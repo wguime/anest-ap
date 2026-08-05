@@ -179,6 +179,10 @@ Na conferência HRO, o campo Sala usa uma lista ordenada de salas/locais canôni
 é uma sugestão selecionável, não bloqueia uma sala nova; escolher a opção canônica
 evita que células mescladas criem blocos distintos por grafia.
 
+Trocas, posições assumidas e liberações são isoladas por turno (`matutino:chave` /
+`vespertino:chave`). Dados legados sem prefixo foram migrados para matutino;
+planos de troca recebem o turno atual e nunca alteram `ordem_liberacao`.
+
 ## Bottom Nav
 4 abas: **Home** | **Gestão** (Shield) | **Educação** | **Menu**
 (Dashboard temporariamente oculto; código preservado em `App.jsx`)

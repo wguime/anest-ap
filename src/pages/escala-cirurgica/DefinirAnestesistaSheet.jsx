@@ -117,6 +117,7 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
         await executarSubstituicao({
           lados: [{
             hospital: escala.hospital, escalaId: escala.id,
+            turno,
             chaveSlot: slotAnterior.chave, nomeSlot: slotAnterior.nome,
             de: { uid: atual.uid || null, nome: rAtual?.nome || atual.alias, apelido: atual.alias || slotAnterior.nome },
             para: { uid: r.uid, nome: r.nome, apelido: r.apelidos?.[0] || primeiroNomeUpper(r.nome) },

@@ -156,13 +156,16 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     const out = []
     const slotLabelDe = (p) => {
       for (const [h2, e2] of Object.entries(escalas)) {
-        if (e2 && localizarSlotRodape(e2, p, resolverRoster)) return HOSPITAL_LABEL[h2] || h2
+        if (e2 && localizarSlotRodape(e2, p, resolverRoster, turno)) return HOSPITAL_LABEL[h2] || h2
       }
       return null
     }
     for (const [h, esc] of Object.entries(escalas)) {
       if (!esc) continue
-      for (const [chave, ov] of Object.entries(esc.linhaOverrides || {})) {
+      for (const [rawChave, ov] of Object.entries(esc.linhaOverrides || {})) {
+        const prefixo = `${turno}:`
+        if (!String(rawChave).startsWith(prefixo)) continue
+        const chave = String(rawChave).slice(prefixo.length)
         const t = ov?.trocaCom
         if (!t?.uid && !t?.nome) continue
         // lado A = dono da linha onde a troca foi declarada (chave = uid ou nome norm.)
@@ -176,7 +179,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
       }
     }
     return out
-  }, [escalas, rosterByUid, resolverRoster, pessoaDe])
+  }, [escalas, rosterByUid, resolverRoster, pessoaDe, turno])
 
   if (!user) return null
 
@@ -288,12 +291,13 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               contraturnoOutros={contraturnoOutros}
               presencaOutros={presencaOutros}
               paresTroca={paresTroca}
-              onMarcarTroca={(linha, colega) => marcarTroca(escala, linha, colega, userInfo)}
+              onMarcarTroca={(linha, colega) => marcarTroca(escala, linha, colega, userInfo, turno)}
               onExecutarTroca={(par) =>
-                executarSubstituicao(planoExecucaoTroca({ escalas, resolverUid: resolverRoster, a: par.a, b: par.b }), userInfo)}
+                executarSubstituicao(planoExecucaoTroca({ escalas, resolverUid: resolverRoster, a: par.a, b: par.b, turno }), userInfo)}
               onDesfazerSubstituicao={(linha) =>
                 desfazerSubstituicao(planoDesfazerTroca({
                   escalas, resolverUid: resolverRoster,
+                  turno,
                   a: pessoaDe(linha.uid, linha.anestesista),
                   b: pessoaDe(linha.assumida?.deUid, linha.assumida?.deNome),
                 }), userInfo)}

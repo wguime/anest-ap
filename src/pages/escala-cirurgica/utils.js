@@ -904,9 +904,10 @@ const uidLocalDe = (esc) => {
 }
 
 /** Slot de uma pessoa no rodapé da escala (qualquer turno) — { nome, chave } | null. */
-export function localizarSlotRodape(esc, pessoa, resolverUid) {
+export function localizarSlotRodape(esc, pessoa, resolverUid, turnoSelecionado = null) {
   const uidLocal = uidLocalDe(esc)
-  for (const turno of ['matutino', 'vespertino']) {
+  const turnos = turnoSelecionado ? [turnoSelecionado] : ['matutino', 'vespertino']
+  for (const turno of turnos) {
     for (const nome of rodapeDoTurno(esc?.ordemLiberacao, turno)) {
       if (pessoaCasaNome(pessoa, nome, resolverUid, uidLocal)) {
         // chave de ESCRITA do override: uid do dicionário > nome normalizado.
@@ -946,13 +947,13 @@ export function casosTransferiveis(esc, pessoa, resolverUid) {
  *   a/b = { uid, nome, apelido } (roster). Puro: nada é escrito aqui.
  * @returns {{ lados: Array, limparTroca: Array }}
  */
-export function planoExecucaoTroca({ escalas, resolverUid, a, b }) {
+export function planoExecucaoTroca({ escalas, resolverUid, a, b, turno = null }) {
   const lados = []
   const limparTroca = []
   for (const [hospital, esc] of Object.entries(escalas || {})) {
     if (!esc?.id) continue
     for (const [de, para] of [[a, b], [b, a]]) {
-      const slot = localizarSlotRodape(esc, de, resolverUid)
+      const slot = localizarSlotRodape(esc, de, resolverUid, turno)
       if (!slot) continue
       lados.push({
         hospital, escalaId: esc.id,
@@ -961,6 +962,7 @@ export function planoExecucaoTroca({ escalas, resolverUid, a, b }) {
         para: { uid: para.uid || null, nome: para.nome, apelido: para.apelido },
         // sem uid de quem assume não há como transferir caso (o service escreveria
         // "?"): o lado vale só pela POSIÇÃO; os casos se ajustam pelo Definir.
+        ...(turno ? { turno } : {}),
         casoIds: para.uid ? casosTransferiveis(esc, de, resolverUid) : [],
       })
     }
@@ -970,12 +972,14 @@ export function planoExecucaoTroca({ escalas, resolverUid, a, b }) {
       if (typeof ref === 'string') return ref === pessoa.uid || pessoaCasaNome(pessoa, ref, resolverUid, uidLocal)
       return ref.uid ? ref.uid === pessoa.uid : pessoaCasaNome(pessoa, ref.nome, resolverUid, uidLocal)
     }
-    for (const [chave, ov] of Object.entries(esc.linhaOverrides || {})) {
+    for (const [rawChave, ov] of Object.entries(esc.linhaOverrides || {})) {
+      if (turno && !String(rawChave).startsWith(`${turno}:`)) continue
+      const chave = turno ? String(rawChave).slice(turno.length + 1) : rawChave
       const t = ov?.trocaCom
       if (!t) continue
       const parAB = ehDoPar(chave, a) && ehDoPar(t, b)
       const parBA = ehDoPar(chave, b) && ehDoPar(t, a)
-      if (parAB || parBA) limparTroca.push({ hospital, escalaId: esc.id, chave })
+      if (parAB || parBA) limparTroca.push({ hospital, escalaId: esc.id, chave, ...(turno ? { turno } : {}) })
     }
   }
   return { lados, limparTroca }
@@ -989,12 +993,14 @@ export function planoExecucaoTroca({ escalas, resolverUid, a, b }) {
  * anestesista). O `trocaCom` NÃO é restaurado — se a troca continua de pé,
  * declara-se de novo.
  */
-export function planoDesfazerTroca({ escalas, resolverUid, a, b }) {
+export function planoDesfazerTroca({ escalas, resolverUid, a, b, turno = null }) {
   const lados = []
   for (const [hospital, esc] of Object.entries(escalas || {})) {
     if (!esc?.id) continue
     const uidLocal = uidLocalDe(esc)
-    for (const [chave, ov] of Object.entries(esc.linhaOverrides || {})) {
+    for (const [rawChave, ov] of Object.entries(esc.linhaOverrides || {})) {
+      if (turno && !String(rawChave).startsWith(`${turno}:`)) continue
+      const chave = turno ? String(rawChave).slice(turno.length + 1) : rawChave
       const asm = ov?.assumidaPor
       if (!asm) continue
       const assumidor = [a, b].find((p) => (asm.uid ? asm.uid === p.uid : pessoaCasaNome(p, asm.nome, resolverUid, uidLocal)))
@@ -1002,7 +1008,7 @@ export function planoDesfazerTroca({ escalas, resolverUid, a, b }) {
       // dono original do slot = a OUTRA pessoa do par (o slot é dela)
       const dono = assumidor === a ? b : a
       lados.push({
-        hospital, escalaId: esc.id, chaveSlot: chave,
+        hospital, escalaId: esc.id, chaveSlot: chave, ...(turno ? { turno } : {}),
         de: { uid: assumidor.uid, nome: assumidor.nome, apelido: assumidor.apelido },
         para: dono.uid ? { uid: dono.uid, nome: dono.nome, apelido: dono.apelido } : null,
         casoIds: dono.uid ? casosTransferiveis(esc, assumidor, resolverUid) : [],

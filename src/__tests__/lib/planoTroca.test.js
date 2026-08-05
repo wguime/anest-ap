@@ -97,6 +97,18 @@ describe('planoExecucaoTroca — swap simultâneo Giovana↔Maurício', () => {
     expect(p.lados.map((l) => l.hospital).sort()).toEqual(['hro', 'unimed'])
     expect(p.lados.find((l) => l.hospital === 'hro').escalaId).toBe('demo-hro')
   })
+
+  it('quando o turno é informado, ignora troca do outro turno e namespacia o lado', () => {
+    const vespertino = {
+      ...escalas.unimed,
+      linhaOverrides: {
+        'matutino:uid-mau': { trocaCom: { uid: 'uid-gio', nome: 'Giovana' } },
+        'vespertino:uid-mau': { trocaCom: { uid: 'uid-gio', nome: 'Giovana' } },
+      },
+    }
+    const plan = planoExecucaoTroca({ escalas: { unimed: vespertino }, resolverUid, a: GIOVANA, b: MAURICIO, turno: 'vespertino' })
+    expect(plan.limparTroca).toEqual([{ hospital: 'unimed', escalaId: 'esc-uni', chave: 'uid-mau', turno: 'vespertino' }])
+  })
 })
 
 describe('planoDesfazerTroca — reverte os dois lados', () => {

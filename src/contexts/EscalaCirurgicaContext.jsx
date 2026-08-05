@@ -470,20 +470,21 @@ export function EscalaCirurgicaProvider({ children }) {
 
   /** Marca/desmarca "Trocado com" na linha. colega = { uid, nome } | null.
    *  Preserva os demais campos do override (override parcial apaga — regra da casa). */
-  const marcarTroca = useCallback(async (escala, linhaArg, colega, userInfo = {}) => {
+  const marcarTroca = useCallback(async (escala, linhaArg, colega, userInfo = {}, turno) => {
     const linha = linhaDe(linhaArg)
     const chave = linha.chave || linha.anestesista
+    const scoped = chaveTurno(turno, chave)
     try {
-      const { trocaCom: _sai, por: _p, em: _e, ...resto } = escala.linhaOverrides?.[chave] || {}
+      const { trocaCom: _sai, por: _p, em: _e, ...resto } = escala.linhaOverrides?.[scoped] || {}
       const temResto = Object.keys(resto).length > 0
       const valor = colega
         ? { ...resto, trocaCom: { uid: colega.uid || null, nome: colega.nome || '', por: userInfo.userId || null, em: new Date().toISOString() }, por: userInfo.userId || null, em: new Date().toISOString() }
         : temResto ? { ...resto, por: userInfo.userId || null, em: new Date().toISOString() } : null
       // demo opera EM MEMÓRIA (padrão do toggleLiberacao) — base dos e2e determinísticos
-      if (!String(escala.id).startsWith('demo-')) await svc.patchLinhaOverride(escala.id, chave, valor)
+      if (!String(escala.id).startsWith('demo-')) await svc.patchLinhaOverride(escala.id, scoped, valor)
       const linhaOverrides = { ...(escala.linhaOverrides || {}) }
-      if (valor) linhaOverrides[chave] = valor
-      else delete linhaOverrides[chave]
+      if (valor) linhaOverrides[scoped] = valor
+      else delete linhaOverrides[scoped]
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { linhaOverrides } })
       toast({
         variant: 'success',
@@ -523,7 +524,8 @@ export function EscalaCirurgicaProvider({ children }) {
         const esc = escalas[lado.hospital]
         if (!esc || esc.id !== lado.escalaId) throw new Error('A escala mudou — recarregue e tente de novo.')
         const demo = String(lado.escalaId).startsWith('demo-') // demo: só em memória
-        const anterior = (esc.linhaOverrides || {})[lado.chaveSlot] ?? null
+        const scoped = chaveTurno(lado.turno, lado.chaveSlot)
+        const anterior = (esc.linhaOverrides || {})[scoped] ?? null
         const { trocaCom: _sai, ...resto } = anterior || {}
         pendentesLimpar.delete(`${lado.escalaId}|${lado.chaveSlot}`)
         const valor = {
@@ -532,10 +534,10 @@ export function EscalaCirurgicaProvider({ children }) {
           por: userInfo.userId || null, em: agoraIso,
         }
         if (!demo) {
-          await svc.patchLinhaOverride(lado.escalaId, lado.chaveSlot, valor)
-          rollback.push(() => svc.patchLinhaOverride(lado.escalaId, lado.chaveSlot, anterior))
+          await svc.patchLinhaOverride(lado.escalaId, scoped, valor)
+          rollback.push(() => svc.patchLinhaOverride(lado.escalaId, scoped, anterior))
         }
-        patchLocal(lado.hospital, (p) => { p.linhaOverrides[lado.chaveSlot] = valor })
+        patchLocal(lado.hospital, (p) => { p.linhaOverrides[scoped] = valor })
         if (lado.casoIds?.length) {
           if (!demo) {
             await svc.updateAnestesistaCasos(lado.casoIds, { uid: lado.para.uid, apelido: lado.para.apelido })
@@ -554,17 +556,18 @@ export function EscalaCirurgicaProvider({ children }) {
       for (const item of limparTroca) {
         if (!pendentesLimpar.has(`${item.escalaId}|${item.chave}`)) continue
         const esc = escalaDe(item.escalaId)
-        const ant = (esc?.linhaOverrides || {})[item.chave]
+        const scoped = chaveTurno(item.turno, item.chave)
+        const ant = (esc?.linhaOverrides || {})[scoped]
         if (!ant?.trocaCom) continue
         const { trocaCom: _t, por: _p, em: _e, ...resto } = ant
         const v = Object.keys(resto).length ? { ...resto, por: userInfo.userId || null, em: agoraIso } : null
         if (!String(item.escalaId).startsWith('demo-')) {
-          await svc.patchLinhaOverride(item.escalaId, item.chave, v)
-          rollback.push(() => svc.patchLinhaOverride(item.escalaId, item.chave, ant))
+          await svc.patchLinhaOverride(item.escalaId, scoped, v)
+          rollback.push(() => svc.patchLinhaOverride(item.escalaId, scoped, ant))
         }
         patchLocal(item.hospital, (p) => {
-          if (v) p.linhaOverrides[item.chave] = v
-          else delete p.linhaOverrides[item.chave]
+          if (v) p.linhaOverrides[scoped] = v
+          else delete p.linhaOverrides[scoped]
         })
       }
       for (const [hospital, patch] of Object.entries(porHospital)) {
@@ -603,19 +606,20 @@ export function EscalaCirurgicaProvider({ children }) {
         const esc = escalas[lado.hospital]
         if (!esc || esc.id !== lado.escalaId) throw new Error('A escala mudou — recarregue e tente de novo.')
         const demo = String(lado.escalaId).startsWith('demo-') // demo: só em memória
-        const anterior = (esc.linhaOverrides || {})[lado.chaveSlot] ?? null
+        const scoped = chaveTurno(lado.turno, lado.chaveSlot)
+        const anterior = (esc.linhaOverrides || {})[scoped] ?? null
         const { assumidaPor: _sai, por: _p, em: _e, ...resto } = anterior || {}
         const valor = Object.keys(resto).length ? { ...resto, por: userInfo.userId || null, em: agoraIso } : null
         if (!demo) {
-          await svc.patchLinhaOverride(lado.escalaId, lado.chaveSlot, valor)
-          rollback.push(() => svc.patchLinhaOverride(lado.escalaId, lado.chaveSlot, anterior))
+          await svc.patchLinhaOverride(lado.escalaId, scoped, valor)
+          rollback.push(() => svc.patchLinhaOverride(lado.escalaId, scoped, anterior))
         }
         if (!porHospital[lado.hospital]) {
           porHospital[lado.hospital] = { linhaOverrides: { ...(esc.linhaOverrides || {}) }, casos: [...(esc.casos || [])] }
         }
         const p = porHospital[lado.hospital]
-        if (valor) p.linhaOverrides[lado.chaveSlot] = valor
-        else delete p.linhaOverrides[lado.chaveSlot]
+        if (valor) p.linhaOverrides[scoped] = valor
+        else delete p.linhaOverrides[scoped]
         if (lado.para?.uid && lado.casoIds?.length) {
           if (!demo) {
             await svc.updateAnestesistaCasos(lado.casoIds, { uid: lado.para.uid, apelido: lado.para.apelido })

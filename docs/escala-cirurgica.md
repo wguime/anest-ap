@@ -311,6 +311,15 @@ intencional ou troca, identificando o colega e o hospital. Nunca transformar
 automaticamente o caso em ajuda, trocar o anestesista ou confiar apenas na cor
 da imagem. Essa confirmação é obrigatória antes da publicação.
 
+### Lição registrada — trocas isoladas por turno (2026-08-05)
+
+Troca declarada, posição assumida e liberação são estado do slot **dentro do
+turno**. Chaves antigas sem prefixo foram migradas para `matutino:` porque os
+casos legados sem turno eram matutinos. Toda nova leitura/escrita usa
+`matutino:chave` ou `vespertino:chave`; planos de troca também recebem o turno e
+ignoram o outro período. `ordem_liberacao` permanece somente a ordem publicada do
+rodapé e nunca é reordenada pela troca.
+
 ### Lição registrada — conferência de salas HRO (2026-08-05)
 
 Na escala do HRO, rótulos de seção e células mescladas podem chegar como
