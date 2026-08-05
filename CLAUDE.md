@@ -162,6 +162,10 @@ A publicação usa a migration `20260804180000`: RPC transacional por
 namespaced (`matutino:chave`/`vespertino:chave`) para liberações e overrides.
 Casos legados sem turno foram fixados como matutinos. A importação herda o
 turno da tela anterior e confirma hospital, data e período antes de publicar.
+Em trocas, `trocaCom` apenas declara o par; somente `assumidaPor` executa a
+substituição. O alvo pode estar fora do hospital e sem casos locais. Após a
+execução, casos abertos e posição devem aparecer de forma idêntica em Completa
+e Minhas; se houver apenas declaração, a troca ainda não foi realizada.
 
 ## Bottom Nav
 4 abas: **Home** | **Gestão** (Shield) | **Educação** | **Menu**
