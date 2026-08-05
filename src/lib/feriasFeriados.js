@@ -30,12 +30,15 @@ export const FERIADOS_UTEIS = {
 }
 
 /**
- * Recesso de fim de ano (semana peri-natal + peri-réveillon). Sem datas
- * confirmadas pelo dono → null; a regra da 7ª vaga peri-recesso degrada
- * para warning genérico enquanto isso.
+ * Recesso de fim de ano (semana peri-natal + peri-réveillon). Datas de 2026
+ * confirmadas pelo dono em 04/08/2026: 21/12/2026 a 03/01/2027.
+ *
+ * Ativa a severidade CRÍTICA da 7ª vaga na janela de ±7 dias em volta do
+ * recesso (regra: no peri-recesso a 7ª vaga é proibida, só licença-saúde).
+ * Ano sem datas → null e o alerta degrada para warning genérico.
  */
 export const RECESSO_FIM_DE_ANO = {
-  2026: null,
+  2026: { inicio: '2026-12-21', fim: '2027-01-03' },
 }
 
 /** @returns {Set<string>} datas ISO dos feriados do ano (vazio se ano não configurado). */

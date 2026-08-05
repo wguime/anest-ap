@@ -107,6 +107,10 @@ export function avaliarDesmarcacaoDia({ data, nome, estadoPorDia = new Map(), ho
 export function montarResumoConfirmacao({
   registrosPP = [], movimentacoes = [], selecoes, nome, ano, socios, feriados,
   hojeISO, violacoesAtuais = [], estadoPorDia = new Map(), porDia = new Map(),
+  // Penalidade da 7ª vaga que a pessoa JÁ carrega (vem do extrato da página).
+  // Entra nos dois lados da conta para o "antes → depois" bater com o que o
+  // Individual mostra; o custo desta seleção é somado só no "depois".
+  penalidadeAtual = 0,
 }) {
   const marcar = [...(selecoes?.marcar || [])].sort()
   const desmarcar = [...(selecoes?.desmarcar || [])].sort()
@@ -149,12 +153,20 @@ export function montarResumoConfirmacao({
     .filter((l) => l.acao === 'marcar')
     .reduce((acc, l) => acc + (l.custoDias - 1), 0)
 
+  // Dono 04/08: o custo extra da 7ª vaga é DEBITADO e conta como dia de
+  // férias. Por isso o resumo declara o efetivo (marcados + penalidade), e
+  // não só os dias marcados — senão o sheet prometeria um saldo que o
+  // extrato não confirma depois.
+  const diasAntes = (pessoaAntes?.diasContados ?? 0) + penalidadeAtual
+  const diasDepois = (pessoaDepois?.diasContados ?? 0) + penalidadeAtual + custoDeclaradoExtra
+  const cota = pessoaDepois?.cota ?? pessoaAntes?.cota ?? 0
+
   return {
     linhas,
-    saldoAntes: pessoaAntes?.saldo ?? 0,
-    saldoDepois: pessoaDepois?.saldo ?? 0,
-    diasAntes: pessoaAntes?.diasContados ?? 0,
-    diasDepois: pessoaDepois?.diasContados ?? 0,
+    saldoAntes: (pessoaAntes?.cota ?? cota) - diasAntes,
+    saldoDepois: cota - diasDepois,
+    diasAntes,
+    diasDepois,
     custoDeclaradoExtra,
     custoTotal: linhas.filter((l) => l.acao === 'marcar').reduce((a, l) => a + l.custoDias, 0),
     avisosNovos,

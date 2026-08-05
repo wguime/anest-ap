@@ -126,22 +126,34 @@ export function regraSegundasSextasIsoladas(extrato, config = {}) {
 // ============================================================================
 
 /**
- * Dias contados acima da cota da pessoa. O id NÃO carrega a magnitude:
- * piorar de 36→37 não re-notifica (deliberado — o alerta segue visível na
- * página com o número atual).
+ * Dias EFETIVOS acima da cota da pessoa. Efetivo = marcados + penalidade da
+ * 7ª vaga (dono 04/08: o custo extra é debitado e conta como dia de férias),
+ * então quem tem 29 marcados + 3 de penalidade estoura uma cota de 30 — antes
+ * essa pessoa passava batida porque a regra olhava só os dias marcados.
+ * Recebendo um extrato sem penalidades aplicadas, `diasEfetivos` é undefined e
+ * o fallback preserva o comportamento antigo.
+ *
+ * O id NÃO carrega a magnitude: piorar de 36→37 não re-notifica (deliberado —
+ * o alerta segue visível na página com o número atual).
  */
 export function regraCotaEstourada(extrato) {
   return extrato.porPessoa
-    .filter((p) => p.diasContados > p.cota)
-    .map((p) => ({
-      id: `cota:${slug(p.nome)}:${extrato.ano}`,
-      regra: 'COTA_ESTOURADA',
-      severidade: 'critical',
-      pessoa: p.nome,
-      pessoaExib: nomeExib(p),
-      referencia: String(extrato.ano),
-      detalhe: `${p.diasContados} dias marcados para uma cota de ${p.cota} (${p.regraCota})`,
-    }))
+    .map((p) => ({ p, efetivos: p.diasEfetivos ?? p.diasContados }))
+    .filter(({ p, efetivos }) => efetivos > p.cota)
+    .map(({ p, efetivos }) => {
+      const penalidade = p.diasPenalidade ?? 0
+      return {
+        id: `cota:${slug(p.nome)}:${extrato.ano}`,
+        regra: 'COTA_ESTOURADA',
+        severidade: 'critical',
+        pessoa: p.nome,
+        pessoaExib: nomeExib(p),
+        referencia: String(extrato.ano),
+        detalhe: penalidade
+          ? `${efetivos} dias para uma cota de ${p.cota} (${p.regraCota}) — ${p.diasContados} marcados + ${penalidade} de penalidade da 7ª vaga`
+          : `${efetivos} dias marcados para uma cota de ${p.cota} (${p.regraCota})`,
+      }
+    })
 }
 
 // ============================================================================

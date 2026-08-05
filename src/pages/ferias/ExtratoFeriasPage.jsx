@@ -646,40 +646,6 @@ export default function ExtratoFeriasPage({ goBack }) {
     () => (registrosRaw ? construirExtrato({ registros, ano, socios, feriados }) : null),
     [registrosRaw, registros, ano, socios, feriados]
   )
-  // Regras avaliam os dias MARCADOS (penalidade é consequência, não marcação)
-  const violacoes = useMemo(
-    () => (extratoBase ? avaliarRegras(extratoBase, { feriados }) : []),
-    [extratoBase, feriados]
-  )
-
-  // ─── Notificação agregada (violações NOVAS; 1/dia; só p/ quem tem acesso) ──
-  // Roda 1x por carga de dados reais. Recipients primeiro: se a lista de
-  // usuários ainda não carregou, NÃO registra as vistas (senão a violação
-  // ficaria marcada como notificada sem ninguém ter recebido).
-  const [notifDone, setNotifDone] = useState(false)
-  useEffect(() => {
-    if (notifDone || !extratoBase || violacoes.length === 0 || usersList.length === 0) return
-    const uid = user?.uid || user?.id
-    if (!uid) return
-    setNotifDone(true)
-    ;(async () => {
-      try {
-        const recipients = getDestinatariosFerias(usersList)
-        if (recipients.length === 0) return
-        const vistas = await fetchViolacoesVistas(ano)
-        const novas = diffViolacoesNovas(violacoes, vistas)
-        if (novas.length === 0) return
-        await registrarViolacoesVistas(novas, { ano, detectedBy: uid })
-        await createSystemNotification(
-          buildFeriasNotificationPayload({ novas, ano, hojeISO, recipientIds: recipients })
-        )
-      } catch (err) {
-        // Nunca derruba a página — o alerta segue visível na tela
-        console.warn('[ExtratoFerias] notificação agregada falhou:', err?.message)
-      }
-    })()
-  }, [notifDone, extratoBase, violacoes, usersList, user, ano, hojeISO, createSystemNotification])
-
   // ─── First-seen das marcações (proxy da ORDEM de marcação — 7ª vaga) ──────
   // A API não expõe quando se marcou; registramos quando cada CodigoPlantao
   // aparece pela 1ª vez. Baseline (1ª varredura) = ordem desconhecida.
@@ -755,6 +721,44 @@ export default function ExtratoFeriasPage({ goBack }) {
     [extratoBase, penalidadesPorPessoa]
   )
 
+  // Regras avaliam o extrato JÁ COM as penalidades da 7ª vaga (dono 04/08: o
+  // custo extra é debitado e conta como dia). Por isso este memo vem DEPOIS de
+  // `extrato` — avaliando `extratoBase`, quem estourava a cota só por causa da
+  // penalidade não gerava alerta nenhum.
+  const violacoes = useMemo(
+    () => (extrato ? avaliarRegras(extrato, { feriados }) : []),
+    [extrato, feriados]
+  )
+
+  // ─── Notificação agregada (violações NOVAS; 1/dia; só p/ quem tem acesso) ──
+  // Roda 1x por carga de dados reais. Recipients primeiro: se a lista de
+  // usuários ainda não carregou, NÃO registra as vistas (senão a violação
+  // ficaria marcada como notificada sem ninguém ter recebido).
+  const [notifDone, setNotifDone] = useState(false)
+  useEffect(() => {
+    if (notifDone || !extratoBase || violacoes.length === 0 || usersList.length === 0) return
+    const uid = user?.uid || user?.id
+    if (!uid) return
+    setNotifDone(true)
+    ;(async () => {
+      try {
+        const recipients = getDestinatariosFerias(usersList)
+        if (recipients.length === 0) return
+        const vistas = await fetchViolacoesVistas(ano)
+        const novas = diffViolacoesNovas(violacoes, vistas)
+        if (novas.length === 0) return
+        await registrarViolacoesVistas(novas, { ano, detectedBy: uid })
+        await createSystemNotification(
+          buildFeriasNotificationPayload({ novas, ano, hojeISO, recipientIds: recipients })
+        )
+      } catch (err) {
+        // Nunca derruba a página — o alerta segue visível na tela
+        console.warn('[ExtratoFerias] notificação agregada falhou:', err?.message)
+      }
+    })()
+  }, [notifDone, extratoBase, violacoes, usersList, user, ano, hojeISO, createSystemNotification])
+
+
   // Individual: default = o próprio usuário (mapa e-mail → sócio)
   useEffect(() => {
     if (pessoaSelecionada || !extrato) return
@@ -805,22 +809,27 @@ export default function ExtratoFeriasPage({ goBack }) {
       const XLSX = await import('xlsx')
       const wb = XLSX.utils.book_new()
 
+      // Marcados e penalidade em colunas separadas, e o TOTAL é o que conta
+      // contra a cota — assim a planilha fecha (total - cota = saldo).
+      const efetivosDe = (p) => p.diasEfetivos ?? p.diasContados
       const ordenados = [...extrato.porPessoa].sort(
-        (a, b) => b.diasContados - a.diasContados || a.nomeCompleto.localeCompare(b.nomeCompleto)
+        (a, b) => efetivosDe(b) - efetivosDe(a) || a.nomeCompleto.localeCompare(b.nomeCompleto)
       )
+      const totalPenalidade = extrato.porPessoa.reduce((a, p) => a + (p.diasPenalidade ?? 0), 0)
       const wsResumo = XLSX.utils.aoa_to_sheet([
         [`Extrato de Férias ${ano} — uso interno do grupo`],
         [],
-        ['Sócio', 'Entrada', 'Cota', 'Dias marcados', 'Saldo', 'Semanas inteiras', 'Situação'],
+        ['Sócio', 'Entrada', 'Cota', 'Dias marcados', 'Penalidade 7ª vaga', 'Total efetivo', 'Saldo', 'Semanas inteiras', 'Situação'],
         ...ordenados.map((p) => [
-          p.nomeCompleto, p.anoEntrada, p.cota, p.diasContados, p.saldo,
+          p.nomeCompleto, p.anoEntrada, p.cota, p.diasContados,
+          p.diasPenalidade ?? 0, efetivosDe(p), p.saldo,
           p.semanas.filter((s) => s.inteira).length,
           p.saldo < 0 ? 'EXCEDIDA' : p.saldo === 0 ? 'Completa' : 'OK',
         ]),
         [],
-        ['TOTAL', '', '', extrato.totalDiasContados],
+        ['TOTAL', '', '', extrato.totalDiasContados, totalPenalidade, extrato.totalDiasContados + totalPenalidade],
       ])
-      wsResumo['!cols'] = [34, 8, 6, 13, 7, 15, 12].map((wch) => ({ wch }))
+      wsResumo['!cols'] = [34, 8, 6, 13, 17, 12, 7, 15, 12].map((wch) => ({ wch }))
       XLSX.utils.book_append_sheet(wb, wsResumo, 'Resumo')
 
       const wsDias = XLSX.utils.aoa_to_sheet([

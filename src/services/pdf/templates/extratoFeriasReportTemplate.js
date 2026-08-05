@@ -75,24 +75,30 @@ export async function render(doc, startY, data, context = {}) {
   y = checkPageBreak(doc, y, 20, logoBase64, title)
   y = addSectionTitle(doc, y, `Dias por sócio (${extrato.porPessoa.length})`)
 
+  // "Dias" é o EFETIVO (marcados + penalidade da 7ª vaga) porque é ele que
+  // conta contra a cota; "Penal." mostra de onde veio a diferença. Sem isso a
+  // linha não fechava: aparecia "29 dias / cota 30 / saldo -2".
   const cols = [
-    { label: 'Sócio', width: 55, align: 'left' },
-    { label: 'Entrada', width: 16, align: 'center' },
-    { label: 'Cota', width: 14, align: 'center' },
+    { label: 'Sócio', width: 52, align: 'left' },
+    { label: 'Entrada', width: 15, align: 'center' },
+    { label: 'Cota', width: 13, align: 'center' },
     { label: 'Dias', width: 14, align: 'center' },
-    { label: 'Saldo', width: 15, align: 'center' },
-    { label: 'Sem. inteiras', width: 22, align: 'center' },
-    { label: 'Situação', width: 24, align: 'center' },
+    { label: 'Penal.', width: 14, align: 'center' },
+    { label: 'Saldo', width: 14, align: 'center' },
+    { label: 'Sem. inteiras', width: 21, align: 'center' },
+    { label: 'Situação', width: 22, align: 'center' },
   ]
 
+  const efetivosDe = (p) => p.diasEfetivos ?? p.diasContados
   const ordenados = [...extrato.porPessoa].sort(
-    (a, b) => b.diasContados - a.diasContados || (a.nomeCompleto || a.nome).localeCompare(b.nomeCompleto || b.nome)
+    (a, b) => efetivosDe(b) - efetivosDe(a) || (a.nomeCompleto || a.nome).localeCompare(b.nomeCompleto || b.nome)
   )
   const rows = ordenados.map((p) => [
     p.nomeCompleto || p.nome,
     String(p.anoEntrada),
     String(p.cota),
-    String(p.diasContados),
+    String(efetivosDe(p)),
+    p.diasPenalidade ? `+${p.diasPenalidade}` : '-',
     String(p.saldo),
     String(p.semanas.filter((s) => s.inteira).length),
     p.saldo < 0 ? 'EXCEDIDA' : p.saldo === 0 ? 'Completa' : 'OK',
@@ -151,8 +157,11 @@ export async function render(doc, startY, data, context = {}) {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8)
     doc.setTextColor(...ANEST_COLORS.gray)
+    const penalidadeInd = pessoa.diasPenalidade ?? 0
     doc.text(
-      `Cota ${pessoa.cota} (${pessoa.regraCota}) · ${pessoa.diasContados} dias marcados · saldo ${pessoa.saldo}`,
+      penalidadeInd
+        ? `Cota ${pessoa.cota} (${pessoa.regraCota}) · ${pessoa.diasContados} marcados + ${penalidadeInd} de penalidade (7ª vaga) = ${pessoa.diasEfetivos} · saldo ${pessoa.saldo}`
+        : `Cota ${pessoa.cota} (${pessoa.regraCota}) · ${pessoa.diasContados} dias marcados · saldo ${pessoa.saldo}`,
       PAGE.marginLeft,
       y
     )

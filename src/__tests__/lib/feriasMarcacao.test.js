@@ -107,8 +107,10 @@ describe('montarResumoConfirmacao', () => {
     expect(resumo.totalMarcar).toBe(2)
     expect(resumo.totalDesmarcar).toBe(1)
     expect(resumo.diasAntes).toBe(3)
-    expect(resumo.diasDepois).toBe(4) // +2 marcados, -1 desmarcado
-    expect(resumo.saldoDepois).toBe(resumo.saldoAntes - 1)
+    // +2 marcados, -1 desmarcado = 4 no calendário, mais os 2 dias extras da
+    // 7ª vaga, que o dono mandou DEBITAR (04/08): o resumo declara o efetivo
+    expect(resumo.diasDepois).toBe(6)
+    expect(resumo.saldoDepois).toBe(resumo.saldoAntes - 3)
     expect(resumo.custoDeclaradoExtra).toBe(CUSTO_SETIMA_VAGA - 1) // só o dia lotado
     expect(resumo.custoTotal).toBe(CUSTO_SETIMA_VAGA + 1)
   })

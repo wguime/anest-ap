@@ -120,8 +120,9 @@ export default function MarcarFeriasView({
     return montarResumoConfirmacao({
       registrosPP, movimentacoes, selecoes, nome, ano, socios, feriados,
       hojeISO, violacoesAtuais: violacoes, estadoPorDia, porDia,
+      penalidadeAtual: pessoa?.diasPenalidade ?? 0,
     })
-  }, [total, extrato, registrosPP, movimentacoes, selecoes, nome, ano, socios, feriados, hojeISO, violacoes, estadoPorDia, porDia])
+  }, [total, extrato, registrosPP, movimentacoes, selecoes, nome, ano, socios, feriados, hojeISO, violacoes, estadoPorDia, porDia, pessoa])
 
   const confirmar = async () => {
     setGravando(true)
@@ -213,11 +214,18 @@ export default function MarcarFeriasView({
         <p className="text-sm font-bold text-foreground">{pessoa.nomeCompleto}</p>
         <div className="mt-2 grid grid-cols-2 gap-2">
           <div className="rounded-xl bg-accent dark:bg-card-elevated px-3 py-2">
-            <p className="text-[11px] font-medium text-primary">Dias marcados</p>
+            {/* Dias USADOS = marcados + penalidade da 7ª vaga, que é o número
+                que conta contra a cota (dono 04/08) */}
+            <p className="text-[11px] font-medium text-primary">Dias usados</p>
             <p className="text-lg font-bold tabular-nums text-foreground">
-              {pessoa.diasContados}
+              {pessoa.diasEfetivos ?? pessoa.diasContados}
               <span className="text-[13px] font-medium text-muted-foreground"> / {pessoa.cota}</span>
             </p>
+            {pessoa.diasPenalidade > 0 && (
+              <p className="text-[10px] leading-tight text-muted-foreground">
+                {pessoa.diasContados} marcados + {pessoa.diasPenalidade} de penalidade
+              </p>
+            )}
           </div>
           <div className="rounded-xl bg-accent dark:bg-card-elevated px-3 py-2">
             <p className="text-[11px] font-medium text-primary">

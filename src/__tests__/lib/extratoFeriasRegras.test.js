@@ -57,8 +57,14 @@ describe('regraMaxPorDia', () => {
       id: 'max-dia:2026-12-17',
       regra: 'MAX_POR_DIA',
       pessoa: null,
-      severidade: 'warning',
+      // 17/12 cai na janela de ±7 dias do recesso (21/12/26–03/01/27,
+      // confirmado pelo dono em 04/08): ali a 7ª vaga é proibida, não só cara
+      severidade: 'critical',
     })
+
+    // fora da janela do recesso o mesmo excesso continua sendo só warning
+    const foraDoRecesso = montar(socios, Object.fromEntries(nomes.map((n) => [n, ['2026-09-17']])))
+    expect(regraMaxPorDia(foraDoRecesso)[0]).toMatchObject({ severidade: 'warning' })
 
     const noLimite = montar(
       socios.slice(0, MAX_VAGAS_DIA),
@@ -143,6 +149,32 @@ describe('regraCotaEstourada — casos reais', () => {
     expect(violacoes.find((v) => v.pessoa === 'NATHALIA FORNARI FERNANDES').id).toBe(
       'cota:nathalia-fornari-fernandes:2026'
     )
+  })
+
+  it('a penalidade da 7ª vaga estoura a cota mesmo com os dias marcados dentro dela', () => {
+    // Dono 04/08: o custo extra é debitado e conta como dia de férias. 29
+    // marcados numa cota de 30 não alertava; com +3 da 7ª vaga, alerta.
+    const extrato = {
+      ano: 2026,
+      porPessoa: [{
+        nome: 'FULANO DE TAL', nomeCompleto: 'Fulano de Tal',
+        cota: 30, regraCota: '4º ano+', diasContados: 29,
+        diasPenalidade: 3, diasEfetivos: 32,
+      }],
+    }
+    const violacoes = regraCotaEstourada(extrato)
+    expect(violacoes).toHaveLength(1)
+    expect(violacoes[0].severidade).toBe('critical')
+    expect(violacoes[0].detalhe).toContain('32 dias')
+    expect(violacoes[0].detalhe).toContain('29 marcados + 3 de penalidade')
+  })
+
+  it('sem penalidade aplicada, cai no comportamento antigo (dias marcados)', () => {
+    const dentro = { ano: 2026, porPessoa: [{ nome: 'X', nomeCompleto: 'X', cota: 30, regraCota: '4º ano+', diasContados: 29 }] }
+    expect(regraCotaEstourada(dentro)).toHaveLength(0)
+    const fora = { ano: 2026, porPessoa: [{ nome: 'X', nomeCompleto: 'X', cota: 30, regraCota: '4º ano+', diasContados: 31 }] }
+    expect(regraCotaEstourada(fora)).toHaveLength(1)
+    expect(regraCotaEstourada(fora)[0].detalhe).toContain('31 dias marcados')
   })
 })
 
