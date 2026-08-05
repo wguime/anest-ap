@@ -137,38 +137,11 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     return out
   }, [escalas, hospital, turno])
 
-  // PRESENÇA NOS OUTROS HOSPITAIS (dono 30/07 — caso TIAGO): quem tem caso AQUI
-  // sem estar no rodapé daqui vira linha extra no fim da fila; se ele pertence à
-  // escala de OUTRO hospital no mesmo turno, é AJUDA por estrutura — o badge não
-  // pode depender de alguém lembrar de marcá-lo em ajuda_externa. Mesma família
-  // do contraturnoOutros: derivado do context, sem persistência.
-  const presencaOutros = useMemo(() => {
-    const out = []
-    for (const [h, esc] of Object.entries(escalas)) {
-      if (h === hospital || !esc) continue
-      const label = HOSPITAL_LABEL[h] || h
-      // `rodapeIdx` = posição no rodapé de ORIGEM (dono 31/07): quem está aqui de
-      // ajuda libera na ordem de liberação de lá — a lib ordena o bloco por isto.
-      rodapeDoTurno(esc.ordemLiberacao, turno).forEach((n, i) => {
-        const nm = normNome(n)
-        if (nm) out.push({ nome: nm, uid: null, hospitalLabel: label, rodapeIdx: i })
-      })
-      for (const c of esc.casos || []) {
-        if ((c.turno || turno) !== turno) continue
-        // sala compartilhada "PAULO + GUILHERME MELO": presença dos DOIS (dono
-        // 31/07 — o Melo emprestado à Unimed caía no bloco do fim do HRO porque
-        // o caso compartilhado não contava como presença lá)
-        const partes = String(c.anestesista || '').split(/\s*\+\s*/)
-        const umSo = partes.length === 1
-        for (const parte of partes) {
-          const nm = normNome(parte)
-          if (!nm || nm === '//' || /^\?+$/.test(nm)) continue
-          out.push({ nome: nm, uid: umSo ? (c.anestesistaUserId || null) : null, hospitalLabel: label, sala: String(c.sala || '').trim() })
-        }
-      }
-    }
-    return out
-  }, [escalas, hospital, turno])
+  // Não inferimos ajuda apenas porque um nome aparece em outra escala. Uma
+  // pessoa pode estar escalada simultaneamente em hospitais diferentes, e essa
+  // inferência gerava falsos badges de "Ajuda". Ajuda só entra por
+  // `ajuda_externa[turno]` (publicação/importação) ou marcação manual.
+  const presencaOutros = useMemo(() => [], [])
 
   // ── TROCA DECLARADA (dono 30/07) — pares das 3 escalas + planos de execução ──
   // Mesmo padrão de contraturnoOutros/presencaOutros: o context já carrega as três
