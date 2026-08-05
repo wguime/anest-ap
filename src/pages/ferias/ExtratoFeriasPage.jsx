@@ -269,8 +269,11 @@ function AlertasSheet({ open, onOpenChange, violacoes, ultimosPorDia = new Map()
 
 // ─── Lista coletiva: nome completo + barra de uso + saldo ───────────────────
 function TabelaColetiva({ extrato, onSelectPessoa }) {
+  // Ordem ALFABÉTICA (dono 05/08): a lista serve para procurar uma pessoa, e
+  // ranquear por dias fazia o mesmo nome mudar de lugar a cada marcação.
+  // `localeCompare` pt-BR para acento não jogar "Ávila" no fim.
   const ordenados = useMemo(
-    () => [...extrato.porPessoa].sort((a, b) => (b.diasEfetivos ?? b.diasContados) - (a.diasEfetivos ?? a.diasContados) || a.nomeCompleto.localeCompare(b.nomeCompleto)),
+    () => [...extrato.porPessoa].sort((a, b) => a.nomeCompleto.localeCompare(b.nomeCompleto, 'pt-BR')),
     [extrato]
   )
   return (
@@ -812,8 +815,8 @@ export default function ExtratoFeriasPage({ goBack }) {
       // Marcados e penalidade em colunas separadas, e o TOTAL é o que conta
       // contra a cota — assim a planilha fecha (total - cota = saldo).
       const efetivosDe = (p) => p.diasEfetivos ?? p.diasContados
-      const ordenados = [...extrato.porPessoa].sort(
-        (a, b) => efetivosDe(b) - efetivosDe(a) || a.nomeCompleto.localeCompare(b.nomeCompleto)
+      const ordenados = [...extrato.porPessoa].sort((a, b) =>
+        a.nomeCompleto.localeCompare(b.nomeCompleto, 'pt-BR')
       )
       const totalPenalidade = extrato.porPessoa.reduce((a, p) => a + (p.diasPenalidade ?? 0), 0)
       const wsResumo = XLSX.utils.aoa_to_sheet([

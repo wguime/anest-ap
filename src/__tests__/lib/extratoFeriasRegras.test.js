@@ -94,6 +94,27 @@ describe('regraSegundasSextasIsoladas', () => {
     expect(regraSegundasSextasIsoladas(duas, { feriados: FERIADOS })).toHaveLength(0)
   })
 
+  it('dia SEQUENCIAL não é picado: semana cheia + a segunda seguinte (dono 05/08)', () => {
+    // 03–07/08 (seg a sex) + 10/08 (segunda). O fim de semana não quebra o
+    // bloco: é UM período de 6 dias úteis, então 10/08 não é "segunda isolada".
+    const socios = [socio('FULANO TESTE', 2010)]
+    const extrato = montar(socios, {
+      'FULANO TESTE': [...semana('2026-08-03'), '2026-08-10'],
+    })
+    const pessoa = extrato.porPessoa[0]
+    expect(pessoa.periodos).toHaveLength(1)
+    expect(pessoa.periodos[0]).toMatchObject({ inicio: '2026-08-03', fim: '2026-08-10', diasUteis: 6 })
+    expect(regraSegundasSextasIsoladas(extrato)).toHaveLength(0)
+
+    // e a sexta que emenda com a segunda seguinte também não é isolada
+    const emenda = montar(socios, { 'FULANO TESTE': ['2026-08-07', '2026-08-10'] })
+    expect(regraSegundasSextasIsoladas(emenda)).toHaveLength(0)
+
+    // controle: as MESMAS 3 segundas, agora realmente soltas, seguem violando
+    const soltas = montar(socios, { 'FULANO TESTE': ['2026-08-03', '2026-08-17', '2026-08-24'] })
+    expect(regraSegundasSextasIsoladas(soltas)).toHaveLength(1)
+  })
+
   it('segunda com terça marcada não é isolada; contagem zera entre semestres', () => {
     const socios = [socio('FULANO TESTE', 2010)]
     const extrato = montar(socios, {

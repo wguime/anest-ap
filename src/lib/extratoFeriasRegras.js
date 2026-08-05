@@ -19,7 +19,7 @@
  */
 
 import { getRecesso } from './feriasFeriados'
-import { diaDaSemana, segundaDaSemana, diasUteisDaSemana } from './extratoFerias'
+import { diaDaSemana, segundaDaSemana } from './extratoFerias'
 
 export const MAX_VAGAS_DIA = 6
 
@@ -77,27 +77,29 @@ function somarDiasISO(iso, n) {
 // ============================================================================
 
 /**
- * Segunda isolada = segunda marcada sem o dia útil seguinte da mesma semana;
- * sexta isolada = sexta sem o dia útil anterior. Feriado adjacente não isola
- * (ex.: sexta 22/05 após Corpus Christi na quinta é isolada só se a quarta
- * também não estiver marcada — o vizinho considerado é o dia ÚTIL não-feriado).
+ * Isolada = a pessoa está de férias NAQUELE DIA SÓ. A conta usa os períodos
+ * contínuos do extrato (`agruparPeriodos`), que emendam por dia ÚTIL: fim de
+ * semana e feriado no meio não quebram o bloco.
+ *
+ * Dono 05/08: dia sequencial não é dia picado. Segunda a sexta + a segunda
+ * seguinte é UM período de 6 dias úteis — antes essa segunda entrava como
+ * "isolada" porque a regra só enxergava o vizinho DENTRO da mesma semana e
+ * não via a sexta anterior. Mesma correção vale para a sexta que emenda com a
+ * segunda seguinte.
+ *
+ * Continua valendo o caso do feriado adjacente: quarta marcada + quinta
+ * feriado + sexta marcada é um bloco só, então a sexta não é isolada.
  */
-export function regraSegundasSextasIsoladas(extrato, config = {}) {
-  const feriados = config.feriados ?? new Set()
+export function regraSegundasSextasIsoladas(extrato) {
   const violacoes = []
   for (const pessoa of extrato.porPessoa) {
-    const marcados = new Set(pessoa.diasContaveis.concat(pessoa.feriadosNaoContados))
     const porSemestre = { S1: { seg: [], sex: [] }, S2: { seg: [], sex: [] } }
 
-    for (const dia of pessoa.diasContaveis) {
+    for (const periodo of pessoa.periodos || []) {
+      if (periodo.diasUteis !== 1) continue // faz parte de um bloco → não é picado
+      const dia = periodo.inicio
       const dow = diaDaSemana(dia)
       if (dow !== 1 && dow !== 5) continue
-      const uteis = diasUteisDaSemana(segundaDaSemana(dia), feriados)
-      const idx = uteis.indexOf(dia)
-      if (idx === -1) continue
-      const vizinho = dow === 1 ? uteis[idx + 1] : uteis[idx - 1]
-      const isolado = !vizinho || !marcados.has(vizinho)
-      if (!isolado) continue
       const sem = dia.slice(5, 7) <= '06' ? 'S1' : 'S2'
       porSemestre[sem][dow === 1 ? 'seg' : 'sex'].push(dia)
     }
@@ -304,7 +306,7 @@ export const REGRA_LABEL = {
 export function avaliarRegras(extrato, config = {}) {
   const todas = [
     ...regraMaxPorDia(extrato, config),
-    ...regraSegundasSextasIsoladas(extrato, config),
+    ...regraSegundasSextasIsoladas(extrato),
     ...regraCotaEstourada(extrato),
     ...regraMetadeMeioAno(extrato),
     ...regraSemanasInteiras(extrato),

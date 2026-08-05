@@ -90,8 +90,10 @@ export async function render(doc, startY, data, context = {}) {
   ]
 
   const efetivosDe = (p) => p.diasEfetivos ?? p.diasContados
-  const ordenados = [...extrato.porPessoa].sort(
-    (a, b) => efetivosDe(b) - efetivosDe(a) || (a.nomeCompleto || a.nome).localeCompare(b.nomeCompleto || b.nome)
+  // Alfabética (dono 05/08), igual à tela — relatório que ordena diferente da
+  // lista obriga a procurar a pessoa duas vezes
+  const ordenados = [...extrato.porPessoa].sort((a, b) =>
+    (a.nomeCompleto || a.nome).localeCompare(b.nomeCompleto || b.nome, 'pt-BR')
   )
   const rows = ordenados.map((p) => [
     p.nomeCompleto || p.nome,

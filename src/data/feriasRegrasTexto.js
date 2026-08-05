@@ -18,7 +18,8 @@ export const REGRAS_FERIAS = [
       { texto: 'Depois de 25 anos de grupo, +1 dia por ano até o limite de 35 dias úteis.', verificada: true },
       { texto: 'Só contam DIAS ÚTEIS, e eles precisam ser usados no ano corrente — não acumulam para o ano seguinte.', verificada: true },
       { texto: 'Licença-saúde desconta férias: em média 1 dia de férias a cada 8 dias de licença (proporcional à cota).' },
-      { texto: 'Licença-maternidade: 120 dias corridos e a cota do ano vigente cai para 20 dias úteis.' },
+      { texto: 'Licença-maternidade: 120 dias corridos e a cota do ano vigente cai para 20 dias úteis. A concessão é aplicada pelo Comitê de Ética, que registra a redução da cota no ano correspondente.' },
+      { texto: 'Licença-paternidade: o dia do parto e o dia seguinte. Se caírem em fim de semana ou feriado, vale apenas o primeiro dia útil subsequente. Também é aplicada pelo Comitê de Ética.' },
       { texto: 'Adiantar dias do ano seguinte é possível com aprovação do coordenador de escalas — os dias são descontados no ano correspondente e, nesse ano, não cabe novo adiantamento.' },
     ],
   },
@@ -122,6 +123,14 @@ export const FAQ_FERIAS = [
   {
     p: 'Tirei licença-saúde. Perco férias?',
     r: 'Em média, 1 dia de férias a cada 8 dias de licença, proporcional à sua cota. Licença-maternidade reduz a cota do ano para 20 dias úteis.',
+  },
+  {
+    p: 'Vou ser pai. Quantos dias tenho?',
+    r: 'O dia do parto e o dia seguinte. Se o parto cair em fim de semana ou feriado, vale apenas o primeiro dia útil subsequente — por exemplo, parto no sábado dá a segunda-feira. Quem aplica a licença é o Comitê de Ética.',
+  },
+  {
+    p: 'Quem concede as licenças de maternidade e paternidade?',
+    r: 'O Comitê de Ética. Ele registra a licença e, no caso da maternidade, a redução da cota do ano para 20 dias úteis. Esses dias não saem da sua cota de férias.',
   },
   {
     p: 'Precisei sair da escala de emergência. Como fica?',
