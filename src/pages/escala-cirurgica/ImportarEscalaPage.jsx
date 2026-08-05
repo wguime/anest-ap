@@ -21,6 +21,7 @@ import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
 import { normNome, gruposAnestesista, chavesAnestesista, nomesImportados, aplicarAtribuicoes, detectarConflitos, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
+import { ehHoraSequencialEscala } from '@/lib/escalaCirurgicaRegras'
 
 const HOSPITAL_OPCOES = Object.entries(HOSPITAL_LABEL).map(([value, label]) => ({ value, label }))
 const PERIODO_OPCOES = [
@@ -49,6 +50,7 @@ export const validarHorarioImportacao = (itens, periodo) => {
   for (const item of itens || []) {
     const hora = String(item?.hora || '').trim()
     if (!hora) { semHora += 1; continue }
+    if (ehHoraSequencialEscala(hora)) { semHora += 1; continue }
     const turnoHora = turnoDeHora(hora)
     if (!turnoHora) { invalidos.push(item); continue }
     if (turnoHora !== periodo) incompatíveis.push({ ...item, turnoHora })

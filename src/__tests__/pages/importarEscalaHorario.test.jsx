@@ -23,6 +23,16 @@ describe('publicação da importação — contexto e horários', () => {
     expect(resultado.invalidos).toHaveLength(0)
   })
 
+  it('permite AS/À seguir como horário sequencial', () => {
+    const resultado = validarHorarioImportacao([
+      { sala: 'CC 1', hora: '08:00' },
+      { sala: 'CC 1', hora: 'AS' },
+      { sala: 'CC 1', hora: 'À seguir' },
+    ], 'matutino')
+    expect(resultado.invalidos).toHaveLength(0)
+    expect(resultado.semHora).toBe(2)
+  })
+
   it('detecta hora inválida e horário incompatível com o turno escolhido', () => {
     const resultado = validarHorarioImportacao([
       { sala: 'CC 1', hora: '25:00' },

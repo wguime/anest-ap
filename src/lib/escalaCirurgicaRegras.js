@@ -13,6 +13,11 @@ export const STATUS_EXTRA_ESCALA = Object.freeze(['atrasada', 'suspensa', 'passa
 
 const HORA_RE = /^(\d{1,2})(?::(\d{2}))?\s*h?$/i
 
+/** Marcador operacional: começa após o término da cirurgia anterior. */
+export function ehHoraSequencialEscala(value) {
+  return /^(?:AS|A\s+SEGUIR|À\s+SEGUIR)$/i.test(String(value ?? '').trim())
+}
+
 /**
  * Faz parsing estrito de uma hora de escala.
  * Aceita 08, 08:30 e 08h; rejeita datas, minutos inválidos e valores vazios.
@@ -46,6 +51,7 @@ export function validarCasoEscala(caso = {}) {
   const issues = []
   const turno = caso.turno || null
   const hora = String(caso.hora ?? '').trim()
+  if (ehHoraSequencialEscala(hora)) return issues
   const parsed = hora ? parseHoraEscala(hora) : null
 
   if (turno && !TURNOS_ESCALA.includes(turno)) {

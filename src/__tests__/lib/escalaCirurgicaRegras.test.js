@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   parseHoraEscala,
+  ehHoraSequencialEscala,
   transicaoStatusEscala,
   turnoDaHoraEscala,
   validarCasoEscala,
@@ -22,6 +23,11 @@ describe('regras da Escala Cirúrgica', () => {
   it('exige turno explícito para item sem horário', () => {
     expect(validarCasoEscala({ sala: 'SRPA' }).map((i) => i.code)).toContain('turno_ausente')
     expect(validarCasoEscala({ sala: 'SRPA', turno: 'matutino' })).toEqual([])
+  })
+
+  it('aceita marcador operacional à seguir', () => {
+    expect(ehHoraSequencialEscala('AS')).toBe(true)
+    expect(validarCasoEscala({ hora: 'À seguir', turno: 'matutino' })).toEqual([])
   })
 
   it('avisa divergência hora/turno sem mover o caso automaticamente', () => {
