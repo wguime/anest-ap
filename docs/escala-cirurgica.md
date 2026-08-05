@@ -300,6 +300,17 @@ dono); calibrar `HEADER_ALIASES` com 1 Excel real da Unimed.
   Fulano primeiro" nomeando quem assumiu), `definirAnestesistaAssumirPosicao.test.jsx`
   (toggle). Os testes de invariante existentes seguem verdes.
 
+### Lição registrada — duplicidade entre hospitais (2026-08-05)
+
+Alexandre D e Vicente apareceram em escalas de hospitais diferentes por uma
+publicação/troca que precisava de conferência humana. A regra canônica agora é:
+o mesmo UID (ou nome normalizado, quando não houver UID) em hospitais distintos
+no mesmo turno gera um alerta na importação. O alerta mostra hospital, turno,
+posição no rodapé e casos envolvidos e exige classificar como duplicidade
+intencional ou troca, identificando o colega e o hospital. Nunca transformar
+automaticamente o caso em ajuda, trocar o anestesista ou confiar apenas na cor
+da imagem. Essa confirmação é obrigatória antes da publicação.
+
 ## Deploy
 
 1. Aplicar a migration: `node scripts/deploy-sp21-mgmt-api.mjs apply-migration supabase/migrations/20260628200000_escala_cirurgica.sql`

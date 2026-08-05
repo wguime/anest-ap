@@ -155,7 +155,7 @@ Acompanhamento de cateteres peridurais por hospital (Unimed/HRO): inserção →
 
 Deploy: `bash scripts/deploy-edge-with-pat.sh <fn> [--no-verify-jwt]` (lê o PAT do .env.local sem ecoar; conferir estado atual com `node scripts/diag-edge-fn-config.mjs`). Edges que recebem JWT não-Supabase (Firebase/custom) exigem `--no-verify-jwt`. CORS: allowlist + echo + `Vary: Origin` (nunca origin única).
 
-### Atualização da Escala Cirúrgica (2026-08-04)
+### Atualização da Escala Cirúrgica (2026-08-05)
 
 A publicação usa a migration `20260804180000`: RPC transacional por
 `data+hospital+turno`, lock do cabeçalho, `publicacao_turnos` e chaves
@@ -166,6 +166,13 @@ Em trocas, `trocaCom` apenas declara o par; somente `assumidaPor` executa a
 substituição. O alvo pode estar fora do hospital e sem casos locais. Após a
 execução, casos abertos e posição devem aparecer de forma idêntica em Completa
 e Minhas; se houver apenas declaração, a troca ainda não foi realizada.
+
+Duplicidade entre hospitais: durante a importação, a mesma identidade em dois
+hospitais no mesmo turno abre um alerta bloqueante com hospital, turno, posição no
+rodapé e casos (sala/hora/procedimento). A secretária precisa confirmar
+"intencional" ou "troca com [colega] em [hospital]" antes de publicar. A decisão
+não altera anestesista, não cria ajuda e não faz troca automática; serve para
+evitar repetir o erro Alexandre D/Vicente.
 
 ## Bottom Nav
 4 abas: **Home** | **Gestão** (Shield) | **Educação** | **Menu**

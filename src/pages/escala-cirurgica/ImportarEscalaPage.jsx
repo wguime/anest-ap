@@ -22,6 +22,7 @@ import SegmentedSelector from './SegmentedSelector'
 import { normNome, gruposAnestesista, chavesAnestesista, nomesImportados, aplicarAtribuicoes, detectarConflitos, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import { ehHoraSequencialEscala } from '@/lib/escalaCirurgicaRegras'
+import { detectarDuplicidadesEscala, formatarOcorrenciaDuplicidade } from '@/lib/escalaCirurgicaDuplicidades'
 
 const HOSPITAL_OPCOES = Object.entries(HOSPITAL_LABEL).map(([value, label]) => ({ value, label }))
 const PERIODO_OPCOES = [
@@ -524,6 +525,8 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
   // Assimétrico por natureza: o PRIMEIRO hospital publicado do dia não tem com o
   // que cruzar. Aparece no 2º e no 3º.
   const [outrasEscalas, setOutrasEscalas] = useState([])
+  const [duplicidadeDecisoes, setDuplicidadeDecisoes] = useState({})
+  useEffect(() => { setDuplicidadeDecisoes({}) }, [dataEscolhida, hosp, periodo])
   useEffect(() => {
     let vivo = true
     const outros = Object.keys(HOSPITAL_LABEL).filter((h) => h !== hosp)
@@ -569,6 +572,21 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
     }
     return { ajudaProvavel, conflitos }
   }, [outrasEscalas, casos, ajudaTexto, periodo, resolver])
+
+  const duplicidades = useMemo(() => detectarDuplicidadesEscala({
+    casos,
+    hospitalAtual: hosp,
+    hospitalAtualLabel: HOSPITAL_LABEL[hosp] || hosp,
+    ordemAtual: separarListaRodape(ordemTexto),
+    periodo,
+    outrasEscalas,
+    resolver,
+    hospitalLabelFor: (hospital) => HOSPITAL_LABEL[hospital] || hospital,
+  }), [casos, hosp, ordemTexto, periodo, outrasEscalas, resolver])
+
+  // A decisão é local à conferência desta publicação. Ela nunca reescreve o
+  // anestesista nem transforma uma duplicidade em ajuda automaticamente.
+  const duplicidadesPendentes = duplicidades.filter((d) => !duplicidadeDecisoes[d.key])
 
   // GUARDRAIL INVERSO (incidente 30/07): anestesista COM CASO que não está no
   // rodapé nem na ajuda. Sem posição na ordem, `gerarColunaLiberacao` o joga como
@@ -621,6 +639,14 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
         variant: 'error',
         title: 'Hora inválida na escala',
         description: `${horario.invalidos.length} item(ns) têm hora inválida. Corrija antes de publicar (use HH:MM, por exemplo 08:30).`,
+      })
+      return
+    }
+    if (duplicidadesPendentes.length) {
+      toast({
+        variant: 'warning',
+        title: 'Confirme as duplicidades antes de publicar',
+        description: `${duplicidadesPendentes.length} pessoa(s) aparecem em mais de um hospital no mesmo turno. Marque se é intencional ou uma troca com o colega indicado.`,
       })
       return
     }
@@ -1055,13 +1081,59 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
                   </div>
                 </div>
               )}
-              {cruzamento.conflitos.length > 0 && (
-                <p className="mt-1.5 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
-                  ⚠ Com casos nos DOIS hospitais no mesmo turno:{' '}
-                  <b>{cruzamento.conflitos.map((c) => `${titleCaseNome(c.nome)} (${c.hospital}: ${c.casos})`).join(', ')}</b>.
-                  Pode ser intencional — nome em AMARELO na escala significa escalado em dois locais de
-                  propósito. Confira antes de publicar.
-                </p>
+              {duplicidades.length > 0 && (
+                <div className="mt-2 rounded-xl border border-warning/40 bg-warning/10 px-3 py-3 text-xs text-warning">
+                  <p className="font-semibold">⚠ Duplicidade entre hospitais — Com casos nos DOIS hospitais no mesmo turno: {duplicidades.map((d) => `${titleCaseNome(d.nome)} (${d.ocorrencias.filter((o) => o.hospital !== hosp && o.casos.length > 0).map((o) => `${o.hospitalLabel}: ${o.casos.length}`).join(', ')})`).join('; ')}. Nome em AMARELO pode ser intencional; confirme antes de publicar.</p>
+                  <p className="mt-1">
+                    A mesma pessoa aparece em escalas diferentes no mesmo turno. Isso pode ser intencional
+                    ou indicar uma troca. A publicação fica bloqueada até cada item ser classificado.
+                  </p>
+                  <div className="mt-2 space-y-2">
+                    {duplicidades.map((duplicidade) => {
+                      const decisao = duplicidadeDecisoes[duplicidade.key]
+                      return (
+                        <div key={duplicidade.key} className="rounded-lg border border-warning/30 bg-card px-2.5 py-2 text-foreground">
+                          <p className="font-semibold">{titleCaseNome(duplicidade.nome)} ({duplicidade.ocorrencias.filter((o) => o.casos.length > 0).map((o) => `${o.hospitalLabel}: ${o.casos.length}`).join(', ')})</p>
+                          <div className="mt-1 space-y-1">
+                            {duplicidade.ocorrencias.map((ocorrencia) => (
+                              <div key={`${duplicidade.key}-${ocorrencia.hospital}`}>
+                                <p>{formatarOcorrenciaDuplicidade(ocorrencia)}</p>
+                                {ocorrencia.casos.length > 0 && (
+                                  <p className="pl-2 text-muted-foreground">
+                                    {ocorrencia.casos.map((caso) => `${caso.sala} · ${caso.hora} · ${caso.procedimento}`).join(' | ')}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          {decisao ? (
+                            <p className="mt-2 rounded-md bg-success/10 px-2 py-1 text-success">
+                              {decisao.tipo === 'troca'
+                                ? `Troca confirmada com ${titleCaseNome(decisao.parceiroNome)} em ${decisao.parceiroHospital}.`
+                                : 'Duplicidade confirmada como intencional.'}
+                            </p>
+                          ) : (
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              <Button size="sm" variant="outline" onClick={() => setDuplicidadeDecisoes((p) => ({ ...p, [duplicidade.key]: { tipo: 'intencional' } }))}>
+                                Confirmar intencional
+                              </Button>
+                              {duplicidade.ocorrencias
+                                .filter((o) => o.hospital !== hosp)
+                                .map((o) => (
+                                  <Button key={`${duplicidade.key}-troca-${o.hospital}`} size="sm" variant="outline" onClick={() => setDuplicidadeDecisoes((p) => ({
+                                    ...p,
+                                    [duplicidade.key]: { tipo: 'troca', parceiroNome: o.nome, parceiroHospital: o.hospitalLabel, parceiroTurno: o.turno },
+                                  }))}>
+                                    Troca com {titleCaseNome(o.nome)} ({o.hospitalLabel})
+                                  </Button>
+                                ))}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
               )}
               {/* GUARDRAIL INVERSO (incidente 30/07 — Cristina nos Exames da
                   Unimed): quem tem caso e não está no rodapé cai como linha extra
