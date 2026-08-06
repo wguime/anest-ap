@@ -12,10 +12,18 @@ const rodapeDoTurnoSeguro = (ordem, turno) => {
 
 const texto = (value) => String(value || '').trim()
 
-const identidade = (caso, resolve) => {
+// Fallback só para chamada sem `normalizar`. A chave PRECISA ser a mesma que
+// `gerarColunaLiberacao` usa em `linha.chave` (`resolverUid(nome) || normNome(nome)`):
+// é por ela que a troca declarada é gravada em `linha_overrides` e reencontrada na
+// coluna de liberação. `normNome` tira acento e a nota de local do rodapé; um
+// uppercase simples não tira, então "RÔMULO" e "MATHEUS (CONSULT)" gerariam chave
+// diferente da linha e o badge de troca nunca apareceria.
+const upperSimples = (nome) => texto(nome).toLocaleUpperCase('pt-BR')
+
+const identidade = (caso, resolve, normalizar) => {
   const nome = texto(caso?.anestesista)
   if (!nome || nome === '//' || /^\?+$/.test(nome)) return null
-  return caso?.anestesistaUserId || resolve?.(nome) || nome.toLocaleUpperCase('pt-BR')
+  return caso?.anestesistaUserId || resolve?.(nome) || normalizar(nome)
 }
 
 const casoResumo = (caso) => ({
@@ -36,6 +44,7 @@ export function detectarDuplicidadesEscala({
   periodo,
   outrasEscalas = [],
   resolver,
+  normalizar = upperSimples,
   hospitalLabelFor,
 }) {
   const porIdentidade = new Map()
@@ -43,7 +52,7 @@ export function detectarDuplicidadesEscala({
     const porPessoa = new Map()
     for (const caso of casosDaEscala || []) {
       if ((caso?.turno || periodo) !== periodo) continue
-      const key = identidade(caso, resolver)
+      const key = identidade(caso, resolver, normalizar)
       if (!key) continue
       const atual = porPessoa.get(key) || { nome: texto(caso.anestesista), casos: [] }
       atual.casos.push(casoResumo(caso))
@@ -51,7 +60,7 @@ export function detectarDuplicidadesEscala({
     }
     for (const nomeRodape of rodapeDoTurnoSeguro(ordem, periodo)) {
       const nome = texto(nomeRodape)
-      const key = nome ? (resolver?.(nome) || nome.toLocaleUpperCase('pt-BR')) : null
+      const key = nome ? (resolver?.(nome) || normalizar(nome)) : null
       if (!key) continue
       const atual = porPessoa.get(key) || { nome, casos: [] }
       atual.noRodape = true

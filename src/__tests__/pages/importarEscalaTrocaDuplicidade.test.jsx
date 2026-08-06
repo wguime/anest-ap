@@ -1,0 +1,136 @@
+/**
+ * Duplicidade entre hospitais → TROCA DECLARADA (dono 06/08).
+ *
+ * Guilherme Didomenico apareceu escalado no HRO e na Unimed no mesmo turno. O
+ * alerta já existia, mas a decisão morria na tela: as Liberações mostravam os
+ * dois escalados normalmente, sem nenhum sinal de troca. E o botão de troca
+ * oferecia "trocar com" a PRÓPRIA pessoa (a outra ocorrência dela), que não é
+ * uma troca — ninguém troca consigo.
+ *
+ * Agora a conferência pergunta com QUEM foi a troca (seletor do roster) e grava
+ * o mesmo `trocaCom` do ✏️ das Liberações, sob a chave namespaced do turno — é
+ * por ela que a coluna de liberação reencontra o par e pinta o badge dos dois
+ * lados.
+ */
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+
+import { ThemeProvider, ToastProvider } from '@/design-system'
+import ImportarEscalaPage from '@/pages/escala-cirurgica/ImportarEscalaPage'
+
+const { svcMock, salvarEscala, prepararImagem } = vi.hoisted(() => ({
+  svcMock: {
+    parseEscalaImagem: vi.fn(),
+    fetchEscala: vi.fn(async () => null),
+    patchLinhaOverride: vi.fn(async () => {}),
+  },
+  salvarEscala: vi.fn(async (p) => ({ id: 'e1', ...p, casos: (p.casos || []).map((c, i) => ({ ...c, id: `c${i}`, ordem: i })) })),
+  prepararImagem: vi.fn(async () => ({ base64: 'AAAA', mimeType: 'image/jpeg', bytes: 3, largura: 1600, altura: 1200, reduzida: true })),
+}))
+vi.mock('@/services/supabaseEscalaCirurgicaService', () => ({ default: svcMock }))
+vi.mock('@/services/supabaseCirurgiasParticularesService', () => ({
+  default: { completarPacienteDoCaso: vi.fn(async () => {}) },
+}))
+vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
+  useEscalaCirurgicaActions: () => ({ salvarEscala }),
+  HOSPITAL_LABEL: { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' },
+}))
+vi.mock('@/contexts/UserContext', () => ({
+  useUser: () => ({ user: { uid: 'u-sec', role: 'secretaria', displayName: 'Secretária' } }),
+}))
+vi.mock('@/lib/imagemVision', () => ({ prepararImagemParaVision: prepararImagem }))
+vi.mock('@/hooks/useRosterAnestesistas', () => ({
+  default: () => ({
+    roster: [], aliases: [], loading: false,
+    rosterByUid: new Map([
+      ['uid-dido', { uid: 'uid-dido', nome: 'GUILHERME XAVIER', apelidos: ['DIDO'] }],
+      ['uid-paulo', { uid: 'uid-paulo', nome: 'PAULO TONINI', apelidos: ['PAULO'] }],
+    ]),
+    options: [
+      { value: 'uid-dido', label: 'Guilherme Xavier' },
+      { value: 'uid-paulo', label: 'Paulo Tonini' },
+    ],
+    resolver: (nome) => ({ DIDO: 'uid-dido', PAULO: 'uid-paulo' })[String(nome).trim().toUpperCase()] || null,
+    refresh: vi.fn(), upsertAlias: vi.fn(async () => {}), removeAlias: vi.fn(),
+  }),
+}))
+
+const wrap = ({ children }) => <ThemeProvider><ToastProvider>{children}</ToastProvider></ThemeProvider>
+
+// Relógio congelado às 10h: `periodo` nasce de turnoAtual(), então sem isso o
+// teste passaria de manhã e quebraria à tarde (a chave namespaced mudaria).
+beforeAll(() => vi.setSystemTime(new Date('2026-08-06T13:00:00Z')))
+afterAll(() => vi.useRealTimers())
+beforeEach(() => vi.clearAllMocks())
+
+describe('duplicidade entre hospitais → troca declarada', () => {
+  /** Unimed importando DIDO, que já tem caso no HRO no mesmo turno. */
+  async function importarComDuplicidade() {
+    svcMock.fetchEscala.mockImplementation(async (_data, hospital) => (
+      hospital === 'hro'
+        ? {
+          id: 'e-hro', hospital: 'hro',
+          casos: [{ sala: 'Sala 1', hora: '08:00', procedimento: 'ARTRODESE', anestesista: 'DIDO', turno: 'matutino' }],
+          ordemLiberacao: { matutino: ['DIDO', 'PAULO'] },
+        }
+        : null
+    ))
+    svcMock.parseEscalaImagem.mockResolvedValueOnce({
+      casos: [{ sala: 'CC - Sala 1', hora: '08:30', procedimento: 'COLECISTECTOMIA', cirurgiao: 'ALBA', anestesista: 'DIDO' }],
+      ordemLiberacao: ['DIDO'],
+      ajudaExterna: [],
+    })
+    const { container } = render(
+      <ImportarEscalaPage hospital="unimed" data="2026-08-06" onClose={vi.fn()} />, { wrapper: wrap },
+    )
+    const input = container.querySelector('input[type="file"]')
+    fireEvent.change(input, { target: { files: [new File(['x'], 'escala.png', { type: 'image/png' })] } })
+    await waitFor(() => expect(svcMock.parseEscalaImagem).toHaveBeenCalled())
+    await screen.findByText(/Duplicidade entre hospitais/i)
+    return container
+  }
+
+  it('não oferece trocar com a própria pessoa duplicada', async () => {
+    await importarComDuplicidade()
+    // O seletor lista colegas — nunca quem está duplicado (o bug antigo era
+    // justamente oferecer "Troca com Guilherme" na linha do Guilherme).
+    expect(screen.queryByRole('button', { name: /Troca com Guilherme/i })).toBeNull()
+    expect(screen.getByText(/Trocou com quem\?/i)).toBeTruthy()
+  })
+
+  it('bloqueia publicar enquanto a duplicidade não for classificada', async () => {
+    await importarComDuplicidade()
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+    await waitFor(() => expect(screen.getByText(/Confirme as duplicidades/i)).toBeTruthy())
+    expect(salvarEscala).not.toHaveBeenCalled()
+  })
+
+  it('grava trocaCom na chave do turno, para o badge sair nos dois lados', async () => {
+    await importarComDuplicidade()
+
+    fireEvent.click(screen.getByText(/Trocou com quem\?/i))
+    fireEvent.click(await screen.findByText('Paulo Tonini'))
+    fireEvent.click(screen.getByRole('button', { name: /Confirmar troca/i }))
+    await screen.findByText(/Troca declarada com/i)
+
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+    await waitFor(() => expect(svcMock.patchLinhaOverride).toHaveBeenCalled())
+
+    const [escalaId, chave, valor] = svcMock.patchLinhaOverride.mock.calls[0]
+    expect(escalaId).toBe('e1')
+    // chave namespaced pelo turno + identidade RESOLVIDA (uid), que é exatamente
+    // o `linha.chave` que a coluna de liberação procura.
+    expect(chave).toBe('matutino:uid-dido')
+    // nome COMPLETO do cadastro: o cruzamento entre hospitais casa por normNome
+    // do nome completo, não pelo apelido da escala.
+    expect(valor.trocaCom).toMatchObject({ uid: 'uid-paulo', nome: 'PAULO TONINI' })
+  })
+
+  it('confirmar como intencional publica sem declarar troca nenhuma', async () => {
+    await importarComDuplicidade()
+    fireEvent.click(screen.getByRole('button', { name: /É intencional/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+    await waitFor(() => expect(salvarEscala).toHaveBeenCalled())
+    expect(svcMock.patchLinhaOverride).not.toHaveBeenCalled()
+  })
+})

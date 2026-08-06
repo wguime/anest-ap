@@ -71,6 +71,9 @@ const HOSPITAL_HINT: Record<string, string> = {
 
 const SYSTEM_PROMPT = `Você extrai a escala cirúrgica de uma imagem (print de tabela) e devolve SOMENTE JSON válido, sem texto antes/depois.
 
+Escreva o JSON COMPACTO — sem quebras de linha e sem indentação entre os campos. A escala vespertina cheia não cabe na resposta quando o JSON vem formatado, e aí ela chega cortada no meio (a extração se perde inteira). O conteúdo extraído é o mesmo; só a formatação muda.
+Omita os campos que ficariam vazios ("") ou false — quem lê preenche esse padrão sozinho. Exceção: "sala", "ordem" e "anestesista" vão SEMPRE, mesmo vazios, porque posicionam o caso.
+
 Schema:
 {
   "casos": [{
@@ -112,6 +115,53 @@ REGRAS:
   "unimed" = grade BRANCA larga com colunas SALA/PACIENTE/IDADE/PROCEDIMENTO/TEMPO/CIRURGIÃO/CONVENIO/ANEST e seções "CO - CESAREA"/"CENTRO CIRÚRGICO - SALA N";
   "materno" = relatório de sistema (G-HOSP) com título "Mapa de cirurgias", colunas Hora/Leito/Paciente/Cirurgião/Procedimento/Observação/Anestesia/Convênio/Sala.
   Se não tiver certeza, "".`
+
+// Teto de saída. Era 8000 e a escala VESPERTINA não cabia: os logs de 06/08
+// mostram TODA invocação terminando em ~68s (o tempo de gerar exatamente 8000
+// tokens) e o JSON chegando cortado no meio de um caso — `JSON.parse` estourava
+// `Expected ',' or ']' ... at position 14742` e a tela dizia "tente um print mais
+// nítido", culpando a imagem por um limite nosso. Quando o corte calhava de cair
+// logo depois de um `}`, o parse PASSAVA e a escala publicava sem os últimos
+// casos — o modo de falha silencioso, pior que o erro.
+const MAX_TOKENS = 32000
+
+/**
+ * Lê o SSE da Anthropic e devolve o texto inteiro + o motivo da parada.
+ *
+ * Streaming não é enfeite: acima de ~16k `max_tokens` a chamada não-streaming
+ * arrisca estourar o timeout de HTTP antes da primeira resposta, e aqui a
+ * conexão precisa continuar recebendo bytes para o gateway não derrubar a
+ * função no meio de uma escala grande.
+ */
+async function lerRespostaStream(res: Response): Promise<{ texto: string; stopReason: string }> {
+  let texto = ''
+  let stopReason = ''
+  let buffer = ''
+  const reader = res.body!.pipeThrough(new TextDecoderStream()).getReader()
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += value
+    // eventos SSE são separados por linha em branco; guarda o resto parcial
+    const partes = buffer.split('\n')
+    buffer = partes.pop() || ''
+    for (const linha of partes) {
+      if (!linha.startsWith('data:')) continue
+      const payload = linha.slice(5).trim()
+      if (!payload || payload === '[DONE]') continue
+      let ev: Record<string, unknown>
+      try { ev = JSON.parse(payload) } catch { continue }
+      if (ev.type === 'content_block_delta') {
+        const d = ev.delta as { type?: string; text?: string } | undefined
+        if (d?.type === 'text_delta') texto += d.text || ''
+      } else if (ev.type === 'message_delta') {
+        const d = ev.delta as { stop_reason?: string } | undefined
+        if (d?.stop_reason) stopReason = d.stop_reason
+      }
+    }
+  }
+  return { texto, stopReason }
+}
 
 // Enums aceitos pela tabela escala_cirurgica_caso — sanitiza p/ não violar o CHECK no insert.
 const BLOCOS = new Set(['normal', 'srpa', 'imagem', 'hemodinamica', 'exames', 'iosc', 'ho', 'consultorio', 'accurata', 'umanita', 'materno', 'simone', 'ccoluna', 'mauricio'])
@@ -255,7 +305,8 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'claude-opus-4-8',
-        max_tokens: 8000,
+        max_tokens: MAX_TOKENS,
+        stream: true,
         system: SYSTEM_PROMPT,
         messages: [{
           role: 'user',
@@ -275,15 +326,33 @@ Deno.serve(async (req) => {
       })
     }
 
-    const data = await res.json()
-    const texto = (data.content || []).map((b: { text?: string }) => b.text || '').join('')
+    const { texto, stopReason } = await lerRespostaStream(res)
     const match = texto.match(/\{[\s\S]*\}/)
     if (!match) {
       return new Response(JSON.stringify({ error: 'Resposta sem JSON', casos: [], ordemLiberacao: [] }), {
         status: 200, headers: { ...cors, 'Content-Type': 'application/json' },
       })
     }
-    const parsed = JSON.parse(match[0])
+    // Corte por teto de tokens é uma condição ESPERADA de escala grande, não um
+    // bug — devolve 200 com um motivo que a tela sabe explicar, em vez de deixar
+    // o JSON.parse estourar num 500 genérico que a UI traduz como "imagem ruim".
+    let parsed: Record<string, unknown>
+    try {
+      parsed = JSON.parse(match[0])
+    } catch (e) {
+      console.error(`[parse-escala-cirurgica] JSON inválido (stop_reason=${stopReason}):`, e)
+      return new Response(JSON.stringify({
+        error: stopReason === 'max_tokens' ? 'extracao_truncada' : 'json_invalido',
+        motivo: stopReason,
+        casos: [], ordemLiberacao: [],
+      }), { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } })
+    }
+    if (stopReason === 'max_tokens') {
+      // O JSON até fechou, mas o modelo foi interrompido: faltam casos no fim.
+      // Publicar isso em silêncio foi o que fez a escala sair sem as últimas
+      // linhas — melhor entregar o que veio, marcado como incompleto.
+      console.error('[parse-escala-cirurgica] extração truncada por max_tokens')
+    }
     const ordemLiberacao = Array.isArray(parsed.ordemLiberacao)
       ? parsed.ordemLiberacao.map((s: unknown) => String(s || '').trim()).filter(Boolean)
       : []
@@ -303,6 +372,8 @@ Deno.serve(async (req) => {
       hospitalDetectado: ['unimed', 'hro', 'materno'].includes(String(parsed.hospitalDetectado || ''))
         ? String(parsed.hospitalDetectado)
         : '',
+      // A tela avisa em vez de deixar a secretária descobrir na hora da liberação
+      truncado: stopReason === 'max_tokens',
     }), { headers: { ...cors, 'Content-Type': 'application/json' } })
   } catch (err) {
     console.error('[parse-escala-cirurgica] erro:', err)

@@ -377,6 +377,19 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
       // HEIC do iPhone, que a Vision recusa.
       const img = await prepararImagemParaVision(file)
       const res = await svc.parseEscalaImagem({ imageBase64: img.base64, mimeType: img.mimeType, hospital: hospParam })
+      // Extração cortada no meio (escala longa demais para uma resposta só): o
+      // servidor devolve 200 com o motivo em vez de estourar. Sem este ramo a
+      // tela publicava a escala faltando as últimas linhas, sem avisar ninguém.
+      if (res?.error === 'extracao_truncada' || res?.error === 'json_invalido') {
+        toast({
+          variant: 'error',
+          duration: 12000,
+          title: 'A escala não coube em uma leitura',
+          description: 'Envie em duas partes (um print da metade de cima e outro da de baixo), ou preencha manualmente.',
+        })
+        if (!casos.length) setCasos([linhaVazia()])
+        return
+      }
       const { selecionados, lote } = carregarLoteImportado(
         (res.casos || []).map((c) => ({ ...linhaVazia(), ...c })),
         hospParam,
@@ -395,7 +408,14 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
       const dataDet = String(res.dataDetectada || '')
       setSugestaoData(/^\d{4}-\d{2}-\d{2}$/.test(dataDet) && dataDet !== dataEscolhida ? dataDet : null)
       const fora = lote.length - selecionados.length
-      toast({ variant: 'success', title: `${resumoTexto(selecionados)} do turno`, description: `${fora ? `${fora} item(ns) do outro turno ficaram fora. ` : ''}Confira e atribua o anestesista de cada sala.` })
+      toast({
+        variant: res?.truncado ? 'warning' : 'success',
+        duration: res?.truncado ? 12000 : undefined,
+        title: res?.truncado ? 'Leitura incompleta — confira o fim da lista' : `${resumoTexto(selecionados)} do turno`,
+        description: res?.truncado
+          ? `Vieram ${resumoTexto(selecionados)}, mas a leitura foi cortada: as últimas linhas do mapa podem estar faltando.`
+          : `${fora ? `${fora} item(ns) do outro turno ficaram fora. ` : ''}Confira e atribua o anestesista de cada sala.`,
+      })
     } catch (err) {
       // A falha tinha de ficar VISÍVEL e ACIONÁVEL: "Falha na extração — preencha
       // manualmente" era o mesmo texto para imagem que nem saiu do aparelho e
@@ -408,7 +428,10 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
         title: daImagem ? 'A imagem não foi enviada' : 'Falha na extração',
         description: daImagem
           ? err.message
-          : 'O servidor não conseguiu ler esta escala. Tente um print mais nítido, ou preencha manualmente.',
+          // NÃO culpar a nitidez (incidente 06/08): a imagem já chegou ao
+          // servidor, então o que falhou foi a leitura lá — mandar o print de
+          // novo, melhor, não resolve e faz a secretária perder tempo.
+          : 'A leitura falhou no servidor. Tente de novo em alguns instantes; se repetir, preencha manualmente.',
       })
       if (!casos.length) setCasos([linhaVazia()])
     } finally { setCarregando(false) }
@@ -537,7 +560,8 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
   // que cruzar. Aparece no 2º e no 3º.
   const [outrasEscalas, setOutrasEscalas] = useState([])
   const [duplicidadeDecisoes, setDuplicidadeDecisoes] = useState({})
-  useEffect(() => { setDuplicidadeDecisoes({}) }, [dataEscolhida, hosp, periodo])
+  const [trocaEscolhida, setTrocaEscolhida] = useState({}) // chave da duplicidade -> uid do colega
+  useEffect(() => { setDuplicidadeDecisoes({}); setTrocaEscolhida({}) }, [dataEscolhida, hosp, periodo])
   useEffect(() => {
     let vivo = true
     const outros = Object.keys(HOSPITAL_LABEL).filter((h) => h !== hosp)
@@ -592,6 +616,9 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
     periodo,
     outrasEscalas,
     resolver,
+    // MESMA normalização de `linha.chave` na coluna de liberação: é a chave por
+    // onde a troca declarada é gravada e reencontrada lá.
+    normalizar: normNome,
     hospitalLabelFor: (hospital) => HOSPITAL_LABEL[hospital] || hospital,
   }), [casos, hosp, ordemTexto, periodo, outrasEscalas, resolver])
 
@@ -657,7 +684,7 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
       toast({
         variant: 'warning',
         title: 'Confirme as duplicidades antes de publicar',
-        description: `${duplicidadesPendentes.length} pessoa(s) aparecem em mais de um hospital no mesmo turno. Marque se é intencional ou uma troca com o colega indicado.`,
+        description: `${duplicidadesPendentes.length} pessoa(s) aparecem em mais de um hospital no mesmo turno. Diga se trabalha nos dois de propósito ou escolha com quem trocou.`,
       })
       return
     }
@@ -757,6 +784,34 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
           }))
         }
       } catch { /* rascunho segue com iniciais */ }
+
+      // TROCA DECLARADA a partir da conferência (dono 06/08). A duplicidade entre
+      // hospitais só ficava registrada na cabeça de quem conferiu: a decisão não
+      // saía da tela e, nas Liberações, os dois apareciam escalados normalmente.
+      // Agora ela grava o MESMO `trocaCom` do ✏️ das Liberações, então o badge sai
+      // nos dois lados (a page deriva `paresTroca` das 3 escalas) e a troca pode
+      // ser executada de lá com um toque.
+      //
+      // Registro ÚNICO, na linha de quem está duplicado: dual-write geraria dois
+      // pares para a mesma troca. Fire-and-forget porque a escala já está
+      // publicada — falhar aqui não pode desfazer a publicação.
+      try {
+        const trocas = Object.entries(duplicidadeDecisoes)
+          .filter(([, d]) => d?.tipo === 'troca' && (d.parceiroUid || d.parceiroNome))
+        if (trocas.length && saved?.id) {
+          await Promise.all(trocas.map(([chave, d]) => {
+            const scoped = `${periodo}:${chave}`
+            const anterior = saved.linhaOverrides?.[scoped] || {}
+            const { trocaCom: _sai, por: _p, em: _e, ...resto } = anterior
+            return svc.patchLinhaOverride(saved.id, scoped, {
+              ...resto,
+              trocaCom: { uid: d.parceiroUid || null, nome: d.parceiroNome || '', por: userId || null, em: new Date().toISOString() },
+              por: userId || null,
+              em: new Date().toISOString(),
+            }).catch(() => {})
+          }))
+        }
+      } catch { /* escala publicada; a troca pode ser declarada pelo ✏️ das Liberações */ }
 
       toast({ variant: 'success', title: 'Escala publicada', description: 'Disponível para toda a equipe em tempo real.' })
 
@@ -1118,26 +1173,54 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
                             ))}
                           </div>
                           {decisao ? (
-                            <p className="mt-2 rounded-md bg-success/10 px-2 py-1 text-success">
-                              {decisao.tipo === 'troca'
-                                ? `Troca confirmada com ${titleCaseNome(decisao.parceiroNome)} em ${decisao.parceiroHospital}.`
-                                : 'Duplicidade confirmada como intencional.'}
-                            </p>
-                          ) : (
-                            <div className="mt-2 flex flex-wrap gap-1.5">
-                              <Button size="sm" variant="outline" onClick={() => setDuplicidadeDecisoes((p) => ({ ...p, [duplicidade.key]: { tipo: 'intencional' } }))}>
-                                Confirmar intencional
+                            <div className="mt-2 flex items-center justify-between gap-2 rounded-md bg-success/10 px-2 py-1 text-success">
+                              <span>
+                                {decisao.tipo === 'troca'
+                                  ? `Troca declarada com ${nomeCirurgiaoCurto(decisao.parceiroNome)} — o badge aparece nos dois lados nas Liberações.`
+                                  : 'Duplicidade confirmada como intencional.'}
+                              </span>
+                              <Button size="sm" variant="ghost" onClick={() => setDuplicidadeDecisoes((p) => {
+                                const { [duplicidade.key]: _fora, ...resto } = p
+                                return resto
+                              })}>
+                                Refazer
                               </Button>
-                              {duplicidade.ocorrencias
-                                .filter((o) => o.hospital !== hosp)
-                                .map((o) => (
-                                  <Button key={`${duplicidade.key}-troca-${o.hospital}`} size="sm" variant="outline" onClick={() => setDuplicidadeDecisoes((p) => ({
-                                    ...p,
-                                    [duplicidade.key]: { tipo: 'troca', parceiroNome: o.nome, parceiroHospital: o.hospitalLabel, parceiroTurno: o.turno },
-                                  }))}>
-                                    Troca com {titleCaseNome(o.nome)} ({o.hospitalLabel})
-                                  </Button>
-                                ))}
+                            </div>
+                          ) : (
+                            <div className="mt-2 space-y-1.5">
+                              {/* Com QUEM a pessoa trocou é escolha da secretária: o
+                                  colega não está deduzível da imagem (a escala mostra
+                                  a duplicidade, não o par). Roster completo, menos a
+                                  própria pessoa — ninguém troca consigo. */}
+                              <Select
+                                searchable
+                                placeholder="Trocou com quem?"
+                                value={trocaEscolhida[duplicidade.key] || ''}
+                                onChange={(v) => setTrocaEscolhida((p) => ({ ...p, [duplicidade.key]: v }))}
+                                options={rosterOpcoes.filter((o) => o.value !== duplicidade.key)}
+                              />
+                              <div className="flex flex-wrap gap-1.5">
+                                <Button
+                                  size="sm"
+                                  disabled={!trocaEscolhida[duplicidade.key]}
+                                  onClick={() => {
+                                    const colega = rosterByUid.get(trocaEscolhida[duplicidade.key])
+                                    if (!colega) return
+                                    setDuplicidadeDecisoes((p) => ({
+                                      ...p,
+                                      // nome COMPLETO do cadastro: o cruzamento entre
+                                      // hospitais casa por normNome do nome completo
+                                      // (mesma regra do ✏️ das Liberações).
+                                      [duplicidade.key]: { tipo: 'troca', parceiroUid: colega.uid, parceiroNome: colega.nome },
+                                    }))
+                                  }}
+                                >
+                                  Confirmar troca
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => setDuplicidadeDecisoes((p) => ({ ...p, [duplicidade.key]: { tipo: 'intencional' } }))}>
+                                  É intencional (trabalha nos dois)
+                                </Button>
+                              </div>
                             </div>
                           )}
                         </div>
