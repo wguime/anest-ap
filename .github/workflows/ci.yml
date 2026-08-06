@@ -53,7 +53,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # As VITE_* são embutidas no bundle em tempo de build. Sem elas o build
+      # PASSA e gera um app sem Supabase, que abre em tela branca ("supabaseUrl
+      # is required"). Em PR de fork os secrets vêm vazios e isso é esperado:
+      # ali o build serve só como checagem de compilação, e o job de deploy não
+      # roda. O que protege produção é o guardrail no deploy, abaixo.
       - name: Build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_FIREBASE_VAPID_KEY: ${{ secrets.VITE_FIREBASE_VAPID_KEY }}
+          VITE_ADMIN_UIDS: ${{ secrets.VITE_ADMIN_UIDS }}
         run: npm run build
 
       - name: Upload dist artifact
@@ -63,6 +74,28 @@ jobs:
           path: dist/
           retention-days: 7
           if-no-files-found: error
+
+  # Correção de escala sem teste volta. Ver scripts/check-regressao-escala.mjs
+  # para o porquê e para a dispensa explícita ([sem-teste: motivo]).
+  regressao-escala:
+    name: Teste de regressão da escala
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # o script compara base...head
+
+      - name: Verificar
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            node scripts/check-regressao-escala.mjs \
+              "${{ github.event.pull_request.base.sha }}" \
+              "${{ github.event.pull_request.head.sha }}"
+          else
+            node scripts/check-regressao-escala.mjs \
+              "${{ github.event.before }}" "${{ github.sha }}"
+          fi
 
   test:
     name: Test
@@ -91,3 +124,61 @@ jobs:
           path: coverage/
           retention-days: 7
           if-no-files-found: ignore
+
+  # ── Deploy ──────────────────────────────────────────────────────────────────
+  # Por que existe: até 06/08/2026 o deploy era 100% manual. Uma correção podia
+  # ficar dias no git sem chegar ao hospital, e para quem usa isso aparece como
+  # "o bug que já foi corrigido voltou" — foi exatamente o caso do isolamento de
+  # trocas por turno (c2a11e2, commitado 05/08 e ainda fora do ar em 06/08).
+  #
+  # Publica o MESMO artefato que o job de build gerou e o de teste validou, em
+  # vez de recompilar: recompilar abriria espaço para o que vai ao ar ser
+  # diferente do que passou nos testes.
+  #
+  # `regressao-escala` de propósito NÃO entra em `needs`: ele é um portão de
+  # revisão (barra o merge do PR via branch protection), não de entrega. Depois
+  # que o código já está na main, segurar a publicação por causa de um teste
+  # faltando só mantém o bug no hospital por mais tempo.
+  deploy:
+    name: Deploy (produção)
+    needs: [lint, build, test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # Grupo próprio e SEM cancel-in-progress: o `concurrency` do topo cancela
+    # execuções antigas, e cancelar um deploy no meio deixaria o hosting num
+    # estado indefinido. Merges em sequência enfileiram.
+    concurrency:
+      group: deploy-hosting-anest-ap
+      cancel-in-progress: false
+    steps:
+      - name: Baixar o dist testado
+        uses: actions/download-artifact@v5
+        with:
+          name: dist
+          path: dist
+
+      # Build verde NÃO prova que o app funciona: se as VITE_* faltarem, o
+      # bundle compila e abre em tela branca. Conferir o host do Supabase dentro
+      # do JS é o que separa "compilou" de "vai funcionar". Falhar aqui é barato;
+      # publicar um app quebrado no meio de um turno não é.
+      - name: Guardrail — o bundle tem mesmo a config do Supabase?
+        run: |
+          if [ -z "${{ secrets.VITE_SUPABASE_URL }}" ]; then
+            echo "::error::secret VITE_SUPABASE_URL ausente — o bundle sairia sem Supabase."
+            exit 1
+          fi
+          host=$(printf '%s' "${{ secrets.VITE_SUPABASE_URL }}" | sed -E 's#^https?://##; s#/.*##')
+          if ! grep -rqF "$host" dist/assets/; then
+            echo "::error::host do Supabase não encontrado no bundle — deploy abortado."
+            exit 1
+          fi
+          test -f dist/index.html || { echo "::error::dist/index.html ausente."; exit 1; }
+          echo "✓ bundle carrega a config do Supabase"
+
+      - name: Publicar no Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_ANEST_AP }}
+          projectId: anest-ap
+          target: anest-ap
+          channelId: live
