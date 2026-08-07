@@ -1188,8 +1188,12 @@ export function estadoTrocasDoHistorico(eventos, turno) {
  * assumidaPor (o chamador avisa que os casos ficam e se ajustam pelo Definir
  * anestesista). O `trocaCom` NÃO é restaurado — se a troca continua de pé,
  * declara-se de novo.
+ *
+ * SEM parâmetro `turno` (desde o D4, 07/08): o turno de cada lado sai do
+ * PREFIXO da chave onde a assunção foi encontrada. Filtrar pelo turno da tela
+ * deixava metade de um par manhã↔tarde por desfazer, em silêncio.
  */
-export function planoDesfazerTroca({ escalas, resolverUid, a, b, turno = null }) {
+export function planoDesfazerTroca({ escalas, resolverUid, a, b }) {
   const lados = []
   for (const [hospital, esc] of Object.entries(escalas || {})) {
     if (!esc?.id) continue
