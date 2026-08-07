@@ -11,7 +11,7 @@
  *  - o trocaCom do par é listado p/ limpeza (o badge some após executar).
  */
 import { describe, it, expect } from 'vitest'
-import { planoExecucaoTroca, planoDesfazerTroca, localizarSlotRodape, casosTransferiveis } from '../../pages/escala-cirurgica/utils'
+import { planoExecucaoTroca, planoDesfazerTroca, localizarSlotRodape, casosTransferiveis, snapshotCasos, lerOverrideAnterior } from '../../pages/escala-cirurgica/utils'
 
 const caso = (id, sala, anestesista, extra = {}) => ({
   id, sala, ordem: 0, anestesista, cirurgiao: 'Cirurgião X',
@@ -166,5 +166,63 @@ describe('localizarSlotRodape / casosTransferiveis — resolução de identidade
       casos: [caso('c1', 'S1', 'G. SILVA', { anestesistaUserId: 'uid-gio' })],
     }
     expect(casosTransferiveis(esc, GIOVANA, resolverUid)).toEqual(['c1'])
+  })
+})
+
+// ROLLBACK POR SNAPSHOT (defeito D2, 07/08): reverter a transferência com
+// `{ uid: de.uid }` apagava o anestesista quando o dono não tinha vínculo —
+// uid null faz o service gravar '?' + sem_anestesista. O snapshot captura o
+// que estava lá (inclusive o TEXTO original) e é o único combustível do
+// rollback em executarSubstituicao/desfazerSubstituicao.
+describe('snapshotCasos — combustível do rollback', () => {
+  it('captura os campos exatos, inclusive dono SEM uid (texto original preservado)', () => {
+    const esc = {
+      casos: [
+        caso('c1', 'S1', 'STAUB'), // sem vínculo — o cenário que o rollback antigo apagava
+        caso('c2', 'S2', 'GIOVANA', { anestesistaUserId: 'uid-gio' }),
+        caso('c3', 'S3', 'OUTRO'),
+      ],
+    }
+    expect(snapshotCasos(esc, ['c1', 'c2'])).toEqual([
+      { id: 'c1', anestesista: 'STAUB', anestesistaUserId: null, semAnestesista: false },
+      { id: 'c2', anestesista: 'GIOVANA', anestesistaUserId: 'uid-gio', semAnestesista: false },
+    ])
+  })
+
+  it('ids fora da escala e lista vazia → snapshot vazio (rollback vira no-op)', () => {
+    expect(snapshotCasos({ casos: [caso('c1', 'S1', 'A')] }, ['c9'])).toEqual([])
+    expect(snapshotCasos({ casos: [] }, ['c1'])).toEqual([])
+    expect(snapshotCasos(null, ['c1'])).toEqual([])
+  })
+})
+
+// CADEIA DE FALLBACK (defeito D6, 07/08): marcarTroca lia SÓ a chave
+// namespaced — declarar troca sobre um override legado (chave crua ou nome)
+// criava uma SEGUNDA entrada e o local/observação da antiga sumia da UI.
+describe('lerOverrideAnterior — cadeia canônica de leitura', () => {
+  const overrides = {
+    'matutino:uid-mau': { local: 'S2' },
+    'uid-gio': { observacao: 'legado cru' },
+    'MAURICIO': { local: 'nome legado' },
+  }
+
+  it('prefere a chave namespaced do turno', () => {
+    expect(lerOverrideAnterior(overrides, 'uid-mau', 'matutino'))
+      .toEqual({ valor: { local: 'S2' }, chaveEncontrada: 'matutino:uid-mau', scoped: 'matutino:uid-mau' })
+  })
+
+  it('cai para a chave crua (legado) e informa onde achou — o chamador migra', () => {
+    expect(lerOverrideAnterior(overrides, 'uid-gio', 'vespertino'))
+      .toEqual({ valor: { observacao: 'legado cru' }, chaveEncontrada: 'uid-gio', scoped: 'vespertino:uid-gio' })
+  })
+
+  it('cai para o nome legado quando a chave promoveu para uid', () => {
+    expect(lerOverrideAnterior(overrides, 'uid-x', 'matutino', ['MAURICIO']))
+      .toEqual({ valor: { local: 'nome legado' }, chaveEncontrada: 'MAURICIO', scoped: 'matutino:uid-x' })
+  })
+
+  it('nada encontrado → valor null com a scoped calculada', () => {
+    expect(lerOverrideAnterior({}, 'uid-x', 'matutino'))
+      .toEqual({ valor: null, chaveEncontrada: null, scoped: 'matutino:uid-x' })
   })
 })

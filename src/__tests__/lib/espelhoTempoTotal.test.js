@@ -110,6 +110,40 @@ describe('espelhoTempoTotal — quando NÃO espelha', () => {
   })
 })
 
+// Produção grava as chaves NAMESPACED por turno ("matutino:uid") desde a
+// migração 20260805130000 — e foi assim que o espelho quebrou em silêncio
+// (defeito 07/08): o guard de assumidaPor comparava a chave crua (morto) e a
+// leitura do override voltava vazia, então definir o término APAGAVA
+// local/observação da linha. Estes casos travam o contrato namespaced;
+// os de cima (chave crua) seguem valendo como compat legado.
+describe('espelhoTempoTotal — chaves namespaced por turno (produção)', () => {
+  const c1 = caso('c1', 'MARILIO', { anestesistaUserId: 'uid-mar' })
+
+  it('preserva local/observação gravados sob a chave do turno (o bug: voltavam vazios)', () => {
+    const esc = escalaCom([c1], {
+      'matutino:uid-mar': { local: 'IOSC', cirurgioes: 'Taciana A', observacao: 'recado', termino: '17:00' },
+    })
+    expect(espelhoTempoTotal(esc, c1, '18:30').override).toEqual({
+      local: 'IOSC', cirurgioes: 'Taciana A', termino: '18:30', observacao: 'recado',
+    })
+  })
+
+  it('posição assumida sob chave namespaced inibe o espelho (guard estava morto)', () => {
+    const esc = escalaCom([c1], { 'matutino:uid-mar': { assumidaPor: { uid: 'uid-kar', nome: 'KARINE' } } })
+    expect(espelhoTempoTotal(esc, c1, '18:30')).toBeNull()
+  })
+
+  it('assunção no OUTRO turno NÃO inibe (a manhã não bloqueia a tarde)', () => {
+    const esc = escalaCom([c1], { 'vespertino:uid-mar': { assumidaPor: { uid: 'uid-kar', nome: 'KARINE' } } })
+    expect(espelhoTempoTotal(esc, c1, '18:30')).not.toBeNull()
+  })
+
+  it('término já igual sob a chave do turno → nada a espelhar', () => {
+    const esc = escalaCom([c1], { 'matutino:uid-mar': { termino: '18:30' } })
+    expect(espelhoTempoTotal(esc, c1, '18:30')).toBeNull()
+  })
+})
+
 describe('observacaoDaLinha', () => {
   it('observação escrita vence a nota legada', () => {
     expect(observacaoDaLinha({ observacao: 'recado', troca: { com: 'CURY' } })).toBe('recado')

@@ -321,6 +321,28 @@ async function updateAnestesistaCasos(casoIds = [], { uid, apelido }) {
   if (error) handleError(error, 'updateAnestesistaCasos')
 }
 
+/**
+ * Restaura o snapshot EXATO de anestesista por caso — caminho de ROLLBACK da
+ * troca. Nunca deriva do uid: dono sem vínculo (uid null) viraria '?' pelo
+ * updateAnestesistaCasos e o rollback apagaria o anestesista em vez de
+ * restaurá-lo (defeito 07/08). Loop de updates individuais: é caminho de erro
+ * (raro) e cada caso pode ter valores diferentes.
+ */
+async function restaurarAnestesistaCasos(snapshots = []) {
+  for (const s of snapshots || []) {
+    if (!s?.id) continue
+    const { error } = await supabase
+      .from('escala_cirurgica_caso')
+      .update({
+        anestesista: s.anestesista ?? null,
+        anestesista_user_id: s.anestesistaUserId ?? null,
+        sem_anestesista: !!s.semAnestesista,
+      })
+      .eq('id', s.id)
+    if (error) handleError(error, 'restaurarAnestesistaCasos')
+  }
+}
+
 /** Edita um caso isolado (ajuste pontual de anestesista/cirurgião). */
 async function updateCaso(casoId, updates) {
   const clean = {}
@@ -416,4 +438,5 @@ export default {
   fetchP4Hospital,
   setP4Hospital,
   parseEscalaImagem,
+  restaurarAnestesistaCasos,
 }

@@ -13,7 +13,7 @@ import { createContext, useContext, useReducer, useMemo, useCallback, useEffect,
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
 import { useToast } from '@/design-system/components/ui/toast'
-import { ajudasPreservadasNoRepasse, familiaConvenio, mergeRodapeTurno, rodapeDoTurno } from '@/pages/escala-cirurgica/utils'
+import { ajudasPreservadasNoRepasse, familiaConvenio, lerOverrideAnterior, mergeRodapeTurno, rodapeDoTurno, snapshotCasos } from '@/pages/escala-cirurgica/utils'
 import { nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
 import { getDemoEscala } from '@/data/escalaCirurgicaDemo'
 import { agora } from '@/lib/devClock'
@@ -475,16 +475,27 @@ export function EscalaCirurgicaProvider({ children }) {
     const chave = linha.chave || linha.anestesista
     const scoped = chaveTurno(turno, chave)
     try {
-      const { trocaCom: _sai, por: _p, em: _e, ...resto } = escala.linhaOverrides?.[scoped] || {}
+      // MESMA cadeia de fallback do setLinhaOverride (defeito 07/08): ler só a
+      // chave namespaced criava uma SEGUNDA entrada quando o override vivia em
+      // chave legada — e o local/observação da entrada antiga sumia da UI.
+      const legada = linha.anestesista && linha.anestesista !== chave ? linha.anestesista : null
+      const { valor: anterior, chaveEncontrada } = lerOverrideAnterior(escala.linhaOverrides, chave, turno, [legada])
+      const { trocaCom: _sai, por: _p, em: _e, ...resto } = anterior || {}
       const temResto = Object.keys(resto).length > 0
       const valor = colega
         ? { ...resto, trocaCom: { uid: colega.uid || null, nome: colega.nome || '', por: userInfo.userId || null, em: new Date().toISOString() }, por: userInfo.userId || null, em: new Date().toISOString() }
         : temResto ? { ...resto, por: userInfo.userId || null, em: new Date().toISOString() } : null
+      const migrarLegada = chaveEncontrada && chaveEncontrada !== scoped
       // demo opera EM MEMÓRIA (padrão do toggleLiberacao) — base dos e2e determinísticos
-      if (!String(escala.id).startsWith('demo-')) await svc.patchLinhaOverride(escala.id, scoped, valor)
+      if (!String(escala.id).startsWith('demo-')) {
+        await svc.patchLinhaOverride(escala.id, scoped, valor)
+        // a entrada migrou para a chave namespaced; a legada sai (padrão do setLinhaOverride)
+        if (migrarLegada) await svc.patchLinhaOverride(escala.id, chaveEncontrada, null)
+      }
       const linhaOverrides = { ...(escala.linhaOverrides || {}) }
       if (valor) linhaOverrides[scoped] = valor
       else delete linhaOverrides[scoped]
+      if (migrarLegada) delete linhaOverrides[chaveEncontrada]
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { linhaOverrides } })
       toast({
         variant: 'success',
@@ -540,8 +551,12 @@ export function EscalaCirurgicaProvider({ children }) {
         patchLocal(lado.hospital, (p) => { p.linhaOverrides[scoped] = valor })
         if (lado.casoIds?.length) {
           if (!demo) {
+            // Rollback por SNAPSHOT do que estava lá. Reverter com {uid: de.uid}
+            // apagava o anestesista quando o dono não tinha vínculo: uid null
+            // faz o service gravar '?' + sem_anestesista (defeito 07/08).
+            const antes = snapshotCasos(esc, lado.casoIds)
             await svc.updateAnestesistaCasos(lado.casoIds, { uid: lado.para.uid, apelido: lado.para.apelido })
-            rollback.push(() => svc.updateAnestesistaCasos(lado.casoIds, { uid: lado.de.uid, apelido: lado.de.apelido }))
+            rollback.push(() => svc.restaurarAnestesistaCasos(antes))
           }
           const ids = new Set(lado.casoIds)
           patchLocal(lado.hospital, (p) => {
@@ -622,8 +637,11 @@ export function EscalaCirurgicaProvider({ children }) {
         else delete p.linhaOverrides[scoped]
         if (lado.para?.uid && lado.casoIds?.length) {
           if (!demo) {
+            // mesmo snapshot do executar: rollback restaura o que estava lá,
+            // nunca re-deriva do uid (uid null viraria '?')
+            const antes = snapshotCasos(esc, lado.casoIds)
             await svc.updateAnestesistaCasos(lado.casoIds, { uid: lado.para.uid, apelido: lado.para.apelido })
-            rollback.push(() => svc.updateAnestesistaCasos(lado.casoIds, { uid: lado.de.uid, apelido: lado.de.apelido }))
+            rollback.push(() => svc.restaurarAnestesistaCasos(antes))
           }
           const ids = new Set(lado.casoIds)
           p.casos = p.casos.map((c) => ids.has(c.id)

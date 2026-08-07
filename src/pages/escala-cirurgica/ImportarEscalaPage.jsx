@@ -19,7 +19,7 @@ import { isPermissionError } from '@/services/supabaseEscalaAnestesistaService'
 import { prepararImagemParaVision } from '@/lib/imagemVision'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
-import { normNome, gruposAnestesista, chavesAnestesista, nomesImportados, aplicarAtribuicoes, detectarConflitos, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital } from './utils'
+import { normNome, gruposAnestesista, chavesAnestesista, nomesImportados, aplicarAtribuicoes, detectarConflitos, lerOverrideAnterior, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import { ehHoraSequencialEscala } from '@/lib/escalaCirurgicaRegras'
 import { detectarDuplicidadesEscala, formatarOcorrenciaDuplicidade } from '@/lib/escalaCirurgicaDuplicidades'
@@ -801,8 +801,10 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
         if (trocas.length && saved?.id) {
           await Promise.all(trocas.map(([chave, d]) => {
             const scoped = `${periodo}:${chave}`
-            const anterior = saved.linhaOverrides?.[scoped] || {}
-            const { trocaCom: _sai, por: _p, em: _e, ...resto } = anterior
+            // cadeia de fallback (defeito D6): o override pode viver em chave
+            // legada; ler só a scoped duplicaria a entrada
+            const { valor: anterior } = lerOverrideAnterior(saved.linhaOverrides, chave, periodo)
+            const { trocaCom: _sai, por: _p, em: _e, ...resto } = anterior || {}
             return svc.patchLinhaOverride(saved.id, scoped, {
               ...resto,
               trocaCom: { uid: d.parceiroUid || null, nome: d.parceiroNome || '', por: userId || null, em: new Date().toISOString() },

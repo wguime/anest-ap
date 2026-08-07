@@ -564,6 +564,49 @@ export function ajudasPreservadasNoRepasse(casosAntes, casosDepois, ids, escala)
 }
 
 /**
+ * Snapshot dos campos de anestesista dos casos — combustível do ROLLBACK da
+ * troca. O rollback antigo re-derivava do uid do dono (`{ uid: de.uid }`) e,
+ * com dono SEM vínculo (uid null), o service traduzia para `anestesista='?'` +
+ * `sem_anestesista=true`: o rollback APAGAVA o anestesista em vez de
+ * restaurá-lo (defeito 07/08). O snapshot devolve o que estava lá de fato,
+ * inclusive o TEXTO original do caso (ex.: "STAUB", não o nome do roster).
+ */
+export function snapshotCasos(escala, casoIds = []) {
+  const ids = new Set(casoIds || [])
+  return (escala?.casos || [])
+    .filter((c) => ids.has(c.id))
+    .map((c) => ({
+      id: c.id,
+      anestesista: c.anestesista ?? null,
+      anestesistaUserId: c.anestesistaUserId ?? null,
+      semAnestesista: !!c.semAnestesista,
+    }))
+}
+
+/**
+ * Lê o override anterior de uma linha pela MESMA cadeia de fallback do
+ * setLinhaOverride: chave namespaced → chave crua → nome legado (namespaced e
+ * cru). Ler SÓ a chave namespaced criava uma SEGUNDA entrada ao declarar troca
+ * sobre um override legado — e o local/observação da entrada antiga sumia da UI
+ * (o overrideDe da view acha a scoped primeiro). Devolve também a
+ * `chaveEncontrada` para o chamador limpar a entrada legada após migrar.
+ */
+export function lerOverrideAnterior(overrides, chave, turno, nomesLegados = []) {
+  const lo = overrides || {}
+  const scoped = turno ? `${turno}:${chave}` : chave
+  const candidatos = [scoped, chave]
+  for (const nome of (nomesLegados || []).filter(Boolean)) {
+    if (nome === chave) continue
+    if (turno) candidatos.push(`${turno}:${nome}`)
+    candidatos.push(nome)
+  }
+  for (const k of candidatos) {
+    if (lo[k] != null) return { valor: lo[k], chaveEncontrada: k, scoped }
+  }
+  return { valor: null, chaveEncontrada: null, scoped }
+}
+
+/**
  * ESPELHO DO TEMPO TOTAL (dono 30/07): quando a pessoa tem UMA só cirurgia ativa
  * no turno, o término da cirurgia É o horário de saída dela — deixar o término do
  * caso e o cronômetro da linha independentes gerava divergência (caso 18:30,
@@ -600,11 +643,20 @@ export function espelhoTempoTotal(escala, caso, terminoHHMM, { hospitalLabels } 
   }
   const uid = caso.anestesistaUserId || uidPorNome.get(normNome(nomeBruto)) || null
   const chave = uid || normNome(nomeBruto)
-  // posição assumida em qualquer direção → a chave da linha não é a desta pessoa
+  // posição assumida em qualquer direção → a chave da linha não é a desta pessoa.
+  // As chaves do override são namespaced por turno ("matutino:uid") desde a
+  // migração 20260805130000, e SÓ o turno DESTE caso interessa — assunção da
+  // manhã não bloqueia o espelho da tarde. Comparar a chave CRUA aqui deixava o
+  // guard morto (nunca casava) e, pior, a leitura do override lá embaixo voltava
+  // vazia: definir o término APAGAVA local/observação da linha (defeito 07/08).
   for (const [k, ov] of Object.entries(escala?.linhaOverrides || {})) {
     const asm = ov?.assumidaPor
     if (!asm) continue
-    if (k === chave) return null // a posição desta pessoa foi assumida por outro
+    const sep = k.indexOf(':')
+    // chave sem prefixo é legado e vale como matutino (regra da migração)
+    const [pref, resto] = sep >= 0 ? [k.slice(0, sep), k.slice(sep + 1)] : ['matutino', k]
+    if (pref !== turno) continue
+    if (resto === chave) return null // a posição desta pessoa foi assumida por outro
     if ((asm.uid && asm.uid === uid) || (asm.nome && normNome(asm.nome) === normNome(nomeBruto))) return null
   }
   const ativos = doTurno.filter((c) => {
@@ -619,9 +671,13 @@ export function espelhoTempoTotal(escala, caso, terminoHHMM, { hospitalLabels } 
   })
   if (ativos.length !== 1) return null
   if (caso.id ? ativos[0].id !== caso.id : normNome(ativos[0].anestesista) !== normNome(nomeBruto)) return null
-  const bruto = escala?.linhaOverrides?.[chave]
-    ?? escala?.linhaOverrides?.[normNome(nomeBruto)]
-    ?? escala?.linhaOverrides?.[nomeBruto]
+  // leitura pela MESMA cadeia do setLinhaOverride, turno primeiro: o override
+  // vivo mora em `${turno}:${chave}` — ler só a chave crua devolvia null e o
+  // override "completo" montado abaixo zerava local/cirurgiões/observação.
+  const lo = escala?.linhaOverrides || {}
+  const bruto = lo[`${turno}:${chave}`] ?? lo[chave]
+    ?? lo[`${turno}:${normNome(nomeBruto)}`] ?? lo[normNome(nomeBruto)]
+    ?? lo[nomeBruto]
   const ov = typeof bruto === 'string' ? { local: bruto } : bruto || null
   const termino = terminoHHMM || ''
   if ((ov?.termino || '') === termino) return null // nada a espelhar
