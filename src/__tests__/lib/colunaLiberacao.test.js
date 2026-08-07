@@ -356,6 +356,27 @@ describe('plantão do turno seguinte — último nome escalado do rodapé', () =
     expect(r.linhas[2].isProximoPlantao).toBe(true)
     expect(r.linhas[0].isPlantonista).toBe(true) // o plantonista do turno segue sendo o 1º
   })
+
+  // Defeito D11 (07/08, confirmado por sonda): quando o ÚNICO nome nosso do
+  // rodapé é também o último (o resto é ajuda de fora), a mesma pessoa levava os
+  // dois selos e era MOVIDA para o fim — e o fim libera PRIMEIRO: o plantonista
+  // viraria o primeiro a sair. Segurar o plantão do hospital prevalece.
+  it('plantonista que também fecha o rodapé NÃO desce para o fim (mantém os 2 selos no topo)', () => {
+    const soUmNosso = [
+      caso('S1', 0, 'AJUDA_A', 'Cirurgião X'),
+      caso('S2', 0, 'NOSSO_B', 'Cirurgião Y'),
+    ]
+    const r = gerarColunaLiberacao(soUmNosso, ['AJUDA_A', 'NOSSO_B'], {
+      turno: 'vespertino', ajudaExterna: ['AJUDA_A'],
+    })
+    const nosso = r.linhas.find((l) => l.anestesista === 'Nosso_b')
+    expect(nosso.isPlantonista).toBe(true)
+    expect(nosso.isProximoPlantao).toBe(true) // os dois selos convivem
+    expect(nosso.plantaoLabel).toBe('Plantão da manhã')
+    // e ele NÃO é o último da lista — o fim libera primeiro
+    expect(r.linhas[r.linhas.length - 1].anestesista).not.toBe('Nosso_b')
+    expect(r.plantonista).toBe('Nosso_b')
+  })
   it('fica ABAIXO das ajudas — sai antes delas', () => {
     const comAjuda = [...casos, caso('S4', 0, 'DIEGO', 'Xavier Yves')]
     const r = gerarColunaLiberacao(comAjuda, ['LEONARDO', 'MARILIO', 'KARINE'], {
@@ -847,7 +868,8 @@ describe('slot assumido (troca declarada, dono 30/07)', () => {
     expect(slot.chave).toBe('MAURICIO') // chave ESTÁVEL: marcações do slot não órfãm
     expect(slot.uid).toBe('uid-gio') // status/casos casam por quem assumiu
     expect(slot.nomeOriginal).toBe('MAURICIO') // nada reescreve o rodapé
-    expect(slot.assumida).toEqual({ deNome: 'Mauricio', deUid: null })
+    // deNomeOriginal = nome CRU do rodapé (D8): é por ele que o desfazer casa o dono
+    expect(slot.assumida).toEqual({ deNome: 'Mauricio', deNomeOriginal: 'MAURICIO', deUid: null })
     expect(slot.cirurgioes).toEqual(['Taciana Alflen']) // consome o grupo dela
     expect(slot.teveCasos).toBe(true) // nunca nasce "não escalado"/liberado
   })
@@ -1086,5 +1108,33 @@ describe('visitante sem caso no destino — linha sustentada pela ajuda (dono 31
     const leo = r.linhas[2]
     expect(leo.teveCasos).toBe(true)  // não nasce liberado: veio de fora p/ trabalhar
     expect(leo.ajudaIdx).toBeNull()   // ordem derivada da origem — sem setas
+  })
+})
+
+// Defeitos D8/D12 (07/08): identidade NUNCA vem do nome exibido.
+describe('identidade da linha — nunca pelo display', () => {
+  it('slot assumido expõe deNomeOriginal (nome CRU do rodapé) além do display', () => {
+    const r = gerarColunaLiberacao(
+      [caso('S1', 0, 'GIOVANA', 'Cirurgião X', '07:30', { anestesistaUserId: 'uid-gio' })],
+      ['GUILHERME STAUB'],
+      { assumidas: { 'GUILHERME STAUB': { uid: 'uid-gio', nome: 'GIOVANA SILVA' } } },
+    )
+    const linha = r.linhas[0]
+    // o desfazer casa o dono por normNome do nome CRU — o display encurtado
+    // ("G. Staub") não bate com o cadastro e degradava p/ "só posição"
+    expect(linha.assumida.deNomeOriginal).toBe('GUILHERME STAUB')
+    expect(linha.nomeOriginal).toBe('GUILHERME STAUB')
+  })
+
+  it('nomeOriginal não defaulta para o display (a classe do bug de 22/07)', () => {
+    const r = gerarColunaLiberacao(
+      [caso('S1', 0, 'MARILIO', 'Cirurgião X')],
+      ['MARILIO'],
+      {},
+    )
+    // call sites reais SEMPRE passam nomeOriginal; o contrato é que ele venha do
+    // RODAPÉ (cru), nunca do texto exibido na tela
+    expect(r.linhas[0].nomeOriginal).toBe('MARILIO')
+    expect(r.linhas[0].anestesista).toBe('Marilio') // display é outra coisa
   })
 })

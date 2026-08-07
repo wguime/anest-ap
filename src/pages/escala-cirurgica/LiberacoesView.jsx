@@ -389,7 +389,14 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const trocaDe = (linha) => {
     if (!linha || linha.assumida || linha.noturno || !paresTroca.length) return null
     const chaves = new Set(
-      [linha.chave, linha.uid, normNome(linha.nomeOriginal || ''), normNome(linha.anestesista || '')].filter(Boolean)
+      [
+        linha.chave, linha.uid,
+        normNome(linha.nomeOriginal || ''),
+        // uid resolvido do nome CRU do rodapé (defeito D8): o matching por
+        // display era acidental — homônimo de display casaria o par errado
+        resolverUid(linha.nomeOriginal || '') || null,
+        normNome(linha.anestesista || ''),
+      ].filter(Boolean)
     )
     for (const par of paresTroca) {
       // par HISTÓRICO é rastro de swap já executado (exibição/telemetria) —
@@ -1131,8 +1138,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
               {/* ── TROCA DECLARADA (dono 30/07) — declarar / executar / desfazer.
                   NÃO é a troca antiga (removida 2×): par declarado + badge nos dois
                   lados + execução de um toque (swap SIMULTÂNEO dos dois hospitais).
-                  Nada aqui escreve ordem_liberacao — a identidade do SLOT muda. ── */}
-              {canEdit && !editor.noturno && (() => {
+                  Nada aqui escreve ordem_liberacao — a identidade do SLOT muda.
+                  Linha `chave#casos` (dono de slot assumido reaparecendo com casos)
+                  fica DE FORA: a chave é espelho de verdade-dos-dados — troca
+                  gravada nela ficaria órfã, nada a lê (defeito D7, 07/08). ── */}
+              {canEdit && !editor.noturno && !String(editor.chave || '').includes('#casos') && (() => {
                 if (editor.assumida) {
                   return (
                     <div className="space-y-1.5">

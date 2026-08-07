@@ -122,6 +122,20 @@ describe('Badge "Troca" nos dois lados do par', () => {
     expect(screen.queryByText(/Executar troca/)).toBeNull()
     expect(screen.queryByText(/Desfazer troca/)).toBeNull()
   })
+
+  it('linha-espelho `chave#casos` não oferece troca (defeito D7 — gravaria em chave órfã)', () => {
+    // republicação conflituosa: slot do Marilio assumido pela Karine, e os casos
+    // do Marilio re-importados no nome dele → linha extra `uid-mar#casos`
+    const escala = {
+      ...escalaBase,
+      linhaOverrides: { 'matutino:uid-mar': { assumidaPor: { uid: 'uid-kar', nome: 'KARINE BEDIN' } } },
+    }
+    montar({}, escala)
+    // a linha-espelho do Marilio existe (os casos não somem em silêncio)…
+    fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Marilio Flach'))
+    // …mas o bloco de troca fica de fora: trocaCom em `uid-mar#casos` seria órfão
+    expect(screen.queryByText(/Marcar troca com um colega/)).toBeNull()
+  })
 })
 
 describe('Painel ✏️ — declarar, executar e desfazer a troca', () => {

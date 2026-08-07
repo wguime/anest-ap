@@ -317,7 +317,10 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                   escalas, resolverUid: resolverRoster,
                   turno,
                   a: pessoaDe(linha.uid, linha.anestesista),
-                  b: pessoaDe(linha.assumida?.deUid, linha.assumida?.deNome),
+                  // nome CRU do rodapé, nunca o display (defeito D8): o plano
+                  // casa o dono por normNome e o display curto não bate com o
+                  // cadastro — o desfazer degradava p/ "só posição"
+                  b: pessoaDe(linha.assumida?.deUid, linha.assumida?.deNomeOriginal || linha.assumida?.deNome),
                 }), userInfo)}
               onRemoveAjuda={(nome) => removerAjuda(escala, turno, nome)}
             />

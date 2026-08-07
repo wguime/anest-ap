@@ -431,10 +431,13 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     salas: g ? g.salas : [],
     // chave ESTÁVEL p/ marcações (uid do vínculo ou nome normalizado) + nome
     // ORIGINAL do rodapé p/ persistir reordenação — o nome EXIBIDO muda com
-    // vínculos/diferenciação e corrompia marcações e rodapé (bug real 2026-07-22)
+    // vínculos/diferenciação e corrompia marcações e rodapé (bug real 2026-07-22).
+    // Default NULL de propósito (defeito D12): defaultar para o display fazia um
+    // call site esquecido alimentar marcações com um nome que muda — a classe
+    // exata do bug de 22/07. Todo call site passa nomeOriginal explícito.
     chave: '',
     uid: null,
-    nomeOriginal: display,
+    nomeOriginal: null,
     // teve caso hoje (mesmo que todos já encerrados) — NÃO auto-liberar
     teveCasos: !!g?.teveCasos,
     isPlantonista: false,
@@ -507,7 +510,11 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
         isAjuda: azuis.has(key) || azuis.has(keyAsm) || emprestadoAsm,
         ajudaFora: emprestadoAsm,
         chave: key, uid: uidAsm || asm.uid || null, nomeOriginal: nomeRodape,
-        assumida: { deNome: displayDe(nomeRodape, uid), deUid: uid || null },
+        // deNomeOriginal = nome CRU do rodapé (defeito D8, 07/08): o desfazer
+        // casa o dono por normNome, e o display curto ("G. Staub") não bate com
+        // o cadastro ("Guilherme Staub") — o desfazer degradava p/ "só posição"
+        // por diferença de FORMATO do nome. deNome segue sendo só exibição.
+        assumida: { deNome: displayDe(nomeRodape, uid), deNomeOriginal: nomeRodape, deUid: uid || null },
       })
       // A pessoa acabou de herdar posição + casos: nunca cair em "não escalado"
       // (nasceria liberada e afundaria) mesmo que os casos ainda estejam a caminho.
@@ -624,10 +631,19 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     // caso hoje — em 31/07 nem ADRIANO (HRO) nem ALEXANDRE D (Unimed) mostravam
     // o selo porque estavam sem casos. Sem casos a linha continua nascendo
     // liberada (naoEscalado), só que no fim e identificada.
-    if (i >= 0) {
+    //
+    // EXCEÇÃO: o PLANTONISTA do turno atual (defeito D11, 07/08). Quando o único
+    // nome nosso do rodapé é também o último (o resto é ajuda de fora), a mesma
+    // pessoa levava os DOIS selos e era MOVIDA para o fim — e o fim libera
+    // primeiro: o plantonista viraria o primeiro a sair. Segurar o plantão do
+    // hospital prevalece; a pessoa mantém os dois selos e fica no topo.
+    if (i >= 0 && !de[i].isPlantonista) {
       de[i].isProximoPlantao = true
       de[i].plantaoLabel = PLANTAO_LABEL[opts.turno]
       proximoPlantao = de.splice(i, 1)[0]
+    } else if (i >= 0) {
+      de[i].isProximoPlantao = true
+      de[i].plantaoLabel = PLANTAO_LABEL[opts.turno]
     }
   }
 

@@ -473,6 +473,14 @@ export function EscalaCirurgicaProvider({ children }) {
   const marcarTroca = useCallback(async (escala, linhaArg, colega, userInfo = {}, turno) => {
     const linha = linhaDe(linhaArg)
     const chave = linha.chave || linha.anestesista
+    // chave `uid#casos` é o namespace da linha-espelho (dono de slot assumido
+    // reaparecendo com casos) — troca gravada nela fica órfã: nem a coluna nem
+    // paresTroca a leem (defeito D7, 07/08). A UI já esconde o bloco; isto é
+    // defesa contra chamador novo.
+    if (String(chave).includes('#')) {
+      toast({ variant: 'warning', title: 'Esta linha não aceita troca', description: 'Ela espelha casos re-importados. Ajuste pelo Definir anestesista ou pela linha principal da pessoa.' })
+      return
+    }
     const scoped = chaveTurno(turno, chave)
     try {
       // MESMA cadeia de fallback do setLinhaOverride (defeito 07/08): ler só a
