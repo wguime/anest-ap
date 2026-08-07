@@ -9,13 +9,6 @@
       ],
       "env": {}
     },
-    "shadcn": {
-      "command": "npx",
-      "args": [
-        "shadcn@latest",
-        "mcp"
-      ]
-    },
     "firebase": {
       "type": "stdio",
       "command": "npx",
@@ -25,17 +18,6 @@
         "mcp"
       ],
       "env": {}
-    },
-    "firecrawl": {
-      "type": "stdio",
-      "command": "npx",
-      "args": [
-        "-y",
-        "firecrawl-mcp"
-      ],
-      "env": {
-        "FIRECRAWL_API_KEY": "YOUR_KEY_HERE"
-      }
     },
     "supabase": {
       "type": "stdio",
@@ -49,22 +31,6 @@
       "env": {
         "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}"
       }
-    },
-    "context7": {
-      "type": "stdio",
-      "command": "npx",
-      "args": [
-        "-y",
-        "@upstash/context7-mcp@latest"
-      ]
-    },
-    "lighthouse": {
-      "type": "stdio",
-      "command": "npx",
-      "args": [
-        "-y",
-        "lighthouse-mcp"
-      ]
     }
   }
 }
