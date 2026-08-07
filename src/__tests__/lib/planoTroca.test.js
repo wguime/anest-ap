@@ -11,7 +11,7 @@
  *  - o trocaCom do par é listado p/ limpeza (o badge some após executar).
  */
 import { describe, it, expect } from 'vitest'
-import { planoExecucaoTroca, planoDesfazerTroca, localizarSlotRodape, casosTransferiveis, snapshotCasos, lerOverrideAnterior, estadoTrocasDoHistorico } from '../../pages/escala-cirurgica/utils'
+import { planoExecucaoTroca, planoExecucaoDeclarada, planoDesfazerTroca, localizarSlotRodape, casosTransferiveis, snapshotCasos, lerOverrideAnterior, estadoTrocasDoHistorico } from '../../pages/escala-cirurgica/utils'
 
 const caso = (id, sala, anestesista, extra = {}) => ({
   id, sala, ordem: 0, anestesista, cirurgiao: 'Cirurgião X',
@@ -204,6 +204,56 @@ describe('localizarSlotRodape / casosTransferiveis — resolução de identidade
       casos: [caso('c1', 'S1', 'G. SILVA', { anestesistaUserId: 'uid-gio' })],
     }
     expect(casosTransferiveis(esc, GIOVANA, resolverUid)).toEqual(['c1'])
+  })
+})
+
+// PLANO ANCORADO NA DECLARAÇÃO (Fase 2 — convergência da importação). O caso
+// canônico: DIDO duplicado nos DOIS hospitais, "trocou com Paulo". O varre-tudo
+// do planoExecucaoTroca também trocaria a posição onde o DIDO vai ficar; o
+// plano ancorado troca SÓ a vaga declarante + a recíproca do parceiro.
+describe('planoExecucaoDeclarada — âncora no slot declarante', () => {
+  const DIDO = { uid: 'uid-dido', nome: 'GUILHERME XAVIER', apelido: 'DIDO' }
+  const PAULO = { uid: 'uid-paulo', nome: 'PAULO TONINI', apelido: 'PAULO' }
+  const resolve = (n) => ({ DIDO: 'uid-dido', PAULO: 'uid-paulo' })[String(n || '').trim().toUpperCase()] || null
+  // DIDO nos rodapés da Unimed E do HRO (duplicado); PAULO só no HRO
+  const escalasDup = {
+    unimed: {
+      id: 'esc-uni', hospital: 'unimed',
+      ordemLiberacao: { matutino: ['DIDO'] },
+      linhaOverrides: {},
+      casos: [caso('u1', 'S1', 'DIDO', { anestesistaUserId: 'uid-dido' })],
+    },
+    hro: {
+      id: 'esc-hro', hospital: 'hro',
+      ordemLiberacao: { matutino: ['DIDO', 'PAULO'] },
+      linhaOverrides: {},
+      casos: [caso('h1', 'S1', 'PAULO', { anestesistaUserId: 'uid-paulo' })],
+    },
+    materno: null,
+  }
+  const par = { hospital: 'unimed', escalaId: 'esc-uni', turno: 'matutino', chave: 'uid-dido' }
+
+  it('troca a vaga DECLARANTE + a recíproca do parceiro — nunca a posição onde o duplicado fica', () => {
+    const plan = planoExecucaoDeclarada({ escalas: escalasDup, resolverUid: resolve, par, a: DIDO, b: PAULO })
+    expect(plan.lados).toHaveLength(2)
+    // vaga duplicada na Unimed → Paulo assume
+    expect(plan.lados[0]).toMatchObject({ escalaId: 'esc-uni', chaveSlot: 'uid-dido', para: { uid: 'uid-paulo' } })
+    // recíproca: vaga do Paulo no HRO → Dido assume
+    expect(plan.lados[1]).toMatchObject({ escalaId: 'esc-hro', chaveSlot: 'uid-paulo', para: { uid: 'uid-dido' } })
+    // a vaga do DIDO no HRO (onde ele VAI FICAR) não aparece em lado nenhum
+    expect(plan.lados.some((l) => l.escalaId === 'esc-hro' && l.chaveSlot === 'uid-dido')).toBe(false)
+    expect(plan.pendencias).toEqual([])
+  })
+
+  it('parceiro sem vaga em lugar nenhum = assunção unilateral (1 lado, sem pendência de slot)', () => {
+    const semPaulo = {
+      ...escalasDup,
+      hro: { ...escalasDup.hro, ordemLiberacao: { matutino: ['DIDO'] }, casos: [] },
+    }
+    const plan = planoExecucaoDeclarada({ escalas: semPaulo, resolverUid: resolve, par, a: DIDO, b: PAULO })
+    expect(plan.lados).toHaveLength(1)
+    expect(plan.lados[0]).toMatchObject({ escalaId: 'esc-uni', para: { uid: 'uid-paulo' } })
+    expect(plan.pendencias).toEqual([])
   })
 })
 

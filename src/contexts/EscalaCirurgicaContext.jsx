@@ -525,9 +525,13 @@ export function EscalaCirurgicaProvider({ children }) {
    * (rollback best-effort) e, se o rollback também falhar, recarrega do banco e
    * avisa — nunca deixa a tela fingindo sucesso (lição F1.6).
    */
-  const executarSubstituicao = useCallback(async ({ lados = [], limparTroca = [] }, userInfo = {}) => {
+  const executarSubstituicao = useCallback(async ({ lados = [], limparTroca = [] }, userInfo = {}, { escalasOverride = null } = {}) => {
     if (!lados.length) return
-    const escalas = escalasRef.current
+    // escalasOverride (Fase 2, importação): a publicação acabou de acontecer e o
+    // estado do context ainda não a viu — o plano opera sobre o snapshot que o
+    // chamador montou (saved + outras escalas), sem corrida com o realtime. O
+    // dispatch local é pulado: quem usa override recarrega do banco em seguida.
+    const escalas = escalasOverride || escalasRef.current
     const agoraIso = new Date().toISOString()
     const rollback = [] // LIFO
     const porHospital = {} // patches locais pós-sucesso
@@ -606,8 +610,10 @@ export function EscalaCirurgicaProvider({ children }) {
           else delete p.linhaOverrides[scoped]
         })
       }
-      for (const [hospital, patch] of Object.entries(porHospital)) {
-        dispatch({ type: 'PATCH_HOSPITAL', hospital, patch })
+      if (!escalasOverride) {
+        for (const [hospital, patch] of Object.entries(porHospital)) {
+          dispatch({ type: 'PATCH_HOSPITAL', hospital, patch })
+        }
       }
       // todos os lados já estavam no estado-alvo: nada foi escrito (D10)
       if (ladosPulados === lados.length) {

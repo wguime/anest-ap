@@ -18,13 +18,14 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { ThemeProvider, ToastProvider } from '@/design-system'
 import ImportarEscalaPage from '@/pages/escala-cirurgica/ImportarEscalaPage'
 
-const { svcMock, salvarEscala, prepararImagem } = vi.hoisted(() => ({
+const { svcMock, salvarEscala, executarSubstituicao, prepararImagem } = vi.hoisted(() => ({
   svcMock: {
     parseEscalaImagem: vi.fn(),
     fetchEscala: vi.fn(async () => null),
     patchLinhaOverride: vi.fn(async () => {}),
   },
   salvarEscala: vi.fn(async (p) => ({ id: 'e1', ...p, casos: (p.casos || []).map((c, i) => ({ ...c, id: `c${i}`, ordem: i })) })),
+  executarSubstituicao: vi.fn(async () => {}),
   prepararImagem: vi.fn(async () => ({ base64: 'AAAA', mimeType: 'image/jpeg', bytes: 3, largura: 1600, altura: 1200, reduzida: true })),
 }))
 vi.mock('@/services/supabaseEscalaCirurgicaService', () => ({ default: svcMock }))
@@ -32,7 +33,7 @@ vi.mock('@/services/supabaseCirurgiasParticularesService', () => ({
   default: { completarPacienteDoCaso: vi.fn(async () => {}) },
 }))
 vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
-  useEscalaCirurgicaActions: () => ({ salvarEscala }),
+  useEscalaCirurgicaActions: () => ({ salvarEscala, executarSubstituicao }),
   HOSPITAL_LABEL: { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' },
 }))
 vi.mock('@/contexts/UserContext', () => ({
@@ -132,5 +133,73 @@ describe('duplicidade entre hospitais → troca declarada', () => {
     fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
     await waitFor(() => expect(salvarEscala).toHaveBeenCalled())
     expect(svcMock.patchLinhaOverride).not.toHaveBeenCalled()
+    expect(executarSubstituicao).not.toHaveBeenCalled()
+  })
+
+  // FASE 2 (dono 07/08 — "as trocas não saem de forma automática após leitura
+  // das escalas"): a decisão TROCA agora executa o swap na publicação, com o
+  // plano ANCORADO na declaração — a vaga duplicada AQUI vai para o parceiro e
+  // a recíproca é a vaga do parceiro no hospital DELE. A posição onde o
+  // duplicado VAI FICAR nunca é tocada.
+  it('decisão troca EXECUTA na publicação: vaga daqui → parceiro; recíproca no hospital dele', async () => {
+    await importarComDuplicidade()
+    fireEvent.click(screen.getByText(/Trocou com quem\?/i))
+    fireEvent.click(await screen.findByText('Paulo Tonini'))
+    fireEvent.click(screen.getByRole('button', { name: /Confirmar troca/i }))
+    await screen.findByText(/Troca declarada com/i)
+
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+    await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
+
+    const [plan, , opts] = executarSubstituicao.mock.calls[0]
+    // snapshot explícito: sem corrida com o realtime do context
+    expect(opts?.escalasOverride).toBeTruthy()
+    expect(plan.lados).toHaveLength(2)
+    // vaga duplicada na Unimed (recém-publicada, id e1) → Paulo assume, com o tipo
+    expect(plan.lados[0]).toMatchObject({
+      escalaId: 'e1', chaveSlot: 'uid-dido',
+      para: { uid: 'uid-paulo' }, tipo: 'entre_hospitais',
+    })
+    // recíproca: vaga do Paulo no HRO → Dido assume
+    expect(plan.lados[1]).toMatchObject({
+      escalaId: 'e-hro', chaveSlot: 'uid-paulo',
+      para: { uid: 'uid-dido' },
+    })
+    // a vaga do DIDO no HRO (onde ele vai ficar) NÃO entra no swap
+    expect(plan.lados.some((l) => l.escalaId === 'e-hro' && l.chaveSlot === 'uid-dido')).toBe(false)
+  })
+
+  it('parceiro sem posição em escala nenhuma → assunção unilateral (1 lado)', async () => {
+    // HRO sem o PAULO no rodapé: ele é o "colega de fora" da taxonomia
+    svcMock.fetchEscala.mockImplementation(async (_d, hospital) => (
+      hospital === 'hro'
+        ? {
+          id: 'e-hro', hospital: 'hro',
+          casos: [{ sala: 'Sala 1', hora: '08:00', procedimento: 'ARTRODESE', anestesista: 'DIDO', turno: 'matutino' }],
+          ordemLiberacao: { matutino: ['DIDO'] },
+        }
+        : null
+    ))
+    svcMock.parseEscalaImagem.mockResolvedValueOnce({
+      casos: [{ sala: 'CC - Sala 1', hora: '08:30', procedimento: 'COLECISTECTOMIA', cirurgiao: 'ALBA', anestesista: 'DIDO' }],
+      ordemLiberacao: ['DIDO'],
+      ajudaExterna: [],
+    })
+    const { container } = render(
+      <ImportarEscalaPage hospital="unimed" data="2026-08-06" onClose={vi.fn()} />, { wrapper: wrap },
+    )
+    fireEvent.change(container.querySelector('input[type="file"]'), { target: { files: [new File(['x'], 'e.png', { type: 'image/png' })] } })
+    await screen.findByText(/Duplicidade entre hospitais/i)
+
+    fireEvent.click(screen.getByText(/Trocou com quem\?/i))
+    fireEvent.click(await screen.findByText('Paulo Tonini'))
+    fireEvent.click(screen.getByRole('button', { name: /Confirmar troca/i }))
+    await screen.findByText(/Troca declarada com/i)
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+
+    await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
+    const [plan] = executarSubstituicao.mock.calls[0]
+    expect(plan.lados).toHaveLength(1)
+    expect(plan.lados[0]).toMatchObject({ escalaId: 'e1', chaveSlot: 'uid-dido', para: { uid: 'uid-paulo' } })
   })
 })

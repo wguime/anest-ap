@@ -19,10 +19,10 @@ import { isPermissionError } from '@/services/supabaseEscalaAnestesistaService'
 import { prepararImagemParaVision } from '@/lib/imagemVision'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
-import { normNome, gruposAnestesista, chavesAnestesista, nomesImportados, aplicarAtribuicoes, detectarConflitos, lerOverrideAnterior, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital } from './utils'
+import { normNome, gruposAnestesista, chavesAnestesista, nomesImportados, aplicarAtribuicoes, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import { ehHoraSequencialEscala } from '@/lib/escalaCirurgicaRegras'
-import { detectarDuplicidadesEscala, formatarOcorrenciaDuplicidade } from '@/lib/escalaCirurgicaDuplicidades'
+import { detectarDuplicidadesEscala, formatarOcorrenciaDuplicidade, sugerirParceiroTroca } from '@/lib/escalaCirurgicaDuplicidades'
 
 const HOSPITAL_OPCOES = Object.entries(HOSPITAL_LABEL).map(([value, label]) => ({ value, label }))
 const PERIODO_OPCOES = [
@@ -149,7 +149,7 @@ const prepararCasos = (rows, hosp, posicoes = []) => {
 
 export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial, onClose }) {
   const { toast } = useToast()
-  const { salvarEscalaTurno, salvarEscala } = useEscalaCirurgicaActions()
+  const { salvarEscalaTurno, salvarEscala, executarSubstituicao } = useEscalaCirurgicaActions()
   // Compatibilidade com fixtures/testes e integrações antigas; em produção o
   // provider sempre expõe a publicação transacional por turno.
   const publicarEscala = salvarEscalaTurno || salvarEscala
@@ -626,6 +626,27 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
   // anestesista nem transforma uma duplicidade em ajuda automaticamente.
   const duplicidadesPendentes = duplicidades.filter((d) => !duplicidadeDecisoes[d.key])
 
+  // PAR PROPOSTO (Fase 2.2, dono 07/08): a leitura das DUAS escalas sugere o
+  // parceiro simétrico (rodapé em A com casos em B ↔ rodapé em B com casos em
+  // A) e PRÉ-PREENCHE o seletor — a secretária só confirma (ou corrige). A
+  // sugestão nunca classifica sozinha: sem o toque em "Confirmar troca", nada
+  // é gravado.
+  useEffect(() => {
+    if (!duplicidades.length) return
+    const sugestoes = sugerirParceiroTroca(duplicidades)
+    if (!sugestoes.size) return
+    setTrocaEscolhida((atual) => {
+      let mudou = false
+      const prox = { ...atual }
+      for (const [key, parceiroKey] of sugestoes) {
+        // só chave que resolve para login vira valor de Select — e nunca por
+        // cima de escolha já feita
+        if (!prox[key] && rosterByUid.has(parceiroKey)) { prox[key] = parceiroKey; mudou = true }
+      }
+      return mudou ? prox : atual
+    })
+  }, [duplicidades, rosterByUid])
+
   // GUARDRAIL INVERSO (incidente 30/07): anestesista COM CASO que não está no
   // rodapé nem na ajuda. Sem posição na ordem, `gerarColunaLiberacao` o joga como
   // linha EXTRA no fim da fila — e ele parece "não estar na escala". Foi o que
@@ -785,38 +806,91 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
         }
       } catch { /* rascunho segue com iniciais */ }
 
-      // TROCA DECLARADA a partir da conferência (dono 06/08). A duplicidade entre
-      // hospitais só ficava registrada na cabeça de quem conferiu: a decisão não
-      // saía da tela e, nas Liberações, os dois apareciam escalados normalmente.
-      // Agora ela grava o MESMO `trocaCom` do ✏️ das Liberações, então o badge sai
-      // nos dois lados (a page deriva `paresTroca` das 3 escalas) e a troca pode
-      // ser executada de lá com um toque.
+      // TROCA a partir da conferência (dono 06/08; EXECUÇÃO automática 07/08 —
+      // "as trocas não saem de forma automática após leitura das escalas").
+      // A decisão "troca" agora: (1) DECLARA o trocaCom (rastro, badge nos dois
+      // lados) e (2) EXECUTA o swap quando o plano fecha — os dois lados com uid
+      // resolvido, ou assunção de um lado só (colega sem escala publicada). O
+      // que não fecha fica declarado, com o aviso do que falta.
       //
-      // Registro ÚNICO, na linha de quem está duplicado: dual-write geraria dois
-      // pares para a mesma troca. Fire-and-forget porque a escala já está
-      // publicada — falhar aqui não pode desfazer a publicação.
+      // Snapshot explícito (saved + outras escalas): o estado do context ainda
+      // não viu a publicação — sem corrida com o realtime. Registro ÚNICO na
+      // linha do duplicado; fire-and-forget em relação à publicação (falhar aqui
+      // NUNCA desfaz o que já publicou).
+      let trocasExecutadas = []
+      let trocasPendentes = []
       try {
         const trocas = Object.entries(duplicidadeDecisoes)
           .filter(([, d]) => d?.tipo === 'troca' && (d.parceiroUid || d.parceiroNome))
-        if (trocas.length && saved?.id) {
-          await Promise.all(trocas.map(([chave, d]) => {
+        if (saved?.id && (trocas.length || outrasEscalas.length)) {
+          const snapshot = { [hosp]: saved }
+          for (const o of outrasEscalas) if (o?.hospital) snapshot[o.hospital] = o
+          const agoraIso = () => new Date().toISOString()
+
+          for (const [chave, d] of trocas) {
             const scoped = `${periodo}:${chave}`
             // cadeia de fallback (defeito D6): o override pode viver em chave
             // legada; ler só a scoped duplicaria a entrada
             const { valor: anterior } = lerOverrideAnterior(saved.linhaOverrides, chave, periodo)
             const { trocaCom: _sai, por: _p, em: _e, ...resto } = anterior || {}
-            return svc.patchLinhaOverride(saved.id, scoped, {
-              ...resto,
-              // duplicidade entre hospitais É o tipo 'entre_hospitais' por definição
-              trocaCom: { uid: d.parceiroUid || null, nome: d.parceiroNome || '', tipo: 'entre_hospitais', por: userId || null, em: new Date().toISOString() },
-              por: userId || null,
-              em: new Date().toISOString(),
-            }).catch(() => {})
-          }))
-        }
-      } catch { /* escala publicada; a troca pode ser declarada pelo ✏️ das Liberações */ }
+            // duplicidade entre hospitais É o tipo 'entre_hospitais' por definição
+            const trocaCom = { uid: d.parceiroUid || null, nome: d.parceiroNome || '', tipo: 'entre_hospitais', por: userId || null, em: agoraIso() }
+            await svc.patchLinhaOverride(saved.id, scoped, { ...resto, trocaCom, por: userId || null, em: agoraIso() }).catch(() => {})
+            // espelha no snapshot: a convergência abaixo lê daqui
+            snapshot[hosp] = {
+              ...snapshot[hosp],
+              linhaOverrides: { ...(snapshot[hosp].linhaOverrides || {}), [scoped]: { ...resto, trocaCom } },
+            }
+          }
 
-      toast({ variant: 'success', title: 'Escala publicada', description: 'Disponível para toda a equipe em tempo real.' })
+          // CONVERGÊNCIA: varre TODOS os pares declarados (os desta publicação e
+          // os que esperavam o parceiro chegar — inclusive re-execução pós-
+          // republicação, que zera os overrides) e executa os que fecham. A
+          // idempotência (D10) pula o que já está executado.
+          for (const par of paresDeclarados(snapshot)) {
+            const aUid = rosterByUid.has(par.chave) ? par.chave : resolver(par.chave)
+            const rA = aUid ? rosterByUid.get(aUid) : null
+            const rB = par.b.uid ? rosterByUid.get(par.b.uid) : null
+            const a = { uid: aUid || null, nome: rA?.nome || par.chave, apelido: rA?.apelidos?.[0] || par.chave }
+            const bPar = { uid: par.b.uid, nome: rB?.nome || par.b.nome, apelido: rB?.apelidos?.[0] || String(par.b.nome).split(/\s+/)[0]?.toUpperCase() || '' }
+            // plano ANCORADO na declaração — o varre-tudo do ✏️ trocaria também a
+            // posição onde o duplicado VAI FICAR (caso canônico Didomenico⇄Paulo)
+            const plan = planoExecucaoDeclarada({ escalas: snapshot, resolverUid: resolver, par: { ...par, turno: par.turno || periodo }, a, b: bPar })
+            const meta = { tipo: par.tipo || 'entre_hospitais', ...(par.motivo && { motivo: par.motivo }) }
+            // executa quando TODO lado tem quem assumir com uid (2 lados = swap;
+            // 1 lado = assunção por colega de fora). Senão: fica declarado.
+            if (plan.lados.length && plan.lados.every((l) => l.para.uid)) {
+              try {
+                await executarSubstituicao(
+                  { ...plan, lados: plan.lados.map((l) => ({ ...l, ...meta })) },
+                  { userId, userName: user?.displayName },
+                  { escalasOverride: snapshot },
+                )
+                trocasExecutadas.push(`${nomeCirurgiaoCurto(a.nome)} ⇄ ${nomeCirurgiaoCurto(bPar.nome)}`)
+              } catch { trocasPendentes.push(`${nomeCirurgiaoCurto(bPar.nome)}: a execução falhou — execute pelo ✏️ das Liberações`) }
+            } else if (plan.pendencias.length) {
+              trocasPendentes.push(...plan.pendencias.map((pe) => pe.motivo === 'sem_uid'
+                ? `${nomeCirurgiaoCurto(pe.pessoa.nome)} sem vínculo de login — vincule pelo 🔗 e execute pelas Liberações`
+                : `${nomeCirurgiaoCurto(pe.pessoa.nome)} sem posição publicada — executa quando a escala dele(a) for publicada`))
+            }
+          }
+        }
+      } catch { /* escala publicada; a troca pode ser declarada/executada pelo ✏️ */ }
+
+      toast({
+        variant: 'success',
+        title: 'Escala publicada',
+        description: trocasExecutadas.length
+          ? `Troca executada: ${[...new Set(trocasExecutadas)].join(' · ')}.`
+          : 'Disponível para toda a equipe em tempo real.',
+      })
+      if (trocasPendentes.length) {
+        toast({
+          variant: 'warning', duration: 12000,
+          title: 'Troca declarada, ainda não executada',
+          description: [...new Set(trocasPendentes)].join(' · '),
+        })
+      }
 
       // Aviso SEPARADO e depois do sucesso: a escala FOI publicada, e esconder
       // isso faria o usuário republicar à toa. Duração longa — é instrução, não

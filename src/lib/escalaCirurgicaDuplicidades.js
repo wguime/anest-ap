@@ -95,6 +95,40 @@ export function detectarDuplicidadesEscala({
     }))
 }
 
+/**
+ * Sugere o PARCEIRO provável de cada duplicidade (Fase 2.2, dono 07/08): quem
+ * está no rodapé de A com casos em B provavelmente trocou com quem está no
+ * rodapé de B com casos em A — o par SIMÉTRICO. Com exatamente UM candidato
+ * simétrico, a conferência pré-preenche o seletor; a decisão continua humana
+ * (a sugestão nunca classifica sozinha).
+ * @returns Map<keyDaDuplicidade, keyDoParceiroSugerido>
+ */
+export function sugerirParceiroTroca(duplicidades) {
+  const assinatura = (grupo) => {
+    const rodapeEm = new Set()
+    const casosEm = new Set()
+    for (const o of grupo.ocorrencias || []) {
+      if (o.noRodape) rodapeEm.add(o.hospital)
+      if (o.casos?.length) casosEm.add(o.hospital)
+    }
+    return { rodapeEm, casosEm }
+  }
+  const sugestoes = new Map()
+  for (const p of duplicidades || []) {
+    const sp = assinatura(p)
+    const candidatos = (duplicidades || []).filter((q) => {
+      if (q.key === p.key) return false
+      const sq = assinatura(q)
+      // simetria: Q tem rodapé onde P tem casos E casos onde P tem rodapé
+      const qRodapeOndePCasos = [...sp.casosEm].some((h) => sq.rodapeEm.has(h))
+      const qCasosOndePRodape = [...sp.rodapeEm].some((h) => sq.casosEm.has(h))
+      return qRodapeOndePCasos && qCasosOndePRodape
+    })
+    if (candidatos.length === 1) sugestoes.set(p.key, candidatos[0].key)
+  }
+  return sugestoes
+}
+
 export const formatarOcorrenciaDuplicidade = (ocorrencia) => {
   const onde = `${ocorrencia.hospitalLabel} · ${ocorrencia.turno === 'matutino' ? 'Matutino' : 'Vespertino'}`
   const posicao = ocorrencia.noRodape ? 'posição no rodapé' : 'sem posição no rodapé'

@@ -1072,6 +1072,83 @@ export function planoExecucaoTroca({ escalas, resolverUid, a, b, turno = null })
 }
 
 /**
+ * Pares de troca DECLARADOS (trocaCom vivo) nas escalas carregadas — insumo da
+ * convergência da importação (Fase 2): publicar uma escala varre os pares
+ * declarados e EXECUTA os que agora fecham (o parceiro que faltava chegou, ou a
+ * republicação apagou a execução e ela precisa voltar). Puro; a idempotência da
+ * execução (D10) torna o replay barato e seguro.
+ * @returns [{ hospital, escalaId, turno, chave, b: { uid, nome }, tipo, motivo }]
+ */
+export function paresDeclarados(escalas) {
+  const out = []
+  for (const [hospital, esc] of Object.entries(escalas || {})) {
+    if (!esc?.id) continue
+    for (const [rawChave, ov] of Object.entries(esc.linhaOverrides || {})) {
+      const t = ov?.trocaCom
+      if (!t || (!t.uid && !t.nome)) continue
+      const sep = String(rawChave).indexOf(':')
+      const [turnoChave, chave] = sep >= 0
+        ? [String(rawChave).slice(0, sep), String(rawChave).slice(sep + 1)]
+        : [null, rawChave]
+      if (turnoChave && turnoChave !== 'matutino' && turnoChave !== 'vespertino') continue
+      out.push({
+        hospital, escalaId: esc.id, turno: turnoChave, chave,
+        b: { uid: t.uid || null, nome: t.nome || '' },
+        tipo: t.tipo || null, motivo: t.motivo || null,
+      })
+    }
+  }
+  return out
+}
+
+/**
+ * Plano de execução ANCORADO numa declaração (convergência da importação,
+ * Fase 2). Difere do planoExecucaoTroca (que varre TODOS os slots do par nos 3
+ * hospitais — correto para o ✏️, onde ninguém está duplicado): aqui a âncora é
+ * o slot DECLARANTE. No caso canônico da duplicidade (Didomenico nos DOIS
+ * hospitais, "trocou com Paulo"), o varre-tudo também trocaria a posição onde
+ * ele VAI FICAR — errado. O certo: a vaga duplicada AQUI vai para o parceiro;
+ * o recíproco é só a vaga do PARCEIRO no hospital dele (quando existe).
+ * Puro; nada é escrito aqui.
+ */
+export function planoExecucaoDeclarada({ escalas, resolverUid, par, a, b }) {
+  const lados = []
+  const pendencias = []
+  const escA = Object.values(escalas || {}).find((e) => e?.id === par.escalaId)
+  const slotA = escA ? localizarSlotRodape(escA, a, resolverUid, par.turno) : null
+  if (!slotA) {
+    pendencias.push({ pessoa: a, motivo: 'sem_slot' })
+  } else {
+    lados.push({
+      hospital: par.hospital, escalaId: par.escalaId,
+      chaveSlot: slotA.chave, nomeSlot: slotA.nome,
+      ...(slotA.turno ? { turno: slotA.turno } : {}),
+      de: { uid: a.uid || null, nome: a.nome, apelido: a.apelido || slotA.nome },
+      para: { uid: b.uid || null, nome: b.nome, apelido: b.apelido },
+      casoIds: b.uid ? casosTransferiveis(escA, a, resolverUid) : [],
+    })
+  }
+  // recíproco: a vaga do PARCEIRO no hospital dele (fora da escala declarante).
+  // Sem vaga em lugar nenhum = assunção unilateral (colega de fora) — não é pendência.
+  for (const [hospital, esc] of Object.entries(escalas || {})) {
+    if (!esc?.id || esc.id === par.escalaId) continue
+    const slotB = localizarSlotRodape(esc, b, resolverUid, par.turno)
+    if (!slotB) continue
+    lados.push({
+      hospital, escalaId: esc.id,
+      chaveSlot: slotB.chave, nomeSlot: slotB.nome,
+      ...(slotB.turno ? { turno: slotB.turno } : {}),
+      de: { uid: b.uid || null, nome: b.nome, apelido: b.apelido || slotB.nome },
+      para: { uid: a.uid || null, nome: a.nome, apelido: a.apelido },
+      casoIds: a.uid ? casosTransferiveis(esc, b, resolverUid) : [],
+    })
+    break
+  }
+  if (!b.uid) pendencias.push({ pessoa: b, motivo: 'sem_uid' })
+  return { lados, pendencias }
+}
+
+/**
  * Extrai do histórico de eventos o rastro de SWAPS EXECUTADOS (defeito D1,
  * 07/08). O histórico é AMBÍGUO no eixo de DECLARAÇÃO: executar a troca limpa
  * o `trocaCom` e o trigger registra `troca_desfeita` — igualzinho à desistência
