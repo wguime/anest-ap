@@ -18,7 +18,7 @@ import BoardView from './BoardView'
 import LiberacoesView from './LiberacoesView'
 import ImportarEscalaPage from './ImportarEscalaPage'
 import VinculosSheet from './VinculosSheet'
-import { meuAliasDe, turnoAtual, casosResolvidos, filtrarPorTurno, normNome, formatData, rodapeDoTurno, localizarSlotRodape, planoExecucaoTroca, planoDesfazerTroca } from './utils'
+import { meuAliasDe, turnoAtual, casosResolvidos, estadoTrocasDoHistorico, filtrarPorTurno, normNome, formatData, rodapeDoTurno, localizarSlotRodape, planoExecucaoTroca, planoDesfazerTroca } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 
 const HOSPITAL_OPCOES = HOSPITAIS.map((h) => ({ value: h, label: HOSPITAL_LABEL[h] }))
@@ -177,29 +177,19 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           a, b, aHospitalLabel: slotLabelDe(a), bHospitalLabel: slotLabelDe(b),
         })
       }
-      // Mesmo após desfazer a troca, o rastro continua disponível para o card:
-      // o override deixa de existir, mas os casos encerrados não devem perder a
-      // informação de que foram executados por substituição.
-      for (const evento of esc.trocasHistorico || []) {
-        const detalhe = evento?.detalhe || {}
-        // Eventos antigos gravavam a chave sem namespace e, pela regra de
-        // migração, pertencem ao matutino. Nunca deixar esse histórico vazar
-        // para a aba vespertina. Eventos novos carregam o prefixo do turno.
-        const chaveEventoRaw = String(evento.anestesista || '')
-        const turnoEvento = chaveEventoRaw.startsWith('vespertino:')
-          ? 'vespertino'
-          : chaveEventoRaw.startsWith('matutino:') || !chaveEventoRaw.includes(':')
-            ? 'matutino'
-            : null
-        if (turnoEvento !== turno) continue
-        if (!['troca_declarada', 'posicao_assumida', 'troca_desfeita'].includes(evento?.statusPara)) continue
-        if (!detalhe.uid && !detalhe.nome) continue
-        const chave = chaveEventoRaw.replace(/^(matutino|vespertino):/, '')
-        if (!chave) continue
+      // Rastro de swaps EXECUTADOS (6e99f68): mesmo após desfazer/republicar, o
+      // caso encerrado não perde quem o executou. O helper reduz o histórico e
+      // NUNCA deriva par do eixo de declaração — `troca_desfeita` ressuscitava
+      // badge e oferecia "Executar" de novo (defeito D1, 07/08). Par `historica`
+      // é exibição/telemetria: trocaDe() na view o ignora para ação.
+      for (const { chave, detalhe } of estadoTrocasDoHistorico(esc.trocasHistorico, turno)) {
         const aUid = rosterByUid.has(chave) ? chave : (resolverRoster(chave) || null)
         const a = pessoaDe(aUid, chave)
         const b = pessoaDe(detalhe.uid, detalhe.nome)
-        if (out.some((p) => p.hospital === h && p.chave === chave && p.b.uid === b.uid)) continue
+        // dedup contra o par vivo: por uid quando há, por nome quando não — dois
+        // pares distintos com uid null não podem colapsar num só (defeito D9)
+        const mesmoB = (p) => (p.b.uid || b.uid) ? p.b.uid === b.uid : normNome(p.b.nome) === normNome(b.nome)
+        if (out.some((p) => p.hospital === h && p.chave === chave && mesmoB(p))) continue
         out.push({
           hospital: h, hospitalLabel: HOSPITAL_LABEL[h] || h, escalaId: esc.id, chave,
           a, b, aHospitalLabel: slotLabelDe(a), bHospitalLabel: slotLabelDe(b), historica: true,

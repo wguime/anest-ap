@@ -11,7 +11,7 @@
  *  - o trocaCom do par é listado p/ limpeza (o badge some após executar).
  */
 import { describe, it, expect } from 'vitest'
-import { planoExecucaoTroca, planoDesfazerTroca, localizarSlotRodape, casosTransferiveis, snapshotCasos, lerOverrideAnterior } from '../../pages/escala-cirurgica/utils'
+import { planoExecucaoTroca, planoDesfazerTroca, localizarSlotRodape, casosTransferiveis, snapshotCasos, lerOverrideAnterior, estadoTrocasDoHistorico } from '../../pages/escala-cirurgica/utils'
 
 const caso = (id, sala, anestesista, extra = {}) => ({
   id, sala, ordem: 0, anestesista, cirurgiao: 'Cirurgião X',
@@ -98,7 +98,9 @@ describe('planoExecucaoTroca — swap simultâneo Giovana↔Maurício', () => {
     expect(p.lados.find((l) => l.hospital === 'hro').escalaId).toBe('demo-hro')
   })
 
-  it('quando o turno é informado, ignora troca do outro turno e namespacia o lado', () => {
+  it('declarações do MESMO par em qualquer turno entram na limpeza, cada uma com o turno da própria chave', () => {
+    // contrato do D4 (07/08): o par pode ter sido declarado na manhã e executado
+    // à tarde — limpar só o turno da tela deixava o badge vivo no outro turno
     const vespertino = {
       ...escalas.unimed,
       linhaOverrides: {
@@ -107,7 +109,37 @@ describe('planoExecucaoTroca — swap simultâneo Giovana↔Maurício', () => {
       },
     }
     const plan = planoExecucaoTroca({ escalas: { unimed: vespertino }, resolverUid, a: GIOVANA, b: MAURICIO, turno: 'vespertino' })
-    expect(plan.limparTroca).toEqual([{ hospital: 'unimed', escalaId: 'esc-uni', chave: 'uid-mau', turno: 'vespertino' }])
+    expect(plan.limparTroca).toEqual(expect.arrayContaining([
+      { hospital: 'unimed', escalaId: 'esc-uni', chave: 'uid-mau', turno: 'matutino' },
+      { hospital: 'unimed', escalaId: 'esc-uni', chave: 'uid-mau', turno: 'vespertino' },
+    ]))
+    expect(plan.limparTroca).toHaveLength(2)
+  })
+
+  // PAR CROSS-TURNO (defeito D4, 07/08): Maurício no rodapé MATUTINO da Unimed,
+  // Giovana no VESPERTINO do HRO. Produção sempre passa o turno da tela — o
+  // filtro antigo achava só um slot e produzia MEIO swap em silêncio (uma pessoa
+  // herdava posição+casos e a outra não).
+  it('par manhã↔tarde fecha com 2 lados, cada um no turno do PRÓPRIO slot', () => {
+    const plan = planoExecucaoTroca({ escalas, resolverUid, a: GIOVANA, b: MAURICIO, turno: 'vespertino' })
+    expect(plan.lados).toHaveLength(2)
+    const ladoUnimed = plan.lados.find((l) => l.hospital === 'unimed')
+    const ladoHro = plan.lados.find((l) => l.hospital === 'hro')
+    // o turno de cada lado é o do slot achado — é ele que escopa a chave de escrita
+    expect(ladoUnimed.turno).toBe('matutino')
+    expect(ladoHro.turno).toBe('vespertino')
+  })
+
+  it('pessoa sem slot em lugar nenhum → pendência sem_slot (nunca meio swap calado)', () => {
+    const FORA = { uid: 'uid-fora', nome: 'COLEGA DE FORA', apelido: 'FORA' }
+    const plan = planoExecucaoTroca({ escalas, resolverUid, a: GIOVANA, b: FORA, turno: 'vespertino' })
+    expect(plan.lados).toHaveLength(1) // só o slot da Giovana
+    expect(plan.pendencias).toEqual([{ pessoa: FORA, motivo: 'sem_slot' }])
+  })
+
+  it('par completo → sem pendências', () => {
+    const plan = planoExecucaoTroca({ escalas, resolverUid, a: GIOVANA, b: MAURICIO })
+    expect(plan.pendencias).toEqual([])
   })
 })
 
@@ -153,12 +185,18 @@ describe('planoDesfazerTroca — reverte os dois lados', () => {
 
 describe('localizarSlotRodape / casosTransferiveis — resolução de identidade', () => {
   it('acha o slot pelo apelido do dicionário e pelo nome ensinado pelos casos', () => {
-    // dicionário resolve GIOVANA→uid-gio
-    expect(localizarSlotRodape(escalas.hro, GIOVANA, resolverUid)).toEqual({ nome: 'GIOVANA', chave: 'uid-gio' })
+    // dicionário resolve GIOVANA→uid-gio; o slot informa o turno onde FOI achado
+    expect(localizarSlotRodape(escalas.hro, GIOVANA, resolverUid)).toEqual({ nome: 'GIOVANA', chave: 'uid-gio', turno: 'vespertino' })
     // sem dicionário: os casos ensinam MAURICIO→uid-mau (chave cai no nome, estável)
-    expect(localizarSlotRodape(escalas.unimed, MAURICIO, () => null)).toEqual({ nome: 'MAURICIO', chave: 'MAURICIO' })
+    expect(localizarSlotRodape(escalas.unimed, MAURICIO, () => null)).toEqual({ nome: 'MAURICIO', chave: 'MAURICIO', turno: 'matutino' })
     // quem não está em rodapé nenhum
     expect(localizarSlotRodape(escalas.unimed, { uid: 'uid-x', nome: 'NINGUEM' }, resolverUid)).toBeNull()
+  })
+
+  it('turno pedido é PREFERÊNCIA: slot só no outro turno ainda é achado, com o turno DELE (D3/D4)', () => {
+    // Giovana só tem slot no vespertino do HRO; a tela está no matutino
+    expect(localizarSlotRodape(escalas.hro, GIOVANA, resolverUid, 'matutino'))
+      .toEqual({ nome: 'GIOVANA', chave: 'uid-gio', turno: 'vespertino' })
   })
 
   it('casosTransferiveis casa por uid mesmo com grafia diferente do nome', () => {
@@ -166,6 +204,53 @@ describe('localizarSlotRodape / casosTransferiveis — resolução de identidade
       casos: [caso('c1', 'S1', 'G. SILVA', { anestesistaUserId: 'uid-gio' })],
     }
     expect(casosTransferiveis(esc, GIOVANA, resolverUid)).toEqual(['c1'])
+  })
+})
+
+// HISTÓRICO → PARES (defeito D1, 07/08): executar a troca limpa o trocaCom e o
+// trigger registra `troca_desfeita` — igual à desistência do usuário. Derivar
+// par de QUALQUER evento ressuscitava badge de troca desfeita e oferecia
+// "Executar" de novo. Só `posicao_assumida` (swap que aconteceu) gera rastro.
+describe('estadoTrocasDoHistorico — só swap executado vira par', () => {
+  const ev = (anestesista, statusPara, detalhe, em) => ({ anestesista, statusPara, detalhe, em })
+  const DET = { uid: 'uid-gio', nome: 'GIOVANA SILVA' }
+
+  it('troca_declarada e troca_desfeita NUNCA geram par (era o bug do badge ressuscitado)', () => {
+    const eventos = [
+      ev('matutino:uid-mau', 'troca_desfeita', DET, '3'),
+      ev('matutino:uid-mau', 'troca_declarada', DET, '2'),
+    ]
+    expect(estadoTrocasDoHistorico(eventos, 'matutino')).toEqual([])
+  })
+
+  it('posicao_assumida gera o rastro — e o MAIS RECENTE por chave ganha (lista vem desc)', () => {
+    const outra = { uid: 'uid-kar', nome: 'KARINE BEDIN' }
+    const eventos = [
+      ev('matutino:uid-mau', 'posicao_assumida', outra, '5'),
+      ev('matutino:uid-mau', 'posicao_assumida', DET, '1'),
+    ]
+    expect(estadoTrocasDoHistorico(eventos, 'matutino')).toEqual([{ chave: 'uid-mau', detalhe: outra }])
+  })
+
+  it('o rastro sobrevive ao desfazer (6e99f68: caso encerrado não perde quem executou)', () => {
+    const eventos = [
+      ev('matutino:uid-mau', 'assuncao_desfeita', DET, '2'),
+      ev('matutino:uid-mau', 'posicao_assumida', DET, '1'),
+    ]
+    expect(estadoTrocasDoHistorico(eventos, 'matutino')).toEqual([{ chave: 'uid-mau', detalhe: DET }])
+  })
+
+  it('isola por turno: evento sem prefixo é matutino e nunca vaza para a tarde', () => {
+    const eventos = [
+      ev('uid-mau', 'posicao_assumida', DET, '2'), // legado sem prefixo = matutino
+      ev('vespertino:uid-kar', 'posicao_assumida', DET, '1'),
+    ]
+    expect(estadoTrocasDoHistorico(eventos, 'matutino')).toEqual([{ chave: 'uid-mau', detalhe: DET }])
+    expect(estadoTrocasDoHistorico(eventos, 'vespertino')).toEqual([{ chave: 'uid-kar', detalhe: DET }])
+  })
+
+  it('detalhe sem uid nem nome não vira par', () => {
+    expect(estadoTrocasDoHistorico([ev('matutino:x', 'posicao_assumida', {}, '1')], 'matutino')).toEqual([])
   })
 })
 

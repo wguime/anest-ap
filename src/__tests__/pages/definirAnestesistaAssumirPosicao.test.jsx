@@ -109,6 +109,30 @@ describe('toggle "Assumir também a posição" no Definir anestesista', () => {
     await waitFor(() => expect(setAnestesistaCasos).toHaveBeenCalledTimes(1))
     expect(executarSubstituicao).not.toHaveBeenCalled()
   })
+
+  // Defeito D3 (07/08): o slot era buscado SEM turno mas gravado com o turno da
+  // TELA — o assumidaPor caía numa chave que o rodapé daquele turno não continha
+  // (casos transferidos, posição não assumida em turno nenhum). O turno da
+  // escrita agora é o do SLOT achado, nunca o da tela.
+  it('slot no matutino + tela no vespertino: o lado grava com o turno do SLOT', async () => {
+    // STAUB tem um caso à TARDE, mas a posição dele no rodapé é MATUTINA
+    const casoTarde = caso({ id: 'c3', hora: '14:00' })
+    const esc = { ...escalaComRodape, casos: [...escalaComRodape.casos, casoTarde] }
+    render(
+      <DefinirAnestesistaSheet escala={esc} sala="Sala 5" turno="vespertino" casosAlvo={[casoTarde]} onClose={vi.fn()} />,
+      { wrapper: wrap },
+    )
+    escolherCury()
+    fireEvent.click(await screen.findByRole('switch'))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar responsável' }))
+    await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
+    const [plan] = executarSubstituicao.mock.calls[0]
+    // gravar com o turno da TELA poria o assumidaPor em `vespertino:uid-staub`,
+    // chave que o rodapé vespertino não contém (o bug: casos transferidos,
+    // posição não assumida em turno nenhum)
+    expect(plan.lados[0].turno).toBe('matutino')
+    expect(plan.lados[0].chaveSlot).toBe('uid-staub')
+  })
 })
 
 // ════════════════════════════════════════════════════════════════════════════

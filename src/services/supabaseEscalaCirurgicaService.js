@@ -124,6 +124,9 @@ async function fetchEscala(data, hospital) {
       .eq('escala_id', header.id)
       .eq('tipo', 'troca')
       .order('em', { ascending: false })
+      // janela: o consumo reduz ao último posicao_assumida por chave; sem teto,
+      // um dia agitado (republicações geram rajadas) crescia sem limite (D9)
+      .limit(60)
     if (!eventosErr) trocasHistorico = (eventos || []).map(toCamelCase)
   } catch { /* histórico é complementar */ }
 

@@ -531,12 +531,23 @@ export function EscalaCirurgicaProvider({ children }) {
     const escalaDe = (escalaId) => Object.values(escalas).find((e) => e?.id === escalaId)
     try {
       const pendentesLimpar = new Set(limparTroca.map((x) => `${x.escalaId}|${x.chave}`))
+      let ladosPulados = 0
       for (const lado of lados) {
         const esc = escalas[lado.hospital]
         if (!esc || esc.id !== lado.escalaId) throw new Error('A escala mudou — recarregue e tente de novo.')
         const demo = String(lado.escalaId).startsWith('demo-') // demo: só em memória
         const scoped = chaveTurno(lado.turno, lado.chaveSlot)
         const anterior = (esc.linhaOverrides || {})[scoped] ?? null
+        // IDEMPOTÊNCIA (defeito D10, 07/08): o slot já está assumido por quem
+        // este lado quer pôr → pular o lado INTEIRO. Re-executar (2º toque,
+        // convergência pós-publicação, dois plantonistas ao mesmo tempo)
+        // re-transferia casos que agora pertencem ao outro lado do swap.
+        const asmAtual = anterior?.assumidaPor
+        const jaAssumido = asmAtual && (
+          asmAtual.uid ? asmAtual.uid === lado.para.uid
+            : (!lado.para.uid && normNome(asmAtual.nome || '') === normNome(lado.para.nome || ''))
+        )
+        if (jaAssumido) { ladosPulados += 1; pendentesLimpar.delete(`${lado.escalaId}|${lado.chaveSlot}`); continue }
         const { trocaCom: _sai, ...resto } = anterior || {}
         pendentesLimpar.delete(`${lado.escalaId}|${lado.chaveSlot}`)
         const valor = {
@@ -587,6 +598,11 @@ export function EscalaCirurgicaProvider({ children }) {
       }
       for (const [hospital, patch] of Object.entries(porHospital)) {
         dispatch({ type: 'PATCH_HOSPITAL', hospital, patch })
+      }
+      // todos os lados já estavam no estado-alvo: nada foi escrito (D10)
+      if (ladosPulados === lados.length) {
+        toast({ variant: 'success', title: 'Troca já executada', description: 'Nada a refazer — a posição já estava assumida.' })
+        return
       }
       const nomes = [...new Set(lados.map((l) =>
         `${nomeCirurgiaoCurto(l.para.nome)} → posição de ${titleCaseNome(l.nomeSlot || l.de.nome)}`))]

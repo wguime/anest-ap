@@ -112,6 +112,16 @@ describe('Badge "Troca" nos dois lados do par', () => {
     montar()
     expect(screen.queryByText('Troca')).toBeNull()
   })
+
+  it('par HISTÓRICO (rastro de swap executado) não vira badge nem oferece ação (defeito D1)', () => {
+    // troca desfeita/consumida ressuscitava pelo histórico: badge voltava e o
+    // painel oferecia "Executar troca" de novo, sem saída na UI
+    montar({ paresTroca: [{ ...PAR, historica: true }] })
+    expect(screen.queryByText('Troca')).toBeNull()
+    fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Marilio Flach'))
+    expect(screen.queryByText(/Executar troca/)).toBeNull()
+    expect(screen.queryByText(/Desfazer troca/)).toBeNull()
+  })
 })
 
 describe('Painel ✏️ — declarar, executar e desfazer a troca', () => {

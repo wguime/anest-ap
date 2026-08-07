@@ -962,7 +962,14 @@ const uidLocalDe = (esc) => {
 /** Slot de uma pessoa no rodapé da escala (qualquer turno) — { nome, chave } | null. */
 export function localizarSlotRodape(esc, pessoa, resolverUid, turnoSelecionado = null) {
   const uidLocal = uidLocalDe(esc)
-  const turnos = turnoSelecionado ? [turnoSelecionado] : ['matutino', 'vespertino']
+  // `turnoSelecionado` é PREFERÊNCIA de busca, não filtro: o slot da pessoa pode
+  // estar no outro turno (par manhã↔tarde) e restringir produzia meio swap em
+  // silêncio — um lado herdava posição+casos e o outro não (defeito D4, 07/08).
+  // O turno onde o slot FOI achado volta no resultado: é ele que escopa a chave
+  // namespaced da escrita, nunca o turno da tela.
+  const turnos = turnoSelecionado
+    ? [turnoSelecionado, turnoSelecionado === 'matutino' ? 'vespertino' : 'matutino']
+    : ['matutino', 'vespertino']
   for (const turno of turnos) {
     for (const nome of rodapeDoTurno(esc?.ordemLiberacao, turno)) {
       if (pessoaCasaNome(pessoa, nome, resolverUid, uidLocal)) {
@@ -970,7 +977,7 @@ export function localizarSlotRodape(esc, pessoa, resolverUid, turnoSelecionado =
         // NÃO usa o uid ensinado pelos casos: após a transferência os casos param
         // de ensinar o nome antigo e a chave derivada mudaria — a lib lê com
         // fallback por norm(nome), que é estável.
-        return { nome, chave: resolverUid?.(nome) || normNome(nome) }
+        return { nome, chave: resolverUid?.(nome) || normNome(nome), turno }
       }
     }
   }
@@ -1001,16 +1008,25 @@ export function casosTransferiveis(esc, pessoa, resolverUid) {
  *
  * @param {object} args { escalas: {unimed,hro,materno}, resolverUid, a, b }
  *   a/b = { uid, nome, apelido } (roster). Puro: nada é escrito aqui.
- * @returns {{ lados: Array, limparTroca: Array }}
+ *   turno = PREFERÊNCIA de busca do slot (defeito D4, 07/08): restringir os dois
+ *   lados ao turno da tela fazia o par manhã↔tarde produzir UM lado só, em
+ *   silêncio — uma pessoa herdava posição+casos e a outra não. Cada lado agora
+ *   carrega o turno do PRÓPRIO slot (é ele que escopa a chave namespaced).
+ * @returns {{ lados: Array, limparTroca: Array, pendencias: Array }}
+ *   pendencias = o que impede o swap de fechar ({ pessoa, motivo:
+ *   'sem_slot' | 'sem_uid' }) — o chamador mostra o que falta em vez de
+ *   executar meio swap calado.
  */
 export function planoExecucaoTroca({ escalas, resolverUid, a, b, turno = null }) {
   const lados = []
   const limparTroca = []
+  const comSlot = new Set()
   for (const [hospital, esc] of Object.entries(escalas || {})) {
     if (!esc?.id) continue
     for (const [de, para] of [[a, b], [b, a]]) {
       const slot = localizarSlotRodape(esc, de, resolverUid, turno)
       if (!slot) continue
+      comSlot.add(de)
       lados.push({
         hospital, escalaId: esc.id,
         chaveSlot: slot.chave, nomeSlot: slot.nome,
@@ -1018,7 +1034,7 @@ export function planoExecucaoTroca({ escalas, resolverUid, a, b, turno = null })
         para: { uid: para.uid || null, nome: para.nome, apelido: para.apelido },
         // sem uid de quem assume não há como transferir caso (o service escreveria
         // "?"): o lado vale só pela POSIÇÃO; os casos se ajustam pelo Definir.
-        ...(turno ? { turno } : {}),
+        ...(slot.turno ? { turno: slot.turno } : (turno ? { turno } : {})),
         casoIds: para.uid ? casosTransferiveis(esc, de, resolverUid) : [],
       })
     }
@@ -1029,16 +1045,63 @@ export function planoExecucaoTroca({ escalas, resolverUid, a, b, turno = null })
       return ref.uid ? ref.uid === pessoa.uid : pessoaCasaNome(pessoa, ref.nome, resolverUid, uidLocal)
     }
     for (const [rawChave, ov] of Object.entries(esc.linhaOverrides || {})) {
-      if (turno && !String(rawChave).startsWith(`${turno}:`)) continue
-      const chave = turno ? String(rawChave).slice(turno.length + 1) : rawChave
+      // a declaração pode viver em QUALQUER turno (o par atravessa manhã↔tarde
+      // desde o D4) — o prefixo achado escopa a limpeza daquela entrada
+      const sep = String(rawChave).indexOf(':')
+      const [turnoChave, chave] = sep >= 0
+        ? [String(rawChave).slice(0, sep), String(rawChave).slice(sep + 1)]
+        : [null, rawChave]
+      if (turnoChave && turnoChave !== 'matutino' && turnoChave !== 'vespertino') continue
       const t = ov?.trocaCom
       if (!t) continue
       const parAB = ehDoPar(chave, a) && ehDoPar(t, b)
       const parBA = ehDoPar(chave, b) && ehDoPar(t, a)
-      if (parAB || parBA) limparTroca.push({ hospital, escalaId: esc.id, chave, ...(turno ? { turno } : {}) })
+      if (parAB || parBA) {
+        // o turno da limpeza é o DA CHAVE achada (chave crua legada fica crua:
+        // anexar o turno da tela faria a limpeza mirar uma entrada inexistente)
+        limparTroca.push({ hospital, escalaId: esc.id, chave, ...(turnoChave ? { turno: turnoChave } : {}) })
+      }
     }
   }
-  return { lados, limparTroca }
+  const pendencias = []
+  for (const pessoa of [a, b]) {
+    if (!comSlot.has(pessoa)) pendencias.push({ pessoa, motivo: 'sem_slot' })
+    else if (!pessoa.uid) pendencias.push({ pessoa, motivo: 'sem_uid' })
+  }
+  return { lados, limparTroca, pendencias }
+}
+
+/**
+ * Extrai do histórico de eventos o rastro de SWAPS EXECUTADOS (defeito D1,
+ * 07/08). O histórico é AMBÍGUO no eixo de DECLARAÇÃO: executar a troca limpa
+ * o `trocaCom` e o trigger registra `troca_desfeita` — igualzinho à desistência
+ * do usuário. Derivar par de `troca_declarada`/`troca_desfeita` ressuscitava
+ * badge de troca desfeita e oferecia "Executar" de novo, sem saída na UI.
+ *
+ * Regra: par histórico SÓ nasce de `posicao_assumida` — um swap que aconteceu
+ * de fato. O rastro sobrevive ao desfazer e à republicação (intenção do commit
+ * 6e99f68: caso encerrado não perde quem o executou), mas é EXIBIÇÃO/telemetria
+ * — quem consome marca `historica: true` e nunca oferece ação por ele.
+ *
+ * @param eventos [{ anestesista: 'turno:chave'|chave, statusPara, detalhe, em }] — já em ordem `em desc`
+ * @param turno   'matutino' | 'vespertino' — eventos sem prefixo são matutinos (regra da migração)
+ * @returns [{ chave, detalhe }] — no máximo um por chave (o mais recente)
+ */
+export function estadoTrocasDoHistorico(eventos, turno) {
+  const porChave = new Map() // chave nua -> detalhe (1º visto ganha: lista vem desc)
+  for (const evento of eventos || []) {
+    if (evento?.statusPara !== 'posicao_assumida') continue
+    const raw = String(evento.anestesista || '')
+    const sep = raw.indexOf(':')
+    const [turnoEvento, chave] = sep >= 0
+      ? [raw.slice(0, sep), raw.slice(sep + 1)]
+      : ['matutino', raw]
+    if (turnoEvento !== turno || !chave) continue
+    const detalhe = evento.detalhe || {}
+    if (!detalhe.uid && !detalhe.nome) continue
+    if (!porChave.has(chave)) porChave.set(chave, detalhe)
+  }
+  return [...porChave.entries()].map(([chave, detalhe]) => ({ chave, detalhe }))
 }
 
 /**
@@ -1055,8 +1118,13 @@ export function planoDesfazerTroca({ escalas, resolverUid, a, b, turno = null })
     if (!esc?.id) continue
     const uidLocal = uidLocalDe(esc)
     for (const [rawChave, ov] of Object.entries(esc.linhaOverrides || {})) {
-      if (turno && !String(rawChave).startsWith(`${turno}:`)) continue
-      const chave = turno ? String(rawChave).slice(turno.length + 1) : rawChave
+      // espelho do D4: a assunção pode viver em qualquer turno (par manhã↔tarde);
+      // o prefixo DA CHAVE escopa o desfazer — nunca o turno da tela
+      const sep = String(rawChave).indexOf(':')
+      const [turnoChave, chave] = sep >= 0
+        ? [String(rawChave).slice(0, sep), String(rawChave).slice(sep + 1)]
+        : [null, rawChave]
+      if (turnoChave && turnoChave !== 'matutino' && turnoChave !== 'vespertino') continue
       const asm = ov?.assumidaPor
       if (!asm) continue
       const assumidor = [a, b].find((p) => (asm.uid ? asm.uid === p.uid : pessoaCasaNome(p, asm.nome, resolverUid, uidLocal)))
@@ -1064,7 +1132,9 @@ export function planoDesfazerTroca({ escalas, resolverUid, a, b, turno = null })
       // dono original do slot = a OUTRA pessoa do par (o slot é dela)
       const dono = assumidor === a ? b : a
       lados.push({
-        hospital, escalaId: esc.id, chaveSlot: chave, ...(turno ? { turno } : {}),
+        // chave crua legada fica crua (anexar o turno da tela miraria uma
+        // entrada namespaced que não existe)
+        hospital, escalaId: esc.id, chaveSlot: chave, ...(turnoChave ? { turno: turnoChave } : {}),
         de: { uid: assumidor.uid, nome: assumidor.nome, apelido: assumidor.apelido },
         para: dono.uid ? { uid: dono.uid, nome: dono.nome, apelido: dono.apelido } : null,
         casoIds: dono.uid ? casosTransferiveis(esc, assumidor, resolverUid) : [],

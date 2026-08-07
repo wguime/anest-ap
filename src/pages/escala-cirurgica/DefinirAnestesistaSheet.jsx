@@ -102,8 +102,12 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
   const slotAnterior = useMemo(() => {
     if (!atual.uid && !atual.alias) return null
     const r = atual.uid ? rosterByUid.get(atual.uid) : null
-    return localizarSlotRodape(escala, { uid: atual.uid, nome: r?.nome || atual.alias }, resolver)
-  }, [escala, atual, rosterByUid, resolver])
+    // turno da tela é PREFERÊNCIA de busca; o slot achado carrega o turno DELE —
+    // buscar sem turno e gravar com o turno exibido punha o assumidaPor numa
+    // chave que o rodapé do turno não continha (defeito D3, 07/08: casos
+    // transferidos, posição não assumida em turno nenhum)
+    return localizarSlotRodape(escala, { uid: atual.uid, nome: r?.nome || atual.alias }, resolver, turno)
+  }, [escala, atual, rosterByUid, resolver, turno])
   const ofereceAssumir = !!slotAnterior && !!escolhido && escolhido !== SEM_ANESTESISTA && escolhido !== atual.uid
 
   const confirmar = async () => {
@@ -117,7 +121,8 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
         await executarSubstituicao({
           lados: [{
             hospital: escala.hospital, escalaId: escala.id,
-            turno,
+            // o turno da ESCRITA é o do slot achado, nunca o da tela (D3)
+            turno: slotAnterior.turno || turno,
             chaveSlot: slotAnterior.chave, nomeSlot: slotAnterior.nome,
             de: { uid: atual.uid || null, nome: rAtual?.nome || atual.alias, apelido: atual.alias || slotAnterior.nome },
             para: { uid: r.uid, nome: r.nome, apelido: r.apelidos?.[0] || primeiroNomeUpper(r.nome) },

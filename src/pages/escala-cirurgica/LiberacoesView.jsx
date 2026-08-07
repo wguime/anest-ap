@@ -392,6 +392,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       [linha.chave, linha.uid, normNome(linha.nomeOriginal || ''), normNome(linha.anestesista || '')].filter(Boolean)
     )
     for (const par of paresTroca) {
+      // par HISTÓRICO é rastro de swap já executado (exibição/telemetria) —
+      // nunca vira badge ativo nem oferece "Executar"/"Desfazer" de novo: era o
+      // defeito D1, badge de troca desfeita ressuscitando sem saída na UI
+      if (par.historica) continue
       const ladoA = [par.chave, par.a?.uid, normNome(par.a?.nome || '')].filter(Boolean)
       const ladoB = [par.b?.uid, normNome(par.b?.nome || '')].filter(Boolean)
       if (ladoA.some((k) => chaves.has(k))) {

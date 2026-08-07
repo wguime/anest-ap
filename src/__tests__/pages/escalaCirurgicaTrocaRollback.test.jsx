@@ -124,6 +124,38 @@ describe('executarSubstituicao — rollback por snapshot', () => {
   })
 })
 
+// IDEMPOTÊNCIA (defeito D10, corrigido 07/08): re-executar o mesmo plano —
+// 2º toque, convergência pós-publicação, dois plantonistas ao mesmo tempo —
+// re-transferia casos que, depois do swap, pertencem ao OUTRO lado. Lado cujo
+// slot já está assumido por quem o plano quer pôr é pulado inteiro.
+describe('executarSubstituicao — idempotência', () => {
+  it('slot já assumido pelo alvo → nenhuma escrita, toast de "já executada"', async () => {
+    svcMock.fetchEscala.mockImplementation(async (_d, hosp) => (hosp === 'unimed'
+      ? {
+        ...escalaUnimed,
+        linhaOverrides: { 'matutino:STAUB': { assumidaPor: { uid: 'uid-gio', nome: 'GIOVANA SILVA' } } },
+        // pós-swap real: o caso já é da Giovana
+        casos: [{ id: 'c1', sala: 'S1', ordem: 0, anestesista: 'GIOVANA', anestesistaUserId: 'uid-gio', semAnestesista: false, turno: 'matutino' }],
+      }
+      : null))
+    await montar()
+
+    const plano = {
+      lados: [{
+        hospital: 'unimed', escalaId: 'esc-uni', turno: 'matutino',
+        chaveSlot: 'STAUB', nomeSlot: 'STAUB',
+        de: { uid: null, nome: 'STAUB', apelido: 'STAUB' },
+        para: { uid: 'uid-gio', nome: 'GIOVANA SILVA', apelido: 'GIOVANA' },
+        casoIds: ['c1'],
+      }],
+      limparTroca: [],
+    }
+    await act(async () => { await actions.executarSubstituicao(plano, { userId: 'u-test' }) })
+    expect(svcMock.patchLinhaOverride).not.toHaveBeenCalled()
+    expect(svcMock.updateAnestesistaCasos).not.toHaveBeenCalled()
+  })
+})
+
 // CADEIA DE FALLBACK no marcarTroca (defeito D6, corrigido 07/08): o override da
 // linha pode viver em chave LEGADA (crua, sem prefixo de turno). Ler só a chave
 // namespaced criava uma SEGUNDA entrada — a troca ia para `matutino:uid-gio` e o
