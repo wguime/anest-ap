@@ -869,7 +869,7 @@ describe('slot assumido (troca declarada, dono 30/07)', () => {
     expect(slot.uid).toBe('uid-gio') // status/casos casam por quem assumiu
     expect(slot.nomeOriginal).toBe('MAURICIO') // nada reescreve o rodapé
     // deNomeOriginal = nome CRU do rodapé (D8): é por ele que o desfazer casa o dono
-    expect(slot.assumida).toEqual({ deNome: 'Mauricio', deNomeOriginal: 'MAURICIO', deUid: null })
+    expect(slot.assumida).toEqual({ deNome: 'Mauricio', deNomeOriginal: 'MAURICIO', deUid: null, motivo: null })
     expect(slot.cirurgioes).toEqual(['Taciana Alflen']) // consome o grupo dela
     expect(slot.teveCasos).toBe(true) // nunca nasce "não escalado"/liberado
   })

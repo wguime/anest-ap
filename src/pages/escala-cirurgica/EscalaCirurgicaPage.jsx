@@ -18,6 +18,7 @@ import BoardView from './BoardView'
 import LiberacoesView from './LiberacoesView'
 import ImportarEscalaPage from './ImportarEscalaPage'
 import VinculosSheet from './VinculosSheet'
+import TrocaSheet from './TrocaSheet'
 import { meuAliasDe, turnoAtual, casosResolvidos, estadoTrocasDoHistorico, filtrarPorTurno, normNome, formatData, rodapeDoTurno, localizarSlotRodape, planoExecucaoTroca, planoDesfazerTroca } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 
@@ -48,6 +49,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   }, [data])
   const [importando, setImportando] = useState(false)
   const [vinculos, setVinculos] = useState(false)
+  const [trocaSheet, setTrocaSheet] = useState(null) // linha de origem do fluxo único de troca
 
   // Navegação de data (pedido do dono 24/07 + pesquisa NN/G: default HOJE, atalho
   // "Amanhã" só quando a de amanhã já foi PUBLICADA — nunca leva a uma tela vazia;
@@ -175,6 +177,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
         out.push({
           hospital: h, hospitalLabel: HOSPITAL_LABEL[h] || h, escalaId: esc.id, chave,
           a, b, aHospitalLabel: slotLabelDe(a), bHospitalLabel: slotLabelDe(b),
+          tipo: t.tipo || null, motivo: t.motivo || null,
         })
       }
       // Rastro de swaps EXECUTADOS (6e99f68): mesmo após desfazer/republicar, o
@@ -310,8 +313,13 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               presencaOutros={presencaOutros}
               paresTroca={paresTroca}
               onMarcarTroca={(linha, colega) => marcarTroca(escala, linha, colega, userInfo, turno)}
-              onExecutarTroca={(par) =>
-                executarSubstituicao(planoExecucaoTroca({ escalas, resolverUid: resolverRoster, a: par.a, b: par.b, turno }), userInfo)}
+              onAbrirTroca={(linha) => setTrocaSheet(linha)}
+              onExecutarTroca={(par) => {
+                const plan = planoExecucaoTroca({ escalas, resolverUid: resolverRoster, a: par.a, b: par.b, turno })
+                // tipo/motivo declarados viajam para o assumidaPor na execução
+                const meta = { ...(par.tipo && { tipo: par.tipo }), ...(par.motivo && { motivo: par.motivo }) }
+                return executarSubstituicao({ ...plan, lados: plan.lados.map((l) => ({ ...l, ...meta })) }, userInfo)
+              }}
               onDesfazerSubstituicao={(linha) =>
                 desfazerSubstituicao(planoDesfazerTroca({
                   escalas, resolverUid: resolverRoster,
@@ -335,6 +343,17 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           meuUid={meuUid}
           podeGerenciar={!!(user.isAdmin || (user.role || '').toLowerCase() === 'secretaria')}
           onClose={() => setVinculos(false)}
+        />
+      )}
+
+      {/* FLUXO ÚNICO de troca (dono 07/08): declarar/executar novos pares passa
+          sempre por aqui — tipo inferido pela geografia dos slots + motivo. */}
+      {trocaSheet && (
+        <TrocaSheet
+          linha={trocaSheet}
+          escala={escala}
+          turno={turno}
+          onClose={() => setTrocaSheet(null)}
         />
       )}
 

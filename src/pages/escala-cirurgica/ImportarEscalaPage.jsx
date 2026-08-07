@@ -807,7 +807,8 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
             const { trocaCom: _sai, por: _p, em: _e, ...resto } = anterior || {}
             return svc.patchLinhaOverride(saved.id, scoped, {
               ...resto,
-              trocaCom: { uid: d.parceiroUid || null, nome: d.parceiroNome || '', por: userId || null, em: new Date().toISOString() },
+              // duplicidade entre hospitais É o tipo 'entre_hospitais' por definição
+              trocaCom: { uid: d.parceiroUid || null, nome: d.parceiroNome || '', tipo: 'entre_hospitais', por: userId || null, em: new Date().toISOString() },
               por: userId || null,
               em: new Date().toISOString(),
             }).catch(() => {})
@@ -1277,7 +1278,7 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
           onConfirm={() => { setSubstituir(null); publicar({ confirmacao: true, substituicao: true }) }}
           title="Isso vai reduzir a escala do dia?"
           description={`O dia tem ${substituir.atuais} itens e esta publicação deixaria ${substituir.novos} — ${substituir.atuais - substituir.novos} item(ns) seriam apagados e não dá para desfazer. Se você só quer acrescentar uma cirurgia, cancele e use "Adicionar caso" na aba Completa.`}
-          confirmText="Substituir mesmo assim"
+          confirmText="Republicar por cima"
           cancelText="Cancelar"
         />
       )}

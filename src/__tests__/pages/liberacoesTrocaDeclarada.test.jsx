@@ -89,7 +89,7 @@ describe('Badge "Troca" nos dois lados do par', () => {
   it('o lado declarado carrega o badge e diz com quem e onde', () => {
     montar({ paresTroca: [PAR] })
     const card = document.querySelector('[data-linha="uid-mar"]')
-    expect(within(card).getByText('Troca')).toBeTruthy()
+    expect(within(card).getByText('Troca declarada')).toBeTruthy()
     expect(within(card).getByText(/Trocado com Marcos Cury \(Unimed\)/)).toBeTruthy()
   })
 
@@ -102,24 +102,24 @@ describe('Badge "Troca" nos dois lados do par', () => {
     }
     montar({ paresTroca: [PAR] }, escala)
     const cardCury = document.querySelector('[data-linha="uid-cury"]')
-    expect(within(cardCury).getByText('Troca')).toBeTruthy()
+    expect(within(cardCury).getByText('Troca declarada')).toBeTruthy()
     expect(within(cardCury).getByText(/Trocado com Marilio Flach \(HRO\)/)).toBeTruthy()
     // e o lado declarado segue com o dele
-    expect(within(document.querySelector('[data-linha="uid-mar"]')).getByText('Troca')).toBeTruthy()
+    expect(within(document.querySelector('[data-linha="uid-mar"]')).getByText('Troca declarada')).toBeTruthy()
   })
 
   it('sem par declarado, nenhum badge Troca aparece', () => {
     montar()
-    expect(screen.queryByText('Troca')).toBeNull()
+    expect(screen.queryByText(/Troca declarada|Troca executada/)).toBeNull()
   })
 
   it('par HISTÓRICO (rastro de swap executado) não vira badge nem oferece ação (defeito D1)', () => {
     // troca desfeita/consumida ressuscitava pelo histórico: badge voltava e o
     // painel oferecia "Executar troca" de novo, sem saída na UI
     montar({ paresTroca: [{ ...PAR, historica: true }] })
-    expect(screen.queryByText('Troca')).toBeNull()
+    expect(screen.queryByText('Troca declarada')).toBeNull()
     fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Marilio Flach'))
-    expect(screen.queryByText(/Executar troca/)).toBeNull()
+    expect(screen.queryByText(/Executar agora/)).toBeNull()
     expect(screen.queryByText(/Desfazer troca/)).toBeNull()
   })
 
@@ -134,23 +134,21 @@ describe('Badge "Troca" nos dois lados do par', () => {
     // a linha-espelho do Marilio existe (os casos não somem em silêncio)…
     fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Marilio Flach'))
     // …mas o bloco de troca fica de fora: trocaCom em `uid-mar#casos` seria órfão
-    expect(screen.queryByText(/Marcar troca com um colega/)).toBeNull()
+    expect(screen.queryByText(/Trocar com um colega/)).toBeNull()
   })
 })
 
 describe('Painel ✏️ — declarar, executar e desfazer a troca', () => {
-  it('declarar: escolhe o colega e chama onMarcarTroca com o par (nome COMPLETO do cadastro)', async () => {
-    const onMarcarTroca = vi.fn(async () => {})
-    montar({ onMarcarTroca })
+  it('declarar sai pelo FLUXO ÚNICO: o botão abre o TrocaSheet com a linha de origem', async () => {
+    // dono 07/08 ("as trocas num só local"): a view não declara mais inline —
+    // delega ao TrocaSheet, que infere o tipo e grava tipo/motivo. O fluxo
+    // completo de declaração tem teste próprio (trocaSheet.test.jsx).
+    const onAbrirTroca = vi.fn()
+    montar({ onAbrirTroca })
     abrirEditor('Karine Bedin')
-    fireEvent.click(screen.getByRole('button', { name: /Marcar troca com um colega/ }))
-    fireEvent.click(screen.getAllByRole('combobox').find((c) => /colega da troca/i.test(c.textContent)))
-    fireEvent.click(screen.getByRole('option', { name: 'PAULO TONINI' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Marcar troca' }))
-    await waitFor(() => expect(onMarcarTroca).toHaveBeenCalled())
-    const [linha, colega] = onMarcarTroca.mock.calls[0]
-    expect(linha.chave).toBe('uid-kar')
-    expect(colega).toEqual({ uid: 'uid-paulo', nome: 'PAULO TONINI' })
+    fireEvent.click(screen.getByRole('button', { name: /Trocar com um colega/ }))
+    await waitFor(() => expect(onAbrirTroca).toHaveBeenCalled())
+    expect(onAbrirTroca.mock.calls[0][0].chave).toBe('uid-kar')
   })
 
   it('linha com troca declarada: painel oferece executar (um toque) e desfazer', async () => {
@@ -160,7 +158,7 @@ describe('Painel ✏️ — declarar, executar e desfazer a troca', () => {
     const onReordenarAjuda = vi.fn()
     montar({ paresTroca: [PAR], onExecutarTroca, onSetOverride, onReorder, onReordenarAjuda })
     abrirEditor('Marilio Flach')
-    fireEvent.click(screen.getByRole('button', { name: /Executar troca — Marcos Cury assume aqui/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Executar agora — Marcos Cury assume aqui/ }))
     await waitFor(() => expect(onExecutarTroca).toHaveBeenCalledWith(PAR))
     // executar NÃO passa por override/ordem — o plano vai pelo caminho próprio
     expect(onSetOverride).not.toHaveBeenCalled()
@@ -197,7 +195,7 @@ describe('Slot assumido (troca executada)', () => {
     const slot = document.querySelector('[data-linha="uid-mar"]')
     expect(within(slot).getByText('Marcos Cury')).toBeTruthy()
     expect(within(slot).getByText(/Assumiu a posição de Marilio Flach/)).toBeTruthy()
-    expect(within(slot).getByText('Troca')).toBeTruthy()
+    expect(within(slot).getByText('Troca executada')).toBeTruthy()
     expect(within(slot).getByText('Taciana A')).toBeTruthy() // os casos vieram junto
   })
 
@@ -210,7 +208,7 @@ describe('Slot assumido (troca executada)', () => {
     montar({ paresTroca: [] }, escalaLiberada)
     const slot = document.querySelector('[data-linha="uid-mar"]')
     expect(within(slot).getByText('Marcos Cury')).toBeTruthy()
-    expect(within(slot).getByText('Troca')).toBeTruthy()
+    expect(within(slot).getByText('Troca executada')).toBeTruthy()
     expect(within(slot).getByText(/Assumiu a posição de Marilio Flach/)).toBeTruthy()
   })
 
@@ -221,11 +219,11 @@ describe('Slot assumido (troca executada)', () => {
     await waitFor(() => expect(screen.getByText(/Libere Marcos Cury primeiro/)).toBeTruthy())
   })
 
-  it('painel do slot assumido oferece "Desfazer substituição"', async () => {
+  it('painel do slot assumido oferece "Desfazer troca"', async () => {
     const onDesfazerSubstituicao = vi.fn(async () => {})
     montar({ onDesfazerSubstituicao }, escalaAssumida)
     abrirEditor('Marcos Cury')
-    fireEvent.click(screen.getByRole('button', { name: /Desfazer substituição/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Desfazer troca/ }))
     await waitFor(() => expect(onDesfazerSubstituicao).toHaveBeenCalled())
     const linha = onDesfazerSubstituicao.mock.calls[0][0]
     expect(linha.chave).toBe('uid-mar')

@@ -97,7 +97,7 @@ describe('Troca REMOVIDA — a aba não mexe mais na ordem nem no dono do caso (
     const onDefinirCasos = vi.fn(async () => {})
     montar({ onSetOverride, onDefinirCasos })
     abrirEditor('Marilio Flach')
-    fireEvent.change(screen.getByPlaceholderText(/trocou com o Cury/), { target: { value: 'foi para o HRO' } })
+    fireEvent.change(screen.getByPlaceholderText(/saiu para a Hemodinâmica/), { target: { value: 'foi para o HRO' } })
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(onSetOverride).toHaveBeenCalled())
     // o único efeito é o override da própria linha
@@ -129,7 +129,7 @@ describe('Observação da linha (dono 29/07)', () => {
     const onSetOverride = vi.fn(async () => {})
     montar({ onSetOverride }, { ...escalaBase, linhaOverrides: { 'uid-mar': { observacao: 'sai mais cedo' } } })
     abrirEditor('Marilio Flach')
-    const campo = screen.getByPlaceholderText(/trocou com o Cury/)
+    const campo = screen.getByPlaceholderText(/saiu para a Hemodinâmica/)
     expect(campo.value).toBe('sai mais cedo')
     fireEvent.change(campo, { target: { value: '' } })
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))

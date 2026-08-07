@@ -68,11 +68,11 @@ test('declarar → badge nos 2 lados → executar (posição+casos) → desfazer
     }).toPass({ timeout: 30_000 });
   };
 
-  // ── 1. DECLARAR pelo ✏️ da linha da Giovana ────────────────────────────────
-  // Select searchable do roster: busca e escolhe o Mauricio (nome do cadastro).
+  // ── 1. DECLARAR pelo FLUXO ÚNICO (dono 07/08): o ✏️ abre o TrocaSheet, que
+  // infere o tipo e oferece "Trocar agora"/"Declarar para depois".
   // Retry no abrir (toPass): o clique durante a animação do sheet não registra.
-  const trigger = page.getByRole('combobox').filter({ hasText: /colega da troca/i });
-  await noPainel(/Editar local\/cirurgião de Giovana/, /Marcar troca com um colega/,
+  const trigger = page.getByRole('combobox').filter({ hasText: /Escolha o colega/i });
+  await noPainel(/Editar local\/cirurgião de Giovana/, /Trocar com um colega/,
     () => trigger.isVisible());
   await expect(async () => {
     await trigger.click();
@@ -80,31 +80,33 @@ test('declarar → badge nos 2 lados → executar (posição+casos) → desfazer
   }).toPass({ timeout: 15_000 });
   await page.getByPlaceholder('Buscar...').fill('mauric');
   await page.getByRole('option', { name: /mauricio/i }).first().click();
-  await page.getByRole('button', { name: 'Marcar troca', exact: true }).click();
+  // tipo INFERIDO aparece antes de confirmar (mesmo hospital → posições)
+  await expect(page.getByText('Troca de posições')).toBeVisible({ timeout: 5_000 });
+  await page.getByRole('button', { name: 'Declarar para depois', exact: true }).click();
 
   // ── 2. BADGE nos DOIS lados do par ────────────────────────────────────────
-  await expect(linhaGiovana.getByText('Troca', { exact: true })).toBeVisible({ timeout: 10_000 });
-  await expect(linhaMauricio.getByText('Troca', { exact: true })).toBeVisible();
+  await expect(linhaGiovana.getByText('Troca declarada', { exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(linhaMauricio.getByText('Troca declarada', { exact: true })).toBeVisible();
   await expect(linhaGiovana.getByText(/Trocado com/)).toBeVisible();
   await page.screenshot({ path: 'e2e/__screenshots__/troca-declarada-badges.png', fullPage: true });
 
   // ── 3. EXECUTAR (um toque) do painel da linha do Maurício ─────────────────
-  await noPainel('Editar local/cirurgião de Mauricio Bastos', /Executar troca — .* assume aqui/,
-    () => page.getByText(/Substituição executada/).isVisible());
+  await noPainel('Editar local/cirurgião de Mauricio Bastos', /Executar agora — .* assume aqui/,
+    () => page.getByText(/Troca executada(?!\s*—)/).first().isVisible());
 
   // Par no MESMO hospital → swap simultâneo dos DOIS slots: o slot do Maurício
   // exibe a Giovana e o dela exibe o Maurício — as CHAVES dos slots não mudam,
   // ninguém vira linha extra e a ordem do rodapé segue intocada.
-  await expect(page.getByText(/Substituição executada/)).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText('Troca executada', { exact: true }).first()).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText(/Assumiu a posição de Mauricio Bastos/)).toBeVisible();
   await expect(page.getByText(/Assumiu a posição de Giovana Noll/)).toBeVisible();
-  // o badge Troca some dos dois lados após a execução
-  await expect(page.locator('[data-linha]').getByText('Troca', { exact: true })).toHaveCount(0);
+  // o badge de DECLARADA some após a execução (dá lugar ao de executada)
+  await expect(page.locator('[data-linha]').getByText('Troca declarada', { exact: true })).toHaveCount(0);
   await page.screenshot({ path: 'e2e/__screenshots__/troca-executada-posicao.png', fullPage: true });
 
   // ── 4. DESFAZER a substituição (caminho de erro humano) ───────────────────
-  await noPainel('Editar local/cirurgião de Giovana Noll', /Desfazer substituição/,
-    () => page.getByText(/Substituição desfeita/).isVisible());
-  await expect(page.getByText(/Substituição desfeita/)).toBeVisible({ timeout: 10_000 });
+  await noPainel('Editar local/cirurgião de Giovana Noll', /Desfazer troca/,
+    () => page.getByText(/Troca desfeita/).isVisible());
+  await expect(page.getByText(/Troca desfeita/)).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText(/Assumiu a posição de/)).toHaveCount(0);
 });

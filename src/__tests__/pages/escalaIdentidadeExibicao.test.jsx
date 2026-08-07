@@ -135,7 +135,7 @@ describe('DefinirAnestesistaSheet — vai direto ao seletor', () => {
 
   it('mostra afirmação nomeando a sala, e o seletor já visível', async () => {
     abrir()
-    expect(await screen.findByText('Trocar anestesista da CC - Sala 1:')).toBeTruthy()
+    expect(await screen.findByText('Novo responsável da CC - Sala 1:')).toBeTruthy()
     expect(screen.getByRole('combobox')).toBeTruthy()
     // a pergunta e os botões Não/Sim não existem mais
     expect(screen.queryByRole('button', { name: 'Sim, trocar' })).toBeNull()
@@ -155,6 +155,6 @@ describe('DefinirAnestesistaSheet — vai direto ao seletor', () => {
       <DefinirAnestesistaSheet escala={escala} sala="CC - Sala 1" casosAlvo={[escala.casos[0]]} onClose={vi.fn()} />,
       { wrapper: wrap },
     )
-    expect(await screen.findByText('Trocar anestesista deste caso:')).toBeTruthy()
+    expect(await screen.findByText('Novo responsável deste caso:')).toBeTruthy()
   })
 })

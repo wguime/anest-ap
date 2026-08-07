@@ -188,7 +188,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
           <div className="px-1 pb-2">
             {!editandoSala ? (
               <Button size="sm" variant="outline" className="w-full" onClick={abrirEditorSala}>
-                <MapPin className="w-4 h-4" /> Trocar sala/local
+                <MapPin className="w-4 h-4" /> Mudar de sala/local
               </Button>
             ) : (
               <div className="rounded-xl border border-border bg-muted/30 p-3 space-y-2">
@@ -227,7 +227,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
           </div>
         )}
 
-        {/* ORDEM DOS BLOCOS (dono 29/07, à noite): "Trocar sala/local" fica logo
+        {/* ORDEM DOS BLOCOS (dono 29/07, à noite): "Mudar de sala/local" fica logo
             ACIMA de "Definir anestesista deste caso", e o STATUS logo ABAIXO de
             "Marcar como ajuda" — pedido dele olhando a tela em uso. */}
         {definivel && (

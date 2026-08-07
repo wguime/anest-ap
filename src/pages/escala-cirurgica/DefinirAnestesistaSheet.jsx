@@ -84,8 +84,8 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
   const casoUnico = casosAlvo?.length === 1 ? casosAlvo[0] : null
   // afirmação, não pergunta — e nomeia o alvo (sala ou caso)
   const rotuloAcao = casoUnico
-    ? 'Trocar anestesista deste caso:'
-    : `Trocar anestesista da ${salaExibicao(sala)}:`
+    ? 'Novo responsável deste caso:'
+    : `Novo responsável da ${salaExibicao(sala)}:`
   const titulo = casosAlvo?.length
     ? (casoUnico ? 'Anestesista deste caso' : 'Anestesista do grupo')
     : 'Anestesista da sala'
@@ -124,6 +124,7 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
             // o turno da ESCRITA é o do slot achado, nunca o da tela (D3)
             turno: slotAnterior.turno || turno,
             chaveSlot: slotAnterior.chave, nomeSlot: slotAnterior.nome,
+            tipo: 'assuncao',
             de: { uid: atual.uid || null, nome: rAtual?.nome || atual.alias, apelido: atual.alias || slotAnterior.nome },
             para: { uid: r.uid, nome: r.nome, apelido: r.apelidos?.[0] || primeiroNomeUpper(r.nome) },
             casoIds: alvos.map((c) => c.id).filter(Boolean),

@@ -4,7 +4,7 @@
  * Bug: `MinhasEscalasView` abria o `CasoDetalheSheet` sem a prop `podeEditar`, e
  * dentro do sheet TUDO que edita é gated em `podeEditarCaso`. Resultado: pela
  * Minhas o detalhe vinha pela metade — sem residente, sem tempo da cirurgia, sem
- * ajuda e sem "trocar sala/local" — enquanto pela Completa vinha completo. Como a
+ * ajuda e sem "mudar de sala/local" — enquanto pela Completa vinha completo. Como a
  * Minhas não deixava editar, "mudar numa aba e ver na outra" também não fechava.
  *
  * As três abas usam o MESMO componente de detalhe: a diferença entre elas tem de
@@ -82,9 +82,9 @@ describe('Minhas — detalhe do caso vem COMPLETO', () => {
     expect(screen.getByRole('button', { name: 'Definir' })).toBeTruthy()
   })
 
-  it('traz "trocar sala/local" e a marcação de ajuda', () => {
+  it('traz "mudar de sala/local" e a marcação de ajuda', () => {
     abrirDetalhe()
-    expect(screen.getByRole('button', { name: /Trocar sala\/local/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Mudar de sala\/local/i })).toBeTruthy()
     expect(screen.getByRole('button', { name: /como ajuda/i })).toBeTruthy()
   })
 

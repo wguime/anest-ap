@@ -49,7 +49,7 @@ const SELO_SEM_PROXIMO = new Set(['P1', 'P2'])
 // responder "sou eu quem comanda a fila?", que era a permissão da SUBSTITUIÇÃO de
 // posição. Sem a troca, quem edita a escala (canEdit) opera a fila inteira e a
 // ORDEM é que decide quem pode ser liberado agora.
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, p4Hospital = null, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onExecutarTroca, onDesfazerSubstituicao }) {
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, p4Hospital = null, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao }) {
   const { toast } = useToast()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
   // do turno selecionado e o rodapé (ordem de liberação) DAQUELE turno.
@@ -69,8 +69,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const [p4Sheet, setP4Sheet] = useState(false) // sheet "Onde está o P4 hoje?"
   const [alvoSemAnest, setAlvoSemAnest] = useState(null) // alerta "?" sendo resolvido
   const [semAnestUid, setSemAnestUid] = useState('')
-  const [trocaSel, setTrocaSel] = useState(false) // painel ✏️: seletor "Trocado com" aberto
-  const [trocaUid, setTrocaUid] = useState('')
   const [executandoTroca, setExecutandoTroca] = useState(false)
 
   // Cronômetro em tempo real: o texto é derivado puro de `agoraMin`. O hook
@@ -480,8 +478,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     setRascCirurgiao(ov?.cirurgioes || '')
     setRascTermino(ov?.termino || '')
     setRascObservacao(observacaoDe(ov))
-    setTrocaSel(false)
-    setTrocaUid('')
     setEditor(linha)
   }
   // Salvar ESPERA a persistência antes de fechar (o padrão do `toggle`): fechar
@@ -573,20 +569,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     setAjudaSheet(false)
   }
 
-  // ── TROCA DECLARADA — marcar/executar/desfazer pelo painel ✏️ (dono 30/07) ──
-  // Guarda o nome COMPLETO do cadastro no trocaCom (o matching cruzado usa
-  // normNome do nome completo); a exibição encurta na hora de renderizar.
-  const marcarTrocaEditor = async () => {
-    const r = rosterByUid.get(trocaUid)
-    if (!r || !editor) return
-    setExecutandoTroca(true)
-    try {
-      await onMarcarTroca?.(editor, { uid: r.uid, nome: r.nome })
-      setTrocaSel(false)
-      setTrocaUid('')
-      setEditor(null)
-    } catch { /* toast no context */ } finally { setExecutandoTroca(false) }
-  }
+  // ── TROCA — executar/desfazer pelo painel ✏️; DECLARAR é do TrocaSheet
+  // (fluxo único, dono 07/08). Um toque aqui, sem navegação.
   const desfazerTrocaEditor = async () => {
     if (!editor) return
     setExecutandoTroca(true)
@@ -817,10 +801,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       visível inclusive após liberar — não pode parecer que o
                       substituto virou uma posição nova. */}
                   {trocaDe(linha) && (
-                    <Badge className="shrink-0 border-transparent bg-category-indigo text-white">Troca</Badge>
+                    <Badge className="shrink-0 border-category-indigo bg-transparent text-category-indigo-fg">Troca declarada</Badge>
                   )}
                   {linha.assumida && !trocaDe(linha) && (
-                    <Badge className="shrink-0 border-transparent bg-category-indigo text-white">Troca</Badge>
+                    <Badge className="shrink-0 border-transparent bg-category-indigo text-white">Troca executada</Badge>
                   )}
                   {foraDoRodape && !trocaDe(linha) && !linha.assumida && (
                     <Badge variant="warning" className="shrink-0">Fora do rodapé</Badge>
@@ -898,6 +882,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
                         Trocado com {trocaDe(linha).outroNome}
                         {trocaDe(linha).outroHospitalLabel ? ` (${trocaDe(linha).outroHospitalLabel})` : ''}
+                        {trocaDe(linha).par?.motivo ? ` · ${trocaDe(linha).par.motivo}` : ''}
                       </p>
                     )}
                     {/* SLOT ASSUMIDO (troca executada): a linha já exibe quem
@@ -906,7 +891,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     {linha.assumida && (
                       <p className="mt-0.5 flex items-center gap-1 text-[13px] leading-snug text-muted-foreground">
                         <ArrowLeftRight className="h-3 w-3 shrink-0" />
-                        <span className="min-w-0">Assumiu a posição de {linha.assumida.deNome}</span>
+                        <span className="min-w-0">
+                          Assumiu a posição de {linha.assumida.deNome}
+                          {linha.assumida.motivo ? ` · ${linha.assumida.motivo}` : ''}
+                        </span>
                       </p>
                     )}
                     {/* cirurgiões em ORDEM DE HORÁRIO, 1 por linha, SEM bolinha (pedido do dono 24/07).
@@ -1113,7 +1101,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 <Badge className="border-transparent bg-primary text-primary-foreground">{editor.plantaoLabel}</Badge>
               )}
               {editor && trocaDe(editor) && (
-                <Badge className="border-transparent bg-category-indigo text-white">Troca</Badge>
+                <Badge className="border-category-indigo bg-transparent text-category-indigo-fg">Troca declarada</Badge>
+              )}
+              {editor?.assumida && (
+                <Badge className="border-transparent bg-category-indigo text-white">Troca executada</Badge>
               )}
             </SheetTitle>
           </SheetHeader>
@@ -1148,7 +1139,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     <div className="space-y-1.5">
                       <Button variant="outline" className="w-full" disabled={executandoTroca} onClick={desfazerSubstEditor}>
                         {executandoTroca ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowLeftRight className="w-4 h-4" />}
-                        Desfazer substituição
+                        Desfazer troca
                       </Button>
                       <p className="text-xs text-muted-foreground">
                         Devolve a posição e os casos em aberto para {editor.assumida.deNome}, nos dois lados da troca.
@@ -1162,14 +1153,15 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     <div className="space-y-1.5 rounded-xl border border-category-indigo/40 bg-category-indigo/10 p-2.5">
                       <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
                         <ArrowLeftRight className="h-3.5 w-3.5 shrink-0 text-category-indigo-fg" />
-                        Trocado com <b>{info.outroNome}</b>{info.outroHospitalLabel ? ` (${info.outroHospitalLabel})` : ''}
+                        Troca declarada com <b>{info.outroNome}</b>{info.outroHospitalLabel ? ` (${info.outroHospitalLabel})` : ''}
+                        {info.par?.motivo ? <span className="font-normal text-muted-foreground"> · {info.par.motivo}</span> : null}
                       </p>
                       <Button className="w-full" disabled={executandoTroca} onClick={() => executarTrocaEditor(info.par)}>
                         {executandoTroca ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowLeftRight className="w-4 h-4" />}
-                        Executar troca — {info.outroNome} assume aqui
+                        Executar agora — {info.outroNome} assume aqui
                       </Button>
                       <p className="text-xs text-muted-foreground">
-                        Um toque, os dois lados juntos: quem está trocado herda a posição na fila e os casos em aberto do colega em cada hospital.
+                        Um toque, os dois lados juntos: cada um herda a posição na fila e os casos em aberto do colega.
                       </p>
                       <Button variant="outline" className="w-full" disabled={executandoTroca} onClick={desfazerTrocaEditor}>
                         Desfazer troca
@@ -1177,24 +1169,17 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     </div>
                   )
                 }
-                if (trocaSel) {
-                  return (
-                    <div className="space-y-1.5">
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Trocado com</p>
-                      <Select className="w-full" searchable options={opcoesRoster} value={trocaUid}
-                        onChange={setTrocaUid} placeholder="Escolha o colega da troca" />
-                      <Button className="w-full" disabled={!trocaUid || executandoTroca} onClick={marcarTrocaEditor}>
-                        {executandoTroca ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Marcar troca'}
-                      </Button>
-                      <p className="text-xs text-muted-foreground">
-                        Os dois ganham o badge Troca onde estão — vale entre hospitais. Executar a substituição é outro passo, quando a pessoa chegar.
-                      </p>
-                    </div>
-                  )
-                }
+                // FLUXO ÚNICO (dono 07/08, "as trocas num só local"): declarar
+                // sai daqui e vai para o TrocaSheet — tipo inferido + motivo +
+                // "Trocar agora"/"Declarar para depois", a MESMA UI de qualquer
+                // entrada. Executar/desfazer o que já existe fica no painel
+                // (um toque, sem navegação).
                 return (
-                  <Button variant="outline" className="w-full" onClick={() => setTrocaSel(true)}>
-                    <ArrowLeftRight className="w-4 h-4" /> Marcar troca com um colega
+                  <Button
+                    variant="outline" className="w-full"
+                    onClick={() => { const l = editor; setEditor(null); onAbrirTroca?.(l) }}
+                  >
+                    <ArrowLeftRight className="w-4 h-4" /> Trocar com um colega
                   </Button>
                 )
               })()}
@@ -1212,7 +1197,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   value={rascObservacao}
                   maxLength={OBSERVACAO_MAX}
                   onChange={(e) => setRascObservacao(e.target.value)}
-                  placeholder="ex.: trocou com o Cury no HRO"
+                  placeholder="ex.: saiu para a Hemodinâmica às 15h"
                   onKeyDown={(e) => { if (e.key === 'Enter') salvarEditor() }}
                 />
                 {/* LGPD: campo aberto que o grupo TODO enxerga. A escala só guarda

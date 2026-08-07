@@ -490,8 +490,10 @@ export function EscalaCirurgicaProvider({ children }) {
       const { valor: anterior, chaveEncontrada } = lerOverrideAnterior(escala.linhaOverrides, chave, turno, [legada])
       const { trocaCom: _sai, por: _p, em: _e, ...resto } = anterior || {}
       const temResto = Object.keys(resto).length > 0
+      // tipo/motivo (dono 07/08) viajam DENTRO do jsonb — sem migration; o
+      // trigger de eventos audita o detalhe inteiro de graça
       const valor = colega
-        ? { ...resto, trocaCom: { uid: colega.uid || null, nome: colega.nome || '', por: userInfo.userId || null, em: new Date().toISOString() }, por: userInfo.userId || null, em: new Date().toISOString() }
+        ? { ...resto, trocaCom: { uid: colega.uid || null, nome: colega.nome || '', ...(colega.tipo && { tipo: colega.tipo }), ...(colega.motivo && { motivo: colega.motivo }), por: userInfo.userId || null, em: new Date().toISOString() }, por: userInfo.userId || null, em: new Date().toISOString() }
         : temResto ? { ...resto, por: userInfo.userId || null, em: new Date().toISOString() } : null
       const migrarLegada = chaveEncontrada && chaveEncontrada !== scoped
       // demo opera EM MEMÓRIA (padrão do toggleLiberacao) — base dos e2e determinísticos
@@ -560,7 +562,7 @@ export function EscalaCirurgicaProvider({ children }) {
         pendentesLimpar.delete(`${lado.escalaId}|${lado.chaveSlot}`)
         const valor = {
           ...resto,
-          assumidaPor: { uid: lado.para.uid, nome: lado.para.nome, por: userInfo.userId || null, em: agoraIso },
+          assumidaPor: { uid: lado.para.uid, nome: lado.para.nome, ...(lado.tipo && { tipo: lado.tipo }), ...(lado.motivo && { motivo: lado.motivo }), por: userInfo.userId || null, em: agoraIso },
           por: userInfo.userId || null, em: agoraIso,
         }
         if (!demo) {
@@ -614,7 +616,7 @@ export function EscalaCirurgicaProvider({ children }) {
       }
       const nomes = [...new Set(lados.map((l) =>
         `${nomeCirurgiaoCurto(l.para.nome)} → posição de ${titleCaseNome(l.nomeSlot || l.de.nome)}`))]
-      toast({ variant: 'success', title: 'Substituição executada', description: nomes.join(' · ') })
+      toast({ variant: 'success', title: 'Troca executada', description: nomes.join(' · ') })
     } catch (error) {
       let restaurou = true
       for (const desfaz of rollback.reverse()) {
@@ -623,7 +625,7 @@ export function EscalaCirurgicaProvider({ children }) {
       loadData(dataRef.current)
       toast({
         variant: 'error',
-        title: 'Substituição não concluída',
+        title: 'Troca não concluída',
         description: restaurou
           ? `${error.message} Nada foi alterado.`
           : `${error.message} Parte foi revertida — confira a lista antes de repetir.`,
@@ -679,7 +681,7 @@ export function EscalaCirurgicaProvider({ children }) {
       const semVolta = lados.filter((l) => !l.para?.uid)
       toast({
         variant: semVolta.length ? 'warning' : 'success',
-        title: 'Substituição desfeita',
+        title: 'Troca desfeita',
         description: semVolta.length
           ? `Casos seguem com ${semVolta.map((l) => nomeCirurgiaoCurto(l.de.nome)).join(', ')} — ajuste pelo Definir anestesista se preciso.`
           : undefined,
