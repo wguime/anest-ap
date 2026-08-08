@@ -26,21 +26,36 @@ describe('calcHorasSemAvaliacao', () => {
   })
 })
 
-describe('getEvolucaoAlertLevel (warning 24h / critical 36h)', () => {
+describe('getEvolucaoAlertLevel (warning 30h / critical 42h)', () => {
   it('recém-evoluído → normal', () => {
     expect(getEvolucaoAlertLevel(hoursAgo(2), hoursAgo(40))).toBe('normal')
   })
 
-  it('no limite de warning (24h) → warning', () => {
+  it('no limite de warning (30h) → warning', () => {
     expect(getEvolucaoAlertLevel(hoursAgo(EVOLUCAO_WARNING_HOURS), null)).toBe('warning')
   })
 
-  it('entre 24h e 36h → warning', () => {
-    expect(getEvolucaoAlertLevel(hoursAgo(30), null)).toBe('warning')
+  it('entre 30h e 42h → warning', () => {
+    expect(getEvolucaoAlertLevel(hoursAgo(36), null)).toBe('warning')
   })
 
-  it('no limite crítico (36h) → critical', () => {
+  it('no limite crítico (42h) → critical', () => {
     expect(getEvolucaoAlertLevel(hoursAgo(EVOLUCAO_CRITICAL_HOURS), null)).toBe('critical')
+  })
+
+  // Regressão 08/08: a visita diária deriva de hora (intervalos reais medidos em
+  // produção: 21,8h · 25,2h · 25,4h · 31,3h · 34,4h). Com o corte antigo de 24h,
+  // um cateter evoluído TODO DIA acendia o alerta na janela entre a visita de
+  // ontem e a de hoje — e sumia quando a visita do dia era registrada.
+  it.each([21.8, 25.2, 25.4, 28])(
+    'visita diária com deriva de %sh → normal (não é falta de evolução)',
+    (h) => {
+      expect(getEvolucaoAlertLevel(hoursAgo(h), hoursAgo(96))).toBe('normal')
+    }
+  )
+
+  it('um dia inteiro pulado (46h) → critical', () => {
+    expect(getEvolucaoAlertLevel(hoursAgo(46), hoursAgo(96))).toBe('critical')
   })
 
   it('nunca evoluído há muito tempo (desde inserção) → critical', () => {

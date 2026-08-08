@@ -78,12 +78,12 @@ Duas camadas independentes, ambas baseadas em `calcHorasCateter(dataInsercao)`:
 
 **2. Lembretes por notificação — SERVER-SIDE via pg_cron** (`notify_cateter_reminders()`, migration `20260628150000`, diário ~10h UTC). O hook cliente `useCateterReminders` foi **removido** (tomava RLS 42501 e nunca entregava). Dois eixos:
 - **Duração** 24/48/72/96h desde `data_insercao` — dedup `cateter-reminder_<id>_<threshold>` (1x por threshold, p/ sempre); priority normal/normal/alta/urgente.
-- **Não evoluído**: horas desde `coalesce(ultima_avaliacao_at, data_insercao)` ≥ 24 (aviso) / ≥ 36 (crítico) — dedup com **janela diária** `cateter-naoevoluido_<id>_<YYYY-MM-DD>` (re-dispara a cada dia enquanto não houver evolução; some ao evoluir).
+- **Não evoluído**: horas desde `coalesce(ultima_avaliacao_at, data_insercao)` ≥ 30 (aviso) / ≥ 42 (crítico) — dedup com **janela diária** `cateter-naoevoluido_<id>_<YYYY-MM-DD>` (re-dispara a cada dia enquanto não houver evolução; some ao evoluir).
 - Recipients computados no SQL (anestesiologistas/residentes ativos); só cateteres `status='ativo'`. LGPD: só iniciais via `cateter_iniciais`.
 
 **3. Notificações de EVENTO (novo/evolução/retirada) — SERVER-SIDE via trigger** (`20260628130000`, `SECURITY DEFINER`, espelha `notify_public_incidents`). O INSERT cliente em `notifications` tomava RLS 42501 e era silenciado; o trigger bypassa a RLS. Os calls cliente seguem (deduplicados pelo `ON CONFLICT`). Chaves: `cateter_<id>_novo` / `cateter_evolucao_<followupId>` / `cateter_<id>_retirada`.
 
-**4. Alerta "não evoluído" no card** (`getEvolucaoAlertLevel`, base `ultima_avaliacao_at` da migration `20260628140000`): badge "Sem evolução há Xh" abaixo do badge de status no `CateterCard`, aviso 24h / crítico 36h.
+**4. Alerta "não evoluído" no card** (`getEvolucaoAlertLevel`, base `ultima_avaliacao_at` da migration `20260628140000`): badge "Sem evolução há Xh" abaixo do badge de status no `CateterCard`, aviso 30h / crítico 42h.
 
 ## Notificações (LGPD-safe)
 Helpers em `src/utils/cateterNotifications.js`. Eventos: `novo` (inserção), `evolucao` (followup), `retirada` + lembretes de duração. Categoria `cateter`, sender "Gestão de Cateteres", deep-link `actionUrl: 'cateterDetalhe'`.

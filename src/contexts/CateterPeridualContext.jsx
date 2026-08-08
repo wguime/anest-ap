@@ -38,6 +38,25 @@ function cateterReducer(state, action) {
           c.id === action.payload.id ? { ...c, ...action.payload } : c
         ),
       }
+    // Espelha, no cliente, o que o trigger tr_cateter_touch_ultima_avaliacao faz
+    // no banco ao gravar uma evolução: o insert do followup NÃO devolve a linha
+    // do cateter, então sem isto o card seguia marcando "sem evolução há Xh"
+    // depois de evoluir, até o app recarregar (incidente 08/08).
+    case 'TOUCH_ULTIMA_AVALIACAO': {
+      const { id, dataAvaliacao } = action.payload || {}
+      const nova = dataAvaliacao ? new Date(dataAvaliacao).getTime() : NaN
+      if (!id || Number.isNaN(nova)) return state
+      return {
+        ...state,
+        cateteres: state.cateteres.map((c) => {
+          if (c.id !== id) return c
+          // GREATEST como no trigger: editar uma evolução ANTIGA não pode
+          // regredir o campo e ressuscitar o alerta.
+          const atual = c.ultimaAvaliacaoAt ? new Date(c.ultimaAvaliacaoAt).getTime() : -Infinity
+          return nova > atual ? { ...c, ultimaAvaliacaoAt: dataAvaliacao } : c
+        }),
+      }
+    }
     default:
       return state
   }
@@ -117,12 +136,26 @@ export function CateterPeridualProvider({ children }) {
   const addFollowup = useCallback(async (followupData, userInfo) => {
     // Audit-trail: exige user real (lança se ausente), nunca fallback 'Usuario'.
     const audited = requireUserId(userInfo, 'CateterPeridualContext.addFollowup')
-    return supabaseCateterPeridualService.createFollowup(followupData, audited)
+    const result = await supabaseCateterPeridualService.createFollowup(followupData, audited)
+    if (result) {
+      dispatch({
+        type: 'TOUCH_ULTIMA_AVALIACAO',
+        payload: { id: result.cateterId, dataAvaliacao: result.dataAvaliacao },
+      })
+    }
+    return result
   }, [])
 
   const updateFollowup = useCallback(async (id, updates, userInfo) => {
     const audited = requireUserId(userInfo, 'CateterPeridualContext.updateFollowup')
-    return supabaseCateterPeridualService.updateFollowup(id, updates, audited)
+    const result = await supabaseCateterPeridualService.updateFollowup(id, updates, audited)
+    if (result) {
+      dispatch({
+        type: 'TOUCH_ULTIMA_AVALIACAO',
+        payload: { id: result.cateterId, dataAvaliacao: result.dataAvaliacao },
+      })
+    }
+    return result
   }, [])
 
   const getCateterById = useCallback(

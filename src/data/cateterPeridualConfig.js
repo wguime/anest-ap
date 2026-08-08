@@ -43,8 +43,17 @@ export const WARNING_DURATION_HOURS = 72
 
 // Alerta de "cateter não evoluído" — horas SEM evolução PO (ciclo diário).
 // Eixo distinto do de duração total: cobra evolução diária do cateter ativo.
-export const EVOLUCAO_WARNING_HOURS = 24
-export const EVOLUCAO_CRITICAL_HOURS = 36
+//
+// 30/42h, não 24/36 (ajuste 08/08): a visita diária não acontece na mesma hora
+// todo dia — os intervalos reais entre evoluções em produção foram 21,8h · 25,2h
+// · 25,4h · 31,3h · 34,4h. Com o corte em 24h, um cateter evoluído TODO DIA
+// acendia o alerta na janela entre a hora da visita de ontem e a de hoje, e ele
+// sumia sozinho quando a visita do dia era registrada. 30h tolera ~6h de deriva
+// da rotina; 42h significa que um dia inteiro foi pulado.
+// ⚠️ Espelhados em notify_cateter_reminders() (migration 20260808120000) —
+// mudar aqui exige mudar lá.
+export const EVOLUCAO_WARNING_HOURS = 30
+export const EVOLUCAO_CRITICAL_HOURS = 42
 
 // Complicações comuns
 export const COMPLICACOES_COMUNS = [
