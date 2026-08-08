@@ -1,0 +1,61 @@
+{
+  "nome": "ANEST",
+  "descricao": "Plataforma de gestão da qualidade em anestesiologia",
+
+  "cores": {
+    "verde_institucional": "#004225",
+    "verde_profundo": "#002215",
+    "verde_claro": "#9BC53D",
+    "verde_tenue": "#E8F5E9",
+    "dourado": "#C8952B",
+    "vermelho_alerta": "#DC2626",
+    "ambar_atencao": "#F59E0B",
+    "grafite": "#111827",
+    "cinza_apoio": "#6B7280"
+  },
+
+  "tipografia": {
+    "titulos": {
+      "familia": "Inter",
+      "pesos": [600, 700],
+      "arquivo": null,
+      "origem": "Google Fonts CDN (index.html:60) — nenhum arquivo de fonte no repositório",
+      "fallback_pdf": "DejaVu Sans"
+    },
+    "corpo": {
+      "familia": "Inter",
+      "pesos": [400, 500],
+      "arquivo": null,
+      "origem": "Google Fonts CDN (index.html:60) — nenhum arquivo de fonte no repositório",
+      "fallback_pdf": "DejaVu Sans"
+    },
+    "mono": {
+      "familia": null,
+      "pesos": [],
+      "arquivo": null,
+      "origem": "não declarada — o design system do ANEST não define família monoespaçada"
+    }
+  },
+
+  "logos": {
+    "principal": "assets/anest-logo.svg",
+    "negativo": "assets/anest-logo-branco.svg",
+    "dark": "assets/anest-logo-dark.svg",
+    "simbolo": null
+  },
+
+  "origem": "extraído em 2026-08-08 do repositório ANEST App, commit 066a9a6, a partir de: public/logo-anest-original.png (arte), src/design-system/Tokens.json, src/styles/anest-theme.css, tailwind.config.js, src/services/pdf/pdfBranding.js e public/manifest.json (cores e tipografia)",
+
+  "observacoes": [
+    "COR HERDADA DO GERADOR, NÃO DO APP: 'dourado' (#C8952B) veio de build_pdf.py. O design system do ANEST não tem nenhum token dourado/gold — não existe correspondente a inferir.",
+    "'verde_institucional' é #004225 (token greenDark = --primary do app), NÃO o #004D26 provisório que estava embutido em build_pdf.py. #004D26 não aparece uma única vez no repositório.",
+    "'verde_tenue' (#E8F5E9) é o token --card-elevated, que no app já cumpre exatamente esse papel: fundo de contêiner de seção e cabeçalho de tabela (pdfBranding.js: tableHeader).",
+    "'vermelho_alerta' e 'ambar_atencao' são os tokens reais do app (--destructive #DC2626 e --warning #F59E0B), mais saturados que os #A8322D/#B8860B do gerador. 'grafite' é o #111827 que pdfBranding.js já usa como cor de corpo nos PDFs do app.",
+    "CORES DA MARCA ≠ TOKENS DO APP: o wordmark do logo é #133A11 e a linha de ECG é #9CCB64, medidos por moda dos pixels de miolo do master (erosão de 2 px, estável em todos os níveis). Nenhum dos dois é um token declarado — o greenLight #9BC53D do design system é visivelmente mais amarelado que o ECG real (canal azul 61 contra 100). Os SVGs preservam as cores da arte; os tokens governam a diagramação do documento.",
+    "NÃO EXISTE SÍMBOLO: a marca é um wordmark — a palavra 'Anest' atravessada por uma linha de ECG. Não há elemento gráfico destacável, então 'simbolo' é null em vez de um recorte inventado. O cabeçalho corrido usa o logo completo em tamanho reduzido.",
+    "OS SVGs SÃO VETORIZADOS, NÃO ORIGINAIS: o repositório não tem nenhum logo vetorial. O único master é public/logo-anest-original.png (1024×1024 RGBA), byte a byte idêntico em quatro caminhos, incluindo as cópias em Documents/IA/Qmentum/. Os SVGs foram traçados dele por assets/gerar-logos.py e conferidos contra o raster a 400 dpi. Se o master mudar, rodar o script de novo.",
+    "'anest-logo-branco.svg' é 100% branco, conforme especificado para a capa verde. Ele funciona, mas achata o contraste de dois tons: o ECG passa a ler como sublinhado do wordmark. 'anest-logo-dark.svg' (branco + ECG #9CCB64) preserva o caráter da marca e fica melhor sobre a capa — para adotá-lo basta apontar logos.negativo para ele.",
+    "TIPOGRAFIA SEM ARQUIVO: a família da marca é Inter, mas ela vem do CDN do Google e não há nenhum .woff/.ttf versionado no repositório. Os .woff2 de Inter em dist/ são artefato de build, embutidos no CSS de uma dependência de editor rich-text. Os PDFs da skill usam DejaVu Sans; os PDFs que o app gera hoje (jsPDF) usam Helvetica. Nenhum dos dois usa Inter de fato.",
+    "O token typography.fontFamily de Tokens.json ainda declara a stack -apple-system/SF Pro Display e está desatualizado: quem manda no app é o tailwind.config.js, que aplica Inter."
+  ]
+}

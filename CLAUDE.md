@@ -248,9 +248,18 @@ camadas), compactação do histórico, telemetria de trocas, renomear
 ⚠️ Bug conhecido: `src/App.jsx:1011` (TODO BUG-06) — global BottomNav pode duplicar com per-page BottomNav (createPortal). Decisão arquitetural pendente. Em página nova, **NÃO** renderizar BottomNav próprio.
 
 ## Skills (`.claude/skills/`) — invocar com `/`
-`/calculadoras` `/educacao` `/gestao-documental` `/centro-gestao` `/notificacoes` `/nova-pagina` `/supabase-migration` `/rotacao-residencia` `/importar-plantoes-residencia` `/escala` `/escala-cirurgica` `/cirurgias-particulares` `/cateter-peridural` `/criar-prompt`
+`/calculadoras` `/educacao` `/gestao-documental` `/centro-gestao` `/notificacoes` `/nova-pagina` `/supabase-migration` `/rotacao-residencia` `/importar-plantoes-residencia` `/escala` `/escala-cirurgica` `/cirurgias-particulares` `/cateter-peridural` `/criar-prompt` `/protocolo-anestesico`
 
 > `/escala` substitui as antigas `/sobreaviso` e `/hospitais`: um docx único por mês (template gerado pela própria skill) importa as duas escalas de uma vez.
+
+### `/protocolo-anestesico` — skill com artefato para o Claude.ai
+Gera protocolos anestésicos institucionais (PDF completo + guia rápido) com a marca ANEST. Vive em `.claude/skills/protocolo-anestesico/`; os ativos de marca ficam em `assets/` e `assets/marca.json` é a fonte da paleta (`build_pdf.py` o carrega sozinho). **Não existe logo vetorial no repositório** — os 3 SVGs são traçados do master `public/logo-anest-original.png` por `assets/gerar-logos.py`; se o master mudar, rodar o script de novo. Verde institucional = `#004225` (o `#004D26` de versões antigas da skill nunca existiu aqui) e **não há dourado no design system** (o `#C8952B` é herdado do gerador).
+
+O Claude.ai consome um **artefato de build** em `.claude/dist-skills/` (`protocolo-anestesico.skill` + `HANDOFF-CLAUDE-AI.md` com os logos em base64). ⚠️ **não** usar `dist/` — é a saída do Vite, está no `.gitignore` e o CI a regenera a cada push. **Regerar os dois sempre que a skill ou os assets mudarem**, senão o Claude.ai fica com marca velha:
+```bash
+cd .claude/skills && zip -r -q -X ../dist-skills/protocolo-anestesico.skill protocolo-anestesico -x '*.DS_Store' -x '*__pycache__*'
+```
+Dependências do gerador: `pip install weasyprint markdown pdf2image pypdf` + `brew install pango` (WeasyPrint precisa das libs de sistema) + `brew install --cask font-dejavu` (a fonte dos PDFs; a Inter da marca vem de CDN e não é usada em PDF).
 
 ## Rules (`.claude/rules/`) — auto-aplicadas neste projeto
 `design-tokens` · `responsividade` · `navegacao` · `lgpd` · `qmentum-compliance` · `supabase-firebase` · `padroes-codigo` · `audit-trail` · `prompting`
