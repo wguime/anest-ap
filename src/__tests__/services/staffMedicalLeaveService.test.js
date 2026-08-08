@@ -82,11 +82,11 @@ function currentPublicSnapshot({
   delete staff.consultorio.atestado
   staff.hospitais.indisponivel = Array.from(
     { length: hospitalUnavailable },
-    () => ({ nome: 'INDISPONÍVEL', status: 'indisponivel' })
+    () => ({ nome: 'ATESTADO', status: 'indisponivel' })
   )
   staff.consultorio.indisponivel = Array.from(
     { length: consultorioUnavailable },
-    () => ({ nome: 'INDISPONÍVEL', status: 'indisponivel' })
+    () => ({ nome: 'ATESTADO', status: 'indisponivel' })
   )
   if (revision !== undefined) staff.revision = revision
   return staff
@@ -382,7 +382,7 @@ describe('saveStaffWithMedicalLeaves', () => {
     expect(result.staff.hospitais).not.toHaveProperty('atestado')
     expect(result.staff.consultorio).not.toHaveProperty('atestado')
     expect(result.staff.hospitais.indisponivel).toEqual([
-      { nome: 'INDISPONÍVEL', status: 'indisponivel' },
+      { nome: 'ATESTADO', status: 'indisponivel' },
     ])
     expect(result.staff.consultorio.indisponivel).toEqual([])
     expect(result.staff.consultorio.recepcao).toEqual([

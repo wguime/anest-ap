@@ -14,6 +14,7 @@ import {
   extractMedicalLeavesFromStaff,
   isoFromDateLike,
   sanitizeStaffForPublic,
+  PUBLIC_PLACEHOLDER,
 } from '../lib/staffMedicalLeaves'
 
 const COLLECTION = 'staffMedicalLeaves'
@@ -167,8 +168,14 @@ export async function saveStaffWithMedicalLeaves({
     if (updatePublic) {
       for (const scope of ['hospitais', 'consultorio']) {
         const currentProjection = currentPublicStaff?.[scope]?.indisponivel
+        // Rótulo vem do PUBLIC_PLACEHOLDER da lib — fonte ÚNICA (decisão do
+        // dono 08/08: a escala mostra "ATESTADO", o motivo operacional, sem
+        // datas nem diagnóstico). Este ponto duplicava o texto à mão e escrevia
+        // "INDISPONÍVEL": o documento público e a projeção administrativa
+        // divergiam para o mesmo dado, e o teste que cobrava a coerência ficou
+        // vermelho desde 03/08, segurando o deploy automático.
         publicStaff[scope].indisponivel = Array.isArray(currentProjection)
-          ? currentProjection.map(() => ({ nome: 'INDISPONÍVEL', status: 'indisponivel' }))
+          ? currentProjection.map(() => ({ ...PUBLIC_PLACEHOLDER }))
           : []
       }
       const currentRevision = currentPublicStaff?.revision
