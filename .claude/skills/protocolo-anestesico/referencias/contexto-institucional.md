@@ -1,10 +1,9 @@
 # Contexto institucional
 
 Os campos marcados **[do repositório]** foram extraídos do ANEST App em
-2026-08-08 (commit `066a9a6`) e são confiáveis. Os que continuam com
-`_(preencher)_` são coisas que o repositório **não sabe** — foram deixados em
-branco de propósito, em vez de preenchidos por inferência. Quanto mais completo,
-menos perguntas a skill precisa fazer e mais executável fica o documento.
+2026-08-08 (commit `066a9a6`). Os marcados **[padrão do serviço]** foram
+decididos pelo serviço em 2026-08-09 e valem como definitivos — não perguntar de
+novo a cada protocolo.
 
 ---
 
@@ -15,9 +14,9 @@ menos perguntas a skill precisa fazer e mais executável fica o documento.
   anestesiologia **[do repositório]**
 - Cidade: Chapecó, SC **[do repositório: a tabela UTM da codificação é a Lista de
   Chapecó]**
-- Responsável técnico: _(preencher — nome e CRM, entra na página de aprovação.
-  O organograma do app tem o **cargo** de Responsável Técnico, mas a pessoa está
-  no Firestore, não no código)_
+- Responsável técnico: **não se aplica — uso interno sem publicação.** A §23 sai
+  com os campos de assinatura em branco, preenchidos à mão na reunião de serviço
+  que aprovar o documento.
 - Idioma: português do Brasil **[do repositório]**
 
 ### Locais onde os protocolos se aplicam **[do repositório]**
@@ -37,9 +36,17 @@ Cateter peridural só é registrado em **Unimed e HRO**.
 
 ## Perfil assistencial
 
-- Público: adulto — _(confirmar: o serviço cobre o Hospital Materno Infantil e
-  faz analgesia de parto, então obstetrícia e pediatria podem estar no escopo.
-  O repositório não define faixa etária.)_
+### Escopo etário **[padrão do serviço]**
+
+**Padrão: adulto.** Cirurgia pediátrica só quando informada explicitamente no
+pedido.
+
+Para procedimentos que existem nas duas populações, **perguntar ao final da
+entrega** se o usuário deseja também a versão pediátrica como documento
+separado. **Nunca misturar populações no mesmo protocolo** — dose por peso,
+via aérea, jejum, volemia e limites de anestésico local mudam o suficiente para
+que um documento único vire fonte de erro em vez de referência.
+
 - Papel: assistência + supervisão de residentes **[do repositório: há módulo de
   Residência com estágios, rodízio e o papel `medico-residente`; na escala
   cirúrgica o residente é campo do caso, e não responde pelo caso]**
@@ -49,28 +56,16 @@ Cateter peridural só é registrado em **Unimed e HRO**.
   alterações e página de aprovação com assinatura.
 
 ## Recursos disponíveis
-*(marcar o que existe; a skill não deve prescrever o que o serviço não tem, e
-deve sinalizar quando um recurso ausente for clinicamente relevante)*
 
-**O repositório não sabe nada sobre isto.** O ANEST App não tem inventário de
-equipamento de anestesia — a busca por BIS, ROTEM/TEG, cell saver, TCI,
-termodiluição, eco transesofágico e videolaringoscópio só encontra menções em
-calculadoras clínicas e na taxonomia de incidentes, nunca como "o serviço tem".
-Toda a lista abaixo depende de resposta humana.
+**Não se aplica como inventário fechado — uso interno sem publicação.** O
+serviço opera em mais de dez locais, com disponibilidade que varia entre eles;
+manter um checklist único seria falso.
 
-- [ ] Débito cardíaco calibrado (termodiluição transpulmonar)
-- [ ] Débito cardíaco não calibrado (contorno de pulso)
-- [ ] Ecocardiografia transesofágica
-- [ ] Tromboelastometria (ROTEM/TEG)
-- [ ] TOF quantitativo (aceleromiografia/eletromiografia)
-- [ ] Índice processado de EEG (BIS/entropia)
-- [ ] Gasometria point-of-care em sala
-- [ ] Aquecedor de fluidos de alto fluxo
-- [ ] Recuperador de células (cell saver)
-- [ ] Infusão alvo-controlada (TCI)
-- [ ] Ultrassom para acesso vascular e bloqueios
-- [ ] Videolaringoscópio / fibroscópio
-- [ ] Banco de sangue no local (vs. remoto — muda o tempo de resposta)
+Conduta da skill: **prescrever a conduta correta e, quando ela depender de um
+recurso que pode não existir no local, declarar a dependência e oferecer a
+alternativa** — "se houver tromboelastometria, guiar por ela; sem ela, usar
+gatilhos de coagulograma convencional". O que não se faz é assumir silenciosamente
+que o recurso existe, nem omitir a conduta melhor por suposição de que falta.
 
 ## Equipamentos padronizados
 *(informado pelo dono; não vem do repositório)*
@@ -83,11 +78,25 @@ Toda a lista abaixo depende de resposta humana.
 
 ## Formulário — observações locais
 
-- Convenção adotada para noradrenalina: _(base ou hemitartarato — **preencher, é
-  fonte de erro de 2×**)_
-- Fármacos indisponíveis: _(preencher)_
-- Substituições padronizadas: _(preencher)_
-- Contato da farmácia para conferência de apresentação: _(preencher)_
+### Noradrenalina — convenção do serviço **[padrão do serviço]**
+
+**Todas as doses e diluições dos protocolos são expressas em NORADRENALINA
+BASE** (ampola brasileira = 8 mg de hemitartarato = 4 mg de base).
+
+**Toda prescrição e todo rótulo de bomba devem declarar a convenção em uso.**
+A tabela mestra de diluições (§16) traz **sempre** a caixa de atenção sobre a
+rotulagem da ampola.
+
+Por que isto é regra e não preferência: a ampola brasileira é rotulada em
+hemitartarato, e ler o rótulo como se fosse base — ou o contrário — é **erro de
+2× na dose de um vasopressor**. A convenção só protege se estiver escrita no
+documento, na prescrição e na bomba; declarada em um lugar só, não protege.
+
+- Fármacos indisponíveis: **não se aplica como lista fixa** — varia por local.
+  Quando um protocolo depender de fármaco de disponibilidade incerta, declarar a
+  dependência e dar a alternativa padronizada, como em "Recursos disponíveis".
+- Conferência de apresentação comercial: responsabilidade de quem usa o
+  protocolo, antes do uso. É o que o rodapé de todos os PDFs já declara.
 
 ## Marca **[do repositório]**
 
@@ -108,11 +117,14 @@ Toda a lista abaixo depende de resposta humana.
 
 ## Onde ficam os protocolos aprovados
 
-- **O próprio ANEST App tem o destino natural [do repositório]:** a Biblioteca /
-  Gestão Documental já tem a categoria `protocolos_clinicos`, com versionamento,
-  ciclo de aprovação, alertas de revisão vencida e arquivamento. É o repositório
-  auditável que a acreditação Qmentum espera.
-- _(preencher: se o protocolo publicado deve ser carregado na Biblioteca do app,
-  em Google Drive/Notion, ou nos dois)_
-- Tarefas agendadas leem por conector e **não acessam pastas do computador** —
-  o destino escolhido precisa ser alcançável por conector.
+**Uso interno, sem publicação externa.** O destino de arquivo é decisão de
+operação do serviço, não da skill — a skill entrega os três arquivos e para aí.
+
+Duas opções em aberto, ambas válidas: a Biblioteca / Gestão Documental do próprio
+ANEST App (categoria `protocolos_clinicos`, já com versionamento, ciclo de
+aprovação e alerta de revisão vencida — é o acervo auditável que o Qmentum
+espera), ou a pasta do Google Drive lida pelas tarefas agendadas.
+
+Restrição que vale para qualquer escolha: **tarefas agendadas leem por conector
+e não acessam pastas do computador.** Acervo que precise entrar na vigilância
+dos loops tem de estar em destino alcançável por conector.

@@ -54,6 +54,16 @@ uma rodada** de perguntas, e só se a ambiguidade mudar a estrutura do documento
 (ex.: cardíaca com ou sem CEC). Nunca entreviste longamente antes de escrever —
 é melhor entregar documento completo com premissas declaradas.
 
+**Escopo etário é adulto por padrão** — pediátrico só quando o pedido disser.
+Nunca misturar as duas populações no mesmo documento: dose por peso, via aérea,
+jejum e limites de anestésico local divergem o bastante para que o documento
+único vire fonte de erro.
+
+**Noradrenalina é sempre expressa em BASE** (ampola brasileira = 8 mg de
+hemitartarato = 4 mg de base), com a convenção declarada no texto, e a caixa de
+atenção sobre a rotulagem da ampola na tabela de diluições. Ler o rótulo pela
+convenção errada é erro de 2× num vasopressor.
+
 Se o usuário anexar um esboço, ele é a **base, não a autoridade**. Trate como
 rascunho a corrigir contra a evidência.
 
@@ -156,6 +166,10 @@ No chat, declarar sempre:
 3. O que depende de confirmação com a farmácia da instituição
 4. Quais recomendações ficaram em grau [C] ou [D] e por quê
 5. As mudanças de maior impacto clínico — não descreva a estrutura do documento
+
+Se o procedimento também existe em pediatria, **perguntar ao final** se o
+usuário quer a versão pediátrica como documento separado. Perguntar depois de
+entregar, nunca antes — a pergunta não pode atrasar o documento adulto.
 
 ---
 
