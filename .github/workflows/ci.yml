@@ -151,6 +151,18 @@ jobs:
       group: deploy-hosting-anest-ap
       cancel-in-progress: false
     steps:
+      # `firebase deploy` só sabe o que publicar lendo o firebase.json do repo —
+      # é dele que saem o site de destino, o `public: dist` e os headers de cache
+      # (o `regex: "^/[^.]*$"` que impede o index velho de ficar 1h em cache e
+      # quebrar chunk lazy). Sem checkout o runner teria só a pasta dist e o
+      # deploy morreria em "Not in a Firebase project directory" — a chave de
+      # serviço não é o único requisito.
+      # `.firebaserc` é gitignored e NÃO faz falta: o projeto vem do input
+      # `projectId` e `--only hosting:anest-ap` casa com a chave `site` do
+      # firebase.json (que declara dois sites: anest-ap e anest-v2).
+      - name: Checkout — o firebase.json diz onde e como publicar
+        uses: actions/checkout@v4
+
       - name: Baixar o dist testado
         uses: actions/download-artifact@v5
         with:
