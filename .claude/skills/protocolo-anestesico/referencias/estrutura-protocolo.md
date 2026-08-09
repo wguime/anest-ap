@@ -22,13 +22,35 @@ os protocolos do serviço sejam navegáveis da mesma forma.
 | 14 | Distúrbios metabólicos e eletrolíticos | Um bloco por íon: referência, apresentação, correção com diluição |
 | 15 | Farmacologia específica do procedimento | Quimioterápicos, imunossupressores, agentes de perfusão, contraste, uterotônicos etc. |
 | 16 | Tabela mestra de diluições e infusões | Fórmula universal + convenção de volume final + tabelas ml/h por peso |
-| 17 | Algoritmos de intercorrências | Blocos de código com fluxo passo a passo |
+| 17 | Algoritmos de intercorrências | Bloco cercado por ``` com o fluxo passo a passo (ver "vocabulário visual") |
 | 18 | Emergência e pós-operatório | Critérios de extubação, destino, metas pós-operatórias |
 | 19 | Segurança ocupacional | Quando houver exposição (quimioterápico, radiação, agentes infecciosos) |
 | 20 | Anexos | Fórmulas de bolso, checklist de bolso, folha de registro |
 | 21 | Mudanças em relação à versão anterior | Tabela: item anterior → nova recomendação → justificativa com referência |
 | 22 | Referências | Numeradas, agrupadas por tema, formato Vancouver, com marca de quais foram confirmadas em busca |
 | 23 | Página de aprovação | Campos de assinatura, vigência e histórico de versões — obrigatória para Qmentum |
+
+## Vocabulário visual — qual elemento usar para quê
+
+O documento tem quatro elementos, e cada um significa uma coisa. Misturá-los faz
+o leitor perder o rastro do que é fluxo, do que é dado e do que é alerta.
+
+| Conteúdo | Elemento no markdown | Como sai no PDF |
+|---|---|---|
+| **Fluxo de decisão** (algoritmo, árvore de conduta) | Bloco cercado por ``` | Caixa verde-tênue com barra verde, monoespaçada |
+| **Dado tabular** (parâmetros, doses por peso, cronograma) | Tabela markdown | Cabeçalho verde sólido, linhas alternadas |
+| **Lista de conferência** (checklist de sala, de bolso) | `- [ ] item` | Lista proporcional com caixa de marcar |
+| **Alerta** (mudança relevante, armadilha, ressalva) | `> citação` | Caixa creme com barra âmbar |
+
+**Bloco cercado é só para fluxo.** Ele é monoespaçado porque o alinhamento das
+ramificações (`├─`, `└─`, `↓`) é funcional — tira o alinhamento e a árvore de
+decisão vira parágrafo. Fora disso, bloco cercado é erro: **checklist não é
+fluxo**, e um checklist cercado sai monoespaçado, miúdo e fora do padrão do
+resto do documento. Foi assim que a §20.2 divergiu da §4 na v2.2 do CRS-HIPEC.
+
+**Fórmula solta no meio de frase ou de célula** vai em crase simples. Cercar
+metade da célula em crase e deixar a outra metade fora produz uma linha meio
+monoespaçada e meio proporcional — ou toda a fórmula entra, ou nenhuma.
 
 ## Graduação da evidência no corpo do texto
 

@@ -52,10 +52,18 @@ declarado é defeito.**
 - Armadilhas de rotulagem em caixa de atenção
 
 ### Página 4 — Algoritmos
-- Fluxos das intercorrências principais em monoespaçado
+- Fluxos das intercorrências principais em `<pre>` (monoespaçado — o alinhamento
+  das ramificações é funcional). O CSS já os pinta com o verde-tênue e a barra
+  verde das tabelas: é elemento do documento, **não** listagem de código.
+  Não reduzir a fonte do fluxo para ganhar espaço — algoritmo de emergência em
+  letra miúda é defeito; se não couber, corte conteúdo.
 - Tabela do agente/variante do procedimento
 - Fórmulas de bolso
 - Caixa final com o item de maior risco de esquecimento
+
+**Checklist no guia usa `<ul class="check">`, nunca `<pre>`.** Bloco
+monoespaçado é para fluxo; lista de conferência é lista, e sai proporcional com
+a caixa de marcar, igual ao checklist do documento completo.
 
 ---
 

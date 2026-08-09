@@ -186,12 +186,23 @@ blockquote { margin: 3mm 0 4mm 0; padding: 2.6mm 3.5mm; background: #fdf6e6;
              border-left: 3.5pt solid %(dourado)s; font-size: 8.4pt; page-break-inside: avoid; }
 blockquote p:last-child { margin-bottom: 0; }
 
-pre { background: #f2f7f4; border: .5pt solid #c6d8cd; border-left: 3.5pt solid %(verde)s;
-      padding: 3mm 3.5mm; font-family: "DejaVu Sans Mono", monospace; font-size: 7.4pt;
-      line-height: 1.45; white-space: pre-wrap; page-break-inside: avoid; margin: 2.5mm 0 4mm 0; }
-code { font-family: "DejaVu Sans Mono", monospace; font-size: 7.8pt; background: %(verdeten)s;
+/* Bloco de fluxo (algoritmo de intercorrencia). Monoespacado porque o
+   alinhamento das ramificacoes e funcional, mas com a MESMA paleta das tabelas
+   -- fundo verde tenue, borda e barra verde -- para ler como elemento do
+   documento, e nao como listagem de codigo. */
+pre { background: %(verdeten)s; border: .4pt solid #cfdcd4; border-left: 3.5pt solid %(verde)s;
+      padding: 3mm 3.5mm; font-family: "DejaVu Sans Mono", monospace; font-size: 7.6pt;
+      line-height: 1.5; color: %(grafite)s; white-space: pre-wrap;
+      page-break-inside: avoid; margin: 2.5mm 0 4.5mm 0; }
+
+/* Formula solta no meio de uma frase. Em em, nao em pt, para acompanhar o
+   tamanho do contexto em que cai. */
+code { font-family: "DejaVu Sans Mono", monospace; font-size: .96em; background: %(verdeten)s;
        padding: .3mm 1mm; border-radius: 1.5pt; }
-pre code { background: none; padding: 0; font-size: 7.4pt; }
+/* Dentro de tabela a pilha tingida quebra a leitura: metade da celula sai
+   tingida e metade nao. Na tabela a formula fica so monoespacada. */
+td code, th code { background: none; padding: 0; font-size: .97em; }
+pre code { background: none; padding: 0; font-size: 1em; }
 a { color: %(verde)s; text-decoration: none; }
 """
 
@@ -293,9 +304,12 @@ table.trig tr.danger td b { color: %(vermelho)s; }
 .alert.info .alert-t { background: %(verde)s; }
 .two { display: flex; gap: 4mm; }
 .two > div { flex: 1; }
-pre { background: #f2f7f4; border-left: 2.5pt solid %(verde)s; padding: 2mm 2.4mm;
-      font-family: "DejaVu Sans Mono", monospace; font-size: 6.5pt; line-height: 1.42;
-      white-space: pre-wrap; margin: 1mm 0 0 0; }
+/* Mesma regra do documento completo: o fluxo usa a paleta das tabelas do guia,
+   nao o cinza de listagem de codigo. Fonte um pouco maior que a antiga -- num
+   cartao de emergencia, algoritmo em letra miuda e defeito. */
+pre { background: %(verdeten)s; border: .4pt solid #d3e0d8; border-left: 2.5pt solid %(verde)s;
+      padding: 2.2mm 2.6mm; font-family: "DejaVu Sans Mono", monospace; font-size: 6.9pt;
+      line-height: 1.5; color: %(grafite)s; white-space: pre-wrap; margin: 1mm 0 0 0; }
 .foot { margin-top: 3mm; padding-top: 1.6mm; border-top: .5pt solid #cfdde1;
         font-size: 6.4pt; color: #7d9199; font-style: italic; }
 """
