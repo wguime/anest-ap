@@ -188,6 +188,13 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    // Fuso de PRODUÇÃO. O app roda em Chapecó/SC e toda regra de horário da
+    // escala é escrita em BRT (turnoAtual, fase noturna 19h/23h, rollover 07h,
+    // crons 18h/20h30). Sem isto o runner do GitHub (UTC) lia o relógio
+    // congelado `2026-07-28T10:00:00-03:00` como 13h — turno vespertino — e as
+    // fixtures matutinas caíam: 28 testes vermelhos no CI e verdes no Mac,
+    // segurando o deploy automático desde 05/08.
+    env: { TZ: 'America/Sao_Paulo' },
     // Default de 5s estoura em testes de componente jsdom quando os workers
     // disputam transform da run completa (local: iCloud; CI: runner 2-core).
     // Falha real de hang continua detectável — só fica mais lenta.

@@ -4,7 +4,8 @@
  * Asserts:
  *   1. Quando auth.currentUser (Firebase) é null (user deslogado),
  *      createNotificationBatch retorna [] sem chamar .from().insert().
- *   2. Quando ha user autenticado, o insert prossegue normalmente.
+ *   2. Quando ha user autenticado, o insert prossegue — com as linhas certas,
+ *      sem .select() e devolvendo [] (ver d127706, 2026-08-03).
  *
  * Contexto do bug:
  *   Apos auth.signOut() o JWT cache vira anon. Qualquer batch insert
@@ -90,23 +91,13 @@ describe('createNotificationBatch — guard pos-logout', () => {
     expect(mockInsert).not.toHaveBeenCalled()
   })
 
-  it('chama insert na tabela notifications quando ha user autenticado', async () => {
+  // O retorno é [] POR DECISÃO (d127706): pedir as linhas de volta (.select())
+  // exige que elas passem pela policy de SELECT — "recipient_id = firebase_uid()"
+  // — e um insert para OUTRO destinatário abortava o batch inteiro com 42501 em
+  // silêncio (a notificação agregada de férias não chegava a ninguém). Nenhum
+  // chamador consome o retorno. O contrato aqui é o INSERT, não a resposta.
+  it('insere as linhas certas e devolve [] — sem pedir RETURNING', async () => {
     auth.currentUser = { uid: 'firebase-uid-abc' }
-    insertResult = {
-      data: [
-        {
-          id: 'notif-1',
-          recipient_id: 'user-1',
-          subject: 'Teste',
-          content: 'Body',
-          category: 'sistema',
-          priority: 'normal',
-          sender_name: 'Sistema ANEST',
-          dismissable: true,
-        },
-      ],
-      error: null,
-    }
 
     const result = await supabaseMessagesService.createNotificationBatch(
       ['user-1'],
@@ -122,8 +113,8 @@ describe('createNotificationBatch — guard pos-logout', () => {
       subject: 'Teste',
       content: 'Body',
     })
-    expect(result).toHaveLength(1)
-    expect(result[0]).toMatchObject({ id: 'notif-1', recipientId: 'user-1' })
+    expect(mockSelect).not.toHaveBeenCalled()
+    expect(result).toEqual([])
   })
 
   it('retorna [] sem checar auth quando recipientIds vazio', async () => {
