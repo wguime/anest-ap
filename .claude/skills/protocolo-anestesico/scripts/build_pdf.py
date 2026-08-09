@@ -258,7 +258,11 @@ h2.sec .sub { text-transform: none; letter-spacing: 0; font-weight: normal;
 ul.check { list-style: none; padding-left: 0; }
 ul.check li:before { content: "\\2610\\00a0\\00a0"; color: #2c7a5b; font-weight: bold; }
 .legend { font-size: 6.2pt; color: #7d9199; font-weight: normal; font-style: italic; }
-b.t { color: %(vermelho)s; font-family: "DejaVu Sans Mono", monospace; font-size: 6.6pt; }
+/* Marco temporal. VERDE, nao vermelho: o vermelho deste documento significa
+   emergencia, e gastar a cor num rotulo de tempo enfraquece o alerta de verdade.
+   O marco tambem carrega sempre a unidade -- numero solto nao diz de que
+   referencial esta contando. */
+b.t { color: %(verde)s; font-family: "DejaVu Sans Mono", monospace; font-size: 6.6pt; }
 
 table { width: 100%%; border-collapse: collapse; }
 table.mini { font-size: 7.1pt; margin-top: .8mm; }
@@ -277,6 +281,19 @@ table.ck th { background: %(verde)s; color: #fff; text-align: left; padding: 1.1
               font-size: 6.8pt; letter-spacing: .08em; }
 table.ck td { padding: 1.2mm 1.6mm; border-bottom: .4pt solid #d9e5de; vertical-align: top; }
 td.bx { width: 5mm; font-size: 10pt; color: %(verde)s; text-align: center; line-height: 1; }
+/* Algoritmo do guia: MESMA tabela do resto do documento, com coluna estreita
+   de passo e as ramificacoes recuadas. Substitui a arte ASCII monoespacada --
+   fluxo desenhado com |, ├ e └ nao e a linguagem destes documentos. */
+table.algo { font-size: 6.9pt; margin-top: .8mm; margin-bottom: 1mm; }
+table.algo th { background: %(verde)s; color: #fff; text-align: left;
+                padding: 1mm 1.6mm; font-size: 6.6pt; letter-spacing: .06em; }
+table.algo td { padding: .82mm 1.6mm; border-bottom: .4pt solid #d9e5de; vertical-align: top; }
+table.algo td:first-child { width: 8mm; color: %(verde)s; font-weight: bold; text-align: center; }
+table.algo tr.br td:first-child { color: #9fb3a8; font-weight: normal; }
+table.algo tr.br td:last-child { padding-left: 4mm; }
+table.algo tr.gat td { background: %(verdeten)s; }
+table.algo tr.gat td:first-child { font-size: 6.2pt; letter-spacing: .06em; }
+
 table.trig { font-size: 6.9pt; margin-top: .8mm; }
 table.trig thead th { background: %(verde)s; color: #fff; text-align: left;
                       padding: 1.2mm 2mm; font-size: 6.9pt; }

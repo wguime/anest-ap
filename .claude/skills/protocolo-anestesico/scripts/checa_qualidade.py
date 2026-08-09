@@ -58,6 +58,26 @@ def checa_markdown(caminho):
         aviso("%d ocorrencia(s) de '~' - em varias fontes fica parecido com sinal de "
               "menos. Trocar por 'cerca de'." % n_til)
 
+    # Bloco cercado sai monoespacado, com cara de listagem de codigo, e destoa do
+    # resto do documento -- que e feito de tabelas e listas. Fluxo de decisao vira
+    # tabela Passo|Conduta com as ramificacoes recuadas; checklist vira "- [ ]";
+    # diferencial vira lista com marcador.
+    n_cerca = len(re.findall(r'^```', s, flags=re.M))
+    if n_cerca:
+        aviso("%d bloco(s) cercado(s) por ``` - saem monoespacados, fora do padrao "
+              "visual do documento. Fluxo -> tabela Passo|Conduta; checklist -> '- [ ]'; "
+              "diferencial -> lista." % n_cerca)
+
+    # Marco temporal sem unidade nao diz de que referencial esta contando: "45" pode
+    # ser minuto, dose ou numero de item. A regra do protocolo e escrever por extenso.
+    orfaos = re.findall(r'\*\*(\d{1,3})\*\*\s+(?![a-zA-Zà-ÿ]*\s*(?:min|h|mg|ml|g|UI|mEq|%|°))'
+                        r'([a-zà-ÿ]{3,})', s)
+    if len(orfaos) >= 3:
+        exemplos = ', '.join('**%s** %s' % o for o in orfaos[:3])
+        aviso("%d numero(s) em negrito sem unidade seguidos de texto (ex.: %s). Se for "
+              "marco temporal, escrever '45 min' e declarar o referencial."
+              % (len(orfaos), exemplos))
+
     # secoes obrigatorias
     for sec in ["## 21.", "## 22."]:
         if sec not in s:

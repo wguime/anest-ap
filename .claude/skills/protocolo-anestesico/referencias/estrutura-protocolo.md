@@ -32,25 +32,56 @@ os protocolos do serviço sejam navegáveis da mesma forma.
 
 ## Vocabulário visual — qual elemento usar para quê
 
-O documento tem quatro elementos, e cada um significa uma coisa. Misturá-los faz
-o leitor perder o rastro do que é fluxo, do que é dado e do que é alerta.
+O documento inteiro é feito de **tabelas e listas**. Não há um quinto elemento.
 
 | Conteúdo | Elemento no markdown | Como sai no PDF |
 |---|---|---|
-| **Fluxo de decisão** (algoritmo, árvore de conduta) | Bloco cercado por ``` | Caixa verde-tênue com barra verde, monoespaçada |
+| **Fluxo de decisão** (algoritmo, árvore de conduta) | Tabela `Passo \| Conduta` | Cabeçalho verde, ramificações recuadas com `↳` |
 | **Dado tabular** (parâmetros, doses por peso, cronograma) | Tabela markdown | Cabeçalho verde sólido, linhas alternadas |
 | **Lista de conferência** (checklist de sala, de bolso) | `- [ ] item` | Lista proporcional com caixa de marcar |
+| **Diferencial / enumeração sem ordem de execução** | `- item` | Lista com marcador |
 | **Alerta** (mudança relevante, armadilha, ressalva) | `> citação` | Caixa creme com barra âmbar |
 
-**Bloco cercado é só para fluxo.** Ele é monoespaçado porque o alinhamento das
-ramificações (`├─`, `└─`, `↓`) é funcional — tira o alinhamento e a árvore de
-decisão vira parágrafo. Fora disso, bloco cercado é erro: **checklist não é
-fluxo**, e um checklist cercado sai monoespaçado, miúdo e fora do padrão do
-resto do documento. Foi assim que a §20.2 divergiu da §4 na v2.2 do CRS-HIPEC.
+**Nunca usar bloco cercado por ```.** Ele sai monoespaçado, com cara de listagem
+de código, e destoa de tudo à volta. Desenhar fluxo com `├─`, `└─` e `↓` é arte
+ASCII: não é a linguagem destes documentos, e quebra quando a coluna é estreita.
+`checa_qualidade.py` avisa quando encontra um.
+
+**Fluxo vira tabela assim** — o número carrega a sequência, e a ramificação vira
+linha recuada:
+
+```text
+| Passo | Conduta |
+|---|---|
+| **Gatilho** | PAM < 65 mmHg |
+| **1** | Confirmar: plano profundo? bolus peridural? erro de medida? |
+| **2** | Avaliar volume sistólico / VPP |
+| ↳ | Responsivo → cristaloide 250 ml, reavaliar |
+| ↳ | Não responsivo → passo 3 |
+| **3** | **NORADRENALINA** — titular 0,05 → 0,5 µg/kg/min |
+```
 
 **Fórmula solta no meio de frase ou de célula** vai em crase simples. Cercar
 metade da célula em crase e deixar a outra metade fora produz uma linha meio
 monoespaçada e meio proporcional — ou toda a fórmula entra, ou nenhuma.
+
+## Marco temporal — sempre com unidade e referencial
+
+**Número relativo sem referencial declarado é defeito**, e a regra vale também
+para o guia rápido. Um `45` solto pode ser minuto, dose ou número de item.
+
+- Escrever a unidade: **"45 min"**, nunca **"45"**.
+- Declarar o referencial no cabeçalho da coluna ou do cartão: *"Antes da
+  incisão"*, *"Faltando para a perfusão"*, *"Tempo de perfusão"*.
+- Em contagem regressiva, ordenar do maior para o menor e **uma marca por
+  linha** — sequência de marcos separados por `·` no meio de um parágrafo é
+  ilegível sob pressão, que é exatamente quando o documento é usado.
+
+## Cor — o vermelho é da emergência
+
+Vermelho significa **limite ou emergência**. Não usar em rótulo de tempo, número
+de passo ou destaque decorativo: cada uso decorativo enfraquece o alerta de
+verdade. Marco temporal e numeração de passo vão em **verde**.
 
 ## Graduação da evidência no corpo do texto
 

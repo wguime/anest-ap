@@ -52,18 +52,25 @@ declarado é defeito.**
 - Armadilhas de rotulagem em caixa de atenção
 
 ### Página 4 — Algoritmos
-- Fluxos das intercorrências principais em `<pre>` (monoespaçado — o alinhamento
-  das ramificações é funcional). O CSS já os pinta com o verde-tênue e a barra
-  verde das tabelas: é elemento do documento, **não** listagem de código.
-  Não reduzir a fonte do fluxo para ganhar espaço — algoritmo de emergência em
-  letra miúda é defeito; se não couber, corte conteúdo.
+- Fluxos das intercorrências em **`<table class="algo">`**: primeira coluna com o
+  número do passo, ramificação em linha `class="br"` com `↳`, gatilho em linha
+  `class="gat"`. Mesma tabela do resto do documento.
 - Tabela do agente/variante do procedimento
 - Fórmulas de bolso
 - Caixa final com o item de maior risco de esquecimento
 
-**Checklist no guia usa `<ul class="check">`, nunca `<pre>`.** Bloco
-monoespaçado é para fluxo; lista de conferência é lista, e sai proporcional com
-a caixa de marcar, igual ao checklist do documento completo.
+**Nunca usar `<pre>` no guia.** Fluxo desenhado com `|`, `├─` e `└─` sai
+monoespaçado, com cara de listagem de código, e destoa de todo o resto — que é
+tabela e lista. Checklist usa `<ul class="check">`; diferencial usa `<ul>`.
+
+**Marco temporal leva unidade e referencial.** `<b class="t">45 min</b>`, nunca
+`<b class="t">45</b>`, e o referencial declarado no cabeçalho da coluna ou do
+cartão (*"Antes da incisão"*, *"Faltando para a perfusão"*). Em contagem
+regressiva, uma marca por linha, do maior para o menor — marcos separados por
+`·` dentro de um parágrafo viram um borrão quando se lê sob pressão.
+
+**`b.t` é verde.** O vermelho do guia é da emergência; gastá-lo em rótulo de
+tempo enfraquece as linhas `tr.danger`, que são as que precisam saltar.
 
 ---
 
@@ -107,10 +114,15 @@ Pensada para ficar colada onde o anestesiologista olha, não para ser lida na m�
 
 - Virar resumo do documento completo em vez de recorte operacional
 - Números divergindo do completo (o erro mais grave e o mais comum)
-- Marcos temporais sem legenda
+- **Marcos temporais sem unidade ou sem referencial** — `45` em vez de `45 min`,
+  ou uma fileira de marcos separados por `·` dentro de um parágrafo, que perde a
+  ordem e não diz de que evento está contando
+- **Fluxo em `<pre>` com arte ASCII** — vira listagem de código no meio de um
+  documento feito de tabelas
 - Justificativa infiltrada ("porque a hipertermia reduz a função plaquetária") —
   corta
-- Cor decorativa competindo com o vermelho de emergência
+- **Cor decorativa competindo com o vermelho de emergência** — inclusive vermelho
+  em rótulo de tempo ou número de passo
 
 ---
 
