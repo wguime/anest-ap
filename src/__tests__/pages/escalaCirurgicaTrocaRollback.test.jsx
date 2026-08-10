@@ -28,7 +28,7 @@ vi.mock('@/services/supabaseSubscriptionHelper', () => ({
   createReliableSubscription: () => ({ cleanup: () => {} }),
 }))
 
-import { EscalaCirurgicaProvider, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
+import { EscalaCirurgicaProvider, useEscalaCirurgica, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 
 // STAUB não tem vínculo (uid null) — é o cenário que o rollback antigo apagava.
 const escalaUnimed = {
@@ -42,8 +42,10 @@ const escalaUnimed = {
 }
 
 let actions
+let estado
 function Grab() {
   actions = useEscalaCirurgicaActions()
+  estado = useEscalaCirurgica()
   return null
 }
 
@@ -54,8 +56,11 @@ const montar = async () => {
     </ToastProvider></ThemeProvider>
   )
   await waitFor(() => expect(svcMock.fetchEscala).toHaveBeenCalled())
-  // espera o SET_ALL assentar (executarSubstituicao lê escalasRef)
-  await waitFor(() => expect(actions).toBeTruthy())
+  // ESPERAR A ESCALA ASSENTAR NO ESTADO, não só o provider existir: sob carga
+  // (suíte inteira) o executarSubstituicao chegava antes do SET_ALL, não achava
+  // `escalas.unimed` e morria em "A escala mudou" — flake que derrubou o CI em
+  // 10/08 sem nenhuma relação com o que estava sendo testado.
+  await waitFor(() => expect(estado?.escalas?.unimed?.id).toBe('esc-uni'))
 }
 
 beforeEach(() => {
