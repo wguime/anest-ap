@@ -130,6 +130,29 @@ describe('planoExecucaoTroca — swap simultâneo Giovana↔Maurício', () => {
     expect(ladoHro.turno).toBe('vespertino')
   })
 
+  // CORTE DO TURNO DA TELA (dono 10/08): Raquel⇄Nathalia, troca só da TARDE. As
+  // duas também trabalham de manhã em outro hospital, e o sheet pedia decisão
+  // sobre 4 posições — duas fora da troca ("estão aparecendo turnos que não
+  // fazem parte da troca").
+  it('quem TEM posição no turno da tela não arrasta a do outro turno', () => {
+    const nosDois = {
+      unimed: {
+        id: 'esc-uni', hospital: 'unimed',
+        ordemLiberacao: { matutino: ['GIOVANA'], vespertino: ['MAURICIO'] },
+        linhaOverrides: {}, casos: [],
+      },
+      hro: {
+        id: 'esc-hro', hospital: 'hro',
+        ordemLiberacao: { matutino: ['MAURICIO'], vespertino: ['GIOVANA'] },
+        linhaOverrides: {}, casos: [],
+      },
+    }
+    const plan = planoExecucaoTroca({ escalas: nosDois, resolverUid, a: MAURICIO, b: GIOVANA, turno: 'vespertino' })
+    expect(plan.lados).toHaveLength(2)
+    expect(plan.lados.every((l) => l.turno === 'vespertino')).toBe(true)
+    expect(plan.lados.map((l) => l.hospital).sort()).toEqual(['hro', 'unimed'])
+  })
+
   it('pessoa sem slot em lugar nenhum → pendência sem_slot (nunca meio swap calado)', () => {
     const FORA = { uid: 'uid-fora', nome: 'COLEGA DE FORA', apelido: 'FORA' }
     const plan = planoExecucaoTroca({ escalas, resolverUid, a: GIOVANA, b: FORA, turno: 'vespertino' })

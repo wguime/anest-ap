@@ -1012,13 +1012,19 @@ export function casosTransferiveis(esc, pessoa, resolverUid) {
  *   lados ao turno da tela fazia o par manhã↔tarde produzir UM lado só, em
  *   silêncio — uma pessoa herdava posição+casos e a outra não. Cada lado agora
  *   carrega o turno do PRÓPRIO slot (é ele que escopa a chave namespaced).
+ *   ⚠️ mas quem TEM posição no turno da tela fica só com ela (dono 10/08): a
+ *   busca cai no outro turno de propósito, e sem este corte uma troca de tarde
+ *   entre duas pessoas que também trabalham de manhã abria 4 posições no sheet
+ *   (Raquel⇄Nathalia, 10/08). O par manhã↔tarde segue inteiro: o outro turno só
+ *   entra para quem não tem nada no turno exibido.
  * @returns {{ lados: Array, limparTroca: Array, pendencias: Array }}
  *   pendencias = o que impede o swap de fechar ({ pessoa, motivo:
  *   'sem_slot' | 'sem_uid' }) — o chamador mostra o que falta em vez de
  *   executar meio swap calado.
  */
 export function planoExecucaoTroca({ escalas, resolverUid, a, b, turno = null }) {
-  const lados = []
+  // por PESSOA (mesma referência de objeto), para o corte de turno lá embaixo
+  const porPessoa = new Map([[a, []], [b, []]])
   const limparTroca = []
   const comSlot = new Set()
   for (const [hospital, esc] of Object.entries(escalas || {})) {
@@ -1027,7 +1033,7 @@ export function planoExecucaoTroca({ escalas, resolverUid, a, b, turno = null })
       const slot = localizarSlotRodape(esc, de, resolverUid, turno)
       if (!slot) continue
       comSlot.add(de)
-      lados.push({
+      porPessoa.get(de).push({
         hospital, escalaId: esc.id,
         chaveSlot: slot.chave, nomeSlot: slot.nome,
         de: { uid: de.uid || null, nome: de.nome, apelido: de.apelido || slot.nome },
@@ -1062,6 +1068,16 @@ export function planoExecucaoTroca({ escalas, resolverUid, a, b, turno = null })
         limparTroca.push({ hospital, escalaId: esc.id, chave, ...(turnoChave ? { turno: turnoChave } : {}) })
       }
     }
+  }
+  // CORTE DO TURNO DA TELA (dono 10/08): quem tem posição no turno exibido
+  // entra só com ela. Sem isto, uma troca da tarde entre duas pessoas que
+  // também trabalham de manhã pedia decisão sobre 4 posições — duas delas fora
+  // da troca. Quem não tem nada no turno da tela mantém o slot do outro turno
+  // (é o par manhã↔tarde do D4, que precisa fechar inteiro).
+  const lados = []
+  for (const lista of porPessoa.values()) {
+    const noTurno = turno ? lista.filter((l) => l.turno === turno) : []
+    lados.push(...(noTurno.length ? noTurno : lista))
   }
   const pendencias = []
   for (const pessoa of [a, b]) {
