@@ -110,7 +110,7 @@ describe('Badge "Troca" nos dois lados do par', () => {
 
   it('sem par declarado, nenhum badge Troca aparece', () => {
     montar()
-    expect(screen.queryByText(/Troca declarada|Troca executada/)).toBeNull()
+    expect(screen.queryByText(/^Troca( declarada)?$/)).toBeNull()
   })
 
   it('par HISTÓRICO (rastro de swap executado) não vira badge nem oferece ação (defeito D1)', () => {
@@ -195,7 +195,8 @@ describe('Slot assumido (troca executada)', () => {
     const slot = document.querySelector('[data-linha="uid-mar"]')
     expect(within(slot).getByText('Marcos Cury')).toBeTruthy()
     expect(within(slot).getByText(/Assumiu a posição de Marilio Flach/)).toBeTruthy()
-    expect(within(slot).getByText('Troca executada')).toBeTruthy()
+    // badge enxuto (dono 09/08): "Troca", não "Troca executada"
+    expect(within(slot).getByText('Troca')).toBeTruthy()
     expect(within(slot).getByText('Taciana A')).toBeTruthy() // os casos vieram junto
   })
 
@@ -208,7 +209,7 @@ describe('Slot assumido (troca executada)', () => {
     montar({ paresTroca: [] }, escalaLiberada)
     const slot = document.querySelector('[data-linha="uid-mar"]')
     expect(within(slot).getByText('Marcos Cury')).toBeTruthy()
-    expect(within(slot).getByText('Troca executada')).toBeTruthy()
+    expect(within(slot).getByText('Troca')).toBeTruthy()
     expect(within(slot).getByText(/Assumiu a posição de Marilio Flach/)).toBeTruthy()
   })
 

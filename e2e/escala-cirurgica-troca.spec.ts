@@ -1,6 +1,7 @@
 /**
- * E2E: TROCA DECLARADA (dono 30/07) — declarar → badge nos dois lados → executar
- * (um toque) → quem assume ocupa a POSIÇÃO do colega → desfazer.
+ * E2E: TROCA (fluxo único) — escolher o colega → CONFIRMAR de onde cada um sai
+ * (dono 09/08: a escala pode vir publicada já com os nomes trocados) → trocar
+ * no ato → quem assume ocupa a POSIÇÃO do colega, com badge nos dois → desfazer.
  *
  * Determinístico por construção: escala DEMO (26/06/2026) client-side, e as
  * actions de troca operam EM MEMÓRIA no demo (padrão do toggleLiberacao) — nada
@@ -20,7 +21,7 @@ const DEMO_TIME = new Date('2026-06-26T14:00:00-03:00');
 
 test.use({ viewport: { width: 375, height: 812 } });
 
-test('declarar → badge nos 2 lados → executar (posição+casos) → desfazer', async ({ page }) => {
+test('confirmar origem → trocar agora (posição+casos) → badge nos 2 lados → desfazer', async ({ page }) => {
   test.skip(!E2E_USER_EMAIL || !E2E_USER_PASSWORD, 'Set E2E_USER_EMAIL / E2E_USER_PASSWORD');
   test.setTimeout(180_000);
 
@@ -68,8 +69,9 @@ test('declarar → badge nos 2 lados → executar (posição+casos) → desfazer
     }).toPass({ timeout: 30_000 });
   };
 
-  // ── 1. DECLARAR pelo FLUXO ÚNICO (dono 07/08): o ✏️ abre o TrocaSheet, que
-  // infere o tipo e oferece "Trocar agora"/"Declarar para depois".
+  // ── 1. TROCAR pelo FLUXO ÚNICO (dono 07/08): o ✏️ abre o TrocaSheet, que
+  // pede a ORIGEM de cada um (dono 09/08 — a escala pode vir já trocada),
+  // infere o tipo e executa no ato ("Declarar para depois" saiu em 09/08).
   // Retry no abrir (toPass): o clique durante a animação do sheet não registra.
   const trigger = page.getByRole('combobox').filter({ hasText: /Escolha o colega/i });
   await noPainel(/Editar local\/cirurgião de Giovana/, /Trocar com um colega/,
@@ -80,28 +82,27 @@ test('declarar → badge nos 2 lados → executar (posição+casos) → desfazer
   }).toPass({ timeout: 15_000 });
   await page.getByPlaceholder('Buscar...').fill('mauric');
   await page.getByRole('option', { name: /mauricio/i }).first().click();
-  // tipo INFERIDO aparece antes de confirmar (mesmo hospital → posições)
-  await expect(page.getByText('Troca de posições')).toBeVisible({ timeout: 5_000 });
-  await page.getByRole('button', { name: 'Declarar para depois', exact: true }).click();
 
-  // ── 2. BADGE nos DOIS lados do par ────────────────────────────────────────
-  await expect(linhaGiovana.getByText('Troca declarada', { exact: true })).toBeVisible({ timeout: 10_000 });
-  await expect(linhaMauricio.getByText('Troca declarada', { exact: true })).toBeVisible();
-  await expect(linhaGiovana.getByText(/Trocado com/)).toBeVisible();
-  await page.screenshot({ path: 'e2e/__screenshots__/troca-declarada-badges.png', fullPage: true });
+  // ── 2. CONFIRMAR a origem dos dois (nada vem pré-marcado) ─────────────────
+  // Os dois são do HRO no demo → um chip "HRO · <turno>" por pessoa.
+  const chipsHro = page.getByRole('button', { name: /^HRO · / });
+  await expect(chipsHro).toHaveCount(2, { timeout: 5_000 });
+  await chipsHro.nth(0).click();
+  await chipsHro.nth(1).click();
+  // tipo INFERIDO das posições confirmadas (mesmo hospital → posições)
+  await expect(page.getByRole('button', { name: 'Troca de posições' }))
+    .toHaveAttribute('aria-pressed', 'true', { timeout: 5_000 });
+  await expect(page.getByText(/assume a posição de Giovana/i)).toBeVisible();
+  await page.screenshot({ path: 'e2e/__screenshots__/troca-sheet-origem.png', fullPage: true });
+  await page.getByRole('button', { name: /Trocar agora/ }).click();
 
-  // ── 3. EXECUTAR (um toque) do painel da linha do Maurício ─────────────────
-  await noPainel('Editar local/cirurgião de Mauricio Bastos', /Executar agora — .* assume aqui/,
-    () => page.getByText(/Troca executada(?!\s*—)/).first().isVisible());
-
-  // Par no MESMO hospital → swap simultâneo dos DOIS slots: o slot do Maurício
-  // exibe a Giovana e o dela exibe o Maurício — as CHAVES dos slots não mudam,
-  // ninguém vira linha extra e a ordem do rodapé segue intocada.
-  await expect(page.getByText('Troca executada', { exact: true }).first()).toBeVisible({ timeout: 10_000 });
+  // ── 3. Par no MESMO hospital → swap simultâneo dos DOIS slots: o slot do
+  // Maurício exibe a Giovana e o dela exibe o Maurício — as CHAVES dos slots
+  // não mudam, ninguém vira linha extra e a ordem do rodapé segue intocada.
+  await expect(linhaGiovana.getByText('Troca', { exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(linhaMauricio.getByText('Troca', { exact: true })).toBeVisible();
   await expect(page.getByText(/Assumiu a posição de Mauricio Bastos/)).toBeVisible();
   await expect(page.getByText(/Assumiu a posição de Giovana Noll/)).toBeVisible();
-  // o badge de DECLARADA some após a execução (dá lugar ao de executada)
-  await expect(page.locator('[data-linha]').getByText('Troca declarada', { exact: true })).toHaveCount(0);
   await page.screenshot({ path: 'e2e/__screenshots__/troca-executada-posicao.png', fullPage: true });
 
   // ── 4. DESFAZER a substituição (caminho de erro humano) ───────────────────

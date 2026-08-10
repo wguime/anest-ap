@@ -212,15 +212,23 @@ convergência); plantonista que fecha o rodapé NÃO desce ao fim da fila;
 matching NUNCA por nome de exibição (`assumida.deNomeOriginal`); linha-espelho
 `chave#casos` não aceita troca; `trocasHistorico` com limit(60).
 
-**Fase 1 — TrocaSheet** (`TrocaSheet.jsx`, commit 486ea3a): fluxo único —
-colega → tipo INFERIDO pela geografia dos slots (entre_hospitais / posicoes /
-entre_turnos / assuncao) pré-selecionado e corrigível → motivo opcional →
-preview (lados + pendências) → **"Trocar agora"** (executa direto, SEM passar
-por trocaCom — evita ruído no log) ou "Declarar para depois". `tipo`/`motivo`
-viajam DENTRO do jsonb (sem migration; trigger audita de graça) e aparecem no
-card. Vocabulário único: "Substituição executada/desfeita"→"Troca
-executada/desfeita"; badges com ESTADO (Troca declarada outline / Troca
-executada solid); "Trocar anestesista"→"Novo responsável"; "Trocar
+**Fase 1 — TrocaSheet** (`TrocaSheet.jsx`, commits 486ea3a + ajustes do dono
+09/08): fluxo único — colega → **ORIGEM CONFIRMADA de cada um** → tipo INFERIDO
+pela geografia dos slots CONFIRMADOS (entre_hospitais / posicoes / entre_turnos
+/ assuncao), pré-selecionado e corrigível → motivo opcional → resumo do efeito
+→ **"Trocar agora"** (executa direto, SEM passar por trocaCom — evita ruído no
+log). ⚠️ **a origem NUNCA é assumida**: a escala às vezes é publicada JÁ com os
+nomes trocados (10/08: Garim publicado no lugar do Rafael na Unimed e Rafael no
+lugar do Garim no HRO) e supor que o nome achado no rodapé marca a origem
+DESFAZ a troca real — cada pessoa escolhe a posição que DEIXA ou "não sai
+daqui", e com só metade confirmada o botão fica travado (meio swap = D4).
+**"Declarar para depois" SAIU** (dono 09/08, "não entendi a funcionalidade"):
+par declarado só nasce da conferência da importação (que executa ao publicar); o
+painel ✏️ segue executando/desfazendo o que já existe. `tipo`/`motivo` viajam
+DENTRO do jsonb (sem migration; trigger audita de graça) e aparecem no card.
+Vocabulário único: "Substituição executada/desfeita"→"Troca executada/desfeita";
+badges com ESTADO (Troca declarada outline / **"Troca"** solid — enxuto por
+pedido do dono 09/08); "Trocar anestesista"→"Novo responsável"; "Trocar
 sala/local"→"Mudar de sala/local"; "Substituir mesmo assim"→"Republicar por
 cima". Toggle "Assumir também a posição" continua como atalho (tipo
 `assuncao`).

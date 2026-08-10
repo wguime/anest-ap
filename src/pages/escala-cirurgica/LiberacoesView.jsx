@@ -804,7 +804,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     <Badge className="shrink-0 border-category-indigo bg-transparent text-category-indigo-fg">Troca declarada</Badge>
                   )}
                   {linha.assumida && !trocaDe(linha) && (
-                    <Badge className="shrink-0 border-transparent bg-category-indigo text-white">Troca executada</Badge>
+                    <Badge className="shrink-0 border-transparent bg-category-indigo text-white">Troca</Badge>
                   )}
                   {foraDoRodape && !trocaDe(linha) && !linha.assumida && (
                     <Badge variant="warning" className="shrink-0">Fora do rodapé</Badge>
@@ -1104,7 +1104,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 <Badge className="border-category-indigo bg-transparent text-category-indigo-fg">Troca declarada</Badge>
               )}
               {editor?.assumida && (
-                <Badge className="border-transparent bg-category-indigo text-white">Troca executada</Badge>
+                <Badge className="border-transparent bg-category-indigo text-white">Troca</Badge>
               )}
             </SheetTitle>
           </SheetHeader>
@@ -1169,9 +1169,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     </div>
                   )
                 }
-                // FLUXO ÚNICO (dono 07/08, "as trocas num só local"): declarar
-                // sai daqui e vai para o TrocaSheet — tipo inferido + motivo +
-                // "Trocar agora"/"Declarar para depois", a MESMA UI de qualquer
+                // FLUXO ÚNICO (dono 07/08, "as trocas num só local"): trocar
+                // sai daqui e vai para o TrocaSheet — origem confirmada + tipo
+                // inferido + motivo + "Trocar agora", a MESMA UI de qualquer
                 // entrada. Executar/desfazer o que já existe fica no painel
                 // (um toque, sem navegação).
                 return (

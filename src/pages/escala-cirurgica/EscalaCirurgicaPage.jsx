@@ -347,12 +347,12 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
         />
       )}
 
-      {/* FLUXO ÚNICO de troca (dono 07/08): declarar/executar novos pares passa
-          sempre por aqui — tipo inferido pela geografia dos slots + motivo. */}
+      {/* FLUXO ÚNICO de troca (dono 07/08): executar troca nova passa sempre por
+          aqui — origem confirmada + tipo inferido + motivo. O sheet lê as 3
+          escalas do context, por isso não recebe a escala da tela. */}
       {trocaSheet && (
         <TrocaSheet
           linha={trocaSheet}
-          escala={escala}
           turno={turno}
           onClose={() => setTrocaSheet(null)}
         />
