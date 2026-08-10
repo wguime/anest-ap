@@ -195,6 +195,58 @@ describe('planoDesfazerTroca — reverte os dois lados', () => {
     expect(hro.casoIds).toEqual(['h1'])
   })
 
+  // INCIDENTE 10/08: a assunção foi executada nos slots da MANHÃ e não moveu
+  // caso nenhum; ao desfazer, os casos da TARDE (que nunca saíram do lugar)
+  // foram entregues ao colega e as duas ficaram sem caso no próprio rodapé — a
+  // fila do vespertino inteira embaralhou.
+  it('devolve SÓ os casos que a execução moveu (recibo em assumidaPor.casoIds)', () => {
+    const escalas = {
+      unimed: {
+        id: 'esc-uni', hospital: 'unimed',
+        ordemLiberacao: { matutino: ['MAURICIO'] },
+        // assunção da MANHÃ que não trouxe caso algum
+        linhaOverrides: { 'matutino:uid-mau': { assumidaPor: { uid: 'uid-gio', nome: 'GIOVANA SILVA', casoIds: [] } } },
+        // caso da TARDE, legitimamente da Giovana
+        casos: [caso('u9', 'S9', 'GIOVANA', { anestesistaUserId: 'uid-gio', turno: 'vespertino' })],
+      },
+    }
+    const p = planoDesfazerTroca({ escalas, resolverUid, a: GIOVANA, b: MAURICIO })
+    expect(p.lados).toHaveLength(1)
+    expect(p.lados[0].casoIds).toEqual([])
+  })
+
+  it('recibo antigo (sem casoIds) devolve só os casos DO TURNO do slot', () => {
+    const escalas = {
+      unimed: {
+        id: 'esc-uni', hospital: 'unimed',
+        ordemLiberacao: { matutino: ['MAURICIO'] },
+        linhaOverrides: { 'matutino:uid-mau': { assumidaPor: { uid: 'uid-gio', nome: 'GIOVANA SILVA' } } },
+        casos: [
+          caso('u1', 'S1', 'GIOVANA', { anestesistaUserId: 'uid-gio', turno: 'matutino' }),
+          caso('u9', 'S9', 'GIOVANA', { anestesistaUserId: 'uid-gio', turno: 'vespertino' }),
+        ],
+      },
+    }
+    const p = planoDesfazerTroca({ escalas, resolverUid, a: GIOVANA, b: MAURICIO })
+    expect(p.lados[0].casoIds).toEqual(['u1'])
+  })
+
+  it('caso já repassado a outra pessoa não volta pelo recibo', () => {
+    const escalas = {
+      unimed: {
+        id: 'esc-uni', hospital: 'unimed',
+        ordemLiberacao: { matutino: ['MAURICIO'] },
+        linhaOverrides: { 'matutino:uid-mau': { assumidaPor: { uid: 'uid-gio', nome: 'GIOVANA SILVA', casoIds: ['u1', 'u2'] } } },
+        casos: [
+          caso('u1', 'S1', 'GIOVANA', { anestesistaUserId: 'uid-gio', turno: 'matutino' }),
+          caso('u2', 'S2', 'KARINE', { anestesistaUserId: 'uid-kar', turno: 'matutino' }),
+        ],
+      },
+    }
+    const p = planoDesfazerTroca({ escalas, resolverUid, a: GIOVANA, b: MAURICIO })
+    expect(p.lados[0].casoIds).toEqual(['u1'])
+  })
+
   it('dono original sem uid → só limpa a assunção (para null, sem casos)', () => {
     const p = planoDesfazerTroca({
       escalas: escalasPos, resolverUid,

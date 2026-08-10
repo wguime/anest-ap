@@ -1213,6 +1213,33 @@ export function estadoTrocasDoHistorico(eventos, turno) {
  * PREFIXO da chave onde a assunção foi encontrada. Filtrar pelo turno da tela
  * deixava metade de um par manhã↔tarde por desfazer, em silêncio.
  */
+/**
+ * Casos que o DESFAZER devolve ao dono do slot (incidente 10/08).
+ *
+ * Antes devolvia TODOS os casos abertos de quem assumiu naquele hospital — sem
+ * saber o que a execução tinha de fato movido e sem olhar turno. Numa assunção
+ * que não trouxe caso nenhum (posição da manhã, casos da tarde intactos), o
+ * desfazer ENTREGOU os casos da tarde da pessoa ao colega: a Raquel perdeu as 3
+ * cirurgias da tarde na Unimed e a Nathalia a das 13h no HRO, e as duas viraram
+ * "sem casos" no próprio rodapé — a fila inteira do vespertino embaralhou.
+ *
+ * Agora a execução carimba `assumidaPor.casoIds` (jsonb, sem migration) e o
+ * desfazer devolve SÓ esses, e só os que ainda estão com quem assumiu (caso
+ * repassado depois no Definir anestesista não volta para o lugar errado).
+ * Registro antigo, sem `casoIds`: mantém o comportamento de varrer os casos do
+ * assumente, mas LIMITADO AO TURNO do slot — o outro turno nunca foi parte da
+ * troca.
+ */
+function casosParaDevolver(esc, asm, assumidor, resolverUid, turnoChave) {
+  const abertos = new Set(casosTransferiveis(esc, assumidor, resolverUid))
+  if (Array.isArray(asm?.casoIds)) return asm.casoIds.filter((id) => abertos.has(id))
+  if (!turnoChave) return [...abertos]
+  const doTurno = new Set(
+    casosResolvidos(esc).filter((c) => (c.turno || 'matutino') === turnoChave).map((c) => c.id),
+  )
+  return [...abertos].filter((id) => doTurno.has(id))
+}
+
 export function planoDesfazerTroca({ escalas, resolverUid, a, b }) {
   const lados = []
   for (const [hospital, esc] of Object.entries(escalas || {})) {
@@ -1238,7 +1265,7 @@ export function planoDesfazerTroca({ escalas, resolverUid, a, b }) {
         hospital, escalaId: esc.id, chaveSlot: chave, ...(turnoChave ? { turno: turnoChave } : {}),
         de: { uid: assumidor.uid, nome: assumidor.nome, apelido: assumidor.apelido },
         para: dono.uid ? { uid: dono.uid, nome: dono.nome, apelido: dono.apelido } : null,
-        casoIds: dono.uid ? casosTransferiveis(esc, assumidor, resolverUid) : [],
+        casoIds: dono.uid ? casosParaDevolver(esc, asm, assumidor, resolverUid, turnoChave) : [],
       })
     }
   }

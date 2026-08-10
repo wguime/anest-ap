@@ -569,7 +569,10 @@ export function EscalaCirurgicaProvider({ children }) {
         pendentesLimpar.delete(`${lado.escalaId}|${lado.chaveSlot}`)
         const valor = {
           ...resto,
-          assumidaPor: { uid: lado.para.uid, nome: lado.para.nome, ...(lado.tipo && { tipo: lado.tipo }), ...(lado.motivo && { motivo: lado.motivo }), por: userInfo.userId || null, em: agoraIso },
+          // `casoIds` = o que ESTA execução moveu (incidente 10/08): sem esse
+          // recibo o desfazer devolvia todos os casos abertos do assumente no
+          // hospital, inclusive os do outro turno, que nunca saíram do lugar.
+          assumidaPor: { uid: lado.para.uid, nome: lado.para.nome, ...(lado.tipo && { tipo: lado.tipo }), ...(lado.motivo && { motivo: lado.motivo }), casoIds: lado.casoIds || [], por: userInfo.userId || null, em: agoraIso },
           por: userInfo.userId || null, em: agoraIso,
         }
         if (!demo) {
