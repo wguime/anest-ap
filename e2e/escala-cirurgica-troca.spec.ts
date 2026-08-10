@@ -86,8 +86,8 @@ test('confirmar origem → trocar agora (posição+casos) → badge nos 2 lados 
   // ── 2. DECIDIR POSIÇÃO POR POSIÇÃO (nada vem pré-marcado) ─────────────────
   // Os dois são do HRO no demo → 2 cartões de posição, cada um com "fica"/"assume".
   await expect(page.getByText('Quem fica com cada posição?')).toBeVisible({ timeout: 5_000 });
-  await page.getByRole('button', { name: 'Mauricio Bastos assume' }).click(); // posição da Giovana
-  await page.getByRole('button', { name: 'Giovana Noll assume' }).click();    // posição do Maurício
+  await page.getByRole('button', { name: 'Mauricio Bastos assume HRO' }).click(); // posição da Giovana
+  await page.getByRole('button', { name: 'Giovana Noll assume HRO' }).click();    // posição do Maurício
   // tipo INFERIDO da geografia do par (mesmo hospital → posições)
   await expect(page.getByText('Troca de posições')).toBeVisible();
   await page.screenshot({ path: 'e2e/__screenshots__/troca-sheet-posicoes.png', fullPage: true });

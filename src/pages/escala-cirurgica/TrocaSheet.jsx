@@ -172,10 +172,7 @@ export default function TrocaSheet({ linha, escala, turno, onClose }) {
                   Nada vem pré-marcado. Escala já publicada trocada = "fica" nas
                   duas, e o botão vira "Registrar troca". */}
               <div>
-                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Quem fica com cada posição?</p>
-                <p className="mb-2 text-xs text-muted-foreground">
-                  Se a escala já saiu com os dois no lugar certo, deixe “fica” nas duas — a troca entra só como registro.
-                </p>
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Quem fica com cada posição?</p>
 
                 <div className="space-y-2">
                   {slots.map((l) => {
@@ -192,12 +189,14 @@ export default function TrocaSheet({ linha, escala, turno, onClose }) {
                           </p>
                         </div>
                         <p className="mb-2 text-xs text-muted-foreground">Posição de {titleCaseNome(l.nomeSlot)}</p>
+                        {/* o HOSPITAL vai no rótulo da opção (dono 10/08): lida
+                            sozinha, "Fulano assume" não dizia assume ONDE */}
                         <div className="flex gap-1.5">
                           <OpcaoSlot ativo={escolha[id] === 'fica'} onClick={() => setEscolha((e) => ({ ...e, [id]: 'fica' }))}>
-                            {curto(l.de.nome)} fica
+                            {curto(l.de.nome)} fica {HOSPITAL_LABEL[l.hospital] || l.hospital}
                           </OpcaoSlot>
                           <OpcaoSlot ativo={escolha[id] === 'assume'} onClick={() => setEscolha((e) => ({ ...e, [id]: 'assume' }))}>
-                            {curto(l.para.nome)} assume
+                            {curto(l.para.nome)} assume {HOSPITAL_LABEL[l.hospital] || l.hospital}
                           </OpcaoSlot>
                         </div>
                       </div>

@@ -110,7 +110,7 @@ describe('TrocaSheet', () => {
     expect(screen.getByText('Posição de Giovana')).toBeTruthy()
     expect(screen.getByText('Posição de Mauricio')).toBeTruthy()
     expect(botaoPrincipal()).toBeDisabled()
-    marcar('Giovana Noll fica')
+    marcar('Giovana Noll fica HRO')
     expect(botaoPrincipal()).toBeDisabled() // falta a outra posição (defeito D4)
   })
 
@@ -119,8 +119,8 @@ describe('TrocaSheet', () => {
     // o rastro (badge nos dois), não o swap
     montar()
     await escolherColega('MAURICIO MAHALEM BASTOS')
-    marcar('Giovana Noll fica')
-    marcar('Mauricio Bastos fica')
+    marcar('Giovana Noll fica HRO')
+    marcar('Mauricio Bastos fica Unimed')
     fireEvent.change(screen.getByPlaceholderText(/plantão trocado/), { target: { value: 'trocaram entre si' } })
     await waitFor(() => expect(botaoPrincipal()).toHaveTextContent('Registrar troca'))
     fireEvent.click(botaoPrincipal())
@@ -139,8 +139,8 @@ describe('TrocaSheet', () => {
   it('os dois assumem a posição do outro: "Trocar agora" executa os 2 lados com tipo e motivo', async () => {
     montar()
     await escolherColega('MAURICIO MAHALEM BASTOS')
-    marcar('Mauricio Bastos assume')
-    marcar('Giovana Noll assume')
+    marcar('Mauricio Bastos assume HRO')
+    marcar('Giovana Noll assume Unimed')
     fireEvent.change(screen.getByPlaceholderText(/plantão trocado/), { target: { value: 'plantão' } })
     await waitFor(() => expect(botaoPrincipal()).toHaveTextContent('Trocar agora'))
     fireEvent.click(botaoPrincipal())
@@ -157,8 +157,8 @@ describe('TrocaSheet', () => {
   it('metade já publicada trocada: executa SÓ a posição marcada como assumida', async () => {
     montar()
     await escolherColega('MAURICIO MAHALEM BASTOS')
-    marcar('Giovana Noll fica')       // o HRO já está certo
-    marcar('Giovana Noll assume')     // a vaga do Maurício na Unimed passa para ela
+    marcar('Giovana Noll fica HRO')       // o HRO já está certo
+    marcar('Giovana Noll assume Unimed')     // a vaga do Maurício na Unimed passa para ela
     fireEvent.click(botaoPrincipal())
     await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
     const [plan] = executarSubstituicao.mock.calls[0]
@@ -173,7 +173,7 @@ describe('TrocaSheet', () => {
     montar()
     await escolherColega('COLEGA DE FORA')
     expect(await screen.findByText(/não tem posição em jogo/i)).toBeTruthy()
-    marcar('Colega Fora assume')
+    marcar('Colega Fora assume HRO')
     fireEvent.click(botaoPrincipal())
     await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
     const [plan] = executarSubstituicao.mock.calls[0]
@@ -194,8 +194,8 @@ describe('TrocaSheet', () => {
     await waitFor(() => expect(screen.getByText(TIPO_LABEL.entre_hospitais)).toBeTruthy())
     fireEvent.click(screen.getAllByRole('combobox')[1])
     fireEvent.click(await screen.findByRole('option', { name: TIPO_LABEL.posicoes }))
-    marcar('Giovana Noll fica')
-    marcar('Mauricio Bastos fica')
+    marcar('Giovana Noll fica HRO')
+    marcar('Mauricio Bastos fica Unimed')
     fireEvent.click(botaoPrincipal())
     await waitFor(() => expect(marcarTroca).toHaveBeenCalledTimes(1))
     expect(marcarTroca.mock.calls[0][2].tipo).toBe('posicoes')
