@@ -11,7 +11,7 @@
  *  - o trocaCom do par é listado p/ limpeza (o badge some após executar).
  */
 import { describe, it, expect } from 'vitest'
-import { planoExecucaoTroca, planoExecucaoDeclarada, planoDesfazerTroca, localizarSlotRodape, casosTransferiveis, snapshotCasos, lerOverrideAnterior, estadoTrocasDoHistorico } from '../../pages/escala-cirurgica/utils'
+import { planoExecucaoTroca, planoExecucaoDeclarada, planoDesfazerTroca, localizarSlotRodape, casosTransferiveis, snapshotCasos, lerOverrideAnterior, estadoTrocasDoHistorico, paresDeclarados } from '../../pages/escala-cirurgica/utils'
 
 const caso = (id, sala, anestesista, extra = {}) => ({
   id, sala, ordem: 0, anestesista, cirurgiao: 'Cirurgião X',
@@ -254,6 +254,31 @@ describe('planoExecucaoDeclarada — âncora no slot declarante', () => {
     expect(plan.lados).toHaveLength(1)
     expect(plan.lados[0]).toMatchObject({ escalaId: 'esc-uni', para: { uid: 'uid-paulo' } })
     expect(plan.pendencias).toEqual([])
+  })
+})
+
+// REGISTRO ≠ DECLARAÇÃO (dono 10/08): quando a escala já sai publicada com os
+// nomes trocados, o par entra só como rastro (`apenasRegistro`). Se a
+// convergência da importação o executasse, a próxima publicação MOVERIA os dois
+// e desfaria a troca real — foi o caso Rafael⇄Garim.
+describe('paresDeclarados — registro não vira execução', () => {
+  const escalasCom = (trocaCom) => ({
+    hro: {
+      id: 'esc-hro', hospital: 'hro',
+      ordemLiberacao: { matutino: ['GIOVANA'] },
+      linhaOverrides: { 'matutino:uid-gio': { trocaCom } },
+      casos: [],
+    },
+  })
+
+  it('par pendente entra na convergência', () => {
+    const pares = paresDeclarados(escalasCom({ uid: 'uid-mau', nome: 'MAURICIO' }))
+    expect(pares).toHaveLength(1)
+    expect(pares[0]).toMatchObject({ escalaId: 'esc-hro', turno: 'matutino', chave: 'uid-gio' })
+  })
+
+  it('par só de REGISTRO fica de fora', () => {
+    expect(paresDeclarados(escalasCom({ uid: 'uid-mau', nome: 'MAURICIO', apenasRegistro: true }))).toEqual([])
   })
 })
 

@@ -492,8 +492,11 @@ export function EscalaCirurgicaProvider({ children }) {
       const temResto = Object.keys(resto).length > 0
       // tipo/motivo (dono 07/08) viajam DENTRO do jsonb — sem migration; o
       // trigger de eventos audita o detalhe inteiro de graça
+      // `apenasRegistro` (dono 10/08): a escala já saiu trocada e ninguém muda
+      // de lugar — só o rastro. Não é declaração pendente: a convergência da
+      // importação a ignora (senão a próxima publicação executaria o swap).
       const valor = colega
-        ? { ...resto, trocaCom: { uid: colega.uid || null, nome: colega.nome || '', ...(colega.tipo && { tipo: colega.tipo }), ...(colega.motivo && { motivo: colega.motivo }), por: userInfo.userId || null, em: new Date().toISOString() }, por: userInfo.userId || null, em: new Date().toISOString() }
+        ? { ...resto, trocaCom: { uid: colega.uid || null, nome: colega.nome || '', ...(colega.tipo && { tipo: colega.tipo }), ...(colega.motivo && { motivo: colega.motivo }), ...(colega.apenasRegistro && { apenasRegistro: true }), por: userInfo.userId || null, em: new Date().toISOString() }, por: userInfo.userId || null, em: new Date().toISOString() }
         : temResto ? { ...resto, por: userInfo.userId || null, em: new Date().toISOString() } : null
       const migrarLegada = chaveEncontrada && chaveEncontrada !== scoped
       // demo opera EM MEMÓRIA (padrão do toggleLiberacao) — base dos e2e determinísticos
@@ -509,7 +512,7 @@ export function EscalaCirurgicaProvider({ children }) {
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { linhaOverrides } })
       toast({
         variant: 'success',
-        title: colega ? 'Troca declarada' : 'Troca desfeita',
+        title: colega ? (colega.apenasRegistro ? 'Troca registrada' : 'Troca declarada') : 'Troca desfeita',
         description: colega ? `${linha.anestesista} ⇄ ${nomeCirurgiaoCurto(colega.nome)} — badge nos dois lados.` : undefined,
       })
     } catch (error) {

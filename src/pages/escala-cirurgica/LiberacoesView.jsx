@@ -800,8 +800,14 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       linha passa a exibir quem assumiu, mas o badge continua
                       visível inclusive após liberar — não pode parecer que o
                       substituto virou uma posição nova. */}
+                  {/* SÓLIDO quando a troca é fato (registro de escala já
+                      publicada trocada); OUTLINE quando ainda falta executar. */}
                   {trocaDe(linha) && (
-                    <Badge className="shrink-0 border-category-indigo bg-transparent text-category-indigo-fg">Troca declarada</Badge>
+                    <Badge className={trocaDe(linha).par?.apenasRegistro
+                      ? 'shrink-0 border-transparent bg-category-indigo text-white'
+                      : 'shrink-0 border-category-indigo bg-transparent text-category-indigo-fg'}>
+                      Troca
+                    </Badge>
                   )}
                   {linha.assumida && !trocaDe(linha) && (
                     <Badge className="shrink-0 border-transparent bg-category-indigo text-white">Troca</Badge>
@@ -1101,7 +1107,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 <Badge className="border-transparent bg-primary text-primary-foreground">{editor.plantaoLabel}</Badge>
               )}
               {editor && trocaDe(editor) && (
-                <Badge className="border-category-indigo bg-transparent text-category-indigo-fg">Troca declarada</Badge>
+                <Badge className={trocaDe(editor).par?.apenasRegistro
+                  ? 'border-transparent bg-category-indigo text-white'
+                  : 'border-category-indigo bg-transparent text-category-indigo-fg'}>
+                  Troca
+                </Badge>
               )}
               {editor?.assumida && (
                 <Badge className="border-transparent bg-category-indigo text-white">Troca</Badge>
@@ -1149,22 +1159,34 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 }
                 const info = trocaDe(editor)
                 if (info) {
+                  // REGISTRO (dono 10/08): a escala já saiu trocada, ninguém
+                  // muda de lugar — oferecer "executar" aqui MOVERIA os dois e
+                  // desfaria a troca real. Só o rastro e o botão de tirá-lo.
+                  const registro = !!info.par?.apenasRegistro
                   return (
                     <div className="space-y-1.5 rounded-xl border border-category-indigo/40 bg-category-indigo/10 p-2.5">
                       <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
                         <ArrowLeftRight className="h-3.5 w-3.5 shrink-0 text-category-indigo-fg" />
-                        Troca declarada com <b>{info.outroNome}</b>{info.outroHospitalLabel ? ` (${info.outroHospitalLabel})` : ''}
+                        Trocado com <b>{info.outroNome}</b>{info.outroHospitalLabel ? ` (${info.outroHospitalLabel})` : ''}
                         {info.par?.motivo ? <span className="font-normal text-muted-foreground"> · {info.par.motivo}</span> : null}
                       </p>
-                      <Button className="w-full" disabled={executandoTroca} onClick={() => executarTrocaEditor(info.par)}>
-                        {executandoTroca ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowLeftRight className="w-4 h-4" />}
-                        Executar agora — {info.outroNome} assume aqui
-                      </Button>
-                      <p className="text-xs text-muted-foreground">
-                        Um toque, os dois lados juntos: cada um herda a posição na fila e os casos em aberto do colega.
-                      </p>
+                      {registro ? (
+                        <p className="text-xs text-muted-foreground">
+                          A escala já saiu com os dois no lugar certo — este é o registro da troca, ninguém muda de posição.
+                        </p>
+                      ) : (
+                        <>
+                          <Button className="w-full" disabled={executandoTroca} onClick={() => executarTrocaEditor(info.par)}>
+                            {executandoTroca ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowLeftRight className="w-4 h-4" />}
+                            Executar agora — {info.outroNome} assume aqui
+                          </Button>
+                          <p className="text-xs text-muted-foreground">
+                            Um toque, os dois lados juntos: cada um herda a posição na fila e os casos em aberto do colega.
+                          </p>
+                        </>
+                      )}
                       <Button variant="outline" className="w-full" disabled={executandoTroca} onClick={desfazerTrocaEditor}>
-                        Desfazer troca
+                        {registro ? 'Remover registro da troca' : 'Desfazer troca'}
                       </Button>
                     </div>
                   )

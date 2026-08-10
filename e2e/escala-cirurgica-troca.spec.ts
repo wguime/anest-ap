@@ -83,17 +83,14 @@ test('confirmar origem → trocar agora (posição+casos) → badge nos 2 lados 
   await page.getByPlaceholder('Buscar...').fill('mauric');
   await page.getByRole('option', { name: /mauricio/i }).first().click();
 
-  // ── 2. CONFIRMAR a origem dos dois (nada vem pré-marcado) ─────────────────
-  // Os dois são do HRO no demo → um chip "HRO · <turno>" por pessoa.
-  const chipsHro = page.getByRole('button', { name: /^HRO · / });
-  await expect(chipsHro).toHaveCount(2, { timeout: 5_000 });
-  await chipsHro.nth(0).click();
-  await chipsHro.nth(1).click();
-  // tipo INFERIDO das posições confirmadas (mesmo hospital → posições)
-  await expect(page.getByRole('button', { name: 'Troca de posições' }))
-    .toHaveAttribute('aria-pressed', 'true', { timeout: 5_000 });
-  await expect(page.getByText(/assume a posição de Giovana/i)).toBeVisible();
-  await page.screenshot({ path: 'e2e/__screenshots__/troca-sheet-origem.png', fullPage: true });
+  // ── 2. DECIDIR POSIÇÃO POR POSIÇÃO (nada vem pré-marcado) ─────────────────
+  // Os dois são do HRO no demo → 2 cartões de posição, cada um com "fica"/"assume".
+  await expect(page.getByText('Quem fica com cada posição?')).toBeVisible({ timeout: 5_000 });
+  await page.getByRole('button', { name: 'Mauricio Bastos assume' }).click(); // posição da Giovana
+  await page.getByRole('button', { name: 'Giovana Noll assume' }).click();    // posição do Maurício
+  // tipo INFERIDO da geografia do par (mesmo hospital → posições)
+  await expect(page.getByText('Troca de posições')).toBeVisible();
+  await page.screenshot({ path: 'e2e/__screenshots__/troca-sheet-posicoes.png', fullPage: true });
   await page.getByRole('button', { name: /Trocar agora/ }).click();
 
   // ── 3. Par no MESMO hospital → swap simultâneo dos DOIS slots: o slot do

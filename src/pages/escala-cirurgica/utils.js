@@ -1086,6 +1086,10 @@ export function paresDeclarados(escalas) {
     for (const [rawChave, ov] of Object.entries(esc.linhaOverrides || {})) {
       const t = ov?.trocaCom
       if (!t || (!t.uid && !t.nome)) continue
+      // REGISTRO de troca já refletida na escala publicada (dono 10/08): é
+      // rastro, não pendência. Executá-lo na convergência moveria os dois e
+      // DESFARIA a troca real — o caso Rafael⇄Garim de 10/08.
+      if (t.apenasRegistro) continue
       const sep = String(rawChave).indexOf(':')
       const [turnoChave, chave] = sep >= 0
         ? [String(rawChave).slice(0, sep), String(rawChave).slice(sep + 1)]

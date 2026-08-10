@@ -178,6 +178,9 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           hospital: h, hospitalLabel: HOSPITAL_LABEL[h] || h, escalaId: esc.id, chave,
           a, b, aHospitalLabel: slotLabelDe(a), bHospitalLabel: slotLabelDe(b),
           tipo: t.tipo || null, motivo: t.motivo || null,
+          // registro de troca JÁ refletida na escala publicada (dono 10/08):
+          // vira badge, nunca oferta de "executar" — não há o que mover
+          apenasRegistro: !!t.apenasRegistro,
         })
       }
       // Rastro de swaps EXECUTADOS (6e99f68): mesmo após desfazer/republicar, o
@@ -347,12 +350,14 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
         />
       )}
 
-      {/* FLUXO ÚNICO de troca (dono 07/08): executar troca nova passa sempre por
-          aqui — origem confirmada + tipo inferido + motivo. O sheet lê as 3
-          escalas do context, por isso não recebe a escala da tela. */}
+      {/* FLUXO ÚNICO de troca (dono 07/08): troca nova passa sempre por aqui —
+          uma decisão por posição (fica/assume) + tipo + motivo. As posições vêm
+          das 3 escalas do context; a `escala` da tela é onde o registro sem
+          movimento é gravado (trocaCom na linha de origem). */}
       {trocaSheet && (
         <TrocaSheet
           linha={trocaSheet}
+          escala={escala}
           turno={turno}
           onClose={() => setTrocaSheet(null)}
         />

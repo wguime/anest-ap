@@ -1,15 +1,14 @@
 /**
  * TrocaSheet — o FLUXO ÚNICO de troca (dono 07/08: "num só local, fáceis de
  * executar e intuitivas"). Estes testes travam o contrato:
- *   1. a ORIGEM de cada um é CONFIRMADA, nunca assumida (dono 09/08): a escala
- *      pode ser publicada JÁ com os nomes trocados de posição — supor que o
- *      nome achado no rodapé marca a origem devolvia cada um ao hospital de
- *      onde saiu (caso Garim⇄Rafael, escalas de 10/08 pela manhã);
- *   2. o TIPO é INFERIDO pela geografia dos slots CONFIRMADOS e pré-selecionado;
- *   3. "Trocar agora" executa DIRETO (assumidaPor com tipo+motivo);
- *   4. só metade confirmada não executa (meio swap calado = defeito D4);
- *   5. não existe mais "Declarar para depois" (dono 09/08) — o sheet nunca
- *      grava trocaCom;
+ *   1. a decisão é POR POSIÇÃO e nada vem pré-marcado (dono 09–10/08): a escala
+ *      pode sair JÁ com os nomes trocados — supor a origem invertia a troca;
+ *   2. ninguém muda de lugar ("fica" nas duas) → "Registrar troca": grava
+ *      trocaCom com `apenasRegistro`, sem mover posição nem caso. É o caso
+ *      Rafael⇄Garim de 10/08, que antes não tinha caminho na UI;
+ *   3. alguém assume → "Trocar agora" executa só as posições marcadas;
+ *   4. com posição por confirmar o botão fica travado (meio swap = D4);
+ *   5. o TIPO é inferido pela geografia dos slots do PAR (não por quem se move);
  *   6. a própria pessoa não aparece no seletor de colega.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -67,18 +66,16 @@ const wrap = ({ children }) => <ThemeProvider><ToastProvider>{children}</ToastPr
 const LINHA_GIOVANA = { chave: 'uid-gio', uid: 'uid-gio', anestesista: 'Giovana Noll', nomeOriginal: 'GIOVANA' }
 
 const montar = (props = {}) => render(
-  <TrocaSheet linha={LINHA_GIOVANA} turno="matutino" onClose={vi.fn()} {...props} />,
+  <TrocaSheet linha={LINHA_GIOVANA} escala={escalaHro} turno="matutino" onClose={vi.fn()} {...props} />,
   { wrapper: wrap },
 )
 
 const escolherColega = async (nome) => {
-  fireEvent.click(screen.getByRole('combobox'))
+  fireEvent.click(screen.getAllByRole('combobox')[0])
   fireEvent.click(await screen.findByRole('option', { name: nome }))
 }
-const marcarOrigem = (nomeChip) => fireEvent.click(screen.getByRole('button', { name: nomeChip }))
-/** "Não sai daqui" existe por pessoa: 0 = quem abriu o sheet, 1 = o colega */
-const naoSai = (indice) => fireEvent.click(screen.getAllByRole('button', { name: 'Não sai daqui' })[indice])
-const botaoTrocar = () => screen.getByRole('button', { name: /Trocar agora/ })
+const marcar = (nomeBotao) => fireEvent.click(screen.getByRole('button', { name: nomeBotao }))
+const botaoPrincipal = () => screen.getByRole('button', { name: /Trocar agora|Registrar troca/ })
 
 beforeEach(() => vi.clearAllMocks())
 
@@ -100,39 +97,53 @@ describe('inferirTipoTroca — taxonomia pela geografia dos slots', () => {
 describe('TrocaSheet', () => {
   it('a própria pessoa fica fora do seletor de colega', async () => {
     montar()
-    fireEvent.click(screen.getByRole('combobox'))
+    fireEvent.click(screen.getAllByRole('combobox')[0])
     expect(screen.queryByRole('option', { name: 'GIOVANA GOMES NOLL' })).toBeNull()
     expect(await screen.findByRole('option', { name: 'MAURICIO MAHALEM BASTOS' })).toBeTruthy()
   })
 
-  it('as posições NÃO vêm pré-marcadas: sem confirmar a origem não dá para trocar', async () => {
+  it('uma decisão por POSIÇÃO, nada pré-marcado — e meia resposta não libera o botão', async () => {
     montar()
     await escolherColega('MAURICIO MAHALEM BASTOS')
-    await screen.findByText('De onde cada um sai?')
-    expect(botaoTrocar()).toBeDisabled()
-    // só um lado confirmado ainda não executa (meio swap calado — defeito D4)
-    marcarOrigem('HRO · manhã')
-    expect(botaoTrocar()).toBeDisabled()
+    await screen.findByText('Quem fica com cada posição?')
+    // as duas posições do par aparecem, cada uma com as duas saídas
+    expect(screen.getByText('Posição de Giovana')).toBeTruthy()
+    expect(screen.getByText('Posição de Mauricio')).toBeTruthy()
+    expect(botaoPrincipal()).toBeDisabled()
+    marcar('Giovana Noll fica')
+    expect(botaoPrincipal()).toBeDisabled() // falta a outra posição (defeito D4)
   })
 
-  it('par completo entre hospitais: confirmadas as origens, infere o tipo e mostra os 2 lados', async () => {
+  it('escala já publicada trocada: "fica" nas duas vira REGISTRO, sem mover ninguém', async () => {
+    // caso real 10/08 — Rafael já está no HRO e Garim na Unimed; o que falta é
+    // o rastro (badge nos dois), não o swap
     montar()
     await escolherColega('MAURICIO MAHALEM BASTOS')
-    marcarOrigem('HRO · manhã')
-    marcarOrigem('Unimed · manhã')
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: TIPO_LABEL.entre_hospitais })).toHaveAttribute('aria-pressed', 'true'))
-    expect(screen.getByText(/assume a posição de Giovana/i)).toBeTruthy()
-    expect(screen.getByText(/assume a posição de Mauricio/i)).toBeTruthy()
+    marcar('Giovana Noll fica')
+    marcar('Mauricio Bastos fica')
+    fireEvent.change(screen.getByPlaceholderText(/plantão trocado/), { target: { value: 'trocaram entre si' } })
+    await waitFor(() => expect(botaoPrincipal()).toHaveTextContent('Registrar troca'))
+    fireEvent.click(botaoPrincipal())
+    await waitFor(() => expect(marcarTroca).toHaveBeenCalledTimes(1))
+    const [escala, linha, colega, , turno] = marcarTroca.mock.calls[0]
+    expect(escala.id).toBe('esc-hro')
+    expect(linha.chave).toBe('uid-gio')
+    expect(colega).toMatchObject({
+      uid: 'uid-mau', nome: 'MAURICIO MAHALEM BASTOS',
+      tipo: 'entre_hospitais', motivo: 'trocaram entre si', apenasRegistro: true,
+    })
+    expect(turno).toBe('matutino')
+    expect(executarSubstituicao).not.toHaveBeenCalled()
   })
 
-  it('"Trocar agora" executa com tipo e motivo DENTRO dos lados — e nunca declara', async () => {
+  it('os dois assumem a posição do outro: "Trocar agora" executa os 2 lados com tipo e motivo', async () => {
     montar()
     await escolherColega('MAURICIO MAHALEM BASTOS')
-    marcarOrigem('HRO · manhã')
-    marcarOrigem('Unimed · manhã')
+    marcar('Mauricio Bastos assume')
+    marcar('Giovana Noll assume')
     fireEvent.change(screen.getByPlaceholderText(/plantão trocado/), { target: { value: 'plantão' } })
-    fireEvent.click(botaoTrocar())
+    await waitFor(() => expect(botaoPrincipal()).toHaveTextContent('Trocar agora'))
+    fireEvent.click(botaoPrincipal())
     await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
     const [plan] = executarSubstituicao.mock.calls[0]
     expect(plan.lados).toHaveLength(2)
@@ -143,51 +154,50 @@ describe('TrocaSheet', () => {
     expect(marcarTroca).not.toHaveBeenCalled()
   })
 
+  it('metade já publicada trocada: executa SÓ a posição marcada como assumida', async () => {
+    montar()
+    await escolherColega('MAURICIO MAHALEM BASTOS')
+    marcar('Giovana Noll fica')       // o HRO já está certo
+    marcar('Giovana Noll assume')     // a vaga do Maurício na Unimed passa para ela
+    fireEvent.click(botaoPrincipal())
+    await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
+    const [plan] = executarSubstituicao.mock.calls[0]
+    expect(plan.lados).toHaveLength(1)
+    expect(plan.lados[0].hospital).toBe('unimed')
+    expect(plan.lados[0].para.uid).toBe('uid-gio')
+    // tipo vem da GEOGRAFIA do par (2 hospitais), não de quem se move
+    expect(plan.lados[0].tipo).toBe('entre_hospitais')
+  })
+
+  it('colega sem posição publicada: avisa e a única decisão é a posição que existe', async () => {
+    montar()
+    await escolherColega('COLEGA DE FORA')
+    expect(await screen.findByText(/não tem posição em jogo/i)).toBeTruthy()
+    marcar('Colega Fora assume')
+    fireEvent.click(botaoPrincipal())
+    await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
+    const [plan] = executarSubstituicao.mock.calls[0]
+    expect(plan.lados).toHaveLength(1)
+    expect(plan.lados[0].para.uid).toBe('uid-fora')
+    expect(plan.lados[0].tipo).toBe('assuncao')
+  })
+
   it('"Declarar para depois" não existe mais (dono 09/08)', async () => {
     montar()
     await escolherColega('MAURICIO MAHALEM BASTOS')
     expect(screen.queryByRole('button', { name: /Declarar para depois/ })).toBeNull()
   })
 
-  it('escala publicada JÁ trocada: os dois "não saem daqui" e não há o que executar', async () => {
-    // caso real 10/08 — a secretária publicou Garim no lugar do Rafael e vice-versa;
-    // executar aqui devolveria cada um ao hospital de origem, desfazendo a troca
+  it('o tipo inferido aparece escolhido e continua corrigível', async () => {
     montar()
     await escolherColega('MAURICIO MAHALEM BASTOS')
-    naoSai(0)
-    naoSai(1)
-    await waitFor(() => expect(screen.getByText(/Nada a executar/i)).toBeTruthy())
-    expect(botaoTrocar()).toBeDisabled()
-    fireEvent.click(botaoTrocar())
-    expect(executarSubstituicao).not.toHaveBeenCalled()
-  })
-
-  it('metade já publicada trocada: executa SÓ a posição confirmada', async () => {
-    montar()
-    await escolherColega('MAURICIO MAHALEM BASTOS')
-    naoSai(0)                       // Giovana já está no lugar certo
-    marcarOrigem('Unimed · manhã')  // a vaga do Maurício é que passa
-    fireEvent.click(botaoTrocar())
-    await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
-    const [plan] = executarSubstituicao.mock.calls[0]
-    expect(plan.lados).toHaveLength(1)
-    expect(plan.lados[0].hospital).toBe('unimed')
-    expect(plan.lados[0].para.uid).toBe('uid-gio')
-    expect(plan.lados[0].tipo).toBe('assuncao')
-  })
-
-  it('colega SEM posição publicada: avisa e executa o lado que existe', async () => {
-    montar()
-    await escolherColega('COLEGA DE FORA')
-    expect(await screen.findByText(/não tem posição a deixar/i)).toBeTruthy()
-    marcarOrigem('HRO · manhã')
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: TIPO_LABEL.assuncao })).toHaveAttribute('aria-pressed', 'true'))
-    fireEvent.click(botaoTrocar())
-    await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
-    const [plan] = executarSubstituicao.mock.calls[0]
-    expect(plan.lados).toHaveLength(1)
-    expect(plan.lados[0].para.uid).toBe('uid-fora')
-    expect(plan.lados[0].tipo).toBe('assuncao')
+    await waitFor(() => expect(screen.getByText(TIPO_LABEL.entre_hospitais)).toBeTruthy())
+    fireEvent.click(screen.getAllByRole('combobox')[1])
+    fireEvent.click(await screen.findByRole('option', { name: TIPO_LABEL.posicoes }))
+    marcar('Giovana Noll fica')
+    marcar('Mauricio Bastos fica')
+    fireEvent.click(botaoPrincipal())
+    await waitFor(() => expect(marcarTroca).toHaveBeenCalledTimes(1))
+    expect(marcarTroca.mock.calls[0][2].tipo).toBe('posicoes')
   })
 })

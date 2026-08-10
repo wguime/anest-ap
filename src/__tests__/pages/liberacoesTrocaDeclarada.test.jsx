@@ -89,7 +89,7 @@ describe('Badge "Troca" nos dois lados do par', () => {
   it('o lado declarado carrega o badge e diz com quem e onde', () => {
     montar({ paresTroca: [PAR] })
     const card = document.querySelector('[data-linha="uid-mar"]')
-    expect(within(card).getByText('Troca declarada')).toBeTruthy()
+    expect(within(card).getByText('Troca')).toBeTruthy()
     expect(within(card).getByText(/Trocado com Marcos Cury \(Unimed\)/)).toBeTruthy()
   })
 
@@ -102,10 +102,10 @@ describe('Badge "Troca" nos dois lados do par', () => {
     }
     montar({ paresTroca: [PAR] }, escala)
     const cardCury = document.querySelector('[data-linha="uid-cury"]')
-    expect(within(cardCury).getByText('Troca declarada')).toBeTruthy()
+    expect(within(cardCury).getByText('Troca')).toBeTruthy()
     expect(within(cardCury).getByText(/Trocado com Marilio Flach \(HRO\)/)).toBeTruthy()
     // e o lado declarado segue com o dele
-    expect(within(document.querySelector('[data-linha="uid-mar"]')).getByText('Troca declarada')).toBeTruthy()
+    expect(within(document.querySelector('[data-linha="uid-mar"]')).getByText('Troca')).toBeTruthy()
   })
 
   it('sem par declarado, nenhum badge Troca aparece', () => {
@@ -117,7 +117,7 @@ describe('Badge "Troca" nos dois lados do par', () => {
     // troca desfeita/consumida ressuscitava pelo histórico: badge voltava e o
     // painel oferecia "Executar troca" de novo, sem saída na UI
     montar({ paresTroca: [{ ...PAR, historica: true }] })
-    expect(screen.queryByText('Troca declarada')).toBeNull()
+    expect(screen.queryByText('Troca')).toBeNull()
     fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Marilio Flach'))
     expect(screen.queryByText(/Executar agora/)).toBeNull()
     expect(screen.queryByText(/Desfazer troca/)).toBeNull()
@@ -173,6 +173,21 @@ describe('Painel ✏️ — declarar, executar e desfazer a troca', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Desfazer troca' }))
     await waitFor(() => expect(onMarcarTroca).toHaveBeenCalled())
     expect(onMarcarTroca.mock.calls[0][1]).toBeNull()
+  })
+
+  it('REGISTRO (escala já publicada trocada) não oferece executar — só remover o registro', async () => {
+    // dono 10/08 (Rafael⇄Garim): os dois já estão no hospital certo. "Executar"
+    // aqui moveria os dois e desfaria a troca real.
+    const onExecutarTroca = vi.fn(async () => {})
+    const onMarcarTroca = vi.fn(async () => {})
+    montar({ paresTroca: [{ ...PAR, apenasRegistro: true }], onExecutarTroca, onMarcarTroca })
+    abrirEditor('Marilio Flach')
+    expect(screen.queryByText(/Executar agora/)).toBeNull()
+    expect(screen.getByText(/já saiu com os dois no lugar certo/i)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Remover registro da troca' }))
+    await waitFor(() => expect(onMarcarTroca).toHaveBeenCalled())
+    expect(onMarcarTroca.mock.calls[0][1]).toBeNull()
+    expect(onExecutarTroca).not.toHaveBeenCalled()
   })
 })
 

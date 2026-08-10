@@ -212,25 +212,35 @@ convergência); plantonista que fecha o rodapé NÃO desce ao fim da fila;
 matching NUNCA por nome de exibição (`assumida.deNomeOriginal`); linha-espelho
 `chave#casos` não aceita troca; `trocasHistorico` com limit(60).
 
-**Fase 1 — TrocaSheet** (`TrocaSheet.jsx`, commits 486ea3a + ajustes do dono
-09/08): fluxo único — colega → **ORIGEM CONFIRMADA de cada um** → tipo INFERIDO
-pela geografia dos slots CONFIRMADOS (entre_hospitais / posicoes / entre_turnos
-/ assuncao), pré-selecionado e corrigível → motivo opcional → resumo do efeito
-→ **"Trocar agora"** (executa direto, SEM passar por trocaCom — evita ruído no
-log). ⚠️ **a origem NUNCA é assumida**: a escala às vezes é publicada JÁ com os
-nomes trocados (10/08: Garim publicado no lugar do Rafael na Unimed e Rafael no
-lugar do Garim no HRO) e supor que o nome achado no rodapé marca a origem
-DESFAZ a troca real — cada pessoa escolhe a posição que DEIXA ou "não sai
-daqui", e com só metade confirmada o botão fica travado (meio swap = D4).
+**Fase 1 — TrocaSheet** (`TrocaSheet.jsx`, commit 486ea3a + redesenho do dono
+09–10/08): fluxo único — colega → **uma decisão POR POSIÇÃO** → tipo (Select,
+inferido pela geografia dos slots do PAR: entre_hospitais / posicoes /
+entre_turnos / assuncao, corrigível) → motivo opcional → botão que muda com a
+resposta. ⚠️ **o app nunca supõe a origem**: a escala costuma sair publicada JÁ
+com os nomes trocados (10/08: Rafael, da Unimed, já veio no rodapé do HRO e o
+Garim no da Unimed) e supor que o nome achado marca a posição de origem DESFAZ a
+troca real. Cada posição do par vira um cartão (hospital · turno, nº de casos,
+"Posição de X") com duas saídas explícitas — **"{dono} fica"** / **"{colega}
+assume"** — nada pré-marcado; com posição por confirmar o botão fica travado
+(meio swap = D4). Daí:
+- alguém assume → **"Trocar agora"** (assumidaPor + casos, os dois lados juntos,
+  rollback; sem passar por trocaCom — evita ruído no log);
+- ninguém muda de lugar → **"Registrar troca"** = `trocaCom.apenasRegistro`
+  (jsonb, sem migration): a escala já saiu certa e falta só o RASTRO — badge
+  **"Troca"** sólido nos dois e "Trocado com X" no card. Era o buraco de 10/08
+  ("não consigo colocar o badge nos dois"). ⚠️ registro **não** é declaração
+  pendente: `paresDeclarados` o IGNORA (senão a próxima publicação executaria o
+  swap e desfaria a troca real) e o painel ✏️ não oferece "Executar agora", só
+  "Remover registro da troca".
+
 **"Declarar para depois" SAIU** (dono 09/08, "não entendi a funcionalidade"):
-par declarado só nasce da conferência da importação (que executa ao publicar); o
-painel ✏️ segue executando/desfazendo o que já existe. `tipo`/`motivo` viajam
-DENTRO do jsonb (sem migration; trigger audita de graça) e aparecem no card.
-Vocabulário único: "Substituição executada/desfeita"→"Troca executada/desfeita";
-badges com ESTADO (Troca declarada outline / **"Troca"** solid — enxuto por
-pedido do dono 09/08); "Trocar anestesista"→"Novo responsável"; "Trocar
-sala/local"→"Mudar de sala/local"; "Substituir mesmo assim"→"Republicar por
-cima". Toggle "Assumir também a posição" continua como atalho (tipo
+par pendente só nasce da conferência da importação (que executa ao publicar).
+`tipo`/`motivo` viajam DENTRO do jsonb (trigger audita de graça) e aparecem no
+card. Vocabulário único: "Substituição executada/desfeita"→"Troca
+executada/desfeita"; badge é sempre **"Troca"** (sólido = fato — assumida ou
+registro; outline = falta executar); "Trocar anestesista"→"Novo responsável";
+"Trocar sala/local"→"Mudar de sala/local"; "Substituir mesmo assim"→"Republicar
+por cima". Toggle "Assumir também a posição" continua como atalho (tipo
 `assuncao`).
 
 **Fase 2 — troca automática na importação** (commit ff3ddd2): decisão "troca"
