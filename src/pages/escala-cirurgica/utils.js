@@ -1088,6 +1088,71 @@ export function planoExecucaoTroca({ escalas, resolverUid, a, b, turno = null })
 }
 
 /**
+ * Assunções DERIVADAS de um par de troca registrado (incidente 10/08).
+ *
+ * "Registrar troca" nasceu para a escala que já sai publicada trocada: o rodapé
+ * daqui já traz quem trabalha aqui e falta só o rastro. Mas quando o par é
+ * registrado com o rodapé AINDA no nome antigo — foi o caso Raquel⇄Nathalia,
+ * cujos casos trocaram de dono mas os rodapés não —, quem está de fato operando
+ * aqui não tem posição na fila e cai como CARD EXTRA no fim, enquanto a posição
+ * fica com quem nem está no hospital.
+ *
+ * Regra (só com evidência, nunca por adivinhação): o colega assume o slot do
+ * parceiro quando (1) o parceiro tem posição no rodapé daqui, (2) o colega NÃO
+ * tem posição própria aqui, (3) o colega tem caso aqui e (4) o dono do slot não
+ * tem nenhum. Fora disso nada muda — em especial, escala já publicada trocada
+ * (cada um no próprio rodapé, com os próprios casos) não dispara nada.
+ *
+ * Puro e só de EXIBIÇÃO: alimenta `opts.assumidas` de gerarColunaLiberacao, que
+ * troca a identidade do slot sem tocar em ordem_liberacao.
+ *
+ * @param {object} args { pares: paresTroca da página, rodape: nomes do turno,
+ *   casos: casos do turno, resolverUid }
+ * @returns {{ [chaveSlot]: { uid, nome, motivo, registro: true } }}
+ */
+export function assumidasDeRegistro({ pares = [], rodape = [], casos = [], resolverUid = null } = {}) {
+  const chaveDe = (nome) => resolverUid?.(nome) || normNome(nome)
+  const slots = new Map() // chave do slot → nome do rodapé
+  for (const nome of rodape) {
+    const k = chaveDe(nome)
+    if (k && !slots.has(k)) slots.set(k, nome)
+  }
+  const comCaso = new Set()
+  for (const c of casos || []) {
+    if (c?.semAnestesista) continue
+    const nome = String(c?.anestesista || '').trim()
+    if (!nome || nome === '//' || nome.includes('+') || /^\?+$/.test(nome)) continue
+    if (c.anestesistaUserId) comCaso.add(c.anestesistaUserId)
+    comCaso.add(normNome(nome))
+    const uidDoNome = resolverUid?.(nome)
+    if (uidDoNome) comCaso.add(uidDoNome)
+  }
+  const slotDe = (p) => {
+    if (!p) return null
+    for (const [k, nome] of slots) {
+      if (p.uid && (k === p.uid || resolverUid?.(nome) === p.uid)) return k
+      if (p.nome && normNome(nome) === normNome(p.nome)) return k
+    }
+    return null
+  }
+  const temCaso = (p) => !!p && ((p.uid && comCaso.has(p.uid)) || (p.nome && comCaso.has(normNome(p.nome))))
+
+  const out = {}
+  for (const par of pares || []) {
+    if (par?.historica) continue
+    for (const [dono, outro] of [[par.a, par.b], [par.b, par.a]]) {
+      const chave = slotDe(dono)
+      if (!chave || out[chave]) continue
+      if (slotDe(outro)) continue   // o colega tem posição própria aqui
+      if (!temCaso(outro)) continue // sem caso aqui não há evidência de que veio
+      if (temCaso(dono)) continue   // o dono está trabalhando: o slot é dele
+      out[chave] = { uid: outro.uid || null, nome: outro.nome || '', motivo: par.motivo || null, registro: true }
+    }
+  }
+  return out
+}
+
+/**
  * Pares de troca DECLARADOS (trocaCom vivo) nas escalas carregadas — insumo da
  * convergência da importação (Fase 2): publicar uma escala varre os pares
  * declarados e EXECUTA os que agora fecham (o parceiro que faltava chegou, ou a

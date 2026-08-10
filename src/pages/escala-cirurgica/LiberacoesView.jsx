@@ -18,7 +18,7 @@ import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import useAgoraMinuto from './useAgoraMinuto'
 import PainelTempo, { formatFaltante, fraseFaltante } from './PainelTempo'
-import { casosResolvidos, compararSalas, filtrarPorTurno, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao } from './utils'
+import { assumidasDeRegistro, casosResolvidos, compararSalas, filtrarPorTurno, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao } from './utils'
 
 // Sentinelas do dropdown de Local (valores impossíveis como nome de sala)
 const LOCAL_AUTO = '__auto__'
@@ -157,7 +157,12 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     // SLOTS ASSUMIDOS (troca declarada executada, dono 30/07): a lib recebe os
     // assumidaPor por chave e troca a IDENTIDADE do slot — quem assumiu aparece
     // na posição do colega em vez de virar linha extra no fim da fila.
-    const assumidas = {}
+    // Par REGISTRADO com o rodapé ainda no nome antigo (incidente 10/08): quem
+    // opera aqui assume o slot do parceiro em vez de virar card extra no fim.
+    // Só com evidência (ver assumidasDeRegistro); assumidaPor explícito vence.
+    const assumidas = assumidasDeRegistro({
+      pares: paresTroca, rodape: rodapeTurno, casos: casosTurno, resolverUid,
+    })
     const prefixoTurno = turno && (turno === 'matutino' || turno === 'vespertino') ? `${turno}:` : ''
     for (const [rawKey, ov] of Object.entries(escala?.linhaOverrides || {})) {
       if (prefixoTurno && !String(rawKey).startsWith(prefixoTurno)) continue
@@ -179,7 +184,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       // nome — quem está aqui de ajuda libera primeiro, na ordem de liberação de lá.
       rodapeOutros: presencaOutros.filter((p) => p.rodapeIdx != null),
     })
-  }, [casosTurno, rodapeTurno, escala, hospitalLabel, turno, resolverUid, nomeExibicao, presencaOutros])
+  }, [casosTurno, rodapeTurno, escala, hospitalLabel, turno, resolverUid, nomeExibicao, presencaOutros, paresTroca])
 
   // Locais do hospital p/ o editor de linha (dropdown, pedido do dono 2026-07-22):
   // salas da escala do dia (ordem do board) + locais APRENDIDOS do histórico

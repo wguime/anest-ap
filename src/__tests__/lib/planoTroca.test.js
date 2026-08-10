@@ -11,7 +11,7 @@
  *  - o trocaCom do par é listado p/ limpeza (o badge some após executar).
  */
 import { describe, it, expect } from 'vitest'
-import { planoExecucaoTroca, planoExecucaoDeclarada, planoDesfazerTroca, localizarSlotRodape, casosTransferiveis, snapshotCasos, lerOverrideAnterior, estadoTrocasDoHistorico, paresDeclarados } from '../../pages/escala-cirurgica/utils'
+import { planoExecucaoTroca, planoExecucaoDeclarada, planoDesfazerTroca, localizarSlotRodape, casosTransferiveis, snapshotCasos, lerOverrideAnterior, estadoTrocasDoHistorico, paresDeclarados, assumidasDeRegistro } from '../../pages/escala-cirurgica/utils'
 
 const caso = (id, sala, anestesista, extra = {}) => ({
   id, sala, ordem: 0, anestesista, cirurgiao: 'Cirurgião X',
@@ -329,6 +329,42 @@ describe('planoExecucaoDeclarada — âncora no slot declarante', () => {
     expect(plan.lados).toHaveLength(1)
     expect(plan.lados[0]).toMatchObject({ escalaId: 'esc-uni', para: { uid: 'uid-paulo' } })
     expect(plan.pendencias).toEqual([])
+  })
+})
+
+// PAR REGISTRADO × CARD EXTRA (incidente 10/08): registrar a troca com o rodapé
+// ainda no nome antigo deixava quem opera aqui sem posição — card solto no fim
+// da fila — enquanto a posição ficava com quem nem está no hospital.
+describe('assumidasDeRegistro — o colega assume o slot só com evidência', () => {
+  const par = { a: GIOVANA, b: MAURICIO }
+  // rodapé daqui tem GIOVANA; quem tem caso aqui é o MAURICIO (caso Raquel⇄Nathalia)
+  const rodape = ['GIOVANA', 'KARINE']
+  const casosDoMauricio = [caso('c1', 'S1', 'MAURICIO', { anestesistaUserId: 'uid-mau' })]
+
+  it('parceiro sem posição aqui, com caso aqui, e dono do slot sem caso → assume', () => {
+    expect(assumidasDeRegistro({ pares: [par], rodape, casos: casosDoMauricio, resolverUid }))
+      .toEqual({ 'uid-gio': { uid: 'uid-mau', nome: 'MAURICIO COSTA', motivo: null, registro: true } })
+  })
+
+  it('dono do slot trabalhando aqui → o slot continua dele', () => {
+    const casos = [...casosDoMauricio, caso('c2', 'S2', 'GIOVANA', { anestesistaUserId: 'uid-gio' })]
+    expect(assumidasDeRegistro({ pares: [par], rodape, casos, resolverUid })).toEqual({})
+  })
+
+  it('escala já publicada trocada (cada um no próprio rodapé) → nada muda', () => {
+    expect(assumidasDeRegistro({
+      pares: [par], rodape: ['GIOVANA', 'MAURICIO'], casos: casosDoMauricio, resolverUid,
+    })).toEqual({})
+  })
+
+  it('sem caso aqui não há evidência: o parceiro não toma o slot', () => {
+    expect(assumidasDeRegistro({ pares: [par], rodape, casos: [], resolverUid })).toEqual({})
+  })
+
+  it('par histórico (rastro de swap já executado) é ignorado', () => {
+    expect(assumidasDeRegistro({
+      pares: [{ ...par, historica: true }], rodape, casos: casosDoMauricio, resolverUid,
+    })).toEqual({})
   })
 })
 

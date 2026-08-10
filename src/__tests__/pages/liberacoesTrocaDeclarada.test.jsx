@@ -138,6 +138,37 @@ describe('Badge "Troca" nos dois lados do par', () => {
   })
 })
 
+describe('Par registrado com o rodapé ainda no nome antigo (incidente 10/08)', () => {
+  // Raquel⇄Nathalia: os CASOS trocaram de dono, os rodapés não. Registrar a
+  // troca deixava quem opera aqui como card extra no fim da fila, enquanto a
+  // posição ficava com quem nem está no hospital.
+  const escalaCasoDoCury = {
+    ...escalaBase,
+    casos: [
+      caso('Sala 1', 0, 'LEONARDO', 'Liana W', '07:30'),
+      caso('Sala 2', 0, 'CURY', 'Taciana A', '07:30', { anestesistaUserId: 'uid-cury' }),
+      caso('Sala 3', 0, 'KARINE', 'Farret G', '07:30'),
+    ],
+  }
+
+  it('quem opera aqui ocupa a posição do parceiro — sem card extra no fim', () => {
+    montar({ paresTroca: [PAR] }, escalaCasoDoCury)
+    const chaves = [...document.querySelectorAll('[data-linha]')].map((el) => el.getAttribute('data-linha'))
+    expect(chaves).toEqual(['uid-leo', 'uid-mar', 'uid-kar']) // nenhuma linha extra do Cury
+    const slot = document.querySelector('[data-linha="uid-mar"]')
+    expect(within(slot).getByText('Marcos Cury')).toBeTruthy()
+    expect(within(slot).getByText(/Assumiu a posição de Marilio Flach/)).toBeTruthy()
+  })
+
+  it('com o dono do slot operando aqui, a posição continua dele', () => {
+    // escalaBase: o Marilio tem caso próprio → nada é derivado
+    montar({ paresTroca: [PAR] })
+    const slot = document.querySelector('[data-linha="uid-mar"]')
+    expect(within(slot).getByText('Marilio Flach')).toBeTruthy()
+    expect(within(slot).getByText(/Trocado com Marcos Cury/)).toBeTruthy()
+  })
+})
+
 describe('Painel ✏️ — declarar, executar e desfazer a troca', () => {
   it('declarar sai pelo FLUXO ÚNICO: o botão abre o TrocaSheet com a linha de origem', async () => {
     // dono 07/08 ("as trocas num só local"): a view não declara mais inline —
