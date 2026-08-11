@@ -74,6 +74,11 @@ export function candidatosNome(nome) {
   const c = new Set([t.join(' ')])
   if (t.length > 1) {
     c.add(`${t[0]} ${t[t.length - 1]}`)
+    // PREFIXO de dois nomes (dono 11/08): o rodapé escreve "JOAO RICARDO" e o
+    // cadastro é "JOÃO RICARDO MOREIRA" — sem esta variante o P2 dele ficava
+    // sem badge na fila. Vem antes de sobrenome/primeiro nome soltos porque é
+    // mais específica (e é o que a escala usa para separar dois homônimos).
+    if (t.length > 2) c.add(`${t[0]} ${t[1]}`)
     c.add(t[t.length - 1])
     c.add(t[0])
   }
@@ -174,15 +179,31 @@ export function marcarSelosNoTurno(linhas, noturnos, opts = {}) {
   const resolverUid = typeof opts.resolverUid === 'function' ? opts.resolverUid : () => null
   const normalizar = typeof opts.normalizar === 'function' ? opts.normalizar : (s) => String(s || '').trim().toUpperCase()
 
+  // MATCHING POR VÁRIAS CHAVES (dono 11/08: "é P1–P4, está na lista e não tem o
+  // badge"). O PegaPlantao devolve o nome COMPLETO ("João Ricardo Moreira") e a
+  // linha é chaveada pelo uid do vínculo ou pelo nome CURTO do rodapé ("JOAO
+  // RICARDO"): sem vínculo cadastrado, comparar uma chave só nunca casava.
+  // Agora cada setor carrega o uid e as variantes de `candidatosNome`, e a linha
+  // é testada por uid, chave, nome do rodapé e nome exibido.
   const porChave = new Map()
   for (const setor of ['P1', 'P2', 'P3', 'P4']) {
     const nome = String(noturnos[setor] || '').trim()
     if (!nome) continue
-    const chave = resolverUid(nome) || normalizar(nome)
-    if (chave && !porChave.has(chave)) porChave.set(chave, setor)
+    const uid = resolverUid(nome)
+    const chaves = [uid, ...(uid ? [] : candidatosNome(nome).map(normalizar))].filter(Boolean)
+    for (const chave of chaves) if (!porChave.has(chave)) porChave.set(chave, setor)
   }
   if (!porChave.size) return lista
-  return lista.map((l) => (porChave.has(l.chave) ? { ...l, selo: porChave.get(l.chave) } : l))
+  const seloDe = (l) => {
+    for (const k of [l.chave, l.uid, normalizar(l.nomeOriginal || ''), normalizar(l.anestesista || '')]) {
+      if (k && porChave.has(k)) return porChave.get(k)
+    }
+    return null
+  }
+  return lista.map((l) => {
+    const selo = seloDe(l)
+    return selo ? { ...l, selo } : l
+  })
 }
 
 /**

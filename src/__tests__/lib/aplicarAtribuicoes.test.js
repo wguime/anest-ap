@@ -420,3 +420,29 @@ describe('aplicarAtribuicoes — atribuição por grupo (dono 27/07)', () => {
     expect(out[1].semAnestesista).toBe(true)
   })
 })
+
+// SALA DE DOIS (dono 11/08): a Unimed teve uma cirurgia com Raquel E Gabriela e
+// a dupla não sobreviveu até a Completa. Um login só não representa duas
+// pessoas — escolher um no seletor apagava a colega.
+describe('aplicarAtribuicoes — cirurgia com DOIS anestesistas', () => {
+  const DUPLA = [{ sala: 'CC - Sala 3', anestesista: 'RAQUEL + GABRIELA' }]
+
+  it('preserva os dois nomes mesmo com atribuição no grupo', () => {
+    const out = aplicarAtribuicoes(DUPLA, { 'CC - Sala 3': 'uid-paulo' }, apelidoDe, resolver)
+    expect(out[0].anestesista).toBe('RAQUEL + GABRIELA')
+    expect(out[0].anestesistaUserId).toBeNull()
+  })
+
+  it('sem atribuição também fica intacta (nunca resolve para um só)', () => {
+    const out = aplicarAtribuicoes(DUPLA, {}, apelidoDe, resolver)
+    expect(out[0].anestesista).toBe('RAQUEL + GABRIELA')
+    expect(out[0].anestesistaUserId).toBeNull()
+  })
+
+  it('a linha "//" da mesma sala continua herdando a dupla', () => {
+    const casos = [...DUPLA, { sala: 'CC - Sala 3', anestesista: '//' }]
+    const out = aplicarAtribuicoes(casos, {}, apelidoDe, resolver)
+    expect(out[1].anestesista).toBe('//')
+    expect(out[1].semAnestesista).toBeFalsy()
+  })
+})

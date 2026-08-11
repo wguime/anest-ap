@@ -283,8 +283,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // aviso, sem `noturno`: posição, cor e liberação seguem a lógica do dia.
   // Só DIA ÚTIL: o plantão P1–P4 ainda não está estruturado p/ o fim de semana
   // (decisão do dono 25/07) — avisar no sábado seria informação inventada.
-  const avisarSelos = fase === 'dia' && turno === 'vespertino'
-    && escala?.data === hojeISO() && ehDiaUtil(escala?.data)
+  // 11/08: o aviso valia SÓ na lista da tarde e o dono viu gente de plantão hoje
+  // sem selo na de manhã. Quem entra no plantão à noite carrega o selo nos DOIS
+  // turnos da escala de HOJE — é informação da pessoa, não do turno.
+  const avisarSelos = fase === 'dia' && escala?.data === hojeISO() && ehDiaUtil(escala?.data)
   const fundidas = linhasNoite.length
     ? fundirLinhasNoturnas(linhas, linhasNoite, {
         resolverUid: resolverNomeCompleto,

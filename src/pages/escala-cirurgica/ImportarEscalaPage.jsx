@@ -7,7 +7,7 @@
  */
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { ChevronLeft, ChevronDown, ChevronsDownUp, ChevronsUpDown, Plus, Trash2, Sparkles, Loader2, Check, AlertTriangle } from 'lucide-react'
-import { Button, ConfirmDialog, DatePicker, FileUpload, Input, Select, useToast } from '@/design-system'
+import { Button, ConfirmDialog, DatePicker, FileUpload, Input, Select, Textarea, useToast } from '@/design-system'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import { useEscalaCirurgicaActions, HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
@@ -546,6 +546,17 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
     const flags = nomes.map(temCaso)
     return nomes.filter((n, i) => !flags[i] && (flags[i - 1] || flags[i + 1]))
   }, [ordemTexto, atribuicoes, casos, resolver])
+
+  // Ordem NUMERADA para conferir contra a imagem (dono 11/08): o rodapé é lido
+  // por POSIÇÃO, e num input de uma linha só davam para ver os 4 primeiros de 17.
+  const ordemNumerada = useMemo(() => {
+    const nomes = separarListaRodape(ordemTexto)
+    return nomes.map((nome, i) => ({
+      nome,
+      i,
+      papel: i === 0 ? 'plantonista' : (i === nomes.length - 1 && nomes.length > 1 ? 'sai 1º' : null),
+    }))
+  }, [ordemTexto])
 
   // GUARDRAIL DE NOME AMBÍGUO (dono 11/08) — BLOQUEIA a publicação.
   // A escala veio com "JOAO" na CO - Cesárea e o rodapé tinha JOAO HENRIQUE e
@@ -1215,7 +1226,39 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
                 <label className="text-xs font-medium text-muted-foreground">Ordem de liberação (rodapé)</label>
                 <Button size="sm" variant="ghost" onClick={preencherRodape}>Preencher da atribuição</Button>
               </div>
-              <Input placeholder="Leonardo, Marilio, Diego, …" value={ordemTexto} onChange={(e) => setOrdemTexto(e.target.value)} />
+              {/* A ordem é o dado mais SAGRADO da importação e cabia numa linha
+                  só: com 17 nomes apareciam 4 (dono 11/08, "difícil de
+                  visualizar"). Textarea mostra o texto inteiro para editar, e a
+                  lista NUMERADA embaixo é o que se confere contra a imagem —
+                  posição por posição, com as duas regras posicionais à vista. */}
+              <Textarea
+                rows={3}
+                placeholder="Leonardo, Marilio, Diego, …"
+                value={ordemTexto}
+                onChange={(e) => setOrdemTexto(e.target.value)}
+              />
+              {ordemNumerada.length > 0 && (
+                <div className="mt-1.5 rounded-lg border border-border-strong bg-card px-2.5 py-2">
+                  <div className="flex flex-wrap gap-1">
+                    {ordemNumerada.map(({ nome, i, papel }) => (
+                      <span
+                        key={`${nome}-${i}`}
+                        className={[
+                          'inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs',
+                          papel ? 'bg-primary/10 font-medium text-primary' : 'bg-muted text-foreground',
+                        ].join(' ')}
+                      >
+                        <b className="tabular-nums opacity-60">{i + 1}</b> {nome}
+                        {papel && <span className="opacity-70">· {papel}</span>}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    {ordemNumerada.length} {ordemNumerada.length === 1 ? 'nome' : 'nomes'} — confira contra o rodapé da imagem:
+                    o 1º é o plantonista e o último sai primeiro (plantão do turno seguinte).
+                  </p>
+                </div>
+              )}
               {/* NOME AMBÍGUO (dono 11/08) — vermelho: isto impede publicar */}
               {gruposAmbiguos.length > 0 && (
                 <div className="mt-1.5 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">

@@ -542,3 +542,35 @@ describe('Conferência — nome ambíguo bloqueia a publicação', () => {
     expect(screen.queryByText(/pode ser/i)).toBeNull()
   })
 })
+
+// ORDEM DE LIBERAÇÃO VISÍVEL (dono 11/08: "difícil de visualizar"). O rodapé é
+// o dado mais sagrado da importação e cabia numa linha só — com 17 nomes
+// apareciam 4. Agora o texto inteiro é editável num textarea e a lista NUMERADA
+// embaixo é o que se confere contra a imagem, posição por posição.
+describe('Conferência — ordem de liberação numerada', () => {
+  const UM = [{ sala: 'Sala 1', hora: '08:00', anestesista: 'CURY', cirurgiao: 'DR. ANA', procedimento: 'Hérnia' }]
+  const RODAPE = ['NATHALIA', 'ERLEI', 'FERNANDO', 'JOAO HENRIQUE', 'CURY']
+
+  it('numera cada posição e marca o plantonista e quem sai primeiro', async () => {
+    await importar(UM, RODAPE)
+    const numerada = await screen.findByText(/confira contra o rodapé da imagem/i)
+    const caixa = numerada.parentElement
+    RODAPE.forEach((nome, i) => {
+      const chip = within(caixa).getByText(nome).closest('span')
+      expect(chip.textContent).toContain(String(i + 1))
+    })
+    // 1º = plantonista, último = sai primeiro (as duas regras posicionais)
+    const chipDe = (nome) => within(caixa).getByText(nome).closest('span')
+    expect(chipDe('NATHALIA').textContent).toMatch(/plantonista/i)
+    expect(chipDe('CURY').textContent).toMatch(/sai 1º/i)
+    expect(chipDe('ERLEI').textContent).not.toMatch(/plantonista|sai 1º/i)
+    expect(numerada.textContent).toMatch(/5 nomes/)
+  })
+
+  it('o texto inteiro fica editável (textarea, não uma linha só)', async () => {
+    const container = await importar(UM, RODAPE)
+    const campo = container.querySelector('textarea')
+    expect(campo).toBeTruthy()
+    expect(campo.value).toBe(RODAPE.join(', '))
+  })
+})

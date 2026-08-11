@@ -378,6 +378,12 @@ export function aplicarAtribuicoes(casos, atribuicoes, apelidoDe, resolverUid = 
     if (grupoSemNinguem.has(k)) {
       return { ...c, semAnestesista: true, anestesista: '?', anestesistaUserId: null }
     }
+    // SALA DE DOIS ("RAQUEL + GABRIELA", dono 11/08): a dupla é a informação da
+    // escala e um login só não a representa — escolher um no seletor apagava a
+    // colega e a Completa passava a mostrar uma pessoa onde havia duas. O texto
+    // fica como veio; a fila já conta presença dos DOIS (colunaLiberacao separa
+    // pelo "+") e nenhuma transferência de caso mexe em sala compartilhada.
+    if (t.includes('+')) return { ...c, anestesista: t, anestesistaUserId: null }
     // Atribuição do grupo vence (login escolhido > texto importado, lição 23/07);
     // senão preserva o uid da extração e, por último, tenta o dicionário.
     const nomeReal = t && t !== '//' ? t : ''

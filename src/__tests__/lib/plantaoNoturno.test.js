@@ -79,10 +79,15 @@ describe('plantonistasNoturnos', () => {
 })
 
 describe('candidatosNome', () => {
-  it('nome completo gera variações (completo, primeiro+último, último, primeiro)', () => {
+  it('nome completo gera variações (completo, primeiro+último, dois primeiros, último, primeiro)', () => {
+    // "João Ricardo" (dois primeiros) entrou em 11/08: é assim que o rodapé
+    // escreve quem tem xará, e sem essa variante o P2 dele ficava sem badge
     expect(candidatosNome('João Ricardo Moreira')).toEqual([
-      'João Ricardo Moreira', 'João Moreira', 'Moreira', 'João',
+      'João Ricardo Moreira', 'João Moreira', 'João Ricardo', 'Moreira', 'João',
     ])
+  })
+  it('nome de dois tokens não ganha variante nova', () => {
+    expect(candidatosNome('Fernanda Guollo')).toEqual(['Fernanda Guollo', 'Guollo', 'Fernanda'])
   })
   it('inicial abreviada ("G. Staub") cai no sobrenome', () => {
     expect(candidatosNome('G. Staub')).toEqual(['Staub'])
@@ -164,7 +169,8 @@ describe('linhasNoturnas — marcação do P4 (coringa)', () => {
 describe('marcarSelosNoTurno — aviso na lista da tarde (pedido do dono 25/07)', () => {
   const linha = (nome, chave) => ({ anestesista: nome, chave, cirurgioes: ['Cir'], salas: ['S1'], teveCasos: true, isPlantonista: chave === 'LEONARDO' })
   const lista = [linha('Leonardo', 'LEONARDO'), linha('Marilio', 'MARILIO'), linha('Diego', 'DIEGO')]
-  const opts = { normalizar: (s) => String(s || '').trim().toUpperCase() }
+  // espelha o normNome de produção (tira acento): sem isso o teste mede outra coisa
+  const opts = { normalizar: (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase() }
 
   it('põe o selo em quem entra no plantão, SEM mexer na ordem nem no status', () => {
     const out = marcarSelosNoTurno(lista, { P2: 'Diego', P3: 'Leonardo' }, opts)
@@ -198,6 +204,35 @@ describe('marcarSelosNoTurno — aviso na lista da tarde (pedido do dono 25/07)'
     const out = marcarSelosNoTurno(lista, { P1: 'Ninguém Daqui' }, opts)
     expect(out.every((l) => l.selo === undefined)).toBe(true)
   })
+
+  // Dono 11/08: "é P1–P4, está na lista de liberações e não tem o badge". O
+  // PegaPlantao manda o nome COMPLETO e a linha é chaveada pelo nome CURTO do
+  // rodapé — sem vínculo cadastrado, uma chave só nunca casava.
+  it('nome completo do plantão casa com o nome curto do rodapé, mesmo sem vínculo', () => {
+    const semUid = [
+      { anestesista: 'Joao Ricardo', chave: 'JOAO RICARDO', nomeOriginal: 'JOAO RICARDO' },
+      { anestesista: 'Klisman', chave: 'KLISMAN', nomeOriginal: 'KLISMAN' },
+    ]
+    const out = marcarSelosNoTurno(semUid, { P2: 'João Ricardo Moreira' }, opts)
+    expect(out.map((l) => l.selo)).toEqual(['P2', undefined])
+  })
+
+  it('casa pelo SOBRENOME quando o rodapé traz só ele', () => {
+    const porSobrenome = [{ anestesista: 'Moreira', chave: 'MOREIRA', nomeOriginal: 'MOREIRA' }]
+    expect(marcarSelosNoTurno(porSobrenome, { P3: 'João Ricardo Moreira' }, opts)[0].selo).toBe('P3')
+  })
+
+  it('com vínculo, o uid manda e o nome não gera falso positivo', () => {
+    // dois "Joãos": o uid resolve o certo e o outro não pode herdar o selo
+    const linhas = [
+      { anestesista: 'Joao Henrique', chave: 'uid-jh', uid: 'uid-jh', nomeOriginal: 'JOAO HENRIQUE' },
+      { anestesista: 'Joao Ricardo', chave: 'uid-jr', uid: 'uid-jr', nomeOriginal: 'JOAO RICARDO' },
+    ]
+    const out = marcarSelosNoTurno(linhas, { P1: 'João Ricardo Moreira' }, {
+      ...opts, resolverUid: (n) => (/RICARDO/i.test(n) ? 'uid-jr' : null),
+    })
+    expect(out.map((l) => l.selo)).toEqual([undefined, 'P1'])
+  })
 })
 
 describe('fundirLinhasNoturnas — noturnos no topo, vespertina abaixo', () => {
@@ -211,7 +246,8 @@ describe('fundirLinhasNoturnas — noturnos no topo, vespertina abaixo', () => {
     linha('Marilio', 'MARILIO'),
     linha('Diego', 'DIEGO'),
   ]
-  const opts = { normalizar: (s) => String(s || '').trim().toUpperCase() }
+  // espelha o normNome de produção (tira acento): sem isso o teste mede outra coisa
+  const opts = { normalizar: (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase() }
   const noite = (setores) => setores.map((s, i) => ({
     setor: s, nome: s === 'P1' ? 'Marilio' : `Noturno ${s}`,
     papel: i === 0 ? 'Plantonista' : s === 'P4' ? 'Coringa' : 'Plantão noturno',
