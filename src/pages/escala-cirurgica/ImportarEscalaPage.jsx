@@ -528,7 +528,6 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
   // enxergando exatamente o mesmo dado de antes.
   const [posSel, setPosSel] = useState(null)      // posição aberta para edição
   const [rascunhoNome, setRascunhoNome] = useState('')
-  const [nomeNovo, setNomeNovo] = useState('')
 
   const gravarOrdem = (nomes) => setOrdemTexto(nomes.filter(Boolean).join(', '))
   // Vírgula é o separador da string — deixá-la passar partiria o nome em dois.
@@ -568,14 +567,32 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
     if (ehAjuda(antigo)) { marcarAjuda(antigo, false); marcarAjuda(novo, true) }
   }
 
-  const adicionarNoRodape = () => {
-    const novo = limparNome(nomeNovo)
+  // Acrescentar é POR LOGIN, não digitando (dono 11/08: "para evitar
+  // duplicidades"). Texto livre aqui criava a mesma pessoa duas vezes — o
+  // rodapé é casado por apelido, e "CURY" digitado ao lado de um caso do
+  // "GUSTAVO" vira duas linhas na fila. O texto inserido é o MESMO que
+  // "Preencher da atribuição" usa (apelido do dicionário), então rodapé e casos
+  // caem na mesma identidade. Nome fora do cadastro ainda entra corrigindo o
+  // texto de uma posição existente.
+  const adicionarNoRodape = (uid) => {
+    const novo = apelidoExibicao(null, uid)
     if (!novo) return
     const nomes = separarListaRodape(ordemTexto)
-    if (nomes.some((n) => normNome(n) === normNome(novo))) { setNomeNovo(''); return }
+    if (nomes.some((n) => normNome(n) === normNome(novo) || resolver(n) === uid)) return
     gravarOrdem([...nomes, novo])
-    setNomeNovo('')
   }
+
+  // Quem já está no rodapé sai do picker: a lista mostra só quem FALTA.
+  const opcoesParaAcrescentar = useMemo(() => {
+    const nomes = separarListaRodape(ordemTexto)
+    const uids = new Set(nomes.map((n) => resolver(n)).filter(Boolean))
+    const textos = new Set(nomes.map(normNome))
+    return rosterOpcoes.filter((o) => {
+      if (uids.has(o.value)) return false
+      const apelido = apelidoExibicao(null, o.value)
+      return !apelido || !textos.has(normNome(apelido))
+    })
+  }, [ordemTexto, rosterOpcoes, resolver, apelidoExibicao])
 
   // AJUDA é o único selo que não vem da posição — e é o que mais falha na
   // extração (30/07: a Vision não reconheceu o azul do rodapé e a escala foi ao
@@ -1375,18 +1392,15 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
                     </li>
                   )}
                 </ul>
-                <div className="flex items-center gap-1.5 border-t border-border bg-muted/40 px-2.5 py-2">
-                  <Input
-                    aria-label="Acrescentar nome ao fim do rodapé"
-                    placeholder="Acrescentar nome no fim…"
-                    value={nomeNovo}
-                    onChange={(e) => setNomeNovo(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); adicionarNoRodape() } }}
+                <div className="border-t border-border bg-muted/40 px-2.5 py-2">
+                  <Select
+                    aria-label="Acrescentar anestesista ao fim do rodapé"
+                    placeholder="+ Acrescentar anestesista no fim…"
+                    value=""
+                    onChange={adicionarNoRodape}
+                    options={opcoesParaAcrescentar}
+                    searchable
                   />
-                  <Button size="sm" variant="outline" aria-label="Acrescentar ao rodapé"
-                    onClick={adicionarNoRodape} disabled={!nomeNovo.trim()}>
-                    <Plus className="h-4 w-4" />
-                  </Button>
                 </div>
                 {ordemNumerada.length > 0 && (
                   <p className="border-t border-border px-2.5 py-2 text-xs text-muted-foreground">

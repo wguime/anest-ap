@@ -654,18 +654,35 @@ describe('Conferência — ordem de liberação numerada', () => {
     )
   })
 
-  it('acrescenta nome que a extração perdeu e remove o que sobrou', async () => {
+  // Acrescentar é POR LOGIN (dono 11/08, "para evitar duplicidades"): digitar
+  // criava a mesma pessoa duas vezes na fila — o rodapé casa por apelido, e
+  // "CURY" escrito à mão ao lado de um caso do mesmo login vira duas linhas.
+  it('acrescenta quem a extração perdeu escolhendo o login, com o apelido do dicionário', async () => {
+    await importar(UM, ['NATHALIA', 'ERLEI', 'FERNANDO'])
+    const caixa = (await screen.findByText(/confira contra o rodapé da imagem/i)).parentElement
+    fireEvent.click(within(caixa).getByRole('combobox'))
+    fireEvent.click(await screen.findByRole('option', { name: 'Gustavo Cury' }))
+
+    await waitFor(() => expect(caixa.querySelectorAll('li')).toHaveLength(4))
+    // entra como CURY (apelido), o mesmo texto do caso — não como "Gustavo Cury"
+    const ultima = [...caixa.querySelectorAll('li')].at(-1)
+    expect(ultima.textContent).toContain('CURY')
+    expect(ultima.textContent).toContain('1 caso')
+  })
+
+  it('quem já está no rodapé não aparece na lista de acrescentar', async () => {
+    await importar(UM, RODAPE)                 // RODAPE já tem CURY
+    const caixa = (await screen.findByText(/confira contra o rodapé da imagem/i)).parentElement
+    fireEvent.click(within(caixa).getByRole('combobox'))
+    await waitFor(() => expect(screen.queryByRole('option', { name: 'Gustavo Cury' })).toBeNull())
+  })
+
+  it('remove a posição que sobrou na extração', async () => {
     await importar(UM, RODAPE)
     const caixa = (await screen.findByText(/confira contra o rodapé da imagem/i)).parentElement
-    const novo = within(caixa).getByLabelText(/Acrescentar nome/i)
-    fireEvent.change(novo, { target: { value: 'MATHEUS' } })
-    fireEvent.click(within(caixa).getByRole('button', { name: /Acrescentar ao rodapé/i }))
-    await waitFor(() => expect(caixa.querySelectorAll('li')).toHaveLength(6))
-    expect([...caixa.querySelectorAll('li')].at(-1).textContent).toContain('MATHEUS')
-
     fireEvent.click(within(caixa).getByText('ERLEI').closest('button'))
     fireEvent.click(screen.getByRole('button', { name: /Remover/i }))
-    await waitFor(() => expect(caixa.querySelectorAll('li')).toHaveLength(5))
+    await waitFor(() => expect(caixa.querySelectorAll('li')).toHaveLength(4))
     expect(caixa.textContent).not.toContain('ERLEI')
   })
 })
