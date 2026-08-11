@@ -1094,6 +1094,25 @@ export function planoExecucaoTroca({ escalas, resolverUid, a, b, turno = null })
 }
 
 /**
+ * O anestesista deste caso sou eu? (Minhas escalas / destaque "meu" na Completa)
+ *
+ * DUPLA na mesma cirurgia (dono 11/08): "RAQUEL + GABRIELA" é caso das DUAS e
+ * não cabe num uid — comparar o texto inteiro deixava a cirurgia fora da aba
+ * Minhas das duas. Caso normal segue pelo uid do vínculo, que é a identidade
+ * forte; o apelido só entra quando não há uid (demo/legado) ou quando é dupla.
+ *
+ * @param {object} caso  { anestesista, anestesistaUserId }
+ * @param {object} eu    { uid, alias } — alias = apelido/1º nome do usuário
+ */
+export function anestesistaDoCasoEh(caso, { uid = null, alias = '' } = {}) {
+  const partes = String(caso?.anestesista || '').split(/\s*\+\s*/).map(normNome).filter(Boolean)
+  const dupla = partes.length > 1
+  if (caso?.anestesistaUserId && !dupla) return !!uid && caso.anestesistaUserId === uid
+  const eu = normNome(alias)
+  return !!eu && partes.includes(eu)
+}
+
+/**
  * Candidatos do roster para um PRIMEIRO NOME sozinho — o detector de nome
  * ambíguo da conferência (dono 11/08).
  *

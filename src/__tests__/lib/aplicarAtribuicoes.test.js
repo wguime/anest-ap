@@ -7,7 +7,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import {
-  aplicarAtribuicoes, alvosTrocaResponsavel, salasDoHospital,
+  aplicarAtribuicoes, alvosTrocaResponsavel, anestesistaDoCasoEh, salasDoHospital,
   chavesAnestesista, gruposAnestesista, nomesImportados,
 } from '../../pages/escala-cirurgica/utils'
 
@@ -444,5 +444,35 @@ describe('aplicarAtribuicoes — cirurgia com DOIS anestesistas', () => {
     const out = aplicarAtribuicoes(casos, {}, apelidoDe, resolver)
     expect(out[1].anestesista).toBe('//')
     expect(out[1].semAnestesista).toBeFalsy()
+  })
+})
+
+// MINHAS / destaque "meu" na Completa com DUPLA (dono 11/08): "RAQUEL +
+// GABRIELA" não cabe num uid, então o caso nasce sem `anestesistaUserId` —
+// comparar o texto inteiro deixava a cirurgia fora da aba Minhas DAS DUAS.
+describe('anestesistaDoCasoEh', () => {
+  const eu = { uid: 'uid-raquel', alias: 'RAQUEL' }
+
+  it('dupla conta para os dois lados', () => {
+    const caso = { anestesista: 'RAQUEL + GABRIELA', anestesistaUserId: null }
+    expect(anestesistaDoCasoEh(caso, eu)).toBe(true)
+    expect(anestesistaDoCasoEh(caso, { uid: 'uid-gab', alias: 'Gabriela' })).toBe(true)
+    expect(anestesistaDoCasoEh(caso, { uid: 'uid-x', alias: 'Cury' })).toBe(false)
+  })
+
+  it('caso normal continua decidindo pelo uid (nome igual de outra pessoa não pega)', () => {
+    const caso = { anestesista: 'RAQUEL', anestesistaUserId: 'uid-raquel' }
+    expect(anestesistaDoCasoEh(caso, eu)).toBe(true)
+    expect(anestesistaDoCasoEh(caso, { uid: 'uid-outra', alias: 'RAQUEL' })).toBe(false)
+  })
+
+  it('sem uid no caso (demo/legado) cai no apelido, com acento e caixa livres', () => {
+    expect(anestesistaDoCasoEh({ anestesista: 'raquel' }, eu)).toBe(true)
+    expect(anestesistaDoCasoEh({ anestesista: 'JANAÍNA' }, { alias: 'Janaina' })).toBe(true)
+  })
+
+  it('sem alias e sem uid não é de ninguém', () => {
+    expect(anestesistaDoCasoEh({ anestesista: 'RAQUEL + GABRIELA' }, {})).toBe(false)
+    expect(anestesistaDoCasoEh(null, eu)).toBe(false)
   })
 })

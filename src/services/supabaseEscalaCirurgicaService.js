@@ -308,15 +308,21 @@ async function addCaso(escalaId, caso) {
  * em 23/07. O chamador decide os alvos via alvosTrocaResponsavel (linhas com
  * anestesista próprio ficam de fora). Substitui o sistema de trocas.
  */
-async function updateAnestesistaCasos(casoIds = [], { uid, apelido }) {
+async function updateAnestesistaCasos(casoIds = [], { uid, apelido, dupla = false }) {
   const ids = (casoIds || []).filter(Boolean)
   if (!ids.length) return
-  // uid null = deixar o caso SEM anestesista de propósito (vira "?" e volta ao
-  // alerta das Liberações — pedido do dono 26/07). Com uid, o caminho normal:
-  // sem_anestesista=false tira o caso do alerta assim que ele ganha dono (24/07).
-  const patch = uid
-    ? { anestesista: apelido, anestesista_user_id: uid, sem_anestesista: false }
-    : { anestesista: '?', anestesista_user_id: null, sem_anestesista: true }
+  // DUPLA na MESMA cirurgia (dono 11/08): duas pessoas não cabem num uid — o
+  // texto "A + B" É o dado (a Completa mostra os dois no cabeçalho e a fila
+  // conta presença dos dois). uid null aqui NÃO é "sem anestesista": sem esta
+  // ramificação o service gravaria "?" e a cirurgia cairia no alerta.
+  // uid null (sem dupla) = deixar o caso SEM anestesista de propósito (vira "?"
+  // e volta ao alerta das Liberações — pedido do dono 26/07). Com uid, o caminho
+  // normal: sem_anestesista=false tira o caso do alerta assim que ganha dono (24/07).
+  const patch = dupla
+    ? { anestesista: apelido, anestesista_user_id: null, sem_anestesista: false }
+    : uid
+      ? { anestesista: apelido, anestesista_user_id: uid, sem_anestesista: false }
+      : { anestesista: '?', anestesista_user_id: null, sem_anestesista: true }
   const { error } = await supabase
     .from('escala_cirurgica_caso')
     .update(patch)

@@ -9,7 +9,7 @@ import { CalendarClock, MapPin } from 'lucide-react'
 import { Badge, EmptyState } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { ehPosicaoAssistencial, resumirItensEscala } from '@/lib/escalaCirurgicaItens'
-import { casosResolvidos, normNome, filtrarPorTurno, salaExibicao } from './utils'
+import { anestesistaDoCasoEh, casosResolvidos, filtrarPorTurno, salaExibicao } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import { CasoCard } from './BoardView'
 import useAgoraMinuto from './useAgoraMinuto'
@@ -18,7 +18,6 @@ import CasoDetalheSheet from './CasoDetalheSheet'
 
 export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onVerBoard }) {
   const { user } = useUser()
-  const alvo = normNome(meuAlias)
   const [detalhe, setDetalhe] = useState(null)   // caso aberto (mesmo sheet da aba Completa)
   const [definir, setDefinir] = useState(null)   // { sala, caso? }
   const isDemo = String(escala?.id).startsWith('demo-')
@@ -36,9 +35,10 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
   const meus = useMemo(
     () => filtrarPorTurno(casosResolvidos(escala), turno).filter((c) =>
       (!!meuUid && c.residenteUserId === meuUid)
-      || (c.anestesistaUserId ? c.anestesistaUserId === meuUid : (alvo && normNome(c.anestesista) === alvo))
+      // dupla "A + B" entra para as DUAS (o helper trata; uid é null nela)
+      || anestesistaDoCasoEh(c, { uid: meuUid, alias: meuAlias })
     ),
-    [escala, alvo, meuUid, turno]
+    [escala, meuAlias, meuUid, turno]
   )
 
   if (!meus.length) {

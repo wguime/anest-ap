@@ -421,7 +421,7 @@ export function EscalaCirurgicaProvider({ children }) {
   // NUNCA a sala inteira às cegas: o update sala-wide achatou o IOSC (multi-
   // anestesista) p/ uma pessoa e dois anestesistas SUMIRAM da escala (23/07).
   // Completa/Liberações/Minhas derivam dos casos → atualizam juntas p/ todos.
-  const setAnestesistaCasos = useCallback(async (escala, casoIds, { uid, apelido }, { rotulo = '' } = {}) => {
+  const setAnestesistaCasos = useCallback(async (escala, casoIds, { uid, apelido, dupla = false }, { rotulo = '' } = {}) => {
     if (String(escala.id).startsWith('demo-')) {
       toast({ variant: 'warning', title: 'Indisponível na demonstração' })
       return
@@ -430,11 +430,14 @@ export function EscalaCirurgicaProvider({ children }) {
     if (!ids.length) return
     try {
       const idSet = new Set(ids)
-      await svc.updateAnestesistaCasos(ids, { uid, apelido })
-      // espelha o service: sem uid o caso volta a ser "?" (e ao alerta)
-      const patch = uid
-        ? { anestesista: apelido, anestesistaUserId: uid, semAnestesista: false }
-        : { anestesista: '?', anestesistaUserId: null, semAnestesista: true }
+      await svc.updateAnestesistaCasos(ids, { uid, apelido, dupla })
+      // espelha o service: dupla mantém o texto "A + B" sem uid (não é "sem
+      // anestesista"); sem uid e sem dupla o caso volta a ser "?" (e ao alerta)
+      const patch = dupla
+        ? { anestesista: apelido, anestesistaUserId: null, semAnestesista: false }
+        : uid
+          ? { anestesista: apelido, anestesistaUserId: uid, semAnestesista: false }
+          : { anestesista: '?', anestesistaUserId: null, semAnestesista: true }
       const casos = (escala.casos || []).map((c) => (idSet.has(c.id) ? { ...c, ...patch } : c))
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { casos } })
       // VISITANTE PRESERVADO NO REPASSE (dono 31/07 — caso LEONARDO): quem veio
@@ -454,8 +457,8 @@ export function EscalaCirurgicaProvider({ children }) {
       } catch { /* repasse já está feito; a ajuda pode ser marcada à mão */ }
       toast({
         variant: 'success',
-        title: uid ? 'Responsável atualizado' : 'Caso sem anestesista',
-        description: `${rotulo || `${ids.length} caso(s)`} → ${uid ? apelido : 'sem anestesista (?)'}`,
+        title: dupla ? 'Dois anestesistas na cirurgia' : uid ? 'Responsável atualizado' : 'Caso sem anestesista',
+        description: `${rotulo || `${ids.length} caso(s)`} → ${dupla || uid ? apelido : 'sem anestesista (?)'}`,
       })
     } catch (error) {
       toast({ variant: 'error', title: 'Erro ao definir anestesista', description: error.message })

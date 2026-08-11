@@ -29,6 +29,7 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
   const { setAnestesistaCasos, executarSubstituicao } = useEscalaCirurgicaActions()
   const { options: rosterOpcoes, rosterByUid, resolver, loading: rosterLoading } = useRosterAnestesistas()
   const [uidEscolhido, setUidEscolhido] = useState('')
+  const [uidSegundo, setUidSegundo] = useState('') // dupla na MESMA cirurgia
   const [salvando, setSalvando] = useState(false)
   const [assumirPosicao, setAssumirPosicao] = useState(false)
 
@@ -110,13 +111,35 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
   }, [escala, atual, rosterByUid, resolver, turno])
   const ofereceAssumir = !!slotAnterior && !!escolhido && escolhido !== SEM_ANESTESISTA && escolhido !== atual.uid
 
+  // DUPLA NA MESMA CIRURGIA (dono 11/08). Duas pessoas não cabem num uid: o
+  // texto "A + B" É o dado — a Completa mostra as duas no cabeçalho, a fila
+  // conta presença das duas e nenhuma transferência mexe em sala compartilhada.
+  // Só no modo CASO: dupla é da CIRURGIA, não da sala (sala com anestesistas
+  // diferentes em cirurgias diferentes segue com um bloco para cada, 27/07).
+  const podeDupla = !!casoUnico && !!escolhido && escolhido !== SEM_ANESTESISTA
+  const opcoesSegundo = useMemo(
+    () => [{ value: '', label: 'Só um anestesista' }, ...(rosterOpcoes || []).filter((o) => o.value !== escolhido)],
+    [rosterOpcoes, escolhido]
+  )
+  const segundo = podeDupla && uidSegundo ? rosterByUid.get(uidSegundo) : null
+  const apelidoDe = (r) => r?.apelidos?.[0] || primeiroNomeUpper(r?.nome)
+
   const confirmar = async () => {
     const semAnest = escolhido === SEM_ANESTESISTA
     const r = semAnest ? null : rosterByUid.get(escolhido)
     if (!semAnest && !r) return
     setSalvando(true)
     try {
-      if (!semAnest && assumirPosicao && ofereceAssumir) {
+      if (segundo) {
+        // a posição na fila NÃO é oferecida junto: com dois donos não existe um
+        // slot único a assumir — quem trocou de posição resolve pelo ✏️/Troca.
+        await setAnestesistaCasos(
+          escala,
+          alvos.map((c) => c.id),
+          { uid: null, apelido: `${apelidoDe(r)} + ${apelidoDe(segundo)}`, dupla: true },
+          { rotulo }
+        )
+      } else if (!semAnest && assumirPosicao && ofereceAssumir) {
         const rAtual = atual.uid ? rosterByUid.get(atual.uid) : null
         await executarSubstituicao({
           lados: [{
@@ -180,9 +203,28 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
               />
             )}
           </div>
+          {/* DUPLA na mesma cirurgia (dono 11/08) — só no modo CASO */}
+          {podeDupla && (
+            <div>
+              <p className="mb-1 text-sm font-medium text-foreground">Segundo anestesista (mesma cirurgia):</p>
+              <Select
+                className="w-full"
+                searchable
+                options={opcoesSegundo}
+                value={uidSegundo}
+                onChange={setUidSegundo}
+                placeholder="Só um anestesista"
+              />
+              {segundo && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  A cirurgia fica com os dois no cabeçalho da Completa e conta presença dos dois na fila.
+                </p>
+              )}
+            </div>
+          )}
           {/* Posição na fila junto com os casos (dono 30/07): sem isto quem assume
               vira linha EXTRA no fim da fila — o caso Giovana↔Maurício. */}
-          {ofereceAssumir && (
+          {ofereceAssumir && !segundo && (
             <Switch
               checked={assumirPosicao}
               onChange={setAssumirPosicao}
@@ -195,7 +237,11 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
             disabled={salvando || !escolhido || escolhido === atual.uid || !alvos.length}
             onClick={confirmar}
           >
-            {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : (escolhido === SEM_ANESTESISTA ? 'Deixar sem anestesista' : 'Confirmar responsável')}
+            {salvando
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : segundo ? 'Confirmar os dois anestesistas'
+                : escolhido === SEM_ANESTESISTA ? 'Deixar sem anestesista'
+                  : 'Confirmar responsável'}
           </Button>
           {!alvos.length && (
             <p className="text-xs text-muted-foreground">

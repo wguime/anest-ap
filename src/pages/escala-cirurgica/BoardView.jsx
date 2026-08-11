@@ -12,7 +12,7 @@ import {
 import { useUser } from '@/contexts/UserContext'
 import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
-import { casoConcluido, casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, compararSalas, parseHoraMinutos, salaExibicao, nomeAnestesistaExibicao } from './utils'
+import { anestesistaDoCasoEh, casoConcluido, casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, compararSalas, parseHoraMinutos, salaExibicao, nomeAnestesistaExibicao } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import { formatFaltante } from './PainelTempo'
 import useAgoraMinuto from './useAgoraMinuto'
@@ -194,7 +194,6 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
   const agoraMin = useAgoraMinuto()
   const casos = useMemo(() => filtrarPorTurno(casosResolvidos(escala), turno), [escala, turno])
   const grupos = useMemo(() => agruparPorSala(casos), [casos])
-  const alvo = normNome(meuAlias)
 
   // GRUPOS DE EXIBIÇÃO (pedido do dono 23/07): sala com MAIS de um anestesista
   // (IOSC/Exames/Umanitá/…) vira UM GRUPO POR ANESTESISTA — "IOSC — Cury",
@@ -227,7 +226,8 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
     }
     return out
   }, [grupos, escala?.hospital])
-  const ehMeu = (c) => (c.anestesistaUserId ? c.anestesistaUserId === meuUid : alvo && normNome(c.anestesista) === alvo)
+  // dupla "A + B": o caso é das DUAS — o helper cobre (uid é null por construção)
+  const ehMeu = (c) => anestesistaDoCasoEh(c, { uid: meuUid, alias: meuAlias })
 
   const isDemo = String(escala?.id).startsWith('demo-')
   const canEdit = podeEditarEscalaCirurgica(user)

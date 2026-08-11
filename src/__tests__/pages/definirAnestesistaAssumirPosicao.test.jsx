@@ -170,3 +170,50 @@ describe('modo SALA opera só no turno exibido (bug 31/07)', () => {
     expect(screen.getByText(/Aline/)).toBeTruthy()
   })
 })
+
+// DUPLA NA MESMA CIRURGIA (dono 11/08): duas anestesistas no mesmo procedimento
+// não cabem num uid — o texto "A + B" é o dado. Só existe no modo CASO: sala com
+// anestesistas diferentes em cirurgias diferentes segue com um bloco para cada.
+describe('Segundo anestesista (mesma cirurgia)', () => {
+  const abrirCaso = () => render(
+    <DefinirAnestesistaSheet escala={escalaComRodape} sala="Sala 5" casosAlvo={[caso()]} onClose={vi.fn()} />,
+    { wrapper: wrap },
+  )
+  const segundoSelect = () => screen.getAllByRole('combobox')[1]
+
+  it('só aparece depois de escolher o responsável, e só no modo CASO', async () => {
+    abrirCaso()
+    expect(screen.queryByText(/Segundo anestesista/i)).toBeNull()
+    escolherCury()
+    expect(await screen.findByText(/Segundo anestesista/i)).toBeTruthy()
+  })
+
+  it('modo SALA não oferece dupla (a dupla é da cirurgia, não da sala)', () => {
+    render(<DefinirAnestesistaSheet escala={escalaComRodape} sala="Sala 5" onClose={vi.fn()} />, { wrapper: wrap })
+    escolherCury()
+    expect(screen.queryByText(/Segundo anestesista/i)).toBeNull()
+  })
+
+  it('escolhido o segundo, grava "A + B" sem uid e marcado como dupla', async () => {
+    abrirCaso()
+    escolherCury()
+    await screen.findByText(/Segundo anestesista/i)
+    fireEvent.click(segundoSelect())
+    fireEvent.click(await screen.findByRole('option', { name: 'GUILHERME STAUB' }))
+    fireEvent.click(screen.getByRole('button', { name: /Confirmar os dois anestesistas/i }))
+    await waitFor(() => expect(setAnestesistaCasos).toHaveBeenCalled())
+    const [, ids, quem] = setAnestesistaCasos.mock.calls[0]
+    expect(ids).toEqual(['c1'])
+    expect(quem).toEqual({ uid: null, apelido: 'CURY + STAUB', dupla: true })
+    expect(executarSubstituicao).not.toHaveBeenCalled()
+  })
+
+  it('com dupla, o toggle de assumir posição sai de cena (não há um dono só)', async () => {
+    abrirCaso()
+    escolherCury()
+    await screen.findByText(/Segundo anestesista/i)
+    fireEvent.click(segundoSelect())
+    fireEvent.click(await screen.findByRole('option', { name: 'GUILHERME STAUB' }))
+    await waitFor(() => expect(screen.queryByRole('switch')).toBeNull())
+  })
+})
