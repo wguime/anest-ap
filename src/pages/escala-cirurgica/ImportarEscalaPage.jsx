@@ -6,8 +6,8 @@
  * apelido importado é aprendido no dicionário (apelido→login) p/ a próxima escala.
  */
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import { ChevronLeft, ChevronDown, ChevronsDownUp, ChevronsUpDown, Plus, Trash2, Sparkles, Loader2, Check, AlertTriangle } from 'lucide-react'
-import { Button, ConfirmDialog, DatePicker, FileUpload, Input, Select, Textarea, useToast } from '@/design-system'
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronDown, ChevronsDownUp, ChevronsUpDown, Plus, Trash2, Sparkles, Loader2, Check, AlertTriangle } from 'lucide-react'
+import { Button, ConfirmDialog, DatePicker, FileUpload, Input, Select, useToast } from '@/design-system'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import { useEscalaCirurgicaActions, HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
@@ -402,6 +402,7 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
       // não trouxe fica VAZIO e visível como vazio, para alguém preencher à mão.
       setOrdemTexto((res.ordemLiberacao || []).join(', '))
       setAjudaTexto((res.ajudaExterna || []).join(', '))
+      setPosSel(null)   // rodapé novo: nenhuma posição em edição
       // Layout de outro hospital? Sugere (o dono confirma — nunca troca sozinho).
       const det = String(res.hospitalDetectado || '')
       setSugestaoHosp(det && det !== hospParam ? { hospital: det, origem: 'vision' } : null)
@@ -513,6 +514,77 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
       return true
     })
     setOrdemTexto([...atuais, ...faltantes].join(', '))
+  }
+
+  // ── EDIÇÃO DO RODAPÉ PELA PRÓPRIA LISTA (dono 11/08) ───────────────────────
+  //
+  // O campo de texto saiu: a lista numerada é a única superfície. Editar aqui é
+  // legítimo — é a transcrição da FOTO, e a conferência é o último ponto em que
+  // ainda dá para consertar o que a Vision leu torto. (A ordem só é imutável
+  // DEPOIS de publicada: lá, mudar = republicar.)
+  //
+  // `ordemTexto` continua sendo a fonte da verdade; os controles reescrevem a
+  // string. Assim publicar, cruzamento e "Preencher da atribuição" seguem
+  // enxergando exatamente o mesmo dado de antes.
+  const [posSel, setPosSel] = useState(null)      // posição aberta para edição
+  const [rascunhoNome, setRascunhoNome] = useState('')
+  const [nomeNovo, setNomeNovo] = useState('')
+
+  const gravarOrdem = (nomes) => setOrdemTexto(nomes.filter(Boolean).join(', '))
+  // Vírgula é o separador da string — deixá-la passar partiria o nome em dois.
+  const limparNome = (v) => String(v || '').replace(/,/g, ' ').replace(/\s+/g, ' ').trim()
+
+  const abrirPosicao = (i, nome) => {
+    if (posSel === i) { setPosSel(null); return }
+    setPosSel(i)
+    setRascunhoNome(nome)
+  }
+
+  const moverPosicao = (i, delta) => {
+    const nomes = separarListaRodape(ordemTexto)
+    const j = i + delta
+    if (j < 0 || j >= nomes.length) return
+    ;[nomes[i], nomes[j]] = [nomes[j], nomes[i]]
+    gravarOrdem(nomes)
+    setPosSel(j)                                   // o painel acompanha o nome
+  }
+
+  const removerPosicao = (i) => {
+    const nomes = separarListaRodape(ordemTexto)
+    const [fora] = nomes.splice(i, 1)
+    gravarOrdem(nomes)
+    marcarAjuda(fora, false)                       // não deixa ajuda órfã
+    setPosSel(null)
+  }
+
+  const renomearPosicao = () => {
+    if (posSel == null) return
+    const nomes = separarListaRodape(ordemTexto)
+    const novo = limparNome(rascunhoNome)
+    const antigo = nomes[posSel]
+    if (!novo || !antigo || novo === antigo) { setRascunhoNome(antigo || ''); return }
+    nomes[posSel] = novo
+    gravarOrdem(nomes)
+    if (ehAjuda(antigo)) { marcarAjuda(antigo, false); marcarAjuda(novo, true) }
+  }
+
+  const adicionarNoRodape = () => {
+    const novo = limparNome(nomeNovo)
+    if (!novo) return
+    const nomes = separarListaRodape(ordemTexto)
+    if (nomes.some((n) => normNome(n) === normNome(novo))) { setNomeNovo(''); return }
+    gravarOrdem([...nomes, novo])
+    setNomeNovo('')
+  }
+
+  // AJUDA é o único selo que não vem da posição — e é o que mais falha na
+  // extração (30/07: a Vision não reconheceu o azul do rodapé e a escala foi ao
+  // ar sem ajuda nenhuma). Fonte única: o mesmo `ajudaTexto` do campo abaixo.
+  const ehAjuda = (nome) => separarListaRodape(ajudaTexto).some((n) => normNome(n) === normNome(nome))
+  const marcarAjuda = (nome, ligar) => {
+    const atuais = separarListaRodape(ajudaTexto)
+    const fora = atuais.filter((n) => normNome(n) !== normNome(nome))
+    setAjudaTexto((ligar ? [...fora, nome] : fora).join(', '))
   }
 
   // Grupo 100% "?" não conta como pendência: ficar sem anestesista ali é a
@@ -1224,22 +1296,22 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
               </div>
               {/* A ordem é o dado mais SAGRADO da importação e cabia numa linha
                   só: com 17 nomes apareciam 4 (dono 11/08, "difícil de
-                  visualizar"). Textarea mostra o texto inteiro para editar, e a
-                  lista NUMERADA embaixo é o que se confere contra a imagem —
-                  posição por posição, com as duas regras posicionais à vista. */}
-              <Textarea
-                rows={3}
-                placeholder="Leonardo, Marilio, Diego, …"
-                value={ordemTexto}
-                onChange={(e) => setOrdemTexto(e.target.value)}
-              />
-              {ordemNumerada.length > 0 && (
-                <div className="mt-1.5 overflow-hidden rounded-xl border border-border-strong bg-card">
-                  <ul className="divide-y divide-border">
-                    {ordemNumerada.map(({ nome, i, papel, casos: nCasos, ajuda }) => {
-                      const suspeito = rodapeSuspeitos.includes(nome)
-                      return (
-                        <li key={`${nome}-${i}`} className="flex items-center gap-2 px-2.5 py-1.5">
+                  visualizar"). O campo de texto SAIU (dono 11/08): a lista
+                  numerada é a única superfície — se confere contra a foto
+                  posição por posição e se corrige na própria posição. */}
+              <div className="overflow-hidden rounded-xl border border-border-strong bg-card">
+                <ul className="divide-y divide-border">
+                  {ordemNumerada.map(({ nome, i, papel, casos: nCasos, ajuda }) => {
+                    const suspeito = rodapeSuspeitos.includes(nome)
+                    const aberta = posSel === i
+                    return (
+                      <li key={i}>
+                        <button
+                          type="button"
+                          onClick={() => abrirPosicao(i, nome)}
+                          aria-expanded={aberta}
+                          className="flex w-full items-center gap-2 px-2.5 py-2 text-left"
+                        >
                           <span className="w-5 shrink-0 text-right text-xs font-bold tabular-nums text-muted-foreground">
                             {i + 1}
                           </span>
@@ -1257,16 +1329,73 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
                           >
                             {nCasos > 0 ? `${nCasos} caso${nCasos > 1 ? 's' : ''}` : (suspeito ? '⚠ sem caso' : 'sem caso')}
                           </span>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                  <p className="border-t border-border bg-muted/40 px-2.5 py-2 text-xs text-muted-foreground">
+                        </button>
+                        {aberta && (
+                          <div className="space-y-2 border-t border-border bg-muted/30 px-2.5 py-2">
+                            <Input
+                              aria-label={`Nome na posição ${i + 1}`}
+                              value={rascunhoNome}
+                              onChange={(e) => setRascunhoNome(e.target.value)}
+                              onBlur={renomearPosicao}
+                              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }}
+                            />
+                            <div className="flex flex-wrap gap-1.5">
+                              <Button size="sm" variant="outline" disabled={i === 0}
+                                onClick={() => moverPosicao(i, -1)} aria-label="Subir uma posição">
+                                <ArrowUp className="h-4 w-4" /> Subir
+                              </Button>
+                              <Button size="sm" variant="outline" disabled={i === ordemNumerada.length - 1}
+                                onClick={() => moverPosicao(i, 1)} aria-label="Descer uma posição">
+                                <ArrowDown className="h-4 w-4" /> Descer
+                              </Button>
+                              <Button size="sm" variant={ajuda ? 'primary' : 'outline'}
+                                onClick={() => marcarAjuda(nome, !ajuda)} aria-pressed={ajuda}>
+                                Ajuda
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => removerPosicao(i)}>
+                                <Trash2 className="h-4 w-4" /> Remover
+                              </Button>
+                            </div>
+                            {/* Plantonista e "sai 1º" são da POSIÇÃO, não da
+                                pessoa — por isso não têm botão: quem muda esses
+                                selos é mover o nome. */}
+                            <p className="text-xs text-muted-foreground">
+                              1ª posição = plantonista · última = sai 1º (plantão do turno seguinte).
+                              Mova o nome para mudar esses selos. Marque <b>Ajuda</b> em quem veio de outro
+                              hospital (nome em AZUL no rodapé).
+                            </p>
+                          </div>
+                        )}
+                      </li>
+                    )
+                  })}
+                  {ordemNumerada.length === 0 && (
+                    <li className="px-2.5 py-3 text-xs text-muted-foreground">
+                      Nenhum nome lido do rodapé — acrescente abaixo ou use “Preencher da atribuição”.
+                    </li>
+                  )}
+                </ul>
+                <div className="flex items-center gap-1.5 border-t border-border bg-muted/40 px-2.5 py-2">
+                  <Input
+                    aria-label="Acrescentar nome ao fim do rodapé"
+                    placeholder="Acrescentar nome no fim…"
+                    value={nomeNovo}
+                    onChange={(e) => setNomeNovo(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); adicionarNoRodape() } }}
+                  />
+                  <Button size="sm" variant="outline" aria-label="Acrescentar ao rodapé"
+                    onClick={adicionarNoRodape} disabled={!nomeNovo.trim()}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                {ordemNumerada.length > 0 && (
+                  <p className="border-t border-border px-2.5 py-2 text-xs text-muted-foreground">
                     {ordemNumerada.length} {ordemNumerada.length === 1 ? 'nome' : 'nomes'} — confira contra o rodapé da imagem:
                     o 1º é o plantonista e o último sai primeiro (plantão do turno seguinte).
+                    Toque num nome para corrigir, mover ou marcar ajuda.
                   </p>
-                </div>
-              )}
+                )}
+              </div>
               {/* NOME AMBÍGUO (dono 11/08) — vermelho: isto impede publicar */}
               {gruposAmbiguos.length > 0 && (
                 <div className="mt-1.5 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">

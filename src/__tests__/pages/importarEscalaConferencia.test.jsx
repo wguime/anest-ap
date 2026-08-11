@@ -65,7 +65,11 @@ async function importar(casos, ordemLiberacao = []) {
 
 /** Cabeçalho de um bloco da conferência (o botão que abre os casos). */
 const blocos = (container) =>
-  [...container.querySelectorAll('button[aria-expanded]')].filter((b) => /\d+ caso/.test(b.textContent))
+  [...container.querySelectorAll('button[aria-expanded]')]
+    // a lista do rodapé também tem linhas expansíveis com "N casos" — ela vive
+    // em <li>, os blocos da conferência não.
+    .filter((b) => !b.closest('li'))
+    .filter((b) => /\d+ caso/.test(b.textContent))
 
 // RELÓGIO CONGELADO às 10h (mesma lição do liberacoesPainelLinha, ontem às 23h):
 // `periodo` da página nasce de turnoAtual(), então testes com fixture MATUTINA
@@ -79,6 +83,11 @@ afterAll(() => vi.useRealTimers())
 
 beforeEach(() => {
   svcMock.parseEscalaImagem.mockReset()
+  // sem isto, a implementação instalada pelo describe do cruzamento VAZA para os
+  // testes seguintes: a tela enxerga uma escala de outro hospital que não existe
+  // no fixture e o publicar para no guardrail de duplicidade.
+  svcMock.fetchEscala.mockReset()
+  svcMock.fetchEscala.mockResolvedValue(null)
   salvarEscala.mockClear()
   upsertAlias.mockReset()
   upsertAlias.mockResolvedValue({})
@@ -583,10 +592,80 @@ describe('Conferência — ordem de liberação numerada', () => {
     expect(aviso.textContent).not.toMatch(/JOAO HENRIQUE/)
   })
 
-  it('o texto inteiro fica editável (textarea, não uma linha só)', async () => {
+  // A LISTA É A ÚNICA SUPERFÍCIE (dono 11/08): o campo de texto saiu e a
+  // correção acontece na própria posição. Editar aqui é legítimo — é a
+  // transcrição da foto, e a conferência é o último ponto em que dá para
+  // consertar o que a Vision leu torto (depois de publicada a ordem é imutável).
+  it('o campo de texto do rodapé saiu — a lista é a única superfície', async () => {
     const container = await importar(UM, RODAPE)
-    const campo = container.querySelector('textarea')
-    expect(campo).toBeTruthy()
-    expect(campo.value).toBe(RODAPE.join(', '))
+    expect(container.querySelector('textarea')).toBeNull()
+  })
+
+  /** Abre os controles da posição de um nome. */
+  const abrir = async (nome) => {
+    const caixa = (await screen.findByText(/confira contra o rodapé da imagem/i)).parentElement
+    fireEvent.click(within(caixa).getByText(nome).closest('button'))
+    return caixa
+  }
+
+  it('mover um nome muda a posição — e o selo posicional vai junto', async () => {
+    await importar(UM, RODAPE)
+    const caixa = await abrir('ERLEI')
+    fireEvent.click(screen.getByRole('button', { name: /Subir/i }))
+    const linhas = [...caixa.querySelectorAll('li')]
+    expect(linhas[0].textContent).toContain('ERLEI')
+    expect(linhas[0].textContent).toMatch(/plantonista/i)      // 1ª posição manda
+    expect(linhas[1].textContent).toContain('NATHALIA')
+    expect(linhas[1].textContent).not.toMatch(/plantonista/i)
+  })
+
+  it('a ordem corrigida é a que vai para a publicação', async () => {
+    await importar(UM, RODAPE)
+    await abrir('ERLEI')
+    fireEvent.click(screen.getByRole('button', { name: /Subir/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+    await waitFor(() => expect(salvarEscala).toHaveBeenCalled())
+    expect(salvarEscala.mock.calls[0][0].ordemLiberacao).toEqual({
+      matutino: ['ERLEI', 'NATHALIA', 'FERNANDO', 'JOAO HENRIQUE', 'CURY'],
+    })
+  })
+
+  // AJUDA é o único selo que não vem da posição — e o que mais falha na
+  // extração (30/07: a Vision não viu o azul e a escala foi ao ar sem ajuda).
+  it('marcar ajuda à mão põe o selo e vai junto na publicação', async () => {
+    await importar(UM, RODAPE)
+    const caixa = await abrir('FERNANDO')
+    fireEvent.click(screen.getByRole('button', { name: /^Ajuda$/i }))
+    expect(within(caixa).getByText('FERNANDO').closest('li').textContent).toMatch(/ajuda/i)
+
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+    await waitFor(() => expect(salvarEscala).toHaveBeenCalled())
+    expect(salvarEscala.mock.calls[0][0].ajudaExterna).toEqual({ matutino: ['FERNANDO'] })
+  })
+
+  it('corrigir o nome de uma posição não mexe nas outras', async () => {
+    await importar(UM, RODAPE)
+    const caixa = await abrir('JOAO HENRIQUE')
+    const campo = within(caixa).getByLabelText(/Nome na posição 4/i)
+    fireEvent.change(campo, { target: { value: 'JOAO RICARDO' } })
+    fireEvent.blur(campo)
+    expect([...caixa.querySelectorAll('li')].map((l) => l.textContent)).toEqual(
+      ['NATHALIA', 'ERLEI', 'FERNANDO', 'JOAO RICARDO', 'CURY'].map((n) => expect.stringContaining(n)),
+    )
+  })
+
+  it('acrescenta nome que a extração perdeu e remove o que sobrou', async () => {
+    await importar(UM, RODAPE)
+    const caixa = (await screen.findByText(/confira contra o rodapé da imagem/i)).parentElement
+    const novo = within(caixa).getByLabelText(/Acrescentar nome/i)
+    fireEvent.change(novo, { target: { value: 'MATHEUS' } })
+    fireEvent.click(within(caixa).getByRole('button', { name: /Acrescentar ao rodapé/i }))
+    await waitFor(() => expect(caixa.querySelectorAll('li')).toHaveLength(6))
+    expect([...caixa.querySelectorAll('li')].at(-1).textContent).toContain('MATHEUS')
+
+    fireEvent.click(within(caixa).getByText('ERLEI').closest('button'))
+    fireEvent.click(screen.getByRole('button', { name: /Remover/i }))
+    await waitFor(() => expect(caixa.querySelectorAll('li')).toHaveLength(5))
+    expect(caixa.textContent).not.toContain('ERLEI')
   })
 })
