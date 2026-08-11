@@ -34,8 +34,13 @@ const FONTE = [
 ]
 
 // Teste que conta como cobertura da escala (unitário, de página ou e2e).
+// A lista é por NOME de arquivo e tem ponto cego: em 11/08 o gate reprovou um
+// commit que trazia `aplicarAtribuicoes.test.js` e
+// `definirAnestesistaAssumirPosicao.test.jsx` — testes 100% da escala cujos
+// nomes não continham nenhuma das palavras. Ao criar teste de escala com nome
+// novo, ou use uma destas palavras, ou acrescente-a aqui.
 const TESTE = [
-  /^src\/__tests__\/.*(escala|liberac|troca|coluna|plantao|cirurg|roster)/i,
+  /^src\/__tests__\/.*(escala|liberac|troca|coluna|plantao|cirurg|roster|anestesista|atribuic|rodape)/i,
   /^e2e\/escala-/i,
 ]
 
