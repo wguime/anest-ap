@@ -1140,6 +1140,51 @@ export function candidatosPrimeiroNome(nome, roster = []) {
 }
 
 /**
+ * Rodapé da conferência linha a linha, na ORDEM em que foi lido (dono 11/08:
+ * "difícil de analisar").
+ *
+ * O rodapé é conferido POSIÇÃO POR POSIÇÃO contra a foto, e cada posição tem
+ * três perguntas: quem é, que papel a posição carrega (1º = plantonista, último
+ * = plantão do turno seguinte, sai 1º) e se essa pessoa tem cirurgia no lote.
+ * Nome do rodapé com ZERO casos é o sinal de que a extração jogou a linha dele
+ * para outra pessoa — foi assim que Didomenico e Melo sumiram do IOSC em 23/07.
+ *
+ * A dupla ("A + B", mesma cirurgia) conta para as DUAS: a cirurgia é das duas,
+ * e sem isso a colega apareceria como nome sem caso.
+ *
+ * @param {string[]} nomes  ordem do rodapé, como está no campo
+ * @param {Array} casos     casos do lote em conferência
+ * @param {Function} resolverUid  apelido → uid do vínculo (pode devolver null)
+ * @param {string[]} ajuda  nomes marcados como ajuda de outro hospital
+ * @returns [{ nome, i, papel, casos, ajuda }]
+ */
+export function resumirRodape(nomes, casos, resolverUid = null, ajuda = []) {
+  const conta = new Map()
+  const somar = (chave) => { if (chave) conta.set(chave, (conta.get(chave) || 0) + 1) }
+  for (const c of casos || []) {
+    const bruto = String(c?.anestesista || '').trim()
+    if (!bruto || bruto === '//' || /^\?+$/.test(bruto)) continue
+    const partes = bruto.split('+').map((p) => p.trim()).filter(Boolean)
+    for (const parte of partes) {
+      const uid = partes.length === 1 ? (c?.anestesistaUserId || resolverUid?.(parte)) : resolverUid?.(parte)
+      somar(uid || normNome(parte))
+    }
+  }
+  const naAjuda = new Set((ajuda || []).map(normNome).filter(Boolean))
+  const total = (nomes || []).length
+  return (nomes || []).map((nome, i) => {
+    const uid = resolverUid?.(nome)
+    return {
+      nome,
+      i,
+      papel: i === 0 ? 'plantonista' : (i === total - 1 && total > 1 ? 'sai 1º' : null),
+      casos: (uid ? conta.get(uid) : 0) || conta.get(normNome(nome)) || 0,
+      ajuda: naAjuda.has(normNome(nome)),
+    }
+  })
+}
+
+/**
  * Pares de troca DECLARADOS (trocaCom vivo) nas escalas carregadas — insumo da
  * convergência da importação (Fase 2): publicar uma escala varre os pares
  * declarados e EXECUTA os que agora fecham (o parceiro que faltava chegou, ou a

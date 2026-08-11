@@ -555,16 +555,32 @@ describe('Conferência — ordem de liberação numerada', () => {
     await importar(UM, RODAPE)
     const numerada = await screen.findByText(/confira contra o rodapé da imagem/i)
     const caixa = numerada.parentElement
-    RODAPE.forEach((nome, i) => {
-      const chip = within(caixa).getByText(nome).closest('span')
-      expect(chip.textContent).toContain(String(i + 1))
-    })
+    // uma LINHA por posição, na ordem do rodapé — é assim que se lê a foto
+    const linhas = [...caixa.querySelectorAll('li')]
+    expect(linhas.map((l) => l.textContent)).toEqual(
+      RODAPE.map((nome, i) => expect.stringContaining(`${i + 1}${nome}`)),
+    )
     // 1º = plantonista, último = sai primeiro (as duas regras posicionais)
-    const chipDe = (nome) => within(caixa).getByText(nome).closest('span')
-    expect(chipDe('NATHALIA').textContent).toMatch(/plantonista/i)
-    expect(chipDe('CURY').textContent).toMatch(/sai 1º/i)
-    expect(chipDe('ERLEI').textContent).not.toMatch(/plantonista|sai 1º/i)
+    const linhaDe = (nome) => within(caixa).getByText(nome).closest('li')
+    expect(linhaDe('NATHALIA').textContent).toMatch(/plantonista/i)
+    expect(linhaDe('CURY').textContent).toMatch(/sai 1º/i)
+    expect(linhaDe('ERLEI').textContent).not.toMatch(/plantonista|sai 1º/i)
     expect(numerada.textContent).toMatch(/5 nomes/)
+  })
+
+  // A conferência é contra a FOTO: o aviso de "está no rodapé mas não tem
+  // cirurgia" só serve se estiver NA POSIÇÃO do nome. Listá-lo num parágrafo à
+  // parte obrigava a procurar o nome no meio da lista.
+  it('cada posição mostra os casos da pessoa e marca quem ficou sem nenhum', async () => {
+    await importar(UM, RODAPE)
+    const caixa = (await screen.findByText(/confira contra o rodapé da imagem/i)).parentElement
+    const linhaDe = (nome) => within(caixa).getByText(nome).closest('li')
+    expect(linhaDe('CURY').textContent).toMatch(/1 caso/)
+    expect(linhaDe('JOAO HENRIQUE').textContent).toMatch(/⚠ sem caso/)
+    // o aviso explica o porquê UMA vez, sem repetir a lista de nomes
+    const aviso = screen.getByText(/confira a extração/i)
+    expect(aviso.textContent).toMatch(/Um nome está/)
+    expect(aviso.textContent).not.toMatch(/JOAO HENRIQUE/)
   })
 
   it('o texto inteiro fica editável (textarea, não uma linha só)', async () => {

@@ -19,7 +19,7 @@ import { isPermissionError } from '@/services/supabaseEscalaAnestesistaService'
 import { prepararImagemParaVision } from '@/lib/imagemVision'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
-import { normNome, candidatosPrimeiroNome, gruposAnestesista, chavesAnestesista, nomesImportados, aplicarAtribuicoes, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital } from './utils'
+import { normNome, candidatosPrimeiroNome, resumirRodape, gruposAnestesista, chavesAnestesista, nomesImportados, aplicarAtribuicoes, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import { ehHoraSequencialEscala } from '@/lib/escalaCirurgicaRegras'
 import { detectarDuplicidadesEscala, formatarOcorrenciaDuplicidade, sugerirParceiroTroca } from '@/lib/escalaCirurgicaDuplicidades'
@@ -549,14 +549,10 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
 
   // Ordem NUMERADA para conferir contra a imagem (dono 11/08): o rodapé é lido
   // por POSIÇÃO, e num input de uma linha só davam para ver os 4 primeiros de 17.
-  const ordemNumerada = useMemo(() => {
-    const nomes = separarListaRodape(ordemTexto)
-    return nomes.map((nome, i) => ({
-      nome,
-      i,
-      papel: i === 0 ? 'plantonista' : (i === nomes.length - 1 && nomes.length > 1 ? 'sai 1º' : null),
-    }))
-  }, [ordemTexto])
+  const ordemNumerada = useMemo(
+    () => resumirRodape(separarListaRodape(ordemTexto), casos, resolver, separarListaRodape(ajudaTexto)),
+    [ordemTexto, ajudaTexto, casos, resolver],
+  )
 
   // GUARDRAIL DE NOME AMBÍGUO (dono 11/08) — BLOQUEIA a publicação.
   // A escala veio com "JOAO" na CO - Cesárea e o rodapé tinha JOAO HENRIQUE e
@@ -1238,22 +1234,34 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
                 onChange={(e) => setOrdemTexto(e.target.value)}
               />
               {ordemNumerada.length > 0 && (
-                <div className="mt-1.5 rounded-lg border border-border-strong bg-card px-2.5 py-2">
-                  <div className="flex flex-wrap gap-1">
-                    {ordemNumerada.map(({ nome, i, papel }) => (
-                      <span
-                        key={`${nome}-${i}`}
-                        className={[
-                          'inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs',
-                          papel ? 'bg-primary/10 font-medium text-primary' : 'bg-muted text-foreground',
-                        ].join(' ')}
-                      >
-                        <b className="tabular-nums opacity-60">{i + 1}</b> {nome}
-                        {papel && <span className="opacity-70">· {papel}</span>}
-                      </span>
-                    ))}
-                  </div>
-                  <p className="mt-1.5 text-xs text-muted-foreground">
+                <div className="mt-1.5 overflow-hidden rounded-xl border border-border-strong bg-card">
+                  <ul className="divide-y divide-border">
+                    {ordemNumerada.map(({ nome, i, papel, casos: nCasos, ajuda }) => {
+                      const suspeito = rodapeSuspeitos.includes(nome)
+                      return (
+                        <li key={`${nome}-${i}`} className="flex items-center gap-2 px-2.5 py-1.5">
+                          <span className="w-5 shrink-0 text-right text-xs font-bold tabular-nums text-muted-foreground">
+                            {i + 1}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{nome}</span>
+                          {papel && <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">{papel}</span>}
+                          {ajuda && <span className="shrink-0 rounded-full bg-info/10 px-1.5 py-0.5 text-[11px] font-medium text-info">ajuda</span>}
+                          {/* Contagem de casos é o que denuncia a extração torta:
+                              nome do rodapé sem cirurgia nenhuma normalmente
+                              perdeu a linha para outra pessoa (IOSC, 23/07). */}
+                          <span
+                            className={[
+                              'shrink-0 text-[11px] tabular-nums',
+                              suspeito ? 'rounded-full bg-warning/15 px-1.5 py-0.5 font-medium text-warning' : 'text-muted-foreground',
+                            ].join(' ')}
+                          >
+                            {nCasos > 0 ? `${nCasos} caso${nCasos > 1 ? 's' : ''}` : (suspeito ? '⚠ sem caso' : 'sem caso')}
+                          </span>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                  <p className="border-t border-border bg-muted/40 px-2.5 py-2 text-xs text-muted-foreground">
                     {ordemNumerada.length} {ordemNumerada.length === 1 ? 'nome' : 'nomes'} — confira contra o rodapé da imagem:
                     o 1º é o plantonista e o último sai primeiro (plantão do turno seguinte).
                   </p>
@@ -1271,11 +1279,14 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
                   ))}
                 </div>
               )}
+              {/* Os nomes já vão marcados na própria posição da lista acima —
+                  aqui fica só o PORQUÊ, que é o que a secretária precisa ler
+                  uma vez. Repetir a lista fazia procurar o nome no meio dela. */}
               {rodapeSuspeitos.length > 0 && (
                 <p className="mt-1.5 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
-                  ⚠ Na ordem de liberação mas SEM nenhum caso: <b>{rodapeSuspeitos.join(', ')}</b> —
-                  confira a extração: as linhas desses anestesistas podem ter saído para outra pessoa
-                  (foi o que sumiu com Didomenico/Melo no IOSC em 23/07).
+                  ⚠ {rodapeSuspeitos.length === 1 ? 'Um nome está' : `${rodapeSuspeitos.length} nomes estão`} na ordem
+                  de liberação sem nenhum caso (marcados acima) — confira a extração: a linha deles pode ter saído
+                  para outra pessoa (foi o que sumiu com Didomenico/Melo no IOSC em 23/07).
                 </p>
               )}
             </div>
