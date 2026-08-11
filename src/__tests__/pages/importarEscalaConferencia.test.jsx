@@ -12,7 +12,10 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { ThemeProvider, ToastProvider } from '@/design-system'
 import ImportarEscalaPage from '@/pages/escala-cirurgica/ImportarEscalaPage'
 
-const { svcMock, salvarEscala, upsertAlias, prepararImagem } = vi.hoisted(() => ({
+// roster MUTÁVEL: o guardrail de nome ambíguo (dono 11/08) precisa de dois
+// homônimos cadastrados; os demais testes seguem com o roster vazio.
+const { svcMock, salvarEscala, upsertAlias, prepararImagem, rosterHolder } = vi.hoisted(() => ({
+  rosterHolder: { lista: [] },
   svcMock: { parseEscalaImagem: vi.fn(), fetchEscala: vi.fn(async () => null) },
   salvarEscala: vi.fn(async (p) => ({ id: 'e1', ...p, casos: p.casos.map((c, i) => ({ ...c, id: `c${i}`, ordem: i })) })),
   upsertAlias: vi.fn(async () => {}),
@@ -39,7 +42,7 @@ vi.mock('@/lib/imagemVision', () => ({
 }))
 vi.mock('@/hooks/useRosterAnestesistas', () => ({
   default: () => ({
-    roster: [], aliases: [], loading: false,
+    roster: rosterHolder.lista, aliases: [], loading: false,
     rosterByUid: new Map([['uid-cury', { uid: 'uid-cury', nome: 'GUSTAVO CURY', apelidos: ['CURY'] }]]),
     options: [{ value: 'uid-cury', label: 'Gustavo Cury' }],
     resolver: (nome) => (String(nome).trim().toUpperCase() === 'CURY' ? 'uid-cury' : null),
@@ -488,5 +491,54 @@ describe('Adicionar linha — digitação da Sala (bug 30/07)', () => {
     await waitFor(() => expect(blocos(container).some((b) => b.textContent.includes('Sala 9'))).toBe(true))
     // bloco de destino aberto — os campos não "somem" atrás de um bloco fechado
     expect(screen.getByDisplayValue('Sala 9')).toBeTruthy()
+  })
+})
+
+// NOME AMBÍGUO (dono 11/08) — incidente da CO - Cesárea: a escala veio com
+// "JOAO" e o rodapé daquele dia tinha JOAO HENRIQUE e JOAO RICARDO. O
+// dicionário não resolve primeiro nome com dois donos (regra da casa:
+// perguntar, nunca chutar), então os 3 casos ficaram órfãos numa linha "Fora do
+// rodapé" e o João dono deles nasceu liberado por aparecer sem cirurgia — o que
+// ainda fez a fila parecer publicada fora de ordem.
+describe('Conferência — nome ambíguo bloqueia a publicação', () => {
+  const DOIS_JOAOS = [
+    { uid: 'uid-jh', nome: 'JOÃO HENRIQUE SALVÃO VANNI', apelidos: ['JOAO HENRIQUE', 'JOAO VANNI'] },
+    { uid: 'uid-jr', nome: 'JOÃO RICARDO MOREIRA', apelidos: ['JOAO RICARDO', 'JOAO MOREIRA'] },
+  ]
+  const CESAREA = [
+    { sala: 'CO - Cesárea', hora: '07:30', anestesista: 'JOAO', cirurgiao: 'DRA. TACIANA ALFLEN', procedimento: 'Cesariana' },
+  ]
+
+  beforeEach(() => { rosterHolder.lista = DOIS_JOAOS })
+  afterAll(() => { rosterHolder.lista = [] })
+
+  it('avisa na tela quem são os candidatos e não deixa publicar', async () => {
+    await importar(CESAREA)
+    expect(await screen.findByText(/pode ser/i)).toBeTruthy()
+    const aviso = screen.getByText(/pode ser/i)
+    // nomes como a fila os mostra (1º + último), que é como a secretária os conhece
+    expect(aviso.textContent).toMatch(/João Vanni/i)
+    expect(aviso.textContent).toMatch(/João Moreira/i)
+
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+    expect(await screen.findByText(/qual deles/i)).toBeTruthy()
+    expect(salvarEscala).not.toHaveBeenCalled()
+  })
+
+  it('escolhido o login, o bloqueio sai e a escala publica', async () => {
+    const container = await importar(CESAREA)
+    await waitFor(() => expect(blocos(container)).toHaveLength(1))
+    const bloco = blocos(container)[0].parentElement
+    fireEvent.click(within(bloco).getByRole('combobox'))
+    fireEvent.click(await screen.findByRole('option', { name: 'Gustavo Cury' }))
+
+    await waitFor(() => expect(screen.queryByText(/pode ser/i)).toBeNull())
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+    await waitFor(() => expect(salvarEscala).toHaveBeenCalled())
+  })
+
+  it('nome com sobrenome não é ambíguo — publica direto', async () => {
+    await importar([{ ...CESAREA[0], anestesista: 'JOAO RICARDO' }])
+    expect(screen.queryByText(/pode ser/i)).toBeNull()
   })
 })

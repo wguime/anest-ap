@@ -138,6 +138,36 @@ describe('Badge "Troca" nos dois lados do par', () => {
   })
 })
 
+// A FILA SEGUE SEMPRE A ORDEM DO RODAPÉ (dono 11/08, reforçando 27/07).
+// Liberado ficava afundado no fim da lista e isso passava a impressão de que o
+// rodapé tinha sido publicado fora de ordem — foi a leitura de 11/08, quando o
+// João Ricardo (11º) apareceu em 13º por ter nascido liberado sem cirurgia.
+describe('Ordem da fila = ordem do rodapé', () => {
+  it('quem já foi liberado mantém a própria posição', () => {
+    const escala = {
+      ...escalaBase,
+      liberacoes: { 'matutino:uid-mar': { liberadoEm: '2026-07-29T11:00:00Z' } },
+    }
+    montar({}, escala)
+    const chaves = [...document.querySelectorAll('[data-linha]')].map((el) => el.getAttribute('data-linha'))
+    expect(chaves).toEqual(['uid-leo', 'uid-mar', 'uid-kar'])
+  })
+
+  it('quem nasce liberado por estar sem cirurgia também fica na posição dele', () => {
+    // Karine no rodapé sem nenhum caso: nasce liberada e continua em 3º
+    const escala = {
+      ...escalaBase,
+      casos: [
+        caso('Sala 1', 0, 'LEONARDO', 'Liana W', '07:30'),
+        caso('Sala 2', 0, 'MARILIO', 'Taciana A', '07:30'),
+      ],
+    }
+    montar({}, escala)
+    const chaves = [...document.querySelectorAll('[data-linha]')].map((el) => el.getAttribute('data-linha'))
+    expect(chaves).toEqual(['uid-leo', 'uid-mar', 'uid-kar'])
+  })
+})
+
 describe('Painel ✏️ — declarar, executar e desfazer a troca', () => {
   it('declarar sai pelo FLUXO ÚNICO: o botão abre o TrocaSheet com a linha de origem', async () => {
     // dono 07/08 ("as trocas num só local"): a view não declara mais inline —

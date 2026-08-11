@@ -326,18 +326,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // definição (vermelho desde a publicação). Quem TEVE casos e todos encerraram
   // fica ATIVO (o conteúdo sai da linha, mas quem libera é o plantonista).
   const naoEscalado = (l) => !l.teveCasos && !l.notaRodape && !(l.salas?.length) && !(l.cirurgioes?.length)
-  const estaLiberada = (l) => {
-    const m = marcaDe(l)
-    const forcadoEscalado = m?.escalado === true // entrou na escala no meio do dia
-    return (!!m && !forcadoEscalado) || (naoEscalado(l) && !forcadoEscalado)
-  }
-  // Liberados AFUNDAM para o fim da lista (pedido do dono 2026-07-21): a liberação
-  // corre de baixo para cima, então o "próximo a ser liberado" fica sempre logo
-  // ACIMA do bloco vermelho — nunca abaixo de quem já saiu. Ordem relativa
-  // preservada dentro de cada grupo; persistir (setas) grava a ordem exibida.
-  // Plantão noturno tem posição FIXA (pedido do dono 24/07): liberado NÃO afunda —
-  // o P2 liberado volta para o lugar de P2, independente de onde estava escalado
-  // no dia. O afundamento vale só para a lista do turno.
+  // (o estado "liberada" é calculado por linha no render — ver `liberado` lá
+  // embaixo. Não existe mais uma versão aqui em cima porque a exibição parou de
+  // separar liberados dos demais: a fila segue a ordem do rodapé, ponto.)
   // total de ajudas persistidas (= tamanho do array `ajuda_externa[turno]`), que é
   // o que limita as setas do bloco. Usa o maior `ajudaIdx` visto +1 em vez do
   // tamanho da lista exibida: quem virou plantão do contraturno saiu do bloco mas
@@ -426,10 +417,17 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // mas não podem ocupar uma posição da ordem publicada nem entrar na fila.
   const linhasForaDoRodape = doTurno.filter((l) => l.isExtra)
   const linhasOficiais = doTurno.filter((l) => !l.isExtra)
+  // A FILA SEGUE SEMPRE A ORDEM DO RODAPÉ (dono 11/08, reforçando 27/07).
+  // Liberado NÃO afunda mais: quem sai fica na própria posição, riscado e com o
+  // selo "Liberado". O afundamento antigo dava a impressão de que a ordem tinha
+  // sido publicada errada — em 11/08 o João Ricardo apareceu em 13º (nasceu
+  // liberado por estar sem cirurgia) sendo 11º no rodapé, e a leitura foi
+  // "inseriram o rodapé fora de ordem". Só saem da ordem quem a regra manda:
+  // plantão noturno no topo, e extras/ajudas/plantão-do-turno-seguinte no fim
+  // (esses a própria lib já posiciona).
   const linhasExibicao = [
     ...linhasFase.filter((l) => l.noturno),
-    ...linhasOficiais.filter((l) => !estaLiberada(l)),
-    ...linhasOficiais.filter(estaLiberada),
+    ...linhasOficiais,
     ...linhasForaDoRodape,
   ]
 

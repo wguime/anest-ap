@@ -19,7 +19,7 @@ import { isPermissionError } from '@/services/supabaseEscalaAnestesistaService'
 import { prepararImagemParaVision } from '@/lib/imagemVision'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
-import { normNome, gruposAnestesista, chavesAnestesista, nomesImportados, aplicarAtribuicoes, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital } from './utils'
+import { normNome, candidatosPrimeiroNome, gruposAnestesista, chavesAnestesista, nomesImportados, aplicarAtribuicoes, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import { ehHoraSequencialEscala } from '@/lib/escalaCirurgicaRegras'
 import { detectarDuplicidadesEscala, formatarOcorrenciaDuplicidade, sugerirParceiroTroca } from '@/lib/escalaCirurgicaDuplicidades'
@@ -154,7 +154,7 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
   // provider sempre expõe a publicação transacional por turno.
   const publicarEscala = salvarEscalaTurno || salvarEscala
   const { user } = useUser()
-  const { options: rosterOpcoes, rosterByUid, resolver, upsertAlias } = useRosterAnestesistas()
+  const { roster, options: rosterOpcoes, rosterByUid, resolver, upsertAlias } = useRosterAnestesistas()
 
   const [casos, setCasos] = useState([])
   const [atribuicoes, setAtribuicoes] = useState({}) // sala -> uid
@@ -547,6 +547,21 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
     return nomes.filter((n, i) => !flags[i] && (flags[i - 1] || flags[i + 1]))
   }, [ordemTexto, atribuicoes, casos, resolver])
 
+  // GUARDRAIL DE NOME AMBÍGUO (dono 11/08) — BLOQUEIA a publicação.
+  // A escala veio com "JOAO" na CO - Cesárea e o rodapé tinha JOAO HENRIQUE e
+  // JOAO RICARDO: o dicionário não resolve primeiro nome com dois donos (regra
+  // da casa: perguntar, nunca chutar), os 3 casos ficaram órfãos numa linha
+  // "Fora do rodapé" e o dono deles nasceu liberado por aparecer sem cirurgia.
+  // Aqui é o único ponto onde ainda dá para pedir o sobrenome a quem tem a
+  // imagem na mão — depois de publicado, só no banco.
+  const gruposAmbiguos = useMemo(() => {
+    if (!roster?.length) return []
+    return grupos
+      .filter((g) => !atribuicoes[g.chave] && !g.indices.every((i) => casos[i]?.semAnestesista))
+      .map((g) => ({ grupo: g, candidatos: candidatosPrimeiroNome(g.nome, roster) }))
+      .filter(({ candidatos }) => candidatos.length > 1)
+  }, [grupos, atribuicoes, casos, roster])
+
   // ── CRUZAMENTO COM AS ESCALAS JÁ PUBLICADAS (dono 30/07) ───────────────────
   //
   // "Ajuda" era derivada de UM sinal só: a COR da tinta no rodapé. Foi esse sinal
@@ -698,6 +713,19 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
         variant: 'error',
         title: 'Hora inválida na escala',
         description: `${horario.invalidos.length} item(ns) têm hora inválida. Corrija antes de publicar (use HH:MM, por exemplo 08:30).`,
+      })
+      return
+    }
+    // NOME AMBÍGUO BLOQUEIA (dono 11/08): publicar "JOAO" com dois Joãos no
+    // rodapé deixa a sala órfã e o dono dela fora da fila. Só quem está com a
+    // imagem na mão sabe o sobrenome.
+    if (gruposAmbiguos.length) {
+      const { grupo, candidatos } = gruposAmbiguos[0]
+      toast({
+        variant: 'error',
+        duration: 12000,
+        title: `"${grupo.nome}" — qual deles?`,
+        description: `${candidatos.map((c) => nomeCirurgiaoCurto(titleCaseNome(c.nome))).join(' ou ')}. Escolha o login na conferência${gruposAmbiguos.length > 1 ? ` (e em mais ${gruposAmbiguos.length - 1} nome[s] igual[is])` : ''} — sem sobrenome a sala fica sem dono na fila.`,
       })
       return
     }
@@ -1188,6 +1216,18 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
                 <Button size="sm" variant="ghost" onClick={preencherRodape}>Preencher da atribuição</Button>
               </div>
               <Input placeholder="Leonardo, Marilio, Diego, …" value={ordemTexto} onChange={(e) => setOrdemTexto(e.target.value)} />
+              {/* NOME AMBÍGUO (dono 11/08) — vermelho: isto impede publicar */}
+              {gruposAmbiguos.length > 0 && (
+                <div className="mt-1.5 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                  {gruposAmbiguos.map(({ grupo, candidatos }) => (
+                    <p key={grupo.chave}>
+                      ⛔ <b>{grupo.nome}</b> em {grupo.sala || 'sala sem nome'}: pode ser{' '}
+                      {candidatos.map((c) => nomeCirurgiaoCurto(titleCaseNome(c.nome))).join(' ou ')}.
+                      Escolha o login — sem sobrenome a sala fica sem dono e some da ordem de liberação.
+                    </p>
+                  ))}
+                </div>
+              )}
               {rodapeSuspeitos.length > 0 && (
                 <p className="mt-1.5 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
                   ⚠ Na ordem de liberação mas SEM nenhum caso: <b>{rodapeSuspeitos.join(', ')}</b> —

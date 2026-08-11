@@ -1088,6 +1088,33 @@ export function planoExecucaoTroca({ escalas, resolverUid, a, b, turno = null })
 }
 
 /**
+ * Candidatos do roster para um PRIMEIRO NOME sozinho — o detector de nome
+ * ambíguo da conferência (dono 11/08).
+ *
+ * Em 11/08 a sala CO - Cesárea da Unimed foi publicada com o anestesista
+ * escrito só "JOAO", e o rodapé daquele dia tinha JOAO HENRIQUE e JOAO RICARDO.
+ * O dicionário não resolve primeiro nome com dois donos (é a regra: perguntar,
+ * nunca chutar), então os 3 casos ficaram órfãos: viraram uma linha "Joao —
+ * Fora do rodapé" e o João que era o dono nasceu liberado por aparecer sem
+ * cirurgia. Publicar assim não pode passar em silêncio.
+ *
+ * Só considera nome de UM token: "JOAO RICARDO" já discrimina, e sobrenome
+ * sozinho ("GARIM") é resolvido pelo dicionário como qualquer apelido.
+ *
+ * @param {string} nome  texto do anestesista como veio da importação
+ * @param {Array} roster [{ uid, nome, apelidos }]
+ * @returns {Array} pessoas do roster que atendem por esse primeiro nome
+ */
+export function candidatosPrimeiroNome(nome, roster = []) {
+  const alvo = normNome(nome)
+  if (!alvo || alvo === '//' || alvo.includes(' ') || alvo.includes('+') || /^\?+$/.test(alvo)) return []
+  return (roster || []).filter((p) => {
+    const nomes = [p?.nome, ...(p?.apelidos || [])].map(normNome).filter(Boolean)
+    return nomes.some((n) => n === alvo || n.startsWith(`${alvo} `))
+  })
+}
+
+/**
  * Pares de troca DECLARADOS (trocaCom vivo) nas escalas carregadas — insumo da
  * convergência da importação (Fase 2): publicar uma escala varre os pares
  * declarados e EXECUTA os que agora fecham (o parceiro que faltava chegou, ou a

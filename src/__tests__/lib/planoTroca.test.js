@@ -11,7 +11,7 @@
  *  - o trocaCom do par é listado p/ limpeza (o badge some após executar).
  */
 import { describe, it, expect } from 'vitest'
-import { planoExecucaoTroca, planoExecucaoDeclarada, planoDesfazerTroca, localizarSlotRodape, casosTransferiveis, snapshotCasos, lerOverrideAnterior, estadoTrocasDoHistorico, paresDeclarados } from '../../pages/escala-cirurgica/utils'
+import { candidatosPrimeiroNome, planoExecucaoTroca, planoExecucaoDeclarada, planoDesfazerTroca, localizarSlotRodape, casosTransferiveis, snapshotCasos, lerOverrideAnterior, estadoTrocasDoHistorico, paresDeclarados } from '../../pages/escala-cirurgica/utils'
 
 const caso = (id, sala, anestesista, extra = {}) => ({
   id, sala, ordem: 0, anestesista, cirurgiao: 'Cirurgião X',
@@ -329,6 +329,37 @@ describe('planoExecucaoDeclarada — âncora no slot declarante', () => {
     expect(plan.lados).toHaveLength(1)
     expect(plan.lados[0]).toMatchObject({ escalaId: 'esc-uni', para: { uid: 'uid-paulo' } })
     expect(plan.pendencias).toEqual([])
+  })
+})
+
+// NOME AMBÍGUO (dono 11/08): a CO - Cesárea da Unimed foi publicada com "JOAO"
+// e o rodapé tinha JOAO HENRIQUE e JOAO RICARDO — os 3 casos ficaram órfãos e o
+// dono deles sumiu da fila. O detector alimenta o bloqueio da conferência.
+describe('candidatosPrimeiroNome — quem atende por esse primeiro nome', () => {
+  const ROSTER = [
+    { uid: 'uid-jh', nome: 'JOÃO HENRIQUE SALVÃO VANNI', apelidos: ['JOAO HENRIQUE', 'JOAO H.'] },
+    { uid: 'uid-jr', nome: 'JOÃO RICARDO MOREIRA', apelidos: ['JOAO RICARDO', 'JOAO MOREIRA'] },
+    { uid: 'uid-gar', nome: 'GUSTAVO ALMANSA GARIM', apelidos: ['GARIM'] },
+  ]
+
+  it('primeiro nome com dois donos devolve os dois (é o que bloqueia a publicação)', () => {
+    expect(candidatosPrimeiroNome('JOAO', ROSTER).map((p) => p.uid)).toEqual(['uid-jh', 'uid-jr'])
+    expect(candidatosPrimeiroNome('joão', ROSTER).map((p) => p.uid)).toEqual(['uid-jh', 'uid-jr'])
+  })
+
+  it('nome com sobrenome já discrimina — no máximo um candidato', () => {
+    expect(candidatosPrimeiroNome('JOAO RICARDO', ROSTER)).toEqual([])
+  })
+
+  it('apelido de dono único não é ambíguo', () => {
+    expect(candidatosPrimeiroNome('GARIM', ROSTER).map((p) => p.uid)).toEqual(['uid-gar'])
+    expect(candidatosPrimeiroNome('GUSTAVO', ROSTER).map((p) => p.uid)).toEqual(['uid-gar'])
+  })
+
+  it('vazio, "//", "?" e sala compartilhada nunca viram candidato', () => {
+    for (const n of ['', '  ', '//', '?', '??', 'JOAO + GARIM']) {
+      expect(candidatosPrimeiroNome(n, ROSTER)).toEqual([])
+    }
   })
 })
 
