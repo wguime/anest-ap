@@ -990,11 +990,52 @@ export function localizarSlotRodape(esc, pessoa, resolverUid, turnoSelecionado =
   return null
 }
 
-/** Ids dos casos TRANSFERÍVEIS de uma pessoa na escala: não-terminados e sem
- *  sala compartilhada ("A + B" levaria o caso inteiro e apagaria o colega). */
-export function casosTransferiveis(esc, pessoa, resolverUid) {
+/**
+ * Onde a pessoa ESTÁ nesta escala: a posição no rodapé ou, na falta dela, as
+ * CIRURGIAS dela no turno.
+ *
+ * O Materno é publicado sem rodapé nenhum (13/08: `ordem_liberacao` vazia nos
+ * dois turnos em 17 de 17 escalas) — quem trabalha lá só existe nos casos. Como
+ * a troca era ancorada apenas no rodapé, o colega do Materno caía em "não tem
+ * posição em jogo" e o swap saía pela metade: a vaga do hospital mudava de dono
+ * e as cirurgias do Materno seguiam no nome de quem tinha saído, para arrumar à
+ * mão uma a uma. Vale igual para quem tem cirurgia num hospital sem estar no
+ * rodapé dele.
+ *
+ * `semPosicao: true` diz que o slot NÃO veio do rodapé: não há fila para herdar,
+ * só as cirurgias — quem exibe precisa falar isso, e `ordem_liberacao` continua
+ * intocada nos dois caminhos.
+ *
+ * @returns {{ nome, chave, turno, semPosicao }|null}
+ */
+export function localizarSlotEscala(esc, pessoa, resolverUid, turnoSelecionado = null) {
+  const noRodape = localizarSlotRodape(esc, pessoa, resolverUid, turnoSelecionado)
+  if (noRodape) return { ...noRodape, semPosicao: false }
   const uidLocal = uidLocalDe(esc)
-  return casosResolvidos(esc)
+  const turnos = turnoSelecionado
+    ? [turnoSelecionado, turnoSelecionado === 'matutino' ? 'vespertino' : 'matutino']
+    : ['matutino', 'vespertino']
+  for (const turno of turnos) {
+    // só vira lado da troca quando há o que MOVER: quem tem lá apenas cirurgia
+    // encerrada ou sala compartilhada não muda de mãos e continua "sem slot"
+    if (!casosTransferiveis(esc, pessoa, resolverUid, turno).length) continue
+    const meu = filtrarPorTurno(casosResolvidos(esc), turno).find(
+      (c) => !c.semAnestesista && pessoaCasaNome(pessoa, c.anestesista, resolverUid, uidLocal)
+    )
+    if (!meu) continue
+    const nome = String(meu.anestesista || '').trim()
+    return { nome, chave: resolverUid?.(nome) || pessoa.uid || normNome(nome), turno, semPosicao: true }
+  }
+  return null
+}
+
+/** Ids dos casos TRANSFERÍVEIS de uma pessoa na escala: não-terminados e sem
+ *  sala compartilhada ("A + B" levaria o caso inteiro e apagaria o colega).
+ *  `turno` (opcional) recorta pelo MESMO critério da exibição: é o que sustenta
+ *  a presença por casos (Materno), onde manhã e tarde são pessoas diferentes. */
+export function casosTransferiveis(esc, pessoa, resolverUid, turno = null) {
+  const uidLocal = uidLocalDe(esc)
+  return filtrarPorTurno(casosResolvidos(esc), turno)
     .filter((c) => {
       if (!c.id || c.semAnestesista) return false
       if ((c.statusCirurgia || 'agendada') === 'terminada') return false
@@ -1036,18 +1077,23 @@ export function planoExecucaoTroca({ escalas, resolverUid, a, b, turno = null })
   for (const [hospital, esc] of Object.entries(escalas || {})) {
     if (!esc?.id) continue
     for (const [de, para] of [[a, b], [b, a]]) {
-      const slot = localizarSlotRodape(esc, de, resolverUid, turno)
+      const slot = localizarSlotEscala(esc, de, resolverUid, turno)
       if (!slot) continue
       comSlot.add(de)
       porPessoa.get(de).push({
         hospital, escalaId: esc.id,
         chaveSlot: slot.chave, nomeSlot: slot.nome,
+        // slot achado pelos CASOS (Materno e afins): não há posição na fila para
+        // herdar — o lado move só as cirurgias, e o sheet precisa dizer isso.
+        ...(slot.semPosicao && { semPosicao: true }),
         de: { uid: de.uid || null, nome: de.nome, apelido: de.apelido || slot.nome },
         para: { uid: para.uid || null, nome: para.nome, apelido: para.apelido },
         // sem uid de quem assume não há como transferir caso (o service escreveria
         // "?"): o lado vale só pela POSIÇÃO; os casos se ajustam pelo Definir.
         ...(slot.turno ? { turno: slot.turno } : (turno ? { turno } : {})),
-        casoIds: para.uid ? casosTransferiveis(esc, de, resolverUid) : [],
+        // o lado sem posição nasce de UM turno e leva só os casos DELE (no
+        // Materno, a manhã e a tarde costumam ser pessoas diferentes)
+        casoIds: para.uid ? casosTransferiveis(esc, de, resolverUid, slot.semPosicao ? slot.turno : null) : [],
       })
     }
     const uidLocal = uidLocalDe(esc)
@@ -1245,19 +1291,21 @@ export function planoExecucaoDeclarada({ escalas, resolverUid, par, a, b }) {
       casoIds: b.uid ? casosTransferiveis(escA, a, resolverUid) : [],
     })
   }
-  // recíproco: a vaga do PARCEIRO no hospital dele (fora da escala declarante).
-  // Sem vaga em lugar nenhum = assunção unilateral (colega de fora) — não é pendência.
+  // recíproco: a vaga do PARCEIRO no hospital dele (fora da escala declarante) —
+  // ou, onde não há rodapé publicado (Materno), as cirurgias dele naquele turno.
+  // Sem nada em lugar nenhum = assunção unilateral (colega de fora) — não é pendência.
   for (const [hospital, esc] of Object.entries(escalas || {})) {
     if (!esc?.id || esc.id === par.escalaId) continue
-    const slotB = localizarSlotRodape(esc, b, resolverUid, par.turno)
+    const slotB = localizarSlotEscala(esc, b, resolverUid, par.turno)
     if (!slotB) continue
     lados.push({
       hospital, escalaId: esc.id,
       chaveSlot: slotB.chave, nomeSlot: slotB.nome,
+      ...(slotB.semPosicao && { semPosicao: true }),
       ...(slotB.turno ? { turno: slotB.turno } : {}),
       de: { uid: b.uid || null, nome: b.nome, apelido: b.apelido || slotB.nome },
       para: { uid: a.uid || null, nome: a.nome, apelido: a.apelido },
-      casoIds: a.uid ? casosTransferiveis(esc, b, resolverUid) : [],
+      casoIds: a.uid ? casosTransferiveis(esc, b, resolverUid, slotB.semPosicao ? slotB.turno : null) : [],
     })
     break
   }

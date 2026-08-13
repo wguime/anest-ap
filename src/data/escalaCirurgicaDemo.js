@@ -85,7 +85,9 @@ const hro = {
 const materno = {
   id: 'demo-materno', hospital: 'materno', data: DEMO_DATE, status: 'publicada',
   liberacoes: {}, linhaOverrides: {},
-  ordemLiberacao: ['ROMULO'],
+  // O Materno é publicado SEM rodapé — assim em 17/17 escalas até 13/08. Quem
+  // trabalha lá só existe nos casos, e é isso que a troca precisa enxergar.
+  ordemLiberacao: [],
   casos: [
     c('Sala 3 HC', 0, '07:30', 'M.S.', '9a', '', 'Amigdalectomia com adenoidectomia + turbinectomia', 'Larissa Vendrame de Marchi', 'ROMULO', 'SUS'),
     c('Sala 3 HC', 1, '08:30', 'L.B.', '4a', '', 'Amigdalectomia com adenoidectomia + turbinectomia', 'Larissa Vendrame de Marchi', '//', 'SUS'),

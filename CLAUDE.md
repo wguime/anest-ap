@@ -255,6 +255,26 @@ declarados e executa os que fecham — inclusive re-execução pós-republicaç�
 (que zera overrides). Sem vínculo de login → fica declarado + aviso do que
 falta. RLS validada: gate por PAPEL, não por hospital — escrita cruzada ok.
 
+**COLEGA FORA DA UNIMED/HRO (dono 13/08):** a troca era ancorada SÓ no rodapé, e
+o **Materno é publicado sem rodapé nenhum** (`ordem_liberacao` vazia nos dois
+turnos em 17/17 escalas) — quem trabalha lá só existe nos CASOS. O colega do
+Materno caía em "não tem posição em jogo" e o swap saía pela metade: a vaga do
+hospital mudava de dono e as cirurgias do Materno seguiam no nome de quem tinha
+saído, para arrumar à mão uma a uma. `localizarSlotEscala` (utils, puro) é a
+resposta única de "onde essa pessoa está nesta escala": rodapé e, na falta dele,
+as cirurgias DAQUELE turno — o lado nasce com `semPosicao: true` (não há fila a
+herdar, só os casos; `ordem_liberacao` segue intocada) e só existe se houver o
+que mover (cirurgia encerrada ou sala "A + B" não conta). Vale nos dois motores:
+`planoExecucaoTroca` (TrocaSheet) e o recíproco de `planoExecucaoDeclarada`
+(convergência da publicação). O cartão do sheet diz "Cirurgias de X · sem fila de
+liberação", e o tipo passa a inferir `entre_hospitais` sozinho. Colega em
+**lugar nenhum** (consultório/folga) segue com a assunção de mão única, agora com
+**"Onde {colega} está hoje"** (`LOCAL_COLEGA_OPCOES`: Consultório/Materno/
+Sobreaviso/Folga/Outro) — viaja no jsonb (`trocaCom.local` / `assumidaPor.local`,
+sem migration) e aparece na fila em "Trocado com X (Consultório)" e "Assumiu a
+posição de Y · Consultório". A escala demo do Materno perdeu o rodapé fake para
+espelhar a produção.
+
 **Fase 3 (planejada, não iniciada)**: identidade única de matching (hoje 4
 camadas), compactação do histórico, telemetria de trocas, renomear
 `executarSubstituicao`→`executarTroca`.

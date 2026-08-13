@@ -21,6 +21,7 @@ const ROSTER = [
   { uid: 'uid-gio', nome: 'GIOVANA GOMES NOLL', apelidos: ['GIOVANA'] },
   { uid: 'uid-mau', nome: 'MAURICIO MAHALEM BASTOS', apelidos: ['MAURICIO'] },
   { uid: 'uid-fora', nome: 'COLEGA DE FORA', apelidos: ['FORA'] },
+  { uid: 'uid-rose', nome: 'ROSEMARY CURY', apelidos: ['ROSE'] },
 ]
 const APELIDO_UID = Object.fromEntries(ROSTER.flatMap((r) => r.apelidos.map((a) => [a, r.uid])))
 
@@ -43,8 +44,17 @@ const escalaHro = {
   casos: [{ id: 'h1', sala: 'S1', ordem: 0, anestesista: 'GIOVANA', anestesistaUserId: 'uid-gio', bloco: 'normal' }],
 }
 
+// O Materno é publicado SEM rodapé (assim em 17/17 escalas até 13/08): quem
+// trabalha lá só existe nos casos.
+const escalaMaterno = {
+  id: 'esc-mat', hospital: 'materno',
+  ordemLiberacao: { matutino: [], vespertino: [] },
+  linhaOverrides: {},
+  casos: [{ id: 'm1', sala: 'Sala 2 HC', ordem: 0, hora: '07:30', turno: 'matutino', anestesista: 'ROSE', anestesistaUserId: 'uid-rose', bloco: 'normal' }],
+}
+
 vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
-  useEscalaCirurgica: () => ({ escalas: { unimed: escalaUnimed, hro: escalaHro, materno: null } }),
+  useEscalaCirurgica: () => ({ escalas: { unimed: escalaUnimed, hro: escalaHro, materno: escalaMaterno } }),
   useEscalaCirurgicaActions: () => ({ marcarTroca, executarSubstituicao }),
   HOSPITAL_LABEL: { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' },
 }))
@@ -172,7 +182,7 @@ describe('TrocaSheet', () => {
   it('colega sem posição publicada: avisa e a única decisão é a posição que existe', async () => {
     montar()
     await escolherColega('COLEGA DE FORA')
-    expect(await screen.findByText(/não tem posição em jogo/i)).toBeTruthy()
+    expect(await screen.findByText(/não tem posição nem cirurgia/i)).toBeTruthy()
     marcar('Colega Fora assume HRO')
     fireEvent.click(botaoPrincipal())
     await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
@@ -180,6 +190,44 @@ describe('TrocaSheet', () => {
     expect(plan.lados).toHaveLength(1)
     expect(plan.lados[0].para.uid).toBe('uid-fora')
     expect(plan.lados[0].tipo).toBe('assuncao')
+  })
+
+  // ── COLEGA FORA DA UNIMED/HRO (dono 13/08) ─────────────────────────────────
+  it('colega do Materno: a troca fecha pelos CASOS, mesmo sem rodapé lá', async () => {
+    montar()
+    await escolherColega('ROSEMARY CURY')
+    // o cartão do Materno diz que ali não há fila para herdar — só as cirurgias
+    expect(await screen.findByText(/Cirurgias de Rose · sem fila de liberação/)).toBeTruthy()
+    expect(screen.getByText('Posição de Giovana')).toBeTruthy()
+    marcar('Rosemary Cury assume HRO')
+    marcar('Giovana Noll assume Materno')
+    await waitFor(() => expect(botaoPrincipal()).toHaveTextContent('Trocar agora'))
+    fireEvent.click(botaoPrincipal())
+    await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
+    const [plan] = executarSubstituicao.mock.calls[0]
+    const mat = plan.lados.find((l) => l.hospital === 'materno')
+    expect(mat).toMatchObject({ semPosicao: true, casoIds: ['m1'], para: { uid: 'uid-gio' } })
+    // dois hospitais em jogo → é troca entre hospitais, não "colega de fora assume"
+    expect(mat.tipo).toBe('entre_hospitais')
+  })
+
+  it('colega em lugar nenhum: dá para dizer ONDE ele está, e isso entra no registro', async () => {
+    montar()
+    await escolherColega('COLEGA DE FORA')
+    // o seletor de local só existe para quem não aparece em escala nenhuma
+    fireEvent.click(screen.getAllByRole('combobox')[1])
+    fireEvent.click(await screen.findByRole('option', { name: 'Consultório' }))
+    marcar('Giovana Noll fica HRO')
+    fireEvent.click(botaoPrincipal())
+    await waitFor(() => expect(marcarTroca).toHaveBeenCalledTimes(1))
+    expect(marcarTroca.mock.calls[0][2]).toMatchObject({ uid: 'uid-fora', local: 'Consultório', apenasRegistro: true })
+  })
+
+  it('colega que TEM escala não ganha campo de local (não há o que perguntar)', async () => {
+    montar()
+    await escolherColega('MAURICIO MAHALEM BASTOS')
+    await screen.findByText('Quem fica com cada posição?')
+    expect(screen.queryByText(/Onde .* está hoje/)).toBeNull()
   })
 
   it('"Declarar para depois" não existe mais (dono 09/08)', async () => {

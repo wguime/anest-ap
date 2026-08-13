@@ -43,6 +43,18 @@ export const TIPO_LABEL = {
 }
 const TIPO_OPCOES = Object.entries(TIPO_LABEL).map(([value, label]) => ({ value, label }))
 
+/** Onde o colega está quando não aparece em escala nenhuma do dia (dono 13/08:
+ *  "o colega pode estar no consultório, Materno, e não há essas opções"). É só
+ *  o RASTRO — nada a mover — mas é o que responde "cadê o Fulano" para quem lê
+ *  a fila depois. Materno entra porque a escala de lá pode ainda não ter saído. */
+export const LOCAL_COLEGA_OPCOES = [
+  { value: 'Consultório', label: 'Consultório' },
+  { value: 'Materno', label: 'Materno' },
+  { value: 'Sobreaviso', label: 'Sobreaviso' },
+  { value: 'Folga', label: 'Folga' },
+  { value: 'Outro local', label: 'Outro local' },
+]
+
 const ladoId = (l) => `${l.escalaId}:${l.chaveSlot}`
 const turnoCurto = (t) => (t === 'matutino' ? 'manhã' : t === 'vespertino' ? 'tarde' : '')
 const curto = (nome) => nomeCirurgiaoCurto(titleCaseNome(nome)) || nome
@@ -102,6 +114,7 @@ export default function TrocaSheet({ linha, escala, turno, onClose }) {
   const [tipo, setTipo] = useState(null) // null = usa o inferido
   const [escolha, setEscolha] = useState({}) // ladoId → 'fica' | 'assume'
   const [motivo, setMotivo] = useState('')
+  const [local, setLocal] = useState('') // onde o colega está, quando não há escala dele
   const [salvando, setSalvando] = useState(false)
 
   const b = useMemo(() => {
@@ -122,8 +135,16 @@ export default function TrocaSheet({ linha, escala, turno, onClose }) {
   const semSlot = (plan?.pendencias || []).filter((p) => p.motivo === 'sem_slot')
   const semVinculo = (plan?.pendencias || []).filter((p) => p.motivo === 'sem_uid')
 
+  // o colega não aparece em escala nenhuma → o "onde ele está" é a única coisa
+  // que sobra para registrar (e some assim que ele tem posição ou cirurgia)
+  const colegaSemEscala = !!b && semSlot.some((p) => p.pessoa === b)
+
   const tipoEfetivo = tipo || inferirTipoTroca(plan)
-  const meta = { ...(tipoEfetivo && { tipo: tipoEfetivo }), ...(motivo.trim() && { motivo: motivo.trim().slice(0, MOTIVO_MAX) }) }
+  const meta = {
+    ...(tipoEfetivo && { tipo: tipoEfetivo }),
+    ...(motivo.trim() && { motivo: motivo.trim().slice(0, MOTIVO_MAX) }),
+    ...(colegaSemEscala && local && { local }),
+  }
   const userInfo = { userId: user?.uid || user?.id || null, userName: user?.displayName }
 
   const confirmar = async () => {
@@ -161,7 +182,7 @@ export default function TrocaSheet({ linha, escala, turno, onClose }) {
               className="w-full" searchable
               options={rosterOpcoes.filter((o) => o.value !== a.uid)}
               value={uidColega}
-              onChange={(v) => { setUidColega(v); setTipo(null); setEscolha({}) }}
+              onChange={(v) => { setUidColega(v); setTipo(null); setEscolha({}); setLocal('') }}
               placeholder="Escolha o colega"
             />
           </div>
@@ -188,7 +209,13 @@ export default function TrocaSheet({ linha, escala, turno, onClose }) {
                             {l.casoIds.length ? `${l.casoIds.length} caso${l.casoIds.length === 1 ? '' : 's'}` : 'sem casos'}
                           </p>
                         </div>
-                        <p className="mb-2 text-xs text-muted-foreground">Posição de {titleCaseNome(l.nomeSlot)}</p>
+                        <p className="mb-2 text-xs text-muted-foreground">
+                          {l.semPosicao
+                            // Materno & afins: o hospital publica só as cirurgias,
+                            // não há fila para herdar — quem assume leva os casos.
+                            ? `Cirurgias de ${titleCaseNome(l.nomeSlot)} · sem fila de liberação`
+                            : `Posição de ${titleCaseNome(l.nomeSlot)}`}
+                        </p>
                         {/* o HOSPITAL vai no rótulo da opção (dono 10/08): lida
                             sozinha, "Fulano assume" não dizia assume ONDE */}
                         <div className="flex gap-1.5">
@@ -205,7 +232,8 @@ export default function TrocaSheet({ linha, escala, turno, onClose }) {
 
                   {semSlot.map((p) => (
                     <p key={p.pessoa.uid || p.pessoa.nome} className="text-xs text-muted-foreground">
-                      {curto(p.pessoa.nome)} não está no rodapé de nenhuma escala carregada — não tem posição em jogo.
+                      {curto(p.pessoa.nome)} não tem posição nem cirurgia nas escalas de hoje — a troca corre só
+                      pelo lado de cá.
                     </p>
                   ))}
                   {semVinculo.map((p) => (
@@ -217,6 +245,20 @@ export default function TrocaSheet({ linha, escala, turno, onClose }) {
               </div>
 
               <div className="grid gap-3">
+                {colegaSemEscala && (
+                  <div>
+                    <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Onde {curto(b.nome)} está hoje
+                    </p>
+                    <Select
+                      className="w-full"
+                      options={LOCAL_COLEGA_OPCOES}
+                      value={local}
+                      onChange={setLocal}
+                      placeholder="Consultório, Materno, folga…"
+                    />
+                  </div>
+                )}
                 <div>
                   <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Tipo da troca</p>
                   <Select

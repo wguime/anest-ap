@@ -514,7 +514,9 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
         // casa o dono por normNome, e o display curto ("G. Staub") não bate com
         // o cadastro ("Guilherme Staub") — o desfazer degradava p/ "só posição"
         // por diferença de FORMATO do nome. deNome segue sendo só exibição.
-        assumida: { deNome: displayDe(nomeRodape, uid), deNomeOriginal: nomeRodape, deUid: uid || null, motivo: asm.motivo || null },
+        // `local` = de onde veio quem assumiu, quando ele não estava em escala
+        // nenhuma (consultório/folga) — é a resposta de "cadê o titular" na fila
+        assumida: { deNome: displayDe(nomeRodape, uid), deNomeOriginal: nomeRodape, deUid: uid || null, motivo: asm.motivo || null, local: asm.local || null },
       })
       // A pessoa acabou de herdar posição + casos: nunca cair em "não escalado"
       // (nasceria liberada e afundaria) mesmo que os casos ainda estejam a caminho.

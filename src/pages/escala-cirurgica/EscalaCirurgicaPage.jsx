@@ -19,7 +19,7 @@ import LiberacoesView from './LiberacoesView'
 import ImportarEscalaPage from './ImportarEscalaPage'
 import VinculosSheet from './VinculosSheet'
 import TrocaSheet from './TrocaSheet'
-import { meuAliasDe, turnoAtual, casosResolvidos, estadoTrocasDoHistorico, filtrarPorTurno, normNome, formatData, rodapeDoTurno, localizarSlotRodape, planoExecucaoTroca, planoDesfazerTroca } from './utils'
+import { meuAliasDe, turnoAtual, casosResolvidos, estadoTrocasDoHistorico, filtrarPorTurno, normNome, formatData, rodapeDoTurno, localizarSlotEscala, planoExecucaoTroca, planoDesfazerTroca } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 
 const HOSPITAL_OPCOES = HOSPITAIS.map((h) => ({ value: h, label: HOSPITAL_LABEL[h] }))
@@ -156,9 +156,11 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
 
   const paresTroca = useMemo(() => {
     const out = []
+    // onde a pessoa do par está — rodapé OU cirurgias (o Materno sai sem rodapé
+    // e o colega de lá aparecia como se não estivesse em lugar nenhum)
     const slotLabelDe = (p) => {
       for (const [h2, e2] of Object.entries(escalas)) {
-        if (e2 && localizarSlotRodape(e2, p, resolverRoster, turno)) return HOSPITAL_LABEL[h2] || h2
+        if (e2 && localizarSlotEscala(e2, p, resolverRoster, turno)) return HOSPITAL_LABEL[h2] || h2
       }
       return null
     }
@@ -176,8 +178,10 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
         const b = pessoaDe(t.uid, t.nome)
         out.push({
           hospital: h, hospitalLabel: HOSPITAL_LABEL[h] || h, escalaId: esc.id, chave,
-          a, b, aHospitalLabel: slotLabelDe(a), bHospitalLabel: slotLabelDe(b),
-          tipo: t.tipo || null, motivo: t.motivo || null,
+          // colega fora de qualquer escala (consultório/folga): o local declarado
+          // no sheet ocupa o lugar do hospital que não existe
+          a, b, aHospitalLabel: slotLabelDe(a), bHospitalLabel: slotLabelDe(b) || t.local || null,
+          tipo: t.tipo || null, motivo: t.motivo || null, local: t.local || null,
           // registro de troca JÁ refletida na escala publicada (dono 10/08):
           // vira badge, nunca oferta de "executar" — não há o que mover
           apenasRegistro: !!t.apenasRegistro,

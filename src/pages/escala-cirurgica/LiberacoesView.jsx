@@ -899,6 +899,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         <ArrowLeftRight className="h-3 w-3 shrink-0" />
                         <span className="min-w-0">
                           Assumiu a posição de {linha.assumida.deNome}
+                          {/* de onde veio quem chegou (consultório/folga): sem isso a
+                              fila não conta o outro lado da troca (dono 13/08) */}
+                          {linha.assumida.local ? ` · ${linha.assumida.local}` : ''}
                           {linha.assumida.motivo ? ` · ${linha.assumida.motivo}` : ''}
                         </span>
                       </p>

@@ -166,6 +166,88 @@ describe('planoExecucaoTroca — swap simultâneo Giovana↔Maurício', () => {
   })
 })
 
+// ── COLEGA SEM RODAPÉ (dono 13/08) ───────────────────────────────────────────
+// "a troca é com colega que não está na escala da Unimed e HRO — pode estar no
+// consultório, Materno". O Materno é publicado SEM rodapé nenhum (ordem_liberacao
+// vazia nos dois turnos em 17/17 escalas até 13/08): quem trabalha lá só existe
+// nos casos. Ancorada só no rodapé, a troca saía pela metade — a vaga do hospital
+// mudava de dono e as cirurgias do Materno ficavam no nome de quem tinha saído.
+describe('planoExecucaoTroca — lado achado pelas CIRURGIAS (Materno, sem rodapé)', () => {
+  const comMaterno = {
+    unimed: escalas.unimed,
+    hro: null,
+    materno: {
+      id: 'esc-mat', hospital: 'materno',
+      ordemLiberacao: { matutino: [], vespertino: [] }, // o Materno sai sempre assim
+      linhaOverrides: {},
+      casos: [
+        caso('m1', 'Sala 2 HC', 'GIOVANA', { anestesistaUserId: 'uid-gio', hora: '07:30', turno: 'matutino' }),
+        caso('m2', 'Sala 2 HC', 'GIOVANA', { anestesistaUserId: 'uid-gio', hora: '08:30', turno: 'matutino' }),
+        caso('m3', 'Sala 2 HC', 'GIOVANA', { anestesistaUserId: 'uid-gio', hora: '09:30', turno: 'matutino', statusCirurgia: 'terminada' }),
+        // a tarde do Materno costuma ser de OUTRA pessoa — não pode viajar junto
+        caso('m4', 'Sala 2 HC', 'GIOVANA', { anestesistaUserId: 'uid-gio', hora: '14:00', turno: 'vespertino' }),
+      ],
+    },
+  }
+  const plan = planoExecucaoTroca({ escalas: comMaterno, resolverUid, a: MAURICIO, b: GIOVANA, turno: 'matutino' })
+
+  it('fecha os DOIS lados: a vaga da Unimed e as cirurgias do Materno', () => {
+    expect(plan.lados.map((l) => l.hospital).sort()).toEqual(['materno', 'unimed'])
+    expect(plan.pendencias).toEqual([])
+  })
+
+  it('o lado do Materno é marcado semPosicao — não há fila para herdar', () => {
+    const mat = plan.lados.find((l) => l.hospital === 'materno')
+    expect(mat.semPosicao).toBe(true)
+    expect(plan.lados.find((l) => l.hospital === 'unimed').semPosicao).toBeUndefined()
+  })
+
+  it('leva só as cirurgias abertas DAQUELE turno (a tarde do Materno é de outra pessoa)', () => {
+    expect(plan.lados.find((l) => l.hospital === 'materno').casoIds).toEqual(['m1', 'm2'])
+  })
+
+  it('a chave do lado sem posição é estável (uid do dicionário) — o desfazer a encontra', () => {
+    expect(plan.lados.find((l) => l.hospital === 'materno').chaveSlot).toBe('uid-gio')
+  })
+
+  it('nem assim escreve ordem de liberação', () => {
+    expect(JSON.stringify(plan)).not.toContain('ordemLiberacao')
+  })
+
+  it('só cirurgia ENCERRADA ou compartilhada não cria lado (não há o que mover)', () => {
+    const soFechadas = {
+      ...comMaterno,
+      materno: {
+        ...comMaterno.materno,
+        casos: [
+          caso('m5', 'S1', 'GIOVANA', { anestesistaUserId: 'uid-gio', turno: 'matutino', statusCirurgia: 'terminada' }),
+          caso('m6', 'S1', 'GIOVANA + ANDRE', { turno: 'matutino' }),
+        ],
+      },
+    }
+    const p = planoExecucaoTroca({ escalas: soFechadas, resolverUid, a: MAURICIO, b: GIOVANA, turno: 'matutino' })
+    expect(p.lados.map((l) => l.hospital)).toEqual(['unimed'])
+    expect(p.pendencias).toEqual([{ pessoa: GIOVANA, motivo: 'sem_slot' }])
+  })
+})
+
+describe('planoExecucaoDeclarada — recíproco do parceiro sem rodapé', () => {
+  it('o parceiro que só tem cirurgias (Materno) também entra na convergência da publicação', () => {
+    const escalasDecl = {
+      unimed: escalas.unimed,
+      materno: {
+        id: 'esc-mat', hospital: 'materno',
+        ordemLiberacao: { matutino: [] }, linhaOverrides: {},
+        casos: [caso('m1', 'Sala 2 HC', 'GIOVANA', { anestesistaUserId: 'uid-gio', turno: 'matutino' })],
+      },
+    }
+    const par = { escalaId: 'esc-uni', hospital: 'unimed', turno: 'matutino' }
+    const plan = planoExecucaoDeclarada({ escalas: escalasDecl, resolverUid, par, a: MAURICIO, b: GIOVANA })
+    expect(plan.lados.map((l) => l.hospital).sort()).toEqual(['materno', 'unimed'])
+    expect(plan.lados.find((l) => l.hospital === 'materno')).toMatchObject({ semPosicao: true, casoIds: ['m1'] })
+  })
+})
+
 describe('planoDesfazerTroca — reverte os dois lados', () => {
   // estado PÓS-execução: assumidaPor nos dois slots, casos já transferidos
   const escalasPos = {
