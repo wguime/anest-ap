@@ -168,10 +168,12 @@ export default defineConfig({
           // Firebase é ~500KB+ (auth + firestore + messaging) — só consumido
           // por hooks/services específicos, mas estava eager via UserContext.
           'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/messaging', 'firebase/analytics'],
-          // PDF stack (>1MB combinado) — geração/preview de docs, certificados, OCR previews.
-          'vendor-pdf': ['jspdf', 'pdf-lib'],
-          // Markdown rendering (comunicados, educação) — separa do main.
-          'vendor-markdown': ['react-markdown', 'dompurify'],
+          // jspdf/pdf-lib/react-markdown/dompurify NÃO entram aqui de
+          // propósito (12/08): são consumidos só por import() dinâmico, e o
+          // manualChunks forçava um chunk onde o Rollup também alojava o
+          // helper de preload do Vite — o que tornava vendor-pdf (377KB) e
+          // vendor-markdown deps ESTÁTICAS da entrada, baixadas em todo boot.
+          // Sem a entrada aqui, o Rollup os separa sozinho como chunks async.
         }
       }
     }

@@ -6,7 +6,7 @@
  */
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { SEARCH_RESULT_TYPES } from '@/types/documents'
-import { searchAll } from '@/data/searchUtils'
+import { preloadSearchIndex } from '@/data/searchLazy'
 import { useDocumentsContext } from '@/contexts/DocumentsContext'
 import { searchGlobal } from '@/services/supabaseSearchService'
 
@@ -53,7 +53,9 @@ export function useSearch(query, filters = {}) {
     try {
       let combined = []
 
-      // Pages always come from local search
+      // Pages always come from local search (índice lazy — ver searchLazy.js;
+      // performSearch já é async, o await aqui não muda o contrato)
+      const { searchAll } = await preloadSearchIndex()
       const localResults = searchAll(q)
       const pageResults = localResults.pages.map((p) => ({
         resultId: p.id,

@@ -7,7 +7,7 @@ import { useDocuments } from '../contexts/DocumentsContext';
 import { ATALHOS_DISPONIVEIS, carregarAtalhosSalvos } from '../data/atalhosConfig';
 import { isExpirado } from '@/utils/comunicadosHelpers';
 import { formatDate } from '@/utils/formatters';
-import { searchAll } from '../data/searchUtils';
+import { useSearchAll } from '../data/searchLazy';
 import { aplicarDuplasFerias } from '@/lib/feriasDuplas';
 import { NoticiasCarousel } from '../components/noticias/NoticiasCarousel';
 import { CertificadoExpiracaoBanner } from '../components/educacao/CertificadoExpiracaoBanner';
@@ -37,7 +37,11 @@ import { useResidencia } from '../hooks/useResidencia';
 import { useStaff } from '../hooks/useStaff';
 import { useSobreavisoMaterno } from '../hooks/useSobreavisoMaterno';
 import { isFuncionariaPorEmail } from '../utils/funcionariaResolver';
-import { EditEstagiosModal, EditPlantaoModal } from '../components/residencia';
+// Imports DIRETOS, não pelo barrel: o index da residência re-exporta o
+// ResidenciaChat, que importa dompurify ESTÁTICO — via barrel, o markdown
+// stack inteiro entrava no boot da Home (vendor-markdown pré-carregado).
+import { EditEstagiosModal } from '../components/residencia/EditEstagiosModal';
+import { EditPlantaoModal } from '../components/residencia/EditPlantaoModal';
 import { EditSobreavisoModal } from '../components/sobreaviso';
 import { getHospitaisEfetivo, getHospitaisEfetivos, isDiaAutomaticoHospitais, TURNO_MANHA as HOSPITAIS_TURNO_MANHA, TURNO_TARDE as HOSPITAIS_TURNO_TARDE, TURNO_FUNC_UNIMED as HOSPITAIS_TURNO_FUNC_UNIMED } from '../data/hospitaisTecnicas2026';
 import { useHospitaisOverrides } from '../hooks/useHospitaisOverrides';
@@ -99,14 +103,17 @@ export default function HomePage({ onNavigate }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [searchOpen]);
 
-  // Busca live inline. `searchAll` (puro) cobre páginas + calculadoras;
-  // documentos vêm do DocumentsContext (cache client-side, provider global).
+  // Busca live inline. `searchAll` (puro) cobre páginas + calculadoras — via
+  // fachada LAZY (searchLazy): o índice das 73 calculadoras sai do chunk
+  // inicial e chega em idle, antes da primeira tecla. Documentos vêm do
+  // DocumentsContext (cache client-side, provider global).
+  const searchAllFn = useSearchAll();
   const { searchAllDocuments } = useDocuments();
   const results = useMemo(() => {
-    const base = searchAll(search);
+    const base = searchAllFn(search);
     const documents = search.trim() ? (searchAllDocuments?.(search) || []) : [];
     return { ...base, documents };
-  }, [search, searchAllDocuments]);
+  }, [search, searchAllFn, searchAllDocuments]);
   const hasResults = results.pages.length > 0 || results.documents.length > 0;
   const showDropdown = search.trim().length > 0;
 

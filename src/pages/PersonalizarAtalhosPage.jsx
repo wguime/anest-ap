@@ -1,7 +1,26 @@
 import { useState, useEffect } from 'react';
 import { useTheme, Card, CardContent, Button } from '@/design-system';
-import { Check } from 'lucide-react';
-import * as LucideIcons from 'lucide-react';
+// Ícones NOMEADOS, nunca `import * as`: o namespace com acesso dinâmico
+// forçava os ~1500 ícones do lucide inteiros para o vendor-ui (chunk do BOOT,
+// ~400KB a mais no parse de toda abertura do app). A lista espelha os nomes
+// usados em atalhosConfig (icon: '<Nome>') — ícone novo lá = adicionar aqui.
+import {
+  AlertOctagon, AlertTriangle, BookMarked, BookOpen, Briefcase, Bug,
+  Calculator, Calendar, CalendarDays, Check, ClipboardCheck, ClipboardList,
+  DollarSign, FileBarChart, FileSearch, FileText, FolderOpen, GraduationCap,
+  Headphones, Library, Mail, Megaphone, MessageSquare, Network, Receipt,
+  Scale, Shield, ShieldAlert, ShieldCheck, Target, TrendingUp, Trophy,
+  Users, Wrench,
+} from 'lucide-react';
+
+const LucideIcons = {
+  AlertOctagon, AlertTriangle, BookMarked, BookOpen, Briefcase, Bug,
+  Calculator, Calendar, CalendarDays, ClipboardCheck, ClipboardList,
+  DollarSign, FileBarChart, FileSearch, FileText, FolderOpen, GraduationCap,
+  Headphones, Library, Mail, Megaphone, MessageSquare, Network, Receipt,
+  Scale, Shield, ShieldAlert, ShieldCheck, Target, TrendingUp, Trophy,
+  Users, Wrench,
+};
 import { PageHeader } from '@/components';
 import { ATALHOS_DISPONIVEIS, CATEGORIAS, ATALHOS_PADRAO, MAX_ATALHOS, getAtalhosByCategoria, carregarAtalhosSalvos, salvarAtalhos } from '../data/atalhosConfig';
 

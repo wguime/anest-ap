@@ -20,10 +20,43 @@ import { normalizeRole, ehContaDeTeste } from '@/utils/userTypes'
 import svc, { buildResolver } from '@/services/supabaseEscalaAnestesistaService'
 import { titleCaseNome } from '@/lib/colunaLiberacao'
 
+// Cache local do roster derivado (SWR). O UsersManagementContext é Tier 2 —
+// fetch adiado 2s — então todo lugar que resolve apelido→nome (card da Home,
+// Liberações) abria com o TEXTO CRU do rodapé e trocava para o nome completo
+// segundos depois (bug relatado 12/08: "aparece o apelido e depois o nome").
+// O último roster bom fica em localStorage e hidrata o hook no primeiro
+// render; quando os dados vivos chegam, substituem (e reescrevem o cache).
+// Só dados operacionais internos (nome/uid/apelido de staff — mesmo padrão do
+// cache de férias em pegaPlantaoApi); nunca dado de paciente.
+const ROSTER_CACHE_KEY = 'anest-roster-anestesistas-v1'
+
+function lerRosterCache() {
+  try {
+    const raw = localStorage.getItem(ROSTER_CACHE_KEY)
+    if (!raw) return null
+    const c = JSON.parse(raw)
+    if (!Array.isArray(c?.roster) || !Array.isArray(c?.duplicadas) || !Array.isArray(c?.aliases)) return null
+    return c
+  } catch {
+    return null // localStorage indisponível/corrompido — segue sem cache
+  }
+}
+
+let _ultimoCacheJson = null // evita N writes idênticos (o hook tem várias instâncias)
+function gravarRosterCache(payload) {
+  try {
+    const json = JSON.stringify(payload)
+    if (json === _ultimoCacheJson) return
+    _ultimoCacheJson = json
+    localStorage.setItem(ROSTER_CACHE_KEY, json)
+  } catch { /* quota/private mode — cache é só aceleração */ }
+}
+
 export default function useRosterAnestesistas() {
   const { users } = useUsersManagement()
   const [aliases, setAliases] = useState([])
   const [loading, setLoading] = useState(true)
+  const [cacheInicial] = useState(() => lerRosterCache())
 
   const refresh = useCallback(async () => {
     try {
@@ -36,11 +69,24 @@ export default function useRosterAnestesistas() {
   }, [])
   useEffect(() => { refresh() }, [refresh])
 
+  // Aliases vivos vencem; enquanto não chegam, o cache resolve (o dicionário
+  // muda raramente e o dado vivo corrige em segundos). `aliases` cru — usado
+  // pela VinculosSheet e pelo aprendizado de apelido — segue SÓ o dado vivo.
+  const aliasesEfetivos = aliases.length > 0 ? aliases : (cacheInicial?.aliases ?? aliases)
+  const usersProntos = (users?.length ?? 0) > 0
+
   // UMA PESSOA, UM NOME (pedido do dono 29/07): quem tem 2 contas aparecia 2× na
   // lista de escolha. A 2ª conta (`contaDuplicadaDe`, migration 20260729100000)
   // sai da lista mas continua RESOLVENDO para o perfil principal — registro
   // antigo salvo nela não pode perder o nome. A conta segue ativa para login.
   const { roster, duplicadas } = useMemo(() => {
+    // Users ainda não carregados (Tier 2, +2s) → último roster bom do cache
+    if (!usersProntos && cacheInicial) {
+      return {
+        roster: cacheInicial.roster,
+        duplicadas: new Map(cacheInicial.duplicadas),
+      }
+    }
     const byUid = new Map()
     const duplicadas = new Map() // uid secundário → uid principal
     // APELIDO NO DICIONÁRIO = responde por casos (fix 30/07: a DANIELA sumiu do
@@ -50,7 +96,7 @@ export default function useRosterAnestesistas() {
     // cadastro (Daniela é medico-residente e responde por casos no HRO; era a
     // única nessa condição no levantamento). Critério baseado em dado curado,
     // sem mexer no cargo — que alimenta o módulo de residência.
-    const uidsComAlias = new Set(aliases.map((a) => a.userId))
+    const uidsComAlias = new Set(aliasesEfetivos.map((a) => a.userId))
     for (const u of users || []) {
       if (u?.active === false || !u?.nome) continue
       if (ehContaDeTeste(u)) continue
@@ -58,7 +104,7 @@ export default function useRosterAnestesistas() {
       if (u.contaDuplicadaDe) { duplicadas.set(u.id, u.contaDuplicadaDe); continue }
       byUid.set(u.id, { uid: u.id, nome: u.nome, apelidos: [] })
     }
-    for (const a of aliases) {
+    for (const a of aliasesEfetivos) {
       // apelido gravado na conta secundária vale para a principal
       const r = byUid.get(duplicadas.get(a.userId) || a.userId)
       if (r && !r.apelidos.includes(a.apelido)) r.apelidos.push(a.apelido)
@@ -67,7 +113,13 @@ export default function useRosterAnestesistas() {
       roster: [...byUid.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
       duplicadas,
     }
-  }, [users, aliases])
+  }, [users, aliasesEfetivos, usersProntos, cacheInicial])
+
+  // Write-through: roster derivado de dados VIVOS vira o cache da próxima sessão
+  useEffect(() => {
+    if (!usersProntos || roster.length === 0) return
+    gravarRosterCache({ roster, duplicadas: [...duplicadas], aliases: aliasesEfetivos })
+  }, [usersProntos, roster, duplicadas, aliasesEfetivos])
 
   /** uid da conta secundária → uid do perfil principal (identidade canônica). */
   const canonicalUid = useCallback(
@@ -75,7 +127,7 @@ export default function useRosterAnestesistas() {
     [duplicadas]
   )
 
-  const resolverBruto = useMemo(() => buildResolver(aliases), [aliases])
+  const resolverBruto = useMemo(() => buildResolver(aliasesEfetivos), [aliasesEfetivos])
   const resolver = useCallback((nome) => canonicalUid(resolverBruto(nome)), [resolverBruto, canonicalUid])
 
   // Rótulo = só o NOME COMPLETO (pedido do dono 26/07): "NOME (APELIDO/APELIDO)"

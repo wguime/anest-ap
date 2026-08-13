@@ -2,7 +2,7 @@
  * usePegaPlantao Hook
  * Hooks para buscar dados da API Pega Plantao
  */
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { agora, devClockAtivo } from '../lib/devClock';
 import { getPlantoesHoje, getPlantoesHojePorSetor, getAfastamentosAtivos, transformPlantoes, transformAfastamentos, isConfigured, clearCache, isWeekend as _checkIsWeekend, isWeekendMode as checkIsWeekendMode, getPeriodoAtual, estaNaMadrugada, HORA_CORTE_PLANTAO } from '../services/pegaPlantaoApi';
 
@@ -251,6 +251,47 @@ export function useAfastamentosAtivos(profissionais = []) {
 // ============================================================================
 
 /**
+ * Snapshot do dia em localStorage (SWR) — a API Pega Plantão só tinha cache em
+ * MEMÓRIA, então toda abertura fria do app segurava os cards Plantões/Férias
+ * da Home em skeleton até o round-trip OAuth + API externa (o caso comum: o
+ * médico abre o app várias vezes ao dia). O último resultado real do dia
+ * hidrata o estado no primeiro render e o fetch atualiza em silêncio.
+ * Mesmo padrão do cache de férias históricas em pegaPlantaoApi (localStorage).
+ */
+const ESCALA_DIA_SNAPSHOT_KEY = 'anest-escala-dia-snapshot-v1';
+
+/**
+ * Chave do "dia-plantão": a madrugada (antes do corte das 7h) pertence ao
+ * plantão do dia ANTERIOR — reabrir o app à 0h30 ainda mostra o time noturno.
+ */
+function chavePlantaoDoDia(d) {
+  const ajustado = new Date(d);
+  if (estaNaMadrugada(ajustado)) ajustado.setDate(ajustado.getDate() - 1);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${ajustado.getFullYear()}-${p(ajustado.getMonth() + 1)}-${p(ajustado.getDate())}`;
+}
+
+function lerSnapshotEscalaDia(d) {
+  try {
+    const raw = localStorage.getItem(ESCALA_DIA_SNAPSHOT_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    if (s?.chave !== chavePlantaoDoDia(d)) return null; // outro dia → skeleton normal
+    const dados = s.dados;
+    if (!dados || !Array.isArray(dados.manha) || !Array.isArray(dados.tarde) || !Array.isArray(dados.ferias)) return null;
+    return dados;
+  } catch {
+    return null; // localStorage indisponível/corrompido — segue sem snapshot
+  }
+}
+
+function gravarSnapshotEscalaDia(d, dados) {
+  try {
+    localStorage.setItem(ESCALA_DIA_SNAPSHOT_KEY, JSON.stringify({ chave: chavePlantaoDoDia(d), dados }));
+  } catch { /* quota/private mode — snapshot é só aceleração */ }
+}
+
+/**
  * Hook para buscar escala do dia organizada por setores (P1-P11)
  * Retorna plantoes separados por periodo (manha/tarde) e ferias (apenas dias uteis)
  *
@@ -263,21 +304,33 @@ export function useEscalaDia() {
   // virada da meia-noite nem era percebida. Pedido do dono 25/07.
   const [hoje, setHoje] = useState(() => agora());
 
-  // Inicializar com dados vazios - sera preenchido pelo fetch
-  const [data, setData] = useState({
+  // Snapshot do dia (SWR): abre com o último resultado real deste dia-plantão
+  // e o fetch atualiza em silêncio. Relógio de dev congelado ignora o snapshot
+  // (determinismo do mock).
+  const [snapshotInicial] = useState(() => (devClockAtivo() ? null : lerSnapshotEscalaDia(agora())));
+
+  const [data, setData] = useState(() => snapshotInicial ?? {
     manha: [],
     tarde: [],
     ferias: [],
     isWeekend: checkIsWeekendMode(hoje),
   });
-  const [loading, setLoading] = useState(true); // Inicia como true - vai buscar da API
+  const [loading, setLoading] = useState(snapshotInicial == null);
   const [error, setError] = useState(null);
   const [usandoMock, setUsandoMock] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
+  // Dia-plantão a que o `data` exibido pertence quando veio de dado REAL
+  // (snapshot ou fetch). null = vazio ou mock.
+  const chaveDadosRef = useRef(snapshotInicial ? chavePlantaoDoDia(hoje) : null);
+
   const fetchEscala = useCallback(async () => {
-    setLoading(true);
+    // Skeleton SÓ quando o que está na tela não é deste dia-plantão (1ª carga
+    // sem snapshot, virada de dia). Revalidação do mesmo dia (foco/10min)
+    // atualiza em silêncio — antes, cada revalidação piscava o skeleton.
+    const chaveAlvo = chavePlantaoDoDia(hoje);
+    if (chaveDadosRef.current !== chaveAlvo) setLoading(true);
     setError(null);
 
     // Relógio de dev congelado: plantão P1–P4 do mock, p/ a inspeção das fases
@@ -286,6 +339,7 @@ export function useEscalaDia() {
       console.warn('API Pega Plantao nao configurada, mantendo mock data');
       const mockData = getMockPlantoesSetor(hoje);
       setData(mockData);
+      chaveDadosRef.current = null; // mock não é dado real do dia
       setUsandoMock(true);
       setLoading(false);
       setHasLoadedOnce(true);
@@ -295,16 +349,25 @@ export function useEscalaDia() {
     try {
       const escalaData = await getPlantoesHojePorSetor(hoje);
       setData(escalaData);
+      chaveDadosRef.current = chaveAlvo;
+      gravarSnapshotEscalaDia(hoje, escalaData);
       setUsandoMock(false);
       setHasLoadedOnce(true);
     } catch (err) {
       console.error('Erro ao buscar escala do dia:', err);
       setError(err.message);
-      // Fallback para mock em caso de erro
-      const mockData = getMockPlantoesSetor(hoje);
-      setData(mockData);
-      setUsandoMock(true);
-      setHasLoadedOnce(true);
+      if (chaveDadosRef.current === chaveAlvo) {
+        // Já exibimos dado REAL deste dia (snapshot/fetch anterior): manter
+        // vale mais que trocar por demonstração.
+        setHasLoadedOnce(true);
+      } else {
+        // Fallback para mock em caso de erro
+        const mockData = getMockPlantoesSetor(hoje);
+        setData(mockData);
+        chaveDadosRef.current = null;
+        setUsandoMock(true);
+        setHasLoadedOnce(true);
+      }
     } finally {
       setLoading(false);
     }

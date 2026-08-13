@@ -5,7 +5,10 @@ import { pageToPath, parsePath } from "./navigation/pageSlugs"
 import { AnimatePresence, motion } from "framer-motion"
 
 import { BottomNav, ErrorBoundary, useToast, useSwipeBack, useCommandPaletteShortcut } from "@/design-system"
-import { AppCommandPalette } from "./components/AppCommandPalette"
+// Lazy: a paleta ⌘K puxa as 73 definições de calculadora (~284KB de fonte)
+// para o índice — eager, isso tudo entrava no chunk INICIAL do app. O chunk
+// só carrega no primeiro ⌘K (raro em mobile, que é o uso dominante).
+const AppCommandPalette = lazy(() => import("./components/AppCommandPalette"))
 import { PageLoadingFallback } from "@/design-system/components/anest/page-loading-fallback"
 import { SearchToggleButton } from "@/design-system/components/anest/search-toggle-button"
 import { SearchBar } from "@/design-system/components/anest/search-bar"
@@ -856,6 +859,9 @@ function App() {
   // rápida (páginas + calculadoras). Não-intrusivo — a busca por lupa de cada
   // página continua inline (comportamento próprio). Abre só via ⌘K/Ctrl-K.
   const [commandOpen, setCommandOpen] = useState(false)
+  // Monta a paleta só depois do 1º ⌘K (e mantém montada p/ animação de fechar)
+  const [commandJaAberta, setCommandJaAberta] = useState(false)
+  useEffect(() => { if (commandOpen) setCommandJaAberta(true) }, [commandOpen])
   useCommandPaletteShortcut(setCommandOpen)
 
   // Activity tracking
@@ -871,6 +877,26 @@ function App() {
 
   // Sprint 10 / F6.2: drena fila de mutations offline ao mount + 'online' event.
   useOfflineQueueFlush()
+
+  // Pré-carga em idle dos chunks das páginas mais abertas: o 1º toque nelas
+  // não espera rede, e logo após um deploy o SW já guarda o chunk novo
+  // (encolhe a janela do ChunkLoadError de bundle velho). Sequencial e tarde
+  // (6s) para não disputar banda com os fetches do boot. O path do import é
+  // IGUAL ao do lazy() correspondente = Vite reusa o MESMO chunk.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const paginas = [
+        () => import("./pages/escala-cirurgica/EscalaCirurgicaPage"),
+        () => import("./pages/ComunicadosPage"),
+        () => import("./pages/communication/InboxPage"),
+        () => import("./pages/EscalasPage"),
+        () => import("@/design-system/showcase/CalculatorShowcase"),
+        () => import("./pages/ProfilePage"),
+      ]
+      paginas.reduce((p, carrega) => p.then(() => carrega().catch(() => {})), Promise.resolve())
+    }, 6000)
+    return () => clearTimeout(timer)
+  }, [])
 
   // Listen for Supabase token errors and show toast to user
   useEffect(() => {
@@ -1511,12 +1537,16 @@ function App() {
       {/* Onda G — CommandPalette ⌘K (atalho de teclado). Funciona em qualquer
           tela via ⌘K/Ctrl-K; sem UI visível própria (não conflita com as lupas
           inline das páginas). Permissões via checkPageAccess. */}
-      <AppCommandPalette
-        open={commandOpen}
-        onOpenChange={setCommandOpen}
-        onNavigate={handleNavigate}
-        canAccessPage={checkPageAccess}
-      />
+      {(commandOpen || commandJaAberta) && (
+        <Suspense fallback={null}>
+          <AppCommandPalette
+            open={commandOpen}
+            onOpenChange={setCommandOpen}
+            onNavigate={handleNavigate}
+            canAccessPage={checkPageAccess}
+          />
+        </Suspense>
+      )}
 
       {/* TODO BUG-06: This global BottomNav may duplicate with per-page BottomNav instances.
           Most pages (63+) render their own BottomNav via the documented createPortal pattern.
