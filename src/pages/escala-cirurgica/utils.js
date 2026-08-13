@@ -968,14 +968,14 @@ const uidLocalDe = (esc) => {
 /** Slot de uma pessoa no rodapé da escala (qualquer turno) — { nome, chave } | null. */
 export function localizarSlotRodape(esc, pessoa, resolverUid, turnoSelecionado = null) {
   const uidLocal = uidLocalDe(esc)
-  // `turnoSelecionado` é PREFERÊNCIA de busca, não filtro: o slot da pessoa pode
-  // estar no outro turno (par manhã↔tarde) e restringir produzia meio swap em
-  // silêncio — um lado herdava posição+casos e o outro não (defeito D4, 07/08).
-  // O turno onde o slot FOI achado volta no resultado: é ele que escopa a chave
-  // namespaced da escrita, nunca o turno da tela.
-  const turnos = turnoSelecionado
-    ? [turnoSelecionado, turnoSelecionado === 'matutino' ? 'vespertino' : 'matutino']
-    : ['matutino', 'vespertino']
+  // TURNOS INDEPENDENTES (dono 13/08): manhã e tarde são escalas separadas, com
+  // gente e configuração próprias — o app NUNCA cruza uma com a outra. Antes o
+  // turno era só preferência de busca e caía no outro quando não achava (D4,
+  // 07/08); na prática isso trazia para a tela da tarde a posição que a pessoa
+  // tinha de manhã, pedia decisão sobre ela e podia mover casos de um turno que
+  // ninguém estava mexendo (Staub e Karine, 13/08). Turno informado = único
+  // turno olhado. Sem turno (chamada legada) segue varrendo os dois.
+  const turnos = turnoSelecionado ? [turnoSelecionado] : ['matutino', 'vespertino']
   for (const turno of turnos) {
     for (const nome of rodapeDoTurno(esc?.ordemLiberacao, turno)) {
       if (pessoaCasaNome(pessoa, nome, resolverUid, uidLocal)) {
@@ -1012,9 +1012,8 @@ export function localizarSlotEscala(esc, pessoa, resolverUid, turnoSelecionado =
   const noRodape = localizarSlotRodape(esc, pessoa, resolverUid, turnoSelecionado)
   if (noRodape) return { ...noRodape, semPosicao: false }
   const uidLocal = uidLocalDe(esc)
-  const turnos = turnoSelecionado
-    ? [turnoSelecionado, turnoSelecionado === 'matutino' ? 'vespertino' : 'matutino']
-    : ['matutino', 'vespertino']
+  // mesmo contrato do rodapé: turno informado é o ÚNICO turno olhado
+  const turnos = turnoSelecionado ? [turnoSelecionado] : ['matutino', 'vespertino']
   for (const turno of turnos) {
     // só vira lado da troca quando há o que MOVER: quem tem lá apenas cirurgia
     // encerrada ou sala compartilhada não muda de mãos e continua "sem slot"
@@ -1055,23 +1054,16 @@ export function casosTransferiveis(esc, pessoa, resolverUid, turno = null) {
  *
  * @param {object} args { escalas: {unimed,hro,materno}, resolverUid, a, b }
  *   a/b = { uid, nome, apelido } (roster). Puro: nada é escrito aqui.
- *   turno = PREFERÊNCIA de busca do slot (defeito D4, 07/08): restringir os dois
- *   lados ao turno da tela fazia o par manhã↔tarde produzir UM lado só, em
- *   silêncio — uma pessoa herdava posição+casos e a outra não. Cada lado agora
- *   carrega o turno do PRÓPRIO slot (é ele que escopa a chave namespaced).
- *   ⚠️ mas quem TEM posição no turno da tela fica só com ela (dono 10/08): a
- *   busca cai no outro turno de propósito, e sem este corte uma troca de tarde
- *   entre duas pessoas que também trabalham de manhã abria 4 posições no sheet
- *   (Raquel⇄Nathalia, 10/08). O par manhã↔tarde segue inteiro: o outro turno só
- *   entra para quem não tem nada no turno exibido.
+ *   turno = O TURNO, e só ele (dono 13/08: "cada turno tem configurações
+ *   diferentes, não vincule o turno da manhã com o da tarde"). Manhã e tarde são
+ *   escalas independentes: nenhum lado, caso ou limpeza atravessa a fronteira.
  * @returns {{ lados: Array, limparTroca: Array, pendencias: Array }}
  *   pendencias = o que impede o swap de fechar ({ pessoa, motivo:
  *   'sem_slot' | 'sem_uid' }) — o chamador mostra o que falta em vez de
  *   executar meio swap calado.
  */
 export function planoExecucaoTroca({ escalas, resolverUid, a, b, turno = null }) {
-  // por PESSOA (mesma referência de objeto), para o corte de turno lá embaixo
-  const porPessoa = new Map([[a, []], [b, []]])
+  const lados = []
   const limparTroca = []
   const comSlot = new Set()
   for (const [hospital, esc] of Object.entries(escalas || {})) {
@@ -1080,7 +1072,7 @@ export function planoExecucaoTroca({ escalas, resolverUid, a, b, turno = null })
       const slot = localizarSlotEscala(esc, de, resolverUid, turno)
       if (!slot) continue
       comSlot.add(de)
-      porPessoa.get(de).push({
+      lados.push({
         hospital, escalaId: esc.id,
         chaveSlot: slot.chave, nomeSlot: slot.nome,
         // slot achado pelos CASOS (Materno e afins): não há posição na fila para
@@ -1093,9 +1085,7 @@ export function planoExecucaoTroca({ escalas, resolverUid, a, b, turno = null })
         ...(slot.turno ? { turno: slot.turno } : (turno ? { turno } : {})),
         // CADA LADO LEVA SÓ OS CASOS DO PRÓPRIO TURNO (incidente 13/08): a
         // Karine trocou a TARDE e o cartão do HRO contava 2 casos — um deles era
-        // o Exames das 7h30, que não estava em jogo e teria mudado de dono na
-        // execução. Turno da tela como piso: slot legado sem turno não vira
-        // transferência do dia inteiro.
+        // o Exames das 7h30, de outro turno, que teria mudado de dono na execução.
         casoIds: para.uid ? casosTransferiveis(esc, de, resolverUid, slot.turno || turno || null) : [],
       })
     }
@@ -1106,13 +1096,14 @@ export function planoExecucaoTroca({ escalas, resolverUid, a, b, turno = null })
       return ref.uid ? ref.uid === pessoa.uid : pessoaCasaNome(pessoa, ref.nome, resolverUid, uidLocal)
     }
     for (const [rawChave, ov] of Object.entries(esc.linhaOverrides || {})) {
-      // a declaração pode viver em QUALQUER turno (o par atravessa manhã↔tarde
-      // desde o D4) — o prefixo achado escopa a limpeza daquela entrada
       const sep = String(rawChave).indexOf(':')
       const [turnoChave, chave] = sep >= 0
         ? [String(rawChave).slice(0, sep), String(rawChave).slice(sep + 1)]
         : [null, rawChave]
       if (turnoChave && turnoChave !== 'matutino' && turnoChave !== 'vespertino') continue
+      // TURNOS INDEPENDENTES: executar a troca da tarde não apaga a declaração
+      // da manhã (chave crua legada é matutina pela regra da migração)
+      if (turno && (turnoChave || 'matutino') !== turno) continue
       const t = ov?.trocaCom
       if (!t) continue
       const parAB = ehDoPar(chave, a) && ehDoPar(t, b)
@@ -1123,16 +1114,6 @@ export function planoExecucaoTroca({ escalas, resolverUid, a, b, turno = null })
         limparTroca.push({ hospital, escalaId: esc.id, chave, ...(turnoChave ? { turno: turnoChave } : {}) })
       }
     }
-  }
-  // CORTE DO TURNO DA TELA (dono 10/08): quem tem posição no turno exibido
-  // entra só com ela. Sem isto, uma troca da tarde entre duas pessoas que
-  // também trabalham de manhã pedia decisão sobre 4 posições — duas delas fora
-  // da troca. Quem não tem nada no turno da tela mantém o slot do outro turno
-  // (é o par manhã↔tarde do D4, que precisa fechar inteiro).
-  const lados = []
-  for (const lista of porPessoa.values()) {
-    const noTurno = turno ? lista.filter((l) => l.turno === turno) : []
-    lados.push(...(noTurno.length ? noTurno : lista))
   }
   const pendencias = []
   for (const pessoa of [a, b]) {
@@ -1389,19 +1370,21 @@ function casosParaDevolver(esc, asm, assumidor, resolverUid, turnoChave) {
   return [...abertos].filter((id) => doTurno.has(id))
 }
 
-export function planoDesfazerTroca({ escalas, resolverUid, a, b }) {
+export function planoDesfazerTroca({ escalas, resolverUid, a, b, turno = null }) {
   const lados = []
   for (const [hospital, esc] of Object.entries(escalas || {})) {
     if (!esc?.id) continue
     const uidLocal = uidLocalDe(esc)
     for (const [rawChave, ov] of Object.entries(esc.linhaOverrides || {})) {
-      // espelho do D4: a assunção pode viver em qualquer turno (par manhã↔tarde);
-      // o prefixo DA CHAVE escopa o desfazer — nunca o turno da tela
       const sep = String(rawChave).indexOf(':')
       const [turnoChave, chave] = sep >= 0
         ? [String(rawChave).slice(0, sep), String(rawChave).slice(sep + 1)]
         : [null, rawChave]
       if (turnoChave && turnoChave !== 'matutino' && turnoChave !== 'vespertino') continue
+      // TURNOS INDEPENDENTES (dono 13/08): desfazer a troca da tarde não desfaz
+      // a da manhã do mesmo par — cada turno tem a sua. Chave crua legada conta
+      // como matutina (regra da migração).
+      if (turno && (turnoChave || 'matutino') !== turno) continue
       const asm = ov?.assumidaPor
       if (!asm) continue
       const assumidor = [a, b].find((p) => (asm.uid ? asm.uid === p.uid : pessoaCasaNome(p, asm.nome, resolverUid, uidLocal)))

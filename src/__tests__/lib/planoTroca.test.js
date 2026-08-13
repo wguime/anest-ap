@@ -100,9 +100,10 @@ describe('planoExecucaoTroca — swap simultâneo Giovana↔Maurício', () => {
     expect(p.lados.find((l) => l.hospital === 'hro').escalaId).toBe('demo-hro')
   })
 
-  it('declarações do MESMO par em qualquer turno entram na limpeza, cada uma com o turno da própria chave', () => {
-    // contrato do D4 (07/08): o par pode ter sido declarado na manhã e executado
-    // à tarde — limpar só o turno da tela deixava o badge vivo no outro turno
+  // TURNOS INDEPENDENTES (dono 13/08): antes a limpeza varria os dois turnos
+  // (contrato do D4), então executar a troca da tarde apagava a declaração da
+  // manhã do mesmo par. Cada turno tem a sua troca e o seu badge.
+  it('a limpeza fica no turno da tela — a declaração do outro turno sobrevive', () => {
     const vespertino = {
       ...escalas.unimed,
       linhaOverrides: {
@@ -111,25 +112,21 @@ describe('planoExecucaoTroca — swap simultâneo Giovana↔Maurício', () => {
       },
     }
     const plan = planoExecucaoTroca({ escalas: { unimed: vespertino }, resolverUid, a: GIOVANA, b: MAURICIO, turno: 'vespertino' })
-    expect(plan.limparTroca).toEqual(expect.arrayContaining([
-      { hospital: 'unimed', escalaId: 'esc-uni', chave: 'uid-mau', turno: 'matutino' },
+    expect(plan.limparTroca).toEqual([
       { hospital: 'unimed', escalaId: 'esc-uni', chave: 'uid-mau', turno: 'vespertino' },
-    ]))
-    expect(plan.limparTroca).toHaveLength(2)
+    ])
   })
 
-  // PAR CROSS-TURNO (defeito D4, 07/08): Maurício no rodapé MATUTINO da Unimed,
-  // Giovana no VESPERTINO do HRO. Produção sempre passa o turno da tela — o
-  // filtro antigo achava só um slot e produzia MEIO swap em silêncio (uma pessoa
-  // herdava posição+casos e a outra não).
-  it('par manhã↔tarde fecha com 2 lados, cada um no turno do PRÓPRIO slot', () => {
+  // Maurício no rodapé MATUTINO da Unimed, Giovana no VESPERTINO do HRO. Até
+  // 13/08 os dois lados fechavam juntos (D4); agora a tela da tarde só enxerga a
+  // tarde — o que era par manhã↔tarde virou duas trocas, uma em cada turno.
+  it('slot do outro turno não entra: a tela da tarde só mexe na tarde', () => {
     const plan = planoExecucaoTroca({ escalas, resolverUid, a: GIOVANA, b: MAURICIO, turno: 'vespertino' })
-    expect(plan.lados).toHaveLength(2)
-    const ladoUnimed = plan.lados.find((l) => l.hospital === 'unimed')
-    const ladoHro = plan.lados.find((l) => l.hospital === 'hro')
-    // o turno de cada lado é o do slot achado — é ele que escopa a chave de escrita
-    expect(ladoUnimed.turno).toBe('matutino')
-    expect(ladoHro.turno).toBe('vespertino')
+    expect(plan.lados).toHaveLength(1)
+    expect(plan.lados[0]).toMatchObject({ hospital: 'hro', turno: 'vespertino' })
+    // e a manhã do Maurício continua intocada — ele fica como pendência, não
+    // como lado silencioso
+    expect(plan.pendencias).toEqual([{ pessoa: MAURICIO, motivo: 'sem_slot' }])
   })
 
   // CORTE DO TURNO DA TELA (dono 10/08): Raquel⇄Nathalia, troca só da TARDE. As
@@ -298,6 +295,25 @@ describe('planoDesfazerTroca — reverte os dois lados', () => {
     materno: null,
   }
 
+  // TURNOS INDEPENDENTES (dono 13/08): desfazer na tarde não pode desfazer a
+  // troca da manhã do mesmo par — cada turno tem a sua.
+  it('desfazer é escopado pelo turno da tela', () => {
+    const doisTurnos = {
+      unimed: {
+        id: 'esc-uni', hospital: 'unimed',
+        ordemLiberacao: { matutino: ['MAURICIO'], vespertino: ['MAURICIO'] },
+        linhaOverrides: {
+          'matutino:uid-mau': { assumidaPor: { uid: 'uid-gio', nome: 'GIOVANA SILVA', casoIds: [] } },
+          'vespertino:uid-mau': { assumidaPor: { uid: 'uid-gio', nome: 'GIOVANA SILVA', casoIds: [] } },
+        },
+        casos: [],
+      },
+    }
+    const p = planoDesfazerTroca({ escalas: doisTurnos, resolverUid, a: GIOVANA, b: MAURICIO, turno: 'vespertino' })
+    expect(p.lados).toHaveLength(1)
+    expect(p.lados[0].turno).toBe('vespertino')
+  })
+
   it('acha as duas assunções e devolve os casos ao dono original de cada slot', () => {
     const p = planoDesfazerTroca({ escalas: escalasPos, resolverUid, a: GIOVANA, b: MAURICIO })
     expect(p.lados).toHaveLength(2)
@@ -382,9 +398,14 @@ describe('localizarSlotRodape / casosTransferiveis — resolução de identidade
     expect(localizarSlotRodape(escalas.unimed, { uid: 'uid-x', nome: 'NINGUEM' }, resolverUid)).toBeNull()
   })
 
-  it('turno pedido é PREFERÊNCIA: slot só no outro turno ainda é achado, com o turno DELE (D3/D4)', () => {
+  // TURNOS INDEPENDENTES (dono 13/08): "cada turno tem configurações diferentes,
+  // não vincule o turno da manhã com o da tarde". Até 13/08 o turno era só
+  // PREFERÊNCIA e a busca caía no outro (D3/D4) — era assim que a tela da tarde
+  // pedia decisão sobre a posição que a pessoa tinha de manhã.
+  it('turno pedido é o ÚNICO olhado: slot do outro turno não é achado', () => {
     // Giovana só tem slot no vespertino do HRO; a tela está no matutino
-    expect(localizarSlotRodape(escalas.hro, GIOVANA, resolverUid, 'matutino'))
+    expect(localizarSlotRodape(escalas.hro, GIOVANA, resolverUid, 'matutino')).toBeNull()
+    expect(localizarSlotRodape(escalas.hro, GIOVANA, resolverUid, 'vespertino'))
       .toEqual({ nome: 'GIOVANA', chave: 'uid-gio', turno: 'vespertino' })
   })
 

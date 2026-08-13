@@ -103,10 +103,10 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
   const slotAnterior = useMemo(() => {
     if (!atual.uid && !atual.alias) return null
     const r = atual.uid ? rosterByUid.get(atual.uid) : null
-    // turno da tela é PREFERÊNCIA de busca; o slot achado carrega o turno DELE —
-    // buscar sem turno e gravar com o turno exibido punha o assumidaPor numa
-    // chave que o rodapé do turno não continha (defeito D3, 07/08: casos
-    // transferidos, posição não assumida em turno nenhum)
+    // SÓ o turno da tela (turnos independentes, dono 13/08): posição da manhã
+    // não é assumível a partir da tarde. Achar o slot do outro turno e gravar
+    // lá punha o assumidaPor numa chave que o rodapé exibido não continha
+    // (defeito D3, 07/08 — o cruzamento era a raiz, não só o turno da escrita)
     return localizarSlotRodape(escala, { uid: atual.uid, nome: r?.nome || atual.alias }, resolver, turno)
   }, [escala, atual, rosterByUid, resolver, turno])
   const ofereceAssumir = !!slotAnterior && !!escolhido && escolhido !== SEM_ANESTESISTA && escolhido !== atual.uid

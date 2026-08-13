@@ -110,12 +110,12 @@ describe('toggle "Assumir também a posição" no Definir anestesista', () => {
     expect(executarSubstituicao).not.toHaveBeenCalled()
   })
 
-  // Defeito D3 (07/08): o slot era buscado SEM turno mas gravado com o turno da
-  // TELA — o assumidaPor caía numa chave que o rodapé daquele turno não continha
-  // (casos transferidos, posição não assumida em turno nenhum). O turno da
-  // escrita agora é o do SLOT achado, nunca o da tela.
-  it('slot no matutino + tela no vespertino: o lado grava com o turno do SLOT', async () => {
-    // STAUB tem um caso à TARDE, mas a posição dele no rodapé é MATUTINA
+  // TURNOS INDEPENDENTES (dono 13/08): a posição de STAUB é MATUTINA e a tela
+  // está na TARDE — na tarde não existe posição dele para assumir, então o
+  // toggle nem é oferecido e o repasse move só as cirurgias. Até 13/08 o slot da
+  // manhã era encontrado a partir da tarde e a assunção era gravada no OUTRO
+  // turno (defeito D3 tinha corrigido só o turno da escrita, não o cruzamento).
+  it('posição em outro turno não é oferecida: a tarde não assume vaga da manhã', async () => {
     const casoTarde = caso({ id: 'c3', hora: '14:00' })
     const esc = { ...escalaComRodape, casos: [...escalaComRodape.casos, casoTarde] }
     render(
@@ -123,15 +123,10 @@ describe('toggle "Assumir também a posição" no Definir anestesista', () => {
       { wrapper: wrap },
     )
     escolherCury()
-    fireEvent.click(await screen.findByRole('switch'))
+    expect(screen.queryByRole('switch')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar responsável' }))
-    await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
-    const [plan] = executarSubstituicao.mock.calls[0]
-    // gravar com o turno da TELA poria o assumidaPor em `vespertino:uid-staub`,
-    // chave que o rodapé vespertino não contém (o bug: casos transferidos,
-    // posição não assumida em turno nenhum)
-    expect(plan.lados[0].turno).toBe('matutino')
-    expect(plan.lados[0].chaveSlot).toBe('uid-staub')
+    await waitFor(() => expect(setAnestesistaCasos).toHaveBeenCalledTimes(1))
+    expect(executarSubstituicao).not.toHaveBeenCalled()
   })
 })
 

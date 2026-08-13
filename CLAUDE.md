@@ -255,6 +255,19 @@ declarados e executa os que fecham — inclusive re-execução pós-republicaç�
 (que zera overrides). Sem vínculo de login → fica declarado + aviso do que
 falta. RLS validada: gate por PAPEL, não por hospital — escrita cruzada ok.
 
+**TURNOS INDEPENDENTES (dono 13/08, regra estruturante):** manhã e tarde são
+escalas SEPARADAS — "cada turno tem configurações diferentes, não vincule o turno
+da manhã com o da tarde". Todo helper que recebe `turno` trata como filtro
+EXATO, nunca preferência: `localizarSlotRodape`/`localizarSlotEscala` só olham o
+turno pedido (o fallback para o outro turno, D3/D4 de 07/08, foi REMOVIDO — era
+ele que trazia para a tela da tarde a posição que a pessoa tinha de manhã e pedia
+decisão sobre ela); `casosTransferiveis` recorta pelo turno do lado; a limpeza de
+`trocaCom` e o `planoDesfazerTroca` (agora com `turno`) só tocam chaves do turno
+exibido (chave crua legada = matutino). Consequência ACEITA: par manhã↔tarde vira
+DUAS trocas, uma por turno; e o toggle "Assumir também a posição" some quando a
+vaga da pessoa está no outro turno. O "corte do turno da tela" de 10/08 virou
+redundante e saiu junto.
+
 **COLEGA FORA DA UNIMED/HRO (dono 13/08):** a troca era ancorada SÓ no rodapé, e
 o **Materno é publicado sem rodapé nenhum** (`ordem_liberacao` vazia nos dois
 turnos em 17/17 escalas) — quem trabalha lá só existe nos CASOS. O colega do

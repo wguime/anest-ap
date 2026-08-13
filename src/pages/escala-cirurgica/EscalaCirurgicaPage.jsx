@@ -329,9 +329,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               }}
               onDesfazerSubstituicao={(linha) =>
                 desfazerSubstituicao(planoDesfazerTroca({
-                  escalas, resolverUid: resolverRoster,
-                  // sem `turno`: o turno de cada lado vem do prefixo da chave
-                  // onde a assunção está (par manhã↔tarde desfaz inteiro — D4)
+                  escalas, resolverUid: resolverRoster, turno,
                   a: pessoaDe(linha.uid, linha.anestesista),
                   // nome CRU do rodapé, nunca o display (defeito D8): o plano
                   // casa o dono por normNome e o display curto não bate com o
