@@ -322,7 +322,8 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               onMarcarTroca={(linha, colega) => marcarTroca(escala, linha, colega, userInfo, turno)}
               onAbrirTroca={(linha) => setTrocaSheet(linha)}
               onExecutarTroca={(par) => {
-                const plan = planoExecucaoTroca({ escalas, resolverUid: resolverRoster, a: par.a, b: par.b, turno })
+                // âncora = a escala onde a declaração vive (mesma regra do sheet)
+                const plan = planoExecucaoTroca({ escalas, resolverUid: resolverRoster, a: par.a, b: par.b, turno, escalaAncora: par.escalaId || null })
                 // tipo/motivo declarados viajam para o assumidaPor na execução
                 const meta = { ...(par.tipo && { tipo: par.tipo }), ...(par.motivo && { motivo: par.motivo }) }
                 return executarSubstituicao({ ...plan, lados: plan.lados.map((l) => ({ ...l, ...meta })) }, userInfo)

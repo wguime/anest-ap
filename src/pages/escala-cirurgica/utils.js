@@ -1057,18 +1057,27 @@ export function casosTransferiveis(esc, pessoa, resolverUid, turno = null) {
  *   turno = O TURNO, e só ele (dono 13/08: "cada turno tem configurações
  *   diferentes, não vincule o turno da manhã com o da tarde"). Manhã e tarde são
  *   escalas independentes: nenhum lado, caso ou limpeza atravessa a fronteira.
+ *   escalaAncora = id da escala DE ONDE a troca foi aberta. `a` entra só com a
+ *   posição dela ali — é aquela que está sendo trocada. Sem a âncora, quem
+ *   aparece em dois hospitais no mesmo turno arrastava o outro para o sheet:
+ *   registrando a troca da Karine no MATERNO surgia um cartão do HRO, onde ela
+ *   está no rodapé e tem uma linha de sala "Materno" (a mesma jornada anotada
+ *   nos dois quadros) — dono 13/08: "aparece opção no HRO sem que ela esteja lá".
+ *   Mesmo princípio que `planoExecucaoDeclarada` já usava para a duplicidade.
  * @returns {{ lados: Array, limparTroca: Array, pendencias: Array }}
  *   pendencias = o que impede o swap de fechar ({ pessoa, motivo:
  *   'sem_slot' | 'sem_uid' }) — o chamador mostra o que falta em vez de
  *   executar meio swap calado.
  */
-export function planoExecucaoTroca({ escalas, resolverUid, a, b, turno = null }) {
+export function planoExecucaoTroca({ escalas, resolverUid, a, b, turno = null, escalaAncora = null }) {
   const lados = []
   const limparTroca = []
   const comSlot = new Set()
   for (const [hospital, esc] of Object.entries(escalas || {})) {
     if (!esc?.id) continue
-    for (const [de, para] of [[a, b], [b, a]]) {
+    // `a` só na escala de onde a troca foi aberta; `b` onde estiver
+    const pares = escalaAncora && esc.id !== escalaAncora ? [[b, a]] : [[a, b], [b, a]]
+    for (const [de, para] of pares) {
       const slot = localizarSlotEscala(esc, de, resolverUid, turno)
       if (!slot) continue
       comSlot.add(de)

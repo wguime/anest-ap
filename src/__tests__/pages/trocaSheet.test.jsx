@@ -55,8 +55,11 @@ const escalaMaterno = {
   casos: [{ id: 'm1', sala: 'Sala 2 HC', ordem: 0, hora: '07:30', turno: 'matutino', anestesista: 'ROSE', anestesistaUserId: 'uid-rose', bloco: 'normal' }],
 }
 
+// mutável: um teste precisa de uma pessoa presente em DOIS hospitais
+const escalasMock = { unimed: escalaUnimed, hro: escalaHro, materno: escalaMaterno }
+
 vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
-  useEscalaCirurgica: () => ({ escalas: { unimed: escalaUnimed, hro: escalaHro, materno: escalaMaterno } }),
+  useEscalaCirurgica: () => ({ escalas: escalasMock }),
   useEscalaCirurgicaActions: () => ({ marcarTroca, executarSubstituicao }),
   HOSPITAL_LABEL: { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' },
 }))
@@ -251,6 +254,30 @@ describe('TrocaSheet', () => {
     fireEvent.click(botaoPrincipal())
     await waitFor(() => expect(marcarTroca).toHaveBeenCalledTimes(1))
     expect(marcarTroca.mock.calls[0][2]).toMatchObject({ uid: 'uid-mau', local: 'Consultório' })
+  })
+
+  // INCIDENTE 13/08 (Karine): quem aparece em DOIS hospitais no mesmo turno —
+  // a mesma jornada anotada nos dois quadros (linha de sala "Materno" dentro da
+  // escala do HRO) — arrastava o outro hospital para o sheet. A posição em jogo
+  // é a da TELA de onde a troca foi aberta.
+  it('a posição trocada é a da escala aberta: o outro hospital dela não entra', async () => {
+    const hroOriginal = escalasMock.hro
+    escalasMock.hro = { ...escalaHro, ordemLiberacao: { matutino: ['GIOVANA', 'KARINE', 'ROSE'] } }
+    try {
+      const LINHA_ROSE = { chave: 'uid-rose', uid: 'uid-rose', anestesista: 'Rose Cury', nomeOriginal: 'ROSE' }
+      render(
+        <TrocaSheet linha={LINHA_ROSE} escala={escalaMaterno} turno="matutino" onClose={vi.fn()} />,
+        { wrapper: wrap },
+      )
+      await escolherColega('MAURICIO MAHALEM BASTOS')
+      await screen.findByText('Quem fica com cada posição?')
+      // Materno (a tela) + Unimed (o colega). O HRO dela fica de fora.
+      expect(screen.getByText(/Cirurgias de Rose · sem fila de liberação/)).toBeTruthy()
+      expect(screen.getByText('Posição de Mauricio')).toBeTruthy()
+      expect(screen.queryByText('Posição de Rose')).toBeNull()
+    } finally {
+      escalasMock.hro = hroOriginal
+    }
   })
 
   it('"Declarar para depois" não existe mais (dono 09/08)', async () => {

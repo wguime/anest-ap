@@ -260,6 +260,58 @@ describe('planoExecucaoTroca — cada lado leva só os casos do PRÓPRIO turno',
   })
 })
 
+// INCIDENTE 13/08 (Karine no Materno): ela está no rodapé vespertino do HRO e
+// tem lá uma linha de sala "Materno" — a MESMA jornada anotada nos dois quadros.
+// Registrando a troca a partir do Materno, o sheet trazia um cartão do HRO:
+// "aparece opção no HRO sem que ela esteja lá".
+describe('planoExecucaoTroca — âncora: `a` entra só com a posição da tela', () => {
+  const trespe = {
+    hro: {
+      id: 'esc-hro', hospital: 'hro',
+      ordemLiberacao: { vespertino: ['KARINE'] }, linhaOverrides: {},
+      casos: [caso('h1', 'Materno', 'KARINE', { anestesistaUserId: 'uid-kar', turno: 'vespertino' })],
+    },
+    materno: {
+      id: 'esc-mat', hospital: 'materno',
+      ordemLiberacao: { vespertino: [] }, linhaOverrides: {},
+      casos: [caso('m1', 'Sala 3 HC', 'KARINE', { anestesistaUserId: 'uid-kar', turno: 'vespertino' })],
+    },
+    unimed: {
+      id: 'esc-uni', hospital: 'unimed',
+      ordemLiberacao: { vespertino: ['MAURICIO'] }, linhaOverrides: {},
+      casos: [caso('u1', 'S1', 'MAURICIO', { anestesistaUserId: 'uid-mau', turno: 'vespertino' })],
+    },
+  }
+  const KARINE = { uid: 'uid-kar', nome: 'KARINE BEDIN', apelido: 'KARINE' }
+  const resolver2 = (n) => (String(n || '').trim().toUpperCase() === 'KARINE' ? 'uid-kar' : resolverUid(n))
+
+  it('aberta no Materno: só Materno (dela) + Unimed (do colega) — o HRO fica fora', () => {
+    const plan = planoExecucaoTroca({
+      escalas: trespe, resolverUid: resolver2, a: KARINE, b: MAURICIO,
+      turno: 'vespertino', escalaAncora: 'esc-mat',
+    })
+    expect(plan.lados.map((l) => l.hospital).sort()).toEqual(['materno', 'unimed'])
+  })
+
+  it('aberta no HRO: a posição trocada é a do HRO — o Materno fica fora', () => {
+    const plan = planoExecucaoTroca({
+      escalas: trespe, resolverUid: resolver2, a: KARINE, b: MAURICIO,
+      turno: 'vespertino', escalaAncora: 'esc-hro',
+    })
+    expect(plan.lados.map((l) => l.hospital).sort()).toEqual(['hro', 'unimed'])
+  })
+
+  it('a âncora não mexe no lado do COLEGA (o recíproco continua onde ele está)', () => {
+    const plan = planoExecucaoTroca({
+      escalas: trespe, resolverUid: resolver2, a: KARINE, b: MAURICIO,
+      turno: 'vespertino', escalaAncora: 'esc-mat',
+    })
+    expect(plan.lados.find((l) => l.hospital === 'unimed')).toMatchObject({
+      de: { uid: 'uid-mau' }, para: { uid: 'uid-kar' }, casoIds: ['u1'],
+    })
+  })
+})
+
 describe('planoExecucaoDeclarada — recíproco do parceiro sem rodapé', () => {
   it('o parceiro que só tem cirurgias (Materno) também entra na convergência da publicação', () => {
     const escalasDecl = {

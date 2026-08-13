@@ -125,8 +125,10 @@ export default function TrocaSheet({ linha, escala, turno, onClose }) {
 
   // PLANO EM MODO SECO — nada é escrito aqui; cada lado é uma POSIÇÃO em jogo
   const plan = useMemo(
-    () => (b ? planoExecucaoTroca({ escalas, resolverUid: resolver, a, b, turno }) : null),
-    [escalas, resolver, a, b, turno],
+    // âncora = a escala de onde a troca foi aberta: a posição de `a` em jogo é
+    // a DESTA tela (dono 13/08 — a Karine no Materno trazia junto o HRO)
+    () => (b ? planoExecucaoTroca({ escalas, resolverUid: resolver, a, b, turno, escalaAncora: escala?.id || null }) : null),
+    [escalas, resolver, a, b, turno, escala?.id],
   )
   const slots = plan?.lados || []
   const faltaConfirmar = slots.some((l) => !escolha[ladoId(l)])

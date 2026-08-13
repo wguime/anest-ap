@@ -268,6 +268,14 @@ DUAS trocas, uma por turno; e o toggle "Assumir também a posição" some quando
 vaga da pessoa está no outro turno. O "corte do turno da tela" de 10/08 virou
 redundante e saiu junto.
 
+**ÂNCORA DA TROCA (dono 13/08):** o sheet abre a partir de UMA linha, e a
+posição de `a` em jogo é a DAQUELA escala — `planoExecucaoTroca` recebe
+`escalaAncora` (id) e só varre os outros hospitais atrás do COLEGA. Sem isso,
+quem aparece em dois hospitais no mesmo turno arrastava o outro para a decisão:
+registrar a troca da Karine no MATERNO abria um cartão do HRO, onde ela está no
+rodapé e tem uma linha de sala "Materno" (a mesma jornada anotada nos dois
+quadros). Mesmo princípio que `planoExecucaoDeclarada` já usava na duplicidade.
+
 **COLEGA FORA DA UNIMED/HRO (dono 13/08):** a troca era ancorada SÓ no rodapé, e
 o **Materno é publicado sem rodapé nenhum** (`ordem_liberacao` vazia nos dois
 turnos em 17/17 escalas) — quem trabalha lá só existe nos CASOS. O colega do

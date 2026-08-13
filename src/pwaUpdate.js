@@ -20,13 +20,16 @@
  * REFORMA 13/08 (queixa do dono: "a Home abre, carrega e recarrega sozinha"):
  * na 1ª abertura pós-deploy o SW serve o shell VELHO, o pageshow inicial fazia
  * um location.reload() INÚTIL (o SW novo nem tinha instalado — voltava o mesmo
- * shell velho) e segundos depois o autoUpdate do plugin recarregava DE NOVO ao
- * assumir — o usuário via o app abrir, usar e sumir. Agora, versão publicada
- * diferente = OVERLAY "Atualizando" na hora (ninguém investe numa sessão
- * condenada) e UM reload quando o SW novo assume (o autoUpdate do plugin faz
- * isso via controllerchange); backstop de 6s p/ SW que já assumiu em 2º plano
- * e desistência aos 15s (app segue utilizável no bundle atual; o próximo ciclo
- * tenta de novo). Cooldown de 60s continua impedindo laço de reload.
+ * shell velho) e segundos depois o plugin recarregava DE NOVO ao assumir — o
+ * usuário via o app abrir, usar e sumir. Agora, versão publicada diferente =
+ * busca do bundle novo em silêncio e UM reload quando o SW novo assume
+ * (controllerchange), com backstop às cegas aos 12s e desistência aos 18s.
+ * Cooldown de 60s continua impedindo laço de reload.
+ *
+ * ⚠️ SEM AVISO NA TELA (dono 13/08: "não solicitei o aparecimento dessa mensagem
+ * ao abrir o app"). A reforma tinha posto um overlay "Atualizando o ANEST…"
+ * durante a espera; atualizar é trabalho de bastidor e o app não interrompe
+ * quem abriu para trabalhar. O único momento visível é o reload.
  */
 import { registerSW } from 'virtual:pwa-register'
 
@@ -57,35 +60,6 @@ async function versaoPublicadaMudou() {
   } catch {
     return false // offline: segue com o que tem
   }
-}
-
-// ── Overlay "Atualizando o ANEST…" — DOM puro, independe do React ────────────
-let overlayEl = null
-
-function mostrarOverlay() {
-  if (overlayEl) return
-  const dark = window.matchMedia?.('(prefers-color-scheme: dark)')?.matches
-  overlayEl = document.createElement('div')
-  overlayEl.id = 'anest-atualizando'
-  overlayEl.setAttribute('role', 'status')
-  overlayEl.style.cssText = [
-    'position:fixed', 'inset:0', 'z-index:2147483647',
-    'display:flex', 'flex-direction:column', 'align-items:center',
-    'justify-content:center', 'gap:14px',
-    `background:${dark ? '#111916' : '#F0FFF4'}`,
-    `color:${dark ? '#2ECC71' : '#004225'}`,
-    'font:600 15px -apple-system,BlinkMacSystemFont,system-ui,sans-serif',
-  ].join(';')
-  overlayEl.innerHTML =
-    '<div style="width:28px;height:28px;border:3px solid currentColor;border-top-color:transparent;border-radius:50%;animation:anest-spin .8s linear infinite"></div>' +
-    '<div>Atualizando o ANEST…</div>' +
-    '<style>@keyframes anest-spin{to{transform:rotate(360deg)}}</style>'
-  document.body.appendChild(overlayEl)
-}
-
-function removerOverlay() {
-  overlayEl?.remove()
-  overlayEl = null
 }
 
 registerSW({
@@ -121,7 +95,6 @@ registerSW({
       if (atualizando || document.hidden) return
       if (!(await versaoPublicadaMudou())) return
       atualizando = true
-      mostrarOverlay()
       checarSW() // acelera o install do SW novo; o claim dele faz o reload
       setTimeout(() => {
         // 12s sem claim: último recurso — reload às cegas (cooldown de 60s
@@ -131,19 +104,17 @@ registerSW({
           window.location.reload()
         }
       }, 12000)
-      setTimeout(() => {
-        // 18s sem trocar de versão (rede ruim, SW travado): devolve o app —
-        // utilizável no bundle atual é melhor que overlay eterno. O próximo
-        // visibilitychange/intervalo tenta de novo.
-        removerOverlay()
-        atualizando = false
-      }, 18000)
+      // 18s sem trocar de versão (rede ruim, SW travado): desiste desta rodada.
+      // O app segue utilizável no bundle atual e o próximo
+      // visibilitychange/intervalo tenta de novo.
+      setTimeout(() => { atualizando = false }, 18000)
     }
 
-    // Boot: se o deploy mudou desde a última visita, o shell atual (servido
-    // pelo SW velho) já nasce condenado — overlay imediato em vez de deixar o
-    // usuário começar a usar e ser recarregado no meio. 800ms: depois do 1º
-    // paint, sem atrasar o boot de quem já está atualizado.
+    // Boot: se o deploy mudou desde a última visita, começa a buscar o bundle
+    // novo já — em SILÊNCIO (dono 13/08: "não solicitei essa mensagem ao abrir
+    // o app"). A atualização é trabalho de bastidor: o único momento visível é
+    // o reload, quando o SW novo assume. 800ms: depois do 1º paint, sem atrasar
+    // o boot de quem já está atualizado.
     checarSW()
     setTimeout(aplicarAtualizacaoSeDesatualizado, 800)
 
