@@ -267,9 +267,14 @@ herdar, só os casos; `ordem_liberacao` segue intocada) e só existe se houver o
 que mover (cirurgia encerrada ou sala "A + B" não conta). Vale nos dois motores:
 `planoExecucaoTroca` (TrocaSheet) e o recíproco de `planoExecucaoDeclarada`
 (convergência da publicação). O cartão do sheet diz "Cirurgias de X · sem fila de
-liberação", e o tipo passa a inferir `entre_hospitais` sozinho. Colega em
-**lugar nenhum** (consultório/folga) segue com a assunção de mão única, agora com
-**"Onde {colega} está hoje"** (`LOCAL_COLEGA_OPCOES`: Consultório/Materno/
+liberação", e o tipo passa a inferir `entre_hospitais` sozinho. ⚠️ **cada lado
+leva SÓ os casos do próprio turno** (`casosTransferiveis(..., turno)`): a Karine
+trocou a tarde e o cartão do HRO contava 2 casos — um era o Exames das 7h30, que
+não estava em jogo e mudaria de dono na execução (o recibo `assumidaPor.casoIds`
+só tinha consertado o desfazer). Colega **sem posição NO TURNO EXIBIDO**
+(consultório/folga — inclusive quem fecha o outro turno, caso Staub: manhã no HRO,
+tarde no consultório) ganha **"Onde {colega} está à tarde/de manhã"**
+(`LOCAL_COLEGA_OPCOES`: Consultório/Materno/
 Sobreaviso/Folga/Outro) — viaja no jsonb (`trocaCom.local` / `assumidaPor.local`,
 sem migration) e aparece na fila em "Trocado com X (Consultório)" e "Assumiu a
 posição de Y · Consultório". A escala demo do Materno perdeu o rodapé fake para

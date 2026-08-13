@@ -39,7 +39,9 @@ const escalaUnimed = {
 }
 const escalaHro = {
   id: 'esc-hro', hospital: 'hro',
-  ordemLiberacao: { matutino: ['GIOVANA', 'KARINE'] },
+  // Giovana fecha os dois turnos do HRO (é o caso do incidente do Staub abaixo:
+  // quem está na tela tem posição na tarde, o colega só na manhã)
+  ordemLiberacao: { matutino: ['GIOVANA', 'KARINE'], vespertino: ['GIOVANA', 'KARINE'] },
   linhaOverrides: {},
   casos: [{ id: 'h1', sala: 'S1', ordem: 0, anestesista: 'GIOVANA', anestesistaUserId: 'uid-gio', bloco: 'normal' }],
 }
@@ -223,11 +225,32 @@ describe('TrocaSheet', () => {
     expect(marcarTroca.mock.calls[0][2]).toMatchObject({ uid: 'uid-fora', local: 'Consultório', apenasRegistro: true })
   })
 
-  it('colega que TEM escala não ganha campo de local (não há o que perguntar)', async () => {
+  it('colega que TEM escala no turno exibido não ganha campo de local', async () => {
     montar()
     await escolherColega('MAURICIO MAHALEM BASTOS')
     await screen.findByText('Quem fica com cada posição?')
-    expect(screen.queryByText(/Onde .* está hoje/)).toBeNull()
+    expect(screen.queryByText(/Onde .* está/)).toBeNull()
+  })
+
+  // INCIDENTE 13/08 (Staub): fecha a MANHÃ do HRO e passa a TARDE no consultório.
+  // Como o nome dele estava no rodapé da manhã, o campo de local sumia e não
+  // havia onde dizer para onde ele tinha ido — o que era justamente o registro
+  // que faltava ("a troca já está correta na escala, só precisa ser identificada").
+  it('colega escalado só no OUTRO turno ainda pode ser marcado como fora (consultório)', async () => {
+    render(
+      <TrocaSheet linha={LINHA_GIOVANA} escala={escalaHro} turno="vespertino" onClose={vi.fn()} />,
+      { wrapper: wrap },
+    )
+    // Maurício está no rodapé MATUTINO da Unimed; a tela é a tarde
+    await escolherColega('MAURICIO MAHALEM BASTOS')
+    expect(await screen.findByText(/Onde Mauricio Bastos está à tarde/)).toBeTruthy()
+    fireEvent.click(screen.getAllByRole('combobox')[1])
+    fireEvent.click(await screen.findByRole('option', { name: 'Consultório' }))
+    for (const b of screen.getAllByRole('button', { name: /fica (HRO|Unimed)/ })) fireEvent.click(b)
+    await waitFor(() => expect(botaoPrincipal()).toHaveTextContent('Registrar troca'))
+    fireEvent.click(botaoPrincipal())
+    await waitFor(() => expect(marcarTroca).toHaveBeenCalledTimes(1))
+    expect(marcarTroca.mock.calls[0][2]).toMatchObject({ uid: 'uid-mau', local: 'Consultório' })
   })
 
   it('"Declarar para depois" não existe mais (dono 09/08)', async () => {

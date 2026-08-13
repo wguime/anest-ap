@@ -31,7 +31,7 @@ import { useUser } from '@/contexts/UserContext'
 import { useEscalaCirurgica, useEscalaCirurgicaActions, HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
-import { planoExecucaoTroca } from './utils'
+import { planoExecucaoTroca, normNome } from './utils'
 
 export const MOTIVO_MAX = 80
 
@@ -135,9 +135,12 @@ export default function TrocaSheet({ linha, escala, turno, onClose }) {
   const semSlot = (plan?.pendencias || []).filter((p) => p.motivo === 'sem_slot')
   const semVinculo = (plan?.pendencias || []).filter((p) => p.motivo === 'sem_uid')
 
-  // o colega não aparece em escala nenhuma → o "onde ele está" é a única coisa
-  // que sobra para registrar (e some assim que ele tem posição ou cirurgia)
-  const colegaSemEscala = !!b && semSlot.some((p) => p.pessoa === b)
+  // O colega não está em lugar nenhum NO TURNO EXIBIDO (incidente 13/08: o Staub
+  // fecha a manhã do HRO e passa a tarde no consultório — como ele aparecia no
+  // rodapé da manhã, o campo de local sumia e não havia onde dizer para onde ele
+  // tinha ido). O que interessa é o turno que está sendo registrado.
+  const ehDoColega = (l) => (l.de.uid && b?.uid ? l.de.uid === b.uid : normNome(l.de.nome) === normNome(b?.nome || ''))
+  const colegaSemEscala = !!b && !slots.some((l) => ehDoColega(l) && (!turno || l.turno === turno))
 
   const tipoEfetivo = tipo || inferirTipoTroca(plan)
   const meta = {
@@ -248,7 +251,7 @@ export default function TrocaSheet({ linha, escala, turno, onClose }) {
                 {colegaSemEscala && (
                   <div>
                     <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Onde {curto(b.nome)} está hoje
+                      Onde {curto(b.nome)} está {turno === 'matutino' ? 'de manhã' : 'à tarde'}
                     </p>
                     <Select
                       className="w-full"

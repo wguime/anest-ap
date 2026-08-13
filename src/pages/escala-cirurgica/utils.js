@@ -1091,9 +1091,12 @@ export function planoExecucaoTroca({ escalas, resolverUid, a, b, turno = null })
         // sem uid de quem assume não há como transferir caso (o service escreveria
         // "?"): o lado vale só pela POSIÇÃO; os casos se ajustam pelo Definir.
         ...(slot.turno ? { turno: slot.turno } : (turno ? { turno } : {})),
-        // o lado sem posição nasce de UM turno e leva só os casos DELE (no
-        // Materno, a manhã e a tarde costumam ser pessoas diferentes)
-        casoIds: para.uid ? casosTransferiveis(esc, de, resolverUid, slot.semPosicao ? slot.turno : null) : [],
+        // CADA LADO LEVA SÓ OS CASOS DO PRÓPRIO TURNO (incidente 13/08): a
+        // Karine trocou a TARDE e o cartão do HRO contava 2 casos — um deles era
+        // o Exames das 7h30, que não estava em jogo e teria mudado de dono na
+        // execução. Turno da tela como piso: slot legado sem turno não vira
+        // transferência do dia inteiro.
+        casoIds: para.uid ? casosTransferiveis(esc, de, resolverUid, slot.turno || turno || null) : [],
       })
     }
     const uidLocal = uidLocalDe(esc)
@@ -1288,7 +1291,8 @@ export function planoExecucaoDeclarada({ escalas, resolverUid, par, a, b }) {
       ...(slotA.turno ? { turno: slotA.turno } : {}),
       de: { uid: a.uid || null, nome: a.nome, apelido: a.apelido || slotA.nome },
       para: { uid: b.uid || null, nome: b.nome, apelido: b.apelido },
-      casoIds: b.uid ? casosTransferiveis(escA, a, resolverUid) : [],
+      // só os casos DAQUELE turno (13/08) — o outro turno nunca esteve em jogo
+      casoIds: b.uid ? casosTransferiveis(escA, a, resolverUid, slotA.turno || par.turno || null) : [],
     })
   }
   // recíproco: a vaga do PARCEIRO no hospital dele (fora da escala declarante) —
@@ -1305,7 +1309,7 @@ export function planoExecucaoDeclarada({ escalas, resolverUid, par, a, b }) {
       ...(slotB.turno ? { turno: slotB.turno } : {}),
       de: { uid: b.uid || null, nome: b.nome, apelido: b.apelido || slotB.nome },
       para: { uid: a.uid || null, nome: a.nome, apelido: a.apelido },
-      casoIds: a.uid ? casosTransferiveis(esc, b, resolverUid, slotB.semPosicao ? slotB.turno : null) : [],
+      casoIds: a.uid ? casosTransferiveis(esc, b, resolverUid, slotB.turno || par.turno || null) : [],
     })
     break
   }

@@ -44,7 +44,9 @@ const escalas = {
     id: 'esc-hro', hospital: 'hro',
     ordemLiberacao: { vespertino: ['GIOVANA', 'KARINE'] },
     linhaOverrides: {},
-    casos: [caso('h1', 'S1', 'GIOVANA', { anestesistaUserId: 'uid-gio' })],
+    // o slot dela no HRO é o VESPERTINO — o caso tem de ser do mesmo turno,
+    // senão o plano nem deveria movê-lo (regra de 13/08)
+    casos: [caso('h1', 'S1', 'GIOVANA', { anestesistaUserId: 'uid-gio', turno: 'vespertino' })],
   },
   materno: null,
 }
@@ -228,6 +230,36 @@ describe('planoExecucaoTroca — lado achado pelas CIRURGIAS (Materno, sem rodap
     const p = planoExecucaoTroca({ escalas: soFechadas, resolverUid, a: MAURICIO, b: GIOVANA, turno: 'matutino' })
     expect(p.lados.map((l) => l.hospital)).toEqual(['unimed'])
     expect(p.pendencias).toEqual([{ pessoa: GIOVANA, motivo: 'sem_slot' }])
+  })
+})
+
+// INCIDENTE 13/08 (Karine): ela está no rodapé do HRO nos DOIS turnos e trocou
+// só a TARDE. O cartão do HRO contava "2 casos" — um deles o Exames das 7h30,
+// que não estava em jogo e teria mudado de dono na execução.
+describe('planoExecucaoTroca — cada lado leva só os casos do PRÓPRIO turno', () => {
+  const doisTurnos = {
+    hro: {
+      id: 'esc-hro', hospital: 'hro',
+      ordemLiberacao: { matutino: ['KARINE'], vespertino: ['KARINE'] },
+      linhaOverrides: {},
+      casos: [
+        caso('manha', 'Exames', 'KARINE', { anestesistaUserId: 'uid-kar', hora: '07:30', turno: 'matutino' }),
+        caso('tarde', 'Materno', 'KARINE', { anestesistaUserId: 'uid-kar', hora: '13:30', turno: 'vespertino' }),
+      ],
+    },
+  }
+  const KARINE = { uid: 'uid-kar', nome: 'KARINE BEDIN', apelido: 'KARINE' }
+  const resolver2 = (n) => (String(n || '').trim().toUpperCase() === 'KARINE' ? 'uid-kar' : resolverUid(n))
+
+  it('troca da tarde não arrasta a cirurgia da manhã', () => {
+    const plan = planoExecucaoTroca({ escalas: doisTurnos, resolverUid: resolver2, a: KARINE, b: MAURICIO, turno: 'vespertino' })
+    expect(plan.lados).toHaveLength(1)
+    expect(plan.lados[0]).toMatchObject({ turno: 'vespertino', casoIds: ['tarde'] })
+  })
+
+  it('e o espelho: troca da manhã não arrasta a da tarde', () => {
+    const plan = planoExecucaoTroca({ escalas: doisTurnos, resolverUid: resolver2, a: KARINE, b: MAURICIO, turno: 'matutino' })
+    expect(plan.lados[0]).toMatchObject({ turno: 'matutino', casoIds: ['manha'] })
   })
 })
 
