@@ -165,5 +165,10 @@ export default function useRosterAnestesistas() {
     await refresh()
   }, [refresh])
 
-  return { roster, rosterByUid, aliases, resolver, canonicalUid, options, loading, refresh, upsertAlias, removeAlias }
+  // `pronto` = o hook TEM como resolver apelido→nome agora (cache da última
+  // sessão ou dados vivos). Quem exibe nome usa isto para segurar o skeleton
+  // em vez de mostrar o texto cru do rodapé e trocar depois (flicker 12-13/08).
+  const pronto = usersProntos || cacheInicial != null
+
+  return { roster, rosterByUid, aliases, resolver, canonicalUid, options, loading, pronto, refresh, upsertAlias, removeAlias }
 }

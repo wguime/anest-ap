@@ -42,9 +42,21 @@ export function EscalaCirurgicaHomeCard({ onNavigate }) {
   const fonte = contextEhHoje ? escalas : fallback
   // NOME DO CADASTRO no card (pedido do dono 31/07): o rodapé traz apelido/1º
   // nome ("ADRIANO", "DIDO") — o card mostra "nome + último sobrenome" do
-  // cadastro via dicionário de apelidos, como a aba Liberações. Sem vínculo
-  // (roster ainda carregando, apelido desconhecido), cai no texto do rodapé.
-  const { resolver, rosterByUid } = useRosterAnestesistas()
+  // cadastro via dicionário de apelidos, como a aba Liberações.
+  const { resolver, rosterByUid, pronto: rosterPronto } = useRosterAnestesistas()
+
+  // SEM PISCAR (dono 13/08): mostrar o apelido e trocar pelo nome completo
+  // segundos depois era o flicker relatado — enquanto o roster não tem como
+  // resolver (nem cache, nem cadastro carregado), o card fica no skeleton.
+  // Escape de 8s: se o cadastro nunca chegar (falha de rede), apelido é
+  // melhor que skeleton eterno.
+  const [esperaRosterEsgotada, setEsperaRosterEsgotada] = useState(false)
+  useEffect(() => {
+    if (rosterPronto) return
+    const t = setTimeout(() => setEsperaRosterEsgotada(true), 8000)
+    return () => clearTimeout(t)
+  }, [rosterPronto])
+  const aguardandoRoster = !rosterPronto && !esperaRosterEsgotada
   const linhas = useMemo(() => HOSPITAIS.flatMap((h) => {
     const e = fonte?.[h]
     // plantonista do TURNO atual (rodapé por-turno; array legado = o dia todo).
@@ -61,7 +73,8 @@ export function EscalaCirurgicaHomeCard({ onNavigate }) {
     return [{ hospital: HOSPITAL_LABEL[h], nome: cadastro ? nomeCirurgiaoCurto(cadastro) : titleCaseNome(plantonista) }]
   }), [fonte, resolver, rosterByUid])
 
-  const carregando = linhas.length === 0 && (contextEhHoje ? loading : fallback == null)
+  const fonteCarregando = contextEhHoje ? loading : fallback == null
+  const carregando = (linhas.length === 0 && fonteCarregando) || (linhas.length > 0 && aguardandoRoster)
   const abrir = () => onNavigate?.('escalaCirurgica')
 
   return (

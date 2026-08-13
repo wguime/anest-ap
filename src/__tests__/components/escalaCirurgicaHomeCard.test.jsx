@@ -1,0 +1,94 @@
+/**
+ * EscalaCirurgicaHomeCard — SEM PISCAR (dono 13/08).
+ *
+ * O card mostrava o texto cru do rodapé ("DIDO") e trocava pelo nome completo
+ * quando o cadastro (Tier 2, +2s) chegava. Regra travada aqui: enquanto o
+ * roster não tem como resolver apelido→nome (nem cache, nem dados vivos), o
+ * card fica no SKELETON — o apelido nunca é renderizado. Escape de 8s cobre
+ * falha de rede do cadastro (apelido é melhor que skeleton eterno).
+ */
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, act } from '@testing-library/react'
+
+const estado = {
+  ctx: null,
+  roster: null,
+}
+
+const hojeLocalISO = () => {
+  const d = new Date()
+  const p = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
+vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
+  useEscalaCirurgica: () => estado.ctx,
+  hojeISO: () => hojeLocalISO(),
+  HOSPITAIS: ['unimed', 'hro', 'materno'],
+  HOSPITAL_LABEL: { unimed: 'UNIMED', hro: 'HRO', materno: 'MATERNO' },
+}))
+vi.mock('@/services/supabaseEscalaCirurgicaService', () => ({
+  default: { fetchEscala: vi.fn(async () => null) },
+}))
+vi.mock('@/hooks/useRosterAnestesistas', () => ({
+  default: () => estado.roster,
+}))
+
+import { EscalaCirurgicaHomeCard } from '@/components/escala-cirurgica/EscalaCirurgicaHomeCard'
+
+// escala publicada com o apelido "DIDO" no rodapé (array legado = vale p/ os 2 turnos)
+const escalasComDido = {
+  unimed: { status: 'publicada', ordemLiberacao: ['DIDO'], casos: [] },
+  hro: null,
+  materno: null,
+}
+
+const rosterVazio = (pronto) => ({
+  resolver: () => null,
+  rosterByUid: new Map(),
+  pronto,
+})
+
+const rosterComDido = () => ({
+  resolver: (nome) => (String(nome).trim().toUpperCase() === 'DIDO' ? 'uid-gustavo' : null),
+  rosterByUid: new Map([['uid-gustavo', { uid: 'uid-gustavo', nome: 'GUSTAVO BIESDORF' }]]),
+  pronto: true,
+})
+
+describe('EscalaCirurgicaHomeCard — sem piscar apelido→nome', () => {
+  beforeEach(() => {
+    estado.ctx = { escalas: escalasComDido, data: hojeLocalISO(), loading: false }
+    estado.roster = rosterVazio(false)
+  })
+  afterEach(() => vi.useRealTimers())
+
+  it('roster SEM condição de resolver → skeleton, e o apelido NUNCA aparece', () => {
+    render(<EscalaCirurgicaHomeCard />)
+    expect(screen.queryByText('Dido')).toBeNull()
+    expect(screen.queryByText(/DIDO/i)).toBeNull()
+    // segue em carregamento (sem a lista e sem o estado "sem escala")
+    expect(screen.queryByText('Sem escala publicada hoje')).toBeNull()
+    expect(screen.queryByText('UNIMED')).toBeNull()
+  })
+
+  it('roster pronto (cache ou vivo) → nome COMPLETO direto', () => {
+    estado.roster = rosterComDido()
+    render(<EscalaCirurgicaHomeCard />)
+    expect(screen.getByText('Gustavo Biesdorf')).toBeTruthy()
+    expect(screen.queryByText('Dido')).toBeNull()
+  })
+
+  it('escape de 8s: cadastro nunca chegou → mostra o texto do rodapé', () => {
+    vi.useFakeTimers()
+    render(<EscalaCirurgicaHomeCard />)
+    expect(screen.queryByText('Dido')).toBeNull()
+    act(() => { vi.advanceTimersByTime(8100) })
+    expect(screen.getByText('Dido')).toBeTruthy()
+  })
+
+  it('sem escala publicada → estado vazio, independente do roster', () => {
+    estado.ctx = { escalas: { unimed: null, hro: null, materno: null }, data: hojeLocalISO(), loading: false }
+    render(<EscalaCirurgicaHomeCard />)
+    expect(screen.getByText('Sem escala publicada hoje')).toBeTruthy()
+  })
+})
