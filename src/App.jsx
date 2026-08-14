@@ -31,7 +31,6 @@ import { pageVariants, pageTransition, prefersReducedMotion } from "@/design-sys
 import { ChevronLeft } from "lucide-react"
 
 import { useUser } from "./contexts/UserContext"
-import { useCateterPeridural } from "./contexts/CateterPeridualContext"
 import { reportError } from "@/services/errorReporting"
 import { SUB_CARD_PARENT } from "./data/rolePermissionTemplates"
 import { isBulkImportEnabled } from "./utils/featureFlags"
@@ -799,14 +798,14 @@ function AccessDeniedPage({ message, onNavigate }) {
 }
 
 // BottomNav principal. Labels pt-BR ficam no BottomNav (bottom-nav.jsx) via DEFAULT_LABELS por ícone.
-function AppBottomNav({ activeNav, onNavClick, menuBadge = false }) {
+function AppBottomNav({ activeNav, onNavClick }) {
   return (
     <BottomNav
       items={[
         { icon: "Home", label: "Início", active: activeNav === "home", id: "home" },
         { icon: "Shield", label: "Gestão", active: activeNav === "shield", id: "shield" },
         { icon: "GraduationCap", label: "Educação", active: activeNav === "education", id: "education" },
-        { icon: "Menu", label: "Menu", active: activeNav === "menu", id: "menu", badge: menuBadge },
+        { icon: "Menu", label: "Menu", active: activeNav === "menu", id: "menu" },
       ]}
       onItemClick={onNavClick}
     />
@@ -837,8 +836,6 @@ function samePageParams(a, b) {
 function App() {
   const { user, isAuthenticated, needsLgpdConsent, acceptLgpd } = useUser()
   const { toast } = useToast()
-  const { cateteres } = useCateterPeridural()
-  const hasActiveCateterPeridural = cateteres.some((c) => c.status === 'ativo')
   // F2 Etapa A (Fundação): a URL é a fonte de verdade da navegação.
   // currentPage/pageParams nascem da URL (refresh e deep-link preservam a
   // tela) e o effect de location aplica mudanças vindas de navigate() e do
@@ -1558,7 +1555,6 @@ function App() {
         <AppBottomNav
           activeNav={activeNav}
           onNavClick={handleNavClick}
-          menuBadge={hasActiveCateterPeridural}
         />
       )}
 

@@ -17,6 +17,9 @@ Doc de libs (React, Tailwind, Framer Motion, Firebase, Supabase) e registry do s
 **WebSearch/WebFetch** na doc oficial — `docfork`/`shadcn`/`context7`/`chrome-devtools`/`lighthouse`/`firecrawl`
 foram removidos por não-uso (0–1 invocações em 34 sessões). GitHub é pelo **`gh` CLI**, não por MCP.
 
+## Regra #2 — Layout/DS congelado (dono 14/08)
+Nenhuma mudança visual (cor, tipografia, espaçamento, componente DS, navegação, animação) sem solicitação EXPRESSA do dono — o app está em uso clínico diário e mudança visual não pedida vira ruído e retreinamento da equipe. Corrigir bug visual REPORTADO pelo dono conta como solicitação; melhoria/refactor oportunista de UI, não. Na dúvida, AskUserQuestion antes de tocar no visual.
+
 ## Solicitações & Prompts (Fable 5)
 - Pedido novo: dar o motivo junto — "[contexto/para quem] → [o que habilita] → [pedido] → [pronto quando: critério verificável]"
 - Runs longos: antes de reportar progresso, auditar cada claim contra um tool result da sessão; teste falhou = reportar com output; não verificado = dizer explicitamente
@@ -308,6 +311,8 @@ camadas), compactação do histórico, telemetria de trocas, renomear
 ## Bottom Nav
 4 abas: **Home** | **Gestão** (Shield) | **Educação** | **Menu**
 (Dashboard temporariamente oculto; código preservado em `App.jsx`)
+
+**Visual TRAVADO (dono 14/08):** barra SEM badge/dot (removido 2× — `8663996` e 13/08; estado clínico pertence ao card do módulo, não à navegação) e cor por TOKEN em `.bottom-nav-glass` (anest-theme.css): light `--muted` #E8F5E9 (nível 1 — o nível 0 #F0FFF4 sobre cards brancos lia como "barra branca"), dark `--background` #111916; borda `border-border`, sem inset/borda branca (viravam "filete" sobre o verde). O ramo iOS (blur off) usa os mesmos tokens.
 
 ⚠️ Bug conhecido: `src/App.jsx:1011` (TODO BUG-06) — global BottomNav pode duplicar com per-page BottomNav (createPortal). Decisão arquitetural pendente. Em página nova, **NÃO** renderizar BottomNav próprio.
 

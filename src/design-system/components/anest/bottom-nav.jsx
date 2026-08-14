@@ -45,9 +45,10 @@ function BottomNav({ items = [], onItemClick, className, ...props }) {
         // página, e lá o blur é desligado por @supports — utilitário Tailwind
         // vem depois no cascade e venceria o desligamento.
         "bottom-nav-glass",
-        "border-t border-white/20 dark:border-white/10",
-        "shadow-[0_-8px_32px_rgba(0,66,37,0.08),inset_0_1px_0_rgba(255,255,255,0.25)] dark:shadow-[0_-8px_32px_rgba(0,0,0,0.35),inset_0_0.5px_0_rgba(255,255,255,0.08)]",
-        "safe-area-inset-bottom",
+        // border-border é o token de separador p/ navbars; a borda branca + o
+        // realce inset branco liam como um filete claro sobre o fundo verde.
+        "border-t border-border",
+        "shadow-[0_-8px_32px_rgba(0,66,37,0.08)] dark:shadow-[0_-8px_32px_rgba(0,0,0,0.35)]",
         className
       )}
       {...props}
@@ -66,9 +67,7 @@ function BottomNav({ items = [], onItemClick, className, ...props }) {
 
           const key = `${item.href ?? "item"}-${iconName ?? "custom"}-${index}`
           // Labels em pt-BR: prioriza item.label (custom), fallback para DEFAULT_LABELS por ícone
-          const baseLabel = item.label || (iconName && DEFAULT_LABELS[iconName]) || "Navegação"
-          const hasBadge = Boolean(item.badge)
-          const label = hasBadge ? `${baseLabel} (notificações pendentes)` : baseLabel
+          const label = item.label || (iconName && DEFAULT_LABELS[iconName]) || "Navegação"
 
           const commonClassName = cn(
             // Touch target 44x44 (WCAG 2.5.8 + regra ANEST)
@@ -119,12 +118,6 @@ function BottomNav({ items = [], onItemClick, className, ...props }) {
                       fill: item.active ? "currentColor" : "none"
                     })
                   : item.icon
-              )}
-              {hasBadge && (
-                <span
-                  aria-hidden="true"
-                  className="absolute -top-0.5 -right-0.5 z-20 w-2.5 h-2.5 rounded-full bg-destructive ring-2 ring-background"
-                />
               )}
               </span>
             </>

@@ -348,21 +348,28 @@
 
 /* Bottom nav glass — afeta TODAS as páginas. O blur fica AQUI (e não em
  * utilitário Tailwind) para que o desligamento no iOS, mais abaixo, consiga
- * vencer o cascade. */
+ * vencer o cascade.
+ *
+ * Cor por token, NUNCA branco cru (a barra lia como "barra branca" fora do DS,
+ * relato do dono 13/08). Light usa --muted (nível 1, #E8F5E9): o nível 0
+ * (#F0FFF4) sobre os cards brancos ainda parecia branco (14/08) — o verde
+ * precisa ser o perceptível da hierarquia. Dark fica no --background (#111916),
+ * aprovado pelo dono. Alpha 0.92: translucidez de 0.60 deixava o conteúdo
+ * legível através da barra ("filete com conteúdo atrás"). */
 .bottom-nav-glass {
-  background-color: rgb(255 255 255 / 0.60);
+  background-color: hsl(var(--muted) / 0.92);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
 }
 .dark .bottom-nav-glass {
-  background-color: rgb(17 25 22 / 0.60);
+  background-color: hsl(var(--background) / 0.92);
 }
 @supports not (backdrop-filter: blur(1px)) {
   .bottom-nav-glass {
-    background-color: rgb(255 255 255 / 0.95);
+    background-color: hsl(var(--muted) / 0.97);
   }
   .dark .bottom-nav-glass {
-    background-color: rgb(17 25 22 / 0.95);
+    background-color: hsl(var(--background) / 0.97);
   }
 }
 
@@ -381,12 +388,12 @@
  */
 @supports (-webkit-touch-callout: none) {
   .bottom-nav-glass {
-    background-color: rgb(255 255 255 / 0.97);
+    background-color: hsl(var(--muted) / 0.97);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
   .dark .bottom-nav-glass {
-    background-color: rgb(17 25 22 / 0.97);
+    background-color: hsl(var(--background) / 0.97);
   }
 }
 
