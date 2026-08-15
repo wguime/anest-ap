@@ -35,10 +35,16 @@ export function ehDiaUtil(dataIso) {
   return wd !== 0 && wd !== 6
 }
 
-/** Fase da lista: 'dia' | 'noite' | 'zerada'. */
-export function faseLiberacoes({ agoraMin, dataEscala, hojeIso }) {
+/**
+ * Fase da lista: 'dia' | 'noite' | 'zerada'.
+ * `fds: true` = modo fim de semana ATIVO (fila única publicada, 2026-08-15):
+ * a transição noturna passa a valer no sáb/dom, com os 4 nomes da faixa
+ * 19-07 da grade importada (linhasNoturnasFds) no lugar dos P1–P4 do card
+ * Plantões. Sem o flag, FDS segue sem transição — comportamento de sempre.
+ */
+export function faseLiberacoes({ agoraMin, dataEscala, hojeIso, fds = false }) {
   if (!dataEscala || dataEscala !== hojeIso) return 'dia'
-  if (!ehDiaUtil(dataEscala)) return 'dia' // FDS sem transição
+  if (!fds && !ehDiaUtil(dataEscala)) return 'dia' // FDS sem fila única: sem transição
   if (agoraMin >= ZERA_LIBERACOES_MIN) return 'zerada'
   if (agoraMin >= INICIO_NOTURNO_MIN) return 'noite'
   return 'dia'
@@ -255,6 +261,12 @@ export function fundirLinhasNoturnas(linhas, linhasNoite, opts = {}) {
       // troca de posição, ignora o status do dia e usa a chave da noite.
       noturno: true,
       teveCasos: true, isAjuda: false,
+      // FDS (linhasNoturnasFds): cols Unimed/HRO da faixa 19-07 são FIXAS no
+      // hospital — fora do "próximo a ser liberado". O equivalente de dia útil
+      // é o SELO_SEM_PROXIMO (P1/P2), que no FDS não serve: o selo lá é o Pn
+      // da PESSOA, e o substituto da noite pode nem ter posição (João Ricardo,
+      // 16/08). Linhas de dia útil não trazem o campo → false, sem efeito.
+      ...(n.foraDaFila ? { foraDaFila: true } : {}),
       chave: `${PREFIXO_NOITE}${chave}`, chaveDia: chave,
     }
     if (base) { topo.push({ ...base, ...selo }); continue }

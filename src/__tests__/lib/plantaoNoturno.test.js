@@ -28,6 +28,14 @@ describe('faseLiberacoes', () => {
     expect(faseLiberacoes({ agoraMin: 20 * 60, dataEscala: '2026-07-25', hojeIso: '2026-07-25' })).toBe('dia') // sábado
     expect(faseLiberacoes({ agoraMin: 22 * 60, dataEscala: '2026-07-26', hojeIso: '2026-07-26' })).toBe('dia') // domingo
   })
+  it('FDS com fila única publicada (fds: true, 15/08): a transição liga no sáb/dom', () => {
+    const sab = (agoraMin) => faseLiberacoes({ agoraMin, dataEscala: '2026-08-15', hojeIso: '2026-08-15', fds: true })
+    expect(sab(18 * 60 + 59)).toBe('dia')
+    expect(sab(19 * 60)).toBe('noite')
+    expect(sab(23 * 60)).toBe('zerada')
+    // outra data segue 'dia' mesmo com o flag (consultar amanhã não zera nada)
+    expect(faseLiberacoes({ agoraMin: 23 * 60, dataEscala: '2026-08-16', hojeIso: '2026-08-15', fds: true })).toBe('dia')
+  })
   it('feriado em dia de semana SEGUE a regra (decisão c) — qualquer seg–sex vira noite às 19h', () => {
     // 2026-09-07 (Independência) cai numa segunda
     expect(faseLiberacoes({ agoraMin: 20 * 60, dataEscala: '2026-09-07', hojeIso: '2026-09-07' })).toBe('noite')
@@ -236,6 +244,16 @@ describe('marcarSelosNoTurno — aviso na lista da tarde (pedido do dono 25/07)'
 })
 
 describe('fundirLinhasNoturnas — noturnos no topo, vespertina abaixo', () => {
+  it('propaga foraDaFila do card noturno FDS (Unimed/HRO fixos, 15/08) — dia útil segue sem o campo', () => {
+    const noite = [
+      { setor: 'P2', nome: 'JOAO HENRIQUE', papel: 'Plantão Unimed', isPlantonista: false, foraDaFila: true },
+      { setor: 'P4', nome: 'MATHEUS', papel: 'Retaguarda 1ª chamada', isPlantonista: false },
+    ]
+    const out = fundirLinhasNoturnas([], noite, {})
+    expect(out[0].foraDaFila).toBe(true)
+    expect(out[1].foraDaFila).toBeUndefined()
+  })
+
   const linha = (nome, chave, extra = {}) => ({
     anestesista: nome, chave, uid: null, nomeOriginal: nome.toUpperCase(),
     cirurgioes: ['Cir'], salas: ['Sala 1'], teveCasos: true, isPlantonista: false, isAjuda: false,

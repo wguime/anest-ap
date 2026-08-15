@@ -20,6 +20,7 @@ import ImportarEscalaPage from './ImportarEscalaPage'
 import VinculosSheet from './VinculosSheet'
 import TrocaSheet from './TrocaSheet'
 import { meuAliasDe, turnoAtual, casosResolvidos, estadoTrocasDoHistorico, filtrarPorTurno, normNome, formatData, rodapeDoTurno, localizarSlotEscala, planoExecucaoTroca, planoDesfazerTroca } from './utils'
+import { ehFimDeSemana, FDS_HOSPITAL } from '@/lib/escalaFds'
 import { podeEditarEscalaCirurgica } from './gate'
 
 const HOSPITAL_OPCOES = HOSPITAIS.map((h) => ({ value: h, label: HOSPITAL_LABEL[h] }))
@@ -66,7 +67,9 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const [calendarioAberto, setCalendarioAberto] = useState(false)
   useEffect(() => {
     let vivo = true
-    Promise.all(HOSPITAIS.map((h) => svc.fetchEscala(amanha, h).catch(() => null)))
+    // amanhã de sexta = sábado: a fila única (linha 'fds') também conta como publicada
+    const alvos = [...HOSPITAIS, ...(ehFimDeSemana(amanha) ? [FDS_HOSPITAL] : [])]
+    Promise.all(alvos.map((h) => svc.fetchEscala(amanha, h).catch(() => null)))
       .then((rs) => { if (vivo) setAmanhaPublicada(rs.some((e) => e?.status === 'publicada')) })
       .catch(() => {})
     return () => { vivo = false }
@@ -131,13 +134,39 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const contraturnoOutros = useMemo(() => {
     const out = []
     for (const [h, esc] of Object.entries(escalas)) {
-      if (h === hospital || !esc) continue
+      // 'fds' é a fila única do fim de semana, não um "outro hospital" — o
+      // último nome dela não é contraturno de ninguém
+      if (h === hospital || h === FDS_HOSPITAL || !esc) continue
       const rodape = rodapeDoTurno(esc.ordemLiberacao, turno)
       const ultimo = rodape[rodape.length - 1]
       if (ultimo) out.push({ nome: normNome(ultimo), hospitalLabel: HOSPITAL_LABEL[h] || h })
     }
     return out
   }, [escalas, hospital, turno])
+
+  // ── MODO FIM DE SEMANA (dono 15/08): fila de liberação ÚNICA ───────────────
+  // Liga quando a data é sáb/dom E a linha 'fds' do dia está publicada. Sem ela,
+  // a aba Liberações segue no comportamento por hospital (rollout seguro).
+  const fimDeSemana = ehFimDeSemana(data)
+  const modoFds = fimDeSemana && escalas.fds?.status === 'publicada'
+  // casos dos 3 hospitais mesclados, cada um anotado com a origem (campo só de
+  // exibição — nunca entra em CASO_FIELDS/persistência)
+  const casosFds = useMemo(() => {
+    if (!modoFds) return null
+    const out = []
+    for (const h of HOSPITAIS) {
+      for (const c of escalas[h]?.casos || []) out.push({ ...c, hospitalOrigem: h })
+    }
+    return out
+  }, [modoFds, escalas])
+  // "?" resolvido pela fila única grava no CASO — que mora na escala do hospital
+  // de origem, não na linha 'fds'
+  const escalaDoCaso = useCallback((casoId) => {
+    for (const h of HOSPITAIS) {
+      if ((escalas[h]?.casos || []).some((c) => c.id === casoId)) return escalas[h]
+    }
+    return null
+  }, [escalas])
 
   // Não inferimos ajuda apenas porque um nome aparece em outra escala. Uma
   // pessoa pode estar escalada simultaneamente em hospitais diferentes, e essa
@@ -160,12 +189,14 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     // e o colega de lá aparecia como se não estivesse em lugar nenhum)
     const slotLabelDe = (p) => {
       for (const [h2, e2] of Object.entries(escalas)) {
-        if (e2 && localizarSlotEscala(e2, p, resolverRoster, turno)) return HOSPITAL_LABEL[h2] || h2
+        if (h2 === FDS_HOSPITAL || !e2) continue // fila única não é "onde a pessoa está"
+        if (localizarSlotEscala(e2, p, resolverRoster, turno)) return HOSPITAL_LABEL[h2] || h2
       }
       return null
     }
     for (const [h, esc] of Object.entries(escalas)) {
-      if (!esc) continue
+      // linha 'fds' fora: troca declarada não existe no modo FDS (escopo 15/08)
+      if (!esc || h === FDS_HOSPITAL) continue
       for (const [rawChave, ov] of Object.entries(esc.linhaOverrides || {})) {
         const prefixo = `${turno}:`
         if (!String(rawChave).startsWith(prefixo)) continue
@@ -280,8 +311,16 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           </p>
         )}
 
-        {/* Hospital */}
-        <SegmentedSelector options={HOSPITAL_OPCOES} value={hospital} onChange={setHospital} />
+        {/* Hospital — na aba Liberações do FDS a fila é ÚNICA (todos os
+            hospitais), então o seletor sai e um rótulo diz o porquê; Minhas e
+            Completa seguem por hospital e o seletor volta ao trocar de aba. */}
+        {aba === 'liberacoes' && modoFds ? (
+          <p className="rounded-lg bg-primary/10 px-3 py-2 text-xs font-medium text-primary">
+            Fim de semana — fila de liberação única (todos os hospitais)
+          </p>
+        ) : (
+          <SegmentedSelector options={HOSPITAL_OPCOES} value={hospital} onChange={setHospital} />
+        )}
 
         {/* Abas internas — variante "filled" (trilho + selecionada em verde sólido, pedido do dono 24/07) */}
         <SegmentedSelector options={ABA_OPCOES} value={aba} onChange={setAba} variant="filled" />
@@ -299,47 +338,66 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
             <MinhasEscalasView escala={escala} meuAlias={meuAlias} meuUid={meuUid} turno={turno} onVerBoard={() => setAba('board')} />
           )}
           {aba === 'board' && <BoardView escala={escala} meuAlias={meuAlias} meuUid={meuUid} turno={turno} onNavigate={onNavigate} />}
-          {aba === 'liberacoes' && (
-            <LiberacoesView
-              escala={escala}
-              hospital={hospital}
-              hospitalLabel={HOSPITAL_LABEL[hospital]}
-              canEdit={canEdit}
-              turno={turno}
-              plantoes={plantoesDia}
-              p4Hospital={p4Hospital}
-              onDefinirP4={(h) => definirP4Hospital(h, userInfo)}
-              onDefinirCasos={(casoIds, { uid, apelido, rotulo }) =>
-                setAnestesistaCasos(escala, casoIds, { uid, apelido }, { rotulo })}
-              onToggle={(anest) => toggleLiberacao(escala, anest, userInfo, turno)}
-              onToggleEscalado={(anest) => toggleEscalado(escala, anest, userInfo, turno)}
-              onSetOverride={(anest, override) => setLinhaOverride(escala, anest, override, userInfo, turno)}
-              onAddAjuda={(nome) => adicionarAjuda(escala, turno, nome)}
-              onReordenarAjuda={(de, para) => reordenarAjuda(escala, turno, de, para)}
-              contraturnoOutros={contraturnoOutros}
-              presencaOutros={presencaOutros}
-              paresTroca={paresTroca}
-              onMarcarTroca={(linha, colega) => marcarTroca(escala, linha, colega, userInfo, turno)}
-              onAbrirTroca={(linha) => setTrocaSheet(linha)}
-              onExecutarTroca={(par) => {
-                // âncora = a escala onde a declaração vive (mesma regra do sheet)
-                const plan = planoExecucaoTroca({ escalas, resolverUid: resolverRoster, a: par.a, b: par.b, turno, escalaAncora: par.escalaId || null })
-                // tipo/motivo declarados viajam para o assumidaPor na execução
-                const meta = { ...(par.tipo && { tipo: par.tipo }), ...(par.motivo && { motivo: par.motivo }) }
-                return executarSubstituicao({ ...plan, lados: plan.lados.map((l) => ({ ...l, ...meta })) }, userInfo)
-              }}
-              onDesfazerSubstituicao={(linha) =>
-                desfazerSubstituicao(planoDesfazerTroca({
-                  escalas, resolverUid: resolverRoster, turno,
-                  a: pessoaDe(linha.uid, linha.anestesista),
-                  // nome CRU do rodapé, nunca o display (defeito D8): o plano
-                  // casa o dono por normNome e o display curto não bate com o
-                  // cadastro — o desfazer degradava p/ "só posição"
-                  b: pessoaDe(linha.assumida?.deUid, linha.assumida?.deNomeOriginal || linha.assumida?.deNome),
-                }), userInfo)}
-              onRemoveAjuda={(nome) => removerAjuda(escala, turno, nome)}
-            />
-          )}
+          {aba === 'liberacoes' && (() => {
+            // MODO FDS: a view opera sobre a linha 'fds' (fila única + marcações)
+            // e os casos mesclados dos 3 hospitais; troca/P4-coringa ficam fora.
+            const escalaLib = modoFds ? escalas.fds : escala
+            return (
+              <>
+                {fimDeSemana && !modoFds && canEdit && (
+                  <p className="mb-3 rounded-lg bg-info/10 px-3 py-2 text-xs text-info">
+                    Fim de semana: importe o documento de FDS (grade P1–P4 + ordem de liberação)
+                    para a fila única de todos os hospitais. Sem ele, a fila segue por hospital.
+                  </p>
+                )}
+                <LiberacoesView
+                  escala={escalaLib}
+                  hospital={modoFds ? FDS_HOSPITAL : hospital}
+                  hospitalLabel={modoFds ? 'Fim de semana' : HOSPITAL_LABEL[hospital]}
+                  canEdit={canEdit}
+                  turno={turno}
+                  plantoes={plantoesDia}
+                  p4Hospital={p4Hospital}
+                  modoFds={modoFds}
+                  casosFds={casosFds}
+                  fdsMeta={modoFds ? escalas.fds?.fdsMeta || null : null}
+                  onDefinirP4={modoFds ? undefined : (h) => definirP4Hospital(h, userInfo)}
+                  onDefinirCasos={(casoIds, { uid, apelido, rotulo }) => {
+                    // na fila única o caso pertence à escala do hospital de origem
+                    const dona = modoFds ? escalaDoCaso(casoIds[0]) || escala : escala
+                    return setAnestesistaCasos(dona, casoIds, { uid, apelido }, { rotulo })
+                  }}
+                  onToggle={(anest) => toggleLiberacao(escalaLib, anest, userInfo, turno)}
+                  onToggleEscalado={(anest) => toggleEscalado(escalaLib, anest, userInfo, turno)}
+                  onSetOverride={(anest, override) => setLinhaOverride(escalaLib, anest, override, userInfo, turno)}
+                  onAddAjuda={(nome) => adicionarAjuda(escalaLib, turno, nome)}
+                  onReordenarAjuda={(de, para) => reordenarAjuda(escalaLib, turno, de, para)}
+                  contraturnoOutros={modoFds ? [] : contraturnoOutros}
+                  presencaOutros={presencaOutros}
+                  paresTroca={modoFds ? [] : paresTroca}
+                  onMarcarTroca={modoFds ? undefined : (linha, colega) => marcarTroca(escala, linha, colega, userInfo, turno)}
+                  onAbrirTroca={modoFds ? undefined : (linha) => setTrocaSheet(linha)}
+                  onExecutarTroca={modoFds ? undefined : (par) => {
+                    // âncora = a escala onde a declaração vive (mesma regra do sheet)
+                    const plan = planoExecucaoTroca({ escalas, resolverUid: resolverRoster, a: par.a, b: par.b, turno, escalaAncora: par.escalaId || null })
+                    // tipo/motivo declarados viajam para o assumidaPor na execução
+                    const meta = { ...(par.tipo && { tipo: par.tipo }), ...(par.motivo && { motivo: par.motivo }) }
+                    return executarSubstituicao({ ...plan, lados: plan.lados.map((l) => ({ ...l, ...meta })) }, userInfo)
+                  }}
+                  onDesfazerSubstituicao={modoFds ? undefined : (linha) =>
+                    desfazerSubstituicao(planoDesfazerTroca({
+                      escalas, resolverUid: resolverRoster, turno,
+                      a: pessoaDe(linha.uid, linha.anestesista),
+                      // nome CRU do rodapé, nunca o display (defeito D8): o plano
+                      // casa o dono por normNome e o display curto não bate com o
+                      // cadastro — o desfazer degradava p/ "só posição"
+                      b: pessoaDe(linha.assumida?.deUid, linha.assumida?.deNomeOriginal || linha.assumida?.deNome),
+                    }), userInfo)}
+                  onRemoveAjuda={(nome) => removerAjuda(escalaLib, turno, nome)}
+                />
+              </>
+            )
+          })()}
         </div>
 
         {loading && <p className="text-center text-sm text-muted-foreground py-4">Carregando…</p>}

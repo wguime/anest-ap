@@ -15,15 +15,15 @@ const estado = {
   roster: null,
 }
 
-const hojeLocalISO = () => {
-  const d = new Date()
+const hojeLocalISO = (base) => {
+  const d = base instanceof Date ? base : new Date()
   const p = (n) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
 vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
   useEscalaCirurgica: () => estado.ctx,
-  hojeISO: () => hojeLocalISO(),
+  hojeISO: (d) => hojeLocalISO(d),
   HOSPITAIS: ['unimed', 'hro', 'materno'],
   HOSPITAL_LABEL: { unimed: 'UNIMED', hro: 'HRO', materno: 'MATERNO' },
 }))
@@ -90,5 +90,49 @@ describe('EscalaCirurgicaHomeCard — sem piscar apelido→nome', () => {
     estado.ctx = { escalas: { unimed: null, hro: null, materno: null }, data: hojeLocalISO(), loading: false }
     render(<EscalaCirurgicaHomeCard />)
     expect(screen.getByText('Sem escala publicada hoje')).toBeTruthy()
+  })
+})
+
+describe('modo FDS — plantões físicos da faixa da grade (dono 15/08)', () => {
+  afterEach(() => vi.useRealTimers())
+
+  it('fila única publicada no sábado → Unimed/HRO da faixa 7-13, não o 1º do rodapé', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-15T10:00:00-03:00')) // sábado, faixa 7-13
+    estado.roster = rosterComDido()
+    estado.ctx = {
+      data: '2026-08-15', loading: false,
+      escalas: {
+        unimed: null, hro: null, materno: null,
+        fds: {
+          status: 'publicada', hospital: 'fds',
+          // rodapé da fila única: o 1º é quem SAI POR ÚLTIMO, não "o plantonista
+          // da Unimed" — o card não pode derivar plantonista dele no FDS
+          ordemLiberacao: { matutino: ['DIDO'] }, casos: [],
+          fdsMeta: {
+            grade: { '7-13': { unimed: 'GUILHERME DIDOMENICO', hro: 'JOAO HENRIQUE', ret1: 'CRISTINA', ret2: 'MATHEUS' } },
+            posicoes: {},
+          },
+        },
+      },
+    }
+    render(<EscalaCirurgicaHomeCard />)
+    expect(screen.getByText('Plantão · 7–13h')).toBeTruthy()
+    expect(screen.getByText('Guilherme Didomenico')).toBeTruthy()
+    expect(screen.getByText('Joao Henrique')).toBeTruthy()
+    expect(screen.queryByText('Gustavo Biesdorf')).toBeNull()
+  })
+
+  it('sábado SEM fila única publicada → comportamento por hospital preservado', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-15T10:00:00-03:00'))
+    estado.roster = rosterComDido()
+    estado.ctx = {
+      data: '2026-08-15', loading: false,
+      escalas: { ...escalasComDido, fds: null },
+    }
+    render(<EscalaCirurgicaHomeCard />)
+    expect(screen.getByText('Gustavo Biesdorf')).toBeTruthy()
+    expect(screen.queryByText(/Plantão · /)).toBeNull()
   })
 })

@@ -13,6 +13,7 @@ import {
 } from '@/design-system'
 import { gerarColunaLiberacao, nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
 import { faseLiberacoes, plantonistasNoturnos, candidatosNome, linhasNoturnas, fundirLinhasNoturnas, marcarSelosNoTurno, ehDiaUtil, casarPorInicialSobrenome, P4_HOSPITAIS } from '@/lib/plantaoNoturno'
+import { marcarSelosFds, linhasNoturnasFds, plantonistasFaixaFds, faixaFdsAtual } from '@/lib/escalaFds'
 import { hojeISO, HOSPITAL_LABEL, OBSERVACAO_MAX } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
@@ -49,11 +50,19 @@ const SELO_SEM_PROXIMO = new Set(['P1', 'P2'])
 // responder "sou eu quem comanda a fila?", que era a permissão da SUBSTITUIÇÃO de
 // posição. Sem a troca, quem edita a escala (canEdit) opera a fila inteira e a
 // ORDEM é que decide quem pode ser liberado agora.
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, p4Hospital = null, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao }) {
+// MODO FDS (dono 15/08): fila de liberação ÚNICA do fim de semana — `escala` é a
+// linha pseudo-hospital 'fds', `casosFds` traz os casos dos 3 hospitais (cada um
+// anotado com hospitalOrigem, campo só de exibição) e `fdsMeta` é o payload do
+// documento (grade P1–P4, Pn→pessoa, escalação). Troca/P4-coringa ficam FORA do
+// modo FDS (a fila única já modela "pega caso em qualquer hospital").
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, p4Hospital = null, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null }) {
   const { toast } = useToast()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
   // do turno selecionado e o rodapé (ordem de liberação) DAQUELE turno.
-  const casosTurno = useMemo(() => filtrarPorTurno(escala?.casos || [], turno), [escala, turno])
+  const casosTurno = useMemo(
+    () => filtrarPorTurno((modoFds && casosFds) ? casosFds : (escala?.casos || []), turno),
+    [escala, turno, modoFds, casosFds]
+  )
   const rodapeTurno = useMemo(() => rodapeDoTurno(escala?.ordemLiberacao, turno), [escala, turno])
   const [editor, setEditor] = useState(null) // linha em edição (sheet)
   const [rascLocal, setRascLocal] = useState('')
@@ -153,7 +162,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   }, [rosterByUid, curtoAmbiguo])
 
   const { linhas, semAnestesista } = useMemo(() => {
-    if (!casosTurno.length) return { linhas: [], semAnestesista: [] }
+    // FDS: a fila publicada existe ANTES das listas de procedimentos (são
+    // importações separadas) — o rodapé sozinho já rende as linhas; sem casos,
+    // todo mundo nasce "não escalado" até a importação chegar.
+    if (!casosTurno.length && !(modoFds && rodapeTurno.length)) return { linhas: [], semAnestesista: [] }
     // SLOTS ASSUMIDOS (troca declarada executada, dono 30/07): a lib recebe os
     // assumidaPor por chave e troca a IDENTIDADE do slot — quem assumiu aparece
     // na posição do colega em vez de virar linha extra no fim da fila.
@@ -167,7 +179,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     return gerarColunaLiberacao(casosTurno, rodapeTurno, {
       hospital: hospitalLabel,
       ajudaExterna: rodapeDoTurno(escala.ajudaExterna, turno), // AZUL, por-turno (ajuda da tarde ≠ da manhã)
-      turno, // decide o "plantão da tarde" (último nome escalado do rodapé matutino)
+      // "plantão do turno seguinte" (último do rodapé sai 1º) é conhecimento de
+      // DIA ÚTIL — na fila única do FDS a posição vem do documento e mover o
+      // último corromperia a leitura da ordem publicada. `opts.turno` só
+      // alimenta essa regra na lib; o namespacing das marcações é da view.
+      turno: modoFds ? undefined : turno,
       resolverUid,
       nomeExibicao,
       assumidas,
@@ -179,7 +195,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       // nome — quem está aqui de ajuda libera primeiro, na ordem de liberação de lá.
       rodapeOutros: presencaOutros.filter((p) => p.rodapeIdx != null),
     })
-  }, [casosTurno, rodapeTurno, escala, hospitalLabel, turno, resolverUid, nomeExibicao, presencaOutros])
+  }, [casosTurno, rodapeTurno, escala, hospitalLabel, turno, resolverUid, nomeExibicao, presencaOutros, modoFds])
 
   // Locais do hospital p/ o editor de linha (dropdown, pedido do dono 2026-07-22):
   // salas da escala do dia (ordem do board) + locais APRENDIDOS do histórico
@@ -248,7 +264,72 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // (zero escrita na escala/rodapé — a corrupção de 22/07 veio de reescrevê-lo).
   const chaveHospital = hospital || String(hospitalLabel || '').toLowerCase()
   const noturnos = useMemo(() => plantonistasNoturnos(plantoes), [plantoes])
-  const fase = faseLiberacoes({ agoraMin, dataEscala: escala?.data, hojeIso: hojeISO() })
+  // modoFds liga a transição noturna no sáb/dom (fila única publicada) — os 4
+  // nomes vêm da faixa 19-07 da grade IMPORTADA, nunca do card Plantões.
+  const fase = faseLiberacoes({ agoraMin, dataEscala: escala?.data, hojeIso: hojeISO(), fds: modoFds })
+
+  // HOSPITAL DE CADA PESSOA na fila única (modo FDS): derivado dos casos
+  // mesclados (hospitalOrigem) pela MESMA chave canônica das linhas (uid do
+  // vínculo ou nome normalizado — padrão statusPorChave). Vira prefixo do
+  // local no card ("Unimed · CC - Sala 1"), porque sala sozinha é ambígua
+  // quando a fila cruza hospitais.
+  const hospitaisPorChave = useMemo(() => {
+    if (!modoFds) return null
+    const m = new Map()
+    for (const c of casosResolvidos({ casos: casosTurno })) {
+      const rotulo = HOSPITAL_LABEL[c.hospitalOrigem]
+      if (!rotulo) continue
+      const nome = String(c.anestesista || '').trim()
+      if (!nome || nome === '//') continue
+      const partes = nome.split(/\s*\+\s*/).map((s) => s.trim()).filter(Boolean)
+      const umSo = partes.length === 1
+      for (const parte of partes) {
+        const uid = (umSo ? c.anestesistaUserId : null) || resolverUid(parte) || null
+        const key = uid || normNome(parte)
+        const set = m.get(key) || new Set()
+        set.add(rotulo)
+        m.set(key, set)
+      }
+    }
+    return m
+  }, [modoFds, casosTurno, resolverUid])
+  const hospitaisDe = (l) => {
+    if (!hospitaisPorChave) return null
+    const set = hospitaisPorChave.get(l.chave) || (l.uid && hospitaisPorChave.get(l.uid)) || null
+    return set?.size ? [...set].join('/') : null
+  }
+
+  // PLANTÃO FÍSICO da faixa atual (modo FDS): quem está em Unimed/HRO segundo a
+  // grade — badge específico no lugar do "Plantonista" genérico (que diria menos:
+  // no FDS os dois fisicamente de plantão saem por último e a fila é uma só).
+  const plantaoFisico = useMemo(() => {
+    if (!modoFds || !fdsMeta?.grade) return null
+    const faixa = faixaFdsAtual(agoraMin)
+    if (!faixa) return null
+    const { unimed, hro } = plantonistasFaixaFds(fdsMeta.grade, faixa)
+    const m = new Map()
+    const add = (nomeBruto, rotulo) => {
+      const nome = String(nomeBruto || '').trim()
+      if (!nome) return
+      // mesmas chaves do marcarSelosNoTurno: uid do vínculo; sem vínculo, as
+      // variantes de candidatosNome — a LINHA casa por chave inteira, então
+      // token solto ("JOAO") não gera falso positivo (chave da linha é o nome
+      // completo normalizado ou o uid)
+      const uid = resolverUid(nome)
+      const chaves = [uid, ...(uid ? [] : candidatosNome(nome).map(normNome))].filter(Boolean)
+      for (const k of chaves) if (!m.has(k)) m.set(k, rotulo)
+    }
+    add(unimed, 'Plantão Unimed')
+    add(hro, 'Plantão HRO')
+    return m
+  }, [modoFds, fdsMeta, agoraMin, resolverUid])
+  const plantaoFisicoDe = (l) => {
+    if (!plantaoFisico || l.noturno) return null // card noturno já diz o papel
+    for (const k of [l.chave, l.uid, normNome(l.nomeOriginal || ''), normNome(l.anestesista || '')]) {
+      if (k && plantaoFisico.has(k)) return plantaoFisico.get(k)
+    }
+    return null
+  }
   // nome do PegaPlantao ("G. Staub") → uid do vínculo, via candidatos do dicionário
   const resolverNomeCompleto = (nome) => {
     for (const cand of candidatosNome(nome)) {
@@ -277,7 +358,14 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // está vira card `sintetico` (não existe no rodapé → não reordena).
   // Às 23h a lista do dia ZERA e sobram SÓ os P1–P4 (pedido do dono 24/07) —
   // filtrar os fundidos preserva as marcações de quem foi hoistado.
-  const linhasNoite = fase === 'dia' ? [] : linhasNoturnas(chaveHospital, noturnos, p4Hospital)
+  const linhasNoite = fase === 'dia'
+    ? []
+    : modoFds
+      // FDS: SÓ os 4 plantões da faixa 19-07 da grade importada (cols 1–2 fixas
+      // no hospital = foraDaFila; 3–4 = ordem de chamada). ORDEM_NOTURNA e o
+      // card Plantões são conhecimento de dia útil e ficam fora daqui.
+      ? linhasNoturnasFds(fdsMeta?.grade, fdsMeta?.posicoes, { resolverUid, normalizar: normNome })
+      : linhasNoturnas(chaveHospital, noturnos, p4Hospital)
   // Antes das 19h, no VESPERTINO da escala de HOJE: quem entra no plantão hoje já
   // aparece com o selo P1–P4 na lista da tarde (pedido do dono 25/07) — só o
   // aviso, sem `noturno`: posição, cor e liberação seguem a lógica do dia.
@@ -296,7 +384,13 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     : avisarSelos
       ? marcarSelosNoTurno(linhas, noturnos, { resolverUid: resolverNomeCompleto, normalizar: normNome })
       : linhas
-  const linhasFase = fase === 'zerada' ? fundidas.filter((l) => l.noturno) : fundidas
+  // BADGE Pn (P1–P12) em toda linha da fila única, conforme a posição da pessoa
+  // na ordem da escala (dono 15/08). Card noturno já vem com o selo da fusão —
+  // marcarSelosFds não sobrescreve.
+  const comSelos = modoFds
+    ? marcarSelosFds(fundidas, fdsMeta?.posicoes, { resolverUid, normalizar: normNome })
+    : fundidas
+  const linhasFase = fase === 'zerada' ? comSelos.filter((l) => l.noturno) : comSelos
 
   if (!escala || !linhasFase.length) {
     return fase === 'zerada' ? (
@@ -321,8 +415,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // um caso a partir da fila: a substituição de posição saiu junto com a troca.
   // Com ela saiu também a única leitura de "sou o plantonista?" — quem libera é
   // qualquer `canEdit`, e quem pode liberar AGORA é decidido pela ORDEM da fila.
-  // marcar onde o coringa está é da equipe toda (mesma permissão de editar a lista)
-  const podeMarcarP4 = !!canEdit && !!onDefinirP4
+  // marcar onde o coringa está é da equipe toda (mesma permissão de editar a lista).
+  // No FDS não há coringa: os 4 têm posto explícito na grade 19-07 — o sheet do
+  // P4 fica fora (e o selo Pn do modo FDS nunca vira botão).
+  const podeMarcarP4 = !!canEdit && !!onDefinirP4 && !modoFds
 
   // não escalado = está no rodapé mas NUNCA teve caso no dia → liberado por
   // definição (vermelho desde a publicação). Quem TEVE casos e todos encerraram
@@ -595,6 +691,14 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       setEditor(null)
     } catch { /* toast no context */ } finally { setExecutandoTroca(false) }
   }
+
+  // De qual hospital é o procedimento "?" (só na fila única do FDS — a lib não
+  // repassa hospitalOrigem, então o caso é reencontrado pelo id nos mesclados).
+  const hospitalDoAlerta = (id) => {
+    if (!modoFds || !id) return null
+    const c = casosTurno.find((x) => x.id === id)
+    return c?.hospitalOrigem ? HOSPITAL_LABEL[c.hospitalOrigem] : null
+  }
   return (
     <div className="space-y-3">
       {/* Procedimentos sem anestesista NO TOPO (pedido do dono 24/07): o plantonista
@@ -627,6 +731,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 >
                   <div className="flex items-center gap-2">
                     <span className="font-bold tabular-nums">{i.hora || '—'}</span>
+                    {hospitalDoAlerta(i.id) && <span className="shrink-0 text-xs font-semibold text-muted-foreground">{hospitalDoAlerta(i.id)}</span>}
                     {i.sala && <span className="min-w-0 truncate font-semibold" title={i.sala}>{salaLiberacao(i.sala)}</span>}
                     <Badge variant="warning" badgeStyle="subtle" className="ml-auto shrink-0">Sem anestesista</Badge>
                   </div>
@@ -652,8 +757,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
         {(() => {
           // Está na FILA de liberação? P1/P2 são os plantonistas da noite: nunca
           // entram no "próximo a ser liberado" (pedido do dono 24/07). P3/P4 entram.
+          // No FDS o selo é o Pn da PESSOA (não o posto) — quem está fora da fila
+          // à noite são as cols Unimed/HRO da grade, marcadas com `foraDaFila`
+          // (o substituto da noite pode nem ter Pn, caso João Ricardo 16/08).
           const naFila = (l) => {
-            if (l.noturno && SELO_SEM_PROXIMO.has(l.selo)) return false
+            if (l.noturno && (modoFds ? l.foraDaFila : SELO_SEM_PROXIMO.has(l.selo))) return false
             if (l.isExtra) return false
             const m = marcaDe(l)
             const emSala = m?.escalado === true || !naoEscalado(l)
@@ -785,11 +893,19 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     <Badge className={`shrink-0 ${SELO_NOTURNO}`}>{linha.selo}</Badge>
                   ))}
                   <span className="min-w-0 truncate">{linha.anestesista}</span>
-                  {/* liberado = card enxuto (pedido do dono): só nome + badge Liberado + lápis */}
-                  {!liberadoReal && linha.isPlantonista && (
+                  {/* liberado = card enxuto (pedido do dono): só nome + badge Liberado + lápis.
+                      No FDS o genérico "Plantonista" dá lugar ao badge ESPECÍFICO
+                      "Plantão Unimed/HRO" da faixa atual (grade importada) — na
+                      fila única, dizer QUAL hospital é a informação. */}
+                  {!liberadoReal && !modoFds && linha.isPlantonista && (
                     <Badge variant="secondary"
                       className="shrink-0 dark:bg-[hsl(var(--badge-success))] dark:text-[hsl(var(--badge-success-foreground))]">
                       Plantonista
+                    </Badge>
+                  )}
+                  {!liberadoReal && plantaoFisicoDe(linha) && (
+                    <Badge className="shrink-0 border-transparent bg-primary text-primary-foreground">
+                      {plantaoFisicoDe(linha)}
                     </Badge>
                   )}
                   {/* AZUL SÓLIDO (pedido do dono 2026-07-21) — mesmo destaque do Plantonista */}
@@ -869,7 +985,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     {!liberadoReal && linha.papelNoturno && !linha.isPlantonista && (
                       <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
                         {linha.papelNoturno}
-                        {linha.selo === 'P4' && !p4Hospital && ' · nos três hospitais'}
+                        {/* "nos três hospitais" é do coringa de DIA ÚTIL — no FDS o
+                            selo P4 é só a posição da pessoa, não o posto coringa */}
+                        {!modoFds && linha.selo === 'P4' && !p4Hospital && ' · nos três hospitais'}
                       </p>
                     )}
                     {/* EMPRESTADO (dono 30/07): mantém a posição daqui e o card diz
@@ -961,12 +1079,15 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         )}
                       </div>
                     )}
-                    {/* sala/local abaixo do cirurgião (pedido do dono 2026-07-20) */}
+                    {/* sala/local abaixo do cirurgião (pedido do dono 2026-07-20).
+                        Na fila única (FDS) o hospital prefixa o local: "CC - Sala 1"
+                        existe na Unimed E no HRO — sala sozinha é ambígua. */}
                     {!liberadoReal && localExibido && (
                       <p
                         className={['mt-0.5 truncate text-xs font-semibold', ov?.local ? 'text-primary' : 'text-foreground/80'].join(' ')}
                         title={ov?.local ? 'Local ajustado' : localExibido}
                       >
+                        {hospitaisDe(linha) && !ov?.local ? <span className="text-muted-foreground">{hospitaisDe(linha)} · </span> : null}
                         {localExibido}
                       </p>
                     )}
@@ -1146,7 +1267,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   Linha `chave#casos` (dono de slot assumido reaparecendo com casos)
                   fica DE FORA: a chave é espelho de verdade-dos-dados — troca
                   gravada nela ficaria órfã, nada a lê (defeito D7, 07/08). ── */}
-              {canEdit && !editor.noturno && !String(editor.chave || '').includes('#casos') && (() => {
+              {/* TROCAS FICAM FORA DO MODO FDS (decisão de escopo 15/08): a fila
+                  única já modela "pega caso em qualquer hospital" — movimentação
+                  registra-se pela Observação da linha (espírito da decisão 29/07). */}
+              {canEdit && !editor.noturno && !modoFds && !String(editor.chave || '').includes('#casos') && (() => {
                 if (editor.assumida) {
                   return (
                     <div className="space-y-1.5">

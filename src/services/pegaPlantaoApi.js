@@ -161,15 +161,18 @@ export function plantaoEmAndamento(plantao, agora = new Date()) {
 // CONFIGURACAO DE SETORES POR PERIODO
 // ============================================================================
 
+// P12 no FDS (2026-08-15): o documento de fim de semana chega a 12 posições
+// (12º VICENTE em 15/08) — sem o setor aqui, o P12 do Pega Plantão nem chegava
+// ao app e a conferência da fila única não tinha com o que cruzar.
 const SETORES_CONFIG = {
   // Segunda a Sexta
   diasUteis: ['P1', 'P2', 'P3', 'P4'],
   // Sabado Manha
-  sabadoManha: ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10', 'P11'],
-  // Sabado Tarde (todos os 11 setores)
-  sabadoTarde: ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10', 'P11'],
-  // Domingo - Manha e Tarde (todos os 11 setores)
-  domingo: ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10', 'P11'],
+  sabadoManha: ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10', 'P11', 'P12'],
+  // Sabado Tarde (todos os setores)
+  sabadoTarde: ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10', 'P11', 'P12'],
+  // Domingo - Manha e Tarde (todos os setores)
+  domingo: ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10', 'P11', 'P12'],
 };
 
 /**

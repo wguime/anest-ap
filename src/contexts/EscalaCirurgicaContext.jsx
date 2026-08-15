@@ -15,9 +15,13 @@ import { createReliableSubscription } from '@/services/supabaseSubscriptionHelpe
 import { useToast } from '@/design-system/components/ui/toast'
 import { ajudasPreservadasNoRepasse, familiaConvenio, lerOverrideAnterior, mergeRodapeTurno, rodapeDoTurno, snapshotCasos } from '@/pages/escala-cirurgica/utils'
 import { nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
+import { ehFimDeSemana, FDS_HOSPITAL } from '@/lib/escalaFds'
 import { getDemoEscala } from '@/data/escalaCirurgicaDemo'
 import { agora } from '@/lib/devClock'
 
+// ⚠️ 'fds' NÃO entra aqui: HomeCard, HOSPITAL_OPCOES da página e o loadData
+// iteram esta constante — a linha da fila única do FDS é um slot EXTRA do
+// estado (escalas.fds), carregado à parte só em sáb/dom (padrão p4Hospital).
 export const HOSPITAIS = ['unimed', 'hro', 'materno']
 export const HOSPITAL_LABEL = { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' }
 
@@ -46,7 +50,8 @@ const EscalaStateContext = createContext(null)
 const EscalaActionsContext = createContext(null)
 
 // p4Hospital: onde o coringa da noite está hoje (null = aparece nos 3 hospitais)
-const initialState = { escalas: { unimed: null, hro: null, materno: null }, p4Hospital: null }
+// escalas.fds: linha da fila única do FDS (null em dia útil — nem é buscada)
+const initialState = { escalas: { unimed: null, hro: null, materno: null, fds: null }, p4Hospital: null }
 
 function reducer(state, action) {
   switch (action.type) {
@@ -93,8 +98,14 @@ export function EscalaCirurgicaProvider({ children }) {
   const loadData = useCallback(async (dia) => {
     setLoading(true)
     try {
-      const results = await Promise.all(HOSPITAIS.map((h) => svc.fetchEscala(dia, h).catch(() => null)))
-      const escalas = {}
+      const [results, fdsRow] = await Promise.all([
+        Promise.all(HOSPITAIS.map((h) => svc.fetchEscala(dia, h).catch(() => null))),
+        // fila única do FDS: linha pseudo-hospital 'fds' (uma por sáb/dom).
+        // Dia útil nem faz a request; falha cai em null (modo FDS não liga e a
+        // tela segue no comportamento por hospital — rollout seguro).
+        ehFimDeSemana(dia) ? svc.fetchEscala(dia, FDS_HOSPITAL).catch(() => null) : Promise.resolve(null),
+      ])
+      const escalas = { fds: fdsRow }
       // Fixture demo é ferramenta de DEV/e2e (testes determinísticos) — PRODUÇÃO
       // nunca vê demo (pedido do dono 23/07: botão e dados de demonstração excluídos).
       HOSPITAIS.forEach((h, i) => { escalas[h] = results[i] || (import.meta.env.DEV ? getDemoEscala(dia, h) : null) })
@@ -870,7 +881,7 @@ export function EscalaCirurgicaProvider({ children }) {
   )
 }
 
-const STATE_FALLBACK = { escalas: { unimed: null, hro: null, materno: null }, p4Hospital: null, data: hojeISO(), loading: true, hoje: hojeISO() }
+const STATE_FALLBACK = { escalas: { unimed: null, hro: null, materno: null, fds: null }, p4Hospital: null, data: hojeISO(), loading: true, hoje: hojeISO() }
 const ACTIONS_FALLBACK = {
   setData: () => {}, salvarEscala: async () => {}, salvarEscalaTurno: async () => {}, reordenarLiberacao: async () => {},
   toggleLiberacao: async () => {}, setLocalAnestesista: async () => {}, setAnestesistaCasos: async () => {},

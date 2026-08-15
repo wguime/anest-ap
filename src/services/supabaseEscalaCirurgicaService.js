@@ -26,6 +26,10 @@ const CAMEL_TO_SNAKE = {
   createdAt: 'created_at',
   updatedAt: 'updated_at',
   publicacaoTurnos: 'publicacao_turnos',
+  // fila única do FDS (linha hospital='fds'): sem esta entrada o campo chega
+  // como `fds_meta` e o modo fim de semana "não liga" em silêncio (pegadinha
+  // recorrente — caso ultima_avaliacao_at/contaDuplicadaDe)
+  fdsMeta: 'fds_meta',
   // escala_cirurgica_caso
   escalaId: 'escala_id',
   tempoEstimado: 'tempo_estimado',
@@ -201,7 +205,7 @@ async function salvarEscala({ data, hospital, casos = [], ordemLiberacao = [], a
  * replace + reset operacional do turno em uma transação; o outro turno não é
  * apagado nem tem suas liberações/overrides alterados.
  */
-async function salvarEscalaTurno({ data, hospital, turno, casos = [], ordemLiberacao = [], ajudaExterna = [], sourceImagePath, status = 'publicada' }, userInfo = {}) {
+async function salvarEscalaTurno({ data, hospital, turno, casos = [], ordemLiberacao = [], ajudaExterna = [], sourceImagePath, status = 'publicada', fdsMeta }, userInfo = {}) {
   if (turno !== 'matutino' && turno !== 'vespertino') {
     throw new Error('salvarEscalaTurno: turno inválido')
   }
@@ -210,6 +214,9 @@ async function salvarEscalaTurno({ data, hospital, turno, casos = [], ordemLiber
     ordem_liberacao: ordemLiberacao,
     ajuda_externa: ajudaExterna,
     source_image_path: sourceImagePath ?? null,
+    // payload do documento de FDS — só a linha hospital='fds' envia; a RPC
+    // preserva o valor atual quando o campo não vem (republicação de 1 turno)
+    ...(fdsMeta !== undefined ? { fds_meta: fdsMeta } : {}),
     ...(userInfo.userName ? { published_by_name: userInfo.userName } : {}),
   }
   // O turno da operação é a fonte de verdade; não aceitar um turno divergente
