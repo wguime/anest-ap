@@ -308,6 +308,40 @@ espelhar a produção.
 camadas), compactação do histórico, telemetria de trocas, renomear
 `executarSubstituicao`→`executarTroca`.
 
+### Modo FIM DE SEMANA — fila de liberação ÚNICA (dono 15/08)
+
+Sáb/dom operam com UMA fila por turno cobrindo os 3 hospitais (documento
+"ESCALA DE FINAL DE SEMANA": grade P1–P4 em 3 faixas 7-13/13-19/19-07 × 4
+colunas Unimed/HRO/ret1/ret2 + listas numeradas P5+ por período + linha "1º→
+último a ser LIBERADO" por turno). A fila vive numa linha **pseudo-hospital
+`'fds'`** de `escala_cirurgica` (migration `20260815120000`: CHECK +'fds',
+coluna `fds_meta` jsonb {grade, posicoes Pn→pessoa, escalacao, ordemFonte},
+RPC aceita 'fds' e rejeita fds_meta em hospital real) — RLS por papel e
+realtime cobrem sem mudança; **`HOSPITAIS` NÃO ganhou 'fds'** (slot extra
+`escalas.fds`, carregado só em FDS). ⚠️ **sentido da ordem**: o doc escreve
+"1º→último a ser liberado" = INVERSO do rodapé; a inversão é ÚNICA, na
+publicação da conferência (`rodapeDeOrdemDoc` em `src/lib/escalaFds.js`) —
+nunca em leitura, nunca flag. Pn→pessoa normalmente vale o FDS INTEIRO (dom
+7º=Thayna foi troca pessoal — domingo herda o sábado, editável); a ordem de
+liberação NÃO é derivável (P09,P10,P11 ≠ reverso) — turno sem linha nasce com
+SUGESTÃO (inverso da escalação) marcada "Sugerida". Importação: edge em
+`modo:'fds'` + conferência própria `ImportarEscalaFdsPage` (login vence texto;
+bloqueiam publicar: ordem vazia, Pn sem dono, 1º nome ambíguo);
+**funcionárias do bloco PLANTÃO MATERNO NUNCA viram posição** (→ `ignorados`;
+Renata/Elisete têm escala própria); publica até 4 turnos `hospital='fds'`,
+`casos: []`. Fila unificada (`LiberacoesView modoFds`): casos dos 3 hospitais
+mesclados (`hospitalOrigem` só exibição), badge **Pn P1–P12** por posição,
+hospital prefixa o local, badges "Plantão Unimed/HRO" da faixa da grade
+(genérico "Plantonista" sai), `opts.turno` OMITIDO na lib (regra
+plantão-do-turno-seguinte é de dia útil; namespacing das marcações segue na
+view); **trocas e P4-coringa FORA do modo FDS**. Fase noturna:
+`faseLiberacoes({fds:true})` liga 19h/23h no sáb/dom com a faixa 19-07 DA
+GRADE (`linhasNoturnasFds`; Unimed/HRO fixos = `foraDaFila`, nunca "próximo").
+HomeCard mostra os plantões físicos da faixa (madrugada <7h = grade da
+véspera); Pega Plantão ganhou P12 no FDS. Rollout: sem linha 'fds' publicada,
+sáb/dom seguem por hospital + aviso a quem edita. Demo `DEMO_DATE_FDS`
+(27/06, DEV-only) + e2e `escala-cirurgica-fds.spec.ts`.
+
 ## Bottom Nav
 4 abas: **Home** | **Gestão** (Shield) | **Educação** | **Menu**
 (Dashboard temporariamente oculto; código preservado em `App.jsx`)

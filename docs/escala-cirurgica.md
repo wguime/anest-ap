@@ -344,6 +344,68 @@ salas já usadas e locais especiais. A pessoa continua podendo informar uma sala
 nova, mas a seleção sugerida evita grafias divergentes e permite separar cada
 bloco/local antes de publicar.
 
+## Modo FIM DE SEMANA — fila de liberação ÚNICA (2026-08-15)
+
+No sáb/dom o grupo opera com **UMA fila de liberação por turno cobrindo todos os
+hospitais** (documento próprio "ESCALA DE FINAL DE SEMANA"): grade P1–P4 em 3
+faixas (`7-13`/`13-19`/`19-07`) × 4 colunas (Unimed, HRO, retaguarda 1 e 2),
+lista numerada P5+ por período e a linha "ordem do primeiro ao último a ser
+liberado" por turno. As listas de procedimentos continuam POR HOSPITAL, no fluxo
+de importação normal (sem rodapé próprio no FDS).
+
+**Arquitetura** (migration `20260815120000_escala_fds.sql`):
+
+- A fila vive numa linha **pseudo-hospital `'fds'`** de `escala_cirurgica` (uma
+  por data), reusando `ordem_liberacao{matutino,vespertino}`, `liberacoes`,
+  `linha_overrides`, `ajuda_externa` e as RPCs de patch — RLS por papel cobre os
+  4 verbos sem policy nova; realtime idem. Coluna nova `fds_meta jsonb` guarda o
+  payload do documento: `{ grade, posicoes (Pn→pessoa), escalacao (Pn por
+  turno), ordemFonte (documento|sugerida) }`. A RPC `rpc_publicar_escala_turno`
+  aceita `'fds'` e rejeita `fds_meta` em hospital real.
+- **Sentido da ordem**: o doc escreve "1º→último a ser LIBERADO"; o rodapé do
+  app é o INVERSO (1ª posição sai por último). A inversão acontece UMA vez, na
+  publicação da conferência (`rodapeDeOrdemDoc` em `src/lib/escalaFds.js`) —
+  nunca em leitura. Conferido com o doc real de 15/08: invertido, o rodapé abre
+  com P1,P2 (fisicamente de plantão 7-13) e fecha com P4 (sai 1º).
+- **Pn→pessoa** normalmente vale o FDS inteiro (o número acompanha a pessoa;
+  divergência entre dias = troca pessoal — domingo nasce herdando o sábado e é
+  editável). A ordem de liberação NÃO é derivável da escalação (o doc de 15/08
+  prova: `P09,P10,P11`, não `P11,P10,P09`) — é dado de entrada; turno sem a
+  linha explícita nasce com a SUGESTÃO (inverso da escalação) marcada
+  "Sugerida — ajuste antes de publicar".
+- **Importação**: edge `parse-escala-cirurgica` em `modo: 'fds'`
+  (`refSabado`/`refDomingo` dão ano às datas do título) → conferência própria
+  `ImportarEscalaFdsPage.jsx` (grade, posições com Select de login — login vence
+  o texto —, ordens por turno na direção do documento). Bloqueiam publicar:
+  ordem vazia, Pn sem dono, 1º nome com 2+ candidatos sem login. Publicar = até
+  4 `rpc_publicar_escala_turno` (`hospital='fds'`, `casos: []`). Funcionárias do
+  bloco PLANTÃO MATERNO **nunca** viram posição (vão a `ignorados` — decisão do
+  dono 15/08; Renata/Elisete têm escala própria).
+- **Fila unificada** (`LiberacoesView` com `modoFds`): casos dos 3 hospitais
+  mesclados (`hospitalOrigem`, campo só de exibição — fora de `CASO_FIELDS`),
+  badge **Pn (P1–P12)** por posição (`marcarSelosFds`), hospital prefixando o
+  local ("Unimed · CC - Sala 1"), badges "Plantão Unimed/HRO" da faixa atual da
+  grade no lugar do "Plantonista" genérico, bloqueio "libere na ordem" cruzando
+  hospitais. `opts.turno` é OMITIDO na chamada da lib (a regra "plantão do turno
+  seguinte" é de dia útil); o namespacing `matutino:`/`vespertino:` das
+  marcações segue na view. **Trocas e P4-coringa ficam FORA do modo FDS** —
+  movimentação registra-se pela Observação da linha.
+- **Fase noturna FDS**: `faseLiberacoes({ fds: true })` liga a transição
+  19h/23h no sáb/dom; os 4 cards vêm da faixa **19-07 da grade importada**
+  (`linhasNoturnasFds` — nunca `ORDEM_NOTURNA`/Pega Plantão): cols Unimed/HRO
+  fixas (`foraDaFila`, nunca "próximo"), cols 3–4 = ordem de chamada (col4
+  libera antes). Às 23h a lista zera e ficam só os 4.
+- **HomeCard** no FDS mostra os plantões físicos da faixa atual (madrugada <7h
+  usa a grade da véspera). `SETORES_CONFIG` do Pega Plantão ganhou P12.
+- **Rollout seguro**: sem linha `'fds'` publicada, sáb/dom seguem no
+  comportamento por hospital + aviso para quem edita. Dia útil 100% intacto
+  (testes de regressão).
+- Testes: `src/__tests__/lib/escalaFds*.test.js`,
+  `src/__tests__/pages/{liberacoesFdsUnificada,importarEscalaFds}.test.jsx`,
+  extensões de `plantaoNoturno.test.js`/`escalaCirurgicaHomeCard.test.jsx`, e2e
+  `e2e/escala-cirurgica-fds.spec.ts` (fixture demo `DEMO_DATE_FDS` 27/06,
+  DEV-only).
+
 ## Deploy
 
 1. Aplicar a migration: `node scripts/deploy-sp21-mgmt-api.mjs apply-migration supabase/migrations/20260628200000_escala_cirurgica.sql`
