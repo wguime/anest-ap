@@ -14,6 +14,7 @@ import { describe, it, expect } from 'vitest'
 import {
   FDS_HOSPITAL,
   ehFimDeSemana,
+  sabadoDoFimDeSemana,
   faixaFdsAtual,
   normalizarPn,
   marcarSelosFds,
@@ -62,6 +63,16 @@ describe('ehFimDeSemana', () => {
   })
   it('constante do pseudo-hospital', () => {
     expect(FDS_HOSPITAL).toBe('fds')
+  })
+})
+
+describe('sabadoDoFimDeSemana', () => {
+  it('sábado → ele mesmo; domingo → a véspera; dia útil → o PRÓXIMO sábado', () => {
+    expect(sabadoDoFimDeSemana('2026-08-15')).toBe('2026-08-15') // sábado
+    expect(sabadoDoFimDeSemana('2026-08-16')).toBe('2026-08-15') // domingo → véspera
+    expect(sabadoDoFimDeSemana('2026-08-14')).toBe('2026-08-15') // sexta → amanhã
+    expect(sabadoDoFimDeSemana('2026-08-17')).toBe('2026-08-22') // segunda → próximo
+    expect(sabadoDoFimDeSemana(null)).toBe(null)
   })
 })
 

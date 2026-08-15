@@ -51,6 +51,21 @@ export function ehFimDeSemana(dataIso) {
 }
 
 /**
+ * Sábado do fim de semana ALVO a partir de uma data: sábado → ela mesma;
+ * domingo → o sábado da véspera; dia útil → o PRÓXIMO sábado (a secretária
+ * importa o documento na sexta para o FDS que vem).
+ */
+export function sabadoDoFimDeSemana(dataIso) {
+  if (!dataIso) return null
+  const d = new Date(`${dataIso}T12:00:00`)
+  if (Number.isNaN(d.getTime())) return null
+  const wd = d.getDay()
+  d.setDate(d.getDate() + (wd === 6 ? 0 : wd === 0 ? -1 : 6 - wd))
+  const off = d.getTimezoneOffset() * 60000
+  return new Date(d.getTime() - off).toISOString().slice(0, 10)
+}
+
+/**
  * Faixa da grade em vigor num minuto do dia. 19:00–06:59 é a noturna: a
  * madrugada pertence à faixa 19-07 iniciada na VÉSPERA (mesmo recorte do
  * `chavePlantaoDoDia` do Pega Plantão — quem consome antes das 7h deve buscar

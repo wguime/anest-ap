@@ -426,13 +426,22 @@ async function setP4Hospital(data, hospital, { userName = null } = {}) {
  * Extrai a escala estruturada de uma imagem via Edge Function (Claude Vision).
  * Retorna { casos: [...], ordemLiberacao: [...] }. Paciente vem só por iniciais.
  * Lança em caso de falha (a UI cai no preenchimento manual).
+ *
+ * modo 'fds' (2026-08-15): o upload é o documento "ESCALA DE FINAL DE SEMANA"
+ * e a resposta vira { dias: [...], ignorados: [...] } — refSabado/refDomingo
+ * dão o ano às datas do título ("SÁBADO – 15 DE AGOSTO" vem sem ano).
  */
-async function parseEscalaImagem({ imageBase64, mimeType, hospital }) {
+async function parseEscalaImagem({ imageBase64, mimeType, hospital, modo, refSabado, refDomingo }) {
   const { data, error } = await supabase.functions.invoke('parse-escala-cirurgica', {
-    body: { imageBase64, mimeType, hospital },
+    body: {
+      imageBase64, mimeType, hospital,
+      ...(modo ? { modo } : {}),
+      ...(refSabado ? { refSabado } : {}),
+      ...(refDomingo ? { refDomingo } : {}),
+    },
   })
   if (error) handleError(error, 'parseEscalaImagem')
-  return data || { casos: [], ordemLiberacao: [] }
+  return data || (modo === 'fds' ? { dias: [], ignorados: [] } : { casos: [], ordemLiberacao: [] })
 }
 
 export default {

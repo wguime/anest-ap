@@ -102,7 +102,66 @@ const materno = {
 
 export const DEMO_ESCALAS = { unimed, hro, materno }
 
-/** Retorna a escala demo do hospital se a data for a de demonstração. */
+// ── FIM DE SEMANA (fila única, 2026-08-15) ─────────────────────────────────
+// Sábado seguinte à demo: fixture do MODO FDS — linha 'fds' (rodapé invertido
+// do documento real de 15/08 + fds_meta) + escalas por hospital SEM rodapé
+// (no FDS a ordem vem do documento único, não das listas por hospital).
+// Base determinística p/ e2e/screenshot; PROD nunca vê (gate DEV no context).
+export const DEMO_DATE_FDS = '2026-06-27'
+
+const unimedFds = {
+  id: 'demo-unimed-fds', hospital: 'unimed', data: DEMO_DATE_FDS, status: 'publicada',
+  liberacoes: {}, linhaOverrides: {}, ordemLiberacao: { matutino: [], vespertino: [] },
+  casos: [
+    c('C.O - Sala 3', 0, '07:30', 'I.R.', '26a', '01:15', 'Cesariana', 'Taissa Seminate', 'STAUB', 'Unimed Intercâmbio Estadual', { turno: 'matutino' }),
+    c('CC - Sala 1', 0, '07:30', 'L.A.', '82a', '03:00', 'Revisão de artroplastia de quadril', 'Airton Pagani', 'MARILIO', 'Intercâmbio Mercosul', { turno: 'matutino' }),
+    c('CC - Sala 2', 0, '07:30', 'C.S.', '3a', '01:15', 'Himenotomia', 'Ricardo Filipak', 'GABRIELA', 'Unimed Intercâmbio Estadual', { turno: 'matutino' }),
+    c('CC - Sala 6', 0, '07:30', 'S.G.', '45a', '01:30', 'Varizes - tratamento cirúrgico de um membro', 'Fernando Schinko', 'GUILHERME DIDOMENICO', 'Unimed Intercâmbio Estadual', { turno: 'matutino' }),
+    c('CC - Sala 1', 1, '13:45', 'L.V.', '34a', '01:30', 'Reconstrução do ligamento cruzado', 'Rodolfo Pagani', 'ERLEI', 'Unimed Chapecó - VD', { turno: 'vespertino' }),
+    c('CC - Sala 2', 1, '13:30', 'D.V.', '34a', '03:00', 'Artrodese da coluna com instrumentação', 'Eduardo Baldissera', 'ROBERTA', 'Unimed Chapecó - VD', { turno: 'vespertino' }),
+  ],
+}
+const hroFds = {
+  id: 'demo-hro-fds', hospital: 'hro', data: DEMO_DATE_FDS, status: 'publicada',
+  liberacoes: {}, linhaOverrides: {}, ordemLiberacao: { matutino: [], vespertino: [] },
+  casos: [
+    c('Bloco A - Sala 1', 0, '07:00', '', '', '', 'Emergência/CO', '', 'MATHEUS', 'BRF', { tipo: 'emergencia', turno: 'matutino' }),
+    c('Sala 1', 0, '08:00', 'R.W.', '63a', '', 'Artroplastia total de joelho com implantes', 'Airton Pagani', 'STAUB', 'SUS', { turno: 'matutino' }),
+    c('Bloco A - Sala 4', 0, '13:00', 'A.F.', '59a', '', 'Artroplastia de quadril + tenotomia', 'Rodolfo Pagani', 'GABRIEL', 'SUS', { turno: 'vespertino' }),
+  ],
+}
+const fdsRow = {
+  id: 'demo-fds', hospital: 'fds', data: DEMO_DATE_FDS, status: 'publicada',
+  liberacoes: {}, linhaOverrides: {}, ajudaExterna: {}, casos: [],
+  // rodapé = INVERSO da linha do doc ("1º→último a ser liberado":
+  // P4,P3,P12,P09,P10,P11,P6,P5,P8,P7,P2,P1) — 1ª posição sai por último
+  ordemLiberacao: {
+    matutino: ['GUILHERME DIDOMENICO', 'JOAO HENRIQUE', 'MARILIO', 'RAFAEL', 'GABRIELA', 'ERLEI', 'GABRIEL', 'STAUB', 'ROBERTA', 'VICENTE', 'CRISTINA', 'MATHEUS'],
+    vespertino: ['CRISTINA', 'MATHEUS', 'ERLEI', 'GABRIELA', 'ROBERTA', 'STAUB', 'GABRIEL'],
+  },
+  fdsMeta: {
+    grade: {
+      '7-13': { unimed: 'GUILHERME DIDOMENICO', hro: 'JOAO HENRIQUE', ret1: 'CRISTINA', ret2: 'MATHEUS' },
+      '13-19': { unimed: 'CRISTINA', hro: 'MATHEUS', ret1: 'GUILHERME DIDOMENICO', ret2: 'JOAO HENRIQUE' },
+      '19-07': { unimed: 'JOAO HENRIQUE', hro: 'GUILHERME DIDOMENICO', ret1: 'MATHEUS', ret2: 'CRISTINA' },
+    },
+    posicoes: {
+      P1: 'GUILHERME DIDOMENICO', P2: 'JOAO HENRIQUE', P3: 'CRISTINA', P4: 'MATHEUS',
+      P5: 'GABRIELA', P6: 'ERLEI', P7: 'MARILIO', P8: 'RAFAEL',
+      P9: 'ROBERTA', P10: 'STAUB', P11: 'GABRIEL', P12: 'VICENTE',
+    },
+    escalacao: {
+      matutino: ['P5', 'P6', 'P7', 'P8', 'P9', 'P10', 'P11', 'P12'],
+      vespertino: ['P6', 'P5', 'P9', 'P10', 'P11'],
+    },
+    ordemFonte: { matutino: 'documento', vespertino: 'documento' },
+  },
+}
+export const DEMO_ESCALAS_FDS = { unimed: unimedFds, hro: hroFds, materno: null, fds: fdsRow }
+
+/** Retorna a escala demo do hospital se a data for uma das de demonstração. */
 export function getDemoEscala(data, hospital) {
-  return data === DEMO_DATE ? DEMO_ESCALAS[hospital] || null : null
+  if (data === DEMO_DATE) return DEMO_ESCALAS[hospital] || null
+  if (data === DEMO_DATE_FDS) return DEMO_ESCALAS_FDS[hospital] || null
+  return null
 }

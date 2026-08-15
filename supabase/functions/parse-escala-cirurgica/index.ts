@@ -117,6 +117,98 @@ REGRAS:
   "materno" = relatório de sistema (G-HOSP) com título "Mapa de cirurgias", colunas Hora/Leito/Paciente/Cirurgião/Procedimento/Observação/Anestesia/Convênio/Sala.
   Se não tiver certeza, "".`
 
+// ── MODO FDS (2026-08-15) ────────────────────────────────────────────────────
+// body { modo: 'fds' }: o upload é o documento "ESCALA DE FINAL DE SEMANA"
+// (grade P1–P4 em 3 faixas × 4 colunas + listas numeradas P5+ por período +
+// linhas "ordem do primeiro ao último a ser liberado"), que alimenta a fila de
+// liberação ÚNICA do sáb/dom. Zero dado de paciente neste documento.
+// LGPD/decisão do dono 15/08: as linhas do bloco "PLANTÃO MATERNO" com datas
+// (ex.: "15/08 – RENATA") são FUNCIONÁRIAS com escala própria — NUNCA viram
+// posição/plantão/lista; vão para `ignorados` (informativo da conferência).
+const FDS_SYSTEM_PROMPT = `Você extrai o documento "ESCALA DE FINAL DE SEMANA" de uma imagem e devolve SOMENTE JSON válido, sem texto antes/depois. Escreva o JSON COMPACTO (sem indentação).
+
+Schema:
+{
+  "dias": [{
+    "data": "YYYY-MM-DD",
+    "plantoes": { "P1": string, "P2": string, "P3": string, "P4": string },
+    "grade": {
+      "7-13":  { "unimed": string, "hro": string, "ret1": string, "ret2": string },
+      "13-19": { "unimed": string, "hro": string, "ret1": string, "ret2": string },
+      "19-07": { "unimed": string, "hro": string, "ret1": string, "ret2": string }
+    },
+    "listas": { "matutino": [{ "n": number, "nome": string }], "vespertino": [{ "n": number, "nome": string }] },
+    "ordemLiberacaoDoc": { "matutino": string[], "vespertino": string[] }
+  }],
+  "ignorados": string[]
+}
+
+REGRAS:
+- O documento cobre SÁBADO e DOMINGO: devolva um item em "dias" para cada dia com tabela própria.
+- GRADE: cada dia tem uma tabela de 3 faixas de horário (7-13HS, 13-19HS, 19-07HS) por 4 colunas. Coluna 1 = UNIMED, coluna 2 = HRO (os cabeçalhos existem); colunas 3 e 4 = retaguarda (ret1, ret2). Copie o NOME de cada célula SEM o rótulo P1–P4 (ex.: célula "P1 GUILHERME DIDOMENICO" → "GUILHERME DIDOMENICO").
+- plantoes: os rótulos P1–P4 aparecem colados aos nomes na linha 7-13HS (normalmente só no sábado). Associe cada Pn ao nome daquela célula. Dia sem rótulos → {} (o app herda do sábado; os MESMOS 4 rodam a grade o fim de semana inteiro).
+- listas: as linhas numeradas ("5º GABRIELA 6º ERLEI 7º MARILIO ...") são a lista de escalação do PERÍODO, NA ORDEM em que os itens aparecem (a ordem importa — "6º ERLEI 5º GABRIELA" é diferente de "5º GABRIELA 6º ERLEI"). A lista geral do dia = matutino; a linha prefixada "SÁBADO A TARDE"/"À TARDE" = vespertino (sem linha própria da tarde, repita a da manhã). Uma linha "EMERGENCIA: 11º GABRIEL" acrescenta { "n": 11, "nome": "GABRIEL" } ao FIM das listas dos DOIS períodos do dia (sem duplicar se já estiver).
+- ordemLiberacaoDoc: as linhas "Ordem do primeiro ao último a ser liberado: P4, P3, P12, P09, ..." — copie os códigos EXATAMENTE como estão, na ordem (aceite zeros à esquerda como "P09"). "SÁBADO MATUTINO" → matutino do sábado; "SÁBADO VESPERTINO" → vespertino. Turno sem essa linha → [].
+- PLANTÃO MATERNO / funcionárias: linhas do bloco "PLANTÃO MATERNO" com data e nome (ex.: "15/08 – RENATA", "16/08 – ELISETE") são FUNCIONÁRIAS com escala própria — NUNCA as coloque em plantoes/grade/listas; devolva o texto literal de cada uma em "ignorados". Exceção: entrada "Nº NOME" (ex.: "11º GABRIEL") é anestesista numerado — pertence às listas do dia, não a ignorados.
+- Não existe dado de paciente neste documento; não extraia nenhum.
+- data: os títulos ("SÁBADO – 15 DE AGOSTO") podem vir sem ano — use as datas de referência informadas na mensagem para converter para YYYY-MM-DD.
+- Campos ausentes: "" / [] / {}.`
+
+// Sanitização do modo FDS — espelha as regras do prompt (defesa em profundidade).
+const FAIXAS_FDS = ['7-13', '13-19', '19-07'] as const
+function sanitizeFds(parsed: Record<string, unknown>): { dias: unknown[]; ignorados: string[] } {
+  const str = (v: unknown, max = 100) => String(v ?? '').trim().slice(0, max)
+  const ignorados = (Array.isArray(parsed?.ignorados) ? parsed.ignorados : [])
+    .map((s: unknown) => str(s, 160)).filter(Boolean).slice(0, 20)
+  // nomes que aparecem em linhas ignoradas COM data (dd/mm) = funcionárias;
+  // se a leitura os tiver espalhado para listas/grade, caem aqui também
+  const nomesFuncionarias = new Set<string>()
+  for (const linha of ignorados) {
+    if (!/\d{1,2}\/\d{1,2}/.test(linha)) continue
+    for (const tok of linha.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().split(/[^A-Z]+/)) {
+      if (tok.length >= 4 && !['PLANTAO', 'MATERNO'].includes(tok)) nomesFuncionarias.add(tok)
+    }
+  }
+  const ehFuncionaria = (nome: string) =>
+    nomesFuncionarias.has(nome.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim())
+  const dias: unknown[] = []
+  for (const d of (Array.isArray(parsed?.dias) ? parsed.dias : []).slice(0, 4) as Record<string, unknown>[]) {
+    const data = str(d?.data, 10)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) continue
+    const plantoes: Record<string, string> = {}
+    for (const [k, v] of Object.entries((d?.plantoes as Record<string, unknown>) || {})) {
+      const pn = String(k).trim().toUpperCase()
+      if (/^P\d{1,2}$/.test(pn) && str(v) && !ehFuncionaria(str(v))) plantoes[pn] = str(v)
+    }
+    const grade: Record<string, Record<string, string>> = {}
+    for (const faixa of FAIXAS_FDS) {
+      const l = ((d?.grade as Record<string, unknown>)?.[faixa] as Record<string, unknown>) || {}
+      grade[faixa] = {
+        unimed: str(l?.unimed), hro: str(l?.hro), ret1: str(l?.ret1), ret2: str(l?.ret2),
+      }
+    }
+    const listas: Record<string, { n: number; nome: string }[]> = { matutino: [], vespertino: [] }
+    for (const turno of ['matutino', 'vespertino'] as const) {
+      const arr = ((d?.listas as Record<string, unknown>)?.[turno] as unknown[]) || []
+      for (const item of (Array.isArray(arr) ? arr : []).slice(0, 20) as Record<string, unknown>[]) {
+        const n = Number(item?.n)
+        const nome = str(item?.nome)
+        if (!Number.isInteger(n) || n < 1 || n > 30 || !nome) continue
+        if (ehFuncionaria(nome)) continue // funcionária NUNCA vira posição
+        listas[turno].push({ n, nome })
+      }
+    }
+    const ordemLiberacaoDoc: Record<string, string[]> = { matutino: [], vespertino: [] }
+    for (const turno of ['matutino', 'vespertino'] as const) {
+      const arr = ((d?.ordemLiberacaoDoc as Record<string, unknown>)?.[turno] as unknown[]) || []
+      ordemLiberacaoDoc[turno] = (Array.isArray(arr) ? arr : [])
+        .map((s: unknown) => str(s, 40)).filter(Boolean).slice(0, 30)
+    }
+    dias.push({ data, plantoes, grade, listas, ordemLiberacaoDoc })
+  }
+  return { dias, ignorados }
+}
+
 // Teto de saída. Era 8000 e a escala VESPERTINA não cabia: os logs de 06/08
 // mostram TODA invocação terminando em ~68s (o tempo de gerar exatamente 8000
 // tokens) e o JSON chegando cortado no meio de um caso — `JSON.parse` estourava
@@ -269,7 +361,8 @@ Deno.serve(async (req) => {
   console.log(`[parse-escala-cirurgica] parse solicitado por uid=${auth.uid}`)
 
   try {
-    const { imageBase64, mimeType, hospital } = await req.json()
+    const { imageBase64, mimeType, hospital, modo, refSabado, refDomingo } = await req.json()
+    const modoFds = modo === 'fds'
     if (!imageBase64) {
       return new Response(JSON.stringify({ error: 'imageBase64 ausente' }), {
         status: 400, headers: { ...cors, 'Content-Type': 'application/json' },
@@ -297,6 +390,13 @@ Deno.serve(async (req) => {
     }
 
     const hint = HOSPITAL_HINT[hospital] || ''
+    // datas de referência do FDS (o título "SÁBADO – 15 DE AGOSTO" vem sem ano)
+    const iso = (v: unknown) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : '')
+    const refs = [iso(refSabado) && `sábado = ${iso(refSabado)}`, iso(refDomingo) && `domingo = ${iso(refDomingo)}`]
+      .filter(Boolean).join(', ')
+    const userText = modoFds
+      ? `Extraia o documento ESCALA DE FINAL DE SEMANA desta imagem.${refs ? ` Datas de referência: ${refs}.` : ''}\nResponda SOMENTE o JSON.`
+      : `Extraia a escala desta imagem. ${hint}\nResponda SOMENTE o JSON.`
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -308,12 +408,12 @@ Deno.serve(async (req) => {
         model: 'claude-opus-4-8',
         max_tokens: MAX_TOKENS,
         stream: true,
-        system: SYSTEM_PROMPT,
+        system: modoFds ? FDS_SYSTEM_PROMPT : SYSTEM_PROMPT,
         messages: [{
           role: 'user',
           content: [
             { type: 'image', source: { type: 'base64', media_type: mime, data: imageBase64 } },
-            { type: 'text', text: `Extraia a escala desta imagem. ${hint}\nResponda SOMENTE o JSON.` },
+            { type: 'text', text: userText },
           ],
         }],
       }),
@@ -330,7 +430,11 @@ Deno.serve(async (req) => {
     const { texto, stopReason } = await lerRespostaStream(res)
     const match = texto.match(/\{[\s\S]*\}/)
     if (!match) {
-      return new Response(JSON.stringify({ error: 'Resposta sem JSON', casos: [], ordemLiberacao: [] }), {
+      return new Response(JSON.stringify(
+        modoFds
+          ? { error: 'Resposta sem JSON', dias: [], ignorados: [] }
+          : { error: 'Resposta sem JSON', casos: [], ordemLiberacao: [] }
+      ), {
         status: 200, headers: { ...cors, 'Content-Type': 'application/json' },
       })
     }
@@ -345,8 +449,15 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({
         error: stopReason === 'max_tokens' ? 'extracao_truncada' : 'json_invalido',
         motivo: stopReason,
-        casos: [], ordemLiberacao: [],
+        ...(modoFds ? { dias: [], ignorados: [] } : { casos: [], ordemLiberacao: [] }),
       }), { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } })
+    }
+    // MODO FDS: resposta própria (dias/ignorados) — nada do caminho de casos.
+    if (modoFds) {
+      const fds = sanitizeFds(parsed)
+      return new Response(JSON.stringify({ ...fds, truncado: stopReason === 'max_tokens' }), {
+        headers: { ...cors, 'Content-Type': 'application/json' },
+      })
     }
     if (stopReason === 'max_tokens') {
       // O JSON até fechou, mas o modelo foi interrompido: faltam casos no fim.

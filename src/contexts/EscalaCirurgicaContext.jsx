@@ -105,9 +105,9 @@ export function EscalaCirurgicaProvider({ children }) {
         // tela segue no comportamento por hospital — rollout seguro).
         ehFimDeSemana(dia) ? svc.fetchEscala(dia, FDS_HOSPITAL).catch(() => null) : Promise.resolve(null),
       ])
-      const escalas = { fds: fdsRow }
       // Fixture demo é ferramenta de DEV/e2e (testes determinísticos) — PRODUÇÃO
       // nunca vê demo (pedido do dono 23/07: botão e dados de demonstração excluídos).
+      const escalas = { fds: fdsRow || (import.meta.env.DEV ? getDemoEscala(dia, FDS_HOSPITAL) : null) }
       HOSPITAIS.forEach((h, i) => { escalas[h] = results[i] || (import.meta.env.DEV ? getDemoEscala(dia, h) : null) })
       dispatch({ type: 'SET_ALL', payload: escalas })
       // marcação do P4 do dia (fase noturna das Liberações) — falha vira null,

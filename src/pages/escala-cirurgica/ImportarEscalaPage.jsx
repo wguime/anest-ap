@@ -21,6 +21,7 @@ import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
 import { normNome, candidatosPrimeiroNome, resumirRodape, gruposAnestesista, chavesAnestesista, nomesImportados, aplicarAtribuicoes, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
+import { ehFimDeSemana } from '@/lib/escalaFds'
 import { ehHoraSequencialEscala } from '@/lib/escalaCirurgicaRegras'
 import { detectarDuplicidadesEscala, formatarOcorrenciaDuplicidade, sugerirParceiroTroca } from '@/lib/escalaCirurgicaDuplicidades'
 
@@ -147,7 +148,7 @@ const prepararCasos = (rows, hosp, posicoes = []) => {
   return carimbarImportado(unicos)
 }
 
-export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial, onClose }) {
+export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial, onClose, onAbrirFds }) {
   const { toast } = useToast()
   const { salvarEscalaTurno, salvarEscala, executarSubstituicao } = useEscalaCirurgicaActions()
   // Compatibilidade com fixtures/testes e integrações antigas; em produção o
@@ -1095,6 +1096,25 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
           <label className="text-xs font-medium text-muted-foreground mb-1 block">Hospital desta escala</label>
           <SegmentedSelector options={HOSPITAL_OPCOES} value={hosp} onChange={(v) => { setHosp(v); setSugestaoHosp(null) }} />
         </div>
+
+        {/* Documento de FIM DE SEMANA (fila única, dono 15/08): é outro documento
+            e outra conferência — destacado quando a data escolhida é sáb/dom. */}
+        {onAbrirFds && (
+          <button
+            type="button"
+            onClick={() => onAbrirFds()}
+            className={[
+              'w-full rounded-xl border p-3 text-left text-sm active:opacity-70',
+              ehFimDeSemana(dataEscolhida)
+                ? 'border-primary/50 bg-primary/10 text-primary font-medium'
+                : 'border-border bg-muted/30 text-muted-foreground',
+            ].join(' ')}
+          >
+            {ehFimDeSemana(dataEscolhida)
+              ? 'Esta data é fim de semana — a ordem de liberação é ÚNICA (todos os hospitais). Importar o documento de FDS ›'
+              : 'Escala de fim de semana? Importe o documento de FDS (fila única) ›'}
+          </button>
+        )}
 
         {/* Sugestão pelo layout do anexo — confirmar, nunca trocar sozinho */}
         {sugestaoHosp && (

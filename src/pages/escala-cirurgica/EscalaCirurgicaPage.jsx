@@ -17,6 +17,7 @@ import MinhasEscalasView from './MinhasEscalasView'
 import BoardView from './BoardView'
 import LiberacoesView from './LiberacoesView'
 import ImportarEscalaPage from './ImportarEscalaPage'
+import ImportarEscalaFdsPage from './ImportarEscalaFdsPage'
 import VinculosSheet from './VinculosSheet'
 import TrocaSheet from './TrocaSheet'
 import { meuAliasDe, turnoAtual, casosResolvidos, estadoTrocasDoHistorico, filtrarPorTurno, normNome, formatData, rodapeDoTurno, localizarSlotEscala, planoExecucaoTroca, planoDesfazerTroca } from './utils'
@@ -49,6 +50,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     return a && m && d ? new Date(a, m - 1, d) : new Date()
   }, [data])
   const [importando, setImportando] = useState(false)
+  const [importandoFds, setImportandoFds] = useState(false) // documento de FDS (fila única)
   const [vinculos, setVinculos] = useState(false)
   const [trocaSheet, setTrocaSheet] = useState(null) // linha de origem do fluxo único de troca
 
@@ -253,7 +255,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     <div className="min-h-dvh bg-background pb-24">
       <PageHeader
         title="Escala Cirúrgica"
-        subtitle={`${HOSPITAL_LABEL[hospital]} · ${turno === 'matutino' ? 'Matutino' : 'Vespertino'}`}
+        subtitle={`${aba === 'liberacoes' && modoFds ? 'Fim de semana' : HOSPITAL_LABEL[hospital]} · ${turno === 'matutino' ? 'Matutino' : 'Vespertino'}`}
         onBack={goBack}
         actions={
           canEdit ? (
@@ -429,12 +431,24 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           hospital={hospital}
           data={data}
           turno={turno}
+          onAbrirFds={() => { setImportando(false); setImportandoFds(true) }}
           onClose={(publicado) => {
             setImportando(false)
             // Publicou noutra data/hospital/período? Aterrissa exatamente na escala publicada.
             if (publicado?.data) setData(publicado.data)
             if (publicado?.hospital) setHospital(publicado.hospital)
             if (publicado?.turno) setTurno(publicado.turno)
+          }}
+        />
+      )}
+
+      {importandoFds && (
+        <ImportarEscalaFdsPage
+          data={data}
+          onClose={(publicado) => {
+            setImportandoFds(false)
+            // aterrissa no sábado publicado, já na fila única
+            if (publicado?.data) { setData(publicado.data); setAba('liberacoes') }
           }}
         />
       )}
