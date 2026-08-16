@@ -4,7 +4,7 @@
  * todos com seletor segmentado (mesmo estilo do Cateter Peridural).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link2, Upload } from 'lucide-react'
+import { Upload } from 'lucide-react'
 import { PageHeader } from '@/components'
 import { Button } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
@@ -19,7 +19,6 @@ import BoardView from './BoardView'
 import LiberacoesView from './LiberacoesView'
 import ImportarEscalaPage from './ImportarEscalaPage'
 import ImportarEscalaFdsPage from './ImportarEscalaFdsPage'
-import VinculosSheet from './VinculosSheet'
 import TrocaSheet from './TrocaSheet'
 import { meuAliasDe, turnoAtual, casosResolvidos, estadoTrocasDoHistorico, filtrarPorTurno, normNome, formatData, rodapeDoTurno, localizarSlotEscala, planoExecucaoTroca, planoDesfazerTroca } from './utils'
 import { ehFimDeSemana, FDS_HOSPITAL, FDS_TURNO_CASOS, turnoFdsAtual } from '@/lib/escalaFds'
@@ -69,7 +68,6 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   )
   const [importando, setImportando] = useState(false)
   const [importandoFds, setImportandoFds] = useState(false) // documento de FDS (fila única)
-  const [vinculos, setVinculos] = useState(false)
   const [trocaSheet, setTrocaSheet] = useState(null) // linha de origem do fluxo único de troca
 
   // Navegação de data (pedido do dono 24/07 + pesquisa NN/G: default HOJE, atalho
@@ -307,14 +305,12 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
         onBack={goBack}
         actions={
           canEdit ? (
-            <div className="flex items-center gap-1">
-              <Button size="sm" variant="ghost" onClick={() => setVinculos(true)} aria-label="Vínculos de nomes da escala">
-                <Link2 className="w-4 h-4" />
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => setImportando(true)} aria-label="Importar escala">
-                <Upload className="w-4 h-4" /> Importar
-              </Button>
-            </div>
+            // O atalho de VÍNCULOS saiu do header (dono 16/08): é manutenção de
+            // dicionário, não operação do plantão. A tela de vínculos segue
+            // existindo (VinculosSheet) para ser religada onde fizer sentido.
+            <Button size="sm" variant="ghost" onClick={() => setImportando(true)} aria-label="Importar escala">
+              <Upload className="w-4 h-4" /> Importar
+            </Button>
           ) : null
         }
       />
@@ -364,11 +360,6 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
             segue valendo para as abas Minhas/Completa, e a nota abaixo explica
             por que a lista de liberações não muda ao trocar de hospital. */}
         <SegmentedSelector size="sm" options={HOSPITAL_OPCOES} value={hospital} onChange={setHospital} />
-        {aba === 'liberacoes' && modoFds && (
-          <p className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary">
-            Fim de semana — fila de liberação única (todos os hospitais)
-          </p>
-        )}
 
         {/* Abas internas — variante "filled" (trilho + selecionada em verde sólido, pedido do dono 24/07) */}
         <SegmentedSelector options={ABA_OPCOES} value={aba} onChange={setAba} variant="filled" />
@@ -409,6 +400,10 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                   modoFds={modoFds}
                   casosFds={casosFds}
                   fdsMeta={modoFds ? escalas.fds?.fdsMeta || null : null}
+                  // urgência/encaixe entra na escala do HOSPITAL selecionado
+                  // (a fila do FDS é única, mas o caso pertence a um hospital)
+                  escalaCasoNovo={escala}
+                  onNavigate={onNavigate}
                   onDefinirP4={modoFds ? undefined : (h) => definirP4Hospital(h, userInfo)}
                   onDefinirCasos={(casoIds, { uid, apelido, rotulo }) => {
                     // na fila única o caso pertence à escala do hospital de origem
@@ -450,14 +445,6 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
 
         {loading && <p className="text-center text-sm text-muted-foreground py-4">Carregando…</p>}
       </div>
-
-      {vinculos && (
-        <VinculosSheet
-          meuUid={meuUid}
-          podeGerenciar={!!(user.isAdmin || (user.role || '').toLowerCase() === 'secretaria')}
-          onClose={() => setVinculos(false)}
-        />
-      )}
 
       {/* FLUXO ÚNICO de troca (dono 07/08): troca nova passa sempre por aqui —
           uma decisão por posição (fica/assume) + tipo + motivo. As posições vêm

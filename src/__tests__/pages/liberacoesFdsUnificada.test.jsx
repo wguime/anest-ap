@@ -175,6 +175,15 @@ describe('fila única — ordem do rodapé publicado, cruzando hospitais', () =>
     expect(cardDe('GUILHERME DIDOMENICO')).toBeTruthy()
   })
 
+  it('Adicionar caso (urgência/encaixe) também na aba Liberações (dono 16/08)', () => {
+    // sem a escala de destino (hospital selecionado), o botão não aparece
+    montar()
+    expect(screen.queryByRole('button', { name: /Adicionar caso/ })).toBeNull()
+    // com ela, o botão entra acima do "Adicionar anestesista (ajuda)"
+    montar({ escalaCasoNovo: { id: 'e-unimed', hospital: 'unimed', casos: [] } })
+    expect(screen.getByRole('button', { name: /Adicionar caso \(urgência\/encaixe\)/ })).toBeTruthy()
+  })
+
   it('modo FDS não expõe troca nem P4-coringa no painel da linha', () => {
     montar()
     fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Matheus'))

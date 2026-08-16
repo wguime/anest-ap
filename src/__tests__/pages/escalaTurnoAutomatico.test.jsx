@@ -124,11 +124,19 @@ describe('turno acompanha o relógio (dono 15/08)', () => {
     }
     render(<EscalaCirurgicaPage onNavigate={() => {}} goBack={() => {}} />, { wrapper: wrap })
     fireEvent.click(screen.getByRole('tab', { name: 'Liberações' }))
-    // os 3 hospitais seguem na tela; a nota explica a fila única
+    // os 3 hospitais seguem na tela (a nota "fila de liberação única" saiu em
+    // 16/08, a pedido do dono — a informação já está no rótulo do cabeçalho)
     expect(screen.getByRole('tab', { name: 'Unimed' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'HRO' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Materno' })).toBeTruthy()
-    expect(screen.getByText(/fila de liberação única/)).toBeTruthy()
+    expect(screen.queryByText(/fila de liberação única/)).toBeNull()
+  })
+
+  it('o atalho de VÍNCULOS saiu do header (dono 16/08)', () => {
+    vi.setSystemTime(new Date('2026-08-17T10:00:00-03:00'))
+    montarHoje()
+    expect(screen.queryByLabelText(/Vínculos de nomes/)).toBeNull()
+    expect(screen.getByLabelText('Importar escala')).toBeTruthy()
   })
 
   it('o calendário livre "Outra data" SAIU da tela (dono 16/08)', () => {

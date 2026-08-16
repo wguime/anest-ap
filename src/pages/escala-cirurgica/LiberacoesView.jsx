@@ -6,7 +6,7 @@
  * override estruturado que sobrevive à re-derivação. Realtime: reflete para todos.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, ArrowLeftRight, Check, ChevronDown, ChevronUp, ListOrdered, Loader2, MessageSquare, Moon, Pencil, Timer, UserPlus, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeftRight, Check, ChevronDown, ChevronUp, ListOrdered, Loader2, MessageSquare, Moon, Pencil, Plus, Timer, UserPlus, X } from 'lucide-react'
 import {
   Badge, Button, EmptyState, Input, Select, useToast,
   Sheet, SheetContent, SheetHeader, SheetTitle,
@@ -19,6 +19,7 @@ import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import useAgoraMinuto from './useAgoraMinuto'
 import PainelTempo, { formatFaltante, fraseFaltante } from './PainelTempo'
+import AddCasoSheet from './AddCasoSheet'
 import { casosResolvidos, compararSalas, filtrarPorTurno, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao } from './utils'
 
 // Sentinelas do dropdown de Local (valores impossíveis como nome de sala)
@@ -55,7 +56,7 @@ const SELO_SEM_PROXIMO = new Set(['P1', 'P2'])
 // anotado com hospitalOrigem, campo só de exibição) e `fdsMeta` é o payload do
 // documento (grade P1–P4, Pn→pessoa, escalação). Troca/P4-coringa ficam FORA do
 // modo FDS (a fila única já modela "pega caso em qualquer hospital").
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, p4Hospital = null, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null }) {
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, p4Hospital = null, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, onNavigate }) {
   const { toast } = useToast()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
   // do turno selecionado e o rodapé (ordem de liberação) DAQUELE turno.
@@ -83,6 +84,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const [alvoSemAnest, setAlvoSemAnest] = useState(null) // alerta "?" sendo resolvido
   const [semAnestUid, setSemAnestUid] = useState('')
   const [executandoTroca, setExecutandoTroca] = useState(false)
+  const [addCaso, setAddCaso] = useState(false) // urgência/encaixe direto da fila (dono 16/08)
 
   // Cronômetro em tempo real: o texto é derivado puro de `agoraMin`. O hook
   // recalcula ao voltar do segundo plano (iOS/PWA mata o setInterval na
@@ -1242,12 +1244,30 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
         })()}
       </div>
 
+      {/* Urgência/encaixe SEM trocar de aba (dono 16/08): o mesmo sheet da aba
+          Completa. No fim de semana o caso entra na escala do HOSPITAL
+          selecionado no topo — a fila é única, os casos não. */}
+      {canEdit && escalaCasoNovo && !String(escalaCasoNovo.id || '').startsWith('demo-') && (
+        <Button variant="outline" className="w-full" onClick={() => setAddCaso(true)}>
+          <Plus className="w-4 h-4" /> Adicionar caso (urgência/encaixe)
+        </Button>
+      )}
+
       {/* Adicionar anestesista de OUTRO hospital como AJUDA (pedido do dono 24/07):
           entra ao fim da coluna (badge Ajuda azul, primeiro a ser liberado). */}
       {canEdit && fase !== 'zerada' && (
         <Button variant="outline" className="w-full" onClick={() => setAjudaSheet(true)}>
           <UserPlus className="w-4 h-4" /> Adicionar anestesista (ajuda)
         </Button>
+      )}
+
+      {addCaso && escalaCasoNovo && (
+        <AddCasoSheet
+          escala={escalaCasoNovo}
+          turno={turnoBase}
+          onClose={() => setAddCaso(false)}
+          onPreencherCobranca={(novo) => onNavigate?.('novaCirurgiaParticular', { escalaCasoId: novo.id })}
+        />
       )}
 
       {/* Painel da linha (✏️): casos da pessoa (ponte com a Completa) + tempo +
