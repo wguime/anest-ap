@@ -11,6 +11,7 @@
 import { useEffect, useMemo } from 'react'
 import { ChevronRight, Sparkles } from 'lucide-react'
 import { useNoticias } from '@/contexts/NoticiasContext'
+import { ordenarDestaques } from '@/lib/noticiasDestaques'
 import { NoticiaCard } from './NoticiaCard'
 import { HScroll } from './HScroll'
 
@@ -21,16 +22,10 @@ export function NoticiasCarousel({ onNavigate }) {
     loadHighlights()
   }, [loadHighlights])
 
-  const top10 = useMemo(() => {
-    return [...(highlights || [])]
-      .sort((a, b) => {
-        const sa = a.finalScore ?? 0
-        const sb = b.finalScore ?? 0
-        if (sb !== sa) return sb - sa
-        return (b.publicadoEm || '').localeCompare(a.publicadoEm || '')
-      })
-      .slice(0, 10)
-  }, [highlights])
+  const top10 = useMemo(
+    () => ordenarDestaques(highlights).slice(0, 10),
+    [highlights],
+  )
 
   if (!highlightsLoaded || top10.length === 0) {
     return null

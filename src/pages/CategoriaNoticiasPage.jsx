@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Newspaper, Sparkles } from 'lucide-react'
 import { useNoticias } from '@/contexts/NoticiasContext'
+import { ordenarDestaques } from '@/lib/noticiasDestaques'
 import { NoticiaCard } from '@/components/noticias/NoticiaCard'
 import { HScroll } from '@/components/noticias/HScroll'
 import { getCategoryConfig } from '@/components/noticias/categoriesConfig'
@@ -38,16 +39,10 @@ export default function CategoriaNoticiasPage({ category, onNavigate, goBack }) 
     return noticias.filter((n) => n.category === category)
   }, [noticias, category])
 
-  const top10 = useMemo(() => {
-    return [...filtered]
-      .sort((a, b) => {
-        const sa = a.finalScore ?? 0
-        const sb = b.finalScore ?? 0
-        if (sb !== sa) return sb - sa
-        return (b.publicadoEm || '').localeCompare(a.publicadoEm || '')
-      })
-      .slice(0, 10)
-  }, [filtered])
+  const top10 = useMemo(
+    () => ordenarDestaques(filtered).slice(0, 10),
+    [filtered],
+  )
 
   const sortedRest = useMemo(() => {
     return [...filtered].sort((a, b) =>

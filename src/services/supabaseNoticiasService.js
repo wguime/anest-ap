@@ -51,6 +51,9 @@ const CAMEL_TO_SNAKE = {
   finalScore: 'final_score',
   isFeatured: 'is_featured',
   scoresUpdatedAt: 'scores_updated_at',
+  // Curadoria (destaque fixo por período, ex.: Dr. Humberto Hepp)
+  curadoriaPor: 'curadoria_por',
+  curadoriaDestaqueAte: 'curadoria_destaque_ate',
 }
 
 const SNAKE_TO_CAMEL = Object.fromEntries(
@@ -86,6 +89,7 @@ const LIST_COLUMNS = [
   'publicado_em', 'idioma', 'article_type', 'final_score', 'is_featured',
   'oa_pdf_url', 'pmc_id', 'category', 'journal_issn', 'fontes_extras',
   'raw_url', 'fonte_url', 'doi', 'pmid',
+  'curadoria_por', 'curadoria_destaque_ate',
 ].join(', ')
 
 // ============================================================================
@@ -117,16 +121,37 @@ async function fetchLatest(options = {}) {
 
 async function fetchHighlights(options = {}) {
   const { limit = 10 } = options
-  const { data, error } = await supabase
-    .from('noticias')
-    .select(LIST_COLUMNS)
-    .order('final_score', { ascending: false, nullsFirst: false })
-    .order('publicado_em', { ascending: false })
-    .limit(limit)
-  if (error) {
-    if (handleError(error, 'fetchHighlights') === 'TABLE_NOT_FOUND') return []
+
+  // Curadoria ativa entra SEMPRE, mesmo com score baixo — o top-N por score
+  // sozinho deixaria o artigo curado de fora do carrossel.
+  const [topRes, curadosRes] = await Promise.all([
+    supabase
+      .from('noticias')
+      .select(LIST_COLUMNS)
+      .order('final_score', { ascending: false, nullsFirst: false })
+      .order('publicado_em', { ascending: false })
+      .limit(limit),
+    supabase
+      .from('noticias')
+      .select(LIST_COLUMNS)
+      .gt('curadoria_destaque_ate', new Date().toISOString())
+      .order('publicado_em', { ascending: false })
+      .limit(limit),
+  ])
+
+  if (topRes.error) {
+    if (handleError(topRes.error, 'fetchHighlights') === 'TABLE_NOT_FOUND') return []
   }
-  return (data || []).map(toCamelCase)
+  // Coluna de curadoria ainda ausente (migration não aplicada) não pode
+  // derrubar os destaques normais — degrada para o top por score.
+  const curados = curadosRes.error ? [] : (curadosRes.data || [])
+
+  const vistos = new Set(curados.map((n) => n.id))
+  const merged = [
+    ...curados,
+    ...(topRes.data || []).filter((n) => !vistos.has(n.id)),
+  ].slice(0, limit)
+  return merged.map(toCamelCase)
 }
 
 async function fetchByCategory(category, options = {}) {

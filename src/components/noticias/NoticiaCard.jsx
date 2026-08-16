@@ -10,7 +10,7 @@
  * evita re-renders quando outros campos da notícia mudam.
  */
 import { memo } from 'react'
-import { Newspaper, Lock, BookOpen } from 'lucide-react'
+import { Newspaper, Lock, BookOpen, Award } from 'lucide-react'
 import { Badge } from '@/design-system/components/ui/badge'
 import { cn } from '@/design-system/utils/tokens'
 import { formatDate } from '@/utils/formatters'
@@ -61,11 +61,18 @@ function NoticiaCardImpl({ noticia, variant = 'list', onClick, className }) {
           <Badge variant="default" badgeStyle="subtle" className="text-[10px] uppercase">
             {noticia.fonte}
           </Badge>
-          {noticia.articleType && (
+          {/* No carousel (altura fixa, sem wrap) a curadoria ocupa o lugar do
+              tipo de artigo — é o selo mais forte e não cabem os dois a 375px */}
+          {noticia.curadoriaPor ? (
+            <Badge variant="info" badgeStyle="subtle" className="text-[10px] gap-1 min-w-0">
+              <Award className="h-3 w-3 shrink-0" aria-hidden="true" />
+              <span className="truncate">Curadoria {noticia.curadoriaPor}</span>
+            </Badge>
+          ) : noticia.articleType ? (
             <Badge variant="secondary" badgeStyle="subtle" className="text-[10px]">
               {noticia.articleType}
             </Badge>
-          )}
+          ) : null}
           <span className="ml-auto text-[10px] text-muted-foreground shrink-0">{date}</span>
         </div>
         <h3
@@ -104,6 +111,12 @@ function NoticiaCardImpl({ noticia, variant = 'list', onClick, className }) {
         {noticia.articleType && (
           <Badge variant="secondary" badgeStyle="subtle" className="text-[10px]">
             {noticia.articleType}
+          </Badge>
+        )}
+        {noticia.curadoriaPor && (
+          <Badge variant="info" badgeStyle="subtle" className="text-[10px] gap-1">
+            <Award className="h-3 w-3" aria-hidden="true" />
+            Curadoria {noticia.curadoriaPor}
           </Badge>
         )}
         {isOA ? (
@@ -152,7 +165,8 @@ function arePropsEqual(prev, next) {
     a.oaPdfUrl === b.oaPdfUrl &&
     a.pmcId === b.pmcId &&
     a.isFeatured === b.isFeatured &&
-    a.articleType === b.articleType
+    a.articleType === b.articleType &&
+    a.curadoriaPor === b.curadoriaPor
   )
 }
 

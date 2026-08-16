@@ -12,7 +12,7 @@
  *  - Metadados expandíveis: categoria, tipo, citações, score, DOI, PMID, MeSH top 10.
  */
 import { useState, useEffect, useMemo } from 'react'
-import { ExternalLink, Newspaper, Calendar, Copy, CheckCheck, BookOpen, Lock, ChevronDown, ChevronUp, FileText } from 'lucide-react'
+import { ExternalLink, Newspaper, Calendar, Copy, CheckCheck, BookOpen, Lock, ChevronDown, ChevronUp, FileText, Award } from 'lucide-react'
 import { useNoticias } from '@/contexts/NoticiasContext'
 import { Button, Skeleton, EmptyState } from '@/design-system'
 import { PageHeader } from '@/components'
@@ -148,6 +148,12 @@ export default function NoticiaDetalhePage({ noticiaId, onNavigate, goBack }) {
               <Badge variant="default" badgeStyle="subtle">{noticia.fonte}</Badge>
               {noticia.articleType && (
                 <Badge variant="secondary" badgeStyle="subtle">{noticia.articleType}</Badge>
+              )}
+              {noticia.curadoriaPor && (
+                <Badge variant="info" badgeStyle="subtle" className="gap-1">
+                  <Award className="h-3 w-3" aria-hidden="true" />
+                  Curadoria {noticia.curadoriaPor}
+                </Badge>
               )}
               {isOA ? (
                 <Badge variant="success" badgeStyle="subtle" className="gap-1">

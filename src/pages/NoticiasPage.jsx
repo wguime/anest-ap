@@ -15,6 +15,7 @@
 import { useEffect, useMemo, useState, useDeferredValue, useId } from 'react'
 import { LayoutGrid, Newspaper, Sparkles } from 'lucide-react'
 import { useNoticias } from '@/contexts/NoticiasContext'
+import { ordenarDestaques } from '@/lib/noticiasDestaques'
 import { NoticiaCard } from '@/components/noticias/NoticiaCard'
 import { HScroll } from '@/components/noticias/HScroll'
 import { CategoriasGrid } from '@/components/noticias/CategoriasGrid'
@@ -81,17 +82,11 @@ export default function NoticiasPage({ onNavigate, goBack }) {
     })
   }, [noticias, activeTab, search])
 
-  // Hero: top 10 do filtrado por finalScore
-  const top10 = useMemo(() => {
-    return [...filtered]
-      .sort((a, b) => {
-        const sa = a.finalScore ?? 0
-        const sb = b.finalScore ?? 0
-        if (sb !== sa) return sb - sa
-        return (b.publicadoEm || '').localeCompare(a.publicadoEm || '')
-      })
-      .slice(0, 10)
-  }, [filtered])
+  // Hero: top 10 do filtrado — curadoria ativa primeiro, depois finalScore
+  const top10 = useMemo(
+    () => ordenarDestaques(filtered).slice(0, 10),
+    [filtered],
+  )
 
   // Lista: ordenação por data, paginada
   const listSorted = useMemo(() => {

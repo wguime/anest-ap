@@ -50,10 +50,15 @@ function noticiasReducer(state, action) {
 function fingerprint(rows) {
   if (!Array.isArray(rows) || rows.length === 0) return '0:'
   let max = ''
+  let ids = ''
   for (const r of rows) {
     if (r?.publicadoEm && r.publicadoEm > max) max = r.publicadoEm
+    // ids na conta: sem eles, uma troca de composição da lista com mesmo
+    // tamanho e mesma data máxima (ex.: entrada de artigo curado no top 10)
+    // não dispararia o dispatch e a UI ficaria presa no cache antigo
+    ids += r?.id || ''
   }
-  return `${rows.length}:${max}`
+  return `${rows.length}:${max}:${ids}`
 }
 
 function loadFromCache() {
