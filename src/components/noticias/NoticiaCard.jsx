@@ -64,7 +64,7 @@ function NoticiaCardImpl({ noticia, variant = 'list', onClick, className }) {
           {/* No carousel (altura fixa, sem wrap) a curadoria ocupa o lugar do
               tipo de artigo — é o selo mais forte e não cabem os dois a 375px */}
           {noticia.curadoriaPor ? (
-            <Badge variant="info" badgeStyle="subtle" className="text-[10px] gap-1 min-w-0">
+            <Badge variant="default" badgeStyle="subtle" className="text-[10px] gap-1 min-w-0">
               <Award className="h-3 w-3 shrink-0" aria-hidden="true" />
               <span className="truncate">Curadoria {noticia.curadoriaPor}</span>
             </Badge>
@@ -114,7 +114,7 @@ function NoticiaCardImpl({ noticia, variant = 'list', onClick, className }) {
           </Badge>
         )}
         {noticia.curadoriaPor && (
-          <Badge variant="info" badgeStyle="subtle" className="text-[10px] gap-1">
+          <Badge variant="default" badgeStyle="subtle" className="text-[10px] gap-1">
             <Award className="h-3 w-3" aria-hidden="true" />
             Curadoria {noticia.curadoriaPor}
           </Badge>

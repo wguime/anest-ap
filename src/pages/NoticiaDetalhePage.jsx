@@ -150,7 +150,7 @@ export default function NoticiaDetalhePage({ noticiaId, onNavigate, goBack }) {
                 <Badge variant="secondary" badgeStyle="subtle">{noticia.articleType}</Badge>
               )}
               {noticia.curadoriaPor && (
-                <Badge variant="info" badgeStyle="subtle" className="gap-1">
+                <Badge variant="default" badgeStyle="subtle" className="gap-1">
                   <Award className="h-3 w-3" aria-hidden="true" />
                   Curadoria {noticia.curadoriaPor}
                 </Badge>
