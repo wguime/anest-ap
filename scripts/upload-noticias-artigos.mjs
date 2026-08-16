@@ -12,10 +12,11 @@
  *
  * Uso:
  *   node scripts/upload-noticias-artigos.mjs <arquivo.pdf> [nome-no-bucket.pdf]
+ *   node scripts/upload-noticias-artigos.mjs --dir <pasta>   # todos os .pdf da pasta
  */
 import { SignJWT } from 'jose'
-import { readFileSync, existsSync } from 'fs'
-import { resolve, dirname, basename } from 'path'
+import { readFileSync, existsSync, readdirSync } from 'fs'
+import { resolve, dirname, basename, join } from 'path'
 import { fileURLToPath } from 'url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -37,15 +38,28 @@ if (!URL || !ANON || !JWT_SECRET) {
 }
 
 const BUCKET = 'noticias-artigos'
-const filePath = process.argv[2]
-if (!filePath || !existsSync(filePath)) {
-  console.error('Uso: node scripts/upload-noticias-artigos.mjs <arquivo.pdf> [nome-no-bucket.pdf]')
-  process.exit(1)
-}
-const destName = (process.argv[3] || basename(filePath)).replace(/[^a-zA-Z0-9._-]/g, '')
-if (!destName.toLowerCase().endsWith('.pdf')) {
-  console.error('❌ Só PDF: o PDFEmbed do app exige URL terminando em .pdf')
-  process.exit(1)
+
+let jobs = [] // [{ filePath, destName }]
+if (process.argv[2] === '--dir') {
+  const dir = process.argv[3]
+  if (!dir || !existsSync(dir)) {
+    console.error('Uso: node scripts/upload-noticias-artigos.mjs --dir <pasta-com-pdfs>')
+    process.exit(1)
+  }
+  jobs = readdirSync(dir)
+    .filter((f) => f.toLowerCase().endsWith('.pdf'))
+    .map((f) => ({ filePath: join(dir, f), destName: f }))
+  if (jobs.length === 0) {
+    console.error('❌ Nenhum .pdf na pasta', dir)
+    process.exit(1)
+  }
+} else {
+  const filePath = process.argv[2]
+  if (!filePath || !existsSync(filePath)) {
+    console.error('Uso: node scripts/upload-noticias-artigos.mjs <arquivo.pdf> [nome-no-bucket.pdf]')
+    process.exit(1)
+  }
+  jobs = [{ filePath, destName: process.argv[3] || basename(filePath) }]
 }
 
 const token = await new SignJWT({ role: 'service_role', iss: 'supabase' })
@@ -54,19 +68,30 @@ const token = await new SignJWT({ role: 'service_role', iss: 'supabase' })
   .setExpirationTime('10m')
   .sign(new TextEncoder().encode(JWT_SECRET))
 
-const body = readFileSync(filePath)
-const res = await fetch(`${URL}/storage/v1/object/${BUCKET}/${destName}`, {
-  method: 'POST',
-  headers: {
-    Authorization: `Bearer ${token}`,
-    apikey: ANON,
-    'Content-Type': 'application/pdf',
-    'x-upsert': 'true',
-  },
-  body,
-})
-if (!res.ok) {
-  console.error('❌ Upload falhou:', res.status, (await res.text()).slice(0, 300))
-  process.exit(1)
+let falhas = 0
+for (const { filePath, destName } of jobs) {
+  const safeName = destName.replace(/[^a-zA-Z0-9._-]/g, '')
+  if (!safeName.toLowerCase().endsWith('.pdf')) {
+    console.error('❌ Só PDF (o PDFEmbed do app exige URL terminando em .pdf):', destName)
+    falhas++
+    continue
+  }
+  const body = readFileSync(filePath)
+  const res = await fetch(`${URL}/storage/v1/object/${BUCKET}/${safeName}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      apikey: ANON,
+      'Content-Type': 'application/pdf',
+      'x-upsert': 'true',
+    },
+    body,
+  })
+  if (!res.ok) {
+    console.error('❌ Upload falhou:', safeName, res.status, (await res.text()).slice(0, 300))
+    falhas++
+    continue
+  }
+  console.log('✅', `${URL}/storage/v1/object/public/${BUCKET}/${safeName}`)
 }
-console.log('✅', `${URL}/storage/v1/object/public/${BUCKET}/${destName}`)
+process.exit(falhas > 0 ? 1 : 0)
