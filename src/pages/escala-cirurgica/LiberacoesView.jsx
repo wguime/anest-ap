@@ -13,7 +13,7 @@ import {
 } from '@/design-system'
 import { gerarColunaLiberacao, nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
 import { faseLiberacoes, plantonistasNoturnos, candidatosNome, linhasNoturnas, fundirLinhasNoturnas, marcarSelosNoTurno, ehDiaUtil, casarPorInicialSobrenome, P4_HOSPITAIS } from '@/lib/plantaoNoturno'
-import { marcarSelosFds, linhasNoturnasFds, plantonistasFaixaFds, faixaFdsAtual, resolverNomeEstrito } from '@/lib/escalaFds'
+import { marcarSelosFds, linhasNoturnasFds, plantonistasFaixaFds, FDS_TURNO_FAIXA, resolverNomeEstrito } from '@/lib/escalaFds'
 import { hojeISO, HOSPITAL_LABEL, OBSERVACAO_MAX } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
@@ -308,7 +308,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // no FDS os dois fisicamente de plantão saem por último e a fila é uma só).
   const plantaoFisico = useMemo(() => {
     if (!modoFds || !fdsMeta?.grade) return null
-    const faixa = faixaFdsAtual(agoraMin)
+    // FAIXA DO TURNO EXIBIDO, não a do relógio (defeito visto 16/08: às 11h a
+    // tarde e a noite apareciam SEM os badges, porque a faixa vinha do relógio
+    // — a manhã). Os dois primeiros da fila são sempre os plantões daquele
+    // turno, e é isso que o badge tem de dizer em qualquer horário.
+    const faixa = FDS_TURNO_FAIXA[turno]
     if (!faixa) return null
     const { unimed, hro } = plantonistasFaixaFds(fdsMeta.grade, faixa)
     const m = new Map()
@@ -326,10 +330,12 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     add(unimed, 'Plantão Unimed')
     add(hro, 'Plantão HRO')
     return m
-  }, [modoFds, fdsMeta, agoraMin, resolverUid])
+  }, [modoFds, fdsMeta, turno, resolverUid])
+  // vale também no card NOTURNO (dono 16/08: "adicione os badges de plantão em
+  // todos os turnos") — lá a chave é namespaced 'noite:', daí o chaveDia
   const plantaoFisicoDe = (l) => {
-    if (!plantaoFisico || l.noturno) return null // card noturno já diz o papel
-    for (const k of [l.chave, l.uid, normNome(l.nomeOriginal || ''), normNome(l.anestesista || '')]) {
+    if (!plantaoFisico) return null
+    for (const k of [l.chave, l.chaveDia, l.uid, normNome(l.nomeOriginal || ''), normNome(l.anestesista || '')]) {
       if (k && plantaoFisico.has(k)) return plantaoFisico.get(k)
     }
     return null
@@ -709,6 +715,16 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     } catch { /* toast no context */ } finally { setExecutandoTroca(false) }
   }
 
+  /** Papel do card noturno SEM repetir o badge ("Plantão Unimed · cobre X" →
+   *  "cobre X"); sem badge, o papel vai inteiro. */
+  const papelSemBadge = (l) => {
+    const papel = l.papelNoturno
+    if (!papel) return null
+    const badge = plantaoFisicoDe(l)
+    if (!badge || !papel.startsWith(badge)) return papel
+    return papel.slice(badge.length).replace(/^\s*·\s*/, '') || null
+  }
+
   // De qual hospital é o procedimento "?" (só na fila única do FDS — a lib não
   // repassa hospitalOrigem, então o caso é reencontrado pelo id nos mesclados).
   const hospitalDoAlerta = (id) => {
@@ -999,9 +1015,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     {/* papel no plantão noturno. Quem é plantonista já tem o BADGE
                         ao lado do nome — repetir a palavra na linha de baixo era
                         redundante. No P4 sem marcação, diz que está nos três. */}
-                    {!liberadoReal && linha.papelNoturno && !linha.isPlantonista && (
+                    {!liberadoReal && papelSemBadge(linha) && !linha.isPlantonista && (
                       <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
-                        {linha.papelNoturno}
+                        {papelSemBadge(linha)}
                         {/* "nos três hospitais" é do coringa de DIA ÚTIL — no FDS o
                             selo P4 é só a posição da pessoa, não o posto coringa */}
                         {!modoFds && linha.selo === 'P4' && !p4Hospital && ' · nos três hospitais'}

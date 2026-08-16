@@ -60,6 +60,11 @@ const RODAPE_SAB_MAT = [
   'GUILHERME DIDOMENICO', 'JOAO HENRIQUE', 'MARILIO', 'RAFAEL', 'GABRIELA', 'ERLEI',
   'GABRIEL', 'STAUB', 'ROBERTA', 'VICENTE', 'CRISTINA', 'MATHEUS',
 ]
+// tarde do documento (P3,P4,P6,P5,P9,P10,P11 + P1,P2 que pegam a noite)
+const RODAPE_SAB_VESP = [
+  'CRISTINA', 'MATHEUS', 'ERLEI', 'GABRIELA', 'ROBERTA', 'STAUB', 'GABRIEL',
+  'GUILHERME DIDOMENICO', 'JOAO HENRIQUE',
+]
 
 const caso = (id, hospitalOrigem, sala, anestesista, extra = {}) => ({
   id, hospitalOrigem, sala, ordem: 0, hora: '07:30', anestesista, cirurgiao: 'Cirurgião X',
@@ -76,7 +81,7 @@ const CASOS_FDS = [
 
 const ESCALA_FDS = {
   id: 'fds-1', hospital: 'fds', data: '2026-08-15', status: 'publicada',
-  ordemLiberacao: { matutino: RODAPE_SAB_MAT, vespertino: [] },
+  ordemLiberacao: { matutino: RODAPE_SAB_MAT, vespertino: RODAPE_SAB_VESP },
   ajudaExterna: { matutino: ['THAYNA'] }, // ajuda avulsa SEM posição Pn
   liberacoes: {}, linhaOverrides: {},
   casos: [],
@@ -142,6 +147,15 @@ describe('fila única — ordem do rodapé publicado, cruzando hospitais', () =>
     expect(screen.queryByText('Plantonista')).toBeNull()
   })
 
+  it('badge segue o TURNO EXIBIDO, não o relógio (dono 16/08)', () => {
+    // 10h da manhã, olhando a TARDE: os plantões são os da faixa 13-19
+    // (Cristina/Unimed e Matheus/HRO), não os da manhã
+    montar({ turno: 'vespertino' })
+    expect(cardDe('CRISTINA').textContent).toContain('Plantão Unimed')
+    expect(cardDe('MATHEUS').textContent).toContain('Plantão HRO')
+    expect(cardDe('GUILHERME DIDOMENICO').textContent).not.toContain('Plantão')
+  })
+
   it('liberar fora da ordem só avisa; liberar o próximo dispara com a chave estável', () => {
     const onToggle = vi.fn(async () => {})
     montar({ onToggle })
@@ -176,8 +190,11 @@ describe('turno NOTURNO do FDS — turno próprio, fila da grade 19-07 (dono 15/
     expect(chaves).toEqual(['noite:JOAO HENRIQUE', 'noite:GUILHERME DIDOMENICO', 'noite:MATHEUS', 'noite:CRISTINA'])
     // ordem ditada pelo dono, do ÚLTIMO ao PRIMEIRO a ser liberado
     expect(chaves.map((c) => cardDe(c).dataset.selo)).toEqual(['P2', 'P1', 'P4', 'P3'])
+    // badge (não só texto) nos dois primeiros, como nos demais turnos
     expect(cardDe('noite:JOAO HENRIQUE').textContent).toContain('Plantão Unimed')
     expect(cardDe('noite:GUILHERME DIDOMENICO').textContent).toContain('Plantão HRO')
+    // e o papel não repete o que o badge já diz
+    expect(cardDe('noite:JOAO HENRIQUE').textContent.match(/Plantão Unimed/g)).toHaveLength(1)
     // fixos no hospital nunca viram "Próximo a ser liberado"; a retaguarda 2ª
     // chamada (col4) é a primeira a sair
     expect(cardDe('noite:JOAO HENRIQUE').textContent).not.toContain('Próximo a ser liberado')
