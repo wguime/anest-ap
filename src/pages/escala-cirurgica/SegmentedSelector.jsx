@@ -6,8 +6,12 @@
  * variant='filled' (pedido do dono 24/07): trilho claro único + selecionada em VERDE SÓLIDO
  * (branco no texto) — diferencia as ABAS de visualização do filtro de hospital.
  */
-export default function SegmentedSelector({ options, value, onChange, className = '', variant = 'outline' }) {
+export default function SegmentedSelector({ options, value, onChange, className = '', variant = 'outline', size = 'md' }) {
   const filled = variant === 'filled'
+  // size='sm' (dono 16/08): data + 3 turnos do fim de semana na MESMA linha a
+  // 375px. Só o padding horizontal e o corpo do texto encolhem — a altura
+  // mínima de toque (44px) fica intacta.
+  const sm = size === 'sm'
   const badge = (opt) =>
     opt.badge != null && opt.badge > 0 ? (
       <span className={`inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-bold leading-none ${
@@ -21,7 +25,7 @@ export default function SegmentedSelector({ options, value, onChange, className 
     <div
       className={filled
         ? `grid gap-1 rounded-[16px] bg-primary/5 p-1 dark:bg-primary/10 ${className}`
-        : `grid gap-2 ${className}`}
+        : `grid ${sm ? 'gap-1.5' : 'gap-2'} ${className}`}
       style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
       role="tablist"
     >
@@ -40,7 +44,7 @@ export default function SegmentedSelector({ options, value, onChange, className 
                     ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
                     : 'bg-transparent text-muted-foreground'
                 }`
-              : `py-3 px-3 min-h-[44px] rounded-[16px] border text-sm font-medium transition-all active:scale-95 inline-flex items-center justify-center gap-1.5 ${
+              : `${sm ? 'py-2 px-1.5 text-[13px] rounded-[14px]' : 'py-3 px-3 text-sm rounded-[16px]'} min-h-[44px] border font-medium transition-all active:scale-95 inline-flex items-center justify-center gap-1.5 ${
                   active
                     ? 'border-[hsl(var(--primary-hover))] bg-primary/10 text-primary dark:border-[hsl(var(--primary))] dark:bg-primary/20'
                     : 'border-[hsl(var(--input))] bg-card text-muted-foreground'

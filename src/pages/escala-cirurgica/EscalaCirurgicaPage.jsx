@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link2, Upload } from 'lucide-react'
 import { PageHeader } from '@/components'
-import { Button, DatePicker } from '@/design-system'
+import { Button } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { useEscalaDia } from '@/hooks/usePegaPlantao'
 import { useEscalaCirurgica, HOSPITAIS, HOSPITAL_LABEL, hojeISO } from '@/contexts/EscalaCirurgicaContext'
@@ -22,18 +22,24 @@ import ImportarEscalaFdsPage from './ImportarEscalaFdsPage'
 import VinculosSheet from './VinculosSheet'
 import TrocaSheet from './TrocaSheet'
 import { meuAliasDe, turnoAtual, casosResolvidos, estadoTrocasDoHistorico, filtrarPorTurno, normNome, formatData, rodapeDoTurno, localizarSlotEscala, planoExecucaoTroca, planoDesfazerTroca } from './utils'
-import { ehFimDeSemana, FDS_HOSPITAL, FDS_TURNOS, FDS_TURNO_LABEL, FDS_TURNO_CASOS, turnoFdsAtual } from '@/lib/escalaFds'
+import { ehFimDeSemana, FDS_HOSPITAL, FDS_TURNO_CASOS, turnoFdsAtual } from '@/lib/escalaFds'
 import { podeEditarEscalaCirurgica } from './gate'
 
 const HOSPITAL_OPCOES = HOSPITAIS.map((h) => ({ value: h, label: HOSPITAL_LABEL[h] }))
+// Rótulos CURTOS (dono 16/08): "Manhã/Tarde/Noite" cabem no card a 375px —
+// "Matutino/Vespertino/Noturno" cortavam com o 3º turno do fim de semana.
 const TURNO_OPCOES = [
-  { value: 'matutino', label: 'Matutino' },
-  { value: 'vespertino', label: 'Vespertino' },
+  { value: 'matutino', label: 'Manhã' },
+  { value: 'vespertino', label: 'Tarde' },
 ]
 // FIM DE SEMANA (dono 15/08 21h): a NOITE é um turno próprio, com fila de
 // liberação própria (a linha 19-07HS da grade) — no dia útil ela continua
 // sendo só a fase automática das 19h dentro da aba.
-const TURNO_OPCOES_FDS = FDS_TURNOS.map((t) => ({ value: t, label: FDS_TURNO_LABEL[t] }))
+const TURNO_OPCOES_FDS = [
+  { value: 'matutino', label: 'Manhã' },
+  { value: 'vespertino', label: 'Tarde' },
+  { value: 'noturno', label: 'Noite' },
+]
 const ABA_OPCOES = [
   { value: 'minhas', label: 'Minhas' },
   { value: 'board', label: 'Completa' },
@@ -61,10 +67,6 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     () => (modoFds ? turnoFdsAtual(new Date().getHours() * 60 + new Date().getMinutes()) : turnoAtual()),
     [modoFds]
   )
-  const dataComoDate = useMemo(() => {
-    const [a, m, d] = String(data || '').split('-').map(Number)
-    return a && m && d ? new Date(a, m - 1, d) : new Date()
-  }, [data])
   const [importando, setImportando] = useState(false)
   const [importandoFds, setImportandoFds] = useState(false) // documento de FDS (fila única)
   const [vinculos, setVinculos] = useState(false)
@@ -72,8 +74,8 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
 
   // Navegação de data (pedido do dono 24/07 + pesquisa NN/G: default HOJE, atalho
   // "Amanhã" só quando a de amanhã já foi PUBLICADA — nunca leva a uma tela vazia;
-  // "Outra data" (calendário livre) só p/ quem edita). Elimina a confusão de
-  // navegar p/ datas vazias e ver escala velha.
+  // O calendário livre saiu em 16/08 (pedido do dono): a escala é operada no
+  // dia e navegar para datas vazias só confundia.
   // `hoje` vem do context e AVANÇA na virada da meia-noite (antes era um useMemo
   // fixo no mount: o rótulo "Hoje" ficava colado na data de ONTEM no app aberto).
   const amanha = useMemo(() => {
@@ -82,7 +84,6 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     return hojeISO(d)
   }, [hoje])
   const [amanhaPublicada, setAmanhaPublicada] = useState(false)
-  const [calendarioAberto, setCalendarioAberto] = useState(false)
   useEffect(() => {
     let vivo = true
     // amanhã de sexta = sábado: a fila única (linha 'fds') também conta como publicada
@@ -302,7 +303,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     <div className="min-h-dvh bg-background pb-24">
       <PageHeader
         title="Escala Cirúrgica"
-        subtitle={`${aba === 'liberacoes' && modoFds ? 'Fim de semana' : HOSPITAL_LABEL[hospital]} · ${FDS_TURNO_LABEL[turno] || 'Matutino'}`}
+        subtitle={`${aba === 'liberacoes' && modoFds ? 'Fim de semana' : HOSPITAL_LABEL[hospital]} · ${(TURNO_OPCOES_FDS.find((t) => t.value === turno) || {}).label || 'Manhã'}`}
         onBack={goBack}
         actions={
           canEdit ? (
@@ -319,64 +320,49 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
       />
 
       <div className="max-w-3xl mx-auto px-4 pt-3 space-y-3">
-        {/* Data (Hoje/Amanhã ou calendário livre) + Turno na mesma linha */}
+        {/* Data (Hoje/Amanhã) + Turno na MESMA linha, compactos (dono 16/08).
+            O CALENDÁRIO LIVRE ("Outra data") SAIU em 16/08, a pedido do dono —
+            também no dia útil: a escala é operada no dia, e o atalho abria a
+            porta para consultar datas vazias. Publicar noutra data continua
+            possível pela importação, que tem calendário próprio. */}
+        {/* Data COMPACTA numa linha (dono 16/08: "reduza o tamanho do card
+            Hoje") e os turnos em linha PRÓPRIA, lado a lado ("mantenha todos
+            em linha conforme estavam"). */}
         <div className="flex items-stretch gap-2">
-          {calendarioAberto ? (
-            // Parse manual do ISO — new Date('YYYY-MM-DD') é UTC e desloca 1 dia no fuso BR.
-            <DatePicker
-              className="flex-1 min-w-0"
-              value={dataComoDate}
-              onChange={(d) => d && setData(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)}
-              placeholder="Data da escala"
-            />
-          ) : (
-            <SegmentedSelector
-              className="flex-1"
-              options={opcoesData}
-              value={modoData === 'outra' ? '' : modoData}
-              onChange={(v) => {
-                if (v === 'amanha') { setData(amanha); setTurno('matutino') } // manhã seguinte
-                else setData(hoje)
-              }}
-            />
-          )}
-          {/* 2 turnos cabem ao lado da data; os 3 do FDS não — a 375px os
-              rótulos "Vespertino"/"Noturno" saíam cortados, então a linha é
-              própria (mobile-first). */}
-          {!modoFds && (
-            <SegmentedSelector className="flex-1" options={TURNO_OPCOES} value={turno} onChange={escolherTurno} />
-          )}
+          <SegmentedSelector
+            className="shrink-0"
+            size="sm"
+            options={opcoesData}
+            value={modoData === 'outra' ? '' : modoData}
+            onChange={(v) => {
+              if (v === 'amanha') { setData(amanha); setTurno('matutino') } // manhã seguinte
+              else setData(hoje)
+            }}
+          />
         </div>
-        {modoFds && (
-          <SegmentedSelector options={TURNO_OPCOES_FDS} value={turno} onChange={escolherTurno} />
-        )}
+        <SegmentedSelector
+          size="sm"
+          options={modoFds ? TURNO_OPCOES_FDS : TURNO_OPCOES}
+          value={turno}
+          onChange={escolherTurno}
+        />
 
-        {/* "Outra data" (calendário livre) só p/ quem edita a escala */}
-        {canEdit && (
-          <button
-            type="button"
-            onClick={() => { setCalendarioAberto((v) => !v); if (calendarioAberto) setData(hoje) }}
-            className="text-xs font-medium text-primary active:opacity-60"
-          >
-            {calendarioAberto ? '‹ Voltar para Hoje/Amanhã' : 'Outra data (calendário) ›'}
-          </button>
-        )}
-        {/* Vendo uma data que não é hoje/amanhã (via calendário): rótulo + volta rápida */}
-        {modoData === 'outra' && !calendarioAberto && (
+        {/* Aterrissou noutra data (ex.: publicou pela importação): rótulo + volta */}
+        {modoData === 'outra' && (
           <p className="rounded-lg bg-warning/10 px-3 py-1.5 text-xs text-warning">
             Vendo {formatData(data)} — <button type="button" className="font-semibold underline" onClick={() => setData(hoje)}>voltar para hoje</button>
           </p>
         )}
 
-        {/* Hospital — na aba Liberações do FDS a fila é ÚNICA (todos os
-            hospitais), então o seletor sai e um rótulo diz o porquê; Minhas e
-            Completa seguem por hospital e o seletor volta ao trocar de aba. */}
-        {aba === 'liberacoes' && modoFds ? (
-          <p className="rounded-lg bg-primary/10 px-3 py-2 text-xs font-medium text-primary">
+        {/* Hospital SEMPRE visível (dono 16/08: "ocultou o nome dos hospitais,
+            corrija"). No fim de semana a fila de liberação é única — o seletor
+            segue valendo para as abas Minhas/Completa, e a nota abaixo explica
+            por que a lista de liberações não muda ao trocar de hospital. */}
+        <SegmentedSelector size="sm" options={HOSPITAL_OPCOES} value={hospital} onChange={setHospital} />
+        {aba === 'liberacoes' && modoFds && (
+          <p className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary">
             Fim de semana — fila de liberação única (todos os hospitais)
           </p>
-        ) : (
-          <SegmentedSelector options={HOSPITAL_OPCOES} value={hospital} onChange={setHospital} />
         )}
 
         {/* Abas internas — variante "filled" (trilho + selecionada em verde sólido, pedido do dono 24/07) */}
