@@ -22,7 +22,7 @@ import ImportarEscalaFdsPage from './ImportarEscalaFdsPage'
 import VinculosSheet from './VinculosSheet'
 import TrocaSheet from './TrocaSheet'
 import { meuAliasDe, turnoAtual, casosResolvidos, estadoTrocasDoHistorico, filtrarPorTurno, normNome, formatData, rodapeDoTurno, localizarSlotEscala, planoExecucaoTroca, planoDesfazerTroca } from './utils'
-import { ehFimDeSemana, FDS_HOSPITAL } from '@/lib/escalaFds'
+import { ehFimDeSemana, FDS_HOSPITAL, FDS_TURNOS, FDS_TURNO_LABEL, FDS_TURNO_CASOS, turnoFdsAtual } from '@/lib/escalaFds'
 import { podeEditarEscalaCirurgica } from './gate'
 
 const HOSPITAL_OPCOES = HOSPITAIS.map((h) => ({ value: h, label: HOSPITAL_LABEL[h] }))
@@ -30,6 +30,10 @@ const TURNO_OPCOES = [
   { value: 'matutino', label: 'Matutino' },
   { value: 'vespertino', label: 'Vespertino' },
 ]
+// FIM DE SEMANA (dono 15/08 21h): a NOITE é um turno próprio, com fila de
+// liberação própria (a linha 19-07HS da grade) — no dia útil ela continua
+// sendo só a fase automática das 19h dentro da aba.
+const TURNO_OPCOES_FDS = FDS_TURNOS.map((t) => ({ value: t, label: FDS_TURNO_LABEL[t] }))
 const ABA_OPCOES = [
   { value: 'minhas', label: 'Minhas' },
   { value: 'board', label: 'Completa' },
@@ -46,6 +50,17 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const [hospital, setHospital] = useState('unimed')
   const [aba, setAba] = useState('minhas')
   const [turno, setTurno] = useState(() => turnoAtual())
+  // ── MODO FIM DE SEMANA (dono 15/08): fila de liberação ÚNICA ───────────────
+  // Liga quando a data é sáb/dom E a linha 'fds' do dia está publicada. Sem ela,
+  // a aba Liberações segue no comportamento por hospital (rollout seguro).
+  // Fica ANTES dos efeitos de turno: no FDS o relógio decide entre 3 turnos.
+  const fimDeSemana = ehFimDeSemana(data)
+  const modoFds = fimDeSemana && escalas.fds?.status === 'publicada'
+  // turno do relógio: 2 faixas no dia útil, 3 no FDS (7h/13h/19h)
+  const turnoDoRelogio = useCallback(
+    () => (modoFds ? turnoFdsAtual(new Date().getHours() * 60 + new Date().getMinutes()) : turnoAtual()),
+    [modoFds]
+  )
   const dataComoDate = useMemo(() => {
     const [a, m, d] = String(data || '').split('-').map(Number)
     return a && m && d ? new Date(a, m - 1, d) : new Date()
@@ -96,8 +111,8 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     if (viradaRef.current === hoje) return
     viradaRef.current = hoje
     turnoManualRef.current = null
-    setTurno(turnoAtual())
-  }, [hoje])
+    setTurno(turnoDoRelogio())
+  }, [hoje, turnoDoRelogio])
 
   // TURNO ACOMPANHA O RELÓGIO (dono 15/08: "a ordem de liberações deve mudar
   // automaticamente às 7h, 13h e às 19h conforme escala"): vendo a escala de
@@ -109,18 +124,22 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   // pode ser desfeito sob o dedo); outra data nunca é mexida.
   const agoraMin = useAgoraMinuto()
   useEffect(() => {
+    // 'noturno' só existe no FDS: saindo dele (outra data/dia útil), a tela
+    // volta para o turno do relógio em vez de ficar num turno inexistente.
+    if (!modoFds && turno === 'noturno') { turnoManualRef.current = null; setTurno(turnoAtual()); return }
     if (data !== hoje) return
-    const atual = turnoAtual()
+    const atual = turnoDoRelogio()
     if (turnoManualRef.current === atual) return // escolha manual vale nesta faixa
     turnoManualRef.current = null
     if (turno !== atual) setTurno(atual)
-  }, [agoraMin, data, hoje, turno])
+  }, [agoraMin, data, hoje, turno, modoFds, turnoDoRelogio])
   // Toda escolha EXPLÍCITA de turno passa por aqui: divergente do relógio →
   // pausa o automático nesta faixa; igual ao relógio → automático segue.
   const escolherTurno = useCallback((t) => {
-    turnoManualRef.current = t !== turnoAtual() ? turnoAtual() : null
+    const atual = turnoDoRelogio()
+    turnoManualRef.current = t !== atual ? atual : null
     setTurno(t)
-  }, [])
+  }, [turnoDoRelogio])
 
   // Abre já no hospital+turno onde o usuário está escalado (pedido do dono 23/07:
   // abria fixo em Unimed/Minhas e vinha em branco p/ quem estava no HRO/Materno).
@@ -175,11 +194,6 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     return out
   }, [escalas, hospital, turno])
 
-  // ── MODO FIM DE SEMANA (dono 15/08): fila de liberação ÚNICA ───────────────
-  // Liga quando a data é sáb/dom E a linha 'fds' do dia está publicada. Sem ela,
-  // a aba Liberações segue no comportamento por hospital (rollout seguro).
-  const fimDeSemana = ehFimDeSemana(data)
-  const modoFds = fimDeSemana && escalas.fds?.status === 'publicada'
   // casos dos 3 hospitais mesclados, cada um anotado com a origem (campo só de
   // exibição — nunca entra em CASO_FIELDS/persistência)
   const casosFds = useMemo(() => {
@@ -275,6 +289,10 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
 
   const canEdit = podeEditarEscalaCirurgica(user)
   const escala = escalas[hospital]
+  // Turno de CASOS: 'noturno' é turno da FILA (o CHECK do banco só aceita
+  // matutino/vespertino) — Completa/Minhas mostram as cirurgias da tarde, que
+  // são as que seguem em curso à noite.
+  const turnoCasos = FDS_TURNO_CASOS[turno] || turno
 
   const meuAlias = meuAliasDe(user)
   const meuUid = user?.uid || user?.id
@@ -284,7 +302,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     <div className="min-h-dvh bg-background pb-24">
       <PageHeader
         title="Escala Cirúrgica"
-        subtitle={`${aba === 'liberacoes' && modoFds ? 'Fim de semana' : HOSPITAL_LABEL[hospital]} · ${turno === 'matutino' ? 'Matutino' : 'Vespertino'}`}
+        subtitle={`${aba === 'liberacoes' && modoFds ? 'Fim de semana' : HOSPITAL_LABEL[hospital]} · ${FDS_TURNO_LABEL[turno] || 'Matutino'}`}
         onBack={goBack}
         actions={
           canEdit ? (
@@ -322,7 +340,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               }}
             />
           )}
-          <SegmentedSelector className="flex-1" options={TURNO_OPCOES} value={turno} onChange={escolherTurno} />
+          <SegmentedSelector className="flex-1" options={modoFds ? TURNO_OPCOES_FDS : TURNO_OPCOES} value={turno} onChange={escolherTurno} />
         </div>
 
         {/* "Outra data" (calendário livre) só p/ quem edita a escala */}
@@ -366,9 +384,9 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
 
         <div className="pt-1">
           {aba === 'minhas' && (
-            <MinhasEscalasView escala={escala} meuAlias={meuAlias} meuUid={meuUid} turno={turno} onVerBoard={() => setAba('board')} />
+            <MinhasEscalasView escala={escala} meuAlias={meuAlias} meuUid={meuUid} turno={turnoCasos} onVerBoard={() => setAba('board')} />
           )}
-          {aba === 'board' && <BoardView escala={escala} meuAlias={meuAlias} meuUid={meuUid} turno={turno} onNavigate={onNavigate} />}
+          {aba === 'board' && <BoardView escala={escala} meuAlias={meuAlias} meuUid={meuUid} turno={turnoCasos} onNavigate={onNavigate} />}
           {aba === 'liberacoes' && (() => {
             // MODO FDS: a view opera sobre a linha 'fds' (fila única + marcações)
             // e os casos mesclados dos 3 hospitais; troca/P4-coringa ficam fora.

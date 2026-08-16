@@ -20,6 +20,7 @@ import {
   marcarSelosFds,
   plantonistasFaixaFds,
   linhasNoturnasFds,
+  resolverNomeEstrito,
   sugerirRodapeFds,
   rodapeDeOrdemDoc,
   normalizarParseFds,
@@ -154,8 +155,15 @@ describe('sugerirRodapeFds — turno sem linha explícita (domingo)', () => {
       'CRISTINA', 'MATHEUS', 'JOAO HENRIQUE', 'GUILHERME DIDOMENICO',
     ])
   })
+  it('noite = a própria linha 19-07 da grade (sem lista numerada)', () => {
+    // dom 19-07: JOAO RICARDO (Unimed), MATHEUS (HRO), GD (ret1), JH (ret2)
+    // = P3(vaga), P4, P1, P2 — a ordem ditada pelo dono para domingo à noite
+    expect(sugerirRodapeFds(doming, 'noturno')).toEqual([
+      'JOAO RICARDO', 'MATHEUS', 'GUILHERME DIDOMENICO', 'JOAO HENRIQUE',
+    ])
+  })
   it('turno desconhecido → []', () => {
-    expect(sugerirRodapeFds(doming, 'noturno')).toEqual([])
+    expect(sugerirRodapeFds(doming, 'xpto')).toEqual([])
   })
 })
 
@@ -182,17 +190,39 @@ describe('linhasNoturnasFds — só os 4 plantões da faixa 19-07', () => {
     expect(linhas[0].papel).toBe('Plantão Unimed')
     expect(linhas[1].papel).toBe('Plantão HRO')
   })
-  it('domingo: JOAO RICARDO (substituto, sem posição) NÃO herda o selo do JOAO HENRIQUE pelo "JOAO"', () => {
+  it('domingo: JOAO RICARDO (substituto) assume a VAGA P3 da Cristina — nunca o P2 do JOAO HENRIQUE', () => {
+    // ordem ditada pelo dono p/ domingo à noite: P3, P4, P1, P2
     const linhas = linhasNoturnasFds(GRADE_DOM, POSICOES_SAB)
-    const joaoRicardo = linhas.find((l) => l.nome === 'JOAO RICARDO')
-    expect(joaoRicardo.setor).toBe(null)
-    expect(joaoRicardo.foraDaFila).toBe(true) // segue fixo na Unimed mesmo sem Pn
-    const joaoHenrique = linhas.find((l) => l.nome === 'JOAO HENRIQUE')
-    expect(joaoHenrique.setor).toBe('P2')
+    expect(linhas.map((l) => l.nome)).toEqual(['JOAO RICARDO', 'MATHEUS', 'GUILHERME DIDOMENICO', 'JOAO HENRIQUE'])
+    expect(linhas.map((l) => l.setor)).toEqual(['P3', 'P4', 'P1', 'P2'])
+    const joaoRicardo = linhas[0]
+    expect(joaoRicardo.cobrindo).toBe('CRISTINA') // a vaga é dela (cor no documento)
+    expect(joaoRicardo.papel).toBe('Plantão Unimed · cobre CRISTINA')
+    expect(joaoRicardo.foraDaFila).toBe(true) // fixo na Unimed
+  })
+  it('vaga só é atribuída quando é 1↔1 (2 desconhecidos → ninguém recebe selo)', () => {
+    const grade = { '19-07': { unimed: 'FULANO', hro: 'BELTRANO', ret1: 'MATHEUS', ret2: 'CRISTINA' } }
+    const linhas = linhasNoturnasFds(grade, POSICOES_SAB)
+    expect(linhas.filter((l) => !l.setor).map((l) => l.nome)).toEqual(['FULANO', 'BELTRANO'])
   })
   it('célula vazia não vira card', () => {
     const linhas = linhasNoturnasFds({ '19-07': { unimed: 'A', hro: '', ret1: ' ', ret2: 'B' } }, {})
     expect(linhas.map((l) => l.nome)).toEqual(['A', 'B'])
+  })
+})
+
+describe('resolverNomeEstrito — sem colapso por primeiro nome (16/08)', () => {
+  // dicionário real: alias "JOAO" aponta p/ o JOAO HENRIQUE
+  const resolverUid = (n) => ({ 'JOAO': 'uid-jh', 'JOAO HENRIQUE': 'uid-jh', 'MATHEUS': 'uid-mat' }[String(n).toUpperCase()] || null)
+  it('nome COMPOSTO não casa por token solto — JOAO RICARDO ≠ JOAO HENRIQUE', () => {
+    expect(resolverNomeEstrito('JOAO RICARDO', resolverUid)).toBe(null)
+    expect(resolverNomeEstrito('JOAO HENRIQUE', resolverUid)).toBe('uid-jh')
+  })
+  it('nome de UM token continua valendo por ele mesmo', () => {
+    expect(resolverNomeEstrito('MATHEUS', resolverUid)).toBe('uid-mat')
+  })
+  it('sem resolver → null', () => {
+    expect(resolverNomeEstrito('QUALQUER', null)).toBe(null)
   })
 })
 

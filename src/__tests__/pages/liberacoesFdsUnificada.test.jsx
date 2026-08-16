@@ -169,28 +169,38 @@ describe('fila única — ordem do rodapé publicado, cruzando hospitais', () =>
   })
 })
 
-describe('fase noturna FDS — faixa 19-07 da grade importada', () => {
-  it('às 20h os 4 plantões da noite assumem o topo; Unimed/HRO fixos nunca são o próximo', () => {
-    vi.setSystemTime(new Date('2026-08-15T20:00:00-03:00'))
-    montar()
-    // topo na ordem da grade 19-07: JH (Unimed) · GD (HRO) · MATHEUS · CRISTINA
-    const noturnos = [...document.querySelectorAll('[data-linha^="noite:"]')].map((el) => el.dataset.linha)
-    expect(noturnos).toEqual(['noite:JOAO HENRIQUE', 'noite:GUILHERME DIDOMENICO', 'noite:MATHEUS', 'noite:CRISTINA'])
-    expect(cardDe('noite:JOAO HENRIQUE').textContent).toContain('Plantão Unimed')
-    expect(cardDe('noite:GUILHERME DIDOMENICO').textContent).toContain('Plantão HRO')
-    expect(cardDe('noite:JOAO HENRIQUE').dataset.selo).toBe('P2')
-    // fixos no hospital nunca viram "Próximo a ser liberado"
-    expect(cardDe('noite:JOAO HENRIQUE').textContent).not.toContain('Próximo a ser liberado')
-    expect(cardDe('noite:GUILHERME DIDOMENICO').textContent).not.toContain('Próximo a ser liberado')
-    vi.setSystemTime(new Date('2026-08-15T10:00:00-03:00'))
-  })
-
-  it('às 23h a lista zera e ficam só os 4 da noite; o próximo é a retaguarda 2 (col4)', () => {
-    vi.setSystemTime(new Date('2026-08-15T23:30:00-03:00'))
-    montar()
+describe('turno NOTURNO do FDS — turno próprio, fila da grade 19-07 (dono 15/08 21h)', () => {
+  it('a fila é SÓ os 4 da grade, na ordem da esquerda p/ a direita (sáb = P2, P1, P4, P3)', () => {
+    montar({ turno: 'noturno' })
     const chaves = [...document.querySelectorAll('[data-linha]')].map((el) => el.dataset.linha)
     expect(chaves).toEqual(['noite:JOAO HENRIQUE', 'noite:GUILHERME DIDOMENICO', 'noite:MATHEUS', 'noite:CRISTINA'])
+    // ordem ditada pelo dono, do ÚLTIMO ao PRIMEIRO a ser liberado
+    expect(chaves.map((c) => cardDe(c).dataset.selo)).toEqual(['P2', 'P1', 'P4', 'P3'])
+    expect(cardDe('noite:JOAO HENRIQUE').textContent).toContain('Plantão Unimed')
+    expect(cardDe('noite:GUILHERME DIDOMENICO').textContent).toContain('Plantão HRO')
+    // fixos no hospital nunca viram "Próximo a ser liberado"; a retaguarda 2ª
+    // chamada (col4) é a primeira a sair
+    expect(cardDe('noite:JOAO HENRIQUE').textContent).not.toContain('Próximo a ser liberado')
+    expect(cardDe('noite:GUILHERME DIDOMENICO').textContent).not.toContain('Próximo a ser liberado')
     expect(cardDe('noite:CRISTINA').textContent).toContain('Próximo a ser liberado')
+  })
+
+  it('o card noturno herda a cirurgia da TARDE em curso (noturno não tem caso próprio)', () => {
+    // Cristina não tem caso; Matheus tem o do HRO (turno matutino no fixture) —
+    // o que importa é a base ser a vespertina, sem quebrar quem não tem caso
+    montar({ turno: 'noturno' })
+    expect(cardDe('noite:MATHEUS')).toBeTruthy()
+    expect(cardDe('noite:CRISTINA').textContent).toContain('Retaguarda 2ª chamada')
+  })
+
+  it('às 20h, conferir o MATUTINO mostra a fila da manhã PURA — sem os 4 da noite por cima', () => {
+    // era o defeito relatado: a fusão roubava o topo e renumerava a manhã
+    vi.setSystemTime(new Date('2026-08-15T20:00:00-03:00'))
+    montar({ turno: 'matutino' })
+    expect(document.querySelector('[data-linha^="noite:"]')).toBeNull()
+    const chaves = [...document.querySelectorAll('[data-linha]')].map((el) => el.dataset.linha)
+    // rodapé publicado na ordem exata + a ajuda avulsa no fim (regra da lib)
+    expect(chaves).toEqual([...RODAPE_SAB_MAT.map((n) => (n === 'STAUB' ? 'uid-staub' : n)), 'THAYNA'])
     vi.setSystemTime(new Date('2026-08-15T10:00:00-03:00'))
   })
 })

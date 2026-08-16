@@ -28,8 +28,34 @@ export const FDS_HOSPITAL = 'fds'
 
 export const FAIXAS_FDS = ['7-13', '13-19', '19-07']
 
-/** Faixa da grade que corresponde a cada turno publicável. */
-export const FDS_TURNO_FAIXA = { matutino: '7-13', vespertino: '13-19' }
+/**
+ * Turnos do FIM DE SEMANA (dono 15/08, reforço 16/08): a NOITE é um turno
+ * PRÓPRIO, com fila de liberação própria — não uma fusão por cima da lista do
+ * dia (era o que embaralhava a numeração da manhã na tela às 21h).
+ * ⚠️ `noturno` NÃO é turno de CASO (o CHECK do banco só aceita matutino/
+ * vespertino): as cirurgias em curso à noite são as da tarde — por isso o card
+ * noturno herda o conteúdo do vespertino (`FDS_TURNO_CASOS`).
+ */
+export const FDS_TURNOS = ['matutino', 'vespertino', 'noturno']
+export const FDS_TURNO_LABEL = { matutino: 'Matutino', vespertino: 'Vespertino', noturno: 'Noturno' }
+
+/** Faixa da grade que corresponde a cada turno. */
+export const FDS_TURNO_FAIXA = { matutino: '7-13', vespertino: '13-19', noturno: '19-07' }
+
+/** Turno de CASOS que alimenta cada turno da fila (a noite herda a tarde). */
+export const FDS_TURNO_CASOS = { matutino: 'matutino', vespertino: 'vespertino', noturno: 'vespertino' }
+
+/**
+ * Turno do FDS pelo relógio (dono 15/08: "a ordem de liberações deve mudar
+ * automaticamente às 7h, 13h e às 19h conforme escala"). Madrugada (<7h)
+ * pertence ao noturno iniciado na véspera.
+ */
+export function turnoFdsAtual(agoraMin) {
+  const faixa = faixaFdsAtual(agoraMin)
+  if (faixa === '7-13') return 'matutino'
+  if (faixa === '13-19') return 'vespertino'
+  return 'noturno'
+}
 
 /** Papéis da faixa noturna (19-07): cols 1–2 fixas no hospital, 3–4 chamada. */
 export const FDS_NOITE_PAPEL = {
@@ -156,6 +182,25 @@ export function marcarSelosFds(linhas, posicoes, opts = {}) {
   })
 }
 
+/**
+ * Resolve nome→uid SEM cair no primeiro nome solto: "JOAO RICARDO" (substituto
+ * da noite de domingo) casava com o alias "JOAO" do JOAO HENRIQUE e os dois
+ * cards colapsavam num só — a fila da noite saía com 3 nomes em vez de 4
+ * (defeito visto em produção 16/08). Nome composto só casa por variante
+ * composta; nome de um token só continua valendo por ele mesmo.
+ */
+export function resolverNomeEstrito(nome, resolverUid) {
+  if (typeof resolverUid !== 'function') return null
+  const tokens = String(nome || '').trim().split(/\s+/).filter(Boolean)
+  const composto = tokens.length > 1
+  for (const cand of candidatosNome(nome)) {
+    if (composto && !cand.includes(' ')) continue
+    const uid = resolverUid(cand)
+    if (uid) return uid
+  }
+  return null
+}
+
 /** Quem está FISICAMENTE de plantão em Unimed/HRO numa faixa da grade. */
 export function plantonistasFaixaFds(grade, faixa) {
   const linha = grade?.[faixa] || {}
@@ -193,6 +238,22 @@ export function linhasNoturnasFds(grade, posicoes = {}, opts = {}) {
       col,
     })
   }
+  // SUBSTITUTO NA VAGA (dom 16/08: JOAO RICARDO cobre a CRISTINA — escrito na
+  // cor dela no documento, e o dono leu a noite como "P3, P4, P1, P2"). Sem cor
+  // para ler, a atribuição só é feita quando é DETERMINÍSTICA: exatamente um
+  // nome sem posição e exatamente uma vaga de P1–P4 não ocupada naquela noite.
+  // Com 2+ de qualquer lado, ninguém recebe selo (nunca chutar identidade).
+  const semSelo = linhas.filter((l) => !l.setor)
+  const usados = new Set(linhas.map((l) => l.setor).filter(Boolean))
+  const vagas = ['P1', 'P2', 'P3', 'P4'].filter((pn) => posicoes?.[pn] && !usados.has(pn))
+  if (semSelo.length === 1 && vagas.length === 1) {
+    semSelo[0].setor = vagas[0]
+    const dono = String(posicoes[vagas[0]] || '').trim()
+    semSelo[0].cobrindo = dono // quem ele está cobrindo
+    // o card diz a cobertura no papel — quem lê a fila precisa saber que a
+    // vaga é de outra pessoa (o documento marcava isso pela COR)
+    if (dono) semSelo[0].papel = `${semSelo[0].papel} · cobre ${dono.split(/\s+/)[0]}`
+  }
   return linhas
 }
 
@@ -209,8 +270,12 @@ export function sugerirRodapeFds({ grade, posicoes, escalacao } = {}, turno) {
   const faixa = FDS_TURNO_FAIXA[turno]
   if (!faixa) return []
   const linha = grade?.[faixa] || {}
-  const numerados = (escalacao?.[turno] || [])
-    .map((pn) => posicoes?.[normalizarPn(pn)] || null)
+  // NOITE: a fila é a própria linha 19-07 da grade, da esquerda p/ a direita —
+  // sem lista numerada (confirmado com o dono 15/08: sáb P2,P1,P4,P3 · dom
+  // P3,P4,P1,P2 são exatamente Unimed, HRO, retaguarda 1, retaguarda 2).
+  const numerados = turno === 'noturno'
+    ? []
+    : (escalacao?.[turno] || []).map((pn) => posicoes?.[normalizarPn(pn)] || null)
   const bruto = [linha.unimed, linha.hro, ...numerados, linha.ret1, linha.ret2]
   const vistos = new Set()
   const ordem = []

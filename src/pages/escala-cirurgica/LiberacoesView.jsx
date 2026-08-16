@@ -13,7 +13,7 @@ import {
 } from '@/design-system'
 import { gerarColunaLiberacao, nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
 import { faseLiberacoes, plantonistasNoturnos, candidatosNome, linhasNoturnas, fundirLinhasNoturnas, marcarSelosNoTurno, ehDiaUtil, casarPorInicialSobrenome, P4_HOSPITAIS } from '@/lib/plantaoNoturno'
-import { marcarSelosFds, linhasNoturnasFds, plantonistasFaixaFds, faixaFdsAtual } from '@/lib/escalaFds'
+import { marcarSelosFds, linhasNoturnasFds, plantonistasFaixaFds, faixaFdsAtual, resolverNomeEstrito } from '@/lib/escalaFds'
 import { hojeISO, HOSPITAL_LABEL, OBSERVACAO_MAX } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
@@ -59,11 +59,15 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const { toast } = useToast()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
   // do turno selecionado e o rodapé (ordem de liberação) DAQUELE turno.
+  // Turno NOTURNO do FDS não tem casos próprios (o CHECK do banco só aceita
+  // matutino/vespertino): as cirurgias em curso à noite são as da TARDE — a
+  // base é o vespertino e o card do plantonista herda o que ele está operando.
+  const turnoBase = (modoFds && turno === 'noturno') ? 'vespertino' : turno
   const casosTurno = useMemo(
-    () => filtrarPorTurno((modoFds && casosFds) ? casosFds : (escala?.casos || []), turno),
-    [escala, turno, modoFds, casosFds]
+    () => filtrarPorTurno((modoFds && casosFds) ? casosFds : (escala?.casos || []), turnoBase),
+    [escala, turnoBase, modoFds, casosFds]
   )
-  const rodapeTurno = useMemo(() => rodapeDoTurno(escala?.ordemLiberacao, turno), [escala, turno])
+  const rodapeTurno = useMemo(() => rodapeDoTurno(escala?.ordemLiberacao, turnoBase), [escala, turnoBase])
   const [editor, setEditor] = useState(null) // linha em edição (sheet)
   const [rascLocal, setRascLocal] = useState('')
   const [localOutro, setLocalOutro] = useState(false) // "Outro" no seletor de local
@@ -109,7 +113,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const { roster, options: opcoesRoster, resolver: resolverUid, rosterByUid, loading: rosterLoading } = useRosterAnestesistas()
 
   // Ajuda externa DO TURNO (nomes azuis) + opções do roster p/ o sheet de adicionar.
-  const ajudaTurno = useMemo(() => rodapeDoTurno(escala?.ajudaExterna, turno), [escala, turno])
+  const ajudaTurno = useMemo(() => rodapeDoTurno(escala?.ajudaExterna, turnoBase), [escala, turnoBase])
 
   // Anestesista LIVRE (pedido do dono 24/07): teve casos no turno e TODOS já
   // encerraram (terminada/suspensa) → badge "Livre". Conta por chave IGUAL à do
@@ -170,7 +174,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     // assumidaPor por chave e troca a IDENTIDADE do slot — quem assumiu aparece
     // na posição do colega em vez de virar linha extra no fim da fila.
     const assumidas = {}
-    const prefixoTurno = turno && (turno === 'matutino' || turno === 'vespertino') ? `${turno}:` : ''
+    const prefixoTurno = (turnoBase === 'matutino' || turnoBase === 'vespertino') ? `${turnoBase}:` : ''
     for (const [rawKey, ov] of Object.entries(escala?.linhaOverrides || {})) {
       if (prefixoTurno && !String(rawKey).startsWith(prefixoTurno)) continue
       const k = prefixoTurno ? String(rawKey).slice(prefixoTurno.length) : rawKey
@@ -178,7 +182,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     }
     return gerarColunaLiberacao(casosTurno, rodapeTurno, {
       hospital: hospitalLabel,
-      ajudaExterna: rodapeDoTurno(escala.ajudaExterna, turno), // AZUL, por-turno (ajuda da tarde ≠ da manhã)
+      ajudaExterna: rodapeDoTurno(escala.ajudaExterna, turnoBase), // AZUL, por-turno (ajuda da tarde ≠ da manhã)
       // "plantão do turno seguinte" (último do rodapé sai 1º) é conhecimento de
       // DIA ÚTIL — na fila única do FDS a posição vem do documento e mover o
       // último corromperia a leitura da ordem publicada. `opts.turno` só
@@ -195,7 +199,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       // nome — quem está aqui de ajuda libera primeiro, na ordem de liberação de lá.
       rodapeOutros: presencaOutros.filter((p) => p.rodapeIdx != null),
     })
-  }, [casosTurno, rodapeTurno, escala, hospitalLabel, turno, resolverUid, nomeExibicao, presencaOutros, modoFds])
+  }, [casosTurno, rodapeTurno, escala, hospitalLabel, turno, turnoBase, resolverUid, nomeExibicao, presencaOutros, modoFds])
 
   // Locais do hospital p/ o editor de linha (dropdown, pedido do dono 2026-07-22):
   // salas da escala do dia (ordem do board) + locais APRENDIDOS do histórico
@@ -358,14 +362,20 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // está vira card `sintetico` (não existe no rodapé → não reordena).
   // Às 23h a lista do dia ZERA e sobram SÓ os P1–P4 (pedido do dono 24/07) —
   // filtrar os fundidos preserva as marcações de quem foi hoistado.
-  const linhasNoite = fase === 'dia'
-    ? []
-    : modoFds
-      // FDS: SÓ os 4 plantões da faixa 19-07 da grade importada (cols 1–2 fixas
-      // no hospital = foraDaFila; 3–4 = ordem de chamada). ORDEM_NOTURNA e o
-      // card Plantões são conhecimento de dia útil e ficam fora daqui.
-      ? linhasNoturnasFds(fdsMeta?.grade, fdsMeta?.posicoes, { resolverUid, normalizar: normNome })
-      : linhasNoturnas(chaveHospital, noturnos, p4Hospital)
+  // FDS: a NOITE é um TURNO PRÓPRIO do seletor (dono 15/08 21h: "sábado de
+  // manhã não está idêntica" — a fusão dos 4 sobre a lista do dia roubava o
+  // topo e renumerava tudo). No turno 'noturno' a fila é SÓ os 4 da grade
+  // 19-07, na ordem da esquerda p/ a direita (Unimed, HRO, ret1, ret2) — que é
+  // exatamente a ordem ditada pelo dono (sáb P2,P1,P4,P3 · dom P3,P4,P1,P2).
+  // Matutino/Vespertino ficam PUROS a qualquer hora: conferir a fila da manhã
+  // às 21h mostra a manhã como publicada.
+  const noiteFds = modoFds && turno === 'noturno'
+  const linhasNoite = modoFds
+    // SÓ os 4 plantões da faixa 19-07 da grade importada (cols 1–2 fixas no
+    // hospital = foraDaFila; 3–4 = ordem de chamada). ORDEM_NOTURNA e o card
+    // Plantões são conhecimento de dia útil e ficam fora daqui.
+    ? (noiteFds ? linhasNoturnasFds(fdsMeta?.grade, fdsMeta?.posicoes, { resolverUid: (n) => resolverNomeEstrito(n, resolverUid), normalizar: normNome }) : [])
+    : fase === 'dia' ? [] : linhasNoturnas(chaveHospital, noturnos, p4Hospital)
   // Antes das 19h, no VESPERTINO da escala de HOJE: quem entra no plantão hoje já
   // aparece com o selo P1–P4 na lista da tarde (pedido do dono 25/07) — só o
   // aviso, sem `noturno`: posição, cor e liberação seguem a lógica do dia.
@@ -377,7 +387,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const avisarSelos = fase === 'dia' && escala?.data === hojeISO() && ehDiaUtil(escala?.data)
   const fundidas = linhasNoite.length
     ? fundirLinhasNoturnas(linhas, linhasNoite, {
-        resolverUid: resolverNomeCompleto,
+        // FDS: matching ESTRITO — sem ele "JOAO RICARDO" casava com o alias
+        // "JOAO" do JOAO HENRIQUE e os dois viravam um card só (16/08)
+        resolverUid: modoFds ? (n) => resolverNomeEstrito(n, resolverUid) : resolverNomeCompleto,
         normalizar: normNome,
         display: (nome, uid) => (uid && nomeExibicao(uid)) || titleCaseNome(nome),
       })
@@ -390,14 +402,19 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const comSelos = modoFds
     ? marcarSelosFds(fundidas, fdsMeta?.posicoes, { resolverUid, normalizar: normNome })
     : fundidas
-  const linhasFase = fase === 'zerada' ? comSelos.filter((l) => l.noturno) : comSelos
+  // Turno NOTURNO do FDS = só os 4 da grade (mesma regra do 'zerada' de dia
+  // útil): quem já estava na lista da tarde é HOISTADO com o conteúdo (cirurgia
+  // em curso continua visível), quem não estava vira card sintético.
+  const linhasFase = (fase === 'zerada' || noiteFds) ? comSelos.filter((l) => l.noturno) : comSelos
 
   if (!escala || !linhasFase.length) {
-    return fase === 'zerada' ? (
+    return (fase === 'zerada' || noiteFds) ? (
       <EmptyState
         icon={<Moon className="w-6 h-6" />}
-        title="Liberações do dia encerradas"
-        description="A lista zera às 23h e ficam só os plantonistas da noite — nenhum escalado para este hospital."
+        title={noiteFds ? 'Sem plantão noturno na escala' : 'Liberações do dia encerradas'}
+        description={noiteFds
+          ? 'A linha 19-07HS do documento de fim de semana não trouxe nomes — reimporte o documento para gerar a fila da noite.'
+          : 'A lista zera às 23h e ficam só os plantonistas da noite — nenhum escalado para este hospital.'}
       />
     ) : (
       <EmptyState

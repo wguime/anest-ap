@@ -81,6 +81,30 @@ describe('turno acompanha o relógio (dono 15/08)', () => {
     expect(screen.getByText(/· Vespertino/)).toBeTruthy()
   })
 
+  it('FDS: às 19h o turno vira NOTURNO (3 turnos no seletor: 7h/13h/19h)', async () => {
+    vi.setSystemTime(new Date('2026-08-15T18:59:00-03:00')) // sábado, fim da tarde
+    const hoje = hojeLocalISO()
+    estado.ctx = {
+      escalas: {
+        unimed: null, hro: null, materno: null,
+        fds: {
+          id: 'fds-1', hospital: 'fds', status: 'publicada', data: hoje,
+          ordemLiberacao: { matutino: ['A'], vespertino: ['B'] }, ajudaExterna: {},
+          liberacoes: {}, linhaOverrides: {}, casos: [],
+          fdsMeta: { grade: { '19-07': { unimed: 'JOAO HENRIQUE', hro: 'GUILHERME DIDOMENICO', ret1: 'MATHEUS', ret2: 'CRISTINA' } }, posicoes: {} },
+        },
+      },
+      p4Hospital: null, data: hoje, hoje, loading: false, ...acoes(),
+    }
+    render(<EscalaCirurgicaPage onNavigate={() => {}} goBack={() => {}} />, { wrapper: wrap })
+    // seletor tem os 3 turnos do fim de semana
+    expect(screen.getByRole('tab', { name: 'Noturno' })).toBeTruthy()
+    expect(screen.getByText(/· Vespertino/)).toBeTruthy()
+    // 18:59 → 19:01: a virada das 19h leva a tela para o noturno sozinha
+    await act(async () => { vi.advanceTimersByTime(2 * 60_000) })
+    expect(screen.getByText(/· Noturno/)).toBeTruthy()
+  })
+
   it('escolha manual divergente NÃO é desfeita pelo relógio na mesma faixa', async () => {
     vi.setSystemTime(new Date('2026-08-15T14:00:00-03:00')) // tarde
     montarHoje()
