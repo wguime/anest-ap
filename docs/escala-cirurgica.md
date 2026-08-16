@@ -397,6 +397,25 @@ de importação normal (sem rodapé próprio no FDS).
   libera antes). Às 23h a lista zera e ficam só os 4.
 - **HomeCard** no FDS mostra os plantões físicos da faixa atual (madrugada <7h
   usa a grade da véspera). `SETORES_CONFIG` do Pega Plantão ganhou P12.
+- **NOTURNO é um TURNO do seletor** (dono 15/08 21h, correção): no FDS o
+  seletor tem `Matutino · Vespertino · Noturno` e o relógio troca entre eles às
+  **7h/13h/19h** (`turnoFdsAtual`). Antes a noite era uma FASE fundida por cima
+  da lista do dia — roubava o topo e renumerava a manhã; hoje cada turno mostra
+  a própria fila, pura, a qualquer hora. O turno noturno é a linha 19-07 da
+  grade na ordem esquerda→direita (Unimed, HRO, retaguarda 1, retaguarda 2),
+  que é exatamente a ordem operacional (sáb P2,P1,P4,P3 · dom P3,P4,P1,P2); os
+  cards herdam a cirurgia da tarde em curso, porque `noturno` não é turno de
+  CASO (CHECK do banco). Ordens confirmadas pelo dono (último→primeiro a ser
+  liberado): sáb manhã P1,P2,P7,P8,P5,P6,P11,P10,P9,P12,P3,P4 · sáb tarde
+  P3,P4,P6,P5,P9,P10,P11,P1,P2 · dom manhã P3,P4,P8,P7,P11,P2,P1 · dom tarde
+  P1,P2,P7,P8,P11,P4,P3.
+- **Substituto na vaga da noite**: quem aparece na linha 19-07 sem ser P1–P4
+  (dom 16/08: JOAO RICARDO cobrindo a CRISTINA, escrito na cor dela no
+  documento) colapsava com o JOAO HENRIQUE pelo alias "JOAO" e sumia da fila —
+  `resolverNomeEstrito` proíbe casar nome COMPOSTO por token solto. Ele assume
+  o selo da vaga livre quando a atribuição é determinística (1 desconhecido ↔ 1
+  vaga), com "cobre X" no papel do card; com 2+ de qualquer lado ninguém recebe
+  selo (nunca chutar identidade).
 - **Rollout seguro**: sem linha `'fds'` publicada, sáb/dom seguem no
   comportamento por hospital + aviso para quem edita. Dia útil 100% intacto
   (testes de regressão).

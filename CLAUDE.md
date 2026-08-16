@@ -338,7 +338,18 @@ view); **trocas e P4-coringa FORA do modo FDS**. Fase noturna:
 `faseLiberacoes({fds:true})` liga 19h/23h no sáb/dom com a faixa 19-07 DA
 GRADE (`linhasNoturnasFds`; Unimed/HRO fixos = `foraDaFila`, nunca "próximo").
 HomeCard mostra os plantões físicos da faixa (madrugada <7h = grade da
-véspera); Pega Plantão ganhou P12 no FDS. Rollout: sem linha 'fds' publicada,
+véspera); Pega Plantão ganhou P12 no FDS. **NOTURNO É TURNO, não fase (dono
+15/08 21h):** o seletor do FDS tem 3 turnos (Matutino·Vespertino·**Noturno**) e
+o relógio escolhe entre eles às **7h/13h/19h** (`turnoFdsAtual`) — a fusão
+antiga por cima da lista do dia roubava o topo e RENUMERAVA a manhã ("sábado de
+manhã não está idêntica"); hoje conferir a manhã às 21h mostra a manhã pura. O
+turno noturno é SÓ a linha 19-07 da grade, esquerda→direita (= ordem ditada:
+sáb P2,P1,P4,P3 · dom P3,P4,P1,P2), com os cards herdando a cirurgia da tarde
+em curso (`FDS_TURNO_CASOS`: noturno lê casos do vespertino — o CHECK do banco
+só aceita matutino/vespertino). **Substituto na vaga:** nome fora do P1–P4 na
+linha 19-07 (dom: JOAO RICARDO) some se casar por primeiro nome
+(`resolverNomeEstrito` proíbe token solto p/ nome composto) e ASSUME o selo da
+vaga livre quando é 1↔1 (P3 da Cristina), com "cobre X" no papel. Rollout: sem linha 'fds' publicada,
 sáb/dom seguem por hospital + aviso a quem edita. Demo `DEMO_DATE_FDS`
 (27/06, DEV-only) + e2e `escala-cirurgica-fds.spec.ts`.
 
