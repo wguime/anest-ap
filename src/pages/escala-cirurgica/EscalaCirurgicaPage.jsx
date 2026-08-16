@@ -13,6 +13,7 @@ import { useEscalaCirurgica, HOSPITAIS, HOSPITAL_LABEL, hojeISO } from '@/contex
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import SegmentedSelector from './SegmentedSelector'
+import BarraControles from './BarraControles'
 import useAgoraMinuto from './useAgoraMinuto'
 import MinhasEscalasView from './MinhasEscalasView'
 import BoardView from './BoardView'
@@ -20,7 +21,7 @@ import LiberacoesView from './LiberacoesView'
 import ImportarEscalaPage from './ImportarEscalaPage'
 import ImportarEscalaFdsPage from './ImportarEscalaFdsPage'
 import TrocaSheet from './TrocaSheet'
-import { meuAliasDe, turnoAtual, casosResolvidos, estadoTrocasDoHistorico, filtrarPorTurno, normNome, formatData, rodapeDoTurno, localizarSlotEscala, planoExecucaoTroca, planoDesfazerTroca } from './utils'
+import { meuAliasDe, turnoAtual, casosResolvidos, dataPorExtenso, estadoTrocasDoHistorico, filtrarPorTurno, normNome, formatData, rodapeDoTurno, localizarSlotEscala, planoExecucaoTroca, planoDesfazerTroca } from './utils'
 import { ehFimDeSemana, FDS_HOSPITAL, FDS_TURNO_CASOS, turnoFdsAtual } from '@/lib/escalaFds'
 import { podeEditarEscalaCirurgica } from './gate'
 
@@ -301,7 +302,10 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     <div className="min-h-dvh bg-background pb-24">
       <PageHeader
         title="Escala Cirúrgica"
-        subtitle={`${aba === 'liberacoes' && modoFds ? 'Fim de semana' : HOSPITAL_LABEL[hospital]} · ${(TURNO_OPCOES_FDS.find((t) => t.value === turno) || {}).label || 'Manhã'}`}
+        // Subtítulo = DATA da escala (dono 16/08). Hospital e turno saíram
+        // daqui: os botões logo abaixo já dizem, e a data não estava em lugar
+        // nenhum depois que o botão "Hoje" deixou de aparecer sozinho.
+        subtitle={dataPorExtenso(data, hoje)}
         onBack={goBack}
         actions={
           canEdit ? (
@@ -316,37 +320,28 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
       />
 
       <div className="max-w-3xl mx-auto px-4 pt-3 space-y-3">
-        {/* Data (Hoje/Amanhã) + Turno na MESMA linha, compactos (dono 16/08).
+        {/* Barra de controles (data · turno · hospital · abas · ações).
             O CALENDÁRIO LIVRE ("Outra data") SAIU em 16/08, a pedido do dono —
             também no dia útil: a escala é operada no dia, e o atalho abria a
             porta para consultar datas vazias. Publicar noutra data continua
             possível pela importação, que tem calendário próprio. */}
-        {/* Hoje + turnos na MESMA linha, todos os cards com a MESMA largura
-            (dono 16/08): cada seletor recebe `flex` = nº de opções e o mesmo
-            gap interno, então as colunas ficam harmônicas de ponta a ponta.
-            O "Hoje" leva a tinta forte (destaque da data). */}
-        <div className="flex items-stretch gap-1.5">
-          <SegmentedSelector
-            className="min-w-0"
-            style={{ flex: opcoesData.length }}
-            size="xs"
-            strong
-            options={opcoesData}
-            value={modoData === 'outra' ? '' : modoData}
-            onChange={(v) => {
-              if (v === 'amanha') { setData(amanha); setTurno('matutino') } // manhã seguinte
-              else setData(hoje)
-            }}
-          />
-          <SegmentedSelector
-            className="min-w-0"
-            style={{ flex: (modoFds ? TURNO_OPCOES_FDS : TURNO_OPCOES).length }}
-            size="xs"
-            options={modoFds ? TURNO_OPCOES_FDS : TURNO_OPCOES}
-            value={turno}
-            onChange={escolherTurno}
-          />
-        </div>
+        <BarraControles
+          opcoesData={opcoesData}
+          modoData={modoData}
+          onEscolherData={(v) => {
+            if (v === 'amanha') { setData(amanha); setTurno('matutino') } // manhã seguinte
+            else setData(hoje)
+          }}
+          turnoOpcoes={modoFds ? TURNO_OPCOES_FDS : TURNO_OPCOES}
+          turno={turno}
+          onEscolherTurno={escolherTurno}
+          hospitalOpcoes={HOSPITAL_OPCOES}
+          hospital={hospital}
+          onEscolherHospital={setHospital}
+          abaOpcoes={ABA_OPCOES}
+          aba={aba}
+          onEscolherAba={setAba}
+        />
 
         {/* Aterrissou noutra data (ex.: publicou pela importação): rótulo + volta */}
         {modoData === 'outra' && (
@@ -354,15 +349,6 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
             Vendo {formatData(data)} — <button type="button" className="font-semibold underline" onClick={() => setData(hoje)}>voltar para hoje</button>
           </p>
         )}
-
-        {/* Hospital SEMPRE visível (dono 16/08: "ocultou o nome dos hospitais,
-            corrija"). No fim de semana a fila de liberação é única — o seletor
-            segue valendo para as abas Minhas/Completa, e a nota abaixo explica
-            por que a lista de liberações não muda ao trocar de hospital. */}
-        <SegmentedSelector size="sm" options={HOSPITAL_OPCOES} value={hospital} onChange={setHospital} />
-
-        {/* Abas internas — variante "filled" (trilho + selecionada em verde sólido, pedido do dono 24/07) */}
-        <SegmentedSelector options={ABA_OPCOES} value={aba} onChange={setAba} variant="filled" />
 
         {/* Botão de demonstração EXCLUÍDO (pedido do dono 23/07) — a fixture demo
             segue existindo SÓ em DEV (base determinística dos e2e). */}

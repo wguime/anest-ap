@@ -490,6 +490,30 @@ export function formatData(iso) {
   return d && m && a ? `${d}/${m}/${a}` : iso
 }
 
+/**
+ * Data por extenso para o subtítulo da tela (dono 16/08: a data da escala no
+ * lugar de "Fim de semana · Noite", que os botões abaixo já dizem).
+ * Ex.: "Domingo, 16 de agosto" · hoje/amanhã ganham prefixo próprio.
+ */
+export function dataPorExtenso(iso, hojeIso = null) {
+  if (!iso) return ''
+  const d = new Date(`${iso}T12:00:00`)
+  if (Number.isNaN(d.getTime())) return ''
+  const DIAS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+  // Curto o bastante para caber no subtítulo do cabeçalho a 375px sem truncar
+  // ("Hoje · Domingo, 16 de agosto" cortava em "16 de ago…").
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const corpo = `${DIAS[d.getDay()]}, ${dd}/${mm}`
+  if (!hojeIso) return corpo
+  if (iso === hojeIso) return `Hoje · ${corpo}`
+  const amanha = new Date(`${hojeIso}T12:00:00`)
+  amanha.setDate(amanha.getDate() + 1)
+  const off = amanha.getTimezoneOffset() * 60000
+  const amanhaIso = new Date(amanha.getTime() - off).toISOString().slice(0, 10)
+  return iso === amanhaIso ? `Amanhã · ${corpo}` : corpo
+}
+
 /** "HH:MM" → minutos do dia; null se inválido/vazio (mesma regex de turnoDeHora). */
 export function parseHoraMinutos(hora) {
   const m = /^(\d{1,2}):?(\d{2})?/.exec(String(hora || '').trim())

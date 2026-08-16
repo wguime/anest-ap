@@ -62,6 +62,10 @@ beforeEach(() => {
 })
 afterEach(() => vi.useRealTimers())
 
+/** Turno selecionado, lido do próprio seletor (o subtítulo virou a data). */
+const turnoAtivo = () => ['Manhã', 'Tarde', 'Noite']
+  .find((n) => screen.queryByRole('tab', { name: n })?.getAttribute('aria-selected') === 'true') || null
+
 const montarHoje = () => {
   const hoje = hojeLocalISO()
   estado.ctx = {
@@ -75,10 +79,10 @@ describe('turno acompanha o relógio (dono 15/08)', () => {
   it('às 13h a tela vira sozinha do matutino para o vespertino', async () => {
     vi.setSystemTime(new Date('2026-08-15T12:59:00-03:00'))
     montarHoje()
-    expect(screen.getByText(/· Manhã/)).toBeTruthy()
+    expect(turnoAtivo()).toBe('Manhã')
     // 12:59 → 13:01 — o tick do relógio (30s) dispara a virada, sem toque
     await act(async () => { vi.advanceTimersByTime(2 * 60_000) })
-    expect(screen.getByText(/· Tarde/)).toBeTruthy()
+    expect(turnoAtivo()).toBe('Tarde')
   })
 
   it('FDS: às 19h o turno vira NOTURNO (3 turnos no seletor: 7h/13h/19h)', async () => {
@@ -100,12 +104,13 @@ describe('turno acompanha o relógio (dono 15/08)', () => {
     // seletor tem os 3 turnos do fim de semana, com rótulos CURTOS (dono 16/08:
     // Manhã/Tarde/Noite cabem ao lado do 'Hoje' a 375px)
     expect(screen.getByRole('tab', { name: 'Noite' })).toBeTruthy()
+    // turno e hospital em trilhos SEPARADOS (um trilho = um eixo)
     expect(screen.getByRole('tab', { name: 'Manhã' }).closest('[role="tablist"]'))
-      .not.toBe(screen.getByRole('tab', { name: 'Hoje' }).closest('[role="tablist"]'))
-    expect(screen.getByText(/· Tarde/)).toBeTruthy()
+      .not.toBe(screen.getByRole('tab', { name: 'Unimed' }).closest('[role="tablist"]'))
+    expect(turnoAtivo()).toBe('Tarde')
     // 18:59 → 19:01: a virada das 19h leva a tela para o noturno sozinha
     await act(async () => { vi.advanceTimersByTime(2 * 60_000) })
-    expect(screen.getByText(/· Noite/)).toBeTruthy()
+    expect(turnoAtivo()).toBe('Noite')
   })
 
   it('FDS: o seletor de HOSPITAL continua visível na aba Liberações (dono 16/08)', () => {
@@ -143,8 +148,9 @@ describe('turno acompanha o relógio (dono 15/08)', () => {
     vi.setSystemTime(new Date('2026-08-17T10:00:00-03:00'))
     montarHoje()
     expect(screen.queryByText(/Outra data/)).toBeNull()
-    // a navegação que ficou é só Hoje (+ Amanhã quando publicada)
-    expect(screen.getByRole('tab', { name: 'Hoje' })).toBeTruthy()
+    // "Hoje" sozinho também saiu (dono 16/08): sem escala de amanhã publicada
+    // não há escolha de data, e a data mora no subtítulo do cabeçalho
+    expect(screen.queryByRole('tab', { name: 'Hoje' })).toBeNull()
   })
 
   it('dia útil NÃO tem turno Noturno (é conceito do fim de semana)', () => {
@@ -157,12 +163,12 @@ describe('turno acompanha o relógio (dono 15/08)', () => {
   it('escolha manual divergente NÃO é desfeita pelo relógio na mesma faixa', async () => {
     vi.setSystemTime(new Date('2026-08-15T14:00:00-03:00')) // tarde
     montarHoje()
-    expect(screen.getByText(/· Tarde/)).toBeTruthy()
+    expect(turnoAtivo()).toBe('Tarde')
     // usuário consulta a manhã de propósito…
     fireEvent.click(screen.getByRole('tab', { name: 'Manhã' }))
-    expect(screen.getByText(/· Manhã/)).toBeTruthy()
+    expect(turnoAtivo()).toBe('Manhã')
     // …e os ticks seguintes não roubam a tela de volta
     await act(async () => { vi.advanceTimersByTime(5 * 60_000) })
-    expect(screen.getByText(/· Manhã/)).toBeTruthy()
+    expect(turnoAtivo()).toBe('Manhã')
   })
 })
