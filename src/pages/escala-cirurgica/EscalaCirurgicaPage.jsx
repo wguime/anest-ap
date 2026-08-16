@@ -325,13 +325,16 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
             também no dia útil: a escala é operada no dia, e o atalho abria a
             porta para consultar datas vazias. Publicar noutra data continua
             possível pela importação, que tem calendário próprio. */}
-        {/* Data COMPACTA numa linha (dono 16/08: "reduza o tamanho do card
-            Hoje") e os turnos em linha PRÓPRIA, lado a lado ("mantenha todos
-            em linha conforme estavam"). */}
-        <div className="flex items-stretch gap-2">
+        {/* Hoje + turnos na MESMA linha, todos os cards com a MESMA largura
+            (dono 16/08): cada seletor recebe `flex` = nº de opções e o mesmo
+            gap interno, então as colunas ficam harmônicas de ponta a ponta.
+            O "Hoje" leva a tinta forte (destaque da data). */}
+        <div className="flex items-stretch gap-1.5">
           <SegmentedSelector
-            className="shrink-0"
+            className="min-w-0"
+            style={{ flex: opcoesData.length }}
             size="sm"
+            strong
             options={opcoesData}
             value={modoData === 'outra' ? '' : modoData}
             onChange={(v) => {
@@ -339,13 +342,15 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               else setData(hoje)
             }}
           />
+          <SegmentedSelector
+            className="min-w-0"
+            style={{ flex: (modoFds ? TURNO_OPCOES_FDS : TURNO_OPCOES).length }}
+            size="sm"
+            options={modoFds ? TURNO_OPCOES_FDS : TURNO_OPCOES}
+            value={turno}
+            onChange={escolherTurno}
+          />
         </div>
-        <SegmentedSelector
-          size="sm"
-          options={modoFds ? TURNO_OPCOES_FDS : TURNO_OPCOES}
-          value={turno}
-          onChange={escolherTurno}
-        />
 
         {/* Aterrissou noutra data (ex.: publicou pela importação): rótulo + volta */}
         {modoData === 'outra' && (
