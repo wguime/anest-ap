@@ -444,6 +444,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // No FDS não há coringa: os 4 têm posto explícito na grade 19-07 — o sheet do
   // P4 fica fora (e o selo Pn do modo FDS nunca vira botão).
   const podeMarcarP4 = !!canEdit && !!onDefinirP4 && !modoFds
+  // urgência/encaixe precisa de uma escala REAL de destino (a demo não grava)
+  const podeAddCaso = !!escalaCasoNovo && !String(escalaCasoNovo.id || '').startsWith('demo-')
 
   // não escalado = está no rodapé mas NUNCA teve caso no dia → liberado por
   // definição (vermelho desde a publicação). Quem TEVE casos e todos encerraram
@@ -736,6 +738,32 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   }
   return (
     <div className="space-y-3">
+      {/* AÇÕES NO TOPO, LADO A LADO (dono 16/08) — mesma altura do "Adicionar
+          caso" da aba Completa (Button size='sm'). Rótulo visível curto para os
+          dois caberem a 375px; o aria-label mantém o texto completo. */}
+      {canEdit && (podeAddCaso || fase !== 'zerada') && (
+        <div className="flex items-stretch gap-2">
+          {podeAddCaso && (
+            <Button
+              size="sm" variant="outline" className="min-w-0 flex-1"
+              aria-label="Adicionar caso (urgência/encaixe)"
+              onClick={() => setAddCaso(true)}
+            >
+              <Plus className="w-4 h-4 shrink-0" /> Adicionar caso
+            </Button>
+          )}
+          {fase !== 'zerada' && (
+            <Button
+              size="sm" variant="outline" className="min-w-0 flex-1"
+              aria-label="Adicionar anestesista (ajuda)"
+              onClick={() => setAjudaSheet(true)}
+            >
+              <UserPlus className="w-4 h-4 shrink-0" /> Adicionar ajuda
+            </Button>
+          )}
+        </div>
+      )}
+
       {/* Procedimentos sem anestesista NO TOPO (pedido do dono 24/07): o plantonista
           precisa cobrir. Somem sozinhos ao serem marcados como terminados/suspensos
           (concluído é filtrado em gerarColunaLiberacao). Hora em destaque, por horário. */}
@@ -1244,24 +1272,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
         })()}
       </div>
 
-      {/* Urgência/encaixe SEM trocar de aba (dono 16/08): o mesmo sheet da aba
-          Completa. No fim de semana o caso entra na escala do HOSPITAL
-          selecionado no topo — a fila é única, os casos não. */}
-      {canEdit && escalaCasoNovo && !String(escalaCasoNovo.id || '').startsWith('demo-') && (
-        <Button variant="outline" className="w-full" onClick={() => setAddCaso(true)}>
-          <Plus className="w-4 h-4" /> Adicionar caso (urgência/encaixe)
-        </Button>
-      )}
-
-      {/* Adicionar anestesista de OUTRO hospital como AJUDA (pedido do dono 24/07):
-          entra ao fim da coluna (badge Ajuda azul, primeiro a ser liberado). */}
-      {canEdit && fase !== 'zerada' && (
-        <Button variant="outline" className="w-full" onClick={() => setAjudaSheet(true)}>
-          <UserPlus className="w-4 h-4" /> Adicionar anestesista (ajuda)
-        </Button>
-      )}
-
-      {addCaso && escalaCasoNovo && (
+      {addCaso && podeAddCaso && (
         <AddCasoSheet
           escala={escalaCasoNovo}
           turno={turnoBase}
