@@ -11,7 +11,12 @@ export default function SegmentedSelector({ options, value, onChange, className 
   // size='sm' (dono 16/08): data + 3 turnos do fim de semana na MESMA linha a
   // 375px. Só o padding horizontal e o corpo do texto encolhem — a altura
   // mínima de toque (44px) fica intacta.
-  const sm = size === 'sm'
+  // size='xs' (dono 16/08, tarde): linha de data/turno mais BAIXA que a dos
+  // hospitais, para separar visualmente os dois eixos. 40px é o piso que
+  // mantém o toque confortável (o card tem ~80px de largura); abaixo disso o
+  // dedo começa a errar no centro cirúrgico.
+  const xs = size === 'xs'
+  const sm = size === 'sm' || xs
   const badge = (opt) =>
     opt.badge != null && opt.badge > 0 ? (
       <span className={`inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-bold leading-none ${
@@ -44,7 +49,7 @@ export default function SegmentedSelector({ options, value, onChange, className 
                     ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
                     : 'bg-transparent text-muted-foreground'
                 }`
-              : `${sm ? 'py-2 px-1.5 text-[13px] rounded-[14px]' : 'py-3 px-3 text-sm rounded-[16px]'} min-h-[44px] border font-medium transition-all active:scale-95 inline-flex items-center justify-center gap-1.5 ${
+              : `${sm ? 'px-1.5 text-[13px] rounded-[14px]' : 'py-3 px-3 text-sm rounded-[16px]'} ${xs ? 'min-h-[40px] py-1' : `${sm ? 'py-2' : ''} min-h-[44px]`} border font-medium transition-all active:scale-95 inline-flex items-center justify-center gap-1.5 ${
                   active
                     // strong (dono 16/08): mesma família, tinta um passo mais
                     // forte — destaca a data sem virar o verde sólido das abas

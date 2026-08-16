@@ -333,7 +333,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           <SegmentedSelector
             className="min-w-0"
             style={{ flex: opcoesData.length }}
-            size="sm"
+            size="xs"
             strong
             options={opcoesData}
             value={modoData === 'outra' ? '' : modoData}
@@ -345,7 +345,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           <SegmentedSelector
             className="min-w-0"
             style={{ flex: (modoFds ? TURNO_OPCOES_FDS : TURNO_OPCOES).length }}
-            size="sm"
+            size="xs"
             options={modoFds ? TURNO_OPCOES_FDS : TURNO_OPCOES}
             value={turno}
             onChange={escolherTurno}
