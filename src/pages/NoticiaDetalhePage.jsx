@@ -11,10 +11,10 @@
  *  - Botões grid 2-col: PMC | PubMed | Fonte | Copiar DOI.
  *  - Metadados expandíveis: categoria, tipo, citações, score, DOI, PMID, MeSH top 10.
  */
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, Suspense } from 'react'
 import { ExternalLink, Newspaper, Calendar, Copy, CheckCheck, BookOpen, Lock, ChevronDown, ChevronUp, FileText, Award } from 'lucide-react'
 import { useNoticias } from '@/contexts/NoticiasContext'
-import { Button, Skeleton, EmptyState } from '@/design-system'
+import { Button, Skeleton, EmptyState, PDFViewer } from '@/design-system'
 import { PageHeader } from '@/components'
 import { Badge } from '@/design-system/components/ui/badge'
 import { PDFEmbed } from '@/components/noticias/PDFEmbed'
@@ -223,15 +223,28 @@ export default function NoticiaDetalhePage({ noticiaId, onNavigate, goBack }) {
               </div>
             )}
 
-            {/* PDF / artigo OA — usa iframe nativo do browser (bypassa CORS).
-                Detecta URLs que não são PDFs diretos (DOIs, landings) e mostra
-                fallback CTA "Abrir artigo na fonte" automaticamente. */}
+            {/* PDF do artigo completo.
+                - URL relativa (PDF hospedado pelo app em public/artigos/, caso
+                  da curadoria): mesmo PDFViewer da gestão documental (react-pdf,
+                  zoom + fullscreen; Suspense LOCAL obrigatório — sem boundary
+                  próximo o lazy congela a UI anterior sem erro).
+                - URL externa (PMC etc.): segue no iframe PDFEmbed, que esconde
+                  sozinho quando o host bloqueia embed (X-Frame-Options/CORS). */}
             {noticia.oaPdfUrl && (
-              <section
-                aria-label="PDF do artigo (Open Access)"
-                className="rounded-xl overflow-hidden border border-border bg-card"
-              >
-                <PDFEmbed url={noticia.oaPdfUrl} title={noticia.tituloPt || noticia.titulo} />
+              <section aria-label="PDF do artigo completo">
+                {noticia.oaPdfUrl.startsWith('/') ? (
+                  <Suspense fallback={<Skeleton className="w-full h-[500px] rounded-2xl" />}>
+                    <PDFViewer
+                      src={noticia.oaPdfUrl}
+                      title={noticia.tituloPt || noticia.titulo}
+                      height="500px"
+                    />
+                  </Suspense>
+                ) : (
+                  <div className="rounded-xl overflow-hidden border border-border bg-card">
+                    <PDFEmbed url={noticia.oaPdfUrl} title={noticia.tituloPt || noticia.titulo} />
+                  </div>
+                )}
               </section>
             )}
 
