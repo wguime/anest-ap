@@ -51,14 +51,18 @@ function fingerprint(rows) {
   if (!Array.isArray(rows) || rows.length === 0) return '0:'
   let max = ''
   let ids = ''
+  let chars = 0
   for (const r of rows) {
     if (r?.publicadoEm && r.publicadoEm > max) max = r.publicadoEm
     // ids na conta: sem eles, uma troca de composição da lista com mesmo
     // tamanho e mesma data máxima (ex.: entrada de artigo curado no top 10)
     // não dispararia o dispatch e a UI ficaria presa no cache antigo
     ids += r?.id || ''
+    // tamanho do texto PT na conta: edição/tradução de conteúdo não muda
+    // id nem data — sem este sinal a revisão só aparecia ao reabrir o app
+    chars += (r?.tituloPt?.length || 0) + (r?.resumoPt?.length || 0)
   }
-  return `${rows.length}:${max}:${ids}`
+  return `${rows.length}:${max}:${chars}:${ids}`
 }
 
 function loadFromCache() {
