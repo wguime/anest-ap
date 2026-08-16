@@ -97,12 +97,22 @@ describe('turno acompanha o relógio (dono 15/08)', () => {
       p4Hospital: null, data: hoje, hoje, loading: false, ...acoes(),
     }
     render(<EscalaCirurgicaPage onNavigate={() => {}} goBack={() => {}} />, { wrapper: wrap })
-    // seletor tem os 3 turnos do fim de semana
+    // seletor tem os 3 turnos do fim de semana, em LINHA PRÓPRIA (a 375px os
+    // 3 rótulos não cabem ao lado do seletor de data — ficavam cortados)
     expect(screen.getByRole('tab', { name: 'Noturno' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Matutino' }).closest('[role="tablist"]'))
+      .not.toBe(screen.getByRole('tab', { name: 'Hoje' }).closest('[role="tablist"]'))
     expect(screen.getByText(/· Vespertino/)).toBeTruthy()
     // 18:59 → 19:01: a virada das 19h leva a tela para o noturno sozinha
     await act(async () => { vi.advanceTimersByTime(2 * 60_000) })
     expect(screen.getByText(/· Noturno/)).toBeTruthy()
+  })
+
+  it('dia útil NÃO tem turno Noturno (é conceito do fim de semana)', () => {
+    vi.setSystemTime(new Date('2026-08-17T10:00:00-03:00')) // segunda
+    montarHoje()
+    expect(screen.queryByRole('tab', { name: 'Noturno' })).toBeNull()
+    expect(screen.getByRole('tab', { name: 'Matutino' })).toBeTruthy()
   })
 
   it('escolha manual divergente NÃO é desfeita pelo relógio na mesma faixa', async () => {

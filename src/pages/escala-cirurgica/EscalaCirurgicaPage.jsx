@@ -340,8 +340,16 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               }}
             />
           )}
-          <SegmentedSelector className="flex-1" options={modoFds ? TURNO_OPCOES_FDS : TURNO_OPCOES} value={turno} onChange={escolherTurno} />
+          {/* 2 turnos cabem ao lado da data; os 3 do FDS não — a 375px os
+              rótulos "Vespertino"/"Noturno" saíam cortados, então a linha é
+              própria (mobile-first). */}
+          {!modoFds && (
+            <SegmentedSelector className="flex-1" options={TURNO_OPCOES} value={turno} onChange={escolherTurno} />
+          )}
         </div>
+        {modoFds && (
+          <SegmentedSelector options={TURNO_OPCOES_FDS} value={turno} onChange={escolherTurno} />
+        )}
 
         {/* "Outra data" (calendário livre) só p/ quem edita a escala */}
         {canEdit && (
