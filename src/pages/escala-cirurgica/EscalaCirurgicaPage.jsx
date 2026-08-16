@@ -13,6 +13,7 @@ import { useEscalaCirurgica, HOSPITAIS, HOSPITAL_LABEL, hojeISO } from '@/contex
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import SegmentedSelector from './SegmentedSelector'
+import useAgoraMinuto from './useAgoraMinuto'
 import MinhasEscalasView from './MinhasEscalasView'
 import BoardView from './BoardView'
 import LiberacoesView from './LiberacoesView'
@@ -84,14 +85,42 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
 
   useEffect(() => { document.title = 'Escala Cirúrgica' }, [])
 
+  // Escolha MANUAL de turno divergente do relógio: guarda o turno do RELÓGIO
+  // no momento da escolha — o automático fica pausado enquanto a faixa durar.
+  const turnoManualRef = useRef(null)
+
   // Virou o dia: o turno volta para o do relógio. Sem isto, às 00h05 a tela do
   // dia NOVO abria no vespertino de ontem — vazio ("Nenhum caso neste turno").
   const viradaRef = useRef(hoje)
   useEffect(() => {
     if (viradaRef.current === hoje) return
     viradaRef.current = hoje
+    turnoManualRef.current = null
     setTurno(turnoAtual())
   }, [hoje])
+
+  // TURNO ACOMPANHA O RELÓGIO (dono 15/08: "a ordem de liberações deve mudar
+  // automaticamente às 7h, 13h e às 19h conforme escala"): vendo a escala de
+  // HOJE, a virada das 13h troca matutino→vespertino sozinha — sem isto a fila
+  // da manhã ficava na tela até alguém tocar o seletor. As 19h/23h já são
+  // automáticas dentro da view (fase noturna deriva do relógio), e as 7h é a
+  // virada do dia acima. Escolha manual de turno divergente pausa o automático
+  // até a PRÓXIMA virada do relógio (consultar o outro turno de propósito não
+  // pode ser desfeito sob o dedo); outra data nunca é mexida.
+  const agoraMin = useAgoraMinuto()
+  useEffect(() => {
+    if (data !== hoje) return
+    const atual = turnoAtual()
+    if (turnoManualRef.current === atual) return // escolha manual vale nesta faixa
+    turnoManualRef.current = null
+    if (turno !== atual) setTurno(atual)
+  }, [agoraMin, data, hoje, turno])
+  // Toda escolha EXPLÍCITA de turno passa por aqui: divergente do relógio →
+  // pausa o automático nesta faixa; igual ao relógio → automático segue.
+  const escolherTurno = useCallback((t) => {
+    turnoManualRef.current = t !== turnoAtual() ? turnoAtual() : null
+    setTurno(t)
+  }, [])
 
   // Abre já no hospital+turno onde o usuário está escalado (pedido do dono 23/07:
   // abria fixo em Unimed/Minhas e vinha em branco p/ quem estava no HRO/Materno).
@@ -113,7 +142,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     for (const h of HOSPITAIS) {
       if (!escalas[h]?.casos?.length) continue
       for (const t of [tNow, tNow === 'matutino' ? 'vespertino' : 'matutino']) {
-        if (temCaso(escalas[h], t)) { setHospital(h); setTurno(t); autoSelRef.current = true; return }
+        if (temCaso(escalas[h], t)) { setHospital(h); escolherTurno(t); autoSelRef.current = true; return }
       }
     }
     autoSelRef.current = true // escalas carregaram mas o user não está em nenhuma
@@ -293,7 +322,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               }}
             />
           )}
-          <SegmentedSelector className="flex-1" options={TURNO_OPCOES} value={turno} onChange={setTurno} />
+          <SegmentedSelector className="flex-1" options={TURNO_OPCOES} value={turno} onChange={escolherTurno} />
         </div>
 
         {/* "Outra data" (calendário livre) só p/ quem edita a escala */}
@@ -437,7 +466,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
             // Publicou noutra data/hospital/período? Aterrissa exatamente na escala publicada.
             if (publicado?.data) setData(publicado.data)
             if (publicado?.hospital) setHospital(publicado.hospital)
-            if (publicado?.turno) setTurno(publicado.turno)
+            if (publicado?.turno) escolherTurno(publicado.turno)
           }}
         />
       )}
