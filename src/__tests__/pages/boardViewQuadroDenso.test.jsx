@@ -163,3 +163,19 @@ describe('Completa — coluna do tempo', () => {
     expect(screen.queryByText(/^~/)).toBeNull()
   })
 })
+
+describe('Completa — colunas da direita', () => {
+  it('reserva o lugar do status e do convênio mesmo quando não existem', () => {
+    const { container } = render(
+      <CasoCard caso={{ ...caso(), convenio: '', statusCirurgia: 'agendada' }} moldura="linha" onClick={() => {}} />,
+      { wrapper: wrap },
+    )
+    const direita = container.querySelector('button > div > span:last-child > span:last-child > span:last-child')
+    // as duas caixas continuam no DOM com largura mínima — é o que mantém
+    // "Terminada" e o selo do convênio na mesma vertical, card a card
+    const caixas = direita.querySelectorAll(':scope > span')
+    expect(caixas).toHaveLength(2)
+    expect(caixas[0].className).toContain('min-w-[86px]')
+    expect(caixas[1].className).toContain('min-w-[46px]')
+  })
+})
