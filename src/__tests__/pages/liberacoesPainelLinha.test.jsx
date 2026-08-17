@@ -122,7 +122,9 @@ describe('Observação da linha (dono 29/07)', () => {
     montar({}, { ...escalaBase, linhaOverrides: { 'uid-mar': { observacao: 'trocou com o Cury no HRO' } } })
     expect(screen.getByText('trocou com o Cury no HRO')).toBeTruthy()
     abrirEditor('Marilio Flach')
-    expect(screen.getByText(/Não escreva nome de paciente/)).toBeTruthy()
+    // o aviso encurtou no redesenho 17/08 (o campo abre o painel e o texto longo
+    // roubava a linha), mas a regra LGPD continua dita na tela
+    expect(screen.getByText(/Sem nome de paciente/)).toBeTruthy()
   })
 
   it('abre o painel já preenchida e limpa quando esvaziada', async () => {
@@ -242,15 +244,43 @@ describe('Painel da linha — SEM a lista de casos (dono 30/07)', () => {
     abrirEditor('Marilio Flach')
     expect(screen.queryByText('Casos no turno')).toBeNull()
     expect(screen.queryByText(/Toque no caso/)).toBeNull()
-    // 2× e não 3×: linha da fila + hint "Automático (dos casos)" do editor —
-    // o card do caso (a 3ª ocorrência de antes) saiu do painel
-    expect(screen.getAllByText('Taciana A')).toHaveLength(2)
+    // 1×: só a linha da fila. Os hints "Automático (dos casos)" agora vivem
+    // dentro de "Ajustes da fila", que nasce recolhido (redesenho 17/08)
+    expect(screen.getAllByText('Taciana A')).toHaveLength(1)
   })
 
-  it('mostra o valor automático de local e cirurgião ao lado do ajuste', () => {
+  it('mostra o valor automático de local e cirurgião ao abrir os ajustes', () => {
     montar()
     abrirEditor('Marilio Flach')
+    // recolhido, a dobra já resume os dois valores…
+    expect(document.querySelector('[data-slot="sheet-content"]').textContent).toMatch(/Local Sala \d/)
+    expect(screen.queryByText(/Automático \(dos casos\)/)).toBeNull()
+    // …e abrir traz os campos com o automático explicado
+    fireEvent.click(screen.getByRole('button', { name: /Ajustes da fila/ }))
     expect(screen.getAllByText(/Automático \(dos casos\)/).length).toBe(2)
+  })
+
+  it('o painel abre JÁ com os ajustes quando alguém escreveu um à mão', () => {
+    // esconder um valor ajustado é pior que gastar a altura: quem abre precisa
+    // ver que a linha não está mais no automático
+    montar({}, { ...escalaBase, linhaOverrides: { 'uid-mar': { local: 'Coronel Freitas' } } })
+    abrirEditor('Marilio Flach')
+    expect(screen.getAllByText(/Automático \(dos casos\)/).length).toBe(2)
+  })
+
+  it('o recado abre o painel e conta os caracteres', () => {
+    montar()
+    abrirEditor('Marilio Flach')
+    expect(screen.getByText('Recado para a equipe')).toBeTruthy()
+    fireEvent.change(screen.getByPlaceholderText(/Hemodinâmica/), { target: { value: 'no consultório' } })
+    expect(screen.getByText(`14/120`)).toBeTruthy()
+  })
+
+  it('o cabeçalho repete o contexto que o card da fila dá', () => {
+    montar()
+    abrirEditor('Marilio Flach')
+    // quantas cirurgias e onde — é o que decide o ajuste, e sumia ao abrir o painel
+    expect(document.querySelector('[data-slot="sheet-header"]').textContent).toMatch(/1 cirurgia/)
   })
 })
 

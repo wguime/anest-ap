@@ -75,6 +75,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const [rascCirurgiao, setRascCirurgiao] = useState('')
   const [rascTermino, setRascTermino] = useState('') // término manual "HH:MM"
   const [rascObservacao, setRascObservacao] = useState('') // recado operacional da linha
+  // "Ajustes da fila" nasce RECOLHIDO (dono 17/08): local e cirurgião são conserto
+  // de exibição e quase nunca se tocam — abertos, empurravam o recado (que é o uso
+  // diário) para o meio do painel, com todos os campos no mesmo peso.
+  const [abrirAjustes, setAbrirAjustes] = useState(false)
   const [alvoTempo, setAlvoTempo] = useState(null) // linha do sheet "Tempo faltante"
   const [salvandoEditor, setSalvandoEditor] = useState(false)
   const [horaExata, setHoraExata] = useState('') // hora exata de término (HH:MM, Select DS)
@@ -653,6 +657,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     setRascCirurgiao(ov?.cirurgioes || '')
     setRascTermino(ov?.termino || '')
     setRascObservacao(observacaoDe(ov))
+    // já ajustado à mão? então o painel abre mostrando o ajuste — esconder um
+    // valor que alguém escreveu é pior que gastar a altura
+    setAbrirAjustes(!!(ov?.local || ov?.cirurgioes))
     setEditor(linha)
   }
   // Salvar ESPERA a persistência antes de fechar (o padrão do `toggle`): fechar
@@ -1311,13 +1318,17 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
         />
       )}
 
-      {/* Painel da linha (✏️): casos da pessoa (ponte com a Completa) + tempo +
-          ajustes de exibição + quem ocupa a posição. Redesenho 29/07: antes era só
-          "local e cirurgião" e o plantonista precisava trocar de aba p/ tudo. */}
+      {/* Painel da linha (✏️): o que é da LINHA da fila — recado, ajuda, troca e
+          os ajustes de exibição (local/cirurgião). Os casos saíram em 31/07.
+          DESENHO "RECADO EM CIMA" (dono 17/08, escolhido em protótipo): o que se
+          escreve aqui todo dia é o RECADO, então ele abre o painel; ajuda e troca
+          viram dois blocos de um toque; local e cirurgião — conserto de exibição,
+          raro — descem para "Ajustes da fila", recolhido mas com o valor à vista.
+          Antes os sete controles tinham o mesmo tamanho, na mesma coluna. */}
       <Sheet open={!!editor} onOpenChange={(o) => !o && setEditor(null)}>
-        <SheetContent side="bottom" className="max-h-[88vh]">
-          <SheetHeader>
-            <SheetTitle className="flex flex-wrap items-center gap-2">
+        <SheetContent side="bottom" className="!h-auto max-h-[88vh]">
+          <SheetHeader className="pb-2">
+            <SheetTitle className="flex flex-wrap items-center gap-2 text-[17px]">
               {editor?.anestesista}
               {editor?.isPlantonista && <Badge variant="secondary">Plantonista</Badge>}
               {editor?.isAjuda && <Badge variant="info">Ajuda</Badge>}
@@ -1335,12 +1346,50 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 <Badge className="border-transparent bg-category-indigo text-white">Troca</Badge>
               )}
             </SheetTitle>
+            {/* O CONTEXTO QUE O CARD JÁ MOSTRAVA (auditoria 17/08): quem abria o
+                painel perdia de vista quantas cirurgias a pessoa tem e quantas já
+                têm término informado — e é justamente o que decide o ajuste. */}
+            {editor && (
+              <p className="mt-1 text-[11.5px] leading-snug text-muted-foreground">
+                {[
+                  editor.casosAtivos
+                    ? `${editor.casosAtivos} ${editor.casosAtivos === 1 ? 'cirurgia' : 'cirurgias'}`
+                    : 'sem cirurgia neste turno',
+                  editor.casosAtivos > 1 ? `${editor.casosComTermino} com término informado` : null,
+                  (editor.salas || []).map(salaLiberacao).join('/') || editor.notaRodape || null,
+                ].filter(Boolean).join(' · ')}
+              </p>
+            )}
           </SheetHeader>
           {editor && (
             <div className="space-y-3 px-1 pb-4">
               {/* Os CASOS da pessoa saíram do painel (dono 30/07): ver e abrir
                   cirurgias é papel das abas Completa/Minhas — aqui ficou só o
                   que é da LINHA da fila (ajuda, troca, tempo total, observação). */}
+
+              {/* ── RECADO: primeiro, porque é o que se usa todo dia ─────────── */}
+              <div>
+                <label htmlFor="editor-observacao" className="mb-1.5 flex items-center gap-1.5 text-[11.5px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <MessageSquare className="h-3.5 w-3.5" /> Recado para a equipe
+                </label>
+                <Input
+                  id="editor-observacao"
+                  value={rascObservacao}
+                  maxLength={OBSERVACAO_MAX}
+                  onChange={(e) => setRascObservacao(e.target.value)}
+                  placeholder="ex.: saiu para a Hemodinâmica às 15h"
+                  onKeyDown={(e) => { if (e.key === 'Enter') salvarEditor() }}
+                />
+                <p className="mt-1 text-right text-[11px] text-muted-foreground">
+                  {rascObservacao.length}/{OBSERVACAO_MAX}
+                </p>
+                {/* LGPD: campo aberto que o grupo TODO enxerga. A escala só guarda
+                    iniciais de paciente e um texto livre não pode furar isso. */}
+                <p className="text-[11.5px] leading-snug text-muted-foreground">
+                  Aparece no card da fila. Sem nome de paciente — a escala só guarda iniciais.
+                </p>
+              </div>
+
               {/* ── AJUDA à mão (dono 29/07) — card noturno fica de fora: ele é
                   sintetizado do plantão, não existe no rodapé do turno. ── */}
               {canEdit && !editor.noturno && (
@@ -1427,29 +1476,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 )
               })()}
 
-              {/* ── OBSERVAÇÃO (dono 29/07, no lugar da troca) ──────────────────
-                  "Retire a funcionalidade de troca (apenas deixe um campo em aberto
-                  para observação)". Quem trocou de hospital ou de sala escreve aqui;
-                  o plantonista lê e resolve. Nada reescreve o rodapé nem move casos. */}
-              <div>
-                <label htmlFor="editor-observacao" className="mb-1 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  <MessageSquare className="h-3.5 w-3.5" /> Observação
-                </label>
-                <Input
-                  id="editor-observacao"
-                  value={rascObservacao}
-                  maxLength={OBSERVACAO_MAX}
-                  onChange={(e) => setRascObservacao(e.target.value)}
-                  placeholder="ex.: saiu para a Hemodinâmica às 15h"
-                  onKeyDown={(e) => { if (e.key === 'Enter') salvarEditor() }}
-                />
-                {/* LGPD: campo aberto que o grupo TODO enxerga. A escala só guarda
-                    iniciais de paciente e um texto livre não pode furar isso. */}
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Recado operacional para a equipe — aparece no card da fila. Não escreva nome de paciente (a escala só guarda iniciais).
-                </p>
-              </div>
-
               {/* ── TEMPO DA PESSOA SAIU DAQUI (dono 29/07). Havia DOIS lugares
                   editando o mesmo `linha_overrides[chave].termino`: este bloco e o
                   sheet do ⏱ da própria linha. Um campo com dois donos na tela é o
@@ -1457,63 +1483,94 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   que estourava a altura do sheet. Ficou o ⏱, que já explica o que
                   o número significa. NÃO reintroduzir aqui. ── */}
 
-              <div>
-                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Local</p>
-                {editor.salas?.length > 0 && (
-                  <p className="mb-1 text-xs text-muted-foreground">
-                    Automático (dos casos): <b className="text-foreground/80">{editor.salas.map(salaLiberacao).join('/')}</b>
-                  </p>
-                )}
-                {/* dropdown com os locais do hospital (dia + aprendidos); "Outro" abre digitação */}
-                <Select
-                  id="editor-local-select"
-                  className="w-full"
-                  options={[
-                    { value: LOCAL_AUTO, label: 'Automático (derivado dos casos)' },
-                    ...locaisHospital.map((l) => ({ value: l, label: l })),
-                    { value: LOCAL_OUTRO, label: 'Outro… (digitar)' },
-                  ]}
-                  value={localOutro ? LOCAL_OUTRO : (rascLocal || LOCAL_AUTO)}
-                  onChange={(v) => {
-                    if (v === LOCAL_OUTRO) { setLocalOutro(true); setRascLocal('') }
-                    else { setLocalOutro(false); setRascLocal(v === LOCAL_AUTO ? '' : v) }
-                  }}
-                  placeholder="Local"
-                />
-                {localOutro && (
-                  <Input
-                    id="editor-local"
-                    autoFocus
-                    className="mt-2"
-                    value={rascLocal}
-                    onChange={(e) => setRascLocal(e.target.value)}
-                    placeholder="ex.: Coronel Freitas"
-                    onKeyDown={(e) => { if (e.key === 'Enter') salvarEditor() }}
-                  />
-                )}
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Local novo digitado em "Outro" entra na lista para as próximas vezes.
-                </p>
-              </div>
-              <div>
-                <label htmlFor="editor-cirurgiao" className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground">Cirurgião(ões)</label>
-                {editor.cirurgioes?.length > 0 && (
-                  <p className="mb-1 text-xs text-muted-foreground">
-                    Automático (dos casos): <b className="text-foreground/80">{editor.cirurgioes.join(' · ')}</b>
-                  </p>
-                )}
-                <Input
-                  id="editor-cirurgiao"
-                  value={rascCirurgiao}
-                  onChange={(e) => setRascCirurgiao(e.target.value)}
-                  placeholder={editor.cirurgioes.length ? editor.cirurgioes.join(' · ') : 'ex.: Liana W'}
-                  onKeyDown={(e) => { if (e.key === 'Enter') salvarEditor() }}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Campo vazio segue o automático. "Restaurar automático" limpa também o cronômetro e as marcas desta linha.
-              </p>
-              <div className="flex gap-2">
+              {/* ── AJUSTES DA FILA (dono 17/08): local e cirurgião são conserto de
+                  EXIBIÇÃO da linha — não mudam a sala da cirurgia (isso é no
+                  detalhe do caso, na Completa). Recolhidos, com o valor atual na
+                  própria dobra: quem não veio mexer neles não paga a altura. ── */}
+              <button
+                type="button"
+                aria-expanded={abrirAjustes}
+                onClick={() => setAbrirAjustes((v) => !v)}
+                className="-mx-1 grid w-[calc(100%+8px)] grid-cols-[1fr_auto] items-center border-t border-border px-1 pt-3 text-left"
+              >
+                <span className="text-sm font-bold">Ajustes da fila</span>
+                <ChevronDown className={`row-span-2 h-4 w-4 text-muted-foreground transition-transform ${abrirAjustes ? 'rotate-180' : ''}`} />
+                <span className="truncate text-[11.5px] text-muted-foreground">
+                  Local {rascLocal || (editor.salas || []).map(salaLiberacao).join('/') || 'automático'}
+                  {' · '}
+                  Cirurgião {rascCirurgiao || editor.cirurgioes.join(' · ') || 'automático'}
+                </span>
+              </button>
+
+              {abrirAjustes && (
+                <>
+                  <div>
+                    <p className="mb-1 text-[11.5px] font-semibold uppercase tracking-wide text-muted-foreground">Local</p>
+                    {editor.salas?.length > 0 && (
+                      <p className="mb-1 text-[11.5px] text-muted-foreground">
+                        Automático (dos casos): <b className="text-foreground/80">{editor.salas.map(salaLiberacao).join('/')}</b>
+                      </p>
+                    )}
+                    {/* dropdown com os locais do hospital (dia + aprendidos); "Outro" abre digitação */}
+                    <Select
+                      id="editor-local-select"
+                      className="w-full"
+                      options={[
+                        { value: LOCAL_AUTO, label: 'Automático (derivado dos casos)' },
+                        ...locaisHospital.map((l) => ({ value: l, label: l })),
+                        { value: LOCAL_OUTRO, label: 'Outro… (digitar)' },
+                      ]}
+                      value={localOutro ? LOCAL_OUTRO : (rascLocal || LOCAL_AUTO)}
+                      onChange={(v) => {
+                        if (v === LOCAL_OUTRO) { setLocalOutro(true); setRascLocal('') }
+                        else { setLocalOutro(false); setRascLocal(v === LOCAL_AUTO ? '' : v) }
+                      }}
+                      placeholder="Local"
+                    />
+                    {localOutro && (
+                      <Input
+                        id="editor-local"
+                        autoFocus
+                        className="mt-2"
+                        value={rascLocal}
+                        onChange={(e) => setRascLocal(e.target.value)}
+                        placeholder="ex.: Coronel Freitas"
+                        onKeyDown={(e) => { if (e.key === 'Enter') salvarEditor() }}
+                      />
+                    )}
+                    <p className="mt-1 text-[11.5px] text-muted-foreground">
+                      Muda só o que a FILA mostra. A sala da cirurgia se corrige no detalhe do caso.
+                      Local novo digitado em "Outro" entra na lista para as próximas vezes.
+                    </p>
+                  </div>
+                  <div>
+                    <label htmlFor="editor-cirurgiao" className="mb-1 block text-[11.5px] font-semibold uppercase tracking-wide text-muted-foreground">Cirurgião(ões)</label>
+                    {editor.cirurgioes?.length > 0 && (
+                      <p className="mb-1 text-[11.5px] text-muted-foreground">
+                        Automático (dos casos): <b className="text-foreground/80">{editor.cirurgioes.join(' · ')}</b>
+                      </p>
+                    )}
+                    <Input
+                      id="editor-cirurgiao"
+                      value={rascCirurgiao}
+                      onChange={(e) => setRascCirurgiao(e.target.value)}
+                      placeholder={editor.cirurgioes.length ? editor.cirurgioes.join(' · ') : 'ex.: Liana W'}
+                      onKeyDown={(e) => { if (e.key === 'Enter') salvarEditor() }}
+                    />
+                    {/* escrever aqui SUBSTITUI a lista derivada — e com ela somem os
+                        tempos por cirurgia dos chips (não há caso a que casar) */}
+                    <p className="mt-1 text-[11.5px] text-muted-foreground">
+                      Campo vazio segue o automático. Escrevendo à mão, a linha deixa de mostrar
+                      o tempo de cada cirurgia.
+                    </p>
+                  </div>
+                </>
+              )}
+
+              {/* AÇÕES GRUDADAS NO PÉ: com o painel rolando (recado + troca +
+                  ajustes abertos), Salvar saía da tela e o campo ficava preenchido
+                  sem gravar. */}
+              <div className="sticky bottom-0 -mx-1 flex gap-2 border-t border-border bg-card px-1 pb-1 pt-3">
                 <Button variant="outline" className="flex-1" disabled={salvandoEditor} onClick={restaurarEditor}>
                   Restaurar automático
                 </Button>
@@ -1521,6 +1578,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   {salvandoEditor ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
                 </Button>
               </div>
+              <p className="text-[11.5px] text-muted-foreground">
+                "Restaurar automático" limpa também o cronômetro e as marcas desta linha.
+              </p>
             </div>
           )}
         </SheetContent>

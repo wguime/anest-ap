@@ -289,6 +289,9 @@ describe('Plantonista — interações na aba Liberações', () => {
     const onSetOverride = vi.fn()
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} onSetOverride={onSetOverride} />, { wrapper: wrap })
     fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Leonardo'))
+    // local e cirurgião ficam em "Ajustes da fila", recolhido (redesenho 17/08):
+    // são conserto de exibição e o painel abre no recado, que é o uso diário
+    fireEvent.click(screen.getByRole('button', { name: /Ajustes da fila/ }))
     // Local agora é DROPDOWN (23/07) — "Outro… (digitar)" abre o campo livre.
     // Alvo pelo id: o painel de tempo (29/07) também tem um combobox no sheet.
     fireEvent.click(document.getElementById('editor-local-select'))
