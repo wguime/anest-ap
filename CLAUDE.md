@@ -365,6 +365,42 @@ vaga livre quando é 1↔1 (P3 da Cristina), com "cobre X" no papel. Rollout: se
 sáb/dom seguem por hospital + aviso a quem edita. Demo `DEMO_DATE_FDS`
 (27/06, DEV-only) + e2e `escala-cirurgica-fds.spec.ts`.
 
+### Desenho das telas da escala (dono 17/08) — escolhido em protótipo, antes do código
+
+Método que valeu e vale para a próxima mudança visual do módulo: propostas renderizadas
+como HTML estático com os tokens reais, a 430px (iPhone 14 Pro Max) nos dois temas, com a
+medição ao lado (altura dos controles, y do 1º item, quantos itens cabem sem rolar) — o
+dono escolhe por imagem e só então `src/` muda. A BarraControles (16/08) não entrou em
+discussão: as telas convivem com ela.
+
+- **Completa** (`BoardView`): quadro DENSO — salas em faixas full-bleed com divisórias no
+  lugar de cartões soltos (6 casos por tela contra 4), cabeçalho `bg-card-elevated` com a
+  sala em **pill sólida** + anestesista 15px + contagem + ⚙, sala colapsável. Card: hora em
+  coluna com o término abaixo (`13:30`/`→15:45`); **iniciais · idade · PROCEDIMENTO na 1ª
+  linha** (é qual cirurgia que se procura primeiro); cirurgião (+ `· R: residente`) na 2ª,
+  com tempo faltante, status e convênio à direita — a 2ª linha QUEBRA em vez de truncar o
+  cirurgião. **Tinta em UM eixo só**: iniciada `bg-success/[0.14]` e terminada
+  `bg-info/[0.12]` (dark /20 e /22); atrasada, suspensa e passa-para-tarde ficam só no
+  badge — com os cinco pintando o quadro virava vitral. `CasoCard` ganhou `moldura`:
+  `'linha'` na Completa, `'card'` na Minhas (mesmo conteúdo, molduras diferentes).
+- **Importar · entrada**: stepper **1 Anexar → 2 Conferir** (o 2 acende com a base) +
+  cartão único "Para qual escala" (hospital · data · período); o atalho do documento de FDS
+  desceu para depois do anexo — é desvio de rota, não etapa. As sugestões do anexo seguem
+  sugerindo, nunca trocando sozinhas.
+- **Importar · conferência**: barra fixa **Blocos · Liberações · Pendências** que ROLA até a
+  seção (`#conf-blocos`/`#conf-liberacoes`/`#conf-pendencias`) — não troca de aba, porque
+  bloco e fila precisam ser lidos na mesma passada — com faixa vermelha contando o que
+  impede publicar. Fila de liberação em **2 colunas correndo para baixo** e **SEM contagem
+  de casos por pessoa** (o número confundia): quem está na ordem sem cirurgia nenhuma leva
+  **ponto âmbar** e o porquê é lido uma vez em Pendências. Editor da posição abre FORA das
+  colunas. Botão diz **"Publicar N casos"**.
+- **Importar · FDS**: **P1–P12 em 2 colunas** (P1..P6 esquerda, P7..P12 direita) e as **3
+  filas lado a lado** (Manhã · Tarde · Noite) — empilhadas passavam de uma tela e comparar
+  turnos exigia vai-e-volta. Cabeçalho da coluna leva **só o turno**: os selos "do
+  documento"/"Sugerida" saíram da tela (a origem continua em `fds_meta.ordemFonte`, que é
+  quem a fila usa). Ordinal colado ao nome (`1º Matheus`), Pn acima em peso menor; mover/
+  remover e o par texto+login abrem fora das colunas. Os dois dias seguem empilhados.
+
 ## Bottom Nav
 4 abas: **Home** | **Gestão** (Shield) | **Educação** | **Menu**
 (Dashboard temporariamente oculto; código preservado em `App.jsx`)
