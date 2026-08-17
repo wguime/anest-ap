@@ -56,7 +56,7 @@ const SELO_SEM_PROXIMO = new Set(['P1', 'P2'])
 // anotado com hospitalOrigem, campo só de exibição) e `fdsMeta` é o payload do
 // documento (grade P1–P4, Pn→pessoa, escalação). Troca/P4-coringa ficam FORA do
 // modo FDS (a fila única já modela "pega caso em qualquer hospital").
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, p4Hospital = null, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, onNavigate }) {
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, p4Hospital = null, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, onGarantirEscala, onNavigate }) {
   const { toast } = useToast()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
   // do turno selecionado e o rodapé (ordem de liberação) DAQUELE turno.
@@ -85,6 +85,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const [semAnestUid, setSemAnestUid] = useState('')
   const [executandoTroca, setExecutandoTroca] = useState(false)
   const [addCaso, setAddCaso] = useState(false) // urgência/encaixe direto da fila (dono 16/08)
+  const [escalaDoCasoNovo, setEscalaDoCasoNovo] = useState(null) // criada sob demanda
+  const [criandoEscala, setCriandoEscala] = useState(false)
 
   // Cronômetro em tempo real: o texto é derivado puro de `agoraMin`. O hook
   // recalcula ao voltar do segundo plano (iOS/PWA mata o setInterval na
@@ -415,23 +417,69 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // em curso continua visível), quem não estava vira card sintético.
   const linhasFase = (fase === 'zerada' || noiteFds) ? comSelos.filter((l) => l.noturno) : comSelos
 
-  if (!escala || !linhasFase.length) {
-    return (fase === 'zerada' || noiteFds) ? (
-      <EmptyState
-        icon={<Moon className="w-6 h-6" />}
-        title={noiteFds ? 'Sem plantão noturno na escala' : 'Liberações do dia encerradas'}
-        description={noiteFds
-          ? 'A linha 19-07HS do documento de fim de semana não trouxe nomes — reimporte o documento para gerar a fila da noite.'
-          : 'A lista zera às 23h e ficam só os plantonistas da noite — nenhum escalado para este hospital.'}
-      />
-    ) : (
-      <EmptyState
-        icon={<ListOrdered className="w-6 h-6" />}
-        title="Sem liberações"
-        description="Importe a escala deste hospital para gerar a ordem de liberação."
-      />
-    )
+  // urgência/encaixe precisa de uma escala REAL de destino — mas ela pode ser
+  // CRIADA na hora (dono 16/08: hospital sem escala publicada ficava sem ação
+  // nenhuma). A demo continua de fora: lá nada é gravado.
+  const ehDemo = String(escalaCasoNovo?.id || escala?.id || '').startsWith('demo-')
+  const podeAddCaso = !ehDemo && (!!escalaCasoNovo || !!onGarantirEscala)
+
+  /** Abre o sheet de caso, criando a escala do hospital se ainda não existir. */
+  const abrirAddCaso = async () => {
+    if (criandoEscala) return
+    if (escalaCasoNovo?.id) { setEscalaDoCasoNovo(escalaCasoNovo); setAddCaso(true); return }
+    setCriandoEscala(true)
+    try {
+      const nova = await onGarantirEscala?.()
+      if (nova?.id) { setEscalaDoCasoNovo(nova); setAddCaso(true) }
+    } catch { /* toast vem do context */ } finally { setCriandoEscala(false) }
   }
+
+  // Ações do topo (dono 16/08: "mesmo sem casos publicados adicione a opção de
+  // adicionar caso e ajuda") — aparecem TAMBÉM quando não há fila nenhuma,
+  // que é o caso do Materno em quase todo dia.
+  const acoesTopo = canEdit && (podeAddCaso || fase !== 'zerada') ? (
+    <div className="flex items-stretch gap-2">
+      {podeAddCaso && (
+        <Button
+          size="sm" variant="outline" className="min-w-0 flex-1"
+          aria-label="Adicionar caso (urgência/encaixe)"
+          disabled={criandoEscala}
+          onClick={abrirAddCaso}
+        >
+          <Plus className="w-4 h-4 shrink-0" /> Adicionar caso
+        </Button>
+      )}
+      {fase !== 'zerada' && onAddAjuda && (
+        <Button
+          size="sm" variant="outline" className="min-w-0 flex-1"
+          aria-label="Adicionar anestesista (ajuda)"
+          onClick={() => setAjudaSheet(true)}
+        >
+          <UserPlus className="w-4 h-4 shrink-0" /> Adicionar ajuda
+        </Button>
+      )}
+    </div>
+  ) : null
+
+  // Sem fila: mostra o vazio NO LUGAR da lista, mantendo as ações do topo e os
+  // sheets montados uma única vez (o early return de antes deixava o hospital
+  // sem escala publicada — o Materno — sem nenhuma ação disponível).
+  const semFila = !escala || !linhasFase.length
+  const estadoVazio = (fase === 'zerada' || noiteFds) ? (
+    <EmptyState
+      icon={<Moon className="w-6 h-6" />}
+      title={noiteFds ? 'Sem plantão noturno na escala' : 'Liberações do dia encerradas'}
+      description={noiteFds
+        ? 'A linha 19-07HS do documento de fim de semana não trouxe nomes — reimporte o documento para gerar a fila da noite.'
+        : 'A lista zera às 23h e ficam só os plantonistas da noite — nenhum escalado para este hospital.'}
+    />
+  ) : (
+    <EmptyState
+      icon={<ListOrdered className="w-6 h-6" />}
+      title="Sem liberações"
+      description="Importe a escala deste hospital para gerar a ordem de liberação — ou acrescente um caso avulso pelo botão acima."
+    />
+  )
 
   // A ORDEM É IMUTÁVEL NO APP (pedido do dono 2026-07-27): ninguém reordena a
   // fila — nem o plantonista. Ela vale como veio no rodapé vermelho da escala;
@@ -444,9 +492,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // No FDS não há coringa: os 4 têm posto explícito na grade 19-07 — o sheet do
   // P4 fica fora (e o selo Pn do modo FDS nunca vira botão).
   const podeMarcarP4 = !!canEdit && !!onDefinirP4 && !modoFds
-  // urgência/encaixe precisa de uma escala REAL de destino (a demo não grava)
-  const podeAddCaso = !!escalaCasoNovo && !String(escalaCasoNovo.id || '').startsWith('demo-')
-
   // não escalado = está no rodapé mas NUNCA teve caso no dia → liberado por
   // definição (vermelho desde a publicação). Quem TEVE casos e todos encerraram
   // fica ATIVO (o conteúdo sai da linha, mas quem libera é o plantonista).
@@ -738,31 +783,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   }
   return (
     <div className="space-y-3">
-      {/* AÇÕES NO TOPO, LADO A LADO (dono 16/08) — mesma altura do "Adicionar
-          caso" da aba Completa (Button size='sm'). Rótulo visível curto para os
-          dois caberem a 375px; o aria-label mantém o texto completo. */}
-      {canEdit && (podeAddCaso || fase !== 'zerada') && (
-        <div className="flex items-stretch gap-2">
-          {podeAddCaso && (
-            <Button
-              size="sm" variant="outline" className="min-w-0 flex-1"
-              aria-label="Adicionar caso (urgência/encaixe)"
-              onClick={() => setAddCaso(true)}
-            >
-              <Plus className="w-4 h-4 shrink-0" /> Adicionar caso
-            </Button>
-          )}
-          {fase !== 'zerada' && (
-            <Button
-              size="sm" variant="outline" className="min-w-0 flex-1"
-              aria-label="Adicionar anestesista (ajuda)"
-              onClick={() => setAjudaSheet(true)}
-            >
-              <UserPlus className="w-4 h-4 shrink-0" /> Adicionar ajuda
-            </Button>
-          )}
-        </div>
-      )}
+      {acoesTopo}
 
       {/* Procedimentos sem anestesista NO TOPO (pedido do dono 24/07): o plantonista
           precisa cobrir. Somem sozinhos ao serem marcados como terminados/suspensos
@@ -814,9 +835,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           </div>
         </div>
       )}
+      {semFila && estadoVazio}
+
       {/* div simples de propósito: animação de layout + reload do realtime moviam a
           linha sob o dedo (mesma classe do bug da inbox, fix 956aedd) */}
-      <div className="space-y-1.5">
+      {!semFila && <div className="space-y-1.5">
         {(() => {
           // Está na FILA de liberação? P1/P2 são os plantonistas da noite: nunca
           // entram no "próximo a ser liberado" (pedido do dono 24/07). P3/P4 entram.
@@ -1270,11 +1293,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           )
           })
         })()}
-      </div>
+      </div>}
 
-      {addCaso && podeAddCaso && (
+      {addCaso && escalaDoCasoNovo && (
         <AddCasoSheet
-          escala={escalaCasoNovo}
+          escala={escalaDoCasoNovo}
           turno={turnoBase}
           onClose={() => setAddCaso(false)}
           onPreencherCobranca={(novo) => onNavigate?.('novaCirurgiaParticular', { escalaCasoId: novo.id })}

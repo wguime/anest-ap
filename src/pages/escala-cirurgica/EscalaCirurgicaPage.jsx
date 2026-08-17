@@ -48,7 +48,7 @@ const ABA_OPCOES = [
 
 export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const { user } = useUser()
-  const { escalas, data, loading, p4Hospital, hoje, setData, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, reordenarAjuda, definirP4Hospital, setAnestesistaCasos, marcarTroca, executarSubstituicao, desfazerSubstituicao } = useEscalaCirurgica()
+  const { escalas, data, loading, p4Hospital, hoje, setData, prefetch, salvarEscalaTurno, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, reordenarAjuda, definirP4Hospital, setAnestesistaCasos, marcarTroca, executarSubstituicao, desfazerSubstituicao } = useEscalaCirurgica()
   // Roster p/ resolver os lados do par da troca declarada (uid/nome/apelido)
   const { resolver: resolverRoster, rosterByUid } = useRosterAnestesistas()
   // P1–P4 do dia (card Plantões/PegaPlantao) — alimentam a fase noturna das Liberações
@@ -95,10 +95,17 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     // amanhã de sexta = sábado: a fila única (linha 'fds') também conta como publicada
     const alvos = [...HOSPITAIS, ...(ehFimDeSemana(amanha) ? [FDS_HOSPITAL] : [])]
     Promise.all(alvos.map((h) => svc.fetchEscala(amanha, h).catch(() => null)))
-      .then((rs) => { if (vivo) setAmanhaPublicada(rs.some((e) => e?.status === 'publicada')) })
+      .then((rs) => {
+        if (!vivo) return
+        const publicada = rs.some((e) => e?.status === 'publicada')
+        setAmanhaPublicada(publicada)
+        // já adianta a busca: quando o usuário tocar em "Amanhã", a escala
+        // aparece na hora em vez de esperar ~2,5s de rede (dono 16/08)
+        if (publicada) prefetch?.(amanha)
+      })
       .catch(() => {})
     return () => { vivo = false }
-  }, [amanha])
+  }, [amanha, prefetch])
   const modoData = data === amanha ? 'amanha' : data === hoje ? 'hoje' : 'outra'
   const opcoesData = [
     { value: 'hoje', label: 'Hoje' },
@@ -295,14 +302,32 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     return out
   }, [escalas, rosterByUid, resolverRoster, pessoaDe, turno])
 
+  // Escala do hospital + turno de CASOS ('noturno' é turno da FILA; o CHECK do
+  // banco só aceita matutino/vespertino, e à noite valem as cirurgias da tarde)
+  const escalaDoHospital = escalas[hospital]
+  const turnoDeCasos = FDS_TURNO_CASOS[turno] || turno
+
+  /**
+   * Devolve a escala do hospital selecionado, CRIANDO uma vazia se ainda não
+   * existir (dono 16/08: "mesmo sem casos publicados adicione a opção de
+   * adicionar caso e ajuda" — o Materno costuma não ter escala importada e
+   * ficava sem nenhuma ação disponível).
+   * ⚠️ Só cria quando NÃO há escala: publicar por cima de uma existente
+   * apagaria o rodapé do turno (a RPC substitui `ordem_liberacao`).
+   */
+  const garantirEscala = useCallback(async () => {
+    if (escalaDoHospital?.id && !String(escalaDoHospital.id).startsWith('demo-')) return escalaDoHospital
+    return salvarEscalaTurno({
+      data, hospital, turno: turnoDeCasos,
+      casos: [], ordemLiberacao: [], ajudaExterna: [], status: 'publicada',
+    }, { userId: user?.uid || user?.id || null, userName: user?.displayName })
+  }, [escalaDoHospital, data, hospital, turnoDeCasos, salvarEscalaTurno, user])
+
   if (!user) return null
 
   const canEdit = podeEditarEscalaCirurgica(user)
-  const escala = escalas[hospital]
-  // Turno de CASOS: 'noturno' é turno da FILA (o CHECK do banco só aceita
-  // matutino/vespertino) — Completa/Minhas mostram as cirurgias da tarde, que
-  // são as que seguem em curso à noite.
-  const turnoCasos = FDS_TURNO_CASOS[turno] || turno
+  const escala = escalaDoHospital
+  const turnoCasos = turnoDeCasos
 
   const meuAlias = meuAliasDe(user)
   const meuUid = user?.uid || user?.id
@@ -399,6 +424,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                   // urgência/encaixe entra na escala do HOSPITAL selecionado
                   // (a fila do FDS é única, mas o caso pertence a um hospital)
                   escalaCasoNovo={escala}
+                  onGarantirEscala={garantirEscala}
                   onNavigate={onNavigate}
                   onDefinirP4={modoFds ? undefined : (h) => definirP4Hospital(h, userInfo)}
                   onDefinirCasos={(casoIds, { uid, apelido, rotulo }) => {

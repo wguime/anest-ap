@@ -95,8 +95,25 @@ export function EscalaCirurgicaProvider({ children }) {
   const escalasRef = useRef(state.escalas)
   useEffect(() => { escalasRef.current = state.escalas }, [state.escalas])
 
+  // CACHE POR DATA (dono 16/08: "transição de hoje para amanhã está lenta e
+  // demorando a aparecer informações"). Duas coisas aconteciam ao trocar de
+  // data: a tela seguia mostrando a escala da data ANTERIOR até a resposta
+  // chegar (informação errada no ar) e voltar para "hoje" refazia tudo do
+  // zero. Agora: data já vista aparece na hora (e revalida em segundo plano),
+  // data nova limpa a tela antes de buscar — nunca mostra o dia errado.
+  const cacheRef = useRef(new Map())
+
   const loadData = useCallback(async (dia) => {
-    setLoading(true)
+    const emCache = cacheRef.current.get(dia)
+    if (emCache) {
+      dispatch({ type: 'SET_ALL', payload: emCache.escalas })
+      dispatch({ type: 'SET_P4_HOSPITAL', payload: emCache.p4Hospital ?? null })
+      setLoading(false)
+    } else {
+      // sem cache: zera para não exibir a data anterior enquanto busca
+      dispatch({ type: 'SET_ALL', payload: { unimed: null, hro: null, materno: null, fds: null } })
+      setLoading(true)
+    }
     try {
       const [results, fdsRow] = await Promise.all([
         Promise.all(HOSPITAIS.map((h) => svc.fetchEscala(dia, h).catch(() => null))),
@@ -112,14 +129,43 @@ export function EscalaCirurgicaProvider({ children }) {
       dispatch({ type: 'SET_ALL', payload: escalas })
       // marcação do P4 do dia (fase noturna das Liberações) — falha vira null,
       // que é o padrão seguro: o coringa aparece nos 3 hospitais.
+      let p4 = null
       try {
-        dispatch({ type: 'SET_P4_HOSPITAL', payload: await svc.fetchP4Hospital(dia) })
-      } catch { dispatch({ type: 'SET_P4_HOSPITAL', payload: null }) }
+        p4 = await svc.fetchP4Hospital(dia)
+      } catch { p4 = null }
+      dispatch({ type: 'SET_P4_HOSPITAL', payload: p4 })
+      // guarda para a próxima visita à mesma data (o realtime revalida)
+      cacheRef.current.set(dia, { escalas, p4Hospital: p4 })
+      if (cacheRef.current.size > 8) {
+        cacheRef.current.delete(cacheRef.current.keys().next().value)
+      }
     } catch (err) {
       console.error('[EscalaCirurgicaContext] load falhou:', err)
     } finally {
       setLoading(false)
     }
+  }, [])
+
+  /**
+   * Pré-carrega uma data em segundo plano (dono 16/08: "transição de hoje para
+   * amanhã está lenta"). A página chama para AMANHÃ assim que descobre que a
+   * escala de lá está publicada — quando o usuário toca, já está em cache.
+   * Silencioso: falha aqui não aparece na tela; o load normal tenta de novo.
+   */
+  const prefetch = useCallback(async (dia) => {
+    if (!dia || cacheRef.current.has(dia)) return
+    try {
+      const [results, fdsRow] = await Promise.all([
+        Promise.all(HOSPITAIS.map((h) => svc.fetchEscala(dia, h).catch(() => null))),
+        ehFimDeSemana(dia) ? svc.fetchEscala(dia, FDS_HOSPITAL).catch(() => null) : Promise.resolve(null),
+      ])
+      if (!results.some(Boolean) && !fdsRow) return // nada publicado: não cacheia
+      const escalas = { fds: fdsRow }
+      HOSPITAIS.forEach((h, i) => { escalas[h] = results[i] || null })
+      let p4 = null
+      try { p4 = await svc.fetchP4Hospital(dia) } catch { p4 = null }
+      cacheRef.current.set(dia, { escalas, p4Hospital: p4 })
+    } catch { /* silencioso: é adiantamento, não caminho crítico */ }
   }, [])
 
   // Recarrega quando a data muda (sem recriar subscriptions).
@@ -867,10 +913,10 @@ export function EscalaCirurgicaProvider({ children }) {
   }, [state.p4Hospital, toast])
 
   const actionsValue = useMemo(() => ({
-    setData, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista,
+    setData, prefetch, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista,
     setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda,
     reordenarAjuda, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, refresh,
-  }), [salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda, reordenarAjuda, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, refresh])
+  }), [prefetch, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda, reordenarAjuda, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, refresh])
 
   const stateValue = useMemo(() => ({
     escalas: state.escalas, p4Hospital: state.p4Hospital, data, loading, hoje,
@@ -887,7 +933,7 @@ export function EscalaCirurgicaProvider({ children }) {
 
 const STATE_FALLBACK = { escalas: { unimed: null, hro: null, materno: null, fds: null }, p4Hospital: null, data: hojeISO(), loading: true, hoje: hojeISO() }
 const ACTIONS_FALLBACK = {
-  setData: () => {}, salvarEscala: async () => {}, salvarEscalaTurno: async () => {}, reordenarLiberacao: async () => {},
+  setData: () => {}, prefetch: async () => {}, salvarEscala: async () => {}, salvarEscalaTurno: async () => {}, reordenarLiberacao: async () => {},
   toggleLiberacao: async () => {}, setLocalAnestesista: async () => {}, setAnestesistaCasos: async () => {},
   atualizarCaso: async () => {}, adicionarAjuda: async () => {}, removerAjuda: async () => {},
   definirP4Hospital: async () => {}, marcarTroca: async () => {}, executarSubstituicao: async () => {},

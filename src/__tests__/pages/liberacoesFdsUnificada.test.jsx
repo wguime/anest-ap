@@ -17,7 +17,7 @@
  *  7. dia útil intacto: sem modoFds, casosFds é ignorado.
  */
 import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 
 import { ThemeProvider, ToastProvider } from '@/design-system'
 import LiberacoesView from '@/pages/escala-cirurgica/LiberacoesView'
@@ -40,6 +40,11 @@ vi.mock('@/hooks/useRosterAnestesistas', () => ({
 }))
 vi.mock('@/services/supabaseEscalaCirurgicaService', () => ({
   default: { fetchLocaisHospital: vi.fn(async () => []) },
+}))
+// o formulário de caso tem contexto próprio (UserProvider/roster) e teste
+// dedicado — aqui só interessa que ele seja aberto com a escala certa
+vi.mock('@/pages/escala-cirurgica/AddCasoSheet', () => ({
+  default: ({ escala }) => <div data-testid="add-caso" data-escala={escala?.id} />,
 }))
 
 const wrap = ({ children }) => <ThemeProvider><ToastProvider>{children}</ToastProvider></ThemeProvider>
@@ -182,6 +187,28 @@ describe('fila única — ordem do rodapé publicado, cruzando hospitais', () =>
     // com ela, o botão entra acima do "Adicionar anestesista (ajuda)"
     montar({ escalaCasoNovo: { id: 'e-unimed', hospital: 'unimed', casos: [] } })
     expect(screen.getByRole('button', { name: /Adicionar caso \(urgência\/encaixe\)/ })).toBeTruthy()
+  })
+
+  it('sem escala publicada, as ações continuam disponíveis (caso do Materno)', async () => {
+    // dono 16/08: hospital sem escala ficava sem "Adicionar caso"/"ajuda".
+    // Agora a escala é criada sob demanda por onGarantirEscala.
+    const onGarantirEscala = vi.fn(async () => ({ id: 'nova-1', hospital: 'materno', casos: [] }))
+    render(
+      <LiberacoesView
+        escala={null} hospital="materno" hospitalLabel="Materno" turno="matutino"
+        canEdit onGarantirEscala={onGarantirEscala} onAddAjuda={() => {}}
+        onToggle={() => {}} onSetOverride={() => {}}
+      />,
+      { wrapper: wrap }
+    )
+    expect(screen.getByRole('button', { name: /Adicionar caso/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Adicionar anestesista \(ajuda\)/ })).toBeTruthy()
+    expect(screen.getByText(/Sem liberações/)).toBeTruthy()
+    // tocar em "Adicionar caso" cria a escala antes de abrir o formulário
+    fireEvent.click(screen.getByRole('button', { name: /Adicionar caso/ }))
+    await waitFor(() => expect(onGarantirEscala).toHaveBeenCalled())
+    // e o formulário abre já apontando para a escala recém-criada
+    await waitFor(() => expect(screen.getByTestId('add-caso').dataset.escala).toBe('nova-1'))
   })
 
   it('modo FDS não expõe troca nem P4-coringa no painel da linha', () => {
