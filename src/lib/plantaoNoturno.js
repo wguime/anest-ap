@@ -278,7 +278,9 @@ export function fundirLinhasNoturnas(linhas, linhasNoite, opts = {}) {
       uid,
       nomeOriginal: n.nome,
       sintetico: true,
-      texto: `${nome} — ${n.papel}`,
+      // sem papel = gente da lista numerada que entra na fila da noite sem
+      // posto (FDS): o nome sozinho é a linha inteira
+      texto: n.papel ? `${nome} — ${n.papel}` : nome,
       ...selo,
     })
   }

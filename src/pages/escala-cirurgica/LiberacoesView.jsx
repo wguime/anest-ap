@@ -375,8 +375,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // FDS: a NOITE é um TURNO PRÓPRIO do seletor (dono 15/08 21h: "sábado de
   // manhã não está idêntica" — a fusão dos 4 sobre a lista do dia roubava o
   // topo e renumerava tudo). No turno 'noturno' a fila é SÓ os 4 da grade
-  // 19-07, na ordem da esquerda p/ a direita (Unimed, HRO, ret1, ret2) — que é
-  // exatamente a ordem ditada pelo dono (sáb P2,P1,P4,P3 · dom P3,P4,P1,P2).
+  // 19-07 (ordem da esquerda p/ a direita) MAIS quem a ordem publicada da noite
+  // acrescentar — a fila noturna do dono é maior que a grade (sáb P2,P1,P4,P3,
+  // P11,P8,P7 · dom P3,P4,P1,P2,P11,P6,P5).
   // Matutino/Vespertino ficam PUROS a qualquer hora: conferir a fila da manhã
   // às 21h mostra a manhã como publicada.
   const noiteFds = modoFds && turno === 'noturno'
@@ -384,7 +385,12 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     // SÓ os 4 plantões da faixa 19-07 da grade importada (cols 1–2 fixas no
     // hospital = foraDaFila; 3–4 = ordem de chamada). ORDEM_NOTURNA e o card
     // Plantões são conhecimento de dia útil e ficam fora daqui.
-    ? (noiteFds ? linhasNoturnasFds(fdsMeta?.grade, fdsMeta?.posicoes, { resolverUid: (n) => resolverNomeEstrito(n, resolverUid), normalizar: normNome }) : [])
+    ? (noiteFds ? linhasNoturnasFds(fdsMeta?.grade, fdsMeta?.posicoes, {
+        // ordem DITADA da noite (dono 16/08) quando publicada; sem ela, a fila é
+        // a própria linha 19-07 da grade
+        ordem: Array.isArray(fdsMeta?.ordemNoite) ? fdsMeta.ordemNoite : [],
+        resolverUid: (n) => resolverNomeEstrito(n, resolverUid), normalizar: normNome,
+      }) : [])
     : fase === 'dia' ? [] : linhasNoturnas(chaveHospital, noturnos, p4Hospital)
   // Antes das 19h, no VESPERTINO da escala de HOJE: quem entra no plantão hoje já
   // aparece com o selo P1–P4 na lista da tarde (pedido do dono 25/07) — só o
@@ -412,9 +418,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const comSelos = modoFds
     ? marcarSelosFds(fundidas, fdsMeta?.posicoes, { resolverUid, normalizar: normNome })
     : fundidas
-  // Turno NOTURNO do FDS = só os 4 da grade (mesma regra do 'zerada' de dia
-  // útil): quem já estava na lista da tarde é HOISTADO com o conteúdo (cirurgia
-  // em curso continua visível), quem não estava vira card sintético.
+  // Turno NOTURNO do FDS = só quem está na fila da noite (mesma regra do
+  // 'zerada' de dia útil): quem já estava na lista da tarde é HOISTADO com o
+  // conteúdo (cirurgia em curso continua visível), quem não estava vira card
+  // sintético.
   const linhasFase = (fase === 'zerada' || noiteFds) ? comSelos.filter((l) => l.noturno) : comSelos
 
   // urgência/encaixe precisa de uma escala REAL de destino — mas ela pode ser

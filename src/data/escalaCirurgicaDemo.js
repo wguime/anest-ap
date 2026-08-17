@@ -155,6 +155,9 @@ const fdsRow = {
       vespertino: ['P6', 'P5', 'P9', 'P10', 'P11'],
     },
     ordemFonte: { matutino: 'documento', vespertino: 'documento' },
+    // fila da NOITE (dono 16/08): a linha 19-07 da grade + os Pn da lista
+    // numerada que também ficam — estes liberam primeiro (ficam no fim)
+    ordemNoite: ['JOAO HENRIQUE', 'GUILHERME DIDOMENICO', 'MATHEUS', 'CRISTINA', 'GABRIEL', 'RAFAEL', 'MARILIO'],
   },
 }
 export const DEMO_ESCALAS_FDS = { unimed: unimedFds, hro: hroFds, materno: null, fds: fdsRow }

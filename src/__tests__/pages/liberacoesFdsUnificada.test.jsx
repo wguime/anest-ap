@@ -246,6 +246,22 @@ describe('turno NOTURNO do FDS — turno próprio, fila da grade 19-07 (dono 15/
     expect(cardDe('noite:CRISTINA').textContent).toContain('Retaguarda 2ª chamada')
   })
 
+  it('ordem DITADA da noite acrescenta os Pn da lista numerada no fim da fila (dono 16/08)', () => {
+    // sáb à noite: P2, P1, P4, P3 (grade) + P11, P8, P7 — os acrescentados
+    // liberam PRIMEIRO, então ficam embaixo
+    const ordemNoite = ['JOAO HENRIQUE', 'GUILHERME DIDOMENICO', 'MATHEUS', 'CRISTINA', 'GABRIEL', 'RAFAEL', 'MARILIO']
+    const fdsMeta = { ...ESCALA_FDS.fdsMeta, ordemNoite }
+    montar({ turno: 'noturno', escala: { ...ESCALA_FDS, fdsMeta }, fdsMeta })
+    const chaves = [...document.querySelectorAll('[data-linha]')].map((el) => el.dataset.linha)
+    expect(chaves.map((c) => cardDe(c).dataset.selo)).toEqual(['P2', 'P1', 'P4', 'P3', 'P11', 'P8', 'P7'])
+    // o último da fila é o primeiro a ser liberado
+    expect(cardDe(chaves[chaves.length - 1]).textContent).toContain('Próximo a ser liberado')
+    // quem veio da lista numerada não ganha posto de plantão
+    expect(cardDe(chaves[4]).textContent).not.toContain('Plantão')
+    // e os dois plantões físicos seguem fora da fila
+    expect(cardDe('noite:JOAO HENRIQUE').textContent).not.toContain('Próximo a ser liberado')
+  })
+
   it('às 20h, conferir o MATUTINO mostra a fila da manhã PURA — sem os 4 da noite por cima', () => {
     // era o defeito relatado: a fusão roubava o topo e renumerava a manhã
     vi.setSystemTime(new Date('2026-08-15T20:00:00-03:00'))

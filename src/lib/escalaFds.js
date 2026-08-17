@@ -210,23 +210,26 @@ export function plantonistasFaixaFds(grade, faixa) {
 }
 
 /**
- * Cards da fase noturna do FDS — SÓ os 4 plantões da faixa 19-07 da grade
- * IMPORTADA (nunca ORDEM_NOTURNA/useEscalaDia, que são conhecimento de dia
- * útil). Cols 1–2 são FIXAS no hospital → `foraDaFila: true` (fora do
- * "próximo a ser liberado", equivalente FDS do P1/P2); cols 3–4 são a ordem
- * de chamada (col3 antes de col4 ⇒ col4 libera primeiro — a lista segue a
- * convenção do rodapé, liberação de baixo p/ cima). Saída no formato de
- * `linhasNoturnas` (consumida por `fundirLinhasNoturnas`).
+ * Cards do turno NOTURNO do FDS, a partir da faixa 19-07 da grade IMPORTADA
+ * (nunca ORDEM_NOTURNA/useEscalaDia, que são conhecimento de dia útil).
+ * Cols 1–2 são FIXAS no hospital → `foraDaFila: true` (fora do "próximo a ser
+ * liberado", equivalente FDS do P1/P2); cols 3–4 são a ordem de chamada.
+ *
+ * `opts.ordem` (nomes, convenção do rodapé: 1º sai por ÚLTIMO) é a ordem de
+ * liberação DITADA para a noite — pode incluir gente da lista numerada que não
+ * aparece na grade. Sem ela, a fila é a própria linha 19-07 da esquerda p/ a
+ * direita. Saída no formato de `linhasNoturnas` (lida por `fundirLinhasNoturnas`).
  */
 export function linhasNoturnasFds(grade, posicoes = {}, opts = {}) {
   const faixa = grade?.['19-07'] || {}
   const indice = construirIndicePn(posicoes, opts)
-  const linhas = []
+  const norm = typeof opts.normalizar === 'function' ? opts.normalizar : normPadrao
+  const daGrade = []
   for (const col of ['unimed', 'hro', 'ret1', 'ret2']) {
     const nome = String(faixa[col] || '').trim()
     if (!nome) continue
     const fixo = col === 'unimed' || col === 'hro'
-    linhas.push({
+    daGrade.push({
       setor: indice.deNome(nome), // selo Pn quando a pessoa tem posição; null é ok
       nome,
       papel: FDS_NOITE_PAPEL[col],
@@ -238,23 +241,53 @@ export function linhasNoturnasFds(grade, posicoes = {}, opts = {}) {
       col,
     })
   }
-  // SUBSTITUTO NA VAGA (dom 16/08: JOAO RICARDO cobre a CRISTINA — escrito na
-  // cor dela no documento, e o dono leu a noite como "P3, P4, P1, P2"). Sem cor
-  // para ler, a atribuição só é feita quando é DETERMINÍSTICA: exatamente um
-  // nome sem posição e exatamente uma vaga de P1–P4 não ocupada naquela noite.
-  // Com 2+ de qualquer lado, ninguém recebe selo (nunca chutar identidade).
+  aplicarCoberturaNoite(daGrade, posicoes)
+
+  // ORDEM DITADA (dono 16/08: "sábado à noite P2, P1, P4, P3, P11, P8 e P7 —
+  // apenas adicione os P's faltantes"): a fila da noite pode ser MAIOR que a
+  // linha 19-07 da grade. Quando `opts.ordem` vem publicada, ela é a fila; a
+  // grade continua mandando no que é POSTO (papel "Plantão Unimed/HRO" e o
+  // `foraDaFila` que tira os dois do "próximo a ser liberado").
+  const ordem = (opts.ordem || []).map((n) => String(n || '').trim()).filter(Boolean)
+  if (!ordem.length) return daGrade
+
+  const usados = new Set()
+  const daOrdem = []
+  for (const nome of ordem) {
+    const chave = norm(nome)
+    if (!chave || usados.has(chave)) continue
+    usados.add(chave)
+    const naGrade = daGrade.find((l) => norm(l.nome) === chave)
+    // fora da grade = gente da lista numerada que também fica à noite: entra na
+    // fila comum (sem posto, dentro do "próximo a ser liberado") com o seu Pn.
+    daOrdem.push(naGrade || {
+      setor: indice.deNome(nome), nome, papel: null, isPlantonista: false, foraDaFila: false,
+    })
+  }
+  // Quem está FISICAMENTE de plantão e não foi citado na ordem nunca some da
+  // tela: entra na frente, que é onde o posto o coloca (sai por último).
+  const naoCitados = daGrade.filter((l) => !usados.has(norm(l.nome)))
+  return [...naoCitados, ...daOrdem]
+}
+
+/**
+ * SUBSTITUTO NA VAGA (dom 16/08: JOAO RICARDO cobre a CRISTINA — escrito na cor
+ * dela no documento, e o dono leu a noite como "P3, P4, P1, P2"). Sem cor para
+ * ler, a atribuição só é feita quando é DETERMINÍSTICA: exatamente um nome sem
+ * posição e exatamente uma vaga de P1–P4 não ocupada naquela noite. Com 2+ de
+ * qualquer lado, ninguém recebe selo (nunca chutar identidade). Muta as linhas.
+ */
+function aplicarCoberturaNoite(linhas, posicoes) {
   const semSelo = linhas.filter((l) => !l.setor)
   const usados = new Set(linhas.map((l) => l.setor).filter(Boolean))
   const vagas = ['P1', 'P2', 'P3', 'P4'].filter((pn) => posicoes?.[pn] && !usados.has(pn))
-  if (semSelo.length === 1 && vagas.length === 1) {
-    semSelo[0].setor = vagas[0]
-    const dono = String(posicoes[vagas[0]] || '').trim()
-    semSelo[0].cobrindo = dono // quem ele está cobrindo
-    // o card diz a cobertura no papel — quem lê a fila precisa saber que a
-    // vaga é de outra pessoa (o documento marcava isso pela COR)
-    if (dono) semSelo[0].papel = `${semSelo[0].papel} · cobre ${dono.split(/\s+/)[0]}`
-  }
-  return linhas
+  if (semSelo.length !== 1 || vagas.length !== 1) return
+  semSelo[0].setor = vagas[0]
+  const dono = String(posicoes[vagas[0]] || '').trim()
+  semSelo[0].cobrindo = dono // quem ele está cobrindo
+  // o card diz a cobertura no papel — quem lê a fila precisa saber que a vaga é
+  // de outra pessoa (o documento marcava isso pela COR)
+  if (dono) semSelo[0].papel = `${semSelo[0].papel} · cobre ${dono.split(/\s+/)[0]}`
 }
 
 /**

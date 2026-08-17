@@ -128,8 +128,10 @@ describe('Conferência do FDS — leitura e sugestão', () => {
 
   it('sábado vem "documento"; domingo sem linha explícita nasce com a SUGESTÃO marcada', async () => {
     await importar()
-    // 2 turnos do domingo sugeridos (matutino + vespertino)
-    expect(screen.getAllByText('Sugerida — ajuste antes de publicar')).toHaveLength(2)
+    // 2 turnos do domingo (matutino + vespertino) + a NOITE dos dois dias: o
+    // documento não traz linha de liberação noturna, então ela nasce da grade
+    // 19-07 marcada como sugestão, para o conferente ajustar (dono 16/08)
+    expect(screen.getAllByText('Sugerida — ajuste antes de publicar')).toHaveLength(4)
     // 1º a ser liberado do domingo (sugestão exibida na direção do doc) =
     // reverse(escalação) → GUILHERME DIDOMENICO abre a lista
     const blocosDomingo = screen.getAllByText(/Ordem de liberação · Matutino/)[1]
@@ -173,6 +175,36 @@ describe('Publicação — inversão na fronteira + fds_meta', () => {
     // troca pessoal do domingo (7º=THAYNA) venceu a herança do sábado (7º=MARILIO)
     expect(domMat.fdsMeta.posicoes.P7).toBe('THAYNA')
     expect(domMat.fdsMeta.posicoes.P12).toBe('VICENTE') // herdado
+  })
+
+  it('a fila da NOITE viaja no fds_meta.ordemNoite (dono 16/08) — sem virar turno no banco', async () => {
+    await importar()
+    fireEvent.click(screen.getByRole('button', { name: /Publicar fim de semana \(4 turnos\)/ }))
+    await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalledTimes(4))
+    const chamadas = salvarEscalaTurno.mock.calls.map(([p]) => p)
+    // continua 4 publicações: 'noturno' não é turno de caso no banco
+    expect(chamadas.some((p) => p.turno === 'noturno')).toBe(false)
+    const sab = chamadas.find((p) => p.data === '2026-08-15' && p.turno === 'matutino')
+    // sem linha de noite no documento, a fila nasce da grade 19-07 (P2,P1,P4,P3)
+    expect(sab.fdsMeta.ordemNoite).toEqual(['JOAO HENRIQUE', 'GUILHERME DIDOMENICO', 'MATHEUS', 'CRISTINA'])
+    // e vai IGUAL nas duas publicações do dia (republicar um turno não apaga a noite)
+    const sabVesp = chamadas.find((p) => p.data === '2026-08-15' && p.turno === 'vespertino')
+    expect(sabVesp.fdsMeta.ordemNoite).toEqual(sab.fdsMeta.ordemNoite)
+  })
+
+  it('a lista da noite é editável na conferência e o que ficar lá é o que publica', async () => {
+    await importar()
+    const titulo = [...document.querySelectorAll('p')].find((el) => /Ordem de liberação · Noturno/.test(el.textContent))
+    const secao = titulo.parentElement.parentElement // div do turno
+    const remover = secao.querySelectorAll('[aria-label^="Remover"]')
+    expect(remover.length).toBe(4) // os 4 da grade 19-07
+    // a lista da conferência corre na direção do DOCUMENTO (1º a ser liberado
+    // no topo): remover o 1º tira quem sairia primeiro
+    fireEvent.click(remover[0])
+    fireEvent.click(screen.getByRole('button', { name: /Publicar fim de semana \(4 turnos\)/ }))
+    await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalled())
+    const sab = salvarEscalaTurno.mock.calls.map(([p]) => p).find((p) => p.data === '2026-08-15' && p.turno === 'matutino')
+    expect(sab.fdsMeta.ordemNoite).toEqual(['JOAO HENRIQUE', 'GUILHERME DIDOMENICO', 'MATHEUS'])
   })
 
   it('nome ambíguo (2+ candidatos no cadastro, sem login) BLOQUEIA a publicação', async () => {

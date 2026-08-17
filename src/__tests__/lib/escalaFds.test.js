@@ -211,6 +211,50 @@ describe('linhasNoturnasFds — só os 4 plantões da faixa 19-07', () => {
   })
 })
 
+describe('ordem DITADA da noite (dono 16/08 — "apenas adicione os P\'s faltantes")', () => {
+  // sáb: P2, P1, P4, P3 (grade 19-07) + P11, P8, P7 da lista numerada
+  const ORDEM_NOITE_SAB = ['JOAO HENRIQUE', 'GUILHERME DIDOMENICO', 'MATHEUS', 'CRISTINA', 'GABRIEL', 'RAFAEL', 'MARILIO']
+  // dom: P3 (coberto por JOAO RICARDO), P4, P1, P2 + P11, P6, P5
+  const ORDEM_NOITE_DOM = ['JOAO RICARDO', 'MATHEUS', 'GUILHERME DIDOMENICO', 'JOAO HENRIQUE', 'GABRIEL', 'ERLEI', 'GABRIELA']
+
+  it('sábado: os 7 na ordem ditada, com o Pn de cada um', () => {
+    const linhas = linhasNoturnasFds(GRADE_SAB, POSICOES_SAB, { ordem: ORDEM_NOITE_SAB })
+    expect(linhas.map((l) => l.setor)).toEqual(['P2', 'P1', 'P4', 'P3', 'P11', 'P8', 'P7'])
+    expect(linhas.map((l) => l.nome)).toEqual(ORDEM_NOITE_SAB)
+  })
+
+  it('quem veio da lista numerada entra na FILA (libera primeiro) e sem posto', () => {
+    const linhas = linhasNoturnasFds(GRADE_SAB, POSICOES_SAB, { ordem: ORDEM_NOITE_SAB })
+    const acrescentados = linhas.slice(4)
+    expect(acrescentados.every((l) => l.foraDaFila === false)).toBe(true)
+    expect(acrescentados.every((l) => l.papel === null)).toBe(true)
+    // os dois plantões físicos seguem fora do "próximo a ser liberado"
+    expect(linhas.slice(0, 2).every((l) => l.foraDaFila === true)).toBe(true)
+    expect(linhas[0].papel).toBe('Plantão Unimed')
+  })
+
+  it('domingo: o substituto abre a fila com a vaga que cobre', () => {
+    const linhas = linhasNoturnasFds(GRADE_DOM, POSICOES_SAB, { ordem: ORDEM_NOITE_DOM })
+    expect(linhas.map((l) => l.setor)).toEqual(['P3', 'P4', 'P1', 'P2', 'P11', 'P6', 'P5'])
+    expect(linhas[0].papel).toBe('Plantão Unimed · cobre CRISTINA')
+  })
+
+  it('sem ordem publicada, a fila continua sendo a linha 19-07 (comportamento de sempre)', () => {
+    expect(linhasNoturnasFds(GRADE_SAB, POSICOES_SAB, { ordem: [] }).map((l) => l.setor))
+      .toEqual(['P2', 'P1', 'P4', 'P3'])
+  })
+
+  it('quem está de plantão e ficou FORA da ordem não some — entra na frente (sai por último)', () => {
+    const linhas = linhasNoturnasFds(GRADE_SAB, POSICOES_SAB, { ordem: ['MATHEUS', 'CRISTINA', 'GABRIEL'] })
+    expect(linhas.map((l) => l.nome)).toEqual(['JOAO HENRIQUE', 'GUILHERME DIDOMENICO', 'MATHEUS', 'CRISTINA', 'GABRIEL'])
+  })
+
+  it('nome repetido na ordem não duplica card', () => {
+    const linhas = linhasNoturnasFds(GRADE_SAB, POSICOES_SAB, { ordem: ['MATHEUS', 'MATHEUS', 'GABRIEL'] })
+    expect(linhas.filter((l) => l.nome === 'MATHEUS')).toHaveLength(1)
+  })
+})
+
 describe('resolverNomeEstrito — sem colapso por primeiro nome (16/08)', () => {
   // dicionário real: alias "JOAO" aponta p/ o JOAO HENRIQUE
   const resolverUid = (n) => ({ 'JOAO': 'uid-jh', 'JOAO HENRIQUE': 'uid-jh', 'MATHEUS': 'uid-mat' }[String(n).toUpperCase()] || null)

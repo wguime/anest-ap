@@ -38,8 +38,14 @@ import {
 import { normNome, candidatosPrimeiroNome, formatData } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 
+// Turnos PUBLICADOS como linha da fila única (a noite não é turno de caso no
+// banco — a fila dela viaja no fds_meta.ordemNoite do mesmo payload).
 const TURNOS = ['matutino', 'vespertino']
-const TURNO_LABEL = { matutino: 'Matutino', vespertino: 'Vespertino' }
+// Ordem de liberação conferida/editada: os dois turnos publicados MAIS a noite
+// (dono 16/08: a fila noturna tem gente da lista numerada além da grade 19-07 —
+// sáb P2,P1,P4,P3,P11,P8,P7 · dom P3,P4,P1,P2,P11,P6,P5).
+const TURNOS_ORDEM = [...TURNOS, 'noturno']
+const TURNO_LABEL = { matutino: 'Matutino', vespertino: 'Vespertino', noturno: 'Noturno' }
 const FAIXA_LABEL = { '7-13': '7–13h', '13-19': '13–19h', '19-07': '19–07h' }
 const COLUNAS = [
   { key: 'unimed', label: 'Unimed' },
@@ -102,7 +108,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
         if (d.data !== sabadoISO && d.data !== domingoISO) { fora.push(d.data); continue }
         const ordem = {}
         const ordemFonte = {}
-        for (const turno of TURNOS) {
+        for (const turno of TURNOS_ORDEM) {
           if (d.ordemDoc[turno]?.length) {
             ordem[turno] = d.ordemDoc[turno]
             ordemFonte[turno] = 'documento'
@@ -203,7 +209,10 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
     const out = []
     const tokens = dia?.ordem?.[turno] || []
     if (!tokens.length) {
-      out.push('Ordem de liberação vazia — sem ela a fila seria inventada dos casos.')
+      // NOITE sem ordem não trava a publicação: a fila cai na linha 19-07 da
+      // grade, que é o comportamento de sempre. Manhã e tarde não têm essa
+      // rede — sem rodapé a fila seria inventada dos casos.
+      if (turno !== 'noturno') out.push('Ordem de liberação vazia — sem ela a fila seria inventada dos casos.')
       return out
     }
     const { semDono } = ordemPublicacao(iso, turno)
@@ -222,7 +231,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
     }
     return [...new Set(out)]
   }
-  const todosBloqueios = diasAlvo.flatMap((iso) => TURNOS.flatMap((t) =>
+  const todosBloqueios = diasAlvo.flatMap((iso) => TURNOS_ORDEM.flatMap((t) =>
     bloqueiosDe(iso, t).map((b) => `${formatData(iso)} · ${TURNO_LABEL[t]}: ${b}`)))
 
   // ── publicação ────────────────────────────────────────────────────────────
@@ -261,6 +270,10 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
                 posicoes: posicoesEfetivas(iso),
                 escalacao: dia.escalacao,
                 ordemFonte: dia.ordemFonte,
+                // fila da NOITE (nomes, convenção do rodapé): vai no meta porque
+                // 'noturno' não é turno de publicação no banco. Republicar sem
+                // este campo apagaria a ordem ditada em silêncio.
+                ordemNoite: ordemPublicacao(iso, 'noturno').rodape,
               },
               status: 'publicada',
             }, { userName: user?.displayName })
@@ -401,7 +414,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
               </div>
 
               {/* ordem de liberação POR TURNO, na direção do DOCUMENTO */}
-              {TURNOS.map((turno) => {
+              {TURNOS_ORDEM.map((turno) => {
                 const tokens = dia.ordem[turno] || []
                 const bloqueios = bloqueiosDe(iso, turno)
                 return (
