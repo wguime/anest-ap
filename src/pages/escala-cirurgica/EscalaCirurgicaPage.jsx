@@ -56,16 +56,23 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const [hospital, setHospital] = useState('unimed')
   const [aba, setAba] = useState('minhas')
   const [turno, setTurno] = useState(() => turnoAtual())
+  // sáb/dom é dado do CALENDÁRIO — não espera rede (ver turnoDoRelogio)
+  const fimDeSemana = ehFimDeSemana(data)
   // ── MODO FIM DE SEMANA (dono 15/08): fila de liberação ÚNICA ───────────────
   // Liga quando a data é sáb/dom E a linha 'fds' do dia está publicada. Sem ela,
   // a aba Liberações segue no comportamento por hospital (rollout seguro).
   // Fica ANTES dos efeitos de turno: no FDS o relógio decide entre 3 turnos.
-  const fimDeSemana = ehFimDeSemana(data)
   const modoFds = fimDeSemana && escalas.fds?.status === 'publicada'
   // turno do relógio: 2 faixas no dia útil, 3 no FDS (7h/13h/19h)
+  // ⚠️ Depende da DATA, não da linha 'fds' (defeito 16/08: "pisca com
+  // informações antigas"). Ligar os 3 turnos ao fetch fazia a tela abrir com
+  // "Manhã | Tarde" no vespertino e, ~3s depois, virar "Manhã | Tarde | Noite"
+  // no noturno — dois estados visíveis para quem só queria conferir a fila.
+  // Sábado e domingo são conhecidos pelo calendário: decidir por eles é
+  // instantâneo e o primeiro render já sai certo.
   const turnoDoRelogio = useCallback(
-    () => (modoFds ? turnoFdsAtual(new Date().getHours() * 60 + new Date().getMinutes()) : turnoAtual()),
-    [modoFds]
+    () => (fimDeSemana ? turnoFdsAtual(new Date().getHours() * 60 + new Date().getMinutes()) : turnoAtual()),
+    [fimDeSemana]
   )
   const [importando, setImportando] = useState(false)
   const [importandoFds, setImportandoFds] = useState(false) // documento de FDS (fila única)
@@ -126,7 +133,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   useEffect(() => {
     // 'noturno' só existe no FDS: saindo dele (outra data/dia útil), a tela
     // volta para o turno do relógio em vez de ficar num turno inexistente.
-    if (!modoFds && turno === 'noturno') { turnoManualRef.current = null; setTurno(turnoAtual()); return }
+    if (!fimDeSemana && turno === 'noturno') { turnoManualRef.current = null; setTurno(turnoAtual()); return }
     if (data !== hoje) return
     const atual = turnoDoRelogio()
     if (turnoManualRef.current === atual) return // escolha manual vale nesta faixa
@@ -332,7 +339,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
             if (v === 'amanha') { setData(amanha); setTurno('matutino') } // manhã seguinte
             else setData(hoje)
           }}
-          turnoOpcoes={modoFds ? TURNO_OPCOES_FDS : TURNO_OPCOES}
+          turnoOpcoes={fimDeSemana ? TURNO_OPCOES_FDS : TURNO_OPCOES}
           turno={turno}
           onEscolherTurno={escolherTurno}
           hospitalOpcoes={HOSPITAL_OPCOES}

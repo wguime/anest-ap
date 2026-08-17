@@ -63,7 +63,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // Turno NOTURNO do FDS não tem casos próprios (o CHECK do banco só aceita
   // matutino/vespertino): as cirurgias em curso à noite são as da TARDE — a
   // base é o vespertino e o card do plantonista herda o que ele está operando.
-  const turnoBase = (modoFds && turno === 'noturno') ? 'vespertino' : turno
+  const turnoBase = turno === 'noturno' ? 'vespertino' : turno
   const casosTurno = useMemo(
     () => filtrarPorTurno((modoFds && casosFds) ? casosFds : (escala?.casos || []), turnoBase),
     [escala, turnoBase, modoFds, casosFds]

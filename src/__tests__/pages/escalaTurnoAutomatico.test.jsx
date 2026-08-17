@@ -153,6 +153,25 @@ describe('turno acompanha o relógio (dono 15/08)', () => {
     expect(screen.queryByRole('tab', { name: 'Hoje' })).toBeNull()
   })
 
+  it('FDS: os 3 turnos aparecem no PRIMEIRO render, sem esperar a fila carregar', () => {
+    // defeito 16/08 ("pisca com informações antigas"): a barra abria com
+    // "Manhã | Tarde" e virava 3 turnos ~3s depois, quando a linha 'fds'
+    // chegava do banco. Sábado/domingo é do calendário — não espera rede.
+    vi.setSystemTime(new Date('2026-08-15T20:00:00-03:00')) // sábado, 20h
+    const hoje = hojeLocalISO()
+    estado.ctx = {
+      // NENHUMA escala carregada ainda (é o instante do primeiro render)
+      escalas: { unimed: null, hro: null, materno: null, fds: null },
+      p4Hospital: null, data: hoje, hoje, loading: true, ...acoes(),
+    }
+    render(<EscalaCirurgicaPage onNavigate={() => {}} goBack={() => {}} />, { wrapper: wrap })
+    expect(screen.getByRole('tab', { name: 'Manhã' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Tarde' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Noite' })).toBeTruthy()
+    // e já abre no turno certo do relógio (20h = noite), sem trocar depois
+    expect(turnoAtivo()).toBe('Noite')
+  })
+
   it('dia útil NÃO tem turno Noturno (é conceito do fim de semana)', () => {
     vi.setSystemTime(new Date('2026-08-17T10:00:00-03:00')) // segunda
     montarHoje()
