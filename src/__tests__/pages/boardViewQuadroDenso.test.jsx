@@ -145,3 +145,21 @@ describe('Completa — cabeçalho da sala', () => {
     expect(screen.getByText('Mauricio')).toBeTruthy()
   })
 })
+
+describe('Completa — coluna do tempo', () => {
+  it('põe a duração estimada e o tempo faltante embaixo do horário', () => {
+    renderBoard([caso({ tempoEstimado: '02:30', terminoPrevisto: '15:45', statusCirurgia: 'iniciada' })])
+    const card = screen.getByRole('button', { name: /^Detalhes do caso/ })
+    const coluna = card.querySelector(':scope > div > span:first-child')
+    // hora, duração e o que falta — os três na MESMA coluna (dono 17/08)
+    expect(within(coluna).getByText('13:30')).toBeTruthy()
+    expect(within(coluna).getByText('02:30')).toBeTruthy()
+    expect(coluna.textContent).toMatch(/min|h/)
+  })
+
+  it('cirurgia agendada mostra a hora de término, não contagem', () => {
+    renderBoard([caso({ tempoEstimado: '02:30', terminoPrevisto: '15:45' })])
+    expect(screen.getByText('→15:45')).toBeTruthy()
+    expect(screen.queryByText(/^~/)).toBeNull()
+  })
+})

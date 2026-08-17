@@ -97,7 +97,7 @@ export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null, 
       ? 'bg-info/[0.12] dark:bg-info/[0.22]'
       : ''
   const emLinha = moldura === 'linha'
-  const temColunaHora = Boolean(caso.hora) || alvoCaso != null
+  const temColunaHora = Boolean(caso.hora) || alvoCaso != null || Boolean(caso.tempoEstimado)
   return (
     <button
       type="button"
@@ -115,19 +115,39 @@ export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null, 
       ].filter(Boolean).join(' ')}
     >
       <div className="flex gap-2.5">
+        {/* COLUNA DO TEMPO (dono 17/08): hora, duração estimada e o tempo faltante
+            desta cirurgia ficam juntos embaixo do horário — espalhados pelo card,
+            os três eram lidos como coisas de assuntos diferentes. À direita sobram
+            só status e convênio. */}
         {temColunaHora && (
-          <span className="w-[52px] shrink-0">
+          <span className="w-[62px] shrink-0">
             {caso.hora && <span className="block text-[15px] font-bold tabular-nums text-foreground">{caso.hora}</span>}
-            {alvoCaso != null && (
+            {caso.tempoEstimado && (
+              <span
+                className="flex items-center gap-0.5 whitespace-nowrap text-[10px] tabular-nums text-muted-foreground"
+                title={`Duração estimada desta cirurgia: ${caso.tempoEstimado}`}
+              >
+                <Timer className="h-2.5 w-2.5 shrink-0" />{caso.tempoEstimado}
+              </span>
+            )}
+            {/* CONTAGEM SÓ NO CASO EM ANDAMENTO (regra 29/07): agendada mostra a
+                hora prevista de término; contar o que ainda não começou é chute
+                apresentado como número. */}
+            {faltaCaso ? (
+              <span
+                className={`block whitespace-nowrap text-[10px] font-semibold tabular-nums ${faltaCaso.atrasada ? 'text-warning' : 'text-foreground/70'}`}
+                title={`Esta cirurgia (em andamento) termina às ${caso.terminoPrevisto}`}
+              >
+                {faltaCaso.texto}
+              </span>
+            ) : alvoCaso != null ? (
               <span
                 className="block text-[10px] tabular-nums text-muted-foreground"
-                title={emAndamento
-                  ? `Esta cirurgia (em andamento) termina às ${caso.terminoPrevisto}`
-                  : `Esta cirurgia está prevista para terminar às ${caso.terminoPrevisto}`}
+                title={`Esta cirurgia está prevista para terminar às ${caso.terminoPrevisto}`}
               >
                 →{caso.terminoPrevisto}
               </span>
-            )}
+            ) : null}
           </span>
         )}
         <span className="min-w-0 flex-1">
@@ -154,30 +174,10 @@ export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null, 
                 · R: {residente}
               </span>
             )}
+            {/* tempo desta cirurgia mora na COLUNA da esquerda; aqui ficam só o
+                estado e o convênio. O tempo da PESSOA é outra coisa — pílula verde
+                sólida na fila — e os dois nunca podem ser lidos um pelo outro. */}
             <span className="ml-auto flex shrink-0 items-center gap-1">
-              {caso.tempoEstimado && (
-                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                  <Timer className="w-3 h-3" /> {caso.tempoEstimado}
-                </span>
-              )}
-              {/* chip CINZA e pequeno: é o tempo de UMA cirurgia. O da PESSOA é a
-                  pílula verde sólida na fila — pesos diferentes de propósito, para
-                  o plantonista nunca ler um pelo outro. Só aparece com a cirurgia
-                  em andamento; agendada mostra a HORA na coluna da esquerda. */}
-              {faltaCaso && (
-                <span
-                  title={`Esta cirurgia (em andamento) termina às ${caso.terminoPrevisto}`}
-                  className={[
-                    'inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs font-medium',
-                    faltaCaso.atrasada
-                      ? 'border-warning/50 bg-warning/10 text-warning'
-                      : 'border-border bg-muted/60 text-foreground/80',
-                  ].join(' ')}
-                >
-                  <Timer className="w-3 h-3 shrink-0" />
-                  {faltaCaso.texto}
-                </span>
-              )}
               {tb && <Badge variant={tb.variant} badgeStyle={tb.style}>{tb.label}</Badge>}
               {st && <Badge variant={st.variant}>{st.label}</Badge>}
               {ex && <Badge variant={ex.variant} className={ex.badgeClass}>{ex.label}</Badge>}
