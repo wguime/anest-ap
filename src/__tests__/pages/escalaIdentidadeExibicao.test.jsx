@@ -17,6 +17,7 @@ import { render, screen } from '@testing-library/react'
 import { ThemeProvider, ToastProvider } from '@/design-system'
 import { nomeAnestesistaExibicao } from '@/pages/escala-cirurgica/utils'
 import DefinirAnestesistaSheet from '@/pages/escala-cirurgica/DefinirAnestesistaSheet'
+import CasoDetalheSheet from '@/pages/escala-cirurgica/CasoDetalheSheet'
 
 const ROSTER = new Map([
   ['uid-staub', { uid: 'uid-staub', nome: 'GUILHERME STAUB', apelidos: ['STAUB'] }],
@@ -31,6 +32,9 @@ vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
 // o sheet usa o user real só p/ o audit (`por`) da assunção de posição
 vi.mock('@/contexts/UserContext', () => ({
   useUser: () => ({ user: { uid: 'uid-test' } }),
+}))
+vi.mock('@/hooks/useRosterResidentes', () => ({
+  default: () => ({ residentes: [], residenteByUid: new Map(), options: [] }),
 }))
 vi.mock('@/hooks/useRosterAnestesistas', () => ({
   default: () => ({
@@ -159,5 +163,40 @@ describe('DefinirAnestesistaSheet — vai direto à escolha', () => {
       { wrapper: wrap },
     )
     expect(await screen.findByText('Quem responde por esta cirurgia?')).toBeTruthy()
+  })
+})
+
+/**
+ * O DETALHE DO CASO usa a MESMA fonte de nome (17/08). O sheet mostrava o alias
+ * cru da importação — "ALEXANDRE D" em caixa alta, ao lado do cirurgião em Title
+ * Case, enquanto o cabeçalho da sala e o sheet de definir diziam "Alexandre
+ * Danieli". Três superfícies do mesmo caso, dois nomes para a mesma pessoa.
+ */
+describe('CasoDetalheSheet — o anestesista vem do cadastro', () => {
+  const escala = {
+    id: 'e1', hospital: 'hro', ajudaExterna: {},
+    casos: [{
+      id: 'c1', sala: 'Sala 5', ordem: 0, hora: '08:00', turno: 'matutino',
+      anestesista: 'STAUB', anestesistaUserId: 'uid-staub',
+      cirurgiao: 'Ana Souza', procedimento: 'Colecistectomia',
+    }],
+  }
+
+  it('mostra o nome do cadastro, não o alias em caixa alta', () => {
+    render(
+      <CasoDetalheSheet escala={escala} caso={escala.casos[0]} onClose={vi.fn()} podeEditar />,
+      { wrapper: wrap },
+    )
+    expect(screen.getByText('Guilherme Staub')).toBeTruthy()
+    expect(screen.queryByText('STAUB')).toBeNull()
+  })
+
+  it('sem vínculo, cai no texto importado (não some nome nenhum)', () => {
+    const semUid = { ...escala, casos: [{ ...escala.casos[0], anestesistaUserId: null, anestesista: 'KARINE' }] }
+    render(
+      <CasoDetalheSheet escala={semUid} caso={semUid.casos[0]} onClose={vi.fn()} podeEditar />,
+      { wrapper: wrap },
+    )
+    expect(screen.getByText('Karine')).toBeTruthy()
   })
 })

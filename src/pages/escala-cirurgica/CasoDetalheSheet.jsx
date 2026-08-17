@@ -18,11 +18,12 @@ import { GraduationCap, Loader2, MapPin, Stethoscope, Timer, UserCog } from 'luc
 import { Badge, Button, Input, Select, Sheet, SheetContent, SheetHeader, SheetTitle } from '@/design-system'
 import { HOSPITAL_LABEL, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
+import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import useRosterResidentes from '@/hooks/useRosterResidentes'
 import { titleCaseNome } from '@/lib/colunaLiberacao'
 import PainelTempo, { formatFaltante } from './PainelTempo'
 import useAgoraMinuto from './useAgoraMinuto'
-import { espelhoTempoTotal, LOCAIS_BASE, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso } from './utils'
+import { espelhoTempoTotal, LOCAIS_BASE, nomeAnestesistaExibicao, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso } from './utils'
 
 const SALA_OUTRO = '__outro__'
 // Sentinela do seletor de residente (valor impossível como uid).
@@ -48,6 +49,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
   const { setStatusCirurgia, atualizarCaso, adicionarAjuda, removerAjuda, setLinhaOverride } = useEscalaCirurgicaActions()
   const { user } = useUser()
   const { options: opcoesResidente, residenteByUid } = useRosterResidentes()
+  const { rosterByUid } = useRosterAnestesistas()
   const agoraMin = useAgoraMinuto()
   const isDemo = String(escala?.id).startsWith('demo-')
   // um editor por vez: 'sala' | 'cirurgiao' | 'residente' | 'tempo' | null
@@ -312,10 +314,15 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
             />
           )}
 
+          {/* MESMA função do cabeçalho da sala e do sheet de definir (bug 29/07:
+              o cabeçalho vinha do cadastro e este texto vinha do alias importado,
+              então "Guilherme Staub" lá e "STAUB" aqui — o dono leu como duas
+              pessoas). Também tira a CAIXA ALTA do alias, que destoava do nome do
+              cirurgião ao lado. */}
           <LinhaDado
             icone={<UserCog className="h-3.5 w-3.5" />}
             rotulo="Anestesista"
-            valor={vivo.anestesista}
+            valor={nomeAnestesistaExibicao({ uid: vivo.anestesistaUserId, alias: vivo.anestesista, rosterByUid })}
             destaque
             acao={definivel && {
               label: 'Trocar',

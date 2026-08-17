@@ -1588,12 +1588,21 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
 
       {/* Tempo faltante — 1 toque define o término e liga o cronômetro do card */}
       <Sheet open={!!alvoTempo} onOpenChange={(o) => { if (!o) { setAlvoTempo(null); setHoraExata('') } }}>
-        <SheetContent side="bottom">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              <Timer className="w-4 h-4 shrink-0" /> {alvoTempo?.anestesista || 'Tempo'}
+        <SheetContent side="bottom" className="!h-auto max-h-[88vh]">
+          <SheetHeader className="pb-2">
+            {/* MESMO NOME do botão que abriu (dono 17/08): a pílula/atalho da fila
+                diz "Tempo total" e o painel dizia outra coisa — eram quatro nomes
+                para dois conceitos. Aqui e no card é "tempo faltante"; "término"
+                é o da CIRURGIA, no detalhe do caso. */}
+            <SheetTitle className="flex items-center gap-2 text-[17px]">
+              <Timer className="w-4 h-4 shrink-0" /> Tempo faltante de {alvoTempo?.anestesista || '—'}
             </SheetTitle>
-            <p className="text-sm text-muted-foreground">Tempo para término ou horário de término de todos os seus casos</p>
+            <p className="mt-1 text-[11.5px] leading-snug text-muted-foreground">
+              Quando {alvoTempo?.anestesista ? 'essa pessoa' : 'ela'} fica livre — vale para
+              {alvoTempo?.casosAtivos
+                ? ` as ${alvoTempo.casosAtivos} ${alvoTempo.casosAtivos === 1 ? 'cirurgia' : 'cirurgias'} dela, e nunca é a soma delas.`
+                : ' o turno todo.'}
+            </p>
           </SheetHeader>
           {alvoTempo && (
             <div className="space-y-5 px-1 pb-6 pt-2">

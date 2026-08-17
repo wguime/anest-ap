@@ -276,6 +276,18 @@ describe('Painel da linha — SEM a lista de casos (dono 30/07)', () => {
     expect(screen.getByText(`14/120`)).toBeTruthy()
   })
 
+  it('o painel do TEMPO usa o mesmo nome do botão que o abriu', () => {
+    // eram quatro nomes para dois conceitos: "+ Tempo total" no card, "Falta" no
+    // campo, "tempo faltante" no aria-label e "Tempo para término ou horário de
+    // término de todos os seus casos" no subtítulo (auditoria 17/08)
+    montar()
+    fireEvent.click(screen.getByLabelText('Definir tempo faltante de Marilio Flach'))
+    expect(screen.getByText(/Tempo faltante de Marilio Flach/)).toBeTruthy()
+    expect(screen.queryByText(/Tempo para término ou horário de término/)).toBeNull()
+    // e o painel acompanha o conteúdo em vez de nascer com 85% da tela
+    expect(document.querySelector('[data-slot="sheet-content"]').className).toContain('!h-auto')
+  })
+
   it('o cabeçalho repete o contexto que o card da fila dá', () => {
     montar()
     abrirEditor('Marilio Flach')

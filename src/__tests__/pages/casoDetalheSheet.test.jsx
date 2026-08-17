@@ -34,6 +34,11 @@ vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
 vi.mock('@/contexts/UserContext', () => ({
   useUser: () => ({ user: { uid: 'u-eu', displayName: 'Eu Mesmo' } }),
 }))
+// o detalhe usa o roster de anestesistas só para EXIBIR o nome do cadastro
+// (mesma função do cabeçalho da sala) — sem vínculo, cai no texto importado
+vi.mock('@/hooks/useRosterAnestesistas', () => ({
+  default: () => ({ options: [], rosterByUid: new Map(), resolver: () => null, loading: false }),
+}))
 vi.mock('@/hooks/useRosterResidentes', () => ({
   default: () => ({
     residentes: [{ uid: 'uid-augusto', nome: 'Augusto' }, { uid: 'uid-jacinta', nome: 'Jacinta' }],
