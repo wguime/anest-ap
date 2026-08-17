@@ -191,11 +191,15 @@ describe('Conferência — anexo misto e data impressa', () => {
       target: { files: [new File(['x'], 'materno.png', { type: 'image/png' })] },
     })
 
-    expect(await screen.findByRole('heading', { name: /Conferir 2 blocos · 9 cirurgias/i })).toBeTruthy()
+    // desde 17/08 o título é fixo ("Blocos por anestesista") e o resumo do lote
+    // fica ao lado, em texto menor
+    expect(await screen.findByRole('heading', { name: /Blocos por anestesista/i })).toBeTruthy()
+    expect(screen.getAllByText(/9 cirurgias/i).length).toBeGreaterThan(0)
     expect(await screen.findByText(/3 item\(ns\) do outro turno não serão adicionados/i)).toBeTruthy()
 
     fireEvent.click(screen.getByRole('tab', { name: 'Vespertino' }))
-    expect(await screen.findByRole('heading', { name: /Conferir 1 bloco · 3 cirurgias/i })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: /Blocos por anestesista/i })).toBeTruthy()
+    expect(screen.getAllByText(/3 cirurgias/i).length).toBeGreaterThan(0)
     expect(svcMock.parseEscalaImagem).toHaveBeenCalledTimes(1)
 
     fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
@@ -243,7 +247,8 @@ describe('Conferência — anexo misto e data impressa', () => {
       target: { files: [new File(['x'], 'unimed.png', { type: 'image/png' })] },
     })
 
-    expect(await screen.findByRole('heading', { name: /1 cirurgia \+ 1 posição/i })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: /Blocos por anestesista/i })).toBeTruthy()
+    expect(screen.getAllByText(/1 cirurgia \+ 1 posição/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/1 posição$/i).length).toBeGreaterThan(0)
 
     fireEvent.click(screen.getByRole('tab', { name: 'Vespertino' }))
@@ -580,12 +585,17 @@ describe('Conferência — ordem de liberação numerada', () => {
   // A conferência é contra a FOTO: o aviso de "está no rodapé mas não tem
   // cirurgia" só serve se estiver NA POSIÇÃO do nome. Listá-lo num parágrafo à
   // parte obrigava a procurar o nome no meio da lista.
-  it('cada posição mostra os casos da pessoa e marca quem ficou sem nenhum', async () => {
+  // A CONTAGEM POR PESSOA SAIU (dono 17/08): o número na posição confundia quem
+  // confere. Quem está na ordem sem cirurgia nenhuma — o detector da extração
+  // torta — segue MARCADO, agora com o ponto âmbar, e o porquê é lido uma vez em
+  // Pendências.
+  it('marca com o ponto âmbar quem está na ordem sem nenhuma cirurgia, sem contar casos', async () => {
     await importar(UM, RODAPE)
     const caixa = (await screen.findByText(/confira contra o rodapé da imagem/i)).parentElement
     const linhaDe = (nome) => within(caixa).getByText(nome).closest('li')
-    expect(linhaDe('CURY').textContent).toMatch(/1 caso/)
-    expect(linhaDe('JOAO HENRIQUE').textContent).toMatch(/⚠ sem caso/)
+    expect(linhaDe('CURY').textContent).not.toMatch(/caso/)
+    expect(linhaDe('CURY').querySelector('[title="na ordem sem nenhuma cirurgia"]')).toBeNull()
+    expect(linhaDe('JOAO HENRIQUE').querySelector('[title="na ordem sem nenhuma cirurgia"]')).toBeTruthy()
     // o aviso explica o porquê UMA vez, sem repetir a lista de nomes
     const aviso = screen.getByText(/confira a extração/i)
     expect(aviso.textContent).toMatch(/Um nome está/)
@@ -667,7 +677,6 @@ describe('Conferência — ordem de liberação numerada', () => {
     // entra como CURY (apelido), o mesmo texto do caso — não como "Gustavo Cury"
     const ultima = [...caixa.querySelectorAll('li')].at(-1)
     expect(ultima.textContent).toContain('CURY')
-    expect(ultima.textContent).toContain('1 caso')
   })
 
   it('quem já está no rodapé não aparece na lista de acrescentar', async () => {

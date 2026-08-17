@@ -1041,6 +1041,18 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
 
   const temBase = casos.length > 0
   const duplicados = useMemo(() => detectarItensDuplicados(casos), [casos])
+  // Placar da conferência (dono 17/08): a barra de atalhos precisa dizer, sem
+  // rolar, quanta coisa ainda impede publicar. BLOQUEIO é o que o `publicar`
+  // recusa — nome ambíguo e duplicidade não classificada; o resto é AVISO, que
+  // só pede conferência.
+  const bloqueiosConferencia = gruposAmbiguos.length + duplicidadesPendentes.length
+  const avisosConferencia = rodapeSuspeitos.length + conflitos.length + blocosRepetidos.length
+    + duplicados.length + casosForaDoRodape.length + gruposSemAnestesista
+  const totalPendencias = bloqueiosConferencia + avisosConferencia
+  // Posição aberta para edição — o editor mora FORA das duas colunas da fila
+  const posAberta = ordemNumerada.find((p) => p.i === posSel) || null
+  /** Rola até a seção da conferência (o scroll é do container, não da janela). */
+  const irPara = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   const resumoTexto = (itens) => {
     const r = resumirItensEscala(itens)
     const partes = []
@@ -1188,52 +1200,47 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
           </p>
         )}
 
-        {duplicados.length > 0 && (
-          <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 space-y-1">
-            <p className="text-sm font-semibold text-warning flex items-center gap-1.5">
-              <AlertTriangle className="w-4 h-4 shrink-0" /> Possíveis cirurgias duplicadas
-            </p>
-            {duplicados.map(({ item, quantidade }, i) => (
-              <p key={`${item.sala}-${item.hora}-${i}`} className="text-xs text-warning">
-                {item.sala || 'Sem sala'} · {item.hora || 'sem hora'} · {item.procedimento || item.cirurgiao || 'sem descrição'} aparece {quantidade} vezes. Confira o anexo; nada foi removido automaticamente.
-              </p>
-            ))}
-          </div>
-        )}
-
-        {/* Conflitos de horário (aviso, não bloqueia) */}
-        {conflitos.length > 0 && (
-          <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 space-y-1.5">
-            <p className="text-sm font-semibold text-warning flex items-center gap-1.5">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
-              {conflitos.length === 1 ? '1 conflito de horário' : `${conflitos.length} conflitos de horário`}
-            </p>
-            <p className="text-xs text-muted-foreground">Mesmo anestesista em 2 salas no mesmo horário. Pode publicar mesmo assim — revise se foi intencional.</p>
-            <ul className="space-y-0.5">
-              {conflitos.map((c, i) => (
-                <li key={i} className="text-xs text-warning">{c.nome || 'Anestesista'} — {c.sala1} ({c.hora1}) e {c.sala2} ({c.hora2})</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* Blocos multi-anestesista com todas as linhas iguais (aviso, não bloqueia) */}
-        {blocosRepetidos.length > 0 && (
-          <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 space-y-1">
-            <p className="text-sm font-semibold text-warning flex items-center gap-1.5">
-              <AlertTriangle className="w-4 h-4 shrink-0" /> Mesmo anestesista em todas as linhas
-            </p>
-            {blocosRepetidos.map((b) => (
-              <p key={b.sala} className="text-xs text-warning">
-                {b.sala}: {b.nome} nas {b.n} linhas — nesses blocos cada linha costuma ter o SEU anestesista; confira a imagem.
-              </p>
-            ))}
-          </div>
-        )}
-
         {/* Conferência da base */}
         {temBase && (
           <>
+            {/* TRÊS DESTINOS NUMA ROLAGEM SÓ (dono 17/08, escolha em protótipo):
+                Blocos · Liberações · Pendências ROLAM até a seção em vez de trocar
+                de aba — bloco e fila precisam poder ser lidos na mesma passada. A
+                faixa de bloqueio fica fixa embaixo dos atalhos: o problema pode
+                sair da tela, não da barra. */}
+            <nav
+              className="sticky top-14 z-10 -mx-4 border-b border-border bg-background px-4 pb-2 pt-1"
+              aria-label="Seções da conferência"
+            >
+              <div className="flex gap-1.5 overflow-x-auto">
+                {[
+                  { id: 'conf-blocos', label: 'Blocos', n: grupos.length },
+                  { id: 'conf-liberacoes', label: 'Liberações', n: ordemNumerada.length },
+                  { id: 'conf-pendencias', label: 'Pendências', n: totalPendencias, alerta: bloqueiosConferencia > 0 },
+                ].map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => irPara(s.id)}
+                    className="inline-flex min-h-[34px] shrink-0 items-center gap-1.5 rounded-[10px] bg-muted px-3
+                               text-xs font-bold text-muted-foreground transition-transform active:scale-95"
+                  >
+                    {s.label}
+                    <span className={`rounded-md px-1.5 text-[10px] ${s.alerta ? 'bg-destructive text-destructive-foreground' : ''}`}>
+                      {s.n}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              {bloqueiosConferencia > 0 && (
+                <p className="mt-1.5 flex items-center gap-1.5 rounded-lg bg-destructive/10 px-2.5 py-1.5 text-xs font-semibold text-destructive">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  {bloqueiosConferencia === 1 ? '1 bloqueio impede publicar' : `${bloqueiosConferencia} bloqueios impedem publicar`}
+                  {avisosConferencia > 0 && ` · ${avisosConferencia} aviso${avisosConferencia > 1 ? 's' : ''}`}
+                </p>
+              )}
+            </nav>
+
             {/* CONFERÊNCIA POR ANESTESISTA (redesenho 26/07, split 27/07): a lista
                 plana de N cards era impraticável no celular e ficava longe da
                 atribuição, que vivia noutra seção. Agora cada bloco é dobrado,
@@ -1241,11 +1248,14 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
                 do anestesista ali mesmo. Sala com VÁRIOS anestesistas (Exames,
                 IOSC, seções de outro hospital) rende um bloco por anestesista:
                 agrupar todo mundo numa sala só foi o que achatou o IOSC em 23/07. */}
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-primary" /> Conferir {grupos.length} bloco{grupos.length === 1 ? '' : 's'} · {resumoTexto(casos)}
+            <section id="conf-blocos" className="scroll-mt-28">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="flex min-w-0 items-center gap-1.5 text-[15px] font-extrabold">
+                <Sparkles className="w-4 h-4 shrink-0 text-primary" />
+                <span className="truncate">Blocos por anestesista</span>
               </h2>
-              <div className="flex items-center gap-1">
+              <div className="flex shrink-0 items-center gap-1">
+                <span className="text-[11.5px] text-muted-foreground">{resumoTexto(casos)}</span>
                 <Button size="sm" variant="ghost"
                   onClick={() => setGruposAbertos(todasAbertas ? new Set() : new Set(grupos.map((g) => g.chave)))}
                   aria-label={todasAbertas ? 'Recolher todos os blocos' : 'Expandir todos os blocos'}>
@@ -1352,83 +1362,50 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
               })}
             </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-medium text-muted-foreground">Ordem de liberação (rodapé)</label>
+            </section>
+
+            <section id="conf-liberacoes" className="scroll-mt-28">
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <h2 className="text-[15px] font-extrabold">Ordem de liberação</h2>
                 <Button size="sm" variant="ghost" onClick={preencherRodape}>Preencher da atribuição</Button>
               </div>
               {/* A ordem é o dado mais SAGRADO da importação e cabia numa linha
                   só: com 17 nomes apareciam 4 (dono 11/08, "difícil de
                   visualizar"). O campo de texto SAIU (dono 11/08): a lista
                   numerada é a única superfície — se confere contra a foto
-                  posição por posição e se corrige na própria posição. */}
+                  posição por posição e se corrige na própria posição.
+                  Desde 17/08 ela corre em DUAS COLUNAS, para baixo: a esquerda
+                  inteira e só então a direita — 15 nomes cabem sem rolar. */}
+              <p className="mb-1.5 text-[11.5px] text-muted-foreground">
+                1º = plantonista · último sai 1º. A ordem corre para baixo: a coluna da esquerda inteira, depois a direita.
+              </p>
               <div className="overflow-hidden rounded-xl border border-border-strong bg-card">
-                <ul className="divide-y divide-border">
-                  {ordemNumerada.map(({ nome, i, papel, casos: nCasos, ajuda }) => {
+                <ul className="columns-2 gap-x-3 px-2.5 py-1">
+                  {ordemNumerada.map(({ nome, i, papel, ajuda }) => {
                     const suspeito = rodapeSuspeitos.includes(nome)
-                    const aberta = posSel === i
                     return (
-                      <li key={i}>
+                      <li key={i} className="break-inside-avoid border-b border-border/60">
                         <button
                           type="button"
                           onClick={() => abrirPosicao(i, nome)}
-                          aria-expanded={aberta}
-                          className="flex w-full items-center gap-2 px-2.5 py-2 text-left"
+                          aria-expanded={posSel === i}
+                          className={`flex w-full items-center gap-1.5 py-1.5 text-left ${posSel === i ? 'text-primary' : ''}`}
                         >
-                          <span className="w-5 shrink-0 text-right text-xs font-bold tabular-nums text-muted-foreground">
+                          <span className="w-4 shrink-0 text-right text-[11px] font-bold tabular-nums text-muted-foreground">
                             {i + 1}
                           </span>
-                          <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{nome}</span>
-                          {papel && <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">{papel}</span>}
-                          {ajuda && <span className="shrink-0 rounded-full bg-info/10 px-1.5 py-0.5 text-[11px] font-medium text-info">ajuda</span>}
-                          {/* Contagem de casos é o que denuncia a extração torta:
-                              nome do rodapé sem cirurgia nenhuma normalmente
-                              perdeu a linha para outra pessoa (IOSC, 23/07). */}
-                          <span
-                            className={[
-                              'shrink-0 text-[11px] tabular-nums',
-                              suspeito ? 'rounded-full bg-warning/15 px-1.5 py-0.5 font-medium text-warning' : 'text-muted-foreground',
-                            ].join(' ')}
-                          >
-                            {nCasos > 0 ? `${nCasos} caso${nCasos > 1 ? 's' : ''}` : (suspeito ? '⚠ sem caso' : 'sem caso')}
-                          </span>
+                          <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-foreground">{nome}</span>
+                          {papel && <span className="shrink-0 rounded-md bg-primary/10 px-1 py-0.5 text-[9.5px] font-bold text-primary">{papel}</span>}
+                          {ajuda && <span className="shrink-0 rounded-md bg-info/15 px-1 py-0.5 text-[9.5px] font-bold text-info">ajuda</span>}
+                          {/* SEM a contagem de casos (dono 17/08): o número por
+                              pessoa confundia quem confere. Quem está na ordem sem
+                              cirurgia nenhuma — o detector da extração torta (IOSC,
+                              23/07) — fica com o ponto âmbar, e o porquê é lido uma
+                              vez em Pendências. */}
+                          {suspeito && (
+                            <span className="h-[7px] w-[7px] shrink-0 rounded-full bg-warning" title="na ordem sem nenhuma cirurgia" />
+                          )}
                         </button>
-                        {aberta && (
-                          <div className="space-y-2 border-t border-border bg-muted/30 px-2.5 py-2">
-                            <Input
-                              aria-label={`Nome na posição ${i + 1}`}
-                              value={rascunhoNome}
-                              onChange={(e) => setRascunhoNome(e.target.value)}
-                              onBlur={renomearPosicao}
-                              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }}
-                            />
-                            <div className="flex flex-wrap gap-1.5">
-                              <Button size="sm" variant="outline" disabled={i === 0}
-                                onClick={() => moverPosicao(i, -1)} aria-label="Subir uma posição">
-                                <ArrowUp className="h-4 w-4" /> Subir
-                              </Button>
-                              <Button size="sm" variant="outline" disabled={i === ordemNumerada.length - 1}
-                                onClick={() => moverPosicao(i, 1)} aria-label="Descer uma posição">
-                                <ArrowDown className="h-4 w-4" /> Descer
-                              </Button>
-                              <Button size="sm" variant={ajuda ? 'primary' : 'outline'}
-                                onClick={() => marcarAjuda(nome, !ajuda)} aria-pressed={ajuda}>
-                                Ajuda
-                              </Button>
-                              <Button size="sm" variant="ghost" onClick={() => removerPosicao(i)}>
-                                <Trash2 className="h-4 w-4" /> Remover
-                              </Button>
-                            </div>
-                            {/* Plantonista e "sai 1º" são da POSIÇÃO, não da
-                                pessoa — por isso não têm botão: quem muda esses
-                                selos é mover o nome. */}
-                            <p className="text-xs text-muted-foreground">
-                              1ª posição = plantonista · última = sai 1º (plantão do turno seguinte).
-                              Mova o nome para mudar esses selos. Marque <b>Ajuda</b> em quem veio de outro
-                              hospital (nome em AZUL no rodapé).
-                            </p>
-                          </div>
-                        )}
                       </li>
                     )
                   })}
@@ -1438,6 +1415,47 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
                     </li>
                   )}
                 </ul>
+                {/* Editor da posição FORA do fluxo de colunas: dentro de uma coluna
+                    de ~200px os quatro botões não cabem lado a lado. */}
+                {posAberta && (
+                  <div className="space-y-2 border-t border-border bg-muted/30 px-2.5 py-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                      Posição {posAberta.i + 1}
+                    </p>
+                    <Input
+                      aria-label={`Nome na posição ${posAberta.i + 1}`}
+                      value={rascunhoNome}
+                      onChange={(e) => setRascunhoNome(e.target.value)}
+                      onBlur={renomearPosicao}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }}
+                    />
+                    <div className="flex flex-wrap gap-1.5">
+                      <Button size="sm" variant="outline" disabled={posAberta.i === 0}
+                        onClick={() => moverPosicao(posAberta.i, -1)} aria-label="Subir uma posição">
+                        <ArrowUp className="h-4 w-4" /> Subir
+                      </Button>
+                      <Button size="sm" variant="outline" disabled={posAberta.i === ordemNumerada.length - 1}
+                        onClick={() => moverPosicao(posAberta.i, 1)} aria-label="Descer uma posição">
+                        <ArrowDown className="h-4 w-4" /> Descer
+                      </Button>
+                      <Button size="sm" variant={posAberta.ajuda ? 'primary' : 'outline'}
+                        onClick={() => marcarAjuda(posAberta.nome, !posAberta.ajuda)} aria-pressed={posAberta.ajuda}>
+                        Ajuda
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => removerPosicao(posAberta.i)}>
+                        <Trash2 className="h-4 w-4" /> Remover
+                      </Button>
+                    </div>
+                    {/* Plantonista e "sai 1º" são da POSIÇÃO, não da
+                        pessoa — por isso não têm botão: quem muda esses
+                        selos é mover o nome. */}
+                    <p className="text-xs text-muted-foreground">
+                      1ª posição = plantonista · última = sai 1º (plantão do turno seguinte).
+                      Mova o nome para mudar esses selos. Marque <b>Ajuda</b> em quem veio de outro
+                      hospital (nome em AZUL no rodapé).
+                    </p>
+                  </div>
+                )}
                 <div className="border-t border-border bg-muted/40 px-2.5 py-2">
                   <Select
                     aria-label="Acrescentar anestesista ao fim do rodapé"
@@ -1457,8 +1475,31 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
                 )}
               </div>
               {/* NOME AMBÍGUO (dono 11/08) — vermelho: isto impede publicar */}
+            </section>
+
+            {/* PENDÊNCIAS num lugar só (dono 17/08): o que impede publicar e o que
+                pede conferência ficavam espalhados entre os seletores, os blocos e
+                a fila. Aqui a ordem é a da gravidade — vermelho primeiro. */}
+            <section id="conf-pendencias" className="scroll-mt-28 space-y-2">
+              <h2 className="text-[15px] font-extrabold">
+                Pendências
+                {totalPendencias > 0 && (
+                  <span className="ml-1.5 text-[11.5px] font-semibold text-muted-foreground">
+                    {bloqueiosConferencia > 0 && `${bloqueiosConferencia} bloqueia${bloqueiosConferencia > 1 ? 'm' : ''}`}
+                    {bloqueiosConferencia > 0 && avisosConferencia > 0 && ' · '}
+                    {avisosConferencia > 0 && `${avisosConferencia} aviso${avisosConferencia > 1 ? 's' : ''}`}
+                  </span>
+                )}
+              </h2>
+              {totalPendencias === 0 && (
+                <p className="rounded-lg bg-success/10 px-3 py-2 text-xs text-success">
+                  Nada pendente — confira os blocos e a ordem e publique.
+                </p>
+              )}
+
+              {/* NOME AMBÍGUO (dono 11/08) — vermelho: isto impede publicar */}
               {gruposAmbiguos.length > 0 && (
-                <div className="mt-1.5 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                <div className="rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
                   {gruposAmbiguos.map(({ grupo, candidatos }) => (
                     <p key={grupo.chave}>
                       ⛔ <b>{grupo.nome}</b> em {grupo.sala || 'sala sem nome'}: pode ser{' '}
@@ -1468,20 +1509,61 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
                   ))}
                 </div>
               )}
-              {/* Os nomes já vão marcados na própria posição da lista acima —
+              {/* Os nomes já vão marcados na própria posição da fila (ponto âmbar) —
                   aqui fica só o PORQUÊ, que é o que a secretária precisa ler
                   uma vez. Repetir a lista fazia procurar o nome no meio dela. */}
               {rodapeSuspeitos.length > 0 && (
-                <p className="mt-1.5 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
+                <p className="rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
                   ⚠ {rodapeSuspeitos.length === 1 ? 'Um nome está' : `${rodapeSuspeitos.length} nomes estão`} na ordem
-                  de liberação sem nenhum caso (marcados acima) — confira a extração: a linha deles pode ter saído
+                  de liberação sem nenhum caso (marcados com o ponto âmbar) — confira a extração: a linha deles pode ter saído
                   para outra pessoa (foi o que sumiu com Didomenico/Melo no IOSC em 23/07).
                 </p>
               )}
-            </div>
 
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">
+              {duplicados.length > 0 && (
+                <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 space-y-1">
+                  <p className="text-sm font-semibold text-warning flex items-center gap-1.5">
+                    <AlertTriangle className="w-4 h-4 shrink-0" /> Possíveis cirurgias duplicadas
+                  </p>
+                  {duplicados.map(({ item, quantidade }, i) => (
+                    <p key={`${item.sala}-${item.hora}-${i}`} className="text-xs text-warning">
+                      {item.sala || 'Sem sala'} · {item.hora || 'sem hora'} · {item.procedimento || item.cirurgiao || 'sem descrição'} aparece {quantidade} vezes. Confira o anexo; nada foi removido automaticamente.
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              {/* Conflitos de horário (aviso, não bloqueia) */}
+              {conflitos.length > 0 && (
+                <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 space-y-1.5">
+                  <p className="text-sm font-semibold text-warning flex items-center gap-1.5">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    {conflitos.length === 1 ? '1 conflito de horário' : `${conflitos.length} conflitos de horário`}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Mesmo anestesista em 2 salas no mesmo horário. Pode publicar mesmo assim — revise se foi intencional.</p>
+                  <ul className="space-y-0.5">
+                    {conflitos.map((c, i) => (
+                      <li key={i} className="text-xs text-warning">{c.nome || 'Anestesista'} — {c.sala1} ({c.hora1}) e {c.sala2} ({c.hora2})</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Blocos multi-anestesista com todas as linhas iguais (aviso, não bloqueia) */}
+              {blocosRepetidos.length > 0 && (
+                <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 space-y-1">
+                  <p className="text-sm font-semibold text-warning flex items-center gap-1.5">
+                    <AlertTriangle className="w-4 h-4 shrink-0" /> Mesmo anestesista em todas as linhas
+                  </p>
+                  {blocosRepetidos.map((b) => (
+                    <p key={b.sala} className="text-xs text-warning">
+                      {b.sala}: {b.nome} nas {b.n} linhas — nesses blocos cada linha costuma ter o SEU anestesista; confira a imagem.
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              <label className="text-xs font-medium text-muted-foreground mb-1 block pt-1">
                 Ajuda de outro hospital (nomes em AZUL no rodapé)
               </label>
               <Input placeholder="ex.: Diego, Cury — vão ao fim da liberação (primeiros a sair)"
@@ -1612,7 +1694,7 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
                   </div>
                 </div>
               )}
-            </div>
+            </section>
           </>
         )}
       </div>
@@ -1620,8 +1702,12 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
       {temBase && canEdit && (
         <div className="fixed bottom-0 inset-x-0 z-modal border-t border-border bg-card p-3 flex gap-2 max-w-3xl mx-auto">
           <Button variant="ghost" onClick={onClose} className="flex-1">Cancelar</Button>
+          {/* A contagem no botão é a última conferência antes de gravar (dono
+              17/08): publicar "3 casos" quando a foto tinha 12 é o erro que a
+              secretária pega aqui, não depois. */}
           <Button onClick={() => publicar()} disabled={publicando} className="flex-1">
-            {publicando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Publicar
+            {publicando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+            Publicar {selecionarCasosDoTurno(casos, periodo).length} caso{selecionarCasosDoTurno(casos, periodo).length === 1 ? '' : 's'}
           </Button>
         </div>
       )}
