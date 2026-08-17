@@ -4,7 +4,7 @@
  * abre um bottom-sheet com o detalhe.
  */
 import { useMemo, useState } from 'react'
-import { ChevronRight, ChevronsDownUp, ChevronsUpDown, Clock, GraduationCap, Stethoscope, Timer, UserCog, Plus } from 'lucide-react'
+import { ChevronsDownUp, ChevronsUpDown, Stethoscope, Timer, UserCog, Plus } from 'lucide-react'
 import {
   Accordion, AccordionItem, AccordionTrigger, AccordionContent,
   Badge, Button, EmptyState,
@@ -22,9 +22,10 @@ import CasoDetalheSheet from './CasoDetalheSheet'
 
 // Status em DOIS eixos (decisão do dono 2026-07-21):
 // PRINCIPAL (exclusivo, pinta o card): agendada → Iniciada VERDE → Terminada AZUL.
+// A tinta vive no CasoCard (`tinta`) desde 17/08 — aqui ficam só rótulo e variante.
 const STATUS_CIRURGIA = {
-  iniciada: { label: 'Iniciada', variant: 'success', card: 'border-success bg-success/25' },
-  terminada: { label: 'Terminada', variant: 'info', card: 'border-info bg-info/15 dark:bg-info/25' },
+  iniciada: { label: 'Iniciada', variant: 'success' },
+  terminada: { label: 'Terminada', variant: 'info' },
 }
 // EXTRA (badge que convive com agendada/iniciada; terminada limpa e bloqueia):
 const STATUS_EXTRA = {
@@ -45,11 +46,22 @@ export const casoVazio = (c) =>
  * (pedido do dono 2026-07-21 / 29-07).
  * Grafia: nunca CAIXA ALTA — procedimento em frase (siglas preservadas), nomes em Title Case.
  *
+ * ARRANJO (dono 17/08, escolhido em protótipo): hora numa coluna à esquerda com
+ * o término previsto abaixo (13:30 / →15:45); a 1ª linha traz iniciais · idade ·
+ * PROCEDIMENTO juntos — é qual cirurgia que se procura primeiro; a 2ª traz o
+ * cirurgião (e o residente) à esquerda e, à direita, o estado agora (tempo
+ * faltante + status) e o convênio. Os selos saíram da 1ª linha.
+ * A 2ª linha QUEBRA quando os selos não cabem: nome de cirurgião não é abreviável.
+ *
+ * `moldura`: 'linha' é o quadro denso da aba Completa (full-bleed, divisória em
+ * baixo); 'card' é o cartão isolado que a Minhas usa. Mesmo conteúdo, molduras
+ * diferentes — as duas abas não podem divergir no que mostram.
+ *
  * `agoraMin` vem de FORA de propósito: o cronômetro precisa de um único intervalo
  * para a lista toda (ver useAgoraMinuto), não um timer por card. Sem ele, o card
  * mostra a HORA do término em vez da contagem — nunca perde a informação.
  */
-export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null }) {
+export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null, moldura = 'card' }) {
   const tb = tipoBadge(caso.tipo)
   const st = STATUS_CIRURGIA[caso.statusCirurgia]
   const ex = extraDe(caso)
@@ -76,97 +88,108 @@ export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null }
     : null
   const rotulo = ['Detalhes do caso', salaLabel, caso.hora, caso.pacienteIniciais, procedimento]
     .filter(Boolean).join(', ')
+  // SÓ o eixo principal pinta o card, e em tinta suave (dono 17/08): com os cinco
+  // estados pintando, o quadro virava vitral. Atrasada/suspensa/passa-para-tarde
+  // continuam existindo — no badge, sobre fundo neutro.
+  const tinta = caso.statusCirurgia === 'iniciada'
+    ? 'bg-success/[0.14] dark:bg-success/20'
+    : caso.statusCirurgia === 'terminada'
+      ? 'bg-info/[0.12] dark:bg-info/[0.22]'
+      : ''
+  const emLinha = moldura === 'linha'
+  const temColunaHora = Boolean(caso.hora) || alvoCaso != null
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label={rotulo}
       className={[
-        'w-full text-left rounded-xl border p-3 min-h-[44px] transition-colors',
+        'w-full text-left min-h-[44px] transition-colors',
+        emLinha ? 'border-b border-border/70 px-3 py-2' : 'rounded-xl border p-3',
         // hover só onde hover existe de verdade — no touch o :hover "gruda" após o tap
         // e o card fica oscilando entre a tinta do status e o cinza (bug reportado no mobile)
         'active:bg-muted/60 supports-[hover:hover]:hover:bg-muted/40',
-        st?.card ? st.card : destaque ? 'border-primary/60 bg-primary/5' : 'border-border bg-card',
+        tinta || (emLinha ? 'bg-card' : destaque ? 'border-primary/60 bg-primary/5' : 'border-border bg-card'),
+        tinta && !emLinha ? (destaque ? 'border-primary/60' : 'border-border') : '',
         // convênio identifica só pelo SELO (stripe lateral removida a pedido do dono 2026-07-21)
       ].filter(Boolean).join(' ')}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          {/* Zona 1 — quando/quem: hora fixa à esquerda, paciente+idade, badges de tipo/status */}
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-            {salaLabel && <span className="font-bold text-foreground">{salaLabel}</span>}
-            {caso.hora && (
-              <span className="inline-flex items-center gap-1 font-semibold tabular-nums text-foreground">
-                <Clock className="w-3.5 h-3.5 text-muted-foreground" /> {caso.hora}
+      <div className="flex gap-2.5">
+        {temColunaHora && (
+          <span className="w-[52px] shrink-0">
+            {caso.hora && <span className="block text-[15px] font-bold tabular-nums text-foreground">{caso.hora}</span>}
+            {alvoCaso != null && (
+              <span
+                className="block text-[10px] tabular-nums text-muted-foreground"
+                title={emAndamento
+                  ? `Esta cirurgia (em andamento) termina às ${caso.terminoPrevisto}`
+                  : `Esta cirurgia está prevista para terminar às ${caso.terminoPrevisto}`}
+              >
+                →{caso.terminoPrevisto}
               </span>
             )}
+          </span>
+        )}
+        <span className="min-w-0 flex-1">
+          {/* Linha 1 — de quem é e QUAL cirurgia, na mesma leitura */}
+          <span className="flex items-baseline gap-1.5">
+            {salaLabel && <span className="shrink-0 text-sm font-bold text-foreground">{salaLabel}</span>}
             {caso.pacienteIniciais && (
-              <span className="max-w-[8rem] truncate font-semibold text-foreground" title={caso.pacienteIniciais}>
+              <span className="shrink-0 text-[14.5px] font-bold text-foreground" title={caso.pacienteIniciais}>
                 {caso.pacienteIniciais}
               </span>
             )}
-            {caso.idade && <span className="text-muted-foreground">{caso.idade}</span>}
-            {tb && <Badge variant={tb.variant} badgeStyle={tb.style}>{tb.label}</Badge>}
-            {st && <Badge variant={st.variant}>{st.label}</Badge>}
-            {ex && <Badge variant={ex.variant} className={ex.badgeClass}>{ex.label}</Badge>}
-          </div>
-          {/* Zona 2 — procedimento + tempo cirúrgico na MESMA linha (pedido 2026-07-21) */}
-          {(procedimento || caso.tempoEstimado || alvoCaso != null) && (
-            <div className="mt-1 flex items-center justify-between gap-2">
-              <p className="min-w-0 truncate text-[15px] text-foreground/90" title={procedimento}>{procedimento}</p>
-              <span className="flex shrink-0 items-center gap-1.5">
-                {caso.tempoEstimado && (
-                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    <Timer className="w-3 h-3" /> {caso.tempoEstimado}
-                  </span>
-                )}
-                {/* chip CINZA e pequeno: é o tempo de UMA cirurgia. O da PESSOA é a
-                    pílula verde sólida na fila — pesos diferentes de propósito, para
-                    o plantonista nunca ler um pelo outro. */}
-                {alvoCaso != null && (
-                  <span
-                    title={emAndamento
-                      ? `Esta cirurgia (em andamento) termina às ${caso.terminoPrevisto}`
-                      : `Esta cirurgia está prevista para terminar às ${caso.terminoPrevisto}`}
-                    className={[
-                      'inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs font-medium',
-                      faltaCaso?.atrasada
-                        ? 'border-warning/50 bg-warning/10 text-warning'
-                        : 'border-border bg-muted/60 text-foreground/80',
-                    ].join(' ')}
-                  >
-                    <Timer className="w-3 h-3 shrink-0" />
-                    {faltaCaso ? faltaCaso.texto : caso.terminoPrevisto}
-                  </span>
-                )}
+            {caso.idade && <span className="shrink-0 text-xs text-muted-foreground">{caso.idade}</span>}
+            {procedimento && (
+              <span className="min-w-0 truncate text-[14.5px] text-foreground" title={procedimento}>{procedimento}</span>
+            )}
+          </span>
+          {/* Linha 2 — quem opera à esquerda; estado agora e convênio à direita */}
+          <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1">
+            {cirurgiao && (
+              <span className="max-w-full truncate text-sm text-foreground/90" title={cirurgiao}>{cirurgiao}</span>
+            )}
+            {residente && (
+              <span className="shrink-0 text-[11.5px] text-muted-foreground" title={`Residente: ${residente}`}>
+                · R: {residente}
               </span>
-            </div>
-          )}
-          {/* Zona 3 — cirurgião em destaque + convênio na MESMA linha (sem rodapé:
-              elimina o espaço em branco abaixo do cirurgião — pedido 2026-07-21).
-              Selo TONAL; -mr-6 estende sob a coluna da seta → cola na borda direita. */}
-          {(cirurgiao || caso.convenio) && (
-            <div className="-mr-6 mt-1 flex items-center justify-between gap-2">
-              <p className="flex min-w-0 items-center gap-1.5 text-[15px] font-semibold text-foreground">
-                <Stethoscope className="w-4 h-4 shrink-0 text-muted-foreground" />
-                <span className="truncate" title={cirurgiao}>{cirurgiao}</span>
-              </p>
+            )}
+            <span className="ml-auto flex shrink-0 items-center gap-1">
+              {caso.tempoEstimado && (
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  <Timer className="w-3 h-3" /> {caso.tempoEstimado}
+                </span>
+              )}
+              {/* chip CINZA e pequeno: é o tempo de UMA cirurgia. O da PESSOA é a
+                  pílula verde sólida na fila — pesos diferentes de propósito, para
+                  o plantonista nunca ler um pelo outro. Só aparece com a cirurgia
+                  em andamento; agendada mostra a HORA na coluna da esquerda. */}
+              {faltaCaso && (
+                <span
+                  title={`Esta cirurgia (em andamento) termina às ${caso.terminoPrevisto}`}
+                  className={[
+                    'inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs font-medium',
+                    faltaCaso.atrasada
+                      ? 'border-warning/50 bg-warning/10 text-warning'
+                      : 'border-border bg-muted/60 text-foreground/80',
+                  ].join(' ')}
+                >
+                  <Timer className="w-3 h-3 shrink-0" />
+                  {faltaCaso.texto}
+                </span>
+              )}
+              {tb && <Badge variant={tb.variant} badgeStyle={tb.style}>{tb.label}</Badge>}
+              {st && <Badge variant={st.variant}>{st.label}</Badge>}
+              {ex && <Badge variant={ex.variant} className={ex.badgeClass}>{ex.label}</Badge>}
               {caso.convenio && (
                 <span className="max-w-[140px] shrink-0 truncate rounded-md border border-transparent bg-black/10 px-1.5 py-0.5 text-xs font-medium text-foreground/80 dark:bg-white/15 dark:text-foreground/90"
                   title={caso.convenio}>
                   {caso.convenio}
                 </span>
               )}
-            </div>
-          )}
-          {residente && (
-            <p className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[13px] text-muted-foreground">
-              <GraduationCap className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate" title={`Residente: ${residente}`}>Residente: {residente}</span>
-            </p>
-          )}
-        </div>
-        <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" />
+            </span>
+          </span>
+        </span>
       </div>
     </button>
   )
@@ -283,52 +306,58 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
           {canEdit && !isDemo ? null : (algumaAberta ? 'Recolher todas' : 'Expandir todas')}
         </Button>
       </div>
-      <Accordion type="multiple" value={abertasAtual} onValueChange={setAbertas} className="space-y-2">
+      {/* QUADRO DENSO (dono 17/08): as salas viram faixas full-bleed com divisórias
+          em vez de cartões soltos — cabem 6 casos na tela contra 4, e o cabeçalho
+          fica sendo a única superfície com moldura. `-mx-4` desfaz o padding
+          lateral da página; a sala segue colapsável (chevron do Accordion). */}
+      <Accordion type="multiple" value={abertasAtual} onValueChange={setAbertas} className="-mx-4 divide-y-0">
         {gruposExibicao.map((g) => {
           const nomeGrupo = g.anestesista ? displayGrupo(g) : (g.split ? '?' : '')
+          const nCasos = g.casos.filter((c) => !casoVazio(c)).length
           return (
-            <AccordionItem key={g.chave} value={g.chave} className="rounded-xl border border-border bg-card">
-              {/* sticky no <h3> do header (no button interno é inerte — h3 tem a altura dele) */}
+            <AccordionItem key={g.chave} value={g.chave} className="border-0">
+              {/* sticky no <h3> do header (no button interno é inerte — h3 tem a altura dele).
+                  O fundo mora no h3: os `group-data-[state=open]` do trigger, do ⚙ e do
+                  chevron são neutralizados para não pintarem faixas por cima dele. */}
               <AccordionTrigger
-                className="px-3"
-                headerClassName="sticky top-14 z-10 bg-card rounded-t-xl"
+                className="px-3 py-2 group-data-[state=open]:bg-transparent"
+                headerClassName="sticky top-14 z-10 border-y border-border bg-card-elevated"
                 iconAfterActions
-                iconClassName="rounded-tr-xl group-data-[state=open]:bg-muted dark:group-data-[state=open]:bg-card"
+                iconClassName="group-data-[state=open]:bg-transparent dark:group-data-[state=open]:bg-transparent"
                 actions={podeDefinir ? (
                   <button
                     type="button"
                     onClick={() => setDefinir({ sala: g.sala, casosAlvo: g.split ? g.casos : null })}
                     aria-label={`Definir anestesista da ${g.sala}${g.split ? ` (${nomeGrupo})` : ''}`}
                     className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center self-stretch
-                               px-1 text-primary transition-colors active:opacity-60
-                               group-data-[state=open]:bg-muted dark:group-data-[state=open]:bg-card"
+                               px-1 text-primary transition-colors active:opacity-60"
                   >
                     <UserCog className="w-4 h-4" />
                   </button>
                 ) : null}
               >
-                <span className="flex min-w-0 items-center gap-2 text-sm font-semibold">
-                  <span className="shrink-0">{salaExibicao(g.sala)}</span>
+                <span className="flex w-full min-w-0 items-center gap-2">
+                  <span className="shrink-0 rounded-md bg-primary px-1.5 py-0.5 text-[10.5px] font-extrabold uppercase tracking-wide text-primary-foreground">
+                    {salaExibicao(g.sala)}
+                  </span>
                   {nomeGrupo && (
-                    <span className="truncate font-normal text-muted-foreground" title={nomeGrupo}>
-                      — {nomeGrupo}
-                    </span>
+                    <span className="truncate text-[15px] font-bold" title={nomeGrupo}>{nomeGrupo}</span>
                   )}
+                  <span className="ml-auto shrink-0 text-[11px] font-normal text-muted-foreground">{nCasos}</span>
                 </span>
               </AccordionTrigger>
-              <AccordionContent className="px-3 pb-3 pt-2">
-                <div className="space-y-2">
-                  {/* SRPA e afins sem procedimentos: só o cabeçalho, sem card vazio */}
-                  {g.casos.filter((c) => !casoVazio(c)).map((caso) => (
-                    <CasoCard
-                      key={caso.id || `${g.chave}-${caso.ordem}`}
-                      caso={caso}
-                      destaque={ehMeu(caso)}
-                      agoraMin={agoraMin}
-                      onClick={() => setDetalhe(caso)}
-                    />
-                  ))}
-                </div>
+              <AccordionContent className="p-0">
+                {/* SRPA e afins sem procedimentos: só o cabeçalho, sem card vazio */}
+                {g.casos.filter((c) => !casoVazio(c)).map((caso) => (
+                  <CasoCard
+                    key={caso.id || `${g.chave}-${caso.ordem}`}
+                    caso={caso}
+                    destaque={ehMeu(caso)}
+                    agoraMin={agoraMin}
+                    moldura="linha"
+                    onClick={() => setDetalhe(caso)}
+                  />
+                ))}
               </AccordionContent>
             </AccordionItem>
           )

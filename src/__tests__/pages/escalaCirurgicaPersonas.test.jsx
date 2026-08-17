@@ -388,16 +388,18 @@ describe('Board — família e cor do convênio', () => {
 
 describe('Board — cor de status do card (Iniciada amarelo, Terminada verde)', () => {
   const escala = (status) => ({ id: 'e1', hospital: 'unimed', casos: [{ id: 'c1', sala: 'SALA 1', ordem: 0, hora: '13:30', anestesista: 'X', procedimento: 'Sinus', statusCirurgia: status }] })
-  it('iniciada → card verde (decisão 2026-07-20)', () => {
+  // A tinta afinou em 17/08 (dono, escolha em protótipo): o card inteiro pinta,
+  // mas em dose suave — o verde forte disputava com o badge sólido do status.
+  it('iniciada → card verde (decisão 2026-07-20, tinta suave desde 17/08)', () => {
     render(<BoardView escala={escala('iniciada')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
     const card = screen.getByText('Sinus').closest('button')
-    expect(card.className).toContain('bg-success/25')
+    expect(card.className).toContain('bg-success/[0.14]')
     expect(card.className).not.toContain('destructive')
   })
   it('terminada → card azul (info)', () => {
     render(<BoardView escala={escala('terminada')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
     const card = screen.getByText('Sinus').closest('button')
-    expect(card.className).toContain('bg-info/15')
+    expect(card.className).toContain('bg-info/[0.12]')
   })
   it('atrasada/suspensa/passa_tarde → só o BADGE colore; card fica neutro', () => {
     for (const [status, label] of [['suspensa', 'Suspensa'], ['atrasada', 'Atrasada'], ['passa_tarde', 'Passa para tarde']]) {
@@ -411,7 +413,7 @@ describe('Board — cor de status do card (Iniciada amarelo, Terminada verde)', 
   it('dois eixos: Iniciada + Atrasada convivem (card verde + os DOIS badges)', () => {
     const e = { id: 'e1', hospital: 'unimed', casos: [{ id: 'c1', sala: 'SALA 1', ordem: 0, hora: '13:30', anestesista: 'X', procedimento: 'Sinus', statusCirurgia: 'iniciada', statusExtra: 'atrasada' }] }
     render(<BoardView escala={e} meuAlias="zz" meuUid="u-zz" turno="vespertino" />, { wrapper: wrap })
-    expect(screen.getByText('Sinus').closest('button').className).toContain('bg-success/25')
+    expect(screen.getByText('Sinus').closest('button').className).toContain('bg-success/[0.14]')
     expect(screen.getByText('Iniciada')).toBeTruthy()
     expect(screen.getByText('Atrasada')).toBeTruthy()
   })
@@ -619,12 +621,13 @@ describe('Cards — idade e tempo cirúrgico no demo (quando houver)', () => {
       ],
     }
     render(<BoardView escala={escala} meuAlias="x" meuUid="u-x" turno="matutino" />, { wrapper: wrap })
-    // sala multi vira UM GRUPO POR ANESTESISTA — "IOSC — Cury", "IOSC — Melo",
-    // "IOSC — Guilherme Didomenico" (cada um como sala separada, pedido 23/07)
+    // sala multi vira UM GRUPO POR ANESTESISTA — três cabeçalhos "IOSC" com o
+    // nome de cada um (pedido 23/07). Desde 17/08 o nome vem ao lado da pill da
+    // sala, sem o travessão que os separava no cabeçalho antigo.
     expect(screen.getAllByText('IOSC').length).toBe(3)
-    expect(screen.getByText('— Cury')).toBeTruthy()
-    expect(screen.getByText('— Melo')).toBeTruthy()
-    expect(screen.getByText('— Guilherme Didomenico')).toBeTruthy()
+    expect(screen.getByText('Cury')).toBeTruthy()
+    expect(screen.getByText('Melo')).toBeTruthy()
+    expect(screen.getByText('Guilherme Didomenico')).toBeTruthy()
   })
   it('board renderiza idade e tempo no card', () => {
     const escala = { id: 'e1', hospital: 'unimed', casos: [{ id: 'c1', sala: 'SALA 1', ordem: 0, hora: '13:30', idade: '37a', tempoEstimado: '01:15', anestesista: 'X', cirurgiao: 'Rodrigo Souza', procedimento: 'Sinus', pacienteIniciais: 'M.C.' }] }
