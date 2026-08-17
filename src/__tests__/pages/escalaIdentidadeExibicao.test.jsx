@@ -153,7 +153,9 @@ describe('DefinirAnestesistaSheet — vai direto à escolha', () => {
     abrir()
     const marcados = (await screen.findAllByRole('option')).filter((o) => o.getAttribute('aria-selected') === 'true')
     expect(marcados).toHaveLength(0)
-    expect(screen.getByRole('button', { name: /Confirmar responsável/i })).toBeDisabled()
+    // desde o desenho C (17/08) o rodapé só existe depois da escolha: em vez de um
+    // botão morto na tela, não há botão nenhum
+    expect(screen.queryByRole('button', { name: /Confirmar responsável/i })).toBeNull()
   })
 
   it('no modo CASO a pergunta fala do caso, não da sala', async () => {

@@ -164,10 +164,14 @@ export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null, 
               <span className="min-w-0 truncate text-[14.5px] text-foreground" title={procedimento}>{procedimento}</span>
             )}
           </span>
-          {/* Linha 2 — quem opera à esquerda; estado agora e convênio à direita */}
-          <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1">
+          {/* Linha 2 — quem opera à esquerda; estado agora e convênio à direita.
+              SEM quebra (dono 17/08): a linha tem altura fixa para as colunas da
+              direita alinharem card a card. Quem cede espaço é o nome do cirurgião,
+              que trunca com o nome inteiro no title — antes o selo do convênio
+              descia para uma terceira linha e cada card ficava de uma altura. */}
+          <span className="mt-0.5 flex items-center gap-x-1.5">
             {cirurgiao && (
-              <span className="max-w-full truncate text-sm text-foreground/90" title={cirurgiao}>{cirurgiao}</span>
+              <span className="min-w-0 truncate text-sm text-foreground/90" title={cirurgiao}>{cirurgiao}</span>
             )}
             {residente && (
               <span className="shrink-0 text-[11.5px] text-muted-foreground" title={`Residente: ${residente}`}>
@@ -177,16 +181,24 @@ export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null, 
             {/* tempo desta cirurgia mora na COLUNA da esquerda; aqui ficam só o
                 estado e o convênio. O tempo da PESSOA é outra coisa — pílula verde
                 sólida na fila — e os dois nunca podem ser lidos um pelo outro. */}
-            <span className="ml-auto flex shrink-0 items-center gap-1">
-              {tb && <Badge variant={tb.variant} badgeStyle={tb.style}>{tb.label}</Badge>}
-              {st && <Badge variant={st.variant}>{st.label}</Badge>}
-              {ex && <Badge variant={ex.variant} className={ex.badgeClass}>{ex.label}</Badge>}
-              {caso.convenio && (
-                <span className="max-w-[140px] shrink-0 truncate rounded-md border border-transparent bg-black/10 px-1.5 py-0.5 text-xs font-medium text-foreground/80 dark:bg-white/15 dark:text-foreground/90"
-                  title={caso.convenio}>
-                  {caso.convenio}
-                </span>
-              )}
+            {/* DUAS COLUNAS FIXAS (dono 17/08): estado e convênio guardam o lugar
+                mesmo quando não existem — a caixa vazia é o que mantém "Terminada"
+                e o selo do convênio na mesma vertical linha após linha. Sem a
+                reserva, cada card alinhava pelo que tinha e a coluna serrilhava. */}
+            <span className="ml-auto flex shrink-0 items-center justify-end gap-1">
+              <span className="flex min-w-[86px] items-center justify-end gap-1">
+                {tb && <Badge variant={tb.variant} badgeStyle={tb.style}>{tb.label}</Badge>}
+                {st && <Badge variant={st.variant}>{st.label}</Badge>}
+                {ex && <Badge variant={ex.variant} className={ex.badgeClass}>{ex.label}</Badge>}
+              </span>
+              <span className="flex min-w-[46px] max-w-[96px] justify-end">
+                {caso.convenio && (
+                  <span className="truncate rounded-md border border-transparent bg-black/10 px-1.5 py-0.5 text-xs font-medium text-foreground/80 dark:bg-white/15 dark:text-foreground/90"
+                    title={caso.convenio}>
+                    {caso.convenio}
+                  </span>
+                )}
+              </span>
             </span>
           </span>
         </span>
