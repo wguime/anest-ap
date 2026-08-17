@@ -65,7 +65,7 @@ const montar = (props = {}, esc = escala) => render(
 
 /** Abre o bloco de tempo (a linha mostra o valor; o botão abre o editor). */
 const abrirTempo = () =>
-  fireEvent.click(screen.getByRole('button', { name: /Definir término|^\d{2}:\d{2}/ }))
+  fireEvent.click(screen.getByRole('button', { name: /Término desta cirurgia/ }))
 
 beforeEach(() => vi.clearAllMocks())
 
@@ -148,6 +148,13 @@ describe('Dois eixos de status (dono 21/07, desenho 17/08)', () => {
     expect(screen.getByRole('button', { name: 'Atrasada' }).disabled).toBe(false)
   })
 
+  it('agrupa em três cartões por assunto (desenho 17/08)', () => {
+    // uma pergunta por cartão: que cirurgia é · como ela vai · quem está e onde
+    montar()
+    expect(screen.getByText('Andamento')).toBeTruthy()
+    expect(screen.getByText('Quem está e onde')).toBeTruthy()
+  })
+
   it('o painel acompanha o conteúdo — não nasce com 85% da tela', () => {
     // `POSITION_CLASSES.bottom` do DS fixa h-[85vh]; sem soltar isso, o painel
     // ocupa 85% da tela mesmo com pouca coisa dentro (jsdom não mede layout, então
@@ -198,7 +205,7 @@ describe('Término DESTA cirurgia (dono 29/07)', () => {
   it('o rótulo separa os dois tempos para o plantonista não confundir', () => {
     montar()
     // o bloco diz que é DESTA cirurgia; o tempo da PESSOA é outro campo, na fila
-    expect(screen.getByText(/Tempo desta cirurgia/)).toBeTruthy()
+    expect(screen.getByText(/Término desta cirurgia/)).toBeTruthy()
     abrirTempo()
     expect(screen.getByText(/Só desta cirurgia/)).toBeTruthy()
     // as duas entradas são ALTERNATIVAS: o painel abre numa e o alternador leva à outra

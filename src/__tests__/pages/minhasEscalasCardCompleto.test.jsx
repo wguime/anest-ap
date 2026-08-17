@@ -95,7 +95,7 @@ describe('Minhas — detalhe do caso vem COMPLETO', () => {
 
   it('traz "mudar de sala/local", o cirurgião e a marcação de ajuda', () => {
     abrirDetalhe()
-    expect(screen.getByRole('button', { name: /Mudar de sala\/local/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Mudar sala/local' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Trocar cirurgião' })).toBeTruthy()
     expect(screen.getByRole('button', { name: /como ajuda/i })).toBeTruthy()
   })

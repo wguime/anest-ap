@@ -200,9 +200,9 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
           mexer nos outros cinco sheets do app) e o `max-h` mantém o teto; passando
           dele, o corpo do sheet volta a rolar como hoje. */}
       <SheetContent side="bottom" className="!h-auto max-h-[88vh]">
-        {/* CABEÇALHO — identidade do caso, em leitura. O procedimento é o título
-            (é qual cirurgia que se procura primeiro) e QUEBRA em vez de truncar. */}
-        <SheetHeader>
+        {/* Cabeçalho enxuto: onde e quando, mais os dois selos que classificam o
+            caso. O QUE é a cirurgia mora no primeiro cartão. */}
+        <SheetHeader className="pb-2">
           <div className="flex items-center gap-2">
             <span className="shrink-0 rounded-md bg-primary px-1.5 py-0.5 text-[10.5px] font-extrabold uppercase tracking-wide text-primary-foreground">
               {salaExibicao(vivo.sala)}
@@ -219,25 +219,32 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
               )}
             </span>
           </div>
-          {/* MESMA grafia do card no quadro (`fraseClinica`): o texto importado
-              vem em CAIXA ALTA e o painel repetia assim — o mesmo procedimento
-              aparecia de dois jeitos em duas telas do mesmo caso. */}
-          <SheetTitle className="text-[15px] font-extrabold leading-tight [overflow-wrap:anywhere]">
-            {fraseClinica(vivo.procedimento) || salaExibicao(vivo.sala)}
-          </SheetTitle>
-          {(vivo.pacienteIniciais || vivo.idade || vivo.tempoEstimado) && (
-            <p className="text-[11.5px] text-muted-foreground">
-              {[vivo.pacienteIniciais, idadeCurta(vivo.idade), vivo.tempoEstimado && `previsto ${vivo.tempoEstimado}`]
-                .filter(Boolean).join(' · ')}
-            </p>
-          )}
         </SheetHeader>
 
-        <div className="px-1 pb-4">
-          {/* ── ANDAMENTO + AVISO: os dois eixos, rotulados e separados ────── */}
+        {/* TRÊS CARTÕES POR ASSUNTO (dono 17/08, escolhido em protótipo): uma
+            pergunta por cartão — que cirurgia é · como ela vai · quem está e onde.
+            "Decisão ganha cartão" é a mesma regra das telas grandes; antes tudo
+            vinha em uma coluna só, no mesmo peso. */}
+        <div className="space-y-2.5 px-1 pb-4">
+          <article className="rounded-2xl border border-border-strong bg-card-elevated p-3">
+            {/* MESMA grafia do card no quadro (`fraseClinica`): o texto importado
+                vem em CAIXA ALTA e o painel repetia assim — o mesmo procedimento
+                aparecia de dois jeitos em duas telas do mesmo caso. */}
+            <SheetTitle className="text-[15px] font-extrabold leading-tight [overflow-wrap:anywhere]">
+              {fraseClinica(vivo.procedimento) || salaExibicao(vivo.sala)}
+            </SheetTitle>
+            {(vivo.pacienteIniciais || vivo.idade || vivo.tempoEstimado) && (
+              <p className="mt-1 text-[12.5px] text-muted-foreground">
+                {[vivo.pacienteIniciais, idadeCurta(vivo.idade), vivo.tempoEstimado && `previsto ${vivo.tempoEstimado}`]
+                  .filter(Boolean).join(' · ')}
+              </p>
+            )}
+          </article>
+
+          {/* ── ANDAMENTO: os dois eixos + o tempo desta cirurgia ─────────── */}
           {!isDemo && vivo.id && (
-            <>
-              <Rotulo>Andamento</Rotulo>
+            <article className="rounded-2xl border border-border-strong p-3">
+              <h3 className="mb-2 text-[15px] font-extrabold">Andamento</h3>
               <div className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">
                 {ANDAMENTO.map((s) => (
                   <button
@@ -256,9 +263,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                   </button>
                 ))}
               </div>
-
-              <Rotulo className="mt-2.5">Aviso</Rotulo>
-              <div className="flex gap-1.5">
+              <div className="mt-2 flex gap-1.5">
                 {AVISO.map((s) => {
                   const ativo = vivo.statusExtra === s.valor
                   return (
@@ -282,186 +287,190 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
               <p className="mt-1.5 text-[11.5px] text-muted-foreground">
                 Marcar <b className="font-semibold text-foreground">Terminada</b> desliga os avisos.
               </p>
-            </>
-          )}
 
-          {/* ── EQUIPE: quem está nesta cirurgia ───────────────────────────── */}
-          <Rotulo className="mt-3">Equipe</Rotulo>
-          {/* CIRURGIÃO editável (dono 17/08): o nome vem da importação e sai
-              torto com alguma frequência; era o único dado da cirurgia sem
-              conserto no app — só o campo de EXIBIÇÃO da fila, que não corrige
-              o caso nem o quadro. Grava em `cirurgiao`, o mesmo campo que o
-              "Adicionar caso" já preenche, então Completa, Minhas e o
-              automático da fila acompanham juntos. */}
-          <LinhaDado
-            icone={<Stethoscope className="h-3.5 w-3.5" />}
-            rotulo="Cirurgião"
-            valor={titleCaseNome(vivo.cirurgiao)}
-            acao={podeEditarCaso && { label: 'Trocar', onClick: () => abrirEditor('cirurgiao') }}
-          />
-          {editor === 'cirurgiao' && (
-            <EditorTexto
-              titulo="Cirurgião desta cirurgia"
-              opcoes={opcoesCirurgiao}
-              sentinela={CIRURGIAO_OUTRO}
-              outro={cirurgiaoOutro}
-              setOutro={setCirurgiaoOutro}
-              valor={rascCirurgiao}
-              setValor={setRascCirurgiao}
-              placeholderSelect="Escolha o cirurgião"
-              placeholderInput="ex.: Eduardo Baldissera"
-              nota="Vale só para esta cirurgia. A fila mostra o cirurgião de cada caso automaticamente."
-              salvando={salvando === 'cirurgiao'}
-              onCancelar={() => setEditor(null)}
-              onSalvar={() => salvarTexto('cirurgiao', rascCirurgiao)}
-            />
-          )}
-
-          {/* MESMA função do cabeçalho da sala e do sheet de definir (bug 29/07:
-              o cabeçalho vinha do cadastro e este texto vinha do alias importado,
-              então "Guilherme Staub" lá e "STAUB" aqui — o dono leu como duas
-              pessoas). Também tira a CAIXA ALTA do alias, que destoava do nome do
-              cirurgião ao lado. */}
-          <LinhaDado
-            icone={<UserCog className="h-3.5 w-3.5" />}
-            rotulo="Anestesista"
-            valor={nomeAnestesistaExibicao({ uid: vivo.anestesistaUserId, alias: vivo.anestesista, rosterByUid })}
-            destaque
-            acao={definivel && {
-              label: 'Trocar',
-              onClick: () => { onClose?.(); onDefinirAnestesista(vivo.sala, vivo) },
-            }}
-          />
-
-          <LinhaDado
-            icone={<GraduationCap className="h-3.5 w-3.5" />}
-            rotulo="Residente"
-            valor={titleCaseNome(residenteNome) || (podeEditarCaso ? 'Sem residente' : '')}
-            acao={podeEditarCaso && { label: 'Trocar', onClick: () => abrirEditor('residente') }}
-          />
-          {editor === 'residente' && (
-            <div className="mt-2 rounded-xl border border-border bg-muted/30 p-3">
-              <Select
-                id="caso-residente"
-                className="w-full"
-                searchable
-                options={[{ value: SEM_RESIDENTE, label: 'Sem residente' }, ...opcoesResidente]}
-                value={vivo.residenteUserId || SEM_RESIDENTE}
-                onChange={trocarResidente}
-                placeholder="Selecionar residente…"
-              />
-              <p className="mt-1.5 flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
-                {salvando === 'residente' && <Loader2 className="h-3 w-3 animate-spin" />}
-                Acompanha o caso — quem responde por ele continua sendo o anestesista.
-              </p>
-            </div>
-          )}
-
-          {podeMarcarAjuda && (
-            <>
-              <button
-                type="button"
-                disabled={salvando === 'ajuda'}
-                onClick={alternarAjuda}
-                aria-pressed={!!entradaAjuda}
-                aria-label={entradaAjuda
-                  ? `${titleCaseNome(nomeAnest)} não é ajuda de outro hospital`
-                  : `Marcar ${titleCaseNome(nomeAnest)} como ajuda de outro hospital`}
-                className="flex min-h-[48px] w-full items-center gap-2 border-b border-border py-2 text-left"
-              >
-                <span className="text-[15px] font-semibold">Ajuda de outro hospital</span>
-                <span className="ml-auto flex items-center gap-2">
-                  {salvando === 'ajuda' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                  <span className={[
-                    'relative h-[26px] w-11 shrink-0 rounded-full border transition-colors',
-                    entradaAjuda ? 'border-primary bg-primary' : 'border-muted-foreground/25 bg-muted-foreground/30',
-                  ].join(' ')}>
-                    <span className={[
-                      'absolute top-[2px] h-5 w-5 rounded-full bg-white shadow transition-all',
-                      entradaAjuda ? 'left-[22px]' : 'left-[2px]',
-                    ].join(' ')} />
-                  </span>
-                </span>
-              </button>
-              <p className="mt-1.5 text-[11.5px] text-muted-foreground">
-                Entra ao fim da fila de liberação — primeiro a ser liberado.
-              </p>
-            </>
-          )}
-
-          {/* ── TEMPO DESTA CIRURGIA ───────────────────────────────────────── */}
-          {podeEditarCaso ? (
-            <>
-              <Rotulo className="mt-3"><Timer className="h-3.5 w-3.5" /> Tempo desta cirurgia</Rotulo>
-              <button
-                type="button"
-                onClick={() => setEditor((e) => (e === 'tempo' ? null : 'tempo'))}
-                className="flex min-h-[48px] w-full items-center gap-2 border-b border-border py-2 text-left"
-              >
-                {vivo.terminoPrevisto ? (
-                  <>
-                    <span className="text-[15px] font-bold tabular-nums">{vivo.terminoPrevisto}</span>
-                    {faltaTermino && (
-                      <span className={['text-[12.5px]', faltaTermino.atrasada ? 'font-medium text-warning' : 'text-muted-foreground'].join(' ')}>
-                        {faltaTermino.atrasada
-                          ? `${faltaTermino.texto.replace('+', '')} além`
-                          : `faltam ${faltaTermino.texto.replace('~', '')}`}
+              {podeEditarCaso && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setEditor((e) => (e === 'tempo' ? null : 'tempo'))}
+                    className="mt-2 flex min-h-[48px] w-full items-center gap-2 border-t border-border pt-2 text-left"
+                  >
+                    <span className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground">
+                      <Timer className="h-3.5 w-3.5" /> Término desta cirurgia
+                    </span>
+                    {vivo.terminoPrevisto ? (
+                      <span className="ml-auto flex items-center gap-1.5">
+                        <span className="text-[15px] font-bold tabular-nums">{vivo.terminoPrevisto}</span>
+                        {faltaTermino && (
+                          <span className={['text-[11.5px]', faltaTermino.atrasada ? 'font-medium text-warning' : 'text-muted-foreground'].join(' ')}>
+                            {faltaTermino.atrasada
+                              ? `${faltaTermino.texto.replace('+', '')} além`
+                              : `faltam ${faltaTermino.texto.replace('~', '')}`}
+                          </span>
+                        )}
                       </span>
+                    ) : (
+                      <span className="ml-auto text-[14px] font-semibold text-primary">Definir término</span>
                     )}
-                  </>
-                ) : (
-                  <span className="text-[15px] font-semibold text-muted-foreground">Definir término</span>
-                )}
-                <span className="ml-auto text-muted-foreground">{editor === 'tempo' ? '▴' : '▾'}</span>
-              </button>
-              {editor === 'tempo' && (
-                <div className="mt-2 rounded-xl border border-border bg-muted/30 p-3">
-                  <PainelTempo
-                    atual={vivo.terminoPrevisto || ''}
-                    horaExata={horaExata}
-                    onHoraExata={setHoraExata}
-                    onDefinir={definirTerminoCaso}
-                  />
-                  {/* TÉRMINO, não "tempo faltante": o campo guarda uma HORA, e
-                      "tempo faltante" é o nome do OUTRO campo — o da pessoa, na
-                      fila. Os dois disputavam a mesma palavra. */}
-                  <p className="mt-2 text-[11.5px] text-muted-foreground">
-                    Só desta cirurgia. Na fila conta o tempo enquanto está Iniciada.
-                  </p>
-                </div>
+                    <span className="text-muted-foreground">{editor === 'tempo' ? '▴' : '▾'}</span>
+                  </button>
+                  {editor === 'tempo' && (
+                    <div className="mt-2 rounded-xl border border-border bg-muted/30 p-3">
+                      <PainelTempo
+                        atual={vivo.terminoPrevisto || ''}
+                        horaExata={horaExata}
+                        onHoraExata={setHoraExata}
+                        onDefinir={definirTerminoCaso}
+                      />
+                      {/* TÉRMINO, não "tempo faltante": o campo guarda uma HORA, e
+                          "tempo faltante" é o nome do OUTRO campo — o da pessoa, na
+                          fila. Os dois disputavam a mesma palavra. */}
+                      <p className="mt-2 text-[11.5px] text-muted-foreground">
+                        Só desta cirurgia. Na fila conta o tempo enquanto está Iniciada.
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
-            </>
-          ) : vivo.terminoPrevisto && (
-            <>
-              <Rotulo className="mt-3"><Timer className="h-3.5 w-3.5" /> Tempo desta cirurgia</Rotulo>
-              <p className="py-2 text-[15px] font-bold tabular-nums">{vivo.terminoPrevisto}</p>
-            </>
+              {!podeEditarCaso && vivo.terminoPrevisto && (
+                <p className="mt-2 border-t border-border pt-2 text-[12.5px] text-muted-foreground">
+                  Término desta cirurgia: <b className="text-foreground tabular-nums">{vivo.terminoPrevisto}</b>
+                </p>
+              )}
+            </article>
           )}
 
-          {/* ── O RARO POR ÚLTIMO: corrigir ONDE o caso acontece (dono 24/07) ─ */}
-          {podeEditarCaso && (
-            <div className="mt-3.5">
-              <Button size="sm" variant="outline" className="w-full" onClick={() => abrirEditor('sala')}>
-                <MapPin className="w-4 h-4" /> Mudar de sala/local
-              </Button>
-              {editor === 'sala' && (
-                <EditorTexto
-                  titulo="Sala / Local do procedimento"
-                  opcoes={opcoesSala}
-                  sentinela={SALA_OUTRO}
-                  outro={salaOutro}
-                  setOutro={setSalaOutro}
-                  valor={rascSala}
-                  setValor={setRascSala}
-                  placeholderSelect="Escolha a sala/local"
-                  placeholderInput="ex.: IOSC - Sala 1"
-                  salvando={salvando === 'sala'}
-                  onCancelar={() => setEditor(null)}
-                  onSalvar={() => salvarTexto('sala', rascSala)}
+          {/* ── QUEM ESTÁ E ONDE ─────────────────────────────────────────── */}
+          <article className="rounded-2xl border border-border-strong p-3">
+            <h3 className="mb-1 text-[15px] font-extrabold">Quem está e onde</h3>
+
+            {/* CIRURGIÃO editável (dono 17/08): o nome vem da importação e sai
+                torto com alguma frequência; era o único dado da cirurgia sem
+                conserto no app — só o campo de EXIBIÇÃO da fila, que não corrige
+                o caso nem o quadro. Grava em `cirurgiao`, o mesmo campo que o
+                "Adicionar caso" já preenche. */}
+            <LinhaDado
+              icone={<Stethoscope className="h-3.5 w-3.5" />}
+              rotulo="Cirurgião"
+              valor={titleCaseNome(vivo.cirurgiao)}
+              acao={podeEditarCaso && { label: 'Trocar', onClick: () => abrirEditor('cirurgiao') }}
+            />
+            {editor === 'cirurgiao' && (
+              <EditorTexto
+                titulo="Cirurgião desta cirurgia"
+                opcoes={opcoesCirurgiao}
+                sentinela={CIRURGIAO_OUTRO}
+                outro={cirurgiaoOutro}
+                setOutro={setCirurgiaoOutro}
+                valor={rascCirurgiao}
+                setValor={setRascCirurgiao}
+                placeholderSelect="Escolha o cirurgião"
+                placeholderInput="ex.: Eduardo Baldissera"
+                nota="Vale só para esta cirurgia. A fila mostra o cirurgião de cada caso automaticamente."
+                salvando={salvando === 'cirurgiao'}
+                onCancelar={() => setEditor(null)}
+                onSalvar={() => salvarTexto('cirurgiao', rascCirurgiao)}
+              />
+            )}
+
+            {/* MESMA função do cabeçalho da sala e do sheet de definir (bug 29/07:
+                o cabeçalho vinha do cadastro e este texto vinha do alias importado,
+                então "Guilherme Staub" lá e "STAUB" aqui — o dono leu como duas
+                pessoas). Também tira a CAIXA ALTA do alias. */}
+            <LinhaDado
+              icone={<UserCog className="h-3.5 w-3.5" />}
+              rotulo="Anestesista"
+              valor={nomeAnestesistaExibicao({ uid: vivo.anestesistaUserId, alias: vivo.anestesista, rosterByUid })}
+              destaque
+              acao={definivel && {
+                label: 'Trocar',
+                onClick: () => { onClose?.(); onDefinirAnestesista(vivo.sala, vivo) },
+              }}
+            />
+
+            <LinhaDado
+              icone={<GraduationCap className="h-3.5 w-3.5" />}
+              rotulo="Residente"
+              valor={titleCaseNome(residenteNome) || (podeEditarCaso ? 'Sem residente' : '')}
+              acao={podeEditarCaso && { label: 'Trocar', onClick: () => abrirEditor('residente') }}
+            />
+            {editor === 'residente' && (
+              <div className="mt-2 rounded-xl border border-border bg-muted/30 p-3">
+                <Select
+                  id="caso-residente"
+                  className="w-full"
+                  searchable
+                  options={[{ value: SEM_RESIDENTE, label: 'Sem residente' }, ...opcoesResidente]}
+                  value={vivo.residenteUserId || SEM_RESIDENTE}
+                  onChange={trocarResidente}
+                  placeholder="Selecionar residente…"
                 />
-              )}
-            </div>
-          )}
+                <p className="mt-1.5 flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
+                  {salvando === 'residente' && <Loader2 className="h-3 w-3 animate-spin" />}
+                  Acompanha o caso — quem responde por ele continua sendo o anestesista.
+                </p>
+              </div>
+            )}
+
+            {/* Corrigir ONDE o caso acontece (dono 24/07) — mesma gramática das
+                outras linhas do cartão, em vez de um botão solto no fim do painel. */}
+            <LinhaDado
+              icone={<MapPin className="h-3.5 w-3.5" />}
+              rotulo="Sala/local"
+              valor={salaExibicao(vivo.sala)}
+              acao={podeEditarCaso && { label: 'Mudar', onClick: () => abrirEditor('sala') }}
+            />
+            {editor === 'sala' && (
+              <EditorTexto
+                titulo="Sala / Local do procedimento"
+                opcoes={opcoesSala}
+                sentinela={SALA_OUTRO}
+                outro={salaOutro}
+                setOutro={setSalaOutro}
+                valor={rascSala}
+                setValor={setRascSala}
+                placeholderSelect="Escolha a sala/local"
+                placeholderInput="ex.: IOSC - Sala 1"
+                salvando={salvando === 'sala'}
+                onCancelar={() => setEditor(null)}
+                onSalvar={() => salvarTexto('sala', rascSala)}
+              />
+            )}
+
+            {/* AJUDA de outro hospital (dono 29/07). RÓTULO ÚNICO com o painel da
+                linha (auditoria 17/08): eram dois textos para a mesma marca. */}
+            {podeMarcarAjuda && (
+              <>
+                <button
+                  type="button"
+                  disabled={salvando === 'ajuda'}
+                  onClick={alternarAjuda}
+                  aria-pressed={!!entradaAjuda}
+                  aria-label={entradaAjuda
+                    ? `${titleCaseNome(nomeAnest)} não é ajuda de outro hospital`
+                    : `Marcar ${titleCaseNome(nomeAnest)} como ajuda de outro hospital`}
+                  className="flex min-h-[48px] w-full items-center gap-2 py-2 text-left"
+                >
+                  <span className="text-[14.5px] font-semibold">Ajuda de outro hospital</span>
+                  <span className="ml-auto flex items-center gap-2">
+                    {salvando === 'ajuda' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    <span className={[
+                      'relative h-[26px] w-11 shrink-0 rounded-full border transition-colors',
+                      entradaAjuda ? 'border-primary bg-primary' : 'border-muted-foreground/25 bg-muted-foreground/30',
+                    ].join(' ')}>
+                      <span className={[
+                        'absolute top-[2px] h-5 w-5 rounded-full bg-white shadow transition-all',
+                        entradaAjuda ? 'left-[22px]' : 'left-[2px]',
+                      ].join(' ')} />
+                    </span>
+                  </span>
+                </button>
+                <p className="text-[11.5px] text-muted-foreground">
+                  Entra ao fim da fila de liberação — primeiro a ser liberado.
+                </p>
+              </>
+            )}
+          </article>
         </div>
       </SheetContent>
     </Sheet>
@@ -497,7 +506,7 @@ function Rotulo({ children, className = '' }) {
 function LinhaDado({ icone, rotulo, valor, destaque, acao }) {
   if (!valor && !acao) return null
   return (
-    <div className="flex min-h-[48px] items-center gap-2.5 border-b border-border py-2">
+    <div className="flex min-h-[48px] items-center gap-2.5 border-b border-border py-2 last-of-type:border-b-0">
       <span className="flex shrink-0 items-center gap-1.5 text-[12.5px] text-muted-foreground">
         {icone}{rotulo}
       </span>
