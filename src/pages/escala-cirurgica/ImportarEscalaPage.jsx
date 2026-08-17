@@ -1076,45 +1076,51 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
           <p className="rounded-lg bg-warning/10 text-warning text-sm p-3">Você não tem permissão para confeccionar escalas.</p>
         )}
 
-        {/* Data + período da escala NO CORPO (pedido 2026-07-22 — antes era fixo no header) */}
-        <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">Data e período da escala</label>
-          <div className="flex items-stretch gap-2">
-            <DatePicker
-              className="flex-1 min-w-0"
-              value={(() => { const [y, m, d] = String(dataEscolhida || '').split('-').map(Number); return y ? new Date(y, m - 1, d) : new Date() })()}
-              onChange={(d) => { if (d) { setDataEscolhida(dataToISO(d)); setSugestaoData(null) } }}
-              placeholder="Data da escala"
-            />
-            <SegmentedSelector className="flex-1" options={PERIODO_OPCOES} value={periodo} onChange={mudarPeriodo} />
+        {/* DOIS PASSOS DECLARADOS (dono 17/08): anexar e conferir são dois momentos
+            para quem usa — a secretária anexa e só depois confere. O stepper diz em
+            qual deles ela está; o passo 2 acende quando a base entra. */}
+        <ol className="flex items-center gap-2" aria-label="Etapas da importação">
+          {[{ n: 1, label: 'Anexar', on: !temBase }, { n: 2, label: 'Conferir', on: temBase }].map((p, i) => (
+            <li key={p.n} className="flex items-center gap-2">
+              {i > 0 && <span className="h-px w-4 bg-border-strong" aria-hidden="true" />}
+              <span className={`flex items-center gap-1.5 text-xs font-semibold ${p.on ? 'text-primary' : 'text-muted-foreground'}`}>
+                <span className={`flex h-[22px] w-[22px] items-center justify-center rounded-full text-[11px]
+                  ${p.on ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>{p.n}</span>
+                {p.label}
+              </span>
+            </li>
+          ))}
+        </ol>
+
+        {/* PARA QUAL ESCALA — hospital, data e período num cartão só (dono 17/08).
+            Soltos no corpo, os três pareciam etapas independentes; juntos são a
+            pergunta única que o anexo responde. */}
+        <section className="space-y-3 rounded-2xl border border-border-strong bg-card p-3">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-primary">Para qual escala</h2>
+          <div>
+            {/* Hospital da escala (pedido do dono 2026-07-21): editável aqui — a escala
+                pode ser de outro hospital que não o selecionado na página. */}
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">Hospital</label>
+            <SegmentedSelector options={HOSPITAL_OPCOES} value={hosp} onChange={(v) => { setHosp(v); setSugestaoHosp(null) }} />
           </div>
-        </div>
-
-        {/* Hospital da escala (pedido do dono 2026-07-21): editável aqui — a escala
-            pode ser de outro hospital que não o selecionado na página. */}
-        <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">Hospital desta escala</label>
-          <SegmentedSelector options={HOSPITAL_OPCOES} value={hosp} onChange={(v) => { setHosp(v); setSugestaoHosp(null) }} />
-        </div>
-
-        {/* Documento de FIM DE SEMANA (fila única, dono 15/08): é outro documento
-            e outra conferência — destacado quando a data escolhida é sáb/dom. */}
-        {onAbrirFds && (
-          <button
-            type="button"
-            onClick={() => onAbrirFds()}
-            className={[
-              'w-full rounded-xl border p-3 text-left text-sm active:opacity-70',
-              ehFimDeSemana(dataEscolhida)
-                ? 'border-primary/50 bg-primary/10 text-primary font-medium'
-                : 'border-border bg-muted/30 text-muted-foreground',
-            ].join(' ')}
-          >
-            {ehFimDeSemana(dataEscolhida)
-              ? 'Esta data é fim de semana — a ordem de liberação é ÚNICA (todos os hospitais). Importar o documento de FDS ›'
-              : 'Escala de fim de semana? Importe o documento de FDS (fila única) ›'}
-          </button>
-        )}
+          {/* items-start: o DatePicker é mais alto que o seletor de período — alinhar
+              pelo fim descolava os dois rótulos */}
+          <div className="grid grid-cols-[1.15fr_1fr] items-start gap-2">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Data</label>
+              <DatePicker
+                className="w-full min-w-0"
+                value={(() => { const [y, m, d] = String(dataEscolhida || '').split('-').map(Number); return y ? new Date(y, m - 1, d) : new Date() })()}
+                onChange={(d) => { if (d) { setDataEscolhida(dataToISO(d)); setSugestaoData(null) } }}
+                placeholder="Data da escala"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Período</label>
+              <SegmentedSelector options={PERIODO_OPCOES} value={periodo} onChange={mudarPeriodo} />
+            </div>
+          </div>
+        </section>
 
         {/* Sugestão pelo layout do anexo — confirmar, nunca trocar sozinho */}
         {sugestaoHosp && (
@@ -1150,6 +1156,26 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
           onChange={(f) => importarArquivo(Array.isArray(f) ? f[0] : f)} disabled={carregando || !canEdit} />
         {!temBase && canEdit && (
           <Button variant="outline" onClick={addLinha} className="w-full"><Plus className="w-4 h-4" /> Ou preencher manualmente</Button>
+        )}
+
+        {/* Documento de FIM DE SEMANA (fila única, dono 15/08): é outro documento
+            e outra conferência — destacado quando a data escolhida é sáb/dom.
+            Fica DEPOIS do anexo (dono 17/08): é desvio de rota, não etapa. */}
+        {onAbrirFds && (
+          <button
+            type="button"
+            onClick={() => onAbrirFds()}
+            className={[
+              'w-full rounded-xl border p-3 text-left text-sm active:opacity-70',
+              ehFimDeSemana(dataEscolhida)
+                ? 'border-primary/50 bg-primary/10 text-primary font-medium'
+                : 'border-border bg-muted/30 text-muted-foreground',
+            ].join(' ')}
+          >
+            {ehFimDeSemana(dataEscolhida)
+              ? 'Esta data é fim de semana — a ordem de liberação é ÚNICA (todos os hospitais). Importar o documento de FDS ›'
+              : 'Escala de fim de semana? Importe o documento de FDS (fila única) ›'}
+          </button>
         )}
 
         {carregando && (
