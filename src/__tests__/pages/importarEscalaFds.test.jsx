@@ -5,15 +5,16 @@
  * Trava:
  *  1. publicar grava o rodapé INVERTIDO (o doc escreve "1º→último a ser
  *     liberado"; o rodapé do app é o inverso) em hospital='fds', casos [];
- *  2. turno sem linha explícita (domingo) nasce com a SUGESTÃO marcada
- *     "Sugerida — ajuste antes de publicar";
+ *  2. turno sem linha explícita (domingo) nasce com a SUGESTÃO — o selo saiu da
+ *     coluna em 17/08 (dono: "deixe apenas a informação do turno"), mas a origem
+ *     continua viajando no fds_meta.ordemFonte;
  *  3. funcionária (bloco PLANTÃO MATERNO) NUNCA vira posição/linha — só
  *     informativo;
  *  4. nome ambíguo (2+ candidatos no cadastro, sem login) BLOQUEIA publicar;
  *  5. as 4 publicações levam o fds_meta completo (grade/posições/escalação).
  */
 import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 
 import { ThemeProvider, ToastProvider } from '@/design-system'
 import ImportarEscalaFdsPage from '@/pages/escala-cirurgica/ImportarEscalaFdsPage'
@@ -126,16 +127,25 @@ describe('Conferência do FDS — leitura e sugestão', () => {
     }))
   })
 
-  it('sábado vem "documento"; domingo sem linha explícita nasce com a SUGESTÃO marcada', async () => {
+  it('sábado vem "documento"; domingo sem linha explícita nasce da SUGESTÃO', async () => {
     await importar()
-    // 2 turnos do domingo (matutino + vespertino) + a NOITE dos dois dias: o
-    // documento não traz linha de liberação noturna, então ela nasce da grade
-    // 19-07 marcada como sugestão, para o conferente ajustar (dono 16/08)
-    expect(screen.getAllByText('Sugerida — ajuste antes de publicar')).toHaveLength(4)
-    // 1º a ser liberado do domingo (sugestão exibida na direção do doc) =
-    // reverse(escalação) → GUILHERME DIDOMENICO abre a lista
-    const blocosDomingo = screen.getAllByText(/Ordem de liberação · Matutino/)[1]
-    expect(blocosDomingo).toBeTruthy()
+    // O SELO saiu da coluna (dono 17/08: só o nome do turno). A origem segue
+    // sendo publicada — é ela que a fila usa depois: 2 turnos do domingo
+    // (matutino + vespertino) + a NOITE dos dois dias nascem de sugestão,
+    // porque o documento não traz linha de liberação noturna (dono 16/08).
+    expect(screen.queryByText(/Sugerida/)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Publicar fim de semana \(4 turnos\)/ }))
+    await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalledTimes(4))
+    const chamadas = salvarEscalaTurno.mock.calls.map(([p]) => p)
+    const sab = chamadas.find((p) => p.data === '2026-08-15' && p.turno === 'matutino')
+    const dom = chamadas.find((p) => p.data === '2026-08-16' && p.turno === 'matutino')
+    expect(sab.fdsMeta.ordemFonte.matutino).toBe('documento')
+    expect(sab.fdsMeta.ordemFonte.noturno).toBe('sugerida')
+    expect(dom.fdsMeta.ordemFonte.matutino).toBe('sugerida')
+    // as três colunas de turno estão na tela, uma por dia (o rótulo se repete na
+    // linha de "acrescentar por login" do mesmo turno)
+    expect(screen.getAllByText('Manhã').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getAllByText('Noite').length).toBeGreaterThanOrEqual(2)
   })
 
   it('funcionárias do PLANTÃO MATERNO ficam SÓ no informativo — nunca viram posição/ordem', async () => {
@@ -194,13 +204,14 @@ describe('Publicação — inversão na fronteira + fds_meta', () => {
 
   it('a lista da noite é editável na conferência e o que ficar lá é o que publica', async () => {
     await importar()
-    const titulo = [...document.querySelectorAll('p')].find((el) => /Ordem de liberação · Noturno/.test(el.textContent))
-    const secao = titulo.parentElement.parentElement // div do turno
-    const remover = secao.querySelectorAll('[aria-label^="Remover"]')
-    expect(remover.length).toBe(4) // os 4 da grade 19-07
+    // Desde 17/08 a coluna só lista; mover/remover abre no editor abaixo dela
+    // (três botões não cabem numa coluna de ~130px).
+    // [0] = sábado (os dois dias ficam empilhados na mesma tela)
+    const primeiroDaNoite = screen.getAllByRole('button', { name: /^Posição 1 de Noite/ })[0]
+    fireEvent.click(primeiroDaNoite)
     // a lista da conferência corre na direção do DOCUMENTO (1º a ser liberado
     // no topo): remover o 1º tira quem sairia primeiro
-    fireEvent.click(remover[0])
+    fireEvent.click(screen.getByRole('button', { name: /Remover/i }))
     fireEvent.click(screen.getByRole('button', { name: /Publicar fim de semana \(4 turnos\)/ }))
     await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalled())
     const sab = salvarEscalaTurno.mock.calls.map(([p]) => p).find((p) => p.data === '2026-08-15' && p.turno === 'matutino')
@@ -218,5 +229,47 @@ describe('Publicação — inversão na fronteira + fds_meta', () => {
     expect(botao.disabled).toBe(true)
     fireEvent.click(botao)
     expect(salvarEscalaTurno).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * LAYOUT DA CONFERÊNCIA (dono 17/08, escolha em protótipo a 430px):
+ *  · P1–P12 corre em DUAS COLUNAS, para baixo — em linha, as doze posições
+ *    empurravam a ordem de liberação para fora da tela;
+ *  · as três listas de liberação ficam LADO A LADO (manhã · tarde · noite), com
+ *    o cabeçalho só do turno e o ordinal colado ao nome;
+ *  · o que não cabe em coluna estreita — o par texto+login, os botões de mover —
+ *    abre num editor FORA das colunas.
+ */
+describe('FDS — colunas da conferência', () => {
+  it('lista P1–P12 em duas colunas e abre texto+login fora delas', async () => {
+    await importar()
+    const chips = screen.getAllByRole('button', { expanded: false })
+      .filter((b) => /^P\d+/.test(b.textContent))
+    expect(chips.length).toBeGreaterThanOrEqual(12)
+    expect(chips[0].closest('div').className).toContain('columns-2')
+    // fechado, o chip não traz campo nenhum; ao abrir, vêm o texto e o login
+    fireEvent.click(chips[0])
+    const editor = await screen.findByText(/^Posição P1$/)
+    expect(editor.parentElement.querySelector('input')).toBeTruthy()
+    expect(within(editor.parentElement).getByText(/login escolhido vence o texto/i)).toBeTruthy()
+  })
+
+  it('põe manhã, tarde e noite lado a lado, com o ordinal antes do nome', async () => {
+    await importar()
+    const primeiro = screen.getAllByRole('button', { name: /^Posição 1 de Manhã/ })[0]
+    // "1º Matheus": ordinal colado ao nome, nome curto para caber na coluna
+    expect(primeiro.textContent).toMatch(/1º\s*Matheus/)
+    // as três colunas vivem no mesmo grid
+    expect(primeiro.closest('.grid').className).toContain('grid-cols-3')
+  })
+
+  it('cabeçalho da coluna leva SÓ o nome do turno', async () => {
+    await importar()
+    const primeiro = screen.getAllByRole('button', { name: /^Posição 1 de Manhã/ })[0]
+    const coluna = primeiro.closest('div')            // a coluna do turno
+    const cabecalho = coluna.querySelector('p')
+    expect(cabecalho.textContent.trim()).toBe('Manhã') // sem "do documento"/"Sugerida"
+    expect(screen.queryByText(/Sugerida/)).toBeNull()
   })
 })
