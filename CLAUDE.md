@@ -342,11 +342,23 @@ véspera); Pega Plantão ganhou P12 no FDS. **NOTURNO É TURNO, não fase (dono
 15/08 21h):** o seletor do FDS tem 3 turnos (Matutino·Vespertino·**Noturno**) e
 o relógio escolhe entre eles às **7h/13h/19h** (`turnoFdsAtual`) — a fusão
 antiga por cima da lista do dia roubava o topo e RENUMERAVA a manhã ("sábado de
-manhã não está idêntica"); hoje conferir a manhã às 21h mostra a manhã pura. O
-turno noturno é SÓ a linha 19-07 da grade, esquerda→direita (= ordem ditada:
-sáb P2,P1,P4,P3 · dom P3,P4,P1,P2), com os cards herdando a cirurgia da tarde
-em curso (`FDS_TURNO_CASOS`: noturno lê casos do vespertino — o CHECK do banco
-só aceita matutino/vespertino). **Substituto na vaga:** nome fora do P1–P4 na
+manhã não está idêntica"); hoje conferir a manhã às 21h mostra a manhã pura. Os
+cards do noturno herdam a cirurgia da tarde em curso (`FDS_TURNO_CASOS`:
+noturno lê casos do vespertino — o CHECK do banco só aceita matutino/
+vespertino). **A FILA DA NOITE É MAIOR QUE A GRADE (dono 16/08:** sáb
+P2,P1,P4,P3,**P11,P8,P7** · dom P3,P4,P1,P2,**P11,P6,P5** — "apenas adicione os
+P's faltantes"): quem está de plantão à noite ≠ quem está na fila da noite, e os
+Pn da lista numerada que entram são os que saem PRIMEIRO. `opts.ordem` de
+`linhasNoturnasFds` (nomes, convenção do rodapé) é a fila; a grade só decide
+POSTO (papel "Plantão Unimed/HRO" + `foraDaFila`). Quem está na grade e não foi
+citado NUNCA some — vai para a frente (sai por último); sem ordem publicada a
+fila segue sendo a linha 19-07 esquerda→direita. Mora em
+**`fds_meta.ordemNoite`** porque 'noturno' não é turno de publicação, e o meta
+vai inteiro em toda publicação (republicar não apaga; migration
+`20260816120000` gravou 15–16/08). A conferência tem a 3ª lista, editável como
+as outras: sem linha de noite no doc ela nasce da grade marcada "Sugerida", e
+noite vazia NÃO trava a publicação (cai na grade) — manhã/tarde travam.
+**Substituto na vaga:** nome fora do P1–P4 na
 linha 19-07 (dom: JOAO RICARDO) some se casar por primeiro nome
 (`resolverNomeEstrito` proíbe token solto p/ nome composto) e ASSUME o selo da
 vaga livre quando é 1↔1 (P3 da Cristina), com "cobre X" no papel. Rollout: sem linha 'fds' publicada,
