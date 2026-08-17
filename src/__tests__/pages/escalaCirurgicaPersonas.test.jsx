@@ -152,11 +152,13 @@ describe('Anestesista — Minhas escalas casam por login (uid)', () => {
     expect(screen.getByText('Artrodese')).toBeTruthy()
     expect(screen.queryByText('Artroplastia')).toBeNull()
   })
-  it('clicar no meu caso abre o detalhe com status e "Definir anestesista deste caso" (trocas aposentadas 23/07)', () => {
+  // rótulos do redesenho 17/08: "Status da cirurgia" virou os dois eixos
+  // ("Andamento" + "Aviso") e o botão do anestesista virou a ação da linha dele
+  it('clicar no meu caso abre o detalhe com status e a troca do anestesista (trocas aposentadas 23/07)', () => {
     render(<MinhasEscalasView escala={escala} meuAlias="Alexandre" meuUid="u-alex-s" turno="vespertino" />, { wrapper: wrap })
     fireEvent.click(screen.getByText('Artrodese'))
-    expect(screen.getByText('Status da cirurgia')).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Definir anestesista deste caso/ })).toBeTruthy()
+    expect(screen.getByText('Andamento')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Trocar anestesista' })).toBeTruthy()
   })
   it('usuário sem casos → empty state', () => {
     render(<MinhasEscalasView escala={escala} meuAlias="Zé" meuUid="u-ze" turno="vespertino" />, { wrapper: wrap })
@@ -175,7 +177,7 @@ describe('Anestesista — Minhas escalas casam por login (uid)', () => {
     render(<MinhasEscalasView escala={comPosicao} meuAlias="Anest A" meuUid="u-anest-a" turno="matutino" />, { wrapper: wrap })
     expect(screen.getByText('Posição')).toBeTruthy()
     expect(screen.getByText('Local de trabalho neste turno')).toBeTruthy()
-    expect(screen.queryByText('Status da cirurgia')).toBeNull()
+    expect(screen.queryByText('Andamento')).toBeNull()
     expect(screen.getByText(/1 posição neste hospital/i)).toBeTruthy()
   })
 })

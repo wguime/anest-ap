@@ -9,6 +9,11 @@
  *
  * As três abas usam o MESMO componente de detalhe: a diferença entre elas tem de
  * ser só QUAIS casos a lista mostra.
+ *
+ * REDESENHO 17/08 ("Andamento no topo"): residente, cirurgião e tempo passaram a
+ * abrir o editor a partir da linha que mostra o valor atual — o painel deixou de
+ * empilhar três seletores abertos. O que estes testes travam continua sendo o
+ * mesmo: pela Minhas o detalhe chega COMPLETO e grava pelo mesmo caminho.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
@@ -69,30 +74,33 @@ const abrirDetalhe = () => {
 beforeEach(() => atualizarCaso.mockClear())
 
 describe('Minhas — detalhe do caso vem COMPLETO', () => {
-  it('traz o seletor de residente (some sem podeEditar)', () => {
+  it('traz o residente — a linha mostra o valor e o botão abre o seletor', () => {
     abrirDetalhe()
     expect(screen.getByText('Residente')).toBeTruthy()
-    // sem residente escolhido o Select mostra a opção "Sem residente" (o value
-    // nasce no sentinela), não o placeholder
+    // sem residente escolhido, a linha diz "Sem residente" (é o valor, não um vazio)
     expect(screen.getByText('Sem residente')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Trocar residente' }))
+    fireEvent.click(screen.getByRole('combobox'))
+    expect(screen.getByRole('option', { name: 'Augusto' })).toBeTruthy()
   })
 
   it('traz o tempo da cirurgia', () => {
     abrirDetalhe()
-    expect(screen.getByRole('button', { name: 'Definir' })).toBeTruthy()
+    // sem término informado a linha é um convite explícito, não um campo vazio
+    fireEvent.click(screen.getByRole('button', { name: /Definir término/ }))
+    expect(document.querySelector('[data-slot="termino-hora"]')).toBeTruthy()
   })
 
-  it('traz "mudar de sala/local" e a marcação de ajuda', () => {
+  it('traz "mudar de sala/local", o cirurgião e a marcação de ajuda', () => {
     abrirDetalhe()
     expect(screen.getByRole('button', { name: /Mudar de sala\/local/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Trocar cirurgião' })).toBeTruthy()
     expect(screen.getByRole('button', { name: /como ajuda/i })).toBeTruthy()
   })
 
   it('editar pela Minhas grava no MESMO caminho da Completa', async () => {
     abrirDetalhe()
-    // o Select do DS usa aria-labelledby, que vence o aria-label — localiza pelo
-    // placeholder do próprio combobox
-    // horário são DUAS roletas; escopa pelo rótulo do bloco
+    fireEvent.click(screen.getByRole('button', { name: /Definir término/ }))
     // horário é campo mascarado: digitar 1800 → "18:00" e grava
     fireEvent.change(document.querySelector('[data-slot="termino-hora"]'), { target: { value: '1800' } })
     // mesma action de context que a Completa usa — é o que mantém as abas juntas
