@@ -401,6 +401,43 @@ discussão: as telas convivem com ela.
   quem a fila usa). Ordinal colado ao nome (`1º Matheus`), Pn acima em peso menor; mover/
   remover e o par texto+login abrem fora das colunas. Os dois dias seguem empilhados.
 
+### Superfícies de ação da escala (dono 17/08) — os painéis que abrem por cima
+
+Mesmo método (protótipo a 430px nos dois temas, medição ao lado, escolha por imagem).
+⚠️ `POSITION_CLASSES.bottom` do DS fixa **`h-[85vh]`**, não `max-h`: todo bottom-sheet
+nascia com 85% da tela mesmo quase vazio — era a causa do "a tela fica quase vazia". Os
+sheets da escala passam `!h-auto max-h-[88vh]`; o **default do DS fica como está** (mexer
+nele alcança os outros cinco sheets do app).
+
+- **Detalhe do caso** (`CasoDetalheSheet`, Completa + Minhas): estado primeiro. Cabeçalho =
+  pill da sala · hora · badge de tipo · selo tonal de convênio, procedimento como título
+  (15px extrabold, QUEBRA) e iniciais · idade · previsto como metadado. Corpo: **Andamento**
+  (segmented 3, exclusivo, é quem pinta o card) → **Aviso** (3 chips, convivem com iniciada,
+  bloqueados por terminada) → **Equipe** (cirurgião · anestesista · residente · ajuda, cada
+  um com o valor e um botão que abre o editor na própria linha) → **Tempo desta cirurgia** →
+  "Mudar de sala/local". **Cirurgião virou editável** (grava `cirurgiao`, o mesmo campo do
+  Adicionar caso; sugere os cirurgiões do dia p/ a mesma pessoa não entrar em 2 grafias).
+  Nome do anestesista e grafia do procedimento vêm das MESMAS funções do quadro
+  (`nomeAnestesistaExibicao`, `fraseClinica`) — o painel repetia o texto cru da importação.
+- **Anestesista da sala/caso** (`DefinirAnestesistaSheet`): o Select saiu, **o roster é a
+  tela** — uma linha por colega com onde ele está agora (`Nº na fila` + cirurgias no turno),
+  busca no topo (45+ pessoas), escolha em 1 toque. Cabeçalho declara o ALCANCE ("1 cirurgia
+  muda de dono (a das 10:00 já terminou e fica com X)") e traz **"agora com {nome}"** — é
+  esse nome que denuncia divergência de turno (bug 31/07). Rodapé grudado repete o efeito
+  antes de confirmar. Regra de negócio intacta (modos, turno, terminados, dupla, assunção).
+- **Tempo** (`PainelTempo`, fonte única da pessoa e da cirurgia): o **"ou" virou alternador
+  segmentado** — "Tempo faltante" × "Horário de término", um caminho por vez, com "dois
+  jeitos de dizer a mesma coisa, preencha um". Vazio abre na duração; com valor, no horário.
+  Atalhos em grade de 6 (30min–3h) + "Outro tempo…". **"Definir" saiu** (morto: atalho,
+  seletor e campo já gravam na escolha). O sheet da fila chama-se "Tempo faltante de {nome}",
+  igual ao botão que o abre — eram 4 nomes para 2 conceitos.
+- **Painel da linha** (✏️ Liberações): **recado em cima** (é o uso diário) com contador;
+  ajuda e troca logo abaixo; local e cirurgião descem para **"Ajustes da fila"**, recolhido
+  com o valor na dobra e já aberto se alguém escreveu um à mão. Cabeçalho repete o contexto
+  do card (quantas cirurgias · quantas com término · onde). Restaurar/Salvar grudados no pé.
+  Rótulos: "Local" diz que muda só o que a FILA mostra (a sala da cirurgia é no detalhe do
+  caso) e o cirurgião avisa que escrever à mão apaga o tempo por cirurgia dos chips.
+
 ## Bottom Nav
 4 abas: **Home** | **Gestão** (Shield) | **Educação** | **Menu**
 (Dashboard temporariamente oculto; código preservado em `App.jsx`)
