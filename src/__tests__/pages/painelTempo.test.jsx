@@ -15,6 +15,12 @@
  *
  * O cronômetro segue 100% MANUAL (decisão do dono 23/07): o que muda é quantos
  * toques a escolha custa, não de onde o número vem.
+ *
+ * REDESENHO 17/08 ("Alternador segmentado", escolhido em protótipo): o "ou"
+ * virou a própria escolha — as duas rotas não convivem mais na tela, e o botão
+ * "Definir" saiu por ser morto no caminho comum (atalho, seletor e campo já
+ * gravam). "Falta" virou "Tempo faltante", as duas correções que o dono pediu
+ * antes de comparar as propostas.
  */
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
@@ -36,9 +42,13 @@ const montar = (props = {}) => {
 
 /** Combobox pelo texto visível (o DS usa aria-labelledby, que vence aria-label). */
 const combo = (re) => screen.getAllByRole('combobox').find((c) => re.test(c.textContent))
+/** Vai para a rota do horário digitado (a outra metade do alternador). */
+const abaHorario = () => fireEvent.click(screen.getByRole('tab', { name: 'Horário de término' }))
+/** Vai para a rota da duração. */
+const abaFaltante = () => fireEvent.click(screen.getByRole('tab', { name: 'Tempo faltante' }))
 /** Escolhe no seletor de DURAÇÃO (rótulo é duração; o valor gravado é a hora). */
 const escolherDuracao = async (rotulo) => {
-  fireEvent.click(combo(/Falta/i))
+  fireEvent.click(combo(/Outro tempo/i))
   fireEvent.click(await screen.findByRole('option', { name: rotulo }))
 }
 /** Roletas de hora e minuto, escopadas pelo rótulo do bloco (o DS não deixa
@@ -50,15 +60,35 @@ const digitarHorario = (hhmm) =>
   fireEvent.change(campoHora(), { target: { value: hhmm.replace(':', '') } })
 
 describe('PainelTempo — duas entradas para o mesmo campo (dono 29/07)', () => {
-  it('oferece TEMPO FALTANTE e HORÁRIO DE TÉRMINO, uma ou outra', () => {
+  it('oferece TEMPO FALTANTE e HORÁRIO DE TÉRMINO — uma OU outra, nunca as duas', () => {
     montar()
-    expect(combo(/Falta/i)).toBeTruthy()
-    // horário virou campo mascarado (mesma máscara do "Adicionar caso")
+    // vazio nasce na duração: é como quem está em sala pensa
+    expect(screen.getByRole('tab', { name: 'Tempo faltante' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('button', { name: '1h30' })).toBeTruthy()
+    expect(campoHora()).toBeNull() // a outra rota não está na tela
+    expect(screen.getByText(/Dois jeitos de dizer a mesma coisa/)).toBeTruthy()
+    abaHorario()
+    // horário é campo mascarado (mesma máscara do "Adicionar caso")
     expect(campoHora()).toBeTruthy()
+    expect(screen.queryByRole('button', { name: '1h30' })).toBeNull()
+  })
+
+  it('os atalhos gravam em UM toque (é o caminho do meio do plantão)', () => {
+    const { onDefinir } = montar()
+    fireEvent.click(screen.getByRole('button', { name: '1h30' }))
+    expect(onDefinir).toHaveBeenCalledTimes(1)
+    expect(onDefinir.mock.calls[0][0]).toMatch(/^([01][0-9]|2[0-3]):[0-5][0-9]$/)
+  })
+
+  it('com valor gravado abre na rota do HORÁRIO — o que vale é uma hora', () => {
+    montar({ atual: '16:30' })
+    expect(screen.getByRole('tab', { name: 'Horário de término' })).toHaveAttribute('aria-selected', 'true')
+    expect(campoHora().value).toBe('16:30')
   })
 
   it('hora incompleta NÃO grava — "18:3" no meio da digitação não é um término', () => {
     const { onDefinir } = montar()
+    abaHorario()
     fireEvent.change(campoHora(), { target: { value: '183' } })
     expect(onDefinir).not.toHaveBeenCalled()
     // e hora inválida também não (25:00 não existe)
@@ -68,7 +98,7 @@ describe('PainelTempo — duas entradas para o mesmo campo (dono 29/07)', () => 
 
   it('escolher a duração grava a HORA correspondente, sem depender do botão', async () => {
     const { onDefinir } = montar()
-    await escolherDuracao('1h')
+    await escolherDuracao('1h15')
     expect(onDefinir).toHaveBeenCalledTimes(1)
     // o banco guarda "HH:MM": duração salva envelheceria sozinha, hora não
     expect(onDefinir.mock.calls[0][0]).toMatch(/^([01][0-9]|2[0-3]):[0-5][0-9]$/)
@@ -76,20 +106,16 @@ describe('PainelTempo — duas entradas para o mesmo campo (dono 29/07)', () => 
 
   it('escolher o horário grava exatamente ele', async () => {
     const { onDefinir } = montar()
+    abaHorario()
     digitarHorario('18:30')
     expect(onDefinir).toHaveBeenCalledWith('18:30')
   })
 
   it('não finge um valor escolhido quando não há nenhum', () => {
     montar()
-    expect(screen.getByRole('button', { name: 'Definir' })).toBeDisabled()
+    abaHorario()
+    expect(campoHora().value).toBe('')
     expect(screen.queryByText(/Acaba às/)).toBeNull()
-  })
-
-  it('com valor gravado, o campo mostra ELE e o botão volta a valer', () => {
-    montar({ atual: '16:30' })
-    expect(campoHora().value).toBe('16:30')
-    expect(screen.getByRole('button', { name: 'Definir' })).not.toBeDisabled()
   })
 
   it('a prévia traduz a hora em quanto falta — sem conta de cabeça', () => {
@@ -98,21 +124,21 @@ describe('PainelTempo — duas entradas para o mesmo campo (dono 29/07)', () => 
     expect(previa).toBeTruthy()
   })
 
-  it('o botão continua gravando para quem toca nele', () => {
-    const { onDefinir } = montar({ atual: '16:30' })
-    fireEvent.click(screen.getByRole('button', { name: 'Definir' }))
-    expect(onDefinir).toHaveBeenCalledWith('16:30')
+  it('"Definir" saiu — era botão morto (a escolha já grava)', () => {
+    montar({ atual: '16:30' })
+    expect(screen.queryByRole('button', { name: 'Definir' })).toBeNull()
   })
 
   it('sem valor, Limpar aparece mas fica DESABILITADO — layout estável', () => {
-    // os dois botões vêm lado a lado desde o primeiro render (dono 29/07): layout
-    // que muda de forma conforme o estado obriga a reprocurar o botão a cada vez
+    // o botão vem desde o primeiro render (dono 29/07): layout que muda de forma
+    // conforme o estado obriga a reprocurar o botão a cada vez
     montar()
     expect(screen.getByRole('button', { name: 'Limpar' })).toBeDisabled()
   })
 
   it('com valor, Limpar grava vazio', () => {
     const { onDefinir } = montar({ atual: '16:30' })
+    abaFaltante() // Limpar vale nas duas rotas
     const limpar = screen.getByRole('button', { name: 'Limpar' })
     expect(limpar).not.toBeDisabled()
     fireEvent.click(limpar)

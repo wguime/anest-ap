@@ -152,9 +152,8 @@ describe('Observação da linha (dono 29/07)', () => {
     const onSetOverride = vi.fn(async () => {})
     montar({ onSetOverride }, { ...escalaBase, linhaOverrides: { 'uid-mar': { observacao: 'no consultório' } } })
     fireEvent.click(screen.getByLabelText('Definir tempo faltante de Marilio Flach'))
-    // os atalhos de duração saíram (dono 29/07): o Select de tempo faltante ocupou o lugar
-    fireEvent.click(screen.getAllByRole('combobox').find((c) => /Falta/i.test(c.textContent)))
-    fireEvent.click(screen.getByRole('option', { name: '1h' }))
+    // atalho de duração em grade (redesenho 17/08): um toque grava
+    fireEvent.click(screen.getByRole('button', { name: '1h' }))
     await waitFor(() => expect(onSetOverride).toHaveBeenCalled())
     expect(onSetOverride.mock.calls[0][1].observacao).toBe('no consultório')
   })

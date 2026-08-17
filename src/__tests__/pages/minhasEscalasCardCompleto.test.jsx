@@ -88,6 +88,8 @@ describe('Minhas — detalhe do caso vem COMPLETO', () => {
     abrirDetalhe()
     // sem término informado a linha é um convite explícito, não um campo vazio
     fireEvent.click(screen.getByRole('button', { name: /Definir término/ }))
+    expect(screen.getByRole('button', { name: '1h30' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('tab', { name: 'Horário de término' }))
     expect(document.querySelector('[data-slot="termino-hora"]')).toBeTruthy()
   })
 
@@ -101,6 +103,7 @@ describe('Minhas — detalhe do caso vem COMPLETO', () => {
   it('editar pela Minhas grava no MESMO caminho da Completa', async () => {
     abrirDetalhe()
     fireEvent.click(screen.getByRole('button', { name: /Definir término/ }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Horário de término' }))
     // horário é campo mascarado: digitar 1800 → "18:00" e grava
     fireEvent.change(document.querySelector('[data-slot="termino-hora"]'), { target: { value: '1800' } })
     // mesma action de context que a Completa usa — é o que mantém as abas juntas

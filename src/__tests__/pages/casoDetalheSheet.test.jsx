@@ -161,9 +161,7 @@ describe('Término DESTA cirurgia (dono 29/07)', () => {
   it('grava o término previsto no caso — e ESPELHA no tempo total (única cirurgia, dono 30/07)', async () => {
     montar()
     abrirTempo()
-    // os atalhos de duração saíram (dono 29/07): o Select de tempo faltante ocupou o lugar
-    fireEvent.click(screen.getAllByRole('combobox').find((c) => /Falta/i.test(c.textContent)))
-    fireEvent.click(screen.getByRole('option', { name: '1h' }))
+    fireEvent.click(screen.getByRole('button', { name: '1h' }))
     await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
     const patch = atualizarCaso.mock.calls[0][2]
     expect(patch).toHaveProperty('terminoPrevisto')
@@ -180,8 +178,7 @@ describe('Término DESTA cirurgia (dono 29/07)', () => {
     const segundo = { ...caso, id: 'c2', ordem: 1, hora: '09:00', cirurgiao: 'Liana W' }
     montar({}, { ...escala, casos: [caso, segundo] })
     abrirTempo()
-    fireEvent.click(screen.getAllByRole('combobox').find((c) => /Falta/i.test(c.textContent)))
-    fireEvent.click(screen.getByRole('option', { name: '1h' }))
+    fireEvent.click(screen.getByRole('button', { name: '1h' }))
     await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
     expect(setLinhaOverride).not.toHaveBeenCalled()
   })
@@ -192,8 +189,9 @@ describe('Término DESTA cirurgia (dono 29/07)', () => {
     expect(screen.getByText(/Tempo desta cirurgia/)).toBeTruthy()
     abrirTempo()
     expect(screen.getByText(/Só desta cirurgia/)).toBeTruthy()
-    // as duas entradas convivem: duração OU horário digitado, mesmo campo
-    expect(screen.getAllByRole('combobox').find((c) => /Falta/i.test(c.textContent))).toBeTruthy()
+    // as duas entradas são ALTERNATIVAS: o painel abre numa e o alternador leva à outra
+    expect(screen.getByRole('button', { name: '1h30' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('tab', { name: 'Horário de término' }))
     expect(document.querySelector('[data-slot="termino-hora"]')).toBeTruthy()
   })
 

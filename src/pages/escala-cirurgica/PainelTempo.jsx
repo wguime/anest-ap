@@ -15,6 +15,10 @@
 import { useState } from 'react'
 import { Button, Input, Select } from '@/design-system'
 import { agora } from '@/lib/devClock'
+import SegmentedSelector from './SegmentedSelector'
+
+/** Atalhos de duração da grade (minutos) — o resto vive em "Outro tempo…". */
+export const ATALHOS_MIN = [30, 45, 60, 90, 120, 180]
 
 /** Opções do Select de hora exata (padrão DS): dia inteiro em passos de 15min. */
 export const HORARIOS_OPCOES = Array.from({ length: 96 }, (_, i) => {
@@ -133,6 +137,12 @@ export default function PainelTempo({ horarios, atual, horaExata, onHoraExata, o
     }
   }
 
+  // MODO: qual das duas rotas está na tela. Nasce em "Horário" quando já existe
+  // um valor gravado — o que está salvo é uma HORA, e escondê-la atrás da outra
+  // aba faria o painel abrir sem mostrar o que já vale.
+  const [modo, setModo] = useState(valor ? 'hora' : 'falta')
+  const gravar = (hhmm) => { onHoraExata(hhmm); onDefinir(hhmm) }
+
   return (
     <div className="space-y-3">
       {/* DUAS ENTRADAS, UMA OU OUTRA (dono 29/07): quem está em sala às vezes pensa
@@ -143,28 +153,51 @@ export default function PainelTempo({ horarios, atual, horaExata, onHoraExata, o
           GRAVA NA ESCOLHA: antes só o botão gravava, e o 2º toque era o passo que
           se perdia — nos dois caminhos que usam este painel o banco ficou sem
           NENHUM valor.
-          UMA LINHA SÓ: rótulos e divisor gastavam quatro linhas num painel que já
-          estourava a altura do sheet. Os placeholders carregam o significado
-          ("Falta" à esquerda, "18:30" à direita) e a prévia abaixo diz o resultado
-          em palavras. */}
-      <div className="flex items-stretch gap-1.5">
-        {/* duração: é AÇÃO, não estado — volta ao placeholder depois de escolher.
-            O estado aparece no campo de horário e na prévia. */}
-        {/* SIMÉTRICOS (dono 29/07): `flex-1 basis-0` dá aos dois a MESMA largura,
-            independente do texto dentro. Antes o "Falta" tomava todo o espaço
-            sobrando e o horário ficava num quadradinho de 86px. */}
-        <Select className="min-w-0 flex-1 basis-0" options={opcoes} value=""
-          onChange={(v) => { onHoraExata(v); onDefinir(v) }}
-          placeholder="Falta" aria-label="Tempo faltante" />
-        <span className="shrink-0 self-center text-xs text-muted-foreground">ou</span>
-        {/* horário digitado com máscara — teclado numérico no celular. Digitação
-            MANTIDA por decisão do dono: dos componentes prontos pesquisados, os
-            que passam a régua do projeto (React Aria TimeField, OpenStatus
-            TimePicker) também exigem digitar, e a roleta (react-mobile-picker)
-            tem 357★, abaixo do mínimo de 1k. */}
+          O "OU" VIROU A PRÓPRIA ESCOLHA (dono 17/08): eram dois campos lado a lado
+          com um "ou" minúsculo entre eles, lidos como dois campos A PREENCHER. Com
+          o alternador só um caminho existe de cada vez, e a frase abaixo diz que
+          são duas maneiras de dizer a mesma coisa. */}
+      <SegmentedSelector
+        variant="filled"
+        options={[
+          { value: 'falta', label: 'Tempo faltante' },
+          { value: 'hora', label: 'Horário de término' },
+        ]}
+        value={modo}
+        onChange={setModo}
+      />
+      <p className="text-[12.5px] leading-snug text-muted-foreground">
+        Dois jeitos de dizer a mesma coisa. Preencha um.
+      </p>
+
+      {modo === 'falta' ? (
+        <>
+          {/* atalhos: é AÇÃO, não estado — o que vale aparece na prévia abaixo */}
+          <div className="grid grid-cols-3 gap-2">
+            {ATALHOS_MIN.map((min) => (
+              <Button
+                key={min}
+                variant="outline"
+                className="min-h-[44px] font-bold"
+                onClick={() => gravar(emMinutos(min))}
+              >
+                {rotuloDuracao(min)}
+              </Button>
+            ))}
+          </div>
+          <Select className="w-full" options={opcoes} value=""
+            onChange={gravar}
+            placeholder="Outro tempo…" aria-label="Outro tempo faltante" />
+        </>
+      ) : (
+        /* horário digitado com máscara — teclado numérico no celular. Digitação
+           MANTIDA por decisão do dono: dos componentes prontos pesquisados, os
+           que passam a régua do projeto (React Aria TimeField, OpenStatus
+           TimePicker) também exigem digitar, e a roleta (react-mobile-picker)
+           tem 357★, abaixo do mínimo de 1k. */
         <Input
           data-slot="termino-hora"
-          className="min-w-0 flex-1 basis-0 text-center"
+          className="w-full text-center text-[17px] font-semibold"
           value={horaTexto}
           onChange={(e) => digitarHora(e.target.value)}
           inputMode="numeric"
@@ -172,32 +205,20 @@ export default function PainelTempo({ horarios, atual, horaExata, onHoraExata, o
           placeholder="18:30"
           aria-label="Horário de término"
         />
-      </div>
+      )}
 
-      {/* AÇÕES LADO A LADO ABAIXO DOS CAMPOS (dono 29/07): mesmo tamanho e forma,
-          cores diferentes — "Definir" em verde sólido (ação principal) e "Limpar"
-          em contorno vermelho (apagar não pode ter o mesmo peso visual de gravar).
-          Os DOIS aparecem sempre, desde o primeiro render: layout que muda de
-          forma conforme o estado obriga a reprocurar o botão a cada vez. Sem
-          valor, "Limpar" fica desabilitado — não há o que apagar, e desabilitado
-          é honesto onde esconder seria confuso. */}
-      <div className="flex items-stretch gap-2">
-        <Button
-          className="min-w-0 flex-1 basis-0"
-          disabled={!(horaExata || atual)}
-          onClick={() => onDefinir(horaExata || atual)}
-        >
-          Definir
-        </Button>
-        <Button
-          variant="outline"
-          className="min-w-0 flex-1 basis-0 border-destructive text-destructive hover:bg-destructive/10"
-          disabled={!atual}
-          onClick={() => onDefinir('')}
-        >
-          Limpar
-        </Button>
-      </div>
+      {/* "Definir" SAIU (dono 17/08): no caminho comum ele era um botão morto —
+          atalho, seletor e campo já gravam na escolha, e ele só regravava um valor
+          que já estava salvo. Ficou "Limpar", que é a única ação que sobra: sem
+          valor, desabilitado (esconder seria pior que mostrar apagado). */}
+      <Button
+        variant="outline"
+        className="w-full border-destructive text-destructive hover:bg-destructive/10"
+        disabled={!atual}
+        onClick={() => onDefinir('')}
+      >
+        Limpar
+      </Button>
 
       {restante && (
         <p className={['text-xs', restante.atrasada ? 'text-warning' : 'text-muted-foreground'].join(' ')}>
