@@ -156,6 +156,13 @@ describe('Dois eixos de status (dono 21/07, desenho 17/08)', () => {
     expect(document.querySelector('[data-slot="sheet-content"]').className).toContain('!h-auto')
   })
 
+  it('o procedimento usa a MESMA grafia do card no quadro', () => {
+    // o texto importado vem em caixa alta; o card já o passa por fraseClinica e o
+    // painel repetia cru — mesmo dado, duas grafias em duas telas do mesmo caso
+    montar({}, { ...escala, casos: [{ ...caso, procedimento: 'EXERESE DE NODULO' }] })
+    expect(screen.getByText('Exerese de nodulo')).toBeTruthy()
+  })
+
   it('o tipo do caso é badge vermelho, não linha de texto (auditoria 17/08)', () => {
     montar({}, { ...escala, casos: [{ ...caso, tipo: 'emergencia' }] })
     expect(screen.getByText('Emergência')).toBeTruthy()

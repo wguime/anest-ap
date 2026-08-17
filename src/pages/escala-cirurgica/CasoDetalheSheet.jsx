@@ -20,7 +20,7 @@ import { HOSPITAL_LABEL, useEscalaCirurgicaActions } from '@/contexts/EscalaCiru
 import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import useRosterResidentes from '@/hooks/useRosterResidentes'
-import { titleCaseNome } from '@/lib/colunaLiberacao'
+import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
 import PainelTempo, { formatFaltante } from './PainelTempo'
 import useAgoraMinuto from './useAgoraMinuto'
 import { espelhoTempoTotal, LOCAIS_BASE, nomeAnestesistaExibicao, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso } from './utils'
@@ -219,8 +219,11 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
               )}
             </span>
           </div>
+          {/* MESMA grafia do card no quadro (`fraseClinica`): o texto importado
+              vem em CAIXA ALTA e o painel repetia assim — o mesmo procedimento
+              aparecia de dois jeitos em duas telas do mesmo caso. */}
           <SheetTitle className="text-[15px] font-extrabold leading-tight [overflow-wrap:anywhere]">
-            {vivo.procedimento || salaExibicao(vivo.sala)}
+            {fraseClinica(vivo.procedimento) || salaExibicao(vivo.sala)}
           </SheetTitle>
           {(vivo.pacienteIniciais || vivo.idade || vivo.tempoEstimado) && (
             <p className="text-[11.5px] text-muted-foreground">
