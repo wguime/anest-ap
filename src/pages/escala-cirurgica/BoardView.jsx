@@ -336,12 +336,17 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
                   </button>
                 ) : null}
               >
+                {/* Tinta do cabeçalho (dono 17/08): o verde sólido pesava demais numa
+                    lista de 12 salas. O badge repete a receita do seletor ATIVO da barra
+                    de controles — primary/20 com texto primary — e o nome do anestesista
+                    usa a MESMA cor do texto do badge, para o cabeçalho inteiro ler como
+                    um bloco só. */}
                 <span className="flex w-full min-w-0 items-center gap-2">
-                  <span className="shrink-0 rounded-md bg-primary px-1.5 py-0.5 text-[10.5px] font-extrabold uppercase tracking-wide text-primary-foreground">
+                  <span className="shrink-0 rounded-md bg-primary/20 px-1.5 py-0.5 text-[10.5px] font-extrabold uppercase tracking-wide text-primary">
                     {salaExibicao(g.sala)}
                   </span>
                   {nomeGrupo && (
-                    <span className="truncate text-[15px] font-bold" title={nomeGrupo}>{nomeGrupo}</span>
+                    <span className="truncate text-[15px] font-semibold text-primary" title={nomeGrupo}>{nomeGrupo}</span>
                   )}
                   <span className="ml-auto shrink-0 text-[11px] font-normal text-muted-foreground">{nCasos}</span>
                 </span>

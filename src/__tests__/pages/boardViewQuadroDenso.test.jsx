@@ -124,6 +124,12 @@ describe('Completa — cabeçalho da sala', () => {
     renderBoard([caso(), caso({ id: 'c2', hora: '15:00', pacienteIniciais: 'T.T.' })])
     expect(screen.getByText('Sala 2')).toBeTruthy()
     expect(screen.getByText('Gabriel')).toBeTruthy()
+    // tinta do cabeçalho (dono 17/08): o badge repete a receita do seletor ATIVO
+    // (primary/20 + texto primary) e o nome usa a MESMA cor do texto do badge —
+    // o verde sólido pesava demais numa lista de 12 salas
+    expect(screen.getByText('Sala 2').className).toContain('bg-primary/20')
+    expect(screen.getByText('Sala 2').className).toContain('text-primary')
+    expect(screen.getByText('Gabriel').className).toContain('text-primary')
     expect(screen.getByText('2')).toBeTruthy()
     // o Accordion do DS entrega o botão de recolher/expandir da seção
     expect(screen.getByRole('button', { name: /Recolher seção/i })).toBeTruthy()
