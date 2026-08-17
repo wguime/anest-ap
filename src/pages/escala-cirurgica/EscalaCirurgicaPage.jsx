@@ -263,7 +263,10 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           hospital: h, hospitalLabel: HOSPITAL_LABEL[h] || h, escalaId: esc.id, chave,
           // colega fora de qualquer escala (consultório/folga): o local declarado
           // no sheet ocupa o lugar do hospital que não existe
-          a, b, aHospitalLabel: slotLabelDe(a), bHospitalLabel: slotLabelDe(b) || t.local || null,
+          // o local INFORMADO na troca vem primeiro (dono 16/08: "quero que
+          // informe entre parênteses quando informado") — quem digitou
+          // "Consultório" sabe algo que a escala não mostra
+          a, b, aHospitalLabel: slotLabelDe(a), bHospitalLabel: t.local || slotLabelDe(b) || null,
           tipo: t.tipo || null, motivo: t.motivo || null, local: t.local || null,
           // registro de troca JÁ refletida na escala publicada (dono 10/08):
           // vira badge, nunca oferta de "executar" — não há o que mover

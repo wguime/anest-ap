@@ -113,7 +113,7 @@ const Select = React.forwardRef(
       const spaceAbove = rect.top
 
       // Prefer below, but flip to above if not enough space
-      const searchBarHeight = searchable ? 48 : 0
+      const searchBarHeight = 0 // a busca agora fica no gatilho, não no menu
       const dropdownHeight = Math.min(240 + searchBarHeight, options.length * 48 + 8 + searchBarHeight)
       const showAbove = spaceBelow < dropdownHeight && spaceAbove > spaceBelow
 
@@ -140,7 +140,7 @@ const Select = React.forwardRef(
         }
         return { top, left, width }
       })
-    }, [options.length, searchable])
+    }, [options.length])
 
     // Recompute position on open and when window scrolls/resizes
     React.useLayoutEffect(() => {
@@ -161,7 +161,13 @@ const Select = React.forwardRef(
         // busca do próprio dropdown (mobile): o foco está dentro do dropdown.
         // Sem isso, tocar no campo de busca abre o teclado → viewport rola →
         // o dropdown fecha antes de o usuário conseguir digitar.
-        if (searchable && dropdownRef.current?.contains(document.activeElement)) return
+        // Teclado virtual rola o viewport ao focar a busca — fechar aqui
+        // matava a digitação no celular. Com a busca no GATILHO (16/08), o
+        // input não está mais dentro do dropdown: checar os dois.
+        if (searchable && (
+          dropdownRef.current?.contains(document.activeElement)
+          || (searchInputRef.current && searchInputRef.current === document.activeElement)
+        )) return
         // Fecha o dropdown em qualquer scroll externo (UX nativa mobile —
         // tentar reposicionar durante scroll rápido sempre deixa o dropdown
         // visualmente "atrás" do trigger por causa de RAF/render delay)
@@ -383,16 +389,44 @@ const Select = React.forwardRef(
             pointerEvents: disabled ? 'none' : 'auto',
           }}
         >
-          <span
-            className={cn(
-              "flex-1 min-w-0 truncate",
-              selectedOption
-                ? "text-primary font-medium"
-                : "text-muted-foreground"
-            )}
-          >
-            {selectedOption ? selectedOption.label : placeholder}
-          </span>
+          {/* BUSCA NO PRÓPRIO GATILHO (dono 16/08): antes o campo ficava dentro
+              do menu, abaixo — no celular era preciso um SEGUNDO toque para
+              digitar. Aberto, o gatilho vira o input e o teclado sobe no mesmo
+              gesto que abriu a lista. */}
+          {searchable && isOpen ? (
+            <>
+            <Search size={16} className="shrink-0 text-muted-foreground" aria-hidden="true" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value)
+                setFocusedIndex(0)
+              }}
+              onKeyDown={handleKeyDown}
+              onClick={(e) => e.stopPropagation()}
+              placeholder={selectedOption ? selectedOption.label : placeholder}
+              aria-label={placeholder || 'Buscar'}
+              className={cn(
+                "flex-1 min-w-0 bg-transparent outline-none border-0 p-0",
+                "text-foreground placeholder:text-muted-foreground"
+              )}
+              style={{ fontSize: 'inherit' }}
+            />
+            </>
+          ) : (
+            <span
+              className={cn(
+                "flex-1 min-w-0 truncate",
+                selectedOption
+                  ? "text-primary font-medium"
+                  : "text-muted-foreground"
+              )}
+            >
+              {selectedOption ? selectedOption.label : placeholder}
+            </span>
+          )}
 
           {/* Checkmark quando selecionado, Chevron quando não */}
           {selectedOption ? (
@@ -425,33 +459,8 @@ const Select = React.forwardRef(
                 maxHeight: '340px',
               }}
             >
-              {/* Search input */}
-              {searchable && (
-                <div className="px-3 pt-3 pb-2 border-b border-border">
-                  <div className="relative">
-                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                    <input
-                      ref={searchInputRef}
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => {
-                        setSearchQuery(e.target.value)
-                        setFocusedIndex(0)
-                      }}
-                      onKeyDown={handleKeyDown}
-                      placeholder="Buscar..."
-                      className={cn(
-                        "w-full pl-9 pr-3 py-2 text-sm rounded-xl border",
-                        "border-border",
-                        "bg-background dark:bg-card",
-                        "text-foreground",
-                        "placeholder:text-muted-foreground dark:placeholder:text-muted-foreground",
-                        "outline-none focus:border-primary dark:focus:border-primary"
-                      )}
-                    />
-                  </div>
-                </div>
-              )}
+              {/* A BUSCA VIVE NO GATILHO desde 16/08 (dono): o campo aqui
+                  dentro obrigava um segundo toque no celular para digitar. */}
 
               <motion.ul
                 ref={listboxRef}

@@ -14,6 +14,13 @@ const OPTIONS = [
   { value: 'carla', label: 'Carla Mendes' },
 ]
 
+/**
+ * Campo de busca — desde 16/08 ele vive no PRÓPRIO GATILHO (antes ficava dentro
+ * do menu, o que obrigava um segundo toque no celular para digitar). O input
+ * herda o placeholder do select, então localizamos pelo rótulo acessível.
+ */
+const buscaDoGatilho = () => screen.getByRole('textbox', { name: 'Selecione...' })
+
 function renderSelect(props = {}) {
   return render(
     <Select label="Anestesiologista" searchable options={OPTIONS} value="" onChange={() => {}} placeholder="Selecione..." {...props} />
@@ -21,6 +28,15 @@ function renderSelect(props = {}) {
 }
 
 describe('Select searchable — filtro do dropdown', () => {
+  it('a busca fica no GATILHO ao abrir, sem exigir um segundo toque (dono 16/08)', () => {
+    renderSelect()
+    const gatilho = screen.getByRole('combobox')
+    expect(screen.queryByRole('textbox')).toBeNull()  // fechado: só o rótulo
+    fireEvent.click(gatilho)
+    const busca = buscaDoGatilho()
+    expect(gatilho.contains(busca)).toBe(true)        // o input está DENTRO do gatilho
+  })
+
   it('abre o dropdown e mostra todas as opções', () => {
     renderSelect()
     fireEvent.click(screen.getByRole('combobox'))
@@ -31,7 +47,7 @@ describe('Select searchable — filtro do dropdown', () => {
   it('filtra as opções ao digitar na barra de busca', () => {
     renderSelect()
     fireEvent.click(screen.getByRole('combobox'))
-    const searchInput = screen.getByPlaceholderText('Buscar...')
+    const searchInput = buscaDoGatilho()
     fireEvent.change(searchInput, { target: { value: 'bru' } })
     const listbox = screen.getByRole('listbox')
     const opts = within(listbox).getAllByRole('option')
@@ -42,7 +58,7 @@ describe('Select searchable — filtro do dropdown', () => {
   it('mostra "Nenhum resultado encontrado" quando não há match', () => {
     renderSelect()
     fireEvent.click(screen.getByRole('combobox'))
-    fireEvent.change(screen.getByPlaceholderText('Buscar...'), { target: { value: 'zzz' } })
+    fireEvent.change(buscaDoGatilho(), { target: { value: 'zzz' } })
     expect(screen.getByText(/Nenhum resultado encontrado/i)).toBeInTheDocument()
   })
 
@@ -52,7 +68,7 @@ describe('Select searchable — filtro do dropdown', () => {
     // externo deve ser ignorado.
     renderSelect()
     fireEvent.click(screen.getByRole('combobox'))
-    const searchInput = screen.getByPlaceholderText('Buscar...')
+    const searchInput = buscaDoGatilho()
     searchInput.focus()
     expect(document.activeElement).toBe(searchInput)
     fireEvent.scroll(window, {})
