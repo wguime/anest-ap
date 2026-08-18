@@ -19,7 +19,7 @@ import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import useAgoraMinuto from './useAgoraMinuto'
 import useAvisoPlantonista from './useAvisoPlantonista'
-import PainelTempo, { formatFaltante, fraseFaltante } from './PainelTempo'
+import PainelTempo, { formatFaltante, fraseCronometro, fraseFaltante } from './PainelTempo'
 import AddCasoSheet from './AddCasoSheet'
 import { casosResolvidos, compararSalas, filtrarPorTurno, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao } from './utils'
 
@@ -1036,14 +1036,24 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // setas de ordem existem só no bloco de AJUDA (o rodapé é imutável) e o
           // layout da coluna da direita depende disso: com setas vira duas linhas.
           const temSetasAjuda = canEdit && linha.isAjuda && !linha.ajudaFora && !linha.isProximoPlantao && linha.ajudaIdx != null
+          const terminoLinhaMin = parseHoraMinutos(ov?.termino)
           const cronometro = (() => {
             // terminou TUDO (badge Livre): o tempo que sobrou é informação vencida
             // — mostrar "~1h20" ao lado de "Livre" fazia o card se contradizer.
             if (liberado || livre) return null
-            const manual = parseHoraMinutos(ov?.termino)
+            const manual = terminoLinhaMin
             if (manual == null) return null
             return {
               ...formatFaltante(manual, agoraMin),        // curto p/ a coluna
+              // ESTOUROU: a PALAVRA entra no lugar do sinal (dono 18/08). "+25min"
+              // sozinho não diz de que horário está falando nem se o tempo falta ou
+              // já passou — e esta é a SEGUNDA vez que o tempo da pessoa é relatado
+              // como pouco claro (a 1ª foi 30/07, com dois relógios no mesmo card).
+              // "25min além" é a MESMA frase que a linha do cirurgião logo acima já
+              // usa, então a tela inteira fala uma língua só; e não vira "atrasou",
+              // que aqui é o badge de status DA CIRURGIA e trocaria uma dúvida por
+              // outra. Enquanto FALTA, "~25min" se explica sozinho e fica como está.
+              texto: fraseCronometro(manual, agoraMin),
               titulo: formatRestante(manual, agoraMin),   // frase completa no title
             }
           })()
@@ -1256,6 +1266,15 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                           const andando = !!linha.tokenAndamento?.[c]
                           const falta = andando && alvo != null ? formatFaltante(alvo, agoraMin) : null
                           const hora = linha.tokenTermino?.[c] || null
+                          // MESMO HORÁRIO, UMA VEZ SÓ (dono 18/08). Quem tem uma
+                          // cirurgia ativa tem o total da linha ESPELHADO do término
+                          // dela (31/07) — e o card mostrava o mesmo tempo duas
+                          // vezes, âmbar aqui e verde na pílula. Dois números
+                          // idênticos lado a lado fazem procurar uma diferença que
+                          // não existe: é a própria pergunta "a que se refere?".
+                          // Fica a PÍLULA, que é o número que dirige a fila; o chip
+                          // volta assim que os horários divergem (2+ cirurgias).
+                          const espelhaOTotal = alvo != null && alvo === terminoLinhaMin && !!cronometro
                           return (
                             <p key={i} className="flex items-center gap-1.5">
                               {andando && (
@@ -1271,7 +1290,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                                   (colado ao cirurgião) e o VERBO diz o que é. Some o
                                   segundo ícone do card e o nome deixa de disputar a
                                   linha com um elemento de borda. */}
-                              {(falta || hora) && (
+                              {(falta || hora) && !espelhaOTotal && (
                                 <span
                                   title={andando
                                     ? `Esta cirurgia (em andamento) termina às ${hora}`
