@@ -695,3 +695,39 @@ describe('Conferência — ordem de liberação numerada', () => {
     expect(caixa.textContent).not.toContain('ERLEI')
   })
 })
+
+// A leitura por imagem pode falhar por CONTA/CHAVE (não passa sozinha) ou por
+// sobrecarga (passa). Em 17–18/08 a chave ficou sem crédito no meio da tarde e
+// a tela pediu "tente de novo" — a foto foi reenviada oito vezes e o vespertino
+// do dia 18 ficou sem escala.
+describe('Falha da IA na leitura (incidente 17–18/08)', () => {
+  const subir = () => {
+    const { container } = render(<ImportarEscalaPage hospital="hro" data="2026-07-28" onClose={vi.fn()} />, { wrapper: wrap })
+    fireEvent.change(container.querySelector('input[type="file"]'), {
+      target: { files: [new File(['x'], 'escala.png', { type: 'image/png' })] },
+    })
+    return container
+  }
+
+  it('conta sem crédito: diz que reenviar não resolve e aponta a saída', async () => {
+    svcMock.parseEscalaImagem.mockResolvedValueOnce({
+      error: 'ia_falhou',
+      iaStatus: 400,
+      iaTipo: 'invalid_request_error',
+      iaMensagem: 'Your credit balance is too low to access the Anthropic API.',
+      casos: [], ordemLiberacao: [],
+    })
+    subir()
+    expect(await screen.findByText(/sem créditos/i)).toBeTruthy()
+    expect(screen.queryByText(/Tente de novo em alguns instantes/i)).toBeNull()
+  })
+
+  it('sobrecarga: aí sim manda tentar de novo', async () => {
+    svcMock.parseEscalaImagem.mockResolvedValueOnce({
+      error: 'ia_falhou', iaStatus: 529, iaTipo: 'overloaded_error', iaMensagem: 'Overloaded',
+      casos: [], ordemLiberacao: [],
+    })
+    subir()
+    expect(await screen.findByText(/sobrecarregado/i)).toBeTruthy()
+  })
+})

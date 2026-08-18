@@ -384,8 +384,16 @@ Deno.serve(async (req) => {
 
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY não configurado' }), {
-        status: 500, headers: { ...cors, 'Content-Type': 'application/json' },
+      // Mesmo caminho da chave recusada: é problema de configuração, e a tela
+      // precisa dizer "avise o administrador" em vez de "tente de novo".
+      return new Response(JSON.stringify({
+        error: 'ia_falhou',
+        iaStatus: 401,
+        iaTipo: 'authentication_error',
+        iaMensagem: 'ANTHROPIC_API_KEY não configurado',
+        ...(modoFds ? { dias: [], ignorados: [] } : { casos: [], ordemLiberacao: [] }),
+      }), {
+        status: 200, headers: { ...cors, 'Content-Type': 'application/json' },
       })
     }
 
@@ -422,8 +430,28 @@ Deno.serve(async (req) => {
     if (!res.ok) {
       const detail = await res.text()
       console.error('[parse-escala-cirurgica] Anthropic error:', detail)
-      return new Response(JSON.stringify({ error: 'Falha na extração (Anthropic)' }), {
-        status: 502, headers: { ...cors, 'Content-Type': 'application/json' },
+      // 200 com o MOTIVO, como já se faz com `extracao_truncada` logo abaixo: o
+      // corpo de uma resposta não-2xx não chega ao app por `functions.invoke`,
+      // então o 502 virava um erro sem texto e a tela pedia "tente de novo"
+      // mesmo quando o problema era a conta da IA — foi assim que a foto da
+      // escala foi reenviada oito vezes em 18/08, com a chave sem crédito desde
+      // a véspera. A classificação e os textos vivem em
+      // src/lib/escalaVisionFalha.js; aqui só se repassa o que a Anthropic disse.
+      let iaTipo = ''
+      let iaMensagem = detail
+      try {
+        const corpo = JSON.parse(detail)
+        iaTipo = String(corpo?.error?.type || '')
+        iaMensagem = String(corpo?.error?.message || detail)
+      } catch { /* corpo não-JSON: segue como veio */ }
+      return new Response(JSON.stringify({
+        error: 'ia_falhou',
+        iaStatus: res.status,
+        iaTipo,
+        iaMensagem: iaMensagem.slice(0, 300),
+        ...(modoFds ? { dias: [], ignorados: [] } : { casos: [], ordemLiberacao: [] }),
+      }), {
+        status: 200, headers: { ...cors, 'Content-Type': 'application/json' },
       })
     }
 

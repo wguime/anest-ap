@@ -30,6 +30,7 @@ import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { prepararImagemParaVision } from '@/lib/imagemVision'
+import { ERRO_IA, classificarFalhaVision, mensagemFalhaVision } from '@/lib/escalaVisionFalha'
 import { isPermissionError } from '@/services/supabaseEscalaAnestesistaService'
 import {
   FDS_HOSPITAL, FAIXAS_FDS, normalizarPn, normalizarParseFds, sugerirRodapeFds,
@@ -107,6 +108,19 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
         imageBase64: img.base64, mimeType: img.mimeType,
         modo: 'fds', refSabado: sabadoISO, refDomingo: domingoISO,
       })
+      // Falha da IA (conta/chave/sobrecarga) — o mesmo diagnóstico da
+      // importação normal; aqui a única saída é reimportar quando voltar.
+      if (res?.error === ERRO_IA) {
+        toast({
+          variant: 'error',
+          duration: 12000,
+          ...mensagemFalhaVision(
+            classificarFalhaVision({ status: res.iaStatus, tipo: res.iaTipo, mensagem: res.iaMensagem }),
+            'reimporte o documento quando a leitura voltar',
+          ),
+        })
+        return
+      }
       if (res?.error === 'extracao_truncada' || res?.error === 'json_invalido') {
         toast({
           variant: 'error', duration: 12000,

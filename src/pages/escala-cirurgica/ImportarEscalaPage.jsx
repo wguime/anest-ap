@@ -15,6 +15,7 @@ import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { parseExcelEscala } from '@/lib/excelEscala'
 import { nomeCirurgiaoCurto, separarListaRodape, titleCaseNome } from '@/lib/colunaLiberacao'
 import { aplicarHoraPadraoPosicoes, detectarItensDuplicados, ehPosicaoAssistencial, filtrarItensImportados, resumirItensEscala } from '@/lib/escalaCirurgicaItens'
+import { ERRO_IA, classificarFalhaVision, mensagemFalhaVision } from '@/lib/escalaVisionFalha'
 import { isPermissionError } from '@/services/supabaseEscalaAnestesistaService'
 import { prepararImagemParaVision } from '@/lib/imagemVision'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
@@ -386,6 +387,21 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
       // Extração cortada no meio (escala longa demais para uma resposta só): o
       // servidor devolve 200 com o motivo em vez de estourar. Sem este ramo a
       // tela publicava a escala faltando as últimas linhas, sem avisar ninguém.
+      // A IA não leu a imagem por CONTA/CHAVE/sobrecarga: cada motivo tem uma
+      // saída diferente, e mandar "tente de novo" para todos foi o que fez a
+      // foto ser reenviada oito vezes em 18/08 com a chave sem crédito.
+      if (res?.error === ERRO_IA) {
+        toast({
+          variant: 'error',
+          duration: 12000,
+          ...mensagemFalhaVision(
+            classificarFalhaVision({ status: res.iaStatus, tipo: res.iaTipo, mensagem: res.iaMensagem }),
+            'importe a planilha ou preencha à mão',
+          ),
+        })
+        if (!casos.length) setCasos([linhaVazia()])
+        return
+      }
       if (res?.error === 'extracao_truncada' || res?.error === 'json_invalido') {
         toast({
           variant: 'error',
@@ -432,13 +448,13 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
       toast({
         variant: 'error',
         duration: 12000,
-        title: daImagem ? 'A imagem não foi enviada' : 'Falha na extração',
-        description: daImagem
-          ? err.message
-          // NÃO culpar a nitidez (incidente 06/08): a imagem já chegou ao
-          // servidor, então o que falhou foi a leitura lá — mandar o print de
-          // novo, melhor, não resolve e faz a secretária perder tempo.
-          : 'A leitura falhou no servidor. Tente de novo em alguns instantes; se repetir, preencha manualmente.',
+        // NÃO culpar a nitidez (incidente 06/08): quando o erro não é do envio,
+        // a imagem já chegou ao servidor — mandar um print melhor não resolve.
+        // O texto sem diagnóstico é o mesmo da lib, para a tela falar uma língua
+        // só com o ramo que recebe o motivo da edge.
+        ...(daImagem
+          ? { title: 'A imagem não foi enviada', description: err.message }
+          : mensagemFalhaVision(null, 'importe a planilha ou preencha à mão')),
       })
       if (!casos.length) setCasos([linhaVazia()])
     } finally { setCarregando(false) }
