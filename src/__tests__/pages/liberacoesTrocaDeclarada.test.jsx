@@ -190,6 +190,10 @@ describe('Painel ✏️ — declarar, executar e desfazer a troca', () => {
     abrirEditor('Marilio Flach')
     fireEvent.click(screen.getByRole('button', { name: /^Troca/ }))
     fireEvent.click(screen.getByRole('button', { name: /Executar agora — Marcos Cury assume aqui/ }))
+    // POP-UP ANTES DE CONCLUIR (dono 18/08): nenhum caminho executa o swap sem
+    // mostrar antes o que muda na fila
+    expect(screen.getByText('Trocar as posições?')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar troca' }))
     await waitFor(() => expect(onExecutarTroca).toHaveBeenCalledWith(PAR))
     // executar NÃO passa por override/ordem — o plano vai pelo caminho próprio
     expect(onSetOverride).not.toHaveBeenCalled()
@@ -221,6 +225,64 @@ describe('Painel ✏️ — declarar, executar e desfazer a troca', () => {
     await waitFor(() => expect(onMarcarTroca).toHaveBeenCalled())
     expect(onMarcarTroca.mock.calls[0][1]).toBeNull()
     expect(onExecutarTroca).not.toHaveBeenCalled()
+  })
+
+  // ⚠️ A DECLARAÇÃO MORA EM UMA LINHA SÓ — a de quem declarou — e o badge sai
+  // nos DOIS lados (dono 18/08: "ao registrar troca e após desfazer a troca ela
+  // está persistindo"). Desfazer pela linha do COLEGA mandava a limpeza para a
+  // chave DELE, que nunca teve trocaCom: o toast dizia "Troca desfeita" e os dois
+  // cards continuavam com o badge. Quem sabe onde ela mora é o PAR.
+  it('desfazer pelo lado do COLEGA mira a escala/chave de quem declarou', async () => {
+    const onMarcarTroca = vi.fn(async () => {})
+    // Cury entra aqui como ajuda: o badge dele vem do par declarado no Marilio
+    const escala = {
+      ...escalaBase,
+      ajudaExterna: { matutino: ['CURY'] },
+      linhaOverrides: { 'matutino:uid-mar': { trocaCom: { uid: 'uid-cury', nome: 'MARCOS TADEU CURY', apenasRegistro: true } } },
+      casos: [...escalaBase.casos, caso('IOSC', 0, 'CURY', 'Tirapelle', '07:30')],
+    }
+    montar({ paresTroca: [{ ...PAR, apenasRegistro: true }], onMarcarTroca }, escala)
+    abrirEditor('Marcos Cury')
+    fireEvent.click(screen.getByRole('button', { name: /^Troca/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remover registro da troca' }))
+    await waitFor(() => expect(onMarcarTroca).toHaveBeenCalled())
+    const [, colega, par] = onMarcarTroca.mock.calls[0]
+    expect(colega).toBeNull()
+    // o 3º argumento é o endereço da declaração — sem ele a page limparia uid-cury
+    expect(par).toMatchObject({ escalaId: 'e1', chave: 'uid-mar' })
+  })
+
+  // ⚠️ REGISTRO ERA BECO SEM SAÍDA (dono 18/08: "a Daniela assumiu o plantão mas
+  // ficou apenas o badge de troca"): com a troca registrada, o painel ✏️ perdia a
+  // entrada do TrocaSheet e sobrava só "Remover" — não havia caminho nenhum para
+  // a posição mudar de dono.
+  it('REGISTRO oferece "Trocar de posição na escala" (reabre o sheet no modo posição)', () => {
+    const onAbrirTroca = vi.fn()
+    montar({ paresTroca: [{ ...PAR, apenasRegistro: true }], onAbrirTroca })
+    abrirEditor('Marilio Flach')
+    fireEvent.click(screen.getByRole('button', { name: /^Troca/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Trocar de posição na escala/ }))
+    expect(onAbrirTroca).toHaveBeenCalled()
+    const [linha, colegaUid, modo] = onAbrirTroca.mock.calls[0]
+    expect(linha.chave).toBe('uid-mar')
+    expect(colegaUid).toBe('uid-cury') // o par já é conhecido
+    expect(modo).toBe('posicao')
+  })
+
+  // ⚠️ OPÇÃO PRÓPRIA (dono 18/08): "trocas entre hospitais como já é feito
+  // normalmente, quero apenas uma nova opção para trocar de posição na escala".
+  // A troca de sempre continua na linha de cima, intacta.
+  it('linha sem troca tem as DUAS opções — a de sempre e a de posição', () => {
+    const onAbrirTroca = vi.fn()
+    montar({ onAbrirTroca })
+    abrirEditor('Karine Bedin')
+    fireEvent.click(screen.getByRole('button', { name: /^Troca com um colega/ }))
+    expect(onAbrirTroca.mock.calls[0][2]).toBeUndefined() // modo registro (o de sempre)
+
+    abrirEditor('Karine Bedin')
+    fireEvent.click(screen.getByRole('button', { name: /^Trocar de posição na escala/ }))
+    expect(onAbrirTroca.mock.calls[1][2]).toBe('posicao')
+    expect(onAbrirTroca.mock.calls[1][0].chave).toBe('uid-kar')
   })
 })
 

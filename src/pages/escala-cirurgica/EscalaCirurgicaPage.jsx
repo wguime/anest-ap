@@ -21,7 +21,7 @@ import LiberacoesView from './LiberacoesView'
 import ImportarEscalaPage from './ImportarEscalaPage'
 import ImportarEscalaFdsPage from './ImportarEscalaFdsPage'
 import TrocaSheet from './TrocaSheet'
-import { meuAliasDe, turnoAtual, casosResolvidos, dataPorExtenso, estadoTrocasDoHistorico, filtrarPorTurno, normNome, formatData, rodapeDoTurno, localizarSlotEscala, planoExecucaoTroca, planoDesfazerTroca } from './utils'
+import { meuAliasDe, turnoAtual, casosResolvidos, dataPorExtenso, estadoTrocasDoHistorico, filtrarPorTurno, normNome, formatData, rodapeDoTurno, localizarSlotEscala, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca } from './utils'
 import { ehFimDeSemana, FDS_HOSPITAL, FDS_TURNO_CASOS, turnoFdsAtual } from '@/lib/escalaFds'
 import { podeEditarEscalaCirurgica } from './gate'
 
@@ -76,7 +76,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   )
   const [importando, setImportando] = useState(false)
   const [importandoFds, setImportandoFds] = useState(false) // documento de FDS (fila única)
-  const [trocaSheet, setTrocaSheet] = useState(null) // linha de origem do fluxo único de troca
+  const [trocaSheet, setTrocaSheet] = useState(null) // { linha, colegaUid, modo } — origem do fluxo único de troca
 
   // Navegação de data (pedido do dono 24/07 + pesquisa NN/G: default HOJE, atalho
   // "Amanhã" só quando a de amanhã já foi PUBLICADA — nunca leva a uma tela vazia;
@@ -445,8 +445,16 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                   contraturnoOutros={modoFds ? [] : contraturnoOutros}
                   presencaOutros={presencaOutros}
                   paresTroca={modoFds ? [] : paresTroca}
-                  onMarcarTroca={modoFds ? undefined : (linha, colega) => marcarTroca(escala, linha, colega, userInfo, turno)}
-                  onAbrirTroca={modoFds ? undefined : (linha) => setTrocaSheet(linha)}
+                  onMarcarTroca={modoFds ? undefined : (linha, colega, par) => {
+                    // REMOVER mira onde a declaração MORA, não a linha da tela
+                    // (incidente 18/08 — ver alvoRemocaoTroca). Chave CRUA como
+                    // string: linhaDe() a usa como chave E nome, sem inventar
+                    // chave legada que apontaria para outra entrada.
+                    const alvo = colega ? null : alvoRemocaoTroca(escalas, par)
+                    if (alvo) return marcarTroca(alvo.escala, alvo.chave, null, userInfo, turno)
+                    return marcarTroca(escala, linha, colega, userInfo, turno)
+                  }}
+                  onAbrirTroca={modoFds ? undefined : (linha, colegaUid = null, modo = 'registro') => setTrocaSheet({ linha, colegaUid, modo })}
                   onExecutarTroca={modoFds ? undefined : (par) => {
                     // âncora = a escala onde a declaração vive (mesma regra do sheet)
                     const plan = planoExecucaoTroca({ escalas, resolverUid: resolverRoster, a: par.a, b: par.b, turno, escalaAncora: par.escalaId || null })
@@ -479,7 +487,9 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           movimento é gravado (trocaCom na linha de origem). */}
       {trocaSheet && (
         <TrocaSheet
-          linha={trocaSheet}
+          linha={trocaSheet.linha}
+          colegaInicial={trocaSheet.colegaUid}
+          modo={trocaSheet.modo}
           escala={escala}
           turno={turno}
           onClose={() => setTrocaSheet(null)}

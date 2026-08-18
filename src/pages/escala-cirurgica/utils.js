@@ -1439,6 +1439,25 @@ function casosParaDevolver(esc, asm, assumidor, resolverUid, turnoChave) {
   return [...abertos].filter((id) => doTurno.has(id))
 }
 
+/**
+ * Onde REMOVER a troca declarada/registrada.
+ *
+ * ⚠️ A declaração mora em UMA linha só — a de quem declarou — e o badge sai nos
+ * DOIS lados (e atravessa hospitais). Desfazer pela linha do COLEGA mandava a
+ * limpeza para a chave DELE, que nunca teve `trocaCom`: a escrita ia para o
+ * lugar errado, o toast dizia "Troca desfeita" e os dois cards continuavam com o
+ * badge (dono 18/08: "após desfazer a troca ela está persistindo"). Quem sabe o
+ * endereço é o PAR (escalaId + chave), nunca a linha que está na tela.
+ *
+ * @returns {{ escala, chave }|null} null = sem par conhecido (o chamador cai no
+ *   caminho antigo, pela linha da tela)
+ */
+export function alvoRemocaoTroca(escalas, par) {
+  if (!par?.escalaId || !par?.chave) return null
+  const escala = Object.values(escalas || {}).find((e) => e?.id === par.escalaId)
+  return escala ? { escala, chave: par.chave } : null
+}
+
 export function planoDesfazerTroca({ escalas, resolverUid, a, b, turno = null }) {
   const lados = []
   for (const [hospital, esc] of Object.entries(escalas || {})) {
@@ -1460,6 +1479,12 @@ export function planoDesfazerTroca({ escalas, resolverUid, a, b, turno = null })
       if (!assumidor) continue
       // dono original do slot = a OUTRA pessoa do par (o slot é dela)
       const dono = assumidor === a ? b : a
+      // ⚠️ …a MENOS que o recibo diga outra coisa (18/08). Deduzir o dono só
+      // pelo par corrompia quem assumiu DUAS posições no mesmo turno (dois
+      // hospitais): desfazer uma troca varria também a outra vaga e a devolvia
+      // para a pessoa errada, com as cirurgias dela junto. `assumidaPor.de` é
+      // gravado na execução; registro antigo (sem `de`) segue pela dedução.
+      if (asm.de && !(asm.de.uid ? asm.de.uid === dono.uid : pessoaCasaNome(dono, asm.de.nome, resolverUid, uidLocal))) continue
       lados.push({
         // chave crua legada fica crua (anexar o turno da tela miraria uma
         // entrada namespaced que não existe)

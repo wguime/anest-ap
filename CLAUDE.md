@@ -308,6 +308,43 @@ espelhar a produção.
 camadas), compactação do histórico, telemetria de trocas, renomear
 `executarSubstituicao`→`executarTroca`.
 
+**TROCAR DE POSIÇÃO é OPÇÃO PRÓPRIA (dono 18/08 — caso Fernanda⇄Daniela:** "a
+Daniela assumiu o plantão mas ficou apenas o badge de troca"): o painel ✏️ da
+linha tem DUAS entradas — "Troca com um colega" (o fluxo de sempre, registro por
+padrão, que é como a **troca entre hospitais** é feita e **fica como está**) e
+**"Trocar de posição na escala"**, que abre o mesmo `TrocaSheet` com
+`modo='posicao'`: cada posição em jogo já nasce **"assume"** (derivado, não
+estado — `escolhaDe`), o tipo não é perguntado (é `posicoes` por definição) e o
+botão é "Trocar posição". Registro que já existe também converte por ali (botão
+no painel da troca, com o colega pré-escolhido — antes era beco sem saída: só
+"Remover"). ⚠️ o tipo do Select continua **taxonomia, não mecânica** — fazê-lo
+mover sozinho foi tentado e revertido no mesmo dia, porque "Troca entre
+hospitais" é justamente o caso em que a escala já saiu trocada e mover DESFARIA
+a troca real (Rafael⇄Garim 10/08).
+
+**POP-UP ANTES DE CONCLUIR (dono 18/08):** todo caminho que EXECUTA swap
+(`TrocaSheet` e "Executar agora" do ✏️) passa por `ConfirmDialog` listando quem
+assume qual posição, hospital · turno e quantas cirurgias em aberto vão junto.
+Registro (ninguém se move) não pergunta — não há o que rever.
+
+**Dois defeitos de matching corrigidos junto (18/08):**
+- **desfazer mirava a linha da TELA, não onde a declaração mora**: `trocaCom`
+  vive numa linha só — a de quem declarou — e o badge sai nos dois lados; remover
+  pelo card do colega (ou de outro hospital) escrevia num override sem `trocaCom`,
+  o toast dizia "Troca desfeita" e o badge continuava. `alvoRemocaoTroca(escalas,
+  par)` (utils, puro) devolve o endereço real (escalaId + chave).
+- **`planoDesfazerTroca` deduzia o dono do slot como "o outro do par"**: quem
+  assumiu DUAS posições no mesmo turno via a segunda vaga ser desfeita junto com a
+  primeira e devolvida à pessoa errada, com as cirurgias dela. A execução agora
+  carimba `assumidaPor.de` (recibo do dono, jsonb, sem migration) e o desfazer só
+  toca o slot certo; registro antigo sem `de` segue pela dedução.
+
+⚠️ **Conhecido, não corrigido:** a convergência da importação executa os pares
+num loop sobre um snapshot que NÃO é atualizado entre execuções — com A⇄B e B⇄C
+declarados no mesmo turno, a segunda execução sobrescreve a primeira
+(last-write-wins) e pode re-transferir casos. Entrada ambígua por natureza;
+consertar exige `executarSubstituicao` devolver o estado resultante.
+
 ### Modo FIM DE SEMANA — fila de liberação ÚNICA (dono 15/08)
 
 Sáb/dom operam com UMA fila por turno cobrindo os 3 hospitais (documento
