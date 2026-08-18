@@ -420,7 +420,14 @@ discussão: as telas convivem com ela.
   "mais próximas ao horário"), e **caso sem horário RECUA junto** — a margem é do
   QUADRO, não da sala (`casoTemColunaTempo` sobre todos os casos do turno): urgência
   acrescentada à mão vira sala PRÓPRIA sem horário nenhum, e a reserva por sala a deixava
-  fora do prumo do resto. Quadro sem horário nenhum não paga o recuo. **Tinta em UM eixo só**: iniciada `bg-success/[0.14]` e terminada
+  fora do prumo do resto. Quadro sem horário nenhum não paga o recuo. **Tempo ESTOURADO
+  mostra a âncora (dono 18/08):** cirurgia em andamento que passa da hora ficava só com
+  `+50min`, e o horário que dá sentido ao número era justamente o que sumia — 50min do quê,
+  faltando ou passados? Agora a coluna se lê inteira (`10:30` / `→11:57` RISCADO / `+43min`
+  âmbar): riscar é a convenção de painel de aeroporto para o horário que não vale mais, faz
+  o trabalho da palavra dentro de 46px (`43min além` quebraria em duas linhas) e não depende
+  só da cor, que neste módulo já significa outras cinco coisas. Enquanto FALTA, `~45min` se
+  explica sozinho e a âncora não aparece. **Tinta em UM eixo só**: iniciada `bg-success/[0.14]` e terminada
   `bg-info/[0.12]` (dark /20 e /22); atrasada, suspensa e passa-para-tarde ficam só no
   badge — com os cinco pintando o quadro virava vitral. `CasoCard` ganhou `moldura`:
   `'linha'` na Completa, `'card'` na Minhas (mesmo conteúdo, molduras diferentes).
@@ -434,7 +441,13 @@ discussão: as telas convivem com ela.
   impede publicar. Fila de liberação em **2 colunas correndo para baixo** e **SEM contagem
   de casos por pessoa** (o número confundia): quem está na ordem sem cirurgia nenhuma leva
   **ponto âmbar** e o porquê é lido uma vez em Pendências. Editor da posição abre FORA das
-  colunas. Botão diz **"Publicar N casos"**.
+  colunas. Botão diz **"Publicar N casos"**. **SRPA da Unimed entra às 09:00** (dono 18/08):
+  o mapa nunca escreve esse horário — 34 das 37 publicações com SRPA vieram sem hora — e sem
+  ele a posição fica fora de toda conta de tempo, então é regra da casa e mora no código
+  (`aplicarHoraPadraoPosicoes` em `escalaCirurgicaItens.js`), carimbada na conferência, onde
+  ainda dá para corrigir. ⚠️ **só no MATUTINO**: a hora é o que decide o turno na publicação,
+  e 09:00 numa importação vespertina jogaria a SRPA para FORA da escala da tarde. O horário
+  da SRPA vespertina ninguém informou; até lá ela segue sem hora, herdando o turno escolhido.
 - **Importar · FDS**: **P1–P12 em 2 colunas** (P1..P6 esquerda, P7..P12 direita) e as **3
   filas lado a lado** (Manhã · Tarde · Noite) — empilhadas passavam de uma tela e comparar
   turnos exigia vai-e-volta. Cabeçalho da coluna leva **só o turno**: os selos "do
@@ -481,6 +494,21 @@ explicam metade das queixas e valem para o app inteiro:
   o card mudar de tamanho debaixo do dedo piora a leitura. Atalhos em grade de 6 +
   "Outro tempo…"; campo de horário estreito e centrado. **"Definir" saiu** — era morto,
   já que atalho, seletor e campo gravam na escolha.
+- **Pílula do total da pessoa** na fila (dono 18/08, 2ª queixa sobre o MESMO número — a 1ª
+  foi 30/07, com dois relógios no card): um delta solto é o pior formato possível para algo
+  lido de relance, porque é relativo, sem rótulo e sem âncora. Três referências convergem —
+  painel de aeroporto mostra o previsto MAIS a palavra de status (nunca só o atraso), o guia
+  de timestamps do Cloudscape exige rótulo dizendo a que evento o horário se refere, e
+  Dexter & Epstein (Anesth Analg) mostram que, passada a estimativa, o tempo restante médio
+  fica quase CONSTANTE (um contador que sobe não prevê nada, só informa que estourou). Daí a
+  assimetria de `fraseCronometro`: enquanto falta, `~25min`; quando passa, **`25min além`** —
+  a mesma frase que a linha do cirurgião já usa, para a tela falar uma língua só. ⚠️ **não
+  vira "atrasou"**: esse é o badge de status DA CIRURGIA e trocaria uma dúvida por outra.
+  E o card **não repete o mesmo tempo**: quem tem UMA cirurgia ativa tem o total espelhado
+  do término dela (31/07), então o valor saía duas vezes, âmbar no chip e verde na pílula —
+  dois números idênticos fazem procurar uma diferença que não existe, que é a própria
+  pergunta "a que se refere?". Fica a pílula (é ela que dirige a fila); o chip volta quando
+  os horários divergem (2+ cirurgias) e some junto o truncamento do nome do cirurgião.
 - **Painel da linha** (✏️ Liberações): **lista full-bleed** de cinco assuntos com o valor
   atual à direita — Observação · Local · Cirurgião(ões) · Ajuda · Troca — e o editor
   abrindo em folha. O rodapé Restaurar/Salvar some enquanto a folha está aberta (dois
