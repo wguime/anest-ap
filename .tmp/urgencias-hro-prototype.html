@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Faixa de urgências do HRO — protótipo 430px</title>
+<title>Faixa de urgências do HRO — protótipo 430px (v2)</title>
 <style>
-  /* Tokens REAIS do app (src/styles/anest-theme.css). Nada inventado. */
+  /* Tokens REAIS (src/styles/anest-theme.css). Nada inventado. */
   :root{
     --background:136 100% 97%; --foreground:0 0% 0%;
     --card:0 0% 100%; --card-elevated:135 52% 94%;
@@ -16,6 +16,8 @@
     --warning:38 92% 50%; --warning-foreground:0 0% 0%;
     --success:135 59% 49%; --success-foreground:0 0% 100%;
     --info:211 100% 50%; --info-foreground:0 0% 100%;
+    --tinta-iniciada:hsl(var(--success)/.14);
+    --tinta-acima:hsl(var(--destructive)/.10);
   }
   .dark{
     --background:157 19% 8%; --foreground:0 0% 100%;
@@ -27,6 +29,10 @@
     --warning:37 90% 51%; --warning-foreground:0 0% 0%;
     --success:145 63% 49%; --success-foreground:155 16% 12%;
     --info:204 70% 53%; --info-foreground:0 0% 100%;
+    /* o app tem variante PRÓPRIA no escuro; usar o mesmo alfa das duas dava
+       bloco verde chapado (foi o que o dono viu no print) */
+    --tinta-iniciada:hsl(var(--success)/.20);
+    --tinta-acima:hsl(var(--destructive)/.15);
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{
@@ -34,84 +40,120 @@
     background:#5b6b64;padding:24px;color:hsl(var(--foreground));
   }
   h1{font-size:20px;font-weight:700;color:#fff;margin-bottom:4px}
-  .intro{color:#dbe6e1;font-size:13.5px;max-width:920px;margin-bottom:22px}
+  .intro{color:#dbe6e1;font-size:13.5px;max-width:960px;margin-bottom:22px}
   .intro b{color:#fff}
+  .intro code{background:rgba(255,255,255,.12);padding:1px 4px;border-radius:4px;font-size:12px}
   .par{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:30px;align-items:flex-start}
   .rotulo{color:#fff;font-size:13px;font-weight:700;margin:0 0 8px;letter-spacing:.02em}
   .rotulo span{font-weight:400;color:#c8d6d0}
 
-  /* Tela de 430px — iPhone 14 Pro Max */
   .tela{width:430px;background:hsl(var(--background));border-radius:22px;overflow:hidden;
-        box-shadow:0 10px 30px rgba(0,0,0,.35);position:relative}
+        box-shadow:0 10px 30px rgba(0,0,0,.35)}
   .conteudo{padding:12px 16px 16px}          /* espelha max-w-3xl mx-auto px-4 pt-3 */
   .fullbleed{margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px}
 
-  /* Barra de controles, só para dar contexto de altura */
   .controles{display:flex;gap:6px;margin-bottom:8px}
   .trilho{flex:1;display:flex;background:hsl(var(--muted));border-radius:10px;padding:2px}
   .trilho b{flex:1;text-align:center;font-size:12px;font-weight:600;padding:7px 0;border-radius:8px;
             color:hsl(var(--muted-foreground))}
   .trilho b.on{background:hsl(var(--primary)/.2);color:hsl(var(--primary));font-weight:700}
 
-  /* ── A FAIXA ─────────────────────────────────────────────────────── */
-  .faixa{border-top:1px solid;border-bottom:1px solid;padding:8px 16px}
-  .faixa.neutra{border-color:hsl(var(--border-strong));background:hsl(var(--muted)/.4)}
-  .faixa.acima{border-color:hsl(var(--destructive)/.4);background:hsl(var(--destructive)/.1)}
-  .l1{display:flex;align-items:center;gap:8px}
-  .l1 .tit{font-size:14px;font-weight:800;letter-spacing:.01em}
-  .l1 .sub{font-size:12.5px;color:hsl(var(--muted-foreground))}
-  .cont{margin-left:auto;font-variant-numeric:tabular-nums;font-size:13px;font-weight:700}
-  .badge{display:inline-block;border-radius:10px;padding:3px 9px;font-size:12px;font-weight:700;
-         font-variant-numeric:tabular-nums}
-  .badge.sub{background:hsl(var(--destructive)/.15);color:hsl(var(--destructive))}
-  .badge.sol{background:hsl(var(--destructive));color:hsl(var(--destructive-foreground))}
-  .dedic{margin-top:3px;font-size:11.5px;color:hsl(var(--muted-foreground))}
+  /* ── FAIXA ───────────────────────────────────────────────────────── */
+  .faixa{border-top:1px solid hsl(var(--border));border-bottom:1px solid hsl(var(--border));
+         background:hsl(var(--muted)/.4);padding:7px 16px 9px}
+  /* "Acima" NÃO pinta o fundo: card verde sobre fundo vermelho era vitral (a
+     "combinação estranha" do print do dono). O vermelho concentra em 3 pontos —
+     badge solid, card excedente e a nota — sobre o mesmo fundo neutro. Mesmo
+     princípio do quadro denso: tinta em UM eixo só. */
+  .faixa.acima{border-color:hsl(var(--destructive)/.4)}
 
-  .fila{margin-top:7px;display:flex;flex-direction:column;gap:5px}
+  .cab{display:flex;align-items:baseline;gap:7px;margin-bottom:6px}
+  .cab .tit{font-size:14px;font-weight:800}
+  .cab .sub{font-size:12px;color:hsl(var(--muted-foreground))}
+  .cab .cont{margin-left:auto;font-size:12px;font-weight:600;color:hsl(var(--muted-foreground));
+             font-variant-numeric:tabular-nums}
+  /* Badge do DS: subtle = /15 sobre o próprio tom; solid = tom cheio */
+  .bdg{border-radius:10px;padding:2px 8px;font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums;
+       display:inline-block}
+  .bdg.sub{background:hsl(var(--destructive)/.15);color:hsl(var(--destructive))}
+  .bdg.sol{background:hsl(var(--destructive));color:hsl(var(--destructive-foreground))}
+
+  /* GRADE UNIFORME — todos os postos do contrato, mesmo tamanho */
+  .postos{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+  .posto{display:flex;flex-direction:column;justify-content:center;gap:2px;
+         min-height:44px;border-radius:10px;border:1px solid hsl(var(--border));
+         background:hsl(var(--card));padding:5px 6px;width:100%;text-align:left;
+         font:inherit;color:inherit;cursor:pointer;overflow:hidden}
+  /* alternativa 2x2, para comparar lado a lado */
+  .postos.dois{grid-template-columns:1fr 1fr;gap:6px}
+  .postos.dois .posto{min-height:46px;border-radius:12px;padding:5px 8px}
+  .posto.ocupado{background:var(--tinta-iniciada)}
+  .posto.livre{background:transparent;border-style:dashed}
+  .posto.dedicado{background:hsl(var(--muted)/.55)}
+  .posto.extra{background:var(--tinta-acima);border-color:hsl(var(--destructive)/.45)}
+  .posto.extra .sala{background:hsl(var(--destructive)/.15);color:hsl(var(--destructive))}
+  .l1{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0}
+  .postos.dois .l1{flex-direction:row;align-items:center;gap:5px}
+  /* MESMA receita do cabeçalho de sala do quadro: primary/20 + texto primary */
+  .sala{flex:none;border-radius:5px;background:hsl(var(--primary)/.2);color:hsl(var(--primary));
+        padding:0 4px;font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.02em;
+        line-height:14px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .quem{display:block;width:100%;font-size:12.5px;font-weight:700;line-height:15px;
+        overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+  .l2{display:block;font-size:10px;color:hsl(var(--muted-foreground));
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .postos.dois .sala{font-size:10.5px;padding:1px 5px;line-height:16px}
+  .postos.dois .quem{font-size:13.5px}
+  .postos.dois .l2{font-size:10.5px}
+  .l2 b{font-weight:600;color:hsl(var(--muted-foreground))}
+
+  /* FILA */
+  .filaTit{margin:8px 0 4px;font-size:10.5px;font-weight:700;text-transform:uppercase;
+           letter-spacing:.04em;color:hsl(var(--muted-foreground))}
+  .fila{display:flex;flex-direction:column;gap:4px}
   .item{display:flex;align-items:center;gap:8px;min-height:44px;border-radius:12px;
-        border:1px solid hsl(var(--border));background:hsl(var(--card));padding:6px 9px;width:100%;
+        border:1px solid hsl(var(--border));background:hsl(var(--card));padding:5px 9px;width:100%;
         text-align:left;font:inherit;color:inherit;cursor:pointer}
-  .pos{font-size:12px;font-weight:800;color:hsl(var(--muted-foreground));min-width:14px;
-       font-variant-numeric:tabular-nums}
-  .nv{border-radius:8px;padding:2px 7px;font-size:11px;font-weight:800;white-space:nowrap;border:1px solid}
-  .nv.imediata{background:hsl(var(--destructive));color:hsl(var(--destructive-foreground));border-color:transparent}
-  .nv.urgente{background:hsl(var(--warning));color:hsl(var(--warning-foreground));border-color:transparent}
-  .nv.aguarda{background:transparent;color:hsl(var(--muted-foreground));border-color:hsl(var(--border-strong))}
-  .nv.sem{background:transparent;color:hsl(var(--warning));border-color:hsl(var(--warning)/.6)}
+  .pos{font-size:11.5px;font-weight:800;color:hsl(var(--muted-foreground));min-width:13px;
+       font-variant-numeric:tabular-nums;flex:none}
   .txt{flex:1;min-width:0}
-  .txt .p{font-size:13.5px;font-weight:600;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .txt .s{font-size:11.5px;color:hsl(var(--muted-foreground))}
-  .esp{font-size:12px;font-variant-numeric:tabular-nums;color:hsl(var(--muted-foreground));white-space:nowrap}
-  .chev{color:hsl(var(--muted-foreground));font-size:15px}
-  .vertodas{margin-top:5px;font-size:12px;font-weight:600;color:hsl(var(--primary));
-            background:none;border:0;padding:6px 0;cursor:pointer}
-  .andamento{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
-  .sala{display:flex;align-items:center;gap:5px;border-radius:10px;padding:5px 9px;min-height:34px;
-        background:hsl(var(--success)/.14);border:1px solid hsl(var(--success)/.35);font-size:12.5px;
-        font-weight:600;cursor:pointer;color:inherit}
-  .sala i{font-style:normal;color:hsl(var(--muted-foreground));font-weight:500;font-variant-numeric:tabular-nums}
-  .confirmar{margin-top:6px;display:flex;align-items:center;gap:8px;font-size:11.5px;color:hsl(var(--warning))}
-  .confirmar button{margin-left:auto;font:inherit;font-weight:700;border:1px solid hsl(var(--warning)/.5);
-                    background:transparent;color:hsl(var(--warning));border-radius:9px;padding:5px 9px;cursor:pointer}
+  .txt .p{display:block;font-size:14.5px;font-weight:600;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .txt .s{display:block;font-size:11px;color:hsl(var(--muted-foreground));margin-top:1px}
+  .nv{flex:none;border-radius:8px;padding:2px 7px;font-size:11px;font-weight:700;white-space:nowrap}
+  .nv.imediata{background:hsl(var(--destructive)/.15);color:hsl(var(--destructive))}
+  .nv.urgente{background:hsl(var(--warning)/.18);color:hsl(var(--warning))}
+  .dark .nv.urgente{color:hsl(var(--warning))}
+  .nv.aguarda{background:hsl(var(--muted));color:hsl(var(--muted-foreground))}
+  .nv.sem{background:transparent;color:hsl(var(--warning));border:1px dashed hsl(var(--warning)/.6)}
+  .esp{flex:none;font-size:11.5px;font-variant-numeric:tabular-nums;color:hsl(var(--muted-foreground))}
+  .chev{flex:none;color:hsl(var(--muted-foreground));font-size:15px}
+  .vertodas{margin-top:4px;font-size:11.5px;font-weight:600;color:hsl(var(--primary));
+            background:none;border:0;padding:5px 0;cursor:pointer}
+  .conf{margin-top:6px;display:flex;align-items:center;gap:8px;font-size:11px;color:hsl(var(--warning))}
+  .conf button{margin-left:auto;font:inherit;font-weight:700;border:1px solid hsl(var(--warning)/.5);
+               background:transparent;color:hsl(var(--warning));border-radius:9px;padding:4px 9px;cursor:pointer}
+  .nota-faixa{margin-top:5px;font-size:11px;color:hsl(var(--muted-foreground))}
+  .faixa.acima .nota-faixa{color:hsl(var(--destructive))}
 
-  /* Quadro por baixo, para medir o empurrão */
+  /* QUADRO por baixo — classes reais do BoardView */
   .quadro{margin-top:10px}
   .cabsala{display:flex;align-items:center;gap:8px;background:hsl(var(--card-elevated));
            border-top:1px solid hsl(var(--border));border-bottom:1px solid hsl(var(--border));
-           padding:9px 16px}
-  .pill{background:hsl(var(--primary));color:hsl(var(--primary-foreground));border-radius:8px;
-        padding:3px 8px;font-size:12px;font-weight:800}
-  .cabsala .nome{font-size:15px;font-weight:600}
-  .cabsala .n{margin-left:auto;font-size:12px;color:hsl(var(--muted-foreground))}
-  .caso{display:flex;gap:8px;padding:8px 16px;border-bottom:1px solid hsl(var(--border))}
-  .caso.iniciada{background:hsl(var(--success)/.14)}
+           padding:8px 12px}
+  .cabsala .nome{font-size:15px;font-weight:600;color:hsl(var(--primary))}
+  .cabsala .n{margin-left:auto;font-size:11px;color:hsl(var(--muted-foreground))}
+  .caso{display:flex;gap:8px;padding:8px 12px;border-bottom:1px solid hsl(var(--border)/.7);
+        background:hsl(var(--card))}
+  .caso.iniciada{background:var(--tinta-iniciada)}
   .hcol{width:46px;flex:none;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
   .hcol small{display:block;font-weight:500;color:hsl(var(--muted-foreground));font-size:11.5px}
-  .caso .c1{font-size:13.5px;font-weight:600}
-  .caso .c2{font-size:12px;color:hsl(var(--muted-foreground))}
+  .caso .c1{font-size:14.5px;font-weight:700}
+  .caso .c1 em{font-style:normal;font-size:12px;font-weight:400;color:hsl(var(--muted-foreground))}
+  .caso .c2{font-size:14.5px;margin-top:3px}
+  .caso .c3{font-size:12px;color:hsl(var(--muted-foreground));margin-top:3px}
 
-  /* Régua de medição */
-  .medida{width:320px;color:#eaf2ee;font-size:12.5px;line-height:1.5}
+  /* Régua */
+  .medida{width:330px;color:#eaf2ee;font-size:12.5px;line-height:1.5}
   .medida h3{font-size:13px;color:#fff;margin-bottom:6px}
   .medida table{width:100%;border-collapse:collapse;margin-bottom:10px}
   .medida td{padding:2px 0;vertical-align:top}
@@ -122,18 +164,21 @@
 </head>
 <body>
 
-<h1>Faixa de urgências do HRO — 430px, dois temas</h1>
+<h1>Faixa de urgências do HRO — v2, 430px, dois temas</h1>
 <p class="intro">
-  Quatro estados, empilhados com a régua ao lado. <b>As medidas foram medidas</b>
-  (<code>getBoundingClientRect</code> no navegador; altura útil = 932 − 120 de header − 88 de
-  bottom nav), não estimadas. Tokens são os reais de
-  <b>src/styles/anest-theme.css</b>; nenhuma cor nova entra no módulo — a faixa usa o
-  <b>vermelho que já significa urgência</b> no quadro (<code>tipoBadge</code>), e a escalada é o
-  par <b>subtle → solid</b> que aquele badge já ensina (Urgência subtle, Emergência solid).
-  Dentro do contrato não é alerta, então <b>não ganha cor</b>.
+  Reconstruída depois da sua revisão. Quatro correções: <b>(1)</b> o escuro estava fora do DS —
+  o selo de sala virou a receita real do quadro (<code>bg-primary/20 · text-primary</code>, 10,5px
+  caixa alta) e a tinta de "iniciada" ganhou a variante própria do tema escuro
+  (<code>dark:bg-success/20</code>), que é o que o app faz e o protótipo não fazia;
+  <b>(2)</b> todos os postos agora são <b>cards do mesmo tamanho, os 4 numa fileira</b> (59px, medido — empilhar sala/nome/papel dentro do card foi o que deixou os nomes inteiros sem alargar a faixa),
+  em vez de chips que quebravam a linha torto; <b>(3)</b> <b>Ortopedia e CO viraram cards</b>, no
+  lugar da linha de texto solta; <b>(4)</b> a paleta caiu para <b>duas cores</b> — verde suave para
+  quem está operando e vermelho suave para o que passa do contrato —, com a gravidade em badge
+  <i>subtle</i> do DS em vez de pílula chapada. E o texto grudado da fila
+  ("fêmur<i>Sala 1</i>") virou duas linhas.
 </p>
 
-<!-- ───────────────────────── A) 1 de 2 ───────────────────────── -->
+<!-- ─────────────── A · dentro do contrato ─────────────── -->
 <div class="par">
   <div>
     <p class="rotulo">A · dentro do contrato <span>— 1 de 2 salas · claro</span></p>
@@ -147,27 +192,40 @@
           <div class="trilho"><b>Minhas</b><b class="on">Completa</b><b>Liberações</b></div>
         </div>
 
-        <div class="faixa neutra fullbleed">
-          <div class="l1">
-            <span class="tit">Urgências</span>
-            <span class="sub">1 de 2 salas</span>
+        <div class="faixa fullbleed">
+          <div class="cab">
+            <span class="tit">Urgências</span><span class="sub">1 de 2 salas</span>
             <span class="cont">1 livre</span>
           </div>
-          <div class="andamento">
-            <button class="sala">Sala 6 · Marcelo <i>há 40min</i></button>
+          <div class="postos">
+            <div class="posto ocupado">
+              <span class="l1"><span class="sala">Sala 6</span><span class="quem">Marcelo</span></span>
+              <span class="l2">Plantão · 40min</span>
+            </div>
+            <div class="posto livre">
+              <span class="l1"><span class="quem">Sobreaviso</span></span>
+              <span class="l2">livre</span>
+            </div>
+            <div class="posto dedicado">
+              <span class="l1"><span class="sala">Sala 4</span><span class="quem">Rafael</span></span>
+              <span class="l2">Ortopedia</span>
+            </div>
+            <div class="posto dedicado">
+              <span class="l1"><span class="sala">Sala 7</span><span class="quem">Cristina</span></span>
+              <span class="l2">Centro obst.</span>
+            </div>
           </div>
-          <p class="dedic">Cobertas pelo dedicado: Sala 4 · Sala 7-CO</p>
         </div>
 
         <div class="quadro">
-          <div class="cabsala"><span class="pill">Sala 6</span><span class="nome">Marcelo</span><span class="n">2</span></div>
+          <div class="cabsala"><span class="sala">Sala 6</span><span class="nome">Marcelo</span><span class="n">2</span></div>
           <div class="caso iniciada">
             <div class="hcol">10:20<small>→11:40</small></div>
-            <div><div class="c1">M.S.G. · 47a · Apendicectomia</div><div class="c2">Benito Bodanese</div></div>
+            <div><div class="c1">M.S.G. <em>47a</em></div><div class="c2">Apendicectomia</div><div class="c3">Benito Bodanese</div></div>
           </div>
           <div class="caso">
             <div class="hcol">12:00</div>
-            <div><div class="c1">J.P.L. · 63a · Colecistectomia</div><div class="c2">Taciana A · R: Augusto</div></div>
+            <div><div class="c1">J.P.L. <em>63a</em></div><div class="c2">Colecistectomia</div><div class="c3">Taciana A · R: Augusto</div></div>
           </div>
         </div>
       </div>
@@ -185,26 +243,39 @@
         <div class="controles">
           <div class="trilho"><b>Minhas</b><b class="on">Completa</b><b>Liberações</b></div>
         </div>
-        <div class="faixa neutra fullbleed">
-          <div class="l1">
-            <span class="tit">Urgências</span>
-            <span class="sub">1 de 2 salas</span>
+        <div class="faixa fullbleed">
+          <div class="cab">
+            <span class="tit">Urgências</span><span class="sub">1 de 2 salas</span>
             <span class="cont">1 livre</span>
           </div>
-          <div class="andamento">
-            <button class="sala">Sala 6 · Marcelo <i>há 40min</i></button>
+          <div class="postos">
+            <div class="posto ocupado">
+              <span class="l1"><span class="sala">Sala 6</span><span class="quem">Marcelo</span></span>
+              <span class="l2">Plantão · 40min</span>
+            </div>
+            <div class="posto livre">
+              <span class="l1"><span class="quem">Sobreaviso</span></span>
+              <span class="l2">livre</span>
+            </div>
+            <div class="posto dedicado">
+              <span class="l1"><span class="sala">Sala 4</span><span class="quem">Rafael</span></span>
+              <span class="l2">Ortopedia</span>
+            </div>
+            <div class="posto dedicado">
+              <span class="l1"><span class="sala">Sala 7</span><span class="quem">Cristina</span></span>
+              <span class="l2">Centro obst.</span>
+            </div>
           </div>
-          <p class="dedic">Cobertas pelo dedicado: Sala 4 · Sala 7-CO</p>
         </div>
         <div class="quadro">
-          <div class="cabsala"><span class="pill">Sala 6</span><span class="nome">Marcelo</span><span class="n">2</span></div>
+          <div class="cabsala"><span class="sala">Sala 6</span><span class="nome">Marcelo</span><span class="n">2</span></div>
           <div class="caso iniciada">
             <div class="hcol">10:20<small>→11:40</small></div>
-            <div><div class="c1">M.S.G. · 47a · Apendicectomia</div><div class="c2">Benito Bodanese</div></div>
+            <div><div class="c1">M.S.G. <em>47a</em></div><div class="c2">Apendicectomia</div><div class="c3">Benito Bodanese</div></div>
           </div>
           <div class="caso">
             <div class="hcol">12:00</div>
-            <div><div class="c1">J.P.L. · 63a · Colecistectomia</div><div class="c2">Taciana A · R: Augusto</div></div>
+            <div><div class="c1">J.P.L. <em>63a</em></div><div class="c2">Colecistectomia</div><div class="c3">Taciana A · R: Augusto</div></div>
           </div>
         </div>
       </div>
@@ -212,26 +283,28 @@
   </div>
 
   <div class="medida">
-    <h3>Régua — estado A</h3>
+    <h3>Régua — estado A <span style="font-weight:400">(medido, não estimado)</span></h3>
     <table>
-      <tr><td>altura da faixa</td><td>95 px</td></tr>
-      <tr><td>y do 1º cabeçalho de sala (sem faixa)</td><td>107 px</td></tr>
-      <tr><td>y do 1º cabeçalho de sala (com faixa)</td><td>202 px</td></tr>
-      <tr><td>casos visíveis sem rolar (sem faixa)</td><td>11</td></tr>
-      <tr><td>casos visíveis sem rolar (com faixa)</td><td>9</td></tr>
-      <tr><td>alvo de toque do chip de sala</td><td>34 px*</td></tr>
+      <tr><td>altura da faixa</td><td id="mA-h">—</td></tr>
+      <tr><td>altura de cada card de posto</td><td id="mA-card">—</td></tr>
+      <tr><td>y do 1º cabeçalho de sala</td><td id="mA-y">—</td></tr>
+      <tr><td>casos visíveis sem rolar</td><td id="mA-casos">—</td></tr>
+      <tr><td>versão anterior, mesma tela</td><td>95 px</td></tr>
     </table>
     <p class="nota">
-      * O chip de sala tem 34 px de altura, abaixo dos 44 px da regra de toque. Duas
-      saídas: subir para 44 px (a faixa vai a 84 px e o quadro perde mais um caso) ou
-      manter 34 px porque o alvo real é a linha inteira (largura cheia, ≥44 px de área).
-      <b>Decidir na revisão.</b>
+      A grade mostra <b>os quatro postos do contrato</b>, não só quem está operando: a leitura
+      passa a ser "o que o hospital paga × o que está em uso". Ortopedia e CO entram como cards
+      <b>silenciados</b> (fundo <code>muted</code>, sem verde) porque estão fora da conta das 2
+      salas — presentes para conferência, sem competir pelo olho.
     </p>
-    <p>Sem urgência nenhuma a faixa <b>não existe</b> — a tela fica idêntica à de hoje.</p>
+    <p>
+      À tarde e à noite o card do CO <b>sai da grade e entra na conta</b>: não há CO no contrato
+      nesses turnos. A grade encolhe para 3 e 2 cards.
+    </p>
   </div>
 </div>
 
-<!-- ───────────────────────── B) 2 de 2 + fila ───────────────────────── -->
+<!-- ─────────────── B · capacidade cheia ─────────────── -->
 <div class="par">
   <div>
     <p class="rotulo">B · capacidade cheia <span>— 2 de 2 · fila de 3 · claro</span></p>
@@ -240,16 +313,30 @@
         <div class="controles">
           <div class="trilho"><b>Minhas</b><b class="on">Completa</b><b>Liberações</b></div>
         </div>
-        <div class="faixa neutra fullbleed">
-          <div class="l1">
-            <span class="tit">Urgências</span>
-            <span class="sub">2 de 2 ocupadas</span>
-            <span class="cont"><span class="badge sub">2 de 2</span></span>
+        <div class="faixa fullbleed">
+          <div class="cab">
+            <span class="tit">Urgências</span><span class="sub">2 de 2 ocupadas</span>
+            <span class="cont"><span class="bdg sub">2 de 2</span></span>
           </div>
-          <div class="andamento">
-            <button class="sala">Sala 6 · Marcelo <i>há 40min</i></button>
-            <button class="sala">Sala 2 · Janaína <i>há 15min</i></button>
+          <div class="postos">
+            <div class="posto ocupado">
+              <span class="l1"><span class="sala">Sala 6</span><span class="quem">Marcelo</span></span>
+              <span class="l2">Plantão · 40min</span>
+            </div>
+            <div class="posto ocupado">
+              <span class="l1"><span class="sala">Sala 2</span><span class="quem">Janaína</span></span>
+              <span class="l2">Sobreav. · 15min</span>
+            </div>
+            <div class="posto dedicado">
+              <span class="l1"><span class="sala">Sala 4</span><span class="quem">Rafael</span></span>
+              <span class="l2">Ortopedia</span>
+            </div>
+            <div class="posto dedicado">
+              <span class="l1"><span class="sala">Sala 7</span><span class="quem">Cristina</span></span>
+              <span class="l2">Centro obst.</span>
+            </div>
           </div>
+          <p class="filaTit">Fila — 3 aguardando</p>
           <div class="fila">
             <button class="item">
               <span class="pos">1º</span><span class="nv imediata">Imediata</span>
@@ -267,13 +354,12 @@
               <span class="esp">2h10</span><span class="chev">›</span>
             </button>
           </div>
-          <p class="dedic">Cobertas pelo dedicado: Sala 4 · Sala 7-CO</p>
         </div>
         <div class="quadro">
-          <div class="cabsala"><span class="pill">Sala 6</span><span class="nome">Marcelo</span><span class="n">2</span></div>
+          <div class="cabsala"><span class="sala">Sala 6</span><span class="nome">Marcelo</span><span class="n">2</span></div>
           <div class="caso iniciada">
             <div class="hcol">10:20<small>→11:40</small></div>
-            <div><div class="c1">M.S.G. · 47a · Apendicectomia</div><div class="c2">Benito Bodanese</div></div>
+            <div><div class="c1">M.S.G. <em>47a</em></div><div class="c2">Apendicectomia</div><div class="c3">Benito Bodanese</div></div>
           </div>
         </div>
       </div>
@@ -287,16 +373,30 @@
         <div class="controles">
           <div class="trilho"><b>Minhas</b><b class="on">Completa</b><b>Liberações</b></div>
         </div>
-        <div class="faixa neutra fullbleed">
-          <div class="l1">
-            <span class="tit">Urgências</span>
-            <span class="sub">2 de 2 ocupadas</span>
-            <span class="cont"><span class="badge sub">2 de 2</span></span>
+        <div class="faixa fullbleed">
+          <div class="cab">
+            <span class="tit">Urgências</span><span class="sub">2 de 2 ocupadas</span>
+            <span class="cont"><span class="bdg sub">2 de 2</span></span>
           </div>
-          <div class="andamento">
-            <button class="sala">Sala 6 · Marcelo <i>há 40min</i></button>
-            <button class="sala">Sala 2 · Janaína <i>há 15min</i></button>
+          <div class="postos">
+            <div class="posto ocupado">
+              <span class="l1"><span class="sala">Sala 6</span><span class="quem">Marcelo</span></span>
+              <span class="l2">Plantão · 40min</span>
+            </div>
+            <div class="posto ocupado">
+              <span class="l1"><span class="sala">Sala 2</span><span class="quem">Janaína</span></span>
+              <span class="l2">Sobreav. · 15min</span>
+            </div>
+            <div class="posto dedicado">
+              <span class="l1"><span class="sala">Sala 4</span><span class="quem">Rafael</span></span>
+              <span class="l2">Ortopedia</span>
+            </div>
+            <div class="posto dedicado">
+              <span class="l1"><span class="sala">Sala 7</span><span class="quem">Cristina</span></span>
+              <span class="l2">Centro obst.</span>
+            </div>
           </div>
+          <p class="filaTit">Fila — 3 aguardando</p>
           <div class="fila">
             <button class="item">
               <span class="pos">1º</span><span class="nv imediata">Imediata</span>
@@ -314,13 +414,12 @@
               <span class="esp">2h10</span><span class="chev">›</span>
             </button>
           </div>
-          <p class="dedic">Cobertas pelo dedicado: Sala 4 · Sala 7-CO</p>
         </div>
         <div class="quadro">
-          <div class="cabsala"><span class="pill">Sala 6</span><span class="nome">Marcelo</span><span class="n">2</span></div>
+          <div class="cabsala"><span class="sala">Sala 6</span><span class="nome">Marcelo</span><span class="n">2</span></div>
           <div class="caso iniciada">
             <div class="hcol">10:20<small>→11:40</small></div>
-            <div><div class="c1">M.S.G. · 47a · Apendicectomia</div><div class="c2">Benito Bodanese</div></div>
+            <div><div class="c1">M.S.G. <em>47a</em></div><div class="c2">Apendicectomia</div><div class="c3">Benito Bodanese</div></div>
           </div>
         </div>
       </div>
@@ -330,25 +429,25 @@
   <div class="medida">
     <h3>Régua — estado B</h3>
     <table>
-      <tr><td>altura da faixa (fila de 3)</td><td>248 px</td></tr>
-      <tr><td>y do 1º cabeçalho de sala</td><td>313 px</td></tr>
-      <tr><td>casos visíveis sem rolar</td><td>6</td></tr>
-      <tr><td>altura de cada linha da fila</td><td>44 px</td></tr>
-      <tr><td>teto de linhas antes do “ver todas”</td><td>3</td></tr>
+      <tr><td>altura da faixa (4 postos + fila de 3)</td><td id="mB-h">—</td></tr>
+      <tr><td>altura de cada linha da fila</td><td id="mB-item">—</td></tr>
+      <tr><td>y do 1º cabeçalho de sala</td><td id="mB-y">—</td></tr>
+      <tr><td>casos visíveis sem rolar</td><td id="mB-casos">—</td></tr>
+      <tr><td>versão anterior, mesma tela</td><td>248 px</td></tr>
     </table>
     <p class="nota">
-      Fila de 3 é o teto — o mesmo <code>MAX_AVISOS = 3</code> do recado do plantonista.
-      Fila maior vira mural e deixa de ser lida; a 4ª em diante entra em “ver todas (N)”.
+      Fila de 3 é o teto — mesmo <code>MAX_AVISOS = 3</code> do recado do plantonista. A 4ª em
+      diante vai para "ver todas (N)".
     </p>
     <p>
-      A gravidade não classificada aparece como <b>“Classificar”</b> em âmbar e vai para o
-      <b>fim</b> da fila: o app não chuta prioridade clínica, mas também não deixa a
-      urgência invisível.
+      Gravidade agora é badge <b>subtle</b> do DS (fundo a 15% do próprio tom), não pílula
+      chapada: ela qualifica a linha, não disputa com o contador. E o procedimento ganhou linha
+      própria — antes "Fratura de fêmur" e "Sala 1 · SUS" saíam grudados.
     </p>
   </div>
 </div>
 
-<!-- ───────────────────────── C) acima do contrato ───────────────────────── -->
+<!-- ─────────────── C · acima do contrato ─────────────── -->
 <div class="par">
   <div>
     <p class="rotulo">C · acima do contrato <span>— 3 salas ao mesmo tempo · claro</span></p>
@@ -358,30 +457,39 @@
           <div class="trilho"><b>Minhas</b><b class="on">Completa</b><b>Liberações</b></div>
         </div>
         <div class="faixa acima fullbleed">
-          <div class="l1">
-            <span class="tit">Urgências</span>
-            <span class="sub">acima do contrato</span>
-            <span class="cont"><span class="badge sol">3 de 2</span></span>
+          <div class="cab">
+            <span class="tit">Urgências</span><span class="sub">acima do contrato</span>
+            <span class="cont"><span class="bdg sol">3 de 2</span></span>
           </div>
-          <div class="andamento">
-            <button class="sala">Sala 6 · Marcelo <i>há 40min</i></button>
-            <button class="sala">Sala 2 · Janaína <i>há 15min</i></button>
-            <button class="sala">Sala 3 · Fernando <i>há 5min</i></button>
+          <div class="postos">
+            <div class="posto ocupado">
+              <span class="l1"><span class="sala">Sala 6</span><span class="quem">Marcelo</span></span>
+              <span class="l2">Plantão · 40min</span>
+            </div>
+            <div class="posto ocupado">
+              <span class="l1"><span class="sala">Sala 2</span><span class="quem">Janaína</span></span>
+              <span class="l2">Sobreav. · 15min</span>
+            </div>
+            <div class="posto extra">
+              <span class="l1"><span class="sala">Sala 3</span><span class="quem">Fernando</span></span>
+              <span class="l2">Extra · 5min</span>
+            </div>
+            <div class="posto dedicado">
+              <span class="l1"><span class="sala">Sala 4</span><span class="quem">Rafael</span></span>
+              <span class="l2">Ortopedia</span>
+            </div>
           </div>
-          <div class="fila">
-            <button class="item">
-              <span class="pos">1º</span><span class="nv urgente">Urgente</span>
-              <span class="txt"><span class="p">Fratura de fêmur</span><span class="s">Sala 1 · SUS</span></span>
-              <span class="esp">48min</span><span class="chev">›</span>
-            </button>
-          </div>
-          <p class="dedic">3 salas de urgência simultâneas — o contrato cobre 2 (plantonista + sobreaviso).</p>
+          <p class="nota-faixa">O contrato cobre 2 salas de urgência: plantonista + sobreaviso.</p>
         </div>
         <div class="quadro">
-          <div class="cabsala"><span class="pill">Sala 6</span><span class="nome">Marcelo</span><span class="n">2</span></div>
+          <div class="cabsala"><span class="sala">Sala 6</span><span class="nome">Marcelo</span><span class="n">2</span></div>
           <div class="caso iniciada">
             <div class="hcol">10:20<small>→11:40</small></div>
-            <div><div class="c1">M.S.G. · 47a · Apendicectomia</div><div class="c2">Benito Bodanese</div></div>
+            <div><div class="c1">M.S.G. <em>47a</em></div><div class="c2">Apendicectomia</div><div class="c3">Benito Bodanese</div></div>
+          </div>
+          <div class="caso">
+            <div class="hcol">12:00</div>
+            <div><div class="c1">J.P.L. <em>63a</em></div><div class="c2">Colecistectomia</div><div class="c3">Taciana A</div></div>
           </div>
         </div>
       </div>
@@ -396,30 +504,39 @@
           <div class="trilho"><b>Minhas</b><b class="on">Completa</b><b>Liberações</b></div>
         </div>
         <div class="faixa acima fullbleed">
-          <div class="l1">
-            <span class="tit">Urgências</span>
-            <span class="sub">acima do contrato</span>
-            <span class="cont"><span class="badge sol">3 de 2</span></span>
+          <div class="cab">
+            <span class="tit">Urgências</span><span class="sub">acima do contrato</span>
+            <span class="cont"><span class="bdg sol">3 de 2</span></span>
           </div>
-          <div class="andamento">
-            <button class="sala">Sala 6 · Marcelo <i>há 40min</i></button>
-            <button class="sala">Sala 2 · Janaína <i>há 15min</i></button>
-            <button class="sala">Sala 3 · Fernando <i>há 5min</i></button>
+          <div class="postos">
+            <div class="posto ocupado">
+              <span class="l1"><span class="sala">Sala 6</span><span class="quem">Marcelo</span></span>
+              <span class="l2">Plantão · 40min</span>
+            </div>
+            <div class="posto ocupado">
+              <span class="l1"><span class="sala">Sala 2</span><span class="quem">Janaína</span></span>
+              <span class="l2">Sobreav. · 15min</span>
+            </div>
+            <div class="posto extra">
+              <span class="l1"><span class="sala">Sala 3</span><span class="quem">Fernando</span></span>
+              <span class="l2">Extra · 5min</span>
+            </div>
+            <div class="posto dedicado">
+              <span class="l1"><span class="sala">Sala 4</span><span class="quem">Rafael</span></span>
+              <span class="l2">Ortopedia</span>
+            </div>
           </div>
-          <div class="fila">
-            <button class="item">
-              <span class="pos">1º</span><span class="nv urgente">Urgente</span>
-              <span class="txt"><span class="p">Fratura de fêmur</span><span class="s">Sala 1 · SUS</span></span>
-              <span class="esp">48min</span><span class="chev">›</span>
-            </button>
-          </div>
-          <p class="dedic">3 salas de urgência simultâneas — o contrato cobre 2 (plantonista + sobreaviso).</p>
+          <p class="nota-faixa">O contrato cobre 2 salas de urgência: plantonista + sobreaviso.</p>
         </div>
         <div class="quadro">
-          <div class="cabsala"><span class="pill">Sala 6</span><span class="nome">Marcelo</span><span class="n">2</span></div>
+          <div class="cabsala"><span class="sala">Sala 6</span><span class="nome">Marcelo</span><span class="n">2</span></div>
           <div class="caso iniciada">
             <div class="hcol">10:20<small>→11:40</small></div>
-            <div><div class="c1">M.S.G. · 47a · Apendicectomia</div><div class="c2">Benito Bodanese</div></div>
+            <div><div class="c1">M.S.G. <em>47a</em></div><div class="c2">Apendicectomia</div><div class="c3">Benito Bodanese</div></div>
+          </div>
+          <div class="caso">
+            <div class="hcol">12:00</div>
+            <div><div class="c1">J.P.L. <em>63a</em></div><div class="c2">Colecistectomia</div><div class="c3">Taciana A</div></div>
           </div>
         </div>
       </div>
@@ -429,22 +546,22 @@
   <div class="medida">
     <h3>Régua — estado C</h3>
     <table>
-      <tr><td>altura da faixa</td><td>204 px</td></tr>
-      <tr><td>y do 1º cabeçalho de sala</td><td>268 px</td></tr>
-      <tr><td>casos visíveis sem rolar</td><td>7</td></tr>
+      <tr><td>altura da faixa</td><td id="mC-h">—</td></tr>
+      <tr><td>y do 1º cabeçalho de sala</td><td id="mC-y">—</td></tr>
+      <tr><td>casos visíveis sem rolar</td><td id="mC-casos">—</td></tr>
+      <tr><td>versão anterior, mesma tela</td><td>204 px</td></tr>
     </table>
     <p class="nota">
-      Único estado que ganha cor de fundo. O vermelho é o <b>mesmo</b> de “Urgência” no
-      card do quadro; o badge sólido é o degrau que “Emergência” já usa. Zero token novo.
-    </p>
-    <p>
-      A frase diz <b>o que está acontecendo</b>, não como se sente: é a lição do OPEL do
-      NHS — cada nível de escalada carrega a informação que embasa a decisão.
+      O fundo NÃO pinta mais de vermelho — card verde sobre fundo vermelho era o vitral do
+      print. O vermelho concentra em três pontos: o badge sólido "3 de 2", o <b>card do
+      excedente</b> (moldura + selo de sala vermelhos, rótulo "Extra") e a nota. Mesmo princípio
+      do quadro denso: tinta em um eixo só. O CO sai da grade para o card extra caber sem criar
+      uma 2ª fileira.
     </p>
   </div>
 </div>
 
-<!-- ───────────────────────── D) marcação esquecida ───────────────────────── -->
+<!-- ─────────────── D · qualidade do dado ─────────────── -->
 <div class="par">
   <div>
     <p class="rotulo">D · qualidade do dado <span>— iniciada há 5h e suspeita de não-marcada · claro</span></p>
@@ -453,15 +570,30 @@
         <div class="controles">
           <div class="trilho"><b>Minhas</b><b class="on">Completa</b><b>Liberações</b></div>
         </div>
-        <div class="faixa neutra fullbleed">
-          <div class="l1">
-            <span class="tit">Urgências</span>
-            <span class="sub">1 de 2 salas</span>
+        <div class="faixa fullbleed">
+          <div class="cab">
+            <span class="tit">Urgências</span><span class="sub">1 de 2 salas</span>
             <span class="cont">1 livre</span>
           </div>
-          <div class="andamento">
-            <button class="sala">Sala 2 · Janaína <i>há 15min</i></button>
+          <div class="postos">
+            <div class="posto ocupado">
+              <span class="l1"><span class="sala">Sala 2</span><span class="quem">Janaína</span></span>
+              <span class="l2">Plantão · 15min</span>
+            </div>
+            <div class="posto livre">
+              <span class="l1"><span class="quem">Sobreaviso</span></span>
+              <span class="l2">livre</span>
+            </div>
+            <div class="posto dedicado">
+              <span class="l1"><span class="sala">Sala 4</span><span class="quem">Rafael</span></span>
+              <span class="l2">Ortopedia</span>
+            </div>
+            <div class="posto dedicado">
+              <span class="l1"><span class="sala">Sala 7</span><span class="quem">Cristina</span></span>
+              <span class="l2">Centro obst.</span>
+            </div>
           </div>
+          <p class="filaTit">Fila — 1 aguardando</p>
           <div class="fila">
             <button class="item">
               <span class="pos">1º</span><span class="nv urgente">Urgente</span>
@@ -469,19 +601,16 @@
               <span class="esp">48min</span><span class="chev">›</span>
             </button>
           </div>
-          <div class="confirmar">
+          <div class="conf">
             <span>Sala 6 iniciada 09:10 — ainda em andamento?</span>
             <button>Terminada</button>
           </div>
-          <div class="confirmar">
-            <span>1 marcada 09:00 pode já ter começado</span>
-          </div>
         </div>
         <div class="quadro">
-          <div class="cabsala"><span class="pill">Sala 2</span><span class="nome">Janaína</span><span class="n">1</span></div>
+          <div class="cabsala"><span class="sala">Sala 2</span><span class="nome">Janaína</span><span class="n">1</span></div>
           <div class="caso iniciada">
             <div class="hcol">10:45</div>
-            <div><div class="c1">R.T.C. · 31a · Drenagem de abscesso</div><div class="c2">Benito Bodanese</div></div>
+            <div><div class="c1">R.T.C. <em>31a</em></div><div class="c2">Drenagem de abscesso</div><div class="c3">Benito Bodanese</div></div>
           </div>
         </div>
       </div>
@@ -495,15 +624,30 @@
         <div class="controles">
           <div class="trilho"><b>Minhas</b><b class="on">Completa</b><b>Liberações</b></div>
         </div>
-        <div class="faixa neutra fullbleed">
-          <div class="l1">
-            <span class="tit">Urgências</span>
-            <span class="sub">1 de 2 salas</span>
+        <div class="faixa fullbleed">
+          <div class="cab">
+            <span class="tit">Urgências</span><span class="sub">1 de 2 salas</span>
             <span class="cont">1 livre</span>
           </div>
-          <div class="andamento">
-            <button class="sala">Sala 2 · Janaína <i>há 15min</i></button>
+          <div class="postos">
+            <div class="posto ocupado">
+              <span class="l1"><span class="sala">Sala 2</span><span class="quem">Janaína</span></span>
+              <span class="l2">Plantão · 15min</span>
+            </div>
+            <div class="posto livre">
+              <span class="l1"><span class="quem">Sobreaviso</span></span>
+              <span class="l2">livre</span>
+            </div>
+            <div class="posto dedicado">
+              <span class="l1"><span class="sala">Sala 4</span><span class="quem">Rafael</span></span>
+              <span class="l2">Ortopedia</span>
+            </div>
+            <div class="posto dedicado">
+              <span class="l1"><span class="sala">Sala 7</span><span class="quem">Cristina</span></span>
+              <span class="l2">Centro obst.</span>
+            </div>
           </div>
+          <p class="filaTit">Fila — 1 aguardando</p>
           <div class="fila">
             <button class="item">
               <span class="pos">1º</span><span class="nv urgente">Urgente</span>
@@ -511,19 +655,16 @@
               <span class="esp">48min</span><span class="chev">›</span>
             </button>
           </div>
-          <div class="confirmar">
+          <div class="conf">
             <span>Sala 6 iniciada 09:10 — ainda em andamento?</span>
             <button>Terminada</button>
           </div>
-          <div class="confirmar">
-            <span>1 marcada 09:00 pode já ter começado</span>
-          </div>
         </div>
         <div class="quadro">
-          <div class="cabsala"><span class="pill">Sala 2</span><span class="nome">Janaína</span><span class="n">1</span></div>
+          <div class="cabsala"><span class="sala">Sala 2</span><span class="nome">Janaína</span><span class="n">1</span></div>
           <div class="caso iniciada">
             <div class="hcol">10:45</div>
-            <div><div class="c1">R.T.C. · 31a · Drenagem de abscesso</div><div class="c2">Benito Bodanese</div></div>
+            <div><div class="c1">R.T.C. <em>31a</em></div><div class="c2">Drenagem de abscesso</div><div class="c3">Benito Bodanese</div></div>
           </div>
         </div>
       </div>
@@ -533,30 +674,52 @@
   <div class="medida">
     <h3>Régua — estado D</h3>
     <table>
-      <tr><td>altura da faixa</td><td>183 px</td></tr>
-      <tr><td>y do 1º cabeçalho de sala</td><td>247 px</td></tr>
-      <tr><td>casos visíveis sem rolar</td><td>8</td></tr>
+      <tr><td>altura da faixa</td><td id="mD-h">—</td></tr>
+      <tr><td>y do 1º cabeçalho de sala</td><td id="mD-y">—</td></tr>
+      <tr><td>casos visíveis sem rolar</td><td id="mD-casos">—</td></tr>
+      <tr><td>versão anterior, mesma tela</td><td>183 px</td></tr>
     </table>
     <p class="nota">
-      Este é o estado que <b>o dado de produção obriga a desenhar</b>: 36% das urgências do
-      HRO ficaram sem marcação e 13 ficaram “iniciada” para sempre. A sala esquecida
-      <b>sai da contagem</b> (aqui o contador diz 1 de 2, não 2 de 2) e vira pergunta —
-      o app não afirma o que não sabe, e nunca esconde a urgência sozinho.
-    </p>
-    <p>
-      Ponto para decidir: as duas linhas de confirmação em âmbar competem com o contador.
-      Alternativa é fundir numa só (“2 marcações a confirmar ›”).
+      O estado que o dado obriga a desenhar: 34% das urgências do HRO ficaram sem marcação e 13
+      ficaram "iniciada" para sempre. A sala esquecida <b>sai da contagem</b> — o contador diz 1
+      de 2, não 2 de 2 — e vira pergunta com resposta de um toque.
     </p>
   </div>
 </div>
 
-<p class="intro" style="max-width:920px">
-  <b>Perguntas para a revisão:</b>
-  (1) chip de sala a 34 px ou 44 px?
-  (2) a fila mostra o <b>procedimento</b> em primeiro (como aqui) ou a <b>sala</b>?
-  (3) duas linhas de confirmação ou uma só agregada?
-  (4) “Cobertas pelo dedicado” fica sempre visível ou só quando há urgência em Sala 4 / CO?
+<p class="intro" style="max-width:960px">
+  <b>O que ficou para você decidir:</b>
+  (1) o card de Ortopedia/CO fica <b>sempre</b> na grade, ou só quando há urgência naquela sala?
+  (2) card do posto <b>livre</b> — moldura tracejada (como aqui) ou some da grade?
+  (3) o "há 40min" conta desde o <b>início da cirurgia</b> (como aqui) ou mostra a <b>previsão de
+  término</b>, que é o que interessa para saber quando a sala vaga?
 </p>
+
+<script>
+  // A régua é MEDIDA, nunca digitada: valor escrito à mão já saiu errado uma vez.
+  const UTIL = 932 - 120 - 88;   // iPhone 14 Pro Max − header do app − bottom nav
+  const px = (n) => Math.round(n) + ' px';
+  document.querySelectorAll('.par').forEach((par, i) => {
+    const id = ['mA', 'mB', 'mC', 'mD'][i];
+    const tela = par.querySelector('.tela');
+    const faixa = par.querySelector('.faixa');
+    const cab = par.querySelector('.cabsala');
+    const caso = par.querySelector('.caso');
+    const posto = par.querySelector('.posto');
+    const item = par.querySelector('.item');
+    const topo = tela.getBoundingClientRect().top;
+    const h = faixa.getBoundingClientRect().height;
+    const y = cab.getBoundingClientRect().top - topo;
+    const hCab = cab.getBoundingClientRect().height;
+    const hCaso = caso.getBoundingClientRect().height;
+    const set = (sufixo, valor) => { const el = document.getElementById(id + '-' + sufixo); if (el) el.textContent = valor; };
+    set('h', px(h));
+    set('y', px(y));
+    set('card', px(posto.getBoundingClientRect().height));
+    if (item) set('item', px(item.getBoundingClientRect().height));
+    set('casos', String(Math.floor((UTIL - y - hCab) / hCaso)));
+  });
+</script>
 
 </body>
 </html>
