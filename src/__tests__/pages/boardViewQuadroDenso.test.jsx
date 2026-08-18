@@ -218,3 +218,31 @@ describe('Completa — caso sem paciente identificado', () => {
     expect(card.querySelectorAll(':scope > div > span:last-child > span')).toHaveLength(3)
   })
 })
+
+describe('Completa — alinhamento de quem não tem horário', () => {
+  // Urgência encaixada no meio da sala não vem com horário. Sem reserva, o texto
+  // dela começava colado na margem e o quadro serrilhava — parecia de outra
+  // lista (print do dono, 18/08).
+  const semHora = { id: 'c2', sala: 'Sala 2', ordem: 1, hora: '', turno: 'vespertino',
+    pacienteIniciais: 'R.R.', idade: '32a', procedimento: 'APENDICECTOMIA',
+    cirurgiao: 'JONATHAN', anestesista: 'GABRIEL', convenio: 'SUS', statusCirurgia: 'agendada' }
+
+  const colunaDe = (card) => card.querySelector(':scope > div > span:first-child')
+
+  it('recua o caso sem horário até a mesma vertical de quem tem, na mesma sala', () => {
+    renderBoard([caso(), semHora])
+    const [comHora, sem] = screen.getAllByRole('button', { name: /^Detalhes do caso/ })
+    // a caixa vazia tem a MESMA largura da coluna do tempo — é o que alinha
+    expect(colunaDe(comHora).className).toContain('w-[46px]')
+    expect(colunaDe(sem).className).toContain('w-[46px]')
+    expect(colunaDe(sem).textContent).toBe('')
+  })
+
+  it('sala inteira sem horário não paga o recuo', () => {
+    renderBoard([semHora, { ...semHora, id: 'c3', ordem: 2, pacienteIniciais: 'M.S.' }])
+    for (const card of screen.getAllByRole('button', { name: /^Detalhes do caso/ })) {
+      // o primeiro filho já é o bloco de texto: nenhuma caixa reservada antes
+      expect(colunaDe(card).textContent).toMatch(/R\.R\.|M\.S\./)
+    }
+  })
+})
