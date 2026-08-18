@@ -102,6 +102,25 @@ export function fraseFaltante(f) {
   return f.atrasada ? `${n} além` : `faltam ${n}`
 }
 
+/**
+ * Texto da PÍLULA do total da pessoa, na fila de liberação.
+ *
+ * Assimétrico de propósito: enquanto FALTA, "~25min" se explica sozinho e o
+ * espaço é curto; quando PASSA, o sinal vira palavra ("25min além"). Um delta
+ * solto é o pior formato possível para um número que alguém precisa ler de
+ * relance — é relativo, não tem rótulo e não tem âncora, e as três referências
+ * que consultei convergem nisso: painel de aeroporto mostra o horário previsto
+ * MAIS a palavra de status (nunca só o atraso), o guia de timestamps do
+ * Cloudscape exige que todo horário venha com um rótulo dizendo a que evento se
+ * refere, e Dexter & Epstein (Anesth Analg) mostram que, depois que a cirurgia
+ * passa da estimativa, o tempo restante médio fica quase CONSTANTE — ou seja, um
+ * contador que segue subindo não prevê nada, só informa que estourou.
+ */
+export function fraseCronometro(alvoMin, agoraMin) {
+  const f = formatFaltante(alvoMin, agoraMin)
+  return f.atrasada ? fraseFaltante(f) : f.texto
+}
+
 /** Minutos desde a meia-noite de um "HH:MM" (null se não parseia). */
 function paraMinutos(hhmm) {
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || '').trim())

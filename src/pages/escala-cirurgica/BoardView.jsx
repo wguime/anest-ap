@@ -151,12 +151,28 @@ export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null, 
                 hora prevista de término; contar o que ainda não começou é chute
                 apresentado como número. */}
             {faltaCaso ? (
-              <span
-                className={`block whitespace-nowrap text-[10px] font-semibold tabular-nums ${faltaCaso.atrasada ? 'text-warning' : 'text-foreground/70'}`}
-                title={`Esta cirurgia (em andamento) termina às ${caso.terminoPrevisto}`}
-              >
-                {faltaCaso.texto}
-              </span>
+              <>
+                {/* A ÂNCORA VOLTA QUANDO O TEMPO ESTOURA (dono 18/08). Enquanto
+                    falta, "~45min" se explica sozinho; depois que passa, o card
+                    ficava só com "+50min" — e o horário que dá sentido ao número
+                    era justamente o que sumia. Some a referência e o sinal vira
+                    adivinhação: 50min do quê, faltando ou passados? Com o
+                    previsto de volta, a coluna lê-se de cima para baixo — começou
+                    08:45, previa terminar 10:01, passou 50min disso. */}
+                {faltaCaso.atrasada && (
+                  <span className="block whitespace-nowrap text-[10px] tabular-nums text-muted-foreground line-through">
+                    →{caso.terminoPrevisto}
+                  </span>
+                )}
+                <span
+                  className={`block whitespace-nowrap text-[10px] font-semibold tabular-nums ${faltaCaso.atrasada ? 'text-warning' : 'text-foreground/70'}`}
+                  title={faltaCaso.atrasada
+                    ? `Esta cirurgia estava prevista para terminar às ${caso.terminoPrevisto} — passou ${faltaCaso.texto.replace('+', '')}`
+                    : `Esta cirurgia (em andamento) termina às ${caso.terminoPrevisto}`}
+                >
+                  {faltaCaso.texto}
+                </span>
+              </>
             ) : alvoCaso != null ? (
               <span
                 className="block text-[10px] tabular-nums text-muted-foreground"

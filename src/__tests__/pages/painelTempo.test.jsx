@@ -26,7 +26,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 
 import { ThemeProvider } from '@/design-system'
-import PainelTempo, { formatFaltante, fraseFaltante } from '@/pages/escala-cirurgica/PainelTempo'
+import PainelTempo, { formatFaltante, fraseCronometro, fraseFaltante } from '@/pages/escala-cirurgica/PainelTempo'
 
 const wrap = ({ children }) => <ThemeProvider>{children}</ThemeProvider>
 
@@ -157,6 +157,16 @@ describe('PainelTempo — duas entradas para o mesmo campo (dono 29/07)', () => 
  */
 describe('fraseFaltante', () => {
   const em = (alvo, agora) => fraseFaltante(formatFaltante(alvo, agora))
+
+  // A pílula do total da pessoa é assimétrica de propósito (dono 18/08): curta
+  // enquanto falta, por palavra quando passa — um delta solto ("+25min") não diz
+  // de que horário fala nem se falta ou já passou.
+  it('a pílula do total troca o sinal por palavra só quando estoura', () => {
+    expect(fraseCronometro(15 * 60, 14 * 60 + 15)).toBe('~45min')
+    expect(fraseCronometro(14 * 60, 14 * 60 + 25)).toBe('25min além')
+    expect(fraseCronometro(14 * 60, 12 * 60)).toBe('~2h00')
+    expect(fraseCronometro(12 * 60, 14 * 60 + 10)).toBe('2h10 além')
+  })
 
   it('no prazo vira "faltam N"', () => {
     expect(em(10 * 60 + 45, 10 * 60)).toBe('faltam 45min')
