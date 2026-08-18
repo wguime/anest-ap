@@ -229,7 +229,7 @@ describe('Completa — alinhamento de quem não tem horário', () => {
 
   const colunaDe = (card) => card.querySelector(':scope > div > span:first-child')
 
-  it('recua o caso sem horário até a mesma vertical de quem tem, na mesma sala', () => {
+  it('recua o caso sem horário até a mesma vertical de quem tem', () => {
     renderBoard([caso(), semHora])
     const [comHora, sem] = screen.getAllByRole('button', { name: /^Detalhes do caso/ })
     // a caixa vazia tem a MESMA largura da coluna do tempo — é o que alinha
@@ -238,7 +238,17 @@ describe('Completa — alinhamento de quem não tem horário', () => {
     expect(colunaDe(sem).textContent).toBe('')
   })
 
-  it('sala inteira sem horário não paga o recuo', () => {
+  // A margem é do QUADRO, não da sala (dono 18/08, 09h): a urgência acrescentada
+  // à mão entra numa sala própria, sem horário nenhum — pela regra por sala ela
+  // ficava fora do prumo de todo o resto do quadro.
+  it('recua também na sala que não tem horário nenhum, se o quadro tem', () => {
+    renderBoard([caso(), { ...semHora, sala: 'Sala 6' }])
+    const [, urgencia] = screen.getAllByRole('button', { name: /^Detalhes do caso/ })
+    expect(colunaDe(urgencia).className).toContain('w-[46px]')
+    expect(colunaDe(urgencia).textContent).toBe('')
+  })
+
+  it('quadro sem horário NENHUM não paga o recuo', () => {
     renderBoard([semHora, { ...semHora, id: 'c3', ordem: 2, pacienteIniciais: 'M.S.' }])
     for (const card of screen.getAllByRole('button', { name: /^Detalhes do caso/ })) {
       // o primeiro filho já é o bloco de texto: nenhuma caixa reservada antes

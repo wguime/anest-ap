@@ -167,11 +167,12 @@ export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null, 
             ) : null}
           </span>
         )}
-        {/* CAIXA VAZIA NO LUGAR DA HORA (dono 18/08): caso sem horário na MESMA
-            sala que outro com horário começava colado na margem, e o quadro
-            serrilhava — a urgência encaixada parecia de outra lista. A reserva é
-            por SALA: sala inteira sem horário (bloco de urgências) não paga o
-            recuo por nada. */}
+        {/* CAIXA VAZIA NO LUGAR DA HORA (dono 18/08): caso sem horário começava
+            colado na margem e o quadro serrilhava — a urgência encaixada parecia
+            de outra lista. A reserva vale para o QUADRO inteiro, não por sala: a
+            urgência acrescentada à mão cai numa sala própria, sem horário nenhum,
+            e a reserva por sala deixava a sala inteira fora do prumo do resto
+            (print do dono às 09h). Quadro sem NENHUM horário não paga o recuo. */}
         {!temColunaHora && reservaHora && <span aria-hidden className="w-[46px] shrink-0" />}
         {/* Três linhas próximas (dono 17/08): paciente / procedimento / cirurgião
             lêem como um bloco só, com um respiro de 3px entre elas — coladas de
@@ -267,6 +268,11 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
   const agoraMin = useAgoraMinuto()
   const casos = useMemo(() => filtrarPorTurno(casosResolvidos(escala), turno), [escala, turno])
   const grupos = useMemo(() => agruparPorSala(casos), [casos])
+  // MARGEM ÚNICA DO QUADRO (dono 18/08): quem não tem horário recua igual, em
+  // qualquer sala — a urgência acrescentada à mão vira sala própria sem horário
+  // nenhum e a reserva por sala a deixava fora do prumo do resto. Quadro sem
+  // NENHUM horário (nada a alinhar) segue sem recuo.
+  const reservaHora = useMemo(() => casos.some(casoTemColunaTempo), [casos])
 
   // GRUPOS DE EXIBIÇÃO (pedido do dono 23/07): sala com MAIS de um anestesista
   // (IOSC/Exames/Umanitá/…) vira UM GRUPO POR ANESTESISTA — "IOSC — Cury",
@@ -408,23 +414,17 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
               </AccordionTrigger>
               <AccordionContent className="p-0">
                 {/* SRPA e afins sem procedimentos: só o cabeçalho, sem card vazio */}
-                {(() => {
-                  const visiveis = g.casos.filter((c) => !casoVazio(c))
-                  // alinhamento por SALA: se ALGUÉM aqui tem horário, os sem
-                  // horário recuam junto (dono 18/08)
-                  const reservaHora = visiveis.some(casoTemColunaTempo)
-                  return visiveis.map((caso) => (
-                    <CasoCard
-                      key={caso.id || `${g.chave}-${caso.ordem}`}
-                      caso={caso}
-                      destaque={ehMeu(caso)}
-                      agoraMin={agoraMin}
-                      moldura="linha"
-                      reservaHora={reservaHora}
-                      onClick={() => setDetalhe(caso)}
-                    />
-                  ))
-                })()}
+                {g.casos.filter((c) => !casoVazio(c)).map((caso) => (
+                  <CasoCard
+                    key={caso.id || `${g.chave}-${caso.ordem}`}
+                    caso={caso}
+                    destaque={ehMeu(caso)}
+                    agoraMin={agoraMin}
+                    moldura="linha"
+                    reservaHora={reservaHora}
+                    onClick={() => setDetalhe(caso)}
+                  />
+                ))}
               </AccordionContent>
             </AccordionItem>
           )

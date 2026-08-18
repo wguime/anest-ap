@@ -380,10 +380,10 @@ discussão: as telas convivem com ela.
   linha** (é qual cirurgia que se procura primeiro); cirurgião (+ `· R: residente`) na 2ª,
   com tempo faltante, status e convênio à direita — a 2ª linha QUEBRA em vez de truncar o
   cirurgião. A coluna do tempo tem **46px** e o texto começa logo depois (dono 18/08,
-  "mais próximas ao horário"), e **caso sem horário RECUA junto** quando alguém da MESMA
-  sala tem horário (`casoTemColunaTempo` decide a reserva por sala) — a urgência encaixada
-  começava na margem e o quadro serrilhava; sala inteira sem horário (bloco de urgências)
-  não paga o recuo. **Tinta em UM eixo só**: iniciada `bg-success/[0.14]` e terminada
+  "mais próximas ao horário"), e **caso sem horário RECUA junto** — a margem é do
+  QUADRO, não da sala (`casoTemColunaTempo` sobre todos os casos do turno): urgência
+  acrescentada à mão vira sala PRÓPRIA sem horário nenhum, e a reserva por sala a deixava
+  fora do prumo do resto. Quadro sem horário nenhum não paga o recuo. **Tinta em UM eixo só**: iniciada `bg-success/[0.14]` e terminada
   `bg-info/[0.12]` (dark /20 e /22); atrasada, suspensa e passa-para-tarde ficam só no
   badge — com os cinco pintando o quadro virava vitral. `CasoCard` ganhou `moldura`:
   `'linha'` na Completa, `'card'` na Minhas (mesmo conteúdo, molduras diferentes).
