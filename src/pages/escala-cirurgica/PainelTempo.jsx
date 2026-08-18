@@ -172,8 +172,10 @@ export default function PainelTempo({ horarios, atual, horaExata, onHoraExata, o
 
       {/* ALTURA CONSTANTE (dono 17/08): as duas rotas ocupam a mesma caixa. A da
           duração é a mais alta (grade de 6 + "Outro tempo…"); sem a altura fixa, alternar
-          fazia o painel encolher e crescer debaixo do dedo. */}
-      <div className="h-[154px]">
+          fazia o painel encolher e crescer debaixo do dedo.
+          172px = 2 fileiras de 44 + gap 8 + respiro 16 + o seletor de 44, com
+          folga para o "Limpar" não encostar (dono 17/08). */}
+      <div className="h-[172px]">
       {modo === 'falta' ? (
         <>
           {/* atalhos: é AÇÃO, não estado — o que vale aparece na prévia abaixo */}
@@ -189,7 +191,9 @@ export default function PainelTempo({ horarios, atual, horaExata, onHoraExata, o
               </Button>
             ))}
           </div>
-          <Select className="w-full" options={opcoes} value=""
+          {/* respiro: sem ele o seletor encostava na fileira de atalhos e os três
+              viravam um bloco só (dono 17/08) */}
+          <Select className="mt-4 w-full" options={opcoes} value=""
             onChange={gravar}
             placeholder="Outro tempo…" aria-label="Outro tempo faltante" />
         </>
@@ -199,9 +203,15 @@ export default function PainelTempo({ horarios, atual, horaExata, onHoraExata, o
            que passam a régua do projeto (React Aria TimeField, OpenStatus
            TimePicker) também exigem digitar, e a roleta (react-mobile-picker)
            tem 357★, abaixo do mínimo de 1k. */
+        /* CENTRADO E ESTREITO (dono 17/08): o campo guarda quatro dígitos e
+           ocupava a largura da tela — a caixa vazia parecia esperar uma frase.
+           `mx-auto` com largura fixa põe o alvo debaixo do polegar. A tipografia
+           vai em `[&_input]` porque o `className` do Input do DS pousa no WRAPPER:
+           aplicado ali, o `text-center` centralizava a caixa e deixava os dígitos
+           encostados na borda esquerda. */
         <Input
           data-slot="termino-hora"
-          className="w-full text-center text-[17px] font-semibold"
+          className="mx-auto w-[160px] [&_input]:text-center [&_input]:text-[19px] [&_input]:font-bold [&_input]:tracking-wide"
           value={horaTexto}
           onChange={(e) => digitarHora(e.target.value)}
           inputMode="numeric"
