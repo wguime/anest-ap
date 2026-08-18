@@ -74,14 +74,17 @@ const abrirDetalhe = () => {
 beforeEach(() => atualizarCaso.mockClear())
 
 describe('Minhas — detalhe do caso vem COMPLETO', () => {
-  it('traz o residente — a linha mostra o valor e o botão abre o seletor', () => {
+  it('traz o residente — a linha mostra o valor e o botão abre a lista', () => {
     abrirDetalhe()
     expect(screen.getByText('Residente')).toBeTruthy()
     // sem residente escolhido, a linha diz "Sem residente" (é o valor, não um vazio)
     expect(screen.getByText('Sem residente')).toBeTruthy()
+    // desde 17/08 a lista já vem ABERTA no sheet do editor (nada de seletor
+    // fechado pedindo um segundo toque) — a Minhas usa o mesmo componente da
+    // Completa, então o que vale lá vale aqui
     fireEvent.click(screen.getByRole('button', { name: 'Trocar residente' }))
-    fireEvent.click(screen.getByRole('combobox'))
-    expect(screen.getByRole('option', { name: 'Augusto' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Augusto' })).toBeTruthy()
+    expect(screen.queryByRole('combobox')).toBeNull()
   })
 
   it('traz o tempo da cirurgia', () => {

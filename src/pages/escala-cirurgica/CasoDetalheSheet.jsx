@@ -14,8 +14,8 @@
  * iguais, seis botões de status e três linhas de dados, tudo no mesmo peso.
  */
 import { useMemo, useState } from 'react'
-import { GraduationCap, Loader2, MapPin, Stethoscope, Timer, UserCog } from 'lucide-react'
-import { Badge, Button, Input, Select, Sheet, SheetContent, SheetHeader, SheetTitle } from '@/design-system'
+import { Check, GraduationCap, Loader2, MapPin, Stethoscope, Timer, UserCog } from 'lucide-react'
+import { Badge, Button, Input, Sheet, SheetContent, SheetHeader, SheetTitle } from '@/design-system'
 import { HOSPITAL_LABEL, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
@@ -28,7 +28,6 @@ import { espelhoTempoTotal, LOCAIS_BASE, nomeAnestesistaExibicao, normNome, pars
 const SALA_OUTRO = '__outro__'
 // Sentinela do seletor de residente (valor impossível como uid).
 const SEM_RESIDENTE = '__sem__'
-const CIRURGIAO_OUTRO = '__outro__'
 
 // EIXO PRINCIPAL — exclusivo, é o que pinta o card no quadro.
 const ANDAMENTO = [
@@ -57,7 +56,6 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
   const [rascSala, setRascSala] = useState('')
   const [salaOutro, setSalaOutro] = useState(false)
   const [rascCirurgiao, setRascCirurgiao] = useState('')
-  const [cirurgiaoOutro, setCirurgiaoOutro] = useState(false)
   const [salvando, setSalvando] = useState('')
   const [horaExata, setHoraExata] = useState('') // hora exata de término da cirurgia
 
@@ -75,14 +73,6 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
     return unicos([...doDia, ...base])
   }, [escala])
 
-  // Cirurgiões JÁ NA ESCALA do dia: não existe cadastro de cirurgião no app (o
-  // "Adicionar caso" pede texto livre), então a lista do dia é o que evita
-  // grafias divergentes para a mesma pessoa. "Outro" segue aceitando um nome novo.
-  const opcoesCirurgiao = useMemo(
-    () => unicos((escala?.casos || []).map((c) => String(c.cirurgiao || '').trim()).filter(Boolean)),
-    [escala]
-  )
-
   if (!vivo) return null
 
   // Um gate só para todos os ajustes do caso: quem edita a escala (canEdit), fora
@@ -97,7 +87,6 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
     if (qual === 'cirurgiao') {
       const atual = String(vivo.cirurgiao || '')
       setRascCirurgiao(atual)
-      setCirurgiaoOutro(!!atual && !opcoesCirurgiao.some((s) => s.toLowerCase() === atual.toLowerCase()))
     }
     setEditor((e) => (e === qual ? null : qual))
   }
@@ -314,21 +303,22 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                     )}
                     <span className="text-muted-foreground">{editor === 'tempo' ? '▴' : '▾'}</span>
                   </button>
+                  {/* O editor abre num sheet PRÓPRIO, de baixo para cima (dono
+                      17/08): expandindo aqui dentro, o card mudava de tamanho no
+                      meio da leitura e a pessoa perdia o lugar. */}
                   {editor === 'tempo' && (
-                    <div className="mt-2 rounded-xl border border-border bg-muted/30 p-3">
+                    <EditorSheet
+                      titulo="Término desta cirurgia"
+                      nota="Só desta cirurgia. Na fila conta o tempo enquanto está Iniciada."
+                      onClose={() => setEditor(null)}
+                    >
                       <PainelTempo
                         atual={vivo.terminoPrevisto || ''}
                         horaExata={horaExata}
                         onHoraExata={setHoraExata}
-                        onDefinir={definirTerminoCaso}
+                        onDefinir={(v) => { definirTerminoCaso(v); setEditor(null) }}
                       />
-                      {/* TÉRMINO, não "tempo faltante": o campo guarda uma HORA, e
-                          "tempo faltante" é o nome do OUTRO campo — o da pessoa, na
-                          fila. Os dois disputavam a mesma palavra. */}
-                      <p className="mt-2 text-[11.5px] text-muted-foreground">
-                        Só desta cirurgia. Na fila conta o tempo enquanto está Iniciada.
-                      </p>
-                    </div>
+                    </EditorSheet>
                   )}
                 </>
               )}
@@ -355,22 +345,31 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
               valor={titleCaseNome(vivo.cirurgiao)}
               acao={podeEditarCaso && { label: 'Trocar', onClick: () => abrirEditor('cirurgiao') }}
             />
+            {/* Só DIGITAÇÃO (dono 17/08): o nome do cirurgião vem torto da
+                importação e a lista de sugestões atrapalhava mais do que ajudava
+                — quem corrige aqui já sabe o nome certo. */}
             {editor === 'cirurgiao' && (
-              <EditorTexto
+              <EditorSheet
                 titulo="Cirurgião desta cirurgia"
-                opcoes={opcoesCirurgiao}
-                sentinela={CIRURGIAO_OUTRO}
-                outro={cirurgiaoOutro}
-                setOutro={setCirurgiaoOutro}
-                valor={rascCirurgiao}
-                setValor={setRascCirurgiao}
-                placeholderSelect="Escolha o cirurgião"
-                placeholderInput="ex.: Eduardo Baldissera"
                 nota="Vale só para esta cirurgia. A fila mostra o cirurgião de cada caso automaticamente."
-                salvando={salvando === 'cirurgiao'}
-                onCancelar={() => setEditor(null)}
-                onSalvar={() => salvarTexto('cirurgiao', rascCirurgiao)}
-              />
+                onClose={() => setEditor(null)}
+              >
+                <Input
+                  autoFocus
+                  aria-label="Nome do cirurgião"
+                  value={rascCirurgiao}
+                  onChange={(e) => setRascCirurgiao(e.target.value)}
+                  placeholder="ex.: Eduardo Baldissera"
+                  onKeyDown={(e) => { if (e.key === 'Enter') salvarTexto('cirurgiao', rascCirurgiao) }}
+                />
+                <div className="flex gap-2 pt-1">
+                  <Button size="sm" variant="ghost" className="flex-1" onClick={() => setEditor(null)}>Cancelar</Button>
+                  <Button size="sm" className="flex-1" disabled={salvando === 'cirurgiao' || !rascCirurgiao.trim()}
+                    onClick={() => salvarTexto('cirurgiao', rascCirurgiao)}>
+                    {salvando === 'cirurgiao' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
+                  </Button>
+                </div>
+              </EditorSheet>
             )}
 
             {/* MESMA função do cabeçalho da sala e do sheet de definir (bug 29/07:
@@ -394,22 +393,21 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
               valor={titleCaseNome(residenteNome) || (podeEditarCaso ? 'Sem residente' : '')}
               acao={podeEditarCaso && { label: 'Trocar', onClick: () => abrirEditor('residente') }}
             />
+            {/* A LISTA JÁ ABERTA (dono 17/08): antes o toque revelava um seletor
+                fechado, e era preciso um segundo toque para ver os nomes. */}
             {editor === 'residente' && (
-              <div className="mt-2 rounded-xl border border-border bg-muted/30 p-3">
-                <Select
-                  id="caso-residente"
-                  className="w-full"
-                  searchable
-                  options={[{ value: SEM_RESIDENTE, label: 'Sem residente' }, ...opcoesResidente]}
-                  value={vivo.residenteUserId || SEM_RESIDENTE}
-                  onChange={trocarResidente}
-                  placeholder="Selecionar residente…"
+              <EditorSheet
+                titulo="Residente que acompanha"
+                nota="Acompanha o caso — quem responde por ele continua sendo o anestesista."
+                onClose={() => setEditor(null)}
+              >
+                <ListaEscolha
+                  opcoes={[{ value: SEM_RESIDENTE, label: 'Sem residente' }, ...opcoesResidente]}
+                  valor={vivo.residenteUserId || SEM_RESIDENTE}
+                  salvando={salvando === 'residente'}
+                  onEscolher={trocarResidente}
                 />
-                <p className="mt-1.5 flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
-                  {salvando === 'residente' && <Loader2 className="h-3 w-3 animate-spin" />}
-                  Acompanha o caso — quem responde por ele continua sendo o anestesista.
-                </p>
-              </div>
+              </EditorSheet>
             )}
 
             {/* Corrigir ONDE o caso acontece (dono 24/07) — mesma gramática das
@@ -421,20 +419,35 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
               acao={podeEditarCaso && { label: 'Mudar', onClick: () => abrirEditor('sala') }}
             />
             {editor === 'sala' && (
-              <EditorTexto
+              <EditorSheet
                 titulo="Sala / Local do procedimento"
-                opcoes={opcoesSala}
-                sentinela={SALA_OUTRO}
-                outro={salaOutro}
-                setOutro={setSalaOutro}
-                valor={rascSala}
-                setValor={setRascSala}
-                placeholderSelect="Escolha a sala/local"
-                placeholderInput="ex.: IOSC - Sala 1"
-                salvando={salvando === 'sala'}
-                onCancelar={() => setEditor(null)}
-                onSalvar={() => salvarTexto('sala', rascSala)}
-              />
+                onClose={() => setEditor(null)}
+              >
+                <ListaEscolha
+                  opcoes={opcoesSala.map((o) => ({ value: o, label: o }))}
+                  valor={salaOutro ? '' : String(vivo.sala || '')}
+                  salvando={salvando === 'sala'}
+                  onEscolher={(v) => salvarTexto('sala', v)}
+                />
+                {/* local novo continua possível — digitado, entra na lista das
+                    próximas vezes (regra antiga do campo) */}
+                <div className="border-t border-border pt-2">
+                  <Input
+                    aria-label="Outra sala ou local"
+                    value={rascSala}
+                    onChange={(e) => { setSalaOutro(true); setRascSala(e.target.value) }}
+                    placeholder="Outro local — ex.: IOSC - Sala 1"
+                    onKeyDown={(e) => { if (e.key === 'Enter') salvarTexto('sala', rascSala) }}
+                  />
+                  <div className="flex gap-2 pt-2">
+                    <Button size="sm" variant="ghost" className="flex-1" onClick={() => setEditor(null)}>Cancelar</Button>
+                    <Button size="sm" className="flex-1" disabled={salvando === 'sala' || !rascSala.trim()}
+                      onClick={() => salvarTexto('sala', rascSala)}>
+                      {salvando === 'sala' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
+                    </Button>
+                  </div>
+                </div>
+              </EditorSheet>
             )}
 
             {/* AJUDA de outro hospital (dono 29/07). RÓTULO ÚNICO com o painel da
@@ -531,44 +544,55 @@ function LinhaDado({ icone, rotulo, valor, destaque, acao }) {
 }
 
 /**
- * Editor inline de um campo de texto com lista de sugestões + "Outro… (digitar)".
- * Mesmo padrão nos dois campos que o usam (sala e cirurgião) — os dois vêm da
- * importação e são corrigidos do mesmo jeito.
+ * Editor de UM campo, num sheet próprio de baixo para cima (dono 17/08).
+ * Expandir dentro do cartão mudava a altura do painel no meio da leitura e a
+ * pessoa perdia o lugar; aqui o conteúdo do caso fica parado atrás e o editor
+ * chega por cima, já com a lista aberta ou o campo em foco.
  */
-function EditorTexto({
-  titulo, opcoes, sentinela, outro, setOutro, valor, setValor,
-  placeholderSelect, placeholderInput, nota, salvando, onCancelar, onSalvar,
-}) {
+function EditorSheet({ titulo, nota, onClose, children }) {
   return (
-    <div className="mt-2 space-y-2 rounded-xl border border-border bg-muted/30 p-3">
-      <p className="text-[11.5px] font-semibold uppercase tracking-wide text-muted-foreground">{titulo}</p>
-      <Select
-        className="w-full"
-        searchable
-        options={[...opcoes.map((s) => ({ value: s, label: s })), { value: sentinela, label: 'Outro… (digitar)' }]}
-        value={outro ? sentinela : valor}
-        onChange={(v) => {
-          if (v === sentinela) { setOutro(true); setValor('') }
-          else { setOutro(false); setValor(v) }
-        }}
-        placeholder={placeholderSelect}
-      />
-      {outro && (
-        <Input
-          autoFocus
-          value={valor}
-          onChange={(e) => setValor(e.target.value)}
-          placeholder={placeholderInput}
-          onKeyDown={(e) => { if (e.key === 'Enter') onSalvar() }}
-        />
-      )}
-      {nota && <p className="text-[11.5px] text-muted-foreground">{nota}</p>}
-      <div className="flex gap-2 pt-1">
-        <Button size="sm" variant="ghost" className="flex-1" onClick={onCancelar}>Cancelar</Button>
-        <Button size="sm" className="flex-1" disabled={salvando || !String(valor || '').trim()} onClick={onSalvar}>
-          {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
-        </Button>
-      </div>
-    </div>
+    <Sheet open onOpenChange={(o) => !o && onClose()}>
+      {/* z acima do sheet do caso (z-submodal do DS = 1200): os dois são bottom
+          sheets e o de dentro precisa vencer o de fora */}
+      <SheetContent side="bottom" className="!h-auto max-h-[85vh] z-[1200]">
+        <SheetHeader className="pb-2">
+          <SheetTitle className="text-[17px] leading-tight">{titulo}</SheetTitle>
+          {nota && <p className="mt-1 text-[11.5px] leading-snug text-muted-foreground">{nota}</p>}
+        </SheetHeader>
+        <div className="space-y-2 overflow-y-auto pb-4">{children}</div>
+      </SheetContent>
+    </Sheet>
+  )
+}
+
+/**
+ * Lista de escolha com as opções JÁ VISÍVEIS — um toque escolhe e grava. O
+ * seletor fechado exigia dois toques para ver os nomes (dono 17/08), e numa lista
+ * curta como residente ou sala isso é uma etapa a mais sem ganho nenhum.
+ */
+function ListaEscolha({ opcoes, valor, salvando, onEscolher }) {
+  return (
+    <ul className="max-h-[52vh] overflow-y-auto rounded-xl border border-border">
+      {opcoes.map((o) => {
+        const atual = String(o.value) === String(valor)
+        return (
+          <li key={o.value} className="border-b border-border last:border-b-0">
+            <button
+              type="button"
+              disabled={!!salvando}
+              onClick={() => onEscolher(o.value)}
+              aria-pressed={atual}
+              className={[
+                'flex min-h-[48px] w-full items-center gap-2 px-3 py-2 text-left text-[15px]',
+                atual ? 'bg-primary/10 font-bold text-primary' : 'font-medium',
+              ].join(' ')}
+            >
+              <span className="min-w-0 [overflow-wrap:anywhere]">{o.label}</span>
+              {atual && <Check className="ml-auto h-4 w-4 shrink-0" />}
+            </button>
+          </li>
+        )
+      })}
+    </ul>
   )
 }

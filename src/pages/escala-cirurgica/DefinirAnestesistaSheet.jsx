@@ -28,8 +28,8 @@ import { HOSPITAL_LABEL, useEscalaCirurgicaActions } from '@/contexts/EscalaCiru
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { fraseClinica, nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
 import {
-  alvosTrocaResponsavel, anestesistaDaSala, anestesistaDoCasoEh, filtrarPorTurno, localizarSlotRodape,
-  nomeAnestesistaExibicao, normNome, rodapeDoTurno, salaExibicao,
+  alvosTrocaResponsavel, anestesistaDaSala, filtrarPorTurno, localizarSlotRodape,
+  nomeAnestesistaExibicao, salaExibicao,
 } from './utils'
 
 const primeiroNomeUpper = (nome) => String(nome || '').trim().split(/\s+/)[0]?.toUpperCase() || ''
@@ -92,41 +92,22 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
     [atual, rosterByUid]
   )
 
-  // ONDE CADA COLEGA ESTÁ AGORA — o que faz a lista valer mais que um Select:
-  // a posição dele na fila deste turno e quantas cirurgias já carrega aqui.
-  // Leitura pura; nada disto escreve (a `ordem_liberacao` segue intocada).
-  const contextoDe = useMemo(() => {
-    const rodape = rodapeDoTurno(escala?.ordemLiberacao, turno || 'matutino')
-    return (r) => {
-      const casa = (nome) => resolver?.(nome) === r.uid
-        || normNome(nome) === normNome(r.nome)
-        || (r.apelidos || []).some((a) => normNome(a) === normNome(nome))
-      const idx = rodape.findIndex(casa)
-      const nCasos = casosTurno.filter((c) => anestesistaDoCasoEh(c, { uid: r.uid, alias: r.apelidos?.[0] || r.nome })).length
-      return [
-        idx >= 0 ? `${idx + 1}º na fila` : null,
-        nCasos ? `${nCasos} ${nCasos === 1 ? 'cirurgia' : 'cirurgias'}` : null,
-      ].filter(Boolean).join(' · ')
-    }
-  }, [escala, turno, casosTurno, resolver])
-
+  // A LISTA É SÓ DE NOMES (dono 17/08): a posição na fila e a contagem de
+  // cirurgias saíram do rótulo. Quem escolhe aqui está procurando UMA pessoa pelo
+  // nome, e o texto extra fazia cada linha virar uma frase para ler.
   const jaSemAnestesista = !!alvos.length && alvos.every((c) => c.semAnestesista)
   // O seletor nasce VAZIO quando já existe responsável: repetir o nome de quem
   // está lá, com "Confirmar" desabilitado, era o botão morto do print de 29/07.
   const escolhido = uidEscolhido || (jaSemAnestesista ? SEM_ANESTESISTA : '')
   const casoUnico = casosAlvo?.length === 1 ? casosAlvo[0] : null
 
-  // OPÇÕES DO SELETOR: "Sem anestesista" primeiro e, em cada colega, ONDE ele
-  // está agora (posição na fila e cirurgias no turno) — o que a lista inline
-  // mostrava em duas linhas cabe no rótulo do Select, que é searchable e já é o
-  // controle que a equipe usa hoje em produção (dono 17/08, 2ª rodada).
+  // OPÇÕES: "Sem anestesista" primeiro e o resto em ORDEM ALFABÉTICA, só o nome
+  // (dono 17/08). Ordenação com `localeCompare` pt-BR — sem ela, nome acentuado
+  // vai parar depois do Z.
   const opcoes = useMemo(() => [
     { value: SEM_ANESTESISTA, label: 'Sem anestesista (?)' },
-    ...(rosterOpcoes || []).map((o) => {
-      const ctx = contextoDe(rosterByUid.get(o.value) || { uid: o.value, nome: o.label })
-      return { value: o.value, label: ctx ? `${o.label} · ${ctx}` : o.label }
-    }),
-  ], [rosterOpcoes, rosterByUid, contextoDe])
+    ...[...(rosterOpcoes || [])].sort((a, b) => a.label.localeCompare(b.label, 'pt-BR')),
+  ], [rosterOpcoes])
 
   const pergunta = casoUnico
     ? 'Quem responde por esta cirurgia?'
@@ -230,9 +211,6 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
     totalLado ? `${totalLado} ${totalLado === 1 ? 'cirurgia' : 'cirurgias'}` : 'sem cirurgia',
     naoMudam.length ? `${naoMudam.length} terminada${naoMudam.length === 1 ? '' : 's'}` : null,
   ].filter(Boolean).join(' · ')
-  const contextoEscolhido = escolhido && escolhido !== SEM_ANESTESISTA
-    ? contextoDe(rosterByUid.get(escolhido) || { uid: escolhido, nome: nomeEscolhido })
-    : ''
 
   return (
     <Sheet open onOpenChange={(o) => !o && onClose?.()}>
@@ -279,7 +257,7 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
                     {escolhido === SEM_ANESTESISTA ? 'Sem anestesista' : (nomeEscolhido || 'Escolher…')}
                   </span>
                   <span className="block text-[11px] text-muted-foreground">
-                    {escolhido ? (contextoEscolhido || 'toque para trocar') : 'toque para ver a lista'}
+                    {escolhido ? 'toque para trocar' : 'toque para ver a lista'}
                   </span>
                 </span>
                 <ChevronDown className="h-4 w-4 shrink-0 text-primary" />

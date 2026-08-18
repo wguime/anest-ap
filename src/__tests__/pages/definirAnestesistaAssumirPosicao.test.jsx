@@ -93,11 +93,17 @@ describe('Lista de colegas (dono 17/08)', () => {
     expect(screen.getByText(/2 cirurgias · 1 terminada/)).toBeTruthy()
   })
 
-  it('cada colega vem com onde ele está agora (posição na fila)', () => {
+  // A LISTA É SÓ DE NOMES, EM ORDEM ALFABÉTICA (dono 17/08): a posição na fila e
+  // a contagem de cirurgias saíram do rótulo — quem escolhe aqui procura UMA
+  // pessoa pelo nome, e o texto extra fazia cada linha virar uma frase para ler.
+  it('lista os colegas só pelo nome, em ordem alfabética', () => {
     render(<DefinirAnestesistaSheet escala={escalaComRodape} sala="Sala 5" turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
     fireEvent.click(screen.getByRole('combobox'))
-    // STAUB é o 2º do rodapé matutino e tem 1 cirurgia não terminada no turno
-    expect(screen.getByRole('option', { name: /GUILHERME STAUB · 2º na fila/ })).toBeTruthy()
+    const opcoes = screen.getAllByRole('option').map((o) => o.textContent.trim())
+    expect(opcoes.some((t) => /na fila|cirurgia/.test(t))).toBe(false)
+    // "Sem anestesista (?)" abre a lista; o resto vem ordenado em pt-BR
+    const nomes = opcoes.slice(1)
+    expect(nomes).toEqual([...nomes].sort((a, b) => a.localeCompare(b, 'pt-BR')))
   })
 
   it('sem ninguém escolhido o Confirmar existe, porém desabilitado', () => {

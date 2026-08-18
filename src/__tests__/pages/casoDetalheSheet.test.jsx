@@ -70,11 +70,13 @@ const abrirTempo = () =>
 beforeEach(() => vi.clearAllMocks())
 
 describe('Residente do caso (dono 29/07)', () => {
+  // A LISTA JÁ ABRE (dono 17/08): o seletor fechado exigia um segundo toque só
+  // para ver os nomes. O editor vem num sheet próprio, de baixo para cima, para o
+  // cartão do caso não mudar de tamanho no meio da leitura.
   it('escolher o residente grava uid + nome no CASO', async () => {
     montar()
     fireEvent.click(screen.getByRole('button', { name: 'Trocar residente' }))
-    fireEvent.click(screen.getByRole('combobox'))
-    fireEvent.click(screen.getByRole('option', { name: 'Augusto' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Augusto' }))
     await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
     expect(atualizarCaso.mock.calls[0][2]).toEqual({ residente: 'Augusto', residenteUserId: 'uid-augusto' })
   })
@@ -83,8 +85,7 @@ describe('Residente do caso (dono 29/07)', () => {
     const comResidente = { ...caso, residente: 'Augusto', residenteUserId: 'uid-augusto' }
     montar({}, { ...escala, casos: [comResidente] })
     fireEvent.click(screen.getByRole('button', { name: 'Trocar residente' }))
-    fireEvent.click(screen.getByRole('combobox'))
-    fireEvent.click(screen.getByRole('option', { name: 'Sem residente' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sem residente' }))
     await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
     expect(atualizarCaso.mock.calls[0][2]).toEqual({ residente: null, residenteUserId: null })
   })
@@ -105,24 +106,24 @@ describe('Residente do caso (dono 29/07)', () => {
 })
 
 describe('Cirurgião do caso (dono 17/08)', () => {
+  // SÓ DIGITAÇÃO (dono 17/08): a lista de sugestões saiu — quem corrige o nome do
+  // cirurgião aqui já sabe o nome certo, e a lista atrapalhava mais que ajudava.
   it('trocar o cirurgião grava no CASO — mesmo campo do "Adicionar caso"', async () => {
     montar()
     fireEvent.click(screen.getByRole('button', { name: 'Trocar cirurgião' }))
-    fireEvent.click(screen.getByRole('combobox'))
-    fireEvent.click(screen.getByRole('option', { name: 'Outro… (digitar)' }))
     fireEvent.change(screen.getByPlaceholderText(/Eduardo Baldissera/), { target: { value: 'Liana W' } })
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
     expect(atualizarCaso.mock.calls[0][2]).toEqual({ cirurgiao: 'Liana W' })
   })
 
-  it('sugere os cirurgiões JÁ na escala do dia (evita a mesma pessoa em duas grafias)', () => {
+  it('o editor do cirurgião é campo aberto, sem lista de sugestões', () => {
     const outro = { ...caso, id: 'c2', ordem: 1, cirurgiao: 'Liana Winkelmann' }
     montar({}, { ...escala, casos: [caso, outro] })
     fireEvent.click(screen.getByRole('button', { name: 'Trocar cirurgião' }))
-    fireEvent.click(screen.getByRole('combobox'))
-    expect(screen.getByRole('option', { name: 'Liana Winkelmann' })).toBeTruthy()
-    expect(screen.getByRole('option', { name: 'Taciana A' })).toBeTruthy()
+    expect(screen.getByPlaceholderText(/Eduardo Baldissera/)).toBeTruthy()
+    expect(screen.queryByRole('combobox')).toBeNull()
+    expect(screen.queryByRole('option')).toBeNull()
   })
 
   it('quem não edita não troca o cirurgião', () => {
@@ -247,5 +248,26 @@ describe('Ajuda marcada pela aba Completa (dono 29/07)', () => {
   it('caso sem dono ("?") também não oferece', () => {
     montar({}, { ...escala, casos: [{ ...caso, anestesista: '?' }] })
     expect(screen.queryByRole('button', { name: /como ajuda/ })).toBeNull()
+  })
+})
+
+describe('Editores em sheet próprio (dono 17/08)', () => {
+  // Expandindo dentro do cartão, o painel mudava de altura no meio da leitura e a
+  // pessoa perdia o lugar. Agora cada editor chega por cima, de baixo para cima.
+  it('"Definir término" abre um sheet por cima, sem crescer o cartão', () => {
+    montar()
+    const antes = document.querySelectorAll('[data-slot="sheet-content"], [role="dialog"]').length
+    fireEvent.click(screen.getByRole('button', { name: /Definir término|Término desta cirurgia/i }))
+    const depois = document.querySelectorAll('[data-slot="sheet-content"], [role="dialog"]').length
+    expect(depois).toBeGreaterThan(antes)
+    expect(screen.getByText('Tempo faltante')).toBeTruthy()
+  })
+
+  it('a lista de sala já vem aberta, com o local atual marcado', () => {
+    montar()
+    fireEvent.click(screen.getByRole('button', { name: 'Mudar sala/local' }))
+    // opções visíveis de imediato — sem um segundo toque para abrir seletor
+    expect(screen.getByRole('button', { name: /Bloco M - Sala 3/i })).toBeTruthy()
+    expect(screen.queryByRole('combobox')).toBeNull()
   })
 })
