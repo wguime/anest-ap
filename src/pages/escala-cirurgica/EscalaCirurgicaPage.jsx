@@ -17,6 +17,7 @@ import BarraControles from './BarraControles'
 import useAgoraMinuto from './useAgoraMinuto'
 import MinhasEscalasView from './MinhasEscalasView'
 import BoardView from './BoardView'
+import FaixaUrgencias from './FaixaUrgencias'
 import LiberacoesView from './LiberacoesView'
 import ImportarEscalaPage from './ImportarEscalaPage'
 import ImportarEscalaFdsPage from './ImportarEscalaFdsPage'
@@ -397,7 +398,17 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           {aba === 'minhas' && (
             <MinhasEscalasView escala={escala} meuAlias={meuAlias} meuUid={meuUid} turno={turnoCasos} onVerBoard={() => setAba('board')} />
           )}
-          {aba === 'board' && <BoardView escala={escala} meuAlias={meuAlias} meuUid={meuUid} turno={turnoCasos} onNavigate={onNavigate} />}
+          {aba === 'board' && (
+            <>
+              {/* Urgências do HRO (dono 18/08): ocupação das 2 salas do contrato +
+                  fila. FORA da BoardView de propósito — os EmptyStates dela matariam
+                  a faixa no dia sem escala publicada com urgência à mão. */}
+              {!modoFds && (
+                <FaixaUrgencias escala={escala} hospital={hospital} turno={turnoCasos} hoje={hoje} />
+              )}
+              <BoardView escala={escala} meuAlias={meuAlias} meuUid={meuUid} turno={turnoCasos} onNavigate={onNavigate} />
+            </>
+          )}
           {aba === 'liberacoes' && (() => {
             // MODO FDS: a view opera sobre a linha 'fds' (fila única + marcações)
             // e os casos mesclados dos 3 hospitais; troca/P4-coringa ficam fora.
