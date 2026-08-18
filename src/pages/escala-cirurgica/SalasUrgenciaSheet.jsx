@@ -59,12 +59,17 @@ export default function SalasUrgenciaSheet({ escala, turno, onClose }) {
   }
 
   return (
-    <Sheet open onClose={onClose} position="bottom" className="!h-auto max-h-[88vh]">
-      <SheetContent className="flex flex-col">
-        <SheetHeader>
+    /* API do DS: `open`/`onOpenChange` no Sheet raiz e `side` no SheetContent —
+       `position`/`onClose` no raiz são IGNORADOS em silêncio e o sheet abre como
+       painel lateral default com o título fora do lugar (bug reportado pelo dono
+       18/08 15h). `!h-auto max-h-[88vh]` é o padrão dos sheets da escala (17/08):
+       o painel acompanha o conteúdo; o corpo do DS já rola sozinho. */
+    <Sheet open onOpenChange={(o) => !o && onClose?.()}>
+      <SheetContent side="bottom" className="!h-auto max-h-[88vh]">
+        <SheetHeader className="pb-2">
           <SheetTitle>Salas do contrato — {turno === 'vespertino' ? 'tarde' : 'manhã'}</SheetTitle>
         </SheetHeader>
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 pb-2">
+        <div className="space-y-3 px-1 pb-2">
           <p className="text-xs text-muted-foreground">
             Marque onde cada papel está <b className="font-semibold text-foreground">hoje</b>.
             Em Automático vale o de sempre; a marcação só muda a quem a urgência é
@@ -85,7 +90,7 @@ export default function SalasUrgenciaSheet({ escala, turno, onClose }) {
             </div>
           ))}
         </div>
-        <div className="flex gap-2 border-t border-border px-4 py-3">
+        <div className="flex gap-2 border-t border-border px-1 pb-4 pt-3">
           <Button variant="outline" className="flex-1" onClick={onClose}>Cancelar</Button>
           <Button className="flex-1" onClick={salvar} disabled={salvando}>
             {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}

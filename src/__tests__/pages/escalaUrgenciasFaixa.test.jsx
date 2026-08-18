@@ -255,6 +255,13 @@ describe('salas configuráveis por dia/turno', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Configurar salas do contrato' }))
     expect(screen.getByText(/Salas do contrato — manhã/)).toBeTruthy()
 
+    // BOTTOM sheet com altura solta — a API do DS ignora props erradas em
+    // silêncio (`position` no raiz) e o sheet abria como painel LATERAL com o
+    // título fora do lugar (bug do dono 18/08 15h). O side vira classe.
+    const painel = document.querySelector('[data-slot="sheet-content"]')
+    expect(painel.className).toContain('bottom-0')
+    expect(painel.className).toContain('!h-auto')
+
     // marca a ortopedia na Sala 3 (Select do DS: combobox → option)
     const combos = screen.getAllByRole('combobox')
     fireEvent.click(combos[2]) // Plantão, Sobreaviso, Ortopedia, CO
