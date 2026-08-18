@@ -46,6 +46,11 @@ precisa marcar nada:
 - Endoscopia/colonoscopia fora do centro cirúrgico e hemodinâmica **não entram** — é
   o que diz o contrato.
 
+**E se a ortopedia ou o CO mudarem de sala no dia?** Toquem na engrenagem (⚙) no
+canto do quadro de urgências e marquem onde cada um está — dá para ajustar
+Plantão, Sobreaviso, Ortopedia e CO, por turno. Em "Automático" vale o de sempre
+(ortopedia na 4, CO na 7).
+
 **Por que marcar importa de verdade.** O que não é marcado não conta. Nos últimos 30
 dias, **34% das urgências do HRO ficaram sem nenhuma marcação** (25 de 73) — e é
 exatamente esse número que vamos levar ao hospital para discutir o contrato. Sem

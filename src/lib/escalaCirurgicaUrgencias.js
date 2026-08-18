@@ -104,6 +104,28 @@ export const SALAS_FORA_DO_CONTRATO_HRO = Object.freeze({
   DIGIMAX: 'outro_hospital',
 })
 
+/**
+ * Salas dos papéis do contrato NO DIA (dono 18/08, 2ª decisão): a ortopedia opera
+ * "normalmente na sala 4" — mas normalmente não é sempre. `urgencias_meta` no
+ * cabeçalho da escala guarda, POR TURNO de publicação, onde cada papel está:
+ *   { matutino: { orto, co, plantao, sobreaviso }, vespertino: {...} }
+ * Campo ausente/null = automático (default do contrato + heurística por ordem de
+ * início). Merge raso: marcar só o CO não mexe na ortopedia.
+ */
+export function salasContrato(urgenciasMeta, turno) {
+  const cfg = (urgenciasMeta && urgenciasMeta[turno === 'vespertino' ? 'vespertino' : 'matutino']) || {}
+  const limpo = (v) => {
+    const t = String(v || '').trim()
+    return t || null
+  }
+  return {
+    orto: limpo(cfg.orto),
+    co: limpo(cfg.co),
+    plantao: limpo(cfg.plantao),
+    sobreaviso: limpo(cfg.sobreaviso),
+  }
+}
+
 const TIPOS_URGENTES = new Set(['urgencia', 'emergencia'])
 
 /** O caso é urgência ou emergência? (tipo, nunca status — regra da matriz canônica) */
@@ -131,10 +153,23 @@ export function turnoContratual({ turno, agoraMin, dataEscala, hojeIso, fds = fa
  * casos) E "Sala 5" (3); "Sala 7 - CO" (15) E "Sala 7" (1). Comparar string crua
  * classificaria 4 casos reais errado.
  */
-export function papelDaSalaHro(sala) {
+export function papelDaSalaHro(sala, salas = null) {
   const s = normNome(sala).replace(/\s+/g, ' ')
   if (!s) return 'geral'
   if (SALAS_FORA_DO_CONTRATO_HRO[s]) return 'fora'
+  // Sala MARCADA vence o default por inteiro naquele papel: se o dia diz que a
+  // ortopedia está na Sala 3, a Sala 4 volta a ser sala comum — quem marcou
+  // sabe onde a equipe está, o regex só conhece o "normalmente".
+  const marcada = (v) => v != null && normNome(v).replace(/\s+/g, ' ') === s
+  if (salas?.orto || salas?.co) {
+    if (marcada(salas.orto)) return 'orto'
+    if (marcada(salas.co)) return 'co'
+    if (salas.orto && salas.co) return 'geral' // os dois marcados: defaults desligados
+    // só um papel marcado: o OUTRO continua no default
+    if (!salas.orto && (/^SALA ?4\b/.test(s))) return 'orto'
+    if (!salas.co && (/^SALA ?7\b/.test(s) || /^C ?\.? ?O ?\.?$/.test(s) || /\bCO$/.test(s))) return 'co'
+    return 'geral'
+  }
   if (/^SALA ?4\b/.test(s)) return 'orto'
   if (/^SALA ?7\b/.test(s)) return 'co'
   if (/^C ?\.? ?O ?\.?$/.test(s) || /\bCO$/.test(s)) return 'co'
@@ -228,6 +263,7 @@ export function estadoUrgencias(casos = [], opts = {}) {
     turno = 'matutino',
     fds = false,
     contrato = CONTRATO_HRO,
+    salas = null, // salasContrato(urgenciasMeta, turno) — null = tudo automático
   } = opts
 
   const turnoContrato = turnoContratual({ turno, agoraMin, dataEscala, hojeIso, fds })
@@ -253,6 +289,8 @@ export function estadoUrgencias(casos = [], opts = {}) {
     foraDaConta: [],
     suspeitas: [],
     esperaMaxMin: null,
+    postos: papeis.map((papel) => ({ papel, item: null })),
+    extras: [],
   }
 
   // O contrato é do HRO. Deixar isso explícito impede a feature de vazar para
@@ -268,7 +306,7 @@ export function estadoUrgencias(casos = [], opts = {}) {
 
   for (const caso of casos) {
     if (!ehUrgencia(caso) || casoConcluido(caso)) continue
-    const papel = papelDaSalaHro(caso?.sala)
+    const papel = papelDaSalaHro(caso?.sala, salas)
 
     if (papel === 'fora') {
       foraDaConta.push({ ...itemDe(caso, { agoraMin, dataEscala, papel }), motivo: motivoForaDoContrato(caso?.sala) })
@@ -307,9 +345,12 @@ export function estadoUrgencias(casos = [], opts = {}) {
     ocupadas === 0 ? 'livre' : ocupadas < capacidade ? 'parcial' : ocupadas === capacidade ? 'cheio' : 'acima'
 
   const esperas = fila.map((f) => f.esperaMin).filter((v) => v != null)
+  const { postos, extras } = distribuirPostos(emAndamento, papeis, salas)
 
   return {
     ...vazio,
+    postos,
+    extras,
     ativo: emAndamento.length + aConfirmar.length + fila.length + dedicadas.length > 0,
     ocupadas,
     livres: Math.max(0, capacidade - ocupadas),
@@ -342,6 +383,34 @@ export function inicioDaUrgencia(caso, { dataEscala } = {}) {
   const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   if (dataEscala && iso !== dataEscala) return null
   return d.getHours() * 60 + d.getMinutes()
+}
+
+/**
+ * Distribui as urgências em andamento pelos POSTOS do contrato.
+ *
+ * Sala MARCADA casa primeiro (se o plantão está marcado "Sala 6", a urgência da
+ * Sala 6 é dele, não importa a ordem de início); as não casadas preenchem os
+ * postos vagos por ordem de início (mais antiga primeiro — quem começou antes
+ * "é" o plantonista para fins de leitura); o que sobra é EXTRA, fora do
+ * contrato. A marcação muda só o RÓTULO da atribuição: a contagem de ocupação
+ * (2 de 2, acima) nunca depende dela.
+ */
+export function distribuirPostos(emAndamento = [], papeis = [], salas = null) {
+  const chaveSala = (v) => normNome(v).replace(/\s+/g, ' ')
+  const mapa = { plantonista: salas?.plantao || null, sobreaviso: salas?.sobreaviso || null }
+  const restantes = [...emAndamento].sort((a, b) => (b.desdeMin ?? 0) - (a.desdeMin ?? 0))
+  const postos = papeis.map((papel) => ({ papel, item: null }))
+
+  for (const posto of postos) {
+    const marcada = mapa[posto.papel]
+    if (!marcada) continue
+    const i = restantes.findIndex((it) => chaveSala(it.sala) === chaveSala(marcada))
+    if (i >= 0) posto.item = restantes.splice(i, 1)[0]
+  }
+  for (const posto of postos) {
+    if (!posto.item && restantes.length) posto.item = restantes.shift()
+  }
+  return { postos, extras: restantes }
 }
 
 /** "HH:MM" → minutos do dia (local, sem depender do parse de Date). */

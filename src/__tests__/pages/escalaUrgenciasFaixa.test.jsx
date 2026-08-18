@@ -20,9 +20,9 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { ThemeProvider, ToastProvider } from '@/design-system'
 import FaixaUrgencias from '@/pages/escala-cirurgica/FaixaUrgencias'
 
-const { setStatusCirurgia } = vi.hoisted(() => ({ setStatusCirurgia: vi.fn(async () => {}) }))
+const { setStatusCirurgia, definirSalasUrgencia } = vi.hoisted(() => ({ setStatusCirurgia: vi.fn(async () => {}), definirSalasUrgencia: vi.fn(async () => {}) }))
 vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
-  useEscalaCirurgicaActions: () => ({ setStatusCirurgia }),
+  useEscalaCirurgicaActions: () => ({ setStatusCirurgia, definirSalasUrgencia }),
   HOSPITAL_LABEL: { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' },
 }))
 vi.mock('@/contexts/UserContext', () => ({
@@ -207,5 +207,72 @@ describe('invariantes do módulo', () => {
     montar([iniciada('c1', 'Sala 6', { statusAtualizadoEm: `${HOJE}T05:00:00` })])
     fireEvent.click(screen.getByRole('button', { name: 'Terminada' }))
     expect(setStatusCirurgia).toHaveBeenCalledTimes(1)
+  })
+})
+
+/**
+ * SALAS CONFIGURÁVEIS (dono 18/08, 2ª decisão): "as salas do CO e ortopedia
+ * podem mudar" — o ⚙ da faixa abre o sheet que marca onde cada papel está
+ * NESTE dia/turno. Config vive em urgencias_meta (sobrevive à republicação).
+ */
+describe('salas configuráveis por dia/turno', () => {
+  it('a config do dia muda o card dedicado: ortopedia marcada na Sala 3', () => {
+    render(
+      <FaixaUrgencias
+        escala={{
+          ...escalaCom([
+            iniciada('c1', 'Sala 6'),
+            caso('e3', 'Sala 3', { tipo: 'eletiva', anestesista: 'RAFAEL', anestesistaUserId: 'u-rafael' }),
+          ]),
+          urgenciasMeta: { matutino: { orto: 'Sala 3' } },
+        }}
+        hospital="hro" turno="matutino" hoje={HOJE}
+      />,
+      { wrapper: wrap },
+    )
+    // o card da ortopedia agora aponta a Sala 3 e quem a cobre
+    const orto = screen.getByText('Orto').closest('div')
+    expect(orto.textContent).toContain('Sala 3')
+    expect(orto.textContent).toContain('Rafael')
+  })
+
+  it('urgência na Sala 4 vira comum quando a ortopedia foi marcada noutra sala', () => {
+    render(
+      <FaixaUrgencias
+        escala={{
+          ...escalaCom([iniciada('c1', 'Sala 4')]),
+          urgenciasMeta: { matutino: { orto: 'Sala 3' } },
+        }}
+        hospital="hro" turno="matutino" hoje={HOJE}
+      />,
+      { wrapper: wrap },
+    )
+    expect(screen.getByText('1 de 2 salas')).toBeTruthy() // ocupou o plantonista
+  })
+
+  it('o ⚙ abre o sheet e salvar chama a action com o payload do turno', async () => {
+    montar([iniciada('c1', 'Sala 6')])
+    fireEvent.click(screen.getByRole('button', { name: 'Configurar salas do contrato' }))
+    expect(screen.getByText(/Salas do contrato — manhã/)).toBeTruthy()
+
+    // marca a ortopedia na Sala 3 (Select do DS: combobox → option)
+    const combos = screen.getAllByRole('combobox')
+    fireEvent.click(combos[2]) // Plantão, Sobreaviso, Ortopedia, CO
+    fireEvent.click(screen.getByRole('option', { name: 'Sala 3' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+
+    await vi.waitFor(() => expect(definirSalasUrgencia).toHaveBeenCalled())
+    const [escalaArg, turnoArg, cfgArg] = definirSalasUrgencia.mock.calls[0]
+    expect(escalaArg.id).toBe('e1')
+    expect(turnoArg).toBe('matutino')
+    expect(cfgArg).toEqual({ orto: 'Sala 3' })
+  })
+
+  it('tudo em Automático salva null — o jsonb não guarda ruído', async () => {
+    montar([iniciada('c1', 'Sala 6')])
+    fireEvent.click(screen.getByRole('button', { name: 'Configurar salas do contrato' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    await vi.waitFor(() => expect(definirSalasUrgencia).toHaveBeenCalled())
+    expect(definirSalasUrgencia.mock.calls[0][2]).toBeNull()
   })
 })

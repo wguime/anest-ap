@@ -288,3 +288,84 @@ describe('drift lib ↔ SQL do relatório', () => {
     )
   })
 })
+
+/**
+ * SALAS CONFIGURÁVEIS por dia/turno (dono 18/08, 2ª decisão): "as salas do CO e
+ * ortopedia podem mudar". `urgencias_meta` no cabeçalho marca onde cada papel
+ * está; ausente = automático. A marcação muda a ATRIBUIÇÃO, nunca a contagem.
+ */
+import { distribuirPostos, salasContrato } from '@/lib/escalaCirurgicaUrgencias'
+
+describe('salasContrato — config por turno sobre o default', () => {
+  it('sem meta, tudo automático; meta parcial só mexe no papel marcado', () => {
+    expect(salasContrato(null, 'matutino')).toEqual({ orto: null, co: null, plantao: null, sobreaviso: null })
+    const meta = { matutino: { orto: 'Sala 3' } }
+    expect(salasContrato(meta, 'matutino').orto).toBe('Sala 3')
+    expect(salasContrato(meta, 'matutino').co).toBeNull()
+    // turnos independentes: a config da manhã não vaza para a tarde
+    expect(salasContrato(meta, 'vespertino').orto).toBeNull()
+  })
+})
+
+describe('papelDaSalaHro com salas marcadas — a config vence o "normalmente"', () => {
+  it('ortopedia marcada na Sala 3: a Sala 3 vira orto e a Sala 4 volta a ser comum', () => {
+    const salas = { orto: 'Sala 3', co: null, plantao: null, sobreaviso: null }
+    expect(papelDaSalaHro('Sala 3', salas)).toBe('orto')
+    expect(papelDaSalaHro('Sala 4', salas)).toBe('geral')
+    // o CO não foi marcado → segue no default
+    expect(papelDaSalaHro('Sala 7 - CO', salas)).toBe('co')
+  })
+
+  it('exclusões continuam valendo mesmo com config', () => {
+    const salas = { orto: 'Sala 3', co: 'Sala 9', plantao: null, sobreaviso: null }
+    expect(papelDaSalaHro('Exames', salas)).toBe('fora')
+    expect(papelDaSalaHro('Sala 9', salas)).toBe('co')
+    expect(papelDaSalaHro('Sala 7 - CO', salas)).toBe('geral') // os dois marcados: default desligado
+  })
+
+  it('config muda a atribuição na conta: urgência da Sala 4 pesa no plantonista quando a orto está na 3', () => {
+    const estado = em(
+      [caso('Sala 4', { id: 'u4' }), caso('Sala 3', { id: 'u3' })],
+      { salas: { orto: 'Sala 3', co: null, plantao: null, sobreaviso: null } },
+    )
+    expect(estado.fila.map((f) => f.id)).toEqual(['u4']) // Sala 4 virou comum
+    expect(estado.dedicadas.map((d) => d.id)).toEqual(['u3'])
+  })
+})
+
+describe('distribuirPostos — sala marcada casa primeiro, o resto por ordem de início', () => {
+  const item = (id, sala, desdeMin) => ({ id, sala, desdeMin, caso: { id } })
+
+  it('sem marcação: mais antiga é o plantão, seguinte o sobreaviso, resto extra', () => {
+    const { postos, extras } = distribuirPostos(
+      [item('b', 'Sala 2', 15), item('a', 'Sala 6', 40), item('c', 'Sala 3', 5)],
+      ['plantonista', 'sobreaviso'],
+    )
+    expect(postos.map((p) => p.item?.id)).toEqual(['a', 'b'])
+    expect(extras.map((e) => e.id)).toEqual(['c'])
+  })
+
+  it('plantão marcado "Sala 2": a urgência da Sala 2 é dele mesmo tendo começado depois', () => {
+    const { postos } = distribuirPostos(
+      [item('a', 'Sala 6', 40), item('b', 'Sala 2', 15)],
+      ['plantonista', 'sobreaviso'],
+      { plantao: 'Sala 2', sobreaviso: null },
+    )
+    expect(postos[0]).toMatchObject({ papel: 'plantonista', item: { id: 'b' } })
+    expect(postos[1]).toMatchObject({ papel: 'sobreaviso', item: { id: 'a' } })
+  })
+
+  it('a marcação NUNCA muda a contagem — 3 em andamento seguem sendo "acima"', () => {
+    const estado = em(
+      [
+        caso('Sala 6', { id: 'c1', statusCirurgia: 'iniciada', statusAtualizadoEm: `${HOJE}T09:00:00` }),
+        caso('Sala 2', { id: 'c2', statusCirurgia: 'iniciada', statusAtualizadoEm: `${HOJE}T10:00:00` }),
+        caso('Sala 3', { id: 'c3', statusCirurgia: 'iniciada', statusAtualizadoEm: `${HOJE}T10:30:00` }),
+      ],
+      { salas: { orto: null, co: null, plantao: 'Sala 3', sobreaviso: 'Sala 2' } },
+    )
+    expect(estado.nivel).toBe('acima')
+    expect(estado.postos.map((p) => p.item?.id)).toEqual(['c3', 'c2']) // marcados casaram
+    expect(estado.extras.map((e) => e.id)).toEqual(['c1']) // o não marcado virou extra
+  })
+})

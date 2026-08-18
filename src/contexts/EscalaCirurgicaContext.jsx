@@ -918,11 +918,35 @@ export function EscalaCirurgicaProvider({ children }) {
     }
   }, [state.p4Hospital, toast])
 
+  // Salas dos papéis do contrato de urgência do HRO, POR TURNO (dono 18/08):
+  // { orto?, co?, plantao?, sobreaviso? } — null/ausente = automático; cfg null
+  // limpa o turno inteiro. Otimista como as demais: a faixa reflete na hora e
+  // o realtime confirma para o resto da equipe.
+  const definirSalasUrgencia = useCallback(async (escala, turno, cfg) => {
+    if (String(escala.id).startsWith('demo-')) {
+      toast({ variant: 'warning', title: 'Indisponível na demonstração' })
+      return
+    }
+    const chave = turno === 'vespertino' ? 'vespertino' : 'matutino'
+    const anterior = escala.urgenciasMeta || {}
+    const urgenciasMeta = cfg == null
+      ? Object.fromEntries(Object.entries(anterior).filter(([k]) => k !== chave))
+      : { ...anterior, [chave]: cfg }
+    dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { urgenciasMeta } })
+    try {
+      await svc.patchUrgenciasMeta(escala.id, chave, cfg)
+    } catch (error) {
+      dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { urgenciasMeta: anterior } })
+      toast({ variant: 'error', title: 'Erro ao salvar as salas', description: error.message })
+      throw error
+    }
+  }, [toast])
+
   const actionsValue = useMemo(() => ({
     setData, prefetch, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista,
     setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda,
-    reordenarAjuda, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, refresh,
-  }), [prefetch, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda, reordenarAjuda, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, refresh])
+    reordenarAjuda, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, definirSalasUrgencia, refresh,
+  }), [prefetch, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda, reordenarAjuda, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, definirSalasUrgencia, refresh])
 
   const stateValue = useMemo(() => ({
     escalas: state.escalas, p4Hospital: state.p4Hospital, data, loading, hoje,
@@ -943,7 +967,7 @@ const ACTIONS_FALLBACK = {
   toggleLiberacao: async () => {}, setLocalAnestesista: async () => {}, setAnestesistaCasos: async () => {},
   atualizarCaso: async () => {}, adicionarAjuda: async () => {}, removerAjuda: async () => {},
   definirP4Hospital: async () => {}, marcarTroca: async () => {}, executarSubstituicao: async () => {},
-  desfazerSubstituicao: async () => {}, refresh: async () => {},
+  desfazerSubstituicao: async () => {}, definirSalasUrgencia: async () => {}, refresh: async () => {},
 }
 
 export function useEscalaCirurgicaActions() {

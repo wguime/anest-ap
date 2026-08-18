@@ -1,0 +1,97 @@
+/**
+ * SalasUrgenciaSheet — marca ONDE cada papel do contrato de urgência do HRO está
+ * NESTE dia/turno: Plantão · Sobreaviso · Ortopedia · CO.
+ *
+ * PORQUÊ (dono 18/08): a ortopedia opera "normalmente na sala 4" e o CO na 7 —
+ * mas essas salas MUDAM, e com elas muda quem absorve a urgência e quem pesa nas
+ * 2 vagas do contrato. O default continua no código (o normal não exige toque
+ * nenhum); este sheet é o ajuste do dia que foge do normal.
+ *
+ * "Automático" = comportamento de sempre: orto/CO nos defaults do contrato,
+ * plantão/sobreaviso atribuídos por ordem de início. Marcar plantão/sobreaviso
+ * numa sala só muda o RÓTULO da atribuição — a contagem (2 de 2, acima) nunca
+ * depende disso. Config é POR TURNO (turnos independentes, regra de 13/08) e
+ * sobrevive à republicação (coluna própria, fora do reset).
+ */
+import { useState } from 'react'
+import { Loader2 } from 'lucide-react'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, Select, Button } from '@/design-system'
+import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
+import { salasContrato } from '@/lib/escalaCirurgicaUrgencias'
+import { casosResolvidos, salasDoHospital } from './utils'
+
+const AUTO = '__auto__'
+
+const LINHAS = [
+  { campo: 'plantao', label: 'Plantão', hint: 'automático: a urgência mais antiga em andamento' },
+  { campo: 'sobreaviso', label: 'Sobreaviso', hint: 'automático: a segunda em andamento' },
+  { campo: 'orto', label: 'Ortopedia', hint: 'automático: Sala 4' },
+  { campo: 'co', label: 'CO', hint: 'automático: Sala 7 - CO · dedicado só de manhã' },
+]
+
+export default function SalasUrgenciaSheet({ escala, turno, onClose }) {
+  const { definirSalasUrgencia } = useEscalaCirurgicaActions()
+  const atual = salasContrato(escala?.urgenciasMeta, turno)
+  const [valores, setValores] = useState(() => ({
+    plantao: atual.plantao || AUTO,
+    sobreaviso: atual.sobreaviso || AUTO,
+    orto: atual.orto || AUTO,
+    co: atual.co || AUTO,
+  }))
+  const [salvando, setSalvando] = useState(false)
+
+  // Mesmas opções de sala do "Adicionar caso": as do dia + as canônicas do HRO.
+  const opcoes = [
+    { value: AUTO, label: 'Automático' },
+    ...salasDoHospital('hro', casosResolvidos(escala)).map((s) => ({ value: s, label: s })),
+  ]
+
+  const salvar = async () => {
+    setSalvando(true)
+    try {
+      const cfg = Object.fromEntries(
+        Object.entries(valores).filter(([, v]) => v && v !== AUTO),
+      )
+      // tudo em automático = limpar o turno (o jsonb não guarda ruído)
+      await definirSalasUrgencia(escala, turno, Object.keys(cfg).length ? cfg : null)
+      onClose?.()
+    } catch { /* toast no context */ } finally { setSalvando(false) }
+  }
+
+  return (
+    <Sheet open onClose={onClose} position="bottom" className="!h-auto max-h-[88vh]">
+      <SheetContent className="flex flex-col">
+        <SheetHeader>
+          <SheetTitle>Salas do contrato — {turno === 'vespertino' ? 'tarde' : 'manhã'}</SheetTitle>
+        </SheetHeader>
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 pb-2">
+          <p className="text-xs text-muted-foreground">
+            Marque onde cada papel está <b className="font-semibold text-foreground">hoje</b>.
+            Em Automático vale o de sempre; a marcação só muda a quem a urgência é
+            atribuída — a conta de 2 salas não muda.
+          </p>
+          {LINHAS.map((l) => (
+            <div key={l.campo}>
+              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground" htmlFor={`su-${l.campo}`}>
+                {l.label}
+              </label>
+              <Select
+                id={`su-${l.campo}`}
+                options={opcoes}
+                value={valores[l.campo]}
+                onChange={(v) => setValores((prev) => ({ ...prev, [l.campo]: v }))}
+              />
+              <p className="mt-0.5 text-[11px] text-muted-foreground">{l.hint}</p>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2 border-t border-border px-4 py-3">
+          <Button variant="outline" className="flex-1" onClick={onClose}>Cancelar</Button>
+          <Button className="flex-1" onClick={salvar} disabled={salvando}>
+            {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  )
+}

@@ -587,6 +587,18 @@ quando há urgência) mostra isso em tempo real.
   `bg-success/[0.14] dark:/20`); **vermelho SÓ no excedente/badge/nota** — fundo
   vermelho sob cards verdes foi vetado como "vitral". Toque abre o `CasoDetalheSheet`
   (onde Iniciada/Terminada já são marcados). Sem urgência: tela idêntica à de antes.
+- **Salas CONFIGURÁVEIS por dia/turno (dono 18/08, 2ª decisão)**: "as salas do CO e
+  ortopedia podem mudar" — `urgencias_meta` jsonb no cabeçalho (migration
+  `20260818190000`), chaveado por turno de PUBLICAÇÃO, gravado pela MESMA
+  `rpc_escala_patch_liberacao` (campo novo no CHECK; por/em carimbados server-side).
+  Coluna própria DE PROPÓSITO: reusar `linha_overrides` morreria no reset da
+  republicação. `salasContrato(meta, turno)` resolve config→default;
+  `papelDaSalaHro(sala, salas)` — sala marcada VENCE o default por papel (orto na
+  Sala 3 ⇒ Sala 4 vira comum); `distribuirPostos` casa sala marcada primeiro, resto
+  por ordem de início; **a marcação muda só a ATRIBUIÇÃO, nunca a contagem**. UI: ⚙
+  no cabeçalho da faixa → `SalasUrgenciaSheet` (4 Selects + Automático; tudo
+  automático salva null). `urgenciasMeta` PRECISOU entrar no CAMEL_TO_SNAKE (classe
+  fds_meta/conta_duplicada_de).
 - **Relatório contratual**: modo `contrato-hro` planejado na skill `/escala-cirurgica`
   (pareamento 1º iniciada→1º terminada posterior = Achado 2; sweep-line com empate
   saída-antes-de-entrada; SUS = `upper(convenio) ~ '^SUS\M'`; tudo

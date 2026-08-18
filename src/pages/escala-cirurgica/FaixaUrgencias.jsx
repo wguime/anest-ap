@@ -28,11 +28,11 @@
  * do turno exibido — ocupação é do relógio (lib estadoUrgencias).
  */
 import { useMemo, useState } from 'react'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Settings2 } from 'lucide-react'
 import { Badge } from '@/design-system'
 import { fraseClinica } from '@/lib/colunaLiberacao'
 import {
-  CONTRATO_HRO, GRAVIDADE_LABEL, estadoUrgencias, papelDaSalaHro,
+  CONTRATO_HRO, GRAVIDADE_LABEL, estadoUrgencias, papelDaSalaHro, salasContrato,
 } from '@/lib/escalaCirurgicaUrgencias'
 import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
@@ -41,6 +41,7 @@ import useAgoraMinuto from './useAgoraMinuto'
 import { casosResolvidos, filtrarPorTurno, nomeAnestesistaExibicao, salaLiberacao } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import CasoDetalheSheet from './CasoDetalheSheet'
+import SalasUrgenciaSheet from './SalasUrgenciaSheet'
 
 const PAPEL_LABEL = { plantonista: 'Plantão', sobreaviso: 'Sobreaviso' }
 const DEDICADO_LABEL = { orto: 'Orto', co: 'CO' }
@@ -75,14 +76,18 @@ export default function FaixaUrgencias({ escala, hospital, turno, hoje }) {
   const { setStatusCirurgia } = useEscalaCirurgicaActions()
   const [detalhe, setDetalhe] = useState(null)
   const [todas, setTodas] = useState(false)
+  const [configurar, setConfigurar] = useState(false)
 
   // Ocupação é do relógio → dia INTEIRO; o turno só escolhe a linha do contrato.
   const casos = useMemo(() => casosResolvidos(escala), [escala])
+  // Salas dos papéis NO DIA (dono 18/08): urgencias_meta do cabeçalho vence o
+  // "normalmente Sala 4/Sala 7" quando marcado; ausente = automático.
+  const salas = useMemo(() => salasContrato(escala?.urgenciasMeta, turno), [escala?.urgenciasMeta, turno])
   const estado = useMemo(
     () => estadoUrgencias(casos, {
-      hospital, turno, agoraMin, dataEscala: escala?.data || null, hojeIso: hoje,
+      hospital, turno, agoraMin, dataEscala: escala?.data || null, hojeIso: hoje, salas,
     }),
-    [casos, hospital, turno, agoraMin, escala?.data, hoje],
+    [casos, hospital, turno, agoraMin, escala?.data, hoje, salas],
   )
 
   // Dedicados do TURNO EXIBIDO: quem cobre a Sala 4 / Sala 7 - CO agora. Casa
@@ -92,30 +97,27 @@ export default function FaixaUrgencias({ escala, hospital, turno, hoje }) {
     const doTurno = filtrarPorTurno(casos, turno)
     const linha = CONTRATO_HRO[estado.turnoContrato] || CONTRATO_HRO.manha
     return Object.keys(linha.dedicadas).map((papel) => {
-      const caso = doTurno.find((c) => papelDaSalaHro(c.sala) === papel && c.anestesistaUserId)
+      const caso = doTurno.find((c) => papelDaSalaHro(c.sala, salas) === papel && c.anestesistaUserId)
       const urg = estado.dedicadas.find((d) => d.papel === papel)
       return {
         papel,
-        sala: linha.dedicadas[papel],
+        sala: salas[papel] || linha.dedicadas[papel], // config do dia vence o default
         nome: caso
           ? nomeAnestesistaExibicao({ uid: caso.anestesistaUserId, alias: caso.anestesista, rosterByUid })
           : '',
         urgencia: urg || null,
       }
     })
-  }, [casos, turno, estado.turnoContrato, estado.dedicadas, rosterByUid])
+  }, [casos, turno, estado.turnoContrato, estado.dedicadas, rosterByUid, salas])
 
   if (hospital !== 'hro' || !estado.ativo) return null
 
   const nomeDe = (caso) =>
     nomeAnestesistaExibicao({ uid: caso?.anestesistaUserId, alias: caso?.anestesista, rosterByUid })
 
-  // Os N primeiros em andamento ocupam o contrato (mais antigo primeiro — quem
-  // começou antes "é" o plantonista para fins de leitura); o resto é EXTRA.
-  const andamento = [...estado.emAndamento].sort((a, b) => (b.desdeMin ?? 0) - (a.desdeMin ?? 0))
-  const noContrato = andamento.slice(0, estado.capacidade)
-  const extras = andamento.slice(estado.capacidade)
-  const livres = estado.papeis.slice(noContrato.length)
+  // Postos e excedente vêm da LIB (distribuirPostos): sala marcada casa
+  // primeiro, o resto por ordem de início — testável fora do React.
+  const { postos, extras } = estado
 
   const filaVisivel = todas ? estado.fila : estado.fila.slice(0, 3)
   const acima = estado.nivel === 'acima'
@@ -146,25 +148,34 @@ export default function FaixaUrgencias({ escala, hospital, turno, hoje }) {
             )}
             {estado.nivel !== 'cheio' && !acima && `${estado.livres} livre${estado.livres === 1 ? '' : 's'}`}
           </span>
+          {podeEditar && (
+            <button
+              type="button"
+              onClick={() => setConfigurar(true)}
+              aria-label="Configurar salas do contrato"
+              className="-my-1 flex min-h-[32px] min-w-[32px] items-center justify-center text-muted-foreground active:opacity-60"
+            >
+              <Settings2 className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
 
         {/* POSTOS do contrato — grade 2 colunas, um card de UMA linha cada */}
         <div className="grid grid-cols-2 gap-1.5">
-          {noContrato.map((it) => (
+          {postos.map(({ papel, item }) => item ? (
             <button
-              key={it.id}
+              key={papel}
               type="button"
-              onClick={() => setDetalhe(it.caso)}
+              onClick={() => setDetalhe(item.caso)}
               className={`${CARD_BASE} border-border bg-success/[0.14] dark:bg-success/20`}
             >
-              <SeloSala>{salaLiberacao(it.sala)}</SeloSala>
-              <span className="min-w-0 flex-1 truncate text-[13px]">{nomeDe(it.caso)}</span>
-              {it.desdeMin != null && (
-                <span className="shrink-0 text-[10.5px] tabular-nums text-muted-foreground">{formatEspera(it.desdeMin)}</span>
+              <SeloSala>{salaLiberacao(item.sala)}</SeloSala>
+              <span className="min-w-0 flex-1 truncate text-[13px]">{nomeDe(item.caso)}</span>
+              {item.desdeMin != null && (
+                <span className="shrink-0 text-[10.5px] tabular-nums text-muted-foreground">{formatEspera(item.desdeMin)}</span>
               )}
             </button>
-          ))}
-          {livres.map((papel) => (
+          ) : (
             <div key={papel} className={`${CARD_BASE} border-dashed border-border bg-transparent`}>
               <span className="min-w-0 flex-1 truncate text-[13px]">{PAPEL_LABEL[papel] || papel}</span>
               <span className="shrink-0 text-[10.5px] text-muted-foreground">livre</span>
@@ -294,6 +305,10 @@ export default function FaixaUrgencias({ escala, hospital, turno, hoje }) {
           </button>
         )}
       </section>
+
+      {configurar && (
+        <SalasUrgenciaSheet escala={escala} turno={turno} onClose={() => setConfigurar(false)} />
+      )}
 
       {detalhe && (
         <CasoDetalheSheet

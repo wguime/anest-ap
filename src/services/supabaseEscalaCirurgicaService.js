@@ -30,6 +30,9 @@ const CAMEL_TO_SNAKE = {
   // como `fds_meta` e o modo fim de semana "não liga" em silêncio (pegadinha
   // recorrente — caso ultima_avaliacao_at/contaDuplicadaDe)
   fdsMeta: 'fds_meta',
+  // salas dos papéis do contrato de urgência do HRO por turno (dono 18/08) —
+  // sem esta entrada o campo chega como `urgencias_meta` e a config "não liga"
+  urgenciasMeta: 'urgencias_meta',
   // escala_cirurgica_caso
   escalaId: 'escala_id',
   tempoEstimado: 'tempo_estimado',
@@ -288,6 +291,18 @@ async function patchLinhaOverride(escalaId, chave, valor) {
 }
 
 /**
+ * Grava/limpa as salas dos papéis do contrato de urgência do HRO para UM turno
+ * ({ orto?, co?, plantao?, sobreaviso? }; null limpa o turno = tudo automático).
+ * Mesma RPC de merge por chave dos overrides — por/em carimbados server-side.
+ */
+async function patchUrgenciasMeta(escalaId, turno, valor) {
+  const { error } = await supabase.rpc('rpc_escala_patch_liberacao', {
+    p_escala_id: escalaId, p_campo: 'urgencias_meta', p_chave: turno, p_valor: valor ?? null,
+  })
+  if (error) handleError(error, 'patchUrgenciasMeta')
+}
+
+/**
  * Atualiza o STATUS da cirurgia (agendada/iniciada/terminada) — RPC com audit
  * carimbado server-side (status_atualizado_por/em = firebase_uid()/now()).
  */
@@ -520,6 +535,7 @@ export default {
   updateAjudaExterna,
   patchLiberacao,
   patchLinhaOverride,
+  patchUrgenciasMeta,
   updateStatusCirurgia,
   updateAnestesistaCasos,
   addCaso,
