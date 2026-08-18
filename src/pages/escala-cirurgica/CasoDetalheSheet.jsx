@@ -334,44 +334,6 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
           <article className="rounded-2xl border border-border-strong p-3">
             <h3 className="mb-1 text-[15px] font-extrabold">Quem está e onde</h3>
 
-            {/* CIRURGIÃO editável (dono 17/08): o nome vem da importação e sai
-                torto com alguma frequência; era o único dado da cirurgia sem
-                conserto no app — só o campo de EXIBIÇÃO da fila, que não corrige
-                o caso nem o quadro. Grava em `cirurgiao`, o mesmo campo que o
-                "Adicionar caso" já preenche. */}
-            <LinhaDado
-              icone={<Stethoscope className="h-3.5 w-3.5" />}
-              rotulo="Cirurgião"
-              valor={titleCaseNome(vivo.cirurgiao)}
-              acao={podeEditarCaso && { label: 'Trocar', onClick: () => abrirEditor('cirurgiao') }}
-            />
-            {/* Só DIGITAÇÃO (dono 17/08): o nome do cirurgião vem torto da
-                importação e a lista de sugestões atrapalhava mais do que ajudava
-                — quem corrige aqui já sabe o nome certo. */}
-            {editor === 'cirurgiao' && (
-              <EditorSheet
-                titulo="Cirurgião desta cirurgia"
-                nota="Vale só para esta cirurgia. A fila mostra o cirurgião de cada caso automaticamente."
-                onClose={() => setEditor(null)}
-              >
-                <Input
-                  autoFocus
-                  aria-label="Nome do cirurgião"
-                  value={rascCirurgiao}
-                  onChange={(e) => setRascCirurgiao(e.target.value)}
-                  placeholder="ex.: Eduardo Baldissera"
-                  onKeyDown={(e) => { if (e.key === 'Enter') salvarTexto('cirurgiao', rascCirurgiao) }}
-                />
-                <div className="flex gap-2 pt-1">
-                  <Button size="sm" variant="ghost" className="flex-1" onClick={() => setEditor(null)}>Cancelar</Button>
-                  <Button size="sm" className="flex-1" disabled={salvando === 'cirurgiao' || !rascCirurgiao.trim()}
-                    onClick={() => salvarTexto('cirurgiao', rascCirurgiao)}>
-                    {salvando === 'cirurgiao' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
-                  </Button>
-                </div>
-              </EditorSheet>
-            )}
-
             {/* MESMA função do cabeçalho da sala e do sheet de definir (bug 29/07:
                 o cabeçalho vinha do cadastro e este texto vinha do alias importado,
                 então "Guilherme Staub" lá e "STAUB" aqui — o dono leu como duas
@@ -446,6 +408,44 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                       {salvando === 'sala' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
                     </Button>
                   </div>
+                </div>
+              </EditorSheet>
+            )}
+
+            {/* CIRURGIÃO editável (dono 17/08): o nome vem da importação e sai
+                torto com alguma frequência; era o único dado da cirurgia sem
+                conserto no app — só o campo de EXIBIÇÃO da fila, que não corrige
+                o caso nem o quadro. Grava em `cirurgiao`, o mesmo campo que o
+                "Adicionar caso" já preenche. */}
+            <LinhaDado
+              icone={<Stethoscope className="h-3.5 w-3.5" />}
+              rotulo="Cirurgião"
+              valor={titleCaseNome(vivo.cirurgiao)}
+              acao={podeEditarCaso && { label: 'Trocar', onClick: () => abrirEditor('cirurgiao') }}
+            />
+            {/* Só DIGITAÇÃO (dono 17/08): o nome do cirurgião vem torto da
+                importação e a lista de sugestões atrapalhava mais do que ajudava
+                — quem corrige aqui já sabe o nome certo. */}
+            {editor === 'cirurgiao' && (
+              <EditorSheet
+                titulo="Cirurgião desta cirurgia"
+                nota="Vale só para esta cirurgia. A fila mostra o cirurgião de cada caso automaticamente."
+                onClose={() => setEditor(null)}
+              >
+                <Input
+                  autoFocus
+                  aria-label="Nome do cirurgião"
+                  value={rascCirurgiao}
+                  onChange={(e) => setRascCirurgiao(e.target.value)}
+                  placeholder="ex.: Eduardo Baldissera"
+                  onKeyDown={(e) => { if (e.key === 'Enter') salvarTexto('cirurgiao', rascCirurgiao) }}
+                />
+                <div className="flex gap-2 pt-1">
+                  <Button size="sm" variant="ghost" className="flex-1" onClick={() => setEditor(null)}>Cancelar</Button>
+                  <Button size="sm" className="flex-1" disabled={salvando === 'cirurgiao' || !rascCirurgiao.trim()}
+                    onClick={() => salvarTexto('cirurgiao', rascCirurgiao)}>
+                    {salvando === 'cirurgiao' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
+                  </Button>
                 </div>
               </EditorSheet>
             )}
