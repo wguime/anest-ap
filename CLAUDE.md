@@ -544,6 +544,56 @@ o recado assim que ele confirmava o próprio).
 - Hook `useAvisoPlantonista` fica FORA do context: o recado não é parte da escala e o
   context já carrega três hospitais por data.
 
+### Urgências do HRO — contador de contrato + fila (dono 18/08)
+
+O contrato do HRO paga por turno: manhã 1 orto (Sala 4) + 1 CO (Sala 7) + plantonista +
+sobreaviso; tarde sem CO; noite só plantonista + sobreaviso → **capacidade de urgências
+simultâneas = 2**; endoscopia/colono FORA do CC e hemodinâmica não contam. A 3ª urgência
+exige gente que o hospital não paga — a faixa no topo da aba **Completa** (só HRO, só
+quando há urgência) mostra isso em tempo real.
+
+- Lib pura `src/lib/escalaCirurgicaUrgencias.js` — nome de propósito: o gate de CI só
+  observa `escalaCirurgica*`. `CONTRATO_HRO` é config POR TURNO (o `co` some de
+  `dedicadas` à tarde/noite — é onde a decisão vira código); `turnoContratual` delega a
+  `faseLiberacoes` (o campo `turno` do caso só aceita matutino|vespertino, então a
+  urgência das 21h é vespertina no banco mas do contrato da NOITE — **a capacidade vem do
+  relógio**). `estadoUrgencias` recebe o **dia inteiro** (`casosResolvidos`), NUNCA
+  `filtrarPorTurno`: urgência da manhã ainda aberta às 14h ocupa o plantonista da tarde.
+  Exclusão é pela SALA (a mesma colono conta no CC e não conta em `Exames`), via
+  `papelDaSalaHro` NORMALIZADO — produção tem "Sala 5"/"Sala 5 - Emergência" e
+  "Sala 7"/"Sala 7 - CO" para as mesmas salas. Fila ordena gravidade→`created_at`
+  (⚠️ chega em **snake_case** — não está no CAMEL_TO_SNAKE; `createdAt` = NaN silencioso);
+  NUNCA por `hora` (18/08: 9 de 9 urgências sem hora). Iniciada há >4h
+  (`statusAtualizadoEm`, nunca a chegada) sai da ocupação e vira pergunta "ainda em
+  andamento?" — 36% das urgências ficam sem marcação, e o app não afirma o que não sabe.
+- **Coluna `gravidade`** (migration `20260818140000`): imediata|urgente|aguarda
+  (adaptação NCEPOD), NULL = não classificada (sem default: não existe gravidade neutra;
+  NULL vai ao FIM da fila com "Classificar"). Capturada no `AddCasoSheet` (obrigatória só
+  em urgência/emergência; emergência pré-seleciona imediata) e editável no cartão
+  Andamento do `CasoDetalheSheet`. ⚠️ a migration patcheia as DUAS RPCs de publicação
+  **sobre a definição VIVA** (`pg_get_functiondef` + âncora única + guard de versão) — a
+  versão mais nova de uma RPC NÃO está na migration de nº mais alto que a cita
+  (`20260726110000` é anterior a `20260729210000`); copiar a errada apaga colunas em
+  silêncio. `gravidade_caso` denormalizada em `escala_cirurgica_evento` (trigger); só é
+  gravada quando há transição de status — lacuna aceita, o relatório declara a cobertura.
+- **UI** `FaixaUrgencias.jsx` em EscalaCirurgicaPage (branch board, fora do modo FDS),
+  **FORA da BoardView** — os EmptyStates dela matariam a faixa no dia sem escala com
+  urgência à mão (8 de 9 em 18/08). Desenho fechado em 3 rodadas de protótipo
+  (`.tmp/urgencias-hro-prototype.html`): grade 2×2 de UMA linha (36px, sem negrito, sem
+  subtítulo), postos = plantão/sobreaviso + dedicados do turno; **excedente = card
+  PRÓPRIO full-width com rótulo EXTRA** (nunca chip igual aos outros); fila em 1 linha
+  (nº+gravidade+procedimento+espera; sala/convênio só no detalhe), teto 3 + "ver todas";
+  cores = receitas existentes (selo de sala `bg-primary/20 text-primary`, tinta
+  `bg-success/[0.14] dark:/20`); **vermelho SÓ no excedente/badge/nota** — fundo
+  vermelho sob cards verdes foi vetado como "vitral". Toque abre o `CasoDetalheSheet`
+  (onde Iniciada/Terminada já são marcados). Sem urgência: tela idêntica à de antes.
+- **Relatório contratual**: modo `contrato-hro` planejado na skill `/escala-cirurgica`
+  (pareamento 1º iniciada→1º terminada posterior = Achado 2; sweep-line com empate
+  saída-antes-de-entrada; SUS = `upper(convenio) ~ '^SUS\M'`; tudo
+  `at time zone 'America/Sao_Paulo'`). Validado contra produção 18/08: 16 intervalos,
+  mediana 49min, pico 2 simultâneas em 06/08. Comunicado leigo à equipe:
+  `.tmp/comunicado-urgencias-hro.md`.
+
 ## Bottom Nav
 4 abas: **Home** | **Gestão** (Shield) | **Educação** | **Menu**
 (Dashboard temporariamente oculto; código preservado em `App.jsx`)
