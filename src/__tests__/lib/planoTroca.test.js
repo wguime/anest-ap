@@ -11,7 +11,7 @@
  *  - o trocaCom do par é listado p/ limpeza (o badge some após executar).
  */
 import { describe, it, expect } from 'vitest'
-import { candidatosPrimeiroNome, planoExecucaoTroca, planoExecucaoDeclarada, planoDesfazerTroca, localizarSlotRodape, casosTransferiveis, snapshotCasos, lerOverrideAnterior, estadoTrocasDoHistorico, paresDeclarados } from '../../pages/escala-cirurgica/utils'
+import { candidatosPrimeiroNome, planoExecucaoTroca, planoExecucaoDeclarada, planoDesfazerTroca, localizarSlotRodape, casosTransferiveis, snapshotCasos, lerOverrideAnterior, estadoTrocasDoHistorico, paresDeclarados, alvoRemocaoTroca } from '../../pages/escala-cirurgica/utils'
 
 const caso = (id, sala, anestesista, extra = {}) => ({
   id, sala, ordem: 0, anestesista, cirurgiao: 'Cirurgião X',
@@ -366,6 +366,46 @@ describe('planoDesfazerTroca — reverte os dois lados', () => {
     expect(p.lados[0].turno).toBe('vespertino')
   })
 
+  // ⚠️ RECIBO DO DONO (18/08). O plano varre os assumidaPor do par no turno e
+  // deduzia o dono do slot como "o outro do par". Quem assumiu DUAS posições no
+  // mesmo turno (dois hospitais, trocas com pessoas diferentes) via a segunda
+  // vaga ser desfeita junto com a primeira e devolvida à pessoa ERRADA, com as
+  // cirurgias dela. `assumidaPor.de`, gravado na execução, corta isso.
+  it('não toca na assunção de OUTRO par que a mesma pessoa executou no turno', () => {
+    const duasAssuncoes = {
+      unimed: {
+        id: 'esc-uni', hospital: 'unimed',
+        ordemLiberacao: { matutino: ['MAURICIO'] },
+        linhaOverrides: { 'matutino:uid-mau': { assumidaPor: { uid: 'uid-gio', nome: 'GIOVANA SILVA', de: { uid: 'uid-mau', nome: 'MAURICIO COSTA' }, casoIds: [] } } },
+        casos: [],
+      },
+      hro: {
+        id: 'esc-hro', hospital: 'hro',
+        ordemLiberacao: { matutino: ['KARINE'] },
+        // MESMA Giovana assumindo, mas o slot é da KARINE — outro par
+        linhaOverrides: { 'matutino:uid-kar': { assumidaPor: { uid: 'uid-gio', nome: 'GIOVANA SILVA', de: { uid: 'uid-kar', nome: 'KARINE BEDIN' }, casoIds: [] } } },
+        casos: [],
+      },
+    }
+    const p = planoDesfazerTroca({ escalas: duasAssuncoes, resolverUid, a: GIOVANA, b: MAURICIO, turno: 'matutino' })
+    expect(p.lados).toHaveLength(1)
+    expect(p.lados[0]).toMatchObject({ hospital: 'unimed', chaveSlot: 'uid-mau' })
+  })
+
+  it('registro antigo (sem recibo `de`) segue pela dedução — não quebra o que já está no banco', () => {
+    const legado = {
+      unimed: {
+        id: 'esc-uni', hospital: 'unimed',
+        ordemLiberacao: { matutino: ['MAURICIO'] },
+        linhaOverrides: { 'matutino:uid-mau': { assumidaPor: { uid: 'uid-gio', nome: 'GIOVANA SILVA', casoIds: [] } } },
+        casos: [],
+      },
+    }
+    const p = planoDesfazerTroca({ escalas: legado, resolverUid, a: GIOVANA, b: MAURICIO, turno: 'matutino' })
+    expect(p.lados).toHaveLength(1)
+    expect(p.lados[0]).toMatchObject({ chaveSlot: 'uid-mau', para: { uid: 'uid-mau' } })
+  })
+
   it('acha as duas assunções e devolve os casos ao dono original de cada slot', () => {
     const p = planoDesfazerTroca({ escalas: escalasPos, resolverUid, a: GIOVANA, b: MAURICIO })
     expect(p.lados).toHaveLength(2)
@@ -677,5 +717,32 @@ describe('lerOverrideAnterior — cadeia canônica de leitura', () => {
   it('nada encontrado → valor null com a scoped calculada', () => {
     expect(lerOverrideAnterior({}, 'uid-x', 'matutino'))
       .toEqual({ valor: null, chaveEncontrada: null, scoped: 'matutino:uid-x' })
+  })
+})
+
+// ⚠️ A DECLARAÇÃO MORA EM UMA LINHA SÓ e o badge sai nos DOIS lados (dono 18/08:
+// "ao registrar troca e após desfazer a troca ela está persistindo"). Desfazer
+// pela linha do colega mandava a limpeza para a chave dele — sem trocaCom
+// nenhum — e a troca continuava viva na linha de quem declarou.
+describe('alvoRemocaoTroca — remover onde a declaração mora', () => {
+  const escalas = {
+    unimed: { id: 'esc-uni', hospital: 'unimed' },
+    hro: { id: 'esc-hro', hospital: 'hro' },
+  }
+
+  it('devolve a escala do par, não a que está na tela', () => {
+    const par = { escalaId: 'esc-hro', chave: 'uid-mar' }
+    expect(alvoRemocaoTroca(escalas, par)).toEqual({ escala: escalas.hro, chave: 'uid-mar' })
+  })
+
+  it('sem par (ou par incompleto) devolve null — o chamador segue pela linha da tela', () => {
+    expect(alvoRemocaoTroca(escalas, null)).toBeNull()
+    expect(alvoRemocaoTroca(escalas, { escalaId: 'esc-hro' })).toBeNull()
+    expect(alvoRemocaoTroca(escalas, { chave: 'uid-mar' })).toBeNull()
+  })
+
+  it('escala do par não carregada → null (não escreve num alvo adivinhado)', () => {
+    expect(alvoRemocaoTroca(escalas, { escalaId: 'esc-mat', chave: 'uid-rose' })).toBeNull()
+    expect(alvoRemocaoTroca(null, { escalaId: 'esc-hro', chave: 'uid-mar' })).toBeNull()
   })
 })

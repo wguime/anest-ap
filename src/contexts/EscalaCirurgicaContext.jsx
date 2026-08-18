@@ -636,7 +636,13 @@ export function EscalaCirurgicaProvider({ children }) {
           // `casoIds` = o que ESTA execução moveu (incidente 10/08): sem esse
           // recibo o desfazer devolvia todos os casos abertos do assumente no
           // hospital, inclusive os do outro turno, que nunca saíram do lugar.
-          assumidaPor: { uid: lado.para.uid, nome: lado.para.nome, ...(lado.tipo && { tipo: lado.tipo }), ...(lado.motivo && { motivo: lado.motivo }), ...(lado.local && { local: lado.local }), casoIds: lado.casoIds || [], por: userInfo.userId || null, em: agoraIso },
+          // `de` = RECIBO DO DONO do slot (18/08). planoDesfazerTroca varre os
+          // assumidaPor do par no turno e deduzia o dono como "o outro do par":
+          // quem assumiu DUAS posições no mesmo turno (dois hospitais) via a
+          // segunda vaga ser desfeita junto com a primeira, devolvida à pessoa
+          // errada e com os casos dela. Registro antigo (sem `de`) mantém o
+          // comportamento anterior.
+          assumidaPor: { uid: lado.para.uid, nome: lado.para.nome, de: { uid: lado.de?.uid || null, nome: lado.de?.nome || '' }, ...(lado.tipo && { tipo: lado.tipo }), ...(lado.motivo && { motivo: lado.motivo }), ...(lado.local && { local: lado.local }), casoIds: lado.casoIds || [], por: userInfo.userId || null, em: agoraIso },
           por: userInfo.userId || null, em: agoraIso,
         }
         if (!demo) {

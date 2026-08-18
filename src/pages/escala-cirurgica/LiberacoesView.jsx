@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, ArrowLeftRight, Check, ChevronDown, ChevronRight, ChevronUp, History, ListOrdered, Loader2, MessageSquare, Moon, Pencil, Plus, Timer, UserPlus, X } from 'lucide-react'
 import {
-  Badge, Button, EmptyState, Input, Select, useToast,
+  Badge, Button, ConfirmDialog, EmptyState, Input, Select, useToast,
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/design-system'
 import { gerarColunaLiberacao, nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
@@ -19,7 +19,7 @@ import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import useAgoraMinuto from './useAgoraMinuto'
 import useAvisoPlantonista from './useAvisoPlantonista'
-import PainelTempo, { formatFaltante, fraseFaltante } from './PainelTempo'
+import PainelTempo, { formatFaltante, fraseCronometro, fraseFaltante } from './PainelTempo'
 import AddCasoSheet from './AddCasoSheet'
 import { casosResolvidos, compararSalas, filtrarPorTurno, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao } from './utils'
 
@@ -92,6 +92,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const [alvoSemAnest, setAlvoSemAnest] = useState(null) // alerta "?" sendo resolvido
   const [semAnestUid, setSemAnestUid] = useState('')
   const [executandoTroca, setExecutandoTroca] = useState(false)
+  const [confirmarTroca, setConfirmarTroca] = useState(null) // par aguardando o pop-up (dono 18/08)
   const [addCaso, setAddCaso] = useState(false) // urgência/encaixe direto da fila (dono 16/08)
   const [escalaDoCasoNovo, setEscalaDoCasoNovo] = useState(null) // criada sob demanda
   const [criandoEscala, setCriandoEscala] = useState(false)
@@ -589,7 +590,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
    * hospitais, caso real Giovana@HRO ⇄ Maurício@Unimed). Casa por uid E por nome
    * normalizado dos dois lados. Linha já ASSUMIDA não tem badge: a execução
    * consome a declaração (decisão do dono 30/07 — o badge some).
-   * @returns {{ par, outroNome, outroHospitalLabel }|null}
+   * @returns {{ par, outroNome, outroUid, outroHospitalLabel }|null}
    */
   const nomeCurtoTroca = (nome) => (nome ? nomeCirurgiaoCurto(titleCaseNome(nome)) : '')
   const trocaDe = (linha) => {
@@ -612,10 +613,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       const ladoA = [par.chave, par.a?.uid, normNome(par.a?.nome || '')].filter(Boolean)
       const ladoB = [par.b?.uid, normNome(par.b?.nome || '')].filter(Boolean)
       if (ladoA.some((k) => chaves.has(k))) {
-        return { par, outroNome: nomeCurtoTroca(par.b?.nome), outroHospitalLabel: par.bHospitalLabel || null }
+        return { par, outroNome: nomeCurtoTroca(par.b?.nome), outroUid: par.b?.uid || null, outroHospitalLabel: par.bHospitalLabel || null }
       }
       if (ladoB.some((k) => chaves.has(k))) {
-        return { par, outroNome: nomeCurtoTroca(par.a?.nome), outroHospitalLabel: par.aHospitalLabel || null }
+        return { par, outroNome: nomeCurtoTroca(par.a?.nome), outroUid: par.a?.uid || null, outroHospitalLabel: par.aHospitalLabel || null }
       }
     }
     return null
@@ -792,19 +793,29 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
 
   // ── TROCA — executar/desfazer pelo painel ✏️; DECLARAR é do TrocaSheet
   // (fluxo único, dono 07/08). Um toque aqui, sem navegação.
-  const desfazerTrocaEditor = async () => {
+  // ⚠️ o `par` VIAJA JUNTO (incidente 18/08): a declaração vive numa ÚNICA
+  // linha_overrides — a de quem declarou — e o badge aparece nos DOIS lados.
+  // Desfazer pela linha do COLEGA (ou por outro hospital) limpava um override
+  // que nunca teve trocaCom: nada mudava e a troca "persistia" nos dois cards.
+  // Quem sabe onde ela mora é o par (escalaId + chave), não a linha da tela.
+  const desfazerTrocaEditor = async (par) => {
     if (!editor) return
     setExecutandoTroca(true)
     try {
-      await onMarcarTroca?.(editor, null)
+      await onMarcarTroca?.(editor, null, par || null)
       setEditor(null)
     } catch { /* toast no context */ } finally { setExecutandoTroca(false) }
   }
-  const executarTrocaEditor = async (par) => {
+  // POP-UP ANTES DE CONCLUIR (dono 18/08): este botão troca as posições dos dois
+  // lados de uma vez e leva as cirurgias em aberto junto — mesma confirmação do
+  // TrocaSheet, para não haver caminho que execute o swap sem perguntar.
+  const executarTrocaEditor = async () => {
+    const par = confirmarTroca?.par
     if (!par || executandoTroca) return
     setExecutandoTroca(true)
     try {
       await onExecutarTroca?.(par)
+      setConfirmarTroca(null)
       setEditor(null)
     } catch { /* toast no context */ } finally { setExecutandoTroca(false) }
   }
@@ -1025,14 +1036,24 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // setas de ordem existem só no bloco de AJUDA (o rodapé é imutável) e o
           // layout da coluna da direita depende disso: com setas vira duas linhas.
           const temSetasAjuda = canEdit && linha.isAjuda && !linha.ajudaFora && !linha.isProximoPlantao && linha.ajudaIdx != null
+          const terminoLinhaMin = parseHoraMinutos(ov?.termino)
           const cronometro = (() => {
             // terminou TUDO (badge Livre): o tempo que sobrou é informação vencida
             // — mostrar "~1h20" ao lado de "Livre" fazia o card se contradizer.
             if (liberado || livre) return null
-            const manual = parseHoraMinutos(ov?.termino)
+            const manual = terminoLinhaMin
             if (manual == null) return null
             return {
               ...formatFaltante(manual, agoraMin),        // curto p/ a coluna
+              // ESTOUROU: a PALAVRA entra no lugar do sinal (dono 18/08). "+25min"
+              // sozinho não diz de que horário está falando nem se o tempo falta ou
+              // já passou — e esta é a SEGUNDA vez que o tempo da pessoa é relatado
+              // como pouco claro (a 1ª foi 30/07, com dois relógios no mesmo card).
+              // "25min além" é a MESMA frase que a linha do cirurgião logo acima já
+              // usa, então a tela inteira fala uma língua só; e não vira "atrasou",
+              // que aqui é o badge de status DA CIRURGIA e trocaria uma dúvida por
+              // outra. Enquanto FALTA, "~25min" se explica sozinho e fica como está.
+              texto: fraseCronometro(manual, agoraMin),
               titulo: formatRestante(manual, agoraMin),   // frase completa no title
             }
           })()
@@ -1245,6 +1266,15 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                           const andando = !!linha.tokenAndamento?.[c]
                           const falta = andando && alvo != null ? formatFaltante(alvo, agoraMin) : null
                           const hora = linha.tokenTermino?.[c] || null
+                          // MESMO HORÁRIO, UMA VEZ SÓ (dono 18/08). Quem tem uma
+                          // cirurgia ativa tem o total da linha ESPELHADO do término
+                          // dela (31/07) — e o card mostrava o mesmo tempo duas
+                          // vezes, âmbar aqui e verde na pílula. Dois números
+                          // idênticos lado a lado fazem procurar uma diferença que
+                          // não existe: é a própria pergunta "a que se refere?".
+                          // Fica a PÍLULA, que é o número que dirige a fila; o chip
+                          // volta assim que os horários divergem (2+ cirurgias).
+                          const espelhaOTotal = alvo != null && alvo === terminoLinhaMin && !!cronometro
                           return (
                             <p key={i} className="flex items-center gap-1.5">
                               {andando && (
@@ -1260,7 +1290,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                                   (colado ao cirurgião) e o VERBO diz o que é. Some o
                                   segundo ícone do card e o nome deixa de disputar a
                                   linha com um elemento de borda. */}
-                              {(falta || hora) && (
+                              {(falta || hora) && !espelhaOTotal && (
                                 <span
                                   title={andando
                                     ? `Esta cirurgia (em andamento) termina às ${hora}`
@@ -1649,12 +1679,29 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                             {info.par?.motivo ? <span className="font-normal text-muted-foreground"> · {info.par.motivo}</span> : null}
                           </p>
                           {registro ? (
-                            <p className="mb-2 text-[11.5px] text-muted-foreground">
-                              A escala já saiu com os dois no lugar certo — este é o registro da troca, ninguém muda de posição.
-                            </p>
+                            <>
+                              <p className="mb-2 text-[11.5px] text-muted-foreground">
+                                A escala já saiu com os dois no lugar certo — este é o registro da troca, ninguém muda de posição.
+                              </p>
+                              {/* ⚠️ registro era BECO SEM SAÍDA (dono 18/08: "a
+                                  posição na lista de liberações não está
+                                  mudando"): com a troca registrada, o painel
+                                  perdia a entrada do TrocaSheet e o único botão
+                                  era remover — não havia caminho nenhum para
+                                  fazer as posições trocarem de fato. Aqui a
+                                  decisão volta a ser POR POSIÇÃO no sheet (o
+                                  app nunca supõe quem se move, regra 10/08), já
+                                  com o colega escolhido. */}
+                              <Button variant="outline" className="mb-1.5 w-full" disabled={executandoTroca}
+                                onClick={() => { const l = editor; setEditor(null); onAbrirTroca?.(l, info.outroUid || null, 'posicao') }}>
+                                <ArrowLeftRight className="w-4 h-4" />
+                                Trocar de posição na escala
+                              </Button>
+                            </>
                           ) : (
                             <>
-                              <Button className="w-full" disabled={executandoTroca} onClick={() => executarTrocaEditor(info.par)}>
+                              <Button className="w-full" disabled={executandoTroca}
+                                onClick={() => setConfirmarTroca({ par: info.par, outroNome: info.outroNome, euNome: editor.anestesista })}>
                                 {executandoTroca ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowLeftRight className="w-4 h-4" />}
                                 Executar agora — {info.outroNome} assume aqui
                               </Button>
@@ -1663,7 +1710,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                               </p>
                             </>
                           )}
-                          <Button variant="outline" className="w-full" disabled={executandoTroca} onClick={desfazerTrocaEditor}>
+                          <Button variant="outline" className="w-full" disabled={executandoTroca} onClick={() => desfazerTrocaEditor(info.par)}>
                             {registro ? 'Remover registro da troca' : 'Desfazer troca'}
                           </Button>
                         </EditorPainel>
@@ -1676,11 +1723,25 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 // inferido + motivo + "Trocar agora", a MESMA UI de qualquer
                 // entrada. Executar/desfazer o que já existe fica no painel.
                 return (
-                  <LinhaPainel
-                    rotulo="Troca com um colega"
-                    valor="nenhuma"
-                    onClick={() => { const l = editor; setEditor(null); onAbrirTroca?.(l) }}
-                  />
+                  <>
+                    <LinhaPainel
+                      rotulo="Troca com um colega"
+                      valor="nenhuma"
+                      onClick={() => { const l = editor; setEditor(null); onAbrirTroca?.(l) }}
+                    />
+                    {/* ⚠️ OPÇÃO PRÓPRIA (dono 18/08, caso Fernanda⇄Daniela): "a
+                        Daniela assumiu o plantão mas ficou apenas o badge de
+                        troca — nesses casos quero que haja troca de posição".
+                        A troca de cima segue como sempre (registro por padrão,
+                        que é como a troca entre hospitais é feita); esta aqui
+                        diz de saída que a POSIÇÃO muda de dono na fila, e ainda
+                        pede confirmação antes de gravar. */}
+                    <LinhaPainel
+                      rotulo="Trocar de posição na escala"
+                      valor="quem assumir entra nesta posição"
+                      onClick={() => { const l = editor; setEditor(null); onAbrirTroca?.(l, null, 'posicao') }}
+                    />
+                  </>
                 )
               })()}
 
@@ -1964,6 +2025,27 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* CONFIRMAÇÃO DO SWAP (dono 18/08) — mesma pergunta do TrocaSheet: nenhum
+          caminho executa a troca sem mostrar antes o que muda na fila. */}
+      <ConfirmDialog
+        open={!!confirmarTroca}
+        onClose={() => { if (!executandoTroca) setConfirmarTroca(null) }}
+        onConfirm={executarTrocaEditor}
+        loading={executandoTroca}
+        title="Trocar as posições?"
+        description={confirmarTroca
+          ? `${confirmarTroca.outroNome} assume a posição de ${confirmarTroca.euNome} — e a posição de ${confirmarTroca.outroNome} passa para ${confirmarTroca.euNome}.`
+          : undefined}
+        confirmText="Confirmar troca"
+        cancelText="Revisar"
+        icon={<ArrowLeftRight className="h-11 w-11" />}
+      >
+        <p className="text-xs text-muted-foreground">
+          Os dois lados vão juntos: cada um herda a posição na fila e as cirurgias em aberto do colega. A ordem
+          publicada no rodapé não muda — o que muda é quem ocupa cada posição. Dá para desfazer pelo ✏️ da linha.
+        </p>
+      </ConfirmDialog>
 
     </div>
   )
