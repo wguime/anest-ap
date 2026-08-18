@@ -62,7 +62,13 @@ export const casoVazio = (c) =>
  * para a lista toda (ver useAgoraMinuto), não um timer por card. Sem ele, o card
  * mostra a HORA do término em vez da contagem — nunca perde a informação.
  */
-export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null, moldura = 'card' }) {
+export function casoTemColunaTempo(caso) {
+  if (String(caso?.hora || '').trim()) return true
+  if (String(caso?.tempoEstimado || '').trim()) return true
+  return !casoConcluido(caso) && parseHoraMinutos(caso?.terminoPrevisto) != null
+}
+
+export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null, moldura = 'card', reservaHora = false }) {
   const tb = tipoBadge(caso.tipo)
   const st = STATUS_CIRURGIA[caso.statusCirurgia]
   const ex = extraDe(caso)
@@ -105,7 +111,7 @@ export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null, 
   // linha de identificação nasceria vazia — aí o procedimento sobe para ela e o
   // card fica com duas linhas (dono 17/08).
   const temIdentificacao = Boolean(salaLabel || caso.pacienteIniciais || idade)
-  const temColunaHora = Boolean(caso.hora) || alvoCaso != null || Boolean(caso.tempoEstimado)
+  const temColunaHora = casoTemColunaTempo(caso)
   return (
     <button
       type="button"
@@ -122,13 +128,13 @@ export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null, 
         // convênio identifica só pelo SELO (stripe lateral removida a pedido do dono 2026-07-21)
       ].filter(Boolean).join(' ')}
     >
-      <div className="flex gap-2.5">
+      <div className="flex gap-2">
         {/* COLUNA DO TEMPO (dono 17/08): hora, duração estimada e o tempo faltante
             desta cirurgia ficam juntos embaixo do horário — espalhados pelo card,
             os três eram lidos como coisas de assuntos diferentes. À direita sobram
             só status e convênio. */}
         {temColunaHora && (
-          <span className="w-[62px] shrink-0">
+          <span className="w-[46px] shrink-0">
             {caso.hora && <span className="block text-[15px] font-bold tabular-nums text-foreground">{caso.hora}</span>}
             {/* A duração SUGERIDA pela escala cede a vez assim que alguém informa o
                 término (dono 17/08): mostrar as duas é ler o palpite e o combinado
@@ -161,6 +167,12 @@ export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null, 
             ) : null}
           </span>
         )}
+        {/* CAIXA VAZIA NO LUGAR DA HORA (dono 18/08): caso sem horário na MESMA
+            sala que outro com horário começava colado na margem, e o quadro
+            serrilhava — a urgência encaixada parecia de outra lista. A reserva é
+            por SALA: sala inteira sem horário (bloco de urgências) não paga o
+            recuo por nada. */}
+        {!temColunaHora && reservaHora && <span aria-hidden className="w-[46px] shrink-0" />}
         {/* Três linhas próximas (dono 17/08): paciente / procedimento / cirurgião
             lêem como um bloco só, com um respiro de 3px entre elas — coladas de
             todo, o selo do convênio encostava no texto de cima. Os selos ocupam
@@ -396,16 +408,23 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
               </AccordionTrigger>
               <AccordionContent className="p-0">
                 {/* SRPA e afins sem procedimentos: só o cabeçalho, sem card vazio */}
-                {g.casos.filter((c) => !casoVazio(c)).map((caso) => (
-                  <CasoCard
-                    key={caso.id || `${g.chave}-${caso.ordem}`}
-                    caso={caso}
-                    destaque={ehMeu(caso)}
-                    agoraMin={agoraMin}
-                    moldura="linha"
-                    onClick={() => setDetalhe(caso)}
-                  />
-                ))}
+                {(() => {
+                  const visiveis = g.casos.filter((c) => !casoVazio(c))
+                  // alinhamento por SALA: se ALGUÉM aqui tem horário, os sem
+                  // horário recuam junto (dono 18/08)
+                  const reservaHora = visiveis.some(casoTemColunaTempo)
+                  return visiveis.map((caso) => (
+                    <CasoCard
+                      key={caso.id || `${g.chave}-${caso.ordem}`}
+                      caso={caso}
+                      destaque={ehMeu(caso)}
+                      agoraMin={agoraMin}
+                      moldura="linha"
+                      reservaHora={reservaHora}
+                      onClick={() => setDetalhe(caso)}
+                    />
+                  ))
+                })()}
               </AccordionContent>
             </AccordionItem>
           )

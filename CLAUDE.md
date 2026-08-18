@@ -379,7 +379,11 @@ discussão: as telas convivem com ela.
   coluna com o término abaixo (`13:30`/`→15:45`); **iniciais · idade · PROCEDIMENTO na 1ª
   linha** (é qual cirurgia que se procura primeiro); cirurgião (+ `· R: residente`) na 2ª,
   com tempo faltante, status e convênio à direita — a 2ª linha QUEBRA em vez de truncar o
-  cirurgião. **Tinta em UM eixo só**: iniciada `bg-success/[0.14]` e terminada
+  cirurgião. A coluna do tempo tem **46px** e o texto começa logo depois (dono 18/08,
+  "mais próximas ao horário"), e **caso sem horário RECUA junto** quando alguém da MESMA
+  sala tem horário (`casoTemColunaTempo` decide a reserva por sala) — a urgência encaixada
+  começava na margem e o quadro serrilhava; sala inteira sem horário (bloco de urgências)
+  não paga o recuo. **Tinta em UM eixo só**: iniciada `bg-success/[0.14]` e terminada
   `bg-info/[0.12]` (dark /20 e /22); atrasada, suspensa e passa-para-tarde ficam só no
   badge — com os cinco pintando o quadro virava vitral. `CasoCard` ganhou `moldura`:
   `'linha'` na Completa, `'card'` na Minhas (mesmo conteúdo, molduras diferentes).
