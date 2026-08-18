@@ -46,6 +46,9 @@ const TURNOS = ['matutino', 'vespertino']
 // sáb P2,P1,P4,P3,P11,P8,P7 · dom P3,P4,P1,P2,P11,P6,P5).
 const TURNOS_ORDEM = [...TURNOS, 'noturno']
 const TURNO_LABEL = { matutino: 'Matutino', vespertino: 'Vespertino', noturno: 'Noturno' }
+// rótulo curto das COLUNAS de liberação (dono 17/08: só o turno, sem "do
+// documento"/"sugerida") — mesma grafia do seletor da escala: Manhã · Tarde
+const TURNO_CURTO = { matutino: 'Manhã', vespertino: 'Tarde', noturno: 'Noite' }
 const FAIXA_LABEL = { '7-13': '7–13h', '13-19': '13–19h', '19-07': '19–07h' }
 const COLUNAS = [
   { key: 'unimed', label: 'Unimed' },
@@ -55,6 +58,13 @@ const COLUNAS = [
 ]
 
 const primeiroNomeUpper = (nome) => normNome(String(nome || '').split(/\s+/)[0] || '')
+/** Nome curto para as colunas estreitas: "Guilherme D." em vez de CAIXA ALTA. */
+const nomeCurtoFds = (nome) => {
+  const partes = String(nome || '').trim().split(/\s+/).filter(Boolean)
+  if (!partes.length) return ''
+  const tc = (w) => w.charAt(0) + w.slice(1).toLowerCase()
+  return partes.length > 1 ? `${tc(partes[0])} ${partes[1][0]}.` : tc(partes[0])
+}
 const ordenarPn = (a, b) => Number(a.slice(1)) - Number(b.slice(1))
 const proximoDia = (iso) => {
   const d = new Date(`${iso}T12:00:00`)
@@ -80,6 +90,10 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
   const [carregando, setCarregando] = useState(false)
   const [publicando, setPublicando] = useState(false)
   const [addSel, setAddSel] = useState({})   // `${iso}|${turno}` → uid do "acrescentar"
+  // seleção aberta para edição — o par texto+login e os botões de mover moram
+  // FORA das colunas (não cabem em ~130px)
+  const [posSel, setPosSel] = useState(null)   // { iso, pn }
+  const [ordemSel, setOrdemSel] = useState(null) // { iso, turno, i }
 
   const diasAlvo = [sabadoISO, domingoISO].filter((iso) => dias[iso])
 
@@ -387,87 +401,162 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
                 ))}
               </div>
 
-              {/* Pn → pessoa (login vence o texto; domingo herda o sábado) */}
+              {/* Pn → pessoa (login vence o texto; domingo herda o sábado).
+                  DUAS COLUNAS correndo para BAIXO (dono 17/08): P1..P6 na
+                  esquerda, P7..P12 na direita — em linha, as doze posições
+                  empurravam a ordem de liberação para fora da tela. O par
+                  texto+login abre embaixo, fora das colunas: os dois campos não
+                  cabem numa coluna de ~200px. */}
               <div className="space-y-1.5">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Posições (Pn → pessoa)</p>
-                {pns.map((pn) => {
-                  const nome = dia.posicoes[pn]
-                  const uid = logins[`${iso}|${pn}`] || ''
-                  const ambiguo = !uid && !resolver(nome) && candidatosPrimeiroNomeMemo(nome, roster)
-                  return (
-                    <div key={pn} className="flex flex-wrap items-center gap-1.5">
-                      <Badge className="shrink-0 border-transparent bg-primary text-primary-foreground">{pn}</Badge>
-                      <Input className="min-w-0 flex-1" value={nome}
-                        onChange={(e) => setPosicao(iso, pn, e.target.value)} />
-                      <Select
-                        className={`w-40 shrink-0 ${ambiguo ? 'ring-1 ring-destructive rounded-lg' : ''}`}
-                        searchable
-                        options={[{ value: '', label: '— login —' }, ...rosterOpcoes]}
-                        value={uid}
-                        onChange={(v) => setLogins((p) => ({ ...p, [`${iso}|${pn}`]: v }))}
-                        placeholder="Login"
-                      />
-                    </div>
-                  )
-                })}
+                <div className="columns-2 gap-x-2">
+                  {pns.map((pn) => {
+                    const nome = dia.posicoes[pn]
+                    const uid = logins[`${iso}|${pn}`] || ''
+                    const ambiguo = !uid && !resolver(nome) && candidatosPrimeiroNomeMemo(nome, roster)
+                    const aberta = posSel?.iso === iso && posSel?.pn === pn
+                    return (
+                      <button
+                        key={pn}
+                        type="button"
+                        onClick={() => setPosSel(aberta ? null : { iso, pn })}
+                        aria-expanded={aberta}
+                        className={[
+                          'mb-1.5 flex w-full break-inside-avoid items-center gap-1.5 rounded-[10px] border px-1.5 py-1 text-left',
+                          'min-h-[40px]',
+                          ambiguo ? 'border-destructive/55' : aberta ? 'border-primary' : 'border-border',
+                        ].join(' ')}
+                      >
+                        <Badge className="shrink-0 border-transparent bg-primary text-primary-foreground">{pn}</Badge>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[11.5px] font-semibold">{nomeCurtoFds(nome)}</span>
+                          <span className={`block truncate text-[10px] ${uid ? 'text-muted-foreground' : ambiguo ? 'font-semibold text-destructive' : 'text-muted-foreground'}`}>
+                            {uid ? `✓ ${rosterByUid.get(uid)?.nome ? nomeCurtoFds(rosterByUid.get(uid).nome) : 'login'}` : 'sem login'}
+                          </span>
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+                {posSel?.iso === iso && dia.posicoes[posSel.pn] !== undefined && (
+                  <div className="space-y-1.5 rounded-xl border border-border bg-muted/30 p-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Posição {posSel.pn}</p>
+                    <Input
+                      aria-label={`Nome de ${posSel.pn}`}
+                      value={dia.posicoes[posSel.pn]}
+                      onChange={(e) => setPosicao(iso, posSel.pn, e.target.value)}
+                    />
+                    <Select
+                      className="w-full"
+                      searchable
+                      options={[{ value: '', label: '— login —' }, ...rosterOpcoes]}
+                      value={logins[`${iso}|${posSel.pn}`] || ''}
+                      onChange={(v) => setLogins((p) => ({ ...p, [`${iso}|${posSel.pn}`]: v }))}
+                      placeholder="Login"
+                    />
+                    <p className="text-[11px] text-muted-foreground">O login escolhido vence o texto lido da foto.</p>
+                  </div>
+                )}
                 {!pns.length && <p className="text-xs text-muted-foreground">Nenhuma posição lida — reimporte ou preencha a ordem por login abaixo.</p>}
               </div>
 
-              {/* ordem de liberação POR TURNO, na direção do DOCUMENTO */}
-              {TURNOS_ORDEM.map((turno) => {
-                const tokens = dia.ordem[turno] || []
-                const bloqueios = bloqueiosDe(iso, turno)
-                return (
-                  <div key={turno} className="space-y-1.5">
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Ordem de liberação · {TURNO_LABEL[turno]}
-                      </p>
-                      {dia.ordemFonte[turno] === 'sugerida' && (
-                        <Badge variant="warning" badgeStyle="subtle" className="shrink-0">Sugerida — ajuste antes de publicar</Badge>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground">Do primeiro ao último a ser liberado (como no documento).</p>
-                    {tokens.map((token, i) => {
-                      const pn = normalizarPn(tokenParaPn(dia, token))
-                      const nome = nomeDoToken(dia, token)
-                      return (
-                        <div key={`${token}-${i}`} className="flex items-center gap-1 rounded-lg border border-border bg-background px-2 py-1">
-                          <span className="w-6 shrink-0 text-center text-xs font-semibold text-muted-foreground">{i + 1}º</span>
-                          {pn && <Badge className="shrink-0 border-transparent bg-primary/80 text-primary-foreground">{pn}</Badge>}
-                          <span className={`min-w-0 flex-1 truncate text-sm font-medium ${nome ? '' : 'text-destructive'}`}>
-                            {nome || `${token} — sem pessoa`}
-                          </span>
-                          <button type="button" aria-label={`Subir ${nome || token}`} disabled={i === 0}
-                            onClick={() => moverOrdem(iso, turno, i, -1)}
-                            className="flex h-8 w-7 items-center justify-center text-primary disabled:opacity-25"><ArrowUp className="h-3.5 w-3.5" /></button>
-                          <button type="button" aria-label={`Descer ${nome || token}`} disabled={i === tokens.length - 1}
-                            onClick={() => moverOrdem(iso, turno, i, +1)}
-                            className="flex h-8 w-7 items-center justify-center text-primary disabled:opacity-25"><ArrowDown className="h-3.5 w-3.5" /></button>
-                          <button type="button" aria-label={`Remover ${nome || token}`}
-                            onClick={() => removerOrdem(iso, turno, i)}
-                            className="flex h-8 w-7 items-center justify-center text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
-                        </div>
-                      )
-                    })}
-                    <div className="flex items-center gap-1.5">
-                      <Select className="min-w-0 flex-1" searchable options={rosterOpcoes}
-                        value={addSel[`${iso}|${turno}`] || ''}
-                        onChange={(v) => setAddSel((p) => ({ ...p, [`${iso}|${turno}`]: v }))}
-                        placeholder="Acrescentar por login (entra no fim)" />
-                      <Button size="sm" variant="outline" disabled={!addSel[`${iso}|${turno}`]}
-                        onClick={() => acrescentarOrdem(iso, turno)}>
-                        <Plus className="h-4 w-4" />
+              {/* ORDEM DE LIBERAÇÃO EM TRÊS COLUNAS (dono 17/08): manhã · tarde ·
+                  noite lado a lado, na direção do DOCUMENTO. Empilhadas, as três
+                  listas somavam mais de uma tela e a comparação entre turnos —
+                  que é o que a conferência faz — exigia rolar para frente e para
+                  trás. O cabeçalho leva SÓ o nome do turno (sem "do documento"/
+                  "sugerida") e o ordinal vem colado ao nome. */}
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Ordem de liberação — 1º ao último
+                </p>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {TURNOS_ORDEM.map((turno) => {
+                    const tokens = dia.ordem[turno] || []
+                    return (
+                      <div key={turno} className="min-w-0">
+                        <p className="mb-1 rounded-[9px] bg-primary/10 px-1 py-1 text-center text-[11.5px] font-bold text-primary">
+                          {TURNO_CURTO[turno]}
+                        </p>
+                        <ol className="space-y-1">
+                          {tokens.map((token, i) => {
+                            const pn = normalizarPn(tokenParaPn(dia, token))
+                            const nome = nomeDoToken(dia, token)
+                            const aberta = ordemSel?.iso === iso && ordemSel?.turno === turno && ordemSel?.i === i
+                            return (
+                              <li key={`${token}-${i}`}>
+                                <button
+                                  type="button"
+                                  aria-expanded={aberta}
+                                  aria-label={`Posição ${i + 1} de ${TURNO_CURTO[turno]}: ${nome || token}`}
+                                  onClick={() => setOrdemSel(aberta ? null : { iso, turno, i })}
+                                  className={`w-full rounded-lg px-1.5 py-1 text-left ${aberta ? 'bg-primary/20' : 'bg-muted'}`}
+                                >
+                                  {pn && <span className="block text-[9.5px] font-extrabold text-muted-foreground">{pn}</span>}
+                                  <span className={`block truncate text-[11px] font-bold ${nome ? '' : 'text-destructive'}`}>
+                                    <span className="text-primary">{i + 1}º</span> {nome ? nomeCurtoFds(nome) : 'sem pessoa'}
+                                  </span>
+                                </button>
+                              </li>
+                            )
+                          })}
+                          {!tokens.length && <li className="px-1 text-[11px] text-muted-foreground">—</li>}
+                        </ol>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* mover/remover FORA das colunas: três botões não cabem em ~130px */}
+                {ordemSel?.iso === iso && (
+                  <div className="space-y-1.5 rounded-xl border border-border bg-muted/30 p-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                      {TURNO_CURTO[ordemSel.turno]} · posição {ordemSel.i + 1}º —{' '}
+                      {nomeDoToken(dia, (dia.ordem[ordemSel.turno] || [])[ordemSel.i]) || 'sem pessoa'}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      <Button size="sm" variant="outline" disabled={ordemSel.i === 0}
+                        onClick={() => moverOrdem(iso, ordemSel.turno, ordemSel.i, -1)}
+                        aria-label="Subir uma posição">
+                        <ArrowUp className="h-4 w-4" /> Subir
+                      </Button>
+                      <Button size="sm" variant="outline"
+                        disabled={ordemSel.i === (dia.ordem[ordemSel.turno] || []).length - 1}
+                        onClick={() => moverOrdem(iso, ordemSel.turno, ordemSel.i, +1)}
+                        aria-label="Descer uma posição">
+                        <ArrowDown className="h-4 w-4" /> Descer
+                      </Button>
+                      <Button size="sm" variant="ghost"
+                        onClick={() => { removerOrdem(iso, ordemSel.turno, ordemSel.i); setOrdemSel(null) }}>
+                        <Trash2 className="h-4 w-4" /> Remover
                       </Button>
                     </div>
-                    {bloqueios.map((b, i) => (
-                      <p key={i} className="flex items-start gap-1.5 rounded-lg bg-destructive/10 p-2 text-xs font-medium text-destructive">
-                        <X className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {b}
-                      </p>
-                    ))}
                   </div>
-                )
-              })}
+                )}
+
+                {/* acrescentar por LOGIN, um turno por linha (regra 11/08: texto
+                    livre criava a mesma pessoa 2× na fila) */}
+                {TURNOS_ORDEM.map((turno) => (
+                  <div key={`add-${turno}`} className="flex items-center gap-1.5">
+                    <span className="w-12 shrink-0 text-[11px] font-semibold text-muted-foreground">{TURNO_CURTO[turno]}</span>
+                    <Select className="min-w-0 flex-1" searchable options={rosterOpcoes}
+                      value={addSel[`${iso}|${turno}`] || ''}
+                      onChange={(v) => setAddSel((p) => ({ ...p, [`${iso}|${turno}`]: v }))}
+                      placeholder="Acrescentar por login (entra no fim)" />
+                    <Button size="sm" variant="outline" disabled={!addSel[`${iso}|${turno}`]}
+                      onClick={() => acrescentarOrdem(iso, turno)}
+                      aria-label={`Acrescentar em ${TURNO_CURTO[turno]}`}>
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+
+                {TURNOS_ORDEM.flatMap((turno) => bloqueiosDe(iso, turno).map((b, i) => (
+                  <p key={`${turno}-${i}`} className="flex items-start gap-1.5 rounded-lg bg-destructive/10 p-2 text-xs font-medium text-destructive">
+                    <X className="mt-0.5 h-3.5 w-3.5 shrink-0" /> <span><b>{TURNO_CURTO[turno]}:</b> {b}</span>
+                  </p>
+                )))}
+              </div>
             </section>
           )
         })}

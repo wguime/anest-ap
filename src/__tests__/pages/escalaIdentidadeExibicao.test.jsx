@@ -12,11 +12,12 @@
  * identidade tem de ser a do GRUPO tocado e não "a primeira da sala".
  */
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 
 import { ThemeProvider, ToastProvider } from '@/design-system'
 import { nomeAnestesistaExibicao } from '@/pages/escala-cirurgica/utils'
 import DefinirAnestesistaSheet from '@/pages/escala-cirurgica/DefinirAnestesistaSheet'
+import CasoDetalheSheet from '@/pages/escala-cirurgica/CasoDetalheSheet'
 
 const ROSTER = new Map([
   ['uid-staub', { uid: 'uid-staub', nome: 'GUILHERME STAUB', apelidos: ['STAUB'] }],
@@ -31,6 +32,9 @@ vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
 // o sheet usa o user real só p/ o audit (`por`) da assunção de posição
 vi.mock('@/contexts/UserContext', () => ({
   useUser: () => ({ user: { uid: 'uid-test' } }),
+}))
+vi.mock('@/hooks/useRosterResidentes', () => ({
+  default: () => ({ residentes: [], residenteByUid: new Map(), options: [] }),
 }))
 vi.mock('@/hooks/useRosterAnestesistas', () => ({
   default: () => ({
@@ -81,9 +85,10 @@ describe('DefinirAnestesistaSheet — mostra o mesmo nome do cabeçalho', () => 
       <DefinirAnestesistaSheet escala={escala} sala="Sala 5" casosAlvo={escala.casos} onClose={vi.fn()} />,
       { wrapper: wrap },
     )
-    // o cabeçalho da Completa mostraria "Guilherme Staub" — o sheet mostrava "Staub"
-    expect(await screen.findByText('Guilherme Staub')).toBeTruthy()
-    expect(screen.queryByText('Staub')).toBeNull()
+    // o cabeçalho da Completa mostraria "Guilherme Staub" — o sheet mostrava "Staub".
+    // Desde 17/08 o nome de quem responde HOJE vive na linha de contexto do
+    // cabeçalho ("agora com …"), que é a que denuncia divergência de turno.
+    expect(await screen.findByText(/agora com Guilherme Staub/)).toBeTruthy()
   })
 
   it('em bloco multi-anestesista traz o anestesista DO GRUPO tocado', async () => {
@@ -107,18 +112,20 @@ describe('DefinirAnestesistaSheet — mostra o mesmo nome do cabeçalho', () => 
       { wrapper: wrap },
     )
     // nomeCirurgiaoCurto = 1º nome + ÚLTIMO sobrenome → "Guilherme Melo"
-    expect(await screen.findByText('Guilherme Melo')).toBeTruthy()
-    expect(screen.queryByText('Gustavo Cury')).toBeNull()
+    expect(await screen.findByText(/agora com Guilherme Melo/)).toBeTruthy()
+    expect(screen.queryByText(/agora com Gustavo Cury/)).toBeNull()
   })
 })
 
 /**
- * SEM pergunta prévia (dono 29/07, revisão da noite). O sheet abre DIRETO no
- * seletor, com rótulo AFIRMATIVO — "Trocar anestesista da Sala 1:" — em vez de
- * "trocar? Não/Sim". O passo extra custava um toque no meio do plantão e não
- * protegia de nada: a troca só acontece no "Confirmar responsável".
+ * SEM pergunta prévia (dono 29/07, revisão da noite). O sheet abre DIRETO na
+ * escolha — antes havia um "trocar? Não/Sim" que custava um toque no meio do
+ * plantão e não protegia de nada: a troca só acontece no "Confirmar responsável".
+ *
+ * Desde o redesenho de 17/08 a escolha é a LISTA de colegas (o Select saiu): a
+ * pergunta virou o título e ninguém nasce marcado.
  */
-describe('DefinirAnestesistaSheet — vai direto ao seletor', () => {
+describe('DefinirAnestesistaSheet — vai direto à escolha', () => {
   const caso = (over) => ({
     id: 'c1', sala: 'CC - Sala 1', ordem: 0, hora: '08:00', statusCirurgia: 'agendada',
     anestesista: 'STAUB', anestesistaUserId: 'uid-staub', cirurgiao: 'ANA SOUZA', ...over,
@@ -133,28 +140,64 @@ describe('DefinirAnestesistaSheet — vai direto ao seletor', () => {
     )
   }
 
-  it('mostra afirmação nomeando a sala, e o seletor já visível', async () => {
+  it('a pergunta nomeia a sala e o card ASSUME abre o seletor', async () => {
     abrir()
-    expect(await screen.findByText('Novo responsável da CC - Sala 1:')).toBeTruthy()
-    expect(screen.getByRole('combobox')).toBeTruthy()
+    expect(await screen.findByText('Quem responde pela CC - Sala 1?')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Escolher quem assume' }))
+    expect(screen.getByRole('option', { name: /GUSTAVO CURY/ })).toBeTruthy()
     // a pergunta e os botões Não/Sim não existem mais
     expect(screen.queryByRole('button', { name: 'Sim, trocar' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Não' })).toBeNull()
   })
 
-  it('o seletor nasce VAZIO — repetir quem já está lá deixava o Confirmar morto', async () => {
+  it('ninguém nasce marcado — repetir quem já está lá deixava o Confirmar morto', async () => {
     abrir()
-    const combo = await screen.findByRole('combobox')
-    expect(combo.textContent).toMatch(/Escolha o anestesista/i)
-    expect(screen.getByRole('button', { name: /Confirmar responsável/i })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Escolher quem assume' }))
+    const marcados = (await screen.findAllByRole('option')).filter((o) => o.getAttribute('aria-selected') === 'true')
+    expect(marcados).toHaveLength(0)
   })
 
-  it('no modo CASO a afirmação fala do caso, não da sala', async () => {
+  it('no modo CASO a pergunta fala do caso, não da sala', async () => {
     const escala = { id: 'e1', hospital: 'hro', casos: [caso()] }
     render(
       <DefinirAnestesistaSheet escala={escala} sala="CC - Sala 1" casosAlvo={[escala.casos[0]]} onClose={vi.fn()} />,
       { wrapper: wrap },
     )
-    expect(await screen.findByText('Novo responsável deste caso:')).toBeTruthy()
+    expect(await screen.findByText('Quem responde por esta cirurgia?')).toBeTruthy()
+  })
+})
+
+/**
+ * O DETALHE DO CASO usa a MESMA fonte de nome (17/08). O sheet mostrava o alias
+ * cru da importação — "ALEXANDRE D" em caixa alta, ao lado do cirurgião em Title
+ * Case, enquanto o cabeçalho da sala e o sheet de definir diziam "Alexandre
+ * Danieli". Três superfícies do mesmo caso, dois nomes para a mesma pessoa.
+ */
+describe('CasoDetalheSheet — o anestesista vem do cadastro', () => {
+  const escala = {
+    id: 'e1', hospital: 'hro', ajudaExterna: {},
+    casos: [{
+      id: 'c1', sala: 'Sala 5', ordem: 0, hora: '08:00', turno: 'matutino',
+      anestesista: 'STAUB', anestesistaUserId: 'uid-staub',
+      cirurgiao: 'Ana Souza', procedimento: 'Colecistectomia',
+    }],
+  }
+
+  it('mostra o nome do cadastro, não o alias em caixa alta', () => {
+    render(
+      <CasoDetalheSheet escala={escala} caso={escala.casos[0]} onClose={vi.fn()} podeEditar />,
+      { wrapper: wrap },
+    )
+    expect(screen.getByText('Guilherme Staub')).toBeTruthy()
+    expect(screen.queryByText('STAUB')).toBeNull()
+  })
+
+  it('sem vínculo, cai no texto importado (não some nome nenhum)', () => {
+    const semUid = { ...escala, casos: [{ ...escala.casos[0], anestesistaUserId: null, anestesista: 'KARINE' }] }
+    render(
+      <CasoDetalheSheet escala={semUid} caso={semUid.casos[0]} onClose={vi.fn()} podeEditar />,
+      { wrapper: wrap },
+    )
+    expect(screen.getByText('Karine')).toBeTruthy()
   })
 })

@@ -152,11 +152,13 @@ describe('Anestesista — Minhas escalas casam por login (uid)', () => {
     expect(screen.getByText('Artrodese')).toBeTruthy()
     expect(screen.queryByText('Artroplastia')).toBeNull()
   })
-  it('clicar no meu caso abre o detalhe com status e "Definir anestesista deste caso" (trocas aposentadas 23/07)', () => {
+  // rótulos do redesenho 17/08: "Status da cirurgia" virou os dois eixos
+  // ("Andamento" + "Aviso") e o botão do anestesista virou a ação da linha dele
+  it('clicar no meu caso abre o detalhe com status e a troca do anestesista (trocas aposentadas 23/07)', () => {
     render(<MinhasEscalasView escala={escala} meuAlias="Alexandre" meuUid="u-alex-s" turno="vespertino" />, { wrapper: wrap })
     fireEvent.click(screen.getByText('Artrodese'))
-    expect(screen.getByText('Status da cirurgia')).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Definir anestesista deste caso/ })).toBeTruthy()
+    expect(screen.getByText('Andamento')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Trocar anestesista' })).toBeTruthy()
   })
   it('usuário sem casos → empty state', () => {
     render(<MinhasEscalasView escala={escala} meuAlias="Zé" meuUid="u-ze" turno="vespertino" />, { wrapper: wrap })
@@ -175,7 +177,7 @@ describe('Anestesista — Minhas escalas casam por login (uid)', () => {
     render(<MinhasEscalasView escala={comPosicao} meuAlias="Anest A" meuUid="u-anest-a" turno="matutino" />, { wrapper: wrap })
     expect(screen.getByText('Posição')).toBeTruthy()
     expect(screen.getByText('Local de trabalho neste turno')).toBeTruthy()
-    expect(screen.queryByText('Status da cirurgia')).toBeNull()
+    expect(screen.queryByText('Andamento')).toBeNull()
     expect(screen.getByText(/1 posição neste hospital/i)).toBeTruthy()
   })
 })
@@ -287,11 +289,15 @@ describe('Plantonista — interações na aba Liberações', () => {
     const onSetOverride = vi.fn()
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} onSetOverride={onSetOverride} />, { wrapper: wrap })
     fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Leonardo'))
+    // o painel virou LISTA (redesenho 17/08, 2ª rodada): cada assunto é uma linha
+    // e o editor abre abaixo da linha tocada
+    fireEvent.click(screen.getByRole('button', { name: /^Local/ }))
     // Local agora é DROPDOWN (23/07) — "Outro… (digitar)" abre o campo livre.
     // Alvo pelo id: o painel de tempo (29/07) também tem um combobox no sheet.
     fireEvent.click(document.getElementById('editor-local-select'))
     fireEvent.click(screen.getByRole('option', { name: /Outro/ }))
     fireEvent.change(screen.getByPlaceholderText(/Coronel Freitas/), { target: { value: 'Coronel Freitas' } })
+    fireEvent.click(screen.getByRole('button', { name: /^Cirurgião\(ões\)/ }))
     fireEvent.change(screen.getByLabelText('Cirurgião(ões)'), { target: { value: 'Vanessa B' } })
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     expect(onSetOverride).toHaveBeenCalledWith(
@@ -388,16 +394,18 @@ describe('Board — família e cor do convênio', () => {
 
 describe('Board — cor de status do card (Iniciada amarelo, Terminada verde)', () => {
   const escala = (status) => ({ id: 'e1', hospital: 'unimed', casos: [{ id: 'c1', sala: 'SALA 1', ordem: 0, hora: '13:30', anestesista: 'X', procedimento: 'Sinus', statusCirurgia: status }] })
-  it('iniciada → card verde (decisão 2026-07-20)', () => {
+  // A tinta afinou em 17/08 (dono, escolha em protótipo): o card inteiro pinta,
+  // mas em dose suave — o verde forte disputava com o badge sólido do status.
+  it('iniciada → card verde (decisão 2026-07-20, tinta suave desde 17/08)', () => {
     render(<BoardView escala={escala('iniciada')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
     const card = screen.getByText('Sinus').closest('button')
-    expect(card.className).toContain('bg-success/25')
+    expect(card.className).toContain('bg-success/[0.14]')
     expect(card.className).not.toContain('destructive')
   })
   it('terminada → card azul (info)', () => {
     render(<BoardView escala={escala('terminada')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
     const card = screen.getByText('Sinus').closest('button')
-    expect(card.className).toContain('bg-info/15')
+    expect(card.className).toContain('bg-info/[0.12]')
   })
   it('atrasada/suspensa/passa_tarde → só o BADGE colore; card fica neutro', () => {
     for (const [status, label] of [['suspensa', 'Suspensa'], ['atrasada', 'Atrasada'], ['passa_tarde', 'Passa para tarde']]) {
@@ -408,10 +416,19 @@ describe('Board — cor de status do card (Iniciada amarelo, Terminada verde)', 
       unmount()
     }
   })
+  it('cabeçalho da sala é UMA cor só, também no escuro', () => {
+    // o trigger do DS pinta `dark:group-data-[state=open]:bg-card`; sem neutralizar
+    // a variante escura, a faixa saía partida em duas cores na vertical, no meio do
+    // nome e do ⚙ (bug visto no escuro, dono 17/08)
+    render(<BoardView escala={escala('agendada')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
+    const trigger = screen.getByText('SALA 1').closest('button')
+    expect(trigger.className).toContain('dark:group-data-[state=open]:bg-transparent')
+  })
+
   it('dois eixos: Iniciada + Atrasada convivem (card verde + os DOIS badges)', () => {
     const e = { id: 'e1', hospital: 'unimed', casos: [{ id: 'c1', sala: 'SALA 1', ordem: 0, hora: '13:30', anestesista: 'X', procedimento: 'Sinus', statusCirurgia: 'iniciada', statusExtra: 'atrasada' }] }
     render(<BoardView escala={e} meuAlias="zz" meuUid="u-zz" turno="vespertino" />, { wrapper: wrap })
-    expect(screen.getByText('Sinus').closest('button').className).toContain('bg-success/25')
+    expect(screen.getByText('Sinus').closest('button').className).toContain('bg-success/[0.14]')
     expect(screen.getByText('Iniciada')).toBeTruthy()
     expect(screen.getByText('Atrasada')).toBeTruthy()
   })
@@ -619,12 +636,13 @@ describe('Cards — idade e tempo cirúrgico no demo (quando houver)', () => {
       ],
     }
     render(<BoardView escala={escala} meuAlias="x" meuUid="u-x" turno="matutino" />, { wrapper: wrap })
-    // sala multi vira UM GRUPO POR ANESTESISTA — "IOSC — Cury", "IOSC — Melo",
-    // "IOSC — Guilherme Didomenico" (cada um como sala separada, pedido 23/07)
+    // sala multi vira UM GRUPO POR ANESTESISTA — três cabeçalhos "IOSC" com o
+    // nome de cada um (pedido 23/07). Desde 17/08 o nome vem ao lado da pill da
+    // sala, sem o travessão que os separava no cabeçalho antigo.
     expect(screen.getAllByText('IOSC').length).toBe(3)
-    expect(screen.getByText('— Cury')).toBeTruthy()
-    expect(screen.getByText('— Melo')).toBeTruthy()
-    expect(screen.getByText('— Guilherme Didomenico')).toBeTruthy()
+    expect(screen.getByText('Cury')).toBeTruthy()
+    expect(screen.getByText('Melo')).toBeTruthy()
+    expect(screen.getByText('Guilherme Didomenico')).toBeTruthy()
   })
   it('board renderiza idade e tempo no card', () => {
     const escala = { id: 'e1', hospital: 'unimed', casos: [{ id: 'c1', sala: 'SALA 1', ordem: 0, hora: '13:30', idade: '37a', tempoEstimado: '01:15', anestesista: 'X', cirurgiao: 'Rodrigo Souza', procedimento: 'Sinus', pacienteIniciais: 'M.C.' }] }
@@ -819,9 +837,9 @@ describe('Liberações — Tempo faltante e lista de cirurgiões (F1.9d)', () =>
     const onSetOverride = vi.fn()
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} onSetOverride={onSetOverride} />, { wrapper: wrap })
     fireEvent.click(screen.getByLabelText('Definir tempo faltante de Rodnei'))
-    // os atalhos de duração saíram (dono 29/07): o Select de tempo faltante ocupou o lugar
-    fireEvent.click(screen.getAllByRole('combobox').find((c) => /Falta/i.test(c.textContent)))
-    fireEvent.click(screen.getByRole('option', { name: '1h' }))
+    // os atalhos de duração VOLTARAM como grade (dono 17/08): um toque grava, e o
+    // "Outro tempo…" cobre o resto da lista
+    fireEvent.click(screen.getByRole('button', { name: '1h' }))
     expect(onSetOverride).toHaveBeenCalledWith(
       expect.objectContaining({ anestesista: 'Rodnei' }),
       expect.objectContaining({ termino: expect.stringMatching(/^\d{2}:\d{2}$/) })

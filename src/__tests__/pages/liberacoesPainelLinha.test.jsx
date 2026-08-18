@@ -63,6 +63,11 @@ const escalaBase = {
 
 const abrirEditor = (nome) => fireEvent.click(screen.getByLabelText(`Editar local/cirurgião de ${nome}`))
 
+// A OBSERVAÇÃO É A ÚLTIMA LINHA DO PAINEL (dono 17/08: "observação depois da
+// troca") e nasce fechada — com ela no fim, abrir sozinha faria o painel nascer
+// rolado. Cada assunto se abre ao toque.
+const abrirObservacao = () => fireEvent.click(screen.getByRole('button', { name: /^Observação/ }))
+
 const montar = (props = {}, escala = escalaBase) => render(
   <LiberacoesView escala={escala} hospital="hro" hospitalLabel="HRO" turno="matutino"
     canEdit onToggle={() => {}} onSetOverride={() => {}} {...props} />,
@@ -81,6 +86,10 @@ beforeAll(() => {
 })
 afterAll(() => vi.useRealTimers())
 
+/** Abre o editor de uma linha do painel (desenho C, 17/08: a lista mostra e o
+ *  editor abre abaixo da linha tocada). */
+const abrirLinha = (rotulo) => fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${rotulo}`) }))
+
 beforeEach(() => vi.clearAllMocks())
 
 describe('Troca REMOVIDA — a aba não mexe mais na ordem nem no dono do caso (dono 29/07)', () => {
@@ -97,6 +106,7 @@ describe('Troca REMOVIDA — a aba não mexe mais na ordem nem no dono do caso (
     const onDefinirCasos = vi.fn(async () => {})
     montar({ onSetOverride, onDefinirCasos })
     abrirEditor('Marilio Flach')
+    abrirObservacao()
     fireEvent.change(screen.getByPlaceholderText(/saiu para a Hemodinâmica/), { target: { value: 'foi para o HRO' } })
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(onSetOverride).toHaveBeenCalled())
@@ -122,13 +132,16 @@ describe('Observação da linha (dono 29/07)', () => {
     montar({}, { ...escalaBase, linhaOverrides: { 'uid-mar': { observacao: 'trocou com o Cury no HRO' } } })
     expect(screen.getByText('trocou com o Cury no HRO')).toBeTruthy()
     abrirEditor('Marilio Flach')
-    expect(screen.getByText(/Não escreva nome de paciente/)).toBeTruthy()
+    abrirObservacao()
+    // o aviso encurtou no redesenho 17/08, mas a regra LGPD continua dita na tela
+    expect(screen.getByText(/Sem nome de paciente/)).toBeTruthy()
   })
 
   it('abre o painel já preenchida e limpa quando esvaziada', async () => {
     const onSetOverride = vi.fn(async () => {})
     montar({ onSetOverride }, { ...escalaBase, linhaOverrides: { 'uid-mar': { observacao: 'sai mais cedo' } } })
     abrirEditor('Marilio Flach')
+    abrirObservacao()
     const campo = screen.getByPlaceholderText(/saiu para a Hemodinâmica/)
     expect(campo.value).toBe('sai mais cedo')
     fireEvent.change(campo, { target: { value: '' } })
@@ -152,9 +165,8 @@ describe('Observação da linha (dono 29/07)', () => {
     const onSetOverride = vi.fn(async () => {})
     montar({ onSetOverride }, { ...escalaBase, linhaOverrides: { 'uid-mar': { observacao: 'no consultório' } } })
     fireEvent.click(screen.getByLabelText('Definir tempo faltante de Marilio Flach'))
-    // os atalhos de duração saíram (dono 29/07): o Select de tempo faltante ocupou o lugar
-    fireEvent.click(screen.getAllByRole('combobox').find((c) => /Falta/i.test(c.textContent)))
-    fireEvent.click(screen.getByRole('option', { name: '1h' }))
+    // atalho de duração em grade (redesenho 17/08): um toque grava
+    fireEvent.click(screen.getByRole('button', { name: '1h' }))
     await waitFor(() => expect(onSetOverride).toHaveBeenCalled())
     expect(onSetOverride.mock.calls[0][1].observacao).toBe('no consultório')
   })
@@ -165,7 +177,7 @@ describe('Ajuda marcada à mão (dono 29/07)', () => {
     const onAddAjuda = vi.fn(async () => {})
     montar({ onAddAjuda })
     abrirEditor('Marilio Flach')
-    fireEvent.click(screen.getByRole('button', { name: /Marcar como ajuda de outro hospital/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Marcar .* como ajuda de outro hospital/ }))
     await waitFor(() => expect(onAddAjuda).toHaveBeenCalledWith('MARILIO'))
   })
 
@@ -173,7 +185,7 @@ describe('Ajuda marcada à mão (dono 29/07)', () => {
     const onRemoveAjuda = vi.fn(async () => {})
     montar({ onRemoveAjuda })
     abrirEditor('Marcos Cury')
-    fireEvent.click(screen.getByRole('button', { name: /Não é ajuda de outro hospital/ }))
+    fireEvent.click(screen.getByRole('button', { name: /não é ajuda de outro hospital/ }))
     // 'CURY' é como está escrito em ajudaExterna — não o nome exibido "Marcos Cury"
     await waitFor(() => expect(onRemoveAjuda).toHaveBeenCalledWith('CURY'))
   })
@@ -243,15 +255,57 @@ describe('Painel da linha — SEM a lista de casos (dono 30/07)', () => {
     abrirEditor('Marilio Flach')
     expect(screen.queryByText('Casos no turno')).toBeNull()
     expect(screen.queryByText(/Toque no caso/)).toBeNull()
-    // 2× e não 3×: linha da fila + hint "Automático (dos casos)" do editor —
-    // o card do caso (a 3ª ocorrência de antes) saiu do painel
-    expect(screen.getAllByText('Taciana A')).toHaveLength(2)
+    // 1×: só a linha da fila. Os hints "Automático (dos casos)" agora vivem
+    // dentro de "Ajustes da fila", que nasce recolhido (redesenho 17/08)
+    expect(screen.getAllByText('Taciana A')).toHaveLength(1)
   })
 
-  it('mostra o valor automático de local e cirurgião ao lado do ajuste', () => {
+  it('mostra o valor automático de local e cirurgião ao abrir os ajustes', () => {
     montar()
     abrirEditor('Marilio Flach')
-    expect(screen.getAllByText(/Automático \(dos casos\)/).length).toBe(2)
+    // a lista já resume os dois valores na própria linha…
+    expect(document.querySelector('[data-slot="sheet-content"]').textContent).toMatch(/Sala \d · automático/)
+    expect(screen.queryByText(/Automático \(dos casos\)/)).toBeNull()
+    // …e abrir a linha traz o campo com o automático explicado
+    abrirLinha('Local')
+    expect(screen.getAllByText(/Automático \(dos casos\)/).length).toBe(1)
+  })
+
+  it('o painel abre JÁ no ajuste quando alguém escreveu um à mão', () => {
+    // esconder um valor ajustado atrás de um toque é pior que gastar a altura:
+    // quem abre precisa ver que a linha não está mais no automático
+    montar({}, { ...escalaBase, linhaOverrides: { 'uid-mar': { local: 'Coronel Freitas' } } })
+    abrirEditor('Marilio Flach')
+    expect(screen.getByDisplayValue('Coronel Freitas')).toBeTruthy()
+  })
+
+  it('a observação é a última linha do painel e conta os caracteres', () => {
+    montar()
+    abrirEditor('Marilio Flach')
+    expect(screen.getAllByText('Observação').length).toBeGreaterThan(0)
+    abrirObservacao()
+    expect(screen.getByPlaceholderText(/Hemodinâmica/)).toBeTruthy()
+    fireEvent.change(screen.getByPlaceholderText(/Hemodinâmica/), { target: { value: 'no consultório' } })
+    expect(screen.getByText(`14/120`)).toBeTruthy()
+  })
+
+  it('o painel do TEMPO usa o mesmo nome do botão que o abriu', () => {
+    // eram quatro nomes para dois conceitos: "+ Tempo total" no card, "Falta" no
+    // campo, "tempo faltante" no aria-label e "Tempo para término ou horário de
+    // término de todos os seus casos" no subtítulo (auditoria 17/08)
+    montar()
+    fireEvent.click(screen.getByLabelText('Definir tempo faltante de Marilio Flach'))
+    expect(screen.getByText(/Tempo faltante de Marilio Flach/)).toBeTruthy()
+    expect(screen.queryByText(/Tempo para término ou horário de término/)).toBeNull()
+    // e o painel acompanha o conteúdo em vez de nascer com 85% da tela
+    expect(document.querySelector('[data-slot="sheet-content"]').className).toContain('!h-auto')
+  })
+
+  it('o cabeçalho repete o contexto que o card da fila dá', () => {
+    montar()
+    abrirEditor('Marilio Flach')
+    // quantas cirurgias e onde — é o que decide o ajuste, e sumia ao abrir o painel
+    expect(document.querySelector('[data-slot="sheet-header"]').textContent).toMatch(/1 cirurgia/)
   })
 })
 

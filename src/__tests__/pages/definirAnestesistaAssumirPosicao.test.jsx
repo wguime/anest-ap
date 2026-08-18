@@ -60,12 +60,71 @@ const escalaComRodape = {
   casos: [caso(), caso({ id: 'c2', hora: '10:00', statusCirurgia: 'terminada' })],
 }
 
+// REDESENHO 17/08 (2ª rodada): o card ASSUME é o seletor — o Select do DS (o
+// mesmo de produção, com busca) abre ancorado nele. A asserção é a mesma; o que
+// mudou é o caminho até o colega.
+// O card ASSUME abre uma FOLHA de baixo para cima com busca no topo (dono 17/08,
+// 3ª rodada): o dropdown do Select herda a largura do gatilho, e o gatilho é meio
+// card — a lista saía estreita, com os nomes quebrando.
 const escolherCury = () => {
-  fireEvent.click(screen.getByRole('combobox'))
-  fireEvent.click(screen.getByRole('option', { name: 'GUSTAVO CURY' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Escolher quem assume' }))
+  fireEvent.click(screen.getByRole('option', { name: /GUSTAVO CURY/ }))
 }
 
 beforeEach(() => vi.clearAllMocks())
+
+describe('Lista de colegas (dono 17/08)', () => {
+  it('declara o ALCANCE: os procedimentos assumidos e o que fica', () => {
+    render(<DefinirAnestesistaSheet escala={escalaComRodape} sala="Sala 5" onClose={vi.fn()} />, { wrapper: wrap })
+    escolherCury()
+    // 2 casos na sala, 1 terminado → 1 é assumido, 1 fica (invisível no desenho antigo)
+    expect(screen.getByText('Procedimentos assumidos')).toBeTruthy()
+    expect(screen.getByText(/já terminou: fica com/)).toBeTruthy()
+  })
+
+  it('o card ASSUME abre a folha com a lista e a busca no topo', () => {
+    render(<DefinirAnestesistaSheet escala={escalaComRodape} sala="Sala 5" onClose={vi.fn()} />, { wrapper: wrap })
+    // fechada, nenhuma opção na tela: o painel não vira lista rolante
+    expect(screen.queryByRole('option')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Escolher quem assume' }))
+    expect(screen.getByLabelText('Buscar anestesista')).toBeTruthy()
+    expect(screen.getByRole('option', { name: /GUSTAVO CURY/ })).toBeTruthy()
+  })
+
+  it('a busca filtra por nome ou apelido (o roster passa de 45 pessoas)', () => {
+    render(<DefinirAnestesistaSheet escala={escalaComRodape} sala="Sala 5" onClose={vi.fn()} />, { wrapper: wrap })
+    fireEvent.click(screen.getByRole('button', { name: 'Escolher quem assume' }))
+    fireEvent.change(screen.getByLabelText('Buscar anestesista'), { target: { value: 'staub' } })
+    expect(screen.getByRole('option', { name: /GUILHERME STAUB/ })).toBeTruthy()
+    expect(screen.queryByRole('option', { name: /GUSTAVO CURY/ })).toBeNull()
+  })
+
+  it('o lado que SAI resume o que ele tem aqui', () => {
+    render(<DefinirAnestesistaSheet escala={escalaComRodape} sala="Sala 5" onClose={vi.fn()} />, { wrapper: wrap })
+    expect(screen.getByText('Sai')).toBeTruthy()
+    expect(screen.getByText(/2 cirurgias · 1 terminada/)).toBeTruthy()
+  })
+
+  // A LISTA É SÓ DE NOMES, EM ORDEM ALFABÉTICA (dono 17/08): a posição na fila e
+  // a contagem de cirurgias saíram do rótulo — quem escolhe aqui procura UMA
+  // pessoa pelo nome, e o texto extra fazia cada linha virar uma frase para ler.
+  it('lista os colegas só pelo nome, em ordem alfabética', () => {
+    render(<DefinirAnestesistaSheet escala={escalaComRodape} sala="Sala 5" turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
+    fireEvent.click(screen.getByRole('button', { name: 'Escolher quem assume' }))
+    const opcoes = screen.getAllByRole('option').map((o) => o.textContent.trim())
+    expect(opcoes.some((t) => /na fila|cirurgia/.test(t))).toBe(false)
+    // "Sem anestesista (?)" abre a lista; o resto vem ordenado em pt-BR
+    const nomes = opcoes.slice(1)
+    expect(nomes).toEqual([...nomes].sort((a, b) => a.localeCompare(b, 'pt-BR')))
+  })
+
+  it('sem ninguém escolhido o Confirmar existe, porém desabilitado', () => {
+    render(<DefinirAnestesistaSheet escala={escalaComRodape} sala="Sala 5" onClose={vi.fn()} />, { wrapper: wrap })
+    expect(screen.getByRole('button', { name: /Confirmar responsável/i })).toBeDisabled()
+    escolherCury()
+    expect(screen.getByRole('button', { name: /Confirmar responsável/i })).not.toBeDisabled()
+  })
+})
 
 describe('toggle "Assumir também a posição" no Definir anestesista', () => {
   it('aparece quando o responsável anterior ocupa posição no rodapé — e nasce desligado', async () => {
@@ -147,11 +206,12 @@ describe('modo SALA opera só no turno exibido (bug 31/07)', () => {
     ],
   }
 
-  it('"Responsável atual" e os ALVOS vêm do turno, não do dia inteiro', async () => {
+  it('"agora com…" e os ALVOS vêm do turno, não do dia inteiro', async () => {
     render(<DefinirAnestesistaSheet escala={escalaDoisTurnos} sala="Sala 5" turno="vespertino" onClose={vi.fn()} />, { wrapper: wrap })
-    // tarde = Staub (o mesmo do header da Completa); antes aparecia a Aline (manhã)
-    expect(screen.getByText(/Staub/)).toBeTruthy()
-    expect(screen.queryByText(/Aline/)).toBeNull()
+    // tarde = Staub (o mesmo do header da Completa); antes aparecia a Aline (manhã).
+    // O nome fica no cabeçalho: é ele que denuncia divergência de turno.
+    expect(screen.getByText(/agora com Guilherme Staub/i)).toBeTruthy()
+    expect(screen.queryByText(/agora com Aline/i)).toBeNull()
     escolherCury()
     fireEvent.click(screen.getByRole('button', { name: /Confirmar/ }))
     await waitFor(() => expect(setAnestesistaCasos).toHaveBeenCalled())
@@ -162,7 +222,7 @@ describe('modo SALA opera só no turno exibido (bug 31/07)', () => {
   it('sem turno (chamada legada) segue olhando o dia inteiro', () => {
     render(<DefinirAnestesistaSheet escala={escalaDoisTurnos} sala="Sala 5" onClose={vi.fn()} />, { wrapper: wrap })
     // primeiro caso do dia é da manhã — comportamento antigo preservado
-    expect(screen.getByText(/Aline/)).toBeTruthy()
+    expect(screen.getByText(/agora com Aline/i)).toBeTruthy()
   })
 })
 
@@ -174,25 +234,32 @@ describe('Segundo anestesista (mesma cirurgia)', () => {
     <DefinirAnestesistaSheet escala={escalaComRodape} sala="Sala 5" casosAlvo={[caso()]} onClose={vi.fn()} />,
     { wrapper: wrap },
   )
-  const segundoSelect = () => screen.getAllByRole('combobox')[1]
+  // o segundo anestesista continua em Select (é exceção, não o caminho comum):
+  // a linha abre o campo
+  // o card ASSUME não é mais combobox (virou folha), então o único Select que
+  // sobra no painel é o do segundo anestesista
+  const segundoSelect = () => {
+    fireEvent.click(screen.getByRole('button', { name: /Dois anestesistas nesta cirurgia/i }))
+    return screen.getByRole('combobox')
+  }
 
   it('só aparece depois de escolher o responsável, e só no modo CASO', async () => {
     abrirCaso()
-    expect(screen.queryByText(/Segundo anestesista/i)).toBeNull()
+    expect(screen.queryByRole('button', { name: /Dois anestesistas/i })).toBeNull()
     escolherCury()
-    expect(await screen.findByText(/Segundo anestesista/i)).toBeTruthy()
+    expect(await screen.findByRole('button', { name: /Dois anestesistas nesta cirurgia/i })).toBeTruthy()
   })
 
   it('modo SALA não oferece dupla (a dupla é da cirurgia, não da sala)', () => {
     render(<DefinirAnestesistaSheet escala={escalaComRodape} sala="Sala 5" onClose={vi.fn()} />, { wrapper: wrap })
     escolherCury()
-    expect(screen.queryByText(/Segundo anestesista/i)).toBeNull()
+    expect(screen.queryByRole('button', { name: /Dois anestesistas/i })).toBeNull()
   })
 
   it('escolhido o segundo, grava "A + B" sem uid e marcado como dupla', async () => {
     abrirCaso()
     escolherCury()
-    await screen.findByText(/Segundo anestesista/i)
+    await screen.findByRole('button', { name: /Dois anestesistas nesta cirurgia/i })
     fireEvent.click(segundoSelect())
     fireEvent.click(await screen.findByRole('option', { name: 'GUILHERME STAUB' }))
     fireEvent.click(screen.getByRole('button', { name: /Confirmar os dois anestesistas/i }))
@@ -206,7 +273,7 @@ describe('Segundo anestesista (mesma cirurgia)', () => {
   it('com dupla, o toggle de assumir posição sai de cena (não há um dono só)', async () => {
     abrirCaso()
     escolherCury()
-    await screen.findByText(/Segundo anestesista/i)
+    await screen.findByRole('button', { name: /Dois anestesistas nesta cirurgia/i })
     fireEvent.click(segundoSelect())
     fireEvent.click(await screen.findByRole('option', { name: 'GUILHERME STAUB' }))
     await waitFor(() => expect(screen.queryByRole('switch')).toBeNull())

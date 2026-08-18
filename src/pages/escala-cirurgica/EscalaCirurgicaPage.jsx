@@ -417,6 +417,11 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                   canEdit={canEdit}
                   turno={turno}
                   plantoes={plantoesDia}
+                  // quem sou eu: a aba precisa saber se ESTE usuário é o
+                  // plantonista do turno — só ele avisa a equipe (dono 17/08)
+                  meuUid={meuUid}
+                  meuAlias={meuAlias}
+                  meuNome={user?.displayName || ''}
                   p4Hospital={p4Hospital}
                   modoFds={modoFds}
                   casosFds={casosFds}

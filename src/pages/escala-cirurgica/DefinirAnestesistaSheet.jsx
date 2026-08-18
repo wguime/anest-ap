@@ -9,20 +9,34 @@
  *   - CASO (detalhe do caso): atinge só aquele caso — é o caminho p/ trocar
  *     uma linha específica de bloco multi (IOSC/Exames/Umanitá).
  * Completa/Liberações/Minhas derivam dos casos → atualizam juntas (realtime).
+ *
+ * DESENHO "LISTA DE COLEGAS" (dono 17/08, escolhido em protótipo): o Select saiu
+ * e o roster É a tela. Dois problemas do desenho antigo:
+ *   1. o painel ficava quase vazio (um Select e um botão dentro de 85% da tela);
+ *   2. o que o sheet DECIDE — quem passa a responder por quais casos — não
+ *      aparecia em lugar nenhum.
+ * Agora o cabeçalho declara o alcance ("2 de 3 cirurgias mudam de dono"), cada
+ * colega vem com onde ele está agora (posição na fila e cirurgias no turno) e o
+ * rodapé repete o efeito inteiro antes de confirmar. Escolher passou de dois
+ * toques (abrir o Select, escolher) para um.
  */
 import { useMemo, useState } from 'react'
-import { Loader2, UserCog } from 'lucide-react'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, Select, Button, Switch } from '@/design-system'
+import { Check, ChevronDown, ChevronRight, Loader2, Search } from 'lucide-react'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, Select, Button, Switch, Input } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
-import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
+import { HOSPITAL_LABEL, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
-import { nomeCirurgiaoCurto } from '@/lib/colunaLiberacao'
-import { alvosTrocaResponsavel, anestesistaDaSala, filtrarPorTurno, salaExibicao, nomeAnestesistaExibicao, localizarSlotRodape } from './utils'
+import { fraseClinica, nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
+import {
+  alvosTrocaResponsavel, anestesistaDaSala, filtrarPorTurno, localizarSlotRodape,
+  nomeAnestesistaExibicao, normNome, salaExibicao,
+} from './utils'
 
 const primeiroNomeUpper = (nome) => String(nome || '').trim().split(/\s+/)[0]?.toUpperCase() || ''
 
 // Sentinela: "deixar sem anestesista" (valor impossível como uid).
 const SEM_ANESTESISTA = '__sem__'
+const TURNO_LABEL = { matutino: 'Matutino', vespertino: 'Vespertino' }
 
 export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null, turno = null, onClose }) {
   const { user } = useUser()
@@ -30,6 +44,13 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
   const { options: rosterOpcoes, rosterByUid, resolver, loading: rosterLoading } = useRosterAnestesistas()
   const [uidEscolhido, setUidEscolhido] = useState('')
   const [uidSegundo, setUidSegundo] = useState('') // dupla na MESMA cirurgia
+  const [abrirSegundo, setAbrirSegundo] = useState(false)
+  // SELETOR EM FOLHA (dono 17/08, 3ª rodada): o dropdown do Select do DS herda a
+  // LARGURA DO GATILHO (`width = triggerWidth` em computePosition), e o gatilho
+  // aqui é meio card — a lista saía num popover estreito, com os nomes quebrando.
+  // Uma folha própria dá largura inteira, busca no topo e altura fixa com rolagem.
+  const [pickerAberto, setPickerAberto] = useState(false)
+  const [busca, setBusca] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [assumirPosicao, setAssumirPosicao] = useState(false)
 
@@ -50,6 +71,14 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
     return alvosTrocaResponsavel(casosTurno, sala)
   }, [casosTurno, sala, casosAlvo])
 
+  // O QUE NÃO MUDA: cirurgia terminada mantém quem a fez. Era a parte invisível
+  // da decisão — quem repassava a sala não sabia que uma das linhas ficava para
+  // trás, e só descobria olhando o quadro depois.
+  const naoMudam = useMemo(() => {
+    const base = casosAlvo?.length ? casosAlvo : casosTurno.filter((c) => c.sala === sala)
+    return base.filter((c) => (c.statusCirurgia || 'agendada') === 'terminada')
+  }, [casosAlvo, casosTurno, sala])
+
   const atual = useMemo(() => {
     const ref = casosAlvo?.[0]
     if (ref) {
@@ -69,27 +98,49 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
     [atual, rosterByUid]
   )
 
-  // "Sem anestesista" (pedido do dono 26/07): deixar a sala/caso descoberto de
-  // propósito — vira "?" e volta ao alerta das Liberações, onde alguém assume.
-  const opcoes = useMemo(
-    () => [{ value: SEM_ANESTESISTA, label: 'Sem anestesista (?)' }, ...(rosterOpcoes || [])],
-    [rosterOpcoes]
-  )
+  // A LISTA É SÓ DE NOMES (dono 17/08): a posição na fila e a contagem de
+  // cirurgias saíram do rótulo. Quem escolhe aqui está procurando UMA pessoa pelo
+  // nome, e o texto extra fazia cada linha virar uma frase para ler.
   const jaSemAnestesista = !!alvos.length && alvos.every((c) => c.semAnestesista)
-  // SEM PERGUNTA PRÉVIA (dono 29/07, revisão da noite): o sheet vai DIRETO ao
-  // seletor, com rótulo afirmativo em vez de "trocar? sim/não" — um passo a menos
-  // no meio do plantão.
   // O seletor nasce VAZIO quando já existe responsável: repetir o nome de quem
   // está lá, com "Confirmar" desabilitado, era o botão morto do print de 29/07.
   const escolhido = uidEscolhido || (jaSemAnestesista ? SEM_ANESTESISTA : '')
   const casoUnico = casosAlvo?.length === 1 ? casosAlvo[0] : null
-  // afirmação, não pergunta — e nomeia o alvo (sala ou caso)
-  const rotuloAcao = casoUnico
-    ? 'Novo responsável deste caso:'
-    : `Novo responsável da ${salaExibicao(sala)}:`
-  const titulo = casosAlvo?.length
-    ? (casoUnico ? 'Anestesista deste caso' : 'Anestesista do grupo')
-    : 'Anestesista da sala'
+
+  // OPÇÕES: "Sem anestesista" primeiro e o resto em ORDEM ALFABÉTICA, só o nome
+  // (dono 17/08). Ordenação com `localeCompare` pt-BR — sem ela, nome acentuado
+  // vai parar depois do Z.
+  const opcoes = useMemo(() => [
+    { value: SEM_ANESTESISTA, label: 'Sem anestesista (?)' },
+    ...[...(rosterOpcoes || [])].sort((a, b) => a.label.localeCompare(b.label, 'pt-BR')),
+  ], [rosterOpcoes])
+
+  // BUSCA no topo da folha (dono 17/08): o roster passa de 45 pessoas e rolar
+  // tudo com o dedo no meio do plantão é pior que digitar duas letras. Casa por
+  // nome OU apelido — quem procura "Staub" não digita "Guilherme".
+  const lista = useMemo(() => {
+    const q = normNome(busca)
+    if (!q) return opcoes
+    return opcoes.filter((o) => {
+      const r = rosterByUid.get(o.value)
+      return normNome(o.label).includes(q) || (r?.apelidos || []).some((a) => normNome(a).includes(q))
+    })
+  }, [opcoes, rosterByUid, busca])
+
+  const pergunta = casoUnico
+    ? 'Quem responde por esta cirurgia?'
+    : `Quem responde pela ${salaExibicao(sala)}?`
+  // Contexto do alvo. "agora com X" NÃO é decoração: é o que denunciou o bug de
+  // 31/07 (com o board na tarde, o sheet mostrava o dono da MANHÃ). Some com o
+  // nome daqui e a divergência de turno volta a ser invisível.
+  const contexto = [
+    TURNO_LABEL[turno],
+    HOSPITAL_LABEL?.[escala?.hospital],
+    casoUnico
+      ? [casoUnico.hora, nomeCirurgiaoCurto(titleCaseNome(casoUnico.cirurgiao))].filter(Boolean).join(' · ')
+      : null,
+    nomeAtual ? `agora com ${nomeAtual}` : null,
+  ].filter(Boolean).join(' · ')
   const rotulo = casoUnico
     ? `${salaExibicao(sala)}${casoUnico.cirurgiao ? ` · ${nomeCirurgiaoCurto(casoUnico.cirurgiao)}` : ''}`
     : `${salaExibicao(sala)}${casosAlvo?.length && atual.alias ? ` — ${nomeAtual}` : ''} (${alvos.length} caso${alvos.length === 1 ? '' : 's'})`
@@ -123,6 +174,9 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
   )
   const segundo = podeDupla && uidSegundo ? rosterByUid.get(uidSegundo) : null
   const apelidoDe = (r) => r?.apelidos?.[0] || primeiroNomeUpper(r?.nome)
+  const nomeEscolhido = escolhido && escolhido !== SEM_ANESTESISTA
+    ? nomeAnestesistaExibicao({ uid: escolhido, alias: '', rosterByUid })
+    : ''
 
   const confirmar = async () => {
     const semAnest = escolhido === SEM_ANESTESISTA
@@ -168,88 +222,214 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
     }
   }
 
+  // Resumo do lado que SAI: quantas cirurgias ele tem aqui e quantas ficam com
+  // ele por já terem terminado.
+  const totalLado = alvos.length + naoMudam.length
+  const resumoSai = [
+    totalLado ? `${totalLado} ${totalLado === 1 ? 'cirurgia' : 'cirurgias'}` : 'sem cirurgia',
+    naoMudam.length ? `${naoMudam.length} terminada${naoMudam.length === 1 ? '' : 's'}` : null,
+  ].filter(Boolean).join(' · ')
+
   return (
     <Sheet open onOpenChange={(o) => !o && onClose?.()}>
-      <SheetContent side="bottom">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <UserCog className="w-4 h-4 shrink-0" /> {titulo}
-          </SheetTitle>
-          <p className="text-lg font-bold leading-tight text-foreground">{rotulo}</p>
+      {/* o painel acompanha o conteúdo: o default do DS fixa 85% da tela e era
+          justamente o que fazia este sheet parecer vazio (dono 17/08) */}
+      <SheetContent side="bottom" className="!h-auto max-h-[88vh]">
+        <SheetHeader className="pb-2">
+          <div className="flex items-center gap-2">
+            {!casoUnico && (
+              <span className="shrink-0 rounded-md bg-primary px-1.5 py-0.5 text-[10.5px] font-extrabold uppercase tracking-wide text-primary-foreground">
+                {salaExibicao(sala)}
+              </span>
+            )}
+            <SheetTitle className="text-[17px] leading-tight">{pergunta}</SheetTitle>
+          </div>
+          {contexto && <p className="mt-1 text-[11.5px] leading-snug text-muted-foreground">{contexto}</p>}
         </SheetHeader>
-        <div className="space-y-4 px-1 pb-6 pt-2">
-          {atual.alias && (
-            <p className="text-sm text-muted-foreground">
-              Responsável atual: <b className="text-foreground">{nomeAtual}</b>
+
+        <div className="px-1 pb-4">
+          {/* ── DE → PARA (dono 17/08): quem sai e quem assume lado a lado, no
+              topo, logo abaixo do título. O card ASSUME É o seletor: o Select do
+              DS (o mesmo que está em produção, com busca) fica INVISÍVEL por
+              cima dele, então o toque abre o dropdown ancorado no card e o
+              painel não vira uma lista rolante (dono 17/08, 2ª rodada). ── */}
+          <div className="grid grid-cols-[1fr_auto_1fr] items-stretch gap-1.5">
+            <div className="flex min-h-[58px] flex-col justify-center gap-px rounded-2xl border border-border-strong px-2.5 py-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Sai</span>
+              <span className="text-[15px] font-bold leading-tight [overflow-wrap:anywhere]">{nomeAtual || '—'}</span>
+              <span className="text-[11px] text-muted-foreground">{resumoSai}</span>
+            </div>
+            <ChevronRight className="h-4 w-4 self-center text-muted-foreground" />
+            <button
+              type="button"
+              onClick={() => !rosterLoading && setPickerAberto(true)}
+              aria-label="Escolher quem assume"
+              className="flex min-h-[58px] items-center gap-1.5 rounded-2xl border border-primary bg-primary/[0.08] px-2.5 py-1.5 text-left"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Assume</span>
+                <span className={[
+                  'block text-[15px] font-bold leading-tight [overflow-wrap:anywhere]',
+                  escolhido ? '' : 'text-primary',
+                ].join(' ')}>
+                  {escolhido === SEM_ANESTESISTA ? 'Sem anestesista' : (nomeEscolhido || 'Escolher…')}
+                </span>
+                <span className="block text-[11px] text-muted-foreground">
+                  {escolhido ? 'toque para trocar' : 'toque para ver a lista'}
+                </span>
+              </span>
+              {rosterLoading
+                ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
+                : <ChevronDown className="h-4 w-4 shrink-0 text-primary" />}
+            </button>
+          </div>
+
+          {/* ── O QUE MUDA DE MÃOS ─────────────────────────────────────────── */}
+          <p className="mb-1 mt-3 text-[11.5px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Procedimentos assumidos
+          </p>
+          {alvos.map((c) => (
+            <div key={c.id} className="flex items-baseline gap-2 border-b border-border py-1.5 text-[12.5px] last:border-b-0">
+              <b className="tabular-nums">{c.hora || '—'}</b>
+              {c.pacienteIniciais && <span>{c.pacienteIniciais}</span>}
+              <span className="min-w-0 truncate">{fraseClinica(c.procedimento)}</span>
+            </div>
+          ))}
+          {!alvos.length && (
+            <p className="py-1.5 text-[12.5px] text-muted-foreground">
+              Nada a passar: as cirurgias já terminaram e mantêm quem as fez.
             </p>
           )}
-          {/* AFIRMAÇÃO + SELETOR, sem passo de confirmação (dono 29/07, revisão da
-              noite): "trocar? Não/Sim" custava um toque a mais no meio do plantão
-              e não protegia de nada — a troca só acontece no "Confirmar" abaixo. */}
-          <div>
-            <p className="mb-1 text-sm font-medium text-foreground">{rotuloAcao}</p>
-            {rosterLoading ? (
-              <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin" /> Carregando roster…
-              </p>
-            ) : (
-              <Select
-                className="w-full"
-                searchable
-                options={opcoes}
-                value={escolhido}
-                onChange={setUidEscolhido}
-                placeholder="Escolha o anestesista"
-              />
-            )}
-          </div>
-          {/* DUPLA na mesma cirurgia (dono 11/08) — só no modo CASO */}
+          {naoMudam.map((c) => (
+            <div key={c.id} className="flex items-baseline gap-2 border-b border-border py-1.5 text-[12.5px] text-muted-foreground last:border-b-0">
+              <b className="tabular-nums">{c.hora || '—'}</b>
+              {c.pacienteIniciais && <span>{c.pacienteIniciais}</span>}
+              <span className="min-w-0 truncate line-through">{fraseClinica(c.procedimento)}</span>
+            </div>
+          ))}
+          {naoMudam.length > 0 && (
+            <p className="mt-1 text-[11.5px] text-muted-foreground">
+              {naoMudam.length === 1 ? `A das ${naoMudam[0].hora} já terminou` : `${naoMudam.length} já terminaram`}
+              : fica{naoMudam.length === 1 ? '' : 'm'} com {nomeAtual || 'quem fez'}.
+            </p>
+          )}
+
+          {/* DUPLA na mesma cirurgia (dono 11/08) — só no modo CASO. No modo
+              SALA a linha nem existe: "só no modo cirurgia" era uma frase que
+              não dizia nada a quem estava olhando (dono 17/08). */}
           {podeDupla && (
-            <div>
-              <p className="mb-1 text-sm font-medium text-foreground">Segundo anestesista (mesma cirurgia):</p>
-              <Select
-                className="w-full"
-                searchable
-                options={opcoesSegundo}
-                value={uidSegundo}
-                onChange={setUidSegundo}
-                placeholder="Só um anestesista"
-              />
-              {segundo && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  A cirurgia fica com os dois no cabeçalho da Completa e conta presença dos dois na fila.
-                </p>
+            <>
+              <button
+                type="button"
+                onClick={() => setAbrirSegundo((v) => !v)}
+                className="flex min-h-[48px] w-full items-center gap-2 border-t border-border py-2 text-left"
+              >
+                <span className="text-[14.5px] font-semibold">Dois anestesistas nesta cirurgia</span>
+                <span className="ml-auto text-[11.5px] text-muted-foreground">
+                  {segundo ? nomeAnestesistaExibicao({ uid: segundo.uid, alias: '', rosterByUid }) : 'não'}
+                </span>
+                <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${abrirSegundo ? 'rotate-180' : ''}`} />
+              </button>
+              {abrirSegundo && (
+                <div className="mb-2 rounded-xl border border-border bg-muted/30 p-3">
+                  <Select
+                    className="w-full"
+                    searchable
+                    options={opcoesSegundo}
+                    value={uidSegundo}
+                    onChange={setUidSegundo}
+                    placeholder="Só um anestesista"
+                  />
+                  <p className="mt-1.5 text-[11.5px] text-muted-foreground">
+                    A cirurgia fica com os dois no cabeçalho da Completa e conta presença dos dois na fila.
+                  </p>
+                </div>
               )}
+            </>
+          )}
+
+          {/* Posição na fila junto com os casos (dono 30/07): sem isto quem
+              assume vira linha EXTRA no fim da fila — o caso Giovana↔Maurício. */}
+          {ofereceAssumir && !segundo && (
+            <div className="border-t border-border py-3">
+              <Switch
+                checked={assumirPosicao}
+                onChange={setAssumirPosicao}
+                label={`Assumir também a posição de ${nomeAtual} na fila`}
+                size="sm"
+              />
             </div>
           )}
-          {/* Posição na fila junto com os casos (dono 30/07): sem isto quem assume
-              vira linha EXTRA no fim da fila — o caso Giovana↔Maurício. */}
-          {ofereceAssumir && !segundo && (
-            <Switch
-              checked={assumirPosicao}
-              onChange={setAssumirPosicao}
-              label={`Assumir também a posição de ${nomeAtual} na ordem de liberação`}
-              size="sm"
-            />
-          )}
-          <Button
-            className="w-full"
-            disabled={salvando || !escolhido || escolhido === atual.uid || !alvos.length}
-            onClick={confirmar}
-          >
-            {salvando
-              ? <Loader2 className="w-4 h-4 animate-spin" />
-              : segundo ? 'Confirmar os dois anestesistas'
-                : escolhido === SEM_ANESTESISTA ? 'Deixar sem anestesista'
-                  : 'Confirmar responsável'}
+        </div>
+
+        <div className="sticky bottom-0 z-10 flex gap-2 border-t border-border bg-card px-1 pb-4 pt-3">
+            <Button variant="outline" className="flex-1" onClick={() => onClose?.()}>Cancelar</Button>
+            <Button
+              className="flex-1"
+              disabled={salvando || !escolhido || escolhido === atual.uid || !alvos.length}
+              onClick={confirmar}
+            >
+              {salvando
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : segundo ? 'Confirmar os dois anestesistas'
+                  : escolhido === SEM_ANESTESISTA ? 'Deixar sem anestesista'
+                    : 'Confirmar responsável'}
           </Button>
-          {!alvos.length && (
-            <p className="text-xs text-muted-foreground">
-              Nada a trocar aqui: as cirurgias já terminaram e mantêm quem as fez.
-            </p>
-          )}
         </div>
       </SheetContent>
+
+      {/* LISTA DE BAIXO PARA CIMA (dono 17/08): folha própria com busca no topo,
+          largura inteira e altura FIXA — a lista rola por dentro e a folha não
+          muda de tamanho conforme o filtro. */}
+      {pickerAberto && (
+        <Sheet open onOpenChange={(o) => { if (!o) { setPickerAberto(false); setBusca('') } }}>
+          <SheetContent side="bottom" className="!h-[72vh]">
+            <SheetHeader className="sticky top-0 z-10 bg-card pb-2">
+              <SheetTitle className="text-[17px]">
+                {casoUnico ? 'Quem assume esta cirurgia?' : `Quem assume a ${salaExibicao(sala)}?`}
+              </SheetTitle>
+              <div className="mt-2">
+                <Input
+                  autoFocus
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  placeholder="Buscar anestesista…"
+                  aria-label="Buscar anestesista"
+                  leftIcon={<Search className="h-4 w-4" />}
+                />
+              </div>
+            </SheetHeader>
+            <div role="listbox" aria-label="Anestesistas" className="px-1 pb-4">
+              {lista.map((o) => {
+                const marcado = escolhido === o.value
+                return (
+                  <button
+                    key={o.value}
+                    type="button"
+                    role="option"
+                    aria-selected={marcado}
+                    onClick={() => { setUidEscolhido(o.value); setPickerAberto(false); setBusca('') }}
+                    className={[
+                      'flex min-h-[52px] w-full items-center gap-2 border-b border-border px-2 py-2 text-left',
+                      marcado ? 'bg-primary/10' : 'active:bg-muted/60',
+                    ].join(' ')}
+                  >
+                    {/* SÓ O NOME, em ordem alfabética (decisão de 17/08): posição na
+                        fila e contagem de cirurgias faziam cada linha virar uma frase */}
+                    <span className="min-w-0 flex-1 text-[15px] font-bold leading-tight [overflow-wrap:anywhere]">
+                      {o.label}
+                    </span>
+                    {marcado && <Check className="h-4 w-4 shrink-0 text-primary" />}
+                  </button>
+                )
+              })}
+              {!lista.length && (
+                <p className="px-1 py-6 text-sm text-muted-foreground">Ninguém com esse nome no roster.</p>
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
     </Sheet>
   )
 }
