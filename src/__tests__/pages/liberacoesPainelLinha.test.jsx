@@ -483,6 +483,29 @@ describe('Clareza dos dois tempos no card (dono 30/07)', () => {
     expect(linhaCirurgiao.textContent).toMatch(/até 23:30|faltam/)
   })
 
+  // SEGUNDA VEZ que este número é relatado como pouco claro (a 1ª foi 30/07). O
+  // sinal "+" pedia que o plantonista adivinhasse se 25min faltavam ou já tinham
+  // passado; a palavra resolve, e é a MESMA que a linha do cirurgião usa acima.
+  it('tempo estourado da pessoa vira palavra: "30min além", não "+30min"', () => {
+    montar({}, {
+      ...comTempos,
+      // relógio do arquivo: 29/07 10:00 → término às 09:30 já passou 30min
+      linhaOverrides: { 'uid-leo': { termino: '09:30' } },
+    })
+    const card = document.querySelector('[data-linha="uid-leo"]')
+    const pilula = within(card).getByTitle(/toque para ajustar/)
+    expect(pilula.textContent).toContain('30min além')
+    expect(pilula.textContent).not.toContain('+30min')
+    // a frase completa segue no title, para quem tem mouse
+    expect(pilula.getAttribute('title')).toMatch(/há 30min além do previsto/)
+  })
+
+  it('enquanto FALTA, a pílula continua curta — "~" não precisa de palavra', () => {
+    montar({}, { ...comTempos, linhaOverrides: { 'uid-leo': { termino: '10:45' } } })
+    const card = document.querySelector('[data-linha="uid-leo"]')
+    expect(within(card).getByTitle(/toque para ajustar/).textContent).toContain('~45min')
+  })
+
   it('estado VAZIO tem cara de ação: "+ Tempo total", tracejado e sem ícone', () => {
     montar({}, comTempos)
     // Marilio não tem override de tempo → estado vazio
