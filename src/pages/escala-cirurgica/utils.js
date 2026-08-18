@@ -1,7 +1,7 @@
 /**
  * Helpers de apresentação da escala cirúrgica (puro, sem React).
  */
-import { resolverAnestesistas, nomeCirurgiaoCurto, titleCaseNome, primeiroNome, stripNotaRodape } from '@/lib/colunaLiberacao'
+import { resolverAnestesistas, nomeCirurgiaoCurto, titleCaseNome, primeiroNome, stripNotaRodape, fraseClinica } from '@/lib/colunaLiberacao'
 
 /** Normaliza nome p/ comparação (acento/caixa/PED-insensível). */
 export const normNome = (s) =>
@@ -904,6 +904,42 @@ const normConvenio = (s) =>
  * Família do convênio p/ identificação visual rápida no board.
  * "Unimed Regional" e "UNIMED CHAPECÓ" caem na mesma família; texto vazio → null.
  */
+/**
+ * Rótulo do convênio NO CARD (dono 17/08): tudo que começa com UNIMED aparece só
+ * como "Unimed". "Unimed Chapecó - VD" e "Unimed Intercâmbio Estadual" comiam a
+ * largura do selo e empurravam o nome do cirurgião para as reticências, e a
+ * distinção entre eles não muda nada dentro da sala.
+ * ⚠️ É SÓ EXIBIÇÃO: o texto original continua guardado no caso — a família do
+ * convênio, o auto-import de cirurgia particular e a conferência dependem dele.
+ */
+export function convenioExibicao(convenio) {
+  const s = normConvenio(convenio)
+  if (!s) return ''
+  if (/^UNIMED\b/.test(s)) return 'Unimed'
+  // GRAFIA DOS OUTROS BADGES (dono 17/08): "PARTICULAR" vira "Particular", como
+  // "Iniciada" e "Passa para tarde". `fraseClinica` é a mesma função que trata o
+  // procedimento — preserva sigla curta (SUS, BRF, SC, FAS) e não mexe em texto
+  // que já veio com minúsculas.
+  return fraseClinica(String(convenio).trim())
+}
+
+/**
+ * Idade NO CARD (dono 17/08): só os anos — "54a 1m 9d" vira "54a". Meses e dias
+ * pesam na leitura sem mudar conduta, EXCETO em quem ainda não fez 1 ano, onde
+ * são a informação clínica (dose, via aérea) — aí ficam, e o "0a" sai.
+ * Formato que não reconheço volta inteiro: melhor um dado estranho na tela do
+ * que uma idade inventada.
+ */
+export function idadeExibicao(idade) {
+  const s = String(idade || '').trim()
+  if (!s) return ''
+  const m = s.match(/^(\d+)\s*a\b/i)
+  if (!m) return s
+  const anos = Number(m[1])
+  if (anos >= 1) return `${anos}a`
+  return s.replace(/^0\s*a\s*/i, '').trim() || s
+}
+
 export function familiaConvenio(convenio) {
   const s = normConvenio(convenio)
   if (!s) return null

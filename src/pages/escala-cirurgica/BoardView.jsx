@@ -12,7 +12,7 @@ import {
 import { useUser } from '@/contexts/UserContext'
 import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
-import { anestesistaDoCasoEh, casoConcluido, casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, compararSalas, parseHoraMinutos, salaExibicao, nomeAnestesistaExibicao } from './utils'
+import { anestesistaDoCasoEh, casoConcluido, casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, compararSalas, parseHoraMinutos, salaExibicao, nomeAnestesistaExibicao, convenioExibicao, idadeExibicao } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import { formatFaltante } from './PainelTempo'
 import useAgoraMinuto from './useAgoraMinuto'
@@ -46,12 +46,13 @@ export const casoVazio = (c) =>
  * (pedido do dono 2026-07-21 / 29-07).
  * Grafia: nunca CAIXA ALTA — procedimento em frase (siglas preservadas), nomes em Title Case.
  *
- * ARRANJO (dono 17/08, escolhido em protótipo): hora numa coluna à esquerda com
- * o término previsto abaixo (13:30 / →15:45); a 1ª linha traz iniciais · idade ·
- * PROCEDIMENTO juntos — é qual cirurgia que se procura primeiro; a 2ª traz o
- * cirurgião (e o residente) à esquerda e, à direita, o estado agora (tempo
- * faltante + status) e o convênio. Os selos saíram da 1ª linha.
- * A 2ª linha QUEBRA quando os selos não cabem: nome de cirurgião não é abreviável.
+ * ARRANJO (dono 17/08): coluna do TEMPO à esquerda (hora, duração estimada e o
+ * que falta) e três linhas à direita — 1ª: iniciais · idade · selos de estado e
+ * convênio; 2ª: o PROCEDIMENTO, em linha própria; 3ª: cirurgião e residente.
+ * O procedimento e o nome do cirurgião ganharam a linha inteira porque os dois
+ * viviam truncados disputando espaço com os selos.
+ * Os selos moram em duas caixas de largura MÍNIMA fixa: card sem status ou sem
+ * convênio guarda o lugar, e a coluna não serrilha de um card para o outro.
  *
  * `moldura`: 'linha' é o quadro denso da aba Completa (full-bleed, divisória em
  * baixo); 'card' é o cartão isolado que a Minhas usa. Mesmo conteúdo, molduras
@@ -70,6 +71,9 @@ export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null, 
   // residente ACOMPANHA o caso (dono 29/07) — aparece abaixo do cirurgião, em peso
   // menor: quem responde pelo caso continua sendo o anestesista.
   const residente = titleCaseNome(caso.residente)
+  // exibição enxuta (dono 17/08): "Unimed X" vira "Unimed"; idade só em anos
+  const convenio = convenioExibicao(caso.convenio)
+  const idade = idadeExibicao(caso.idade)
   // Tempo faltante DESTA CIRURGIA (dono 29/07) — informado à mão no detalhe do
   // caso. Some quando o caso encerra: contagem de cirurgia terminada é ruído.
   const alvoCaso = casoConcluido(caso) ? null : parseHoraMinutos(caso.terminoPrevisto)
@@ -122,7 +126,10 @@ export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null, 
         {temColunaHora && (
           <span className="w-[62px] shrink-0">
             {caso.hora && <span className="block text-[15px] font-bold tabular-nums text-foreground">{caso.hora}</span>}
-            {caso.tempoEstimado && (
+            {/* A duração SUGERIDA pela escala cede a vez assim que alguém informa o
+                término (dono 17/08): mostrar as duas é ler o palpite e o combinado
+                lado a lado. */}
+            {caso.tempoEstimado && alvoCaso == null && (
               <span
                 className="flex items-center gap-0.5 whitespace-nowrap text-[10px] tabular-nums text-muted-foreground"
                 title={`Duração estimada desta cirurgia: ${caso.tempoEstimado}`}
@@ -150,26 +157,39 @@ export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null, 
             ) : null}
           </span>
         )}
-        <span className="min-w-0 flex-1">
-          {/* Linha 1 — de quem é e QUAL cirurgia, na mesma leitura */}
-          <span className="flex items-baseline gap-1.5">
+        {/* Três linhas coladas (dono 17/08): paciente / procedimento / cirurgião
+            lêem como um bloco só. Os selos ocupam os DOIS cantos direitos — em
+            cima o estado da cirurgia, embaixo o convênio — e cada canto guarda o
+            lugar mesmo vazio, senão a coluna serrilha de um card para o outro. */}
+        <span className="min-w-0 flex-1 leading-tight">
+          {/* Linha 1 — de quem é + o estado agora (canto superior direito) */}
+          <span className="flex items-center gap-1.5">
             {salaLabel && <span className="shrink-0 text-sm font-bold text-foreground">{salaLabel}</span>}
             {caso.pacienteIniciais && (
               <span className="shrink-0 text-[14.5px] font-bold text-foreground" title={caso.pacienteIniciais}>
                 {caso.pacienteIniciais}
               </span>
             )}
-            {caso.idade && <span className="shrink-0 text-xs text-muted-foreground">{caso.idade}</span>}
-            {procedimento && (
-              <span className="min-w-0 truncate text-[14.5px] text-foreground" title={procedimento}>{procedimento}</span>
-            )}
+            {idade && <span className="shrink-0 text-xs text-muted-foreground">{idade}</span>}
+            <span className="ml-auto flex shrink-0 items-center justify-end gap-1">
+              {/* à ESQUERDA do estado: o que é exceção — urgência/emergência,
+                  atrasada, suspensa, passa para tarde */}
+              {tb && <Badge variant={tb.variant} badgeStyle={tb.style}>{tb.label}</Badge>}
+              {ex && <Badge variant={ex.variant} className={ex.badgeClass}>{ex.label}</Badge>}
+              {/* canto: o estado da cirurgia, sempre na mesma vertical */}
+              <span className="flex min-w-[76px] items-center justify-end">
+                {st && <Badge variant={st.variant}>{st.label}</Badge>}
+              </span>
+            </span>
           </span>
-          {/* Linha 2 — quem opera à esquerda; estado agora e convênio à direita.
-              SEM quebra (dono 17/08): a linha tem altura fixa para as colunas da
-              direita alinharem card a card. Quem cede espaço é o nome do cirurgião,
-              que trunca com o nome inteiro no title — antes o selo do convênio
-              descia para uma terceira linha e cada card ficava de uma altura. */}
-          <span className="mt-0.5 flex items-center gap-x-1.5">
+          {/* Linha 2 — QUAL cirurgia, na linha inteira */}
+          {procedimento && (
+            <span className="block truncate text-[14.5px] text-foreground" title={procedimento}>
+              {procedimento}
+            </span>
+          )}
+          {/* Linha 3 — quem opera + o convênio no canto inferior direito */}
+          <span className="flex items-center gap-x-1.5">
             {cirurgiao && (
               <span className="min-w-0 truncate text-sm text-foreground/90" title={cirurgiao}>{cirurgiao}</span>
             )}
@@ -178,27 +198,18 @@ export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null, 
                 · R: {residente}
               </span>
             )}
-            {/* tempo desta cirurgia mora na COLUNA da esquerda; aqui ficam só o
-                estado e o convênio. O tempo da PESSOA é outra coisa — pílula verde
-                sólida na fila — e os dois nunca podem ser lidos um pelo outro. */}
-            {/* DUAS COLUNAS FIXAS (dono 17/08): estado e convênio guardam o lugar
-                mesmo quando não existem — a caixa vazia é o que mantém "Terminada"
-                e o selo do convênio na mesma vertical linha após linha. Sem a
-                reserva, cada card alinhava pelo que tinha e a coluna serrilhava. */}
-            <span className="ml-auto flex shrink-0 items-center justify-end gap-1">
-              <span className="flex min-w-[86px] items-center justify-end gap-1">
-                {tb && <Badge variant={tb.variant} badgeStyle={tb.style}>{tb.label}</Badge>}
-                {st && <Badge variant={st.variant}>{st.label}</Badge>}
-                {ex && <Badge variant={ex.variant} className={ex.badgeClass}>{ex.label}</Badge>}
-              </span>
-              <span className="flex min-w-[46px] max-w-[96px] justify-end">
-                {caso.convenio && (
-                  <span className="truncate rounded-md border border-transparent bg-black/10 px-1.5 py-0.5 text-xs font-medium text-foreground/80 dark:bg-white/15 dark:text-foreground/90"
-                    title={caso.convenio}>
-                    {caso.convenio}
-                  </span>
-                )}
-              </span>
+            <span className="ml-auto flex min-w-[46px] max-w-[110px] shrink-0 justify-end">
+              {/* MESMA grafia dos badges de estado (dono 17/08): o selo do convênio
+                  copia a métrica do Badge do DS — 11px semibold, leading-none,
+                  px-2 py-1, raio 10 — e muda só a tinta, que é tonal de propósito
+                  (o convênio identifica, não é estado). Antes ele saía em 12px
+                  medium e a linha ficava com dois tamanhos de letra. */}
+              {convenio && (
+                <span className="truncate rounded-[10px] border border-transparent bg-black/10 px-2 py-1 text-[11px] font-semibold leading-none text-foreground/80 dark:bg-white/15 dark:text-foreground/90"
+                  title={caso.convenio}>
+                  {convenio}
+                </span>
+              )}
             </span>
           </span>
         </span>

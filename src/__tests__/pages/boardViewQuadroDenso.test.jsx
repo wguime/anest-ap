@@ -55,17 +55,30 @@ const renderBoard = (casos) => render(
 )
 
 describe('Completa — arranjo do caso', () => {
-  it('põe iniciais, idade e procedimento na MESMA linha, e o cirurgião na de baixo', () => {
+  // TRÊS LINHAS (dono 17/08): quem+estado / procedimento / quem opera. O
+  // procedimento e o cirurgião ganharam linha própria porque viviam truncados
+  // disputando espaço com os selos.
+  it('separa quem+estado, procedimento e cirurgião em três linhas', () => {
     renderBoard([caso()])
     const card = screen.getByRole('button', { name: /^Detalhes do caso/ })
     const linhas = card.querySelectorAll(':scope > div > span:last-child > span')
-    // primeira linha: quem + qual cirurgia
+    // 1ª: paciente, idade e os selos de estado
     expect(within(linhas[0]).getByText('D.P.')).toBeTruthy()
     expect(within(linhas[0]).getByText('75a')).toBeTruthy()
-    expect(within(linhas[0]).getByText(/Artroplastia total primária do quadril/i)).toBeTruthy()
-    // segunda linha: quem opera
-    expect(within(linhas[1]).getByText(/Mauricio Sanagiotto/i)).toBeTruthy()
-    expect(within(linhas[1]).getByText('SUS')).toBeTruthy()
+    expect(within(linhas[0]).queryByText(/Artroplastia/i)).toBeNull()
+    // 2ª: só o procedimento
+    expect(linhas[1].textContent).toMatch(/Artroplastia total primária do quadril/i)
+    // 3ª: quem opera + o convênio no canto inferior direito
+    expect(within(linhas[2]).getByText(/Mauricio Sanagiotto/i)).toBeTruthy()
+    expect(within(linhas[2]).getByText('SUS')).toBeTruthy()
+  })
+
+  it('badges de estado ficam na linha das iniciais, não na do cirurgião', () => {
+    renderBoard([caso({ statusCirurgia: 'iniciada', statusExtra: 'atrasada' })])
+    const card = screen.getByRole('button', { name: /^Detalhes do caso/ })
+    const linhas = card.querySelectorAll(':scope > div > span:last-child > span')
+    expect(within(linhas[0]).getByText('Iniciada')).toBeTruthy()
+    expect(within(linhas[0]).getByText('Atrasada')).toBeTruthy()
   })
 
   it('mostra o término previsto embaixo da hora, com a seta', () => {
@@ -147,13 +160,21 @@ describe('Completa — cabeçalho da sala', () => {
 })
 
 describe('Completa — coluna do tempo', () => {
-  it('põe a duração estimada e o tempo faltante embaixo do horário', () => {
+  it('põe a duração estimada embaixo do horário enquanto ninguém informou o término', () => {
+    renderBoard([caso({ tempoEstimado: '02:30' })])
+    const card = screen.getByRole('button', { name: /^Detalhes do caso/ })
+    const coluna = card.querySelector(':scope > div > span:first-child')
+    expect(within(coluna).getByText('13:30')).toBeTruthy()
+    expect(within(coluna).getByText('02:30')).toBeTruthy()
+  })
+
+  // A duração é o palpite da escala; o término é o combinado. Mostrar os dois
+  // lado a lado era ler palpite e combinado juntos (dono 17/08).
+  it('término informado SUBSTITUI a duração sugerida pela escala', () => {
     renderBoard([caso({ tempoEstimado: '02:30', terminoPrevisto: '15:45', statusCirurgia: 'iniciada' })])
     const card = screen.getByRole('button', { name: /^Detalhes do caso/ })
     const coluna = card.querySelector(':scope > div > span:first-child')
-    // hora, duração e o que falta — os três na MESMA coluna (dono 17/08)
-    expect(within(coluna).getByText('13:30')).toBeTruthy()
-    expect(within(coluna).getByText('02:30')).toBeTruthy()
+    expect(within(coluna).queryByText('02:30')).toBeNull()
     expect(coluna.textContent).toMatch(/min|h/)
   })
 
@@ -165,17 +186,15 @@ describe('Completa — coluna do tempo', () => {
 })
 
 describe('Completa — colunas da direita', () => {
-  it('reserva o lugar do status e do convênio mesmo quando não existem', () => {
+  it('guarda o lugar do estado e do convênio mesmo quando não existem', () => {
     const { container } = render(
       <CasoCard caso={{ ...caso(), convenio: '', statusCirurgia: 'agendada' }} moldura="linha" onClick={() => {}} />,
       { wrapper: wrap },
     )
-    const direita = container.querySelector('button > div > span:last-child > span:last-child > span:last-child')
-    // as duas caixas continuam no DOM com largura mínima — é o que mantém
-    // "Terminada" e o selo do convênio na mesma vertical, card a card
-    const caixas = direita.querySelectorAll(':scope > span')
-    expect(caixas).toHaveLength(2)
-    expect(caixas[0].className).toContain('min-w-[86px]')
-    expect(caixas[1].className).toContain('min-w-[46px]')
+    const linhas = container.querySelectorAll('button > div > span:last-child > span')
+    // canto superior direito (estado) e inferior direito (convênio) seguem no DOM
+    // com largura mínima — é o que mantém as duas colunas na mesma vertical
+    expect(linhas[0].querySelector('span:last-child > span:last-child').className).toContain('min-w-[76px]')
+    expect(linhas[2].querySelector('span:last-child').className).toContain('min-w-[46px]')
   })
 })
