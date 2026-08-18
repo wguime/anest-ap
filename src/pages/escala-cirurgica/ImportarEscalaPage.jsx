@@ -14,7 +14,7 @@ import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { parseExcelEscala } from '@/lib/excelEscala'
 import { nomeCirurgiaoCurto, separarListaRodape, titleCaseNome } from '@/lib/colunaLiberacao'
-import { detectarItensDuplicados, ehPosicaoAssistencial, filtrarItensImportados, resumirItensEscala } from '@/lib/escalaCirurgicaItens'
+import { aplicarHoraPadraoPosicoes, detectarItensDuplicados, ehPosicaoAssistencial, filtrarItensImportados, resumirItensEscala } from '@/lib/escalaCirurgicaItens'
 import { isPermissionError } from '@/services/supabaseEscalaAnestesistaService'
 import { prepararImagemParaVision } from '@/lib/imagemVision'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
@@ -261,10 +261,15 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
   const carregarLoteImportado = (rows, hospParam, posicoes = []) => {
     // Itens sem hora pertencem ao período selecionado NO MOMENTO DO UPLOAD.
     // Depois disso, alternar manhã/tarde só filtra; não move SRPA entre turnos.
-    const lote = prepararCasos(rows, hospParam, posicoes).map((c) => ({
-      ...c,
-      turno: turnoDeHora(c.hora) || periodo,
-    }))
+    // A SRPA da Unimed entra às 09:00 e o mapa nunca escreve esse horário — o
+    // carimbo entra ANTES do turno para que hora e turno concordem, e entra AQUI
+    // (não na publicação) porque a conferência é onde se corrige o que veio
+    // torto: o 09:00 aparece na linha, editável como qualquer outro campo.
+    const lote = aplicarHoraPadraoPosicoes(prepararCasos(rows, hospParam, posicoes), hospParam, periodo)
+      .map((c) => ({
+        ...c,
+        turno: turnoDeHora(c.hora) || periodo,
+      }))
     setLoteAnexo(lote)
     return { lote, selecionados: aplicarPeriodoAoLote(lote) }
   }
