@@ -222,6 +222,17 @@ describe('Histórico e aparência do recado (dono 17/08)', () => {
     expect(screen.getByText(/Leonardo Fontes/)).toBeTruthy()
   })
 
+  it('o recado usa TEAL — a única família que a escala não usa para estado', async () => {
+    // verde=plantão/iniciada, azul=terminada, âmbar=atrasada/próximo/sem anestesista,
+    // vermelho=liberado/suspensa, roxo="passa para tarde", indigo="troca". Todos
+    // podem aparecer nesta tela; teal não significa nada aqui.
+    fetchAvisos.mockResolvedValue([AVISO])
+    montar({ meuUid: 'uid-leo', meuAlias: 'LEONARDO' })
+    const faixa = (await screen.findByText('Guilherme libera Alexandre S.')).closest('div[class*="category-"]')
+    expect(faixa.className).toContain('category-teal')
+    expect(faixa.className).not.toContain('category-purple')
+  })
+
   it('o card do recado NÃO conta confirmações — só autor e hora', async () => {
     fetchAvisos.mockResolvedValue([{ ...AVISO, confirmadoPor: ['uid-x'] }])
     montar({ meuUid: 'uid-mar', meuAlias: 'MARILIO' })

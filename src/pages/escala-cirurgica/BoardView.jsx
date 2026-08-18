@@ -358,7 +358,12 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
                   O fundo mora no h3: os `group-data-[state=open]` do trigger, do ⚙ e do
                   chevron são neutralizados para não pintarem faixas por cima dele. */}
               <AccordionTrigger
-                className="px-3 py-2 group-data-[state=open]:bg-transparent"
+                /* o `dark:` também (bug visto no escuro, dono 17/08): o trigger do
+                   DS pinta `dark:group-data-[state=open]:bg-card` e só a variante
+                   clara estava neutralizada — no escuro o botão ficava `bg-card` e
+                   o resto do cabeçalho `bg-card-elevated`, partindo a faixa em duas
+                   cores na vertical, bem no meio do nome e do ⚙ */
+                className="px-3 py-2 group-data-[state=open]:bg-transparent dark:group-data-[state=open]:bg-transparent"
                 headerClassName="sticky top-14 z-10 border-y border-border bg-card-elevated"
                 iconAfterActions
                 iconClassName="group-data-[state=open]:bg-transparent dark:group-data-[state=open]:bg-transparent"

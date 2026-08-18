@@ -416,6 +416,15 @@ describe('Board — cor de status do card (Iniciada amarelo, Terminada verde)', 
       unmount()
     }
   })
+  it('cabeçalho da sala é UMA cor só, também no escuro', () => {
+    // o trigger do DS pinta `dark:group-data-[state=open]:bg-card`; sem neutralizar
+    // a variante escura, a faixa saía partida em duas cores na vertical, no meio do
+    // nome e do ⚙ (bug visto no escuro, dono 17/08)
+    render(<BoardView escala={escala('agendada')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
+    const trigger = screen.getByText('SALA 1').closest('button')
+    expect(trigger.className).toContain('dark:group-data-[state=open]:bg-transparent')
+  })
+
   it('dois eixos: Iniciada + Atrasada convivem (card verde + os DOIS badges)', () => {
     const e = { id: 'e1', hospital: 'unimed', casos: [{ id: 'c1', sala: 'SALA 1', ordem: 0, hora: '13:30', anestesista: 'X', procedimento: 'Sinus', statusCirurgia: 'iniciada', statusExtra: 'atrasada' }] }
     render(<BoardView escala={e} meuAlias="zz" meuUid="u-zz" turno="vespertino" />, { wrapper: wrap })

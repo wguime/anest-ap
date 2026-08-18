@@ -403,40 +403,77 @@ discussão: as telas convivem com ela.
 
 ### Superfícies de ação da escala (dono 17/08) — os painéis que abrem por cima
 
-Mesmo método (protótipo a 430px nos dois temas, medição ao lado, escolha por imagem).
-⚠️ `POSITION_CLASSES.bottom` do DS fixa **`h-[85vh]`**, não `max-h`: todo bottom-sheet
-nascia com 85% da tela mesmo quase vazio — era a causa do "a tela fica quase vazia". Os
-sheets da escala passam `!h-auto max-h-[88vh]`; o **default do DS fica como está** (mexer
-nele alcança os outros cinco sheets do app).
+Mesmo método (protótipo a 430px nos dois temas, medição ao lado, escolha por imagem),
+com DUAS rodadas de revisão do dono olhando a tela em uso. Três achados de DS que
+explicam metade das queixas e valem para o app inteiro:
 
-- **Detalhe do caso** (`CasoDetalheSheet`, Completa + Minhas): estado primeiro. Cabeçalho =
-  pill da sala · hora · badge de tipo · selo tonal de convênio, procedimento como título
-  (15px extrabold, QUEBRA) e iniciais · idade · previsto como metadado. Corpo: **Andamento**
-  (segmented 3, exclusivo, é quem pinta o card) → **Aviso** (3 chips, convivem com iniciada,
-  bloqueados por terminada) → **Equipe** (cirurgião · anestesista · residente · ajuda, cada
-  um com o valor e um botão que abre o editor na própria linha) → **Tempo desta cirurgia** →
-  "Mudar de sala/local". **Cirurgião virou editável** (grava `cirurgiao`, o mesmo campo do
-  Adicionar caso; sugere os cirurgiões do dia p/ a mesma pessoa não entrar em 2 grafias).
-  Nome do anestesista e grafia do procedimento vêm das MESMAS funções do quadro
-  (`nomeAnestesistaExibicao`, `fraseClinica`) — o painel repetia o texto cru da importação.
-- **Anestesista da sala/caso** (`DefinirAnestesistaSheet`): o Select saiu, **o roster é a
-  tela** — uma linha por colega com onde ele está agora (`Nº na fila` + cirurgias no turno),
-  busca no topo (45+ pessoas), escolha em 1 toque. Cabeçalho declara o ALCANCE ("1 cirurgia
-  muda de dono (a das 10:00 já terminou e fica com X)") e traz **"agora com {nome}"** — é
-  esse nome que denuncia divergência de turno (bug 31/07). Rodapé grudado repete o efeito
-  antes de confirmar. Regra de negócio intacta (modos, turno, terminados, dupla, assunção).
-- **Tempo** (`PainelTempo`, fonte única da pessoa e da cirurgia): o **"ou" virou alternador
-  segmentado** — "Tempo faltante" × "Horário de término", um caminho por vez, com "dois
-  jeitos de dizer a mesma coisa, preencha um". Vazio abre na duração; com valor, no horário.
-  Atalhos em grade de 6 (30min–3h) + "Outro tempo…". **"Definir" saiu** (morto: atalho,
-  seletor e campo já gravam na escolha). O sheet da fila chama-se "Tempo faltante de {nome}",
-  igual ao botão que o abre — eram 4 nomes para 2 conceitos.
-- **Painel da linha** (✏️ Liberações): **recado em cima** (é o uso diário) com contador;
-  ajuda e troca logo abaixo; local e cirurgião descem para **"Ajustes da fila"**, recolhido
-  com o valor na dobra e já aberto se alguém escreveu um à mão. Cabeçalho repete o contexto
-  do card (quantas cirurgias · quantas com término · onde). Restaurar/Salvar grudados no pé.
-  Rótulos: "Local" diz que muda só o que a FILA mostra (a sala da cirurgia é no detalhe do
-  caso) e o cirurgião avisa que escrever à mão apaga o tempo por cirurgia dos chips.
+- ⚠️ `POSITION_CLASSES.bottom` do DS fixa **`h-[85vh]`**, não `max-h`: todo bottom-sheet
+  nascia com 85% da tela mesmo quase vazio — era a causa literal de "a tela fica quase
+  vazia". Os sheets da escala passam `!h-auto max-h-[88vh]`; o **default do DS fica como
+  está** (mexer nele alcança os outros cinco sheets do app).
+- ⚠️ o dropdown do `Select` herda a **largura do gatilho** (`select.jsx`,
+  `width = Math.min(triggerWidth, …)`). Gatilho estreito = lista de 45 nomes num popover
+  espremido. Onde a lista é longa, usar folha própria em vez de insistir no Select.
+- ⚠️ `AccordionTrigger` pinta `dark:group-data-[state=open]:bg-card`: neutralizar SÓ a
+  variante clara parte o cabeçalho em duas cores no escuro (bug visto em 17/08 no
+  cabeçalho de sala). Neutralizar as duas.
+
+- **Detalhe do caso** (`CasoDetalheSheet`, Completa + Minhas): **três cartões por
+  assunto** — a cirurgia · **Andamento** · Quem está e onde. O primeiro é leitura; o
+  segundo traz os dois eixos (principal pinta o card, aviso convive com iniciada e é
+  bloqueado por terminada) mais o término desta cirurgia; o terceiro traz cirurgião,
+  anestesista, residente, sala/local e ajuda. **Cirurgião virou editável** (grava
+  `cirurgiao`, o mesmo campo do Adicionar caso). Cada editor abre em **folha de baixo
+  para cima**, com o caso parado atrás — expandir dentro do cartão mudava a altura no
+  meio da leitura. Nome do anestesista e grafia do procedimento saem das MESMAS funções
+  do quadro (`nomeAnestesistaExibicao`, `fraseClinica`).
+- **Anestesista da sala/caso** (`DefinirAnestesistaSheet`): **De → Para** — cards SAI e
+  ASSUME lado a lado no topo, "Procedimentos assumidos" abaixo (com os terminados
+  riscados e o porquê), toggle de assumir a posição e o par Cancelar/Trocar. O card
+  ASSUME abre uma **folha** com busca no topo (nome ou apelido), largura inteira e
+  altura fixa de 72vh — a lista rola por dentro e não muda de tamanho com o filtro.
+  Lista só de NOMES em ordem alfabética (`localeCompare` pt-BR). "agora com {nome}" no
+  cabeçalho não é decoração: foi ele que denunciou o bug de turno de 31/07.
+- **Tempo** (`PainelTempo`, fonte única da pessoa e da cirurgia): o **"ou" virou
+  alternador segmentado** — "Tempo faltante" × "Horário de término", um caminho por vez.
+  As duas rotas ocupam a MESMA caixa (`h-[154px]`; medido no app: 413px nas duas) porque
+  o card mudar de tamanho debaixo do dedo piora a leitura. Atalhos em grade de 6 +
+  "Outro tempo…"; campo de horário estreito e centrado. **"Definir" saiu** — era morto,
+  já que atalho, seletor e campo gravam na escolha.
+- **Painel da linha** (✏️ Liberações): **lista full-bleed** de cinco assuntos com o valor
+  atual à direita — Observação · Local · Cirurgião(ões) · Ajuda · Troca — e o editor
+  abrindo em folha. O rodapé Restaurar/Salvar some enquanto a folha está aberta (dois
+  botões "Salvar" na mesma tela é escolha que ninguém deveria ter). "Recado" chama-se
+  **Observação**: com o recado do plantonista na mesma aba, dois "recados" com sentidos
+  diferentes se confundiam.
+
+### Recado do plantonista (dono 17/08) — mensagem na aba Liberações
+
+Faixa full-bleed acima de "procedimentos sem anestesista". **Só o plantonista do turno
+manda** (o do selo na fila; para os demais o botão não existe) — botão "Mensagem para
+equipe". **LER é de todos**: "Histórico de mensagens" abre os recados do turno, inclusive
+os já confirmados, e é lá que o plantonista **apaga** (a lixeira do card sumia junto com
+o recado assim que ele confirmava o próprio).
+
+- **ATÉ 3 por PESSOA, não por turno**: cada um vê os três mais recentes que ainda não
+  confirmou; confirmar libera a vaga do próximo. Um recado antigo não confirmado fica
+  atrás dos novos e só aparece no histórico — decisão consciente do dono.
+- **Some por confirmação individual**: quem confirmou não vê mais, quem não confirmou
+  continua vendo. Sem contagem de leituras no card (virava placar); ficam texto, autor e
+  hora.
+- **Cor = `category-teal`, por ELIMINAÇÃO** (passou por laranja e roxo antes): verde é
+  plantão/iniciada, azul é terminada, âmbar é atrasada/próximo/sem anestesista, vermelho
+  é liberado/suspensa, roxo é "passa para tarde" e indigo é "troca" — todos podem estar
+  na MESMA tela. Teal não significa nada no módulo.
+- ⚠️ **NÃO é notificação**: vive na tela em realtime e morre na confirmação. A escala não
+  manda mensagem a ninguém desde 30/07 e isso não mudou.
+- Banco: `escala_cirurgica_aviso` + `escala_cirurgica_aviso_confirmacao` (migrations
+  `20260817140000` e `20260817180000`). Autor e confirmante são **server-side por
+  trigger** (`firebase_uid()`) — não dá para falar pela boca de outro nem inflar o placar;
+  a confirmação é linha própria com PK composta (num jsonb, duas confirmações simultâneas
+  se sobrescreveriam). RLS por papel, como o resto do módulo; nada toca `ordem_liberacao`.
+- Hook `useAvisoPlantonista` fica FORA do context: o recado não é parte da escala e o
+  context já carrega três hospitais por data.
 
 ## Bottom Nav
 4 abas: **Home** | **Gestão** (Shield) | **Educação** | **Menu**
