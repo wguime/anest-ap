@@ -190,6 +190,27 @@ describe('Histórico e aparência do recado (dono 17/08)', () => {
     expect(screen.getByRole('button', { name: /Histórico de mensagens/ })).toBeTruthy()
   })
 
+  it('o plantonista apaga pelo HISTÓRICO — inclusive o que ele já confirmou', async () => {
+    // sem isto ele perdia o recado de vista ao confirmar o próprio, e o recado
+    // seguia na tela de quem não confirmou, sem ninguém poder tirá-lo
+    fetchAvisos.mockResolvedValue([{ ...AVISO, confirmadoPor: ['uid-leo'] }])
+    montar({ meuUid: 'uid-leo', meuAlias: 'LEONARDO' })
+    // já confirmado: sumiu do topo da fila
+    await waitFor(() => expect(fetchAvisos).toHaveBeenCalled())
+    expect(screen.queryByRole('button', { name: /Excluir recado/ })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Histórico de mensagens/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /Excluir mensagem/ }))
+    await waitFor(() => expect(excluirAviso).toHaveBeenCalledWith('aviso-1'))
+  })
+
+  it('quem não é plantonista lê o histórico mas não apaga', async () => {
+    fetchAvisos.mockResolvedValue([AVISO])
+    montar({ meuUid: 'uid-mar', meuAlias: 'MARILIO' })
+    fireEvent.click(screen.getByRole('button', { name: /Histórico de mensagens/ }))
+    expect(await screen.findAllByText('Guilherme libera Alexandre S.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Excluir mensagem/ })).toBeNull()
+  })
+
   it('o histórico traz o que já foi confirmado (e sumiu da fila)', async () => {
     // confirmado por MIM: sai da faixa, continua no histórico
     fetchAvisos.mockResolvedValue([{ ...AVISO, confirmadoPor: ['uid-mar'] }])

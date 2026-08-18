@@ -1484,7 +1484,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 onClick={() => setAbaPainel((a) => (a === 'local' ? null : 'local'))}
               />
               {abaPainel === 'local' && (
-                <EditorPainel>
+                <EditorPainel
+                  titulo="Local na fila"
+                  descricao="Muda só o que a FILA mostra. A sala da cirurgia se corrige no detalhe do caso."
+                  onFechar={() => setAbaPainel(null)} onSalvar={salvarEditor} salvando={salvandoEditor}
+                >
                   {editor.salas?.length > 0 && (
                     <p className="mb-1 text-[11.5px] text-muted-foreground">
                       Automático (dos casos): <b className="text-foreground/80">{editor.salas.map(salaLiberacao).join('/')}</b>
@@ -1518,7 +1522,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     />
                   )}
                   <p className="mt-1 text-[11.5px] text-muted-foreground">
-                    Muda só o que a FILA mostra. A sala da cirurgia se corrige no detalhe do caso.
                     Local novo digitado em "Outro" entra na lista para as próximas vezes.
                   </p>
                 </EditorPainel>
@@ -1531,7 +1534,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 onClick={() => setAbaPainel((a) => (a === 'cirurgiao' ? null : 'cirurgiao'))}
               />
               {abaPainel === 'cirurgiao' && (
-                <EditorPainel>
+                <EditorPainel
+                  titulo="Cirurgião(ões)"
+                  descricao="Campo vazio segue o automático (o cirurgião de cada caso)."
+                  onFechar={() => setAbaPainel(null)} onSalvar={salvarEditor} salvando={salvandoEditor}
+                >
                   {editor.cirurgioes?.length > 0 && (
                     <p className="mb-1 text-[11.5px] text-muted-foreground">
                       Automático (dos casos): <b className="text-foreground/80">{editor.cirurgioes.join(' · ')}</b>
@@ -1549,8 +1556,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   {/* escrever aqui SUBSTITUI a lista derivada — e com ela somem os
                       tempos por cirurgia dos chips (não há caso a que casar) */}
                   <p className="mt-1 text-[11.5px] text-muted-foreground">
-                    Campo vazio segue o automático. Escrevendo à mão, a linha deixa de mostrar
-                    o tempo de cada cirurgia.
+                    Escrevendo à mão, a linha deixa de mostrar o tempo de cada cirurgia.
                   </p>
                 </EditorPainel>
               )}
@@ -1603,7 +1609,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         onClick={() => setAbaPainel((a) => (a === 'troca' ? null : 'troca'))}
                       />
                       {abaPainel === 'troca' && (
-                        <EditorPainel>
+                        <EditorPainel titulo="Troca" onFechar={() => setAbaPainel(null)} onSalvar={salvarEditor} salvando={salvandoEditor}>
                           <Button variant="outline" className="w-full" disabled={executandoTroca} onClick={desfazerSubstEditor}>
                             {executandoTroca ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowLeftRight className="w-4 h-4" />}
                             Desfazer troca
@@ -1631,7 +1637,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         onClick={() => setAbaPainel((a) => (a === 'troca' ? null : 'troca'))}
                       />
                       {abaPainel === 'troca' && (
-                        <EditorPainel>
+                        <EditorPainel titulo="Troca" onFechar={() => setAbaPainel(null)} onSalvar={salvarEditor} salvando={salvandoEditor}>
                           <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-foreground">
                             <ArrowLeftRight className="h-3.5 w-3.5 shrink-0 text-category-indigo-fg" />
                             Trocado com <b>{info.outroNome}</b>{info.outroHospitalLabel ? ` (${info.outroHospitalLabel})` : ''}
@@ -1684,7 +1690,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 onClick={() => setAbaPainel((a) => (a === 'recado' ? null : 'recado'))}
               />
               {abaPainel === 'recado' && (
-                <EditorPainel>
+                <EditorPainel
+                  titulo="Observação"
+                  descricao="Aparece no card da fila. Sem nome de paciente — a escala só guarda iniciais."
+                  onFechar={() => setAbaPainel(null)} onSalvar={salvarEditor} salvando={salvandoEditor}
+                >
                   {/* sem rótulo aqui: a LINHA logo acima já diz "Observação" —
                       repetir dava a mesma palavra duas vezes coladas na tela */}
                   <Input
@@ -1700,16 +1710,14 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   <p className="mt-1 text-right text-[11px] text-muted-foreground">
                     {rascObservacao.length}/{OBSERVACAO_MAX}
                   </p>
-                  {/* LGPD: campo aberto que o grupo TODO enxerga. A escala só guarda
-                      iniciais de paciente e um texto livre não pode furar isso. */}
-                  <p className="text-[11.5px] leading-snug text-muted-foreground">
-                    Aparece no card da fila. Sem nome de paciente — a escala só guarda iniciais.
-                  </p>
                 </EditorPainel>
               )}
 
               {/* AÇÕES GRUDADAS NO PÉ: com o painel rolando, Salvar saía da tela e
-                  o campo ficava preenchido sem gravar. */}
+                  o campo ficava preenchido sem gravar. Some enquanto uma folha de
+                  editor está aberta — ela tem o próprio Salvar, e dois botões com
+                  o mesmo nome na mesma tela é escolha que ninguém deveria ter. */}
+              {!abaPainel && (
               <div className="sticky bottom-0 -mx-1 mt-3 flex gap-2 border-t border-border bg-card px-1 pb-1 pt-3">
                 <Button variant="outline" className="flex-1" disabled={salvandoEditor} onClick={restaurarEditor}>
                   Restaurar automático
@@ -1718,9 +1726,12 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   {salvandoEditor ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
                 </Button>
               </div>
-              <p className="mt-1 text-[11.5px] text-muted-foreground">
-                "Restaurar automático" limpa também o cronômetro e as marcas desta linha.
-              </p>
+              )}
+              {!abaPainel && (
+                <p className="mt-1 text-[11.5px] text-muted-foreground">
+                  "Restaurar automático" limpa também o cronômetro e as marcas desta linha.
+                </p>
+              )}
             </div>
           )}
         </SheetContent>
@@ -1728,7 +1739,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
 
       {/* HISTÓRICO DO TURNO (dono 17/08): quem não é plantonista não manda, mas
           precisa poder reler o que passou — inclusive o que já confirmou e saiu
-          da tela. Só leitura; nada aqui confirma nem apaga. */}
+          da tela. Ninguém confirma por aqui (isso é do card, na fila), mas o
+          PLANTONISTA apaga: sem isto ele perdia o recado de vista assim que
+          confirmava o próprio — e ele segue na tela de quem não confirmou, sem
+          ninguém poder tirá-lo ("adiciona e/ou exclui quando quiser"). */}
       <Sheet open={historicoSheet} onOpenChange={(o) => !o && setHistoricoSheet(false)}>
         <SheetContent side="bottom" className="!h-auto max-h-[85vh]">
           <SheetHeader className="pb-2">
@@ -1744,14 +1758,26 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
               </p>
             )}
             {historicoAvisos.map((a) => (
-              <div key={a.id} className="rounded-xl border border-border bg-card p-3">
-                <p className="text-[15px] font-bold leading-tight [overflow-wrap:anywhere]">{a.texto}</p>
-                <p className="mt-1 flex items-center gap-1 text-[11.5px] text-muted-foreground">
-                  <MessageSquare className="h-3 w-3 shrink-0" />
-                  <span className="min-w-0 truncate">{titleCaseNome(a.autorNome) || 'Plantonista'}</span>
-                  <span className="shrink-0">· plantonista ·</span>
-                  <span className="shrink-0 tabular-nums">{horaCurta(a.criadoEm)}</span>
-                </p>
+              <div key={a.id} className="flex items-start gap-2 rounded-xl border border-border bg-card p-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[15px] font-bold leading-tight [overflow-wrap:anywhere]">{a.texto}</p>
+                  <p className="mt-1 flex items-center gap-1 text-[11.5px] text-muted-foreground">
+                    <MessageSquare className="h-3 w-3 shrink-0" />
+                    <span className="min-w-0 truncate">{titleCaseNome(a.autorNome) || 'Plantonista'}</span>
+                    <span className="shrink-0">· plantonista ·</span>
+                    <span className="shrink-0 tabular-nums">{horaCurta(a.criadoEm)}</span>
+                  </p>
+                </div>
+                {canEdit && souPlantonista && (
+                  <button
+                    type="button"
+                    onClick={() => excluirAviso(a.id)}
+                    aria-label={`Excluir mensagem "${a.texto}"`}
+                    className="-my-1 flex h-9 w-8 shrink-0 items-center justify-center text-muted-foreground active:opacity-60"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -1960,12 +1986,35 @@ function LinhaPainel({ rotulo, valor, aberto, onClick }) {
   )
 }
 
-/** Bloco do editor que abre sob a linha tocada — fundo próprio para separar. */
-function EditorPainel({ children }) {
+/**
+ * Editor de uma linha do painel, em FOLHA de baixo para cima (dono 17/08): abrir
+ * sob a linha empurrava o resto e mudava a altura do painel no meio da leitura —
+ * o mesmo defeito que os editores do caso tiveram, e que ali já foi resolvido
+ * assim. O conteúdo da linha fica parado atrás.
+ *
+ * Salvar aqui grava o override INTEIRO (local + cirurgião + observação) e fecha o
+ * painel: é o mesmo `salvarEditor` do rodapé, e ter dois botões de gravar com
+ * significados diferentes era o que fazia o campo ficar preenchido sem salvar.
+ */
+function EditorPainel({ titulo, descricao, onFechar, onSalvar, salvando, children }) {
   return (
-    <div className="-mx-1 border-b border-border bg-muted/40 px-3 py-3">
-      {children}
-    </div>
+    <Sheet open onOpenChange={(o) => !o && onFechar?.()}>
+      <SheetContent side="bottom" className="!h-auto max-h-[85vh]">
+        <SheetHeader className="pb-2">
+          <SheetTitle className="text-[17px] leading-tight">{titulo}</SheetTitle>
+          {descricao && (
+            <p className="mt-1 text-[11.5px] leading-snug text-muted-foreground">{descricao}</p>
+          )}
+        </SheetHeader>
+        <div className="px-1 pb-3">{children}</div>
+        <div className="sticky bottom-0 flex gap-2 border-t border-border bg-card px-1 pb-4 pt-3">
+          <Button variant="outline" className="flex-1" onClick={onFechar}>Cancelar</Button>
+          <Button className="flex-1" disabled={salvando} onClick={onSalvar}>
+            {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
   )
 }
 

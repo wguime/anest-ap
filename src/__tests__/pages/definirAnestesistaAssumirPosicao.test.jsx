@@ -63,8 +63,11 @@ const escalaComRodape = {
 // REDESENHO 17/08 (2ª rodada): o card ASSUME é o seletor — o Select do DS (o
 // mesmo de produção, com busca) abre ancorado nele. A asserção é a mesma; o que
 // mudou é o caminho até o colega.
+// O card ASSUME abre uma FOLHA de baixo para cima com busca no topo (dono 17/08,
+// 3ª rodada): o dropdown do Select herda a largura do gatilho, e o gatilho é meio
+// card — a lista saía estreita, com os nomes quebrando.
 const escolherCury = () => {
-  fireEvent.click(screen.getByRole('combobox'))
+  fireEvent.click(screen.getByRole('button', { name: 'Escolher quem assume' }))
   fireEvent.click(screen.getByRole('option', { name: /GUSTAVO CURY/ }))
 }
 
@@ -79,12 +82,21 @@ describe('Lista de colegas (dono 17/08)', () => {
     expect(screen.getByText(/já terminou: fica com/)).toBeTruthy()
   })
 
-  it('o card ASSUME abre o seletor do DS (o mesmo de produção)', () => {
+  it('o card ASSUME abre a folha com a lista e a busca no topo', () => {
     render(<DefinirAnestesistaSheet escala={escalaComRodape} sala="Sala 5" onClose={vi.fn()} />, { wrapper: wrap })
-    // fechado, nenhuma opção na tela: o painel não vira lista rolante
+    // fechada, nenhuma opção na tela: o painel não vira lista rolante
     expect(screen.queryByRole('option')).toBeNull()
-    fireEvent.click(screen.getByRole('combobox'))
+    fireEvent.click(screen.getByRole('button', { name: 'Escolher quem assume' }))
+    expect(screen.getByLabelText('Buscar anestesista')).toBeTruthy()
     expect(screen.getByRole('option', { name: /GUSTAVO CURY/ })).toBeTruthy()
+  })
+
+  it('a busca filtra por nome ou apelido (o roster passa de 45 pessoas)', () => {
+    render(<DefinirAnestesistaSheet escala={escalaComRodape} sala="Sala 5" onClose={vi.fn()} />, { wrapper: wrap })
+    fireEvent.click(screen.getByRole('button', { name: 'Escolher quem assume' }))
+    fireEvent.change(screen.getByLabelText('Buscar anestesista'), { target: { value: 'staub' } })
+    expect(screen.getByRole('option', { name: /GUILHERME STAUB/ })).toBeTruthy()
+    expect(screen.queryByRole('option', { name: /GUSTAVO CURY/ })).toBeNull()
   })
 
   it('o lado que SAI resume o que ele tem aqui', () => {
@@ -98,7 +110,7 @@ describe('Lista de colegas (dono 17/08)', () => {
   // pessoa pelo nome, e o texto extra fazia cada linha virar uma frase para ler.
   it('lista os colegas só pelo nome, em ordem alfabética', () => {
     render(<DefinirAnestesistaSheet escala={escalaComRodape} sala="Sala 5" turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
-    fireEvent.click(screen.getByRole('combobox'))
+    fireEvent.click(screen.getByRole('button', { name: 'Escolher quem assume' }))
     const opcoes = screen.getAllByRole('option').map((o) => o.textContent.trim())
     expect(opcoes.some((t) => /na fila|cirurgia/.test(t))).toBe(false)
     // "Sem anestesista (?)" abre a lista; o resto vem ordenado em pt-BR
@@ -224,10 +236,11 @@ describe('Segundo anestesista (mesma cirurgia)', () => {
   )
   // o segundo anestesista continua em Select (é exceção, não o caminho comum):
   // a linha abre o campo
+  // o card ASSUME não é mais combobox (virou folha), então o único Select que
+  // sobra no painel é o do segundo anestesista
   const segundoSelect = () => {
     fireEvent.click(screen.getByRole('button', { name: /Dois anestesistas nesta cirurgia/i }))
-    // [0] é o card ASSUME; o segundo anestesista é o combobox que acabou de abrir
-    return screen.getAllByRole('combobox')[1]
+    return screen.getByRole('combobox')
   }
 
   it('só aparece depois de escolher o responsável, e só no modo CASO', async () => {

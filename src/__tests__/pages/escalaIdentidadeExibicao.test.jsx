@@ -143,7 +143,7 @@ describe('DefinirAnestesistaSheet — vai direto à escolha', () => {
   it('a pergunta nomeia a sala e o card ASSUME abre o seletor', async () => {
     abrir()
     expect(await screen.findByText('Quem responde pela CC - Sala 1?')).toBeTruthy()
-    fireEvent.click(screen.getByRole('combobox'))
+    fireEvent.click(screen.getByRole('button', { name: 'Escolher quem assume' }))
     expect(screen.getByRole('option', { name: /GUSTAVO CURY/ })).toBeTruthy()
     // a pergunta e os botões Não/Sim não existem mais
     expect(screen.queryByRole('button', { name: 'Sim, trocar' })).toBeNull()
@@ -152,7 +152,7 @@ describe('DefinirAnestesistaSheet — vai direto à escolha', () => {
 
   it('ninguém nasce marcado — repetir quem já está lá deixava o Confirmar morto', async () => {
     abrir()
-    fireEvent.click(screen.getByRole('combobox'))
+    fireEvent.click(screen.getByRole('button', { name: 'Escolher quem assume' }))
     const marcados = (await screen.findAllByRole('option')).filter((o) => o.getAttribute('aria-selected') === 'true')
     expect(marcados).toHaveLength(0)
   })

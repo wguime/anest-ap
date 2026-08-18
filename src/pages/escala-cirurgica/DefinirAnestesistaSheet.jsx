@@ -21,15 +21,15 @@
  * toques (abrir o Select, escolher) para um.
  */
 import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, Select, Button, Switch } from '@/design-system'
+import { Check, ChevronDown, ChevronRight, Loader2, Search } from 'lucide-react'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, Select, Button, Switch, Input } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { HOSPITAL_LABEL, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { fraseClinica, nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
 import {
   alvosTrocaResponsavel, anestesistaDaSala, filtrarPorTurno, localizarSlotRodape,
-  nomeAnestesistaExibicao, salaExibicao,
+  nomeAnestesistaExibicao, normNome, salaExibicao,
 } from './utils'
 
 const primeiroNomeUpper = (nome) => String(nome || '').trim().split(/\s+/)[0]?.toUpperCase() || ''
@@ -45,6 +45,12 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
   const [uidEscolhido, setUidEscolhido] = useState('')
   const [uidSegundo, setUidSegundo] = useState('') // dupla na MESMA cirurgia
   const [abrirSegundo, setAbrirSegundo] = useState(false)
+  // SELETOR EM FOLHA (dono 17/08, 3ª rodada): o dropdown do Select do DS herda a
+  // LARGURA DO GATILHO (`width = triggerWidth` em computePosition), e o gatilho
+  // aqui é meio card — a lista saía num popover estreito, com os nomes quebrando.
+  // Uma folha própria dá largura inteira, busca no topo e altura fixa com rolagem.
+  const [pickerAberto, setPickerAberto] = useState(false)
+  const [busca, setBusca] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [assumirPosicao, setAssumirPosicao] = useState(false)
 
@@ -108,6 +114,18 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
     { value: SEM_ANESTESISTA, label: 'Sem anestesista (?)' },
     ...[...(rosterOpcoes || [])].sort((a, b) => a.label.localeCompare(b.label, 'pt-BR')),
   ], [rosterOpcoes])
+
+  // BUSCA no topo da folha (dono 17/08): o roster passa de 45 pessoas e rolar
+  // tudo com o dedo no meio do plantão é pior que digitar duas letras. Casa por
+  // nome OU apelido — quem procura "Staub" não digita "Guilherme".
+  const lista = useMemo(() => {
+    const q = normNome(busca)
+    if (!q) return opcoes
+    return opcoes.filter((o) => {
+      const r = rosterByUid.get(o.value)
+      return normNome(o.label).includes(q) || (r?.apelidos || []).some((a) => normNome(a).includes(q))
+    })
+  }, [opcoes, rosterByUid, busca])
 
   const pergunta = casoUnico
     ? 'Quem responde por esta cirurgia?'
@@ -242,42 +260,28 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
               <span className="text-[11px] text-muted-foreground">{resumoSai}</span>
             </div>
             <ChevronRight className="h-4 w-4 self-center text-muted-foreground" />
-            <div className="relative">
-              {/* a cara do card — o controle real é o Select invisível por cima */}
-              <div
-                aria-hidden="true"
-                className="pointer-events-none flex min-h-[58px] items-center gap-1.5 rounded-2xl border border-primary bg-primary/[0.08] px-2.5 py-1.5"
-              >
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Assume</span>
-                  <span className={[
-                    'block text-[15px] font-bold leading-tight [overflow-wrap:anywhere]',
-                    escolhido ? '' : 'text-primary',
-                  ].join(' ')}>
-                    {escolhido === SEM_ANESTESISTA ? 'Sem anestesista' : (nomeEscolhido || 'Escolher…')}
-                  </span>
-                  <span className="block text-[11px] text-muted-foreground">
-                    {escolhido ? 'toque para trocar' : 'toque para ver a lista'}
-                  </span>
+            <button
+              type="button"
+              onClick={() => !rosterLoading && setPickerAberto(true)}
+              aria-label="Escolher quem assume"
+              className="flex min-h-[58px] items-center gap-1.5 rounded-2xl border border-primary bg-primary/[0.08] px-2.5 py-1.5 text-left"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Assume</span>
+                <span className={[
+                  'block text-[15px] font-bold leading-tight [overflow-wrap:anywhere]',
+                  escolhido ? '' : 'text-primary',
+                ].join(' ')}>
+                  {escolhido === SEM_ANESTESISTA ? 'Sem anestesista' : (nomeEscolhido || 'Escolher…')}
                 </span>
-                <ChevronDown className="h-4 w-4 shrink-0 text-primary" />
-              </div>
-              {rosterLoading ? (
-                <span className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <span className="block text-[11px] text-muted-foreground">
+                  {escolhido ? 'toque para trocar' : 'toque para ver a lista'}
                 </span>
-              ) : (
-                <Select
-                  className="absolute inset-0 opacity-0 [&_button]:h-full [&_button]:min-h-full"
-                  searchable
-                  aria-label="Escolher quem assume"
-                  options={opcoes}
-                  value={escolhido}
-                  onChange={setUidEscolhido}
-                  placeholder="Escolher…"
-                />
-              )}
-            </div>
+              </span>
+              {rosterLoading
+                ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
+                : <ChevronDown className="h-4 w-4 shrink-0 text-primary" />}
+            </button>
           </div>
 
           {/* ── O QUE MUDA DE MÃOS ─────────────────────────────────────────── */}
@@ -373,6 +377,59 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
           </Button>
         </div>
       </SheetContent>
+
+      {/* LISTA DE BAIXO PARA CIMA (dono 17/08): folha própria com busca no topo,
+          largura inteira e altura FIXA — a lista rola por dentro e a folha não
+          muda de tamanho conforme o filtro. */}
+      {pickerAberto && (
+        <Sheet open onOpenChange={(o) => { if (!o) { setPickerAberto(false); setBusca('') } }}>
+          <SheetContent side="bottom" className="!h-[72vh]">
+            <SheetHeader className="sticky top-0 z-10 bg-card pb-2">
+              <SheetTitle className="text-[17px]">
+                {casoUnico ? 'Quem assume esta cirurgia?' : `Quem assume a ${salaExibicao(sala)}?`}
+              </SheetTitle>
+              <div className="mt-2">
+                <Input
+                  autoFocus
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  placeholder="Buscar anestesista…"
+                  aria-label="Buscar anestesista"
+                  leftIcon={<Search className="h-4 w-4" />}
+                />
+              </div>
+            </SheetHeader>
+            <div role="listbox" aria-label="Anestesistas" className="px-1 pb-4">
+              {lista.map((o) => {
+                const marcado = escolhido === o.value
+                return (
+                  <button
+                    key={o.value}
+                    type="button"
+                    role="option"
+                    aria-selected={marcado}
+                    onClick={() => { setUidEscolhido(o.value); setPickerAberto(false); setBusca('') }}
+                    className={[
+                      'flex min-h-[52px] w-full items-center gap-2 border-b border-border px-2 py-2 text-left',
+                      marcado ? 'bg-primary/10' : 'active:bg-muted/60',
+                    ].join(' ')}
+                  >
+                    {/* SÓ O NOME, em ordem alfabética (decisão de 17/08): posição na
+                        fila e contagem de cirurgias faziam cada linha virar uma frase */}
+                    <span className="min-w-0 flex-1 text-[15px] font-bold leading-tight [overflow-wrap:anywhere]">
+                      {o.label}
+                    </span>
+                    {marcado && <Check className="h-4 w-4 shrink-0 text-primary" />}
+                  </button>
+                )
+              })}
+              {!lista.length && (
+                <p className="px-1 py-6 text-sm text-muted-foreground">Ninguém com esse nome no roster.</p>
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
     </Sheet>
   )
 }
