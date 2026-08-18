@@ -101,5 +101,7 @@ export default function useAvisoPlantonista({ escalaId, turno, userId, userName 
     } catch { carregar() /* falhou: volta ao que o banco diz */ }
   }, [carregar])
 
-  return { avisos: visiveis, podeEnviar, enviar, confirmar, excluir, enviando, recarregar: carregar }
+  // HISTÓRICO: todas as mensagens do turno, inclusive as que EU já confirmei
+  // (dono 17/08) — quem chega no meio do turno precisa poder ler o que passou.
+  return { avisos: visiveis, historico: avisos, podeEnviar, enviar, confirmar, excluir, enviando, recarregar: carregar }
 }

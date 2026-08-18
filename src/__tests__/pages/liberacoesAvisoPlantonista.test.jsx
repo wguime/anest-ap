@@ -173,3 +173,40 @@ describe('O recado na tela', () => {
     expect(screen.queryByRole('button', { name: /Excluir recado/ })).toBeNull()
   })
 })
+
+describe('Histórico e aparência do recado (dono 17/08)', () => {
+  // MANDAR é do plantonista; LER é de todo mundo. Quem chega no meio do turno
+  // precisa poder reler o que já passou — inclusive o que confirmou e sumiu.
+  it('quem não é plantonista vê o histórico, e só ele', async () => {
+    fetchAvisos.mockResolvedValue([AVISO])
+    montar({ meuUid: 'uid-mar', meuAlias: 'MARILIO' })
+    expect(await screen.findByRole('button', { name: /Histórico de mensagens/ })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Mensagem para equipe/ })).toBeNull()
+  })
+
+  it('o plantonista vê os dois botões', async () => {
+    montar({ meuUid: 'uid-leo', meuAlias: 'LEONARDO' })
+    expect(await screen.findByRole('button', { name: /Mensagem para equipe/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Histórico de mensagens/ })).toBeTruthy()
+  })
+
+  it('o histórico traz o que já foi confirmado (e sumiu da fila)', async () => {
+    // confirmado por MIM: sai da faixa, continua no histórico
+    fetchAvisos.mockResolvedValue([{ ...AVISO, confirmadoPor: ['uid-mar'] }])
+    montar({ meuUid: 'uid-mar', meuAlias: 'MARILIO' })
+    const botao = await screen.findByRole('button', { name: /Histórico de mensagens/ })
+    expect(screen.queryByText('Guilherme libera Alexandre S.')).toBeNull()
+    fireEvent.click(botao)
+    expect(await screen.findByText('Guilherme libera Alexandre S.')).toBeTruthy()
+    expect(screen.getByText(/Leonardo Fontes/)).toBeTruthy()
+  })
+
+  it('o card do recado NÃO conta confirmações — só autor e hora', async () => {
+    fetchAvisos.mockResolvedValue([{ ...AVISO, confirmadoPor: ['uid-x'] }])
+    montar({ meuUid: 'uid-mar', meuAlias: 'MARILIO' })
+    expect(await screen.findByText('Guilherme libera Alexandre S.')).toBeTruthy()
+    // "2 de 4 confirmaram" transformava o recado num placar (dono 17/08)
+    expect(screen.queryByText(/confirmaram|confirmou|de \d+/)).toBeNull()
+    expect(screen.getByText(/plantonista/)).toBeTruthy()
+  })
+})
