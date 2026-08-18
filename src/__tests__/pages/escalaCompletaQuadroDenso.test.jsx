@@ -183,6 +183,46 @@ describe('Completa — coluna do tempo', () => {
     expect(screen.getByText('→15:45')).toBeTruthy()
     expect(screen.queryByText(/^~/)).toBeNull()
   })
+
+  // ESTOUROU O TEMPO (dono 18/08): sozinho na coluna, "+50min" não diz de que
+  // horário está falando — e a referência sumia justamente quando passava a
+  // fazer falta. Com o previsto de volta, a coluna se lê de cima para baixo:
+  // começou 13:30, previa terminar 15:45, passou 15min disso.
+  it('mostra o término previsto junto do excedente quando a cirurgia passa da hora', () => {
+    const { container } = render(
+      <CasoCard
+        caso={caso({ terminoPrevisto: '15:45', statusCirurgia: 'iniciada' })}
+        moldura="linha"
+        onClick={() => {}}
+        agoraMin={16 * 60}
+      />,
+      { wrapper: wrap },
+    )
+    const coluna = container.querySelector('button > div > span:first-child')
+    expect(within(coluna).getByText('13:30')).toBeTruthy()
+    expect(within(coluna).getByText('→15:45')).toBeTruthy()
+    const excedente = within(coluna).getByText('+15min')
+    expect(excedente.className).toContain('text-warning')
+    // o porquê fica no title para quem tem mouse; no celular, a leitura é a coluna
+    expect(excedente.getAttribute('title')).toMatch(/prevista para terminar às 15:45.*passou 15min/)
+  })
+
+  // Enquanto FALTA, o número se explica sozinho e a âncora seria ruído: a
+  // coluna tem 46px e três linhas ali empurram o card para cima.
+  it('cirurgia em andamento dentro do prazo não repete o horário previsto', () => {
+    const { container } = render(
+      <CasoCard
+        caso={caso({ terminoPrevisto: '15:45', statusCirurgia: 'iniciada' })}
+        moldura="linha"
+        onClick={() => {}}
+        agoraMin={15 * 60}
+      />,
+      { wrapper: wrap },
+    )
+    const coluna = container.querySelector('button > div > span:first-child')
+    expect(within(coluna).getByText('~45min')).toBeTruthy()
+    expect(within(coluna).queryByText('→15:45')).toBeNull()
+  })
 })
 
 describe('Completa — colunas da direita', () => {
