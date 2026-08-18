@@ -18,6 +18,7 @@ import { hojeISO, HOSPITAL_LABEL, OBSERVACAO_MAX } from '@/contexts/EscalaCirurg
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import useAgoraMinuto from './useAgoraMinuto'
+import useAvisoPlantonista from './useAvisoPlantonista'
 import PainelTempo, { formatFaltante, fraseFaltante } from './PainelTempo'
 import AddCasoSheet from './AddCasoSheet'
 import { casosResolvidos, compararSalas, filtrarPorTurno, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao } from './utils'
@@ -56,7 +57,11 @@ const SELO_SEM_PROXIMO = new Set(['P1', 'P2'])
 // anotado com hospitalOrigem, campo só de exibição) e `fdsMeta` é o payload do
 // documento (grade P1–P4, Pn→pessoa, escalação). Troca/P4-coringa ficam FORA do
 // modo FDS (a fila única já modela "pega caso em qualquer hospital").
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, p4Hospital = null, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, onGarantirEscala, onNavigate }) {
+// Teto do recado do plantonista — o mesmo do CHECK da tabela. É aviso de
+// corredor, não comunicado (para comunicado o app tem o módulo Comunicados).
+const AVISO_MAX = 160
+
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, onGarantirEscala, onNavigate }) {
   const { toast } = useToast()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
   // do turno selecionado e o rodapé (ordem de liberação) DAQUELE turno.
@@ -90,6 +95,20 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const [addCaso, setAddCaso] = useState(false) // urgência/encaixe direto da fila (dono 16/08)
   const [escalaDoCasoNovo, setEscalaDoCasoNovo] = useState(null) // criada sob demanda
   const [criandoEscala, setCriandoEscala] = useState(false)
+  const [avisoSheet, setAvisoSheet] = useState(false) // compor recado do plantonista
+  const [rascAviso, setRascAviso] = useState('')
+
+  // RECADO DO PLANTONISTA (dono 17/08). Fora do context de propósito — ver o
+  // cabeçalho de useAvisoPlantonista.
+  // a identidade vem das PROPS (a página já a tem): puxar `useUser` aqui obrigaria
+  // um UserProvider em volta da view em todo teste que a monta, por um dado que
+  // ela já recebe
+  const { aviso, enviar: enviarAviso, confirmar: confirmarAviso, enviando: enviandoAviso } = useAvisoPlantonista({
+    escalaId: escala?.id,
+    turno: turno || turnoBase,
+    userId: meuUid,
+    userName: meuNome || null,
+  })
 
   // Cronômetro em tempo real: o texto é derivado puro de `agoraMin`. O hook
   // recalcula ao voltar do segundo plano (iOS/PWA mata o setInterval na
@@ -426,6 +445,23 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // conteúdo (cirurgia em curso continua visível), quem não estava vira card
   // sintético.
   const linhasFase = (fase === 'zerada' || noiteFds) ? comSelos.filter((l) => l.noturno) : comSelos
+
+  // SOU O PLANTONISTA? (dono 17/08). A view é quem sabe: o selo sai da lib, na
+  // linha da fila. Casa por chave (uid do vínculo) e, sem vínculo, pelo nome
+  // normalizado — a mesma dupla identidade que a fila usa em todo lugar.
+  // `meuUid`/`meuAlias` voltaram às props por causa disto: saíram em 29/07,
+  // quando a substituição deixou a aba sem nenhuma leitura de "quem sou eu".
+  // sem useMemo de propósito: este trecho roda DEPOIS do early return de
+  // `rosterLoading`, e hook após early return quebra a ordem dos hooks. É um
+  // `.some()` sobre a fila do turno — algumas dezenas de linhas.
+  const souPlantonista = (() => {
+    const meu = normNome(meuAlias)
+    return linhasFase.some((l) => l.isPlantonista && (
+      (meuUid && (l.chave === meuUid || l.uid === meuUid))
+      || (meu && (normNome(l.nomeOriginal || '') === meu || normNome(l.anestesista || '') === meu))
+    ))
+  })()
+
 
   // urgência/encaixe precisa de uma escala REAL de destino — mas ela pode ser
   // CRIADA na hora (dono 16/08: hospital sem escala publicada ficava sem ação
@@ -794,9 +830,54 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     const c = casosTurno.find((x) => x.id === id)
     return c?.hospitalOrigem ? HOSPITAL_LABEL[c.hospitalOrigem] : null
   }
+  const publicarAviso = async () => {
+    if (await enviarAviso(rascAviso)) { setRascAviso(''); setAvisoSheet(false) }
+  }
+
   return (
     <div className="space-y-3">
       {acoesTopo}
+
+      {/* ── RECADO DO PLANTONISTA (dono 17/08) ─────────────────────────────
+          Faixa de borda a borda em TEAL — cor que não significa nada no módulo,
+          então não disputa com atrasada (âmbar), liberado (vermelho), terminada
+          (azul), plantão (verde) nem troca (indigo). Fica ACIMA de "procedimentos
+          sem anestesista", que era o pedido.
+          Some da tela de QUEM CONFIRMA: o hook já devolve só o recado que EU
+          ainda não confirmei. Não notifica ninguém (a escala não manda mensagem
+          desde 30/07) — vive aqui e morre na confirmação. ── */}
+      {aviso && (
+        <div className="-mx-4 border-y border-category-teal/50 bg-category-teal-bg px-4 pb-3 pt-2.5">
+          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-category-teal-fg">
+            <UserPlus className="h-3.5 w-3.5 shrink-0" /> Recado do plantonista
+            <span className="ml-auto font-semibold normal-case tracking-normal text-muted-foreground">
+              {horaCurta(aviso.criadoEm)}
+            </span>
+          </p>
+          <p className="my-1.5 text-[16px] font-bold leading-tight [overflow-wrap:anywhere]">{aviso.texto}</p>
+          <div className="flex items-center gap-2.5">
+            <span className="min-w-0 text-[11px] text-muted-foreground">
+              {titleCaseNome(aviso.autorNome) || 'Plantonista'}
+              {aviso.confirmadoPor.length > 0 && ` · ${aviso.confirmadoPor.length} confirmaram`}
+            </span>
+            <Button
+              size="sm"
+              className="ml-auto shrink-0 bg-category-teal text-white hover:bg-category-teal/90"
+              onClick={() => confirmarAviso(aviso.id)}
+            >
+              <Check className="h-4 w-4" /> Confirmar
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Só o plantonista do turno avisa (decisão do dono): para os demais o
+          botão não existe — não é um botão desabilitado. */}
+      {canEdit && souPlantonista && !aviso && (
+        <Button size="sm" variant="outline" className="w-full" onClick={() => setAvisoSheet(true)}>
+          <UserPlus className="w-4 h-4 shrink-0" /> Avisar a equipe
+        </Button>
+      )}
 
       {/* Procedimentos sem anestesista NO TOPO (pedido do dono 24/07): o plantonista
           precisa cobrir. Somem sozinhos ao serem marcados como terminados/suspensos
@@ -1618,6 +1699,47 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
         </SheetContent>
       </Sheet>
 
+      {/* Compor o recado do plantonista (dono 17/08). Campo único e curto: é um
+          aviso de corredor ("Guilherme libera Alexandre S."), não um comunicado —
+          para comunicado o app já tem o módulo Comunicados. */}
+      <Sheet open={avisoSheet} onOpenChange={(o) => { if (!o) { setAvisoSheet(false); setRascAviso('') } }}>
+        <SheetContent side="bottom" className="!h-auto max-h-[88vh]">
+          <SheetHeader className="pb-2">
+            <SheetTitle className="flex items-center gap-2 text-[17px]">
+              <UserPlus className="w-4 h-4 shrink-0" /> Avisar a equipe
+            </SheetTitle>
+            <p className="mt-1 text-[11.5px] leading-snug text-muted-foreground">
+              Aparece no topo desta aba para todo mundo e some da tela de cada um que confirmar.
+            </p>
+          </SheetHeader>
+          <div className="px-1 pb-4">
+            <Input
+              autoFocus
+              value={rascAviso}
+              maxLength={AVISO_MAX}
+              onChange={(e) => setRascAviso(e.target.value)}
+              placeholder="ex.: Guilherme libera Alexandre S."
+              onKeyDown={(e) => { if (e.key === 'Enter') publicarAviso() }}
+            />
+            <p className="mt-1 text-right text-[11px] text-muted-foreground">{rascAviso.length}/{AVISO_MAX}</p>
+            {/* LGPD: texto livre que o grupo TODO enxerga — mesma regra da
+                Observação da linha (a escala só guarda iniciais de paciente). */}
+            <p className="text-[11.5px] leading-snug text-muted-foreground">
+              Recado operacional. Sem nome de paciente — a escala só guarda iniciais.
+            </p>
+            <Button
+              className="mt-3 w-full"
+              disabled={enviandoAviso || !rascAviso.trim()}
+              onClick={publicarAviso}
+            >
+              {/* rótulo diferente do botão que abriu o sheet: "Avisar a equipe"
+                  nos dois lugares dava dois controles com o mesmo nome na tela */}
+              {enviandoAviso ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Publicar recado'}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
       {/* Tempo faltante — 1 toque define o término e liga o cronômetro do card */}
       <Sheet open={!!alvoTempo} onOpenChange={(o) => { if (!o) { setAlvoTempo(null); setHoraExata('') } }}>
         <SheetContent side="bottom" className="!h-auto max-h-[88vh]">
@@ -1786,4 +1908,13 @@ function EditorPainel({ children }) {
       {children}
     </div>
   )
+}
+
+/** "14:20" a partir do timestamp do recado (vazio se não parseia). */
+function horaCurta(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime())
+    ? ''
+    : `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }

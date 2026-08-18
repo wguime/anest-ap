@@ -444,8 +444,64 @@ async function parseEscalaImagem({ imageBase64, mimeType, hospital, modo, refSab
   return data || (modo === 'fds' ? { dias: [], ignorados: [] } : { casos: [], ordemLiberacao: [] })
 }
 
+
+// ============================================================================
+// AVISO DO PLANTONISTA (dono 2026-08-17)
+// ============================================================================
+// Recado que o plantonista deixa na aba Liberações. Vive na TELA (realtime) e
+// some para cada pessoa que confirma — não é notificação: a escala não manda
+// mensagem a ninguém desde 30/07.
+//
+// A autoria e o confirmante são gravados por TRIGGER no banco (firebase_uid()),
+// então o que se manda daqui é só o texto; nome/uid do cliente entram apenas
+// como fallback quando o perfil ainda não existe no `profiles`.
+
+/** Avisos do turno + quem já confirmou cada um (mais recente primeiro). */
+async function fetchAvisos(escalaId, turno) {
+  if (!escalaId || String(escalaId).startsWith('demo-')) return []
+  const { data, error } = await supabase
+    .from('escala_cirurgica_aviso')
+    // `*` + embed: select explícito de coluna que não existe volta lista VAZIA
+    // em silêncio (lição registrada no projeto)
+    .select('*, confirmacoes:escala_cirurgica_aviso_confirmacao(user_id)')
+    .eq('escala_id', escalaId)
+    .eq('turno', turno)
+    .order('criado_em', { ascending: false })
+  if (error) handleError(error, 'fetchAvisos')
+  return (data || []).map((row) => ({
+    id: row.id,
+    texto: row.texto,
+    autorUserId: row.autor_user_id,
+    autorNome: row.autor_nome,
+    criadoEm: row.criado_em,
+    confirmadoPor: (row.confirmacoes || []).map((c) => c.user_id).filter(Boolean),
+  }))
+}
+
+/** Publica um recado. Autor e horário vêm do trigger, nunca do cliente. */
+async function criarAviso(escalaId, turno, texto, { userName } = {}) {
+  const { data, error } = await supabase
+    .from('escala_cirurgica_aviso')
+    .insert({ escala_id: escalaId, turno, texto: String(texto || '').trim(), autor_nome: userName || null })
+    .select('id')
+    .single()
+  if (error) handleError(error, 'criarAviso')
+  return data?.id || null
+}
+
+/** Confirma por SI (a RLS amarra a linha ao uid do JWT). Repetir é no-op. */
+async function confirmarAviso(avisoId, { userId, userName } = {}) {
+  const { error } = await supabase
+    .from('escala_cirurgica_aviso_confirmacao')
+    .upsert({ aviso_id: avisoId, user_id: userId, user_nome: userName || null }, { onConflict: 'aviso_id,user_id' })
+  if (error) handleError(error, 'confirmarAviso')
+}
+
 export default {
   fetchEscala,
+  fetchAvisos,
+  criarAviso,
+  confirmarAviso,
   fetchLocaisHospital,
   salvarEscala,
   salvarEscalaTurno,
