@@ -76,14 +76,17 @@ function handleError(error, context) {
 }
 
 // Campos aceitos num caso (evita enviar lixo do front, ex. ids client-side).
-// ⚠️ Coluna nova precisa entrar AQUI, no CAMEL_TO_SNAKE acima e na RPC
-// rpc_salvar_escala_cirurgica (que enumera as colunas do INSERT) — faltando
-// qualquer um dos três, o campo é descartado em silêncio ao publicar.
+// ⚠️ Coluna nova precisa entrar AQUI e nas DUAS RPCs que enumeram as colunas do
+// INSERT — `rpc_publicar_escala_turno` (a viva) e `rpc_salvar_escala_cirurgica`
+// (a legada). Faltando qualquer uma, o campo é descartado em silêncio ao
+// publicar. No CAMEL_TO_SNAKE só entra o nome que DIFERE entre camel e snake:
+// `toSnakeCase` faz passthrough (`CAMEL_TO_SNAKE[key] || key`), que é por isso
+// que `sala`, `hora`, `tipo`, `turno` e `gravidade` não estão lá.
 const CASO_FIELDS = [
   'sala', 'ordem', 'hora', 'tempoEstimado', 'terminoPrevisto', 'pacienteIniciais', 'idade', 'procedimento',
   'convenio', 'cirurgiao', 'cirurgiaoDisplay', 'anestesista', 'anestesistaUserId',
   'residente', 'residenteUserId', 'bloco',
-  'isContinuacao', 'semAnestesista', 'tipo', 'turno',
+  'isContinuacao', 'semAnestesista', 'tipo', 'gravidade', 'turno',
 ]
 
 function casoToRow(caso, escalaId) {
