@@ -12,7 +12,7 @@
  * identidade tem de ser a do GRUPO tocado e não "a primeira da sala".
  */
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 
 import { ThemeProvider, ToastProvider } from '@/design-system'
 import { nomeAnestesistaExibicao } from '@/pages/escala-cirurgica/utils'
@@ -140,9 +140,10 @@ describe('DefinirAnestesistaSheet — vai direto à escolha', () => {
     )
   }
 
-  it('a pergunta nomeia a sala e os colegas já estão na tela', async () => {
+  it('a pergunta nomeia a sala e o card ASSUME abre o seletor', async () => {
     abrir()
     expect(await screen.findByText('Quem responde pela CC - Sala 1?')).toBeTruthy()
+    fireEvent.click(screen.getByRole('combobox'))
     expect(screen.getByRole('option', { name: /GUSTAVO CURY/ })).toBeTruthy()
     // a pergunta e os botões Não/Sim não existem mais
     expect(screen.queryByRole('button', { name: 'Sim, trocar' })).toBeNull()
@@ -151,11 +152,9 @@ describe('DefinirAnestesistaSheet — vai direto à escolha', () => {
 
   it('ninguém nasce marcado — repetir quem já está lá deixava o Confirmar morto', async () => {
     abrir()
+    fireEvent.click(screen.getByRole('combobox'))
     const marcados = (await screen.findAllByRole('option')).filter((o) => o.getAttribute('aria-selected') === 'true')
     expect(marcados).toHaveLength(0)
-    // desde o desenho C (17/08) o rodapé só existe depois da escolha: em vez de um
-    // botão morto na tela, não há botão nenhum
-    expect(screen.queryByRole('button', { name: /Confirmar responsável/i })).toBeNull()
   })
 
   it('no modo CASO a pergunta fala do caso, não da sala', async () => {

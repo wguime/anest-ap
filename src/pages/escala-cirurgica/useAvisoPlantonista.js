@@ -11,7 +11,10 @@
  *   • ENVIA: só o plantonista daquele hospital/turno — quem decide é a VIEW, que
  *     é quem sabe qual linha da fila está com o selo (`podeEnviar` é prop);
  *   • SOME: cada pessoa confirma e o aviso sai da tela DELA. Por isso o que este
- *     hook devolve é o aviso NÃO confirmado por MIM, e não "o aviso do turno".
+ *     hook devolve são os avisos NÃO confirmados por MIM, e não "os do turno";
+ *   • ATÉ 3 na tela (dono 17/08, 2ª rodada): o plantonista manda até três e, ao
+ *     confirmar um deles, abre vaga para o próximo. O teto existe para a fila não
+ *     virar mural — foi o excesso que fez as notificações serem removidas.
  *
  * ⚠️ Não notifica ninguém: a escala não manda mensagem desde 30/07 (as 6 fontes
  * foram removidas porque a inbox tinha 99 não lidas em 23 pessoas). O recado vive
@@ -20,6 +23,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
+
+/** Teto de recados na frente da fila (dono 17/08). */
+export const MAX_AVISOS = 3
 
 export default function useAvisoPlantonista({ escalaId, turno, userId, userName }) {
   const [avisos, setAvisos] = useState([])
@@ -54,12 +60,15 @@ export default function useAvisoPlantonista({ escalaId, turno, userId, userName 
     return () => subs.forEach((s) => s.cleanup())
   }, [ativo, carregar])
 
-  // O QUE APARECE: o mais recente que EU ainda não confirmei. Um de cada vez —
-  // empilhar recados na frente da fila devolveria o problema que a inbox tinha.
-  const aviso = useMemo(
-    () => avisos.find((a) => !a.confirmadoPor.includes(userId)) || null,
+  // O QUE APARECE: os que EU ainda não confirmei, do mais recente para o mais
+  // antigo, no máximo MAX_AVISOS.
+  const visiveis = useMemo(
+    () => avisos.filter((a) => !a.confirmadoPor.includes(userId)).slice(0, MAX_AVISOS),
     [avisos, userId]
   )
+  // Enquanto houver vaga, o plantonista pode mandar outro: confirmar um dos três
+  // é o que libera o lugar (pedido do dono).
+  const podeEnviar = visiveis.length < MAX_AVISOS
 
   const enviar = useCallback(async (texto) => {
     const limpo = String(texto || '').trim()
@@ -84,5 +93,13 @@ export default function useAvisoPlantonista({ escalaId, turno, userId, userName 
     } catch { carregar() /* falhou: volta ao que o banco diz */ }
   }, [carregar, userId, userName])
 
-  return { aviso, enviar, confirmar, enviando, recarregar: carregar }
+  const excluir = useCallback(async (avisoId) => {
+    if (!avisoId) return
+    setAvisos((prev) => prev.filter((a) => a.id !== avisoId)) // otimista
+    try {
+      await svc.excluirAviso(avisoId)
+    } catch { carregar() /* falhou: volta ao que o banco diz */ }
+  }, [carregar])
+
+  return { avisos: visiveis, podeEnviar, enviar, confirmar, excluir, enviando, recarregar: carregar }
 }

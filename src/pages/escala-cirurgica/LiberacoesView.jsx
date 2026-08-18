@@ -103,7 +103,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // a identidade vem das PROPS (a página já a tem): puxar `useUser` aqui obrigaria
   // um UserProvider em volta da view em todo teste que a monta, por um dado que
   // ela já recebe
-  const { aviso, enviar: enviarAviso, confirmar: confirmarAviso, enviando: enviandoAviso } = useAvisoPlantonista({
+  const { avisos, podeEnviar: podeAvisar, enviar: enviarAviso, confirmar: confirmarAviso, excluir: excluirAviso, enviando: enviandoAviso } = useAvisoPlantonista({
     escalaId: escala?.id,
     turno: turno || turnoBase,
     userId: meuUid,
@@ -692,9 +692,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     setRascCirurgiao(ov?.cirurgioes || '')
     setRascTermino(ov?.termino || '')
     setRascObservacao(observacaoDe(ov))
-    // já ajustado à mão? o painel abre JÁ no ajuste — esconder um valor que
-    // alguém escreveu atrás de um toque é pior que gastar a altura
-    setAbaPainel(ov?.local ? 'local' : ov?.cirurgioes ? 'cirurgiao' : null)
+    // o painel abre com a OBSERVAÇÃO já aberta (protótipo escolhido, dono 17/08):
+    // é o campo do uso diário. Local/cirurgião ajustados à mão ganham a vez —
+    // esconder um valor que alguém escreveu atrás de um toque é pior.
+    setAbaPainel(ov?.local ? 'local' : ov?.cirurgioes ? 'cirurgiao' : 'recado')
     setEditor(linha)
   }
   // Salvar ESPERA a persistência antes de fechar (o padrão do `toggle`): fechar
@@ -839,43 +840,51 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       {acoesTopo}
 
       {/* ── RECADO DO PLANTONISTA (dono 17/08) ─────────────────────────────
-          Faixa de borda a borda em TEAL — cor que não significa nada no módulo,
-          então não disputa com atrasada (âmbar), liberado (vermelho), terminada
-          (azul), plantão (verde) nem troca (indigo). Fica ACIMA de "procedimentos
-          sem anestesista", que era o pedido.
-          Some da tela de QUEM CONFIRMA: o hook já devolve só o recado que EU
-          ainda não confirmei. Não notifica ninguém (a escala não manda mensagem
-          desde 30/07) — vive aqui e morre na confirmação. ── */}
-      {aviso && (
-        <div className="-mx-4 border-y border-category-teal/50 bg-category-teal-bg px-4 pb-3 pt-2.5">
-          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-category-teal-fg">
-            <UserPlus className="h-3.5 w-3.5 shrink-0" /> Recado do plantonista
-            <span className="ml-auto font-semibold normal-case tracking-normal text-muted-foreground">
-              {horaCurta(aviso.criadoEm)}
-            </span>
+          Faixa de borda a borda em LARANJA (`category-orange`, dono 17/08 na 2ª
+          rodada): é cor de categoria, não de estado — não disputa com atrasada
+          (âmbar/warning), liberado (vermelho), terminada (azul), plantão (verde)
+          nem troca (indigo), e puxa o olho, que era o pedido.
+          Fica ACIMA de "procedimentos sem anestesista". ATÉ TRÊS na tela; some da
+          de QUEM CONFIRMA (o hook devolve só o que EU não confirmei). Não
+          notifica ninguém — vive aqui e morre na confirmação. ── */}
+      {avisos.map((a) => (
+        <div key={a.id} className="-mx-4 border-y border-category-orange/40 bg-category-orange-bg px-4 py-2">
+          <p className="flex items-center gap-1.5 text-[11px] font-semibold text-category-orange-fg">
+            <MessageSquare className="h-3 w-3 shrink-0" />
+            <span className="min-w-0 truncate">{titleCaseNome(a.autorNome) || 'Plantonista'}</span>
+            <span className="shrink-0 tabular-nums opacity-80">· {horaCurta(a.criadoEm)}</span>
+            {/* o plantonista tira o recado que não vale mais (dono 17/08) */}
+            {canEdit && souPlantonista && (
+              <button
+                type="button"
+                onClick={() => excluirAviso(a.id)}
+                aria-label={`Excluir recado "${a.texto}"`}
+                className="-my-2 ml-auto flex h-9 w-8 shrink-0 items-center justify-center text-category-orange-fg active:opacity-60"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </p>
-          <p className="my-1.5 text-[16px] font-bold leading-tight [overflow-wrap:anywhere]">{aviso.texto}</p>
-          <div className="flex items-center gap-2.5">
-            <span className="min-w-0 text-[11px] text-muted-foreground">
-              {titleCaseNome(aviso.autorNome) || 'Plantonista'}
-              {aviso.confirmadoPor.length > 0 && ` · ${aviso.confirmadoPor.length} confirmaram`}
-            </span>
-            <Button
-              size="sm"
-              className="ml-auto shrink-0 bg-category-teal text-white hover:bg-category-teal/90"
-              onClick={() => confirmarAviso(aviso.id)}
+          <div className="mt-0.5 flex items-center gap-2">
+            <p className="min-w-0 flex-1 text-[15px] font-bold leading-tight [overflow-wrap:anywhere]">{a.texto}</p>
+            {/* botão pequeno: o recado é a informação, o confirmar é só a saída */}
+            <button
+              type="button"
+              onClick={() => confirmarAviso(a.id)}
+              className="flex h-8 shrink-0 items-center gap-1 rounded-lg bg-category-orange px-2.5 text-[12.5px] font-bold text-white active:opacity-80"
             >
-              <Check className="h-4 w-4" /> Confirmar
-            </Button>
+              <Check className="h-3.5 w-3.5" /> Confirmar
+            </button>
           </div>
         </div>
-      )}
+      ))}
 
-      {/* Só o plantonista do turno avisa (decisão do dono): para os demais o
-          botão não existe — não é um botão desabilitado. */}
-      {canEdit && souPlantonista && !aviso && (
+      {/* Só o plantonista do turno manda (decisão do dono): para os demais o
+          botão não existe — não é um botão desabilitado. Some quando os três
+          lugares estão ocupados; confirmar um deles devolve a vaga. */}
+      {canEdit && souPlantonista && podeAvisar && (
         <Button size="sm" variant="outline" className="w-full" onClick={() => setAvisoSheet(true)}>
-          <UserPlus className="w-4 h-4 shrink-0" /> Avisar a equipe
+          <MessageSquare className="w-4 h-4 shrink-0" /> Mensagem para equipe
         </Button>
       )}
 
@@ -1451,19 +1460,23 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   linhas com o valor atual à direita, e o editor abrindo ABAIXO da
                   linha tocada — a mesma gramática das telas grandes já escolhidas
                   ("a lista mostra, o editor abre fora dela"). */}
+              {/* "Observação", não "recado" (dono 17/08): com o RECADO DO
+                  PLANTONISTA na mesma aba, dois "recados" com significados
+                  diferentes na mesma tela era exatamente o tipo de nome dividido
+                  que esta rodada veio fechar. Volta ao nome de 29/07. */}
               <LinhaPainel
-                rotulo="Recado"
-                valor={rascObservacao || 'nenhum'}
+                rotulo="Observação"
+                valor={rascObservacao || 'nenhuma'}
                 aberto={abaPainel === 'recado'}
                 onClick={() => setAbaPainel((a) => (a === 'recado' ? null : 'recado'))}
               />
               {abaPainel === 'recado' && (
                 <EditorPainel>
-                  <label htmlFor="editor-observacao" className="mb-1.5 flex items-center gap-1.5 text-[11.5px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    <MessageSquare className="h-3.5 w-3.5" /> Recado para a equipe
-                  </label>
+                  {/* sem rótulo aqui: a LINHA logo acima já diz "Observação" —
+                      repetir dava a mesma palavra duas vezes coladas na tela */}
                   <Input
                     id="editor-observacao"
+                    aria-label="Observação"
                     autoFocus
                     value={rascObservacao}
                     maxLength={OBSERVACAO_MAX}
@@ -1706,7 +1719,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
         <SheetContent side="bottom" className="!h-auto max-h-[88vh]">
           <SheetHeader className="pb-2">
             <SheetTitle className="flex items-center gap-2 text-[17px]">
-              <UserPlus className="w-4 h-4 shrink-0" /> Avisar a equipe
+              <MessageSquare className="w-4 h-4 shrink-0" /> Mensagem para equipe
             </SheetTitle>
             <p className="mt-1 text-[11.5px] leading-snug text-muted-foreground">
               Aparece no topo desta aba para todo mundo e some da tela de cada um que confirmar.

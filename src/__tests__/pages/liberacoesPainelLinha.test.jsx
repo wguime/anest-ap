@@ -101,7 +101,6 @@ describe('Troca REMOVIDA — a aba não mexe mais na ordem nem no dono do caso (
     const onDefinirCasos = vi.fn(async () => {})
     montar({ onSetOverride, onDefinirCasos })
     abrirEditor('Marilio Flach')
-    abrirLinha('Recado')
     fireEvent.change(screen.getByPlaceholderText(/saiu para a Hemodinâmica/), { target: { value: 'foi para o HRO' } })
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(onSetOverride).toHaveBeenCalled())
@@ -129,7 +128,6 @@ describe('Observação da linha (dono 29/07)', () => {
     abrirEditor('Marilio Flach')
     // o aviso encurtou no redesenho 17/08 (o campo abre o painel e o texto longo
     // roubava a linha), mas a regra LGPD continua dita na tela
-    abrirLinha('Recado')
     expect(screen.getByText(/Sem nome de paciente/)).toBeTruthy()
   })
 
@@ -137,7 +135,6 @@ describe('Observação da linha (dono 29/07)', () => {
     const onSetOverride = vi.fn(async () => {})
     montar({ onSetOverride }, { ...escalaBase, linhaOverrides: { 'uid-mar': { observacao: 'sai mais cedo' } } })
     abrirEditor('Marilio Flach')
-    abrirLinha('Recado')
     const campo = screen.getByPlaceholderText(/saiu para a Hemodinâmica/)
     expect(campo.value).toBe('sai mais cedo')
     fireEvent.change(campo, { target: { value: '' } })
@@ -275,11 +272,12 @@ describe('Painel da linha — SEM a lista de casos (dono 30/07)', () => {
     expect(screen.getByDisplayValue('Coronel Freitas')).toBeTruthy()
   })
 
-  it('o recado abre o painel e conta os caracteres', () => {
+  it('a observação abre o painel e conta os caracteres', () => {
     montar()
     abrirEditor('Marilio Flach')
-    abrirLinha('Recado')
-    expect(screen.getByText('Recado para a equipe')).toBeTruthy()
+    // o campo abre junto com o painel (protótipo escolhido, dono 17/08)
+    expect(screen.getAllByText('Observação').length).toBeGreaterThan(0)
+    expect(screen.getByPlaceholderText(/Hemodinâmica/)).toBeTruthy()
     fireEvent.change(screen.getByPlaceholderText(/Hemodinâmica/), { target: { value: 'no consultório' } })
     expect(screen.getByText(`14/120`)).toBeTruthy()
   })

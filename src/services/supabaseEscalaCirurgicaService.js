@@ -489,6 +489,12 @@ async function criarAviso(escalaId, turno, texto, { userName } = {}) {
   return data?.id || null
 }
 
+/** Apaga um recado (o plantonista tira o que não vale mais — dono 17/08). */
+async function excluirAviso(avisoId) {
+  const { error } = await supabase.from('escala_cirurgica_aviso').delete().eq('id', avisoId)
+  if (error) handleError(error, 'excluirAviso')
+}
+
 /** Confirma por SI (a RLS amarra a linha ao uid do JWT). Repetir é no-op. */
 async function confirmarAviso(avisoId, { userId, userName } = {}) {
   const { error } = await supabase
@@ -502,6 +508,7 @@ export default {
   fetchAvisos,
   criarAviso,
   confirmarAviso,
+  excluirAviso,
   fetchLocaisHospital,
   salvarEscala,
   salvarEscalaTurno,

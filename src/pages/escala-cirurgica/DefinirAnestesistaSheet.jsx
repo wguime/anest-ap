@@ -21,8 +21,8 @@
  * toques (abrir o Select, escolher) para um.
  */
 import { useMemo, useState } from 'react'
-import { Check, ChevronDown, ChevronRight, Loader2, Search } from 'lucide-react'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, Select, Button, Switch, Input } from '@/design-system'
+import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, Select, Button, Switch } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { HOSPITAL_LABEL, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
@@ -45,10 +45,6 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
   const [uidEscolhido, setUidEscolhido] = useState('')
   const [uidSegundo, setUidSegundo] = useState('') // dupla na MESMA cirurgia
   const [abrirSegundo, setAbrirSegundo] = useState(false)
-  // A LISTA NASCE FECHADA (dono 17/08): quem abre é o card ASSUME. Sem ninguém
-  // escolhido ela já abre — não há o que mostrar no lugar dela.
-  const [abrirLista, setAbrirLista] = useState(false)
-  const [busca, setBusca] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [assumirPosicao, setAssumirPosicao] = useState(false)
 
@@ -120,16 +116,17 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
   const escolhido = uidEscolhido || (jaSemAnestesista ? SEM_ANESTESISTA : '')
   const casoUnico = casosAlvo?.length === 1 ? casosAlvo[0] : null
 
-  // LISTA filtrada pela busca — o roster passa de 45 pessoas e rolar tudo com o
-  // dedo no meio do plantão é pior que digitar duas letras.
-  const lista = useMemo(() => {
-    const q = normNome(busca)
-    return (rosterOpcoes || []).filter((o) => {
-      if (!q) return true
-      const r = rosterByUid.get(o.value)
-      return normNome(o.label).includes(q) || (r?.apelidos || []).some((a) => normNome(a).includes(q))
-    })
-  }, [rosterOpcoes, rosterByUid, busca])
+  // OPÇÕES DO SELETOR: "Sem anestesista" primeiro e, em cada colega, ONDE ele
+  // está agora (posição na fila e cirurgias no turno) — o que a lista inline
+  // mostrava em duas linhas cabe no rótulo do Select, que é searchable e já é o
+  // controle que a equipe usa hoje em produção (dono 17/08, 2ª rodada).
+  const opcoes = useMemo(() => [
+    { value: SEM_ANESTESISTA, label: 'Sem anestesista (?)' },
+    ...(rosterOpcoes || []).map((o) => {
+      const ctx = contextoDe(rosterByUid.get(o.value) || { uid: o.value, nome: o.label })
+      return { value: o.value, label: ctx ? `${o.label} · ${ctx}` : o.label }
+    }),
+  ], [rosterOpcoes, rosterByUid, contextoDe])
 
   const pergunta = casoUnico
     ? 'Quem responde por esta cirurgia?'
@@ -237,8 +234,6 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
     ? contextoDe(rosterByUid.get(escolhido) || { uid: escolhido, nome: nomeEscolhido })
     : ''
 
-  const listaAberta = abrirLista || !escolhido
-
   return (
     <Sheet open onOpenChange={(o) => !o && onClose?.()}>
       {/* o painel acompanha o conteúdo: o default do DS fixa 85% da tela e era
@@ -258,8 +253,10 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
 
         <div className="px-1 pb-4">
           {/* ── DE → PARA (dono 17/08): quem sai e quem assume lado a lado, no
-              topo, logo abaixo do título. O card ASSUME É o seletor — abre a
-              lista aqui dentro, sem Select e sem sheet por cima de sheet. ── */}
+              topo, logo abaixo do título. O card ASSUME É o seletor: o Select do
+              DS (o mesmo que está em produção, com busca) fica INVISÍVEL por
+              cima dele, então o toque abre o dropdown ancorado no card e o
+              painel não vira uma lista rolante (dono 17/08, 2ª rodada). ── */}
           <div className="grid grid-cols-[1fr_auto_1fr] items-stretch gap-1.5">
             <div className="flex min-h-[58px] flex-col justify-center gap-px rounded-2xl border border-border-strong px-2.5 py-1.5">
               <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Sai</span>
@@ -267,154 +264,123 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
               <span className="text-[11px] text-muted-foreground">{resumoSai}</span>
             </div>
             <ChevronRight className="h-4 w-4 self-center text-muted-foreground" />
-            <button
-              type="button"
-              aria-expanded={listaAberta}
-              onClick={() => setAbrirLista((v) => !v)}
-              className="flex min-h-[58px] items-center gap-1.5 rounded-2xl border border-primary bg-primary/[0.08] px-2.5 py-1.5 text-left"
-            >
-              <span className="min-w-0 flex-1">
-                <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Assume</span>
-                <span className={[
-                  'block text-[15px] font-bold leading-tight [overflow-wrap:anywhere]',
-                  escolhido ? '' : 'text-primary',
-                ].join(' ')}>
-                  {escolhido === SEM_ANESTESISTA ? 'Sem anestesista' : (nomeEscolhido || 'Escolher…')}
+            <div className="relative">
+              {/* a cara do card — o controle real é o Select invisível por cima */}
+              <div
+                aria-hidden="true"
+                className="pointer-events-none flex min-h-[58px] items-center gap-1.5 rounded-2xl border border-primary bg-primary/[0.08] px-2.5 py-1.5"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Assume</span>
+                  <span className={[
+                    'block text-[15px] font-bold leading-tight [overflow-wrap:anywhere]',
+                    escolhido ? '' : 'text-primary',
+                  ].join(' ')}>
+                    {escolhido === SEM_ANESTESISTA ? 'Sem anestesista' : (nomeEscolhido || 'Escolher…')}
+                  </span>
+                  <span className="block text-[11px] text-muted-foreground">
+                    {escolhido ? (contextoEscolhido || 'toque para trocar') : 'toque para ver a lista'}
+                  </span>
                 </span>
-                <span className="block text-[11px] text-muted-foreground">
-                  {escolhido ? (contextoEscolhido || 'toque para trocar') : 'toque para ver a lista'}
+                <ChevronDown className="h-4 w-4 shrink-0 text-primary" />
+              </div>
+              {rosterLoading ? (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
                 </span>
-              </span>
-              <ChevronDown className={`h-4 w-4 shrink-0 text-primary transition-transform ${listaAberta ? 'rotate-180' : ''}`} />
-            </button>
+              ) : (
+                <Select
+                  className="absolute inset-0 opacity-0 [&_button]:h-full [&_button]:min-h-full"
+                  searchable
+                  aria-label="Escolher quem assume"
+                  options={opcoes}
+                  value={escolhido}
+                  onChange={setUidEscolhido}
+                  placeholder="Escolher…"
+                />
+              )}
+            </div>
           </div>
 
-          {listaAberta ? (
-            <>
-              {!rosterLoading && (
-                <div className="mt-2">
-                  <Input
-                    value={busca}
-                    onChange={(e) => setBusca(e.target.value)}
-                    placeholder="Buscar anestesista…"
-                    aria-label="Buscar anestesista"
-                    leftIcon={<Search className="h-4 w-4" />}
-                  />
-                </div>
-              )}
-              {rosterLoading ? (
-                <p className="flex items-center gap-2 px-1 py-4 text-sm text-muted-foreground">
-                  <Loader2 className="w-4 h-4 animate-spin" /> Carregando roster…
-                </p>
-              ) : (
-                <div role="listbox" aria-label="Escolher anestesista" className="mt-1">
-                  {/* "Sem anestesista" (pedido do dono 26/07): deixar a sala/caso
-                      descoberto de propósito — vira "?" e volta ao alerta da fila. */}
-                  <OpcaoColega
-                    nome="Sem anestesista (?)"
-                    contexto="a sala volta ao alerta da fila"
-                    escolhido={escolhido === SEM_ANESTESISTA}
-                    onClick={() => { setUidEscolhido(SEM_ANESTESISTA); setAbrirLista(false) }}
-                  />
-                  {lista.map((o) => (
-                    <OpcaoColega
-                      key={o.value}
-                      nome={o.label}
-                      contexto={contextoDe(rosterByUid.get(o.value) || { uid: o.value, nome: o.label })}
-                      escolhido={escolhido === o.value}
-                      onClick={() => { setUidEscolhido(o.value); setAbrirLista(false) }}
-                    />
-                  ))}
-                  {!lista.length && (
-                    <p className="px-1 py-4 text-sm text-muted-foreground">Ninguém com esse nome no roster.</p>
-                  )}
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              {/* ── O QUE MUDA DE MÃOS ─────────────────────────────────────── */}
-              <p className="mb-1 mt-3 text-[11.5px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Procedimentos assumidos
-              </p>
-              {alvos.map((c) => (
-                <div key={c.id} className="flex items-baseline gap-2 border-b border-border py-1.5 text-[12.5px] last:border-b-0">
-                  <b className="tabular-nums">{c.hora || '—'}</b>
-                  {c.pacienteIniciais && <span>{c.pacienteIniciais}</span>}
-                  <span className="min-w-0 truncate">{fraseClinica(c.procedimento)}</span>
-                </div>
-              ))}
-              {!alvos.length && (
-                <p className="py-1.5 text-[12.5px] text-muted-foreground">
-                  Nada a passar: as cirurgias já terminaram e mantêm quem as fez.
-                </p>
-              )}
-              {naoMudam.map((c) => (
-                <div key={c.id} className="flex items-baseline gap-2 border-b border-border py-1.5 text-[12.5px] text-muted-foreground last:border-b-0">
-                  <b className="tabular-nums">{c.hora || '—'}</b>
-                  {c.pacienteIniciais && <span>{c.pacienteIniciais}</span>}
-                  <span className="min-w-0 truncate line-through">{fraseClinica(c.procedimento)}</span>
-                </div>
-              ))}
-              {naoMudam.length > 0 && (
-                <p className="mt-1 text-[11.5px] text-muted-foreground">
-                  {naoMudam.length === 1 ? `A das ${naoMudam[0].hora} já terminou` : `${naoMudam.length} já terminaram`}
-                  : fica{naoMudam.length === 1 ? '' : 'm'} com {nomeAtual || 'quem fez'}.
-                </p>
-              )}
+          {/* ── O QUE MUDA DE MÃOS ─────────────────────────────────────────── */}
+          <p className="mb-1 mt-3 text-[11.5px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Procedimentos assumidos
+          </p>
+          {alvos.map((c) => (
+            <div key={c.id} className="flex items-baseline gap-2 border-b border-border py-1.5 text-[12.5px] last:border-b-0">
+              <b className="tabular-nums">{c.hora || '—'}</b>
+              {c.pacienteIniciais && <span>{c.pacienteIniciais}</span>}
+              <span className="min-w-0 truncate">{fraseClinica(c.procedimento)}</span>
+            </div>
+          ))}
+          {!alvos.length && (
+            <p className="py-1.5 text-[12.5px] text-muted-foreground">
+              Nada a passar: as cirurgias já terminaram e mantêm quem as fez.
+            </p>
+          )}
+          {naoMudam.map((c) => (
+            <div key={c.id} className="flex items-baseline gap-2 border-b border-border py-1.5 text-[12.5px] text-muted-foreground last:border-b-0">
+              <b className="tabular-nums">{c.hora || '—'}</b>
+              {c.pacienteIniciais && <span>{c.pacienteIniciais}</span>}
+              <span className="min-w-0 truncate line-through">{fraseClinica(c.procedimento)}</span>
+            </div>
+          ))}
+          {naoMudam.length > 0 && (
+            <p className="mt-1 text-[11.5px] text-muted-foreground">
+              {naoMudam.length === 1 ? `A das ${naoMudam[0].hora} já terminou` : `${naoMudam.length} já terminaram`}
+              : fica{naoMudam.length === 1 ? '' : 'm'} com {nomeAtual || 'quem fez'}.
+            </p>
+          )}
 
-              {/* DUPLA na mesma cirurgia (dono 11/08) — só no modo CASO. No modo
-                  SALA a linha nem existe: "só no modo cirurgia" era uma frase que
-                  não dizia nada a quem estava olhando (dono 17/08). */}
-              {podeDupla && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setAbrirSegundo((v) => !v)}
-                    className="flex min-h-[48px] w-full items-center gap-2 border-t border-border py-2 text-left"
-                  >
-                    <span className="text-[14.5px] font-semibold">Dois anestesistas nesta cirurgia</span>
-                    <span className="ml-auto text-[11.5px] text-muted-foreground">
-                      {segundo ? nomeAnestesistaExibicao({ uid: segundo.uid, alias: '', rosterByUid }) : 'não'}
-                    </span>
-                    <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${abrirSegundo ? 'rotate-180' : ''}`} />
-                  </button>
-                  {abrirSegundo && (
-                    <div className="mb-2 rounded-xl border border-border bg-muted/30 p-3">
-                      <Select
-                        className="w-full"
-                        searchable
-                        options={opcoesSegundo}
-                        value={uidSegundo}
-                        onChange={setUidSegundo}
-                        placeholder="Só um anestesista"
-                      />
-                      <p className="mt-1.5 text-[11.5px] text-muted-foreground">
-                        A cirurgia fica com os dois no cabeçalho da Completa e conta presença dos dois na fila.
-                      </p>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* Posição na fila junto com os casos (dono 30/07): sem isto quem
-                  assume vira linha EXTRA no fim da fila — o caso Giovana↔Maurício. */}
-              {ofereceAssumir && !segundo && (
-                <div className="border-t border-border py-3">
-                  <Switch
-                    checked={assumirPosicao}
-                    onChange={setAssumirPosicao}
-                    label={`Assumir também a posição de ${nomeAtual} na fila`}
-                    size="sm"
+          {/* DUPLA na mesma cirurgia (dono 11/08) — só no modo CASO. No modo
+              SALA a linha nem existe: "só no modo cirurgia" era uma frase que
+              não dizia nada a quem estava olhando (dono 17/08). */}
+          {podeDupla && (
+            <>
+              <button
+                type="button"
+                onClick={() => setAbrirSegundo((v) => !v)}
+                className="flex min-h-[48px] w-full items-center gap-2 border-t border-border py-2 text-left"
+              >
+                <span className="text-[14.5px] font-semibold">Dois anestesistas nesta cirurgia</span>
+                <span className="ml-auto text-[11.5px] text-muted-foreground">
+                  {segundo ? nomeAnestesistaExibicao({ uid: segundo.uid, alias: '', rosterByUid }) : 'não'}
+                </span>
+                <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${abrirSegundo ? 'rotate-180' : ''}`} />
+              </button>
+              {abrirSegundo && (
+                <div className="mb-2 rounded-xl border border-border bg-muted/30 p-3">
+                  <Select
+                    className="w-full"
+                    searchable
+                    options={opcoesSegundo}
+                    value={uidSegundo}
+                    onChange={setUidSegundo}
+                    placeholder="Só um anestesista"
                   />
+                  <p className="mt-1.5 text-[11.5px] text-muted-foreground">
+                    A cirurgia fica com os dois no cabeçalho da Completa e conta presença dos dois na fila.
+                  </p>
                 </div>
               )}
             </>
           )}
+
+          {/* Posição na fila junto com os casos (dono 30/07): sem isto quem
+              assume vira linha EXTRA no fim da fila — o caso Giovana↔Maurício. */}
+          {ofereceAssumir && !segundo && (
+            <div className="border-t border-border py-3">
+              <Switch
+                checked={assumirPosicao}
+                onChange={setAssumirPosicao}
+                label={`Assumir também a posição de ${nomeAtual} na fila`}
+                size="sm"
+              />
+            </div>
+          )}
         </div>
 
-        {!listaAberta && (
-          <div className="sticky bottom-0 z-10 flex gap-2 border-t border-border bg-card px-1 pb-4 pt-3">
+        <div className="sticky bottom-0 z-10 flex gap-2 border-t border-border bg-card px-1 pb-4 pt-3">
             <Button variant="outline" className="flex-1" onClick={() => onClose?.()}>Cancelar</Button>
             <Button
               className="flex-1"
@@ -426,33 +392,9 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
                 : segundo ? 'Confirmar os dois anestesistas'
                   : escolhido === SEM_ANESTESISTA ? 'Deixar sem anestesista'
                     : 'Confirmar responsável'}
-            </Button>
-          </div>
-        )}
+          </Button>
+        </div>
       </SheetContent>
     </Sheet>
-  )
-}
-
-/** Linha full-bleed de colega: nome em cima, onde ele está agora embaixo. */
-function OpcaoColega({ nome, contexto, escolhido, onClick }) {
-  return (
-    <button
-      type="button"
-      role="option"
-      aria-selected={escolhido}
-      onClick={onClick}
-      className={[
-        'flex min-h-[52px] w-full items-center gap-2 border-b border-border px-2 py-2 text-left transition-colors',
-        escolhido ? 'bg-primary/10' : 'active:bg-muted/60',
-      ].join(' ')}
-    >
-      <span className="min-w-0 flex-1">
-        {/* nome de pessoa não abrevia: quebra */}
-        <span className="block text-[15px] font-bold leading-tight [overflow-wrap:anywhere]">{nome}</span>
-        {contexto && <span className="block text-[11.5px] text-muted-foreground">{contexto}</span>}
-      </span>
-      {escolhido && <Check className="h-4 w-4 shrink-0 text-primary" />}
-    </button>
   )
 }

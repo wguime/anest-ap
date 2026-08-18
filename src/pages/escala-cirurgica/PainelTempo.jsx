@@ -170,6 +170,10 @@ export default function PainelTempo({ horarios, atual, horaExata, onHoraExata, o
         Dois jeitos de dizer a mesma coisa. Preencha um.
       </p>
 
+      {/* ALTURA CONSTANTE (dono 17/08): as duas rotas ocupam a mesma caixa. A da
+          duração é a mais alta (grade de 6 + "Outro tempo…"); sem a altura fixa, alternar
+          fazia o painel encolher e crescer debaixo do dedo. */}
+      <div className="h-[154px]">
       {modo === 'falta' ? (
         <>
           {/* atalhos: é AÇÃO, não estado — o que vale aparece na prévia abaixo */}
@@ -206,6 +210,7 @@ export default function PainelTempo({ horarios, atual, horaExata, onHoraExata, o
           aria-label="Horário de término"
         />
       )}
+      </div>
 
       {/* "Definir" SAIU (dono 17/08): no caminho comum ele era um botão morto —
           atalho, seletor e campo já gravam na escolha, e ele só regravava um valor
