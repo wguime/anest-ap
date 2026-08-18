@@ -15,6 +15,7 @@ import useRosterResidentes from '@/hooks/useRosterResidentes'
 import { iniciais } from '@/lib/excelEscala'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import { familiaConvenio, turnoDeHora, salasDoHospital } from './utils'
+import { GRAVIDADES, GRAVIDADE_LABEL } from '@/lib/escalaCirurgicaUrgencias'
 
 const NOVA_SALA = '__nova__'
 
@@ -23,6 +24,8 @@ const formatHora = (v) => {
   const d = String(v || '').replace(/\D/g, '').slice(0, 4)
   return d.length <= 2 ? d : `${d.slice(0, 2)}:${d.slice(2)}`
 }
+const GRAVIDADE_OPCOES = GRAVIDADES.map((g) => ({ value: g, label: GRAVIDADE_LABEL[g] }))
+
 const TIPOS = [
   { value: 'eletiva', label: 'Eletiva / encaixe' },
   { value: 'urgencia', label: 'Urgência' },
@@ -56,6 +59,7 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
   const [anestesistaUid, setAnestesistaUid] = useState('')
   const [residenteUid, setResidenteUid] = useState('')
   const [tipo, setTipo] = useState('urgencia')
+  const [gravidade, setGravidade] = useState('')
   const [salvando, setSalvando] = useState(false)
   // Caso particular recém-adicionado: oferece preencher a cobrança agora
   // (o rascunho em Cirurgias Particulares já nasceu via trigger no banco).
@@ -79,7 +83,21 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
   // particular (o trigger `fn_convenio_particular` lê exatamente este campo) e o
   // TIPO pinta urgência/emergência no board. Caso adicionado sem eles nascia
   // incompleto e alguém tinha de caçar a informação depois.
-  const valido = !!(salaFinal && procedimento.trim() && cirurgiao.trim() && convenio.trim() && tipo)
+  // GRAVIDADE só é exigida em urgência/emergência, pelo mesmo critério dos
+  // demais: ela alimenta a ORDEM DA FILA de urgências do HRO, e sem ela a
+  // urgência nasce sem lugar na fila.
+  const exigeGravidade = tipo === 'urgencia' || tipo === 'emergencia'
+  const valido = !!(salaFinal && procedimento.trim() && cirurgiao.trim() && convenio.trim() && tipo
+    && (!exigeGravidade || gravidade))
+
+  // Emergência é IMEDIATA por definição na adaptação da NCEPOD, então o campo
+  // já nasce preenchido — pré-preenchimento coerente, não default silencioso:
+  // só age quando a gravidade ainda está vazia, e continua editável.
+  const escolherTipo = (novo) => {
+    setTipo(novo)
+    if (novo === 'emergencia' && !gravidade) setGravidade('imediata')
+    if (novo === 'eletiva') setGravidade('')
+  }
 
   const submeter = async () => {
     if (!valido || salvando) return
@@ -108,6 +126,7 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
         residente: residenteUid ? (residenteByUid.get(residenteUid)?.nome || null) : null,
         residenteUserId: residenteUid || null,
         tipo,
+        gravidade: exigeGravidade ? gravidade : null,
         // turno EXPLÍCITO: encaixe sem hora ficaria nos dois turnos (bug 26/07)
         turno: turnoDeHora(hora.trim()) || turno || undefined,
       })
@@ -195,9 +214,14 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
               <Input id="ac-conv" value={convenio} onChange={(e) => setConvenio(e.target.value)} placeholder="SUS, Unimed, BRF…" />
             </Campo>
             <Campo id="ac-tipo" label="Tipo *">
-              <Select options={TIPOS} value={tipo} onChange={setTipo} />
+              <Select options={TIPOS} value={tipo} onChange={escolherTipo} />
             </Campo>
           </div>
+          {exigeGravidade && (
+            <Campo id="ac-grav" label="Gravidade *">
+              <Select options={GRAVIDADE_OPCOES} value={gravidade} onChange={setGravidade} placeholder="Quem entra primeiro" />
+            </Campo>
+          )}
           {/* diz O QUE falta: com 4 obrigatórios, botão cinza sem explicação vira
               tentativa e erro no meio do plantão */}
           {!valido && (
@@ -208,6 +232,7 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
                 !cirurgiao.trim() && 'cirurgião',
                 !convenio.trim() && 'convênio',
                 !tipo && 'tipo',
+                exigeGravidade && !gravidade && 'gravidade',
               ].filter(Boolean).join(', ')}.
             </p>
           )}

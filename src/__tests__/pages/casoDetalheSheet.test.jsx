@@ -271,3 +271,45 @@ describe('Editores em sheet próprio (dono 17/08)', () => {
     expect(screen.queryByRole('combobox')).toBeNull()
   })
 })
+
+/**
+ * GRAVIDADE da urgência (dono 18/08) — mora no cartão Andamento, não no cabeçalho:
+ * o cabeçalho é identidade e é leitura; gravidade é decisão que MUDA no tempo (um
+ * "pode aguardar" que descompensa vira "imediata"). É ela que ordena a fila de
+ * urgências do HRO quando as 2 salas do contrato estão ocupadas.
+ */
+describe('Gravidade da urgência (dono 18/08)', () => {
+  const urgente = { ...caso, tipo: 'urgencia' }
+  const escalaUrg = { ...escala, casos: [urgente] }
+
+  it('só aparece em urgência/emergência — cirurgia eletiva não tem fila', () => {
+    montar()
+    expect(screen.queryByRole('button', { name: 'Pode aguardar' })).toBeNull()
+
+    montar({}, escalaUrg)
+    expect(screen.getByRole('button', { name: 'Pode aguardar' })).toBeTruthy()
+  })
+
+  it('escolher o nível grava só `gravidade`, sem tocar no status da cirurgia', async () => {
+    montar({}, escalaUrg)
+    fireEvent.click(screen.getByRole('button', { name: 'Imediata' }))
+    await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
+    expect(atualizarCaso.mock.calls[0][2]).toEqual({ gravidade: 'imediata' })
+    expect(setStatusCirurgia).not.toHaveBeenCalled()
+  })
+
+  it('tocar de novo no nível ativo desmarca (volta a "sem classificação")', async () => {
+    montar({}, { ...escala, casos: [{ ...urgente, gravidade: 'urgente' }] })
+    fireEvent.click(screen.getByRole('button', { name: 'Urgente' }))
+    await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
+    expect(atualizarCaso.mock.calls[0][2]).toEqual({ gravidade: null })
+  })
+
+  it('sem classificação, avisa que a urgência entra no fim da fila', () => {
+    montar({}, escalaUrg)
+    expect(screen.getByText(/entra no fim da fila/i)).toBeTruthy()
+
+    montar({}, { ...escala, casos: [{ ...urgente, gravidade: 'imediata' }] })
+    expect(screen.queryAllByText(/entra no fim da fila/i)).toHaveLength(1) // só o 1º render
+  })
+})

@@ -24,6 +24,7 @@ import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
 import PainelTempo, { formatFaltante } from './PainelTempo'
 import useAgoraMinuto from './useAgoraMinuto'
 import { espelhoTempoTotal, LOCAIS_BASE, nomeAnestesistaExibicao, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso } from './utils'
+import { GRAVIDADES, GRAVIDADE_LABEL } from '@/lib/escalaCirurgicaUrgencias'
 
 const SALA_OUTRO = '__outro__'
 // Sentinela do seletor de residente (valor impossível como uid).
@@ -35,6 +36,17 @@ const ANDAMENTO = [
   { valor: 'iniciada', label: 'Iniciada', cls: 'bg-success text-success-foreground' },
   { valor: 'terminada', label: 'Terminada', cls: 'bg-info text-info-foreground' },
 ]
+// GRAVIDADE — só em urgência/emergência. Adaptação da NCEPOD Classification of
+// Intervention, que manda quem vai operar classificar no momento da decisão de
+// operar: por isso fica aqui, no Andamento (onde se AGE), e não no cabeçalho de
+// identidade — a gravidade muda no tempo, um "pode aguardar" que descompensa
+// vira "imediata". É ela que ordena a fila de urgências do HRO.
+const GRAVIDADE_CLS = {
+  imediata: 'border-destructive bg-destructive text-destructive-foreground',
+  urgente: 'border-warning bg-warning text-warning-foreground',
+  aguarda: 'border-border-strong bg-foreground/80 text-background',
+}
+
 // EIXO EXTRA — convive com agendada/iniciada; terminada limpa e bloqueia.
 const AVISO = [
   { valor: 'atrasada', label: 'Atrasada', cls: 'border-warning bg-warning text-warning-foreground' },
@@ -89,6 +101,14 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
       setRascCirurgiao(atual)
     }
     setEditor((e) => (e === qual ? null : qual))
+  }
+
+  /** Grava a gravidade da urgência; tocar de novo no nível ativo desmarca. */
+  const mudarGravidade = async (nivel) => {
+    setSalvando('gravidade')
+    try {
+      await atualizarCaso(escala, vivo.id, { gravidade: vivo.gravidade === nivel ? null : nivel })
+    } catch { /* toast de erro já vem do context */ } finally { setSalvando('') }
   }
 
   /** Grava um campo de texto do caso (sala/cirurgião) e fecha o editor. */
@@ -276,6 +296,43 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
               <p className="mt-1.5 text-[11.5px] text-muted-foreground">
                 Marcar <b className="font-semibold text-foreground">Terminada</b> desliga os avisos.
               </p>
+
+              {/* Gravidade: só faz sentido em urgência/emergência, e é o que
+                  decide quem entra primeiro quando as 2 salas do contrato do HRO
+                  estão ocupadas. Sem classificação a urgência vai para o fim da
+                  fila com chamada de ação — o app não chuta prioridade clínica. */}
+              {tb && (
+                <div className="mt-3 border-t border-border pt-2.5">
+                  <p className="mb-1.5 text-[12.5px] text-muted-foreground">
+                    Gravidade <span className="text-[11.5px]">— ordena a fila de urgências</span>
+                  </p>
+                  <div className="flex gap-1.5">
+                    {GRAVIDADES.map((g) => {
+                      const ativo = vivo.gravidade === g
+                      return (
+                        <button
+                          key={g}
+                          type="button"
+                          aria-pressed={ativo}
+                          disabled={salvando === 'gravidade'}
+                          onClick={() => mudarGravidade(g)}
+                          className={[
+                            'min-h-[44px] flex-1 rounded-[10px] border px-1.5 text-[12.5px] font-semibold leading-tight transition-colors',
+                            ativo ? GRAVIDADE_CLS[g] : 'border-border-strong bg-card text-foreground',
+                          ].join(' ')}
+                        >
+                          {GRAVIDADE_LABEL[g]}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {!vivo.gravidade && (
+                    <p className="mt-1.5 text-[11.5px] text-warning">
+                      Sem classificação — entra no fim da fila.
+                    </p>
+                  )}
+                </div>
+              )}
 
               {podeEditarCaso && (
                 <>

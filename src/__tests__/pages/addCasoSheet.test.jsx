@@ -52,10 +52,13 @@ const escolherPorPlaceholder = (placeholder, nomeOpcao) =>
 
 /** Cirurgião e convênio passaram a ser OBRIGATÓRIOS (dono 29/07): o cirurgião
  *  agrupa a linha na coluna de liberação e o convênio decide se o caso vira
- *  cobrança particular. Todo teste que salva precisa preenchê-los. */
+ *  cobrança particular. A GRAVIDADE entrou em 18/08 pelo mesmo critério: ela
+ *  ordena a fila de urgências do HRO (o tipo default do formulário é urgência).
+ *  Todo teste que salva precisa preenchê-los. */
 const preencherObrigatorios = () => {
   fireEvent.change(screen.getByPlaceholderText('ex.: Mateus Baptistella'), { target: { value: 'Dr. Ivo' } })
   fireEvent.change(screen.getByPlaceholderText('SUS, Unimed, BRF…'), { target: { value: 'Unimed' } })
+  escolherPorPlaceholder('Quem entra primeiro', 'Urgente')
 }
 
 beforeEach(() => adicionarCaso.mockClear())
@@ -189,5 +192,52 @@ describe('AddCasoSheet — campos obrigatórios', () => {
     expect(payload.cirurgiao).toBe('Dr. Ivo')
     expect(payload.convenio).toBe('Unimed')
     expect(payload.tipo).toBeTruthy() // tipo já entra com default, nunca vazio
+  })
+})
+
+/**
+ * GRAVIDADE (dono 18/08) — exigida só em urgência/emergência, pelo mesmo critério
+ * dos outros obrigatórios: alimenta uma decisão a jusante (a ORDEM DA FILA de
+ * urgências do HRO). Urgência sem gravidade nasceria sem lugar na fila.
+ */
+describe('AddCasoSheet — gravidade da urgência', () => {
+  it('bloqueia e diz o que falta enquanto a urgência não tem gravidade', () => {
+    render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
+    escolher(screen.getAllByRole('combobox')[0], 'Sala 2')
+    fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Apendicectomia' } })
+    fireEvent.change(screen.getByPlaceholderText('ex.: Mateus Baptistella'), { target: { value: 'Dr. Ivo' } })
+    fireEvent.change(screen.getByPlaceholderText('SUS, Unimed, BRF…'), { target: { value: 'SUS' } })
+
+    expect(screen.getByText(/Falta preencher/i).textContent).toMatch(/gravidade/)
+    expect(screen.getByRole('button', { name: /Adicionar/ })).toBeDisabled()
+  })
+
+  it('eletiva não pede gravidade — o campo some e o caso salva sem ele', async () => {
+    render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
+    escolher(screen.getAllByRole('combobox')[0], 'Sala 2')
+    fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Herniorrafia' } })
+    fireEvent.change(screen.getByPlaceholderText('ex.: Mateus Baptistella'), { target: { value: 'Dr. Ivo' } })
+    fireEvent.change(screen.getByPlaceholderText('SUS, Unimed, BRF…'), { target: { value: 'SUS' } })
+    escolherPorPlaceholder('Quem entra primeiro', 'Urgente')
+    escolher(screen.getByText('Urgência'), 'Eletiva / encaixe') // o Select do TIPO
+
+    expect(screen.queryByText('Quem entra primeiro')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
+    await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
+    expect(adicionarCaso.mock.calls[0][1].gravidade).toBeNull()
+  })
+
+  it('emergência já nasce "imediata" — pré-preenchimento, não default silencioso', async () => {
+    render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
+    escolher(screen.getAllByRole('combobox')[0], 'Sala 2')
+    fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Laparotomia' } })
+    fireEvent.change(screen.getByPlaceholderText('ex.: Mateus Baptistella'), { target: { value: 'Dr. Ivo' } })
+    fireEvent.change(screen.getByPlaceholderText('SUS, Unimed, BRF…'), { target: { value: 'SUS' } })
+    escolher(screen.getByText('Urgência'), 'Emergência') // o Select do TIPO
+    // o campo de gravidade já vem preenchido: nada mais a escolher
+    expect(screen.queryByText('Quem entra primeiro')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
+    await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
+    expect(adicionarCaso.mock.calls[0][1].gravidade).toBe('imediata')
   })
 })
