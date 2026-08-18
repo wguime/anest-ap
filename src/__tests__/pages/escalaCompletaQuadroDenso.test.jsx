@@ -200,7 +200,11 @@ describe('Completa — coluna do tempo', () => {
     )
     const coluna = container.querySelector('button > div > span:first-child')
     expect(within(coluna).getByText('13:30')).toBeTruthy()
-    expect(within(coluna).getByText('→15:45')).toBeTruthy()
+    // RISCADO é a convenção de painel de aeroporto para o horário que não vale
+    // mais — diz "venceu" sem gastar largura numa coluna de 46px, e não depende
+    // só da cor (que aqui já significa outras cinco coisas).
+    const previsto = within(coluna).getByText('→15:45')
+    expect(previsto.className).toContain('line-through')
     const excedente = within(coluna).getByText('+15min')
     expect(excedente.className).toContain('text-warning')
     // o porquê fica no title para quem tem mouse; no celular, a leitura é a coluna

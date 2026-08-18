@@ -160,7 +160,7 @@ export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null, 
                     previsto de volta, a coluna lê-se de cima para baixo — começou
                     08:45, previa terminar 10:01, passou 50min disso. */}
                 {faltaCaso.atrasada && (
-                  <span className="block whitespace-nowrap text-[10px] tabular-nums text-muted-foreground">
+                  <span className="block whitespace-nowrap text-[10px] tabular-nums text-muted-foreground line-through">
                     →{caso.terminoPrevisto}
                   </span>
                 )}
