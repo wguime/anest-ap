@@ -198,3 +198,23 @@ describe('Completa — colunas da direita', () => {
     expect(linhas[2].querySelector('span:last-child').className).toContain('min-w-[46px]')
   })
 })
+
+describe('Completa — caso sem paciente identificado', () => {
+  // Bloco de exames, lote de FACO, posição de apoio: a linha de identificação
+  // nasceria vazia, com o badge sozinho e um buraco à esquerda (dono 17/08).
+  it('sobe o procedimento para a primeira linha e fica com duas linhas', () => {
+    renderBoard([caso({ pacienteIniciais: '', idade: '', procedimento: '06 EDA + 05 COLO (08 pctes)', statusCirurgia: 'terminada' })])
+    const card = screen.getByRole('button', { name: /^Detalhes do caso/ })
+    const linhas = card.querySelectorAll(':scope > div > span:last-child > span')
+    expect(linhas).toHaveLength(2)
+    expect(linhas[0].textContent).toMatch(/06 EDA \+ 05 COLO/)
+    expect(within(linhas[0]).getByText('Terminada')).toBeTruthy()
+    expect(within(linhas[1]).getByText(/Mauricio Sanagiotto/i)).toBeTruthy()
+  })
+
+  it('com paciente, o procedimento continua na própria linha', () => {
+    renderBoard([caso()])
+    const card = screen.getByRole('button', { name: /^Detalhes do caso/ })
+    expect(card.querySelectorAll(':scope > div > span:last-child > span')).toHaveLength(3)
+  })
+})

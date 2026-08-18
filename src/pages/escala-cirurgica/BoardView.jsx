@@ -101,6 +101,10 @@ export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null, 
       ? 'bg-info/[0.12] dark:bg-info/[0.22]'
       : ''
   const emLinha = moldura === 'linha'
+  // Sem paciente identificado (bloco de exames, lote de FACO, posição de apoio) a
+  // linha de identificação nasceria vazia — aí o procedimento sobe para ela e o
+  // card fica com duas linhas (dono 17/08).
+  const temIdentificacao = Boolean(salaLabel || caso.pacienteIniciais || idade)
   const temColunaHora = Boolean(caso.hora) || alvoCaso != null || Boolean(caso.tempoEstimado)
   return (
     <button
@@ -157,12 +161,18 @@ export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null, 
             ) : null}
           </span>
         )}
-        {/* Três linhas coladas (dono 17/08): paciente / procedimento / cirurgião
-            lêem como um bloco só. Os selos ocupam os DOIS cantos direitos — em
-            cima o estado da cirurgia, embaixo o convênio — e cada canto guarda o
-            lugar mesmo vazio, senão a coluna serrilha de um card para o outro. */}
+        {/* Três linhas próximas (dono 17/08): paciente / procedimento / cirurgião
+            lêem como um bloco só, com um respiro de 3px entre elas — coladas de
+            todo, o selo do convênio encostava no texto de cima. Os selos ocupam
+            os DOIS cantos direitos — em cima o estado da cirurgia, embaixo o
+            convênio — e cada canto guarda o lugar mesmo vazio, senão a coluna
+            serrilha de um card para o outro.
+            SEM paciente identificado (bloco de exames, lote de FACO, posição), o
+            procedimento SOBE para a primeira linha: a linha de identificação
+            ficaria vazia, com o badge sozinho e um buraco à esquerda. */}
         <span className="min-w-0 flex-1 leading-tight">
-          {/* Linha 1 — de quem é + o estado agora (canto superior direito) */}
+          {/* Linha 1 — de quem é (ou, sem paciente, o próprio procedimento) + o
+              estado agora, no canto superior direito */}
           <span className="flex items-center gap-1.5">
             {salaLabel && <span className="shrink-0 text-sm font-bold text-foreground">{salaLabel}</span>}
             {caso.pacienteIniciais && (
@@ -171,6 +181,11 @@ export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null, 
               </span>
             )}
             {idade && <span className="shrink-0 text-xs text-muted-foreground">{idade}</span>}
+            {!temIdentificacao && procedimento && (
+              <span className="min-w-0 truncate text-[14.5px] text-foreground" title={procedimento}>
+                {procedimento}
+              </span>
+            )}
             <span className="ml-auto flex shrink-0 items-center justify-end gap-1">
               {/* à ESQUERDA do estado: o que é exceção — urgência/emergência,
                   atrasada, suspensa, passa para tarde */}
@@ -183,13 +198,13 @@ export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null, 
             </span>
           </span>
           {/* Linha 2 — QUAL cirurgia, na linha inteira */}
-          {procedimento && (
-            <span className="block truncate text-[14.5px] text-foreground" title={procedimento}>
+          {temIdentificacao && procedimento && (
+            <span className="mt-[3px] block truncate text-[14.5px] text-foreground" title={procedimento}>
               {procedimento}
             </span>
           )}
           {/* Linha 3 — quem opera + o convênio no canto inferior direito */}
-          <span className="flex items-center gap-x-1.5">
+          <span className="mt-[3px] flex items-center gap-x-1.5">
             {cirurgiao && (
               <span className="min-w-0 truncate text-sm text-foreground/90" title={cirurgiao}>{cirurgiao}</span>
             )}
