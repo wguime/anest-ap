@@ -619,6 +619,51 @@ export function ajudasPreservadasNoRepasse(casosAntes, casosDepois, ids, escala,
 }
 
 /**
+ * ESCALADO PRESERVADO NO REPASSE (dono 19/08 — "a pessoa acaba os casos e
+ * aparece liberado no meio da escala de liberações"): quem é do RODAPÉ e perde
+ * o último caso do turno num repasse fica, aos olhos da fila, idêntico a quem
+ * nunca foi escalado — e "não escalado" nasce Liberado. A pessoa trabalhou e a
+ * liberação é MANUAL e NA ORDEM: devolve as linhas que precisam do marcador
+ * `{ escalado: true }` (o MESMO que o toggle manual grava) para seguirem
+ * ativas na própria posição. Quem já tem marcação (liberado de verdade, ou já
+ * forçado escalado) fica como está. A chave segue a convenção das marcações:
+ * uid do vínculo, senão nome normalizado DO RODAPÉ (não do caso — grafias
+ * divergem, caso "GUILHERME M ELO" × rodapé "GUILHERME MELO").
+ * @returns {Array<{chave:string, turno:string}>}
+ */
+export function escaladosPreservadosNoRepasse(casosAntes, casosDepois, ids, escala, opts = {}) {
+  const { resolverUid } = opts
+  const idSet = ids instanceof Set ? ids : new Set(ids || [])
+  const out = []
+  const vistos = new Set()
+  const chaveNome = (s) => normNome(s).replace(/\s+/g, '')
+  for (const c of casosAntes || []) {
+    if (!idSet.has(c.id)) continue
+    const nome = String(c.anestesista || '').trim()
+    const n = chaveNome(nome)
+    if (!n || nome === '//' || /^\?+$/.test(n) || nome.includes('+') || c.semAnestesista) continue
+    const turno = turnoDoCaso(c)
+    if (vistos.has(`${turno}|${n}`)) continue
+    vistos.add(`${turno}|${n}`)
+    const uidCaso = c.anestesistaUserId || resolverUid?.(nome) || null
+    const mesmo = (r) => chaveNome(r) === n || (uidCaso != null && resolverUid?.(r) === uidCaso)
+    const aindaTem = (casosDepois || []).some((d) => {
+      if (turnoDoCaso(d) !== turno) return false
+      if (uidCaso && d.anestesistaUserId === uidCaso) return true
+      return String(d.anestesista || '').split(/\s*\+\s*/).some((p) => mesmo(p))
+    })
+    if (aindaTem) continue
+    const noRodape = rodapeDoTurno(escala?.ordemLiberacao, turno).find(mesmo)
+    if (noRodape === undefined) continue // fora do rodapé: é o caso do irmão acima (ajuda)
+    const chave = resolverUid?.(stripNotaRodape(String(noRodape))) || uidCaso || normNome(noRodape)
+    const lib = escala?.liberacoes || {}
+    if (lib[`${turno}:${chave}`] !== undefined || lib[chave] !== undefined) continue
+    out.push({ chave, turno })
+  }
+  return out
+}
+
+/**
  * Snapshot dos campos de anestesista dos casos — combustível do ROLLBACK da
  * troca. O rollback antigo re-derivava do uid do dono (`{ uid: de.uid }`) e,
  * com dono SEM vínculo (uid null), o service traduzia para `anestesista='?'` +

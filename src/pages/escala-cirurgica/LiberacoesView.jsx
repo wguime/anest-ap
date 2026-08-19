@@ -1151,9 +1151,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   {linha.assumida && !trocaDe(linha) && (
                     <Badge className="shrink-0 border-transparent bg-category-indigo text-white">Troca</Badge>
                   )}
-                  {foraDoRodape && !trocaDe(linha) && !linha.assumida && (
-                    <Badge variant="warning" className="shrink-0">Fora do rodapé</Badge>
-                  )}
+                  {/* linha fora do rodapé NÃO leva badge (dono 19/08, caso Staub):
+                      ela já se distingue por ficar no fim e sem número — o selo
+                      "Fora do rodapé" lia como acusação e saiu. */}
                   {/* ajuda DERIVADA do cruzamento (caso TIAGO 30/07): com o hospital
                       de origem, porque a marca não veio de ajuda_externa */}
                   {!liberadoReal && ajudaDeOutro(linha) && (

@@ -13,7 +13,7 @@ import { createContext, useContext, useReducer, useMemo, useCallback, useEffect,
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
 import { useToast } from '@/design-system/components/ui/toast'
-import { ajudasPreservadasNoRepasse, familiaConvenio, lerOverrideAnterior, mergeRodapeTurno, rodapeDoTurno, snapshotCasos } from '@/pages/escala-cirurgica/utils'
+import { ajudasPreservadasNoRepasse, escaladosPreservadosNoRepasse, familiaConvenio, lerOverrideAnterior, mergeRodapeTurno, rodapeDoTurno, snapshotCasos } from '@/pages/escala-cirurgica/utils'
 import { nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
 import { ehFimDeSemana, FDS_HOSPITAL } from '@/lib/escalaFds'
 import { getDemoEscala } from '@/data/escalaCirurgicaDemo'
@@ -551,7 +551,7 @@ export function EscalaCirurgicaProvider({ children }) {
   // `resolverUid` (apelido→uid do dicionário, opcional) alimenta o
   // ajudasPreservadasNoRepasse: sem ele a decisão "é gente daqui?" cai no
   // fallback por grafia e texto torto da Vision vira ajuda indevida (19/08).
-  const setAnestesistaCasos = useCallback(async (escala, casoIds, { uid, apelido, dupla = false }, { rotulo = '', resolverUid } = {}) => {
+  const setAnestesistaCasos = useCallback(async (escala, casoIds, { uid, apelido, dupla = false }, { rotulo = '', resolverUid, userId = null } = {}) => {
     if (String(escala.id).startsWith('demo-')) {
       toast({ variant: 'warning', title: 'Indisponível na demonstração' })
       return
@@ -596,6 +596,23 @@ export function EscalaCirurgicaProvider({ children }) {
           dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { ajudaExterna } })
         }
       } catch { /* repasse já está feito; a ajuda pode ser marcada à mão */ }
+      // ESCALADO PRESERVADO (dono 19/08 — "acaba os casos e aparece liberado no
+      // meio da fila"): gente do RODAPÉ que ficou sem caso no repasse seguiria
+      // como "não escalado" e nasceria Liberada sem ninguém liberar. Grava o
+      // MESMO marcador do toggle manual ({ escalado: true }) — a linha segue
+      // ativa na posição, aguardando a liberação NA ORDEM. Best-effort.
+      try {
+        const marcadores = escaladosPreservadosNoRepasse(escala.casos, casos, idSet, escala, { resolverUid })
+        if (marcadores.length) {
+          const liberacoes = { ...(escala.liberacoes || {}) }
+          for (const { chave, turno } of marcadores) {
+            const valor = { escalado: true, por: userId, em: new Date().toISOString() }
+            await svc.patchLiberacao(escala.id, `${turno}:${chave}`, valor)
+            liberacoes[`${turno}:${chave}`] = valor
+          }
+          dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { liberacoes } })
+        }
+      } catch { /* repasse já está feito; o toggle manual cobre */ }
       toast({
         variant: 'success',
         title: dupla ? 'Dois anestesistas na cirurgia' : uid ? 'Responsável atualizado' : 'Caso sem anestesista',
