@@ -564,30 +564,39 @@ export const observacaoDaLinha = (ov, hospitalLabels = {}) => {
  * fim). Decide, PURO, quem precisa entrar em `ajuda_externa[turno]` (o mesmo
  * campo do toggle manual de ajuda) para a linha sobreviver ao repasse.
  * Gente do rodapé DAQUI fica de fora: a posição própria já segura a linha.
+ * ⚠️ "É gente daqui?" decide por IDENTIDADE (uid do caso ou apelido resolvido
+ * pelo dicionário via `resolverUid`), nunca só pela grafia: em 19/08 o caso
+ * dizia "GUILHERME M ELO" (texto da Vision, espaço no meio) e o rodapé
+ * "GUILHERME MELO" — texto contra texto marcou gente do rodapé como visitante
+ * e a linha ganhou badge de Ajuda indevido. A grafia (sem espaços) é fallback
+ * para quando não há uid nem resolver.
  * @returns {Array<{nome:string, turno:string}>}
  */
-export function ajudasPreservadasNoRepasse(casosAntes, casosDepois, ids, escala) {
+export function ajudasPreservadasNoRepasse(casosAntes, casosDepois, ids, escala, resolverUid) {
   const idSet = ids instanceof Set ? ids : new Set(ids || [])
   const out = []
   const vistos = new Set()
+  const chaveNome = (s) => normNome(s).replace(/\s+/g, '')
   for (const c of casosAntes || []) {
     if (!idSet.has(c.id)) continue
     const nome = String(c.anestesista || '').trim()
-    const n = normNome(nome)
+    const n = chaveNome(nome)
     // "A + B" fica de fora: o repasse desses é por caso e o colega permanece
     if (!n || nome === '//' || /^\?+$/.test(n) || nome.includes('+') || c.semAnestesista) continue
     if (vistos.has(n)) continue
     vistos.add(n)
+    const uidCaso = c.anestesistaUserId || resolverUid?.(nome) || null
+    const mesmo = (r) => chaveNome(r) === n || (uidCaso != null && resolverUid?.(r) === uidCaso)
     const turno = turnoDoCaso(c)
     // ainda nomeado em algum caso do turno (mesmo terminado)? a linha sobrevive sozinha
     const aindaTem = (casosDepois || []).some((d) => {
       if (turnoDoCaso(d) !== turno) return false
-      if (c.anestesistaUserId && d.anestesistaUserId === c.anestesistaUserId) return true
-      return String(d.anestesista || '').split(/\s*\+\s*/).some((p) => normNome(p) === n)
+      if (uidCaso && d.anestesistaUserId === uidCaso) return true
+      return String(d.anestesista || '').split(/\s*\+\s*/).some((p) => mesmo(p))
     })
     if (aindaTem) continue
-    if (rodapeDoTurno(escala?.ordemLiberacao, turno).some((r) => normNome(r) === n)) continue
-    if (rodapeDoTurno(escala?.ajudaExterna, turno).some((r) => normNome(r) === n)) continue // já é ajuda
+    if (rodapeDoTurno(escala?.ordemLiberacao, turno).some(mesmo)) continue
+    if (rodapeDoTurno(escala?.ajudaExterna, turno).some(mesmo)) continue // já é ajuda
     out.push({ nome, turno })
   }
   return out

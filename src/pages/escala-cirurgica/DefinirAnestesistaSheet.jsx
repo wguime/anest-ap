@@ -216,7 +216,7 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
       : semAnest
         ? { uid: null, apelido: '?' }
         : { uid: r.uid, apelido: r.apelidos?.[0] || primeiroNomeUpper(r.nome) }
-    setAnestesistaCasos(escala, alvos.map((c) => c.id), payload, { rotulo })
+    setAnestesistaCasos(escala, alvos.map((c) => c.id), payload, { rotulo, resolverUid: resolver })
       .catch(() => { /* toast de erro já vem do context */ })
     onClose?.()
   }

@@ -446,7 +446,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                   onDefinirCasos={(casoIds, { uid, apelido, rotulo }) => {
                     // na fila única o caso pertence à escala do hospital de origem
                     const dona = modoFds ? escalaDoCaso(casoIds[0]) || escala : escala
-                    return setAnestesistaCasos(dona, casoIds, { uid, apelido }, { rotulo })
+                    return setAnestesistaCasos(dona, casoIds, { uid, apelido }, { rotulo, resolverUid: resolverRoster })
                   }}
                   onToggle={(anest) => toggleLiberacao(escalaLib, anest, userInfo, turno)}
                   onToggleEscalado={(anest) => toggleEscalado(escalaLib, anest, userInfo, turno)}

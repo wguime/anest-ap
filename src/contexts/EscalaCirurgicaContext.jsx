@@ -548,7 +548,10 @@ export function EscalaCirurgicaProvider({ children }) {
   // NUNCA a sala inteira às cegas: o update sala-wide achatou o IOSC (multi-
   // anestesista) p/ uma pessoa e dois anestesistas SUMIRAM da escala (23/07).
   // Completa/Liberações/Minhas derivam dos casos → atualizam juntas p/ todos.
-  const setAnestesistaCasos = useCallback(async (escala, casoIds, { uid, apelido, dupla = false }, { rotulo = '' } = {}) => {
+  // `resolverUid` (apelido→uid do dicionário, opcional) alimenta o
+  // ajudasPreservadasNoRepasse: sem ele a decisão "é gente daqui?" cai no
+  // fallback por grafia e texto torto da Vision vira ajuda indevida (19/08).
+  const setAnestesistaCasos = useCallback(async (escala, casoIds, { uid, apelido, dupla = false }, { rotulo = '', resolverUid } = {}) => {
     if (String(escala.id).startsWith('demo-')) {
       toast({ variant: 'warning', title: 'Indisponível na demonstração' })
       return
@@ -578,7 +581,7 @@ export function EscalaCirurgicaProvider({ children }) {
       // Best-effort: falha aqui NÃO desfaz o repasse (dá p/ marcar ajuda à mão).
       try {
         let ajudaExterna = escala.ajudaExterna
-        for (const { nome, turno } of ajudasPreservadasNoRepasse(escala.casos, casos, idSet, escala)) {
+        for (const { nome, turno } of ajudasPreservadasNoRepasse(escala.casos, casos, idSet, escala, resolverUid)) {
           const atual = rodapeDoTurno(ajudaExterna, turno)
           ajudaExterna = mergeRodapeTurno(ajudaExterna, turno, [...atual, nome])
         }
