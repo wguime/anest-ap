@@ -29,6 +29,7 @@ const { svcMock, subCallbacks } = vi.hoisted(() => ({
     updateCaso: vi.fn(async () => {}),
     updateAjudaExterna: vi.fn(async () => {}),
     updateStatusCirurgia: vi.fn(async () => {}),
+    updateAnestesistaCasos: vi.fn(async () => {}),
   },
   // callbacks capturados p/ simular um evento realtime chegando no meio do toque
   subCallbacks: [],
@@ -201,6 +202,20 @@ describe('resposta tátil — o estado pinta ANTES do servidor responder', () =>
     expect(unimed().casos.find((c) => c.id === 'c2')).toBe(c2Antes)
   })
 
+  it('setAnestesistaCasos (Definir anestesista) pinta o novo responsável com o update pendente', async () => {
+    // "demora a assumir" (dono 19/08): o sheet segurava o spinner um RTT inteiro
+    // porque esta era a única escrita das abas que ainda esperava o servidor
+    await montar()
+    svcMock.updateAnestesistaCasos.mockImplementation(pendente)
+    act(() => {
+      actions.setAnestesistaCasos(unimed(), ['c1'], { uid: 'uid-gio', apelido: 'GIOVANA' }, { rotulo: 'S1' })
+    })
+    const c1 = unimed().casos.find((c) => c.id === 'c1')
+    expect(c1.anestesista).toBe('GIOVANA')
+    expect(c1.anestesistaUserId).toBe('uid-gio')
+    expect(c1.semAnestesista).toBe(false)
+  })
+
   it('adicionarAjuda / removerAjuda refletem no toque com o update pendente', async () => {
     await montar()
     svcMock.updateAjudaExterna.mockImplementation(pendente)
@@ -242,6 +257,19 @@ describe('rollback — servidor recusou, o toque desfaz sozinho', () => {
       await actions.setLinhaOverride(unimed(), { chave: 'staub', anestesista: 'STAUB' }, { termino: '15:30' }, { userId: 'u1' }, 'matutino').catch(() => {})
     })
     expect(unimed().linhaOverrides['matutino:staub']).toBeUndefined()
+  })
+
+  it('setAnestesistaCasos rejeitado devolve o responsável ao snapshot', async () => {
+    // o "TypeError: Load failed" do 5G (19/08): a rede caiu depois do toque —
+    // o quadro tem de voltar sozinho ao responsável anterior (+ toast do context)
+    await montar()
+    svcMock.updateAnestesistaCasos.mockRejectedValueOnce(new Error('TypeError: Load failed'))
+    await act(async () => {
+      await actions.setAnestesistaCasos(unimed(), ['c1'], { uid: 'uid-gio', apelido: 'GIOVANA' }, { rotulo: 'S1' }).catch(() => {})
+    })
+    const c1 = unimed().casos.find((c) => c.id === 'c1')
+    expect(c1.anestesista).toBe('STAUB')
+    expect(c1.anestesistaUserId).toBeNull()
   })
 
   it('adicionarAjuda rejeitado devolve a lista ao snapshot', async () => {

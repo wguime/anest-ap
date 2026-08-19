@@ -555,18 +555,23 @@ export function EscalaCirurgicaProvider({ children }) {
     }
     const ids = (casoIds || []).filter(Boolean)
     if (!ids.length) return
+    const idSet = new Set(ids)
+    // espelha o service: dupla mantém o texto "A + B" sem uid (não é "sem
+    // anestesista"); sem uid e sem dupla o caso volta a ser "?" (e ao alerta)
+    const patch = dupla
+      ? { anestesista: apelido, anestesistaUserId: null, semAnestesista: false }
+      : uid
+        ? { anestesista: apelido, anestesistaUserId: uid, semAnestesista: false }
+        : { anestesista: '?', anestesistaUserId: null, semAnestesista: true }
+    const casos = (escala.casos || []).map((c) => (idSet.has(c.id) ? { ...c, ...patch } : c))
+    // OTIMISTA (dono 19/08, 2ª queixa de demora — esta era a única escrita das
+    // abas que ainda esperava o RTT): pinta no toque; erro reverte + toast.
+    dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { casos } })
+    marcarEscrita()
     try {
-      const idSet = new Set(ids)
-      await svc.updateAnestesistaCasos(ids, { uid, apelido, dupla })
-      // espelha o service: dupla mantém o texto "A + B" sem uid (não é "sem
-      // anestesista"); sem uid e sem dupla o caso volta a ser "?" (e ao alerta)
-      const patch = dupla
-        ? { anestesista: apelido, anestesistaUserId: null, semAnestesista: false }
-        : uid
-          ? { anestesista: apelido, anestesistaUserId: uid, semAnestesista: false }
-          : { anestesista: '?', anestesistaUserId: null, semAnestesista: true }
-      const casos = (escala.casos || []).map((c) => (idSet.has(c.id) ? { ...c, ...patch } : c))
-      dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { casos } })
+      try {
+        await svc.updateAnestesistaCasos(ids, { uid, apelido, dupla })
+      } finally { encerrarEscrita() }
       // VISITANTE PRESERVADO NO REPASSE (dono 31/07 — caso LEONARDO): quem veio
       // de fora e ficou sem caso aqui entra em ajuda_externa[turno] — a linha das
       // Liberações sobrevive ao repasse (era a única evidência de presença dele).
@@ -588,6 +593,8 @@ export function EscalaCirurgicaProvider({ children }) {
         description: `${rotulo || `${ids.length} caso(s)`} → ${dupla || uid ? apelido : 'sem anestesista (?)'}`,
       })
     } catch (error) {
+      // reverte o otimista ao snapshot — o servidor não confirmou o responsável
+      dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { casos: escala.casos || [] } })
       toast({ variant: 'error', title: 'Erro ao definir anestesista', description: error.message })
       throw error
     }

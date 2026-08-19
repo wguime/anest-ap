@@ -182,18 +182,11 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
     const semAnest = escolhido === SEM_ANESTESISTA
     const r = semAnest ? null : rosterByUid.get(escolhido)
     if (!semAnest && !r) return
-    setSalvando(true)
-    try {
-      if (segundo) {
-        // a posição na fila NÃO é oferecida junto: com dois donos não existe um
-        // slot único a assumir — quem trocou de posição resolve pelo ✏️/Troca.
-        await setAnestesistaCasos(
-          escala,
-          alvos.map((c) => c.id),
-          { uid: null, apelido: `${apelidoDe(r)} + ${apelidoDe(segundo)}`, dupla: true },
-          { rotulo }
-        )
-      } else if (!semAnest && assumirPosicao && ofereceAssumir) {
+    if (!segundo && !semAnest && assumirPosicao && ofereceAssumir) {
+      // assumir a posição é TRANSACIONAL (rollback LIFO) — espera a persistência
+      // com spinner, como o TrocaSheet; só então fecha.
+      setSalvando(true)
+      try {
         const rAtual = atual.uid ? rosterByUid.get(atual.uid) : null
         await executarSubstituicao({
           lados: [{
@@ -208,18 +201,24 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
           }],
           limparTroca: [],
         }, { userId: user?.uid || user?.id || null })
-      } else {
-        await setAnestesistaCasos(
-          escala,
-          alvos.map((c) => c.id),
-          semAnest ? { uid: null, apelido: '?' } : { uid: r.uid, apelido: r.apelidos?.[0] || primeiroNomeUpper(r.nome) },
-          { rotulo }
-        )
+        onClose?.()
+      } catch { /* toast de erro já vem do context */ } finally {
+        setSalvando(false)
       }
-      onClose?.()
-    } catch { /* toast de erro já vem do context */ } finally {
-      setSalvando(false)
+      return
     }
+    // Caminho OTIMISTA (dono 19/08): o context pinta o quadro no dispatch — a
+    // folha fecha no toque em vez de segurar o spinner um RTT inteiro; erro
+    // reverte + toasta por conta do context. (Dupla: a posição na fila NÃO é
+    // oferecida junto — com dois donos não existe um slot único a assumir.)
+    const payload = segundo
+      ? { uid: null, apelido: `${apelidoDe(r)} + ${apelidoDe(segundo)}`, dupla: true }
+      : semAnest
+        ? { uid: null, apelido: '?' }
+        : { uid: r.uid, apelido: r.apelidos?.[0] || primeiroNomeUpper(r.nome) }
+    setAnestesistaCasos(escala, alvos.map((c) => c.id), payload, { rotulo })
+      .catch(() => { /* toast de erro já vem do context */ })
+    onClose?.()
   }
 
   // Resumo do lado que SAI: quantas cirurgias ele tem aqui e quantas ficam com

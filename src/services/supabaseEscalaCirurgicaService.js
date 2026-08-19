@@ -333,6 +333,12 @@ async function addCaso(escalaId, caso) {
  * em 23/07. O chamador decide os alvos via alvosTrocaResponsavel (linhas com
  * anestesista próprio ficam de fora). Substitui o sistema de trocas.
  */
+// Queda de REDE (Safari: "TypeError: Load failed"; Chrome: "Failed to fetch")
+// chega como { error } SEM code — a requisição nem alcançou o Postgres, não é
+// recusa do servidor. Vista em produção 19/08 no 5G do hospital.
+const ehErroDeRede = (error) =>
+  !error?.code && /load failed|failed to fetch|network/i.test(error?.message || '')
+
 async function updateAnestesistaCasos(casoIds = [], { uid, apelido, dupla = false }) {
   const ids = (casoIds || []).filter(Boolean)
   if (!ids.length) return
@@ -348,10 +354,14 @@ async function updateAnestesistaCasos(casoIds = [], { uid, apelido, dupla = fals
     : uid
       ? { anestesista: apelido, anestesista_user_id: uid, sem_anestesista: false }
       : { anestesista: '?', anestesista_user_id: null, sem_anestesista: true }
-  const { error } = await supabase
-    .from('escala_cirurgica_caso')
-    .update(patch)
-    .in('id', ids)
+  const gravar = () => supabase.from('escala_cirurgica_caso').update(patch).in('id', ids)
+  let { error } = await gravar()
+  // blip de rede: o update é idempotente (mesmos valores nos mesmos ids), então
+  // UMA repetição é segura e resolve sem incomodar quem está operando a escala
+  if (error && ehErroDeRede(error)) {
+    await new Promise((r) => setTimeout(r, 400))
+    ;({ error } = await gravar())
+  }
   if (error) handleError(error, 'updateAnestesistaCasos')
 }
 
