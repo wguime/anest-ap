@@ -9,11 +9,12 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { ThemeProvider, ToastProvider } from '@/design-system'
 import AddCasoSheet from '@/pages/escala-cirurgica/AddCasoSheet'
 
-const { adicionarCaso } = vi.hoisted(() => ({
+const { adicionarCaso, definirSalasUrgencia } = vi.hoisted(() => ({
   adicionarCaso: vi.fn(async (_e, c) => ({ id: 'novo-1', ...c })),
+  definirSalasUrgencia: vi.fn(async () => {}),
 }))
 vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
-  useEscalaCirurgicaActions: () => ({ adicionarCaso }),
+  useEscalaCirurgicaActions: () => ({ adicionarCaso, definirSalasUrgencia }),
   HOSPITAL_LABEL: { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' },
 }))
 vi.mock('@/contexts/UserContext', () => ({ useUser: () => ({ user: { uid: 'u-1', displayName: 'Fulano' } }) }))
@@ -61,7 +62,7 @@ const preencherObrigatorios = () => {
   escolherPorPlaceholder('Quem entra primeiro', 'Urgente')
 }
 
-beforeEach(() => adicionarCaso.mockClear())
+beforeEach(() => { adicionarCaso.mockClear(); definirSalasUrgencia.mockClear() })
 
 describe('AddCasoSheet — salvar procedimento e anestesista (dono 29/07)', () => {
   it('salva procedimento, anestesista (apelido + uid) e o resto do formulário', async () => {
@@ -239,5 +240,76 @@ describe('AddCasoSheet — gravidade da urgência', () => {
     fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
     await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
     expect(adicionarCaso.mock.calls[0][1].gravidade).toBe('imediata')
+  })
+})
+
+/**
+ * POSTO DO CONTRATO (dono 19/08): no HRO, quem adiciona urgência/emergência já
+ * diz QUEM a faz (Plantão/Sobreaviso/Ortopedia/CO). A escolha vira CONFIG de
+ * sala (urgencias_meta) — o mesmo dado do ⚙ da faixa —, nunca campo do caso;
+ * posto ocupado pode ser escolhido e o excedente entra como Extra sozinho.
+ */
+describe('AddCasoSheet — posto do contrato (só HRO)', () => {
+  const preencherUrgencia = (salaNome = 'Sala 2') => {
+    escolher(screen.getAllByRole('combobox')[0], salaNome)
+    fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Laparotomia' } })
+    fireEvent.change(screen.getByPlaceholderText('ex.: Mateus Baptistella'), { target: { value: 'Dr. Ivo' } })
+    fireEvent.change(screen.getByPlaceholderText('SUS, Unimed, BRF…'), { target: { value: 'SUS' } })
+    escolherPorPlaceholder('Quem entra primeiro', 'Urgente')
+  }
+
+  it('o campo existe no HRO em urgência e some fora do HRO', () => {
+    render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
+    expect(screen.getByText('Quem faz (posto do contrato)')).toBeTruthy()
+
+    render(
+      <AddCasoSheet escala={{ id: 'e2', hospital: 'unimed', casos: [] }} turno="matutino" onClose={vi.fn()} />,
+      { wrapper: wrap },
+    )
+    // só um campo — o do HRO do primeiro render
+    expect(screen.getAllByText('Quem faz (posto do contrato)')).toHaveLength(1)
+  })
+
+  it('escolher Plantão grava a sala do caso na config daquele posto/turno', async () => {
+    render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
+    preencherUrgencia('Sala 2')
+    escolher(screen.getByText('Automático (pela sala)'), 'Plantão')
+    fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
+    await waitFor(() => expect(definirSalasUrgencia).toHaveBeenCalled())
+    const [, turnoArg, cfgArg] = definirSalasUrgencia.mock.calls[0]
+    expect(turnoArg).toBe('matutino')
+    expect(cfgArg).toEqual({ plantao: 'Sala 2' })
+  })
+
+  it('Automático não grava config nenhuma', async () => {
+    render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
+    preencherUrgencia('Sala 2')
+    fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
+    await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
+    expect(definirSalasUrgencia).not.toHaveBeenCalled()
+  })
+
+  it('Ortopedia na Sala 4 (o default) não precisa de config — nada é gravado', async () => {
+    render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
+    preencherUrgencia('Sala 4')
+    escolher(screen.getByText('Automático (pela sala)'), 'Ortopedia')
+    fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
+    await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
+    expect(definirSalasUrgencia).not.toHaveBeenCalled()
+  })
+
+  it('config existente do posto NUNCA é sobrescrita por aqui — o excedente vira Extra sozinho', async () => {
+    render(
+      <AddCasoSheet
+        escala={{ ...escala, urgenciasMeta: { matutino: { plantao: 'Sala 6' } } }}
+        turno="matutino" onClose={vi.fn()}
+      />,
+      { wrapper: wrap },
+    )
+    preencherUrgencia('Sala 2')
+    escolher(screen.getByText('Automático (pela sala)'), 'Plantão')
+    fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
+    await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
+    expect(definirSalasUrgencia).not.toHaveBeenCalled()
   })
 })

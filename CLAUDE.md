@@ -588,7 +588,12 @@ quando há urgência) mostra isso em tempo real.
   vermelho sob cards verdes foi vetado como "vitral". Toque abre o `CasoDetalheSheet`
   (onde Iniciada/Terminada já são marcados). **Escala do HRO com casos ⇒ faixa VISÍVEL
   mesmo sem urgência (dono 19/08)** — é na publicação da manhã que se confere/configura
-  as salas do contrato; sem caso nenhum no dia, some.
+  as salas do contrato; sem caso nenhum no dia, some. **Postos são atalho (19/08):**
+  posto sem caso abre o AddCasoSheet com `postoInicial`/`salaInicial`; o form (só
+  HRO + urgência/emergência) tem o campo "Quem faz (posto do contrato)" — a escolha
+  vira CONFIG de sala via `definirSalasUrgencia` (nunca campo do caso), só quando o
+  papel ainda está em automático e a sala não é a que já responde por ele; posto
+  ocupado é escolhível e o excedente vira Extra sozinho (`distribuirPostos`).
 - **Salas CONFIGURÁVEIS por dia/turno (dono 18/08, 2ª decisão)**: "as salas do CO e
   ortopedia podem mudar" — `urgencias_meta` jsonb no cabeçalho (migration
   `20260818190000`), chaveado por turno de PUBLICAÇÃO, gravado pela MESMA

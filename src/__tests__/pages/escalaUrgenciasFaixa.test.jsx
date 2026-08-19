@@ -37,6 +37,12 @@ vi.mock('@/pages/escala-cirurgica/useAgoraMinuto', () => ({ default: () => 11 * 
 vi.mock('@/pages/escala-cirurgica/CasoDetalheSheet', () => ({
   default: ({ caso }) => <div data-testid="detalhe">{caso.id}</div>,
 }))
+// O formulário real tem suíte própria; aqui interessa que abre com o posto certo.
+vi.mock('@/pages/escala-cirurgica/AddCasoSheet', () => ({
+  default: ({ postoInicial, salaInicial }) => (
+    <div data-testid="add-caso">{postoInicial}|{salaInicial || ''}</div>
+  ),
+}))
 
 const HOJE = '2026-08-18'
 const wrap = ({ children }) => <ThemeProvider><ToastProvider>{children}</ToastProvider></ThemeProvider>
@@ -296,5 +302,31 @@ describe('salas configuráveis por dia/turno', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     await vi.waitFor(() => expect(definirSalasUrgencia).toHaveBeenCalled())
     expect(definirSalasUrgencia.mock.calls[0][2]).toBeNull()
+  })
+})
+
+
+/**
+ * ATALHO DOS POSTOS (dono 19/08): tocar num posto SEM caso abre o "Adicionar
+ * caso" já apontando o posto (e a sala, no dedicado). Ocupado segue no detalhe.
+ */
+describe('toque nos postos vazios abre o Adicionar caso', () => {
+  it('posto livre abre o formulário apontando o posto', () => {
+    montar([caso('c1', 'Sala 2', { tipo: 'eletiva' })]) // escala sem urgência: 2 livres
+    fireEvent.click(screen.getByText('Plantão').closest('button'))
+    expect(screen.getByTestId('add-caso').textContent).toBe('plantao|')
+  })
+
+  it('dedicado sem urgência abre já com o posto E a sala dele', () => {
+    montar([caso('e1', 'Sala 4', { tipo: 'eletiva', anestesista: 'RAFAEL', anestesistaUserId: 'u-rafael' })])
+    fireEvent.click(screen.getByText('Rafael').closest('button'))
+    expect(screen.getByTestId('add-caso').textContent).toBe('orto|Sala 4')
+  })
+
+  it('posto ocupado continua abrindo o DETALHE do caso, não o formulário', () => {
+    montar([iniciada('c1', 'Sala 6')])
+    fireEvent.click(screen.getByText('Marcelo').closest('button'))
+    expect(screen.getByTestId('detalhe').textContent).toBe('c1')
+    expect(screen.queryByTestId('add-caso')).toBeNull()
   })
 })

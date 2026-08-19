@@ -14,8 +14,9 @@ import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import useRosterResidentes from '@/hooks/useRosterResidentes'
 import { iniciais } from '@/lib/excelEscala'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
-import { familiaConvenio, turnoDeHora, salasDoHospital } from './utils'
-import { GRAVIDADES, GRAVIDADE_LABEL } from '@/lib/escalaCirurgicaUrgencias'
+import { casosResolvidos, familiaConvenio, normNome, turnoDeHora, salasDoHospital } from './utils'
+import { GRAVIDADES, GRAVIDADE_LABEL, estadoUrgencias, salasContrato } from '@/lib/escalaCirurgicaUrgencias'
+import useAgoraMinuto from './useAgoraMinuto'
 
 const NOVA_SALA = '__nova__'
 
@@ -25,6 +26,21 @@ const formatHora = (v) => {
   return d.length <= 2 ? d : `${d.slice(0, 2)}:${d.slice(2)}`
 }
 const GRAVIDADE_OPCOES = GRAVIDADES.map((g) => ({ value: g, label: GRAVIDADE_LABEL[g] }))
+
+// Postos do contrato de urgência do HRO (dono 19/08): quem adiciona a urgência
+// já diz QUEM a faz. A escolha vira CONFIGURAÇÃO de sala (urgencias_meta) — o
+// mesmo dado do ⚙ da faixa — nunca um campo do caso: o posto é derivado da
+// sala, e posto já ocupado deixa o excedente virar "Extra" sozinho
+// (distribuirPostos; a marcação nunca muda a contagem).
+const POSTO_AUTO = '__auto__'
+const POSTOS = [
+  { value: 'plantao', label: 'Plantão' },
+  { value: 'sobreaviso', label: 'Sobreaviso' },
+  { value: 'orto', label: 'Ortopedia' },
+  { value: 'co', label: 'CO' },
+]
+// defaults do contrato — iguais aos de CONTRATO_HRO.manha.dedicadas
+const POSTO_SALA_PADRAO = { orto: 'Sala 4', co: 'Sala 7 - CO' }
 
 const TIPOS = [
   { value: 'eletiva', label: 'Eletiva / encaixe' },
@@ -43,12 +59,12 @@ const Campo = ({ id, label, children }) => (
   </div>
 )
 
-export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobranca }) {
-  const { adicionarCaso } = useEscalaCirurgicaActions()
+export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobranca, postoInicial = '', salaInicial = '' }) {
+  const { adicionarCaso, definirSalasUrgencia } = useEscalaCirurgicaActions()
   const { user } = useUser()
   const { options: rosterOpcoes, rosterByUid } = useRosterAnestesistas()
   const { options: opcoesResidente, residenteByUid } = useRosterResidentes()
-  const [sala, setSala] = useState('')
+  const [sala, setSala] = useState(() => salaInicial || '')
   const [novaSala, setNovaSala] = useState('')
   const [hora, setHora] = useState('')
   const [paciente, setPaciente] = useState('')
@@ -60,6 +76,7 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
   const [residenteUid, setResidenteUid] = useState('')
   const [tipo, setTipo] = useState('urgencia')
   const [gravidade, setGravidade] = useState('')
+  const [posto, setPosto] = useState(() => postoInicial || POSTO_AUTO)
   const [salvando, setSalvando] = useState(false)
   // Caso particular recém-adicionado: oferece preencher a cobrança agora
   // (o rascunho em Cirurgias Particulares já nasceu via trigger no banco).
@@ -87,6 +104,29 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
   // demais: ela alimenta a ORDEM DA FILA de urgências do HRO, e sem ela a
   // urgência nasce sem lugar na fila.
   const exigeGravidade = tipo === 'urgencia' || tipo === 'emergencia'
+
+  // POSTO (só HRO + urgência/emergência): as opções avisam quem já está tomado —
+  // escolher um tomado é permitido, e o excedente aparece como Extra sozinho.
+  const agoraMin = useAgoraMinuto()
+  const mostraPosto = escala?.hospital === 'hro' && exigeGravidade
+  const postoOpcoes = useMemo(() => {
+    if (!mostraPosto) return []
+    const hojeIso = escala?.data || null
+    const estado = estadoUrgencias(casosResolvidos(escala), {
+      hospital: 'hro', turno, agoraMin, dataEscala: hojeIso, hojeIso,
+      salas: salasContrato(escala?.urgenciasMeta, turno),
+    })
+    const tomado = {
+      plantao: !!estado.postos.find((pp) => pp.papel === 'plantonista')?.item,
+      sobreaviso: !!estado.postos.find((pp) => pp.papel === 'sobreaviso')?.item,
+      orto: estado.dedicadas.some((d) => d.papel === 'orto'),
+      co: estado.dedicadas.some((d) => d.papel === 'co'),
+    }
+    return [
+      { value: POSTO_AUTO, label: 'Automático (pela sala)' },
+      ...POSTOS.map((o) => ({ ...o, label: tomado[o.value] ? `${o.label} · ocupado` : o.label })),
+    ]
+  }, [mostraPosto, escala, turno, agoraMin])
   const valido = !!(salaFinal && procedimento.trim() && cirurgiao.trim() && convenio.trim() && tipo
     && (!exigeGravidade || gravidade))
 
@@ -130,6 +170,21 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
         // turno EXPLÍCITO: encaixe sem hora ficaria nos dois turnos (bug 26/07)
         turno: turnoDeHora(hora.trim()) || turno || undefined,
       })
+      // POSTO escolhido → vira CONFIG de sala do papel, no turno DO CASO. Só
+      // grava quando aquele papel ainda está em automático E a sala do caso não
+      // é a que já responde por ele — config existente NUNCA é sobrescrita por
+      // aqui (o caso entra como comum e, extrapolando as 2 vagas, o quadro o
+      // mostra como Extra sozinho — exatamente o combinado com o dono 19/08).
+      if (novo && mostraPosto && posto !== POSTO_AUTO) {
+        const turnoCaso = turnoDeHora(hora.trim()) || turno || 'matutino'
+        const cfg = salasContrato(escala?.urgenciasMeta, turnoCaso)
+        const jaResponde = cfg[posto] || POSTO_SALA_PADRAO[posto] || null
+        if (!cfg[posto] && (!jaResponde || normNome(jaResponde) !== normNome(salaFinal))) {
+          const limpo = Object.fromEntries(Object.entries(cfg).filter(([, v]) => v))
+          await definirSalasUrgencia(escala, turnoCaso, { ...limpo, [posto]: salaFinal })
+            .catch(() => {}) // caso já entrou; o toast de erro da config avisa
+        }
+      }
       // Particular → cobrança auto-criada no banco; completa o NOME com o que
       // foi digitado (a escala só guarda iniciais) e oferece preencher já.
       if (novo && familiaConvenio(novo.convenio) === 'particular') {
@@ -220,6 +275,14 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
           {exigeGravidade && (
             <Campo id="ac-grav" label="Gravidade *">
               <Select options={GRAVIDADE_OPCOES} value={gravidade} onChange={setGravidade} placeholder="Quem entra primeiro" />
+            </Campo>
+          )}
+          {mostraPosto && (
+            <Campo id="ac-posto" label="Quem faz (posto do contrato)">
+              <Select options={postoOpcoes} value={posto} onChange={setPosto} />
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                Posto ocupado? Pode escolher mesmo assim — o excedente entra como Extra.
+              </p>
             </Campo>
           )}
           {/* diz O QUE falta: com 4 obrigatórios, botão cinza sem explicação vira

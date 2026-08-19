@@ -26,10 +26,12 @@ estão em uso, quem está em cada uma, há quanto tempo, e quem espera na fila.
 
 **Como usar — é tudo o que vocês já fazem, só que agora aparece:**
 
-1. **Chegou urgência?** Adicione pelo botão "Adicionar caso" da aba Completa, como
-   sempre. A novidade é um campo — **Imediata / Urgente / Pode aguardar** — que é o
-   que monta a ordem da fila quando as 2 salas estão ocupadas. Emergência já vem
-   marcada como Imediata.
+1. **Chegou urgência?** Toque direto no card do posto (Plantão, Sobreaviso,
+   Ortopedia ou CO) no quadro — o formulário abre já apontando quem vai fazer. Ou
+   use o "Adicionar caso" de sempre: lá tem o campo **Quem faz** com os mesmos 4
+   postos, e o campo **Imediata / Urgente / Pode aguardar**, que monta a ordem da
+   fila quando as 2 salas estão ocupadas. Emergência já vem marcada como Imediata.
+   Se o posto escolhido já estiver ocupado, o caso entra como **Extra** sozinho.
 2. **Entrou na sala?** Abra o caso e toque **Iniciada**. É esse toque que acende o
    card no contador.
 3. **Terminou?** Toque **Terminada**. É o que libera a vaga no contador e chama o

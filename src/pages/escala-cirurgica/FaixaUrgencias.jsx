@@ -42,6 +42,7 @@ import { casosResolvidos, filtrarPorTurno, nomeAnestesistaExibicao, salaLiberaca
 import { podeEditarEscalaCirurgica } from './gate'
 import CasoDetalheSheet from './CasoDetalheSheet'
 import SalasUrgenciaSheet from './SalasUrgenciaSheet'
+import AddCasoSheet from './AddCasoSheet'
 
 const PAPEL_LABEL = { plantonista: 'Plantão', sobreaviso: 'Sobreaviso' }
 const DEDICADO_LABEL = { orto: 'Orto', co: 'CO' }
@@ -77,6 +78,9 @@ export default function FaixaUrgencias({ escala, hospital, turno, hoje }) {
   const [detalhe, setDetalhe] = useState(null)
   const [todas, setTodas] = useState(false)
   const [configurar, setConfigurar] = useState(false)
+  // Toque num posto SEM caso abre o "Adicionar caso" já apontando o posto
+  // (dono 19/08) — { posto, sala } pré-preenchidos; ocupado segue abrindo o detalhe.
+  const [addCaso, setAddCaso] = useState(null)
 
   // Ocupação é do relógio → dia INTEIRO; o turno só escolhe a linha do contrato.
   const casos = useMemo(() => casosResolvidos(escala), [escala])
@@ -176,17 +180,27 @@ export default function FaixaUrgencias({ escala, hospital, turno, hoje }) {
               )}
             </button>
           ) : (
-            <div key={papel} className={`${CARD_BASE} border-dashed border-border bg-transparent`}>
+            <button
+              key={papel}
+              type="button"
+              disabled={!podeEditar}
+              onClick={() => setAddCaso({ posto: papel === 'plantonista' ? 'plantao' : papel })}
+              className={`${CARD_BASE} border-dashed border-border bg-transparent`}
+            >
               <span className="min-w-0 flex-1 truncate text-[13px]">{PAPEL_LABEL[papel] || papel}</span>
               <span className="shrink-0 text-[10.5px] text-muted-foreground">livre</span>
-            </div>
+            </button>
           ))}
           {dedicados.map((d) => {
-            const Comp = d.urgencia ? 'button' : 'div'
+            const Comp = d.urgencia || podeEditar ? 'button' : 'div'
             return (
               <Comp
                 key={d.papel}
-                {...(d.urgencia ? { type: 'button', onClick: () => setDetalhe(d.urgencia.caso) } : {})}
+                {...(d.urgencia
+                  ? { type: 'button', onClick: () => setDetalhe(d.urgencia.caso) }
+                  : podeEditar
+                    ? { type: 'button', onClick: () => setAddCaso({ posto: d.papel, sala: d.sala }) }
+                    : {})}
                 className={[
                   CARD_BASE,
                   'border-border',
@@ -305,6 +319,16 @@ export default function FaixaUrgencias({ escala, hospital, turno, hoje }) {
           </button>
         )}
       </section>
+
+      {addCaso && (
+        <AddCasoSheet
+          escala={escala}
+          turno={turno}
+          postoInicial={addCaso.posto}
+          salaInicial={addCaso.sala || ''}
+          onClose={() => setAddCaso(null)}
+        />
+      )}
 
       {configurar && (
         <SalasUrgenciaSheet escala={escala} turno={turno} onClose={() => setConfigurar(false)} />
