@@ -629,11 +629,16 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     return m ? m.hospitalLabel : null
   }
   const doTurno = linhasFase.filter((l) => !l.noturno)
-  // Casos atribuídos a alguém que não consta no rodapé (por exemplo, um
-  // substituto após uma troca já desfeita) permanecem visíveis por histórico,
-  // mas não podem ocupar uma posição da ordem publicada nem entrar na fila.
+  // ACRESCENTADO SEM CONSTAR NO RODAPÉ = AJUDA (dono 19/08): quem aparece com
+  // caso fora da ordem publicada entra na FILA como ajuda — é o PRIMEIRO a ir
+  // embora, sem ocupar posição de ninguém (a ordem publicada segue intocada; a
+  // fila só muda quando o usuário faz troca). Interação com o plantão do
+  // contraturno: quando o plantão está ESCALADO ele continua fechando a lista
+  // (sai primeiro) e a ajuda entra logo ACIMA (é liberada depois dele); plantão
+  // não escalado/já liberado é pulado pelo naFila e a ajuda vira a primeira.
   const linhasForaDoRodape = doTurno.filter((l) => l.isExtra)
   const linhasOficiais = doTurno.filter((l) => !l.isExtra)
+  const fechaComPlantao = linhasOficiais.length > 0 && linhasOficiais[linhasOficiais.length - 1].isProximoPlantao
   // A FILA SEGUE SEMPRE A ORDEM DO RODAPÉ (dono 11/08, reforçando 27/07).
   // Liberado NÃO afunda mais: quem sai fica na própria posição, riscado e com o
   // selo "Liberado". O afundamento antigo dava a impressão de que a ordem tinha
@@ -642,11 +647,18 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // "inseriram o rodapé fora de ordem". Só saem da ordem quem a regra manda:
   // plantão noturno no topo, e extras/ajudas/plantão-do-turno-seguinte no fim
   // (esses a própria lib já posiciona).
-  const linhasExibicao = [
-    ...linhasFase.filter((l) => l.noturno),
-    ...linhasOficiais,
-    ...linhasForaDoRodape,
-  ]
+  const linhasExibicao = fechaComPlantao
+    ? [
+        ...linhasFase.filter((l) => l.noturno),
+        ...linhasOficiais.slice(0, -1),
+        ...linhasForaDoRodape,
+        linhasOficiais[linhasOficiais.length - 1],
+      ]
+    : [
+        ...linhasFase.filter((l) => l.noturno),
+        ...linhasOficiais,
+        ...linhasForaDoRodape,
+      ]
 
   // Reordenar persiste os NOMES ORIGINAIS do rodapé na ordem-base (sem o
   // afundamento de liberados da exibição). Persistir o nome EXIBIDO corrompia o
@@ -975,7 +987,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // (o substituto da noite pode nem ter Pn, caso João Ricardo 16/08).
           const naFila = (l) => {
             if (l.noturno && (modoFds ? l.foraDaFila : SELO_SEM_PROXIMO.has(l.selo))) return false
-            if (l.isExtra) return false
+            // extra (fora do rodapé) ENTRA na fila como ajuda (dono 19/08):
+            // é o primeiro a ir embora e é liberado como qualquer um
             const m = marcaDe(l)
             const emSala = m?.escalado === true || !naoEscalado(l)
             return !(m && !m.escalado) && emSala
@@ -997,7 +1010,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           const noturno = !!linha.noturno
           const semEscala = !noturno && naoEscalado(linha)
           const foraDoRodape = !noturno && linha.isExtra
-          const numeroExibido = foraDoRodape ? null : ++numeroOrdem
+          // ajuda acrescentada (fora do rodapé) também é numerada: ela está NA
+          // fila (dono 19/08) — o número é sequência de exibição, não posição
+          // da ordem publicada, que segue imutável
+          const numeroExibido = ++numeroOrdem
           const marcacao = marcaDe(linha)
           const forcadoEscalado = marcacao?.escalado === true // entrou na escala no meio do dia
           const liberadoReal = !!marcacao && !forcadoEscalado
@@ -1132,7 +1148,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     </Badge>
                   )}
                   {/* AZUL SÓLIDO (pedido do dono 2026-07-21) — mesmo destaque do Plantonista */}
-                  {!liberadoReal && linha.isAjuda && (
+                  {/* extra fora de TODOS os rodapés = Ajuda (dono 19/08): quem foi
+                      acrescentado e não consta em lista nenhuma é ajuda; com origem
+                      em outro hospital o badge derivado abaixo diz de onde veio */}
+                  {!liberadoReal && (linha.isAjuda || (foraDoRodape && !ajudaDeOutro(linha))) && (
                     <Badge variant="info" className="shrink-0">Ajuda</Badge>
                   )}
                   {/* A troca pertence ao SLOT original. Depois da execução, a

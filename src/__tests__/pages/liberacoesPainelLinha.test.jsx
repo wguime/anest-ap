@@ -567,10 +567,13 @@ describe('Ajuda derivada de outro hospital (caso TIAGO)', () => {
     expect(within(card).queryByText('Ajuda (HRO)')).toBeNull()
   })
 
-  it('sem as escalas dos outros hospitais, nada muda (prop ausente)', () => {
+  it('sem presença em NENHUMA lista, o extra ganha o badge Ajuda simples (dono 19/08)', () => {
+    // regra nova: acrescentado que não consta em lista nenhuma É ajuda — badge
+    // azul, na fila, primeiro a ir embora (antes ficava sem selo nenhum)
     montar({}, comExtra)
     const card = document.querySelector('[data-linha="uid-tiago"]')
-    expect(within(card).queryByText(/Ajuda/)).toBeNull()
+    expect(within(card).getByText('Ajuda')).toBeTruthy()
+    expect(within(card).queryByText(/Ajuda \(/)).toBeNull() // sem origem, sem hospital no selo
   })
 })
 

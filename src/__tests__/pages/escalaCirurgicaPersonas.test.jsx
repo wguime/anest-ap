@@ -1309,3 +1309,59 @@ describe('Liberações — dois cadastros com o mesmo nome curto', () => {
     spy.mockRestore()
   })
 })
+
+// ════════════════════════════════════════════════════════════════════════════
+// ACRESCENTADO FORA DO RODAPÉ = AJUDA NA FILA (dono 19/08)
+// Quem aparece com caso sem constar em lista nenhuma entra na fila como ajuda:
+// badge "Ajuda", primeiro a ir embora — mas o plantão do contraturno ESCALADO
+// continua fechando a lista (sai primeiro; a ajuda é liberada logo após).
+// ════════════════════════════════════════════════════════════════════════════
+describe('Liberações — acrescentado fora do rodapé entra na fila como Ajuda', () => {
+  const caso = (id, anestesista, extra = {}) => ({
+    id, sala: `S-${id}`, ordem: 0, hora: '08:00', turno: 'matutino',
+    anestesista, cirurgiao: 'Cirurgião X', ...extra,
+  })
+
+  it('extra ganha badge Ajuda, entra ACIMA do plantão do contraturno escalado e é liberado após ele', () => {
+    const escala = {
+      id: 'e1', hospital: 'unimed', ordemLiberacao: { matutino: ['ANA', 'BRUNO', 'CARLA'] }, liberacoes: {},
+      casos: [caso('c1', 'ANA'), caso('c2', 'BRUNO'), caso('c3', 'CARLA'), caso('c4', 'ZILDA')],
+    }
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" turno="matutino" canEdit
+      onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
+    const chaves = Array.from(document.querySelectorAll('[data-linha]')).map((e) => e.getAttribute('data-linha'))
+    // ZILDA (fora do rodapé) fica entre a fila e a CARLA (plantão da tarde, fecha a lista)
+    expect(chaves).toEqual(['ANA', 'BRUNO', 'ZILDA', 'CARLA'])
+    // plantão escalado sai PRIMEIRO: é o próximo a ser liberado — não a ajuda
+    const proximo = screen.getByText('Próximo a ser liberado').closest('[data-linha]')
+    expect(proximo.getAttribute('data-linha')).toBe('CARLA')
+    // e a ZILDA carrega o badge de Ajuda (não está em lista nenhuma)
+    const zilda = document.querySelector('[data-linha="ZILDA"]')
+    expect(zilda.textContent).toContain('Ajuda')
+  })
+
+  it('sem plantão do contraturno escalado, a ajuda é a PRIMEIRA a ir embora', () => {
+    // CARLA fecha o rodapé SEM caso → "Não escalado" (fora da fila): quem sai
+    // primeiro passa a ser a ajuda acrescentada
+    const escala = {
+      id: 'e1', hospital: 'unimed', ordemLiberacao: { matutino: ['ANA', 'BRUNO', 'CARLA'] }, liberacoes: {},
+      casos: [caso('c1', 'ANA'), caso('c2', 'BRUNO'), caso('c4', 'ZILDA')],
+    }
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" turno="matutino" canEdit
+      onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
+    const proximo = screen.getByText('Próximo a ser liberado').closest('[data-linha]')
+    expect(proximo.getAttribute('data-linha')).toBe('ZILDA')
+  })
+
+  it('extra com origem em OUTRO hospital segue com o badge derivado "Ajuda (Hospital)"', () => {
+    const escala = {
+      id: 'e1', hospital: 'unimed', ordemLiberacao: { matutino: ['ANA', 'BRUNO'] }, liberacoes: {},
+      casos: [caso('c1', 'ANA'), caso('c4', 'ZILDA')],
+    }
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" turno="matutino" canEdit
+      presencaOutros={[{ nome: 'ZILDA', hospitalLabel: 'HRO', rodapeIdx: 3 }]}
+      onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
+    // com origem conhecida, quem diz de onde veio é o badge derivado — sem duplicar
+    expect(screen.getByText('Ajuda (HRO)')).toBeTruthy()
+  })
+})

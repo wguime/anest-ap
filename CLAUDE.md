@@ -191,10 +191,15 @@ planos de troca recebem o turno atual e nunca alteram `ordem_liberacao`. A
 assunção troca apenas a identidade exibida: `chave`/`nomeOriginal` continuam do
 slot original (por exemplo, Paulo), mesmo com Guilherme assumindo, sendo liberado
 ou desfazendo a troca; o card mantém o contexto da troca para não perder o rastro.
-Casos já registrados em nome de um substituto que não consta no rodapé não são
-apagados nem reatribuídos automaticamente: permanecem no fim da lista, sem
-número de posição e sem alterar a fila oficial — **sem badge** ("Fora do
-rodapé" lia como acusação; excluído a pedido do dono 19/08, caso Staub).
+Casos já registrados em nome de quem não consta no rodapé não são apagados
+nem reatribuídos automaticamente. Desde 19/08 (dono, caso Staub) essa linha
+**entra na fila como AJUDA**: badge azul "Ajuda" (sem o selo "Fora do rodapé",
+que lia como acusação; com origem em outro hospital vale o badge derivado
+"Ajuda (Hospital)"), numerada na exibição e **primeira a ir embora** — exceto
+quando o plantão do contraturno está ESCALADO, que segue fechando a lista (sai
+primeiro) com a ajuda logo acima (liberada depois dele); plantão não escalado/
+liberado é pulado pelo naFila e a ajuda vira o próximo. A `ordem_liberacao`
+publicada segue intocada — o número é sequência de exibição.
 
 ### Reforma das trocas (2026-08-07) — plano em ~/.claude/plans/com-rela-ao-as-escalas-memoized-hamming.md
 
