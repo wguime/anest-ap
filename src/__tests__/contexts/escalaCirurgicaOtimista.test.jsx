@@ -20,7 +20,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, waitFor, act } from '@testing-library/react'
 import { ThemeProvider, ToastProvider } from '@/design-system'
 
-const { svcMock } = vi.hoisted(() => ({
+const { svcMock, subCallbacks } = vi.hoisted(() => ({
   svcMock: {
     fetchEscala: vi.fn(),
     fetchP4Hospital: vi.fn(async () => null),
@@ -30,10 +30,15 @@ const { svcMock } = vi.hoisted(() => ({
     updateAjudaExterna: vi.fn(async () => {}),
     updateStatusCirurgia: vi.fn(async () => {}),
   },
+  // callbacks capturados p/ simular um evento realtime chegando no meio do toque
+  subCallbacks: [],
 }))
 vi.mock('@/services/supabaseEscalaCirurgicaService', () => ({ default: svcMock }))
 vi.mock('@/services/supabaseSubscriptionHelper', () => ({
-  createReliableSubscription: () => ({ cleanup: () => {} }),
+  createReliableSubscription: (opts) => {
+    subCallbacks.push(opts.callback)
+    return { cleanup: () => {} }
+  },
 }))
 
 import { EscalaCirurgicaProvider, useEscalaCirurgica, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
@@ -74,7 +79,67 @@ const unimed = () => estado.escalas.unimed
 
 beforeEach(() => {
   vi.clearAllMocks()
+  subCallbacks.length = 0
   svcMock.fetchEscala.mockImplementation(async (_data, hosp) => (hosp === 'unimed' ? escalaBase() : null))
+})
+
+describe('recarga não atropela o toque (dono 19/08: "vai para outra opção e depois retorna")', () => {
+  // A sequência real do bug: toque pinta "iniciada" → o commit dispara realtime →
+  // loadData repintava o CACHE (snapshot de ANTES do toque — a opção "voltava"
+  // p/ agendada) → o fetch fresco aterrissava e a opção "retornava". A recarga
+  // de revalidação não pode repintar cache nem aplicar snapshot anterior a uma
+  // escrita ainda em voo.
+  it('evento realtime durante o toque NÃO devolve o status antigo', async () => {
+    await montar()
+    // toque: otimista pinta; o RPC fica EM VOO (commit ainda não aconteceu)
+    svcMock.updateStatusCirurgia.mockImplementation(pendente)
+    act(() => {
+      actions.setStatusCirurgia(unimed(), unimed().casos[0], 'iniciada')
+    })
+    expect(unimed().casos[0].statusCirurgia).toBe('iniciada')
+    // realtime chega (ex.: outra marcação da equipe); o fetch devolve o estado
+    // do servidor SEM o nosso toque (agendada) — não pode sobrescrever a tela
+    await act(async () => {
+      subCallbacks.forEach((cb) => cb())
+      await new Promise((r) => setTimeout(r, 0))
+    })
+    expect(unimed().casos[0].statusCirurgia).toBe('iniciada')
+  })
+
+  it('escrita pintada DURANTE o voo de uma recarga também não é atropelada', async () => {
+    await montar()
+    // recarga em voo: o fetch só resolve quando mandarmos (estado do servidor = agendada)
+    let soltarFetch
+    svcMock.fetchEscala.mockImplementation((_d, hosp) => new Promise((res) => {
+      if (hosp !== 'unimed') return res(null)
+      soltarFetch = () => res(escalaBase())
+    }))
+    act(() => { subCallbacks.forEach((cb) => cb()) })
+    // toque no meio do voo
+    svcMock.updateStatusCirurgia.mockImplementation(pendente)
+    act(() => {
+      actions.setStatusCirurgia(unimed(), unimed().casos[0], 'iniciada')
+    })
+    // a resposta velha aterrissa DEPOIS do toque
+    await act(async () => {
+      soltarFetch?.()
+      await new Promise((r) => setTimeout(r, 0))
+    })
+    expect(unimed().casos[0].statusCirurgia).toBe('iniciada')
+  })
+
+  it('troca de DATA continua repintando do cache na hora (SWR de 16/08 preservado)', async () => {
+    await montar()
+    const diaVisto = estado.data
+    // vai para uma data nova (sem cache: zera e busca)…
+    await act(async () => { actions.setData('2026-08-25') })
+    await waitFor(() => expect(estado.data).toBe('2026-08-25'))
+    // …e volta: a escala do dia já visto tem de aparecer de imediato (cache),
+    // mesmo com o fetch de revalidação ainda pendente
+    svcMock.fetchEscala.mockImplementation(pendente)
+    await act(async () => { actions.setData(diaVisto) })
+    expect(unimed()?.id).toBe('esc-uni')
+  })
 })
 
 describe('resposta tátil — o estado pinta ANTES do servidor responder', () => {

@@ -103,16 +103,47 @@ export function EscalaCirurgicaProvider({ children }) {
   // data nova limpa a tela antes de buscar — nunca mostra o dia errado.
   const cacheRef = useRef(new Map())
 
-  const loadData = useCallback(async (dia) => {
-    const emCache = cacheRef.current.get(dia)
-    if (emCache) {
-      dispatch({ type: 'SET_ALL', payload: emCache.escalas })
-      dispatch({ type: 'SET_P4_HOSPITAL', payload: emCache.p4Hospital ?? null })
-      setLoading(false)
-    } else {
-      // sem cache: zera para não exibir a data anterior enquanto busca
-      dispatch({ type: 'SET_ALL', payload: { unimed: null, hro: null, materno: null, fds: null } })
-      setLoading(true)
+  // ── GUARDAS DE CORRIDA (dono 19/08: "vai para outra opção e depois retorna") ──
+  // O toque pinta OTIMISTA; se uma recarga repinta dados de ANTES do toque, a
+  // opção clicada some da tela e só volta quando o fetch fresco aterrissa — era
+  // exatamente o vai-e-volta reportado. Três guardas:
+  //   loadSeqRef  — só a recarga MAIS NOVA aplica (resposta atrasada é lixo);
+  //   escritasRef — escrita otimista EM VOO ⇒ o snapshot do servidor pode ser
+  //                 anterior ao commit dela: não aplica, reagenda;
+  //   mutSeqRef   — escrita pintada DURANTE o voo do fetch ⇒ idem (o realtime
+  //                 do próprio commit dispara outra recarga, já fresca).
+  const loadSeqRef = useRef(0)
+  const escritasRef = useRef(0)
+  const mutSeqRef = useRef(0)
+  const revalidacaoTimerRef = useRef(null)
+  /** Toda action OTIMISTA chama marcar após o dispatch e encerrar no finally. */
+  const marcarEscrita = () => { mutSeqRef.current++; escritasRef.current++ }
+  const encerrarEscrita = () => { escritasRef.current = Math.max(0, escritasRef.current - 1) }
+
+  const loadData = useCallback(async (dia, { revalidacao = false } = {}) => {
+    const seq = ++loadSeqRef.current
+    const mutAntes = mutSeqRef.current
+    // resposta velha não atropela: revalida de novo quando as escritas assentarem
+    const reagendar = () => {
+      clearTimeout(revalidacaoTimerRef.current)
+      revalidacaoTimerRef.current = setTimeout(() => {
+        if (seq === loadSeqRef.current) loadData(dataRef.current, { revalidacao: true })
+      }, 800)
+    }
+    // O repinte do cache é o SWR da TROCA DE DATA (dono 16/08): data já vista
+    // aparece na hora. Em REVALIDAÇÃO da mesma data ele era o bug: repintava o
+    // snapshot de antes do toque (a opção "voltava") até o fetch fresco chegar.
+    if (!revalidacao) {
+      const emCache = cacheRef.current.get(dia)
+      if (emCache) {
+        dispatch({ type: 'SET_ALL', payload: emCache.escalas })
+        dispatch({ type: 'SET_P4_HOSPITAL', payload: emCache.p4Hospital ?? null })
+        setLoading(false)
+      } else {
+        // sem cache: zera para não exibir a data anterior enquanto busca
+        dispatch({ type: 'SET_ALL', payload: { unimed: null, hro: null, materno: null, fds: null } })
+        setLoading(true)
+      }
     }
     try {
       const [results, fdsRow] = await Promise.all([
@@ -122,6 +153,8 @@ export function EscalaCirurgicaProvider({ children }) {
         // tela segue no comportamento por hospital — rollout seguro).
         ehFimDeSemana(dia) ? svc.fetchEscala(dia, FDS_HOSPITAL).catch(() => null) : Promise.resolve(null),
       ])
+      if (seq !== loadSeqRef.current || dataRef.current !== dia) return
+      if (escritasRef.current > 0 || mutSeqRef.current !== mutAntes) { reagendar(); return }
       // Fixture demo é ferramenta de DEV/e2e (testes determinísticos) — PRODUÇÃO
       // nunca vê demo (pedido do dono 23/07: botão e dados de demonstração excluídos).
       const escalas = { fds: fdsRow || (import.meta.env.DEV ? getDemoEscala(dia, FDS_HOSPITAL) : null) }
@@ -133,6 +166,8 @@ export function EscalaCirurgicaProvider({ children }) {
       try {
         p4 = await svc.fetchP4Hospital(dia)
       } catch { p4 = null }
+      if (seq !== loadSeqRef.current || dataRef.current !== dia) return
+      if (escritasRef.current > 0 || mutSeqRef.current !== mutAntes) { reagendar(); return }
       dispatch({ type: 'SET_P4_HOSPITAL', payload: p4 })
       // guarda para a próxima visita à mesma data (o realtime revalida)
       cacheRef.current.set(dia, { escalas, p4Hospital: p4 })
@@ -142,7 +177,7 @@ export function EscalaCirurgicaProvider({ children }) {
     } catch (err) {
       console.error('[EscalaCirurgicaContext] load falhou:', err)
     } finally {
-      setLoading(false)
+      if (seq === loadSeqRef.current) setLoading(false)
     }
   }, [])
 
@@ -207,7 +242,7 @@ export function EscalaCirurgicaProvider({ children }) {
   // reconectar e o estado vira FANTASMA (aviso de troca já excluída do banco
   // preso na tela o dia todo, bug real 2026-07-22). Visível de novo → recarrega.
   useEffect(() => {
-    const retomar = () => { if (!document.hidden) loadData(dataRef.current) }
+    const retomar = () => { if (!document.hidden) loadData(dataRef.current, { revalidacao: true }) }
     document.addEventListener('visibilitychange', retomar)
     window.addEventListener('pageshow', retomar)
     return () => {
@@ -223,11 +258,15 @@ export function EscalaCirurgicaProvider({ children }) {
       createReliableSubscription({
         channelName: `${table}-changes`,
         table,
-        callback: () => loadData(dataRef.current),
-        onRefetch: () => loadData(dataRef.current),
+        // revalidação: MESMA data já na tela — sem repinte do cache (bug 19/08)
+        callback: () => loadData(dataRef.current, { revalidacao: true }),
+        onRefetch: () => loadData(dataRef.current, { revalidacao: true }),
       })
     )
-    return () => subs.forEach((s) => s.cleanup())
+    return () => {
+      subs.forEach((s) => s.cleanup())
+      clearTimeout(revalidacaoTimerRef.current)
+    }
   }, [loadData])
 
   // ── Actions ──────────────────────────────────────────────────────────────
@@ -334,15 +373,18 @@ export function EscalaCirurgicaProvider({ children }) {
       // já; erro reverte os DOIS campos ao snapshot + toast. O toast de sucesso
       // da view continua atrás do await (honestidade da auditoria F1.6 intacta).
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { liberacoes, linhaOverrides } })
-      // merge por chave no servidor — marcações simultâneas de 2 plantonistas não se apagam
-      if (!isDemo) {
-        await svc.patchLiberacao(escala.id, scoped, valor)
-        if (scopedLegada && atual[scopedLegada] !== undefined) await svc.patchLiberacao(escala.id, scopedLegada, null)
-        if (marcador) {
-          await svc.patchLinhaOverride(escala.id, scoped, marcador)
-          if (scopedLegada) await svc.patchLinhaOverride(escala.id, scopedLegada, null)
+      marcarEscrita()
+      try {
+        // merge por chave no servidor — marcações simultâneas de 2 plantonistas não se apagam
+        if (!isDemo) {
+          await svc.patchLiberacao(escala.id, scoped, valor)
+          if (scopedLegada && atual[scopedLegada] !== undefined) await svc.patchLiberacao(escala.id, scopedLegada, null)
+          if (marcador) {
+            await svc.patchLinhaOverride(escala.id, scoped, marcador)
+            if (scopedLegada) await svc.patchLinhaOverride(escala.id, scopedLegada, null)
+          }
         }
-      }
+      } finally { encerrarEscrita() }
     } catch (error) {
       dispatch({
         type: 'PATCH_HOSPITAL', hospital: escala.hospital,
@@ -387,11 +429,14 @@ export function EscalaCirurgicaProvider({ children }) {
       }
       // OTIMISTA (dono 19/08): pinta antes do servidor; erro reverte + toast.
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { liberacoes, linhaOverrides } })
-      if (!isDemo) {
-        await svc.patchLiberacao(escala.id, scoped, valor)
-        if (legada) await svc.patchLiberacao(escala.id, chaveTurno(turno, legada), null)
-        for (const [k, restante] of patchesOverride) await svc.patchLinhaOverride(escala.id, k, restante)
-      }
+      marcarEscrita()
+      try {
+        if (!isDemo) {
+          await svc.patchLiberacao(escala.id, scoped, valor)
+          if (legada) await svc.patchLiberacao(escala.id, chaveTurno(turno, legada), null)
+          for (const [k, restante] of patchesOverride) await svc.patchLinhaOverride(escala.id, k, restante)
+        }
+      } finally { encerrarEscrita() }
     } catch (error) {
       dispatch({
         type: 'PATCH_HOSPITAL', hospital: escala.hospital,
@@ -446,10 +491,13 @@ export function EscalaCirurgicaProvider({ children }) {
       // erro reverte ao snapshot + toast. Quem espera o resolve (painel Salvar)
       // continua esperando a persistência real — só a pintura adiantou.
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { linhaOverrides } })
-      if (!isDemo) {
-        await svc.patchLinhaOverride(escala.id, scoped, valor)
-        if (legada) await svc.patchLinhaOverride(escala.id, chaveTurno(turno, legada), null)
-      }
+      marcarEscrita()
+      try {
+        if (!isDemo) {
+          await svc.patchLinhaOverride(escala.id, scoped, valor)
+          if (legada) await svc.patchLinhaOverride(escala.id, chaveTurno(turno, legada), null)
+        }
+      } finally { encerrarEscrita() }
     } catch (error) {
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { linhaOverrides: escala.linhaOverrides || {} } })
       toast({ variant: 'error', title: 'Erro ao ajustar linha', description: error.message })
@@ -480,8 +528,11 @@ export function EscalaCirurgicaProvider({ children }) {
     // OTIMISTA: pinta a UI já (a demora do RPC deixava o botão "morto" — reclamação
     // do dono em produção); erro reverte pro estado anterior + toast no catch.
     dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { casos } })
+    marcarEscrita()
     try {
-      if (!isDemo && caso.id) await svc.updateStatusCirurgia(caso.id, status)
+      try {
+        if (!isDemo && caso.id) await svc.updateStatusCirurgia(caso.id, status)
+      } finally { encerrarEscrita() }
       // (Os avisos "sala encerrou" e "anestesista livre" p/ o plantonista saíram
       // em 30/07 junto com as demais notificações da escala — ver nota no topo.)
     } catch (error) {
@@ -723,7 +774,7 @@ export function EscalaCirurgicaProvider({ children }) {
       for (const desfaz of rollback.reverse()) {
         try { await desfaz() } catch { restaurou = false }
       }
-      loadData(dataRef.current)
+      loadData(dataRef.current, { revalidacao: true })
       toast({
         variant: 'error',
         title: 'Troca não concluída',
@@ -792,7 +843,7 @@ export function EscalaCirurgicaProvider({ children }) {
       for (const desfaz of rollback.reverse()) {
         try { await desfaz() } catch { restaurou = false }
       }
-      loadData(dataRef.current)
+      loadData(dataRef.current, { revalidacao: true })
       toast({
         variant: 'error',
         title: 'Desfazer não concluído',
@@ -816,7 +867,10 @@ export function EscalaCirurgicaProvider({ children }) {
       // toast de sucesso segue atrás do await — só sai com o dado persistido.
       const casos = (escala.casos || []).map((c) => (c.id === casoId ? { ...c, ...updates } : c))
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { casos } })
-      await svc.updateCaso(casoId, updates)
+      marcarEscrita()
+      try {
+        await svc.updateCaso(casoId, updates)
+      } finally { encerrarEscrita() }
       toast({ variant: 'success', title: 'Caso atualizado' })
     } catch (error) {
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { casos: escala.casos || [] } })
@@ -852,8 +906,11 @@ export function EscalaCirurgicaProvider({ children }) {
     const ajudaExterna = mergeRodapeTurno(escala.ajudaExterna, turno, nova)
     // otimista: a fila reordena na hora e o erro reverte com toast
     dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { ajudaExterna } })
+    marcarEscrita()
     try {
-      await svc.updateAjudaExterna(escala.id, ajudaExterna)
+      try {
+        await svc.updateAjudaExterna(escala.id, ajudaExterna)
+      } finally { encerrarEscrita() }
     } catch (error) {
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { ajudaExterna: escala.ajudaExterna } })
       toast({ variant: 'error', title: 'Erro ao reordenar ajuda', description: error.message })
@@ -874,7 +931,10 @@ export function EscalaCirurgicaProvider({ children }) {
       const ajudaExterna = mergeRodapeTurno(escala.ajudaExterna, turno, [...atual, nm])
       // otimista (dono 19/08): o badge aparece no toque; erro reverte + toast
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { ajudaExterna } })
-      await svc.updateAjudaExterna(escala.id, ajudaExterna)
+      marcarEscrita()
+      try {
+        await svc.updateAjudaExterna(escala.id, ajudaExterna)
+      } finally { encerrarEscrita() }
       toast({ variant: 'success', title: `${nm} adicionado como ajuda` })
     } catch (error) {
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { ajudaExterna: escala.ajudaExterna } })
@@ -890,7 +950,10 @@ export function EscalaCirurgicaProvider({ children }) {
       const ajudaExterna = mergeRodapeTurno(escala.ajudaExterna, turno, atual.filter((n) => normNome(n) !== normNome(nome)))
       // otimista (dono 19/08): erro reverte + toast
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { ajudaExterna } })
-      await svc.updateAjudaExterna(escala.id, ajudaExterna)
+      marcarEscrita()
+      try {
+        await svc.updateAjudaExterna(escala.id, ajudaExterna)
+      } finally { encerrarEscrita() }
     } catch (error) {
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { ajudaExterna: escala.ajudaExterna } })
       toast({ variant: 'error', title: 'Erro ao remover ajuda', description: error.message })
@@ -924,7 +987,7 @@ export function EscalaCirurgicaProvider({ children }) {
   // (ver setLinhaOverride) e o plantonista lê e resolve. A tabela
   // `trocas_cirurgicas` segue no banco: apagar dado é irreversível.
 
-  const refresh = useCallback(() => loadData(dataRef.current), [loadData])
+  const refresh = useCallback(() => loadData(dataRef.current, { revalidacao: true }), [loadData])
 
   /**
    * Marca em qual hospital o P4 (coringa da noite) está escalado no dia exibido.
@@ -935,8 +998,11 @@ export function EscalaCirurgicaProvider({ children }) {
     const dia = dataRef.current
     const anterior = state.p4Hospital
     dispatch({ type: 'SET_P4_HOSPITAL', payload: hospital }) // otimista
+    marcarEscrita()
     try {
-      await svc.setP4Hospital(dia, hospital, { userName: userInfo.userName || null })
+      try {
+        await svc.setP4Hospital(dia, hospital, { userName: userInfo.userName || null })
+      } finally { encerrarEscrita() }
       toast({ variant: 'success', title: 'P4 definido', description: `Plantão noturno do P4 no ${HOSPITAL_LABEL[hospital] || hospital}.` })
     } catch (error) {
       dispatch({ type: 'SET_P4_HOSPITAL', payload: anterior })
@@ -960,8 +1026,11 @@ export function EscalaCirurgicaProvider({ children }) {
       ? Object.fromEntries(Object.entries(anterior).filter(([k]) => k !== chave))
       : { ...anterior, [chave]: cfg }
     dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { urgenciasMeta } })
+    marcarEscrita()
     try {
-      await svc.patchUrgenciasMeta(escala.id, chave, cfg)
+      try {
+        await svc.patchUrgenciasMeta(escala.id, chave, cfg)
+      } finally { encerrarEscrita() }
     } catch (error) {
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { urgenciasMeta: anterior } })
       toast({ variant: 'error', title: 'Erro ao salvar as salas', description: error.message })
