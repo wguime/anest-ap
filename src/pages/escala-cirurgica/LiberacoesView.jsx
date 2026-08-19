@@ -1195,11 +1195,15 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     fica com a LARGURA TODA — badge ao lado sem truncar o nome) */}
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    {/* card vermelho = badge "Liberado", sempre em linha própria
-                        (vale p/ liberado de fato E p/ não escalado, que já nasce liberado) */}
+                    {/* card vermelho, badge sempre em linha própria — mas o RÓTULO
+                        "Liberado" é só de liberação FEITA (dono 19/08: "NUNCA libere
+                        usuário em ordem incorreta" — o automático dizia Liberado para
+                        quem ninguém liberou e a equipe lia como liberação fora de
+                        ordem). Sem caso e sem marcação = "Não escalado", que é o que
+                        de fato se sabe. */}
                     {liberado && (
                       <div className="mt-1">
-                        <Badge variant="destructive" badgeStyle="subtle" className="dark:bg-destructive/25">Liberado</Badge>
+                        <Badge variant="destructive" badgeStyle="subtle" className="dark:bg-destructive/25">{liberadoReal ? 'Liberado' : 'Não escalado'}</Badge>
                       </div>
                     )}
                     {/* papel no plantão noturno. Quem é plantonista já tem o BADGE
