@@ -558,21 +558,26 @@ export const observacaoDaLinha = (ov, hospitalLabels = {}) => {
 
 /**
  * VISITANTE PRESERVADO NO REPASSE (dono 31/07 — caso LEONARDO, Cesárea→Tiago):
- * repassar o ÚLTIMO caso de quem veio de FORA apagava a única evidência de
- * presença dele aqui — a linha sumia das Liberações antes de ele ser liberado
- * (e no hospital de origem ele despencava da posição do rodapé pro bloco do
- * fim). Decide, PURO, quem precisa entrar em `ajuda_externa[turno]` (o mesmo
- * campo do toggle manual de ajuda) para a linha sobreviver ao repasse.
- * Gente do rodapé DAQUI fica de fora: a posição própria já segura a linha.
- * ⚠️ "É gente daqui?" decide por IDENTIDADE (uid do caso ou apelido resolvido
- * pelo dicionário via `resolverUid`), nunca só pela grafia: em 19/08 o caso
- * dizia "GUILHERME M ELO" (texto da Vision, espaço no meio) e o rodapé
+ * repassar o ÚLTIMO caso de quem veio de OUTRO HOSPITAL apagava a única
+ * evidência de presença dele aqui — a linha sumia das Liberações antes de ele
+ * ser liberado (e no hospital de origem ele despencava da posição do rodapé
+ * pro bloco do fim). Decide, PURO, quem precisa entrar em `ajuda_externa[turno]`
+ * (o mesmo campo do toggle manual de ajuda) para a linha sobreviver ao repasse.
+ * ⚠️ SÓ vale para quem é comprovadamente de OUTRO hospital (dono 19/08, swap
+ * Guilherme⇄Diego): troca entre colegas do MESMO hospital apenas move os
+ * procedimentos de sala — ninguém vira "ajuda". A origem é comprovada em
+ * `opts.outrasEscalas` (rodapé do turno ou caso do turno em outra escala do
+ * dia); sem prova, trata como gente da casa e não grava nada.
+ * ⚠️ Todo matching decide por IDENTIDADE (uid do caso ou apelido resolvido
+ * pelo dicionário via `opts.resolverUid`), nunca só pela grafia: em 19/08 o
+ * caso dizia "GUILHERME M ELO" (texto da Vision, espaço no meio) e o rodapé
  * "GUILHERME MELO" — texto contra texto marcou gente do rodapé como visitante
  * e a linha ganhou badge de Ajuda indevido. A grafia (sem espaços) é fallback
  * para quando não há uid nem resolver.
  * @returns {Array<{nome:string, turno:string}>}
  */
-export function ajudasPreservadasNoRepasse(casosAntes, casosDepois, ids, escala, resolverUid) {
+export function ajudasPreservadasNoRepasse(casosAntes, casosDepois, ids, escala, opts = {}) {
+  const { resolverUid, outrasEscalas = [] } = opts
   const idSet = ids instanceof Set ? ids : new Set(ids || [])
   const out = []
   const vistos = new Set()
@@ -597,6 +602,17 @@ export function ajudasPreservadasNoRepasse(casosAntes, casosDepois, ids, escala,
     if (aindaTem) continue
     if (rodapeDoTurno(escala?.ordemLiberacao, turno).some(mesmo)) continue
     if (rodapeDoTurno(escala?.ajudaExterna, turno).some(mesmo)) continue // já é ajuda
+    // origem em OUTRO hospital do dia: rodapé do turno lá, ou — na falta de
+    // rodapé (Materno publica sem nenhum) — caso do MESMO turno em nome dele.
+    const deOutroHospital = (outrasEscalas || []).some((e) => {
+      if (!e || e === escala) return false
+      if (rodapeDoTurno(e.ordemLiberacao, turno).some(mesmo)) return true
+      return (e.casos || []).some((d) =>
+        turnoDoCaso(d) === turno &&
+        ((uidCaso && d.anestesistaUserId === uidCaso) ||
+          String(d.anestesista || '').split(/\s*\+\s*/).some((p) => mesmo(p))))
+    })
+    if (!deOutroHospital) continue // colega da casa: troca só os procedimentos
     out.push({ nome, turno })
   }
   return out

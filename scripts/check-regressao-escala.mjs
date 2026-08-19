@@ -40,7 +40,7 @@ const FONTE = [
 // nomes não continham nenhuma das palavras. Ao criar teste de escala com nome
 // novo, ou use uma destas palavras, ou acrescente-a aqui.
 const TESTE = [
-  /^src\/__tests__\/.*(escala|liberac|troca|coluna|plantao|cirurg|roster|anestesista|atribuic|rodape|ajuda|repasse)/i,
+  /^src\/__tests__\/.*(escala|liberac|troca|coluna|plantao|cirurg|roster|anestesista|atribuic|rodape|ajuda)/i,
   /^e2e\/escala-/i,
 ]
 

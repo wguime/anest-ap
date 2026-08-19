@@ -576,12 +576,18 @@ export function EscalaCirurgicaProvider({ children }) {
         await svc.updateAnestesistaCasos(ids, { uid, apelido, dupla })
       } finally { encerrarEscrita() }
       // VISITANTE PRESERVADO NO REPASSE (dono 31/07 — caso LEONARDO): quem veio
-      // de fora e ficou sem caso aqui entra em ajuda_externa[turno] — a linha das
-      // Liberações sobrevive ao repasse (era a única evidência de presença dele).
-      // Best-effort: falha aqui NÃO desfaz o repasse (dá p/ marcar ajuda à mão).
+      // de OUTRO HOSPITAL e ficou sem caso aqui entra em ajuda_externa[turno] — a
+      // linha das Liberações sobrevive ao repasse (era a única evidência de
+      // presença dele). Colega do MESMO hospital NUNCA vira ajuda (dono 19/08):
+      // a troca de sala move só os procedimentos; a origem é comprovada nas
+      // outras escalas do dia. Best-effort: falha aqui NÃO desfaz o repasse.
       try {
+        const outrasEscalas = HOSPITAIS
+          .filter((h) => h !== escala.hospital)
+          .map((h) => escalasRef.current?.[h])
+          .filter(Boolean)
         let ajudaExterna = escala.ajudaExterna
-        for (const { nome, turno } of ajudasPreservadasNoRepasse(escala.casos, casos, idSet, escala, resolverUid)) {
+        for (const { nome, turno } of ajudasPreservadasNoRepasse(escala.casos, casos, idSet, escala, { resolverUid, outrasEscalas })) {
           const atual = rodapeDoTurno(ajudaExterna, turno)
           ajudaExterna = mergeRodapeTurno(ajudaExterna, turno, [...atual, nome])
         }
