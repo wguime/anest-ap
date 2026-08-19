@@ -351,7 +351,12 @@ export function estadoUrgencias(casos = [], opts = {}) {
     ...vazio,
     postos,
     extras,
-    ativo: emAndamento.length + aConfirmar.length + fila.length + dedicadas.length > 0,
+    // ESCALA PUBLICADA ⇒ FAIXA VISÍVEL (dono 19/08, "no HRO não apareceu"):
+    // a regra original — só com urgência — escondia a faixa exatamente na hora
+    // de USÁ-LA: quem publica a escala de manhã confere/configura as salas do
+    // contrato ANTES da primeira urgência chegar, e os cards de Ortopedia/CO
+    // informam quem cobre mesmo sem urgência. Sem caso nenhum no dia, nada.
+    ativo: casos.length > 0,
     ocupadas,
     livres: Math.max(0, capacidade - ocupadas),
     nivel,

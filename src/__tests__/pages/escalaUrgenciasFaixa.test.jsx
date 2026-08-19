@@ -60,8 +60,23 @@ const montar = (casos, props = {}) => render(
 beforeEach(() => vi.clearAllMocks())
 
 describe('quando a faixa existe', () => {
-  it('não renderiza sem urgência nenhuma — dia comum fica idêntico ao de hoje', () => {
-    montar([caso('c1', 'Sala 2', { tipo: 'eletiva' })])
+  it('escala publicada SEM urgência mostra os postos livres e os dedicados (dono 19/08)', () => {
+    // 19/08: o dono publicou a manhã do HRO (28 casos, zero urgências) e a faixa
+    // não apareceu — mas é exatamente na publicação que se confere/configura as
+    // salas do contrato. Escala com casos ⇒ faixa visível.
+    montar([
+      caso('c1', 'Sala 2', { tipo: 'eletiva' }),
+      caso('orto', 'Sala 4', { tipo: 'eletiva', anestesista: 'RAFAEL', anestesistaUserId: 'u-rafael' }),
+    ])
+    expect(screen.getByText('Urgências')).toBeTruthy()
+    expect(screen.getByText('Plantão')).toBeTruthy()   // posto livre tracejado
+    expect(screen.getByText('Sobreaviso')).toBeTruthy()
+    expect(screen.getByText('Rafael')).toBeTruthy()    // dedicado informa quem cobre
+    expect(screen.getByRole('button', { name: 'Configurar salas do contrato' })).toBeTruthy()
+  })
+
+  it('sem caso NENHUM no dia, a faixa some', () => {
+    montar([])
     expect(screen.queryByText('Urgências')).toBeNull()
   })
 

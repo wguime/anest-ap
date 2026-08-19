@@ -586,7 +586,9 @@ quando há urgência) mostra isso em tempo real.
   cores = receitas existentes (selo de sala `bg-primary/20 text-primary`, tinta
   `bg-success/[0.14] dark:/20`); **vermelho SÓ no excedente/badge/nota** — fundo
   vermelho sob cards verdes foi vetado como "vitral". Toque abre o `CasoDetalheSheet`
-  (onde Iniciada/Terminada já são marcados). Sem urgência: tela idêntica à de antes.
+  (onde Iniciada/Terminada já são marcados). **Escala do HRO com casos ⇒ faixa VISÍVEL
+  mesmo sem urgência (dono 19/08)** — é na publicação da manhã que se confere/configura
+  as salas do contrato; sem caso nenhum no dia, some.
 - **Salas CONFIGURÁVEIS por dia/turno (dono 18/08, 2ª decisão)**: "as salas do CO e
   ortopedia podem mudar" — `urgencias_meta` jsonb no cabeçalho (migration
   `20260818190000`), chaveado por turno de PUBLICAÇÃO, gravado pela MESMA

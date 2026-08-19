@@ -13,7 +13,8 @@
 **Escala cirúrgica — novidade no HRO: contador de urgências** 🚨
 
 Pessoal, a partir de hoje a aba **Completa** do HRO mostra, no topo, um quadro novo
-sempre que houver urgência ou emergência no dia. Quem estava com o app aberto: fechem
+com as salas de urgência do contrato — ele fica lá sempre que houver escala
+publicada, mesmo antes da primeira urgência. Quem estava com o app aberto: fechem
 e abram de novo uma vez, para carregar a versão nova.
 
 **Por que isso existe.** Nosso contrato com o HRO paga **2 anestesistas para

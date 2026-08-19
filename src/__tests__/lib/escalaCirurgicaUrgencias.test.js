@@ -200,8 +200,12 @@ describe('ocupação e níveis de saturação', () => {
     expect(estado.emAndamento).toHaveLength(0)
   })
 
-  it('some da tela quando não há urgência nenhuma (dia igual ao de hoje)', () => {
-    expect(em([caso('Sala 2', { tipo: 'eletiva' })]).ativo).toBe(false)
+  it('escala publicada mantém a faixa ATIVA mesmo sem urgência — é onde se configura o dia', () => {
+    // Regra mudada pelo dono em 19/08 ("no HRO não apareceu"): a faixa também é
+    // o painel de configuração das salas do contrato, e a configuração acontece
+    // de manhã, antes da primeira urgência. Sem caso NENHUM no dia, some.
+    expect(em([caso('Sala 2', { tipo: 'eletiva' })]).ativo).toBe(true)
+    expect(em([]).ativo).toBe(false)
   })
 })
 
