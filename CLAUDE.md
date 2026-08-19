@@ -613,6 +613,26 @@ quando há urgência) mostra isso em tempo real.
   mediana 49min, pico 2 simultâneas em 06/08. Comunicado leigo à equipe:
   `.tmp/comunicado-urgencias-hro.md`.
 
+### Resposta tátil da escala (dono 19/08) — otimismo + memo
+
+O toque pinta ANTES do servidor em TODAS as marcações do módulo: dispatch
+primeiro, erro reverte ao snapshot + toast (`toggleLiberacao`/`toggleEscalado`/
+`setLinhaOverride`/`atualizarCaso`/`adicionarAjuda`/`removerAjuda` ganharam o
+padrão que `setStatusCirurgia` já tinha — esperar o RTT Brasil→us-west-2 antes
+de pintar foi o "delay" reportado pela 2ª vez). O toast de SUCESSO continua
+atrás da persistência (honestidade F1.6: quem anuncia sucesso é o servidor);
+action de escrita NOVA segue o mesmo desenho. Sheets fecham a folha/limpam o
+rascunho no toque (rascunho digitado se perde se o servidor recusar — trade-off
+aceito, o erro toasta). Render: `CasoCard` é `React.memo` com comparador que
+IGNORA `onClick` (contrato: handler só pode depender de `caso` + setters
+estáveis — call site novo respeita ou o card fica stale) e
+`resolverAnestesistas` preserva a REFERÊNCIA do caso inalterado — juntos, um
+toque re-renderiza UM card, não o quadro. Travado em
+`escalaCirurgicaOtimista.test.jsx` (service com promise pendente = detector de
+espera) + caso de referência em `colunaLiberacao.test.js`. Abertura de página
+já era coberta: prefetch do chunk 6s pós-boot (`App.jsx`), sheets com import
+estático, roster em cache SWR.
+
 ## Bottom Nav
 4 abas: **Home** | **Gestão** (Shield) | **Educação** | **Menu**
 (Dashboard temporariamente oculto; código preservado em `App.jsx`)
