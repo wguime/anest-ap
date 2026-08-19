@@ -14,7 +14,7 @@
  * iguais, seis botões de status e três linhas de dados, tudo no mesmo peso.
  */
 import { useMemo, useState } from 'react'
-import { Check, GraduationCap, Loader2, MapPin, Stethoscope, Timer, UserCog } from 'lucide-react'
+import { Check, GraduationCap, MapPin, Stethoscope, Timer, UserCog } from 'lucide-react'
 import { Badge, Button, Input, Sheet, SheetContent, SheetHeader, SheetTitle } from '@/design-system'
 import { HOSPITAL_LABEL, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
@@ -68,7 +68,6 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
   const [rascSala, setRascSala] = useState('')
   const [salaOutro, setSalaOutro] = useState(false)
   const [rascCirurgiao, setRascCirurgiao] = useState('')
-  const [salvando, setSalvando] = useState('')
   const [horaExata, setHoraExata] = useState('') // hora exata de término da cirurgia
 
   // caso VIVO: busca a versão atual no estado (id); cai no prop p/ demo/sem id
@@ -103,23 +102,21 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
     setEditor((e) => (e === qual ? null : qual))
   }
 
-  /** Grava a gravidade da urgência; tocar de novo no nível ativo desmarca. */
-  const mudarGravidade = async (nivel) => {
-    setSalvando('gravidade')
-    try {
-      await atualizarCaso(escala, vivo.id, { gravidade: vivo.gravidade === nivel ? null : nivel })
-    } catch { /* toast de erro já vem do context */ } finally { setSalvando('') }
-  }
+  /** Grava a gravidade da urgência; tocar de novo no nível ativo desmarca.
+      Sem await: o context é otimista (pinta no toque, reverte + toast em erro) —
+      segurar o botão desabilitado durante a ida ao servidor era o delay que o
+      dono reportou em 19/08. */
+  const mudarGravidade = (nivel) =>
+    atualizarCaso(escala, vivo.id, { gravidade: vivo.gravidade === nivel ? null : nivel }).catch(() => {})
 
-  /** Grava um campo de texto do caso (sala/cirurgião) e fecha o editor. */
-  const salvarTexto = async (campo, valor) => {
+  /** Grava um campo de texto do caso (sala/cirurgião) e fecha o editor.
+      Fecha ANTES do servidor: o valor novo já está pintado (context otimista) e
+      erro reverte com toast — a folha presa no spinner era o delay (dono 19/08). */
+  const salvarTexto = (campo, valor) => {
     const novo = String(valor || '').trim()
-    if (!novo || novo === String(vivo[campo] || '')) { setEditor(null); return }
-    setSalvando(campo)
-    try {
-      await atualizarCaso(escala, vivo.id, { [campo]: novo })
-      setEditor(null)
-    } catch { /* toast de erro já vem do context */ } finally { setSalvando('') }
+    setEditor(null)
+    if (!novo || novo === String(vivo[campo] || '')) return
+    atualizarCaso(escala, vivo.id, { [campo]: novo }).catch(() => {})
   }
 
   // RESIDENTE do caso (dono 29/07): acompanha, NÃO responde pelo caso — por isso é
@@ -129,23 +126,21 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
   const residenteNome = vivo.residente
     || (vivo.residenteUserId && residenteByUid.get(vivo.residenteUserId)?.nome)
     || ''
-  const trocarResidente = async (valor) => {
+  const trocarResidente = (valor) => {
     const r = valor === SEM_RESIDENTE ? null : residenteByUid.get(valor)
     if (valor !== SEM_RESIDENTE && !r) return
-    setSalvando('residente')
-    try {
-      await atualizarCaso(escala, vivo.id, {
-        residente: r ? r.nome : null,
-        residenteUserId: r ? r.uid : null,
-      })
-      setEditor(null)
-    } catch { /* toast de erro já vem do context */ } finally { setSalvando('') }
+    setEditor(null) // fecha no toque — context otimista pinta e reverte em erro
+    atualizarCaso(escala, vivo.id, {
+      residente: r ? r.nome : null,
+      residenteUserId: r ? r.uid : null,
+    }).catch(() => {})
   }
 
   // TÉRMINO PREVISTO DESTA CIRURGIA (dono 29/07). É o tempo do CASO — o "quanto
   // falta para a pessoa sair" continua sendo o cronômetro da linha, nas Liberações.
   // Este sheet é o mesmo nas duas abas, então preencher aqui atende as duas.
   const definirTerminoCaso = async (hhmm) => {
+    setHoraExata('') // limpa no toque; o chip pinta pelo otimista do context
     try {
       await atualizarCaso(escala, vivo.id, { terminoPrevisto: hhmm || null })
       // ESPELHO (dono 30/07): com UMA só cirurgia ativa no turno, o término dela
@@ -158,7 +153,6 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
           { userId: user?.uid || user?.id, userName: user?.displayName }, turno)
       }
     } catch { /* toast de erro já vem do context */ }
-    setHoraExata('')
   }
 
   // AJUDA à mão pela aba Completa (dono 29/07). A ajuda é do ANESTESISTA, não do
@@ -174,12 +168,12 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
     .find((n) => normNome(n) === normNome(nomeAnest)) || null
   // sala compartilhada ("A + B") e caso sem dono ("?") não têm um nome só p/ marcar
   const podeMarcarAjuda = podeEditarCaso && !!nomeAnest && !nomeAnest.includes('+') && !/^\?+$/.test(nomeAnest)
-  const alternarAjuda = async () => {
-    setSalvando('ajuda')
-    try {
-      if (entradaAjuda) await removerAjuda(escala, turnoCaso, entradaAjuda)
-      else await adicionarAjuda(escala, turnoCaso, nomeAnest)
-    } catch { /* toast de erro já vem do context */ } finally { setSalvando('') }
+  const alternarAjuda = () => {
+    // sem await: o toggle vira no toque (context otimista); erro reverte + toast
+    const p = entradaAjuda
+      ? removerAjuda(escala, turnoCaso, entradaAjuda)
+      : adicionarAjuda(escala, turnoCaso, nomeAnest)
+    p.catch(() => {})
   }
 
   // Anestesista DESTE caso, não "o primeiro da sala": `anestesistaDaSala` procura
@@ -314,7 +308,6 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                           key={g}
                           type="button"
                           aria-pressed={ativo}
-                          disabled={salvando === 'gravidade'}
                           onClick={() => mudarGravidade(g)}
                           className={[
                             'min-h-[44px] flex-1 rounded-[10px] border px-1.5 text-[12.5px] font-semibold leading-tight transition-colors',
@@ -423,7 +416,6 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                 <ListaEscolha
                   opcoes={[{ value: SEM_RESIDENTE, label: 'Sem residente' }, ...opcoesResidente]}
                   valor={vivo.residenteUserId || SEM_RESIDENTE}
-                  salvando={salvando === 'residente'}
                   onEscolher={trocarResidente}
                 />
               </EditorSheet>
@@ -445,7 +437,6 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                 <ListaEscolha
                   opcoes={opcoesSala.map((o) => ({ value: o, label: o }))}
                   valor={salaOutro ? '' : String(vivo.sala || '')}
-                  salvando={salvando === 'sala'}
                   onEscolher={(v) => salvarTexto('sala', v)}
                 />
                 {/* local novo continua possível — digitado, entra na lista das
@@ -460,9 +451,9 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                   />
                   <div className="flex gap-2 pt-2">
                     <Button size="sm" variant="ghost" className="flex-1" onClick={() => setEditor(null)}>Cancelar</Button>
-                    <Button size="sm" className="flex-1" disabled={salvando === 'sala' || !rascSala.trim()}
+                    <Button size="sm" className="flex-1" disabled={!rascSala.trim()}
                       onClick={() => salvarTexto('sala', rascSala)}>
-                      {salvando === 'sala' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
+                      Salvar
                     </Button>
                   </div>
                 </div>
@@ -499,9 +490,9 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                 />
                 <div className="flex gap-2 pt-1">
                   <Button size="sm" variant="ghost" className="flex-1" onClick={() => setEditor(null)}>Cancelar</Button>
-                  <Button size="sm" className="flex-1" disabled={salvando === 'cirurgiao' || !rascCirurgiao.trim()}
+                  <Button size="sm" className="flex-1" disabled={!rascCirurgiao.trim()}
                     onClick={() => salvarTexto('cirurgiao', rascCirurgiao)}>
-                    {salvando === 'cirurgiao' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
+                    Salvar
                   </Button>
                 </div>
               </EditorSheet>
@@ -513,7 +504,6 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
               <>
                 <button
                   type="button"
-                  disabled={salvando === 'ajuda'}
                   onClick={alternarAjuda}
                   aria-pressed={!!entradaAjuda}
                   aria-label={entradaAjuda
@@ -523,7 +513,6 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                 >
                   <span className="text-[14.5px] font-semibold">Ajuda de outro hospital</span>
                   <span className="ml-auto flex items-center gap-2">
-                    {salvando === 'ajuda' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                     <span className={[
                       'relative h-[26px] w-11 shrink-0 rounded-full border transition-colors',
                       entradaAjuda ? 'border-primary bg-primary' : 'border-muted-foreground/25 bg-muted-foreground/30',
@@ -627,7 +616,7 @@ function EditorSheet({ titulo, nota, onClose, children }) {
  * seletor fechado exigia dois toques para ver os nomes (dono 17/08), e numa lista
  * curta como residente ou sala isso é uma etapa a mais sem ganho nenhum.
  */
-function ListaEscolha({ opcoes, valor, salvando, onEscolher }) {
+function ListaEscolha({ opcoes, valor, onEscolher }) {
   return (
     <ul className="max-h-[52vh] overflow-y-auto rounded-xl border border-border">
       {opcoes.map((o) => {
@@ -636,7 +625,6 @@ function ListaEscolha({ opcoes, valor, salvando, onEscolher }) {
           <li key={o.value} className="border-b border-border last:border-b-0">
             <button
               type="button"
-              disabled={!!salvando}
               onClick={() => onEscolher(o.value)}
               aria-pressed={atual}
               className={[

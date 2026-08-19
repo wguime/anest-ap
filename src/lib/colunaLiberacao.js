@@ -195,7 +195,14 @@ export function resolverAnestesistas(casos) {
       resolvido.set(c, anestesista)
     }
   }
-  return casos.map((c) => ({ ...c, anestesista: resolvido.get(c) ?? stripPed(c.anestesista) }))
+  // Preserva a REFERÊNCIA do caso quando nada muda (dono 19/08, resposta tátil):
+  // o update otimista troca só o caso tocado; se este map clonasse todos, o
+  // React.memo do CasoCard nunca acertaria e cada toque re-renderizava o quadro
+  // inteiro. A função segue pura — o clone só existe quando o valor muda.
+  return casos.map((c) => {
+    const anestesista = resolvido.get(c) ?? stripPed(c.anestesista)
+    return anestesista === c.anestesista ? c : { ...c, anestesista }
+  })
 }
 
 /** Token de cirurgião para um caso, com sufixo de bloco/SRPA/Continuação/Imagem (regras 4–8,13). */

@@ -63,6 +63,17 @@ describe('resolverAnestesistas — regra 2 ("//" herda da linha acima)', () => {
     const r = resolverAnestesistas([caso('S1', 1, 'PED EDUARDO', 'Benito Bodanese')])
     expect(r[0].anestesista).toBe('EDUARDO')
   })
+  it('preserva a REFERÊNCIA do caso quando nada muda (resposta tátil, 19/08)', () => {
+    // O update otimista do context troca só o caso tocado; se este map clonasse
+    // todos, o React.memo do CasoCard nunca acertaria e cada toque no status
+    // re-renderizaria o quadro inteiro — era metade do delay reportado pelo dono.
+    const proprio = caso('S1', 1, 'EDUARDO', 'Rodrigo Souza')
+    const herdado = caso('S1', 2, '//', 'Benito Bodanese')
+    const r = resolverAnestesistas([proprio, herdado])
+    expect(r[0]).toBe(proprio) // nome próprio intacto → mesma referência
+    expect(r[1]).not.toBe(herdado) // herdou da linha de cima → clone com o valor novo
+    expect(r[1].anestesista).toBe('EDUARDO')
+  })
 })
 
 // ============================================================================

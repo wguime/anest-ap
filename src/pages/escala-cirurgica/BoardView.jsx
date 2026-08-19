@@ -3,7 +3,7 @@
  * Lista de cards agrupada por sala (mobile-first, sem grid). Toque no caso
  * abre um bottom-sheet com o detalhe.
  */
-import { useMemo, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { ChevronsDownUp, ChevronsUpDown, Stethoscope, Timer, UserCog, Plus } from 'lucide-react'
 import {
   Accordion, AccordionItem, AccordionTrigger, AccordionContent,
@@ -68,7 +68,7 @@ export function casoTemColunaTempo(caso) {
   return !casoConcluido(caso) && parseHoraMinutos(caso?.terminoPrevisto) != null
 }
 
-export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null, moldura = 'card', reservaHora = false }) {
+function CasoCardBase({ caso, destaque, salaLabel, onClick, agoraMin = null, moldura = 'card', reservaHora = false }) {
   const tb = tipoBadge(caso.tipo)
   const st = STATUS_CIRURGIA[caso.statusCirurgia]
   const ex = extraDe(caso)
@@ -261,6 +261,22 @@ export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null, 
     </button>
   )
 }
+
+/**
+ * memo com comparador que IGNORA `onClick` de propósito (dono 19/08, resposta
+ * tátil imediata): o update otimista do context troca só a referência do caso
+ * tocado (e `resolverAnestesistas` preserva as demais), então com memo um toque
+ * no status re-renderiza UM card, não o quadro inteiro. Os call sites (Completa
+ * e Minhas) criam `onClick` inline (`() => setDetalhe(caso)`), o que derrotaria
+ * o memo por identidade; ignorá-lo é seguro enquanto o handler depender só de
+ * `caso` (mesma referência ⇒ closure equivalente) e de setters estáveis do
+ * React — contrato a manter em call site novo.
+ */
+export const CasoCard = memo(CasoCardBase, (prev, next) =>
+  prev.caso === next.caso && prev.destaque === next.destaque &&
+  prev.salaLabel === next.salaLabel && prev.agoraMin === next.agoraMin &&
+  prev.moldura === next.moldura && prev.reservaHora === next.reservaHora
+)
 
 export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate }) {
   const { user } = useUser()

@@ -310,11 +310,6 @@ export function EscalaCirurgicaProvider({ children }) {
       if (jaLiberado) { delete liberacoes[scoped]; if (scopedLegada) delete liberacoes[scopedLegada]; delete liberacoes[chave]; if (legada) delete liberacoes[legada] }
       else liberacoes[scoped] = valor
       const isDemo = String(escala.id).startsWith('demo-')
-      // merge por chave no servidor — marcações simultâneas de 2 plantonistas não se apagam
-      if (!isDemo) {
-        await svc.patchLiberacao(escala.id, scoped, valor)
-        if (scopedLegada && atual[scopedLegada] !== undefined) await svc.patchLiberacao(escala.id, scopedLegada, null)
-      }
       // Voltou a ser escalado (liberação desfeita)? A situação é NOVA — marca a linha
       // como RENOVADA: apaga ajustes antigos E suprime o derivado dos casos da manhã
       // (sala/cirurgião/tempo vêm em branco p/ preencher do zero).
@@ -322,24 +317,37 @@ export function EscalaCirurgicaProvider({ children }) {
       // ajuste de exibição — sem isto, desfazer uma liberação devolveria o slot ao
       // dono antigo e a pessoa que assumiu viraria linha extra de novo.
       const linhaOverrides = { ...(escala.linhaOverrides || {}) }
-      const overrideChave = chaveTurno(turno, chave)
+      let marcador = null
       if (jaLiberado) {
-        const flags = linhaOverrides[overrideChave] || linhaOverrides[chave] || (legada ? linhaOverrides[legada] : null) || {}
-        const marcador = {
+        const flags = linhaOverrides[scoped] || linhaOverrides[chave] || (legada ? linhaOverrides[legada] : null) || {}
+        marcador = {
           renovado: true,
           ...(flags.trocaCom && { trocaCom: flags.trocaCom }),
           ...(flags.assumidaPor && { assumidaPor: flags.assumidaPor }),
           por: userInfo.userId || null, em: new Date().toISOString(),
         }
-        linhaOverrides[overrideChave] = marcador
+        linhaOverrides[scoped] = marcador
         if (legada) { delete linhaOverrides[legada]; if (scopedLegada) delete linhaOverrides[scopedLegada] }
-        if (!isDemo) {
-          await svc.patchLinhaOverride(escala.id, overrideChave, marcador)
+      }
+      // OTIMISTA (dono 19/08, "resposta tátil imediata"): liberar é o toque mais
+      // frequente do módulo e esperava a ida ao servidor antes de pintar. Pinta
+      // já; erro reverte os DOIS campos ao snapshot + toast. O toast de sucesso
+      // da view continua atrás do await (honestidade da auditoria F1.6 intacta).
+      dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { liberacoes, linhaOverrides } })
+      // merge por chave no servidor — marcações simultâneas de 2 plantonistas não se apagam
+      if (!isDemo) {
+        await svc.patchLiberacao(escala.id, scoped, valor)
+        if (scopedLegada && atual[scopedLegada] !== undefined) await svc.patchLiberacao(escala.id, scopedLegada, null)
+        if (marcador) {
+          await svc.patchLinhaOverride(escala.id, scoped, marcador)
           if (scopedLegada) await svc.patchLinhaOverride(escala.id, scopedLegada, null)
         }
       }
-      dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { liberacoes, linhaOverrides } })
     } catch (error) {
+      dispatch({
+        type: 'PATCH_HOSPITAL', hospital: escala.hospital,
+        patch: { liberacoes: escala.liberacoes || {}, linhaOverrides: escala.linhaOverrides || {} },
+      })
       toast({ variant: 'error', title: 'Erro ao liberar', description: error.message })
       throw error
     }
@@ -361,14 +369,11 @@ export function EscalaCirurgicaProvider({ children }) {
       if (jaForcado) { delete liberacoes[scoped]; delete liberacoes[chave]; if (legada) { delete liberacoes[legada]; delete liberacoes[chaveTurno(turno, legada)] } }
       else liberacoes[scoped] = valor
       const isDemo = String(escala.id).startsWith('demo-')
-      if (!isDemo) {
-        await svc.patchLiberacao(escala.id, scoped, valor)
-        if (legada) await svc.patchLiberacao(escala.id, chaveTurno(turno, legada), null)
-      }
       // Entrou na escala agora (não-escalado → escalado): ajustes antigos da linha
       // são de antes — limpa p/ preencher do zero (sala/local, cirurgião, tempo
       // faltante). trocaCom/assumidaPor ficam: identidade do slot/par, não ajuste.
       const linhaOverrides = { ...(escala.linhaOverrides || {}) }
+      const patchesOverride = []
       for (const k of [scoped, chave, legada, legada && chaveTurno(turno, legada)].filter(Boolean)) {
         if (!jaForcado && linhaOverrides[k]) {
           const { trocaCom, assumidaPor } = linhaOverrides[k]
@@ -377,11 +382,21 @@ export function EscalaCirurgicaProvider({ children }) {
             : null
           if (restante) linhaOverrides[k] = restante
           else delete linhaOverrides[k]
-          if (!isDemo) await svc.patchLinhaOverride(escala.id, k, restante)
+          patchesOverride.push([k, restante])
         }
       }
+      // OTIMISTA (dono 19/08): pinta antes do servidor; erro reverte + toast.
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { liberacoes, linhaOverrides } })
+      if (!isDemo) {
+        await svc.patchLiberacao(escala.id, scoped, valor)
+        if (legada) await svc.patchLiberacao(escala.id, chaveTurno(turno, legada), null)
+        for (const [k, restante] of patchesOverride) await svc.patchLinhaOverride(escala.id, k, restante)
+      }
     } catch (error) {
+      dispatch({
+        type: 'PATCH_HOSPITAL', hospital: escala.hospital,
+        patch: { liberacoes: escala.liberacoes || {}, linhaOverrides: escala.linhaOverrides || {} },
+      })
       toast({ variant: 'error', title: 'Erro ao marcar escalado', description: error.message })
       throw error
     }
@@ -427,12 +442,16 @@ export function EscalaCirurgicaProvider({ children }) {
       else delete linhaOverrides[scoped]
       if (legada) delete linhaOverrides[legada]
       const isDemo = String(escala.id).startsWith('demo-')
+      // OTIMISTA (dono 19/08): o cronômetro/local/observação pintam no toque;
+      // erro reverte ao snapshot + toast. Quem espera o resolve (painel Salvar)
+      // continua esperando a persistência real — só a pintura adiantou.
+      dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { linhaOverrides } })
       if (!isDemo) {
         await svc.patchLinhaOverride(escala.id, scoped, valor)
         if (legada) await svc.patchLinhaOverride(escala.id, chaveTurno(turno, legada), null)
       }
-      dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { linhaOverrides } })
     } catch (error) {
+      dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { linhaOverrides: escala.linhaOverrides || {} } })
       toast({ variant: 'error', title: 'Erro ao ajustar linha', description: error.message })
       throw error
     }
@@ -792,11 +811,15 @@ export function EscalaCirurgicaProvider({ children }) {
       return
     }
     try {
-      await svc.updateCaso(casoId, updates)
+      // OTIMISTA (dono 19/08): gravidade/término/sala/cirurgião/residente pintam
+      // no toque (era daqui o delay do card Andamento); erro reverte + toast. O
+      // toast de sucesso segue atrás do await — só sai com o dado persistido.
       const casos = (escala.casos || []).map((c) => (c.id === casoId ? { ...c, ...updates } : c))
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { casos } })
+      await svc.updateCaso(casoId, updates)
       toast({ variant: 'success', title: 'Caso atualizado' })
     } catch (error) {
+      dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { casos: escala.casos || [] } })
       toast({ variant: 'error', title: 'Erro ao atualizar caso', description: error.message })
       throw error
     }
@@ -849,10 +872,12 @@ export function EscalaCirurgicaProvider({ children }) {
       const atual = rodapeDoTurno(escala.ajudaExterna, turno)
       if (atual.some((n) => normNome(n) === normNome(nm))) return // já é ajuda
       const ajudaExterna = mergeRodapeTurno(escala.ajudaExterna, turno, [...atual, nm])
-      await svc.updateAjudaExterna(escala.id, ajudaExterna)
+      // otimista (dono 19/08): o badge aparece no toque; erro reverte + toast
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { ajudaExterna } })
+      await svc.updateAjudaExterna(escala.id, ajudaExterna)
       toast({ variant: 'success', title: `${nm} adicionado como ajuda` })
     } catch (error) {
+      dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { ajudaExterna: escala.ajudaExterna } })
       toast({ variant: 'error', title: 'Erro ao adicionar ajuda', description: error.message })
       throw error
     }
@@ -863,9 +888,11 @@ export function EscalaCirurgicaProvider({ children }) {
     try {
       const atual = rodapeDoTurno(escala.ajudaExterna, turno)
       const ajudaExterna = mergeRodapeTurno(escala.ajudaExterna, turno, atual.filter((n) => normNome(n) !== normNome(nome)))
-      await svc.updateAjudaExterna(escala.id, ajudaExterna)
+      // otimista (dono 19/08): erro reverte + toast
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { ajudaExterna } })
+      await svc.updateAjudaExterna(escala.id, ajudaExterna)
     } catch (error) {
+      dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { ajudaExterna: escala.ajudaExterna } })
       toast({ variant: 'error', title: 'Erro ao remover ajuda', description: error.message })
       throw error
     }

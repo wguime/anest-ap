@@ -84,7 +84,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // 'troca'|null). Uma por vez: a lista mostra, o editor abre abaixo dela.
   const [abaPainel, setAbaPainel] = useState(null)
   const [alvoTempo, setAlvoTempo] = useState(null) // linha do sheet "Tempo faltante"
-  const [salvandoEditor, setSalvandoEditor] = useState(false)
   const [horaExata, setHoraExata] = useState('') // hora exata de término (HH:MM, Select DS)
   const [ajudaSheet, setAjudaSheet] = useState(false) // sheet "adicionar ajuda"
   const [ajudaUid, setAjudaUid] = useState('')
@@ -702,50 +701,45 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     setAbaPainel(ov?.local ? 'local' : ov?.cirurgioes ? 'cirurgiao' : null)
     setEditor(linha)
   }
-  // Salvar ESPERA a persistência antes de fechar (o padrão do `toggle`): fechar
-  // antes era o "sucesso mentiroso" que a auditoria F1.6 flagrou.
+  // Salvar FECHA NO TOQUE (dono 19/08, "resposta tátil imediata"): o context é
+  // OTIMISTA — o valor já está pintado na fila quando o painel fecha, e erro
+  // reverte + toast. Não é o "sucesso mentiroso" da auditoria F1.6: aquele era um
+  // TOAST de sucesso sem persistência; aqui nenhum sucesso é anunciado — a tela
+  // mostra o estado otimista e desmente sozinha se o servidor recusar.
   // Campos vazios NÃO são "restaurar automático" — mandar `null` aqui apagava o
   // flag `renovado` da linha e ressuscitava sala/cirurgião da manhã (bug 29/07).
-  const salvarEditor = async () => {
-    if (salvandoEditor) return
+  const salvarEditor = () => {
     const local = rascLocal.trim()
     const cirurgioes = rascCirurgiao.trim()
     const termino = rascTermino.trim()
     const observacao = rascObservacao.trim()
-    setSalvandoEditor(true)
-    try {
-      await onSetOverride?.(editor, { local, cirurgioes, termino, observacao })
-      // local novo (digitado em "Outro") entra na lista NA HORA; os demais aparelhos
-      // aprendem no próximo load (o override salvo é a fonte do histórico)
-      if (local && !locaisHospital.includes(local)) setLocaisAprendidos((prev) => [...prev, local])
-      setEditor(null)
-    } catch { /* toast de erro vem do context */ } finally { setSalvandoEditor(false) }
+    // local novo (digitado em "Outro") entra na lista NA HORA; os demais aparelhos
+    // aprendem no próximo load (o override salvo é a fonte do histórico)
+    if (local && !locaisHospital.includes(local)) setLocaisAprendidos((prev) => [...prev, local])
+    setEditor(null)
+    onSetOverride?.(editor, { local, cirurgioes, termino, observacao })?.catch?.(() => {})
   }
-  const restaurarEditor = async () => {
-    if (salvandoEditor) return
-    setSalvandoEditor(true)
-    try {
-      await onSetOverride?.(editor, null) // null = restauração explícita (limpa flags)
-      setEditor(null)
-    } catch { /* toast no context */ } finally { setSalvandoEditor(false) }
+  const restaurarEditor = () => {
+    setEditor(null)
+    onSetOverride?.(editor, null)?.catch?.(() => {}) // null = restauração explícita (limpa flags)
   }
 
   // "Tempo faltante": grava override.termino (agora + duração, ou hora exata),
   // PRESERVANDO local/cirurgiões/observação já ajustados — o override é gravado
   // inteiro, então um campo omitido aqui seria APAGADO.
-  const definirTempo = async (linha, terminoHHMM) => {
+  const definirTempo = (linha, terminoHHMM) => {
     const ov = overrideDe(linha) || {}
     setRascTermino(terminoHHMM || '')
-    try {
-      await onSetOverride?.(linha, {
-        local: ov.local || '',
-        cirurgioes: ov.cirurgioes || '',
-        termino: terminoHHMM || '',
-        observacao: observacaoDe(ov),
-      })
-    } catch { /* toast no context */ }
+    // fecha no toque (dono 19/08): a pílula já pinta pelo otimista do context;
+    // erro reverte + toast — segurar o sheet até o servidor era o delay
     setAlvoTempo(null)
     setHoraExata('')
+    onSetOverride?.(linha, {
+      local: ov.local || '',
+      cirurgioes: ov.cirurgioes || '',
+      termino: terminoHHMM || '',
+      observacao: observacaoDe(ov),
+    })?.catch?.(() => {})
   }
   // Alerta "?" → dono: grava no caso (o alerta sai daqui E da Completa juntos).
   const confirmarSemAnest = async () => {
@@ -1522,7 +1516,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 <EditorPainel
                   titulo="Local na fila"
                   descricao="Muda só o que a FILA mostra. A sala da cirurgia se corrige no detalhe do caso."
-                  onFechar={() => setAbaPainel(null)} onSalvar={salvarEditor} salvando={salvandoEditor}
+                  onFechar={() => setAbaPainel(null)} onSalvar={salvarEditor}
                 >
                   {editor.salas?.length > 0 && (
                     <p className="mb-1 text-[11.5px] text-muted-foreground">
@@ -1572,7 +1566,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 <EditorPainel
                   titulo="Cirurgião(ões)"
                   descricao="Campo vazio segue o automático (o cirurgião de cada caso)."
-                  onFechar={() => setAbaPainel(null)} onSalvar={salvarEditor} salvando={salvandoEditor}
+                  onFechar={() => setAbaPainel(null)} onSalvar={salvarEditor}
                 >
                   {editor.cirurgioes?.length > 0 && (
                     <p className="mb-1 text-[11.5px] text-muted-foreground">
@@ -1601,7 +1595,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
               {canEdit && !editor.noturno && (
                 <button
                   type="button"
-                  onClick={async () => { await toggleAjuda(editor); setEditor(null) }}
+                  /* fecha no toque (dono 19/08): o badge pinta pelo otimista do
+                     context; erro reverte + toast */
+                  onClick={() => { toggleAjuda(editor).catch(() => {}); setEditor(null) }}
                   aria-pressed={!!editor.isAjuda}
                   /* nome acessível igual ao do detalhe do caso: os dois escrevem
                      no MESMO ajudaExterna e tinham dois rótulos (auditoria 17/08) */
@@ -1644,7 +1640,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         onClick={() => setAbaPainel((a) => (a === 'troca' ? null : 'troca'))}
                       />
                       {abaPainel === 'troca' && (
-                        <EditorPainel titulo="Troca" onFechar={() => setAbaPainel(null)} onSalvar={salvarEditor} salvando={salvandoEditor}>
+                        <EditorPainel titulo="Troca" onFechar={() => setAbaPainel(null)} onSalvar={salvarEditor}>
                           <Button variant="outline" className="w-full" disabled={executandoTroca} onClick={desfazerSubstEditor}>
                             {executandoTroca ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowLeftRight className="w-4 h-4" />}
                             Desfazer troca
@@ -1672,7 +1668,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         onClick={() => setAbaPainel((a) => (a === 'troca' ? null : 'troca'))}
                       />
                       {abaPainel === 'troca' && (
-                        <EditorPainel titulo="Troca" onFechar={() => setAbaPainel(null)} onSalvar={salvarEditor} salvando={salvandoEditor}>
+                        <EditorPainel titulo="Troca" onFechar={() => setAbaPainel(null)} onSalvar={salvarEditor}>
                           <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-foreground">
                             <ArrowLeftRight className="h-3.5 w-3.5 shrink-0 text-category-indigo-fg" />
                             Trocado com <b>{info.outroNome}</b>{info.outroHospitalLabel ? ` (${info.outroHospitalLabel})` : ''}
@@ -1759,7 +1755,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 <EditorPainel
                   titulo="Observação"
                   descricao="Aparece no card da fila. Sem nome de paciente — a escala só guarda iniciais."
-                  onFechar={() => setAbaPainel(null)} onSalvar={salvarEditor} salvando={salvandoEditor}
+                  onFechar={() => setAbaPainel(null)} onSalvar={salvarEditor}
                 >
                   {/* sem rótulo aqui: a LINHA logo acima já diz "Observação" —
                       repetir dava a mesma palavra duas vezes coladas na tela */}
@@ -1785,11 +1781,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   o mesmo nome na mesma tela é escolha que ninguém deveria ter. */}
               {!abaPainel && (
               <div className="sticky bottom-0 -mx-1 mt-3 flex gap-2 border-t border-border bg-card px-1 pb-1 pt-3">
-                <Button variant="outline" className="flex-1" disabled={salvandoEditor} onClick={restaurarEditor}>
+                <Button variant="outline" className="flex-1" onClick={restaurarEditor}>
                   Restaurar automático
                 </Button>
-                <Button className="flex-1" disabled={salvandoEditor} onClick={salvarEditor}>
-                  {salvandoEditor ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
+                <Button className="flex-1" onClick={salvarEditor}>
+                  Salvar
                 </Button>
               </div>
               )}
@@ -2083,7 +2079,7 @@ function LinhaPainel({ rotulo, valor, aberto, onClick }) {
  * painel: é o mesmo `salvarEditor` do rodapé, e ter dois botões de gravar com
  * significados diferentes era o que fazia o campo ficar preenchido sem salvar.
  */
-function EditorPainel({ titulo, descricao, onFechar, onSalvar, salvando, children }) {
+function EditorPainel({ titulo, descricao, onFechar, onSalvar, children }) {
   return (
     <Sheet open onOpenChange={(o) => !o && onFechar?.()}>
       <SheetContent side="bottom" className="!h-auto max-h-[85vh]">
@@ -2096,8 +2092,8 @@ function EditorPainel({ titulo, descricao, onFechar, onSalvar, salvando, childre
         <div className="px-1 pb-3">{children}</div>
         <div className="sticky bottom-0 flex gap-2 border-t border-border bg-card px-1 pb-4 pt-3">
           <Button variant="outline" className="flex-1" onClick={onFechar}>Cancelar</Button>
-          <Button className="flex-1" disabled={salvando} onClick={onSalvar}>
-            {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
+          <Button className="flex-1" onClick={onSalvar}>
+            Salvar
           </Button>
         </div>
       </SheetContent>
