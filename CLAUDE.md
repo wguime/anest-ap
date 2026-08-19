@@ -633,6 +633,17 @@ espera) + caso de referência em `colunaLiberacao.test.js`. Abertura de página
 já era coberta: prefetch do chunk 6s pós-boot (`App.jsx`), sheets com import
 estático, roster em cache SWR.
 
+⚠️ **A recarga NÃO atropela o toque (2º round, mesmo dia** — "iniciada ia para
+outra opção e voltava"): o repinte do cache por data em `loadData` é o SWR da
+TROCA DE DATA (16/08) — na revalidação da MESMA data ele repintava o snapshot
+de antes do toque até o fetch fresco chegar. Regras em `loadData`: realtime/
+retomada/refresh/rollback chamam `{revalidacao: true}` (sem repinte de cache);
+só a recarga mais nova aplica (`loadSeqRef` + data conferida); snapshot do
+servidor NÃO aplica com escrita otimista em voo ou pintada durante o voo
+(`escritasRef`/`mutSeqRef` — reagenda 800ms). Toda action otimista chama
+`marcarEscrita()` após o dispatch e `encerrarEscrita()` no finally — action
+nova sem o par reabre o vai-e-volta.
+
 ## Bottom Nav
 4 abas: **Home** | **Gestão** (Shield) | **Educação** | **Menu**
 (Dashboard temporariamente oculto; código preservado em `App.jsx`)
