@@ -144,7 +144,14 @@ dono); calibrar `HEADER_ALIASES` com 1 Excel real da Unimed.
   (delete+insert do rpc_salvar — aceito).
 - **Adicionar caso (F1.5):** `AddCasoSheet` (urgência/encaixe/fora do mapa) → `addCaso` INSERT;
   integra como os demais (board re-agrupa, liberação re-deriva). Paciente vira INICIAIS no blur
-  (CHECK LGPD do banco rejeita nome completo).
+  (CHECK LGPD do banco rejeita nome completo). **Redesenhado em 20/08** (modelo escolhido pelo
+  dono em protótipo, `.tmp/adicionar-caso-modelos.html`): três cartões com a mesma divisão do
+  detalhe do caso — *A cirurgia · Tipo e prioridade · Quem está e onde*. Tipo e gravidade são as
+  pastilhas de `ChipsEscolha.jsx`, compartilhadas com o `CasoDetalheSheet`; convênio é lista
+  (`CONVENIOS_BASE`/`conveniosDaEscala`) com digitação livre como saída — o campo livre acumulou
+  "Unirmd", "Umimed", "Particulae", "Sua" no banco, e convênio torto some do agrupamento por
+  família e da cobrança particular. **Tipo e convênio são editáveis depois de publicada**, no
+  `CasoDetalheSheet`.
 - **Log de eventos invisível (2026-07-18, Fase 0 da previsão de tempos):** tabela insert-only
   `escala_cirurgica_evento` + 2 triggers SECURITY DEFINER (migration `20260718100000`, validada
   pelo migration-validator e aplicada): transições de `status_cirurgia` (com cirurgião/
@@ -424,6 +431,28 @@ de importação normal (sem rodapé próprio no FDS).
   extensões de `plantaoNoturno.test.js`/`escalaCirurgicaHomeCard.test.jsx`, e2e
   `e2e/escala-cirurgica-fds.spec.ts` (fixture demo `DEMO_DATE_FDS` 27/06,
   DEV-only).
+
+## Urgências do HRO — contador de contrato (2026-08-18 → 20)
+
+Painel em tempo real no topo da aba **Completa**, só no HRO: quantas das vagas de urgência
+que o contrato paga estão ocupadas, quem está na fila e se já se opera acima do contrato.
+Lib pura `src/lib/escalaCirurgicaUrgencias.js` + `FaixaUrgencias.jsx`.
+
+- **Contrato por turno** (`CONTRATO_HRO`): manhã 1 orto + 1 CO + plantonista + sobreaviso;
+  tarde sem CO; noite só plantonista + sobreaviso → **2 vagas simultâneas**. A capacidade vem
+  do RELÓGIO, não do campo `turno` do caso (que só aceita matutino|vespertino).
+- **A vaga é da CIRURGIA**, com as cirurgias do MESMO anestesista contando uma vez só — o CO
+  com cesáreas o dia todo é uma pessoa ocupada, não várias.
+- **Encaixe:** urgência aberta entra numa vaga livre mesmo antes de começar → sem vaga livre e
+  não iniciada, fila → sem vaga livre e já iniciada, **Extra** (acima do contrato).
+- **Sala estação** faz a cirurgia contar sem `tipo=urgencia`: sala marcada como
+  plantão/sobreaviso (`urgencias_meta`, ⚙ da faixa) ou o CO à tarde/noite, que perdeu o
+  dedicado. À noite só conta o que ENTROU depois das 19h ou está em andamento.
+- **Gravidade** (`imediata|urgente|aguarda`, adaptação NCEPOD) ordena a fila; NULL vai ao fim
+  com "Classificar". Migration `20260818140000`; `urgencias_meta` em `20260818190000`.
+
+Regras completas, com os porquês e as armadilhas (grafia dupla de sala, `created_at` em
+snake_case, patch das RPCs sobre a definição viva): seção "Urgências do HRO" do `CLAUDE.md`.
 
 ## Deploy
 
