@@ -125,23 +125,18 @@ export default function IncidentesPage({ onNavigate }) {
     <div className="min-h-dvh bg-background pb-24">
       <PageHeader title="Notificações e Denúncias" onBack={() => onNavigate('gestao')} />
 
-      <div className="px-4 sm:px-5">
-        {/* Banner de Seguranca */}
+      {/* pt-4: mesma folga pós-PageHeader das demais páginas (ConsultaSobreaviso,
+          TrocasPlantao, GestaoPage). Esta era a única sem, e o banner encostava. */}
+      <div className="px-4 pt-4 sm:px-5">
+        {/* Banner de Seguranca — sem ícone (dono 20/08) */}
         <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-greenMedium to-greenBright dark:from-greenDark dark:to-greenDarkest">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
-              <Shield className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h2 className="text-base font-semibold text-white mb-1">
-                Ambiente Seguro
-              </h2>
-              <p className="text-sm text-white/80">
-                Este é um canal seguro para relatar incidentes e denúncias.
-                Sua identidade pode ser mantida em sigilo.
-              </p>
-            </div>
-          </div>
+          <h2 className="text-base font-semibold text-white mb-1">
+            Ambiente Seguro
+          </h2>
+          <p className="text-sm text-white/80">
+            Este é um canal seguro para relatar incidentes e denúncias.
+            Sua identidade pode ser mantida em sigilo.
+          </p>
         </div>
 
         {/* Grid de Acoes - 2 colunas */}
