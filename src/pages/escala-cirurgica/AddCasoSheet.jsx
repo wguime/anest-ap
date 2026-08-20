@@ -14,8 +14,8 @@ import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import useRosterResidentes from '@/hooks/useRosterResidentes'
 import { iniciais } from '@/lib/excelEscala'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
-import { casosResolvidos, conveniosDaEscala, familiaConvenio, normalizarSalaHro, normNome, turnoDeHora, salasDoHospital } from './utils'
-import { estadoUrgencias, salasContrato } from '@/lib/escalaCirurgicaUrgencias'
+import { casosResolvidos, conveniosDaEscala, familiaConvenio, normalizarSalaHro, turnoDeHora, salasDoHospital } from './utils'
+import { chaveSala, CONTRATO_HRO, estadoUrgencias, salasContrato } from '@/lib/escalaCirurgicaUrgencias'
 import ChipsEscolha, { GRAVIDADE_CHIPS, TIPOS_CIRURGIA } from './ChipsEscolha'
 import useAgoraMinuto from './useAgoraMinuto'
 
@@ -42,8 +42,9 @@ const POSTOS = [
   { value: 'orto', label: 'Anestesista da ortopedia' },
   { value: 'co', label: 'Anestesista do CO' },
 ]
-// defaults do contrato — iguais aos de CONTRATO_HRO.manha.dedicadas
-const POSTO_SALA_PADRAO = { orto: 'Sala 4', co: 'Sala 7 - CO' }
+// Defaults do contrato lidos da FONTE (antes eram copiados à mão aqui e ficaram
+// para trás quando as numéricas do HRO ganharam o bloco em 20/08).
+const POSTO_SALA_PADRAO = CONTRATO_HRO.manha.dedicadas
 
 // Fora do componente: definido inline, a identidade mudaria a cada render e o
 // React remontaria o subtree — input perdendo foco a cada tecla.
@@ -91,11 +92,16 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
     { value: NOVA_SALA, label: '+ Nova sala…' },
   ], [escala])
 
-  // Sala digitada à mão passa pela MESMA normalização da importação quando é HRO
-  // (dono 20/08): "Sala 7" tem de virar "Sala 7 - CO", senão a mesma sala nasce
-  // com dois rótulos e o quadro a parte em dois blocos.
-  const salaBruta = sala === NOVA_SALA ? novaSala.trim() : sala
-  const salaFinal = escala?.hospital === 'hro' ? normalizarSalaHro(salaBruta) : salaBruta
+  // Sala DIGITADA à mão passa pela MESMA normalização da importação quando é HRO
+  // (dono 20/08): "Sala 7" tem de virar "Bloco A - Sala 7 - CO", senão a mesma
+  // sala nasce com dois rótulos e o quadro a parte em dois blocos.
+  // ⚠️ só a digitada: a opção escolhida na lista já vem canônica OU na grafia do
+  // DIA, que vence de propósito — normalizar a escolha reescreveria a "Sala 4"
+  // de uma escala publicada antes de 20/08 e criaria o segundo bloco justamente
+  // no caminho que existe para evitá-lo.
+  const digitouSala = sala === NOVA_SALA
+  const salaBruta = digitouSala ? novaSala.trim() : sala
+  const salaFinal = digitouSala && escala?.hospital === 'hro' ? normalizarSalaHro(salaBruta) : salaBruta
 
   // CONVÊNIO em lista (dono 20/08): campo livre virou "Unirmd"/"Particulae" no
   // banco, e convênio com erro de digitação some do agrupamento por família — e,
@@ -190,7 +196,10 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
         const turnoCaso = turnoDeHora(hora.trim()) || turno || 'matutino'
         const cfg = salasContrato(escala?.urgenciasMeta, turnoCaso)
         const jaResponde = cfg[posto] || POSTO_SALA_PADRAO[posto] || null
-        if (!cfg[posto] && (!jaResponde || normNome(jaResponde) !== normNome(salaFinal))) {
+        // chaveSala, não normNome: numa escala publicada antes de 20/08 a sala do
+        // caso é "Sala 4" e o default é "Bloco A - Sala 4" — mesma sala, e gravar
+        // config por causa da grafia sobrescreveria o automático sem motivo.
+        if (!cfg[posto] && (!jaResponde || chaveSala(jaResponde) !== chaveSala(salaFinal))) {
           const limpo = Object.fromEntries(Object.entries(cfg).filter(([, v]) => v))
           await definirSalasUrgencia(escala, turnoCaso, { ...limpo, [posto]: salaFinal })
             .catch(() => {}) // caso já entrou; o toast de erro da config avisa

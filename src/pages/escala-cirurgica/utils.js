@@ -123,29 +123,69 @@ export function normalizarSalaUnimed(sala) {
 }
 
 /**
+ * Sala numérica do HRO = BLOCO A (dono 2026-08-20). O mapa do hospital já traz
+ * "BLOCO A" como rótulo de seção na coluna Leito, mas a normalização derrubava o
+ * bloco e gravava só "Sala 1" — ao lado de "Bloco M - Sala 1", que é OUTRA sala,
+ * em outro bloco, com o MESMO número. Quem lê a escala no celular tinha de saber
+ * de cor qual "Sala 1" era qual. Agora todo rótulo numérico nomeia o bloco e a
+ * forma curta saiu da lista de escolha.
+ *
+ * Os dois sufixos do bloco A continuam colados no número (decisão de 20/08 sobre
+ * o CO): o bloco entra antes, o sufixo fica.
+ */
+export const SALA_HRO_CO = 'Bloco A - Sala 7 - CO'
+export const SALA_HRO_EMERGENCIA = 'Bloco A - Sala 5 - Emergência'
+
+/** Rótulo canônico de uma sala numérica do bloco A, a partir do número lido. */
+const salaBlocoA = (n, s) => {
+  if (n === '7') return SALA_HRO_CO // o CO do HRO é a sala 7 (rótulo único, dono 20/08)
+  if (n === '5' && /EMERG/.test(s)) return SALA_HRO_EMERGENCIA
+  return `Bloco A - Sala ${n}`
+}
+
+/**
+ * Chave de IDENTIDADE de sala do HRO: "Sala 4" e "Bloco A - Sala 4" são a MESMA
+ * sala. O prefixo passou a ser gravado em 20/08 e as ~700 cirurgias publicadas
+ * antes disso seguem com o rótulo curto (decisão do dono: não reescrever escala
+ * já publicada) — comparar o texto cru partiria a sala em dois blocos no quadro,
+ * em duas entradas do seletor e em duas vagas do contrato de urgência.
+ *
+ * O lookahead protege "Bloco A" sozinho (seção sem número), que não vira ''.
+ */
+export const chaveSalaHro = (sala) =>
+  normNome(sala).replace(/\s+/g, ' ').replace(/^BLOCO ?A\b\s*-?\s*(?=\S)/, '')
+
+/** Mesma chave, escolhida pelo hospital (fora do HRO o rótulo já é único). */
+export const chaveSalaEscolha = (hospital, sala) =>
+  String(hospital || '').toLowerCase() === 'hro'
+    ? chaveSalaHro(sala)
+    : normNome(sala).replace(/\s+/g, ' ')
+
+/**
  * Normaliza o rótulo de sala da escala HRO na importação (regras do dono 2026-07-21):
- * "CO" e "Sala 7" → "Sala 7 - CO" (o CO do HRO é a sala 7 — rótulo único, dono
- * 20/08); "HO"/"H.O." → "Hospital de Olhos".
+ * numéricas → "Bloco A - Sala N"; "CO" e "Sala 7" → "Bloco A - Sala 7 - CO" (o CO
+ * do HRO é a sala 7 — rótulo único, dono 20/08); "HO"/"H.O." → "Hospital de Olhos".
+ * Idempotente: o rótulo já canônico volta igual.
  */
 export function normalizarSalaHro(sala) {
   const raw = String(sala || '').trim()
   const s = normNome(raw)
   if (!s) return raw
   if (/^H\.?\s*O\.?$/.test(s) || /HOSPITAL DE OLHOS/.test(s)) return 'Hospital de Olhos'
-  if (/^C\.?\s*O\.?$/.test(s)) return 'Sala 7 - CO'
-  // RÓTULO ÚNICO do CO (dono 20/08: "deixe apenas Sala 7 - CO como padrão para
-  // não haver confusão"): produção tinha "Sala 7" (4 casos) e "Sala 7 - CO" (27)
-  // para a MESMA sala. Idempotente — "Sala 7 - CO" volta igual.
-  if (/^SALA ?7\b/.test(s)) return 'Sala 7 - CO'
-  if (/^EMERG/.test(s) && !/\d/.test(s)) return 'Sala 5 - Emergência' // Emergência sozinha = Sala 5
   if (/BLOCO\s*M/.test(s)) {
     const n = s.match(/(\d+)/)
     return n ? `Bloco M - Sala ${n[1]}` : 'Bloco M'
   }
-  if (/BLOCO A/.test(s)) {
+  // Bloco A ANTES das regras numéricas: "Bloco A - Sala 7 - CO" reentra por aqui
+  // e precisa sair inteiro (a regra `^SALA 7` não o alcança, e o `${n}` cru
+  // devolveria "Bloco A - Sala 7", perdendo o CO).
+  if (/BLOCO ?A\b/.test(s)) {
     const n = s.match(/(\d+)/)
-    return n ? `Bloco A - Sala ${n[1]}` : 'Bloco A'
+    return n ? salaBlocoA(n[1], s) : 'Bloco A'
   }
+  if (/^SALA ?\d/.test(s)) return salaBlocoA(s.match(/(\d+)/)[1], s)
+  if (/^C\.?\s*O\.?$/.test(s)) return SALA_HRO_CO
+  if (/^EMERG/.test(s) && !/\d/.test(s)) return SALA_HRO_EMERGENCIA // Emergência sozinha = Sala 5
   if (/^EXAMES?$/.test(s)) return 'Exames'
   if (/^CONSULT/.test(s)) return 'Consultório'
   if (/^IMAGEM$/.test(s)) return 'Imagem'
@@ -196,8 +236,12 @@ export const LOCAIS_BASE = {
     'Hemodinâmica', 'SRPA', 'Exames', 'Imagem', 'Consultório', 'Umanitá', 'Accurata', 'Ambulatorial',
   ],
   hro: [
-    'Sala 1', 'Sala 2', 'Sala 3', 'Sala 4', 'Sala 5 - Emergência', 'Sala 6', 'Sala 7 - CO', 'Sala 8', 'Sala 9',
+    // Numéricas = BLOCO A (dono 20/08): antes a lista tinha "Sala 1" E
+    // "Bloco A - Sala 1" — a mesma sala duas vezes, ao lado de "Bloco M - Sala 1",
+    // que é outra. A forma curta saiu; `chaveSalaHro` mantém as escalas antigas
+    // (que gravaram "Sala 1") apontando para a mesma sala.
     'Bloco A - Sala 1', 'Bloco A - Sala 2', 'Bloco A - Sala 3', 'Bloco A - Sala 4',
+    SALA_HRO_EMERGENCIA, 'Bloco A - Sala 6', SALA_HRO_CO, 'Bloco A - Sala 8', 'Bloco A - Sala 9',
     'Bloco M - Sala 1', 'Bloco M - Sala 2', 'Bloco M - Sala 3', 'Bloco M - Sala 4', 'Bloco M', 'Hemodinâmica', 'Exames', 'Imagem', 'Braquiterapia', 'Consultório',
     'IOSC', 'Hospital de Olhos', 'Centro de Coluna', 'Digimax', 'Ambulatorial',
   ],
@@ -967,7 +1011,10 @@ export function alvosTrocaResponsavel(casos, sala, casoUnico = null) {
  *
  * As salas EM USO vêm primeiro na deduplicação para a grafia delas vencer a
  * canônica ("SALA 2" da escala em vez de "Sala 2" da base) — grafia diferente
- * criaria uma sala separada no board em vez de juntar no grupo existente.
+ * criaria uma sala separada no board em vez de juntar no grupo existente. É por
+ * isso que a chave é `chaveSalaEscolha` e não o texto: numa escala do HRO
+ * publicada antes de 20/08 a sala está gravada "Sala 4", e sem a equivalência o
+ * seletor ofereceria "Sala 4" E "Bloco A - Sala 4" para a mesma sala.
  */
 export function salasDoHospital(hospital, casos) {
   const emUso = [...agruparPorSala(casos || []).keys()]
@@ -976,7 +1023,7 @@ export function salasDoHospital(hospital, casos) {
   for (const s of [...emUso, ...(LOCAIS_BASE[hospital] || [])]) {
     const nome = String(s || '').trim()
     if (!nome || nome === '—') continue
-    const chave = normNome(nome)
+    const chave = chaveSalaEscolha(hospital, nome)
     if (vistos.has(chave)) continue
     vistos.add(chave)
     out.push(nome)

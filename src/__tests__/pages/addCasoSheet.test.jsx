@@ -143,6 +143,19 @@ describe('AddCasoSheet — salvar procedimento e anestesista (dono 29/07)', () =
     expect(adicionarCaso.mock.calls[0][1].pacienteIniciais).toBe('M.A.S.')
   })
 
+  // Numéricas do HRO ganharam o bloco em 20/08, mas escala publicada ANTES tem
+  // "Sala 2" gravado. Escolher a sala do dia na lista não pode reescrevê-la: o
+  // quadro agrupa por TEXTO e a mesma sala apareceria em dois blocos.
+  it('sala escolhida na lista entra como está — a grafia do dia vence', async () => {
+    render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
+    escolherSala('Sala 2') // grafia do dia (o caso da escala está em "Sala 2")
+    fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Drenagem' } })
+    preencherObrigatorios()
+    fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
+    await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
+    expect(adicionarCaso.mock.calls[0][1].sala).toBe('Sala 2')
+  })
+
   it('sala nova digitada à mão entra como sala do caso', async () => {
     render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
     escolherSala('+ Nova sala…')
@@ -151,7 +164,8 @@ describe('AddCasoSheet — salvar procedimento e anestesista (dono 29/07)', () =
     preencherObrigatorios()
     fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
     await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
-    expect(adicionarCaso.mock.calls[0][1].sala).toBe('Sala 12')
+    // digitada à mão passa pela MESMA normalização da importação (dono 20/08)
+    expect(adicionarCaso.mock.calls[0][1].sala).toBe('Bloco A - Sala 12')
   })
 })
 
@@ -299,7 +313,7 @@ describe('AddCasoSheet — posto do contrato (só HRO)', () => {
 
   it('Ortopedia na Sala 4 (o default) não precisa de config — nada é gravado', async () => {
     render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
-    preencherUrgencia('Sala 4')
+    preencherUrgencia('Bloco A - Sala 4')
     escolher(screen.getByText('Automático — decide pela sala'), 'Anestesista da ortopedia')
     fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
     await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())

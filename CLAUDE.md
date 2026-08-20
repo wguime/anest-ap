@@ -679,6 +679,25 @@ não gasta vaga — marcar não é reservar. Tinta verde só com cirurgia EM AND
   lista canônica de exclusão e `PADROES_FORA_DO_CONTRATO_HRO` (regex) é a rede para o
   rótulo digitado — "AMBULAT.", "Ambulatorial BERA", "Odonto ambulatorial" e "MATERNO"
   caíam em 'geral' e uma urgência ali entrava na conta das 2 vagas do HRO.
+- **NUMÉRICA DO HRO = BLOCO A (dono 20/08, 2ª rodada):** "Sala 1" e "Bloco M - Sala 1" são
+  salas DIFERENTES com o mesmo número, e a lista de escolha ainda trazia as duas formas da
+  mesma sala ("Sala 1" E "Bloco A - Sala 1"). Hoje todo rótulo numérico nomeia o bloco —
+  `Bloco A - Sala 1…9`, com os sufixos de 20/08 preservados (`Bloco A - Sala 5 - Emergência`,
+  `Bloco A - Sala 7 - CO`) — e a forma curta SAIU do `LOCAIS_BASE`. Vale na importação, no
+  "Adicionar caso" e no "Mudar" do detalhe, tudo por `normalizarSalaHro` (constantes
+  `SALA_HRO_CO`/`SALA_HRO_EMERGENCIA`; o teste de idempotência existe porque a função roda
+  nos três caminhos). ⚠️ **as ~700 cirurgias já publicadas NÃO foram reescritas** (decisão do
+  dono): a ponte é `chaveSalaHro` (utils, puro), que dá a MESMA identidade a "Sala 4" e
+  "Bloco A - Sala 4" — é ela que faz o `chaveSala` do contrato de urgências contar uma vaga
+  só, a sala marcada no ⚙ casar com o caso na outra grafia, e o seletor não oferecer as duas
+  (`chaveSalaEscolha` em `salasDoHospital` + no dropdown de local da Liberações). ⚠️ e a
+  normalização passou a valer **só para sala DIGITADA**: normalizar a opção ESCOLHIDA
+  reescreveria a "Sala 4" de uma escala antiga e criaria o segundo bloco no quadro — que é
+  exatamente o que a regra existe para impedir. `CONTRATO_HRO.dedicadas` virou a fonte única
+  do padrão orto/CO (o `AddCasoSheet` copiava à mão e teria ficado para trás). Travas em
+  `escalaCirurgicaSalas.test.js` + `escalaCirurgicaUrgencias.test.js`. O prompt da edge
+  `parse-escala-cirurgica` pede o rótulo novo, mas **só vale após re-deploy** — sem ele o app
+  normaliza igual na entrada.
 - **Relatório contratual**: modo `contrato-hro` planejado na skill `/escala-cirurgica`
   (pareamento 1º iniciada→1º terminada posterior = Achado 2; sweep-line com empate
   saída-antes-de-entrada; SUS = `upper(convenio) ~ '^SUS\M'`; tudo

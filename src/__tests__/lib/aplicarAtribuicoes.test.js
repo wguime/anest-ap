@@ -189,7 +189,7 @@ describe('salasDoHospital', () => {
   it('HRO: traz TODAS as salas da base, não só as que já têm caso', () => {
     const casos = [{ sala: 'Sala 2' }, { sala: 'Sala 6' }]
     const out = salasDoHospital('hro', casos)
-    for (const s of ['Sala 1', 'Sala 3', 'Sala 5 - Emergência', 'Sala 7 - CO', 'IOSC', 'Hospital de Olhos']) {
+    for (const s of ['Bloco A - Sala 1', 'Bloco A - Sala 3', 'Bloco A - Sala 5 - Emergência', 'Bloco A - Sala 7 - CO', 'IOSC', 'Hospital de Olhos']) {
       expect(out).toContain(s)
     }
     expect(out.length).toBeGreaterThan(casos.length)
@@ -211,7 +211,17 @@ describe('salasDoHospital', () => {
   it('a grafia EM USO vence a canônica (não cria sala separada no board)', () => {
     const out = salasDoHospital('hro', [{ sala: 'SALA 2' }])
     expect(out).toContain('SALA 2')
-    expect(out).not.toContain('Sala 2')
+    expect(out).not.toContain('Bloco A - Sala 2')
+  })
+
+  // Escala do HRO publicada ANTES de 20/08 gravou "Sala 4"; a base de hoje diz
+  // "Bloco A - Sala 4". Oferecer as duas faria a MESMA sala virar dois blocos no
+  // quadro — o motivo de o dedupe ser por identidade, não por texto.
+  it('HRO: rótulo antigo e novo da mesma sala não aparecem juntos', () => {
+    const out = salasDoHospital('hro', [{ sala: 'Sala 4' }])
+    expect(out).toContain('Sala 4')
+    expect(out).not.toContain('Bloco A - Sala 4')
+    expect(out).toContain('Bloco A - Sala 3') // as demais seguem com o bloco
   })
 
   it('sala fora da base (local novo já usado no dia) continua na lista', () => {

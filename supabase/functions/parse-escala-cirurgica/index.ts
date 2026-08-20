@@ -54,8 +54,9 @@ const HOSPITAL_HINT: Record<string, string> = {
   hro:
     'Formato HRO: colunas Leito, Paciente, Cirurgião, Procedimento, ANEST, Conv., Sala. "//" = mesmo anestesista acima. ' +
     'Rodapé com anestesistas na ordem de liberação. REGRAS DE SALA (nunca deixe sala vazia — use o rótulo da seção): ' +
-    'salas numéricas = "Sala N"; seção "BLOCO M" = "Bloco M - Sala N"; linha só com "CO" = "Sala 7 - CO" (bloco normal — o CO do HRO NÃO é materno, nunca use bloco materno aqui); ' +
-    'linha só com "EMERGENCIA" = "Sala 5 - Emergência"; "HEMO" = "Hemodinâmica" (bloco hemodinamica); "EXAMES" = "Exames" (bloco exames); ' +
+    'salas numéricas (seção BLOCO A) = "Bloco A - Sala N"; seção "BLOCO M" = "Bloco M - Sala N" — o número SOZINHO é ambíguo, a Sala 1 do bloco A e a Sala 1 do bloco M são salas diferentes; ' +
+    'linha só com "CO" = "Bloco A - Sala 7 - CO" (bloco normal — o CO do HRO NÃO é materno, nunca use bloco materno aqui); ' +
+    'linha só com "EMERGENCIA" = "Bloco A - Sala 5 - Emergência"; "HEMO" = "Hemodinâmica" (bloco hemodinamica); "EXAMES" = "Exames" (bloco exames); ' +
     '"BRAQUI" = "Braquiterapia" (bloco normal); "CONSULT." = "Consultório" (bloco consultorio); "IMAGEM" = "Imagem" (bloco imagem). ' +
     '⚠️ COLUNA LEITO = SEÇÕES: um rótulo na coluna Leito (BLOCO A, HEMO, BRAQUI, EXAMES, IOSC, HO, DIGIMAX, C. COLUNA...) inicia uma SEÇÃO que vale para TODAS as linhas abaixo dele até o PRÓXIMO rótulo de Leito — mesmo quando o título da seção está na MESMA COR das linhas de baixo (o IOSC costuma vir em ROXO, igual aos procedimentos). Delimite a seção pela POSIÇÃO na coluna Leito, NUNCA pela cor. ' +
     'A escala inclui OUTROS HOSPITAIS que fazem parte dela — extraia TODAS essas seções como casos também, com o cirurgião quando houver (nomes em ROXO são cirurgiões): ' +

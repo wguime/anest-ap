@@ -28,7 +28,7 @@ import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
 import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
 import PainelTempo, { formatFaltante } from './PainelTempo'
 import useAgoraMinuto from './useAgoraMinuto'
-import { conveniosDaEscala, espelhoTempoTotal, LOCAIS_BASE, nomeAnestesistaExibicao, normalizarSalaHro, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso } from './utils'
+import { conveniosDaEscala, espelhoTempoTotal, nomeAnestesistaExibicao, normalizarSalaHro, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, salasDoHospital, tipoBadge, turnoDoCaso } from './utils'
 import ChipsEscolha, { GRAVIDADE_CHIPS, TIPOS_CIRURGIA } from './ChipsEscolha'
 
 const SALA_OUTRO = '__outro__'
@@ -86,11 +86,13 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
 
   // Opções de sala/local: salas usadas na escala do dia ∪ base do hospital (IOSC,
   // Umanitá, salas fixas…). "Outro" abre digitação p/ um local ainda não listado.
-  const opcoesSala = useMemo(() => {
-    const base = LOCAIS_BASE[String(escala?.hospital || '').toLowerCase()] || []
-    const doDia = (escala?.casos || []).map((c) => String(c.sala || '').trim()).filter(Boolean)
-    return unicos([...doDia, ...base])
-  }, [escala])
+  // MESMA lista do "Adicionar caso" — a montagem local repetia a regra com outro
+  // dedupe e passou a oferecer "Sala 4" E "Bloco A - Sala 4" quando as numéricas
+  // do HRO ganharam o bloco (20/08).
+  const opcoesSala = useMemo(
+    () => salasDoHospital(escala?.hospital, escala?.casos),
+    [escala],
+  )
 
   // MESMA lista do "Adicionar caso": canônicos + os que a escala do dia trouxe.
   const opcoesConvenio = conveniosDaEscala(escala?.casos)
@@ -138,10 +140,13 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
   /** Grava um campo de texto do caso (sala/cirurgião) e fecha o editor.
       Fecha ANTES do servidor: o valor novo já está pintado (context otimista) e
       erro reverte com toast — a folha presa no spinner era o delay (dono 19/08). */
-  const salvarTexto = (campo, valor) => {
-    // sala do HRO passa pela normalização da importação — rótulo único (dono 20/08)
+  const salvarTexto = (campo, valor, digitado = false) => {
+    // sala do HRO DIGITADA passa pela normalização da importação — rótulo único
+    // (dono 20/08). A escolhida na lista, não: ela já vem canônica ou na grafia
+    // do dia, e reescrever a "Sala 4" de uma escala antiga partiria a sala em
+    // dois blocos no quadro.
     const bruto = String(valor || '').trim()
-    const novo = campo === 'sala' && escala?.hospital === 'hro' ? normalizarSalaHro(bruto) : bruto
+    const novo = digitado && campo === 'sala' && escala?.hospital === 'hro' ? normalizarSalaHro(bruto) : bruto
     setEditor(null)
     if (!novo || novo === String(vivo[campo] || '')) return
     atualizarCaso(escala, vivo.id, { [campo]: novo }).catch(() => {})
@@ -518,12 +523,12 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                     value={rascSala}
                     onChange={(e) => { setSalaOutro(true); setRascSala(e.target.value) }}
                     placeholder="Outro local — ex.: IOSC - Sala 1"
-                    onKeyDown={(e) => { if (e.key === 'Enter') salvarTexto('sala', rascSala) }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') salvarTexto('sala', rascSala, true) }}
                   />
                   <div className="flex gap-2 pt-2">
                     <Button size="sm" variant="ghost" className="flex-1" onClick={() => setEditor(null)}>Cancelar</Button>
                     <Button size="sm" className="flex-1" disabled={!rascSala.trim()}
-                      onClick={() => salvarTexto('sala', rascSala)}>
+                      onClick={() => salvarTexto('sala', rascSala, true)}>
                       Salvar
                     </Button>
                   </div>
@@ -611,17 +616,6 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
 export function idadeCurta(bruta) {
   const n = String(bruta || '').match(/\d+/)
   return n ? `${n[0]}a` : ''
-}
-
-/** Lista sem repetição, preservando a ordem e ignorando caixa. */
-function unicos(lista) {
-  const vistos = new Set()
-  const out = []
-  for (const s of lista) {
-    const k = s.toLowerCase()
-    if (!vistos.has(k)) { vistos.add(k); out.push(s) }
-  }
-  return out
 }
 
 function Rotulo({ children, className = '' }) {

@@ -22,7 +22,7 @@ import useAgoraMinuto from './useAgoraMinuto'
 import useAvisoPlantonista from './useAvisoPlantonista'
 import PainelTempo, { formatFaltante, fraseCronometro, fraseFaltante } from './PainelTempo'
 import AddCasoSheet from './AddCasoSheet'
-import { casosResolvidos, compararSalas, filtrarPorTurno, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao } from './utils'
+import { casosResolvidos, chaveSalaEscolha, compararSalas, filtrarPorTurno, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao } from './utils'
 
 // Sentinelas do dropdown de Local (valores impossíveis como nome de sala)
 const LOCAL_AUTO = '__auto__'
@@ -256,7 +256,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     for (const sala of brutos) {
       if (!sala) continue
       const label = salaLiberacao(sala)
-      if (!vistos.has(label)) { vistos.add(label); out.push({ sala, label }) }
+      // Dedupe pela IDENTIDADE da sala, não pelo rótulo: no HRO "Sala 4" (escala
+      // publicada antes de 20/08) e "Bloco A - Sala 4" (base de hoje) são a mesma.
+      const chave = chaveSalaEscolha(chaveHospital, label)
+      if (!vistos.has(chave)) { vistos.add(chave); out.push({ sala, label }) }
     }
     out.sort((a, b) => compararSalas(chaveHospital)(a.sala, b.sala))
     return out.map((x) => x.label)

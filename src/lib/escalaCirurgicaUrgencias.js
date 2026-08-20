@@ -34,15 +34,19 @@
  *
  * Pura: sem React, sem I/O. Tudo que é política externa entra por `opts`.
  */
-import { casoConcluido, normNome, salaLiberacao, turnoDoCaso } from '@/pages/escala-cirurgica/utils'
+import { casoConcluido, chaveSalaHro, normNome, SALA_HRO_CO, salaLiberacao, turnoDoCaso } from '@/pages/escala-cirurgica/utils'
 import { INICIO_NOTURNO_MIN, faseLiberacoes } from '@/lib/plantaoNoturno'
 
 /**
  * Chave estável de uma sala. Normalizar é obrigatório, não elegância: produção
  * tem "Sala 5 - Emergência" (26) E "Sala 5" (27), "Sala 7 - CO" (27) E "Sala 7"
  * (4) para as MESMAS salas — comparar string crua classifica errado.
+ *
+ * Desde 20/08 a numérica do HRO grava o bloco ("Bloco A - Sala 4") e as escalas
+ * publicadas antes seguem sem ele; `chaveSalaHro` é o que faz as duas grafias
+ * contarem como UMA vaga do contrato, aqui e na sala marcada no `urgencias_meta`.
  */
-export const chaveSala = (v) => normNome(v).replace(/\s+/g, ' ')
+export const chaveSala = (v) => chaveSalaHro(v)
 
 /** Níveis de gravidade da fila (adaptação NCEPOD). */
 export const GRAVIDADES = Object.freeze(['imediata', 'urgente', 'aguarda'])
@@ -76,6 +80,13 @@ export const LIMITE_ESQUECIDA_MIN = 240
 export const LIMITE_SUSPEITA_MIN = 15
 
 /**
+ * Rótulos das salas dedicadas — usados como LEGENDA do card quando o dia não tem
+ * nenhuma cirurgia lá (com cirurgia, a grafia do dia vence). `papelDaSalaHro`
+ * reconhece as duas grafias, então trocar aqui não invalida escala antiga.
+ */
+const SALA_HRO_ORTO = 'Bloco A - Sala 4'
+
+/**
  * Contrato vigente do HRO (dono 2026-08-18). Mudou o contrato → muda AQUI, e só aqui.
  *
  * `urgencia` é a lista de PAPÉIS, não o número 2: a capacidade é o tamanho dela, e a
@@ -99,13 +110,13 @@ export const CONTRATO_HRO = Object.freeze({
   manha: Object.freeze({
     label: 'Manhã',
     urgencia: Object.freeze(['plantonista', 'sobreaviso']),
-    dedicadas: Object.freeze({ orto: 'Sala 4', co: 'Sala 7 - CO' }),
+    dedicadas: Object.freeze({ orto: SALA_HRO_ORTO, co: SALA_HRO_CO }),
     estacoes: Object.freeze([]),
   }),
   tarde: Object.freeze({
     label: 'Tarde',
     urgencia: Object.freeze(['plantonista', 'sobreaviso']),
-    dedicadas: Object.freeze({ orto: 'Sala 4' }),
+    dedicadas: Object.freeze({ orto: SALA_HRO_ORTO }),
     estacoes: Object.freeze(['co']),
   }),
   noite: Object.freeze({
@@ -244,11 +255,12 @@ export const motivoForaDoContrato = (sala) => {
  */
 const SALAS_CONHECIDAS_HRO = new Set(
   [
+    // Sem o prefixo do bloco: `chaveSala` já colapsa "Bloco A - Sala 4" em
+    // "Sala 4", então uma entrada por sala cobre as duas grafias.
     'Sala 1', 'Sala 2', 'Sala 3', 'Sala 4', 'Sala 5', 'Sala 5 - Emergência', 'Sala 6',
     'Sala 7', 'Sala 7 - CO', 'Sala 8', 'Sala 9',
-    'Bloco A - Sala 1', 'Bloco A - Sala 2', 'Bloco A - Sala 3', 'Bloco A - Sala 4',
-    'Bloco M - Sala 1', 'Bloco M - Sala 2', 'Bloco M - Sala 3', 'Bloco M - Sala 4', 'Bloco M',
-  ].map((s) => normNome(s).replace(/\s+/g, ' ')),
+    'Bloco M - Sala 1', 'Bloco M - Sala 2', 'Bloco M - Sala 3', 'Bloco M - Sala 4', 'Bloco M', 'Bloco A',
+  ].map(chaveSala),
 )
 
 /**
