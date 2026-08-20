@@ -830,11 +830,12 @@ describe('Liberações — não escalado e cronômetro manual (F1.9b)', () => {
     // sem caso → aguarda na própria posição; o vermelho é só de liberação feita
     expect(screen.getByText('Livre')).toBeTruthy()
     expect(screen.queryByText('Liberado')).toBeNull()
-    // reversível: clicar marca como ESCALADO (entrou na escala no meio do dia)
-    const onToggleEscalado = vi.fn()
-    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onToggleEscalado={onToggleEscalado} onReorder={() => {}} />, { wrapper: wrap })
-    fireEvent.click(screen.getAllByLabelText('Marcar Ferias como escalado').at(-1)) // 2º render (com handler)
-    expect(onToggleEscalado).toHaveBeenCalledWith(expect.objectContaining({ anestesista: 'Ferias' }))
+    // e o círculo LIBERA (dono 20/08): antes marcava "escalado" e o toque nunca
+    // liberava — 16 toques seguidos na fila real sem sair do lugar
+    const onToggle = vi.fn()
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={onToggle} onReorder={() => {}} />, { wrapper: wrap })
+    fireEvent.click(screen.getAllByLabelText('Marcar Ferias liberado').at(-1)) // 2º render (com handler)
+    expect(onToggle).toHaveBeenCalledWith(expect.objectContaining({ anestesista: 'Ferias' }))
   })
   it('término manual (override.termino) vira o cronômetro do card', () => {
     const escala = {
@@ -1458,6 +1459,43 @@ describe('Liberações — NINGUÉM nasce Liberado (invariante, dono 20/08)', ()
     const ana = document.querySelector('[data-linha="ANA"]')
     expect(within(ana).getByText('Livre')).toBeTruthy()
     expect(within(ana).queryByText('Liberado')).toBeNull()
+  })
+
+  it('o círculo LIBERA quem está sem caso — inclusive o ÚLTIMO do rodapé (dono 20/08)', () => {
+    // caso real: THAYNA fecha o rodapé vespertino (plantão da manhã) e não tem
+    // cirurgia. O toque marcava "escalado", ela virava "próximo a ser liberado" e
+    // o toque seguinte desmarcava — 16 vezes no log de 20/08, sem nunca liberar.
+    const onToggle = vi.fn()
+    const escala = {
+      id: 'e1', hospital: 'unimed', liberacoes: {},
+      ordemLiberacao: { matutino: [], vespertino: ['ANA', 'BRUNO', 'THAYNA'] },
+      casos: casosBase.map((c) => ({ ...c, turno: 'vespertino' })),
+    }
+    render(<LiberacoesView escala={escala} hospital="unimed" hospitalLabel="Unimed" turno="vespertino"
+      canEdit onToggle={onToggle} onReorder={() => {}} />, { wrapper: wrap })
+    const thayna = document.querySelector('[data-linha="THAYNA"]')
+    // fecha o rodapé → leva o selo do plantão do contraturno
+    expect(within(thayna).getByText('Plantão da manhã')).toBeTruthy()
+    // fora da fila: não é o "próximo" de ninguém e não mostra o pill âmbar
+    expect(within(thayna).queryByText('Próximo a ser liberado')).toBeNull()
+    fireEvent.click(within(thayna).getByLabelText('Marcar Thayna liberado'))
+    expect(onToggle).toHaveBeenCalledWith(expect.objectContaining({ anestesista: 'Thayna' }))
+  })
+
+  it('quem tem o marcador do repasse AGUARDA a vez — liberar fora de ordem avisa', () => {
+    // trabalhou e ficou sem caso: está na fila, então a ordem vale para ele também
+    // (o guard antigo por `semEscala` deixava essa pessoa furar a fila)
+    const onToggle = vi.fn()
+    const escala = {
+      id: 'e1', hospital: 'unimed', ordemLiberacao: ['ANA', 'BRUNO', 'CARLA'],
+      liberacoes: { BRUNO: { escalado: true } },
+      casos: casosBase,
+    }
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit
+      onToggle={onToggle} onReorder={() => {}} />, { wrapper: wrap })
+    const bruno = document.querySelector('[data-linha="BRUNO"]')
+    fireEvent.click(within(bruno).getByLabelText('Marcar Bruno liberado'))
+    expect(onToggle).not.toHaveBeenCalled()
   })
 
   it('a publicação da tarde NÃO pinta ninguém de vermelho (caso real 20/08)', () => {

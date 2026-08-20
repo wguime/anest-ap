@@ -49,7 +49,7 @@ const ABA_OPCOES = [
 
 export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const { user } = useUser()
-  const { escalas, data, loading, p4Hospital, hoje, setData, prefetch, salvarEscalaTurno, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, reordenarAjuda, definirP4Hospital, setAnestesistaCasos, marcarTroca, executarSubstituicao, desfazerSubstituicao } = useEscalaCirurgica()
+  const { escalas, data, loading, p4Hospital, hoje, setData, prefetch, salvarEscalaTurno, toggleLiberacao, setLinhaOverride, adicionarAjuda, removerAjuda, reordenarAjuda, definirP4Hospital, setAnestesistaCasos, marcarTroca, executarSubstituicao, desfazerSubstituicao } = useEscalaCirurgica()
   // Roster p/ resolver os lados do par da troca declarada (uid/nome/apelido)
   const { resolver: resolverRoster, rosterByUid } = useRosterAnestesistas()
   // P1–P4 do dia (card Plantões/PegaPlantao) — alimentam a fase noturna das Liberações
@@ -449,7 +449,6 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                     return setAnestesistaCasos(dona, casoIds, { uid, apelido }, { rotulo, resolverUid: resolverRoster, userId: user?.uid || user?.id || null })
                   }}
                   onToggle={(anest) => toggleLiberacao(escalaLib, anest, userInfo, turno)}
-                  onToggleEscalado={(anest) => toggleEscalado(escalaLib, anest, userInfo, turno)}
                   onSetOverride={(anest, override) => setLinhaOverride(escalaLib, anest, override, userInfo, turno)}
                   onAddAjuda={(nome) => adicionarAjuda(escalaLib, turno, nome)}
                   onReordenarAjuda={(de, para) => reordenarAjuda(escalaLib, turno, de, para)}

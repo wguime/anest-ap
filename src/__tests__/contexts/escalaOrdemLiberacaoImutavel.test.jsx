@@ -109,4 +109,28 @@ describe('ordem_liberacao é IMUTÁVEL fora da republicação', () => {
       expect(call[2]?.liberadoEm).toBeUndefined()
     }
   })
+
+  it('liberar por cima do marcador do repasse LIBERA (não apaga o marcador em silêncio)', async () => {
+    // dono 20/08: `liberacoes` guarda duas coisas na mesma chave. O toggle lia
+    // qualquer entrada como "já liberado" e o toque DELETAVA o marcador
+    // anunciando "liberado" — a pessoa seguia na fila e o plantonista tocava de
+    // novo, e de novo (16 vezes no log de produção).
+    await montar()
+    await act(async () => {
+      await actions.setAnestesistaCasos(unimed(), ['c3'], { uid: 'uid-gio', apelido: 'GIOVANA' }, { rotulo: 'S4', userId: 'u1' })
+    })
+    expect(unimed().liberacoes['vespertino:uid-die']).toMatchObject({ escalado: true })
+    await act(async () => {
+      await actions.toggleLiberacao(unimed(), { chave: 'uid-die', anestesista: 'DIEGO' }, { userId: 'u1' }, 'vespertino')
+    })
+    const entrada = unimed().liberacoes['vespertino:uid-die']
+    expect(entrada?.liberadoEm).toBeTruthy()
+    expect(entrada?.escalado).toBeUndefined()
+    // e o toque SEGUINTE desfaz, como em qualquer linha
+    await act(async () => {
+      await actions.toggleLiberacao(unimed(), { chave: 'uid-die', anestesista: 'DIEGO' }, { userId: 'u1' }, 'vespertino')
+    })
+    expect(unimed().liberacoes['vespertino:uid-die']).toBeUndefined()
+    expect(svcMock.updateOrdemLiberacao).not.toHaveBeenCalled()
+  })
 })

@@ -62,7 +62,7 @@ const SELO_SEM_PROXIMO = new Set(['P1', 'P2'])
 // corredor, não comunicado (para comunicado o app tem o módulo Comunicados).
 const AVISO_MAX = 160
 
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, onGarantirEscala, onNavigate }) {
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onToggle, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, onGarantirEscala, onNavigate }) {
   const { toast } = useToast()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
   // do turno selecionado e o rodapé (ordem de liberação) DAQUELE turno.
@@ -1033,9 +1033,13 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // está sem caso mostra "Livre" e aguarda; o vermelho nasce SÓ do toque.
           const liberado = liberadoReal
           const estado = liberado ? 'liberado' : idx === idxProximo ? 'proximo' : 'escalado'
-          // Bloqueio da liberação fora de ordem: só o "próximo" sai. Desfazer
-          // (linha já liberada) e P1/P2 — que não estão na fila — nunca bloqueiam.
-          const bloqueioOrdem = (!liberadoReal && !semEscala && idxProximo >= 0 && idx !== idxProximo && naFila(linha))
+          // Bloqueio da liberação fora de ordem: só o "próximo" sai. Quem NÃO está
+          // na fila nunca bloqueia — desfazer (linha já liberada), P1/P2 da noite e
+          // quem está sem caso (não ocupa posição, então sair não fura ordem
+          // nenhuma). O `naFila` é a fonte única disso: o guard antigo por
+          // `semEscala` isentava também quem tinha o marcador do repasse, e essa
+          // pessoa TRABALHOU — ela aguarda a vez como todo mundo.
+          const bloqueioOrdem = (!liberadoReal && idxProximo >= 0 && idx !== idxProximo && naFila(linha))
             ? { faltam: linhasExibicao.slice(idx + 1).filter(naFila).length, proximo: proximoNome }
             : null
           // LIVRE = a pessoa não está em sala e AGUARDA o toque de quem libera, na
@@ -1108,16 +1112,18 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
               {/* setas de reordenar REMOVIDAS (pedido do dono 2026-07-27): a ordem
                   do rodapé é imutável no app — nem o plantonista mexe. */}
 
-              {/* marcar liberado: alvo 44px, círculo visual 28px. Linha sem caso
-                  nenhum não é liberável pelo círculo — ali o toque marca ESCALADO
-                  (quem entrou na escala no meio do dia); ela nasce e fica "Livre". */}
+              {/* marcar liberado: alvo 44px, círculo visual 28px. O círculo LIBERA
+                  em TODA linha, inclusive quem está sem caso (dono 20/08): ele era
+                  um toggle de "escalado" nessas linhas e o toque não liberava —
+                  o log de 20/08 mostra 16 toques seguidos na Thayna, último nome do
+                  rodapé, alternando escalado↔nada sem nunca liberar. Um controle,
+                  um significado; o marcador `escalado` ficou só como rastro
+                  AUTOMÁTICO do repasse (escaladosPreservadosNoRepasse). */}
               <button
                 type="button"
                 disabled={!canEdit}
-                onClick={() => (semEscala ? onToggleEscalado?.(linha) : toggle(linha, liberadoReal, bloqueioOrdem))}
-                aria-label={semEscala
-                  ? (forcadoEscalado ? `Voltar ${linha.anestesista} para não escalado` : `Marcar ${linha.anestesista} como escalado`)
-                  : liberadoReal ? `Desfazer liberação de ${linha.anestesista}` : `Marcar ${linha.anestesista} liberado`}
+                onClick={() => toggle(linha, liberadoReal, bloqueioOrdem)}
+                aria-label={liberadoReal ? `Desfazer liberação de ${linha.anestesista}` : `Marcar ${linha.anestesista} liberado`}
                 className={['flex h-11 w-9 shrink-0 items-center justify-center', canEdit ? 'cursor-pointer' : 'cursor-default'].join(' ')}
               >
                 <span className={[

@@ -343,7 +343,12 @@ export function EscalaCirurgicaProvider({ children }) {
       const atual = escala.liberacoes || {}
       const scoped = chaveTurno(turno, chave)
       const scopedLegada = legada && chaveTurno(turno, legada)
-      const jaLiberado = !!(atual[scoped] ?? (scopedLegada ? atual[scopedLegada] : undefined) ?? atual[chave] ?? (legada ? atual[legada] : undefined))
+      // ⚠️ o mapa `liberacoes` guarda DUAS coisas na mesma chave: a liberação
+      // ({liberadoEm}) e o marcador de escalado ({escalado:true}) que o repasse
+      // grava. Tratar o marcador como "já liberado" fazia o toque APAGAR o
+      // marcador e anunciar "liberado" — a pessoa continuava na fila (dono 20/08).
+      const entradaAtual = atual[scoped] ?? (scopedLegada ? atual[scopedLegada] : undefined) ?? atual[chave] ?? (legada ? atual[legada] : undefined)
+      const jaLiberado = !!entradaAtual && entradaAtual.escalado !== true
       const valor = jaLiberado ? null : { liberadoEm: new Date().toISOString(), por: userInfo.userId || null }
       const liberacoes = { ...atual }
       if (jaLiberado) { delete liberacoes[scoped]; if (scopedLegada) delete liberacoes[scopedLegada]; delete liberacoes[chave]; if (legada) delete liberacoes[legada] }
@@ -395,9 +400,11 @@ export function EscalaCirurgicaProvider({ children }) {
     }
   }, [toast])
 
-  // "Não escalado" é reversível: quem entra na escala no meio do dia é marcado
-  // como ESCALADO ({ escalado: true } no mapa de liberações — o card volta a verde);
-  // desmarcar remove a chave (volta ao vermelho automático).
+  // Marcador ESCALADO ({ escalado: true } no mapa de liberações): mantém a linha
+  // ATIVA na fila mesmo sem caso. SEM ENTRADA NA UI desde 20/08 — o círculo da fila
+  // voltou a significar só "liberar" (ver LiberacoesView) e quem grava o marcador é
+  // o REPASSE, direto (escaladosPreservadosNoRepasse). Fica aqui como escritor
+  // canônico do marcador; se voltar a ter botão, que não seja o mesmo do liberar.
   const toggleEscalado = useCallback(async (escala, linhaArg, userInfo = {}, turno) => {
     const linha = linhaDe(linhaArg)
     const chave = linha.chave || linha.anestesista
