@@ -801,16 +801,14 @@ describe('F1.5 — status da cirurgia e adicionar caso', () => {
 // F1.9 — cronômetro de término da sala (helpers puros)
 // ════════════════════════════════════════════════════════════════════════════
 describe('Liberações — não escalado e cronômetro manual (F1.9b)', () => {
-  it('nome do rodapé SEM casos no dia = Livre aguardando (liberação nunca é automática)', () => {
+  it('nome do rodapé SEM casos desde a publicação = nasce Liberado (config mantida, dono 19/08)', () => {
     const escala = {
       id: 'e1', hospital: 'unimed', ordemLiberacao: ['LEONARDO', 'FERIAS'], liberacoes: {},
       casos: [{ sala: 'S1', ordem: 0, anestesista: 'LEONARDO', cirurgiao: 'Liana Winkelmann' }],
     }
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
-    // ninguém liberou → a linha mostra "Livre" e AGUARDA o toque de quem libera
-    // (dono 19/08: "não quero decisão de liberação de forma automática")
-    expect(screen.getByText('Livre')).toBeTruthy()
-    expect(screen.queryByText('Liberado')).toBeNull()
+    // nunca escalado → sai da conta já como liberado, na própria posição
+    expect(screen.getByText('Liberado')).toBeTruthy()
     // reversível: clicar marca como ESCALADO (entrou na escala no meio do dia)
     const onToggleEscalado = vi.fn()
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onToggleEscalado={onToggleEscalado} onReorder={() => {}} />, { wrapper: wrap })
@@ -1367,17 +1365,18 @@ describe('Liberações — acrescentado fora do rodapé entra na fila como Ajuda
 })
 
 // ════════════════════════════════════════════════════════════════════════════
-// LIBERAÇÃO NUNCA É AUTOMÁTICA (dono 19/08): ficar sem caso, terminar os casos
-// ou situação parecida mostra "Livre" — SEMPRE, mesmo com colegas abaixo já
-// liberados. "Liberado" nasce só do toque de quem libera, na ordem.
+// TRÊS ESTADOS DE QUEM ESTÁ SEM CASO (dono 19/08, regra fechada):
+//   nunca escalado desde a publicação → nasce Liberado (config mantida);
+//   ficou sem caso num REPASSE (marcador escalado:true) → segue ATIVO;
+//   terminou todos → "Livre". liberadoEm só nasce do toggle manual.
 // ════════════════════════════════════════════════════════════════════════════
-describe('Liberações — ninguém aparece Liberado sem toque humano', () => {
+describe('Liberações — nasce Liberado é SÓ de quem nunca foi escalado', () => {
   const casosBase = [
     { sala: 'S1', ordem: 0, anestesista: 'ANA', cirurgiao: 'Cir A' },
     { sala: 'S3', ordem: 0, anestesista: 'CARLA', cirurgiao: 'Cir C' },
   ]
 
-  it('sem caso no MEIO da fila: mostra Livre, nunca Liberado — e não rouba o próximo', () => {
+  it('nunca escalado nasce Liberado na própria posição — e não rouba o próximo', () => {
     const escala = {
       id: 'e1', hospital: 'unimed', ordemLiberacao: ['ANA', 'BRUNO', 'CARLA'], liberacoes: {},
       casos: casosBase,
@@ -1385,26 +1384,23 @@ describe('Liberações — ninguém aparece Liberado sem toque humano', () => {
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit
       onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
     const bruno = document.querySelector('[data-linha="BRUNO"]')
-    expect(within(bruno).getByText('Livre')).toBeTruthy()
-    expect(within(bruno).queryByText('Liberado')).toBeNull()
+    expect(within(bruno).getByText('Liberado')).toBeTruthy()
+    // fora da fila: o próximo a sair segue sendo quem está embaixo e ATIVO
     const proximo = screen.getByText('Próximo a ser liberado').closest('[data-linha]')
     expect(proximo.getAttribute('data-linha')).toBe('CARLA')
   })
 
-  it('MESMO com todos abaixo já liberados, segue Livre — a decisão é humana', () => {
+  it('quem ficou sem caso num REPASSE (marcador escalado) segue ATIVO — nunca Liberado sozinho', () => {
+    // o marcador é o que o próprio repasse grava (escaladosPreservadosNoRepasse)
     const escala = {
       id: 'e1', hospital: 'unimed', ordemLiberacao: ['ANA', 'BRUNO', 'CARLA'],
-      liberacoes: { CARLA: { liberadoEm: 'x' } },
+      liberacoes: { BRUNO: { escalado: true } },
       casos: casosBase,
     }
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit
       onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
     const bruno = document.querySelector('[data-linha="BRUNO"]')
-    expect(within(bruno).getByText('Livre')).toBeTruthy()
     expect(within(bruno).queryByText('Liberado')).toBeNull()
-    // Liberado na tela: SÓ a CARLA, que alguém liberou de fato
-    const carla = document.querySelector('[data-linha="CARLA"]')
-    expect(within(carla).getByText('Liberado')).toBeTruthy()
   })
 
   it('terminou TODOS os casos: Livre aguardando na posição, nunca Liberado', () => {

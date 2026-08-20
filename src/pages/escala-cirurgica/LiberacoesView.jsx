@@ -1017,24 +1017,24 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           const marcacao = marcaDe(linha)
           const forcadoEscalado = marcacao?.escalado === true // entrou na escala no meio do dia
           const liberadoReal = !!marcacao && !forcadoEscalado
-          // LIBERAÇÃO NUNCA É AUTOMÁTICA (dono 19/08: "usuário no meio da escala
-          // com marcação de liberado — isso não pode acontecer NUNCA; mesmo com
-          // colegas abaixo liberados, SEMPRE colocar como Livre"): o visual de
-          // liberado nasce SÓ do toque de quem libera. Quem está sem caso e sem
-          // marcação — ficou sem caso, terminou, nunca teve — mostra "Livre"
-          // (aguardando) na própria posição, o dia inteiro se preciso; o naFila
-          // continua a pulando, então ela não trava o "próximo" de ninguém.
-          const liberado = liberadoReal
+          // TRÊS ESTADOS, fechados pelo dono em 19/08 (mensagens 2–5):
+          //   1. NUNCA ESCALADO desde a publicação (nome do rodapé sem caso e sem
+          //      marcação) → nasce LIBERADO na própria posição — "mantenha a
+          //      configuração de sair na ordem de liberação como liberado";
+          //   2. TRABALHOU e ficou sem caso num REPASSE → o próprio repasse grava
+          //      o marcador escalado:true e a linha segue ATIVA aguardando a vez
+          //      (é o que impede o "liberado sozinho no meio da fila" de voltar);
+          //   3. TERMINOU todos os casos → "Livre", aguardando o toque de quem
+          //      libera. `liberadoEm` continua nascendo SÓ do toggle manual.
+          const liberado = liberadoReal || (semEscala && !forcadoEscalado)
           const estado = liberado ? 'liberado' : idx === idxProximo ? 'proximo' : 'escalado'
           // Bloqueio da liberação fora de ordem: só o "próximo" sai. Desfazer
           // (linha já liberada) e P1/P2 — que não estão na fila — nunca bloqueiam.
           const bloqueioOrdem = (!liberadoReal && !semEscala && idxProximo >= 0 && idx !== idxProximo && naFila(linha))
             ? { faltam: linhasExibicao.slice(idx + 1).filter(naFila).length, proximo: proximoNome }
             : null
-          // LIVRE: terminou todos os casos do turno OU está sem caso e sem
-          // marcação — nos dois a pessoa AGUARDA o plantonista liberar (dono
-          // 19/08: nunca decidir liberação sozinho)
-          const livre = !noturno && !liberado && (estaLivre(linha) || (semEscala && !forcadoEscalado))
+          // LIVRE: terminou todos os casos do turno (aguardando o plantonista liberar)
+          const livre = !noturno && !liberado && estaLivre(linha)
           const ov = overrideDe(linha)
           // linha RENOVADA (voltou de liberação): infos da manhã não valem mais —
           // derivado suprimido; só o que for preenchido manualmente aparece.
@@ -1223,9 +1223,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     fica com a LARGURA TODA — badge ao lado sem truncar o nome) */}
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    {/* card vermelho + "Liberado" = SÓ liberação FEITA (dono 19/08:
-                        liberação nunca é automática — sem caso e sem marcação a
-                        linha mostra "Livre" e aguarda o toque de quem libera) */}
+                    {/* card vermelho + "Liberado" = liberação FEITA ou quem NUNCA
+                        foi escalado desde a publicação (config mantida, dono 19/08).
+                        Quem trabalhou nunca chega aqui sozinho: repasse grava o
+                        marcador escalado e terminar tudo vira "Livre". */}
                     {liberado && (
                       <div className="mt-1">
                         <Badge variant="destructive" badgeStyle="subtle" className="dark:bg-destructive/25">Liberado</Badge>
