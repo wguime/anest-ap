@@ -660,6 +660,14 @@ não gasta vaga — marcar não é reservar. Tinta verde só com cirurgia EM AND
   entendia "posto ocupado → o excedente entra como Extra". ⚠️ os testes do formulário
   achavam a sala por `getAllByRole('combobox')[0]`; agora é `escolherSala()` pelo
   placeholder — índice de combobox quebra a cada campo novo.
+- **CONVÊNIO editável no caso publicado (dono 20/08):** "esse convênio foi digitado
+  errado e não pode ser alterado" — a apendicectomia das 18h entrou como "Sua" (erro de
+  "SUS"). Era o último dado da cirurgia sem conserto depois de publicada, e não é
+  cosmético: `familiaConvenio` decide o selo, o agrupamento e a COBRANÇA particular.
+  Linha no cartão **A cirurgia** do `CasoDetalheSheet` (só p/ quem edita) → `EditorSheet`
+  com a MESMA lista do formulário + digitação. ⚠️ o aviso da folha é regra de negócio, não
+  decoração: trocar PARA Particular cria a cobrança pelo trigger, mas SAIR de Particular
+  não apaga a cobrança já criada — ela precisa de cancelamento em Cirurgias Particulares.
 - **Rótulos de sala (dono 20/08):** "Sala 7" → **"Sala 7 - CO"** é rótulo ÚNICO
   (`normalizarSalaHro`, idempotente), e a normalização passou a valer para sala digitada à
   mão no `AddCasoSheet` e no "Mudar" do detalhe, não só na importação. `MATERNO` entrou na

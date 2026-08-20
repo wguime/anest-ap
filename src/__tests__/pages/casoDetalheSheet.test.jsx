@@ -316,3 +316,43 @@ describe('Gravidade da urgência (dono 18/08)', () => {
     expect(screen.queryAllByText(/entra no fim da fila/i)).toHaveLength(1) // só o 1º render
   })
 })
+
+/**
+ * CONVÊNIO EDITÁVEL (dono 20/08): "esse convênio foi digitado errado e não pode
+ * ser alterado" — a apendicectomia das 18h entrou como "Sua" (erro de "SUS") e
+ * não havia conserto depois de publicada. Não é cosmético: `familiaConvenio`
+ * decide o selo, o agrupamento e a COBRANÇA particular.
+ */
+describe('Convênio da cirurgia', () => {
+  it('a linha mostra o convênio atual e o editor grava a escolha da lista', async () => {
+    montar({}, { ...escala, casos: [{ ...caso, convenio: 'Sua' }] })
+    // aparece duas vezes de propósito: o selo do cabeçalho (leitura rápida) e a
+    // linha do cartão "A cirurgia" (onde se corrige)
+    expect(screen.getAllByText('Sua')).toHaveLength(2)
+
+    fireEvent.click(screen.getByRole('button', { name: /Trocar convênio/i }))
+    expect(screen.getByText('Convênio da cirurgia')).toBeTruthy()
+    // o aviso da cobrança tem de estar à vista de quem troca
+    expect(screen.getByText(/cancele em Cirurgias Particulares/i)).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'SUS' }))
+    await waitFor(() => expect(atualizarCaso).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'e1' }), caso.id, { convenio: 'SUS' },
+    ))
+  })
+
+  it('convênio fora da lista entra digitado', async () => {
+    montar({}, { ...escala, casos: [{ ...caso, convenio: 'SUS' }] })
+    fireEvent.click(screen.getByRole('button', { name: /Trocar convênio/i }))
+    fireEvent.change(screen.getByLabelText('Outro convênio'), { target: { value: 'Sindicato Rural' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    await waitFor(() => expect(atualizarCaso).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'e1' }), caso.id, { convenio: 'Sindicato Rural' },
+    ))
+  })
+
+  it('quem não edita a escala não vê a linha do convênio', () => {
+    montar({ podeEditar: false }, { ...escala, casos: [{ ...caso, convenio: 'Sua' }] })
+    expect(screen.queryByRole('button', { name: /Trocar convênio/i })).toBeNull()
+  })
+})

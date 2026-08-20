@@ -18,7 +18,7 @@
  * iguais, seis botões de status e três linhas de dados, tudo no mesmo peso.
  */
 import { useMemo, useState } from 'react'
-import { Check, GraduationCap, MapPin, Stethoscope, Timer, UserCog } from 'lucide-react'
+import { Check, CreditCard, GraduationCap, MapPin, Stethoscope, Timer, UserCog } from 'lucide-react'
 import { Badge, Button, Input, Sheet, SheetContent, SheetHeader, SheetTitle } from '@/design-system'
 import { HOSPITAL_LABEL, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
@@ -27,7 +27,7 @@ import useRosterResidentes from '@/hooks/useRosterResidentes'
 import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
 import PainelTempo, { formatFaltante } from './PainelTempo'
 import useAgoraMinuto from './useAgoraMinuto'
-import { espelhoTempoTotal, LOCAIS_BASE, nomeAnestesistaExibicao, normalizarSalaHro, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso } from './utils'
+import { conveniosDaEscala, espelhoTempoTotal, LOCAIS_BASE, nomeAnestesistaExibicao, normalizarSalaHro, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso } from './utils'
 import ChipsEscolha, { GRAVIDADE_CHIPS, TIPOS_CIRURGIA } from './ChipsEscolha'
 
 const SALA_OUTRO = '__outro__'
@@ -72,6 +72,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
   const [rascSala, setRascSala] = useState('')
   const [salaOutro, setSalaOutro] = useState(false)
   const [rascCirurgiao, setRascCirurgiao] = useState('')
+  const [rascConvenio, setRascConvenio] = useState('')
   const [horaExata, setHoraExata] = useState('') // hora exata de término da cirurgia
 
   // caso VIVO: busca a versão atual no estado (id); cai no prop p/ demo/sem id
@@ -88,6 +89,9 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
     return unicos([...doDia, ...base])
   }, [escala])
 
+  // MESMA lista do "Adicionar caso": canônicos + os que a escala do dia trouxe.
+  const opcoesConvenio = conveniosDaEscala(escala?.casos)
+
   if (!vivo) return null
 
   // Um gate só para todos os ajustes do caso: quem edita a escala (canEdit), fora
@@ -103,6 +107,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
       const atual = String(vivo.cirurgiao || '')
       setRascCirurgiao(atual)
     }
+    if (qual === 'convenio') setRascConvenio('')
     setEditor((e) => (e === qual ? null : qual))
   }
 
@@ -261,6 +266,52 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                 {[vivo.pacienteIniciais, idadeCurta(vivo.idade), vivo.tempoEstimado && `previsto ${vivo.tempoEstimado}`]
                   .filter(Boolean).join(' · ')}
               </p>
+            )}
+
+            {/* CONVÊNIO editável (dono 20/08: "esse convênio foi digitado errado e
+                não pode ser alterado" — o caso da tarde entrou como "Sua"). Era o
+                último dado da cirurgia sem conserto depois de publicada, e ele não
+                é cosmético: `familiaConvenio` decide a cor do selo, o agrupamento e
+                a COBRANÇA particular. O badge do cabeçalho segue sendo a leitura
+                rápida; aqui é onde se corrige. */}
+            {podeEditarCaso && (
+              <div className="mt-1">
+                <LinhaDado
+                  icone={<CreditCard className="h-3.5 w-3.5" />}
+                  rotulo="Convênio"
+                  valor={vivo.convenio || '—'}
+                  acao={{ label: 'Trocar', onClick: () => abrirEditor('convenio') }}
+                />
+              </div>
+            )}
+            {editor === 'convenio' && (
+              <EditorSheet
+                titulo="Convênio da cirurgia"
+                nota="Particular gera a cobrança automática. Saindo de Particular, a cobrança já criada NÃO some sozinha — cancele em Cirurgias Particulares."
+                onClose={() => setEditor(null)}
+              >
+                <ListaEscolha
+                  opcoes={opcoesConvenio.map((o) => ({ value: o, label: o }))}
+                  valor={String(vivo.convenio || '')}
+                  onEscolher={(v) => salvarTexto('convenio', v)}
+                />
+                <div className="border-t border-border pt-2">
+                  <Input
+                    aria-label="Outro convênio"
+                    value={rascConvenio}
+                    onChange={(e) => setRascConvenio(e.target.value)}
+                    placeholder="Outro convênio"
+                    onKeyDown={(e) => { if (e.key === 'Enter') salvarTexto('convenio', rascConvenio) }}
+                  />
+                  <div className="flex gap-2 pt-2">
+                    <Button size="sm" variant="ghost" className="flex-1" onClick={() => setEditor(null)}>Cancelar</Button>
+                    <Button size="sm" className="flex-1" disabled={!rascConvenio.trim()}
+                      onClick={() => salvarTexto('convenio', rascConvenio)}>
+                      Salvar
+                    </Button>
+                  </div>
+                </div>
+              </EditorSheet>
             )}
           </article>
 
