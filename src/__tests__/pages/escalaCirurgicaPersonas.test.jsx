@@ -231,11 +231,58 @@ describe('Plantonista — interações na aba Liberações', () => {
     expect(await screen.findByText('Libere Diego primeiro')).toBeTruthy()
     expect(await screen.findByText(/Falta 1 anestesista antes de Leonardo na ordem de liberação/)).toBeTruthy()
   })
-  it('desfazer liberação NUNCA é bloqueado pela ordem', () => {
+  it('convocar quem está ACIMA da fila ativa não bloqueia (não fura ordem de ninguém)', () => {
     const onToggle = vi.fn()
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={onToggle} />, { wrapper: wrap })
     fireEvent.click(screen.getByLabelText('Desfazer liberação de Marilio'))
     expect(onToggle).toHaveBeenCalledWith(expect.objectContaining({ anestesista: 'Marilio' }))
+  })
+
+  // CONVOCAR TAMBÉM SEGUE A ORDEM (dono 20/08): "assim como não é possível liberar
+  // colegas fora da ordem, quero que não seja possível convocar outro colega (em
+  // vermelho) fora da ordem". A fila sai de baixo p/ cima, então volta de cima p/
+  // baixo: quem está mais perto de quem ainda opera é o primeiro a ser chamado.
+  const escalaConvocacao = {
+    id: 'e2', hospital: 'unimed', ordemLiberacao: ['ANA', 'BRUNO', 'CARLA', 'DANIEL'],
+    liberacoes: { Carla: { liberadoEm: 'x' }, Daniel: { liberadoEm: 'x' } },
+    casos: [
+      { sala: 'S1', ordem: 0, anestesista: 'ANA', cirurgiao: 'Cir A' },
+      { sala: 'S2', ordem: 0, anestesista: 'BRUNO', cirurgiao: 'Cir B' },
+      { sala: 'S3', ordem: 0, anestesista: 'CARLA', cirurgiao: 'Cir C' },
+      { sala: 'S4', ordem: 0, anestesista: 'DANIEL', cirurgiao: 'Cir D' },
+    ],
+  }
+  it('convocar FORA DA ORDEM não desfaz — Daniel saiu primeiro, volta por último', () => {
+    const onToggle = vi.fn()
+    render(<LiberacoesView escala={escalaConvocacao} hospitalLabel="Unimed" canEdit onToggle={onToggle} />, { wrapper: wrap })
+    fireEvent.click(screen.getByLabelText('Desfazer liberação de Daniel'))
+    expect(onToggle).not.toHaveBeenCalled()
+  })
+  it('convocar o PRÓXIMO (liberado mais perto de quem está em sala) desfaz', () => {
+    const onToggle = vi.fn()
+    render(<LiberacoesView escala={escalaConvocacao} hospitalLabel="Unimed" canEdit onToggle={onToggle} />, { wrapper: wrap })
+    fireEvent.click(screen.getByLabelText('Desfazer liberação de Carla'))
+    expect(onToggle).toHaveBeenCalledWith(expect.objectContaining({ anestesista: 'Carla' }))
+  })
+  it('o aviso da convocação diz quem volta antes', async () => {
+    render(<LiberacoesView escala={escalaConvocacao} hospitalLabel="Unimed" canEdit onToggle={() => {}} />, { wrapper: wrap })
+    fireEvent.click(screen.getByLabelText('Desfazer liberação de Daniel'))
+    expect(await screen.findByText('Convoque Carla primeiro')).toBeTruthy()
+    expect(await screen.findByText(/Carla volta antes de Daniel/)).toBeTruthy()
+  })
+  it('liberado SEM caso nunca bloqueia nem é bloqueado (nunca esteve na fila)', () => {
+    const onToggle = vi.fn()
+    const semCaso = {
+      id: 'e3', hospital: 'unimed', ordemLiberacao: ['ANA', 'BRUNO', 'CARLA'],
+      liberacoes: { Bruno: { liberadoEm: 'x' }, Carla: { liberadoEm: 'x' } },
+      casos: [
+        { sala: 'S1', ordem: 0, anestesista: 'ANA', cirurgiao: 'Cir A' },
+        { sala: 'S3', ordem: 0, anestesista: 'CARLA', cirurgiao: 'Cir C' },
+      ],
+    }
+    render(<LiberacoesView escala={semCaso} hospitalLabel="Unimed" canEdit onToggle={onToggle} />, { wrapper: wrap })
+    fireEvent.click(screen.getByLabelText('Desfazer liberação de Bruno'))
+    expect(onToggle).toHaveBeenCalledWith(expect.objectContaining({ anestesista: 'Bruno' }))
   })
   it('NINGUÉM reordena a fila — nem o plantonista (dono 27/07)', () => {
     // meuAlias casa com o 1º do rodapé: era exatamente quem tinha as setas antes

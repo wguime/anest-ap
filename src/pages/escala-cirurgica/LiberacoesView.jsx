@@ -679,8 +679,15 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
         // 12s: o aviso é a única resposta ao toque — sumir em 5s no meio do
         // centro cirúrgico fazia parecer que o app simplesmente não reagiu.
         duration: 12000,
-        title: `Libere ${bloqueio.proximo} primeiro`,
-        description: `${bloqueio.faltam === 1 ? 'Falta 1 anestesista' : `Faltam ${bloqueio.faltam} anestesistas`} antes de ${linha.anestesista} na ordem de liberação.`,
+        ...(bloqueio.modo === 'convocar'
+          ? {
+              title: `Convoque ${bloqueio.proximo} primeiro`,
+              description: `A convocação desfaz a fila na ordem inversa: ${bloqueio.proximo} volta antes de ${linha.anestesista}.`,
+            }
+          : {
+              title: `Libere ${bloqueio.proximo} primeiro`,
+              description: `${bloqueio.faltam === 1 ? 'Falta 1 anestesista' : `Faltam ${bloqueio.faltam} anestesistas`} antes de ${linha.anestesista} na ordem de liberação.`,
+            }),
       })
       return
     }
@@ -1002,6 +1009,21 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             if (naFila(linhasExibicao[i])) { idxProximo = i; break }
           }
           const proximoNome = idxProximo >= 0 ? linhasExibicao[idxProximo].anestesista : null
+          // CONVOCAR TAMBÉM SEGUE A ORDEM (dono 20/08): desfazer a liberação é
+          // devolver a pessoa à fila, e devolver a errada fura a ordem pelo outro
+          // lado — a convocada vira o "próximo" e passa na frente de quem, na
+          // ordem, saiu depois dela. A fila sai de baixo p/ cima, então volta de
+          // cima p/ baixo: o próximo a CONVOCAR é o liberado mais próximo de quem
+          // ainda está em sala. Quem nunca esteve na fila (sem caso) fica fora da
+          // conta e nunca é bloqueado — o vermelho ali é só registro de que a
+          // pessoa não está em jogo, não uma posição cedida.
+          const voltaPraFila = (l) => !l.noturno && !naoEscalado(l)
+          const jaLiberada = (l) => { const m = marcaDe(l); return !!m && m.escalado !== true }
+          let idxConvocar = -1
+          for (let i = idxProximo + 1; i < linhasExibicao.length; i++) {
+            if (jaLiberada(linhasExibicao[i]) && voltaPraFila(linhasExibicao[i])) { idxConvocar = i; break }
+          }
+          const nomeConvocar = idxConvocar >= 0 ? linhasExibicao[idxConvocar].anestesista : null
           let numeroOrdem = 0
           return linhasExibicao.map((linha, idx) => {
           // PLANTÃO NOTURNO (pedido do dono 24/07): ao virar P1–P4 a pessoa SAI da
@@ -1033,15 +1055,19 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // está sem caso mostra "Livre" e aguarda; o vermelho nasce SÓ do toque.
           const liberado = liberadoReal
           const estado = liberado ? 'liberado' : idx === idxProximo ? 'proximo' : 'escalado'
-          // Bloqueio da liberação fora de ordem: só o "próximo" sai. Quem NÃO está
-          // na fila nunca bloqueia — desfazer (linha já liberada), P1/P2 da noite e
-          // quem está sem caso (não ocupa posição, então sair não fura ordem
-          // nenhuma). O `naFila` é a fonte única disso: o guard antigo por
-          // `semEscala` isentava também quem tinha o marcador do repasse, e essa
-          // pessoa TRABALHOU — ela aguarda a vez como todo mundo.
-          const bloqueioOrdem = (!liberadoReal && idxProximo >= 0 && idx !== idxProximo && naFila(linha))
-            ? { faltam: linhasExibicao.slice(idx + 1).filter(naFila).length, proximo: proximoNome }
-            : null
+          // Bloqueio nos DOIS sentidos: só o "próximo" sai e só o "próximo a
+          // convocar" volta. Quem NÃO está na fila nunca bloqueia — P1/P2 da noite
+          // e quem está sem caso (não ocupa posição, então nem sair nem voltar fura
+          // ordem nenhuma). Do lado de liberar, o `naFila` é a fonte única: o guard
+          // antigo por `semEscala` isentava também quem tinha o marcador do
+          // repasse, e essa pessoa TRABALHOU — aguarda a vez como todo mundo.
+          const bloqueioOrdem = liberadoReal
+            ? ((idxConvocar >= 0 && idx > idxProximo && idx !== idxConvocar && voltaPraFila(linha))
+                ? { modo: 'convocar', proximo: nomeConvocar }
+                : null)
+            : ((idxProximo >= 0 && idx !== idxProximo && naFila(linha))
+                ? { modo: 'liberar', faltam: linhasExibicao.slice(idx + 1).filter(naFila).length, proximo: proximoNome }
+                : null)
           // LIVRE = a pessoa não está em sala e AGUARDA o toque de quem libera, na
           // própria posição, o dia inteiro se preciso. Dois caminhos chegam aqui e
           // são o mesmo fato para quem lê a fila: terminou todos os casos do turno,
