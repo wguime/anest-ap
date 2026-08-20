@@ -1017,15 +1017,24 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           const marcacao = marcaDe(linha)
           const forcadoEscalado = marcacao?.escalado === true // entrou na escala no meio do dia
           const liberadoReal = !!marcacao && !forcadoEscalado
-          const liberado = liberadoReal || (semEscala && !forcadoEscalado)
+          // LIBERAÇÃO NUNCA É AUTOMÁTICA (dono 19/08: "usuário no meio da escala
+          // com marcação de liberado — isso não pode acontecer NUNCA; mesmo com
+          // colegas abaixo liberados, SEMPRE colocar como Livre"): o visual de
+          // liberado nasce SÓ do toque de quem libera. Quem está sem caso e sem
+          // marcação — ficou sem caso, terminou, nunca teve — mostra "Livre"
+          // (aguardando) na própria posição, o dia inteiro se preciso; o naFila
+          // continua a pulando, então ela não trava o "próximo" de ninguém.
+          const liberado = liberadoReal
           const estado = liberado ? 'liberado' : idx === idxProximo ? 'proximo' : 'escalado'
           // Bloqueio da liberação fora de ordem: só o "próximo" sai. Desfazer
           // (linha já liberada) e P1/P2 — que não estão na fila — nunca bloqueiam.
           const bloqueioOrdem = (!liberadoReal && !semEscala && idxProximo >= 0 && idx !== idxProximo && naFila(linha))
             ? { faltam: linhasExibicao.slice(idx + 1).filter(naFila).length, proximo: proximoNome }
             : null
-          // LIVRE: terminou todos os casos do turno (aguardando o plantonista liberar)
-          const livre = !noturno && !liberado && estaLivre(linha)
+          // LIVRE: terminou todos os casos do turno OU está sem caso e sem
+          // marcação — nos dois a pessoa AGUARDA o plantonista liberar (dono
+          // 19/08: nunca decidir liberação sozinho)
+          const livre = !noturno && !liberado && (estaLivre(linha) || (semEscala && !forcadoEscalado))
           const ov = overrideDe(linha)
           // linha RENOVADA (voltou de liberação): infos da manhã não valem mais —
           // derivado suprimido; só o que for preenchido manualmente aparece.
@@ -1214,15 +1223,12 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     fica com a LARGURA TODA — badge ao lado sem truncar o nome) */}
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    {/* card vermelho, badge sempre em linha própria — mas o RÓTULO
-                        "Liberado" é só de liberação FEITA (dono 19/08: "NUNCA libere
-                        usuário em ordem incorreta" — o automático dizia Liberado para
-                        quem ninguém liberou e a equipe lia como liberação fora de
-                        ordem). Sem caso e sem marcação = "Não escalado", que é o que
-                        de fato se sabe. */}
+                    {/* card vermelho + "Liberado" = SÓ liberação FEITA (dono 19/08:
+                        liberação nunca é automática — sem caso e sem marcação a
+                        linha mostra "Livre" e aguarda o toque de quem libera) */}
                     {liberado && (
                       <div className="mt-1">
-                        <Badge variant="destructive" badgeStyle="subtle" className="dark:bg-destructive/25">{liberadoReal ? 'Liberado' : 'Não escalado'}</Badge>
+                        <Badge variant="destructive" badgeStyle="subtle" className="dark:bg-destructive/25">Liberado</Badge>
                       </div>
                     )}
                     {/* papel no plantão noturno. Quem é plantonista já tem o BADGE
