@@ -3,6 +3,8 @@
  *
  * - Stat boxes (dias marcados, sócios com férias, alertas, dias no teto)
  * - Tabela coletiva (sócio, entrada, cota, dias, saldo, semanas inteiras)
+ * A divisão por semestre saiu daqui (dono 20/08): virou relatório próprio,
+ * `feriasSemestreReport`, agrupado por situação em vez de alfabético.
  * - Alertas de regra (REGRAS ESCALAS.pdf)
  * - Seção individual opcional (quando exportado da aba Individual)
  *

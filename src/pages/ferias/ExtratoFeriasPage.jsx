@@ -39,6 +39,7 @@ import {
   getDestinatariosFerias, diffViolacoesNovas, buildFeriasNotificationPayload,
 } from '@/utils/feriasNotificacoes'
 import { normalizarRegistrosFerias, construirExtrato } from '@/lib/extratoFerias'
+import { resumoSemestres, linhaAnaliseSemestre } from '@/lib/feriasSemestre'
 import { aplicarMovimentacoes, vistasDasMovimentacoes } from '@/lib/feriasMovimentacoes'
 import { hojeLocalISO } from '@/lib/feriasMarcacao'
 import { fetchMovimentacoes } from '@/services/supabaseFeriasMovimentacoesService'
@@ -318,8 +319,107 @@ function TabelaColetiva({ extrato, onSelectPessoa }) {
   )
 }
 
+/**
+ * Um semestre do extrato individual: cabeçalho com o que a regra pede, a
+ * barra até esse número e os períodos daquela metade do ano.
+ *
+ * O piso do 1º semestre e o TETO do 2º são a mesma metade da cota vista dos
+ * dois lados (dono 19/08) — por isso a barra é sempre "total ÷ exigência",
+ * mudando só a cor e a frase de status.
+ */
+function BlocoSemestre({ lado, agendados, usufruidos, linhaPeriodo, semestreLivre }) {
+  const ehPrimeiro = lado.chave === 's1'
+  const alvo = ehPrimeiro ? lado.minimo : lado.maximo
+  const variante = semestreLivre
+    ? 'default'
+    : ehPrimeiro
+      ? (lado.ok ? 'success' : 'warning')
+      : (lado.excede > 0 ? 'error' : 'success')
+
+  const status = (() => {
+    if (semestreLivre) return null
+    if (ehPrimeiro) {
+      if (!lado.ok) {
+        return {
+          tom: 'text-warning',
+          texto: `faltam ${lado.falta} dia${lado.falta !== 1 ? 's' : ''} para a metade obrigatória — o que não for usufruído no semestre é perdido`,
+        }
+      }
+      return {
+        tom: 'text-muted-foreground',
+        texto: lado.excedente > 0
+          ? `metade cumprida · ${lado.excedente} dia${lado.excedente !== 1 ? 's' : ''} além dela (permitido)`
+          : 'metade cumprida',
+      }
+    }
+    if (lado.excede > 0) {
+      return {
+        tom: 'text-destructive',
+        texto: `${lado.excede} dia${lado.excede !== 1 ? 's' : ''} acima do máximo do semestre`,
+      }
+    }
+    return {
+      tom: 'text-muted-foreground',
+      texto: lado.restante > 0
+        ? `cabem mais ${lado.restante} dia${lado.restante !== 1 ? 's' : ''} neste semestre`
+        : 'no limite do semestre',
+    }
+  })()
+
+  return (
+    <section className="pt-3 first:pt-0">
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
+          {lado.label}
+          {!semestreLivre && (
+            <span className="ml-1.5 font-medium normal-case tracking-normal text-muted-foreground">
+              {ehPrimeiro ? `mín. ${alvo}` : `máx. ${alvo}`}
+            </span>
+          )}
+        </p>
+        <p className="shrink-0 text-sm font-bold tabular-nums text-foreground">
+          {lado.total}
+          <span className="text-[11px] font-medium text-muted-foreground">
+            {semestreLivre ? ` dia${lado.total !== 1 ? 's' : ''}` : ` de ${alvo} dias`}
+          </span>
+        </p>
+      </div>
+      {!semestreLivre && (
+        <Progress
+          value={lado.total}
+          max={Math.max(1, alvo)}
+          size="sm"
+          variant={variante}
+          animated={false}
+          className="mt-1.5"
+        />
+      )}
+      {status && <p className={`mt-1 text-[11px] leading-snug ${status.tom}`}>{status.texto}</p>}
+
+      {agendados.length === 0 && usufruidos.length === 0 ? (
+        <p className="mt-1.5 text-[13px] text-muted-foreground">Nenhum dia marcado neste semestre.</p>
+      ) : (
+        <>
+          {agendados.length > 0 && (
+            <>
+              <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Agendados</p>
+              <ul>{agendados.map(linhaPeriodo)}</ul>
+            </>
+          )}
+          {usufruidos.length > 0 && (
+            <>
+              <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Usufruídos</p>
+              <ul className="opacity-70">{usufruidos.map(linhaPeriodo)}</ul>
+            </>
+          )}
+        </>
+      )}
+    </section>
+  )
+}
+
 // ─── Individual: saldo-herói + períodos agrupados ───────────────────────────
-function ExtratoIndividual({ pessoa, violacoes, hojeISO, ano, penalidades = [] }) {
+function ExtratoIndividual({ pessoa, violacoes, hojeISO, ano, feriados, penalidades = [] }) {
   if (!pessoa) {
     return (
       <EmptyState
@@ -333,8 +433,11 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO, ano, penalidades = [] }
 
   const violacoesDaPessoa = violacoes.filter((v) => v.pessoa === pessoa.nome)
   const gozados = pessoa.diasContaveis.filter((d) => d < hojeISO).length
-  const agendados = pessoa.periodos.filter((per) => per.fim >= hojeISO)
-  const usufruidos = pessoa.periodos.filter((per) => per.fim < hojeISO)
+  // Metades do ano (dono 19/08): metade da cota até o corte, e o 2º semestre
+  // nunca acima da metade. Fonte única com o bloqueio da aba Agendar.
+  const semestres = resumoSemestres(pessoa, { ano, feriados, penalidades })
+  const agendados = (per) => per.fim >= hojeISO
+  const usufruidos = (per) => per.fim < hojeISO
   // 7ª vaga: já calculada em aplicarPenalidades (fonte única)
   const diasExtras = pessoa.diasPenalidade ?? 0
   const diasEfetivos = pessoa.diasEfetivos ?? pessoa.diasContados
@@ -344,12 +447,6 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO, ano, penalidades = [] }
   // Qual período contém cada dia penalizado (dono 04/08: a penalidade tem
   // que ser localizável na lista, não só no bloco de aviso)
   const penalPorPeriodo = (per) => penalidades.filter((p) => p.data >= per.inicio && p.data <= per.fim)
-  /** Total da seção JÁ com os dias de penalidade dos períodos dela. */
-  const totalSecao = (periodos) =>
-    periodos.reduce(
-      (acc, per) => acc + per.diasUteis + penalPorPeriodo(per).reduce((a, p) => a + p.diasExtras, 0),
-      0
-    )
 
   const linhaPeriodo = (per) => {
     const penal = penalPorPeriodo(per)
@@ -472,31 +569,45 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO, ano, penalidades = [] }
         )
       })()}
 
-      {(agendados.length > 0 || usufruidos.length > 0) && (
+      {pessoa.dias.length > 0 && (
         <Card className="p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-primary mb-2">Extrato</p>
-          {agendados.length > 0 && (
-            <>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Agendados</p>
-              <ul>{agendados.map(linhaPeriodo)}</ul>
-              <p className="mt-1 pt-1 border-t border-border flex items-center justify-between text-sm font-semibold text-foreground">
-                <span>Total agendado</span>
-                <span className="tabular-nums">{totalSecao(agendados)} dias</span>
-              </p>
-            </>
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary">Extrato por semestre</p>
+          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+            {semestres.semestreLivre
+              ? 'No 1º ano a semana pode ficar no semestre que você quiser, mas tem de ser corrida — de segunda a sexta, sem fracionar.'
+              : `Metade da cota (${semestres.s1.minimo} dias) até ${fmtBr(semestres.corte)}; o 2º semestre nunca passa da metade.`}
+            {semestres.prazoEstendido && ' Prazo estendido a 31/07 por filhos em idade escolar.'}
+          </p>
+
+          {/* 1º ano: a exigência é a semana corrida, não a divisão por semestre */}
+          {semestres.primeiroAno && (
+            <p
+              className={`mt-2 rounded-xl px-3 py-2 text-[12px] leading-snug ${
+                semestres.primeiroAno.cumprida
+                  ? 'bg-success/10 text-foreground'
+                  : 'bg-warning/10 text-foreground'
+              }`}
+            >
+              {semestres.primeiroAno.cumprida
+                ? 'Semana corrida de segunda a sexta — regra do 1º ano cumprida.'
+                : semestres.primeiroAno.motivo === 'varias_semanas'
+                  ? `Marcação partida em ${semestres.primeiroAno.semanas} semanas — no 1º ano os 5 dias têm de ser corridos, numa semana só, de segunda a sexta.`
+                  : 'No 1º ano os 5 dias têm de ser corridos, numa semana só, de segunda a sexta — sem fracionar.'}
+            </p>
           )}
-          {usufruidos.length > 0 && (
-            <>
-              <p className={`text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1 ${agendados.length > 0 ? 'mt-3' : ''}`}>
-                Usufruídos
-              </p>
-              <ul className="opacity-70">{usufruidos.map(linhaPeriodo)}</ul>
-              <p className="mt-1 pt-1 border-t border-border flex items-center justify-between text-sm font-semibold text-foreground">
-                <span>Total usufruído</span>
-                <span className="tabular-nums">{totalSecao(usufruidos)} dias</span>
-              </p>
-            </>
-          )}
+
+          <div className="mt-2 divide-y divide-border">
+            {[semestres.s1, semestres.s2].map((lado) => (
+              <BlocoSemestre
+                key={lado.chave}
+                lado={lado}
+                semestreLivre={semestres.semestreLivre}
+                agendados={lado.periodos.filter(agendados)}
+                usufruidos={lado.periodos.filter(usufruidos)}
+                linhaPeriodo={linhaPeriodo}
+              />
+            ))}
+          </div>
           {pessoa.feriadosNaoContados.length > 0 && (
             <p className="mt-3 text-[11px] text-muted-foreground">
               Feriado{pessoa.feriadosNaoContados.length !== 1 ? 's' : ''} em semana inteira (não cont{pessoa.feriadosNaoContados.length !== 1 ? 'am' : 'a'}):{' '}
@@ -805,6 +916,23 @@ export default function ExtratoFeriasPage({ goBack }) {
     }
   }
 
+  /**
+   * PDF só da divisão por semestre (dono 20/08): o relatório completo traz
+   * stat boxes, a tabela geral e os alertas de regra — para discutir a
+   * divisão do ano isso é ruído. Aqui só a análise, agrupada por situação.
+   */
+  const handleExportPdfSemestres = async () => {
+    if (!extrato) return
+    try {
+      await exportPdf('feriasSemestreReport', {
+        extrato,
+        geradoPor: user?.displayName || user?.email || '',
+      })
+    } catch (err) {
+      toast({ title: 'Erro ao gerar PDF', description: err.message, variant: 'error' })
+    }
+  }
+
   const handleExportExcel = async () => {
     if (!extrato) return
     setExportingXlsx(true)
@@ -847,6 +975,48 @@ export default function ExtratoFeriasPage({ goBack }) {
       ])
       wsDias['!cols'] = [34, 16, 10].map((wch) => ({ wch }))
       XLSX.utils.book_append_sheet(wb, wsDias, 'Períodos')
+
+      // Distribuição por semestre (dono 19/08): a metade da cota vale por
+      // metade do ano, e o 2º semestre vem quebrado em usufruído × agendado
+      // — o que já foi não volta, o que está agendado ainda dá p/ remanejar.
+      const analise = ordenados.map((p) => linhaAnaliseSemestre(p, { ano, feriados, hojeISO }))
+      const somaSem = (campo) => analise.reduce((acc, a) => acc + a[campo], 0)
+      const wsSem = XLSX.utils.aoa_to_sheet([
+        [`Distribuição por semestre — ${ano}`],
+        ['Metade da cota até 30/06 (mínimo do 1º semestre); o 2º semestre nunca passa da outra metade (máximo).'],
+        ['Cota de 5 dias (1º ano) escolhe o semestre, mas a semana tem de ser corrida — de segunda a sexta.'],
+        ['Os totais já incluem os dias extras da 7ª vaga no semestre em que caíram.'],
+        [],
+        // Mesma tripla nos dois semestres (já tirou + ainda vai tirar + 7ª
+        // vaga = total): sem a coluna da penalidade a soma da linha não fecha
+        // e o leitor procura um erro que não existe.
+        ['Sócio', 'Cota',
+          '1º sem. devia (mínimo)', '1º sem. já tirou', '1º sem. ainda vai tirar', '1º sem. 7ª vaga',
+          '1º sem. total', '1º sem. EM FALTA',
+          '2º sem. podia (máximo)', '2º sem. já tirou', '2º sem. ainda vai tirar', '2º sem. 7ª vaga',
+          '2º sem. total', '2º sem. DIAS A MAIS',
+          'Total no ano', 'Saldo da cota', 'Situação'],
+        ...analise.map((a) => [
+          a.nomeCompleto, a.cota,
+          a.semestreLivre ? 'livre' : a.s1Minimo, a.s1Usufruido, a.s1Agendado, a.s1Penalidade,
+          a.s1Total, a.semestreLivre ? 'livre' : a.s1Falta,
+          a.semestreLivre ? 'livre' : a.s2Maximo, a.s2Usufruido, a.s2Agendado, a.s2Penalidade,
+          a.s2Total, a.semestreLivre ? 'livre' : a.s2Excede,
+          a.total, a.saldo, a.situacao,
+        ]),
+        [],
+        ['TOTAL DO GRUPO', '',
+          '', somaSem('s1Usufruido'), somaSem('s1Agendado'), somaSem('s1Penalidade'), somaSem('s1Total'), '',
+          '', somaSem('s2Usufruido'), somaSem('s2Agendado'), somaSem('s2Penalidade'), somaSem('s2Total'), '',
+          somaSem('total')],
+        [],
+        [`${analise.filter((a) => a.s2Excede > 0).length} acima do máximo do 2º semestre · ` +
+          `${analise.filter((a) => a.s1Falta > 0).length} abaixo do mínimo do 1º · ` +
+          `${analise.filter((a) => a.semestreLivre && a.situacao !== 'Semana corrida').length} do 1º ano com a semana fracionada`],
+      ])
+      wsSem['!cols'] = [34, 6, 20, 16, 21, 15, 13, 17, 20, 16, 21, 15, 13, 19, 12, 13, 30]
+        .map((wch) => ({ wch }))
+      XLSX.utils.book_append_sheet(wb, wsSem, 'Semestres')
 
       const wsAlertas = XLSX.utils.aoa_to_sheet([
         ['Nível', 'Sócio', 'Regra', 'Detalhe'],
@@ -895,6 +1065,9 @@ export default function ExtratoFeriasPage({ goBack }) {
               <DropdownContent align="end" minWidth={190}>
                 <DropdownItem icon={<FileText className="w-4 h-4" />} onClick={handleExportPdf}>
                   PDF
+                </DropdownItem>
+                <DropdownItem icon={<FileText className="w-4 h-4" />} onClick={handleExportPdfSemestres}>
+                  PDF — só por semestre
                 </DropdownItem>
                 <DropdownItem icon={<FileSpreadsheet className="w-4 h-4" />} onClick={handleExportExcel}>
                   Excel
@@ -1024,6 +1197,7 @@ export default function ExtratoFeriasPage({ goBack }) {
                   violacoes={violacoes}
                   hojeISO={hojeISO}
                   ano={ano}
+                  feriados={feriados}
                   penalidades={pessoa?.penalidades || []}
                 />
               </div>

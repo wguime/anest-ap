@@ -39,9 +39,19 @@ function somarDiasISO(iso, n) {
 
 /**
  * Pode marcar este dia?
+ *
+ * `semestre` (opcional) liga o TETO do 2º semestre: dono 19/08 — "não deve
+ * ser possível marcar mais da metade das férias no segundo semestre".
+ * Diferente de dia lotado e de estouro de cota (que só declaram custo),
+ * esse é BLOQUEIO: a regra do grupo não admite o dia, então não há custo a
+ * confirmar. `usadosS2` já vem com a seleção pendente somada, senão dava
+ * para furar o teto marcando vários dias antes de confirmar. Cota do 1º ano
+ * é livre entre os semestres → a view não passa `semestre`.
+ *
+ * @param {{corte:string, maxS2:number, usadosS2:number}} [semestre]
  * @returns {{ok:boolean, bloqueio?:{tipo,msg}, avisos:Array<{tipo,msg,custoDias?}>, custoDias:number}}
  */
-export function avaliarMarcacaoDia({ data, nome, porDia = new Map(), estadoPorDia = new Map(), hojeISO, feriados = new Set() }) {
+export function avaliarMarcacaoDia({ data, nome, porDia = new Map(), estadoPorDia = new Map(), hojeISO, feriados = new Set(), semestre = null }) {
   const vazio = { avisos: [], custoDias: 1 }
   if (ehFimDeSemana(data)) {
     return { ok: false, bloqueio: { tipo: 'FDS', msg: 'Férias contam só em dias úteis.' }, ...vazio }
@@ -55,6 +65,16 @@ export function avaliarMarcacaoDia({ data, nome, porDia = new Map(), estadoPorDi
   }
   if (estadoPorDia.get(chaveDia(nome, data))) {
     return { ok: false, bloqueio: { tipo: 'JA_MARCADO', msg: 'Você já tem férias neste dia.' }, ...vazio }
+  }
+  if (semestre && data > semestre.corte && semestre.usadosS2 >= semestre.maxS2) {
+    return {
+      ok: false,
+      bloqueio: {
+        tipo: 'METADE_SEGUNDO_SEMESTRE',
+        msg: `Regra do grupo: no máximo ${semestre.maxS2} dias no 2º semestre (metade da cota) — você já está com ${semestre.usadosS2}.`,
+      },
+      ...vazio,
+    }
   }
 
   const avisos = []

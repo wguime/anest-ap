@@ -13,7 +13,7 @@
  * ordem dos hooks e o TDZ, que teste de lib nenhum pega.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 
 const DIAS = ['2026-03-02', '2026-03-03', '2026-03-04', '2026-03-05', '2026-03-06']
 
@@ -71,5 +71,27 @@ describe('ExtratoFeriasPage — pipeline', () => {
 
     expect(erros.filter((e) => /before initialization|Rendered more hooks|order of Hooks/i.test(e))).toEqual([])
     spy.mockRestore()
+  })
+
+  /**
+   * O extrato individual passou a ser dividido pelas metades do ano (dono
+   * 19/08). A fixture é uma semana cheia em março: cota 30 → 5 de 15 no 1º
+   * semestre e nada no 2º. Renderizar de verdade é o que pega prop faltando
+   * (`feriados`) e período caindo no semestre errado.
+   */
+  it('individual discrimina 1º e 2º semestre com o que a regra exige', async () => {
+    render(<ExtratoFeriasPage onNavigate={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(screen.getByText(/Extrato de Férias/i)).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('tab', { name: /Individual/i }))
+
+    const card = await screen.findByText(/Extrato por semestre/i).then((el) => el.closest('div'))
+    // Piso do 1º semestre e teto do 2º, cada um no seu cabeçalho
+    expect(within(card).getByText('mín. 15')).toBeInTheDocument()
+    expect(within(card).getByText('máx. 15')).toBeInTheDocument()
+    // 5 marcados contra o piso de 15 → faltam 10; o 2º semestre segue vazio
+    expect(within(card).getByText(/faltam 10 dias para a metade obrigatória/i)).toBeInTheDocument()
+    expect(within(card).getByText(/cabem mais 15 dias neste semestre/i)).toBeInTheDocument()
+    expect(within(card).getByText(/Nenhum dia marcado neste semestre/i)).toBeInTheDocument()
   })
 })

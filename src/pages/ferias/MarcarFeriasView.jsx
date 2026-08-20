@@ -20,6 +20,7 @@ import {
   montarMovimentacoesParaInsert,
 } from '@/lib/feriasMarcacao'
 import { indexarPorPessoaDia, filtrarNoOps } from '@/lib/feriasMovimentacoes'
+import { resumoSemestres } from '@/lib/feriasSemestre'
 import {
   fetchMovimentacoes, registrarMovimentacoes,
 } from '@/services/supabaseFeriasMovimentacoesService'
@@ -70,6 +71,19 @@ export default function MarcarFeriasView({
     [meusDias, hojeISO, nome, estadoPorDia]
   )
 
+  /**
+   * Teto do 2º semestre (dono 19/08): metade da cota, e a seleção pendente
+   * já conta — sem isso dava para furar o teto marcando vários dias antes de
+   * confirmar. `null` quando a cota é livre entre os semestres (1º ano).
+   */
+  const semestre = useMemo(() => {
+    if (!pessoa) return null
+    const r = resumoSemestres(pessoa, { ano, feriados, penalidades: pessoa.penalidades || [] })
+    if (r.semestreLivre) return null
+    const pendentes = [...selecoes.marcar].filter((d) => d > r.corte).length
+    return { corte: r.corte, maxS2: r.s2.maximo, usadosS2: r.s2.total + pendentes }
+  }, [pessoa, ano, feriados, selecoes])
+
   const motivoBloqueio = useCallback(
     (dia) => {
       if (modo === 'desmarcar') {
@@ -77,9 +91,10 @@ export default function MarcarFeriasView({
         return avaliarDesmarcacaoDia({ data: dia, nome, estadoPorDia, hojeISO }).bloqueio?.msg || null
       }
       if (meusDias.has(dia)) return 'Você já tem férias neste dia'
-      return avaliarMarcacaoDia({ data: dia, nome, porDia, estadoPorDia, hojeISO, feriados }).bloqueio?.msg || null
+      if (selecoes.marcar.has(dia)) return null
+      return avaliarMarcacaoDia({ data: dia, nome, porDia, estadoPorDia, hojeISO, feriados, semestre }).bloqueio?.msg || null
     },
-    [modo, meusDias, nome, estadoPorDia, hojeISO, porDia, feriados]
+    [modo, meusDias, nome, estadoPorDia, hojeISO, porDia, feriados, semestre, selecoes]
   )
 
   const alternarDia = useCallback(
@@ -93,7 +108,7 @@ export default function MarcarFeriasView({
         const querDesmarcar = modo === 'desmarcar'
         const aval = querDesmarcar
           ? avaliarDesmarcacaoDia({ data: dia, nome, estadoPorDia, hojeISO })
-          : avaliarMarcacaoDia({ data: dia, nome, porDia, estadoPorDia, hojeISO, feriados })
+          : avaliarMarcacaoDia({ data: dia, nome, porDia, estadoPorDia, hojeISO, feriados, semestre })
         if (!aval.ok) {
           toast({ title: 'Não é possível', description: aval.bloqueio.msg, variant: 'warning' })
           return atual
@@ -103,7 +118,7 @@ export default function MarcarFeriasView({
         return { marcar, desmarcar }
       })
     },
-    [modo, nome, estadoPorDia, hojeISO, porDia, feriados, toast]
+    [modo, nome, estadoPorDia, hojeISO, porDia, feriados, semestre, toast]
   )
 
   const trocarModo = (novo) => {
@@ -236,6 +251,13 @@ export default function MarcarFeriasView({
             </p>
           </div>
         </div>
+        {/* Sem esta linha, os dias do 2º semestre aparecem apagados no
+            calendário sem explicação (o teto é da regra, não da cota) */}
+        {semestre && (
+          <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
+            2º semestre: {semestre.usadosS2} de {semestre.maxS2} dias — metade da cota é o máximo depois de {fmtBr(semestre.corte)}.
+          </p>
+        )}
       </Card>
 
       {/* Modo desmarcar: as férias que ainda não foram cumpridas */}

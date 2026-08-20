@@ -67,6 +67,35 @@ describe('avaliarMarcacaoDia — bloqueios e avisos', () => {
   })
 })
 
+describe('avaliarMarcacaoDia — teto do 2º semestre (dono 19/08)', () => {
+  const base = { nome: NOME, hojeISO: HOJE, feriados: FERIADOS }
+  // Cota 30 → metade 15. O corte é 30/06 (ninguém marcado com filhos em
+  // idade escolar hoje em feriasSocios.js).
+  const semestre = (usadosS2) => ({ corte: '2026-06-30', maxS2: 15, usadosS2 })
+
+  it('no teto, dia do 2º semestre é BLOQUEIO — não é custo a confirmar', () => {
+    const r = avaliarMarcacaoDia({ ...base, data: '2026-09-15', semestre: semestre(15) })
+    expect(r.ok).toBe(false)
+    expect(r.bloqueio.tipo).toBe('METADE_SEGUNDO_SEMESTRE')
+    expect(r.bloqueio.msg).toContain('15')
+  })
+
+  it('abaixo do teto libera o mesmo dia', () => {
+    expect(avaliarMarcacaoDia({ ...base, data: '2026-09-15', semestre: semestre(14) }).ok).toBe(true)
+  })
+
+  it('o teto não alcança o 1º semestre — lá pode passar da metade', () => {
+    // 30/06 é o próprio corte: ainda é 1º semestre (hoje recuado para o dia
+    // ser futuro; senão o bloqueio de prazo responde antes)
+    const r = avaliarMarcacaoDia({ ...base, hojeISO: '2026-03-02', data: '2026-06-30', semestre: semestre(20) })
+    expect(r.ok).toBe(true)
+  })
+
+  it('sem `semestre` (1º ano, cota livre) nada é bloqueado', () => {
+    expect(avaliarMarcacaoDia({ ...base, data: '2026-09-15' }).ok).toBe(true)
+  })
+})
+
 describe('avaliarDesmarcacaoDia — prazo é bloqueio duro', () => {
   const estadoPorDia = new Map([
     [chaveDia(NOME, '2026-08-05'), { codigo: 'c1', origem: 'pp' }], // amanhã

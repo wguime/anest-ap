@@ -36,9 +36,11 @@ export const REGRAS_FERIAS = [
     id: 'distribuicao',
     titulo: 'Como distribuir no ano',
     itens: [
-      { texto: 'Metade dos dias precisa ser usufruída até o fim de junho — ou até o fim de julho para quem tem filhos em idade escolar. O que não for usado até essas datas é perdido.', verificada: true },
+      { texto: 'Metade da cota precisa ser usufruída até o fim de junho — ou até o fim de julho para quem tem filhos em idade escolar. O que não for usado até essas datas é perdido.', verificada: true },
+      { texto: 'No segundo semestre nunca cabe mais que a metade da cota. Pode-se usar MAIS que a metade no primeiro semestre, nunca no segundo — o app não deixa marcar além desse teto.', verificada: true },
       { texto: 'Dias não usufruídos em cada semestre são perdidos, salvo decisão em assembleia. Adiantar dias de um semestre para o anterior é permitido.' },
-      { texto: 'Com 30 dias de cota: pelo menos 4 semanas inteiras; 2 semanas podem ser fracionadas em dias avulsos. Com 20 dias: 2 semanas inteiras e 2 fracionáveis. Quem tem 1 semana (1º ano) usa no semestre que quiser.', verificada: true },
+      { texto: 'Com 30 dias de cota: pelo menos 4 semanas inteiras; 2 semanas podem ser fracionadas em dias avulsos. Com 20 dias: 2 semanas inteiras e 2 fracionáveis.', verificada: true },
+      { texto: 'No 1º ano são 5 dias e eles têm de ser uma semana corrida, de segunda a sexta, sem fracionar. A semana pode ficar no primeiro ou no segundo semestre, conforme se queira.', verificada: true },
       { texto: 'No máximo 2 sextas e 2 segundas isoladas por semestre. Para marcar mais desses dias avulsos, só na semana vigente e avisando o coordenador.', verificada: true },
     ],
   },
@@ -106,7 +108,7 @@ export const FAQ_FERIAS = [
   },
   {
     p: 'Posso deixar tudo para o segundo semestre?',
-    r: 'Não. Metade dos dias precisa ser usufruída até o fim de junho (ou julho, para quem tem filhos em idade escolar). O que não for usado até essas datas é perdido.',
+    r: 'Não. Metade da cota precisa ser usufruída até o fim de junho (ou julho, para quem tem filhos em idade escolar) e o segundo semestre não comporta mais que a outra metade — o app bloqueia a marcação que passa desse teto. O que não for usado no primeiro semestre é perdido. Exceção: quem está no 1º ano tem 1 semana e escolhe o semestre.',
   },
   {
     p: 'Posso marcar tudo em dias soltos?',

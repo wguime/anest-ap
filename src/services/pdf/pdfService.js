@@ -21,6 +21,7 @@ const TEMPLATES = {
   centroGestaoReport: () => import('./templates/centroGestaoReportTemplate'),
   cirurgiasParticularesReport: () => import('./templates/cirurgiasParticularesReportTemplate'),
   extratoFeriasReport: () => import('./templates/extratoFeriasReportTemplate'),
+  feriasSemestreReport: () => import('./templates/feriasSemestreReportTemplate'),
   feriasRegrasReport: () => import('./templates/feriasRegrasReportTemplate'),
 }
 
