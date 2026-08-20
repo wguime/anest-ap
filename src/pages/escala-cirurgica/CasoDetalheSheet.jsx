@@ -6,6 +6,10 @@
  * Sincronizado AO VIVO: o caso exibido deriva de `escala.casos` (context) — updates
  * otimistas e realtime de outros usuários refletem com o sheet aberto.
  *
+ * TIPO editável no Andamento (dono 20/08): a urgência que a importação não leu
+ * como tal era um beco sem saída — só dava para escolher o tipo ao ADICIONAR o
+ * caso. Reclassificar aqui coloca a cirurgia na conta do contrato do HRO.
+ *
  * DESENHO "ANDAMENTO NO TOPO" (dono 17/08, escolhido em protótipo a 430px): o que
  * se toca no meio da cirurgia é o ESTADO, então ele abre o painel; a identidade do
  * caso vira cabeçalho (procedimento como título, iniciais/idade/convênio como
@@ -23,7 +27,7 @@ import useRosterResidentes from '@/hooks/useRosterResidentes'
 import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
 import PainelTempo, { formatFaltante } from './PainelTempo'
 import useAgoraMinuto from './useAgoraMinuto'
-import { espelhoTempoTotal, LOCAIS_BASE, nomeAnestesistaExibicao, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso } from './utils'
+import { espelhoTempoTotal, LOCAIS_BASE, nomeAnestesistaExibicao, normalizarSalaHro, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso } from './utils'
 import { GRAVIDADES, GRAVIDADE_LABEL } from '@/lib/escalaCirurgicaUrgencias'
 
 const SALA_OUTRO = '__outro__'
@@ -36,6 +40,16 @@ const ANDAMENTO = [
   { valor: 'iniciada', label: 'Iniciada', cls: 'bg-success text-success-foreground' },
   { valor: 'terminada', label: 'Terminada', cls: 'bg-info text-info-foreground' },
 ]
+// TIPO da cirurgia (dono 20/08): a importação lê o mapa e às vezes a urgência não
+// vem marcada — "digamos que essa cirurgia era uma urgência que não foi lida ao
+// ser adicionada na escala". Reclassificar aqui é o que faz a cirurgia entrar na
+// conta do contrato: vaga livre do plantão → senão fila → se já iniciada, Extra.
+const TIPOS = [
+  { valor: 'eletiva', label: 'Eletiva' },
+  { valor: 'urgencia', label: 'Urgência', cls: 'border-destructive bg-destructive/15 text-destructive' },
+  { valor: 'emergencia', label: 'Emergência', cls: 'border-destructive bg-destructive text-destructive-foreground' },
+]
+
 // GRAVIDADE — só em urgência/emergência. Adaptação da NCEPOD Classification of
 // Intervention, que manda quem vai operar classificar no momento da decisão de
 // operar: por isso fica aqui, no Andamento (onde se AGE), e não no cabeçalho de
@@ -102,6 +116,20 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
     setEditor((e) => (e === qual ? null : qual))
   }
 
+  /** Reclassifica a cirurgia (eletiva ↔ urgência/emergência).
+      Emergência é IMEDIATA por definição na adaptação da NCEPOD, então já nasce
+      classificada quando a gravidade está vazia — mesmo pré-preenchimento do
+      "Adicionar caso"; voltar para eletiva limpa a gravidade, que só existe em
+      urgência. Otimista, como o resto do sheet. */
+  const mudarTipo = (novo) => {
+    const atual = vivo.tipo || 'eletiva'
+    if (novo === atual) return
+    const patch = { tipo: novo }
+    if (novo === 'eletiva') patch.gravidade = null
+    else if (novo === 'emergencia' && !vivo.gravidade) patch.gravidade = 'imediata'
+    atualizarCaso(escala, vivo.id, patch).catch(() => {})
+  }
+
   /** Grava a gravidade da urgência; tocar de novo no nível ativo desmarca.
       Sem await: o context é otimista (pinta no toque, reverte + toast em erro) —
       segurar o botão desabilitado durante a ida ao servidor era o delay que o
@@ -113,7 +141,9 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
       Fecha ANTES do servidor: o valor novo já está pintado (context otimista) e
       erro reverte com toast — a folha presa no spinner era o delay (dono 19/08). */
   const salvarTexto = (campo, valor) => {
-    const novo = String(valor || '').trim()
+    // sala do HRO passa pela normalização da importação — rótulo único (dono 20/08)
+    const bruto = String(valor || '').trim()
+    const novo = campo === 'sala' && escala?.hospital === 'hro' ? normalizarSalaHro(bruto) : bruto
     setEditor(null)
     if (!novo || novo === String(vivo[campo] || '')) return
     atualizarCaso(escala, vivo.id, { [campo]: novo }).catch(() => {})
@@ -290,6 +320,36 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
               <p className="mt-1.5 text-[11.5px] text-muted-foreground">
                 Marcar <b className="font-semibold text-foreground">Terminada</b> desliga os avisos.
               </p>
+
+              {/* TIPO: fica no Andamento porque reclassificar é AÇÃO no meio do
+                  turno (a urgência que entrou como eletiva no mapa), e porque é
+                  daqui que sai a gravidade logo abaixo. */}
+              {podeEditarCaso && (
+                <div className="mt-3 border-t border-border pt-2.5">
+                  <p className="mb-1.5 text-[12.5px] text-muted-foreground">
+                    Tipo <span className="text-[11.5px]">— urgência entra na conta do contrato</span>
+                  </p>
+                  <div className="flex gap-1.5">
+                    {TIPOS.map((t) => {
+                      const ativo = (vivo.tipo || 'eletiva') === t.valor
+                      return (
+                        <button
+                          key={t.valor}
+                          type="button"
+                          aria-pressed={ativo}
+                          onClick={() => mudarTipo(t.valor)}
+                          className={[
+                            'min-h-[44px] flex-1 rounded-[10px] border px-1.5 text-[12.5px] font-semibold leading-tight transition-colors',
+                            ativo ? (t.cls || 'border-primary bg-primary text-primary-foreground') : 'border-border-strong bg-card text-foreground',
+                          ].join(' ')}
+                        >
+                          {t.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Gravidade: só faz sentido em urgência/emergência, e é o que
                   decide quem entra primeiro quando as 2 salas do contrato do HRO

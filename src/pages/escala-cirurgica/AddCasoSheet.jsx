@@ -14,7 +14,7 @@ import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import useRosterResidentes from '@/hooks/useRosterResidentes'
 import { iniciais } from '@/lib/excelEscala'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
-import { casosResolvidos, familiaConvenio, normNome, turnoDeHora, salasDoHospital } from './utils'
+import { casosResolvidos, familiaConvenio, normalizarSalaHro, normNome, turnoDeHora, salasDoHospital } from './utils'
 import { GRAVIDADES, GRAVIDADE_LABEL, estadoUrgencias, salasContrato } from '@/lib/escalaCirurgicaUrgencias'
 import useAgoraMinuto from './useAgoraMinuto'
 
@@ -31,7 +31,9 @@ const GRAVIDADE_OPCOES = GRAVIDADES.map((g) => ({ value: g, label: GRAVIDADE_LAB
 // já diz QUEM a faz. A escolha vira CONFIGURAÇÃO de sala (urgencias_meta) — o
 // mesmo dado do ⚙ da faixa — nunca um campo do caso: o posto é derivado da
 // sala, e posto já ocupado deixa o excedente virar "Extra" sozinho
-// (distribuirPostos; a marcação nunca muda a contagem).
+// (distribuirPostos). Desde 20/08 marcar plantão/sobreaviso numa sala É o que a
+// faz ENTRAR na contagem das 2 vagas — antes só trocava o rótulo, e a sala
+// marcada seguia contando 0.
 const POSTO_AUTO = '__auto__'
 const POSTOS = [
   { value: 'plantao', label: 'Plantão' },
@@ -93,7 +95,11 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
     { value: NOVA_SALA, label: '+ Nova sala…' },
   ], [escala])
 
-  const salaFinal = sala === NOVA_SALA ? novaSala.trim() : sala
+  // Sala digitada à mão passa pela MESMA normalização da importação quando é HRO
+  // (dono 20/08): "Sala 7" tem de virar "Sala 7 - CO", senão a mesma sala nasce
+  // com dois rótulos e o quadro a parte em dois blocos.
+  const salaBruta = sala === NOVA_SALA ? novaSala.trim() : sala
+  const salaFinal = escala?.hospital === 'hro' ? normalizarSalaHro(salaBruta) : salaBruta
   // OBRIGATÓRIOS (dono 29/07): cirurgião, convênio e tipo entram na exigência.
   // Não é burocracia — cada um alimenta uma decisão a jusante: o CIRURGIÃO agrupa
   // a linha na coluna de liberação, o CONVÊNIO decide se o caso vira cobrança
@@ -119,8 +125,8 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
     const tomado = {
       plantao: !!estado.postos.find((pp) => pp.papel === 'plantonista')?.item,
       sobreaviso: !!estado.postos.find((pp) => pp.papel === 'sobreaviso')?.item,
-      orto: estado.dedicadas.some((d) => d.papel === 'orto'),
-      co: estado.dedicadas.some((d) => d.papel === 'co'),
+      orto: !!estado.dedicados.find((d) => d.papel === 'orto')?.item,
+      co: !!estado.dedicados.find((d) => d.papel === 'co')?.item,
     }
     return [
       { value: POSTO_AUTO, label: 'Automático (pela sala)' },

@@ -10,6 +10,11 @@
  *     conta dependendo de ONDE é feita.
  *  4. A capacidade vem do RELÓGIO, não do campo `turno` (que só aceita
  *     matutino|vespertino, então a urgência das 21h vive no vespertino).
+ *
+ * REVISÃO 20/08 (dono): a unidade da conta é a SALA, e sala que é ESTAÇÃO do turno
+ * (marcada como plantão/sobreaviso, ou papel do contrato sem dedicado — o CO à
+ * tarde/noite) ocupa vaga por ter cirurgia aberta, sem depender de alguém ter
+ * marcado "iniciada". Foi o caso relatado: CO cheio à tarde, "0 de 2 salas" na tela.
  */
 import { describe, expect, it } from 'vitest'
 import {
@@ -40,6 +45,10 @@ const caso = (sala, extra = {}) => ({
   created_at: `${HOJE}T10:00:00`,
   ...extra,
 })
+
+/** urgência JÁ em andamento (o `iniciada` do outro describe é local dele). */
+const iniciada2 = (sala, id) =>
+  caso(sala, { id, statusCirurgia: 'iniciada', statusAtualizadoEm: `${HOJE}T09:00:00` })
 
 const em = (casos, opts = {}) =>
   estadoUrgencias(casos, {
@@ -88,14 +97,14 @@ describe('exclusão é pela SALA, nunca pelo procedimento', () => {
       caso('Sala 3', { id: 'no-cc', procedimento: proc }),
       caso('Exames', { id: 'fora-cc', procedimento: proc }),
     ])
-    expect(estado.fila.map((f) => f.id)).toEqual(['no-cc'])
+    expect(estado.ocupacoes.map((o) => o.id)).toEqual(['no-cc']) // entrou numa vaga livre
     expect(estado.foraDaConta.map((f) => f.id)).toEqual(['fora-cc'])
     expect(estado.foraDaConta[0].motivo).toBe('exames')
   })
 
   it('não confunde procedimento que só CONTÉM "scopia" com exclusão', () => {
     const estado = em([caso('Sala 2', { procedimento: 'COLECISTECTOMIA VIDEOLAPAROSCOPICA' })])
-    expect(estado.fila).toHaveLength(1)
+    expect(estado.ocupadas).toBe(1)
     expect(estado.foraDaConta).toHaveLength(0)
   })
 })
@@ -104,20 +113,64 @@ describe('contrato POR TURNO — o CO é a decisão que vira código', () => {
   it('de manhã o CO é absorvido pelo dedicado e NÃO ocupa a fila', () => {
     const estado = em([caso('Sala 7 - CO'), caso('Sala 4')], { turno: 'matutino' })
     expect(estado.fila).toHaveLength(0)
-    expect(estado.dedicadas.map((d) => d.papel).sort()).toEqual(['co', 'orto'])
+    expect(estado.dedicados.map((d) => d.papel).sort()).toEqual(['co', 'orto'])
   })
 
-  it('à TARDE não há CO no contrato: a urgência de CO volta a pesar no plantonista', () => {
-    const estado = em([caso('Sala 7 - CO'), caso('Sala 4')], { turno: 'vespertino', agoraMin: 15 * 60 })
-    expect(estado.fila.map((f) => f.papel)).toEqual(['geral']) // o CO entrou na fila
-    expect(estado.dedicadas.map((d) => d.papel)).toEqual(['orto']) // só a ortopedia
+  it('à TARDE o CO OCUPA uma das 2 vagas — sem depender de "iniciada"', () => {
+    // Caso real do dono (20/08): Gabriel no CO à tarde com cesáreas o dia todo, e a
+    // faixa dizia "0 de 2 salas" com o card do plantão em branco, porque só urgência
+    // JÁ INICIADA contava. À tarde não há CO no contrato: quem está ali É uma das 2 vagas.
+    const estado = em(
+      [caso('Sala 7 - CO', { id: 'co', turno: 'vespertino' }), caso('Sala 4', { id: 'orto', turno: 'vespertino' })],
+      { turno: 'vespertino', agoraMin: 15 * 60 },
+    )
+    expect(estado.ocupadas).toBe(1)
+    expect(estado.postos[0]).toMatchObject({ papel: 'plantonista', item: { sala: 'Sala 7 - CO' } })
+    expect(estado.ocupacoes[0].motivo).toBe('sem_dedicado')
+    expect(estado.fila).toHaveLength(0) // o trabalho da estação não é fila
+    expect(estado.dedicados.map((d) => d.papel)).toEqual(['orto']) // só a ortopedia
   })
 
-  it('à NOITE nem CO nem ortopedia são dedicados', () => {
-    const estado = em([caso('Sala 7 - CO'), caso('Sala 4')], { turno: 'vespertino', agoraMin: 20 * 60 })
-    expect(estado.turnoContrato).toBe('noite')
-    expect(estado.dedicadas).toHaveLength(0)
-    expect(estado.fila).toHaveLength(2)
+  it('à NOITE nem CO nem ortopedia são dedicados; o CO conta o que ENTRA na noite', () => {
+    // Dono 20/08: "à tarde e à noite não há sala exclusiva para CO, então SE
+    // ENTRAR será considerada como urgência/emergência". O corte é a chegada:
+    // cesárea que chega 20h ocupa a vaga; o que sobrou da tarde, não.
+    // fixtures ELETIVAS: urgência ocupa vaga por si (regra do encaixe), então é
+    // com eletiva que se enxerga a regra da ESTAÇÃO.
+    const daTarde = em(
+      [caso('Sala 7 - CO', { tipo: 'eletiva', turno: 'vespertino', created_at: `${HOJE}T16:00:00` }),
+       caso('Sala 4', { tipo: 'eletiva', turno: 'vespertino', created_at: `${HOJE}T16:00:00` })],
+      { turno: 'vespertino', agoraMin: 20 * 60 },
+    )
+    expect(daTarde.turnoContrato).toBe('noite')
+    expect(daTarde.dedicados).toHaveLength(0)
+    expect(daTarde.ocupadas).toBe(0)
+
+    const entrouNaNoite = em(
+      [caso('Sala 7 - CO', { id: 'cesarea-noite', tipo: 'eletiva', turno: 'vespertino', created_at: `${HOJE}T19:40:00` })],
+      { turno: 'vespertino', agoraMin: 20 * 60 },
+    )
+    expect(entrouNaNoite.ocupadas).toBe(1)
+    expect(entrouNaNoite.postos[0].item.sala).toBe('Sala 7 - CO')
+  })
+
+  it('em produção 20/08 a Sala 4 fechou a tarde com 3 casos sem "terminada"', () => {
+    // Por isso a estação da noite exige chegada NA noite: sem o corte, a sobra da
+    // tarde marcaria sala ocupada e o alarme de "acima do contrato" nasceria mentindo.
+    const sobra = em(
+      [caso('Sala 4', { tipo: 'eletiva', turno: 'vespertino', created_at: `${HOJE}T14:00:00` })],
+      { turno: 'vespertino', agoraMin: 21 * 60 },
+    )
+    expect(sobra.ocupadas).toBe(0)
+  })
+
+  it('estação só ocupa com cirurgia ABERTA do turno — sobra da manhã não segura a vaga', () => {
+    // A metade dos casos nunca recebe "terminada" (36% em produção). Se o resto da
+    // manhã segurasse a vaga da tarde, a tela mentiria a favor da saturação.
+    const estado = em([caso('Sala 7 - CO', { tipo: 'eletiva', turno: 'matutino' })], { turno: 'vespertino', agoraMin: 15 * 60 })
+    expect(estado.ocupadas).toBe(0)
+    expect(CONTRATO_HRO.tarde.estacoes).toEqual(['co'])
+    expect(CONTRATO_HRO.noite.estacoes).toEqual(['co'])
   })
 
   it('a capacidade é o tamanho da lista de papéis, nunca o literal 2', () => {
@@ -140,15 +193,27 @@ describe('turnoContratual — a capacidade vem do relógio, não do campo turno'
 describe('ocupação e níveis de saturação', () => {
   const iniciada = (sala, extra = {}) => caso(sala, { statusCirurgia: 'iniciada', ...extra })
 
-  it('conta só as INICIADAS como ocupação e devolve os níveis na ordem certa', () => {
-    expect(em([caso('Sala 2')]).nivel).toBe('livre') // nada iniciado ainda
+  it('a urgência ocupa vaga LIVRE mesmo antes de começar; sem vaga, iniciada vira Extra', () => {
+    // Regra do dono 20/08: "que se enquadre numa das salas de plantão livre e, se
+    // não tiver nenhuma sala livre, que entre na fila; ou, se foi iniciada, que
+    // entre como sala extra". Quem assumiu a urgência já é um dos dois do contrato.
+    expect(em([caso('Sala 2')]).nivel).toBe('parcial')
     expect(em([iniciada('Sala 2')]).nivel).toBe('parcial')
-    expect(em([iniciada('Sala 2'), iniciada('Sala 3')]).nivel).toBe('cheio')
+    expect(em([iniciada('Sala 2'), caso('Sala 3')]).nivel).toBe('cheio')
 
+    // 3 iniciadas: as 2 mais antigas ficam nas vagas, a última é EXTRA
     const acima = em([iniciada('Sala 2'), iniciada('Sala 3'), iniciada('Sala 6')])
     expect(acima.nivel).toBe('acima')
     expect(acima.ocupadas).toBe(3)
+    expect(acima.extras).toHaveLength(1)
     expect(acima.livres).toBe(0)
+
+    // 3 agendadas: 2 nas vagas e a 3ª na FILA — nunca "extra", que é o que o
+    // hospital não paga e só existe quando alguém JÁ está operando.
+    const espera = em([caso('Sala 2'), caso('Sala 3'), caso('Sala 6')])
+    expect(espera.nivel).toBe('cheio')
+    expect(espera.extras).toHaveLength(0)
+    expect(espera.fila).toHaveLength(1)
   })
 
   it('terminada e suspensa saem de tudo', () => {
@@ -217,9 +282,11 @@ describe('fila — gravidade primeiro, chegada como desempate', () => {
       caso('Sala 3', { id: 'imediata', gravidade: 'imediata', created_at: `${HOJE}T10:30:00` }),
       caso('Sala 6', { id: 'urgente', gravidade: 'urgente', created_at: `${HOJE}T09:00:00` }),
     ])
-    expect(estado.fila.map((f) => f.id)).toEqual(['imediata', 'urgente', 'aguarda', 'sem'])
+    // as 2 vagas ficam com as mais graves; a fila é o que sobra, na mesma ordem
+    expect(estado.postos.map((p) => p.item?.id)).toEqual(['imediata', 'urgente'])
+    expect(estado.fila.map((f) => f.id)).toEqual(['aguarda', 'sem'])
     expect(estado.fila[0].posicao).toBe(1)
-    expect(estado.proxima.id).toBe('imediata')
+    expect(estado.proxima.id).toBe('aguarda')
     expect(GRAVIDADE_ORDEM.imediata).toBeLessThan(GRAVIDADE_ORDEM.urgente)
   })
 
@@ -227,15 +294,22 @@ describe('fila — gravidade primeiro, chegada como desempate', () => {
     const estado = em([
       caso('Sala 2', { id: 'tarde', gravidade: 'urgente', created_at: `${HOJE}T10:40:00` }),
       caso('Sala 3', { id: 'cedo', gravidade: 'urgente', created_at: `${HOJE}T08:15:00` }),
+      caso('Sala 6', { id: 'meio', gravidade: 'urgente', created_at: `${HOJE}T09:30:00` }),
     ])
-    expect(estado.fila.map((f) => f.id)).toEqual(['cedo', 'tarde'])
+    // as duas vagas vão para as que chegaram antes; a última espera
+    expect(estado.postos.map((p) => p.item?.id)).toEqual(['cedo', 'meio'])
+    expect(estado.fila.map((f) => f.id)).toEqual(['tarde'])
   })
 
   it('urgência SEM hora entra na fila normalmente e a espera vem do created_at', () => {
     // Produção 18/08: 9 de 9 urgências do HRO estavam sem `hora` — a fila NUNCA
     // pode ordenar por hora.
-    const estado = em([caso('Sala 6', { hora: null, created_at: `${HOJE}T09:30:00` })], { agoraMin: 11 * 60 })
-    expect(estado.fila).toHaveLength(1)
+    const estado = em([
+      caso('Sala 1', { id: 'v1', created_at: `${HOJE}T07:00:00` }),
+      caso('Sala 2', { id: 'v2', created_at: `${HOJE}T07:00:00` }),
+      caso('Sala 6', { id: 'espera', hora: null, created_at: `${HOJE}T09:30:00` }),
+    ], { agoraMin: 11 * 60 })
+    expect(estado.fila.map((f) => f.id)).toEqual(['espera'])
     expect(estado.fila[0].esperaMin).toBe(90)
     expect(estado.esperaMaxMin).toBe(90)
   })
@@ -265,9 +339,8 @@ describe('sinais de qualidade do dado', () => {
 
   it('marca sala digitada à mão sem tirá-la da conta', () => {
     const estado = em([caso('Sala Hibrida X')])
-    expect(estado.fila).toHaveLength(1)
-    expect(estado.fila[0].salaDesconhecida).toBe(true)
-    expect(em([caso('Sala 6')]).fila[0].salaDesconhecida).toBe(false)
+    expect(estado.ocupacoes[0].salaDesconhecida).toBe(true)
+    expect(em([caso('Sala 6')]).ocupacoes[0].salaDesconhecida).toBe(false)
   })
 })
 
@@ -288,6 +361,7 @@ describe('drift lib ↔ SQL do relatório', () => {
         'HOSPITAL DE OLHOS',
         'IMAGEM',
         'IOSC',
+        'MATERNO',
       ].sort(),
     )
   })
@@ -332,8 +406,11 @@ describe('papelDaSalaHro com salas marcadas — a config vence o "normalmente"',
       [caso('Sala 4', { id: 'u4' }), caso('Sala 3', { id: 'u3' })],
       { salas: { orto: 'Sala 3', co: null, plantao: null, sobreaviso: null } },
     )
-    expect(estado.fila.map((f) => f.id)).toEqual(['u4']) // Sala 4 virou comum
-    expect(estado.dedicadas.map((d) => d.id)).toEqual(['u3'])
+    expect(estado.postos[0].item.id).toBe('u4') // Sala 4 virou comum e pegou a vaga
+    // `dedicados` traz um card por papel dedicado do turno (o do CO fica vazio):
+    // o card informa quem cobre mesmo sem urgência, e é por ele que se adiciona uma.
+    expect(estado.dedicados.find((d) => d.papel === 'orto').id).toBe('u3')
+    expect(estado.dedicados.find((d) => d.papel === 'co').item).toBeNull()
   })
 })
 
@@ -371,5 +448,187 @@ describe('distribuirPostos — sala marcada casa primeiro, o resto por ordem de 
     expect(estado.nivel).toBe('acima')
     expect(estado.postos.map((p) => p.item?.id)).toEqual(['c3', 'c2']) // marcados casaram
     expect(estado.extras.map((e) => e.id)).toEqual(['c1']) // o não marcado virou extra
+  })
+})
+
+/**
+ * OCUPAÇÃO POR SALA + ESTAÇÃO (dono 20/08, três queixas do mesmo dia no HRO):
+ *  1. "adicionei cesarianas como urgência e o card continua em branco";
+ *  2. "ao ler a escala vespertina, o CO não foi identificado como sala de
+ *     urgência — no vespertino ele entra como urgência, não como sala exclusiva";
+ *  3. "Gabriel ficou com 2 cards de CO; que fique um único card com várias
+ *     cirurgias obstétricas (dia todo) e entre na sala de plantão para a contagem".
+ */
+describe('a unidade da conta é a SALA, não a cirurgia', () => {
+  it('CO com duas cirurgias abertas é UM card, UMA vaga, com a contagem no card', () => {
+    // Reprodução literal da tarde de 20/08: "DIA TODO" (eletiva) + "Cesarianas"
+    // (urgência) na mesma Sala 7 - CO, mesmo anestesista.
+    const estado = em(
+      [
+        caso('Sala 7 - CO', { id: 'dia-todo', tipo: 'eletiva', hora: '13:00', turno: 'vespertino', anestesista: 'GABRIEL', anestesistaUserId: 'u-gabriel' }),
+        caso('Sala 7 - CO', { id: 'cesarianas', gravidade: 'urgente', turno: 'vespertino', anestesista: 'GABRIEL', anestesistaUserId: 'u-gabriel' }),
+      ],
+      { turno: 'vespertino', agoraMin: 14 * 60 },
+    )
+    expect(estado.ocupacoes).toHaveLength(1)
+    expect(estado.ocupacoes[0]).toMatchObject({ sala: 'Sala 7 - CO', qtd: 2, urgencias: 1 })
+    expect(estado.ocupacoes[0].anestesista).toEqual({ uid: 'u-gabriel', alias: 'GABRIEL' })
+    expect(estado.ocupadas).toBe(1)
+    expect(estado.fila).toHaveLength(0) // a cesárea seguinte é trabalho DESTA sala
+  })
+
+  it('duas urgências em andamento na MESMA sala não estouram o contrato', () => {
+    // Antes contava por caso: a mesma pessoa aparecia 2× e a tela dizia "cheio".
+    const estado = em([
+      caso('Sala 6', { id: 'a', statusCirurgia: 'iniciada', statusAtualizadoEm: `${HOJE}T10:30:00` }),
+      caso('Sala 6', { id: 'b', statusCirurgia: 'iniciada', statusAtualizadoEm: `${HOJE}T10:50:00` }),
+    ])
+    expect(estado.ocupadas).toBe(1)
+    expect(estado.nivel).toBe('parcial')
+  })
+
+  it('cirurgia ELETIVA em sala comum nunca ocupa vaga de urgência', () => {
+    const estado = em([caso('Sala 2', { tipo: 'eletiva', statusCirurgia: 'iniciada', statusAtualizadoEm: `${HOJE}T10:30:00` })])
+    expect(estado.ocupadas).toBe(0)
+  })
+})
+
+describe('marcar a sala é o que a faz entrar na contagem (dono 20/08)', () => {
+  const salasCom = (extra) => ({ orto: null, co: null, plantao: null, sobreaviso: null, ...extra })
+
+  it('sala marcada como plantão com cirurgia aberta ocupa a vaga, mesmo sem urgência', () => {
+    const estado = em(
+      [caso('Sala 6', { id: 'e1', tipo: 'eletiva' })],
+      { salas: salasCom({ plantao: 'Sala 6' }) },
+    )
+    expect(estado.ocupadas).toBe(1)
+    expect(estado.ocupacoes[0].motivo).toBe('marcada')
+    expect(estado.postos[0]).toMatchObject({ papel: 'plantonista', item: { sala: 'Sala 6' } })
+  })
+
+  it('sala marcada SEM cirurgia aberta não gasta vaga — marcar não é reservar', () => {
+    const estado = em([caso('Sala 2', { tipo: 'eletiva' })], { salas: salasCom({ sobreaviso: 'Sala 9' }) })
+    expect(estado.ocupadas).toBe(0)
+  })
+
+  it('marcar o plantão na sala do CO vence a absorção do dedicado, inclusive de manhã', () => {
+    // "as salas de urgência não foram identificadas" → marcar é a saída, e ela
+    // precisa valer também quando a sala TEM dedicado no papel (manhã).
+    const estado = em(
+      [caso('Sala 7 - CO', { id: 'co', tipo: 'eletiva' })],
+      { turno: 'matutino', salas: salasCom({ plantao: 'Sala 7 - CO' }) },
+    )
+    expect(estado.ocupadas).toBe(1)
+    expect(estado.postos[0]).toMatchObject({ papel: 'plantonista', item: { sala: 'Sala 7 - CO' } })
+    // e o card de dedicado do CO some — no dia, quem cobre o CO é o plantão
+    expect(estado.dedicados.map((d) => d.papel)).toEqual(['orto'])
+  })
+})
+
+describe('salas de OUTRO hospital dentro da escala do HRO', () => {
+  it('"Materno" e as grafias soltas de ambulatorial ficam fora do contrato', () => {
+    // Varredura de produção 20/08: "MATERNO" (5), "AMBULAT." (1),
+    // "Ambulatorial BERA" (1) e "Odonto ambulatorial" (1) caíam em 'geral' — uma
+    // urgência ali entraria na conta de 2 salas do HRO.
+    expect(papelDaSalaHro('Materno')).toBe('fora')
+    expect(papelDaSalaHro('MATERNO')).toBe('fora')
+    expect(papelDaSalaHro('AMBULAT.')).toBe('fora')
+    expect(papelDaSalaHro('Ambulatorial BERA')).toBe('fora')
+    expect(papelDaSalaHro('Odonto ambulatorial')).toBe('fora')
+    expect(papelDaSalaHro('Sala 6')).toBe('geral') // sem alargar demais
+  })
+})
+
+describe('uma pessoa, uma vaga', () => {
+  it('duas cirurgias do MESMO anestesista são UMA ocupação, com a contagem no card', () => {
+    // A vaga é gasta pela cirurgia (dono 20/08), mas ninguém opera dois pacientes
+    // ao mesmo tempo: o CO com cesáreas o dia todo é um card só, uma vaga só.
+    const estado = em(
+      [
+        caso('Sala 7 - CO', { id: 'a', tipo: 'eletiva', turno: 'vespertino', anestesista: 'GABRIEL', anestesistaUserId: 'u-gab' }),
+        caso('Sala 7 - CO', { id: 'b', turno: 'vespertino', anestesista: 'GABRIEL', anestesistaUserId: 'u-gab' }),
+      ],
+      { turno: 'vespertino', agoraMin: 15 * 60 },
+    )
+    expect(estado.ocupadas).toBe(1)
+    expect(estado.ocupacoes[0].qtd).toBe(2)
+    expect(estado.fila).toHaveLength(0)
+  })
+
+  it('salas comuns diferentes continuam sendo duas ocupações', () => {
+    const estado = em([
+      caso('Sala 6', { id: 'a', statusCirurgia: 'iniciada', statusAtualizadoEm: `${HOJE}T10:30:00` }),
+      caso('Sala 2', { id: 'b', statusCirurgia: 'iniciada', statusAtualizadoEm: `${HOJE}T10:40:00` }),
+    ])
+    expect(estado.ocupadas).toBe(2)
+  })
+})
+
+/**
+ * ENCAIXE DA URGÊNCIA (dono 20/08): "quero que seja possível informar que é uma
+ * urgência e que se enquadre numa das salas de plantão livre; se não tiver
+ * nenhuma sala livre, que entre na fila; ou, se foi iniciada, que entre como
+ * sala extra". É o caminho da cirurgia que a importação não leu como urgência e
+ * é reclassificada no detalhe do caso.
+ */
+describe('reclassificar uma cirurgia como urgência', () => {
+  const eletiva = (sala, extra = {}) => caso(sala, { tipo: 'eletiva', ...extra })
+
+  it('eletiva não conta; virando urgência, entra na vaga livre do plantão', () => {
+    const antes = em([eletiva('Sala 1', { id: 'c1' })])
+    expect(antes.ocupadas).toBe(0)
+
+    const depois = em([caso('Sala 1', { id: 'c1' })]) // mesma cirurgia, agora urgência
+    expect(depois.postos[0]).toMatchObject({ papel: 'plantonista', item: { id: 'c1' } })
+    expect(depois.livres).toBe(1)
+  })
+
+  it('sem vaga livre, a urgência agendada vai para a FILA', () => {
+    const estado = em([
+      iniciada2('Sala 2', 'v1'), iniciada2('Sala 3', 'v2'),
+      caso('Sala 1', { id: 'nova', gravidade: 'urgente' }),
+    ])
+    expect(estado.postos.map((p) => p.item?.id)).toEqual(['v1', 'v2'])
+    expect(estado.fila.map((f) => f.id)).toEqual(['nova'])
+    expect(estado.extras).toHaveLength(0)
+    expect(estado.nivel).toBe('cheio')
+  })
+
+  it('sem vaga livre, a urgência JÁ INICIADA vira Extra e o nível vai a "acima"', () => {
+    const estado = em([
+      iniciada2('Sala 2', 'v1'), iniciada2('Sala 3', 'v2'),
+      caso('Sala 1', { id: 'nova', statusCirurgia: 'iniciada', statusAtualizadoEm: `${HOJE}T10:55:00` }),
+    ])
+    expect(estado.extras.map((e) => e.id)).toEqual(['nova'])
+    expect(estado.nivel).toBe('acima')
+    expect(estado.ocupadas).toBe(3)
+  })
+})
+
+describe('estação: o que está EM ANDAMENTO é fato, não sobra de turno', () => {
+  it('cesárea que COMEÇOU conta no CO às 20h, mesmo tendo entrado à tarde', () => {
+    const estado = em(
+      [caso('Sala 7 - CO', {
+        id: 'cesarea', tipo: 'eletiva', turno: 'vespertino',
+        created_at: `${HOJE}T16:00:00`, statusCirurgia: 'iniciada', statusAtualizadoEm: `${HOJE}T19:30:00`,
+      })],
+      { turno: 'vespertino', agoraMin: 20 * 60 },
+    )
+    expect(estado.ocupadas).toBe(1)
+    expect(estado.postos[0].item.id).toBe('cesarea')
+  })
+
+  it('a mesma cirurgia esquecida (>4h iniciada) sai da conta e vira PERGUNTA', () => {
+    // Sem isto ela sumia da tela: a pergunta "ainda em andamento?" só existia para
+    // o tipo urgência, e o "DIA TODO" do CO é eletiva no banco.
+    const estado = em(
+      [caso('Sala 7 - CO', {
+        id: 'dia-todo', tipo: 'eletiva', turno: 'vespertino',
+        created_at: `${HOJE}T16:00:00`, statusCirurgia: 'iniciada', statusAtualizadoEm: `${HOJE}T14:00:00`,
+      })],
+      { turno: 'vespertino', agoraMin: 20 * 60 },
+    )
+    expect(estado.ocupadas).toBe(0)
+    expect(estado.aConfirmar.map((a) => a.id)).toEqual(['dia-todo'])
   })
 })

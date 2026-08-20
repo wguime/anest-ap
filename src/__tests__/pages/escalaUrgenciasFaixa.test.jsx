@@ -47,10 +47,13 @@ vi.mock('@/pages/escala-cirurgica/AddCasoSheet', () => ({
 const HOJE = '2026-08-18'
 const wrap = ({ children }) => <ThemeProvider><ToastProvider>{children}</ToastProvider></ThemeProvider>
 
+// ⚠️ o anestesista PADRÃO é por caso (`u-${id}`): desde 20/08 duas cirurgias da
+// MESMA pessoa são uma vaga só, então fixture com um anestesista para todos
+// mediria o dedup, não o cenário. Quem quer testar o dedup passa o uid igual.
 const caso = (id, sala, extra = {}) => ({
   id, sala, ordem: 0, tipo: 'urgencia', statusCirurgia: 'agendada', statusExtra: null,
   procedimento: 'APENDICECTOMIA', convenio: 'SUS', anestesista: 'MARCELO',
-  anestesistaUserId: 'u-marcelo', created_at: `${HOJE}T10:00:00`, turno: 'matutino',
+  anestesistaUserId: `u-${id}`, created_at: `${HOJE}T10:00:00`, turno: 'matutino',
   ...extra,
 })
 const iniciada = (id, sala, extra = {}) =>
@@ -125,15 +128,34 @@ describe('postos do contrato', () => {
     expect(screen.getByText('Cristina')).toBeTruthy()
   })
 
-  it('à tarde o CO SAI dos dedicados — não há CO no contrato vespertino', () => {
-    // turno vespertino às 11h (fase 'dia') → contrato da tarde; o card CO some.
+  it('à tarde o CO SAI dos dedicados e passa a OCUPAR uma vaga (dono 20/08)', () => {
+    // turno vespertino às 11h (fase 'dia') → contrato da tarde; o card de dedicado
+    // do CO some e a sala aparece como posto ocupado, com quem cobre. Era a queixa
+    // literal: "adicionei cesarianas como urgência e o card continua em branco".
     montar(
       [iniciada('c1', 'Sala 6', { turno: 'vespertino' }),
        caso('co', 'Sala 7 - CO', { tipo: 'eletiva', turno: 'vespertino', anestesista: 'CRISTINA', anestesistaUserId: 'u-cristina' })],
       { turno: 'vespertino' },
     )
     expect(screen.getByText('Orto')).toBeTruthy()
-    expect(screen.queryByText('CO')).toBeNull()
+    expect(screen.queryByText('CO')).toBeNull() // não é mais card de dedicado
+    expect(screen.getByText('Sala 7 - CO')).toBeTruthy()
+    expect(screen.getByText('Cristina')).toBeTruthy()
+    expect(screen.getByText('2 de 2')).toBeTruthy()
+  })
+
+  it('sala com várias cirurgias é UM card, com a contagem à direita', () => {
+    // "Gabriel ficou com 2 cards de CO — que fique um único card com várias
+    // cirurgias obstétricas (dia todo)".
+    montar(
+      [caso('co1', 'Sala 7 - CO', { tipo: 'eletiva', procedimento: 'DIA TODO', turno: 'vespertino', anestesista: 'GABRIEL', anestesistaUserId: 'u-gabriel' }),
+       caso('co2', 'Sala 7 - CO', { gravidade: 'urgente', procedimento: 'Cesarianas', turno: 'vespertino', anestesista: 'GABRIEL', anestesistaUserId: 'u-gabriel' })],
+      { turno: 'vespertino' },
+    )
+    expect(screen.getAllByText('Sala 7 - CO')).toHaveLength(1)
+    expect(screen.getByText('2 cir.')).toBeTruthy() // abreviado p/ o nome caber em 196px
+    expect(screen.getByText('1 de 2 salas')).toBeTruthy()
+    expect(screen.queryByText(/Fila —/)).toBeNull() // a cesárea seguinte é trabalho DESTA sala
   })
 })
 
@@ -148,7 +170,7 @@ describe('excedente — acima do contrato', () => {
     montar(tres)
     expect(screen.getByText('acima do contrato')).toBeTruthy()
     expect(screen.getByText('Extra')).toBeTruthy()
-    // o excedente é o que INICIOU por último (os 2 mais antigos ocupam o contrato)
+    // o excedente é quem INICIOU por último (os 2 mais antigos ocupam o contrato)
     expect(screen.getByText(/fora do contrato/)).toBeTruthy()
     expect(screen.getByText('Fernando')).toBeTruthy()
     expect(screen.getByText('3 de 2')).toBeTruthy()
@@ -163,8 +185,11 @@ describe('excedente — acima do contrato', () => {
 
 describe('fila', () => {
   it('ordena por gravidade, mostra a espera e a não classificada pede "Classificar" no fim', () => {
+    // 2 vagas ocupadas (a iniciada + a 1ª agendada, que ENTRA na vaga livre desde
+    // 20/08) ⇒ as duas seguintes formam a fila.
     montar([
       iniciada('c0', 'Sala 6'),
+      iniciada('c0b', 'Sala 1'),
       caso('f-sem', 'Sala 9', { created_at: `${HOJE}T08:50:00` }),
       caso('f-imed', 'Sala 3', { gravidade: 'imediata', procedimento: 'AVC HEMORRAGICO', created_at: `${HOJE}T10:48:00` }),
     ])
@@ -178,7 +203,9 @@ describe('fila', () => {
   })
 
   it('acima de 3 na fila, esconde o resto atrás de "ver todas (N)"', () => {
+    // as 2 primeiras ocupam as vagas do contrato; as 4 seguintes fazem a fila
     montar([
+      iniciada('v1', 'Sala 5'), iniciada('v2', 'Sala 6'),
       caso('f1', 'Sala 1', { gravidade: 'urgente' }), caso('f2', 'Sala 2', { gravidade: 'urgente' }),
       caso('f3', 'Sala 3', { gravidade: 'urgente' }), caso('f4', 'Sala 9', { gravidade: 'urgente', procedimento: 'QUARTA' }),
     ])
@@ -196,7 +223,7 @@ describe('toque abre o detalhe — onde Iniciada/Terminada já são marcados', (
   })
 
   it('linha da fila abre o detalhe do caso certo', () => {
-    montar([caso('f1', 'Sala 9', { gravidade: 'urgente' })])
+    montar([iniciada('v1', 'Sala 5'), iniciada('v2', 'Sala 6'), caso('f1', 'Sala 9', { gravidade: 'urgente' })])
     fireEvent.click(screen.getByText(/Apendicectomia/i).closest('button'))
     expect(screen.getByTestId('detalhe').textContent).toBe('f1')
   })
@@ -271,6 +298,23 @@ describe('salas configuráveis por dia/turno', () => {
     expect(screen.getByText('1 de 2 salas')).toBeTruthy() // ocupou o plantonista
   })
 
+  it('marcar o plantão numa sala coloca a sala na CONTAGEM (dono 20/08)', () => {
+    // "se salas de urgência não tiverem sido identificadas, que haja como marcar
+    // sala para que entre na contagem" — até 19/08 marcar não mudava o número.
+    render(
+      <FaixaUrgencias
+        escala={{
+          ...escalaCom([caso('e1', 'Sala 6', { tipo: 'eletiva' })]),
+          urgenciasMeta: { matutino: { plantao: 'Sala 6' } },
+        }}
+        hospital="hro" turno="matutino" hoje={HOJE} />,
+      { wrapper: wrap },
+    )
+    expect(screen.getByText('1 de 2 salas')).toBeTruthy()
+    expect(screen.getByText('Sala 6')).toBeTruthy()
+    expect(screen.getByText('Marcelo')).toBeTruthy()
+  })
+
   it('o ⚙ abre o sheet e salvar chama a action com o payload do turno', async () => {
     montar([iniciada('c1', 'Sala 6')])
     fireEvent.click(screen.getByRole('button', { name: 'Configurar salas do contrato' }))
@@ -328,5 +372,22 @@ describe('toque nos postos vazios abre o Adicionar caso', () => {
     fireEvent.click(screen.getByText('Marcelo').closest('button'))
     expect(screen.getByTestId('detalhe').textContent).toBe('c1')
     expect(screen.queryByTestId('add-caso')).toBeNull()
+  })
+})
+
+/**
+ * UMA PESSOA, UMA VAGA (dono 20/08): "a vaga é gasta por cirurgia" — mas ninguém
+ * opera dois pacientes ao mesmo tempo, então as cirurgias do MESMO anestesista
+ * são um card só, com a contagem. É o CO com cesáreas o dia todo.
+ */
+describe('cirurgias do mesmo anestesista', () => {
+  it('duas cirurgias do mesmo anestesista ocupam UMA vaga e mostram a contagem', () => {
+    montar([
+      caso('a', 'Sala 7 - CO', { anestesistaUserId: 'u-gab', anestesista: 'GABRIEL', tipo: 'eletiva', turno: 'vespertino' }),
+      caso('b', 'Sala 7 - CO', { anestesistaUserId: 'u-gab', anestesista: 'GABRIEL', turno: 'vespertino' }),
+    ], { turno: 'vespertino' })
+    expect(screen.getByText('1 de 2 salas')).toBeTruthy()
+    expect(screen.getByText('2 cir.')).toBeTruthy()
+    expect(screen.queryByText(/Fila —/)).toBeNull()
   })
 })

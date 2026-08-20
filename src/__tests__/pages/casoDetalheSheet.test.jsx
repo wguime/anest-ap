@@ -173,7 +173,10 @@ describe('Dois eixos de status (dono 21/07, desenho 17/08)', () => {
 
   it('o tipo do caso é badge vermelho, não linha de texto (auditoria 17/08)', () => {
     montar({}, { ...escala, casos: [{ ...caso, tipo: 'emergencia' }] })
-    expect(screen.getByText('Emergência')).toBeTruthy()
+    // desde 20/08 "Emergência" aparece duas vezes de propósito: o BADGE do
+    // cabeçalho (identidade) e o botão de reclassificar do Andamento (ação).
+    expect(document.querySelector('[data-slot="badge"][data-variant="destructive"]').textContent).toBe('Emergência')
+    expect(screen.getByRole('button', { name: 'Emergência' }).getAttribute('aria-pressed')).toBe('true')
   })
 })
 

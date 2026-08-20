@@ -8,10 +8,16 @@
  * nenhum); este sheet é o ajuste do dia que foge do normal.
  *
  * "Automático" = comportamento de sempre: orto/CO nos defaults do contrato,
- * plantão/sobreaviso atribuídos por ordem de início. Marcar plantão/sobreaviso
- * numa sala só muda o RÓTULO da atribuição — a contagem (2 de 2, acima) nunca
- * depende disso. Config é POR TURNO (turnos independentes, regra de 13/08) e
- * sobrevive à republicação (coluna própria, fora do reset).
+ * plantão/sobreaviso atribuídos por ordem de início. Config é POR TURNO (turnos
+ * independentes, regra de 13/08) e sobrevive à republicação (coluna própria,
+ * fora do reset).
+ *
+ * ⚠️ MUDANÇA 20/08 (dono): marcar plantão/sobreaviso numa sala FAZ a sala entrar
+ * na contagem das 2 vagas enquanto ela tiver cirurgia aberta no turno — é a
+ * resposta a "se as salas de urgência não tiverem sido identificadas, que haja
+ * como marcar sala para que entre na contagem". Até 19/08 a marcação só trocava
+ * o rótulo de quem cobria o que já estava em andamento, então marcar a sala não
+ * mudava nada na tela e o card do posto continuava "livre".
  */
 import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
@@ -23,10 +29,10 @@ import { casosResolvidos, salasDoHospital } from './utils'
 const AUTO = '__auto__'
 
 const LINHAS = [
-  { campo: 'plantao', label: 'Plantão', hint: 'automático: a urgência mais antiga em andamento' },
-  { campo: 'sobreaviso', label: 'Sobreaviso', hint: 'automático: a segunda em andamento' },
-  { campo: 'orto', label: 'Ortopedia', hint: 'automático: Sala 4' },
-  { campo: 'co', label: 'CO', hint: 'automático: Sala 7 - CO · dedicado só de manhã' },
+  { campo: 'plantao', label: 'Plantão', hint: 'marcar a sala faz ela entrar na conta · automático: a urgência mais antiga em andamento' },
+  { campo: 'sobreaviso', label: 'Sobreaviso', hint: 'marcar a sala faz ela entrar na conta · automático: a segunda em andamento' },
+  { campo: 'orto', label: 'Ortopedia', hint: 'automático: Sala 4 · fora da conta de manhã e à tarde (tem dedicado)' },
+  { campo: 'co', label: 'CO', hint: 'automático: Sala 7 - CO · dedicado só de manhã; à tarde e à noite entra na conta sozinho' },
 ]
 
 export default function SalasUrgenciaSheet({ escala, turno, onClose }) {
@@ -72,8 +78,10 @@ export default function SalasUrgenciaSheet({ escala, turno, onClose }) {
         <div className="space-y-3 px-1 pb-2">
           <p className="text-xs text-muted-foreground">
             Marque onde cada papel está <b className="font-semibold text-foreground">hoje</b>.
-            Em Automático vale o de sempre; a marcação só muda a quem a urgência é
-            atribuída — a conta de 2 salas não muda.
+            Em Automático vale o de sempre. Marcar a sala do plantão ou do sobreaviso
+            coloca essa sala na conta das{' '}
+            <b className="font-semibold text-foreground">2 vagas de urgência</b> enquanto
+            ela tiver cirurgia aberta no turno.
           </p>
           {LINHAS.map((l) => (
             <div key={l.campo}>

@@ -26,19 +26,25 @@
  * justamente no dia sem escala publicada com urgência adicionada à mão (8 de 9
  * urgências de 18/08 nasceram pelo AddCasoSheet). E deriva do DIA inteiro, não
  * do turno exibido — ocupação é do relógio (lib estadoUrgencias).
+ *
+ * REVISÃO 20/08 (dono): a vaga é da CIRURGIA, mas as cirurgias do MESMO
+ * anestesista são um card só, com a contagem à direita ("2 cir.") — o CO com
+ * cesáreas o dia todo é uma pessoa ocupada, não duas. A urgência entra na vaga
+ * livre antes de começar; sem vaga vai para a fila, e se já começou vira Extra.
+ * Os cards dos dedicados vêm prontos da lib (`estado.dedicados`): derivá-los
+ * aqui duplicava a regra do contrato e fazia a sala marcada como plantão
+ * aparecer DUAS vezes na grade.
  */
 import { useMemo, useState } from 'react'
 import { ChevronRight, Settings2 } from 'lucide-react'
 import { Badge } from '@/design-system'
 import { fraseClinica } from '@/lib/colunaLiberacao'
-import {
-  CONTRATO_HRO, GRAVIDADE_LABEL, estadoUrgencias, papelDaSalaHro, salasContrato,
-} from '@/lib/escalaCirurgicaUrgencias'
+import { GRAVIDADE_LABEL, estadoUrgencias, salasContrato } from '@/lib/escalaCirurgicaUrgencias'
 import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import useAgoraMinuto from './useAgoraMinuto'
-import { casosResolvidos, filtrarPorTurno, nomeAnestesistaExibicao, salaLiberacao } from './utils'
+import { casosResolvidos, nomeAnestesistaExibicao, salaLiberacao } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import CasoDetalheSheet from './CasoDetalheSheet'
 import SalasUrgenciaSheet from './SalasUrgenciaSheet'
@@ -94,30 +100,22 @@ export default function FaixaUrgencias({ escala, hospital, turno, hoje }) {
     [casos, hospital, turno, agoraMin, escala?.data, hoje, salas],
   )
 
-  // Dedicados do TURNO EXIBIDO: quem cobre a Sala 4 / Sala 7 - CO agora. Casa
-  // pela FUNÇÃO da sala (papelDaSalaHro), nunca por string — produção tem
-  // "Sala 7" e "Sala 7 - CO" para a mesma sala.
-  const dedicados = useMemo(() => {
-    const doTurno = filtrarPorTurno(casos, turno)
-    const linha = CONTRATO_HRO[estado.turnoContrato] || CONTRATO_HRO.manha
-    return Object.keys(linha.dedicadas).map((papel) => {
-      const caso = doTurno.find((c) => papelDaSalaHro(c.sala, salas) === papel && c.anestesistaUserId)
-      const urg = estado.dedicadas.find((d) => d.papel === papel)
-      return {
-        papel,
-        sala: salas[papel] || linha.dedicadas[papel], // config do dia vence o default
-        nome: caso
-          ? nomeAnestesistaExibicao({ uid: caso.anestesistaUserId, alias: caso.anestesista, rosterByUid })
-          : '',
-        urgencia: urg || null,
-      }
-    })
-  }, [casos, turno, estado.turnoContrato, estado.dedicadas, rosterByUid, salas])
-
   if (hospital !== 'hro' || !estado.ativo) return null
 
-  const nomeDe = (caso) =>
-    nomeAnestesistaExibicao({ uid: caso?.anestesistaUserId, alias: caso?.anestesista, rosterByUid })
+  // O nome do card é o de quem responde pela SALA (a lib resolve, preferindo o
+  // turno contratual vigente) — não o do caso representativo, que numa sala com
+  // várias cirurgias muda conforme qual delas está em andamento.
+  const nomeDe = (a) => nomeAnestesistaExibicao({ uid: a?.uid, alias: a?.alias, rosterByUid })
+  /** Meta à direita do card: tempo em sala; com mais de uma cirurgia, quantas.
+      A contagem é o que o dono pediu ver no CO (uma sala, várias cesáreas), e vai
+      abreviada porque divide 196px com o selo da sala e o NOME — "2 cirurgias"
+      por extenso comia o nome inteiro ("Gabri…"), que é o que se procura no card.
+      O `title` guarda a forma longa. */
+  const metaOcupacao = (it) =>
+    it.qtd > 1 ? `${it.qtd} cir.` : it.desdeMin != null ? formatEspera(it.desdeMin) : ''
+  const tituloOcupacao = (it) =>
+    [it.qtd > 1 ? `${it.qtd} cirurgias` : null, it.desdeMin != null ? `em sala há ${formatEspera(it.desdeMin)}` : null]
+      .filter(Boolean).join(' · ') || undefined
 
   // Postos e excedente vêm da LIB (distribuirPostos): sala marcada casa
   // primeiro, o resto por ordem de início — testável fora do React.
@@ -171,13 +169,21 @@ export default function FaixaUrgencias({ escala, hospital, turno, hoje }) {
               key={papel}
               type="button"
               onClick={() => setDetalhe(item.caso)}
-              className={`${CARD_BASE} border-border bg-success/[0.14] dark:bg-success/20`}
+              title={tituloOcupacao(item)}
+              className={[
+                CARD_BASE, 'border-border',
+                // verde = alguém está OPERANDO ali; sala que ocupa a vaga por ser
+                // estação do turno (CO à tarde, sala marcada) sem cirurgia em
+                // andamento fica no cinza dos dedicados — a tinta não pode
+                // afirmar "iniciada" onde ninguém marcou início.
+                item.emAndamento ? 'bg-success/[0.14] dark:bg-success/20' : 'bg-muted/55',
+              ].join(' ')}
             >
               <SeloSala>{salaLiberacao(item.sala)}</SeloSala>
-              <span className="min-w-0 flex-1 truncate text-[13px]">{nomeDe(item.caso)}</span>
-              {item.desdeMin != null && (
-                <span className="shrink-0 text-[10.5px] tabular-nums text-muted-foreground">{formatEspera(item.desdeMin)}</span>
-              )}
+              <span className="min-w-0 flex-1 truncate text-[13px]">
+                {nomeDe(item.anestesista) || PAPEL_LABEL[papel] || papel}
+              </span>
+              <span className="shrink-0 text-[10.5px] tabular-nums text-muted-foreground">{metaOcupacao(item)}</span>
             </button>
           ) : (
             <button
@@ -191,13 +197,13 @@ export default function FaixaUrgencias({ escala, hospital, turno, hoje }) {
               <span className="shrink-0 text-[10.5px] text-muted-foreground">livre</span>
             </button>
           ))}
-          {dedicados.map((d) => {
-            const Comp = d.urgencia || podeEditar ? 'button' : 'div'
+          {estado.dedicados.map((d) => {
+            const Comp = d.item || podeEditar ? 'button' : 'div'
             return (
               <Comp
                 key={d.papel}
-                {...(d.urgencia
-                  ? { type: 'button', onClick: () => setDetalhe(d.urgencia.caso) }
+                {...(d.item
+                  ? { type: 'button', onClick: () => setDetalhe(d.item.caso) }
                   : podeEditar
                     ? { type: 'button', onClick: () => setAddCaso({ posto: d.papel, sala: d.sala }) }
                     : {})}
@@ -205,13 +211,13 @@ export default function FaixaUrgencias({ escala, hospital, turno, hoje }) {
                   CARD_BASE,
                   'border-border',
                   // urgência em andamento na sala dedicada pinta como as demais
-                  d.urgencia && d.urgencia.caso?.statusCirurgia === 'iniciada'
-                    ? 'bg-success/[0.14] dark:bg-success/20'
-                    : 'bg-muted/55',
+                  d.item?.emAndamento ? 'bg-success/[0.14] dark:bg-success/20' : 'bg-muted/55',
                 ].join(' ')}
               >
                 <SeloSala>{salaLiberacao(d.sala)}</SeloSala>
-                <span className="min-w-0 flex-1 truncate text-[13px]">{d.nome || DEDICADO_NOME[d.papel]}</span>
+                <span className="min-w-0 flex-1 truncate text-[13px]">
+                  {nomeDe(d.anestesista) || DEDICADO_NOME[d.papel]}
+                </span>
                 <span className="shrink-0 text-[10.5px] text-muted-foreground">{DEDICADO_LABEL[d.papel]}</span>
               </Comp>
             )
@@ -228,9 +234,9 @@ export default function FaixaUrgencias({ escala, hospital, turno, hoje }) {
           >
             <span className="shrink-0 text-[11px] font-extrabold uppercase tracking-wide text-destructive">Extra</span>
             <SeloSala tom="destructive">{salaLiberacao(it.sala)}</SeloSala>
-            <span className="min-w-0 flex-1 truncate text-[13px]">{nomeDe(it.caso)}</span>
+            <span className="min-w-0 flex-1 truncate text-[13px]">{nomeDe(it.anestesista)}</span>
             <span className="shrink-0 text-[10.5px] tabular-nums text-destructive">
-              fora do contrato{it.desdeMin != null ? ` · ${formatEspera(it.desdeMin)}` : ''}
+              fora do contrato{metaOcupacao(it) ? ` · ${metaOcupacao(it)}` : ''}
             </span>
           </button>
         ))}

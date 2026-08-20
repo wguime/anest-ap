@@ -124,7 +124,8 @@ export function normalizarSalaUnimed(sala) {
 
 /**
  * Normaliza o rótulo de sala da escala HRO na importação (regras do dono 2026-07-21):
- * "CO" → "Sala 7 - CO" (o CO do HRO é a sala 7); "HO"/"H.O." → "Hospital de Olhos".
+ * "CO" e "Sala 7" → "Sala 7 - CO" (o CO do HRO é a sala 7 — rótulo único, dono
+ * 20/08); "HO"/"H.O." → "Hospital de Olhos".
  */
 export function normalizarSalaHro(sala) {
   const raw = String(sala || '').trim()
@@ -132,6 +133,10 @@ export function normalizarSalaHro(sala) {
   if (!s) return raw
   if (/^H\.?\s*O\.?$/.test(s) || /HOSPITAL DE OLHOS/.test(s)) return 'Hospital de Olhos'
   if (/^C\.?\s*O\.?$/.test(s)) return 'Sala 7 - CO'
+  // RÓTULO ÚNICO do CO (dono 20/08: "deixe apenas Sala 7 - CO como padrão para
+  // não haver confusão"): produção tinha "Sala 7" (4 casos) e "Sala 7 - CO" (27)
+  // para a MESMA sala. Idempotente — "Sala 7 - CO" volta igual.
+  if (/^SALA ?7\b/.test(s)) return 'Sala 7 - CO'
   if (/^EMERG/.test(s) && !/\d/.test(s)) return 'Sala 5 - Emergência' // Emergência sozinha = Sala 5
   if (/BLOCO\s*M/.test(s)) {
     const n = s.match(/(\d+)/)
