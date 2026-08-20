@@ -1017,24 +1017,31 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           const marcacao = marcaDe(linha)
           const forcadoEscalado = marcacao?.escalado === true // entrou na escala no meio do dia
           const liberadoReal = !!marcacao && !forcadoEscalado
-          // TRÊS ESTADOS, fechados pelo dono em 19/08 (mensagens 2–5):
-          //   1. NUNCA ESCALADO desde a publicação (nome do rodapé sem caso e sem
-          //      marcação) → nasce LIBERADO na própria posição — "mantenha a
-          //      configuração de sair na ordem de liberação como liberado";
-          //   2. TRABALHOU e ficou sem caso num REPASSE → o próprio repasse grava
-          //      o marcador escalado:true e a linha segue ATIVA aguardando a vez
-          //      (é o que impede o "liberado sozinho no meio da fila" de voltar);
-          //   3. TERMINOU todos os casos → "Livre", aguardando o toque de quem
-          //      libera. `liberadoEm` continua nascendo SÓ do toggle manual.
-          const liberado = liberadoReal || (semEscala && !forcadoEscalado)
+          // LIBERAÇÃO NUNCA É AUTOMÁTICA — regra fechada pelo dono em 20/08, depois
+          // de o sintoma voltar em produção: Eduardo, 5º de 15 no rodapé vespertino
+          // da Unimed, nasceu VERMELHO 47s depois da publicação da tarde (ele tinha
+          // trocado com a Raquel e não tinha cirurgia ali). Vermelho no MEIO da fila
+          // a equipe lê como liberação fora de ordem, e não há como distinguir na
+          // tela "o app decidiu" de "alguém liberou na frente dos outros".
+          // ⚠️ Isto JÁ foi revertido uma vez — 2154201 (19/08 22:08) desfez 7545ef3
+          // (21:59) por causa de "mantenha a configuração de sair na ordem de
+          // liberação como liberado" — e o sintoma reapareceu no dia seguinte, na
+          // 1ª publicação da tarde. NÃO reverter de novo sem ordem expressa: quem
+          // está sem caso mostra "Livre" e aguarda; o vermelho nasce SÓ do toque.
+          const liberado = liberadoReal
           const estado = liberado ? 'liberado' : idx === idxProximo ? 'proximo' : 'escalado'
           // Bloqueio da liberação fora de ordem: só o "próximo" sai. Desfazer
           // (linha já liberada) e P1/P2 — que não estão na fila — nunca bloqueiam.
           const bloqueioOrdem = (!liberadoReal && !semEscala && idxProximo >= 0 && idx !== idxProximo && naFila(linha))
             ? { faltam: linhasExibicao.slice(idx + 1).filter(naFila).length, proximo: proximoNome }
             : null
-          // LIVRE: terminou todos os casos do turno (aguardando o plantonista liberar)
-          const livre = !noturno && !liberado && estaLivre(linha)
+          // LIVRE = a pessoa não está em sala e AGUARDA o toque de quem libera, na
+          // própria posição, o dia inteiro se preciso. Dois caminhos chegam aqui e
+          // são o mesmo fato para quem lê a fila: terminou todos os casos do turno,
+          // ou está no rodapé sem caso nenhum (nunca escalado / ficou sem caso num
+          // repasse). O `naFila` continua pulando a linha sem caso, então ela não
+          // trava o "próximo" de ninguém.
+          const livre = !noturno && !liberado && (estaLivre(linha) || (semEscala && !forcadoEscalado))
           const ov = overrideDe(linha)
           // linha RENOVADA (voltou de liberação): infos da manhã não valem mais —
           // derivado suprimido; só o que for preenchido manualmente aparece.
@@ -1098,7 +1105,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
               {/* setas de reordenar REMOVIDAS (pedido do dono 2026-07-27): a ordem
                   do rodapé é imutável no app — nem o plantonista mexe. */}
 
-              {/* marcar liberado: alvo 44px, círculo visual 28px (não escalado já nasce liberado) */}
+              {/* marcar liberado: alvo 44px, círculo visual 28px. Linha sem caso
+                  nenhum não é liberável pelo círculo — ali o toque marca ESCALADO
+                  (quem entrou na escala no meio do dia); ela nasce e fica "Livre". */}
               <button
                 type="button"
                 disabled={!canEdit}
@@ -1223,10 +1232,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     fica com a LARGURA TODA — badge ao lado sem truncar o nome) */}
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    {/* card vermelho + "Liberado" = liberação FEITA ou quem NUNCA
-                        foi escalado desde a publicação (config mantida, dono 19/08).
-                        Quem trabalhou nunca chega aqui sozinho: repasse grava o
-                        marcador escalado e terminar tudo vira "Livre". */}
+                    {/* card vermelho + "Liberado" = liberação FEITA, sempre. Sem
+                        caso e sem marcação a linha mostra "Livre" e espera o toque
+                        de quem libera (dono 20/08 — ver o bloco `liberado` acima). */}
                     {liberado && (
                       <div className="mt-1">
                         <Badge variant="destructive" badgeStyle="subtle" className="dark:bg-destructive/25">Liberado</Badge>
