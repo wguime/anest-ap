@@ -14,18 +14,19 @@ import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import useRosterResidentes from '@/hooks/useRosterResidentes'
 import { iniciais } from '@/lib/excelEscala'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
-import { casosResolvidos, familiaConvenio, normalizarSalaHro, normNome, turnoDeHora, salasDoHospital } from './utils'
-import { GRAVIDADES, GRAVIDADE_LABEL, estadoUrgencias, salasContrato } from '@/lib/escalaCirurgicaUrgencias'
+import { casosResolvidos, conveniosDaEscala, familiaConvenio, normalizarSalaHro, normNome, turnoDeHora, salasDoHospital } from './utils'
+import { estadoUrgencias, salasContrato } from '@/lib/escalaCirurgicaUrgencias'
+import ChipsEscolha, { GRAVIDADE_CHIPS, TIPOS_CIRURGIA } from './ChipsEscolha'
 import useAgoraMinuto from './useAgoraMinuto'
 
 const NOVA_SALA = '__nova__'
+const OUTRO_CONVENIO = '__outro__'
 
 /** Auto-formata a hora enquanto digita: só dígitos → "HH:MM" (pedido do dono 24/07). */
 const formatHora = (v) => {
   const d = String(v || '').replace(/\D/g, '').slice(0, 4)
   return d.length <= 2 ? d : `${d.slice(0, 2)}:${d.slice(2)}`
 }
-const GRAVIDADE_OPCOES = GRAVIDADES.map((g) => ({ value: g, label: GRAVIDADE_LABEL[g] }))
 
 // Postos do contrato de urgência do HRO (dono 19/08): quem adiciona a urgência
 // já diz QUEM a faz. A escolha vira CONFIGURAÇÃO de sala (urgencias_meta) — o
@@ -36,25 +37,19 @@ const GRAVIDADE_OPCOES = GRAVIDADES.map((g) => ({ value: g, label: GRAVIDADE_LAB
 // marcada seguia contando 0.
 const POSTO_AUTO = '__auto__'
 const POSTOS = [
-  { value: 'plantao', label: 'Plantão' },
+  { value: 'plantao', label: 'Plantonista do HRO' },
   { value: 'sobreaviso', label: 'Sobreaviso' },
-  { value: 'orto', label: 'Ortopedia' },
-  { value: 'co', label: 'CO' },
+  { value: 'orto', label: 'Anestesista da ortopedia' },
+  { value: 'co', label: 'Anestesista do CO' },
 ]
 // defaults do contrato — iguais aos de CONTRATO_HRO.manha.dedicadas
 const POSTO_SALA_PADRAO = { orto: 'Sala 4', co: 'Sala 7 - CO' }
-
-const TIPOS = [
-  { value: 'eletiva', label: 'Eletiva / encaixe' },
-  { value: 'urgencia', label: 'Urgência' },
-  { value: 'emergencia', label: 'Emergência' },
-]
 
 // Fora do componente: definido inline, a identidade mudaria a cada render e o
 // React remontaria o subtree — input perdendo foco a cada tecla.
 const Campo = ({ id, label, children }) => (
   <div>
-    <label htmlFor={id} className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+    <label htmlFor={id} className="mb-1 block text-[11.5px] font-semibold uppercase tracking-wide text-muted-foreground">
       {label}
     </label>
     {children}
@@ -74,6 +69,7 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
   const [procedimento, setProcedimento] = useState('')
   const [cirurgiao, setCirurgiao] = useState('')
   const [convenio, setConvenio] = useState('')
+  const [outroConvenio, setOutroConvenio] = useState('')
   const [anestesistaUid, setAnestesistaUid] = useState('')
   const [residenteUid, setResidenteUid] = useState('')
   const [tipo, setTipo] = useState('urgencia')
@@ -100,6 +96,15 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
   // com dois rótulos e o quadro a parte em dois blocos.
   const salaBruta = sala === NOVA_SALA ? novaSala.trim() : sala
   const salaFinal = escala?.hospital === 'hro' ? normalizarSalaHro(salaBruta) : salaBruta
+
+  // CONVÊNIO em lista (dono 20/08): campo livre virou "Unirmd"/"Particulae" no
+  // banco, e convênio com erro de digitação some do agrupamento por família — e,
+  // no particular, da COBRANÇA, que casa o texto. Digitar continua possível.
+  const conveniosOpcoes = useMemo(() => [
+    ...conveniosDaEscala(escala?.casos).map((c) => ({ value: c, label: c })),
+    { value: OUTRO_CONVENIO, label: '+ Outro convênio…' },
+  ], [escala])
+  const convenioFinal = convenio === OUTRO_CONVENIO ? outroConvenio.trim() : convenio
   // OBRIGATÓRIOS (dono 29/07): cirurgião, convênio e tipo entram na exigência.
   // Não é burocracia — cada um alimenta uma decisão a jusante: o CIRURGIÃO agrupa
   // a linha na coluna de liberação, o CONVÊNIO decide se o caso vira cobrança
@@ -129,11 +134,11 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
       co: !!estado.dedicados.find((d) => d.papel === 'co')?.item,
     }
     return [
-      { value: POSTO_AUTO, label: 'Automático (pela sala)' },
+      { value: POSTO_AUTO, label: 'Automático — decide pela sala' },
       ...POSTOS.map((o) => ({ ...o, label: tomado[o.value] ? `${o.label} · ocupado` : o.label })),
     ]
   }, [mostraPosto, escala, turno, agoraMin])
-  const valido = !!(salaFinal && procedimento.trim() && cirurgiao.trim() && convenio.trim() && tipo
+  const valido = !!(salaFinal && procedimento.trim() && cirurgiao.trim() && convenioFinal && tipo
     && (!exigeGravidade || gravidade))
 
   // Emergência é IMEDIATA por definição na adaptação da NCEPOD, então o campo
@@ -159,7 +164,7 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
         pacienteIniciais: iniciais(paciente),
         idade: idade.trim(),
         procedimento: procedimento.trim(),
-        convenio: convenio.trim(),
+        convenio: convenioFinal,
         cirurgiao: cirurgiao.trim(),
         // Sem anestesista escolhido → "?" COM a flag (bug 30/07): '' sem flag
         // herdava o dono da sala na exibição (resolverAnestesistas) e o caso
@@ -232,89 +237,144 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
 
   return (
     <Sheet open onOpenChange={(o) => !o && onClose?.()}>
-      <SheetContent side="bottom" className="max-h-[90vh]">
-        <SheetHeader>
+      {/* MESMO painel do detalhe do caso (dono 17/08): `!h-auto` porque o
+          POSITION_CLASSES.bottom do DS fixa h-[85vh] e o formulário curto
+          nasceria com 85% da tela vazia. */}
+      <SheetContent side="bottom" className="!h-auto max-h-[90vh]">
+        <SheetHeader className="pb-2">
           <SheetTitle className="flex items-center gap-2">
             <Plus className="w-4 h-4" /> Adicionar caso
           </SheetTitle>
         </SheetHeader>
-        <div className="px-1 pb-4 space-y-3">
-          <Campo id="ac-sala" label="Sala">
-            <Select options={salasOpcoes} value={sala} onChange={setSala} placeholder="Selecionar sala…" searchable />
-          </Campo>
-          {sala === NOVA_SALA && (
-            <Input value={novaSala} onChange={(e) => setNovaSala(e.target.value)} placeholder="Nome da sala (ex.: SALA 5)" />
-          )}
-          <div className="grid grid-cols-2 gap-2">
-            <Campo id="ac-hora" label="Hora">
-              <Input id="ac-hora" value={hora} onChange={(e) => setHora(formatHora(e.target.value))}
-                inputMode="numeric" placeholder="ex.: 15:30" />
-            </Campo>
-            <Campo id="ac-idade" label="Idade">
-              <Input id="ac-idade" value={idade} onChange={(e) => setIdade(e.target.value)} placeholder="ex.: 47a" />
-            </Campo>
-          </div>
-          <Campo id="ac-paciente" label="Paciente (vira iniciais)">
-            <Input id="ac-paciente" value={paciente}
-              onChange={(e) => {
-                setPaciente(e.target.value)
-                // nome de verdade (palavra 3+ letras) → memoriza p/ a cobrança de particular
-                if (/\p{L}{3,}/u.test(e.target.value)) nomeCompletoRef.current = e.target.value.trim()
-              }}
-              onBlur={() => setPaciente(iniciais(paciente))}
-              placeholder="Nome ou iniciais — salvo só como iniciais (LGPD)" />
-          </Campo>
-          <Campo id="ac-proc" label="Procedimento *">
-            <Input id="ac-proc" value={procedimento} onChange={(e) => setProcedimento(e.target.value)} placeholder="ex.: Apendicectomia" />
-          </Campo>
-          <Campo id="ac-cir" label="Cirurgião *">
-            <Input id="ac-cir" value={cirurgiao} onChange={(e) => setCirurgiao(e.target.value)} placeholder="ex.: Mateus Baptistella" />
-          </Campo>
-          <div className="grid grid-cols-2 gap-2">
-            <Campo id="ac-conv" label="Convênio *">
-              <Input id="ac-conv" value={convenio} onChange={(e) => setConvenio(e.target.value)} placeholder="SUS, Unimed, BRF…" />
-            </Campo>
-            <Campo id="ac-tipo" label="Tipo *">
-              <Select options={TIPOS} value={tipo} onChange={escolherTipo} />
-            </Campo>
-          </div>
-          {exigeGravidade && (
-            <Campo id="ac-grav" label="Gravidade *">
-              <Select options={GRAVIDADE_OPCOES} value={gravidade} onChange={setGravidade} placeholder="Quem entra primeiro" />
-            </Campo>
-          )}
-          {mostraPosto && (
-            <Campo id="ac-posto" label="Quem faz (posto do contrato)">
-              <Select options={postoOpcoes} value={posto} onChange={setPosto} />
-              <p className="mt-0.5 text-[11px] text-muted-foreground">
-                Posto ocupado? Pode escolher mesmo assim — o excedente entra como Extra.
+
+        {/* UM CARTÃO POR PERGUNTA (dono 20/08: "no padrão das outras páginas da
+            escala cirúrgica") — a mesma divisão do detalhe do caso: que cirurgia
+            é · como ela entra · quem está e onde. Antes eram 12 campos numa
+            coluna só, todos no mesmo peso, e o TIPO era um Select enquanto o
+            detalhe já perguntava a mesma coisa em pastilhas. */}
+        <div className="space-y-2.5 px-1 pb-2">
+          <article className="rounded-2xl border border-border-strong bg-card-elevated p-3">
+            <h3 className="mb-2 text-[15px] font-extrabold">A cirurgia</h3>
+            <div className="space-y-2.5">
+              <Campo id="ac-proc" label="Procedimento *">
+                <Input id="ac-proc" value={procedimento} onChange={(e) => setProcedimento(e.target.value)}
+                  placeholder="ex.: Apendicectomia" />
+              </Campo>
+              <div className="grid grid-cols-[1fr_92px] gap-2">
+                <Campo id="ac-paciente" label="Paciente">
+                  <Input id="ac-paciente" value={paciente}
+                    onChange={(e) => {
+                      setPaciente(e.target.value)
+                      // nome de verdade (palavra 3+ letras) → memoriza p/ a cobrança de particular
+                      if (/\p{L}{3,}/u.test(e.target.value)) nomeCompletoRef.current = e.target.value.trim()
+                    }}
+                    onBlur={() => setPaciente(iniciais(paciente))}
+                    placeholder="Nome ou iniciais" />
+                </Campo>
+                <Campo id="ac-idade" label="Idade">
+                  <Input id="ac-idade" value={idade} onChange={(e) => setIdade(e.target.value)} placeholder="47a" />
+                </Campo>
+              </div>
+              <p className="-mt-1 text-[11.5px] text-muted-foreground">
+                O nome vira INICIAIS ao sair do campo — a escala não guarda nome de paciente (LGPD).
               </p>
-            </Campo>
-          )}
-          {/* diz O QUE falta: com 4 obrigatórios, botão cinza sem explicação vira
-              tentativa e erro no meio do plantão */}
+              <Campo id="ac-conv" label="Convênio *">
+                <Select options={conveniosOpcoes} value={convenio} onChange={setConvenio}
+                  placeholder="Selecionar convênio…" searchable />
+              </Campo>
+              {convenio === OUTRO_CONVENIO && (
+                <Input value={outroConvenio} onChange={(e) => setOutroConvenio(e.target.value)}
+                  placeholder="Nome do convênio" />
+              )}
+            </div>
+          </article>
+
+          <article className="rounded-2xl border border-border-strong p-3">
+            <h3 className="mb-2 text-[15px] font-extrabold">Tipo e prioridade</h3>
+            {/* MESMAS pastilhas do cartão Andamento do detalhe (ChipsEscolha). */}
+            <ChipsEscolha
+              opcoes={TIPOS_CIRURGIA}
+              valor={tipo}
+              onChange={escolherTipo}
+              rotulo="Tipo"
+              nota="urgência entra na conta do contrato"
+            />
+            {exigeGravidade && (
+              <ChipsEscolha
+                className="mt-3"
+                opcoes={GRAVIDADE_CHIPS}
+                valor={gravidade}
+                onChange={setGravidade}
+                rotulo="Gravidade *"
+                nota="ordena a fila de urgências"
+                aviso={!gravidade ? 'Sem classificação a urgência não tem lugar na fila.' : null}
+              />
+            )}
+            {mostraPosto && (
+              <div className="mt-3">
+                <Campo id="ac-posto" label="Quem vai fazer esta urgência">
+                  <Select options={postoOpcoes} value={posto} onChange={setPosto} />
+                </Campo>
+                <p className="mt-1 text-[11.5px] leading-snug text-muted-foreground">
+                  O contrato do HRO paga <b className="font-semibold text-foreground">2 vagas de
+                  urgência por turno</b> — plantonista e sobreaviso. A ortopedia e o CO têm
+                  anestesista próprio e ficam fora dessa conta. Se a vaga escolhida já estiver
+                  ocupada, esta urgência entra como <b className="font-semibold text-foreground">Extra</b>,
+                  acima do contrato.
+                </p>
+              </div>
+            )}
+          </article>
+
+          <article className="rounded-2xl border border-border-strong p-3">
+            <h3 className="mb-2 text-[15px] font-extrabold">Quem está e onde</h3>
+            <div className="space-y-2.5">
+              <div className="grid grid-cols-[1fr_108px] gap-2">
+                <Campo id="ac-sala" label="Sala *">
+                  <Select options={salasOpcoes} value={sala} onChange={setSala} placeholder="Selecionar sala…" searchable />
+                </Campo>
+                <Campo id="ac-hora" label="Hora">
+                  <Input id="ac-hora" value={hora} onChange={(e) => setHora(formatHora(e.target.value))}
+                    inputMode="numeric" placeholder="15:30" />
+                </Campo>
+              </div>
+              {sala === NOVA_SALA && (
+                <Input value={novaSala} onChange={(e) => setNovaSala(e.target.value)} placeholder="Nome da sala (ex.: SALA 5)" />
+              )}
+              <Campo id="ac-cir" label="Cirurgião *">
+                <Input id="ac-cir" value={cirurgiao} onChange={(e) => setCirurgiao(e.target.value)}
+                  placeholder="ex.: Mateus Baptistella" />
+              </Campo>
+              <Campo id="ac-anest" label="Anestesista">
+                <Select options={rosterOpcoes} value={anestesistaUid} onChange={setAnestesistaUid}
+                  placeholder="Definir depois" searchable />
+              </Campo>
+              <Campo id="ac-residente" label="Residente">
+                <Select options={opcoesResidente} value={residenteUid} onChange={setResidenteUid}
+                  placeholder="Sem residente" searchable />
+              </Campo>
+            </div>
+          </article>
+        </div>
+
+        {/* RODAPÉ do padrão dos sheets da escala: borda + par de botões. O que
+            falta é dito por extenso — botão cinza sem explicação vira tentativa e
+            erro no meio do plantão. */}
+        <div className="border-t border-border px-1 pb-4 pt-3">
           {!valido && (
-            <p className="text-xs text-warning">
+            <p className="mb-2 text-xs text-warning">
               Falta preencher: {[
                 !salaFinal && 'sala',
                 !procedimento.trim() && 'procedimento',
                 !cirurgiao.trim() && 'cirurgião',
-                !convenio.trim() && 'convênio',
+                !convenioFinal && 'convênio',
                 !tipo && 'tipo',
                 exigeGravidade && !gravidade && 'gravidade',
               ].filter(Boolean).join(', ')}.
             </p>
           )}
-          <Campo id="ac-anest" label="Anestesista (opcional)">
-            <Select options={rosterOpcoes} value={anestesistaUid} onChange={setAnestesistaUid}
-              placeholder="Selecionar anestesista…" searchable />
-          </Campo>
-          <Campo id="ac-residente" label="Residente (opcional)">
-            <Select options={opcoesResidente} value={residenteUid} onChange={setResidenteUid}
-              placeholder="Selecionar residente…" searchable />
-          </Campo>
-          <div className="flex gap-2 pt-1">
-            <Button variant="ghost" onClick={onClose} className="flex-1">Cancelar</Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>
             <Button onClick={submeter} disabled={!valido || salvando} className="flex-1">
               {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
               Adicionar

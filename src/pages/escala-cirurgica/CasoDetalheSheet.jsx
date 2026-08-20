@@ -28,7 +28,7 @@ import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
 import PainelTempo, { formatFaltante } from './PainelTempo'
 import useAgoraMinuto from './useAgoraMinuto'
 import { espelhoTempoTotal, LOCAIS_BASE, nomeAnestesistaExibicao, normalizarSalaHro, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso } from './utils'
-import { GRAVIDADES, GRAVIDADE_LABEL } from '@/lib/escalaCirurgicaUrgencias'
+import ChipsEscolha, { GRAVIDADE_CHIPS, TIPOS_CIRURGIA } from './ChipsEscolha'
 
 const SALA_OUTRO = '__outro__'
 // Sentinela do seletor de residente (valor impossível como uid).
@@ -44,23 +44,13 @@ const ANDAMENTO = [
 // vem marcada — "digamos que essa cirurgia era uma urgência que não foi lida ao
 // ser adicionada na escala". Reclassificar aqui é o que faz a cirurgia entrar na
 // conta do contrato: vaga livre do plantão → senão fila → se já iniciada, Extra.
-const TIPOS = [
-  { valor: 'eletiva', label: 'Eletiva' },
-  { valor: 'urgencia', label: 'Urgência', cls: 'border-destructive bg-destructive/15 text-destructive' },
-  { valor: 'emergencia', label: 'Emergência', cls: 'border-destructive bg-destructive text-destructive-foreground' },
-]
+// Os chips vêm de ChipsEscolha (fonte única com o "Adicionar caso").
 
 // GRAVIDADE — só em urgência/emergência. Adaptação da NCEPOD Classification of
 // Intervention, que manda quem vai operar classificar no momento da decisão de
 // operar: por isso fica aqui, no Andamento (onde se AGE), e não no cabeçalho de
 // identidade — a gravidade muda no tempo, um "pode aguardar" que descompensa
 // vira "imediata". É ela que ordena a fila de urgências do HRO.
-const GRAVIDADE_CLS = {
-  imediata: 'border-destructive bg-destructive text-destructive-foreground',
-  urgente: 'border-warning bg-warning text-warning-foreground',
-  aguarda: 'border-border-strong bg-foreground/80 text-background',
-}
-
 // EIXO EXTRA — convive com agendada/iniciada; terminada limpa e bloqueia.
 const AVISO = [
   { valor: 'atrasada', label: 'Atrasada', cls: 'border-warning bg-warning text-warning-foreground' },
@@ -326,28 +316,13 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                   daqui que sai a gravidade logo abaixo. */}
               {podeEditarCaso && (
                 <div className="mt-3 border-t border-border pt-2.5">
-                  <p className="mb-1.5 text-[12.5px] text-muted-foreground">
-                    Tipo <span className="text-[11.5px]">— urgência entra na conta do contrato</span>
-                  </p>
-                  <div className="flex gap-1.5">
-                    {TIPOS.map((t) => {
-                      const ativo = (vivo.tipo || 'eletiva') === t.valor
-                      return (
-                        <button
-                          key={t.valor}
-                          type="button"
-                          aria-pressed={ativo}
-                          onClick={() => mudarTipo(t.valor)}
-                          className={[
-                            'min-h-[44px] flex-1 rounded-[10px] border px-1.5 text-[12.5px] font-semibold leading-tight transition-colors',
-                            ativo ? (t.cls || 'border-primary bg-primary text-primary-foreground') : 'border-border-strong bg-card text-foreground',
-                          ].join(' ')}
-                        >
-                          {t.label}
-                        </button>
-                      )
-                    })}
-                  </div>
+                  <ChipsEscolha
+                    opcoes={TIPOS_CIRURGIA}
+                    valor={vivo.tipo || 'eletiva'}
+                    onChange={mudarTipo}
+                    rotulo="Tipo"
+                    nota="urgência entra na conta do contrato"
+                  />
                 </div>
               )}
 
@@ -357,33 +332,14 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                   fila com chamada de ação — o app não chuta prioridade clínica. */}
               {tb && (
                 <div className="mt-3 border-t border-border pt-2.5">
-                  <p className="mb-1.5 text-[12.5px] text-muted-foreground">
-                    Gravidade <span className="text-[11.5px]">— ordena a fila de urgências</span>
-                  </p>
-                  <div className="flex gap-1.5">
-                    {GRAVIDADES.map((g) => {
-                      const ativo = vivo.gravidade === g
-                      return (
-                        <button
-                          key={g}
-                          type="button"
-                          aria-pressed={ativo}
-                          onClick={() => mudarGravidade(g)}
-                          className={[
-                            'min-h-[44px] flex-1 rounded-[10px] border px-1.5 text-[12.5px] font-semibold leading-tight transition-colors',
-                            ativo ? GRAVIDADE_CLS[g] : 'border-border-strong bg-card text-foreground',
-                          ].join(' ')}
-                        >
-                          {GRAVIDADE_LABEL[g]}
-                        </button>
-                      )
-                    })}
-                  </div>
-                  {!vivo.gravidade && (
-                    <p className="mt-1.5 text-[11.5px] text-warning">
-                      Sem classificação — entra no fim da fila.
-                    </p>
-                  )}
+                  <ChipsEscolha
+                    opcoes={GRAVIDADE_CHIPS}
+                    valor={vivo.gravidade || ''}
+                    onChange={mudarGravidade}
+                    rotulo="Gravidade"
+                    nota="ordena a fila de urgências"
+                    aviso={!vivo.gravidade ? 'Sem classificação — entra no fim da fila.' : null}
+                  />
                 </div>
               )}
 

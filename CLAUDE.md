@@ -651,7 +651,16 @@ cirurgias do mesmo anestesista contando uma vez só (ver a revisão de 20/08 aba
   pastilhas de 44px, consumida pelo detalhe e pelo formulário (mudar a cor de urgência
   num lugar muda nos dois). ⚠️ os testes do formulário achavam a sala por
   `getAllByRole('combobox')[0]`: agora é `escolherSala()` pelo placeholder — índice de
-  combobox quebra a cada campo novo.
+  combobox quebra a cada campo novo. **CONVÊNIO virou lista** (`CONVENIOS_BASE` +
+  `conveniosDaEscala` em utils): era texto livre e o banco acumulou "Unirmd", "Umimed",
+  "Particulae", "Sua", "sUS" — convênio com erro de digitação some do agrupamento por
+  família e, no particular, da COBRANÇA (o trigger casa o texto). ⚠️ a grafia da lista
+  é a que vai ao banco: "Particular" precisa seguir casando `^PART(ICULAR)?[^A-Z]*$`,
+  travado em teste. Ordem INVERSA à de `salasDoHospital` (canônica primeiro): sala
+  agrupa por TEXTO, convênio agrupa por FAMÍLIA — e a escala de 20/08 trazia
+  "Convênios", "PART" e "SC" no topo. "+ Outro convênio…" abre a digitação. O campo do
+  posto virou **"Quem vai fazer esta urgência"**, com o contrato explicado por extenso:
+  o dono não entendia "posto ocupado → o excedente entra como Extra".
 - **TIPO editável no detalhe do caso (dono 20/08):** "digamos que essa cirurgia era uma
   urgência que não foi lida ao ser adicionada na escala" — o tipo só existia no
   `AddCasoSheet`, então urgência que a Vision leu como eletiva era beco sem saída.

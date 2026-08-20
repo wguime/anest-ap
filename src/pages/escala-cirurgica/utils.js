@@ -204,6 +204,61 @@ export const LOCAIS_BASE = {
   materno: ['Sala 1 HC', 'Sala 2 HC', 'Sala 3 HC', 'Centro Obstétrico'],
 }
 
+/**
+ * CONVÊNIOS que a escala vê, em ordem de frequência real (varredura de produção
+ * 20/08 nas 3 escalas: SUS 711 · Unimed Chapecó 344 · Intercâmbio Estadual 265 ·
+ * Particular 110+ · Intercâmbio Nacional 86 · SC 71 · BRF 64 · Mercosul 62 · FAS 48).
+ *
+ * PORQUÊ (dono 20/08): o campo era texto livre e o banco acumulou "Unirmd",
+ * "Umimed", "Particulae", "Sua", "sUS" — e cada erro de digitação some do
+ * agrupamento por família (`familiaConvenio`) e, no caso do particular, da
+ * COBRANÇA (o trigger `fn_convenio_particular` casa o texto). Lista escolhível
+ * primeiro, digitação como saída.
+ *
+ * ⚠️ a grafia daqui é a que vai para o banco: "Particular" precisa continuar
+ * casando `^PART(ICULAR)?[^A-Z]*$` (espelho JS+SQL do classificador), e os
+ * "Unimed …" precisam começar com UNIMED/INTERCÂMBIO para a família bater.
+ */
+export const CONVENIOS_BASE = [
+  'SUS',
+  'Unimed Chapecó - VD',
+  'Unimed Intercâmbio Estadual',
+  'Unimed Intercâmbio Nacional',
+  'Intercâmbio Mercosul - PR/RS',
+  'Unimed Fundação',
+  'Unimed',
+  'Particular',
+  'SC Saúde',
+  'BRF',
+  'FAS',
+  'CASSI',
+  'GEAP',
+]
+
+/**
+ * Convênios para o seletor: a lista CANÔNICA primeiro, e depois o que a escala do
+ * dia trouxer de diferente.
+ *
+ * ⚠️ ordem INVERSA à de `salasDoHospital` de propósito: lá a grafia do dia vence
+ * porque sala é agrupada por TEXTO (duas grafias = dois blocos no quadro); aqui o
+ * agrupamento é por FAMÍLIA (`familiaConvenio`), então nada se perde ao oferecer a
+ * grafia limpa primeiro — e a escala de 20/08 trazia "Convênios", "PART" e "SC" no
+ * topo, que é exatamente o que a lista existe para parar de propagar.
+ */
+export function conveniosDaEscala(casos) {
+  const vistos = new Set()
+  const out = []
+  for (const c of [...CONVENIOS_BASE, ...(casos || []).map((x) => x?.convenio)]) {
+    const nome = String(c || '').trim()
+    if (!nome) continue
+    const chave = normConvenio(nome)
+    if (!chave || vistos.has(chave)) continue
+    vistos.add(chave)
+    out.push(nome)
+  }
+  return out
+}
+
 /** Bloco derivado do rótulo de sala normalizado (importação Unimed sem Vision). */
 export function blocoDaSalaUnimed(sala) {
   const s = normNome(sala)
