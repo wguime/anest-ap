@@ -555,34 +555,57 @@ o recado assim que ele confirmava o próprio).
 - Hook `useAvisoPlantonista` fica FORA do context: o recado não é parte da escala e o
   context já carrega três hospitais por data.
 
-### Urgências do HRO — contador de contrato + fila (dono 18/08)
+### Urgências do HRO — contador de contrato + fila (dono 18–20/08)
 
-O contrato do HRO paga por turno: manhã 1 orto (Sala 4) + 1 CO (Sala 7) + plantonista +
-sobreaviso; tarde sem CO; noite só plantonista + sobreaviso → **capacidade de urgências
-simultâneas = 2**; endoscopia/colono FORA do CC e hemodinâmica não contam. A 3ª urgência
-exige gente que o hospital não paga — a faixa no topo da aba **Completa** (só HRO, só
-quando há urgência) mostra isso em tempo real. A vaga é gasta pela CIRURGIA — com as
-cirurgias do mesmo anestesista contando uma vez só (ver a revisão de 20/08 abaixo).
+O contrato do HRO paga por turno: manhã 1 orto (Sala 4) + 1 CO (Sala 7 - CO) + plantonista
++ sobreaviso; tarde sem CO; noite só plantonista + sobreaviso → **2 vagas de urgência
+simultâneas**. A 3ª exige gente que o hospital não paga, e a faixa no topo da aba
+**Completa** mostra isso enquanto acontece. Escala do HRO com casos ⇒ faixa VISÍVEL mesmo
+sem urgência (dono 19/08 — é na publicação da manhã que se confere/configura as salas do
+contrato); sem caso nenhum no dia, some. Endoscopia/colono fora do CC e hemodinâmica não
+contam.
+
+**A CONTA (regra fechada em 20/08 na 2ª rodada — a 1ª contou por SALA e o dono corrigiu:
+"a vaga é gasta por cirurgia"):** a unidade é a CIRURGIA, mas duas cirurgias do MESMO
+anestesista são UMA ocupação — ninguém opera dois pacientes ao mesmo tempo, e é isso que
+faz o CO com cesáreas o dia todo ser um card com `2 cir.` em vez de dois. Agrupador:
+`anestesistaUserId` → nome → sala.
+
+**ENCAIXE (dono 20/08):** urgência aberta entra numa vaga LIVRE do contrato mesmo ANTES de
+começar (quem a assumiu já é o plantonista/sobreaviso) → sem vaga livre e ainda não
+iniciada, vai para a **FILA** → sem vaga livre e JÁ INICIADA, vira **Extra**. Ordem de
+entrada: quem já opera (mais antigo) → depois a fila (gravidade → chegada); sala marcada
+casa com o posto dela antes de tudo.
+
+**Sala ESTAÇÃO** é o que faz uma cirurgia contar mesmo sem `tipo=urgencia`: sala marcada
+como plantão/sobreaviso no `urgencias_meta`, ou listada em `CONTRATO_HRO[turno].estacoes`
+(= `['co']` à TARDE e à NOITE — "à tarde e à noite não há sala exclusiva para CO, então se
+entrar será considerada como urgência/emergência"). É o "DIA TODO" do CO, que é eletiva no
+banco. ⚠️ à noite vale o **"SE ENTRAR"**: só cirurgia que chegou depois das 19h
+(`INICIO_NOTURNO_MIN`) **ou que está em andamento** — o `turno` do banco não distingue
+tarde de noite, e a sobra da tarde sem "terminada" (3 casos na Sala 4 em 20/08) travaria
+vaga toda noite. Estação esquecida (>4h iniciada) NÃO some: vira a mesma pergunta "ainda em
+andamento?" das urgências. **Marcar a sala do plantão/sobreaviso ENTRA na contagem** (pedido
+do dono: "se as salas de urgência não tiverem sido identificadas, que haja como marcar sala
+para que entre na contagem") e vence a absorção do dedicado; marcar sala SEM cirurgia aberta
+não gasta vaga — marcar não é reservar. Tinta verde só com cirurgia EM ANDAMENTO.
 
 - Lib pura `src/lib/escalaCirurgicaUrgencias.js` — nome de propósito: o gate de CI só
-  observa `escalaCirurgica*`. `CONTRATO_HRO` é config POR TURNO (o `co` some de
-  `dedicadas` à tarde/noite — é onde a decisão vira código); `turnoContratual` delega a
-  `faseLiberacoes` (o campo `turno` do caso só aceita matutino|vespertino, então a
-  urgência das 21h é vespertina no banco mas do contrato da NOITE — **a capacidade vem do
-  relógio**). `estadoUrgencias` recebe o **dia inteiro** (`casosResolvidos`), NUNCA
-  `filtrarPorTurno`: urgência da manhã ainda aberta às 14h ocupa o plantonista da tarde.
-  Exclusão é pela SALA (a mesma colono conta no CC e não conta em `Exames`), via
-  `papelDaSalaHro` NORMALIZADO — produção tem "Sala 5"/"Sala 5 - Emergência" e
-  "Sala 7"/"Sala 7 - CO" para as mesmas salas. Fila ordena gravidade→`created_at`
-  (⚠️ chega em **snake_case** — não está no CAMEL_TO_SNAKE; `createdAt` = NaN silencioso);
-  NUNCA por `hora` (18/08: 9 de 9 urgências sem hora). Iniciada há >4h
-  (`statusAtualizadoEm`, nunca a chegada) sai da ocupação e vira pergunta "ainda em
-  andamento?" — 36% das urgências ficam sem marcação, e o app não afirma o que não sabe.
-- **Coluna `gravidade`** (migration `20260818140000`): imediata|urgente|aguarda
-  (adaptação NCEPOD), NULL = não classificada (sem default: não existe gravidade neutra;
-  NULL vai ao FIM da fila com "Classificar"). Capturada no `AddCasoSheet` (obrigatória só
-  em urgência/emergência; emergência pré-seleciona imediata) e editável no cartão
-  Andamento do `CasoDetalheSheet`. ⚠️ a migration patcheia as DUAS RPCs de publicação
+  observa `escalaCirurgica*`. `CONTRATO_HRO` é config POR TURNO (`dedicadas` + `estacoes`
+  — é onde a decisão do dono vira código); `turnoContratual` delega a `faseLiberacoes` (o
+  campo `turno` do caso só aceita matutino|vespertino, então a urgência das 21h é
+  vespertina no banco mas do contrato da NOITE — **a capacidade vem do relógio**).
+  `estadoUrgencias` recebe o **dia inteiro** (`casosResolvidos`), NUNCA `filtrarPorTurno`:
+  urgência da manhã ainda aberta às 14h ocupa o plantonista da tarde. Exclusão é pela SALA
+  (a mesma colono conta no CC e não conta em `Exames`), via `papelDaSalaHro` NORMALIZADO —
+  produção tem "Sala 5"/"Sala 5 - Emergência" para a mesma sala. Fila ordena
+  gravidade→`created_at` (⚠️ chega em **snake_case** — não está no CAMEL_TO_SNAKE;
+  `createdAt` = NaN silencioso); NUNCA por `hora` (18/08: 9 de 9 urgências sem hora).
+  Iniciada há >4h (`statusAtualizadoEm`, nunca a chegada) sai da ocupação e vira pergunta —
+  36% das urgências ficam sem marcação, e o app não afirma o que não sabe.
+- **Coluna `gravidade`** (migration `20260818140000`): imediata|urgente|aguarda (adaptação
+  NCEPOD), NULL = não classificada (sem default: não existe gravidade neutra; NULL vai ao
+  FIM da fila com "Classificar"). ⚠️ a migration patcheia as DUAS RPCs de publicação
   **sobre a definição VIVA** (`pg_get_functiondef` + âncora única + guard de versão) — a
   versão mais nova de uma RPC NÃO está na migration de nº mais alto que a cita
   (`20260726110000` é anterior a `20260729210000`); copiar a errada apaga colunas em
@@ -592,92 +615,57 @@ cirurgias do mesmo anestesista contando uma vez só (ver a revisão de 20/08 aba
   **FORA da BoardView** — os EmptyStates dela matariam a faixa no dia sem escala com
   urgência à mão (8 de 9 em 18/08). Desenho fechado em 3 rodadas de protótipo
   (`.tmp/urgencias-hro-prototype.html`): grade 2×2 de UMA linha (36px, sem negrito, sem
-  subtítulo), postos = plantão/sobreaviso + dedicados do turno; **excedente = card
-  PRÓPRIO full-width com rótulo EXTRA** (nunca chip igual aos outros); fila em 1 linha
-  (nº+gravidade+procedimento+espera; sala/convênio só no detalhe), teto 3 + "ver todas";
-  cores = receitas existentes (selo de sala `bg-primary/20 text-primary`, tinta
-  `bg-success/[0.14] dark:/20`); **vermelho SÓ no excedente/badge/nota** — fundo
-  vermelho sob cards verdes foi vetado como "vitral". Toque abre o `CasoDetalheSheet`
-  (onde Iniciada/Terminada já são marcados). **Escala do HRO com casos ⇒ faixa VISÍVEL
-  mesmo sem urgência (dono 19/08)** — é na publicação da manhã que se confere/configura
-  as salas do contrato; sem caso nenhum no dia, some. **Postos são atalho (19/08):**
-  posto sem caso abre o AddCasoSheet com `postoInicial`/`salaInicial`; o form (só
-  HRO + urgência/emergência) tem o campo "Quem faz (posto do contrato)" — a escolha
-  vira CONFIG de sala via `definirSalasUrgencia` (nunca campo do caso), só quando o
-  papel ainda está em automático e a sala não é a que já responde por ele; posto
-  ocupado é escolhível e o excedente vira Extra sozinho (`distribuirPostos`).
+  subtítulo), postos = plantão/sobreaviso + dedicados do turno; **excedente = card PRÓPRIO
+  full-width com rótulo EXTRA** (nunca chip igual aos outros); fila em 1 linha
+  (nº+gravidade+procedimento+espera), teto 3 + "ver todas"; cores = receitas existentes
+  (selo `bg-primary/20`, tinta `bg-success/[0.14] dark:/20`); **vermelho SÓ no
+  excedente/badge/nota** — fundo vermelho sob cards verdes foi vetado como "vitral". Toque
+  abre o `CasoDetalheSheet` (onde Iniciada/Terminada já são marcados); posto SEM caso abre
+  o AddCasoSheet com `postoInicial`/`salaInicial` (19/08). Os cards dos dedicados vêm
+  prontos da lib (`estado.dedicados`) — derivá-los na view duplicava a regra do contrato e
+  fazia a sala marcada como plantão aparecer DUAS vezes na grade.
 - **Salas CONFIGURÁVEIS por dia/turno (dono 18/08, 2ª decisão)**: "as salas do CO e
   ortopedia podem mudar" — `urgencias_meta` jsonb no cabeçalho (migration
   `20260818190000`), chaveado por turno de PUBLICAÇÃO, gravado pela MESMA
   `rpc_escala_patch_liberacao` (campo novo no CHECK; por/em carimbados server-side).
-  Coluna própria DE PROPÓSITO: reusar `linha_overrides` morreria no reset da
-  republicação. `salasContrato(meta, turno)` resolve config→default;
-  `papelDaSalaHro(sala, salas)` — sala marcada VENCE o default por papel (orto na
-  Sala 3 ⇒ Sala 4 vira comum); `distribuirPostos` casa sala marcada primeiro, resto
-  por ordem de início. UI: ⚙ no cabeçalho da faixa → `SalasUrgenciaSheet` (4 Selects
-  + Automático; tudo automático salva null). `urgenciasMeta` PRECISOU entrar no
-  CAMEL_TO_SNAKE (classe fds_meta/conta_duplicada_de).
-- **ENCAIXE DA URGÊNCIA + a vaga é da CIRURGIA (dono 20/08, 2ª rodada — a 1ª tinha
-  contado por SALA e ele corrigiu):** a vaga é gasta pela CIRURGIA, mas duas cirurgias
-  do MESMO anestesista são UMA ocupação (ninguém opera dois pacientes ao mesmo tempo)
-  — daí o CO com cesáreas o dia todo ser um card com `2 cir.` e não dois. O agrupador
-  é o `anestesistaUserId`; sem vínculo, o nome; sem nome, a sala. **Encaixe:** urgência
-  aberta entra numa vaga LIVRE do contrato mesmo ANTES de começar (quem a assumiu já é
-  o plantonista/sobreaviso) → sem vaga livre e ainda não iniciada, vai para a FILA →
-  sem vaga livre e JÁ INICIADA, vira **Extra** (o que o hospital não paga). Ordem de
-  entrada: quem já opera (mais antigo) → depois a fila (gravidade → chegada). Sala
-  marcada casa com o posto dela antes de tudo.
-- **Sala ESTAÇÃO** (o que faz uma cirurgia contar mesmo sem `tipo=urgencia`): marcada
-  como plantão/sobreaviso no `urgencias_meta`, ou listada em `CONTRATO_HRO[turno].estacoes`
-  (= `['co']` à TARDE e à NOITE — "à tarde e à noite não há sala exclusiva para CO,
-  então se entrar será considerada como urgência/emergência"). É o "DIA TODO" do CO,
-  que é eletiva no banco. ⚠️ à noite vale o **"SE ENTRAR"**: só cirurgia que chegou
-  depois das 19h (`INICIO_NOTURNO_MIN`) **ou que está EM ANDAMENTO** — o `turno` do
-  banco não distingue tarde de noite e a sobra da tarde sem "terminada" (3 casos na
-  Sala 4 em 20/08) travaria vaga toda noite. Cirurgia de estação esquecida (>4h
-  iniciada) NÃO some: vira a mesma pergunta "ainda em andamento?" das urgências.
-  **MARCAR a sala do plantão/sobreaviso entra na contagem** (era o pedido "se as salas
-  de urgência não tiverem sido identificadas, que haja como marcar sala para que entre
-  na contagem") e vence a absorção do dedicado. Marcar sala SEM cirurgia aberta não
-  gasta vaga: marcar não é reservar. Tinta verde só com cirurgia EM ANDAMENTO.
-- **"Adicionar caso" no padrão do detalhe (dono 20/08):** "quero que fique no padrão
-  das outras páginas de escala cirúrgica" + "o mesmo sistema para seleção de tipo, para
-  deixar uniforme". Eram 12 campos numa coluna só, todos no mesmo peso, e o TIPO era um
-  Select enquanto o detalhe perguntava a MESMA coisa em pastilhas — dois controles para
-  o mesmo dado fazem aprender a tela duas vezes. Agora são três cartões, a mesma divisão
-  do detalhe (**A cirurgia** · **Tipo e prioridade** · **Quem está e onde**), painel
-  `!h-auto max-h-[90vh]` e rodapé com borda + par de botões, com o "falta preencher"
-  logo acima. Tipo e gravidade saíram para **`ChipsEscolha.jsx`** — fonte ÚNICA das
-  pastilhas de 44px, consumida pelo detalhe e pelo formulário (mudar a cor de urgência
-  num lugar muda nos dois). ⚠️ os testes do formulário achavam a sala por
-  `getAllByRole('combobox')[0]`: agora é `escolherSala()` pelo placeholder — índice de
-  combobox quebra a cada campo novo. **CONVÊNIO virou lista** (`CONVENIOS_BASE` +
-  `conveniosDaEscala` em utils): era texto livre e o banco acumulou "Unirmd", "Umimed",
-  "Particulae", "Sua", "sUS" — convênio com erro de digitação some do agrupamento por
-  família e, no particular, da COBRANÇA (o trigger casa o texto). ⚠️ a grafia da lista
-  é a que vai ao banco: "Particular" precisa seguir casando `^PART(ICULAR)?[^A-Z]*$`,
-  travado em teste. Ordem INVERSA à de `salasDoHospital` (canônica primeiro): sala
-  agrupa por TEXTO, convênio agrupa por FAMÍLIA — e a escala de 20/08 trazia
-  "Convênios", "PART" e "SC" no topo. "+ Outro convênio…" abre a digitação. O campo do
-  posto virou **"Quem vai fazer esta urgência"**, com o contrato explicado por extenso:
-  o dono não entendia "posto ocupado → o excedente entra como Extra".
+  Coluna própria DE PROPÓSITO: reusar `linha_overrides` morreria no reset da republicação.
+  `salasContrato(meta, turno)` resolve config→default; `papelDaSalaHro(sala, salas)` — sala
+  marcada VENCE o default por papel (orto na Sala 3 ⇒ Sala 4 vira comum). UI: ⚙ no
+  cabeçalho da faixa → `SalasUrgenciaSheet` (4 Selects + Automático; tudo automático salva
+  null). ⚠️ **CO pode ser feito em QUALQUER sala** (dono 20/08) — é por isso que a
+  marcação existe: `salas.co = 'Sala 3'` faz a Sala 3 ser o CO do dia e a Sala 7 voltar a
+  ser comum. `urgenciasMeta` PRECISOU entrar no CAMEL_TO_SNAKE (classe
+  fds_meta/conta_duplicada_de).
 - **TIPO editável no detalhe do caso (dono 20/08):** "digamos que essa cirurgia era uma
   urgência que não foi lida ao ser adicionada na escala" — o tipo só existia no
-  `AddCasoSheet`, então urgência que a Vision leu como eletiva era beco sem saída.
-  Agora o cartão **Andamento** do `CasoDetalheSheet` tem Eletiva·Urgência·Emergência
-  (emergência pré-seleciona gravidade `imediata`; voltar p/ eletiva limpa a gravidade),
-  e reclassificar joga a cirurgia no encaixe acima. O badge do cabeçalho continua sendo
-  a identidade — o botão é a AÇÃO, e os dois textos coexistem de propósito.
-- **"Sala 7" → "Sala 7 - CO" é rótulo ÚNICO (dono 20/08):** `normalizarSalaHro` mapeia
-  `^SALA ?7\b` (idempotente) e a normalização passou a valer também para sala digitada
-  à mão no `AddCasoSheet` e no "Mudar" do detalhe, não só na importação. ⚠️ **CO pode
-  ser feito em QUALQUER sala** — é por isso que marcar as salas à mão (⚙ da faixa:
-  Plantão · Sobreaviso · Ortopedia · CO) importa: `salas.co = 'Sala 3'` faz a Sala 3
-  ser o CO do dia e a Sala 7 voltar a ser comum.
-- **Salas de OUTRO hospital dentro da escala do HRO (20/08):** `MATERNO` entrou na lista
-  canônica de exclusão e `PADROES_FORA_DO_CONTRATO_HRO` (regex) é a rede para o rótulo
-  digitado — "AMBULAT.", "Ambulatorial BERA", "Odonto ambulatorial" e "MATERNO" caíam em
-  'geral' e uma urgência ali entrava na conta das 2 vagas do HRO.
+  `AddCasoSheet`, então urgência que a Vision leu como eletiva era beco sem saída. O cartão
+  **Andamento** do `CasoDetalheSheet` tem Eletiva·Urgência·Emergência (emergência
+  pré-seleciona gravidade `imediata`; voltar p/ eletiva limpa a gravidade) e reclassificar
+  joga a cirurgia no encaixe acima. O badge do cabeçalho continua sendo a identidade — o
+  botão é a AÇÃO, e os dois textos coexistem de propósito.
+- **"Adicionar caso" no padrão do detalhe (dono 20/08, modelo A escolhido em protótipo —
+  `.tmp/adicionar-caso-modelos.html`):** três cartões com a MESMA divisão do detalhe
+  (**A cirurgia** · **Tipo e prioridade** · **Quem está e onde**), painel `!h-auto
+  max-h-[90vh]`, rodapé com borda + par de botões e o "falta preencher" logo acima deles.
+  Tipo e gravidade vivem em **`ChipsEscolha.jsx`** — fonte ÚNICA das pastilhas de 44px,
+  consumida pelo detalhe e pelo formulário: eram Select num e pastilha no outro para o
+  MESMO dado. **CONVÊNIO virou lista** (`CONVENIOS_BASE` + `conveniosDaEscala` em utils,
+  com "+ Outro convênio…" para digitar): o campo livre acumulou "Unirmd", "Umimed",
+  "Particulae", "Sua", "sUS" em produção, e convênio com erro de digitação some do
+  agrupamento por família e, no particular, da COBRANÇA (o trigger casa o texto). ⚠️ a
+  grafia da lista é a que vai ao banco: "Particular" precisa seguir casando
+  `^PART(ICULAR)?[^A-Z]*$`, travado em teste. Ordem INVERSA à de `salasDoHospital`
+  (canônica primeiro): sala agrupa por TEXTO, convênio agrupa por FAMÍLIA. O campo do posto
+  virou **"Quem vai fazer esta urgência"** com o contrato explicado por extenso — o dono não
+  entendia "posto ocupado → o excedente entra como Extra". ⚠️ os testes do formulário
+  achavam a sala por `getAllByRole('combobox')[0]`; agora é `escolherSala()` pelo
+  placeholder — índice de combobox quebra a cada campo novo.
+- **Rótulos de sala (dono 20/08):** "Sala 7" → **"Sala 7 - CO"** é rótulo ÚNICO
+  (`normalizarSalaHro`, idempotente), e a normalização passou a valer para sala digitada à
+  mão no `AddCasoSheet` e no "Mudar" do detalhe, não só na importação. `MATERNO` entrou na
+  lista canônica de exclusão e `PADROES_FORA_DO_CONTRATO_HRO` (regex) é a rede para o
+  rótulo digitado — "AMBULAT.", "Ambulatorial BERA", "Odonto ambulatorial" e "MATERNO"
+  caíam em 'geral' e uma urgência ali entrava na conta das 2 vagas do HRO.
 - **Relatório contratual**: modo `contrato-hro` planejado na skill `/escala-cirurgica`
   (pareamento 1º iniciada→1º terminada posterior = Achado 2; sweep-line com empate
   saída-antes-de-entrada; SUS = `upper(convenio) ~ '^SUS\M'`; tudo
