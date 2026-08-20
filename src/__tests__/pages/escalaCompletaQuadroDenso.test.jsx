@@ -132,6 +132,48 @@ describe('Completa — tinta em um eixo só', () => {
   })
 })
 
+// ── OCORRÊNCIA NO CANTO + RÓTULO PELO TURNO (dono 20/08) ────────────────────
+// Duas decisões do mesmo pedido: "quero que o badge 'passa para tarde' fique no
+// canto superior direito nos cards" e "de manhã [...] e a tarde o nome do badge
+// seja 'passa para noite'". O que quebrava antes: o extra vinha à ESQUERDA da
+// caixa reservada do estado, então num caso agendado (caixa vazia) ele parava a
+// 76px da borda, flutuando no meio do card; e o rótulo fixo nomeava, às 16h, um
+// turno que já tinha acabado. O valor gravado segue `passa_tarde` nos dois.
+describe('Completa — a ocorrência mora no canto superior direito', () => {
+  const cantoDireito = (over) => {
+    const { container } = render(
+      <CasoCard caso={caso(over)} moldura="linha" onClick={() => {}} />, { wrapper: wrap },
+    )
+    // 1ª linha do card → a caixa de selos da direita (ml-auto)
+    const linha1 = container.querySelectorAll(':scope > button > div > span:last-child > span')[0]
+    return linha1.querySelector('span.ml-auto')
+  }
+
+  it('o badge é o ÚLTIMO elemento da linha — nada fica à direita dele', () => {
+    const box = cantoDireito({ statusExtra: 'passa_tarde' })
+    expect(box.lastElementChild.textContent).toBe('Passa para noite')
+  })
+
+  it('continua no canto mesmo com a cirurgia iniciada (estado à esquerda dele)', () => {
+    const box = cantoDireito({ statusCirurgia: 'iniciada', statusExtra: 'passa_tarde' })
+    expect(box.textContent).toContain('Iniciada')
+    expect(box.lastElementChild.textContent).toBe('Passa para noite')
+  })
+
+  it('de manhã o destino é a TARDE; à tarde, a NOITE', () => {
+    render(<CasoCard caso={caso({ hora: '08:00', turno: 'matutino', statusExtra: 'passa_tarde' })} moldura="linha" onClick={() => {}} />, { wrapper: wrap })
+    expect(screen.getByText('Passa para tarde')).toBeTruthy()
+    expect(screen.queryByText('Passa para noite')).toBeNull()
+  })
+
+  it('caso legado sem turno cai no rótulo pela HORA, não some', () => {
+    const { turno, ...semTurno } = caso({ hora: '15:00', statusExtra: 'passa_tarde' })
+    expect(turno).toBeTruthy() // a fixture tem turno; aqui ele é removido de propósito
+    render(<CasoCard caso={semTurno} moldura="linha" onClick={() => {}} />, { wrapper: wrap })
+    expect(screen.getByText('Passa para noite')).toBeTruthy()
+  })
+})
+
 describe('Completa — cabeçalho da sala', () => {
   it('traz sala, anestesista e a contagem de casos, e é colapsável', () => {
     renderBoard([caso(), caso({ id: 'c2', hora: '15:00', pacienteIniciais: 'T.T.' })])

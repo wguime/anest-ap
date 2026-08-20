@@ -408,7 +408,8 @@ describe('Board — cor de status do card (Iniciada amarelo, Terminada verde)', 
     expect(card.className).toContain('bg-info/[0.12]')
   })
   it('atrasada/suspensa/passa_tarde → só o BADGE colore; card fica neutro', () => {
-    for (const [status, label] of [['suspensa', 'Suspensa'], ['atrasada', 'Atrasada'], ['passa_tarde', 'Passa para tarde']]) {
+    // fixture de 13:30 no turno vespertino → o rótulo é 'Passa para noite' (dono 20/08)
+    for (const [status, label] of [['suspensa', 'Suspensa'], ['atrasada', 'Atrasada'], ['passa_tarde', 'Passa para noite']]) {
       const { unmount } = render(<BoardView escala={escala(status)} meuAlias="zz" meuUid="u-zz" turno="vespertino" />, { wrapper: wrap })
       expect(screen.getByText(label)).toBeTruthy()
       const card = screen.getByText('Sinus').closest('button')
@@ -435,14 +436,14 @@ describe('Board — cor de status do card (Iniciada amarelo, Terminada verde)', 
   it('sheet: com Terminada, os botões de extra ficam bloqueados', () => {
     render(<BoardView escala={escala('terminada')} meuAlias="zz" meuUid="u-zz" turno="vespertino" />, { wrapper: wrap })
     fireEvent.click(screen.getByText('Sinus'))
-    for (const nome of ['Atrasada', 'Suspensa', 'Passa para tarde']) {
+    for (const nome of ['Atrasada', 'Suspensa', 'Passa para noite']) {
       expect(screen.getByRole('button', { name: nome }).disabled).toBe(true)
     }
   })
-  it('sheet de detalhe oferece os 6 status (inclui Suspensa/Atrasada/Passa para tarde)', () => {
+  it('sheet de detalhe oferece os 6 status (inclui Suspensa/Atrasada/Passa para noite)', () => {
     render(<BoardView escala={escala('agendada')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
     fireEvent.click(screen.getByText('Sinus'))
-    for (const nome of ['Agendada', 'Iniciada', 'Terminada', 'Atrasada', 'Suspensa', 'Passa para tarde']) {
+    for (const nome of ['Agendada', 'Iniciada', 'Terminada', 'Atrasada', 'Suspensa', 'Passa para noite']) {
       expect(screen.getByRole('button', { name: nome })).toBeTruthy()
     }
   })
@@ -461,6 +462,25 @@ describe('Liberações — caso passa_tarde sinaliza o anestesista', () => {
     expect(screen.getByText('Passa para tarde')).toBeTruthy()
     const linhaLeonardo = screen.getByText('Leonardo').closest('p')
     expect(linhaLeonardo.textContent).toContain('Passa para tarde')
+  })
+
+  // Mesma decisão do quadro (dono 20/08): à tarde o destino é a NOITE, e o badge
+  // vai para o canto direito do card — é ocorrência da cirurgia, não identidade
+  // da pessoa, então não entra na fila de selos colados ao nome.
+  it('à tarde o badge diz "Passa para noite" e fica no canto direito da linha', () => {
+    const escala = {
+      id: 'e1', hospital: 'unimed',
+      ordemLiberacao: { vespertino: ['LEONARDO', 'MARILIO'] }, liberacoes: {}, linhaOverrides: {},
+      casos: [
+        { sala: 'SALA 4', ordem: 0, hora: '14:00', turno: 'vespertino', anestesista: 'LEONARDO', cirurgiao: 'Liana Winkelmann', statusExtra: 'passa_tarde' },
+        { sala: 'SALA 3', ordem: 0, hora: '14:00', turno: 'vespertino', anestesista: 'MARILIO', cirurgiao: 'Leandro Trevizan' },
+      ],
+    }
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" turno="vespertino" canEdit onToggle={() => {}} />, { wrapper: wrap })
+    const badge = screen.getByText('Passa para noite')
+    expect(screen.queryByText('Passa para tarde')).toBeNull()
+    expect(badge.className).toContain('ml-auto')
+    expect(screen.getByText('Leonardo').closest('p').contains(badge)).toBe(true)
   })
 })
 

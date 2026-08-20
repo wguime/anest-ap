@@ -222,15 +222,17 @@ describe('Histórico e aparência do recado (dono 17/08)', () => {
     expect(screen.getByText(/Leonardo Fontes/)).toBeTruthy()
   })
 
-  it('o recado usa TEAL — a única família que a escala não usa para estado', async () => {
-    // verde=plantão/iniciada, azul=terminada, âmbar=atrasada/próximo/sem anestesista,
-    // vermelho=liberado/suspensa, roxo="passa para tarde", indigo="troca". Todos
-    // podem aparecer nesta tela; teal não significa nada aqui.
+  it('o recado usa ROXO (dono 20/08) — nunca verde, que é plantão e cirurgia iniciada', async () => {
+    // O teal original ("category-teal") lia como mais um verde na tela, ao lado do
+    // verde de plantão e do verde de cirurgia iniciada — exatamente o que a faixa
+    // não pode parecer. O dono pediu roxo em 20/08 olhando a tela em uso.
     fetchAvisos.mockResolvedValue([AVISO])
     montar({ meuUid: 'uid-leo', meuAlias: 'LEONARDO' })
     const faixa = (await screen.findByText('Guilherme libera Alexandre S.')).closest('div[class*="category-"]')
-    expect(faixa.className).toContain('category-teal')
-    expect(faixa.className).not.toContain('category-purple')
+    expect(faixa.className).toContain('category-purple')
+    expect(faixa.className).not.toContain('category-teal')
+    // e nada de verde/success aqui: é o estado que a faixa NÃO representa
+    expect(faixa.className).not.toMatch(/\bbg-success|\bbg-primary\b/)
   })
 
   it('o card do recado NÃO conta confirmações — só autor e hora', async () => {

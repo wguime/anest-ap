@@ -25,6 +25,7 @@ import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import useRosterResidentes from '@/hooks/useRosterResidentes'
 import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
+import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
 import PainelTempo, { formatFaltante } from './PainelTempo'
 import useAgoraMinuto from './useAgoraMinuto'
 import { conveniosDaEscala, espelhoTempoTotal, LOCAIS_BASE, nomeAnestesistaExibicao, normalizarSalaHro, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso } from './utils'
@@ -56,8 +57,10 @@ const AVISO = [
   { valor: 'atrasada', label: 'Atrasada', cls: 'border-warning bg-warning text-warning-foreground' },
   { valor: 'suspensa', label: 'Suspensa', cls: 'border-destructive bg-destructive text-destructive-foreground' },
   // por extenso, igual ao badge do quadro e da fila — abreviar aqui criaria um
-  // terceiro nome para o mesmo estado (o chip quebra em duas linhas e cabe)
-  { valor: 'passa_tarde', label: 'Passa para tarde', cls: 'border-category-purple bg-category-purple text-white' },
+  // terceiro nome para o mesmo estado (o chip quebra em duas linhas e cabe).
+  // O rótulo vem do TURNO DO CASO (dono 20/08): de manhã "Passa para tarde", à
+  // tarde "Passa para noite". O valor gravado é `passa_tarde` nos dois.
+  { valor: 'passa_tarde', label: null, cls: 'border-category-purple bg-category-purple text-white' },
 ]
 
 export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDefinirAnestesista, onDefinirAnestesista, podeEditar }) {
@@ -340,6 +343,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
               <div className="mt-2 flex gap-1.5">
                 {AVISO.map((s) => {
                   const ativo = vivo.statusExtra === s.valor
+                  const rotulo = s.label || passaTurnoLabel(turnoCaso)
                   return (
                     <button
                       key={s.valor}
@@ -353,7 +357,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                         terminada && 'opacity-40',
                       ].filter(Boolean).join(' ')}
                     >
-                      {s.label}
+                      {rotulo}
                     </button>
                   )
                 })}

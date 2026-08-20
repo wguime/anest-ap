@@ -14,6 +14,7 @@ import {
 import { gerarColunaLiberacao, nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
 import { faseLiberacoes, plantonistasNoturnos, candidatosNome, linhasNoturnas, fundirLinhasNoturnas, marcarSelosNoTurno, ehDiaUtil, casarPorInicialSobrenome, P4_HOSPITAIS } from '@/lib/plantaoNoturno'
 import { marcarSelosFds, linhasNoturnasFds, plantonistasFaixaFds, FDS_TURNO_FAIXA, resolverNomeEstrito } from '@/lib/escalaFds'
+import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
 import { hojeISO, HOSPITAL_LABEL, OBSERVACAO_MAX } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
@@ -859,21 +860,23 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     <div className="space-y-3">
       {acoesTopo}
 
-      {/* ── RECADO DO PLANTONISTA (dono 17/08) ─────────────────────────────
-          Faixa de borda a borda em TEAL (`category-teal`). A escolha da cor foi
-          por ELIMINAÇÃO, e é o que a mantém legível: verde é plantão e cirurgia
-          iniciada, azul é terminada, âmbar é atrasada / próximo a ser liberado /
-          sem anestesista, vermelho é liberado e suspensa, roxo é "passa para
-          tarde" e indigo é "troca" — todos podendo aparecer nesta mesma tela.
-          Teal não significa nada no módulo, então o recado não é confundido com
-          estado nenhum. (Passou por laranja e roxo antes; roxo esbarrava no badge
-          "Passa para tarde", que é `category-purple` e mora na fila logo abaixo.)
+      {/* ── RECADO DO PLANTONISTA (dono 17/08; ROXO por decisão do dono 20/08) ──
+          Faixa de borda a borda em ROXO (`category-purple`), pedido direto do dono
+          no lugar do teal original ("que seja em tons de roxo e não esse verde" —
+          o teal lia como mais um verde na tela, ao lado do verde de plantão e de
+          cirurgia iniciada, que é justamente o que a faixa NÃO deve parecer.
+          ⚠️ o roxo já é o badge "Passa para tarde" (`bg-category-purple` sólido)
+          na fila logo abaixo — foi por isso que ele tinha sido descartado em
+          17/08. A separação aqui é de MASSA, não de matiz: a faixa é a superfície
+          soft (`-bg`) de borda a borda e o badge é uma pastilha sólida dentro de
+          um card, então continuam distinguíveis; o único sólido da faixa é o
+          botão Confirmar, que fica fora da fila.
           Fica ACIMA de "procedimentos sem anestesista". ATÉ TRÊS na tela, POR
           PESSOA: cada um vê os três mais recentes que ainda não confirmou, e
           confirmar libera a vaga do próximo. Não notifica ninguém — vive aqui e
           morre na confirmação. ── */}
       {avisos.map((a) => (
-        <div key={a.id} className="-mx-4 border-y border-category-teal/40 bg-category-teal-bg px-4 py-2">
+        <div key={a.id} className="-mx-4 border-y border-category-purple/40 bg-category-purple-bg px-4 py-2">
           <div className="flex items-center gap-2">
             <div className="min-w-0 flex-1">
               {/* o RECADO primeiro, em negrito: é o que se lê de relance */}
@@ -881,7 +884,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
               {/* quem mandou e QUANDO — sem contagem de confirmações (dono 17/08):
                   quem lê não decide nada com "2 de 4 confirmaram", e o número
                   transformava o recado num placar. */}
-              <p className="mt-0.5 flex items-center gap-1 text-[11.5px] text-category-teal-fg">
+              <p className="mt-0.5 flex items-center gap-1 text-[11.5px] text-category-purple-fg">
                 <MessageSquare className="h-3 w-3 shrink-0" />
                 <span className="min-w-0 truncate">{titleCaseNome(a.autorNome) || 'Plantonista'}</span>
                 <span className="shrink-0 opacity-80">· plantonista ·</span>
@@ -892,7 +895,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             <button
               type="button"
               onClick={() => confirmarAviso(a.id)}
-              className="flex h-8 shrink-0 items-center gap-1 rounded-lg bg-category-teal px-2.5 text-[12.5px] font-bold text-white active:opacity-80"
+              className="flex h-8 shrink-0 items-center gap-1 rounded-lg bg-category-purple px-2.5 text-[12.5px] font-bold text-white active:opacity-80"
             >
               <Check className="h-3.5 w-3.5" /> Confirmar
             </button>
@@ -902,7 +905,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 type="button"
                 onClick={() => excluirAviso(a.id)}
                 aria-label={`Excluir recado "${a.texto}"`}
-                className="-my-2 flex h-9 w-7 shrink-0 items-center justify-center text-category-teal-fg active:opacity-60"
+                className="-my-2 flex h-9 w-7 shrink-0 items-center justify-center text-category-purple-fg active:opacity-60"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -1220,11 +1223,16 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   {livre && (
                     <Badge variant="success" className="shrink-0">Livre</Badge>
                   )}
-                  {/* caso reagendado p/ a tarde (status no board) — o plantonista precisa saber ao
-                      liberar. Linha RENOVADA não herda: o passa-tarde era da escala de antes. */}
+                  {/* caso reagendado p/ o turno seguinte (status no board) — o plantonista
+                      precisa saber ao liberar. Linha RENOVADA não herda: o passa-tarde era
+                      da escala de antes. Rótulo pelo turno (dono 20/08): de manhã "Passa
+                      para tarde", à tarde "Passa para noite". `ml-auto` = canto superior
+                      direito do card, o mesmo lugar que ele ocupa no quadro da Completa —
+                      é ocorrência da cirurgia, não identidade da pessoa, então não fica
+                      na fila de selos colados ao nome. */}
                   {!liberadoReal && !renovado && !noturno && temPassaTarde(linha) && (
-                    <Badge className="shrink-0 border-transparent bg-category-purple text-white">
-                      Passa para tarde
+                    <Badge className="ml-auto shrink-0 border-transparent bg-category-purple text-white">
+                      {passaTurnoLabel(turnoBase)}
                     </Badge>
                   )}
                 </p>

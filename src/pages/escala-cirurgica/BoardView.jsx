@@ -11,8 +11,9 @@ import {
 } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
+import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
-import { anestesistaDoCasoEh, casoConcluido, casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, compararSalas, parseHoraMinutos, salaExibicao, nomeAnestesistaExibicao, convenioExibicao, idadeExibicao } from './utils'
+import { anestesistaDoCasoEh, casoConcluido, casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, turnoDoCaso, compararSalas, parseHoraMinutos, salaExibicao, nomeAnestesistaExibicao, convenioExibicao, idadeExibicao } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import { formatFaltante } from './PainelTempo'
 import useAgoraMinuto from './useAgoraMinuto'
@@ -33,8 +34,16 @@ const STATUS_EXTRA = {
   suspensa: { label: 'Suspensa', variant: 'destructive' },
   passa_tarde: { label: 'Passa para tarde', variant: 'default', badgeClass: 'border-transparent bg-category-purple text-white' },
 }
-// dados/demos antigos ainda podem trazer o extra no campo principal
-const extraDe = (caso) => STATUS_EXTRA[caso.statusExtra] || STATUS_EXTRA[caso.statusCirurgia] || null
+// dados/demos antigos ainda podem trazer o extra no campo principal.
+// O rótulo do `passa_tarde` vem do TURNO DO CASO (dono 20/08): de manhã "Passa
+// para tarde", à tarde "Passa para noite" — o valor gravado é o mesmo.
+const extraDe = (caso) => {
+  const chave = STATUS_EXTRA[caso.statusExtra] ? caso.statusExtra
+    : STATUS_EXTRA[caso.statusCirurgia] ? caso.statusCirurgia : null
+  if (!chave) return null
+  const cfg = STATUS_EXTRA[chave]
+  return chave === 'passa_tarde' ? { ...cfg, label: passaTurnoLabel(turnoDoCaso(caso)) } : cfg
+}
 
 /** Caso "placeholder" (ex.: SRPA sem procedimentos): não renderiza card — só o cabeçalho da sala. */
 export const casoVazio = (c) =>
@@ -216,14 +225,19 @@ function CasoCardBase({ caso, destaque, salaLabel, onClick, agoraMin = null, mol
               </span>
             )}
             <span className="ml-auto flex shrink-0 items-center justify-end gap-1">
-              {/* à ESQUERDA do estado: o que é exceção — urgência/emergência,
-                  atrasada, suspensa, passa para tarde */}
+              {/* à ESQUERDA: o que a cirurgia É — urgência/emergência */}
               {tb && <Badge variant={tb.variant} badgeStyle={tb.style}>{tb.label}</Badge>}
-              {ex && <Badge variant={ex.variant} className={ex.badgeClass}>{ex.label}</Badge>}
-              {/* canto: o estado da cirurgia, sempre na mesma vertical */}
+              {/* o estado da cirurgia, sempre na mesma vertical */}
               <span className="flex min-w-[76px] items-center justify-end">
                 {st && <Badge variant={st.variant}>{st.label}</Badge>}
               </span>
+              {/* CANTO SUPERIOR DIREITO = a OCORRÊNCIA (dono 20/08): passa para
+                  tarde/noite, atrasada, suspensa. Antes o extra vinha à esquerda
+                  da caixa reservada do estado, então num caso agendado (caixa
+                  vazia) ele flutuava a 76px da borda, longe do canto e sem nada
+                  à direita — parecia solto no meio do card. Agora é o último
+                  elemento da linha: com estado ou sem, encosta no canto. */}
+              {ex && <Badge variant={ex.variant} className={ex.badgeClass}>{ex.label}</Badge>}
             </span>
           </span>
           {/* Linha 2 — QUAL cirurgia, na linha inteira */}

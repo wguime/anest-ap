@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   parseHoraEscala,
+  passaTurnoLabel,
   ehHoraSequencialEscala,
   transicaoStatusEscala,
   turnoDaHoraEscala,
@@ -35,6 +36,17 @@ describe('regras da Escala Cirúrgica', () => {
     expect(issues).toEqual(expect.arrayContaining([
       expect.objectContaining({ code: 'hora_turno_divergente', severity: 'warning', expectedTurno: 'matutino' }),
     ]))
+  })
+
+  // Dono 20/08: "quero que essa opção apareça de manhã e a tarde o nome do badge
+  // seja 'passa para noite'". O VALOR gravado continua `passa_tarde` nos dois
+  // turnos (CHECK do banco + as duas RPCs de publicação) — só a palavra muda.
+  it('nomeia o destino pelo turno: de manhã a tarde, à tarde a noite', () => {
+    expect(passaTurnoLabel('matutino')).toBe('Passa para tarde')
+    expect(passaTurnoLabel('vespertino')).toBe('Passa para noite')
+    // turno ausente/desconhecido cai no rótulo de sempre em vez de sumir
+    expect(passaTurnoLabel(null)).toBe('Passa para tarde')
+    expect(passaTurnoLabel(undefined)).toBe('Passa para tarde')
   })
 
   it('exige motivo para reversão de status', () => {

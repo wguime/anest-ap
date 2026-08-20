@@ -11,6 +11,22 @@ export const TURNOS_ESCALA = Object.freeze(['matutino', 'vespertino'])
 export const STATUS_PRINCIPAL_ESCALA = Object.freeze(['agendada', 'iniciada', 'terminada'])
 export const STATUS_EXTRA_ESCALA = Object.freeze(['atrasada', 'suspensa', 'passa_tarde'])
 
+/**
+ * Rótulo do extra `passa_tarde` — o DESTINO depende do turno (dono 20/08): de
+ * manhã a cirurgia que não cabe passa PARA A TARDE; à tarde ela passa PARA A
+ * NOITE, e o rótulo fixo "Passa para tarde" às 16h nomeava um turno que já
+ * acabou. Mesma mecânica do `plantaoLabel` da coluna de liberação: a palavra
+ * vem do turno, nunca fixa na view.
+ *
+ * ⚠️ o VALOR no banco continua `passa_tarde` nos dois turnos — ele está no CHECK
+ * de `escala_cirurgica_caso` e nas duas RPCs de publicação (migrations
+ * 20260720100000 / 20260721100000). Criar um `passa_noite` custaria migration +
+ * reescrita de histórico para mudar só a palavra na tela.
+ */
+export function passaTurnoLabel(turno) {
+  return turno === 'vespertino' ? 'Passa para noite' : 'Passa para tarde'
+}
+
 const HORA_RE = /^(\d{1,2})(?::(\d{2}))?\s*h?$/i
 
 /** Marcador operacional: começa após o término da cirurgia anterior. */
