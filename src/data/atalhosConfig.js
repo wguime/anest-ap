@@ -105,10 +105,10 @@ export const ATALHOS_DISPONIVEIS = [
   },
   {
     id: 'incidentes',
-    label: 'Incidentes',
+    label: 'Notificações',
     icon: 'AlertOctagon',
     categoria: 'qualidade',
-    descricao: 'Gestão de incidentes',
+    descricao: 'Notificações e denúncias',
   },
   {
     id: 'relatorios',

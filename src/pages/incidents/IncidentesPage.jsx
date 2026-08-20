@@ -123,7 +123,7 @@ export default function IncidentesPage({ onNavigate }) {
 
   return (
     <div className="min-h-dvh bg-background pb-24">
-      <PageHeader title="Gestão de Incidentes" onBack={() => onNavigate('gestao')} />
+      <PageHeader title="Notificações e Denúncias" onBack={() => onNavigate('gestao')} />
 
       <div className="px-4 sm:px-5">
         {/* Banner de Seguranca */}

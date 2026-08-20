@@ -31,7 +31,7 @@ const NAV_INDEX = [
   { page: 'noticias', label: 'Notícias', keywords: ['publicacoes', 'feed'] },
   // Gestão
   { page: 'gestao', label: 'Gestão', keywords: ['qualidade', 'shield'] },
-  { page: 'incidentes', label: 'Gestão de Incidentes', keywords: ['incidente', 'notificacao', 'evento adverso'] },
+  { page: 'incidentes', label: 'Notificações e Denúncias', keywords: ['incidente', 'notificacao', 'notificar', 'denuncia', 'denunciar', 'evento adverso', 'near miss', 'relato', 'relatar', 'assedio', 'seguranca do paciente'] },
   { page: 'novoIncidente', label: 'Relatar Notificação', keywords: ['novo incidente', 'reportar'] },
   { page: 'novaDenuncia', label: 'Fazer Denúncia', keywords: ['denuncia', 'ouvidoria'] },
   { page: 'meusRelatos', label: 'Meus Relatos', keywords: ['acompanhar', 'historico'] },

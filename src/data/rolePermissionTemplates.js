@@ -48,7 +48,7 @@ export const NAV_STRUCTURE = {
     cards: [
       {
         id: 'incidentes',
-        label: 'Gestao de Incidentes',
+        label: 'Notificacoes e Denuncias',
         icon: AlertTriangle,
         subCards: [
           { id: 'relatar_notificacao', label: 'Relatar Notificacao' },

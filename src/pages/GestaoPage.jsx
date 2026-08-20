@@ -6,10 +6,10 @@ import { useUser } from '../contexts/UserContext';
 import { useComunicados } from '../contexts/ComunicadosContext';
 import { isExpirado } from '@/utils/comunicadosHelpers';
 
-// Dados para o card de Gestão de Incidentes
+// Dados para o card de Notificações e Denúncias
 const incidentesItems = [
-  'Notificar eventos adversos',
-  'Registrar near miss',
+  'Evento adverso, near miss ou queixa',
+  'Canal sigiloso de denúncia',
 ];
 
 // Dados para o card de Biblioteca de Documentos
@@ -50,12 +50,14 @@ export default function GestaoPage({ onNavigate }) {
     <div className="min-h-dvh bg-background pb-24">
       <h1 className="sr-only">Gestão</h1>
       <div className="px-4 pt-4 sm:px-5 lg:px-6 xl:px-8">
-        {/* Card: Gestão de Incidentes (mesmo estilo do Comunicados) */}
+        {/* Card: Notificações e Denúncias — variant "solid" (dono 19/08). É o único
+            cartão pintado da aba: os três eram idênticos e ninguém achava o canal. */}
         {canAccessCard('incidentes') && (
           <div className="mb-3">
             <ComunicadosCard
+              variant="solid"
               label="SEGURANÇA"
-              title="Gestão de Incidentes"
+              title="Notificações e Denúncias"
               badgeText="Relatar"
               items={incidentesItems}
               onViewAll={() => onNavigate('incidentes')}

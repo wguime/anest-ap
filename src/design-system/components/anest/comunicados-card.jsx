@@ -25,6 +25,11 @@ function ComunicadosCard({
   title,
   badgeText,
   items,
+  // "solid" pinta o cartão com o verde institucional em vez da superfície pálida.
+  // Serve p/ um cartão que precisa ser achado no meio de irmãos idênticos — hoje só
+  // Notificações e Denúncias na aba Gestão. Mesma tinta nos DOIS temas de propósito:
+  // no escuro, um verde escuro fica na clareza dos vizinhos (L 12,9% vs 12,2%) e some.
+  variant = "default",
   // Shared
   onViewAll,
   className,
@@ -32,6 +37,7 @@ function ComunicadosCard({
 }) {
   const isLegacy = Array.isArray(items) && items.length > 0
   const isClickable = typeof onViewAll === "function"
+  const isSolid = variant === "solid"
 
   const activate = React.useCallback(() => {
     onViewAll?.()
@@ -59,8 +65,9 @@ function ComunicadosCard({
         }}
         className={cn(
           "rounded-[20px] p-4 md:p-5",
-          "bg-accent dark:bg-card dark:border dark:border-border",
-          "shadow-[0_2px_12px_rgba(0,66,37,0.08)] dark:shadow-none",
+          isSolid
+            ? "bg-gradient-to-br from-greenMedium to-greenBright shadow-[0_6px_20px_rgba(0,66,37,0.22)] dark:shadow-none"
+            : "bg-accent dark:bg-card dark:border dark:border-border shadow-[0_2px_12px_rgba(0,66,37,0.08)] dark:shadow-none",
           "select-none",
           isClickable
             ? "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -72,11 +79,21 @@ function ComunicadosCard({
         <header className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             {label ? (
-              <div className="text-[12px] font-medium uppercase tracking-[0.5px] text-primary">
+              <div
+                className={cn(
+                  "text-[12px] font-medium uppercase tracking-[0.5px]",
+                  isSolid ? "text-white/75" : "text-primary"
+                )}
+              >
                 {label}
               </div>
             ) : null}
-            <h2 className="mt-0.5 text-[18px] md:text-[20px] font-bold leading-tight text-foreground">
+            <h2
+              className={cn(
+                "mt-0.5 text-[18px] md:text-[20px] font-bold leading-tight",
+                isSolid ? "text-white" : "text-foreground"
+              )}
+            >
               {title}
             </h2>
           </div>
@@ -84,8 +101,9 @@ function ComunicadosCard({
             <span
               className={cn(
                 "inline-flex shrink-0 items-center justify-center rounded-[10px] px-[10px] py-[5px] text-[11px] font-semibold leading-none",
-                "bg-primary text-white",
-                "dark:bg-[linear-gradient(135deg,#2ECC71_0%,#1E8449_100%)] dark:text-foreground dark:shadow-[0_2px_10px_rgba(46,204,113,0.15)]"
+                isSolid
+                  ? "bg-white text-greenDark"
+                  : "bg-primary text-white dark:bg-[linear-gradient(135deg,#2ECC71_0%,#1E8449_100%)] dark:text-foreground dark:shadow-[0_2px_10px_rgba(46,204,113,0.15)]"
               )}
             >
               {badgeText}
@@ -97,9 +115,17 @@ function ComunicadosCard({
             <li key={`${idx}-${item}`} className="flex items-start gap-[10px]">
               <span
                 aria-hidden="true"
-                className="mt-[7px] inline-block h-[6px] w-[6px] shrink-0 rounded-full bg-primary dark:shadow-[0_0_6px_#2ECC71]"
+                className={cn(
+                  "mt-[7px] inline-block h-[6px] w-[6px] shrink-0 rounded-full",
+                  isSolid ? "bg-white/90" : "bg-primary dark:shadow-[0_0_6px_#2ECC71]"
+                )}
               />
-              <span className="text-[14px] font-medium text-foreground dark:text-muted-foreground">
+              <span
+                className={cn(
+                  "text-[14px] font-medium",
+                  isSolid ? "text-white/[0.88]" : "text-foreground dark:text-muted-foreground"
+                )}
+              >
                 {item}
               </span>
             </li>

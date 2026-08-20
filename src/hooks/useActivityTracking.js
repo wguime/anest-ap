@@ -38,7 +38,7 @@ const PAGE_LABELS = {
   autoavaliacao: 'Autoavaliacao ROPs',
   gestaoDocumental: 'Documentos Gestao',
   gestao: 'Gestao Qualidade',
-  incidentes: 'Incidentes',
+  incidentes: 'Notificações e Denúncias',
   comunicados: 'Comunicados',
   planosAcao: 'Planos de Acao',
   kpiDashboard: 'KPI Dashboard',
