@@ -22,6 +22,7 @@ import {
   GRAVIDADE_ORDEM,
   LIMITE_ESQUECIDA_MIN,
   SALAS_FORA_DO_CONTRATO_HRO,
+  planoCruzamentoUrgencias,
   chegadaDaUrgencia,
   estadoUrgencias,
   inicioDaUrgencia,
@@ -303,6 +304,102 @@ describe('ocupação e níveis de saturação', () => {
 // A ocupação segue sendo uma por titular — o que voltou é a VISIBILIDADE de quem
 // espera.
 // ════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
+// A TARDE HERDA AS SALAS DA MANHÃ (dono 21/08: "quero que as salas de urgência da
+// manhã persistam para a tarde, inclusive lista de urgências"). Quem marca onde
+// está o plantão às 7h não remarca às 13h. Sem a herança a tarde nascia em
+// automático: a sala perdia o posto, deixava de ser ESTAÇÃO e as cirurgias dela
+// saíam da conta e da lista.
+// ════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
+// UMA SALA, UMA VAGA (dono 21/08: "a sala extra é a mesma sala que o plantão está
+// fazendo as cirurgias do CO, ou seja, está contando a mesma sala 2 vezes").
+// Recorte real do HRO à tarde: Sala 7 com 4 cesarianas sem anestesista definido +
+// 1 cirurgia do Maurício → duas ocupações, "3 de 2" e um EXTRA vermelho "acima do
+// contrato" com ninguém a mais no hospital.
+// ════════════════════════════════════════════════════════════════════════════
+describe('ocupação — a mesma sala nunca conta duas vezes (dono 21/08)', () => {
+  const semDono = (sala, id) => caso(sala, { id, anestesista: '?', semAnestesista: true })
+  const comDono = (sala, id, uid) => caso(sala, { id, anestesista: 'MAURICIO', anestesistaUserId: uid })
+
+  it('caso sem anestesista e caso com login na MESMA sala são uma ocupação', () => {
+    const estado = em([semDono('Sala 6', 'a'), semDono('Sala 6', 'b'), comDono('Sala 6', 'mau', 'u-mau')])
+    expect(estado.ocupacoes).toHaveLength(1)
+    expect(estado.ocupacoes[0].qtd).toBe(3)
+    expect(estado.extras).toEqual([])
+    expect(estado.nivel).not.toBe('acima')
+  })
+
+  // O recorte exato do relato: TARDE, CO marcado na Sala 7 (que à tarde não tem
+  // dedicado e vira estação), 4 cesarianas sem anestesista + 1 caso do Maurício.
+  it('a Sala 7 da tarde não vira posto + EXTRA da mesma sala', () => {
+    const salas = salasContrato({ vespertino: { co: 'Sala 7' } }, 'vespertino')
+    const estado = em(
+      [semDono('Sala 7', 'c1'), semDono('Sala 7', 'c2'), semDono('Sala 7', 'c3'),
+        semDono('Sala 7', 'c4'), comDono('Sala 7', 'mau', 'u-mau')],
+      { turno: 'vespertino', agoraMin: 15 * 60, salas },
+    )
+    expect(estado.ocupacoes).toHaveLength(1)
+    expect(estado.ocupacoes[0].qtd).toBe(5)
+    expect(estado.extras).toEqual([])
+    expect(estado.nivel).not.toBe('acima')
+  })
+
+  it('salas DIFERENTES seguem contando separado', () => {
+    const estado = em([semDono('Sala 6', 'a'), comDono('Sala 9', 'b', 'u-mau')])
+    expect(estado.ocupacoes).toHaveLength(2)
+    expect(estado.ocupadas).toBe(2)
+  })
+
+  // a regra de 20/08 continua valendo no outro sentido
+  it('a mesma pessoa em duas salas segue sendo UMA ocupação', () => {
+    const estado = em([comDono('Sala 6', 'a', 'u-mau'), comDono('Sala 9', 'b', 'u-mau')])
+    expect(estado.ocupacoes).toHaveLength(1)
+    expect(estado.ocupacoes[0].qtd).toBe(2)
+  })
+
+  it('o excedente real continua aparecendo como EXTRA', () => {
+    const estado = em([
+      iniciada2('Sala 6', 'a'), iniciada2('Sala 8', 'b'), iniciada2('Sala 9', 'c'),
+    ])
+    expect(estado.extras).toHaveLength(1)
+    expect(estado.nivel).toBe('acima')
+  })
+})
+
+describe('salasContrato — a tarde herda a manhã (dono 21/08)', () => {
+  const meta = { matutino: { plantao: 'Sala 9', orto: 'Sala 3' } }
+
+  it('campo não marcado na tarde vem da manhã', () => {
+    expect(salasContrato(meta, 'vespertino')).toMatchObject({ plantao: 'Sala 9', orto: 'Sala 3' })
+  })
+
+  it('a manhã NÃO herda de lugar nenhum', () => {
+    expect(salasContrato({ vespertino: { plantao: 'Sala 2' } }, 'matutino').plantao).toBeNull()
+  })
+
+  it('marcar a tarde vence o herdado, campo a campo', () => {
+    const m = { matutino: { plantao: 'Sala 9', orto: 'Sala 3' }, vespertino: { plantao: 'Sala 6' } }
+    const tarde = salasContrato(m, 'vespertino')
+    expect(tarde.plantao).toBe('Sala 6') // explícito na tarde
+    expect(tarde.orto).toBe('Sala 3') // segue herdado
+  })
+
+  it('sem marcação nenhuma continua tudo automático', () => {
+    expect(salasContrato({}, 'vespertino')).toEqual({ orto: null, co: null, plantao: null, sobreaviso: null })
+    expect(salasContrato(null, 'vespertino')).toEqual({ orto: null, co: null, plantao: null, sobreaviso: null })
+  })
+
+  // O efeito que o dono descreve: a sala marcada de manhã continua sendo POSTO à
+  // tarde, e o que está aberto nela continua na conta em vez de sumir.
+  it('a sala marcada de manhã segue ocupando o posto à tarde', () => {
+    const casos = [caso('Sala 6', { id: 'u6', turno: 'vespertino' })]
+    const salas = salasContrato({ matutino: { plantao: 'Sala 6' } }, 'vespertino')
+    const estado = em(casos, { turno: 'vespertino', agoraMin: 15 * 60, salas })
+    expect(estado.postos[0]).toMatchObject({ papel: 'plantonista', item: { sala: 'Sala 6' } })
+  })
+})
+
 describe('fila — cada urgência que espera tem a própria linha (dono 21/08)', () => {
   // 3 urgências sem anestesista definido na MESMA sala: uma ocupa, duas esperam.
   const semDono = (sala, id, min) =>
@@ -475,8 +572,20 @@ describe('salasContrato — config por turno sobre o default', () => {
     const meta = { matutino: { orto: 'Sala 3' } }
     expect(salasContrato(meta, 'matutino').orto).toBe('Sala 3')
     expect(salasContrato(meta, 'matutino').co).toBeNull()
-    // turnos independentes: a config da manhã não vaza para a tarde
-    expect(salasContrato(meta, 'vespertino').orto).toBeNull()
+  })
+
+  // ⚠️ Esta asserção era o INVERSO até 21/08 ("a config da manhã não vaza para a
+  // tarde"), pela regra estruturante de 13/08 — manhã e tarde são escalas
+  // separadas. O dono abriu uma exceção EXPLÍCITA e restrita a este mapa:
+  // "quero que as salas de urgência da manhã persistam para a tarde". A exceção
+  // vale só para `urgencias_meta`; em TROCA e posição a regra de 13/08 continua
+  // valendo integralmente (`localizarSlotRodape`/`localizarSlotEscala` e
+  // `casosTransferiveis` seguem tratando `turno` como filtro EXATO, travados nos
+  // testes de troca). Se um dia a herança voltar a incomodar, o que se remove é
+  // este `describe`, não a independência de turno do resto do módulo.
+  it('a tarde HERDA a manhã — exceção de 21/08 à independência de turno', () => {
+    const meta = { matutino: { orto: 'Sala 3' } }
+    expect(salasContrato(meta, 'vespertino').orto).toBe('Sala 3')
   })
 })
 
@@ -725,5 +834,105 @@ describe('estação: o que está EM ANDAMENTO é fato, não sobra de turno', () 
     )
     expect(estado.ocupadas).toBe(0)
     expect(estado.aConfirmar.map((a) => a.id)).toEqual(['dia-todo'])
+  })
+})
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// CRUZAMENTO DA URGÊNCIA QUE ATRAVESSA O TURNO (dono 21/08): "ao passar salas de
+// urgência da manhã para tarde cruze os dados com a escala da tarde (no momento
+// da importação) e ajuste os anestesistas conforme escala da tarde; se não houver
+// anestesista escalado, mantenha na fila".
+// ════════════════════════════════════════════════════════════════════════════
+describe('planoCruzamentoUrgencias — quem assume a urgência no turno novo', () => {
+  const manha = (sala, extra = {}) => caso(sala, { turno: 'matutino', ...extra })
+  const tarde = (sala, anestesista, uid, extra = {}) => caso(sala, {
+    turno: 'vespertino', tipo: 'eletiva', anestesista, anestesistaUserId: uid, ...extra,
+  })
+
+  it('a urgência da manhã passa para quem a escala da tarde pôs na sala', () => {
+    const plano = planoCruzamentoUrgencias([
+      manha('Sala 7', { id: 'u', anestesista: 'MAURICIO', anestesistaUserId: 'u-mau' }),
+      tarde('Sala 7', 'GABRIEL', 'u-gab'),
+    ], 'vespertino')
+    expect(plano.atribuir).toHaveLength(1)
+    expect(plano.atribuir[0]).toMatchObject({ uid: 'u-gab', apelido: 'GABRIEL' })
+    expect(plano.atribuir[0].caso.id).toBe('u')
+    expect(plano.semAnestesista).toEqual([])
+  })
+
+  it('cirurgia JÁ INICIADA entra igual — é assumida por quem está à tarde', () => {
+    const plano = planoCruzamentoUrgencias([
+      manha('Sala 7', { id: 'u', statusCirurgia: 'iniciada', anestesista: 'MAURICIO', anestesistaUserId: 'u-mau' }),
+      tarde('Sala 7', 'GABRIEL', 'u-gab'),
+    ], 'vespertino')
+    expect(plano.atribuir.map((a) => a.caso.id)).toEqual(['u'])
+  })
+
+  it('sem ninguém escalado naquela sala, o caso fica SEM anestesista', () => {
+    const plano = planoCruzamentoUrgencias([
+      manha('Sala 7', { id: 'u', anestesista: 'MAURICIO', anestesistaUserId: 'u-mau' }),
+      tarde('Sala 2', 'GABRIEL', 'u-gab'),
+    ], 'vespertino')
+    expect(plano.atribuir).toEqual([])
+    expect(plano.semAnestesista.map((x) => x.caso.id)).toEqual(['u'])
+  })
+
+  it('a sala continua OCUPADA nos cards mesmo sem anestesista', () => {
+    // o caso segue aberto → entra na conta; é o "mantenha como sala ocupada"
+    const estado = em([caso('Sala 6', { id: 'u', anestesista: '?', semAnestesista: true })])
+    expect(estado.ocupadas).toBe(1)
+  })
+
+  it('cirurgia CONCLUÍDA não é reatribuída — é registro do que aconteceu', () => {
+    const plano = planoCruzamentoUrgencias([
+      manha('Sala 7', { id: 'fim', statusCirurgia: 'terminada', anestesista: 'MAURICIO', anestesistaUserId: 'u-mau' }),
+      tarde('Sala 7', 'GABRIEL', 'u-gab'),
+    ], 'vespertino')
+    expect(plano.atribuir).toEqual([])
+    expect(plano.semAnestesista).toEqual([])
+  })
+
+  it('sala FORA do contrato não é tocada (IOSC, Exames, outro hospital)', () => {
+    const plano = planoCruzamentoUrgencias([
+      manha('IOSC', { id: 'i', anestesista: 'MAURICIO', anestesistaUserId: 'u-mau' }),
+      tarde('IOSC', 'GABRIEL', 'u-gab'),
+    ], 'vespertino')
+    expect(plano.atribuir).toEqual([])
+    expect(plano.semAnestesista).toEqual([])
+  })
+
+  it('o caso do PRÓPRIO turno publicado não é mexido', () => {
+    const plano = planoCruzamentoUrgencias([
+      caso('Sala 7', { id: 'v', turno: 'vespertino', anestesista: 'X', anestesistaUserId: 'u-x' }),
+      tarde('Sala 7', 'GABRIEL', 'u-gab'),
+    ], 'vespertino')
+    expect(plano.atribuir).toEqual([])
+  })
+
+  // republicar o mesmo turno não pode reescrever o que já está certo
+  it('é idempotente: quem já é o dono da sala não entra no plano', () => {
+    const casos = [
+      manha('Sala 7', { id: 'u', anestesista: 'GABRIEL', anestesistaUserId: 'u-gab' }),
+      tarde('Sala 7', 'GABRIEL', 'u-gab'),
+    ]
+    expect(planoCruzamentoUrgencias(casos, 'vespertino').atribuir).toEqual([])
+  })
+
+  it('a grafia da sala não separa: "Sala 7 - CO" e "Sala 7" são a mesma', () => {
+    const plano = planoCruzamentoUrgencias([
+      manha('Sala 7 - CO', { id: 'u', anestesista: 'MAURICIO', anestesistaUserId: 'u-mau' }),
+      tarde('Sala 7', 'GABRIEL', 'u-gab'),
+    ], 'vespertino')
+    expect(plano.atribuir.map((a) => a.caso.id)).toEqual(['u'])
+  })
+
+  it('sala da tarde SEM anestesista definido não vira dono', () => {
+    const plano = planoCruzamentoUrgencias([
+      manha('Sala 7', { id: 'u', anestesista: 'MAURICIO', anestesistaUserId: 'u-mau' }),
+      tarde('Sala 7', '?', null, { semAnestesista: true }),
+    ], 'vespertino')
+    expect(plano.atribuir).toEqual([])
+    expect(plano.semAnestesista.map((x) => x.caso.id)).toEqual(['u'])
   })
 })

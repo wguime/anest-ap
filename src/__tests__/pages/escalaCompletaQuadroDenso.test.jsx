@@ -28,6 +28,8 @@ vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
     adicionarAjuda: vi.fn(async () => {}),
     removerAjuda: vi.fn(async () => {}),
   }),
+  // o hook das urgências lê `hoje` do context (fonte única desde 21/08)
+  useEscalaCirurgica: () => ({ hoje: '2026-08-18', escalas: {}, data: '2026-08-18', loading: false }),
   HOSPITAL_LABEL: { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' },
 }))
 vi.mock('@/contexts/UserContext', () => ({

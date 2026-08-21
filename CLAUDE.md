@@ -713,6 +713,56 @@ não gasta vaga — marcar não é reservar. Tinta verde só com cirurgia EM AND
   `-my-2`** (truque do selo P4: toque confortável sem esticar 17 cards) — por isso o e2e mede
   o BADGE, não o botão, senão acusa sobreposição onde a tela mostra empilhamento. O ✏️ do selo
   P4 FICA: ali ele marca que o selo é editável, outra função.
+- **Badge do turno não encosta no cronômetro (dono 21/08, "amontoado"):** o badge fica na
+  linha do nome e a coluna direita começa logo abaixo — medido, o badge terminava em 32px e a
+  pílula do cronômetro começava em 32px, e dois pills sólidos colados liam como um bloco de
+  duas cores. `mt-2` na coluna **só quando o badge existe** (`mostraPassaTurno`): folga fixa
+  esticaria os 17 cards. ⚠️ `mostraPassaTurno` é declarado DEPOIS de `renovado` — declarar
+  junto de `liberado`, como tentei, cai na zona morta e derruba a aba inteira com o
+  ErrorBoundary. Os três pills ficam com 8px entre si.
+- **A TARDE HERDA AS SALAS DE URGÊNCIA DA MANHÃ (dono 21/08):** `salasContrato` faz fallback
+  campo a campo `vespertino → matutino`. Quem marca onde está o plantão às 7h não remarca às
+  13h, e sem a herança a tarde nascia toda em automático: a sala perdia o posto, deixava de
+  ser ESTAÇÃO e as cirurgias dela saíam da conta e da lista. "Automático" na tarde passa a
+  significar "o que a manhã disse"; marcar a tarde vence o herdado, campo a campo. ⚠️ é
+  **exceção EXPLÍCITA e restrita** à regra estruturante de 13/08 ("turnos independentes"):
+  vale só para `urgencias_meta`. Em TROCA e posição a regra segue integral —
+  `localizarSlotRodape`/`localizarSlotEscala` e `casosTransferiveis` continuam tratando
+  `turno` como filtro EXATO, travados em `planoTroca.test.js`. O teste que afirmava o inverso
+  virou o teste da exceção, com o porquê no corpo — não foi apagado.
+- **CRUZAMENTO DA URGÊNCIA QUE ATRAVESSA O TURNO (dono 21/08):** "ao passar salas de urgência
+  da manhã para tarde cruze os dados com a escala da tarde (no momento da importação) e ajuste
+  os anestesistas conforme escala da tarde; se não houver anestesista escalado, mantenha na
+  fila". A urgência aberta é do DIA, não do turno: às 13h ela segue ocupando a sala, mas quem
+  responde por ela passa a ser quem a escala NOVA pôs ali — o da manhã foi embora. Era conserto
+  à mão depois de cada publicação. Lib pura `planoCruzamentoUrgencias` (devolve o PLANO; quem
+  chama grava), chamada no `publicar` da importação, **só HRO** e fire-and-forget — falhar ali
+  nunca desfaz a publicação. Regras: a resposta vem da ESCALA publicada (quem está NAQUELA sala,
+  por `chaveSala`, não por texto) · cirurgia **já iniciada entra igual** ("será assumida por
+  alguém da escala vespertina") · **sem ninguém escalado na sala o caso fica SEM anestesista**
+  (`sem_anestesista=true`, entra no alerta e segue na fila) e a **sala continua ocupada** nos
+  cards, porque a cirurgia existe — nunca se mantém o nome de quem já saiu. Fora do alcance de
+  propósito: cirurgia CONCLUÍDA (é registro do que aconteceu), sala fora do contrato e caso do
+  próprio turno publicado. Idempotente: republicar não reescreve quem já está certo. ⚠️ o toast
+  DIZ o que mudou — reatribuir anestesista é decisão clínica e não pode acontecer em silêncio.
+  Depende de `saved.casos` trazer os DOIS turnos, que é o contrato da RPC
+  (`rpc_publicar_escala_turno` devolve todos os casos da escala, sem filtro de turno).
+- **Definir anestesista PELA FAIXA (dono 21/08):** a urgência costuma nascer sem anestesista
+  (as cesarianas do CO), e o detalhe aberto pela faixa não oferecia o botão da linha
+  "Anestesista" — `CasoDetalheSheet` esconde a ação quando `podeDefinirAnestesista`/
+  `onDefinirAnestesista` faltam, e a `FaixaUrgencias` era o único chamador que não as passava
+  (BoardView e MinhasEscalasView passavam). A faixa agora monta o `DefinirAnestesistaSheet`
+  como o quadro. Travado no teste: o mock do detalhe expõe `data-definivel`.
+- **UMA SALA, UMA VAGA — a mesma sala nunca conta duas vezes (dono 21/08):** "a sala extra é
+  a mesma sala que o plantão está fazendo as cirurgias do CO, ou seja, está contando a mesma
+  sala 2 vezes". Só por titular, a Sala 7 rendia DUAS ocupações — as cesarianas sem
+  anestesista (chave `sala:`) e o caso com login — e a segunda virava EXTRA "acima do
+  contrato" (3 de 2) com ninguém a mais no hospital. Não cabem duas cirurgias simultâneas na
+  mesma sala. As duas regras de colapso se resolvem juntas por **componente conexo de
+  (titular, sala)**: mesma pessoa em duas salas = uma ocupação (20/08) · mesma sala com dois
+  titulares = uma ocupação (21/08). ⚠️ consequência aceita: uma pessoa em duas salas LIGA
+  essas salas, então um terceiro numa delas cai no mesmo componente — o erro passa a ser para
+  MENOS, que é o oposto do que o dono recusou.
 - **Urgências: card do posto em DUAS LINHAS + fila com uma linha por CIRURGIA (dono 21/08).**
   Card: sala em cima, anestesista embaixo — numa linha só os dois disputavam ~150px e o rótulo
   longo empurrou o nome para fora, sobrando uma pastilha muda. A LINHA DA FILA continua em uma
@@ -731,6 +781,56 @@ não gasta vaga — marcar não é reservar. Tinta verde só com cirurgia EM AND
   `at time zone 'America/Sao_Paulo'`). Validado contra produção 18/08: 16 intervalos,
   mediana 49min, pico 2 simultâneas em 06/08. Comunicado leigo à equipe:
   `.tmp/comunicado-urgencias-hro.md`.
+
+### Sincronia das superfícies de urgência (dono 21/08) — uma derivação, um relógio, um "acabou"
+
+Relato: *"ao finalizar uma cirurgia de urgência ela não está sincronizada com as informações no
+topo — Raul ao finalizar no card da Completa não finalizou no mostrador, e vice-versa"*. **Não era
+bug de escrita** (os dois pontos que gravam status chamam a mesma action, no mesmo `escala.casos`):
+era **escopo**. A faixa lê o DIA INTEIRO (regra do contrato, "ocupação é do relógio") e o quadro só
+o turno. Medido em produção em 21/08 às 15h: das **5 urgências abertas do HRO, 4 eram da manhã** —
+na aba Tarde o quadro mostrava UMA, e as outras quatro não tinham card para tocar.
+
+- **`casosHerdados(estado, turno)`** (lib) devolve o que a faixa CONTA e não é do turno; a
+  `BoardView` renderiza num `AccordionItem` **no FIM**, "Ainda abertas — Manhã" (escolha do dono:
+  no fim, não no meio das salas). Sai do MESMO `estado` da faixa — derivadas da mesma fonte, as
+  duas não têm como discordar. ⚠️ o EmptyState "nenhum caso neste turno" passou a conferir também
+  as herdadas: o turno vazio é exatamente quando elas precisam ser vistas.
+- **`useEstadoUrgencias`** é a única porta da UI para `estadoUrgencias`. Antes, faixa e
+  "Adicionar caso" montavam os `opts` à mão e divergiam no `hojeIso` — numa escala de outro dia um
+  aplicava a linha da NOITE e o outro a da manhã, e o formulário dizia "CO · ocupado" ao lado de um
+  card de CO livre. `estadoUrgenciasDaEscala` normaliza; `estadoUrgencias` segue exportada porque é
+  ela que os testes de REGRA exercitam.
+- **`src/lib/escalaCirurgicaStatus.js`** é a fonte única de "acabou?" — a frase estava em QUATRO
+  lugares. São **duas perguntas e continuam duas**: `casoConcluido` ("ainda ocupa alguém?" —
+  terminada OU suspensa, decide vaga/cronômetro) e `casoTerminado` ("quem responde pelo registro?"
+  — só terminada; é o que a TROCA usa, porque cirurgia suspensa acompanha quem assume a sala).
+  Unificar num booleano só mudaria o comportamento da troca sem pedido.
+- **`useAgoraMinuto` virou store de módulo** (`useSyncExternalStore`): sete superfícies tinham cada
+  uma o seu `setInterval` e podiam ficar 30s defasadas justamente nas fronteiras que decidem o que
+  aparece (13h, 19h, 15min da suspeita, 4h da esquecida). O `EscalaCirurgicaHomeCard` usava
+  `new Date()` cru — sem tick e furando o devClock. ⚠️ `getSnapshot` devolve valor CACHEADO:
+  recalcular no render dá tearing na virada do minuto.
+- **`PATCH_CASOS` / `ADD_CASO` no reducer**: o rollback de `setStatusCirurgia` era a única action
+  que revertia com `SET_HOSPITAL` + o snapshot do closure — num blip de rede descartava tudo que
+  outra pessoa tivesse mudado desde a captura. E `adicionarCaso` era a única escrita de casos fora
+  das guardas anti-atropelo (sem `marcarEscrita`), então um `loadData` em voo podia fazer o caso
+  novo sumir. ⚠️ `PATCH_CASOS` **preserva a referência dos casos não tocados** — contrato do
+  `React.memo` do `CasoCard`, travado em teste.
+- **O carimbo entra no OTIMISTA e só no eixo PRINCIPAL.** `setStatusCirurgia(…, userInfo)` grava
+  `statusAtualizadoEm/Por` no ato (a faixa lê esse carimbo para "em sala há X"; sem ele o tempo
+  sumia até o realtime e um carimbo antigo mandava a cirurgia para "iniciada há 6h" e de volta — o
+  "vai e volta"). Migration `20260821200000` para de carimbar no toggle de aviso: **provado em
+  produção** na cirurgia da Rose (iniciada 14:33 → suspensa 15:01 → agendada 15:42, carimbo 15:42,
+  que não é nada útil). `updated_at` continua em ambos — é ele que alimenta o realtime.
+- **`carimboDeStatus`** põe "Iniciada às 14:33 por Fulano" no cartão Andamento do detalhe. É o
+  antídoto do achado da literatura: quadro em que a equipe não confia AUMENTA a carga de
+  comunicação (as pessoas ligam para confirmar). Sem autor no roster, mostra só a hora — nunca
+  "por —"; carimbo de outro dia não vira horário solto.
+- **Travas**: `escalaUrgenciasSincronia.test.jsx` tem o INVARIANTE ("tudo que a faixa conta está
+  alcançável no quadro, e nada duas vezes") — é ele que protege, não a persona, porque o tema
+  "isolar por turno" já regrediu três vezes neste módulo. Mais `escalaCirurgicaStatus.test.js`,
+  `escalaRelogioUnico.test.jsx` e os casos novos em `escalaCirurgicaOtimista.test.jsx`.
 
 ### Resposta tátil da escala (dono 19/08) — otimismo + memo
 

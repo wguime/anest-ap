@@ -23,6 +23,8 @@ import FaixaUrgencias from '@/pages/escala-cirurgica/FaixaUrgencias'
 const { setStatusCirurgia, definirSalasUrgencia } = vi.hoisted(() => ({ setStatusCirurgia: vi.fn(async () => {}), definirSalasUrgencia: vi.fn(async () => {}) }))
 vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
   useEscalaCirurgicaActions: () => ({ setStatusCirurgia, definirSalasUrgencia }),
+  // o hook das urgências lê `hoje` do context (fonte única desde 21/08)
+  useEscalaCirurgica: () => ({ hoje: HOJE, escalas: {}, data: HOJE, loading: false }),
   HOSPITAL_LABEL: { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' },
 }))
 vi.mock('@/contexts/UserContext', () => ({
@@ -33,9 +35,21 @@ vi.mock('@/hooks/useRosterAnestesistas', () => ({
 }))
 // Relógio congelado às 11:00 — a suíte roda em America/Sao_Paulo.
 vi.mock('@/pages/escala-cirurgica/useAgoraMinuto', () => ({ default: () => 11 * 60 }))
-// O detalhe é a superfície REAL de status; aqui só interessa que ele abre com o caso certo.
+// O detalhe é a superfície REAL de status; aqui interessa que ele abre com o caso
+// certo E com o caminho de DEFINIR ANESTESISTA — sem essas duas props o detalhe
+// esconde o botão da linha "Anestesista", e a urgência aberta pela faixa costuma
+// ser justamente a que nasce sem anestesista (as cesarianas do CO).
 vi.mock('@/pages/escala-cirurgica/CasoDetalheSheet', () => ({
-  default: ({ caso }) => <div data-testid="detalhe">{caso.id}</div>,
+  default: ({ caso, podeDefinirAnestesista, onDefinirAnestesista }) => (
+    <div data-testid="detalhe" data-definivel={String(!!onDefinirAnestesista && !!podeDefinirAnestesista?.())}>
+      {caso.id}
+    </div>
+  ),
+}))
+vi.mock('@/pages/escala-cirurgica/DefinirAnestesistaSheet', () => ({
+  default: ({ sala, casosAlvo }) => (
+    <div data-testid="definir">{sala}|{(casosAlvo || []).map((c) => c.id).join(',')}</div>
+  ),
 }))
 // O formulário real tem suíte própria; aqui interessa que abre com o posto certo.
 vi.mock('@/pages/escala-cirurgica/AddCasoSheet', () => ({
@@ -227,6 +241,18 @@ describe('toque abre o detalhe — onde Iniciada/Terminada já são marcados', (
     fireEvent.click(screen.getByText(/Apendicectomia/i).closest('button'))
     expect(screen.getByTestId('detalhe').textContent).toBe('f1')
   })
+
+  // DONO 21/08: "ao clicar no card das urgências deve ser possível adicionar o
+  // anestesista". A faixa abria o detalhe SEM `podeDefinirAnestesista`/
+  // `onDefinirAnestesista` — o quadro e a aba Minhas passavam, a faixa não — e o
+  // detalhe esconde o botão da linha "Anestesista" quando elas faltam. Era o único
+  // caminho para a urgência que nasce sem anestesista, que é o caso comum aqui.
+  it('o detalhe aberto pela faixa permite DEFINIR o anestesista', () => {
+    montar([caso('sem', 'Sala 9', { anestesista: '?', anestesistaUserId: null, semAnestesista: true })])
+    fireEvent.click(screen.getByText('Sala 9').closest('button'))
+    expect(screen.getByTestId('detalhe').textContent).toBe('sem')
+    expect(screen.getByTestId('detalhe').dataset.definivel).toBe('true')
+  })
 })
 
 describe('qualidade do dado', () => {
@@ -235,10 +261,13 @@ describe('qualidade do dado', () => {
     expect(screen.getByText(/ainda em andamento\?/)).toBeTruthy()
     expect(screen.getByText('0 de 2 salas')).toBeTruthy() // saiu da ocupação
     fireEvent.click(screen.getByRole('button', { name: 'Terminada' }))
+    // o 4º argumento é quem tocou — o carimbo otimista precisa dele para o
+    // detalhe dizer "por Fulano" já no ato (dono 21/08)
     expect(setStatusCirurgia).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'e1' }),
       expect.objectContaining({ id: 'c1' }),
       'terminada',
+      expect.objectContaining({ userId: 'u-eu' }),
     )
   })
 

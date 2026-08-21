@@ -6,7 +6,7 @@
  *
  * Exercita o caminho real: upload da imagem → Vision (mock) → conferência.
  */
-import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest'
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 
 import { ThemeProvider, ToastProvider } from '@/design-system'
@@ -16,7 +16,11 @@ import ImportarEscalaPage from '@/pages/escala-cirurgica/ImportarEscalaPage'
 // homônimos cadastrados; os demais testes seguem com o roster vazio.
 const { svcMock, salvarEscala, upsertAlias, prepararImagem, rosterHolder } = vi.hoisted(() => ({
   rosterHolder: { lista: [] },
-  svcMock: { parseEscalaImagem: vi.fn(), fetchEscala: vi.fn(async () => null) },
+  svcMock: {
+    parseEscalaImagem: vi.fn(),
+    fetchEscala: vi.fn(async () => null),
+    updateAnestesistaCasos: vi.fn(async () => {}),
+  },
   salvarEscala: vi.fn(async (p) => ({ id: 'e1', ...p, casos: p.casos.map((c, i) => ({ ...c, id: `c${i}`, ordem: i })) })),
   upsertAlias: vi.fn(async () => {}),
   prepararImagem: vi.fn(async () => ({
@@ -53,9 +57,9 @@ vi.mock('@/hooks/useRosterAnestesistas', () => ({
 const wrap = ({ children }) => <ThemeProvider><ToastProvider>{children}</ToastProvider></ThemeProvider>
 
 /** Sobe uma "imagem" da escala — a extração em si é o mock da Vision. */
-async function importar(casos, ordemLiberacao = []) {
+async function importar(casos, ordemLiberacao = [], { hospital = 'hro' } = {}) {
   svcMock.parseEscalaImagem.mockResolvedValueOnce({ casos, ordemLiberacao, ajudaExterna: [] })
-  const { container } = render(<ImportarEscalaPage hospital="hro" data="2026-07-28" onClose={vi.fn()} />, { wrapper: wrap })
+  const { container } = render(<ImportarEscalaPage hospital={hospital} data="2026-07-28" onClose={vi.fn()} />, { wrapper: wrap })
   const input = container.querySelector('input[type="file"]')
   const file = new File(['x'], 'escala.png', { type: 'image/png' })
   fireEvent.change(input, { target: { files: [file] } })
@@ -89,6 +93,7 @@ beforeEach(() => {
   svcMock.fetchEscala.mockReset()
   svcMock.fetchEscala.mockResolvedValue(null)
   salvarEscala.mockClear()
+  svcMock.updateAnestesistaCasos.mockClear()
   upsertAlias.mockReset()
   upsertAlias.mockResolvedValue({})
   prepararImagem.mockReset()
@@ -729,5 +734,75 @@ describe('Falha da IA na leitura (incidente 17–18/08)', () => {
     })
     subir()
     expect(await screen.findByText(/sobrecarregado/i)).toBeTruthy()
+  })
+})
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// CRUZAMENTO DA URGÊNCIA QUE ATRAVESSA O TURNO (dono 21/08): "ao passar salas de
+// urgência da manhã para tarde cruze os dados com a escala da tarde (no momento
+// da importação) e ajuste os anestesistas conforme escala da tarde; se não houver
+// anestesista escalado, mantenha na fila". A urgência aberta é do DIA: às 13h ela
+// segue ocupando a sala, mas quem responde por ela é quem a escala NOVA pôs lá.
+// ════════════════════════════════════════════════════════════════════════════
+describe('publicação cruza a urgência aberta do turno anterior (dono 21/08)', () => {
+  // O cruzamento só existe quando se publica o turno SEGUINTE — o relógio do
+  // arquivo está às 10h (matutino), aqui ele vai para as 14h para o `periodo`
+  // nascer vespertino, que é o cenário do dono.
+  beforeEach(() => vi.setSystemTime(new Date('2026-07-28T14:00:00-03:00')))
+  afterEach(() => vi.setSystemTime(new Date('2026-07-28T10:00:00-03:00')))
+
+  // a RPC devolve TODOS os casos da escala (os dois turnos) — é disso que o
+  // cruzamento vive; o mock replica esse contrato.
+  const publicarComManhaAberta = (urgenciaManha) => {
+    salvarEscala.mockImplementationOnce(async (p) => ({
+      id: 'e1',
+      ...p,
+      casos: [
+        ...p.casos.map((c, i) => ({ ...c, id: `c${i}`, ordem: i, turno: 'vespertino' })),
+        urgenciaManha,
+      ],
+    }))
+  }
+
+  const TARDE = [
+    { sala: 'Sala 7', hora: '13:30', anestesista: 'CURY', cirurgiao: 'DR. ANA SOUZA', procedimento: 'Cesariana', pacienteIniciais: 'A.B.' },
+  ]
+
+  it('a urgência da manhã passa para quem a escala nova pôs na sala', async () => {
+    publicarComManhaAberta({
+      id: 'urg-manha', sala: 'Sala 7 - CO', turno: 'matutino', tipo: 'urgencia',
+      statusCirurgia: 'iniciada', anestesista: 'MAURICIO', anestesistaUserId: 'uid-mau',
+    })
+    await importar(TARDE)
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+    await waitFor(() => expect(svcMock.updateAnestesistaCasos).toHaveBeenCalled())
+    const [ids, patch] = svcMock.updateAnestesistaCasos.mock.calls[0]
+    expect(ids).toEqual(['urg-manha'])
+    expect(patch).toMatchObject({ uid: 'uid-cury', apelido: 'CURY' })
+  })
+
+  it('sem ninguém escalado na sala, o caso fica SEM anestesista e segue na fila', async () => {
+    publicarComManhaAberta({
+      id: 'urg-sozinha', sala: 'Sala 9', turno: 'matutino', tipo: 'urgencia',
+      statusCirurgia: 'agendada', anestesista: 'MAURICIO', anestesistaUserId: 'uid-mau',
+    })
+    await importar(TARDE)
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+    await waitFor(() => expect(svcMock.updateAnestesistaCasos).toHaveBeenCalled())
+    const [ids, patch] = svcMock.updateAnestesistaCasos.mock.calls[0]
+    expect(ids).toEqual(['urg-sozinha'])
+    expect(patch.uid).toBeNull()
+  })
+
+  it('fora do HRO o cruzamento nem roda — o contrato é do HRO', async () => {
+    publicarComManhaAberta({
+      id: 'urg-manha', sala: 'Sala 7', turno: 'matutino', tipo: 'urgencia',
+      statusCirurgia: 'iniciada', anestesista: 'MAURICIO', anestesistaUserId: 'uid-mau',
+    })
+    await importar(TARDE, [], { hospital: 'unimed' })
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+    await waitFor(() => expect(salvarEscala).toHaveBeenCalled())
+    expect(svcMock.updateAnestesistaCasos).not.toHaveBeenCalled()
   })
 })

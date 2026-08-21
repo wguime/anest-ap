@@ -72,6 +72,42 @@ function reducer(state, action) {
           [action.hospital]: { ...(state.escalas[action.hospital] || {}), ...action.patch },
         },
       }
+    // PATCH_CASOS aplica um patch a casos ESPECÍFICOS sobre o estado ATUAL.
+    // Existe pela mesma razão do PATCH_HOSPITAL acima e por uma segunda (21/08):
+    // reverter com `SET_HOSPITAL` + o `escala` do closure descartava TUDO que
+    // mudou na escala desde que aquele objeto foi capturado — outro status, a
+    // sala marcada no ⚙, uma liberação. Num blip de rede (o 5G do hospital) o
+    // rollback de um toque apagava o trabalho de outra pessoa.
+    // ⚠️ preserva a REFERÊNCIA dos casos não tocados: é o contrato de que o
+    // `React.memo` do CasoCard depende para um toque re-renderizar UM card.
+    case 'PATCH_CASOS': {
+      const atual = state.escalas[action.hospital]
+      if (!atual) return state
+      const alvo = (c) => (action.ids ? action.ids.includes(c.id) : c === action.refCaso)
+      return {
+        ...state,
+        escalas: {
+          ...state.escalas,
+          [action.hospital]: {
+            ...atual,
+            casos: (atual.casos || []).map((c) => (alvo(c) ? { ...c, ...action.patch } : c)),
+          },
+        },
+      }
+    }
+    // Idem para o append: `{...escala, casos:[...]}` do closure perdia o que
+    // tivesse mudado durante o RTT do insert.
+    case 'ADD_CASO': {
+      const atual = state.escalas[action.hospital]
+      if (!atual) return state
+      return {
+        ...state,
+        escalas: {
+          ...state.escalas,
+          [action.hospital]: { ...atual, casos: [...(atual.casos || []), action.caso] },
+        },
+      }
+    }
     case 'SET_P4_HOSPITAL':
       return { ...state, p4Hospital: action.payload }
     default:
@@ -523,18 +559,36 @@ export function EscalaCirurgicaProvider({ children }) {
   // e extra (atrasada/suspensa/passa_tarde, toggle; terminada limpa e bloqueia).
   // Espelha a regra da RPC no update otimista. Qualquer clínico atualiza.
   // Quando a ÚLTIMA cirurgia da sala conclui (terminada ou suspensa), o plantonista é avisado.
-  const setStatusCirurgia = useCallback(async (escala, caso, status) => {
+  const setStatusCirurgia = useCallback(async (escala, caso, status, userInfo = {}) => {
     const EXTRAS = ['atrasada', 'suspensa', 'passa_tarde']
     const isDemo = String(escala.id).startsWith('demo-')
-    const aplicar = (c) => EXTRAS.includes(status)
-      ? { ...c, statusExtra: c.statusExtra === status ? null : status }
-      : { ...c, statusCirurgia: status, ...(status === 'terminada' && { statusExtra: null }) }
-    const casos = (escala.casos || []).map((c) =>
-      (caso.id ? c.id === caso.id : c === caso) ? aplicar(c) : c
-    )
+    const vivo = (escala.casos || []).find((c) => (caso.id ? c.id === caso.id : c === caso)) || caso
+    // ⚠️ O CARIMBO ENTRA NO OTIMISTA (dono 21/08). Este bloco dizia "espelha a
+    // regra da RPC" e não espelhava: a RPC grava `status_atualizado_em/por` e o
+    // otimista não. Entre o toque e o realtime a faixa de urgências perdia o
+    // "em sala há X" (ela lê esse carimbo) e um carimbo antigo mandava a cirurgia
+    // direto para "iniciada há 6h — ainda em andamento?", de onde voltava sozinha
+    // no refetch: o "vai e volta" que o dono relatou.
+    // No eixo EXTRA não se carimba — espelhando a RPC corrigida em 21/08: marcar
+    // "Atrasada" não pode zerar o relógio de quem está operando desde as 10h.
+    const patch = EXTRAS.includes(status)
+      ? { statusExtra: vivo.statusExtra === status ? null : status }
+      : {
+        statusCirurgia: status,
+        ...(status === 'terminada' && { statusExtra: null }),
+        statusAtualizadoEm: agora().toISOString(),
+        statusAtualizadoPor: userInfo.userId || null,
+      }
+    const antes = {
+      statusCirurgia: vivo.statusCirurgia ?? null,
+      statusExtra: vivo.statusExtra ?? null,
+      statusAtualizadoEm: vivo.statusAtualizadoEm ?? null,
+      statusAtualizadoPor: vivo.statusAtualizadoPor ?? null,
+    }
+    const alvo = caso.id ? { ids: [caso.id] } : { refCaso: vivo }
     // OTIMISTA: pinta a UI já (a demora do RPC deixava o botão "morto" — reclamação
-    // do dono em produção); erro reverte pro estado anterior + toast no catch.
-    dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { casos } })
+    // do dono em produção); erro reverte SÓ este caso + toast no catch.
+    dispatch({ type: 'PATCH_CASOS', hospital: escala.hospital, ...alvo, patch })
     marcarEscrita()
     try {
       try {
@@ -543,8 +597,10 @@ export function EscalaCirurgicaProvider({ children }) {
       // (Os avisos "sala encerrou" e "anestesista livre" p/ o plantonista saíram
       // em 30/07 junto com as demais notificações da escala — ver nota no topo.)
     } catch (error) {
-      // reverte o otimista (o servidor recusou — ex.: extra em caso terminada)
-      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: escala })
+      // Reverte SÓ o caso tocado (dono 21/08). Antes era `SET_HOSPITAL` com o
+      // snapshot inteiro do closure: um blip de rede descartava tudo que outra
+      // pessoa tivesse mudado na escala desde a captura.
+      dispatch({ type: 'PATCH_CASOS', hospital: escala.hospital, ...alvo, patch: antes })
       toast({ variant: 'error', title: 'Erro ao atualizar status', description: error.message })
       throw error
     }
@@ -1008,9 +1064,18 @@ export function EscalaCirurgicaProvider({ children }) {
       toast({ variant: 'warning', title: 'Indisponível na demonstração' })
       return null
     }
+    // ⚠️ dentro das guardas anti-atropelo (dono 21/08): esta era a ÚNICA escrita de
+    // casos que não marcava a escrita nem computava sobre o estado atual — durante
+    // o RTT do insert, um `SET_HOSPITAL` com o `escala` do closure descartava
+    // qualquer status marcado no meio, e um `loadData` em voo não enxergava a
+    // mutação e podia aplicar por cima, fazendo o caso novo sumir.
+    marcarEscrita()
     try {
-      const novo = await svc.addCaso(escala.id, caso)
-      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, casos: [...(escala.casos || []), novo] } })
+      let novo
+      try {
+        novo = await svc.addCaso(escala.id, caso)
+        dispatch({ type: 'ADD_CASO', hospital: escala.hospital, caso: novo })
+      } finally { encerrarEscrita() }
       toast({ variant: 'success', title: 'Caso adicionado', description: `${novo.sala || ''} ${novo.hora || ''}`.trim() })
       return novo
     } catch (error) {

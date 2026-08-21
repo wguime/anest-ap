@@ -35,18 +35,19 @@
  * aqui duplicava a regra do contrato e fazia a sala marcada como plantão
  * aparecer DUAS vezes na grade.
  */
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { ChevronRight, Settings2 } from 'lucide-react'
 import { Badge } from '@/design-system'
 import { fraseClinica } from '@/lib/colunaLiberacao'
-import { GRAVIDADE_LABEL, estadoUrgencias, salasContrato } from '@/lib/escalaCirurgicaUrgencias'
+import { GRAVIDADE_LABEL } from '@/lib/escalaCirurgicaUrgencias'
 import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
-import useAgoraMinuto from './useAgoraMinuto'
-import { casosResolvidos, nomeAnestesistaExibicao, salaLiberacao } from './utils'
+import useEstadoUrgencias from './useEstadoUrgencias'
+import { nomeAnestesistaExibicao, salaLiberacao } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import CasoDetalheSheet from './CasoDetalheSheet'
+import DefinirAnestesistaSheet from './DefinirAnestesistaSheet'
 import SalasUrgenciaSheet from './SalasUrgenciaSheet'
 import AddCasoSheet from './AddCasoSheet'
 
@@ -88,12 +89,16 @@ const SeloSala = ({ children, tom = 'primary' }) => (
   </span>
 )
 
-export default function FaixaUrgencias({ escala, hospital, turno, hoje }) {
-  const agoraMin = useAgoraMinuto()
+export default function FaixaUrgencias({ escala, hospital, turno }) {
   const { user } = useUser()
   const { rosterByUid } = useRosterAnestesistas()
   const { setStatusCirurgia } = useEscalaCirurgicaActions()
   const [detalhe, setDetalhe] = useState(null)
+  // Definir o anestesista a partir do detalhe aberto PELA FAIXA (dono 21/08): a
+  // urgência costuma nascer sem anestesista — é o caso das cesarianas do CO —, e
+  // sem estas duas props o `CasoDetalheSheet` esconde o botão da linha
+  // "Anestesista", que é justamente o dado que falta preencher ali.
+  const [definir, setDefinir] = useState(null)
   const [todas, setTodas] = useState(false)
   const [configurar, setConfigurar] = useState(false)
   // Toque num posto SEM caso abre o "Adicionar caso" já apontando o posto
@@ -101,16 +106,9 @@ export default function FaixaUrgencias({ escala, hospital, turno, hoje }) {
   const [addCaso, setAddCaso] = useState(null)
 
   // Ocupação é do relógio → dia INTEIRO; o turno só escolhe a linha do contrato.
-  const casos = useMemo(() => casosResolvidos(escala), [escala])
-  // Salas dos papéis NO DIA (dono 18/08): urgencias_meta do cabeçalho vence o
-  // "normalmente Sala 4/Sala 7" quando marcado; ausente = automático.
-  const salas = useMemo(() => salasContrato(escala?.urgenciasMeta, turno), [escala?.urgenciasMeta, turno])
-  const estado = useMemo(
-    () => estadoUrgencias(casos, {
-      hospital, turno, agoraMin, dataEscala: escala?.data || null, hojeIso: hoje, salas,
-    }),
-    [casos, hospital, turno, agoraMin, escala?.data, hoje, salas],
-  )
+  // O hook é a fonte única (dono 21/08): montar os `opts` à mão aqui foi o que
+  // deixou esta tela e o "Adicionar caso" aplicarem linhas de contrato diferentes.
+  const { estado } = useEstadoUrgencias(escala, { hospital, turno })
 
   if (hospital !== 'hro' || !estado.ativo) return null
 
@@ -328,7 +326,9 @@ export default function FaixaUrgencias({ escala, hospital, turno, hoje }) {
             {podeEditar && (
               <button
                 type="button"
-                onClick={() => setStatusCirurgia(escala, it.caso, 'terminada')}
+                /* `.catch` obrigatório: a action dá throw depois do toast, e este
+                   era o único call site sem tratamento — rejeição não tratada. */
+                onClick={() => setStatusCirurgia(escala, it.caso, 'terminada', { userId: user?.uid || user?.id }).catch(() => {})}
                 className="shrink-0 rounded-[9px] border border-warning/50 px-2 py-1 font-bold text-warning"
               >
                 Terminada
@@ -369,7 +369,19 @@ export default function FaixaUrgencias({ escala, hospital, turno, hoje }) {
           caso={detalhe}
           turno={turno}
           onClose={() => setDetalhe(null)}
+          podeDefinirAnestesista={() => podeEditar}
+          onDefinirAnestesista={(sala, casoAlvo) => setDefinir({ sala, casosAlvo: casoAlvo ? [casoAlvo] : null })}
           podeEditar={podeEditar}
+        />
+      )}
+
+      {definir && (
+        <DefinirAnestesistaSheet
+          escala={escala}
+          sala={definir.sala}
+          casosAlvo={definir.casosAlvo || null}
+          turno={turno}
+          onClose={() => setDefinir(null)}
         />
       )}
     </>

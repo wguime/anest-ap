@@ -26,12 +26,16 @@ import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import useRosterResidentes from '@/hooks/useRosterResidentes'
 import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
 import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
+import { carimboDeStatus } from '@/lib/escalaCirurgicaStatus'
 import PainelTempo, { formatFaltante } from './PainelTempo'
 import useAgoraMinuto from './useAgoraMinuto'
 import { conveniosDaEscala, espelhoTempoTotal, nomeAnestesistaExibicao, normalizarSalaHro, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, salasDoHospital, tipoBadge, turnoDoCaso } from './utils'
 import ChipsEscolha, { GRAVIDADE_CHIPS, TIPOS_CIRURGIA } from './ChipsEscolha'
 
 const SALA_OUTRO = '__outro__'
+// Verbo de cada estado na linha de procedência ("Iniciada às 14:33 por Fulano").
+const STATUS_VERBO = { iniciada: 'Iniciada', terminada: 'Terminada' }
+
 // Sentinela do seletor de residente (valor impossível como uid).
 const SEM_RESIDENTE = '__sem__'
 
@@ -83,6 +87,18 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
     if (!caso) return null
     return (caso.id && (escala?.casos || []).find((c) => c.id === caso.id)) || caso
   }, [escala, caso])
+
+  // PROCEDÊNCIA do estado: quando mudou e por quem. Fica no DETALHE porque é onde
+  // a pergunta se responde — o card do quadro não tem espaço e não decide nada.
+  const carimbo = useMemo(
+    () => carimboDeStatus(vivo, { dataEscala: escala?.data || null }),
+    [vivo, escala?.data],
+  )
+  // Sem autor reconhecido (o uid é de quem TOCOU e o roster só cobre
+  // anestesiologistas) a linha sai só com o horário — nunca "por —".
+  const autorCarimbo = carimbo?.porUid
+    ? nomeAnestesistaExibicao({ uid: carimbo.porUid, rosterByUid }) || ''
+    : ''
 
   // Opções de sala/local: salas usadas na escala do dia ∪ base do hospital (IOSC,
   // Umanitá, salas fixas…). "Outro" abre digitação p/ um local ainda não listado.
@@ -219,7 +235,10 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
   // 27/07 — ninguém mais precisa ser dono da sala para assumir.
   const definivel = !!(onDefinirAnestesista && podeDefinirAnestesista?.(vivo.sala, aliasDet))
   // otimista no context (erro reverte + toast lá) — o sheet só dispara
-  const mudarStatus = (status) => setStatusCirurgia(escala, vivo, status).catch(() => {})
+  // `userId` vai junto: o carimbo otimista precisa saber QUEM tocou, para o
+  // detalhe poder dizer "Iniciada às 14:33 por Fulano" já no ato (dono 21/08).
+  const mudarStatus = (status) =>
+    setStatusCirurgia(escala, vivo, status, { userId: user?.uid || user?.id }).catch(() => {})
 
   const principal = vivo.statusCirurgia || 'agendada'
   const terminada = principal === 'terminada'
@@ -370,6 +389,19 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
               <p className="mt-1.5 text-[11.5px] text-muted-foreground">
                 Marcar <b className="font-semibold text-foreground">Terminada</b> desliga os avisos.
               </p>
+              {/* PROCEDÊNCIA DO ESTADO (dono 21/08). A pesquisa sobre quadros
+                  cirúrgicos eletrônicos converge num ponto: o quadro em que a
+                  equipe não confia AUMENTA a carga de comunicação, porque as
+                  pessoas ligam para confirmar. Dizer quando e por quem custa uma
+                  linha e é o que separa "o app afirma" de "alguém marcou".
+                  Sem autor reconhecido, mostra só o horário — nunca "por —". */}
+              {carimbo && (
+                <p className="mt-0.5 text-[11.5px] text-muted-foreground">
+                  {STATUS_VERBO[carimbo.status] || carimbo.status} às{' '}
+                  <b className="font-semibold text-foreground">{carimbo.hora}</b>
+                  {autorCarimbo ? ` por ${autorCarimbo}` : ''}
+                </p>
+              )}
 
               {/* TIPO: fica no Andamento porque reclassificar é AÇÃO no meio do
                   turno (a urgência que entrou como eletiva no mapa), e porque é

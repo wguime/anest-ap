@@ -30,6 +30,7 @@ const { svcMock, subCallbacks } = vi.hoisted(() => ({
     updateAjudaExterna: vi.fn(async () => {}),
     updateStatusCirurgia: vi.fn(async () => {}),
     updateAnestesistaCasos: vi.fn(async () => {}),
+    addCaso: vi.fn(async (escalaId, c) => ({ id: 'novo-1', ...c })),
   },
   // callbacks capturados p/ simular um evento realtime chegando no meio do toque
   subCallbacks: [],
@@ -279,5 +280,122 @@ describe('rollback — servidor recusou, o toque desfaz sozinho', () => {
       await actions.adicionarAjuda(unimed(), 'matutino', 'CURY').catch(() => {})
     })
     expect(unimed().ajudaExterna.matutino || []).toEqual([])
+  })
+})
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// CARIMBO DO STATUS NO OTIMISTA (dono 21/08) — a faixa de urgências lê
+// `statusAtualizadoEm` para dizer "em sala há X" e para decidir se a cirurgia
+// virou a pergunta "iniciada há 6h — ainda em andamento?". O otimista não
+// carimbava: entre o toque e o realtime o tempo sumia do card e um carimbo
+// antigo mandava a cirurgia para a pergunta, de onde ela voltava sozinha no
+// refetch — o "vai e volta" que o dono relatou.
+// ════════════════════════════════════════════════════════════════════════════
+describe('carimbo do status entra junto com o toque', () => {
+  const casoDe = (id) => unimed().casos.find((c) => c.id === id)
+
+  it('marcar iniciada carimba HORA e AUTOR antes do servidor responder', async () => {
+    await montar()
+    svcMock.updateStatusCirurgia.mockImplementation(pendente)
+    await act(async () => { actions.setStatusCirurgia(unimed(), casoDe('c1'), 'iniciada', { userId: 'u-eu' }) })
+    const c = casoDe('c1')
+    expect(c.statusCirurgia).toBe('iniciada')
+    expect(c.statusAtualizadoEm).toBeTruthy()
+    expect(c.statusAtualizadoPor).toBe('u-eu')
+  })
+
+  // Espelha a RPC corrigida em 21/08: marcar "Atrasada" numa cirurgia que começou
+  // às 10h não pode zerar o relógio de quem está operando.
+  it('marcar um AVISO não mexe no carimbo', async () => {
+    await montar()
+    svcMock.updateStatusCirurgia.mockImplementation(pendente)
+    await act(async () => { actions.setStatusCirurgia(unimed(), casoDe('c1'), 'iniciada', { userId: 'u-eu' }) })
+    const carimboInicial = casoDe('c1').statusAtualizadoEm
+    await act(async () => { actions.setStatusCirurgia(unimed(), casoDe('c1'), 'atrasada', { userId: 'u-outro' }) })
+    expect(casoDe('c1').statusExtra).toBe('atrasada')
+    expect(casoDe('c1').statusAtualizadoEm).toBe(carimboInicial)
+    expect(casoDe('c1').statusAtualizadoPor).toBe('u-eu')
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// ROLLBACK ESTREITO (dono 21/08) — reverter com o snapshot INTEIRO do closure
+// descartava tudo que tivesse mudado na escala desde a captura. Num blip de rede
+// (o 5G do hospital), o erro de UM toque apagava o trabalho de outra pessoa.
+// ════════════════════════════════════════════════════════════════════════════
+describe('rollback do status devolve SÓ o caso tocado', () => {
+  const casoDe = (id) => unimed().casos.find((c) => c.id === id)
+
+  it('o que mudou em OUTRO caso durante o voo sobrevive ao erro', async () => {
+    await montar()
+    let recusar
+    svcMock.updateStatusCirurgia.mockImplementation(() => new Promise((_, rej) => { recusar = rej }))
+    const escalaNoToque = unimed()
+    await act(async () => { actions.setStatusCirurgia(escalaNoToque, casoDe('c1'), 'iniciada', { userId: 'u-eu' }) })
+
+    // outra pessoa (ou outro toque) mexe no c2 enquanto o c1 está em voo
+    svcMock.updateCaso.mockImplementation(async () => {})
+    await act(async () => { await actions.atualizarCaso(unimed(), 'c2', { gravidade: 'imediata' }) })
+    expect(casoDe('c2').gravidade).toBe('imediata')
+
+    await act(async () => { recusar(new Error('Load failed')); await Promise.resolve() })
+
+    expect(casoDe('c1').statusCirurgia).toBe('agendada') // o toque recusado voltou
+    expect(casoDe('c2').gravidade).toBe('imediata') // e o resto NÃO foi junto
+  })
+
+  it('o rollback devolve também o carimbo anterior', async () => {
+    await montar()
+    let recusar
+    svcMock.updateStatusCirurgia.mockImplementation(() => new Promise((_, rej) => { recusar = rej }))
+    await act(async () => { actions.setStatusCirurgia(unimed(), casoDe('c1'), 'iniciada', { userId: 'u-eu' }) })
+    expect(casoDe('c1').statusAtualizadoEm).toBeTruthy()
+    await act(async () => { recusar(new Error('offline')); await Promise.resolve() })
+    expect(casoDe('c1').statusAtualizadoEm ?? null).toBeNull()
+    expect(casoDe('c1').statusAtualizadoPor ?? null).toBeNull()
+  })
+
+  // CONTRATO DO memo do CasoCard (BoardView): um toque re-renderiza UM card, e
+  // isso só vale enquanto o patch preserva a referência dos casos não tocados.
+  it('preserva a REFERÊNCIA dos casos que não foram tocados', async () => {
+    await montar()
+    svcMock.updateStatusCirurgia.mockImplementation(pendente)
+    const antes = unimed().casos
+    await act(async () => { actions.setStatusCirurgia(unimed(), casoDe('c1'), 'iniciada', { userId: 'u-eu' }) })
+    const depois = unimed().casos
+    expect(depois[0]).not.toBe(antes[0]) // o tocado é objeto novo
+    expect(depois[1]).toBe(antes[1]) // o vizinho é o MESMO objeto
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// adicionarCaso DENTRO das guardas (dono 21/08) — era a única escrita de casos
+// que não marcava a escrita: um `loadData` em voo não a enxergava e podia
+// aplicar por cima, fazendo o caso novo sumir da tela.
+// ════════════════════════════════════════════════════════════════════════════
+describe('adicionarCaso não é atropelado pela recarga', () => {
+  it('recarga EM VOO durante o insert não apaga o caso novo', async () => {
+    await montar()
+
+    // recarga começa e fica PENDENTE (é o voo em que o guard tem de reparar)
+    let entregarSnapshot
+    svcMock.fetchEscala.mockImplementation((_data, hosp) => (
+      hosp === 'unimed'
+        ? new Promise((res) => { entregarSnapshot = () => res(escalaBase()) })
+        : Promise.resolve(null)
+    ))
+    await act(async () => { subCallbacks.forEach((cb) => cb?.()); await Promise.resolve() })
+
+    // o caso entra ENQUANTO a recarga está no ar
+    await act(async () => {
+      await actions.adicionarCaso(unimed(), { sala: 'S9', ordem: 0, procedimento: 'APENDICECTOMIA' })
+    })
+    expect(unimed().casos.map((c) => c.id)).toContain('novo-1')
+
+    // o snapshot aterrissa SEM o caso novo (a réplica ainda não o viu): sem o
+    // `marcarEscrita` do insert, ele aplicava por cima e o caso sumia da tela
+    await act(async () => { entregarSnapshot(); await Promise.resolve(); await Promise.resolve() })
+    expect(unimed().casos.map((c) => c.id)).toContain('novo-1')
   })
 })

@@ -17,6 +17,7 @@
  *            'consultorio' | 'accurata' | 'umanita' | 'materno' | 'simone' | 'ccoluna' | 'mauricio'
  *   - semAnestesista: caso "?" (vai para o fim da lista, separado por linha em branco).
  */
+import { casoConcluido } from '@/lib/escalaCirurgicaStatus'
 
 /** Blocos cujo rótulo é acrescentado entre parênteses após o cirurgião (regras 4/6/13). */
 export const BLOCO_LABEL = {
@@ -347,8 +348,7 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   // (pedido do dono 2026-07-21): sala e cirurgião somem quando encerram. A linha
   // NÃO some nem auto-libera — `teveCasos` distingue "tudo encerrado" (fica ativa,
   // aguardando o plantonista) de "nunca escalado" (liberado por definição).
-  const concluido = (c) =>
-    c.statusCirurgia === 'terminada' || c.statusCirurgia === 'suspensa' || c.statusExtra === 'suspensa'
+  // fonte única desde 21/08 — a cópia local aqui era uma das quatro que existiam
 
   for (const c of resolvidos) {
     const nome = String(c.anestesista || '').trim()
@@ -357,7 +357,7 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     // da sala): vira ALERTA no fim da lista com horário/sala/procedimento — o
     // plantonista precisa VER a sala descoberta, nunca sumir em silêncio.
     if (c.semAnestesista || !nome || nome === '//' || /^\?+$/.test(nome)) {
-      if (concluido(c)) continue // alerta "?" some quando o caso encerra
+      if (casoConcluido(c)) continue // alerta "?" some quando o caso encerra
       const cir = nomeCirurgiaoCurto(c.cirurgiao) || BLOCO_LABEL[c.bloco] || 'Imagem'
       const ctx = [BLOCO_LABEL[c.bloco] || opts.hospital, c.hora].filter(Boolean).join(' ')
       incerteza.push({
@@ -386,7 +386,7 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
       }
       const g = grupos.get(key)
       g.teveCasos = true
-      if (concluido(c)) continue // encerrado: some da linha (sala/cirurgião saem)
+      if (casoConcluido(c)) continue // encerrado: some da linha (sala/cirurgião saem)
       g.casosAtivos += 1 // p/ a linha de cobertura ("N cirurgias · M com término")
       const tok = tokenCirurgiao(c)
       if (tok) {

@@ -22,6 +22,7 @@ import { nomeCirurgiaoCurto, titleCaseNome, ordemDerivadaDosCasos } from '@/lib/
 import { turnoAtual, rodapeDoTurno, filtrarPorTurno } from '@/pages/escala-cirurgica/utils'
 import { ehFimDeSemana, FDS_HOSPITAL, faixaFdsAtual, plantonistasFaixaFds } from '@/lib/escalaFds'
 import { formatDate } from '@/utils/formatters'
+import useAgoraMinuto from '@/pages/escala-cirurgica/useAgoraMinuto'
 
 const TURNO_LABEL = { matutino: 'Matutino', vespertino: 'Vespertino' }
 const FAIXA_LABEL = { '7-13': '7–13h', '13-19': '13–19h', '19-07': '19–07h' }
@@ -36,7 +37,10 @@ export function EscalaCirurgicaHomeCard({ onNavigate }) {
   // rodapé" não é o plantonista de um hospital, é quem sai por último da fila.
   // Madrugada <7h pertence à faixa 19-07 iniciada na VÉSPERA (precedente
   // chavePlantaoDoDia do Pega Plantão) — a grade consultada é a de ontem.
-  const agoraMin = new Date().getHours() * 60 + new Date().getMinutes()
+  // `useAgoraMinuto`, não `new Date()`: o relógio cru não tinha tick (só reavaliava
+  // quando o card re-renderizava por outro motivo) e furava o devClock — congelar
+  // `?agora=` para conferir a madrugada não valia aqui. Store única desde 21/08.
+  const agoraMin = useAgoraMinuto()
   const madrugada = agoraMin < 7 * 60
   const diaFdsRef = useMemo(() => {
     if (!madrugada) return hoje

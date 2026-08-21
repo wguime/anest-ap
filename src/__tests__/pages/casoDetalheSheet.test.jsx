@@ -29,6 +29,8 @@ const { atualizarCaso, adicionarAjuda, removerAjuda, setStatusCirurgia, setLinha
 }))
 vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
   useEscalaCirurgicaActions: () => ({ atualizarCaso, adicionarAjuda, removerAjuda, setStatusCirurgia, setLinhaOverride }),
+  // o hook das urgências lê `hoje` do context (fonte única desde 21/08)
+  useEscalaCirurgica: () => ({ hoje: '2026-08-18', escalas: {}, data: '2026-08-18', loading: false }),
   HOSPITAL_LABEL: { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' },
 }))
 vi.mock('@/contexts/UserContext', () => ({
@@ -354,5 +356,44 @@ describe('Convênio da cirurgia', () => {
   it('quem não edita a escala não vê a linha do convênio', () => {
     montar({ podeEditar: false }, { ...escala, casos: [{ ...caso, convenio: 'Sua' }] })
     expect(screen.queryByRole('button', { name: /Trocar convênio/i })).toBeNull()
+  })
+})
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// PROCEDÊNCIA DO ESTADO (dono 21/08). A pesquisa sobre quadros cirúrgicos
+// eletrônicos converge num ponto: o quadro em que a equipe não confia AUMENTA a
+// carga de comunicação, porque as pessoas ligam para confirmar. Dizer quando e
+// por quem custa uma linha — e é o que separa "o app afirma" de "alguém marcou".
+// ════════════════════════════════════════════════════════════════════════════
+describe('Andamento — quando mudou e por quem', () => {
+  const comCarimbo = (extra = {}) => {
+    const c = { ...caso, statusCirurgia: 'iniciada', statusAtualizadoEm: '2026-07-29T14:33:07', ...extra }
+    return { ...escala, casos: [c] }
+  }
+
+  it('diz o estado e a hora em que foi marcado', () => {
+    montar({}, comCarimbo())
+    expect(screen.getByText(/Iniciada às/)).toBeTruthy()
+    expect(screen.getByText('14:33')).toBeTruthy()
+  })
+
+  // O uid é de QUEM TOCOU e o roster só cobre anestesiologistas: secretária,
+  // técnica ou admin não resolvem. Melhor só a hora do que "por —".
+  it('sem autor reconhecido, mostra só o horário', () => {
+    montar({}, comCarimbo({ statusAtualizadoPor: 'u-desconhecido' }))
+    expect(screen.getByText(/Iniciada às/)).toBeTruthy()
+    expect(screen.queryByText(/por\s*—/)).toBeNull()
+  })
+
+  it('caso AGENDADO não ganha a linha — nada aconteceu ainda', () => {
+    montar()
+    expect(screen.queryByText(/Iniciada às/)).toBeNull()
+    expect(screen.queryByText(/Terminada às/)).toBeNull()
+  })
+
+  it('carimbo de OUTRO dia não vira horário solto', () => {
+    montar({}, comCarimbo({ statusAtualizadoEm: '2026-07-28T14:33:07' }))
+    expect(screen.queryByText(/Iniciada às/)).toBeNull()
   })
 })

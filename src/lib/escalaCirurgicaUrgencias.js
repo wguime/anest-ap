@@ -34,7 +34,7 @@
  *
  * Pura: sem React, sem I/O. Tudo que é política externa entra por `opts`.
  */
-import { casoConcluido, chaveSalaHro, normNome, salaLiberacao, turnoDoCaso } from '@/pages/escala-cirurgica/utils'
+import { casoConcluido, casosResolvidos, chaveSalaHro, compararSalas, normNome, salaLiberacao, turnoDoCaso } from '@/pages/escala-cirurgica/utils'
 import { INICIO_NOTURNO_MIN, faseLiberacoes } from '@/lib/plantaoNoturno'
 
 /**
@@ -178,16 +178,28 @@ export const PADROES_FORA_DO_CONTRATO_HRO = Object.freeze([
  * início). Merge raso: marcar só o CO não mexe na ortopedia.
  */
 export function salasContrato(urgenciasMeta, turno) {
-  const cfg = (urgenciasMeta && urgenciasMeta[turno === 'vespertino' ? 'vespertino' : 'matutino']) || {}
+  const meta = urgenciasMeta || {}
+  const vespertino = turno === 'vespertino'
+  const cfg = (vespertino ? meta.vespertino : meta.matutino) || {}
+  // A TARDE HERDA A MANHÃ, campo a campo (dono 21/08: "quero que as salas de
+  // urgência da manhã persistam para a tarde"). Quem marca onde está o plantão às
+  // 7h não remarca às 13h — a equipe é a mesma e a sala também —, e sem a herança
+  // a tarde nascia toda em automático: a sala perdia o posto, deixava de ser
+  // ESTAÇÃO e as cirurgias dela sumiam da conta e da lista de urgências.
+  // "Automático" na tarde passa a significar "o que a manhã disse", e a manhã em
+  // automático continua caindo no default do contrato. Para divergir, basta marcar
+  // a tarde explicitamente — o valor do turno sempre vence o herdado.
+  const herdado = vespertino ? (meta.matutino || {}) : {}
   const limpo = (v) => {
     const t = String(v || '').trim()
     return t || null
   }
+  const campo = (nome) => limpo(cfg[nome]) || limpo(herdado[nome])
   return {
-    orto: limpo(cfg.orto),
-    co: limpo(cfg.co),
-    plantao: limpo(cfg.plantao),
-    sobreaviso: limpo(cfg.sobreaviso),
+    orto: campo('orto'),
+    co: campo('co'),
+    plantao: campo('plantao'),
+    sobreaviso: campo('sobreaviso'),
   }
 }
 
@@ -570,11 +582,37 @@ export function estadoUrgencias(casos = [], opts = {}) {
   // ao mesmo tempo: as cirurgias do MESMO anestesista são uma ocupação só, com a
   // contagem no card — é o CO com cesáreas o dia todo. Sem vínculo de login o
   // agrupador é a sala (é o que existe para dizer "é a mesma pessoa").
+  // ⚠️ E UMA SALA, UMA VAGA TAMBÉM (dono 21/08): "a sala extra é a mesma sala que o
+  // plantão está fazendo as cirurgias do CO, ou seja, está contando a mesma sala 2
+  // vezes". Só por titular, a Sala 7 rendia DUAS ocupações — as cesarianas sem
+  // anestesista definido (chave `sala:`) e o Maurício, com login — e a segunda
+  // virava EXTRA "acima do contrato" com ninguém a mais no hospital. Não cabem duas
+  // cirurgias simultâneas na mesma sala: quem aparece junto ali é a mesma
+  // ocupação, seja rendição, dupla ou caso ainda sem anestesista atribuído.
+  //
+  // As duas regras são de COLAPSO e se resolvem juntas por componente conexo de
+  // (titular, sala): mesma pessoa em duas salas = uma ocupação (20/08), mesma sala
+  // com dois titulares = uma ocupação (21/08). Consequência aceita: uma pessoa em
+  // duas salas LIGA essas salas, então um terceiro numa delas entra no mesmo
+  // componente. O erro passa a ser para MENOS, e é o oposto do que o dono acabou
+  // de recusar — duas contagens da mesma sala.
+  const pai = new Map()
+  const raiz = (k) => {
+    if (!pai.has(k)) pai.set(k, k)
+    while (pai.get(k) !== k) { pai.set(k, pai.get(pai.get(k))); k = pai.get(k) }
+    return k
+  }
+  const unir = (a, b) => {
+    const ra = raiz(a); const rb = raiz(b)
+    if (ra !== rb) pai.set(rb, ra)
+  }
+  const chaveTitular = (c) => c?.anestesistaUserId
+    || (c?.anestesista && c.anestesista !== '?' ? `nome:${normNome(c.anestesista)}` : `sala:${chaveSala(c?.sala)}`)
+  for (const cand of candidatos) unir(`t:${chaveTitular(cand.caso)}`, `s:${chaveSala(cand.caso?.sala)}`)
+
   const titulares = new Map()
   for (const cand of candidatos) {
-    const c = cand.caso
-    const chave = c?.anestesistaUserId
-      || (c?.anestesista && c.anestesista !== '?' ? `nome:${normNome(c.anestesista)}` : `sala:${chaveSala(c?.sala)}`)
+    const chave = raiz(`t:${chaveTitular(cand.caso)}`)
     let t = titulares.get(chave)
     if (!t) { t = { chave, itens: [], rodando: [], postoMarcado: null }; titulares.set(chave, t) }
     t.itens.push(cand)
@@ -693,6 +731,76 @@ export function estadoUrgencias(casos = [], opts = {}) {
 }
 
 /**
+ * As cirurgias que a faixa está CONTANDO e que não pertencem ao turno exibido.
+ *
+ * PORQUÊ (dono 21/08, o relato que abriu tudo isto): a faixa lê o DIA INTEIRO —
+ * "ocupação é do relógio", urgência da manhã ainda aberta ocupa o plantonista da
+ * tarde — e o quadro lê só o turno. Medido em produção em 21/08 às 15h: das 5
+ * urgências abertas do HRO, 4 eram do turno da manhã. Na aba Tarde o quadro
+ * mostrava UMA. As outras quatro não tinham card para tocar: era impossível
+ * marcá-las Terminada por ali, e terminar qualquer outra coisa não mexia na
+ * faixa — o "finalizei e o mostrador não finalizou".
+ *
+ * A saída NÃO é a faixa filtrar por turno (quebraria a conta do contrato), é o
+ * quadro parar de esconder o que a faixa afirma. E a lista sai do MESMO `estado`
+ * que alimenta a faixa: derivada da mesma fonte, as duas não têm como discordar.
+ *
+ * @param {object} estado  retorno de `estadoUrgencias`
+ * @param {string} turnoExibido  'matutino' | 'vespertino'
+ * @returns {Array} casos (linha crua da escala), sem repetição, na ordem do quadro
+ */
+export function casosHerdados(estado, turnoExibido) {
+  if (!estado?.ativo || !turnoExibido) return []
+  const itens = [
+    ...(estado.ocupacoes || []).flatMap((o) => o.casos || []),
+    ...(estado.dedicados || []).flatMap((d) => d.item?.casos || []),
+    ...(estado.fila || []),
+    ...(estado.aConfirmar || []),
+  ]
+  const vistos = new Set()
+  const out = []
+  for (const it of itens) {
+    const c = it?.caso
+    if (!c || turnoDoCaso(c) === turnoExibido) continue
+    const chave = c.id || `${c.sala}|${c.ordem}|${c.procedimento}`
+    if (vistos.has(chave)) continue
+    vistos.add(chave)
+    out.push(c)
+  }
+  const porSala = compararSalas('hro')
+  return out.sort((a, b) => {
+    const d = porSala(String(a.sala || ''), String(b.sala || ''))
+    return d !== 0 ? d : (Number(a.ordem) || 0) - (Number(b.ordem) || 0)
+  })
+}
+
+/**
+ * `estadoUrgencias` a partir da ESCALA — a única montagem que a UI deve usar.
+ *
+ * PORQUÊ (dono 21/08): o estado era montado em DOIS lugares que escreviam os
+ * `opts` à mão (a faixa e o "Adicionar caso"), e eles divergiam: um passava o
+ * `hojeIso` de verdade, o outro passava a data da escala. Como `turnoContratual`
+ * decide pela comparação `dataEscala × hojeIso`, ver a escala de outro dia fazia
+ * um aplicar a linha da NOITE e o outro a da manhã — o formulário dizia "CO ·
+ * ocupado" ao lado de um card de CO livre. Normalizar aqui é o que impede que uma
+ * terceira tela nasça com um terceiro conjunto de opções.
+ *
+ * `estadoUrgencias` continua exportada: é ela que os testes de REGRA exercitam,
+ * com os casos montados à mão.
+ */
+export function estadoUrgenciasDaEscala(escala, { hospital, turno, agoraMin, hojeIso, fds = false } = {}) {
+  return estadoUrgencias(casosResolvidos(escala), {
+    hospital: hospital ?? escala?.hospital,
+    turno,
+    agoraMin,
+    dataEscala: escala?.data || null,
+    hojeIso,
+    fds,
+    salas: salasContrato(escala?.urgenciasMeta, turno),
+  })
+}
+
+/**
  * Minuto do dia em que o caso foi marcado "iniciada".
  *
  * ⚠️ NÃO usar a chegada para isto: um caso registrado às 07:00 e iniciado às 10:30
@@ -754,4 +862,73 @@ function horaEmMinutos(hora) {
   const min = Number(m[2])
   if (h > 23 || min > 59) return null
   return h * 60 + min
+}
+
+/**
+ * CRUZAMENTO DA URGÊNCIA QUE ATRAVESSA O TURNO (dono 2026-08-21).
+ *
+ * "Quero que ao passar salas de urgência da manhã para tarde cruze os dados com a
+ * escala da tarde (no momento da importação) e ajuste os anestesistas conforme
+ * escala da tarde; se não houver anestesista escalado, mantenha na fila."
+ *
+ * A urgência aberta é do DIA, não do turno: às 13h ela continua ocupando uma sala,
+ * mas quem responde por ela passa a ser quem a escala NOVA colocou naquela sala —
+ * o anestesista da manhã foi embora. Antes isso era conserto à mão, caso a caso,
+ * depois de cada publicação.
+ *
+ * Regras (as três frases do dono, nesta ordem):
+ *  1. a resposta vem da ESCALA PUBLICADA, não de heurística: procura-se, entre os
+ *     casos do turno recém-publicado, quem está NAQUELA SALA (identidade de sala,
+ *     não texto — "Sala 7" e "Sala 7 - CO" são a mesma);
+ *  2. cirurgia JÁ INICIADA entra igual: "será assumida por alguém da escala
+ *     vespertina". O que ficou para trás é o turno, não o paciente;
+ *  3. sem ninguém escalado ali, o caso fica SEM anestesista definido — e a sala
+ *     segue ocupada nos cards, porque a cirurgia existe. Nunca se mantém o nome de
+ *     quem já saiu: seria afirmar que alguém está lá.
+ *
+ * Fora do alcance, de propósito: cirurgia CONCLUÍDA (registro do que aconteceu),
+ * sala fora do contrato (IOSC, Exames, outro hospital) e caso do próprio turno
+ * publicado (esse já veio com o anestesista certo na importação).
+ *
+ * Pura: devolve o PLANO; quem chama decide gravar.
+ *
+ * @param {Array} casos           todos os casos da escala depois de publicar
+ * @param {string} turnoPublicado 'matutino' | 'vespertino'
+ * @param {{salas?: object}} [opts] salas marcadas do contrato (papel → sala)
+ * @returns {{ atribuir: Array<{caso, uid, apelido}>, semAnestesista: Array }}
+ */
+export function planoCruzamentoUrgencias(casos = [], turnoPublicado = 'vespertino', opts = {}) {
+  const { salas = null } = opts
+  const doTurno = casos.filter((c) => turnoDoCaso(c) === turnoPublicado)
+
+  // Quem a escala NOVA colocou em cada sala. Primeiro caso com login vence; o
+  // texto sozinho é fallback (rodapé sem vínculo ainda é a resposta da escala).
+  const donoDaSala = new Map()
+  for (const c of doTurno) {
+    const k = chaveSala(c?.sala)
+    if (!k || donoDaSala.get(k)?.uid) continue
+    const uid = c?.anestesistaUserId || null
+    const apelido = String(c?.anestesista || '').trim()
+    if (!uid && (!apelido || apelido === '?' || c?.semAnestesista)) continue
+    donoDaSala.set(k, { uid, apelido })
+  }
+
+  const atribuir = []
+  const semAnestesista = []
+  for (const c of casos) {
+    if (!ehUrgencia(c) || casoConcluido(c)) continue
+    if (turnoDoCaso(c) === turnoPublicado) continue
+    if (papelDaSalaHro(c?.sala, salas) === 'fora') continue
+    const novo = donoDaSala.get(chaveSala(c?.sala))
+    if (novo) {
+      // já é a pessoa certa → nada a fazer (idempotente: republicar não reescreve)
+      if (novo.uid && novo.uid === c?.anestesistaUserId) continue
+      if (!novo.uid && normNome(novo.apelido) === normNome(c?.anestesista)) continue
+      atribuir.push({ caso: c, uid: novo.uid, apelido: novo.apelido })
+    } else if (c?.anestesistaUserId || (c?.anestesista && c.anestesista !== '?')) {
+      // ninguém escalado naquela sala: o nome da manhã não vale mais
+      semAnestesista.push({ caso: c })
+    }
+  }
+  return { atribuir, semAnestesista }
 }

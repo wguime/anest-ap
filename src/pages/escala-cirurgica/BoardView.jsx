@@ -17,9 +17,16 @@ import { anestesistaDoCasoEh, casoConcluido, casosResolvidos, agruparPorSala, ti
 import { podeEditarEscalaCirurgica } from './gate'
 import { formatFaltante } from './PainelTempo'
 import useAgoraMinuto from './useAgoraMinuto'
+import useEstadoUrgencias from './useEstadoUrgencias'
 import DefinirAnestesistaSheet from './DefinirAnestesistaSheet'
 import AddCasoSheet from './AddCasoSheet'
 import CasoDetalheSheet from './CasoDetalheSheet'
+
+// Grupo das cirurgias que atravessaram o turno. Valor impossível como chave de
+// sala, para não colidir com nenhum grupo real do Accordion.
+const CHAVE_HERDADAS = '__herdadas__'
+// Rótulo do turno de origem — o mesmo vocabulário curto da barra de controles.
+const rotuloTurno = (t) => (t === 'matutino' ? 'Manhã' : 'Tarde')
 
 // Status em DOIS eixos (decisão do dono 2026-07-21):
 // PRINCIPAL (exclusivo, pinta o card): agendada → Iniciada VERDE → Terminada AZUL.
@@ -313,6 +320,19 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
   // de cada cirurgia nos CasoCard.
   const agoraMin = useAgoraMinuto()
   const casos = useMemo(() => filtrarPorTurno(casosResolvidos(escala), turno), [escala, turno])
+  // AINDA ABERTAS DO OUTRO TURNO (dono 21/08, o relato que abriu a revisão): a
+  // faixa de urgências conta o DIA INTEIRO e o quadro só o turno — medido em
+  // produção, das 5 urgências abertas do HRO às 15h, QUATRO eram da manhã e não
+  // tinham card na aba Tarde. Sem card não há como marcar Terminada, e terminar
+  // outra coisa não mexia na faixa: "finalizei e o mostrador não finalizou".
+  // A lista vem do MESMO estado que alimenta a faixa — derivadas da mesma fonte,
+  // as duas não têm como discordar. Fora do HRO vem vazia e nada muda.
+  const { herdados } = useEstadoUrgencias(escala, { hospital: escala?.hospital, turno })
+  const idsDoTurno = useMemo(() => new Set(casos.map((c) => c.id).filter(Boolean)), [casos])
+  const herdadasVisiveis = useMemo(
+    () => herdados.filter((c) => !c.id || !idsDoTurno.has(c.id)),
+    [herdados, idsDoTurno],
+  )
   const grupos = useMemo(() => agruparPorSala(casos), [casos])
   // MARGEM ÚNICA DO QUADRO (dono 18/08): quem não tem horário recua igual, em
   // qualquer sala — a urgência acrescentada à mão vira sala própria sem horário
@@ -374,7 +394,9 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
       />
     )
   }
-  if (!casos.length) {
+  // ⚠️ o EmptyState não pode engolir as herdadas: o turno sem caso nenhum é
+  // exatamente a situação em que a urgência que atravessou precisa ser vista.
+  if (!casos.length && !herdadasVisiveis.length) {
     return (
       <EmptyState
         icon={<Stethoscope className="w-6 h-6" />}
@@ -384,7 +406,10 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
     )
   }
 
-  const chavesGrupos = gruposExibicao.map((g) => g.chave)
+  const chavesGrupos = [
+    ...gruposExibicao.map((g) => g.chave),
+    ...(herdadasVisiveis.length ? [CHAVE_HERDADAS] : []),
+  ]
 
   const abertasAtual = abertas ?? chavesGrupos
   const algumaAberta = abertasAtual.length > 0
@@ -475,6 +500,45 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
             </AccordionItem>
           )
         })}
+        {/* NO FIM, e não no meio das salas (escolha do dono 21/08): o quadro
+            continua sendo do turno; o que atravessou fica separado e visível.
+            A sala aparece NO CARD porque o grupo não é de uma sala só. */}
+        {herdadasVisiveis.length > 0 && (
+          <AccordionItem value={CHAVE_HERDADAS} className="border-0">
+            <AccordionTrigger
+              className="px-3 py-2 group-data-[state=open]:bg-transparent dark:group-data-[state=open]:bg-transparent"
+              headerClassName="sticky top-14 z-10 border-y border-border bg-card-elevated"
+              iconAfterActions
+              iconClassName="group-data-[state=open]:bg-transparent dark:group-data-[state=open]:bg-transparent"
+            >
+              <span className="flex w-full min-w-0 items-center gap-2">
+                <span className="shrink-0 rounded-md bg-warning/20 px-1.5 py-0.5 text-[10.5px] font-extrabold uppercase tracking-wide text-warning">
+                  Ainda abertas
+                </span>
+                <span className="truncate text-[15px] font-semibold text-warning">
+                  {rotuloTurno(turno === 'vespertino' ? 'matutino' : 'vespertino')}
+                </span>
+                <span className="ml-auto shrink-0 text-[11px] font-normal text-muted-foreground">
+                  {herdadasVisiveis.length}
+                </span>
+              </span>
+            </AccordionTrigger>
+            <AccordionContent className="p-0">
+              {herdadasVisiveis.map((caso) => (
+                <CasoCard
+                  key={caso.id || `herdada-${caso.sala}-${caso.ordem}`}
+                  caso={caso}
+                  destaque={ehMeu(caso)}
+                  salaLabel={salaExibicao(caso.sala)}
+                  agoraMin={agoraMin}
+                  moldura="linha"
+                  reservaHora={reservaHora}
+                  onClick={() => setDetalhe(caso)}
+                />
+              ))}
+            </AccordionContent>
+          </AccordionItem>
+        )}
       </Accordion>
 
       {detalhe && (

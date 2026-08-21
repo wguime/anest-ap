@@ -14,10 +14,10 @@ import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import useRosterResidentes from '@/hooks/useRosterResidentes'
 import { iniciais } from '@/lib/excelEscala'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
-import { casosResolvidos, conveniosDaEscala, familiaConvenio, normalizarSalaHro, turnoDeHora, salasDoHospital } from './utils'
-import { chaveSala, CONTRATO_HRO, estadoUrgencias, salasContrato } from '@/lib/escalaCirurgicaUrgencias'
+import { conveniosDaEscala, familiaConvenio, normalizarSalaHro, turnoDeHora, salasDoHospital } from './utils'
+import { chaveSala, CONTRATO_HRO, salasContrato } from '@/lib/escalaCirurgicaUrgencias'
 import ChipsEscolha, { GRAVIDADE_CHIPS, TIPOS_CIRURGIA } from './ChipsEscolha'
-import useAgoraMinuto from './useAgoraMinuto'
+import useEstadoUrgencias from './useEstadoUrgencias'
 
 const NOVA_SALA = '__nova__'
 const OUTRO_CONVENIO = '__outro__'
@@ -124,15 +124,14 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
 
   // POSTO (só HRO + urgência/emergência): as opções avisam quem já está tomado —
   // escolher um tomado é permitido, e o excedente aparece como Extra sozinho.
-  const agoraMin = useAgoraMinuto()
+  // MESMO estado da faixa (dono 21/08): montar os `opts` aqui passava
+  // `hojeIso = escala.data`, e a faixa passava o hoje de verdade — numa escala de
+  // outro dia os dois aplicavam linhas de contrato DIFERENTES, e este campo dizia
+  // "CO · ocupado" ao lado de um card de CO livre.
+  const { estado } = useEstadoUrgencias(escala, { hospital: 'hro', turno })
   const mostraPosto = escala?.hospital === 'hro' && exigeGravidade
   const postoOpcoes = useMemo(() => {
     if (!mostraPosto) return []
-    const hojeIso = escala?.data || null
-    const estado = estadoUrgencias(casosResolvidos(escala), {
-      hospital: 'hro', turno, agoraMin, dataEscala: hojeIso, hojeIso,
-      salas: salasContrato(escala?.urgenciasMeta, turno),
-    })
     const tomado = {
       plantao: !!estado.postos.find((pp) => pp.papel === 'plantonista')?.item,
       sobreaviso: !!estado.postos.find((pp) => pp.papel === 'sobreaviso')?.item,
@@ -143,7 +142,7 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
       { value: POSTO_AUTO, label: 'Automático — decide pela sala' },
       ...POSTOS.map((o) => ({ ...o, label: tomado[o.value] ? `${o.label} · ocupado` : o.label })),
     ]
-  }, [mostraPosto, escala, turno, agoraMin])
+  }, [mostraPosto, estado])
   const valido = !!(salaFinal && procedimento.trim() && cirurgiao.trim() && convenioFinal && tipo
     && (!exigeGravidade || gravidade))
 

@@ -404,7 +404,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                   fila. FORA da BoardView de propósito — os EmptyStates dela matariam
                   a faixa no dia sem escala publicada com urgência à mão. */}
               {!modoFds && (
-                <FaixaUrgencias escala={escala} hospital={hospital} turno={turnoCasos} hoje={hoje} />
+                <FaixaUrgencias escala={escala} hospital={hospital} turno={turnoCasos} />
               )}
               <BoardView escala={escala} meuAlias={meuAlias} meuUid={meuUid} turno={turnoCasos} onNavigate={onNavigate} />
             </>

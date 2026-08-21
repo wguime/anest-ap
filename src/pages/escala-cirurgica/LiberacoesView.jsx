@@ -22,7 +22,7 @@ import useAgoraMinuto from './useAgoraMinuto'
 import useAvisoPlantonista from './useAvisoPlantonista'
 import PainelTempo, { formatFaltante, fraseCronometro, fraseFaltante } from './PainelTempo'
 import AddCasoSheet from './AddCasoSheet'
-import { casosResolvidos, chaveSalaEscolha, compararSalas, filtrarPorTurno, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao } from './utils'
+import { casoConcluido, casosResolvidos, chaveSalaEscolha, compararSalas, filtrarPorTurno, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao } from './utils'
 
 // Sentinelas do dropdown de Local (valores impossíveis como nome de sala)
 const LOCAL_AUTO = '__auto__'
@@ -149,7 +149,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // com linha.chave. Só badge visual — a escala não manda notificação (decisão 30/07).
   const statusPorChave = useMemo(() => {
     const m = new Map()
-    const concl = (c) => c.statusCirurgia === 'terminada' || c.statusCirurgia === 'suspensa' || c.statusExtra === 'suspensa'
     for (const c of casosResolvidos({ casos: casosTurno })) {
       const nome = String(c.anestesista || '').trim()
       if (!nome || nome === '//') continue
@@ -159,7 +158,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
         const uid = (umSo ? c.anestesistaUserId : null) || resolverUid(parte) || null
         const key = uid || normNome(parte)
         const e = m.get(key) || { total: 0, concluidos: 0 }
-        e.total += 1; if (concl(c)) e.concluidos += 1
+        e.total += 1; if (casoConcluido(c)) e.concluidos += 1
         m.set(key, e)
       }
     }
@@ -1095,6 +1094,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // linha RENOVADA (voltou de liberação): infos da manhã não valem mais —
           // derivado suprimido; só o que for preenchido manualmente aparece.
           const renovado = !!ov?.renovado
+          // Badge do turno seguinte: some ao liberar, na linha RENOVADA (o
+          // passa-tarde era da escala de antes) e no card noturno. Fica AQUI, e não
+          // junto de `liberado`, porque depende de `renovado`, que nasce do override
+          // logo acima — declarar antes cai na zona morta e derruba a aba inteira.
+          const mostraPassaTurno = !liberadoReal && !renovado && !noturno && temPassaTarde(linha)
           // >1 cirurgião = lista (1 por linha); override manual = 1 linha como digitado
           const listaCirurgioes = ov?.cirurgioes
             ? [ov.cirurgioes]
@@ -1283,7 +1287,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       direito do card, o mesmo lugar que ele ocupa no quadro da Completa —
                       é ocorrência da cirurgia, não identidade da pessoa, então não fica
                       na fila de selos colados ao nome. */}
-                  {!liberadoReal && !renovado && !noturno && temPassaTarde(linha) && (
+                  {mostraPassaTurno && (
                     <Badge className="ml-auto mr-2.5 shrink-0 border-transparent bg-category-purple text-white">
                       {passaTurnoLabel(turnoBase)}
                     </Badge>
@@ -1448,7 +1452,16 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       normal, coluna quando havia setas de ajuda), com um `mr-10` de
                       correção para os dois alinharem entre si. Uma coluna só torna o
                       alinhamento o padrão e o hack saiu junto. */}
-                  <div className="flex shrink-0 flex-col items-end gap-1 pr-2.5">
+                  {/* ⚠️ `mt-2` SÓ quando há o badge do turno acima: sem ele o badge
+                      roxo e a pílula verde do cronômetro ficavam ENCOSTADOS (medido:
+                      badge termina em 32px, cronômetro começa em 32px) e os dois liam
+                      como um bloco de duas cores — foi o "amontoado" reportado pelo
+                      dono em 21/08. Condicional em vez de margem fixa porque a folga
+                      só é necessária nesses cards; fixa, ela esticaria os 17. */}
+                  <div className={[
+                    'flex shrink-0 flex-col items-end gap-1 pr-2.5',
+                    mostraPassaTurno ? 'mt-2' : '',
+                  ].join(' ')}>
                     {!liberadoReal && (cronometro ? (
                       <button
                         type="button"

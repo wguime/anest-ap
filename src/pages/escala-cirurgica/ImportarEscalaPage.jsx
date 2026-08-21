@@ -22,6 +22,7 @@ import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
 import { normNome, candidatosPrimeiroNome, resumirRodape, gruposAnestesista, chavesAnestesista, nomesImportados, aplicarAtribuicoes, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
+import { planoCruzamentoUrgencias, salasContrato } from '@/lib/escalaCirurgicaUrgencias'
 import { ehFimDeSemana } from '@/lib/escalaFds'
 import { ehHoraSequencialEscala } from '@/lib/escalaCirurgicaRegras'
 import { detectarDuplicidadesEscala, formatarOcorrenciaDuplicidade, sugerirParceiroTroca } from '@/lib/escalaCirurgicaDuplicidades'
@@ -1023,6 +1024,33 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
         }
       } catch { /* escala publicada; a troca pode ser declarada/executada pelo ✏️ */ }
 
+      // CRUZAMENTO DA URGÊNCIA QUE ATRAVESSA O TURNO (dono 21/08): a urgência
+      // aberta é do DIA, não do turno — às 13h ela segue ocupando uma sala, mas
+      // quem responde por ela passa a ser quem esta escala colocou naquela sala.
+      // Antes era conserto à mão, caso a caso, depois de cada publicação.
+      // Só HRO (é o contrato dele) e fire-and-forget: falhar aqui NUNCA desfaz a
+      // publicação. O toast diz o que mudou — reatribuir anestesista é decisão
+      // clínica, não pode acontecer em silêncio.
+      let cruzadas = 0
+      let cruzadasSemDono = 0
+      try {
+        if (hosp === 'hro' && saved?.casos?.length) {
+          const plano = planoCruzamentoUrgencias(saved.casos, periodo, {
+            salas: salasContrato(saved.urgenciasMeta, periodo),
+          })
+          for (const a of plano.atribuir) {
+            await svc.updateAnestesistaCasos([a.caso.id], { uid: a.uid, apelido: a.apelido })
+          }
+          if (plano.semAnestesista.length) {
+            await svc.updateAnestesistaCasos(
+              plano.semAnestesista.map((x) => x.caso.id), { uid: null, apelido: '' },
+            )
+          }
+          cruzadas = plano.atribuir.length
+          cruzadasSemDono = plano.semAnestesista.length
+        }
+      } catch { /* a escala está publicada; o ajuste pode ser feito no card */ }
+
       toast({
         variant: 'success',
         title: 'Escala publicada',
@@ -1030,6 +1058,17 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
           ? `Troca executada: ${[...new Set(trocasExecutadas)].join(' · ')}.`
           : 'Disponível para toda a equipe em tempo real.',
       })
+      if (cruzadas || cruzadasSemDono) {
+        const partes = []
+        if (cruzadas) partes.push(`${cruzadas} passou para o anestesista desta escala`)
+        if (cruzadasSemDono) partes.push(`${cruzadasSemDono} ficou sem anestesista (ninguém escalado na sala) e segue na fila`)
+        toast({
+          variant: cruzadasSemDono ? 'warning' : 'info',
+          duration: 12000,
+          title: 'Urgência aberta do turno anterior',
+          description: `${partes.join(' · ')}.`,
+        })
+      }
       if (trocasPendentes.length) {
         toast({
           variant: 'warning', duration: 12000,

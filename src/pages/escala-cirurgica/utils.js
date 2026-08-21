@@ -2,6 +2,7 @@
  * Helpers de apresentação da escala cirúrgica (puro, sem React).
  */
 import { resolverAnestesistas, nomeCirurgiaoCurto, titleCaseNome, primeiroNome, stripNotaRodape, fraseClinica } from '@/lib/colunaLiberacao'
+import { STATUS_CONCLUIDO, casoConcluido, casoTerminado } from '@/lib/escalaCirurgicaStatus'
 
 /** Normaliza nome p/ comparação (acento/caixa/PED-insensível). */
 export const normNome = (s) =>
@@ -635,16 +636,10 @@ export function parseDuracaoMin(t) {
   return Number(m[1]) * 60 + Number(m[2])
 }
 
-/** Status que encerram o caso p/ fins de estimativa/fechamento de sala. */
-export const STATUS_CONCLUIDO = ['terminada', 'suspensa']
-
-/**
- * Caso concluído p/ fins de sala (não conta no cronômetro/fechamento):
- * terminada (principal) OU suspensa — que hoje vive em statusExtra
- * (aceita o valor legado no campo principal p/ demo/dados antigos).
- */
-export const casoConcluido = (c) =>
-  STATUS_CONCLUIDO.includes(c?.statusCirurgia || 'agendada') || c?.statusExtra === 'suspensa'
+// "Acabou?" é UMA pergunta com DUAS respostas, e as duas moram em
+// `@/lib/escalaCirurgicaStatus` desde 21/08 — antes a mesma frase estava escrita
+// em quatro lugares. Re-exportadas aqui para os ~15 import sites não mudarem.
+export { STATUS_CONCLUIDO, casoConcluido, casoTerminado }
 
 /**
  * Observação exibível de um override de linha. A troca saiu do app em 29/07, mas
@@ -999,8 +994,10 @@ export function alvosTrocaResponsavel(casos, sala, casoUnico = null) {
   // os já TERMINADOS (esses mantêm quem terminou). Sem exclusão por "anestesista
   // próprio" — salas multi-anestesista (IOSC/…) já vêm SPLIT por anestesista no
   // board, então o clique no cabeçalho usa casosAlvo scoped e não passa por aqui.
-  const naoTerminado = (c) => (c.statusCirurgia || 'agendada') !== 'terminada'
-  const alvos = (casos || []).filter((c) => c.sala === sala && naoTerminado(c))
+  // `casoTerminado`, não `casoConcluido`: cirurgia SUSPENSA vai junto com a sala
+  // para o novo responsável — ela pode voltar a acontecer, e quem está lá é quem
+  // responde por ela. Ver `@/lib/escalaCirurgicaStatus`.
+  const alvos = (casos || []).filter((c) => c.sala === sala && !casoTerminado(c))
   return { alvos, proprios: [] }
 }
 
@@ -1274,7 +1271,8 @@ export function casosTransferiveis(esc, pessoa, resolverUid, turno = null) {
   return filtrarPorTurno(casosResolvidos(esc), turno)
     .filter((c) => {
       if (!c.id || c.semAnestesista) return false
-      if ((c.statusCirurgia || 'agendada') === 'terminada') return false
+      // TERMINADA, não concluída: a suspensa acompanha quem assume a posição.
+      if (casoTerminado(c)) return false
       const nome = String(c.anestesista || '').trim()
       if (!nome || nome === '//' || nome.includes('+') || /^\?+$/.test(nome)) return false
       if (c.anestesistaUserId) return c.anestesistaUserId === pessoa.uid
