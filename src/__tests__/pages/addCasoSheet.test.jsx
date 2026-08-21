@@ -164,8 +164,7 @@ describe('AddCasoSheet — salvar procedimento e anestesista (dono 29/07)', () =
     preencherObrigatorios()
     fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
     await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
-    // digitada à mão passa pela MESMA normalização da importação (dono 20/08)
-    expect(adicionarCaso.mock.calls[0][1].sala).toBe('Bloco A - Sala 12')
+    expect(adicionarCaso.mock.calls[0][1].sala).toBe('Sala 12')
   })
 })
 
@@ -313,7 +312,7 @@ describe('AddCasoSheet — posto do contrato (só HRO)', () => {
 
   it('Ortopedia na Sala 4 (o default) não precisa de config — nada é gravado', async () => {
     render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
-    preencherUrgencia('Bloco A - Sala 4')
+    preencherUrgencia('Sala 4')
     escolher(screen.getByText('Automático — decide pela sala'), 'Anestesista da ortopedia')
     fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
     await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())

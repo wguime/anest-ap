@@ -330,14 +330,14 @@ describe('salas configuráveis por dia/turno', () => {
     // marca a ortopedia na Sala 3 (Select do DS: combobox → option)
     const combos = screen.getAllByRole('combobox')
     fireEvent.click(combos[2]) // Plantão, Sobreaviso, Ortopedia, CO
-    fireEvent.click(screen.getByRole('option', { name: 'Bloco A - Sala 3' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Sala 3' }))
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
 
     await vi.waitFor(() => expect(definirSalasUrgencia).toHaveBeenCalled())
     const [escalaArg, turnoArg, cfgArg] = definirSalasUrgencia.mock.calls[0]
     expect(escalaArg.id).toBe('e1')
     expect(turnoArg).toBe('matutino')
-    expect(cfgArg).toEqual({ orto: 'Bloco A - Sala 3' })
+    expect(cfgArg).toEqual({ orto: 'Sala 3' })
   })
 
   it('tudo em Automático salva null — o jsonb não guarda ruído', async () => {

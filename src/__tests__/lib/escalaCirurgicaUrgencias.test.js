@@ -78,11 +78,12 @@ describe('papelDaSalaHro — grafia dupla é dado real de produção', () => {
     expect(papelDaSalaHro('Bloco A - Sala 2')).toBe('geral')
   })
 
-  // Desde 20/08 a numérica do HRO grava o bloco; as escalas publicadas antes
-  // seguem sem ele. Se as duas grafias não contarem como a MESMA sala, a
-  // ortopedia perde o card dedicado e a urgência dela passa a pesar no
-  // plantonista — o contador diria "acima do contrato" sem ninguém a mais.
-  it('o prefixo do bloco não muda o papel da sala', () => {
+  // O rótulo curto é o da TELA (dono 21/08); o papel da sala é conhecimento do
+  // app. Se as grafias longas que as escalas publicadas gravaram não contarem
+  // como a MESMA sala, a ortopedia perde o card dedicado e a urgência dela passa
+  // a pesar no plantonista — o contador diria "acima do contrato" sem ninguém a
+  // mais na casa.
+  it('bloco e sufixo no rótulo não mudam o papel da sala', () => {
     expect(papelDaSalaHro('Bloco A - Sala 4')).toBe('orto')
     expect(papelDaSalaHro('Bloco A - Sala 7 - CO')).toBe('co')
     expect(papelDaSalaHro('Bloco M - Sala 4')).toBe('geral') // outro bloco, outra sala
@@ -92,7 +93,7 @@ describe('papelDaSalaHro — grafia dupla é dado real de produção', () => {
     // secretária marca "Sala 3" no ⚙; a escala do dia gravou "Bloco A - Sala 3"
     const salas = { orto: 'Sala 3', co: null, plantao: null, sobreaviso: null }
     expect(papelDaSalaHro('Bloco A - Sala 3', salas)).toBe('orto')
-    expect(papelDaSalaHro('Bloco A - Sala 4', salas)).toBe('geral')
+    expect(papelDaSalaHro('Sala 4', salas)).toBe('geral')
   })
 
   it('tira da conta o que o contrato exclui e os hospitais dentro da escala do HRO', () => {

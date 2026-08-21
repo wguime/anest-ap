@@ -34,17 +34,15 @@
  *
  * Pura: sem React, sem I/O. Tudo que é política externa entra por `opts`.
  */
-import { casoConcluido, chaveSalaHro, normNome, SALA_HRO_CO, salaLiberacao, turnoDoCaso } from '@/pages/escala-cirurgica/utils'
+import { casoConcluido, chaveSalaHro, normNome, salaLiberacao, turnoDoCaso } from '@/pages/escala-cirurgica/utils'
 import { INICIO_NOTURNO_MIN, faseLiberacoes } from '@/lib/plantaoNoturno'
 
 /**
  * Chave estável de uma sala. Normalizar é obrigatório, não elegância: produção
- * tem "Sala 5 - Emergência" (26) E "Sala 5" (27), "Sala 7 - CO" (27) E "Sala 7"
- * (4) para as MESMAS salas — comparar string crua classifica errado.
- *
- * Desde 20/08 a numérica do HRO grava o bloco ("Bloco A - Sala 4") e as escalas
- * publicadas antes seguem sem ele; `chaveSalaHro` é o que faz as duas grafias
- * contarem como UMA vaga do contrato, aqui e na sala marcada no `urgencias_meta`.
+ * tem "Sala 5 - Emergência" (26) E "Sala 5" (27), "Sala 7 - CO" (30) E "Sala 7",
+ * e alguns "Bloco A - Sala N" — todas para as MESMAS salas. `chaveSalaHro` é o
+ * que faz as três grafias contarem como UMA vaga do contrato, aqui e na sala
+ * marcada no `urgencias_meta`.
  */
 export const chaveSala = (v) => chaveSalaHro(v)
 
@@ -80,11 +78,14 @@ export const LIMITE_ESQUECIDA_MIN = 240
 export const LIMITE_SUSPEITA_MIN = 15
 
 /**
- * Rótulos das salas dedicadas — usados como LEGENDA do card quando o dia não tem
- * nenhuma cirurgia lá (com cirurgia, a grafia do dia vence). `papelDaSalaHro`
- * reconhece as duas grafias, então trocar aqui não invalida escala antiga.
+ * Rótulos das salas dedicadas — LEGENDA do card quando o dia não tem cirurgia lá
+ * (com cirurgia, a grafia do dia vence). Só o número, como no resto da tela: o
+ * PAPEL já é dito no badge ao lado do card ("Orto", "CO"), então repeti-lo dentro
+ * do rótulo era a poluição que o dono tirou em 21/08. `papelDaSalaHro` reconhece
+ * as grafias antigas, então escala publicada com "Sala 7 - CO" segue classificada.
  */
-const SALA_HRO_ORTO = 'Bloco A - Sala 4'
+const SALA_HRO_ORTO = 'Sala 4'
+const SALA_HRO_CO = 'Sala 7'
 
 /**
  * Contrato vigente do HRO (dono 2026-08-18). Mudou o contrato → muda AQUI, e só aqui.
@@ -255,10 +256,9 @@ export const motivoForaDoContrato = (sala) => {
  */
 const SALAS_CONHECIDAS_HRO = new Set(
   [
-    // Sem o prefixo do bloco: `chaveSala` já colapsa "Bloco A - Sala 4" em
-    // "Sala 4", então uma entrada por sala cobre as duas grafias.
-    'Sala 1', 'Sala 2', 'Sala 3', 'Sala 4', 'Sala 5', 'Sala 5 - Emergência', 'Sala 6',
-    'Sala 7', 'Sala 7 - CO', 'Sala 8', 'Sala 9',
+    // Uma entrada por sala: `chaveSala` já colapsa "Sala 5 - Emergência",
+    // "Sala 7 - CO" e "Bloco A - Sala N" no número.
+    'Sala 1', 'Sala 2', 'Sala 3', 'Sala 4', 'Sala 5', 'Sala 6', 'Sala 7', 'Sala 8', 'Sala 9',
     'Bloco M - Sala 1', 'Bloco M - Sala 2', 'Bloco M - Sala 3', 'Bloco M - Sala 4', 'Bloco M', 'Bloco A',
   ].map(chaveSala),
 )
