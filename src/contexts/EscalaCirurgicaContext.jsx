@@ -401,10 +401,10 @@ export function EscalaCirurgicaProvider({ children }) {
   }, [toast])
 
   // Marcador ESCALADO ({ escalado: true } no mapa de liberações): mantém a linha
-  // ATIVA na fila mesmo sem caso. SEM ENTRADA NA UI desde 20/08 — o círculo da fila
-  // voltou a significar só "liberar" (ver LiberacoesView) e quem grava o marcador é
-  // o REPASSE, direto (escaladosPreservadosNoRepasse). Fica aqui como escritor
-  // canônico do marcador; se voltar a ter botão, que não seja o mesmo do liberar.
+  // ATIVA na fila mesmo sem caso. Dois escritores: o REPASSE, direto
+  // (escaladosPreservadosNoRepasse), e o círculo da fila quando DESMARCA uma linha
+  // da cauda — a que nasce liberada por não ter procedimento na importação
+  // (dono 21/08). Nas demais linhas o círculo grava liberação, não este marcador.
   const toggleEscalado = useCallback(async (escala, linhaArg, userInfo = {}, turno) => {
     const linha = linhaDe(linhaArg)
     const chave = linha.chave || linha.anestesista

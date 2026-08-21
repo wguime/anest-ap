@@ -868,21 +868,20 @@ describe('F1.5 — status da cirurgia e adicionar caso', () => {
 // F1.9 — cronômetro de término da sala (helpers puros)
 // ════════════════════════════════════════════════════════════════════════════
 describe('Liberações — não escalado e cronômetro manual (F1.9b)', () => {
-  it('nome do rodapé SEM casos desde a publicação = nasce Livre, nunca Liberado (dono 20/08)', () => {
+  it('ÚLTIMO do rodapé sem caso na importação = nasce Liberado (dono 21/08)', () => {
     const escala = {
       id: 'e1', hospital: 'unimed', ordemLiberacao: ['LEONARDO', 'FERIAS'], liberacoes: {},
       casos: [{ sala: 'S1', ordem: 0, anestesista: 'LEONARDO', cirurgiao: 'Liana Winkelmann' }],
     }
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
-    // sem caso → aguarda na própria posição; o vermelho é só de liberação feita
-    expect(screen.getByText('Livre')).toBeTruthy()
-    expect(screen.queryByText('Liberado')).toBeNull()
-    // e o círculo LIBERA (dono 20/08): antes marcava "escalado" e o toque nunca
-    // liberava — 16 toques seguidos na fila real sem sair do lugar
-    const onToggle = vi.fn()
-    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={onToggle} onReorder={() => {}} />, { wrapper: wrap })
-    fireEvent.click(screen.getAllByLabelText('Marcar Ferias liberado').at(-1)) // 2º render (com handler)
-    expect(onToggle).toHaveBeenCalledWith(expect.objectContaining({ anestesista: 'Ferias' }))
+    // fecha a lista sem procedimento nenhum → não está em jogo
+    expect(screen.getByText('Liberado')).toBeTruthy()
+    expect(screen.queryByText('Livre')).toBeNull()
+    // já nasce MARCADO, então o toque DESMARCA (= "não, ele está trabalhando")
+    const onToggleEscalado = vi.fn()
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onToggleEscalado={onToggleEscalado} onReorder={() => {}} />, { wrapper: wrap })
+    fireEvent.click(screen.getAllByLabelText('Desfazer liberação de Ferias').at(-1)) // 2º render (com handler)
+    expect(onToggleEscalado).toHaveBeenCalledWith(expect.objectContaining({ anestesista: 'Ferias' }))
   })
   it('término manual (override.termino) vira o cronômetro do card', () => {
     const escala = {
@@ -1439,10 +1438,15 @@ describe('Liberações — acrescentado fora do rodapé entra na fila como Ajuda
 //   ficou sem caso num REPASSE (marcador escalado:true) → segue ATIVO;
 //   terminou todos → "Livre". liberadoEm só nasce do toggle manual.
 // ════════════════════════════════════════════════════════════════════════════
-describe('Liberações — NINGUÉM nasce Liberado (invariante, dono 20/08)', () => {
-  // Travado depois de a regra ser revertida uma vez (2154201 sobre 7545ef3, 19/08)
-  // e o sintoma reaparecer em produção na 1ª publicação da tarde de 20/08: linha
-  // vermelha no meio da fila que ninguém liberou. O vermelho é SÓ do toque humano.
+describe('Liberações — vermelho automático SÓ na cauda (invariante, dono 20–21/08)', () => {
+  // Duas metades da mesma regra, cada uma nascida de um sintoma em produção:
+  //  · no MEIO da fila ninguém nasce vermelho (20/08 — Eduardo, 5º de 15, lido
+  //    pela equipe como liberação fora de ordem; a regra já foi revertida uma vez,
+  //    2154201 sobre 7545ef3, e o sintoma voltou em 15h);
+  //  · na CAUDA nasce (21/08 — quem fecha a lista sem procedimento na importação
+  //    não está em jogo; era o que o dono marcava à mão, 16 toques na Thayna).
+  // A fronteira é o ÚLTIMO NOME COM TRABALHO, não a fila: assim a linha do meio
+  // não vira vermelha sozinha conforme os de baixo são liberados.
   const casosBase = [
     { sala: 'S1', ordem: 0, anestesista: 'ANA', cirurgiao: 'Cir A' },
     { sala: 'S3', ordem: 0, anestesista: 'CARLA', cirurgiao: 'Cir C' },
@@ -1508,25 +1512,50 @@ describe('Liberações — NINGUÉM nasce Liberado (invariante, dono 20/08)', ()
     expect(within(ana).queryByText('Liberado')).toBeNull()
   })
 
-  it('o círculo LIBERA quem está sem caso — inclusive o ÚLTIMO do rodapé (dono 20/08)', () => {
-    // caso real: THAYNA fecha o rodapé vespertino (plantão da manhã) e não tem
-    // cirurgia. O toque marcava "escalado", ela virava "próximo a ser liberado" e
-    // o toque seguinte desmarcava — 16 vezes no log de 20/08, sem nunca liberar.
-    const onToggle = vi.fn()
+  it('quem FECHA o rodapé sem cirurgia nasce Liberado e o toque DESMARCA (caso Thayna)', () => {
+    // caso real 20/08: THAYNA fecha o rodapé vespertino (plantão da manhã) e não
+    // tem cirurgia. Hoje ela já nasce vermelha — que era o estado que o dono
+    // tentava alcançar a dedo — e o círculo, marcado, desmarca.
+    const onToggleEscalado = vi.fn()
     const escala = {
       id: 'e1', hospital: 'unimed', liberacoes: {},
       ordemLiberacao: { matutino: [], vespertino: ['ANA', 'BRUNO', 'THAYNA'] },
       casos: casosBase.map((c) => ({ ...c, turno: 'vespertino' })),
     }
     render(<LiberacoesView escala={escala} hospital="unimed" hospitalLabel="Unimed" turno="vespertino"
-      canEdit onToggle={onToggle} onReorder={() => {}} />, { wrapper: wrap })
+      canEdit onToggle={() => {}} onToggleEscalado={onToggleEscalado} onReorder={() => {}} />, { wrapper: wrap })
     const thayna = document.querySelector('[data-linha="THAYNA"]')
-    // fecha o rodapé → leva o selo do plantão do contraturno
     expect(within(thayna).getByText('Plantão da manhã')).toBeTruthy()
-    // fora da fila: não é o "próximo" de ninguém e não mostra o pill âmbar
+    expect(within(thayna).getByText('Liberado')).toBeTruthy()
+    // fora da fila: não é o "próximo" de ninguém
     expect(within(thayna).queryByText('Próximo a ser liberado')).toBeNull()
-    fireEvent.click(within(thayna).getByLabelText('Marcar Thayna liberado'))
-    expect(onToggle).toHaveBeenCalledWith(expect.objectContaining({ anestesista: 'Thayna' }))
+    fireEvent.click(within(thayna).getByLabelText('Desfazer liberação de Thayna'))
+    expect(onToggleEscalado).toHaveBeenCalledWith(expect.objectContaining({ anestesista: 'Thayna' }))
+  })
+
+  it('a CAUDA inteira sem procedimento nasce vermelha; quem tem cirurgia abaixo, não (caso real 21/08)', () => {
+    // recorte do rodapé matutino de 21/08: Alexandre Schmidt (14) é o último COM
+    // cirurgia; Rafael, Daniela e Alexandre Danieli fecham a lista sem nenhuma e
+    // apareciam verdes com o badge "Livre".
+    const escala = {
+      id: 'e1', hospital: 'unimed', liberacoes: {},
+      ordemLiberacao: ['EDUARDO', 'ERLEI', 'SCHMIDT', 'RAFAEL', 'DANIELA', 'DANIELI'],
+      casos: [
+        { sala: 'Bloco A - Sala 9', ordem: 0, anestesista: 'EDUARDO', cirurgiao: 'Vinicius Rubin' },
+        { sala: 'Ambulatorial', ordem: 0, anestesista: 'ERLEI', cirurgiao: 'Le Face' },
+        { sala: 'Bloco A - Sala 6', ordem: 0, anestesista: 'SCHMIDT', cirurgiao: 'Gabriel Radaelli' },
+      ],
+    }
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit
+      onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
+    for (const chave of ['RAFAEL', 'DANIELA', 'DANIELI']) {
+      const card = document.querySelector(`[data-linha="${chave}"]`)
+      expect(within(card).getByText('Liberado')).toBeTruthy()
+      expect(within(card).queryByText('Livre')).toBeNull()
+    }
+    // o último COM cirurgia segue ativo e é o próximo a ser liberado
+    const schmidt = document.querySelector('[data-linha="SCHMIDT"]')
+    expect(within(schmidt).getByText('Próximo a ser liberado')).toBeTruthy()
   })
 
   it('quem tem o marcador do repasse AGUARDA a vez — liberar fora de ordem avisa', () => {

@@ -62,7 +62,7 @@ const SELO_SEM_PROXIMO = new Set(['P1', 'P2'])
 // corredor, não comunicado (para comunicado o app tem o módulo Comunicados).
 const AVISO_MAX = 160
 
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onToggle, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, onGarantirEscala, onNavigate }) {
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, onGarantirEscala, onNavigate }) {
   const { toast } = useToast()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
   // do turno selecionado e o rodapé (ordem de liberação) DAQUELE turno.
@@ -1027,6 +1027,22 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             if (jaLiberada(linhasExibicao[i]) && voltaPraFila(linhasExibicao[i])) { idxConvocar = i; break }
           }
           const nomeConvocar = idxConvocar >= 0 ? linhasExibicao[idxConvocar].anestesista : null
+          // CAUDA SEM PROCEDIMENTO (dono 21/08): "os últimos usuários da lista de
+          // liberação que não estiverem com procedimento cirúrgico no momento de
+          // importação da escala aparecem como LIBERADOS (vermelho)" — não verdes
+          // com o badge Livre. É o fecho das três queixas seguidas: o vermelho
+          // automático no MEIO da fila (Eduardo, 5º de 15, em 20/08) lia como
+          // liberação fora de ordem e teve de sair; na CAUDA ele é a informação
+          // certa — quem fecha a lista sem cirurgia nenhuma não está em jogo, e
+          // era isso que o dono tentava marcar à mão (16 toques na Thayna).
+          // ⚠️ a fronteira é o ÚLTIMO NOME COM TRABALHO NA IMPORTAÇÃO, não o
+          // `idxProximo`: usar a fila faria a linha do meio virar vermelha sozinha
+          // conforme os de baixo fossem liberados — decisão automática de novo,
+          // que é justamente o que não pode acontecer.
+          let idxUltimoTrabalho = -1
+          for (let i = linhasExibicao.length - 1; i >= 0; i--) {
+            if (!naoEscalado(linhasExibicao[i])) { idxUltimoTrabalho = i; break }
+          }
           let numeroOrdem = 0
           return linhasExibicao.map((linha, idx) => {
           // PLANTÃO NOTURNO (pedido do dono 24/07): ao virar P1–P4 a pessoa SAI da
@@ -1045,18 +1061,15 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           const marcacao = marcaDe(linha)
           const forcadoEscalado = marcacao?.escalado === true // entrou na escala no meio do dia
           const liberadoReal = !!marcacao && !forcadoEscalado
-          // LIBERAÇÃO NUNCA É AUTOMÁTICA — regra fechada pelo dono em 20/08, depois
-          // de o sintoma voltar em produção: Eduardo, 5º de 15 no rodapé vespertino
-          // da Unimed, nasceu VERMELHO 47s depois da publicação da tarde (ele tinha
-          // trocado com a Raquel e não tinha cirurgia ali). Vermelho no MEIO da fila
-          // a equipe lê como liberação fora de ordem, e não há como distinguir na
-          // tela "o app decidiu" de "alguém liberou na frente dos outros".
-          // ⚠️ Isto JÁ foi revertido uma vez — 2154201 (19/08 22:08) desfez 7545ef3
-          // (21:59) por causa de "mantenha a configuração de sair na ordem de
-          // liberação como liberado" — e o sintoma reapareceu no dia seguinte, na
-          // 1ª publicação da tarde. NÃO reverter de novo sem ordem expressa: quem
-          // está sem caso mostra "Livre" e aguarda; o vermelho nasce SÓ do toque.
-          const liberado = liberadoReal
+          // NO MEIO DA FILA o vermelho NUNCA é automático (dono 20/08, depois de o
+          // sintoma voltar em produção: Eduardo, 5º de 15, nasceu vermelho 47s
+          // depois da publicação da tarde — ele tinha trocado com a Raquel e não
+          // tinha cirurgia ali). Ali a equipe lê como liberação fora de ordem e não
+          // há como distinguir "o app decidiu" de "alguém liberou na frente".
+          // NA CAUDA é o contrário: quem fecha a lista sem procedimento nenhum
+          // nasce liberado, porque não está em jogo (dono 21/08).
+          const caudaSemTrabalho = semEscala && !forcadoEscalado && idx > idxUltimoTrabalho
+          const liberado = liberadoReal || caudaSemTrabalho
           const estado = liberado ? 'liberado' : idx === idxProximo ? 'proximo' : 'escalado'
           // Bloqueio nos DOIS sentidos: só o "próximo" sai e só o "próximo a
           // convocar" volta. Quem NÃO está na fila nunca bloqueia — P1/P2 da noite
@@ -1141,18 +1154,23 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
               {/* setas de reordenar REMOVIDAS (pedido do dono 2026-07-27): a ordem
                   do rodapé é imutável no app — nem o plantonista mexe. */}
 
-              {/* marcar liberado: alvo 44px, círculo visual 28px. O círculo LIBERA
-                  em TODA linha, inclusive quem está sem caso (dono 20/08): ele era
-                  um toggle de "escalado" nessas linhas e o toque não liberava —
-                  o log de 20/08 mostra 16 toques seguidos na Thayna, último nome do
-                  rodapé, alternando escalado↔nada sem nunca liberar. Um controle,
-                  um significado; o marcador `escalado` ficou só como rastro
-                  AUTOMÁTICO do repasse (escaladosPreservadosNoRepasse). */}
+              {/* marcar liberado: alvo 44px, círculo visual 28px. O círculo é um
+                  CHECKBOX de "esta pessoa está liberada" — marcado = vermelho,
+                  desmarcado = na escala — e é isso em TODA linha. O que muda por
+                  baixo é só como o estado é gravado: numa linha comum a marcação é
+                  a liberação (`liberadoEm`); na cauda, que já nasce marcada, o
+                  toque DESmarca e o que se grava é `{escalado:true}` ("não, ele
+                  está trabalhando"). ⚠️ o que NÃO pode voltar é o círculo dizer uma
+                  coisa e fazer outra: em 20/08 ele aparecia VAZIO e alternava um
+                  flag escondido, e o dono tocou 16 vezes seguidas na Thayna sem
+                  nunca liberar. Marcado/desmarcado tem de espelhar o vermelho. */}
               <button
                 type="button"
                 disabled={!canEdit}
-                onClick={() => toggle(linha, liberadoReal, bloqueioOrdem)}
-                aria-label={liberadoReal ? `Desfazer liberação de ${linha.anestesista}` : `Marcar ${linha.anestesista} liberado`}
+                onClick={() => (caudaSemTrabalho
+                  ? onToggleEscalado?.(linha)   // já nasce marcado: o toque DESMARCA
+                  : toggle(linha, liberadoReal, bloqueioOrdem))}
+                aria-label={liberado ? `Desfazer liberação de ${linha.anestesista}` : `Marcar ${linha.anestesista} liberado`}
                 className={['flex h-11 w-9 shrink-0 items-center justify-center', canEdit ? 'cursor-pointer' : 'cursor-default'].join(' ')}
               >
                 <span className={[
