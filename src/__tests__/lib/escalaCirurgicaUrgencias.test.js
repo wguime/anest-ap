@@ -292,6 +292,83 @@ describe('ocupação e níveis de saturação', () => {
   })
 })
 
+// ════════════════════════════════════════════════════════════════════════════
+// UMA LINHA POR CIRURGIA QUE ESPERA (dono 21/08: "há várias cirurgias de urgência
+// e não estão na fila; cada urgência deve ser uma cirurgia na fila").
+//
+// Recorte REAL do HRO em 21/08: 6 urgências abertas — 3 cesarianas no CO, 2 na
+// Emergência e 1 na Sala 8 — e a faixa dizia "2 de 2 salas" com a fila VAZIA. A
+// causa eram os dois agrupamentos: "uma pessoa, uma vaga" colapsava as cirurgias
+// do mesmo titular num card só, e a sala DEDICADA nem chegava a `candidatos`.
+// A ocupação segue sendo uma por titular — o que voltou é a VISIBILIDADE de quem
+// espera.
+// ════════════════════════════════════════════════════════════════════════════
+describe('fila — cada urgência que espera tem a própria linha (dono 21/08)', () => {
+  // 3 urgências sem anestesista definido na MESMA sala: uma ocupa, duas esperam.
+  const semDono = (sala, id, min) =>
+    caso(sala, { id, anestesista: '?', semAnestesista: true, created_at: `${HOJE}T1${min}:00:00` })
+
+  it('as demais cirurgias do titular que ocupa a vaga entram na fila', () => {
+    const estado = em([semDono('Sala 5', 'a', 0), semDono('Sala 5', 'b', 1), semDono('Sala 5', 'c', 2)])
+    expect(estado.postos[0].item.caso.id).toBe('a') // 1 vaga, 1 card
+    expect(estado.postos[0].item.qtd).toBe(3) // o card continua contando as três
+    expect(estado.fila.map((f) => f.caso.id)).toEqual(['b', 'c'])
+  })
+
+  it('quem espera atrás de uma sala DEDICADA também aparece', () => {
+    // CO de manhã é dedicado: absorve a ocupação, mas a fila que se forma ali é real
+    const estado = em([semDono('Sala 7', 'co1', 0), semDono('Sala 7', 'co2', 1), semDono('Sala 7', 'co3', 2)])
+    const co = estado.dedicados.find((d) => d.papel === 'co')
+    expect(co.item.caso.id).toBe('co1')
+    expect(estado.postos.every((p) => !p.item)).toBe(true) // dedicada não gasta vaga
+    expect(estado.fila.map((f) => f.caso.id)).toEqual(['co2', 'co3'])
+  })
+
+  it('quem já está no card NÃO aparece de novo na fila', () => {
+    // 3 titulares para 2 vagas: dois viram card, o terceiro é a fila — e nenhum
+    // dos dois primeiros pode aparecer nos dois lugares.
+    const estado = em([
+      iniciada2('Sala 2', 'rodando'),
+      semDono('Sala 3', 'vaga2', 0),
+      semDono('Sala 6', 'espera', 1),
+    ])
+    const emCard = estado.postos.map((p) => p.item?.caso.id).filter(Boolean)
+    expect(emCard).toContain('rodando')
+    expect(estado.fila.map((f) => f.caso.id)).toEqual(['espera'])
+    for (const id of emCard) expect(estado.fila.some((f) => f.caso.id === id)).toBe(false)
+  })
+
+  it('urgência já TERMINADA não entra na fila', () => {
+    const estado = em([
+      caso('Sala 5', { id: 'fim', statusCirurgia: 'terminada' }),
+      semDono('Sala 5', 'espera', 0),
+    ])
+    expect(estado.fila.map((f) => f.caso.id)).toEqual([])
+    expect(estado.postos[0].item.caso.id).toBe('espera')
+  })
+
+  it('o dia 21/08 inteiro: 6 urgências abertas, 3 em card e 3 na fila', () => {
+    const estado = em([
+      caso('Sala 5', { id: 'e-ok', statusCirurgia: 'terminada', anestesista: 'MAURICIO', anestesistaUserId: 'u-mau' }),
+      semDono('Sala 5', 'e-hernia', 6),
+      semDono('Sala 5', 'e-desbrid', 7),
+      semDono('Sala 7', 'co1', 6),
+      semDono('Sala 7', 'co2', 7),
+      semDono('Sala 7', 'co3', 8),
+      caso('Sala 8', { id: 's8', anestesista: 'ALINE', anestesistaUserId: 'u-aline', created_at: `${HOJE}T14:46:00` }),
+      caso('Sala 4', { id: 'orto', tipo: 'eletiva', statusCirurgia: 'iniciada', statusAtualizadoEm: `${HOJE}T10:00:00`, anestesista: 'THAYNA', anestesistaUserId: 'u-thay' }),
+    ])
+    const emCard = [
+      ...estado.postos.map((p) => p.item?.caso.id),
+      ...estado.dedicados.map((d) => d.item?.caso.id),
+    ].filter(Boolean)
+    // cada urgência aberta aparece EXATAMENTE uma vez: ou é card, ou está na fila
+    expect([...emCard, ...estado.fila.map((f) => f.caso.id)].sort())
+      .toEqual(['co1', 'co2', 'co3', 'e-desbrid', 'e-hernia', 's8'])
+    expect(estado.fila).toHaveLength(3)
+  })
+})
+
 describe('fila — gravidade primeiro, chegada como desempate', () => {
   it('ordena por gravidade e deixa a não classificada no fim', () => {
     const estado = em([

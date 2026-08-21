@@ -61,8 +61,20 @@ export const formatEspera = (min) => {
   return m < 60 ? `${m}min` : `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}`
 }
 
-const CARD_BASE =
-  'flex min-h-[36px] w-full items-center gap-1.5 overflow-hidden rounded-[10px] border px-2 py-1 text-left'
+/** Caixa comum dos cards da faixa — o arranjo interno é de cada um. */
+const CARD_BOX = 'w-full overflow-hidden rounded-[10px] border px-2 py-1 text-left'
+
+/**
+ * Card do POSTO em DUAS LINHAS (dono 21/08): sala em cima, anestesista embaixo.
+ * Numa linha só, o selo da sala e o nome disputavam ~150px e os dois perdiam —
+ * "BLOCO A - SALA 5 - EMERGÊNCIA" empurrou o nome para fora do card e sobrou uma
+ * pastilha muda. Empilhado, a sala tem a largura inteira e o nome também.
+ */
+const CARD_BASE = `flex min-h-[44px] flex-col justify-center gap-0.5 ${CARD_BOX}`
+
+/** Linha da FILA: continua em UMA linha — ali não há sala, e o que se lê de
+ *  relance é gravidade → procedimento → espera, nessa ordem, lado a lado. */
+const CARD_FILA = `flex min-h-[36px] items-center gap-1.5 ${CARD_BOX}`
 
 /** Selo de sala — MESMA receita do cabeçalho de sala do quadro (primary/20). */
 const SeloSala = ({ children, tom = 'primary' }) => (
@@ -179,11 +191,13 @@ export default function FaixaUrgencias({ escala, hospital, turno, hoje }) {
                 item.emAndamento ? 'bg-success/[0.14] dark:bg-success/20' : 'bg-muted/55',
               ].join(' ')}
             >
-              <SeloSala>{salaLiberacao(item.sala)}</SeloSala>
-              <span className="min-w-0 flex-1 truncate text-[13px]">
-                {nomeDe(item.anestesista) || PAPEL_LABEL[papel] || papel}
+              <span className="flex"><SeloSala>{salaLiberacao(item.sala)}</SeloSala></span>
+              <span className="flex items-baseline gap-1.5">
+                <span className="min-w-0 flex-1 truncate text-[13px]">
+                  {nomeDe(item.anestesista) || PAPEL_LABEL[papel] || papel}
+                </span>
+                <span className="shrink-0 text-[10.5px] tabular-nums text-muted-foreground">{metaOcupacao(item)}</span>
               </span>
-              <span className="shrink-0 text-[10.5px] tabular-nums text-muted-foreground">{metaOcupacao(item)}</span>
             </button>
           ) : (
             <button
@@ -193,8 +207,11 @@ export default function FaixaUrgencias({ escala, hospital, turno, hoje }) {
               onClick={() => setAddCaso({ posto: papel === 'plantonista' ? 'plantao' : papel })}
               className={`${CARD_BASE} border-dashed border-border bg-transparent`}
             >
-              <span className="min-w-0 flex-1 truncate text-[13px]">{PAPEL_LABEL[papel] || papel}</span>
-              <span className="shrink-0 text-[10.5px] text-muted-foreground">livre</span>
+              {/* posto LIVRE não tem sala: uma linha só, centrada na mesma altura */}
+              <span className="flex flex-1 items-center gap-1.5">
+                <span className="min-w-0 flex-1 truncate text-[13px]">{PAPEL_LABEL[papel] || papel}</span>
+                <span className="shrink-0 text-[10.5px] text-muted-foreground">livre</span>
+              </span>
             </button>
           ))}
           {estado.dedicados.map((d) => {
@@ -214,11 +231,13 @@ export default function FaixaUrgencias({ escala, hospital, turno, hoje }) {
                   d.item?.emAndamento ? 'bg-success/[0.14] dark:bg-success/20' : 'bg-muted/55',
                 ].join(' ')}
               >
-                <SeloSala>{salaLiberacao(d.sala)}</SeloSala>
-                <span className="min-w-0 flex-1 truncate text-[13px]">
-                  {nomeDe(d.anestesista) || DEDICADO_NOME[d.papel]}
+                <span className="flex"><SeloSala>{salaLiberacao(d.sala)}</SeloSala></span>
+                <span className="flex items-baseline gap-1.5">
+                  <span className="min-w-0 flex-1 truncate text-[13px]">
+                    {nomeDe(d.anestesista) || DEDICADO_NOME[d.papel]}
+                  </span>
+                  <span className="shrink-0 text-[10.5px] text-muted-foreground">{DEDICADO_LABEL[d.papel]}</span>
                 </span>
-                <span className="shrink-0 text-[10.5px] text-muted-foreground">{DEDICADO_LABEL[d.papel]}</span>
               </Comp>
             )
           })}
@@ -230,13 +249,17 @@ export default function FaixaUrgencias({ escala, hospital, turno, hoje }) {
             key={it.id}
             type="button"
             onClick={() => setDetalhe(it.caso)}
-            className={`${CARD_BASE} mt-1.5 min-h-[38px] border-destructive/50 bg-destructive/10 dark:bg-destructive/15`}
+            className={`${CARD_BASE} mt-1.5 border-destructive/50 bg-destructive/10 dark:bg-destructive/15`}
           >
-            <span className="shrink-0 text-[11px] font-extrabold uppercase tracking-wide text-destructive">Extra</span>
-            <SeloSala tom="destructive">{salaLiberacao(it.sala)}</SeloSala>
-            <span className="min-w-0 flex-1 truncate text-[13px]">{nomeDe(it.anestesista)}</span>
-            <span className="shrink-0 text-[10.5px] tabular-nums text-destructive">
-              fora do contrato{metaOcupacao(it) ? ` · ${metaOcupacao(it)}` : ''}
+            <span className="flex items-center gap-1.5">
+              <span className="shrink-0 text-[11px] font-extrabold uppercase tracking-wide text-destructive">Extra</span>
+              <SeloSala tom="destructive">{salaLiberacao(it.sala)}</SeloSala>
+            </span>
+            <span className="flex items-baseline gap-1.5">
+              <span className="min-w-0 flex-1 truncate text-[13px]">{nomeDe(it.anestesista)}</span>
+              <span className="shrink-0 text-[10.5px] tabular-nums text-destructive">
+                fora do contrato{metaOcupacao(it) ? ` · ${metaOcupacao(it)}` : ''}
+              </span>
             </span>
           </button>
         ))}
@@ -258,7 +281,7 @@ export default function FaixaUrgencias({ escala, hospital, turno, hoje }) {
                   key={f.id}
                   type="button"
                   onClick={() => setDetalhe(f.caso)}
-                  className={`${CARD_BASE} border-border bg-card`}
+                  className={`${CARD_FILA} border-border bg-card`}
                 >
                   <span className="min-w-[13px] shrink-0 text-[11.5px] font-extrabold tabular-nums text-muted-foreground">
                     {f.posicao}º

@@ -604,7 +604,6 @@ export function estadoUrgencias(casos = [], opts = {}) {
   // vai para a FILA.
   const { postos, extras: sobras } = distribuirPostos(emOrdem, papeis, salas)
   const extras = sobras.filter((o) => o.emAndamento)
-  const pendentes = sobras.filter((o) => !o.emAndamento).flatMap((o) => o.casos.filter((i) => ehUrgencia(i.caso)))
   const ocupacoes = [...postos.map((p) => p.item).filter(Boolean), ...extras]
 
   // ── 4) cards dos dedicados do turno (informam quem cobre, fora da conta) ────
@@ -634,6 +633,32 @@ export function estadoUrgencias(casos = [], opts = {}) {
       }
     })
 
+  // ── 5) FILA: uma linha por CIRURGIA que espera (dono 21/08) ────────────────
+  // A fila recebia só o que sobrava dos postos, e o agrupamento "uma pessoa, uma
+  // vaga" engolia o resto: em 21/08 o CO tinha TRÊS cesarianas e a Emergência
+  // DUAS, e a tela dizia "2 de 2 salas" com a fila VAZIA — as quatro que
+  // aguardavam não existiam em lugar nenhum. A OCUPAÇÃO continua sendo uma por
+  // titular (ninguém opera dois pacientes ao mesmo tempo); o que muda é que cada
+  // urgência que ainda não começou volta a ter a sua linha, inclusive as que
+  // esperam atrás de uma sala dedicada — é justamente ali que a fila se forma.
+  //
+  // Não entra na fila quem já é o CARD: o representante de cada ocupação (posto,
+  // extra ou dedicado) já está na tela, e repeti-lo faria contar duas vezes.
+  const naTela = new Set(
+    [...postos.map((p) => p.item), ...extras, ...dedicados.map((d) => d.item)]
+      .filter(Boolean)
+      .map((o) => o.caso),
+  )
+  // A sala DEDICADA sai da disputa por vaga (o anestesista dela é pago à parte) e
+  // por isso os casos dela nem chegam a `candidatos` — mas quem espera atrás dela
+  // espera de verdade: em 21/08 eram duas cesarianas atrás da que estava no CO.
+  const esperandoNasDedicadas = [...salasDedicadas.values()].flatMap(({ g, urgentes }) =>
+    urgentes.filter((i) => ![...g.iniciadas, ...g.esquecidas].some((x) => x.caso === i.caso)),
+  )
+  const pendentes = [
+    ...candidatos.filter((c) => ehUrgencia(c.caso) && !c.rodando),
+    ...esperandoNasDedicadas,
+  ].filter((c) => !naTela.has(c.caso))
   const fila = ordenarFilaUrgencias(pendentes).map((it, i) => ({ ...it, posicao: i + 1 }))
   const nasVagas = postos.filter((p) => p.item).length
   const ocupadas = nasVagas + extras.length
