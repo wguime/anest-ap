@@ -1284,7 +1284,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       é ocorrência da cirurgia, não identidade da pessoa, então não fica
                       na fila de selos colados ao nome. */}
                   {!liberadoReal && !renovado && !noturno && temPassaTarde(linha) && (
-                    <Badge className="ml-auto shrink-0 border-transparent bg-category-purple text-white">
+                    <Badge className="ml-auto mr-2.5 shrink-0 border-transparent bg-category-purple text-white">
                       {passaTurnoLabel(turnoBase)}
                     </Badge>
                   )}
@@ -1441,20 +1441,14 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     )}
                   </div>
 
-                  {/* DIREITA ADAPTATIVA (dono 30/07). Com o rótulo curto ("Tempo
-                      total") o badge + lápis cabem numa LINHA só — que é o caso da
-                      grande maioria dos cards, e economiza uma faixa de altura em
-                      cada um. A segunda linha só nasce quando há setas de ajuda, aí
-                      o badge sobe e setas + lápis ficam embaixo. Condicional
-                      explícito em vez de `flex-wrap` com largura máxima: quebra por
-                      medida é frágil e some quando o rótulo muda de tamanho. */}
-                  <div className={[
-                    'flex shrink-0',
-                    temSetasAjuda ? 'flex-col items-end gap-1' : 'items-center gap-1',
-                  ].join(' ')}>
-                    {/* mr-10 no modo coluna = lápis (w-9) + gap-1 da linha única:
-                        o badge das ajudas fica na MESMA vertical dos demais cards
-                        (dono 31/07 — flush à direita parecia desalinhado). */}
+                  {/* DIREITA EM COLUNA (dono 21/08): cronômetro em cima, "Editar"
+                      no canto INFERIOR direito, os dois com a mesma margem da borda
+                      do card — e na mesma vertical dos badges de estado da 1ª linha.
+                      Antes ficavam lado a lado e a direita tinha DOIS layouts (linha
+                      normal, coluna quando havia setas de ajuda), com um `mr-10` de
+                      correção para os dois alinharem entre si. Uma coluna só torna o
+                      alinhamento o padrão e o hack saiu junto. */}
+                  <div className="flex shrink-0 flex-col items-end gap-1 pr-2.5">
                     {!liberadoReal && (cronometro ? (
                       <button
                         type="button"
@@ -1464,7 +1458,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         className={[
                           'flex min-h-[26px] items-center gap-1 whitespace-nowrap rounded-full',
                           'bg-primary px-2.5 text-sm font-semibold text-primary-foreground',
-                          temSetasAjuda ? 'mr-10' : '',
                         ].join(' ')}
                       >
                         <Timer className="h-3.5 w-3.5 shrink-0" /> {cronometro.texto}
@@ -1480,10 +1473,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                            pela FORMA, sem precisar ler. Preenchido continua sendo a
                            pílula verde sólida, logo acima — a única coisa no card com
                            peso de badge, porque é ela que dirige a ordem da fila. */
-                        className={[
-                          'rounded-md border border-dashed border-border-strong bg-transparent px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground active:bg-muted',
-                          temSetasAjuda ? 'mr-10' : '',
-                        ].join(' ')}
+                        className="rounded-md border border-dashed border-border-strong bg-transparent px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground active:bg-muted"
                       >
                         + Tempo total
                       </button>
@@ -1520,14 +1510,24 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         </button>
                       </>
                     )}
+                    {/* EDITAR: badge com a palavra, não o lápis (dono 21/08). O ícone
+                        sozinho não dizia o que abria — e o painel que ele abre não é
+                        "editar a linha" no sentido óbvio: é onde ficam observação,
+                        local, cirurgião, ajuda e troca. Outline verde = ação, o mesmo
+                        vocabulário dos botões "Adicionar ajuda"/"Histórico" no topo
+                        da aba; os badges de ESTADO do card são todos sólidos, então
+                        nada aqui se confunde com estado. Toque segue com 44px de
+                        altura e o `pr-2.5` dá o mesmo respiro que o lápis tinha. */}
                     {canEdit && (
                       <button
                         type="button"
                         onClick={() => abrirEditor(linha)}
                         aria-label={`Editar local/cirurgião de ${linha.anestesista}`}
-                        className="flex h-11 w-9 shrink-0 items-center justify-center text-muted-foreground hover:text-primary"
+                        /* -my-2: alvo de toque de 44px sem esticar o card — mesmo
+                           truque do selo P4 acima. */
+                        className="-my-2 flex h-11 shrink-0 items-center justify-center pl-1"
                       >
-                        <Pencil className="w-4 h-4" />
+                        <Badge badgeStyle="outline">Editar</Badge>
                       </button>
                     )}
                     </div>

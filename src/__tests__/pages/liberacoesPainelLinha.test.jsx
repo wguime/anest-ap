@@ -63,6 +63,20 @@ const escalaBase = {
 
 const abrirEditor = (nome) => fireEvent.click(screen.getByLabelText(`Editar local/cirurgião de ${nome}`))
 
+// O CONTROLE DIZ "EDITAR" (dono 21/08, no lugar do lápis). O ícone sozinho não
+// dizia o que abria — e o que abre não é "editar a linha" no sentido óbvio: é
+// observação, local, cirurgião, ajuda e troca. O aria-label continua nomeando a
+// pessoa (é o que distingue 16 botões iguais para quem usa leitor de tela).
+describe('controle de edição da linha', () => {
+  it('mostra a palavra "Editar", não só o ícone', () => {
+    montar()
+    const botao = screen.getByLabelText('Editar local/cirurgião de Marilio Flach')
+    expect(botao.textContent.trim()).toBe('Editar')
+    // continua com alvo de toque de 44px (regra de responsividade do app)
+    expect(botao.className).toContain('h-11')
+  })
+})
+
 // A OBSERVAÇÃO É A ÚLTIMA LINHA DO PAINEL (dono 17/08: "observação depois da
 // troca") e nasce fechada — com ela no fim, abrir sozinha faria o painel nascer
 // rolado. Cada assunto se abre ao toque.

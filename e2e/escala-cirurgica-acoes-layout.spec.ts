@@ -16,7 +16,7 @@ const DEMO_TIME = new Date('2026-06-26T14:00:00-03:00');
 
 test.use({ viewport: { width: 375, height: 812 } });
 
-test('badge e controles ocupam uma linha só e nada vaza da tela', async ({ page }) => {
+test('tempo e "Editar" empilhados à direita, alinhados, sem vazar da tela', async ({ page }) => {
   test.skip(!E2E_USER_EMAIL || !E2E_USER_PASSWORD, 'Set E2E_USER_EMAIL / E2E_USER_PASSWORD');
   test.setTimeout(120_000);
 
@@ -38,20 +38,32 @@ test('badge e controles ocupam uma linha só e nada vaza da tela', async ({ page
   const card = page.locator('[data-linha]').first();
   await expect(card).toBeVisible({ timeout: 15_000 });
 
-  // 1. SEM setas de ajuda, badge e lápis dividem a MESMA linha (dono 30/07: com o
-  //    rótulo curto "Tempo total" isso cabe, e economiza uma faixa de altura em cada
-  //    card). A segunda linha só nasce quando há setas — caso não coberto aqui, ver
-  //    o limite anotado abaixo.
+  // 1. COLUNA À DIREITA (dono 21/08): o tempo em cima, "Editar" no canto INFERIOR
+  //    direito — empilhados, não lado a lado —, e os dois com a MESMA margem da
+  //    borda do card. Era a geometria oposta até 20/08 (uma linha só); a medida
+  //    aqui é o que impede a volta silenciosa, porque jsdom não mede layout.
   const badge = card.getByRole('button', { name: /Definir tempo faltante|toque para ajustar/ }).first();
-  const lapis = card.getByRole('button', { name: /^Editar local\/cirurgião/ });
-  const [bBadge, bLapis] = [await badge.boundingBox(), await lapis.boundingBox()];
-  expect(bBadge && bLapis).toBeTruthy();
-  const sobrepoemVerticalmente =
-    bBadge!.y < bLapis!.y + bLapis!.height && bLapis!.y < bBadge!.y + bBadge!.height;
-  expect(sobrepoemVerticalmente).toBe(true);
+  const editar = card.getByRole('button', { name: /^Editar local\/cirurgião/ });
+  const [bBadge, bEditar, bCard] = [
+    await badge.boundingBox(), await editar.boundingBox(), await card.boundingBox(),
+  ];
+  expect(bBadge && bEditar).toBeTruthy();
+  // ⚠️ mede-se o BADGE, não o botão: o botão tem 44px de alvo com margem negativa
+  // e transborda a própria caixa de propósito (mesmo truque do selo P4 — toque
+  // confortável sem esticar 17 cards). Comparar as caixas dos BOTÕES acusaria
+  // sobreposição onde a tela mostra dois elementos empilhados.
+  const bPill = (await editar.locator('span').first().boundingBox())!;
+  // empilhados: o tempo termina ANTES de o "Editar" começar
+  expect(bBadge!.y + bBadge!.height).toBeLessThanOrEqual(bPill.y + 1);
+  // e o "Editar" é o último elemento do card (canto inferior direito)
+  expect(bPill.y + bPill.height).toBeLessThanOrEqual(bCard!.y + bCard!.height + 1);
+  // mesma margem da borda direita, para os dois lerem como uma coluna só
+  const recuo = (b: { x: number; width: number }) => Math.round(bCard!.x + bCard!.width - (b.x + b.width));
+  expect(recuo(bPill)).toBe(recuo(bBadge!));
+  // "Editar" diz a palavra — o lápis sozinho não dizia o que abria (dono 21/08)
+  expect((await editar.textContent())?.trim()).toBe('Editar');
 
   // 2. NADA do card passa da largura da tela — foi o estrago de 30/07
-  const bCard = await card.boundingBox();
   expect(bCard!.x + bCard!.width).toBeLessThanOrEqual(375);
   for (const el of await card.locator('button').all()) {
     const b = await el.boundingBox();

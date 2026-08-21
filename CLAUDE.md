@@ -679,25 +679,52 @@ não gasta vaga — marcar não é reservar. Tinta verde só com cirurgia EM AND
   lista canônica de exclusão e `PADROES_FORA_DO_CONTRATO_HRO` (regex) é a rede para o
   rótulo digitado — "AMBULAT.", "Ambulatorial BERA", "Odonto ambulatorial" e "MATERNO"
   caíam em 'geral' e uma urgência ali entrava na conta das 2 vagas do HRO.
-- **NUMÉRICA DO HRO = BLOCO A (dono 20/08, 2ª rodada):** "Sala 1" e "Bloco M - Sala 1" são
-  salas DIFERENTES com o mesmo número, e a lista de escolha ainda trazia as duas formas da
-  mesma sala ("Sala 1" E "Bloco A - Sala 1"). Hoje todo rótulo numérico nomeia o bloco —
-  `Bloco A - Sala 1…9`, com os sufixos de 20/08 preservados (`Bloco A - Sala 5 - Emergência`,
-  `Bloco A - Sala 7 - CO`) — e a forma curta SAIU do `LOCAIS_BASE`. Vale na importação, no
-  "Adicionar caso" e no "Mudar" do detalhe, tudo por `normalizarSalaHro` (constantes
-  `SALA_HRO_CO`/`SALA_HRO_EMERGENCIA`; o teste de idempotência existe porque a função roda
-  nos três caminhos). ⚠️ **as ~700 cirurgias já publicadas NÃO foram reescritas** (decisão do
-  dono): a ponte é `chaveSalaHro` (utils, puro), que dá a MESMA identidade a "Sala 4" e
-  "Bloco A - Sala 4" — é ela que faz o `chaveSala` do contrato de urgências contar uma vaga
-  só, a sala marcada no ⚙ casar com o caso na outra grafia, e o seletor não oferecer as duas
-  (`chaveSalaEscolha` em `salasDoHospital` + no dropdown de local da Liberações). ⚠️ e a
-  normalização passou a valer **só para sala DIGITADA**: normalizar a opção ESCOLHIDA
-  reescreveria a "Sala 4" de uma escala antiga e criaria o segundo bloco no quadro — que é
-  exatamente o que a regra existe para impedir. `CONTRATO_HRO.dedicadas` virou a fonte única
-  do padrão orto/CO (o `AddCasoSheet` copiava à mão e teria ficado para trás). Travas em
-  `escalaCirurgicaSalas.test.js` + `escalaCirurgicaUrgencias.test.js`. O prompt da edge
-  `parse-escala-cirurgica` pede o rótulo novo, mas **só vale após re-deploy** — sem ele o app
-  normaliza igual na entrada.
+- **RÓTULO DE SALA CURTO, BLOCO IMPLÍCITO (dono 21/08 — "ficou muito poluído"):** a
+  numérica do HRO é do BLOCO A, a 5 é a Emergência e a 7 é o CO, mas **nada disso vai para o
+  rótulo**: `Sala 1`…`Sala 9`, uma entrada por sala na lista de escolha. A tentativa de 20/08
+  (`Bloco A - Sala 7 - CO`) durou um dia — a sala se repete na pastilha de cada faixa do
+  quadro, no card de cada pessoa da fila e nos cards da faixa de urgências, e três informações
+  no mesmo rótulo espremeram o resto (o card do dedicado passou a truncar o nome). **`Bloco M`
+  MANTÉM o bloco** — ali ele não é implícito, é o que separa a sala 1 do materno da sala 1 do
+  bloco A. O que o app continua sabendo: `normalizarSalaHro` traduz `CO`→`Sala 7`,
+  `EMERGENCIA`→`Sala 5`, `Bloco A - Sala 4`→`Sala 4`, `Sala 7 - CO`→`Sala 7`;
+  `papelDaSalaHro` segue classificando orto/CO e a faixa de urgências nomeia o papel **no
+  badge ao lado**, não no rótulo. ⚠️ **escala publicada NÃO é reescrita** e produção tem as
+  três grafias da mesma sala (`Sala 5` 27 · `Sala 5 - Emergência` 26 · `Sala 7 - CO` 30 ·
+  alguns `Bloco A - Sala N`): a ponte é **`chaveSalaHro`** (utils, puro) — colapsa prefixo de
+  bloco A e sufixo de papel no número —, e é ela que faz o `chaveSala` do contrato contar UMA
+  vaga, a sala marcada no ⚙ casar com o caso na outra grafia e o seletor não oferecer a mesma
+  sala duas vezes (`chaveSalaEscolha` em `salasDoHospital` + no dropdown de local da
+  Liberações). ⚠️ a normalização vale **só para sala DIGITADA**: normalizar a opção ESCOLHIDA
+  reescreveria a grafia do DIA e criaria o segundo bloco no quadro — que é o que a regra existe
+  para impedir. `CONTRATO_HRO.dedicadas` é a fonte única do padrão orto/CO (o `AddCasoSheet`
+  copiava à mão). Travas em `escalaCirurgicaSalas.test.js` + `escalaCirurgicaUrgencias.test.js`.
+- **Fila: coluna à direita, badge do turno com respiro e "Editar" por extenso (dono 21/08):**
+  o tempo fica em cima e o **"Editar" no canto INFERIOR direito**, os dois com a mesma margem
+  da borda (11px a 375px) e na mesma vertical do "Passa para tarde/noite" — que usa `ml-auto`
+  mas encostava na borda porque o corpo do card não tem padding à direita (`mr-2.5`). Antes a
+  direita tinha DOIS layouts (linha; coluna quando havia setas de ajuda) e um `mr-10` só para
+  alinhá-los entre si — com uma coluna só, o alinhamento é o padrão e o hack saiu. O **lápis
+  virou badge "Editar"** (`badgeStyle` outline): o ícone não dizia o que abria, e o painel não
+  é "editar a linha" — é observação, local, cirurgião, ajuda e troca. Outline = ação (o
+  vocabulário dos botões do topo da aba); os badges de ESTADO são sólidos, então nada se
+  confunde. `aria-label` inalterado (`Editar local/cirurgião de {nome}`) — é o que distingue
+  16 botões iguais no leitor de tela e o que testes e e2e usam. O botão leva **44px de alvo com
+  `-my-2`** (truque do selo P4: toque confortável sem esticar 17 cards) — por isso o e2e mede
+  o BADGE, não o botão, senão acusa sobreposição onde a tela mostra empilhamento. O ✏️ do selo
+  P4 FICA: ali ele marca que o selo é editável, outra função.
+- **Urgências: card do posto em DUAS LINHAS + fila com uma linha por CIRURGIA (dono 21/08).**
+  Card: sala em cima, anestesista embaixo — numa linha só os dois disputavam ~150px e o rótulo
+  longo empurrou o nome para fora, sobrando uma pastilha muda. A LINHA DA FILA continua em uma
+  linha (`CARD_FILA`): ali não há sala, e o que se lê de relance é gravidade → procedimento →
+  espera. ⚠️ **a fila recebia só o que sobrava dos postos** e os dois agrupamentos a
+  esvaziavam: "uma pessoa, uma vaga" colapsava as cirurgias do mesmo titular num card, e a sala
+  DEDICADA nem chegava a `candidatos`. Em 21/08 havia 6 urgências abertas (3 cesarianas no CO,
+  2 na Emergência, 1 na Sala 8) e a tela dizia "2 de 2 salas" com fila VAZIA. Hoje a OCUPAÇÃO
+  segue sendo uma por titular (ninguém opera dois pacientes ao mesmo tempo) e a FILA lista toda
+  urgência aberta que ainda não começou e **não é o representante de nenhum card** — incluindo
+  quem espera atrás de uma sala dedicada, que é justamente onde a fila se forma. Invariante
+  travado em teste: cada urgência aberta aparece EXATAMENTE uma vez, ou como card ou na fila.
 - **Relatório contratual**: modo `contrato-hro` planejado na skill `/escala-cirurgica`
   (pareamento 1º iniciada→1º terminada posterior = Achado 2; sweep-line com empate
   saída-antes-de-entrada; SUS = `upper(convenio) ~ '^SUS\M'`; tudo

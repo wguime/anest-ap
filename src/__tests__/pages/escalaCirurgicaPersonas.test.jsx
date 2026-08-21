@@ -527,6 +527,11 @@ describe('Liberações — caso passa_tarde sinaliza o anestesista', () => {
     const badge = screen.getByText('Passa para noite')
     expect(screen.queryByText('Passa para tarde')).toBeNull()
     expect(badge.className).toContain('ml-auto')
+    // NÃO COLADO NA BORDA (dono 21/08): o `ml-auto` empurra o badge até o fim do
+    // corpo do card, que não tem padding à direita — sem a margem ele encostava na
+    // borda. O 2.5 é o mesmo recuo do botão "Editar" logo abaixo, para os dois
+    // ficarem na mesma coluna.
+    expect(badge.className).toContain('mr-2.5')
     expect(screen.getByText('Leonardo').closest('p').contains(badge)).toBe(true)
   })
 })
