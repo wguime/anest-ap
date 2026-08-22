@@ -1047,6 +1047,16 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           for (let i = linhasExibicao.length - 1; i >= 0; i--) {
             if (!naoEscalado(linhasExibicao[i])) { idxUltimoTrabalho = i; break }
           }
+          // ⚠️ NINGUÉM com cirurgia = NÃO EXISTE CAUDA (dono 22/08). Sem esta
+          // guarda o `idx > -1` é verdade para a fila INTEIRA e todo mundo nasce
+          // vermelho — foi o que a tarde de sábado 22/08 mostrou: os 7 nomes
+          // liberados de uma vez, ordem nenhuma, antes de o turno começar. A
+          // cauda é o que vem DEPOIS do último nome com trabalho; sem esse nome
+          // não há depois, e vale a regra de 20/08: ninguém nasce liberado.
+          // Acontece sempre que o mapa do turno chega sem anestesista definido —
+          // as 8 cirurgias da tarde daquele sábado tinham sala, hora e cirurgião,
+          // e nenhuma tinha dono.
+          const temAlguemComTrabalho = idxUltimoTrabalho >= 0
           let numeroOrdem = 0
           return linhasExibicao.map((linha, idx) => {
           // PLANTÃO NOTURNO (pedido do dono 24/07): ao virar P1–P4 a pessoa SAI da
@@ -1072,7 +1082,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // há como distinguir "o app decidiu" de "alguém liberou na frente".
           // NA CAUDA é o contrário: quem fecha a lista sem procedimento nenhum
           // nasce liberado, porque não está em jogo (dono 21/08).
-          const caudaSemTrabalho = semEscala && !forcadoEscalado && idx > idxUltimoTrabalho
+          const caudaSemTrabalho = temAlguemComTrabalho && semEscala && !forcadoEscalado && idx > idxUltimoTrabalho
           const liberado = liberadoReal || caudaSemTrabalho
           const estado = liberado ? 'liberado' : idx === idxProximo ? 'proximo' : 'escalado'
           // Bloqueio nos DOIS sentidos: só o "próximo" sai e só o "próximo a

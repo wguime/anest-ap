@@ -496,6 +496,51 @@ describe('Board — cor de status do card (Iniciada amarelo, Terminada verde)', 
   })
 })
 
+// ════════════════════════════════════════════════════════════════════════════
+// FILA INTEIRA SEM CIRURGIA (dono 22/08) — não existe cauda, ninguém nasce
+// liberado. Recorte real: a tarde de sábado 22/08 saiu com 8 cirurgias sem
+// anestesista definido, e os 7 nomes da fila nasceram vermelhos de uma vez,
+// antes de o turno começar. A regra da cauda (21/08) pressupõe um último nome
+// COM trabalho para marcar a fronteira; sem ele vale a de 20/08.
+// ════════════════════════════════════════════════════════════════════════════
+describe('Liberações — sem ninguém em cirurgia não há cauda', () => {
+  const semDono = {
+    id: 'e1', hospital: 'hro',
+    ordemLiberacao: { vespertino: ['ROMULO', 'DANIELA', 'GARIM', 'THAYNA'] },
+    liberacoes: {}, linhaOverrides: {},
+    // cirurgias existem, mas nenhuma tem anestesista — ninguém na fila "trabalha"
+    casos: [
+      { id: 'c1', sala: 'Sala 1', ordem: 0, hora: '13:00', turno: 'vespertino', anestesista: '?', semAnestesista: true, procedimento: 'ARTROPLASTIA' },
+      { id: 'c2', sala: 'Sala 4', ordem: 0, hora: '13:00', turno: 'vespertino', anestesista: '?', semAnestesista: true, procedimento: 'FRATURA' },
+    ],
+  }
+
+  it('NENHUM dos nomes nasce Liberado', () => {
+    render(<LiberacoesView escala={semDono} hospitalLabel="HRO" turno="vespertino" canEdit onToggle={() => {}} />, { wrapper: wrap })
+    expect(screen.queryAllByText('Liberado')).toHaveLength(0)
+  })
+
+  it('todos aparecem como Livre, aguardando na própria posição', () => {
+    // Livre é o estado de quem está sem caso (dono 20/08): aguarda na posição, o
+    // `naFila` a pula, e por isso não existe "próximo a ser liberado" aqui — o
+    // que NÃO pode é a fila inteira nascer vermelha, dizendo que todos já saíram.
+    render(<LiberacoesView escala={semDono} hospitalLabel="HRO" turno="vespertino" canEdit onToggle={() => {}} />, { wrapper: wrap })
+    expect(screen.queryAllByText('Livre').length).toBe(4)
+    expect(screen.queryByText('Próximo a ser liberado')).toBeNull()
+  })
+
+  it('com UM nome em cirurgia, a cauda depois dele volta a nascer liberada', () => {
+    const comDono = {
+      ...semDono,
+      casos: [{ id: 'c1', sala: 'Sala 1', ordem: 0, hora: '13:00', turno: 'vespertino', anestesista: 'ROMULO', procedimento: 'ARTROPLASTIA' }],
+    }
+    render(<LiberacoesView escala={comDono} hospitalLabel="HRO" turno="vespertino" canEdit onToggle={() => {}} />, { wrapper: wrap })
+    // Rômulo é o 1º do rodapé e o único com cirurgia: os três depois dele fecham
+    // a lista sem procedimento e nascem liberados (regra da cauda, 21/08)
+    expect(screen.queryAllByText('Liberado').length).toBe(3)
+  })
+})
+
 describe('Liberações — caso passa_tarde sinaliza o anestesista', () => {
   it('linha do anestesista com caso passa_tarde ganha badge "Passa para tarde"', () => {
     const escala = {

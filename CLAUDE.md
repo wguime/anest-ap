@@ -832,6 +832,34 @@ não gasta vaga — marcar não é reservar. Tinta verde só com cirurgia EM AND
   mediana 49min, pico 2 simultâneas em 06/08. Comunicado leigo à equipe:
   `.tmp/comunicado-urgencias-hro.md`.
 
+### FDS — fila completa e o fim do vermelho em massa (dono 22/08)
+
+Duas queixas no mesmo dia, sobre a escala de 22–23/08 publicada pelo app.
+
+**"Estão faltando colegas"** (domingo e noite): a linha de ordem do documento é a
+fila, mas quem está ESCALADO no turno e não foi citado nela **nunca some** —
+regra já estabelecida em 16/08 para a noite ("apenas adicione os P's faltantes"),
+que vale para qualquer turno. No domingo o bloco traz uma linha só (`P1 P2 P3
+P4`) e cita à parte 8º OSCAR, 7º GUILHERME DIDOMENICO e EMERGENCIA: 11º THAYNA —
+os três ficaram fora da fila. O slot de cada faltante vem de `sugerirRodapeFds`
+(postos na frente · numerados no meio · retaguarda no fim), que é a forma que o
+PRÓPRIO documento usa na manhã de sábado, onde P4/P3 são a retaguarda e saem
+primeiro. ⚠️ turno com UMA linha só no bloco = a linha é do MATUTINO; o
+vespertino nasce da grade daquele turno (marcado "sugerida") — aplicar a mesma
+linha nos dois punha Daniela/Rômulo à frente numa tarde cujo plantão é
+Karine/Gabriel, e sumia com Matheus e Cristina, que só existem na faixa 13-19.
+
+**Fila inteira vermelha:** a tarde de sábado saiu com 8 cirurgias sem
+anestesista definido e os 7 nomes nasceram LIBERADOS de uma vez, antes de o turno
+começar. Causa: `idxUltimoTrabalho` é -1 quando NINGUÉM tem cirurgia, e `idx >
+-1` é verdade para a fila toda. A cauda é o que vem DEPOIS do último nome com
+trabalho; sem esse nome não há depois, e vale a regra de 20/08 — ninguém nasce
+liberado. Guarda `temAlguemComTrabalho` em `LiberacoesView`; travado em
+`escalaCirurgicaPersonas.test.jsx` (describe "sem ninguém em cirurgia não há
+cauda"), com o caso inverso junto: um nome com cirurgia e a cauda volta a nascer
+liberada. Acontece sempre que o mapa do turno chega sem anestesista — o mapa do
+HRO de fim de semana traz a coluna vazia à tarde.
+
 ### "Passa para tarde" PERSISTE na tarde (dono 22/08)
 
 O marcador existia desde 20/08 mas só pintava o badge no turno de ORIGEM: a
