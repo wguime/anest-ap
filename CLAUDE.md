@@ -413,6 +413,56 @@ vaga livre quando é 1↔1 (P3 da Cristina), com "cobre X" no papel. Rollout: se
 sáb/dom seguem por hospital + aviso a quem edita. Demo `DEMO_DATE_FDS`
 (27/06, DEV-only) + e2e `escala-cirurgica-fds.spec.ts`.
 
+### FDS — todos os arquivos numa entrada só (dono 22/08)
+
+"é assim que recebo os arquivos": no fim de semana chegam JUNTOS, no mesmo dia, a
+tabela de posições (sáb+dom) e um mapa cirúrgico por hospital e por dia. Os 4
+arquivos de 22–23/08 custavam **6 leituras da Vision e 9 publicações**, com
+hospital/data/período trocados à mão entre elas. `ImportarEscalaFdsPage` virou a
+**LISTA DE DOCUMENTOS** (modelo A, escolhido em protótipo a 430px): a tabela é o
+1º item porque vale os dois dias, cada mapa entra como item que se declara
+sozinho (hospital pelo layout, data pelo cabeçalho — `classificarAnexoMapa`;
+o que a leitura não resolveu vira Select no próprio item, nunca palpite), e um
+"Publicar fim de semana" faz as 4 filas + uma chamada por (hospital, dia, turno)
+COM casos. Chave do item = hospital+dia: reanexar o mesmo par SUBSTITUI.
+
+⚠️ **O fluxo de DIA ÚTIL não muda** (dono 22/08: "durante a semana as escalas são
+postadas em turnos diferentes pois são disponibilizadas em turnos diferentes, não
+mexa na organização já estabelecida"). `ImportarEscalaPage` só trocou o import de
+`prepararCasos`, movido para `utils` como `prepararCasosImportados` (fonte única,
+sem alteração). A edge idem: sem a flag `secoesTurno` o prompt é literalmente a
+mesma string.
+
+**O que faz a leitura ficar correta — o turno vem da FAIXA, não só da hora:** o
+turno saía de `turnoDeHora`, e as linhas **"AS"** (a seguir) do HRO não têm hora —
+herdavam o período selecionado NO ANEXO. Por isso o mesmo mapa precisava ser
+anexado duas vezes, e a tarde se perdia (6 das 15 cirurgias do HRO em 22/08 são
+"AS"; em 21/08 a produção tem 4 casos com `hora='AS'` e 14 sem hora). A edge em
+`secoesTurno: true` lê a faixa **MATUTINO/VESPERTINO** e devolve `turno` por caso;
+`turnoDoCasoImportado` decide **hora > faixa > padrão** (a hora vence porque
+`selecionarCasosDoTurno` republica por ela).
+⚠️ **A herança de "//" NÃO pode atravessar a faixa:** ela é por SALA, e a Sala 1
+do HRO tem THAYNA às 7h com a coluna da tarde VAZIA — sem fronteira, as 3
+cirurgias da tarde sairiam no nome dela, em silêncio. Daí
+`prepararCasosFimDeSemana` preparar o lote POR TURNO. Só morde onde o documento
+deixa a tarde em branco, que é o caso do mapa de fim de semana (no dia útil a
+tarde traz nomes próprios).
+
+**Sugestão pelo posto da grade** (dono 22/08): sala sem nenhum nome no mapa entra
+pré-selecionada com quem a grade põe naquele hospital naquele turno
+(`anestesistaDoPosto` — HRO 13–19h = Rômulo), marcada "Sugerido pelo posto da
+grade". Só alcança grupo SEM nome lido, e só se o login resolver — nunca chuta
+identidade. Conferência do mapa (`ConferirMapaFdsPage`) é enxuta de propósito: no
+FDS o mapa **não tem rodapé** (a fila é a da linha 'fds'), então não há lista
+numerada, ajuda, troca nem duplicidade — e `ordemLiberacao: []` na publicação do
+mapa, senão nasceria uma 2ª ordem concorrendo com a única.
+
+Guardrail anti-perda espelha o do dia útil: anexo menor que o turno já publicado
+(≥3 casos) pede "Republicar por cima". Refs: `src/lib/escalaFdsMapas.js` (lib
+pura) · `ConferirMapaFdsPage.jsx` · testes `escalaFdsMapas.test.js` +
+`importarEscalaFdsMapas.test.jsx` · e2e visual `importar-fds-mapas.spec.ts`.
+⚠️ a edge `parse-escala-cirurgica` PRECISA de re-deploy para a faixa valer.
+
 ### Desenho das telas da escala (dono 17/08) — escolhido em protótipo, antes do código
 
 Método que valeu e vale para a próxima mudança visual do módulo: propostas renderizadas

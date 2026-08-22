@@ -3,6 +3,8 @@
  */
 import { resolverAnestesistas, nomeCirurgiaoCurto, titleCaseNome, primeiroNome, stripNotaRodape, fraseClinica } from '@/lib/colunaLiberacao'
 import { STATUS_CONCLUIDO, casoConcluido, casoTerminado } from '@/lib/escalaCirurgicaStatus'
+import { ehPosicaoAssistencial, filtrarItensImportados } from '@/lib/escalaCirurgicaItens'
+import { TURNOS_MAPA, turnoDoCasoImportado } from '@/lib/escalaFdsMapas'
 
 /** Normaliza nome p/ comparação (acento/caixa/PED-insensível). */
 export const normNome = (s) =>
@@ -1672,3 +1674,112 @@ export function planoDesfazerTroca({ escalas, resolverUid, a, b, turno = null })
   }
   return { lados }
 }
+
+// ── PREPARAÇÃO DO LOTE IMPORTADO ─────────────────────────────────────────────
+// Movido de ImportarEscalaPage em 2026-08-22 (sem alteração) para virar fonte
+// ÚNICA: o fluxo de FIM DE SEMANA precisa da MESMA sala canônica e do MESMO
+// carimbo de anestesista importado. Duplicar a regra é como o IOSC saiu com
+// três linhas para um anestesista só — mudar um lugar e esquecer o outro.
+
+export const linhaVazia = (sala = '') => ({
+  sala, hora: '', pacienteIniciais: '', procedimento: '',
+  cirurgiao: '', anestesista: '', bloco: 'normal', tipo: 'eletiva',
+})
+
+// Normalização de salas na importação (pedidos 2026-07-21):
+// Unimed — "CENTRO CIRÚRGICO - SALA 1" → "CC - Sala 1" + bloco pela seção;
+// HRO — "CO" → "Sala 7 - CO", "HO" → "Hospital de Olhos".
+const normalizarCasosImportados = (rows, hosp) => {
+  if (hosp === 'unimed') {
+    return rows.map((c) => {
+      const sala = normalizarSalaUnimed(c.sala)
+      return { ...c, sala, bloco: c.bloco && c.bloco !== 'normal' ? c.bloco : blocoDaSalaUnimed(sala) }
+    })
+  }
+  if (hosp === 'hro') return rows.map((c) => ({ ...c, sala: normalizarSalaHro(c.sala) }))
+  return rows
+}
+
+/**
+ * Carimba o nome do anestesista COMO VEIO da escala (herança "//" já resolvida).
+ * É a chave estável dos grupos da conferência: atribuir troca o texto da linha,
+ * e sem o carimbo o grupo do colega se dissolveria no meio da conferência.
+ * Campo só desta tela — o whitelist CASO_FIELDS do service não o publica.
+ */
+const carimbarImportado = (rows) => {
+  const nomes = nomesImportados(rows)
+  return rows.map((c, i) => ({ ...c, anestesistaImportado: nomes[i] }))
+}
+const posicaoParaCompat = (p) => ({
+  ...linhaVazia(String(p?.local || p?.sala || 'SRPA').trim()),
+  anestesista: String(p?.anestesista || '').trim(),
+  anestesistaUserId: p?.anestesistaUserId || null,
+  bloco: 'srpa',
+  posicaoAssistencial: true,
+})
+
+export const prepararCasosImportados = (rows, hosp, posicoes = []) => {
+  const normalizados = normalizarCasosImportados([
+    ...(rows || []),
+    ...(posicoes || []).map(posicaoParaCompat),
+  ], hosp)
+  // Edge antiga ainda pode devolver SRPA dentro de `casos`; a nova devolve em
+  // `posicoesAssistenciais`. A chave evita duplicar durante a transição.
+  const unicos = []
+  const posicoesVistas = new Set()
+  for (const item of filtrarItensImportados(normalizados)) {
+    if (ehPosicaoAssistencial(item)) {
+      const k = `${normNome(item.sala)}|${normNome(item.anestesista)}`
+      if (posicoesVistas.has(k)) continue
+      posicoesVistas.add(k)
+    }
+    unicos.push(item)
+  }
+  return carimbarImportado(unicos)
+}
+
+/**
+ * Prepara o lote de um mapa de FIM DE SEMANA, que traz o DIA INTEIRO numa
+ * leitura só. Diferença única e necessária em relação a `prepararCasosImportados`:
+ * a preparação roda POR TURNO, então a herança de "//" (mesmo anestesista da
+ * linha acima, por sala) NÃO atravessa a faixa MATUTINO/VESPERTINO.
+ *
+ * ⚠️ Sem isso, o mapa do HRO de 22/08 publicaria a tarde com o anestesista da
+ * MANHÃ: a Sala 1 tem THAYNA às 7h e a coluna da tarde veio VAZIA — a herança
+ * por sala atravessaria a faixa e carimbaria as três cirurgias da tarde no nome
+ * dela, em silêncio. É a mesma família do erro "não espalhe o nome de uma linha
+ * para outras" que o prompt combate desde 23/07; aqui a fronteira é a faixa.
+ *
+ * O fluxo de DIA ÚTIL não passa por aqui: lá o anexo é de um turno por vez.
+ */
+export function prepararCasosFimDeSemana(rows, hospital, posicoes = []) {
+  const porTurno = { matutino: [], vespertino: [] }
+  for (const c of rows || []) porTurno[turnoDoCasoImportado(c)].push(c)
+  return TURNOS_MAPA.flatMap((turno) => prepararCasosImportados(
+    porTurno[turno],
+    hospital,
+    // posições assistenciais (SRPA) não trazem turno — entram na manhã, como no
+    // fluxo normal, e o horário padrão delas segue sendo o de lá
+    turno === 'matutino' ? posicoes : [],
+  ).map((c) => ({ ...c, turno })))
+}
+
+/**
+ * Salas de um mapa de FIM DE SEMANA ainda sem identidade: nem nome lido no
+ * documento, nem login escolhido na conferência. É o número que a lista de
+ * documentos mostra em âmbar — não bloqueia publicar (sala descoberta é
+ * informação da escala), mas precisa estar visível antes.
+ */
+export function gruposSemIdentidade(mapa) {
+  const out = { matutino: 0, vespertino: 0 }
+  for (const turno of TURNOS_MAPA) {
+    const casos = (mapa?.casos || []).filter((c) => turnoDoCasoImportado(c) === turno)
+    const atrib = mapa?.atribuicoes?.[turno] || {}
+    for (const g of gruposAnestesista(casos, mapa?.hospital)) {
+      const lido = normNome(g.nome)
+      if (!atrib[g.chave] && (!lido || lido === '?')) out[turno] += 1
+    }
+  }
+  return out
+}
+

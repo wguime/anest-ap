@@ -459,13 +459,15 @@ async function setP4Hospital(data, hospital, { userName = null } = {}) {
  * e a resposta vira { dias: [...], ignorados: [...] } — refSabado/refDomingo
  * dão o ano às datas do título ("SÁBADO – 15 DE AGOSTO" vem sem ano).
  */
-async function parseEscalaImagem({ imageBase64, mimeType, hospital, modo, refSabado, refDomingo }) {
+async function parseEscalaImagem({ imageBase64, mimeType, hospital, modo, refSabado, refDomingo, secoesTurno }) {
   const { data, error } = await supabase.functions.invoke('parse-escala-cirurgica', {
     body: {
       imageBase64, mimeType, hospital,
       ...(modo ? { modo } : {}),
       ...(refSabado ? { refSabado } : {}),
       ...(refDomingo ? { refDomingo } : {}),
+      // turno pela FAIXA do documento — só o fluxo de fim de semana pede
+      ...(secoesTurno ? { secoesTurno: true } : {}),
     },
   })
   if (error) handleError(error, 'parseEscalaImagem')

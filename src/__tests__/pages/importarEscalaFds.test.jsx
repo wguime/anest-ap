@@ -98,13 +98,29 @@ const SUGESTAO_DOM_MAT = [
   'CRISTINA', 'MATHEUS', 'RAFAEL', 'THAYNA', 'GABRIEL', 'JOAO HENRIQUE', 'GUILHERME DIDOMENICO',
 ]
 
+/**
+ * A tela abre na LISTA DE DOCUMENTOS desde 2026-08-22 (os mapas cirúrgicos do
+ * fim de semana entram na mesma entrada). A tabela de posições é o primeiro item
+ * e a conferência dela — que é o que este arquivo cobre — abre por "Anexar ›".
+ * As asserções abaixo são as mesmas de antes; só o caminho até a tela mudou.
+ */
 async function importar(resposta = RESPOSTA_FDS) {
   svcMock.parseEscalaImagem.mockResolvedValueOnce(resposta)
   const utils = render(<ImportarEscalaFdsPage data="2026-08-15" onClose={vi.fn()} />, { wrapper: wrap })
+  fireEvent.click(await screen.findByRole('button', { name: /Anexar/ }))
+  await screen.findByText('Posições e fila', { selector: 'h1' })
   const input = utils.container.querySelector('input[type="file"]')
   fireEvent.change(input, { target: { files: [new File(['x'], 'fds.png', { type: 'image/png' })] } })
   await waitFor(() => expect(svcMock.parseEscalaImagem).toHaveBeenCalled())
   return utils
+}
+
+/** Volta da conferência da grade para a lista e publica o fim de semana. */
+async function publicarFds() {
+  fireEvent.click(await screen.findByRole('button', { name: /Concluir conferência/ }))
+  const botao = await screen.findByRole('button', { name: /Publicar fim de semana/ })
+  await waitFor(() => expect(botao).not.toBeDisabled())
+  fireEvent.click(botao)
 }
 
 beforeAll(() => {
@@ -134,7 +150,12 @@ describe('Conferência do FDS — leitura e sugestão', () => {
     // (matutino + vespertino) + a NOITE dos dois dias nascem de sugestão,
     // porque o documento não traz linha de liberação noturna (dono 16/08).
     expect(screen.queryByText(/Sugerida/)).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: /Publicar fim de semana \(4 turnos\)/ }))
+    // as três colunas de turno estão na tela, uma por dia (o rótulo se repete na
+    // linha de "acrescentar por login" do mesmo turno). Conferido ANTES de
+    // publicar: publicar volta para a lista de documentos.
+    expect(screen.getAllByText('Manhã').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getAllByText('Noite').length).toBeGreaterThanOrEqual(2)
+    await publicarFds()
     await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalledTimes(4))
     const chamadas = salvarEscalaTurno.mock.calls.map(([p]) => p)
     const sab = chamadas.find((p) => p.data === '2026-08-15' && p.turno === 'matutino')
@@ -142,10 +163,6 @@ describe('Conferência do FDS — leitura e sugestão', () => {
     expect(sab.fdsMeta.ordemFonte.matutino).toBe('documento')
     expect(sab.fdsMeta.ordemFonte.noturno).toBe('sugerida')
     expect(dom.fdsMeta.ordemFonte.matutino).toBe('sugerida')
-    // as três colunas de turno estão na tela, uma por dia (o rótulo se repete na
-    // linha de "acrescentar por login" do mesmo turno)
-    expect(screen.getAllByText('Manhã').length).toBeGreaterThanOrEqual(2)
-    expect(screen.getAllByText('Noite').length).toBeGreaterThanOrEqual(2)
   })
 
   it('funcionárias do PLANTÃO MATERNO ficam SÓ no informativo — nunca viram posição/ordem', async () => {
@@ -161,7 +178,7 @@ describe('Conferência do FDS — leitura e sugestão', () => {
 describe('Publicação — inversão na fronteira + fds_meta', () => {
   it('publica 4 turnos em hospital fds, casos [], rodapé INVERTIDO e meta completo', async () => {
     await importar()
-    fireEvent.click(screen.getByRole('button', { name: /Publicar fim de semana \(4 turnos\)/ }))
+    await publicarFds()
     await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalledTimes(4))
 
     const chamadas = salvarEscalaTurno.mock.calls.map(([p]) => p)
@@ -189,7 +206,7 @@ describe('Publicação — inversão na fronteira + fds_meta', () => {
 
   it('a fila da NOITE viaja no fds_meta.ordemNoite (dono 16/08) — sem virar turno no banco', async () => {
     await importar()
-    fireEvent.click(screen.getByRole('button', { name: /Publicar fim de semana \(4 turnos\)/ }))
+    await publicarFds()
     await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalledTimes(4))
     const chamadas = salvarEscalaTurno.mock.calls.map(([p]) => p)
     // continua 4 publicações: 'noturno' não é turno de caso no banco
@@ -212,7 +229,7 @@ describe('Publicação — inversão na fronteira + fds_meta', () => {
     // a lista da conferência corre na direção do DOCUMENTO (1º a ser liberado
     // no topo): remover o 1º tira quem sairia primeiro
     fireEvent.click(screen.getByRole('button', { name: /Remover/i }))
-    fireEvent.click(screen.getByRole('button', { name: /Publicar fim de semana \(4 turnos\)/ }))
+    await publicarFds()
     await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalled())
     const sab = salvarEscalaTurno.mock.calls.map(([p]) => p).find((p) => p.data === '2026-08-15' && p.turno === 'matutino')
     expect(sab.fdsMeta.ordemNoite).toEqual(['JOAO HENRIQUE', 'GUILHERME DIDOMENICO', 'MATHEUS'])
@@ -225,7 +242,8 @@ describe('Publicação — inversão na fronteira + fds_meta', () => {
     ]
     await importar()
     expect(screen.getAllByText(/mais de um candidato no cadastro/).length).toBeGreaterThan(0)
-    const botao = screen.getByRole('button', { name: /Publicar fim de semana/ })
+    fireEvent.click(await screen.findByRole('button', { name: /Concluir conferência/ }))
+    const botao = await screen.findByRole('button', { name: /Publicar fim de semana/ })
     expect(botao.disabled).toBe(true)
     fireEvent.click(botao)
     expect(salvarEscalaTurno).not.toHaveBeenCalled()

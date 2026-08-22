@@ -14,13 +14,13 @@ import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { parseExcelEscala } from '@/lib/excelEscala'
 import { nomeCirurgiaoCurto, separarListaRodape, titleCaseNome } from '@/lib/colunaLiberacao'
-import { aplicarHoraPadraoPosicoes, detectarItensDuplicados, ehPosicaoAssistencial, filtrarItensImportados, resumirItensEscala } from '@/lib/escalaCirurgicaItens'
+import { aplicarHoraPadraoPosicoes, detectarItensDuplicados, ehPosicaoAssistencial, resumirItensEscala } from '@/lib/escalaCirurgicaItens'
 import { ERRO_IA, classificarFalhaVision, mensagemFalhaVision } from '@/lib/escalaVisionFalha'
 import { isPermissionError } from '@/services/supabaseEscalaAnestesistaService'
 import { prepararImagemParaVision } from '@/lib/imagemVision'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
-import { normNome, candidatosPrimeiroNome, resumirRodape, gruposAnestesista, chavesAnestesista, nomesImportados, aplicarAtribuicoes, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital } from './utils'
+import { linhaVazia, prepararCasosImportados as prepararCasos, normNome, candidatosPrimeiroNome, resumirRodape, gruposAnestesista, chavesAnestesista, aplicarAtribuicoes, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import { planoCruzamentoUrgencias, salasContrato } from '@/lib/escalaCirurgicaUrgencias'
 import { ehFimDeSemana } from '@/lib/escalaFds'
@@ -34,11 +34,6 @@ const PERIODO_OPCOES = [
 ]
 const dataToISO = (d) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-
-const linhaVazia = (sala = '') => ({
-  sala, hora: '', pacienteIniciais: '', procedimento: '',
-  cirurgiao: '', anestesista: '', bloco: 'normal', tipo: 'eletiva',
-})
 
 /**
  * Valida as horas do lote antes da publicação. Horas inválidas nunca podem
@@ -97,58 +92,6 @@ const primeiroNomeUpper = (nome) => normNome(String(nome || '').split(/\s+/)[0] 
 // Sentinela do seletor por caso: deixar a linha SEM anestesista de propósito
 // ("?" da escala). Valor impossível como uid.
 const SEM_ANESTESISTA = '__sem__'
-
-// Normalização de salas na importação (pedidos 2026-07-21):
-// Unimed — "CENTRO CIRÚRGICO - SALA 1" → "CC - Sala 1" + bloco pela seção;
-// HRO — "CO" → "Sala 7 - CO", "HO" → "Hospital de Olhos".
-const normalizarCasosImportados = (rows, hosp) => {
-  if (hosp === 'unimed') {
-    return rows.map((c) => {
-      const sala = normalizarSalaUnimed(c.sala)
-      return { ...c, sala, bloco: c.bloco && c.bloco !== 'normal' ? c.bloco : blocoDaSalaUnimed(sala) }
-    })
-  }
-  if (hosp === 'hro') return rows.map((c) => ({ ...c, sala: normalizarSalaHro(c.sala) }))
-  return rows
-}
-
-/**
- * Carimba o nome do anestesista COMO VEIO da escala (herança "//" já resolvida).
- * É a chave estável dos grupos da conferência: atribuir troca o texto da linha,
- * e sem o carimbo o grupo do colega se dissolveria no meio da conferência.
- * Campo só desta tela — o whitelist CASO_FIELDS do service não o publica.
- */
-const carimbarImportado = (rows) => {
-  const nomes = nomesImportados(rows)
-  return rows.map((c, i) => ({ ...c, anestesistaImportado: nomes[i] }))
-}
-const posicaoParaCompat = (p) => ({
-  ...linhaVazia(String(p?.local || p?.sala || 'SRPA').trim()),
-  anestesista: String(p?.anestesista || '').trim(),
-  anestesistaUserId: p?.anestesistaUserId || null,
-  bloco: 'srpa',
-  posicaoAssistencial: true,
-})
-
-const prepararCasos = (rows, hosp, posicoes = []) => {
-  const normalizados = normalizarCasosImportados([
-    ...(rows || []),
-    ...(posicoes || []).map(posicaoParaCompat),
-  ], hosp)
-  // Edge antiga ainda pode devolver SRPA dentro de `casos`; a nova devolve em
-  // `posicoesAssistenciais`. A chave evita duplicar durante a transição.
-  const unicos = []
-  const posicoesVistas = new Set()
-  for (const item of filtrarItensImportados(normalizados)) {
-    if (ehPosicaoAssistencial(item)) {
-      const k = `${normNome(item.sala)}|${normNome(item.anestesista)}`
-      if (posicoesVistas.has(k)) continue
-      posicoesVistas.add(k)
-    }
-    unicos.push(item)
-  }
-  return carimbarImportado(unicos)
-}
 
 export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial, onClose, onAbrirFds }) {
   const { toast } = useToast()

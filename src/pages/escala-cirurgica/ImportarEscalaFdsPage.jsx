@@ -18,15 +18,29 @@
  * Funcionárias (bloco PLANTÃO MATERNO com datas) NUNCA viram posição — a edge
  * as devolve em `ignorados` e aqui viram só um informativo.
  *
+ * MAPAS CIRÚRGICOS NA MESMA TELA (dono 2026-08-22): no fim de semana os arquivos
+ * chegam TODOS JUNTOS no mesmo dia — a tabela de posições mais um mapa por
+ * hospital e por dia. A página virou a LISTA DE DOCUMENTOS: a tabela é o
+ * primeiro item (vale os dois dias) e cada mapa entra como um item que se
+ * declara sozinho (hospital pelo layout, data pelo cabeçalho). Antes, os 4
+ * arquivos de 22–23/08 custavam 6 leituras da Vision e 9 publicações, com
+ * hospital/data/período trocados à mão entre elas.
+ *
+ * ⚠️ O fluxo de DIA ÚTIL não muda (dono 2026-08-22): lá as escalas são postadas
+ * em turnos diferentes porque saem em horas diferentes. `ImportarEscalaPage`
+ * segue como está — o único código compartilhado é `prepararCasosImportados`,
+ * movido para utils sem alteração.
+ *
  * Publicar = até 4 chamadas rpc_publicar_escala_turno em hospital='fds'
- * (sáb-mat, sáb-vesp, dom-mat, dom-vesp), casos SEMPRE [] (a fila deriva dos
- * casos por hospital, importados no fluxo normal). Republicar é idempotente.
+ * (sáb-mat, sáb-vesp, dom-mat, dom-vesp) com casos [] — a fila única deriva dos
+ * casos por hospital — MAIS uma chamada por (hospital, dia, turno) com casos,
+ * vinda dos mapas. Republicar é idempotente.
  */
 import { useMemo, useState } from 'react'
-import { AlertTriangle, ArrowDown, ArrowUp, Check, ChevronLeft, Loader2, Plus, Trash2, X } from 'lucide-react'
-import { Badge, Button, DatePicker, FileUpload, Input, Select, useToast } from '@/design-system'
+import { AlertTriangle, ArrowDown, ArrowUp, Check, ChevronLeft, FileText, Loader2, Plus, Trash2, X } from 'lucide-react'
+import { Badge, Button, ConfirmDialog, DatePicker, FileUpload, Input, Select, useToast } from '@/design-system'
 import svc from '@/services/supabaseEscalaCirurgicaService'
-import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
+import { useEscalaCirurgicaActions, HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { prepararImagemParaVision } from '@/lib/imagemVision'
@@ -36,7 +50,15 @@ import {
   FDS_HOSPITAL, FAIXAS_FDS, normalizarPn, normalizarParseFds, sugerirRodapeFds,
   rodapeDeOrdemDoc, sabadoDoFimDeSemana,
 } from '@/lib/escalaFds'
-import { normNome, candidatosPrimeiroNome, formatData } from './utils'
+import {
+  normNome, candidatosPrimeiroNome, formatData, prepararCasosFimDeSemana,
+  aplicarAtribuicoes, gruposSemIdentidade, gruposAnestesista,
+} from './utils'
+import {
+  carimbarTurnos, chaveMapa, classificarAnexoMapa, planoPublicacaoMapas,
+  resumoMapa, HOSPITAIS_MAPA,
+} from '@/lib/escalaFdsMapas'
+import ConferirMapaFdsPage from './ConferirMapaFdsPage'
 import { podeEditarEscalaCirurgica } from './gate'
 
 // Turnos PUBLICADOS como linha da fila única (a noite não é turno de caso no
@@ -95,6 +117,15 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
   // FORA das colunas (não cabem em ~130px)
   const [posSel, setPosSel] = useState(null)   // { iso, pn }
   const [ordemSel, setOrdemSel] = useState(null) // { iso, turno, i }
+  // MAPAS CIRÚRGICOS: chaveMapa(hospital, data) → { id, nome, hospital, data,
+  // casos, atribuicoes: {turno: {chave: uid}}, sugeridos, turnoAberto }.
+  // A chave é hospital+dia porque reanexar o MESMO par substitui (a foto nova
+  // manda, como no rodapé da conferência de dia útil) — dois itens do mesmo par
+  // publicariam duas vezes sobre a mesma escala.
+  const [mapas, setMapas] = useState({})
+  // 'lista' (documentos) · 'grade' (conferência da tabela de posições) · chave de um mapa
+  const [vista, setVista] = useState('lista')
+  const [encolhimentos, setEncolhimentos] = useState(null) // guardrail anti-perda
 
   const diasAlvo = [sabadoISO, domingoISO].filter((iso) => dias[iso])
 
@@ -168,6 +199,113 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
       toast({ variant: 'error', title: 'Falha ao ler a imagem', description: 'Tente outra foto/print do documento.' })
     } finally { setCarregando(false) }
   }
+
+  // ── MAPAS CIRÚRGICOS ──────────────────────────────────────────────────────
+  // Vários de uma vez: o fim de semana chega como um lote. Cada arquivo é lido
+  // com `secoesTurno` — a edge devolve o turno POR CASO, pela faixa MATUTINO/
+  // VESPERTINO do documento. É isso que faz uma leitura servir os dois turnos:
+  // sem a faixa, as linhas "AS" (6 das 15 cirurgias do HRO em 22/08) herdam o
+  // período do anexo e a tarde se perde.
+  const importarMapas = async (files) => {
+    const lista = (Array.isArray(files) ? files : [files]).filter(Boolean)
+    if (!lista.length) return
+    setCarregando(true)
+    const problemas = []
+    let lidos = 0
+    try {
+      for (const file of lista) {
+        try {
+          const img = await prepararImagemParaVision(file)
+          const res = await svc.parseEscalaImagem({
+            imageBase64: img.base64, mimeType: img.mimeType, secoesTurno: true,
+          })
+          if (res?.error === ERRO_IA) {
+            problemas.push(`${file.name}: ${mensagemFalhaVision(
+              classificarFalhaVision({ status: res.iaStatus, tipo: res.iaTipo, mensagem: res.iaMensagem }),
+            ).title}`)
+            continue
+          }
+          if (res?.error === 'extracao_truncada' || res?.error === 'json_invalido') {
+            problemas.push(`${file.name}: a leitura foi cortada — envie um print mais fechado`)
+            continue
+          }
+          const cls = classificarAnexoMapa(res, { sabadoISO, domingoISO })
+          if (!(res.casos || []).length) {
+            problemas.push(`${file.name}: nenhuma cirurgia reconhecida`)
+            continue
+          }
+          // hospital indefinido não impede entrar na lista — o item pede a
+          // confirmação em vez de a tela escolher por conta própria
+          // por TURNO: a herança de "//" não pode atravessar a faixa
+          // MATUTINO/VESPERTINO (ver prepararCasosFimDeSemana)
+          const casos = carimbarTurnos(
+            prepararCasosFimDeSemana(res.casos, cls.hospital, res.posicoesAssistenciais || []),
+            'matutino',
+          )
+          const chave = chaveMapa(cls.hospital, cls.data)
+          setMapas((prev) => ({
+            ...prev,
+            [chave]: {
+              id: chave, nome: file.name, hospital: cls.hospital, data: cls.data,
+              dataForaDoFimDeSemana: cls.dataForaDoFimDeSemana, confirmar: cls.confirmar,
+              casos, atribuicoes: {}, sugeridos: {}, turnoAberto: null,
+              truncado: !!res.truncado, conferido: false,
+            },
+          }))
+          lidos += 1
+        } catch (err) {
+          problemas.push(`${file.name}: ${err?.name === 'ErroImagem' ? err.message : 'falha na leitura'}`)
+        }
+      }
+    } finally { setCarregando(false) }
+    if (lidos) {
+      toast({
+        variant: problemas.length ? 'warning' : 'success',
+        duration: problemas.length ? 12000 : undefined,
+        title: `${lidos} mapa${lidos > 1 ? 's' : ''} lido${lidos > 1 ? 's' : ''}`,
+        description: problemas.length ? problemas.join(' · ') : 'Confira o anestesista de cada sala antes de publicar.',
+      })
+    } else {
+      toast({
+        variant: 'error', duration: 12000,
+        title: 'Nenhum mapa foi lido',
+        description: problemas.join(' · ') || 'Tente outro print do mapa cirúrgico.',
+      })
+    }
+  }
+
+  const salvarMapa = (mapa, { silencioso = false } = {}) => {
+    setMapas((prev) => ({ ...prev, [mapa.id]: mapa }))
+    if (!silencioso) setVista('lista')
+  }
+  const removerMapa = (chave) => {
+    setMapas((prev) => { const p = { ...prev }; delete p[chave]; return p })
+    setVista('lista')
+  }
+  /** Hospital/data confirmados à mão re-chaveiam o item (o par é a identidade). */
+  const redefinirMapa = (chave, campos) => setMapas((prev) => {
+    const atual = prev[chave]
+    if (!atual) return prev
+    const proximo = { ...atual, ...campos }
+    proximo.confirmar = [!proximo.hospital && 'hospital', !proximo.data && 'data'].filter(Boolean)
+    const novaChave = chaveMapa(proximo.hospital, proximo.data)
+    const p = { ...prev }
+    delete p[chave]
+    // sala canônica depende do hospital: trocar o hospital re-prepara o lote
+    if (campos.hospital && campos.hospital !== atual.hospital) {
+      proximo.casos = carimbarTurnos(prepararCasosFimDeSemana(proximo.casos, proximo.hospital), 'matutino')
+      proximo.atribuicoes = {}
+      proximo.sugeridos = {}
+    }
+    p[novaChave] = { ...proximo, id: novaChave }
+    return p
+  })
+
+  const listaMapas = useMemo(
+    () => Object.values(mapas).sort((a, b) =>
+      String(a.data).localeCompare(String(b.data)) || String(a.hospital).localeCompare(String(b.hospital))),
+    [mapas],
+  )
 
   // ── edição ────────────────────────────────────────────────────────────────
   const mudarDia = (iso, mut) => setDias((prev) => ({ ...prev, [iso]: mut(prev[iso]) }))
@@ -262,9 +400,46 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
   const todosBloqueios = diasAlvo.flatMap((iso) => TURNOS_ORDEM.flatMap((t) =>
     bloqueiosDe(iso, t).map((b) => `${formatData(iso)} · ${TURNO_LABEL[t]}: ${b}`)))
 
+  // Mapa sem hospital ou sem data não tem para onde ir — bloqueia, porque
+  // publicar "no palpite" põe cirurgia no hospital errado.
+  const bloqueiosMapas = listaMapas
+    .filter((m) => m.confirmar?.length)
+    .map((m) => `${m.nome}: falta ${m.confirmar.join(' e ')} — complete no item.`)
+  const planoMapas = useMemo(() => planoPublicacaoMapas(listaMapas), [listaMapas])
+  const totalCasos = planoMapas.reduce((n, p) => n + p.casos.length, 0)
+
   // ── publicação ────────────────────────────────────────────────────────────
-  const publicar = async () => {
-    if (publicando || !diasAlvo.length || todosBloqueios.length) return
+  /**
+   * GUARDRAIL ANTI-PERDA (incidente 23/07 no fluxo de dia útil: publicar com 1
+   * caso APAGOU os 31 da escala — publicar é DELETE+reinsert). Aqui o risco é o
+   * mesmo: reimportar um print cortado por cima de uma escala cheia. Compara com
+   * o que está publicado e pede confirmação antes de encolher.
+   */
+  const conferirEncolhimento = async () => {
+    const achados = []
+    const porEscala = new Map()
+    for (const item of planoMapas) {
+      const k = `${item.data}|${item.hospital}`
+      if (!porEscala.has(k)) {
+        porEscala.set(k, await svc.fetchEscala(item.data, item.hospital).catch(() => null))
+      }
+      const existente = porEscala.get(k)
+      const atuais = (existente?.casos || []).filter((c) => (c.turno || 'matutino') === item.turno).length
+      if (atuais >= 3 && atuais > item.casos.length) {
+        achados.push(`${HOSPITAL_LABEL[item.hospital] || item.hospital} ${formatData(item.data)} ${TURNO_LABEL[item.turno]}: ${atuais} → ${item.casos.length}`)
+      }
+    }
+    return achados
+  }
+
+  const publicar = async ({ confirmado = false } = {}) => {
+    if (publicando || !diasAlvo.length || todosBloqueios.length || bloqueiosMapas.length) return
+    if (!confirmado && planoMapas.length) {
+      setPublicando(true)
+      let achados = []
+      try { achados = await conferirEncolhimento() } finally { setPublicando(false) }
+      if (achados.length) { setEncolhimentos(achados); return }
+    }
     setPublicando(true)
     const publicados = []
     const falhas = []
@@ -311,6 +486,37 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
           }
         }
       }
+      // MAPAS: uma publicação por (hospital, dia, turno) COM casos. O turno sem
+      // caso nenhum não é publicado — a RPC substitui o turno inteiro, e mandar
+      // vazio apagaria o que já estivesse lá.
+      for (const item of planoMapas) {
+        const atribuicoesDoTurno = mapas[item.mapaId]?.atribuicoes?.[item.turno] || {}
+        const casos = aplicarAtribuicoes(
+          item.casos,
+          atribuicoesDoTurno,
+          (chave, uid) => {
+            const r = rosterByUid.get(uid)
+            if (r) return r.apelidos?.[0] || primeiroNomeUpper(r.nome)
+            const g = gruposAnestesista(item.casos, item.hospital).find((x) => x.chave === chave)
+            return g?.nome ? normNome(g.nome) : ''
+          },
+          resolver,
+        )
+        const rotulo = `${HOSPITAL_LABEL[item.hospital] || item.hospital} ${formatData(item.data)} ${TURNO_LABEL[item.turno]}`
+        try {
+          await salvarEscalaTurno({
+            data: item.data, hospital: item.hospital, turno: item.turno,
+            casos,
+            // No fim de semana o mapa NÃO traz rodapé: a fila é a da linha 'fds'.
+            // Publicar rodapé aqui criaria uma segunda ordem, concorrente da única.
+            ordemLiberacao: [], ajudaExterna: [],
+            status: 'publicada',
+          }, { userName: user?.displayName })
+          publicados.push(`${rotulo} (${casos.length})`)
+        } catch (err) {
+          falhas.push(`${rotulo}: ${err.message}`)
+        }
+      }
       if (falhas.length) {
         toast({
           variant: 'warning', duration: 12000,
@@ -318,23 +524,28 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
           description: `Republicar é seguro (substitui o turno). Falhou: ${falhas.join(' · ')}`,
         })
       } else {
-        toast({ variant: 'success', title: 'Fim de semana publicado', description: `${publicados.length} turno(s) na fila única.` })
+        toast({
+          variant: 'success',
+          title: 'Fim de semana publicado',
+          description: `${diasAlvo.length * TURNOS.length} turno(s) na fila única${totalCasos ? ` · ${totalCasos} cirurgia(s) em ${planoMapas.length} turno(s) de hospital` : ''}.`,
+        })
       }
       if (publicados.length) onClose?.({ data: sabadoISO })
     } finally { setPublicando(false) }
   }
 
-  return (
+  // ── VISTA: conferência da TABELA DE POSIÇÕES (o documento de fim de semana) ─
+  const renderGrade = () => (
     <div className="fixed inset-0 z-modal bg-background overflow-y-auto">
       <div className="sticky top-0 z-10 border-b border-border bg-card pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex h-14 max-w-3xl items-center px-4">
-          <button type="button" onClick={() => onClose?.()} aria-label="Cancelar"
+          <button type="button" onClick={() => setVista('lista')} aria-label="Voltar para os documentos"
             className="flex min-h-[44px] min-w-[70px] items-center gap-1 text-primary active:opacity-60">
             <ChevronLeft className="h-5 w-5" />
-            <span className="text-sm font-medium">Cancelar</span>
+            <span className="text-sm font-medium">Voltar</span>
           </button>
           <h1 className="min-w-0 flex-1 truncate text-center text-base font-semibold text-foreground">
-            Fim de semana · fila única
+            Posições e fila
           </h1>
           <span className="min-w-[70px]" aria-hidden="true" />
         </div>
@@ -345,26 +556,9 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
         )}
         <p className="text-sm text-muted-foreground">
           Documento "ESCALA DE FINAL DE SEMANA": grade P1–P4, numeração das posições e a ordem de
-          liberação de cada turno — uma fila só para todos os hospitais. As listas de procedimentos
-          continuam sendo importadas por hospital, no fluxo normal.
+          liberação de cada turno — uma fila só para todos os hospitais. Os mapas cirúrgicos entram
+          como documentos próprios na lista anterior.
         </p>
-
-        <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">Sábado do fim de semana</label>
-          <div className="flex items-center gap-2">
-            <DatePicker
-              className="flex-1 min-w-0"
-              value={(() => { const [y, m, d] = String(sabadoISO || '').split('-').map(Number); return y ? new Date(y, m - 1, d) : new Date() })()}
-              onChange={(d) => {
-                if (!d) return
-                const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-                setSabadoISO(sabadoDoFimDeSemana(iso) || iso)
-              }}
-              placeholder="Sábado"
-            />
-            <span className="shrink-0 text-xs text-muted-foreground">+ domingo {formatData(domingoISO)}</span>
-          </div>
-        </div>
 
         <FileUpload accept="image/*" maxSize={15 * 1024 * 1024} variant="dropzone"
           label="Foto do documento de fim de semana"
@@ -576,18 +770,258 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
         })}
 
         {diasAlvo.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">
-              Publicar substitui os turnos da fila única e zera as marcações deles (a escala
-              recém-postada é a válida). A ordem publicada é imutável — mudar = republicar aqui.
-            </p>
-            <Button className="w-full" disabled={!canEdit || publicando || !!todosBloqueios.length} onClick={publicar}>
-              {publicando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-              Publicar fim de semana ({diasAlvo.length * TURNOS.length} turnos)
-            </Button>
-          </div>
+          <Button className="w-full" variant="outline" onClick={() => setVista('lista')}>
+            <Check className="h-4 w-4" /> Concluir conferência
+          </Button>
         )}
       </div>
+    </div>
+  )
+
+  // ── VISTA: LISTA DE DOCUMENTOS (modelo escolhido pelo dono 2026-08-22) ──────
+  // Um item por arquivo, na ordem em que chegam. A tabela de posições é o
+  // primeiro item porque vale os DOIS dias; cada mapa vira um item que se
+  // declara sozinho. O que ainda impede publicar aparece no próprio item.
+  const gradeLida = diasAlvo.length > 0
+  const itemGrade = {
+    estado: gradeLida ? (todosBloqueios.length ? 'erro' : 'ok') : 'vazio',
+    titulo: 'Posições e fila',
+    sub: gradeLida
+      ? `${Object.keys(dias[sabadoISO]?.posicoes || {}).length} posições · filas de manhã, tarde e noite`
+      : 'Documento "ESCALA DE FINAL DE SEMANA" — grade e ordem de liberação',
+    pendencia: todosBloqueios[0] || '',
+    erro: !!todosBloqueios.length,
+  }
+
+  const renderLista = () => (
+    <div className="fixed inset-0 z-modal bg-background overflow-y-auto">
+      <div className="sticky top-0 z-10 border-b border-border bg-card pt-[env(safe-area-inset-top)]">
+        <div className="mx-auto flex h-14 max-w-3xl items-center px-4">
+          <button type="button" onClick={() => onClose?.()} aria-label="Cancelar"
+            className="flex min-h-[44px] min-w-[70px] items-center gap-1 text-primary active:opacity-60">
+            <ChevronLeft className="h-5 w-5" />
+            <span className="text-sm font-medium">Cancelar</span>
+          </button>
+          <h1 className="min-w-0 flex-1 truncate text-center text-base font-semibold text-foreground">
+            Fim de semana
+          </h1>
+          <span className="min-w-[70px]" aria-hidden="true" />
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-3xl space-y-3 p-4 pb-32">
+        {!canEdit && (
+          <p className="rounded-lg bg-warning/10 p-3 text-sm text-warning">Você não tem permissão para confeccionar escalas.</p>
+        )}
+
+        {/* dois passos declarados, mesma gramática da importação de dia útil */}
+        <ol className="flex items-center gap-2" aria-label="Etapas da importação">
+          {[{ n: 1, label: 'Anexar', on: !gradeLida && !listaMapas.length }, { n: 2, label: 'Conferir', on: gradeLida || listaMapas.length > 0 }].map((passo, i) => (
+            <li key={passo.n} className="flex items-center gap-2">
+              {i > 0 && <span className="h-px w-4 bg-border-strong" aria-hidden="true" />}
+              <span className={`flex items-center gap-1.5 text-xs font-semibold ${passo.on ? 'text-primary' : 'text-muted-foreground'}`}>
+                <span className={`flex h-[22px] w-[22px] items-center justify-center rounded-full text-[11px] ${passo.on ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                  {passo.n}
+                </span>
+                {passo.label}
+              </span>
+            </li>
+          ))}
+        </ol>
+
+        <section className="space-y-2 rounded-2xl border border-border-strong bg-card p-3">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-primary">Qual fim de semana</h2>
+          <DatePicker
+            className="w-full min-w-0"
+            value={(() => { const [y, m, d] = String(sabadoISO || '').split('-').map(Number); return y ? new Date(y, m - 1, d) : new Date() })()}
+            onChange={(d) => {
+              if (!d) return
+              const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+              setSabadoISO(sabadoDoFimDeSemana(iso) || iso)
+            }}
+            placeholder="Sábado"
+          />
+          <p className="text-xs text-muted-foreground">Sábado {formatData(sabadoISO)} · Domingo {formatData(domingoISO)}</p>
+        </section>
+
+        <div className="flex items-baseline gap-2">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-primary">Documentos</h2>
+          <span className="text-[11px] text-muted-foreground">
+            {(gradeLida ? 1 : 0) + listaMapas.length} de {1 + listaMapas.length} lido
+            {1 + listaMapas.length > 1 ? 's' : ''}
+          </span>
+        </div>
+
+        <div className="overflow-hidden rounded-2xl border border-border-strong bg-card">
+          {/* item fixo: a tabela de posições vale os dois dias */}
+          <ItemDocumento
+            estado={itemGrade.estado}
+            titulo={itemGrade.titulo}
+            sub={itemGrade.sub}
+            pendencia={itemGrade.pendencia}
+            erro={itemGrade.erro}
+            acao={gradeLida ? 'Conferir' : 'Anexar'}
+            onAbrir={() => setVista('grade')}
+          />
+          {listaMapas.map((m) => {
+            const r = resumoMapa(m.casos)
+            const sem = gruposSemIdentidade(m)
+            const semTotal = sem.matutino + sem.vespertino
+            return (
+              <ItemDocumento
+                key={m.id}
+                estado={m.confirmar?.length ? 'erro' : semTotal ? 'aviso' : 'ok'}
+                erro={!!m.confirmar?.length}
+                titulo={`${m.hospital ? HOSPITAL_LABEL[m.hospital] : 'Hospital?'} · ${m.data ? formatData(m.data) : 'data?'}`}
+                sub={`${r.total} cirurgia${r.total === 1 ? '' : 's'} — manhã ${r.matutino} · tarde ${r.vespertino}`}
+                pendencia={
+                  m.confirmar?.length
+                    ? `Falta ${m.confirmar.join(' e ')}${m.dataForaDoFimDeSemana ? ` — o arquivo mostra ${formatData(m.dataForaDoFimDeSemana)}` : ''}`
+                    : semTotal
+                      ? `${semTotal} sala(s) sem anestesista`
+                      : m.truncado ? 'Leitura cortada no fim — confira as últimas linhas' : ''
+                }
+                acao="Conferir"
+                onAbrir={() => setVista(m.id)}
+                onRemover={() => removerMapa(m.id)}
+              >
+                {!!m.confirmar?.length && (
+                  <div className="mt-2 grid grid-cols-2 gap-1.5">
+                    <Select
+                      className="min-w-0"
+                      aria-label="Hospital do mapa"
+                      options={HOSPITAIS_MAPA.map((h) => ({ value: h, label: HOSPITAL_LABEL[h] || h }))}
+                      value={m.hospital || ''}
+                      onChange={(v) => redefinirMapa(m.id, { hospital: v })}
+                      placeholder="Hospital"
+                    />
+                    <Select
+                      className="min-w-0"
+                      aria-label="Dia do mapa"
+                      options={[
+                        { value: sabadoISO, label: `Sábado ${formatData(sabadoISO)}` },
+                        { value: domingoISO, label: `Domingo ${formatData(domingoISO)}` },
+                      ]}
+                      value={m.data || ''}
+                      onChange={(v) => redefinirMapa(m.id, { data: v })}
+                      placeholder="Dia"
+                    />
+                  </div>
+                )}
+              </ItemDocumento>
+            )
+          })}
+        </div>
+
+        <FileUpload
+          accept="image/*"
+          multiple
+          maxSize={15 * 1024 * 1024}
+          variant="dropzone"
+          label="Adicionar mapas cirúrgicos"
+          description="Pode soltar vários de uma vez — hospital e dia saem do próprio arquivo. Paciente só por iniciais."
+          onChange={(f) => importarMapas(f)}
+          disabled={carregando || !canEdit}
+        />
+
+        {carregando && (
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Lendo os documentos…
+          </p>
+        )}
+
+        {[...todosBloqueios, ...bloqueiosMapas].map((b, i) => (
+          <p key={i} className="flex items-start gap-1.5 rounded-lg bg-destructive/10 p-2 text-xs font-medium text-destructive">
+            <X className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {b}
+          </p>
+        ))}
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 border-t border-border bg-card p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="mx-auto max-w-3xl space-y-2">
+          <p className="text-center text-[11px] text-muted-foreground">
+            {gradeLida
+              ? `${diasAlvo.length * TURNOS.length} filas${planoMapas.length ? ` · ${planoMapas.length} turnos de cirurgias · ${totalCasos} casos` : ' · nenhum mapa cirúrgico anexado'}`
+              : 'Anexe a tabela de posições — é ela que traz a fila de liberação'}
+          </p>
+          <Button
+            className="w-full"
+            disabled={!canEdit || publicando || !gradeLida || !!todosBloqueios.length || !!bloqueiosMapas.length}
+            onClick={() => publicar()}
+          >
+            {publicando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+            Publicar fim de semana
+          </Button>
+        </div>
+      </div>
+
+      <ConfirmDialog
+        open={!!encolhimentos}
+        variant="danger"
+        onClose={() => setEncolhimentos(null)}
+        onCancel={() => setEncolhimentos(null)}
+        onConfirm={() => { setEncolhimentos(null); publicar({ confirmado: true }) }}
+        title="A escala publicada tem mais cirurgias"
+        description={`O anexo traz menos casos do que já está publicado: ${(encolhimentos || []).join(' · ')}. Publicar substitui o turno inteiro — o que está lá some. Confira se o print pegou o mapa completo.`}
+        confirmText="Republicar por cima"
+      />
+    </div>
+  )
+
+  const mapaAberto = mapas[vista]
+  if (mapaAberto) {
+    return (
+      <ConferirMapaFdsPage
+        mapa={mapaAberto}
+        grade={dias[mapaAberto.data]?.grade || null}
+        canEdit={canEdit}
+        onSalvar={salvarMapa}
+        onVoltar={() => setVista('lista')}
+      />
+    )
+  }
+  return vista === 'grade' ? renderGrade() : renderLista()
+}
+
+/**
+ * Uma linha da lista de documentos. O alvo de toque do "Conferir" é 44px — o
+ * badge sozinho media 31px, abaixo da regra da casa.
+ */
+function ItemDocumento({ estado, titulo, sub, pendencia, erro, acao, onAbrir, onRemover, children }) {
+  const marca = {
+    ok: { classe: 'bg-success text-white', simbolo: '✓' },
+    aviso: { classe: 'bg-warning text-warning-foreground', simbolo: '!' },
+    erro: { classe: 'bg-destructive text-white', simbolo: '!' },
+    vazio: { classe: 'border border-dashed border-border-strong text-muted-foreground', simbolo: '' },
+  }[estado] || { classe: 'bg-muted', simbolo: '' }
+  return (
+    <div className="border-b border-border last:border-b-0 px-3 py-2.5">
+      <div className="flex items-start gap-2.5">
+        <span aria-hidden="true"
+          className={`mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-[12px] font-extrabold ${marca.classe}`}>
+          {marca.simbolo || <FileText className="h-3 w-3" />}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] font-bold leading-tight text-foreground">{titulo}</p>
+          <p className="mt-0.5 text-[12.5px] text-muted-foreground">{sub}</p>
+          {pendencia && (
+            <p className={`mt-0.5 text-xs font-semibold ${erro ? 'text-destructive' : 'text-warning'}`}>{pendencia}</p>
+          )}
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1 self-center">
+          <button type="button" onClick={onAbrir}
+            className="flex min-h-[44px] items-center rounded-[10px] border border-primary/45 px-2.5 text-[12.5px] font-bold text-primary active:opacity-60">
+            {acao} ›
+          </button>
+          {onRemover && (
+            <button type="button" onClick={onRemover} aria-label={`Remover ${titulo}`}
+              className="text-[11px] font-semibold text-muted-foreground active:opacity-60">
+              Remover
+            </button>
+          )}
+        </div>
+      </div>
+      {children}
     </div>
   )
 }

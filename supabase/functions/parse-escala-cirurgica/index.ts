@@ -118,6 +118,26 @@ REGRAS:
   "materno" = relatório de sistema (G-HOSP) com título "Mapa de cirurgias", colunas Hora/Leito/Paciente/Cirurgião/Procedimento/Observação/Anestesia/Convênio/Sala.
   Se não tiver certeza, "".`
 
+// ── SEÇÕES DE TURNO (2026-08-22) ────────────────────────────────────────────
+// body { secoesTurno: true }: acrescenta ao prompt normal a leitura da FAIXA
+// "MATUTINO"/"VESPERTINO" que divide o mapa em dois blocos, devolvendo o turno
+// POR CASO. Existe porque o turno saía só da HORA, e as linhas "AS" (a seguir)
+// não têm hora: elas herdavam o período selecionado no anexo, então um mapa só
+// nunca produzia manhã e tarde corretas — era preciso anexá-lo duas vezes.
+//
+// ⚠️ SÓ o fluxo de FIM DE SEMANA envia a flag. No dia útil as escalas chegam em
+// turnos separados, em horas diferentes, e a organização de lá não muda (dono
+// 2026-08-22) — sem a flag o prompt é literalmente a mesma string de antes.
+const SECOES_TURNO_REGRA = `
+
+TURNO DE CADA CASO (a imagem traz o dia inteiro):
+- Acrescente ao schema de cada caso o campo "turno": "matutino"|"vespertino"|"".
+- O mapa é dividido por FAIXAS DE TÍTULO com os dizeres MATUTINO e VESPERTINO (costumam vir destacadas em amarelo, ocupando a largura da tabela). Toda linha ABAIXO de uma faixa pertence àquele turno, até a faixa seguinte.
+- Vale a POSIÇÃO na tabela, nunca a hora: linhas com "AS", "A SEGUIR", célula de hora vazia ou ilegível recebem o turno da faixa em que estão. É justamente essa linha sem hora que a faixa existe para classificar.
+- Sem nenhuma faixa visível na imagem, devolva "" — quem lê decide pelo período escolhido.
+`
+
+
 // ── MODO FDS (2026-08-15) ────────────────────────────────────────────────────
 // body { modo: 'fds' }: o upload é o documento "ESCALA DE FINAL DE SEMANA"
 // (grade P1–P4 em 3 faixas × 4 colunas + listas numeradas P5+ por período +
@@ -261,7 +281,9 @@ async function lerRespostaStream(res: Response): Promise<{ texto: string; stopRe
 const BLOCOS = new Set(['normal', 'srpa', 'imagem', 'hemodinamica', 'exames', 'iosc', 'ho', 'consultorio', 'accurata', 'umanita', 'materno', 'simone', 'ccoluna', 'mauricio'])
 const TIPOS = new Set(['eletiva', 'urgencia', 'emergencia'])
 
-function sanitizeCasos(raw: unknown): unknown[] {
+const TURNOS_CASO = new Set(['matutino', 'vespertino'])
+
+function sanitizeCasos(raw: unknown, comTurno = false): unknown[] {
   if (!Array.isArray(raw)) return []
   const str = (v: unknown) => String(v ?? '').trim()
   return raw.map((c: Record<string, unknown>, i: number) => {
@@ -289,6 +311,9 @@ function sanitizeCasos(raw: unknown): unknown[] {
       isContinuacao: c?.isContinuacao === true,
       semAnestesista: c?.semAnestesista === true,
       tipo: TIPOS.has(tipo) ? tipo : 'eletiva',
+      // '' = a imagem não trouxe faixa de turno; quem lê decide pelo período
+      // escolhido. Fora deste modo o campo nem aparece na resposta.
+      ...(comTurno ? { turno: TURNOS_CASO.has(String(c?.turno ?? '')) ? String(c?.turno) : '' } : {}),
     }
   }).filter((c: Record<string, unknown>) => [
     c.pacienteIniciais, c.pacienteNome, c.procedimento, c.cirurgiao, c.convenio,
@@ -362,8 +387,11 @@ Deno.serve(async (req) => {
   console.log(`[parse-escala-cirurgica] parse solicitado por uid=${auth.uid}`)
 
   try {
-    const { imageBase64, mimeType, hospital, modo, refSabado, refDomingo } = await req.json()
+    const { imageBase64, mimeType, hospital, modo, refSabado, refDomingo, secoesTurno } = await req.json()
     const modoFds = modo === 'fds'
+    // turno por FAIXA do documento — só o fluxo de fim de semana pede (ver
+    // SECOES_TURNO_REGRA). No modo FDS o documento não tem casos.
+    const comSecoesTurno = secoesTurno === true && !modoFds
     if (!imageBase64) {
       return new Response(JSON.stringify({ error: 'imageBase64 ausente' }), {
         status: 400, headers: { ...cors, 'Content-Type': 'application/json' },
@@ -417,7 +445,9 @@ Deno.serve(async (req) => {
         model: 'claude-opus-4-8',
         max_tokens: MAX_TOKENS,
         stream: true,
-        system: modoFds ? FDS_SYSTEM_PROMPT : SYSTEM_PROMPT,
+        system: modoFds
+          ? FDS_SYSTEM_PROMPT
+          : (comSecoesTurno ? SYSTEM_PROMPT + SECOES_TURNO_REGRA : SYSTEM_PROMPT),
         messages: [{
           role: 'user',
           content: [
@@ -502,7 +532,7 @@ Deno.serve(async (req) => {
       : []
     return new Response(JSON.stringify({
       // guardrail: apaga anestesista ausente do rodapé (alucinação) — só quando há rodapé
-      casos: blankAnestesistasForaDoRodape(sanitizeCasos(parsed.casos) as Record<string, unknown>[], ordemLiberacao, ajudaExterna),
+      casos: blankAnestesistasForaDoRodape(sanitizeCasos(parsed.casos, comSecoesTurno) as Record<string, unknown>[], ordemLiberacao, ajudaExterna),
       posicoesAssistenciais: sanitizePosicoes(parsed.posicoesAssistenciais),
       ordemLiberacao,
       ajudaExterna,
