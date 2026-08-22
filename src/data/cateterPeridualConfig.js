@@ -44,15 +44,20 @@ export const WARNING_DURATION_HOURS = 72
 // Alerta de "cateter não evoluído" — horas SEM evolução PO (ciclo diário).
 // Eixo distinto do de duração total: cobra evolução diária do cateter ativo.
 //
-// 30/42h, não 24/36 (ajuste 08/08): a visita diária não acontece na mesma hora
-// todo dia — os intervalos reais entre evoluções em produção foram 21,8h · 25,2h
-// · 25,4h · 31,3h · 34,4h. Com o corte em 24h, um cateter evoluído TODO DIA
-// acendia o alerta na janela entre a hora da visita de ontem e a de hoje, e ele
-// sumia sozinho quando a visita do dia era registrada. 30h tolera ~6h de deriva
-// da rotina; 42h significa que um dia inteiro foi pulado.
-// ⚠️ Espelhados em notify_cateter_reminders() (migration 20260808120000) —
+// 36/42h (recalibração 22/08), antes 30/42 e originalmente 24/36. Os cortes
+// saem da distribuição REAL dos 55 intervalos entre evoluções consecutivas em
+// produção (mediana 21,5h · p90 32,8h): 10 caem em 24–30h, 6 em 30–34h,
+// NENHUM entre 34h e 42h, e 4 acima de 42h. O vale vazio de 34–42h é a
+// fronteira natural entre "a visita saiu tarde" e "um dia foi pulado": 36h fica
+// no meio dele, o que apaga os 6 alertas de rotina atrasada sem perder um único
+// atraso real. 42h continua sendo o crítico — é onde moram os 4.
+// ⚠️ Espelhados em notify_cateter_reminders() (migration 20260822120000) —
 // mudar aqui exige mudar lá.
-export const EVOLUCAO_WARNING_HOURS = 30
+// ⚠️ Uma divergência é PROPOSITAL: cateter NUNCA evoluído. Aqui o nível cai no
+// fallback da inserção (o card precisa mostrar que nada foi registrado); o cron
+// NÃO notifica esse caso, porque os lembretes de PO1/PO2 já cobrem o mesmo fato
+// e os dois eixos saíam juntos, dobrando o aviso (11/08 e 18/08, 2×57 pessoas).
+export const EVOLUCAO_WARNING_HOURS = 36
 export const EVOLUCAO_CRITICAL_HOURS = 42
 
 // Complicações comuns
