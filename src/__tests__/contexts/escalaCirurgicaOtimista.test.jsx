@@ -332,14 +332,19 @@ describe('rollback do status devolve SÓ o caso tocado', () => {
     let recusar
     svcMock.updateStatusCirurgia.mockImplementation(() => new Promise((_, rej) => { recusar = rej }))
     const escalaNoToque = unimed()
-    await act(async () => { actions.setStatusCirurgia(escalaNoToque, casoDe('c1'), 'iniciada', { userId: 'u-eu' }) })
+    // .catch aqui, não no final: a action REJEITA quando `recusar` dispara e a
+    // promise fica sem dono (o toque é intencionalmente não-aguardado, é o que
+    // simula o voo). Sem isto o vitest fecha com "Unhandled Rejection" e o job
+    // Test do CI reprova mesmo com todos os testes verdes.
+    let emVoo
+    await act(async () => { emVoo = actions.setStatusCirurgia(escalaNoToque, casoDe('c1'), 'iniciada', { userId: 'u-eu' }).catch(() => {}) })
 
     // outra pessoa (ou outro toque) mexe no c2 enquanto o c1 está em voo
     svcMock.updateCaso.mockImplementation(async () => {})
     await act(async () => { await actions.atualizarCaso(unimed(), 'c2', { gravidade: 'imediata' }) })
     expect(casoDe('c2').gravidade).toBe('imediata')
 
-    await act(async () => { recusar(new Error('Load failed')); await Promise.resolve() })
+    await act(async () => { recusar(new Error('Load failed')); await emVoo })
 
     expect(casoDe('c1').statusCirurgia).toBe('agendada') // o toque recusado voltou
     expect(casoDe('c2').gravidade).toBe('imediata') // e o resto NÃO foi junto
@@ -349,9 +354,10 @@ describe('rollback do status devolve SÓ o caso tocado', () => {
     await montar()
     let recusar
     svcMock.updateStatusCirurgia.mockImplementation(() => new Promise((_, rej) => { recusar = rej }))
-    await act(async () => { actions.setStatusCirurgia(unimed(), casoDe('c1'), 'iniciada', { userId: 'u-eu' }) })
+    let emVoo
+    await act(async () => { emVoo = actions.setStatusCirurgia(unimed(), casoDe('c1'), 'iniciada', { userId: 'u-eu' }).catch(() => {}) })
     expect(casoDe('c1').statusAtualizadoEm).toBeTruthy()
-    await act(async () => { recusar(new Error('offline')); await Promise.resolve() })
+    await act(async () => { recusar(new Error('offline')); await emVoo })
     expect(casoDe('c1').statusAtualizadoEm ?? null).toBeNull()
     expect(casoDe('c1').statusAtualizadoPor ?? null).toBeNull()
   })
