@@ -109,3 +109,22 @@ export function transicaoStatusEscala(origem, destino, { motivo } = {}) {
     ? { ok: true, reversible: true }
     : { ok: false, code: 'reversao_exige_motivo', reversible: true }
 }
+
+/**
+ * Extra do caso, aceitando o legado no campo principal (demo e dados anteriores
+ * ao desdobramento em dois eixos gravavam o extra em `statusCirurgia`).
+ */
+export function extraDoCaso(caso) {
+  const extra = String(caso?.statusExtra || '')
+  if (STATUS_EXTRA_ESCALA.includes(extra)) return extra
+  const principal = String(caso?.statusCirurgia || '')
+  return STATUS_EXTRA_ESCALA.includes(principal) ? principal : ''
+}
+
+/**
+ * A cirurgia foi marcada para atravessar o turno ("Passa para tarde"/"Passa para
+ * noite" — o valor gravado é `passa_tarde` nos dois, ver passaTurnoLabel).
+ */
+export function casoPassaDeTurno(caso) {
+  return extraDoCaso(caso) === 'passa_tarde'
+}

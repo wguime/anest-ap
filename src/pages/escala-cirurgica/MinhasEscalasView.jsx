@@ -9,7 +9,7 @@ import { CalendarClock, MapPin } from 'lucide-react'
 import { Badge, EmptyState } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { ehPosicaoAssistencial, resumirItensEscala } from '@/lib/escalaCirurgicaItens'
-import { anestesistaDoCasoEh, casosResolvidos, filtrarPorTurno, salaExibicao } from './utils'
+import { anestesistaDoCasoEh, casosResolvidos, filtrarPorTurnoExibicao, salaExibicao } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import { CasoCard } from './BoardView'
 import useAgoraMinuto from './useAgoraMinuto'
@@ -33,7 +33,7 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
   // O RESIDENTE (dono 29/07) também tem os casos dele aqui: ele acompanha por
   // `residenteUserId`, que só existe via seletor — sempre uid, nunca texto.
   const meus = useMemo(
-    () => filtrarPorTurno(casosResolvidos(escala), turno).filter((c) =>
+    () => filtrarPorTurnoExibicao(casosResolvidos(escala), turno).filter((c) =>
       (!!meuUid && c.residenteUserId === meuUid)
       // dupla "A + B" entra para as DUAS (o helper trata; uid é null nela)
       || anestesistaDoCasoEh(c, { uid: meuUid, alias: meuAlias })

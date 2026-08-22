@@ -3,6 +3,7 @@
  */
 import { resolverAnestesistas, nomeCirurgiaoCurto, titleCaseNome, primeiroNome, stripNotaRodape, fraseClinica } from '@/lib/colunaLiberacao'
 import { STATUS_CONCLUIDO, casoConcluido, casoTerminado } from '@/lib/escalaCirurgicaStatus'
+import { casoPassaDeTurno } from '@/lib/escalaCirurgicaRegras'
 import { ehPosicaoAssistencial, filtrarItensImportados } from '@/lib/escalaCirurgicaItens'
 import { TURNOS_MAPA, turnoDoCasoImportado } from '@/lib/escalaFdsMapas'
 
@@ -543,6 +544,45 @@ export function selecionarCasosDoTurno(casos, turno) {
 export function filtrarPorTurno(casos, turno) {
   if (!turno) return casos
   return casos.filter((c) => turnoDoCaso(c) === turno)
+}
+
+/**
+ * A cirurgia da MANHÃ marcada "Passa para tarde" segue valendo na TARDE (dono
+ * 2026-08-22: "quero que cirurgias marcadas como passam para tarde persistam na
+ * escala da tarde"). Antes o marcador só pintava o badge no turno de origem: a
+ * cirurgia continuava só na manhã e, à tarde, quem estava nela aparecia sem caso
+ * — some da conta de quem está ocupado bem no turno em que ela vai acontecer.
+ *
+ * `casoConcluido` (terminada OU suspensa) encerra a travessia: é a mesma
+ * pergunta "ainda ocupa alguém?" que decide vaga e cronômetro no resto do módulo.
+ *
+ * ⚠️ Só matutino → vespertino. À tarde o rótulo é "Passa para noite", e a noite
+ * já enxerga os casos da tarde (FDS_TURNO_CASOS.noturno = 'vespertino'); no dia
+ * útil não existe turno de casos depois do vespertino.
+ */
+export function casoSegueParaOTurno(caso, turnoExibido) {
+  return turnoExibido === 'vespertino'
+    && turnoDoCaso(caso) === 'matutino'
+    && casoPassaDeTurno(caso)
+    && !casoConcluido(caso)
+}
+
+/** Casos que ATRAVESSARAM para o turno exibido (não são dele, mas valem nele). */
+export function casosQuePassamParaOTurno(casos, turno) {
+  return (casos || []).filter((c) => casoSegueParaOTurno(c, turno))
+}
+
+/**
+ * Filtro de EXIBIÇÃO: os casos do turno MAIS os que atravessaram para ele.
+ *
+ * ⚠️ Não substitui `filtrarPorTurno` em toda parte. Troca e posição continuam
+ * com o filtro EXATO (regra estruturante de 13/08 — turno é filtro, nunca
+ * preferência): mover um caso da manhã ao trocar a posição da TARDE reatribuiria
+ * cirurgia de outro turno. Aqui é o que a tela mostra e o que a fila conta.
+ */
+export function filtrarPorTurnoExibicao(casos, turno) {
+  if (!turno) return casos
+  return (casos || []).filter((c) => turnoDoCaso(c) === turno || casoSegueParaOTurno(c, turno))
 }
 
 /** Turno corrente pela hora local (default do seletor). */

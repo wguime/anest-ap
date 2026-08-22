@@ -22,7 +22,7 @@ import LiberacoesView from './LiberacoesView'
 import ImportarEscalaPage from './ImportarEscalaPage'
 import ImportarEscalaFdsPage from './ImportarEscalaFdsPage'
 import TrocaSheet from './TrocaSheet'
-import { meuAliasDe, turnoAtual, casosResolvidos, dataPorExtenso, estadoTrocasDoHistorico, filtrarPorTurno, normNome, formatData, rodapeDoTurno, localizarSlotEscala, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca } from './utils'
+import { meuAliasDe, turnoAtual, casosResolvidos, dataPorExtenso, estadoTrocasDoHistorico, filtrarPorTurnoExibicao, normNome, formatData, rodapeDoTurno, localizarSlotEscala, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca } from './utils'
 import { ehFimDeSemana, FDS_HOSPITAL, FDS_TURNO_CASOS, turnoFdsAtual } from '@/lib/escalaFds'
 import { podeEditarEscalaCirurgica } from './gate'
 
@@ -166,7 +166,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     const uid = user.uid || user.id
     const alvo = normNome(meuAliasDe(user))
     // residente acompanha por uid (dono 29/07) — abre no hospital dele também
-    const temCaso = (e, t) => filtrarPorTurno(casosResolvidos(e), t).some(
+    const temCaso = (e, t) => filtrarPorTurnoExibicao(casosResolvidos(e), t).some(
       (c) => c.residenteUserId === uid
         || (c.anestesistaUserId ? c.anestesistaUserId === uid : (alvo && normNome(c.anestesista) === alvo))
     )

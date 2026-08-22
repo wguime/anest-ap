@@ -22,7 +22,7 @@ import useAgoraMinuto from './useAgoraMinuto'
 import useAvisoPlantonista from './useAvisoPlantonista'
 import PainelTempo, { formatFaltante, fraseCronometro, fraseFaltante } from './PainelTempo'
 import AddCasoSheet from './AddCasoSheet'
-import { casoConcluido, casosResolvidos, chaveSalaEscolha, compararSalas, filtrarPorTurno, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao } from './utils'
+import { casoConcluido, casosResolvidos, chaveSalaEscolha, compararSalas, filtrarPorTurnoExibicao, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao, turnoDoCaso } from './utils'
 
 // Sentinelas do dropdown de Local (valores impossíveis como nome de sala)
 const LOCAL_AUTO = '__auto__'
@@ -71,7 +71,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // base é o vespertino e o card do plantonista herda o que ele está operando.
   const turnoBase = turno === 'noturno' ? 'vespertino' : turno
   const casosTurno = useMemo(
-    () => filtrarPorTurno((modoFds && casosFds) ? casosFds : (escala?.casos || []), turnoBase),
+    () => filtrarPorTurnoExibicao((modoFds && casosFds) ? casosFds : (escala?.casos || []), turnoBase),
     [escala, turnoBase, modoFds, casosFds]
   )
   const rodapeTurno = useMemo(() => rodapeDoTurno(escala?.ordemLiberacao, turnoBase), [escala, turnoBase])
@@ -122,6 +122,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const nomesPassaTarde = useMemo(() => {
     const s = new Set()
     for (const c of casosResolvidos({ casos: casosTurno })) {
+      // SÓ o caso DESTE turno marca a linha: desde 22/08 a cirurgia da manhã que
+      // passa para a tarde aparece também na tarde, e lá o rótulo seria "Passa
+      // para noite" — ela passou para DENTRO deste turno, não para fora dele.
+      // Sem turno informado (chamada legada) não há o que recortar.
+      if (turnoBase && turnoDoCaso(c) !== turnoBase) continue
       // extra no campo novo; aceita o legado no principal (demo/dados antigos)
       if ((c.statusExtra === 'passa_tarde' || c.statusCirurgia === 'passa_tarde') && c.anestesista) {
         s.add(normNome(c.anestesista))

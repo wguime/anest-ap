@@ -832,6 +832,32 @@ não gasta vaga — marcar não é reservar. Tinta verde só com cirurgia EM AND
   mediana 49min, pico 2 simultâneas em 06/08. Comunicado leigo à equipe:
   `.tmp/comunicado-urgencias-hro.md`.
 
+### "Passa para tarde" PERSISTE na tarde (dono 22/08)
+
+O marcador existia desde 20/08 mas só pintava o badge no turno de ORIGEM: a
+cirurgia continuava só na manhã e, na tela da tarde, quem estava nela aparecia
+SEM CASO — sumia da conta de quem está ocupado bem no turno em que ela vai
+acontecer. Agora ela ATRAVESSA: `casoSegueParaOTurno` (utils, puro) +
+`filtrarPorTurnoExibicao` põem a cirurgia matutina marcada também na tarde, e
+`casoConcluido` (terminada OU suspensa) encerra a travessia — a mesma pergunta
+"ainda ocupa alguém?" que decide vaga e cronômetro no resto do módulo. Só
+matutino→vespertino: à tarde o rótulo é "Passa para noite" e a noite já enxerga
+os casos da tarde (`FDS_TURNO_CASOS.noturno`).
+
+Superfícies: **Completa** entrega a cirurgia ao MESMO grupo "Ainda abertas —
+Manhã" que as urgências herdadas já usam (o grupo existe e foi escolhido para
+exatamente esta forma de problema; a diferença é a origem — urgência vem do
+contrato do HRO, esta vale em qualquer hospital) · **Minhas** e a **fila de
+Liberações** contam a cirurgia na tarde. ⚠️ o badge "Passa para tarde/noite" da
+FILA continua saindo só do caso DAQUELE turno (`turnoDoCaso(c) !== turnoBase`
+pula): o rótulo nomeia quem SAI do turno, e ela entrou nele.
+
+⚠️ **`filtrarPorTurno` continua ESTRITO** e é ele que TROCA e posição usam —
+regra estruturante de 13/08, turno é filtro e nunca preferência. Mover a
+cirurgia da manhã ao trocar a posição da TARDE reatribuiria caso de outro turno.
+Travas: `escalaPassaDeTurno.test.js` (invariante "alcançável na tarde, uma vez
+só" + o que não pode mudar junto) + caso na `escalaCirurgicaPersonas.test.jsx`.
+
 ### Sincronia das superfícies de urgência (dono 21/08) — uma derivação, um relógio, um "acabou"
 
 Relato: *"ao finalizar uma cirurgia de urgência ela não está sincronizada com as informações no

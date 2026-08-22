@@ -13,7 +13,7 @@ import { useUser } from '@/contexts/UserContext'
 import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
 import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
-import { anestesistaDoCasoEh, casoConcluido, casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, turnoDoCaso, compararSalas, parseHoraMinutos, salaExibicao, nomeAnestesistaExibicao, convenioExibicao, idadeExibicao } from './utils'
+import { anestesistaDoCasoEh, casoConcluido, casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, casosQuePassamParaOTurno, turnoDoCaso, compararSalas, parseHoraMinutos, salaExibicao, nomeAnestesistaExibicao, convenioExibicao, idadeExibicao } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import { formatFaltante } from './PainelTempo'
 import useAgoraMinuto from './useAgoraMinuto'
@@ -329,10 +329,21 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
   // as duas não têm como discordar. Fora do HRO vem vazia e nada muda.
   const { herdados } = useEstadoUrgencias(escala, { hospital: escala?.hospital, turno })
   const idsDoTurno = useMemo(() => new Set(casos.map((c) => c.id).filter(Boolean)), [casos])
-  const herdadasVisiveis = useMemo(
-    () => herdados.filter((c) => !c.id || !idsDoTurno.has(c.id)),
-    [herdados, idsDoTurno],
-  )
+  // "Passa para tarde" entra no MESMO grupo (dono 2026-08-22): também é cirurgia
+  // que atravessou o turno, e o grupo já existe e já foi escolhido para isso. A
+  // diferença é a origem — as urgências vêm do contrato do HRO e só de lá; esta
+  // vale em qualquer hospital, porque a marcação é do quadro.
+  const herdadasVisiveis = useMemo(() => {
+    const vistos = new Set()
+    const out = []
+    for (const c of [...herdados, ...casosQuePassamParaOTurno(casosResolvidos(escala), turno)]) {
+      const chave = c.id || `${c.sala}|${c.ordem}|${c.procedimento}`
+      if (vistos.has(chave) || (c.id && idsDoTurno.has(c.id))) continue
+      vistos.add(chave)
+      out.push(c)
+    }
+    return out
+  }, [herdados, idsDoTurno, escala, turno])
   const grupos = useMemo(() => agruparPorSala(casos), [casos])
   // MARGEM ÚNICA DO QUADRO (dono 18/08): quem não tem horário recua igual, em
   // qualquer sala — a urgência acrescentada à mão vira sala própria sem horário

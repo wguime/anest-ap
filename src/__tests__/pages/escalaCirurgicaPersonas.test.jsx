@@ -534,6 +534,30 @@ describe('Liberações — caso passa_tarde sinaliza o anestesista', () => {
     expect(badge.className).toContain('mr-2.5')
     expect(screen.getByText('Leonardo').closest('p').contains(badge)).toBe(true)
   })
+
+  // PERSISTE NA TARDE (dono 2026-08-22): "quero que cirurgias marcadas como
+  // passam para tarde persistam na escala da tarde". Antes o marcador só pintava
+  // o badge no turno de origem — a cirurgia ficava só na manhã e, na tela da
+  // tarde, quem estava nela aparecia SEM CASO, some da conta de quem está
+  // ocupado bem no turno em que ela vai acontecer.
+  it('a cirurgia da MANHÃ marcada conta na fila da TARDE, sem virar "Passa para noite"', () => {
+    const escala = {
+      id: 'e1', hospital: 'unimed',
+      ordemLiberacao: { matutino: ['LEONARDO', 'MARILIO'], vespertino: ['LEONARDO', 'MARILIO'] },
+      liberacoes: {}, linhaOverrides: {},
+      casos: [
+        { id: 'c1', sala: 'SALA 4', ordem: 0, hora: '08:00', turno: 'matutino', anestesista: 'LEONARDO', cirurgiao: 'Liana Winkelmann', statusExtra: 'passa_tarde' },
+        { id: 'c2', sala: 'SALA 3', ordem: 0, hora: '14:00', turno: 'vespertino', anestesista: 'MARILIO', cirurgiao: 'Leandro Trevizan' },
+      ],
+    }
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" turno="vespertino" canEdit onToggle={() => {}} />, { wrapper: wrap })
+    // o caso atravessou: o cirurgião dele aparece na linha do Leonardo à tarde
+    expect(screen.getByText('Liana Winkelmann')).toBeTruthy()
+    // e ele NÃO está "Livre" — está em cirurgia
+    expect(screen.getByText('Leonardo').closest('p').textContent).not.toContain('Livre')
+    // o rótulo do destino é de quem SAI deste turno; ela entrou nele
+    expect(screen.queryByText('Passa para noite')).toBeNull()
+  })
 })
 
 // ════════════════════════════════════════════════════════════════════════════
