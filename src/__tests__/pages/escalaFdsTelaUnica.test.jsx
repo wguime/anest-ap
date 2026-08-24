@@ -135,6 +135,50 @@ describe('Terminei — encerra as cirurgias abertas da pessoa', () => {
   })
 })
 
+/**
+ * ESPAÇAMENTO E ALINHAMENTO DO CARD (dono 24/08, comparando a tela em uso com o
+ * protótipo aprovado). Estas asserções olham CLASSE de layout, o que normalmente
+ * é frágil demais para valer um teste — aqui vale porque foi exatamente a classe
+ * que regrediu: `items-center` num flex cujo segundo filho é mais alto empurra o
+ * primeiro para o meio, e foi assim que o círculo foi parar 36px abaixo do nome
+ * e o hospital ganhou um vão de 14px depois dele. É um erro que não aparece em
+ * nenhuma asserção de conteúdo e que só se vê medindo a tela.
+ */
+describe('alinhamento do card — número e círculo na linha do nome', () => {
+  it('o card alinha pelo TOPO, não pelo centro', async () => {
+    const { container } = render(<LiberacoesView {...props()} />, { wrapper: wrap })
+    await screen.findByText(/Karine/)
+    const card = container.querySelector('[data-linha]')
+    expect(card.className).toContain('items-start')
+    expect(card.className).not.toContain('items-center')
+  })
+
+  it('o bloco de texto também alinha pelo topo — senão o hospital descola do nome', async () => {
+    const { container } = render(<LiberacoesView {...props()} />, { wrapper: wrap })
+    await screen.findByText(/Karine/)
+    const card = container.querySelector('[data-linha]')
+    const interno = card.querySelector('[class*="justify-between"]')
+    expect(interno.className).toContain('items-start')
+  })
+})
+
+describe('alerta de sem anestesista — compacto', () => {
+  const COM_ORFA = [...CASOS_FDS, {
+    id: 'c9', sala: 'CO - Sala 3', ordem: 0, hora: '11:00', turno: 'matutino',
+    anestesista: '?', semAnestesista: true, procedimento: 'CESARIANA',
+    cirurgiao: 'Carlos Yora', hospitalOrigem: 'unimed',
+  }]
+
+  it('NÃO repete "Sem anestesista" dentro do card: o título logo acima já diz', async () => {
+    render(<LiberacoesView {...props({ casosFds: COM_ORFA })} />, { wrapper: wrap })
+    // o título da seção existe...
+    expect(await screen.findByText(/Procedimentos sem anestesista/)).toBeTruthy()
+    // ...e o badge dentro do card não: era a mesma frase duas vezes, e ele
+    // empurrava a sala para a esquerda além de somar altura
+    expect(screen.queryByText('Sem anestesista')).toBeNull()
+  })
+})
+
 describe('painel da linha — Hospital, Responsável e Posição só na fila única', () => {
   const abrirPainel = async (extra = {}) => {
     render(<LiberacoesView {...props(extra)} />, { wrapper: wrap })
