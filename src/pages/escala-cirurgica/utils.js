@@ -585,6 +585,77 @@ export function filtrarPorTurnoExibicao(casos, turno) {
   return (casos || []).filter((c) => turnoDoCaso(c) === turno || casoSegueParaOTurno(c, turno))
 }
 
+/**
+ * Casos que a FILA DE LIBERAÇÃO enxerga no turno.
+ *
+ * A cirurgia da manhã marcada "Passa para tarde" atravessa (dono 22/08) para que
+ * quem vai fazê-la apareça OCUPADO no turno em que ela acontece. Mas ela conta
+ * para quem JÁ ESTÁ no turno — nunca CRIA posição na fila para quem não está.
+ *
+ * Caso que motivou (Unimed, tarde de 24/08): a cirurgia da Gabriela das 07:00
+ * ficou marcada "passa para tarde" e à tarde ela estava escalada no HRO. A fila
+ * da tarde da Unimed ganhou uma linha dela no fim, com badge "Ajuda" — o app
+ * afirmando o que não era verdade (ela não estava ajudando ali) e, de quebra,
+ * empurrando a fronteira da cauda: o Vicente, que fecha a ordem sem cirurgia,
+ * deixou de nascer liberado. A cirurgia NÃO some: segue no quadro da Completa,
+ * no grupo "Ainda abertas — Manhã", que é onde ela é resolvida.
+ *
+ * "Está no turno" = nome na ordem publicada dele OU cirurgia PRÓPRIA dele. Quem
+ * só apareceu por causa da travessia não conta — senão a regra se justificaria
+ * sozinha.
+ *
+ * @param {Array} casos      casos da escala (os dois turnos)
+ * @param {string} turno     turno exibido
+ * @param {string[]} ordemTurno  rodapé publicado do turno
+ * @param {Function} [resolverUid]  apelido → uid do vínculo
+ */
+export function casosDaFilaDoTurno(casos, turno, ordemTurno = [], resolverUid = null) {
+  if (!turno) return casos || []
+  const nativos = filtrarPorTurno(casos || [], turno)
+  const atravessam = casosQuePassamParaOTurno(casos || [], turno)
+  if (!atravessam.length) return nativos
+  const presentes = presencaDoTurno(ordemTurno, nativos, resolverUid)
+  return [...nativos, ...atravessam.filter((c) => estaPresente(presentes, c, resolverUid))]
+}
+
+/**
+ * Chaves de identidade de um anestesista: uid do vínculo E nome normalizado, e
+ * as duas coisas para CADA metade de uma dupla "A + B".
+ *
+ * Tolerante de propósito. Este módulo já errou identidade por quatro caminhos
+ * diferentes (dicionário, uid do caso, grafia da Vision, apelido do rodapé), e
+ * aqui a assimetria é clara: casar demais preserva o comportamento de hoje;
+ * casar de menos some com a linha de alguém que está trabalhando.
+ */
+export function chavesIdentidade(nome, uid = null, resolverUid = null) {
+  const out = []
+  if (uid) out.push(uid)
+  for (const parte of String(nome || '').split('+').map((x) => x.trim()).filter(Boolean)) {
+    const n = normNome(parte)
+    if (!n || n === '//' || /^\?+$/.test(n)) continue
+    out.push(n)
+    const u = resolverUid?.(parte)
+    if (u) out.push(u)
+  }
+  return out
+}
+
+/** Quem está NO turno: nomes da ordem publicada + donos de cirurgia própria dele. */
+export function presencaDoTurno(ordemTurno = [], casosDoTurno = [], resolverUid = null) {
+  const set = new Set()
+  for (const n of ordemTurno || []) for (const k of chavesIdentidade(n, null, resolverUid)) set.add(k)
+  for (const c of casosDoTurno || []) {
+    for (const k of chavesIdentidade(c?.anestesista, c?.anestesistaUserId, resolverUid)) set.add(k)
+  }
+  return set
+}
+
+/** O anestesista deste caso está no conjunto de presença? */
+export function estaPresente(presentes, caso, resolverUid = null) {
+  return chavesIdentidade(caso?.anestesista, caso?.anestesistaUserId, resolverUid)
+    .some((k) => presentes.has(k))
+}
+
 /** Turno corrente pela hora local (default do seletor). */
 export function turnoAtual(d = new Date()) {
   return d.getHours() < 13 ? 'matutino' : 'vespertino'

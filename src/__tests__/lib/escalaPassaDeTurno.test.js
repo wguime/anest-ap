@@ -14,7 +14,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   filtrarPorTurno, filtrarPorTurnoExibicao, casoSegueParaOTurno,
-  casosQuePassamParaOTurno, casosTransferiveis, casosResolvidos,
+  casosQuePassamParaOTurno, casosTransferiveis, casosResolvidos, casosDaFilaDoTurno,
 } from '@/pages/escala-cirurgica/utils'
 import { casoPassaDeTurno, extraDoCaso } from '@/lib/escalaCirurgicaRegras'
 
@@ -94,5 +94,52 @@ describe('o que NÃO pode mudar junto', () => {
 
   it('filtrarPorTurno continua ESTRITO — é ele que troca e slot usam', () => {
     expect(filtrarPorTurno(escala.casos, 'vespertino').map((c) => c.id)).toEqual(['t1'])
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// A TRAVESSIA CONTA PARA QUEM JÁ ESTÁ NO TURNO — NUNCA CRIA POSIÇÃO NA FILA
+// (dono 24/08, caso Gabriela na Unimed)
+//
+// A cirurgia dela das 07:00 ficou marcada "passa para tarde" e à tarde ela
+// estava escalada no HRO. A fila da tarde da Unimed ganhou uma linha dela no
+// fim, com badge "Ajuda" — o app afirmando o que não era verdade. A cirurgia
+// não some: segue no quadro da Completa, no grupo "Ainda abertas — Manhã".
+// ════════════════════════════════════════════════════════════════════════════
+describe('INVARIANTE: a travessia não inventa gente na fila', () => {
+  const G_MANHA = caso({ id: 'g1', anestesista: 'GABRIELA', anestesistaUserId: 'uid-gab', hora: '07:00', statusExtra: 'passa_tarde' })
+  const R_TARDE = caso({ id: 'r1', anestesista: 'RAUL', anestesistaUserId: 'uid-raul', turno: 'vespertino', hora: '13:00' })
+
+  it('quem NÃO está na ordem nem tem cirurgia própria do turno fica fora da fila', () => {
+    const fila = casosDaFilaDoTurno([G_MANHA, R_TARDE], 'vespertino', ['RAUL', 'VICENTE'])
+    expect(fila.map((c) => c.id)).toEqual(['r1'])
+  })
+
+  it('mas a cirurgia continua existindo para a tela que pergunta "isto existe?"', () => {
+    // é o que a Completa e a aba Minhas usam — a travessia de 22/08 segue de pé
+    expect(filtrarPorTurnoExibicao([G_MANHA, R_TARDE], 'vespertino').map((c) => c.id))
+      .toEqual(['g1', 'r1'])
+  })
+
+  it('quem ESTÁ na ordem da tarde leva a cirurgia junto (caso Humberto, mesmo dia)', () => {
+    const fila = casosDaFilaDoTurno([G_MANHA, R_TARDE], 'vespertino', ['GABRIELA', 'RAUL'])
+    expect(fila.map((c) => c.id).sort()).toEqual(['g1', 'r1'])
+  })
+
+  it('quem tem cirurgia PRÓPRIA da tarde também leva a da manhã junto', () => {
+    const gTarde = caso({ id: 'g2', anestesista: 'GABRIELA', anestesistaUserId: 'uid-gab', turno: 'vespertino', hora: '14:00' })
+    const fila = casosDaFilaDoTurno([G_MANHA, gTarde], 'vespertino', [])
+    expect(fila.map((c) => c.id).sort()).toEqual(['g1', 'g2'])
+  })
+
+  it('casa por LOGIN quando a grafia diverge (o rodapé diz o apelido, o caso diz outro)', () => {
+    const resolver = (n) => (String(n).toUpperCase().startsWith('GABRIELA') ? 'uid-gab' : null)
+    const fila = casosDaFilaDoTurno([G_MANHA, R_TARDE], 'vespertino', ['GABRIELA VEDANA', 'RAUL'], resolver)
+    expect(fila.map((c) => c.id).sort()).toEqual(['g1', 'r1'])
+  })
+
+  it('sem nenhuma travessia, devolve exatamente o filtro estrito do turno', () => {
+    expect(casosDaFilaDoTurno([MANHA_COMUM, TARDE], 'vespertino', ['THAYNA']).map((c) => c.id))
+      .toEqual(filtrarPorTurno([MANHA_COMUM, TARDE], 'vespertino').map((c) => c.id))
   })
 })

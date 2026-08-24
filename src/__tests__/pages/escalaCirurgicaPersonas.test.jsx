@@ -1676,3 +1676,128 @@ describe('Liberações — vermelho automático SÓ na cauda (invariante, dono 2
     expect(within(eduardo).getByText('Livre')).toBeTruthy()
   })
 })
+
+// ════════════════════════════════════════════════════════════════════════════
+// A CAUDA É DA ORDEM PUBLICADA, NÃO DA LISTA NA TELA (dono 24/08)
+//
+// Recorte real: Unimed, tarde de 24/08. O rodapé terminava em RAUL (com
+// cirurgia) → VICENTE (sem) → GUILHERME DIDOMENICO (sem, plantão da manhã). A
+// tela acrescentou no fim a GABRIELA — visitante do HRO, ali por uma cirurgia da
+// manhã marcada "passa para tarde". Como ela tinha caso e ficava DEPOIS do
+// Vicente, virou a fronteira da cauda: ele apareceu "Livre" no lugar de
+// Liberado, e o dono teve de marcar à mão outra vez.
+//
+// Invariante, não persona: quem não está na ordem não tem posição na fila, então
+// não decide onde a fila termina nem nasce liberado por estar depois do fim dela.
+// ════════════════════════════════════════════════════════════════════════════
+describe('Liberações — a cauda é da ORDEM, não da tela (invariante, dono 24/08)', () => {
+  const vesp = (o) => ({ ordem: 0, turno: 'vespertino', hora: '13:30', ...o })
+  const escalaBase = {
+    id: 'e1', hospital: 'unimed', liberacoes: {}, linhaOverrides: {},
+    ordemLiberacao: { matutino: [], vespertino: ['HUMBERTO', 'RAUL', 'VICENTE', 'DIDOMENICO'] },
+    casos: [
+      vesp({ id: 'c1', sala: 'Hemodinâmica', anestesista: 'HUMBERTO', cirurgiao: 'Eduardo Menegat' }),
+      vesp({ id: 'c2', sala: 'Imagem', anestesista: 'RAUL', cirurgiao: 'Continuação' }),
+      vesp({ id: 'c3', sala: 'CC - Sala 10', anestesista: 'GABRIELA', cirurgiao: 'Paulo Caldas' }),
+    ],
+  }
+  const montar = (props = {}) => render(
+    <LiberacoesView escala={escalaBase} hospital="unimed" hospitalLabel="Unimed" turno="vespertino"
+      canEdit presencaOutros={[{ nome: 'GABRIELA', hospitalLabel: 'HRO', rodapeIdx: 14 }]}
+      onToggle={() => {}} {...props} />,
+    { wrapper: wrap },
+  )
+
+  it('a visitante entra DEPOIS de quem fecha a ordem (é a exibição que o dono viu)', () => {
+    montar()
+    const chaves = Array.from(document.querySelectorAll('[data-linha]')).map((e) => e.getAttribute('data-linha'))
+    // exatamente o que a tela mostrou: 13 RAUL · 14 VICENTE · 15 GABRIELA · 16 DIDOMENICO
+    expect(chaves).toEqual(['HUMBERTO', 'RAUL', 'VICENTE', 'GABRIELA', 'DIDOMENICO'])
+  })
+
+  it('VICENTE fecha a ordem sem cirurgia e nasce LIBERADO, apesar da visitante abaixo', () => {
+    montar()
+    const vicente = document.querySelector('[data-linha="VICENTE"]')
+    expect(within(vicente).getByText('Liberado')).toBeTruthy()
+    expect(within(vicente).queryByText('Livre')).toBeNull()
+  })
+
+  it('o plantão do contraturno, que fecha tudo, também nasce liberado', () => {
+    montar()
+    const didomenico = document.querySelector('[data-linha="DIDOMENICO"]')
+    expect(within(didomenico).getByText('Liberado')).toBeTruthy()
+  })
+
+  it('a visitante NÃO nasce liberada: sem posição na ordem, a cauda não a alcança', () => {
+    // ela tem cirurgia, então o ponto é o inverso — mesmo sem nenhuma, estar
+    // depois do fim da fila não é motivo para o app decidir por ela
+    const semCaso = { ...escalaBase, casos: escalaBase.casos.filter((c) => c.id !== 'c3') }
+    render(<LiberacoesView escala={semCaso} hospital="unimed" hospitalLabel="Unimed" turno="vespertino"
+      canEdit ajudaExterna={{}} presencaOutros={[]} onToggle={() => {}}
+      onAddAjuda={() => {}} />, { wrapper: wrap })
+    // sem a visitante, a cauda continua sendo Vicente + Didomenico
+    expect(screen.queryAllByText('Liberado').length).toBe(2)
+  })
+
+  it('quem tem cirurgia na ORDEM segue definindo a fronteira (ninguém acima vira vermelho)', () => {
+    montar()
+    const humberto = document.querySelector('[data-linha="HUMBERTO"]')
+    const raul = document.querySelector('[data-linha="RAUL"]')
+    expect(within(humberto).queryByText('Liberado')).toBeNull()
+    expect(within(raul).queryByText('Liberado')).toBeNull()
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// A CIRURGIA QUE ATRAVESSA O TURNO NÃO CRIA LINHA NA FILA (dono 24/08)
+// ════════════════════════════════════════════════════════════════════════════
+describe('Liberações — "passa para tarde" de quem não está na tarde (dono 24/08)', () => {
+  const escala = (ordemVesp) => ({
+    id: 'e1', hospital: 'unimed', liberacoes: {}, linhaOverrides: {},
+    ordemLiberacao: { matutino: ['GABRIELA', 'RAUL'], vespertino: ordemVesp },
+    casos: [
+      { id: 'm1', sala: 'CC - Sala 10', ordem: 0, turno: 'matutino', hora: '07:00', anestesista: 'GABRIELA', cirurgiao: 'Paulo Caldas', statusExtra: 'passa_tarde' },
+      { id: 't1', sala: 'Imagem', ordem: 0, turno: 'vespertino', hora: '13:00', anestesista: 'RAUL', cirurgiao: 'Continuação' },
+    ],
+  })
+
+  it('a anestesista da manhã NÃO ganha linha na fila da tarde', () => {
+    render(<LiberacoesView escala={escala(['RAUL', 'VICENTE'])} hospital="unimed" hospitalLabel="Unimed"
+      turno="vespertino" canEdit onToggle={() => {}} />, { wrapper: wrap })
+    expect(document.querySelector('[data-linha="GABRIELA"]')).toBeNull()
+    expect(screen.queryByText('Paulo Caldas')).toBeNull()
+  })
+
+  it('o "próximo a ser liberado" volta a ser quem está de fato trabalhando', () => {
+    // era a 3ª metade da queixa de 24/08: "Gabriela (próximo a ser liberado)" —
+    // a fila anunciava como próxima a sair alguém que nem estava no turno
+    render(<LiberacoesView escala={escala(['RAUL', 'VICENTE'])} hospital="unimed" hospitalLabel="Unimed"
+      turno="vespertino" canEdit onToggle={() => {}} />, { wrapper: wrap })
+    const proximo = screen.getByText('Próximo a ser liberado').closest('[data-linha]')
+    expect(proximo.getAttribute('data-linha')).toBe('RAUL')
+  })
+
+  it('e o VICENTE, que fecha a ordem sem cirurgia, nasce Liberado (fix completo do dia)', () => {
+    render(<LiberacoesView escala={escala(['RAUL', 'VICENTE'])} hospital="unimed" hospitalLabel="Unimed"
+      turno="vespertino" canEdit onToggle={() => {}} />, { wrapper: wrap })
+    const vicente = document.querySelector('[data-linha="VICENTE"]')
+    expect(within(vicente).getByText('Liberado')).toBeTruthy()
+  })
+
+  it('mas se ela ESTÁ na ordem da tarde, a cirurgia conta e ela aparece ocupada', () => {
+    render(<LiberacoesView escala={escala(['GABRIELA', 'RAUL'])} hospital="unimed" hospitalLabel="Unimed"
+      turno="vespertino" canEdit onToggle={() => {}} />, { wrapper: wrap })
+    const gabriela = document.querySelector('[data-linha="GABRIELA"]')
+    expect(gabriela).toBeTruthy()
+    expect(within(gabriela).queryByText('Livre')).toBeNull()
+    expect(within(gabriela).getByText(/Paulo Caldas/)).toBeTruthy()
+  })
+
+  it('na fila da MANHÃ a cirurgia segue sendo dela, como sempre foi', () => {
+    render(<LiberacoesView escala={escala(['RAUL', 'VICENTE'])} hospital="unimed" hospitalLabel="Unimed"
+      turno="matutino" canEdit onToggle={() => {}} />, { wrapper: wrap })
+    const gabriela = document.querySelector('[data-linha="GABRIELA"]')
+    expect(gabriela).toBeTruthy()
+    expect(within(gabriela).getByText('Passa para tarde')).toBeTruthy()
+  })
+})

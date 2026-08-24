@@ -23,7 +23,7 @@ import useAvisoPlantonista from './useAvisoPlantonista'
 import { AvisoTempoEstourado } from './useAvisoTempoEstourado'
 import PainelTempo, { formatFaltante, fraseCronometro, fraseFaltante } from './PainelTempo'
 import AddCasoSheet from './AddCasoSheet'
-import { casoConcluido, casosResolvidos, chaveSalaEscolha, compararSalas, filtrarPorTurnoExibicao, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao, turnoDoCaso } from './utils'
+import { casoConcluido, casosDaFilaDoTurno, casosResolvidos, chaveSalaEscolha, compararSalas, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao, turnoDoCaso } from './utils'
 
 // Sentinelas do dropdown de Local (valores impossíveis como nome de sala)
 const LOCAL_AUTO = '__auto__'
@@ -75,11 +75,22 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // matutino/vespertino): as cirurgias em curso à noite são as da TARDE — a
   // base é o vespertino e o card do plantonista herda o que ele está operando.
   const turnoBase = turno === 'noturno' ? 'vespertino' : turno
-  const casosTurno = useMemo(
-    () => filtrarPorTurnoExibicao((modoFds && casosFds) ? casosFds : (escala?.casos || []), turnoBase),
-    [escala, turnoBase, modoFds, casosFds]
-  )
+  // Dicionário apelido→login: variantes do mesmo anestesista (rodapé × caso) colapsam
+  // numa linha só — sem ele "GUILHERME D." virava linha extra no fim e roubava o
+  // "próximo a ser liberado" do lugar certo (bug do piloto 2026-07-21).
+  const { roster, options: opcoesRoster, resolver: resolverUid, rosterByUid, loading: rosterLoading } = useRosterAnestesistas()
+
   const rodapeTurno = useMemo(() => rodapeDoTurno(escala?.ordemLiberacao, turnoBase), [escala, turnoBase])
+  // ⚠️ `casosDaFilaDoTurno`, e não `filtrarPorTurnoExibicao`: a cirurgia que
+  // atravessa o turno ("Passa para tarde") conta para quem JÁ está no turno e
+  // nunca cria posição na fila para quem não está — ver o cabeçalho do helper
+  // (caso Gabriela, Unimed, 24/08). No quadro da Completa e na aba Minhas ela
+  // segue aparecendo: lá a pergunta é "esta cirurgia existe?", aqui é "quem
+  // está nesta fila?".
+  const casosTurno = useMemo(
+    () => casosDaFilaDoTurno((modoFds && casosFds) ? casosFds : (escala?.casos || []), turnoBase, rodapeTurno, resolverUid),
+    [escala, turnoBase, modoFds, casosFds, rodapeTurno, resolverUid]
+  )
   const [editor, setEditor] = useState(null) // linha em edição (sheet)
   const [rascLocal, setRascLocal] = useState('')
   const [rascHospital, setRascHospital] = useState('') // hospital da linha (só fila única)
@@ -153,11 +164,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // `l.uid` cobre o slot ASSUMIDO: a chave segue sendo a do dono original, mas os
   // casos (e o status deles) pertencem a quem assumiu.
   const temPassaTarde = (l) => nomesPassaTarde.has(l.chave) || (l.uid && nomesPassaTarde.has(l.uid)) || nomesPassaTarde.has(normNome(l.anestesista))
-
-  // Dicionário apelido→login: variantes do mesmo anestesista (rodapé × caso) colapsam
-  // numa linha só — sem ele "GUILHERME D." virava linha extra no fim e roubava o
-  // "próximo a ser liberado" do lugar certo (bug do piloto 2026-07-21).
-  const { roster, options: opcoesRoster, resolver: resolverUid, rosterByUid, loading: rosterLoading } = useRosterAnestesistas()
 
   // Ajuda externa DO TURNO (nomes azuis) + opções do roster p/ o sheet de adicionar.
   const ajudaTurno = useMemo(() => rodapeDoTurno(escala?.ajudaExterna, turnoBase), [escala, turnoBase])
@@ -1188,11 +1194,22 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // `idxProximo`: usar a fila faria a linha do meio virar vermelha sozinha
           // conforme os de baixo fossem liberados — decisão automática de novo,
           // que é justamente o que não pode acontecer.
+          //
+          // ⚠️ E a conta é sobre a ORDEM PUBLICADA (`noRodape`), não sobre a lista
+          // que está na tela. A exibição acrescenta no FIM quem não está na ordem
+          // — extras, ajudas e visitantes de outro hospital —, e um deles COM
+          // cirurgia empurrava a fronteira para depois de quem fecha o rodapé:
+          // em 24/08 a Unimed publicou a tarde com o Vicente fechando a ordem sem
+          // cirurgia, e ele apareceu "Livre" porque uma visitante do HRO entrou
+          // atrás dele com um caso. Quem não está na ordem não tem posição na
+          // fila, então não pode definir onde a fila termina — nem nascer
+          // liberado por estar depois do fim dela.
           let idxUltimoTrabalho = -1
           for (let i = linhasExibicao.length - 1; i >= 0; i--) {
-            if (!naoEscalado(linhasExibicao[i])) { idxUltimoTrabalho = i; break }
+            const l = linhasExibicao[i]
+            if (l.noRodape && !naoEscalado(l)) { idxUltimoTrabalho = i; break }
           }
-          // ⚠️ NINGUÉM com cirurgia = NÃO EXISTE CAUDA (dono 22/08). Sem esta
+          // ⚠️ NINGUÉM DA ORDEM com cirurgia = NÃO EXISTE CAUDA (dono 22/08). Sem esta
           // guarda o `idx > -1` é verdade para a fila INTEIRA e todo mundo nasce
           // vermelho — foi o que a tarde de sábado 22/08 mostrou: os 7 nomes
           // liberados de uma vez, ordem nenhuma, antes de o turno começar. A
@@ -1227,7 +1244,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // há como distinguir "o app decidiu" de "alguém liberou na frente".
           // NA CAUDA é o contrário: quem fecha a lista sem procedimento nenhum
           // nasce liberado, porque não está em jogo (dono 21/08).
-          const caudaSemTrabalho = temAlguemComTrabalho && semEscala && !forcadoEscalado && idx > idxUltimoTrabalho
+          const caudaSemTrabalho = temAlguemComTrabalho && linha.noRodape && semEscala
+            && !forcadoEscalado && idx > idxUltimoTrabalho
           const liberado = liberadoReal || caudaSemTrabalho
           const estado = liberado ? 'liberado' : idx === idxProximo ? 'proximo' : 'escalado'
           // Bloqueio nos DOIS sentidos: só o "próximo" sai e só o "próximo a

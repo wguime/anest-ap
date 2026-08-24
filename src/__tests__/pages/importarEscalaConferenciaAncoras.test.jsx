@@ -132,18 +132,41 @@ describe('Conferência — fila em duas colunas', () => {
 })
 
 describe('Conferência — pendências num lugar só', () => {
-  it('o porquê do nome sem cirurgia mora na seção Pendências', async () => {
+  // DOIS avisos diferentes para o mesmo sintoma "está na ordem e não tem
+  // cirurgia", e o nome cai em UM só (dono 24/08 — contar a mesma pessoa duas
+  // vezes inflava o número de pendências):
+  //  · na CAUDA → diz o que vai acontecer (nasce LIBERADO na fila, regra 21/08);
+  //  · no MEIO, com vizinho escalado → suspeita de extração torta (IOSC 23/07).
+  it('quem FECHA a ordem sem cirurgia é nomeado, com o que vai acontecer', async () => {
     const container = await conferir()
     const pend = container.querySelector('#conf-pendencias')
-    expect(within(pend).getByText(/confira a extração/i)).toBeTruthy()
+    const aviso = within(pend).getByText(/nascer/i)
+    expect(aviso.textContent).toMatch(/FERNANDO/)
+    expect(aviso.textContent).toMatch(/LIBERADO/)
+    // e não repete o mesmo nome no aviso de extração
+    expect(within(pend).queryByText(/confira a extração/i)).toBeNull()
     // o campo de ajuda (que resolve o caso mais comum) fica na mesma seção
     expect(within(pend).getByText(/Ajuda de outro hospital/i)).toBeTruthy()
+  })
+
+  it('no MEIO da ordem, o aviso continua sendo o da extração torta', async () => {
+    // ERLEI sem cirurgia entre CURY e FERNANDO, que têm — e FERNANDO fecha a
+    // ordem COM cirurgia, então não há cauda nenhuma
+    const casos = [
+      { sala: 'SALA 1', hora: '08:00', procedimento: 'Catarata', cirurgiao: 'Bruno', anestesista: 'CURY' },
+      { sala: 'SALA 2', hora: '08:30', procedimento: 'Colecistectomia', cirurgiao: 'Dirceu', anestesista: 'FERNANDO' },
+    ]
+    const container = await conferir(casos, ['CURY', 'ERLEI', 'FERNANDO'])
+    const pend = container.querySelector('#conf-pendencias')
+    expect(within(pend).getByText(/confira a extração/i)).toBeTruthy()
+    expect(within(pend).queryByText(/nascer/i)).toBeNull()
   })
 
   it('some com o aviso do nome sem cirurgia quando a ordem casa com os casos', async () => {
     const container = await conferir(CASOS, ['CURY', 'ERLEI'])
     const pend = container.querySelector('#conf-pendencias')
     expect(within(pend).queryByText(/confira a extração/i)).toBeNull()
+    expect(within(pend).queryByText(/nascer/i)).toBeNull()
     // o campo de ajuda continua ali — é a seção dele
     expect(within(pend).getByText(/Ajuda de outro hospital/i)).toBeTruthy()
   })
@@ -153,5 +176,66 @@ describe('Conferência — botão de publicar', () => {
   it('mostra quantos casos vão ser publicados', async () => {
     await conferir()
     expect(screen.getByRole('button', { name: /Publicar 2 casos/i })).toBeTruthy()
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// CIRURGIA DA MANHÃ QUE ATRAVESSA PARA A TARDE (dono 24/08)
+//
+// "Gabriela não estava na escala e foi adicionada como ajuda. Nenhum dos dois
+// apareceu na tela de confirmação antes da publicação."
+// A cirurgia dela das 07:00 ficou marcada "passa para tarde" e à tarde ela
+// estava no HRO. A fila não a inventa mais — mas a cirurgia existe e alguém
+// precisa decidir o que fazer com ela, e é aqui que dá para ver isso.
+// ════════════════════════════════════════════════════════════════════════════
+describe('Conferência — cirurgia da manhã que passa para esta tarde', () => {
+  const PUBLICADA = {
+    id: 'e1', hospital: 'unimed', data: '2026-07-28',
+    ordemLiberacao: { matutino: ['GABRIELA', 'RAUL'], vespertino: [] },
+    liberacoes: {}, linhaOverrides: {},
+    casos: [
+      { id: 'm1', sala: 'CC - Sala 10', ordem: 0, turno: 'matutino', hora: '07:00', anestesista: 'GABRIELA', cirurgiao: 'PAULO CALDAS', statusExtra: 'passa_tarde' },
+      { id: 'm2', sala: 'CC - Sala 1', ordem: 0, turno: 'matutino', hora: '07:30', anestesista: 'RAUL', cirurgiao: 'OUTRO' },
+    ],
+  }
+
+  async function conferirTarde(ordem) {
+    svcMock.fetchEscala.mockImplementation(async (_d, h) => (h === 'unimed' ? PUBLICADA : null))
+    svcMock.parseEscalaImagem.mockResolvedValueOnce({
+      casos: [{ sala: 'CC - Sala 10', hora: '13:30', procedimento: 'X', cirurgiao: 'Bruno', anestesista: 'LOUISE' }],
+      ordemLiberacao: ordem, ajudaExterna: [],
+    })
+    const { container } = render(
+      <ImportarEscalaPage hospital="unimed" data="2026-07-28" turno="vespertino" onClose={vi.fn()} />, { wrapper: wrap },
+    )
+    fireEvent.change(container.querySelector('input[type="file"]'), {
+      target: { files: [new File(['x'], 'escala.png', { type: 'image/png' })] },
+    })
+    await waitFor(() => expect(svcMock.parseEscalaImagem).toHaveBeenCalled())
+    await screen.findByRole('heading', { name: /Blocos por anestesista/i })
+    return container
+  }
+
+  it('avisa, com sala e cirurgião, quando a anestesista não está nesta ordem', async () => {
+    const container = await conferirTarde(['LOUISE', 'VICENTE'])
+    const pend = container.querySelector('#conf-pendencias')
+    await waitFor(() => expect(within(pend).getByText(/passa[m]? para esta tarde/i)).toBeTruthy())
+    const item = within(pend).getByText(/CC - Sala 10/)
+    expect(item.textContent).toMatch(/Gabriela/i)
+    expect(item.textContent).toMatch(/07:00/)
+  })
+
+  it('cala quando a anestesista ESTÁ na ordem da tarde — lá a cirurgia conta para ela', async () => {
+    const container = await conferirTarde(['GABRIELA', 'LOUISE'])
+    const pend = container.querySelector('#conf-pendencias')
+    await waitFor(() => expect(svcMock.fetchEscala).toHaveBeenCalled())
+    expect(within(pend).queryByText(/passa[m]? para esta tarde/i)).toBeNull()
+  })
+
+  it('cala na importação da MANHÃ: a travessia é para a tarde', async () => {
+    svcMock.fetchEscala.mockImplementation(async (_d, h) => (h === 'unimed' ? PUBLICADA : null))
+    const container = await conferir(CASOS, ['CURY', 'ERLEI'])
+    const pend = container.querySelector('#conf-pendencias')
+    expect(within(pend).queryByText(/passa[m]? para esta tarde/i)).toBeNull()
   })
 })

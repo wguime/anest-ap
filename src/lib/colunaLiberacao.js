@@ -297,6 +297,10 @@ export function ordemDerivadaDosCasos(casos) {
  * NUNCA use `linhas` como fonte para gravar `ordem_liberacao` — foi assim que a
  * substituição de posição passou a injetar nomes e reordenar o rodapé (bug 29/07).
  * Para escrever a ordem, parta SEMPRE do rodapé do turno.
+ *
+ * `linha.noRodape` distingue as duas coisas: true = a linha OCUPA posição na
+ * ordem publicada; false = entrou só na exibição (extra, ajuda avulsa,
+ * visitante). Regra que fale em posição na fila lê `noRodape`, não o índice.
  */
 export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   const resolvidos = resolverAnestesistas(casos || [])
@@ -462,6 +466,14 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     assumida: null, // slot assumido: { deNome, deUid } = quem ocupava a posição antes
     notaRodape: null, // nota "(CONSULT)" do rodapé → rótulo de local no card
     isExtra: false, // tem caso mas NÃO está no rodapé (ver aviso do JSDoc)
+    // OCUPA POSIÇÃO NA ORDEM PUBLICADA. É o oposto de "apareceu na tela": a
+    // lista de exibição carrega extras, ajudas e visitantes que NÃO estão no
+    // rodapé, e toda regra que fala em "os últimos da lista de liberação"
+    // (a cauda que nasce liberada, dono 21/08) é sobre a ORDEM, não sobre a
+    // tela. Sem este flag a fronteira da cauda se move sozinha quando um
+    // visitante com cirurgia entra no fim — foi o caso Vicente/Gabriela de
+    // 24/08 na Unimed.
+    noRodape: false,
     texto: `${display} — ${g && g.tokens.length ? cirurgioesOrdenados(g).join('/') : '…'}`,
     ...extra,
   })
@@ -559,6 +571,9 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
       // cards noturnos, 24/07). A liberação dele continua sendo decidida AQUI.
       if (emprestado || azulSemCasoAqui) l.teveCasos = true
     }
+    // veio da ORDEM publicada (ou da ordem derivada dos casos, quando o
+    // hospital publica sem rodapé) — vale mesmo indo para o bloco do fim
+    l.noRodape = true
     ;(l.isAjuda && !l.ajudaFora ? linhasAjuda : principais).push(l)
   }
   // azuis listados só em ajudaExterna (fora do rodapé) também entram ao fim

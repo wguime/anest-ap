@@ -1013,6 +1013,60 @@ cirurgia da manhã ao trocar a posição da TARDE reatribuiria caso de outro tur
 Travas: `escalaPassaDeTurno.test.js` (invariante "alcançável na tarde, uma vez
 só" + o que não pode mudar junto) + caso na `escalaCirurgicaPersonas.test.jsx`.
 
+### A fila é da ORDEM PUBLICADA, não da lista na tela (dono 24/08)
+
+Relato: *"ao adicionar a escala vespertina deixou: Vicente (livre), Gabriela
+(próximo a ser liberado). Vicente não tinha procedimentos na escala, o correto é
+estar liberado, e Gabriela não estava na escala e foi adicionada como 'ajuda'.
+Nenhum dos dois apareceu na tela de confirmação antes da publicação... esse erro
+está aparecendo com frequência."* Três sintomas, **uma causa**: a travessia de
+22/08 pôs na fila da tarde alguém que não estava no turno, e a linha dela
+deslocou a fronteira da cauda.
+
+Reconstruído dos dados (Unimed, 24/08): a cirurgia da **Gabriela** das 07:00 na
+CC - Sala 10 foi marcada "passa para tarde" e ficou `agendada`; à tarde ela
+estava escalada no **HRO** (15º do rodapé de lá). A regra de 22/08 trouxe a
+cirurgia para a tarde da Unimed, a lib não a achou no rodapé e a devolveu como
+**visitante** no fim da lista — badge "Ajuda" e "próximo a ser liberado" para
+quem nem estava no hospital. E como ela vinha DEPOIS do Vicente e tinha caso,
+virou o "último nome com trabalho": o Vicente, 14º e último da ordem com
+cirurgia nenhuma, saiu de LIBERADO para "Livre".
+
+- **A cauda é da ordem** (`linha.noRodape`, novo na lib): a exibição acrescenta no
+  fim extras, ajudas e visitantes, e nenhum deles ocupa posição na fila — então
+  nenhum deles define onde a fila termina nem nasce liberado por estar depois do
+  fim dela. Antes a fronteira era o último índice da LISTA, e qualquer visitante
+  com cirurgia a empurrava; é por isso que o sintoma era frequente (visitante de
+  outro hospital é rotina). `proximoPlantao` continua sendo do rodapé, mesmo
+  exibido por último.
+- **A travessia conta, não cria** (`casosDaFilaDoTurno` em utils, no lugar de
+  `filtrarPorTurnoExibicao` SÓ na LiberacoesView): a cirurgia que atravessa o
+  turno entra na fila de quem **já está** no turno — nome na ordem publicada ou
+  cirurgia própria dele — e nunca inventa posição para quem não está. O Humberto,
+  que também tinha uma marcada "passa para tarde" e ESTÁ no rodapé da tarde,
+  segue com a cirurgia na linha dele (era o comportamento certo desde 22/08). A
+  cirurgia da Gabriela **não some**: continua no quadro da **Completa**, no grupo
+  "Ainda abertas — Manhã", e na aba **Minhas** dela — lá a pergunta é "esta
+  cirurgia existe?", na fila é "quem está nesta fila?". Identidade tolerante por
+  desenho (`chavesIdentidade`: uid E nome, as duas metades de uma dupla "A + B"):
+  casar demais preserva o comportamento de hoje, casar de menos some com a linha
+  de quem está trabalhando.
+- **A conferência passa a dizer o que vai acontecer** — era a queixa do "não
+  apareceu na tela de confirmação". O aviso de 23/07 fala de SUSPEITA ("confira a
+  extração"), e quem lê conclui que está tudo certo. Agora quem fecha a ordem sem
+  cirurgia é **nomeado**, com a consequência ("vai nascer LIBERADO (vermelho) na
+  fila"), e a cirurgia da manhã que atravessa sem dono presente vira pendência
+  própria com sala, hora e cirurgião. ⚠️ **um aviso por nome**: quem está na cauda
+  sai do aviso de extração (dizia a mesma coisa e contava a pessoa duas vezes no
+  contador de pendências); o ponto âmbar na posição cobre os dois casos. A
+  conferência agora busca também a escala JÁ PUBLICADA do próprio hospital — é
+  dela que saem as cirurgias marcadas, que o lote em conferência não contém.
+- Travas: describe "a cauda é da ORDEM, não da tela" (recorte real de 24/08:
+  Humberto · Raul · Vicente · Gabriela visitante · Didomenico) + "passa para tarde
+  de quem não está na tarde" em `escalaCirurgicaPersonas.test.jsx`; invariante "a
+  travessia não inventa gente na fila" em `escalaPassaDeTurno.test.js`; os dois
+  avisos novos em `importarEscalaConferenciaAncoras.test.jsx`.
+
 ### Sincronia das superfícies de urgência (dono 21/08) — uma derivação, um relógio, um "acabou"
 
 Relato: *"ao finalizar uma cirurgia de urgência ela não está sincronizada com as informações no

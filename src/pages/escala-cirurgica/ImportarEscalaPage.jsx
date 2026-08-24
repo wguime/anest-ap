@@ -20,7 +20,7 @@ import { isPermissionError } from '@/services/supabaseEscalaAnestesistaService'
 import { prepararImagemParaVision } from '@/lib/imagemVision'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
-import { linhaVazia, prepararCasosImportados as prepararCasos, normNome, candidatosPrimeiroNome, resumirRodape, gruposAnestesista, chavesAnestesista, aplicarAtribuicoes, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital } from './utils'
+import { linhaVazia, prepararCasosImportados as prepararCasos, normNome, candidatosPrimeiroNome, resumirRodape, casosQuePassamParaOTurno, presencaDoTurno, estaPresente, gruposAnestesista, chavesAnestesista, aplicarAtribuicoes, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import { planoCruzamentoUrgencias, salasContrato } from '@/lib/escalaCirurgicaUrgencias'
 import { ehFimDeSemana } from '@/lib/escalaFds'
@@ -609,6 +609,59 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
     [ordemTexto, ajudaTexto, casos, resolver],
   )
 
+  // Escala JÁ PUBLICADA deste mesmo hospital/dia — é dela que saem as cirurgias
+  // da manhã marcadas "passa para tarde" (o lote em conferência não as contém).
+  const [escalaPublicada, setEscalaPublicada] = useState(null)
+  useEffect(() => {
+    let vivo = true
+    svc.fetchEscala(dataEscolhida, hosp)
+      .then((r) => { if (vivo) setEscalaPublicada(r || null) })
+      .catch(() => { if (vivo) setEscalaPublicada(null) })
+    return () => { vivo = false }
+  }, [dataEscolhida, hosp])
+
+  // ── O QUE A PUBLICAÇÃO VAI FAZER COM QUEM ESTÁ SEM CIRURGIA (dono 24/08) ──
+  // "Nenhum dos dois apareceu na tela de confirmação antes da publicação."
+  // O aviso de extração acima existe desde 23/07, mas ele fala de SUSPEITA
+  // ("confira a extração"); o que faltava era a CONSEQUÊNCIA — quem fecha a
+  // ordem sem cirurgia nasce vermelho na fila (regra de 21/08) e, se aquilo era
+  // erro de leitura, a conferência é o último lugar onde dá para consertar.
+  // Mesma conta da fila: fronteira = último nome da ORDEM com trabalho; sem
+  // ninguém com trabalho não existe cauda (22/08). Ajuda conta como trabalho —
+  // na fila ela nunca nasce liberada.
+  const caudaLiberada = useMemo(() => {
+    let ultimo = -1
+    for (let i = ordemNumerada.length - 1; i >= 0; i--) {
+      if (ordemNumerada[i].casos > 0 || ordemNumerada[i].ajuda) { ultimo = i; break }
+    }
+    if (ultimo < 0) return []
+    return ordemNumerada.slice(ultimo + 1).filter((p) => p.casos === 0 && !p.ajuda)
+  }, [ordemNumerada])
+  const nomesCauda = useMemo(() => new Set(caudaLiberada.map((p) => p.nome)), [caudaLiberada])
+  // UM aviso por nome: quem está na cauda é coberto pelo aviso acima, que diz a
+  // mesma coisa ("a linha dele pode ter saído para outra pessoa") E o que vai
+  // acontecer. Contar duas vezes a mesma pessoa inflava o número de pendências.
+  const suspeitosExtracao = useMemo(
+    () => rodapeSuspeitos.filter((n) => !nomesCauda.has(n)),
+    [rodapeSuspeitos, nomesCauda],
+  )
+
+  // ── CIRURGIA DA MANHÃ QUE ATRAVESSA PARA ESTE TURNO (dono 24/08) ──────────
+  // A cirurgia marcada "Passa para tarde" segue valendo à tarde (22/08). Quando
+  // o anestesista dela NÃO está na escala da tarde, ela fica sem dono presente:
+  // em 24/08 a cirurgia das 07:00 da Gabriela passou para a tarde e ela estava
+  // no HRO — a fila da Unimed inventou uma linha dela, com badge "Ajuda".
+  // A fila não a cria mais (`casosDaFilaDoTurno`), mas a cirurgia continua
+  // existindo e alguém precisa decidir: reatribuir a quem está na sala à tarde,
+  // ou desmarcar o "passa para tarde". Isto é o aviso — nunca a decisão.
+  const travessiasOrfas = useMemo(() => {
+    if (periodo !== 'vespertino' || !escalaPublicada) return []
+    const atravessam = casosQuePassamParaOTurno(escalaPublicada.casos || [], 'vespertino')
+    if (!atravessam.length) return []
+    const presentes = presencaDoTurno(separarListaRodape(ordemTexto), casos, resolver)
+    return atravessam.filter((c) => !estaPresente(presentes, c, resolver))
+  }, [escalaPublicada, periodo, ordemTexto, casos, resolver])
+
   // GUARDRAIL DE NOME AMBÍGUO (dono 11/08) — BLOQUEIA a publicação.
   // A escala veio com "JOAO" na CO - Cesárea e o rodapé tinha JOAO HENRIQUE e
   // JOAO RICARDO: o dicionário não resolve primeiro nome com dois donos (regra
@@ -1049,7 +1102,8 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
   // recusa — nome ambíguo e duplicidade não classificada; o resto é AVISO, que
   // só pede conferência.
   const bloqueiosConferencia = gruposAmbiguos.length + duplicidadesPendentes.length
-  const avisosConferencia = rodapeSuspeitos.length + conflitos.length + blocosRepetidos.length
+  const avisosConferencia = suspeitosExtracao.length + caudaLiberada.length
+    + conflitos.length + blocosRepetidos.length + travessiasOrfas.length
     + duplicados.length + casosForaDoRodape.length + gruposSemAnestesista
   const totalPendencias = bloqueiosConferencia + avisosConferencia
   // Posição aberta para edição — o editor mora FORA das duas colunas da fila
@@ -1385,7 +1439,10 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
               <div className="overflow-hidden rounded-xl border border-border-strong bg-card">
                 <ul className="columns-2 gap-x-3 px-2.5 py-1">
                   {ordemNumerada.map(({ nome, i, papel, ajuda }) => {
-                    const suspeito = rodapeSuspeitos.includes(nome)
+                    // ponto âmbar = "na ordem sem nenhuma cirurgia": o vizinho
+                    // escalado (extração torta, 23/07) OU a cauda que vai nascer
+                    // liberada (24/08) — os dois são o mesmo fato na posição.
+                    const suspeito = rodapeSuspeitos.includes(nome) || nomesCauda.has(nome)
                     return (
                       <li key={i} className="break-inside-avoid border-b border-border/60">
                         <button
@@ -1515,12 +1572,49 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
               {/* Os nomes já vão marcados na própria posição da fila (ponto âmbar) —
                   aqui fica só o PORQUÊ, que é o que a secretária precisa ler
                   uma vez. Repetir a lista fazia procurar o nome no meio dela. */}
-              {rodapeSuspeitos.length > 0 && (
+              {suspeitosExtracao.length > 0 && (
                 <p className="rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
-                  ⚠ {rodapeSuspeitos.length === 1 ? 'Um nome está' : `${rodapeSuspeitos.length} nomes estão`} na ordem
+                  ⚠ {suspeitosExtracao.length === 1 ? 'Um nome está' : `${suspeitosExtracao.length} nomes estão`} na ordem
                   de liberação sem nenhum caso (marcados com o ponto âmbar) — confira a extração: a linha deles pode ter saído
                   para outra pessoa (foi o que sumiu com Didomenico/Melo no IOSC em 23/07).
                 </p>
+              )}
+
+              {/* O QUE VAI ACONTECER com quem está sem cirurgia (dono 24/08).
+                  Nomeia só a CAUDA — que costuma ser 1 a 3 nomes e é a parte
+                  acionável; repetir a ordem inteira faria procurar o nome no
+                  meio dela (decisão de 17/08, mantida). */}
+              {caudaLiberada.length > 0 && (
+                <p className="rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
+                  ⚠ {caudaLiberada.map((p) => p.nome).join(', ')} {caudaLiberada.length === 1 ? 'fecha' : 'fecham'} a ordem
+                  sem cirurgia neste lote e {caudaLiberada.length === 1 ? 'vai nascer' : 'vão nascer'}{' '}
+                  <b>{caudaLiberada.length === 1 ? 'LIBERADO' : 'LIBERADOS'}</b> (vermelho) na fila.
+                  Se {caudaLiberada.length === 1 ? 'essa pessoa trabalha' : 'alguém dessa lista trabalha'} neste turno, a linha
+                  dela saiu para outra pessoa — corrija antes de publicar.
+                </p>
+              )}
+
+              {/* Cirurgia da manhã que atravessa e fica sem dono presente */}
+              {travessiasOrfas.length > 0 && (
+                <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 space-y-1">
+                  <p className="text-sm font-semibold text-warning flex items-center gap-1.5">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    {travessiasOrfas.length === 1 ? '1 cirurgia da manhã passa para esta tarde' : `${travessiasOrfas.length} cirurgias da manhã passam para esta tarde`}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Marcadas “passa para tarde” e o anestesista delas não está nesta ordem de liberação.
+                    Publique e resolva na aba Completa (grupo “Ainda abertas — Manhã”): reatribua a quem está na sala à tarde,
+                    ou desmarque o “passa para tarde”. Elas não entram na fila desta tarde.
+                  </p>
+                  <ul className="space-y-0.5">
+                    {travessiasOrfas.map((c) => (
+                      <li key={c.id} className="text-xs text-warning">
+                        {titleCaseNome(c.anestesista || 'sem anestesista')} · {c.sala || 'sem sala'}
+                        {c.hora ? ` · ${c.hora}` : ''}{c.cirurgiao ? ` · ${nomeCirurgiaoCurto(titleCaseNome(c.cirurgiao))}` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
 
               {duplicados.length > 0 && (
