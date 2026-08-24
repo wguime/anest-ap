@@ -45,7 +45,9 @@ vi.mock('@/hooks/useRosterAnestesistas', () => ({
   }),
 }))
 vi.mock('@/services/supabaseEscalaCirurgicaService', () => ({
-  default: { fetchLocaisHospital: vi.fn(async () => []) },
+  default: {
+    // aviso de tempo estourado (24/08): sem isto o hook rejeita solto
+    reservarAvisoTempo: vi.fn(async () => false), fetchLocaisHospital: vi.fn(async () => []) },
 }))
 
 const wrap = ({ children }) => <ThemeProvider><ToastProvider>{children}</ToastProvider></ThemeProvider>

@@ -29,7 +29,9 @@ const { svcMock, salvarEscala, prepararImagem } = vi.hoisted(() => ({
 }))
 vi.mock('@/services/supabaseEscalaCirurgicaService', () => ({ default: svcMock }))
 vi.mock('@/services/supabaseCirurgiasParticularesService', () => ({
-  default: { completarPacienteDoCaso: vi.fn(async () => {}) },
+  default: {
+    // aviso de tempo estourado (24/08): sem isto o hook rejeita solto
+    reservarAvisoTempo: vi.fn(async () => false), completarPacienteDoCaso: vi.fn(async () => {}) },
 }))
 vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
   useEscalaCirurgicaActions: () => ({ salvarEscala }),

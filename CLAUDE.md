@@ -600,8 +600,25 @@ o recado assim que ele confirmava o próprio).
   é de MASSA, não de matiz: a faixa é a superfície soft (`-bg`) de borda a borda; o badge é
   pastilha sólida dentro do card. Trocar a tinta do badge é o caminho se um dia confundir,
   nunca a da faixa. Travado em `liberacoesAvisoPlantonista.test.jsx`.
-- ⚠️ **NÃO é notificação**: vive na tela em realtime e morre na confirmação. A escala não
-  manda mensagem a ninguém desde 30/07 e isso não mudou.
+- ⚠️ **Não entra na CAIXA DE ENTRADA**: vive na tela em realtime e morre na confirmação. A
+  escala não cria notificação in-app desde 30/07 e isso não mudou.
+- **VIRA PUSH DE TELA BLOQUEADA (dono 24/08):** "quero que os usuários recebam um pop-up da
+  mensagem mesmo com o celular bloqueado". Ao enviar, o recado sai também por FCM para
+  **todos com acesso à escala** (decisão do dono; = `podeEditarEscalaCirurgica`, o mesmo
+  conjunto do gate e da RLS, de qualquer hospital — `destinatariosPush.js` não tem regra
+  própria de propósito), menos o autor. ⚠️ **não é volta do que foi cortado em 30/07**:
+  aquilo eram 6 avisos automáticos POR EVENTO que criavam linha na inbox (99 não lidas em 23
+  pessoas); este é uma frase que uma pessoa escolheu escrever, tem teto de 3 na tela, é
+  opt-in por construção (só chega a quem ativou notificação) e **não deixa não-lida em lugar
+  nenhum**. `priority:'high'` + tag única (`escala-recado`): dois recados seguidos
+  SUBSTITUEM na bandeja em vez de empilhar. ⚠️ **LGPD**: o corpo aparece na tela BLOQUEADA de
+  quem recebe, à vista de quem estiver com o aparelho na mão — o aviso do formulário passou a
+  dizer "sem paciente: nem nome, nem iniciais", que é mais estrito que a regra da Observação.
+- **Alcance real medido (24/08): 35 dos 71 perfis têm `fcmToken`** (31 renovados em agosto).
+  No iPhone o token só existe com o app **instalado na tela de início** — em aba do Safari a
+  API nem existe —, então esse número é literalmente "quantos aparelhos podem receber com a
+  tela bloqueada". Quem não instalou não recebe, e isso não é falha: a tela segue sendo a
+  fonte da verdade.
 - Banco: `escala_cirurgica_aviso` + `escala_cirurgica_aviso_confirmacao` (migrations
   `20260817140000` e `20260817180000`). Autor e confirmante são **server-side por
   trigger** (`firebase_uid()`) — não dá para falar pela boca de outro nem inflar o placar;
@@ -770,6 +787,37 @@ não gasta vaga — marcar não é reservar. Tinta verde só com cirurgia EM AND
   esticaria os 17 cards. ⚠️ `mostraPassaTurno` é declarado DEPOIS de `renovado` — declarar
   junto de `liberado`, como tentei, cai na zona morta e derruba a aba inteira com o
   ErrorBoundary. Os três pills ficam com 8px entre si.
+- **Seta do cirurgião e "~" do cronômetro: fora (dono 24/08):** o ▶ que marcava "cirurgia em
+  andamento" antes do nome do cirurgião saiu — a própria linha já distingue (a iniciada conta
+  "faltam 45min", a agendada mostra "até 15:45"), e o glifo repetia isso num símbolo que só se
+  entendia pelo tooltip, que no celular não existe. `andando` segue decidindo contagem × hora;
+  só o desenho saiu. E a pílula do total mostra **`1h18`**, sem til: o `~` sai em
+  `fraseCronometro`, NÃO em `formatFaltante`, que é compartilhado — a coluna de tempo do
+  quadro da Completa (`~45min`, desenho de 18/08) fica como está.
+- **TEMPO ESTOURADO pede atualização (dono 24/08):** "após terminar o tempo estabelecido, quero
+  que o usuário receba uma mensagem para atualizar o tempo, caso o procedimento não tenha
+  terminado". São DUAS metades e elas falham diferente. **(1) Tela**, 100% confiável: a pílula
+  vira **âmbar** (era verde, a cor de "está tudo correndo", enquanto o texto já dizia "25min
+  além" — número e tinta discordavam) e o card ganha "Atualize o tempo se a cirurgia não
+  terminou". Âmbar aqui já significa "passou do previsto" (tempo da cirurgia estourada, badge
+  Atrasada). **(2) Push** para a pessoa do cronômetro, ⚠️ **best-effort**: quem dispara é o
+  aparelho de quem estiver com a aba Liberações aberta — sem nenhuma tela aberta naquele
+  minuto, ninguém recebe e só o âmbar aparece depois. Um cron no servidor resolveria, ao custo
+  de refazer em SQL a resolução de identidade da fila (as 4 camadas de matching), que é onde
+  este módulo mais errou. Só entra quem tem login vinculado, não foi liberado e AINDA tem
+  cirurgia aberta; card noturno entra (P1–P4 têm cronômetro e é quem mais fica sem ninguém
+  olhando a tela). ⚠️ **a trava de "N telas, uma push" é a PK do banco**, não código:
+  `escala_cirurgica_aviso_tempo` (migration `20260824120000`, aplicada) com
+  `upsert + ignoreDuplicates` → `ON CONFLICT DO NOTHING`, e só manda quem conseguiu inserir.
+  `ignoreDuplicates` é opção de **upsert**; em `insert` ela é descartada em silêncio e o
+  perdedor leva 23505 — foi achado na revisão. O `alvo` (HH:MM) está na chave: atualizar o
+  tempo rearma o aviso; repetir o MESMO horário não. A policy de SELECT parece órfã e **não
+  é** — é o `.select()` que revela quem ganhou a corrida; removê-la mata a push em silêncio.
+- **`send-fcm-push` aceita `userIds` (lote, 24/08):** o recado alcança ~70 pessoas e uma
+  chamada por destinatário seriam 70 requisições saindo do celular de quem escreveu, no meio
+  do turno. O OAuth do Google resolve UMA vez e os lookups vão em blocos de 10. Contrato de 1
+  pessoa (`userId` + 404 `no_fcm_token`) intacto — as mensagens internas dependem dele; os
+  dois foram verificados contra a edge em produção depois do deploy.
 - **A folga é de TODO selo, não só do roxo (dono 24/08, "alguns badges muito próximos"):** a
   correção de 21/08 travou o `mt-2` em `mostraPassaTurno` e o defeito seguiu de pé para os
   outros oito selos — medido a 375px com a escala real, "Plantão da tarde" terminava a **0px**

@@ -27,15 +27,25 @@
  *
  * Body:
  *   {
- *     userId: string,        // Firebase UID do destinatário
+ *     userId?: string,       // Firebase UID do destinatário (1 pessoa)
+ *     userIds?: string[],    // OU vários (lote) — ver abaixo
  *     title: string,         // notification.title
  *     body?: string,         // notification.body
  *     data?: object,         // payload custom (url, tag, etc)
  *     priority?: 'normal'|'high'
  *   }
  *
+ * LOTE (2026-08-24): `userIds` existe porque o recado do plantonista vai para
+ * TODA a equipe com acesso à escala — ~70 pessoas. Uma chamada por destinatário
+ * significaria 70 requisições saindo do celular de quem escreveu o recado, no
+ * meio do turno, cada uma pagando cold start. Aqui o OAuth do Google e a
+ * service account são resolvidos UMA vez e o loop é sobre os lookups.
+ * Quem não tem fcmToken (não optou por push) apenas não entra na conta — não é
+ * erro: metade do grupo está nessa situação.
+ *
  * Respostas:
- *   200 { messageId, sentAt }                    — push enviada
+ *   200 { messageId, sentAt }                    — push enviada (modo userId)
+ *   200 { enviados, semToken, falhas, sentAt }   — modo lote (userIds)
  *   400 { error: 'invalid_payload' }             — campos faltando
  *   401 { error: 'invalid_token' }               — JWT ruim
  *   404 { error: 'no_fcm_token' }                — user não tem token (não opt-in)
@@ -51,7 +61,8 @@ const corsHeaders = {
 }
 
 interface SendPushPayload {
-  userId: string
+  userId?: string
+  userIds?: string[]
   title: string
   body?: string
   data?: Record<string, string>
@@ -171,7 +182,16 @@ Deno.serve(async (req) => {
   } catch {
     return jsonResponse(400, { error: 'invalid_payload' })
   }
-  if (!payload.userId || !payload.title) {
+  // Um destinatário OU uma lista. `MAX_LOTE` é um teto de sanidade: o grupo
+  // inteiro do hospital cabe folgado em 200, e um número maior que isso é
+  // sintoma de chamada errada, não de caso de uso novo.
+  const MAX_LOTE = 200
+  const alvos = [...new Set(
+    (payload.userIds && Array.isArray(payload.userIds) ? payload.userIds : [payload.userId])
+      .filter((u): u is string => typeof u === 'string' && u.length > 0),
+  )].slice(0, MAX_LOTE)
+  const emLote = Array.isArray(payload.userIds)
+  if (alvos.length === 0 || !payload.title) {
     return jsonResponse(400, { error: 'invalid_payload' })
   }
 
@@ -199,63 +219,77 @@ Deno.serve(async (req) => {
     return jsonResponse(500, { error: 'oauth_failed' })
   }
 
-  // 5) Lookup FCM token from Firestore.
-  let fcmToken: string | null = null
-  try {
-    fcmToken = await lookupFcmToken(googleToken, projectId, payload.userId)
-  } catch (err) {
-    console.error('send-fcm-push: firestore lookup', err instanceof Error ? err.message : err)
-    return jsonResponse(500, { error: 'firestore_lookup_failed' })
-  }
-  if (!fcmToken) {
-    return jsonResponse(404, { error: 'no_fcm_token' })
-  }
-
-  // 6) Send FCM HTTP v1.
+  // 5+6) Para cada alvo: lookup do fcmToken e envio. Em lote, uma falha
+  // individual NÃO derruba as outras — o recado tem de chegar a quem dá.
   const fcmEndpoint = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`
-  const fcmBody = {
-    message: {
-      token: fcmToken,
-      notification: {
-        title: payload.title,
-        body: payload.body || '',
-      },
-      data: payload.data
-        // FCM data values precisam ser strings.
-        ? Object.fromEntries(
-            Object.entries(payload.data).map(([k, v]) => [k, typeof v === 'string' ? v : String(v)]),
-          )
-        : undefined,
-      webpush: {
-        headers: {
-          Urgency: payload.priority === 'high' ? 'high' : 'normal',
-        },
-        fcm_options: payload.data?.url ? { link: payload.data.url } : undefined,
-      },
-    },
-  }
+  const dados = payload.data
+    // FCM data values precisam ser strings.
+    ? Object.fromEntries(
+        Object.entries(payload.data).map(([k, v]) => [k, typeof v === 'string' ? v : String(v)]),
+      )
+    : undefined
 
-  try {
+  async function enviarPara(userId: string): Promise<'enviado' | 'sem_token' | 'falha'> {
+    let fcmToken: string | null = null
+    try {
+      fcmToken = await lookupFcmToken(googleToken, projectId, userId)
+    } catch (err) {
+      console.error('send-fcm-push: firestore lookup', err instanceof Error ? err.message : err)
+      return 'falha'
+    }
+    if (!fcmToken) return 'sem_token'
+    const fcmBody = {
+      message: {
+        token: fcmToken,
+        notification: { title: payload.title, body: payload.body || '' },
+        data: dados,
+        webpush: {
+          headers: { Urgency: payload.priority === 'high' ? 'high' : 'normal' },
+          fcm_options: payload.data?.url ? { link: payload.data.url } : undefined,
+        },
+      },
+    }
     const fcmResp = await fetch(fcmEndpoint, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${googleToken}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { Authorization: `Bearer ${googleToken}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(fcmBody),
     })
-
     if (!fcmResp.ok) {
       const text = await fcmResp.text()
       console.error('send-fcm-push: FCM rejeitou', fcmResp.status, text.slice(0, 300))
-      return jsonResponse(500, { error: 'fcm_request_failed', detail: text.slice(0, 200) })
+      return 'falha'
+    }
+    return 'enviado'
+  }
+
+  try {
+    // MODO 1 PESSOA: contrato antigo intacto (mensagens internas dependem dele),
+    // inclusive o 404 de "não optou por push", que o chamador silencia.
+    if (!emLote) {
+      const r = await enviarPara(alvos[0])
+      if (r === 'sem_token') return jsonResponse(404, { error: 'no_fcm_token' })
+      if (r === 'falha') return jsonResponse(500, { error: 'fcm_request_failed' })
+      const sentAt = new Date().toISOString()
+      console.log('send-fcm-push: enviada', { caller: callerSub, target: alvos[0] })
+      return jsonResponse(200, { messageId: null, sentAt })
     }
 
-    const fcmJson = await fcmResp.json() as { name?: string }
-    const messageId = fcmJson.name || null
+    // MODO LOTE: concorrência limitada. Sem o limite, 70 lookups simultâneos no
+    // Firestore estouram o tempo da edge; em blocos de 10 o lote inteiro sai em
+    // poucos segundos.
+    const BLOCO = 10
+    let enviados = 0, semToken = 0, falhas = 0
+    for (let i = 0; i < alvos.length; i += BLOCO) {
+      const res = await Promise.all(alvos.slice(i, i + BLOCO).map(enviarPara))
+      for (const r of res) {
+        if (r === 'enviado') enviados++
+        else if (r === 'sem_token') semToken++
+        else falhas++
+      }
+    }
     const sentAt = new Date().toISOString()
-    console.log('send-fcm-push: enviada', { caller: callerSub, target: payload.userId, messageId })
-    return jsonResponse(200, { messageId, sentAt })
+    console.log('send-fcm-push: lote', { caller: callerSub, alvos: alvos.length, enviados, semToken, falhas })
+    return jsonResponse(200, { enviados, semToken, falhas, sentAt })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('send-fcm-push: erro inesperado', msg.slice(0, 200))

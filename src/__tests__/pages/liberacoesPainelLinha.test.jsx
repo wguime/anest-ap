@@ -36,7 +36,9 @@ vi.mock('@/hooks/useRosterAnestesistas', () => ({
   }),
 }))
 vi.mock('@/services/supabaseEscalaCirurgicaService', () => ({
-  default: { fetchLocaisHospital: vi.fn(async () => []) },
+  default: {
+    // aviso de tempo estourado (24/08): sem isto o hook rejeita solto
+    reservarAvisoTempo: vi.fn(async () => false), fetchLocaisHospital: vi.fn(async () => []) },
 }))
 
 const wrap = ({ children }) => <ThemeProvider><ToastProvider>{children}</ToastProvider></ThemeProvider>
@@ -247,8 +249,15 @@ describe('Tempo da CIRURGIA × tempo da PESSOA no card da fila (dono 29/07)', ()
     // frase, não chip: a posição diz de quem é e o verbo diz o que é
     expect(linhaCirurgiao.textContent).toMatch(/faltam \d/)
     expect(linhaCirurgiao.querySelector('svg')).toBeNull()
-    // e vem marcada como em andamento, que é o que autoriza a contagem
-    expect(within(cardLeo).getByTitle('Cirurgia em andamento')).toBeTruthy()
+    // SEM O ▶ (dono 24/08): o triângulo que marcava "em andamento" saiu. Quem
+    // separa uma da outra é a PALAVRA — a iniciada conta ("faltam 45min"), a
+    // agendada mostra a hora ("até 15:45") —, então o glifo era a mesma coisa
+    // dita num símbolo que só se entendia pelo tooltip, e tooltip não existe no
+    // celular. `andando` segue decidindo contagem × hora; só o desenho saiu.
+    expect(within(cardLeo).queryByTitle('Cirurgia em andamento')).toBeNull()
+    expect(cardLeo.textContent).not.toContain('▶')
+    const cardMar = document.querySelector('[data-linha="uid-mar"]')
+    expect(within(cardMar).getByText('Taciana A').closest('p').textContent).not.toMatch(/faltam/)
   })
 
   it('sem término informado no caso, nenhum chip é inventado', () => {
@@ -507,17 +516,24 @@ describe('Clareza dos dois tempos no card (dono 30/07)', () => {
       linhaOverrides: { 'uid-leo': { termino: '09:30' } },
     })
     const card = document.querySelector('[data-linha="uid-leo"]')
-    const pilula = within(card).getByTitle(/toque para ajustar/)
+    // o title mudou junto com a cor (dono 24/08): estourado convida a ATUALIZAR
+    const pilula = within(card).getByTitle(/toque para atualizar o tempo/)
     expect(pilula.textContent).toContain('30min além')
     expect(pilula.textContent).not.toContain('+30min')
     // a frase completa segue no title, para quem tem mouse
     expect(pilula.getAttribute('title')).toMatch(/há 30min além do previsto/)
   })
 
-  it('enquanto FALTA, a pílula continua curta — "~" não precisa de palavra', () => {
+  it('enquanto FALTA, a pílula continua curta — e SEM o "~" (dono 24/08)', () => {
     montar({}, { ...comTempos, linhaOverrides: { 'uid-leo': { termino: '10:45' } } })
     const card = document.querySelector('[data-linha="uid-leo"]')
-    expect(within(card).getByTitle(/toque para ajustar/).textContent).toContain('~45min')
+    const pilula = within(card).getByTitle(/toque para ajustar/)
+    // o til saiu da PÍLULA (pedido do dono olhando a tela em uso). A assimetria
+    // de 18/08 fica: enquanto falta é só o número; quando passa, vira palavra.
+    expect(pilula.textContent).toContain('45min')
+    expect(pilula.textContent).not.toContain('~')
+    // e a frase completa segue no title, que é onde mora a explicação
+    expect(pilula.getAttribute('title')).toMatch(/45min/)
   })
 
   it('estado VAZIO tem cara de ação: "+ Tempo total", tracejado e sem ícone', () => {

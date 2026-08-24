@@ -115,10 +115,15 @@ export function fraseFaltante(f) {
  * refere, e Dexter & Epstein (Anesth Analg) mostram que, depois que a cirurgia
  * passa da estimativa, o tempo restante médio fica quase CONSTANTE — ou seja, um
  * contador que segue subindo não prevê nada, só informa que estourou.
+ *
+ * SEM O "~" (dono 24/08): a pílula mostra "1h18", não "~1h18". O til vinha de
+ * `formatFaltante`, que é compartilhado — por isso ele é retirado AQUI e não lá:
+ * a coluna de tempo do quadro da Completa ("~45min", desenho de 18/08) segue
+ * como está, e é a pílula da fila que o dono pediu limpa.
  */
 export function fraseCronometro(alvoMin, agoraMin) {
   const f = formatFaltante(alvoMin, agoraMin)
-  return f.atrasada ? fraseFaltante(f) : f.texto
+  return f.atrasada ? fraseFaltante(f) : f.texto.replace(/^~/, '')
 }
 
 /** Minutos desde a meia-noite de um "HH:MM" (null se não parseia). */

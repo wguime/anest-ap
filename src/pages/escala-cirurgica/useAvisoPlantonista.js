@@ -16,24 +16,35 @@
  *     confirmar um deles, abre vaga para o próximo. O teto existe para a fila não
  *     virar mural — foi o excesso que fez as notificações serem removidas.
  *
- * ⚠️ Não notifica ninguém: a escala não manda mensagem desde 30/07 (as 6 fontes
- * foram removidas porque a inbox tinha 99 não lidas em 23 pessoas). O recado vive
- * na tela, em realtime, e morre na confirmação.
+ * ⚠️ Não entra na CAIXA DE ENTRADA: a escala não manda notificação in-app desde
+ * 30/07 (as 6 fontes por evento foram removidas porque a inbox tinha 99 não lidas
+ * em 23 pessoas) e isso não mudou — o recado vive na tela, em realtime, e morre
+ * na confirmação.
+ *
+ * O que mudou em 24/08 (dono): ao ENVIAR, o recado também sai como PUSH para
+ * quem tem acesso à escala, para chegar com o celular bloqueado. Não é volta do
+ * que foi cortado em 30/07: aquilo era aviso automático POR EVENTO (escalado,
+ * liberado, sala encerrou…); este é uma frase que uma pessoa escolheu escrever, é
+ * raro por construção (teto de 3 na tela) e não deixa não-lida acumulada em lugar
+ * nenhum. O push é best-effort e não altera o fluxo: se falhar, o recado está na
+ * tela do mesmo jeito.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
+import { enviarPushBestEffort } from '@/services/pushDispatchService'
+import { destinatariosEscala } from './destinatariosPush'
 
 /** Teto de recados na frente da fila (dono 17/08). */
 export const MAX_AVISOS = 3
 
-export default function useAvisoPlantonista({ escalaId, turno, userId, userName }) {
+export default function useAvisoPlantonista({ escalaId, turno, userId, userName, hospitalLabel }) {
   const [avisos, setAvisos] = useState([])
   const [enviando, setEnviando] = useState(false)
   // a demo é client-side (id 'demo-*') e não tem linha no banco para referenciar
   const ativo = !!escalaId && !String(escalaId).startsWith('demo-') && !!turno
-  const ref = useRef({ escalaId, turno })
-  ref.current = { escalaId, turno }
+  const ref = useRef({ escalaId, turno, hospitalLabel })
+  ref.current = { escalaId, turno, hospitalLabel }
 
   const carregar = useCallback(async () => {
     const { escalaId: id, turno: t } = ref.current
@@ -72,15 +83,33 @@ export default function useAvisoPlantonista({ escalaId, turno, userId, userName 
 
   const enviar = useCallback(async (texto) => {
     const limpo = String(texto || '').trim()
-    const { escalaId: id, turno: t } = ref.current
+    const { escalaId: id, turno: t, hospitalLabel: hosp } = ref.current
     if (!limpo || !id || !t) return false
     setEnviando(true)
     try {
       await svc.criarAviso(id, t, limpo, { userName })
       await carregar()
+      // PUSH DEPOIS DO INSERT, nunca antes: quem anuncia é o servidor. Se a
+      // gravação falhar, ninguém recebe aviso de um recado que não existe.
+      // Fire-and-forget — a tela já mostrou o recado e não espera a rede.
+      ;(async () => {
+        const alvos = await destinatariosEscala(userId)
+        enviarPushBestEffort({
+          userIds: alvos,
+          title: hosp ? `Recado do plantonista · ${hosp}` : 'Recado do plantonista',
+          body: userName ? `${userName}: ${limpo}` : limpo,
+          url: '/escala-cirurgica',
+          // MESMA tag para todos os recados: dois seguidos SUBSTITUEM na bandeja
+          // em vez de empilhar — o teto de 3 na tela existe pela mesma razão.
+          tag: 'escala-recado',
+          // 'high' é o que faz o iOS acordar o aparelho em vez de agrupar a
+          // entrega para depois; é recado de centro cirúrgico em andamento.
+          priority: 'high',
+        })
+      })()
       return true
     } catch { return false } finally { setEnviando(false) }
-  }, [carregar, userName])
+  }, [carregar, userName, userId])
 
   const confirmar = useCallback(async (avisoId) => {
     if (!avisoId || !userId) return

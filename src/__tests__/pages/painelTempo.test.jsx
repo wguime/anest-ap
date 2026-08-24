@@ -162,10 +162,16 @@ describe('fraseFaltante', () => {
   // enquanto falta, por palavra quando passa — um delta solto ("+25min") não diz
   // de que horário fala nem se falta ou já passou.
   it('a pílula do total troca o sinal por palavra só quando estoura', () => {
-    expect(fraseCronometro(15 * 60, 14 * 60 + 15)).toBe('~45min')
+    // SEM O "~" desde 24/08 (dono, olhando a tela em uso): a pílula mostra o
+    // número seco. A assimetria de 18/08 continua — o que muda quando estoura é
+    // a PALAVRA, e é ela que carrega o significado, não um sinal.
+    expect(fraseCronometro(15 * 60, 14 * 60 + 15)).toBe('45min')
     expect(fraseCronometro(14 * 60, 14 * 60 + 25)).toBe('25min além')
-    expect(fraseCronometro(14 * 60, 12 * 60)).toBe('~2h00')
+    expect(fraseCronometro(14 * 60, 12 * 60)).toBe('2h00')
     expect(fraseCronometro(12 * 60, 14 * 60 + 10)).toBe('2h10 além')
+    // e o til NÃO saiu de `formatFaltante`, que é compartilhado: a coluna de
+    // tempo do quadro da Completa (desenho de 18/08) segue como está.
+    expect(formatFaltante(15 * 60, 14 * 60 + 15).texto).toBe('~45min')
   })
 
   it('no prazo vira "faltam N"', () => {

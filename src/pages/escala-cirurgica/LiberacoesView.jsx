@@ -20,6 +20,7 @@ import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import useAgoraMinuto from './useAgoraMinuto'
 import useAvisoPlantonista from './useAvisoPlantonista'
+import { AvisoTempoEstourado } from './useAvisoTempoEstourado'
 import PainelTempo, { formatFaltante, fraseCronometro, fraseFaltante } from './PainelTempo'
 import AddCasoSheet from './AddCasoSheet'
 import { casoConcluido, casosResolvidos, chaveSalaEscolha, compararSalas, filtrarPorTurnoExibicao, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao, turnoDoCaso } from './utils'
@@ -110,6 +111,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     turno: turno || turnoBase,
     userId: meuUid,
     userName: meuNome || null,
+    // vai no título do push ("Recado do plantonista · HRO"): quem recebe com o
+    // celular bloqueado precisa saber de qual hospital é antes de abrir
+    hospitalLabel: hospitalLabel || null,
   })
 
   // Cronômetro em tempo real: o texto é derivado puro de `agoraMin`. O hook
@@ -668,6 +672,27 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
         ...linhasForaDoRodape,
       ]
 
+  // TEMPO ESTOURADO (dono 24/08): quem informou um término que já passou e AINDA
+  // tem cirurgia aberta. A conta é a mesma que pinta a pílula de âmbar no card —
+  // um lugar só decide o que é "estourou", senão a tela e a push discordariam.
+  // Só entra quem tem login vinculado: sem uid não há para quem mandar.
+  // ⚠️ o card NOTURNO entra (P1–P4 têm ficha completa, cronômetro inclusive):
+  // quem está de plantão à noite é justamente quem fica sem ninguém por perto
+  // para olhar a tela. Excluí-lo seria lacuna, não decisão.
+  const alvosTempoEstourado = linhasExibicao.reduce((acc, l) => {
+    if (!l.uid) return acc
+    const ovL = overrideDe(l)
+    const alvo = ovL?.termino
+    if (!alvo) return acc
+    const alvoMin = parseHoraMinutos(alvo)
+    if (alvoMin == null || alvoMin >= agoraMin) return acc
+    const marca = marcaDe(l)
+    const jaLiberado = !!marca && marca.escalado !== true
+    if (jaLiberado || estaLivre(l) || !(l.casosAtivos > 0)) return acc
+    acc.push({ chave: l.chave, uid: l.uid, alvo })
+    return acc
+  }, [])
+
   // Reordenar persiste os NOMES ORIGINAIS do rodapé na ordem-base (sem o
   // afundamento de liberados da exibição). Persistir o nome EXIBIDO corrompia o
   // rodapé (duplicatas reais em 22/07 — o nome transformado não casava mais com
@@ -872,6 +897,14 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
 
   return (
     <div className="space-y-3">
+      {/* Não desenha nada: é o disparo da push de "tempo estourado" (dono 24/08).
+          Vive como componente porque a lista só existe depois do guard de
+          `rosterLoading` lá em cima — ver o porquê no próprio arquivo. */}
+      <AvisoTempoEstourado
+        escalaId={escala?.id}
+        turno={turno || turnoBase}
+        alvos={alvosTempoEstourado}
+      />
       {acoesTopo}
 
       {/* ── RECADO DO PLANTONISTA (dono 17/08; ROXO por decisão do dono 20/08) ──
@@ -1418,11 +1451,15 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                           // Fica a PÍLULA, que é o número que dirige a fila; o chip
                           // volta assim que os horários divergem (2+ cirurgias).
                           const espelhaOTotal = alvo != null && alvo === terminoLinhaMin && !!cronometro
+                          // SEM O ▶ (dono 24/08): o triângulo antes do nome do cirurgião
+                          // saiu. "Cirurgia em andamento" já está dito na própria linha —
+                          // a agendada mostra "até 15:45" e só a que está correndo mostra
+                          // a contagem ("faltam 45min" / "12min além"). O glifo repetia
+                          // isso num símbolo que precisava de tooltip para ser entendido,
+                          // e tooltip não existe no celular. `andando` continua sendo o
+                          // que decide contagem × hora — só o desenho saiu.
                           return (
                             <p key={i} className="flex items-center gap-1.5">
-                              {andando && (
-                                <span className="shrink-0 text-primary" title="Cirurgia em andamento" aria-label="em andamento">▶</span>
-                              )}
                               <span className="min-w-0 truncate">{c}</span>
                               {i === 0 && ov?.cirurgioes && <span className="shrink-0 text-xs text-primary">· ajustado</span>}
                               {/* TEMPO DA CIRURGIA EM PALAVRA (dono 30/07). Era um
@@ -1483,6 +1520,19 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         <span className="min-w-0">{observacaoLinha}</span>
                       </p>
                     )}
+                    {/* TEMPO ESTOUROU: o pedido em PALAVRA (dono 24/08). A pílula
+                        âmbar diz que passou; esta linha diz o que fazer, que é a
+                        parte que o dono pediu ("uma mensagem para atualizar o
+                        tempo"). Fica na coluna da esquerda, onde já moram as infos
+                        da linha, e SEM ícone: o card já teve dois ⏱ disputando
+                        significado em 30/07 e um terceiro relógio devolveria o
+                        problema. Some sozinha quando o tempo é atualizado — é a
+                        mesma condição que pinta a pílula. */}
+                    {!liberadoReal && cronometro?.atrasada && (
+                      <p className="mt-0.5 text-[13px] font-medium leading-snug text-warning">
+                        Atualize o tempo se a cirurgia não terminou.
+                      </p>
+                    )}
                     {/* card amarelo: deixa explícito o PORQUÊ da cor */}
                     {estado === 'proximo' && (
                       <div className="mt-1">
@@ -1517,10 +1567,21 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         type="button"
                         disabled={!canEdit}
                         onClick={() => canEdit && setAlvoTempo(linha)}
-                        title={`${cronometro.titulo} — toque para ajustar`}
+                        title={cronometro.atrasada
+                          ? `${cronometro.titulo} — toque para atualizar o tempo`
+                          : `${cronometro.titulo} — toque para ajustar`}
                         className={[
                           'flex min-h-[26px] items-center gap-1 whitespace-nowrap rounded-full',
-                          'bg-primary px-2.5 text-sm font-semibold text-primary-foreground',
+                          'px-2.5 text-sm font-semibold',
+                          // ESTOUROU = ÂMBAR (dono 24/08). O tempo já virava palavra
+                          // ("25min além"), mas seguia pintado de verde, a cor de
+                          // "está tudo correndo" — o número dizia uma coisa e a tinta
+                          // outra. Âmbar nesta tela já significa "passou do previsto":
+                          // é a mesma tinta do tempo da CIRURGIA estourada, na linha
+                          // do cirurgião logo acima, e do badge "Atrasada".
+                          cronometro.atrasada
+                            ? 'bg-warning text-warning-foreground'
+                            : 'bg-primary text-primary-foreground',
                         ].join(' ')}
                       >
                         <Timer className="h-3.5 w-3.5 shrink-0" /> {cronometro.texto}
@@ -2019,6 +2080,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             </SheetTitle>
             <p className="mt-1 text-[11.5px] leading-snug text-muted-foreground">
               Aparece no topo desta aba para todo mundo e some da tela de cada um que confirmar.
+              Chega também como notificação no celular de quem ativou.
             </p>
           </SheetHeader>
           <div className="px-1 pb-4">
@@ -2032,9 +2094,13 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             />
             <p className="mt-1 text-right text-[11px] text-muted-foreground">{rascAviso.length}/{AVISO_MAX}</p>
             {/* LGPD: texto livre que o grupo TODO enxerga — mesma regra da
-                Observação da linha (a escala só guarda iniciais de paciente). */}
+                Observação da linha (a escala só guarda iniciais de paciente).
+                Desde 24/08 o recado também vai como push, e o corpo da push
+                aparece na tela BLOQUEADA de quem recebe, à vista de quem estiver
+                com o aparelho na mão: aqui nem iniciais servem. */}
             <p className="text-[11.5px] leading-snug text-muted-foreground">
-              Recado operacional. Sem nome de paciente — a escala só guarda iniciais.
+              Recado operacional. Sem paciente — nem nome, nem iniciais: o texto
+              aparece na tela bloqueada de quem recebe.
             </p>
             <Button
               className="mt-3 w-full"

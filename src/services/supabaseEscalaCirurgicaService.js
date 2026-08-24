@@ -519,6 +519,64 @@ async function criarAviso(escalaId, turno, texto, { userName } = {}) {
   return data?.id || null
 }
 
+/**
+ * TRAVA do aviso "tempo estourado" (dono 24/08).
+ *
+ * Devolve `true` só para QUEM CONSEGUIU inserir a linha — e é esse `true` que
+ * autoriza mandar a push. O disparo sai do cliente, e num turno normal há várias
+ * telas abertas na aba Liberações ao mesmo tempo: sem trava, cada uma mandaria a
+ * sua e a pessoa receberia o mesmo aviso 3, 4 vezes.
+ *
+ * ⚠️ `upsert` + `ignoreDuplicates`, e NÃO `insert`: `ignoreDuplicates` é opção do
+ * upsert (postgrest-js: `insert(values, {count, defaultToNull})`), então em
+ * `insert` ela é descartada em silêncio e o perdedor da corrida leva 23505 em vez
+ * de resposta vazia. A trava até funcionaria pelo ramo de erro, mas encheria o log
+ * de 409 que parecem incidente. Assim o PostgREST emite `ON CONFLICT DO NOTHING`
+ * de verdade e o `.select()` devolve linha só para quem inseriu.
+ *
+ * ⚠️ a policy de SELECT da tabela é o que faz o `.select()` devolver a linha —
+ * sem ela o vencedor receberia representação vazia e NUNCA mandaria a push.
+ * Ninguém lê essa tabela de outro jeito: não é policy órfã.
+ *
+ * `alvo` (o HH:MM que estourou) faz parte da chave: atualizar o tempo — que é
+ * justamente o que o aviso pede — rearma o aviso para o horário novo. Repetir o
+ * MESMO horário não rearma (a linha já existe): é trade-off consciente, o
+ * alternativo seria versionar o override na chave.
+ *
+ * NUNCA lança: é caminho de aviso, não de operação clínica. Mas erro que NÃO é
+ * conflito vira warn — sem isso "perdi a corrida" e "a migration não foi
+ * aplicada" (42P01) / "a RLS negou" (42501) seriam indistinguíveis, e a metade
+ * do push poderia nunca ter funcionado sem ninguém notar (a tela âmbar continua
+ * aparecendo de qualquer jeito).
+ */
+async function reservarAvisoTempo(escalaId, turno, chave, alvo) {
+  if (!escalaId || String(escalaId).startsWith('demo-') || !turno || !chave || !alvo) return false
+  // O CHECK do banco é HH:MM zero-padded; `parseHoraMinutos` do front aceita
+  // "8:30". Normaliza aqui para os dois lados falarem o mesmo formato.
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(alvo).trim())
+  if (!m) return false
+  const alvoNorm = `${String(Number(m[1])).padStart(2, '0')}:${m[2]}`
+  try {
+    const { data, error } = await supabase
+      .from('escala_cirurgica_aviso_tempo')
+      .upsert(
+        { escala_id: escalaId, turno, chave, alvo: alvoNorm },
+        { onConflict: 'escala_id,turno,chave,alvo', ignoreDuplicates: true },
+      )
+      .select('chave')
+    if (error) {
+      if (error.code !== '23505') {
+        console.warn('[escala] reservarAvisoTempo falhou:', error.code, error.message)
+      }
+      return false
+    }
+    return Array.isArray(data) && data.length > 0
+  } catch (err) {
+    console.warn('[escala] reservarAvisoTempo exceção:', err?.message || err)
+    return false
+  }
+}
+
 /** Apaga um recado (o plantonista tira o que não vale mais — dono 17/08). */
 async function excluirAviso(avisoId) {
   const { error } = await supabase.from('escala_cirurgica_aviso').delete().eq('id', avisoId)
@@ -538,6 +596,7 @@ export default {
   fetchAvisos,
   criarAviso,
   confirmarAviso,
+  reservarAvisoTempo,
   excluirAviso,
   fetchLocaisHospital,
   salvarEscala,

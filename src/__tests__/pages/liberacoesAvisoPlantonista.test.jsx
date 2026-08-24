@@ -25,7 +25,9 @@ const { fetchAvisos, criarAviso, confirmarAviso, excluirAviso } = vi.hoisted(() 
   excluirAviso: vi.fn(async () => {}),
 }))
 vi.mock('@/services/supabaseEscalaCirurgicaService', () => ({
-  default: { fetchAvisos, criarAviso, confirmarAviso, excluirAviso, fetchLocaisHospital: vi.fn(async () => []) },
+  default: {
+    // aviso de tempo estourado (24/08): sem isto o hook rejeita solto
+    reservarAvisoTempo: vi.fn(async () => false), fetchAvisos, criarAviso, confirmarAviso, excluirAviso, fetchLocaisHospital: vi.fn(async () => []) },
 }))
 vi.mock('@/services/supabaseSubscriptionHelper', () => ({
   createReliableSubscription: () => ({ cleanup: () => {} }),
