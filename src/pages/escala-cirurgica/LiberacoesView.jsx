@@ -1131,31 +1131,40 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     definivel && 'active:opacity-70',
                   ].filter(Boolean).join(' ')}
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold tabular-nums">{i.hora || '—'}</span>
-                    {hospitalDoAlerta(i.id) && <span className="shrink-0 text-xs font-semibold text-muted-foreground">{hospitalDoAlerta(i.id)}</span>}
-                    {i.sala && <span className="min-w-0 truncate font-semibold" title={i.sala}>{salaLiberacao(i.sala)}</span>}
-                    <Badge variant="warning" badgeStyle="subtle" className="ml-auto shrink-0">Sem anestesista</Badge>
-                  </div>
-                  {(i.procedimento || i.cirurgiao) && (
-                    <p className="mt-0.5 text-foreground/90">
-                      {[i.procedimento, i.cirurgiao].filter(Boolean).join(' · ')}
-                    </p>
-                  )}
-                  {/* ⚠️ a pastilha "Assumir" é do FIM DE SEMANA (dono 24/08, 2ª
-                      mensagem): no dia útil fica a frase de sempre. O card
-                      inteiro é o alvo nos dois casos. */}
-                  {definivel && (modoFds ? (
-                    <p className="mt-1.5 flex justify-end">
-                      <span className="flex min-h-[36px] items-center gap-1.5 rounded-[10px] bg-warning px-3 text-[12.5px] font-extrabold text-warning-foreground">
+                  {/* TEXTO À ESQUERDA, AÇÃO À DIREITA (dono 24/08, comparando a
+                      tela com o protótipo aprovado): a pastilha ocupava uma
+                      TERCEIRA linha só para ela e o alerta ia a 107px medidos.
+                      Inline, volta a ~74px. O badge "Sem anestesista" saiu junto:
+                      o título logo acima já diz isso e ele só empurrava a sala
+                      para a esquerda. */}
+                  <div className="flex items-center gap-2.5">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold tabular-nums">{i.hora || '—'}</span>
+                        {hospitalDoAlerta(i.id) && <span className="shrink-0 text-xs font-semibold text-muted-foreground">{hospitalDoAlerta(i.id)}</span>}
+                        {i.sala && <span className="min-w-0 truncate font-semibold" title={i.sala}>{salaLiberacao(i.sala)}</span>}
+                      </div>
+                      {(i.procedimento || i.cirurgiao) && (
+                        <p className="mt-0.5 text-foreground/90">
+                          {[i.procedimento, i.cirurgiao].filter(Boolean).join(' · ')}
+                        </p>
+                      )}
+                    </div>
+                    {/* ⚠️ a pastilha "Assumir" é do FIM DE SEMANA (dono 24/08, 2ª
+                        mensagem): no dia útil fica a frase de sempre, logo abaixo
+                        — inline ela não caberia a 430px. O card inteiro é o alvo
+                        nos dois casos. */}
+                    {definivel && modoFds && (
+                      <span className="flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-[10px] bg-warning px-3 text-[12.5px] font-extrabold text-warning-foreground">
                         <UserPlus className="h-3.5 w-3.5 shrink-0" /> Assumir
                       </span>
-                    </p>
-                  ) : (
+                    )}
+                  </div>
+                  {definivel && !modoFds && (
                     <p className="mt-1 flex items-center gap-1 text-xs font-medium text-primary">
                       <UserPlus className="h-3 w-3 shrink-0" /> Toque para definir o anestesista
                     </p>
-                  ))}
+                  )}
                 </Wrapper>
               )
             })}
@@ -1373,9 +1382,16 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
               data-linha={linha.chave}
               data-nome={linha.anestesista}
               data-selo={linha.selo || undefined}
-              className={['flex min-h-[68px] items-center rounded-xl border transition-colors', CARD_ESTADO[estado]].join(' ')}
+              /* ITEMS-START, não center (dono 24/08, comparando a tela com o
+                 protótipo aprovado): com `items-center` o número e o círculo
+                 flutuavam para o MEIO vertical de um corpo de 4 linhas — medido,
+                 o círculo caía 36px abaixo do nome e lia como se pertencesse à
+                 linha da sala. Alinhados ao topo eles voltam a ficar na linha do
+                 NOME, que é de quem eles são. O `min-h` saiu junto: o conteúdo
+                 sempre passa de 68px e ele só somava altura nos cards curtos. */
+              className={['flex items-start rounded-xl border transition-colors', CARD_ESTADO[estado]].join(' ')}
             >
-              <span className="w-5 shrink-0 pl-1 text-center text-xs font-semibold text-muted-foreground">{numeroExibido || '•'}</span>
+              <span className="w-5 shrink-0 pt-3 pl-1 text-center text-xs font-semibold text-muted-foreground">{numeroExibido || '•'}</span>
 
               {/* setas de reordenar REMOVIDAS (pedido do dono 2026-07-27): a ordem
                   do rodapé é imutável no app — nem o plantonista mexe. */}
@@ -1411,7 +1427,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
               </button>
 
               {/* corpo em 2 níveis: nome em destaque, cirurgião(ões) abaixo */}
-              <div className="min-w-0 flex-1 py-2.5 pl-1">
+              <div className="min-w-0 flex-1 py-2 pl-1">
                 {/* flex + truncate: badge SEMPRE ao lado do nome (sem quebrar p/ baixo).
                     `pr-1.5` (24/08) é o piso da margem direita: os selos são `shrink-0`
                     e só o nome cede, então com nome longo + 3 selos o último parava a
@@ -1529,7 +1545,13 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 </p>
                 {/* 2ª linha: infos à esquerda; cronômetro + lápis à direita (o nome acima
                     fica com a LARGURA TODA — badge ao lado sem truncar o nome) */}
-                <div className="flex items-center justify-between gap-2">
+                {/* ITEMS-START também aqui (dono 24/08): a coluna da direita é
+                    mais alta que o bloco de texto (87px contra ~60), e com
+                    `items-center` o texto era empurrado para o meio — abrindo um
+                    vão de ~14px entre o nome e a linha do hospital, que no
+                    protótipo vêm coladas. Alinhados ao topo, hospital, sala e
+                    cirurgiões descem direto do nome. */}
+                <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     {/* card vermelho + "Liberado" = liberação FEITA, sempre. Sem
                         caso e sem marcação a linha mostra "Livre" e espera o toque
