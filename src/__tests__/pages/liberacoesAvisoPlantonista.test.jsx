@@ -241,8 +241,16 @@ describe('Histórico e aparência do recado (dono 17/08)', () => {
     fetchAvisos.mockResolvedValue([{ ...AVISO, confirmadoPor: ['uid-x'] }])
     montar({ meuUid: 'uid-mar', meuAlias: 'MARILIO' })
     expect(await screen.findByText('Guilherme libera Alexandre S.')).toBeTruthy()
-    // "2 de 4 confirmaram" transformava o recado num placar (dono 17/08)
+    // "2 de 4 confirmaram" transformava o recado num placar (dono 17/08) — segue
+    // valendo com o cartão novo de 24/08
     expect(screen.queryByText(/confirmaram|confirmou|de \d+/)).toBeNull()
-    expect(screen.getByText(/plantonista/)).toBeTruthy()
+    // desde 24/08 "plantonista" aparece DUAS vezes: no rótulo do cartão
+    // ("Recado do plantonista") e na linha de autoria. Não é redundância: o
+    // rótulo diz de quem é a mensagem antes de ela ser lida, a linha diz QUEM e
+    // QUANDO. Por isso a busca deixou de ser por texto solto.
+    expect(screen.getByText('Recado do plantonista')).toBeTruthy()
+    expect(screen.getByText(/· plantonista ·/)).toBeTruthy()
+    // e o confirmar virou botão de verdade (40px), não a pastilha do canto
+    expect(screen.getByRole('button', { name: /Confirmar leitura/ })).toBeTruthy()
   })
 })

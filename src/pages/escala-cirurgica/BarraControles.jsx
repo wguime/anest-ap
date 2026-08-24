@@ -87,11 +87,19 @@ export default function BarraControles({
         />
       </div>
 
-      {/* Hospital SEMPRE visível (dono 16/08) e na mesma altura do turno */}
-      <Trilho options={hospitalOpcoes} value={hospital} onChange={onEscolherHospital} />
+      {/* Hospital SEMPRE visível (dono 16/08) e na mesma altura do turno.
+          ⚠️ some no FIM DE SEMANA (dono 24/08): lá a fila é ÚNICA e já cobre os
+          três hospitais — o seletor não filtraria nada e só faria perguntar qual
+          escolher. Quem passa `null` está dizendo "não há esse eixo aqui". */}
+      {hospitalOpcoes && (
+        <Trilho options={hospitalOpcoes} value={hospital} onChange={onEscolherHospital} />
+      )}
 
-      {/* Abas em verde sólido (dono 24/07) — separa "o que vejo" de "o que filtro" */}
-      <SegmentedSelector options={abaOpcoes} value={aba} onChange={onEscolherAba} variant="filled" />
+      {/* Abas em verde sólido (dono 24/07) — separa "o que vejo" de "o que filtro".
+          Também somem no fim de semana: lá existe uma tela só. */}
+      {abaOpcoes && (
+        <SegmentedSelector options={abaOpcoes} value={aba} onChange={onEscolherAba} variant="filled" />
+      )}
     </div>
   )
 }

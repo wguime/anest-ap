@@ -381,13 +381,17 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     for (const parte of partes) {
       const { key, uid } = resolveKey(parte, umSo ? (c.anestesistaUserId || null) : null)
       if (!grupos.has(key)) {
-        grupos.set(key, { display: displayDe(parte, uid), tokens: [], tokenHora: {}, tokenTermino: {}, tokenAndamento: {}, casosAtivos: 0, salas: [], teveCasos: false, uid: uid || null, nomeOriginal: parte })
+        grupos.set(key, { display: displayDe(parte, uid), tokens: [], tokenHora: {}, tokenTermino: {}, tokenAndamento: {}, casosAtivos: 0, casoIds: [], salas: [], teveCasos: false, uid: uid || null, nomeOriginal: parte })
         ordemEncontro.push(key)
       }
       const g = grupos.get(key)
       g.teveCasos = true
       if (casoConcluido(c)) continue // encerrado: some da linha (sala/cirurgião saem)
       g.casosAtivos += 1 // p/ a linha de cobertura ("N cirurgias · M com término")
+      // ids das cirurgias AINDA ABERTAS da pessoa (dono 24/08): é o que o
+      // "Terminei" da fila encerra de uma vez. Só id de verdade — caso ainda sem
+      // id (otimista/demo) não tem o que atualizar no servidor.
+      if (c.id) g.casoIds.push(c.id)
       const tok = tokenCirurgiao(c)
       if (tok) {
         // A cirurgia EM ANDAMENTO é a única que pode mostrar contagem regressiva
@@ -434,6 +438,8 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     // têm término informado. Sem isto, "~45min" numa pessoa com 3 cirurgias não
     // diz se o quadro está completo — e informação faltando parecia informação.
     casosAtivos: g ? g.casosAtivos : 0,
+    // ids das cirurgias abertas — alimenta o "Terminei" da linha
+    casoIds: g ? [...g.casoIds] : [],
     casosComTermino: g ? Object.keys(g.tokenTermino).length : 0,
     salas: g ? g.salas : [],
     // chave ESTÁVEL p/ marcações (uid do vínculo ou nome normalizado) + nome

@@ -898,6 +898,67 @@ não gasta vaga — marcar não é reservar. Tinta verde só com cirurgia EM AND
   mediana 49min, pico 2 simultâneas em 06/08. Comunicado leigo à equipe:
   `.tmp/comunicado-urgencias-hro.md`.
 
+### FDS — UMA TELA SÓ (dono 24/08), depois da análise dos 5 fins de semana
+
+"Quero organizar as escalas de final de semana apenas com lista de liberações."
+A análise (5 fins de semana no banco) confirmou e mostrou o porquê real: em dois
+deles houve **mais toques para DESFAZER liberação do que para liberar** (13×3 em
+15/08, 9×3 em 22/08, estes em 13 minutos), sempre pela mesma causa — cirurgia sem
+anestesista definido faz a pessoa aparecer sem trabalho e a fila se desmancha. O
+quadro por sala resolve um problema que o sábado não tem (12 salas contra 42) e
+é largamente abandonado (15/08 e 23/08: NENHUMA cirurgia marcada). Mas ele não
+podia sumir sem levar junto a ação mais usada: no fim de semana quase toda
+marcação é na cirurgia **de outra pessoa** (19 de 20 em 22/08), por 1 a 3 pessoas
+no dia — alguém cobrindo o grupo.
+
+**A tela:** sáb/dom perdem as ABAS e o SELETOR DE HOSPITAL (`BarraControles`
+aceita `null` nesses eixos = "não existe esse eixo aqui"); sobra a fila, com
+data e turno. Dia útil intocado. Card no **modelo A** (ações empilhadas à
+direita, escolhido em protótipo): **hospital ISOLADO** em caixa alta logo abaixo
+do nome, **sala** na linha seguinte, **cirurgiões em lista** depois — numa fila
+que cobre três hospitais "onde a pessoa está" é a primeira pergunta, e a caixa
+alta curta lê como rótulo em vez de disputar com o nome.
+
+**"Terminei"** (`onTerminarCasos` → `linha.casoIds`, novo na lib): encerra de uma
+vez as cirurgias em aberto no nome da pessoa. ⚠️ é OUTRO controle que o círculo
+— círculo = "está liberada" (saiu do hospital), Terminei = "acabei o que era
+meu", e a pessoa segue na posição como Livre. É a lição de 20/08 (um controle,
+um significado). Marcar caso a caso continua no detalhe, para o registro de
+horários que alimenta a previsão de tempos.
+
+**Painel da linha ganhou três assuntos, só na fila única:** **Hospital** (campo
+próprio no override — quem troca de hospital no meio do sábado não tinha como
+dizer isso), **Responsável** (troca o NOME mantendo a posição: assunção
+unilateral pelo mesmo motor do dia útil — pedido do dono para "alguém de FORA da
+escala fazer um turno específico") e **Posição na fila** (trocar de vaga com um
+colega, duas assunções cruzadas numa transação; "pode deixar a opção, mas não é
+a regra"). ⚠️ `ordem_liberacao` continua IMUTÁVEL nos três — muda quem ocupa a
+vaga, nunca a ordem publicada.
+
+⚠️ **DEFEITO CORRIGIDO: o seletor de Local abria VAZIO no fim de semana** — a
+chave saía de `hospitalLabel.toLowerCase()`, que ali vale `"fim de semana"`
+(inexistente em `LOCAIS_BASE`), e o complemento vinha de `escala.casos`, que na
+linha 'fds' é SEMPRE vazio. Era por isso que `local` nunca havia sido usado num
+sábado. Agora a lista é a união dos três hospitais, estreitando quando há
+hospital escolhido na linha.
+
+⚠️ **`executarSubstituicao`/`desfazerSubstituicao` passaram a resolver ONDE O
+CASO MORA**: na fila única a linha 'fds' não guarda caso nenhum, e o snapshot de
+rollback e o patch otimista liam `lado.hospital` — a reversão não restauraria
+nada e o quadro só pintaria no realtime.
+
+**Atravessam para o DIA ÚTIL, por pedido expresso:** o **recado do plantonista**
+vira cartão com rótulo "Recado do plantonista", autor·papel·hora e **"Confirmar
+leitura"** de largura inteira (40px contra os 32px da pastilha de canto); e o
+botão **"Importar"** do cabeçalho vira `variant="outline"` sem ícone (em ghost
+não parecia tocável). O bloco de sem-anestesista troca a frase "Toque para
+definir o anestesista" pelo botão **"Assumir"**.
+
+Travas: `escalaFdsTelaUnica.test.jsx` (10 casos: barra sem os eixos, card,
+Terminei ≠ círculo, os três assuntos, Local não-vazio). ⚠️ dois testes MUDARAM DE
+LADO com o porquê no corpo, em vez de sumir: o de 16/08 que exigia o seletor de
+hospital no FDS e o do recado.
+
 ### FDS — fila completa e o fim do vermelho em massa (dono 22/08)
 
 Duas queixas no mesmo dia, sobre a escala de 22–23/08 publicada pelo app.

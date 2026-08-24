@@ -776,6 +776,22 @@ export function EscalaCirurgicaProvider({ children }) {
       mut(porHospital[hospital])
     }
     const escalaDe = (escalaId) => Object.values(escalas).find((e) => e?.id === escalaId)
+    // ⚠️ ONDE O CASO MORA (dono 24/08, fila única do fim de semana): a linha
+    // 'fds' tem SEMPRE zero casos — as cirurgias ficam nas escalas por hospital.
+    // O snapshot de rollback e o patch otimista liam `lado.hospital`, e num lado
+    // da fila única isso é a linha vazia: a reversão não restauraria nada e o
+    // quadro não pintaria até o realtime chegar. Aqui cada id é resolvido para o
+    // hospital que realmente o guarda. Fora do FDS devolve o próprio lado.
+    const hospitaisDosCasos = (lado) => {
+      const ids = new Set(lado.casoIds || [])
+      if (!ids.size) return []
+      const achados = new Map()
+      for (const [h, esc] of Object.entries(escalas)) {
+        const meus = (esc?.casos || []).filter((c) => ids.has(c.id))
+        if (meus.length) achados.set(h, esc)
+      }
+      return achados.size ? [...achados.entries()] : [[lado.hospital, escalas[lado.hospital]]]
+    }
     try {
       const pendentesLimpar = new Set(limparTroca.map((x) => `${x.escalaId}|${x.chave}`))
       let ladosPulados = 0
@@ -817,20 +833,23 @@ export function EscalaCirurgicaProvider({ children }) {
         }
         patchLocal(lado.hospital, (p) => { p.linhaOverrides[scoped] = valor })
         if (lado.casoIds?.length) {
+          const donos = hospitaisDosCasos(lado)
           if (!demo) {
             // Rollback por SNAPSHOT do que estava lá. Reverter com {uid: de.uid}
             // apagava o anestesista quando o dono não tinha vínculo: uid null
             // faz o service gravar '?' + sem_anestesista (defeito 07/08).
-            const antes = snapshotCasos(esc, lado.casoIds)
+            const antes = donos.flatMap(([, e]) => snapshotCasos(e, lado.casoIds))
             await svc.updateAnestesistaCasos(lado.casoIds, { uid: lado.para.uid, apelido: lado.para.apelido })
             rollback.push(() => svc.restaurarAnestesistaCasos(antes))
           }
           const ids = new Set(lado.casoIds)
-          patchLocal(lado.hospital, (p) => {
-            p.casos = p.casos.map((c) => ids.has(c.id)
-              ? { ...c, anestesista: lado.para.apelido, anestesistaUserId: lado.para.uid, semAnestesista: false }
-              : c)
-          })
+          for (const [h] of donos) {
+            patchLocal(h, (p) => {
+              p.casos = p.casos.map((c) => ids.has(c.id)
+                ? { ...c, anestesista: lado.para.apelido, anestesistaUserId: lado.para.uid, semAnestesista: false }
+                : c)
+            })
+          }
         }
       }
       // trocaCom declarado em OUTRA chave que não os slots (ex.: na linha de quem
@@ -910,17 +929,28 @@ export function EscalaCirurgicaProvider({ children }) {
         if (valor) p.linhaOverrides[scoped] = valor
         else delete p.linhaOverrides[scoped]
         if (lado.para?.uid && lado.casoIds?.length) {
+          // MESMA correção do executar (dono 24/08): na fila única a linha 'fds'
+          // não guarda caso nenhum — o snapshot e o patch otimista precisam ir
+          // ao hospital que realmente tem a cirurgia.
+          const ids = new Set(lado.casoIds)
+          const donos = Object.entries(escalas)
+            .filter(([, e]) => (e?.casos || []).some((c) => ids.has(c.id)))
+          const alvos = donos.length ? donos : [[lado.hospital, esc]]
           if (!demo) {
             // mesmo snapshot do executar: rollback restaura o que estava lá,
             // nunca re-deriva do uid (uid null viraria '?')
-            const antes = snapshotCasos(esc, lado.casoIds)
+            const antes = alvos.flatMap(([, e]) => snapshotCasos(e, lado.casoIds))
             await svc.updateAnestesistaCasos(lado.casoIds, { uid: lado.para.uid, apelido: lado.para.apelido })
             rollback.push(() => svc.restaurarAnestesistaCasos(antes))
           }
-          const ids = new Set(lado.casoIds)
-          p.casos = p.casos.map((c) => ids.has(c.id)
-            ? { ...c, anestesista: lado.para.apelido, anestesistaUserId: lado.para.uid, semAnestesista: false }
-            : c)
+          for (const [h, e] of alvos) {
+            if (!porHospital[h]) {
+              porHospital[h] = { linhaOverrides: { ...(e?.linhaOverrides || {}) }, casos: [...(e?.casos || [])] }
+            }
+            porHospital[h].casos = porHospital[h].casos.map((c) => ids.has(c.id)
+              ? { ...c, anestesista: lado.para.apelido, anestesistaUserId: lado.para.uid, semAnestesista: false }
+              : c)
+          }
         }
       }
       for (const [hospital, patch] of Object.entries(porHospital)) {

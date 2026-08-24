@@ -4,7 +4,6 @@
  * todos com seletor segmentado (mesmo estilo do Cateter Peridural).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Upload } from 'lucide-react'
 import { PageHeader } from '@/components'
 import { Button } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
@@ -49,7 +48,7 @@ const ABA_OPCOES = [
 
 export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const { user } = useUser()
-  const { escalas, data, loading, p4Hospital, hoje, setData, prefetch, salvarEscalaTurno, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, reordenarAjuda, definirP4Hospital, setAnestesistaCasos, marcarTroca, executarSubstituicao, desfazerSubstituicao } = useEscalaCirurgica()
+  const { escalas, data, loading, p4Hospital, hoje, setData, prefetch, salvarEscalaTurno, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, reordenarAjuda, definirP4Hospital, setAnestesistaCasos, setStatusCirurgia, marcarTroca, executarSubstituicao, desfazerSubstituicao } = useEscalaCirurgica()
   // Roster p/ resolver os lados do par da troca declarada (uid/nome/apelido)
   const { resolver: resolverRoster, rosterByUid } = useRosterAnestesistas()
   // P1–P4 do dia (card Plantões/PegaPlantao) — alimentam a fase noturna das Liberações
@@ -348,8 +347,13 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
             // O atalho de VÍNCULOS saiu do header (dono 16/08): é manutenção de
             // dicionário, não operação do plantão. A tela de vínculos segue
             // existindo (VinculosSheet) para ser religada onde fizer sentido.
-            <Button size="sm" variant="ghost" onClick={() => setImportando(true)} aria-label="Importar escala">
-              <Upload className="w-4 h-4" /> Importar
+            // OUTLINE, não ghost (dono 24/08, escolhido no protótipo do fim de
+            // semana e adotado TAMBÉM no dia útil): em ghost o "Importar" não
+            // parecia tocável no canto do cabeçalho. A borda diz que é botão.
+            // Sem o ícone: a palavra basta e a pílula fica com o mesmo peso do
+            // resto dos botões outline da tela.
+            <Button size="sm" variant="outline" onClick={() => setImportando(true)} aria-label="Importar escala">
+              Importar
             </Button>
           ) : null
         }
@@ -371,10 +375,15 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           turnoOpcoes={fimDeSemana ? TURNO_OPCOES_FDS : TURNO_OPCOES}
           turno={turno}
           onEscolherTurno={escolherTurno}
-          hospitalOpcoes={HOSPITAL_OPCOES}
+          // TELA ÚNICA NO FIM DE SEMANA (dono 24/08): sem abas e sem seletor de
+          // hospital. A fila única já cobre os três hospitais, e o quadro por
+          // sala resolvia um problema que o sábado não tem — 12 salas contra as
+          // 42 de um dia útil, com o agravante de obrigar a trocar de hospital
+          // para alcançar cada sala. O dia útil segue com os três controles.
+          hospitalOpcoes={modoFds ? null : HOSPITAL_OPCOES}
           hospital={hospital}
           onEscolherHospital={setHospital}
-          abaOpcoes={ABA_OPCOES}
+          abaOpcoes={modoFds ? null : ABA_OPCOES}
           aba={aba}
           onEscolherAba={setAba}
         />
@@ -395,10 +404,10 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
         )}
 
         <div className="pt-1">
-          {aba === 'minhas' && (
+          {!modoFds && aba === 'minhas' && (
             <MinhasEscalasView escala={escala} meuAlias={meuAlias} meuUid={meuUid} turno={turnoCasos} onVerBoard={() => setAba('board')} />
           )}
-          {aba === 'board' && (
+          {!modoFds && aba === 'board' && (
             <>
               {/* Urgências do HRO (dono 18/08): ocupação das 2 salas do contrato +
                   fila. FORA da BoardView de propósito — os EmptyStates dela matariam
@@ -409,7 +418,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               <BoardView escala={escala} meuAlias={meuAlias} meuUid={meuUid} turno={turnoCasos} onNavigate={onNavigate} />
             </>
           )}
-          {aba === 'liberacoes' && (() => {
+          {(modoFds || aba === 'liberacoes') && (() => {
             // MODO FDS: a view opera sobre a linha 'fds' (fila única + marcações)
             // e os casos mesclados dos 3 hospitais; troca/P4-coringa ficam fora.
             const escalaLib = modoFds ? escalas.fds : escala
@@ -448,6 +457,62 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                     const dona = modoFds ? escalaDoCaso(casoIds[0]) || escala : escala
                     return setAnestesistaCasos(dona, casoIds, { uid, apelido }, { rotulo, resolverUid: resolverRoster, userId: user?.uid || user?.id || null })
                   }}
+                  // TERMINEI (dono 24/08): encerra de uma vez as cirurgias em
+                  // aberto no nome da pessoa. A fila não precisa saber de cada
+                  // cirurgia — precisa saber se a pessoa ainda está ocupada, e
+                  // marcar uma a uma não pegava: em 22/08, 15 das 35 cirurgias
+                  // nunca saíram de "agendada". Marcar caso a caso continua
+                  // existindo no detalhe, para quem quer o registro de horário.
+                  // ⚠️ na fila única cada caso mora na escala do hospital de
+                  // origem — mesma resolução do onDefinirCasos.
+                  onTerminarCasos={(casoIds) => Promise.all(
+                    casoIds.map((id) => {
+                      const dona = modoFds ? escalaDoCaso(id) || escala : escala
+                      const caso = (dona?.casos || []).find((c) => c.id === id)
+                      return caso ? setStatusCirurgia(dona, caso, 'terminada', userInfo) : null
+                    }).filter(Boolean)
+                  )}
+                  // RESPONSÁVEL DA POSIÇÃO (dono 24/08) — assunção unilateral na
+                  // fila única: o slot fica com quem assumiu, a posição e a ordem
+                  // não se movem, e as cirurgias em aberto vão junto. Mesmo motor
+                  // do "Assumir também a posição" do dia útil.
+                  onTrocarResponsavel={modoFds ? (({ chaveSlot, nomeSlot, de, para, casoIds }) =>
+                    executarSubstituicao({
+                      lados: [{
+                        hospital: FDS_HOSPITAL, escalaId: escalaLib.id, turno: turnoDeCasos,
+                        chaveSlot, nomeSlot, tipo: 'assuncao', de, para, casoIds,
+                      }],
+                      limparTroca: [],
+                    }, userInfo)) : undefined}
+                  // DEVOLVER a posição: o mesmo desfazer do dia útil, montado à
+                  // mão porque na fila única não há PAR — é assunção de um lado só.
+                  // Os casos a devolver saem do recibo `assumidaPor.casoIds`
+                  // (incidente 10/08: sem ele o desfazer devolvia todos os casos
+                  // abertos do assumente, inclusive os que nunca saíram do lugar).
+                  onDevolverResponsavel={modoFds ? ((linha) => desfazerSubstituicao({
+                    lados: [{
+                      hospital: FDS_HOSPITAL, escalaId: escalaLib.id, turno: turnoDeCasos,
+                      chaveSlot: linha.chave,
+                      casoIds: linha.assumida?.casoIds || [],
+                      // `para` no desfazer é para QUEM os casos voltam: o dono
+                      // original do slot. Sem uid não há a quem devolver e o
+                      // context deixa os casos onde estão (avisa no toast).
+                      para: linha.assumida?.deUid ? {
+                        uid: linha.assumida.deUid,
+                        nome: linha.assumida.deNome || '',
+                        apelido: linha.assumida.deNomeOriginal || linha.assumida.deNome || '',
+                      } : null,
+                    }],
+                  }, userInfo)) : undefined}
+                  // TROCAR DE POSIÇÃO: dois lados cruzados numa transação só —
+                  // ou os dois assumem, ou nenhum (rollback LIFO do context).
+                  onTrocarPosicao={modoFds ? ((lados) => executarSubstituicao({
+                    lados: lados.map((l) => ({
+                      ...l, hospital: FDS_HOSPITAL, escalaId: escalaLib.id,
+                      turno: turnoDeCasos, tipo: 'posicoes',
+                    })),
+                    limparTroca: [],
+                  }, userInfo)) : undefined}
                   onToggle={(anest) => toggleLiberacao(escalaLib, anest, userInfo, turno)}
                   onToggleEscalado={(anest) => toggleEscalado(escalaLib, anest, userInfo, turno)}
                   onSetOverride={(anest, override) => setLinhaOverride(escalaLib, anest, override, userInfo, turno)}

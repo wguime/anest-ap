@@ -104,16 +104,22 @@ describe('turno acompanha o relógio (dono 15/08)', () => {
     // seletor tem os 3 turnos do fim de semana, com rótulos CURTOS (dono 16/08:
     // Manhã/Tarde/Noite cabem ao lado do 'Hoje' a 375px)
     expect(screen.getByRole('tab', { name: 'Noite' })).toBeTruthy()
-    // turno e hospital em trilhos SEPARADOS (um trilho = um eixo)
-    expect(screen.getByRole('tab', { name: 'Manhã' }).closest('[role="tablist"]'))
-      .not.toBe(screen.getByRole('tab', { name: 'Unimed' }).closest('[role="tablist"]'))
+    // ⚠️ a comparação com o trilho de HOSPITAL saiu em 24/08: no fim de semana ele
+    // não existe mais (tela única). O que este teste cobre é a VIRADA do turno —
+    // a separação dos trilhos segue coberta no dia útil, logo abaixo.
     expect(turnoAtivo()).toBe('Tarde')
     // 18:59 → 19:01: a virada das 19h leva a tela para o noturno sozinha
     await act(async () => { vi.advanceTimersByTime(2 * 60_000) })
     expect(turnoAtivo()).toBe('Noite')
   })
 
-  it('FDS: o seletor de HOSPITAL continua visível na aba Liberações (dono 16/08)', () => {
+  // ⚠️ ESTE TESTE MUDOU DE LADO EM 24/08, e o porquê fica aqui em vez de o teste
+  // sumir: em 16/08 o dono quis os três hospitais visíveis no fim de semana; em
+  // 24/08 ele decidiu que sáb/dom têm UMA TELA SÓ — a fila já cobre os três, e o
+  // seletor não filtrava nada. O que a trava protege continua sendo o mesmo:
+  // que a tela do fim de semana não volte a pedir "qual hospital?" quando a fila
+  // é única. Só o sentido da asserção inverteu, por decisão do dono.
+  it('FDS: NÃO há seletor de hospital nem abas — a fila única é a tela (dono 24/08)', () => {
     vi.setSystemTime(new Date('2026-08-15T10:00:00-03:00'))
     const hoje = hojeLocalISO()
     estado.ctx = {
@@ -128,13 +134,14 @@ describe('turno acompanha o relógio (dono 15/08)', () => {
       p4Hospital: null, data: hoje, hoje, loading: false, ...acoes(),
     }
     render(<EscalaCirurgicaPage onNavigate={() => {}} goBack={() => {}} />, { wrapper: wrap })
-    fireEvent.click(screen.getByRole('tab', { name: 'Liberações' }))
-    // os 3 hospitais seguem na tela (a nota "fila de liberação única" saiu em
-    // 16/08, a pedido do dono — a informação já está no rótulo do cabeçalho)
-    expect(screen.getByRole('tab', { name: 'Unimed' })).toBeTruthy()
-    expect(screen.getByRole('tab', { name: 'HRO' })).toBeTruthy()
-    expect(screen.getByRole('tab', { name: 'Materno' })).toBeTruthy()
-    expect(screen.queryByText(/fila de liberação única/)).toBeNull()
+    // sem aba para clicar: a fila já é o que está na tela
+    expect(screen.queryByRole('tab', { name: 'Liberações' })).toBeNull()
+    expect(screen.queryByRole('tab', { name: 'Completa' })).toBeNull()
+    for (const h of ['Unimed', 'HRO', 'Materno']) {
+      expect(screen.queryByRole('tab', { name: h })).toBeNull()
+    }
+    // o TURNO continua: é o único eixo que sobra no fim de semana
+    expect(screen.getByRole('tab', { name: 'Manhã' })).toBeTruthy()
   })
 
   it('o atalho de VÍNCULOS saiu do header (dono 16/08)', () => {

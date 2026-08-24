@@ -63,7 +63,11 @@ const SELO_SEM_PROXIMO = new Set(['P1', 'P2'])
 // corredor, não comunicado (para comunicado o app tem o módulo Comunicados).
 const AVISO_MAX = 160
 
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, onGarantirEscala, onNavigate }) {
+// Hospitais que a fila única cobre — o rótulo é o que vai para o override e o
+// que o card mostra, então sai do MESMO mapa que o resto do módulo usa.
+const HOSPITAIS_FILA = ['unimed', 'hro', 'materno'].map((v) => ({ value: v, label: HOSPITAL_LABEL[v] || v }))
+
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onTerminarCasos, onTrocarResponsavel, onDevolverResponsavel, onTrocarPosicao, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, onGarantirEscala, onNavigate }) {
   const { toast } = useToast()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
   // do turno selecionado e o rodapé (ordem de liberação) DAQUELE turno.
@@ -78,6 +82,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const rodapeTurno = useMemo(() => rodapeDoTurno(escala?.ordemLiberacao, turnoBase), [escala, turnoBase])
   const [editor, setEditor] = useState(null) // linha em edição (sheet)
   const [rascLocal, setRascLocal] = useState('')
+  const [rascHospital, setRascHospital] = useState('') // hospital da linha (só fila única)
+  const [respUid, setRespUid] = useState('')            // novo responsável pela posição
+  const [posColega, setPosColega] = useState('')        // colega com quem trocar de posição
+  const [trocandoResp, setTrocandoResp] = useState(false)
   const [localOutro, setLocalOutro] = useState(false) // "Outro" no seletor de local
   const [rascCirurgiao, setRascCirurgiao] = useState('')
   const [rascTermino, setRascTermino] = useState('') // término manual "HH:MM"
@@ -90,7 +98,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const [ajudaSheet, setAjudaSheet] = useState(false) // sheet "adicionar ajuda"
   const [ajudaUid, setAjudaUid] = useState('')
   const [p4Sheet, setP4Sheet] = useState(false) // sheet "Onde está o P4 hoje?"
-  const [alvoSemAnest, setAlvoSemAnest] = useState(null) // alerta "?" sendo resolvido
+  const [alvoSemAnest, setAlvoSemAnest] = useState(null)
+  // chave da linha com "Terminei" em voo — o botão desabilita só nela
+  const [terminando, setTerminando] = useState(null) // alerta "?" sendo resolvido
   const [semAnestUid, setSemAnestUid] = useState('')
   const [executandoTroca, setExecutandoTroca] = useState(false)
   const [confirmarTroca, setConfirmarTroca] = useState(null) // par aguardando o pop-up (dono 18/08)
@@ -251,12 +261,25 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   }, [hospitalLabel])
 
   const locaisHospital = useMemo(() => {
-    const chaveHospital = String(hospitalLabel || '').toLowerCase()
+    // ⚠️ DEFEITO CORRIGIDO (dono 24/08): a chave saía de `hospitalLabel`, que na
+    // fila única vale "Fim de semana" — uma chave que não existe em LOCAIS_BASE.
+    // O complemento viria de `escala.casos`, e a linha 'fds' tem SEMPRE zero
+    // casos. Resultado: no fim de semana o seletor de Local abria VAZIO, e foi
+    // por isso que `local` nunca foi usado em nenhum sábado ou domingo. Na fila
+    // única a lista é a UNIÃO dos três hospitais, com o hospital escolhido na
+    // linha acima estreitando quando há um.
+    const chaveHospital = modoFds
+      ? String(rascHospital || '').toLowerCase()
+      : String(hospitalLabel || '').toLowerCase()
     // TODAS as salas do hospital (base canônica), mesmo fora da escala do dia
     // (pedido do dono) ∪ salas do dia ∪ aprendidos; dedupe pelo rótulo exibido.
     const brutos = [
-      ...(LOCAIS_BASE[chaveHospital] || []),
-      ...(escala?.casos || []).map((c) => String(c.sala || '').trim()),
+      // sem hospital escolhido na fila única: a base dos TRÊS, para haver o que
+      // escolher (é a diferença entre um seletor útil e um seletor vazio)
+      ...(LOCAIS_BASE[chaveHospital]
+        || (modoFds ? HOSPITAIS_FILA.flatMap((h) => LOCAIS_BASE[h.value] || []) : [])),
+      // na fila única os casos vêm de `casosTurno` (a linha 'fds' não tem casos)
+      ...((modoFds ? casosTurno : escala?.casos) || []).map((c) => String(c.sala || '').trim()),
       ...locaisAprendidos,
     ]
     const vistos = new Set()
@@ -271,7 +294,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     }
     out.sort((a, b) => compararSalas(chaveHospital)(a.sala, b.sala))
     return out.map((x) => x.label)
-  }, [escala, hospitalLabel, locaisAprendidos])
+  }, [escala, hospitalLabel, locaisAprendidos, modoFds, rascHospital, casosTurno])
 
   const liberacoes = escala?.liberacoes || {}
   // overrides estruturados { local?, cirurgioes? }; string = formato legado (demo antigo)
@@ -741,6 +764,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     const ov = overrideDe(linha)
     const loc = ov?.local || ''
     setRascLocal(loc)
+    setRascHospital(ov?.hospital || '')
+    setRespUid('')
+    setPosColega('')
     setLocalOutro(!!loc && !locaisHospital.includes(loc)) // local livre já salvo → modo "Outro"
     setRascCirurgiao(ov?.cirurgioes || '')
     setRascTermino(ov?.termino || '')
@@ -762,6 +788,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // flag `renovado` da linha e ressuscitava sala/cirurgião da manhã (bug 29/07).
   const salvarEditor = () => {
     const local = rascLocal.trim()
+    const hospital = rascHospital.trim()
     const cirurgioes = rascCirurgiao.trim()
     const termino = rascTermino.trim()
     const observacao = rascObservacao.trim()
@@ -769,8 +796,71 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     // aprendem no próximo load (o override salvo é a fonte do histórico)
     if (local && !locaisHospital.includes(local)) setLocaisAprendidos((prev) => [...prev, local])
     setEditor(null)
-    onSetOverride?.(editor, { local, cirurgioes, termino, observacao })?.catch?.(() => {})
+    onSetOverride?.(editor, { local, hospital, cirurgioes, termino, observacao })?.catch?.(() => {})
   }
+  /**
+   * TROCAR O RESPONSÁVEL mantendo a posição (dono 24/08). É a assunção
+   * UNILATERAL que já existe no dia útil (o toggle "Assumir também a posição"
+   * do ⚙ da sala), agora alcançável na fila única — onde as trocas entre
+   * colegas e hospitais acontecem o tempo todo e não havia como registrá-las.
+   * ⚠️ o slot NÃO muda de chave: `chaveSlot`/`nomeSlot` seguem os do dono
+   * original, então marcações e ordem publicada continuam válidas. Quem muda é
+   * a identidade EXIBIDA e o dono das cirurgias em aberto.
+   */
+  const trocarResponsavel = async (linha) => {
+    const r = rosterByUid.get(respUid)
+    if (!r || !onTrocarResponsavel) return
+    setTrocandoResp(true)
+    try {
+      await onTrocarResponsavel({
+        chaveSlot: linha.chave,
+        nomeSlot: linha.nomeOriginal,
+        de: { uid: linha.uid || null, nome: linha.anestesista },
+        para: { uid: r.uid, nome: r.nome, apelido: r.apelidos?.[0] || linha.anestesista },
+        casoIds: linha.casoIds || [],
+      })
+      setEditor(null)
+    } catch { /* o context toasta e reverte */ } finally { setTrocandoResp(false) }
+  }
+  /**
+   * TROCAR DE POSIÇÃO com um colega da MESMA fila (dono 24/08: "pode deixar a
+   * opção, mas não é a regra"). São duas assunções CRUZADAS no mesmo motor
+   * transacional: cada um passa a responder pelo slot do outro, levando as
+   * cirurgias em aberto. A `ordem_liberacao` publicada continua intocada — o que
+   * muda é quem ocupa cada vaga, que é exatamente o que "trocar de posição"
+   * significa aqui.
+   */
+  const trocarPosicao = async (linha) => {
+    const outra = linhas.find((l) => l.chave === posColega)
+    if (!outra || !onTrocarPosicao) return
+    setTrocandoResp(true)
+    try {
+      await onTrocarPosicao([
+        {
+          chaveSlot: linha.chave, nomeSlot: linha.nomeOriginal,
+          de: { uid: linha.uid || null, nome: linha.anestesista },
+          para: { uid: outra.uid || null, nome: outra.anestesista, apelido: outra.nomeOriginal || outra.anestesista },
+          casoIds: linha.casoIds || [],
+        },
+        {
+          chaveSlot: outra.chave, nomeSlot: outra.nomeOriginal,
+          de: { uid: outra.uid || null, nome: outra.anestesista },
+          para: { uid: linha.uid || null, nome: linha.anestesista, apelido: linha.nomeOriginal || linha.anestesista },
+          casoIds: outra.casoIds || [],
+        },
+      ])
+      setEditor(null)
+    } catch { /* o context toasta e reverte os dois lados juntos */ } finally { setTrocandoResp(false) }
+  }
+  const devolverResponsavel = async (linha) => {
+    if (!onDevolverResponsavel) return
+    setTrocandoResp(true)
+    try {
+      await onDevolverResponsavel(linha)
+      setEditor(null)
+    } catch { /* idem */ } finally { setTrocandoResp(false) }
+  }
+
   const restaurarEditor = () => {
     setEditor(null)
     onSetOverride?.(editor, null)?.catch?.(() => {}) // null = restauração explícita (limpa flags)
@@ -788,6 +878,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     setHoraExata('')
     onSetOverride?.(linha, {
       local: ov.local || '',
+      // ⚠️ o hospital viaja junto: este caminho grava o override INTEIRO, e o
+      // campo omitido é APAGADO (a mesma pegadinha que sumiu com local/
+      // observação em 07/08 ao definir o término).
+      hospital: ov.hospital || '',
       cirurgioes: ov.cirurgioes || '',
       termino: terminoHHMM || '',
       observacao: observacaoDe(ov),
@@ -922,12 +1016,21 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           PESSOA: cada um vê os três mais recentes que ainda não confirmou, e
           confirmar libera a vaga do próximo. Não notifica ninguém — vive aqui e
           morre na confirmação. ── */}
+      {/* CARTÃO com rótulo, e não mais faixa de borda a borda (dono 24/08,
+          escolhido no protótipo do fim de semana e adotado TAMBÉM no dia útil):
+          o rótulo "Recado do plantonista" diz de quem é a mensagem antes de ela
+          ser lida, e o Confirmar leitura vira botão de largura inteira em vez de
+          uma pastilha de 32px no canto — confirmar é a única saída do recado e
+          estava com metade do alvo de um botão. */}
       {avisos.map((a) => (
-        <div key={a.id} className="-mx-4 border-y border-category-purple/40 bg-category-purple-bg px-4 py-2">
+        <div key={a.id} className="rounded-2xl border border-category-purple/45 bg-category-purple-bg px-3 py-2.5">
           <div className="flex items-center gap-2">
             <div className="min-w-0 flex-1">
-              {/* o RECADO primeiro, em negrito: é o que se lê de relance */}
-              <p className="text-[15px] font-bold leading-tight text-foreground [overflow-wrap:anywhere]">{a.texto}</p>
+              <p className="mb-0.5 text-[10.5px] font-extrabold uppercase tracking-[0.06em] text-category-purple-fg">
+                Recado do plantonista
+              </p>
+              {/* o RECADO em negrito: é o que se lê de relance */}
+              <p className="text-[14.5px] font-bold leading-tight text-foreground [overflow-wrap:anywhere]">{a.texto}</p>
               {/* quem mandou e QUANDO — sem contagem de confirmações (dono 17/08):
                   quem lê não decide nada com "2 de 4 confirmaram", e o número
                   transformava o recado num placar. */}
@@ -938,14 +1041,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 <span className="shrink-0 tabular-nums opacity-80">{horaCurta(a.criadoEm)}</span>
               </p>
             </div>
-            {/* botão pequeno: o recado é a informação, o confirmar é só a saída */}
-            <button
-              type="button"
-              onClick={() => confirmarAviso(a.id)}
-              className="flex h-8 shrink-0 items-center gap-1 rounded-lg bg-category-purple px-2.5 text-[12.5px] font-bold text-white active:opacity-80"
-            >
-              <Check className="h-3.5 w-3.5" /> Confirmar
-            </button>
             {/* o plantonista tira o recado que não vale mais (dono 17/08) */}
             {canEdit && souPlantonista && (
               <button
@@ -958,6 +1053,16 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
               </button>
             )}
           </div>
+          {/* CONFIRMAR LEITURA de largura inteira (dono 24/08): 40px de alvo,
+              contra os 32px da pastilha que ficava no canto. É a única saída do
+              recado — ele some para quem confirma e libera a vaga do próximo. */}
+          <button
+            type="button"
+            onClick={() => confirmarAviso(a.id)}
+            className="mt-2 flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-[11px] bg-category-purple text-[13.5px] font-extrabold text-white active:opacity-80"
+          >
+            <Check className="h-4 w-4 shrink-0" /> Confirmar leitura
+          </button>
         </div>
       ))}
 
@@ -1013,9 +1118,16 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       {[i.procedimento, i.cirurgiao].filter(Boolean).join(' · ')}
                     </p>
                   )}
+                  {/* ASSUMIR (dono 24/08, no lugar de "Toque para definir o
+                      anestesista"): a frase explicava o gesto mas não parecia
+                      acionável. O card inteiro continua sendo o alvo — a pastilha
+                      é a marca de que ele responde ao toque, e a folha que abre
+                      deixa escolher qualquer anestesista, não só quem tocou. */}
                   {definivel && (
-                    <p className="mt-1 flex items-center gap-1 text-xs font-medium text-primary">
-                      <UserPlus className="h-3 w-3 shrink-0" /> Toque para definir o anestesista
+                    <p className="mt-1.5 flex justify-end">
+                      <span className="flex min-h-[36px] items-center gap-1.5 rounded-[10px] bg-warning px-3 text-[12.5px] font-extrabold text-warning-foreground">
+                        <UserPlus className="h-3.5 w-3.5 shrink-0" /> Assumir
+                      </span>
                     </p>
                   )}
                 </Wrapper>
@@ -1174,6 +1286,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // sala na escala — diz onde a pessoa está sem ninguém precisar editar
           const salasAuto = renovado ? '' : ((linha.salas || []).map(salaLiberacao).join('/') || linha.notaRodape || '')
           const localExibido = ov?.local || salasAuto
+          // HOSPITAL da linha (dono 24/08): o ajustado à mão vence o derivado dos
+          // casos. Fora do modo FDS `hospitaisDe` devolve null e a linha nem
+          // aparece — no dia útil a tela toda é de um hospital só e repetir o
+          // nome em cada card não informa nada.
+          const hospitalDaLinha = ov?.hospital || hospitaisDe(linha)
           const observacaoLinha = observacaoDe(ov)
           // Cronômetro 100% MANUAL (decisão do dono 23/07): TODA linha nasce em
           // branco ("Tempo faltante") e só conta depois que alguém preenche —
@@ -1429,6 +1546,27 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         </span>
                       </p>
                     )}
+                    {/* HOSPITAL ISOLADO, SALA LOGO ABAIXO, cirurgiões depois
+                        (dono 24/08). Antes o local vinha DEPOIS dos cirurgiões e
+                        o hospital era um prefixo dele. Numa fila que cobre os três
+                        hospitais, "onde a pessoa está" é a primeira pergunta — e o
+                        hospital em caixa alta curta lê como RÓTULO, não como um
+                        segundo nome disputando com o de cima. Descendo a fila os
+                        hospitais formam uma coluna que se varre de relance. */}
+                    {!liberadoReal && hospitalDaLinha && (
+                      <p className="mt-0.5 text-[11.5px] font-extrabold uppercase tracking-[0.06em] text-primary">
+                        {hospitalDaLinha}
+                      </p>
+                    )}
+                    {!liberadoReal && localExibido && (
+                      <p
+                        className={['truncate text-[12.5px] font-semibold', ov?.local ? 'text-primary' : 'text-foreground/90'].join(' ')}
+                        title={ov?.local ? 'Local ajustado' : localExibido}
+                      >
+                        {localExibido}
+                        {ov?.local && <span className="ml-1 text-xs font-normal text-primary">· ajustado</span>}
+                      </p>
+                    )}
                     {/* cirurgiões em ORDEM DE HORÁRIO, 1 por linha, SEM bolinha (pedido do dono 24/07).
                         Cada um leva o tempo faltante DA SUA CIRURGIA num chip cinza pequeno
                         (dono 29/07) — a pílula verde à direita é o total da PESSOA. */}
@@ -1496,18 +1634,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                           </p>
                         )}
                       </div>
-                    )}
-                    {/* sala/local abaixo do cirurgião (pedido do dono 2026-07-20).
-                        Na fila única (FDS) o hospital prefixa o local: "CC - Sala 1"
-                        existe na Unimed E no HRO — sala sozinha é ambígua. */}
-                    {!liberadoReal && localExibido && (
-                      <p
-                        className={['mt-0.5 truncate text-xs font-semibold', ov?.local ? 'text-primary' : 'text-foreground/80'].join(' ')}
-                        title={ov?.local ? 'Local ajustado' : localExibido}
-                      >
-                        {hospitaisDe(linha) && !ov?.local ? <span className="text-muted-foreground">{hospitaisDe(linha)} · </span> : null}
-                        {localExibido}
-                      </p>
                     )}
                     {/* OBSERVAÇÃO da linha (dono 29/07, no lugar da troca): recado
                         operacional escrito à mão — "trocou com o Fulano no HRO",
@@ -1602,6 +1728,33 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         + Tempo total
                       </button>
                     )))}
+                    {/* TERMINEI (dono 24/08): encerra de uma vez as cirurgias em
+                        aberto no nome da pessoa — ela vira "Livre" e CONTINUA na
+                        posição, aguardando a vez. ⚠️ é outra coisa que o círculo:
+                        o círculo é o checkbox de "está liberada" (saiu do
+                        hospital); este é "acabei o que era meu". Um controle, um
+                        significado — a lição de 20/08, quando o mesmo círculo
+                        alternava dois estados e o dono tocou 16 vezes sem efeito.
+                        Só aparece com cirurgia aberta, então se apaga sozinho. */}
+                    {canEdit && !liberadoReal && linha.casoIds?.length > 0 && onTerminarCasos && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTerminando(linha.chave)
+                          Promise.resolve(onTerminarCasos(linha.casoIds))
+                            .finally(() => setTerminando(null))
+                        }}
+                        disabled={terminando === linha.chave}
+                        aria-label={linha.casoIds.length === 1
+                          ? `Marcar a cirurgia de ${linha.anestesista} como terminada`
+                          : `Marcar as ${linha.casoIds.length} cirurgias de ${linha.anestesista} como terminadas`}
+                        className="-my-1.5 flex h-10 shrink-0 items-center justify-center disabled:opacity-50"
+                      >
+                        <Badge badgeStyle="outline" className="border-primary bg-primary/10">
+                          {terminando === linha.chave ? 'Encerrando…' : 'Terminei'}
+                        </Badge>
+                      </button>
+                    )}
                     <div className="flex items-center">
                     {/* SETAS DE ORDEM DA AJUDA — de volta INLINE ao lado do lápis
                         (dono 30/07: o bloco abaixo desconfigurou o card, porque esta
@@ -1726,6 +1879,47 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   linhas com o valor atual à direita, e o editor abrindo ABAIXO da
                   linha tocada — a mesma gramática das telas grandes já escolhidas
                   ("a lista mostra, o editor abre fora dela"). */}
+              {/* ── HOSPITAL (dono 24/08): campo PRÓPRIO, e não mais só o prefixo
+                  do local derivado dos casos. No fim de semana a fila cobre os três
+                  hospitais e as trocas acontecem entre eles o tempo todo — quem
+                  mudou de hospital no meio do sábado não tinha como dizer isso na
+                  própria linha, porque o hospital só existia quando vinha de uma
+                  cirurgia importada. Só aparece na fila única: no dia útil a tela
+                  inteira é de um hospital só. ── */}
+              {modoFds && (
+                <>
+                  <LinhaPainel
+                    rotulo="Hospital"
+                    valor={rascHospital || (hospitaisDe(editor) ? `${hospitaisDe(editor)} · automático` : '—')}
+                    aberto={abaPainel === 'hospital'}
+                    onClick={() => setAbaPainel((a) => (a === 'hospital' ? null : 'hospital'))}
+                  />
+                  {abaPainel === 'hospital' && (
+                    <div className="mb-2 space-y-2 rounded-xl border border-border bg-muted/30 p-2.5">
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {HOSPITAIS_FILA.map((h) => (
+                          <button
+                            key={h.value}
+                            type="button"
+                            onClick={() => setRascHospital(rascHospital === h.label ? '' : h.label)}
+                            className={[
+                              'min-h-[44px] rounded-xl border px-2 text-sm font-semibold transition-colors',
+                              rascHospital === h.label
+                                ? 'border-primary bg-primary/10 text-primary'
+                                : 'border-border text-muted-foreground',
+                            ].join(' ')}
+                          >
+                            {h.label}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        Em branco = o hospital vem das cirurgias desta pessoa.
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
               {/* ── LOCAL: conserto de EXIBIÇÃO da linha; a sala da cirurgia é no
                   detalhe do caso, na Completa (os dois rótulos pareciam a mesma
                   coisa com efeitos diferentes — auditoria 17/08). ── */}
@@ -1852,6 +2046,112 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   TROCAS FICAM FORA DO MODO FDS (decisão de escopo 15/08): a fila
                   única já modela "pega caso em qualquer hospital" — movimentação
                   registra-se pela Observação da linha. ── */}
+              {/* ── RESPONSÁVEL (dono 24/08): troca o NOME de quem responde pela
+                  posição, mantendo a posição. Nasceu de um caso que o app não
+                  cobria — "eventualmente os usuários fazem trocas de alguém de
+                  FORA da escala fazer um turno específico". Não é a troca entre
+                  dois colegas da fila (essa é a linha abaixo): é substituição de
+                  um lado só. O selo Pn, a chave da linha e a ordem publicada não
+                  se movem; muda quem aparece e para quem vão as cirurgias em
+                  aberto. Só na fila única — no dia útil o caminho é o ⚙ da sala,
+                  na aba Completa. ── */}
+              {canEdit && modoFds && !editor.noturno && !String(editor.chave || '').includes('#casos') && (
+                <>
+                  <LinhaPainel
+                    rotulo="Responsável"
+                    valor={editor.assumida
+                      ? `${editor.anestesista} · no lugar de ${editor.assumida.deNome}`
+                      : editor.anestesista}
+                    aberto={abaPainel === 'responsavel'}
+                    onClick={() => setAbaPainel((a) => (a === 'responsavel' ? null : 'responsavel'))}
+                  />
+                  {abaPainel === 'responsavel' && (
+                    <div className="mb-2 space-y-2 rounded-xl border border-border bg-muted/30 p-2.5">
+                      {editor.assumida ? (
+                        <>
+                          <p className="text-xs text-muted-foreground">
+                            A posição é de <b className="text-foreground">{editor.assumida.deNome}</b> e hoje
+                            está com <b className="text-foreground">{editor.anestesista}</b>.
+                          </p>
+                          <Button
+                            variant="outline"
+                            className="w-full"
+                            disabled={trocandoResp}
+                            onClick={() => devolverResponsavel(editor)}
+                          >
+                            Devolver a posição para {editor.assumida.deNome}
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Select
+                            className="w-full"
+                            searchable
+                            options={opcoesRoster}
+                            value={respUid}
+                            onChange={setRespUid}
+                            placeholder="Quem responde por esta posição hoje"
+                          />
+                          <p className="text-[11px] leading-snug text-muted-foreground">
+                            A posição continua sendo a de <b className="text-foreground">{editor.anestesista}</b> e a
+                            ordem de liberação não se move.
+                            {editor.casoIds?.length
+                              ? ` As ${editor.casoIds.length} cirurgia(s) em aberto vão junto.`
+                              : ' Não há cirurgia em aberto para transferir.'}
+                          </p>
+                          <Button
+                            className="w-full"
+                            disabled={!respUid || trocandoResp}
+                            onClick={() => trocarResponsavel(editor)}
+                          >
+                            {trocandoResp ? 'Trocando…' : 'Trocar responsável'}
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+              {/* ── POSIÇÃO NA FILA (dono 24/08): "pode deixar a opção, mas não é
+                  a regra". Trocar de posição com um colega da mesma fila — duas
+                  assunções cruzadas. A ordem publicada NÃO se move: o que muda é
+                  quem ocupa cada vaga. Fica por último no painel, depois de tudo
+                  que é do dia a dia, porque é a ação mais rara. ── */}
+              {canEdit && modoFds && !editor.noturno && !editor.assumida && !String(editor.chave || '').includes('#casos') && (
+                <>
+                  <LinhaPainel
+                    rotulo="Posição na fila"
+                    valor={`${(linhas.findIndex((l) => l.chave === editor.chave) + 1) || '—'}ª · trocar`}
+                    aberto={abaPainel === 'posicao'}
+                    onClick={() => setAbaPainel((a) => (a === 'posicao' ? null : 'posicao'))}
+                  />
+                  {abaPainel === 'posicao' && (
+                    <div className="mb-2 space-y-2 rounded-xl border border-border bg-muted/30 p-2.5">
+                      <Select
+                        className="w-full"
+                        searchable
+                        options={linhas
+                          .filter((l) => l.chave !== editor.chave && !l.noturno && !l.assumida)
+                          .map((l, i) => ({ value: l.chave, label: `${i + 1}ª · ${l.anestesista}` }))}
+                        value={posColega}
+                        onChange={setPosColega}
+                        placeholder="Trocar de posição com"
+                      />
+                      <p className="text-[11px] leading-snug text-muted-foreground">
+                        Os dois trocam de vaga e levam as cirurgias em aberto. A ordem publicada
+                        não muda — só quem ocupa cada posição.
+                      </p>
+                      <Button
+                        className="w-full"
+                        disabled={!posColega || trocandoResp}
+                        onClick={() => trocarPosicao(editor)}
+                      >
+                        {trocandoResp ? 'Trocando…' : 'Trocar de posição'}
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
               {canEdit && !editor.noturno && !modoFds && !String(editor.chave || '').includes('#casos') && (() => {
                 if (editor.assumida) {
                   return (
