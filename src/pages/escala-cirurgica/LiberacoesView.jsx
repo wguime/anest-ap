@@ -1114,6 +1114,25 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // junto de `liberado`, porque depende de `renovado`, que nasce do override
           // logo acima — declarar antes cai na zona morta e derruba a aba inteira.
           const mostraPassaTurno = !liberadoReal && !renovado && !noturno && temPassaTarde(linha)
+          // SELOS DA 1ª LINHA em consts, e não inline no JSX, porque a COLUNA DA
+          // DIREITA (cronômetro + Editar) precisa saber se existe algum: quando a
+          // coluna é mais alta que as infos da esquerda ela começa colada no fim da
+          // 1ª linha, e um badge que alcance a faixa dela encosta nela. Medido em
+          // 24/08 no card do "Plantão da tarde": 0px entre o badge e o "+ Tempo
+          // total" — é o mesmo "amontoado" reportado em 21/08, que na época foi
+          // resolvido só para o badge roxo (`mostraPassaTurno`). Derivar da MESMA
+          // const que o JSX usa é o que impede a lista de condições de divergir.
+          const badgePlantonista = !liberadoReal && !modoFds && linha.isPlantonista
+          const badgePlantaoFisico = !liberadoReal && plantaoFisicoDe(linha)
+          const badgeAjuda = !liberadoReal && (linha.isAjuda || (foraDoRodape && !ajudaDeOutro(linha)))
+          const badgeTroca = trocaDe(linha)
+          const badgeAssumida = linha.assumida && !badgeTroca
+          const badgeAjudaOutro = !liberadoReal && ajudaDeOutro(linha)
+          const badgeProximoPlantao = !liberadoReal && linha.isProximoPlantao
+          const badgeContraturno = !liberadoReal && !linha.isProximoPlantao && contraturnoDe(linha)
+          const temSeloAoLadoDoNome = !!(badgePlantonista || badgePlantaoFisico || badgeAjuda
+            || badgeTroca || badgeAssumida || badgeAjudaOutro || badgeProximoPlantao
+            || badgeContraturno || livre || mostraPassaTurno)
           // >1 cirurgião = lista (1 por linha); override manual = 1 linha como digitado
           const listaCirurgioes = ov?.cirurgioes
             ? [ov.cirurgioes]
@@ -1205,8 +1224,17 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
 
               {/* corpo em 2 níveis: nome em destaque, cirurgião(ões) abaixo */}
               <div className="min-w-0 flex-1 py-2.5 pl-1">
-                {/* flex + truncate: badge SEMPRE ao lado do nome (sem quebrar p/ baixo) */}
-                <p className={['flex items-center gap-1.5 text-[15px] font-semibold leading-tight', liberadoReal && 'line-through opacity-60'].filter(Boolean).join(' ')}>
+                {/* flex + truncate: badge SEMPRE ao lado do nome (sem quebrar p/ baixo).
+                    `pr-1.5` (24/08) é o piso da margem direita: os selos são `shrink-0`
+                    e só o nome cede, então com nome longo + 3 selos o último parava a
+                    1px da borda ARREDONDADA do card — encostado nela.
+                    ⚠️ 6px é TETO medido, não escolha estética: a 375px a linha tem 282px
+                    e o pior caso REAL de hoje ("Leonardo Ferrazzo" + Plantonista +
+                    Troca) gasta 275,5. `pr-2` e `pr-2.5 + gap-2` foram testados no app e
+                    os dois truncam o NOME do plantonista ("Leonardo Ferraz…"), que é a
+                    identidade do card. É pelo mesmo orçamento que o gap entre selos
+                    segue em 6px: 8px custa 4px que não existem nessa largura. */}
+                <p className={['flex items-center gap-1.5 pr-1.5 text-[15px] font-semibold leading-tight', liberadoReal && 'line-through opacity-60'].filter(Boolean).join(' ')}>
                   {/* SELO do plantão noturno ANTES do nome (pedido do dono 24/07).
                       No P4 o selo é o BOTÃO que abre "Onde está o P4 hoje?" — área
                       de toque esticada por padding negativo (≥44px sem inchar a linha). */}
@@ -1229,13 +1257,13 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       No FDS o genérico "Plantonista" dá lugar ao badge ESPECÍFICO
                       "Plantão Unimed/HRO" da faixa atual (grade importada) — na
                       fila única, dizer QUAL hospital é a informação. */}
-                  {!liberadoReal && !modoFds && linha.isPlantonista && (
+                  {badgePlantonista && (
                     <Badge variant="secondary"
                       className="shrink-0 dark:bg-[hsl(var(--badge-success))] dark:text-[hsl(var(--badge-success-foreground))]">
                       Plantonista
                     </Badge>
                   )}
-                  {!liberadoReal && plantaoFisicoDe(linha) && (
+                  {badgePlantaoFisico && (
                     <Badge className="shrink-0 border-transparent bg-primary text-primary-foreground">
                       {plantaoFisicoDe(linha)}
                     </Badge>
@@ -1244,7 +1272,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   {/* extra fora de TODOS os rodapés = Ajuda (dono 19/08): quem foi
                       acrescentado e não consta em lista nenhuma é ajuda; com origem
                       em outro hospital o badge derivado abaixo diz de onde veio */}
-                  {!liberadoReal && (linha.isAjuda || (foraDoRodape && !ajudaDeOutro(linha))) && (
+                  {badgeAjuda && (
                     <Badge variant="info" className="shrink-0">Ajuda</Badge>
                   )}
                   {/* A troca pertence ao SLOT original. Depois da execução, a
@@ -1253,14 +1281,14 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       substituto virou uma posição nova. */}
                   {/* SÓLIDO quando a troca é fato (registro de escala já
                       publicada trocada); OUTLINE quando ainda falta executar. */}
-                  {trocaDe(linha) && (
-                    <Badge className={trocaDe(linha).par?.apenasRegistro
+                  {badgeTroca && (
+                    <Badge className={badgeTroca.par?.apenasRegistro
                       ? 'shrink-0 border-transparent bg-category-indigo text-white'
                       : 'shrink-0 border-category-indigo bg-transparent text-category-indigo-fg'}>
                       Troca
                     </Badge>
                   )}
-                  {linha.assumida && !trocaDe(linha) && (
+                  {badgeAssumida && (
                     <Badge className="shrink-0 border-transparent bg-category-indigo text-white">Troca</Badge>
                   )}
                   {/* linha fora do rodapé NÃO leva badge (dono 19/08, caso Staub):
@@ -1268,14 +1296,14 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       "Fora do rodapé" lia como acusação e saiu. */}
                   {/* ajuda DERIVADA do cruzamento (caso TIAGO 30/07): com o hospital
                       de origem, porque a marca não veio de ajuda_externa */}
-                  {!liberadoReal && ajudaDeOutro(linha) && (
-                    <Badge variant="info" className="shrink-0">Ajuda ({ajudaDeOutro(linha)})</Badge>
+                  {badgeAjudaOutro && (
+                    <Badge variant="info" className="shrink-0">Ajuda ({badgeAjudaOutro})</Badge>
                   )}
                   {/* último nome escalado do rodapé = plantonista do turno SEGUINTE:
                       sai primeiro (regra do dono 29/07, nos dois turnos). Verde
                       sólido, a cor dos plantões. O rótulo vem da lib — de manhã é
                       "Plantão da tarde", à tarde "Plantão da manhã". */}
-                  {!liberadoReal && linha.isProximoPlantao && (
+                  {badgeProximoPlantao && (
                     <Badge className="shrink-0 border-transparent bg-primary text-primary-foreground">
                       {linha.plantaoLabel}
                     </Badge>
@@ -1286,9 +1314,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       plantão — foi o caso do Fernando na Unimed em 30/07. Mesma cor
                       dos plantões, com o hospital entre parênteses para não
                       confundir com o contraturno DESTA escala. */}
-                  {!liberadoReal && !linha.isProximoPlantao && contraturnoDe(linha) && (
+                  {badgeContraturno && (
                     <Badge className="shrink-0 border-transparent bg-primary/80 text-primary-foreground">
-                      {rotuloPlantao} ({contraturnoDe(linha)})
+                      {rotuloPlantao} ({badgeContraturno})
                     </Badge>
                   )}
                   {/* LIVRE (verde): terminou todos os casos do turno */}
@@ -1301,9 +1329,12 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       para tarde", à tarde "Passa para noite". `ml-auto` = canto superior
                       direito do card, o mesmo lugar que ele ocupa no quadro da Completa —
                       é ocorrência da cirurgia, não identidade da pessoa, então não fica
-                      na fila de selos colados ao nome. */}
+                      na fila de selos colados ao nome. `mr-1` sobre o `pr-1.5` da linha
+                      fecha os 10px do `pr-2.5` da coluna de baixo: este é o único selo
+                      que fica SEMPRE empilhado sobre a pílula do cronômetro, e
+                      desencontro entre dois pills um sobre o outro se enxerga. */}
                   {mostraPassaTurno && (
-                    <Badge className="ml-auto mr-2.5 shrink-0 border-transparent bg-category-purple text-white">
+                    <Badge className="ml-auto mr-1 shrink-0 border-transparent bg-category-purple text-white">
                       {passaTurnoLabel(turnoBase)}
                     </Badge>
                   )}
@@ -1467,15 +1498,19 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       normal, coluna quando havia setas de ajuda), com um `mr-10` de
                       correção para os dois alinharem entre si. Uma coluna só torna o
                       alinhamento o padrão e o hack saiu junto. */}
-                  {/* ⚠️ `mt-2` SÓ quando há o badge do turno acima: sem ele o badge
-                      roxo e a pílula verde do cronômetro ficavam ENCOSTADOS (medido:
-                      badge termina em 32px, cronômetro começa em 32px) e os dois liam
-                      como um bloco de duas cores — foi o "amontoado" reportado pelo
-                      dono em 21/08. Condicional em vez de margem fixa porque a folga
-                      só é necessária nesses cards; fixa, ela esticaria os 17. */}
+                  {/* ⚠️ `mt-2` SÓ quando há SELO na 1ª linha: sem ele o badge e a
+                      pílula verde do cronômetro ficam ENCOSTADOS (medido em 21/08 no
+                      badge roxo: badge termina em 32px, cronômetro começa em 32px) e
+                      os dois liam como um bloco de duas cores — o "amontoado"
+                      reportado pelo dono. Condicional em vez de margem fixa porque a
+                      folga só é necessária nesses cards; fixa, ela esticaria os 17
+                      (em metade da fila esta coluna é o elemento mais alto do card e
+                      é ela que define a altura). ⚠️ a condição era só o badge roxo e
+                      isso deixou o defeito de pé para os OUTROS selos: em 24/08 o
+                      "Plantão da tarde" encostava a 0px no "+ Tempo total". */}
                   <div className={[
                     'flex shrink-0 flex-col items-end gap-1 pr-2.5',
-                    mostraPassaTurno ? 'mt-2' : '',
+                    temSeloAoLadoDoNome ? 'mt-2' : '',
                   ].join(' ')}>
                     {!liberadoReal && (cronometro ? (
                       <button

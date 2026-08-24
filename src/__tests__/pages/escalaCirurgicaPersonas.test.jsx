@@ -573,11 +573,17 @@ describe('Liberações — caso passa_tarde sinaliza o anestesista', () => {
     expect(screen.queryByText('Passa para tarde')).toBeNull()
     expect(badge.className).toContain('ml-auto')
     // NÃO COLADO NA BORDA (dono 21/08): o `ml-auto` empurra o badge até o fim do
-    // corpo do card, que não tem padding à direita — sem a margem ele encostava na
-    // borda. O 2.5 é o mesmo recuo do botão "Editar" logo abaixo, para os dois
-    // ficarem na mesma coluna.
-    expect(badge.className).toContain('mr-2.5')
-    expect(screen.getByText('Leonardo').closest('p').contains(badge)).toBe(true)
+    // corpo do card, e o recuo tem de bater com o do botão "Editar" logo abaixo,
+    // para os dois ficarem na mesma coluna. ⚠️ desde 24/08 esses 10px vêm de DUAS
+    // parcelas: a linha do nome inteira ganhou `pr-1.5` (nenhum selo encosta na
+    // borda arredondada, não só este) e o badge fecha os 4px que faltam. É a soma
+    // que importa — por isso as três classes são verificadas juntas.
+    const linhaDoNome = screen.getByText('Leonardo').closest('p')
+    expect(linhaDoNome.className).toContain('pr-1.5')
+    expect(badge.className).toContain('mr-1')
+    expect(badge.closest('[data-linha]').querySelector('div.flex.shrink-0.flex-col.items-end').className)
+      .toContain('pr-2.5')
+    expect(linhaDoNome.contains(badge)).toBe(true)
   })
 
   // PERSISTE NA TARDE (dono 2026-08-22): "quero que cirurgias marcadas como

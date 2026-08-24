@@ -770,6 +770,24 @@ não gasta vaga — marcar não é reservar. Tinta verde só com cirurgia EM AND
   esticaria os 17 cards. ⚠️ `mostraPassaTurno` é declarado DEPOIS de `renovado` — declarar
   junto de `liberado`, como tentei, cai na zona morta e derruba a aba inteira com o
   ErrorBoundary. Os três pills ficam com 8px entre si.
+- **A folga é de TODO selo, não só do roxo (dono 24/08, "alguns badges muito próximos"):** a
+  correção de 21/08 travou o `mt-2` em `mostraPassaTurno` e o defeito seguiu de pé para os
+  outros oito selos — medido a 375px com a escala real, "Plantão da tarde" terminava a **0px**
+  do "+ Tempo total". A coluna da direita é `items-center` na 2ª linha, então quando as infos
+  da esquerda são curtas (linha liberada, linha sem cirurgião) **ela vira o elemento mais alto
+  do card** e começa colada no fim da 1ª linha: acontece em METADE da fila. Hoje a condição é
+  `temSeloAoLadoDoNome`, e os nove selos viraram consts que o JSX e a folga consomem — a lista
+  não tem como divergir. Junto: `pr-1.5` na linha do nome (com nome longo + 3 selos o último
+  parava a **1px** da borda arredondada) e o roxo trocou `mr-2.5` por `mr-1`, que somado ao
+  `pr` fecha os mesmos 10px do `pr-2.5` da coluna. ⚠️ **6px entre selos é TETO medido, não
+  escolha estética**: a linha tem 282px a 375px e "Leonardo Ferrazzo" + Plantonista + Troca
+  gasta 275,5 — `pr-2` e `pr-2.5 + gap-2` foram testados no app e os dois truncam o NOME do
+  plantonista ("Leonardo Ferraz…"), que é a identidade do card; `flex-wrap` joga "Troca" órfã
+  numa 2ª linha e contraria "badge ao lado do nome". A 430px sobram 64px, se um dia valer abrir
+  o gap só acima de ~400px. Trava: `liberacoesSelosPosicao.test.jsx` é **invariante** ("havendo
+  selo, há folga"), não o caso de um selo — foi exatamente a trava estreita que deixou 21/08
+  passar; e a varredura de geometria (nenhum par < 6px, nada encostando na borda) vive no e2e
+  `escala-cirurgica-acoes-layout.spec.ts`, porque jsdom não mede layout.
 - **A TARDE HERDA AS SALAS DE URGÊNCIA DA MANHÃ (dono 21/08):** `salasContrato` faz fallback
   campo a campo `vespertino → matutino`. Quem marca onde está o plantão às 7h não remarca às
   13h, e sem a herança a tarde nascia toda em automático: a sala perdia o posto, deixava de

@@ -80,3 +80,71 @@ test('tempo e "Editar" empilhados à direita, alinhados, sem vazar da tela', asy
   const bNome = await nome.boundingBox();
   expect(bNome!.width).toBeGreaterThan(80);
 });
+
+/**
+ * PROXIMIDADE DOS SELOS (dono 24/08: "alguns badges estão aparecendo muito
+ * próximos"). Medido antes de mexer, com a escala real: o selo "Plantão da
+ * tarde" da 1ª linha terminava a 0px do "+ Tempo total" logo abaixo, e com nome
+ * longo + 3 selos o último parava a 1px da borda arredondada do card.
+ *
+ * A varredura é por PAR, e não por elemento nomeado, de propósito: a 1ª linha
+ * tem nove selos condicionais e o defeito de 21/08 voltou justamente porque a
+ * folga foi travada num deles só. Qualquer selo novo cai nesta rede sem que
+ * ninguém precise lembrar de adicioná-lo aqui.
+ */
+test('nenhum selo encosta em outro nem na borda do card', async ({ page }) => {
+  test.skip(!E2E_USER_EMAIL || !E2E_USER_PASSWORD, 'Set E2E_USER_EMAIL / E2E_USER_PASSWORD');
+  test.setTimeout(120_000);
+
+  await page.clock.setFixedTime(DEMO_TIME);
+  await page.goto('/');
+  await page.locator('input[type="email"]').first().fill(E2E_USER_EMAIL);
+  await page.locator('input[type="password"]').first().fill(E2E_USER_PASSWORD);
+  await page.getByRole('button', { name: /entrar/i }).first().click();
+  await expect(page.getByRole('heading', { name: 'Página inicial' })).toBeVisible({ timeout: 20_000 });
+
+  await page.goto('/escala-cirurgica');
+  const tab = page.getByRole('tab', { name: 'Liberações' });
+  await expect(async () => {
+    await tab.click();
+    await expect(tab).toHaveAttribute('aria-selected', 'true', { timeout: 1_000 });
+  }).toPass({ timeout: 20_000 });
+  await expect(page.locator('[data-linha]').first()).toBeVisible({ timeout: 15_000 });
+
+  // 6px é o gap da própria linha de selos; abaixo disso dois pills sólidos de
+  // cores diferentes passam a ler como UM bloco de duas cores.
+  const MIN = 6;
+  const achados = await page.evaluate((min) => {
+    const problemas: string[] = [];
+    const SEL = '[data-slot="badge"], button[title*="toque para ajustar"], button[aria-label^="Definir tempo"]';
+    document.querySelectorAll('[data-linha]').forEach((card) => {
+      const cb = card.getBoundingClientRect();
+      const quem = (card as HTMLElement).dataset.nome;
+      const els = [...card.querySelectorAll(SEL)].map((el) => {
+        const r = el.getBoundingClientRect();
+        return { t: el.textContent!.trim().slice(0, 20), x: r.x, X: r.right, y: r.y, Y: r.bottom };
+      });
+      for (const e of els) {
+        const d = cb.right - e.X;
+        if (d < min) problemas.push(`${quem}: "${e.t}" a ${d.toFixed(1)}px da borda`);
+      }
+      for (let i = 0; i < els.length; i++) {
+        for (let j = i + 1; j < els.length; j++) {
+          const a = els[i]; const b = els[j];
+          // só compara o par nos eixos em que eles de fato se cruzam
+          if (Math.min(a.Y, b.Y) - Math.max(a.y, b.y) > 0) {
+            const g = Math.max(a.x, b.x) - Math.min(a.X, b.X);
+            if (g < min) problemas.push(`${quem}: "${a.t}" | "${b.t}" a ${g.toFixed(1)}px na horizontal`);
+          }
+          if (Math.min(a.X, b.X) - Math.max(a.x, b.x) > 0) {
+            const g = Math.max(a.y, b.y) - Math.min(a.Y, b.Y);
+            if (g < min) problemas.push(`${quem}: "${a.t}" | "${b.t}" a ${g.toFixed(1)}px na vertical`);
+          }
+        }
+      }
+    });
+    return problemas;
+  }, MIN);
+
+  expect(achados, achados.join('\n')).toEqual([]);
+});
