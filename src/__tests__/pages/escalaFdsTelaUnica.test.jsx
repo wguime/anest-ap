@@ -6,8 +6,12 @@
  * botão "Terminei", e com o painel da linha ganhando Hospital, Responsável e
  * Posição na fila.
  *
- * ⚠️ O DIA ÚTIL não pode mudar — as três abas e o seletor de hospital seguem lá.
- * Só o recado do plantonista e o botão "Importar" atravessam para os dois.
+ * ⚠️ O DIA ÚTIL NÃO MUDA — NADA daqui atravessa (dono 24/08, 2ª mensagem:
+ * "faça apenas o solicitado sem alterar a escala de dias úteis"). Na primeira
+ * versão o recado do plantonista, o botão "Importar", o "Terminei", a pastilha
+ * "Assumir" e a nova ordem do card foram adotados também no dia útil; o dono
+ * recusou. O describe do fim do arquivo é a trava da FRONTEIRA — ela já foi
+ * cruzada uma vez.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
@@ -173,5 +177,70 @@ describe('painel da linha — Hospital, Responsável e Posição só na fila ún
     expect(await screen.findByText('CC - Sala 1')).toBeTruthy()
     // Sala 4 é do HRO e aparece DUAS vezes: no card do Gabriel e na lista
     expect(screen.getAllByText('Sala 4').length).toBeGreaterThan(1)
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// A FRONTEIRA: o que é do fim de semana FICA no fim de semana (dono 24/08)
+// ════════════════════════════════════════════════════════════════════════════
+describe('o desenho da fila única não atravessa para o dia útil', () => {
+  // mesma escala e mesmos casos, só que como um dia útil: um hospital, sem modoFds
+  const ESCALA_UTIL = {
+    id: 'e-util', hospital: 'unimed',
+    ordemLiberacao: { matutino: ['KARINE', 'GABRIEL'] },
+    liberacoes: {}, linhaOverrides: {},
+    casos: [
+      { id: 'c1', sala: 'CC - Sala 3', ordem: 0, hora: '07:30', turno: 'matutino', anestesista: 'KARINE', cirurgiao: 'Lucas Martins', procedimento: 'TROCA VALVAR' },
+      { id: 'c2', sala: 'CC - Sala 4', ordem: 0, hora: '07:00', turno: 'matutino', anestesista: 'GABRIEL', cirurgiao: 'Plantao Orto', procedimento: 'CLAVICULA' },
+    ],
+  }
+  const utilProps = (extra = {}) => ({
+    escala: ESCALA_UTIL, hospital: 'unimed', hospitalLabel: 'Unimed',
+    canEdit: true, turno: 'matutino', onToggle: vi.fn(), ...extra,
+  })
+
+  it('sem "Terminei" — no dia útil a cirurgia se encerra no detalhe, uma a uma', async () => {
+    render(<LiberacoesView {...utilProps({ onTerminarCasos: vi.fn() })} />, { wrapper: wrap })
+    await screen.findByText(/Karine/i)
+    expect(screen.queryByText('Terminei')).toBeNull()
+  })
+
+  it('o mesmo botão CONTINUA na fila única — é lá que ele foi pedido', async () => {
+    render(<LiberacoesView {...props({ onTerminarCasos: vi.fn() })} />, { wrapper: wrap })
+    await screen.findByText(/Karine/i)
+    expect(screen.getAllByText('Terminei').length).toBeGreaterThan(0)
+  })
+
+  it('sem anestesista: volta a frase de sempre, não a pastilha "Assumir"', async () => {
+    const escala = {
+      ...ESCALA_UTIL,
+      casos: [
+        ...ESCALA_UTIL.casos,
+        { id: 'c9', sala: 'CC - Sala 9', ordem: 0, hora: '08:00', turno: 'matutino', anestesista: '?', semAnestesista: true, procedimento: 'HERNIA', cirurgiao: 'Dr. X' },
+      ],
+    }
+    render(<LiberacoesView {...utilProps({ escala, onDefinirCasos: vi.fn() })} />, { wrapper: wrap })
+    expect(await screen.findByText(/Toque para definir o anestesista/)).toBeTruthy()
+    expect(screen.queryByText('Assumir')).toBeNull()
+  })
+
+  it('a sala fica ABAIXO do cirurgião, e o hospital não aparece no card', async () => {
+    const { container } = render(<LiberacoesView {...utilProps()} />, { wrapper: wrap })
+    // a chave da linha é o uid do vínculo quando o dicionário resolve
+    await screen.findByText(/Lucas Martins/)
+    const card = container.querySelector('[data-linha="uid-karine"]')
+    expect(card).toBeTruthy()
+    // compara as FOLHAS (elemento sem filho elemento): comparar textContent de
+    // qualquer nó acharia primeiro um ancestral, que contém as duas coisas e
+    // deixaria o teste passar com qualquer ordem
+    const folhas = [...card.querySelectorAll('p, span, div')].filter((e) => !e.querySelector('*'))
+    const cir = folhas.find((e) => e.textContent.includes('Lucas Martins'))
+    const sala = folhas.find((e) => e.textContent.trim() === 'CC - Sala 3')
+    expect(cir).toBeTruthy()
+    expect(sala).toBeTruthy()
+    // DOCUMENT_POSITION_PRECEDING = o cirurgião vem ANTES da sala
+    expect(sala.compareDocumentPosition(cir) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy()
+    // hospital em linha própria é do fim de semana: aqui a tela toda é de um só
+    expect(card.textContent).not.toMatch(/UNIMED/)
   })
 })

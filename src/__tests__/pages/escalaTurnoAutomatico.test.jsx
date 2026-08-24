@@ -151,6 +151,15 @@ describe('turno acompanha o relógio (dono 15/08)', () => {
     expect(screen.getByLabelText('Importar escala')).toBeTruthy()
   })
 
+  // ⚠️ FRONTEIRA (dono 24/08, 2ª mensagem): o "Importar" em outline SEM ícone
+  // saiu do protótipo do FIM DE SEMANA e foi adotado também no dia útil na
+  // primeira versão. O dono recusou — "não altere a escala de dias úteis".
+  it('DIA ÚTIL: o "Importar" mantém o ícone (ghost), como está desde o começo', () => {
+    vi.setSystemTime(new Date('2026-08-17T10:00:00-03:00'))
+    montarHoje()
+    expect(screen.getByLabelText('Importar escala').querySelector('svg')).toBeTruthy()
+  })
+
   it('o calendário livre "Outra data" SAIU da tela (dono 16/08)', () => {
     vi.setSystemTime(new Date('2026-08-17T10:00:00-03:00'))
     montarHoje()

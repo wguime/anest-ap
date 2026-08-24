@@ -4,6 +4,7 @@
  * todos com seletor segmentado (mesmo estilo do Cateter Peridural).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Upload } from 'lucide-react'
 import { PageHeader } from '@/components'
 import { Button } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
@@ -347,13 +348,11 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
             // O atalho de VÍNCULOS saiu do header (dono 16/08): é manutenção de
             // dicionário, não operação do plantão. A tela de vínculos segue
             // existindo (VinculosSheet) para ser religada onde fizer sentido.
-            // OUTLINE, não ghost (dono 24/08, escolhido no protótipo do fim de
-            // semana e adotado TAMBÉM no dia útil): em ghost o "Importar" não
-            // parecia tocável no canto do cabeçalho. A borda diz que é botão.
-            // Sem o ícone: a palavra basta e a pílula fica com o mesmo peso do
-            // resto dos botões outline da tela.
-            <Button size="sm" variant="outline" onClick={() => setImportando(true)} aria-label="Importar escala">
-              Importar
+            // ⚠️ o outline sem ícone é do protótipo do FIM DE SEMANA (dono
+            // 24/08, 2ª mensagem): no dia útil o botão volta ao ghost com o
+            // ícone, como está desde o começo.
+            <Button size="sm" variant={modoFds ? 'outline' : 'ghost'} onClick={() => setImportando(true)} aria-label="Importar escala">
+              {!modoFds && <Upload className="w-4 h-4" />} Importar
             </Button>
           ) : null
         }
@@ -457,21 +456,22 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                     const dona = modoFds ? escalaDoCaso(casoIds[0]) || escala : escala
                     return setAnestesistaCasos(dona, casoIds, { uid, apelido }, { rotulo, resolverUid: resolverRoster, userId: user?.uid || user?.id || null })
                   }}
-                  // TERMINEI (dono 24/08): encerra de uma vez as cirurgias em
-                  // aberto no nome da pessoa. A fila não precisa saber de cada
-                  // cirurgia — precisa saber se a pessoa ainda está ocupada, e
-                  // marcar uma a uma não pegava: em 22/08, 15 das 35 cirurgias
-                  // nunca saíram de "agendada". Marcar caso a caso continua
-                  // existindo no detalhe, para quem quer o registro de horário.
+                  // TERMINEI — SÓ NO FIM DE SEMANA (dono 24/08, 2ª mensagem:
+                  // "não altere a escala de dias úteis"). Encerra de uma vez as
+                  // cirurgias em aberto no nome da pessoa: a fila única não
+                  // precisa saber de cada cirurgia, só se a pessoa ainda está
+                  // ocupada — em 22/08, 15 das 35 nunca saíram de "agendada".
+                  // No DIA ÚTIL a marcação caso a caso do detalhe é o caminho
+                  // estabelecido e continua sendo o único.
                   // ⚠️ na fila única cada caso mora na escala do hospital de
                   // origem — mesma resolução do onDefinirCasos.
-                  onTerminarCasos={(casoIds) => Promise.all(
+                  onTerminarCasos={modoFds ? ((casoIds) => Promise.all(
                     casoIds.map((id) => {
-                      const dona = modoFds ? escalaDoCaso(id) || escala : escala
+                      const dona = escalaDoCaso(id) || escala
                       const caso = (dona?.casos || []).find((c) => c.id === id)
                       return caso ? setStatusCirurgia(dona, caso, 'terminada', userInfo) : null
                     }).filter(Boolean)
-                  )}
+                  )) : undefined}
                   // RESPONSÁVEL DA POSIÇÃO (dono 24/08) — assunção unilateral na
                   // fila única: o slot fica com quem assumiu, a posição e a ordem
                   // não se movem, e as cirurgias em aberto vão junto. Mesmo motor

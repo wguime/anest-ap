@@ -1022,21 +1022,27 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           PESSOA: cada um vê os três mais recentes que ainda não confirmou, e
           confirmar libera a vaga do próximo. Não notifica ninguém — vive aqui e
           morre na confirmação. ── */}
-      {/* CARTÃO com rótulo, e não mais faixa de borda a borda (dono 24/08,
-          escolhido no protótipo do fim de semana e adotado TAMBÉM no dia útil):
-          o rótulo "Recado do plantonista" diz de quem é a mensagem antes de ela
-          ser lida, e o Confirmar leitura vira botão de largura inteira em vez de
-          uma pastilha de 32px no canto — confirmar é a única saída do recado e
-          estava com metade do alvo de um botão. */}
+      {/* ⚠️ DUAS FORMAS, e a diferença é o DIA (dono 24/08, 2ª mensagem): o
+          cartão com rótulo e o "Confirmar leitura" de largura inteira foram
+          desenhados no protótipo do FIM DE SEMANA e valem só lá. No dia útil a
+          faixa de borda a borda de 17/08 fica como está — "não quero que sejam
+          aplicadas em dias úteis". */}
       {avisos.map((a) => (
-        <div key={a.id} className="rounded-2xl border border-category-purple/45 bg-category-purple-bg px-3 py-2.5">
+        <div
+          key={a.id}
+          className={modoFds
+            ? 'rounded-2xl border border-category-purple/45 bg-category-purple-bg px-3 py-2.5'
+            : '-mx-4 border-y border-category-purple/40 bg-category-purple-bg px-4 py-2'}
+        >
           <div className="flex items-center gap-2">
             <div className="min-w-0 flex-1">
-              <p className="mb-0.5 text-[10.5px] font-extrabold uppercase tracking-[0.06em] text-category-purple-fg">
-                Recado do plantonista
-              </p>
+              {modoFds && (
+                <p className="mb-0.5 text-[10.5px] font-extrabold uppercase tracking-[0.06em] text-category-purple-fg">
+                  Recado do plantonista
+                </p>
+              )}
               {/* o RECADO em negrito: é o que se lê de relance */}
-              <p className="text-[14.5px] font-bold leading-tight text-foreground [overflow-wrap:anywhere]">{a.texto}</p>
+              <p className={[modoFds ? 'text-[14.5px]' : 'text-[15px]', 'font-bold leading-tight text-foreground [overflow-wrap:anywhere]'].join(' ')}>{a.texto}</p>
               {/* quem mandou e QUANDO — sem contagem de confirmações (dono 17/08):
                   quem lê não decide nada com "2 de 4 confirmaram", e o número
                   transformava o recado num placar. */}
@@ -1047,6 +1053,17 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 <span className="shrink-0 tabular-nums opacity-80">{horaCurta(a.criadoEm)}</span>
               </p>
             </div>
+            {/* DIA ÚTIL: botão pequeno no canto — o recado é a informação, o
+                confirmar é só a saída (desenho de 17/08, intacto). */}
+            {!modoFds && (
+              <button
+                type="button"
+                onClick={() => confirmarAviso(a.id)}
+                className="flex h-8 shrink-0 items-center gap-1 rounded-lg bg-category-purple px-2.5 text-[12.5px] font-bold text-white active:opacity-80"
+              >
+                <Check className="h-3.5 w-3.5" /> Confirmar
+              </button>
+            )}
             {/* o plantonista tira o recado que não vale mais (dono 17/08) */}
             {canEdit && souPlantonista && (
               <button
@@ -1059,16 +1076,17 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
               </button>
             )}
           </div>
-          {/* CONFIRMAR LEITURA de largura inteira (dono 24/08): 40px de alvo,
-              contra os 32px da pastilha que ficava no canto. É a única saída do
-              recado — ele some para quem confirma e libera a vaga do próximo. */}
-          <button
-            type="button"
-            onClick={() => confirmarAviso(a.id)}
-            className="mt-2 flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-[11px] bg-category-purple text-[13.5px] font-extrabold text-white active:opacity-80"
-          >
-            <Check className="h-4 w-4 shrink-0" /> Confirmar leitura
-          </button>
+          {/* FIM DE SEMANA: Confirmar leitura de largura inteira (40px de alvo,
+              contra os 32px da pastilha de canto). Só aqui. */}
+          {modoFds && (
+            <button
+              type="button"
+              onClick={() => confirmarAviso(a.id)}
+              className="mt-2 flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-[11px] bg-category-purple text-[13.5px] font-extrabold text-white active:opacity-80"
+            >
+              <Check className="h-4 w-4 shrink-0" /> Confirmar leitura
+            </button>
+          )}
         </div>
       ))}
 
@@ -1124,18 +1142,20 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       {[i.procedimento, i.cirurgiao].filter(Boolean).join(' · ')}
                     </p>
                   )}
-                  {/* ASSUMIR (dono 24/08, no lugar de "Toque para definir o
-                      anestesista"): a frase explicava o gesto mas não parecia
-                      acionável. O card inteiro continua sendo o alvo — a pastilha
-                      é a marca de que ele responde ao toque, e a folha que abre
-                      deixa escolher qualquer anestesista, não só quem tocou. */}
-                  {definivel && (
+                  {/* ⚠️ a pastilha "Assumir" é do FIM DE SEMANA (dono 24/08, 2ª
+                      mensagem): no dia útil fica a frase de sempre. O card
+                      inteiro é o alvo nos dois casos. */}
+                  {definivel && (modoFds ? (
                     <p className="mt-1.5 flex justify-end">
                       <span className="flex min-h-[36px] items-center gap-1.5 rounded-[10px] bg-warning px-3 text-[12.5px] font-extrabold text-warning-foreground">
                         <UserPlus className="h-3.5 w-3.5 shrink-0" /> Assumir
                       </span>
                     </p>
-                  )}
+                  ) : (
+                    <p className="mt-1 flex items-center gap-1 text-xs font-medium text-primary">
+                      <UserPlus className="h-3 w-3 shrink-0" /> Toque para definir o anestesista
+                    </p>
+                  ))}
                 </Wrapper>
               )
             })}
@@ -1564,19 +1584,18 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         </span>
                       </p>
                     )}
-                    {/* HOSPITAL ISOLADO, SALA LOGO ABAIXO, cirurgiões depois
-                        (dono 24/08). Antes o local vinha DEPOIS dos cirurgiões e
-                        o hospital era um prefixo dele. Numa fila que cobre os três
-                        hospitais, "onde a pessoa está" é a primeira pergunta — e o
-                        hospital em caixa alta curta lê como RÓTULO, não como um
-                        segundo nome disputando com o de cima. Descendo a fila os
-                        hospitais formam uma coluna que se varre de relance. */}
-                    {!liberadoReal && hospitalDaLinha && (
+                    {/* ⚠️ HOSPITAL ISOLADO + SALA ANTES DOS CIRURGIÕES é o card do
+                        FIM DE SEMANA (dono 24/08, 2ª mensagem: "não altere a
+                        escala de dias úteis"). Numa fila que cobre os três
+                        hospitais "onde a pessoa está" é a primeira pergunta; num
+                        dia útil a tela inteira é de um hospital só e a ordem de
+                        20/07 — cirurgião, depois sala — fica como está. */}
+                    {modoFds && !liberadoReal && hospitalDaLinha && (
                       <p className="mt-0.5 text-[11.5px] font-extrabold uppercase tracking-[0.06em] text-primary">
                         {hospitalDaLinha}
                       </p>
                     )}
-                    {!liberadoReal && localExibido && (
+                    {modoFds && !liberadoReal && localExibido && (
                       <p
                         className={['truncate text-[12.5px] font-semibold', ov?.local ? 'text-primary' : 'text-foreground/90'].join(' ')}
                         title={ov?.local ? 'Local ajustado' : localExibido}
@@ -1652,6 +1671,16 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                           </p>
                         )}
                       </div>
+                    )}
+                    {/* DIA ÚTIL: sala/local ABAIXO do cirurgião (pedido do dono
+                        2026-07-20), no tamanho e na cor de sempre. */}
+                    {!modoFds && !liberadoReal && localExibido && (
+                      <p
+                        className={['mt-0.5 truncate text-xs font-semibold', ov?.local ? 'text-primary' : 'text-foreground/80'].join(' ')}
+                        title={ov?.local ? 'Local ajustado' : localExibido}
+                      >
+                        {localExibido}
+                      </p>
                     )}
                     {/* OBSERVAÇÃO da linha (dono 29/07, no lugar da troca): recado
                         operacional escrito à mão — "trocou com o Fulano no HRO",
@@ -1746,7 +1775,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         + Tempo total
                       </button>
                     )))}
-                    {/* TERMINEI (dono 24/08): encerra de uma vez as cirurgias em
+                    {/* TERMINEI — SÓ NA FILA ÚNICA (dono 24/08, 2ª mensagem: "não
+                        altere a escala de dias úteis"). Encerra de uma vez as cirurgias em
                         aberto no nome da pessoa — ela vira "Livre" e CONTINUA na
                         posição, aguardando a vez. ⚠️ é outra coisa que o círculo:
                         o círculo é o checkbox de "está liberada" (saiu do
@@ -1754,7 +1784,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         significado — a lição de 20/08, quando o mesmo círculo
                         alternava dois estados e o dono tocou 16 vezes sem efeito.
                         Só aparece com cirurgia aberta, então se apaga sozinho. */}
-                    {canEdit && !liberadoReal && linha.casoIds?.length > 0 && onTerminarCasos && (
+                    {modoFds && canEdit && !liberadoReal && linha.casoIds?.length > 0 && onTerminarCasos && (
                       <button
                         type="button"
                         onClick={() => {

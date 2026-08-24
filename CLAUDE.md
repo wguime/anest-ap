@@ -947,17 +947,33 @@ CASO MORA**: na fila única a linha 'fds' não guarda caso nenhum, e o snapshot 
 rollback e o patch otimista liam `lado.hospital` — a reversão não restauraria
 nada e o quadro só pintaria no realtime.
 
-**Atravessam para o DIA ÚTIL, por pedido expresso:** o **recado do plantonista**
-vira cartão com rótulo "Recado do plantonista", autor·papel·hora e **"Confirmar
-leitura"** de largura inteira (40px contra os 32px da pastilha de canto); e o
-botão **"Importar"** do cabeçalho vira `variant="outline"` sem ícone (em ghost
-não parecia tocável). O bloco de sem-anestesista troca a frase "Toque para
-definir o anestesista" pelo botão **"Assumir"**.
+⛔ **NADA DISTO ATRAVESSA PARA O DIA ÚTIL (dono 24/08, 2ª mensagem):** *"solicitei
+alguns ajustes para escala do final de semana e esses ajustes ficaram para a
+escala de dias úteis — não quero que sejam aplicadas em dias úteis. Faça apenas o
+solicitado."* A primeira versão adotou CINCO coisas do protótipo do fim de semana
+também no dia útil, e as cinco voltaram: o **recado do plantonista** (cartão com
+rótulo + "Confirmar leitura" de largura inteira → volta a faixa de borda a borda
+de 17/08 com a pastilha "Confirmar" no canto); o **"Importar"** do cabeçalho
+(outline sem ícone → volta a `ghost` com o ícone); a pastilha **"Assumir"** no
+bloco de sem-anestesista (→ volta "Toque para definir o anestesista"); o botão
+**"Terminei"** na linha da fila (some — no dia útil a cirurgia se encerra no
+detalhe, uma a uma); e a **ordem do card** (hospital isolado + sala ANTES dos
+cirurgiões → volta sala ABAIXO do cirurgião, desenho de 20/07). O gate é
+`modoFds` em cada ponto, e "Terminei" leva DOIS: o `modoFds` da view e o
+`onTerminarCasos` que a página só passa no fim de semana.
 
-Travas: `escalaFdsTelaUnica.test.jsx` (10 casos: barra sem os eixos, card,
-Terminei ≠ círculo, os três assuntos, Local não-vazio). ⚠️ dois testes MUDARAM DE
-LADO com o porquê no corpo, em vez de sumir: o de 16/08 que exigia o seletor de
-hospital no FDS e o do recado.
+⚠️ A regra geral, que já vale para a IMPORTAÇÃO desde 22/08 e agora vale para a
+TELA: melhoria nascida de um protótipo de fim de semana fica no fim de semana. O
+dia útil é o fluxo estabelecido de uma equipe em uso clínico diário — mudança
+visual ali é retreinamento, e precisa de pedido próprio (Regra #2).
+
+Travas: `escalaFdsTelaUnica.test.jsx` (14 casos: barra sem os eixos, card,
+Terminei ≠ círculo, os três assuntos, Local não-vazio + o describe **"o desenho
+da fila única não atravessa para o dia útil"**, que é a trava da FRONTEIRA — ela
+já foi cruzada uma vez); `liberacoesAvisoPlantonista.test.jsx` cobre as DUAS
+formas do recado, uma por dia; `escalaTurnoAutomatico.test.jsx` prende o ícone do
+"Importar" no dia útil. ⚠️ um teste MUDOU DE LADO com o porquê no corpo, em vez de
+sumir: o de 16/08 que exigia o seletor de hospital no FDS.
 
 ### FDS — fila completa e o fim do vermelho em massa (dono 22/08)
 
