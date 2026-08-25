@@ -4714,6 +4714,36 @@ const periopCalculators = [
       reference: 'Aldrete JA. J Clin Anesth 1995 | Aldrete JA, Kroulik D. Anesth Analg 1970',
     },
   },
+  // Anticoagulantes — consulta completa (bloqueio, cateter peridural, reversores, pré-op).
+  // Toda a regra clínica vive em src/lib/anticoagulantes.js.
+  {
+    id: 'periop_anticoagulantes',
+    title: 'Anticoagulantes',
+    subtitle: 'Bloqueio, cateter peridural e reversores',
+    icon: 'Droplets',
+    status: 'active',
+    customRender: 'anticoagulantes',
+    inputs: [],
+    compute: () => null,
+    resultMessage: () => '',
+    infoBox: {
+      warnings: [
+        'Inserção E retirada do cateter: o intervalo vale para os dois.',
+        'Reversor não libera bloqueio — antídoto é para sangramento, não para viabilizar punção.',
+        'TP/TTPa normais não afastam DOAC residual. Ultrassom não encurta intervalo.',
+      ],
+      keyPoints: [
+        'ASRA 5ª ed.: "profilático/terapêutico" virou dose BAIXA/ALTA, e a regra do neuroeixo passou a valer para plexo/nervo PROFUNDOS.',
+        'Bloqueio superficial e compressível fica fora destas regras.',
+        'ClCr muda o intervalo de HBPM, fondaparinux e dabigatrana.',
+        'Suspeita de hematoma: RM de emergência e descompressão em 6–12 h.',
+      ],
+      interpretation:
+        'Intervalos entre a última dose e a punção, a retirada do cateter peridural e a reintrodução do fármaco — mais reversores, limiares laboratoriais e suspensão pré-operatória. Números da ASRA 5ª ed. (2025); ESAIC/ESRA 2022 e SBA 2020 como contraponto. Divergindo, prevalece o protocolo do serviço.',
+      reference:
+        'ASRA 5th ed. Reg Anesth Pain Med 2025 (10.1136/rapm-2024-105766) | ESAIC/ESRA. Eur J Anaesthesiol 2022;39:100-132 | SBA 2020. Braz J Anesthesiol 2020;70:364-387 | Grottke. Eur J Anaesthesiol 2024;41:327-350 | PAUSE. JAMA Intern Med 2019;179:1469-78',
+    },
+  },
 ];
 
 // =============================================================================

@@ -29,6 +29,7 @@ import SofaDisplay from './displays/SofaDisplay';
 import FibrilacaoAtrialDisplay from './displays/FibrilacaoAtrialDisplay';
 import SedacaoDeliriumDisplay from './displays/SedacaoDeliriumDisplay';
 import Saps3Display from './displays/Saps3Display';
+import AnticoagulantesDisplay from './displays/AnticoagulantesDisplay';
 
 // Estrutura default de categorias PediCalc — usada quando o usuário ainda
 // não digitou peso, para manter a lista sempre visível.
@@ -135,22 +136,18 @@ function InfoBox({ infoBox, reference }) {
           "bg-destructive/10 dark:bg-muted",
           "border border-destructive/40 dark:border-border"
         )}>
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-destructive dark:text-foreground mt-0.5 flex-shrink-0" />
-            <div className="flex-1">
-              <h4 className="font-bold text-destructive dark:text-foreground text-sm mb-2">
-                {warnings.length === 1 ? 'Aviso' : 'Avisos Criticos'}
-              </h4>
-              <ul className="space-y-1.5">
-                {warnings.map((w, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-destructive dark:text-muted-foreground">
-                    <span className="w-1.5 h-1.5 rounded-full bg-destructive dark:bg-muted-foreground mt-2 flex-shrink-0" />
-                    <span>{w}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+          <h4 className="font-bold text-destructive dark:text-foreground text-sm mb-2 flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+            {warnings.length === 1 ? 'Aviso' : 'Avisos Criticos'}
+          </h4>
+          <ul className="space-y-1.5">
+            {warnings.map((w, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-destructive dark:text-muted-foreground">
+                <span className="w-1.5 h-1.5 rounded-full bg-destructive dark:bg-muted-foreground mt-2 flex-shrink-0" />
+                <span>{w}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -161,22 +158,18 @@ function InfoBox({ infoBox, reference }) {
           "bg-category-blue-bg dark:bg-muted",
           "border border-border"
         )}>
-          <div className="flex items-start gap-3">
-            <Pill className="w-5 h-5 text-category-blue-fg dark:text-foreground mt-0.5 flex-shrink-0" />
-            <div className="flex-1">
-              <h4 className="font-bold text-category-blue-fg dark:text-foreground text-sm mb-2">
-                Doses e Orientacoes
-              </h4>
-              <ul className="space-y-1.5">
-                {doses.map((d, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-category-blue-fg dark:text-muted-foreground">
-                    <span className="w-1.5 h-1.5 rounded-full bg-category-blue dark:bg-muted-foreground mt-2 flex-shrink-0" />
-                    <span>{d}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+          <h4 className="font-bold text-category-blue-fg dark:text-foreground text-sm mb-2 flex items-center gap-2">
+            <Pill className="w-5 h-5 flex-shrink-0" />
+            Doses e Orientacoes
+          </h4>
+          <ul className="space-y-1.5">
+            {doses.map((d, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-category-blue-fg dark:text-muted-foreground">
+                <span className="w-1.5 h-1.5 rounded-full bg-category-blue dark:bg-muted-foreground mt-2 flex-shrink-0" />
+                <span>{d}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -187,17 +180,13 @@ function InfoBox({ infoBox, reference }) {
           "bg-muted",
           "border border-border"
         )}>
-          <div className="flex items-start gap-3">
-            <Info className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-            <div className="flex-1">
-              <h4 className="font-bold text-primary text-sm mb-2">
-                Interpretacao
-              </h4>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {interpretation}
-              </p>
-            </div>
-          </div>
+          <h4 className="font-bold text-primary text-sm mb-2 flex items-center gap-2">
+            <Info className="w-5 h-5 flex-shrink-0" />
+            Interpretacao
+          </h4>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {interpretation}
+          </p>
         </div>
       )}
 
@@ -229,7 +218,7 @@ function InfoBox({ infoBox, reference }) {
 
           {isKeyPointsOpen && (
             <div className="px-4 pb-4 pt-0">
-              <ul className="space-y-1.5 ml-8">
+              <ul className="space-y-1.5">
                 {keyPoints.map((point, i) => (
                   <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
                     <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground mt-2 flex-shrink-0" />
@@ -2030,7 +2019,7 @@ function CalculatorPage({ calculator, _onBack }) {
       )}
 
       {/* Select inputs as cards or dropdown - Skip for calculators with inputs inside custom displays */}
-      {selectInputs.length > 0 && !['viaAerea', 'reversores', 'balancoHidricoTransop', 'aldrete', 'sofa', 'faAnticoag', 'sedacaoDelirium', 'saps3'].includes(calculator.customRender) && (
+      {selectInputs.length > 0 && !['viaAerea', 'reversores', 'balancoHidricoTransop', 'aldrete', 'sofa', 'faAnticoag', 'sedacaoDelirium', 'saps3', 'anticoagulantes'].includes(calculator.customRender) && (
         <div
           className={cn(
             "p-4 rounded-xl overflow-visible",
@@ -2061,7 +2050,7 @@ function CalculatorPage({ calculator, _onBack }) {
 
       {/* Number inputs - Skip for calculators with inputs inside custom displays */}
       {numberInputs.length > 0 &&
-       !['pedicalc', 'adultcalc', 'viaAerea', 'pedDesfib', 'broselow', 'hollidaySegar', 'acls', 'reversores', 'balancoHidricoTransop', 'aldrete', 'sofa', 'faAnticoag', 'sedacaoDelirium', 'saps3'].includes(calculator.customRender) && (
+       !['pedicalc', 'adultcalc', 'viaAerea', 'pedDesfib', 'broselow', 'hollidaySegar', 'acls', 'reversores', 'balancoHidricoTransop', 'aldrete', 'sofa', 'faAnticoag', 'sedacaoDelirium', 'saps3', 'anticoagulantes'].includes(calculator.customRender) && (
         <div
           className={cn(
             "p-4 rounded-xl",
@@ -2187,6 +2176,10 @@ function CalculatorPage({ calculator, _onBack }) {
 
       {calculator.customRender === 'saps3' && (
         <Saps3Display />
+      )}
+
+      {calculator.customRender === 'anticoagulantes' && (
+        <AnticoagulantesDisplay />
       )}
 
       {/* Result - Abaixo dos inputs, como no App Legado (para calculadoras normais) */}

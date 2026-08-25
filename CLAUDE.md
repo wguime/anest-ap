@@ -74,7 +74,7 @@ Antes de declarar pronto:
 10. Modal DS API: `title`/`description`/`footer` props (sem ModalHeader/Content/Footer)
 
 ## Calculadoras Clínicas
-73 calculadoras ativas em 13 seções. Dados em `src/design-system/data/calculator-definitions.js`.
+70 calculadoras ativas em 13 seções. Dados em `src/design-system/data/calculator-definitions.js`.
 
 **Padrão para calculadoras complexas:**
 - Lib pura: `src/lib/<nome>.js` (funções puras, `num()` helper, JSDoc, named exports)
@@ -84,6 +84,30 @@ Antes de declarar pronto:
 - Em CalculatorShowcase.jsx: import + exclusion arrays + bloco `customRender === '<nome>'`
 - `LEGACY_ID_MAP`: mapeia IDs antigos → novos para favoritos não quebrarem
 - `getSectionsWithCalculators()` filtra `status: 'inactive'`
+
+**Anticoagulantes** (card `periop_anticoagulantes`, seção Perioperatório e Via Aérea, 2026-08-25):
+consulta, não escore. `src/lib/anticoagulantes.js` (pura) tem 30 fármacos × 4 janelas — última dose→punção,
+última dose→retirada do cateter, punção→próxima dose, retirada→próxima dose — mais 9 reversores, protocolo do
+cateter, sinais de hematoma, limiares e suspensão pré-operatória. 4 abas em `AnticoagulantesDisplay.jsx`.
+Números da **ASRA 5ª ed. (2025)**, com ESAIC/ESRA 2022 e SBA 2020 (nomes ANVISA) como contraponto na tela —
+⚠️ a SBA é mais conservadora nos DOACs (72 h para qualquer dose contra 24–36 h da ASRA em dose baixa); trocar a
+fonte primária é 1 linha por fármaco. `resolverJanela` ajusta por ClCr e idade, e a PRIMEIRA regra que casa
+vence (renal antes de idade). ⚠️ `resumo` existe porque badge é `whitespace-nowrap` e não encolhe: a frase do
+GP IIb/IIIa deixava o nome do fármaco com 49px. Travas: `anticoagulantes.test.js` (43), com invariantes de
+comprimento de rótulo — foi assim que o defeito nasceu.
+
+**Três limites do DS descobertos aqui, que valem para o app inteiro:**
+- ⚠️ `DatePicker` abre o popup como `absolute z-50` **sem portal** (`date-picker.jsx:434`), e `AccordionContent`
+  (e `CollapsibleContent`) animam altura com `overflow-hidden` — calendário dentro de sanfona sai **cortado no
+  meio do mês**. Onde precisar dos dois, usar `Sheet`.
+- ⚠️ `TabsList` traz `w-full`: largura fixa em 100% do pai **ignora margem negativa**. A barra ficava 16px mais
+  estreita que os cards e deslocada 8px à esquerda — lia-se como "seletores não centralizados". Com margem
+  negativa, passar `w-auto` junto. E `flex` respeita o `min-width:auto` de cada rótulo (larguras desiguais):
+  `grid grid-cols-4` iguala, mas aí o `px-3` do gatilho não cabe mais — `px-1`.
+- ⚠️ `Alert` põe o ícone numa **coluna à esquerda**, centrado na vertical: em alerta longo ele flutua no meio e
+  rouba ~24px de largura de TODAS as linhas. Ícone dentro do `title` + colapsar a coluna resolve. **O mesmo
+  padrão estava no `InfoBox` do CalculatorShowcase e foi corrigido para as 70 calculadoras (dono 25/08)** —
+  o texto recuava 48px e agora recua 17px.
 
 **Critérios UTI** (feature separada): `src/data/criteriosUtiCalculators.js` + `src/pages/CriteriosUTIPage.jsx`
 7 calculadoras (SORT, ESS, POTTER, SAS, SIAARTI, P-POSSUM, CFM 2156) em 4 categorias (Pré-op / Intra-op / Composto / Regulatório).
