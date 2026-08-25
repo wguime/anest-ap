@@ -127,10 +127,15 @@ describe('modo FDS — plantões físicos da faixa da grade (dono 15/08)', () =>
    * FERIADO (dono 25/08: "os nomes dos plantonistas no card na página home está
    * errado"). Sem grade P1–P4, o card caía no plantonista POR HOSPITAL derivado
    * da ORDEM DOS CASOS — quem aparece primeiro na lista de cirurgias, que não
-   * tem relação com quem está de plantão. Os plantonistas são os dois primeiros
-   * da folha; o hospital de cada um vem das cirurgias do dia.
+   * tem relação com quem está de plantão. Plantão são os dois que FECHAM a fila
+   * do turno (posições 1 e 2 da ordem publicada); o hospital de cada um vem das
+   * cirurgias do dia.
+   *
+   * ⚠️ A fonte é a ORDEM DO TURNO, não a folha — mesma correção do selo na fila
+   * (dono 25/08, à tarde). A folha não vira; a ordem sim, e às 13h ela inverte.
+   * Preso à folha, o card nomearia na Home quem a fila já mostra indo embora.
    */
-  describe('feriado — os dois primeiros da folha, com o hospital dos casos', () => {
+  describe('feriado — os dois que fecham a fila do turno, com o hospital dos casos', () => {
     const rosterFeriado = () => ({
       resolver: (n) => ({ FERNANDA: 'uid-fe', DANIELA: 'uid-da', MARILIO: 'uid-ma' })[String(n).trim().toUpperCase()] || null,
       rosterByUid: new Map([
@@ -140,7 +145,10 @@ describe('modo FDS — plantões físicos da faixa da grade (dono 15/08)', () =>
       ]),
       pronto: true,
     })
-    const ctxFeriado = (fdsMeta) => ({
+    // a tarde é a folha DE TRÁS PARA FRENTE (é o que a publicação grava)
+    const ORDEM_FOLHA = ['FERNANDA', 'DANIELA', 'MARILIO']
+    const ORDEM = { matutino: ORDEM_FOLHA, vespertino: [...ORDEM_FOLHA].reverse() }
+    const ctxFeriado = (fdsMeta, ordemLiberacao = ORDEM) => ({
       data: '2026-08-25', loading: false,
       escalas: {
         // MARILIO é o 1º caso da Unimed: era ele que o card mostrava antes
@@ -152,7 +160,7 @@ describe('modo FDS — plantões físicos da faixa da grade (dono 15/08)', () =>
           { id: 'h1', anestesista: 'DANIELA', anestesistaUserId: 'uid-da', turno: 'matutino' },
         ] },
         materno: null,
-        fds: { status: 'publicada', ordemLiberacao: {}, casos: [], fdsMeta },
+        fds: { status: 'publicada', ordemLiberacao, casos: [], fdsMeta },
       },
     })
 
@@ -162,23 +170,34 @@ describe('modo FDS — plantões físicos da faixa da grade (dono 15/08)', () =>
       estado.roster = rosterFeriado()
     })
 
-    it('mostra FERNANDA e DANIELA, não o primeiro nome da lista de casos', () => {
-      estado.ctx = ctxFeriado({ tipo: 'feriado', grade: {}, posicoes: {}, listaFonte: ['FERNANDA', 'DANIELA', 'MARILIO'] })
+    it('de manhã mostra FERNANDA e DANIELA, não o primeiro nome da lista de casos', () => {
+      estado.ctx = ctxFeriado({ tipo: 'feriado', grade: {}, posicoes: {} })
       render(<EscalaCirurgicaHomeCard />)
       expect(screen.getByText('Fernanda Guollo')).toBeTruthy()
       expect(screen.getByText('Daniela Reis')).toBeTruthy()
       expect(screen.queryByText('Marilio Flach')).toBeNull()   // era o nome errado
     })
 
-    it('o rótulo é "Feriado", não a faixa da grade — o plantão é 07h→07h', () => {
-      estado.ctx = ctxFeriado({ tipo: 'feriado', grade: {}, posicoes: {}, listaFonte: ['FERNANDA', 'DANIELA'] })
+    it('às 13h o card VIRA junto com a fila — Home e escala não divergem', () => {
+      // a mesma correção do selo: à tarde a ordem inverte, MARILIO passa a fechar
+      // a fila e a FERNANDA, que fechava de manhã, é das primeiras a ir embora
+      vi.setSystemTime(new Date('2026-08-25T14:00:00-03:00'))
+      estado.ctx = ctxFeriado({ tipo: 'feriado', grade: {}, posicoes: {} })
+      render(<EscalaCirurgicaHomeCard />)
+      expect(screen.getByText('Marilio Flach')).toBeTruthy()
+      expect(screen.getByText('Daniela Reis')).toBeTruthy()
+      expect(screen.queryByText('Fernanda Guollo')).toBeNull()
+    })
+
+    it('o rótulo é "Feriado" — o feriado não tem as faixas da grade do FDS', () => {
+      estado.ctx = ctxFeriado({ tipo: 'feriado', grade: {}, posicoes: {} })
       render(<EscalaCirurgicaHomeCard />)
       expect(screen.getByText('Plantão · Feriado')).toBeTruthy()
       expect(screen.queryByText(/Plantão · 7–13h/)).toBeNull()
     })
 
-    it('sem a folha no meta, cai no comportamento por hospital em vez de chutar', () => {
-      estado.ctx = ctxFeriado({ tipo: 'feriado', grade: {}, posicoes: {} })
+    it('sem ordem publicada, cai no comportamento por hospital em vez de chutar', () => {
+      estado.ctx = ctxFeriado({ tipo: 'feriado', grade: {}, posicoes: {} }, {})
       render(<EscalaCirurgicaHomeCard />)
       expect(screen.queryByText(/Plantão · /)).toBeNull()
       expect(screen.getByText(/Plantonista · /)).toBeTruthy()

@@ -1070,18 +1070,35 @@ o do fim de semana, INTEIRO. ⚠️ não reduzir o caso a sala/cirurgião/aneste
 o trigger `fn_sync_cirurgia_particular` casa para abrir a cobrança — só o mapa da
 Unimed de 25/08 traz 6 PARTICULAR.
 
-**SELO DE PLANTÃO — os DOIS PRIMEIROS da folha (dono 25/08):** "o primeiro e
-segundo nomes da lista sempre serão plantão de algum hospital conforme ordem de
-liberação (ou seja os dois últimos a serem liberados são os plantões)" — é
-também a confirmação independente do sentido da fila. No FDS esse selo sai da
-grade P1–P4 da faixa; no feriado sai de `fdsMeta.listaFonte`, posições 1 e 2 →
-"Plantão Unimed"/"Plantão HRO" (o genérico "Plantonista" segue suprimido na fila
-única, como no FDS — ele diria menos). ⚠️ o HOSPITAL vem das cirurgias do DIA
-(`hospitaisDoDia`), não do turno exibido: o plantão do feriado é 07h→07h e à
-tarde a ordem inverte, então o plantonista passa a ser o primeiro a sair e pode
-já estar sem cirurgia — pelo mapa do turno o selo perderia o hospital justamente
-aí. Por isso o selo vale nos DOIS turnos: estar de plantão é da pessoa, não da
-posição. Sem cirurgia no dia inteiro cai no genérico.
+**SELO DE PLANTÃO — os DOIS QUE FECHAM A FILA DO TURNO (dono 25/08):** "o
+primeiro e segundo nomes da lista sempre serão plantão de algum hospital conforme
+ordem de liberação (**ou seja os dois últimos a serem liberados são os
+plantões**)" — é também a confirmação independente do sentido da fila. No FDS o
+selo sai da grade P1–P4 da faixa; no feriado, das **posições 1 e 2 da ORDEM
+PUBLICADA do turno exibido**, que por convenção do rodapé são os dois últimos a
+sair → "Plantão Unimed"/"Plantão HRO" (o genérico "Plantonista" segue suprimido
+na fila única, como no FDS — ele diria menos). Sem cirurgia no dia inteiro cai no
+genérico. ⚠️ o HOSPITAL vem das cirurgias do **DIA** (`hospitaisDoDia`), não do
+turno: quem fecha a fila pode já estar sem cirurgia naquele turno, e pelo mapa do
+turno o selo perderia o hospital justamente aí.
+
+⚠️ **É POSICIONAL, não da pessoa — e isso foi corrigido no MESMO DIA.** A 1ª
+versão saía de `fdsMeta.listaFonte` (a folha, que não vira) e valia nos dois
+turnos, com o argumento de que o plantão do feriado é 07h→07h. O dono recusou
+olhando a tela da tarde: *"na escala da tarde, os dois últimos a serem liberados
+devem receber o badge de plantão e os primeiros a serem liberados (que foram os
+plantões da manhã) devem perder os badges"*. O motivo é o que o selo COMUNICA
+numa fila — **quem ainda vai ficar**: preso à folha, de tarde ele marcava quem
+estava indo embora PRIMEIRO e não dizia nada sobre quem ficaria até a noite. Como
+a tarde é a folha invertida, ler a ordem do turno dá o mesmo resultado de manhã e
+troca os donos à tarde, sem regra extra. **`EscalaCirurgicaHomeCard` mudou
+junto** (mesma fonte, turno do relógio compartilhado): preso à folha, ele passaria
+às 13h a nomear na Home quem a fila já mostra saindo. Travas: describe "feriado"
+em `escalaFdsTelaUnica.test.jsx` — fixture com **QUATRO** nomes de propósito, já
+que com dois a folha e a ordem invertida contêm as mesmas pessoas e QUALQUER
+regra passa (foi assim que a 1ª versão atravessou os testes) — e o caso das 14h
+em `escalaCirurgicaHomeCard.test.jsx`. `fdsMeta.listaFonte` continua GRAVADO como
+transcrição do documento, mas nenhuma tela deriva dele.
 
 **O LOGIN NASCE PREENCHIDO PELO NOME LIDO (dono 25/08):** "identificou o
 anestesista (cabeçalho) mas o campo abaixo deixou 'sem anestesista'". A

@@ -419,15 +419,25 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     }
 
     // FERIADO (dono 25/08): não há grade P1–P4. "O primeiro e segundo nomes da
-    // lista sempre serão plantão de algum hospital" — e é por isso que são os
-    // dois ÚLTIMOS a serem liberados de manhã. A folha publicada mora em
-    // `fdsMeta.listaFonte`; o hospital de cada um sai das cirurgias DO DIA.
-    // Vale nos dois turnos ("sempre"): estar de plantão é da pessoa, não da
-    // posição — à tarde a ordem inverte e eles saem primeiro, mas continuam
-    // sendo quem cobre o hospital.
+    // lista sempre serão plantão de algum hospital ... ou seja os dois últimos a
+    // serem liberados são os plantões" — e o que o selo diz é essa SEGUNDA
+    // metade: quem FECHA a fila DESTE turno.
+    //
+    // ⚠️ o selo é POSICIONAL, não da pessoa (correção do dono no mesmo dia: "na
+    // escala da tarde, os dois últimos a serem liberados devem receber o badge
+    // de plantão e os primeiros a serem liberados (que foram os plantões da
+    // manhã) devem perder"). A 1ª versão saía de `fdsMeta.listaFonte` — a folha,
+    // que não vira —, então de tarde o selo aparecia sobre FERNANDA e DANIELA
+    // enquanto elas eram as PRIMEIRAS a ir embora: o quadro dizia "de plantão"
+    // sobre quem estava saindo, e não dizia nada sobre quem ia ficar até a noite.
+    // Por isso a fonte é a ORDEM PUBLICADA do turno exibido, cujas posições 1 e 2
+    // são, por convenção do rodapé, os dois últimos a serem liberados. De manhã
+    // dá o mesmo resultado de antes (a ordem matutina É a folha); de tarde, que
+    // é a folha invertida, dá os dois do fim dela.
+    // Mesmo desenho do ramo de fim de semana logo abaixo, que já lê a faixa do
+    // TURNO EXIBIDO. O hospital de cada um sai das cirurgias DO DIA.
     if (feriado) {
-      const folha = Array.isArray(fdsMeta?.listaFonte) ? fdsMeta.listaFonte : []
-      for (const nome of folha.slice(0, 2)) {
+      for (const nome of rodapeTurno.slice(0, 2)) {
         const chave = resolverUid(String(nome || '').trim()) || normNome(nome)
         const onde = hospitaisDoDia?.get(chave)
         // sem cirurgia no dia não dá para dizer QUAL hospital — o genérico não
@@ -448,7 +458,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     add(unimed, 'Plantão Unimed')
     add(hro, 'Plantão HRO')
     return m
-  }, [modoFds, feriado, fdsMeta, turno, resolverUid, hospitaisDoDia])
+  }, [modoFds, feriado, fdsMeta, turno, rodapeTurno, resolverUid, hospitaisDoDia])
   // vale também no card NOTURNO (dono 16/08: "adicione os badges de plantão em
   // todos os turnos") — lá a chave é namespaced 'noite:', daí o chaveDia
   const plantaoFisicoDe = (l) => {

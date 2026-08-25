@@ -217,32 +217,63 @@ describe('feriado — sem selo Pn', () => {
    * Dono 25/08: "o primeiro e segundo nomes da lista sempre serão plantão de
    * algum hospital conforme ordem de liberação (ou seja os dois últimos a serem
    * liberados são os plantões)". No feriado não há grade P1–P4, então o selo sai
-   * da folha publicada (`fdsMeta.listaFonte`) e o hospital, das cirurgias do dia.
+   * da ORDEM PUBLICADA do turno exibido — posições 1 e 2 são, por convenção do
+   * rodapé, os dois últimos a serem liberados — e o hospital, das cirurgias do dia.
+   *
+   * ⚠️ A fixture tem QUATRO nomes de propósito. Com dois, a folha e a ordem
+   * invertida contêm as mesmas pessoas e QUALQUER regra passa: foi assim que a 1ª
+   * versão do selo atravessou os testes.
    */
+  const ORDEM_FOLHA = ['KARINE', 'GABRIEL', 'MARILIA', 'RENATO']
   const feriado = (extra = {}) => props({
     escala: {
       ...ESCALA_FDS,
       data: '2026-08-25',
-      ordemLiberacao: { matutino: ['KARINE', 'GABRIEL'], vespertino: ['GABRIEL', 'KARINE'] },
+      // a tarde é a folha DE TRÁS PARA FRENTE (é o que a publicação grava)
+      ordemLiberacao: { matutino: ORDEM_FOLHA, vespertino: [...ORDEM_FOLHA].reverse() },
     },
-    fdsMeta: { tipo: 'feriado', grade: {}, posicoes: {}, listaFonte: ['KARINE', 'GABRIEL'] },
+    casosFds: [
+      ...CASOS_FDS,
+      { id: 'c3', sala: 'CC - Sala 5', ordem: 0, hora: '13:30', turno: 'vespertino', anestesista: 'MARILIA', cirurgiao: 'Ana Prado', procedimento: 'COLECISTECTOMIA', hospitalOrigem: 'unimed' },
+      { id: 'c4', sala: 'Sala 6', ordem: 0, hora: '13:00', turno: 'vespertino', anestesista: 'RENATO', cirurgiao: 'Helio Machado', procedimento: 'OSTEOSSINTESE', hospitalOrigem: 'hro' },
+    ],
+    fdsMeta: { tipo: 'feriado', grade: {}, posicoes: {}, listaFonte: ORDEM_FOLHA },
     ...extra,
   })
 
-  it('os dois primeiros da folha levam o selo com o hospital de cada um', async () => {
+  // pela CHAVE da linha, não pelo nome: o card exibe "Renato", não "RENATO"
+  const cardDe = (chave) => document.querySelector(`[data-linha="${chave}"]`)
+
+  it('de manhã o selo é de quem FECHA a fila — os dois primeiros da folha', async () => {
     render(<LiberacoesView {...feriado()} />, { wrapper: wrap })
-    expect(await screen.findByText('Plantão Unimed')).toBeTruthy()   // KARINE, 1ª da folha
+    expect(await screen.findByText('Plantão Unimed')).toBeTruthy()   // KARINE, 1ª da ordem
     expect(screen.getByText('Plantão HRO')).toBeTruthy()             // GABRIEL, 2º
     expect(screen.queryByText('Plantonista')).toBeNull()             // o genérico não volta
   })
 
-  it('o selo vale À TARDE também, quando o plantonista já não tem cirurgia', async () => {
-    // o plantão do feriado é 07h→07h: estar de plantão é da PESSOA, não da
-    // posição. À tarde a ordem inverte e eles saem primeiro, mas seguem sendo
-    // quem cobre o hospital — o hospital vem dos casos do DIA, não do turno.
+  /**
+   * ⚠️ ESTE TESTE MUDOU DE LADO, e o porquê fica aqui em vez de o teste sumir.
+   *
+   * Ele afirmava o contrário — que o selo vale nos dois turnos porque "estar de
+   * plantão é da PESSOA, não da posição" (o plantão do feriado é 07h→07h). O dono
+   * corrigiu no mesmo dia, olhando a tela da tarde: "os dois últimos a serem
+   * liberados devem receber o badge de plantão e os primeiros a serem liberados
+   * (que foram os plantões da manhã) devem perder os badges".
+   *
+   * A razão é o que o selo COMUNICA numa fila: quem ainda vai ficar. Saindo da
+   * folha, que não vira, de tarde ele aparecia sobre quem estava indo embora
+   * PRIMEIRO e não dizia nada sobre quem ficaria até a noite — exatamente ao
+   * contrário do que a fila precisa mostrar.
+   */
+  it('à tarde o selo TROCA de dono: vai para quem fecha a fila e sai de quem já vai embora', async () => {
     render(<LiberacoesView {...feriado({ turno: 'vespertino' })} />, { wrapper: wrap })
-    expect(await screen.findByText('Plantão Unimed')).toBeTruthy()
-    expect(screen.getByText('Plantão HRO')).toBeTruthy()
+    await screen.findByText('Plantão HRO')
+    // a tarde inverte: RENATO (1º da ordem vespertina) e MARILIA (2ª) fecham a fila
+    expect(cardDe('RENATO').textContent).toContain('Plantão HRO')
+    expect(cardDe('uid-marilia').textContent).toContain('Plantão Unimed')
+    // e os plantões da MANHÃ perdem o selo — eles são os primeiros a sair agora
+    expect(cardDe('uid-karine').textContent).not.toMatch(/Plantão|Plantonista/)
+    expect(cardDe('GABRIEL').textContent).not.toMatch(/Plantão|Plantonista/)
   })
 
   /**

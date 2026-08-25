@@ -104,14 +104,20 @@ export function EscalaCirurgicaHomeCard({ onNavigate }) {
     // FERIADO (dono 25/08, "os nomes dos plantonistas no card da home está
     // errado"): não há grade P1–P4, então o card caía no plantonista POR
     // HOSPITAL derivado da ordem dos casos — que é só quem aparece primeiro na
-    // lista de cirurgias, não quem está de plantão. Os plantonistas são os DOIS
-    // PRIMEIROS da folha (mesma regra do selo na fila), e o hospital de cada um
-    // vem das cirurgias do dia.
+    // lista de cirurgias, não quem está de plantão. Plantão são os DOIS que
+    // FECHAM a fila do turno — posições 1 e 2 da ordem publicada, por convenção
+    // do rodapé —, e o hospital de cada um vem das cirurgias do dia.
+    // ⚠️ MESMA FONTE do selo na fila (`plantaoFisico` da LiberacoesView), e por
+    // isso ela virou o turno em vez da folha: às 13h a ordem inverte, e um card
+    // preso à folha passaria a nomear na Home quem a fila já mostra saindo.
     if (ehFeriado(diaFdsRef)) {
       // sem as escalas do MESMO dia não dá para dizer o hospital de cada um —
       // cai no comportamento por hospital em vez de arriscar rótulo errado
       if (diaFdsRef !== hoje || !fonte) return null
-      const folha = (fdsRow?.fdsMeta?.listaFonte || []).slice(0, 2)
+      // do RELÓGIO COMPARTILHADO, não de `new Date()`: o memo já depende de
+      // `agoraMin`, então a virada das 13h repinta o card sozinha
+      const turnoFeriado = agoraMin < 13 * 60 ? 'matutino' : 'vespertino'
+      const folha = rodapeDoTurno(fdsRow?.ordemLiberacao, turnoFeriado).slice(0, 2)
       if (!folha.length) return null
       const chaveDe = (n) => resolver(n) || normNome(n)
       const out = []
@@ -126,8 +132,8 @@ export function EscalaCirurgicaHomeCard({ onNavigate }) {
         }))
         if (hosp) out.push({ hospital: HOSPITAL_LABEL[hosp], nome: nomeDe(nome) })
       }
-      // rótulo próprio: no feriado o plantão é 07h→07h e não muda às 13h, então
-      // a faixa da grade ("7–13") mentiria sobre quando esses nomes trocam
+      // rótulo próprio: o feriado não tem as faixas da grade do fim de semana
+      // ("7–13"/"13–19"), então nomear uma delas mentiria sobre o recorte
       return out.length ? { faixa: null, rotulo: 'Feriado', linhas: out } : null
     }
 
