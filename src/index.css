@@ -60,50 +60,80 @@
 }
 
 /* ============================================================================
- * Orientação — o app é RETRATO (dono 25/08)
+ * Orientação — o app é RETRATO e NÃO GIRA (dono 25/08)
  * ============================================================================
- * Gira só o que nasce deitado: documento (PDF) e vídeo. Esses pedem a liberação
- * por `permitirLandscape()` (src/lib/orientacaoTela.js), que põe
- * `landscape-liberado` no <html>; sem a classe, o overlay cobre a tela deitada.
+ * Não existe API que trave a rotação no iPhone, então a tela é girada DE VOLTA:
+ * com o aparelho deitado o `<body>` recebe `-angle` e o app continua em pé em
+ * relação ao aparelho, como um app que não suporta paisagem. Não há aviso —
+ * a tela simplesmente não gira. Quem decide é `src/lib/orientacaoTela.js` (as
+ * classes abaixo saem de lá, já considerando a exceção de documento e vídeo).
  *
- * O recorte `max-height: 500px` é o que separa CELULAR deitado de tablet e
- * notebook — em iPad e desktop paisagem é o uso normal e não se bloqueia.
+ * ⚠️ é o `<body>`, e não o `#root`, porque TODO portal do DS (modal, sheet,
+ * select, toast, PDF em tela cheia) monta em `document.body`.
+ * ⚠️ o transform faz do `<body>` o containing block dos `position: fixed` — é
+ * o que mantém header e BottomNav certos na tela virtual — e também o elemento
+ * que ROLA: por isso `rolarAoTopo()` (src/utils/rolarAoTopo.js) existe.
  */
-@media screen and (orientation: landscape) and (max-height: 500px) {
-  html:not(.landscape-liberado) .landscape-block-overlay {
-    display: flex;
-  }
+html.rotacao-compensada {
+  overflow: hidden;
 }
 
-/* Overlay que bloqueia a paisagem (markup em src/components/LandscapeBlockOverlay.jsx) */
-.landscape-block-overlay {
-  display: none;
+html.rotacao-compensada body {
   position: fixed;
-  inset: 0;
-  z-index: var(--z-overlay);
-  /* ⚠️ os tokens guardam só o triplo HSL — `var(--background)` cru é valor
-     inválido e a declaração cai, deixando o overlay TRANSPARENTE (era o bug:
-     o aviso aparecia flutuando sobre o app girado). */
-  background: hsl(var(--background));
-  color: hsl(var(--foreground));
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 2rem;
+  top: 0;
+  left: 0;
+  /* medidas trocadas: a "largura" da tela em pé é a altura física, e vice-versa */
+  width: 100vh;
+  height: 100vw;
+  max-width: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  transform-origin: 0 0;
 }
 
-/* Fullscreen (vídeo nativo, PDF em tela cheia) nunca vê o overlay.
-   ⚠️ regras SEPARADAS de propósito: numa lista de seletores, um seletor que o
-   browser não conhece invalida a lista INTEIRA — agrupar `:fullscreen` com
-   `:-webkit-full-screen` derrubava as duas onde só uma existe. */
-:fullscreen .landscape-block-overlay {
-  display: none !important;
+/* topo do aparelho à esquerda (angle 90) — desfaz girando -90° */
+html.rotacao-compensada.rot-ccw body {
+  transform: translateY(100vh) rotate(-90deg);
 }
 
-:-webkit-full-screen .landscape-block-overlay {
-  display: none !important;
+/* topo do aparelho à direita (angle 270) — desfaz girando +90° */
+html.rotacao-compensada.rot-cw body {
+  transform: translateX(100vw) rotate(90deg);
 }
+
+/* ⚠️ **As unidades de viewport não sabem da rotação**: `vh` continua medindo a
+   tela FÍSICA (deitada) e `vw`, a largura física. Sem traduzir, a página inteira
+   se espremia numa faixa — foi o que aconteceu no login (`w-screen h-[100dvh]`),
+   que virou 844 de largura dentro de uma tela virtual de 390. Na tela em pé a
+   ALTURA é `100vw` e a LARGURA é `100vh`, então cada classe troca de eixo
+   mantendo a porcentagem.
+   ⚠️ a lista abaixo é GERADA do código e travada por
+   `src/__tests__/estilo/unidadesViewportRotacao.test.js`: classe de viewport
+   nova sem tradução aqui FALHA o teste — sem isso a lista envelhece calada e o
+   defeito volta numa tela só. */
+html.rotacao-compensada .h-\[100dvh\] { height: 100vw; }
+html.rotacao-compensada .h-\[60vh\] { height: 60vw; }
+html.rotacao-compensada .h-\[70vh\] { height: 70vw; }
+html.rotacao-compensada .h-\[72vh\] { height: 72vw; }
+html.rotacao-compensada .h-\[85vh\] { height: 85vw; }
+html.rotacao-compensada .h-dvh { height: 100vw; }
+html.rotacao-compensada .max-h-\[52vh\] { max-height: 52vw; }
+html.rotacao-compensada .max-h-\[60vh\] { max-height: 60vw; }
+html.rotacao-compensada .max-h-\[70vh\] { max-height: 70vw; }
+html.rotacao-compensada .max-h-\[80vh\] { max-height: 80vw; }
+html.rotacao-compensada .max-h-\[85dvh\] { max-height: 85vw; }
+html.rotacao-compensada .max-h-\[85vh\] { max-height: 85vw; }
+html.rotacao-compensada .max-h-\[88vh\] { max-height: 88vw; }
+html.rotacao-compensada .max-h-\[90vh\] { max-height: 90vw; }
+html.rotacao-compensada .max-h-\[92vh\] { max-height: 92vw; }
+html.rotacao-compensada .max-w-\[90vw\] { max-width: 90vh; }
+html.rotacao-compensada .min-h-\[50vh\] { min-height: 50vw; }
+html.rotacao-compensada .min-h-\[60dvh\] { min-height: 60vw; }
+html.rotacao-compensada .min-h-dvh { min-height: 100vw; }
+html.rotacao-compensada .w-\[72vw\] { width: 72vh; }
+html.rotacao-compensada .w-\[75vw\] { width: 75vh; }
+html.rotacao-compensada .w-screen { width: 100vh; }
 
 /* Touch Target Mínimo (44x44px conforme Apple HIG) */
 .touch-target {

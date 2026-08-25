@@ -48,39 +48,50 @@ className="text-sm lg:text-base"
 ## Modal Overflow
 Modal.Body: `overflow-y-auto overflow-x-hidden`. Footer prop mantém botões fora do scroll.
 
-## Orientação — o app é RETRATO (dono 25/08)
+## Orientação — o app é RETRATO e NÃO GIRA (dono 25/08)
 Nada gira, exceto o conteúdo que nasce deitado: **documento (PDF/anexo Office),
-vídeo e imagem em tela cheia**. Girar o resto não melhora nada — o app é
-desenhado a 375px — e vira layout esticado no meio do turno.
+vídeo e imagem em tela cheia**. E **sem aviso**: o dono recusou a mensagem "Gire
+seu dispositivo" — a tela simplesmente não gira.
 
-Fonte única: `src/lib/orientacaoTela.js`. Quem precisa da exceção chama
-`useLandscapePermitido()` (`src/hooks/useLandscapePermitido.js`) e a devolve ao
-desmontar; é **contador**, não booleano, porque PDF dentro de modal sobre página
-com vídeo devolveria a trava cedo demais. Já pedem: `PDFViewer` (DS),
-`VideoPlayer` (DS), `PDFEmbed`, `AulaPlayerPage`, `ExpandedImageModal` e o anexo
-Office do comunicado. Prévia de conteúdo em formulário de ADMIN fica de fora de
-propósito — a tela ali é de edição, não de leitura (e o fullscreen do iframe
-continua funcionando).
+⚠️ **Não existe API que trave a rotação no iPhone** (`screen.orientation.lock` só
+vale no Android com o app instalado; o `orientation: portrait` do manifest o iOS
+ignora). Por isso a trava tem duas camadas, em `src/lib/orientacaoTela.js`:
+1. **lock nativo** — resolve sozinho no Android/PWA. ⚠️ liberar é `lock('any')`,
+   **nunca `unlock()`**, que devolve à orientação padrão do manifest (portrait).
+2. **compensação por CSS** — o que segura o iPhone: com o celular deitado o
+   `<body>` é girado de volta por `-angle` (`screen.orientation.angle`), e o app
+   continua **em pé em relação ao aparelho**, como um app que não suporta
+   paisagem. Classes `rotacao-compensada` + `rot-cw`/`rot-ccw` no `<html>`.
 
-Duas camadas, porque nenhuma cobre todos os aparelhos:
-- `screen.orientation.lock()` — trava de verdade só no Android/PWA instalado.
-  ⚠️ liberar é `lock('any')`, **nunca `unlock()`**: `unlock()` devolve à
-  orientação padrão, que o `manifest.json` fixa em `portrait`.
-- classe `landscape-liberado` no `<html>` + overlay "Gire seu dispositivo"
-  (`.landscape-block-overlay`, `index.css` + `src/components/LandscapeBlockOverlay.jsx`,
-  montado em `main.jsx` ACIMA do portão de auth — login também é o app). É o que
-  segura o iPhone, onde o lock não existe na prática.
+Exceção: `useLandscapePermitido()` (`src/hooks/useLandscapePermitido.js`), pedida
+e devolvida ao desmontar — **contador**, não booleano, porque PDF dentro de modal
+sobre página com vídeo devolveria a trava cedo demais. Já pedem: `PDFViewer` e
+`VideoPlayer` do DS, `PDFEmbed`, `AulaPlayerPage`, `ExpandedImageModal` e o anexo
+Office do comunicado. Prévia embutida em formulário de ADMIN fica de fora de
+propósito — a tela ali é de edição, e o fullscreen do iframe já resolve.
 
-O recorte `max-height: 500px` separa CELULAR deitado de tablet/desktop: em iPad
-e notebook paisagem é o uso normal e não se bloqueia. Rotas públicas
-`/verificar/*` ficam fora.
+**Três consequências do transform, todas de propósito:**
+- É o **`<body>`**, não o `#root`: TODO portal do DS (modal, sheet, select,
+  dropdown, toast, PDF em tela cheia) monta em `document.body` — girar o `#root`
+  deixaria essas camadas deitadas por cima do app em pé.
+- O `<body>` vira o containing block dos `position: fixed` (é o que mantém header
+  e BottomNav certos na tela virtual) **e o elemento que ROLA**: `window.scrollTo`
+  não alcança mais o conteúdo, daí `rolarAoTopo()` em `src/utils/rolarAoTopo.js`
+  em toda navegação. Listener de scroll no `window` fica inerte nesse modo —
+  degradação aceita, o modo é transitório.
+- ⚠️ **as unidades de viewport não sabem da rotação**: `vh` segue medindo a tela
+  física deitada. Sem traduzir, a página se espreme numa faixa (foi o que houve
+  com o `w-screen h-[100dvh]` do login). Na tela virtual a ALTURA é `100vw` e a
+  LARGURA é `100vh`; as ~22 traduções em `index.css` são **geradas do código** e
+  travadas por `src/__tests__/estilo/unidadesViewportRotacao.test.js` — classe de
+  viewport nova sem tradução FALHA o teste, senão a lista envelhece calada.
 
-⚠️ Dois defeitos de CSS que nasceram aqui e valem para o app inteiro: os tokens
-guardam só o triplo HSL (`background: var(--background)` é valor inválido e a
-declaração CAI — o overlay ficava transparente), e numa LISTA de seletores um
-seletor que o browser não conhece invalida a lista inteira (agrupar
-`:fullscreen` com `:-webkit-full-screen` derruba as duas onde só uma existe).
+O recorte `max-height: 500px` separa CELULAR deitado de tablet/desktop: em iPad e
+notebook paisagem é o uso normal e não se compensa nada. Rotas públicas
+`/verificar/*` ficam fora (`TravaOrientacao` fica no ramo do app em `main.jsx`,
+acima do portão de auth — login e boot também são o app).
 
-Travas: `src/__tests__/lib/orientacaoTela.test.js` (invariante do contador) +
-o describe de rotação em `src/__tests__/design-system/video-player.test.jsx`
-(a LIGAÇÃO — o componente esquecer de pedir é o que se perde num refactor).
+Travas: `src/__tests__/lib/orientacaoTela.test.js` (invariante: ângulo→sentido,
+contador aninhado, tablet fora) · a trava de drift acima · o describe de rotação
+em `src/__tests__/design-system/video-player.test.jsx` (a LIGAÇÃO — o que se
+perde num refactor é o componente esquecer de pedir).

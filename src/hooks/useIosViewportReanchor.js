@@ -14,6 +14,7 @@
  * viewports: o conteúdo visível não se mexe e o offset zera.
  */
 import { useEffect } from 'react'
+import { rotacaoCompensada } from '@/lib/orientacaoTela'
 
 const editandoTexto = () => {
   const el = document.activeElement
@@ -37,6 +38,10 @@ export default function useIosViewportReanchor() {
       // (scale ≠ 1) também. Só reconciliamos o estado quebrado: parado, sem
       // teclado, e mesmo assim deslocado.
       if (editandoTexto() || toqueAtivo || Math.abs(vv.scale - 1) > 0.01) return
+      // Com a tela contra-rotacionada quem rola é o <body>, e o scroll do
+      // documento não move mais nada: reancorar aqui só brigaria com o
+      // transform. O bug do teclado é do modo retrato, que é onde se digita.
+      if (rotacaoCompensada()) return
       if (vv.offsetTop < 2) return
       window.scrollTo(window.scrollX, Math.max(0, Math.round(vv.pageTop)))
       if (tentativa >= 2) return

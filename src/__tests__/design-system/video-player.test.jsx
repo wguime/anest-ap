@@ -37,7 +37,7 @@ vi.mock('react-dom', async () => {
 });
 
 import { VideoPlayer } from '@/design-system/components/ui/video-player';
-import { _resetOrientacao } from '@/lib/orientacaoTela';
+import { _resetOrientacao, landscapePermitido } from '@/lib/orientacaoTela';
 
 describe('VideoPlayer', () => {
   beforeEach(() => {
@@ -132,11 +132,11 @@ describe('VideoPlayer — libera a rotação da tela enquanto está montado', ()
     _resetOrientacao();
   });
 
-  it('com o player na tela o <html> ganha `landscape-liberado`; ao sair, perde', () => {
+  it('com o player na tela a exceção está de pé; ao sair, cai', () => {
     const { unmount } = render(<VideoPlayer src="video.mp4" title="Aula" />);
-    expect(document.documentElement.classList.contains('landscape-liberado')).toBe(true);
+    expect(landscapePermitido()).toBe(true);
 
     unmount();
-    expect(document.documentElement.classList.contains('landscape-liberado')).toBe(false);
+    expect(landscapePermitido()).toBe(false);
   });
 });

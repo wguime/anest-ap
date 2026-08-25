@@ -15,6 +15,7 @@ import { HScroll } from '@/components/noticias/HScroll'
 import { getCategoryConfig } from '@/components/noticias/categoriesConfig'
 import { PageHeader } from '@/components'
 import { Button, Skeleton, EmptyState } from '@/design-system'
+import { rolarAoTopo } from '@/utils/rolarAoTopo';
 
 const PAGE_SIZE = 20
 
@@ -23,7 +24,7 @@ export default function CategoriaNoticiasPage({ category, onNavigate, goBack }) 
   const [pageLimit, setPageLimit] = useState(PAGE_SIZE)
 
   useEffect(() => {
-    window.scrollTo(0, 0)
+    rolarAoTopo()
     loadNoticias()
   }, [loadNoticias])
 

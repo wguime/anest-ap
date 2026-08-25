@@ -1404,27 +1404,24 @@ nova sem o par reabre o vai-e-volta.
 
 ⚠️ Bug conhecido: `src/App.jsx:1011` (TODO BUG-06) — global BottomNav pode duplicar com per-page BottomNav (createPortal). Decisão arquitetural pendente. Em página nova, **NÃO** renderizar BottomNav próprio.
 
-## Orientação da tela — o app é RETRATO (dono 25/08)
-Nada gira, exceto o que nasce deitado: **documento (PDF/anexo Office), vídeo e imagem em tela cheia**.
-Fonte única `src/lib/orientacaoTela.js` — quem precisa **PEDE** com `useLandscapePermitido()` e devolve ao
-desmontar; é **contador**, não booleano (PDF em modal sobre página com vídeo devolveria a trava cedo demais).
-Já pedem: `PDFViewer` e `VideoPlayer` do DS (cobrem documento, ética, relatório, comunicado, aula, férias),
-`PDFEmbed`, `AulaPlayerPage`, `ExpandedImageModal` e o anexo Office do comunicado. Prévia embutida em
-formulário de ADMIN fica FORA de propósito — ali a tela é de edição, e o fullscreen do iframe já resolve.
-Sair da tela cheia NÃO força retrato: devolve a decisão à política (`aplicarPoliticaOrientacao`), senão o
-aparelho vira na mão de quem ainda está deitado com o vídeo tocando. Duas camadas, porque nenhuma cobre
-todos os aparelhos: `screen.orientation.lock()` (só Android/PWA instalado — ⚠️ liberar é `lock('any')`,
-**nunca `unlock()`**, que devolve ao `portrait` do manifest) + classe `landscape-liberado` no `<html>`
-ligando o overlay `LandscapeBlockOverlay`, montado em `main.jsx` **ACIMA do portão de auth** (login e boot
-também são o app); é ele que segura o iPhone, onde o lock não existe na prática. iPad/desktop seguem livres
-(recorte `max-height: 500px` = celular deitado) e `/verificar/*` fica fora.
-⚠️ **o overlay JÁ EXISTIA e não funcionava**, por dois defeitos de CSS que valem para o app inteiro: os
-tokens guardam só o triplo HSL, então `background: var(--background)` é valor inválido e a declaração CAI —
-o aviso aparecia TRANSPARENTE sobre o app girado; e numa LISTA de seletores um seletor desconhecido invalida
-a lista inteira (`:fullscreen` agrupado com `:-webkit-full-screen` derrubava as duas). Travas:
-`src/__tests__/lib/orientacaoTela.test.js` (invariante do contador) + o describe de rotação em
-`video-player.test.jsx` (a LIGAÇÃO — o que se perde num refactor é o componente esquecer de pedir).
-Detalhes e call sites: `.claude/rules/responsividade.md`.
+## Orientação da tela — o app é RETRATO e NÃO GIRA (dono 25/08)
+Nada gira, exceto o que nasce deitado: **documento (PDF/anexo Office), vídeo e imagem em tela cheia** — e **sem
+aviso nenhum**: a 1ª versão bloqueava com um overlay "Gire seu dispositivo" e o dono recusou ("não quero que
+apareça nenhuma mensagem, não deve rodar a tela nunca!!"). ⚠️ **não existe API que trave a rotação no iPhone**
+(`lock()` só vale no Android/PWA; o `orientation: portrait` do manifest o iOS ignora), então a trava tem duas
+camadas em `src/lib/orientacaoTela.js`: o lock nativo (⚠️ liberar é `lock('any')`, **nunca `unlock()`**, que
+devolve ao portrait do manifest) e a **compensação por CSS** — com o celular deitado o `<body>` gira de volta
+por `-angle` e o app fica **em pé em relação ao aparelho**, como um app que não suporta paisagem. A exceção é
+PEDIDA por `useLandscapePermitido()` e devolvida ao desmontar (contador, não booleano: PDF em modal sobre
+página com vídeo devolveria a trava cedo demais); pedem `PDFViewer`/`VideoPlayer` do DS, `PDFEmbed`,
+`AulaPlayerPage`, `ExpandedImageModal` e o anexo Office do comunicado — prévia em formulário de ADMIN fica
+FORA. Três consequências do transform: é o **`<body>`** e não o `#root` (todo portal do DS monta em
+`document.body`); o `<body>` vira o containing block dos `fixed` **e o que ROLA** — `window.scrollTo` não
+alcança mais nada, daí `rolarAoTopo()` (`src/utils/rolarAoTopo.js`) na navegação; e ⚠️ **as unidades de
+viewport não sabem da rotação** (`vh` mede a tela física), o que espremia a página numa faixa — na tela
+virtual ALTURA é `100vw` e LARGURA é `100vh`, com ~22 traduções GERADAS em `index.css` e travadas por
+`unidadesViewportRotacao.test.js` (classe nova sem tradução falha o teste). iPad/desktop seguem livres
+(`max-height: 500px`) e `/verificar/*` fica fora. Detalhes: `.claude/rules/responsividade.md`.
 
 ## Skills (`.claude/skills/`) — invocar com `/`
 `/calculadoras` `/educacao` `/gestao-documental` `/centro-gestao` `/notificacoes` `/nova-pagina` `/supabase-migration` `/rotacao-residencia` `/importar-plantoes-residencia` `/escala` `/escala-cirurgica` `/cirurgias-particulares` `/cateter-peridural` `/criar-prompt`
