@@ -28,16 +28,21 @@ ser liberado"; no feriado vem de uma **LISTA SIMPLES DE NOMES**, sem posições
 numeradas e sem grade de plantão.
 
 **A mesma lista serve os dois turnos, lida em sentidos opostos** (regra do dono):
+manhã de cima para baixo, tarde de baixo para cima.
 
-- **manhã** — de cima para baixo: o **primeiro da lista é o primeiro a ser
-  liberado**;
-- **tarde** — de baixo para cima: o **último da lista é o primeiro a ser
-  liberado**.
+⚠️ **A folha do feriado JÁ vem na direção do rodapé** — ela NÃO é a linha
+"1º→último a ser liberado" do documento de fim de semana. A diferença inverte a
+fila inteira, então a prova está na própria folha de 25/08: os **13 primeiros
+nomes são exatamente os 13 que têm cirurgia de manhã** nos mapas da Unimed e do
+HRO, e **nenhum dos 9 últimos tem** — são esses 9 que cobrem as salas da tarde.
+Como a convenção do app é "1ª posição sai por ÚLTIMO", a lista escrita já diz que
+quem não tem cirurgia sai primeiro. Ou seja:
 
-Isso importa porque a `ordem_liberacao` do app tem a convenção INVERSA (1ª
-posição = sai por ÚLTIMO; a liberação corre de baixo para cima na tela). Então a
-inversão acontece **uma vez só, na publicação**, como já acontece em
-`rodapeDeOrdemDoc` do fim de semana — nunca em leitura, nunca por flag.
+- **manhã** — `ordem_liberacao` = a folha **na ordem escrita**;
+- **tarde** — a folha **de trás para frente**.
+
+`rodapeDeOrdemDoc` continua sendo a única inversão do módulo, e nada disso
+alcança o fim de semana: o `ordemLiberacaoDoc` de sáb/dom segue como está.
 
 ## Pedido
 
@@ -115,10 +120,10 @@ GARIM · CURY · KLISMAN · KARINE · ALEXANDRE S · ALEXANDRE D · GUILHERME DI
 
 O que a tela tem de mostrar depois de publicar:
 
-- **manhã** — a primeira a ser liberada é **FERNANDA**; a última, **GUILHERME
-  DIDOMENICO**;
-- **tarde** — o primeiro a ser liberado é **GUILHERME DIDOMENICO**; a última,
-  **FERNANDA**;
+- **manhã** — o primeiro a ser liberado é **GUILHERME DIDOMENICO** (fecha a lista
+  e não tem cirurgia); a última, **FERNANDA** (abre a lista e opera desde as 7h30);
+- **tarde** — inverte: a primeira a ser liberada é **FERNANDA**; o último,
+  **GUILHERME DIDOMENICO**;
 - os dois turnos com os **22 nomes**, nenhum a menos;
 - todos os cards **VERDES** na publicação (regra do dono de 24/08: ninguém nasce
   liberado na fila única);
