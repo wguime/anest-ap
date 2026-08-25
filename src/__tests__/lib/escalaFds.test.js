@@ -28,6 +28,7 @@ import {
   ordensDocumentoFeriado,
   normalizarParseFds,
 } from '../../lib/escalaFds'
+import { gerarColunaLiberacao } from '../../lib/colunaLiberacao'
 
 // ── Fixtures do documento real 15–16/08/2026 ────────────────────────────────
 const GRADE_SAB = {
@@ -77,28 +78,67 @@ describe('ehFimDeSemana', () => {
 })
 
 describe('feriado como data de fila única (sem mudar ehDiaUtil)', () => {
-  it('reconhece 25/08/2026 pela fonte FERIADOS_UTEIS', () => {
+  it('reconhece 25/08/2026 pela MESMA lista do plantão 24h (FERIADOS_2026)', () => {
     expect(ehFeriado('2026-08-25')).toBe(true)
     expect(ehDataFilaUnica('2026-08-25')).toBe(true)
     expect(ehFimDeSemana('2026-08-25')).toBe(false)
   })
 
-  it('lista real de 22 nomes: manhã lê de cima para baixo e tarde de baixo para cima, com uma única inversão na publicação', () => {
+  it('cobre os feriados que a lista de FÉRIAS deixa de fora (fim de ano e 15/11)', () => {
+    // `FERIADOS_UTEIS` (feriasFeriados.js) exclui de propósito 24/12, 25/12,
+    // 31/12 e 01/01 — lá o fim de ano é RECESSO. No hospital esses dias rodam
+    // escala de feriado, então a fila única precisa alcançá-los.
+    for (const iso of ['2026-11-15', '2026-12-24', '2026-12-25', '2026-12-31', '2027-01-01']) {
+      expect(ehFeriado(iso)).toBe(true)
+      expect(ehDataFilaUnica(iso)).toBe(true)
+    }
+    expect(ehFeriado('2026-08-26')).toBe(false) // quarta comum
+    expect(ehFeriado('')).toBe(false)
+  })
+
+  /**
+   * SENTIDO DA FILA — o defeito de 24/08 (dono: "entregou a ordem de liberação
+   * invertida"). A folha do feriado JÁ vem na direção do rodapé: os 13
+   * primeiros nomes são exatamente os 13 com cirurgia de manhã nos mapas, e os
+   * 9 últimos não têm nenhuma — quem não tem cirurgia é quem sai primeiro.
+   */
+  it('lista real de 22 nomes: a manhã sai na ordem da folha e a tarde, de trás para frente', () => {
     const ordemDoc = ordensDocumentoFeriado(LISTA_FERIADO_25_08)
-    expect(ordemDoc.matutino).toHaveLength(22)
-    expect(ordemDoc.vespertino).toHaveLength(22)
-    expect(ordemDoc.matutino).toEqual(LISTA_FERIADO_25_08)
-    expect(ordemDoc.vespertino).toEqual([...LISTA_FERIADO_25_08].reverse())
+    // convenção do DOCUMENTO (1º→último a ser liberado): a manhã entra invertida
+    expect(ordemDoc.matutino).toEqual([...LISTA_FERIADO_25_08].reverse())
+    expect(ordemDoc.vespertino).toEqual(LISTA_FERIADO_25_08)
 
     const manha = rodapeDeOrdemDoc(ordemDoc.matutino).rodape
     const tarde = rodapeDeOrdemDoc(ordemDoc.vespertino).rodape
-    // No rodapé, o último card é o próximo a sair.
-    expect(manha.at(-1)).toBe('FERNANDA')
-    expect(manha[0]).toBe('GUILHERME DIDOMENICO')
-    expect(tarde.at(-1)).toBe('GUILHERME DIDOMENICO')
-    expect(tarde[0]).toBe('FERNANDA')
-    expect(new Set(manha)).toHaveLength(22)
-    expect(new Set(tarde)).toHaveLength(22)
+    expect(manha).toHaveLength(22)
+    expect(tarde).toHaveLength(22)
+    // RODAPÉ: 1ª posição = ÚLTIMA a sair; o último card é o próximo a ser liberado.
+    expect(manha).toEqual(LISTA_FERIADO_25_08)
+    expect(manha[0]).toBe('FERNANDA')
+    expect(manha.at(-1)).toBe('GUILHERME DIDOMENICO')   // 1º liberado de manhã
+    expect(tarde).toEqual([...LISTA_FERIADO_25_08].reverse())
+    expect(tarde[0]).toBe('GUILHERME DIDOMENICO')
+    expect(tarde.at(-1)).toBe('FERNANDA')               // 1ª liberada à tarde
+  })
+
+  it('o rodapé publicado é a ordem que a FILA mostra — quem sai primeiro fica no fim', () => {
+    // Invariante em cima de gerarColunaLiberacao, que é o que a aba Liberações
+    // consome: sem isto, uma inversão futura passa nos testes de string.
+    const ordemDoc = ordensDocumentoFeriado(LISTA_FERIADO_25_08)
+    const casos = LISTA_FERIADO_25_08.map((nome, i) => ({
+      id: `c${i}`, sala: `Sala ${i + 1}`, anestesista: nome, cirurgiao: 'DR. X', status: 'agendada',
+    }))
+    for (const [turno, primeiroLiberado, ultimoLiberado] of [
+      ['matutino', 'GUILHERME DIDOMENICO', 'FERNANDA'],
+      ['vespertino', 'FERNANDA', 'GUILHERME DIDOMENICO'],
+    ]) {
+      const { rodape } = rodapeDeOrdemDoc(ordemDoc[turno])
+      const { linhas } = gerarColunaLiberacao(casos, rodape)
+      expect(linhas).toHaveLength(22)
+      // a fila sai de BAIXO p/ cima: o último da lista é o próximo a ser liberado
+      expect(linhas.at(-1).anestesista.toUpperCase()).toBe(primeiroLiberado)
+      expect(linhas[0].anestesista.toUpperCase()).toBe(ultimoLiberado)
+    }
   })
 })
 

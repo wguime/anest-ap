@@ -591,6 +591,15 @@ o recado assim que ele confirmava o próprio).
 - **Some por confirmação individual**: quem confirmou não vê mais, quem não confirmou
   continua vendo. Sem contagem de leituras no card (virava placar); ficam texto, autor e
   hora.
+- **CARTÃO com rótulo, EM TODA ESCALA (dono 24/08):** "quero que essa configuração de
+  mensagem do plantonista seja assim nos dias úteis". O desenho nasceu no protótipo do
+  fim de semana e ficou lá dois dias, enquanto o dia útil seguia com a faixa de borda a
+  borda de 17/08 e o "Confirmar" numa pastilha de 32px no canto. O que veio junto: o
+  **rótulo** diz de quem é a mensagem antes de ela ser lida, e o **"Confirmar leitura"**
+  vira botão de largura inteira (40px de alvo contra 32) — é a única saída do recado.
+  Sem ramificação por modo: um recado, um desenho. ⚠️ a trava
+  (`liberacoesAvisoPlantonista.test.jsx`) MUDOU DE LADO com o porquê no corpo — ela
+  travava a divergência entre os modos e hoje trava a convergência.
 - **Cor = `category-purple` (dono 20/08), no lugar do teal de 17/08**: "que as mensagens
   enviadas pelo plantonista sejam em tons de roxo e não esse verde". O teal tinha sido
   escolhido por ELIMINAÇÃO (verde é plantão/iniciada, azul é terminada, âmbar é
@@ -1000,6 +1009,61 @@ já foi cruzada uma vez); `liberacoesAvisoPlantonista.test.jsx` cobre as DUAS
 formas do recado, uma por dia; `escalaTurnoAutomatico.test.jsx` prende o ícone do
 "Importar" no dia útil. ⚠️ um teste MUDOU DE LADO com o porquê no corpo, em vez de
 sumir: o de 16/08 que exigia o seletor de hospital no FDS.
+
+### FERIADO — a mesma fila única, com uma LISTA no lugar da grade (dono 24/08)
+
+Feriado roda como fim de semana na vida real (plantão 07h→07h, um anestesista
+cobrindo os três hospitais) e rodava como dia útil no app. Agora `ehDataFilaUnica`
+= sáb/dom **ou** feriado, e o feriado entra pelo MESMO caminho do FDS — linha
+pseudo-hospital `'fds'`, `ImportarEscalaFdsPage`, `LiberacoesView modoFds`, tela
+única. Não existe um terceiro modo.
+
+⚠️ **A fonte do feriado é `FERIADOS_2026` (`src/data/plantao2026.js`)** — a MESMA
+lista de `isPlantao24h`, que é literalmente a condição "este dia roda plantão de
+fim de semana". **Não usar `FERIADOS_UTEIS`** (`feriasFeriados.js`): aquela é de
+contagem de FÉRIAS e exclui de propósito 24/12, 25/12, 31/12 e 01/01 (lá o fim de
+ano é RECESSO), além de não ter 15/11 — dias em que o hospital roda escala de
+feriado e a fila única precisa ligar. `ehDiaUtil` NÃO muda: o plantão noturno e a
+escala de funcionárias seguem com as próprias regras.
+
+**O documento é uma LISTA SIMPLES de nomes** ("FERIADO 25/08" + 22 nomes), sem
+grade P1–P4, sem posições numeradas e sem a linha "1º→último a ser liberado" do
+FDS. Daí: sem selo Pn, sem P4-coringa, sem fila da noite (`fase` fixa em `'dia'`
+— derivada da DATA, não de `fdsMeta.tipo`, que só existe depois de publicar), e
+o seletor com dois turnos.
+
+⚠️ **SENTIDO DA FILA — errar aqui inverte tudo, e foi o defeito de 24/08** ("a
+ordem de liberação veio invertida"). A folha do feriado **já vem na direção do
+RODAPÉ**: quem está no TOPO é quem FICA até o fim da manhã, e a CAUDA sai
+primeiro. A folha de 25/08 prova sozinha — os **13 primeiros nomes são
+exatamente os 13 com cirurgia de manhã** nos mapas de Unimed e HRO, e os 9
+últimos (ROSE → GUILHERME DIDOMENICO) não têm nenhuma; esses mesmos 9 cobrem as
+9 salas da tarde. Quem não tem cirurgia é quem vai embora primeiro, e é por isso
+que está no fim da folha. Então: **manhã = a folha na ordem escrita · tarde = a
+folha de trás para frente**. A tela da manhã lê igual ao papel.
+
+A inversão continua ACONTECENDO UMA VEZ SÓ, na publicação: `ordensDocumentoFeriado`
+devolve a convenção do DOCUMENTO (manhã invertida, tarde direta) e
+`rodapeDeOrdemDoc` faz a única volta, como no FDS. ⚠️ **a CONFERÊNCIA mostra e
+edita a folha na ordem escrita** — é a transcrição do documento, e Subir/Descer/
+Remover indexam por ela; exibir a lista já invertida por turno faz o botão mexer
+na pessoa errada, em silêncio (defeito real, corrigido antes de sair).
+
+**Os mapas cirúrgicos entram na MESMA entrada**, como no FDS de 22/08, e o caso é
+o do fim de semana, INTEIRO. ⚠️ não reduzir o caso a sala/cirurgião/anestesista
+"porque é só o que o card mostra": isso derruba o **convênio**, e é o convênio que
+o trigger `fn_sync_cirurgia_particular` casa para abrir a cobrança — só o mapa da
+Unimed de 25/08 traz 6 PARTICULAR.
+
+Herda de graça do modo FDS: ninguém nasce vermelho na publicação (24/08), badge
+"Livre" para quem está sem cirurgia, hospital em caixa alta no card, a ação do
+alerta como frase abaixo do texto. Travas: describe "feriado como data de fila
+única" em `escalaFds.test.js` — com o invariante que roda `gerarColunaLiberacao`
+sobre o rodapé publicado e afirma QUEM é o próximo a ser liberado em cada turno,
+que é o que protege contra uma re-inversão (asserção de string não protege) — +
+o describe "FERIADO" em `importarEscalaFds.test.jsx` (publicação nos dois turnos
+e o alinhamento entre o que a tela mostra e o que Descer move) + e2e
+`escala-cirurgica-feriado.spec.ts` sobre a fixture DEV `DEMO_DATE_FERIADO`.
 
 ### FDS — fila completa e o fim do vermelho em massa (dono 22/08)
 

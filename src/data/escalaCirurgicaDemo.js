@@ -164,8 +164,7 @@ export const DEMO_ESCALAS_FDS = { unimed: unimedFds, hro: hroFds, materno: null,
 
 // ── FERIADO (fila única sem Pn, 2026-08-25) ────────────────────────────────
 // Fixture somente DEV/e2e para conferir o card real sem publicar em produção.
-// Casos deliberadamente mínimos: o fluxo de feriado não persiste paciente nem
-// procedimento, apenas hospital (cabeçalho), sala, cirurgião e anestesista.
+// Recorte real da folha de 25/08 + os mapas de Unimed e HRO daquele dia.
 export const DEMO_DATE_FERIADO = '2026-08-25'
 const listaFeriado = [
   'FERNANDA', 'DANIELA', 'GABRIELA', 'OSCAR', 'ADRIANO', 'GIOVANA', 'MARILIO', 'VICENTE',
@@ -205,9 +204,11 @@ const hroFeriado = {
 const fdsFeriado = {
   id: 'demo-fds-feriado', hospital: 'fds', data: DEMO_DATE_FERIADO, status: 'publicada',
   liberacoes: {}, linhaOverrides: {}, ajudaExterna: {}, casos: [],
+  // RODAPÉ (1ª posição = ÚLTIMA a sair). A manhã sai na ordem da folha; a
+  // tarde, de trás para frente — ver `ordensDocumentoFeriado`.
   ordemLiberacao: {
-    matutino: [...listaFeriado].reverse(),
-    vespertino: [...listaFeriado],
+    matutino: [...listaFeriado],
+    vespertino: [...listaFeriado].reverse(),
   },
   fdsMeta: {
     tipo: 'feriado', listaFonte: listaFeriado, grade: {}, posicoes: {}, escalacao: {},

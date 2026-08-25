@@ -22,7 +22,7 @@
  * (quem está disponível e em que ordem).
  */
 import { ehDiaUtil, candidatosNome } from '@/lib/plantaoNoturno'
-import { FERIADOS_UTEIS } from '@/lib/feriasFeriados'
+import { FERIADOS_2026 } from '@/data/plantao2026'
 
 /** Pseudo-hospital da linha que guarda a fila única do dia. */
 export const FDS_HOSPITAL = 'fds'
@@ -75,14 +75,23 @@ export function ehFimDeSemana(dataIso) {
 }
 
 /**
- * Feriado oficial da escala do grupo. Fonte única: `FERIADOS_UTEIS`, também
- * usada por férias; não muda `ehDiaUtil`, porque o plantão noturno e a escala
- * de funcionárias continuam com as próprias regras de feriado.
+ * Feriado em que o grupo opera como fim de semana. Fonte única:
+ * `FERIADOS_2026`, a MESMA lista que `isPlantao24h` usa para dizer que o dia
+ * roda plantão 07h→07h — que é exatamente a condição em que existe uma fila
+ * só para os três hospitais.
+ *
+ * ⚠️ NÃO usar `FERIADOS_UTEIS` (`feriasFeriados.js`): aquela lista é de
+ * contagem de FÉRIAS e exclui de propósito 24/12, 25/12, 31/12 e 01/01 (lá o
+ * fim de ano é RECESSO, não feriado) — dias em que o hospital roda escala de
+ * feriado. Ela também não tem 15/11. Usá-la deixaria esses dias fora da fila
+ * única em silêncio.
+ *
+ * Não muda `ehDiaUtil`: o plantão noturno e a escala de funcionárias seguem
+ * com as próprias regras de feriado.
  */
 export function ehFeriado(dataIso) {
   const iso = String(dataIso || '')
-  const ano = Number(iso.slice(0, 4))
-  return Number.isInteger(ano) && (FERIADOS_UTEIS[ano] || []).includes(iso)
+  return /^\d{4}-\d{2}-\d{2}$/.test(iso) && FERIADOS_2026.has(iso)
 }
 
 /** Datas em que a Escala Cirúrgica opera com a linha única hospital='fds'. */
@@ -362,14 +371,26 @@ export function rodapeDeOrdemDoc(ordemDoc, posicoes = {}) {
 }
 
 /**
- * Lista simples do FERIADO → ordens na direção do documento (1º→último a ser
- * liberado). A manhã lê de cima para baixo; a tarde, de baixo para cima. A
- * conversão para a convenção inversa do rodapé continua exclusiva de
- * `rodapeDeOrdemDoc`, chamada na publicação.
+ * Lista simples do FERIADO → ordens na convenção do DOCUMENTO (1º→último a ser
+ * liberado), para a publicação inverter UMA vez só em `rodapeDeOrdemDoc`.
+ *
+ * ⚠️ SENTIDO — errar aqui inverte a fila inteira e foi o defeito de 24/08.
+ * A folha do feriado NÃO é uma linha "1º→último a ser liberado" como a do fim
+ * de semana: ela já vem na direção do RODAPÉ. Quem está no TOPO é quem FICA
+ * até o fim da manhã; a CAUDA sai primeiro. A folha de 25/08 prova isso — os
+ * 13 primeiros nomes são EXATAMENTE os 13 com cirurgia de manhã nos mapas de
+ * Unimed e HRO, e os 9 últimos (ROSE → GUILHERME DIDOMENICO) não têm nenhuma:
+ * quem não tem cirurgia é quem vai embora primeiro, e é por isso que está no
+ * fim da folha. Os mesmos 9 cobrem as 9 salas da tarde.
+ *
+ * Daí: a MANHÃ entra aqui INVERTIDA (o último da folha é o 1º a ser liberado)
+ * e a TARDE, direta (o 1º da folha é o 1º a ser liberado). Depois do
+ * `rodapeDeOrdemDoc`, o rodapé da manhã sai na ordem da folha e o da tarde, de
+ * trás para frente.
  */
 export function ordensDocumentoFeriado(lista) {
   const nomes = (lista || []).map((n) => String(n || '').trim()).filter(Boolean)
-  return { matutino: nomes, vespertino: [...nomes].reverse() }
+  return { matutino: [...nomes].reverse(), vespertino: nomes }
 }
 
 /**

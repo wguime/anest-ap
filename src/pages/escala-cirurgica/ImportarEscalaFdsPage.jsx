@@ -56,7 +56,7 @@ import {
 } from './utils'
 import {
   carimbarTurnos, chaveMapa, classificarAnexoMapa, planoPublicacaoMapas,
-  reduzirCasoParaFilaFeriado, resumoMapa, HOSPITAIS_MAPA,
+  resumoMapa, HOSPITAIS_MAPA,
 } from '@/lib/escalaFdsMapas'
 import ConferirMapaFdsPage from './ConferirMapaFdsPage'
 import { podeEditarEscalaCirurgica } from './gate'
@@ -254,11 +254,15 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
           // confirmação em vez de a tela escolher por conta própria
           // por TURNO: a herança de "//" não pode atravessar a faixa
           // MATUTINO/VESPERTINO (ver prepararCasosFimDeSemana)
-          const casosPreparados = carimbarTurnos(
+          // FERIADO usa o MESMO caso do fim de semana, inteiro. Reduzi-lo a
+          // sala/cirurgião/anestesista (a leitura literal de "o que o card
+          // mostra") derrubaria em silêncio o convênio — e é o convênio que o
+          // trigger `fn_sync_cirurgia_particular` casa para abrir a cobrança
+          // particular. Só o mapa da Unimed de 25/08 traz 6 PARTICULAR.
+          const casos = carimbarTurnos(
             prepararCasosFimDeSemana(res.casos, cls.hospital, res.posicoesAssistenciais || []),
             'matutino',
           )
-          const casos = feriado ? casosPreparados.map(reduzirCasoParaFilaFeriado) : casosPreparados
           const chave = chaveMapa(cls.hospital, cls.data)
           setMapas((prev) => ({
             ...prev,
@@ -326,8 +330,13 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
 
   // ── edição ────────────────────────────────────────────────────────────────
   const mudarDia = (iso, mut) => setDias((prev) => ({ ...prev, [iso]: mut(prev[iso]) }))
+  // O que a TELA mostra e EDITA. No feriado é a folha, na ordem em que foi
+  // escrita: a conferência é a transcrição do documento, e é por ela que
+  // Subir/Descer/Remover indexam. A direção de cada turno entra só na
+  // publicação (`ordensDocumentoFeriado`) — inverter aqui faria o botão mexer
+  // na linha errada.
   const ordemDoDia = (dia, turno) => feriado
-    ? (ordensDocumentoFeriado(dia?.listaFeriado)[turno] || [])
+    ? (dia?.listaFeriado || [])
     : (dia?.ordem?.[turno] || [])
   const mudarListaFeriado = (iso, mut) => mudarDia(iso, (d) => ({ ...d, listaFeriado: mut(d.listaFeriado || []) }))
   const setCelula = (iso, faixa, col, valor) => mudarDia(iso, (d) => ({
@@ -399,7 +408,11 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
   }
   const ordemPublicacao = (iso, turno) => {
     const dia = dias[iso]
-    const tokens = ordemDoDia(dia, turno).map((t) => tokenParaPn(dia, t))
+    // FERIADO: a folha vale os dois turnos em sentidos opostos. `ordensDocumentoFeriado`
+    // devolve a convenção do documento e `rodapeDeOrdemDoc` inverte UMA vez, como no FDS.
+    const tokens = feriado
+      ? (ordensDocumentoFeriado(dia?.listaFeriado)[turno] || [])
+      : ordemDoDia(dia, turno).map((t) => tokenParaPn(dia, t))
     return rodapeDeOrdemDoc(tokens, posicoesEfetivas(iso))
   }
   /** Bloqueios de publicação por dia+turno (regra da casa: nunca chutar identidade). */
@@ -591,7 +604,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
         )}
         <p className="text-sm text-muted-foreground">
           {feriado
-            ? 'Lista simples do feriado: a manhã segue de cima para baixo e a tarde usa a mesma lista de baixo para cima — uma fila só para todos os hospitais.'
+            ? 'Lista simples do feriado: a manhã sai na ordem da folha e a tarde usa a mesma lista de trás para frente — uma fila só para todos os hospitais.'
             : 'Documento "ESCALA DE FINAL DE SEMANA": grade P1–P4, numeração das posições e a ordem de liberação de cada turno — uma fila só para todos os hospitais.'}
           {' '}Os mapas cirúrgicos entram como documentos próprios na lista anterior.
         </p>
@@ -714,11 +727,12 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
                   "sugerida") e o ordinal vem colado ao nome. */}
               <div className="space-y-1.5">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  {feriado ? 'Lista do feriado — de cima para baixo' : 'Ordem de liberação — 1º ao último'}
+                  {feriado ? 'Lista do feriado — na ordem da folha' : 'Ordem de liberação — 1º ao último'}
                 </p>
                 {feriado && (
                   <p className="text-[11px] text-muted-foreground">
-                    Manhã: de cima para baixo · Tarde: de baixo para cima
+                    A manhã sai nesta ordem; a tarde, de trás para frente. Em cada turno, quem
+                    está no FIM da fila é o primeiro a ser liberado.
                   </p>
                 )}
                 <div className={`grid ${feriado ? 'grid-cols-1' : 'grid-cols-3'} gap-1.5`}>

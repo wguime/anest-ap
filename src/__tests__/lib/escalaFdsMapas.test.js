@@ -9,7 +9,7 @@ import { describe, it, expect } from 'vitest'
 import {
   turnoDoCasoImportado, carimbarTurnos, classificarAnexoMapa, resumoMapa,
   anestesistaDoPosto, sugerirAtribuicoesDoPosto, chaveMapa, planoPublicacaoMapas,
-  nomesDoMapa, reduzirCasoParaFilaFeriado,
+  nomesDoMapa,
 } from '@/lib/escalaFdsMapas'
 
 // grade real do documento de 22/08 (faixa → coluna → pessoa)
@@ -60,22 +60,6 @@ describe('turno do caso importado — a faixa do documento resolve o "AS"', () =
     const out = carimbarTurnos(mapaHro, 'matutino')
     expect(out.filter((c) => c.turno === 'matutino')).toHaveLength(5)
     expect(out.filter((c) => c.turno === 'vespertino')).toHaveLength(3)
-  })
-})
-
-describe('campos persistidos pelo mapa do feriado', () => {
-  it('guarda só o necessário para o card operacional, sem paciente/procedimento', () => {
-    const reduzido = reduzirCasoParaFilaFeriado({
-      hora: '08:00', turno: 'matutino', sala: 'Sala 1', cirurgiao: 'DR. X',
-      anestesista: 'FERNANDA', anestesistaUserId: 'uid-f', semAnestesista: false,
-      pacienteIniciais: 'AB', procedimento: 'PROCEDIMENTO', convenio: 'SUS', idade: '55',
-    })
-    expect(reduzido).toEqual({
-      hora: '08:00', turno: 'matutino', sala: 'Sala 1', cirurgiao: 'DR. X',
-      anestesista: 'FERNANDA', anestesistaUserId: 'uid-f', semAnestesista: false,
-    })
-    expect(reduzido).not.toHaveProperty('pacienteIniciais')
-    expect(reduzido).not.toHaveProperty('procedimento')
   })
 })
 

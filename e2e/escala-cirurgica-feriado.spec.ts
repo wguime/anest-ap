@@ -31,8 +31,10 @@ test('feriado: fila única, 22 nomes, card FDS sem Pn e alerta de anestesista', 
   const cards = page.locator('[data-linha]');
   await expect(cards).toHaveCount(22);
   await expect(page.locator('[data-selo]')).toHaveCount(0); // feriado não tem Pn
-  await expect(cards.first()).toContainText('Guilherme Didomenico');
-  await expect(cards.last()).toContainText('Fernanda'); // manhã: Fernanda sai primeiro
+  // MANHÃ = ordem da folha: Fernanda no topo (sai por último), Didomenico no
+  // fim da fila (é o próximo a ser liberado).
+  await expect(cards.first()).toContainText('Fernanda');
+  await expect(cards.last()).toContainText('Guilherme Didomenico');
 
   const fernanda = page.locator('[data-linha]').filter({ hasText: 'Fernanda' });
   const hospital = fernanda.getByText('Unimed');
@@ -43,13 +45,17 @@ test('feriado: fila única, 22 nomes, card FDS sem Pn e alerta de anestesista', 
   await expect(fernanda.getByText('+ Tempo total')).toBeVisible();
   await expect(fernanda.getByText('Editar')).toBeVisible();
 
+  // A ação do alerta é a FRASE abaixo do texto, nos dois modos (dono 24/08 —
+  // a pastilha inline comia 48% da linha e saiu). Ver escalaFdsTelaUnica.
   await expect(page.getByText('Procedimentos sem anestesista')).toBeVisible();
-  await expect(page.getByRole('button', { name: /Definir anestesista de Enio Brambatti/i })).toContainText('Adicionar anestesista');
+  await expect(page.getByRole('button', { name: /Definir anestesista de Enio Brambatti/i }))
+    .toContainText('Toque para definir o anestesista');
 
   await page.getByRole('tab', { name: 'Tarde' }).click();
   await expect(cards).toHaveCount(22);
-  await expect(cards.first()).toContainText('Fernanda');
-  await expect(cards.last()).toContainText('Guilherme Didomenico'); // tarde: último da folha sai primeiro
+  // TARDE = folha de trás para frente: Fernanda passa a ser a 1ª liberada.
+  await expect(cards.first()).toContainText('Guilherme Didomenico');
+  await expect(cards.last()).toContainText('Fernanda');
   await expect(page.locator('[data-selo]')).toHaveCount(0);
   await page.getByRole('tab', { name: 'Manhã' }).click();
 

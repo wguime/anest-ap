@@ -281,7 +281,7 @@ describe('FERIADO — lista simples na mesma entrada da fila única', () => {
     expect(screen.queryByText('Plantões (grade)')).toBeNull()
     expect(screen.queryByText('Posições (Pn → pessoa)')).toBeNull()
     expect(screen.getAllByRole('button', { name: /^Posição 1 de Manhã/ })[0].textContent).toContain('Fernanda')
-    expect(screen.getByText(/Manhã: de cima para baixo/)).toBeTruthy()
+    expect(screen.getByText(/Em cada turno, quem está no FIM da fila/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: /^Posição 1 de Tarde/ })).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: /Concluir conferência/ }))
@@ -296,13 +296,36 @@ describe('FERIADO — lista simples na mesma entrada da fila única', () => {
     expect(manha.hospital).toBe('fds')
     expect(manha.ordemLiberacao).toHaveLength(22)
     expect(tarde.ordemLiberacao).toHaveLength(22)
-    expect(manha.ordemLiberacao.at(-1)).toBe('FERNANDA')
-    expect(manha.ordemLiberacao[0]).toBe('GUILHERME DIDOMENICO')
-    expect(tarde.ordemLiberacao.at(-1)).toBe('GUILHERME DIDOMENICO')
-    expect(tarde.ordemLiberacao[0]).toBe('FERNANDA')
+    // RODAPÉ (1ª posição = ÚLTIMA a sair): a manhã sai na ordem da folha, a
+    // tarde de trás para frente. Invertido, o defeito de 24/08 volta.
+    expect(manha.ordemLiberacao).toEqual(LISTA_FERIADO_25_08)
+    expect(manha.ordemLiberacao.at(-1)).toBe('GUILHERME DIDOMENICO') // 1º liberado de manhã
+    expect(tarde.ordemLiberacao).toEqual([...LISTA_FERIADO_25_08].reverse())
+    expect(tarde.ordemLiberacao.at(-1)).toBe('FERNANDA')             // 1ª liberada à tarde
     expect(manha.fdsMeta).toMatchObject({
       tipo: 'feriado', posicoes: {}, ordemNoite: [], listaFonte: LISTA_FERIADO_25_08,
     })
+  })
+
+  /**
+   * A conferência é a TRANSCRIÇÃO da folha: ela mostra a lista na ordem escrita
+   * e é por esse índice que Subir/Descer/Remover cortam o array. Exibir a lista
+   * já invertida por turno (como ficou na 1ª tentativa) faz o botão mexer na
+   * pessoa errada, em silêncio.
+   */
+  it('mostra a folha na ordem escrita e Descer move a linha que está na tela', async () => {
+    await importarFeriado()
+    const rotulos = () => screen.getAllByRole('button', { name: /^Posição \d+ de Manhã/ })
+      .map((b) => b.getAttribute('aria-label'))
+    expect(rotulos()).toHaveLength(22)
+    expect(rotulos()[0]).toMatch(/Posição 1 de Manhã: FERNANDA/i)
+    expect(rotulos()[1]).toMatch(/Posição 2 de Manhã: DANIELA/i)
+    expect(rotulos().at(-1)).toMatch(/Posição 22 de Manhã: GUILHERME DIDOMENICO/i)
+
+    fireEvent.click(screen.getByRole('button', { name: /^Posição 1 de Manhã/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Descer uma posição' }))
+    expect(rotulos()[0]).toMatch(/Posição 1 de Manhã: DANIELA/i)
+    expect(rotulos()[1]).toMatch(/Posição 2 de Manhã: FERNANDA/i)
   })
 })
 

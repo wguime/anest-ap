@@ -66,22 +66,6 @@ export function carimbarTurnos(casos, turnoPadrao = 'matutino') {
 }
 
 /**
- * No feriado o mapa alimenta apenas o card operacional da fila única. Mantém
- * os campos necessários para turno, sala, cirurgião e anestesista; paciente,
- * procedimento, convênio e demais detalhes não são persistidos nesse fluxo.
- */
-export function reduzirCasoParaFilaFeriado(caso) {
-  const out = {}
-  for (const campo of [
-    'hora', 'turno', 'sala', 'cirurgiao', 'cirurgiaoDisplay',
-    'anestesista', 'anestesistaUserId', 'semAnestesista',
-  ]) {
-    if (caso?.[campo] !== undefined) out[campo] = caso[campo]
-  }
-  return out
-}
-
-/**
  * A que escala um anexo pertence. O documento se declara: o layout diz o
  * hospital (`hospitalDetectado`) e o cabeçalho diz a data (`dataDetectada` —
  * "22/08/2026 HRO"). Ambos são SUGESTÃO: `confirmar` marca o que a leitura não
