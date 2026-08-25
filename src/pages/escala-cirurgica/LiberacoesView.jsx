@@ -1154,7 +1154,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         nos dois casos. */}
                     {definivel && modoFds && (
                       <span className="flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-[10px] bg-warning px-3 text-[12.5px] font-extrabold text-warning-foreground">
-                        <UserPlus className="h-3.5 w-3.5 shrink-0" /> Assumir
+                        <UserPlus className="h-3.5 w-3.5 shrink-0" /> Adicionar anestesista
                       </span>
                     )}
                   </div>
@@ -1271,9 +1271,21 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // há como distinguir "o app decidiu" de "alguém liberou na frente".
           // NA CAUDA é o contrário: quem fecha a lista sem procedimento nenhum
           // nasce liberado, porque não está em jogo (dono 21/08).
-          const caudaSemTrabalho = temAlguemComTrabalho && linha.noRodape && semEscala
+          // ⚠️ NO FIM DE SEMANA NINGUÉM NASCE VERMELHO (dono 24/08: "ao publicar
+          // escala de final de semana, todos os usuários apareçam com o card
+          // verde"). A cauda automática de 21/08 nasceu do dia útil, onde o
+          // rodapé costuma trazer gente que fecha a lista sem cirurgia nenhuma;
+          // na fila única quem está publicado ESTÁ de plantão, e o mapa
+          // cirúrgico chega separado — muitas vezes depois. Card vermelho ali
+          // dizia "já foi embora" de quem tinha acabado de entrar na escala.
+          // O vermelho volta a ser só do toque humano, como em 20/08.
+          const caudaSemTrabalho = !modoFds && temAlguemComTrabalho && linha.noRodape && semEscala
             && !forcadoEscalado && idx > idxUltimoTrabalho
           const liberado = liberadoReal || caudaSemTrabalho
+          // ⚠️ o card BRANCO de "Livre" também é de dia útil: na fila única ele
+          // fazia metade da lista nascer descolorida na publicação, antes de a
+          // primeira cirurgia ser importada. O BADGE "Livre" fica — é
+          // informação verdadeira ("sem cirurgia agora") e não some com a tinta.
           const estado = liberado ? 'liberado' : idx === idxProximo ? 'proximo' : 'escalado'
           // Bloqueio nos DOIS sentidos: só o "próximo" sai e só o "próximo a
           // convocar" volta. Quem NÃO está na fila nunca bloqueia — P1/P2 da noite

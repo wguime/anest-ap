@@ -162,6 +162,53 @@ describe('alerta de sem anestesista — compacto', () => {
   })
 })
 
+/**
+ * PUBLICAÇÃO PINTA TODO MUNDO DE VERDE (dono 24/08): "ao publicar escala de final
+ * de semana, todos os usuários apareçam com o card verde". A cauda vermelha
+ * automática (21/08) nasceu do dia útil, onde o rodapé traz gente que fecha a
+ * lista sem cirurgia; na fila única quem está publicado ESTÁ de plantão, e o mapa
+ * cirúrgico chega separado — muitas vezes depois. Vermelho ali dizia "já foi
+ * embora" de quem tinha acabado de entrar na escala.
+ */
+describe('fila única — ninguém nasce vermelho na publicação', () => {
+  const semCirurgiaNenhuma = {
+    ...ESCALA_FDS,
+    ordemLiberacao: { matutino: ['KARINE', 'GABRIEL', 'OSCAR', 'THAYNA'] },
+  }
+
+  it('escala recém-publicada, sem mapa cirúrgico ainda: nenhum card Liberado', async () => {
+    render(<LiberacoesView {...props({ escala: semCirurgiaNenhuma, casosFds: [] })} />, { wrapper: wrap })
+    await screen.findByText(/Karine/)
+    expect(screen.queryAllByText('Liberado')).toHaveLength(0)
+  })
+
+  it('com mapa importado, quem fecha a lista sem cirurgia também segue verde', async () => {
+    // no dia útil estes seriam a "cauda" e nasceriam vermelhos (regra de 21/08)
+    render(<LiberacoesView {...props({ escala: semCirurgiaNenhuma })} />, { wrapper: wrap })
+    await screen.findByText(/Oscar/)
+    expect(screen.queryAllByText('Liberado')).toHaveLength(0)
+  })
+
+  it('o badge "Livre" continua — a tinta some, a informação não', async () => {
+    render(<LiberacoesView {...props({ escala: semCirurgiaNenhuma })} />, { wrapper: wrap })
+    await screen.findByText(/Oscar/)
+    expect(screen.getAllByText('Livre').length).toBeGreaterThan(0)
+  })
+})
+
+describe('alerta de sem anestesista — o botão diz o que faz', () => {
+  it('a pastilha é "Adicionar anestesista" (dono 24/08)', async () => {
+    const comOrfa = [...CASOS_FDS, {
+      id: 'c9', sala: 'CO - Sala 3', ordem: 0, hora: '11:00', turno: 'matutino',
+      anestesista: '?', semAnestesista: true, procedimento: 'CESARIANA',
+      cirurgiao: 'Carlos Yora', hospitalOrigem: 'unimed',
+    }]
+    render(<LiberacoesView {...props({ casosFds: comOrfa, onDefinirCasos: vi.fn() })} />, { wrapper: wrap })
+    expect(await screen.findByText('Adicionar anestesista')).toBeTruthy()
+    expect(screen.queryByText('Assumir')).toBeNull()
+  })
+})
+
 describe('painel da linha — Hospital, Responsável e Posição só na fila única', () => {
   const abrirPainel = async (extra = {}) => {
     render(<LiberacoesView {...props(extra)} />, { wrapper: wrap })

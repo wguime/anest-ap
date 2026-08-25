@@ -965,6 +965,20 @@ bloco de sem-anestesista (→ volta "Toque para definir o anestesista"); e a
 cirurgiões → volta sala ABAIXO do cirurgião, desenho de 20/07). O gate é
 `modoFds` em cada ponto. (O "Terminei" saiu de vez horas depois — ver acima.)
 
+⚠️ **PUBLICAÇÃO PINTA TODO MUNDO DE VERDE na fila única (dono 24/08):** "ao
+publicar escala de final de semana, todos os usuários apareçam com o card verde".
+A cauda vermelha automática (21/08) e o card BRANCO de "Livre" (20/08) nasceram
+do DIA ÚTIL, onde o rodapé traz gente que fecha a lista sem cirurgia nenhuma. Na
+fila única quem está publicado ESTÁ de plantão, e o mapa cirúrgico chega em
+importação SEPARADA — muitas vezes depois: metade da lista nascia descolorida ou
+vermelha, dizendo "já foi embora" de quem tinha acabado de entrar na escala. Em
+`modoFds` o vermelho volta a ser só do toque humano. O BADGE "Livre" fica — é
+informação verdadeira ("sem cirurgia agora") e não some com a tinta. Medido em
+22/08 depois da mudança: 12 cards, 0 liberados automáticos. O dia útil mantém as
+duas regras. A pastilha do alerta virou **"Adicionar anestesista"** (177px, não
+trunca a sala ao lado). Travas: describe "fila única — ninguém nasce vermelho na
+publicação" em `escalaFdsTelaUnica.test.jsx`.
+
 ⚠️ A regra geral, que já vale para a IMPORTAÇÃO desde 22/08 e agora vale para a
 TELA: melhoria nascida de um protótipo de fim de semana fica no fim de semana. O
 dia útil é o fluxo estabelecido de uma equipe em uso clínico diário — mudança
