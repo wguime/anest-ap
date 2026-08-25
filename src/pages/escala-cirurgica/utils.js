@@ -109,13 +109,26 @@ export function normalizarSalaUnimed(sala) {
   const raw = String(sala || '').trim()
   const s = normNome(raw)
   if (!s) return raw
-  let m = s.match(/CENTRO\s+CIRURGICO.*?(\d+)/) || (/^CC\b/.test(s) ? s.match(/(\d+)/) : null)
+  let m = s.match(/CENTRO\s+CIRURGICO.*?0*(\d+)/) || (/^CC\b/.test(s) ? s.match(/0*(\d+)/) : null)
   if (m) return `CC - Sala ${m[1]}`
   if (/^C\.?\s*O\b/.test(s) || /CENTRO OBSTET/.test(s)) {
     if (/CESAR/.test(s)) return 'CO - Cesárea'
-    const n = s.match(/(\d+)/)
+    const n = s.match(/0*(\d+)/)
     return n ? `CO - Sala ${n[1]}` : 'CO'
   }
+  // A NUMÉRICA SOZINHA É DO CENTRO CIRÚRGICO (dono 2026-08-25: "na escala Unimed
+  // não está saindo com a Sala, está aparecendo apenas um número"). O mapa da
+  // Unimed às vezes rotula a coluna só com o número ("6") ou com "SALA 6" — foi
+  // assim que vieram os 31 casos da Unimed no feriado de 25/08 e os de 19/08 —, e
+  // sem esta regra o texto passava direto: o card mostrava "6", que não se lê como
+  // sala, e a MESMA sala virava um segundo bloco no quadro e uma segunda entrada
+  // no seletor, ao lado da "CC - Sala 6" canônica.
+  // O bloco obstétrico nunca cai aqui: ele vem sempre rotulado ("CO - Sala 3") e
+  // a regra do C.O acima já o pegou — é o que torna seguro assumir o CC.
+  // O `0*` nas três regras é a mesma identidade: produção tem "CC - Sala 01" e
+  // "CC - Sala 1" para a mesma sala (12/08), e duas grafias = duas salas.
+  m = s.match(/^(?:SALA\s*)?0*(\d+)\b/)
+  if (m) return `CC - Sala ${m[1]}`
   if (/SRPA/.test(s)) return 'SRPA'
   if (/EXAME/.test(s)) return 'Exames'
   if (/IMAGEM/.test(s)) return 'Imagem'

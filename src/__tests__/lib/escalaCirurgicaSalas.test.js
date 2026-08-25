@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { chaveSalaHro, LOCAIS_BASE, normalizarSalaHro, salasDoHospital } from '@/pages/escala-cirurgica/utils'
+import { chaveSalaHro, LOCAIS_BASE, normalizarSalaHro, normalizarSalaUnimed, salasDoHospital } from '@/pages/escala-cirurgica/utils'
 
 describe('salas HRO na conferência', () => {
   it('normaliza blocos e locais especiais sem perder a sala', () => {
@@ -81,6 +81,63 @@ describe('salas do HRO: rótulo curto, bloco implícito (dono 21/08)', () => {
     expect(salas.indexOf('Sala 4')).toBeLessThan(salas.indexOf('Sala 8'))
     expect(salas.indexOf('Sala 9')).toBeLessThan(salas.indexOf('Bloco M - Sala 1'))
     expect(salas.indexOf('Bloco M - Sala 4')).toBeLessThan(salas.indexOf('Hemodinâmica'))
+  })
+})
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// UNIMED: A NUMÉRICA SOZINHA É DO CENTRO CIRÚRGICO (dono 2026-08-25).
+// Relato: "na escala Unimed não está saindo com a Sala, está aparecendo apenas
+// um número abaixo do nome do hospital". O mapa da Unimed rotula a coluna ora
+// com "CENTRO CIRÚRGICO - SALA 1", ora com "SALA 1", ora só com "1" — e as duas
+// últimas passavam direto pelo normalizador, que devolvia o texto cru. Os 22
+// casos da Unimed no feriado de 25/08 saíram assim.
+//
+// O prejuízo não é só o rótulo: a Unimed não tem uma `chaveSalaHro` que colapse
+// grafias, então "6" e "CC - Sala 6" são DUAS salas — dois blocos no quadro e
+// duas entradas no seletor.
+// ════════════════════════════════════════════════════════════════════════════
+describe('salas da Unimed: a numérica sozinha é o Centro Cirúrgico (dono 25/08)', () => {
+  it('o número cru vira a sala do CC — era o que o card mostrava como "6"', () => {
+    for (const n of [1, 2, 3, 4, 5, 6, 7]) {
+      expect(normalizarSalaUnimed(String(n))).toBe(`CC - Sala ${n}`)
+    }
+    // "SALA 4" é o mesmo defeito com o prefixo escrito (produção, 19/08)
+    expect(normalizarSalaUnimed('SALA 4')).toBe('CC - Sala 4')
+    // sufixo do equipamento não cria uma segunda sala 10
+    expect(normalizarSalaUnimed('10 ROBOTICA')).toBe('CC - Sala 10')
+  })
+
+  it('o bloco obstétrico NÃO é absorvido pela regra do CC', () => {
+    // é o que torna seguro assumir "número solto = Centro Cirúrgico": o CO vem
+    // sempre rotulado no mapa, e a regra dele corre antes
+    expect(normalizarSalaUnimed('CO - Sala 3')).toBe('CO - Sala 3')
+    expect(normalizarSalaUnimed('CO - CESAREA')).toBe('CO - Cesárea')
+    expect(normalizarSalaUnimed('CENTRO OBSTETRICO 2')).toBe('CO - Sala 2')
+  })
+
+  it('zero à esquerda é a MESMA sala (produção tem "CC - Sala 01" e "CC - Sala 1")', () => {
+    expect(normalizarSalaUnimed('CC - Sala 06')).toBe('CC - Sala 6')
+    expect(normalizarSalaUnimed('CO - Sala 03')).toBe('CO - Sala 3')
+    expect(normalizarSalaUnimed('06')).toBe('CC - Sala 6')
+  })
+
+  it('é idempotente e não toca nos locais que não são sala numerada', () => {
+    for (const s of ['CC - Sala 6', 'CO - Cesárea', 'Hemodinâmica', 'SRPA', 'Exames',
+      'Imagem', 'Consultório', 'Umanitá', 'Accurata']) {
+      expect(normalizarSalaUnimed(s)).toBe(s)
+      expect(normalizarSalaUnimed(normalizarSalaUnimed(s))).toBe(s)
+    }
+    // texto que não é sala volta como veio — o normalizador não inventa sala
+    expect(normalizarSalaUnimed('MATERNO')).toBe('MATERNO')
+    expect(normalizarSalaUnimed('')).toBe('')
+  })
+
+  it('a sala normalizada casa com a lista de escolha, sem duplicar a sala', () => {
+    const casos = [{ sala: normalizarSalaUnimed('6') }, { sala: normalizarSalaUnimed('SALA 6') }]
+    const salas = salasDoHospital('unimed', casos)
+    expect(salas.filter((s) => s === 'CC - Sala 6')).toHaveLength(1)
+    expect(salas).not.toContain('6')
   })
 })
 

@@ -775,6 +775,21 @@ não gasta vaga — marcar não é reservar. Tinta verde só com cirurgia EM AND
   reescreveria a grafia do DIA e criaria o segundo bloco no quadro — que é o que a regra existe
   para impedir. `CONTRATO_HRO.dedicadas` é a fonte única do padrão orto/CO (o `AddCasoSheet`
   copiava à mão). Travas em `escalaCirurgicaSalas.test.js` + `escalaCirurgicaUrgencias.test.js`.
+- **SALA DA UNIMED: a numérica sozinha é o CENTRO CIRÚRGICO (dono 25/08 — "não está saindo com
+  a Sala, está aparecendo apenas um número"):** o mapa da Unimed rotula a coluna ora
+  "CENTRO CIRÚRGICO - SALA 1", ora "SALA 1", ora só **"1"**, e `normalizarSalaUnimed` só conhecia
+  a primeira — as outras duas passavam cruas e iam publicadas assim (31 casos no feriado de 25/08,
+  17 em 19/08). O estrago não é só o rótulo: a Unimed **não tem** uma `chaveSalaHro` que colapse
+  grafias, então `"6"` e `"CC - Sala 6"` são DUAS salas — dois blocos no quadro e duas entradas no
+  seletor. Hoje `^(?:SALA\s*)?0*(\d+)` → `CC - Sala N`, e o `0*` entrou também nas regras do CC e
+  do CO, porque produção tem "CC - Sala 01" e "CC - Sala 1" para a mesma sala (12/08). ⚠️ assumir o
+  CC só é seguro porque o **bloco obstétrico vem sempre rotulado** no mapa ("CO - Sala 3") e a
+  regra do C.O corre ANTES — travado em teste. A escala de 25/08 já publicada foi reparada por
+  `scripts/repair-escala-unimed-salas-2026-08-25.sql` (só a coluna `sala`, só aquela data): os dois
+  triggers de negócio da tabela são `UPDATE OF` colunas específicas e não disparam, o `local` de
+  `cirurgias_particulares` é o HOSPITAL e não a sala, e `liberacoes`/`linha_overrides` são
+  chaveados por PESSOA — reimportar, que era a alternativa, zeraria as liberações do turno em
+  pleno feriado.
 - **Fila: coluna à direita, badge do turno com respiro e "Editar" por extenso (dono 21/08):**
   o tempo fica em cima e o **"Editar" no canto INFERIOR direito**, os dois com a mesma margem
   da borda (11px a 375px) e na mesma vertical do "Passa para tarde/noite" — que usa `ml-auto`
