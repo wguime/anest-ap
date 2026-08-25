@@ -344,20 +344,30 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const fase = feriado
     ? 'dia'
     : faseLiberacoes({ agoraMin, dataEscala: escala?.data, hojeIso: hojeISO(), fds: modoFds })
-  // CAUDA VERMELHA AUTOMÁTICA: dia útil sempre; FERIADO também (dono 25/08, "os
-  // usuários que não tiverem casos deixe como liberados"). Sáb/dom seguem FORA
-  // pela decisão de 24/08 — e a diferença é de fluxo, não de gosto: no fim de
-  // semana o mapa cirúrgico chega em importação SEPARADA, muitas vezes depois
-  // da lista, então "sem caso" ali quer dizer "ainda não importei" e o vermelho
-  // dizia "já foi embora" de quem tinha acabado de entrar na escala. No feriado
-  // a lista e os mapas entram JUNTOS, na mesma tela, então "sem caso" é
-  // informação de verdade.
+  // CAUDA VERMELHA AUTOMÁTICA — quem fecha a fila sem cirurgia nasce Liberado.
+  //
+  //   dia útil ........... sempre (regra de 21/08)
+  //   feriado MANHÃ ...... sim (dono 25/08, "os usuários que não tiverem casos
+  //                        deixe como liberados") — ali lista e mapas entram
+  //                        JUNTOS, na mesma tela, então "sem caso" é informação
+  //                        de verdade, e a manhã de 25/08 saiu certa assim
+  //   feriado TARDE ...... NÃO
+  //   sáb/dom ............ NÃO, nos dois turnos (decisão de 24/08)
+  //
+  // ⚠️ O VESPERTINO DA FILA ÚNICA FICA FORA POR REGRA, não por acidente (dono
+  // 25/08, fim da tarde): "as escalas vespertinas, na maioria das vezes, estarão
+  // sem anestesistas escalados... mantenha o esquema de todos estarem livres e
+  // não liberados; os ajustes nos períodos vespertinos serão feitos
+  // manualmente". Hoje o mapa da tarde chegou sem um único anestesista nos dois
+  // hospitais e a guarda `temAlguemComTrabalho` (22/08) já segurava o vermelho
+  // — mas por acaso: bastaria UM nome designado no anexo para a guarda cair e a
+  // fila inteira atrás dele nascer vermelha, que é o oposto do pedido. O corte
+  // por turno é o que torna isso estável quando a tarde vier parcialmente
+  // preenchida (caso previsto por ele na mesma mensagem).
+  //
   // ⚠️ continua sendo CAUDA, não "qualquer um sem caso": vermelho no MEIO da
-  // fila é lido como liberação fora de ordem (incidente Eduardo, 20/08). E a
-  // guarda `temAlguemComTrabalho` (22/08) segue valendo — sem nenhum nome com
-  // cirurgia não há cauda, que é exatamente o caso da TARDE de 25/08, publicada
-  // com as 18 cirurgias sem anestesista definido.
-  const caudaAutomatica = !modoFds || feriado
+  // fila é lido como liberação fora de ordem (incidente Eduardo, 20/08).
+  const caudaAutomatica = !modoFds || (feriado && turnoBase === 'matutino')
 
   // HOSPITAL DE CADA PESSOA na fila única (modo FDS): derivado dos casos
   // mesclados (hospitalOrigem) pela MESMA chave canônica das linhas (uid do

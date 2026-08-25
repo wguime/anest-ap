@@ -1123,10 +1123,39 @@ as duas assinaturas do HRO no prompt — e casa quase palavra por palavra com a
 descrição do MATERNO. `redefinirMapa` já re-chaveava e re-preparava o lote com
 as salas canônicas do hospital novo; só faltava o caminho até ele.
 
-Herda de graça do modo FDS: ninguém nasce vermelho na publicação (24/08), badge
-"Livre" para quem está sem cirurgia, hospital em caixa alta no card, a ação do
-alerta como frase abaixo do texto. Travas: describe "feriado como data de fila
-única" em `escalaFds.test.js` — com o invariante que roda `gerarColunaLiberacao`
+**CAUDA VERMELHA: SÓ NA MANHÃ DO FERIADO.** O mapa desta linha, por turno:
+
+| | cauda vermelha? |
+|---|---|
+| dia útil (manhã e tarde) | sim — regra de 21/08 |
+| **feriado, MANHÃ** | **sim** (dono 25/08: "os usuários que não tiverem casos deixe como liberados") |
+| **feriado, TARDE** | **não** |
+| sáb/dom, os dois turnos | não — decisão de 24/08 |
+
+A manhã do feriado entrou porque ali lista e mapas chegam JUNTOS, na mesma tela:
+"sem caso" é informação de verdade, e a manhã de 25/08 saiu certa assim (1–13
+trabalhando, 14–22 liberados). ⚠️ **O VESPERTINO DA FILA ÚNICA FICA FORA POR
+REGRA, não por acidente** (dono 25/08, fim da tarde): *"as escalas vespertinas,
+na maioria das vezes, estarão sem anestesistas escalados... mantenha o esquema de
+todos estarem livres e não liberados; os ajustes nos períodos vespertinos serão
+feitos manualmente"*. Em 25/08 o mapa da tarde chegou com as 18 cirurgias sem um
+único anestesista nos dois hospitais, e a guarda `temAlguemComTrabalho` (22/08)
+já segurava o vermelho — **mas por acaso**: bastaria UM nome designado no anexo
+para a guarda cair e a fila inteira atrás dele nascer vermelha. O corte por turno
+(`caudaAutomatica = !modoFds || (feriado && turnoBase === 'matutino')`) é o que
+torna isso estável quando a tarde vier parcialmente preenchida — caso previsto
+por ele na mesma mensagem ("se alguma escala dos feriados e finais de semana
+vierem com anestesistas designados, faça a distribuição conforme os anexos").
+O badge "Livre" continua nos dois turnos: a tinta sai, a informação não.
+
+⚠️ o teste que trava isso usa uma tarde com DOIS colegas já designados, de
+propósito — com a tarde 100% vazia a guarda de 22/08 mascara a diferença e
+qualquer regra passa. Conferido que ele FALHA com a regra anterior (2 cards
+vermelhos) antes de entrar.
+
+Herda de graça do modo FDS: badge "Livre" para quem está sem cirurgia, hospital
+em caixa alta no card, a ação do alerta como frase abaixo do texto. Travas:
+describe "feriado como data de fila única" em `escalaFds.test.js` — com o invariante que roda `gerarColunaLiberacao`
 sobre o rodapé publicado e afirma QUEM é o próximo a ser liberado em cada turno,
 que é o que protege contra uma re-inversão (asserção de string não protege) — +
 o describe "FERIADO" em `importarEscalaFds.test.jsx` (publicação nos dois turnos
