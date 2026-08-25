@@ -19,8 +19,8 @@ import { useEscalaCirurgica, hojeISO, HOSPITAIS, HOSPITAL_LABEL } from '@/contex
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { nomeCirurgiaoCurto, titleCaseNome, ordemDerivadaDosCasos } from '@/lib/colunaLiberacao'
-import { turnoAtual, rodapeDoTurno, filtrarPorTurno } from '@/pages/escala-cirurgica/utils'
-import { ehDataFilaUnica, FDS_HOSPITAL, faixaFdsAtual, plantonistasFaixaFds } from '@/lib/escalaFds'
+import { turnoAtual, rodapeDoTurno, filtrarPorTurno, normNome } from '@/pages/escala-cirurgica/utils'
+import { ehDataFilaUnica, ehFeriado, FDS_HOSPITAL, faixaFdsAtual, plantonistasFaixaFds } from '@/lib/escalaFds'
 import { formatDate } from '@/utils/formatters'
 import useAgoraMinuto from '@/pages/escala-cirurgica/useAgoraMinuto'
 
@@ -95,20 +95,52 @@ export function EscalaCirurgicaHomeCard({ onNavigate }) {
   // Linhas do modo FDS: quem está fisicamente em Unimed/HRO na faixa atual da
   // grade. null = sem fila única publicada → cai nas linhas por hospital.
   const linhasFds = useMemo(() => {
-    if (!fdsAtivo || fdsRow?.status !== 'publicada' || !fdsRow?.fdsMeta?.grade) return null
-    const faixa = faixaFdsAtual(agoraMin)
-    if (!faixa) return null
-    const { unimed, hro } = plantonistasFaixaFds(fdsRow.fdsMeta.grade, faixa)
+    if (!fdsAtivo || fdsRow?.status !== 'publicada') return null
     const nomeDe = (n) => {
       const cadastro = rosterByUid.get(resolver(n) || '')?.nome
       return cadastro ? nomeCirurgiaoCurto(cadastro) : titleCaseNome(n)
     }
+
+    // FERIADO (dono 25/08, "os nomes dos plantonistas no card da home está
+    // errado"): não há grade P1–P4, então o card caía no plantonista POR
+    // HOSPITAL derivado da ordem dos casos — que é só quem aparece primeiro na
+    // lista de cirurgias, não quem está de plantão. Os plantonistas são os DOIS
+    // PRIMEIROS da folha (mesma regra do selo na fila), e o hospital de cada um
+    // vem das cirurgias do dia.
+    if (ehFeriado(diaFdsRef)) {
+      // sem as escalas do MESMO dia não dá para dizer o hospital de cada um —
+      // cai no comportamento por hospital em vez de arriscar rótulo errado
+      if (diaFdsRef !== hoje || !fonte) return null
+      const folha = (fdsRow?.fdsMeta?.listaFonte || []).slice(0, 2)
+      if (!folha.length) return null
+      const chaveDe = (n) => resolver(n) || normNome(n)
+      const out = []
+      for (const nome of folha) {
+        const chave = chaveDe(nome)
+        const hosp = HOSPITAIS.find((h) => (fonte[h]?.casos || []).some((c) => {
+          const partes = String(c.anestesista || '').split(/\s*\+\s*/)
+          return partes.some((parte) => {
+            const k = (partes.length === 1 ? c.anestesistaUserId : null) || chaveDe(parte)
+            return k && k === chave
+          })
+        }))
+        if (hosp) out.push({ hospital: HOSPITAL_LABEL[hosp], nome: nomeDe(nome) })
+      }
+      // rótulo próprio: no feriado o plantão é 07h→07h e não muda às 13h, então
+      // a faixa da grade ("7–13") mentiria sobre quando esses nomes trocam
+      return out.length ? { faixa: null, rotulo: 'Feriado', linhas: out } : null
+    }
+
+    if (!fdsRow?.fdsMeta?.grade) return null
+    const faixa = faixaFdsAtual(agoraMin)
+    if (!faixa) return null
+    const { unimed, hro } = plantonistasFaixaFds(fdsRow.fdsMeta.grade, faixa)
     const out = [
       ...(unimed ? [{ hospital: HOSPITAL_LABEL.unimed, nome: nomeDe(unimed) }] : []),
       ...(hro ? [{ hospital: HOSPITAL_LABEL.hro, nome: nomeDe(hro) }] : []),
     ]
     return out.length ? { faixa, linhas: out } : null
-  }, [fdsAtivo, fdsRow, agoraMin, resolver, rosterByUid])
+  }, [fdsAtivo, fdsRow, agoraMin, resolver, rosterByUid, diaFdsRef, hoje, fonte])
 
   const linhas = useMemo(() => HOSPITAIS.flatMap((h) => {
     const e = fonte?.[h]
@@ -184,12 +216,12 @@ export function EscalaCirurgicaHomeCard({ onNavigate }) {
           {/* turno vira rótulo da lista (desceu do topo — pedido do dono);
               no FDS o rótulo é a FAIXA da grade (7–13/13–19/19–07) */}
           <div className="mt-4 flex items-center gap-2 text-[11.5px] font-semibold uppercase tracking-[0.5px] text-primary">
-            <span>{linhasFds ? `Plantão · ${FAIXA_LABEL[linhasFds.faixa]}` : `Plantonista · ${TURNO_LABEL[turnoAtual()]}`}</span>
+            <span>{linhasFds ? `Plantão · ${linhasFds.rotulo || FAIXA_LABEL[linhasFds.faixa]}` : `Plantonista · ${TURNO_LABEL[turnoAtual()]}`}</span>
             <span className="h-px flex-1 bg-primary/10" aria-hidden="true" />
           </div>
           <ul className="mt-3 grid gap-[11px]">
             {(linhasFds ? linhasFds.linhas : linhas).map((l) => (
-              <li key={l.hospital} className="flex items-center gap-3">
+              <li key={`${l.hospital}-${l.nome}`} className="flex items-center gap-3">
                 {/* hospital em chip tonal de largura fixa (Opção B) — peso equilibrado com o nome */}
                 <span className="w-[5.25rem] shrink-0 rounded-[8px] bg-primary/10 px-2 py-1 text-center text-[11px] font-bold uppercase tracking-wide text-primary">
                   {l.hospital}

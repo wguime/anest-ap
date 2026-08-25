@@ -340,9 +340,24 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // noturna a fundir. Mantém a fila vespertina publicada até o fim do dia.
   // ⚠️ a data decide, não `fdsMeta.tipo`: o meta só existe depois de publicar
   // e uma republicação sem ele devolveria a fase noturna em silêncio.
-  const fase = modoFds && ehFeriado(escala?.data)
+  const feriado = modoFds && ehFeriado(escala?.data)
+  const fase = feriado
     ? 'dia'
     : faseLiberacoes({ agoraMin, dataEscala: escala?.data, hojeIso: hojeISO(), fds: modoFds })
+  // CAUDA VERMELHA AUTOMÁTICA: dia útil sempre; FERIADO também (dono 25/08, "os
+  // usuários que não tiverem casos deixe como liberados"). Sáb/dom seguem FORA
+  // pela decisão de 24/08 — e a diferença é de fluxo, não de gosto: no fim de
+  // semana o mapa cirúrgico chega em importação SEPARADA, muitas vezes depois
+  // da lista, então "sem caso" ali quer dizer "ainda não importei" e o vermelho
+  // dizia "já foi embora" de quem tinha acabado de entrar na escala. No feriado
+  // a lista e os mapas entram JUNTOS, na mesma tela, então "sem caso" é
+  // informação de verdade.
+  // ⚠️ continua sendo CAUDA, não "qualquer um sem caso": vermelho no MEIO da
+  // fila é lido como liberação fora de ordem (incidente Eduardo, 20/08). E a
+  // guarda `temAlguemComTrabalho` (22/08) segue valendo — sem nenhum nome com
+  // cirurgia não há cauda, que é exatamente o caso da TARDE de 25/08, publicada
+  // com as 18 cirurgias sem anestesista definido.
+  const caudaAutomatica = !modoFds || feriado
 
   // HOSPITAL DE CADA PESSOA na fila única (modo FDS): derivado dos casos
   // mesclados (hospitalOrigem) pela MESMA chave canônica das linhas (uid do
@@ -410,7 +425,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     // Vale nos dois turnos ("sempre"): estar de plantão é da pessoa, não da
     // posição — à tarde a ordem inverte e eles saem primeiro, mas continuam
     // sendo quem cobre o hospital.
-    if (ehFeriado(escala?.data)) {
+    if (feriado) {
       const folha = Array.isArray(fdsMeta?.listaFonte) ? fdsMeta.listaFonte : []
       for (const nome of folha.slice(0, 2)) {
         const chave = resolverUid(String(nome || '').trim()) || normNome(nome)
@@ -433,7 +448,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     add(unimed, 'Plantão Unimed')
     add(hro, 'Plantão HRO')
     return m
-  }, [modoFds, fdsMeta, turno, resolverUid, escala, hospitaisDoDia])
+  }, [modoFds, feriado, fdsMeta, turno, resolverUid, hospitaisDoDia])
   // vale também no card NOTURNO (dono 16/08: "adicione os badges de plantão em
   // todos os turnos") — lá a chave é namespaced 'noite:', daí o chaveDia
   const plantaoFisicoDe = (l) => {
@@ -1301,7 +1316,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // cirúrgico chega separado — muitas vezes depois. Card vermelho ali
           // dizia "já foi embora" de quem tinha acabado de entrar na escala.
           // O vermelho volta a ser só do toque humano, como em 20/08.
-          const caudaSemTrabalho = !modoFds && temAlguemComTrabalho && linha.noRodape && semEscala
+          const caudaSemTrabalho = caudaAutomatica && temAlguemComTrabalho && linha.noRodape && semEscala
             && !forcadoEscalado && idx > idxUltimoTrabalho
           const liberado = liberadoReal || caudaSemTrabalho
           // ⚠️ o card BRANCO de "Livre" também é de dia útil: na fila única ele

@@ -123,6 +123,68 @@ describe('modo FDS — plantões físicos da faixa da grade (dono 15/08)', () =>
     expect(screen.queryByText('Gustavo Biesdorf')).toBeNull()
   })
 
+  /**
+   * FERIADO (dono 25/08: "os nomes dos plantonistas no card na página home está
+   * errado"). Sem grade P1–P4, o card caía no plantonista POR HOSPITAL derivado
+   * da ORDEM DOS CASOS — quem aparece primeiro na lista de cirurgias, que não
+   * tem relação com quem está de plantão. Os plantonistas são os dois primeiros
+   * da folha; o hospital de cada um vem das cirurgias do dia.
+   */
+  describe('feriado — os dois primeiros da folha, com o hospital dos casos', () => {
+    const rosterFeriado = () => ({
+      resolver: (n) => ({ FERNANDA: 'uid-fe', DANIELA: 'uid-da', MARILIO: 'uid-ma' })[String(n).trim().toUpperCase()] || null,
+      rosterByUid: new Map([
+        ['uid-fe', { uid: 'uid-fe', nome: 'FERNANDA GUOLLO' }],
+        ['uid-da', { uid: 'uid-da', nome: 'DANIELA KLEIN REIS' }],
+        ['uid-ma', { uid: 'uid-ma', nome: 'MARILIO FLACH' }],
+      ]),
+      pronto: true,
+    })
+    const ctxFeriado = (fdsMeta) => ({
+      data: '2026-08-25', loading: false,
+      escalas: {
+        // MARILIO é o 1º caso da Unimed: era ele que o card mostrava antes
+        unimed: { status: 'publicada', ordemLiberacao: [], casos: [
+          { id: 'u1', anestesista: 'MARILIO', anestesistaUserId: 'uid-ma', turno: 'matutino' },
+          { id: 'u2', anestesista: 'FERNANDA', anestesistaUserId: 'uid-fe', turno: 'matutino' },
+        ] },
+        hro: { status: 'publicada', ordemLiberacao: [], casos: [
+          { id: 'h1', anestesista: 'DANIELA', anestesistaUserId: 'uid-da', turno: 'matutino' },
+        ] },
+        materno: null,
+        fds: { status: 'publicada', ordemLiberacao: {}, casos: [], fdsMeta },
+      },
+    })
+
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-08-25T10:00:00-03:00'))
+      estado.roster = rosterFeriado()
+    })
+
+    it('mostra FERNANDA e DANIELA, não o primeiro nome da lista de casos', () => {
+      estado.ctx = ctxFeriado({ tipo: 'feriado', grade: {}, posicoes: {}, listaFonte: ['FERNANDA', 'DANIELA', 'MARILIO'] })
+      render(<EscalaCirurgicaHomeCard />)
+      expect(screen.getByText('Fernanda Guollo')).toBeTruthy()
+      expect(screen.getByText('Daniela Reis')).toBeTruthy()
+      expect(screen.queryByText('Marilio Flach')).toBeNull()   // era o nome errado
+    })
+
+    it('o rótulo é "Feriado", não a faixa da grade — o plantão é 07h→07h', () => {
+      estado.ctx = ctxFeriado({ tipo: 'feriado', grade: {}, posicoes: {}, listaFonte: ['FERNANDA', 'DANIELA'] })
+      render(<EscalaCirurgicaHomeCard />)
+      expect(screen.getByText('Plantão · Feriado')).toBeTruthy()
+      expect(screen.queryByText(/Plantão · 7–13h/)).toBeNull()
+    })
+
+    it('sem a folha no meta, cai no comportamento por hospital em vez de chutar', () => {
+      estado.ctx = ctxFeriado({ tipo: 'feriado', grade: {}, posicoes: {} })
+      render(<EscalaCirurgicaHomeCard />)
+      expect(screen.queryByText(/Plantão · /)).toBeNull()
+      expect(screen.getByText(/Plantonista · /)).toBeTruthy()
+    })
+  })
+
   it('sábado SEM fila única publicada → comportamento por hospital preservado', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-08-15T10:00:00-03:00'))

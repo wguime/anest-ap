@@ -245,6 +245,47 @@ describe('feriado — sem selo Pn', () => {
     expect(screen.getByText('Plantão HRO')).toBeTruthy()
   })
 
+  /**
+   * Dono 25/08: "os usuários que não tiverem casos deixe como liberados". A
+   * cauda vermelha automática (21/08, dia útil) passa a valer no FERIADO — no
+   * feriado a lista e os mapas entram JUNTOS, então "sem caso" é informação de
+   * verdade, diferente do sáb/dom, onde o mapa chega depois (24/08).
+   */
+  it('cauda sem cirurgia nasce LIBERADA no feriado', async () => {
+    const { container } = render(<LiberacoesView {...feriado({
+      escala: {
+        ...ESCALA_FDS, data: '2026-08-25',
+        ordemLiberacao: { matutino: ['KARINE', 'GABRIEL', 'MARILIA'] },
+      },
+      fdsMeta: { tipo: 'feriado', grade: {}, posicoes: {}, listaFonte: ['KARINE', 'GABRIEL', 'MARILIA'] },
+    })} />, { wrapper: wrap })
+    await screen.findByText(/Karine/)
+    // KARINE e GABRIEL têm cirurgia; MARILIA fecha a lista sem nenhuma
+    const cards = [...container.querySelectorAll('[data-linha]')]
+    expect(cards).toHaveLength(3)
+    expect(cards[2].textContent).toMatch(/Marilia/)
+    expect(cards[2].textContent).toMatch(/Liberado/)
+    expect(cards[0].textContent).not.toMatch(/Liberado/)
+    expect(cards[1].textContent).not.toMatch(/Liberado/)
+  })
+
+  it('TARDE de 25/08: mapa sem anestesista nenhum NÃO pinta a fila inteira de vermelho', async () => {
+    // caso real: as 18 cirurgias da tarde foram publicadas com "?" nos dois
+    // hospitais. Sem nome com trabalho não existe cauda (guarda de 22/08) — o
+    // contrário seriam 22 cards vermelhos dizendo que todo mundo foi embora
+    // antes de o turno começar.
+    const { container } = render(<LiberacoesView {...feriado({
+      turno: 'vespertino',
+      casosFds: [
+        { id: 'v1', sala: 'CC - Sala 2', ordem: 0, hora: '13:30', turno: 'vespertino', anestesista: '?', semAnestesista: true, cirurgiao: 'Makey Zortea', hospitalOrigem: 'unimed' },
+      ],
+    })} />, { wrapper: wrap })
+    await screen.findByText(/Gabriel/)
+    const cards = [...container.querySelectorAll('[data-linha]')]
+    expect(cards.length).toBeGreaterThan(0)
+    expect(cards.filter((c) => /Liberado/.test(c.textContent))).toHaveLength(0)
+  })
+
   it('quem não está nas duas primeiras posições da folha não recebe selo', async () => {
     render(<LiberacoesView {...feriado({
       escala: {
