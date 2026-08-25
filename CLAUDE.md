@@ -1055,6 +1055,42 @@ o do fim de semana, INTEIRO. ⚠️ não reduzir o caso a sala/cirurgião/aneste
 o trigger `fn_sync_cirurgia_particular` casa para abrir a cobrança — só o mapa da
 Unimed de 25/08 traz 6 PARTICULAR.
 
+**SELO DE PLANTÃO — os DOIS PRIMEIROS da folha (dono 25/08):** "o primeiro e
+segundo nomes da lista sempre serão plantão de algum hospital conforme ordem de
+liberação (ou seja os dois últimos a serem liberados são os plantões)" — é
+também a confirmação independente do sentido da fila. No FDS esse selo sai da
+grade P1–P4 da faixa; no feriado sai de `fdsMeta.listaFonte`, posições 1 e 2 →
+"Plantão Unimed"/"Plantão HRO" (o genérico "Plantonista" segue suprimido na fila
+única, como no FDS — ele diria menos). ⚠️ o HOSPITAL vem das cirurgias do DIA
+(`hospitaisDoDia`), não do turno exibido: o plantão do feriado é 07h→07h e à
+tarde a ordem inverte, então o plantonista passa a ser o primeiro a sair e pode
+já estar sem cirurgia — pelo mapa do turno o selo perderia o hospital justamente
+aí. Por isso o selo vale nos DOIS turnos: estar de plantão é da pessoa, não da
+posição. Sem cirurgia no dia inteiro cai no genérico.
+
+**O LOGIN NASCE PREENCHIDO PELO NOME LIDO (dono 25/08):** "identificou o
+anestesista (cabeçalho) mas o campo abaixo deixou 'sem anestesista'". A
+conferência do mapa só pré-selecionava pelo POSTO DA GRADE (22/08), que alcança
+apenas grupo SEM nome — e no feriado não há grade. `sugerirAtribuicoesLidas`
+resolve o nome do documento pelo dicionário, como a conferência de DIA ÚTIL já
+fazia; não vira "sugestão" na tela (o nome é do documento, o dicionário só diz a
+qual login pertence — diferente do posto, que é palpite e segue rotulado). Fora
+de propósito: "?" (ausência é informação), nome que o dicionário não resolve
+(escolha humana) e DUPLA "A + B" (um login não representa dois). ⚠️ **não havia
+perda de dado** — `aplicarAtribuicoes` recebe o `resolver` e já caía no
+dicionário na publicação; o defeito era a conferência não mostrar o que ia
+acontecer. Efeito aceito: com o login resolvido o cabeçalho do grupo mostra o
+nome do CADASTRO, como a sugestão do posto já fazia.
+
+**HOSPITAL E DIA DO MAPA SEMPRE EDITÁVEIS (dono 25/08, "há possibilidade de
+confusão? e se houver como resolver?"):** os dois Selects só nasciam quando a
+leitura FALHAVA, então leitura CONFIANTE E ERRADA era beco sem saída — remover e
+reanexar reclassifica igual. ⚠️ o risco é concreto: o mapa do HRO **de feriado**
+não tem coluna ANEST (o anestesista vem em "Observação") nem rodapé vermelho —
+as duas assinaturas do HRO no prompt — e casa quase palavra por palavra com a
+descrição do MATERNO. `redefinirMapa` já re-chaveava e re-preparava o lote com
+as salas canônicas do hospital novo; só faltava o caminho até ele.
+
 Herda de graça do modo FDS: ninguém nasce vermelho na publicação (24/08), badge
 "Livre" para quem está sem cirurgia, hospital em caixa alta no card, a ação do
 alerta como frase abaixo do texto. Travas: describe "feriado como data de fila
