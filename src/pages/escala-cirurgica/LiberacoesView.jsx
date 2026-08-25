@@ -349,10 +349,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // vínculo ou nome normalizado — padrão statusPorChave). Vira prefixo do
   // local no card ("Unimed · CC - Sala 1"), porque sala sozinha é ambígua
   // quando a fila cruza hospitais.
-  const hospitaisPorChave = useMemo(() => {
-    if (!modoFds) return null
+  const mapaHospitais = useCallback((casos) => {
     const m = new Map()
-    for (const c of casosResolvidos({ casos: casosTurno })) {
+    for (const c of casosResolvidos({ casos: casos || [] })) {
       const rotulo = HOSPITAL_LABEL[c.hospitalOrigem]
       if (!rotulo) continue
       const nome = String(c.anestesista || '').trim()
@@ -368,7 +367,18 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       }
     }
     return m
-  }, [modoFds, casosTurno, resolverUid])
+  }, [resolverUid])
+  const hospitaisPorChave = useMemo(
+    () => (modoFds ? mapaHospitais(casosTurno) : null),
+    [modoFds, mapaHospitais, casosTurno],
+  )
+  // Hospital de cada pessoa no DIA INTEIRO (os dois turnos), não só no exibido:
+  // é o que o selo de plantão do FERIADO consome, porque lá o plantão é 07h→07h
+  // e à tarde o plantonista pode já não ter cirurgia nenhuma.
+  const hospitaisDoDia = useMemo(
+    () => (modoFds ? mapaHospitais((modoFds && casosFds) ? casosFds : (escala?.casos || [])) : null),
+    [modoFds, mapaHospitais, casosFds, escala],
+  )
   const hospitaisDe = (l) => {
     if (!hospitaisPorChave) return null
     const set = hospitaisPorChave.get(l.chave) || (l.uid && hospitaisPorChave.get(l.uid)) || null
@@ -379,14 +389,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // grade — badge específico no lugar do "Plantonista" genérico (que diria menos:
   // no FDS os dois fisicamente de plantão saem por último e a fila é uma só).
   const plantaoFisico = useMemo(() => {
-    if (!modoFds || !fdsMeta?.grade) return null
-    // FAIXA DO TURNO EXIBIDO, não a do relógio (defeito visto 16/08: às 11h a
-    // tarde e a noite apareciam SEM os badges, porque a faixa vinha do relógio
-    // — a manhã). Os dois primeiros da fila são sempre os plantões daquele
-    // turno, e é isso que o badge tem de dizer em qualquer horário.
-    const faixa = FDS_TURNO_FAIXA[turno]
-    if (!faixa) return null
-    const { unimed, hro } = plantonistasFaixaFds(fdsMeta.grade, faixa)
+    if (!modoFds) return null
     const m = new Map()
     const add = (nomeBruto, rotulo) => {
       const nome = String(nomeBruto || '').trim()
@@ -399,10 +402,38 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       const chaves = [uid, ...(uid ? [] : candidatosNome(nome).map(normNome))].filter(Boolean)
       for (const k of chaves) if (!m.has(k)) m.set(k, rotulo)
     }
+
+    // FERIADO (dono 25/08): não há grade P1–P4. "O primeiro e segundo nomes da
+    // lista sempre serão plantão de algum hospital" — e é por isso que são os
+    // dois ÚLTIMOS a serem liberados de manhã. A folha publicada mora em
+    // `fdsMeta.listaFonte`; o hospital de cada um sai das cirurgias DO DIA.
+    // Vale nos dois turnos ("sempre"): estar de plantão é da pessoa, não da
+    // posição — à tarde a ordem inverte e eles saem primeiro, mas continuam
+    // sendo quem cobre o hospital.
+    if (ehFeriado(escala?.data)) {
+      const folha = Array.isArray(fdsMeta?.listaFonte) ? fdsMeta.listaFonte : []
+      for (const nome of folha.slice(0, 2)) {
+        const chave = resolverUid(String(nome || '').trim()) || normNome(nome)
+        const onde = hospitaisDoDia?.get(chave)
+        // sem cirurgia no dia não dá para dizer QUAL hospital — o genérico não
+        // mente, e é melhor que apagar a informação de que a pessoa é plantão
+        add(nome, onde?.size ? `Plantão ${[...onde].join('/')}` : 'Plantonista')
+      }
+      return m.size ? m : null
+    }
+
+    if (!fdsMeta?.grade) return null
+    // FAIXA DO TURNO EXIBIDO, não a do relógio (defeito visto 16/08: às 11h a
+    // tarde e a noite apareciam SEM os badges, porque a faixa vinha do relógio
+    // — a manhã). Os dois primeiros da fila são sempre os plantões daquele
+    // turno, e é isso que o badge tem de dizer em qualquer horário.
+    const faixa = FDS_TURNO_FAIXA[turno]
+    if (!faixa) return null
+    const { unimed, hro } = plantonistasFaixaFds(fdsMeta.grade, faixa)
     add(unimed, 'Plantão Unimed')
     add(hro, 'Plantão HRO')
     return m
-  }, [modoFds, fdsMeta, turno, resolverUid])
+  }, [modoFds, fdsMeta, turno, resolverUid, escala, hospitaisDoDia])
   // vale também no card NOTURNO (dono 16/08: "adicione os badges de plantão em
   // todos os turnos") — lá a chave é namespaced 'noite:', daí o chaveDia
   const plantaoFisicoDe = (l) => {

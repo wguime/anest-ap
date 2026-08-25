@@ -212,6 +212,51 @@ describe('feriado — sem selo Pn', () => {
       vi.useRealTimers()
     }
   })
+
+  /**
+   * Dono 25/08: "o primeiro e segundo nomes da lista sempre serão plantão de
+   * algum hospital conforme ordem de liberação (ou seja os dois últimos a serem
+   * liberados são os plantões)". No feriado não há grade P1–P4, então o selo sai
+   * da folha publicada (`fdsMeta.listaFonte`) e o hospital, das cirurgias do dia.
+   */
+  const feriado = (extra = {}) => props({
+    escala: {
+      ...ESCALA_FDS,
+      data: '2026-08-25',
+      ordemLiberacao: { matutino: ['KARINE', 'GABRIEL'], vespertino: ['GABRIEL', 'KARINE'] },
+    },
+    fdsMeta: { tipo: 'feriado', grade: {}, posicoes: {}, listaFonte: ['KARINE', 'GABRIEL'] },
+    ...extra,
+  })
+
+  it('os dois primeiros da folha levam o selo com o hospital de cada um', async () => {
+    render(<LiberacoesView {...feriado()} />, { wrapper: wrap })
+    expect(await screen.findByText('Plantão Unimed')).toBeTruthy()   // KARINE, 1ª da folha
+    expect(screen.getByText('Plantão HRO')).toBeTruthy()             // GABRIEL, 2º
+    expect(screen.queryByText('Plantonista')).toBeNull()             // o genérico não volta
+  })
+
+  it('o selo vale À TARDE também, quando o plantonista já não tem cirurgia', async () => {
+    // o plantão do feriado é 07h→07h: estar de plantão é da PESSOA, não da
+    // posição. À tarde a ordem inverte e eles saem primeiro, mas seguem sendo
+    // quem cobre o hospital — o hospital vem dos casos do DIA, não do turno.
+    render(<LiberacoesView {...feriado({ turno: 'vespertino' })} />, { wrapper: wrap })
+    expect(await screen.findByText('Plantão Unimed')).toBeTruthy()
+    expect(screen.getByText('Plantão HRO')).toBeTruthy()
+  })
+
+  it('quem não está nas duas primeiras posições da folha não recebe selo', async () => {
+    render(<LiberacoesView {...feriado({
+      escala: {
+        ...ESCALA_FDS, data: '2026-08-25',
+        ordemLiberacao: { matutino: ['KARINE', 'GABRIEL', 'MARILIA'] },
+      },
+      fdsMeta: { tipo: 'feriado', grade: {}, posicoes: {}, listaFonte: ['KARINE', 'GABRIEL', 'MARILIA'] },
+    })} />, { wrapper: wrap })
+    await screen.findByText('Plantão Unimed')
+    expect(screen.queryByText(/Plantão Marilia|Plantonista/)).toBeNull()
+    expect(screen.getAllByText(/^Plantão /)).toHaveLength(2)
+  })
 })
 
 describe('alerta de sem anestesista — a ação fica ABAIXO do texto', () => {
