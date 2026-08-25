@@ -214,15 +214,24 @@ describe('feriado — sem selo Pn', () => {
   })
 })
 
-describe('alerta de sem anestesista — o botão diz o que faz', () => {
-  it('a pastilha é "Adicionar anestesista" (dono 24/08)', async () => {
+describe('alerta de sem anestesista — a ação fica ABAIXO do texto', () => {
+  /**
+   * Terceira volta no mesmo alerta (dono 24/08): "Toque para definir" (dia útil)
+   * → pastilha "Assumir" só no fim de semana → "Adicionar anestesista" → a
+   * pastilha SAI e vale a frase abaixo, nos dois modos. O que decidiu foi a
+   * medida: inline a pastilha comia 48% da linha (183px de 378) e sobravam
+   * 195px para hora, hospital, sala, procedimento e cirurgião. Abaixo, o texto
+   * recupera 388px por 22px de altura — e o alerta volta a ser um código só.
+   */
+  it('não há pastilha inline; a ação é a frase, e ela vale também na fila única', async () => {
     const comOrfa = [...CASOS_FDS, {
       id: 'c9', sala: 'CO - Sala 3', ordem: 0, hora: '11:00', turno: 'matutino',
       anestesista: '?', semAnestesista: true, procedimento: 'CESARIANA',
       cirurgiao: 'Carlos Yora', hospitalOrigem: 'unimed',
     }]
     render(<LiberacoesView {...props({ casosFds: comOrfa, onDefinirCasos: vi.fn() })} />, { wrapper: wrap })
-    expect(await screen.findByText('Adicionar anestesista')).toBeTruthy()
+    expect(await screen.findByText(/Toque para definir o anestesista/)).toBeTruthy()
+    expect(screen.queryByText('Adicionar anestesista')).toBeNull()
     expect(screen.queryByText('Assumir')).toBeNull()
   })
 })

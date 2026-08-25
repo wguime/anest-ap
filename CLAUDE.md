@@ -975,8 +975,15 @@ vermelha, dizendo "já foi embora" de quem tinha acabado de entrar na escala. Em
 `modoFds` o vermelho volta a ser só do toque humano. O BADGE "Livre" fica — é
 informação verdadeira ("sem cirurgia agora") e não some com a tinta. Medido em
 22/08 depois da mudança: 12 cards, 0 liberados automáticos. O dia útil mantém as
-duas regras. A pastilha do alerta virou **"Adicionar anestesista"** (177px, não
-trunca a sala ao lado). Travas: describe "fila única — ninguém nasce vermelho na
+duas regras. ⚠️ **A pastilha do alerta SAIU (dono 24/08, 3ª volta no mesmo elemento):**
+"Toque para definir" (dia útil) → pastilha "Assumir" só no fim de semana →
+"Adicionar anestesista" → **a pastilha sai e vale a FRASE ABAIXO nos dois
+modos**. O que decidiu foi a medida, não o gosto: inline a pastilha comia **48%
+da linha** (183px de 378) e sobravam 195px para hora, hospital, sala,
+procedimento e cirurgião — a sala ainda não truncava, mas por pouco. Abaixo, o
+texto recupera a linha inteira (**376px** medidos no app) por 22px de altura, e o
+alerta volta a ser UM código só: era pastilha no sábado e frase na segunda para o
+mesmo gesto. O card inteiro segue sendo o alvo. Travas: describe "fila única — ninguém nasce vermelho na
 publicação" em `escalaFdsTelaUnica.test.jsx`.
 
 ⚠️ A regra geral, que já vale para a IMPORTAÇÃO desde 22/08 e agora vale para a

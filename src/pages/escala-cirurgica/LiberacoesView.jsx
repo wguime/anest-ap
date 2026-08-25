@@ -13,7 +13,7 @@ import {
 } from '@/design-system'
 import { gerarColunaLiberacao, nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
 import { faseLiberacoes, plantonistasNoturnos, candidatosNome, linhasNoturnas, fundirLinhasNoturnas, marcarSelosNoTurno, ehDiaUtil, casarPorInicialSobrenome, P4_HOSPITAIS } from '@/lib/plantaoNoturno'
-import { marcarSelosFds, linhasNoturnasFds, plantonistasFaixaFds, FDS_TURNO_FAIXA, resolverNomeEstrito } from '@/lib/escalaFds'
+import { marcarSelosFds, linhasNoturnasFds, plantonistasFaixaFds, FDS_TURNO_FAIXA, resolverNomeEstrito, ehFeriado } from '@/lib/escalaFds'
 import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
 import { hojeISO, HOSPITAL_LABEL, OBSERVACAO_MAX } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
@@ -338,7 +338,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // nomes vêm da faixa 19-07 da grade IMPORTADA, nunca do card Plantões.
   // Feriado tem só manhã+tarde na lista simples; não há grade 19-07 nem fila
   // noturna a fundir. Mantém a fila vespertina publicada até o fim do dia.
-  const fase = modoFds && fdsMeta?.tipo === 'feriado'
+  // ⚠️ a data decide, não `fdsMeta.tipo`: o meta só existe depois de publicar
+  // e uma republicação sem ele devolveria a fase noturna em silêncio.
+  const fase = modoFds && ehFeriado(escala?.data)
     ? 'dia'
     : faseLiberacoes({ agoraMin, dataEscala: escala?.data, hojeIso: hojeISO(), fds: modoFds })
 
@@ -1139,30 +1141,25 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       Inline, volta a ~74px. O badge "Sem anestesista" saiu junto:
                       o título logo acima já diz isso e ele só empurrava a sala
                       para a esquerda. */}
-                  <div className="flex items-center gap-2.5">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold tabular-nums">{i.hora || '—'}</span>
-                        {hospitalDoAlerta(i.id) && <span className="shrink-0 text-xs font-semibold text-muted-foreground">{hospitalDoAlerta(i.id)}</span>}
-                        {i.sala && <span className="min-w-0 truncate font-semibold" title={i.sala}>{salaLiberacao(i.sala)}</span>}
-                      </div>
-                      {(i.procedimento || i.cirurgiao) && (
-                        <p className="mt-0.5 text-foreground/90">
-                          {[i.procedimento, i.cirurgiao].filter(Boolean).join(' · ')}
-                        </p>
-                      )}
-                    </div>
-                    {/* ⚠️ a pastilha "Assumir" é do FIM DE SEMANA (dono 24/08, 2ª
-                        mensagem): no dia útil fica a frase de sempre, logo abaixo
-                        — inline ela não caberia a 430px. O card inteiro é o alvo
-                        nos dois casos. */}
-                    {definivel && modoFds && (
-                      <span className="flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-[10px] bg-warning px-3 text-[12.5px] font-extrabold text-warning-foreground">
-                        <UserPlus className="h-3.5 w-3.5 shrink-0" /> Adicionar anestesista
-                      </span>
-                    )}
+                  {/* A AÇÃO FICA ABAIXO DO TEXTO, NOS DOIS MODOS (dono 24/08,
+                      escolhendo entre três protótipos). A pastilha inline comia
+                      48% da linha — 183px de 378 — e sobravam 195px para
+                      "11:00 · Unimed · CO - Sala 3 · Cesariana · Carlos Yora".
+                      Abaixo, o texto recupera a linha inteira (388px medidos) ao
+                      custo de 22px de altura, e o alerta volta a ser UM código
+                      só: era pastilha no sábado e frase na segunda, para o mesmo
+                      gesto. O card inteiro continua sendo o alvo. */}
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold tabular-nums">{i.hora || '—'}</span>
+                    {hospitalDoAlerta(i.id) && <span className="shrink-0 text-xs font-semibold text-muted-foreground">{hospitalDoAlerta(i.id)}</span>}
+                    {i.sala && <span className="min-w-0 truncate font-semibold" title={i.sala}>{salaLiberacao(i.sala)}</span>}
                   </div>
-                  {definivel && !modoFds && (
+                  {(i.procedimento || i.cirurgiao) && (
+                    <p className="mt-0.5 text-foreground/90">
+                      {[i.procedimento, i.cirurgiao].filter(Boolean).join(' · ')}
+                    </p>
+                  )}
+                  {definivel && (
                     <p className="mt-1 flex items-center gap-1 text-xs font-medium text-primary">
                       <UserPlus className="h-3 w-3 shrink-0" /> Toque para definir o anestesista
                     </p>
