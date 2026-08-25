@@ -8,8 +8,8 @@
 import { describe, it, expect } from 'vitest'
 import {
   turnoDoCasoImportado, carimbarTurnos, classificarAnexoMapa, resumoMapa,
-  anestesistaDoPosto, sugerirAtribuicoesDoPosto, chaveMapa, planoPublicacaoMapas,
-  nomesDoMapa,
+  anestesistaDoPosto, sugerirAtribuicoesDoPosto, sugerirAtribuicoesLidas,
+  chaveMapa, planoPublicacaoMapas, nomesDoMapa,
 } from '@/lib/escalaFdsMapas'
 
 // grade real do documento de 22/08 (faixa → coluna → pessoa)
@@ -151,6 +151,60 @@ describe('sugestão pelo posto da grade (dono 2026-08-22)', () => {
     const grupos = [{ chave: 'Sala 1', nome: '' }]
     expect(sugerirAtribuicoesDoPosto(grupos, 'ROMULO', () => null)).toEqual({})
     expect(sugerirAtribuicoesDoPosto(grupos, '', () => 'uid')).toEqual({})
+  })
+})
+
+/**
+ * Dono 25/08, conferindo o mapa do feriado: "identificou o anestesista
+ * (cabeçalho) mas o campo abaixo deixou 'sem anestesista'". O cabeçalho vinha
+ * do nome LIDO e o Select nunca era pré-selecionado por ele — só pelo posto da
+ * grade, que no feriado não existe. A conferência de DIA ÚTIL já fazia isso.
+ */
+describe('pré-seleção pelo nome LIDO no mapa (dono 25/08)', () => {
+  // recorte real dos mapas de 25/08 (Unimed Sala 3 é a dupla OSCAR + NATHALIA)
+  const DICIONARIO = {
+    MARILIO: 'uid-marilio', FERNANDA: 'uid-fernanda', DANIELA: 'uid-daniela',
+    'JOAO RICARDO': 'uid-joao-ricardo', GIOVANA: 'uid-giovana',
+  }
+  const resolver = (n) => DICIONARIO[String(n || '').toUpperCase()] || null
+
+  it('o nome do documento resolve para o login e o campo nasce preenchido', () => {
+    const grupos = [
+      { chave: 'CC - Sala 1', nome: 'MARILIO' },
+      { chave: 'CC - Sala 2', nome: 'FERNANDA' },
+      { chave: 'Sala 1', nome: 'DANIELA' },
+      { chave: 'Sala 2', nome: 'JOAO RICARDO' },
+    ]
+    expect(sugerirAtribuicoesLidas(grupos, resolver)).toEqual({
+      'CC - Sala 1': 'uid-marilio',
+      'CC - Sala 2': 'uid-fernanda',
+      'Sala 1': 'uid-daniela',
+      'Sala 2': 'uid-joao-ricardo',
+    })
+  })
+
+  it('não alcança ausência declarada, nem nome fora do dicionário, nem DUPLA', () => {
+    const grupos = [
+      { chave: 'CC - Sala 4', nome: '?' },                 // ausência é informação
+      { chave: 'CC - Sala 9', nome: '' },                  // vazio é do posto da grade
+      { chave: 'CC - Sala 8', nome: 'NOME NOVO' },         // sem login: escolha humana
+      { chave: 'CC - Sala 3', nome: 'OSCAR + NATHALIA' },  // um login não representa dois
+    ]
+    expect(sugerirAtribuicoesLidas(grupos, resolver)).toEqual({})
+  })
+
+  it('as duas fontes são disjuntas — a do posto nunca cobre grupo com nome', () => {
+    const grupos = [{ chave: 'Sala 1', nome: 'DANIELA' }, { chave: 'Sala 6', nome: '' }]
+    const lidas = sugerirAtribuicoesLidas(grupos, resolver)
+    const posto = sugerirAtribuicoesDoPosto(grupos, 'MARILIO', resolver)
+    expect(Object.keys(lidas)).toEqual(['Sala 1'])
+    expect(Object.keys(posto)).toEqual(['Sala 6'])
+    expect(Object.keys(lidas).filter((k) => k in posto)).toEqual([])
+  })
+
+  it('sem dicionário não inventa', () => {
+    expect(sugerirAtribuicoesLidas([{ chave: 'Sala 1', nome: 'DANIELA' }], null)).toEqual({})
+    expect(sugerirAtribuicoesLidas(null, resolver)).toEqual({})
   })
 })
 

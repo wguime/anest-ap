@@ -25,7 +25,7 @@ import { Badge, Button, Select } from '@/design-system'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
 import { nomeCirurgiaoCurto } from '@/lib/colunaLiberacao'
-import { anestesistaDoPosto, sugerirAtribuicoesDoPosto, turnoDoCasoImportado, TURNOS_MAPA } from '@/lib/escalaFdsMapas'
+import { anestesistaDoPosto, sugerirAtribuicoesDoPosto, sugerirAtribuicoesLidas, turnoDoCasoImportado, TURNOS_MAPA } from '@/lib/escalaFdsMapas'
 import { gruposAnestesista, formatData } from './utils'
 import SegmentedSelector from './SegmentedSelector'
 
@@ -62,19 +62,36 @@ export default function ConferirMapaFdsPage({ mapa, grade, onSalvar, onVoltar, c
   const atribuicoes = mapa?.atribuicoes?.[turno] || {}
   const sugeridos = mapa?.sugeridos?.[turno] || {}
 
-  // SUGESTÃO PELO POSTO DA GRADE (dono 2026-08-22): o mapa do HRO de sábado veio
-  // com a coluna do anestesista vazia nas 6 cirurgias da tarde, e a grade diz que
-  // das 13–19h o HRO é do Rômulo. Pré-seleciona, marca como sugestão e o Select
-  // continua mandando — a atribuição nunca é gravada sozinha.
+  // PRÉ-SELEÇÃO DO LOGIN, em duas fontes que não se cruzam:
+  //
+  // 1. NOME LIDO no mapa (dono 25/08: "identificou o anestesista no cabeçalho
+  //    mas o campo abaixo deixou 'sem anestesista'"). O dicionário só diz a que
+  //    login o nome do documento pertence — não é palpite, então entra sem
+  //    marca de sugestão, igual à conferência de dia útil.
+  // 2. POSTO DA GRADE (dono 22/08): o mapa do HRO de sábado veio com a coluna do
+  //    anestesista vazia nas 6 cirurgias da tarde, e a grade diz que das 13–19h
+  //    o HRO é do Rômulo. Esse SIM é sugestão e leva o rótulo.
+  //
+  // Uma alcança só grupo COM nome, a outra só grupo SEM nome. Em nenhuma das
+  // duas a atribuição é gravada sozinha: o Select continua mandando.
   useEffect(() => {
     if (!canEdit) return
-    const novas = sugerirAtribuicoesDoPosto(grupos, nomePosto, resolver)
-    const faltando = Object.entries(novas).filter(([k]) => atribuicoes[k] === undefined)
-    if (!faltando.length) return
+    const lidas = sugerirAtribuicoesLidas(grupos, resolver)
+    const doPosto = sugerirAtribuicoesDoPosto(grupos, nomePosto, resolver)
+    const novasLidas = Object.entries(lidas).filter(([k]) => atribuicoes[k] === undefined)
+    const novasPosto = Object.entries(doPosto).filter(([k]) => atribuicoes[k] === undefined)
+    if (!novasLidas.length && !novasPosto.length) return
     onSalvar({
       ...mapa,
-      atribuicoes: { ...mapa.atribuicoes, [turno]: { ...atribuicoes, ...Object.fromEntries(faltando.map(([k, v]) => [k, v.uid])) } },
-      sugeridos: { ...mapa.sugeridos, [turno]: { ...sugeridos, ...Object.fromEntries(faltando.map(([k, v]) => [k, v.nome])) } },
+      atribuicoes: {
+        ...mapa.atribuicoes,
+        [turno]: {
+          ...atribuicoes,
+          ...Object.fromEntries(novasLidas),
+          ...Object.fromEntries(novasPosto.map(([k, v]) => [k, v.uid])),
+        },
+      },
+      sugeridos: { ...mapa.sugeridos, [turno]: { ...sugeridos, ...Object.fromEntries(novasPosto.map(([k, v]) => [k, v.nome])) } },
     }, { silencioso: true })
   }, [grupos, nomePosto, resolver, canEdit]) // eslint-disable-line react-hooks/exhaustive-deps
 

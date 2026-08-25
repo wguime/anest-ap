@@ -272,8 +272,17 @@ describe('conferência do mapa', () => {
     await anexarMapa(container, MAPA_HRO_SABADO, 'hro.png')
     await abrirMapa(/HRO · 22\/08/)
 
-    // manhã: os nomes vêm do documento e a grade não os substitui
-    expect(await screen.findByText('THAYNA')).toBeInTheDocument()
+    // manhã: os nomes vêm do documento e a grade não os substitui. O cabeçalho
+    // mostra o nome do CADASTRO porque o login já nasce resolvido pelo nome
+    // lido (dono 25/08) — o que importa aqui é que a pessoa é a THAYNA e não o
+    // Rômulo do posto, e que a linha dela não leva rótulo de sugestão.
+    // ⚠️ o Select do DS não repassa `aria-label` (usa `aria-labelledby` de um
+    // label que aqui não existe), então a busca é pela seção da sala.
+    const secao = (await screen.findByText('Sala 1')).closest('section')
+    const campo = within(secao).getByRole('combobox')
+    expect(campo).toHaveTextContent('THAYNA REGINA SANTOS')
+    expect(campo).not.toHaveTextContent('sem anestesista')   // a queixa de 25/08
+    expect(screen.queryByText(/Sugerido pelo posto da grade/)).toBeNull()
     fireEvent.click(screen.getByRole('tab', { name: /Tarde · 3/ }))
     // tarde: a coluna veio vazia e a grade põe o Rômulo no HRO das 13–19h
     await waitFor(() => expect(screen.getAllByText(/Sugerido pelo posto da grade/).length).toBeGreaterThan(0))

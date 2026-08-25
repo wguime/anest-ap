@@ -147,6 +147,38 @@ export function sugerirAtribuicoesDoPosto(grupos, nomePosto, resolverUid) {
 }
 
 /**
+ * Pré-seleção do login para os grupos que TÊM nome lido no mapa, resolvido pelo
+ * dicionário de apelidos. É o que a conferência de DIA ÚTIL já fazia
+ * (`ImportarEscalaPage`, efeito "Pré-atribui pela resolução do apelido
+ * importado") e faltava aqui: o cabeçalho mostrava "MARILIO" e o Select abaixo
+ * dizia "— sem anestesista —", que se lê como "o app não entendeu".
+ *
+ * Não é palpite e por isso não vira "sugestão" na tela: o nome é do documento,
+ * o dicionário só diz a qual login ele pertence. Nome que o dicionário não
+ * resolve fica de fora — a escolha é humana (regra da casa: nunca chutar
+ * identidade).
+ *
+ * ⚠️ DUPLA ("OSCAR + NATHALIA"): fica de fora de propósito. Um login só não
+ * representa duas pessoas, e `aplicarAtribuicoes` preserva o texto com "+"
+ * justamente para a fila contar a presença dos dois.
+ *
+ * @param {Array} grupos                            saída de `gruposAnestesista`
+ * @param {(nome:string)=>string|null} resolverUid  dicionário apelido→login
+ * @returns {Object} chave do grupo → uid
+ */
+export function sugerirAtribuicoesLidas(grupos, resolverUid) {
+  const out = {}
+  if (!resolverUid) return out
+  for (const g of grupos || []) {
+    const lido = texto(g?.nome)
+    if (!lido || lido === '?' || /^\?+$/.test(lido) || lido.includes('+')) continue
+    const uid = resolverUid(lido)
+    if (uid) out[g.chave] = uid
+  }
+  return out
+}
+
+/**
  * Chave estável de um mapa na lista de documentos: um arquivo por
  * hospital+dia. Reanexar o mesmo par SUBSTITUI (a foto nova manda — mesma regra
  * do rodapé na importação de dia útil), em vez de criar um segundo item que

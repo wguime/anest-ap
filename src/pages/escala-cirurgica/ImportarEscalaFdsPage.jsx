@@ -948,8 +948,18 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
                 onAbrir={() => setVista(m.id)}
                 onRemover={() => removerMapa(m.id)}
               >
-                {!!m.confirmar?.length && (
-                  <div className="mt-2 grid grid-cols-2 gap-1.5">
+                {/* HOSPITAL E DIA SEMPRE EDITÁVEIS (dono 25/08, "e se houver
+                    confusão como resolver?"). Antes os dois Selects só nasciam
+                    quando a leitura FALHAVA (`confirmar`), e leitura CONFIANTE
+                    E ERRADA não tinha conserto: o item dizia "Unimed · 25/08" e
+                    não havia por onde trocar — remover e reanexar reclassifica
+                    igual. O risco é concreto: o mapa do HRO de FERIADO não tem
+                    coluna ANEST (o anestesista vem em "Observação") nem rodapé
+                    vermelho, que são as duas assinaturas do HRO no prompt, e
+                    casa quase palavra por palavra com a descrição do MATERNO.
+                    `redefinirMapa` já re-chaveia e re-prepara o lote com as
+                    salas canônicas do hospital novo — só faltava o caminho. */}
+                <div className="mt-2 grid grid-cols-2 gap-1.5">
                     <Select
                       className="min-w-0"
                       aria-label="Hospital do mapa"
@@ -969,8 +979,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
                       onChange={(v) => redefinirMapa(m.id, { data: v })}
                       placeholder="Dia"
                     />
-                  </div>
-                )}
+                </div>
               </ItemDocumento>
             )
           })}
