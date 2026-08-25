@@ -51,6 +51,18 @@ card mostra: **hospital, sala, cirurgião e anestesista**. Nada de paciente alé
 das iniciais — é regra de LGPD do projeto e o CHECK do banco rejeita nome
 completo na escala.
 
+Duas regras da tela, decididas em 24/08 depois deste prompt ser escrito, e que
+o feriado herda sem trabalho extra se você reusar o caminho do fim de semana:
+
+- **o alerta de sem-anestesista não tem pastilha**: a ação é a frase "Toque para
+  definir o anestesista" ABAIXO do texto. Inline ela comia 48% da linha e o texto
+  ficava com 195px; abaixo, recupera 376px por 22px de altura;
+- **o recado do plantonista é cartão** com rótulo "RECADO DO PLANTONISTA",
+  "autor · plantonista · hora" e "Confirmar leitura" de largura inteira.
+
+Nenhuma das duas tem ramificação por modo — são um código só, então não há o que
+"ligar" para o feriado.
+
 **O card do feriado é o mesmo do fim de semana**, sem exceção: hospital em caixa
 alta isolado abaixo do nome, sala na linha seguinte, cirurgiões em lista, e a
 coluna da direita com "+ Tempo total" e "Editar". A única diferença esperada é a
@@ -78,8 +90,10 @@ ausência do selo Pn — no feriado não há posições numeradas.
 ## Fronteiras
 
 - **Não toque no fluxo de dia útil.** É decisão expressa do dono (24/08): as três
-  abas, o seletor de hospital, o desenho do recado, o botão "Importar" e a ordem
-  do card seguem como estão de segunda a sexta. A trava disso é o describe
+  abas, o seletor de hospital, o botão "Importar" e a ordem do card seguem como
+  estão de segunda a sexta. (O recado do plantonista e o alerta de sem-anestesista
+  são a exceção — o dono pediu que os dois valham igual em toda escala, e eles já
+  estão assim.) A trava disso é o describe
   "o desenho da fila única não atravessa para o dia útil" em
   `src/__tests__/pages/escalaFdsTelaUnica.test.jsx` — ele tem de continuar verde.
 - **`ordem_liberacao` é imutável depois de publicada.** Mudar a fila = republicar.
@@ -109,8 +123,8 @@ O que a tela tem de mostrar depois de publicar:
 - todos os cards **VERDES** na publicação (regra do dono de 24/08: ninguém nasce
   liberado na fila única);
 - as cirurgias dos mapas aparecendo no card de quem as faz, com hospital, sala e
-  cirurgião — e as sem anestesista no alerta do topo, com o botão "Adicionar
-  anestesista".
+  cirurgião — e as sem anestesista no alerta do topo, com a frase "Toque para
+  definir o anestesista" abaixo do texto.
 
 ⚠️ Confira dois nomes contra o dicionário `escala_anestesista_alias` antes de
 confiar na fila: **ALEXANDRE S** e **ALEXANDRE D** são pessoas diferentes, e

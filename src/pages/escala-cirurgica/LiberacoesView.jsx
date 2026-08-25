@@ -1031,22 +1031,27 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           desenhados no protótipo do FIM DE SEMANA e valem só lá. No dia útil a
           faixa de borda a borda de 17/08 fica como está — "não quero que sejam
           aplicadas em dias úteis". */}
+      {/* CARTÃO COM RÓTULO, EM TODA ESCALA (dono 24/08: "quero que essa
+          configuração de mensagem do plantonista seja assim nos dias úteis").
+          O desenho nasceu no protótipo do fim de semana e ficou lá por dois dias,
+          enquanto o dia útil seguia com a faixa de borda a borda de 17/08 e o
+          "Confirmar" numa pastilha de 32px no canto. As duas diferenças que o
+          dono quis trazer: o RÓTULO diz de quem é a mensagem antes de ela ser
+          lida, e o CONFIRMAR vira botão de largura inteira — 40px de alvo contra
+          32px, para a única saída do recado. Sem ramificação: um recado, um
+          desenho. */}
       {avisos.map((a) => (
         <div
           key={a.id}
-          className={modoFds
-            ? 'rounded-2xl border border-category-purple/45 bg-category-purple-bg px-3 py-2.5'
-            : '-mx-4 border-y border-category-purple/40 bg-category-purple-bg px-4 py-2'}
+          className="rounded-2xl border border-category-purple/45 bg-category-purple-bg px-3 py-2.5"
         >
           <div className="flex items-center gap-2">
             <div className="min-w-0 flex-1">
-              {modoFds && (
-                <p className="mb-0.5 text-[10.5px] font-extrabold uppercase tracking-[0.06em] text-category-purple-fg">
-                  Recado do plantonista
-                </p>
-              )}
+              <p className="mb-0.5 text-[10.5px] font-extrabold uppercase tracking-[0.06em] text-category-purple-fg">
+                Recado do plantonista
+              </p>
               {/* o RECADO em negrito: é o que se lê de relance */}
-              <p className={[modoFds ? 'text-[14.5px]' : 'text-[15px]', 'font-bold leading-tight text-foreground [overflow-wrap:anywhere]'].join(' ')}>{a.texto}</p>
+              <p className="text-[14.5px] font-bold leading-tight text-foreground [overflow-wrap:anywhere]">{a.texto}</p>
               {/* quem mandou e QUANDO — sem contagem de confirmações (dono 17/08):
                   quem lê não decide nada com "2 de 4 confirmaram", e o número
                   transformava o recado num placar. */}
@@ -1057,17 +1062,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 <span className="shrink-0 tabular-nums opacity-80">{horaCurta(a.criadoEm)}</span>
               </p>
             </div>
-            {/* DIA ÚTIL: botão pequeno no canto — o recado é a informação, o
-                confirmar é só a saída (desenho de 17/08, intacto). */}
-            {!modoFds && (
-              <button
-                type="button"
-                onClick={() => confirmarAviso(a.id)}
-                className="flex h-8 shrink-0 items-center gap-1 rounded-lg bg-category-purple px-2.5 text-[12.5px] font-bold text-white active:opacity-80"
-              >
-                <Check className="h-3.5 w-3.5" /> Confirmar
-              </button>
-            )}
             {/* o plantonista tira o recado que não vale mais (dono 17/08) */}
             {canEdit && souPlantonista && (
               <button
@@ -1080,17 +1074,13 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
               </button>
             )}
           </div>
-          {/* FIM DE SEMANA: Confirmar leitura de largura inteira (40px de alvo,
-              contra os 32px da pastilha de canto). Só aqui. */}
-          {modoFds && (
-            <button
-              type="button"
-              onClick={() => confirmarAviso(a.id)}
-              className="mt-2 flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-[11px] bg-category-purple text-[13.5px] font-extrabold text-white active:opacity-80"
-            >
-              <Check className="h-4 w-4 shrink-0" /> Confirmar leitura
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => confirmarAviso(a.id)}
+            className="mt-2 flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-[11px] bg-category-purple text-[13.5px] font-extrabold text-white active:opacity-80"
+          >
+            <Check className="h-4 w-4 shrink-0" /> Confirmar leitura
+          </button>
         </div>
       ))}
 

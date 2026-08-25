@@ -256,17 +256,30 @@ describe('Histórico e aparência do recado (dono 17/08)', () => {
 // mantém a faixa de borda a borda de 17/08, com a pastilha de Confirmar no
 // canto. Trava dos DOIS lados: é a fronteira que já foi cruzada uma vez.
 // ════════════════════════════════════════════════════════════════════════════
-describe('Recado — a forma depende do dia', () => {
-  it('DIA ÚTIL: faixa sem rótulo, com a pastilha "Confirmar" no canto', async () => {
+describe('Recado — um desenho só, em toda escala', () => {
+  /**
+   * ⚠️ ESTE TESTE MUDOU DE LADO EM 24/08, e o porquê fica aqui em vez de sumir.
+   * O cartão com rótulo e o "Confirmar leitura" de largura inteira nasceram no
+   * protótipo do FIM DE SEMANA; chegaram ao dia útil junto e foram devolvidos
+   * ("faça apenas o solicitado sem alterar a escala de dias úteis"), o que este
+   * describe travava dos dois lados. Horas depois o dono pediu o contrário:
+   * "quero que essa configuração de mensagem do plantonista seja assim nos dias
+   * úteis". Então o recado passou a ter UM desenho, e a ramificação sumiu.
+   *
+   * O que a trava protege continua sendo o mesmo: que os dois modos não voltem a
+   * divergir para o mesmo gesto.
+   */
+  it('DIA ÚTIL: cartão com rótulo e "Confirmar leitura" de largura inteira', async () => {
     fetchAvisos.mockResolvedValue([AVISO])
     montar({ meuUid: 'uid-mar', meuAlias: 'MARILIO' })
     await screen.findByText('Guilherme libera Alexandre S.')
-    expect(screen.queryByText('Recado do plantonista')).toBeNull()
-    expect(screen.getByRole('button', { name: /^Confirmar$/ })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: /Confirmar leitura/ })).toBeNull()
+    expect(screen.getByText('Recado do plantonista')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Confirmar leitura/ })).toBeTruthy()
+    // a pastilha de 32px do canto saiu
+    expect(screen.queryByRole('button', { name: /^Confirmar$/ })).toBeNull()
   })
 
-  it('FIM DE SEMANA: cartão com rótulo e "Confirmar leitura" de largura inteira', async () => {
+  it('FILA ÚNICA: idêntico — mesmo rótulo, mesmo botão', async () => {
     fetchAvisos.mockResolvedValue([AVISO])
     montar({ meuUid: 'uid-mar', meuAlias: 'MARILIO', modoFds: true })
     await screen.findByText('Guilherme libera Alexandre S.')
