@@ -1043,9 +1043,30 @@ escala de funcionárias seguem com as próprias regras.
 
 **O documento é uma LISTA SIMPLES de nomes** ("FERIADO 25/08" + 22 nomes), sem
 grade P1–P4, sem posições numeradas e sem a linha "1º→último a ser liberado" do
-FDS. Daí: sem selo Pn, sem P4-coringa, sem fila da noite (`fase` fixa em `'dia'`
-— derivada da DATA, não de `fdsMeta.tipo`, que só existe depois de publicar), e
-o seletor com dois turnos.
+FDS. Daí: sem a numeração Pn DA GRADE (P1–P12), sem P4-coringa, sem fila da
+noite (`fase` fixa em `'dia'` — derivada da DATA, não de `fdsMeta.tipo`, que só
+existe depois de publicar), e o seletor com dois turnos.
+
+**SELOS P1–P4 DO PLANTÃO — a fonte é a do DIA ÚTIL (dono 25/08):** "informe quem
+são os plantões (P1–P4) assim como já é informado nas escalas de dias úteis;
+apenas nos feriados, já que dias úteis e finais de semana já possuem essas
+marcações". Vêm do **card Plantões** (`plantoes` → `plantonistasNoturnos` →
+`marcarSelosNoTurno`), que é onde os P1–P4 do dia existem — a folha do feriado
+não traz posição nenhuma. Uma condição: `avisarSelos` deixou de ser exclusivo de
+`!modoFds`; `ehDiaUtil` (true numa terça) é o que segue excluindo sáb/dom. Como
+no dia útil, o selo é **da PESSOA e vale nos dois turnos**, acompanhando a
+posição dela em cada fila.
+
+⚠️ **duas numerações, um badge — não misturar.** Sáb/dom ficam fora por motivo
+DIFERENTE do dia útil: lá os Pn saem da GRADE do documento e vão até **P12**,
+sendo posições da ESCALA, não o plantão do dia. Por isso `marcarSelosFds` é
+PULADO no feriado (`modoFds && !feriado`): na prática `posicoes` é `{}` ali, mas
+um meta legado bastaria para pôr P7/P8 no mesmo selo que significa "plantão".
+
+⚠️ **P do card sem linha na folha NÃO vira card** (confirmado pelo dono 25/08):
+naquele dia o card Plantões trazia P3 Fernando Henrique e P4 Rômulo, nenhum dos
+dois na lista de 22 nomes — sem card na fila, não há o que marcar, e sintetizar
+linha seria inventar presença. Só P1 e P2 apareceram, e está certo assim.
 
 ⚠️ **SENTIDO DA FILA — errar aqui inverte tudo, e foi o defeito de 24/08** ("a
 ordem de liberação veio invertida"). A folha do feriado **já vem na direção do
