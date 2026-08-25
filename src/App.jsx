@@ -35,7 +35,6 @@ import { reportError } from "@/services/errorReporting"
 import { SUB_CARD_PARENT } from "./data/rolePermissionTemplates"
 import { isBulkImportEnabled } from "./utils/featureFlags"
 import { useActivityTracking } from "./hooks/useActivityTracking"
-import { useLockPortraitOrientation } from "./hooks/useLockPortraitOrientation"
 import useIosViewportReanchor from "./hooks/useIosViewportReanchor"
 import { PrivacyPolicyModal } from "./components/PrivacyPolicyModal"
 import { canAccessCentroGestao, canAccessIncidenteGestao, canAccessDenunciaGestao } from "./pages/management/utils/incidentAccess"
@@ -864,10 +863,6 @@ function App() {
   // Activity tracking
   const { trackPageView } = useActivityTracking()
 
-  // Trava orientação em portrait (best-effort — cobre Android Chrome PWA;
-  // iOS Safari usa fallback visual via RotateDeviceOverlay)
-  useLockPortraitOrientation()
-
   // iOS: teclado fechado pode deixar o visual viewport deslocado e o
   // BottomNav/headers `fixed` "flutuando" no meio da página — re-ancora.
   useIosViewportReanchor()
@@ -1558,25 +1553,6 @@ function App() {
         />
       )}
 
-      {/* Overlay para bloquear modo paisagem (exceto em fullscreen e AulaPlayerPage) */}
-      {currentPage !== 'aulaPlayer' && (
-        <div className="landscape-block-overlay">
-          <div className="w-16 h-16 mb-4 text-muted-foreground">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="4" y="2" width="16" height="20" rx="2" />
-              <path d="M12 18h.01" />
-            </svg>
-          </div>
-          <h2 className="text-lg font-semibold text-foreground mb-2">
-            Gire seu dispositivo
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Este aplicativo funciona melhor em modo retrato.
-            <br />
-            Para assistir vídeos em tela cheia, use o botão de expandir.
-          </p>
-        </div>
-      )}
     </div>
   )
 }

@@ -1404,6 +1404,28 @@ nova sem o par reabre o vai-e-volta.
 
 ⚠️ Bug conhecido: `src/App.jsx:1011` (TODO BUG-06) — global BottomNav pode duplicar com per-page BottomNav (createPortal). Decisão arquitetural pendente. Em página nova, **NÃO** renderizar BottomNav próprio.
 
+## Orientação da tela — o app é RETRATO (dono 25/08)
+Nada gira, exceto o que nasce deitado: **documento (PDF/anexo Office), vídeo e imagem em tela cheia**.
+Fonte única `src/lib/orientacaoTela.js` — quem precisa **PEDE** com `useLandscapePermitido()` e devolve ao
+desmontar; é **contador**, não booleano (PDF em modal sobre página com vídeo devolveria a trava cedo demais).
+Já pedem: `PDFViewer` e `VideoPlayer` do DS (cobrem documento, ética, relatório, comunicado, aula, férias),
+`PDFEmbed`, `AulaPlayerPage`, `ExpandedImageModal` e o anexo Office do comunicado. Prévia embutida em
+formulário de ADMIN fica FORA de propósito — ali a tela é de edição, e o fullscreen do iframe já resolve.
+Sair da tela cheia NÃO força retrato: devolve a decisão à política (`aplicarPoliticaOrientacao`), senão o
+aparelho vira na mão de quem ainda está deitado com o vídeo tocando. Duas camadas, porque nenhuma cobre
+todos os aparelhos: `screen.orientation.lock()` (só Android/PWA instalado — ⚠️ liberar é `lock('any')`,
+**nunca `unlock()`**, que devolve ao `portrait` do manifest) + classe `landscape-liberado` no `<html>`
+ligando o overlay `LandscapeBlockOverlay`, montado em `main.jsx` **ACIMA do portão de auth** (login e boot
+também são o app); é ele que segura o iPhone, onde o lock não existe na prática. iPad/desktop seguem livres
+(recorte `max-height: 500px` = celular deitado) e `/verificar/*` fica fora.
+⚠️ **o overlay JÁ EXISTIA e não funcionava**, por dois defeitos de CSS que valem para o app inteiro: os
+tokens guardam só o triplo HSL, então `background: var(--background)` é valor inválido e a declaração CAI —
+o aviso aparecia TRANSPARENTE sobre o app girado; e numa LISTA de seletores um seletor desconhecido invalida
+a lista inteira (`:fullscreen` agrupado com `:-webkit-full-screen` derrubava as duas). Travas:
+`src/__tests__/lib/orientacaoTela.test.js` (invariante do contador) + o describe de rotação em
+`video-player.test.jsx` (a LIGAÇÃO — o que se perde num refactor é o componente esquecer de pedir).
+Detalhes e call sites: `.claude/rules/responsividade.md`.
+
 ## Skills (`.claude/skills/`) — invocar com `/`
 `/calculadoras` `/educacao` `/gestao-documental` `/centro-gestao` `/notificacoes` `/nova-pagina` `/supabase-migration` `/rotacao-residencia` `/importar-plantoes-residencia` `/escala` `/escala-cirurgica` `/cirurgias-particulares` `/cateter-peridural` `/criar-prompt`
 

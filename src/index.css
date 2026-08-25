@@ -60,23 +60,32 @@
 }
 
 /* ============================================================================
- * Controle de Orientação - Forçar Portrait exceto em Fullscreen
- * ============================================================================ */
-
-/* Quando NÃO está em fullscreen, mostra aviso em landscape */
+ * Orientação — o app é RETRATO (dono 25/08)
+ * ============================================================================
+ * Gira só o que nasce deitado: documento (PDF) e vídeo. Esses pedem a liberação
+ * por `permitirLandscape()` (src/lib/orientacaoTela.js), que põe
+ * `landscape-liberado` no <html>; sem a classe, o overlay cobre a tela deitada.
+ *
+ * O recorte `max-height: 500px` é o que separa CELULAR deitado de tablet e
+ * notebook — em iPad e desktop paisagem é o uso normal e não se bloqueia.
+ */
 @media screen and (orientation: landscape) and (max-height: 500px) {
-  body:not(:fullscreen) .landscape-block-overlay {
-    display: flex !important;
+  html:not(.landscape-liberado) .landscape-block-overlay {
+    display: flex;
   }
 }
 
-/* Overlay para bloquear landscape (deve ser adicionado no App) */
+/* Overlay que bloqueia a paisagem (markup em src/components/LandscapeBlockOverlay.jsx) */
 .landscape-block-overlay {
   display: none;
   position: fixed;
   inset: 0;
   z-index: var(--z-overlay);
-  background: var(--background);
+  /* ⚠️ os tokens guardam só o triplo HSL — `var(--background)` cru é valor
+     inválido e a declaração cai, deixando o overlay TRANSPARENTE (era o bug:
+     o aviso aparecia flutuando sobre o app girado). */
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -84,8 +93,14 @@
   padding: 2rem;
 }
 
-/* Permitir landscape em fullscreen */
-:fullscreen .landscape-block-overlay,
+/* Fullscreen (vídeo nativo, PDF em tela cheia) nunca vê o overlay.
+   ⚠️ regras SEPARADAS de propósito: numa lista de seletores, um seletor que o
+   browser não conhece invalida a lista INTEIRA — agrupar `:fullscreen` com
+   `:-webkit-full-screen` derrubava as duas onde só uma existe. */
+:fullscreen .landscape-block-overlay {
+  display: none !important;
+}
+
 :-webkit-full-screen .landscape-block-overlay {
   display: none !important;
 }

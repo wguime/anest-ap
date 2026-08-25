@@ -18,6 +18,7 @@ import { PageHeader } from '@/components';
 import { cn } from '@/design-system/utils/tokens';
 import { useToast } from '@/design-system';
 import { useHaptic } from '@/design-system/hooks';
+import { useLandscapePermitido } from '@/hooks/useLandscapePermitido';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { Search, Plus, X, Calendar, Link as LinkIcon, Paperclip, FileText, Image, Table, File, ExternalLink, Archive, ArchiveRestore, Edit, Trash2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Upload, AlertCircle, Maximize2, Minimize2, Megaphone, Users, CheckCircle, ClipboardList, Clock, ShieldCheck, Presentation, MailOpen } from 'lucide-react';
 
@@ -75,6 +76,11 @@ function ZoomableImage({ src, alt, onExpand }) {
 
 // Modal fullscreen para imagem expandida
 function ExpandedImageModal({ image, onClose }) {
+  // Foto/scan em tela cheia entra na exceção da trava de retrato: metade das
+  // imagens é deitada e no celular em pé sobra uma faixa. (antes do early
+  // return — hook não pode ficar atrás dele)
+  useLandscapePermitido(Boolean(image));
+
   if (!image) return null;
 
   const modalContent = (
@@ -343,6 +349,15 @@ export default function ComunicadosPage({ onNavigate, params }) {
 
   // Estado para imagem expandida
   const [expandedImage, setExpandedImage] = useState(null);
+  // Anexo Office aberto no comunicado (visualizado inline pelo gview) é
+  // documento — gira como o PDF gira. PDF e imagem já liberam por conta
+  // própria (PDFViewer / ExpandedImageModal).
+  useLandscapePermitido(
+    (selectedComunicado?.anexos || []).some(
+      (a) => a?.url && a.url !== '#' && a?.nome && getAnexoType(a.nome) === 'other'
+    )
+  );
+
   // confirmação destrutiva de exclusão de comunicado
   const [deleteTargetId, setDeleteTargetId] = useState(null);
   const [deleting, setDeleting] = useState(false);

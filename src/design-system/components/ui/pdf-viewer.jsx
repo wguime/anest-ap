@@ -8,6 +8,7 @@ import { Document, Page, pdfjs } from 'react-pdf'
 import { motion, AnimatePresence } from 'framer-motion'
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { cn } from "@/design-system/utils/tokens"
+import { useLandscapePermitido } from "@/hooks/useLandscapePermitido"
 
 // Worker local — evita latência CDN, funciona offline, sem risco de version mismatch.
 // Atribuição INCONDICIONAL: o próprio react-pdf v10 já seta o default relativo
@@ -133,6 +134,10 @@ function PDFViewer({
   const [zoom, setZoom] = useState(1)
   const [baseWidth, setBaseWidth] = useState(0)
   const [isFullscreen, setIsFullscreen] = useState(false)
+
+  // Documento é a exceção da trava de retrato: página A4 deitada no celular
+  // ganha ~2x de largura útil. Vale enquanto o viewer estiver montado.
+  useLandscapePermitido()
 
   // Largura "fit-to-width": acompanha o container (responsivo) via ResizeObserver.
   // baseWidth = largura útil da área de scroll; pageWidth aplica o zoom por cima.

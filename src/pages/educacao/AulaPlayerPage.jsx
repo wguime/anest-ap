@@ -1,7 +1,8 @@
 /**
  * AulaPlayerPage.jsx
  * Página wrapper para o player de aula
- * Permite rotação para modo horizontal apenas nesta página
+ * Permite rotação para modo horizontal (exceção da trava de retrato do app —
+ * ver src/lib/orientacaoTela.js)
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -17,6 +18,8 @@ import { useEffectiveBanner } from './hooks/useEffectiveBanner';
 import * as educacaoService from '@/services/educacaoService';
 import { formatDuracao } from './data/educacaoUtils';
 import { triggerCompletionConfetti } from '@/utils/confetti';
+import { useLandscapePermitido } from '@/hooks/useLandscapePermitido';
+import { aplicarPoliticaOrientacao } from '@/lib/orientacaoTela';
 
 function formatMMSS(segundos) {
   const s = Math.max(0, Math.floor(Number(segundos) || 0));
@@ -38,8 +41,7 @@ function useScreenOrientation() {
         await elem.webkitRequestFullscreen();
       }
 
-      // Tentar bloquear em landscape (o overlay landscape-block-overlay
-      // é automaticamente escondido pelo CSS :fullscreen)
+      // Em tela cheia o conteúdo É deitado — pede landscape de fato.
       if (screen.orientation && screen.orientation.lock) {
         try {
           await screen.orientation.lock('landscape');
@@ -61,14 +63,10 @@ function useScreenOrientation() {
         await document.webkitExitFullscreen();
       }
 
-      // Re-lock em portrait após sair do vídeo
-      if (screen.orientation && screen.orientation.lock) {
-        try {
-          await screen.orientation.lock('portrait');
-        } catch (_e) {
-          // Fallback silencioso — iOS Safari e browser tabs sem PWA não suportam
-        }
-      }
+      // Desfaz o lock de landscape da tela cheia devolvendo a decisão à
+      // política, que aqui responde 'any' (a página está liberada). Forçar
+      // retrato viraria o aparelho na mão de quem ainda está deitado.
+      aplicarPoliticaOrientacao();
       setIsFullscreen(false);
     } catch (err) {
       console.error('Exit fullscreen error:', err);
@@ -79,11 +77,8 @@ function useScreenOrientation() {
     const handleFullscreenChange = () => {
       const isFs = !!document.fullscreenElement || !!document.webkitFullscreenElement;
       setIsFullscreen(isFs);
-
-      if (!isFs && screen.orientation && screen.orientation.lock) {
-        // Ao sair do fullscreen (inclusive via ESC), reinstaurar portrait
-        screen.orientation.lock('portrait').catch(() => {});
-      }
+      // Saída por ESC/gesto: mesmo caminho do botão.
+      if (!isFs) aplicarPoliticaOrientacao();
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -92,9 +87,6 @@ function useScreenOrientation() {
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-      if (screen.orientation && screen.orientation.lock) {
-        screen.orientation.lock('portrait').catch(() => {});
-      }
     };
   }, []);
 
@@ -104,6 +96,8 @@ function useScreenOrientation() {
 export default function AulaPlayerPage({ onNavigate, goBack, params }) {
   const { cursoId, moduloId, aulaId } = params || {};
   const { isFullscreen, enterFullscreen, _exitFullscreen } = useScreenOrientation();
+  // A aula é o conteúdo (vídeo/PDF): a página inteira gira.
+  useLandscapePermitido();
   const prefersReducedMotion = useReducedMotion();
   const { user } = useUser();
   const userId = user?.uid || user?.id || null;

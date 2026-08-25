@@ -37,6 +37,7 @@ vi.mock('react-dom', async () => {
 });
 
 import { VideoPlayer } from '@/design-system/components/ui/video-player';
+import { _resetOrientacao } from '@/lib/orientacaoTela';
 
 describe('VideoPlayer', () => {
   beforeEach(() => {
@@ -117,5 +118,25 @@ describe('VideoPlayer', () => {
       <VideoPlayer type="youtube" videoId="" title="No Video" />
     );
     expect(screen.getByText(/URL de vídeo inválida/i)).toBeInTheDocument();
+  });
+});
+
+/**
+ * A trava de retrato do app (dono 25/08) tem duas exceções: documento e vídeo.
+ * Este é o lado do VÍDEO — o teste vive aqui, e não junto da lib, porque o que
+ * pode se perder num refactor é a LIGAÇÃO (o componente esquecer de pedir), não
+ * a contagem, que `orientacaoTela.test.js` já cobre.
+ */
+describe('VideoPlayer — libera a rotação da tela enquanto está montado', () => {
+  beforeEach(() => {
+    _resetOrientacao();
+  });
+
+  it('com o player na tela o <html> ganha `landscape-liberado`; ao sair, perde', () => {
+    const { unmount } = render(<VideoPlayer src="video.mp4" title="Aula" />);
+    expect(document.documentElement.classList.contains('landscape-liberado')).toBe(true);
+
+    unmount();
+    expect(document.documentElement.classList.contains('landscape-liberado')).toBe(false);
   });
 });

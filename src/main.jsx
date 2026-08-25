@@ -23,6 +23,7 @@ import { NoticiasProvider } from './contexts/NoticiasContext'
 import LoginPage from './pages/LoginPage'
 import VerificarCertificadoPage from './pages/educacao/VerificarCertificadoPage'
 import VerificarDocumentoPublicoPage from './pages/VerificarDocumentoPublicoPage'
+import { LandscapeBlockOverlay } from './components/LandscapeBlockOverlay'
 import './index.css'
 import './pwaUpdate' // SW: check de update ao voltar ao 1º plano (aparelhos presos em bundle velho, 23/07)
 import App from './App.jsx'
@@ -218,9 +219,14 @@ function PublicRouteOrApp() {
   }
 
   return (
-    <AuthGatedProviders>
-      <App />
-    </AuthGatedProviders>
+    <>
+      {/* Acima do portão de auth de propósito: login e spinner de boot também
+          são o app, e também não giram. As rotas públicas acima ficam de fora. */}
+      <LandscapeBlockOverlay />
+      <AuthGatedProviders>
+        <App />
+      </AuthGatedProviders>
+    </>
   )
 }
 
