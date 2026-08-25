@@ -66,18 +66,37 @@ export function carimbarTurnos(casos, turnoPadrao = 'matutino') {
 }
 
 /**
+ * No feriado o mapa alimenta apenas o card operacional da fila única. Mantém
+ * os campos necessários para turno, sala, cirurgião e anestesista; paciente,
+ * procedimento, convênio e demais detalhes não são persistidos nesse fluxo.
+ */
+export function reduzirCasoParaFilaFeriado(caso) {
+  const out = {}
+  for (const campo of [
+    'hora', 'turno', 'sala', 'cirurgiao', 'cirurgiaoDisplay',
+    'anestesista', 'anestesistaUserId', 'semAnestesista',
+  ]) {
+    if (caso?.[campo] !== undefined) out[campo] = caso[campo]
+  }
+  return out
+}
+
+/**
  * A que escala um anexo pertence. O documento se declara: o layout diz o
  * hospital (`hospitalDetectado`) e o cabeçalho diz a data (`dataDetectada` —
  * "22/08/2026 HRO"). Ambos são SUGESTÃO: `confirmar` marca o que a leitura não
  * resolveu, para a tela pedir em vez de escolher sozinha (regra da casa: sugere,
  * nunca troca sozinho).
  */
-export function classificarAnexoMapa(resposta, { sabadoISO, domingoISO } = {}) {
+export function classificarAnexoMapa(resposta, { sabadoISO, domingoISO, datasAlvo } = {}) {
   const hospital = HOSPITAIS_MAPA.includes(texto(resposta?.hospitalDetectado))
     ? texto(resposta.hospitalDetectado)
     : ''
   const detectada = texto(resposta?.dataDetectada)
-  const doFimDeSemana = detectada === sabadoISO || detectada === domingoISO
+  const datas = Array.isArray(datasAlvo) && datasAlvo.length
+    ? datasAlvo.filter(Boolean)
+    : [sabadoISO, domingoISO].filter(Boolean)
+  const doFimDeSemana = datas.includes(detectada)
   return {
     hospital,
     data: doFimDeSemana ? detectada : '',

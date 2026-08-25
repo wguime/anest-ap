@@ -23,7 +23,7 @@ import ImportarEscalaPage from './ImportarEscalaPage'
 import ImportarEscalaFdsPage from './ImportarEscalaFdsPage'
 import TrocaSheet from './TrocaSheet'
 import { meuAliasDe, turnoAtual, casosResolvidos, dataPorExtenso, estadoTrocasDoHistorico, filtrarPorTurnoExibicao, normNome, formatData, rodapeDoTurno, localizarSlotEscala, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca } from './utils'
-import { ehFimDeSemana, FDS_HOSPITAL, FDS_TURNO_CASOS, turnoFdsAtual } from '@/lib/escalaFds'
+import { ehDataFilaUnica, ehFeriado, ehFimDeSemana, FDS_HOSPITAL, FDS_TURNO_CASOS, turnoFdsAtual } from '@/lib/escalaFds'
 import { podeEditarEscalaCirurgica } from './gate'
 
 const HOSPITAL_OPCOES = HOSPITAIS.map((h) => ({ value: h, label: HOSPITAL_LABEL[h] }))
@@ -59,11 +59,13 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const [turno, setTurno] = useState(() => turnoAtual())
   // sáb/dom é dado do CALENDÁRIO — não espera rede (ver turnoDoRelogio)
   const fimDeSemana = ehFimDeSemana(data)
+  const feriado = ehFeriado(data)
+  const dataFilaUnica = ehDataFilaUnica(data)
   // ── MODO FIM DE SEMANA (dono 15/08): fila de liberação ÚNICA ───────────────
   // Liga quando a data é sáb/dom E a linha 'fds' do dia está publicada. Sem ela,
   // a aba Liberações segue no comportamento por hospital (rollout seguro).
   // Fica ANTES dos efeitos de turno: no FDS o relógio decide entre 3 turnos.
-  const modoFds = fimDeSemana && escalas.fds?.status === 'publicada'
+  const modoFds = dataFilaUnica && escalas.fds?.status === 'publicada'
   // turno do relógio: 2 faixas no dia útil, 3 no FDS (7h/13h/19h)
   // ⚠️ Depende da DATA, não da linha 'fds' (defeito 16/08: "pisca com
   // informações antigas"). Ligar os 3 turnos ao fetch fazia a tela abrir com
@@ -94,7 +96,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   useEffect(() => {
     let vivo = true
     // amanhã de sexta = sábado: a fila única (linha 'fds') também conta como publicada
-    const alvos = [...HOSPITAIS, ...(ehFimDeSemana(amanha) ? [FDS_HOSPITAL] : [])]
+    const alvos = [...HOSPITAIS, ...(ehDataFilaUnica(amanha) ? [FDS_HOSPITAL] : [])]
     Promise.all(alvos.map((h) => svc.fetchEscala(amanha, h).catch(() => null)))
       .then((rs) => {
         if (!vivo) return
@@ -351,7 +353,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
             // ⚠️ o outline sem ícone é do protótipo do FIM DE SEMANA (dono
             // 24/08, 2ª mensagem): no dia útil o botão volta ao ghost com o
             // ícone, como está desde o começo.
-            <Button size="sm" variant={modoFds ? 'outline' : 'ghost'} onClick={() => setImportando(true)} aria-label="Importar escala">
+            <Button size="sm" variant={modoFds ? 'outline' : 'ghost'} onClick={() => feriado ? setImportandoFds(true) : setImportando(true)} aria-label="Importar escala">
               {!modoFds && <Upload className="w-4 h-4" />} Importar
             </Button>
           ) : null
@@ -423,16 +425,17 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
             const escalaLib = modoFds ? escalas.fds : escala
             return (
               <>
-                {fimDeSemana && !modoFds && canEdit && (
+                {dataFilaUnica && !modoFds && canEdit && (
                   <p className="mb-3 rounded-lg bg-info/10 px-3 py-2 text-xs text-info">
-                    Fim de semana: importe o documento de FDS (grade P1–P4 + ordem de liberação)
-                    para a fila única de todos os hospitais. Sem ele, a fila segue por hospital.
+                    {feriado
+                      ? 'Feriado: importe a lista e os mapas cirúrgicos para criar a fila única de todos os hospitais.'
+                      : 'Fim de semana: importe o documento de FDS (grade P1–P4 + ordem de liberação) para a fila única de todos os hospitais. Sem ele, a fila segue por hospital.'}
                   </p>
                 )}
                 <LiberacoesView
                   escala={escalaLib}
                   hospital={modoFds ? FDS_HOSPITAL : hospital}
-                  hospitalLabel={modoFds ? 'Fim de semana' : HOSPITAL_LABEL[hospital]}
+                  hospitalLabel={modoFds ? (feriado ? 'Feriado' : 'Fim de semana') : HOSPITAL_LABEL[hospital]}
                   canEdit={canEdit}
                   turno={turno}
                   plantoes={plantoesDia}
@@ -561,7 +564,11 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           hospital={hospital}
           data={data}
           turno={turno}
-          onAbrirFds={() => { setImportando(false); setImportandoFds(true) }}
+          onAbrirFds={(dataAlvo) => {
+            if (dataAlvo) setData(dataAlvo)
+            setImportando(false)
+            setImportandoFds(true)
+          }}
           onClose={(publicado) => {
             setImportando(false)
             // Publicou noutra data/hospital/período? Aterrissa exatamente na escala publicada.

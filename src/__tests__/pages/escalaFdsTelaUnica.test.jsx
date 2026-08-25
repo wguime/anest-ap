@@ -196,6 +196,24 @@ describe('fila única — ninguém nasce vermelho na publicação', () => {
   })
 })
 
+describe('feriado — sem selo Pn', () => {
+  it('não herda os selos P1–P4 da regra noturna de segunda–sexta', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-08-25T10:00:00-03:00'))
+    try {
+      const { container } = render(<LiberacoesView {...props({
+        escala: { ...ESCALA_FDS, data: '2026-08-25' },
+        fdsMeta: { tipo: 'feriado', grade: {}, posicoes: {} },
+        plantoes: [{ setor: 'P1', nome: 'KARINE' }, { setor: 'P2', nome: 'GABRIEL' }],
+      })} />, { wrapper: wrap })
+      await screen.findByText(/Karine/)
+      expect(container.querySelectorAll('[data-selo]')).toHaveLength(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})
+
 describe('alerta de sem anestesista — o botão diz o que faz', () => {
   it('a pastilha é "Adicionar anestesista" (dono 24/08)', async () => {
     const comOrfa = [...CASOS_FDS, {

@@ -48,7 +48,7 @@ import { ERRO_IA, classificarFalhaVision, mensagemFalhaVision } from '@/lib/esca
 import { isPermissionError } from '@/services/supabaseEscalaAnestesistaService'
 import {
   FDS_HOSPITAL, FAIXAS_FDS, normalizarPn, normalizarParseFds, sugerirRodapeFds,
-  rodapeDeOrdemDoc, sabadoDoFimDeSemana,
+  rodapeDeOrdemDoc, sabadoDoFimDeSemana, ehFeriado, ordensDocumentoFeriado,
 } from '@/lib/escalaFds'
 import {
   normNome, candidatosPrimeiroNome, formatData, prepararCasosFimDeSemana,
@@ -56,7 +56,7 @@ import {
 } from './utils'
 import {
   carimbarTurnos, chaveMapa, classificarAnexoMapa, planoPublicacaoMapas,
-  resumoMapa, HOSPITAIS_MAPA,
+  reduzirCasoParaFilaFeriado, resumoMapa, HOSPITAIS_MAPA,
 } from '@/lib/escalaFdsMapas'
 import ConferirMapaFdsPage from './ConferirMapaFdsPage'
 import { podeEditarEscalaCirurgica } from './gate'
@@ -103,8 +103,14 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
   const { roster, options: rosterOpcoes, rosterByUid, resolver, upsertAlias } = useRosterAnestesistas()
   const canEdit = podeEditarEscalaCirurgica(user)
 
-  const [sabadoISO, setSabadoISO] = useState(() => sabadoDoFimDeSemana(data) || data)
-  const domingoISO = useMemo(() => proximoDia(sabadoISO), [sabadoISO])
+  // O mesmo fluxo aceita dois formatos: FDS (sábado+domingo) e feriado (um dia).
+  // O nome histórico `sabadoISO` é mantido localmente para reduzir o risco de
+  // regressão no fluxo já publicado; em feriado ele guarda a própria data.
+  const [sabadoISO, setSabadoISO] = useState(() => ehFeriado(data) ? data : (sabadoDoFimDeSemana(data) || data))
+  const feriado = ehFeriado(sabadoISO)
+  const domingoISO = useMemo(() => feriado ? null : proximoDia(sabadoISO), [feriado, sabadoISO])
+  const datasSelecionadas = useMemo(() => feriado ? [sabadoISO] : [sabadoISO, domingoISO], [feriado, sabadoISO, domingoISO])
+  const turnosOrdem = feriado ? TURNOS : TURNOS_ORDEM
 
   const [dias, setDias] = useState({})       // { [iso]: { grade, posicoes, escalacao, ordem, ordemFonte } }
   const [logins, setLogins] = useState({})   // `${iso}|${pn}` → uid escolhido
@@ -127,7 +133,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
   const [vista, setVista] = useState('lista')
   const [encolhimentos, setEncolhimentos] = useState(null) // guardrail anti-perda
 
-  const diasAlvo = [sabadoISO, domingoISO].filter((iso) => dias[iso])
+  const diasAlvo = datasSelecionadas.filter((iso) => dias[iso])
 
   const importarImagem = async (file) => {
     if (!file) return
@@ -137,7 +143,8 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
       const img = await prepararImagemParaVision(file)
       const res = await svc.parseEscalaImagem({
         imageBase64: img.base64, mimeType: img.mimeType,
-        modo: 'fds', refSabado: sabadoISO, refDomingo: domingoISO,
+        modo: 'fds',
+        ...(feriado ? { refFeriado: sabadoISO } : { refSabado: sabadoISO, refDomingo: domingoISO }),
       })
       // Falha da IA (conta/chave/sobrecarga) — o mesmo diagnóstico da
       // importação normal; aqui a única saída é reimportar quando voltar.
@@ -164,10 +171,10 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
       const porData = {}
       const fora = []
       for (const d of norm.dias) {
-        if (d.data !== sabadoISO && d.data !== domingoISO) { fora.push(d.data); continue }
+        if (!datasSelecionadas.includes(d.data)) { fora.push(d.data); continue }
         const ordem = {}
         const ordemFonte = {}
-        for (const turno of TURNOS_ORDEM) {
+        for (const turno of turnosOrdem) {
           if (d.ordemDoc[turno]?.length) {
             ordem[turno] = d.ordemDoc[turno]
             ordemFonte[turno] = 'documento'
@@ -178,7 +185,10 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
             ordemFonte[turno] = 'sugerida'
           }
         }
-        porData[d.data] = { grade: d.grade, posicoes: d.posicoes, escalacao: d.escalacao, ordem, ordemFonte }
+        porData[d.data] = {
+          tipo: d.tipo, grade: d.grade, posicoes: d.posicoes, escalacao: d.escalacao,
+          listaFeriado: d.listaFeriado || [], ordem, ordemFonte,
+        }
       }
       setDias(porData)
       setLogins({})
@@ -190,7 +200,13 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
       ])
       const n = Object.keys(porData).length
       if (!n) {
-        toast({ variant: 'error', title: 'Nenhum dia do FDS reconhecido', description: 'Confira se a foto é do documento de fim de semana e se o sábado selecionado está certo.' })
+        toast({
+          variant: 'error',
+          title: feriado ? 'Lista do feriado não reconhecida' : 'Nenhum dia do FDS reconhecido',
+          description: feriado
+            ? 'Confira se a foto mostra o título do feriado e a lista completa de nomes.'
+            : 'Confira se a foto é do documento de fim de semana e se o sábado selecionado está certo.',
+        })
       } else {
         toast({ variant: 'success', title: `${n} dia${n > 1 ? 's' : ''} lido${n > 1 ? 's' : ''} — confira e publique` })
       }
@@ -229,7 +245,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
             problemas.push(`${file.name}: a leitura foi cortada — envie um print mais fechado`)
             continue
           }
-          const cls = classificarAnexoMapa(res, { sabadoISO, domingoISO })
+          const cls = classificarAnexoMapa(res, { sabadoISO, domingoISO, datasAlvo: datasSelecionadas })
           if (!(res.casos || []).length) {
             problemas.push(`${file.name}: nenhuma cirurgia reconhecida`)
             continue
@@ -238,10 +254,11 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
           // confirmação em vez de a tela escolher por conta própria
           // por TURNO: a herança de "//" não pode atravessar a faixa
           // MATUTINO/VESPERTINO (ver prepararCasosFimDeSemana)
-          const casos = carimbarTurnos(
+          const casosPreparados = carimbarTurnos(
             prepararCasosFimDeSemana(res.casos, cls.hospital, res.posicoesAssistenciais || []),
             'matutino',
           )
+          const casos = feriado ? casosPreparados.map(reduzirCasoParaFilaFeriado) : casosPreparados
           const chave = chaveMapa(cls.hospital, cls.data)
           setMapas((prev) => ({
             ...prev,
@@ -309,6 +326,10 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
 
   // ── edição ────────────────────────────────────────────────────────────────
   const mudarDia = (iso, mut) => setDias((prev) => ({ ...prev, [iso]: mut(prev[iso]) }))
+  const ordemDoDia = (dia, turno) => feriado
+    ? (ordensDocumentoFeriado(dia?.listaFeriado)[turno] || [])
+    : (dia?.ordem?.[turno] || [])
+  const mudarListaFeriado = (iso, mut) => mudarDia(iso, (d) => ({ ...d, listaFeriado: mut(d.listaFeriado || []) }))
   const setCelula = (iso, faixa, col, valor) => mudarDia(iso, (d) => ({
     ...d, grade: { ...d.grade, [faixa]: { ...d.grade[faixa], [col]: valor } },
   }))
@@ -316,6 +337,13 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
     ...d, posicoes: { ...d.posicoes, [pn]: nome },
   }))
   const moverOrdem = (iso, turno, i, delta) => mudarDia(iso, (d) => {
+    if (feriado) {
+      const arr = [...(d.listaFeriado || [])]
+      const j = i + delta
+      if (j < 0 || j >= arr.length) return d
+      arr.splice(j, 0, ...arr.splice(i, 1))
+      return { ...d, listaFeriado: arr }
+    }
     const arr = [...d.ordem[turno]]
     const j = i + delta
     if (j < 0 || j >= arr.length) return d
@@ -323,6 +351,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
     return { ...d, ordem: { ...d.ordem, [turno]: arr } }
   })
   const removerOrdem = (iso, turno, i) => mudarDia(iso, (d) => {
+    if (feriado) return { ...d, listaFeriado: (d.listaFeriado || []).filter((_, k) => k !== i) }
     const arr = d.ordem[turno].filter((_, k) => k !== i)
     return { ...d, ordem: { ...d.ordem, [turno]: arr } }
   })
@@ -333,11 +362,15 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
     const r = uid ? rosterByUid.get(uid) : null
     if (!r) return
     const texto = r.apelidos?.[0] || primeiroNomeUpper(r.nome)
-    mudarDia(iso, (d) => (
-      d.ordem[turno].some((t) => normNome(nomeDoToken(dias[iso], t)) === normNome(texto))
-        ? d
-        : { ...d, ordem: { ...d.ordem, [turno]: [...d.ordem[turno], texto] } }
-    ))
+    if (feriado) {
+      mudarListaFeriado(iso, (lista) => lista.some((t) => normNome(t) === normNome(texto)) ? lista : [...lista, texto])
+    } else {
+      mudarDia(iso, (d) => (
+        d.ordem[turno].some((t) => normNome(nomeDoToken(dias[iso], t)) === normNome(texto))
+          ? d
+          : { ...d, ordem: { ...d.ordem, [turno]: [...d.ordem[turno], texto] } }
+      ))
+    }
     setAddSel((p) => ({ ...p, [`${iso}|${turno}`]: '' }))
   }
 
@@ -366,14 +399,14 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
   }
   const ordemPublicacao = (iso, turno) => {
     const dia = dias[iso]
-    const tokens = (dia?.ordem?.[turno] || []).map((t) => tokenParaPn(dia, t))
+    const tokens = ordemDoDia(dia, turno).map((t) => tokenParaPn(dia, t))
     return rodapeDeOrdemDoc(tokens, posicoesEfetivas(iso))
   }
   /** Bloqueios de publicação por dia+turno (regra da casa: nunca chutar identidade). */
   const bloqueiosDe = (iso, turno) => {
     const dia = dias[iso]
     const out = []
-    const tokens = dia?.ordem?.[turno] || []
+    const tokens = ordemDoDia(dia, turno)
     if (!tokens.length) {
       // NOITE sem ordem não trava a publicação: a fila cai na linha 19-07 da
       // grade, que é o comportamento de sempre. Manhã e tarde não têm essa
@@ -397,7 +430,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
     }
     return [...new Set(out)]
   }
-  const todosBloqueios = diasAlvo.flatMap((iso) => TURNOS_ORDEM.flatMap((t) =>
+  const todosBloqueios = diasAlvo.flatMap((iso) => turnosOrdem.flatMap((t) =>
     bloqueiosDe(iso, t).map((b) => `${formatData(iso)} · ${TURNO_LABEL[t]}: ${b}`)))
 
   // Mapa sem hospital ou sem data não tem para onde ir — bloqueia, porque
@@ -472,11 +505,13 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
                 grade: dia.grade,
                 posicoes: posicoesEfetivas(iso),
                 escalacao: dia.escalacao,
+                tipo: feriado ? 'feriado' : 'fim_de_semana',
+                ...(feriado ? { listaFonte: [...(dia.listaFeriado || [])] } : {}),
                 ordemFonte: dia.ordemFonte,
                 // fila da NOITE (nomes, convenção do rodapé): vai no meta porque
                 // 'noturno' não é turno de publicação no banco. Republicar sem
                 // este campo apagaria a ordem ditada em silêncio.
-                ordemNoite: ordemPublicacao(iso, 'noturno').rodape,
+                ordemNoite: feriado ? [] : ordemPublicacao(iso, 'noturno').rodape,
               },
               status: 'publicada',
             }, { userName: user?.displayName })
@@ -526,7 +561,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
       } else {
         toast({
           variant: 'success',
-          title: 'Fim de semana publicado',
+          title: feriado ? 'Feriado publicado' : 'Fim de semana publicado',
           description: `${diasAlvo.length * TURNOS.length} turno(s) na fila única${totalCasos ? ` · ${totalCasos} cirurgia(s) em ${planoMapas.length} turno(s) de hospital` : ''}.`,
         })
       }
@@ -545,7 +580,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
             <span className="text-sm font-medium">Voltar</span>
           </button>
           <h1 className="min-w-0 flex-1 truncate text-center text-base font-semibold text-foreground">
-            Posições e fila
+            {feriado ? 'Lista e fila' : 'Posições e fila'}
           </h1>
           <span className="min-w-[70px]" aria-hidden="true" />
         </div>
@@ -555,14 +590,17 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
           <p className="rounded-lg bg-warning/10 text-warning text-sm p-3">Você não tem permissão para confeccionar escalas.</p>
         )}
         <p className="text-sm text-muted-foreground">
-          Documento "ESCALA DE FINAL DE SEMANA": grade P1–P4, numeração das posições e a ordem de
-          liberação de cada turno — uma fila só para todos os hospitais. Os mapas cirúrgicos entram
-          como documentos próprios na lista anterior.
+          {feriado
+            ? 'Lista simples do feriado: a manhã segue de cima para baixo e a tarde usa a mesma lista de baixo para cima — uma fila só para todos os hospitais.'
+            : 'Documento "ESCALA DE FINAL DE SEMANA": grade P1–P4, numeração das posições e a ordem de liberação de cada turno — uma fila só para todos os hospitais.'}
+          {' '}Os mapas cirúrgicos entram como documentos próprios na lista anterior.
         </p>
 
         <FileUpload accept="image/*" maxSize={15 * 1024 * 1024} variant="dropzone"
-          label="Foto do documento de fim de semana"
-          description="Print/foto da ESCALA DE FINAL DE SEMANA (sábado e domingo juntos). Sem dado de paciente."
+          label={feriado ? 'Foto da lista do feriado' : 'Foto do documento de fim de semana'}
+          description={feriado
+            ? `Print/foto da lista de ${formatData(sabadoISO)}. Sem dado de paciente.`
+            : 'Print/foto da ESCALA DE FINAL DE SEMANA (sábado e domingo juntos). Sem dado de paciente.'}
           onChange={(f) => importarImagem(Array.isArray(f) ? f[0] : f)} disabled={carregando || !canEdit} />
 
         {carregando && (
@@ -590,8 +628,8 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
             <section key={iso} className="rounded-2xl border border-border-strong bg-card p-3 space-y-4">
               <h2 className="text-sm font-bold text-foreground">{formatData(iso)}</h2>
 
-              {/* grade P1–P4: 3 faixas × 4 células (cols 1–2 fixas nos hospitais) */}
-              <div className="space-y-2">
+              {/* Feriado não tem grade nem posições numeradas: mostra só a lista. */}
+              {!feriado && <div className="space-y-2">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Plantões (grade)</p>
                 {FAIXAS_FDS.map((faixa) => (
                   <div key={faixa}>
@@ -607,7 +645,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
                     </div>
                   </div>
                 ))}
-              </div>
+              </div>}
 
               {/* Pn → pessoa (login vence o texto; domingo herda o sábado).
                   DUAS COLUNAS correndo para BAIXO (dono 17/08): P1..P6 na
@@ -615,7 +653,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
                   empurravam a ordem de liberação para fora da tela. O par
                   texto+login abre embaixo, fora das colunas: os dois campos não
                   cabem numa coluna de ~200px. */}
-              <div className="space-y-1.5">
+              {!feriado && <div className="space-y-1.5">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Posições (Pn → pessoa)</p>
                 <div className="columns-2 gap-x-2">
                   {pns.map((pn) => {
@@ -666,7 +704,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
                   </div>
                 )}
                 {!pns.length && <p className="text-xs text-muted-foreground">Nenhuma posição lida — reimporte ou preencha a ordem por login abaixo.</p>}
-              </div>
+              </div>}
 
               {/* ORDEM DE LIBERAÇÃO EM TRÊS COLUNAS (dono 17/08): manhã · tarde ·
                   noite lado a lado, na direção do DOCUMENTO. Empilhadas, as três
@@ -676,11 +714,16 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
                   "sugerida") e o ordinal vem colado ao nome. */}
               <div className="space-y-1.5">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Ordem de liberação — 1º ao último
+                  {feriado ? 'Lista do feriado — de cima para baixo' : 'Ordem de liberação — 1º ao último'}
                 </p>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {TURNOS_ORDEM.map((turno) => {
-                    const tokens = dia.ordem[turno] || []
+                {feriado && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Manhã: de cima para baixo · Tarde: de baixo para cima
+                  </p>
+                )}
+                <div className={`grid ${feriado ? 'grid-cols-1' : 'grid-cols-3'} gap-1.5`}>
+                  {(feriado ? ['matutino'] : turnosOrdem).map((turno) => {
+                    const tokens = ordemDoDia(dia, turno)
                     return (
                       <div key={turno} className="min-w-0">
                         <p className="mb-1 rounded-[9px] bg-primary/10 px-1 py-1 text-center text-[11.5px] font-bold text-primary">
@@ -720,7 +763,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
                   <div className="space-y-1.5 rounded-xl border border-border bg-muted/30 p-2">
                     <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                       {TURNO_CURTO[ordemSel.turno]} · posição {ordemSel.i + 1}º —{' '}
-                      {nomeDoToken(dia, (dia.ordem[ordemSel.turno] || [])[ordemSel.i]) || 'sem pessoa'}
+                      {nomeDoToken(dia, ordemDoDia(dia, ordemSel.turno)[ordemSel.i]) || 'sem pessoa'}
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       <Button size="sm" variant="outline" disabled={ordemSel.i === 0}
@@ -729,7 +772,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
                         <ArrowUp className="h-4 w-4" /> Subir
                       </Button>
                       <Button size="sm" variant="outline"
-                        disabled={ordemSel.i === (dia.ordem[ordemSel.turno] || []).length - 1}
+                        disabled={ordemSel.i === ordemDoDia(dia, ordemSel.turno).length - 1}
                         onClick={() => moverOrdem(iso, ordemSel.turno, ordemSel.i, +1)}
                         aria-label="Descer uma posição">
                         <ArrowDown className="h-4 w-4" /> Descer
@@ -744,9 +787,9 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
 
                 {/* acrescentar por LOGIN, um turno por linha (regra 11/08: texto
                     livre criava a mesma pessoa 2× na fila) */}
-                {TURNOS_ORDEM.map((turno) => (
+                {(feriado ? ['matutino'] : turnosOrdem).map((turno) => (
                   <div key={`add-${turno}`} className="flex items-center gap-1.5">
-                    <span className="w-12 shrink-0 text-[11px] font-semibold text-muted-foreground">{TURNO_CURTO[turno]}</span>
+                    <span className="w-12 shrink-0 text-[11px] font-semibold text-muted-foreground">{feriado ? 'Lista' : TURNO_CURTO[turno]}</span>
                     <Select className="min-w-0 flex-1" searchable options={rosterOpcoes}
                       value={addSel[`${iso}|${turno}`] || ''}
                       onChange={(v) => setAddSel((p) => ({ ...p, [`${iso}|${turno}`]: v }))}
@@ -759,7 +802,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
                   </div>
                 ))}
 
-                {TURNOS_ORDEM.flatMap((turno) => bloqueiosDe(iso, turno).map((b, i) => (
+                {turnosOrdem.flatMap((turno) => bloqueiosDe(iso, turno).map((b, i) => (
                   <p key={`${turno}-${i}`} className="flex items-start gap-1.5 rounded-lg bg-destructive/10 p-2 text-xs font-medium text-destructive">
                     <X className="mt-0.5 h-3.5 w-3.5 shrink-0" /> <span><b>{TURNO_CURTO[turno]}:</b> {b}</span>
                   </p>
@@ -785,10 +828,14 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
   const gradeLida = diasAlvo.length > 0
   const itemGrade = {
     estado: gradeLida ? (todosBloqueios.length ? 'erro' : 'ok') : 'vazio',
-    titulo: 'Posições e fila',
+    titulo: feriado ? 'Lista e fila' : 'Posições e fila',
     sub: gradeLida
-      ? `${Object.keys(dias[sabadoISO]?.posicoes || {}).length} posições · filas de manhã, tarde e noite`
-      : 'Documento "ESCALA DE FINAL DE SEMANA" — grade e ordem de liberação',
+      ? (feriado
+          ? `${dias[sabadoISO]?.listaFeriado?.length || 0} nomes · filas de manhã e tarde`
+          : `${Object.keys(dias[sabadoISO]?.posicoes || {}).length} posições · filas de manhã, tarde e noite`)
+      : (feriado
+          ? 'Lista do feriado — uma ordem, lida em sentidos opostos por turno'
+          : 'Documento "ESCALA DE FINAL DE SEMANA" — grade e ordem de liberação'),
     pendencia: todosBloqueios[0] || '',
     erro: !!todosBloqueios.length,
   }
@@ -803,7 +850,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
             <span className="text-sm font-medium">Cancelar</span>
           </button>
           <h1 className="min-w-0 flex-1 truncate text-center text-base font-semibold text-foreground">
-            Fim de semana
+            {feriado ? 'Feriado' : 'Fim de semana'}
           </h1>
           <span className="min-w-[70px]" aria-hidden="true" />
         </div>
@@ -830,18 +877,20 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
         </ol>
 
         <section className="space-y-2 rounded-2xl border border-border-strong bg-card p-3">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-primary">Qual fim de semana</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wide text-primary">{feriado ? 'Qual feriado' : 'Qual fim de semana'}</h2>
           <DatePicker
             className="w-full min-w-0"
             value={(() => { const [y, m, d] = String(sabadoISO || '').split('-').map(Number); return y ? new Date(y, m - 1, d) : new Date() })()}
             onChange={(d) => {
               if (!d) return
               const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-              setSabadoISO(sabadoDoFimDeSemana(iso) || iso)
+              setSabadoISO(ehFeriado(iso) ? iso : (sabadoDoFimDeSemana(iso) || iso))
             }}
-            placeholder="Sábado"
+            placeholder={feriado ? 'Feriado' : 'Sábado'}
           />
-          <p className="text-xs text-muted-foreground">Sábado {formatData(sabadoISO)} · Domingo {formatData(domingoISO)}</p>
+          <p className="text-xs text-muted-foreground">
+            {feriado ? `Feriado ${formatData(sabadoISO)}` : `Sábado ${formatData(sabadoISO)} · Domingo ${formatData(domingoISO)}`}
+          </p>
         </section>
 
         <div className="flex items-baseline gap-2">
@@ -898,10 +947,10 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
                     <Select
                       className="min-w-0"
                       aria-label="Dia do mapa"
-                      options={[
-                        { value: sabadoISO, label: `Sábado ${formatData(sabadoISO)}` },
-                        { value: domingoISO, label: `Domingo ${formatData(domingoISO)}` },
-                      ]}
+                      options={datasSelecionadas.map((iso, i) => ({
+                        value: iso,
+                        label: feriado ? `Feriado ${formatData(iso)}` : `${i === 0 ? 'Sábado' : 'Domingo'} ${formatData(iso)}`,
+                      }))}
                       value={m.data || ''}
                       onChange={(v) => redefinirMapa(m.id, { data: v })}
                       placeholder="Dia"
@@ -942,7 +991,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
           <p className="text-center text-[11px] text-muted-foreground">
             {gradeLida
               ? `${diasAlvo.length * TURNOS.length} filas${planoMapas.length ? ` · ${planoMapas.length} turnos de cirurgias · ${totalCasos} casos` : ' · nenhum mapa cirúrgico anexado'}`
-              : 'Anexe a tabela de posições — é ela que traz a fila de liberação'}
+              : (feriado ? 'Anexe a lista do feriado — é ela que traz a fila de liberação' : 'Anexe a tabela de posições — é ela que traz a fila de liberação')}
           </p>
           <Button
             className="w-full"
@@ -950,7 +999,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
             onClick={() => publicar()}
           >
             {publicando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-            Publicar fim de semana
+            {feriado ? 'Publicar feriado' : 'Publicar fim de semana'}
           </Button>
         </div>
       </div>

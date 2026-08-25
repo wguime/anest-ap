@@ -457,15 +457,16 @@ async function setP4Hospital(data, hospital, { userName = null } = {}) {
  *
  * modo 'fds' (2026-08-15): o upload é o documento "ESCALA DE FINAL DE SEMANA"
  * e a resposta vira { dias: [...], ignorados: [...] } — refSabado/refDomingo
- * dão o ano às datas do título ("SÁBADO – 15 DE AGOSTO" vem sem ano).
+ * dão o ano às datas do FDS; refFeriado identifica a lista simples de um dia.
  */
-async function parseEscalaImagem({ imageBase64, mimeType, hospital, modo, refSabado, refDomingo, secoesTurno }) {
+async function parseEscalaImagem({ imageBase64, mimeType, hospital, modo, refSabado, refDomingo, refFeriado, secoesTurno }) {
   const { data, error } = await supabase.functions.invoke('parse-escala-cirurgica', {
     body: {
       imageBase64, mimeType, hospital,
       ...(modo ? { modo } : {}),
       ...(refSabado ? { refSabado } : {}),
       ...(refDomingo ? { refDomingo } : {}),
+      ...(refFeriado ? { refFeriado } : {}),
       // turno pela FAIXA do documento — só o fluxo de fim de semana pede
       ...(secoesTurno ? { secoesTurno: true } : {}),
     },

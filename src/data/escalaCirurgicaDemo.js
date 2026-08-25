@@ -162,9 +162,66 @@ const fdsRow = {
 }
 export const DEMO_ESCALAS_FDS = { unimed: unimedFds, hro: hroFds, materno: null, fds: fdsRow }
 
+// ── FERIADO (fila única sem Pn, 2026-08-25) ────────────────────────────────
+// Fixture somente DEV/e2e para conferir o card real sem publicar em produção.
+// Casos deliberadamente mínimos: o fluxo de feriado não persiste paciente nem
+// procedimento, apenas hospital (cabeçalho), sala, cirurgião e anestesista.
+export const DEMO_DATE_FERIADO = '2026-08-25'
+const listaFeriado = [
+  'FERNANDA', 'DANIELA', 'GABRIELA', 'OSCAR', 'ADRIANO', 'GIOVANA', 'MARILIO', 'VICENTE',
+  'TIAGO', 'JOAO RICARDO', 'RAUL', 'NATHALIA', 'GUILHERME MELO', 'ROSE', 'GABRIEL',
+  'GARIM', 'CURY', 'KLISMAN', 'KARINE', 'ALEXANDRE S', 'ALEXANDRE D', 'GUILHERME DIDOMENICO',
+]
+const cf = (id, sala, cirurgiao, anestesista, hospital, extra = {}) => ({
+  id: `demo-feriado-${id}`, sala, ordem: 0, hora: '08:00', turno: 'matutino',
+  cirurgiao, anestesista, hospitalOrigem: hospital, semAnestesista: false, ...extra,
+})
+const unimedFeriado = {
+  id: 'demo-unimed-feriado', hospital: 'unimed', data: DEMO_DATE_FERIADO, status: 'publicada',
+  liberacoes: {}, linhaOverrides: {}, ordemLiberacao: { matutino: [], vespertino: [] },
+  casos: [
+    cf('u1', 'Centro Cirúrgico - Sala 1', 'Mauricio Custodio Fabiani', 'MARILIO', 'unimed'),
+    cf('u2', 'Centro Cirúrgico - Sala 1', 'Marco Andre Machado Alecio', 'MARILIO', 'unimed'),
+    cf('u3', 'Centro Cirúrgico - Sala 2', 'Amanda Lucas da Costa', 'FERNANDA', 'unimed'),
+    cf('u4', 'Centro Cirúrgico - Sala 3', 'Cristiano Devenci Vendrame', 'OSCAR + NATHALIA', 'unimed'),
+    cf('u5', 'Centro Cirúrgico - Sala 4', 'Enio Roberto Brambatti', '?', 'unimed', { semAnestesista: true }),
+    cf('u6', 'Centro Cirúrgico - Sala 5', 'Julio Antonio Zawadzki', 'TIAGO', 'unimed'),
+    cf('u7', 'Centro Cirúrgico - Sala 6', 'Mateus Ceresoli Baptistella', 'VICENTE', 'unimed'),
+    cf('u8', 'Centro Cirúrgico - Sala 7', 'Andre Fernando Scherer', 'ADRIANO', 'unimed'),
+    cf('u9', 'Centro Cirúrgico - Sala 10 Robótica', 'Vinicius Rubin', 'GABRIELA', 'unimed'),
+  ],
+}
+const hroFeriado = {
+  id: 'demo-hro-feriado', hospital: 'hro', data: DEMO_DATE_FERIADO, status: 'publicada',
+  liberacoes: {}, linhaOverrides: {}, ordemLiberacao: { matutino: [], vespertino: [] },
+  casos: [
+    cf('h1', 'Sala 1', 'Alberto Biazussi', 'DANIELA', 'hro', { hora: '07:00' }),
+    cf('h2', 'Sala 2', 'Cesar Bombardelli', 'JOAO RICARDO', 'hro', { hora: '07:00' }),
+    cf('h3', 'Sala 4', 'Ricardo Filipak', 'GIOVANA', 'hro', { hora: '07:00' }),
+    cf('h4', 'Sala 6', 'Helio Machado', 'RAUL', 'hro', { hora: '07:00' }),
+    cf('h5', 'Sala 8', 'Leonor Seben', 'GUILHERME MELO', 'hro', { hora: '07:00' }),
+  ],
+}
+const fdsFeriado = {
+  id: 'demo-fds-feriado', hospital: 'fds', data: DEMO_DATE_FERIADO, status: 'publicada',
+  liberacoes: {}, linhaOverrides: {}, ajudaExterna: {}, casos: [],
+  ordemLiberacao: {
+    matutino: [...listaFeriado].reverse(),
+    vespertino: [...listaFeriado],
+  },
+  fdsMeta: {
+    tipo: 'feriado', listaFonte: listaFeriado, grade: {}, posicoes: {}, escalacao: {},
+    ordemFonte: { matutino: 'documento', vespertino: 'documento' }, ordemNoite: [],
+  },
+}
+export const DEMO_ESCALAS_FERIADO = {
+  unimed: unimedFeriado, hro: hroFeriado, materno: null, fds: fdsFeriado,
+}
+
 /** Retorna a escala demo do hospital se a data for uma das de demonstração. */
 export function getDemoEscala(data, hospital) {
   if (data === DEMO_DATE) return DEMO_ESCALAS[hospital] || null
   if (data === DEMO_DATE_FDS) return DEMO_ESCALAS_FDS[hospital] || null
+  if (data === DEMO_DATE_FERIADO) return DEMO_ESCALAS_FERIADO[hospital] || null
   return null
 }

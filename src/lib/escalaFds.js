@@ -22,6 +22,7 @@
  * (quem está disponível e em que ordem).
  */
 import { ehDiaUtil, candidatosNome } from '@/lib/plantaoNoturno'
+import { FERIADOS_UTEIS } from '@/lib/feriasFeriados'
 
 /** Pseudo-hospital da linha que guarda a fila única do dia. */
 export const FDS_HOSPITAL = 'fds'
@@ -67,13 +68,26 @@ export const FDS_NOITE_PAPEL = {
 
 const normPadrao = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase()
 
-/**
- * Fim de semana = sábado/domingo. FERIADO em dia de semana segue a regra de
- * dia útil (decisão existente do plantão noturno — fonte única `ehDiaUtil`).
- */
+/** Fim de semana civil = sábado/domingo. Não inclui feriado em dia de semana. */
 export function ehFimDeSemana(dataIso) {
   if (!dataIso) return false
   return !ehDiaUtil(dataIso)
+}
+
+/**
+ * Feriado oficial da escala do grupo. Fonte única: `FERIADOS_UTEIS`, também
+ * usada por férias; não muda `ehDiaUtil`, porque o plantão noturno e a escala
+ * de funcionárias continuam com as próprias regras de feriado.
+ */
+export function ehFeriado(dataIso) {
+  const iso = String(dataIso || '')
+  const ano = Number(iso.slice(0, 4))
+  return Number.isInteger(ano) && (FERIADOS_UTEIS[ano] || []).includes(iso)
+}
+
+/** Datas em que a Escala Cirúrgica opera com a linha única hospital='fds'. */
+export function ehDataFilaUnica(dataIso) {
+  return ehFimDeSemana(dataIso) || ehFeriado(dataIso)
 }
 
 /**
@@ -348,6 +362,17 @@ export function rodapeDeOrdemDoc(ordemDoc, posicoes = {}) {
 }
 
 /**
+ * Lista simples do FERIADO → ordens na direção do documento (1º→último a ser
+ * liberado). A manhã lê de cima para baixo; a tarde, de baixo para cima. A
+ * conversão para a convenção inversa do rodapé continua exclusiva de
+ * `rodapeDeOrdemDoc`, chamada na publicação.
+ */
+export function ordensDocumentoFeriado(lista) {
+  const nomes = (lista || []).map((n) => String(n || '').trim()).filter(Boolean)
+  return { matutino: nomes, vespertino: [...nomes].reverse() }
+}
+
+/**
  * Normaliza a resposta da edge (modo 'fds') no modelo da conferência.
  * Contrato da edge, por dia detectado no documento:
  *   { data: 'YYYY-MM-DD',
@@ -370,10 +395,11 @@ export function normalizarParseFds(resposta, opts = {}) {
       avisos.push(`Dia com data inválida ignorado: "${diaBruto?.data}"`)
       continue
     }
-    if (!ehFimDeSemana(data)) {
-      avisos.push(`${data} não é sábado/domingo — dia ignorado`)
+    if (!ehDataFilaUnica(data)) {
+      avisos.push(`${data} não é sábado/domingo nem feriado cadastrado — dia ignorado`)
       continue
     }
+    const feriado = ehFeriado(data)
     const grade = {}
     for (const faixa of FAIXAS_FDS) {
       const l = diaBruto?.grade?.[faixa] || {}
@@ -412,13 +438,20 @@ export function normalizarParseFds(resposta, opts = {}) {
       const nm = String(nomeBruto || '').trim()
       if (pn && nm && !posicoes[pn]) posicoes[pn] = nm
     }
-    const ordemDoc = { matutino: [], vespertino: [] }
-    for (const turno of ['matutino', 'vespertino']) {
-      ordemDoc[turno] = (diaBruto?.ordemLiberacaoDoc?.[turno] || [])
-        .map((t) => normalizarPn(t) || String(t || '').trim())
-        .filter(Boolean)
+    const listaFeriado = (diaBruto?.listaFeriado || [])
+      .map((t) => String(t || '').trim())
+      .filter(Boolean)
+    const ordemDoc = feriado
+      ? ordensDocumentoFeriado(listaFeriado)
+      : { matutino: [], vespertino: [] }
+    if (!feriado) {
+      for (const turno of ['matutino', 'vespertino']) {
+        ordemDoc[turno] = (diaBruto?.ordemLiberacaoDoc?.[turno] || [])
+          .map((t) => normalizarPn(t) || String(t || '').trim())
+          .filter(Boolean)
+      }
     }
-    dias.push({ data, grade, posicoes, escalacao, ordemDoc })
+    dias.push({ data, tipo: feriado ? 'feriado' : 'fim_de_semana', grade, posicoes, escalacao, ordemDoc, listaFeriado })
   }
   // dia posterior herda o mapeamento do anterior (domingo nasce do sábado)
   dias.sort((a, b) => a.data.localeCompare(b.data))

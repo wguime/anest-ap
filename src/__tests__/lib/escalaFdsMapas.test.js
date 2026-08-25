@@ -9,7 +9,7 @@ import { describe, it, expect } from 'vitest'
 import {
   turnoDoCasoImportado, carimbarTurnos, classificarAnexoMapa, resumoMapa,
   anestesistaDoPosto, sugerirAtribuicoesDoPosto, chaveMapa, planoPublicacaoMapas,
-  nomesDoMapa,
+  nomesDoMapa, reduzirCasoParaFilaFeriado,
 } from '@/lib/escalaFdsMapas'
 
 // grade real do documento de 22/08 (faixa → coluna → pessoa)
@@ -63,6 +63,22 @@ describe('turno do caso importado — a faixa do documento resolve o "AS"', () =
   })
 })
 
+describe('campos persistidos pelo mapa do feriado', () => {
+  it('guarda só o necessário para o card operacional, sem paciente/procedimento', () => {
+    const reduzido = reduzirCasoParaFilaFeriado({
+      hora: '08:00', turno: 'matutino', sala: 'Sala 1', cirurgiao: 'DR. X',
+      anestesista: 'FERNANDA', anestesistaUserId: 'uid-f', semAnestesista: false,
+      pacienteIniciais: 'AB', procedimento: 'PROCEDIMENTO', convenio: 'SUS', idade: '55',
+    })
+    expect(reduzido).toEqual({
+      hora: '08:00', turno: 'matutino', sala: 'Sala 1', cirurgiao: 'DR. X',
+      anestesista: 'FERNANDA', anestesistaUserId: 'uid-f', semAnestesista: false,
+    })
+    expect(reduzido).not.toHaveProperty('pacienteIniciais')
+    expect(reduzido).not.toHaveProperty('procedimento')
+  })
+})
+
 describe('classificação do anexo — o documento se declara', () => {
   const fds = { sabadoISO: '2026-08-22', domingoISO: '2026-08-23' }
 
@@ -75,6 +91,14 @@ describe('classificação do anexo — o documento se declara', () => {
   it('mapa do HRO de domingo encaixa no outro dia do mesmo fim de semana', () => {
     const r = classificarAnexoMapa({ hospitalDetectado: 'hro', dataDetectada: '2026-08-23' }, fds)
     expect(r.data).toBe('2026-08-23')
+  })
+
+  it('mapa do feriado encaixa na única data-alvo', () => {
+    const r = classificarAnexoMapa(
+      { hospitalDetectado: 'unimed', dataDetectada: '2026-08-25' },
+      { datasAlvo: ['2026-08-25'] },
+    )
+    expect(r).toMatchObject({ hospital: 'unimed', data: '2026-08-25', confirmar: [] })
   })
 
   it('data de OUTRO fim de semana não encaixa e o motivo fica visível', () => {

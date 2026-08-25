@@ -94,6 +94,16 @@ const RODAPE_SAB_MAT = [
   'GUILHERME DIDOMENICO', 'JOAO HENRIQUE', 'MARILIO', 'RAFAEL', 'GABRIELA', 'ERLEI',
   'GABRIEL', 'STAUB', 'ROBERTA', 'VICENTE', 'CRISTINA', 'MATHEUS',
 ]
+
+const LISTA_FERIADO_25_08 = [
+  'FERNANDA', 'DANIELA', 'GABRIELA', 'OSCAR', 'ADRIANO', 'GIOVANA', 'MARILIO', 'VICENTE',
+  'TIAGO', 'JOAO RICARDO', 'RAUL', 'NATHALIA', 'GUILHERME MELO', 'ROSE', 'GABRIEL',
+  'GARIM', 'CURY', 'KLISMAN', 'KARINE', 'ALEXANDRE S', 'ALEXANDRE D', 'GUILHERME DIDOMENICO',
+]
+const RESPOSTA_FERIADO = {
+  dias: [{ data: '2026-08-25', listaFeriado: LISTA_FERIADO_25_08 }],
+  ignorados: [],
+}
 const SUGESTAO_DOM_MAT = [
   'CRISTINA', 'MATHEUS', 'RAFAEL', 'THAYNA', 'GABRIEL', 'JOAO HENRIQUE', 'GUILHERME DIDOMENICO',
 ]
@@ -121,6 +131,17 @@ async function publicarFds() {
   const botao = await screen.findByRole('button', { name: /Publicar fim de semana/ })
   await waitFor(() => expect(botao).not.toBeDisabled())
   fireEvent.click(botao)
+}
+
+async function importarFeriado() {
+  svcMock.parseEscalaImagem.mockResolvedValueOnce(RESPOSTA_FERIADO)
+  const utils = render(<ImportarEscalaFdsPage data="2026-08-25" onClose={vi.fn()} />, { wrapper: wrap })
+  fireEvent.click(await screen.findByRole('button', { name: /Anexar/ }))
+  await screen.findByText('Lista e fila', { selector: 'h1' })
+  const input = utils.container.querySelector('input[type="file"]')
+  fireEvent.change(input, { target: { files: [new File(['x'], 'feriado.png', { type: 'image/png' })] } })
+  await waitFor(() => expect(svcMock.parseEscalaImagem).toHaveBeenCalled())
+  return utils
 }
 
 beforeAll(() => {
@@ -247,6 +268,41 @@ describe('Publicação — inversão na fronteira + fds_meta', () => {
     expect(botao.disabled).toBe(true)
     fireEvent.click(botao)
     expect(salvarEscalaTurno).not.toHaveBeenCalled()
+  })
+})
+
+describe('FERIADO — lista simples na mesma entrada da fila única', () => {
+  it('publica os 22 nomes nos dois turnos, com sentidos opostos e sem posições Pn', async () => {
+    await importarFeriado()
+    expect(svcMock.parseEscalaImagem).toHaveBeenCalledWith(expect.objectContaining({
+      modo: 'fds', refFeriado: '2026-08-25',
+    }))
+    expect(svcMock.parseEscalaImagem.mock.calls[0][0]).not.toHaveProperty('refSabado')
+    expect(screen.queryByText('Plantões (grade)')).toBeNull()
+    expect(screen.queryByText('Posições (Pn → pessoa)')).toBeNull()
+    expect(screen.getAllByRole('button', { name: /^Posição 1 de Manhã/ })[0].textContent).toContain('Fernanda')
+    expect(screen.getByText(/Manhã: de cima para baixo/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^Posição 1 de Tarde/ })).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: /Concluir conferência/ }))
+    const botao = await screen.findByRole('button', { name: /Publicar feriado/ })
+    await waitFor(() => expect(botao).not.toBeDisabled())
+    fireEvent.click(botao)
+    await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalledTimes(2))
+
+    const chamadas = salvarEscalaTurno.mock.calls.map(([p]) => p)
+    const manha = chamadas.find((p) => p.turno === 'matutino')
+    const tarde = chamadas.find((p) => p.turno === 'vespertino')
+    expect(manha.hospital).toBe('fds')
+    expect(manha.ordemLiberacao).toHaveLength(22)
+    expect(tarde.ordemLiberacao).toHaveLength(22)
+    expect(manha.ordemLiberacao.at(-1)).toBe('FERNANDA')
+    expect(manha.ordemLiberacao[0]).toBe('GUILHERME DIDOMENICO')
+    expect(tarde.ordemLiberacao.at(-1)).toBe('GUILHERME DIDOMENICO')
+    expect(tarde.ordemLiberacao[0]).toBe('FERNANDA')
+    expect(manha.fdsMeta).toMatchObject({
+      tipo: 'feriado', posicoes: {}, ordemNoite: [], listaFonte: LISTA_FERIADO_25_08,
+    })
   })
 })
 

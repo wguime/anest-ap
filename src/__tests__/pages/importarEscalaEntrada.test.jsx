@@ -109,6 +109,15 @@ describe('Entrada — dois passos declarados', () => {
     // Node.compareDocumentPosition: 4 = o argumento vem DEPOIS do nó
     expect(upload.compareDocumentPosition(fds) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
+
+  it('feriado destaca a fila única e repassa a data escolhida ao importador especial', () => {
+    const onAbrirFds = vi.fn()
+    abrir({ data: '2026-08-25', onAbrirFds })
+    const botao = screen.getByRole('button', { name: /Esta data é feriado/i })
+    expect(botao.className).toContain('border-primary')
+    fireEvent.click(botao)
+    expect(onAbrirFds).toHaveBeenCalledWith('2026-08-25')
+  })
 })
 
 describe('Entrada — o anexo SUGERE, nunca troca sozinho', () => {

@@ -23,7 +23,7 @@ import SegmentedSelector from './SegmentedSelector'
 import { linhaVazia, prepararCasosImportados as prepararCasos, normNome, candidatosPrimeiroNome, resumirRodape, casosQuePassamParaOTurno, presencaDoTurno, estaPresente, gruposAnestesista, chavesAnestesista, aplicarAtribuicoes, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import { planoCruzamentoUrgencias, salasContrato } from '@/lib/escalaCirurgicaUrgencias'
-import { ehFimDeSemana } from '@/lib/escalaFds'
+import { ehDataFilaUnica, ehFeriado } from '@/lib/escalaFds'
 import { ehHoraSequencialEscala } from '@/lib/escalaCirurgicaRegras'
 import { detectarDuplicidadesEscala, formatarOcorrenciaDuplicidade, sugerirParceiroTroca } from '@/lib/escalaCirurgicaDuplicidades'
 
@@ -1233,16 +1233,18 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
         {onAbrirFds && (
           <button
             type="button"
-            onClick={() => onAbrirFds()}
+            onClick={() => onAbrirFds(dataEscolhida)}
             className={[
               'w-full rounded-xl border p-3 text-left text-sm active:opacity-70',
-              ehFimDeSemana(dataEscolhida)
+              ehDataFilaUnica(dataEscolhida)
                 ? 'border-primary/50 bg-primary/10 text-primary font-medium'
                 : 'border-border bg-muted/30 text-muted-foreground',
             ].join(' ')}
           >
-            {ehFimDeSemana(dataEscolhida)
-              ? 'Esta data é fim de semana — a ordem de liberação é ÚNICA (todos os hospitais). Importar o documento de FDS ›'
+            {ehDataFilaUnica(dataEscolhida)
+              ? (ehFeriado(dataEscolhida)
+                  ? 'Esta data é feriado — a ordem de liberação é ÚNICA (todos os hospitais). Importar lista e mapas ›'
+                  : 'Esta data é fim de semana — a ordem de liberação é ÚNICA (todos os hospitais). Importar o documento de FDS ›')
               : 'Escala de fim de semana? Importe o documento de FDS (fila única) ›'}
           </button>
         )}

@@ -13,6 +13,8 @@
 import { describe, it, expect } from 'vitest'
 import {
   FDS_HOSPITAL,
+  ehDataFilaUnica,
+  ehFeriado,
   ehFimDeSemana,
   sabadoDoFimDeSemana,
   faixaFdsAtual,
@@ -23,6 +25,7 @@ import {
   resolverNomeEstrito,
   sugerirRodapeFds,
   rodapeDeOrdemDoc,
+  ordensDocumentoFeriado,
   normalizarParseFds,
 } from '../../lib/escalaFds'
 
@@ -44,6 +47,12 @@ const ESCALACAO_SAB = {
 const ORDEM_DOC_SAB_MAT = ['P4', 'P3', 'P12', 'P09', 'P10', 'P11', 'P6', 'P5', 'P8', 'P7', 'P2', 'P1']
 const ORDEM_DOC_SAB_VESP = ['P11', 'P10', 'P9', 'P5', 'P6', 'P4', 'P3']
 
+const LISTA_FERIADO_25_08 = [
+  'FERNANDA', 'DANIELA', 'GABRIELA', 'OSCAR', 'ADRIANO', 'GIOVANA', 'MARILIO', 'VICENTE',
+  'TIAGO', 'JOAO RICARDO', 'RAUL', 'NATHALIA', 'GUILHERME MELO', 'ROSE', 'GABRIEL',
+  'GARIM', 'CURY', 'KLISMAN', 'KARINE', 'ALEXANDRE S', 'ALEXANDRE D', 'GUILHERME DIDOMENICO',
+]
+
 const GRADE_DOM = {
   '7-13': { unimed: 'CRISTINA', hro: 'MATHEUS', ret1: 'JOAO HENRIQUE', ret2: 'GUILHERME DIDOMENICO' },
   '13-19': { unimed: 'GUILHERME DIDOMENICO', hro: 'JOAO HENRIQUE', ret1: 'MATHEUS', ret2: 'CRISTINA' },
@@ -64,6 +73,32 @@ describe('ehFimDeSemana', () => {
   })
   it('constante do pseudo-hospital', () => {
     expect(FDS_HOSPITAL).toBe('fds')
+  })
+})
+
+describe('feriado como data de fila única (sem mudar ehDiaUtil)', () => {
+  it('reconhece 25/08/2026 pela fonte FERIADOS_UTEIS', () => {
+    expect(ehFeriado('2026-08-25')).toBe(true)
+    expect(ehDataFilaUnica('2026-08-25')).toBe(true)
+    expect(ehFimDeSemana('2026-08-25')).toBe(false)
+  })
+
+  it('lista real de 22 nomes: manhã lê de cima para baixo e tarde de baixo para cima, com uma única inversão na publicação', () => {
+    const ordemDoc = ordensDocumentoFeriado(LISTA_FERIADO_25_08)
+    expect(ordemDoc.matutino).toHaveLength(22)
+    expect(ordemDoc.vespertino).toHaveLength(22)
+    expect(ordemDoc.matutino).toEqual(LISTA_FERIADO_25_08)
+    expect(ordemDoc.vespertino).toEqual([...LISTA_FERIADO_25_08].reverse())
+
+    const manha = rodapeDeOrdemDoc(ordemDoc.matutino).rodape
+    const tarde = rodapeDeOrdemDoc(ordemDoc.vespertino).rodape
+    // No rodapé, o último card é o próximo a sair.
+    expect(manha.at(-1)).toBe('FERNANDA')
+    expect(manha[0]).toBe('GUILHERME DIDOMENICO')
+    expect(tarde.at(-1)).toBe('GUILHERME DIDOMENICO')
+    expect(tarde[0]).toBe('FERNANDA')
+    expect(new Set(manha)).toHaveLength(22)
+    expect(new Set(tarde)).toHaveLength(22)
   })
 })
 
@@ -355,6 +390,16 @@ describe('normalizarParseFds — resposta da edge → modelo da conferência', (
     const { dias, avisos } = normalizarParseFds({ dias: [{ data: '2026-08-14', grade: {}, listas: {} }] })
     expect(dias).toEqual([])
     expect(avisos.some((a) => a.includes('2026-08-14'))).toBe(true)
+  })
+  it('feriado cadastrado aceita lista simples e deriva as duas ordens sem Pn', () => {
+    const { dias, avisos } = normalizarParseFds({
+      dias: [{ data: '2026-08-25', listaFeriado: LISTA_FERIADO_25_08 }],
+    })
+    expect(avisos).toEqual([])
+    expect(dias).toHaveLength(1)
+    expect(dias[0].tipo).toBe('feriado')
+    expect(dias[0].posicoes).toEqual({})
+    expect(dias[0].ordemDoc).toEqual(ordensDocumentoFeriado(LISTA_FERIADO_25_08))
   })
   it('mesmo Pn com dois nomes diferentes no MESMO dia gera aviso (1ª ocorrência vence)', () => {
     const { dias, avisos } = normalizarParseFds({

@@ -336,7 +336,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const noturnos = useMemo(() => plantonistasNoturnos(plantoes), [plantoes])
   // modoFds liga a transição noturna no sáb/dom (fila única publicada) — os 4
   // nomes vêm da faixa 19-07 da grade IMPORTADA, nunca do card Plantões.
-  const fase = faseLiberacoes({ agoraMin, dataEscala: escala?.data, hojeIso: hojeISO(), fds: modoFds })
+  // Feriado tem só manhã+tarde na lista simples; não há grade 19-07 nem fila
+  // noturna a fundir. Mantém a fila vespertina publicada até o fim do dia.
+  const fase = modoFds && fdsMeta?.tipo === 'feriado'
+    ? 'dia'
+    : faseLiberacoes({ agoraMin, dataEscala: escala?.data, hojeIso: hojeISO(), fds: modoFds })
 
   // HOSPITAL DE CADA PESSOA na fila única (modo FDS): derivado dos casos
   // mesclados (hospitalOrigem) pela MESMA chave canônica das linhas (uid do
@@ -462,7 +466,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // 11/08: o aviso valia SÓ na lista da tarde e o dono viu gente de plantão hoje
   // sem selo na de manhã. Quem entra no plantão à noite carrega o selo nos DOIS
   // turnos da escala de HOJE — é informação da pessoa, não do turno.
-  const avisarSelos = fase === 'dia' && escala?.data === hojeISO() && ehDiaUtil(escala?.data)
+  const avisarSelos = !modoFds && fase === 'dia' && escala?.data === hojeISO() && ehDiaUtil(escala?.data)
   const fundidas = linhasNoite.length
     ? fundirLinhasNoturnas(linhas, linhasNoite, {
         // FDS: matching ESTRITO — sem ele "JOAO RICARDO" casava com o alias

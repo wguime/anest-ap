@@ -139,14 +139,13 @@ TURNO DE CADA CASO (a imagem traz o dia inteiro):
 
 
 // ── MODO FDS (2026-08-15) ────────────────────────────────────────────────────
-// body { modo: 'fds' }: o upload é o documento "ESCALA DE FINAL DE SEMANA"
-// (grade P1–P4 em 3 faixas × 4 colunas + listas numeradas P5+ por período +
-// linhas "ordem do primeiro ao último a ser liberado"), que alimenta a fila de
-// liberação ÚNICA do sáb/dom. Zero dado de paciente neste documento.
+// body { modo: 'fds' }: o upload alimenta a fila de liberação ÚNICA. Pode ser o
+// documento de FDS (grade P1–P4 + listas numeradas) ou a lista simples de um
+// FERIADO. Zero dado de paciente nestes documentos.
 // LGPD/decisão do dono 15/08: as linhas do bloco "PLANTÃO MATERNO" com datas
 // (ex.: "15/08 – RENATA") são FUNCIONÁRIAS com escala própria — NUNCA viram
 // posição/plantão/lista; vão para `ignorados` (informativo da conferência).
-const FDS_SYSTEM_PROMPT = `Você extrai o documento "ESCALA DE FINAL DE SEMANA" de uma imagem e devolve SOMENTE JSON válido, sem texto antes/depois. Escreva o JSON COMPACTO (sem indentação).
+const FDS_SYSTEM_PROMPT = `Você extrai um documento de fila única da Escala Cirúrgica: "ESCALA DE FINAL DE SEMANA" OU uma lista simples com título "FERIADO". Devolva SOMENTE JSON válido, sem texto antes/depois. Escreva o JSON COMPACTO (sem indentação).
 
 Schema:
 {
@@ -159,13 +158,15 @@ Schema:
       "19-07": { "unimed": string, "hro": string, "ret1": string, "ret2": string }
     },
     "listas": { "matutino": [{ "n": number, "nome": string }], "vespertino": [{ "n": number, "nome": string }] },
-    "ordemLiberacaoDoc": { "matutino": string[], "vespertino": string[] }
+    "ordemLiberacaoDoc": { "matutino": string[], "vespertino": string[] },
+    "listaFeriado": string[]
   }],
   "ignorados": string[]
 }
 
 REGRAS:
-- O documento cobre SÁBADO e DOMINGO: devolva um item em "dias" para cada dia com tabela própria.
+- FERIADO: quando o título trouxer "FERIADO" e uma LISTA SIMPLES DE NOMES, devolva UM item em "dias", com a data de referência informada e os nomes em "listaFeriado" EXATAMENTE na ordem visual de cima para baixo. Não numere, não ordene e não deduplique. Nesse formato, devolva plantoes/grade/listas/ordemLiberacaoDoc vazios. A mesma lista servirá manhã e tarde; o app aplica os sentidos opostos.
+- FIM DE SEMANA: quando houver grade P1–P4, o documento cobre SÁBADO e DOMINGO; devolva um item em "dias" para cada dia com tabela própria e listaFeriado: [].
 - GRADE: cada dia tem uma tabela de 3 faixas de horário (7-13HS, 13-19HS, 19-07HS) por 4 colunas. Coluna 1 = UNIMED, coluna 2 = HRO (os cabeçalhos existem); colunas 3 e 4 = retaguarda (ret1, ret2). Copie o NOME de cada célula SEM o rótulo P1–P4 (ex.: célula "P1 GUILHERME DIDOMENICO" → "GUILHERME DIDOMENICO").
 - plantoes: os rótulos P1–P4 aparecem colados aos nomes na linha 7-13HS (normalmente só no sábado). Associe cada Pn ao nome daquela célula. Dia sem rótulos → {} (o app herda do sábado; os MESMOS 4 rodam a grade o fim de semana inteiro).
 - listas: as linhas numeradas ("5º GABRIELA 6º ERLEI 7º MARILIO ...") são a lista de escalação do PERÍODO, NA ORDEM em que os itens aparecem (a ordem importa — "6º ERLEI 5º GABRIELA" é diferente de "5º GABRIELA 6º ERLEI"). A lista geral do dia = matutino; a linha prefixada "SÁBADO A TARDE"/"À TARDE" = vespertino (sem linha própria da tarde, repita a da manhã). Uma linha "EMERGENCIA: 11º GABRIEL" acrescenta { "n": 11, "nome": "GABRIEL" } ao FIM das listas dos DOIS períodos do dia (sem duplicar se já estiver).
@@ -225,7 +226,9 @@ function sanitizeFds(parsed: Record<string, unknown>): { dias: unknown[]; ignora
       ordemLiberacaoDoc[turno] = (Array.isArray(arr) ? arr : [])
         .map((s: unknown) => str(s, 40)).filter(Boolean).slice(0, 30)
     }
-    dias.push({ data, plantoes, grade, listas, ordemLiberacaoDoc })
+    const listaFeriado = (Array.isArray(d?.listaFeriado) ? d.listaFeriado : [])
+      .map((s: unknown) => str(s, 100)).filter(Boolean).slice(0, 40)
+    dias.push({ data, plantoes, grade, listas, ordemLiberacaoDoc, listaFeriado })
   }
   return { dias, ignorados }
 }
@@ -387,7 +390,7 @@ Deno.serve(async (req) => {
   console.log(`[parse-escala-cirurgica] parse solicitado por uid=${auth.uid}`)
 
   try {
-    const { imageBase64, mimeType, hospital, modo, refSabado, refDomingo, secoesTurno } = await req.json()
+    const { imageBase64, mimeType, hospital, modo, refSabado, refDomingo, refFeriado, secoesTurno } = await req.json()
     const modoFds = modo === 'fds'
     // turno por FAIXA do documento — só o fluxo de fim de semana pede (ver
     // SECOES_TURNO_REGRA). No modo FDS o documento não tem casos.
@@ -429,10 +432,10 @@ Deno.serve(async (req) => {
     const hint = HOSPITAL_HINT[hospital] || ''
     // datas de referência do FDS (o título "SÁBADO – 15 DE AGOSTO" vem sem ano)
     const iso = (v: unknown) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : '')
-    const refs = [iso(refSabado) && `sábado = ${iso(refSabado)}`, iso(refDomingo) && `domingo = ${iso(refDomingo)}`]
+    const refs = [iso(refSabado) && `sábado = ${iso(refSabado)}`, iso(refDomingo) && `domingo = ${iso(refDomingo)}`, iso(refFeriado) && `feriado = ${iso(refFeriado)}`]
       .filter(Boolean).join(', ')
     const userText = modoFds
-      ? `Extraia o documento ESCALA DE FINAL DE SEMANA desta imagem.${refs ? ` Datas de referência: ${refs}.` : ''}\nResponda SOMENTE o JSON.`
+      ? `Extraia o documento de fila única (fim de semana ou feriado) desta imagem.${refs ? ` Datas de referência: ${refs}.` : ''}\nResponda SOMENTE o JSON.`
       : `Extraia a escala desta imagem. ${hint}\nResponda SOMENTE o JSON.`
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',

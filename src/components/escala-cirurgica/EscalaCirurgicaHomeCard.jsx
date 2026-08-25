@@ -20,7 +20,7 @@ import svc from '@/services/supabaseEscalaCirurgicaService'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { nomeCirurgiaoCurto, titleCaseNome, ordemDerivadaDosCasos } from '@/lib/colunaLiberacao'
 import { turnoAtual, rodapeDoTurno, filtrarPorTurno } from '@/pages/escala-cirurgica/utils'
-import { ehFimDeSemana, FDS_HOSPITAL, faixaFdsAtual, plantonistasFaixaFds } from '@/lib/escalaFds'
+import { ehDataFilaUnica, FDS_HOSPITAL, faixaFdsAtual, plantonistasFaixaFds } from '@/lib/escalaFds'
 import { formatDate } from '@/utils/formatters'
 import useAgoraMinuto from '@/pages/escala-cirurgica/useAgoraMinuto'
 
@@ -48,7 +48,7 @@ export function EscalaCirurgicaHomeCard({ onNavigate }) {
     d.setDate(d.getDate() - 1)
     return hojeISO(d)
   }, [madrugada, hoje])
-  const fdsAtivo = ehFimDeSemana(diaFdsRef)
+  const fdsAtivo = ehDataFilaUnica(diaFdsRef)
   // Linha 'fds' vem do context quando ele já está no dia certo; só a madrugada
   // (grade da véspera) ou o context noutra data exigem fetch próprio.
   const precisaFetchFds = fdsAtivo && !(contextEhHoje && diaFdsRef === hoje)

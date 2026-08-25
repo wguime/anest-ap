@@ -15,7 +15,7 @@ import { createReliableSubscription } from '@/services/supabaseSubscriptionHelpe
 import { useToast } from '@/design-system/components/ui/toast'
 import { ajudasPreservadasNoRepasse, escaladosPreservadosNoRepasse, familiaConvenio, lerOverrideAnterior, mergeRodapeTurno, rodapeDoTurno, snapshotCasos } from '@/pages/escala-cirurgica/utils'
 import { nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
-import { ehFimDeSemana, FDS_HOSPITAL } from '@/lib/escalaFds'
+import { ehDataFilaUnica, FDS_HOSPITAL } from '@/lib/escalaFds'
 import { getDemoEscala } from '@/data/escalaCirurgicaDemo'
 import { agora } from '@/lib/devClock'
 
@@ -184,10 +184,10 @@ export function EscalaCirurgicaProvider({ children }) {
     try {
       const [results, fdsRow] = await Promise.all([
         Promise.all(HOSPITAIS.map((h) => svc.fetchEscala(dia, h).catch(() => null))),
-        // fila única do FDS: linha pseudo-hospital 'fds' (uma por sáb/dom).
+        // fila única: linha pseudo-hospital 'fds' (sáb/dom e feriados).
         // Dia útil nem faz a request; falha cai em null (modo FDS não liga e a
         // tela segue no comportamento por hospital — rollout seguro).
-        ehFimDeSemana(dia) ? svc.fetchEscala(dia, FDS_HOSPITAL).catch(() => null) : Promise.resolve(null),
+        ehDataFilaUnica(dia) ? svc.fetchEscala(dia, FDS_HOSPITAL).catch(() => null) : Promise.resolve(null),
       ])
       if (seq !== loadSeqRef.current || dataRef.current !== dia) return
       if (escritasRef.current > 0 || mutSeqRef.current !== mutAntes) { reagendar(); return }
@@ -228,7 +228,7 @@ export function EscalaCirurgicaProvider({ children }) {
     try {
       const [results, fdsRow] = await Promise.all([
         Promise.all(HOSPITAIS.map((h) => svc.fetchEscala(dia, h).catch(() => null))),
-        ehFimDeSemana(dia) ? svc.fetchEscala(dia, FDS_HOSPITAL).catch(() => null) : Promise.resolve(null),
+        ehDataFilaUnica(dia) ? svc.fetchEscala(dia, FDS_HOSPITAL).catch(() => null) : Promise.resolve(null),
       ])
       if (!results.some(Boolean) && !fdsRow) return // nada publicado: não cacheia
       const escalas = { fds: fdsRow }
