@@ -529,12 +529,23 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // Antes das 19h, no VESPERTINO da escala de HOJE: quem entra no plantão hoje já
   // aparece com o selo P1–P4 na lista da tarde (pedido do dono 25/07) — só o
   // aviso, sem `noturno`: posição, cor e liberação seguem a lógica do dia.
-  // Só DIA ÚTIL: o plantão P1–P4 ainda não está estruturado p/ o fim de semana
-  // (decisão do dono 25/07) — avisar no sábado seria informação inventada.
+  // Dia útil e FERIADO (dono 25/08: "informe quem são os plantões P1–P4 assim
+  // como já é informado nas escalas de dias úteis... apenas nos feriados, já que
+  // dias úteis e finais de semana já possuem essas marcações"). O feriado usa a
+  // MESMA fonte do dia útil — o card Plantões (`plantoes` → `noturnos`) — porque
+  // é lá que P1–P4 do dia existem; a folha do feriado não traz posição nenhuma.
+  //
+  // ⚠️ SÁB/DOM continuam fora por outro motivo, e não é o mesmo: lá os Pn vêm da
+  // GRADE do documento (`marcarSelosFds`, P1–P12) e são posições da escala, não
+  // o plantão noturno do card. Ligar este aviso ali sobreporia duas numerações
+  // diferentes no mesmo selo. `ehDiaUtil` (que é true no feriado, uma terça) é o
+  // que segue excluindo o fim de semana.
+  //
   // 11/08: o aviso valia SÓ na lista da tarde e o dono viu gente de plantão hoje
   // sem selo na de manhã. Quem entra no plantão à noite carrega o selo nos DOIS
   // turnos da escala de HOJE — é informação da pessoa, não do turno.
-  const avisarSelos = !modoFds && fase === 'dia' && escala?.data === hojeISO() && ehDiaUtil(escala?.data)
+  const avisarSelos = (!modoFds || feriado) && fase === 'dia'
+    && escala?.data === hojeISO() && ehDiaUtil(escala?.data)
   const fundidas = linhasNoite.length
     ? fundirLinhasNoturnas(linhas, linhasNoite, {
         // FDS: matching ESTRITO — sem ele "JOAO RICARDO" casava com o alias
@@ -549,7 +560,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // BADGE Pn (P1–P12) em toda linha da fila única, conforme a posição da pessoa
   // na ordem da escala (dono 15/08). Card noturno já vem com o selo da fusão —
   // marcarSelosFds não sobrescreve.
-  const comSelos = modoFds
+  // ⚠️ FERIADO fica de fora: lá o selo é P1–P4 do card Plantões (o plantão do
+  // dia), e `posicoes` é a numeração P1–P12 da GRADE do fim de semana — outro
+  // significado no mesmo badge. Na prática o feriado publica `posicoes: {}`,
+  // mas um meta legado bastaria para misturar as duas numerações.
+  const comSelos = modoFds && !feriado
     ? marcarSelosFds(fundidas, fdsMeta?.posicoes, { resolverUid, normalizar: normNome })
     : fundidas
   // Turno NOTURNO do FDS = só quem está na fila da noite (mesma regra do

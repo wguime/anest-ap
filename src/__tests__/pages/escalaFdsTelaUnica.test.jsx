@@ -212,8 +212,21 @@ describe('fila única — ninguém nasce vermelho na publicação', () => {
   })
 })
 
-describe('feriado — sem selo Pn', () => {
-  it('não herda os selos P1–P4 da regra noturna de segunda–sexta', async () => {
+describe('feriado — selos e plantão', () => {
+  /**
+   * ⚠️ ESTE TESTE MUDOU DE LADO em 25/08, e o porquê fica aqui em vez de ele sumir.
+   *
+   * Ele afirmava que o feriado NÃO tem selo Pn nenhum — verdade enquanto a única
+   * fonte considerada era a grade do fim de semana, que no feriado é vazia. O
+   * dono pediu o oposto no fim do dia: "informe quem são os plantões (P1–P4)
+   * assim como já é informado nas escalas de dias úteis... apenas nos feriados,
+   * já que dias úteis e finais de semana já possuem essas marcações".
+   *
+   * A fonte é a do DIA ÚTIL (o card Plantões), não a grade — a folha do feriado
+   * não traz posição nenhuma. O que continua verdadeiro, e segue afirmado
+   * abaixo, é que a numeração P5+ da grade do FDS não aparece aqui.
+   */
+  it('o selo P1–P4 vem do card Plantões, como no dia útil', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.setSystemTime(new Date('2026-08-25T10:00:00-03:00'))
     try {
@@ -223,7 +236,44 @@ describe('feriado — sem selo Pn', () => {
         plantoes: [{ setor: 'P1', nome: 'KARINE' }, { setor: 'P2', nome: 'GABRIEL' }],
       })} />, { wrapper: wrap })
       await screen.findByText(/Karine/)
+      const selos = [...container.querySelectorAll('[data-selo]')].map((e) => e.getAttribute('data-selo'))
+      expect(selos.sort()).toEqual(['P1', 'P2'])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('sem plantão no card do dia, nenhum selo é inventado', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-08-25T10:00:00-03:00'))
+    try {
+      const { container } = render(<LiberacoesView {...props({
+        escala: { ...ESCALA_FDS, data: '2026-08-25' },
+        fdsMeta: { tipo: 'feriado', grade: {}, posicoes: {} },
+        plantoes: [],
+      })} />, { wrapper: wrap })
+      await screen.findByText(/Karine/)
       expect(container.querySelectorAll('[data-selo]')).toHaveLength(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('a numeração P5+ da grade do FDS não atravessa para o feriado', async () => {
+    // `fdsMeta.posicoes` é a fonte dos Pn do fim de semana (P1–P12). No feriado
+    // ela é vazia; se um meta legado trouxer posições, elas não podem virar selo
+    // aqui — seriam outra numeração, com outro significado, no mesmo lugar.
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-08-25T10:00:00-03:00'))
+    try {
+      const { container } = render(<LiberacoesView {...props({
+        escala: { ...ESCALA_FDS, data: '2026-08-25' },
+        fdsMeta: { tipo: 'feriado', grade: {}, posicoes: { P7: 'KARINE', P8: 'GABRIEL' } },
+        plantoes: [{ setor: 'P1', nome: 'KARINE' }],
+      })} />, { wrapper: wrap })
+      await screen.findByText(/Karine/)
+      const selos = [...container.querySelectorAll('[data-selo]')].map((e) => e.getAttribute('data-selo'))
+      expect(selos).toEqual(['P1'])
     } finally {
       vi.useRealTimers()
     }
