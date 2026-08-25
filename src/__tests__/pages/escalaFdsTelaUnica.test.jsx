@@ -105,45 +105,28 @@ describe('card da fila — hospital isolado, sala abaixo, cirurgiões depois', (
   })
 })
 
-describe('Terminei — encerra as cirurgias abertas da pessoa', () => {
-  it('aparece em quem tem cirurgia e manda os ids dela', async () => {
-    const onTerminarCasos = vi.fn(async () => {})
-    render(<LiberacoesView {...props({ onTerminarCasos })} />, { wrapper: wrap })
-    const botoes = await screen.findAllByText('Terminei')
-    expect(botoes.length).toBe(2) // as duas pessoas têm cirurgia aberta
-    fireEvent.click(botoes[0].closest('button'))
-    await waitFor(() => expect(onTerminarCasos).toHaveBeenCalled())
-    // manda SÓ os casos daquela pessoa
-    expect(onTerminarCasos.mock.calls[0][0]).toEqual(['c1'])
-  })
-
-  it('NÃO aparece em quem está sem cirurgia — não há o que encerrar', async () => {
-    const semCasos = { ...ESCALA_FDS, ordemLiberacao: { matutino: ['KARINE', 'GABRIEL', 'OSCAR'] } }
-    render(<LiberacoesView {...props({ escala: semCasos, onTerminarCasos: vi.fn() })} />, { wrapper: wrap })
-    await screen.findByText('Oscar')
-    // 3 na fila, 2 com cirurgia
-    expect(screen.getAllByText('Terminei').length).toBe(2)
-  })
-
-  it('é OUTRO controle que o círculo de liberar (lição de 20/08)', async () => {
-    const onToggle = vi.fn()
-    const onTerminarCasos = vi.fn(async () => {})
-    render(<LiberacoesView {...props({ onToggle, onTerminarCasos })} />, { wrapper: wrap })
-    fireEvent.click((await screen.findAllByText('Terminei'))[0].closest('button'))
-    await waitFor(() => expect(onTerminarCasos).toHaveBeenCalled())
-    expect(onToggle).not.toHaveBeenCalled()
+/**
+ * ⚠️ O "Terminei" FOI RETIRADO (dono 24/08, 3ª decisão sobre ele). O caminho foi:
+ * criado como botão da linha para encerrar de uma vez as cirurgias em aberto →
+ * restrito à fila única ("não altere a escala de dias úteis") → removido, com a
+ * coluna de ações voltando a ser tempo + Editar, como no dia útil.
+ *
+ * Esta trava fica no lugar dos três testes que exercitavam o botão, para que a
+ * remoção não pareça um esquecimento e para que ele não volte sem decisão: o
+ * encerramento de cirurgia é no detalhe do caso, uma a uma.
+ */
+describe('sem "Terminei" na fila — a cirurgia se encerra no detalhe', () => {
+  it('a coluna de ações tem só tempo e Editar', async () => {
+    render(<LiberacoesView {...props()} />, { wrapper: wrap })
+    await screen.findByText(/Karine/)
+    expect(screen.queryByText('Terminei')).toBeNull()
+    expect(screen.queryByText('Encerrando…')).toBeNull()
+    // o que fica é a mesma dupla do dia útil
+    expect(screen.getAllByText('Editar').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('+ Tempo total').length).toBeGreaterThan(0)
   })
 })
 
-/**
- * ESPAÇAMENTO E ALINHAMENTO DO CARD (dono 24/08, comparando a tela em uso com o
- * protótipo aprovado). Estas asserções olham CLASSE de layout, o que normalmente
- * é frágil demais para valer um teste — aqui vale porque foi exatamente a classe
- * que regrediu: `items-center` num flex cujo segundo filho é mais alto empurra o
- * primeiro para o meio, e foi assim que o círculo foi parar 36px abaixo do nome
- * e o hospital ganhou um vão de 14px depois dele. É um erro que não aparece em
- * nenhuma asserção de conteúdo e que só se vê medindo a tela.
- */
 describe('alinhamento do card — número e círculo na linha do nome', () => {
   it('o card alinha pelo TOPO, não pelo centro', async () => {
     const { container } = render(<LiberacoesView {...props()} />, { wrapper: wrap })
@@ -249,11 +232,7 @@ describe('o desenho da fila única não atravessa para o dia útil', () => {
     expect(screen.queryByText('Terminei')).toBeNull()
   })
 
-  it('o mesmo botão CONTINUA na fila única — é lá que ele foi pedido', async () => {
-    render(<LiberacoesView {...props({ onTerminarCasos: vi.fn() })} />, { wrapper: wrap })
-    await screen.findByText(/Karine/i)
-    expect(screen.getAllByText('Terminei').length).toBeGreaterThan(0)
-  })
+
 
   it('sem anestesista: volta a frase de sempre, não a pastilha "Assumir"', async () => {
     const escala = {

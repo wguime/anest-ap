@@ -49,7 +49,7 @@ const ABA_OPCOES = [
 
 export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const { user } = useUser()
-  const { escalas, data, loading, p4Hospital, hoje, setData, prefetch, salvarEscalaTurno, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, reordenarAjuda, definirP4Hospital, setAnestesistaCasos, setStatusCirurgia, marcarTroca, executarSubstituicao, desfazerSubstituicao } = useEscalaCirurgica()
+  const { escalas, data, loading, p4Hospital, hoje, setData, prefetch, salvarEscalaTurno, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, reordenarAjuda, definirP4Hospital, setAnestesistaCasos, marcarTroca, executarSubstituicao, desfazerSubstituicao } = useEscalaCirurgica()
   // Roster p/ resolver os lados do par da troca declarada (uid/nome/apelido)
   const { resolver: resolverRoster, rosterByUid } = useRosterAnestesistas()
   // P1–P4 do dia (card Plantões/PegaPlantao) — alimentam a fase noturna das Liberações
@@ -456,22 +456,6 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                     const dona = modoFds ? escalaDoCaso(casoIds[0]) || escala : escala
                     return setAnestesistaCasos(dona, casoIds, { uid, apelido }, { rotulo, resolverUid: resolverRoster, userId: user?.uid || user?.id || null })
                   }}
-                  // TERMINEI — SÓ NO FIM DE SEMANA (dono 24/08, 2ª mensagem:
-                  // "não altere a escala de dias úteis"). Encerra de uma vez as
-                  // cirurgias em aberto no nome da pessoa: a fila única não
-                  // precisa saber de cada cirurgia, só se a pessoa ainda está
-                  // ocupada — em 22/08, 15 das 35 nunca saíram de "agendada".
-                  // No DIA ÚTIL a marcação caso a caso do detalhe é o caminho
-                  // estabelecido e continua sendo o único.
-                  // ⚠️ na fila única cada caso mora na escala do hospital de
-                  // origem — mesma resolução do onDefinirCasos.
-                  onTerminarCasos={modoFds ? ((casoIds) => Promise.all(
-                    casoIds.map((id) => {
-                      const dona = escalaDoCaso(id) || escala
-                      const caso = (dona?.casos || []).find((c) => c.id === id)
-                      return caso ? setStatusCirurgia(dona, caso, 'terminada', userInfo) : null
-                    }).filter(Boolean)
-                  )) : undefined}
                   // RESPONSÁVEL DA POSIÇÃO (dono 24/08) — assunção unilateral na
                   // fila única: o slot fica com quem assumiu, a posição e a ordem
                   // não se movem, e as cirurgias em aberto vão junto. Mesmo motor

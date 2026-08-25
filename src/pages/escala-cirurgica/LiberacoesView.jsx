@@ -67,7 +67,7 @@ const AVISO_MAX = 160
 // que o card mostra, então sai do MESMO mapa que o resto do módulo usa.
 const HOSPITAIS_FILA = ['unimed', 'hro', 'materno'].map((v) => ({ value: v, label: HOSPITAL_LABEL[v] || v }))
 
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onTerminarCasos, onTrocarResponsavel, onDevolverResponsavel, onTrocarPosicao, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, onGarantirEscala, onNavigate }) {
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onTrocarResponsavel, onDevolverResponsavel, onTrocarPosicao, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, onGarantirEscala, onNavigate }) {
   const { toast } = useToast()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
   // do turno selecionado e o rodapé (ordem de liberação) DAQUELE turno.
@@ -110,8 +110,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const [ajudaUid, setAjudaUid] = useState('')
   const [p4Sheet, setP4Sheet] = useState(false) // sheet "Onde está o P4 hoje?"
   const [alvoSemAnest, setAlvoSemAnest] = useState(null)
-  // chave da linha com "Terminei" em voo — o botão desabilita só nela
-  const [terminando, setTerminando] = useState(null) // alerta "?" sendo resolvido
   const [semAnestUid, setSemAnestUid] = useState('')
   const [executandoTroca, setExecutandoTroca] = useState(false)
   const [confirmarTroca, setConfirmarTroca] = useState(null) // par aguardando o pop-up (dono 18/08)
@@ -1797,34 +1795,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         + Tempo total
                       </button>
                     )))}
-                    {/* TERMINEI — SÓ NA FILA ÚNICA (dono 24/08, 2ª mensagem: "não
-                        altere a escala de dias úteis"). Encerra de uma vez as cirurgias em
-                        aberto no nome da pessoa — ela vira "Livre" e CONTINUA na
-                        posição, aguardando a vez. ⚠️ é outra coisa que o círculo:
-                        o círculo é o checkbox de "está liberada" (saiu do
-                        hospital); este é "acabei o que era meu". Um controle, um
-                        significado — a lição de 20/08, quando o mesmo círculo
-                        alternava dois estados e o dono tocou 16 vezes sem efeito.
-                        Só aparece com cirurgia aberta, então se apaga sozinho. */}
-                    {modoFds && canEdit && !liberadoReal && linha.casoIds?.length > 0 && onTerminarCasos && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTerminando(linha.chave)
-                          Promise.resolve(onTerminarCasos(linha.casoIds))
-                            .finally(() => setTerminando(null))
-                        }}
-                        disabled={terminando === linha.chave}
-                        aria-label={linha.casoIds.length === 1
-                          ? `Marcar a cirurgia de ${linha.anestesista} como terminada`
-                          : `Marcar as ${linha.casoIds.length} cirurgias de ${linha.anestesista} como terminadas`}
-                        className="-my-1.5 flex h-10 shrink-0 items-center justify-center disabled:opacity-50"
-                      >
-                        <Badge badgeStyle="outline" className="border-primary bg-primary/10">
-                          {terminando === linha.chave ? 'Encerrando…' : 'Terminei'}
-                        </Badge>
-                      </button>
-                    )}
                     <div className="flex items-center">
                     {/* SETAS DE ORDEM DA AJUDA — de volta INLINE ao lado do lápis
                         (dono 30/07: o bloco abaixo desconfigurou o card, porque esta

@@ -919,12 +919,17 @@ do nome, **sala** na linha seguinte, **cirurgiões em lista** depois — numa fi
 que cobre três hospitais "onde a pessoa está" é a primeira pergunta, e a caixa
 alta curta lê como rótulo em vez de disputar com o nome.
 
-**"Terminei"** (`onTerminarCasos` → `linha.casoIds`, novo na lib): encerra de uma
-vez as cirurgias em aberto no nome da pessoa. ⚠️ é OUTRO controle que o círculo
-— círculo = "está liberada" (saiu do hospital), Terminei = "acabei o que era
-meu", e a pessoa segue na posição como Livre. É a lição de 20/08 (um controle,
-um significado). Marcar caso a caso continua no detalhe, para o registro de
-horários que alimenta a previsão de tempos.
+⚠️ **"Terminei" NASCEU E SAIU NO MESMO DIA (dono 24/08, três decisões seguidas):**
+botão da linha que encerrava de uma vez as cirurgias em aberto no nome da pessoa
+→ restrito à fila única → **REMOVIDO**, e a coluna de ações voltou a ser
+`+ Tempo total` + `Editar`, a mesma dupla do dia útil ("verifique como os cards
+estão configurados em dias úteis e use a mesma distribuição"). Medido depois da
+remoção: a coluna caiu de 87 para **55px** e o espaço vazio da fila de 222 para
+**84px**, porque a altura do card passou a ser ditada pelo TEXTO e não pela
+coluna. ⚠️ o problema que o botão atacava CONTINUA de pé: em 22/08, 15 das 35
+cirurgias nunca saíram de "agendada", e sem atalho na linha o encerramento volta
+a ser caso a caso no detalhe. `linha.casoIds` (ids das cirurgias abertas da
+pessoa) ficou na lib, testado, para quando houver outra ideia.
 
 **Painel da linha ganhou três assuntos, só na fila única:** **Hospital** (campo
 próprio no override — quem troca de hospital no meio do sábado não tinha como
@@ -955,20 +960,20 @@ também no dia útil, e as cinco voltaram: o **recado do plantonista** (cartão 
 rótulo + "Confirmar leitura" de largura inteira → volta a faixa de borda a borda
 de 17/08 com a pastilha "Confirmar" no canto); o **"Importar"** do cabeçalho
 (outline sem ícone → volta a `ghost` com o ícone); a pastilha **"Assumir"** no
-bloco de sem-anestesista (→ volta "Toque para definir o anestesista"); o botão
-**"Terminei"** na linha da fila (some — no dia útil a cirurgia se encerra no
-detalhe, uma a uma); e a **ordem do card** (hospital isolado + sala ANTES dos
+bloco de sem-anestesista (→ volta "Toque para definir o anestesista"); e a
+**ordem do card** (hospital isolado + sala ANTES dos
 cirurgiões → volta sala ABAIXO do cirurgião, desenho de 20/07). O gate é
-`modoFds` em cada ponto, e "Terminei" leva DOIS: o `modoFds` da view e o
-`onTerminarCasos` que a página só passa no fim de semana.
+`modoFds` em cada ponto. (O "Terminei" saiu de vez horas depois — ver acima.)
 
 ⚠️ A regra geral, que já vale para a IMPORTAÇÃO desde 22/08 e agora vale para a
 TELA: melhoria nascida de um protótipo de fim de semana fica no fim de semana. O
 dia útil é o fluxo estabelecido de uma equipe em uso clínico diário — mudança
 visual ali é retreinamento, e precisa de pedido próprio (Regra #2).
 
-Travas: `escalaFdsTelaUnica.test.jsx` (14 casos: barra sem os eixos, card,
-Terminei ≠ círculo, os três assuntos, Local não-vazio + o describe **"o desenho
+Travas: `escalaFdsTelaUnica.test.jsx` (barra sem os eixos, card, os três
+assuntos, Local não-vazio, o describe "sem 'Terminei' na fila" — que guarda o
+caminho inteiro do botão para ele não voltar sem decisão nem a remoção parecer
+esquecimento — + o describe **"o desenho
 da fila única não atravessa para o dia útil"**, que é a trava da FRONTEIRA — ela
 já foi cruzada uma vez); `liberacoesAvisoPlantonista.test.jsx` cobre as DUAS
 formas do recado, uma por dia; `escalaTurnoAutomatico.test.jsx` prende o ícone do
