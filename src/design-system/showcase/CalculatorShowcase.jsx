@@ -30,6 +30,7 @@ import FibrilacaoAtrialDisplay from './displays/FibrilacaoAtrialDisplay';
 import SedacaoDeliriumDisplay from './displays/SedacaoDeliriumDisplay';
 import Saps3Display from './displays/Saps3Display';
 import AnticoagulantesDisplay from './displays/AnticoagulantesDisplay';
+import InibidoresApetiteDisplay from './displays/InibidoresApetiteDisplay';
 
 // Estrutura default de categorias PediCalc — usada quando o usuário ainda
 // não digitou peso, para manter a lista sempre visível.
@@ -2019,7 +2020,7 @@ function CalculatorPage({ calculator, _onBack }) {
       )}
 
       {/* Select inputs as cards or dropdown - Skip for calculators with inputs inside custom displays */}
-      {selectInputs.length > 0 && !['viaAerea', 'reversores', 'balancoHidricoTransop', 'aldrete', 'sofa', 'faAnticoag', 'sedacaoDelirium', 'saps3', 'anticoagulantes'].includes(calculator.customRender) && (
+      {selectInputs.length > 0 && !['viaAerea', 'reversores', 'balancoHidricoTransop', 'aldrete', 'sofa', 'faAnticoag', 'sedacaoDelirium', 'saps3', 'anticoagulantes', 'inibidoresApetite'].includes(calculator.customRender) && (
         <div
           className={cn(
             "p-4 rounded-xl overflow-visible",
@@ -2050,7 +2051,7 @@ function CalculatorPage({ calculator, _onBack }) {
 
       {/* Number inputs - Skip for calculators with inputs inside custom displays */}
       {numberInputs.length > 0 &&
-       !['pedicalc', 'adultcalc', 'viaAerea', 'pedDesfib', 'broselow', 'hollidaySegar', 'acls', 'reversores', 'balancoHidricoTransop', 'aldrete', 'sofa', 'faAnticoag', 'sedacaoDelirium', 'saps3', 'anticoagulantes'].includes(calculator.customRender) && (
+       !['pedicalc', 'adultcalc', 'viaAerea', 'pedDesfib', 'broselow', 'hollidaySegar', 'acls', 'reversores', 'balancoHidricoTransop', 'aldrete', 'sofa', 'faAnticoag', 'sedacaoDelirium', 'saps3', 'anticoagulantes', 'inibidoresApetite'].includes(calculator.customRender) && (
         <div
           className={cn(
             "p-4 rounded-xl",
@@ -2180,6 +2181,10 @@ function CalculatorPage({ calculator, _onBack }) {
 
       {calculator.customRender === 'anticoagulantes' && (
         <AnticoagulantesDisplay />
+      )}
+
+      {calculator.customRender === 'inibidoresApetite' && (
+        <InibidoresApetiteDisplay />
       )}
 
       {/* Result - Abaixo dos inputs, como no App Legado (para calculadoras normais) */}

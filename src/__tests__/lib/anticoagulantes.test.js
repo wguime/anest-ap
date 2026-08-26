@@ -291,3 +291,35 @@ describe('reversores', () => {
     expect(getFarmaco('fonda_alta').reversor).toBe('nenhum')
   })
 })
+
+describe('as regras vivem no próprio fármaco', () => {
+  /**
+   * Dono 25/08: "quero que sempre coloque as regras, para evitar ficar
+   * procurando em outros fármacos (pode manter a informação: mesma dose que
+   * X...)". Dalteparina e nadroparina só diziam "mesmas regras da
+   * enoxaparina" e paravam aí — quem estava com o paciente na frente tinha de
+   * sair da tela para achar o número. A referência pode ficar; sozinha, não.
+   */
+  it('alerta que cita outro fármaco também traz os números', () => {
+    ANTICOAGULANTES.forEach((f) => {
+      ;(f.alertas || []).forEach((a) => {
+        if (!/mesmas? regras?|mesma dose/i.test(a)) return
+        expect(/\d\s*h/i.test(a), `referência sem número em ${f.id}: "${a}"`).toBe(true)
+      })
+    })
+  })
+
+  it('dalteparina e nadroparina declaram as quatro janelas por dose', () => {
+    ;['dalteparina', 'nadroparina'].forEach((id) => {
+      const f = ANTICOAGULANTES.find((x) => x.id === id)
+      const a = f.alertas[0]
+      expect(a, `punção em ${id}`).toMatch(/pun[çc][ãa]o e retirada/i)
+      expect(a, `dose baixa em ${id}`).toMatch(/12 h na dose baixa/i)
+      expect(a, `dose alta em ${id}`).toMatch(/24 h na dose alta/i)
+      // \b evita casar o "4 h" que existe DENTRO de "24 h" — foi o que quase
+      // deixou esta trava passar no texto antigo, que não falava da próxima dose
+      expect(a, `reintrodução em ${id}`).toMatch(/\b4 h depois de retirar/i)
+      expect(a, `referência em ${id}`).toMatch(/enoxaparina/i)
+    })
+  })
+})

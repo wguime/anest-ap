@@ -4744,6 +4744,34 @@ const periopCalculators = [
         'ASRA 5th ed. Reg Anesth Pain Med 2025 (10.1136/rapm-2024-105766) | ESAIC/ESRA. Eur J Anaesthesiol 2022;39:100-132 | SBA 2020. Braz J Anesthesiol 2020;70:364-387 | Grottke. Eur J Anaesthesiol 2024;41:327-350 | PAUSE. JAMA Intern Med 2019;179:1469-78',
     },
   },
+  {
+    id: 'periop_inibidores_apetite',
+    title: 'Inibidores de apetite',
+    subtitle: 'GLP-1, coagonistas e antiobesidade no perioperatório',
+    icon: 'Apple',
+    status: 'active',
+    customRender: 'inibidoresApetite',
+    inputs: [],
+    compute: () => null,
+    resultMessage: () => '',
+    infoBox: {
+      warnings: [
+        'A ausência de sintomas gastrointestinais NÃO exclui resíduo gástrico aumentado.',
+        'Manter o fármaco só é opção onde há POCUS gástrico sistemático no dia. Sem essa estrutura, suspenda.',
+        'Naltrexona/bupropiona bloqueia o receptor opioide: sem 72 h de suspensão, a analgesia planejada pode falhar.',
+      ],
+      keyPoints: [
+        'Suspensão não é mais rotineira: dose estável há mais de 12 semanas e sem fator de risco pode seguir.',
+        'Havendo qualquer fator de risco, suspenda por no mínimo 7 dias, seja o fármaco de longa ou curta duração.',
+        'Dieta líquida sem resíduos por 24 h + jejum de 8 a 12 h valem para TODOS, suspendendo ou não.',
+        'POCUS no dia: Perlas 0 ou 1 (até 1,5 mL/kg) segue; grau 2 ou sólido, adia ou faz sequência rápida.',
+      ],
+      interpretation:
+        'Conduta pré-operatória por fármaco, dieta e jejum, ultrassom gástrico com a fórmula de Perlas e conduta no dia. Fonte primária: nota SBA/SBD/ABESO de 15/05/2026, com ANZCA, SPAQI, AOA/RCOA e ASA/ASMBS como contraponto na tela. Divergindo, prevalece o protocolo do serviço.',
+      reference:
+        'SBA C.SBA-01744/2026 (15/05/2026), consenso SBA/SBD/ABESO | Marino EC et al. Diabetol Metab Syndr 2026;18:91 | Oprea AD et al. SPAQI. Br J Anaesth 2025;135:48-78 | Kindel TL et al. Clin Gastroenterol Hepatol 2025;23:2083-5 | El-Boghdadly K et al. Anaesthesia 2025;80:412-24 | Perlas A et al. Can J Anaesth 2018;65:437-48',
+    },
+  },
 ];
 
 // =============================================================================

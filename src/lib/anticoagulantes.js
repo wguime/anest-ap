@@ -55,6 +55,9 @@ export const ANTICOAGULANTES = [
   // ---------------------------------------------------------------- HEPARINAS
   {
     id: 'hnf_iv',
+    grupo: 'hnf',
+    grupoNome: 'Heparina não fracionada (HNF)',
+    variante: 'Endovenosa',
     farmaco: 'Heparina não fracionada (HNF)',
     comerciais: ['Liquemine', 'Hepamax'],
     classe: 'heparina',
@@ -77,6 +80,9 @@ export const ANTICOAGULANTES = [
   },
   {
     id: 'hnf_sc_baixa',
+    grupo: 'hnf',
+    grupoNome: 'Heparina não fracionada (HNF)',
+    variante: 'SC dose baixa',
     farmaco: 'HNF subcutânea — dose baixa',
     comerciais: ['Liquemine'],
     classe: 'heparina',
@@ -95,6 +101,9 @@ export const ANTICOAGULANTES = [
   },
   {
     id: 'hnf_sc_alta',
+    grupo: 'hnf',
+    grupoNome: 'Heparina não fracionada (HNF)',
+    variante: 'SC dose alta',
     farmaco: 'HNF subcutânea — dose alta',
     comerciais: ['Liquemine'],
     classe: 'heparina',
@@ -113,6 +122,9 @@ export const ANTICOAGULANTES = [
   },
   {
     id: 'hnf_sc_terap',
+    grupo: 'hnf',
+    grupoNome: 'Heparina não fracionada (HNF)',
+    variante: 'SC terapêutica',
     farmaco: 'HNF subcutânea — terapêutica',
     comerciais: ['Liquemine'],
     classe: 'heparina',
@@ -131,6 +143,9 @@ export const ANTICOAGULANTES = [
   },
   {
     id: 'enox_baixa',
+    grupo: 'enoxaparina',
+    grupoNome: 'Enoxaparina',
+    variante: 'Dose baixa',
     farmaco: 'Enoxaparina — dose baixa',
     comerciais: ['Clexane', 'Versa', 'Endocris'],
     classe: 'heparina',
@@ -156,6 +171,9 @@ export const ANTICOAGULANTES = [
   },
   {
     id: 'enox_alta',
+    grupo: 'enoxaparina',
+    grupoNome: 'Enoxaparina',
+    variante: 'Dose alta',
     farmaco: 'Enoxaparina — dose alta',
     comerciais: ['Clexane', 'Versa', 'Endocris'],
     classe: 'heparina',
@@ -193,7 +211,11 @@ export const ANTICOAGULANTES = [
     cateter: 'condicional',
     laboratorio: 'Anti-Xa ≤ 0,1 UI/mL',
     reversor: 'protamina',
-    alertas: ['Mesmas regras da enoxaparina, separadas por dose baixa (12 h) e alta (24 h).'],
+    alertas: [
+      'Punção e retirada do cateter: 12 h na dose baixa, 24 h na dose alta. '
+        + 'Próxima dose: 12 h depois da punção, 4 h depois de retirar o cateter. '
+        + 'São as mesmas regras da enoxaparina.',
+    ],
     notas: { sba: '> 12 h (profilática) · > 24 h (terapêutica)' },
   },
   {
@@ -211,11 +233,18 @@ export const ANTICOAGULANTES = [
     cateter: 'condicional',
     laboratorio: 'Anti-Xa ≤ 0,1 UI/mL',
     reversor: 'protamina',
-    alertas: ['Mesmas regras da enoxaparina, separadas por dose baixa (12 h) e alta (24 h).'],
+    alertas: [
+      'Punção e retirada do cateter: 12 h na dose baixa, 24 h na dose alta. '
+        + 'Próxima dose: 12 h depois da punção, 4 h depois de retirar o cateter. '
+        + 'São as mesmas regras da enoxaparina.',
+    ],
     notas: { sba: '> 12 h (profilática) · > 24 h (terapêutica)' },
   },
   {
     id: 'fonda_baixa',
+    grupo: 'fondaparinux',
+    grupoNome: 'Fondaparinux',
+    variante: 'Dose baixa',
     farmaco: 'Fondaparinux — dose baixa',
     comerciais: ['Arixtra'],
     classe: 'xa',
@@ -246,6 +275,9 @@ export const ANTICOAGULANTES = [
   },
   {
     id: 'fonda_alta',
+    grupo: 'fondaparinux',
+    grupoNome: 'Fondaparinux',
+    variante: 'Dose alta',
     farmaco: 'Fondaparinux — dose alta',
     comerciais: ['Arixtra'],
     classe: 'xa',
@@ -274,6 +306,9 @@ export const ANTICOAGULANTES = [
   // ------------------------------------------------------------- DOACs — anti-Xa
   {
     id: 'rivaroxabana_baixa',
+    grupo: 'rivaroxabana',
+    grupoNome: 'Rivaroxabana',
+    variante: 'Dose baixa',
     farmaco: 'Rivaroxabana — dose baixa',
     comerciais: ['Xarelto'],
     classe: 'xa',
@@ -295,6 +330,9 @@ export const ANTICOAGULANTES = [
   },
   {
     id: 'rivaroxabana_alta',
+    grupo: 'rivaroxabana',
+    grupoNome: 'Rivaroxabana',
+    variante: 'Dose alta',
     farmaco: 'Rivaroxabana — dose alta',
     comerciais: ['Xarelto'],
     classe: 'xa',
@@ -313,6 +351,9 @@ export const ANTICOAGULANTES = [
   },
   {
     id: 'apixabana_baixa',
+    grupo: 'apixabana',
+    grupoNome: 'Apixabana',
+    variante: 'Dose baixa',
     farmaco: 'Apixabana — dose baixa',
     comerciais: ['Eliquis'],
     classe: 'xa',
@@ -331,6 +372,9 @@ export const ANTICOAGULANTES = [
   },
   {
     id: 'apixabana_alta',
+    grupo: 'apixabana',
+    grupoNome: 'Apixabana',
+    variante: 'Dose alta',
     farmaco: 'Apixabana — dose alta',
     comerciais: ['Eliquis'],
     classe: 'xa',
@@ -369,6 +413,9 @@ export const ANTICOAGULANTES = [
   // -------------------------------------------------------- DOAC — anti-IIa
   {
     id: 'dabigatrana_baixa',
+    grupo: 'dabigatrana',
+    grupoNome: 'Dabigatrana',
+    variante: 'Dose baixa',
     farmaco: 'Dabigatrana — dose baixa',
     comerciais: ['Pradaxa'],
     classe: 'iia',
@@ -390,6 +437,9 @@ export const ANTICOAGULANTES = [
   },
   {
     id: 'dabigatrana_alta',
+    grupo: 'dabigatrana',
+    grupoNome: 'Dabigatrana',
+    variante: 'Dose alta',
     farmaco: 'Dabigatrana — dose alta',
     comerciais: ['Pradaxa'],
     classe: 'iia',
@@ -731,7 +781,7 @@ export const REVERSORES = [
       'Segunda escolha: exige descongelamento, grande volume e raramente normaliza o RNI.',
       'Considerar em coagulopatia dilucional associada.',
     ],
-    inicio: '30 min a horas',
+    inicio: '≥ 30 min',
     riscos: 'Sobrecarga volêmica (TACO), TRALI, reações transfusionais.',
     brasil: 'Disponível.',
   },

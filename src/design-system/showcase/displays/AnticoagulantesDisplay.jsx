@@ -31,6 +31,8 @@ import { TimePicker } from '../../components/ui/time-picker';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '../../components/ui/accordion';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../../components/ui/sheet';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/tabs';
+import ListaFarmacosAgrupada, { PaginaGrupo } from './ListaFarmacosAgrupada';
+import { agruparVariantes } from '../../../lib/agrupamentoFarmacos';
 import {
   ANTICOAGULANTES,
   REVERSORES,
@@ -66,6 +68,20 @@ const BADGE_CATETER = { success: 'success', warning: 'warning', destructive: 'de
  * na borda, a borda arredondada e a sombra ficam cortadas.
  */
 const LARGURA = '-mx-2';
+
+/** Rótulo de assunto — o mesmo formato do "DOSE" no card do reversor. */
+function Rotulo({ children, tom }) {
+  return (
+    <p
+      className={cn(
+        'text-[11px] font-semibold uppercase tracking-wider mb-1',
+        tom === 'warning' ? 'text-warning' : 'text-muted-foreground'
+      )}
+    >
+      {children}
+    </p>
+  );
+}
 
 function Bloco({ titulo, acessorio, children, className, padding = 'md' }) {
   return (
@@ -194,10 +210,20 @@ const PACIENTE_VAZIO = { clcr: '', idade: '', plaquetas: '', inr: '', data: null
 function AbaBloqueio() {
   const [termo, setTermo] = useState('');
   const [farmacoId, setFarmacoId] = useState(null);
+  const [grupoId, setGrupoId] = useState(null);
   const [paciente, setPaciente] = useState(PACIENTE_VAZIO);
   const [painelAberto, setPainelAberto] = useState(false);
 
   const grupos = useMemo(() => agruparPorClasse(buscarFarmacos(termo)), [termo]);
+
+  /* A tela do grupo sai da base COMPLETA, não do resultado da busca: quem
+     pediu a medicação quer ver todas as doses e vias dela, mesmo que o termo
+     digitado só casasse com uma. */
+  const cardGrupo = useMemo(
+    () => (grupoId ? agruparVariantes(ANTICOAGULANTES).find((c) => c.chave === grupoId) : null),
+    [grupoId]
+  );
+  const lerResumo = (f) => f.antes?.resumo || f.antes?.texto || horasParaTexto(f.antes?.horas);
 
   const num = (v) => {
     const n = parseFloat(String(v).replace(',', '.'));
@@ -227,6 +253,20 @@ function AbaBloqueio() {
 
   const setCampo = (campo) => (e) => setPaciente((p) => ({ ...p, [campo]: e.target.value }));
 
+  // ------------------------------------------------ DOSES E VIAS DE UM FÁRMACO
+  if (!avaliacao && cardGrupo) {
+    return (
+      <PaginaGrupo
+        card={cardGrupo}
+        largura={LARGURA}
+        lerResumo={lerResumo}
+        rotuloVoltar="Todos os fármacos"
+        onVoltar={() => setGrupoId(null)}
+        onEscolher={setFarmacoId}
+      />
+    );
+  }
+
   // ------------------------------------------------------------------ LISTA
   if (!avaliacao) {
     return (
@@ -247,46 +287,13 @@ function AbaBloqueio() {
           </Bloco>
         )}
 
-        {grupos.map((grupo) => (
-          <div key={grupo.classe} className="space-y-1.5">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-1">
-              {grupo.label}
-            </p>
-            {grupo.farmacos.map((f) => (
-              <Card
-                key={f.id}
-                variant="interactive"
-                padding="none"
-                className={cn(LARGURA, 'overflow-hidden')}
-              >
-                <button
-                  type="button"
-                  onClick={() => setFarmacoId(f.id)}
-                  className="w-full min-h-[44px] px-3 py-2.5 text-left"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-foreground leading-tight">{f.farmaco}</p>
-                      <p className="text-xs text-muted-foreground leading-snug mt-0.5">{f.regime}</p>
-                      {f.comerciais?.length > 0 && (
-                        /* sem truncate: nome comercial é como a droga chega
-                           na prescrição — cortar "Endocris" esconde o dado */
-                        <p className="text-xs text-muted-foreground leading-snug mt-0.5">
-                          {f.comerciais.join(' · ')}
-                        </p>
-                      )}
-                    </div>
-                    {/* resumo, não texto: o badge não encolhe e a frase longa
-                        do GP IIb/IIIa deixava o nome do fármaco com 49px */}
-                    <Badge variant="secondary" badgeStyle="subtle" className="shrink-0">
-                      {f.antes?.resumo || f.antes?.texto || horasParaTexto(f.antes?.horas)}
-                    </Badge>
-                  </div>
-                </button>
-              </Card>
-            ))}
-          </div>
-        ))}
+        <ListaFarmacosAgrupada
+          grupos={grupos}
+          largura={LARGURA}
+          lerResumo={lerResumo}
+          onEscolher={setFarmacoId}
+          onAbrirGrupo={setGrupoId}
+        />
       </div>
     );
   }
@@ -315,7 +322,8 @@ function AbaBloqueio() {
           className="w-full min-h-[44px] px-4 py-2 flex items-center gap-1.5 text-left border-b border-border text-primary"
         >
           <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
-          <span className="text-sm font-semibold">Todos os fármacos</span>
+          {/* devolve à tela do grupo quando foi por ela que se chegou aqui */}
+          <span className="text-sm font-semibold">{cardGrupo ? cardGrupo.nome : 'Todos os fármacos'}</span>
         </button>
         <div className="p-4 space-y-2">
           <div>
@@ -686,16 +694,17 @@ function AbaReversores() {
                 <h3 className="text-base font-bold text-foreground leading-tight">{r.nome}</h3>
                 <p className="text-xs text-muted-foreground leading-snug">{r.alvo}</p>
               </div>
-              <Badge variant="info" badgeStyle="subtle" className="shrink-0">
-                {r.inicio}
+              {/* Azul não dizia nada aqui (dono 25/08) e o número sozinho
+                  também não: "1–2 h" do quê? Verde institucional do DS e o
+                  rótulo dentro do badge. */}
+              <Badge variant="default" badgeStyle="subtle" className="shrink-0">
+                Início {r.inicio}
               </Badge>
             </div>
 
             {/* A dose é o que se procura: maior peso tipográfico do card */}
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Dose
-              </p>
+              <Rotulo>Dose</Rotulo>
               <p className="text-base font-bold text-foreground leading-snug">{r.dose}</p>
             </div>
           </div>
@@ -706,20 +715,27 @@ function AbaReversores() {
               <AccordionTrigger className="px-4">
                 <span className="text-sm font-semibold">Como usar, riscos e disponibilidade</span>
               </AccordionTrigger>
+              {/* Três assuntos, três rótulos — antes eram bullets seguidos de
+                  duas linhas soltas com o rótulo embutido no meio da frase, e
+                  nada dizia onde um assunto acabava e o outro começava. Os
+                  rótulos são os MESMOS do "DOSE" do cabeçalho do card. */}
               <AccordionContent className="px-4 pb-4">
-                <div className="space-y-2">
-                  <Lista itens={r.detalhes} />
+                <div className="space-y-3">
+                  <div>
+                    <Rotulo>Como usar</Rotulo>
+                    <Lista itens={r.detalhes} />
+                  </div>
                   {r.riscos !== '—' && (
-                    <p className="text-xs text-warning leading-snug">
-                      <span className="font-semibold">Riscos: </span>
-                      {r.riscos}
-                    </p>
+                    <div>
+                      <Rotulo tom="warning">Riscos</Rotulo>
+                      <p className="text-sm text-foreground leading-snug">{r.riscos}</p>
+                    </div>
                   )}
                   {r.brasil !== '—' && (
-                    <p className="text-xs text-muted-foreground leading-snug">
-                      <span className="font-semibold text-foreground">No Brasil: </span>
-                      {r.brasil}
-                    </p>
+                    <div>
+                      <Rotulo>Disponibilidade no Brasil</Rotulo>
+                      <p className="text-sm text-muted-foreground leading-snug">{r.brasil}</p>
+                    </div>
                   )}
                 </div>
               </AccordionContent>
