@@ -60,89 +60,34 @@
 }
 
 /* ============================================================================
- * Orientação — o app é RETRATO e NÃO GIRA (dono 25/08)
- * ============================================================================
- * Não existe API que trave a rotação no iPhone, então a tela do APP é girada de
- * volta: com o celular deitado o `<body>` recebe -90°/+90° e o app continua em
- * pé em relação ao aparelho, como um app que não suporta paisagem. Sem aviso —
- * a tela simplesmente não gira.
- *
- * ⚠️ **Quem decide é ESTA media query, não o JS** (dono 26/08: "fica na
- * horizontal e retorna para vertical"). Com a decisão no JS, o `orientationchange`
- * do iOS chega ANTES de a viewport virar — naquele instante ainda se lê "retrato"
- * e não se compensa — e a correção só vinha no `resize` seguinte, que em PWA
- * standalone atrasa: dava para VER o app deitar e voltar. O motor de CSS
- * reavalia a media query no mesmo frame em que a viewport muda, sem evento.
- * Ao JS sobra só o SENTIDO (`.rot-cw`), e o padrão vale enquanto ele não fala.
- *
- * `pointer: coarse` é o que separa CELULAR de janela de desktop baixinha (era o
- * `angle 90/270` que o JS conferia antes); iPad fica fora pelo `max-height`.
- * `landscape-liberado` é a exceção de documento/vídeo, que faz a tela girar.
- *
- * ⚠️ é o `<body>`, e não o `#root`, porque TODO portal do DS (modal, sheet,
- * select, toast, PDF em tela cheia) monta em `document.body`.
- * ⚠️ o transform faz do `<body>` o containing block dos `position: fixed` — é o
- * que mantém header e BottomNav certos na tela virtual — e também o elemento que
- * ROLA: por isso `rolarAoTopo()` (src/utils/rolarAoTopo.js) existe.
- */
-@media screen and (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
-  html:not(.landscape-liberado) {
-    overflow: hidden;
-  }
+ * Controle de Orientação - Forçar Portrait exceto em Fullscreen
+ * ============================================================================ */
 
-  html:not(.landscape-liberado) body {
-    position: fixed;
-    top: 0;
-    left: 0;
-    /* medidas trocadas: a "largura" da tela em pé é a altura física, e vice-versa */
-    width: 100vh;
-    height: 100vw;
-    max-width: none;
-    overflow-x: hidden;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    transform-origin: 0 0;
-    /* padrão: aparelho deitado com o topo à esquerda (angle 90) */
-    transform: translateY(100vh) rotate(-90deg);
+/* Quando NÃO está em fullscreen, mostra aviso em landscape */
+@media screen and (orientation: landscape) and (max-height: 500px) {
+  body:not(:fullscreen) .landscape-block-overlay {
+    display: flex !important;
   }
+}
 
-  /* topo do aparelho à direita (angle 270) — o JS marca, e só então inverte */
-  html:not(.landscape-liberado).rot-cw body {
-    transform: translateX(100vw) rotate(90deg);
-  }
+/* Overlay para bloquear landscape (deve ser adicionado no App) */
+.landscape-block-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  background: var(--background);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+}
 
-  /* ⚠️ **As unidades de viewport não sabem da rotação**: `vh` continua medindo a
-     tela FÍSICA (deitada) e `vw`, a largura física. Sem traduzir, a página
-     inteira se espremia numa faixa — foi o que aconteceu no login
-     (`w-screen h-[100dvh]`), que virou 844 de largura dentro de uma tela virtual
-     de 390. Na tela em pé a ALTURA é `100vw` e a LARGURA é `100vh`, então cada
-     classe troca de eixo mantendo a porcentagem.
-     ⚠️ a lista abaixo é GERADA do código e travada por
-     `src/__tests__/estilo/unidadesViewportRotacao.test.js`: classe de viewport
-     nova sem tradução aqui FALHA o teste — sem isso a lista envelhece calada e o
-     defeito volta numa tela só. */
-  html:not(.landscape-liberado) .h-\[100dvh\] { height: 100vw; }
-  html:not(.landscape-liberado) .h-\[60vh\] { height: 60vw; }
-  html:not(.landscape-liberado) .h-\[70vh\] { height: 70vw; }
-  html:not(.landscape-liberado) .h-\[72vh\] { height: 72vw; }
-  html:not(.landscape-liberado) .h-\[85vh\] { height: 85vw; }
-  html:not(.landscape-liberado) .h-dvh { height: 100vw; }
-  html:not(.landscape-liberado) .max-h-\[52vh\] { max-height: 52vw; }
-  html:not(.landscape-liberado) .max-h-\[60vh\] { max-height: 60vw; }
-  html:not(.landscape-liberado) .max-h-\[70vh\] { max-height: 70vw; }
-  html:not(.landscape-liberado) .max-h-\[80vh\] { max-height: 80vw; }
-  html:not(.landscape-liberado) .max-h-\[85dvh\] { max-height: 85vw; }
-  html:not(.landscape-liberado) .max-h-\[85vh\] { max-height: 85vw; }
-  html:not(.landscape-liberado) .max-h-\[88vh\] { max-height: 88vw; }
-  html:not(.landscape-liberado) .max-h-\[90vh\] { max-height: 90vw; }
-  html:not(.landscape-liberado) .max-h-\[92vh\] { max-height: 92vw; }
-  html:not(.landscape-liberado) .max-w-\[90vw\] { max-width: 90vh; }
-  html:not(.landscape-liberado) .min-h-\[50vh\] { min-height: 50vw; }
-  html:not(.landscape-liberado) .min-h-\[60dvh\] { min-height: 60vw; }
-  html:not(.landscape-liberado) .min-h-dvh { min-height: 100vw; }
-  html:not(.landscape-liberado) .w-\[72vw\] { width: 72vh; }
-  html:not(.landscape-liberado) .w-\[75vw\] { width: 75vh; }
-  html:not(.landscape-liberado) .w-screen { width: 100vh; }
+/* Permitir landscape em fullscreen */
+:fullscreen .landscape-block-overlay,
+:-webkit-full-screen .landscape-block-overlay {
+  display: none !important;
 }
 
 /* Touch Target Mínimo (44x44px conforme Apple HIG) */

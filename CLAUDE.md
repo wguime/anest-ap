@@ -1404,29 +1404,6 @@ nova sem o par reabre o vai-e-volta.
 
 ⚠️ Bug conhecido: `src/App.jsx:1011` (TODO BUG-06) — global BottomNav pode duplicar com per-page BottomNav (createPortal). Decisão arquitetural pendente. Em página nova, **NÃO** renderizar BottomNav próprio.
 
-## Orientação da tela — o app é RETRATO e NÃO GIRA (dono 25/08)
-Nada gira, exceto o que nasce deitado: **documento (PDF/anexo Office), vídeo e imagem em tela cheia** — e **sem
-aviso nenhum**: a 1ª versão bloqueava com um overlay "Gire seu dispositivo" e o dono recusou ("não quero que
-apareça nenhuma mensagem, não deve rodar a tela nunca!!"). ⚠️ **não existe API que trave a rotação no iPhone**
-(`lock()` só vale no Android/PWA; o `orientation: portrait` do manifest o iOS ignora), então a trava tem duas
-camadas em `src/lib/orientacaoTela.js`: o lock nativo (⚠️ liberar é `lock('any')`, **nunca `unlock()`**, que
-devolve ao portrait do manifest) e a **compensação por CSS** — com o celular deitado o `<body>` gira de volta
-e o app fica **em pé em relação ao aparelho**, como um app que não suporta paisagem. ⚠️ **quem decide compensar
-é a MEDIA QUERY, não o JS** (dono 26/08: "fica na horizontal e retorna para vertical"): o `orientationchange`
-do iOS chega ANTES de a viewport virar, então decidir no JS lia "retrato", não compensava, e só o `resize`
-seguinte corrigia — dava para VER o app deitar e voltar. O CSS reavalia no mesmo frame; ao JS sobra o SENTIDO
-(`.rot-cw`) e a exceção (`.landscape-liberado`), e `pointer: coarse` separa celular de janela de desktop. A exceção é
-PEDIDA por `useLandscapePermitido()` e devolvida ao desmontar (contador, não booleano: PDF em modal sobre
-página com vídeo devolveria a trava cedo demais); pedem `PDFViewer`/`VideoPlayer` do DS, `PDFEmbed`,
-`AulaPlayerPage`, `ExpandedImageModal` e o anexo Office do comunicado — prévia em formulário de ADMIN fica
-FORA. Três consequências do transform: é o **`<body>`** e não o `#root` (todo portal do DS monta em
-`document.body`); o `<body>` vira o containing block dos `fixed` **e o que ROLA** — `window.scrollTo` não
-alcança mais nada, daí `rolarAoTopo()` (`src/utils/rolarAoTopo.js`) na navegação; e ⚠️ **as unidades de
-viewport não sabem da rotação** (`vh` mede a tela física), o que espremia a página numa faixa — na tela
-virtual ALTURA é `100vw` e LARGURA é `100vh`, com ~22 traduções GERADAS em `index.css` e travadas por
-`unidadesViewportRotacao.test.js` (classe nova sem tradução falha o teste). iPad/desktop seguem livres
-(`max-height: 500px`) e `/verificar/*` fica fora. Detalhes: `.claude/rules/responsividade.md`.
-
 ## Skills (`.claude/skills/`) — invocar com `/`
 `/calculadoras` `/educacao` `/gestao-documental` `/centro-gestao` `/notificacoes` `/nova-pagina` `/supabase-migration` `/rotacao-residencia` `/importar-plantoes-residencia` `/escala` `/escala-cirurgica` `/cirurgias-particulares` `/cateter-peridural` `/criar-prompt`
 
