@@ -166,7 +166,19 @@ function ItemSanfona({ valor, titulo, children }) {
 // ABA 1 — PRÉ-OP
 // =============================================================================
 
-function SelecaoFarmaco() {
+/**
+ * O estado da Pré-op mora no componente RAIZ, não aqui.
+ *
+ * ⚠️ `TabsContent` DESMONTA o painel inativo. Com o estado local, tocar em
+ * "No dia" e voltar descartava o fármaco aberto E a avaliação do paciente
+ * inteira — os 17 fatores marcados, a data e a hora da última dose, o toggle
+ * do POCUS. Medido em 26/08: abrir Liraglutida → No dia → Pré-op devolvia a
+ * lista, calado. Subindo o estado, a troca de aba não perde nada.
+ *
+ * `painelAberto` fica de fora de propósito: uma folha aberta não deve
+ * sobreviver a uma troca de aba.
+ */
+function useEstadoPreOp() {
   const [termo, setTermo] = useState('');
   const [farmacoId, setFarmacoId] = useState(null);
   const [grupoId, setGrupoId] = useState(null);
@@ -174,6 +186,27 @@ function SelecaoFarmaco() {
   const [pocusDisponivel, setPocusDisponivel] = useState(false);
   const [data, setData] = useState(null);
   const [hora, setHora] = useState('');
+  return {
+    termo, setTermo,
+    farmacoId, setFarmacoId,
+    grupoId, setGrupoId,
+    fatores, setFatores,
+    pocusDisponivel, setPocusDisponivel,
+    data, setData,
+    hora, setHora,
+  };
+}
+
+function SelecaoFarmaco({ estado }) {
+  const {
+    termo, setTermo,
+    farmacoId, setFarmacoId,
+    grupoId, setGrupoId,
+    fatores, setFatores,
+    pocusDisponivel, setPocusDisponivel,
+    data, setData,
+    hora, setHora,
+  } = estado;
   const [painelAberto, setPainelAberto] = useState(false);
 
   const grupos = useMemo(() => agruparPorClasse(buscarFarmacos(termo)), [termo]);
@@ -513,10 +546,10 @@ function TituloSecao({ children }) {
   );
 }
 
-function AbaPreOp() {
+function AbaPreOp({ estado }) {
   return (
     <div className="space-y-3">
-      <SelecaoFarmaco />
+      <SelecaoFarmaco estado={estado} />
 
       {/* A dieta era uma ABA (dono 26/08 mandou reorganizar por momento): ela
           não é assunto paralelo, é o que a decisão acima manda prescrever. E
@@ -820,6 +853,15 @@ function AbaReferencia() {
 // =============================================================================
 
 export default function InibidoresApetiteDisplay() {
+  const estado = useEstadoPreOp();
+  /* Dentro de um fármaco (ou das apresentações de um), a barra de abas some.
+     ⚠️ Encostada num cartão intitulado "Liraglutida", ela lia como sub-abas
+     DAQUELE remédio — "Liraglutida: Pré-op / No dia / Referência" — em vez de
+     abas da página (dono 26/08). Escondê-la também fecha o único caminho para
+     sair do fármaco por engano: resta o "← Todos os fármacos", que é
+     explícito. A imersão é DERIVADA do estado, não avisada por callback. */
+  const imerso = Boolean(estado.farmacoId || estado.grupoId);
+
   return (
     <div className="space-y-3">
       {/* TRÊS abas, por MOMENTO, não por assunto (dono 26/08, depois da
@@ -836,7 +878,7 @@ export default function InibidoresApetiteDisplay() {
             estreita que os cards e deslocada à esquerda. */}
         <TabsList
           aria-label="Seções de inibidores de apetite"
-          className={cn(LARGURA, 'grid w-auto grid-cols-3')}
+          className={cn(LARGURA, 'grid w-auto grid-cols-3', imerso && 'hidden')}
         >
           <TabsTrigger value="preop" className="w-full px-1">Pré-op</TabsTrigger>
           <TabsTrigger value="nodia" className="w-full px-1">No dia</TabsTrigger>
@@ -844,7 +886,7 @@ export default function InibidoresApetiteDisplay() {
         </TabsList>
 
         <TabsContent value="preop" className="mt-3">
-          <AbaPreOp />
+          <AbaPreOp estado={estado} />
         </TabsContent>
         <TabsContent value="nodia" className="mt-3">
           <AbaNoDia />

@@ -246,6 +246,39 @@ test.describe('Inibidores de apetite — DS', () => {
 
     await page.getByRole('button', { name: /^SC dose alta/ }).click();
     await expect(page.getByRole('heading', { name: /HNF subcutânea — dose alta/ })).toBeVisible();
+
+    /* Mesmo defeito do card irmão, confirmado medindo em 26/08: a barra ficava
+       sobre o cartão do fármaco (lendo como sub-abas dele) e a troca de aba
+       descartava o fármaco E os dados do paciente (ClCr, idade, plaquetas,
+       RNI, última dose), calada. */
+    const barraVisivel = await page.evaluate(() => {
+      const l = document.querySelector('[role="tablist"]');
+      return !!l && l.getBoundingClientRect().height > 0;
+    });
+    expect(barraVisivel, 'a barra devia sumir dentro do fármaco').toBe(false);
+
+    await page.getByRole('button', { name: /Dados do paciente/ }).click();
+    await page.waitForTimeout(400);
+    await page.getByLabel(/RNI/).fill('2.5');
+    await page.waitForTimeout(300);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(400);
+    await expect(page.getByText(/RNI 2\.5/).first()).toBeVisible();
+
+    // chegamos pelo cartão do grupo, então o voltar do detalhe devolve à tela
+    // da HNF; é de lá que se volta para a lista
+    await page.getByRole('button', { name: /^Heparina não fracionada/ }).click();
+    await page.waitForTimeout(400);
+    await page.getByRole('button', { name: /Todos os fármacos/ }).click();
+    await page.waitForTimeout(400);
+    await page.getByRole('tab', { name: 'Cateter' }).click();
+    await page.waitForTimeout(400);
+    await page.getByRole('tab', { name: 'Bloqueio' }).click();
+    await page.waitForTimeout(500);
+    await page.getByRole('button', { name: /^Heparina não fracionada/ }).click();
+    await page.waitForTimeout(400);
+    await page.getByRole('button', { name: /^SC dose alta/ }).click();
+    await expect(page.getByText(/RNI 2\.5/).first(), 'os dados do paciente se perderam').toBeVisible();
   });
 
   test('reversores: badge verde com rótulo e orientações em três assuntos', async ({ page }) => {
@@ -294,6 +327,10 @@ test.describe('Inibidores de apetite — DS', () => {
     await expect(page.getByText('O que prescrever').first()).toBeVisible();
     await expect(page.getByText('Na avaliação pré-anestésica').first()).toBeVisible();
 
+    // volta à lista: dentro do fármaco a barra de abas não existe mais
+    await page.getByRole('button', { name: /Todos os fármacos/ }).click();
+    await page.waitForTimeout(400);
+
     // os 17 fatores agora são legíveis SEM escolher fármaco
     await page.getByRole('tab', { name: 'Referência' }).click();
     await page.waitForTimeout(600);
@@ -304,6 +341,50 @@ test.describe('Inibidores de apetite — DS', () => {
 
     // e o conteúdo cortado não voltou
     await expect(page.getByText(/succinilcolina|Trendelenburg|Pré-oxigenação/)).toHaveCount(0);
+  });
+
+  test('dentro do fármaco não há abas, e a avaliação sobrevive à troca', async ({ page }) => {
+    test.setTimeout(150_000);
+    await page.setViewportSize({ width: 375, height: 812 });
+    await entrar(page, 'light');
+    await abrirCard(page);
+
+    const barraVisivel = () =>
+      page.evaluate(() => {
+        const l = document.querySelector('[role="tablist"]');
+        return !!l && l.getBoundingClientRect().height > 0;
+      });
+
+    // encostada num cartão intitulado "Liraglutida", a barra lia como
+    // sub-abas DAQUELE remédio (dono 26/08)
+    expect(await barraVisivel(), 'a barra some na lista').toBe(true);
+    await page.getByRole('button', { name: /^Liraglutida/ }).click();
+    await page.waitForTimeout(400);
+    expect(await barraVisivel(), 'a barra devia sumir dentro do fármaco').toBe(false);
+
+    // marca um fator na avaliação do paciente
+    await page.getByRole('button', { name: /Avaliação do paciente/ }).click();
+    await page.waitForTimeout(400);
+    await page.getByText('Sintomas gastrointestinais', { exact: true }).first().click();
+    await page.waitForTimeout(300);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(400);
+    await expect(page.getByText(/1 fator/).first()).toBeVisible();
+
+    await page.getByRole('button', { name: /Todos os fármacos/ }).click();
+    await page.waitForTimeout(400);
+    expect(await barraVisivel(), 'a barra volta na lista').toBe(true);
+
+    /* ⚠️ TabsContent DESMONTA o painel inativo: com o estado dentro da aba,
+       esta ida e volta descartava o fármaco E a avaliação inteira — 17
+       checkboxes, data e hora da última dose, toggle do POCUS —, calada. */
+    await page.getByRole('tab', { name: 'Referência' }).click();
+    await page.waitForTimeout(400);
+    await page.getByRole('tab', { name: 'Pré-op' }).click();
+    await page.waitForTimeout(500);
+    await page.getByRole('button', { name: /^Liraglutida/ }).click();
+    await page.waitForTimeout(500);
+    await expect(page.getByText(/1 fator/).first(), 'a avaliação do paciente se perdeu').toBeVisible();
   });
 
   test('POCUS: a fórmula de Perlas calcula na tela', async ({ page }) => {

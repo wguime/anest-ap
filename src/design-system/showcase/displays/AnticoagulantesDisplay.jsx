@@ -207,11 +207,28 @@ function CardSanfona({ children, className, recorta = true }) {
 
 const PACIENTE_VAZIO = { clcr: '', idade: '', plaquetas: '', inr: '', data: null, hora: '' };
 
-function AbaBloqueio() {
+/**
+ * O estado da aba Bloqueio mora no componente RAIZ, não aqui.
+ *
+ * ⚠️ `TabsContent` DESMONTA o painel inativo. Com o estado local, abrir um
+ * fármaco, tocar em "Cateter" e voltar descartava o fármaco E os dados do
+ * paciente — ClCr, idade, plaquetas, RNI e o horário da última dose —, em
+ * silêncio. Medido em 26/08 no card irmão de Inibidores de apetite e
+ * confirmado idêntico aqui (RNI 2,5 digitado, perdido na volta).
+ *
+ * `painelAberto` fica de fora de propósito: uma folha aberta não deve
+ * sobreviver a uma troca de aba.
+ */
+function useEstadoBloqueio() {
   const [termo, setTermo] = useState('');
   const [farmacoId, setFarmacoId] = useState(null);
   const [grupoId, setGrupoId] = useState(null);
   const [paciente, setPaciente] = useState(PACIENTE_VAZIO);
+  return { termo, setTermo, farmacoId, setFarmacoId, grupoId, setGrupoId, paciente, setPaciente };
+}
+
+function AbaBloqueio({ estado }) {
+  const { termo, setTermo, farmacoId, setFarmacoId, grupoId, setGrupoId, paciente, setPaciente } = estado;
   const [painelAberto, setPainelAberto] = useState(false);
 
   const grupos = useMemo(() => agruparPorClasse(buscarFarmacos(termo)), [termo]);
@@ -784,6 +801,14 @@ function AbaPreOperatorio() {
 // =============================================================================
 
 export default function AnticoagulantesDisplay() {
+  const estado = useEstadoBloqueio();
+  /* Dentro de um fármaco a barra de abas some: encostada num cartão
+     intitulado "Varfarina", ela lia como sub-abas DAQUELE remédio em vez de
+     abas da página. Mesma correção do card de Inibidores de apetite, onde o
+     dono reportou (26/08). Sai também o único caminho para perder o fármaco
+     por engano — resta o "← Todos os fármacos", que é explícito. */
+  const imerso = Boolean(estado.farmacoId || estado.grupoId);
+
   return (
     <div className="space-y-3">
       {/* underline é o padrão do app em página de detalhe com abas (Reuniões,
@@ -799,7 +824,7 @@ export default function AnticoagulantesDisplay() {
             que se via como "seletores não centralizados". */}
         <TabsList
           aria-label="Seções de anticoagulantes"
-          className={cn(LARGURA, 'grid w-auto grid-cols-4')}
+          className={cn(LARGURA, 'grid w-auto grid-cols-4', imerso && 'hidden')}
         >
           {/* px-1 em vez do px-3 do DS: com a coluna do grid em 76px, os 24px
               de padding não deixavam "Bloqueio" e "Reversão" caberem. A largura
@@ -811,7 +836,7 @@ export default function AnticoagulantesDisplay() {
         </TabsList>
 
         <TabsContent value="bloqueio" className="mt-3">
-          <AbaBloqueio />
+          <AbaBloqueio estado={estado} />
         </TabsContent>
         <TabsContent value="cateter" className="mt-3">
           <AbaCateter />

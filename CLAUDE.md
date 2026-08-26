@@ -231,6 +231,22 @@ linha com o rótulo "Intervalo desta conduta" e ficava espremido à direita, com
 badge e virando um bloco ragged — foi o *"informações amontoadas"* do dono. `fonteSuspensao.detalhe` ganhou teto
 de 48 caracteres (invariante em teste) e a explicação de escopo vive uma vez só, no rodapé da aba.
 
+⚠️ **`TabsContent` do DS DESMONTA o painel inativo — estado local dentro de uma aba MORRE na troca.** Vale para o
+app inteiro. Nos dois cards de consulta isso apagava, em silêncio, o fármaco aberto E os dados do paciente
+digitados: nos Inibidores, os 17 fatores marcados + data/hora da última dose + toggle do POCUS; nos
+Anticoagulantes, ClCr, idade, plaquetas, RNI e a última dose (medido: RNI 2,5 digitado, perdido ao ir em
+"Cateter" e voltar). Correção: o estado subiu para o componente RAIZ (`useEstadoPreOp` / `useEstadoBloqueio`),
+que não desmonta. `painelAberto` fica de fora de propósito — folha aberta não deve sobreviver a troca de aba.
+
+⚠️ **Dentro de um fármaco, a barra de abas SOME nos dois cards** (dono 26/08, sobre os Inibidores: "ao abrir um
+medicamento os seletores acima podem confundir o usuário"). Encostada num cartão intitulado "Liraglutida", ela
+lia como sub-abas DAQUELE remédio — "Liraglutida: Pré-op / No dia / Referência" — em vez de abas da página. A
+imersão é **derivada** (`Boolean(farmacoId || grupoId)`), não avisada por callback, e fecha de quebra o único
+caminho de sair do fármaco por engano: resta o "← Todos os fármacos", que é explícito. ⚠️ voltando de um fármaco
+alcançado pela tela do GRUPO, o botão diz o nome do grupo, não "Todos os fármacos" — são dois passos de volta.
+Aplicado também aos Anticoagulantes porque é o MESMO defeito, confirmado por medição, e perder dado de paciente
+digitado é bug, não estilo.
+
 **Três limites do DS descobertos aqui, que valem para o app inteiro:**
 - ⚠️ `DatePicker` abre o popup como `absolute z-50` **sem portal** (`date-picker.jsx:434`), e `AccordionContent`
   (e `CollapsibleContent`) animam altura com `overflow-hidden` — calendário dentro de sanfona sai **cortado no
