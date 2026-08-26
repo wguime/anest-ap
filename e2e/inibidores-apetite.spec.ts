@@ -387,6 +387,53 @@ test.describe('Inibidores de apetite — DS', () => {
     await expect(page.getByText(/1 fator/).first(), 'a avaliação do paciente se perdeu').toBeVisible();
   });
 
+  /**
+   * Contraste dos badges (dono 26/08: "alguns estão difíceis de visualizar").
+   * Medido: só o `default` passa AA em `subtle`; `success` reprova ATÉ sólido
+   * (2,22:1 — #34C759 é claro demais para texto branco). A trava mede o
+   * RENDERIZADO, compondo o alfa sobre o primeiro ancestral opaco — sem isso
+   * o rgba do badge é comparado com ele mesmo e dá razão 1.
+   */
+  test('nenhum badge abaixo de 4,5:1 nos dois cards e nos dois temas', async ({ page }) => {
+    test.setTimeout(240_000);
+    await page.setViewportSize({ width: 375, height: 812 });
+
+    const MEDIR = () =>
+      page.evaluate(() => {
+        const lin = (c: number) => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+        const lum = (v: number[]) => 0.2126 * lin(v[0]) + 0.7152 * lin(v[1]) + 0.0722 * lin(v[2]);
+        const parse = (s: string) => { const m = (s || '').match(/[\d.]+/g) || []; return { c: m.slice(0, 3).map(Number), a: m.length > 3 ? parseFloat(m[3]) : 1 }; };
+        const opaco = (el: Element | null): number[] => { let n = el as HTMLElement | null;
+          while (n) { const p = parse(getComputedStyle(n).backgroundColor); if (p.c.length === 3 && p.a >= 0.999) return p.c; n = n.parentElement; } return [255, 255, 255]; };
+        const comp = (f: number[], a: number, b: number[]) => f.map((v, i) => v * a + b[i] * (1 - a));
+        const cr = (a: number[], b: number[]) => { const la = lum(a), lb = lum(b); const hi = Math.max(la, lb), lo = Math.min(la, lb); return (hi + 0.05) / (lo + 0.05); };
+        return Array.from(document.querySelectorAll('[data-slot="badge"], span[class*="rounded-[10px]"]'))
+          .filter((e) => (e.textContent || '').trim().length > 1)
+          .map((e) => { const cs = getComputedStyle(e); const base = opaco(e.parentElement);
+            const pb = parse(cs.backgroundColor); const bg = pb.a > 0 ? comp(pb.c, pb.a, base) : base;
+            const pf = parse(cs.color); const fg = comp(pf.c, pf.a, bg);
+            return { txt: (e.textContent || '').trim().slice(0, 20), razao: +cr(fg, bg).toFixed(2) }; })
+          .filter((x) => x.razao < 4.5);
+      });
+
+    for (const tema of ['light', 'dark'] as const) {
+      await entrar(page, tema);
+      for (const [card, farmaco] of [['Anticoagulantes', 'Varfarina'], ['Inibidores de apetite', 'Liraglutida']] as const) {
+        await page.goto('/calculadoras');
+        await page.waitForTimeout(2200);
+        await page.getByText('Perioperatório e Via Aérea', { exact: false }).first().click();
+        await page.waitForTimeout(700);
+        await page.getByText(card, { exact: true }).first().click();
+        await page.waitForTimeout(1200);
+        expect(await MEDIR(), `${tema}/${card}/lista`).toEqual([]);
+        await page.getByRole('button', { name: new RegExp('^' + farmaco) }).click();
+        await page.waitForTimeout(700);
+        expect(await MEDIR(), `${tema}/${card}/detalhe`).toEqual([]);
+      }
+      await page.evaluate(() => localStorage.clear());
+    }
+  });
+
   test('POCUS: a fórmula de Perlas calcula na tela', async ({ page }) => {
     test.setTimeout(120_000);
     await page.setViewportSize({ width: 375, height: 812 });

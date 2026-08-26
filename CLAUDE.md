@@ -247,6 +247,42 @@ alcançado pela tela do GRUPO, o botão diz o nome do grupo, não "Todos os fár
 Aplicado também aos Anticoagulantes porque é o MESMO defeito, confirmado por medição, e perder dado de paciente
 digitado é bug, não estilo.
 
+⚠️ **CONTRASTE DOS BADGES — medido em 26/08 contra WCAG AA (4,5:1), vale para o app inteiro:**
+
+| variante | `subtle` | `solid` |
+|---|---|---|
+| **default** (verde institucional #004225) | **9,71 ✓** | **11,63 ✓** |
+| warning | 1,99 ✗ | 9,78 ✓ |
+| destructive | 4,13 ✗ | 4,83 ✓ |
+| secondary | 4,27 ✗ | 4,83 ✓ |
+| info | 3,54 ✗ | 4,02 ✗ |
+| **success** | 2,04 ✗ | **2,22 ✗** |
+
+**Só o `default` passa em `subtle`, e o `success` reprova ATÉ sólido** — #34C759 é claro demais para texto
+branco. Daí as regras nos dois cards de consulta: `subtle` só com `default`; status colorido sempre `solid`; e
+NADA usa `success` com texto — vira `default`, que mantém o sentido "ok" e passa com folga. Sobre o cabeçalho
+tonal (#D4EDDA) o `secondary` cai para 3,90, então lá os atributos usam `default` outline (9,37). ⚠️ Os tokens
+NÃO foram mexidos (alcançariam o app inteiro); a correção é por uso. Outros displays ainda usam `success` com
+texto (`BalancoHidricoTransopDisplay`, `SofaDisplay`) — não tocados, ficam para decisão do dono. Trava no e2e
+mede o RENDERIZADO compondo o alfa sobre o primeiro ancestral opaco: sem isso o rgba do badge é comparado com
+ele mesmo e dá razão 1 (foi o que o meu 1º medidor fez).
+
+⚠️ **Cabeçalho do fármaco em tom de destaque** (dono 26/08): `bg-accent dark:bg-card dark:border dark:border-border`
+— a MESMA receita do `EscalaCirurgicaHomeCard`, que é o padrão do app para cartão que se destaca sem virar
+alerta. No escuro o `accent` (#212D28) fica quase igual ao `card`, por isso lá o destaque vem da BORDA. Vale
+para os dois cards de consulta e para a tela das apresentações.
+
+⚠️ **O `Alert` do DS tem `border-l-4`** (alert.jsx:9) — a borda esquerda grossa destoava dos demais cards. Anulada
+LOCALMENTE com `border-l` na className (tailwind-merge resolve a favor da última); mexer no `alert.jsx`
+alcançaria todos os alertas do app.
+
+⚠️ **O título da calculadora pagava DOIS padding-top**: a página do App dá 16px e o `CalculatorShowcase` dava
+outros 12, contra 16px abaixo — o dono viu o desequilíbrio. Com `pt-0` no container, os dois vãos ficam em 16px.
+Vale para as 71 calculadoras.
+
+⚠️ **O voltar mora em cartão PRÓPRIO**, separado do da medicação (dono 26/08: "está colado"). Continua no fluxo
+do scroll — não flutua sobre o cabeçalho fixo, que era o motivo de ele estar dentro do card.
+
 **Três limites do DS descobertos aqui, que valem para o app inteiro:**
 - ⚠️ `DatePicker` abre o popup como `absolute z-50` **sem portal** (`date-picker.jsx:434`), e `AccordionContent`
   (e `CollapsibleContent`) animam altura com `overflow-hidden` — calendário dentro de sanfona sai **cortado no

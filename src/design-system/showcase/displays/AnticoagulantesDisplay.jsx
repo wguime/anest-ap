@@ -54,7 +54,26 @@ import {
 // PEÇAS DE APRESENTAÇÃO (só composição de componentes do DS)
 // =============================================================================
 
-const BADGE_CATETER = { success: 'success', warning: 'warning', destructive: 'destructive' };
+/**
+ * Contraste dos badges — medido contra WCAG AA (4,5:1) em 26/08, depois de o
+ * dono relatar selos "difíceis de visualizar".
+ *
+ *   variante      subtle   solid
+ *   default        9,71 ✓  11,63 ✓   <- o único que passa em subtle
+ *   warning        1,99 ✗   9,78 ✓
+ *   destructive    4,13 ✗   4,83 ✓
+ *   secondary      4,27 ✗   4,83 ✓
+ *   info           3,54 ✗   4,02 ✗
+ *   success        2,04 ✗   2,22 ✗   <- reprova ATÉ sólido (#34C759 é claro
+ *                                       demais para texto branco)
+ *
+ * Daí as regras aqui: `subtle` só com `default`; status colorido sempre
+ * `solid`; e NADA usa `success` com texto — vira `default`, que é o verde
+ * institucional, mantém o sentido "ok" e passa com folga.
+ * Sobre o cabeçalho tonal (#D4EDDA) o `secondary` cai para 3,90 — lá os
+ * atributos usam `default` outline (9,37).
+ */
+const BADGE_CATETER = { success: 'default', warning: 'warning', destructive: 'destructive' };
 
 /**
  * Largura do card: a MESMA da conferência da escala cirúrgica
@@ -68,6 +87,16 @@ const BADGE_CATETER = { success: 'success', warning: 'warning', destructive: 'de
  * na borda, a borda arredondada e a sombra ficam cortadas.
  */
 const LARGURA = '-mx-2';
+
+/**
+ * Tonalidade de destaque do cabeçalho — a MESMA do card da Escala Cirúrgica
+ * na Home (`bg-accent` #D4EDDA no claro, `card` + borda no escuro), que é o
+ * padrão do app para cartão que precisa se destacar sem virar alerta
+ * (dono 26/08). No escuro o `accent` (#212D28) fica quase igual ao `card`, por
+ * isso lá o destaque vem da BORDA — é a receita que já está em produção.
+ */
+const DESTAQUE = 'bg-accent dark:bg-card dark:border dark:border-border';
+
 
 /** Rótulo de assunto — o mesmo formato do "DOSE" no card do reversor. */
 function Rotulo({ children, tom }) {
@@ -103,7 +132,15 @@ function Bloco({ titulo, acessorio, children, className, padding = 'md' }) {
  * Aqui o ícone vai para dentro do título e a coluna é colapsada — o texto
  * ganha a largura inteira do card.
  */
-const SEM_COLUNA_DE_ICONE = '[&>div>div:first-child]:hidden';
+/**
+ * Dois ajustes locais no Alert do DS:
+ *   1. o ícone sai da COLUNA à esquerda (ele é centrado na vertical e, em
+ *      alerta longo, flutua no meio roubando largura de todas as linhas);
+ *   2. `border-l` anula o `border-l-4` da base (alert.jsx:9) — a borda
+ *      esquerda grossa destoava dos demais cards (dono 26/08).
+ * ⚠️ Local, não no alert.jsx: lá alcançaria todos os alertas do app.
+ */
+const SEM_COLUNA_DE_ICONE = '[&>div>div:first-child]:hidden border-l';
 
 function TituloAlerta({ icone: Icone, children }) {
   return (
@@ -336,31 +373,45 @@ function AbaBloqueio({ estado }) {
         <button
           type="button"
           onClick={() => setFarmacoId(null)}
-          className="w-full min-h-[44px] px-4 py-2 flex items-center gap-1.5 text-left border-b border-border text-primary"
+          className="w-full min-h-[44px] px-4 py-2 flex items-center gap-1.5 text-left text-primary"
         >
           <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
           {/* devolve à tela do grupo quando foi por ela que se chegou aqui */}
           <span className="text-sm font-semibold">{cardGrupo ? cardGrupo.nome : 'Todos os fármacos'}</span>
         </button>
-        <div className="p-4 space-y-2">
+      </Card>
+
+      {/* O voltar mora em cartão PRÓPRIO (dono 26/08: "está colado no card da
+          medicação"). Continua no fluxo do scroll, não flutua sobre o
+          cabeçalho fixo — que era o motivo de ele estar dentro do card. */}
+      <Card padding="none" className={cn(LARGURA, 'overflow-hidden', DESTAQUE)}>
+        <div className="p-4 space-y-3">
           <div>
-            <h3 className="text-lg font-bold text-foreground leading-tight">{farmaco.farmaco}</h3>
-            <p className="text-sm text-muted-foreground leading-snug">{farmaco.regime}</p>
+            <h3 className="text-[18px] font-bold text-foreground leading-tight">{farmaco.farmaco}</h3>
+            <p className="mt-0.5 text-[13px] text-muted-foreground leading-snug">{farmaco.regime}</p>
           </div>
+          {/* Hierarquia dos selos: os ATRIBUTOS (via, marcas) ficam todos no
+              mesmo traço discreto; o do CATETER continua sólido e colorido de
+              propósito — é status de segurança, e é o único que deve gritar
+              nesta linha. */}
           <div className="flex flex-wrap items-center gap-1.5">
-            <Badge variant="secondary" badgeStyle="subtle">{farmaco.via}</Badge>
+            <Badge variant="default" badgeStyle="outline">{farmaco.via}</Badge>
             {farmaco.comerciais?.map((c) => (
-              <Badge key={c} variant="secondary" badgeStyle="outline">{c}</Badge>
+              <Badge key={c} variant="default" badgeStyle="outline">{c}</Badge>
             ))}
             <Badge variant={BADGE_CATETER[cateter.tom] || 'warning'} badgeStyle="solid">
               {cateter.label}
             </Badge>
           </div>
+          {/* mesma estrutura rótulo→valor do card irmão: lá "Doses usuais" era
+              linha e aqui era frase com o rótulo embutido (dono 26/08 pediu
+              harmonia entre os dois) */}
           {farmaco.dosesTipicas && farmaco.dosesTipicas !== '—' && (
-            <p className="text-xs text-muted-foreground leading-snug">
-              <span className="font-semibold text-foreground">Doses usuais: </span>
-              {farmaco.dosesTipicas}
-            </p>
+            <div className="divide-y divide-primary/10 border-t border-primary/10">
+              <LinhaDado rotulo="Doses usuais" valor="">
+                <p className="text-xs text-muted-foreground leading-snug mt-0.5">{farmaco.dosesTipicas}</p>
+              </LinhaDado>
+            </div>
           )}
         </div>
       </Card>
@@ -408,7 +459,7 @@ function AbaBloqueio({ estado }) {
               </span>
             )}
           </div>
-          <Badge variant={preenchidos.length > 0 ? 'success' : 'secondary'} badgeStyle="subtle" className="shrink-0">
+          <Badge variant={preenchidos.length > 0 ? 'default' : 'secondary'} badgeStyle="solid" className="shrink-0">
             {preenchidos.length > 0 ? 'Editar' : 'Informar'}
           </Badge>
         </button>

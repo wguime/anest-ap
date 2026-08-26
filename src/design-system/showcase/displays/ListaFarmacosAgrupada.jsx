@@ -31,6 +31,14 @@ import { agruparVariantes, resumoDoGrupo } from '../../../lib/agrupamentoFarmaco
 const NOME = 'text-base font-bold text-foreground leading-tight';
 const APOIO = 'text-xs text-muted-foreground leading-snug';
 
+/**
+ * Tonalidade de destaque do cabeçalho — a MESMA do card da Escala Cirúrgica
+ * na Home (`bg-accent` no claro, `card` + borda no escuro), pedido do dono em
+ * 26/08. No escuro o `accent` fica quase igual ao `card`, por isso lá o
+ * destaque vem da BORDA.
+ */
+const DESTAQUE = 'bg-accent dark:bg-card dark:border dark:border-border';
+
 /** Corpo comum ao cartão único e ao da variante. */
 function Corpo({ titulo, regime, comerciais, resumo }) {
   return (
@@ -144,14 +152,23 @@ export function PaginaGrupo({ card, largura, lerResumo, onVoltar, onEscolher, ro
         <button
           type="button"
           onClick={onVoltar}
-          className="w-full min-h-[44px] px-4 py-2 flex items-center gap-1.5 text-left border-b border-border text-primary"
+          className="w-full min-h-[44px] px-4 py-2 flex items-center gap-1.5 text-left text-primary"
         >
           <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
           <span className="text-sm font-semibold">{rotuloVoltar}</span>
         </button>
+      </Card>
+
+      {/* cartão próprio para o voltar, separado do da medicação (dono 26/08) */}
+      <Card padding="none" className={cn(largura, 'overflow-hidden', DESTAQUE)}>
         <div className="p-4">
-          <h3 className="text-lg font-bold text-foreground leading-tight">{card.nome}</h3>
-          <p className={cn(APOIO, 'mt-0.5')}>Toque na apresentação que o paciente usa.</p>
+          {/* mesma escala tipográfica do cabeçalho do fármaco: 18px/700 com o
+              apoio em 13px, para as duas telas da mesma jornada não mudarem
+              de peso no meio do caminho */}
+          <h3 className="text-[18px] font-bold text-foreground leading-tight">{card.nome}</h3>
+          <p className="mt-0.5 text-[13px] text-muted-foreground leading-snug">
+            Toque na apresentação que o paciente usa.
+          </p>
         </div>
       </Card>
 

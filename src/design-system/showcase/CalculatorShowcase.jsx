@@ -1990,7 +1990,11 @@ function CalculatorPage({ calculator, _onBack }) {
   };
 
   return (
-    <div className="px-2 py-3 lg:p-6 space-y-4 lg:space-y-6 min-h-dvh bg-background overflow-x-hidden">
+    /* pt-0: a página do App já paga 16px de padding-top e este container
+       pagava outros 12 — o título ficava com 28px acima contra 16 abaixo, e
+       o dono viu o desequilíbrio (26/08). Sem o pt duplicado, os dois vãos
+       ficam em 16px. Vale para as 71 calculadoras. */
+    <div className="px-2 pt-0 pb-3 lg:p-6 space-y-4 lg:space-y-6 min-h-dvh bg-background overflow-x-hidden">
       {/* Header — back button e limpar removidos; navegação via header global */}
       <div>
         <h1 className="text-lg font-bold text-foreground leading-tight">{calculator.title}</h1>

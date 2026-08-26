@@ -67,10 +67,47 @@ import {
  */
 const LARGURA = '-mx-2';
 
-/** Colapsa a coluna do ícone do Alert do DS (ver cabeçalho). */
-const SEM_COLUNA_DE_ICONE = '[&>div>div:first-child]:hidden';
+/**
+ * Tonalidade de destaque do cabeçalho — a MESMA do card da Escala Cirúrgica
+ * na Home (`bg-accent` #D4EDDA no claro, `card` + borda no escuro), que é o
+ * padrão do app para cartão que precisa se destacar sem virar alerta
+ * (dono 26/08). No escuro o `accent` (#212D28) fica quase igual ao `card`, por
+ * isso lá o destaque vem da BORDA — é a receita que já está em produção.
+ */
+const DESTAQUE = 'bg-accent dark:bg-card dark:border dark:border-border';
 
-const TOM_BADGE = { success: 'success', warning: 'warning', destructive: 'destructive', info: 'secondary' };
+
+/** Colapsa a coluna do ícone do Alert do DS (ver cabeçalho). */
+/**
+ * Dois ajustes locais no Alert do DS:
+ *   1. o ícone sai da COLUNA à esquerda (ele é centrado na vertical e, em
+ *      alerta longo, flutua no meio roubando largura de todas as linhas);
+ *   2. `border-l` anula o `border-l-4` da base (alert.jsx:9) — a borda
+ *      esquerda grossa destoava dos demais cards (dono 26/08).
+ * ⚠️ Local, não no alert.jsx: lá alcançaria todos os alertas do app.
+ */
+const SEM_COLUNA_DE_ICONE = '[&>div>div:first-child]:hidden border-l';
+
+/**
+ * Contraste dos badges — medido contra WCAG AA (4,5:1) em 26/08, depois de o
+ * dono relatar selos "difíceis de visualizar".
+ *
+ *   variante      subtle   solid
+ *   default        9,71 ✓  11,63 ✓   <- o único que passa em subtle
+ *   warning        1,99 ✗   9,78 ✓
+ *   destructive    4,13 ✗   4,83 ✓
+ *   secondary      4,27 ✗   4,83 ✓
+ *   info           3,54 ✗   4,02 ✗
+ *   success        2,04 ✗   2,22 ✗   <- reprova ATÉ sólido (#34C759 é claro
+ *                                       demais para texto branco)
+ *
+ * Daí as regras aqui: `subtle` só com `default`; status colorido sempre
+ * `solid`; e NADA usa `success` com texto — vira `default`, que é o verde
+ * institucional, mantém o sentido "ok" e passa com folga.
+ * Sobre o cabeçalho tonal (#D4EDDA) o `secondary` cai para 3,90 — lá os
+ * atributos usam `default` outline (9,37).
+ */
+const TOM_BADGE = { success: 'default', warning: 'warning', destructive: 'destructive', info: 'secondary' };
 /** O herói do veredito: verde quando pode manter, vermelho no alto risco. */
 const TEXTO_TOM = {
   success: 'text-primary',
@@ -299,27 +336,40 @@ function SelecaoFarmaco({ estado }) {
         <button
           type="button"
           onClick={() => setFarmacoId(null)}
-          className="w-full min-h-[44px] px-4 py-2 flex items-center gap-1.5 text-left border-b border-border text-primary"
+          className="w-full min-h-[44px] px-4 py-2 flex items-center gap-1.5 text-left text-primary"
         >
           <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
           {/* devolve à tela do grupo quando foi por ela que se chegou aqui */}
           <span className="text-sm font-semibold">{cardGrupo ? cardGrupo.nome : 'Todos os fármacos'}</span>
         </button>
-        <div className="p-4 space-y-2">
+      </Card>
+
+      {/* O voltar mora em cartão PRÓPRIO (dono 26/08: "está colado no card da
+          medicação"). Continua no fluxo do scroll, não flutua sobre o
+          cabeçalho fixo — que era o motivo de ele estar dentro do card. */}
+      <Card padding="none" className={cn(LARGURA, 'overflow-hidden', DESTAQUE)}>
+        <div className="p-4 space-y-3">
           <div>
-            <h3 className="text-lg font-bold text-foreground leading-tight">{farmaco.farmaco}</h3>
-            <p className="text-sm text-muted-foreground leading-snug">{farmaco.regime}</p>
+            <h3 className="text-[18px] font-bold text-foreground leading-tight">{farmaco.farmaco}</h3>
+            <p className="mt-0.5 text-[13px] text-muted-foreground leading-snug">{farmaco.regime}</p>
           </div>
+          {/* Hierarquia dos selos: os ATRIBUTOS (via, marcas) ficam todos no
+              mesmo traço discreto e a DURAÇÃO, que é o que sustenta a regra
+              dos 7 dias, ganha o tonal verde — o mesmo chip do card da
+              Escala. Três estilos de badge disputando na mesma linha era o
+              que tirava a harmonia. */}
           <div className="flex flex-wrap items-center gap-1.5">
-            <Badge variant="secondary" badgeStyle="subtle">{farmaco.via}</Badge>
-            {farmaco.duracao && (
-              <Badge variant="secondary" badgeStyle="solid">{DURACAO[farmaco.duracao]?.label}</Badge>
-            )}
+            <Badge variant="default" badgeStyle="outline">{farmaco.via}</Badge>
             {farmaco.comerciais?.map((c) => (
-              <Badge key={c} variant="secondary" badgeStyle="outline">{c}</Badge>
+              <Badge key={c} variant="default" badgeStyle="outline">{c}</Badge>
             ))}
+            {farmaco.duracao && (
+              <Badge variant="default" badgeStyle="solid">{DURACAO[farmaco.duracao]?.label}</Badge>
+            )}
           </div>
-          <div className="divide-y divide-border">
+          {/* filete do verde institucional, como o do card da Escala: sobre o
+              fundo tonal o `border-border` some */}
+          <div className="divide-y divide-primary/10 border-t border-primary/10">
             <LinhaDado rotulo="Meia-vida" valor={farmaco.meiaVida} />
             {farmaco.dosesTipicas && (
               <LinhaDado rotulo="Doses usuais" valor="">
@@ -338,7 +388,7 @@ function SelecaoFarmaco({ estado }) {
       <Bloco
         titulo="Suspensão"
         acessorio={
-          <Badge variant={TOM_BADGE[conduta.tom] || 'secondary'} badgeStyle="subtle" className="shrink-0">
+          <Badge variant={TOM_BADGE[conduta.tom] || 'secondary'} badgeStyle="solid" className="shrink-0">
             {conduta.chip}
           </Badge>
         }
@@ -372,8 +422,8 @@ function SelecaoFarmaco({ estado }) {
             sibutramina por 7 dias. */}
         <div className="flex items-start gap-2">
           <Badge
-            variant={farmaco.fonteSuspensao.orgao === 'SBA' ? 'success' : 'secondary'}
-            badgeStyle={farmaco.fonteSuspensao.orgao === 'SBA' ? 'solid' : 'outline'}
+            variant={farmaco.fonteSuspensao.orgao === 'SBA' ? 'default' : 'secondary'}
+            badgeStyle="solid"
             className="shrink-0"
           >
             {farmaco.fonteSuspensao.orgao}
@@ -424,8 +474,8 @@ function SelecaoFarmaco({ estado }) {
             )}
           </div>
           <Badge
-            variant={fatoresAtivos.length > 0 ? 'destructive' : preenchidos.length > 0 ? 'success' : 'secondary'}
-            badgeStyle="subtle"
+            variant={fatoresAtivos.length > 0 ? 'destructive' : preenchidos.length > 0 ? 'default' : 'secondary'}
+            badgeStyle="solid"
             className="shrink-0"
           >
             {preenchidos.length > 0 ? 'Editar' : 'Informar'}
@@ -732,8 +782,8 @@ function AbaNoDia() {
           <div className="flex items-start justify-between gap-2">
             <p className="text-sm font-semibold text-foreground leading-tight">{g.titulo}</p>
             <Badge
-              variant={g.risco === 'alto' ? 'destructive' : 'success'}
-              badgeStyle="subtle"
+              variant={g.risco === 'alto' ? 'destructive' : 'default'}
+              badgeStyle="solid"
               className="shrink-0"
             >
               {g.risco === 'alto' ? 'Alto risco' : 'Baixo risco'}
@@ -805,7 +855,7 @@ function AbaReferencia() {
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-bold text-foreground leading-tight">{c.fonte}</p>
             {c.principal && (
-              <Badge variant="success" badgeStyle="solid" className="shrink-0">
+              <Badge variant="default" badgeStyle="solid" className="shrink-0">
                 Adotada
               </Badge>
             )}
