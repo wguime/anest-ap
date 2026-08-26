@@ -1,12 +1,16 @@
 /**
- * Trava de orientação do app (dono 25/08, reforçada no mesmo dia: "não deve
- * rodar a tela nunca!!").
+ * Trava de orientação do app (dono 25/08 "não deve rodar a tela nunca!!";
+ * 26/08 "fica na horizontal e retorna para vertical").
  *
- * INVARIANTE, não persona: com o celular deitado o app se contra-rotaciona
- * (nada de aviso), e só NÃO faz isso enquanto alguém tiver pedido a exceção —
- * documento ou vídeo. O caso que quebra uma implementação por booleano é o
- * aninhado: PDF aberto dentro de um modal sobre uma página com vídeo, onde
- * fechar um dos dois devolveria a trava com o outro ainda na tela.
+ * ⚠️ O QUE ESTE TESTE **NÃO** COBRE, de propósito: o *quando* compensar. Isso é
+ * da media query em `index.css` — foi tirado do JS justamente porque decidir
+ * aqui chegava tarde no iPhone e dava para ver o app deitar e voltar. Testar o
+ * "quando" neste módulo recriaria a dependência que causou o defeito.
+ *
+ * O que é daqui, e é o que se trava: a EXCEÇÃO (documento/vídeo desligam a
+ * compensação) e o SENTIDO da rotação. O caso que quebra uma implementação por
+ * booleano é o aninhado — PDF dentro de um modal sobre uma página com vídeo —,
+ * onde fechar um dos dois devolveria a trava com o outro ainda na tela.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
@@ -20,23 +24,23 @@ import {
 let lock;
 
 /** jsdom não tem orientação: o teste descreve o aparelho. */
-function aparelho({ angulo = 0, altura = 844, largura = 390 } = {}) {
+function aparelho({ angulo = 0, deitado = false, celular = true } = {}) {
   Object.defineProperty(globalThis.screen, 'orientation', {
     value: { lock, unlock: vi.fn(), angle: angulo, type: 'portrait-primary' },
     configurable: true,
     writable: true,
   });
+  // espelha a media query do index.css
   window.matchMedia = vi.fn().mockImplementation((q) => ({
-    // o recorte da política: celular DEITADO (paisagem e baixinho)
-    matches: q.includes('landscape') && largura > altura && altura <= 500,
+    matches: deitado && celular,
     media: q,
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
   }));
 }
 
-const deitado = (angulo = 90) => aparelho({ angulo, altura: 390, largura: 844 });
-const emPe = () => aparelho({ angulo: 0, altura: 844, largura: 390 });
+const deitado = (angulo = 90) => aparelho({ angulo, deitado: true });
+const emPe = () => aparelho({ angulo: 0 });
 
 beforeEach(() => {
   lock = vi.fn(() => Promise.resolve());
@@ -49,48 +53,47 @@ const html = () => document.documentElement.classList;
 const ultimoLock = () => lock.mock.calls.at(-1)?.[0];
 
 describe('orientacaoTela — a tela não gira, e sem aviso', () => {
-  it('em pé não compensa nada e trava em retrato', () => {
+  it('em pé: nada liberado, nada invertido, lock em retrato', () => {
     aplicarPoliticaOrientacao();
 
-    expect(rotacaoCompensada()).toBe(false);
+    expect(html().contains('landscape-liberado')).toBe(false);
     expect(html().contains('rot-cw')).toBe(false);
-    expect(html().contains('rot-ccw')).toBe(false);
     expect(ultimoLock()).toBe('portrait');
     expect(landscapePermitido()).toBe(false);
   });
 
-  it('deitado com o topo à esquerda (angle 90) gira o conteúdo -90°', () => {
+  it('topo do aparelho à esquerda (angle 90) usa o sentido PADRÃO do CSS', () => {
     deitado(90);
     aplicarPoliticaOrientacao();
 
-    expect(rotacaoCompensada()).toBe(true);
-    expect(html().contains('rot-ccw')).toBe(true);
+    // sem classe: o CSS já gira -90° sozinho, sem esperar este módulo
     expect(html().contains('rot-cw')).toBe(false);
+    expect(rotacaoCompensada()).toBe(true);
   });
 
-  it('deitado para o outro lado (angle 270) gira +90°', () => {
+  it('topo do aparelho à direita (angle 270) inverte o sentido', () => {
     deitado(270);
     aplicarPoliticaOrientacao();
 
     expect(html().contains('rot-cw')).toBe(true);
-    expect(html().contains('rot-ccw')).toBe(false);
   });
 
-  it('endireitar o aparelho desfaz a compensação', () => {
-    deitado(90);
+  it('endireitar o aparelho tira a inversão', () => {
+    deitado(270);
     aplicarPoliticaOrientacao();
-    expect(rotacaoCompensada()).toBe(true);
+    expect(html().contains('rot-cw')).toBe(true);
 
     emPe();
     aplicarPoliticaOrientacao();
+    expect(html().contains('rot-cw')).toBe(false);
     expect(rotacaoCompensada()).toBe(false);
-    expect(html().contains('rot-ccw')).toBe(false);
   });
 
-  it('documento/vídeo: com a exceção pedida o app GIRA — nada de compensar', () => {
+  it('documento/vídeo: a exceção desliga a compensação e o app GIRA', () => {
     deitado(90);
     permitirLandscape();
 
+    expect(html().contains('landscape-liberado')).toBe(true);
     expect(rotacaoCompensada()).toBe(false);
     // ⚠️ unlock() devolveria à orientação PADRÃO, que o manifest fixa em
     // portrait: em PWA Android não liberaria nada.
@@ -102,6 +105,7 @@ describe('orientacaoTela — a tela não gira, e sem aviso', () => {
     const devolver = permitirLandscape();
     devolver();
 
+    expect(html().contains('landscape-liberado')).toBe(false);
     expect(rotacaoCompensada()).toBe(true);
     expect(ultimoLock()).toBe('portrait');
   });
@@ -129,8 +133,8 @@ describe('orientacaoTela — a tela não gira, e sem aviso', () => {
     expect(rotacaoCompensada()).toBe(false);
   });
 
-  it('tablet/notebook deitado (altura > 500px) fica fora: paisagem ali é o uso normal', () => {
-    aparelho({ angulo: 90, altura: 768, largura: 1024 });
+  it('tablet/notebook deitado fica fora — a media query não casa', () => {
+    aparelho({ angulo: 90, deitado: true, celular: false });
     aplicarPoliticaOrientacao();
 
     expect(rotacaoCompensada()).toBe(false);

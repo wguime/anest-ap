@@ -15,10 +15,19 @@
  *     `lock('any')`, NUNCA `unlock()`: `unlock()` devolve à orientação PADRÃO,
  *     que o manifest fixa em `portrait`.
  *  2. **compensação por CSS** — o que segura o iPhone: com o aparelho deitado,
- *     o `<body>` é girado de volta por `-angle`, e o app continua **em pé em
- *     relação ao aparelho**, exatamente como um app que não suporta paisagem.
- *     Substituiu o aviso "Gire seu dispositivo" (o dono não quer mensagem
- *     nenhuma: a tela simplesmente não gira).
+ *     o `<body>` é girado de volta, e o app continua **em pé em relação ao
+ *     aparelho**, exatamente como um app que não suporta paisagem. Substituiu o
+ *     aviso "Gire seu dispositivo" (o dono não quer mensagem nenhuma).
+ *
+ * ⚠️ **QUEM DECIDE COMPENSAR É O CSS, não este módulo** (dono 26/08: "fica na
+ * horizontal e retorna para vertical"). O `orientationchange` do iOS chega ANTES
+ * de a viewport virar — lendo dali, ainda se vê "retrato" e não se compensa — e
+ * a correção só vinha no `resize` seguinte, que em PWA standalone atrasa: dava
+ * para VER o app deitar e voltar. A media query em `index.css` é reavaliada no
+ * mesmo frame da mudança, sem depender de evento. Aqui fica só o **sentido**
+ * (`.rot-cw` quando o topo do aparelho está à direita), e o padrão do CSS vale
+ * enquanto este módulo não fala — no pior caso o app aparece em pé de cabeça
+ * para baixo por um instante, nunca deitado.
  *
  * Por que o `<body>` e não o `#root`: TODO portal do DS (modal, sheet, select,
  * dropdown, toast, PDF em tela cheia) monta em `document.body` — girar o
@@ -31,13 +40,14 @@
  * no celular deitado; em retrato nada disto liga.
  */
 
-const CLASSE_COMPENSADA = 'rotacao-compensada';
-const CLASSE_CW = 'rot-cw';   // conteúdo gira +90° (aparelho com o topo à direita)
-const CLASSE_CCW = 'rot-ccw'; // conteúdo gira -90° (aparelho com o topo à esquerda)
+const CLASSE_LIBERADO = 'landscape-liberado'; // exceção ativa: a tela pode girar
+const CLASSE_CW = 'rot-cw';                   // topo do aparelho à direita (angle 270)
 
-// O recorte separa CELULAR deitado de tablet/notebook: em iPad e desktop
-// paisagem é o uso normal e não se compensa nada.
-const CELULAR_DEITADO = '(orientation: landscape) and (max-height: 500px)';
+// ⚠️ ESPELHA a media query de `index.css` — mudar um exige mudar o outro. O
+// recorte separa CELULAR deitado de tablet e de janela de desktop baixinha: em
+// iPad e notebook paisagem é o uso normal e não se compensa nada.
+const CELULAR_DEITADO =
+  'screen and (orientation: landscape) and (max-height: 500px) and (pointer: coarse)';
 
 let concessoes = 0;
 let instalado = false;
@@ -72,14 +82,12 @@ function aplicar() {
   const liberado = concessoes > 0;
 
   // --- camada 2: compensação por CSS (a que vale no iPhone) ---
+  // Só duas coisas saem daqui: a EXCEÇÃO (documento/vídeo desligam tudo) e o
+  // SENTIDO. O "quando" é da media query — ver o ⚠️ do cabeçalho.
   if (typeof document !== 'undefined' && document.documentElement) {
     const html = document.documentElement;
-    const angulo = anguloDaTela();
-    const compensa = !liberado && celularDeitado() && (angulo === 90 || angulo === 270);
-
-    html.classList.toggle(CLASSE_COMPENSADA, compensa);
-    html.classList.toggle(CLASSE_CCW, compensa && angulo === 90);
-    html.classList.toggle(CLASSE_CW, compensa && angulo === 270);
+    html.classList.toggle(CLASSE_LIBERADO, liberado);
+    html.classList.toggle(CLASSE_CW, anguloDaTela() === 270);
   }
 
   // --- camada 1: lock nativo (Android/PWA) ---
@@ -115,12 +123,16 @@ export function instalarTravaOrientacao() {
   if (instalado || typeof window === 'undefined') return () => {};
   instalado = true;
 
-  // `orientationchange` dispara ANTES de a viewport ter as medidas novas em
-  // parte dos aparelhos; `resize` chega depois e corrige. Os dois, de propósito.
+  // Os três, de propósito: aqui só se atualiza o SENTIDO, e quanto mais cedo
+  // melhor. `screen.orientation` é o que chega primeiro (iOS 16.4+) e já traz o
+  // ângulo novo; `orientationchange` cobre o iOS antigo; `resize` é a rede.
+  const o = typeof screen !== 'undefined' ? screen.orientation : null;
+  if (o && typeof o.addEventListener === 'function') o.addEventListener('change', aplicar);
   window.addEventListener('orientationchange', aplicar);
   window.addEventListener('resize', aplicar);
 
   return () => {
+    if (o && typeof o.removeEventListener === 'function') o.removeEventListener('change', aplicar);
     window.removeEventListener('orientationchange', aplicar);
     window.removeEventListener('resize', aplicar);
     instalado = false;
@@ -148,10 +160,13 @@ export function landscapePermitido() {
   return concessoes > 0;
 }
 
-/** O app está com a tela contra-rotacionada agora? (quem rola é o `<body>`) */
+/**
+ * O app está com a tela contra-rotacionada agora? (quem rola é o `<body>`)
+ * Calculado, não lido de classe: o CSS pode já estar compensando num frame em
+ * que este módulo ainda não passou, e quem pergunta precisa da verdade de agora.
+ */
 export function rotacaoCompensada() {
-  if (typeof document === 'undefined' || !document.documentElement) return false;
-  return document.documentElement.classList.contains(CLASSE_COMPENSADA);
+  return concessoes === 0 && celularDeitado();
 }
 
 /** Só para teste — zera o contador e reaplica a política. */

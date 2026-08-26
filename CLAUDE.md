@@ -1411,7 +1411,11 @@ apareça nenhuma mensagem, não deve rodar a tela nunca!!"). ⚠️ **não exist
 (`lock()` só vale no Android/PWA; o `orientation: portrait` do manifest o iOS ignora), então a trava tem duas
 camadas em `src/lib/orientacaoTela.js`: o lock nativo (⚠️ liberar é `lock('any')`, **nunca `unlock()`**, que
 devolve ao portrait do manifest) e a **compensação por CSS** — com o celular deitado o `<body>` gira de volta
-por `-angle` e o app fica **em pé em relação ao aparelho**, como um app que não suporta paisagem. A exceção é
+e o app fica **em pé em relação ao aparelho**, como um app que não suporta paisagem. ⚠️ **quem decide compensar
+é a MEDIA QUERY, não o JS** (dono 26/08: "fica na horizontal e retorna para vertical"): o `orientationchange`
+do iOS chega ANTES de a viewport virar, então decidir no JS lia "retrato", não compensava, e só o `resize`
+seguinte corrigia — dava para VER o app deitar e voltar. O CSS reavalia no mesmo frame; ao JS sobra o SENTIDO
+(`.rot-cw`) e a exceção (`.landscape-liberado`), e `pointer: coarse` separa celular de janela de desktop. A exceção é
 PEDIDA por `useLandscapePermitido()` e devolvida ao desmontar (contador, não booleano: PDF em modal sobre
 página com vídeo devolveria a trava cedo demais); pedem `PDFViewer`/`VideoPlayer` do DS, `PDFEmbed`,
 `AulaPlayerPage`, `ExpandedImageModal` e o anexo Office do comunicado — prévia em formulário de ADMIN fica

@@ -40,7 +40,7 @@ describe('unidades de viewport × tela contra-rotacionada', () => {
 
     const semTraducao = [...usadas].filter((classe) => {
       const seletor = `.${classe.replace('[', '\\[').replace(']', '\\]')} `;
-      return !css.includes(`html.rotacao-compensada ${seletor}`);
+      return !css.includes(`html:not(.landscape-liberado) ${seletor}`);
     });
 
     expect(semTraducao, `sem tradução em index.css: ${semTraducao.join(', ')}`).toEqual([]);

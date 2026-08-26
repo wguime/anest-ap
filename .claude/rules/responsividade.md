@@ -59,9 +59,22 @@ ignora). Por isso a trava tem duas camadas, em `src/lib/orientacaoTela.js`:
 1. **lock nativo** — resolve sozinho no Android/PWA. ⚠️ liberar é `lock('any')`,
    **nunca `unlock()`**, que devolve à orientação padrão do manifest (portrait).
 2. **compensação por CSS** — o que segura o iPhone: com o celular deitado o
-   `<body>` é girado de volta por `-angle` (`screen.orientation.angle`), e o app
-   continua **em pé em relação ao aparelho**, como um app que não suporta
-   paisagem. Classes `rotacao-compensada` + `rot-cw`/`rot-ccw` no `<html>`.
+   `<body>` é girado de volta e o app continua **em pé em relação ao aparelho**,
+   como um app que não suporta paisagem.
+
+⚠️ **QUEM DECIDE COMPENSAR É A MEDIA QUERY, não o JS** (dono 26/08: "fica na
+horizontal e retorna para vertical"). Com a decisão no JS, o `orientationchange`
+do iOS chega ANTES de a viewport virar — ali ainda se lê "retrato" e não se
+compensa — e a correção só vinha no `resize` seguinte, que em PWA standalone
+atrasa: dava para VER o app deitar e voltar. O motor de CSS reavalia a media
+query no mesmo frame da mudança, sem evento nenhum. Ao JS sobra só o SENTIDO
+(`.rot-cw` quando o topo do aparelho está à direita) e a exceção
+(`.landscape-liberado`); enquanto ele não fala, vale o sentido PADRÃO do CSS —
+no pior caso o app aparece em pé de cabeça para baixo por um instante, nunca
+deitado. `pointer: coarse` na media query é o que separa celular de janela de
+desktop baixinha (era o `angle 90/270` que o JS conferia). ⚠️ a constante
+`CELULAR_DEITADO` do módulo ESPELHA essa media query: mudar uma exige mudar a
+outra.
 
 Exceção: `useLandscapePermitido()` (`src/hooks/useLandscapePermitido.js`), pedida
 e devolvida ao desmontar — **contador**, não booleano, porque PDF dentro de modal
@@ -91,7 +104,8 @@ notebook paisagem é o uso normal e não se compensa nada. Rotas públicas
 `/verificar/*` ficam fora (`TravaOrientacao` fica no ramo do app em `main.jsx`,
 acima do portão de auth — login e boot também são o app).
 
-Travas: `src/__tests__/lib/orientacaoTela.test.js` (invariante: ângulo→sentido,
-contador aninhado, tablet fora) · a trava de drift acima · o describe de rotação
+Travas: `src/__tests__/lib/orientacaoTela.test.js` (exceção e sentido —
+⚠️ o *quando* NÃO é testado ali de propósito: é da media query, e testá-lo no
+módulo recriaria a dependência que causou o defeito de 26/08) · a trava de drift acima · o describe de rotação
 em `src/__tests__/design-system/video-player.test.jsx` (a LIGAÇÃO — o que se
 perde num refactor é o componente esquecer de pedir).
