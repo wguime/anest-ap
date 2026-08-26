@@ -60,35 +60,14 @@
 }
 
 /* ============================================================================
- * Controle de Orientação - Forçar Portrait exceto em Fullscreen
- * ============================================================================ */
-
-/* Quando NÃO está em fullscreen, mostra aviso em landscape */
-@media screen and (orientation: landscape) and (max-height: 500px) {
-  body:not(:fullscreen) .landscape-block-overlay {
-    display: flex !important;
-  }
-}
-
-/* Overlay para bloquear landscape (deve ser adicionado no App) */
-.landscape-block-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-overlay);
-  background: var(--background);
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 2rem;
-}
-
-/* Permitir landscape em fullscreen */
-:fullscreen .landscape-block-overlay,
-:-webkit-full-screen .landscape-block-overlay {
-  display: none !important;
-}
+ * Orientação
+ * ============================================================================
+ * O aviso "Gire seu dispositivo" SAIU (dono 25–26/08: "não quero que apareça
+ * nenhuma mensagem"). O app segue tentando o lock nativo em
+ * `useLockPortraitOrientation` — que só o Android/PWA honra, e o iPhone só com
+ * a flag experimental do Safari ligada no aparelho. Enquanto não houver uma
+ * decisão sobre travar de verdade, a tela gira e nada é dito.
+ */
 
 /* Touch Target Mínimo (44x44px conforme Apple HIG) */
 .touch-target {

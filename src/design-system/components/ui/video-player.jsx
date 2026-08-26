@@ -560,9 +560,8 @@ function VideoPlayer({
     else if (videoRef.current && type === 'video') videoRef.current.playbackRate = playbackRate
   }, [playbackRate, type, sendYTCommand, sendVimeoCommand])
 
-  // Fullscreen change listener — gerencia orientação. O overlay de landscape
-  // (landscape-block-overlay em index.css) usa pseudo-classe :fullscreen e se
-  // auto-esconde durante fullscreen, então basta gerenciar orientation.lock.
+  // Fullscreen change listener — gerencia orientação: em tela cheia o vídeo
+  // pede landscape (o conteúdo É deitado) e, ao sair, volta para retrato.
   useEffect(() => {
     const handleFullscreenChange = () => {
       const isFs = !!document.fullscreenElement

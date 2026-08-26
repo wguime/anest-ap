@@ -38,8 +38,7 @@ function useScreenOrientation() {
         await elem.webkitRequestFullscreen();
       }
 
-      // Tentar bloquear em landscape (o overlay landscape-block-overlay
-      // é automaticamente escondido pelo CSS :fullscreen)
+      // Em tela cheia o conteúdo É deitado — pede landscape de fato.
       if (screen.orientation && screen.orientation.lock) {
         try {
           await screen.orientation.lock('landscape');
