@@ -16,7 +16,6 @@
  */
 import { useState, useEffect, useRef } from 'react'
 import { Skeleton } from '@/design-system'
-import { useLandscapePermitido } from '@/hooks/useLandscapePermitido'
 
 function isLikelyDirectPdf(url) {
   // Heurística estrita: SOMENTE URLs que terminam em ".pdf" literalmente.
@@ -46,11 +45,6 @@ export function PDFEmbed({ url, title = 'PDF do artigo', className }) {
     }, 12000)
     return () => clearTimeout(timer)
   }, [canEmbed, url, loaded])
-
-  // Artigo é documento: gira junto com o resto da leitura de PDF. Condicionado
-  // porque a section some quando o embed falha — e aí não há o que deitar.
-  // (antes do early return: hook não pode ficar atrás dele)
-  useLandscapePermitido(Boolean(url) && canEmbed && !failed)
 
   // URL não embedável OU iframe falhou → esconde section inteira
   if (!url || !canEmbed || failed) return null

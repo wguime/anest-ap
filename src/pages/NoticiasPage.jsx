@@ -22,7 +22,6 @@ import { CategoriasGrid } from '@/components/noticias/CategoriasGrid'
 import { Tabs, TabsList, TabsTrigger, EmptyState, Skeleton, Modal, Button, SearchToggleButton, Collapsible, CollapsibleContent } from '@/design-system'
 import { SearchBar } from '@/design-system/components/anest/search-bar'
 import { PageHeader } from '@/components'
-import { rolarAoTopo } from '@/utils/rolarAoTopo';
 
 const TABS = [
   { value: 'all', label: 'Todas' },
@@ -66,7 +65,7 @@ export default function NoticiasPage({ onNavigate, goBack }) {
   }, [searchOpen])
 
   useEffect(() => {
-    rolarAoTopo()
+    window.scrollTo(0, 0)
     loadNoticias()
   }, [loadNoticias])
 

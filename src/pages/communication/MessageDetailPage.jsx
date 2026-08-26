@@ -5,7 +5,6 @@ import { Card, CardContent, Avatar, Badge, Button, useTheme, ConfirmDialog } fro
 import { PageHeader } from "@/components"
 import { useMessages } from "@/contexts/MessagesContext"
 import { formatDate } from "@/utils/formatters"
-import { rolarAoTopo } from '@/utils/rolarAoTopo';
 
 const CATEGORY_ICONS = {
   plantao: Stethoscope,
@@ -102,7 +101,7 @@ export default function MessageDetailPage({ onNavigate, goBack, params }) {
     setReplyContent("")
     setShowReply(false)
     setShowDeleteConfirm(false)
-    rolarAoTopo()
+    window.scrollTo(0, 0)
   }
 
   // Find the message or notification
