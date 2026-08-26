@@ -16,6 +16,7 @@ import {
   buildReuniaoCancelPayload,
   buildReuniaoDocumentoPayload,
 } from '@/utils/reuniaoNotifications';
+import { rolarAoTopo } from '@/utils/rolarAoTopo';
 
 export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
   const { toast } = useToast();
@@ -32,7 +33,7 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
   const [activatingCheckin, setActivatingCheckin] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
 
-  useEffect(() => { window.scrollTo(0, 0); }, []);
+  useEffect(() => { rolarAoTopo(); }, []);
 
   // --- Data loaders ---
   const loadReuniao = useCallback(async () => {

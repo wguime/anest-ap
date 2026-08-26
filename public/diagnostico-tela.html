@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>ANEST — diagnóstico de tela</title>
+<style>
+  /* ===================================================================
+     A MESMA trava do app, copiada aqui de propósito: esta página é
+     servida direto pelo hosting, sem passar pelo bundle nem pelo cache
+     do app instalado. Se a trava funciona no aparelho, funciona AQUI.
+     =================================================================== */
+  @media screen and (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+    html { overflow: hidden; }
+    body {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vh;   /* a "largura" da tela em pé é a altura física */
+      height: 100vw;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      transform-origin: 0 0;
+      transform: translateY(100vh) rotate(-90deg); /* topo do aparelho à esquerda */
+    }
+    html.rot-cw body {
+      transform: translateX(100vw) rotate(90deg);  /* topo à direita */
+    }
+  }
+
+  :root { color-scheme: light dark; }
+  body {
+    margin: 0;
+    padding: 20px 16px 40px;
+    font: 15px/1.45 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    background: #F0FFF4;
+    color: #002215;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { background: #111916; color: #E8F5E9; }
+    .linha { border-color: #2A3F36 !important; }
+    .rot { background: #1A2420 !important; }
+  }
+  h1 { font-size: 19px; margin: 0 0 4px; }
+  .sub { margin: 0 0 20px; opacity: .75; font-size: 14px; }
+  .veredito {
+    padding: 14px 16px; border-radius: 16px; font-weight: 700; margin-bottom: 20px;
+    font-size: 16px; color: #fff;
+  }
+  .ok { background: #2E8B57; }
+  .nao { background: #DC2626; }
+  .linha {
+    display: flex; justify-content: space-between; gap: 12px;
+    padding: 9px 0; border-bottom: 1px solid #C8E6C9;
+  }
+  .linha span:first-child { opacity: .75; }
+  .linha span:last-child { font-weight: 600; text-align: right; word-break: break-word; }
+  .rot {
+    margin-top: 22px; padding: 14px 16px; border-radius: 16px; background: #E8F5E9;
+    font-size: 14px;
+  }
+  code { font-size: 13px; }
+</style>
+</head>
+<body>
+
+<h1>ANEST — diagnóstico de tela</h1>
+<p class="sub">Deite o aparelho. Se a trava funciona aqui, este texto continua <b>em pé</b>.</p>
+
+<div id="veredito" class="veredito"></div>
+<div id="dados"></div>
+
+<div class="rot">
+  Esta página não faz parte do app e não guarda nada. É só para descobrir por que
+  a tela gira no seu aparelho. Mande um print desta tela <b>com o celular deitado</b>.
+</div>
+
+<script>
+(function () {
+  var dados = document.getElementById('dados');
+  var veredito = document.getElementById('veredito');
+
+  function mq(q) { return window.matchMedia && window.matchMedia(q).matches; }
+
+  function angulo() {
+    if (screen.orientation && typeof screen.orientation.angle === 'number') return screen.orientation.angle;
+    if (typeof window.orientation === 'number') return window.orientation;
+    return null;
+  }
+
+  function linha(rotulo, valor) {
+    return '<div class="linha"><span>' + rotulo + '</span><span>' + valor + '</span></div>';
+  }
+
+  function sn(v) { return v ? 'SIM' : 'NÃO'; }
+
+  function render() {
+    var ang = angulo();
+    // o sentido: só inverte quando o topo do aparelho está à direita
+    document.documentElement.classList.toggle('rot-cw', ang === 270 || ang === -90);
+
+    var deitado = mq('(orientation: landscape)');
+    var baixo = mq('(max-height: 500px)');
+    var toque = mq('(pointer: coarse)');
+    var trava = mq('screen and (orientation: landscape) and (max-height: 500px) and (pointer: coarse)');
+    var girado = getComputedStyle(document.body).transform !== 'none';
+
+    veredito.className = 'veredito ' + (deitado ? (girado ? 'ok' : 'nao') : 'ok');
+    veredito.textContent = !deitado
+      ? 'Aparelho em pé — deite para testar'
+      : (girado ? 'FUNCIONA: a trava está ativa neste aparelho'
+                : 'NÃO FUNCIONA: a trava não pegou aqui');
+
+    dados.innerHTML =
+      linha('Tela (CSS)', window.innerWidth + ' × ' + window.innerHeight) +
+      linha('Está deitado?', sn(deitado)) +
+      linha('Altura ≤ 500px?', sn(baixo)) +
+      linha('É toque (pointer: coarse)?', sn(toque)) +
+      linha('<b>A regra da trava casa?</b>', '<b>' + sn(trava) + '</b>') +
+      linha('Tela girou de volta?', sn(girado)) +
+      linha('Ângulo do sistema', ang === null ? 'não informado' : ang + '°') +
+      linha('screen.orientation.lock', (screen.orientation && screen.orientation.lock) ? 'existe' : 'não existe') +
+      linha('Instalado na tela de início?', sn(mq('(display-mode: standalone)'))) +
+      linha('Pixel ratio', window.devicePixelRatio) +
+      linha('Navegador', navigator.userAgent.slice(0, 60) + '…');
+  }
+
+  window.addEventListener('resize', render);
+  window.addEventListener('orientationchange', render);
+  if (screen.orientation && screen.orientation.addEventListener) {
+    screen.orientation.addEventListener('change', render);
+  }
+  render();
+
+  // qual versão o hosting está servindo agora (para comparar com a do app)
+  fetch('/', { cache: 'no-store' }).then(function (r) { return r.text(); }).then(function (html) {
+    var m = html.match(/\/assets\/index-[A-Za-z0-9_-]+\.css/);
+    dados.insertAdjacentHTML('beforeend', linha('Versão publicada agora', m ? m[0].replace('/assets/', '') : '?'));
+  }).catch(function () {});
+})();
+</script>
+
+</body>
+</html>

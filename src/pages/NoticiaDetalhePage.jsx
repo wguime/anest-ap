@@ -20,6 +20,7 @@ import { Badge } from '@/design-system/components/ui/badge'
 import { PDFEmbed } from '@/components/noticias/PDFEmbed'
 import { cn } from '@/design-system/utils/tokens'
 import { formatDate } from '@/utils/formatters'
+import { rolarAoTopo } from '@/utils/rolarAoTopo';
 
 function formatFullDate(iso) {
   if (!iso) return ''
@@ -86,7 +87,7 @@ export default function NoticiaDetalhePage({ noticiaId, onNavigate, goBack }) {
   const [showMeta, setShowMeta] = useState(false)
 
   useEffect(() => {
-    window.scrollTo(0, 0)
+    rolarAoTopo()
     let alive = true
     setLoading(true)
     getById(noticiaId).then((n) => {

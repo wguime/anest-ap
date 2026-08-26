@@ -6,6 +6,8 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from "@/design-system/utils/tokens"
+import { useLandscapePermitido } from "@/hooks/useLandscapePermitido"
+import { aplicarPoliticaOrientacao } from "@/lib/orientacaoTela"
 
 /**
  * VideoPlayer - Player de vídeo completo e acessível
@@ -194,6 +196,11 @@ function VideoPlayer({
   const hideControlsTimeout = useRef(null)
   const isPlayingRef = useRef(false)
   const maxWatchedTimeRef = useRef(initialTime > 0 ? initialTime : 0)
+
+  // Vídeo é a outra exceção da trava de retrato (a 1ª é documento): 16/9 no
+  // celular em pé ocupa 1/4 da tela. Vale com o player montado — quem assiste
+  // deita o aparelho ANTES de entrar em tela cheia.
+  useLandscapePermitido()
 
   // Keep callback refs stable so the postMessage listener never tears down
   const callbacksRef = useRef({ onPlay, onPause, onEnded, onTimeUpdate, onDurationChange })
@@ -560,18 +567,22 @@ function VideoPlayer({
     else if (videoRef.current && type === 'video') videoRef.current.playbackRate = playbackRate
   }, [playbackRate, type, sendYTCommand, sendVimeoCommand])
 
-  // Fullscreen change listener — gerencia orientação: em tela cheia o vídeo
-  // pede landscape (o conteúdo É deitado) e, ao sair, volta para retrato.
+  // Fullscreen change listener. Em tela cheia o vídeo pede landscape de fato
+  // (o conteúdo É deitado); ao sair, quem decide é a política — o player segue
+  // montado com a concessão acima. Travar retrato aqui acionaria o overlay
+  // "Gire seu dispositivo" com o aparelho deitado e o vídeo ainda tocando.
   useEffect(() => {
     const handleFullscreenChange = () => {
       const isFs = !!document.fullscreenElement
       setIsFullscreen(isFs)
-      if (screen.orientation && screen.orientation.lock) {
-        if (isFs) {
+      if (isFs) {
+        if (screen.orientation && screen.orientation.lock) {
           screen.orientation.lock('landscape').catch(() => {})
-        } else {
-          screen.orientation.lock('portrait').catch(() => {})
         }
+      } else {
+        // Devolve a decisão à política (aqui: 'any', o player segue montado)
+        // em vez de forçar retrato na mão de quem ainda está deitado.
+        aplicarPoliticaOrientacao()
       }
     }
     document.addEventListener('fullscreenchange', handleFullscreenChange)

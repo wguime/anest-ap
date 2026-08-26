@@ -35,8 +35,8 @@ import { reportError } from "@/services/errorReporting"
 import { SUB_CARD_PARENT } from "./data/rolePermissionTemplates"
 import { isBulkImportEnabled } from "./utils/featureFlags"
 import { useActivityTracking } from "./hooks/useActivityTracking"
-import { useLockPortraitOrientation } from "./hooks/useLockPortraitOrientation"
 import useIosViewportReanchor from "./hooks/useIosViewportReanchor"
+import { rolarAoTopo } from "./utils/rolarAoTopo"
 import { PrivacyPolicyModal } from "./components/PrivacyPolicyModal"
 import { canAccessCentroGestao, canAccessIncidenteGestao, canAccessDenunciaGestao } from "./pages/management/utils/incidentAccess"
 // ─── Eager imports (paths diretos, não via barrel) ───────────────────────────
@@ -864,10 +864,6 @@ function App() {
   // Activity tracking
   const { trackPageView } = useActivityTracking()
 
-  // Trava orientação em portrait (best-effort — cobre Android Chrome PWA;
-  // iOS Safari usa fallback visual via RotateDeviceOverlay)
-  useLockPortraitOrientation()
-
   // iOS: teclado fechado pode deixar o visual viewport deslocado e o
   // BottomNav/headers `fixed` "flutuando" no meio da página — re-ancora.
   useIosViewportReanchor()
@@ -944,7 +940,7 @@ function App() {
   // Also clear any stuck overflow:hidden on body (safety net for modals that didn't clean up)
   useEffect(() => {
     document.body.style.overflow = ''
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    rolarAoTopo()
     trackPageView(currentPage)
   }, [currentPage, trackPageView])
 
@@ -978,7 +974,7 @@ function App() {
     if (navigationType === 'POP') {
       setNavigationHistory(prev => prev.slice(0, -1))
     }
-    window.scrollTo(0, 0)
+    rolarAoTopo()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location])
 

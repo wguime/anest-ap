@@ -1404,6 +1404,32 @@ nova sem o par reabre o vai-e-volta.
 
 ⚠️ Bug conhecido: `src/App.jsx:1011` (TODO BUG-06) — global BottomNav pode duplicar com per-page BottomNav (createPortal). Decisão arquitetural pendente. Em página nova, **NÃO** renderizar BottomNav próprio.
 
+## Orientação da tela — a tela do app é FIXA (dono 25–26/08)
+Nada gira, exceto o que nasce deitado: **documento (PDF/anexo Office), vídeo e imagem em tela cheia** — e **sem
+aviso nenhum** (a 1ª versão bloqueava com overlay "Gire seu dispositivo" e o dono recusou). Vale para **todos os
+usuários, em qualquer sistema**, embutido no app: nada de configuração por aparelho. ⚠️ **não existe API que
+trave a rotação no iPhone** — `lock()` é recurso EXPERIMENTAL do Safari desde o 16.4 (Ajustes → Safari → Avançado)
+e o `orientation` do manifest o iOS ignora —, então a trava tem duas camadas em `src/lib/orientacaoTela.js`: o
+lock nativo (Android/PWA; ⚠️ liberar é `lock('any')`, **nunca `unlock()`**) e a **contra-rotação por CSS** — com
+o aparelho deitado o `<body>` gira de volta e o app fica em pé em relação ao aparelho, como um app que não
+suporta paisagem. A exceção é PEDIDA por `useLandscapePermitido()` e devolvida ao desmontar (contador, não
+booleano); pedem `PDFViewer`/`VideoPlayer` do DS, `PDFEmbed`, `AulaPlayerPage`, `ExpandedImageModal` e o anexo
+Office do comunicado — prévia em formulário de ADMIN fica FORA.
+⚠️ **Quem decide compensar é a MEDIA QUERY, não o JS**: o `orientationchange` do iOS chega ANTES de a viewport
+virar, então decidir no JS lia "retrato", não compensava, e só o `resize` seguinte corrigia — dava para VER o app
+deitar e voltar (relato do dono 26/08). Ao JS sobra o SENTIDO (`.rot-cw`) e a exceção (`.landscape-liberado`).
+⚠️ **A regra é só de CELULAR** (dono 26/08: "em ipads, tablets a tela pode girar"): `max-height: 500px` separa
+celular deitado de tablet e `pointer: coarse` tira o desktop. Esse corte é DO DONO — no meio do caminho eu o
+removi supondo que fosse a causa do "continua rodando", e ele corrigiu na hora. Vale para TODOS os usuários,
+sem ninguém configurar nada no aparelho ("quero que seja uma função nativa do aplicativo"). Três consequências do transform: é o **`<body>`** e não o `#root` (todo portal do DS monta em
+`document.body`); o `<body>` vira o containing block dos `fixed` **e o que ROLA** — daí `rolarAoTopo()`
+(`src/utils/rolarAoTopo.js`); e ⚠️ **as unidades de viewport não sabem da rotação** (`vh` mede a tela física), o
+que espremia a página numa faixa — na tela virtual ALTURA é `100vw` e LARGURA é `100vh`, com traduções GERADAS em
+`index.css` travadas por `unidadesViewportRotacao.test.js`. ⚠️ **o que não dá para eliminar**: a animação de
+rotação do próprio iOS, que é do sistema (só app nativo, via `Info.plist`, trava isso). E o preço: a ACT rule
+b33eff do W3C reprova a técnica como falha do **WCAG 2.1 SC 1.3.4 (AA)** — cabe na exceção "orientação
+essencial", decisão do dono. Detalhes: `.claude/rules/responsividade.md`.
+
 ## Skills (`.claude/skills/`) — invocar com `/`
 `/calculadoras` `/educacao` `/gestao-documental` `/centro-gestao` `/notificacoes` `/nova-pagina` `/supabase-migration` `/rotacao-residencia` `/importar-plantoes-residencia` `/escala` `/escala-cirurgica` `/cirurgias-particulares` `/cateter-peridural` `/criar-prompt`
 
