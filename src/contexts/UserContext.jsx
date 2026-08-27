@@ -17,6 +17,18 @@ const UserContext = createContext(null);
 const ADMIN_UIDS = (import.meta.env.VITE_ADMIN_UIDS || '').split(',').filter(Boolean);
 
 /**
+ * Campos que SÓ admin escreve em userProfiles — espelha privilegedUserFields()
+ * de firestore.rules. Manter os dois lados iguais: a regra é a que vale, esta
+ * lista só evita disparar uma escrita que o servidor vai recusar.
+ */
+const CAMPOS_PRIVILEGIADOS = new Set([
+  'isAdmin', 'isCoordenador', 'role', 'tipoUsuario',
+  'permissions', 'customPermissions', 'cardPermissions',
+  'documentCategoryPermissions', 'documentIndividualPermissions',
+  'documentWritePermissions',
+]);
+
+/**
  * Garante que usuarios com UIDs de admin tenham as flags corretas,
  * independente do que esta no Firestore.
  */
@@ -70,6 +82,11 @@ export function UserProvider({ children, forceMock = false }) {
   const useMockRef = useRef(useMock);
   useMockRef.current = useMock;
 
+  // Última decisão da reconciliação Supabase→Firestore para campos que só admin
+  // persiste. Sobrevive entre snapshots do mesmo login; zerada a cada troca de
+  // usuário no onAuthChange.
+  const reconciliadoRef = useRef(null);
+
   const [user, setUser] = useState(null);
   const [firebaseUser, setFirebaseUser] = useState(null);
   const [isLoading, setIsLoading] = useState(!useMock);
@@ -86,6 +103,8 @@ export function UserProvider({ children, forceMock = false }) {
       // Limpar listener anterior do perfil
       if (unsubProfile) { unsubProfile(); unsubProfile = null; }
       if (cleanupIncidentSettingsSub) { cleanupIncidentSettingsSub(); cleanupIncidentSettingsSub = null; }
+      // Outro login = outra reconciliação; não carregar o papel de quem saiu.
+      reconciliadoRef.current = null;
 
       if (fbUser) {
         setFirebaseUser(fbUser);
@@ -99,7 +118,14 @@ export function UserProvider({ children, forceMock = false }) {
         unsubProfile = onSnapshot(profileRef, async (snap) => {
           if (snap.exists()) {
             const rawProfile = { id: snap.id, ...snap.data() };
-            const enrichedProfile = ensureAdminFlags(rawProfile);
+            // O doc do Firestore pode estar atrás do Supabase em campo que só
+            // admin grava. Sem reaplicar a última reconciliação, QUALQUER escrita
+            // no doc (token de push, consentimento LGPD) reentrega o papel velho
+            // e o gate da escala pisca até a reconciliação seguinte resolver.
+            const perfilBase = ensureAdminFlags(rawProfile);
+            const enrichedProfile = reconciliadoRef.current
+              ? ensureAdminFlags({ ...rawProfile, ...reconciliadoRef.current })
+              : perfilBase;
             setUser(enrichedProfile);
 
             // Buscar settings de notificação de incidentes do usuário (para acesso ao Centro de Gestão)
@@ -148,10 +174,19 @@ export function UserProvider({ children, forceMock = false }) {
             // Sincronizar flags de admin de volta ao Firestore se ensureAdminFlags mudou algo
             // (o writeback dispara onSnapshot de novo, mas na segunda vez os valores já batem
             //  e a condição é false — sem loop infinito)
-            if (enrichedProfile.isAdmin !== rawProfile.isAdmin || enrichedProfile.role !== rawProfile.role) {
+            //
+            // `isAdmin`/`role` são campos de privilégio: firestore.rules só aceita
+            // de quem JÁ é admin no doc. Sem o guarda, quem está em VITE_ADMIN_UIDS
+            // mas com isAdmin=false no Firestore dispara uma escrita recusada, e o
+            // rollback do SDK reentrega o snapshot velho — o mesmo laço que fazia o
+            // papel piscar. Comparar com perfilBase (e não com enrichedProfile, que
+            // já carrega a reconciliação do Supabase) mantém este writeback restrito
+            // ao que ensureAdminFlags mudou.
+            if (rawProfile.isAdmin === true
+              && (perfilBase.isAdmin !== rawProfile.isAdmin || perfilBase.role !== rawProfile.role)) {
               updateDoc(profileRef, {
-                isAdmin: enrichedProfile.isAdmin,
-                role: enrichedProfile.role,
+                isAdmin: perfilBase.isAdmin,
+                role: perfilBase.role,
                 updatedAt: new Date(),
               }).catch((err) => console.warn('Falha ao sincronizar admin flags:', err));
             }
@@ -233,7 +268,12 @@ export function UserProvider({ children, forceMock = false }) {
                       syncFields.permissions = row.permissions;
                     }
                   }
-                  if (Object.keys(syncFields).length > 0) {
+                  // Repetição do que já foi reconciliado nesta sessão: o doc do
+                  // Firestore continua velho (só admin persiste), então syncFields
+                  // sai idêntico a cada snapshot. Re-aplicar só geraria render e log.
+                  const jaAplicado = reconciliadoRef.current
+                    && JSON.stringify(syncFields) === JSON.stringify(reconciliadoRef.current);
+                  if (Object.keys(syncFields).length > 0 && !jaAplicado) {
                     const disabledCards = syncFields.permissions
                       ? Object.entries(syncFields.permissions).filter(([, v]) => v === false).map(([k]) => k)
                       : [];
@@ -244,9 +284,32 @@ export function UserProvider({ children, forceMock = false }) {
                     });
                     // Atualizar state IMEDIATAMENTE (sem esperar round-trip Firestore)
                     setUser(prev => prev ? ensureAdminFlags({ ...prev, ...syncFields }) : prev);
-                    // Persistir no Firestore para futuras sessões
-                    updateDoc(profileRef, { ...syncFields, updatedAt: new Date() })
-                      .catch((err) => console.warn('[UserContext] Firestore writeback failed:', err));
+                    // Guardar o que o Supabase decidiu: o próximo onSnapshot traz o
+                    // doc do Firestore ainda desatualizado e, sem isto, o papel volta
+                    // ao valor velho até esta reconciliação rodar de novo — piscando.
+                    reconciliadoRef.current = syncFields;
+
+                    // Persistir no Firestore para futuras sessões. Campo de
+                    // privilégio SÓ vai se o perfil já for admin: firestore.rules
+                    // recusa `role`/`permissions` escritos pelo próprio dono do
+                    // perfil (anti escalada). A escrita otimista do SDK entra no
+                    // cache local, o servidor recusa e o ROLLBACK dispara onSnapshot
+                    // de novo com o valor velho — que realimenta esta reconciliação.
+                    // Resultado: o papel piscava a sessão inteira e o card da Escala
+                    // Cirúrgica aparecia e sumia (caso Oscar Morais, 2026-08-27).
+                    // Sem privilégio a verdade do Supabase vale em memória; persistir
+                    // é tarefa do Centro de Gestão (admin) ou de
+                    // scripts/sync-papel-firestore.mjs.
+                    const podeGravarPrivilegio = rawProfile.isAdmin === true;
+                    const writeback = podeGravarPrivilegio
+                      ? syncFields
+                      : Object.fromEntries(
+                          Object.entries(syncFields).filter(([k]) => !CAMPOS_PRIVILEGIADOS.has(k)),
+                        );
+                    if (Object.keys(writeback).length > 0) {
+                      updateDoc(profileRef, { ...writeback, updatedAt: new Date() })
+                        .catch((err) => console.warn('[UserContext] Firestore writeback failed:', err));
+                    }
                   } else {
                     console.debug('[UserContext] Reconciliation: Supabase and Firestore in sync');
                   }
