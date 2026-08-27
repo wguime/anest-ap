@@ -122,7 +122,10 @@ describe('Selos da 1ª linha × coluna do cronômetro (dono 24/08)', () => {
   it('o nome cede antes do selo: continua sendo o único elástico da linha', () => {
     montar()
     const card = cardDe('Leonardo Ferrazzo')
-    const nome = [...linhaDoNome(card).children].find((el) => el.tagName === 'SPAN' && !el.dataset.slot)
+    // ⚠️ pelo TEXTO, não pela posição: deitado o ordinal ("1º") entra como
+    // primeiro span da linha, e buscar "o primeiro span" passava a devolver ele.
+    const nome = [...linhaDoNome(card).children]
+      .find((el) => el.tagName === 'SPAN' && !el.dataset.slot && el.textContent === 'Leonardo Ferrazzo')
     expect(nome.className).toContain('truncate')
     expect(nome.className).toContain('min-w-0')
     // todo selo é rígido — sem isto o badge encolheria e o texto dele quebraria

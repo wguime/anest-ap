@@ -585,12 +585,9 @@ export default function HomePage({ onNavigate }) {
           )}
         </div>
 
-        {/* deitado: os MESMOS cards, em duas colunas. Multi-coluna do CSS em vez
-            de grid porque cada card já vive num `div mb-4` — o fluxo respeita
-            essas margens e nada no DOM muda de lugar; `break-inside-avoid`
-            impede um card de ser partido no pé da coluna. O wrapper começa aqui
-            de propósito: cabeçalho, busca, banner e carrossel ficam de fora,
-            com a largura inteira. */}
+        {/* deitado: os MESMOS cards, em duas colunas preenchidas por LINHA. O
+            wrapper começa aqui de propósito: cabeçalho, busca, banner e
+            carrossel ficam de fora, com a largura inteira. */}
         {/* Wave 1.4 T1.4.2: banner de certificados expirando */}
         <CertificadoExpiracaoBanner onNavigate={onNavigate} />
 
@@ -600,7 +597,18 @@ export default function HomePage({ onNavigate }) {
             artigo cortava o card ao lado). Deitado ele encolhe em vez de sair. */}
         <NoticiasCarousel onNavigate={onNavigate} />
 
-        <div className="deitado:columns-2 deitado:gap-3 [&>*]:deitado:break-inside-avoid">
+        {/* ⚠️ GRID, não multi-coluna (dono 26/08: "home deveria ser: escala
+            cirúrgica - Plantões"). O fluxo de colunas do CSS enche a coluna da
+            ESQUERDA inteira antes de começar a direita: medido, a esquerda ficava
+            com Escala/Plantões/Férias/Estágios/Plantão Residência e a segunda
+            posição VISÍVEL da tela virava o card de Hospitais ("Técnicas de
+            Enfermagem"), que no retrato é o último. Em grid, cada linha é
+            preenchida na ordem do retrato — 1º à esquerda, 2º à direita.
+            As margens `mb-*` de cada card são zeradas aqui, senão somariam ao
+            `gap` e desalinhariam os topos de cada linha. `items-start` porque os
+            cards da Home têm alturas MUITO diferentes (de 129px a 1858px
+            medidos): esticar aqui só criaria vão vazio. */}
+        <div className="deitado:grid deitado:grid-cols-2 deitado:gap-3 deitado:items-start [&>*]:deitado:mb-0">
         {/* Escala Cirúrgica — plantonista do turno (Comunicados migrou p/ a aba
             Gestão em 2026-07-22). Gate por papel, sem placeholder p/ quem não passa. */}
         {podeVerEscalaCirurgica(user) && (

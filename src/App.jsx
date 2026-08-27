@@ -1498,7 +1498,13 @@ function App() {
       <ReloadPrompt />
 
       {/* Container limita largura no desktop (mobile = 100% width) */}
-      <main id="main-content" tabIndex={-1} className="container focus:outline-none" ref={swipeContainerRef}>
+      {/* deitado: sem o teto de 720px do `container` (dono 26/08). Com a faixa
+          lateral ocupando 76px sobram 768, e o teto centralizava a página deixando
+          24px mortos de cada lado — na horizontal a largura é justamente o que
+          sobra, e são esses 48px que fazem as duas colunas da fila de liberação
+          ficarem MAIS largas que a coluna única do retrato em vez de mais
+          estreitas. Em pé nada muda. */}
+      <main id="main-content" tabIndex={-1} className="container deitado:max-w-none focus:outline-none" ref={swipeContainerRef}>
         <ErrorBoundary
           key={currentPage}
           onError={(error, errorInfo) =>

@@ -360,7 +360,12 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
         }
       />
 
-      <div className="max-w-3xl mx-auto px-4 pt-3 space-y-3">
+      {/* deitado: sem o teto de largura (dono 26/08). Ele centraliza a coluna em
+          720px e sobra 24px de cada lado; na horizontal esses 48px são a diferença
+          entre duas colunas de 338px (mais estreitas que os 343px do retrato, onde
+          o nome do plantonista já trunca no pior caso) e duas de 362px. Espaçamento
+          vertical mais curto pela mesma razão: altura é o que falta. */}
+      <div className="max-w-3xl deitado:max-w-none mx-auto px-4 pt-3 deitado:pt-1.5 space-y-3 deitado:space-y-2">
         {/* Barra de controles (data · turno · hospital · abas · ações).
             O CALENDÁRIO LIVRE ("Outra data") SAIU em 16/08, a pedido do dono —
             também no dia útil: a escala é operada no dia, e o atalho abria a

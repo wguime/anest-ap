@@ -448,7 +448,14 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
           em vez de cartões soltos — cabem 6 casos na tela contra 4, e o cabeçalho
           fica sendo a única superfície com moldura. `-mx-4` desfaz o padding
           lateral da página; a sala segue colapsável (chevron do Accordion). */}
-      <Accordion type="multiple" value={abertasAtual} onValueChange={setAbertas} className="-mx-4 divide-y-0">
+      {/* deitado: as MESMAS faixas em DUAS COLUNAS (dono 26/08). O card de cada
+          cirurgia não muda — hora, iniciais, procedimento, cirurgião e a tinta de
+          "iniciada" são os de hoje; o que muda é quantas salas cabem na tela: a
+          linha do caso usa ~360px dos 736 disponíveis e a outra metade ficava
+          vazia. Multi-coluna porque a sala é um bloco inteiro que não pode ser
+          partido (`break-inside-avoid`) e a leitura continua sendo de cima para
+          baixo, coluna a coluna. */}
+      <Accordion type="multiple" value={abertasAtual} onValueChange={setAbertas} className="-mx-4 divide-y-0 deitado:columns-2 deitado:gap-4 [&>*]:deitado:break-inside-avoid">
         {gruposExibicao.map((g) => {
           const nomeGrupo = g.anestesista ? displayGrupo(g) : (g.split ? '?' : '')
           const nCasos = g.casos.filter((c) => !casoVazio(c)).length

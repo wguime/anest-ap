@@ -17,6 +17,13 @@
  * ⚠️ Regra do dono: TODOS os controles ficam visíveis — nada de colapsar ou
  * esconder ao rolar. 34px é o piso de altura (com ~110px de largura o toque
  * segue confortável); abaixo disso o dedo erra no centro cirúrgico.
+ *
+ * ⚠️ CELULAR DEITADO: os três trilhos viram UMA linha de 42px (dono 26/08). Em
+ * pé eles são três faixas empilhadas e custam 150px medidos — de 390px de tela
+ * na horizontal, isso mais o cabeçalho é 67% da altura só de controle, e a
+ * primeira linha da fila ficava 210px ABAIXO da borda. Deitado a largura é o que
+ * sobra, então os mesmos trilhos, com a MESMA altura de toque, cabem lado a
+ * lado. Nada some e nada encolhe abaixo do piso de 34px.
  */
 import SegmentedSelector from './SegmentedSelector'
 
@@ -69,8 +76,8 @@ export default function BarraControles({
   const temEscolhaDeData = opcoesData.length > 1
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-stretch gap-2">
+    <div className="space-y-2 deitado:flex deitado:items-center deitado:gap-2 deitado:space-y-0">
+      <div className="flex items-stretch gap-2 deitado:shrink-0">
         {temEscolhaDeData && (
           <Trilho
             className="shrink-0"
@@ -92,13 +99,22 @@ export default function BarraControles({
           três hospitais — o seletor não filtraria nada e só faria perguntar qual
           escolher. Quem passa `null` está dizendo "não há esse eixo aqui". */}
       {hospitalOpcoes && (
-        <Trilho options={hospitalOpcoes} value={hospital} onChange={onEscolherHospital} />
+        <Trilho className="deitado:shrink-0" options={hospitalOpcoes} value={hospital} onChange={onEscolherHospital} />
       )}
 
       {/* Abas em verde sólido (dono 24/07) — separa "o que vejo" de "o que filtro".
           Também somem no fim de semana: lá existe uma tela só. */}
       {abaOpcoes && (
-        <SegmentedSelector options={abaOpcoes} value={aba} onChange={onEscolherAba} variant="filled" />
+        <SegmentedSelector
+          options={abaOpcoes}
+          value={aba}
+          onChange={onEscolherAba}
+          variant="filled"
+          // deitado as abas ficam com a sobra da linha (são o controle mais
+          // tocado) e os botões descem de 42px para 34px de corpo — o mesmo piso
+          // dos trilhos ao lado, para a linha inteira fechar em 42px.
+          className="deitado:min-w-0 deitado:flex-1 [&>button]:deitado:min-h-[34px] [&>button]:deitado:py-1"
+        />
       )}
     </div>
   )

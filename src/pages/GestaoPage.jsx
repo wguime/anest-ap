@@ -49,20 +49,24 @@ export default function GestaoPage({ onNavigate }) {
   return (
     <div className="min-h-dvh bg-background pb-24">
       <h1 className="sr-only">Gestão</h1>
-      {/* deitado: os MESMOS cards em duas colunas — mesma solução da Home.
-          Multi-coluna respeita o `mb-3` de cada card e não mexe no DOM;
-          `break-inside-avoid` impede um card de partir no pé da coluna. */}
       {/* deitado: os MESMOS cards em duas colunas, preenchidas por LINHA — mesma
-          regra da Home. ⚠️ era multi-coluna e o dono apontou (26/08) que os cards
-          ficavam assimétricos: o fluxo por coluna enchia a esquerda com os dois
-          cards altos e jogava o resto para a direita, sem nenhuma linha se
-          alinhar. Em grid, cada linha alinha o topo dos dois cards. */}
-      <div className="px-4 pt-4 sm:px-5 lg:px-6 xl:px-8 deitado:grid deitado:grid-cols-2 deitado:gap-3 deitado:pt-2 deitado:items-start [&>*]:deitado:mb-0">
+          regra da Home. Era multi-coluna e o fluxo por coluna enchia a esquerda
+          com os dois cards altos, sem nenhuma linha se alinhar.
+          ⚠️ `items-stretch` (dono 26/08: "organizar o tamanho dos cards para que
+          fique simétrico em horizontal"). Com `items-start` cada card ficava na
+          própria altura natural e a linha saía torta — medido, a 2ª linha tinha
+          151px à esquerda contra 292px à direita, porque a direita é a GRADE de
+          widgets (duas fileiras) e a esquerda um cartão de duas linhas. Esticar
+          é o que iguala a linha; o cartão apenas respira mais por dentro.
+          As margens `mb-*` são zeradas: somariam ao `gap` e desalinhariam os
+          topos. */}
+      <div className="px-4 pt-4 sm:px-5 lg:px-6 xl:px-8 deitado:grid deitado:grid-cols-2 deitado:gap-3 deitado:pt-2 deitado:items-stretch [&>*]:deitado:mb-0">
         {/* Card: Notificações e Denúncias — variant "solid" (dono 19/08). É o único
             cartão pintado da aba: os três eram idênticos e ninguém achava o canal. */}
         {canAccessCard('incidentes') && (
           <div className="mb-3">
             <ComunicadosCard
+              className="deitado:h-full"
               variant="solid"
               label="SEGURANÇA"
               title="Notificações e Denúncias"
@@ -77,6 +81,7 @@ export default function GestaoPage({ onNavigate }) {
         {canAccessCard('biblioteca') && (
           <div className="mb-3">
             <ComunicadosCard
+              className="deitado:h-full"
               label="DOCUMENTOS"
               title="Biblioteca de Documentos"
               badgeText="Acessar"
@@ -91,6 +96,7 @@ export default function GestaoPage({ onNavigate }) {
         {canAccessCard('comunicados') && (
           <div className="mb-4">
             <ComunicadosCard
+              className="deitado:h-full"
               label="COMUNICAÇÃO"
               title="Comunicados"
               badgeText={unreadComunicados > 0
