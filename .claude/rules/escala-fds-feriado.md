@@ -88,12 +88,14 @@ o que a leitura não resolveu vira Select no próprio item, nunca palpite), e um
 "Publicar fim de semana" faz as 4 filas + uma chamada por (hospital, dia, turno)
 COM casos. Chave do item = hospital+dia: reanexar o mesmo par SUBSTITUI.
 
-⚠️ **O fluxo de DIA ÚTIL não muda** (dono 22/08: "durante a semana as escalas são
-postadas em turnos diferentes pois são disponibilizadas em turnos diferentes, não
-mexa na organização já estabelecida"). `ImportarEscalaPage` só trocou o import de
-`prepararCasos`, movido para `utils` como `prepararCasosImportados` (fonte única,
-sem alteração). A edge idem: sem a flag `secoesTurno` o prompt é literalmente a
-mesma string.
+⚠️ **O fluxo de DIA ÚTIL ganhou o lote em 27/08** — o "não mexa" de 22/08 valia
+para o TURNO, e essa parte continua de pé. O dono voltou ao assunto pedindo o
+anexo em lote também no dia útil ("quero que verifique a possibilidade de
+adicionar como é feito no final de semana") com **uma aba de conferência por
+hospital**, e mantendo o resto: "continuarei anexando as escalas um turno por
+vez". Ver `escala-telas.md` → *Lote do dia útil*. A edge segue igual: sem a flag
+`secoesTurno` o prompt é literalmente a mesma string, e o lote do dia útil NÃO a
+envia (lá o turno vem da hora, e a faixa MATUTINO/VESPERTINO é do mapa de FDS).
 
 **O que faz a leitura ficar correta — o turno vem da FAIXA, não só da hora:** o
 turno saía de `turnoDeHora`, e as linhas **"AS"** (a seguir) do HRO não têm hora —

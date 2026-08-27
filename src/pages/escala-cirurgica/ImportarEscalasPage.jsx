@@ -1,0 +1,629 @@
+/**
+ * ImportarEscalasPage — o LOTE do dia útil (dono 2026-08-27).
+ *
+ * "Ao adicionar os arquivos das escalas em dias úteis, quero que verifique a
+ * possibilidade de adicionar como é feito no final de semana: adicionar todos os
+ * arquivos e após fazer a conferência" + "na tela de conferência quero uma aba
+ * de conferência para cada hospital para realizar ajustes".
+ *
+ * O que muda: o anexo aceita TODOS os arquivos de uma vez e cada um se declara
+ * pelo layout (`hospitalDetectado`, que a leitura já devolvia e a tela só usava
+ * como sugestão); a conferência ganha uma ABA por hospital.
+ * O que NÃO muda (dono, na mesma conversa): "continuarei anexando as escalas um
+ * turno por vez" — data e período são do LOTE, um só cartão —, e a conferência
+ * de cada aba é a de sempre, inteira: rodapé, ajuda, duplicidades, trocas e
+ * guardrails seguem em `ImportarEscalaPage`, que não foi refatorada.
+ *
+ * ⚠️ As abas são instâncias MONTADAS e escondidas (`oculta`), nunca `Tabs` do
+ * DS: `TabsContent` desmonta o painel inativo e o estado local morre na troca
+ * (limite do DS já registrado em `padroes-codigo.md`, com dado de paciente
+ * perdido). Aqui, desmontar apagaria a conferência já feita naquele hospital.
+ *
+ * A publicação continua sendo UMA POR HOSPITAL, pela mesma via de sempre — a
+ * folha de revisão só chama, em sequência, o `publicar` de cada aba.
+ */
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { AlertTriangle, Check, ChevronLeft, ChevronRight, FileText, Loader2, Trash2 } from 'lucide-react'
+import {
+  Button, ConfirmDialog, DatePicker, FileUpload, Select,
+  Sheet, SheetContent, SheetHeader, SheetTitle, useToast,
+} from '@/design-system'
+import svc from '@/services/supabaseEscalaCirurgicaService'
+import { HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
+import { useUser } from '@/contexts/UserContext'
+import { parseExcelEscala } from '@/lib/excelEscala'
+import { prepararImagemParaVision } from '@/lib/imagemVision'
+import { ERRO_IA, classificarFalhaVision, mensagemFalhaVision } from '@/lib/escalaVisionFalha'
+import { ehDataFilaUnica, ehFeriado } from '@/lib/escalaFds'
+import {
+  HOSPITAIS_LOTE, classificarAnexoDiaUtil, estadoEscala,
+  planoPublicacaoLote, rotuloPublicacaoLote, resumirPublicacaoLote,
+} from '@/lib/escalaLoteImportacao'
+import { formatData, turnoAtual } from './utils'
+import { podeEditarEscalaCirurgica } from './gate'
+import ImportarEscalaPage from './ImportarEscalaPage'
+import SegmentedSelector from './SegmentedSelector'
+
+const PERIODO_OPCOES = [
+  { value: 'matutino', label: 'Manhã' },
+  { value: 'vespertino', label: 'Tarde' },
+]
+const HOSPITAL_OPCOES = HOSPITAIS_LOTE.map((v) => ({ value: v, label: HOSPITAL_LABEL[v] || v }))
+const dataToISO = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const ehPlanilha = (file) => /\.(xlsx?|csv)$/i.test(file?.name || '')
+
+/**
+ * Selo de estado da aba — CÍRCULO (dono 27/08), mesmo diâmetro do badge do
+ * SegmentedSelector do DS (h-5 = 20px). Vermelho é o que o `publicar` recusa
+ * (nome ambíguo, duplicidade não classificada); âmbar é aviso, que publica
+ * assim mesmo; ✓ é escala pronta. É a taxonomia que a barra de pendências da
+ * conferência já usa — aqui ela só passa a ser visível POR HOSPITAL.
+ */
+function SeloEstado({ estado, ativa }) {
+  const anel = ativa ? 'ring-[1.5px] ring-white/55' : ''
+  if (estado.tipo === 'trava') {
+    return (
+      <span className={`inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1
+        text-[11px] font-bold leading-none bg-destructive text-destructive-foreground ${anel}`}>
+        {estado.n}
+      </span>
+    )
+  }
+  if (estado.tipo === 'avisa') {
+    return (
+      <span className={`inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1
+        text-[11px] font-bold leading-none bg-warning text-warning-foreground ${anel}`}>
+        {estado.n}
+      </span>
+    )
+  }
+  if (estado.tipo === 'vazio') return null
+  return (
+    <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full
+      bg-success text-success-foreground ${anel}`} aria-label="pronta">
+      <Check className="h-[13px] w-[13px]" strokeWidth={2.6} />
+    </span>
+  )
+}
+
+export default function ImportarEscalasPage({ hospital, data, turno: turnoInicial, onClose, onAbrirFds }) {
+  const { toast } = useToast()
+  const { user } = useUser()
+  const canEdit = podeEditarEscalaCirurgica(user)
+
+  const [dataEscolhida, setDataEscolhida] = useState(data)
+  const [periodo, setPeriodo] = useState(() => (
+    turnoInicial === 'matutino' || turnoInicial === 'vespertino' ? turnoInicial : turnoAtual()
+  ))
+  // hospital -> lote LIDO (rows + rodapé), a matéria-prima da aba
+  const [itens, setItens] = useState({})
+  // arquivos que a leitura não conseguiu atribuir: o item pede o hospital em
+  // vez de a tela escolher sozinha (regra da casa: sugere, nunca troca sozinho)
+  const [pendentes, setPendentes] = useState([])
+  const [abaAtiva, setAbaAtiva] = useState(hospital || null)
+  const [resumos, setResumos] = useState({})
+  const [carregando, setCarregando] = useState(false)
+  const [revisar, setRevisar] = useState(false)
+  const [publicandoLote, setPublicandoLote] = useState(false)
+  const [encolhimentos, setEncolhimentos] = useState(null)
+  const [publicados, setPublicados] = useState([])
+  const refs = useRef({})
+
+  const hospitaisDoLote = useMemo(
+    () => HOSPITAIS_LOTE.filter((h) => itens[h]),
+    [itens],
+  )
+  const temLote = hospitaisDoLote.length > 0
+  const aba = abaAtiva && itens[abaAtiva] ? abaAtiva : hospitaisDoLote[0] || null
+
+  /** O que cada aba conta ao lote (selo, folha de revisão e cruzamento). */
+  const receberResumo = useCallback((resumo) => {
+    if (!resumo?.hospital) return
+    setResumos((prev) => ({ ...prev, [resumo.hospital]: resumo }))
+  }, [])
+
+  // Cada aba enxerga as OUTRAS abas — é o que faz a duplicidade entre hospitais
+  // existir antes da primeira publicação (antes, o cruzamento só via o que já
+  // estava publicado: o primeiro hospital do dia não tinha com o que cruzar).
+  const irmasPara = useCallback((hosp) => (
+    Object.values(resumos)
+      .filter((r) => r.hospital !== hosp && r.totalCasos >= 0)
+      .map((r) => ({
+        hospital: r.hospital,
+        casos: r.casos,
+        ordemLiberacao: r.ordemLiberacao,
+        ajudaExterna: r.ajudaExterna,
+      }))
+  ), [resumos])
+
+  const estadoDe = useCallback((hosp) => {
+    const r = resumos[hosp]
+    return estadoEscala({ casos: r?.totalCasos || 0, bloqueios: r?.bloqueios || 0, avisos: r?.avisos || 0 })
+  }, [resumos])
+
+  // ── LEITURA EM LOTE ────────────────────────────────────────────────────────
+  // Um arquivo, uma leitura. Sem hint de hospital (o hospital é justamente o que
+  // se quer descobrir) — é como o fim de semana já lê os mapas desde 22/08.
+  // Corrigir o hospital à mão no item RELÊ com o hint certo, que é o mecanismo
+  // que a tela de uma escala só já tinha.
+  const lerArquivo = async (file) => {
+    if (ehPlanilha(file)) {
+      const { casos: rows } = await parseExcelEscala(file)
+      if (!rows.length) return { erro: 'não consegui ler a planilha' }
+      const cls = classificarAnexoDiaUtil({}, { planilha: true, dataDoLote: dataEscolhida })
+      return { cls, lote: { rows, posicoes: [], ordemLiberacao: [], ajudaExterna: [] }, nome: file.name }
+    }
+    if (!String(file.type || '').startsWith('image/')) {
+      return { erro: 'formato não suportado — envie Excel/CSV ou uma imagem' }
+    }
+    const img = await prepararImagemParaVision(file)
+    const res = await svc.parseEscalaImagem({ imageBase64: img.base64, mimeType: img.mimeType })
+    if (res?.error === ERRO_IA) {
+      const m = mensagemFalhaVision(
+        classificarFalhaVision({ status: res.iaStatus, tipo: res.iaTipo, mensagem: res.iaMensagem }),
+      )
+      return { erro: m.title }
+    }
+    if (res?.error === 'extracao_truncada' || res?.error === 'json_invalido') {
+      return { erro: 'a leitura foi cortada — envie um print mais fechado' }
+    }
+    if (!(res.casos || []).length) return { erro: 'nenhuma cirurgia reconhecida' }
+    const cls = classificarAnexoDiaUtil(res, { dataDoLote: dataEscolhida })
+    return {
+      cls,
+      nome: file.name,
+      arquivo: file,
+      truncado: !!res.truncado,
+      lote: {
+        rows: res.casos || [],
+        posicoes: res.posicoesAssistenciais || [],
+        // rodapé SUBSTITUI (incidente 30/07): o que a imagem não trouxe fica
+        // vazio e visível como vazio, nunca com o valor do anexo anterior
+        ordemLiberacao: res.ordemLiberacao || [],
+        ajudaExterna: res.ajudaExterna || [],
+      },
+    }
+  }
+
+  const importarArquivos = async (files) => {
+    const lista = (Array.isArray(files) ? files : [files]).filter(Boolean)
+    if (!lista.length) return
+    setCarregando(true)
+    const problemas = []
+    const semHospital = []
+    let lidos = 0
+    try {
+      for (const file of lista) {
+        try {
+          const r = await lerArquivo(file)
+          if (r.erro) { problemas.push(`${file.name}: ${r.erro}`); continue }
+          if (r.cls.dataDivergente) {
+            problemas.push(`${file.name}: o arquivo mostra ${formatData(r.cls.dataDivergente)}, e o lote é de ${formatData(dataEscolhida)}`)
+          }
+          if (!r.cls.hospital) {
+            semHospital.push({ id: `${file.name}-${semHospital.length}`, nome: file.name, ...r })
+            continue
+          }
+          const hosp = r.cls.hospital
+          // reanexar o mesmo hospital SUBSTITUI: duas abas do mesmo hospital
+          // publicariam duas vezes sobre a mesma escala
+          setItens((prev) => ({
+            ...prev,
+            [hosp]: { hospital: hosp, nome: r.nome, arquivo: r.arquivo, truncado: r.truncado, lote: r.lote },
+          }))
+          setAbaAtiva((atual) => atual || hosp)
+          lidos += 1
+        } catch (err) {
+          problemas.push(`${file.name}: ${err?.name === 'ErroImagem' ? err.message : 'falha na leitura'}`)
+        }
+      }
+    } finally { setCarregando(false) }
+    if (semHospital.length) setPendentes((p) => [...p, ...semHospital])
+    if (lidos || semHospital.length) {
+      toast({
+        variant: problemas.length ? 'warning' : 'success',
+        duration: problemas.length ? 12000 : undefined,
+        title: `${lidos + semHospital.length} escala${lidos + semHospital.length > 1 ? 's lidas' : ' lida'}`,
+        description: problemas.length
+          ? problemas.join(' · ')
+          : (semHospital.length
+            ? 'Diga de qual hospital é o arquivo que não se identificou.'
+            : 'Confira cada hospital nas abas e publique.'),
+      })
+    } else {
+      toast({
+        variant: 'error', duration: 12000,
+        title: 'Nenhuma escala foi lida',
+        description: problemas.join(' · ') || 'Tente outro arquivo.',
+      })
+    }
+  }
+
+  /** Item que não se identificou: o hospital escolhido à mão RELÊ com o hint. */
+  const resolverPendente = async (pendente, hosp) => {
+    setPendentes((p) => p.filter((x) => x.id !== pendente.id))
+    if (!hosp) return
+    if (pendente.arquivo) {
+      setCarregando(true)
+      try {
+        const img = await prepararImagemParaVision(pendente.arquivo)
+        const res = await svc.parseEscalaImagem({
+          imageBase64: img.base64, mimeType: img.mimeType, hospital: hosp,
+        })
+        if (!res?.error && (res.casos || []).length) {
+          setItens((prev) => ({
+            ...prev,
+            [hosp]: {
+              hospital: hosp, nome: pendente.nome, arquivo: pendente.arquivo, truncado: !!res.truncado,
+              lote: {
+                rows: res.casos, posicoes: res.posicoesAssistenciais || [],
+                ordemLiberacao: res.ordemLiberacao || [], ajudaExterna: res.ajudaExterna || [],
+              },
+            },
+          }))
+          setAbaAtiva((atual) => atual || hosp)
+          setCarregando(false)
+          return
+        }
+      } catch { /* cai para o lote já lido */ } finally { setCarregando(false) }
+    }
+    // releitura não deu: entra com o que já tinha sido lido, sem perder o anexo
+    setItens((prev) => ({ ...prev, [hosp]: { hospital: hosp, nome: pendente.nome, arquivo: pendente.arquivo, lote: pendente.lote } }))
+    setAbaAtiva((atual) => atual || hosp)
+  }
+
+  const removerEscala = (hosp) => {
+    setItens((prev) => { const p = { ...prev }; delete p[hosp]; return p })
+    setResumos((prev) => { const p = { ...prev }; delete p[hosp]; return p })
+    delete refs.current[hosp]
+    setAbaAtiva(null)
+  }
+
+  // ── PUBLICAÇÃO ─────────────────────────────────────────────────────────────
+  const plano = useMemo(
+    () => planoPublicacaoLote(hospitaisDoLote.map((h) => ({
+      hospital: h,
+      casos: resumos[h]?.totalCasos || 0,
+      bloqueios: resumos[h]?.bloqueios || 0,
+      avisos: resumos[h]?.avisos || 0,
+    }))),
+    [hospitaisDoLote, resumos],
+  )
+
+  // Guardrail anti-perda (incidente 23/07: publicar com 1 caso APAGOU os 31 da
+  // escala — publicar é DELETE+reinsert). Na tela de uma escala só ele é um
+  // diálogo por publicação; no lote precisa ser ANTES, junto, senão a folha
+  // dispararia três diálogos em sequência no meio da publicação.
+  const encolhem = useMemo(() => plano.publicar
+    .map((p) => ({ ...p, publicados: resumos[p.hospital]?.publicados || 0 }))
+    .filter((p) => p.publicados >= 3 && p.publicados > p.casos), [plano, resumos])
+
+  const publicarLote = async () => {
+    setEncolhimentos(null)
+    setPublicandoLote(true)
+    const resultados = []
+    try {
+      for (const alvo of plano.publicar) {
+        const api = refs.current[alvo.hospital]
+        if (!api?.publicar) { resultados.push({ hospital: alvo.hospital, ok: false }); continue }
+        // sequencial de propósito: publicar as três ao mesmo tempo faria três
+        // conferências de duplicidade correrem sobre o mesmo dia
+        const r = await api.publicar()
+        resultados.push({ hospital: alvo.hospital, ok: !!r?.ok })
+      }
+    } finally { setPublicandoLote(false) }
+    const { ok, falhou, tudoCerto } = resumirPublicacaoLote(resultados)
+    setPublicados(ok)
+    const nomes = (lista) => lista.map((h) => HOSPITAL_LABEL[h] || h).join(', ')
+    if (tudoCerto) {
+      setRevisar(false)
+      toast({
+        variant: 'success',
+        title: ok.length > 1 ? `${ok.length} escalas publicadas` : 'Escala publicada',
+        description: `${nomes(ok)} · ${formatData(dataEscolhida)} · ${periodo === 'matutino' ? 'Matutino' : 'Vespertino'}.`,
+      })
+      onClose?.({ data: dataEscolhida, hospital: ok[ok.length - 1], turno: periodo })
+      return
+    }
+    // A publicação NÃO é transacional entre hospitais: dizer o que JÁ subiu é o
+    // que evita republicar por cima do que está no ar.
+    toast({
+      variant: 'error',
+      duration: 15000,
+      title: ok.length ? 'Publicação parcial' : 'Não foi possível publicar',
+      description: ok.length
+        ? `Publicadas: ${nomes(ok)}. Ficou faltando: ${nomes(falhou)} — a aba continua aberta, com tudo o que você conferiu.`
+        : `${nomes(falhou)}: nada foi publicado. Nenhuma escala do lote foi alterada.`,
+    })
+  }
+
+  const rotuloBotao = rotuloPublicacaoLote(plano)
+  const podePublicar = plano.publicar.length > 0 && canEdit && !publicandoLote
+
+  return (
+    <div className="fixed inset-0 z-modal bg-background overflow-y-auto">
+      {/* Header no padrão do PageHeader do DS — altura 56, sombra, título com
+          subtítulo e slot à direita. Continua STICKY em vez de `fixed` (o
+          PageHeader é fixed com spacer e, no PWA do iPhone, cobria os
+          seletores — motivo já registrado na tela de uma escala só). */}
+      <div className="sticky top-0 z-20 border-b border-border bg-card shadow-sm pt-[env(safe-area-inset-top)]">
+        <div className="mx-auto flex h-14 max-w-3xl items-center px-4">
+          <button
+            type="button"
+            onClick={() => onClose?.()}
+            aria-label="Cancelar"
+            className="flex min-h-[44px] min-w-[70px] items-center gap-1 text-primary active:opacity-60"
+          >
+            <ChevronLeft className="h-5 w-5" />
+            <span className="text-sm font-medium">Cancelar</span>
+          </button>
+          <div className="mx-2 min-w-0 flex-1 text-center">
+            <h1 className="truncate text-base font-semibold text-foreground">Confeccionar escalas</h1>
+            <p className="-mt-0.5 truncate text-xs text-muted-foreground">
+              {formatData(dataEscolhida)} · {periodo === 'matutino' ? 'Matutino' : 'Vespertino'}
+            </p>
+          </div>
+          <div className="flex min-w-[70px] justify-end">
+            {temLote && (
+              <span className="inline-flex items-center gap-1 rounded-[10px] bg-muted px-2.5 py-1.5
+                               text-xs font-bold text-muted-foreground">
+                {hospitaisDoLote.length}
+                <FileText className="h-3.5 w-3.5" />
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-3xl space-y-4 p-4 pb-28">
+        {!canEdit && (
+          <p className="rounded-lg bg-warning/10 p-3 text-sm text-warning">
+            Você não tem permissão para confeccionar escalas.
+          </p>
+        )}
+
+        {/* Data e período são do LOTE: o dono anexa um turno por vez, e as
+            escalas dos hospitais são do mesmo dia e do mesmo turno. */}
+        <section className="space-y-3 rounded-2xl border border-border-strong bg-card p-3">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-primary">Para qual escala</h3>
+          <div className="grid grid-cols-[1.15fr_1fr] items-start gap-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Data</label>
+              <DatePicker
+                className="w-full min-w-0"
+                value={(() => { const [y, m, d] = String(dataEscolhida || '').split('-').map(Number); return y ? new Date(y, m - 1, d) : new Date() })()}
+                onChange={(d) => { if (d) setDataEscolhida(dataToISO(d)) }}
+                placeholder="Data da escala"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Período</label>
+              <SegmentedSelector options={PERIODO_OPCOES} value={periodo} onChange={setPeriodo} size="xs" />
+            </div>
+          </div>
+        </section>
+
+        {/* Com o lote na mão o anexo vira BOTÃO: o dropzone tem 126px e, depois
+            que as escalas entraram, ele só empurra as abas e a conferência
+            para baixo — quem já anexou está conferindo, não anexando. */}
+        <FileUpload
+          accept=".xlsx,.xls,.csv,image/*"
+          multiple
+          maxSize={15 * 1024 * 1024}
+          variant={temLote ? 'button' : 'dropzone'}
+          label={temLote ? 'Falta alguma escala?' : 'Arquivos das escalas'}
+          description={temLote
+            ? undefined
+            : 'Pode soltar todos de uma vez — o hospital sai do próprio arquivo. Excel/CSV ou foto (paciente só por iniciais).'}
+          onChange={(f) => importarArquivos(f)}
+          disabled={carregando || !canEdit}
+        />
+
+        {carregando && (
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Lendo…
+          </p>
+        )}
+
+        {/* Arquivo que não se identificou: PERGUNTA o hospital, não chuta */}
+        {pendentes.map((p) => (
+          <div key={p.id} className="space-y-2 rounded-xl border border-warning/40 bg-warning/10 p-3">
+            <p className="flex items-center gap-2 text-xs font-semibold text-warning">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              {p.nome}: não reconheci o hospital pelo layout.
+            </p>
+            <Select
+              options={HOSPITAL_OPCOES}
+              value=""
+              placeholder="Escolher o hospital"
+              onChange={(v) => resolverPendente(p, v)}
+            />
+          </div>
+        ))}
+
+        {/* Atalho do documento de FDS — desvio de rota, não etapa (dono 17/08) */}
+        {!temLote && onAbrirFds && (
+          <button
+            type="button"
+            onClick={() => onAbrirFds(ehDataFilaUnica(dataEscolhida) ? dataEscolhida : undefined)}
+            className={[
+              'w-full rounded-xl border px-3 py-2.5 text-left text-xs',
+              ehDataFilaUnica(dataEscolhida)
+                ? 'border-primary/50 bg-primary/10 font-medium text-primary'
+                : 'border-border bg-muted/30 text-muted-foreground',
+            ].join(' ')}
+          >
+            {ehDataFilaUnica(dataEscolhida)
+              ? (ehFeriado(dataEscolhida)
+                ? 'Esta data é feriado — a ordem de liberação é ÚNICA (todos os hospitais). Importar lista e mapas ›'
+                : 'Esta data é fim de semana — a ordem de liberação é ÚNICA (todos os hospitais). Importar o documento de FDS ›')
+              : 'Escala de fim de semana? Importe o documento de FDS (fila única) ›'}
+          </button>
+        )}
+
+        {/* ── ABAS ── mesmo visual do SegmentedSelector variant="filled" do DS.
+            Não é o componente porque o selo de estado é colorido por hospital,
+            e mexer no SegmentedSelector alcançaria o app inteiro (Regra #2). */}
+        {temLote && (
+          <div className="sticky top-14 z-10 -mx-4 bg-background px-4 pb-1 pt-2">
+            <div
+              className="grid gap-1 rounded-[16px] bg-primary/5 p-1 dark:bg-primary/10"
+              style={{ gridTemplateColumns: `repeat(${hospitaisDoLote.length}, minmax(0, 1fr))` }}
+              role="tablist"
+              aria-label="Hospitais do lote"
+            >
+              {hospitaisDoLote.map((h) => {
+                const ativa = h === aba
+                return (
+                  <button
+                    key={h}
+                    type="button"
+                    role="tab"
+                    aria-selected={ativa}
+                    onClick={() => setAbaAtiva(h)}
+                    className={`inline-flex min-h-[42px] items-center justify-center gap-1.5 rounded-[12px]
+                      px-3 py-2.5 text-sm transition-all active:scale-95 ${ativa
+                        ? 'bg-primary font-semibold text-primary-foreground shadow-sm'
+                        : 'bg-transparent font-medium text-muted-foreground'}`}
+                  >
+                    {HOSPITAL_LABEL[h] || h}
+                    <SeloEstado estado={estadoDe(h)} ativa={ativa} />
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Uma instância por hospital: a inativa fica ESCONDIDA, nunca desmontada */}
+        {hospitaisDoLote.map((h) => (
+          <ImportarEscalaPage
+            key={h}
+            ref={(api) => { if (api) refs.current[h] = api; else delete refs.current[h] }}
+            embutida
+            oculta={h !== aba}
+            hospital={h}
+            data={dataEscolhida}
+            turno={periodo}
+            dataLote={dataEscolhida}
+            periodoLote={periodo}
+            loteInicial={itens[h]?.lote}
+            escalasIrmas={irmasPara(h)}
+            onResumo={receberResumo}
+            onClose={() => {}}
+          />
+        ))}
+
+        {temLote && (
+          <button
+            type="button"
+            onClick={() => removerEscala(aba)}
+            className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground active:opacity-60"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Tirar {HOSPITAL_LABEL[aba] || aba} do lote
+          </button>
+        )}
+      </div>
+
+      {temLote && canEdit && (
+        <div className="fixed inset-x-0 bottom-0 z-modal mx-auto flex max-w-3xl gap-2 border-t border-border bg-card p-3">
+          <Button variant="ghost" onClick={() => onClose?.()} className="flex-1">Cancelar</Button>
+          <Button onClick={() => setRevisar(true)} className="flex-1">
+            <Check className="h-4 w-4" /> Revisar e publicar
+          </Button>
+        </div>
+      )}
+
+      {/* ── FOLHA DE REVISÃO (R2, escolhido pelo dono em protótipo) ──
+          `!h-auto max-h-[88vh]`: o bottom-sheet do DS fixa h-[85vh] e nasceria
+          com 85% da tela mesmo com três linhas (limite já registrado nas rules
+          da escala — "a tela fica quase vazia"). */}
+      <Sheet open={revisar} onOpenChange={(o) => !o && !publicandoLote && setRevisar(false)}>
+        <SheetContent side="bottom" className="!h-auto max-h-[88vh]">
+          <SheetHeader className="pb-2">
+            <SheetTitle>Revisar antes de publicar</SheetTitle>
+            <p className="mt-2 text-sm leading-5 text-muted-foreground">
+              {formatData(dataEscolhida)} · {periodo === 'matutino' ? 'Matutino' : 'Vespertino'}.
+              Cada hospital é publicado na sua própria escala, uma de cada vez — como sempre.
+            </p>
+          </SheetHeader>
+          <div className="space-y-2 px-6 pb-2">
+            {hospitaisDoLote.map((h) => {
+              const r = resumos[h]
+              const estado = estadoDe(h)
+              const travada = estado.tipo === 'trava'
+              const encolhe = encolhem.find((e) => e.hospital === h)
+              return (
+                <button
+                  key={h}
+                  type="button"
+                  onClick={() => { setAbaAtiva(h); setRevisar(false) }}
+                  className={`flex w-full items-center gap-2.5 rounded-[13px] border p-3 text-left
+                    ${travada ? 'border-destructive/50 bg-destructive/10' : 'border-border bg-card-elevated'}`}
+                >
+                  <SeloEstado estado={estado} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-bold">{HOSPITAL_LABEL[h] || h}</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      {r?.totalCasos || 0} caso{(r?.totalCasos || 0) === 1 ? '' : 's'}
+                      {r?.ordemLiberacao?.length ? ` · ${r.ordemLiberacao.length} na ordem` : ''}
+                      {travada && ` · ${estado.n} bloqueio${estado.n > 1 ? 's' : ''} — resolva para publicar`}
+                      {!travada && estado.tipo === 'avisa' && ` · ${estado.n} aviso${estado.n > 1 ? 's' : ''} — publica assim mesmo`}
+                      {encolhe && ` · reduz de ${encolhe.publicados} para ${encolhe.casos}`}
+                    </span>
+                  </span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </button>
+              )
+            })}
+            {plano.foraDoLote.some((f) => f.motivo === 'bloqueio') && (
+              <p className="rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                Quem tem bloqueio fica de fora desta publicação — os outros hospitais publicam
+                normalmente. Toque no hospital para resolver e publique de novo.
+              </p>
+            )}
+          </div>
+          <div className="flex gap-2 px-6 pb-6 pt-2">
+            <Button variant="ghost" className="flex-1" onClick={() => setRevisar(false)} disabled={publicandoLote}>
+              Voltar
+            </Button>
+            <Button
+              className="flex-1"
+              disabled={!podePublicar}
+              onClick={() => (encolhem.length ? setEncolhimentos(encolhem) : publicarLote())}
+            >
+              {publicandoLote ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+              {rotuloBotao}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Anti-perda do lote inteiro, numa pergunta só */}
+      {encolhimentos && (
+        <ConfirmDialog
+          open
+          variant="danger"
+          onClose={() => setEncolhimentos(null)}
+          onConfirm={publicarLote}
+          title="Isso vai reduzir escala publicada?"
+          description={`${encolhimentos.map((e) => `${HOSPITAL_LABEL[e.hospital] || e.hospital}: ${e.publicados} → ${e.casos}`).join(' · ')}. Os casos a mais seriam apagados e não dá para desfazer. Se você só quer acrescentar uma cirurgia, cancele e use "Adicionar caso" na aba Completa.`}
+          confirmText="Republicar por cima"
+          cancelText="Cancelar"
+        />
+      )}
+
+      {/* Publicação parcial: as abas que subiram ficam ditas na tela, não só no
+          toast, porque o toast some e a tela continua aberta. */}
+      {publicados.length > 0 && !publicandoLote && (
+        <div className="fixed inset-x-0 bottom-[76px] z-modal mx-auto max-w-3xl px-4">
+          <p className="rounded-lg bg-success/10 px-3 py-2 text-xs text-success">
+            Já publicado neste lote: {publicados.map((h) => HOSPITAL_LABEL[h] || h).join(', ')}.
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}

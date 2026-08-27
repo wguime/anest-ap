@@ -26,10 +26,11 @@
  * arquivos de 22–23/08 custavam 6 leituras da Vision e 9 publicações, com
  * hospital/data/período trocados à mão entre elas.
  *
- * ⚠️ O fluxo de DIA ÚTIL não muda (dono 2026-08-22): lá as escalas são postadas
- * em turnos diferentes porque saem em horas diferentes. `ImportarEscalaPage`
- * segue como está — o único código compartilhado é `prepararCasosImportados`,
- * movido para utils sem alteração.
+ * ⚠️ O dia útil ganhou o lote em 2026-08-27 (`ImportarEscalasPage`), com uma aba
+ * por hospital. O que continua valendo do "não mexa" de 22/08 é o TURNO: lá as
+ * escalas são postadas em turnos diferentes porque saem em horas diferentes, e o
+ * lote de dia útil é de um turno só. As duas telas seguem separadas — o código
+ * compartilhado é `prepararCasosImportados` e a ideia de lista de documentos.
  *
  * Publicar = até 4 chamadas rpc_publicar_escala_turno em hospital='fds'
  * (sáb-mat, sáb-vesp, dom-mat, dom-vesp) com casos [] — a fila única deriva dos

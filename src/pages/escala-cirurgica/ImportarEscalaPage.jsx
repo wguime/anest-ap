@@ -5,7 +5,7 @@
  * (login), o que resolve a identidade na origem (sem match por nome). Ao atribuir, o
  * apelido importado é aprendido no dicionário (apelido→login) p/ a próxima escala.
  */
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react'
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronDown, ChevronsDownUp, ChevronsUpDown, Plus, Trash2, Sparkles, Loader2, Check, AlertTriangle } from 'lucide-react'
 import { Button, ConfirmDialog, DatePicker, FileUpload, Input, Select, useToast } from '@/design-system'
 import svc from '@/services/supabaseEscalaCirurgicaService'
@@ -93,7 +93,24 @@ const primeiroNomeUpper = (nome) => normNome(String(nome || '').split(/\s+/)[0] 
 // ("?" da escala). Valor impossível como uid.
 const SEM_ANESTESISTA = '__sem__'
 
-export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial, onClose, onAbrirFds }) {
+/**
+ * MODO LOTE (dono 2026-08-27) — "adicionar todos os arquivos e após fazer a
+ * conferência", como no fim de semana, com UMA ABA por hospital.
+ *
+ * A conferência não foi refatorada: `ImportarEscalasPage` monta uma instância
+ * DESTA página por hospital anexado e esconde as inativas (`oculta`), de modo
+ * que cada aba guarda o seu próprio estado — casos, atribuições, rodapé, ajuda,
+ * decisões de duplicidade — exatamente como quando era uma escala por vez.
+ * O que sobe para o pai no modo `embutida`: header, cartão de data/período (que
+ * são do LOTE — o dono segue anexando um turno por vez), anexo e barra de
+ * publicar. O que desce: `dataLote`/`periodoLote`, o `loteInicial` já lido e as
+ * `escalasIrmas` (as outras abas), que entram no cruzamento entre hospitais.
+ */
+const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
+  hospital, data, turno: turnoInicial, onClose, onAbrirFds,
+  embutida = false, oculta = false, loteInicial = null,
+  dataLote, periodoLote, escalasIrmas = [], onResumo,
+}, ref) {
   const { toast } = useToast()
   const { salvarEscalaTurno, salvarEscala, executarSubstituicao } = useEscalaCirurgicaActions()
   // Compatibilidade com fixtures/testes e integrações antigas; em produção o
@@ -219,15 +236,47 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
     return { lote, selecionados: aplicarPeriodoAoLote(lote) }
   }
 
-  const mudarPeriodo = (novoPeriodo) => {
+  const mudarPeriodo = (novoPeriodo, { silencioso = false } = {}) => {
     setPeriodo(novoPeriodo)
     if (!loteAnexo) return
     const selecionados = aplicarPeriodoAoLote(loteAnexo, novoPeriodo)
+    // No lote quem troca o turno é o cartão do PAI, uma vez só: três instâncias
+    // toastando a mesma troca viraria três avisos idênticos na mesma tela.
+    if (silencioso) return
     toast({
       title: novoPeriodo === 'matutino' ? 'Turno matutino selecionado' : 'Turno vespertino selecionado',
       description: `${resumoTexto(selecionados)} do anexo. As atribuições manuais foram reiniciadas para conferência.`,
     })
   }
+
+  // ── SINCRONIA COM O LOTE (modo embutido) ─────────────────────────────────
+  // Data e período são do LOTE, não da aba: o dono anexa um turno por vez e as
+  // três escalas do dia são do mesmo dia e do mesmo turno. Trocar o turno no
+  // cartão refiltra as três abas pela HORA de cada caso, que é a regra de
+  // sempre — sem toast, porque o aviso é do cartão que fez a troca.
+  useEffect(() => {
+    if (!embutida || !dataLote || dataLote === dataEscolhida) return
+    setDataEscolhida(dataLote)
+  }, [embutida, dataLote, dataEscolhida])
+  useEffect(() => {
+    if (!embutida || !periodoLote || periodoLote === periodo) return
+    mudarPeriodo(periodoLote, { silencioso: true })
+    // mudarPeriodo é recriado a cada render; a dependência é o período do pai
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [embutida, periodoLote])
+
+  // O lote desta aba já foi LIDO pelo pai (uma leitura por arquivo, no anexo em
+  // lote). Aqui ele só entra na conferência — a página não relê nada. A
+  // referência do objeto muda quando o mesmo hospital é reanexado: a foto nova
+  // manda, como sempre (incidente 30/07 — ordem/ajuda SUBSTITUEM, não completam).
+  useEffect(() => {
+    if (!loteInicial) return
+    carregarLoteImportado(loteInicial.rows || [], hosp, loteInicial.posicoes || [])
+    setOrdemTexto((loteInicial.ordemLiberacao || []).join(', '))
+    setAjudaTexto((loteInicial.ajudaExterna || []).join(', '))
+    setPosSel(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loteInicial])
 
   // Pré-atribui pela resolução do apelido importado (dicionário), sem sobrescrever
   // escolha. Por GRUPO: no IOSC cada anestesista resolve o seu próprio login.
@@ -688,7 +737,7 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
   //
   // Assimétrico por natureza: o PRIMEIRO hospital publicado do dia não tem com o
   // que cruzar. Aparece no 2º e no 3º.
-  const [outrasEscalas, setOutrasEscalas] = useState([])
+  const [outrasPublicadas, setOutrasPublicadas] = useState([])
   const [duplicidadeDecisoes, setDuplicidadeDecisoes] = useState({})
   const [trocaEscolhida, setTrocaEscolhida] = useState({}) // chave da duplicidade -> uid do colega
   useEffect(() => { setDuplicidadeDecisoes({}); setTrocaEscolhida({}) }, [dataEscolhida, hosp, periodo])
@@ -696,9 +745,22 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
     let vivo = true
     const outros = Object.keys(HOSPITAL_LABEL).filter((h) => h !== hosp)
     Promise.all(outros.map((h) => svc.fetchEscala(dataEscolhida, h).catch(() => null)))
-      .then((rs) => { if (vivo) setOutrasEscalas(rs.filter(Boolean)) })
+      .then((rs) => { if (vivo) setOutrasPublicadas(rs.filter(Boolean)) })
     return () => { vivo = false }
   }, [dataEscolhida, hosp])
+
+  // A ABA IRMÃ VENCE O QUE ESTÁ PUBLICADO (dono 27/08). O cruzamento entre
+  // hospitais nasceu assimétrico: comparando só com o que JÁ está no banco, o
+  // primeiro hospital publicado do dia não tem com o que cruzar e o último
+  // decide sozinho pelos dois. Com as escalas do lote na tela, a aba do HRO em
+  // conferência é uma fonte tão boa quanto a escala publicada dele — e mais
+  // nova. Ela entra no lugar da publicada do mesmo hospital; os hospitais que
+  // não estão no lote seguem vindo do banco.
+  const outrasEscalas = useMemo(() => {
+    const irmas = (escalasIrmas || []).filter((e) => e?.hospital && e.hospital !== hosp)
+    const cobertos = new Set(irmas.map((e) => e.hospital))
+    return [...irmas, ...outrasPublicadas.filter((e) => !cobertos.has(e?.hospital))]
+  }, [escalasIrmas, outrasPublicadas, hosp])
 
   const cruzamento = useMemo(() => {
     if (!outrasEscalas.length || !casos.length) return { ajudaProvavel: [], conflitos: [] }
@@ -829,7 +891,7 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
         title: 'Hora inválida na escala',
         description: `${horario.invalidos.length} item(ns) têm hora inválida. Corrija antes de publicar (use HH:MM, por exemplo 08:30).`,
       })
-      return
+      return { ok: false, hospital: hosp, motivo: 'hora inválida' }
     }
     // NOME AMBÍGUO BLOQUEIA (dono 11/08): publicar "JOAO" com dois Joãos no
     // rodapé deixa a sala órfã e o dono dela fora da fila. Só quem está com a
@@ -842,7 +904,7 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
         title: `"${grupo.nome}" — qual deles?`,
         description: `${candidatos.map((c) => nomeCirurgiaoCurto(titleCaseNome(c.nome))).join(' ou ')}. Escolha o login na conferência${gruposAmbiguos.length > 1 ? ` (e em mais ${gruposAmbiguos.length - 1} nome[s] igual[is])` : ''} — sem sobrenome a sala fica sem dono na fila.`,
       })
-      return
+      return { ok: false, hospital: hosp, motivo: 'nome ambíguo' }
     }
     if (duplicidadesPendentes.length) {
       toast({
@@ -850,7 +912,7 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
         title: 'Confirme as duplicidades antes de publicar',
         description: `${duplicidadesPendentes.length} pessoa(s) aparecem em mais de um hospital no mesmo turno. Diga se trabalha nos dois de propósito ou escolha com quem trocou.`,
       })
-      return
+      return { ok: false, hospital: hosp, motivo: 'duplicidade não classificada' }
     }
     if (horario.incompatíveis.length) {
       toast({
@@ -861,7 +923,7 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
     }
     if (!confirmacao && salvarEscalaTurno) {
       setConfirmacaoPublicacao(true)
-      return
+      return { ok: false, hospital: hosp, motivo: 'aguardando confirmação' }
     }
     setPublicando(true)
     try {
@@ -890,7 +952,7 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
         if (atuais >= 3 && atuais > casosNovos.length) {
           setPublicando(false)
           setSubstituir({ atuais, novos: casosOut.length })
-          return
+          return { ok: false, hospital: hosp, motivo: 'encolhimento não confirmado' }
         }
       }
 
@@ -1088,10 +1150,16 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
             : `${nomes}: não foi possível salvar o vínculo. Tente de novo pelo 🔗 — até lá esse nome aparece duas vezes na fila.`,
         })
       }
-      // devolve onde publicou → a página aterrissa na escala certa (data/hospital/período)
-      onClose?.({ data: dataEscolhida, hospital: hosp, turno: periodo })
+      // No lote quem fecha a tela é o pai, DEPOIS da última escala — fechar aqui
+      // desmontaria as abas que ainda não publicaram.
+      if (!embutida) {
+        // devolve onde publicou → a página aterrissa na escala certa (data/hospital/período)
+        onClose?.({ data: dataEscolhida, hospital: hosp, turno: periodo })
+      }
+      return { ok: true, hospital: hosp }
     } catch {
       /* toast no context */
+      return { ok: false, hospital: hosp }
     } finally { setPublicando(false) }
   }
 
@@ -1106,6 +1174,46 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
     + conflitos.length + blocosRepetidos.length + travessiasOrfas.length
     + duplicados.length + casosForaDoRodape.length + gruposSemAnestesista
   const totalPendencias = bloqueiosConferencia + avisosConferencia
+
+  // ── O QUE ESTA ABA CONTA AO LOTE (dono 27/08) ────────────────────────────
+  // Dois consumidores: o SELO da aba (pronto · trava · avisa, mesma taxonomia
+  // da barra de pendências) e as ABAS IRMÃS, que usam estes casos e este rodapé
+  // para cruzar duplicidade e ajuda antes de qualquer publicação.
+  const casosAtribuidosDoTurno = useMemo(
+    () => selecionarCasosDoTurno(aplicarAtribuicoes(casos, atribuicoes, apelidoExibicao, resolver), periodo),
+    [casos, atribuicoes, apelidoExibicao, resolver, periodo],
+  )
+  const resumoAba = useMemo(() => ({
+    hospital: hosp,
+    casos: casosAtribuidosDoTurno,
+    totalCasos: casosAtribuidosDoTurno.length,
+    ordemLiberacao: separarListaRodape(ordemTexto),
+    ajudaExterna: separarListaRodape(ajudaTexto),
+    bloqueios: bloqueiosConferencia,
+    avisos: avisosConferencia,
+    // guardrail anti-perda por escala, para a folha avisar ANTES: o turno
+    // publicado tem mais casos do que este lote (publicar é DELETE+reinsert)
+    publicados: (escalaPublicada?.casos || []).filter((c) => (c.turno || periodo) === periodo).length,
+  }), [hosp, casosAtribuidosDoTurno, ordemTexto, ajudaTexto, bloqueiosConferencia,
+    avisosConferencia, escalaPublicada, periodo])
+  // Assinatura estável: sem ela, um objeto novo a cada render realimentaria o
+  // estado do pai e a árvore inteira giraria em laço.
+  const assinaturaAba = [
+    hosp, periodo, resumoAba.totalCasos, resumoAba.bloqueios, resumoAba.avisos, resumoAba.publicados,
+    resumoAba.ordemLiberacao.join('~'), resumoAba.ajudaExterna.join('~'),
+    casosAtribuidosDoTurno.map((c) => `${c.sala}:${c.anestesistaUserId || c.anestesista}`).join('~'),
+  ].join('|')
+  useEffect(() => {
+    onResumo?.(resumoAba)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assinaturaAba])
+
+  // A folha de revisão do lote publica cada hospital pela MESMA via de sempre —
+  // é esta função, a da aba, chamada uma vez por escala.
+  useImperativeHandle(ref, () => ({
+    hospital: hosp,
+    publicar: (opts) => publicar({ confirmacao: true, substituicao: true, ...opts }),
+  }))
   // Posição aberta para edição — o editor mora FORA das duas colunas da fila
   const posAberta = ordemNumerada.find((p) => p.i === posSel) || null
   /** Rola até a seção da conferência (o scroll é do container, não da janela). */
@@ -1119,11 +1227,19 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
   }
 
   return (
-    <div className="fixed inset-0 z-modal bg-background overflow-y-auto">
+    // Embutida no lote: sem moldura própria e SEM DESMONTAR quando muda de aba
+    // (`hidden`) — desmontar apagaria a conferência já feita naquele hospital.
+    <div className={embutida
+      ? (oculta ? 'hidden' : '')
+      : 'fixed inset-0 z-modal bg-background overflow-y-auto'}
+      {...(embutida ? { 'aria-hidden': oculta || undefined } : {})}
+    >
       {/* Header STICKY próprio (2026-07-22): o PageHeader é position:fixed com spacer
           de altura fixa — no PWA (safe-area do iPhone) ele cobria os seletores.
-          Sticky dimensiona pelo conteúdo, respeita o notch e nunca sobrepõe. */}
-      <div className="sticky top-0 z-10 border-b border-border bg-card pt-[env(safe-area-inset-top)]">
+          Sticky dimensiona pelo conteúdo, respeita o notch e nunca sobrepõe.
+          No lote quem desenha o header é `ImportarEscalasPage`, uma vez só. */}
+      {!embutida && (
+      <div className="sticky top-0 z-10 border-b border-border bg-card shadow-sm pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex h-14 max-w-3xl items-center px-4">
           <button
             type="button"
@@ -1134,17 +1250,24 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
             <ChevronLeft className="h-5 w-5" />
             <span className="text-sm font-medium">Cancelar</span>
           </button>
-          <h1 className="min-w-0 flex-1 truncate text-center text-base font-semibold text-foreground">
-            Confeccionar · {HOSPITAL_LABEL[hosp]}
-          </h1>
+          <div className="min-w-0 flex-1 mx-2 text-center">
+            <h1 className="truncate text-base font-semibold text-foreground">
+              Confeccionar · {HOSPITAL_LABEL[hosp]}
+            </h1>
+            <p className="truncate text-xs text-muted-foreground -mt-0.5">
+              {formatData(dataEscolhida)} · {periodo === 'matutino' ? 'Matutino' : 'Vespertino'}
+            </p>
+          </div>
           <span className="min-w-[70px]" aria-hidden="true" />
         </div>
       </div>
-      <div className="max-w-3xl mx-auto p-4 pb-28 space-y-4">
+      )}
+      <div className={embutida ? 'space-y-4' : 'max-w-3xl mx-auto p-4 pb-28 space-y-4'}>
         {!canEdit && (
           <p className="rounded-lg bg-warning/10 text-warning text-sm p-3">Você não tem permissão para confeccionar escalas.</p>
         )}
 
+        {!embutida && (<>
         {/* DOIS PASSOS DECLARADOS (dono 17/08): anexar e conferir são dois momentos
             para quem usa — a secretária anexa e só depois confere. O stepper diz em
             qual deles ela está; o passo 2 acende quando a base entra. */}
@@ -1216,7 +1339,9 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
             </Button>
           </div>
         )}
+        </>)}
 
+        {!embutida && (<>
         {/* Anexo ÚNICO multi-formato (pedido do dono 2026-07-21): Excel/CSV → parser
             local; imagem → Vision. Roteia pelo tipo do arquivo — sem seletor de fonte. */}
         <FileUpload accept=".xlsx,.xls,.csv,image/*" maxSize={15 * 1024 * 1024} variant="dropzone"
@@ -1248,6 +1373,7 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
               : 'Escala de fim de semana? Importe o documento de FDS (fila única) ›'}
           </button>
         )}
+        </>)}
 
         {carregando && (
           <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /> Lendo…</p>
@@ -1268,7 +1394,8 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
                 faixa de bloqueio fica fixa embaixo dos atalhos: o problema pode
                 sair da tela, não da barra. */}
             <nav
-              className="sticky top-14 z-10 -mx-4 border-b border-border bg-background px-4 pb-2 pt-1"
+              className={`sticky z-10 -mx-4 border-b border-border bg-background px-4 pb-2 pt-1
+                ${embutida ? 'top-[110px]' : 'top-14'}`}
               aria-label="Seções da conferência"
             >
               <div className="flex gap-1.5 overflow-x-auto">
@@ -1798,7 +1925,7 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
         )}
       </div>
 
-      {temBase && canEdit && (
+      {!embutida && temBase && canEdit && (
         <div className="fixed bottom-0 inset-x-0 z-modal border-t border-border bg-card p-3 flex gap-2 max-w-3xl mx-auto">
           <Button variant="ghost" onClick={onClose} className="flex-1">Cancelar</Button>
           {/* A contagem no botão é a última conferência antes de gravar (dono
@@ -1836,4 +1963,6 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
       />
     </div>
   )
-}
+})
+
+export default ImportarEscalaPage

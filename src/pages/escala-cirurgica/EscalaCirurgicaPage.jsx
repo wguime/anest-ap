@@ -19,7 +19,7 @@ import MinhasEscalasView from './MinhasEscalasView'
 import BoardView from './BoardView'
 import FaixaUrgencias from './FaixaUrgencias'
 import LiberacoesView from './LiberacoesView'
-import ImportarEscalaPage from './ImportarEscalaPage'
+import ImportarEscalasPage from './ImportarEscalasPage'
 import ImportarEscalaFdsPage from './ImportarEscalaFdsPage'
 import TrocaSheet from './TrocaSheet'
 import { meuAliasDe, turnoAtual, casosResolvidos, dataPorExtenso, estadoTrocasDoHistorico, filtrarPorTurnoExibicao, normNome, formatData, rodapeDoTurno, localizarSlotEscala, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca } from './utils'
@@ -589,7 +589,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
       )}
 
       {importando && (
-        <ImportarEscalaPage
+        <ImportarEscalasPage
           hospital={hospital}
           data={data}
           turno={turno}

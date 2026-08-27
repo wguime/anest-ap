@@ -64,6 +64,29 @@ discussão: as telas convivem com ela.
   ainda dá para corrigir. ⚠️ **só no MATUTINO**: a hora é o que decide o turno na publicação,
   e 09:00 numa importação vespertina jogaria a SRPA para FORA da escala da tarde. O horário
   da SRPA vespertina ninguém informou; até lá ela segue sem hora, herdando o turno escolhido.
+- **Importar · LOTE do dia útil (dono 27/08)**: os arquivos dos hospitais entram
+  TODOS DE UMA VEZ e a conferência ganha **uma aba por hospital**
+  (`ImportarEscalasPage`, modelo B escolhido em protótipo a 430px). Cada arquivo
+  se declara pelo layout (`hospitalDetectado`, que a leitura já devolvia e a tela
+  só usava como sugestão) — o que não se declarou vira Select no próprio item,
+  nunca palpite; a chave do item é o **HOSPITAL** (no FDS é hospital+dia, porque
+  lá um documento cobre o fim de semana), então reanexar o mesmo hospital
+  SUBSTITUI a aba. **Data e período seguem do LOTE**, um cartão só: "continuarei
+  anexando as escalas um turno por vez". ⚠️ as abas são instâncias MONTADAS e
+  escondidas (`oculta`), nunca `Tabs` do DS — `TabsContent` desmonta o painel
+  inativo e levaria junto a conferência já feita (trava em
+  `importarEscalasLote.test.jsx`). O selo da aba é **círculo de 20px** (mesmo
+  diâmetro do badge do SegmentedSelector): vermelho = bloqueia publicar, âmbar =
+  aviso, ✓ = pronta — a taxonomia da barra de pendências, agora por hospital.
+  Publicar abre a **folha de revisão** (Sheet `!h-auto max-h-[88vh]`, senão nasce
+  com 85% da tela vazia) listando os hospitais; o botão publica **uma escala de
+  cada vez**, pela via de sempre. Hospital com bloqueio fica **de fora**, com o
+  motivo, e não segura os outros — escala precisa publicar; e como a publicação
+  não é transacional entre hospitais, o relato diz por nome quais subiram.
+  **Ganho de graça:** com as escalas na tela, a duplicidade entre hospitais e a
+  ajuda em azul passam a ser vistas ANTES da primeira publicação (antes o
+  cruzamento só via o que já estava publicado — o primeiro hospital do dia não
+  tinha com o que cruzar e o último decidia pelos dois).
 - **Importar · FDS**: **P1–P12 em 2 colunas** (P1..P6 esquerda, P7..P12 direita) e as **3
   filas lado a lado** (Manhã · Tarde · Noite) — empilhadas passavam de uma tela e comparar
   turnos exigia vai-e-volta. Cabeçalho da coluna leva **só o turno**: os selos "do
