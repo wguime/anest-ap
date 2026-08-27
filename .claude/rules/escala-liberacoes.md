@@ -130,3 +130,62 @@ servidor NÃO aplica com escrita otimista em voo ou pintada durante o voo
 (`escritasRef`/`mutSeqRef` — reagenda 800ms). Toda action otimista chama
 `marcarEscrita()` após o dispatch e `encerrarEscrita()` no finally — action
 nova sem o par reabre o vai-e-volta.
+
+### A cauda libera pelo HOSPITAL DE ORIGEM (dono 27/08)
+
+*"sempre os primeiros a irem embora são os plantões do contraturno, após os
+anestesistas que estariam escalados no materno e após os anestesistas de outro
+hospital, sempre respeitando a ordem de liberação do hospital de origem"* —
+resposta ao relato do mesmo dia: *"a ordem de liberações está errada, as ajudas
+vieram do HRO, e segundo a escala quem sai primeiro é Gustavo e não Alexandre.
+Romulo continua ser o primeiro das ajudas a ir embora."*
+
+**Como a regra chegou quebrada:** a ordenação por rodapé de origem existe na lib
+desde 31/07 (`opts.rodapeOutros`), mas a PÁGINA parou de alimentá-la em **04/08**
+(`ebfa726`, "fix: nao inferir ajuda entre hospitais") — `presencaOutros` virou
+`[]` para matar um falso badge de "Ajuda" em quem estava escalado em dois
+hospitais no mesmo turno. Aquela inferência vinha da metade derivada dos **casos**;
+a metade do **rodapé**, que é a única que a ordem precisa, foi junto. Desde então
+a cauda ordenava por ordem de ENCONTRO dos casos. Medido em 27/08 na Unimed/tarde:
+HRO tinha ALEXANDRE S em 6º e GUSTAVO em 10º, e a Unimed liberava o Alexandre
+primeiro. ⚠️ o teste de lib passava o tempo todo — o que quebrou foi o FIO entre
+página e lib, e é por isso que a trava nova é de PÁGINA (`escalaAjudaOrigemHospital.test.jsx`).
+
+- `presencaOutros` voltou **só com o rodapé** (`{ nome, uid, hospital, hospitalLabel, rodapeIdx }`).
+  Enquanto ele não tiver `sala`, `ajudandoFora`/`ajudaForaInfo` seguem desligados —
+  a inferência de "emprestado" continua fora, como está desde 04/08.
+- Níveis da cauda, de quem sai por ÚLTIMO para quem sai PRIMEIRO: fila → ajuda sem
+  origem conhecida → ajuda de outro hospital (índice do rodapé de lá ASCENDENTE:
+  maior índice lá = sai antes lá = mais embaixo aqui) → **Materno** → plantão do
+  contraturno. O contraturno fecha a lista por fora do sort (regra de 29/07) e,
+  estando escalado, é ELE o "próximo a ser liberado", não a ajuda logo acima.
+- **`origemHospital`/`origemLabel` na linha são a FONTE ÚNICA do badge
+  "Ajuda (HRO)"** — a view cruzava as escalas de novo para escrever o rótulo, e com
+  a marca manual passariam a existir dois caminhos para a mesma frase. Quem decide
+  a ORDEM decide o RÓTULO. ⚠️ a condição para gravar o par é TER ORIGEM, não ter o
+  slug: `hospital` é opcional em `rodapeOutros` e gatear pelo slug deixava sem
+  rótulo a chamada que só manda nome + índice.
+
+### "Veio de" — informar o Materno, que quase nunca tem escala (dono 27/08)
+
+*"crie um sistema para informar, pq eventualmente o materno não tem escala e esses
+anestesistas não aparecem em escala nenhuma"*. Sem rodapé de onde derivar, quem
+veio do Materno não tinha lugar na cauda — era o caso do Rômulo em 27/08.
+
+Linha **"Veio de"** no painel "Editar", só nas linhas da cauda (`isExtra ||
+isAjuda`; quem está no rodapé daqui é da casa e a pergunta não existe), com os
+hospitais MENOS o da fila + "Não informar". Grava o slug em
+`linha_overrides[turno:chave].origem` via `definirOrigemLinha` (otimista, audit
+com o user real) e chega à lib como `opts.origemManual` = `{ [chave]: { hospital,
+label } }`. Quando o hospital de origem TEM escala, o valor aparece como
+"(da escala)" e não precisa de toque.
+
+- A marca **vence a derivada** — é declaração humana sobre alguém que a estrutura
+  não enxerga. Mas marcar o MESMO hospital em que a pessoa já aparece **preserva a
+  posição real de lá** (confirmar "veio do HRO" não pode zerar o 10º do Gustavo e
+  empatá-lo com o 6º do Alexandre); de outro hospital, índice 0 e o sort estável
+  mantém a ordem em que já estava.
+- `origem` sobrevive a QUALQUER salvar do editor e ao "Restaurar automático", pela
+  mesma razão de `trocaCom`/`assumidaPor`: é declaração sobre a pessoa, não ajuste
+  de exibição — e é ela que decide a ordem de saída. Limpar é só pelo "Não informar".
+- Nada disso encosta em `ordem_liberacao`.

@@ -522,8 +522,15 @@ export function EscalaCirurgicaProvider({ children }) {
       // próprios — apagá-las aqui devolveria o slot ao dono antigo em silêncio.
       const trocaCom = anterior.trocaCom || null
       const assumidaPor = anterior.assumidaPor || null
-      const valor = (local || cirurgioes || termino || observacao || renovado || trocaCom || assumidaPor)
-        ? { ...(local && { local }), ...(cirurgioes && { cirurgioes }), ...(termino && { termino }), ...(observacao && { observacao }), ...(renovado && { renovado: true }), ...(trocaCom && { trocaCom }), ...(assumidaPor && { assumidaPor }), por: userInfo.userId || null, em: new Date().toISOString() }
+      // ORIGEM da ajuda (dono 27/08): de qual hospital a pessoa veio, informada à
+      // mão quando ela não está em escala publicada nenhuma (o caso do Materno).
+      // Sobrevive a QUALQUER salvar do editor e ao "Restaurar automático" pela
+      // mesma razão de trocaCom/assumidaPor: é declaração sobre a pessoa, não
+      // ajuste de exibição — e é ela que decide a ordem de saída na cauda.
+      // Limpar é pelo botão próprio ("Não informar" → `definirOrigemLinha`).
+      const origem = anterior.origem || null
+      const valor = (local || cirurgioes || termino || observacao || renovado || trocaCom || assumidaPor || origem)
+        ? { ...(local && { local }), ...(cirurgioes && { cirurgioes }), ...(termino && { termino }), ...(observacao && { observacao }), ...(renovado && { renovado: true }), ...(trocaCom && { trocaCom }), ...(assumidaPor && { assumidaPor }), ...(origem && { origem }), por: userInfo.userId || null, em: new Date().toISOString() }
         : null
       const linhaOverrides = { ...(escala.linhaOverrides || {}) }
       if (valor) linhaOverrides[scoped] = valor
@@ -544,6 +551,50 @@ export function EscalaCirurgicaProvider({ children }) {
     } catch (error) {
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { linhaOverrides: escala.linhaOverrides || {} } })
       toast({ variant: 'error', title: 'Erro ao ajustar linha', description: error.message })
+      throw error
+    }
+  }, [toast])
+
+  /**
+   * DE ONDE A AJUDA VEIO (dono 27/08). "sempre verifique de onde as ajudas
+   * saíram; se estiverem na escala de outro hospital respeite a ordem de
+   * liberação" — quando o hospital de origem TEM escala publicada, a fila
+   * descobre sozinha pelo rodapé de lá. Este caminho é para o buraco que o dono
+   * apontou: **o Materno costuma não ter escala**, e essas pessoas não aparecem
+   * em escala nenhuma, então não há de onde derivar.
+   *
+   * Grava só o slug do hospital em `linha_overrides[turno:chave].origem`; a
+   * ordem da cauda sai daí (Materno antes dos demais). `origem = null` é o "Não
+   * informar" e volta ao automático. Não encosta em `ordem_liberacao`.
+   */
+  const definirOrigemLinha = useCallback(async (escala, linhaArg, origem, userInfo = {}, turno) => {
+    const linha = linhaDe(linhaArg)
+    const chave = linha.chave || linha.anestesista
+    const scoped = chaveTurno(turno, chave)
+    const anterior = escala.linhaOverrides?.[scoped] || {}
+    const slug = origem ? String(origem).trim() : null
+    if ((anterior.origem || null) === slug) return
+    const semOrigem = { ...anterior }
+    delete semOrigem.origem
+    // sobra alguma coisa no override além da origem? senão a entrada inteira sai
+    const restou = ['local', 'cirurgioes', 'termino', 'observacao', 'renovado', 'trocaCom', 'assumidaPor']
+      .some((k) => semOrigem[k])
+    const valor = slug
+      ? { ...semOrigem, origem: slug, por: userInfo.userId || null, em: new Date().toISOString() }
+      : (restou ? { ...semOrigem, por: userInfo.userId || null, em: new Date().toISOString() } : null)
+    const linhaOverrides = { ...(escala.linhaOverrides || {}) }
+    if (valor) linhaOverrides[scoped] = valor
+    else delete linhaOverrides[scoped]
+    try {
+      // otimista, como toda marcação do módulo desde 19/08
+      dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { linhaOverrides } })
+      marcarEscrita()
+      try {
+        if (!String(escala.id).startsWith('demo-')) await svc.patchLinhaOverride(escala.id, scoped, valor)
+      } finally { encerrarEscrita() }
+    } catch (error) {
+      dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { linhaOverrides: escala.linhaOverrides || {} } })
+      toast({ variant: 'error', title: 'Erro ao informar a origem', description: error.message })
       throw error
     }
   }, [toast])
@@ -1176,8 +1227,8 @@ export function EscalaCirurgicaProvider({ children }) {
   const actionsValue = useMemo(() => ({
     setData, prefetch, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista,
     setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda,
-    reordenarAjuda, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, definirSalasUrgencia, refresh,
-  }), [prefetch, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda, reordenarAjuda, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, definirSalasUrgencia, refresh])
+    reordenarAjuda, definirOrigemLinha, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, definirSalasUrgencia, refresh,
+  }), [prefetch, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda, reordenarAjuda, definirOrigemLinha, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, definirSalasUrgencia, refresh])
 
   const stateValue = useMemo(() => ({
     escalas: state.escalas, p4Hospital: state.p4Hospital, data, loading, hoje,

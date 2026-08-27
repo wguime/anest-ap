@@ -15,7 +15,7 @@ import { gerarColunaLiberacao, nomeCirurgiaoCurto, titleCaseNome } from '@/lib/c
 import { faseLiberacoes, plantonistasNoturnos, candidatosNome, linhasNoturnas, fundirLinhasNoturnas, marcarSelosNoTurno, ehDiaUtil, casarPorInicialSobrenome, P4_HOSPITAIS } from '@/lib/plantaoNoturno'
 import { marcarSelosFds, linhasNoturnasFds, plantonistasFaixaFds, FDS_TURNO_FAIXA, resolverNomeEstrito, ehFeriado } from '@/lib/escalaFds'
 import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
-import { hojeISO, HOSPITAL_LABEL, OBSERVACAO_MAX } from '@/contexts/EscalaCirurgicaContext'
+import { hojeISO, HOSPITAIS, HOSPITAL_LABEL, OBSERVACAO_MAX } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import useAgoraMinuto from './useAgoraMinuto'
@@ -68,7 +68,7 @@ const AVISO_MAX = 160
 // que o card mostra, então sai do MESMO mapa que o resto do módulo usa.
 const HOSPITAIS_FILA = ['unimed', 'hro', 'materno'].map((v) => ({ value: v, label: HOSPITAL_LABEL[v] || v }))
 
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onTrocarResponsavel, onDevolverResponsavel, onTrocarPosicao, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, onGarantirEscala, onNavigate }) {
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onTrocarResponsavel, onDevolverResponsavel, onTrocarPosicao, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, onDefinirOrigem, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, onGarantirEscala, onNavigate }) {
   const { toast } = useToast()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
   // do turno selecionado e o rodapé (ordem de liberação) DAQUELE turno.
@@ -216,6 +216,25 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     return (curtoAmbiguo.get(normNome(curto)) || 0) > 1 ? titleCaseNome(r.nome) : curto
   }, [rosterByUid, curtoAmbiguo])
 
+  /**
+   * ORIGEM INFORMADA À MÃO (dono 27/08): `{ [chave]: { hospital, label } }` lido
+   * de `linha_overrides[turno:chave].origem`. Existe por causa do MATERNO — ele
+   * costuma não ter escala publicada, então quem veio de lá não aparece em rodapé
+   * nenhum e a fila não teria como saber que essa pessoa sai antes das ajudas dos
+   * outros hospitais. Namespaced por turno como todo o resto dos overrides.
+   */
+  const origemManual = useMemo(() => {
+    const out = {}
+    const prefixo = (turnoBase === 'matutino' || turnoBase === 'vespertino') ? `${turnoBase}:` : ''
+    for (const [rawKey, ov] of Object.entries(escala?.linhaOverrides || {})) {
+      if (!ov?.origem) continue
+      if (prefixo && !String(rawKey).startsWith(prefixo)) continue
+      const k = prefixo ? String(rawKey).slice(prefixo.length) : rawKey
+      out[k] = { hospital: ov.origem, label: HOSPITAL_LABEL[ov.origem] || ov.origem }
+    }
+    return out
+  }, [escala, turnoBase])
+
   const { linhas, semAnestesista } = useMemo(() => {
     // FDS: a fila publicada existe ANTES das listas de procedimentos (são
     // importações separadas) — o rodapé sozinho já rende as linhas; sem casos,
@@ -249,8 +268,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       // VISITANTES (dono 31/07): rodapés das OUTRAS escalas com o índice de cada
       // nome — quem está aqui de ajuda libera primeiro, na ordem de liberação de lá.
       rodapeOutros: presencaOutros.filter((p) => p.rodapeIdx != null),
+      origemManual,
     })
-  }, [casosTurno, rodapeTurno, escala, hospitalLabel, turno, turnoBase, resolverUid, nomeExibicao, presencaOutros, modoFds])
+  }, [casosTurno, rodapeTurno, escala, hospitalLabel, turno, turnoBase, resolverUid, nomeExibicao, presencaOutros, origemManual, modoFds])
 
   // Locais do hospital p/ o editor de linha (dropdown, pedido do dono 2026-07-22):
   // salas da escala do dia (ordem do board) + locais APRENDIDOS do histórico
@@ -777,9 +797,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
    */
   const ajudaDeOutro = (linha) => {
     if (linha.isAjuda || !linha.isExtra) return null
-    const nomes = new Set([normNome(linha.nomeOriginal || ''), normNome(linha.anestesista || '')].filter(Boolean))
-    const m = presencaOutros.find((p) => (linha.uid && p.uid && p.uid === linha.uid) || (p.nome && nomes.has(p.nome)))
-    return m ? m.hospitalLabel : null
+    return linha.origemLabel || null
   }
   /**
    * Destino de quem foi EMPRESTADO (dono 30/07): a linha fica na posição do rodapé
@@ -2252,6 +2270,68 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     Escrevendo à mão, a linha deixa de mostrar o tempo de cada cirurgia.
                   </p>
                 </EditorPainel>
+              )}
+
+              {/* ── DE ONDE A AJUDA VEIO (dono 27/08) ──────────────────────────
+                  "sempre verifique de onde as ajudas saíram; se estiverem na
+                  escala de outro hospital respeite a ordem de liberação". Quando o
+                  hospital de origem TEM escala publicada a fila descobre sozinha
+                  pelo rodapé de lá — o valor aparece aqui como "(da escala)" e não
+                  precisa de toque. Este controle é para o buraco que o dono
+                  apontou: o **Materno costuma não ter escala**, e essas pessoas
+                  não constam em lugar nenhum.
+                  Só nas linhas da CAUDA (extra/ajuda): quem está no rodapé daqui é
+                  da casa, e "de onde veio" não faz pergunta nenhuma nele. Card
+                  noturno fica de fora pela mesma razão do toggle abaixo. ── */}
+              {canEdit && !editor.noturno && onDefinirOrigem && (editor.isExtra || editor.isAjuda) && (
+                <>
+                  <LinhaPainel
+                    rotulo="Veio de"
+                    valor={origemManual[editor.chave]?.label
+                      || (editor.origemLabel ? `${editor.origemLabel} (da escala)` : '—')}
+                    aberto={abaPainel === 'origem'}
+                    onClick={() => setAbaPainel((a) => (a === 'origem' ? null : 'origem'))}
+                  />
+                  {abaPainel === 'origem' && (
+                    <div className="mb-2 space-y-2 rounded-xl border border-border bg-muted/30 p-2.5">
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {HOSPITAIS.filter((h) => h !== hospital).map((h) => {
+                          const marcado = origemManual[editor.chave]?.hospital === h
+                          return (
+                            <button
+                              key={h}
+                              type="button"
+                              aria-pressed={marcado}
+                              onClick={() => { onDefinirOrigem(editor, marcado ? null : h)?.catch?.(() => {}); setAbaPainel(null) }}
+                              className={[
+                                'flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border text-[14px]',
+                                marcado
+                                  ? 'border-primary bg-primary/10 font-bold text-primary dark:bg-primary/20'
+                                  : 'border-input bg-card font-semibold text-muted-foreground active:bg-muted',
+                              ].join(' ')}
+                            >
+                              {marcado && <Check className="h-4 w-4 shrink-0" />}
+                              {HOSPITAL_LABEL[h] || h}
+                            </button>
+                          )
+                        })}
+                        <button
+                          type="button"
+                          onClick={() => { onDefinirOrigem(editor, null)?.catch?.(() => {}); setAbaPainel(null) }}
+                          className="flex min-h-[44px] items-center justify-center rounded-xl border border-input bg-card text-[14px] font-semibold text-muted-foreground active:bg-muted"
+                        >
+                          Não informar
+                        </button>
+                      </div>
+                      <p className="text-[11px] leading-snug text-muted-foreground">
+                        Use quando a pessoa não está na escala publicada de nenhum hospital neste turno —
+                        o Materno, quase sempre. Quem estaria no Materno vai embora antes das ajudas dos
+                        outros hospitais; os demais liberam na ordem da escala de origem. Vale só neste
+                        turno e não muda a ordem de liberação publicada.
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
 
               {/* ── AJUDA à mão (dono 29/07) — card noturno fica de fora: ele é

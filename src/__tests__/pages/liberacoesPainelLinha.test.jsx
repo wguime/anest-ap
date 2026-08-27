@@ -571,7 +571,12 @@ describe('Ajuda derivada de outro hospital (caso TIAGO)', () => {
       caso('Hemodinâmica', 0, 'TIAGO', 'Marcos Freitas', '08:00', { anestesistaUserId: 'uid-tiago' }),
     ],
   }
-  const presenca = [{ nome: 'TIAGO', uid: null, hospitalLabel: 'HRO' }]
+  // ⚠️ `rodapeIdx` não é enfeite (27/08): desde que a ordem da cauda passou a sair
+  // do rodapé de ORIGEM, entrada de presença SEM posição não descreve mais nada —
+  // a página só emite quem veio do rodapé de outra escala, e é a MESMA entrada que
+  // decide a ordem e escreve o badge. Um dado que não serve para ordenar não pode
+  // render um rótulo (era o caminho para os dois divergirem).
+  const presenca = [{ nome: 'TIAGO', uid: null, hospital: 'hro', hospitalLabel: 'HRO', rodapeIdx: 4 }]
 
   it('linha extra presente na escala de outro hospital ganha "Ajuda (HRO)"', () => {
     montar({ presencaOutros: presenca }, comExtra)
@@ -582,7 +587,7 @@ describe('Ajuda derivada de outro hospital (caso TIAGO)', () => {
 
   it('quem está no rodapé LOCAL não ganha o badge derivado, mesmo cruzando', () => {
     // Marilio aparece também na escala do HRO (cross-listado) — é da casa aqui
-    montar({ presencaOutros: [...presenca, { nome: 'MARILIO', uid: null, hospitalLabel: 'HRO' }] }, comExtra)
+    montar({ presencaOutros: [...presenca, { nome: 'MARILIO', uid: null, hospital: 'hro', hospitalLabel: 'HRO', rodapeIdx: 2 }] }, comExtra)
     const card = document.querySelector('[data-linha="uid-mar"]')
     expect(within(card).queryByText(/Ajuda \(/)).toBeNull()
   })

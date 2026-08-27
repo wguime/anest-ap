@@ -466,6 +466,11 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     assumida: null, // slot assumido: { deNome, deUid } = quem ocupava a posição antes
     notaRodape: null, // nota "(CONSULT)" do rodapé → rótulo de local no card
     isExtra: false, // tem caso mas NÃO está no rodapé (ver aviso do JSDoc)
+    // DE ONDE A PESSOA VEIO quando isso é conhecido — slug + rótulo do hospital
+    // de origem (derivado do rodapé de lá ou informado à mão). Decide a ordem da
+    // cauda E o texto do badge "Ajuda (HRO)"; a view não cruza escalas de novo.
+    origemHospital: null,
+    origemLabel: null,
     // OCUPA POSIÇÃO NA ORDEM PUBLICADA. É o oposto de "apareceu na tela": a
     // lista de exibição carrega extras, ajudas e visitantes que NÃO estão no
     // rodapé, e toda regra que fala em "os últimos da lista de liberação"
@@ -681,30 +686,70 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   // outro hospital sai PRIMEIRO — e entre eles vale a ORDEM DE LIBERAÇÃO do
   // rodapé de ORIGEM (quem sairia antes lá, sai antes aqui), não a ordem do
   // array de ajuda nem a de encontro dos casos. `rodapeOutros` vem da view
-  // (rodapés das outras escalas carregadas, com o índice de cada nome).
+  // (rodapés das outras escalas carregadas): `{ nome, uid, hospital, rodapeIdx }`
+  // — `hospital` é o SLUG ('materno'/'hro'/'unimed'), usado no nível de origem
+  // abaixo; sem ele o Materno perde a precedência e vira "outro hospital".
   const origemIdx = new Map()
+  const origemHosp = new Map()
+  const origemLabel = new Map()
   for (const r of opts.rodapeOutros || []) {
     if (r?.rodapeIdx == null) continue
     const { key, uid } = resolveKey(r.nome || '', r.uid || null)
-    if (key && !origemIdx.has(key)) origemIdx.set(key, r.rodapeIdx)
-    if (uid && !origemIdx.has(uid)) origemIdx.set(uid, r.rodapeIdx)
+    for (const k of [key, uid]) {
+      if (!k || origemIdx.has(k)) continue
+      origemIdx.set(k, r.rodapeIdx)
+      origemHosp.set(k, r.hospital || null)
+      origemLabel.set(k, r.hospitalLabel || null)
+    }
   }
-  const idxOrigem = (l) => origemIdx.get(l.chave)
-    ?? (l.uid != null ? origemIdx.get(l.uid) : undefined)
-    ?? origemIdx.get(norm(l.nomeOriginal || ''))
+  const porChave = (mapa, l) => mapa.get(l.chave)
+    ?? (l.uid != null ? mapa.get(l.uid) : undefined)
+    ?? mapa.get(norm(l.nomeOriginal || ''))
     ?? null
+  // ORIGEM INFORMADA À MÃO (dono 27/08): `{ [chave]: { hospital, label } }`, vindo
+  // de `linha_overrides[turno:chave].origem`. Existe porque o MATERNO costuma não
+  // ter escala publicada — quem veio de lá não está em rodapé nenhum e não há de
+  // onde derivar a origem. A marca VENCE a derivada: é declaração humana sobre
+  // uma pessoa que a estrutura não consegue enxergar.
+  const manual = opts.origemManual || {}
+  const marcaDe = (l) => manual[l.chave] || (l.uid != null ? manual[l.uid] : null) || null
+  const hospOrigem = (l) => marcaDe(l)?.hospital || porChave(origemHosp, l) || null
+  const idxOrigem = (l) => {
+    const m = marcaDe(l)
+    const derivado = porChave(origemIdx, l)
+    if (!m) return derivado
+    // marcada como sendo do MESMO hospital em que ela já aparece: a posição real
+    // de lá continua valendo. De outro hospital (ou de nenhum): sem ordem própria
+    // — cai em 0 e o sort estável preserva a ordem em que já estava.
+    return (porChave(origemHosp, l) === m.hospital && derivado != null) ? derivado : 0
+  }
   // extra com origem conhecida é visitante → sai dos extras e entra no bloco do fim
   const extrasLocais = []
   const visitantesExtras = []
   for (const l of extras) (idxOrigem(l) != null ? visitantesExtras : extrasLocais).push(l)
-  // bloco do fim = ajudas + visitantes; quem tem origem conhecida vai DEPOIS das
-  // ajudas manuais (libera primeiro) e ordena pelo índice de origem ASCENDENTE —
-  // o fim da lista libera primeiro, então índice MAIOR na origem = mais embaixo.
+  // ORDEM DA CAUDA (dono 27/08): "sempre os primeiros a irem embora são os
+  // plantões do contraturno, após os anestesistas que estariam escalados no
+  // materno, e após os anestesistas de outro hospital, sempre respeitando a
+  // ordem de liberação do hospital de origem".
+  //
+  // A lista corre de cima para baixo e o FIM libera primeiro, então "sai antes"
+  // = "mais embaixo" = comparador MAIOR. O plantão do contraturno já fecha a
+  // lista por fora deste sort (`proximoPlantao`, regra de 29/07); aqui ficam os
+  // dois níveis seguintes: Materno abaixo dos demais hospitais, e dentro de cada
+  // hospital o índice do rodapé de ORIGEM ascendente (índice maior lá = sai
+  // antes lá = mais embaixo aqui).
+  const MATERNO = 'materno'
+  const nivelOrigem = (l) => (hospOrigem(l) === MATERNO ? 1 : 0)
   const fimAjuda = [...linhasAjuda, ...visitantesExtras]
   fimAjuda.sort((a, b) => {
     const ia = idxOrigem(a)
     const ib = idxOrigem(b)
-    if (ia != null && ib != null) return ia - ib
+    if (ia != null && ib != null) {
+      const na = nivelOrigem(a)
+      const nb = nivelOrigem(b)
+      if (na !== nb) return na - nb // Materno mais embaixo: sai antes dos outros hospitais
+      return ia - ib
+    }
     if (ia != null) return 1
     if (ib != null) return -1
     return 0 // sem origem: mantém a ordem já resolvida (array de ajuda) — sort é estável
@@ -716,6 +761,19 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     if (idxOrigem(l) == null) continue
     l.ajudaIdx = null
     l.teveCasos = true
+  }
+  // DE ONDE VEIO, na própria linha — FONTE ÚNICA do badge "Ajuda (HRO)". A view
+  // cruzava as escalas de novo para escrever esse rótulo, e com a marca manual
+  // passariam a existir dois caminhos para a mesma frase: dois lugares divergem
+  // no primeiro ajuste. Quem decide a ORDEM decide o RÓTULO.
+  // ⚠️ a condição é TER ORIGEM, não ter o slug do hospital: `hospital` é opcional
+  // em `rodapeOutros` (sem ele vale a regra de 31/07, só o índice) e gatear pelo
+  // slug deixava sem rótulo justamente a chamada que só manda nome + índice.
+  for (const l of [...principais, ...extrasLocais, ...fimAjuda, ...(proximoPlantao ? [proximoPlantao] : [])]) {
+    const m = marcaDe(l)
+    if (!m && idxOrigem(l) == null) continue
+    l.origemHospital = hospOrigem(l)
+    l.origemLabel = m?.label || porChave(origemLabel, l) || null
   }
 
   const linhas = [...principais, ...extrasLocais, ...fimAjuda, ...(proximoPlantao ? [proximoPlantao] : [])]

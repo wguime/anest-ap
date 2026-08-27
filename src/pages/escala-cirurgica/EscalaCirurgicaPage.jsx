@@ -49,7 +49,7 @@ const ABA_OPCOES = [
 
 export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const { user } = useUser()
-  const { escalas, data, loading, p4Hospital, hoje, setData, prefetch, salvarEscalaTurno, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, reordenarAjuda, definirP4Hospital, setAnestesistaCasos, marcarTroca, executarSubstituicao, desfazerSubstituicao } = useEscalaCirurgica()
+  const { escalas, data, loading, p4Hospital, hoje, setData, prefetch, salvarEscalaTurno, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, reordenarAjuda, definirOrigemLinha, definirP4Hospital, setAnestesistaCasos, marcarTroca, executarSubstituicao, desfazerSubstituicao } = useEscalaCirurgica()
   // Roster p/ resolver os lados do par da troca declarada (uid/nome/apelido)
   const { resolver: resolverRoster, rosterByUid } = useRosterAnestesistas()
   // P1–P4 do dia (card Plantões/PegaPlantao) — alimentam a fase noturna das Liberações
@@ -230,11 +230,32 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     return null
   }, [escalas])
 
-  // Não inferimos ajuda apenas porque um nome aparece em outra escala. Uma
-  // pessoa pode estar escalada simultaneamente em hospitais diferentes, e essa
-  // inferência gerava falsos badges de "Ajuda". Ajuda só entra por
-  // `ajuda_externa[turno]` (publicação/importação) ou marcação manual.
-  const presencaOutros = useMemo(() => [], [])
+  // DE ONDE A AJUDA SAIU (dono 31/07, recolocado em 27/08): quem está aqui de
+  // ajuda libera na ORDEM DE LIBERAÇÃO DO HOSPITAL DE ORIGEM — "sempre verifique
+  // de onde as ajudas saíram; se estiverem na escala de outro hospital, respeite
+  // a ordem de liberação". `rodapeIdx` é a posição no rodapé de lá e é o que a
+  // lib usa para ordenar a cauda da fila.
+  //
+  // ⚠️ SÓ O RODAPÉ, nunca os casos. Em 04/08 (`ebfa726`) este cálculo inteiro foi
+  // trocado por `[]` porque a metade derivada dos CASOS inferia ajuda de quem
+  // simplesmente tinha cirurgia em dois hospitais no mesmo turno — falso badge.
+  // A metade do rodapé não tem esse defeito (rodapé é escala publicada, não
+  // coincidência de agenda) e é a única que a ordem precisa. Enquanto `sala` não
+  // for preenchido aqui, `ajudandoFora`/`ajudaForaInfo` seguem desligados —
+  // a inferência de "emprestado" continua fora, como está desde 04/08.
+  const presencaOutros = useMemo(() => {
+    const out = []
+    for (const [h, esc] of Object.entries(escalas)) {
+      // 'fds' é a fila única do fim de semana, não um "outro hospital"
+      if (h === hospital || h === FDS_HOSPITAL || !esc) continue
+      const label = HOSPITAL_LABEL[h] || h
+      rodapeDoTurno(esc.ordemLiberacao, turno).forEach((n, i) => {
+        const nm = normNome(n)
+        if (nm) out.push({ nome: nm, uid: null, hospital: h, hospitalLabel: label, rodapeIdx: i })
+      })
+    }
+    return out
+  }, [escalas, hospital, turno])
 
   // ── TROCA DECLARADA (dono 30/07) — pares das 3 escalas + planos de execução ──
   // Mesmo padrão de contraturnoOutros/presencaOutros: o context já carrega as três
@@ -510,6 +531,9 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                   onSetOverride={(anest, override) => setLinhaOverride(escalaLib, anest, override, userInfo, turno)}
                   onAddAjuda={(nome) => adicionarAjuda(escalaLib, turno, nome)}
                   onReordenarAjuda={(de, para) => reordenarAjuda(escalaLib, turno, de, para)}
+                  /* DE ONDE A AJUDA VEIO (dono 27/08) — informado à mão quando o
+                     hospital de origem não tem escala publicada (o Materno). */
+                  onDefinirOrigem={(linha, origem) => definirOrigemLinha(escalaLib, linha, origem, userInfo, turno)}
                   contraturnoOutros={modoFds ? [] : contraturnoOutros}
                   presencaOutros={presencaOutros}
                   paresTroca={modoFds ? [] : paresTroca}

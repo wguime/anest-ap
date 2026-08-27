@@ -1,0 +1,182 @@
+/**
+ * DE ONDE A AJUDA SAIU manda na ordem da cauda (dono 27/08).
+ *
+ * "sempre os primeiros a irem embora são os plantões do contraturno, após os
+ * anestesistas que estariam escalados no materno e após os anestesistas de outro
+ * hospital, sempre respeitando a ordem de liberação do hospital de origem."
+ *
+ * A regra existe na lib desde 31/07, mas a PÁGINA parou de alimentá-la em 04/08
+ * (`ebfa726` trocou `presencaOutros` por `[]` para matar um falso badge de
+ * "Ajuda" que vinha da metade derivada dos CASOS). Desde então a cauda da fila
+ * ordenava por ordem de ENCONTRO dos casos. Caso real que originou a trava —
+ * Unimed, tarde de 27/08: GUSTAVO e ALEXANDRE S ajudando vindos do HRO, onde o
+ * rodapé da tarde tem ALEXANDRE S em 6º e GUSTAVO em 10º; a Unimed liberava o
+ * Alexandre primeiro, quando quem sai antes é o Gustavo.
+ *
+ * ⚠️ Esta trava é de PÁGINA de propósito. A ordenação em si já tem teste de lib
+ * (`colunaLiberacao.test.js`) e ele passava o tempo todo com o defeito em pé —
+ * o que quebrou foi o fio entre as duas, e é o fio que precisa de teste.
+ */
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent } from '@testing-library/react'
+
+import { ThemeProvider, ToastProvider } from '@/design-system'
+
+const { estado, svcMock } = vi.hoisted(() => ({
+  estado: { ctx: null },
+  svcMock: {
+    fetchEscala: vi.fn(async () => null),
+    fetchLocaisHospital: vi.fn(async () => []),
+    reservarAvisoTempo: vi.fn(async () => false),
+  },
+}))
+
+vi.mock('@/services/supabaseEscalaCirurgicaService', () => ({ default: svcMock }))
+vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
+  useEscalaCirurgica: () => estado.ctx,
+  hojeISO: () => '2026-08-27',
+  HOSPITAIS: ['unimed', 'hro', 'materno'],
+  HOSPITAL_LABEL: { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' },
+  OBSERVACAO_MAX: 120,
+}))
+vi.mock('@/contexts/UserContext', () => ({
+  useUser: () => ({ user: { uid: 'u-x', role: 'anestesiologista', displayName: 'X' } }),
+}))
+vi.mock('@/hooks/usePegaPlantao', () => ({ useEscalaDia: () => ({ plantoes: [] }) }))
+vi.mock('@/hooks/useRosterAnestesistas', () => ({
+  default: () => ({
+    roster: [], rosterByUid: new Map(), aliases: [], options: [],
+    resolver: () => null, loading: false, pronto: true,
+    refresh: vi.fn(), upsertAlias: vi.fn(), removeAlias: vi.fn(),
+  }),
+}))
+
+import EscalaCirurgicaPage from '@/pages/escala-cirurgica/EscalaCirurgicaPage'
+
+const wrap = ({ children }) => <ThemeProvider><ToastProvider>{children}</ToastProvider></ThemeProvider>
+
+const caso = (id, sala, anestesista, hora = '13:30') => ({
+  id, sala, ordem: 0, hora, anestesista, cirurgiao: 'Cirurgião',
+  bloco: 'normal', isContinuacao: false, semAnestesista: false,
+})
+
+const acoes = () => ({
+  setData: vi.fn(), toggleLiberacao: vi.fn(), toggleEscalado: vi.fn(), setLinhaOverride: vi.fn(),
+  adicionarAjuda: vi.fn(), removerAjuda: vi.fn(), reordenarAjuda: vi.fn(), definirP4Hospital: vi.fn(),
+  setAnestesistaCasos: vi.fn(), marcarTroca: vi.fn(), executarSubstituicao: vi.fn(),
+  desfazerSubstituicao: vi.fn(), salvarEscalaTurno: vi.fn(), atualizarCaso: vi.fn(),
+  definirOrigemLinha: vi.fn(),
+  setStatusCirurgia: vi.fn(), adicionarCaso: vi.fn(), definirSalasUrgencia: vi.fn(),
+})
+
+// Unimed da tarde: Gabriela (plantonista) · Marilio · Oscar (fecha o rodapé =
+// plantão do contraturno). Gustavo, Alexandre S e Rômulo têm caso aqui e não
+// estão neste rodapé — entram na cauda.
+const UNIMED = {
+  id: 'u1', hospital: 'unimed', data: '2026-08-27',
+  ordemLiberacao: { vespertino: ['GABRIELA', 'MARILIO', 'OSCAR'] },
+  ajudaExterna: { vespertino: [] },
+  liberacoes: {}, linhaOverrides: {},
+  casos: [
+    caso('c1', 'CC - Sala 2', 'MARILIO'),
+    caso('c2', 'CC - Sala 3', 'GABRIELA'),
+    caso('c3', 'CO - Cesárea', 'GUSTAVO'),
+    caso('c4', 'Exames', 'ROMULO'),
+    caso('c5', 'Imagem', 'ALEXANDRE S', '13:00'),
+    caso('c6', 'CC - Sala 5', 'OSCAR'),
+  ],
+}
+// HRO da tarde: Alexandre S em 6º, Gustavo em 10º (recorte do rodapé real).
+const HRO = {
+  id: 'h1', hospital: 'hro', data: '2026-08-27',
+  ordemLiberacao: {
+    vespertino: ['THAYNA', 'LOUISE', 'ALEXANDRE D', 'DANIELA', 'RAFAEL', 'ALEXANDRE S',
+      'NATHALIA', 'EDUARDO', 'JANAINA', 'GUSTAVO', 'MAURICIO', 'ROSE'],
+  },
+  ajudaExterna: { vespertino: ['ALEXANDRE S', 'GUSTAVO'] },
+  liberacoes: {}, linhaOverrides: {}, casos: [],
+}
+
+const montar = (escalas) => {
+  estado.ctx = {
+    escalas: { unimed: null, hro: null, materno: null, fds: null, ...escalas },
+    p4Hospital: null, data: '2026-08-27', hoje: '2026-08-27', loading: false, ...acoes(),
+  }
+  const r = render(<EscalaCirurgicaPage onNavigate={() => {}} goBack={() => {}} />, { wrapper: wrap })
+  fireEvent.click(screen.getByRole('tab', { name: 'Liberações' }))
+  return r
+}
+
+/** Nomes da fila, de cima para baixo. O ÚLTIMO é o PRIMEIRO a ir embora. */
+const fila = () => screen.queryAllByLabelText(/^Editar local\/cirurgião de /)
+  .map((b) => b.getAttribute('aria-label').replace('Editar local/cirurgião de ', ''))
+
+beforeEach(() => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  vi.setSystemTime(new Date('2026-08-27T14:00:00-03:00')) // quinta, turno vespertino
+})
+afterEach(() => vi.useRealTimers())
+
+describe('ajuda libera na ordem do hospital de ORIGEM (dono 27/08)', () => {
+  it('com a escala do HRO carregada, Gustavo (10º lá) sai antes de Alexandre (6º lá)', () => {
+    montar({ unimed: UNIMED, hro: HRO })
+    const nomes = fila()
+    // Oscar fecha o rodapé daqui → plantão do contraturno, sempre o último
+    expect(nomes[nomes.length - 1]).toBe('Oscar')
+    // índice MAIOR no rodapé de origem = sai antes lá = mais embaixo aqui
+    expect(nomes.indexOf('Gustavo')).toBeGreaterThan(nomes.indexOf('Alexandre S'))
+  })
+
+  it('o card diz de ONDE a ajuda veio', () => {
+    montar({ unimed: UNIMED, hro: HRO })
+    expect(screen.getAllByText('Ajuda (HRO)').length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('o painel “Veio de” existe na ajuda e grava o hospital escolhido', () => {
+    montar({ unimed: UNIMED, hro: HRO })
+    fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Romulo'))
+    fireEvent.click(screen.getByRole('button', { name: /^Veio de/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Materno' }))
+    expect(estado.ctx.setLinhaOverride).not.toHaveBeenCalled() // não é o editor de exibição
+    expect(estado.ctx.definirOrigemLinha).toHaveBeenCalledTimes(1)
+    const [, linha, origem, , turno] = estado.ctx.definirOrigemLinha.mock.calls[0]
+    expect(linha.anestesista).toBe('Romulo')
+    expect(origem).toBe('materno')
+    expect(turno).toBe('vespertino')
+  })
+
+  it('“Veio de” não oferece o hospital em que a fila já está', () => {
+    montar({ unimed: UNIMED, hro: HRO })
+    fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Romulo'))
+    fireEvent.click(screen.getByRole('button', { name: /^Veio de/ }))
+    expect(screen.getByRole('button', { name: 'Materno' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'HRO' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Unimed' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Não informar' })).toBeTruthy()
+  })
+
+  it('quem é do rodapé daqui não tem “Veio de” — não há pergunta a fazer', () => {
+    montar({ unimed: UNIMED, hro: HRO })
+    fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Marilio'))
+    expect(screen.queryByRole('button', { name: /^Veio de/ })).toBeNull()
+  })
+
+  it('marcado como Materno, o Rômulo passa a sair antes das ajudas do HRO', () => {
+    const marcado = {
+      ...UNIMED,
+      linhaOverrides: { 'vespertino:ROMULO': { origem: 'materno', por: 'u-x', em: '2026-08-27T17:00:00Z' } },
+    }
+    montar({ unimed: marcado, hro: HRO })
+    const nomes = fila()
+    expect(nomes.slice(-4)).toEqual(['Alexandre S', 'Gustavo', 'Romulo', 'Oscar'])
+    expect(screen.getByText('Ajuda (Materno)')).toBeTruthy()
+  })
+
+  it('sem a escala do outro hospital, a cauda não inventa ordem nenhuma', () => {
+    montar({ unimed: UNIMED })
+    // ninguém tem origem conhecida: a fila não quebra e o contraturno segue no fim
+    const nomes = fila()
+    expect(nomes[nomes.length - 1]).toBe('Oscar')
+    expect(screen.queryByText('Ajuda (HRO)')).toBeNull()
+  })
+})

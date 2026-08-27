@@ -1150,3 +1150,138 @@ describe('identidade da linha — nunca pelo display', () => {
     expect(r.linhas[0].anestesista).toBe('Marilio') // display é outra coisa
   })
 })
+
+// ════════════════════════════════════════════════════════════════════════════
+// ORDEM DA CAUDA POR HOSPITAL DE ORIGEM (dono 27/08): "sempre os primeiros a
+// irem embora são os plantões do contraturno, após os anestesistas que estariam
+// escalados no materno e após os anestesistas de outro hospital, sempre
+// respeitando a ordem de liberação do hospital de origem".
+//
+// O caso que originou a regra é REAL — Unimed, tarde de 27/08. GUSTAVO e
+// ALEXANDRE S ajudavam a Unimed vindos do HRO, onde o rodapé da tarde tem
+// ALEXANDRE S em 6º e GUSTAVO em 10º. A fila da Unimed liberava o Alexandre
+// primeiro (ordem de ENCONTRO dos casos), quando quem sai antes é o Gustavo —
+// ele está mais para o fim do rodapé de origem.
+// ════════════════════════════════════════════════════════════════════════════
+describe('cauda da fila: Materno antes dos outros hospitais (dono 27/08)', () => {
+  // recorte fiel da Unimed/tarde de 27/08 (nomes do rodapé publicado)
+  const casosUnimed = [
+    caso('CC - Sala 2', 0, 'MARILIO', 'Cirurgião A'),
+    caso('CC - Sala 3', 0, 'GABRIELA', 'Cirurgião B'),
+    caso('CO - Cesárea', 0, 'GUSTAVO', 'Cirurgião C'),
+    caso('Exames', 0, 'ROMULO', 'Cirurgião D'),
+    caso('Imagem', 0, 'ALEXANDRE S', 'Cirurgião E'),
+  ]
+  const rodapeUnimed = ['GABRIELA', 'MARILIO', 'OSCAR']
+  // rodapé do HRO da tarde: ALEXANDRE S em 6º, GUSTAVO em 10º
+  const doHro = [
+    { nome: 'ALEXANDRE S', hospital: 'hro', rodapeIdx: 5 },
+    { nome: 'GUSTAVO', hospital: 'hro', rodapeIdx: 9 },
+  ]
+
+  it('entre ajudas do MESMO hospital vale a ordem de liberação de lá: Gustavo sai antes de Alexandre', () => {
+    const r = gerarColunaLiberacao(casosUnimed, rodapeUnimed, {
+      turno: 'vespertino', rodapeOutros: doHro,
+    })
+    const nomes = r.linhas.map((l) => l.anestesista)
+    // Oscar fecha o rodapé → plantão do contraturno, sempre o último da lista
+    expect(nomes[nomes.length - 1]).toBe('Oscar')
+    // índice MAIOR no rodapé de origem = sai antes = mais embaixo aqui
+    expect(nomes.indexOf('Gustavo')).toBeGreaterThan(nomes.indexOf('Alexandre S'))
+  })
+
+  it('quem estaria no MATERNO sai antes de quem veio de outro hospital', () => {
+    const r = gerarColunaLiberacao(casosUnimed, rodapeUnimed, {
+      turno: 'vespertino',
+      rodapeOutros: [...doHro, { nome: 'ROMULO', hospital: 'materno', rodapeIdx: 0 }],
+    })
+    const nomes = r.linhas.map((l) => l.anestesista)
+    // cauda, de cima para baixo: Alexandre (HRO 6º) · Gustavo (HRO 10º) · Rômulo
+    // (Materno) · Oscar (contraturno). O fim libera primeiro.
+    expect(nomes.slice(-4)).toEqual(['Alexandre S', 'Gustavo', 'Romulo', 'Oscar'])
+  })
+
+  it('o Materno vem primeiro mesmo sendo o 1º do rodapé de lá — hospital manda antes do índice', () => {
+    const r = gerarColunaLiberacao(casosUnimed, rodapeUnimed, {
+      turno: 'vespertino',
+      rodapeOutros: [
+        { nome: 'ALEXANDRE S', hospital: 'hro', rodapeIdx: 15 }, // último do HRO
+        { nome: 'ROMULO', hospital: 'materno', rodapeIdx: 0 },   // primeiro do Materno
+      ],
+    })
+    const nomes = r.linhas.map((l) => l.anestesista)
+    expect(nomes.indexOf('Romulo')).toBeGreaterThan(nomes.indexOf('Alexandre S'))
+  })
+
+  it('sem `hospital` na origem o comportamento de 31/07 é idêntico (só o índice manda)', () => {
+    const r = gerarColunaLiberacao(casosUnimed, rodapeUnimed, {
+      turno: 'vespertino',
+      rodapeOutros: [{ nome: 'ALEXANDRE S', rodapeIdx: 5 }, { nome: 'GUSTAVO', rodapeIdx: 9 }],
+    })
+    const nomes = r.linhas.map((l) => l.anestesista)
+    expect(nomes.indexOf('Gustavo')).toBeGreaterThan(nomes.indexOf('Alexandre S'))
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// ORIGEM INFORMADA À MÃO (dono 27/08): "crie um sistema para informar, pq
+// eventualmente o materno não tem escala e esses anestesistas não aparecem em
+// escala nenhuma". Sem escala do Materno publicada não há rodapé de onde
+// derivar, e quem veio de lá ficava sem lugar na cauda. A marca vive em
+// `linha_overrides[turno:chave].origem` e chega aqui como `origemManual`.
+// ════════════════════════════════════════════════════════════════════════════
+describe('origem informada à mão — o Materno sem escala (dono 27/08)', () => {
+  const casos = [
+    caso('CC - Sala 2', 0, 'MARILIO', 'Cirurgião A'),
+    caso('CO - Cesárea', 0, 'GUSTAVO', 'Cirurgião C'),
+    caso('Exames', 0, 'ROMULO', 'Cirurgião D'),
+    caso('Imagem', 0, 'ALEXANDRE S', 'Cirurgião E'),
+  ]
+  const rodape = ['GABRIELA', 'MARILIO', 'OSCAR']
+  const doHro = [
+    { nome: 'ALEXANDRE S', hospital: 'hro', hospitalLabel: 'HRO', rodapeIdx: 5 },
+    { nome: 'GUSTAVO', hospital: 'hro', hospitalLabel: 'HRO', rodapeIdx: 9 },
+  ]
+
+  it('marcado como Materno, vai para o fim da cauda e sai antes dos vindos do HRO', () => {
+    const r = gerarColunaLiberacao(casos, rodape, {
+      turno: 'vespertino', rodapeOutros: doHro,
+      origemManual: { ROMULO: { hospital: 'materno', label: 'Materno' } },
+    })
+    const nomes = r.linhas.map((l) => l.anestesista)
+    // recorte real de 27/08 na Unimed: o fim libera primeiro
+    expect(nomes.slice(-4)).toEqual(['Alexandre S', 'Gustavo', 'Romulo', 'Oscar'])
+  })
+
+  it('sem a marca, quem não está em rodapé nenhum não tem ordem de origem e sai por último', () => {
+    const r = gerarColunaLiberacao(casos, rodape, { turno: 'vespertino', rodapeOutros: doHro })
+    const nomes = r.linhas.map((l) => l.anestesista)
+    // é exatamente este buraco que a marca fecha — Rômulo acima dos dois do HRO
+    expect(nomes.indexOf('Romulo')).toBeLessThan(nomes.indexOf('Alexandre S'))
+  })
+
+  it('a marca é a fonte do RÓTULO do badge, não só da ordem', () => {
+    const r = gerarColunaLiberacao(casos, rodape, {
+      turno: 'vespertino', rodapeOutros: doHro,
+      origemManual: { ROMULO: { hospital: 'materno', label: 'Materno' } },
+    })
+    const porNome = Object.fromEntries(r.linhas.map((l) => [l.anestesista, l]))
+    expect(porNome.Romulo.origemLabel).toBe('Materno')
+    expect(porNome.Romulo.origemHospital).toBe('materno')
+    // derivada do rodapé de origem entrega o mesmo par, sem marca nenhuma
+    expect(porNome.Gustavo.origemLabel).toBe('HRO')
+    expect(porNome.Gustavo.origemHospital).toBe('hro')
+    // quem é da casa não tem origem
+    expect(porNome.Marilio.origemHospital).toBeNull()
+  })
+
+  it('marca do MESMO hospital em que a pessoa já aparece preserva a posição real de lá', () => {
+    const r = gerarColunaLiberacao(casos, rodape, {
+      turno: 'vespertino', rodapeOutros: doHro,
+      // confirmar "veio do HRO" não pode zerar o 10º do Gustavo e empatá-lo com o 6º
+      origemManual: { GUSTAVO: { hospital: 'hro', label: 'HRO' } },
+    })
+    const nomes = r.linhas.map((l) => l.anestesista)
+    expect(nomes.indexOf('Gustavo')).toBeGreaterThan(nomes.indexOf('Alexandre S'))
+  })
+})
