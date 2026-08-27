@@ -134,6 +134,42 @@ describe('anexo em lote — cada arquivo vai para a aba do seu hospital', () => 
   })
 })
 
+describe('a conferência só abre com o lote inteiro lido (dono 27/08)', () => {
+  it('nenhuma aba aparece enquanto ainda há arquivo em leitura', async () => {
+    // entregando aba por aba, quem anexou três arquivos começava a conferir o
+    // primeiro enquanto os outros ainda estavam na Vision — e a tela mudava de
+    // tamanho embaixo do dedo, com "Lendo…" ao lado de uma escala já aberta
+    let liberarSegunda
+    const segunda = new Promise((resolve) => { liberarSegunda = resolve })
+    svcMock.parseEscalaImagem
+      .mockResolvedValueOnce({ casos: [caso('Sala 1', 'CURY')], hospitalDetectado: 'hro' })
+      .mockImplementationOnce(() => segunda)
+
+    const { container } = montar()
+    const input = container.querySelector('input[type="file"]')
+    fireEvent.change(input, { target: { files: [img('hro.png'), img('materno.png')] } })
+
+    // a primeira já foi lida — e mesmo assim nada de abas
+    await waitFor(() => expect(svcMock.parseEscalaImagem).toHaveBeenCalledTimes(2))
+    expect(abas()).toHaveLength(0)
+    expect(screen.getByText(/Lendo 2 de 2/i)).toBeTruthy()
+
+    liberarSegunda({ casos: [caso('Sala 2', 'PAULO')], hospitalDetectado: 'materno' })
+    await waitFor(() => expect(abas()).toHaveLength(2))
+  })
+
+  it('o lote entra INTEIRO de uma vez, não uma aba de cada vez', async () => {
+    svcMock.parseEscalaImagem
+      .mockResolvedValueOnce({ casos: [caso('Sala 1', 'CURY')], hospitalDetectado: 'hro' })
+      .mockResolvedValueOnce({ casos: [caso('Sala 2', 'PAULO')], hospitalDetectado: 'materno' })
+
+    const { container } = montar()
+    await soltarArquivos(container, [img('hro.png'), img('materno.png')])
+    // nunca existe um estado intermediário de UMA aba: ou nenhuma, ou as duas
+    await waitFor(() => expect(abas()).toHaveLength(2))
+  })
+})
+
 describe('a troca de aba não pode apagar a conferência', () => {
   it('o que foi digitado no rodapé de um hospital continua lá depois de ir e voltar', async () => {
     // é a trava do desenho: `TabsContent` do DS desmontaria o painel inativo e

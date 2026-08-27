@@ -183,3 +183,40 @@ describe('idadeExibicao — anos, exceto no primeiro ano de vida', () => {
     expect(idadeExibicao('')).toBe('')
   })
 })
+
+describe('seção-clínica corrige a sala numérica (dono 27/08)', () => {
+  // "na escala do HRO várias vezes está lendo as salas do IOSC como sendo Sala
+  // 1, 2, 3 do HRO": a regra existe no prompt desde 24/07, mas quando a leitura
+  // escorrega a linha do IOSC cai na Sala 1 do HRO — junto de OUTRO anestesista.
+  // O bloco vem da mesma leitura e resolve sem depender de acerto de sala.
+  it('IOSC com "Sala 1" vira IOSC — não a Sala 1 do HRO', () => {
+    expect(normalizarSalaHro('Sala 1', 'iosc')).toBe('IOSC')
+    expect(normalizarSalaHro('SALA 3', 'iosc')).toBe('IOSC')
+  })
+
+  it('Hospital de Olhos e Centro de Coluna seguem a mesma regra', () => {
+    expect(normalizarSalaHro('Sala 2', 'ho')).toBe('Hospital de Olhos')
+    expect(normalizarSalaHro('Sala 1', 'ccoluna')).toBe('Centro de Coluna')
+  })
+
+  it('sala VAZIA numa seção-clínica também assume o nome da seção', () => {
+    expect(normalizarSalaHro('', 'iosc')).toBe('IOSC')
+  })
+
+  it('a sala já correta não muda', () => {
+    expect(normalizarSalaHro('IOSC', 'iosc')).toBe('IOSC')
+  })
+
+  it('sem bloco de seção, a sala numérica continua sendo do HRO', () => {
+    // o bloco normal é o caso comum — a correção não pode roubar salas do HRO
+    expect(normalizarSalaHro('Sala 1', 'normal')).toBe('Sala 1')
+    expect(normalizarSalaHro('Sala 1')).toBe('Sala 1')
+    expect(normalizarSalaHro('Sala 1', 'exames')).toBe('Sala 1')
+  })
+
+  it('sala NOMEADA dentro da seção é preservada (só a numérica é interna)', () => {
+    // "Hemodinâmica" numa linha marcada iosc é erro de bloco, não de sala:
+    // trocar por "IOSC" apagaria o local que a leitura acertou
+    expect(normalizarSalaHro('HEMO', 'iosc')).toBe('Hemodinâmica')
+  })
+})

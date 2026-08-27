@@ -104,6 +104,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
   const [abaAtiva, setAbaAtiva] = useState(hospital || null)
   const [resumos, setResumos] = useState({})
   const [carregando, setCarregando] = useState(false)
+  const [progresso, setProgresso] = useState(null) // { feitos, total } durante a leitura
   const [revisar, setRevisar] = useState(false)
   const [publicandoLote, setPublicandoLote] = useState(false)
   const [encolhimentos, setEncolhimentos] = useState(null)
@@ -190,11 +191,18 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
     const lista = (Array.isArray(files) ? files : [files]).filter(Boolean)
     if (!lista.length) return
     setCarregando(true)
+    setProgresso({ feitos: 0, total: lista.length })
     const problemas = []
     const semHospital = []
+    // A CONFERÊNCIA SÓ ABRE COM O LOTE INTEIRO LIDO (dono 27/08): entregando aba
+    // por aba, quem anexou três arquivos começava a conferir o primeiro enquanto
+    // os outros ainda estavam na Vision — e a tela mudava de tamanho embaixo do
+    // dedo, com "Lendo…" ao lado de uma escala já aberta. Aqui as leituras são
+    // acumuladas e entram JUNTAS, no fim.
+    const prontos = {}
     let lidos = 0
     try {
-      for (const file of lista) {
+      for (const [n, file] of lista.entries()) {
         try {
           const r = await lerArquivo(file)
           if (r.erro) { problemas.push(`${file.name}: ${r.erro}`); continue }
@@ -208,17 +216,22 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
           const hosp = r.cls.hospital
           // reanexar o mesmo hospital SUBSTITUI: duas abas do mesmo hospital
           // publicariam duas vezes sobre a mesma escala
-          setItens((prev) => ({
-            ...prev,
-            [hosp]: { hospital: hosp, nome: r.nome, arquivo: r.arquivo, truncado: r.truncado, lote: r.lote },
-          }))
-          setAbaAtiva((atual) => atual || hosp)
+          prontos[hosp] = { hospital: hosp, nome: r.nome, arquivo: r.arquivo, truncado: r.truncado, lote: r.lote }
           lidos += 1
         } catch (err) {
           problemas.push(`${file.name}: ${err?.name === 'ErroImagem' ? err.message : 'falha na leitura'}`)
+        } finally {
+          setProgresso({ feitos: n + 1, total: lista.length })
         }
       }
-    } finally { setCarregando(false) }
+    } finally {
+      if (Object.keys(prontos).length) {
+        setItens((prev) => ({ ...prev, ...prontos }))
+        setAbaAtiva((atual) => atual || Object.keys(prontos)[0])
+      }
+      setCarregando(false)
+      setProgresso(null)
+    }
     if (semHospital.length) setPendentes((p) => [...p, ...semHospital])
     if (lidos || semHospital.length) {
       toast({
@@ -399,7 +412,10 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Período</label>
-              <SegmentedSelector options={PERIODO_OPCOES} value={periodo} onChange={setPeriodo} size="xs" />
+              {/* sem size="xs": a 40px o botão ficava mais baixo que o DatePicker
+                  e o cartão saía torto (dono 27/08). O padrão do DS é 44px, a
+                  mesma altura do campo de data. */}
+              <SegmentedSelector options={PERIODO_OPCOES} value={periodo} onChange={setPeriodo} />
             </div>
           </div>
         </section>
@@ -422,7 +438,10 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
 
         {carregando && (
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Lendo…
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {progresso?.total > 1
+              ? `Lendo ${Math.min(progresso.feitos + 1, progresso.total)} de ${progresso.total} escalas — a conferência abre quando todas terminarem…`
+              : 'Lendo a escala…'}
           </p>
         )}
 

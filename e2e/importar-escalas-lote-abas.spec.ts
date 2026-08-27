@@ -93,6 +93,12 @@ test('lote: dois arquivos, duas abas, selo por hospital e folha de revisão', as
   await abas.nth(0).click();
   await expect(page.getByPlaceholder(/vão ao fim da liberação/i).locator('visible=true')).toHaveValue('DIEGO');
 
+  // o campo Sala é uma ESCOLHA das salas daquele hospital (dono 27/08)
+  await page.getByRole('button', { name: /Sala 1/ }).first().click();
+  const seletorSala = page.getByRole('combobox').filter({ hasText: /Sala 1|Escolher a sala/ }).first();
+  await expect(seletorSala).toBeVisible();
+  await page.screenshot({ path: `.tmp/e2e-bloco-${SCHEME}.png` });
+
   // folha de revisão: os dois hospitais antes de publicar
   await page.getByRole('button', { name: /revisar e publicar/i }).click();
   await expect(page.getByText('Revisar antes de publicar')).toBeVisible();

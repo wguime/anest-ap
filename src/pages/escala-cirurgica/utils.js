@@ -187,9 +187,21 @@ export const chaveSalaEscolha = (hospital, sala) =>
  * hospital escreve o papel no lugar do número); "HO"/"H.O." → "Hospital de Olhos".
  * Idempotente: o rótulo já canônico volta igual.
  */
-export function normalizarSalaHro(sala) {
+// Seções que são OUTRA clínica dentro da escala do HRO: a sala é o nome da
+// seção, e o "SALA 1/2/3" que aparece na coluna Sala é a sala INTERNA de lá.
+const SECAO_CLINICA_HRO = { iosc: 'IOSC', ho: 'Hospital de Olhos', ccoluna: 'Centro de Coluna' }
+
+export function normalizarSalaHro(sala, bloco) {
   const raw = String(sala || '').trim()
   const s = normNome(raw)
+  // ⚠️ O BLOCO CORRIGE A SALA (dono 27/08: "na escala do HRO várias vezes está
+  // lendo as salas do IOSC como sendo Sala 1, 2, 3 do HRO"). A regra existe no
+  // prompt desde 24/07, mas quando a leitura escorrega a linha do IOSC cai na
+  // Sala 1 do HRO — junto de outro anestesista, que é o pior desfecho possível.
+  // Aqui não depende de leitura: se a linha se declarou de uma seção-clínica, a
+  // sala numérica é a sala INTERNA de lá e o rótulo da seção manda.
+  const secao = SECAO_CLINICA_HRO[String(bloco || '').trim().toLowerCase()]
+  if (secao && (!s || /^SALA ?\d/.test(s) || /^BLOCO ?A\b/.test(s))) return secao
   if (!s) return raw
   if (/^H\.?\s*O\.?$/.test(s) || /HOSPITAL DE OLHOS/.test(s)) return 'Hospital de Olhos'
   if (/BLOCO\s*M/.test(s)) {
@@ -1820,7 +1832,7 @@ const normalizarCasosImportados = (rows, hosp) => {
       return { ...c, sala, bloco: c.bloco && c.bloco !== 'normal' ? c.bloco : blocoDaSalaUnimed(sala) }
     })
   }
-  if (hosp === 'hro') return rows.map((c) => ({ ...c, sala: normalizarSalaHro(c.sala) }))
+  if (hosp === 'hro') return rows.map((c) => ({ ...c, sala: normalizarSalaHro(c.sala, c.bloco) }))
   return rows
 }
 

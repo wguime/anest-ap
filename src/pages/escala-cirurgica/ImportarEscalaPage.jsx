@@ -58,32 +58,65 @@ export const validarHorarioImportacao = (itens, periodo) => {
 }
 
 /**
- * Campo Sala com rascunho local, comprometido no BLUR (bug 30/07): o texto da
- * sala alimenta a CHAVE do bloco de conferência — atualizar o estado global a
- * cada tecla trocava a key, o React remontava o bloco inteiro, o input saía do
- * DOM e o foco caía no body: só dava para digitar UMA letra por vez (e o bloco
- * ainda voltava fechado). A digitação fica local; o reagrupamento acontece uma
- * vez, ao sair do campo.
+ * Campo Sala — ESCOLHA entre as salas DAQUELE hospital, com saída para digitar
+ * (dono 27/08: "quero que seja possível apenas selecionar a sala referente
+ * àquele hospital e com a opção de digitar caso não haja nenhuma").
+ *
+ * Era um Input com `datalist`: no iPhone o datalist praticamente não abre, então
+ * na prática a sala era sempre digitada — e é assim que "BLOCO M", "Bloco M" e
+ * "bloco m" viram três blocos diferentes na mesma conferência. Agora a lista
+ * manda; "Outra sala…" abre o campo livre para o que não estiver nela.
+ *
+ * O campo livre mantém o rascunho local comprometido no BLUR (bug 30/07): o
+ * texto da sala alimenta a CHAVE do bloco — atualizar o estado global a cada
+ * tecla trocava a key, o React remontava o bloco e o foco caía no body.
  */
-function CampoSala({ valor, onCommit, opcoes = [], listaId = 'salas-disponiveis' }) {
+const SALA_LIVRE = '__outra__'
+function CampoSala({ valor, onCommit, opcoes = [] }) {
+  const atual = String(valor || '')
+  const naLista = opcoes.some((o) => o === atual)
+  // sala que veio da leitura e não está na lista abre JÁ no campo livre — senão
+  // o Select mostraria vazio e a sala lida sumiria da tela
+  const [livre, setLivre] = useState(!!atual && !naLista)
   const [rasc, setRasc] = useState(null)
+
+  if (livre) {
+    return (
+      <div className="flex items-center gap-1">
+        <Input
+          autoFocus={!atual}
+          placeholder="Digite a sala"
+          value={rasc ?? atual}
+          onChange={(e) => setRasc(e.target.value)}
+          onBlur={() => {
+            if (rasc != null && rasc.trim() !== atual) onCommit(rasc.trim())
+            setRasc(null)
+          }}
+          onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+        />
+        <button
+          type="button"
+          onClick={() => { setRasc(null); setLivre(false) }}
+          aria-label="Escolher da lista de salas"
+          className="shrink-0 rounded-lg px-2 py-2 text-xs font-semibold text-primary"
+        >
+          Lista
+        </button>
+      </div>
+    )
+  }
   return (
-    <>
-      <Input
-        list={listaId}
-        placeholder="Sala"
-      value={rasc ?? valor}
-      onChange={(e) => setRasc(e.target.value)}
-      onBlur={() => {
-        if (rasc != null && rasc.trim() !== String(valor || '')) onCommit(rasc.trim())
-        setRasc(null)
+    <Select
+      options={[...opcoes.map((o) => ({ value: o, label: o })), { value: SALA_LIVRE, label: 'Outra sala…' }]}
+      value={naLista ? atual : ''}
+      placeholder="Escolher a sala…"
+      searchable
+      className="w-full"
+      onChange={(v) => {
+        if (v === SALA_LIVRE) { setLivre(true); return }
+        onCommit(v)
       }}
-      onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
-      />
-      <datalist id={listaId}>
-        {opcoes.map((sala) => <option key={sala} value={sala} />)}
-      </datalist>
-    </>
+    />
   )
 }
 
@@ -876,6 +909,22 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     return [...fora.entries()].map(([nome, n]) => ({ nome, casos: n }))
   }, [ordemTexto, ajudaTexto, casos, resolver, cruzamento])
 
+  // SEÇÕES DO HRO QUE COSTUMAM SUMIR NA LEITURA (dono 27/08: "várias vezes na
+  // escala do HRO não está fazendo leitura dos locais: Imagem, Exames,
+  // hemodinâmica"). Elas ficam fora da grade principal do mapa e a extração as
+  // pula em silêncio — o que some não deixa rastro nenhum na tela. Não dá para
+  // inventar o que não foi lido; dá para AVISAR que não veio nada delas, que é o
+  // suficiente para conferir contra a imagem. Aviso, nunca bloqueio: tem dia sem
+  // essas seções.
+  const secoesAusentesHro = useMemo(() => {
+    if (hosp !== 'hro' || !casos.length) return []
+    const alvo = { Exames: /^EXAMES?$/, Imagem: /^IMAGEM$/, 'Hemodinâmica': /^HEMO/ }
+    const presentes = new Set(casos.map((c) => normNome(c.sala)))
+    return Object.entries(alvo)
+      .filter(([, re]) => ![...presentes].some((s) => re.test(s)))
+      .map(([nome]) => nome)
+  }, [hosp, casos])
+
   // ── Publicação ───────────────────────────────────────────────────────────────
   // GUARDRAIL ANTI-PERDA (incidente 23/07: publicar/importar com 1 caso APAGOU os
   // 31 da escala — publicar é DELETE+reinsert). Se a escala já publicada tem MAIS
@@ -1173,7 +1222,31 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   const avisosConferencia = suspeitosExtracao.length + caudaLiberada.length
     + conflitos.length + blocosRepetidos.length + travessiasOrfas.length
     + duplicados.length + casosForaDoRodape.length + gruposSemAnestesista
+    + (secoesAusentesHro.length === 3 ? 1 : 0)
   const totalPendencias = bloqueiosConferencia + avisosConferencia
+  // O QUE são as pendências, não só quantas (dono 27/08: "quero que a descrição
+  // das pendências fique abaixo desses cards"). O número no chip dizia que havia
+  // algo a resolver, mas obrigava a rolar até o fim da tela para descobrir o
+  // quê. Cada linha é curta e diz a AÇÃO; o detalhe continua em Pendências.
+  const resumoPendencias = useMemo(() => {
+    const l = []
+    const n = (q, um, muitos) => `${q} ${q === 1 ? um : muitos}`
+    if (gruposAmbiguos.length) l.push({ trava: true, txt: `${n(gruposAmbiguos.length, 'nome ambíguo', 'nomes ambíguos')} — escolha o login` })
+    if (duplicidadesPendentes.length) l.push({ trava: true, txt: `${n(duplicidadesPendentes.length, 'pessoa', 'pessoas')} em dois hospitais — classifique` })
+    if (gruposSemAnestesista) l.push({ trava: false, txt: `${n(gruposSemAnestesista, 'bloco', 'blocos')} sem anestesista` })
+    if (casosForaDoRodape.length) l.push({ trava: false, txt: `${n(casosForaDoRodape.length, 'anestesista', 'anestesistas')} com caso fora da ordem de liberação` })
+    if (caudaLiberada.length) l.push({ trava: false, txt: `${n(caudaLiberada.length, 'nome nasce', 'nomes nascem')} LIBERADO sem cirurgia` })
+    if (suspeitosExtracao.length) l.push({ trava: false, txt: `${n(suspeitosExtracao.length, 'nome', 'nomes')} na ordem sem nenhum caso` })
+    if (conflitos.length) l.push({ trava: false, txt: `${n(conflitos.length, 'conflito', 'conflitos')} de horário` })
+    if (blocosRepetidos.length) l.push({ trava: false, txt: `${n(blocosRepetidos.length, 'bloco', 'blocos')} com o mesmo nome em todas as linhas` })
+    if (travessiasOrfas.length) l.push({ trava: false, txt: `${n(travessiasOrfas.length, 'cirurgia que atravessa', 'cirurgias que atravessam')} sem dono presente` })
+    if (duplicados.length) l.push({ trava: false, txt: `${n(duplicados.length, 'item repetido', 'itens repetidos')}` })
+    // só quando NENHUMA das três veio: faltar uma é rotina, faltar as três é a
+    // assinatura da leitura que pulou o rodapé do mapa
+    if (secoesAusentesHro.length === 3) l.push({ trava: false, txt: 'nada de Exames, Imagem nem Hemodinâmica — confira o mapa' })
+    return l
+  }, [gruposAmbiguos, duplicidadesPendentes, gruposSemAnestesista, casosForaDoRodape, caudaLiberada,
+    suspeitosExtracao, conflitos, blocosRepetidos, travessiasOrfas, duplicados, secoesAusentesHro])
 
   // ── O QUE ESTA ABA CONTA AO LOTE (dono 27/08) ────────────────────────────
   // Dois consumidores: o SELO da aba (pronto · trava · avisa, mesma taxonomia
@@ -1418,14 +1491,44 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                   </button>
                 ))}
               </div>
-              {bloqueiosConferencia > 0 && (
-                <p className="mt-1.5 flex items-center gap-1.5 rounded-lg bg-destructive/10 px-2.5 py-1.5 text-xs font-semibold text-destructive">
-                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                  {bloqueiosConferencia === 1 ? '1 bloqueio impede publicar' : `${bloqueiosConferencia} bloqueios impedem publicar`}
-                  {avisosConferencia > 0 && ` · ${avisosConferencia} aviso${avisosConferencia > 1 ? 's' : ''}`}
-                </p>
-              )}
             </nav>
+
+            {/* DESCRIÇÃO DAS PENDÊNCIAS logo abaixo dos chips (dono 27/08) — fora
+                da barra sticky de propósito: dentro dela, uma lista de 4 linhas
+                comeria altura fixa da conferência inteira. Toque leva ao detalhe. */}
+            {resumoPendencias.length > 0 && (
+              <button
+                type="button"
+                onClick={() => irPara('conf-pendencias')}
+                // nome acessível PRÓPRIO: o texto do cartão contém "impede
+                // publicar" e sem isto ele disputa com o botão Publicar
+                aria-label={`Ver as ${resumoPendencias.length} pendência(s) da conferência`}
+                className={[
+                  'w-full rounded-xl border px-3 py-2.5 text-left',
+                  bloqueiosConferencia > 0
+                    ? 'border-destructive/40 bg-destructive/10'
+                    : 'border-warning/40 bg-warning/10',
+                ].join(' ')}
+              >
+                <p className={`flex items-center gap-1.5 text-xs font-bold ${bloqueiosConferencia > 0 ? 'text-destructive' : 'text-warning'}`}>
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  {bloqueiosConferencia > 0
+                    ? `${bloqueiosConferencia === 1 ? '1 bloqueio impede' : `${bloqueiosConferencia} bloqueios impedem`} publicar`
+                    : `${avisosConferencia === 1 ? '1 aviso' : `${avisosConferencia} avisos`} — publica assim mesmo`}
+                  {bloqueiosConferencia > 0 && avisosConferencia > 0 && ` · ${avisosConferencia} aviso${avisosConferencia > 1 ? 's' : ''}`}
+                </p>
+                <ul className="mt-1.5 space-y-0.5">
+                  {resumoPendencias.slice(0, 4).map((p) => (
+                    <li key={p.txt} className={`flex gap-1.5 text-xs ${p.trava ? 'font-semibold text-destructive' : 'text-warning'}`}>
+                      <span aria-hidden="true">{p.trava ? '⛔' : '·'}</span>{p.txt}
+                    </li>
+                  ))}
+                  {resumoPendencias.length > 4 && (
+                    <li className="text-xs text-muted-foreground">e mais {resumoPendencias.length - 4} — toque para ver</li>
+                  )}
+                </ul>
+              </button>
+            )}
 
             {/* CONFERÊNCIA POR ANESTESISTA (redesenho 26/07, split 27/07): a lista
                 plana de N cards era impraticável no celular e ficava longe da
@@ -1472,18 +1575,25 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                     <button type="button" onClick={() => alternarGrupo(chave)}
                       aria-expanded={aberta}
                       className="flex w-full items-center gap-2 p-3 text-left">
+                      {/* SALA · CIRURGIÃO, e o anestesista só no seletor (dono 27/08:
+                          "nomes dos anestesistas estão duplicados"). O nome importado
+                          aparecia no título E no placeholder do Select logo abaixo —
+                          duas grafias da mesma pessoa, uma delas a que a leitura chutou.
+                          O cirurgião é quem identifica a sala na imagem, então ele sobe
+                          para a linha da sala. ⚠️ bloco DIVIDIDO por anestesista e SEM
+                          cirurgião (posição assistencial) ficaria idêntico ao irmão:
+                          só nesse caso o nome importado continua, como desambiguador. */}
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold" title={sala}>
+                        <p className="truncate text-sm font-semibold" title={[sala, ...cirurgioes].join(' · ')}>
                           {sala}
-                          {g.split && (
+                          {cirurgioes.length > 0 ? (
+                            <span className="ml-1.5 font-normal text-muted-foreground">
+                              · {cirurgioes.slice(0, 2).join(', ')}{cirurgioes.length > 2 ? ` +${cirurgioes.length - 2}` : ''}
+                            </span>
+                          ) : g.split && (
                             <span className="ml-1.5 font-medium text-primary">· {importado || 'sem anestesista'}</span>
                           )}
                         </p>
-                        {cirurgioes.length > 0 && (
-                          <p className="truncate text-xs text-muted-foreground" title={cirurgioes.join(', ')}>
-                            {cirurgioes.slice(0, 3).join(', ')}{cirurgioes.length > 3 ? ` +${cirurgioes.length - 3}` : ''}
-                          </p>
-                        )}
                       </div>
                       <span className="shrink-0 text-xs text-muted-foreground">
                         {somentePosicoes ? `${itens.length} posiç${itens.length === 1 ? 'ão' : 'ões'}` : `${itens.length} caso${itens.length > 1 ? 's' : ''}`}
@@ -1517,7 +1627,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                                 className="ml-auto text-destructive"><Trash2 className="w-4 h-4" /></button>
                             </div>
                             <div className="grid grid-cols-[1fr_5.5rem] gap-1.5">
-                              <CampoSala valor={c.sala} onCommit={(v) => commitSala(i, v)} opcoes={salasDisponiveis} listaId={`salas-importacao-${i}`} />
+                              <CampoSala valor={c.sala} onCommit={(v) => commitSala(i, v)} opcoes={salasDisponiveis} />
                               <Input placeholder="Hora" value={c.hora} onChange={(e) => setCampo(i, 'hora', e.target.value)} />
                             </div>
                             {!ehPosicaoAssistencial(c) && (
@@ -1720,6 +1830,15 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                   <b>{caudaLiberada.length === 1 ? 'LIBERADO' : 'LIBERADOS'}</b> (vermelho) na fila.
                   Se {caudaLiberada.length === 1 ? 'essa pessoa trabalha' : 'alguém dessa lista trabalha'} neste turno, a linha
                   dela saiu para outra pessoa — corrija antes de publicar.
+                </p>
+              )}
+
+              {secoesAusentesHro.length === 3 && (
+                <p className="rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
+                  ⚠ A leitura não trouxe nenhuma linha de <b>Exames</b>, <b>Imagem</b> ou <b>Hemodinâmica</b>.
+                  Essas seções ficam fora da grade principal do mapa do HRO e são as que mais escapam da
+                  extração — confira a imagem e acrescente à mão o que faltar (+ Linha), ou reimporte um
+                  print que mostre o rodapé do mapa inteiro.
                 </p>
               )}
 

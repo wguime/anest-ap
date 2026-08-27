@@ -115,15 +115,19 @@ describe('Conferência — bloco por anestesista (dono 27/07)', () => {
     const container = await importar(IOSC)
     await waitFor(() => expect(blocos(container)).toHaveLength(3))
 
+    // O que separa os blocos na TELA é o CIRURGIÃO (dono 27/08: o anestesista
+    // saiu do título e ficou só no seletor, porque aparecia duas vezes). O que
+    // este teste protege continua sendo o mesmo de 27/07: três blocos, um por
+    // anestesista, cada um com os SEUS casos e o SEU cirurgião.
     const [b1, b2, b3] = blocos(container)
     expect(b1.textContent).toContain('IOSC')
-    expect(b1.textContent).toContain('· CURY')
     expect(b1.textContent).toContain('Dr. Souza')
     expect(b1.textContent).not.toContain('Dr. Lima')     // cirurgião do colega não vaza
-    expect(b2.textContent).toContain('· MELO')
     expect(b2.textContent).toContain('Dr. Lima')
-    expect(b3.textContent).toContain('· DIDOMENICO')
+    expect(b2.textContent).not.toContain('Dr. Souza')
     expect(b3.textContent).toContain('Dr. Dias')
+    // o nome do anestesista NÃO se repete no título — ele vive no seletor
+    expect(b1.querySelector('p').textContent).not.toContain('CURY')
     // cada bloco anuncia 1 caso — nenhum concentra os 3
     expect(blocos(container).every((b) => b.textContent.includes('1 caso'))).toBe(true)
   })
@@ -149,7 +153,9 @@ describe('Conferência — bloco por anestesista (dono 27/07)', () => {
     ])
     await waitFor(() => expect(blocos(container)).toHaveLength(1))
     expect(blocos(container)[0].textContent).toContain('2 casos')
-    expect(blocos(container)[0].textContent).not.toContain('·') // sem sufixo de anestesista
+    // sala não repartida e sem sufixo de ANESTESISTA no título (o "·" que hoje
+    // aparece é o do cirurgião, que passou a identificar o bloco)
+    expect(blocos(container)[0].querySelector('p').textContent).not.toContain('CURY')
   })
 
   it('linha "?" vira bloco próprio e não recebe o anestesista do vizinho', async () => {
@@ -158,7 +164,10 @@ describe('Conferência — bloco por anestesista (dono 27/07)', () => {
       { sala: 'Exames', hora: '09:00', anestesista: '?', semAnestesista: true, cirurgiao: 'DR. BRUNO LIMA' },
     ])
     await waitFor(() => expect(blocos(container)).toHaveLength(2))
-    expect(blocos(container)[1].textContent).toContain('sem anestesista')
+    // o "?" continua sendo um bloco à parte; quem anuncia o estado é o seletor
+    // do bloco (o título agora leva sala · cirurgião)
+    expect(blocos(container)[1].textContent).toContain('Dr. Lima')
+    expect(blocos(container)[1].parentElement.textContent).toContain('Sem anestesista')
 
     fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
     await waitFor(() => expect(salvarEscala).toHaveBeenCalled())
@@ -472,7 +481,18 @@ describe('Conferência — cruzamento com outro hospital', () => {
 // atualizar o estado a cada tecla trocava a key, o React remontava o bloco e o
 // input saía do DOM com o foco (só entrava UMA letra por vez; e o bloco novo
 // ainda nascia colapsado). O campo passou a commitar no BLUR.
+//
+// Desde 27/08 a sala é ESCOLHIDA na lista do hospital (dono: "apenas selecionar
+// a sala referente àquele hospital e com a opção de digitar caso não haja
+// nenhuma") — o datalist antigo praticamente não abria no iPhone, e a sala
+// acabava sempre digitada, que é como a mesma sala vira três grafias. A trava do
+// foco continua valendo onde a digitação existe: dentro de "Outra sala…".
 // ════════════════════════════════════════════════════════════════════════════
+/** Gatilho do seletor de SALA (o do anestesista também é combobox). */
+const abrirSeletorDeSala = () =>
+  screen.getAllByRole('combobox').find((el) => /Escolher a sala|Sala|IOSC/.test(el.textContent)
+    && !/anestesista/i.test(el.textContent))
+
 describe('Adicionar linha — digitação da Sala (bug 30/07)', () => {
   const UMA = [{ sala: 'Sala 1', hora: '08:00', anestesista: 'CURY', cirurgiao: 'DR. ANA SOUZA', procedimento: 'Catarata', pacienteIniciais: 'A.B.' }]
 
@@ -480,8 +500,21 @@ describe('Adicionar linha — digitação da Sala (bug 30/07)', () => {
     const container = await importar(UMA)
     await waitFor(() => expect(blocos(container)).toHaveLength(1))
     fireEvent.click(screen.getByRole('button', { name: 'Linha' }))
-    expect(screen.getByPlaceholderText('Sala')).toBeTruthy()
+    expect(screen.getByText('Escolher a sala…')).toBeTruthy()
     expect(screen.getByPlaceholderText('Procedimento')).toBeTruthy()
+  })
+
+  it('a lista de salas é a do HOSPITAL da escala, e não a de outro', async () => {
+    const container = await importar(UMA, [], { hospital: 'hro' })
+    await waitFor(() => expect(blocos(container)).toHaveLength(1))
+    fireEvent.click(screen.getByRole('button', { name: 'Linha' }))
+    fireEvent.click(abrirSeletorDeSala())
+
+    expect(await screen.findByRole('option', { name: 'IOSC' })).toBeTruthy()
+    expect(screen.getByRole('option', { name: 'Bloco M - Sala 1' })).toBeTruthy()
+    // sala da Unimed não entra na lista do HRO
+    expect(screen.queryByRole('option', { name: 'CO - Cesárea' })).toBeNull()
+    expect(screen.getByRole('option', { name: 'Outra sala…' })).toBeTruthy()
   })
 
   it('digitação contínua na Sala: mesmo input, sem remount, foco preservado', async () => {
@@ -489,14 +522,17 @@ describe('Adicionar linha — digitação da Sala (bug 30/07)', () => {
     await waitFor(() => expect(blocos(container)).toHaveLength(1))
     fireEvent.click(screen.getByRole('button', { name: 'Linha' }))
 
-    const sala = screen.getByPlaceholderText('Sala')
+    fireEvent.click(abrirSeletorDeSala())
+    fireEvent.click(await screen.findByRole('option', { name: 'Outra sala…' }))
+
+    const sala = screen.getByPlaceholderText('Digite a sala')
     sala.focus()
     for (const parcial of ['S', 'Sa', 'Sal', 'Sala', 'Sala ', 'Sala 9']) {
       fireEvent.change(sala, { target: { value: parcial } })
     }
     // o mesmo nó continua no DOM com o valor inteiro e o foco — antes a 1ª
     // tecla remontava o bloco e o activeElement caía no body
-    expect(screen.getByPlaceholderText('Sala')).toBe(sala)
+    expect(screen.getByPlaceholderText('Digite a sala')).toBe(sala)
     expect(sala.value).toBe('Sala 9')
     expect(document.activeElement).toBe(sala)
   })
@@ -506,12 +542,18 @@ describe('Adicionar linha — digitação da Sala (bug 30/07)', () => {
     await waitFor(() => expect(blocos(container)).toHaveLength(1))
     fireEvent.click(screen.getByRole('button', { name: 'Linha' }))
 
-    const sala = screen.getByPlaceholderText('Sala')
+    fireEvent.click(abrirSeletorDeSala())
+    fireEvent.click(await screen.findByRole('option', { name: 'Outra sala…' }))
+    const sala = screen.getByPlaceholderText('Digite a sala')
     fireEvent.change(sala, { target: { value: 'Sala 9' } })
     fireEvent.blur(sala)
     await waitFor(() => expect(blocos(container).some((b) => b.textContent.includes('Sala 9'))).toBe(true))
-    // bloco de destino aberto — os campos não "somem" atrás de um bloco fechado
-    expect(screen.getByDisplayValue('Sala 9')).toBeTruthy()
+    // bloco de destino ABERTO — os campos não "somem" atrás de um bloco fechado.
+    // (a sala digitada que existe na lista do hospital volta a ser mostrada pelo
+    // seletor, então o que se verifica é o bloco expandido, não o input)
+    const destino = blocos(container).find((b) => b.textContent.includes('Sala 9'))
+    expect(destino.getAttribute('aria-expanded')).toBe('true')
+    expect(within(destino.parentElement).getByPlaceholderText('Procedimento')).toBeTruthy()
   })
 })
 
