@@ -455,7 +455,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
           vazia. Multi-coluna porque a sala é um bloco inteiro que não pode ser
           partido (`break-inside-avoid`) e a leitura continua sendo de cima para
           baixo, coluna a coluna. */}
-      <Accordion type="multiple" value={abertasAtual} onValueChange={setAbertas} className="-mx-4 divide-y-0 deitado:columns-2 deitado:gap-4 [&>*]:deitado:break-inside-avoid">
+      <Accordion type="multiple" value={abertasAtual} onValueChange={setAbertas} className="-mx-4 divide-y-0 deitado:columns-2 deitado:gap-4 deitado:[column-rule:1px_solid_hsl(var(--border-strong))] [&>*]:deitado:break-inside-avoid">
         {gruposExibicao.map((g) => {
           const nomeGrupo = g.anestesista ? displayGrupo(g) : (g.split ? '?' : '')
           const nCasos = g.casos.filter((c) => !casoVazio(c)).length
@@ -471,7 +471,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
                    o resto do cabeçalho `bg-card-elevated`, partindo a faixa em duas
                    cores na vertical, bem no meio do nome e do ⚙ */
                 className="px-3 py-2 group-data-[state=open]:bg-transparent dark:group-data-[state=open]:bg-transparent"
-                headerClassName="sticky top-14 z-10 border-y border-border bg-card-elevated"
+                headerClassName="sticky top-14 z-10 deitado:static border-y border-border bg-card-elevated"
                 iconAfterActions
                 iconClassName="group-data-[state=open]:bg-transparent dark:group-data-[state=open]:bg-transparent"
                 actions={podeDefinir ? (
@@ -525,7 +525,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
           <AccordionItem value={CHAVE_HERDADAS} className="border-0">
             <AccordionTrigger
               className="px-3 py-2 group-data-[state=open]:bg-transparent dark:group-data-[state=open]:bg-transparent"
-              headerClassName="sticky top-14 z-10 border-y border-border bg-card-elevated"
+              headerClassName="sticky top-14 z-10 deitado:static border-y border-border bg-card-elevated"
               iconAfterActions
               iconClassName="group-data-[state=open]:bg-transparent dark:group-data-[state=open]:bg-transparent"
             >

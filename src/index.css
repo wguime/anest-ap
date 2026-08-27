@@ -85,9 +85,15 @@
    o começo dos cards, e os ícones ficavam espremidos em 76−59=17px — foi o
    "barra lateral cortada" e o "cards não ajustados à esquerda" que o dono
    fotografou no aparelho em 27/08. Em pé, no simulador e no desktop o `env()`
-   é 0 e o token vale exatamente 76px, então nada muda. */
+   é 0 e o token vale exatamente 76px, então nada muda.
+   ⚠️ a COLUNA DO ÍCONE é de 56px, não de 76 (dono 27/08: "barra lateral continua
+   muito afastada"). Reservando os 76 do retrato MAIS o entalhe, a faixa ia a
+   138px e empurrava a página inteira. 56px ainda deixam 52px úteis depois do
+   `px-1` da barra — acima dos 44px de alvo de toque —, e a faixa cai para 118px
+   no iPhone. O entalhe continua reservado: em paisagem ele cobre o miolo da
+   borda esquerda, e sem essa reserva os dois ícones do meio ficariam atrás dele. */
 :root {
-  --faixa-lateral: calc(76px + env(safe-area-inset-left, 0px));
+  --faixa-lateral: max(76px, calc(env(safe-area-inset-left, 0px) + 56px));
 }
 
 /* Deitado a navegação sai de baixo e vira faixa lateral: a reserva de altura
@@ -106,6 +112,26 @@
   body {
     padding-left: 76px;
     padding-left: var(--faixa-lateral);
+  }
+
+  /* ⚠️ MASONRY DE VERDADE, onde o motor já tem (dono 27/08: "não quero esse
+     espaço vazio abaixo da escala cirúrgica" + "esses cards ... quero que fiquem
+     lado a lado em duas colunas"). Os dois pedidos juntos são impossíveis numa
+     grade comum: ela trabalha por LINHA, e uma linha é tão alta quanto o cartão
+     mais alto dela — medido na Home real, isso abria 152, 66, 500 e 876px de
+     branco. Multi-coluna do CSS não tem vão nenhum, mas enche a coluna da
+     esquerda inteira antes da direita, e aí o 2º cartão da tela vira o de
+     Hospitais — que é justamente o que ele recusou em 26/08.
+     `grid-lanes` resolve os dois: o 1º cartão vai para a esquerda, o 2º para a
+     direita, e cada um dos seguintes cai na coluna MAIS CURTA. Verificado no
+     motor: WebKit 26.4 (o do iPhone e do iPad) suporta; o Chromium ainda não, e
+     lá o `@supports` simplesmente não se aplica e vale a grade por linha de
+     hoje — o Android continua como está, sem regressão. */
+  @supports (display: grid-lanes) {
+    /* ⚠️ `!important` porque a classe utilitária `deitado:grid` do Tailwind tem a
+       MESMA especificidade (0,1,0) e é emitida depois desta folha — medido: sem
+       ele o computado ficava em `grid` e o masonry nunca ligava. */
+    .grade-deitada { display: grid-lanes !important; }
   }
 
   /* ⚠️ o Tailwind emite só `break-inside: avoid`, e o WebKit antigo obedece pela

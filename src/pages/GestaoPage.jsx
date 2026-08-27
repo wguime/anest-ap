@@ -29,10 +29,12 @@ const QUADRADO_DEITADO = [
   // ~134px isso deixa o nome grudado na borda de baixo (dono 27/08, foto do
   // aparelho). Aqui ele volta a descer do ícone, com respiro próprio.
   '[&_.mt-auto]:deitado:mt-3',
-  // ⚠️ e a LEGENDA sai: em ~102px úteis ela já vinha cortada ("Gestão da…") e o
-  // cartão tem `overflow-hidden`, então no aparelho ela nem aparecia inteira.
-  // Ela repete o título logo acima ("Qualidade / Gestão da qualidade").
-  '[&_[data-slot=widget-card-subtitle]]:deitado:hidden',
+  // ⚠️ a LEGENDA fica (dono 27/08: "falta o subtítulo abaixo do título"). Eu a
+  // tinha tirado por vir cortada em ~102px úteis; agora ela QUEBRA em duas linhas
+  // em vez de ser truncada, que é o que a fazia aparecer como "Gestão da…" — o
+  // `line-clamp-1` do componente é do retrato, onde o cartão é largo e baixo.
+  '[&_[data-slot=widget-card-subtitle]]:deitado:line-clamp-2',
+  '[&_[data-slot=widget-card-subtitle]]:deitado:whitespace-normal',
 ].join(' ')
 
 export default function GestaoPage({ onNavigate }) {
@@ -80,7 +82,7 @@ export default function GestaoPage({ onNavigate }) {
           criava 141px de vão vazio dentro dele ("ficou esquisito"); e pôr
           Comunicados na largura inteira deixava dois títulos curtos espalhados
           por 720px. */}
-      <div className="px-4 pt-4 sm:px-5 lg:px-6 xl:px-8 deitado:grid deitado:grid-cols-10 deitado:gap-3 deitado:pt-2 deitado:items-start [&>*]:deitado:mb-0">
+      <div className="px-4 pt-4 sm:px-5 lg:px-6 xl:px-8 deitado:!px-3 deitado:grid deitado:grid-cols-10 deitado:gap-3 deitado:pt-2 deitado:items-start [&>*]:deitado:mb-0">
         {/* Card: Notificações e Denúncias — variant "solid" (dono 19/08). É o único
             cartão pintado da aba: os três eram idênticos e ninguém achava o canal. */}
         {canAccessCard('incidentes') && (

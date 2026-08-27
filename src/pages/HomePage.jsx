@@ -64,15 +64,6 @@ function ResidenteIcon({ ano }) {
   );
 }
 
-// ⚠️ deitado as duas TABELAS de pessoal (técnicas dos hospitais e secretárias)
-// ocupam a largura inteira. Elas são listas de gente com três colunas por dentro,
-// então meia tela não as favorece — e, medidas na Home real, são as duas mais
-// altas de todas (629px e 1005px contra 129px dos vizinhos): em meia largura
-// abriam 500px e 876px de branco na coluna ao lado, que foi o que o dono
-// fotografou. Com elas inteiras e a grade em `dense`, o cartão curto que vem
-// DEPOIS sobe e preenche o buraco que a tabela deixaria.
-const TABELA_LARGA_DEITADA = 'deitado:col-span-2'
-
 export default function HomePage({ onNavigate }) {
   useEffect(() => {
     document.title = 'Início — ANEST';
@@ -470,7 +461,7 @@ export default function HomePage({ onNavigate }) {
         </div>
       )}
       {/* Container scrollable com padding */}
-      <div className="px-4 pt-6 sm:px-5 lg:px-6 xl:px-8">
+      <div className="px-4 pt-6 sm:px-5 lg:px-6 xl:px-8 deitado:!px-3">
         {/* Header nao fixo - rola com a pagina */}
         <Header
           greeting={`Olá, ${user.firstName}`}
@@ -617,7 +608,7 @@ export default function HomePage({ onNavigate }) {
             `gap` e desalinhariam os topos de cada linha. `items-start` porque os
             cards da Home têm alturas MUITO diferentes (de 129px a 1858px
             medidos): esticar aqui só criaria vão vazio. */}
-        <div className="deitado:grid deitado:grid-cols-2 deitado:grid-flow-row-dense deitado:gap-3 deitado:items-start [&>*]:deitado:mb-0">
+        <div className="grade-deitada deitado:grid deitado:grid-cols-2 deitado:gap-3 deitado:items-start [&>*]:deitado:mb-0">
         {/* Escala Cirúrgica — plantonista do turno (Comunicados migrou p/ a aba
             Gestão em 2026-07-22). Gate por papel, sem placeholder p/ quem não passa. */}
         {podeVerEscalaCirurgica(user) && (
@@ -852,7 +843,6 @@ export default function HomePage({ onNavigate }) {
           <div className="space-y-4 mb-4 deitado:contents deitado:space-y-0">
             {/* Hospitais - Técnicas de Enfermagem */}
             <StaffScheduleCard
-              className={TABELA_LARGA_DEITADA}
               subtitle="HOSPITAIS"
               title="Técnicas de Enfermagem"
               meta={
@@ -919,7 +909,6 @@ export default function HomePage({ onNavigate }) {
             {/* Consultório - Secretárias (data rola às 18h; oculto em FDS/feriado) */}
             {!isDiaNaoUtil(escalaCardData, FERIADOS_2026) && (
               <StaffScheduleCard
-                className={TABELA_LARGA_DEITADA}
                 subtitle="CONSULTÓRIO"
                 title="Secretárias"
                 meta={formatCardMeta(escalaCardData, null)}

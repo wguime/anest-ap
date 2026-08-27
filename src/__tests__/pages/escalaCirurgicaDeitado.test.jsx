@@ -78,10 +78,6 @@ const escala = {
 // ⚠️ a hora tem de ser do turno da fila (matutino): com 16:00 o caso cai no
 // vespertino, `filtrarPorTurno` o descarta e o alerta simplesmente não existe —
 // foi assim que a 1ª versão deste teste passou verde afirmando o contrário.
-const escalaComSemAnest = {
-  ...escala,
-  casos: [...escala.casos, caso('Sala 9', 0, '?', 'Ana P', '07:45', { semAnestesista: true })],
-}
 // ⚠️ DOIS alertas de propósito: com um só, "o primeiro fica ao lado" e "todos
 // ficam ao lado" dão o mesmo resultado e qualquer regra passa.
 const escalaComDoisSemAnest = {
@@ -179,85 +175,38 @@ describe('fila de liberação deitada (dono 26/08)', () => {
     expect(colunaDoNumero(cardDe('Karine Bedin')).textContent).toBe('4')
   })
 
-  it('as ações ocupam a metade ESQUERDA e terminam na mesma linha que o alerta', () => {
-    montar({ onGarantirEscala: () => {}, onAddAjuda: () => {} }, escalaComSemAnest)
-    const historico = screen.getByRole('button', { name: 'Histórico de mensagens' })
-    const fileira = historico.parentElement
-    // ⚠️ o lugar é FIXO (dono 27/08). Duas versões anteriores punham o botão
-    // "onde sobrasse espaço" — canto de cima à esquerda, depois no fim da linha
-    // do alerta — e as duas foram recusadas. Coluna 1 é a metade esquerda.
-    expect(fileira.className).toContain('deitado:col-start-1')
-    // com "Adicionar caso/ajuda" acima, esta é a 2ª fileira — as duas juntas dão
-    // os quatro botões iguais em 2×2 do plantonista
-    expect(fileira.className).toContain('deitado:row-start-2')
-    // ⚠️ `h-auto` é o que faz a metade esquerda terminar na MESMA linha que o
-    // alerta: o `h-9` do Button (size sm) vence o stretch da grade e, sem isto,
-    // medido no app, ela parava 13px acima dele.
-    expect(historico.className).toContain('deitado:h-auto')
-  })
-
-  it('sem "Adicionar caso/ajuda", a fileira de mensagens SOBE para a 1ª', () => {
-    // quem não edita não tem as ações de cima — sem isto sobraria uma fileira
-    // vazia sobre o Histórico, que é o único botão que resta
-    montar({ canEdit: false }, escalaComSemAnest)
-    const historico = screen.getByRole('button', { name: 'Histórico de mensagens' })
-    expect(historico.parentElement.className).toContain('deitado:row-start-1')
-  })
-
-  it('SEM alerta na tela, as ações viram UMA fileira com um botão por coluna', () => {
-    // dono 27/08: "quando não houver procedimento sem anestesista deixe os cards
-    // alinhados (3 ou 4 se plantonista)". Antes a metade direita ficava vazia — e
-    // é o caso da maioria dos dias, porque alerta de sem-anestesista é exceção.
-    montar({ onGarantirEscala: () => {}, onAddAjuda: () => {} })
+  it('as ações ficam numa FILEIRA SÓ, uma coluna por botão, com o alerta inteiro embaixo', () => {
+    // ⚠️ este teste MUDOU DE LADO, com o porquê no corpo. Ele travava as ações na
+    // metade ESQUERDA com o alerta na outra metade (27/08, manhã) e depois com só
+    // o 1º alerta ao lado delas (27/08, tarde) — as duas formas foram recusadas
+    // pelo dono na foto do aparelho: "deixe o topo alinhado assim como está na aba
+    // Completa". Lá as ações ficam em cima e o conteúdo embaixo, tudo começando na
+    // mesma margem, e é isso que se trava agora.
+    montar({ onGarantirEscala: () => {}, onAddAjuda: () => {}, onDefinirCasos: () => {} }, escalaComDoisSemAnest)
     const historico = screen.getByRole('button', { name: 'Histórico de mensagens' })
     const raiz = historico.closest('div.space-y-3')
     // três botões (Adicionar caso · Adicionar ajuda · Histórico) = três colunas
     expect(raiz.className).toContain('deitado:grid-cols-3')
-    // ⚠️ os dois blocos de ação são SEPARADOS no DOM (o recado do plantonista
-    // entra entre eles), então a fileira única só existe com `contents`: os
-    // invólucros somem deitado e os botões viram filhos diretos da grade.
+    // ⚠️ os dois blocos de ação são SEPARADOS no DOM (o recado do plantonista entra
+    // entre eles), então a fileira única só existe com `contents`
     expect(historico.parentElement.className).toContain('deitado:contents')
     expect(screen.getByRole('button', { name: 'Adicionar anestesista (ajuda)' })
       .parentElement.className).toContain('deitado:contents')
-    // e a fila continua inteira, sem precisar saber quantas colunas existem
-    const lista = listaDaFila(cardDe('Leonardo Ferrazzo'))
-    expect(lista.className).toContain('deitado:col-span-full')
-  })
-
-  it('COM alerta, a grade volta a duas colunas — ações à esquerda, alerta à direita', () => {
-    montar({ onGarantirEscala: () => {}, onAddAjuda: () => {} }, escalaComSemAnest)
-    const historico = screen.getByRole('button', { name: 'Histórico de mensagens' })
-    const raiz = historico.closest('div.space-y-3')
-    expect(raiz.className).toContain('deitado:grid-cols-2')
-    // aqui os invólucros voltam a ser fileiras da coluna 1
-    expect(historico.parentElement.className).toContain('deitado:col-start-1')
-    expect(historico.parentElement.className).not.toContain('deitado:contents')
-  })
-
-  it('deitado só o PRIMEIRO alerta fica ao lado dos botões; os outros vão à largura inteira', () => {
-    // dono 27/08, foto do aparelho: com três alertas empilhados na metade
-    // direita, os botões esticavam junto e viravam quatro retângulos enormes.
-    // Agora a metade esquerda tem a altura de UM alerta.
-    montar({ onGarantirEscala: () => {}, onAddAjuda: () => {}, onDefinirCasos: () => {} }, escalaComDoisSemAnest)
+    // e o alerta desce inteiro, com TODOS os procedimentos no mesmo bloco
     const alertas = screen.getAllByLabelText(/^Definir anestesista de /)
     expect(alertas).toHaveLength(2)
-    const blocoDoLado = alertas[0].closest('[class*="deitado:col-start-2"]')
-    expect(blocoDoLado).toBeTruthy()
-    // ⚠️ é o `row-span-2` que faz as duas metades terminarem na mesma linha
-    expect(blocoDoLado.className).toContain('deitado:row-span-2')
-    // o segundo NÃO está nesse bloco — está num que ocupa a largura toda
-    expect(blocoDoLado.contains(alertas[1])).toBe(false)
-    expect(alertas[1].closest('[class*="deitado:col-span-full"]')).toBeTruthy()
+    const bloco = alertas[0].closest('[class*="deitado:col-span-full"]')
+    expect(bloco).toBeTruthy()
+    expect(bloco.contains(alertas[1])).toBe(true)
   })
 
-  it('INVARIANTE: em pé a lista continua colada, como quando era um bloco só', () => {
-    // partir em dois blocos põe entre eles o `space-y-3` da raiz (12px) no lugar
-    // do `space-y-1.5` (6px) da lista — o `!mt-1.5` repõe o espaçamento exato
-    montar({ onDefinirCasos: () => {} }, escalaComDoisSemAnest)
-    const alertas = screen.getAllByLabelText(/^Definir anestesista de /)
-    const blocoDeBaixo = alertas[1].closest('[class*="deitado:col-span-full"]')
-    expect(blocoDeBaixo.className).toContain('!mt-1.5')
-    expect(blocoDeBaixo.className).toContain('deitado:!mt-0')
+  it('INVARIANTE: o que não é ação ocupa TODAS as colunas, seja qual for o número de botões', () => {
+    // a grade muda de forma com a quantidade de botões (3 ou 4), então nada pode
+    // depender de "duas colunas": recado, alerta e fila usam `col-span-full`
+    montar({ onGarantirEscala: () => {}, onAddAjuda: () => {}, onDefinirCasos: () => {} }, escalaComDoisSemAnest)
+    const lista = listaDaFila(cardDe('Leonardo Ferrazzo'))
+    expect(lista.className).toContain('deitado:col-span-full')
+    expect(lista.className).not.toContain('deitado:col-span-2')
   })
 
   it('o rótulo ENCURTA deitado, e o nome inteiro fica para o leitor de tela', () => {

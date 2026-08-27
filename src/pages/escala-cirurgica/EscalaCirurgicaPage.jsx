@@ -386,7 +386,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           entre duas colunas de 338px (mais estreitas que os 343px do retrato, onde
           o nome do plantonista já trunca no pior caso) e duas de 362px. Espaçamento
           vertical mais curto pela mesma razão: altura é o que falta. */}
-      <div className="max-w-3xl deitado:max-w-none mx-auto px-4 pt-3 deitado:pt-1.5 space-y-3 deitado:space-y-2">
+      <div className="max-w-3xl deitado:max-w-none mx-auto px-4 deitado:px-3 pt-3 deitado:pt-1.5 space-y-3 deitado:space-y-2">
         {/* Barra de controles (data · turno · hospital · abas · ações).
             O CALENDÁRIO LIVRE ("Outra data") SAIU em 16/08, a pedido do dono —
             também no dia útil: a escala é operada no dia, e o atalho abria a

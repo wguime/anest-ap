@@ -655,10 +655,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // classes LITERAIS: o Tailwind lê o código como texto e não geraria a
   // interpolada. Com alerta a grade é sempre de duas colunas (ações | alerta).
   const COLUNAS_RAIZ = { 1: 'deitado:grid-cols-1', 2: 'deitado:grid-cols-2', 3: 'deitado:grid-cols-3', 4: 'deitado:grid-cols-4' }
-  const gradeRaiz = temAlertaSemAnest ? 'deitado:grid-cols-2' : (COLUNAS_RAIZ[nAcoes] || 'deitado:grid-cols-4')
-  // com alerta cada bloco de ação é uma fileira da coluna 1; sem alerta os dois
-  // se dissolvem e os botões entram na fileira única
-  const posAcoesTopo = temAlertaSemAnest ? 'deitado:col-start-1 deitado:row-start-1' : 'deitado:contents'
+  const gradeRaiz = COLUNAS_RAIZ[nAcoes] || 'deitado:grid-cols-4'
 
   const cartaoSemAnestesista = (i, k) => {
     // Tocar no alerta define o responsável (pedido do dono 26/07) — o
@@ -714,11 +711,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
 
   // ⚠️ deitado o 1º alerta vai ao lado dos botões e o resto desce inteiro; em pé
   // a lista é a mesma de sempre, só partida em dois blocos coladinhos.
-  const alertasAoLado = temAlertaSemAnest ? semAnestesista.slice(0, 1) : []
-  const alertasAbaixo = temAlertaSemAnest ? semAnestesista.slice(1) : []
-
   const acoesTopo = canEdit && (podeAddCaso || fase !== 'zerada') ? (
-    <div className={`flex items-stretch gap-2 ${posAcoesTopo}`}>
+    <div className="flex items-stretch gap-2 deitado:contents">
       {podeAddCaso && (
         <Button
           size="sm" variant="outline" className="min-w-0 flex-1 deitado:h-auto"
@@ -1186,23 +1180,19 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   }
 
   return (
-    /* ⚠️ deitado a coluna vira uma GRADE DE DUAS COLUNAS (dono 27/08): as ações
-       ocupam a metade ESQUERDA e "procedimentos sem anestesista" a metade
-       direita. Duas formas já foram recusadas antes desta — ícone solto no canto
-       de cima à esquerda, e depois ícone no fim da linha do alerta —, e o que as
-       duas tinham em comum era o botão não ter lugar PRÓPRIO: ele ia parar onde
-       sobrasse espaço naquele momento da tela. Aqui cada metade é uma coluna fixa.
-       As colunas das duas primeiras FILEIRAS são ocupadas explicitamente (ações à
-       esquerda, alerta atravessando as duas à direita), então tudo que precisa da
-       largura inteira — recado, fila, estado vazio — leva `col-span-full` e o
-       posicionamento automático o joga para a 3ª fileira em diante: um item que
-       ocupa todas as colunas não cabe numa sobra de uma. É isso que mantém a
-       coisa de pé quando não há ações (usuário sem permissão de edição).
-       ⚠️ SEM alerta a grade muda de forma: passa a ter uma coluna por BOTÃO e as
-       ações viram uma fileira só, com todos do mesmo tamanho — ver
-       `temAlertaSemAnest` lá em cima. `col-span-full` é o que faz recado e fila
-       continuarem inteiros nas duas formas, sem precisar saber quantas colunas
-       existem. */
+    /* ⚠️ deitado a raiz vira uma GRADE com UMA COLUNA POR BOTÃO, e só as ações
+       vivem nela: os 3 (ou 4, com o plantonista) ficam numa FILEIRA SÓ, do mesmo
+       tamanho, e todo o resto — recado, alerta de sem anestesista, fila — leva
+       `col-span-full` e desce inteiro embaixo. É a mesma pilha da aba Completa
+       (dono 27/08), e foi a terceira forma tentada: os botões em meia tela com o
+       alerta na outra metade, e depois com só o 1º alerta ao lado deles, foram as
+       duas recusadas — as duas punham assuntos diferentes na mesma faixa e
+       deixavam os topos desencontrados.
+       ⚠️ As duas fileiras de ação são blocos SEPARADOS no DOM (o recado do
+       plantonista entra entre elas), então a fileira única só existe com
+       `contents`: os invólucros somem deitado e os botões viram filhos diretos da
+       grade. O `gap` do invólucro e o da raiz são o mesmo 8px, então o
+       espaçamento não muda. */
     <div className={`space-y-3 deitado:grid ${gradeRaiz} deitado:items-stretch deitado:gap-2 deitado:space-y-0`}>
       {/* Não desenha nada: é o disparo da push de "tempo estourado" (dono 24/08).
           Vive como componente porque a lista só existe depois do guard de
@@ -1295,9 +1285,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           Com o plantonista logado são dois botões aqui e dois acima: os QUATRO
           ficam iguais, em 2×2 (dono 27/08). Sem ele, o Histórico ocupa sozinho a
           largura dos dois de cima — é o que o `flex-1` já faz. */}
-      <div className={['flex gap-2', temAlertaSemAnest
-        ? `deitado:col-start-1 ${acoesTopo ? 'deitado:row-start-2' : 'deitado:row-start-1'}`
-        : 'deitado:contents'].join(' ')}>
+      <div className="flex gap-2 deitado:contents">
         {canEdit && souPlantonista && podeAvisar && (
           <Button size="sm" variant="outline" className="min-w-0 flex-1 deitado:h-auto"
             aria-label="Mensagem para equipe" onClick={() => setAvisoSheet(true)}>
@@ -1322,29 +1310,21 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       {/* Procedimentos sem anestesista NO TOPO (pedido do dono 24/07): o plantonista
           precisa cobrir. Somem sozinhos ao serem marcados como terminados/suspensos
           (concluído é filtrado em gerarColunaLiberacao). Hora em destaque, por horário. */}
-      {/* ⚠️ deitado o PRIMEIRO alerta fica na metade direita, ao lado dos botões, e
-          os DEMAIS descem para a largura inteira (dono 27/08: "os botões à esquerda
-          ocupam a altura de UM alerta; os outros ocupam a largura toda"). Antes a
-          coluna inteira de alertas ficava à direita e, com três deles na tela, os
-          botões esticavam junto e viravam quatro retângulos enormes — foi o que ele
-          fotografou no aparelho. Com um alerta só ali, a altura da metade esquerda
-          volta a ser a de um alerta.
-          Em pé nada muda: os dois blocos ficam um debaixo do outro, e o `!mt-1.5` do
-          segundo repõe exatamente o espaçamento de 6px que a lista tinha quando era
-          um bloco só (o `space-y-3` da raiz daria 12px). */}
+      {/* ⚠️ deitado o bloco fica com a LARGURA INTEIRA, abaixo da fileira de botões
+          (dono 27/08: "os 3 ou 4 botões deixe o topo alinhado assim como está na aba
+          Completa"). Duas formas anteriores foram recusadas — os botões em meia tela
+          com o alerta na outra metade, e depois com o 1º alerta ao lado deles: as duas
+          punham conteúdo de assuntos diferentes na mesma faixa e deixavam os topos
+          desencontrados. Agora é a mesma pilha da Completa: ações em cima, conteúdo
+          embaixo, tudo começando na mesma margem. */}
       {temAlertaSemAnest && (
-        <div className="deitado:col-start-2 deitado:row-start-1 deitado:row-span-2 deitado:min-w-0">
+        <div className="deitado:col-span-full">
           <p className="mb-1.5 flex items-center gap-1 px-1 text-xs font-semibold text-warning">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Procedimentos sem anestesista
           </p>
           <div className="space-y-1.5">
-            {alertasAoLado.map(cartaoSemAnestesista)}
+            {semAnestesista.map(cartaoSemAnestesista)}
           </div>
-        </div>
-      )}
-      {alertasAbaixo.length > 0 && (
-        <div className="!mt-1.5 space-y-1.5 deitado:!mt-0 deitado:col-span-full">
-          {alertasAbaixo.map((i, k) => cartaoSemAnestesista(i, k + 1))}
         </div>
       )}
       {semFila && <div className="deitado:col-span-full">{estadoVazio}</div>}
