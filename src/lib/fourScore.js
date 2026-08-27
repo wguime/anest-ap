@@ -22,7 +22,7 @@ const DESCRIPTIONS = {
     'M4: Sinal de polegar para cima, punho ou sinal de paz',
   ],
   brainstem: [
-    'B0: Reflexo pupilar e corneano ausentes',
+    'B0: Reflexos pupilar, corneano e de tosse ausentes',
     'B1: Reflexo pupilar E corneano ausentes',
     'B2: Reflexo pupilar OU corneano ausente',
     'B3: Uma pupila fixa e dilatada',

@@ -6,6 +6,16 @@
 
 import { maintenanceRate } from '@/lib/fluidBalance';
 import { hollidaySegarDaily } from '@/lib/burnFluid';
+import { apacheII } from '@/lib/apacheII';
+import { fourScore } from '@/lib/fourScore';
+import { roxIndex } from '@/lib/roxIndex';
+import {
+  sodiumCorrectedHillier,
+  sodiumCorrectedKatz,
+  interpretSodium,
+  calciumCorrectedPayne,
+  interpretCalcium,
+} from '@/lib/electrolyteCorrection';
 
 // =============================================================================
 // CONSTANTES E HELPERS
@@ -3353,119 +3363,18 @@ const utiCalculators = [
         ],
       },
     ],
+    // A conta mora em `@/lib/apacheII` — uma implementação só, coberta por teste.
+    // Antes era inline aqui e usava `parseFloat(x) || default`, que descartava o
+    // ZERO como se fosse campo vazio: FR = 0 (apneia) e leucócitos = 0 valem +4
+    // cada e pontuavam 0. A lib usa `Number.isFinite` e trata o 0 como valor.
     compute: (values) => {
-      let score = 0;
-
-      // Idade
-      const idade = parseFloat(values.idade) || 0;
-      if (idade >= 75) score += 6;
-      else if (idade >= 65) score += 5;
-      else if (idade >= 55) score += 3;
-      else if (idade >= 45) score += 2;
-
-      // Temperatura
-      const temp = parseFloat(values.temp) || 37;
-      if (temp >= 41 || temp <= 29.9) score += 4;
-      else if (temp >= 39 || temp <= 31.9) score += 3;
-      else if (temp <= 33.9) score += 2;
-      else if (temp >= 38.5 || temp <= 35.9) score += 1;
-
-      // PAM — Knaus 1985 Table 1
-      const pam = parseFloat(values.pam) || 70;
-      if (pam >= 160 || pam <= 49) score += 4;
-      else if (pam >= 130) score += 3;
-      else if (pam <= 69) score += 2;
-      else if (pam >= 110) score += 2;
-
-      // FC
-      const fc = parseFloat(values.fc) || 80;
-      if (fc >= 180 || fc <= 39) score += 4;
-      else if (fc >= 140 || fc <= 54) score += 3;
-      else if (fc >= 110 || fc <= 69) score += 2;
-
-      // FR
-      const fr = parseFloat(values.fr) || 16;
-      if (fr >= 50 || fr <= 5) score += 4;
-      else if (fr >= 35) score += 3;
-      else if (fr <= 9) score += 2;
-      else if (fr >= 25 || fr <= 11) score += 1;
-
-      // Oxigenação — Knaus 1985: PaO2 <55 = +4, 55-60 = +3, 61-70 = +1
-      const oxi = values.oxigenacao || 'pao2_70';
-      if (oxi === 'aado2_500p') score += 4;
-      else if (oxi === 'pao2_55') score += 4;
-      else if (oxi === 'aado2_500') score += 3;
-      else if (oxi === 'pao2_55_60') score += 3;
-      else if (oxi === 'aado2_350') score += 2;
-      else if (oxi === 'pao2_61_70') score += 1;
-
-      // pH
-      const ph = parseFloat(values.ph) || 7.4;
-      if (ph >= 7.7 || ph < 7.15) score += 4;
-      else if (ph >= 7.6 || ph < 7.25) score += 3;
-      else if (ph < 7.33) score += 2;
-      else if (ph >= 7.5) score += 1;
-
-      // Sódio
-      const sodio = parseFloat(values.sodio) || 140;
-      if (sodio >= 180 || sodio <= 110) score += 4;
-      else if (sodio >= 160 || sodio <= 119) score += 3;
-      else if (sodio >= 155 || sodio <= 129) score += 2;
-      else if (sodio >= 150) score += 1;
-
-      // Potássio — Knaus 1985: K 2.5-2.9 = +2, 3.0-3.4 = +1
-      const k = parseFloat(values.potassio) || 4;
-      if (k >= 7 || k < 2.5) score += 4;
-      else if (k >= 6) score += 3;
-      else if (k < 3) score += 2;
-      else if (k >= 5.5 || k < 3.5) score += 1;
-
-      // Creatinina (dobrar se IRA)
-      const cr = parseFloat(values.creatinina) || 1;
-      const ira = values.ira ? 2 : 1;
-      if (cr >= 3.5) score += 4 * ira;
-      else if (cr >= 2) score += 3 * ira;
-      else if (cr >= 1.5 || cr < 0.6) score += 2 * ira;
-
-      // Hematocrito
-      const ht = parseFloat(values.hematocrito) || 40;
-      if (ht >= 60 || ht < 20) score += 4;
-      else if (ht >= 50 || ht < 30) score += 2;
-      else if (ht >= 46) score += 1;
-
-      // Leucócitos
-      const leuco = parseFloat(values.leucocitos) || 10;
-      if (leuco >= 40 || leuco < 1) score += 4;
-      else if (leuco >= 20 || leuco < 3) score += 2;
-      else if (leuco >= 15) score += 1;
-
-      // Glasgow (15 - Glasgow)
-      const gcs = parseFloat(values.glasgow) || 15;
-      score += 15 - gcs;
-
-      // Doença crônica
-      const dc = values.doenca_cronica || 'nenhuma';
-      if (dc === 'emergencia') score += 5;
-      else if (dc === 'eletivo') score += 2;
-
-      // Mortalidade estimada
-      let mortalidade = '';
-      let risk = 'baixo';
-      if (score <= 4) { mortalidade = '~4%'; risk = 'baixo'; }
-      else if (score <= 9) { mortalidade = '~8%'; risk = 'baixo'; }
-      else if (score <= 14) { mortalidade = '~15%'; risk = 'medio'; }
-      else if (score <= 19) { mortalidade = '~25%'; risk = 'medio'; }
-      else if (score <= 24) { mortalidade = '~40%'; risk = 'alto'; }
-      else if (score <= 29) { mortalidade = '~55%'; risk = 'alto'; }
-      else if (score <= 34) { mortalidade = '~75%'; risk = 'critico'; }
-      else { mortalidade = '>85%'; risk = 'critico'; }
-
+      const { score, risk, mortality } = apacheII(values);
       return {
         score,
         risk,
         details: {
           'Score total': `${score} pontos`,
-          'Mortalidade estimada': mortalidade,
+          'Mortalidade estimada': mortality,
         },
       };
     },
@@ -3830,7 +3739,7 @@ const utiCalculators = [
         label: 'Reflexos de Tronco (B)',
         type: 'select',
         options: [
-          { value: 0, label: 'B0 — Pupilar E corneano ausentes' },
+          { value: 0, label: 'B0 — Pupilar, corneano E tosse ausentes' },
           { value: 1, label: 'B1 — Pupilar E corneano ausentes' },
           { value: 2, label: 'B2 — Pupilar OU corneano ausente' },
           { value: 3, label: 'B3 — Uma pupila fixa e dilatada' },
@@ -3850,35 +3759,28 @@ const utiCalculators = [
         ],
       },
     ],
+    // A soma e as faixas moram em `@/lib/fourScore`. O texto do prognóstico fica
+    // aqui porque é apresentação — a lib devolve a chave, não a frase de tela.
     compute: (values) => {
-      const e = parseInt(values.eye) || 0;
-      const m = parseInt(values.motor) || 0;
-      const b = parseInt(values.brainstem) || 0;
-      const r = parseInt(values.respiration) || 0;
-      const total = e + m + b + r;
+      const { total, risk, prognosis, components } = fourScore(values);
 
-      let risk;
-      if (total <= 4) risk = 'critico';
-      else if (total <= 8) risk = 'alto';
-      else if (total <= 12) risk = 'medio';
-      else risk = 'baixo';
-
-      let prognostico;
-      if (total === 0) prognostico = 'Possível morte encefálica — investigar';
-      else if (total <= 4) prognostico = 'Prognóstico reservado';
-      else if (total <= 8) prognostico = 'Disfunção neurológica grave';
-      else if (total <= 12) prognostico = 'Disfunção moderada';
-      else prognostico = 'Bom prognóstico';
+      const PROGNOSTICO = {
+        morte_encefalica_possivel: 'Possível morte encefálica — investigar',
+        prognostico_reservado: 'Prognóstico reservado',
+        disfuncao_grave: 'Disfunção neurológica grave',
+        disfuncao_moderada: 'Disfunção moderada',
+        bom_prognostico: 'Bom prognóstico',
+      };
 
       return {
         score: total,
         risk,
         details: {
-          'Ocular (E)': `${e} pts`,
-          'Motor (M)': `${m} pts`,
-          'Tronco (B)': `${b} pts`,
-          'Respiração (R)': `${r} pts`,
-          'Prognóstico': prognostico,
+          'Ocular (E)': `${components.eye.score} pts`,
+          'Motor (M)': `${components.motor.score} pts`,
+          'Tronco (B)': `${components.brainstem.score} pts`,
+          'Respiração (R)': `${components.respiration.score} pts`,
+          'Prognóstico': PROGNOSTICO[prognosis],
         },
       };
     },
@@ -3974,35 +3876,23 @@ const utiCalculators = [
       { id: 'fio2', label: 'FiO2 (%)', type: 'number', min: 21, max: 100, step: 1 },
       { id: 'fr', label: 'FR (irpm)', type: 'number', min: 5, max: 60, step: 1 },
     ],
+    // A conta e o corte moram em `@/lib/roxIndex`. As frases de tela ficam aqui.
     compute: (values) => {
-      const spo2 = parseFloat(values.spo2);
-      const fio2 = parseFloat(values.fio2);
-      const fr = parseFloat(values.fr);
+      const resultado = roxIndex(values);
+      if (!resultado) return null;
 
-      if (!spo2 || !fio2 || !fr || fio2 <= 0 || fr <= 0) return null;
-
-      const fio2Dec = fio2 > 1 ? fio2 / 100 : fio2;
-      const rox = (spo2 / fio2Dec) / fr;
-      const rounded = Math.round(rox * 100) / 100;
-
-      let risk, interpretacao;
-      if (rounded >= 4.88) {
-        risk = 'baixo';
-        interpretacao = 'Baixo risco de falha — manter CNAF';
-      } else if (rounded >= 3.85) {
-        risk = 'medio';
-        interpretacao = 'Risco intermediário — reavaliar em 1-2h';
-      } else {
-        risk = 'alto';
-        interpretacao = 'Alto risco de falha — considerar intubação';
-      }
+      const INTERPRETACAO = {
+        baixo: 'Baixo risco de falha — manter CNAF',
+        medio: 'Risco intermediário — reavaliar em 1-2h',
+        alto: 'Alto risco de falha — considerar intubação',
+      };
 
       return {
-        score: rounded,
-        risk,
+        score: resultado.rox,
+        risk: resultado.risk,
         details: {
-          'ROX Index': rounded.toFixed(2),
-          'Interpretação': interpretacao,
+          'ROX Index': resultado.rox.toFixed(2),
+          'Interpretação': INTERPRETACAO[resultado.risk],
         },
       };
     },
@@ -6201,60 +6091,40 @@ const renalCalculators = [
       { id: 'sodio', label: 'Sódio medido (mEq/L)', type: 'number', min: 100, max: 180, step: 1 },
       { id: 'glicose', label: 'Glicose (mg/dL)', type: 'number', min: 50, max: 1500, step: 1 },
     ],
+    // Correção e faixas moram em `@/lib/electrolyteCorrection`. A lib devolve a
+    // chave da faixa (`band`); as frases de tela ficam aqui.
     compute: (values) => {
       const na = parseFloat(values.sodio) || 0;
       const gli = parseFloat(values.glicose) || 0;
 
       if (na === 0 || gli === 0) return null;
 
-      // Hillier 1999: Na_corr = Na + 2.4 x ((Glicose - 100) / 100) — PADRÃO ATUAL
-      // Katz 1973: Na_corr = Na + 1.6 x ((Glicose - 100) / 100) — HISTÓRICO
-      // Iolascon et al. Kidney Int 2022: Hillier 2.4 é universalmente mais preciso
-      const correcaoHillier = 2.4 * ((gli - 100) / 100);
-      const correcaoKatz = 1.6 * ((gli - 100) / 100);
-      const naCorrigidoHillier = na + correcaoHillier;
-      const naCorrigidoKatz = na + correcaoKatz;
+      // Hillier 1999 (2,4) é o padrão universal desde Iolascon, Kidney Int 2022.
+      // Katz 1973 (1,6) segue exibido só para comparação histórica.
+      const hillier = sodiumCorrectedHillier(na, gli);
+      const katz = sodiumCorrectedKatz(na, gli);
+      const naCorrigido = na + 2.4 * ((gli - 100) / 100);
+      const faixa = interpretSodium(naCorrigido);
 
-      // Hillier 2.4 como padrão universal (não apenas >400)
-      const naCorrigido = naCorrigidoHillier;
-      const formulaUsada = 'Hillier (2.4)';
-
-      let risk, riskLabel, interpretacao;
-      if (naCorrigido < 120) {
-        risk = 'critico';
-        riskLabel = 'Hiponatremia grave';
-        interpretacao = 'Hiponatremia grave - risco de edema cerebral';
-      } else if (naCorrigido < 130) {
-        risk = 'alto';
-        riskLabel = 'Hiponatremia mod';
-        interpretacao = 'Hiponatremia moderada';
-      } else if (naCorrigido < 135) {
-        risk = 'medio';
-        riskLabel = 'Hiponatremia leve';
-        interpretacao = 'Hiponatremia leve';
-      } else if (naCorrigido <= 145) {
-        risk = 'baixo';
-        riskLabel = 'Normal';
-        interpretacao = 'Sódio corrigido normal';
-      } else if (naCorrigido <= 150) {
-        risk = 'medio';
-        riskLabel = 'Hipernatremia leve';
-        interpretacao = 'Hipernatremia leve';
-      } else {
-        risk = 'alto';
-        riskLabel = 'Hipernatremia';
-        interpretacao = 'Hipernatremia significativa';
-      }
+      const TEXTO = {
+        hipo_grave: ['Hiponatremia grave', 'Hiponatremia grave - risco de edema cerebral'],
+        hipo_moderada: ['Hiponatremia mod', 'Hiponatremia moderada'],
+        hipo_leve: ['Hiponatremia leve', 'Hiponatremia leve'],
+        normal: ['Normal', 'Sódio corrigido normal'],
+        hiper_leve: ['Hipernatremia leve', 'Hipernatremia leve'],
+        hiper_significativa: ['Hipernatremia', 'Hipernatremia significativa'],
+      };
+      const [riskLabel, interpretacao] = TEXTO[faixa.band];
 
       return {
         score: naCorrigido,
-        risk,
+        risk: faixa.risk,
         riskLabel,
         details: {
           'Interpretação': interpretacao,
-          'Fórmula utilizada': formulaUsada,
+          'Fórmula utilizada': `${hillier.formula} (${hillier.factor})`,
           'Correção aplicada': `+${(naCorrigido - na).toFixed(1)} mEq/L`,
-          'Comparação Katz (1.6, histórico)': `${naCorrigidoKatz.toFixed(1)} mEq/L`,
+          'Comparação Katz (1.6, histórico)': `${katz.corrected.toFixed(1)} mEq/L`,
         },
       };
     },
@@ -6287,46 +6157,30 @@ const renalCalculators = [
       { id: 'calcio', label: 'Cálcio total (mg/dL)', type: 'number', min: 4, max: 18, step: 0.1 },
       { id: 'albumina', label: 'Albumina (g/dL)', type: 'number', min: 1, max: 6, step: 0.1 },
     ],
+    // Correção e faixas moram em `@/lib/electrolyteCorrection`.
     compute: (values) => {
       const ca = parseFloat(values.calcio) || 0;
       const alb = parseFloat(values.albumina) || 0;
 
       if (ca === 0 || alb === 0) return null;
 
-      // Formula: Ca_corr = Ca_medido + 0.8 x (4 - Albumina)
       const correcao = 0.8 * (4 - alb);
       const caCorrigido = ca + correcao;
+      const faixa = interpretCalcium(caCorrigido);
 
-      let risk, riskLabel, interpretacao;
-      if (caCorrigido < 7.0) {
-        risk = 'critico';
-        riskLabel = 'Hipocalcemia grave';
-        interpretacao = 'Hipocalcemia grave - risco de tetania, convulsões';
-      } else if (caCorrigido < 8.5) {
-        risk = 'alto';
-        riskLabel = 'Hipocalcemia';
-        interpretacao = 'Hipocalcemia';
-      } else if (caCorrigido <= 10.5) {
-        risk = 'baixo';
-        riskLabel = 'Normal';
-        interpretacao = 'Cálcio corrigido normal';
-      } else if (caCorrigido <= 12.0) {
-        risk = 'medio';
-        riskLabel = 'Hipercalcemia leve';
-        interpretacao = 'Hipercalcemia leve';
-      } else if (caCorrigido <= 14.0) {
-        risk = 'alto';
-        riskLabel = 'Hipercalcemia mod';
-        interpretacao = 'Hipercalcemia moderada';
-      } else {
-        risk = 'critico';
-        riskLabel = 'Crise hipercalcemica';
-        interpretacao = 'Crise hipercalcemica - emergência';
-      }
+      const TEXTO = {
+        hipo_grave: ['Hipocalcemia grave', 'Hipocalcemia grave - risco de tetania, convulsões'],
+        hipo: ['Hipocalcemia', 'Hipocalcemia'],
+        normal: ['Normal', 'Cálcio corrigido normal'],
+        hiper_leve: ['Hipercalcemia leve', 'Hipercalcemia leve'],
+        hiper_moderada: ['Hipercalcemia mod', 'Hipercalcemia moderada'],
+        crise: ['Crise hipercalcemica', 'Crise hipercalcemica - emergência'],
+      };
+      const [riskLabel, interpretacao] = TEXTO[faixa.band];
 
       return {
         score: caCorrigido,
-        risk,
+        risk: faixa.risk,
         riskLabel,
         details: {
           'Interpretação': interpretacao,

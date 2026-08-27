@@ -109,31 +109,37 @@ export function sodiumCorrectedBoth(naMeasured, glucoseMgDl) {
  * @param {number|string} naValue Sódio sérico (mEq/L)
  * @returns {{ risk: string, label: string, description?: string } | null}
  */
+// ⚠️ Os cortes são FRACIONÁRIOS (`< 130`), não inteiros (`<= 129`): o sódio
+// corrigido é uma soma com 2,4 × ((glicose − 100) / 100) e quase nunca cai em
+// inteiro. Com corte inteiro, 129,28 escapava de "moderada" para "leve" — e a
+// faixa é o que decide a conduta.
 export function interpretSodium(naValue) {
   const na = num(naValue, NaN);
   if (!Number.isFinite(na)) return null;
 
   if (na < 120) {
     return {
+      band: 'hipo_grave',
       risk: 'critico',
       label: 'Hiponatremia grave',
       description: 'Risco de edema cerebral',
     };
   }
-  if (na <= 129) {
-    return { risk: 'alto', label: 'Hiponatremia moderada' };
+  if (na < 130) {
+    return { band: 'hipo_moderada', risk: 'alto', label: 'Hiponatremia moderada' };
   }
-  if (na <= 134) {
-    return { risk: 'medio', label: 'Hiponatremia leve' };
+  if (na < 135) {
+    return { band: 'hipo_leve', risk: 'medio', label: 'Hiponatremia leve' };
   }
   if (na <= 145) {
-    return { risk: 'baixo', label: 'Normal' };
+    return { band: 'normal', risk: 'baixo', label: 'Normal' };
   }
   if (na <= 150) {
-    return { risk: 'medio', label: 'Hipernatremia leve' };
+    return { band: 'hiper_leve', risk: 'medio', label: 'Hipernatremia leve' };
   }
   // > 150
   return {
+    band: 'hiper_significativa',
     risk: 'alto',
     label: 'Hipernatremia significativa',
     description: 'Risco de desidratação celular e alteração neurológica',
@@ -185,30 +191,44 @@ export function calciumCorrectedPayne(caTotalMgDl, albuminGdL) {
  * @param {number|string} caValue Cálcio total (mg/dL)
  * @returns {{ risk: string, label: string, description?: string } | null}
  */
+// ⚠️ Como no sódio, os cortes são fracionários: normal começa em 8,5, então
+// 8,45 é hipocalcemia — com `<= 8.4` era classificado como normal.
+// A faixa de CRISE (> 14) é separada da hipercalcemia moderada porque muda a
+// conduta: crise é emergência, não achado laboratorial.
 export function interpretCalcium(caValue) {
   const ca = num(caValue, NaN);
   if (!Number.isFinite(ca)) return null;
 
   if (ca < 7.0) {
     return {
+      band: 'hipo_grave',
       risk: 'critico',
       label: 'Hipocalcemia grave',
       description: 'Risco de tetania, convulsões',
     };
   }
-  if (ca <= 8.4) {
-    return { risk: 'alto', label: 'Hipocalcemia' };
+  if (ca < 8.5) {
+    return { band: 'hipo', risk: 'alto', label: 'Hipocalcemia' };
   }
   if (ca <= 10.5) {
-    return { risk: 'baixo', label: 'Normal' };
+    return { band: 'normal', risk: 'baixo', label: 'Normal' };
   }
   if (ca <= 12.0) {
-    return { risk: 'medio', label: 'Hipercalcemia leve' };
+    return { band: 'hiper_leve', risk: 'medio', label: 'Hipercalcemia leve' };
   }
-  // > 12.0
+  if (ca <= 14.0) {
+    return {
+      band: 'hiper_moderada',
+      risk: 'alto',
+      label: 'Hipercalcemia moderada',
+      description: 'Risco de arritmia',
+    };
+  }
+  // > 14.0
   return {
-    risk: 'alto',
-    label: 'Hipercalcemia',
-    description: 'Risco de arritmia',
+    band: 'crise',
+    risk: 'critico',
+    label: 'Crise hipercalcêmica',
+    description: 'Emergência — risco de arritmia e coma',
   };
 }
