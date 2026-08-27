@@ -13,7 +13,6 @@ import {
   sodiumCorrectedHillier,
   sodiumCorrectedKatz,
   interpretSodium,
-  calciumCorrectedPayne,
   interpretCalcium,
 } from '@/lib/electrolyteCorrection';
 
