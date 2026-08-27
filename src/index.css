@@ -60,14 +60,37 @@
 }
 
 /* ============================================================================
- * Orientação
+ * Orientação — o app GIRA, e deitado se reorganiza (dono 26/08)
  * ============================================================================
- * O aviso "Gire seu dispositivo" SAIU (dono 25–26/08: "não quero que apareça
- * nenhuma mensagem"). O app segue tentando o lock nativo em
- * `useLockPortraitOrientation` — que só o Android/PWA honra, e o iPhone só com
- * a flag experimental do Safari ligada no aparelho. Enquanto não houver uma
- * decisão sobre travar de verdade, a tela gira e nada é dito.
+ * Depois de três tentativas de travar a rotação (todas revertidas — no iPhone
+ * não existe API para isso), a decisão foi a oposta: deixar girar e fazer a
+ * tela funcionar deitada. Por isso saíram o `orientation: portrait` do manifest
+ * e o lock nativo do App — eles impediam o Android de girar e tornariam este
+ * trabalho inútil lá.
+ *
+ * Quem decide o arranjo é a variante `deitado:` do Tailwind (tailwind.config.js),
+ * que é CELULAR na horizontal: largura sobrando e altura curta. Tablet e desktop
+ * ficam de fora — lá paisagem é uso normal.
+ *
+ * ⚠️ a decisão é de CSS, nunca de JS: o `orientationchange` do iOS chega ANTES
+ * de a viewport ter as medidas novas, e decidir em JS fazia a tela pular.
  */
+
+/* Deitado a navegação sai de baixo e vira faixa lateral: a reserva de altura
+   que cada página faz para a barra inferior (pb-28 e parentes, 183 usos) deixa
+   de fazer sentido e viraria um terço de tela vazio no fim do scroll. */
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+  .pb-28, .pb-24, .pb-32 { padding-bottom: 0.75rem; }
+
+  /* O conteúdo de TODA página recua os 76px da faixa lateral de uma vez só, no
+     body — em vez de um `deitado:pl-` em cada uma das 137 páginas. Vale só para
+     o fluxo normal: `position: fixed` não enxerga padding do body, e é por isso
+     que header e banner recuam por conta própria, com a variante `deitado:`. */
+  body {
+    padding-left: 76px;
+    padding-left: max(76px, calc(76px + env(safe-area-inset-left, 0px)));
+  }
+}
 
 /* Touch Target Mínimo (44x44px conforme Apple HIG) */
 .touch-target {

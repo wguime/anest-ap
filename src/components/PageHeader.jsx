@@ -19,7 +19,9 @@ export default function PageHeader({
   const header = (
     <nav
       className={[
-        'fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm',
+        'fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm' +
+        // deitado: a faixa de navegação ocupa os 76px da esquerda
+        ' deitado:left-[76px]',
         className,
       ].filter(Boolean).join(' ')}
     >

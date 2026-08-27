@@ -4,7 +4,6 @@
   "description": "Plataforma de gestão de qualidade e treinamento gamificado para serviços de anestesiologia",
   "start_url": "/",
   "display": "standalone",
-  "orientation": "portrait",
   "background_color": "#006837",
   "theme_color": "#006837",
   "categories": ["medical", "health", "education"],

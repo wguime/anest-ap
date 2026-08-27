@@ -35,7 +35,6 @@ import { reportError } from "@/services/errorReporting"
 import { SUB_CARD_PARENT } from "./data/rolePermissionTemplates"
 import { isBulkImportEnabled } from "./utils/featureFlags"
 import { useActivityTracking } from "./hooks/useActivityTracking"
-import { useLockPortraitOrientation } from "./hooks/useLockPortraitOrientation"
 import useIosViewportReanchor from "./hooks/useIosViewportReanchor"
 import { PrivacyPolicyModal } from "./components/PrivacyPolicyModal"
 import { canAccessCentroGestao, canAccessIncidenteGestao, canAccessDenunciaGestao } from "./pages/management/utils/incidentAccess"
@@ -464,7 +463,7 @@ function CalculadorasPageWrapper({ _onNavigate, goBack, params }) {
   const showSearchToggle = !selectedCalcId;
 
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm deitado:left-[76px]">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
@@ -863,10 +862,6 @@ function App() {
 
   // Activity tracking
   const { trackPageView } = useActivityTracking()
-
-  // Trava orientação em portrait (best-effort — cobre Android Chrome PWA;
-  // iOS Safari usa fallback visual via RotateDeviceOverlay)
-  useLockPortraitOrientation()
 
   // iOS: teclado fechado pode deixar o visual viewport deslocado e o
   // BottomNav/headers `fixed` "flutuando" no meio da página — re-ancora.
