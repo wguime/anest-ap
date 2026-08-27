@@ -5,35 +5,61 @@
 
 ---
 
-## ⚠️ COMEÇA AQUI — estado da retomada (26/08, ~22h)
+## ⚠️ COMEÇA AQUI — estado da retomada (27/08, ~12h)
 
-**Há um commit pronto e NÃO empurrado**, por decisão do dono: esperar a outra sessão terminar o modo `deitado:`
-para não gerar conflito.
+**O push já aconteceu.** `origin/main...HEAD` = `0 0`: a outra sessão empurrou o modo `deitado:` e
+levou junto o commit da SAPS III (`57a35e8` — o hash `6409650` citado na versão anterior deste texto
+não existe mais; o commit foi reescrito). O CI rodou verde no merge (`5f5d394`, run 33079239190) e
+deployou de checkout limpo. Nada a destravar.
 
-```
-6409650  fix(calculadoras): SAPS III não gravava nenhuma seleção   ← este trabalho
-901422b  fix(deitado): cards por LINHA e faixa lateral…            ┐
-559c651  feat(deitado): Home, Gestão e Menu na horizontal          ├ outra sessão
-ed76afd  feat(deitado): fundação do modo horizontal                ┘
-```
+⚠️ **A outra sessão continua ATIVA** — em 27/08 12h havia 8 arquivos em edição (`App.jsx`,
+`HomePage.jsx`, `GestaoPage.jsx`, `PageHeader.jsx`, `LiberacoesView.jsx`, `NetworkStatusBanner.jsx`,
+`bottom-nav.jsx`, `index.css`), com mtime de minutos atrás. A árvore é COMPARTILHADA: `git add` de
+caminho amplo leva o trabalho dela junto. Commitar sempre por caminho explícito.
 
-**Ao retomar, nesta ordem:**
+### Feito nesta sessão (27/08)
 
-1. **Confirme que a outra sessão fechou.** Ela tinha 6 arquivos ainda em edição — `HomePage.jsx`,
-   `GestaoPage.jsx`, `PageHeader.jsx` e três de `escala-cirurgica/`. Enquanto houver `M` neles, o trabalho está
-   em curso. ⚠️ A árvore é compartilhada: `git add` de caminho amplo leva o que a outra sessão está escrevendo.
-2. **Rode a suíte no COMMIT, não na árvore.** A combinação que vai ao ar (commits deles + o meu, sem as edições
-   em curso) nunca foi verificada — o que rodou verde aqui incluía as edições não commitadas.
-3. **Só então empurre.** O CI está operacional e deploya sozinho a partir de um checkout limpo.
-4. ⚠️ **Não deploye manualmente daqui**: `npm run build` compila o *working tree*, não o HEAD, e levaria junto o
-   que estiver em edição.
+| item | estado |
+|---|---|
+| **Passo 0** — ferramental | ✅ `calc-validator.md` e `/calculadoras` reescritos: o caminho morto `src/pages/calculadoras/` saiu, as contagens agora batem com o repo |
+| **Frente 3a** — trava da `Select` | ✅ `src/__tests__/design-system/select-props.test.js` |
+| **Frente 3b** — libs órfãs | ✅ resolvida por par, com trava em `src/__tests__/data/calculatorLibParidade.test.js` |
 
-**O que já está feito e verificado** (não refaça): a SAPS III foi corrigida e conferida no navegador — escore
-32 → 47 ao escolher "75-79 anos (15 pts)". O restante deste documento é o plano, ainda não executado.
+**Dois defeitos NOVOS encontrados e corrigidos no caminho** (nenhum estava previsto neste plano):
 
-⚠️ **A Frente 7 (celular deitado) foi escrita ANTES de eu descobrir os 3 commits acima.** A outra sessão já
-construiu a fundação — variante `deitado:`, navegação lateral, Home/Gestão/Menu. Releia a Frente 7 como
-"aplicar o que já existe às calculadoras", não como "criar o modo horizontal".
+1. **APACHE II perdia até 8 pontos.** O `compute` inline usava `parseFloat(x) || default`, e `0` é
+   falsy: FR = 0 (apneia) e leucócitos = 0 valem **+4 cada** e pontuavam **0**. Os dois inputs têm
+   `min: 0`, e `min` no HTML não impede digitação — o caso era alcançável na tela. A lib
+   `apacheII.js`, que ninguém importava, já estava certa; passar a importá-la corrigiu o bug.
+2. **FOUR Score: B0 e B1 tinham o MESMO rótulo** ("Pupilar E corneano ausentes"), nos dois lados.
+   Em Wijdicks 2005, B0 é *pupilar, corneano **e de tosse** ausentes* — sem o reflexo de tosse as
+   duas opções ficam indistinguíveis e o usuário não consegue pontuar o tronco. Corrigido na lib e
+   na definição.
+
+**Resultado do 3b, medido por varredura das duas implementações** (não por leitura):
+
+| par | divergência medida | resolução |
+|---|---|---|
+| `roxIndex` | nenhuma em 288 combinações | calculadora passou a importar a lib |
+| `fourScore` | nenhuma em 625 combinações | idem (+ rótulo B0) |
+| `apacheII` | 11 casos, todos no valor **0** — a lib certa, a produção errada | idem — **corrige bug de produção** |
+| `electrolyteCorrection` | 19 casos de faixa — **a produção certa, a lib errada**: cortes em inteiro (`<= 129`, `<= 8.4`) sobre valor fracionário, e sem a faixa de crise hipercalcêmica | lib corrigida para o comportamento de produção, então importada |
+| `curb65` | contratos diferentes: a lib recebe valores brutos e faz os cortes; a tela recebe os 5 critérios já avaliados pelo clínico | **lib e teste aposentados** — ligar uma na outra mudaria a tela (Regra #2). A conta de produção entrou sob trava no lugar |
+
+⚠️ A trava da `Select` pegou uma **segunda ocorrência viva** de `onValueChange`, fora das
+calculadoras: `src/pages/educacao/admin/components/PreviewModal.jsx:115`. O arquivo tem **zero
+importadores** (quem roda é o `PreviewModal_STUDENT_SAFE.jsx`) e está quebrado de outras duas formas
+— usa `ModalHeader`/`ModalContent`, que o `Modal` do DS não expõe, e passa `<option>` como filho da
+`Select`, que só lê a prop `options`. A prop foi renomeada para a trava valer no repo inteiro; **a
+remoção do arquivo é decisão do dono**.
+
+⚠️ **A Frente 7 (celular deitado) foi escrita ANTES de os commits do `deitado:` existirem.** A
+fundação está pronta — variante `deitado:`, navegação lateral, Home/Gestão/Menu. Leia aquela frente
+como "aplicar o que já existe às calculadoras": o sistema de calculadoras tem **0 usos** de `deitado:`.
+
+**A fazer, na ordem:** Frente 3c (matemática das demais) · Frente 4 (português e números) ·
+Frente 1 (card de classificações) · Frente 2 (triagem — é PROPOSTA, não execução) ·
+Frentes 5, 6 e 7 (dependem de aprovação por imagem).
 
 ---
 
@@ -60,7 +86,7 @@ histórico próprios — mexer neles aqui é ampliar escopo sem pedido.
 
 ---
 
-## Passo 0 — consertar o ferramental ANTES de revisar
+## Passo 0 — consertar o ferramental ANTES de revisar — ✅ FEITO em 27/08
 
 Sem isso a revisão começa cega e o revisor perde tempo redescobrindo. **Tudo abaixo foi verificado:**
 
@@ -150,7 +176,7 @@ sustentar a afirmação — se você disser que algo é pouco usado, diga que é
 
 Achados durante o levantamento e **verificados por mim**. Corrija estes primeiro: são defeito, não opinião.
 
-### 3a. A SAPS III não gravava nenhuma seleção — ✅ CORRIGIDO em 26/08
+### 3a. A SAPS III não gravava nenhuma seleção — ✅ CORRIGIDO em 26/08, trava em 27/08
 
 `Saps3Display.jsx` importa a `Select` do DS e passa **`onValueChange`** em **15 lugares** — mas a `Select` do DS
 expõe **`onChange`** (`ui/select.jsx:8`). A prop desconhecida cai no `...props` e é derramada no DOM
@@ -168,11 +194,14 @@ display do sistema com esse erro (`onValueChange` 15 × `onChange` 0).
 o aviso do React sumiu, a seleção grava, e o escore foi de **32 → 47** ao escolher "75-79 anos (15 pts)" — os 15
 pontos exatos da opção.
 
-**Falta a trava.** Não há teste que pegue isso. Crie um: prop errada em `Select` é falha silenciosa — o React só
-avisa no console e a tela parece funcionar. Um teste que monte cada display e verifique que nenhum passa prop
-desconhecida ao `Select` protegeria todos os 16 `customRender` de uma vez.
+**A trava — ✅ FEITA em 27/08:** `src/__tests__/design-system/select-props.test.js`. Ela extrai a allowlist da
+própria assinatura da `Select` (renomear prop no componente atualiza a regra sozinho) e varre todo consumidor do
+repo. ⚠️ **Foi rodada contra o código ANTIGO antes de ser chamada de trava** — e o primeiro desenho REPROVOU:
+reconhecia só o import por alias `@/design-system`, e os displays das calculadoras importam por caminho RELATIVO
+(`../../components/ui/select`). Como estava, deixaria passar exatamente a SAPS III. Corrigida, acusa as 15
+ocorrências históricas.
 
-### 3b. Cinco libs testadas que a produção não usa
+### 3b. Cinco libs testadas que a produção não usa — ✅ RESOLVIDA em 27/08 (ver COMEÇA AQUI)
 
 `apacheII.js`, `curb65.js`, `fourScore.js`, `roxIndex.js` e `electrolyteCorrection.js` têm teste e **zero
 importadores** fora dos próprios testes. As calculadoras equivalentes (`uti_apache2`, `uti_curb65`,
@@ -288,7 +317,7 @@ Confira também a matemática da reposição (jejum, manutenção, perdas, terce
 
 ## Frente 6 — DS e o padrão de seleção
 
-**Estado atual, verificado:** as calculadoras selecionam por `Select` dropdown (9 com `useDropdown: true`),
+**Estado atual, verificado:** as calculadoras selecionam por `Select` dropdown (**35** com `useDropdown: true` — a skill dizia 9, que eram só as pediátricas),
 `WidgetCard` em grade de 2 e `RiskFactorCard`. A escala cirúrgica usa *segmented control*:
 `BarraControles.jsx:33` (`grid gap-1 rounded-[12px] bg-muted p-1`) e `:48`
 (`rounded-[10px] transition-all active:scale-95`) — trilho tingido, segmentos iguais, afundar no toque. É o idioma
