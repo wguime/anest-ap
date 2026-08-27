@@ -5,7 +5,7 @@
  * in Centro de Gestao, the target user's context updates automatically
  * without requiring re-login.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import { UserProvider, useUser } from '../contexts/UserContext';
 
@@ -538,5 +538,158 @@ describe('UserContext real-time profile listener', () => {
 
     const supabaseUsersService = (await import('../services/supabaseUsersService')).default;
     expect(supabaseUsersService.recordAccess).toHaveBeenCalledWith('u1');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// Reconciliação Supabase→Firestore de campo de privilégio
+//
+// Caso Oscar Morais (2026-08-27): quem se cadastra sozinho ganha perfil
+// Supabase com o papel de `authorized_emails` ('anestesiologista'), mas o
+// perfil do Firestore nasce no molde sem privilégio ('colaborador') — e é
+// esse que `podeVerEscalaCirurgica(user)` lê. A reconciliação corrigia em
+// memória e tentava gravar de volta; firestore.rules recusa campo de
+// privilégio do próprio dono do perfil, o SDK faz rollback da escrita
+// otimista e o rollback reentrega o snapshot velho, realimentando tudo.
+// O papel piscava e o card da Escala Cirúrgica aparecia e sumia.
+// ═══════════════════════════════════════════════════════════════════
+describe('UserContext — papel vindo do Supabase quando o Firestore está atrás', () => {
+  const PADRAO_SUPABASE = { data: null, error: null };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authChangeCallback = null;
+    snapshotCallback = null;
+    // mockImplementation (não mockResolvedValue): um teste troca a implementação
+    // por uma promise pendente e clearAllMocks não desfaz isso.
+    mockSupabaseQuery.maybeSingle.mockImplementation(() => Promise.resolve(PADRAO_SUPABASE));
+  });
+
+  afterEach(() => {
+    // mockImplementation (não mockResolvedValue): um teste troca a implementação
+    // por uma promise pendente e clearAllMocks não desfaz isso.
+    mockSupabaseQuery.maybeSingle.mockImplementation(() => Promise.resolve(PADRAO_SUPABASE));
+  });
+
+  /** Firestore com o papel velho; Supabase com o papel autorizado de verdade. */
+  const PERFIL_FIRESTORE_VELHO = {
+    uid: 'u1',
+    email: 'oscar@anest.com.br',
+    role: 'colaborador',
+    isAdmin: false,
+    isCoordenador: false,
+    permissions: { 'doc-protocolos': true },
+  };
+  const LINHA_SUPABASE = {
+    role: 'anestesiologista',
+    is_admin: false,
+    is_coordenador: false,
+    permissions: {},
+    custom_permissions: false,
+    ranking_opt_in: false,
+  };
+
+  async function logarComDrift(perfil = PERFIL_FIRESTORE_VELHO, linha = LINHA_SUPABASE) {
+    mockSupabaseQuery.maybeSingle.mockResolvedValue({ data: linha, error: null });
+    renderWithProvider();
+    await act(async () => {
+      await authChangeCallback({ uid: 'u1', email: perfil.email, displayName: 'Oscar' });
+    });
+    await act(async () => {
+      snapshotCallback(makeSnap(perfil));
+    });
+  }
+
+  it('adota o papel do Supabase mesmo com o Firestore em colaborador', async () => {
+    await logarComDrift();
+
+    const user = JSON.parse(screen.getByTestId('user').textContent);
+    expect(user.role).toBe('anestesiologista');
+  });
+
+  it('não tenta gravar campo de privilégio no Firestore para quem não é admin', async () => {
+    await logarComDrift();
+
+    const { updateDoc } = await import('firebase/firestore');
+    const camposGravados = updateDoc.mock.calls.flatMap(([, dados]) => Object.keys(dados));
+    expect(camposGravados).not.toContain('role');
+    expect(camposGravados).not.toContain('permissions');
+    expect(camposGravados).not.toContain('customPermissions');
+    expect(camposGravados).not.toContain('isAdmin');
+  });
+
+  it('grava rankingOptIn, que não é campo de privilégio', async () => {
+    await logarComDrift();
+
+    const { updateDoc } = await import('firebase/firestore');
+    const camposGravados = updateDoc.mock.calls.flatMap(([, dados]) => Object.keys(dados));
+    expect(camposGravados).toContain('rankingOptIn');
+  });
+
+  it('mantém o papel reconciliado quando outro snapshot reentrega o doc velho', async () => {
+    // A consulta ao Supabase precisa ficar PENDENTE no segundo snapshot. Com um
+    // mock que resolve na hora, a reconciliação recoloca o papel dentro do mesmo
+    // act() e a piscada some do teste — foi assim que este caso passou contra o
+    // código antigo antes de virar trava de verdade.
+    const adiada = () => {
+      let resolver;
+      const promise = new Promise((r) => { resolver = r; });
+      return { promise, resolver };
+    };
+
+    const primeira = adiada();
+    mockSupabaseQuery.maybeSingle.mockImplementation(() => primeira.promise);
+
+    renderWithProvider();
+    await act(async () => {
+      await authChangeCallback({ uid: 'u1', email: PERFIL_FIRESTORE_VELHO.email, displayName: 'Oscar' });
+    });
+    await act(async () => {
+      snapshotCallback(makeSnap(PERFIL_FIRESTORE_VELHO));
+    });
+
+    // Supabase responde: o papel de verdade entra em memória.
+    await act(async () => {
+      primeira.resolver({ data: LINHA_SUPABASE, error: null });
+    });
+    expect(JSON.parse(screen.getByTestId('user').textContent).role).toBe('anestesiologista');
+
+    // Agora uma escrita qualquer no doc (token de push, consentimento LGPD)
+    // reentrega o snapshot com o papel velho, e a reconciliação seguinte fica
+    // pendente. É exatamente a janela em que o gate da escala piscava.
+    const segunda = adiada();
+    mockSupabaseQuery.maybeSingle.mockImplementation(() => segunda.promise);
+    await act(async () => {
+      snapshotCallback(makeSnap({ ...PERFIL_FIRESTORE_VELHO, fcmToken: 'abc' }));
+    });
+
+    expect(JSON.parse(screen.getByTestId('user').textContent).role).toBe('anestesiologista');
+  });
+
+  it('persiste o papel no Firestore quando o perfil JÁ é admin', async () => {
+    await logarComDrift(
+      { ...PERFIL_FIRESTORE_VELHO, isAdmin: true },
+      { ...LINHA_SUPABASE, role: 'secretaria', is_admin: true },
+    );
+
+    const { updateDoc } = await import('firebase/firestore');
+    const camposGravados = updateDoc.mock.calls.flatMap(([, dados]) => Object.keys(dados));
+    expect(camposGravados).toContain('role');
+  });
+
+  it('troca de login zera a reconciliação anterior', async () => {
+    await logarComDrift();
+    expect(JSON.parse(screen.getByTestId('user').textContent).role).toBe('anestesiologista');
+
+    // Outro usuário entra: o papel do anterior não pode vazar para ele.
+    mockSupabaseQuery.maybeSingle.mockResolvedValue(PADRAO_SUPABASE);
+    await act(async () => {
+      await authChangeCallback({ uid: 'u2', email: 'outro@anest.com.br', displayName: 'Outro' });
+    });
+    await act(async () => {
+      snapshotCallback(makeSnap({ uid: 'u2', email: 'outro@anest.com.br', role: 'colaborador', isAdmin: false }, 'u2'));
+    });
+
+    expect(JSON.parse(screen.getByTestId('user').textContent).role).toBe('colaborador');
   });
 });
