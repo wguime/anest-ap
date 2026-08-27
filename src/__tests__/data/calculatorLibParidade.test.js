@@ -86,6 +86,20 @@ describe('APACHE II — o zero é valor, não campo vazio', () => {
     expect(r.risk).toBe('critico');
   });
 
+  // A Glasgow vale 3 a 15 por construção. O input declara `min: 3`, mas `min` no
+  // HTML não impede digitação e o `CalculatorShowcase` não limita o valor — sem
+  // trava, um `0` digitado somaria 15 pontos, quase um terço da escala.
+  it.each([
+    [15, 0],
+    [10, 5],
+    [3, 12],
+    [0, 12],   // abaixo da escala → tratado como 3, não como 15 pontos
+    [-5, 12],
+    [20, 0],   // acima da escala → tratado como 15
+  ])('Glasgow %i soma %i ponto(s)', (glasgow, esperado) => {
+    expect(apache({ ...APACHE_NORMAL, glasgow }).score).toBe(esperado);
+  });
+
   it('a creatinina dobra na insuficiência renal aguda', () => {
     const sem = apache({ ...APACHE_NORMAL, creatinina: 3.5 });
     const com = apache({ ...APACHE_NORMAL, creatinina: 3.5, ira: true });

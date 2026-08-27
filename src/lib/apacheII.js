@@ -108,8 +108,14 @@ function scoreWBC(leuco) {
   return 0;
 }
 
+// A Glasgow vale 3 a 15 POR CONSTRUÇÃO (a soma de três eixos que valem no mínimo
+// 1 cada), então valor fora disso não é paciente, é digitação. Sem esta trava um
+// `0` digitado somava 15 pontos — quase um terço da escala — em silêncio.
+// ⚠️ O input genérico do `CalculatorShowcase` passa `min`/`max` ao DOM mas NÃO
+// limita o que é digitado, e isso vale para as 71 calculadoras.
 function scoreGCS(gcs) {
-  return 15 - gcs;
+  const dentroDaEscala = Math.max(3, Math.min(15, gcs));
+  return 15 - dentroDaEscala;
 }
 
 function scoreChronicHealth(dc) {
