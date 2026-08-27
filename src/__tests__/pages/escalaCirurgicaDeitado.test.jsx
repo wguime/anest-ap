@@ -133,7 +133,14 @@ describe('fila de liberação deitada (dono 26/08)', () => {
     // primeiro filho, e o primeiro filho da SEGUNDA coluna é um card do MEIO da
     // lista — sem isso ele nasceria colado no topo da coluna.
     expect(lista.className).toContain('deitado:space-y-0')
-    expect(lista.className).toContain('mb-2')
+    // ⚠️ o `!` é o que faz a margem EXISTIR. `space-y-0` do Tailwind vira
+    // `.space-y-0 > :not([hidden]) ~ :not([hidden])`, que zera margin-top E
+    // margin-bottom com especificidade (0,3,0); `[&>*]:mb-2` é (0,1,0) e perdia.
+    // Medido no app antes da correção, nos DOIS motores: `margin-bottom: 0px` e
+    // vão de 0px entre TODOS os cards — eles se encostavam, e dois cards de mesmo
+    // fundo colados leem como um só, partido no meio (dono 27/08, foto do
+    // aparelho: "cards truncados"). Sem o `!` a regressão é invisível no código.
+    expect(lista.className).toContain('deitado:!mb-2')
     // em pé continua a coluna única de sempre
     expect(lista.className).toContain('space-y-1.5')
   })

@@ -1342,8 +1342,15 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           `break-inside-avoid` impede um card de ser partido no pé da coluna, e a
           margem passa de `space-y` para `mb`: o `space-y` não põe margem no
           primeiro filho, e o primeiro filho da SEGUNDA coluna é um card do meio
-          da lista — sem isso ele nasceria colado no topo. */}
-      {!semFila && <div className="space-y-1.5 deitado:col-span-full deitado:space-y-0 deitado:columns-2 deitado:gap-2 [&>*]:deitado:mb-2 [&>*]:deitado:break-inside-avoid">
+          da lista — sem isso ele nasceria colado no topo.
+          ⚠️ o `!` do `!mb-2` NÃO é enfeite. O `space-y-0` do Tailwind vira
+          `.space-y-0 > :not([hidden]) ~ :not([hidden])`, que zera margin-top E
+          margin-bottom com especificidade (0,3,0); `[&>*]:mb-2` é (0,1,0) e
+          perdia. Resultado medido no app, nos DOIS motores: `margin-bottom: 0px`
+          e vão de 0px entre TODOS os cards — eles se encostavam, e com o mesmo
+          fundo dois cards colados leem como um só, partido no meio. Foi o
+          "cards truncados" que o dono circulou na foto em 27/08. */}
+      {!semFila && <div className="space-y-1.5 deitado:col-span-full deitado:space-y-0 deitado:columns-2 deitado:gap-2 [&>*]:deitado:!mb-2 [&>*]:deitado:break-inside-avoid">
         {(() => {
           // Está na FILA de liberação? P1/P2 são os plantonistas da noite: nunca
           // entram no "próximo a ser liberado" (pedido do dono 24/07). P3/P4 entram.
