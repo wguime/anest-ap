@@ -277,15 +277,15 @@ export default function Saps3Display() {
         <div className="space-y-3 pl-1">
           <div>
             <label className="text-xs font-medium text-muted-foreground">Idade</label>
-            <Select value={values.idade} onValueChange={(v) => handleChange('idade', v)} options={AGE_OPTIONS} />
+            <Select value={values.idade} onChange={(v) => handleChange('idade', v)} options={AGE_OPTIONS} />
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground">Origem da admissão</label>
-            <Select value={values.origemAdmissao} onValueChange={(v) => handleChange('origemAdmissao', v)} options={ORIGIN_OPTIONS} />
+            <Select value={values.origemAdmissao} onChange={(v) => handleChange('origemAdmissao', v)} options={ORIGIN_OPTIONS} />
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground">Dias de hospital antes da UTI</label>
-            <Select value={values.diasAntesUTI} onValueChange={(v) => handleChange('diasAntesUTI', v)} options={DAYS_OPTIONS} />
+            <Select value={values.diasAntesUTI} onChange={(v) => handleChange('diasAntesUTI', v)} options={DAYS_OPTIONS} />
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Comorbidades</label>
@@ -352,15 +352,15 @@ export default function Saps3Display() {
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground">Motivo da admissão</label>
-            <Select value={values.motivoAdmissao} onValueChange={(v) => handleChange('motivoAdmissao', v)} options={REASON_OPTIONS} />
+            <Select value={values.motivoAdmissao} onChange={(v) => handleChange('motivoAdmissao', v)} options={REASON_OPTIONS} />
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground">Tipo de cirurgia</label>
-            <Select value={values.tipoCirurgia} onValueChange={(v) => handleChange('tipoCirurgia', v)} options={SURGERY_OPTIONS} />
+            <Select value={values.tipoCirurgia} onChange={(v) => handleChange('tipoCirurgia', v)} options={SURGERY_OPTIONS} />
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground">Infecção na admissão</label>
-            <Select value={values.infeccao} onValueChange={(v) => handleChange('infeccao', v)} options={INFECTION_OPTIONS} />
+            <Select value={values.infeccao} onChange={(v) => handleChange('infeccao', v)} options={INFECTION_OPTIONS} />
           </div>
         </div>
       )}
@@ -378,39 +378,39 @@ export default function Saps3Display() {
         <div className="space-y-3 pl-1">
           <div>
             <label className="text-xs font-medium text-muted-foreground">Glasgow (GCS)</label>
-            <Select value={values.glasgow} onValueChange={(v) => handleChange('glasgow', v)} options={GCS_OPTIONS} />
+            <Select value={values.glasgow} onChange={(v) => handleChange('glasgow', v)} options={GCS_OPTIONS} />
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground">Bilirrubina</label>
-            <Select value={values.bilirrubina} onValueChange={(v) => handleChange('bilirrubina', v)} options={BIL_OPTIONS} />
+            <Select value={values.bilirrubina} onChange={(v) => handleChange('bilirrubina', v)} options={BIL_OPTIONS} />
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground">Temperatura</label>
-            <Select value={values.temperatura} onValueChange={(v) => handleChange('temperatura', v)} options={TEMP_OPTIONS} />
+            <Select value={values.temperatura} onChange={(v) => handleChange('temperatura', v)} options={TEMP_OPTIONS} />
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground">Creatinina</label>
-            <Select value={values.creatinina} onValueChange={(v) => handleChange('creatinina', v)} options={CR_OPTIONS} />
+            <Select value={values.creatinina} onChange={(v) => handleChange('creatinina', v)} options={CR_OPTIONS} />
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground">Frequência cardíaca</label>
-            <Select value={values.fc} onValueChange={(v) => handleChange('fc', v)} options={HR_OPTIONS} />
+            <Select value={values.fc} onChange={(v) => handleChange('fc', v)} options={HR_OPTIONS} />
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground">PAS (Pressão arterial sistólica)</label>
-            <Select value={values.pas} onValueChange={(v) => handleChange('pas', v)} options={SBP_OPTIONS} />
+            <Select value={values.pas} onChange={(v) => handleChange('pas', v)} options={SBP_OPTIONS} />
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground">PaO₂/FiO₂ e Ventilação</label>
-            <Select value={values.pao2fio2} onValueChange={(v) => handleChange('pao2fio2', v)} options={PF_OPTIONS} />
+            <Select value={values.pao2fio2} onChange={(v) => handleChange('pao2fio2', v)} options={PF_OPTIONS} />
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground">pH arterial</label>
-            <Select value={values.ph} onValueChange={(v) => handleChange('ph', v)} options={PH_OPTIONS} />
+            <Select value={values.ph} onChange={(v) => handleChange('ph', v)} options={PH_OPTIONS} />
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground">Plaquetas (×10³/µL)</label>
-            <Select value={values.plaquetas} onValueChange={(v) => handleChange('plaquetas', v)} options={PLT_OPTIONS} />
+            <Select value={values.plaquetas} onChange={(v) => handleChange('plaquetas', v)} options={PLT_OPTIONS} />
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground">Vasopressores</label>
