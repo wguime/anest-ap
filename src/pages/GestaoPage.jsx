@@ -52,7 +52,12 @@ export default function GestaoPage({ onNavigate }) {
       {/* deitado: os MESMOS cards em duas colunas — mesma solução da Home.
           Multi-coluna respeita o `mb-3` de cada card e não mexe no DOM;
           `break-inside-avoid` impede um card de partir no pé da coluna. */}
-      <div className="px-4 pt-4 sm:px-5 lg:px-6 xl:px-8 deitado:columns-2 deitado:gap-3 deitado:pt-2 [&>*]:deitado:break-inside-avoid">
+      {/* deitado: os MESMOS cards em duas colunas, preenchidas por LINHA — mesma
+          regra da Home. ⚠️ era multi-coluna e o dono apontou (26/08) que os cards
+          ficavam assimétricos: o fluxo por coluna enchia a esquerda com os dois
+          cards altos e jogava o resto para a direita, sem nenhuma linha se
+          alinhar. Em grid, cada linha alinha o topo dos dois cards. */}
+      <div className="px-4 pt-4 sm:px-5 lg:px-6 xl:px-8 deitado:grid deitado:grid-cols-2 deitado:gap-3 deitado:pt-2 deitado:items-start [&>*]:deitado:mb-0">
         {/* Card: Notificações e Denúncias — variant "solid" (dono 19/08). É o único
             cartão pintado da aba: os três eram idênticos e ninguém achava o canal. */}
         {canAccessCard('incidentes') && (

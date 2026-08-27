@@ -64,9 +64,11 @@ function BottomNav({ items = [], onItemClick, className, ...props }) {
     >
       <div className={cn(
         "flex items-center justify-around max-w-lg mx-auto",
-        // deitado: mesma fileira, outro eixo — e sem o teto de largura, que na
-        // vertical viraria teto de ALTURA e amontoaria os quatro itens no topo.
-        "deitado:flex-col deitado:justify-start deitado:gap-1 deitado:max-w-none deitado:h-full deitado:pt-1"
+        // deitado: mesma fileira, outro eixo. `justify-around` é o MESMO
+        // espaçamento do modo em pé — os quatro itens ficam simétricos entre si
+        // e em relação às bordas (dono 26/08: "os ícones ficam amontoados no
+        // topo"). Sem o teto de largura, que na vertical viraria teto de altura.
+        "deitado:flex-col deitado:justify-around deitado:max-w-none deitado:h-full"
       )}>
         {items.map((item, index) => {
           const isActive = Boolean(item.active)
