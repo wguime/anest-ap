@@ -22,7 +22,18 @@ const bibliotecaItems = [
 // (dono 27/08: "os cards ficam simétricos e quadrados"). O `min-h-0` é o que tira
 // os 140px de altura mínima do WidgetCard — sem ele o quadrado de ~134px não
 // acontece e a fileira sai desalinhada.
-const QUADRADO_DEITADO = 'deitado:col-span-2 deitado:aspect-square deitado:min-h-0'
+const QUADRADO_DEITADO = [
+  'deitado:col-span-2 deitado:aspect-square deitado:min-h-0',
+  // ⚠️ o WidgetCard empurra o texto para a BASE com `mt-auto` — desenho do
+  // retrato, onde o cartão é mais alto que o conteúdo. Dentro de um quadrado de
+  // ~134px isso deixa o nome grudado na borda de baixo (dono 27/08, foto do
+  // aparelho). Aqui ele volta a descer do ícone, com respiro próprio.
+  '[&_.mt-auto]:deitado:mt-3',
+  // ⚠️ e a LEGENDA sai: em ~102px úteis ela já vinha cortada ("Gestão da…") e o
+  // cartão tem `overflow-hidden`, então no aparelho ela nem aparecia inteira.
+  // Ela repete o título logo acima ("Qualidade / Gestão da qualidade").
+  '[&_[data-slot=widget-card-subtitle]]:deitado:hidden',
+].join(' ')
 
 export default function GestaoPage({ onNavigate }) {
   useEffect(() => {

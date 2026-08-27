@@ -76,19 +76,44 @@
  * de a viewport ter as medidas novas, e decidir em JS fazia a tela pular.
  */
 
+/* ⚠️ LARGURA DA FAIXA LATERAL — um token só, porque quatro lugares precisam
+   concordar: a própria faixa, o recuo do body e os dois elementos `fixed` que
+   não enxergam esse recuo (cabeçalho de página e banner de rede).
+   Ela SOMA a área segura da esquerda: no iPhone deitado com a ilha/entalhe do
+   lado esquerdo, `env(safe-area-inset-left)` vale ~59px. Com a faixa fixa em
+   76px e o body recuando 76+59, sobrava um vão de 59px entre a borda da faixa e
+   o começo dos cards, e os ícones ficavam espremidos em 76−59=17px — foi o
+   "barra lateral cortada" e o "cards não ajustados à esquerda" que o dono
+   fotografou no aparelho em 27/08. Em pé, no simulador e no desktop o `env()`
+   é 0 e o token vale exatamente 76px, então nada muda. */
+:root {
+  --faixa-lateral: calc(76px + env(safe-area-inset-left, 0px));
+}
+
 /* Deitado a navegação sai de baixo e vira faixa lateral: a reserva de altura
    que cada página faz para a barra inferior (pb-28 e parentes, 183 usos) deixa
    de fazer sentido e viraria um terço de tela vazio no fim do scroll. */
-@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+/* ⚠️ esta condição tem de ser IDÊNTICA à da variante `deitado:` do
+   tailwind.config.js — são as duas metades da mesma regra. O `max-height: 500px`
+   saiu em 27/08 para o modo valer também em tablet (ver o porquê no config). */
+@media (orientation: landscape) and (pointer: coarse) {
   .pb-28, .pb-24, .pb-32 { padding-bottom: 0.75rem; }
 
-  /* O conteúdo de TODA página recua os 76px da faixa lateral de uma vez só, no
-     body — em vez de um `deitado:pl-` em cada uma das 137 páginas. Vale só para
-     o fluxo normal: `position: fixed` não enxerga padding do body, e é por isso
-     que header e banner recuam por conta própria, com a variante `deitado:`. */
+  /* O conteúdo de TODA página recua a faixa lateral de uma vez só, no body — em
+     vez de um `deitado:pl-` em cada uma das 137 páginas. Vale só para o fluxo
+     normal: `position: fixed` não enxerga padding do body, e é por isso que
+     header e banner recuam por conta própria, com a variante `deitado:`. */
   body {
     padding-left: 76px;
-    padding-left: max(76px, calc(76px + env(safe-area-inset-left, 0px)));
+    padding-left: var(--faixa-lateral);
+  }
+
+  /* ⚠️ o Tailwind emite só `break-inside: avoid`, e o WebKit antigo obedece pela
+     propriedade com prefixo. Sem ela um card da fila pode ser PARTIDO no pé da
+     coluna e continuar no topo da outra — no Chromium não acontece, e o aparelho
+     do dono é iPhone. Custa uma linha e não muda nada onde já funciona. */
+  [class*="deitado:columns-2"] > * {
+    -webkit-column-break-inside: avoid;
   }
 }
 

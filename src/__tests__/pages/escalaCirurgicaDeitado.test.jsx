@@ -82,6 +82,16 @@ const escalaComSemAnest = {
   ...escala,
   casos: [...escala.casos, caso('Sala 9', 0, '?', 'Ana P', '07:45', { semAnestesista: true })],
 }
+// ⚠️ DOIS alertas de propósito: com um só, "o primeiro fica ao lado" e "todos
+// ficam ao lado" dão o mesmo resultado e qualquer regra passa.
+const escalaComDoisSemAnest = {
+  ...escala,
+  casos: [
+    ...escala.casos,
+    caso('Sala 9', 0, '?', 'Ana P', '07:45', { semAnestesista: true }),
+    caso('Sala 10', 0, '?', 'Bento R', '08:10', { semAnestesista: true }),
+  ],
+}
 
 const montar = (props = {}, e = escala) => render(
   <LiberacoesView escala={e} hospital="hro" hospitalLabel="HRO" turno="matutino"
@@ -215,6 +225,32 @@ describe('fila de liberação deitada (dono 26/08)', () => {
     // aqui os invólucros voltam a ser fileiras da coluna 1
     expect(historico.parentElement.className).toContain('deitado:col-start-1')
     expect(historico.parentElement.className).not.toContain('deitado:contents')
+  })
+
+  it('deitado só o PRIMEIRO alerta fica ao lado dos botões; os outros vão à largura inteira', () => {
+    // dono 27/08, foto do aparelho: com três alertas empilhados na metade
+    // direita, os botões esticavam junto e viravam quatro retângulos enormes.
+    // Agora a metade esquerda tem a altura de UM alerta.
+    montar({ onGarantirEscala: () => {}, onAddAjuda: () => {}, onDefinirCasos: () => {} }, escalaComDoisSemAnest)
+    const alertas = screen.getAllByLabelText(/^Definir anestesista de /)
+    expect(alertas).toHaveLength(2)
+    const blocoDoLado = alertas[0].closest('[class*="deitado:col-start-2"]')
+    expect(blocoDoLado).toBeTruthy()
+    // ⚠️ é o `row-span-2` que faz as duas metades terminarem na mesma linha
+    expect(blocoDoLado.className).toContain('deitado:row-span-2')
+    // o segundo NÃO está nesse bloco — está num que ocupa a largura toda
+    expect(blocoDoLado.contains(alertas[1])).toBe(false)
+    expect(alertas[1].closest('[class*="deitado:col-span-full"]')).toBeTruthy()
+  })
+
+  it('INVARIANTE: em pé a lista continua colada, como quando era um bloco só', () => {
+    // partir em dois blocos põe entre eles o `space-y-3` da raiz (12px) no lugar
+    // do `space-y-1.5` (6px) da lista — o `!mt-1.5` repõe o espaçamento exato
+    montar({ onDefinirCasos: () => {} }, escalaComDoisSemAnest)
+    const alertas = screen.getAllByLabelText(/^Definir anestesista de /)
+    const blocoDeBaixo = alertas[1].closest('[class*="deitado:col-span-full"]')
+    expect(blocoDeBaixo.className).toContain('!mt-1.5')
+    expect(blocoDeBaixo.className).toContain('deitado:!mt-0')
   })
 
   it('o rótulo ENCURTA deitado, e o nome inteiro fica para o leitor de tela', () => {

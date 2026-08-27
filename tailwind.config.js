@@ -13,18 +13,29 @@ export default {
       lg: "768px",
       xl: "1024px",
       "2xl": "1440px",
-      // ⚠️ `deitado` NÃO é breakpoint de largura: é o CELULAR na horizontal —
-      // largura sobrando e ALTURA curta (dono 26/08, "que o app fique
-      // organizado na posição horizontal"). `max-height` separa celular de
-      // tablet, onde paisagem é uso normal e nada muda; `pointer: coarse` tira
-      // o desktop, cuja janela não gira. Fonte única do modo horizontal.
+      // ⚠️ `deitado` NÃO é breakpoint de largura: é o APARELHO DE TOQUE na
+      // horizontal — largura sobrando (dono 26/08, "que o app fique organizado
+      // na posição horizontal"). `pointer: coarse` tira o desktop, cuja janela
+      // não gira. Fonte única do modo horizontal.
+      // ⚠️ o `max-height: 500px` SAIU em 27/08, a pedido do dono ("modificações
+      // não foram implementadas em tablets"). Ele separava celular de tablet, e
+      // era herança da decisão de 25/08 — que era sobre TRAVAR A ROTAÇÃO, não
+      // sobre o arranjo: lá o pedido era que o tablet continuasse girando, e
+      // continua. O que muda agora é que ele também se REORGANIZA ao girar, que
+      // é o oposto de travar. No iPad deitado a barra de baixo virava uma faixa
+      // de 1194px de largura e o conteúdo ficava numa coluna de 960 centrada,
+      // com o resto vazio.
+      // ⚠️ o que era compactação de ALTURA (cabeçalho de 44px, controles numa
+      // linha só) continua valendo no tablet, onde sobra altura: é mais denso do
+      // que precisaria ser, mas é o MESMO app — ramificar por tamanho aqui
+      // criaria um terceiro desenho para manter.
       // ⚠️ tem de ser CSS, nunca JS: o `orientationchange` do iOS chega ANTES
       // de a viewport virar, e decidir em JS fazia a tela pular (26/08).
       // ⚠️ POR ÚLTIMO de propósito: o Tailwind emite as media queries na ordem
       // desta lista, e empate de especificidade é decidido por quem vem depois.
       // Declarada antes, `deitado:grid-cols-2` perdia para `lg:grid-cols-3` e a
       // grade da Gestão truncava os rótulos — defeito visto no app.
-      deitado: { raw: "(orientation: landscape) and (max-height: 500px) and (pointer: coarse)" },
+      deitado: { raw: "(orientation: landscape) and (pointer: coarse)" },
     },
     container: {
       center: true,

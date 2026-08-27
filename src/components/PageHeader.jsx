@@ -21,7 +21,7 @@ export default function PageHeader({
       className={[
         'fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm' +
         // deitado: a faixa de navegação ocupa os 76px da esquerda
-        ' deitado:left-[76px]',
+        ' deitado:left-[var(--faixa-lateral)]',
         className,
       ].filter(Boolean).join(' ')}
     >

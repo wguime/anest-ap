@@ -640,6 +640,63 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // se dissolvem e os botões entram na fileira única
   const posAcoesTopo = temAlertaSemAnest ? 'deitado:col-start-1 deitado:row-start-1' : 'deitado:contents'
 
+  const cartaoSemAnestesista = (i, k) => {
+    // Tocar no alerta define o responsável (pedido do dono 26/07) — o
+    // caso sai da lista sozinho, aqui e na Completa (mesma fonte).
+    const definivel = canEdit && !!i.id && !!onDefinirCasos
+    const Wrapper = definivel ? 'button' : 'div'
+    return (
+      <Wrapper
+        key={i.id || k}
+        {...(definivel ? {
+          type: 'button',
+          onClick: () => { setAlvoSemAnest(i); setSemAnestUid('') },
+          'aria-label': `Definir anestesista de ${i.cirurgiao || i.sala || 'procedimento sem anestesista'}`,
+        } : {})}
+        className={[
+          'w-full rounded-xl border border-warning/50 bg-warning/10 p-2.5 text-left text-sm',
+          'dark:border-warning/60 dark:bg-warning/15',
+          definivel && 'active:opacity-70',
+        ].filter(Boolean).join(' ')}
+      >
+        {/* TEXTO À ESQUERDA, AÇÃO À DIREITA (dono 24/08, comparando a
+            tela com o protótipo aprovado): a pastilha ocupava uma
+            TERCEIRA linha só para ela e o alerta ia a 107px medidos.
+            Inline, volta a ~74px. O badge "Sem anestesista" saiu junto:
+            o título logo acima já diz isso e ele só empurrava a sala
+            para a esquerda. */}
+        {/* A AÇÃO FICA ABAIXO DO TEXTO, NOS DOIS MODOS (dono 24/08,
+            escolhendo entre três protótipos). A pastilha inline comia
+            48% da linha — 183px de 378 — e sobravam 195px para
+            "11:00 · Unimed · CO - Sala 3 · Cesariana · Carlos Yora".
+            Abaixo, o texto recupera a linha inteira (388px medidos) ao
+            custo de 22px de altura, e o alerta volta a ser UM código
+            só: era pastilha no sábado e frase na segunda, para o mesmo
+            gesto. O card inteiro continua sendo o alvo. */}
+        <div className="flex items-center gap-2">
+          <span className="font-bold tabular-nums">{i.hora || '—'}</span>
+          {hospitalDoAlerta(i.id) && <span className="shrink-0 text-xs font-semibold text-muted-foreground">{hospitalDoAlerta(i.id)}</span>}
+          {i.sala && <span className="min-w-0 truncate font-semibold" title={i.sala}>{salaLiberacao(i.sala)}</span>}
+        </div>
+        {(i.procedimento || i.cirurgiao) && (
+          <p className="mt-0.5 text-foreground/90">
+            {[i.procedimento, i.cirurgiao].filter(Boolean).join(' · ')}
+          </p>
+        )}
+        {definivel && (
+          <p className="mt-1 flex items-center gap-1 text-xs font-medium text-primary">
+            <UserPlus className="h-3 w-3 shrink-0" /> Toque para definir o anestesista
+          </p>
+        )}
+      </Wrapper>
+            )
+  }
+
+  // ⚠️ deitado o 1º alerta vai ao lado dos botões e o resto desce inteiro; em pé
+  // a lista é a mesma de sempre, só partida em dois blocos coladinhos.
+  const alertasAoLado = temAlertaSemAnest ? semAnestesista.slice(0, 1) : []
+  const alertasAbaixo = temAlertaSemAnest ? semAnestesista.slice(1) : []
+
   const acoesTopo = canEdit && (podeAddCaso || fase !== 'zerada') ? (
     <div className={`flex items-stretch gap-2 ${posAcoesTopo}`}>
       {podeAddCaso && (
@@ -1247,68 +1304,29 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       {/* Procedimentos sem anestesista NO TOPO (pedido do dono 24/07): o plantonista
           precisa cobrir. Somem sozinhos ao serem marcados como terminados/suspensos
           (concluído é filtrado em gerarColunaLiberacao). Hora em destaque, por horário. */}
-      {/* deitado: metade DIREITA, atravessando as duas fileiras de botões — é o
-          `row-span-2` que faz o bloco de ações e o alerta terminarem na MESMA
-          linha (dono 27/08: "deixe os cards alinhados"). Sem ele o alerta é mais
-          alto e as duas metades acabavam em alturas diferentes. */}
-      {fase !== 'zerada' && semAnestesista.length > 0 && (
+      {/* ⚠️ deitado o PRIMEIRO alerta fica na metade direita, ao lado dos botões, e
+          os DEMAIS descem para a largura inteira (dono 27/08: "os botões à esquerda
+          ocupam a altura de UM alerta; os outros ocupam a largura toda"). Antes a
+          coluna inteira de alertas ficava à direita e, com três deles na tela, os
+          botões esticavam junto e viravam quatro retângulos enormes — foi o que ele
+          fotografou no aparelho. Com um alerta só ali, a altura da metade esquerda
+          volta a ser a de um alerta.
+          Em pé nada muda: os dois blocos ficam um debaixo do outro, e o `!mt-1.5` do
+          segundo repõe exatamente o espaçamento de 6px que a lista tinha quando era
+          um bloco só (o `space-y-3` da raiz daria 12px). */}
+      {temAlertaSemAnest && (
         <div className="deitado:col-start-2 deitado:row-start-1 deitado:row-span-2 deitado:min-w-0">
           <p className="mb-1.5 flex items-center gap-1 px-1 text-xs font-semibold text-warning">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Procedimentos sem anestesista
           </p>
           <div className="space-y-1.5">
-            {semAnestesista.map((i, k) => {
-              // Tocar no alerta define o responsável (pedido do dono 26/07) — o
-              // caso sai da lista sozinho, aqui e na Completa (mesma fonte).
-              const definivel = canEdit && !!i.id && !!onDefinirCasos
-              const Wrapper = definivel ? 'button' : 'div'
-              return (
-                <Wrapper
-                  key={i.id || k}
-                  {...(definivel ? {
-                    type: 'button',
-                    onClick: () => { setAlvoSemAnest(i); setSemAnestUid('') },
-                    'aria-label': `Definir anestesista de ${i.cirurgiao || i.sala || 'procedimento sem anestesista'}`,
-                  } : {})}
-                  className={[
-                    'w-full rounded-xl border border-warning/50 bg-warning/10 p-2.5 text-left text-sm',
-                    'dark:border-warning/60 dark:bg-warning/15',
-                    definivel && 'active:opacity-70',
-                  ].filter(Boolean).join(' ')}
-                >
-                  {/* TEXTO À ESQUERDA, AÇÃO À DIREITA (dono 24/08, comparando a
-                      tela com o protótipo aprovado): a pastilha ocupava uma
-                      TERCEIRA linha só para ela e o alerta ia a 107px medidos.
-                      Inline, volta a ~74px. O badge "Sem anestesista" saiu junto:
-                      o título logo acima já diz isso e ele só empurrava a sala
-                      para a esquerda. */}
-                  {/* A AÇÃO FICA ABAIXO DO TEXTO, NOS DOIS MODOS (dono 24/08,
-                      escolhendo entre três protótipos). A pastilha inline comia
-                      48% da linha — 183px de 378 — e sobravam 195px para
-                      "11:00 · Unimed · CO - Sala 3 · Cesariana · Carlos Yora".
-                      Abaixo, o texto recupera a linha inteira (388px medidos) ao
-                      custo de 22px de altura, e o alerta volta a ser UM código
-                      só: era pastilha no sábado e frase na segunda, para o mesmo
-                      gesto. O card inteiro continua sendo o alvo. */}
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold tabular-nums">{i.hora || '—'}</span>
-                    {hospitalDoAlerta(i.id) && <span className="shrink-0 text-xs font-semibold text-muted-foreground">{hospitalDoAlerta(i.id)}</span>}
-                    {i.sala && <span className="min-w-0 truncate font-semibold" title={i.sala}>{salaLiberacao(i.sala)}</span>}
-                  </div>
-                  {(i.procedimento || i.cirurgiao) && (
-                    <p className="mt-0.5 text-foreground/90">
-                      {[i.procedimento, i.cirurgiao].filter(Boolean).join(' · ')}
-                    </p>
-                  )}
-                  {definivel && (
-                    <p className="mt-1 flex items-center gap-1 text-xs font-medium text-primary">
-                      <UserPlus className="h-3 w-3 shrink-0" /> Toque para definir o anestesista
-                    </p>
-                  )}
-                </Wrapper>
-              )
-            })}
+            {alertasAoLado.map(cartaoSemAnestesista)}
           </div>
+        </div>
+      )}
+      {alertasAbaixo.length > 0 && (
+        <div className="!mt-1.5 space-y-1.5 deitado:!mt-0 deitado:col-span-full">
+          {alertasAbaixo.map((i, k) => cartaoSemAnestesista(i, k + 1))}
         </div>
       )}
       {semFila && <div className="deitado:col-span-full">{estadoVazio}</div>}

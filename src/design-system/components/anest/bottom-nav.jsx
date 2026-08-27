@@ -43,7 +43,7 @@ function BottomNav({ items = [], onItemClick, className, ...props }) {
         // é o que falta na horizontal — 72px embaixo custam 18% da tela —, e
         // largura é o que sobra. Não é componente novo: mesmos itens, mesmos
         // ícones, mesmos rótulos, mesma pintura; muda o eixo.
-        "deitado:top-0 deitado:right-auto deitado:w-[76px] deitado:h-full",
+        "deitado:top-0 deitado:right-auto deitado:w-[var(--faixa-lateral)] deitado:h-full",
         "deitado:pt-[max(0.625rem,env(safe-area-inset-top,0.625rem))] deitado:px-1",
         "deitado:pb-[max(0.625rem,env(safe-area-inset-bottom,0.625rem))]",
         "deitado:pl-[max(0.25rem,env(safe-area-inset-left,0.25rem))]",
