@@ -31,6 +31,20 @@ const ALTURA_FILTRO = 'min-h-[34px]'
 const FONTE_FILTRO = 'text-[12px]'
 
 /**
+ * deitado, cada controle cresce na PROPORÇÃO do número de opções que carrega —
+ * assim toda opção da barra fica com a mesma largura, venha ela do turno, do
+ * hospital ou das abas (dono 26/08: "os seletores ficaram assimétricos").
+ * Antes as abas levavam toda a sobra da linha e ficavam com o dobro da largura
+ * por opção dos trilhos ao lado. Classes literais porque o Tailwind lê o código
+ * como texto: `deitado:flex-[${n}]` não seria gerado.
+ */
+const CRESCE = {
+  1: 'deitado:flex-[1]', 2: 'deitado:flex-[2]', 3: 'deitado:flex-[3]',
+  4: 'deitado:flex-[4]', 5: 'deitado:flex-[5]', 6: 'deitado:flex-[6]',
+}
+const cresce = (n) => `deitado:min-w-0 ${CRESCE[n] || 'deitado:flex-[3]'}`
+
+/**
  * Trilho: fundo único com o item ativo em tinta translúcida do verde.
  * Um trilho = um eixo de escolha (data, turno, hospital).
  */
@@ -77,7 +91,7 @@ export default function BarraControles({
 
   return (
     <div className="space-y-2 deitado:flex deitado:items-center deitado:gap-2 deitado:space-y-0">
-      <div className="flex items-stretch gap-2 deitado:shrink-0">
+      <div className={`flex items-stretch gap-2 ${cresce((temEscolhaDeData ? opcoesData.length : 0) + turnoOpcoes.length)}`}>
         {temEscolhaDeData && (
           <Trilho
             className="shrink-0"
@@ -99,7 +113,7 @@ export default function BarraControles({
           três hospitais — o seletor não filtraria nada e só faria perguntar qual
           escolher. Quem passa `null` está dizendo "não há esse eixo aqui". */}
       {hospitalOpcoes && (
-        <Trilho className="deitado:shrink-0" options={hospitalOpcoes} value={hospital} onChange={onEscolherHospital} />
+        <Trilho className={cresce(hospitalOpcoes.length)} options={hospitalOpcoes} value={hospital} onChange={onEscolherHospital} />
       )}
 
       {/* Abas em verde sólido (dono 24/07) — separa "o que vejo" de "o que filtro".
@@ -110,10 +124,15 @@ export default function BarraControles({
           value={aba}
           onChange={onEscolherAba}
           variant="filled"
-          // deitado as abas ficam com a sobra da linha (são o controle mais
-          // tocado) e os botões descem de 42px para 34px de corpo — o mesmo piso
-          // dos trilhos ao lado, para a linha inteira fechar em 42px.
-          className="deitado:min-w-0 deitado:flex-1 [&>button]:deitado:min-h-[34px] [&>button]:deitado:py-1"
+          // deitado os botões descem de 42px para 34px de corpo — o mesmo piso
+          // dos trilhos ao lado, para a linha inteira fechar em 42px — e o corpo
+          // do texto passa a ser o MESMO 12px deles (dono 26/08: "diferença de
+          // tamanhos nas grafias"). Em pé as abas seguem maiores de propósito:
+          // são o controle mais tocado, e lá elas têm uma faixa só para si. Aqui
+          // ficam lado a lado com os filtros, e a diferença de corpo lia como
+          // desalinhamento. O que continua separando "o que vejo" de "o que
+          // filtro" é o verde SÓLIDO da aba ativa, não o tamanho da letra.
+          className={`${cresce(abaOpcoes.length)} [&>button]:deitado:min-h-[34px] [&>button]:deitado:py-1 [&>button]:deitado:text-[12px]`}
         />
       )}
     </div>

@@ -621,7 +621,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // conteúdo. O `aria-label` de cada botão continua dizendo o que ele faz, e no
   // retrato nada muda.
   const acoesTopo = canEdit && (podeAddCaso || fase !== 'zerada') ? (
-    <div className="flex items-stretch gap-2">
+    <div className="flex items-stretch gap-2 deitado:order-3 deitado:self-center">
       {podeAddCaso && (
         <Button
           size="sm" variant="outline" className={`min-w-0 flex-1 ${BOTAO_ACAO_DEITADO}`}
@@ -1096,7 +1096,14 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
        DOM sempre que não há recado na tela (o caso comum) e, com os botões em
        ícone e largura automática, fecham UMA linha de 34px no lugar de duas de
        36px cada. Tudo que precisa da largura inteira (recado, alerta de sem
-       anestesista, a fila) carrega `deitado:w-full` e ganha a própria linha. */
+       a fila) carrega `deitado:w-full` e ganha a própria linha.
+       ⚠️ A ORDEM DE EXIBIÇÃO deitada é dada por `order` (dono 26/08, 2ª rodada:
+       "esses botões ficaram esquisitos"): os ícones vêm ANTES do alerta no DOM e
+       apareciam como dois botões soltos no canto de cima à esquerda, ao lado de
+       um cartão de aviso mais alto que eles. Deitado o alerta ABRE a linha e os
+       ícones ficam depois dele, centrados na altura — ação ao lado do conteúdo a
+       que ela responde, em vez de flutuando acima. Em pé o DOM manda, como
+       sempre. */
     <div className="space-y-3 deitado:flex deitado:flex-wrap deitado:items-start deitado:gap-2 deitado:space-y-0">
       {/* Não desenha nada: é o disparo da push de "tempo estourado" (dono 24/08).
           Vive como componente porque a lista só existe depois do guard de
@@ -1140,7 +1147,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       {avisos.map((a) => (
         <div
           key={a.id}
-          className="rounded-2xl border border-category-purple/45 bg-category-purple-bg px-3 py-2.5 deitado:w-full"
+          className="rounded-2xl border border-category-purple/45 bg-category-purple-bg px-3 py-2.5 deitado:order-1 deitado:w-full"
         >
           <div className="flex items-center gap-2">
             <div className="min-w-0 flex-1">
@@ -1183,7 +1190,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
 
       {/* MANDAR é só do plantonista; LER o histórico é de todo mundo (dono 17/08).
           O plantonista vê os dois botões na mesma linha. */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 deitado:order-4 deitado:self-center">
         {canEdit && souPlantonista && podeAvisar && (
           <Button size="sm" variant="outline" className={`min-w-0 flex-1 ${BOTAO_ACAO_DEITADO}`}
             aria-label="Mensagem para equipe" onClick={() => setAvisoSheet(true)}>
@@ -1203,7 +1210,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           eles deixavam uma faixa de 44px quase vazia, e cada faixa aqui é altura
           que sai da fila. O bloco continua inteiro — só ocupa a sobra da linha. */}
       {fase !== 'zerada' && semAnestesista.length > 0 && (
-        <div className="deitado:min-w-0 deitado:flex-1">
+        <div className="deitado:order-2 deitado:min-w-0 deitado:flex-1">
           <p className="mb-1.5 flex items-center gap-1 px-1 text-xs font-semibold text-warning">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Procedimentos sem anestesista
           </p>
@@ -1262,7 +1269,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           </div>
         </div>
       )}
-      {semFila && <div className="deitado:w-full">{estadoVazio}</div>}
+      {semFila && <div className="deitado:order-5 deitado:w-full">{estadoVazio}</div>}
 
       {/* div simples de propósito: animação de layout + reload do realtime moviam a
           linha sob o dedo (mesma classe do bug da inbox, fix 956aedd) */}
@@ -1276,7 +1283,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           margem passa de `space-y` para `mb`: o `space-y` não põe margem no
           primeiro filho, e o primeiro filho da SEGUNDA coluna é um card do meio
           da lista — sem isso ele nasceria colado no topo. */}
-      {!semFila && <div className="space-y-1.5 deitado:w-full deitado:space-y-0 deitado:columns-2 deitado:gap-2 [&>*]:deitado:mb-2 [&>*]:deitado:break-inside-avoid">
+      {!semFila && <div className="space-y-1.5 deitado:order-5 deitado:w-full deitado:space-y-0 deitado:columns-2 deitado:gap-2 [&>*]:deitado:mb-2 [&>*]:deitado:break-inside-avoid">
         {(() => {
           // Está na FILA de liberação? P1/P2 são os plantonistas da noite: nunca
           // entram no "próximo a ser liberado" (pedido do dono 24/07). P3/P4 entram.
