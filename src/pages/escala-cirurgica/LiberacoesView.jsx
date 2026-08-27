@@ -50,11 +50,6 @@ const SELO_NOTURNO = 'gap-1 border-transparent bg-primary text-primary-foregroun
 // "próximo a ser liberado" (pedido do dono 24/07). P3/P4 seguem a lógica do dia.
 const SELO_SEM_PROXIMO = new Set(['P1', 'P2'])
 
-// Botão de ação com o rótulo ESCONDIDO no celular deitado (dono 26/08): fica o
-// ícone num alvo de 44px. Quatro botões de largura inteira empilhados custavam
-// 84px de uma tela de 390 — atalho não pode competir com a fila. O texto segue
-// no DOM (leitor de tela e teste continuam achando) e o retrato não muda.
-const BOTAO_ACAO_DEITADO = 'deitado:w-11 deitado:flex-none deitado:px-0 deitado:gap-0'
 
 // `meuUid`/`meuAlias`/`podeGerenciar` saíram das props em 29/07: existiam só para
 // responder "sou eu quem comanda a fila?", que era a permissão da SUBSTITUIÇÃO de
@@ -616,29 +611,31 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // Ações do topo (dono 16/08: "mesmo sem casos publicados adicione a opção de
   // adicionar caso e ajuda") — aparecem TAMBÉM quando não há fila nenhuma,
   // que é o caso do Materno em quase todo dia.
-  // ⚠️ deitado o rótulo sai e fica o ÍCONE (`BOTAO_ACAO_DEITADO`): as duas
-  // fileiras de ação custavam 84px de uma tela de 390 e são atalhos, não o
-  // conteúdo. O `aria-label` de cada botão continua dizendo o que ele faz, e no
-  // retrato nada muda.
+  // deitado os dois ficam lado a lado na metade esquerda, com ~177px cada — daí
+  // o RÓTULO continuar visível (a versão só-ícone foi recusada pelo dono em
+  // 27/08). Segue em FLEX e não em grade de duas colunas: o `flex-1` de cada
+  // botão já os deixa exatamente iguais, e quando existe só um deles (usuário
+  // sem "Adicionar caso") ele ocupa a metade inteira em vez de deixar meia
+  // coluna vazia ao lado.
   const acoesTopo = canEdit && (podeAddCaso || fase !== 'zerada') ? (
-    <div className="flex items-stretch gap-2 deitado:order-3 deitado:self-center">
+    <div className="flex items-stretch gap-2 deitado:col-start-1 deitado:row-start-1">
       {podeAddCaso && (
         <Button
-          size="sm" variant="outline" className={`min-w-0 flex-1 ${BOTAO_ACAO_DEITADO}`}
+          size="sm" variant="outline" className="min-w-0 flex-1 deitado:h-auto"
           aria-label="Adicionar caso (urgência/encaixe)"
           disabled={criandoEscala}
           onClick={abrirAddCaso}
         >
-          <Plus className="w-4 h-4 shrink-0" /> <span className="deitado:hidden">Adicionar caso</span>
+          <Plus className="w-4 h-4 shrink-0" /> Adicionar caso
         </Button>
       )}
       {fase !== 'zerada' && onAddAjuda && (
         <Button
-          size="sm" variant="outline" className={`min-w-0 flex-1 ${BOTAO_ACAO_DEITADO}`}
+          size="sm" variant="outline" className="min-w-0 flex-1 deitado:h-auto"
           aria-label="Adicionar anestesista (ajuda)"
           onClick={() => setAjudaSheet(true)}
         >
-          <UserPlus className="w-4 h-4 shrink-0" /> <span className="deitado:hidden">Adicionar ajuda</span>
+          <UserPlus className="w-4 h-4 shrink-0" /> Adicionar ajuda
         </Button>
       )}
     </div>
@@ -1091,20 +1088,19 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   }
 
   return (
-    /* deitado (dono 26/08): a coluna vira uma linha que QUEBRA. As duas fileiras
-       de ação — "Adicionar caso/ajuda" e "Mensagem/Histórico" — são vizinhas no
-       DOM sempre que não há recado na tela (o caso comum) e, com os botões em
-       ícone e largura automática, fecham UMA linha de 34px no lugar de duas de
-       36px cada. Tudo que precisa da largura inteira (recado, alerta de sem
-       a fila) carrega `deitado:w-full` e ganha a própria linha.
-       ⚠️ A ORDEM DE EXIBIÇÃO deitada é dada por `order` (dono 26/08, 2ª rodada:
-       "esses botões ficaram esquisitos"): os ícones vêm ANTES do alerta no DOM e
-       apareciam como dois botões soltos no canto de cima à esquerda, ao lado de
-       um cartão de aviso mais alto que eles. Deitado o alerta ABRE a linha e os
-       ícones ficam depois dele, centrados na altura — ação ao lado do conteúdo a
-       que ela responde, em vez de flutuando acima. Em pé o DOM manda, como
-       sempre. */
-    <div className="space-y-3 deitado:flex deitado:flex-wrap deitado:items-start deitado:gap-2 deitado:space-y-0">
+    /* ⚠️ deitado a coluna vira uma GRADE DE DUAS COLUNAS (dono 27/08): as ações
+       ocupam a metade ESQUERDA e "procedimentos sem anestesista" a metade
+       direita. Duas formas já foram recusadas antes desta — ícone solto no canto
+       de cima à esquerda, e depois ícone no fim da linha do alerta —, e o que as
+       duas tinham em comum era o botão não ter lugar PRÓPRIO: ele ia parar onde
+       sobrasse espaço naquele momento da tela. Aqui cada metade é uma coluna fixa.
+       As colunas das duas primeiras FILEIRAS são ocupadas explicitamente (ações à
+       esquerda, alerta atravessando as duas à direita), então tudo que precisa da
+       largura inteira — recado, fila, estado vazio — leva `col-span-2` e o
+       posicionamento automático o joga para a 3ª fileira em diante: um item de
+       duas colunas não cabe numa sobra de uma coluna. É isso que mantém a coisa
+       de pé quando não há ações (usuário sem edição) ou quando não há alerta. */
+    <div className="space-y-3 deitado:grid deitado:grid-cols-2 deitado:items-stretch deitado:gap-2 deitado:space-y-0">
       {/* Não desenha nada: é o disparo da push de "tempo estourado" (dono 24/08).
           Vive como componente porque a lista só existe depois do guard de
           `rosterLoading` lá em cima — ver o porquê no próprio arquivo. */}
@@ -1147,7 +1143,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       {avisos.map((a) => (
         <div
           key={a.id}
-          className="rounded-2xl border border-category-purple/45 bg-category-purple-bg px-3 py-2.5 deitado:order-1 deitado:w-full"
+          className="rounded-2xl border border-category-purple/45 bg-category-purple-bg px-3 py-2.5 deitado:col-span-2"
         >
           <div className="flex items-center gap-2">
             <div className="min-w-0 flex-1">
@@ -1190,27 +1186,43 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
 
       {/* MANDAR é só do plantonista; LER o histórico é de todo mundo (dono 17/08).
           O plantonista vê os dois botões na mesma linha. */}
-      <div className="flex gap-2 deitado:order-4 deitado:self-center">
+      {/* ⚠️ deitado esta é a 2ª FILEIRA da coluna esquerda — e sobe para a 1ª
+          quando não há "Adicionar caso/ajuda" acima (usuário sem permissão de
+          edição), senão sobraria uma fileira vazia sobre o Histórico.
+          Com o plantonista logado são dois botões aqui e dois acima: os QUATRO
+          ficam iguais, em 2×2 (dono 27/08). Sem ele, o Histórico ocupa sozinho a
+          largura dos dois de cima — é o que o `flex-1` já faz. */}
+      <div className={['flex gap-2 deitado:col-start-1', acoesTopo ? 'deitado:row-start-2' : 'deitado:row-start-1'].join(' ')}>
         {canEdit && souPlantonista && podeAvisar && (
-          <Button size="sm" variant="outline" className={`min-w-0 flex-1 ${BOTAO_ACAO_DEITADO}`}
+          <Button size="sm" variant="outline" className="min-w-0 flex-1 deitado:h-auto"
             aria-label="Mensagem para equipe" onClick={() => setAvisoSheet(true)}>
-            <MessageSquare className="w-4 h-4 shrink-0" /> <span className="deitado:hidden">Mensagem para equipe</span>
+            <MessageSquare className="w-4 h-4 shrink-0" />
+            {/* ⚠️ deitado o rótulo ENCURTA: medido, "Mensagem para equipe" e
+                "Histórico de mensagens" não cabem nos 177px do botão em 2×2 e
+                saíam cortados no meio da palavra. O ícone ao lado já diz do que
+                se trata e o `aria-label` mantém o nome inteiro para leitor de
+                tela. Em pé continua por extenso. */}
+            <span className="deitado:hidden">Mensagem para equipe</span>
+            <span className="hidden deitado:inline">Mensagem</span>
           </Button>
         )}
-        <Button size="sm" variant="outline" className={`min-w-0 flex-1 ${BOTAO_ACAO_DEITADO}`}
+        <Button size="sm" variant="outline" className="min-w-0 flex-1 deitado:h-auto"
           aria-label="Histórico de mensagens" onClick={() => setHistoricoSheet(true)}>
-          <History className="w-4 h-4 shrink-0" /> <span className="deitado:hidden">Histórico de mensagens</span>
+          <History className="w-4 h-4 shrink-0" />
+          <span className="deitado:hidden">Histórico de mensagens</span>
+          <span className="hidden deitado:inline">Histórico</span>
         </Button>
       </div>
 
       {/* Procedimentos sem anestesista NO TOPO (pedido do dono 24/07): o plantonista
           precisa cobrir. Somem sozinhos ao serem marcados como terminados/suspensos
           (concluído é filtrado em gerarColunaLiberacao). Hora em destaque, por horário. */}
-      {/* deitado o alerta divide a linha com os botões de ícone acima: sozinhos
-          eles deixavam uma faixa de 44px quase vazia, e cada faixa aqui é altura
-          que sai da fila. O bloco continua inteiro — só ocupa a sobra da linha. */}
+      {/* deitado: metade DIREITA, atravessando as duas fileiras de botões — é o
+          `row-span-2` que faz o bloco de ações e o alerta terminarem na MESMA
+          linha (dono 27/08: "deixe os cards alinhados"). Sem ele o alerta é mais
+          alto e as duas metades acabavam em alturas diferentes. */}
       {fase !== 'zerada' && semAnestesista.length > 0 && (
-        <div className="deitado:order-2 deitado:min-w-0 deitado:flex-1">
+        <div className="deitado:col-start-2 deitado:row-start-1 deitado:row-span-2 deitado:min-w-0">
           <p className="mb-1.5 flex items-center gap-1 px-1 text-xs font-semibold text-warning">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Procedimentos sem anestesista
           </p>
@@ -1269,7 +1281,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           </div>
         </div>
       )}
-      {semFila && <div className="deitado:order-5 deitado:w-full">{estadoVazio}</div>}
+      {semFila && <div className="deitado:col-span-2">{estadoVazio}</div>}
 
       {/* div simples de propósito: animação de layout + reload do realtime moviam a
           linha sob o dedo (mesma classe do bug da inbox, fix 956aedd) */}
@@ -1283,7 +1295,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           margem passa de `space-y` para `mb`: o `space-y` não põe margem no
           primeiro filho, e o primeiro filho da SEGUNDA coluna é um card do meio
           da lista — sem isso ele nasceria colado no topo. */}
-      {!semFila && <div className="space-y-1.5 deitado:order-5 deitado:w-full deitado:space-y-0 deitado:columns-2 deitado:gap-2 [&>*]:deitado:mb-2 [&>*]:deitado:break-inside-avoid">
+      {!semFila && <div className="space-y-1.5 deitado:col-span-2 deitado:space-y-0 deitado:columns-2 deitado:gap-2 [&>*]:deitado:mb-2 [&>*]:deitado:break-inside-avoid">
         {(() => {
           // Está na FILA de liberação? P1/P2 são os plantonistas da noite: nunca
           // entram no "próximo a ser liberado" (pedido do dono 24/07). P3/P4 entram.

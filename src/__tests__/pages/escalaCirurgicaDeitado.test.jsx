@@ -154,16 +154,42 @@ describe('fila de liberação deitada (dono 26/08)', () => {
     expect(colunaDoNumero(cardDe('Karine Bedin')).textContent).toBe('4')
   })
 
-  it('o rótulo dos botões de ação some deitado, mas continua no DOM', () => {
+  it('as ações ocupam a metade ESQUERDA e terminam na mesma linha que o alerta', () => {
     montar()
-    // quatro botões de largura inteira empilhados custavam 84px de uma tela de
-    // 390 — deitado fica o ícone num alvo de 44px. O texto segue para o leitor
-    // de tela (e o `aria-label` de cada botão diz o que ele faz).
     const historico = screen.getByRole('button', { name: 'Histórico de mensagens' })
-    expect(historico.className).toContain('deitado:w-11')
-    expect(historico.querySelector('span.deitado\\:hidden')?.textContent)
-      .toBe('Histórico de mensagens')
-    // em pé continua o botão largo de sempre
-    expect(historico.className).toContain('flex-1')
+    const fileira = historico.parentElement
+    // ⚠️ o lugar é FIXO (dono 27/08). Duas versões anteriores punham o botão
+    // "onde sobrasse espaço" — canto de cima à esquerda, depois no fim da linha
+    // do alerta — e as duas foram recusadas. Coluna 1 é a metade esquerda.
+    expect(fileira.className).toContain('deitado:col-start-1')
+    // com "Adicionar caso/ajuda" acima, esta é a 2ª fileira — as duas juntas dão
+    // os quatro botões iguais em 2×2 do plantonista
+    expect(fileira.className).toContain('deitado:row-start-2')
+    // ⚠️ `h-auto` é o que faz a metade esquerda terminar na MESMA linha que o
+    // alerta: o `h-9` do Button (size sm) vence o stretch da grade e, sem isto,
+    // medido no app, ela parava 13px acima dele.
+    expect(historico.className).toContain('deitado:h-auto')
+  })
+
+  it('sem "Adicionar caso/ajuda", a fileira de mensagens SOBE para a 1ª', () => {
+    // quem não edita não tem as ações de cima — sem isto sobraria uma fileira
+    // vazia sobre o Histórico, que é o único botão que resta
+    montar({ canEdit: false })
+    const historico = screen.getByRole('button', { name: 'Histórico de mensagens' })
+    expect(historico.parentElement.className).toContain('deitado:row-start-1')
+  })
+
+  it('o rótulo ENCURTA deitado, e o nome inteiro fica para o leitor de tela', () => {
+    montar()
+    // medido: "Histórico de mensagens" não cabe nos 177px do botão em 2×2 e saía
+    // cortado no meio da palavra. Deitado vale "Histórico"; em pé, o nome inteiro.
+    const historico = screen.getByRole('button', { name: 'Histórico de mensagens' })
+    const curto = historico.querySelector('span.hidden')
+    const longo = historico.querySelector('span.deitado\\:hidden')
+    expect(curto.textContent).toBe('Histórico')
+    expect(curto.className).toContain('deitado:inline')
+    expect(longo.textContent).toBe('Histórico de mensagens')
+    // o nome acessível não muda com a orientação — é o `aria-label`
+    expect(historico.getAttribute('aria-label')).toBe('Histórico de mensagens')
   })
 })

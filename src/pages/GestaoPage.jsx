@@ -18,6 +18,12 @@ const bibliotecaItems = [
   'POPs e manuais',
 ];
 
+// deitado cada atalho é um QUADRADO de 2 das 10 colunas da grade da página
+// (dono 27/08: "os cards ficam simétricos e quadrados"). O `min-h-0` é o que tira
+// os 140px de altura mínima do WidgetCard — sem ele o quadrado de ~134px não
+// acontece e a fileira sai desalinhada.
+const QUADRADO_DEITADO = 'deitado:col-span-2 deitado:aspect-square deitado:min-h-0'
+
 export default function GestaoPage({ onNavigate }) {
   useEffect(() => {
     document.title = 'Gestão — ANEST';
@@ -49,27 +55,25 @@ export default function GestaoPage({ onNavigate }) {
   return (
     <div className="min-h-dvh bg-background pb-24">
       <h1 className="sr-only">Gestão</h1>
-      {/* deitado: os MESMOS cards em duas colunas, preenchidas por LINHA — mesma
-          regra da Home. Era multi-coluna e o fluxo por coluna enchia a esquerda
-          com os dois cards altos, sem nenhuma linha se alinhar.
-          ⚠️ CADA LINHA É INTEIRAMENTE SIMÉTRICA POR CONSTRUÇÃO, não por esticar
-          (dono 26/08, 2ª rodada: "cards ficaram muito grandes... ficou esquisito").
-          A 1ª tentativa foi `items-stretch`, e o problema era a origem do
-          desencontro: à direita da 2ª linha não há um cartão, há a GRADE de
-          widgets, que tem duas fileiras (292px medidos contra 151px do cartão ao
-          lado). Esticar o cartão até 292px igualava a linha criando 141px de
-          vão vazio dentro dele — daí o "muito grande".
-          Agora cada linha tem PEÇAS IGUAIS: a 1ª junta os dois cartões de duas
-          linhas (176px cada, já iguais sozinhos), o cartão de Comunicados ocupa a
-          largura inteira e a grade de widgets vira UMA fileira de quatro. Sem
-          esticar nada, sem vão vazio, e os widgets caem de 292px para 140px.
-          As margens `mb-*` são zeradas: somariam ao `gap` e desalinhariam os
-          topos. */}
-      <div className="px-4 pt-4 sm:px-5 lg:px-6 xl:px-8 deitado:grid deitado:grid-cols-2 deitado:gap-3 deitado:pt-2 deitado:items-start [&>*]:deitado:mb-0">
+      {/* deitado (dono 27/08): a aba vira DUAS FILEIRAS. Em cima os dois cartões
+          de duas linhas, metade da largura cada; embaixo os CINCO menores —
+          Comunicados e os quatro atalhos — todos QUADRADOS, do mesmo tamanho e
+          alinhados numa fileira só.
+          ⚠️ A grade é de DEZ colunas para as duas fileiras conviverem numa grade
+          só: em cima cada cartão vale 5 colunas, embaixo cada quadrado vale 2. É
+          o que permite Comunicados e atalhos ficarem lado a lado sendo eles, no
+          DOM, um cartão e uma GRADE de quatro — a grade dos atalhos vira
+          `contents` deitada e os quatro sobem para esta.
+          Histórico de duas tentativas recusadas, para não voltarem: `items-stretch`
+          esticava o cartão de Comunicados até a altura da grade de widgets e
+          criava 141px de vão vazio dentro dele ("ficou esquisito"); e pôr
+          Comunicados na largura inteira deixava dois títulos curtos espalhados
+          por 720px. */}
+      <div className="px-4 pt-4 sm:px-5 lg:px-6 xl:px-8 deitado:grid deitado:grid-cols-10 deitado:gap-3 deitado:pt-2 deitado:items-start [&>*]:deitado:mb-0">
         {/* Card: Notificações e Denúncias — variant "solid" (dono 19/08). É o único
             cartão pintado da aba: os três eram idênticos e ninguém achava o canal. */}
         {canAccessCard('incidentes') && (
-          <div className="mb-3">
+          <div className="mb-3 deitado:col-span-5">
             <ComunicadosCard
               className="deitado:p-4"
               variant="solid"
@@ -84,7 +88,7 @@ export default function GestaoPage({ onNavigate }) {
 
         {/* Card: Biblioteca de Documentos (mesmo estilo do Comunicados) */}
         {canAccessCard('biblioteca') && (
-          <div className="mb-3">
+          <div className="mb-3 deitado:col-span-5">
             <ComunicadosCard
               className="deitado:p-4"
               label="DOCUMENTOS"
@@ -98,15 +102,31 @@ export default function GestaoPage({ onNavigate }) {
 
         {/* Card: Comunicados (migrado da Home 2026-07-22) — mesmo componente/tamanho
             da Biblioteca; títulos recentes como itens, não lidos no badge */}
-        {/* ⚠️ deitado ocupa a linha inteira E a lista de títulos vai a duas
-            colunas: sozinho numa das metades ele deixaria um buraco ao lado, e
-            esticado na largura toda os dois títulos curtos deixavam 400px de
-            vazio à direita. Em duas colunas a largura é usada e o cartão perde
-            uma linha de altura. */}
+        {/* ⚠️ deitado este cartão fica QUADRADO e do tamanho dos atalhos, e a
+            LISTA DE TÍTULOS some (dono 27/08: "em comunicados deixe apenas o
+            título no card"). Some por CSS e não tirando a prop `items`: sem ela o
+            componente cai no outro modo dele (o feed estilo iOS Mail) e viraria
+            outro cartão. O selo de não lidos fica — é o dado que faz alguém
+            tocar. Em pé a lista continua. */}
         {canAccessCard('comunicados') && (
           <div className="mb-4 deitado:col-span-2">
             <ComunicadosCard
-              className="deitado:p-4 [&_ul]:deitado:grid-cols-2 [&_ul]:deitado:mt-3"
+              className={[
+                'deitado:aspect-square deitado:p-4',
+                // a lista de títulos some (ver acima)
+                '[&_ul]:deitado:hidden',
+                // ⚠️ num quadrado de ~134px o cabeçalho do cartão precisa EMPILHAR:
+                // ele é `flex justify-between` e, lado a lado, o selo "22 não
+                // lidos" (85px) e o rótulo "COMUNICAÇÃO" (~95px) não cabem nos
+                // 102px úteis — medido, o rótulo virava "CO" e o selo passava por
+                // cima dele.
+                '[&>header]:deitado:flex-col [&>header]:deitado:items-start [&>header]:deitado:gap-2',
+                // ⚠️ e o TÍTULO desce para 15px, o mesmo dos atalhos ao lado:
+                // "Comunicados" em 20px mede ~118px e é UMA palavra só, então não
+                // quebra — vazava para fora do cartão. 15px é também o que faz os
+                // cinco quadrados falarem no mesmo corpo de letra.
+                '[&_h2]:deitado:text-[15px]',
+              ].join(' ')}
               label="COMUNICAÇÃO"
               title="Comunicados"
               badgeText={unreadComunicados > 0
@@ -119,19 +139,20 @@ export default function GestaoPage({ onNavigate }) {
         )}
 
         {/* Grid de Widgets 2 colunas - todos mesma dimensão */}
-        {/* ⚠️ deitado a grade ocupa a LARGURA INTEIRA e vira UMA fileira de quatro.
-              Dentro de meia tela (~364px) ela ficava com duas fileiras — 292px, o
-              dobro do cartão ao lado, e era essa a assimetria da 2ª linha. Em
-              largura inteira cada widget fica com ~180px, mais que os ~176px que
-              tem no retrato a 375px, então nenhum rótulo trunca (foi o que o
-              `lg:grid-cols-3` fazia: "Qualidad", "Faturame"). */}
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 deitado:col-span-2 deitado:grid-cols-4">
+        {/* ⚠️ deitado esta grade deixa de existir (`contents`) e os quatro atalhos
+              viram filhos diretos da grade da PÁGINA — é assim que eles ficam na
+              mesma fileira do cartão de Comunicados, que é irmão dela e não filho.
+              Cada um leva `col-span-2` (2 de 10) e `aspect-square`; o `min-h` de
+              140px do componente precisa sair junto, senão venceria o quadrado de
+              ~134px e a fileira voltaria a ficar desigual. */}
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 deitado:contents">
           {/* Qualidade - logo abaixo da Biblioteca */}
           {canAccessCard('qualidade') && (
             <WidgetCard
               icon={<Shield className="w-6 h-6" />}
               title="Qualidade"
               subtitle="Gestão da qualidade"
+              className={QUADRADO_DEITADO}
               variant="interactive"
               onClick={() => onNavigate('qualidade')}
             />
@@ -141,6 +162,7 @@ export default function GestaoPage({ onNavigate }) {
               icon={<DollarSign className="w-6 h-6" />}
               title="Faturamento"
               subtitle="Gestão e faturamento"
+              className={QUADRADO_DEITADO}
               variant="interactive"
               onClick={() => onNavigate('faturamento')}
             />
@@ -150,6 +172,7 @@ export default function GestaoPage({ onNavigate }) {
               icon={<Calendar className="w-6 h-6" />}
               title="Escalas"
               subtitle="Gestão de escalas"
+              className={QUADRADO_DEITADO}
               variant="interactive"
               onClick={() => onNavigate('escalas')}
             />
@@ -159,6 +182,7 @@ export default function GestaoPage({ onNavigate }) {
               icon={<Users className="w-6 h-6" />}
               title="Reuniões"
               subtitle="Gestão de reuniões"
+              className={QUADRADO_DEITADO}
               variant="interactive"
               onClick={() => onNavigate('reunioes')}
             />
