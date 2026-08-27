@@ -95,7 +95,9 @@ function Header({
       data-slot="anest-header"
       className={cn(
         "flex items-center justify-between gap-4",
-        "mb-4",
+        // Deitado a altura é o que falta: o cabeçalho encolhe o respiro e a
+        // saudação, sem perder nenhum elemento (avatar, busca e sino ficam).
+        "mb-4 deitado:mb-2",
         className
       )}
       {...props}
@@ -106,7 +108,7 @@ function Header({
           type="button"
           onClick={onAvatarClick}
           aria-label="Perfil"
-          className="shrink-0 inline-flex rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="shrink-0 inline-flex rounded-full deitado:scale-[.78] deitado:origin-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           <Avatar
             size="lg"
@@ -118,12 +120,12 @@ function Header({
         <div className="min-w-0">
           <div
             data-slot="anest-header-greeting"
-            className="text-[18px] md:text-[20px] font-bold text-primary dark:text-foreground truncate"
+            className="text-[18px] md:text-[20px] deitado:text-[15px] font-bold text-primary dark:text-foreground truncate"
           >
             {greeting}
           </div>
           {showDateTime && (
-            <div className="text-[12px] text-muted-foreground mt-0.5">
+            <div className="text-[12px] deitado:text-[11px] text-muted-foreground mt-0.5 deitado:mt-0">
               {dateTime}
             </div>
           )}

@@ -49,7 +49,10 @@ export default function GestaoPage({ onNavigate }) {
   return (
     <div className="min-h-dvh bg-background pb-24">
       <h1 className="sr-only">Gestão</h1>
-      <div className="px-4 pt-4 sm:px-5 lg:px-6 xl:px-8">
+      {/* deitado: os MESMOS cards em duas colunas — mesma solução da Home.
+          Multi-coluna respeita o `mb-3` de cada card e não mexe no DOM;
+          `break-inside-avoid` impede um card de partir no pé da coluna. */}
+      <div className="px-4 pt-4 sm:px-5 lg:px-6 xl:px-8 deitado:columns-2 deitado:gap-3 deitado:pt-2 [&>*]:deitado:break-inside-avoid">
         {/* Card: Notificações e Denúncias — variant "solid" (dono 19/08). É o único
             cartão pintado da aba: os três eram idênticos e ninguém achava o canal. */}
         {canAccessCard('incidentes') && (
@@ -95,7 +98,10 @@ export default function GestaoPage({ onNavigate }) {
         )}
 
         {/* Grid de Widgets 2 colunas - todos mesma dimensão */}
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        {/* ⚠️ deitado esta grade vive DENTRO de uma das duas colunas (~370px):
+              o `lg:grid-cols-3` que a largura de 844px ativaria trunca os rótulos
+              ("Qualidad", "Faturame" — visto no app). Volta a duas. */}
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 deitado:grid-cols-2">
           {/* Qualidade - logo abaixo da Biblioteca */}
           {canAccessCard('qualidade') && (
             <WidgetCard

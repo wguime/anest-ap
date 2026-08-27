@@ -104,7 +104,7 @@ export function HScroll({
         role="region"
         aria-label={ariaLabel}
         className={cn(
-          'flex w-full gap-3 overflow-x-auto pb-2',
+          'flex w-full gap-3 overflow-x-auto pb-2 deitado:pb-1',
           // Esconde a scrollbar nativa em todos os navegadores (Firefox, IE, WebKit)
           '[&::-webkit-scrollbar]:hidden',
           className,
@@ -121,7 +121,13 @@ export function HScroll({
             key={child?.key ?? i}
             ref={(el) => (itemRefs.current[i] = el)}
             data-idx={i}
-            className={cn('shrink-0 w-[88%] sm:w-[420px]', itemClassName)}
+            className={cn(
+              'shrink-0 w-[88%] sm:w-[420px]',
+              // deitado o carrossel tem a largura inteira: cabem dois artigos
+              // lado a lado no lugar de um só.
+              'deitado:w-[48%]',
+              itemClassName
+            )}
           >
             {child}
           </div>

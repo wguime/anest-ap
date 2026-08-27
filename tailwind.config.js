@@ -8,19 +8,23 @@ export default {
     // Breakpoints oficiais do projeto (min-width)
     // Base (sem prefixo) = xs (< 480px)
     screens: {
-      // ⚠️ `deitado` NÃO é breakpoint de largura: é o CELULAR na horizontal —
-      // largura sobrando e ALTURA curta (dono 26/08, "que o app fique organizado
-      // na posição horizontal"). `max-height` separa celular de tablet, onde
-      // paisagem é uso normal e nada muda; `pointer: coarse` tira o desktop,
-      // cuja janela não gira. Fonte única: mudar aqui muda o app inteiro.
-      // ⚠️ tem de ser CSS, nunca JS: o `orientationchange` do iOS chega ANTES
-      // de a viewport virar, e decidir em JS fazia a tela pular (26/08).
-      deitado: { raw: "(orientation: landscape) and (max-height: 500px) and (pointer: coarse)" },
       sm: "480px",
       md: "640px",
       lg: "768px",
       xl: "1024px",
       "2xl": "1440px",
+      // ⚠️ `deitado` NÃO é breakpoint de largura: é o CELULAR na horizontal —
+      // largura sobrando e ALTURA curta (dono 26/08, "que o app fique
+      // organizado na posição horizontal"). `max-height` separa celular de
+      // tablet, onde paisagem é uso normal e nada muda; `pointer: coarse` tira
+      // o desktop, cuja janela não gira. Fonte única do modo horizontal.
+      // ⚠️ tem de ser CSS, nunca JS: o `orientationchange` do iOS chega ANTES
+      // de a viewport virar, e decidir em JS fazia a tela pular (26/08).
+      // ⚠️ POR ÚLTIMO de propósito: o Tailwind emite as media queries na ordem
+      // desta lista, e empate de especificidade é decidido por quem vem depois.
+      // Declarada antes, `deitado:grid-cols-2` perdia para `lg:grid-cols-3` e a
+      // grade da Gestão truncava os rótulos — defeito visto no app.
+      deitado: { raw: "(orientation: landscape) and (max-height: 500px) and (pointer: coarse)" },
     },
     container: {
       center: true,

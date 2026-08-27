@@ -585,12 +585,22 @@ export default function HomePage({ onNavigate }) {
           )}
         </div>
 
+        {/* deitado: os MESMOS cards, em duas colunas. Multi-coluna do CSS em vez
+            de grid porque cada card já vive num `div mb-4` — o fluxo respeita
+            essas margens e nada no DOM muda de lugar; `break-inside-avoid`
+            impede um card de ser partido no pé da coluna. O wrapper começa aqui
+            de propósito: cabeçalho, busca, banner e carrossel ficam de fora,
+            com a largura inteira. */}
         {/* Wave 1.4 T1.4.2: banner de certificados expirando */}
         <CertificadoExpiracaoBanner onNavigate={onNavigate} />
 
-        {/* Notícias — carrossel abaixo da SearchBar */}
+        {/* Notícias — carrossel abaixo da SearchBar. ⚠️ fica FORA do fluxo de
+            colunas abaixo: ele rola na horizontal, e scroll horizontal dentro de
+            multi-coluna vaza por cima da coluna vizinha (visto no app, o card do
+            artigo cortava o card ao lado). Deitado ele encolhe em vez de sair. */}
         <NoticiasCarousel onNavigate={onNavigate} />
 
+        <div className="deitado:columns-2 deitado:gap-3 [&>*]:deitado:break-inside-avoid">
         {/* Escala Cirúrgica — plantonista do turno (Comunicados migrou p/ a aba
             Gestão em 2026-07-22). Gate por papel, sem placeholder p/ quem não passa. */}
         {podeVerEscalaCirurgica(user) && (
@@ -896,6 +906,7 @@ export default function HomePage({ onNavigate }) {
 
           </div>
         ))}
+        </div>
 
         {/* Modais de Edição - Residência */}
         <EditEstagiosModal

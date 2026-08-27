@@ -51,6 +51,9 @@ function NoticiaCardImpl({ noticia, variant = 'list', onClick, className }) {
         aria-labelledby={tituloId}
         className={cn(
           'flex w-full h-[120px] flex-col gap-1 rounded-xl border border-border bg-card p-3 text-left',
+          // deitado a altura é o recurso escasso: o card do carrossel cede
+          // 34px mantendo título e fonte — some só o respiro.
+          'deitado:h-[86px] deitado:p-2.5',
           'shadow-sm transition-all',
           'hover:bg-accent/40 hover:border-border-strong hover:-translate-y-px hover:shadow-elevation-2 active:scale-[0.98]',
           'dark:shadow-none dark:hover:shadow-[0_0_12px_hsl(var(--primary)/0.25)]',
@@ -81,7 +84,9 @@ function NoticiaCardImpl({ noticia, variant = 'list', onClick, className }) {
         >
           {titulo}
         </h3>
-        <p className="text-[12px] leading-snug text-muted-foreground line-clamp-1">
+        {/* deitado o card é 34px mais baixo: o resumo SAI inteiro em vez de ser
+            cortado no meio da linha — título e curadoria bastam para escolher. */}
+        <p className="text-[12px] leading-snug text-muted-foreground line-clamp-1 deitado:hidden">
           {resumo || '—'}
         </p>
       </button>
