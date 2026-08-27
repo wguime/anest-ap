@@ -41,11 +41,40 @@ const REDUCED_MOTION_VARIANTS = {
 
 // --- Position + sizing classes per side ---
 
+// ⚠️ CELULAR DEITADO a folha de BAIXO vira PAINEL LATERAL (dono 27/08, Fase 4 do
+// modo horizontal). Em pé ela ocupa 85% da altura e sobra tela por baixo; deitado
+// os mesmos 85% são 331px de 390 e ela cobre a página inteira — some o contexto de
+// onde a pessoa estava, que é justamente o que uma folha não deve fazer. À direita,
+// com 420px, sobram 424px de tela viva (a faixa lateral mais o conteúdo) e o painel
+// ainda fica MAIS ALTO que era: 390px contra 331.
+//
+// Vale para o app inteiro, e não só para os sheets da escala, porque é mudança de
+// ORIENTAÇÃO: em pé nada muda — a variante `deitado:` só existe em celular na
+// horizontal. Os 420px são a mesma largura que o lado `right` do próprio DS usa.
+//
+// ⚠️ `!h-full` e `max-h-none` são necessários porque os sheets da escala passam
+// `!h-auto max-h-[88vh]` no className (padrão do módulo desde 17/08): sem o
+// `!important` aqui, o `h-auto` deles venceria e o painel teria a altura do
+// conteúdo; sem `max-h-none`, os 88vh virariam 343px e ele não chegaria à base.
+// A variante entra depois na cascata, então ganha dos dois.
+//
+// ⚠️ O que NÃO dá para trocar por CSS é a ANIMAÇÃO: ela é inline, escrita pelo
+// framer-motion a partir de `SLIDE_VARIANTS[side]`, e trocar o lado em JS
+// dependeria de ler a orientação no JS — que é o que faz a tela pular no iOS. O
+// painel entra deslizando de baixo para cima, e não da direita. Aceito de
+// propósito: numa tela de 390px de altura o movimento é curto e lê como abrir.
+const DEITADO_PAINEL_LATERAL = [
+  "deitado:inset-y-0 deitado:left-auto deitado:right-0 deitado:w-[420px]",
+  "deitado:!h-full deitado:max-h-none",
+  "deitado:rounded-l-[20px] deitado:rounded-r-none",
+  "deitado:border-l deitado:border-t-0",
+].join(" ")
+
 const POSITION_CLASSES = {
   right: "inset-y-0 right-0 w-full sm:w-[420px] md:w-[480px] rounded-l-[20px]",
   left: "inset-y-0 left-0 w-full sm:w-[420px] md:w-[480px] rounded-r-[20px]",
   top: "inset-x-0 top-0 h-[85vh] rounded-b-[20px]",
-  bottom: "inset-x-0 bottom-0 h-[85vh] rounded-t-[20px]",
+  bottom: `inset-x-0 bottom-0 h-[85vh] rounded-t-[20px] ${DEITADO_PAINEL_LATERAL}`,
 }
 
 // --- Context for open/onClose propagation ---

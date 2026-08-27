@@ -64,3 +64,62 @@ describe('Sheet — corpo rolável', () => {
     expect(corpo.className).toContain('overflow-y-auto')
   })
 })
+
+/**
+ * CELULAR DEITADO — a folha de baixo vira PAINEL LATERAL (dono 27/08).
+ *
+ * Em pé ela ocupa 85% da altura e sobra tela por baixo; deitado os mesmos 85%
+ * são 331px de 390 e ela cobre a página inteira, apagando o contexto de onde a
+ * pessoa estava — que é justamente o que uma folha não deve fazer. Medido no app
+ * depois da mudança: painel em x=424, 420 × 390px, com 424px de tela viva à
+ * esquerda; em pé, o mesmo sheet segue em y=349, 390 × 495px.
+ *
+ * ⚠️ jsdom não avalia a media query da variante: o que se trava aqui é a REGRA
+ * gravada nas classes, e sobretudo que ela seja PREFIXADA — uma classe de painel
+ * lateral sem `deitado:` viraria o sheet do app inteiro no retrato.
+ */
+describe('Sheet — deitado a folha de baixo vira painel lateral', () => {
+  const painel = () => document.querySelector('[data-slot="sheet-content"]')
+
+  it('ancora à direita, em altura cheia, só deitado', () => {
+    montar()
+    const cls = painel().className
+    for (const regra of [
+      'deitado:right-0', 'deitado:left-auto', 'deitado:inset-y-0',
+      'deitado:w-[420px]', 'deitado:!h-full', 'deitado:max-h-none',
+      'deitado:rounded-l-[20px]',
+    ]) {
+      expect(cls).toContain(regra)
+    }
+  })
+
+  it('INVARIANTE: o retrato continua sendo a folha de baixo', () => {
+    montar()
+    const cls = painel().className
+    // as regras do modo em pé seguem sem prefixo e intactas
+    expect(cls).toContain('inset-x-0')
+    expect(cls).toContain('bottom-0')
+    expect(cls).toContain('h-[85vh]')
+    expect(cls).toContain('rounded-t-[20px]')
+    // ⚠️ e NENHUMA regra de painel lateral pode existir sem a variante: sem este
+    // laço, um `right-0` solto ancoraria o sheet à direita no celular em pé.
+    for (const cls1 of cls.split(/\s+/)) {
+      if (/^(right-0|left-auto|inset-y-0|w-\[420px\]|max-h-none|rounded-l-)/.test(cls1)) {
+        throw new Error(`regra de painel lateral sem a variante deitado: "${cls1}"`)
+      }
+    }
+  })
+
+  it('o lado `right` do DS não é tocado — ele já é lateral', () => {
+    render(
+      <Sheet open onOpenChange={vi.fn()}>
+        <SheetContent side="right"><SheetHeader><SheetTitle>x</SheetTitle></SheetHeader></SheetContent>
+      </Sheet>,
+      { wrapper: wrap },
+    )
+    const laterais = [...document.querySelectorAll('[data-slot="sheet-content"]')]
+    const cls = laterais[laterais.length - 1].className
+    expect(cls).toContain('sm:w-[420px]')
+    expect(cls).not.toContain('deitado:')
+  })
+})
