@@ -1,5 +1,6 @@
 ---
-globs: ["src/services/**"]
+paths:
+  - "src/services/**"
 description: Padrão de audit trail — toda mutation Supabase deve incluir logging
 ---
 

@@ -1,5 +1,7 @@
 ---
-globs: ["**/*.jsx", "**/*.css"]
+paths:
+  - "**/*.jsx"
+  - "**/*.css"
 description: Breakpoints, Tailwind classes responsivas, mobile layouts, touch targets
 ---
 

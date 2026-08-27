@@ -1,0 +1,55 @@
+[mcp_servers.context7]
+command = "npx"
+args = [
+    "-y",
+    "@upstash/context7-mcp@latest",
+]
+
+[mcp_servers.firebase]
+command = "npx"
+args = [
+    "-y",
+    "firebase-tools@latest",
+    "mcp",
+]
+
+[mcp_servers.firecrawl]
+command = "npx"
+args = [
+    "-y",
+    "firecrawl-mcp",
+]
+
+[mcp_servers.firecrawl.env]
+FIRECRAWL_API_KEY = "YOUR_KEY_HERE"
+
+[mcp_servers.lighthouse]
+command = "npx"
+args = [
+    "-y",
+    "lighthouse-mcp",
+]
+
+[mcp_servers.playwright]
+command = "npx"
+args = [
+    "-y",
+    "@playwright/mcp@latest",
+]
+
+[mcp_servers.shadcn]
+command = "npx"
+args = [
+    "shadcn@latest",
+    "mcp",
+]
+
+[mcp_servers.supabase]
+command = "npx"
+args = [
+    "-y",
+    "@supabase/mcp-server-supabase@latest",
+    "--project-ref",
+    "vjzrahruvjffyyqyhjny",
+]
+env_vars = ["SUPABASE_ACCESS_TOKEN"]

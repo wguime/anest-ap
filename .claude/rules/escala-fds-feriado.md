@@ -1,0 +1,415 @@
+---
+paths:
+  - "src/lib/escalaFds.js"
+  - "src/lib/escalaFdsMapas.js"
+  - "src/pages/escala-cirurgica/ImportarEscalaFdsPage.jsx"
+  - "src/pages/escala-cirurgica/ConferirMapaFdsPage.jsx"
+  - "src/pages/escala-cirurgica/LiberacoesView.jsx"
+  - "src/__tests__/**/escalaFds*"
+  - "src/__tests__/**/importarEscalaFds*"
+  - "e2e/escala-cirurgica-fds*"
+  - "e2e/escala-cirurgica-feriado*"
+  - "e2e/importar-fds-mapas*"
+description: Escala Cirúrgica — fim de semana e feriado: fila única, linha pseudo-hospital 'fds', mapas na mesma entrada
+---
+
+<!-- Movido do CLAUDE.md em 2026-08-26 (otimização de contexto): o arquivo passou de
+     1.603 linhas para o alvo oficial de <200. O texto abaixo está VERBATIM — nenhuma
+     decisão do dono foi editada ou resumida. Esta rule carrega SÓ quando o Claude lê um
+     arquivo que casa os `paths` acima. -->
+
+### Modo FIM DE SEMANA — fila de liberação ÚNICA (dono 15/08)
+
+Sáb/dom operam com UMA fila por turno cobrindo os 3 hospitais (documento
+"ESCALA DE FINAL DE SEMANA": grade P1–P4 em 3 faixas 7-13/13-19/19-07 × 4
+colunas Unimed/HRO/ret1/ret2 + listas numeradas P5+ por período + linha "1º→
+último a ser LIBERADO" por turno). A fila vive numa linha **pseudo-hospital
+`'fds'`** de `escala_cirurgica` (migration `20260815120000`: CHECK +'fds',
+coluna `fds_meta` jsonb {grade, posicoes Pn→pessoa, escalacao, ordemFonte},
+RPC aceita 'fds' e rejeita fds_meta em hospital real) — RLS por papel e
+realtime cobrem sem mudança; **`HOSPITAIS` NÃO ganhou 'fds'** (slot extra
+`escalas.fds`, carregado só em FDS). ⚠️ **sentido da ordem**: o doc escreve
+"1º→último a ser liberado" = INVERSO do rodapé; a inversão é ÚNICA, na
+publicação da conferência (`rodapeDeOrdemDoc` em `src/lib/escalaFds.js`) —
+nunca em leitura, nunca flag. Pn→pessoa normalmente vale o FDS INTEIRO (dom
+7º=Thayna foi troca pessoal — domingo herda o sábado, editável); a ordem de
+liberação NÃO é derivável (P09,P10,P11 ≠ reverso) — turno sem linha nasce com
+SUGESTÃO (inverso da escalação) marcada "Sugerida". Importação: edge em
+`modo:'fds'` + conferência própria `ImportarEscalaFdsPage` (login vence texto;
+bloqueiam publicar: ordem vazia, Pn sem dono, 1º nome ambíguo);
+**funcionárias do bloco PLANTÃO MATERNO NUNCA viram posição** (→ `ignorados`;
+Renata/Elisete têm escala própria); publica até 4 turnos `hospital='fds'`,
+`casos: []`. Fila unificada (`LiberacoesView modoFds`): casos dos 3 hospitais
+mesclados (`hospitalOrigem` só exibição), badge **Pn P1–P12** por posição,
+hospital prefixa o local, badges "Plantão Unimed/HRO" da faixa da grade
+(genérico "Plantonista" sai), `opts.turno` OMITIDO na lib (regra
+plantão-do-turno-seguinte é de dia útil; namespacing das marcações segue na
+view); **trocas e P4-coringa FORA do modo FDS**. Fase noturna:
+`faseLiberacoes({fds:true})` liga 19h/23h no sáb/dom com a faixa 19-07 DA
+GRADE (`linhasNoturnasFds`; Unimed/HRO fixos = `foraDaFila`, nunca "próximo").
+HomeCard mostra os plantões físicos da faixa (madrugada <7h = grade da
+véspera); Pega Plantão ganhou P12 no FDS. **NOTURNO É TURNO, não fase (dono
+15/08 21h):** o seletor do FDS tem 3 turnos (Matutino·Vespertino·**Noturno**) e
+o relógio escolhe entre eles às **7h/13h/19h** (`turnoFdsAtual`) — a fusão
+antiga por cima da lista do dia roubava o topo e RENUMERAVA a manhã ("sábado de
+manhã não está idêntica"); hoje conferir a manhã às 21h mostra a manhã pura. Os
+cards do noturno herdam a cirurgia da tarde em curso (`FDS_TURNO_CASOS`:
+noturno lê casos do vespertino — o CHECK do banco só aceita matutino/
+vespertino). **A FILA DA NOITE É MAIOR QUE A GRADE (dono 16/08:** sáb
+P2,P1,P4,P3,**P11,P8,P7** · dom P3,P4,P1,P2,**P11,P6,P5** — "apenas adicione os
+P's faltantes"): quem está de plantão à noite ≠ quem está na fila da noite, e os
+Pn da lista numerada que entram são os que saem PRIMEIRO. `opts.ordem` de
+`linhasNoturnasFds` (nomes, convenção do rodapé) é a fila; a grade só decide
+POSTO (papel "Plantão Unimed/HRO" + `foraDaFila`). Quem está na grade e não foi
+citado NUNCA some — vai para a frente (sai por último); sem ordem publicada a
+fila segue sendo a linha 19-07 esquerda→direita. Mora em
+**`fds_meta.ordemNoite`** porque 'noturno' não é turno de publicação, e o meta
+vai inteiro em toda publicação (republicar não apaga; migration
+`20260816120000` gravou 15–16/08). A conferência tem a 3ª lista, editável como
+as outras: sem linha de noite no doc ela nasce da grade marcada "Sugerida", e
+noite vazia NÃO trava a publicação (cai na grade) — manhã/tarde travam.
+**Substituto na vaga:** nome fora do P1–P4 na
+linha 19-07 (dom: JOAO RICARDO) some se casar por primeiro nome
+(`resolverNomeEstrito` proíbe token solto p/ nome composto) e ASSUME o selo da
+vaga livre quando é 1↔1 (P3 da Cristina), com "cobre X" no papel. Rollout: sem linha 'fds' publicada,
+sáb/dom seguem por hospital + aviso a quem edita. Demo `DEMO_DATE_FDS`
+(27/06, DEV-only) + e2e `escala-cirurgica-fds.spec.ts`.
+
+### FDS — todos os arquivos numa entrada só (dono 22/08)
+
+"é assim que recebo os arquivos": no fim de semana chegam JUNTOS, no mesmo dia, a
+tabela de posições (sáb+dom) e um mapa cirúrgico por hospital e por dia. Os 4
+arquivos de 22–23/08 custavam **6 leituras da Vision e 9 publicações**, com
+hospital/data/período trocados à mão entre elas. `ImportarEscalaFdsPage` virou a
+**LISTA DE DOCUMENTOS** (modelo A, escolhido em protótipo a 430px): a tabela é o
+1º item porque vale os dois dias, cada mapa entra como item que se declara
+sozinho (hospital pelo layout, data pelo cabeçalho — `classificarAnexoMapa`;
+o que a leitura não resolveu vira Select no próprio item, nunca palpite), e um
+"Publicar fim de semana" faz as 4 filas + uma chamada por (hospital, dia, turno)
+COM casos. Chave do item = hospital+dia: reanexar o mesmo par SUBSTITUI.
+
+⚠️ **O fluxo de DIA ÚTIL não muda** (dono 22/08: "durante a semana as escalas são
+postadas em turnos diferentes pois são disponibilizadas em turnos diferentes, não
+mexa na organização já estabelecida"). `ImportarEscalaPage` só trocou o import de
+`prepararCasos`, movido para `utils` como `prepararCasosImportados` (fonte única,
+sem alteração). A edge idem: sem a flag `secoesTurno` o prompt é literalmente a
+mesma string.
+
+**O que faz a leitura ficar correta — o turno vem da FAIXA, não só da hora:** o
+turno saía de `turnoDeHora`, e as linhas **"AS"** (a seguir) do HRO não têm hora —
+herdavam o período selecionado NO ANEXO. Por isso o mesmo mapa precisava ser
+anexado duas vezes, e a tarde se perdia (6 das 15 cirurgias do HRO em 22/08 são
+"AS"; em 21/08 a produção tem 4 casos com `hora='AS'` e 14 sem hora). A edge em
+`secoesTurno: true` lê a faixa **MATUTINO/VESPERTINO** e devolve `turno` por caso;
+`turnoDoCasoImportado` decide **hora > faixa > padrão** (a hora vence porque
+`selecionarCasosDoTurno` republica por ela).
+⚠️ **A herança de "//" NÃO pode atravessar a faixa:** ela é por SALA, e a Sala 1
+do HRO tem THAYNA às 7h com a coluna da tarde VAZIA — sem fronteira, as 3
+cirurgias da tarde sairiam no nome dela, em silêncio. Daí
+`prepararCasosFimDeSemana` preparar o lote POR TURNO. Só morde onde o documento
+deixa a tarde em branco, que é o caso do mapa de fim de semana (no dia útil a
+tarde traz nomes próprios).
+
+**Sugestão pelo posto da grade** (dono 22/08): sala sem nenhum nome no mapa entra
+pré-selecionada com quem a grade põe naquele hospital naquele turno
+(`anestesistaDoPosto` — HRO 13–19h = Rômulo), marcada "Sugerido pelo posto da
+grade". Só alcança grupo SEM nome lido, e só se o login resolver — nunca chuta
+identidade. Conferência do mapa (`ConferirMapaFdsPage`) é enxuta de propósito: no
+FDS o mapa **não tem rodapé** (a fila é a da linha 'fds'), então não há lista
+numerada, ajuda, troca nem duplicidade — e `ordemLiberacao: []` na publicação do
+mapa, senão nasceria uma 2ª ordem concorrendo com a única.
+
+Guardrail anti-perda espelha o do dia útil: anexo menor que o turno já publicado
+(≥3 casos) pede "Republicar por cima". Refs: `src/lib/escalaFdsMapas.js` (lib
+pura) · `ConferirMapaFdsPage.jsx` · testes `escalaFdsMapas.test.js` +
+`importarEscalaFdsMapas.test.jsx` · e2e visual `importar-fds-mapas.spec.ts`.
+⚠️ a edge `parse-escala-cirurgica` PRECISA de re-deploy para a faixa valer.
+
+### FDS — UMA TELA SÓ (dono 24/08), depois da análise dos 5 fins de semana
+
+"Quero organizar as escalas de final de semana apenas com lista de liberações."
+A análise (5 fins de semana no banco) confirmou e mostrou o porquê real: em dois
+deles houve **mais toques para DESFAZER liberação do que para liberar** (13×3 em
+15/08, 9×3 em 22/08, estes em 13 minutos), sempre pela mesma causa — cirurgia sem
+anestesista definido faz a pessoa aparecer sem trabalho e a fila se desmancha. O
+quadro por sala resolve um problema que o sábado não tem (12 salas contra 42) e
+é largamente abandonado (15/08 e 23/08: NENHUMA cirurgia marcada). Mas ele não
+podia sumir sem levar junto a ação mais usada: no fim de semana quase toda
+marcação é na cirurgia **de outra pessoa** (19 de 20 em 22/08), por 1 a 3 pessoas
+no dia — alguém cobrindo o grupo.
+
+**A tela:** sáb/dom perdem as ABAS e o SELETOR DE HOSPITAL (`BarraControles`
+aceita `null` nesses eixos = "não existe esse eixo aqui"); sobra a fila, com
+data e turno. Dia útil intocado. Card no **modelo A** (ações empilhadas à
+direita, escolhido em protótipo): **hospital ISOLADO** em caixa alta logo abaixo
+do nome, **sala** na linha seguinte, **cirurgiões em lista** depois — numa fila
+que cobre três hospitais "onde a pessoa está" é a primeira pergunta, e a caixa
+alta curta lê como rótulo em vez de disputar com o nome.
+
+⚠️ **"Terminei" NASCEU E SAIU NO MESMO DIA (dono 24/08, três decisões seguidas):**
+botão da linha que encerrava de uma vez as cirurgias em aberto no nome da pessoa
+→ restrito à fila única → **REMOVIDO**, e a coluna de ações voltou a ser
+`+ Tempo total` + `Editar`, a mesma dupla do dia útil ("verifique como os cards
+estão configurados em dias úteis e use a mesma distribuição"). Medido depois da
+remoção: a coluna caiu de 87 para **55px** e o espaço vazio da fila de 222 para
+**84px**, porque a altura do card passou a ser ditada pelo TEXTO e não pela
+coluna. ⚠️ o problema que o botão atacava CONTINUA de pé: em 22/08, 15 das 35
+cirurgias nunca saíram de "agendada", e sem atalho na linha o encerramento volta
+a ser caso a caso no detalhe. `linha.casoIds` (ids das cirurgias abertas da
+pessoa) ficou na lib, testado, para quando houver outra ideia.
+
+**Painel da linha ganhou três assuntos, só na fila única:** **Hospital** (campo
+próprio no override — quem troca de hospital no meio do sábado não tinha como
+dizer isso), **Responsável** (troca o NOME mantendo a posição: assunção
+unilateral pelo mesmo motor do dia útil — pedido do dono para "alguém de FORA da
+escala fazer um turno específico") e **Posição na fila** (trocar de vaga com um
+colega, duas assunções cruzadas numa transação; "pode deixar a opção, mas não é
+a regra"). ⚠️ `ordem_liberacao` continua IMUTÁVEL nos três — muda quem ocupa a
+vaga, nunca a ordem publicada.
+
+⚠️ **DEFEITO CORRIGIDO: o seletor de Local abria VAZIO no fim de semana** — a
+chave saía de `hospitalLabel.toLowerCase()`, que ali vale `"fim de semana"`
+(inexistente em `LOCAIS_BASE`), e o complemento vinha de `escala.casos`, que na
+linha 'fds' é SEMPRE vazio. Era por isso que `local` nunca havia sido usado num
+sábado. Agora a lista é a união dos três hospitais, estreitando quando há
+hospital escolhido na linha.
+
+⚠️ **`executarSubstituicao`/`desfazerSubstituicao` passaram a resolver ONDE O
+CASO MORA**: na fila única a linha 'fds' não guarda caso nenhum, e o snapshot de
+rollback e o patch otimista liam `lado.hospital` — a reversão não restauraria
+nada e o quadro só pintaria no realtime.
+
+⛔ **NADA DISTO ATRAVESSA PARA O DIA ÚTIL (dono 24/08, 2ª mensagem):** *"solicitei
+alguns ajustes para escala do final de semana e esses ajustes ficaram para a
+escala de dias úteis — não quero que sejam aplicadas em dias úteis. Faça apenas o
+solicitado."* A primeira versão adotou CINCO coisas do protótipo do fim de semana
+também no dia útil, e as cinco voltaram: o **recado do plantonista** (cartão com
+rótulo + "Confirmar leitura" de largura inteira → volta a faixa de borda a borda
+de 17/08 com a pastilha "Confirmar" no canto); o **"Importar"** do cabeçalho
+(outline sem ícone → volta a `ghost` com o ícone); a pastilha **"Assumir"** no
+bloco de sem-anestesista (→ volta "Toque para definir o anestesista"); e a
+**ordem do card** (hospital isolado + sala ANTES dos
+cirurgiões → volta sala ABAIXO do cirurgião, desenho de 20/07). O gate é
+`modoFds` em cada ponto. (O "Terminei" saiu de vez horas depois — ver acima.)
+
+⚠️ **PUBLICAÇÃO PINTA TODO MUNDO DE VERDE na fila única (dono 24/08):** "ao
+publicar escala de final de semana, todos os usuários apareçam com o card verde".
+A cauda vermelha automática (21/08) e o card BRANCO de "Livre" (20/08) nasceram
+do DIA ÚTIL, onde o rodapé traz gente que fecha a lista sem cirurgia nenhuma. Na
+fila única quem está publicado ESTÁ de plantão, e o mapa cirúrgico chega em
+importação SEPARADA — muitas vezes depois: metade da lista nascia descolorida ou
+vermelha, dizendo "já foi embora" de quem tinha acabado de entrar na escala. Em
+`modoFds` o vermelho volta a ser só do toque humano. O BADGE "Livre" fica — é
+informação verdadeira ("sem cirurgia agora") e não some com a tinta. Medido em
+22/08 depois da mudança: 12 cards, 0 liberados automáticos. O dia útil mantém as
+duas regras. ⚠️ **A pastilha do alerta SAIU (dono 24/08, 3ª volta no mesmo elemento):**
+"Toque para definir" (dia útil) → pastilha "Assumir" só no fim de semana →
+"Adicionar anestesista" → **a pastilha sai e vale a FRASE ABAIXO nos dois
+modos**. O que decidiu foi a medida, não o gosto: inline a pastilha comia **48%
+da linha** (183px de 378) e sobravam 195px para hora, hospital, sala,
+procedimento e cirurgião — a sala ainda não truncava, mas por pouco. Abaixo, o
+texto recupera a linha inteira (**376px** medidos no app) por 22px de altura, e o
+alerta volta a ser UM código só: era pastilha no sábado e frase na segunda para o
+mesmo gesto. O card inteiro segue sendo o alvo. Travas: describe "fila única — ninguém nasce vermelho na
+publicação" em `escalaFdsTelaUnica.test.jsx`.
+
+⚠️ A regra geral, que já vale para a IMPORTAÇÃO desde 22/08 e agora vale para a
+TELA: melhoria nascida de um protótipo de fim de semana fica no fim de semana. O
+dia útil é o fluxo estabelecido de uma equipe em uso clínico diário — mudança
+visual ali é retreinamento, e precisa de pedido próprio (Regra #2).
+
+Travas: `escalaFdsTelaUnica.test.jsx` (barra sem os eixos, card, os três
+assuntos, Local não-vazio, o describe "sem 'Terminei' na fila" — que guarda o
+caminho inteiro do botão para ele não voltar sem decisão nem a remoção parecer
+esquecimento — + o describe **"o desenho
+da fila única não atravessa para o dia útil"**, que é a trava da FRONTEIRA — ela
+já foi cruzada uma vez); `liberacoesAvisoPlantonista.test.jsx` cobre as DUAS
+formas do recado, uma por dia; `escalaTurnoAutomatico.test.jsx` prende o ícone do
+"Importar" no dia útil. ⚠️ um teste MUDOU DE LADO com o porquê no corpo, em vez de
+sumir: o de 16/08 que exigia o seletor de hospital no FDS.
+
+### FERIADO — a mesma fila única, com uma LISTA no lugar da grade (dono 24/08)
+
+Feriado roda como fim de semana na vida real (plantão 07h→07h, um anestesista
+cobrindo os três hospitais) e rodava como dia útil no app. Agora `ehDataFilaUnica`
+= sáb/dom **ou** feriado, e o feriado entra pelo MESMO caminho do FDS — linha
+pseudo-hospital `'fds'`, `ImportarEscalaFdsPage`, `LiberacoesView modoFds`, tela
+única. Não existe um terceiro modo.
+
+⚠️ **A fonte do feriado é `FERIADOS_2026` (`src/data/plantao2026.js`)** — a MESMA
+lista de `isPlantao24h`, que é literalmente a condição "este dia roda plantão de
+fim de semana". **Não usar `FERIADOS_UTEIS`** (`feriasFeriados.js`): aquela é de
+contagem de FÉRIAS e exclui de propósito 24/12, 25/12, 31/12 e 01/01 (lá o fim de
+ano é RECESSO), além de não ter 15/11 — dias em que o hospital roda escala de
+feriado e a fila única precisa ligar. `ehDiaUtil` NÃO muda: o plantão noturno e a
+escala de funcionárias seguem com as próprias regras.
+
+**O documento é uma LISTA SIMPLES de nomes** ("FERIADO 25/08" + 22 nomes), sem
+grade P1–P4, sem posições numeradas e sem a linha "1º→último a ser liberado" do
+FDS. Daí: sem a numeração Pn DA GRADE (P1–P12), sem P4-coringa, sem fila da
+noite (`fase` fixa em `'dia'` — derivada da DATA, não de `fdsMeta.tipo`, que só
+existe depois de publicar), e o seletor com dois turnos.
+
+**SELOS P1–P4 DO PLANTÃO — a fonte é a do DIA ÚTIL (dono 25/08):** "informe quem
+são os plantões (P1–P4) assim como já é informado nas escalas de dias úteis;
+apenas nos feriados, já que dias úteis e finais de semana já possuem essas
+marcações". Vêm do **card Plantões** (`plantoes` → `plantonistasNoturnos` →
+`marcarSelosNoTurno`), que é onde os P1–P4 do dia existem — a folha do feriado
+não traz posição nenhuma. Uma condição: `avisarSelos` deixou de ser exclusivo de
+`!modoFds`; `ehDiaUtil` (true numa terça) é o que segue excluindo sáb/dom. Como
+no dia útil, o selo é **da PESSOA e vale nos dois turnos**, acompanhando a
+posição dela em cada fila.
+
+⚠️ **duas numerações, um badge — não misturar.** Sáb/dom ficam fora por motivo
+DIFERENTE do dia útil: lá os Pn saem da GRADE do documento e vão até **P12**,
+sendo posições da ESCALA, não o plantão do dia. Por isso `marcarSelosFds` é
+PULADO no feriado (`modoFds && !feriado`): na prática `posicoes` é `{}` ali, mas
+um meta legado bastaria para pôr P7/P8 no mesmo selo que significa "plantão".
+
+⚠️ **P do card sem linha na folha NÃO vira card** (confirmado pelo dono 25/08):
+naquele dia o card Plantões trazia P3 Fernando Henrique e P4 Rômulo, nenhum dos
+dois na lista de 22 nomes — sem card na fila, não há o que marcar, e sintetizar
+linha seria inventar presença. Só P1 e P2 apareceram, e está certo assim.
+
+⚠️ **SENTIDO DA FILA — errar aqui inverte tudo, e foi o defeito de 24/08** ("a
+ordem de liberação veio invertida"). A folha do feriado **já vem na direção do
+RODAPÉ**: quem está no TOPO é quem FICA até o fim da manhã, e a CAUDA sai
+primeiro. A folha de 25/08 prova sozinha — os **13 primeiros nomes são
+exatamente os 13 com cirurgia de manhã** nos mapas de Unimed e HRO, e os 9
+últimos (ROSE → GUILHERME DIDOMENICO) não têm nenhuma; esses mesmos 9 cobrem as
+9 salas da tarde. Quem não tem cirurgia é quem vai embora primeiro, e é por isso
+que está no fim da folha. Então: **manhã = a folha na ordem escrita · tarde = a
+folha de trás para frente**. A tela da manhã lê igual ao papel.
+
+A inversão continua ACONTECENDO UMA VEZ SÓ, na publicação: `ordensDocumentoFeriado`
+devolve a convenção do DOCUMENTO (manhã invertida, tarde direta) e
+`rodapeDeOrdemDoc` faz a única volta, como no FDS. ⚠️ **a CONFERÊNCIA mostra e
+edita a folha na ordem escrita** — é a transcrição do documento, e Subir/Descer/
+Remover indexam por ela; exibir a lista já invertida por turno faz o botão mexer
+na pessoa errada, em silêncio (defeito real, corrigido antes de sair).
+
+**Os mapas cirúrgicos entram na MESMA entrada**, como no FDS de 22/08, e o caso é
+o do fim de semana, INTEIRO. ⚠️ não reduzir o caso a sala/cirurgião/anestesista
+"porque é só o que o card mostra": isso derruba o **convênio**, e é o convênio que
+o trigger `fn_sync_cirurgia_particular` casa para abrir a cobrança — só o mapa da
+Unimed de 25/08 traz 6 PARTICULAR.
+
+**SELO DE PLANTÃO — os DOIS QUE FECHAM A FILA DO TURNO (dono 25/08):** "o
+primeiro e segundo nomes da lista sempre serão plantão de algum hospital conforme
+ordem de liberação (**ou seja os dois últimos a serem liberados são os
+plantões**)" — é também a confirmação independente do sentido da fila. No FDS o
+selo sai da grade P1–P4 da faixa; no feriado, das **posições 1 e 2 da ORDEM
+PUBLICADA do turno exibido**, que por convenção do rodapé são os dois últimos a
+sair → "Plantão Unimed"/"Plantão HRO" (o genérico "Plantonista" segue suprimido
+na fila única, como no FDS — ele diria menos). Sem cirurgia no dia inteiro cai no
+genérico. ⚠️ o HOSPITAL vem das cirurgias do **DIA** (`hospitaisDoDia`), não do
+turno: quem fecha a fila pode já estar sem cirurgia naquele turno, e pelo mapa do
+turno o selo perderia o hospital justamente aí.
+
+⚠️ **É POSICIONAL, não da pessoa — e isso foi corrigido no MESMO DIA.** A 1ª
+versão saía de `fdsMeta.listaFonte` (a folha, que não vira) e valia nos dois
+turnos, com o argumento de que o plantão do feriado é 07h→07h. O dono recusou
+olhando a tela da tarde: *"na escala da tarde, os dois últimos a serem liberados
+devem receber o badge de plantão e os primeiros a serem liberados (que foram os
+plantões da manhã) devem perder os badges"*. O motivo é o que o selo COMUNICA
+numa fila — **quem ainda vai ficar**: preso à folha, de tarde ele marcava quem
+estava indo embora PRIMEIRO e não dizia nada sobre quem ficaria até a noite. Como
+a tarde é a folha invertida, ler a ordem do turno dá o mesmo resultado de manhã e
+troca os donos à tarde, sem regra extra. **`EscalaCirurgicaHomeCard` mudou
+junto** (mesma fonte, turno do relógio compartilhado): preso à folha, ele passaria
+às 13h a nomear na Home quem a fila já mostra saindo. Travas: describe "feriado"
+em `escalaFdsTelaUnica.test.jsx` — fixture com **QUATRO** nomes de propósito, já
+que com dois a folha e a ordem invertida contêm as mesmas pessoas e QUALQUER
+regra passa (foi assim que a 1ª versão atravessou os testes) — e o caso das 14h
+em `escalaCirurgicaHomeCard.test.jsx`. `fdsMeta.listaFonte` continua GRAVADO como
+transcrição do documento, mas nenhuma tela deriva dele.
+
+**O LOGIN NASCE PREENCHIDO PELO NOME LIDO (dono 25/08):** "identificou o
+anestesista (cabeçalho) mas o campo abaixo deixou 'sem anestesista'". A
+conferência do mapa só pré-selecionava pelo POSTO DA GRADE (22/08), que alcança
+apenas grupo SEM nome — e no feriado não há grade. `sugerirAtribuicoesLidas`
+resolve o nome do documento pelo dicionário, como a conferência de DIA ÚTIL já
+fazia; não vira "sugestão" na tela (o nome é do documento, o dicionário só diz a
+qual login pertence — diferente do posto, que é palpite e segue rotulado). Fora
+de propósito: "?" (ausência é informação), nome que o dicionário não resolve
+(escolha humana) e DUPLA "A + B" (um login não representa dois). ⚠️ **não havia
+perda de dado** — `aplicarAtribuicoes` recebe o `resolver` e já caía no
+dicionário na publicação; o defeito era a conferência não mostrar o que ia
+acontecer. Efeito aceito: com o login resolvido o cabeçalho do grupo mostra o
+nome do CADASTRO, como a sugestão do posto já fazia.
+
+**HOSPITAL E DIA DO MAPA SEMPRE EDITÁVEIS (dono 25/08, "há possibilidade de
+confusão? e se houver como resolver?"):** os dois Selects só nasciam quando a
+leitura FALHAVA, então leitura CONFIANTE E ERRADA era beco sem saída — remover e
+reanexar reclassifica igual. ⚠️ o risco é concreto: o mapa do HRO **de feriado**
+não tem coluna ANEST (o anestesista vem em "Observação") nem rodapé vermelho —
+as duas assinaturas do HRO no prompt — e casa quase palavra por palavra com a
+descrição do MATERNO. `redefinirMapa` já re-chaveava e re-preparava o lote com
+as salas canônicas do hospital novo; só faltava o caminho até ele.
+
+**CAUDA VERMELHA: SÓ NA MANHÃ DO FERIADO.** O mapa desta linha, por turno:
+
+| | cauda vermelha? |
+|---|---|
+| dia útil (manhã e tarde) | sim — regra de 21/08 |
+| **feriado, MANHÃ** | **sim** (dono 25/08: "os usuários que não tiverem casos deixe como liberados") |
+| **feriado, TARDE** | **não** |
+| sáb/dom, os dois turnos | não — decisão de 24/08 |
+
+A manhã do feriado entrou porque ali lista e mapas chegam JUNTOS, na mesma tela:
+"sem caso" é informação de verdade, e a manhã de 25/08 saiu certa assim (1–13
+trabalhando, 14–22 liberados). ⚠️ **O VESPERTINO DA FILA ÚNICA FICA FORA POR
+REGRA, não por acidente** (dono 25/08, fim da tarde): *"as escalas vespertinas,
+na maioria das vezes, estarão sem anestesistas escalados... mantenha o esquema de
+todos estarem livres e não liberados; os ajustes nos períodos vespertinos serão
+feitos manualmente"*. Em 25/08 o mapa da tarde chegou com as 18 cirurgias sem um
+único anestesista nos dois hospitais, e a guarda `temAlguemComTrabalho` (22/08)
+já segurava o vermelho — **mas por acaso**: bastaria UM nome designado no anexo
+para a guarda cair e a fila inteira atrás dele nascer vermelha. O corte por turno
+(`caudaAutomatica = !modoFds || (feriado && turnoBase === 'matutino')`) é o que
+torna isso estável quando a tarde vier parcialmente preenchida — caso previsto
+por ele na mesma mensagem ("se alguma escala dos feriados e finais de semana
+vierem com anestesistas designados, faça a distribuição conforme os anexos").
+O badge "Livre" continua nos dois turnos: a tinta sai, a informação não.
+
+⚠️ o teste que trava isso usa uma tarde com DOIS colegas já designados, de
+propósito — com a tarde 100% vazia a guarda de 22/08 mascara a diferença e
+qualquer regra passa. Conferido que ele FALHA com a regra anterior (2 cards
+vermelhos) antes de entrar.
+
+Herda de graça do modo FDS: badge "Livre" para quem está sem cirurgia, hospital
+em caixa alta no card, a ação do alerta como frase abaixo do texto. Travas:
+describe "feriado como data de fila única" em `escalaFds.test.js` — com o invariante que roda `gerarColunaLiberacao`
+sobre o rodapé publicado e afirma QUEM é o próximo a ser liberado em cada turno,
+que é o que protege contra uma re-inversão (asserção de string não protege) — +
+o describe "FERIADO" em `importarEscalaFds.test.jsx` (publicação nos dois turnos
+e o alinhamento entre o que a tela mostra e o que Descer move) + e2e
+`escala-cirurgica-feriado.spec.ts` sobre a fixture DEV `DEMO_DATE_FERIADO`.
+
+### FDS — fila completa e o fim do vermelho em massa (dono 22/08)
+
+Duas queixas no mesmo dia, sobre a escala de 22–23/08 publicada pelo app.
+
+**"Estão faltando colegas"** (domingo e noite): a linha de ordem do documento é a
+fila, mas quem está ESCALADO no turno e não foi citado nela **nunca some** —
+regra já estabelecida em 16/08 para a noite ("apenas adicione os P's faltantes"),
+que vale para qualquer turno. No domingo o bloco traz uma linha só (`P1 P2 P3
+P4`) e cita à parte 8º OSCAR, 7º GUILHERME DIDOMENICO e EMERGENCIA: 11º THAYNA —
+os três ficaram fora da fila. O slot de cada faltante vem de `sugerirRodapeFds`
+(postos na frente · numerados no meio · retaguarda no fim), que é a forma que o
+PRÓPRIO documento usa na manhã de sábado, onde P4/P3 são a retaguarda e saem
+primeiro. ⚠️ turno com UMA linha só no bloco = a linha é do MATUTINO; o
+vespertino nasce da grade daquele turno (marcado "sugerida") — aplicar a mesma
+linha nos dois punha Daniela/Rômulo à frente numa tarde cujo plantão é
+Karine/Gabriel, e sumia com Matheus e Cristina, que só existem na faixa 13-19.
+
+**Fila inteira vermelha:** a tarde de sábado saiu com 8 cirurgias sem
+anestesista definido e os 7 nomes nasceram LIBERADOS de uma vez, antes de o turno
+começar. Causa: `idxUltimoTrabalho` é -1 quando NINGUÉM tem cirurgia, e `idx >
+-1` é verdade para a fila toda. A cauda é o que vem DEPOIS do último nome com
+trabalho; sem esse nome não há depois, e vale a regra de 20/08 — ninguém nasce
+liberado. Guarda `temAlguemComTrabalho` em `LiberacoesView`; travado em
+`escalaCirurgicaPersonas.test.jsx` (describe "sem ninguém em cirurgia não há
+cauda"), com o caso inverso junto: um nome com cirurgia e a cauda volta a nascer
+liberada. Acontece sempre que o mapa do turno chega sem anestesista — o mapa do
+HRO de fim de semana traz a coluna vazia à tarde.

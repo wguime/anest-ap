@@ -1,5 +1,4 @@
 ---
-globs: ["**"]
 description: Higiene de secrets — agente nunca vê valores de credenciais. Lê só metadados, invoca CLIs autenticadas, redireciona geração/setup para o usuário via dashboard web.
 ---
 

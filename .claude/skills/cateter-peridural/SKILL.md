@@ -1,10 +1,14 @@
 ---
 name: cateter-peridural
-description: Controle de cateteres peridurais (Supabase cateteres_peridural + followup PO + lembretes 24/48/72/96h). Use ao criar/editar features de cateter, debugar lembretes ou notificações que não chegam, validar LGPD do conteúdo, ou mexer no service/context/páginas do módulo.
+description: Controle de cateteres peridurais (Supabase cateteres_peridural + followup PO + lembretes de duração 72/96h e de não-evoluído 36/42h por pg_cron). Use ao criar/editar features de cateter, debugar lembretes ou notificações que não chegam, validar LGPD do conteúdo, ou mexer no service/context/páginas do módulo.
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 
 # Cateter Peridural ANEST
+
+> **Conhecimento do módulo (eixos de alerta, decisões do dono, histórico das migrations) vive em
+> `.claude/rules/cateter-peridural.md`**, que carrega sozinha ao abrir um arquivo do cateter. Esta
+> skill é o PROCEDIMENTO: quando mexer, o que conferir, como testar.
 
 ## Quando Usar
 - Criar/editar features do módulo (formulário, detalhe, evolução PO, retirada)
@@ -30,14 +34,13 @@ allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 | Detalhe (tabs Dados + Evolução PO) | `src/pages/cateter-peridural/CateterDetalhePage.jsx` |
 | Form de evolução PO + retirada | `src/pages/cateter-peridural/components/FollowupForm.jsx` |
 | Banner 72h/96h | `src/pages/cateter-peridural/components/AlertaDuracao.jsx` |
-| Helpers de notificação (LGPD-safe) | `src/utils/cateterNotifications.js` |
-| Hook de lembretes (admin-only, montado em `HomePage.jsx:225`) | `src/hooks/useCateterReminders.js` |
 | Listas de anestesistas/residentes | `src/hooks/useProfissionaisCateter.js` |
-| Testes | `src/__tests__/utils/cateterNotifications.test.js` |
+| Libs puras | `src/lib/cateterPo.js` (computeDiaPo) · `src/lib/cateterIndicadores.js` |
+| Testes | `src/__tests__/lib/cateterPo.test.js` |
 | Migrations | `src/supabase/migrations/027_cateteres_peridural.sql` · `028_..._hospital.sql` · `029_cateter_residente.sql` |
 | Scripts de diagnóstico | `src/scripts/backfill-cateter-notifications.js` · `src/scripts/inspect-orphan-cateter.js` |
 
-**Tabelas Supabase:** `cateteres_peridural` (status `ativo|retirado`, hospital `unimed|hro`) + `cateteres_peridural_followup` (1 avaliação por dia PO, FK `cateter_id` ON DELETE CASCADE).
+**Tabelas Supabase:** `cateteres_peridural` (status `ativo|retirado`, hospital `unimed|hro`) + `cateteres_peridural_followup` (**N avaliações por dia** — o UNIQUE(cateter_id, dia_po) foi removido em `20260628110000`; FK `cateter_id` ON DELETE CASCADE).
 
 **Navegação (App.jsx):** cases `cateteresPeridural` / `novoCateter` / `cateterDetalhe` (~`src/App.jsx:1078`). Permissões em `PAGE_TO_CARD`: listagem usa o card `cateter_peridural`; subcards `cp_novo` (novoCateter) e `cp_listagem` (cateterDetalhe). Badge do bottom nav "Menu" acende se houver cateter ativo (`hasActiveCateterPeridural`, `src/App.jsx:791`).
 
@@ -53,10 +56,11 @@ allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 
 4. **camelCase ↔ snake_case no service.** Campo novo no DB exige entrada nos mapas `CAMEL_TO_SNAKE` / `FOLLOWUP_CAMEL_TO_SNAKE` do service. Campo fora do mapa passa _as-is_ — funciona se o nome coincidir, quebra silenciosamente se não (lembre `feedback_explicit_select_silent_empty`).
 
-5. **Dedup de lembretes** (`useCateterReminders.js`):
-   - `related_entity_id = cateter-reminder_<cateterId>_<thresholdKey>` — checado contra `notifications` antes de criar (1x por cateter × threshold, para sempre).
-   - Guard de sessão: `processedSessions` com chave `cateter_reminders_<YYYY-MM-DD>` → roda no máximo 1x/dia por sessão, admin-only (`user.isAdmin`), e **trava mesmo em erro** (RLS 403 não re-tenta na sessão).
-   - Thresholds em `CATETER_REMINDER_THRESHOLDS` (24h/48h normal, 72h alta, 96h urgente) — alinhados a `WARNING_DURATION_HOURS=72` / `MAX_DURATION_HOURS=96` do config.
+5. **Lembretes são pg_cron, NÃO cliente.** `notify_cateter_reminders()` (migrations
+   `20260628150000` → `20260808120000` → `20260822120000`), diário 17h BRT. O hook cliente
+   `useCateterReminders` e a constante `CATETER_REMINDER_THRESHOLDS` **não existem mais** —
+   tomavam RLS 42501 em silêncio. Eixos e dedup atuais estão em `.claude/rules/cateter-peridural.md`;
+   não reintroduzir agendamento no cliente.
 
 6. **LGPD: `pacienteIniciais()`.** Notificação NUNCA leva nome do paciente — só 2 iniciais (`"João da Silva"` → `"JS"`, partículas de/da/do ignoradas) + hospital + link para o detalhe. O service também não loga dados clínicos no console (comentários `// LGPD:` em `create`/`markAsRemoved`). Qualquer texto novo de notificação deve passar pelo mesmo crivo.
 
@@ -65,14 +69,21 @@ allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 ## Gotchas
 
 - **Sem UNIQUE(cateter_id, dia_po)** desde `20260628110000`: a constraint foi removida para permitir N avaliações no mesmo dia. `dia_po` deixou de ser identificador único — é derivado da data. (O bug histórico do backfill de notificações, fix `257b302`, era sobre o índice parcial de `notifications`, não desta tabela — o dedup manual do backfill continua válido.) Para corrigir uma avaliação existente use `updateFollowup(id, updates, userInfo)` (passa `updated_by` real).
-- **Cateter retirado nunca alerta.** `useCateterReminders` filtra `status === 'ativo' && dataInsercao`; `AlertaDuracao` só renderiza para ativo. Cateter sem `data_insercao` também fica invisível para lembretes.
+- **Cateter retirado nunca alerta.** O cron filtra `status = 'ativo' AND data_insercao IS NOT NULL` (migration `20260822120000`); `CateteresPeridualPage` e `AlertaDuracao` só alertam para ativo. Cateter sem `data_insercao` fica invisível para lembretes.
 - **RLS por papel (`20260627200000` + `20260628100000`):** SELECT e INSERT/UPDATE = `can_write_cateter() OR is_admin()` — roles `anestesiologista`/`medico-residente` **ou** admin (admin ganhou escrita em 2026-06-12). Sem DELETE. Demais papéis veem módulo vazio (0 rows, sem erro). Helper SECURITY DEFINER no padrão `firebase_uid()`.
 - **Deep-link aceita `id` E `cateterId` (fix 2026-06-10):** a página resolve `params?.id ?? params?.cateterId` — a inbox envia `{ cateterId }`, a listagem `{ id }`. Ao criar navegação nova, qualquer um dos dois funciona; manter os dois aceitos.
 - **Retirada é fluxo da evolução PO.** A UI orienta retirar via toggle no `FollowupForm` (avaliação + retirada atômica no handler); `RemoverCateterModal` existe mas o botão de retirada direta não está exposto no detalhe.
 - **`setor` não existe** (sem coluna nem campo). Os callers não passam mais `setor` ao payload (limpeza 2026-06-13); o helper aceita `setor` opcional (testado) mas está sem uso.
 - **`status` só tem 2 valores** (`ativo|retirado`, CHECK constraint). Não inventar `arquivado` sem migration.
-- **Notificações de cateter são SERVER-SIDE (trigger + pg_cron), não cliente.** O INSERT cliente em `notifications` tomava RLS 42501 e era silenciado (notificações pararam 2026-04→06). Fix: triggers `SECURITY DEFINER` (migration `20260628130000`, espelha `notify_public_incidents`) criam as notificações de evento (novo/evolucao/retirada) bypassando RLS; recipients computados no SQL. Os calls cliente continuam (inofensivos/deduplicados). **`relatedEntityId` ÚNICO POR EVENTO** (índice único parcial `(related_entity_type, related_entity_id, recipient_id) WHERE related_entity_id IS NOT NULL`): `cateter_<id>_novo`, `cateter_evolucao_<followupId>`, `cateter_<id>_retirada`. Helper SQL `cateter_iniciais` espelha `pacienteIniciais` (LGPD).
-- **Lembretes (duração 24/48/72/96h + não-evoluído 30/42h) são pg_cron** (`notify_cateter_reminders()`, migrations `20260628150000` + `20260808120000`, diário 20h UTC = 17h BRT) — o hook cliente `useCateterReminders` foi REMOVIDO (tomava 42501). Dedup: duração `cateter-reminder_<id>_<threshold>` (1x p/ sempre); não-evoluído `cateter-naoevoluido_<id>_<YYYY-MM-DD>` (janela diária, re-dispara enquanto não evoluído).
+- ⚠️ **NÃO EXISTE notificação de EVENTO** (novo / evolução / retirada). Os três triggers e as
+  funções foram DROPADOS na migration `20260730160000` a pedido do dono (30/07): havia 10.881
+  notificações acumuladas, ~98% não lidas. `cateterNotifications.js` foi deletado. **Não recriar** —
+  se o trigger voltar sem o dedup, um insert client-side duplica. Ficam só os lembretes clínicos.
+- **Lembretes clínicos = duração 72/96h + não-evoluído 36/42h**, via pg_cron. ⚠️ o warning de
+  não-evoluído é **36h**, não 30h (`EVOLUCAO_WARNING_HOURS` em `cateterPeridualConfig.js`,
+  recalibrado em `20260822120000` sobre a distribuição real dos intervalos). O porquê da
+  recalibração e a divergência intencional entre CARD e CRON estão em
+  `.claude/rules/cateter-peridural.md`.
 - **`ultima_avaliacao_at`** (migration `20260628140000`): coluna em `cateteres_peridural` mantida por trigger no followup (`GREATEST(data_avaliacao)`); base do alerta "não evoluído" no card (`getEvolucaoAlertLevel` em `cateterPeridualConfig.js`).
 
 ## Como testar

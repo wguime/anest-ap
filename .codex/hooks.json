@@ -1,0 +1,32 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "input=$(cat); cmd=$(echo \"$input\" | jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -qE '(^|[^[:alnum:]])git[[:space:]]+push[[:space:]].*--force'; then branch=$(git -C \"$CLAUDE_PROJECT_DIR\" rev-parse --abbrev-ref HEAD 2>/dev/null); if [ \"$branch\" = \"main\" ]; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"BLOQUEADO: git push --force (ou --force-with-lease) em main. Crie uma branch ou refaça o commit local.\"}}'; fi; fi",
+            "statusMessage": "Pre-check git push --force..."
+          },
+          {
+            "type": "command",
+            "command": "input=$(cat); cmd=$(echo \"$input\" | jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -qE '(^|[[:space:]])firebase[[:space:]]+deploy([[:space:]]|$)'; then cd \"$CLAUDE_PROJECT_DIR\" && local_h=$(git rev-parse HEAD 2>/dev/null) && remote_h=$(git rev-parse origin/main 2>/dev/null); if [ -n \"$local_h\" ] && [ -n \"$remote_h\" ] && [ \"$local_h\" != \"$remote_h\" ]; then echo '{\"systemMessage\":\"⚠️  HEAD local difere de origin/main. Faça git push antes do deploy (regra obrigatória do CLAUDE.md).\"}'; fi; fi",
+            "statusMessage": "Pre-check firebase deploy sync..."
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" 2>/dev/null && b=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) && c=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ') && [ -n \"$b\" ] && printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"📍 Branch: %s | %s arquivo(s) não commitado(s)\"}}' \"$b\" \"$c\""
+          }
+        ]
+      }
+    ]
+  }
+}

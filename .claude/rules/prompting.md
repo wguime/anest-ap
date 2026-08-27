@@ -1,5 +1,11 @@
 ---
-globs: ["CLAUDE.md", ".claude/skills/**", ".claude/agents/**", ".claude/commands/**", ".claude/rules/**", "docs/wave-execution-playbook.md"]
+paths:
+  - "CLAUDE.md"
+  - ".claude/skills/**"
+  - ".claude/agents/**"
+  - ".claude/commands/**"
+  - ".claude/rules/**"
+  - "docs/wave-execution-playbook.md"
 description: Otimização de prompts e solicitações — práticas oficiais Anthropic (Fable 5)
 ---
 

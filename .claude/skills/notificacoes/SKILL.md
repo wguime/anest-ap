@@ -122,7 +122,9 @@ Em `src/services/notificationService.js`:
 
 Helpers LGPD-safe especializados:
 - `src/utils/incidentesResponsaveis.js` → `getResponsaveisIncidentes`, `buildNewIncidentNotificationPayload`, `buildStatusChangeNotificationPayload`
-- `src/utils/cateterNotifications.js` → `getCateterRecipients`, `pacienteIniciais`, `buildCateterNotificationPayload`
+- ⚠️ `src/utils/cateterNotifications.js` foi **DELETADO** (30/07): a escala e o cateter não
+  notificam mais por evento. Para LGPD por iniciais, o equivalente vivo é `cateter_iniciais`
+  (SQL, no cron) — ver `.claude/rules/cateter-peridural.md`. Não recriar o helper client-side.
 - `src/utils/reuniaoNotifications.js` → `buildReuniaoNotificationPayload`
 - `src/utils/tradeNotifications.js` → `getTradeNotificationRecipients`, `buildTradeNotificationContent`
 - `src/utils/sobreavisoNotifications.js` → idem para funcionárias

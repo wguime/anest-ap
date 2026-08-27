@@ -56,7 +56,8 @@ Executar, nesta ordem, e reportar o output real de cada etapa:
 2. `deno check --node-modules-dir=false supabase/functions/parse-escala-cirurgica/index.ts`.
 3. ESLint dos arquivos alterados.
 4. `npm run build` e subida curta de `npm run dev`.
-5. Playwright dos specs demo aplicáveis; declarar qualquer cobertura não executada.
+5. Playwright dos specs demo aplicáveis; o visual principal segue pausado até migrar a
+   fixture antiga, portanto declare explicitamente qualquer cobertura não executada.
 
 Não precisa de biblioteca nova: Vitest, Playwright, XLSX e Supabase SDK já cobrem o fluxo.
 
@@ -68,10 +69,11 @@ Não precisa de biblioteca nova: Vitest, Playwright, XLSX e Supabase SDK já cob
 - Comparar o rodapé literalmente: mesma contagem, sequência e notas entre parênteses.
   Falhar a auditoria se uma nota for dividida, removida, ordenada ou deduplicada; variantes
   `CONS*` representam posição ativa no Consultório, mesmo sem cirurgia.
-- Não publicar nem armazenar a imagem. Em artefatos commitados, usar só contagens e dados
-  desidentificados.
-- SRPA é posição assistencial: aparece na equipe/fila, nunca conta como cirurgia e, no
-  Board, mantém o cabeçalho compacto sem a frase explicativa de que não é cirurgia.
+- Não publicar nem armazenar a imagem. No relatório/fixture, usar apenas contagens e dados
+  desidentificados; nomes de pacientes e colegas não entram em artefatos commitados.
+- Regra estrutural: SRPA é posição assistencial; deve aparecer na equipe/fila, mas nunca
+  contar como cirurgia, receber status cirúrgico ou gerar cobrança. No Board, manter o
+  cabeçalho compacto sem a frase explicativa de que não é cirurgia.
 
 ## Modo `relatorio` — eventos → `docs/escala-cirurgica-metricas/<AAAA>-W<ww>.md`
 

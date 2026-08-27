@@ -1,5 +1,7 @@
 ---
-globs: ["src/App.jsx", "src/pages/**"]
+paths:
+  - "src/App.jsx"
+  - "src/pages/**"
 description: Padrões de navegação React. KEY prop, goBack, scroll to top, PAGE_TO_CARD
 ---
 
@@ -101,3 +103,18 @@ ProfilePage e páginas que acessam user: SEMPRE verificar `if (!user) return nul
 ## Header Fixo
 Cada página implementa Header via createPortal para o container fixo do App.
 Seguir padrão existente em qualquer página.
+
+## Bottom Nav — visual TRAVADO (dono 14/08)
+
+4 abas: **Home** | **Gestão** (Shield) | **Educação** | **Menu** (Dashboard oculto; código preservado
+em `App.jsx`).
+
+Barra **SEM badge/dot** — removido 2× pelo dono (`8663996` e 13/08): estado clínico pertence ao card do
+módulo, não à navegação. Cor por TOKEN em `.bottom-nav-glass` (`anest-theme.css`): light `--muted`
+#E8F5E9 (o nível 0 #F0FFF4 sobre cards brancos lia como "barra branca"), dark `--background` #111916;
+`border-border`, sem inset/borda branca (viravam "filete" sobre o verde). O ramo iOS (blur off) usa os
+mesmos tokens.
+
+⚠️ Bug conhecido `src/App.jsx:1011` (TODO BUG-06): BottomNav global pode duplicar com BottomNav
+per-page (createPortal). Decisão arquitetural pendente. **Em página nova, NÃO renderizar BottomNav
+próprio.**

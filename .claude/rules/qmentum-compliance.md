@@ -1,5 +1,9 @@
 ---
-globs: ["src/pages/management/documents/**", "src/types/documents*", "src/hooks/useDocuments*", "src/hooks/useComplianceMetrics*"]
+paths:
+  - "src/pages/management/documents/**"
+  - "src/types/documents*"
+  - "src/hooks/useDocuments*"
+  - "src/hooks/useComplianceMetrics*"
 description: Compliance Qmentum — ciclo documental (criação→aprovação→distribuição→revisão→arquivamento)
 ---
 

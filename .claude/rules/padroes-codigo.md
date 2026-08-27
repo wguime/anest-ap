@@ -1,5 +1,7 @@
 ---
-globs: ["**/*.jsx", "**/*.js"]
+paths:
+  - "**/*.jsx"
+  - "**/*.js"
 description: Padrões de código ANEST — estrutura de componente, Header com createPortal, animações, A11y
 ---
 
@@ -56,3 +58,40 @@ Usar CVA (class-variance-authority) para definir variantes de componentes.
 
 ## Padrão Canônico
 Para estrutura completa: `src/design-system/showcase/ComponentShowcase.jsx`
+
+## Limites do DS descobertos em uso (valem para o app inteiro)
+
+⚠️ **`TabsContent` DESMONTA o painel inativo — estado local dentro de uma aba MORRE na troca.**
+Já apagou, em silêncio, dados de paciente digitados (ClCr, RNI, fatores de risco marcados). Correção:
+subir o estado para o componente RAIZ, que não desmonta. Estado de "folha aberta" fica de fora de
+propósito — painel aberto não deve sobreviver a troca de aba.
+
+⚠️ **`POSITION_CLASSES.bottom` fixa `h-[85vh]`, não `max-h`**: todo bottom-sheet nasce com 85% da
+tela mesmo quase vazio ("a tela fica quase vazia"). Passar `!h-auto max-h-[88vh]` no sheet. O default
+do DS NÃO foi mexido — alterá-lo alcança todos os sheets do app (Regra #2).
+
+⚠️ **O dropdown do `Select` herda a largura do gatilho** (`select.jsx`,
+`width = Math.min(triggerWidth, …)`). Gatilho estreito + lista longa = popover espremido. Onde a
+lista é longa, usar folha própria em vez de insistir no Select.
+
+⚠️ **`DatePicker` abre o popup como `absolute z-50` sem portal** (`date-picker.jsx:434`) e
+`AccordionContent`/`CollapsibleContent` animam altura com `overflow-hidden` → **calendário dentro de
+sanfona sai cortado no meio do mês**. Onde precisar dos dois, usar `Sheet`.
+
+⚠️ **`TabsList` traz `w-full`**: largura fixa em 100% do pai ignora margem negativa (a barra fica mais
+estreita que os cards e deslocada). Com margem negativa, passar `w-auto` junto. E `flex` respeita o
+`min-width:auto` de cada rótulo (larguras desiguais): `grid grid-cols-N` iguala, mas aí o `px-3` do
+gatilho não cabe — usar `px-1`.
+
+⚠️ **`Alert` põe o ícone numa coluna à esquerda, centrado na vertical**: em alerta longo ele flutua no
+meio e rouba ~24px de largura de TODAS as linhas. Ícone dentro do `title` + colapsar a coluna resolve.
+E o `Alert` tem **`border-l-4`** (`alert.jsx:9`) — anular LOCALMENTE com `border-l` na className
+(tailwind-merge resolve a favor da última); mexer no `alert.jsx` alcança todos os alertas do app.
+
+⚠️ **`AccordionTrigger` pinta `dark:group-data-[state=open]:bg-card`**: neutralizar SÓ a variante clara
+parte o cabeçalho em duas cores no escuro. Neutralizar as duas.
+
+⚠️ **Badge é `whitespace-nowrap` e não encolhe** — texto longo dentro dele empurra o resto da linha
+para fora. Quando o rótulo pode crescer, encurtar a string em vez de confiar no wrap.
+
+⚠️ **`Modal` DS usa props `title`/`description`/`footer`** — não existem `ModalHeader`/`Content`/`Footer`.
