@@ -1,6 +1,16 @@
 /**
  * PreviewModal - Student-Safe com Comparação Admin vs Aluno
- * 
+ *
+ * ⚠️ ARQUIVO SEM USO — zero importadores. Quem está no ar é o
+ * `PreviewModal_STUDENT_SAFE.jsx`, consumido por `CursoFormModal` e
+ * `TrilhaFormModal`. Além disso este arquivo não roda como está: usa
+ * `ModalHeader`/`ModalContent`/`ModalTitle`, que o `Modal` do DS não expõe
+ * (ele recebe `title`/`description`/`footer`), e passa `<option>` como filho da
+ * `Select`, que só lê a prop `options`. Corrigido aqui apenas o
+ * `onValueChange` → `onChange`, para a trava de props da `Select`
+ * (`__tests__/design-system/select-props.test.js`) valer no repo inteiro.
+ * A remoção do arquivo é decisão do dono.
+ *
  * Features:
  * - USA AS MESMAS QUERIES DO ALUNO (sem junction tables)
  * - Mostra itens ocultos (draft, inativos, sem permissão) com motivo
@@ -112,7 +122,7 @@ export function PreviewModal({ open, onClose, allTrilhas = [], _allCursos = [] }
               </label>
               <Select
                 value={selectedUserType}
-                onValueChange={setSelectedUserType}
+                onChange={setSelectedUserType}
               >
                 {Object.entries(TIPOS_USUARIO).map(([key, { label }]) => (
                   <option key={key} value={key}>
