@@ -75,6 +75,14 @@ const escala = {
   ],
 }
 
+// ⚠️ a hora tem de ser do turno da fila (matutino): com 16:00 o caso cai no
+// vespertino, `filtrarPorTurno` o descarta e o alerta simplesmente não existe —
+// foi assim que a 1ª versão deste teste passou verde afirmando o contrário.
+const escalaComSemAnest = {
+  ...escala,
+  casos: [...escala.casos, caso('Sala 9', 0, '?', 'Ana P', '07:45', { semAnestesista: true })],
+}
+
 const montar = (props = {}, e = escala) => render(
   <LiberacoesView escala={e} hospital="hro" hospitalLabel="HRO" turno="matutino"
     canEdit onToggle={() => {}} onSetOverride={() => {}} {...props} />,
@@ -155,7 +163,7 @@ describe('fila de liberação deitada (dono 26/08)', () => {
   })
 
   it('as ações ocupam a metade ESQUERDA e terminam na mesma linha que o alerta', () => {
-    montar()
+    montar({ onGarantirEscala: () => {}, onAddAjuda: () => {} }, escalaComSemAnest)
     const historico = screen.getByRole('button', { name: 'Histórico de mensagens' })
     const fileira = historico.parentElement
     // ⚠️ o lugar é FIXO (dono 27/08). Duas versões anteriores punham o botão
@@ -174,9 +182,39 @@ describe('fila de liberação deitada (dono 26/08)', () => {
   it('sem "Adicionar caso/ajuda", a fileira de mensagens SOBE para a 1ª', () => {
     // quem não edita não tem as ações de cima — sem isto sobraria uma fileira
     // vazia sobre o Histórico, que é o único botão que resta
-    montar({ canEdit: false })
+    montar({ canEdit: false }, escalaComSemAnest)
     const historico = screen.getByRole('button', { name: 'Histórico de mensagens' })
     expect(historico.parentElement.className).toContain('deitado:row-start-1')
+  })
+
+  it('SEM alerta na tela, as ações viram UMA fileira com um botão por coluna', () => {
+    // dono 27/08: "quando não houver procedimento sem anestesista deixe os cards
+    // alinhados (3 ou 4 se plantonista)". Antes a metade direita ficava vazia — e
+    // é o caso da maioria dos dias, porque alerta de sem-anestesista é exceção.
+    montar({ onGarantirEscala: () => {}, onAddAjuda: () => {} })
+    const historico = screen.getByRole('button', { name: 'Histórico de mensagens' })
+    const raiz = historico.closest('div.space-y-3')
+    // três botões (Adicionar caso · Adicionar ajuda · Histórico) = três colunas
+    expect(raiz.className).toContain('deitado:grid-cols-3')
+    // ⚠️ os dois blocos de ação são SEPARADOS no DOM (o recado do plantonista
+    // entra entre eles), então a fileira única só existe com `contents`: os
+    // invólucros somem deitado e os botões viram filhos diretos da grade.
+    expect(historico.parentElement.className).toContain('deitado:contents')
+    expect(screen.getByRole('button', { name: 'Adicionar anestesista (ajuda)' })
+      .parentElement.className).toContain('deitado:contents')
+    // e a fila continua inteira, sem precisar saber quantas colunas existem
+    const lista = listaDaFila(cardDe('Leonardo Ferrazzo'))
+    expect(lista.className).toContain('deitado:col-span-full')
+  })
+
+  it('COM alerta, a grade volta a duas colunas — ações à esquerda, alerta à direita', () => {
+    montar({ onGarantirEscala: () => {}, onAddAjuda: () => {} }, escalaComSemAnest)
+    const historico = screen.getByRole('button', { name: 'Histórico de mensagens' })
+    const raiz = historico.closest('div.space-y-3')
+    expect(raiz.className).toContain('deitado:grid-cols-2')
+    // aqui os invólucros voltam a ser fileiras da coluna 1
+    expect(historico.parentElement.className).toContain('deitado:col-start-1')
+    expect(historico.parentElement.className).not.toContain('deitado:contents')
   })
 
   it('o rótulo ENCURTA deitado, e o nome inteiro fica para o leitor de tela', () => {

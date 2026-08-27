@@ -617,8 +617,31 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // botão já os deixa exatamente iguais, e quando existe só um deles (usuário
   // sem "Adicionar caso") ele ocupa a metade inteira em vez de deixar meia
   // coluna vazia ao lado.
+  // ⚠️ SEM ALERTA na tela, as ações deixam de ficar na metade esquerda e se
+  // espalham pela largura inteira, numa fileira só de 3 (ou 4, com o
+  // plantonista) botões IGUAIS — dono 27/08: "quando não houver procedimento sem
+  // anestesista deixe os cards alinhados". Antes a metade direita ficava vazia,
+  // e é o caso da maioria dos dias.
+  // Como as duas fileiras de ação são blocos SEPARADOS no DOM (o recado do
+  // plantonista entra entre elas), a fileira única só existe com `contents`: os
+  // invólucros somem deitado e os botões viram filhos diretos da grade da raiz,
+  // que aí ganha uma coluna por botão. O `gap` do invólucro e o da raiz são o
+  // mesmo 8px, então nada muda de espaçamento.
+  const temAlertaSemAnest = fase !== 'zerada' && semAnestesista.length > 0
+  const nAcoes = (canEdit && podeAddCaso ? 1 : 0)
+    + (canEdit && fase !== 'zerada' && onAddAjuda ? 1 : 0)
+    + (canEdit && souPlantonista && podeAvisar ? 1 : 0)
+    + 1 // Histórico de mensagens, que todo mundo vê
+  // classes LITERAIS: o Tailwind lê o código como texto e não geraria a
+  // interpolada. Com alerta a grade é sempre de duas colunas (ações | alerta).
+  const COLUNAS_RAIZ = { 1: 'deitado:grid-cols-1', 2: 'deitado:grid-cols-2', 3: 'deitado:grid-cols-3', 4: 'deitado:grid-cols-4' }
+  const gradeRaiz = temAlertaSemAnest ? 'deitado:grid-cols-2' : (COLUNAS_RAIZ[nAcoes] || 'deitado:grid-cols-4')
+  // com alerta cada bloco de ação é uma fileira da coluna 1; sem alerta os dois
+  // se dissolvem e os botões entram na fileira única
+  const posAcoesTopo = temAlertaSemAnest ? 'deitado:col-start-1 deitado:row-start-1' : 'deitado:contents'
+
   const acoesTopo = canEdit && (podeAddCaso || fase !== 'zerada') ? (
-    <div className="flex items-stretch gap-2 deitado:col-start-1 deitado:row-start-1">
+    <div className={`flex items-stretch gap-2 ${posAcoesTopo}`}>
       {podeAddCaso && (
         <Button
           size="sm" variant="outline" className="min-w-0 flex-1 deitado:h-auto"
@@ -1096,11 +1119,16 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
        sobrasse espaço naquele momento da tela. Aqui cada metade é uma coluna fixa.
        As colunas das duas primeiras FILEIRAS são ocupadas explicitamente (ações à
        esquerda, alerta atravessando as duas à direita), então tudo que precisa da
-       largura inteira — recado, fila, estado vazio — leva `col-span-2` e o
-       posicionamento automático o joga para a 3ª fileira em diante: um item de
-       duas colunas não cabe numa sobra de uma coluna. É isso que mantém a coisa
-       de pé quando não há ações (usuário sem edição) ou quando não há alerta. */
-    <div className="space-y-3 deitado:grid deitado:grid-cols-2 deitado:items-stretch deitado:gap-2 deitado:space-y-0">
+       largura inteira — recado, fila, estado vazio — leva `col-span-full` e o
+       posicionamento automático o joga para a 3ª fileira em diante: um item que
+       ocupa todas as colunas não cabe numa sobra de uma. É isso que mantém a
+       coisa de pé quando não há ações (usuário sem permissão de edição).
+       ⚠️ SEM alerta a grade muda de forma: passa a ter uma coluna por BOTÃO e as
+       ações viram uma fileira só, com todos do mesmo tamanho — ver
+       `temAlertaSemAnest` lá em cima. `col-span-full` é o que faz recado e fila
+       continuarem inteiros nas duas formas, sem precisar saber quantas colunas
+       existem. */
+    <div className={`space-y-3 deitado:grid ${gradeRaiz} deitado:items-stretch deitado:gap-2 deitado:space-y-0`}>
       {/* Não desenha nada: é o disparo da push de "tempo estourado" (dono 24/08).
           Vive como componente porque a lista só existe depois do guard de
           `rosterLoading` lá em cima — ver o porquê no próprio arquivo. */}
@@ -1143,7 +1171,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       {avisos.map((a) => (
         <div
           key={a.id}
-          className="rounded-2xl border border-category-purple/45 bg-category-purple-bg px-3 py-2.5 deitado:col-span-2"
+          className="rounded-2xl border border-category-purple/45 bg-category-purple-bg px-3 py-2.5 deitado:col-span-full"
         >
           <div className="flex items-center gap-2">
             <div className="min-w-0 flex-1">
@@ -1192,7 +1220,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           Com o plantonista logado são dois botões aqui e dois acima: os QUATRO
           ficam iguais, em 2×2 (dono 27/08). Sem ele, o Histórico ocupa sozinho a
           largura dos dois de cima — é o que o `flex-1` já faz. */}
-      <div className={['flex gap-2 deitado:col-start-1', acoesTopo ? 'deitado:row-start-2' : 'deitado:row-start-1'].join(' ')}>
+      <div className={['flex gap-2', temAlertaSemAnest
+        ? `deitado:col-start-1 ${acoesTopo ? 'deitado:row-start-2' : 'deitado:row-start-1'}`
+        : 'deitado:contents'].join(' ')}>
         {canEdit && souPlantonista && podeAvisar && (
           <Button size="sm" variant="outline" className="min-w-0 flex-1 deitado:h-auto"
             aria-label="Mensagem para equipe" onClick={() => setAvisoSheet(true)}>
@@ -1281,7 +1311,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           </div>
         </div>
       )}
-      {semFila && <div className="deitado:col-span-2">{estadoVazio}</div>}
+      {semFila && <div className="deitado:col-span-full">{estadoVazio}</div>}
 
       {/* div simples de propósito: animação de layout + reload do realtime moviam a
           linha sob o dedo (mesma classe do bug da inbox, fix 956aedd) */}
@@ -1295,7 +1325,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           margem passa de `space-y` para `mb`: o `space-y` não põe margem no
           primeiro filho, e o primeiro filho da SEGUNDA coluna é um card do meio
           da lista — sem isso ele nasceria colado no topo. */}
-      {!semFila && <div className="space-y-1.5 deitado:col-span-2 deitado:space-y-0 deitado:columns-2 deitado:gap-2 [&>*]:deitado:mb-2 [&>*]:deitado:break-inside-avoid">
+      {!semFila && <div className="space-y-1.5 deitado:col-span-full deitado:space-y-0 deitado:columns-2 deitado:gap-2 [&>*]:deitado:mb-2 [&>*]:deitado:break-inside-avoid">
         {(() => {
           // Está na FILA de liberação? P1/P2 são os plantonistas da noite: nunca
           // entram no "próximo a ser liberado" (pedido do dono 24/07). P3/P4 entram.
