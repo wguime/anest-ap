@@ -50,8 +50,13 @@ export function sodiumCorrectedHillier(naMeasured, glucoseMgDl) {
   const corrected = na + correction;
 
   return {
+    // `corrected` é para EXIBIR (1 decimal). `correctedRaw` é para CLASSIFICAR:
+    // arredondar antes de escolher a faixa muda a conduta na fronteira
+    // (134,95 arredonda para 135,0 e sairia de "leve" para "normal").
     corrected: Math.round(corrected * 10) / 10,
+    correctedRaw: corrected,
     correction: Math.round(correction * 10) / 10,
+    correctionRaw: correction,
     formula: 'Hillier',
     factor: 2.4,
   };
@@ -79,7 +84,9 @@ export function sodiumCorrectedKatz(naMeasured, glucoseMgDl) {
 
   return {
     corrected: Math.round(corrected * 10) / 10,
+    correctedRaw: corrected,
     correction: Math.round(correction * 10) / 10,
+    correctionRaw: correction,
     formula: 'Katz',
     factor: 1.6,
   };
@@ -176,7 +183,9 @@ export function calciumCorrectedPayne(caTotalMgDl, albuminGdL) {
 
   return {
     corrected: Math.round(corrected * 10) / 10,
+    correctedRaw: corrected,
     correction: Math.round(correction * 10) / 10,
+    correctionRaw: correction,
     formula: 'Payne',
   };
 }

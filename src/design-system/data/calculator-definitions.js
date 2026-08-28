@@ -13,6 +13,7 @@ import {
   sodiumCorrectedHillier,
   sodiumCorrectedKatz,
   interpretSodium,
+  calciumCorrectedPayne,
   interpretCalcium,
 } from '@/lib/electrolyteCorrection';
 
@@ -6100,9 +6101,10 @@ const renalCalculators = [
 
       // Hillier 1999 (2,4) é o padrão universal desde Iolascon, Kidney Int 2022.
       // Katz 1973 (1,6) segue exibido só para comparação histórica.
+      // `correctedRaw` (sem arredondar) classifica; `corrected` exibe.
       const hillier = sodiumCorrectedHillier(na, gli);
       const katz = sodiumCorrectedKatz(na, gli);
-      const naCorrigido = na + 2.4 * ((gli - 100) / 100);
+      const naCorrigido = hillier.correctedRaw;
       const faixa = interpretSodium(naCorrigido);
 
       const TEXTO = {
@@ -6122,8 +6124,8 @@ const renalCalculators = [
         details: {
           'Interpretação': interpretacao,
           'Fórmula utilizada': `${hillier.formula} (${hillier.factor})`,
-          'Correção aplicada': `+${(naCorrigido - na).toFixed(1)} mEq/L`,
-          'Comparação Katz (1.6, histórico)': `${katz.corrected.toFixed(1)} mEq/L`,
+          'Correção aplicada': `+${hillier.correctionRaw.toFixed(1)} mEq/L`,
+          'Comparação Katz (1.6, histórico)': `${katz.correctedRaw.toFixed(1)} mEq/L`,
         },
       };
     },
@@ -6163,8 +6165,9 @@ const renalCalculators = [
 
       if (ca === 0 || alb === 0) return null;
 
-      const correcao = 0.8 * (4 - alb);
-      const caCorrigido = ca + correcao;
+      const payne = calciumCorrectedPayne(ca, alb);
+      const correcao = payne.correctionRaw;
+      const caCorrigido = payne.correctedRaw;
       const faixa = interpretCalcium(caCorrigido);
 
       const TEXTO = {
