@@ -112,11 +112,22 @@ discussão: as telas convivem com ela.
   ou vazia, a sala vira o nome da seção. A regra existia SÓ no prompt desde 24/07 —
   quando a leitura escorrega, a linha do IOSC cai numa sala do HRO junto de outro
   anestesista, que é o pior desfecho. Aqui não depende de leitura.
-  **(6)** aviso quando a leitura do HRO não traz NADA de Exames, Imagem e
-  Hemodinâmica (as três ficam fora da grade principal e somem sem rastro). Só
-  quando faltam as TRÊS: faltar uma é rotina. A edge ganhou junto uma VERIFICAÇÃO
-  FINAL no hint do HRO para os dois erros — regra no meio de parágrafo longo é o
-  que vinha falhando.
+  **(6) CAUSA RAIZ achada em 28/08, com o recorte do mapa na mão:** HEMO, EXAMES
+  e IMAGEM **não são cabeçalhos de seção** — são a PRÓPRIA LINHA da cirurgia
+  ("09:00 | HEMO | ANGIOPLASTIA INTRALUMINAL – 2H | Alexandre Medeiros"), com o
+  rótulo do local na coluna Leito, em fundo amarelo. O hint do HRO mandava o
+  contrário desde 24/07 ("um rótulo na coluna Leito INICIA UMA SEÇÃO que vale
+  para as linhas ABAIXO"): lida como título, a linha não vira caso e a cirurgia
+  some sem rastro. Medido em produção (`scripts/diag-escala-secoes-hro.mjs`, 41
+  importações do HRO em 60 dias): **Exames 90% · Hemodinâmica 49% · Imagem 15%** —
+  e o padrão confirma a causa, porque Exames costuma ter linhas ABAIXO dele (que
+  viram casos) enquanto Imagem quase sempre é uma linha só, justamente a que
+  vira "cabeçalho" e desaparece. O prompt passou a decidir pelo CONTEÚDO: linha
+  com hora, procedimento, paciente ou cirurgião é CASO e o rótulo é a sala dela;
+  cabeçalho é só a linha que traz o rótulo e mais nada — destaque e cor não
+  decidem (é o mesmo motivo do IOSC em roxo escorregar). Na tela ficou o aviso
+  POR SEÇÃO faltante (o "só quando faltam as três" pegava 3 das 41 importações
+  enquanto a Imagem se perdia em 35), travado em `importarEscalaConferencia`.
   **(7) O campo Sala virou ESCOLHA das salas daquele hospital** + "Outra sala…"
   para digitar: o `datalist` praticamente não abre no iPhone, então na prática a
   sala era sempre digitada — que é como a mesma sala vira três grafias e três
