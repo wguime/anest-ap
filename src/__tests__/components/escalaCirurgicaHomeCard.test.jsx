@@ -57,6 +57,14 @@ const rosterComDido = () => ({
 
 describe('EscalaCirurgicaHomeCard — sem piscar apelido→nome', () => {
   beforeEach(() => {
+    // RELÓGIO CONGELADO: o setup calcula "hoje" uma vez e o componente calcula
+    // de novo no render. Na virada da meia-noite os dois caem em DIAS
+    // diferentes, o card entra no ramo de "a data do context não é hoje" e o
+    // nome nunca aparece. Foi assim que este arquivo derrubou o CI em 28/08 às
+    // 03:00 UTC (= 00:00 em America/Sao_Paulo, o fuso da suíte): passa o dia
+    // inteiro e falha numa janela de segundos.
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-20T10:00:00-03:00'))
     estado.ctx = { escalas: escalasComDido, data: hojeLocalISO(), loading: false }
     estado.roster = rosterVazio(false)
   })
