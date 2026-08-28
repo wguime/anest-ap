@@ -270,6 +270,48 @@ Morfina VO 60 mg/dia → 25 mcg/h (certo); uma dose avulsa de 10 mg → 4,2 mcg/
 Fontes: CDC Clinical Practice Guideline for Prescribing Opioids 2022 (fatores MME) ·
 Ripamonti C et al. J Clin Oncol 1998;16(10):3216-21 (razão escalonada da metadona).
 
+#### `ped_doses` (PediCalc) e `doses_adultos` (AdultCalc) — 4 achados
+
+**Corrigidos** (erro de código, sem julgamento clínico — commit `0fe7e09`):
+
+1. **As 78 drogas não mostravam a apresentação.** O `compute` lia
+   `med.apresentação` (com acento) e a chave nos dados é `apresentacao` (sem):
+   80 ocorrências, zero com acento. O React renderiza `undefined` como nada, e a
+   linha ficava em branco nas duas calculadoras — 49 drogas pediátricas e 29 de
+   adulto. É a linha que diz qual frasco pegar e em que concentração.
+2. **A OXITOCINA exibia `mg` no lugar de `UI`** — a derivação de unidade não
+   tinha ramo para `UI/kg` e caía no `mg` final.
+
+**Pendentes de decisão do dono** — são valor de dose, não código:
+
+3. ⚠️ **ADENOSINA: o teto está em mg/kg num campo aplicado como mg absoluto.**
+   O código faz `if (doseCalculada > doseMaxima) doseCalculada = doseMaxima`,
+   comparando contra a dose já multiplicada pelo peso. A `obs` da própria droga
+   diz "max 0,3 mg/kg ou 12 mg", ou seja, o `0.3` foi escrito como mg/kg. Efeito:
+   **toda criança acima de 3 kg é travada em 0,3 mg.**
+
+   | peso | dose correta (0,1 mg/kg) | o app entrega |
+   |---|---|---|
+   | 5 kg | 0,5 mg | 0,3 mg |
+   | 10 kg | 1,0 mg | 0,3 mg |
+   | 20 kg | 2,0 mg | 0,3 mg |
+   | 40 kg | 4,0 mg | 0,3 mg |
+
+   Os outros 31 tetos do arquivo estão em mg absoluto e conferem (atropina 0,5 ·
+   naloxone 2 · midazolam 5 · dipirona 1000…) — a adenosina é a única fora do
+   padrão. Pelo PALS o teto absoluto da 1ª dose é 6 mg (2ª dose 0,2 mg/kg,
+   máx. 12 mg). **A conduta é sua: trocar `doseMaxima` para 6?**
+
+4. ⚠️ **GLUCO Ca 10% dosado a 20 mg/kg, que é a dose do CLORETO.** O gluconato
+   de cálcio 10% é dosado a 30–100 mg/kg (usualmente 60); o cloreto de cálcio
+   10% é que são 20 mg/kg. Os dois são "10%" e 100 mg/mL, mas o cloreto tem
+   ~3× mais cálcio elementar por mL. Como está, ou o rótulo está errado (é
+   cloreto) ou a dose está 3× baixa (é gluconato). No Brasil o gluconato é a
+   apresentação usual, o que sugere que a dose é que está baixa. **Decisão sua:
+   corrigir a dose para 60 mg/kg ou renomear para cloreto?**
+
+Fontes: PALS/AHA 2020 (adenosina, cálcio) · StatPearls, Calcium Gluconate.
+
 ## Frente 4 — Português, incluindo os números
 
 O dono pediu português em todos os termos e um siglário. Duas metades:
