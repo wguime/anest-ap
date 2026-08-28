@@ -178,13 +178,16 @@ const pedDosesCalculators = [
           const volumeFinal = doseCalculada / med.concentracaoFinal;
 
           // Formatar unidade
+          // ⚠️ `UI` precisa de ramo próprio: sem ele a OXITOCINA caía no `mg`
+          // final e aparecia como "0,20 mg" em vez de "0,20 UI".
           const unidade = med.unidadeDose.includes('mcg') ? 'mcg' :
                           med.unidadeDose.includes('mEq') ? 'mEq' :
+                          med.unidadeDose.includes('UI') ? 'UI' :
                           med.unidadeDose.includes('ml') ? 'ml' : 'mg';
 
           medicamentos.push({
             droga: med.droga,
-            apresentacao: med.apresentação,
+            apresentacao: med.apresentacao,
             diluicao: med.diluicao,
             dose: `${doseCalculada.toFixed(2)} ${unidade}`,
             volume: `${volumeFinal.toFixed(2)} ml`,
@@ -7090,7 +7093,7 @@ const dorCalculators = [
 
           medicamentos.push({
             droga: med.droga,
-            apresentacao: med.apresentação,
+            apresentacao: med.apresentacao,
             diluicao: med.diluicao,
             dose: `${doseCalculada} ${unidadeExibicao}`,
             dosePadrao: `${med.dosePadrao} ${med.unidadeDose}`,
