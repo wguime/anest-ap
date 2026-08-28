@@ -9,6 +9,7 @@ import { hollidaySegarDaily } from '@/lib/burnFluid';
 import { apacheII } from '@/lib/apacheII';
 import { fourScore } from '@/lib/fourScore';
 import { roxIndex } from '@/lib/roxIndex';
+import { converterOpioide } from '@/lib/opioidConversion';
 import {
   sodiumCorrectedHillier,
   sodiumCorrectedKatz,
@@ -6936,37 +6937,21 @@ const dorCalculators = [
         ],
       },
     ],
+    // A conta mora em `@/lib/opioidConversion`. A metadona NÃO tem fator fixo:
+    // a razão é escalonada pela dose diária de morfina (Ripamonti 1998), e a
+    // razão fixa 4:1 que estava aqui entregava 2× a dose acima de 90 mg/dia e
+    // 3× acima de 300. `Razão aplicada` segue o precedente do Sódio Corrigido,
+    // que também mostra qual fórmula entrou na conta.
     compute: (values) => {
-      const dose = parseFloat(values.dose_origem) || 0;
-      if (dose === 0) return null;
+      const resultado = converterOpioide({
+        origem: values.opioide_origem,
+        destino: values.opioide_destino,
+        dose: values.dose_origem,
+      });
+      if (!resultado) return null;
 
-      // Fatores de conversão para morfina VO equivalente (referência)
-      // Morfina VO = 1, outros relativos a ela
-      const paraMorfinaVO = {
-        morfina_vo: 1,
-        morfina_iv: 3,        // 1 mg IV = 3 mg VO
-        tramadol_vo: 0.1,     // 100 mg tramadol = 10 mg morfina VO
-        tramadol_iv: 0.1,
-        codeina_vo: 0.15,     // 100 mg codeina = 15 mg morfina VO
-        oxicodona_vo: 1.5,    // 10 mg oxicodona = 15 mg morfina VO
-        metadona_vo: 4,       // Variável, usar com cautela (conversão não linear)
-        fentanil_iv: 0.1,     // 100 mcg fentanil IV = 10 mg morfina VO
-        fentanil_td: 2.4,     // 25 mcg/h TD = ~60 mg morfina VO/dia, por dose: ~2.4
-      };
-
-      const origem = values.opioide_origem;
-      const destino = values.opioide_destino;
-
-      if (!paraMorfinaVO[origem] || !paraMorfinaVO[destino]) return null;
-
-      // Converter para morfina VO equivalente, depois para destino
-      const morfinaVOeq = dose * paraMorfinaVO[origem];
-      const doseDestino = morfinaVOeq / paraMorfinaVO[destino];
-
-      // Aplicar redução de 25-50% para tolerância cruzada incompleta
-      const doseReduzida = doseDestino * 0.75;
-
-      const unidadeDestino = destino.includes('fentanil') ? 'mcg' : 'mg';
+      const { morfinaVOeq, doseDestino, doseReduzida, razaoMetadona } = resultado;
+      const unidadeDestino = values.opioide_destino.includes('fentanil') ? 'mcg' : 'mg';
 
       return {
         score: doseDestino,
@@ -6975,6 +6960,7 @@ const dorCalculators = [
           'Dose calculada': `${doseDestino.toFixed(1)} ${unidadeDestino}`,
           'Dose sugerida (-25%)': `${doseReduzida.toFixed(1)} ${unidadeDestino}`,
           'Morfina VO equivalente': `${morfinaVOeq.toFixed(1)} mg`,
+          ...(razaoMetadona ? { 'Razão aplicada (metadona)': `${razaoMetadona}:1 — Ripamonti` } : {}),
         },
       };
     },
