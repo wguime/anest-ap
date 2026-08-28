@@ -87,6 +87,41 @@ discussão: as telas convivem com ela.
   ajuda em azul passam a ser vistas ANTES da primeira publicação (antes o
   cruzamento só via o que já estava publicado — o primeiro hospital do dia não
   tinha com o que cruzar e o último decidia pelos dois).
+- **Importar · lote em uso, 7 correções (dono 27/08, mesmo dia da entrega)**: o
+  dono usou a tela no centro cirúrgico e mandou print de cada uma.
+  **(1) A conferência só abre com o LOTE INTEIRO lido** — entregando aba por aba,
+  ele começava a conferir a primeira com as outras ainda na Vision e a tela mudava
+  de tamanho embaixo do dedo ("Lendo…" ao lado de escala aberta); o progresso diz
+  "Lendo 2 de 3" e as abas entram juntas.
+  **(2)** o seletor de período voltou ao padrão de 44px do DS: a 40px ficava mais
+  baixo que o DatePicker e o cartão saía torto.
+  **(3) O anestesista SAIU do título do bloco** e ficou só no seletor — aparecia
+  duas vezes, e uma delas era a grafia que a leitura chutou; no lugar dele o
+  **CIRURGIÃO**, que é quem identifica a sala na imagem (`CC - Sala 1 · Cesar
+  Bombardelli`). ⚠️ bloco dividido por anestesista e SEM cirurgião (posição
+  assistencial) mantém o nome importado — sem ele os dois blocos da mesma sala
+  ficariam idênticos.
+  **(4) A descrição das pendências vive abaixo dos chips**, com a AÇÃO de cada uma
+  ("2 blocos sem anestesista", "1 nome ambíguo — escolha o login"): o número
+  sozinho obrigava a rolar até o fim para descobrir o quê. Fica FORA da barra
+  sticky de propósito (4 linhas ali comeriam altura fixa da conferência inteira) e
+  tem `aria-label` próprio, senão o texto "impede publicar" disputa com o botão
+  Publicar nos testes.
+  **(5) Sala do IOSC não cai mais na "Sala 1" do HRO**: `normalizarSalaHro` passa a
+  receber o **BLOCO** lido e, em seção-clínica (iosc/ho/ccoluna) com sala numérica
+  ou vazia, a sala vira o nome da seção. A regra existia SÓ no prompt desde 24/07 —
+  quando a leitura escorrega, a linha do IOSC cai numa sala do HRO junto de outro
+  anestesista, que é o pior desfecho. Aqui não depende de leitura.
+  **(6)** aviso quando a leitura do HRO não traz NADA de Exames, Imagem e
+  Hemodinâmica (as três ficam fora da grade principal e somem sem rastro). Só
+  quando faltam as TRÊS: faltar uma é rotina. A edge ganhou junto uma VERIFICAÇÃO
+  FINAL no hint do HRO para os dois erros — regra no meio de parágrafo longo é o
+  que vinha falhando.
+  **(7) O campo Sala virou ESCOLHA das salas daquele hospital** + "Outra sala…"
+  para digitar: o `datalist` praticamente não abre no iPhone, então na prática a
+  sala era sempre digitada — que é como a mesma sala vira três grafias e três
+  blocos. A trava do foco de 30/07 (commit no BLUR) continua valendo DENTRO do
+  campo livre.
 - **Importar · FDS**: **P1–P12 em 2 colunas** (P1..P6 esquerda, P7..P12 direita) e as **3
   filas lado a lado** (Manhã · Tarde · Noite) — empilhadas passavam de uma tela e comparar
   turnos exigia vai-e-volta. Cabeçalho da coluna leva **só o turno**: os selos "do
