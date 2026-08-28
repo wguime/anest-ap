@@ -312,6 +312,33 @@ Ripamonti C et al. J Clin Oncol 1998;16(10):3216-21 (razão escalonada da metado
 
 Fontes: PALS/AHA 2020 (adenosina, cálcio) · StatPearls, Calcium Gluconate.
 
+#### Tier 1 — as demais: conferidas e SEM defeito
+
+Registrado para ninguém reauditar: cada uma foi conferida contra fonte primária.
+
+| calculadora | conferido contra | veredito |
+|---|---|---|
+| `ped_desfib` | PALS/AHA 2020 | ✅ 2 J/kg · 4 J/kg · 4–10 J/kg com teto de 200 J · cardioversão 0,5–1 e 2 J/kg |
+| `ped_via_aerea` | Cole; Motoyama (com cuff) | ✅ idade/4+4 · idade/4+3,5 · profundidade = diâmetro × 3 · faixa pediátrica barrada acima de 50 kg/14 anos com texto de adulto |
+| `ped_broselow` | fita Broselow-Luten | ✅ as 9 zonas de cor, faixas de peso e tubos batem; fora de 46–143 cm devolve erro explícito |
+| `acls_unificado` | AHA/ACLS; ASRA (LAST) | ✅ lidocaína 1–1,5 mg/kg · bicarbonato 1 mEq/kg com volume e ampolas coerentes (8,4% = 1 mEq/mL) · emulsão lipídica 1,5 mL/kg com 100 mL fixo acima de 70 kg |
+| `acls_reversores` | bula do sugamadex; prática corrente | ✅ naloxona titulada de 0,04 mg · flumazenil 0,2 mg · sugamadex 2 / 4 / 16 mg/kg |
+
+⚠️ **O `acls_unificado` CORROBORA o achado do cálcio.** Para a mesma droga, o
+ACLS adulto usa **0,5–1 mL/kg de gluconato 10%** — isto é, 50–100 mg/kg, dentro
+da faixa correta — enquanto o PediCalc usa **20 mg/kg**. O app se contradiz
+internamente, o que é evidência forte de que o errado é o lado pediátrico, não
+o rótulo.
+
+Observação que **não é defeito** e é decisão do dono: a fórmula de Cole em idade
+ímpar dá 4,25 mm e a tela exibe "4,3 mm" — diâmetro que não existe em tubo. A
+conta está certa; quem lê arredonda de cabeça. Mostrar "4,0–4,5 mm" seria mais
+direto, mas é mudança de tela.
+
+`periop_anticoagulantes`, `periop_inibidores_apetite` e `risco_fa_anticoag` já
+têm lib pura com teste (`anticoagulantes`, `inibidoresApetite`, `afib`) e ficam
+para o Tier 4.
+
 ## Frente 4 — Português, incluindo os números
 
 O dono pediu português em todos os termos e um siglário. Duas metades:
