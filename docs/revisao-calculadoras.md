@@ -229,6 +229,47 @@ Priorize por dano: dose de fármaco e reposição volêmica antes de escore prog
 Toda correção de conta entra com teste em `src/__tests__/lib/` cobrindo os limites. Hoje há 58 arquivos de teste
 para 71 calculadoras — parte não tem trava.
 
+### 3c — em andamento (28/08). Inventário e primeiros achados
+
+**71 ativas, conferidas por seção.** Prioridade por dano, como o plano manda (dose e volume antes de
+escore): **Tier 1 — dose de fármaco** (11): `ped_doses`, `doses_adultos`, `dor_conversão`,
+`acls_unificado`, `acls_reversores`, `ped_desfib`, `ped_broselow`, `ped_via_aerea`,
+`periop_anticoagulantes`, `periop_inibidores_apetite`, `risco_fa_anticoag`. **Tier 2 — volume e
+sangue** (12): os `hemo_*`, `adt_balanco_hidrico_transop` e os `ped_*` de fluido/transfusão.
+**Tier 3 — fisiológico/renal** (9). **Tier 4 — escores** (o resto).
+
+⚠️ Cerca de **56 das 71 calculam inline e não têm teste de matemática dedicado** — as ~15 com lib
+pura são a exceção, não a regra.
+
+#### `dor_conversão` (Conversão de Opioides) — 2 achados
+
+⚠️ **Conferido e SEM defeito: o fator do fentanil IV (0,1).** A primeira leitura sugeria que ele
+subestimava a potência em 3× (100 mcg IV ≙ 10 mg de morfina VO, quando a equianalgesia clássica dá
+30 mg). Mas a calculadora cita a convenção **MME do CDC**, e nela o fator é exatamente 0,1. Está
+coerente com a fonte declarada. Registrado para ninguém "corrigir" isso depois.
+
+**1. A metadona entrega 2× a 3× a dose acima de 90 mg/dia.** O código usa razão **fixa 4:1**, com um
+comentário admitindo que a conversão é não-linear. A tabela de Ripamonti, que o próprio `infoBox`
+manda usar, é escalonada:
+
+| morfina VO/dia | razão correta | o que o app entrega |
+|---|---|---|
+| 30–90 mg | 4:1 | correto |
+| 90–300 mg | 8:1 | **2× a dose** (300 mg → 75 mg em vez de 30 mg) |
+| > 300 mg | 12:1 ou mais | **3× a dose** (600 mg → 150 mg em vez de 50 mg) |
+
+O `warnings` avisa da não-linearidade, mas a tela **imprime um número específico** — e é o número que
+a pessoa vai usar. Aviso embaixo de um número não é mitigação. Overdose de metadona é letal: meia-vida
+longa, acúmulo em dias e prolongamento de QT.
+
+**2. O fentanil transdérmico mistura bases de tempo.** O fator 2,4 é por **mcg/h** e devolve MME por
+**DIA**; todos os outros fatores são mg por mg. Para a conta fechar, TODA entrada precisa ser o total
+diário — e a tela pede apenas "Dose (mg ou mcg para fentanil)", sem dizer isso em lugar nenhum.
+Morfina VO 60 mg/dia → 25 mcg/h (certo); uma dose avulsa de 10 mg → 4,2 mcg/h (número sem sentido).
+
+Fontes: CDC Clinical Practice Guideline for Prescribing Opioids 2022 (fatores MME) ·
+Ripamonti C et al. J Clin Oncol 1998;16(10):3216-21 (razão escalonada da metadona).
+
 ## Frente 4 — Português, incluindo os números
 
 O dono pediu português em todos os termos e um siglário. Duas metades:
