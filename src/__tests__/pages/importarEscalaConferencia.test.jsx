@@ -850,3 +850,42 @@ describe('publicação cruza a urgência aberta do turno anterior (dono 21/08)',
     expect(svcMock.updateAnestesistaCasos).not.toHaveBeenCalled()
   })
 })
+
+// ════════════════════════════════════════════════════════════════════════════
+// SEÇÕES QUE SOMEM NA LEITURA DO HRO (dono 27–28/08). O rótulo HEMO/EXAMES/
+// IMAGEM vem na PRÓPRIA linha da cirurgia (hora + procedimento + cirurgião), e
+// o prompt mandava tratá-lo como cabeçalho de seção — lida como título, a linha
+// não vira caso e a cirurgia desaparece. Medido nas 41 importações do HRO dos
+// 60 dias anteriores: Exames chegou em 90%, Hemodinâmica em 49%, Imagem em 15%.
+// A leitura foi corrigida na edge; aqui fica a rede de segurança da tela, que é
+// o último lugar onde alguém percebe a falta antes de publicar.
+// ════════════════════════════════════════════════════════════════════════════
+describe('HRO — aviso das seções que não vieram na leitura', () => {
+  const comSalas = (salas) => salas.map((sala, i) => ({
+    sala, hora: `0${7 + i}:00`, anestesista: 'CURY', cirurgiao: 'DR. ANA SOUZA',
+    procedimento: 'Procedimento', pacienteIniciais: 'A.B.',
+  }))
+
+  it('nomeia CADA seção que faltou, não só quando faltam as três', async () => {
+    // era o buraco do aviso de 27/08: exigir as três juntas pegava 3 das 41
+    // importações, enquanto a Imagem sozinha se perdia em 35 delas
+    await importar(comSalas(['Sala 1', 'Exames']), [], { hospital: 'hro' })
+    const aviso = await screen.findByText(/não trouxe nenhuma linha de/i)
+    expect(aviso.textContent).toContain('Imagem')
+    expect(aviso.textContent).toContain('Hemodinâmica')
+    expect(aviso.textContent).not.toContain('Exames')   // essa veio
+  })
+
+  it('com as três presentes, nenhum aviso', async () => {
+    await importar(comSalas(['Sala 1', 'Exames', 'Imagem', 'Hemodinâmica']), [], { hospital: 'hro' })
+    await waitFor(() => expect(screen.getByText('Blocos por anestesista')).toBeTruthy())
+    expect(screen.queryByText(/não trouxe nenhuma linha de/i)).toBeNull()
+  })
+
+  it('é regra do HRO — a Unimed não é cobrada por essas seções', async () => {
+    // lá esses locais existem, mas o padrão de perda medido é do mapa do HRO
+    await importar(comSalas(['CC - Sala 1']), [], { hospital: 'unimed' })
+    await waitFor(() => expect(screen.getByText('Blocos por anestesista')).toBeTruthy())
+    expect(screen.queryByText(/não trouxe nenhuma linha de/i)).toBeNull()
+  })
+})
