@@ -924,6 +924,11 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
       .filter(([, re]) => ![...presentes].some((s) => re.test(s)))
       .map(([nome]) => nome)
   }, [hosp, casos])
+  // ⚠️ POR SEÇÃO, não "só quando faltam as três" (dono 28/08: "sempre aparece
+  // descrito na escala do HRO"). Medido em produção nas 41 importações do HRO
+  // dos últimos 60 dias: Exames chega em 90%, Hemodinâmica em 49% e Imagem em
+  // 15% — o "nenhuma das três" pegava 3 dessas 41, enquanto a Imagem se perde em
+  // 35. Se as três estão sempre no papel, faltar UMA já é leitura incompleta.
 
   // ── Publicação ───────────────────────────────────────────────────────────────
   // GUARDRAIL ANTI-PERDA (incidente 23/07: publicar/importar com 1 caso APAGOU os
@@ -1222,7 +1227,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   const avisosConferencia = suspeitosExtracao.length + caudaLiberada.length
     + conflitos.length + blocosRepetidos.length + travessiasOrfas.length
     + duplicados.length + casosForaDoRodape.length + gruposSemAnestesista
-    + (secoesAusentesHro.length === 3 ? 1 : 0)
+    + secoesAusentesHro.length
   const totalPendencias = bloqueiosConferencia + avisosConferencia
   // O QUE são as pendências, não só quantas (dono 27/08: "quero que a descrição
   // das pendências fique abaixo desses cards"). O número no chip dizia que havia
@@ -1241,9 +1246,9 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     if (blocosRepetidos.length) l.push({ trava: false, txt: `${n(blocosRepetidos.length, 'bloco', 'blocos')} com o mesmo nome em todas as linhas` })
     if (travessiasOrfas.length) l.push({ trava: false, txt: `${n(travessiasOrfas.length, 'cirurgia que atravessa', 'cirurgias que atravessam')} sem dono presente` })
     if (duplicados.length) l.push({ trava: false, txt: `${n(duplicados.length, 'item repetido', 'itens repetidos')}` })
-    // só quando NENHUMA das três veio: faltar uma é rotina, faltar as três é a
-    // assinatura da leitura que pulou o rodapé do mapa
-    if (secoesAusentesHro.length === 3) l.push({ trava: false, txt: 'nada de Exames, Imagem nem Hemodinâmica — confira o mapa' })
+    if (secoesAusentesHro.length) {
+      l.push({ trava: false, txt: `sem ${secoesAusentesHro.join(', ')} na leitura — confira o mapa` })
+    }
     return l
   }, [gruposAmbiguos, duplicidadesPendentes, gruposSemAnestesista, casosForaDoRodape, caudaLiberada,
     suspeitosExtracao, conflitos, blocosRepetidos, travessiasOrfas, duplicados, secoesAusentesHro])
@@ -1833,12 +1838,13 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                 </p>
               )}
 
-              {secoesAusentesHro.length === 3 && (
+              {secoesAusentesHro.length > 0 && (
                 <p className="rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
-                  ⚠ A leitura não trouxe nenhuma linha de <b>Exames</b>, <b>Imagem</b> ou <b>Hemodinâmica</b>.
-                  Essas seções ficam fora da grade principal do mapa do HRO e são as que mais escapam da
-                  extração — confira a imagem e acrescente à mão o que faltar (+ Linha), ou reimporte um
-                  print que mostre o rodapé do mapa inteiro.
+                  ⚠ A leitura não trouxe nenhuma linha de{' '}
+                  <b>{secoesAusentesHro.join(', ')}</b>. Essas seções ficam fora da grade principal do
+                  mapa do HRO e são as que mais escapam da extração — nas escalas publicadas até 28/08,
+                  a Imagem chegou em 15% das importações e a Hemodinâmica em 49%. Confira a imagem e
+                  acrescente à mão o que faltar (+ Linha), ou reimporte um print que mostre o mapa inteiro.
                 </p>
               )}
 
