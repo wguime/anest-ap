@@ -2440,11 +2440,28 @@ export function CalculatorShowcase({ selectedCalc: selectedCalcProp, onSelectedC
           <p className="text-muted-foreground">Nenhuma calculadora encontrada</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        /* ⚠️ deitado as seções ficam em DUAS COLUNAS (continuação do modo
+           horizontal, 28/08). Fechadas elas são 13 faixas de ~76px numa coluna
+           só: medido a 897×440, cabiam 5 das 13 na tela, e cada faixa usava
+           821px de largura para um título e uma contagem. Em duas, cabem 10.
+           Grade e não multi-coluna de propósito: a seção ABRE e fecha, e o fluxo
+           de colunas rebalancearia a lista inteira a cada toque — num aparelho
+           que se usa na beira do leito, o cartão mudar de coluna sob o dedo é
+           pior do que o vão que a grade deixa ao lado da seção aberta.
+           A grade INTERNA de calculadoras segue em duas: cada coluna fica com
+           ~400px e o cartão com ~190px, praticamente o mesmo dos 375px do
+           retrato — nada encolhe. */
+        <div className="space-y-3 deitado:grid deitado:grid-cols-2 deitado:gap-3 deitado:space-y-0 deitado:items-start">
           {filteredSections.map((section) => {
             const isOpen = openSections[section.id] || searchTerm.length > 0;
             return (
-              <section key={section.id}>
+              /* ⚠️ deitado a seção ABERTA ocupa as DUAS colunas. Numa grade, a
+                 linha fica tão alta quanto o item mais alto: com a seção aberta
+                 em meia largura, a seção curta ao lado deixava metade da tela em
+                 branco. Inteira, ela vira um painel e as calculadoras cabem em
+                 QUATRO colunas de ~190px — mais largas que os ~171px que o cartão
+                 tem no retrato a 375px, então nada encolhe. */
+              <section key={section.id} className={isOpen ? 'deitado:col-span-2' : undefined}>
                 <SectionHeader
                   icon={section.icon}
                   title={section.title}
@@ -2453,7 +2470,7 @@ export function CalculatorShowcase({ selectedCalc: selectedCalcProp, onSelectedC
                   onToggle={() => toggleSection(section.id)}
                 />
                 {isOpen && (
-                  <div className={cn("grid grid-cols-2 gap-3 mt-3", !searchTerm && "ds-stagger-in")}>
+                  <div className={cn("grid grid-cols-2 deitado:grid-cols-4 gap-3 mt-3", !searchTerm && "ds-stagger-in")}>
                     {section.calculators.map((calc) => {
                       const IconComponent = SECTION_ICONS[calc.icon] || Calculator;
                       const isComingSoon = calc.status === 'coming_soon';
