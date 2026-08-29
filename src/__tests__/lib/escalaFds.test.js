@@ -230,15 +230,82 @@ describe('sugerirRodapeFds — turno sem linha explícita (domingo)', () => {
       'CRISTINA', 'MATHEUS', 'JOAO HENRIQUE', 'GUILHERME DIDOMENICO',
     ])
   })
-  it('noite = a própria linha 19-07 da grade (sem lista numerada)', () => {
+  it('noite SEM data cai nos 4 da grade (não dá para saber se é sáb ou dom)', () => {
     // dom 19-07: JOAO RICARDO (Unimed), MATHEUS (HRO), GD (ret1), JH (ret2)
-    // = P3(vaga), P4, P1, P2 — a ordem ditada pelo dono para domingo à noite
+    // = P3(vaga), P4, P1, P2. ⚠️ este teste MUDOU DE ASSUNTO em 29/08: era a
+    // regra ("noite = só a grade") e virou o FALLBACK. A fila da noite é maior
+    // que a grade desde 16/08 e agora nasce completa — mas só quando a data
+    // diz o dia da semana. Sem ela, o comportamento antigo é o seguro.
     expect(sugerirRodapeFds(doming, 'noturno')).toEqual([
       'JOAO RICARDO', 'MATHEUS', 'GUILHERME DIDOMENICO', 'JOAO HENRIQUE',
     ])
   })
   it('turno desconhecido → []', () => {
     expect(sugerirRodapeFds(doming, 'xpto')).toEqual([])
+  })
+})
+
+/**
+ * A fila da NOITE é maior que a grade (dono 16/08, reafirmado em 29/08 quando
+ * as duas noites saíram só com os quatro da faixa 19-07: "não saíram todos os
+ * usuários de plantão na ordem estabelecida — faltam P5, P6, P7 e P8").
+ *
+ * A prova de que a regra está certa é histórica, não inventada aqui: as duas
+ * filas esperadas abaixo são LITERALMENTE os valores que a migration
+ * 20260816120000 gravou à mão depois de o dono ditá-los — se a sugestão
+ * automática reproduz aquele fim de semana, ela reproduz a regra.
+ */
+describe('sugerirRodapeFds — a fila da noite completa (P\'s da lista numerada)', () => {
+  const sabado = { data: '2026-08-15', grade: GRADE_SAB, posicoes: POSICOES_SAB, escalacao: ESCALACAO_SAB }
+  const domingo = {
+    data: '2026-08-16', grade: GRADE_DOM, posicoes: POSICOES_SAB,
+    escalacao: { matutino: ['P8', 'P7', 'P11'], vespertino: ['P7', 'P8', 'P11'] },
+  }
+
+  it('sábado: grade 19-07 (P2,P1,P4,P3) + P11, P8, P7', () => {
+    expect(sugerirRodapeFds(sabado, 'noturno')).toEqual([
+      'JOAO HENRIQUE', 'GUILHERME DIDOMENICO', 'MATHEUS', 'CRISTINA', // P2 P1 P4 P3
+      'GABRIEL', 'RAFAEL', 'MARILIO',                                  // P11 P8 P7
+    ])
+  })
+
+  it('domingo: grade 19-07 (P3,P4,P1,P2) + P11, P6, P5 — e o P\'s são OUTROS', () => {
+    // sáb e dom NÃO recebem os mesmos numerados; um teste só com o sábado
+    // passaria com a lista errada dos dois lados.
+    expect(sugerirRodapeFds(domingo, 'noturno')).toEqual([
+      'JOAO RICARDO', 'MATHEUS', 'GUILHERME DIDOMENICO', 'JOAO HENRIQUE', // P3(vaga) P4 P1 P2
+      'GABRIEL', 'ERLEI', 'GABRIELA',                                      // P11 P6 P5
+    ])
+  })
+
+  it('os numerados entram DEPOIS dos quatro da grade — são os que liberam primeiro', () => {
+    const fila = sugerirRodapeFds(sabado, 'noturno')
+    // convenção do rodapé: a 1ª posição sai por ÚLTIMO. Os quatro postos ficam
+    // na frente; inverter isto mandaria o plantão da Unimed embora primeiro.
+    expect(fila.slice(0, 4)).toEqual(['JOAO HENRIQUE', 'GUILHERME DIDOMENICO', 'MATHEUS', 'CRISTINA'])
+    expect(fila.indexOf('MARILIO')).toBe(fila.length - 1)
+  })
+
+  it('substituto na vaga entra no lugar dele, sem duplicar (JOAO RICARDO cobre o P3)', () => {
+    // a grade de domingo traz JOAO RICARDO onde CRISTINA (P3) estaria; ele é
+    // quem entra na fila, e CRISTINA não aparece
+    const fila = sugerirRodapeFds(domingo, 'noturno')
+    expect(fila).toContain('JOAO RICARDO')
+    expect(fila).not.toContain('CRISTINA')
+  })
+
+  it('Pn sem dono no mapeamento é omitido, nunca chutado', () => {
+    const semP8 = { ...sabado, posicoes: { ...POSICOES_SAB, P8: '' } }
+    expect(sugerirRodapeFds(semP8, 'noturno')).toEqual([
+      'JOAO HENRIQUE', 'GUILHERME DIDOMENICO', 'MATHEUS', 'CRISTINA', 'GABRIEL', 'MARILIO',
+    ])
+  })
+
+  it('feriado não tem fila de noite — a data não é sáb/dom e a lista fica só na grade', () => {
+    const feriado = { ...sabado, data: '2026-08-25' } // terça-feira
+    expect(sugerirRodapeFds(feriado, 'noturno')).toEqual([
+      'JOAO HENRIQUE', 'GUILHERME DIDOMENICO', 'MATHEUS', 'CRISTINA',
+    ])
   })
 })
 

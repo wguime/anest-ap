@@ -415,3 +415,58 @@ liberado. Guarda `temAlguemComTrabalho` em `LiberacoesView`; travado em
 cauda"), com o caso inverso junto: um nome com cirurgia e a cauda volta a nascer
 liberada. Acontece sempre que o mapa do turno chega sem anestesista — o mapa do
 HRO de fim de semana traz a coluna vazia à tarde.
+
+### FDS — a fila da NOITE nasce completa, e substituto em turno de DIA (dono 29/08)
+
+Duas queixas sobre o fim de semana 29–30/08, publicado pelo app às 15h47.
+
+**"A noite não saiu com todos na ordem estabelecida — faltam P5, P6, P7 e P8":**
+as duas noites saíram só com os QUATRO da faixa 19-07. A ordem estabelecida é a
+de 16/08, e continua valendo — **sáb `P2,P1,P4,P3,P11,P8,P7` · dom
+`P3,P4,P1,P2,P11,P6,P5`** (a união dos numerados dos dois dias é exatamente
+P5–P8, que é o que o dono enumerou). Nos FDS de 15–16 e 22–23/08 esses Pn
+entraram **à mão**, pela 3ª lista da conferência: `sugerirRodapeFds(dia,
+'noturno')` devolvia só a linha da grade, e o conserto manual toda semana
+passava por comportamento normal.
+
+Agora a sugestão da noite nasce completa: **`FDS_NOITE_NUMERADOS`** (constante em
+`escalaFds.js`, `{6: [P11,P8,P7], 0: [P11,P6,P5]}`) acrescenta os numerados
+DEPOIS dos quatro postos — eles liberam PRIMEIRO. `sugerirRodapeFds` passou a
+receber **`data`** no primeiro argumento (o objeto de `normalizarParseFds` já a
+tinha); sem data, cai nos quatro da grade, que é o comportamento antigo — é o
+que mantém o FERIADO fora, já que a data dele não é sáb/dom.
+
+⚠️ **por que constante e não derivação:** a fila da noite não está no documento
+para ser lida. `listas` e `ordemLiberacaoDoc` da edge só existem para matutino/
+vespertino, e os numerados da noite também não são o fim da lista do dia (15/08:
+escalação P5→P12, noite P11,P8,P7). Travas em `escalaFds.test.js` (describe "a
+fila da noite completa") e no `importarEscalaFds.test.jsx`: o valor esperado é,
+caractere por caractere, o que a migration `20260816120000` gravou depois de o
+dono ditar a ordem — se a sugestão reproduz aquele fim de semana, reproduz a
+regra. Conferido que os testes FALHAM contra o código anterior.
+
+**"O badge e plantão da Unimed saíram errados na tarde de hoje":** a grade 13-19
+trazia DANIELA no posto da Unimed e a linha do documento a punha em ÚLTIMO na
+fila — ela carregava o badge "Plantão Unimed" sendo, ao mesmo tempo, a PRIMEIRA a
+ser liberada. O dono deu o sentido: *"Daniela está no lugar de Karine (Daniela
+deve ocupar a segunda posição da escala de liberações)"*. É **SUBSTITUTO NA VAGA
+num turno de DIA** — o mesmo caso que a noite já trata em `aplicarCoberturaNoite`
+(JOAO RICARDO cobrindo a Cristina em 16/08): quem cobre assume o SLOT de quem foi
+coberto e o coberto SAI da fila daquele turno. `fds_meta.posicoes` NÃO muda —
+DANIELA segue sendo P11 no roster do fim de semana, e é por P11 que a fila da
+noite a chama; o que muda é a vaga que ela ocupa naquele turno.
+
+⚠️ **como reconhecer sozinho que a leitura errou a grade:** a linha 13-19 é uma
+permutação de P1–P4 (6 de 6 dias de FDS antes deste), e o começo da linha de
+liberação do turno diz quem são os dois plantões — em 29/08 ela abria em `P3,P4`
+enquanto a grade dizia `P11,P3`. Junto disso, a leitura perdeu o `P1,P2` do FIM
+da linha da tarde, que os dois sábados anteriores têm: a retaguarda da faixa
+13-19 entra no fim da fila (regra de 22/08, "quem está escalado no turno e não
+foi citado nunca some"). Correção dos dois dias em
+`supabase/migrations/20260829210000_ordem_fds_29_30_08.sql`.
+
+⚠️ **o efeito colateral silencioso:** com a grade errada, `anestesistaDoPosto`
+atribuiu as 5 cirurgias da tarde da Unimed a DANIELA — sala sem nome no mapa
+recebe quem a grade põe no posto. Aqui isso ficou certo por acaso (ela é mesmo
+quem está lá), mas o mapa **não é evidência independente** da grade: conferir o
+posto contra a linha de liberação, nunca contra os casos que ele mesmo preencheu.

@@ -58,6 +58,31 @@ export function turnoFdsAtual(agoraMin) {
   return 'noturno'
 }
 
+/**
+ * Numerados que ficam à NOITE, além dos quatro da grade 19-07 — a "ordem
+ * estabelecida" do dono (16/08: "apenas adicione os P's faltantes"; reafirmada
+ * em 29/08 diante da fila saindo só com os quatro):
+ *
+ *   sábado:  P2, P1, P4, P3, **P11, P8, P7**
+ *   domingo: P3, P4, P1, P2, **P11, P6, P5**
+ *
+ * Os quatro primeiros de cada linha são a própria faixa 19-07 lida da grade
+ * (unimed, hro, ret1, ret2) e saem de lá; o que mora aqui são só os Pn da
+ * lista numerada, que entram DEPOIS deles no rodapé — quem está de plantão à
+ * noite ≠ quem está na fila da noite, e o numerado é quem libera PRIMEIRO.
+ *
+ * ⚠️ Por que uma constante e não uma derivação: a fila da noite não é
+ * derivável do documento. `listas`/`ordemLiberacaoDoc` da edge só existem para
+ * matutino/vespertino — o documento não tem linha de noite para ler —, e os
+ * numerados da noite também não são o fim da lista do dia (15/08: escalação
+ * P5→P12, noite P11,P8,P7). Sem isto a fila nasce com quatro nomes e o dono
+ * completa à mão toda semana, que foi o que falhou em 29–30/08.
+ */
+export const FDS_NOITE_NUMERADOS = {
+  6: ['P11', 'P8', 'P7'], // sábado
+  0: ['P11', 'P6', 'P5'], // domingo
+}
+
 /** Papéis da faixa noturna (19-07): cols 1–2 fixas no hospital, 3–4 chamada. */
 export const FDS_NOITE_PAPEL = {
   unimed: 'Plantão Unimed',
@@ -322,17 +347,34 @@ function aplicarCoberturaNoite(linhas, posicoes) {
  * na direção de liberação é reverse(E) — e reverse(reverse(E)) = E.
  * Dedupe por nome normalizado (1ª ocorrência vence).
  */
-export function sugerirRodapeFds({ grade, posicoes, escalacao } = {}, turno) {
+export function sugerirRodapeFds({ grade, posicoes, escalacao, data } = {}, turno) {
   const faixa = FDS_TURNO_FAIXA[turno]
   if (!faixa) return []
   const linha = grade?.[faixa] || {}
-  // NOITE: a fila é a própria linha 19-07 da grade, da esquerda p/ a direita —
-  // sem lista numerada (confirmado com o dono 15/08: sáb P2,P1,P4,P3 · dom
-  // P3,P4,P1,P2 são exatamente Unimed, HRO, retaguarda 1, retaguarda 2).
-  const numerados = turno === 'noturno'
-    ? []
-    : (escalacao?.[turno] || []).map((pn) => posicoes?.[normalizarPn(pn)] || null)
-  const bruto = [linha.unimed, linha.hro, ...numerados, linha.ret1, linha.ret2]
+  // NOITE: os quatro da grade 19-07 vêm primeiro, da esquerda p/ a direita
+  // (dono 15/08: sáb P2,P1,P4,P3 · dom P3,P4,P1,P2 são exatamente Unimed, HRO,
+  // retaguarda 1, retaguarda 2) e os numerados de `FDS_NOITE_NUMERADOS` entram
+  // DEPOIS — eles liberam primeiro. Sem a data não dá para saber se é sáb ou
+  // dom, e a fila cai nos quatro da grade, que é o comportamento antigo.
+  if (turno === 'noturno') {
+    const wd = diaDaSemanaFds(data)
+    const extras = (FDS_NOITE_NUMERADOS[wd] || [])
+      .map((pn) => posicoes?.[normalizarPn(pn)] || null)
+    return dedupeNomes([linha.unimed, linha.hro, linha.ret1, linha.ret2, ...extras])
+  }
+  const numerados = (escalacao?.[turno] || []).map((pn) => posicoes?.[normalizarPn(pn)] || null)
+  return dedupeNomes([linha.unimed, linha.hro, ...numerados, linha.ret1, linha.ret2])
+}
+
+/** Dia da semana (0=dom … 6=sáb) de um ISO, no fuso local. Meio-dia evita a virada. */
+function diaDaSemanaFds(dataIso) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dataIso || ''))) return null
+  const d = new Date(`${dataIso}T12:00:00`)
+  return Number.isNaN(d.getTime()) ? null : d.getDay()
+}
+
+/** Nomes não-vazios, sem repetição por nome normalizado (1ª ocorrência vence). */
+function dedupeNomes(bruto) {
   const vistos = new Set()
   const ordem = []
   for (const n of bruto) {

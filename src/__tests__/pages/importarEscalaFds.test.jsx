@@ -233,8 +233,15 @@ describe('Publicação — inversão na fronteira + fds_meta', () => {
     // continua 4 publicações: 'noturno' não é turno de caso no banco
     expect(chamadas.some((p) => p.turno === 'noturno')).toBe(false)
     const sab = chamadas.find((p) => p.data === '2026-08-15' && p.turno === 'matutino')
-    // sem linha de noite no documento, a fila nasce da grade 19-07 (P2,P1,P4,P3)
-    expect(sab.fdsMeta.ordemNoite).toEqual(['JOAO HENRIQUE', 'GUILHERME DIDOMENICO', 'MATHEUS', 'CRISTINA'])
+    // A fila nasce da grade 19-07 (P2,P1,P4,P3) MAIS os numerados da noite
+    // (P11,P8,P7). ⚠️ até 29/08 este teste esperava só os quatro da grade, e
+    // era essa falta que fazia o dono completar a fila à mão todo fim de semana
+    // ("faltam P5, P6, P7 e P8"). O valor abaixo é, caractere por caractere, o
+    // que a migration 20260816120000 gravou depois de ele ditar a ordem — ou
+    // seja, a importação agora produz sozinha o que antes era conserto manual.
+    expect(sab.fdsMeta.ordemNoite).toEqual([
+      'JOAO HENRIQUE', 'GUILHERME DIDOMENICO', 'MATHEUS', 'CRISTINA', 'GABRIEL', 'RAFAEL', 'MARILIO',
+    ])
     // e vai IGUAL nas duas publicações do dia (republicar um turno não apaga a noite)
     const sabVesp = chamadas.find((p) => p.data === '2026-08-15' && p.turno === 'vespertino')
     expect(sabVesp.fdsMeta.ordemNoite).toEqual(sab.fdsMeta.ordemNoite)
@@ -248,12 +255,15 @@ describe('Publicação — inversão na fronteira + fds_meta', () => {
     const primeiroDaNoite = screen.getAllByRole('button', { name: /^Posição 1 de Noite/ })[0]
     fireEvent.click(primeiroDaNoite)
     // a lista da conferência corre na direção do DOCUMENTO (1º a ser liberado
-    // no topo): remover o 1º tira quem sairia primeiro
+    // no topo): remover o 1º tira quem sairia primeiro — hoje o MARILIO (P7),
+    // o último numerado da fila da noite
     fireEvent.click(screen.getByRole('button', { name: /Remover/i }))
     await publicarFds()
     await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalled())
     const sab = salvarEscalaTurno.mock.calls.map(([p]) => p).find((p) => p.data === '2026-08-15' && p.turno === 'matutino')
-    expect(sab.fdsMeta.ordemNoite).toEqual(['JOAO HENRIQUE', 'GUILHERME DIDOMENICO', 'MATHEUS'])
+    expect(sab.fdsMeta.ordemNoite).toEqual([
+      'JOAO HENRIQUE', 'GUILHERME DIDOMENICO', 'MATHEUS', 'CRISTINA', 'GABRIEL', 'RAFAEL',
+    ])
   })
 
   it('nome ambíguo (2+ candidatos no cadastro, sem login) BLOQUEIA a publicação', async () => {
