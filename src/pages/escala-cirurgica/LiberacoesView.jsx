@@ -1357,11 +1357,44 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // (o substituto da noite pode nem ter Pn, caso João Ricardo 16/08).
           const naFila = (l) => {
             if (l.noturno && (modoFds ? l.foraDaFila : SELO_SEM_PROXIMO.has(l.selo))) return false
+            // FILA ÚNICA, TURNO DE DIA: o plantão do turno também NUNCA é o
+            // "próximo a ser liberado" (dono 29/08, sobre a tarde de sábado:
+            // "Daniela está marcada como próxima a ir embora. Está errado, os
+            // plantões nunca vão embora"). À NOITE isso já valia — é o que
+            // `foraDaFila` faz com as cols Unimed/HRO da grade —, e de dia não
+            // valia, porque nada marcava a linha. Não é a mesma regra do P1/P2
+            // de dia útil: aqui o que tira da fila é ESTAR no posto da faixa
+            // exibida, e `plantaoFisico` é justamente esse mapa (grade no
+            // sáb/dom, as duas posições que fecham a fila no feriado) — o mesmo
+            // que pinta o badge "Plantão Unimed/HRO" no card.
+            //
+            // ⚠️ o sintoma aparecia quando os de baixo estavam sem cirurgia: o
+            // "próximo" é o ÚLTIMO ainda em sala, e com a cauda toda livre ele
+            // subia até o plantão. Tirá-lo da fila também o isenta do bloqueio
+            // de ordem (liberar o plantão nunca fura fila) e o tira da conta de
+            // "faltam N" — como já acontece com o P1/P2 da noite.
+            if (modoFds && !l.noturno && plantaoFisicoDe(l)) return false
             // extra (fora do rodapé) ENTRA na fila como ajuda (dono 19/08):
             // é o primeiro a ir embora e é liberado como qualquer um
             const m = marcaDe(l)
+            if (m && !m.escalado) return false // já liberada: saiu da fila
+            // ⚠️ FILA ÚNICA: ESTAR SEM CIRURGIA NÃO TIRA NINGUÉM DA FILA (dono
+            // 29/08: "é possível realizar a liberação fora da ordem já
+            // estabelecida"). "Sem caso = sem posição" é premissa de DIA ÚTIL,
+            // onde o rodapé traz gente que fecha a lista sem trabalho nenhum —
+            // a mesma premissa que já teve de sair da cauda vermelha e do card
+            // branco em 24/08. No sáb/dom quem está publicado ESTÁ de plantão, e
+            // o mapa cirúrgico chega em importação SEPARADA, muitas vezes depois:
+            // com a fila inteira sem caso, TODO MUNDO ficava fora da ordem e
+            // qualquer um podia ser liberado a qualquer hora, sem bloqueio.
+            //
+            // ⚠️ vale só para quem TEM POSIÇÃO (`noRodape`): extra, ajuda e
+            // visitante entram no fim da exibição e não ocupam vaga na fila
+            // (regra de 24/08) — para eles continua valendo "está em sala?",
+            // que é o que põe a ajuda COM cirurgia na frente da saída (19/08).
+            if (modoFds && !l.noturno && l.noRodape) return true
             const emSala = m?.escalado === true || !naoEscalado(l)
-            return !(m && !m.escalado) && emSala
+            return emSala
           }
           // próximo a ser liberado = ÚLTIMO não-liberado ainda EM SALA
           let idxProximo = -1
@@ -1377,7 +1410,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // ainda está em sala. Quem nunca esteve na fila (sem caso) fica fora da
           // conta e nunca é bloqueado — o vermelho ali é só registro de que a
           // pessoa não está em jogo, não uma posição cedida.
-          const voltaPraFila = (l) => !l.noturno && !naoEscalado(l)
+          // simétrico ao `naFila`: na fila única quem foi liberado volta pela
+          // ordem, tendo cirurgia ou não — senão a ordem valeria só na saída e
+          // a convocação continuaria livre, que é a mesma furada pelo outro lado
+          const voltaPraFila = (l) => !l.noturno && ((modoFds && l.noRodape) || !naoEscalado(l))
           const jaLiberada = (l) => { const m = marcaDe(l); return !!m && m.escalado !== true }
           let idxConvocar = -1
           for (let i = idxProximo + 1; i < linhasExibicao.length; i++) {

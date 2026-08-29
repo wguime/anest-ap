@@ -470,3 +470,49 @@ atribuiu as 5 cirurgias da tarde da Unimed a DANIELA — sala sem nome no mapa
 recebe quem a grade põe no posto. Aqui isso ficou certo por acaso (ela é mesmo
 quem está lá), mas o mapa **não é evidência independente** da grade: conferir o
 posto contra a linha de liberação, nunca contra os casos que ele mesmo preencheu.
+
+### FILA ÚNICA — a ordem de liberação vale MESMO SEM CIRURGIA (dono 29/08)
+
+Duas queixas do mesmo sábado, com a MESMA raiz — e é a **terceira vez** que essa
+raiz aparece:
+
+1. *"Daniela está marcada como próxima a ir embora. Está errado, **os plantões
+   nunca vão embora**."*
+2. *"É possível realizar a liberação **fora da ordem já estabelecida** nas
+   regras."* (print: ALEXANDRE, 6º de 8, liberado com o 7º e o 8º ainda na fila.)
+
+`naFila` — a função que decide quem conta para a ordem — exigia **estar em sala**
+(`!naoEscalado`). Premissa de DIA ÚTIL: lá o rodapé traz gente que fecha a lista
+sem trabalho nenhum. No sáb/dom **quem está publicado ESTÁ de plantão** e o mapa
+cirúrgico chega em importação SEPARADA, muitas vezes depois — na tarde de 29/08
+só os dois plantões tinham caso. Com a fila praticamente vazia:
+
+- o "próximo a ser liberado" é o ÚLTIMO da fila, e **subia até o plantão** (1);
+- a trava **"LIBERAÇÃO SÓ NA ORDEM"** (27/07) só vale para quem está NA fila —
+  com a fila vazia ela **não pegava ninguém**, e qualquer card saía a qualquer
+  hora, sem um aviso sequer (2).
+
+⚠️ **É a mesma premissa que já teve de sair da cauda vermelha e do card branco em
+24/08** ("ninguém nasce vermelho na publicação"). Ela volta porque `naoEscalado`
+está espalhado; ao mexer em qualquer decisão de fila, perguntar antes: *isto
+supõe que sem cirurgia a pessoa não está em jogo?* No fim de semana, está.
+
+**O que passou a valer em `modoFds`, turno de DIA:**
+
+| | regra |
+|---|---|
+| quem tem posição (`noRodape`) | está na fila **tenha ou não cirurgia** |
+| plantão da faixa (`plantaoFisico`) | **fora da fila** — nunca é o "próximo", nunca esbarra na ordem para sair. É o equivalente de dia do `foraDaFila` que a NOITE já tinha nas colunas Unimed/HRO |
+| extra · ajuda · visitante | **inalterado** — sem posição, seguem por "está em sala" (19/08 põe a ajuda COM cirurgia na frente da saída; 24/08 diz que eles não ocupam vaga) |
+| convocar (desfazer) | simétrico ao liberar: `voltaPraFila` também deixou de exigir cirurgia para quem tem posição |
+
+⚠️ o recorte por `noRodape` **não é detalhe**: sem ele a ajuda avulsa sem caso
+vira a última da exibição e rouba o "próximo" de quem fecha o rodapé — foi o que
+quebrou dois testes de `liberacoesFdsUnificada` (fixture real de 15/08) antes de
+entrar. O dia útil não é tocado em nenhum dos quatro pontos.
+
+Travas em `escalaFdsTelaUnica.test.jsx`, describe "a ordem de liberação vale
+mesmo sem cirurgia": liberar quem não fecha a fila avisa · quem fecha sai mesmo
+sem cirurgia · o cartão amarelo cai em quem FECHA a fila (e não no último com
+cirurgia) · sobrando só os plantões ninguém é o próximo · e o plantão sai sem
+esbarrar na ordem. Conferido que 3 deles FALHAM contra o código anterior.

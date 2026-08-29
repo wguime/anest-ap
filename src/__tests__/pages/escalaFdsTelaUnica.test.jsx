@@ -212,6 +212,90 @@ describe('fila única — ninguém nasce vermelho na publicação', () => {
   })
 })
 
+/**
+ * DUAS QUEIXAS DO MESMO SÁBADO (dono 29/08), com a MESMA raiz: `naFila` — quem
+ * conta para a ordem de liberação — foi escrito com premissas de DIA ÚTIL.
+ *
+ *   1. "Daniela está marcada como próxima a ir embora. Está errado, os plantões
+ *      nunca vão embora."
+ *   2. "É possível realizar a liberação fora da ordem já estabelecida" (print:
+ *      ALEXANDRE, 6º de 8, liberado com o 7º e o 8º ainda na fila).
+ *
+ * A premissa era "sem cirurgia = sem posição na fila", verdadeira numa terça
+ * (o rodapé traz gente que fecha a lista sem trabalho) e falsa no sáb/dom, onde
+ * quem está publicado ESTÁ de plantão e o mapa cirúrgico chega SEPARADO. Com a
+ * fila quase toda sem caso, ela ficava vazia: o "próximo" subia até o plantão
+ * (queixa 1) e a trava de ordem de 27/07 não pegava ninguém (queixa 2). É a
+ * mesma premissa que já teve de sair da cauda vermelha e do card branco em
+ * 24/08 — a terceira vez que ela aparece no mesmo lugar.
+ *
+ * A fixture é a tarde do print: os dois plantões da faixa 13-19 abrindo a fila
+ * (únicos com cirurgia) e a cauda sem caso nenhum.
+ */
+describe('fila única — a ordem de liberação vale mesmo sem cirurgia', () => {
+  const GRADE_TARDE = { '13-19': { unimed: 'KARINE', hro: 'GABRIEL', ret1: 'OSCAR', ret2: 'THAYNA' } }
+  const tarde = (extra = {}) => props({
+    turno: 'vespertino',
+    fdsMeta: { grade: GRADE_TARDE, posicoes: {} },
+    escala: { ...ESCALA_FDS, ordemLiberacao: { vespertino: ['GABRIEL', 'KARINE', 'MARILIA', 'OSCAR'] } },
+    casosFds: [
+      { id: 'v1', sala: 'CC - Sala 2', ordem: 0, hora: '13:30', turno: 'vespertino', anestesista: 'KARINE', cirurgiao: 'Ana Prado', procedimento: 'COLECISTECTOMIA', hospitalOrigem: 'unimed' },
+      { id: 'v2', sala: 'Sala 3', ordem: 0, hora: '13:00', turno: 'vespertino', anestesista: 'GABRIEL', cirurgiao: 'Alberto Biazussi', procedimento: 'OSTEOSSINTESE', hospitalOrigem: 'hro' },
+    ],
+    ...extra,
+  })
+
+  it('liberar quem NÃO fecha a fila avisa em vez de liberar', async () => {
+    const onToggle = vi.fn()
+    render(<LiberacoesView {...tarde({ onToggle })} />, { wrapper: wrap })
+    await screen.findByText(/Marilia/)
+    // MARILIA é a 3ª de 4 e não tem cirurgia — antes saía com um toque
+    fireEvent.click(screen.getByLabelText('Marcar Marilia Bastos liberado'))
+    expect(await screen.findByText('Libere Oscar primeiro')).toBeTruthy()
+    expect(onToggle).not.toHaveBeenCalled()
+  })
+
+  it('quem fecha a fila sai normalmente, mesmo sem cirurgia nenhuma', async () => {
+    const onToggle = vi.fn()
+    render(<LiberacoesView {...tarde({ onToggle })} />, { wrapper: wrap })
+    await screen.findByText(/Oscar/)
+    fireEvent.click(screen.getByLabelText('Marcar Oscar liberado'))
+    await waitFor(() => expect(onToggle).toHaveBeenCalledTimes(1))
+  })
+
+  it('o "próximo a ser liberado" é quem FECHA a fila, e não o último com cirurgia', async () => {
+    render(<LiberacoesView {...tarde()} />, { wrapper: wrap })
+    await screen.findByText(/Oscar/)
+    const cartoes = screen.getAllByText('Próximo a ser liberado')
+    expect(cartoes).toHaveLength(1)
+    // o cartão amarelo está no card do OSCAR (4º), não no da KARINE (plantão)
+    expect(cartoes[0].closest('[data-linha]').textContent).toContain('Oscar')
+  })
+
+  it('sobrando SÓ os plantões, ninguém é o próximo — eles não vão embora', async () => {
+    // fila com os dois postos da faixa e mais ninguém: se o plantão entrasse na
+    // conta, um dos dois receberia o cartão amarelo
+    render(<LiberacoesView {...tarde({
+      escala: { ...ESCALA_FDS, ordemLiberacao: { vespertino: ['GABRIEL', 'KARINE'] } },
+    })} />, { wrapper: wrap })
+    await screen.findByText(/Karine/)
+    expect(screen.getByText('Plantão Unimed')).toBeTruthy()
+    expect(screen.getByText('Plantão HRO')).toBeTruthy()
+    expect(screen.queryAllByText('Próximo a ser liberado')).toHaveLength(0)
+  })
+
+  it('e o plantão pode ser liberado sem esbarrar na ordem (está fora dela)', async () => {
+    const onToggle = vi.fn()
+    render(<LiberacoesView {...tarde({
+      onToggle,
+      escala: { ...ESCALA_FDS, ordemLiberacao: { vespertino: ['GABRIEL', 'KARINE'] } },
+    })} />, { wrapper: wrap })
+    await screen.findByText(/Karine/)
+    fireEvent.click(screen.getByLabelText('Marcar Karine Bedin liberado'))
+    await waitFor(() => expect(onToggle).toHaveBeenCalledTimes(1))
+  })
+})
+
 describe('feriado — selos e plantão', () => {
   /**
    * ⚠️ ESTE TESTE MUDOU DE LADO em 25/08, e o porquê fica aqui em vez de ele sumir.
