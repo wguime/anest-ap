@@ -64,8 +64,9 @@ calculadora renal do mesmo app usa a **CKD-EPI 2021 *race-free***, justamente a 
 coeficiente racial pelo mesmo motivo. Num app brasileiro, "raça branca" como fator de risco é ainda
 mais frágil que na derivação americana.
 
-**Proposta:** remover o ponto do cálculo e manter a nota explicando por quê — que é o que as
-validações internacionais fazem. Não mexi: muda o escore, e quero seu aval.
+**Feito em 29/08, com aval do dono:** a entrada saiu do cálculo e o `disclaimer` passou a registrar a
+remoção e a data. O subtítulo da seção Demografia foi de "0-5 pontos" para "0-4 pontos", que é o novo
+teto. É o que as validações internacionais fazem.
 
 ---
 
@@ -90,3 +91,32 @@ cubra essa renderização.
 
 ⚠️ A rota `criteriosUti` deve continuar respondendo mesmo sem card, senão link salvo e histórico do
 navegador quebram.
+
+---
+
+## Implementado em 29/08 — aprovado pelo dono
+
+Caminho A. `CalculatorDetailPage` foi **exportada** da `CriteriosUTIPage` e é consumida pela seção via
+`customRender: 'criterioUti'` + `criterioUtiId`, com `lazy` + **Suspense local** — sem o boundary
+próximo, o React congela a tela anterior sem lançar erro.
+
+O card saiu de `MenuPage.jsx`; a rota `criteriosUti` continua viva e coberta por e2e.
+
+### Duas coisas que só a medição no navegador mostrou
+
+1. **O subtítulo do SAS truncava.** "Fim da cirurgia — 3 variáveis" virava "Fim da cirurgia — 3…" no
+   cartão a 430px. Meu detector automático não pegou porque o corte é `line-clamp`, que **não** produz
+   `scrollWidth > clientWidth` — só a captura de tela revelou. Encurtado para "Intraop — 3 variáveis";
+   o do CFM foi encurtado junto, por precaução.
+
+2. **O primeiro print de "deitado" era falso.** O Chromium de desktop reporta `pointer: fine`, e a
+   variante `deitado:` exige `pointer: coarse` — então a media query não casava e a captura saía com o
+   layout de retrato. Com `hasTouch`/`isMobile` emulados, `matchMedia` confirma
+   `(orientation: landscape) and (max-height: 500px) and (pointer: coarse)` = **true**.
+
+   Medindo a posição dos 5 cartões: **retrato x = 16 e 221 (2 colunas)**; **deitado x = 96, 273, 450 e
+   627, largura 165 (4 colunas)**. É o que o protótipo previa — mas a primeira medição dizia 2, porque
+   meu seletor pegava a grade errada. Ler a posição dos cartões, não o `className` de um `div`
+   qualquer, foi o que separou as duas hipóteses.
+
+Verificado ainda: zero estouro horizontal e zero truncamento por `scrollWidth`, nos dois temas.

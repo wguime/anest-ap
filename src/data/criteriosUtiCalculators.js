@@ -155,14 +155,13 @@ export const ESS_CALCULATOR = {
     'Peponis T et al. Validation of ESS for ICU triage. Am J Surg 2019;217(1):150-155.',
     'Nikolopoulos I et al. Multicentric validation. BMC Surg 2021;21:55.',
   ],
-  disclaimer: 'Variável "raça branca" (+1 pt) está na derivação original (ACS-NSQIP, EUA). Validações internacionais frequentemente a omitem por refletir confundidores socioeconômicos, não risco biológico.',
+  disclaimer: 'A variável "raça branca" (+1 pt) da derivação original (ACS-NSQIP, EUA) foi REMOVIDA do cálculo em 29/08/2026: validações internacionais a omitem por refletir confundidor socioeconômico, não risco biológico. O escore máximo desta seção passa de 5 para 4 pontos.',
   sections: [
     {
       title: 'Demografia',
-      sublabel: '0-5 pontos',
+      sublabel: '0-4 pontos',
       inputs: [
         { id: 'idade60', label: 'Idade > 60 anos', type: 'bool', pts: 2 },
-        { id: 'racaBranca', label: 'Raça branca', type: 'bool', pts: 1 },
         { id: 'transferPs', label: 'Transferência de PS externo', type: 'bool', pts: 1 },
         { id: 'transferInternacao', label: 'Transferência de internação', type: 'bool', pts: 1 },
       ],
@@ -1219,13 +1218,24 @@ export const CATEGORIAS = [
   { id: 'regulatorio', label: 'Regulatório (CFM)', icon: 'Shield' },
 ];
 
+// Só as ferramentas VALIDADAS para a decisão de encaminhar o paciente
+// perioperatório à UTI. Revisão de 29/08/2026 — `docs/criterios-uti-revisao.md`.
+//
+// ⚠️ Nada foi apagado: `POTTER_CALCULATOR` e `PPOSSUM_CALCULATOR` seguem
+// exportados acima e voltam à lista com uma linha. Saíram porque:
+//
+// - POTTER-Inspirado NÃO é o POTTER. O `nota` do próprio objeto admite que o
+//   algoritmo original é proprietário e que isto é uma árvore feita à mão — sem
+//   validação — enquanto exibe as referências de validação do POTTER verdadeiro.
+// - P-POSSUM é validada para morbimortalidade, não para a decisão, e parte das
+//   18 variáveis é intra e pós-operatória: não existe no momento de decidir.
+//   SORT (6 variáveis pré-op) e SAS (3 ao fim da cirurgia) cobrem os dois
+//   momentos em que a decisão é tomada.
 export const ALL_CALCULATORS = [
   SORT_CALCULATOR,
   ESS_CALCULATOR,
-  POTTER_CALCULATOR,
   SAS_CALCULATOR,
   SIAARTI_CALCULATOR,
-  PPOSSUM_CALCULATOR,
   CFM_CALCULATOR,
 ];
 

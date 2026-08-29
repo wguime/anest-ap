@@ -644,7 +644,9 @@ function PotterWizard({ onResult }) {
 // =============================================
 // Pagina de uma calculadora individual
 // =============================================
-function CalculatorDetailPage({ calcId, _onBack }) {
+// Exportado para a seção "Indicação de UTI" da aba Calculadoras reaproveitar
+// esta renderização em vez de reescrevê-la (`CalculatorShowcase.jsx`).
+export function CalculatorDetailPage({ calcId, _onBack }) {
   const calc = getCalculatorById(calcId);
   const [potterResult, setPotterResult] = useState(null);
 

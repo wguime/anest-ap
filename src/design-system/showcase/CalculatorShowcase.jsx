@@ -12,7 +12,7 @@
  * - Busca filtra em TODAS secoes
  */
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Search, Calculator, Baby, Heart, HeartPulse, Wind, Shield, Stethoscope, Droplet, Activity, Brain, User, X, ArrowLeft, Info, Siren, Pill, RotateCcw, BedDouble, Scale, Thermometer, Check, Zap, Ruler, Clock, ClipboardCheck, AlertTriangle, TrendingDown, BarChart2, Frown, Flame, Droplets, Syringe, Moon, AlertCircle, Apple, FileText, Eye, Bed, Beaker, FlaskConical, RefreshCw, Plus, Minus, Bell, Bone, BookOpen, ListChecks, ChevronDown, ShieldAlert, Bug, Star } from 'lucide-react';
 import { cn } from '../utils/tokens';
 import { WidgetCard } from '../components/ui/widget-card';
@@ -20,6 +20,15 @@ import { RiskFactorCard } from '../components/anest/risk-factor-card';
 import { ClinicalDisclaimer } from '../components/anest/clinical-disclaimer';
 import { Input } from '../components/ui/input';
 import { useUser } from '../../contexts/UserContext';
+
+// A seção "Indicação de UTI" reaproveita a renderização que já existe na
+// `CriteriosUTIPage` — árvore de decisão, seções com subtotal e interpretação
+// por faixa — em vez de reescrever 766 linhas de tela de decisão clínica.
+// ⚠️ `lazy` para o chunk dela não entrar no bundle de quem nunca abre a seção;
+// precisa de Suspense LOCAL, senão o React congela a tela anterior sem erro.
+const CriterioUtiDetalhe = lazy(() =>
+  import('../../pages/CriteriosUTIPage').then((m) => ({ default: m.CalculatorDetailPage }))
+);
 import { Button } from '../components/ui/button';
 import { Select } from '../components/ui/select';
 import { getCalculatorById, getSectionsWithCalculators, getAllCalculators, PEDI_CALC_DATA } from '../data/calculator-definitions';
@@ -2024,7 +2033,7 @@ function CalculatorPage({ calculator, _onBack }) {
       )}
 
       {/* Select inputs as cards or dropdown - Skip for calculators with inputs inside custom displays */}
-      {selectInputs.length > 0 && !['viaAerea', 'reversores', 'balancoHidricoTransop', 'aldrete', 'sofa', 'faAnticoag', 'sedacaoDelirium', 'saps3', 'anticoagulantes', 'inibidoresApetite'].includes(calculator.customRender) && (
+      {selectInputs.length > 0 && !['viaAerea', 'reversores', 'balancoHidricoTransop', 'aldrete', 'sofa', 'faAnticoag', 'sedacaoDelirium', 'saps3', 'anticoagulantes', 'inibidoresApetite', 'criterioUti'].includes(calculator.customRender) && (
         <div
           className={cn(
             "p-4 rounded-xl overflow-visible",
@@ -2055,7 +2064,7 @@ function CalculatorPage({ calculator, _onBack }) {
 
       {/* Number inputs - Skip for calculators with inputs inside custom displays */}
       {numberInputs.length > 0 &&
-       !['pedicalc', 'adultcalc', 'viaAerea', 'pedDesfib', 'broselow', 'hollidaySegar', 'acls', 'reversores', 'balancoHidricoTransop', 'aldrete', 'sofa', 'faAnticoag', 'sedacaoDelirium', 'saps3', 'anticoagulantes', 'inibidoresApetite'].includes(calculator.customRender) && (
+       !['pedicalc', 'adultcalc', 'viaAerea', 'pedDesfib', 'broselow', 'hollidaySegar', 'acls', 'reversores', 'balancoHidricoTransop', 'aldrete', 'sofa', 'faAnticoag', 'sedacaoDelirium', 'saps3', 'anticoagulantes', 'inibidoresApetite', 'criterioUti'].includes(calculator.customRender) && (
         <div
           className={cn(
             "p-4 rounded-xl",
@@ -2181,6 +2190,14 @@ function CalculatorPage({ calculator, _onBack }) {
 
       {calculator.customRender === 'saps3' && (
         <Saps3Display />
+      )}
+
+      {calculator.customRender === 'criterioUti' && (
+        <Suspense
+          fallback={<div className="py-8 text-center text-sm text-muted-foreground">Carregando…</div>}
+        >
+          <CriterioUtiDetalhe calcId={calculator.criterioUtiId} />
+        </Suspense>
       )}
 
       {calculator.customRender === 'anticoagulantes' && (

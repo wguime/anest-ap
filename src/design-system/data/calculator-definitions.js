@@ -7114,6 +7114,86 @@ const dorCalculators = [
 // ESTRUTURA DE SEÇÕES (9 seções temáticas — reorganizado v5.x)
 // =============================================================================
 
+// =============================================================================
+// SEÇÃO 14: INDICAÇÃO DE UTI (5 ferramentas)
+//
+// Vieram de `src/data/criteriosUtiCalculators.js`, que tinha card próprio no
+// Menu. Decisão do dono (29/08/2026): deixam de ter card e viram seção aqui.
+//
+// ⚠️ Estas NÃO calculam neste arquivo. Cada uma tem renderização própria em
+// `CriteriosUTIPage.jsx` (árvore de decisão, seções com subtotal, interpretação
+// por faixa), reaproveitada via `customRender: 'criterioUti'` + `criterioUtiId`.
+// Aqui elas existem só para aparecer na lista, na busca e nos favoritos.
+//
+// São 5 e não 7: saíram POTTER-Inspirado (não é o POTTER — árvore feita à mão
+// exibindo as citações do algoritmo verdadeiro) e P-POSSUM (validada para
+// morbimortalidade, não para a decisão, e exige variáveis intra e pós-op que
+// não existem na hora de encaminhar). Ver `docs/criterios-uti-revisao.md`.
+// =============================================================================
+
+const criterioUtiCards = [
+  {
+    id: 'criterio_sort',
+    criterioUtiId: 'sort',
+    title: 'SORT',
+    subtitle: 'Pré-op — 6 variáveis',
+    icon: 'ClipboardCheck',
+    status: 'active',
+    customRender: 'criterioUti',
+    inputs: [],
+    compute: () => null,
+    resultMessage: () => '',
+  },
+  {
+    id: 'criterio_ess',
+    criterioUtiId: 'ess',
+    title: 'ESS',
+    subtitle: 'Emergência — triagem UTI',
+    icon: 'Siren',
+    status: 'active',
+    customRender: 'criterioUti',
+    inputs: [],
+    compute: () => null,
+    resultMessage: () => '',
+  },
+  {
+    id: 'criterio_sas',
+    criterioUtiId: 'sas',
+    title: 'SAS',
+    subtitle: 'Intraop — 3 variáveis',
+    icon: 'Activity',
+    status: 'active',
+    customRender: 'criterioUti',
+    inputs: [],
+    compute: () => null,
+    resultMessage: () => '',
+  },
+  {
+    id: 'criterio_siaarti',
+    criterioUtiId: 'siaarti',
+    title: 'SIAARTI 2025',
+    subtitle: 'Diretriz de admissão',
+    icon: 'FileText',
+    status: 'active',
+    customRender: 'criterioUti',
+    inputs: [],
+    compute: () => null,
+    resultMessage: () => '',
+  },
+  {
+    id: 'criterio_cfm2156',
+    criterioUtiId: 'cfm2156',
+    title: 'CFM 2156',
+    subtitle: 'Prioridades 1 a 5',
+    icon: 'Shield',
+    status: 'active',
+    customRender: 'criterioUti',
+    inputs: [],
+    compute: () => null,
+    resultMessage: () => '',
+  },
+];
+
 export const calculatorSections = [
   // PERIOPERATÓRIO & ESTRATIFICAÇÃO
   { id: 'periop', title: 'Perioperatório e Via Aérea', icon: 'Stethoscope', calculators: periopCalculators },
@@ -7123,6 +7203,7 @@ export const calculatorSections = [
   { id: 'hemo', title: 'Fluidoterapia e Sangue', icon: 'Droplet', calculators: hemoCalculators },
   // CUIDADOS INTENSIVOS & SEGURANÇA
   { id: 'uti', title: 'Terapia Intensiva', icon: 'Activity', calculators: utiCalculators },
+  { id: 'criterio_uti', title: 'Indicação de UTI', icon: 'ClipboardCheck', calculators: criterioUtiCards },
   { id: 'seg', title: 'Segurança do Paciente', icon: 'Shield', calculators: segCalculators },
   // SUBESPECIALIDADES
   { id: 'renal', title: 'Renal e Eletrólitos', icon: 'Beaker', calculators: renalCalculators },

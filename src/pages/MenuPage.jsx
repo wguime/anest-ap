@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { Calculator, Wrench, ClipboardList, Activity, Utensils } from 'lucide-react';
+import { Calculator, Wrench, Activity, Utensils } from 'lucide-react';
 import { WidgetCard } from '@/design-system';
 import { PageHeader } from '@/components';
 import { useCardPermissions } from '../hooks/useCardPermissions';
@@ -39,17 +39,10 @@ export default function MenuPage({ onNavigate, goBack }) {
             />
           )}
 
-          {/* Widget Critérios UTI */}
-          {canAccessCard('criterios_uti') && (
-            <WidgetCard
-              size="small"
-              icon={<ClipboardList className="w-6 h-6" />}
-              title="Critérios UTI"
-              subtitle="Triagem pós-op"
-              variant="default"
-              onClick={() => onNavigate('criteriosUti')}
-            />
-          )}
+          {/* Critérios UTI saiu daqui em 29/08/2026 (decisão do dono): virou a
+              seção "Indicação de UTI" dentro de Calculadoras. A rota
+              `criteriosUti` continua respondendo — link salvo e histórico do
+              navegador não podem quebrar. */}
 
           {/* Widget Cateter Peridural */}
           {canAccessCard('cateter_peridural') && (
