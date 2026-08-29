@@ -412,6 +412,29 @@ faixa etária correta: prematuro 95, RN 85, lactente 80, criança 75, adolescent
 
 Fonte: ATLS 10ª ed. · J Emerg Trauma Shock 2024, sobre atribuição de classe.
 
+#### Tier 3 — renal e eletrólitos: conferido, SEM defeito
+
+| calculadora | conferido | veredito |
+|---|---|---|
+| `renal_cockroft` | ClCr = (140 − idade) × peso / (72 × Cr), × 0,85 na mulher | ✅ |
+| `renal_ckdepi` | CKD-EPI 2021 *race-free*: κ 0,7/0,9 · α −0,241/−0,302 · 0,9938^idade · 1,012 na mulher | ✅ valores conferidos numericamente |
+| `renal_aniongap` | Na − (Cl + HCO₃), correção AG + 2,5 × (4 − albumina) | ✅ |
+| `renal_osmolaridade` | 2×Na + glicose/18 + ureia/6 | ✅ — e `ureia/6` equivale a `BUN/2,80`, que é a forma publicada |
+| `renal_gap_osmolar` | osm medida − osm calculada, normal < 10 | ✅ |
+| `renal_sódio`, `renal_cálcio` | já corrigidos na Frente 3b | ✅ |
+
+Duas observações que **não são defeito** e não foram mexidas:
+
+- O `renal_cockroft` rotula o resultado como "Estágio 1/2/3" do KDIGO, e o estadiamento de DRC é
+  definido sobre **TFG estimada** (CKD-EPI), não sobre depuração de creatinina. As duas estimam a
+  mesma coisa e o uso é corrente, mas a nomenclatura é frouxa.
+- A Cockcroft-Gault usa peso **atual**. No obeso, peso ideal ou ajustado é o preferido para ajuste de
+  dose. A fórmula original é com peso atual, então está fiel à fonte.
+
+**Situação da Frente 3c:** Tiers 1, 2 e 3 fechados — **32 das 71** auditadas contra fonte primária,
+com 7 defeitos clínicos encontrados e corrigidos. Falta o Tier 4 (os ~39 escores), que é o de menor
+dano por erro: escore prognóstico não vira conduta imediata como dose e volume.
+
 ## Frente 4 — Português, incluindo os números
 
 O dono pediu português em todos os termos e um siglário. Duas metades:
