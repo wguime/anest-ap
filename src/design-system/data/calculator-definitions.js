@@ -775,7 +775,7 @@ const pedUtiCalculators = [
     title: 'PEWS',
     subtitle: 'Escore Pediátrico de Alerta Precoce',
     icon: 'AlertTriangle',
-    status: 'active',
+    status: 'inactive',
     useDropdown: true,
     inputs: [
       {
@@ -890,7 +890,7 @@ const pedUtiCalculators = [
     title: 'pSOFA',
     subtitle: 'SOFA Pediátrico',
     icon: 'Activity',
-    status: 'active',
+    status: 'inactive',
     useDropdown: true,
     inputs: [
       {
@@ -1028,7 +1028,7 @@ const pedUtiCalculators = [
     title: 'PIM3',
     subtitle: 'Índice de Mortalidade Pediátrica',
     icon: 'TrendingDown',
-    status: 'active',
+    status: 'inactive',
     useDropdown: true,
     inputs: [
       {
@@ -1211,7 +1211,7 @@ const pedUtiCalculators = [
     title: 'PRISM III',
     subtitle: 'Risco de Mortalidade Pediátrica',
     icon: 'BarChart2',
-    status: 'active',
+    status: 'inactive',
     useDropdown: true,
     inputs: [
       {
@@ -1537,7 +1537,7 @@ const pedUtiCalculators = [
     title: 'CHEOPS',
     subtitle: 'Escala de Dor Pós-Operatória Pediátrica',
     icon: 'Thermometer',
-    status: 'active',
+    status: 'inactive',
     useDropdown: true,
     inputs: [
       {
@@ -3309,7 +3309,7 @@ const utiCalculators = [
     title: 'APACHE II',
     subtitle: 'Prognóstico UTI',
     icon: 'BarChart2',
-    status: 'active',
+    status: 'inactive',
     useDropdown: true,
     inputs: [
       { id: 'idade', label: 'Idade (anos)', type: 'number', min: 0, max: 120, step: 1 },
@@ -3465,7 +3465,7 @@ const utiCalculators = [
     title: 'CPIS',
     subtitle: 'Pneumonia/VAP',
     icon: 'Wind',
-    status: 'active',
+    status: 'inactive',
     useDropdown: true,
     inputs: [
       {
@@ -3587,7 +3587,7 @@ const utiCalculators = [
     title: 'NUTRIC Score',
     subtitle: 'Risco nutricional',
     icon: 'Apple',
-    status: 'active',
+    status: 'inactive',
     useDropdown: true,
     inputs: [
       {
@@ -3695,7 +3695,7 @@ const utiCalculators = [
     title: 'FOUR Score',
     subtitle: 'Avaliação Neurológica — Intubados',
     icon: 'Brain',
-    status: 'active',
+    status: 'inactive',
     useDropdown: true,
     inputs: [
       {
@@ -3797,7 +3797,7 @@ const utiCalculators = [
     title: 'CURB-65',
     subtitle: 'Pneumonia Comunitária — Disposição',
     icon: 'Wind',
-    status: 'active',
+    status: 'inactive',
     inputs: [
       { id: 'confusion', label: 'Confusão mental (AMT ≤ 8)', type: 'bool' },
       { id: 'urea', label: 'Ureia > 7 mmol/L (43 mg/dL)', type: 'bool' },
@@ -3858,7 +3858,7 @@ const utiCalculators = [
     title: 'ROX Index',
     subtitle: 'Falha CNAF — Predição de Intubação',
     icon: 'Wind',
-    status: 'active',
+    status: 'inactive',
     inputs: [
       { id: 'spo2', label: 'SpO2 (%)', type: 'number', min: 50, max: 100, step: 1 },
       { id: 'fio2', label: 'FiO2 (%)', type: 'number', min: 21, max: 100, step: 1 },
@@ -4492,7 +4492,7 @@ const periopCalculators = [
     title: 'Murray Score',
     subtitle: 'Lesão Pulmonar (LIS)',
     icon: 'Wind',
-    status: 'active',
+    status: 'inactive',
     useDropdown: true,
     inputs: [
       { id: 'rx', label: 'RX Torax (quadrantes)', type: 'select', options: [
@@ -4662,7 +4662,7 @@ const riscoCalculators = [
     title: 'Goldman',
     subtitle: 'Risco Cardíaco Perioperatório',
     icon: 'Heart',
-    status: 'active',
+    status: 'inactive',
     useDropdown: true,
     inputs: [
       { id: 'idade_70', label: 'Idade > 70 anos', type: 'bool', points: 5 },
@@ -4932,7 +4932,7 @@ const riscoCalculators = [
     title: 'Padua',
     subtitle: 'Risco de TEV em Pacientes Clínicos',
     icon: 'Bed',
-    status: 'active',
+    status: 'inactive',
     useDropdown: true,
     inputs: [
       { id: 'neoplasia', label: 'Neoplasia ativa (metastases, QT/RT <6m, ou cuidados paliativos) (+3)', type: 'bool', points: 3 },
@@ -5008,7 +5008,7 @@ const riscoCalculators = [
     title: 'TIMI Risk Score',
     subtitle: 'IAMSSST / Angina Instável',
     icon: 'Heart',
-    status: 'active',
+    status: 'inactive',
     useDropdown: true,
     inputs: [
       { id: 'idade_65', label: 'Idade >= 65 anos', type: 'bool' },
@@ -5067,7 +5067,7 @@ const riscoCalculators = [
     title: 'HEART Score',
     subtitle: 'Dor Torácica na Emergência',
     icon: 'HeartPulse',
-    status: 'active',
+    status: 'inactive',
     useDropdown: true,
     inputs: [
       {
@@ -5358,7 +5358,7 @@ const segCalculators = [
     title: 'Morse',
     subtitle: 'Risco de Queda',
     icon: 'AlertTriangle',
-    status: 'active',
+    status: 'inactive',
     useDropdown: true,
     inputs: [
       { id: 'queda_hist', label: 'História de queda', type: 'bool', points: 25 },
@@ -5449,7 +5449,7 @@ const segCalculators = [
     title: 'Braden',
     subtitle: 'Lesão por Pressão',
     icon: 'Shield',
-    status: 'active',
+    status: 'inactive',
     useDropdown: true,
     inputs: [
       {
@@ -5577,7 +5577,7 @@ const segCalculators = [
     title: 'MEWS',
     subtitle: 'Alerta Precoce Modificado',
     icon: 'AlertCircle',
-    status: 'active',
+    status: 'inactive',
     useDropdown: true,
     inputs: [
       {
@@ -6648,7 +6648,7 @@ const neuroCalculators = [
     title: 'NIHSS',
     subtitle: 'AVC Isquemico',
     icon: 'Activity',
-    status: 'active',
+    status: 'inactive',
     useDropdown: true,
     inputs: [
       {
@@ -7220,7 +7220,15 @@ export const calculatorSections = [
 // HELPERS
 // =============================================================================
 
+// Favorito salvo não pode virar tela morta. Só entra aqui quem tem SUCESSORA no
+// app — as desativadas por serem de outra especialidade não ganham destino,
+// porque inventar um seria pior que não ter.
 const LEGACY_ID_MAP = {
+  // Triagem de 29/08/2026 — `docs/revisao-calculadoras-triagem.md`
+  'risco_goldman': 'risco_rcri',      // índice de 1977 superado pelo RCRI (ACC/AHA 2024)
+  'uti_apache2': 'uti_saps3',         // calibração de 1985; SAPS 3 validado p/ América do Sul
+  'ped_cheops': 'ped_flacc',          // CHEOPS não mede dor que persiste após a SRPA
+  'seg_mews': 'seg_news2',            // NEWS2 é o sucessor direto do MEWS
   'periop_aldrete_mod': 'periop_aldrete',
   'periop_aldrete_orig': 'periop_aldrete',
   'uti_sofa': 'uti_sofa_unificado',

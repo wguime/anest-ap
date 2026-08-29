@@ -1,0 +1,145 @@
+/**
+ * Trava da triagem das calculadoras (proposta em `docs/revisao-calculadoras-triagem.md`,
+ * aprovada pelo dono em 29/08/2026).
+ *
+ * 20 calculadoras passam a `status: 'inactive'`. **Nada é apagado** — a definição
+ * inteira continua no arquivo e volta com a troca de uma palavra. Foi condição
+ * explícita do dono: *"as que forem descartadas quero que deixe inativas caso eu
+ * mude de ideia e resolva retornar com elas no app"*.
+ *
+ * Dois grupos, com forças de evidência diferentes:
+ *
+ * - **Superadas por algo que o app JÁ TEM.** Estas ganham entrada em
+ *   `LEGACY_ID_MAP` apontando para a sucessora, porque existe para onde mandar
+ *   quem tinha a antiga favoritada.
+ * - **De outra especialidade.** Estas NÃO ganham entrada: não há sucessora, e
+ *   inventar um destino seria pior que não ter.
+ *
+ * ⚠️ Favorito não pode ressuscitar calculadora inativa. `getAllCalculators()`
+ * inclui as inativas de propósito (é o que permite o `LEGACY_ID_MAP` resolver),
+ * então a lista de favoritas precisa filtrar por status — senão desativar não
+ * desativa para quem favoritou.
+ */
+import { describe, it, expect } from 'vitest';
+import {
+  calculatorSections,
+  getAllCalculators,
+  getActiveCalculators,
+  getSectionsWithCalculators,
+  getCalculatorById,
+} from '../../design-system/data/calculator-definitions.js';
+
+// Superadas — têm sucessora no app
+const SUPERADAS = {
+  risco_goldman: 'risco_rcri',
+  uti_apache2: 'uti_saps3',
+  ped_cheops: 'ped_flacc',
+  seg_mews: 'seg_news2',
+};
+
+// De outra especialidade — sem sucessora
+const OUTRA_ESPECIALIDADE = [
+  'risco_timi', 'risco_heart', 'risco_padua',
+  'uti_curb65', 'uti_cpis', 'uti_nutric', 'uti_rox', 'uti_four_score',
+  'seg_morse', 'seg_braden',
+  'neuro_nihss', 'periop_murray',
+  'ped_pews', 'ped_psofa', 'ped_pim3', 'ped_prism3',
+];
+
+const DESATIVADAS = [...Object.keys(SUPERADAS), ...OUTRA_ESPECIALIDADE];
+
+const buscarBruto = (id) => getAllCalculators().find((c) => c.id === id);
+
+describe('as 20 saíram da lista, sem serem apagadas', () => {
+  it('são exatamente 20', () => {
+    expect(DESATIVADAS).toHaveLength(20);
+  });
+
+  it.each(DESATIVADAS)('%s está inactive', (id) => {
+    const c = buscarBruto(id);
+    expect(c, `${id} sumiu do arquivo — deveria estar inactive, não apagada`).toBeTruthy();
+    expect(c.status).toBe('inactive');
+  });
+
+  it.each(DESATIVADAS)('%s continua com a definição inteira, pronta para voltar', (id) => {
+    const c = buscarBruto(id);
+    expect(c.title, `${id} sem título`).toBeTruthy();
+    // `compute` OU `customRender`: algumas calculam no display.
+    expect(Boolean(c.compute || c.customRender), `${id} perdeu a conta`).toBe(true);
+  });
+
+  it('nenhuma delas aparece nas seções visíveis', () => {
+    const visiveis = getSectionsWithCalculators().flatMap((s) => s.calculators.map((c) => c.id));
+    const vazando = DESATIVADAS.filter((id) => visiveis.includes(id));
+    expect(vazando).toEqual([]);
+  });
+});
+
+describe('LEGACY_ID_MAP — só para quem tem sucessora', () => {
+  it.each(Object.entries(SUPERADAS))('favorito em %s resolve para %s', (antigo, sucessora) => {
+    const c = getCalculatorById(antigo);
+    expect(c, `${antigo} não resolveu`).toBeTruthy();
+    expect(c.id).toBe(sucessora);
+    expect(c.status).toBe('active');
+  });
+
+  it('as de outra especialidade NÃO ganham destino inventado', () => {
+    for (const id of OUTRA_ESPECIALIDADE) {
+      const c = getCalculatorById(id);
+      // Resolve para ela mesma (inativa), nunca para outra calculadora.
+      expect(c?.id, `${id} foi redirecionada para algo`).toBe(id);
+    }
+  });
+});
+
+describe('o que sobra', () => {
+  it('as ativas caem para 56', () => {
+    // 71 antes + 5 cards de Indicação de UTI = 76; menos as 20 desativadas = 56.
+    expect(getActiveCalculators()).toHaveLength(56);
+  });
+
+  it('nenhuma seção fica vazia na tela', () => {
+    const vazias = getSectionsWithCalculators()
+      .filter((s) => s.calculators.length === 0)
+      .map((s) => s.title);
+    expect(vazias).toEqual([]);
+  });
+
+  it.each([
+    'risco_rcri', 'risco_caprini', 'risco_fa_anticoag',
+    'uti_saps3', 'uti_sofa_unificado', 'uti_sedacao_delirium', 'seg_news2',
+    'ped_flacc', 'periop_apfel', 'periop_stopbang', 'periop_ariscat',
+  ])('%s continua ativa', (id) => {
+    expect(buscarBruto(id)?.status).toBe('active');
+  });
+
+  it('o total de definições não caiu — nada foi apagado', () => {
+    // 80 originais + 5 cards de Indicação de UTI = 85
+    expect(getAllCalculators()).toHaveLength(85);
+  });
+});
+
+describe('favorito não ressuscita calculadora inativa', () => {
+  // `getAllCalculators()` inclui inativas de propósito (é o que faz o
+  // LEGACY_ID_MAP resolver). Quem monta a lista de favoritas precisa filtrar.
+  it('a seção de favoritas usa apenas calculadoras não-inativas', () => {
+    const fonte = getSectionsWithCalculators().flatMap((s) => s.calculators);
+    const inativasVazando = fonte.filter((c) => c.status === 'inactive').map((c) => c.id);
+    expect(inativasVazando).toEqual([]);
+  });
+});
+
+describe('a estrutura de seções segue íntegra', () => {
+  it('toda calculadora tem id único', () => {
+    const ids = getAllCalculators().map((c) => c.id);
+    const repetidos = ids.filter((id, i) => ids.indexOf(id) !== i);
+    expect(repetidos).toEqual([]);
+  });
+
+  it('toda seção declara título e ícone', () => {
+    for (const s of calculatorSections) {
+      expect(s.title, `${s.id} sem título`).toBeTruthy();
+      expect(s.icon, `${s.id} sem ícone`).toBeTruthy();
+    }
+  });
+});

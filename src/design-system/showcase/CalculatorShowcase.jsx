@@ -2376,9 +2376,14 @@ export function CalculatorShowcase({ selectedCalc: selectedCalcProp, onSelectedC
     const term = searchTerm ? searchTerm.toLowerCase() : '';
 
     // Build favorites section
+    // ⚠️ `allCalculators` inclui as INATIVAS de propósito — é o que permite o
+    // `LEGACY_ID_MAP` resolver favorito antigo. Sem filtrar por status aqui,
+    // desativar uma calculadora não a desativaria para quem a favoritou: ela
+    // sumiria da seção dela e continuaria aparecendo em "Favoritas".
     const favoriteCalcs = favorites
       .map(id => allCalculators.find(c => c.id === id))
-      .filter(Boolean);
+      .filter(Boolean)
+      .filter(c => c.status !== 'inactive');
 
     const filteredFavorites = term
       ? favoriteCalcs.filter(c =>

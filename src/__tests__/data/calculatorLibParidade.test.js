@@ -30,9 +30,15 @@
  * Hillier TA et al. Am J Med 1999 + Payne RB et al. BMJ 1973 (eletrólitos).
  */
 import { describe, it, expect } from 'vitest';
-import { getCalculatorById } from '../../design-system/data/calculator-definitions.js';
+import { getAllCalculators } from '../../design-system/data/calculator-definitions.js';
 
-const compute = (id) => getCalculatorById(id).compute;
+// ⚠️ Busca pelo id BRUTO, não por `getCalculatorById`: desde a triagem de
+// 29/08/2026 o `uti_apache2` está `inactive` e o `LEGACY_ID_MAP` o redireciona
+// para o `uti_saps3`. Passar pelo resolvedor traria o compute do SAPS III e a
+// trava do APACHE II viraria decoração — a calculadora segue no arquivo e pode
+// voltar, então a conta dela continua sob teste.
+const definicao = (id) => getAllCalculators().find((c) => c.id === id);
+const compute = (id) => definicao(id).compute;
 
 // ---------------------------------------------------------------------------
 // APACHE II
@@ -114,7 +120,7 @@ describe('APACHE II — o zero é valor, não campo vazio', () => {
 
 describe('FOUR Score', () => {
   const four = compute('uti_four_score');
-  const inputs = getCalculatorById('uti_four_score').inputs;
+  const inputs = definicao('uti_four_score').inputs;
 
   it.each([
     [4, 4, 4, 4, 16, 'baixo'],
@@ -172,7 +178,7 @@ describe('CURB-65 — soma dos 5 critérios e a tabela de disposição', () => {
   });
 
   it('os 5 critérios são os do escore — nenhum a mais, nenhum a menos', () => {
-    const ids = getCalculatorById('uti_curb65').inputs.map((i) => i.id);
+    const ids = definicao('uti_curb65').inputs.map((i) => i.id);
     expect(ids).toEqual(['confusion', 'urea', 'rr', 'bp', 'age']);
   });
 });

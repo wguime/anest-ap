@@ -60,7 +60,30 @@ Cada corte abaixo traz o **tipo de evidência**, porque nem toda linha tem a mes
 
 ---
 
-## 3. Proposta: 71 cards → 49
+## 3. EXECUTADO em 29/08 — 76 cards ativos → 56
+
+> A proposta original dizia "71 → 49". O número mudou porque, entre a proposta e a execução, os
+> **5 Critérios UTI** entraram como cards nesta lista. A conta real: 71 + 5 = 76 ativos, menos as 20
+> desativadas = **56**. As 3 do card de classificações ainda **não** foram agrupadas — isso é
+> componente novo e vai como protótipo antes.
+
+**20 em `status: 'inactive'`.** Nada apagado: as definições seguem inteiras no arquivo e voltam com a
+troca de uma palavra. Trava em `src/__tests__/data/calculatorTriagem.test.js`.
+
+⚠️ **Só as 4 superadas ganharam entrada em `LEGACY_ID_MAP`**, apontando para a sucessora. As 16 de
+outra especialidade **não** ganharam: não existe sucessora, e inventar um destino seria pior que não
+ter. Quem tinha uma delas favoritada simplesmente deixa de vê-la.
+
+⚠️ **A seção "Favoritas" passou a filtrar inativas.** `getAllCalculators()` inclui as inativas de
+propósito — é o que faz o `LEGACY_ID_MAP` resolver — então, sem o filtro, desativar não desativava
+para quem havia favoritado: a calculadora sumia da seção dela e continuava aparecendo em Favoritas.
+
+⚠️ **O redirecionamento quebrou as travas do APACHE II**, e isso é lição: elas chamavam
+`getCalculatorById('uti_apache2')`, que agora resolve para o SAPS III — e passariam a testar a conta
+errada em silêncio. Corrigidas para buscar pelo id BRUTO. A calculadora está inativa mas pode voltar,
+então a matemática dela continua sob teste.
+
+### Proposta original (mantida como registro)
 
 **20 para `status: 'inactive'`** (nada é apagado; cada uma ganha entrada em `LEGACY_ID_MAP`) e
 **3 agrupadas** num card único de classificações.
