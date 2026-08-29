@@ -381,6 +381,37 @@ ninguém "corrigir" isso depois.
 Fontes: PALS/AHA 2020 · StatPearls, *Calcium Gluconate* · CHEO ED Outreach ·
 Ripamonti C et al. J Clin Oncol 1998 · StatPearls, *Opioid Equivalency*.
 
+#### Tier 2 — reposição volêmica e sangue
+
+**Conferidas e SEM defeito:** `hemo_parkland` (ISBI 2016, 2 mL/kg/%SCQ, com Baxter 1968 exibido só
+como referência histórica; metade em 8 h, metade em 16 h) · `hemo_mabl` e `ped_mabl` (volemia por
+faixa etária correta: prematuro 95, RN 85, lactente 80, criança 75, adolescente 70 mL/kg) ·
+`hemo_cristaloide` (3:1) · `hemo_deficit` (4-2-1 com reposição 50/25/25) · `hemo_shock_index`
+(FC/PAS, faixas padrão) · `ped_transfusao` (Davies, 3 mL/kg por g/dL).
+
+**`hemo_perdas_atls` — 2 defeitos, os dois na direção perigosa. CORRIGIDOS.**
+
+1. **A classe saía de uma SOMA de pontos.** Cada parâmetro valia 0/2/3/4 e os cortes eram 4/8/12, o
+   que exigia ~três parâmetros gravemente alterados para chegar à classe IV. O ATLS atribui a classe
+   pelo **pior** parâmetro — *"the shock class corresponding to the highest shock class amongst
+   traditional vital parameters"*.
+
+   | cenário | classe antes | classe agora |
+   |---|---|---|
+   | FC 145, resto normal | II | **IV** |
+   | FC 145 + PAS 65 | III | **IV** |
+   | PAS 60 isolada | II | **IV** |
+   | diurese 3 mL/h isolada | II | **IV** |
+
+   Subclassificar atrasa sangue e, na classe IV, o **protocolo de transfusão maciça** que a própria
+   calculadora indica na linha "Conduta".
+
+2. **"Volume máximo" era tabela FIXA** (750/1500/2000/2500 mL) enquanto "Perda estimada" já era
+   escalada pela volemia. Num paciente de 100 kg em classe III a estimativa (2450 mL) **passava do
+   "máximo"** (2000 mL) — duas linhas do mesmo cartão se contradizendo. O teto agora escala pelo peso.
+
+Fonte: ATLS 10ª ed. · J Emerg Trauma Shock 2024, sobre atribuição de classe.
+
 ## Frente 4 — Português, incluindo os números
 
 O dono pediu português em todos os termos e um siglário. Duas metades:

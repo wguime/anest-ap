@@ -2670,45 +2670,29 @@ const hemoCalculators = [
       // Classe II: FC 100-120, PAS normal, FR 20-30, diurese 20-30
       // Classe I: FC < 100, PAS normal, FR 14-20, diurese > 30
 
-      let classe = 1;
-      let pontos = 0;
+      // ⚠️ A classe sai do PIOR parâmetro, não de uma soma. O ATLS atribui
+      // "the shock class corresponding to the highest shock class amongst
+      // traditional vital parameters". Somar pontos exigia ~três parâmetros
+      // gravemente alterados para chegar à classe IV: um paciente taquicárdico
+      // a 145 com o resto normal saía classe II, e taquicárdico + hipotenso
+      // saía classe III — atrasando sangue e o protocolo de transfusão maciça.
+      const classeFC = fc > 140 ? 4 : fc > 120 ? 3 : fc > 100 ? 2 : 1;
+      const classePAS = pas < 70 ? 4 : pas < 90 ? 3 : pas < 100 ? 2 : 1;
+      const classeFR = fr > 35 ? 4 : fr > 30 ? 3 : fr > 20 ? 2 : 1;
+      const classeDiurese = diurese < 5 ? 4 : diurese < 15 ? 3 : diurese < 30 ? 2 : 1;
 
-      // Sistema de pontuação para classificacao mais precisa
-      // FC
-      if (fc > 140) pontos += 4;
-      else if (fc > 120) pontos += 3;
-      else if (fc > 100) pontos += 2;
-      else if (fc > 80) pontos += 0;
-
-      // PAS
-      if (pas < 70) pontos += 4;
-      else if (pas < 90) pontos += 3;
-      else if (pas < 100) pontos += 2;
-      else pontos += 0;
-
-      // FR
-      if (fr > 35) pontos += 4;
-      else if (fr > 30) pontos += 3;
-      else if (fr > 20) pontos += 2;
-      else if (fr > 14) pontos += 0;
-
-      // Diurese
-      if (diurese < 5) pontos += 4;
-      else if (diurese < 15) pontos += 3;
-      else if (diurese < 30) pontos += 2;
-      else pontos += 0;
-
-      // Determinar classe baseado na pontuação
-      if (pontos >= 12) classe = 4;
-      else if (pontos >= 8) classe = 3;
-      else if (pontos >= 4) classe = 2;
-      else classe = 1;
+      const classe = Math.max(classeFC, classePAS, classeFR, classeDiurese);
 
       // Perda estimada por classe (valores medios)
       const perdasPercent = { 1: 15, 2: 25, 3: 35, 4: 45 };
-      const perdasML = { 1: 750, 2: 1500, 3: 2000, 4: 2500 };
+      // ⚠️ O teto também escala com o peso. Era tabela FIXA (750/1500/2000/2500
+      // mL) enquanto a perda estimada já era escalada pela volemia: num paciente
+      // de 100 kg em classe III a estimativa (2450 mL) passava do "máximo"
+      // (2000 mL), duas linhas do mesmo cartão se contradizendo.
+      const tetosPercent = { 1: 15, 2: 30, 3: 40, 4: 50 };
       const perdaPercent = perdasPercent[classe];
       const perdaEstimada = volemia * (perdaPercent / 100);
+      const perdaMaxima = volemia * (tetosPercent[classe] / 100);
 
       // Conduta por classe
       const conduta = {
@@ -2723,7 +2707,7 @@ const hemoCalculators = [
         details: {
           'Classe ATLS': `Classe ${classe}`,
           'Perda estimada': `${perdaPercent}% (~${perdaEstimada.toFixed(0)} mL)`,
-          'Volume máximo': `ate ${perdasML[classe]} mL`,
+          'Volume máximo': `${classe === 4 ? 'acima de' : 'ate'} ${perdaMaxima.toFixed(0)} mL`,
           'Volemia calculada': `${volemia.toFixed(0)} mL (70mL/kg)`,
           'Conduta': conduta[classe],
         },
