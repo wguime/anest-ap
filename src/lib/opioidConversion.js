@@ -99,6 +99,19 @@ export function fromMorphineEquivalent(opioide, medd) {
  * @returns {{ morfinaVOeq, doseDestino, doseReduzida, razaoMetadona }|null}
  *   `doseReduzida` aplica −25% por tolerância cruzada incompleta.
  *   `razaoMetadona` só vem preenchida quando a metadona entra na conta.
+ *
+ * ⚠️ **O −25% vale TAMBÉM quando o destino é metadona — não retirar.** Surgiu a
+ * hipótese de que a razão escalonada de Ripamonti já embutisse a tolerância
+ * cruzada, e que o −25% descontaria duas vezes. A literatura diz o oposto:
+ * trocar para metadona exige redução de **75–90%** da dose equianalgésica,
+ * contra 50% nas demais trocas. Medindo contra a razão fixa 4:1 (o
+ * comportamento antigo), Ripamonti + (−25%) entrega:
+ *
+ *   MEDD 300 mg/dia → 18,8 mg  = 75% de redução  ← piso do recomendado
+ *   MEDD 600 mg/dia → 37,5 mg  = 75% de redução
+ *
+ * Sem o −25% a redução cairia para 67%, ABAIXO do piso. Retirar andaria na
+ * direção contrária à recomendação.
  */
 export function converterOpioide({ origem, destino, dose }) {
   const d = parseFloat(dose);

@@ -80,6 +80,73 @@ describe('unidade exibida acompanha a unidade da dose', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Doses corrigidas por evidência (29/08/2026)
+// ---------------------------------------------------------------------------
+
+describe('ADENOSINA — o teto é absoluto, não por kg', () => {
+  // O campo `doseMaxima` é comparado pelo código contra a dose JÁ multiplicada
+  // pelo peso, ou seja, é um teto em mg absolutos. O valor estava `0.3`, que a
+  // própria `obs` da droga descreve como mg/kg — então toda criança acima de
+  // 3 kg era travada em 0,3 mg.
+  // PALS/AHA 2020: 1ª dose 0,1 mg/kg, máximo 6 mg (2ª dose 0,2 mg/kg, máx 12 mg).
+  const doseDe = (peso) => {
+    const l = getCalculatorById('ped_doses').compute({ peso })
+      .categorias.flatMap((c) => c.medicamentos);
+    return parseFloat(l.find((m) => m.droga === 'ADENOSINA').dose);
+  };
+
+  it.each([
+    [5, 0.5],
+    [10, 1.0],
+    [20, 2.0],
+    [40, 4.0],
+    [60, 6.0],   // 0,1 mg/kg = 6 mg, exatamente no teto
+    [80, 6.0],   // acima do teto, trava em 6 mg — e não em 0,3
+  ])('%i kg → %s mg', (peso, esperado) => {
+    expect(doseDe(peso)).toBeCloseTo(esperado, 2);
+  });
+
+  it('nenhum peso pediátrico devolve os antigos 0,3 mg', () => {
+    for (const peso of [4, 5, 8, 10, 15, 20, 30, 40, 50]) {
+      expect(doseDe(peso), `${peso} kg`).toBeGreaterThan(0.3);
+    }
+  });
+});
+
+describe('GLUCONATO de cálcio — a dose é a do gluconato, não a do cloreto', () => {
+  // Gluconato de cálcio 10% e cloreto de cálcio 10% são ambos 100 mg/mL, mas o
+  // cloreto tem ~3× mais cálcio elementar por mL. Daí as doses diferentes:
+  // cloreto 20 mg/kg · gluconato 60–100 mg/kg (máx 2 g).
+  // O app usava 20 mg/kg sob o rótulo "GLUCO Ca 10%" — a dose do cloreto.
+  // O ACLS adulto do PRÓPRIO app já usava 0,5–1 mL/kg (50–100 mg/kg).
+  const gluconato = (peso) => {
+    const l = getCalculatorById('ped_doses').compute({ peso })
+      .categorias.flatMap((c) => c.medicamentos);
+    return l.find((m) => m.droga.includes('GLUCO'));
+  };
+
+  it.each([
+    [5, 300],
+    [10, 600],
+    [20, 1200],
+    [30, 1800],
+    [40, 2000],  // teto de 2 g
+  ])('%i kg → %s mg', (peso, esperado) => {
+    expect(parseFloat(gluconato(peso).dose)).toBeCloseTo(esperado, 1);
+  });
+
+  it('60 mg/kg equivale a 0,6 mL/kg da solução a 10% — a faixa do ACLS adulto', () => {
+    // Diluição declarada: 10 mL + 10 mL AD → 50 mg/mL. 10 kg → 600 mg → 12 mL
+    // do diluído = 6 mL do puro a 100 mg/mL = 0,6 mL/kg.
+    expect(parseFloat(gluconato(10).volume)).toBeCloseTo(12, 1);
+  });
+
+  it('a dose padrão declarada na tela é 60 mg/kg', () => {
+    expect(gluconato(10).dosePadrao).toBe('60 mg/kg');
+  });
+});
+
 describe('a dose escala com o peso', () => {
   it('dobrar o peso dobra a dose, salvo onde há teto ou piso declarado', () => {
     const leve = achatar('ped_doses', 10);

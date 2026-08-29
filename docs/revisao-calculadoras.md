@@ -339,6 +339,48 @@ direto, mas é mudança de tela.
 têm lib pura com teste (`anticoagulantes`, `inibidoresApetite`, `afib`) e ficam
 para o Tier 4.
 
+#### As 3 pendências clínicas — RESOLVIDAS por fonte (29/08)
+
+O dono pediu que as decisões saíssem de evidência, não dele. As três foram, e
+**uma delas contrariou a minha própria hipótese**.
+
+**1. ADENOSINA — corrigida.** `doseMaxima` era `0.3`, valor que a `obs` da droga
+descreve como mg/kg, num campo que o código aplica como **mg absoluto**. Toda
+criança acima de 3 kg travava em 0,3 mg. PALS/AHA 2020: 1ª dose 0,1 mg/kg com
+máximo **6 mg** (2ª dose 0,2 mg/kg, máx 12 mg). Teto corrigido para 6.
+
+| peso | antes | agora |
+|---|---|---|
+| 10 kg | 0,3 mg | 1,0 mg |
+| 20 kg | 0,3 mg | 2,0 mg |
+| 60 kg | 0,3 mg | 6,0 mg (teto) |
+
+**2. GLUCONATO DE CÁLCIO — corrigido.** Estava a 20 mg/kg, que é a dose do
+**cloreto**. Gluconato de cálcio 10% e cloreto 10% são ambos 100 mg/mL, mas o
+cloreto tem ~3× mais cálcio elementar por mL (9,3 mg de Ca elementar por mL de
+gluconato). Fonte: para hipercalemia/hipocalcemia com risco de vida, gluconato
+**60–100 mg/kg**, máximo 2 g; cloreto na parada, 20 mg/kg. Corrigido para
+60 mg/kg com teto de 2 g — que dá 0,6 mL/kg da solução a 10%, a mesma faixa que
+o ACLS adulto do próprio app já usava.
+
+**3. O −25% NA METADONA — mantido, e minha hipótese estava ERRADA.** Eu havia
+levantado que a razão escalonada de Ripamonti talvez já embutisse a tolerância
+cruzada, e que o −25% descontaria duas vezes. A literatura diz o contrário:
+trocar para metadona exige redução de **75–90%** da dose equianalgésica, contra
+50% nas demais trocas. Medindo contra a razão fixa 4:1 (o comportamento antigo):
+
+| MEDD | 4:1 fixo | Ripamonti | com −25% | redução total |
+|---|---|---|---|---|
+| 300 mg/dia | 75,0 mg | 25,0 mg | **18,8 mg** | **75%** — piso do recomendado |
+| 600 mg/dia | 150,0 mg | 50,0 mg | **37,5 mg** | **75%** |
+
+Sem o −25% a redução cairia para 67%, abaixo do piso. **Retirar andaria na
+direção contrária.** Registrado no cabeçalho de `opioidConversion.js` para
+ninguém "corrigir" isso depois.
+
+Fontes: PALS/AHA 2020 · StatPearls, *Calcium Gluconate* · CHEO ED Outreach ·
+Ripamonti C et al. J Clin Oncol 1998 · StatPearls, *Opioid Equivalency*.
+
 ## Frente 4 — Português, incluindo os números
 
 O dono pediu português em todos os termos e um siglário. Duas metades:

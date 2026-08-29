@@ -45,8 +45,8 @@ const PEDI_CALC_DATA = {
       { droga: 'PUSH SF 0,9%', apresentacao: '0,15 mEq/ml', dosePadrao: 20, unidadeDose: 'ml/kg', diluicao: 'PURO', concentracaoFinal: 1, obs: 'Bolus rápido após cada droga IV/IO. Facilita chegada ao coração.' },
       { droga: 'BICA Na 8,4%', apresentacao: '1 mEq/ml', dosePadrao: 1, unidadeDose: 'mEq/kg', diluicao: '20ml + 20ml AD', concentracaoFinal: 0.5, warning: 'NÃO usar rotineiramente! Apenas em acidose grave documentada ou hipercalemia.', obs: 'Infundir lentamente. Incompatível com cálcio na mesma via.' },
       { droga: 'LIDOCAINA 2%', apresentacao: '20 mg/ml', dosePadrao: 1, unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', concentracaoFinal: 20, obs: 'Alternativa a Amiodarona em FV/TV refrataria. Pode repetir 0.5-0.75 mg/kg.' },
-      { droga: 'GLUCO Ca 10%', apresentacao: '100 mg/ml', dosePadrao: 20, unidadeDose: 'mg/kg', diluicao: '10ml + 10ml AD', concentracaoFinal: 50, warning: 'Infusão lenta! Risco de bradicardia e assistolia se rápido.', obs: 'Indicado em hipocalcemia, hipercalemia, intox por bloq Ca.' },
-      { droga: 'ADENOSINA', apresentacao: '3 mg/ml', dosePadrao: 0.1, unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', concentracaoFinal: 3, doseMaxima: 0.3, obs: 'Push MUITO rápido + flush imediato. Se falhar: dobrar dose (max 0.3 mg/kg ou 12mg).' },
+      { droga: 'GLUCO Ca 10%', apresentacao: '100 mg/ml', dosePadrao: 60, unidadeDose: 'mg/kg', diluicao: '10ml + 10ml AD', concentracaoFinal: 50, doseMaxima: 2000, warning: 'Infusão lenta! Risco de bradicardia e assistolia se rápido.', obs: 'Indicado em hipocalcemia, hipercalemia, intox por bloq Ca.' },
+      { droga: 'ADENOSINA', apresentacao: '3 mg/ml', dosePadrao: 0.1, unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', concentracaoFinal: 3, doseMaxima: 6, obs: 'Push MUITO rápido + flush imediato. 1a dose 0,1 mg/kg (máx 6 mg); se falhar, 0,2 mg/kg (máx 12 mg).' },
       { droga: 'GLICOSE 10%', apresentacao: '100 mg/ml', dosePadrao: 500, unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', concentracaoFinal: 100, obs: 'Verificar glicemia capilar. Neonatos tem alto risco de hipoglicemia na PCR.' },
     ],
   },
@@ -6922,7 +6922,7 @@ const dorCalculators = [
           { value: 'fentanil_td', label: 'Fentanil TD (mcg/h)' },
         ],
       },
-      { id: 'dose_origem', label: 'Dose (mg ou mcg para fentanil)', type: 'number', min: 0.1, max: 1000, step: 0.1 },
+      { id: 'dose_origem', label: 'Dose DIÁRIA TOTAL (mg; mcg/h no fentanil TD)', type: 'number', min: 0.1, max: 1000, step: 0.1 },
       {
         id: 'opioide_destino',
         label: 'Converter para',
@@ -6962,7 +6962,7 @@ const dorCalculators = [
         details: {
           'Dose calculada': `${doseDestino.toFixed(1)} ${unidadeDestino}`,
           'Dose sugerida (-25%)': `${doseReduzida.toFixed(1)} ${unidadeDestino}`,
-          'Morfina VO equivalente': `${morfinaVOeq.toFixed(1)} mg`,
+          'Morfina VO equivalente': `${morfinaVOeq.toFixed(1)} mg/dia`,
           ...(razaoMetadona ? { 'Razão aplicada (metadona)': `${razaoMetadona}:1 — Ripamonti` } : {}),
         },
       };
@@ -6973,6 +6973,7 @@ const dorCalculators = [
     },
     infoBox: {
       keyPoints: [
+        'Toda dose é TOTAL DIÁRIO — o fator do fentanil TD (2,4) é por mcg/h e devolve morfina por dia',
         'Conversão baseada em morfina VO como referência',
         'Reduzir 25-50% da dose calculada (tolerância cruzada incompleta)',
         'Fentanil TD: estado de equilíbrio em 12-24h',
