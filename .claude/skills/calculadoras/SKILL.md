@@ -1,6 +1,6 @@
 ---
 name: calculadoras
-description: Regras para criar, editar e corrigir as calculadoras clínicas do ANEST (71 ativas em 13 seções) e os 7 Critérios UTI. Use ao mexer em calculator-definitions.js, nos displays do showcase, nas libs puras de src/lib, ou ao investigar conta errada, InfoBox, layout de grid e formatação de número.
+description: Regras para criar, editar e corrigir as calculadoras clínicas do ANEST (56 ativas em 14 seções, incluindo Indicação de UTI). Use ao mexer em calculator-definitions.js, nos displays do showcase, nas libs puras de src/lib, ou ao investigar conta errada, InfoBox, layout de grid e formatação de número.
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 
@@ -17,11 +17,11 @@ aprovação.
 
 | onde | o que tem |
 |---|---|
-| `src/design-system/data/calculator-definitions.js` | **80 definições — 71 `active`, 9 `inactive`** — em 13 seções |
+| `src/design-system/data/calculator-definitions.js` | **85 definições — 56 `active`, 29 `inactive`** — em 14 seções |
 | `src/design-system/showcase/CalculatorShowcase.jsx` | a tela: grid, busca, inputs genéricos, 8 displays inline |
 | `src/design-system/showcase/displays/` | 8 displays com arquivo próprio |
 | `src/lib/*.js` | libs puras (`apacheII`, `fourScore`, `roxIndex`, `electrolyteCorrection`, `saps3`, `sofaScore`, `fluidBalance`…), testadas em `src/__tests__/lib/` |
-| `src/data/criteriosUtiCalculators.js` + `src/pages/CriteriosUTIPage.jsx` | os **7 Critérios UTI** — sistema paralelo, convenções próprias |
+| `src/data/criteriosUtiCalculators.js` + `src/pages/CriteriosUTIPage.jsx` | as **5 ferramentas de Indicação de UTI** — renderização própria, consumida pela seção via `customRender: 'criterioUti'` |
 | `src/App.jsx:506` | o wrapper com `px-4 sm:px-5 py-4` |
 
 Contar sempre pelo repo, nunca de memória:
@@ -31,8 +31,9 @@ Contar sempre pelo repo, nunca de memória:
 
 - **`useDropdown: true` — 35 calculadoras** (não 9; a lista antiga só tinha as pediátricas).
   Para ver quais: `grep -B20 "useDropdown: true" … | grep "id:"`.
-- **`customRender: '<chave>'` — 16 chaves distintas em 17 usos** (`hollidaySegar` serve duas).
-  8 têm arquivo em `displays/`; as outras 8 são inline no `CalculatorShowcase.jsx`.
+- **`customRender: '<chave>'` — 17 chaves distintas em 23 usos** (`hollidaySegar` serve duas; `criterioUti` serve as 5 da seção Indicação de UTI).
+  8 têm arquivo em `displays/`; 8 são inline no `CalculatorShowcase.jsx`; `criterioUti` reaproveita a
+  `CalculatorDetailPage` exportada da `CriteriosUTIPage` (lazy + Suspense local).
 
 ## Regras obrigatórias
 
@@ -122,5 +123,6 @@ lados não protege nada.
 2. `infoBox` com ao menos `interpretation` e `reference` (fonte primária citada).
 3. Conferir o tratamento do zero em cada campo numérico (regra 2).
 4. Testar em mobile (1 coluna) e desktop (2 colunas), nos dois temas.
-5. Nada é apagado: calculadora descartada vira `status: 'inactive'` + entrada em `LEGACY_ID_MAP`,
-   para favorito salvo não quebrar.
+5. Nada é apagado: calculadora descartada vira `status: 'inactive'`. **`LEGACY_ID_MAP` só para quem
+   tem SUCESSORA** — sem sucessora, inventar um destino é pior que não ter. E a seção "Favoritas"
+   filtra inativas: sem isso, desativar não desativa para quem favoritou.
