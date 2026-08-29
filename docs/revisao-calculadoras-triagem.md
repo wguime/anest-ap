@@ -137,16 +137,19 @@ sanguíneas ped.
 
 ---
 
-## 5. O único ponto onde a evidência não decide sozinha
+## 5. O ponto que dependia de um fato — RESPONDIDO pelo dono (29/08)
 
-**O bloco de UTI depende de um fato sobre a prática do grupo, não da literatura:** se vocês assumem
-plantão de terapia intensiva, `uti_rox`, `uti_cpis`, `uti_nutric`, `uti_four_score` e `uti_curb65` são
-ferramentas de trabalho e não deveriam sair. Se a UTI aparece só como destino de pós-operatório, elas
-são de outra especialidade.
+A pergunta era se o bloco de UTI é ferramenta de trabalho ou de outra especialidade. **A resposta veio
+e é mais precisa do que a pergunta:** os Critérios UTI existem para decidir se o paciente
+**perioperatório** vai para a UTI. Não é intensivismo — é a ponta do ato anestésico.
 
-O que os dados dizem: a página **Critérios UTI foi aberta 79 vezes** em seis meses — existe contato com
-o tema, mas em volume baixo. Isso inclina para o corte, e é por isso que a proposta acima corta.
-Está separado aqui porque é o único grupo em que um fato que você tem e eu não muda a resposta.
+Isso **confirma os cortes desta proposta** no bloco `uti_*` das calculadoras (`uti_rox`, `uti_cpis`,
+`uti_nutric`, `uti_four_score`, `uti_curb65`): nenhum deles responde "este paciente precisa de UTI
+depois desta cirurgia?" — são manejo de quem já está internado na UTI.
+
+E move os **Critérios UTI** (o outro sistema, em `criteriosUtiCalculators.js`) de card próprio para
+uma **seção dentro de Calculadoras**, reduzidos de 7 para 5 ferramentas. Revisão com fonte em
+`docs/criterios-uti-revisao.md`; protótipo em `.tmp/criterios-uti-em-calculadoras.html`.
 
 Mesmo cortando, **nada se perde**: `status: 'inactive'` mantém tudo no código e o retorno é de um
 toque.
