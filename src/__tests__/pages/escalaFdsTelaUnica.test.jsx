@@ -170,45 +170,76 @@ describe('alerta de sem anestesista — compacto', () => {
  * cirúrgico chega separado — muitas vezes depois. Vermelho ali dizia "já foi
  * embora" de quem tinha acabado de entrar na escala.
  */
-describe('fila única — ninguém nasce vermelho na publicação', () => {
+/**
+ * ⚠️ ESTE DESCRIBE INTEIRO TROCOU DE LADO em 29/08, e o porquê fica aqui.
+ *
+ * Ele guardava o "PUBLICAÇÃO PINTA TODO MUNDO DE VERDE na fila única" (24/08) e
+ * a exceção do vespertino (25/08). O dono pediu o oposto, por vocabulário:
+ * *"quero que mude a marcação de 'livre' para liberado assim como já é
+ * realizado em dias úteis, fica mais fácil dos usuários entenderem e
+ * uniformiza"* — e escolheu, no protótipo, o vermelho de verdade e não só a
+ * troca da palavra.
+ *
+ * O que sustentava a exceção era o plantão da faixa NÃO contar como trabalho:
+ * com o mapa do fim de semana chegando vazio, a cauda ou pegava a fila inteira
+ * ou não existia. Agora o plantão conta (ele cobre o hospital as 6 horas), e a
+ * cauda começa logo abaixo dos dois postos — dois cards verdes no topo e o
+ * resto vermelho até chegar cirurgia.
+ *
+ * ⚠️ O QUE NÃO MUDOU e continua travado abaixo: sem NINGUÉM trabalhando não há
+ * cauda (guarda de 22/08 — senão a fila inteira nasce vermelha), e o vermelho
+ * no MEIO da fila continua não sendo automático (incidente Eduardo, 20/08).
+ */
+describe('fila única — a cauda nasce liberada, como no dia útil', () => {
+  const GRADE_MAT = { '7-13': { unimed: 'KARINE', hro: 'GABRIEL', ret1: 'OSCAR', ret2: 'THAYNA' } }
   const semCirurgiaNenhuma = {
     ...ESCALA_FDS,
     ordemLiberacao: { matutino: ['KARINE', 'GABRIEL', 'OSCAR', 'THAYNA'] },
   }
 
-  it('escala recém-publicada, sem mapa cirúrgico ainda: nenhum card Liberado', async () => {
+  it('sem grade e sem mapa, NINGUÉM nasce liberado (guarda de 22/08 intacta)', async () => {
+    // nenhum nome com trabalho = não existe "depois do último com trabalho"
     render(<LiberacoesView {...props({ escala: semCirurgiaNenhuma, casosFds: [] })} />, { wrapper: wrap })
     await screen.findByText(/Karine/)
     expect(screen.queryAllByText('Liberado')).toHaveLength(0)
   })
 
-  it('com mapa importado, quem fecha a lista sem cirurgia também segue verde', async () => {
-    // no dia útil estes seriam a "cauda" e nasceriam vermelhos (regra de 21/08)
-    render(<LiberacoesView {...props({ escala: semCirurgiaNenhuma })} />, { wrapper: wrap })
+  it('com os plantões da grade, a cauda abaixo deles nasce LIBERADA', async () => {
+    // KARINE e GABRIEL são os postos das 7-13h e contam como trabalhando mesmo
+    // sem cirurgia; OSCAR e THAYNA fecham a lista e saem vermelhos
+    render(<LiberacoesView {...props({
+      escala: semCirurgiaNenhuma, casosFds: [], fdsMeta: { grade: GRADE_MAT, posicoes: {} },
+    })} />, { wrapper: wrap })
     await screen.findByText(/Oscar/)
+    expect(screen.getAllByText('Liberado')).toHaveLength(2)
+    // e os dois postos seguem verdes, com o papel no lugar do "Livre"
+    expect(screen.getByText('Plantão Unimed')).toBeTruthy()
+    expect(screen.getByText('Plantão HRO')).toBeTruthy()
+    expect(screen.queryAllByText('Livre')).toHaveLength(0)
+  })
+
+  it('o plantão NUNCA fica "Livre" — ele cobre o hospital as 6 horas', async () => {
+    render(<LiberacoesView {...props({
+      escala: { ...ESCALA_FDS, ordemLiberacao: { matutino: ['KARINE', 'GABRIEL'] } },
+      casosFds: [], fdsMeta: { grade: GRADE_MAT, posicoes: {} },
+    })} />, { wrapper: wrap })
+    await screen.findByText(/Karine/)
+    expect(screen.queryAllByText('Livre')).toHaveLength(0)
     expect(screen.queryAllByText('Liberado')).toHaveLength(0)
   })
 
-  it('o badge "Livre" continua — a tinta some, a informação não', async () => {
-    render(<LiberacoesView {...props({ escala: semCirurgiaNenhuma })} />, { wrapper: wrap })
-    await screen.findByText(/Oscar/)
-    expect(screen.getAllByText('Livre').length).toBeGreaterThan(0)
-  })
-
-  // "inclusive sábados e domingo" (dono 25/08): o vespertino da fila única fica
-  // fora da cauda vermelha em qualquer dia, e não só quando ninguém tem caso.
-  // Aqui KARINE tem cirurgia à tarde e os três seguintes não — no dia útil eles
-  // seriam a cauda.
-  it('TARDE de sáb/dom com alguém já designado: os demais seguem Livre', async () => {
+  it('TARDE de sáb/dom também: a cauda depois do último com cirurgia sai vermelha', async () => {
+    // era a exceção de 25/08 ("o vespertino da fila única fica fora por regra")
     render(<LiberacoesView {...props({
       turno: 'vespertino',
+      fdsMeta: { grade: { '13-19': { unimed: 'KARINE', hro: 'GABRIEL', ret1: '', ret2: '' } }, posicoes: {} },
       escala: { ...ESCALA_FDS, ordemLiberacao: { vespertino: ['KARINE', 'GABRIEL', 'OSCAR', 'THAYNA'] } },
       casosFds: [
         { id: 'v1', sala: 'CC - Sala 2', ordem: 0, hora: '13:30', turno: 'vespertino', anestesista: 'KARINE', cirurgiao: 'Ana Prado', procedimento: 'COLECISTECTOMIA', hospitalOrigem: 'unimed' },
       ],
     })} />, { wrapper: wrap })
     await screen.findByText(/Thayna/)
-    expect(screen.queryAllByText('Liberado')).toHaveLength(0)
+    expect(screen.getAllByText('Liberado')).toHaveLength(2)
   })
 })
 
@@ -233,29 +264,31 @@ describe('fila única — ninguém nasce vermelho na publicação', () => {
  * (únicos com cirurgia) e a cauda sem caso nenhum.
  */
 describe('fila única — a ordem de liberação vale mesmo sem cirurgia', () => {
-  const GRADE_TARDE = { '13-19': { unimed: 'KARINE', hro: 'GABRIEL', ret1: 'OSCAR', ret2: 'THAYNA' } }
+  const GRADE_TARDE = { '13-19': { unimed: 'KARINE', hro: 'GABRIEL', ret1: '', ret2: '' } }
+  const CASO = (id, quem, sala) => ({
+    id, sala, ordem: 0, hora: '13:30', turno: 'vespertino', anestesista: quem,
+    cirurgiao: 'Ana Prado', procedimento: 'COLECISTECTOMIA', hospitalOrigem: 'unimed',
+  })
+  // MARILIA (3ª) está SEM cirurgia mas ACIMA de quem tem: fica na fila e espera
+  // a vez. THAYNA fecha a lista sem nada e nasce liberada.
   const tarde = (extra = {}) => props({
     turno: 'vespertino',
     fdsMeta: { grade: GRADE_TARDE, posicoes: {} },
-    escala: { ...ESCALA_FDS, ordemLiberacao: { vespertino: ['GABRIEL', 'KARINE', 'MARILIA', 'OSCAR'] } },
-    casosFds: [
-      { id: 'v1', sala: 'CC - Sala 2', ordem: 0, hora: '13:30', turno: 'vespertino', anestesista: 'KARINE', cirurgiao: 'Ana Prado', procedimento: 'COLECISTECTOMIA', hospitalOrigem: 'unimed' },
-      { id: 'v2', sala: 'Sala 3', ordem: 0, hora: '13:00', turno: 'vespertino', anestesista: 'GABRIEL', cirurgiao: 'Alberto Biazussi', procedimento: 'OSTEOSSINTESE', hospitalOrigem: 'hro' },
-    ],
+    escala: { ...ESCALA_FDS, ordemLiberacao: { vespertino: ['GABRIEL', 'KARINE', 'MARILIA', 'OSCAR', 'THAYNA'] } },
+    casosFds: [CASO('v1', 'KARINE', 'CC - Sala 2'), CASO('v2', 'GABRIEL', 'Sala 3'), CASO('v3', 'OSCAR', 'CC - Sala 6')],
     ...extra,
   })
 
-  it('liberar quem NÃO fecha a fila avisa em vez de liberar', async () => {
+  it('quem está sem cirurgia NO MEIO da fila espera a vez — não sai com um toque', async () => {
     const onToggle = vi.fn()
     render(<LiberacoesView {...tarde({ onToggle })} />, { wrapper: wrap })
     await screen.findByText(/Marilia/)
-    // MARILIA é a 3ª de 4 e não tem cirurgia — antes saía com um toque
     fireEvent.click(screen.getByLabelText('Marcar Marilia Bastos liberado'))
     expect(await screen.findByText('Libere Oscar primeiro')).toBeTruthy()
     expect(onToggle).not.toHaveBeenCalled()
   })
 
-  it('quem fecha a fila sai normalmente, mesmo sem cirurgia nenhuma', async () => {
+  it('quem fecha a fila sai normalmente', async () => {
     const onToggle = vi.fn()
     render(<LiberacoesView {...tarde({ onToggle })} />, { wrapper: wrap })
     await screen.findByText(/Oscar/)
@@ -263,33 +296,41 @@ describe('fila única — a ordem de liberação vale mesmo sem cirurgia', () =>
     await waitFor(() => expect(onToggle).toHaveBeenCalledTimes(1))
   })
 
-  it('o "próximo a ser liberado" é quem FECHA a fila, e não o último com cirurgia', async () => {
+  it('o cartão amarelo cai em quem TRABALHA, e a cauda sem cirurgia já nasce liberada', async () => {
     render(<LiberacoesView {...tarde()} />, { wrapper: wrap })
-    await screen.findByText(/Oscar/)
+    await screen.findByText(/Thayna/)
     const cartoes = screen.getAllByText('Próximo a ser liberado')
     expect(cartoes).toHaveLength(1)
-    // o cartão amarelo está no card do OSCAR (4º), não no da KARINE (plantão)
     expect(cartoes[0].closest('[data-linha]').textContent).toContain('Oscar')
+    expect(screen.getAllByText('Liberado')).toHaveLength(1) // THAYNA
   })
 
-  it('sobrando SÓ os plantões, ninguém é o próximo — eles não vão embora', async () => {
-    // fila com os dois postos da faixa e mais ninguém: se o plantão entrasse na
-    // conta, um dos dois receberia o cartão amarelo
-    render(<LiberacoesView {...tarde({
-      escala: { ...ESCALA_FDS, ordemLiberacao: { vespertino: ['GABRIEL', 'KARINE'] } },
-    })} />, { wrapper: wrap })
-    await screen.findByText(/Karine/)
-    expect(screen.getByText('Plantão Unimed')).toBeTruthy()
-    expect(screen.getByText('Plantão HRO')).toBeTruthy()
-    expect(screen.queryAllByText('Próximo a ser liberado')).toHaveLength(0)
-  })
-
-  it('e o plantão pode ser liberado sem esbarrar na ordem (está fora dela)', async () => {
+  /**
+   * O estado normal de um turno do fim de semana RECÉM-TROCADO (dono 29/08): a
+   * fila publicada está lá, o mapa cirúrgico ainda não. Sem ninguém trabalhando
+   * não há cauda (guarda de 22/08), então todos continuam na ordem — mas o
+   * cartão amarelo não tem em quem cair, e é isso que o dono pediu: "o próximo a
+   * ser liberado deve ser o primeiro anestesista contendo informações sobre
+   * escalação, e não o último da fila".
+   */
+  it('fila publicada sem mapa: ninguém amarelo, e a ordem continua travando', async () => {
     const onToggle = vi.fn()
-    render(<LiberacoesView {...tarde({
-      onToggle,
-      escala: { ...ESCALA_FDS, ordemLiberacao: { vespertino: ['GABRIEL', 'KARINE'] } },
+    render(<LiberacoesView {...props({
+      turno: 'vespertino', onToggle,
+      escala: { ...ESCALA_FDS, ordemLiberacao: { vespertino: ['GABRIEL', 'KARINE', 'MARILIA', 'OSCAR'] } },
+      casosFds: [], fdsMeta: { grade: {}, posicoes: {} },
     })} />, { wrapper: wrap })
+    await screen.findByText(/Oscar/)
+    expect(screen.queryAllByText('Próximo a ser liberado')).toHaveLength(0)
+    expect(screen.queryAllByText('Liberado')).toHaveLength(0)
+    fireEvent.click(screen.getByLabelText('Marcar Marilia Bastos liberado'))
+    expect(await screen.findByText('Libere Oscar primeiro')).toBeTruthy()
+    expect(onToggle).not.toHaveBeenCalled()
+  })
+
+  it('o plantão sai sem esbarrar na ordem — está fora dela', async () => {
+    const onToggle = vi.fn()
+    render(<LiberacoesView {...tarde({ onToggle })} />, { wrapper: wrap })
     await screen.findByText(/Karine/)
     fireEvent.click(screen.getByLabelText('Marcar Karine Bedin liberado'))
     await waitFor(() => expect(onToggle).toHaveBeenCalledTimes(1))
@@ -451,35 +492,44 @@ describe('feriado — selos e plantão', () => {
   })
 
   /**
-   * VESPERTINO DA FILA ÚNICA — TODO MUNDO "LIVRE" (dono 25/08, fim da tarde):
-   * "as escalas vespertinas, na maioria das vezes, estarão sem anestesistas
-   * escalados... mantenha o esquema de todos estarem livres e não liberados; os
-   * ajustes nos períodos vespertinos serão feitos manualmente".
+   * ⚠️ ESTES DOIS TESTES TROCARAM DE LADO em 29/08, e o porquê fica aqui.
    *
-   * ⚠️ Este caso é o que DISTINGUE a regra da sorte. A fixture tem MARILIA e
-   * RENATO com cirurgia à tarde, então `temAlguemComTrabalho` (a guarda de
-   * 22/08) é verdadeira e NÃO segura nada: pela regra anterior, KARINE e GABRIEL
-   * — que fecham a ordem vespertina sem caso — nasceriam vermelhos. Com o mapa
-   * da tarde 100% vazio (o que aconteceu em 25/08) a guarda mascararia a
-   * diferença e qualquer regra passaria.
+   * Eles guardavam o "VESPERTINO DA FILA ÚNICA — TODO MUNDO LIVRE" (dono 25/08:
+   * "as escalas vespertinas, na maioria das vezes, estarão sem anestesistas
+   * escalados... mantenha o esquema de todos estarem livres e não liberados").
+   * Em 29/08 o dono unificou o vocabulário: *"quero que mude a marcação de
+   * 'livre' para liberado assim como já é realizado em dias úteis, fica mais
+   * fácil dos usuários entenderem e uniformiza"* — e a cauda sem cirurgia passou
+   * a nascer LIBERADA em qualquer dia e turno da fila única, feriado incluído.
+   *
+   * A fixture continua sendo a que DISTINGUE a regra da sorte: MARILIA e RENATO
+   * têm cirurgia à tarde, então a guarda de 22/08 (`temAlguemComTrabalho`) é
+   * verdadeira e não segura nada — o resultado vem da regra, não do acaso de a
+   * tarde estar 100% vazia.
    */
-  it('TARDE do feriado: ninguém nasce liberado, mesmo com colegas já designados', async () => {
+  it('TARDE do feriado: a cauda sem cirurgia nasce LIBERADA, como numa terça', async () => {
     const { container } = render(<LiberacoesView {...feriado({ turno: 'vespertino' })} />, { wrapper: wrap })
     await screen.findByText(/Karine/)
     const cards = [...container.querySelectorAll('[data-linha]')]
     expect(cards).toHaveLength(4)
-    expect(cards.filter((c) => /Liberado/.test(c.textContent))).toHaveLength(0)
-    // e quem está sem cirurgia à tarde aparece como Livre, não como liberado
-    // chave = uid quando o dicionário resolve; senão o nome normalizado
-    expect(cardDe('uid-karine').textContent).toMatch(/Livre/)
-    expect(cardDe('GABRIEL').textContent).toMatch(/Livre/)
+    // KARINE e GABRIEL fecham a ordem vespertina sem caso: saem vermelhos
+    expect(cardDe('uid-karine').textContent).toMatch(/Liberado/)
+    expect(cardDe('GABRIEL').textContent).toMatch(/Liberado/)
+    // e os dois plantões da tarde seguem trabalhando
+    expect(cardDe('RENATO').textContent).not.toMatch(/Liberado/)
+    expect(cardDe('uid-marilia').textContent).not.toMatch(/Liberado/)
   })
 
-  it('TARDE do feriado com o mapa inteiro sem anestesista também fica toda Livre', async () => {
-    // caso real de 25/08: as 18 cirurgias da tarde saíram com "?" nos dois
-    // hospitais. Aqui quem segura é a guarda de 22/08 — as duas razões
-    // coexistem de propósito, e é a de cima que vale quando a tarde vier
-    // parcialmente preenchida.
+  it('TARDE do feriado com o mapa INTEIRO sem anestesista: a cauda ainda sai vermelha', async () => {
+    // caso real de 25/08 — as 18 cirurgias saíram com "?" nos dois hospitais, e
+    // naquele dia a guarda de 22/08 (`temAlguemComTrabalho`) segurava o vermelho
+    // porque NINGUÉM contava como trabalhando. Com o plantão contando (29/08),
+    // os dois que fecham a fila do turno já bastam para a cauda existir.
+    //
+    // ⚠️ a guarda NÃO morreu — ela continua valendo onde não há plantão nenhum a
+    // apontar (sáb/dom com a grade ainda não importada, describe "a cauda nasce
+    // liberada"). O que mudou é que no FERIADO o plantão é POSICIONAL (as duas
+    // primeiras da ordem do turno), então ele sempre existe.
     const { container } = render(<LiberacoesView {...feriado({
       turno: 'vespertino',
       casosFds: [
@@ -488,8 +538,10 @@ describe('feriado — selos e plantão', () => {
     })} />, { wrapper: wrap })
     await screen.findByText(/Gabriel/)
     const cards = [...container.querySelectorAll('[data-linha]')]
-    expect(cards.length).toBeGreaterThan(0)
-    expect(cards.filter((c) => /Liberado/.test(c.textContent))).toHaveLength(0)
+    expect(cards.filter((c) => /Liberado/.test(c.textContent))).toHaveLength(2)
+    // os dois plantões do turno seguem trabalhando, sem "Livre" e sem vermelho
+    expect(cardDe('RENATO').textContent).not.toMatch(/Liberado|Livre/)
+    expect(cardDe('uid-marilia').textContent).not.toMatch(/Liberado|Livre/)
   })
 
   it('quem não está nas duas primeiras posições da folha não recebe selo', async () => {

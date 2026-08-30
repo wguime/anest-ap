@@ -388,7 +388,18 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   //
   // ⚠️ continua sendo CAUDA, não "qualquer um sem caso": vermelho no MEIO da
   // fila é lido como liberação fora de ordem (incidente Eduardo, 20/08).
-  const caudaAutomatica = !modoFds || (feriado && turnoBase === 'matutino')
+  //
+  // ⚠️ 29/08 — UMA LINGUAGEM SÓ: *"quero que mude a marcação de 'livre' para
+  // liberado assim como já é realizado em dias úteis, fica mais fácil dos
+  // usuários entenderem e uniformiza"*. Isto SUPERSEDE os dois recortes acima
+  // (o "todos verdes na publicação" de 24/08 e a exceção do vespertino de
+  // 25/08): a cauda sem cirurgia nasce LIBERADA em qualquer dia e em qualquer
+  // turno, como numa terça-feira. O que fazia o recorte ser necessário era o
+  // plantão da faixa ficar de fora da conta do "último com trabalho" — com ele
+  // contando (abaixo), a cauda começa logo depois dos dois postos, que é
+  // exatamente o desenho que o dono aprovou: dois cards verdes no topo e o
+  // resto vermelho até chegar cirurgia.
+  const caudaAutomatica = true
 
   // HOSPITAL DE CADA PESSOA na fila única (modo FDS): derivado dos casos
   // mesclados (hospitalOrigem) pela MESMA chave canônica das linhas (uid do
@@ -1350,12 +1361,67 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           "cards truncados" que o dono circulou na foto em 27/08. */}
       {!semFila && <div className="space-y-1.5 deitado:col-span-full deitado:space-y-0 deitado:columns-2 deitado:gap-2 [&>*]:deitado:!mb-2 [&>*]:deitado:break-inside-avoid">
         {(() => {
+          // CAUDA SEM PROCEDIMENTO (dono 21/08): "os últimos usuários da lista de
+          // liberação que não estiverem com procedimento cirúrgico no momento de
+          // importação da escala aparecem como LIBERADOS (vermelho)" — não verdes
+          // com o badge Livre. É o fecho das três queixas seguidas: o vermelho
+          // automático no MEIO da fila (Eduardo, 5º de 15, em 20/08) lia como
+          // liberação fora de ordem e teve de sair; na CAUDA ele é a informação
+          // certa — quem fecha a lista sem cirurgia nenhuma não está em jogo, e
+          // era isso que o dono tentava marcar à mão (16 toques na Thayna).
+          // ⚠️ a fronteira é o ÚLTIMO NOME COM TRABALHO NA IMPORTAÇÃO, não o
+          // `idxProximo`: usar a fila faria a linha do meio virar vermelha sozinha
+          // conforme os de baixo fossem liberados — decisão automática de novo,
+          // que é justamente o que não pode acontecer.
+          //
+          // ⚠️ E a conta é sobre a ORDEM PUBLICADA (`noRodape`), não sobre a lista
+          // que está na tela. A exibição acrescenta no FIM quem não está na ordem
+          // — extras, ajudas e visitantes de outro hospital —, e um deles COM
+          // cirurgia empurrava a fronteira para depois de quem fecha o rodapé:
+          // em 24/08 a Unimed publicou a tarde com o Vicente fechando a ordem sem
+          // cirurgia, e ele apareceu "Livre" porque uma visitante do HRO entrou
+          // atrás dele com um caso. Quem não está na ordem não tem posição na
+          // fila, então não pode definir onde a fila termina — nem nascer
+          // liberado por estar depois do fim dela.
+          //
+          // ⚠️ NA FILA ÚNICA O PLANTÃO DA FAIXA CONTA COMO TRABALHO (dono 29/08:
+          // "os plantões sempre trabalhando"), mesmo sem cirurgia no mapa: ele
+          // cobre o hospital as 6 horas inteiras. É o que faz a cauda começar
+          // LOGO ABAIXO dos dois postos quando o mapa do turno chega vazio — sem
+          // isso a guarda `temAlguemComTrabalho` não acha ninguém e a fila
+          // inteira fica verde, que é o estado que ele pediu para acabar.
+          let idxUltimoTrabalho = -1
+          for (let i = linhasExibicao.length - 1; i >= 0; i--) {
+            const l = linhasExibicao[i]
+            const trabalha = !naoEscalado(l) || (modoFds && !!plantaoFisicoDe(l))
+            if (l.noRodape && trabalha) { idxUltimoTrabalho = i; break }
+          }
+          // ⚠️ NINGUÉM DA ORDEM com cirurgia = NÃO EXISTE CAUDA (dono 22/08). Sem esta
+          // guarda o `idx > -1` é verdade para a fila INTEIRA e todo mundo nasce
+          // vermelho — foi o que a tarde de sábado 22/08 mostrou: os 7 nomes
+          // liberados de uma vez, ordem nenhuma, antes de o turno começar. A
+          // cauda é o que vem DEPOIS do último nome com trabalho; sem esse nome
+          // não há depois, e vale a regra de 20/08: ninguém nasce liberado.
+          // Acontece sempre que o mapa do turno chega sem anestesista definido —
+          // as 8 cirurgias da tarde daquele sábado tinham sala, hora e cirurgião,
+          // e nenhuma tinha dono.
+          const temAlguemComTrabalho = idxUltimoTrabalho >= 0
+          // A CAUDA É CALCULADA ANTES DA FILA: quem nasce liberado por estar
+          // depois do último com trabalho não pode contar como posição a ser
+          // liberada — senão o bloqueio de ordem manda "libere X primeiro"
+          // apontando alguém que a tela já mostra em vermelho.
+          const caudaLiberada = (l, i) => caudaAutomatica && temAlguemComTrabalho
+            && !!l.noRodape && !l.noturno && naoEscalado(l)
+            && marcaDe(l)?.escalado !== true && i > idxUltimoTrabalho
+
           // Está na FILA de liberação? P1/P2 são os plantonistas da noite: nunca
           // entram no "próximo a ser liberado" (pedido do dono 24/07). P3/P4 entram.
           // No FDS o selo é o Pn da PESSOA (não o posto) — quem está fora da fila
           // à noite são as cols Unimed/HRO da grade, marcadas com `foraDaFila`
           // (o substituto da noite pode nem ter Pn, caso João Ricardo 16/08).
-          const naFila = (l) => {
+          const naFila = (l, i) => {
+            // cauda que já nasce liberada não ocupa posição a ser liberada
+            if (caudaLiberada(l, i)) return false
             if (l.noturno && (modoFds ? l.foraDaFila : SELO_SEM_PROXIMO.has(l.selo))) return false
             // FILA ÚNICA, TURNO DE DIA: o plantão do turno também NUNCA é o
             // "próximo a ser liberado" (dono 29/08, sobre a tarde de sábado:
@@ -1396,12 +1462,32 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             const emSala = m?.escalado === true || !naoEscalado(l)
             return emSala
           }
-          // próximo a ser liberado = ÚLTIMO não-liberado ainda EM SALA
+          // A ORDEM (quem pode sair agora) = ÚLTIMO não-liberado da fila.
           let idxProximo = -1
           for (let i = linhasExibicao.length - 1; i >= 0; i--) {
-            if (naFila(linhasExibicao[i])) { idxProximo = i; break }
+            if (naFila(linhasExibicao[i], i)) { idxProximo = i; break }
           }
           const proximoNome = idxProximo >= 0 ? linhasExibicao[idxProximo].anestesista : null
+          // O CARTÃO AMARELO é outra pergunta (dono 29/08): "o próximo a ser
+          // liberado deve ser o primeiro anestesista contendo informações sobre
+          // escalação (local, cirurgiões, ajuda...) e não o último da fila".
+          // Quem está sem escalação nenhuma já está livre — avisar que ele "é o
+          // próximo a ser liberado" não diz nada a ninguém. Então: a ordem trava
+          // todo mundo que tem posição (senão volta a liberação fora de ordem de
+          // 29/08), mas a tinta só cai sobre quem está de fato trabalhando.
+          // Fila inteira sem caso = NENHUM cartão amarelo, que é o estado normal
+          // de um turno do fim de semana recém-trocado.
+          // ⛔ SÓ NA FILA ÚNICA: no dia útil o cartão segue sendo o `idxProximo`,
+          // como está desde 27/07. A regra nasceu olhando a tela do sábado e o
+          // dia útil é o fluxo estabelecido da equipe (Regra #2 do CLAUDE.md).
+          let idxCartao = idxProximo
+          if (modoFds) {
+            idxCartao = -1
+            for (let i = linhasExibicao.length - 1; i >= 0; i--) {
+              const l = linhasExibicao[i]
+              if (naFila(l, i) && !naoEscalado(l)) { idxCartao = i; break }
+            }
+          }
           // CONVOCAR TAMBÉM SEGUE A ORDEM (dono 20/08): desfazer a liberação é
           // devolver a pessoa à fila, e devolver a errada fura a ordem pelo outro
           // lado — a convocada vira o "próximo" e passa na frente de quem, na
@@ -1420,43 +1506,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             if (jaLiberada(linhasExibicao[i]) && voltaPraFila(linhasExibicao[i])) { idxConvocar = i; break }
           }
           const nomeConvocar = idxConvocar >= 0 ? linhasExibicao[idxConvocar].anestesista : null
-          // CAUDA SEM PROCEDIMENTO (dono 21/08): "os últimos usuários da lista de
-          // liberação que não estiverem com procedimento cirúrgico no momento de
-          // importação da escala aparecem como LIBERADOS (vermelho)" — não verdes
-          // com o badge Livre. É o fecho das três queixas seguidas: o vermelho
-          // automático no MEIO da fila (Eduardo, 5º de 15, em 20/08) lia como
-          // liberação fora de ordem e teve de sair; na CAUDA ele é a informação
-          // certa — quem fecha a lista sem cirurgia nenhuma não está em jogo, e
-          // era isso que o dono tentava marcar à mão (16 toques na Thayna).
-          // ⚠️ a fronteira é o ÚLTIMO NOME COM TRABALHO NA IMPORTAÇÃO, não o
-          // `idxProximo`: usar a fila faria a linha do meio virar vermelha sozinha
-          // conforme os de baixo fossem liberados — decisão automática de novo,
-          // que é justamente o que não pode acontecer.
-          //
-          // ⚠️ E a conta é sobre a ORDEM PUBLICADA (`noRodape`), não sobre a lista
-          // que está na tela. A exibição acrescenta no FIM quem não está na ordem
-          // — extras, ajudas e visitantes de outro hospital —, e um deles COM
-          // cirurgia empurrava a fronteira para depois de quem fecha o rodapé:
-          // em 24/08 a Unimed publicou a tarde com o Vicente fechando a ordem sem
-          // cirurgia, e ele apareceu "Livre" porque uma visitante do HRO entrou
-          // atrás dele com um caso. Quem não está na ordem não tem posição na
-          // fila, então não pode definir onde a fila termina — nem nascer
-          // liberado por estar depois do fim dela.
-          let idxUltimoTrabalho = -1
-          for (let i = linhasExibicao.length - 1; i >= 0; i--) {
-            const l = linhasExibicao[i]
-            if (l.noRodape && !naoEscalado(l)) { idxUltimoTrabalho = i; break }
-          }
-          // ⚠️ NINGUÉM DA ORDEM com cirurgia = NÃO EXISTE CAUDA (dono 22/08). Sem esta
-          // guarda o `idx > -1` é verdade para a fila INTEIRA e todo mundo nasce
-          // vermelho — foi o que a tarde de sábado 22/08 mostrou: os 7 nomes
-          // liberados de uma vez, ordem nenhuma, antes de o turno começar. A
-          // cauda é o que vem DEPOIS do último nome com trabalho; sem esse nome
-          // não há depois, e vale a regra de 20/08: ninguém nasce liberado.
-          // Acontece sempre que o mapa do turno chega sem anestesista definido —
-          // as 8 cirurgias da tarde daquele sábado tinham sala, hora e cirurgião,
-          // e nenhuma tinha dono.
-          const temAlguemComTrabalho = idxUltimoTrabalho >= 0
           let numeroOrdem = 0
           return linhasExibicao.map((linha, idx) => {
           // PLANTÃO NOTURNO (pedido do dono 24/07): ao virar P1–P4 a pessoa SAI da
@@ -1490,14 +1539,16 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // cirúrgico chega separado — muitas vezes depois. Card vermelho ali
           // dizia "já foi embora" de quem tinha acabado de entrar na escala.
           // O vermelho volta a ser só do toque humano, como em 20/08.
-          const caudaSemTrabalho = caudaAutomatica && temAlguemComTrabalho && linha.noRodape && semEscala
-            && !forcadoEscalado && idx > idxUltimoTrabalho
+          const caudaSemTrabalho = caudaLiberada(linha, idx)
           const liberado = liberadoReal || caudaSemTrabalho
           // ⚠️ o card BRANCO de "Livre" também é de dia útil: na fila única ele
           // fazia metade da lista nascer descolorida na publicação, antes de a
           // primeira cirurgia ser importada. O BADGE "Livre" fica — é
           // informação verdadeira ("sem cirurgia agora") e não some com a tinta.
-          const estado = liberado ? 'liberado' : idx === idxProximo ? 'proximo' : 'escalado'
+          // `idxCartao`, não `idxProximo`: a tinta amarela é de quem TRABALHA
+          // (dono 29/08) — a ordem, que trava quem tenta furar, segue no
+          // `bloqueioOrdem` logo abaixo e continua sendo a fila inteira.
+          const estado = liberado ? 'liberado' : idx === idxCartao ? 'proximo' : 'escalado'
           // Bloqueio nos DOIS sentidos: só o "próximo" sai e só o "próximo a
           // convocar" volta. Quem NÃO está na fila nunca bloqueia — P1/P2 da noite
           // e quem está sem caso (não ocupa posição, então nem sair nem voltar fura
@@ -1508,8 +1559,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             ? ((idxConvocar >= 0 && idx > idxProximo && idx !== idxConvocar && voltaPraFila(linha))
                 ? { modo: 'convocar', proximo: nomeConvocar }
                 : null)
-            : ((idxProximo >= 0 && idx !== idxProximo && naFila(linha))
-                ? { modo: 'liberar', faltam: linhasExibicao.slice(idx + 1).filter(naFila).length, proximo: proximoNome }
+            : ((idxProximo >= 0 && idx !== idxProximo && naFila(linha, idx))
+                ? { modo: 'liberar', faltam: linhasExibicao.slice(idx + 1).filter((l, k) => naFila(l, idx + 1 + k)).length, proximo: proximoNome }
                 : null)
           // LIVRE = a pessoa não está em sala e AGUARDA o toque de quem libera, na
           // própria posição, o dia inteiro se preciso. Dois caminhos chegam aqui e
@@ -1517,7 +1568,15 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // ou está no rodapé sem caso nenhum (nunca escalado / ficou sem caso num
           // repasse). O `naFila` continua pulando a linha sem caso, então ela não
           // trava o "próximo" de ninguém.
-          const livre = !noturno && !liberado && (estaLivre(linha) || (semEscala && !forcadoEscalado))
+          // ⚠️ O PLANTÃO DA FAIXA NUNCA FICA "LIVRE" na fila única (dono 29/08:
+          // "os plantões sempre trabalhando (HRO, Unimed)"). Ele cobre o
+          // hospital as 6 horas inteiras, tenha ou não cirurgia marcada no mapa
+          // — e no fim de semana o mapa costuma chegar vazio, então sem esta
+          // guarda o plantonista nasce rotulado como quem não está em jogo,
+          // bem no card que diz "Plantão Unimed".
+          const plantaoDaFaixa = modoFds && !!plantaoFisicoDe(linha)
+          const livre = !noturno && !liberado && !plantaoDaFaixa
+            && (estaLivre(linha) || (semEscala && !forcadoEscalado))
           const ov = overrideDe(linha)
           // linha RENOVADA (voltou de liberação): infos da manhã não valem mais —
           // derivado suprimido; só o que for preenchido manualmente aparece.

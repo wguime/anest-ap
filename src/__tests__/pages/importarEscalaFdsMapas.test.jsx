@@ -283,26 +283,41 @@ describe('conferência do mapa', () => {
     expect(campo).toHaveTextContent('THAYNA REGINA SANTOS')
     expect(campo).not.toHaveTextContent('sem anestesista')   // a queixa de 25/08
     expect(screen.queryByText(/Sugerido pelo posto da grade/)).toBeNull()
-    fireEvent.click(screen.getByRole('tab', { name: /Tarde · 3/ }))
-    // tarde: a coluna veio vazia e a grade põe o Rômulo no HRO das 13–19h
-    await waitFor(() => expect(screen.getAllByText(/Sugerido pelo posto da grade/).length).toBeGreaterThan(0))
-    expect(screen.getAllByText('RÔMULO SANTOS ROXO').length).toBeGreaterThan(0)
   })
 
-  it('a sugestão vai para a publicação como anestesista de verdade', async () => {
+  /**
+   * ⚠️ ESTES DOIS TESTES TROCARAM DE LADO em 29/08 — a tarde ERA o exemplo
+   * canônico da sugestão pelo posto (22/08: "o mapa do HRO veio com a coluna
+   * vazia nas 6 cirurgias da tarde e a grade diz que das 13–19h o HRO é do
+   * Rômulo"), e agora é o exemplo canônico de que ela NÃO acontece.
+   *
+   * O dono cortou depois de ver o efeito em 29/08 — as 5 cirurgias da tarde da
+   * Unimed, em 3 salas, publicadas no nome do posto sem que ninguém tivesse
+   * escrito aquilo: "somente haja preenchimento automático de informações sobre
+   * escalação no sábado de manhã... deixe todos livres e os plantões sempre
+   * trabalhando". Sala sem nome na tarde fica SEM anestesista, e é a equipe que
+   * preenche durante o turno.
+   */
+  it('tarde de sábado: sala sem nome NÃO recebe mais o posto da grade', async () => {
     const { container } = await abrir()
     await anexarGrade(container, [diaFds('2026-08-22')])
     await anexarMapa(container, MAPA_HRO_SABADO, 'hro.png')
     await abrirMapa(/HRO · 22\/08/)
     fireEvent.click(await screen.findByRole('tab', { name: /Tarde · 3/ }))
-    await waitFor(() => expect(screen.getAllByText(/Sugerido pelo posto da grade/).length).toBeGreaterThan(0))
-    fireEvent.click(screen.getByRole('button', { name: /Voltar para os documentos/ }))
+    await waitFor(() => expect(screen.getByRole('tab', { name: /Tarde · 3/ })).toHaveAttribute('aria-selected', 'true'))
+    expect(screen.queryByText(/Sugerido pelo posto da grade/)).toBeNull()
+    expect(screen.queryAllByText('RÔMULO SANTOS ROXO')).toHaveLength(0)
+  })
+
+  it('e a tarde vai para a publicação SEM anestesista, esperando a equipe', async () => {
+    const { container } = await abrir()
+    await anexarGrade(container, [diaFds('2026-08-22')])
+    await anexarMapa(container, MAPA_HRO_SABADO, 'hro.png')
 
     fireEvent.click(await screen.findByRole('button', { name: /Publicar fim de semana/ }))
     await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalled())
     const tarde = salvarEscalaTurno.mock.calls.map(([p]) => p)
       .find((p) => p.hospital === 'hro' && p.turno === 'vespertino')
-    expect(tarde.casos.every((c) => c.anestesistaUserId === 'uid-romulo')).toBe(true)
-    expect(tarde.casos.every((c) => c.semAnestesista !== true)).toBe(true)
+    expect(tarde.casos.every((c) => !c.anestesistaUserId)).toBe(true)
   })
 })

@@ -58,7 +58,9 @@ export default function ConferirMapaFdsPage({ mapa, grade, onSalvar, onVoltar, c
     [casosDoTurno, mapa?.hospital],
   )
 
-  const nomePosto = anestesistaDoPosto(grade, mapa?.hospital, turno)
+  // a data entra porque a sugestão pelo posto vale SÓ na manhã de sábado
+  // (dono 29/08) — ver `anestesistaDoPosto`
+  const nomePosto = anestesistaDoPosto(grade, mapa?.hospital, turno, mapa?.data)
   const atribuicoes = mapa?.atribuicoes?.[turno] || {}
   const sugeridos = mapa?.sugeridos?.[turno] || {}
 

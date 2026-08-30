@@ -207,3 +207,57 @@ describe('turno acompanha o relógio (dono 15/08)', () => {
     expect(turnoAtivo()).toBe('Manhã')
   })
 })
+
+/**
+ * CABEÇALHO SEM OSCILAR (dono 29/08): "o cabeçalho de final de semana alterna
+ * com o cabeçalho de dias úteis (mostrando abas: minhas, completa e liberações)
+ * — verifique e corrija para que a informação não oscile entre dias úteis,
+ * finais de semana e feriados".
+ *
+ * É o mesmo defeito do seletor de turno de 16/08, no outro eixo: `modoFds`
+ * depende do FETCH da linha 'fds' e o contexto ZERA `escalas` ao trocar de data
+ * sem cache. Nessa janela a tela de sábado abria com as abas e o seletor de
+ * hospital do dia útil e trocava sozinha ~1s depois. O remédio é o mesmo:
+ * sáb/dom/feriado é dado do CALENDÁRIO e decide os EIXOS sem esperar rede.
+ */
+describe('cabeçalho não oscila entre dia útil e fim de semana (dono 29/08)', () => {
+  const montar = (iso, extra = {}) => {
+    estado.ctx = {
+      escalas: { unimed: null, hro: null, materno: null, fds: null },
+      p4Hospital: null, data: iso, hoje: iso, loading: false, ...acoes(), ...extra,
+    }
+    return render(<EscalaCirurgicaPage onNavigate={() => {}} goBack={() => {}} />, { wrapper: wrap })
+  }
+
+  it('SÁBADO carregando: já abre sem as abas e sem o seletor de hospital', () => {
+    vi.setSystemTime(new Date('2026-08-29T10:00:00-03:00')) // sábado
+    montar('2026-08-29', { loading: true })
+    expect(screen.queryByRole('tab', { name: 'Completa' })).toBeNull()
+    expect(screen.queryByRole('tab', { name: 'Minhas' })).toBeNull()
+    expect(screen.queryByRole('tab', { name: 'Unimed' })).toBeNull()
+    // o eixo que existe no fim de semana continua lá desde o 1º render
+    expect(screen.getByRole('tab', { name: 'Noite' })).toBeTruthy()
+  })
+
+  it('FERIADO carregando: idem — a fila única também vale nele', () => {
+    vi.setSystemTime(new Date('2026-08-25T10:00:00-03:00')) // terça, feriado
+    montar('2026-08-25', { loading: true })
+    expect(screen.queryByRole('tab', { name: 'Completa' })).toBeNull()
+    expect(screen.queryByRole('tab', { name: 'Unimed' })).toBeNull()
+  })
+
+  it('DIA ÚTIL carregando: abas e hospital continuam desde o 1º render', () => {
+    vi.setSystemTime(new Date('2026-08-27T10:00:00-03:00')) // quinta
+    montar('2026-08-27', { loading: true })
+    expect(screen.getByRole('tab', { name: 'Completa' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Unimed' })).toBeTruthy()
+  })
+
+  it('sábado SEM fila publicada, depois de carregar, cai no modo por hospital', () => {
+    // rollout seguro: sem a linha 'fds' a tela volta a ser por hospital — uma
+    // transição só, no caso raro, em vez de uma a cada abertura
+    vi.setSystemTime(new Date('2026-08-29T10:00:00-03:00'))
+    montar('2026-08-29', { loading: false })
+    expect(screen.getByRole('tab', { name: 'Unimed' })).toBeTruthy()
+  })
+})

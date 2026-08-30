@@ -516,3 +516,65 @@ mesmo sem cirurgia": liberar quem não fecha a fila avisa · quem fecha sai mesm
 sem cirurgia · o cartão amarelo cai em quem FECHA a fila (e não no último com
 cirurgia) · sobrando só os plantões ninguém é o próximo · e o plantão sai sem
 esbarrar na ordem. Conferido que 3 deles FALHAM contra o código anterior.
+
+### FILA ÚNICA — quatro regras que uniformizam com o dia útil (dono 29/08, noite)
+
+**1. O cartão amarelo é de quem TRABALHA, não do fim da fila.** *"O próximo a ser
+liberado deve ser o primeiro anestesista contendo informações sobre escalação
+(local, cirurgiões, ajuda...) e não o último da fila."* A ORDEM e a TINTA
+passaram a ser duas perguntas: `idxProximo` (quem pode sair agora, trava quem
+tenta furar) continua sendo o último da fila; `idxCartao` (o card amarelo) é o
+último **com escalação**. Fila inteira sem caso = nenhum cartão amarelo, que é o
+estado normal de um turno recém-trocado. ⛔ `idxCartao` só existe em `modoFds` —
+no dia útil o cartão segue no `idxProximo`, como desde 27/07 (Regra #2).
+
+**2. Preenchimento automático SÓ na manhã de sábado.** `anestesistaDoPosto` ganhou
+`dataIso` e devolve `''` fora do matutino de sábado — **sem data, desligado**. A
+sugestão de 22/08 alcançava qualquer turno cuja sala viesse sem nome, e é assim
+que o mapa do fim de semana chega quase sempre: em 29/08 as **5 cirurgias da
+tarde da Unimed, em 3 salas**, foram publicadas no nome do posto sem que ninguém
+tivesse escrito aquilo. A manhã de sábado é o único turno em que a tabela e os
+mapas chegam JUNTOS e o posto ainda descreve o dia.
+
+**3. O plantão da faixa está SEMPRE trabalhando.** Nunca "Livre", nunca no cartão
+amarelo, nunca esbarra na ordem para sair, e **conta como trabalho** na conta do
+último com trabalho. Ele cobre o hospital as 6 horas inteiras — o mapa estar
+vazio não muda isso. É o equivalente de DIA do `foraDaFila` que a noite já tinha.
+
+**4. "Livre" virou "Liberado", de verdade.** *"Quero que mude a marcação de
+'livre' para liberado assim como já é realizado em dias úteis, fica mais fácil
+dos usuários entenderem e uniformiza"* — e no protótipo ele escolheu o **vermelho
+de verdade**, não a troca da palavra. `caudaAutomatica` passou a ser `true` em
+todo dia e todo turno.
+
+⚠️ **ISTO SUPERSEDE DOIS RECORTES ANTERIORES, e é decisão dele nos dois casos:**
+o *"todos verdes na publicação"* de 24/08 e a exceção do *vespertino da fila
+única* de 25/08 (que também valia para o FERIADO). O que sustentava os dois era o
+plantão NÃO contar como trabalho: com o mapa chegando vazio, a cauda ou pegava a
+fila inteira ou não existia. Com a regra 3 acima, a cauda começa logo abaixo dos
+dois postos — dois cards verdes no topo e o resto vermelho até chegar cirurgia,
+que é o desenho aprovado.
+
+⚠️ **O que NÃO mudou:** a guarda `temAlguemComTrabalho` (22/08) continua de pé —
+sem NINGUÉM trabalhando não há cauda, e ela ainda morde no sáb/dom cuja grade
+ainda não foi importada. E o vermelho no MEIO da fila segue não sendo automático
+(incidente Eduardo, 20/08). No FERIADO o plantão é POSICIONAL (as duas primeiras
+da ordem do turno), então ele sempre existe e a cauda sempre nasce.
+
+**5. O cabeçalho não oscila mais.** *"O cabeçalho de final de semana alterna com o
+cabeçalho de dias úteis (mostrando abas: minhas, completa e liberações)."*
+`modoFds` depende do FETCH da linha 'fds' e o contexto ZERA `escalas` ao trocar de
+data sem cache — nessa janela o sábado abria com as abas e o seletor de hospital
+do dia útil. `chromeFilaUnica = dataFilaUnica && (loading || modoFds)` decide os
+EIXOS pelo CALENDÁRIO, que não espera rede: é o mesmo remédio do defeito irmão de
+16/08 (o seletor piscando de 2 para 3 turnos). Sem fila publicada, cai no modo por
+hospital depois de carregar — uma transição no caso raro, em vez de uma por
+abertura.
+
+Travas: describes "a cauda nasce liberada, como no dia útil" e "a ordem de
+liberação vale mesmo sem cirurgia" em `escalaFdsTelaUnica.test.jsx` (com o caso
+"fila publicada sem mapa: ninguém amarelo, e a ordem continua travando", que é o
+que separa as duas perguntas) · "cabeçalho não oscila" em
+`escalaTurnoAutomatico.test.jsx` · a manhã/tarde de sábado em
+`escalaFdsMapas.test.js` e `importarEscalaFdsMapas.test.jsx`. ⚠️ **oito testes
+mudaram de lado com o porquê no corpo** — nenhum foi apagado.

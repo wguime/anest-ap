@@ -66,6 +66,18 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   // a aba Liberações segue no comportamento por hospital (rollout seguro).
   // Fica ANTES dos efeitos de turno: no FDS o relógio decide entre 3 turnos.
   const modoFds = dataFilaUnica && escalas.fds?.status === 'publicada'
+  // CABEÇALHO SEM OSCILAR (dono 29/08: "o cabeçalho de final de semana alterna
+  // com o de dias úteis, mostrando abas: minhas, completa e liberações").
+  // `modoFds` depende do FETCH da linha 'fds', e ao trocar de data sem cache o
+  // contexto ZERA `escalas` antes de buscar — nessa janela a tela abre com as
+  // abas e o seletor de hospital do dia útil e troca sozinha ~1s depois.
+  //
+  // Mesmo remédio do defeito irmão de 16/08 (o seletor de turno piscando de 2
+  // para 3 opções): sáb/dom/feriado é dado do CALENDÁRIO e não espera rede, e é
+  // ele quem decide os EIXOS enquanto a linha não chegou. Se o fetch revelar que
+  // não há fila publicada, a tela cai no comportamento por hospital — uma
+  // transição só, no caso raro, em vez de uma a cada abertura.
+  const chromeFilaUnica = dataFilaUnica && (loading || modoFds)
   // turno do relógio: 2 faixas no dia útil, 3 no FDS (7h/13h/19h)
   // ⚠️ Depende da DATA, não da linha 'fds' (defeito 16/08: "pisca com
   // informações antigas"). Ligar os 3 turnos ao fetch fazia a tela abrir com
@@ -374,8 +386,8 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
             // ⚠️ o outline sem ícone é do protótipo do FIM DE SEMANA (dono
             // 24/08, 2ª mensagem): no dia útil o botão volta ao ghost com o
             // ícone, como está desde o começo.
-            <Button size="sm" variant={modoFds ? 'outline' : 'ghost'} onClick={() => feriado ? setImportandoFds(true) : setImportando(true)} aria-label="Importar escala">
-              {!modoFds && <Upload className="w-4 h-4" />} Importar
+            <Button size="sm" variant={chromeFilaUnica ? 'outline' : 'ghost'} onClick={() => feriado ? setImportandoFds(true) : setImportando(true)} aria-label="Importar escala">
+              {!chromeFilaUnica && <Upload className="w-4 h-4" />} Importar
             </Button>
           ) : null
         }
@@ -407,10 +419,10 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           // sala resolvia um problema que o sábado não tem — 12 salas contra as
           // 42 de um dia útil, com o agravante de obrigar a trocar de hospital
           // para alcançar cada sala. O dia útil segue com os três controles.
-          hospitalOpcoes={modoFds ? null : HOSPITAL_OPCOES}
+          hospitalOpcoes={chromeFilaUnica ? null : HOSPITAL_OPCOES}
           hospital={hospital}
           onEscolherHospital={setHospital}
-          abaOpcoes={modoFds ? null : ABA_OPCOES}
+          abaOpcoes={chromeFilaUnica ? null : ABA_OPCOES}
           aba={aba}
           onEscolherAba={setAba}
         />

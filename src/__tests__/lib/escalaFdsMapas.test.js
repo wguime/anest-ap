@@ -121,18 +121,49 @@ describe('resumo do mapa — o que a lista de documentos mostra', () => {
 })
 
 describe('sugestão pelo posto da grade (dono 2026-08-22)', () => {
-  it('o HRO da tarde é de quem está na faixa 13-19 da coluna HRO', () => {
-    expect(anestesistaDoPosto(GRADE_SABADO, 'hro', 'vespertino')).toBe('ROMULO')
-    expect(anestesistaDoPosto(GRADE_SABADO, 'unimed', 'matutino')).toBe('KARINE')
+  // ⚠️ ESTE TESTE MUDOU DE LADO em 29/08, e o porquê fica aqui em vez de ele sumir.
+  //
+  // A sugestão pelo posto alcançava QUALQUER turno do fim de semana cuja sala
+  // viesse sem nome — e é assim que o mapa de fim de semana chega quase sempre.
+  // Medido em 29/08: as 5 cirurgias da tarde da Unimed, em 3 salas, saíram todas
+  // no nome do posto sem que ninguém tivesse escrito aquilo. O dono cortou:
+  // "somente haja preenchimento automático de informações sobre escalação no
+  // sábado de manhã; a partir disso, sempre que os turnos forem trocados limpe
+  // as informações, deixe todos livres e os plantões sempre trabalhando".
+  //
+  // O sábado de manhã é o único turno em que a tabela de posições e os mapas
+  // chegam JUNTOS e o posto ainda descreve o dia; do meio-dia em diante quem
+  // sabe quem está em cada sala é a equipe.
+  const SABADO = '2026-08-29'
+  const DOMINGO = '2026-08-30'
+
+  it('manhã de SÁBADO: o posto da faixa 7-13 sugere', () => {
+    expect(anestesistaDoPosto(GRADE_SABADO, 'unimed', 'matutino', SABADO)).toBe('KARINE')
+  })
+
+  it('tarde de sábado NÃO sugere mais — nem quando a grade tem o posto', () => {
+    // era 'ROMULO' até 29/08 (o HRO das 13-19h da própria fixture)
+    expect(anestesistaDoPosto(GRADE_SABADO, 'hro', 'vespertino', SABADO)).toBe('')
+  })
+
+  it('domingo não sugere em turno nenhum — o preenchimento é só do sábado', () => {
+    expect(anestesistaDoPosto(GRADE_SABADO, 'unimed', 'matutino', DOMINGO)).toBe('')
+    expect(anestesistaDoPosto(GRADE_SABADO, 'hro', 'vespertino', DOMINGO)).toBe('')
+  })
+
+  it('sem data a sugestão fica DESLIGADA — preencher identidade por engano é pior', () => {
+    expect(anestesistaDoPosto(GRADE_SABADO, 'unimed', 'matutino')).toBe('')
   })
 
   it('materno não tem coluna de posto — não sugere ninguém', () => {
-    expect(anestesistaDoPosto(GRADE_SABADO, 'materno', 'matutino')).toBe('')
+    expect(anestesistaDoPosto(GRADE_SABADO, 'materno', 'matutino', SABADO)).toBe('')
   })
 
-  it('sem grade não inventa', () => {
-    expect(anestesistaDoPosto(null, 'hro', 'matutino')).toBe('')
-    expect(anestesistaDoPosto(GRADE_SABADO, 'hro', 'noturno')).toBe('KARINE') // faixa 19-07
+  it('sem grade não inventa; e a noite não é turno de mapa', () => {
+    expect(anestesistaDoPosto(null, 'hro', 'matutino', SABADO)).toBe('')
+    // antes devolvia KARINE (faixa 19-07): a noite não tem mapa para conferir e
+    // agora está fora junto com os demais turnos que não são a manhã de sábado
+    expect(anestesistaDoPosto(GRADE_SABADO, 'hro', 'noturno', SABADO)).toBe('')
   })
 
   it('sugere só onde o mapa não trouxe nome', () => {

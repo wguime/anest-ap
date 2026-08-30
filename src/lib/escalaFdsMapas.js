@@ -114,12 +114,35 @@ export function resumoMapa(casos) {
  *
  * Retorna o NOME como está na grade (o mesmo texto das posições), ou ''.
  */
-export function anestesistaDoPosto(grade, hospital, turno) {
+export function anestesistaDoPosto(grade, hospital, turno, dataIso = null) {
   const faixa = FDS_TURNO_FAIXA[turno]
   if (!faixa || !grade?.[faixa]) return ''
+  // ⚠️ SÓ NA MANHÃ DE SÁBADO (dono 29/08: "quero que somente haja preenchimento
+  // automático de informações sobre escalação no sábado de manhã; a partir
+  // disso, sempre que os turnos forem trocados limpe as informações, deixe
+  // todos livres e os plantões sempre trabalhando").
+  //
+  // A sugestão de 22/08 preenchia QUALQUER turno do FDS cuja sala viesse sem
+  // nome — e é assim que o mapa de fim de semana chega quase sempre. Resultado
+  // medido em 29/08: as 5 cirurgias da tarde da Unimed, em 3 salas, saíram
+  // todas no nome do posto sem que ninguém tivesse escrito aquilo. O sábado de
+  // manhã é o único turno em que a tabela e os mapas chegam JUNTOS e o posto
+  // ainda descreve o dia; do meio-dia em diante quem sabe quem está em cada
+  // sala é a equipe, não a grade.
+  //
+  // Sem `dataIso` a sugestão fica DESLIGADA: preencher identidade por engano é
+  // pior do que não preencher (é a mesma razão de nunca chutar login).
+  if (turno !== 'matutino' || !ehSabado(dataIso)) return ''
   // ret1/ret2 são retaguarda de chamada, não posto de sala: não sugerem ninguém
   const col = hospital === 'unimed' ? 'unimed' : hospital === 'hro' ? 'hro' : ''
   return col ? texto(grade[faixa][col]) : ''
+}
+
+/** Sábado no calendário local (meio-dia evita a virada de fuso). */
+function ehSabado(dataIso) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dataIso || ''))) return false
+  const d = new Date(`${dataIso}T12:00:00`)
+  return !Number.isNaN(d.getTime()) && d.getDay() === 6
 }
 
 /**
