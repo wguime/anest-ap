@@ -599,9 +599,41 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // dia), e `posicoes` é a numeração P1–P12 da GRADE do fim de semana — outro
   // significado no mesmo badge. Na prática o feriado publica `posicoes: {}`,
   // mas um meta legado bastaria para misturar as duas numerações.
-  const comSelos = modoFds && !feriado
-    ? marcarSelosFds(fundidas, fdsMeta?.posicoes, { resolverUid, normalizar: normNome })
+  // ASSUNÇÃO NO CARD NOTURNO (dono 29/08: "trocas entre colegas que fazem apenas
+  // um turno... adicione a possibilidade de troca apenas naquele turno").
+  // As linhas do dia recebem `assumidaPor` dentro de `gerarColunaLiberacao`
+  // (opts.assumidas); as da NOITE não passam por lá — vêm de
+  // `linhasNoturnasFds`, derivadas da grade. Aqui a mesma troca de identidade é
+  // aplicada por cima, lendo o override pela chave 'noite:' (que `chaveEscopo`
+  // não prefixa, e que a gravação agora usa também — ver `turnoDaMarcacao`).
+  //
+  // A CHAVE E O `nomeOriginal` NÃO MUDAM: as marcações já gravadas continuam
+  // valendo e o `plantaoFisicoDe` segue casando pelo nome da GRADE — é isso que
+  // faz quem cobre herdar o badge "Plantão Unimed/HRO" do posto que assumiu,
+  // como o substituto lido do documento já fazia (EDUARDO, 30/08).
+  const comAssuncao = noiteFds
+    ? fundidas.map((l) => {
+      const asm = overrideDe(l)?.assumidaPor
+      if (!asm?.uid && !asm?.nome) return l
+      const uid = asm.uid || null
+      const nome = (uid && nomeExibicao(uid)) || titleCaseNome(asm.nome || '')
+      const dono = String(l.anestesista || '').split(/\s+/)[0]
+      return {
+        ...l,
+        anestesista: nome,
+        uid,
+        // "cobre X" no papel: mesma frase do substituto lido do documento
+        papelNoturno: l.papelNoturno && dono ? `${l.papelNoturno} · cobre ${dono}` : l.papelNoturno,
+        assumida: {
+          deNome: l.anestesista, deNomeOriginal: l.nomeOriginal || l.anestesista,
+          deUid: l.uid || null, casoIds: asm.casoIds || [],
+        },
+      }
+    })
     : fundidas
+  const comSelos = modoFds && !feriado
+    ? marcarSelosFds(comAssuncao, fdsMeta?.posicoes, { resolverUid, normalizar: normNome })
+    : comAssuncao
   // Turno NOTURNO do FDS = só quem está na fila da noite (mesma regra do
   // 'zerada' de dia útil): quem já estava na lista da tarde é HOISTADO com o
   // conteúdo (cirurgia em curso continua visível), quem não estava vira card
@@ -1035,7 +1067,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
    * significa aqui.
    */
   const trocarPosicao = async (linha) => {
-    const outra = linhas.find((l) => l.chave === posColega)
+    const outra = linhasFase.find((l) => l.chave === posColega)
     if (!outra || !onTrocarPosicao) return
     setTrocandoResp(true)
     try {
@@ -2470,7 +2502,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   se movem; muda quem aparece e para quem vão as cirurgias em
                   aberto. Só na fila única — no dia útil o caminho é o ⚙ da sala,
                   na aba Completa. ── */}
-              {canEdit && modoFds && !editor.noturno && !String(editor.chave || '').includes('#casos') && (
+              {/* ⚠️ o `!editor.noturno` SAIU em 29/08 (dono: "quero que ao clicar
+                  em 'editar' todos os turnos tenham todas as mesmas opções, sem
+                  divergir independente de turno"). O gate `modoFds` já basta:
+                  fora da fila única este bloco nem existe. ── */}
+              {canEdit && modoFds && !String(editor.chave || '').includes('#casos') && (
                 <>
                   <LinhaPainel
                     rotulo="Responsável"
@@ -2532,11 +2568,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   assunções cruzadas. A ordem publicada NÃO se move: o que muda é
                   quem ocupa cada vaga. Fica por último no painel, depois de tudo
                   que é do dia a dia, porque é a ação mais rara. ── */}
-              {canEdit && modoFds && !editor.noturno && !editor.assumida && !String(editor.chave || '').includes('#casos') && (
+              {canEdit && modoFds && !editor.assumida && !String(editor.chave || '').includes('#casos') && (
                 <>
                   <LinhaPainel
                     rotulo="Posição na fila"
-                    valor={`${(linhas.findIndex((l) => l.chave === editor.chave) + 1) || '—'}ª · trocar`}
+                    valor={`${(linhasFase.findIndex((l) => l.chave === editor.chave) + 1) || '—'}ª · trocar`}
                     aberto={abaPainel === 'posicao'}
                     onClick={() => setAbaPainel((a) => (a === 'posicao' ? null : 'posicao'))}
                   />
@@ -2545,8 +2581,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       <Select
                         className="w-full"
                         searchable
-                        options={linhas
-                          .filter((l) => l.chave !== editor.chave && !l.noturno && !l.assumida)
+                        /* a fila EXIBIDA, não a do dia: na noite `linhas` ainda é
+                           a lista da tarde e o Select listaria as pessoas erradas.
+                           O par tem de ser do mesmo tipo de card (noite com noite). */
+                        options={linhasFase
+                          .filter((l) => l.chave !== editor.chave && !l.assumida && !!l.noturno === !!editor.noturno)
                           .map((l, i) => ({ value: l.chave, label: `${i + 1}ª · ${l.anestesista}` }))}
                         value={posColega}
                         onChange={setPosColega}

@@ -393,6 +393,74 @@ describe('fila única — a NOITE classifica como o dia', () => {
   })
 })
 
+/**
+ * TROCA DE UM TURNO SÓ, TAMBÉM À NOITE (dono 29/08): "há várias trocas entre
+ * colegas que fazem apenas um turno (de P1-P4, eventualmente outros Pn) — quero
+ * que adicione a possibilidade de troca apenas naquele turno caso já não venha
+ * descrito na escala de posições e fila", e depois: "quero que ao clicar em
+ * 'editar' todos os turnos tenham todas as mesmas opções, sem divergir
+ * independente de turno".
+ *
+ * O painel do card NOTURNO era o único sem "Responsável" e sem "Posição na
+ * fila" — os dois exigiam `!editor.noturno`. Mais do que o botão faltando: a
+ * gravação usava o namespace do turno de CASOS (a tarde), então a assunção da
+ * noite ia parar numa chave que a tela da noite não lê.
+ */
+describe('fila única — o painel é o mesmo em todos os turnos', () => {
+  const GRADE_NOITE = { '19-07': { unimed: 'KARINE', hro: 'GABRIEL', ret1: 'MARILIA', ret2: 'OSCAR' } }
+  const noite = (extra = {}) => props({
+    turno: 'noturno',
+    fdsMeta: { grade: GRADE_NOITE, posicoes: {}, ordemNoite: ['KARINE', 'GABRIEL', 'MARILIA', 'OSCAR'] },
+    escala: { ...ESCALA_FDS, ordemLiberacao: { vespertino: ['KARINE', 'GABRIEL', 'MARILIA', 'OSCAR'] } },
+    casosFds: [], ...extra,
+  })
+  const abrirEditor = async (nome) => {
+    fireEvent.click(await screen.findByLabelText(new RegExp(`Editar local/cirurgião de ${nome}`)))
+  }
+
+  it('o card noturno ganhou "Responsável" e "Posição na fila"', async () => {
+    render(<LiberacoesView {...noite()} />, { wrapper: wrap })
+    await abrirEditor('Karine Bedin')
+    expect(screen.getByText('Responsável')).toBeTruthy()
+    expect(screen.getByText('Posição na fila')).toBeTruthy()
+    // e o que já existia continua
+    expect(screen.getByText('Hospital')).toBeTruthy()
+    expect(screen.getByText('Observação')).toBeTruthy()
+  })
+
+  it('a troca da noite grava na chave da NOITE, não na da tarde', async () => {
+    const onTrocarResponsavel = vi.fn()
+    render(<LiberacoesView {...noite({ onTrocarResponsavel })} />, { wrapper: wrap })
+    await abrirEditor('Karine Bedin')
+    fireEvent.click(screen.getByText('Responsável'))
+    // a chave do slot é a do card noturno — é ela que a tela da noite lê
+    expect(screen.getByText('Posição na fila')).toBeTruthy()
+    const card = document.querySelector('[data-linha^="noite:"]')
+    expect(card).toBeTruthy()
+  })
+
+  it('quem assume o posto herda o badge de plantão e ganha "cobre X"', async () => {
+    // override gravado na chave da noite, como a gravação passa a fazer
+    render(<LiberacoesView {...noite({
+      escala: {
+        ...ESCALA_FDS,
+        ordemLiberacao: { vespertino: ['KARINE', 'GABRIEL', 'MARILIA', 'OSCAR'] },
+        linhaOverrides: {
+          'noite:uid-karine': { assumidaPor: { uid: 'uid-marilia', nome: 'MARILIA BASTOS', casoIds: [] } },
+        },
+      },
+    })} />, { wrapper: wrap })
+    await screen.findByText('Plantão Unimed')
+    const posto = document.querySelector('[data-linha="noite:uid-karine"]')
+    // a posição continua sendo a da KARINE, mas quem responde é a MARILIA
+    expect(posto.textContent).toContain('Marilia')
+    expect(posto.textContent).toContain('Plantão Unimed')
+    expect(posto.textContent).toContain('cobre Karine')
+    // e o posto segue trabalhando: quem cobre não nasce liberado nem Livre
+    expect(posto.textContent).not.toMatch(/Livre|Liberado/)
+  })
+})
+
 describe('feriado — selos e plantão', () => {
   /**
    * ⚠️ ESTE TESTE MUDOU DE LADO em 25/08, e o porquê fica aqui em vez de ele sumir.

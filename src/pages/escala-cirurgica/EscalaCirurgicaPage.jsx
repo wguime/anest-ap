@@ -342,6 +342,14 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   // banco só aceita matutino/vespertino, e à noite valem as cirurgias da tarde)
   const escalaDoHospital = escalas[hospital]
   const turnoDeCasos = FDS_TURNO_CASOS[turno] || turno
+  // ⚠️ NAMESPACE DA MARCAÇÃO ≠ TURNO DOS CASOS. `turnoDeCasos` responde "de qual
+  // turno são as cirurgias" (a noite lê as da tarde) e é isso que alimenta
+  // publicação e casos. Já a CHAVE de `linha_overrides` tem de ser a do turno
+  // EXIBIDO: `chaveTurno` não prefixa 'noturno', e o card noturno já vem com a
+  // chave 'noite:' — gravar com o prefixo da tarde punha a assunção da noite
+  // numa chave que a tela da noite nunca lê (e que a tarde leria). Nos turnos de
+  // dia os dois são o mesmo valor, então isto não muda nada lá.
+  const turnoDaMarcacao = turno
 
   /**
    * Devolve a escala do hospital selecionado, CRIANDO uma vazia se ainda não
@@ -354,6 +362,8 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const garantirEscala = useCallback(async () => {
     if (escalaDoHospital?.id && !String(escalaDoHospital.id).startsWith('demo-')) return escalaDoHospital
     return salvarEscalaTurno({
+      // publicação vai no turno de CASOS: o CHECK do banco só aceita
+      // matutino/vespertino, e 'noturno' não é turno de publicação
       data, hospital, turno: turnoDeCasos,
       casos: [], ordemLiberacao: [], ajudaExterna: [], status: 'publicada',
     }, { userId: user?.uid || user?.id || null, userName: user?.displayName })
@@ -504,7 +514,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                   onTrocarResponsavel={modoFds ? (({ chaveSlot, nomeSlot, de, para, casoIds }) =>
                     executarSubstituicao({
                       lados: [{
-                        hospital: FDS_HOSPITAL, escalaId: escalaLib.id, turno: turnoDeCasos,
+                        hospital: FDS_HOSPITAL, escalaId: escalaLib.id, turno: turnoDaMarcacao,
                         chaveSlot, nomeSlot, tipo: 'assuncao', de, para, casoIds,
                       }],
                       limparTroca: [],
@@ -516,7 +526,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                   // abertos do assumente, inclusive os que nunca saíram do lugar).
                   onDevolverResponsavel={modoFds ? ((linha) => desfazerSubstituicao({
                     lados: [{
-                      hospital: FDS_HOSPITAL, escalaId: escalaLib.id, turno: turnoDeCasos,
+                      hospital: FDS_HOSPITAL, escalaId: escalaLib.id, turno: turnoDaMarcacao,
                       chaveSlot: linha.chave,
                       casoIds: linha.assumida?.casoIds || [],
                       // `para` no desfazer é para QUEM os casos voltam: o dono
@@ -534,7 +544,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                   onTrocarPosicao={modoFds ? ((lados) => executarSubstituicao({
                     lados: lados.map((l) => ({
                       ...l, hospital: FDS_HOSPITAL, escalaId: escalaLib.id,
-                      turno: turnoDeCasos, tipo: 'posicoes',
+                      turno: turnoDaMarcacao, tipo: 'posicoes',
                     })),
                     limparTroca: [],
                   }, userInfo)) : undefined}

@@ -611,3 +611,51 @@ Travas: describe "a NOITE classifica como o dia" em `escalaFdsTelaUnica.test.jsx
 "Livre" nem vermelho) + dois testes que MUDARAM DE LADO em
 `liberacoesFdsUnificada.test.jsx`, com o porquê no corpo: a CRISTINA (retaguarda
 2ª chamada sem cirurgia) era "próximo a ser liberado" e hoje já nasce liberada.
+
+### FILA ÚNICA — troca de UM TURNO SÓ, também à noite (dono 29/08)
+
+*"Há várias trocas entre colegas que fazem apenas um turno (de P1-P4,
+eventualmente outros Pn) — quero que adicione a possibilidade de troca apenas
+naquele turno caso já não venha descrito na escala de posições e fila"*, e no
+mesmo fôlego: *"quero que ao clicar em 'editar' todos os turnos tenham todas as
+mesmas opções, sem divergir independente de turno"*.
+
+O painel do card **NOTURNO** era o único sem **Responsável** e sem **Posição na
+fila** — os dois exigiam `!editor.noturno`. Hospital, Local, Cirurgião, Tempo e
+Observação já estavam lá.
+
+⚠️ **O botão faltando era o menor dos problemas.** A gravação usava
+`turnoDeCasos` para o NAMESPACE da marcação, e à noite isso é `'vespertino'`:
+`chaveTurno('vespertino', 'noite:X')` → `vespertino:noite:X`, enquanto a tela da
+noite lê `chaveEscopo('noite:X')` → `noite:X` (o `chaveTurno`/`chaveEscopo` não
+prefixa 'noturno'). A assunção iria para uma chave que a noite nunca lê — e que a
+TARDE leria. **`turnoDaMarcacao` (= turno da tela) separou as duas perguntas:**
+"de que turno são as cirurgias" (`turnoDeCasos`, alimenta publicação e casos) e
+"onde mora a marcação" (o turno EXIBIDO). Nos turnos de dia os dois têm o mesmo
+valor — lá nada mudou. ⚠️ a PUBLICAÇÃO (`garantirEscala`) continua em
+`turnoDeCasos`: o CHECK do banco só aceita matutino/vespertino.
+
+**A identidade da noite é aplicada FORA da lib.** As linhas de dia recebem
+`assumidaPor` dentro de `gerarColunaLiberacao` (`opts.assumidas`); as da noite
+não passam por lá — vêm de `linhasNoturnasFds`, derivadas da grade. A troca é
+aplicada por cima (`comAssuncao`), com **chave e `nomeOriginal` intocados**: é
+isso que faz as marcações já gravadas continuarem valendo e que faz quem cobre
+**herdar o badge "Plantão Unimed/HRO"**, porque `plantaoFisicoDe` casa pelo nome
+da GRADE. O papel ganha "· cobre X", a mesma frase do substituto lido do
+documento (EDUARDO, 30/08) — um código só para os dois caminhos.
+
+O Select de **Posição na fila** passou a listar `linhasFase` (a fila EXIBIDA) e a
+exigir o mesmo tipo de card dos dois lados: à noite `linhas` ainda é a lista da
+TARDE, e o seletor oferecia as pessoas erradas.
+
+⛔ **"Ajuda" ficou de fora, e é ausência com motivo:** `adicionarAjuda` grava em
+`ajuda_externa[turno]` e a fila lê `rodapeDoTurno(ajudaExterna, turnoBase)` — à
+noite isso é a tarde, então a marcação da noite cairia numa chave que ninguém lê;
+e `linhasFase` descarta a lista do dia no noturno, então o badge não teria onde
+aparecer. Botão morto é pior que botão ausente. Se a ajuda tiver de existir à
+noite, a fila da noite precisa de fonte própria para ela.
+
+Travas: describe "o painel é o mesmo em todos os turnos" em
+`escalaFdsTelaUnica.test.jsx` (as duas opções presentes no card noturno · quem
+assume herda o badge e o "cobre X" · o posto coberto não nasce Livre nem
+liberado). Conferido que os três FALHAM contra o código anterior.
