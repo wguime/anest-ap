@@ -231,7 +231,16 @@ export function marcarSelosNoTurno(linhas, noturnos, opts = {}) {
  *
  * @param {Array} linhas linhas de gerarColunaLiberacao
  * @param {Array} linhasNoite saída de linhasNoturnas
- * @param {object} opts { resolverUid, normalizar, display }
+ * @param {object} opts { resolverUid, normalizar, display, forcarEmSala }
+ *   forcarEmSala (default true): carimba `teveCasos: true` em todo card noturno.
+ *   ⚠️ DESLIGADO na fila única do FDS (dono 29/08: "o turno da noite continua
+ *   com todos verdes" — ele quis a mesma linguagem do dia, com quem não tem
+ *   cirurgia nascendo Liberado). O carimbo existe para o DIA ÚTIL, onde os
+ *   cards noturnos são fundidos NA LISTA do dia: sem ele o plantonista sem caso
+ *   caía em "não escalado" e AFUNDAVA para o fim, em vez de liderar. No FDS a
+ *   noite é um turno próprio e a lista é filtrada só nos cards noturnos
+ *   (`linhasFase`), então não há para onde afundar — e o que sobra é a
+ *   classificação, que ali precisa ser honesta.
  */
 export function fundirLinhasNoturnas(linhas, linhasNoite, opts = {}) {
   const lista = linhas || []
@@ -260,7 +269,8 @@ export function fundirLinhasNoturnas(linhas, linhasNoite, opts = {}) {
       // lista vespertina exibe antes das 19h (marcarSelosNoTurno) — só o card
       // troca de posição, ignora o status do dia e usa a chave da noite.
       noturno: true,
-      teveCasos: true, isAjuda: false,
+      ...(opts.forcarEmSala === false ? {} : { teveCasos: true }),
+      isAjuda: false,
       // FDS (linhasNoturnasFds): cols Unimed/HRO da faixa 19-07 são FIXAS no
       // hospital — fora do "próximo a ser liberado". O equivalente de dia útil
       // é o SELO_SEM_PROXIMO (P1/P2), que no FDS não serve: o selo lá é o Pn

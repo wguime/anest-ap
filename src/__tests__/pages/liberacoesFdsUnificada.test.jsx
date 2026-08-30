@@ -233,11 +233,19 @@ describe('turno NOTURNO do FDS — turno próprio, fila da grade 19-07 (dono 15/
     expect(cardDe('noite:GUILHERME DIDOMENICO').textContent).toContain('Plantão HRO')
     // e o papel não repete o que o badge já diz
     expect(cardDe('noite:JOAO HENRIQUE').textContent.match(/Plantão Unimed/g)).toHaveLength(1)
-    // fixos no hospital nunca viram "Próximo a ser liberado"; a retaguarda 2ª
-    // chamada (col4) é a primeira a sair
+    // fixos no hospital nunca viram "Próximo a ser liberado"
     expect(cardDe('noite:JOAO HENRIQUE').textContent).not.toContain('Próximo a ser liberado')
     expect(cardDe('noite:GUILHERME DIDOMENICO').textContent).not.toContain('Próximo a ser liberado')
-    expect(cardDe('noite:CRISTINA').textContent).toContain('Próximo a ser liberado')
+    // ⚠️ MUDOU DE LADO em 29/08: a CRISTINA (retaguarda 2ª chamada, sem
+    // cirurgia herdada da tarde) era o "próximo a ser liberado"; hoje ela já
+    // NASCE liberada, como a cauda de qualquer outro turno. O dono uniformizou
+    // a noite com o dia — "o turno da noite continua com todos verdes" era o
+    // que faltava corrigir depois do "Livre" virar "Liberado".
+    expect(cardDe('noite:CRISTINA').textContent).toContain('Liberado')
+    expect(cardDe('noite:CRISTINA').textContent).not.toContain('Próximo a ser liberado')
+    // e os dois postos seguem verdes: o plantão da faixa está sempre trabalhando
+    expect(cardDe('noite:JOAO HENRIQUE').textContent).not.toContain('Liberado')
+    expect(cardDe('noite:GUILHERME DIDOMENICO').textContent).not.toContain('Liberado')
   })
 
   it('o card noturno herda a cirurgia da TARDE em curso (noturno não tem caso próprio)', () => {
@@ -256,8 +264,12 @@ describe('turno NOTURNO do FDS — turno próprio, fila da grade 19-07 (dono 15/
     montar({ turno: 'noturno', escala: { ...ESCALA_FDS, fdsMeta }, fdsMeta })
     const chaves = [...document.querySelectorAll('[data-linha]')].map((el) => el.dataset.linha)
     expect(chaves.map((c) => cardDe(c).dataset.selo)).toEqual(['P2', 'P1', 'P4', 'P3', 'P11', 'P8', 'P7'])
-    // o último da fila é o primeiro a ser liberado
-    expect(cardDe(chaves[chaves.length - 1]).textContent).toContain('Próximo a ser liberado')
+    // ⚠️ MUDOU DE LADO em 29/08 junto com o teste acima: o último da fila era o
+    // "próximo a ser liberado"; hoje ele já nasce LIBERADO, porque não tem
+    // cirurgia nenhuma. O cartão amarelo passou a ser de quem TRABALHA, e à
+    // noite quem trabalha são os dois postos — que estão fora da fila.
+    expect(cardDe(chaves[chaves.length - 1]).textContent).toContain('Liberado')
+    expect(screen.queryAllByText('Próximo a ser liberado')).toHaveLength(0)
     // quem veio da lista numerada não ganha posto de plantão
     expect(cardDe(chaves[4]).textContent).not.toContain('Plantão')
     // e os dois plantões físicos seguem fora da fila

@@ -337,6 +337,62 @@ describe('fila única — a ordem de liberação vale mesmo sem cirurgia', () =>
   })
 })
 
+/**
+ * A NOITE FALA A MESMA LÍNGUA DO DIA (dono 29/08): "o turno da noite continua
+ * com todos verdes, verifique". Até aqui TODO card noturno nascia verde por
+ * construção — `fundirLinhasNoturnas` carimbava `teveCasos: true` em todos.
+ * Esse carimbo existe para o DIA ÚTIL, onde os cards noturnos são fundidos na
+ * lista do dia e sem ele o plantonista sem caso afundava para o fim; na fila
+ * única a noite é um turno próprio e a lista só tem cards noturnos, então não
+ * há para onde afundar — e o que sobra é a classificação.
+ */
+describe('fila única — a NOITE classifica como o dia', () => {
+  const GRADE_NOITE = { '19-07': { unimed: 'KARINE', hro: 'GABRIEL', ret1: 'MARILIA', ret2: 'OSCAR' } }
+  const noite = (extra = {}) => props({
+    turno: 'noturno',
+    fdsMeta: {
+      grade: GRADE_NOITE, posicoes: {},
+      ordemNoite: ['KARINE', 'GABRIEL', 'MARILIA', 'OSCAR'],
+    },
+    escala: { ...ESCALA_FDS, ordemLiberacao: { vespertino: ['KARINE', 'GABRIEL', 'MARILIA', 'OSCAR'] } },
+    casosFds: [],
+    ...extra,
+  })
+
+  it('os dois postos ficam verdes e a retaguarda sem cirurgia nasce LIBERADA', async () => {
+    render(<LiberacoesView {...noite()} />, { wrapper: wrap })
+    await screen.findByText(/Marilia/)
+    expect(screen.getByText('Plantão Unimed')).toBeTruthy()
+    expect(screen.getByText('Plantão HRO')).toBeTruthy()
+    // MARILIA (ret1) e OSCAR (ret2) não têm cirurgia herdada da tarde
+    expect(screen.getAllByText('Liberado')).toHaveLength(2)
+  })
+
+  it('quem herdou cirurgia da TARDE continua verde à noite', async () => {
+    // o card noturno lê os casos do vespertino (FDS_TURNO_CASOS) — quem está
+    // em sala às 19h não pode nascer liberado
+    render(<LiberacoesView {...noite({
+      casosFds: [{
+        id: 'n1', sala: 'CC - Sala 6', ordem: 0, hora: '15:45', turno: 'vespertino',
+        anestesista: 'MARILIA', cirurgiao: 'Cesar Bombardelli', procedimento: 'HERNIORRAFIA',
+        hospitalOrigem: 'unimed',
+      }],
+    })} />, { wrapper: wrap })
+    await screen.findByText(/Marilia/)
+    // só OSCAR, que está depois dela na fila e sem nada
+    expect(screen.getAllByText('Liberado')).toHaveLength(1)
+    expect(screen.getByText('Liberado').closest('[data-linha]').textContent).toContain('Oscar')
+  })
+
+  it('o plantão da noite nunca fica "Livre" nem vermelho, mesmo sem cirurgia', async () => {
+    render(<LiberacoesView {...noite()} />, { wrapper: wrap })
+    await screen.findByText(/Karine/)
+    const posto = document.querySelector('[data-linha="noite:uid-karine"]')
+      || document.querySelector('[data-linha="noite:KARINE"]')
+    expect(posto.textContent).not.toMatch(/Livre|Liberado/)
+  })
+})
+
 describe('feriado — selos e plantão', () => {
   /**
    * ⚠️ ESTE TESTE MUDOU DE LADO em 25/08, e o porquê fica aqui em vez de ele sumir.

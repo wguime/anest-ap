@@ -578,3 +578,36 @@ que separa as duas perguntas) · "cabeçalho não oscila" em
 `escalaTurnoAutomatico.test.jsx` · a manhã/tarde de sábado em
 `escalaFdsMapas.test.js` e `importarEscalaFdsMapas.test.jsx`. ⚠️ **oito testes
 mudaram de lado com o porquê no corpo** — nenhum foi apagado.
+
+### FILA ÚNICA — a NOITE classifica como o dia (dono 29/08)
+
+*"O turno da noite continua com todos verdes, verifique."* Depois de "Livre"
+virar "Liberado" nos turnos de dia, a noite ficou sendo a única tela onde
+ninguém nascia liberado — e não por regra: **todo card noturno nascia com
+`teveCasos: true`**, carimbado por `fundirLinhasNoturnas`.
+
+⚠️ **O carimbo é do DIA ÚTIL e continua lá.** No dia útil os cards noturnos são
+fundidos NA LISTA do dia, e sem ele o plantonista sem caso caía em "não
+escalado", nascia vermelho e **afundava** para o fim em vez de liderar (defeito
+de 24/07). Na fila única a noite é um TURNO PRÓPRIO e `linhasFase` filtra a lista
+só nos cards noturnos — não há para onde afundar, e o que sobra do carimbo é uma
+classificação falsa. `fundirLinhasNoturnas` ganhou `opts.forcarEmSala`, desligado
+só em `modoFds`.
+
+Com isso a noite passa a ler como qualquer turno: **os dois postos da faixa
+19-07 sempre verdes** (regra do plantão, que também os mantém fora do "próximo"),
+**quem herdou cirurgia da tarde verde** (`FDS_TURNO_CASOS.noturno` = vespertino) e
+**o resto da fila vermelho**. Em 30/08 isso são 2 verdes, 2 com cirurgia da tarde
+e 3 vermelhos dos 7 da fila.
+
+⚠️ **`noRodape` não alcança a noite** — ele é carimbado pela lib do DIA, e a ordem
+publicada da noite é `fds_meta.ordemNoite`, com cards vindos de
+`linhasNoturnasFds` (o sintético inclusive). Daí `temPosicao(l)`, que responde
+"ocupa posição?" pelos dois caminhos; sem ele a cauda da noite nunca nasceria,
+porque nenhum card noturno tem `noRodape`.
+
+Travas: describe "a NOITE classifica como o dia" em `escalaFdsTelaUnica.test.jsx`
+(os dois postos verdes · quem herdou cirurgia da tarde verde · o plantão nunca
+"Livre" nem vermelho) + dois testes que MUDARAM DE LADO em
+`liberacoesFdsUnificada.test.jsx`, com o porquê no corpo: a CRISTINA (retaguarda
+2ª chamada sem cirurgia) era "próximo a ser liberado" e hoje já nasce liberada.

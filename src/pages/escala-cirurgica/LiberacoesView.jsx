@@ -585,6 +585,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
         resolverUid: modoFds ? (n) => resolverNomeEstrito(n, resolverUid) : resolverNomeCompleto,
         normalizar: normNome,
         display: (nome, uid) => (uid && nomeExibicao(uid)) || titleCaseNome(nome),
+        // na fila única a noite classifica como o dia (dono 29/08) — ver a
+        // doc de `forcarEmSala`. No dia útil o carimbo continua.
+        forcarEmSala: !modoFds,
       })
     : avisarSelos
       ? marcarSelosNoTurno(linhas, noturnos, { resolverUid: resolverNomeCompleto, normalizar: normNome })
@@ -1390,11 +1393,17 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // LOGO ABAIXO dos dois postos quando o mapa do turno chega vazio — sem
           // isso a guarda `temAlguemComTrabalho` não acha ninguém e a fila
           // inteira fica verde, que é o estado que ele pediu para acabar.
+          // OCUPA POSIÇÃO NA FILA? No dia é estar na ordem publicada (`noRodape`,
+          // que a lib carimba). Na NOITE da fila única a ordem publicada é
+          // `fds_meta.ordemNoite` e os cards vêm de `linhasNoturnasFds` — todos
+          // eles têm posição, inclusive o sintético de quem não estava na tarde.
+          const temPosicao = (l) => (modoFds && l.noturno) ? true : !!l.noRodape
+
           let idxUltimoTrabalho = -1
           for (let i = linhasExibicao.length - 1; i >= 0; i--) {
             const l = linhasExibicao[i]
             const trabalha = !naoEscalado(l) || (modoFds && !!plantaoFisicoDe(l))
-            if (l.noRodape && trabalha) { idxUltimoTrabalho = i; break }
+            if (temPosicao(l) && trabalha) { idxUltimoTrabalho = i; break }
           }
           // ⚠️ NINGUÉM DA ORDEM com cirurgia = NÃO EXISTE CAUDA (dono 22/08). Sem esta
           // guarda o `idx > -1` é verdade para a fila INTEIRA e todo mundo nasce
@@ -1410,8 +1419,12 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // depois do último com trabalho não pode contar como posição a ser
           // liberada — senão o bloqueio de ordem manda "libere X primeiro"
           // apontando alguém que a tela já mostra em vermelho.
+          // ⚠️ NA FILA ÚNICA A NOITE TAMBÉM TEM POSIÇÃO (dono 29/08): a ordem
+          // publicada dela é `fds_meta.ordemNoite`, não o rodapé, então
+          // `noRodape` (que é da lib do dia) não a alcança. No dia útil nada
+          // muda: lá o card noturno segue fora da cauda, verde por desenho.
           const caudaLiberada = (l, i) => caudaAutomatica && temAlguemComTrabalho
-            && !!l.noRodape && !l.noturno && naoEscalado(l)
+            && temPosicao(l) && (modoFds || !l.noturno) && naoEscalado(l)
             && marcaDe(l)?.escalado !== true && i > idxUltimoTrabalho
 
           // Está na FILA de liberação? P1/P2 são os plantonistas da noite: nunca
@@ -1515,7 +1528,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // namespaced ('noite:'), então as marcações do dia não são lidas e uma
           // liberação feita À NOITE (P3/P4 seguem a lógica normal) persiste sozinha.
           const noturno = !!linha.noturno
-          const semEscala = !noturno && naoEscalado(linha)
+          const semEscala = (modoFds || !noturno) && naoEscalado(linha)
           const foraDoRodape = !noturno && linha.isExtra
           // ajuda acrescentada (fora do rodapé) também é numerada: ela está NA
           // fila (dono 19/08) — o número é sequência de exibição, não posição
@@ -1575,7 +1588,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // guarda o plantonista nasce rotulado como quem não está em jogo,
           // bem no card que diz "Plantão Unimed".
           const plantaoDaFaixa = modoFds && !!plantaoFisicoDe(linha)
-          const livre = !noturno && !liberado && !plantaoDaFaixa
+          const livre = (modoFds || !noturno) && !liberado && !plantaoDaFaixa
             && (estaLivre(linha) || (semEscala && !forcadoEscalado))
           const ov = overrideDe(linha)
           // linha RENOVADA (voltou de liberação): infos da manhã não valem mais —
