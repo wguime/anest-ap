@@ -622,8 +622,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
         ...l,
         anestesista: nome,
         uid,
-        // "cobre X" no papel: mesma frase do substituto lido do documento
-        papelNoturno: l.papelNoturno && dono ? `${l.papelNoturno} · cobre ${dono}` : l.papelNoturno,
+        // "Substituindo X" no papel: mesma frase do substituto lido do documento
+        papelNoturno: l.papelNoturno && dono ? `${l.papelNoturno} · Substituindo ${dono}` : l.papelNoturno,
         assumida: {
           deNome: l.anestesista, deNomeOriginal: l.nomeOriginal || l.anestesista,
           deUid: l.uid || null, casoIds: asm.casoIds || [],
@@ -1204,8 +1204,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     } catch { /* toast no context */ } finally { setExecutandoTroca(false) }
   }
 
-  /** Papel do card noturno SEM repetir o badge ("Plantão Unimed · cobre X" →
-   *  "cobre X"); sem badge, o papel vai inteiro. */
+  /** Papel do card noturno SEM repetir o badge ("Plantão Unimed · Substituindo X"
+   *  → "Substituindo X"); sem badge, o papel vai inteiro. */
   const papelSemBadge = (l) => {
     const papel = l.papelNoturno
     if (!papel) return null
@@ -1430,11 +1430,23 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // `fds_meta.ordemNoite` e os cards vêm de `linhasNoturnasFds` — todos
           // eles têm posição, inclusive o sintético de quem não estava na tarde.
           const temPosicao = (l) => (modoFds && l.noturno) ? true : !!l.noRodape
+          // ⚠️ NA NOITE DA FILA ÚNICA SÓ OS DOIS POSTOS TRABALHAM (dono 29/08:
+          // "ao trocar de turno todos fiquem liberados exceto os plantões (HRO e
+          // Unimed)"). A cirurgia que aparece no card noturno é HERANÇA da tarde
+          // (`FDS_TURNO_CASOS.noturno`), não escalação da noite — quem estava em
+          // sala às 18h59 foi liberado às 19h, e é isso que a troca de turno
+          // significa. Contá-la deixava o Nathalia/Giovana da noite de 30/08
+          // verdes por causa de uma cirurgia do turno anterior.
+          //
+          // A cirurgia CONTINUA VISÍVEL no card (decisão de 15/08, "a cirurgia em
+          // curso não some às 19h") — o que ela deixou de fazer é decidir quem
+          // está trabalhando no turno.
+          const semEscalacaoNoTurno = (l) => (noiteFds ? !plantaoFisicoDe(l) : naoEscalado(l))
 
           let idxUltimoTrabalho = -1
           for (let i = linhasExibicao.length - 1; i >= 0; i--) {
             const l = linhasExibicao[i]
-            const trabalha = !naoEscalado(l) || (modoFds && !!plantaoFisicoDe(l))
+            const trabalha = !semEscalacaoNoTurno(l) || (modoFds && !!plantaoFisicoDe(l))
             if (temPosicao(l) && trabalha) { idxUltimoTrabalho = i; break }
           }
           // ⚠️ NINGUÉM DA ORDEM com cirurgia = NÃO EXISTE CAUDA (dono 22/08). Sem esta
@@ -1456,7 +1468,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // `noRodape` (que é da lib do dia) não a alcança. No dia útil nada
           // muda: lá o card noturno segue fora da cauda, verde por desenho.
           const caudaLiberada = (l, i) => caudaAutomatica && temAlguemComTrabalho
-            && temPosicao(l) && (modoFds || !l.noturno) && naoEscalado(l)
+            && temPosicao(l) && (modoFds || !l.noturno) && semEscalacaoNoTurno(l)
             && marcaDe(l)?.escalado !== true && i > idxUltimoTrabalho
 
           // Está na FILA de liberação? P1/P2 são os plantonistas da noite: nunca

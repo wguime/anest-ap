@@ -339,7 +339,7 @@ describe('linhasNoturnasFds — só os 4 plantões da faixa 19-07', () => {
     expect(linhas.map((l) => l.setor)).toEqual(['P3', 'P4', 'P1', 'P2'])
     const joaoRicardo = linhas[0]
     expect(joaoRicardo.cobrindo).toBe('CRISTINA') // a vaga é dela (cor no documento)
-    expect(joaoRicardo.papel).toBe('Plantão Unimed · cobre CRISTINA')
+    expect(joaoRicardo.papel).toBe('Plantão Unimed · Substituindo CRISTINA')
     expect(joaoRicardo.foraDaFila).toBe(true) // fixo na Unimed
   })
   it('vaga só é atribuída quando é 1↔1 (2 desconhecidos → ninguém recebe selo)', () => {
@@ -378,7 +378,7 @@ describe('ordem DITADA da noite (dono 16/08 — "apenas adicione os P\'s faltant
   it('domingo: o substituto abre a fila com a vaga que cobre', () => {
     const linhas = linhasNoturnasFds(GRADE_DOM, POSICOES_SAB, { ordem: ORDEM_NOITE_DOM })
     expect(linhas.map((l) => l.setor)).toEqual(['P3', 'P4', 'P1', 'P2', 'P11', 'P6', 'P5'])
-    expect(linhas[0].papel).toBe('Plantão Unimed · cobre CRISTINA')
+    expect(linhas[0].papel).toBe('Plantão Unimed · Substituindo CRISTINA')
   })
 
   it('sem ordem publicada, a fila continua sendo a linha 19-07 (comportamento de sempre)', () => {

@@ -87,8 +87,13 @@ export const FDS_NOITE_NUMERADOS = {
 export const FDS_NOITE_PAPEL = {
   unimed: 'Plantão Unimed',
   hro: 'Plantão HRO',
-  ret1: 'Retaguarda 1ª chamada',
-  ret2: 'Retaguarda 2ª chamada',
+  // ⚠️ ret1/ret2 SEM RÓTULO (dono 29/08: "retire a frase retaguarda 1 chamada,
+  // 2 chamada"). Eles seguem sendo as colunas 3 e 4 da faixa — o que muda é a
+  // tela: a coluna não vira posto e o lugar dela na fila já diz a ordem de
+  // chamada. Sem papel, o card fica igual ao dos numerados da lista, que é o
+  // que eles são à noite.
+  ret1: null,
+  ret2: null,
 }
 
 const normPadrao = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase()
@@ -335,7 +340,13 @@ function aplicarCoberturaNoite(linhas, posicoes) {
   semSelo[0].cobrindo = dono // quem ele está cobrindo
   // o card diz a cobertura no papel — quem lê a fila precisa saber que a vaga é
   // de outra pessoa (o documento marcava isso pela COR)
-  if (dono) semSelo[0].papel = `${semSelo[0].papel} · cobre ${dono.split(/\s+/)[0]}`
+  // "Substituindo X" (dono 29/08, no lugar de "cobre X"): a palavra descreve o
+  // ato, e é a mesma frase da troca feita à mão no painel — um código só.
+  // sem posto (ret1/ret2 não têm rótulo) o papel é só a substituição
+  if (dono) {
+    const quem = dono.split(/\s+/)[0]
+    semSelo[0].papel = semSelo[0].papel ? `${semSelo[0].papel} · Substituindo ${quem}` : `Substituindo ${quem}`
+  }
 }
 
 /**

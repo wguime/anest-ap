@@ -359,18 +359,28 @@ describe('fila única — a NOITE classifica como o dia', () => {
     ...extra,
   })
 
-  it('os dois postos ficam verdes e a retaguarda sem cirurgia nasce LIBERADA', async () => {
+  it('SÓ os dois postos ficam verdes — todo o resto da fila nasce LIBERADO', async () => {
     render(<LiberacoesView {...noite()} />, { wrapper: wrap })
     await screen.findByText(/Marilia/)
     expect(screen.getByText('Plantão Unimed')).toBeTruthy()
     expect(screen.getByText('Plantão HRO')).toBeTruthy()
-    // MARILIA (ret1) e OSCAR (ret2) não têm cirurgia herdada da tarde
     expect(screen.getAllByText('Liberado')).toHaveLength(2)
+    // e o rótulo de retaguarda saiu da tela (dono 29/08)
+    expect(document.body.textContent).not.toMatch(/Retaguarda/)
   })
 
-  it('quem herdou cirurgia da TARDE continua verde à noite', async () => {
-    // o card noturno lê os casos do vespertino (FDS_TURNO_CASOS) — quem está
-    // em sala às 19h não pode nascer liberado
+  /**
+   * ⚠️ ESTE TESTE TROCOU DE LADO no mesmo dia em que nasceu (29/08). Ele
+   * afirmava que quem herdou a cirurgia da tarde continua VERDE à noite. O dono
+   * fechou a regra logo depois: "ao trocar de turno todos fiquem liberados
+   * exceto os plantões (HRO e Unimed)". A cirurgia que aparece no card noturno é
+   * HERANÇA do turno anterior — quem estava em sala às 18h59 foi liberado às
+   * 19h, e é isso que a troca de turno significa.
+   *
+   * A cirurgia CONTINUA VISÍVEL (decisão de 15/08); o que ela deixou de fazer é
+   * decidir quem está trabalhando no turno.
+   */
+  it('a cirurgia herdada da tarde APARECE, mas não segura ninguém no turno', async () => {
     render(<LiberacoesView {...noite({
       casosFds: [{
         id: 'n1', sala: 'CC - Sala 6', ordem: 0, hora: '15:45', turno: 'vespertino',
@@ -379,9 +389,10 @@ describe('fila única — a NOITE classifica como o dia', () => {
       }],
     })} />, { wrapper: wrap })
     await screen.findByText(/Marilia/)
-    // só OSCAR, que está depois dela na fila e sem nada
-    expect(screen.getAllByText('Liberado')).toHaveLength(1)
-    expect(screen.getByText('Liberado').closest('[data-linha]').textContent).toContain('Oscar')
+    // a cirurgia da tarde segue na tela…
+    expect(screen.getByText('Cesar Bombardelli')).toBeTruthy()
+    // …e MARILIA e OSCAR estão liberados: só os dois postos ficam
+    expect(screen.getAllByText('Liberado')).toHaveLength(2)
   })
 
   it('o plantão da noite nunca fica "Livre" nem vermelho, mesmo sem cirurgia', async () => {
@@ -439,7 +450,7 @@ describe('fila única — o painel é o mesmo em todos os turnos', () => {
     expect(card).toBeTruthy()
   })
 
-  it('quem assume o posto herda o badge de plantão e ganha "cobre X"', async () => {
+  it('quem assume o posto herda o badge de plantão e ganha "Substituindo X"', async () => {
     // override gravado na chave da noite, como a gravação passa a fazer
     render(<LiberacoesView {...noite({
       escala: {
@@ -455,7 +466,7 @@ describe('fila única — o painel é o mesmo em todos os turnos', () => {
     // a posição continua sendo a da KARINE, mas quem responde é a MARILIA
     expect(posto.textContent).toContain('Marilia')
     expect(posto.textContent).toContain('Plantão Unimed')
-    expect(posto.textContent).toContain('cobre Karine')
+    expect(posto.textContent).toContain('Substituindo Karine')
     // e o posto segue trabalhando: quem cobre não nasce liberado nem Livre
     expect(posto.textContent).not.toMatch(/Livre|Liberado/)
   })

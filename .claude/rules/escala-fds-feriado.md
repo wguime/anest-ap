@@ -71,7 +71,7 @@ noite vazia NÃO trava a publicação (cai na grade) — manhã/tarde travam.
 **Substituto na vaga:** nome fora do P1–P4 na
 linha 19-07 (dom: JOAO RICARDO) some se casar por primeiro nome
 (`resolverNomeEstrito` proíbe token solto p/ nome composto) e ASSUME o selo da
-vaga livre quando é 1↔1 (P3 da Cristina), com "cobre X" no papel. Rollout: sem linha 'fds' publicada,
+vaga livre quando é 1↔1 (P3 da Cristina), com "Substituindo X" no papel. Rollout: sem linha 'fds' publicada,
 sáb/dom seguem por hospital + aviso a quem edita. Demo `DEMO_DATE_FDS`
 (27/06, DEV-only) + e2e `escala-cirurgica-fds.spec.ts`.
 
@@ -641,7 +641,7 @@ não passam por lá — vêm de `linhasNoturnasFds`, derivadas da grade. A troca
 aplicada por cima (`comAssuncao`), com **chave e `nomeOriginal` intocados**: é
 isso que faz as marcações já gravadas continuarem valendo e que faz quem cobre
 **herdar o badge "Plantão Unimed/HRO"**, porque `plantaoFisicoDe` casa pelo nome
-da GRADE. O papel ganha "· cobre X", a mesma frase do substituto lido do
+da GRADE. O papel ganha "· Substituindo X", a mesma frase do substituto lido do
 documento (EDUARDO, 30/08) — um código só para os dois caminhos.
 
 O Select de **Posição na fila** passou a listar `linhasFase` (a fila EXIBIDA) e a
@@ -657,5 +657,42 @@ noite, a fila da noite precisa de fonte própria para ela.
 
 Travas: describe "o painel é o mesmo em todos os turnos" em
 `escalaFdsTelaUnica.test.jsx` (as duas opções presentes no card noturno · quem
-assume herda o badge e o "cobre X" · o posto coberto não nasce Livre nem
+assume herda o badge e o "Substituindo X" · o posto coberto não nasce Livre nem
 liberado). Conferido que os três FALHAM contra o código anterior.
+
+### FILA ÚNICA — a troca de turno LIBERA TODO MUNDO menos os dois postos (dono 29/08)
+
+*"Quero que a noite cumpra a mesma regra de troca de turnos no final de semana:
+ao trocar de turno todos fiquem liberados exceto os plantões (HRO e Unimed)."*
+
+A noite ainda deixava verdes quem **herdou a cirurgia da tarde** — o card noturno
+lê os casos do vespertino (`FDS_TURNO_CASOS.noturno`), e em 30/08 isso mantinha
+Nathalia e Giovana trabalhando às 19h por causa de uma cirurgia do turno
+anterior. A herança é do TURNO DE TRÁS: quem estava em sala às 18h59 foi liberado
+às 19h, e é exatamente isso que a troca de turno significa.
+
+`semEscalacaoNoTurno(l)` responde "está escalado NESTE turno?" com regras
+diferentes por turno: no dia é `naoEscalado` (tem sala/cirurgião/caso); na NOITE
+da fila única é só `!plantaoFisicoDe(l)` — **os dois postos e mais ninguém**.
+Resultado: às 19h a tela tem dois cards verdes e o resto liberado.
+
+⚠️ **A cirurgia herdada CONTINUA VISÍVEL no card** — a decisão de 15/08 ("a
+cirurgia em curso não some às 19h") vale. O que ela deixou de fazer é decidir
+quem está trabalhando no turno. Card vermelho com a cirurgia listada é
+informação, não contradição: a cirurgia é do turno passado.
+
+**Duas frases mudaram na mesma rodada:**
+
+- **"cobre X" → "Substituindo X"**, nos DOIS caminhos que a produzem: o
+  substituto lido do documento (`aplicarCoberturaNoite`) e a troca feita à mão no
+  painel. Um código só para os dois.
+- **"Retaguarda 1ª chamada" / "2ª chamada" SAÍRAM** (`FDS_NOITE_PAPEL.ret1/ret2`
+  agora são `null`). As colunas 3 e 4 seguem sendo a ordem de chamada — quem diz
+  isso é a POSIÇÃO na fila, não uma frase no card. Sem papel, o card fica igual
+  ao dos numerados da lista, que é o que eles são à noite. ⚠️ `aplicarCoberturaNoite`
+  precisou da guarda: sem posto, o papel passa a ser só "Substituindo X".
+
+Travas: describe "a NOITE classifica como o dia" em `escalaFdsTelaUnica.test.jsx`
+— "SÓ os dois postos ficam verdes" e "a cirurgia herdada APARECE, mas não segura
+ninguém no turno", este último trocando de lado no mesmo dia em que nasceu, com o
+porquê no corpo. Os dois afirmam também que "Retaguarda" sumiu da tela.

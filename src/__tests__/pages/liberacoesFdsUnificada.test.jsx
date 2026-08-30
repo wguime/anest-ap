@@ -250,10 +250,15 @@ describe('turno NOTURNO do FDS — turno próprio, fila da grade 19-07 (dono 15/
 
   it('o card noturno herda a cirurgia da TARDE em curso (noturno não tem caso próprio)', () => {
     // Cristina não tem caso; Matheus tem o do HRO (turno matutino no fixture) —
-    // o que importa é a base ser a vespertina, sem quebrar quem não tem caso
+    // o que importa é a base ser a vespertina, sem quebrar quem não tem caso.
+    // ⚠️ o rótulo "Retaguarda 1ª/2ª chamada" SAIU em 29/08 a pedido do dono: as
+    // colunas 3 e 4 seguem sendo a ordem de chamada, mas quem diz isso é a
+    // POSIÇÃO na fila, não uma frase no card.
     montar({ turno: 'noturno' })
     expect(cardDe('noite:MATHEUS')).toBeTruthy()
-    expect(cardDe('noite:CRISTINA').textContent).toContain('Retaguarda 2ª chamada')
+    expect(cardDe('noite:CRISTINA')).toBeTruthy()
+    expect(cardDe('noite:CRISTINA').textContent).not.toMatch(/Retaguarda/)
+    expect(document.body.textContent).not.toMatch(/Retaguarda/)
   })
 
   it('ordem DITADA da noite acrescenta os Pn da lista numerada no fim da fila (dono 16/08)', () => {
