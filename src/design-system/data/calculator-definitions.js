@@ -3911,6 +3911,34 @@ const utiCalculators = [
 
 const periopCalculators = [
   {
+    // Agrupa ASA, Mallampati e Cormack-Lehane, que devolviam a classe que o
+    // usuário acabara de escolher — consulta, não cálculo. As três seguem no
+    // arquivo como `inactive` e com entrada em `LEGACY_ID_MAP` apontando para
+    // cá, então favorito antigo abre este card.
+    id: 'periop_classificacoes',
+    title: 'Classificações',
+    subtitle: 'Estado físico e via aérea',
+    // A busca casa título, subtítulo e `keywords`. Sem isto, agrupar as três
+    // num card tornaria "Cormack" e "Mallampati" inbuscáveis.
+    keywords: 'ASA Mallampati Cormack-Lehane Cormack laringoscopia via aérea difícil estado físico Samsoon Yentis',
+    icon: 'ClipboardCheck',
+    status: 'active',
+    customRender: 'classificacoes',
+    inputs: [],
+    compute: () => null,
+    resultMessage: () => '',
+    infoBox: {
+      keyPoints: [
+        'ASA: estado físico, I a VI. O sufixo E marca emergência (ex.: ASA IIIE)',
+        'Mallampati: previsão de via aérea difícil ANTES da indução — classes III e IV',
+        'Cormack-Lehane: o que se VÊ à laringoscopia — graus IIb, IIIa, IIIb e IV são difíceis',
+        'Mallampati isolada tem baixo valor preditivo: combinar com distância tireomentoniana, abertura bucal e mobilidade cervical',
+      ],
+      reference:
+        'ASA Physical Status Classification System | Mallampati SR et al. Can Anaesth Soc J 1985 (mod. Samsoon e Young 1987) | Cormack RS, Lehane J. Anaesthesia 1984 (subdiv. Yentis e Lee 1998)',
+    },
+  },
+  {
     id: 'periop_apfel',
     title: 'Apfel (NVPO)',
     subtitle: 'PONV',
@@ -4132,7 +4160,7 @@ const periopCalculators = [
     title: 'ASA',
     subtitle: 'Classificação Estado Fisico',
     icon: 'User',
-    status: 'active',
+    status: 'inactive',
     inputs: [
       {
         id: 'asa',
@@ -4202,7 +4230,7 @@ const periopCalculators = [
     title: 'Mallampati',
     subtitle: 'Via aérea',
     icon: 'Eye',
-    status: 'active',
+    status: 'inactive',
     inputs: [
       {
         id: 'classe',
@@ -4246,7 +4274,7 @@ const periopCalculators = [
     title: 'Cormack-Lehane',
     subtitle: 'Laringoscopia Direta',
     icon: 'Eye',
-    status: 'active',
+    status: 'inactive',
     inputs: [
       {
         id: 'grau',
@@ -6940,20 +6968,24 @@ const dorCalculators = [
       const { morfinaVOeq, doseDestino, doseReduzida, razaoMetadona } = resultado;
       const unidadeDestino = values.opioide_destino.includes('fentanil') ? 'mcg' : 'mg';
 
+      // ⚠️ O número em destaque é `score`, e ele PRECISA ser a dose que se
+      // prescreve. Antes era `doseDestino`, o equianalgésico BRUTO — ou seja, o
+      // número maior da tela era justamente o que não se deve prescrever, e a
+      // dose correta ficava numa linha de detalhe chamada "Dose sugerida",
+      // que ainda por cima soa opcional. Agora o bruto desce para o bloco de
+      // conferência, onde serve para auditar a conta.
       return {
-        score: doseDestino,
-        riskLabel: `${doseReduzida.toFixed(1)} ${unidadeDestino}`,
+        score: doseReduzida,
         details: {
-          'Dose calculada': `${doseDestino.toFixed(1)} ${unidadeDestino}`,
-          'Dose sugerida (-25%)': `${doseReduzida.toFixed(1)} ${unidadeDestino}`,
           'Morfina VO equivalente': `${morfinaVOeq.toFixed(1)} mg/dia`,
           ...(razaoMetadona ? { 'Razão aplicada (metadona)': `${razaoMetadona}:1 — Ripamonti` } : {}),
+          'Equianalgésico bruto': `${doseDestino.toFixed(1)} ${unidadeDestino} (antes da redução)`,
         },
       };
     },
     resultMessage: (result) => {
       if (!result) return 'Preencha origem, dose e destino';
-      return `Dose equivalente: ${result.score.toFixed(1)}`;
+      return 'Dose a PRESCREVER — já com a redução de 25% por tolerância cruzada incompleta. Titular pela resposta clínica.';
     },
     infoBox: {
       keyPoints: [
@@ -7224,6 +7256,10 @@ export const calculatorSections = [
 // app — as desativadas por serem de outra especialidade não ganham destino,
 // porque inventar um seria pior que não ter.
 const LEGACY_ID_MAP = {
+  // Card de classificações — 30/08/2026
+  'periop_asa': 'periop_classificacoes',
+  'periop_mallampati': 'periop_classificacoes',
+  'periop_cormack': 'periop_classificacoes',
   // Triagem de 29/08/2026 — `docs/revisao-calculadoras-triagem.md`
   'risco_goldman': 'risco_rcri',      // índice de 1977 superado pelo RCRI (ACC/AHA 2024)
   'uti_apache2': 'uti_saps3',         // calibração de 1985; SAPS 3 validado p/ América do Sul

@@ -92,10 +92,38 @@ describe('LEGACY_ID_MAP — só para quem tem sucessora', () => {
   });
 });
 
+describe('card de Classificações — 3 viram 1', () => {
+  // ASA, Mallampati e Cormack devolviam a classe que o usuário acabara de
+  // escolher: consulta, não cálculo. As três seguem no arquivo como `inactive`
+  // e redirecionam para o card, então favorito antigo não vira tela morta.
+  it.each(['periop_asa', 'periop_mallampati', 'periop_cormack'])('%s está inactive', (id) => {
+    expect(buscarBruto(id)?.status).toBe('inactive');
+  });
+
+  it.each(['periop_asa', 'periop_mallampati', 'periop_cormack'])(
+    'favorito em %s abre o card de Classificações',
+    (id) => {
+      expect(getCalculatorById(id)?.id).toBe('periop_classificacoes');
+    },
+  );
+
+  it('o card existe, está ativo e usa o display próprio', () => {
+    const card = buscarBruto('periop_classificacoes');
+    expect(card?.status).toBe('active');
+    expect(card?.customRender).toBe('classificacoes');
+  });
+
+  it('o ASA continua sendo entrada da SORT e da P-POSSUM — a definição não sumiu', () => {
+    // Agrupar preserva as definições e os exemplos de cada classe; excluir, não.
+    const asa = buscarBruto('periop_asa');
+    expect(asa.inputs.find((i) => i.id === 'asa')?.options).toHaveLength(6);
+  });
+});
+
 describe('o que sobra', () => {
-  it('as ativas caem para 56', () => {
-    // 71 antes + 5 cards de Indicação de UTI = 76; menos as 20 desativadas = 56.
-    expect(getActiveCalculators()).toHaveLength(56);
+  it('as ativas caem para 54', () => {
+    // 76 − 20 da triagem = 56; menos ASA/Mallampati/Cormack, mais o card = 54.
+    expect(getActiveCalculators()).toHaveLength(54);
   });
 
   it('nenhuma seção fica vazia na tela', () => {
@@ -114,8 +142,8 @@ describe('o que sobra', () => {
   });
 
   it('o total de definições não caiu — nada foi apagado', () => {
-    // 80 originais + 5 cards de Indicação de UTI = 85
-    expect(getAllCalculators()).toHaveLength(85);
+    // 80 originais + 5 de Indicação de UTI + 1 card de Classificações = 86
+    expect(getAllCalculators()).toHaveLength(86);
   });
 });
 

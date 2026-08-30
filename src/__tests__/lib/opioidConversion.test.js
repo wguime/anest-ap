@@ -18,6 +18,7 @@ import {
   meddFromMethadone,
   converterOpioide,
 } from '../../lib/opioidConversion';
+import { getAllCalculators } from '../../design-system/data/calculator-definitions.js';
 
 describe('razão da metadona — escalonada, não fixa', () => {
   it.each([
@@ -145,5 +146,46 @@ describe('conversão — comportamento geral', () => {
     expect(converterOpioide({ origem: 'morfina_vo', destino: 'morfina_iv', dose: 0 })).toBeNull();
     expect(converterOpioide({ origem: 'morfina_vo', destino: 'morfina_iv', dose: -10 })).toBeNull();
     expect(converterOpioide({ origem: 'heroina', destino: 'morfina_vo', dose: 10 })).toBeNull();
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// O cartão de resultado
+// ---------------------------------------------------------------------------
+
+describe('o número em destaque é o que se PRESCREVE', () => {
+  // `ResultDisplay` mostra `result.score` em 3xl (`CalculatorShowcase.jsx:339`).
+  // Antes o `score` era o equianalgésico BRUTO — o número maior da tela era
+  // justamente o que não se deve prescrever, e a dose correta ficava numa linha
+  // chamada "Dose sugerida", que ainda soa opcional.
+  const compute = getAllCalculators().find((c) => c.id === 'dor_conversão').compute;
+
+  it('300 mg/dia de morfina VO → metadona: destaque 18,8 e bruto 25,0', () => {
+    const r = compute({ opioide_origem: 'morfina_vo', opioide_destino: 'metadona_vo', dose_origem: 300 });
+    expect(r.score).toBeCloseTo(18.75, 2);
+    expect(r.details['Equianalgésico bruto']).toContain('25,0'.replace(',', '.'));
+  });
+
+  it('o destaque é sempre 75% do equianalgésico bruto', () => {
+    for (const destino of ['morfina_iv', 'oxicodona_vo', 'fentanil_td', 'metadona_vo']) {
+      const r = compute({ opioide_origem: 'morfina_vo', opioide_destino: destino, dose_origem: 240 });
+      const bruto = parseFloat(r.details['Equianalgésico bruto']);
+      expect(r.score / bruto, destino).toBeCloseTo(0.75, 4);
+    }
+  });
+
+  it('não sobrou linha com nome que soe opcional', () => {
+    const r = compute({ opioide_origem: 'morfina_vo', opioide_destino: 'oxicodona_vo', dose_origem: 60 });
+    const chaves = Object.keys(r.details).join(' ');
+    expect(chaves).not.toMatch(/sugerid/i);
+    expect(chaves).not.toMatch(/Dose calculada/i);
+  });
+
+  it('a mensagem diz que a redução já foi aplicada', () => {
+    const def = getAllCalculators().find((c) => c.id === 'dor_conversão');
+    const msg = def.resultMessage({ score: 18.75, details: {} });
+    expect(msg).toMatch(/PRESCREVER/);
+    expect(msg).toMatch(/25%/);
   });
 });

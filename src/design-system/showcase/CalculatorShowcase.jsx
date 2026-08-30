@@ -18,6 +18,7 @@ import { cn } from '../utils/tokens';
 import { WidgetCard } from '../components/ui/widget-card';
 import { RiskFactorCard } from '../components/anest/risk-factor-card';
 import { ClinicalDisclaimer } from '../components/anest/clinical-disclaimer';
+import { ClassificacoesDisplay } from './displays/ClassificacoesDisplay';
 import { Input } from '../components/ui/input';
 import { useUser } from '../../contexts/UserContext';
 
@@ -2033,7 +2034,7 @@ function CalculatorPage({ calculator, _onBack }) {
       )}
 
       {/* Select inputs as cards or dropdown - Skip for calculators with inputs inside custom displays */}
-      {selectInputs.length > 0 && !['viaAerea', 'reversores', 'balancoHidricoTransop', 'aldrete', 'sofa', 'faAnticoag', 'sedacaoDelirium', 'saps3', 'anticoagulantes', 'inibidoresApetite', 'criterioUti'].includes(calculator.customRender) && (
+      {selectInputs.length > 0 && !['viaAerea', 'reversores', 'balancoHidricoTransop', 'aldrete', 'sofa', 'faAnticoag', 'sedacaoDelirium', 'saps3', 'anticoagulantes', 'inibidoresApetite', 'criterioUti', 'classificacoes'].includes(calculator.customRender) && (
         <div
           className={cn(
             "p-4 rounded-xl overflow-visible",
@@ -2064,7 +2065,7 @@ function CalculatorPage({ calculator, _onBack }) {
 
       {/* Number inputs - Skip for calculators with inputs inside custom displays */}
       {numberInputs.length > 0 &&
-       !['pedicalc', 'adultcalc', 'viaAerea', 'pedDesfib', 'broselow', 'hollidaySegar', 'acls', 'reversores', 'balancoHidricoTransop', 'aldrete', 'sofa', 'faAnticoag', 'sedacaoDelirium', 'saps3', 'anticoagulantes', 'inibidoresApetite', 'criterioUti'].includes(calculator.customRender) && (
+       !['pedicalc', 'adultcalc', 'viaAerea', 'pedDesfib', 'broselow', 'hollidaySegar', 'acls', 'reversores', 'balancoHidricoTransop', 'aldrete', 'sofa', 'faAnticoag', 'sedacaoDelirium', 'saps3', 'anticoagulantes', 'inibidoresApetite', 'criterioUti', 'classificacoes'].includes(calculator.customRender) && (
         <div
           className={cn(
             "p-4 rounded-xl",
@@ -2190,6 +2191,10 @@ function CalculatorPage({ calculator, _onBack }) {
 
       {calculator.customRender === 'saps3' && (
         <Saps3Display />
+      )}
+
+      {calculator.customRender === 'classificacoes' && (
+        <ClassificacoesDisplay />
       )}
 
       {calculator.customRender === 'criterioUti' && (
@@ -2385,12 +2390,15 @@ export function CalculatorShowcase({ selectedCalc: selectedCalcProp, onSelectedC
       .filter(Boolean)
       .filter(c => c.status !== 'inactive');
 
-    const filteredFavorites = term
-      ? favoriteCalcs.filter(c =>
-          c.title.toLowerCase().includes(term) ||
-          c.subtitle?.toLowerCase().includes(term)
-        )
-      : favoriteCalcs;
+    // `keywords` = nomes que NÃO cabem no subtítulo mas precisam achar o card.
+    // Sem isso, agrupar três escalas num card só tornaria "Cormack" inbuscável:
+    // a busca casa apenas título e subtítulo, e o subtítulo trunca no cartão.
+    const casa = (c) =>
+      c.title.toLowerCase().includes(term) ||
+      c.subtitle?.toLowerCase().includes(term) ||
+      c.keywords?.toLowerCase().includes(term);
+
+    const filteredFavorites = term ? favoriteCalcs.filter(casa) : favoriteCalcs;
 
     const favoritasSection = filteredFavorites.length > 0
       ? [{ id: 'favoritas', title: 'Favoritas', icon: 'Star', calculators: filteredFavorites }]
@@ -2401,11 +2409,7 @@ export function CalculatorShowcase({ selectedCalc: selectedCalcProp, onSelectedC
       ? sections
           .map((section) => ({
             ...section,
-            calculators: section.calculators.filter(
-              (calc) =>
-                calc.title.toLowerCase().includes(term) ||
-                calc.subtitle?.toLowerCase().includes(term)
-            ),
+            calculators: section.calculators.filter(casa),
           }))
           .filter((section) => section.calculators.length > 0)
       : sections;
