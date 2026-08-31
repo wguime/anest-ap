@@ -86,9 +86,10 @@ export function furmanReplacement(weightKg, npoHours, hourNumber) {
  *   medio:   4 ml/kg/h
  *   grande:  6 ml/kg/h
  *
- * Coeficientes alinhados com `ped_fluidos` (mesma calc no app) e POQI-11
- * (BJA 2024), que recomenda abordagem conservadora — terceiro espaço é
- * conceito controverso desde Chappell/Jacob 2008.
+ * Coeficientes do POQI-11 (BJA 2024), que recomenda abordagem conservadora —
+ * terceiro espaço é conceito controverso desde Chappell/Jacob 2008.
+ * (Eram "alinhados com `ped_fluidos`"; esse card foi inativado em 30/08/2026
+ * por duplicar o Balanço Hídrico Transoperatório, que é quem usa esta lib.)
  */
 export function thirdSpaceLoss(weightKg, porte) {
   const map = { pequeno: 2, medio: 4, grande: 6 };

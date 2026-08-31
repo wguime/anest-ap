@@ -29,6 +29,21 @@ export const RISK_LEVELS = {
   critico: { label: 'Risco Crítico', level: 'critico' },
 };
 
+/**
+ * Lê um campo numérico preservando o ZERO digitado.
+ *
+ * `parseFloat(v) || padrao` descarta o zero, porque 0 é falsy — e em variável
+ * fisiológica o zero é o valor mais grave que existe: anúria, apneia, pressão
+ * indetectável. Custou 8 pontos de APACHE II em produção e, depois, a classe IV
+ * do ATLS. Ver `.claude/skills/calculadoras/SKILL.md`, regra 2.
+ *
+ * Campo vazio (`''`, `undefined`) continua caindo no padrão.
+ */
+const numeroOuPadrao = (valor, padrao) => {
+  const n = parseFloat(valor);
+  return Number.isFinite(n) ? n : padrao;
+};
+
 // =============================================================================
 // SEÇÃO 1: PEDIATRIA - DOSES (1 calculadora)
 // =============================================================================
@@ -542,8 +557,13 @@ const pedPeriopCalculators = [
       const tipo = values.tipo_alimento;
       if (!tipo) return null;
 
+      // ⚠️ As chaves têm de bater LETRA POR LETRA com o `value` das opções
+      // acima. `líquido_claro` (com acento) contra `value: 'liquido_claro'`
+      // deixava a opção mais escolhida do card sem resultado nenhum: o mapa
+      // devolvia `undefined`, `info.horas` lançava, e o `catch` do
+      // `CalculatorShowcase` engolia a exceção em silêncio.
       const TEMPOS_JEJUM = {
-        líquido_claro: { horas: 2, label: 'Líquidos claros', nota: 'ESAIC/SPA: 1h e seguro' },
+        liquido_claro: { horas: 2, label: 'Líquidos claros', nota: 'ESAIC/SPA: 1h e seguro' },
         leite_materno: { horas: 4, label: 'Leite materno', nota: '' },
         formula: { horas: 6, label: 'Formula infantil', nota: '' },
         leite_vaca: { horas: 6, label: 'Leite não humano', nota: '' },
@@ -552,6 +572,7 @@ const pedPeriopCalculators = [
       };
 
       const info = TEMPOS_JEJUM[tipo];
+      if (!info) return null;
 
       return {
         score: info.horas,
@@ -564,7 +585,7 @@ const pedPeriopCalculators = [
     },
     resultMessage: (result) => {
       if (!result || !result.details) return 'Selecione o tipo de alimento';
-      return `Jejum mínimo: ${result.details['Tempo minimo']} para ${result.details['Tipo de alimento']}`;
+      return `Jejum mínimo: ${result.details['Tempo mínimo']} para ${result.details['Tipo de alimento']}`;
     },
     infoBox: {
       keyPoints: [
@@ -1775,9 +1796,13 @@ const pedUtiCalculators = [
   {
     id: 'ped_fluidos',
     title: 'Manutenção de Fluidos Pediátrica',
-    subtitle: 'Regra 4-2-1 + Deficit + Perdas',
+    // Subconjunto do Balanço Hídrico Transoperatório, que cobre adulto E
+    // pediátrico com os mesmos coeficientes de terceiro espaço (2/4/6) e mantém
+    // o acompanhamento hora a hora.
+    // Auditoria de 30/08/2026 — `docs/auditoria-calculadoras-uso-real.md` §6.1.
+    subtitle: 'Regra 4-2-1 + Deficit + Perdas (duplicata — usar adt_balanco_hidrico_transop)',
     icon: 'Droplets',
-    status: 'active',
+    status: 'inactive',
     inputs: [
       { id: 'peso', label: 'Peso (kg)', type: 'number', min: 0.5, max: 100, step: 0.1 },
       { id: 'jejum', label: 'Horas de jejum', type: 'number', min: 0, max: 24, step: 1 },
@@ -1884,7 +1909,10 @@ const pedUtiCalculators = [
       { id: 'hematocritoMinimo', label: 'Hematocrito mínimo aceitável (%)', type: 'number', min: 15, max: 40, step: 1 },
     ],
     compute: (values) => {
-      const volemiaMap = { prematuro: 95, rn_termo: 85, lactente: 80, criança: 75, adolescente: 70 };
+      // ⚠️ `criança` (com cedilha) não casava com `value: 'crianca'` e caía no
+      // `|| 75` — que por coincidência era o mesmo 75 mL/kg. O número saía
+      // certo por acaso; mudar o default quebraria em silêncio.
+      const volemiaMap = { prematuro: 95, rn_termo: 85, lactente: 80, crianca: 75, adolescente: 70 };
       const volemiaPorKg = volemiaMap[values.faixaEtaria] || 75;
       const peso = parseFloat(values.peso) || 0;
       const hti = parseFloat(values.hematocritoInicial) || 0;
@@ -1998,7 +2026,10 @@ const pedUtiCalculators = [
       { id: 'perdaEstimada', label: 'Perda estimada (mL)', type: 'number', min: 0, max: 5000, step: 10 },
     ],
     compute: (values) => {
-      const volemiaMap = { prematuro: 95, rn_termo: 85, lactente: 80, criança: 75, adolescente: 70 };
+      // ⚠️ `criança` (com cedilha) não casava com `value: 'crianca'` e caía no
+      // `|| 75` — que por coincidência era o mesmo 75 mL/kg. O número saía
+      // certo por acaso; mudar o default quebraria em silêncio.
+      const volemiaMap = { prematuro: 95, rn_termo: 85, lactente: 80, crianca: 75, adolescente: 70 };
       const volemiaPorKg = volemiaMap[values.faixaEtaria] || 75;
       const peso = parseFloat(values.peso) || 0;
       const perdaML = parseFloat(values.perdaEstimada) || 0;
@@ -2526,7 +2557,7 @@ const hemoCalculators = [
       keyPoints: [
         'Manutenção: Holliday-Segar 4-2-1 (4 ml/kg/h até 10kg + 2 ml/kg/h até 20kg + 1 ml/kg/h acima)',
         'Déficit de jejum reposto 50%/25%/25% nas 3 primeiras horas (esquema de Furman)',
-        'Terceiro espaço: pequeno 2 / médio 4 / grande 6 ml/kg/h (alinhado com ped_fluidos e POQI-11)',
+        'Terceiro espaço: pequeno 2 / médio 4 / grande 6 ml/kg/h (POQI-11)',
         'Reposição de sangramento: cristaloide 3:1 ou coloide/sangue 1:1',
         'EBV: 70 ml/kg adulto, 75 ml/kg criança, 80 ml/kg lactente, 85 ml/kg neonato',
         'Meta de diurese: ≥0,5 ml/kg/h adulto, ≥1 ml/kg/h pediátrico',
@@ -2546,9 +2577,13 @@ const hemoCalculators = [
   {
     id: 'hemo_deficit',
     title: 'Deficit Hidrico',
-    subtitle: 'Regra 4-2-1 + jejum',
+    // Subconjunto estrito do Balanço Hídrico Transoperatório, que faz a mesma
+    // conta 4-2-1 + jejum e ainda entrega manutenção horária e terceiro espaço
+    // na mesma tela. `hemo_holliday` já havia saído por este mesmo motivo.
+    // Auditoria de 30/08/2026 — `docs/auditoria-calculadoras-uso-real.md` §6.1.
+    subtitle: 'Regra 4-2-1 + jejum (duplicata — usar adt_balanco_hidrico_transop)',
     icon: 'Droplet',
-    status: 'active',
+    status: 'inactive',
     inputs: [
       { id: 'peso', label: 'Peso (kg)', type: 'number', min: 1, max: 200, step: 0.1 },
       { id: 'jejum', label: 'Tempo de jejum (horas)', type: 'number', min: 0, max: 24, step: 1 },
@@ -2653,11 +2688,14 @@ const hemoCalculators = [
       { id: 'diurese', label: 'Diurese (mL/h)', type: 'number', min: 0, max: 200, step: 1 },
     ],
     compute: (values) => {
-      const peso = parseFloat(values.peso) || 70;
-      const fc = parseFloat(values.fc) || 0;
-      const pas = parseFloat(values.pas) || 120;
-      const fr = parseFloat(values.fr) || 16;
-      const diurese = parseFloat(values.diurese) || 30;
+      // ⚠️ `|| padrao` descartava o zero: anúria (diurese 0) — o critério
+      // urinário de CLASSE IV — virava 30 mL/h e caía para classe I, e o teste
+      // não pegava porque usava `diurese: 2`. Mesma armadilha em PAS e FR.
+      const peso = numeroOuPadrao(values.peso, 70);
+      const fc = numeroOuPadrao(values.fc, 0);
+      const pas = numeroOuPadrao(values.pas, 120);
+      const fr = numeroOuPadrao(values.fr, 16);
+      const diurese = numeroOuPadrao(values.diurese, 30);
 
       if (peso <= 0) return null;
 
@@ -2718,11 +2756,17 @@ const hemoCalculators = [
       return `Classe ${result.score} ATLS - ${result.details['Perda estimada']}`;
     },
     infoBox: {
+      // ⚠️ Percentual da volemia, nunca mililitro fixo. A tabela clássica
+      // (750/1500/2000 mL) é de um adulto de 70 kg e contradizia o resultado
+      // acima, que escala com o peso: a 100 kg o card dizia "ate 2100 mL" em
+      // cima e "750-1500mL" embaixo.
       keyPoints: [
-        'Classe I: <15% (ate 750mL) - FC<100, PA normal, FR 14-20',
-        'Classe II: 15-30% (750-1500mL) - FC 100-120, PA normal, FR 20-30',
-        'Classe III: 30-40% (1500-2000mL) - FC 120-140, PA baixa, FR 30-40',
-        'Classe IV: >40% (>2000mL) - FC>140, PA muito baixa, FR>35',
+        'Classe I: <15% da volemia - FC<100, PA normal, FR 14-20, diurese >30 mL/h',
+        'Classe II: 15-30% - FC 100-120, PA normal, FR 20-30, diurese 20-30 mL/h',
+        'Classe III: 30-40% - FC 120-140, PA baixa, FR 30-40, diurese 5-15 mL/h',
+        'Classe IV: >40% - FC>140, PA muito baixa, FR>35, diurese desprezível',
+        'Os volumes em mL saem da volemia do paciente (70 mL/kg), não de tabela fixa',
+        'A classe vem do PIOR parâmetro isolado, não da soma dos quatro',
         'Classes III-IV: Iniciar hemotransfusão',
       ],
       reference: 'ATLS 10th Edition - American College of Surgeons',
@@ -3426,7 +3470,7 @@ const utiCalculators = [
     resultMessage: () => '',
     infoBox: {
       keyPoints: [
-        'qSOFA (triagem): 3 critérios — Alteração mental, FR≥22, PAS≤100',
+        'qSOFA (prognóstico à beira do leito): 3 critérios — Alteração mental, FR≥22, PAS≤100',
         'SOFA (completo): 6 sistemas — Resp, Coag, Hepático, Cardio, Neuro, Renal',
         'Sepse (Sepsis-3): Infecção + aumento ≥2 pontos no SOFA basal',
         'qSOFA ≥ 2: investigar sepse com SOFA completo',
@@ -7265,6 +7309,11 @@ const LEGACY_ID_MAP = {
   'uti_apache2': 'uti_saps3',         // calibração de 1985; SAPS 3 validado p/ América do Sul
   'ped_cheops': 'ped_flacc',          // CHEOPS não mede dor que persiste após a SRPA
   'seg_mews': 'seg_news2',            // NEWS2 é o sucessor direto do MEWS
+  // Auditoria de 30/08/2026 — duplicatas de fluidos
+  // (`docs/auditoria-calculadoras-uso-real.md` §6.1). O destino é uma das 3
+  // calculadoras com favorito registrado, então o redirecionamento importa.
+  'hemo_deficit': 'adt_balanco_hidrico_transop',
+  'ped_fluidos': 'adt_balanco_hidrico_transop',
   'periop_aldrete_mod': 'periop_aldrete',
   'periop_aldrete_orig': 'periop_aldrete',
   'uti_sofa': 'uti_sofa_unificado',

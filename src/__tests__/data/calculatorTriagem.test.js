@@ -120,10 +120,63 @@ describe('card de Classificações — 3 viram 1', () => {
   });
 });
 
+describe('duplicatas de fluidos — auditoria de 30/08/2026', () => {
+  // `docs/auditoria-calculadoras-uso-real.md` §6.1. O Balanço Hídrico
+  // Transoperatório faz a conta 4-2-1 + jejum (que era o `hemo_deficit`
+  // inteiro) e o terceiro espaço por porte (que era o `ped_fluidos`), para
+  // adulto e pediátrico, mantendo o acompanhamento hora a hora. `hemo_holliday`
+  // já havia saído por este mesmo motivo — a triagem de 29/08 viu o eixo e
+  // parou no meio dele.
+  const DUPLICATAS_DE_FLUIDO = ['hemo_deficit', 'ped_fluidos'];
+
+  it.each(DUPLICATAS_DE_FLUIDO)('%s está inactive', (id) => {
+    expect(buscarBruto(id)?.status).toBe('inactive');
+  });
+
+  it.each(DUPLICATAS_DE_FLUIDO)('%s continua no arquivo, pronta para voltar', (id) => {
+    const c = buscarBruto(id);
+    expect(c?.compute, `${id} perdeu a conta`).toBeTypeOf('function');
+  });
+
+  it.each(DUPLICATAS_DE_FLUIDO)('favorito em %s abre o Balanço Hídrico Transoperatório', (id) => {
+    // O destino é uma das 3 calculadoras com favorito registrado no grupo —
+    // aqui o redirecionamento não é hipótese.
+    const c = getCalculatorById(id);
+    expect(c?.id).toBe('adt_balanco_hidrico_transop');
+    expect(c?.status).toBe('active');
+  });
+
+  it('o sucessor cobre adulto e pediátrico, que é o que justifica o corte', () => {
+    const sucessor = buscarBruto('adt_balanco_hidrico_transop');
+    expect(sucessor.subtitle).toContain('adulto e pediátrico');
+  });
+
+  it('o Holliday-Segar pediátrico FICA — é o único com a regra diária 100-50-20', () => {
+    const c = buscarBruto('ped_holliday_segar');
+    expect(c?.status).toBe('active');
+    expect(c.compute({ peso: 20 }).details.ml24h).toBe(1500);
+  });
+
+  it('nenhum texto de tela aponta para uma calculadora inativa', () => {
+    // O `keyPoints` do sucessor citava "alinhado com ped_fluidos" — id interno
+    // em texto de usuário, e agora apontando para card morto.
+    const inativas = getAllCalculators().filter((c) => c.status === 'inactive').map((c) => c.id);
+    const textos = getActiveCalculators().flatMap((c) => [
+      ...(c.infoBox?.keyPoints || []),
+      ...(c.infoBox?.warnings || []),
+      c.infoBox?.interpretation || '',
+      c.subtitle || '',
+    ]);
+    const vazando = textos.filter((t) => inativas.some((id) => t.includes(id)));
+    expect(vazando).toEqual([]);
+  });
+});
+
 describe('o que sobra', () => {
-  it('as ativas caem para 54', () => {
-    // 76 − 20 da triagem = 56; menos ASA/Mallampati/Cormack, mais o card = 54.
-    expect(getActiveCalculators()).toHaveLength(54);
+  it('as ativas caem para 52', () => {
+    // 76 − 20 da triagem = 56; menos ASA/Mallampati/Cormack, mais o card = 54;
+    // menos hemo_deficit e ped_fluidos (auditoria de 30/08) = 52.
+    expect(getActiveCalculators()).toHaveLength(52);
   });
 
   it('nenhuma seção fica vazia na tela', () => {

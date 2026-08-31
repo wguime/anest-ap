@@ -88,3 +88,41 @@ describe('os volumes acompanham o peso — as duas linhas não podem se contradi
     expect(atls({ ...NORMAL, peso: 70 }).details['Volemia calculada']).toContain('4900');
   });
 });
+
+describe('o zero digitado é valor, não campo vazio', () => {
+  // Terceiro defeito (30/08/2026): `parseFloat(v) || padrao` descarta o zero,
+  // porque 0 é falsy. Com `min: 0` no input, anúria — o critério urinário de
+  // classe IV — virava 30 mL/h e caía para classe I, e a conduta da classe IV
+  // é "Cristaloide + Sangue + Protocolo de Transfusão Maciça".
+  //
+  // O teste antigo usava `diurese: 2`, que passa pelo `||` e acerta: verde com
+  // o defeito vivo. É a mesma armadilha que custou 8 pontos de APACHE II
+  // (`.claude/skills/calculadoras/SKILL.md`, regra 2).
+  it('anúria isolada é classe IV, não classe I', () => {
+    expect(atls({ ...NORMAL, diurese: 0 }).score).toBe(4);
+  });
+
+  it('anúria manda mesmo com os outros parâmetros só levemente alterados', () => {
+    expect(atls({ ...NORMAL, fc: 110, diurese: 0 }).score).toBe(4);
+  });
+
+  it('anúria aciona o protocolo de transfusão maciça', () => {
+    expect(atls({ ...NORMAL, diurese: 0 }).details['Conduta']).toContain('Maciça');
+  });
+
+  it('PAS 0 (sem pressão detectável) é classe IV, não classe I', () => {
+    expect(atls({ ...NORMAL, pas: 0 }).score).toBe(4);
+  });
+
+  it('FR 0 (apneia) não é lida como FR 16', () => {
+    // FR 0 não pontua na tabela do ATLS (a classe vem de FR ALTA), mas não pode
+    // ser silenciosamente trocada por 16 — o campo tem `min: 0` e aceita o zero.
+    const r = atls({ ...NORMAL, fr: 0, diurese: 0 });
+    expect(r.score).toBe(4);
+  });
+
+  it('campo vazio continua caindo no padrão — só o zero digitado é preservado', () => {
+    expect(atls({ peso: 70, fc: 80 }).score).toBe(1);
+    expect(atls({ ...NORMAL, diurese: '' }).score).toBe(1);
+  });
+});
