@@ -221,6 +221,22 @@ describe('anexo em lote — cada arquivo vai para a aba do seu hospital', () => 
 
     await waitFor(() => expect(abas()).toHaveLength(0))
   })
+
+  it('leitura CORTADA (truncado) entra na aba COM o aviso — não em silêncio', async () => {
+    // auditoria 31/08: a tela de uma escala avisa "leitura incompleta" desde
+    // 06/08; o lote guardava o flag e não avisava nada — a escala sem as
+    // últimas linhas ia para a conferência como se estivesse inteira, que é o
+    // modo de falha silencioso que o teto de tokens da edge existe para expor.
+    svcMock.parseEscalaImagem.mockResolvedValueOnce({
+      casos: [caso('Sala 1', 'CURY')], hospitalDetectado: 'hro',
+      ordemLiberacao: ['CURY'], truncado: true,
+    })
+    const { container } = montar()
+    await soltarArquivos(container, [img('vespertina-grande.png')])
+
+    await waitFor(() => expect(abas()).toHaveLength(1))
+    expect(await screen.findByText(/leitura foi cortada/i)).toBeTruthy()
+  })
 })
 
 describe('o anestesista é perguntado UMA vez por bloco (dono 30/08)', () => {

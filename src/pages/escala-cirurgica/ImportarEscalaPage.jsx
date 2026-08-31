@@ -23,6 +23,7 @@ import SegmentedSelector from './SegmentedSelector'
 import { linhaVazia, prepararCasosImportados as prepararCasos, normNome, candidatosPrimeiroNome, resumirRodape, casosQuePassamParaOTurno, presencaDoTurno, estaPresente, gruposAnestesista, chavesAnestesista, aplicarAtribuicoes, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import { planoCruzamentoUrgencias, salasContrato } from '@/lib/escalaCirurgicaUrgencias'
+import { hospitalPelaEstrutura } from '@/lib/escalaHospitalEstrutura'
 import { ehDataFilaUnica, ehFeriado } from '@/lib/escalaFds'
 import { ehHoraSequencialEscala } from '@/lib/escalaCirurgicaRegras'
 import { detectarDuplicidadesEscala, formatarOcorrenciaDuplicidade, sugerirParceiroTroca } from '@/lib/escalaCirurgicaDuplicidades'
@@ -374,8 +375,8 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     setSugestaoHosp(null)
     setSugestaoData(null)
     if (/\.(xlsx?|csv)$/i.test(file.name || '')) {
-      // Excel/CSV é o export padrão da Unimed — sugere se o hospital escolhido for outro
-      if (hosp !== 'unimed') setSugestaoHosp({ hospital: 'unimed', origem: 'excel' })
+      // a sugestão sai do CABEÇALHO da planilha, dentro de importarExcel — a
+      // suposição de extensão ("planilha = Unimed") ficou como último recurso
       return importarExcel(file)
     }
     if (String(file.type || '').startsWith('image/')) return importarImagem(file)
@@ -386,11 +387,21 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     if (!file) return
     setCarregando(true)
     try {
-      const { casos: rows, headerScore } = await parseExcelEscala(file)
+      const { casos: rows, headerScore, headers } = await parseExcelEscala(file)
       if (!rows.length) {
         toast({ variant: 'error', title: 'Não consegui ler a planilha', description: 'Confira o arquivo ou use entrada manual.' })
         setCasos([linhaVazia()])
       } else {
+        // A PLANILHA SE DECLARA PELO CABEÇALHO (auditoria 31/08): o lote ganhou
+        // isso em 30/08 — LEITO é do mapa do HRO; IDADE/TEMPO, do export da
+        // Unimed — e este fluxo seguia com "planilha = Unimed" por extensão:
+        // recebendo o xlsx do HRO com o HRO já escolhido, a tela sugeria "Usar
+        // Unimed". Sem marca nenhuma, vale o fallback de sempre (Unimed).
+        const estr = hospitalPelaEstrutura({ casos: rows, headers })
+        const palpite = estr.hospital || 'unimed'
+        setSugestaoHosp(palpite !== hosp
+          ? { hospital: palpite, origem: estr.hospital ? 'estrutura' : 'excel' }
+          : null)
         const { selecionados, lote } = carregarLoteImportado(rows, hosp)
         const fora = lote.length - selecionados.length
         toast({ variant: 'success', title: `${resumoTexto(selecionados)} do turno`, description: `${fora ? `${fora} item(ns) do outro turno ficaram fora. ` : ''}Atribua o anestesista de cada sala. (colunas reconhecidas: ${headerScore})` })
@@ -1424,7 +1435,9 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
             <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
             <p className="text-xs text-warning flex-1">
               O anexo parece ser do <strong>{HOSPITAL_LABEL[sugestaoHosp.hospital]}</strong>
-              {sugestaoHosp.origem === 'excel' ? ' (Excel é o export padrão da Unimed)' : ' (pelo layout da imagem)'}.
+              {sugestaoHosp.origem === 'excel' && ' (Excel é o export padrão da Unimed)'}
+              {sugestaoHosp.origem === 'estrutura' && ' (pelas colunas da planilha)'}
+              {sugestaoHosp.origem === 'vision' && ' (pelo layout da imagem)'}.
             </p>
             <Button size="sm" variant="outline" onClick={aplicarSugestaoHosp}>
               Usar {HOSPITAL_LABEL[sugestaoHosp.hospital]}{sugestaoHosp.origem === 'vision' ? ' e reler' : ''}

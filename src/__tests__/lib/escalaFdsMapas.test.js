@@ -98,6 +98,44 @@ describe('classificação do anexo — o documento se declara', () => {
     expect(r.confirmar).toEqual(['hospital'])
   })
 
+  // ── 2ª FONTE: o CONTEÚDO vota junto com o layout (auditoria 31/08) ─────────
+  // O dia útil ganhou isso em 30/08 (`escalaHospitalEstrutura`) e o FDS ficou
+  // só com o layout — a MESMA lacuna, em fluxo onde ela é mais perigosa: o mapa
+  // do HRO de feriado não tem coluna ANEST nem rodapé vermelho (as duas
+  // assinaturas do layout) e casa quase palavra por palavra com o Materno.
+  // Mesma assimetria de lá: uma marca PREENCHE o vazio; duas CONTRADIZEM o
+  // layout — e contradição pergunta, nunca troca sozinha.
+
+  it('layout vazio + IOSC no conteúdo: o mapa entra como HRO pela estrutura', () => {
+    const r = classificarAnexoMapa({
+      hospitalDetectado: '',
+      dataDetectada: '2026-08-22',
+      casos: [{ sala: 'IOSC', bloco: 'iosc' }],
+    }, fds)
+    expect(r.hospital).toBe('hro')
+    expect(r.confirmar).toEqual([])
+  })
+
+  it('layout "materno" contradito por DUAS marcas do HRO: pergunta, com o conflito visível', () => {
+    const r = classificarAnexoMapa({
+      hospitalDetectado: 'materno',
+      dataDetectada: '2026-08-22',
+      casos: [{ sala: 'IOSC', bloco: 'iosc' }, { sala: 'Bloco M - Sala 1', bloco: 'normal' }],
+    }, fds)
+    expect(r.hospital).toBe('')
+    expect(r.confirmar).toContain('hospital')
+    expect(r.conflitoHospital).toBe('hro')
+  })
+
+  it('UMA marca solta não derruba um layout afirmativo (assimetria de 30/08)', () => {
+    const r = classificarAnexoMapa({
+      hospitalDetectado: 'materno',
+      dataDetectada: '2026-08-22',
+      casos: [{ sala: 'Sala 2 HC' }, { sala: 'IOSC', bloco: 'iosc' }],
+    }, fds)
+    expect(r.hospital).toBe('materno')
+  })
+
   it("a linha 'fds' nunca é hospital de mapa", () => {
     expect(classificarAnexoMapa({ hospitalDetectado: 'fds', dataDetectada: '2026-08-22' }, fds).hospital).toBe('')
   })

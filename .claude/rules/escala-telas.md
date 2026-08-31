@@ -389,3 +389,42 @@ continua sendo da conferência.
 Reparo do dado publicado: `scripts/repair-escala-2026-08-31-vespertino.sql`
 (6 UPDATEs idempotentes, casando pelo valor errado; reimportar zeraria liberações,
 tempos e a troca Rodnei⇄Janaína de um turno em andamento).
+
+## Auditoria ponta a ponta (31/08, 2ª rodada) — a CLASSE do defeito, não os 4
+
+Depois do reparo do vespertino, o dono pediu a auditoria do módulo inteiro atrás
+da CLASSE: "regra que existe e não alcança quem precisa dela". Quatro
+confirmadas, todas com teste que falhava contra o código anterior:
+
+1. **`//` chegava PUBLICADO ao banco — 46 casos em 60 dias (medido).** O ramo
+   final de `aplicarAtribuicoes` preservava o texto cru quando o grupo tinha
+   nome fora do dicionário e ninguém escolhia login; e a fila PULA `//` em toda
+   a lib — a cirurgia herdeira não contava para o dono da sala, que aparecia
+   "livre" com cirurgia em aberto. Agora a herança é escrita por extenso na
+   publicação (nome do grupo; dupla herda inteira, uid nulo). Metade dos casos
+   veio dos mapas de FDS, que publicam pela mesma função.
+2. **Leitura truncada entrava MUDA no lote.** A tela de uma escala avisa
+   "leitura incompleta" desde 06/08 e o FDS tem aviso persistente na lista de
+   mapas; o lote guardava `truncado` e não avisava nada
+   (`ImportarEscalasPage` — agora entra no toast de problemas do anexo).
+3. **"Planilha = Unimed" sobreviveu no fluxo de UMA escala.** O lote decide pelo
+   CABEÇALHO desde 30/08 (LEITO = HRO); a tela individual seguia sugerindo
+   "Usar Unimed" até para o xlsx do HRO com o HRO já escolhido. Agora
+   `importarExcel` consulta `hospitalPelaEstrutura` e a extensão virou fallback.
+4. **`classificarAnexoMapa` (FDS) ganhou a 2ª fonte** (`decidirHospital` +
+   estrutura), a mesma assimetria do dia útil — o risco era maior lá: o mapa do
+   HRO de feriado não tem coluna ANEST nem rodapé vermelho e casa com a
+   descrição do Materno. Conflito devolve `conflitoHospital` e pergunta.
+
+⚠️ Bônus da correção da edge (ebfacdd): os MAPAS de FDS (`secoesTurno: true`,
+sem `hospital`) também liam sem NENHUMA regra por hospital desde 22/08 — o
+mesmo buraco do lote, curado de carona pelos 3 hints por default.
+
+Medições que sustentam o resto (`scripts/diag-escala-leitura-60d.mjs`):
+turno×hora incoerente = 129 casos, TODOS de 22–24/07 (legado da migração por
+turno, não defeito atual); "fora do rodapé" = 45 pessoas-turno em 108 turnos
+(TETO — inclui trocas executadas legítimas); sala de seção com bloco `normal` =
+14 casos desde 18/08 (série do defeito nº 2, reparo em
+`scripts/repair-escala-2026-08-31-matutino-e-blocos.sql`, que também zera o
+cirurgião dos 2 Consultórios da MATUTINA de 31/08 — mesmos defeitos do
+vespertino, no turno que o reparo do dono não cobriu).

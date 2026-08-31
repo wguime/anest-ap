@@ -449,11 +449,67 @@ describe('aplicarAtribuicoes — cirurgia com DOIS anestesistas', () => {
     expect(out[0].anestesistaUserId).toBeNull()
   })
 
-  it('a linha "//" da mesma sala continua herdando a dupla', () => {
+  it('a linha "//" da mesma sala herda a dupla POR ESCRITO', () => {
+    // MUDOU DE LADO em 31/08 (auditoria): este teste travava `'//'` no texto,
+    // e foi assim que 46 casos publicaram com "//" em 60 dias — a fila pula
+    // "//" em toda a lib, então a cirurgia herdeira não contava para ninguém.
+    // A herança materializada preserva a mesma informação (a dupla), agora
+    // legível por quem consome o caso publicado.
     const casos = [...DUPLA, { sala: 'CC - Sala 3', anestesista: '//' }]
     const out = aplicarAtribuicoes(casos, {}, apelidoDe, resolver)
-    expect(out[1].anestesista).toBe('//')
+    expect(out[1].anestesista).toBe('RAQUEL + GABRIELA')
+    expect(out[1].anestesistaUserId).toBeNull()
     expect(out[1].semAnestesista).toBeFalsy()
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// HERANÇA "//" MATERIALIZADA NA PUBLICAÇÃO (auditoria 31/08). Medido no banco:
+// 46 casos publicados com anestesista "//" em 60 dias. O caminho: grupo com nome
+// importado que o dicionário NÃO resolve e sem login escolhido — o ramo final de
+// aplicarAtribuicoes preservava o texto cru da linha ("//"), e "//" é pulado por
+// toda a lib da fila: a cirurgia herdeira não contava para o dono da sala, que
+// aparecia "livre" com cirurgia em aberto. O "//" significa "o mesmo da linha de
+// cima" — na publicação esse nome é escrito por extenso.
+// ════════════════════════════════════════════════════════════════════════════
+describe('aplicarAtribuicoes — "//" nunca chega à publicação', () => {
+  it('grupo com nome fora do dicionário e sem atribuição: "//" vira o nome da base', () => {
+    const casos = [
+      { sala: 'Sala 6', anestesista: 'NOME DESCONHECIDO' },
+      { sala: 'Sala 6', anestesista: '//' },
+    ]
+    const out = aplicarAtribuicoes(casos, {}, apelidoDe, resolver)
+    expect(out[1].anestesista).toBe('NOME DESCONHECIDO')
+    expect(out[1].anestesistaUserId).toBeNull()
+    expect(out[1].semAnestesista).toBeFalsy()
+  })
+
+  it('linha VAZIA herdeira também materializa o nome (e o uid, quando resolve)', () => {
+    const casos = [
+      { sala: 'CC - Sala 5', anestesista: 'PAULO' },
+      { sala: 'CC - Sala 5', anestesista: '' },
+    ]
+    const out = aplicarAtribuicoes(casos, {}, apelidoDe, resolver)
+    expect(out[1].anestesista).toBe('PAULO')
+    expect(out[1].anestesistaUserId).toBe('uid-paulo')
+  })
+
+  it('em bloco multi o "//" herda o nome do PRÓPRIO grupo, nunca o do vizinho', () => {
+    const casos = [
+      { sala: 'Exames', anestesista: 'DESCONHECIDO A', anestesistaImportado: 'DESCONHECIDO A' },
+      { sala: 'Exames', anestesista: '//', anestesistaImportado: 'DESCONHECIDO A' },
+      { sala: 'Exames', anestesista: 'COSTA', anestesistaImportado: 'COSTA' },
+    ]
+    const out = aplicarAtribuicoes(casos, {}, apelidoDe, resolver)
+    expect(out[1].anestesista).toBe('DESCONHECIDO A')
+    expect(out[2].anestesista).toBe('COSTA')
+  })
+
+  it('grupo só de "//" (nada acima) continua virando "?" — não há o que herdar', () => {
+    const casos = [{ sala: 'Imagem', anestesista: '//' }]
+    const out = aplicarAtribuicoes(casos, {}, apelidoDe, resolver)
+    expect(out[0].anestesista).toBe('?')
+    expect(out[0].semAnestesista).toBe(true)
   })
 })
 

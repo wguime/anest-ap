@@ -519,15 +519,22 @@ export function aplicarAtribuicoes(casos, atribuicoes, apelidoDe, resolverUid = 
     if (t.includes('+')) return { ...c, anestesista: t, anestesistaUserId: null }
     // Atribuição do grupo vence (login escolhido > texto importado, lição 23/07);
     // senão preserva o uid da extração e, por último, tenta o dicionário.
+    // HERANÇA POR ESCRITO (auditoria 31/08): "//" e a linha vazia significam "o
+    // mesmo da linha de cima" — sem atribuição no grupo, o texto cru ia para o
+    // banco (46 casos em 60 dias) e a fila pula "//" em toda a lib: a cirurgia
+    // herdeira não contava para o dono da sala, que aparecia "livre" com
+    // cirurgia em aberto. O nome do grupo é a herança escrita por extenso; a
+    // dupla ("A + B") herda inteira, com uid nulo como toda dupla.
     const nomeReal = t && t !== '//' ? t : ''
+    const nomeEfetivo = nomeReal || nomeGrupo[k] || ''
     const uid = atribuicoes?.[k]
       || c.anestesistaUserId
-      || (resolverUid && nomeReal ? resolverUid(nomeReal) : null)
+      || (resolverUid && nomeEfetivo && !nomeEfetivo.includes('+') ? resolverUid(nomeEfetivo) : null)
       || null
     return {
       ...c,
-      anestesistaUserId: uid,
-      anestesista: atribuicoes?.[k] ? apelidoDe(k, uid) : (c.anestesista || ''),
+      anestesistaUserId: nomeEfetivo.includes('+') && !atribuicoes?.[k] ? null : uid,
+      anestesista: atribuicoes?.[k] ? apelidoDe(k, uid) : (nomeEfetivo || c.anestesista || ''),
     }
   })
 }

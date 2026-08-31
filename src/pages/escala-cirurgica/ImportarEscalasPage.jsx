@@ -222,6 +222,14 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
           if (r.cls.dataDivergente) {
             problemas.push(`${file.name}: o arquivo mostra ${formatData(r.cls.dataDivergente)}, e o lote é de ${formatData(dataEscolhida)}`)
           }
+          // LEITURA CORTADA NÃO ENTRA EM SILÊNCIO (auditoria 31/08): a tela de
+          // uma escala avisa isto desde 06/08 e o lote guardava o flag sem
+          // avisar nada — a escala sem as últimas linhas ia para a conferência
+          // como se estivesse inteira, o modo de falha que o teto de tokens da
+          // edge existe para expor.
+          if (r.truncado) {
+            problemas.push(`${file.name}: a leitura foi cortada — as últimas linhas do mapa podem estar faltando; confira o fim da lista`)
+          }
           if (!r.cls.hospital) {
             // conflito entre layout e conteúdo tem motivo próprio: "não
             // reconheci" mandaria procurar defeito na foto, e o problema é outro
@@ -339,7 +347,8 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
       } catch { /* cai para o lote já lido */ } finally { setCarregando(false) }
     }
     // releitura não deu: entra com o que já tinha sido lido, sem perder o anexo
-    setItens((prev) => ({ ...prev, [hosp]: { hospital: hosp, nome: pendente.nome, arquivo: pendente.arquivo, lote: pendente.lote } }))
+    // (nem a marca de truncado — a leitura antiga cortada continua cortada)
+    setItens((prev) => ({ ...prev, [hosp]: { hospital: hosp, nome: pendente.nome, arquivo: pendente.arquivo, truncado: !!pendente.truncado, lote: pendente.lote } }))
     setAbaAtiva((atual) => atual || hosp)
   }
 

@@ -21,12 +21,14 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { ThemeProvider, ToastProvider } from '@/design-system'
 import ImportarEscalaPage from '@/pages/escala-cirurgica/ImportarEscalaPage'
 
-const { svcMock, salvarEscala, prepararImagem } = vi.hoisted(() => ({
+const { svcMock, salvarEscala, prepararImagem, parseExcel } = vi.hoisted(() => ({
   svcMock: { parseEscalaImagem: vi.fn(), fetchEscala: vi.fn(async () => null) },
   salvarEscala: vi.fn(async (p) => ({ id: 'e1', ...p, casos: [] })),
   prepararImagem: vi.fn(async () => ({ base64: 'AAAA', mimeType: 'image/jpeg', bytes: 3 })),
+  parseExcel: vi.fn(),
 }))
 vi.mock('@/services/supabaseEscalaCirurgicaService', () => ({ default: svcMock }))
+vi.mock('@/lib/excelEscala', () => ({ parseExcelEscala: parseExcel }))
 vi.mock('@/services/supabaseCirurgiasParticularesService', () => ({
   default: {
     // aviso de tempo estourado (24/08): sem isto o hook rejeita solto
@@ -143,5 +145,51 @@ describe('Entrada — o anexo SUGERE, nunca troca sozinho', () => {
     })
     expect(await screen.findByText(/O anexo mostra a data/i)).toBeTruthy()
     expect(screen.getByRole('button', { name: /Usar esta data/i })).toBeTruthy()
+  })
+})
+
+// ── PLANILHA: a sugestão sai das COLUNAS, não da extensão (auditoria 31/08) ──
+// "Planilha = Unimed" era suposição de extensão, e o lote a corrigiu em 30/08
+// (o mapa do HRO também chega em .xlsx — cabeçalho LEITO). A tela de UMA escala
+// ficou com a regra antiga: recebendo o xlsx do HRO com o HRO já escolhido, ela
+// sugeria "Usar Unimed" — a correção existia e não alcançava este fluxo.
+describe('Entrada — planilha se declara pelo cabeçalho', () => {
+  const anexarExcel = async (container, resposta) => {
+    parseExcel.mockResolvedValueOnce(resposta)
+    const input = container.querySelector('input[type="file"]')
+    fireEvent.change(input, { target: { files: [new File(['x'], 'escala.xlsx')] } })
+    await waitFor(() => expect(parseExcel).toHaveBeenCalled())
+  }
+
+  it('xlsx com coluna LEITO e Unimed escolhida: sugere o HRO', async () => {
+    const { container } = abrir()
+    await anexarExcel(container, {
+      casos: [{ sala: 'Sala 3', hora: '08:00', procedimento: 'ATJ', cirurgiao: 'Bruno', anestesista: 'CURY' }],
+      headerScore: 5,
+      headers: ['LEITO', 'PACIENTE', 'CIRURGIÃO', 'PROCEDIMENTO', 'ANEST', 'CONV.', 'SALA'],
+    })
+    const aviso = await screen.findByText(/O anexo parece ser do/i)
+    expect(aviso.textContent).toMatch(/HRO/)
+  })
+
+  it('xlsx com colunas do HRO e HRO já escolhido: NÃO sugere Unimed', async () => {
+    const { container } = abrir({ hospital: 'hro' })
+    await anexarExcel(container, {
+      casos: [{ sala: 'Sala 3', hora: '08:00', procedimento: 'ATJ', cirurgiao: 'Bruno', anestesista: 'CURY' }],
+      headerScore: 5,
+      headers: ['LEITO', 'PACIENTE', 'CIRURGIÃO', 'PROCEDIMENTO', 'ANEST', 'CONV.', 'SALA'],
+    })
+    expect(screen.queryByText(/O anexo parece ser do/i)).toBeNull()
+  })
+
+  it('xlsx sem marca nenhuma segue sendo o export da Unimed (fallback de sempre)', async () => {
+    const { container } = abrir({ hospital: 'hro' })
+    await anexarExcel(container, {
+      casos: [{ sala: '6', hora: '08:00', procedimento: 'Facectomia', cirurgiao: 'Bruno', anestesista: 'CURY' }],
+      headerScore: 3,
+      headers: ['SALA', 'PACIENTE', 'PROCEDIMENTO', 'ANEST'],
+    })
+    const aviso = await screen.findByText(/O anexo parece ser do/i)
+    expect(aviso.textContent).toMatch(/Unimed/)
   })
 })

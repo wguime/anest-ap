@@ -18,6 +18,7 @@
  * mesmo arquivo nunca produz manhã e tarde corretas numa leitura só.
  */
 import { FDS_TURNO_FAIXA } from '@/lib/escalaFds'
+import { hospitalPelaEstrutura, decidirHospital } from '@/lib/escalaHospitalEstrutura'
 
 /** Hospitais reais que um mapa pode alimentar (a linha 'fds' não é hospital). */
 export const HOSPITAIS_MAPA = ['unimed', 'hro', 'materno']
@@ -71,11 +72,20 @@ export function carimbarTurnos(casos, turnoPadrao = 'matutino') {
  * "22/08/2026 HRO"). Ambos são SUGESTÃO: `confirmar` marca o que a leitura não
  * resolveu, para a tela pedir em vez de escolher sozinha (regra da casa: sugere,
  * nunca troca sozinho).
+ *
+ * Desde 31/08 (auditoria) o CONTEÚDO vota junto com o layout, como o dia útil
+ * faz desde 30/08 (`escalaHospitalEstrutura`) — o FDS tinha ficado só com o
+ * layout, e é aqui que a lacuna é mais perigosa: o mapa do HRO de feriado não
+ * tem coluna ANEST nem rodapé vermelho (as duas assinaturas do layout) e casa
+ * quase palavra por palavra com o Materno. Mesma assimetria de lá: uma marca
+ * PREENCHE o que a leitura deixou vazio; são precisas DUAS para contradizer o
+ * que ela afirmou — e contradição PERGUNTA (`conflitoHospital`), nunca troca.
  */
 export function classificarAnexoMapa(resposta, { sabadoISO, domingoISO, datasAlvo } = {}) {
-  const hospital = HOSPITAIS_MAPA.includes(texto(resposta?.hospitalDetectado))
+  const lido = HOSPITAIS_MAPA.includes(texto(resposta?.hospitalDetectado))
     ? texto(resposta.hospitalDetectado)
     : ''
+  const { hospital, conflito } = decidirHospital(lido, hospitalPelaEstrutura(resposta))
   const detectada = texto(resposta?.dataDetectada)
   const datas = Array.isArray(datasAlvo) && datasAlvo.length
     ? datasAlvo.filter(Boolean)
@@ -87,6 +97,9 @@ export function classificarAnexoMapa(resposta, { sabadoISO, domingoISO, datasAlv
     // data lida mas de OUTRO fim de semana é informação, não ruído: quem anexa
     // o arquivo do sábado passado precisa saber por que ele não encaixou
     dataForaDoFimDeSemana: detectada && !doFimDeSemana ? detectada : '',
+    // layout e conteúdo em contradição: o arquivo pede confirmação, com o que
+    // o conteúdo viu — a tela pergunta em vez de escolher
+    conflitoHospital: conflito,
     confirmar: [!hospital && 'hospital', !doFimDeSemana && 'data'].filter(Boolean),
   }
 }
