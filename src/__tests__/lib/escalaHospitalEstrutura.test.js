@@ -15,17 +15,35 @@ describe('marca exclusiva diz o hospital', () => {
     expect(r.hospital).toBe('hro')
   })
 
-  it('Bloco M e Hemodinâmica também são do HRO', () => {
-    expect(hospitalPelaEstrutura({ casos: [{ sala: 'Bloco M - Sala 2', bloco: 'normal' }] }).hospital).toBe('hro')
-    expect(hospitalPelaEstrutura({ casos: [{ sala: 'Hemodinâmica', bloco: 'hemodinamica' }] }).hospital).toBe('hro')
+  it('Bloco M, Bloco A e a Emergência também são do HRO', () => {
+    expect(hospitalPelaEstrutura({ casos: [{ sala: 'Bloco M - Sala 2' }] }).hospital).toBe('hro')
+    expect(hospitalPelaEstrutura({ casos: [{ sala: 'EMERGENCIA' }] }).hospital).toBe('hro')
   })
 
-  it('SRPA, Accurata e Umanitá são da Unimed', () => {
-    const r = hospitalPelaEstrutura({
-      casos: [{ sala: 'C.O - CESÁREA', bloco: 'normal' }],
-      posicoesAssistenciais: [{ local: 'SRPA ANEST A', anestesista: 'CURY' }],
-    })
-    expect(r.hospital).toBe('unimed')
+  it('Accurata e Umanitá são da Unimed; "CC -" e "CESAREA" também', () => {
+    expect(hospitalPelaEstrutura({ casos: [{ sala: 'C.O - CESÁREA' }] }).hospital).toBe('unimed')
+    expect(hospitalPelaEstrutura({ casos: [{ sala: 'Umanitá', bloco: 'umanita' }] }).hospital).toBe('unimed')
+  })
+
+  it('"Sala 2 HC" é do Materno', () => {
+    expect(hospitalPelaEstrutura({ casos: [{ sala: 'Sala 2 HC' }] }).hospital).toBe('materno')
+  })
+
+  it('⚠️ Hemodinâmica, SRPA e o bloco `materno` NÃO classificam — MEDIDO', () => {
+    // 30/08, 1.000 casos publicados em 60 dias: Hemodinâmica 9 no HRO / 11 na
+    // Unimed; SRPA 3 / 18; bloco `materno` 6 no Materno / 3 na Unimed (onde é o
+    // C.O da própria casa). Marca que existe nos dois não classifica nada — e
+    // classificar por ela mandaria a escala para a aba errada, que é o defeito
+    // que este arquivo inteiro existe para evitar.
+    expect(hospitalPelaEstrutura({ casos: [{ sala: 'Hemodinâmica', bloco: 'hemodinamica' }] }).hospital).toBe('')
+    expect(hospitalPelaEstrutura({ casos: [{ sala: 'SRPA', bloco: 'srpa' }] }).hospital).toBe('')
+    expect(hospitalPelaEstrutura({ casos: [{ sala: 'C.O', bloco: 'materno' }] }).hospital).toBe('')
+  })
+
+  it('"Sala 6" pelado não é de ninguém — o da Unimed vem assim às vezes', () => {
+    // dono 25/08: "na escala Unimed não está saindo com a Sala, está aparecendo
+    // apenas um número". Foi assim que vieram os 31 casos do feriado.
+    expect(hospitalPelaEstrutura({ casos: [{ sala: 'Sala 6' }, { sala: 'Sala 3' }] }).hospital).toBe('')
   })
 
   it('Exames, Imagem e Consultório NÃO classificam — os dois hospitais têm', () => {
@@ -36,7 +54,7 @@ describe('marca exclusiva diz o hospital', () => {
   })
 
   it('documento com marca dos dois não decide nada', () => {
-    const r = hospitalPelaEstrutura({ casos: [{ sala: 'IOSC', bloco: 'iosc' }, { sala: 'SRPA', bloco: 'srpa' }] })
+    const r = hospitalPelaEstrutura({ casos: [{ sala: 'IOSC', bloco: 'iosc' }, { sala: 'Umanitá', bloco: 'umanita' }] })
     expect(r.hospital).toBe('')
   })
 

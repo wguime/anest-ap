@@ -189,3 +189,26 @@ label } }`. Quando o hospital de origem TEM escala, o valor aparece como
   mesma razão de `trocaCom`/`assumidaPor`: é declaração sobre a pessoa, não ajuste
   de exibição — e é ela que decide a ordem de saída. Limpar é só pelo "Não informar".
 - Nada disso encosta em `ordem_liberacao`.
+
+
+## "Sem caso aqui" NÃO é "sem trabalho" (dono 2026-08-30)
+
+> "Veja que Oscar está como Liberado na escala da Unimed, o que não é verdade,
+> ele é ajuda no HRO e é o primeiro a ser liberado."
+
+`naoEscalado` respondia olhando UMA escala: quem está no rodapé sem cirurgia é
+liberado pela cauda automática, desde a publicação. Só que **quem está de ajuda
+em outro hospital não tem caso aqui por definição** — a razão de a linha estar
+vazia era ele estar operando do outro lado da cidade.
+
+`casosForaOutros` (derivado em `EscalaCirurgicaPage` das 3 escalas que o context
+já carrega, sem schema e sem persistência) entra em `naoEscalado`: quem tem
+cirurgia em outro hospital **no mesmo turno** não nasce liberado. Some sozinho
+quando a escala de lá muda.
+
+⚠️ Isto **não** é o badge de ajuda inferido por casos, revertido em 04/08 por
+gerar falso "emprestado". A pergunta aqui é outra e mais simples — "esta pessoa
+está trabalhando neste turno?" — e a assimetria do erro é o que autoriza: errar
+para o lado de NÃO liberar custa um toque; errar para o outro dá alguém como
+livre no meio de uma cirurgia. No modo FDS a lista vai vazia: lá os três
+hospitais são a MESMA fila, e "outro hospital" não existe.

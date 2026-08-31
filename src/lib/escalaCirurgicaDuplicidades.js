@@ -43,10 +43,25 @@ export function detectarDuplicidadesEscala({
   ordemAtual = [],
   periodo,
   outrasEscalas = [],
+  ajudas = [],
   resolver,
   normalizar = upperSimples,
   hospitalLabelFor,
 }) {
+  // AJUDA DECLARADA NÃO É DUPLICIDADE POR CLASSIFICAR (dono 30/08): "Oscar está
+  // como ajuda de outro hospital no HRO, foi identificado como ajuda e mesmo
+  // assim a escala não pôde ser publicada". O nome em AZUL no rodapé já é a
+  // resposta da pergunta que o painel faz — quem escreveu a escala respondeu
+  // antes. Vale a ajuda de QUALQUER lado: quem é ajuda no HRO aparece duplicado
+  // também na conferência da Unimed, e lá a lista de ajuda é a de lá.
+  const chavesDeAjuda = new Map()
+  for (const a of ajudas) {
+    for (const nome of a?.nomes || []) {
+      const n = texto(nome)
+      if (!n) continue
+      chavesDeAjuda.set(resolver?.(n) || normalizar(n), a?.hospitalLabel || '')
+    }
+  }
   const porIdentidade = new Map()
   const adicionar = (escala, label, casosDaEscala, ordem) => {
     const porPessoa = new Map()
@@ -92,6 +107,8 @@ export function detectarDuplicidadesEscala({
     .map((grupo) => ({
       ...grupo,
       nome: grupo.ocorrencias.find((o) => o.casos.length)?.nome || grupo.nome,
+      // rótulo do hospital que DECLAROU a ajuda ('' quando ninguém declarou)
+      ajudaDeclarada: chavesDeAjuda.has(grupo.key) ? (chavesDeAjuda.get(grupo.key) || 'outro hospital') : '',
     }))
 }
 

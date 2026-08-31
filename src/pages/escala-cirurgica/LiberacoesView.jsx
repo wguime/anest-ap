@@ -68,7 +68,7 @@ const AVISO_MAX = 160
 // que o card mostra, então sai do MESMO mapa que o resto do módulo usa.
 const HOSPITAIS_FILA = ['unimed', 'hro', 'materno'].map((v) => ({ value: v, label: HOSPITAL_LABEL[v] || v }))
 
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onTrocarResponsavel, onDevolverResponsavel, onTrocarPosicao, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, onDefinirOrigem, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, onGarantirEscala, onNavigate }) {
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onTrocarResponsavel, onDevolverResponsavel, onTrocarPosicao, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, onDefinirOrigem, contraturnoOutros = [], casosForaOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, onGarantirEscala, onNavigate }) {
   const { toast } = useToast()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
   // do turno selecionado e o rodapé (ordem de liberação) DAQUELE turno.
@@ -815,7 +815,21 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // não escalado = está no rodapé mas NUNCA teve caso no dia → liberado por
   // definição (vermelho desde a publicação). Quem TEVE casos e todos encerraram
   // fica ATIVO (o conteúdo sai da linha, mas quem libera é o plantonista).
+  //
+  // ⚠️ "SEM CASO AQUI" NÃO É "SEM TRABALHO" (dono 30/08 — caso Oscar: "está como
+  // Liberado na escala da Unimed, o que não é verdade, ele é ajuda no HRO").
+  // A conta olhava só ESTA escala, e quem está de ajuda em outro hospital no
+  // mesmo turno não tem caso aqui por definição: a fila o dava como liberado
+  // desde a publicação, com ele operando do outro lado da cidade. `casosForaOutros`
+  // é derivado das 3 escalas que o context já carrega — sem schema e sem
+  // persistência, e some sozinho quando a escala de lá muda.
+  const casoForaDe = (l) => {
+    const alvo = normNome(l.anestesista)
+    const chave = normNome(l.nomeOriginal || '')
+    return casosForaOutros.find((c) => c.nome === alvo || (chave && c.nome === chave)) || null
+  }
   const naoEscalado = (l) => !l.teveCasos && !l.notaRodape && !(l.salas?.length) && !(l.cirurgioes?.length)
+    && !casoForaDe(l)
   // (o estado "liberada" é calculado por linha no render — ver `liberado` lá
   // embaixo. Não existe mais uma versão aqui em cima porque a exibição parou de
   // separar liberados dos demais: a fila segue a ordem do rodapé, ponto.)

@@ -223,6 +223,35 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     return out
   }, [escalas, hospital, turno])
 
+  // QUEM TEM CIRURGIA EM OUTRO HOSPITAL NESTE TURNO (dono 30/08 — caso Oscar).
+  // A fila libera sozinha quem está no rodapé sem caso; para quem está de ajuda
+  // noutro hospital isso é falso por construção — ele não tem caso AQUI porque
+  // está operando LÁ. Derivado das escalas que o context já carrega.
+  //
+  // ⚠️ Isto NÃO é o badge de ajuda inferido por casos, revertido em 04/08 por
+  // gerar falso "emprestado": a pergunta aqui é outra e mais simples — "esta
+  // pessoa está trabalhando neste turno?" —, e errar para o lado de NÃO liberar
+  // custa um toque a mais, enquanto errar para o outro dá alguém como livre no
+  // meio de uma cirurgia.
+  const casosForaOutros = useMemo(() => {
+    const porNome = new Map()
+    for (const [h, esc] of Object.entries(escalas)) {
+      if (h === hospital || h === FDS_HOSPITAL || !esc) continue
+      const label = HOSPITAL_LABEL[h] || h
+      for (const c of esc.casos || []) {
+        if ((c.turno || turno) !== turno) continue
+        const bruto = String(c.anestesista || '').trim()
+        if (!bruto || bruto === '//' || /^\?+$/.test(bruto)) continue
+        const nome = normNome(bruto)
+        if (!nome) continue
+        const e = porNome.get(nome) || { nome, hospitalLabel: label, casos: 0 }
+        e.casos += 1
+        porNome.set(nome, e)
+      }
+    }
+    return [...porNome.values()]
+  }, [escalas, hospital, turno])
+
   // casos dos 3 hospitais mesclados, cada um anotado com a origem (campo só de
   // exibição — nunca entra em CASO_FIELDS/persistência)
   const casosFds = useMemo(() => {
@@ -557,6 +586,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                      hospital de origem não tem escala publicada (o Materno). */
                   onDefinirOrigem={(linha, origem) => definirOrigemLinha(escalaLib, linha, origem, userInfo, turno)}
                   contraturnoOutros={modoFds ? [] : contraturnoOutros}
+                  casosForaOutros={modoFds ? [] : casosForaOutros}
                   presencaOutros={presencaOutros}
                   paresTroca={modoFds ? [] : paresTroca}
                   onMarcarTroca={modoFds ? undefined : (linha, colega, par) => {

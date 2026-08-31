@@ -302,3 +302,42 @@ continua substituindo, que é o que quem reanexa está mandando fazer.
 O fluxo de FIM DE SEMANA (`classificarAnexoMapa`, em `escalaFdsMapas.js`) tem a MESMA
 lacuna e continua só com o layout — não foi tocado por ser outro fluxo; a lib é
 compartilhável quando o dono pedir.
+
+
+## 2ª rodada do lote (dono 2026-08-30, noite) — quatro defeitos
+
+**1. O que sobra no lote é DEDUZIDO.** O mapa do HRO daquela segunda não tinha
+marca nenhuma: as salas eram "Sala 3", "Sala 6", e **"Sala N" pelado é dos dois
+hospitais** (o da Unimed às vezes vem só com o número — dono 25/08). O lote sabe
+o que o arquivo sozinho não sabe: se os outros dois já são Unimed e Materno, o
+que sobra é o HRO. Não é palpite, é conta — e por isso ela **só fecha quando
+sobra UM arquivo para UMA vaga**; com duas vagas livres continua perguntando. A
+dedução é DITA na tela, nunca silenciosa.
+
+⚠️ As marcas de `escalaHospitalEstrutura.js` foram MEDIDAS no banco (1.000 casos
+em 60 dias) e a medição derrubou três que pareciam óbvias: **Hemodinâmica** (9 no
+HRO, 11 na Unimed), **SRPA** (3/18) e o **bloco `materno`** (6 no Materno, 3 na
+Unimed, onde é o C.O da própria casa). Marca que existe nos dois não classifica —
+classificar por ela manda a escala para a aba errada, que é o defeito de origem.
+
+**2. Ajuda declarada não é duplicidade por classificar.** "Oscar está como ajuda
+de outro hospital no HRO, foi identificado como ajuda e mesmo assim a escala não
+pôde ser publicada." O nome em AZUL no rodapé **já é a resposta** da pergunta que
+o painel faz. Vale a ajuda de QUALQUER lado (quem é ajuda no HRO aparece
+duplicado também na conferência da Unimed). O item continua visível, como
+informação; o que ele deixa de fazer é travar.
+
+**3. A decisão de duplicidade é do LOTE, não da aba.** "Tive que clicar a mesma
+informação nas 3 abas dos hospitais, mesmo já tendo informado e no caso não tendo
+relação com o Materno." A duplicidade é da PESSOA e a chave dela é a mesma em
+qualquer aba: responder uma vez responde para todas. Fora do lote (tela de uma
+escala só) o estado segue local.
+
+**4. Bloco de UM caso não pergunta o anestesista duas vezes.** O seletor do bloco
+JÁ é o daquele caso; o seletor por caso existe para FURAR a atribuição do bloco,
+e com um caso não há o que furar. Mesma família da queixa de 27/08 (nome
+duplicado no título e no placeholder).
+
+⚠️ **Segue de pé:** quando a leitura perde a seção do IOSC e devolve `bloco:
+"normal"` + `sala: "Sala 3"`, não há no arquivo o que recuperar — o guardrail de
+27/08 (`normalizarSalaHro(sala, bloco)`) só corrige quando o bloco chegou certo.

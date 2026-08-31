@@ -143,6 +143,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   hospital, data, turno: turnoInicial, onClose, onAbrirFds,
   embutida = false, oculta = false, loteInicial = null,
   dataLote, periodoLote, escalasIrmas = [], onResumo,
+  decisoesLote = null, onDecisoesLote = null, trocasLote = null, onTrocasLote = null,
 }, ref) {
   const { toast } = useToast()
   const { salvarEscalaTurno, salvarEscala, executarSubstituicao } = useEscalaCirurgicaActions()
@@ -771,9 +772,22 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   // Assimétrico por natureza: o PRIMEIRO hospital publicado do dia não tem com o
   // que cruzar. Aparece no 2º e no 3º.
   const [outrasPublicadas, setOutrasPublicadas] = useState([])
-  const [duplicidadeDecisoes, setDuplicidadeDecisoes] = useState({})
-  const [trocaEscolhida, setTrocaEscolhida] = useState({}) // chave da duplicidade -> uid do colega
-  useEffect(() => { setDuplicidadeDecisoes({}); setTrocaEscolhida({}) }, [dataEscolhida, hosp, periodo])
+  // A DECISÃO DE DUPLICIDADE É DO LOTE, NÃO DA ABA (dono 30/08: "tive que clicar
+  // a mesma informação nas 3 abas dos hospitais, mesmo já tendo informado e no
+  // caso não tendo relação com o Materno"). A duplicidade é da PESSOA, e a chave
+  // dela é a mesma em qualquer aba: responder uma vez responde para todas. Fora
+  // do lote (tela de uma escala só) o estado continua local, como sempre foi.
+  const [decisoesLocais, setDecisoesLocais] = useState({})
+  const [trocaLocal, setTrocaLocal] = useState({})
+  const duplicidadeDecisoes = decisoesLote || decisoesLocais
+  const setDuplicidadeDecisoes = onDecisoesLote || setDecisoesLocais
+  const trocaEscolhida = trocasLote || trocaLocal
+  const setTrocaEscolhida = onTrocasLote || setTrocaLocal
+  useEffect(() => {
+    // quem manda no ciclo de vida do estado compartilhado é o lote
+    if (decisoesLote) return
+    setDecisoesLocais({}); setTrocaLocal({})
+  }, [dataEscolhida, hosp, periodo, decisoesLote])
   useEffect(() => {
     let vivo = true
     const outros = Object.keys(HOSPITAL_LABEL).filter((h) => h !== hosp)
@@ -840,16 +854,28 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     ordemAtual: separarListaRodape(ordemTexto),
     periodo,
     outrasEscalas,
+    // AJUDA JÁ DECLARADA no rodapé (aqui ou lá) responde a pergunta do painel
+    ajudas: [
+      { hospitalLabel: HOSPITAL_LABEL[hosp] || hosp, nomes: separarListaRodape(ajudaTexto) },
+      ...outrasEscalas.map((o) => ({
+        hospitalLabel: HOSPITAL_LABEL[o?.hospital] || o?.hospital,
+        nomes: rodapeDoTurno(o?.ajudaExterna, periodo),
+      })),
+    ],
     resolver,
     // MESMA normalização de `linha.chave` na coluna de liberação: é a chave por
     // onde a troca declarada é gravada e reencontrada lá.
     normalizar: normNome,
     hospitalLabelFor: (hospital) => HOSPITAL_LABEL[hospital] || hospital,
-  }), [casos, hosp, ordemTexto, periodo, outrasEscalas, resolver])
+  }), [casos, hosp, ordemTexto, ajudaTexto, periodo, outrasEscalas, resolver])
 
   // A decisão é local à conferência desta publicação. Ela nunca reescreve o
   // anestesista nem transforma uma duplicidade em ajuda automaticamente.
-  const duplicidadesPendentes = duplicidades.filter((d) => !duplicidadeDecisoes[d.key])
+  // Ajuda declarada NÃO fica pendente: o rodapé já disse que a pessoa está nos
+  // dois de propósito (dono 30/08 — "foi identificado como ajuda e mesmo assim
+  // a escala não pôde ser publicada"). O item continua VISÍVEL no painel, como
+  // informação; o que ele deixa de fazer é travar a publicação.
+  const duplicidadesPendentes = duplicidades.filter((d) => !d.ajudaDeclarada && !duplicidadeDecisoes[d.key])
 
   // PAR PROPOSTO (Fase 2.2, dono 07/08): a leitura das DUAS escalas sugere o
   // parceiro simétrico (rodapé em A com casos em B ↔ rodapé em B com casos em
@@ -870,7 +896,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
       }
       return mudou ? prox : atual
     })
-  }, [duplicidades, rosterByUid])
+  }, [duplicidades, rosterByUid, setTrocaEscolhida])
 
   // GUARDRAIL INVERSO (incidente 30/07): anestesista COM CASO que não está no
   // rodapé nem na ajuda. Sem posição na ordem, `gerarColunaLiberacao` o joga como
@@ -1645,15 +1671,24 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                               </>
                             )}
                             {/* anestesista DESTE caso: fura a atribuição do bloco
-                                e é como se corrige um "?" */}
-                            <Select
-                              className="w-full"
-                              options={[{ value: SEM_ANESTESISTA, label: 'Sem anestesista (?)' }, ...rosterOpcoes]}
-                              value={valorAnestesistaCaso(c, chave)}
-                              onChange={(v) => definirAnestesistaCaso(i, v)}
-                              placeholder="Anestesista (defina o do bloco acima)"
-                              searchable
-                            />
+                                e é como se corrige um "?".
+                                ⚠️ SÓ com 2+ casos (dono 30/08: "aparece duas vezes
+                                para selecionar o anestesista"). Bloco de UM caso
+                                não tem o que furar — o seletor do bloco logo acima
+                                JÁ é o daquele caso, e mostrar os dois é a mesma
+                                pergunta feita duas vezes, uma delas capaz de
+                                divergir da outra. É a mesma queixa de 27/08 sobre
+                                nome duplicado, agora no seletor. */}
+                            {itens.length > 1 && (
+                              <Select
+                                className="w-full"
+                                options={[{ value: SEM_ANESTESISTA, label: 'Sem anestesista (?)' }, ...rosterOpcoes]}
+                                value={valorAnestesistaCaso(c, chave)}
+                                onChange={(v) => definirAnestesistaCaso(i, v)}
+                                placeholder="Anestesista (defina o do bloco acima)"
+                                searchable
+                              />
+                            )}
                           </div>
                         ))}
                       </div>
@@ -1945,7 +1980,9 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                   <p className="font-semibold">⚠ Duplicidade entre hospitais — Com casos nos DOIS hospitais no mesmo turno: {duplicidades.map((d) => `${titleCaseNome(d.nome)} (${d.ocorrencias.filter((o) => o.hospital !== hosp && o.casos.length > 0).map((o) => `${o.hospitalLabel}: ${o.casos.length}`).join(', ')})`).join('; ')}. Nome em AMARELO pode ser intencional; confirme antes de publicar.</p>
                   <p className="mt-1">
                     A mesma pessoa aparece em escalas diferentes no mesmo turno. Isso pode ser intencional
-                    ou indicar uma troca. A publicação fica bloqueada até cada item ser classificado.
+                    ou indicar uma troca.{duplicidadesPendentes.length > 0
+                      ? ' A publicação fica bloqueada até cada item ser classificado.'
+                      : ''}
                   </p>
                   <div className="mt-2 space-y-2">
                     {duplicidades.map((duplicidade) => {
@@ -1965,7 +2002,12 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                               </div>
                             ))}
                           </div>
-                          {decisao ? (
+                          {duplicidade.ajudaDeclarada ? (
+                            /* o rodapé já respondeu: nome em AZUL é ajuda declarada */
+                            <p className="mt-2 rounded-md bg-info/10 px-2 py-1 text-info">
+                              Já está como ajuda no rodapé do {duplicidade.ajudaDeclarada} — nada a classificar.
+                            </p>
+                          ) : decisao ? (
                             <div className="mt-2 flex items-center justify-between gap-2 rounded-md bg-success/10 px-2 py-1 text-success">
                               <span>
                                 {decisao.tipo === 'troca'

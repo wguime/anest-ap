@@ -38,26 +38,43 @@ const norm = (s) => String(s ?? '')
  * MARCAS EXCLUSIVAS — cada uma é um FATO do documento, e o nome da marca é o
  * fato, não o campo onde ele apareceu: a mesma linha do IOSC vem como bloco
  * `iosc` e como sala "IOSC", e isso continua sendo UMA evidência, não duas.
- * Exames, Imagem e Consultório ficam de fora de propósito — os dois hospitais
- * têm.
+ *
+ * ⚠️ A lista foi MEDIDA no banco (30/08, 1.000 casos publicados em 60 dias), não
+ * deduzida do prompt — e a medição derrubou três marcas que pareciam óbvias:
+ * Hemodinâmica (9 no HRO, 11 na Unimed), SRPA (3 no HRO, 18 na Unimed) e o bloco
+ * `materno` (6 no Materno, 3 na Unimed, onde é o C.O da própria casa). Exames,
+ * Imagem e Consultório também são dos dois. Marca que aparece nos dois não
+ * classifica nada — só atrasa.
  */
 const BLOCOS = {
-  hro: { iosc: 'iosc', ho: 'ho', ccoluna: 'ccoluna', hemodinamica: 'hemodinamica' },
-  unimed: { srpa: 'srpa', accurata: 'accurata', umanita: 'umanita' },
-  materno: { materno: 'materno' },
+  hro: { iosc: 'iosc', ho: 'ho', ccoluna: 'ccoluna' },
+  unimed: { umanita: 'umanita', accurata: 'accurata', mauricio: 'mauricio' },
+  materno: {},
 }
 
+/**
+ * Rótulos de sala, na grafia CRUA da leitura (a canônica do banco só existe
+ * depois de `normalizarSalaHro`/`normalizarSalaUnimed`, que rodam bem depois).
+ *
+ * ⚠️ "Sala 6" pelado NÃO é marca de ninguém: o mapa da Unimed às vezes rotula a
+ * coluna só com o número ou com "SALA 6" (dono 25/08), e foi assim que vieram os
+ * 31 casos do feriado. O que separa é o PREFIXO — "CC -"/"CENTRO CIRÚRGICO" e
+ * "C.O - CESAREA" são da Unimed; "Bloco A"/"Bloco M" e a Emergência são do HRO;
+ * o sufixo "HC" é do Materno.
+ */
 const SALAS = {
   hro: [
-    [/^IOSC/, 'iosc'], [/HOSPITAL DE OLHOS/, 'ho'], [/^DIGIMAX/, 'digimax'],
-    [/CENTRO DE COLUNA/, 'ccoluna'], [/BRAQUITERAPIA/, 'braquiterapia'],
-    [/HEMODINAMICA/, 'hemodinamica'], [/^BLOCO M\b/, 'bloco-m'],
+    [/^IOSC/, 'iosc'], [/HOSPITAL DE OLHOS/, 'ho'], [/^H\.? ?O\.?$/, 'ho'],
+    [/^DIGIMAX/, 'digimax'], [/CENTRO DE COLUNA/, 'ccoluna'], [/C\. ?COLUNA/, 'ccoluna'],
+    [/BRAQUI/, 'braquiterapia'], [/^BLOCO ?M\b/, 'bloco-m'], [/^BLOCO ?A\b/, 'bloco-a'],
+    [/EMERG/, 'emergencia'],
   ],
   unimed: [
-    [/CESAREA/, 'cesarea'], [/CENTRO CIRURGICO/, 'centro-cirurgico'],
-    [/UMANITA/, 'umanita'], [/ACCURATA/, 'accurata'],
+    [/CESAREA/, 'cesarea'], [/CENTRO CIRURGICO/, 'centro-cirurgico'], [/^CC\b/, 'centro-cirurgico'],
+    [/^C\.? ?O\b.*\d/, 'centro-obstetrico'], [/UMANITA/, 'umanita'], [/ACCURATA/, 'accurata'],
   ],
-  materno: [],
+  // "Sala 2 HC"/"Sala 3 HC" — as duas únicas salas do Materno em 60 dias
+  materno: [[/\bHC$/, 'sala-hc']],
 }
 
 /**
@@ -98,10 +115,9 @@ export function hospitalPelaEstrutura(resposta = {}) {
     }
   }
 
-  // "SRPA ANEST A" é posição assistencial da Unimed — não vira caso, mas é marca
-  for (const p of resposta?.posicoesAssistenciais || []) {
-    if (/SRPA/.test(norm(p?.local))) marcas.unimed.add('srpa')
-  }
+  // A SRPA saiu da lista: "SRPA ANEST A" parece assinatura da Unimed, mas o HRO
+  // também publica posição de SRPA (3 casos em 60 dias). Posições assistenciais
+  // ficam de fora inteiras.
 
   for (const head of resposta?.headers || []) {
     const h = norm(head)

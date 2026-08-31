@@ -22,7 +22,7 @@
  * A publicação continua sendo UMA POR HOSPITAL, pela mesma via de sempre — a
  * folha de revisão só chama, em sequência, o `publicar` de cada aba.
  */
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, Check, ChevronLeft, ChevronRight, FileText, Loader2, Trash2 } from 'lucide-react'
 import {
   Button, ConfirmDialog, DatePicker, FileUpload, Select,
@@ -94,6 +94,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
   const canEdit = podeEditarEscalaCirurgica(user)
 
   const [dataEscolhida, setDataEscolhida] = useState(data)
+  // trocar o dia ou o período do lote invalida toda decisão já tomada
   const [periodo, setPeriodo] = useState(() => (
     turnoInicial === 'matutino' || turnoInicial === 'vespertino' ? turnoInicial : turnoAtual()
   ))
@@ -106,11 +107,18 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
   const [resumos, setResumos] = useState({})
   const [carregando, setCarregando] = useState(false)
   const [progresso, setProgresso] = useState(null) // { feitos, total } durante a leitura
+  // decisões de duplicidade valem para o LOTE inteiro: a duplicidade é da
+  // pessoa, não da aba (dono 30/08) — ver `ImportarEscalaPage`
+  const [duplicidadeDecisoes, setDuplicidadeDecisoes] = useState({})
+  const [trocaEscolhida, setTrocaEscolhida] = useState({})
   const [revisar, setRevisar] = useState(false)
   const [publicandoLote, setPublicandoLote] = useState(false)
   const [encolhimentos, setEncolhimentos] = useState(null)
   const [publicados, setPublicados] = useState([])
   const refs = useRef({})
+
+  // trocar o dia ou o período do lote invalida toda decisão já tomada
+  useEffect(() => { setDuplicidadeDecisoes({}); setTrocaEscolhida({}) }, [dataEscolhida, periodo])
 
   const hospitaisDoLote = useMemo(
     () => HOSPITAIS_LOTE.filter((h) => itens[h]),
@@ -198,6 +206,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
     setProgresso({ feitos: 0, total: lista.length })
     const problemas = []
     const semHospital = []
+    const deduzidos = []
     // A CONFERÊNCIA SÓ ABRE COM O LOTE INTEIRO LIDO (dono 27/08): entregando aba
     // por aba, quem anexou três arquivos começava a conferir o primeiro enquanto
     // os outros ainda estavam na Vision — e a tela mudava de tamanho embaixo do
@@ -233,6 +242,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
               id: `${file.name}-${semHospital.length}`,
               nome: file.name,
               motivo: `o lote já tem uma escala do ${rotulo(hosp)} (${prontos[hosp].nome}).`,
+              colisao: true,
               ...r,
             })
             continue
@@ -246,14 +256,40 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
         }
       }
     } finally {
-      if (Object.keys(prontos).length) {
-        setItens((prev) => ({ ...prev, ...prontos }))
-        setAbaAtiva((atual) => atual || Object.keys(prontos)[0])
-      }
       setCarregando(false)
       setProgresso(null)
     }
+    // ELIMINAÇÃO NO LOTE (dono 30/08, 2ª rodada: "mesmo após mudanças não
+    // reconheceu a escala do HRO, mas apareceu opção de selecionar o hospital").
+    //
+    // O mapa daquela segunda não tinha marca nenhuma: as salas eram "Sala 3",
+    // "Sala 6" — e "Sala N" pelado é dos dois hospitais (o da Unimed às vezes
+    // vem só com o número). Mas o LOTE sabe uma coisa que o arquivo sozinho não
+    // sabe: se os outros dois já são Unimed e Materno, o que sobra é o HRO. Não
+    // é palpite, é conta — e por isso ela só fecha quando sobra UM arquivo para
+    // UMA vaga. Com duas vagas livres continua perguntando.
+    const naoIdentificados = semHospital.filter((p) => !p.colisao)
+    if (naoIdentificados.length === 1) {
+      const ocupados = new Set([...Object.keys(prontos), ...Object.keys(itens)])
+      const livres = HOSPITAIS_LOTE.filter((h) => !ocupados.has(h))
+      if (livres.length === 1) {
+        const p = naoIdentificados[0]
+        prontos[livres[0]] = { hospital: livres[0], nome: p.nome, arquivo: p.arquivo, truncado: p.truncado, lote: p.lote }
+        deduzidos.push({ hospital: livres[0], nome: p.nome })
+        semHospital.splice(semHospital.indexOf(p), 1)
+        lidos += 1
+      }
+    }
+    if (Object.keys(prontos).length) {
+      setItens((prev) => ({ ...prev, ...prontos }))
+      setAbaAtiva((atual) => atual || Object.keys(prontos)[0])
+    }
     if (semHospital.length) setPendentes((p) => [...p, ...semHospital])
+    if (deduzidos.length) {
+      problemas.push(...deduzidos.map((d) => (
+        `${d.nome}: entrou como ${rotulo(d.hospital)} — era o único hospital que faltava no lote. Confira a aba.`
+      )))
+    }
     if (lidos || semHospital.length) {
       toast({
         variant: problemas.length ? 'warning' : 'success',
@@ -550,6 +586,10 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
             periodoLote={periodo}
             loteInicial={itens[h]?.lote}
             escalasIrmas={irmasPara(h)}
+            decisoesLote={duplicidadeDecisoes}
+            onDecisoesLote={setDuplicidadeDecisoes}
+            trocasLote={trocaEscolhida}
+            onTrocasLote={setTrocaEscolhida}
             onResumo={receberResumo}
             onClose={() => {}}
           />

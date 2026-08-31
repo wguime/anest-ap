@@ -157,7 +157,7 @@ describe('anexo em lote — cada arquivo vai para a aba do seu hospital', () => 
     // HRO e Materno têm as MESMAS colunas — a assinatura do HRO é a cor, que um
     // print desbotado não entrega. Aí a escala ia para a aba do Materno.
     svcMock.parseEscalaImagem.mockResolvedValueOnce({
-      casos: [caso('IOSC', 'CURY'), { ...caso('Hemodinâmica', 'PAULO'), bloco: 'hemodinamica' }],
+      casos: [caso('IOSC', 'CURY'), caso('Bloco M - Sala 2', 'PAULO')],
       hospitalDetectado: 'materno',
     })
     const { container } = montar()
@@ -178,12 +178,84 @@ describe('anexo em lote — cada arquivo vai para a aba do seu hospital', () => 
     expect(abas()).toHaveLength(0)
   })
 
+  it('o que sobra no lote é DEDUZIDO: 2 identificados, o 3º é o que falta', async () => {
+    // ⚠️ dono 30/08, 2ª rodada: "mesmo após mudanças não reconheceu a escala do
+    // HRO, mas apareceu opção de selecionar o hospital". O mapa daquela segunda
+    // não tinha marca nenhuma — as salas eram "Sala 3", "Sala 6", e "Sala N"
+    // pelado é dos dois hospitais. O lote sabe o que o arquivo sozinho não sabe.
+    svcMock.parseEscalaImagem
+      .mockResolvedValueOnce({ casos: [caso('CC - Sala 1', 'CURY')], hospitalDetectado: 'unimed' })
+      .mockResolvedValueOnce({ casos: [caso('Sala 2 HC', 'PAULO')], hospitalDetectado: 'materno' })
+      .mockResolvedValueOnce({ casos: [caso('Sala 3', 'CURY'), caso('Sala 6', 'PAULO')], hospitalDetectado: '' })
+
+    const { container } = montar()
+    await soltarArquivos(container, [img('a.png'), img('b.png'), img('c.png')])
+
+    await waitFor(() => expect(abas()).toHaveLength(3))
+    expect(abas().map((b) => b.textContent)).toEqual(
+      expect.arrayContaining([expect.stringContaining('HRO')]),
+    )
+    // e a dedução é DITA, não silenciosa
+    expect(await screen.findByText(/era o único hospital que faltava no lote/i)).toBeTruthy()
+  })
+
+  it('com DUAS vagas livres a dedução não fecha — continua perguntando', () => {
+    // dois arquivos, um identificado: sobra HRO e Materno. Deduzir aqui seria
+    // chute, e chute põe a escala na aba errada — o defeito de origem.
+    svcMock.parseEscalaImagem
+      .mockResolvedValueOnce({ casos: [caso('CC - Sala 1', 'CURY')], hospitalDetectado: 'unimed' })
+      .mockResolvedValueOnce({ casos: [caso('Sala 3', 'PAULO')], hospitalDetectado: '' })
+
+    const { container } = montar()
+    return soltarArquivos(container, [img('a.png'), img('b.png')])
+      .then(async () => {
+        await waitFor(() => expect(abas()).toHaveLength(1))
+        expect(await screen.findByText(/não reconheci o hospital pelo layout/i)).toBeTruthy()
+      })
+  })
+
   it('nenhuma cirurgia reconhecida não abre aba nenhuma', async () => {
     svcMock.parseEscalaImagem.mockResolvedValueOnce({ casos: [], hospitalDetectado: 'hro' })
     const { container } = montar()
     await soltarArquivos(container, [img('borrada.png')])
 
     await waitFor(() => expect(abas()).toHaveLength(0))
+  })
+})
+
+describe('o anestesista é perguntado UMA vez por bloco (dono 30/08)', () => {
+  const abrirBlocos = () => fireEvent.click(screen.getByRole('button', { name: /Expandir todos os blocos/i }))
+
+  it('bloco de UM caso não repete o seletor dentro do caso', async () => {
+    // "na tela de confirmação aparece duas vezes para selecionar o anestesista":
+    // com um caso só, o seletor do bloco JÁ é o daquele caso
+    svcMock.parseEscalaImagem.mockResolvedValueOnce({
+      // PAULO não resolve no roster do teste: sem valor, o Select mostra o
+      // PLACEHOLDER — que é o texto por onde estas duas travas o encontram
+      casos: [caso('Sala 3', 'PAULO')], hospitalDetectado: 'hro', ordemLiberacao: ['PAULO'],
+    })
+    const { container } = montar()
+    await soltarArquivos(container, [img('hro.png')])
+    await waitFor(() => expect(abas()).toHaveLength(1))
+
+    abrirBlocos()
+    expect(screen.queryByText(/defina o do bloco acima/i)).toBeNull()
+  })
+
+  it('com DOIS casos o seletor por caso volta — é como se fura o bloco', async () => {
+    svcMock.parseEscalaImagem.mockResolvedValueOnce({
+      casos: [
+        { ...caso('Exames', 'PAULO', '07:30'), procedimento: 'ENDOSCOPIA' },
+        { ...caso('Exames', 'PAULO', '09:00'), procedimento: 'COLONOSCOPIA', ordem: 1 },
+      ],
+      hospitalDetectado: 'hro', ordemLiberacao: ['PAULO'],
+    })
+    const { container } = montar()
+    await soltarArquivos(container, [img('hro.png')])
+    await waitFor(() => expect(abas()).toHaveLength(1))
+
+    abrirBlocos()
+    expect(screen.getAllByText(/defina o do bloco acima/i).length).toBe(2)
   })
 })
 
@@ -277,6 +349,29 @@ describe('duplicidade entre hospitais — antes da primeira publicação', () =>
 
     expect(await screen.findAllByText(/Duplicidade entre hospitais/i)).not.toHaveLength(0)
     expect(salvarEscalaTurno).not.toHaveBeenCalled()
+  })
+
+  it('classificar numa aba vale para TODAS — a duplicidade é da pessoa', async () => {
+    // dono 30/08: "tive que clicar a mesma informação nas 3 abas dos hospitais,
+    // mesmo já tendo informado e no caso não tendo relação com o Materno"
+    svcMock.parseEscalaImagem
+      .mockResolvedValueOnce({ casos: [caso('Sala 1', 'CURY')], hospitalDetectado: 'hro', ordemLiberacao: ['CURY'] })
+      .mockResolvedValueOnce({ casos: [caso('Sala 2', 'CURY')], hospitalDetectado: 'materno', ordemLiberacao: ['CURY'] })
+
+    const { container } = montar()
+    await soltarArquivos(container, [img('hro.png'), img('materno.png')])
+    await waitFor(() => expect(abas()).toHaveLength(2))
+
+    const botoes = await screen.findAllByRole('button', { name: /É intencional/i })
+    fireEvent.click(botoes[0])
+    // as DUAS abas passam a mostrar resolvido — sem um segundo toque
+    expect(await screen.findAllByText(/confirmada como intencional/i)).toHaveLength(2)
+
+    // UM toque destrava o LOTE INTEIRO: sem compartilhar, a aba não classificada
+    // seguiria travada e a folha diria "Nada a publicar" (é o que o teste vizinho
+    // trava para o caso não classificado)
+    fireEvent.click(screen.getByRole('button', { name: /revisar e publicar/i }))
+    expect(await screen.findByRole('button', { name: /publicar as 2/i })).toBeTruthy()
   })
 
   it('duplicidade não classificada TRAVA a publicação daquele hospital', async () => {

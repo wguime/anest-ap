@@ -66,3 +66,41 @@ describe('sugerirParceiroTroca — só o par simétrico, e só quando é único'
     expect(sugerirParceiroTroca([P, Q]).size).toBe(0)
   })
 })
+
+// AJUDA DECLARADA (dono 30/08): "Oscar está como ajuda de outro hospital no HRO,
+// foi identificado como ajuda e mesmo assim a escala não pôde ser publicada".
+// Nome em AZUL no rodapé é a resposta da pergunta que o painel faz.
+describe('ajuda declarada no rodapé não é duplicidade por classificar', () => {
+  const cenario = (ajudas) => detectarDuplicidadesEscala({
+    casos: [{ sala: 'IOSC', hora: '07:30', procedimento: 'MEDULA ÓSSEA', anestesista: 'OSCAR' }],
+    hospitalAtual: 'hro',
+    hospitalAtualLabel: 'HRO',
+    ordemAtual: [],
+    periodo: 'matutino',
+    outrasEscalas: [{ hospital: 'unimed', hospitalLabel: 'Unimed', casos: [], ordemLiberacao: ['OSCAR'] }],
+    ajudas,
+  })
+
+  it('sem ajuda declarada, o item continua pedindo classificação', () => {
+    const [d] = cenario([])
+    expect(d.nome).toBe('OSCAR')
+    expect(d.ajudaDeclarada).toBe('')
+  })
+
+  it('declarado como ajuda AQUI, o item vem resolvido e diz onde', () => {
+    const [d] = cenario([{ hospitalLabel: 'HRO', nomes: ['OSCAR'] }])
+    expect(d.ajudaDeclarada).toBe('HRO')
+  })
+
+  it('a ajuda declarada do OUTRO lado também resolve', () => {
+    // quem é ajuda no HRO aparece duplicado também na conferência da Unimed, e
+    // lá a lista de ajuda que existe é a de lá
+    const [d] = cenario([{ hospitalLabel: 'HRO', nomes: ['oscar'] }])
+    expect(d.ajudaDeclarada).toBe('HRO')
+  })
+
+  it('ajuda de OUTRA pessoa não resolve a duplicidade desta', () => {
+    const [d] = cenario([{ hospitalLabel: 'HRO', nomes: ['GABRIELA'] }])
+    expect(d.ajudaDeclarada).toBe('')
+  })
+})

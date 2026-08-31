@@ -88,7 +88,7 @@ describe('classificação do anexo — o documento se declara', () => {
     const cls = classificarAnexoDiaUtil(
       {
         hospitalDetectado: 'materno',
-        casos: [{ sala: 'IOSC', bloco: 'iosc' }, { sala: 'Hemodinâmica', bloco: 'hemodinamica' }],
+        casos: [{ sala: 'IOSC', bloco: 'iosc' }, { sala: 'Bloco M - Sala 2' }],
       },
       { dataDoLote: '2026-08-31' },
     )
