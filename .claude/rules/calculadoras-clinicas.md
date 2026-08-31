@@ -20,7 +20,9 @@ description: Calculadoras clínicas (71 em 13 seções) — padrão de lib pura 
      arquivo que casa os `paths` acima. -->
 
 ## Calculadoras Clínicas
-71 calculadoras ativas em 13 seções. Dados em `src/design-system/data/calculator-definitions.js`.
+52 calculadoras ativas em 14 seções (86 definições; 34 `inactive` — nada é apagado).
+Dados em `src/design-system/data/calculator-definitions.js`. Conferir sempre pelo repo, nunca de
+memória: `grep -c "status: 'active'" src/design-system/data/calculator-definitions.js`.
 
 **Padrão para calculadoras complexas:**
 - Lib pura: `src/lib/<nome>.js` (funções puras, `num()` helper, JSDoc, named exports)
@@ -111,7 +113,7 @@ muda `TabsList`/`TabsTrigger`, que leem `useTheme()` do contexto, e rende screen
 de abas × cards, truncamento por `scrollWidth > clientWidth`, alvo de toque e estouro horizontal. Dois achados
 ficaram de fora por serem DO APP e não do card, confirmados medindo o card de Anticoagulantes: o `<input>` do DS
 tem 24px mas a caixa que recebe o toque tem 58px (falso-positivo), e o botão **"Voltar"** do cabeçalho da página
-de calculadora tem **20px** — esse é real, vale para as 71 telas e depende de pedido do dono (Regra #2).
+de calculadora tem **20px** — esse é real, vale para todas as telas de calculadora e depende de pedido do dono (Regra #2).
 
 **Lista agrupada por medicação** (`src/lib/agrupamentoFarmacos.js` + `ListaFarmacosAgrupada.jsx`, dono 25/08 —
 *"a lista ficou muito extensa e com medicações repetidas"*): vale para os DOIS cards. Anticoagulantes saíram de
@@ -224,7 +226,7 @@ alcançaria todos os alertas do app.
 
 ⚠️ **O título da calculadora pagava DOIS padding-top**: a página do App dá 16px e o `CalculatorShowcase` dava
 outros 12, contra 16px abaixo — o dono viu o desequilíbrio. Com `pt-0` no container, os dois vãos ficam em 16px.
-Vale para as 71 calculadoras.
+Vale para todas as calculadoras.
 
 ⚠️ **O voltar mora em cartão PRÓPRIO**, separado do da medicação (dono 26/08: "está colado"). Continua no fluxo
 do scroll — não flutua sobre o cabeçalho fixo, que era o motivo de ele estar dentro do card.
@@ -243,4 +245,6 @@ do scroll — não flutua sobre o cabeçalho fixo, que era o motivo de ele estar
   o texto recuava 48px e agora recua 17px.
 
 **Critérios UTI** (feature separada): `src/data/criteriosUtiCalculators.js` + `src/pages/CriteriosUTIPage.jsx`
-7 calculadoras (SORT, ESS, POTTER, SAS, SIAARTI, P-POSSUM, CFM 2156) em 4 categorias (Pré-op / Intra-op / Composto / Regulatório).
+5 ferramentas (SORT, ESS, SAS, SIAARTI 2025, CFM 2156). POTTER e P-POSSUM saíram em 29/08/2026
+(`docs/criterios-uti-revisao.md`). Desde então NÃO têm card próprio no Menu: entram como a 14ª seção
+de Calculadoras (`criterio_uti`) via `customRender: 'criterioUti'`; a rota `criteriosUti` segue viva.

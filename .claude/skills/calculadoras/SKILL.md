@@ -1,6 +1,6 @@
 ---
 name: calculadoras
-description: Regras para criar, editar e corrigir as calculadoras clínicas do ANEST (56 ativas em 14 seções, incluindo Indicação de UTI). Use ao mexer em calculator-definitions.js, nos displays do showcase, nas libs puras de src/lib, ou ao investigar conta errada, InfoBox, layout de grid e formatação de número.
+description: Regras para criar, editar e corrigir as calculadoras clínicas do ANEST (52 ativas em 14 seções, incluindo Indicação de UTI). Use ao mexer em calculator-definitions.js, nos displays do showcase, nas libs puras de src/lib, ou ao investigar conta errada, InfoBox, layout de grid e formatação de número.
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 
@@ -17,7 +17,7 @@ aprovação.
 
 | onde | o que tem |
 |---|---|
-| `src/design-system/data/calculator-definitions.js` | **85 definições — 56 `active`, 29 `inactive`** — em 14 seções |
+| `src/design-system/data/calculator-definitions.js` | **86 definições — 52 `active`, 34 `inactive`** — em 14 seções |
 | `src/design-system/showcase/CalculatorShowcase.jsx` | a tela: grid, busca, inputs genéricos, 8 displays inline |
 | `src/design-system/showcase/displays/` | 8 displays com arquivo próprio |
 | `src/lib/*.js` | libs puras (`apacheII`, `fourScore`, `roxIndex`, `electrolyteCorrection`, `saps3`, `sofaScore`, `fluidBalance`…), testadas em `src/__tests__/lib/` |
@@ -61,8 +61,20 @@ const fr = Number.isFinite(n) ? n : 16;
 ```
 
 Custou 8 pontos de APACHE II em produção (FR = 0 e leucócitos = 0 valem +4 cada, e os dois inputs
-têm `min: 0`). Só use `|| 0` quando zero for genuinamente equivalente a "campo vazio" — peso, altura,
-dose. Nunca em variável fisiológica que pode ser zero.
+têm `min: 0`) e, depois, a **classe IV do ATLS**: em `hemo_perdas_atls`, `diurese || 30` trocava
+anúria por diurese normal e derrubava o paciente para classe I — o teste não pegava porque usava
+`diurese: 2`, que passa pelo `||`. Só use `|| 0` quando zero for genuinamente equivalente a "campo
+vazio" — peso, altura, dose. Nunca em variável fisiológica que pode ser zero.
+
+Helper pronto no topo de `calculator-definitions.js`: `numeroOuPadrao(valor, padrao)`.
+
+### 2b. ⚠️ Chave de mapa tem de bater LETRA POR LETRA com o `value` da opção
+`value: 'liquido_claro'` contra a chave `líquido_claro` devolve `undefined`, o `compute` lança, e o
+`catch { setResult(null) }` de `CalculatorShowcase.jsx:1974` engole — a opção fica **muda na tela**,
+sem erro em lugar nenhum. Aconteceu em `ped_jejum`, na opção mais escolhida do card.
+Quando o fallback do mapa por acaso vale o mesmo que a chave certa (`crianca`/`criança` em
+`ped_mabl`), o número sai certo e o defeito fica latente até alguém mudar o default.
+Trava genérica: `src/__tests__/data/calculatorOpcoesSelect.test.js`.
 
 ### 3. `risk` acende o badge de risco
 `CalculatorShowcase.jsx:284` lê `result.risk`. Use quando o escore TEM estratificação clínica
