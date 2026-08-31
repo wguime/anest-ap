@@ -5,6 +5,8 @@
  * Migrado do app legado + novas drogas
  */
 
+import { numeroBr } from '../../lib/numeroBr';
+
 // =============================================================================
 // CATEGORIAS DE MEDICAMENTOS
 // =============================================================================
@@ -473,9 +475,9 @@ export function calculatePediatricDose(drugId, weightKg) {
 
   return {
     drug: drug.drug,
-    dose: calculatedDose.toFixed(2),
+    dose: numeroBr(calculatedDose, 2),
     unit: drug.unit.replace('/kg', ''),
-    volume: volume.toFixed(2),
+    volume: numeroBr(volume, 2),
     volumeUnit: 'mL',
     presentation: drug.presentation,
     dilution: drug.dilution,

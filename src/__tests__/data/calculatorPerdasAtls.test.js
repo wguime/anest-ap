@@ -23,6 +23,7 @@
  * Fonte: ATLS 10ª ed. / J Emerg Trauma Shock 2024, sobre atribuição de classe.
  */
 import { describe, it, expect } from 'vitest';
+import { numeroDeTexto } from '../helpers/numeroDeTexto';
 import { getCalculatorById } from '../../design-system/data/calculator-definitions.js';
 
 const atls = getCalculatorById('hemo_perdas_atls').compute;
@@ -66,7 +67,10 @@ describe('classe sai do PIOR parâmetro, não da soma', () => {
 });
 
 describe('os volumes acompanham o peso — as duas linhas não podem se contradizer', () => {
-  const numeros = (texto) => (texto.match(/\d+/g) || []).map(Number);
+  // ⚠️ /\d+/g parte "4.900 mL" em ["4","900"] desde que o app passou a separar
+  // milhar (31/08/2026) — a invariante seria comparada com 900.
+  const numeros = (texto) =>
+    (String(texto).match(/[\d.]+(?:,\d+)?/g) || []).map(numeroDeTexto);
 
   it.each([50, 70, 100, 120])('a %i kg, a perda estimada nunca passa do volume máximo', (peso) => {
     for (const alteracao of [{}, { fc: 110 }, { fc: 130 }, { fc: 145 }]) {
@@ -85,7 +89,7 @@ describe('os volumes acompanham o peso — as duas linhas não podem se contradi
   });
 
   it('a volemia declarada continua sendo 70 mL/kg', () => {
-    expect(atls({ ...NORMAL, peso: 70 }).details['Volemia calculada']).toContain('4900');
+    expect(atls({ ...NORMAL, peso: 70 }).details['Volemia calculada']).toContain('4.900');
   });
 });
 

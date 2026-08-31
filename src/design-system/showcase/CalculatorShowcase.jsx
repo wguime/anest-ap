@@ -12,6 +12,7 @@
  * - Busca filtra em TODAS secoes
  */
 
+import { numeroBr } from '@/lib/numeroBr';
 import { useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Search, Calculator, Baby, Heart, HeartPulse, Wind, Shield, Stethoscope, Droplet, Activity, Brain, User, X, ArrowLeft, Info, Siren, Pill, RotateCcw, BedDouble, Scale, Thermometer, Check, Zap, Ruler, Clock, ClipboardCheck, AlertTriangle, TrendingDown, BarChart2, Frown, Flame, Droplets, Syringe, Moon, AlertCircle, Apple, FileText, Eye, Bed, Beaker, FlaskConical, RefreshCw, Plus, Minus, Bell, Bone, BookOpen, ListChecks, ChevronDown, ShieldAlert, Bug, Star } from 'lucide-react';
 import { cn } from '../utils/tokens';
@@ -338,7 +339,7 @@ function ResultDisplay({ result, title, resultMessage }) {
         <span className="text-sm font-medium text-muted-foreground truncate">{title}</span>
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-3xl font-bold text-foreground">
-            {typeof result.score === 'number' ? result.score.toFixed(2) : result.score}
+            {typeof result.score === 'number' ? numeroBr(result.score, 2) : result.score}
           </span>
           {result.maxScore && (
             <span className="text-sm text-muted-foreground">/ {result.maxScore}</span>
@@ -1682,7 +1683,7 @@ function HollidaySegarDisplay({ result, peso, onPesoChange }) {
             )}>
               <p className="text-xs text-muted-foreground mb-1">Manutencao</p>
               <p className="text-3xl font-bold text-primary">
-                {details.mlHora?.toFixed(1) || '-'}
+                {numeroBr(details.mlHora, 1) || '-'}
               </p>
               <p className="text-sm text-muted-foreground font-medium">mL/hora</p>
               <p className="text-[10px] text-muted-foreground/80">regra 4-2-1</p>
@@ -1696,7 +1697,7 @@ function HollidaySegarDisplay({ result, peso, onPesoChange }) {
             )}>
               <p className="text-xs text-muted-foreground mb-1">Volume 24h</p>
               <p className="text-3xl font-bold text-primary">
-                {details.ml24h?.toFixed(0) || '-'}
+                {numeroBr(details.ml24h) || '-'}
               </p>
               <p className="text-sm text-muted-foreground font-medium">mL/dia</p>
               <p className="text-[10px] text-muted-foreground/80">regra 100-50-20</p>

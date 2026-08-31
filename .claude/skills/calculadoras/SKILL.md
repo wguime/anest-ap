@@ -84,11 +84,31 @@ Trava genérica: `src/__tests__/data/calculatorOpcoesSelect.test.js`.
 `warnings: []` (array) no `infoBox`. O `warning:` string é formato legado já migrado.
 ⚠️ Não confundir com o `warning:` das drogas em `PEDI_CALC_DATA`, que é outro campo e é legítimo.
 
-### 5. ⚠️ `toFixed()` escreve com PONTO — o app escreve com vírgula
-`result.score.toFixed(2)` produz `12.75`, e a tela ao lado diz "1,5 mL/kg". Dois separadores na mesma
-tela fazem duvidar da conta. Num app brasileiro o formato de número é tão português quanto as
-palavras. Precedente de helper: `numeroBr` em `InibidoresApetiteDisplay.jsx`.
-*(A migração dos ~133 usos é a Frente 4 de `docs/revisao-calculadoras.md`.)*
+### 5. ⚠️ NUNCA `toFixed()` para texto de tela — use `numeroBr`
+`toFixed()` devolve PONTO decimal e não separa milhar: `12.75` e `4900` ao lado de "1,5 mL/kg" na
+mesma tela fazem duvidar da conta. Num app brasileiro o formato do número é tão português quanto as
+palavras.
+
+```js
+import { numeroBr } from '@/lib/numeroBr';
+numeroBr(12.75, 2)  // "12,75"
+numeroBr(4900)      // "4.900"
+numeroBr(undefined) // "—"
+```
+
+**Migração concluída em 31/08/2026**: os 139 usos do sistema de calculadoras foram trocados, e os 5
+helpers `br()` locais que faziam `.replace('.', ',')` passaram a delegar no mesmo lugar. `toFixed`
+em `calculator-definitions.js`, `criteriosUtiCalculators.js`, `doses-data.js`, `CalculatorShowcase`
+ou num display é regressão.
+
+⚠️ **O que NÃO pode virar texto: `score`.** Ele é comparado e reconvertido — `parseFloat('2,5')` dá
+**2**, e a faixa muda de lado em silêncio. Foi o que quebrou o Murray e o SORT na própria migração:
+`score` fica NUMÉRICO e a formatação acontece só na exibição (`details`, `resultMessage`,
+`scoreLabel`). Mesma regra para qualquer valor que outro trecho vá parsear.
+
+⚠️ **Teste que lê o número de volta do texto** precisa de `numeroDeTexto`
+(`src/__tests__/helpers/numeroDeTexto.js`): `parseFloat('1.200,5')` devolve **1.2** e a invariante
+clínica passa a ser checada contra o número errado — aconteceu em 4 arquivos de teste.
 
 ### 6. ⚠️ Prop errada na `Select` do DS é falha silenciosa
 A `Select` aceita `options, value, onChange, placeholder, label, error, disabled, searchable, size,

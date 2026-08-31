@@ -12,6 +12,7 @@
  * CDC Clinical Practice Guideline for Prescribing Opioids 2022.
  */
 import { describe, it, expect } from 'vitest';
+import { numeroDeTexto } from '../helpers/numeroDeTexto';
 import {
   MME_FACTORS,
   methadoneRatioFromMedd,
@@ -164,13 +165,13 @@ describe('o número em destaque é o que se PRESCREVE', () => {
   it('300 mg/dia de morfina VO → metadona: destaque 18,8 e bruto 25,0', () => {
     const r = compute({ opioide_origem: 'morfina_vo', opioide_destino: 'metadona_vo', dose_origem: 300 });
     expect(r.score).toBeCloseTo(18.75, 2);
-    expect(r.details['Equianalgésico bruto']).toContain('25,0'.replace(',', '.'));
+    expect(r.details['Equianalgésico bruto']).toContain('25,0');
   });
 
   it('o destaque é sempre 75% do equianalgésico bruto', () => {
     for (const destino of ['morfina_iv', 'oxicodona_vo', 'fentanil_td', 'metadona_vo']) {
       const r = compute({ opioide_origem: 'morfina_vo', opioide_destino: destino, dose_origem: 240 });
-      const bruto = parseFloat(r.details['Equianalgésico bruto']);
+      const bruto = numeroDeTexto(r.details['Equianalgésico bruto']);
       expect(r.score / bruto, destino).toBeCloseTo(0.75, 4);
     }
   });

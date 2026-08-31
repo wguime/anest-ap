@@ -18,6 +18,7 @@
  * e digitar parece não fazer nada (relato do dono no card anterior, 25/08).
  */
 
+import { numeroBr } from '../../../lib/numeroBr';
 import { useMemo, useState } from 'react';
 import { AlertTriangle, ArrowLeft, Info, Search, Siren } from 'lucide-react';
 import { cn } from '../../utils/tokens';
@@ -116,9 +117,6 @@ const TEXTO_TOM = {
   info: 'text-foreground',
 };
 
-/** Número no padrão brasileiro — toFixed devolve PONTO e o resto do card usa vírgula. */
-const numeroBr = (n, casas = 0) =>
-  Number(n).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
 
 function TituloAlerta({ icone: Icone, children }) {
   return (

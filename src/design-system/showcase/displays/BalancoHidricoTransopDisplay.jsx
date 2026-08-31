@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { numeroBr } from '../../../lib/numeroBr';
 import {
   Droplets,
   Plus,
@@ -112,12 +113,6 @@ function emptyHora() {
     outras: '',
   };
 }
-
-/** Número no padrão brasileiro — `toFixed` devolve PONTO e não separa milhar. */
-const numeroBr = (n, casas = 0) => {
-  if (!Number.isFinite(n)) return '—';
-  return n.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
-};
 
 function PillToggle({ value, onChange }) {
   const opts = [

@@ -72,8 +72,9 @@ describe('ped_holliday_segar', () => {
 
   it('resultMessage formata mL/h com 1 decimal e mL/24h inteiro', () => {
     const msg = ped.resultMessage(ped.compute({ peso: 20 }));
-    expect(msg).toContain('60.0 mL/h');
-    expect(msg).toContain('1500 mL/24h');
+    // o app escreve no padrão brasileiro desde 31/08/2026: vírgula decimal.
+    expect(msg).toContain('60,0 mL/h');
+    expect(msg).toContain('1.500 mL/24h');
     expect(ped.resultMessage(null)).toBe('Informe o peso');
   });
 

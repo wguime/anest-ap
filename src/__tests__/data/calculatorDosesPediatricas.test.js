@@ -16,6 +16,7 @@
  * Nenhum dos dois quebrava o build ou lançava — some em silêncio na tela.
  */
 import { describe, it, expect } from 'vitest';
+import { numeroDeTexto } from '../helpers/numeroDeTexto';
 import { getCalculatorById } from '../../design-system/data/calculator-definitions.js';
 
 const achatar = (id, peso) => {
@@ -93,7 +94,7 @@ describe('ADENOSINA — o teto é absoluto, não por kg', () => {
   const doseDe = (peso) => {
     const l = getCalculatorById('ped_doses').compute({ peso })
       .categorias.flatMap((c) => c.medicamentos);
-    return parseFloat(l.find((m) => m.droga === 'ADENOSINA').dose);
+    return numeroDeTexto(l.find((m) => m.droga === 'ADENOSINA').dose);
   };
 
   it.each([
@@ -133,13 +134,13 @@ describe('GLUCONATO de cálcio — a dose é a do gluconato, não a do cloreto',
     [30, 1800],
     [40, 2000],  // teto de 2 g
   ])('%i kg → %s mg', (peso, esperado) => {
-    expect(parseFloat(gluconato(peso).dose)).toBeCloseTo(esperado, 1);
+    expect(numeroDeTexto(gluconato(peso).dose)).toBeCloseTo(esperado, 1);
   });
 
   it('60 mg/kg equivale a 0,6 mL/kg da solução a 10% — a faixa do ACLS adulto', () => {
     // Diluição declarada: 10 mL + 10 mL AD → 50 mg/mL. 10 kg → 600 mg → 12 mL
     // do diluído = 6 mL do puro a 100 mg/mL = 0,6 mL/kg.
-    expect(parseFloat(gluconato(10).volume)).toBeCloseTo(12, 1);
+    expect(numeroDeTexto(gluconato(10).volume)).toBeCloseTo(12, 1);
   });
 
   it('a dose padrão declarada na tela é 60 mg/kg', () => {
@@ -152,8 +153,8 @@ describe('a dose escala com o peso', () => {
     const leve = achatar('ped_doses', 10);
     const pesado = achatar('ped_doses', 20);
     for (let i = 0; i < leve.length; i++) {
-      const a = parseFloat(leve[i].dose);
-      const b = parseFloat(pesado[i].dose);
+      const a = numeroDeTexto(leve[i].dose);
+      const b = numeroDeTexto(pesado[i].dose);
       expect(b, `${leve[i].droga} encolheu ao dobrar o peso`).toBeGreaterThanOrEqual(a);
     }
   });

@@ -4,6 +4,8 @@
  * 34 Ativas (portadas do legado) + 50 Em breve
  */
 
+import { numeroBr } from '../../lib/numeroBr';
+
 import { maintenanceRate } from '@/lib/fluidBalance';
 import { hollidaySegarDaily } from '@/lib/burnFluid';
 import { apacheII } from '@/lib/apacheII';
@@ -208,8 +210,8 @@ const pedDosesCalculators = [
             droga: med.droga,
             apresentacao: med.apresentacao,
             diluicao: med.diluicao,
-            dose: `${doseCalculada.toFixed(2)} ${unidade}`,
-            volume: `${volumeFinal.toFixed(2)} ml`,
+            dose: `${numeroBr(doseCalculada, 2)} ${unidade}`,
+            volume: `${numeroBr(volumeFinal, 2)} ml`,
             dosePadrao: `${med.dosePadrao} ${med.unidadeDose}`,
             warning: med.warning || null,
             obs: med.obs || null,
@@ -333,9 +335,9 @@ const pedViaAereaCalculators = [
         idadeMeses,
         categoria,
         details: {
-          tuboSemCuff: tuboSemCuff?.toFixed(1),
-          tuboComCuff: tuboComCuff?.toFixed(1),
-          profundidade: profundidade?.toFixed(1),
+          tuboSemCuff: numeroBr(tuboSemCuff, 1),
+          tuboComCuff: numeroBr(tuboComCuff, 1),
+          profundidade: numeroBr(profundidade, 1),
           lma,
         },
       };
@@ -521,7 +523,7 @@ const pedPeriopCalculators = [
     },
     resultMessage: (result) => {
       if (!result || !result.details) return 'Informe o peso';
-      return `Manutenção: ${result.details.mlHora?.toFixed(1)} mL/h (4-2-1) | ${result.details.ml24h?.toFixed(0)} mL/24h (100-50-20)`;
+      return `Manutenção: ${numeroBr(result.details.mlHora, 1)} mL/h (4-2-1) | ${numeroBr(result.details.ml24h)} mL/24h (100-50-20)`;
     },
     infoBox: {
       keyPoints: [
@@ -1199,10 +1201,13 @@ const pedUtiCalculators = [
 
       // Probabilidade de morte
       const probMorte = Math.exp(logit) / (1 + Math.exp(logit));
-      const percentMorte = (probMorte * 100).toFixed(1);
+      // ⚠️ o número fica NUMÉRICO; só o texto é formatado. Enquanto `score`
+      // vinha de `parseFloat` do texto, virar vírgula truncava "12,5" em 12.
+      const percentMorteNum = probMorte * 100;
+      const percentMorte = numeroBr(percentMorteNum, 1);
 
       return {
-        score: parseFloat(percentMorte),
+        score: percentMorteNum,
         details: {
           'Probabilidade de óbito': `${percentMorte}%`,
           'Pupilas': pupilas === 1 ? 'Ambas fixas' : 'Reagentes',
@@ -1771,20 +1776,20 @@ const pedUtiCalculators = [
       return {
         score: volumeTotal24h,
         details: {
-          'Parkland (reposição)': `${parkland24h.toFixed(0)} mL/24h`,
-          'Manutenção (Holliday-Segar)': peso < 30 ? `${manutencao24h.toFixed(0)} mL/24h` : 'Não necessário (>=30kg)',
-          'Volume Total 24h': `${volumeTotal24h.toFixed(0)} mL`,
-          '1a fase (8h)': `${volume8h.toFixed(0)} mL`,
-          '2a fase (16h)': `${volume16h.toFixed(0)} mL`,
-          'Taxa 1a fase': horasRestantes8h > 0 ? `${taxaInfusao8h.toFixed(0)} mL/h (em ${horasRestantes8h.toFixed(1)}h restantes)` : 'Fase concluída',
-          'Taxa 2a fase': `${taxaInfusao16h.toFixed(0)} mL/h`,
-          'Diurese alvo': `${diureseAlvo.toFixed(0)} mL/h`,
+          'Parkland (reposição)': `${numeroBr(parkland24h)} mL/24h`,
+          'Manutenção (Holliday-Segar)': peso < 30 ? `${numeroBr(manutencao24h)} mL/24h` : 'Não necessário (>=30kg)',
+          'Volume Total 24h': `${numeroBr(volumeTotal24h)} mL`,
+          '1a fase (8h)': `${numeroBr(volume8h)} mL`,
+          '2a fase (16h)': `${numeroBr(volume16h)} mL`,
+          'Taxa 1a fase': horasRestantes8h > 0 ? `${numeroBr(taxaInfusao8h)} mL/h (em ${numeroBr(horasRestantes8h, 1)}h restantes)` : 'Fase concluída',
+          'Taxa 2a fase': `${numeroBr(taxaInfusao16h)} mL/h`,
+          'Diurese alvo': `${numeroBr(diureseAlvo)} mL/h`,
         },
       };
     },
     resultMessage: (result) => {
       if (!result) return 'Informe peso e SCQ';
-      return `Volume Total 24h: ${result.score.toFixed(0)} mL`;
+      return `Volume Total 24h: ${numeroBr(result.score)} mL`;
     },
     infoBox: {
       keyPoints: [
@@ -1867,20 +1872,20 @@ const pedUtiCalculators = [
       return {
         score: manutencaoHora,
         details: {
-          'Manutenção por hora': `${manutencaoHora.toFixed(1)} mL/h`,
-          'Manutenção 24h': `${manutencao24h.toFixed(0)} mL`,
-          'Deficit de jejum': `${deficit.toFixed(0)} mL`,
-          '1a hora (50% deficit + manut)': `${reposicao1h.toFixed(0)} mL`,
-          '2a hora (25% deficit + manut)': `${reposicao2h.toFixed(0)} mL`,
-          '3a hora (25% deficit + manut)': `${reposicao3h.toFixed(0)} mL`,
-          'Perdas cirúrgicas/hora': perdasHora > 0 ? `${perdasHora.toFixed(0)} mL/h` : 'N/A',
-          'Total intraop/hora (após 3a h)': `${totalIntraopHora.toFixed(0)} mL/h`,
+          'Manutenção por hora': `${numeroBr(manutencaoHora, 1)} mL/h`,
+          'Manutenção 24h': `${numeroBr(manutencao24h)} mL`,
+          'Deficit de jejum': `${numeroBr(deficit)} mL`,
+          '1a hora (50% deficit + manut)': `${numeroBr(reposicao1h)} mL`,
+          '2a hora (25% deficit + manut)': `${numeroBr(reposicao2h)} mL`,
+          '3a hora (25% deficit + manut)': `${numeroBr(reposicao3h)} mL`,
+          'Perdas cirúrgicas/hora': perdasHora > 0 ? `${numeroBr(perdasHora)} mL/h` : 'N/A',
+          'Total intraop/hora (após 3a h)': `${numeroBr(totalIntraopHora)} mL/h`,
         },
       };
     },
     resultMessage: (result) => {
       if (!result) return 'Informe o peso';
-      return `Manutenção: ${result.score.toFixed(1)} mL/h`;
+      return `Manutenção: ${numeroBr(result.score, 1)} mL/h`;
     },
     infoBox: {
       keyPoints: [
@@ -1937,15 +1942,15 @@ const pedUtiCalculators = [
       return {
         score: mabl,
         details: {
-          'Volemia estimada': `${volemiaTotal.toFixed(0)} mL (${volemiaPorKg} mL/kg)`,
-          'Perda máxima permitida': `${mabl.toFixed(0)} mL`,
-          'Percentual da volemia': `${percentual.toFixed(1)}%`,
+          'Volemia estimada': `${numeroBr(volemiaTotal)} mL (${volemiaPorKg} mL/kg)`,
+          'Perda máxima permitida': `${numeroBr(mabl)} mL`,
+          'Percentual da volemia': `${numeroBr(percentual, 1)}%`,
         },
       };
     },
     resultMessage: (result) => {
       if (!result) return 'Preencha todos os campos';
-      return `MABL: ${result.score.toFixed(0)} mL`;
+      return `MABL: ${numeroBr(result.score)} mL`;
     },
     infoBox: {
       keyPoints: [
@@ -1988,16 +1993,16 @@ const pedUtiCalculators = [
       return {
         score: volumeCalculado,
         details: {
-          'Volume calculado (formula)': `${volumeCalculado.toFixed(0)} mL`,
-          'Dose 10 mL/kg': `${doseSimples10.toFixed(0)} mL (+~2 g/dL)`,
-          'Dose 15 mL/kg': `${doseSimples15.toFixed(0)} mL (+~3 g/dL)`,
-          'Incremento Hb esperado': `${(hbAlvo - hbAtual).toFixed(1)} g/dL`,
+          'Volume calculado (formula)': `${numeroBr(volumeCalculado)} mL`,
+          'Dose 10 mL/kg': `${numeroBr(doseSimples10)} mL (+~2 g/dL)`,
+          'Dose 15 mL/kg': `${numeroBr(doseSimples15)} mL (+~3 g/dL)`,
+          'Incremento Hb esperado': `${numeroBr((hbAlvo - hbAtual), 1)} g/dL`,
         },
       };
     },
     resultMessage: (result) => {
       if (!result) return 'Preencha todos os campos';
-      return `Volume CH: ${result.score.toFixed(0)} mL`;
+      return `Volume CH: ${numeroBr(result.score)} mL`;
     },
     infoBox: {
       keyPoints: [
@@ -2076,9 +2081,9 @@ const pedUtiCalculators = [
       return {
         score: percentualPerda,
         details: {
-          'Volemia estimada': `${volemiaTotal.toFixed(0)} mL (${volemiaPorKg} mL/kg)`,
-          'Perda informada': `${perdaML.toFixed(0)} mL`,
-          'Percentual da volemia': `${percentualPerda.toFixed(1)}%`,
+          'Volemia estimada': `${numeroBr(volemiaTotal)} mL (${volemiaPorKg} mL/kg)`,
+          'Perda informada': `${numeroBr(perdaML)} mL`,
+          'Percentual da volemia': `${numeroBr(percentualPerda, 1)}%`,
           'Classificação': classificacao,
           'Reposição sugerida': reposicao,
         },
@@ -2086,7 +2091,7 @@ const pedUtiCalculators = [
     },
     resultMessage: (result) => {
       if (!result) return 'Preencha todos os campos';
-      return `Perda: ${result.score.toFixed(1)}% da volemia`;
+      return `Perda: ${numeroBr(result.score, 1)}% da volemia`;
     },
     infoBox: {
       keyPoints: [
@@ -2136,9 +2141,9 @@ const aclsCalculators = [
 
       const bicarbMeq = Math.round(peso * 1);
       const bicarbAmp = Math.ceil(bicarbMeq / 10);
-      const lidocaina = (peso * 1.5).toFixed(1);
+      const lidocaina = numeroBr((peso * 1.5), 1);
       const gluconatoCa = Math.round(peso * 0.5);
-      const emulsaoLipidica = (peso * 1.5).toFixed(0);
+      const emulsaoLipidica = numeroBr((peso * 1.5));
 
       // Estrutura de categorias igual ao PediCalc
       const categorias = [
@@ -2267,7 +2272,7 @@ const aclsCalculators = [
               subItens: [
                 { nome: 'Dose', valor: '0.05-0.5 mcg/kg/min', detalhe: '1ª linha sepse' },
                 { nome: 'Diluicao', valor: '4mg/250mL', detalhe: '16 mcg/mL' },
-                { nome: 'Resultado', valor: `${((0.1*peso*60)/16).toFixed(1)} - ${((0.3*peso*60)/16).toFixed(1)} mL/h`, detalhe: 'Faixa tipica (0.1-0.3 mcg/kg/min)' },
+                { nome: 'Resultado', valor: `${numeroBr(((0.1*peso*60)/16), 1)} - ${numeroBr(((0.3*peso*60)/16), 1)} mL/h`, detalhe: 'Faixa tipica (0.1-0.3 mcg/kg/min)' },
               ],
             },
             {
@@ -2275,7 +2280,7 @@ const aclsCalculators = [
               subItens: [
                 { nome: 'Dose', valor: '0.01-0.5 mcg/kg/min', detalhe: 'Anafilaxia, choque' },
                 { nome: 'Diluicao', valor: '4mg/250mL', detalhe: '16 mcg/mL' },
-                { nome: 'Resultado', valor: `${((0.05*peso*60)/16).toFixed(1)} - ${((0.2*peso*60)/16).toFixed(1)} mL/h`, detalhe: 'Faixa tipica (0.05-0.2 mcg/kg/min)' },
+                { nome: 'Resultado', valor: `${numeroBr(((0.05*peso*60)/16), 1)} - ${numeroBr(((0.2*peso*60)/16), 1)} mL/h`, detalhe: 'Faixa tipica (0.05-0.2 mcg/kg/min)' },
               ],
             },
             {
@@ -2283,7 +2288,7 @@ const aclsCalculators = [
               subItens: [
                 { nome: 'Dose', valor: '2-20 mcg/kg/min', detalhe: '2-5 renal, 5-10 beta, >10 alfa' },
                 { nome: 'Diluicao', valor: '400mg/250mL', detalhe: '1600 mcg/mL' },
-                { nome: 'Resultado', valor: `${((5*peso*60)/1600).toFixed(1)} - ${((10*peso*60)/1600).toFixed(1)} mL/h`, detalhe: 'Faixa tipica (5-10 mcg/kg/min)' },
+                { nome: 'Resultado', valor: `${numeroBr(((5*peso*60)/1600), 1)} - ${numeroBr(((10*peso*60)/1600), 1)} mL/h`, detalhe: 'Faixa tipica (5-10 mcg/kg/min)' },
               ],
             },
             {
@@ -2291,7 +2296,7 @@ const aclsCalculators = [
               subItens: [
                 { nome: 'Dose', valor: '2-20 mcg/kg/min', detalhe: 'IC, choque cardiogenico' },
                 { nome: 'Diluicao', valor: '250mg/250mL', detalhe: '1000 mcg/mL' },
-                { nome: 'Resultado', valor: `${((5*peso*60)/1000).toFixed(1)} - ${((10*peso*60)/1000).toFixed(1)} mL/h`, detalhe: 'Faixa tipica (5-10 mcg/kg/min)' },
+                { nome: 'Resultado', valor: `${numeroBr(((5*peso*60)/1000), 1)} - ${numeroBr(((10*peso*60)/1000), 1)} mL/h`, detalhe: 'Faixa tipica (5-10 mcg/kg/min)' },
               ],
             },
             { nome: 'VASOPRESSINA', valor: '0.03-0.04 U/min', detalhe: '40U/100mL | Dose fixa, adjuvante a Nora' },
@@ -2300,7 +2305,7 @@ const aclsCalculators = [
               subItens: [
                 { nome: 'Dose', valor: '0.5-5 mcg/kg/min', detalhe: 'Alfa puro, vasoconstritor' },
                 { nome: 'Diluicao', valor: '10mg/250mL', detalhe: '40 mcg/mL' },
-                { nome: 'Resultado', valor: `${((1*peso*60)/40).toFixed(1)} - ${((2*peso*60)/40).toFixed(1)} mL/h`, detalhe: 'Faixa tipica (1-2 mcg/kg/min)' },
+                { nome: 'Resultado', valor: `${numeroBr(((1*peso*60)/40), 1)} - ${numeroBr(((2*peso*60)/40), 1)} mL/h`, detalhe: 'Faixa tipica (1-2 mcg/kg/min)' },
               ],
             },
             {
@@ -2308,7 +2313,7 @@ const aclsCalculators = [
               subItens: [
                 { nome: 'Dose', valor: '0.375-0.75 mcg/kg/min', detalhe: 'Inodilatador, IC refrataria' },
                 { nome: 'Diluicao', valor: '20mg/100mL', detalhe: '200 mcg/mL' },
-                { nome: 'Resultado', valor: `${((0.5*peso*60)/200).toFixed(2)} mL/h`, detalhe: 'Dose media (0.5 mcg/kg/min)' },
+                { nome: 'Resultado', valor: `${numeroBr(((0.5*peso*60)/200), 2)} mL/h`, detalhe: 'Dose media (0.5 mcg/kg/min)' },
               ],
             },
           ],
@@ -2322,7 +2327,7 @@ const aclsCalculators = [
               warning: 'Dose máxima total: 12 mL/kg. Não exceder mesmo em PCR refrataria.',
               subItens: [
                 { nome: 'Bolus', valor: peso >= 70 ? '100 mL' : `${emulsaoLipidica} mL`, detalhe: peso >= 70 ? '1.5 mL/kg em 2-3 min | >70kg: 100mL fixo' : '1.5 mL/kg em 2-3 min | Intox anest local' },
-                { nome: 'Infusão', valor: `${(peso*0.25).toFixed(1)} mL/min`, detalhe: '0.25 mL/kg/min x 15-20 min' },
+                { nome: 'Infusão', valor: `${numeroBr((peso*0.25), 1)} mL/min`, detalhe: '0.25 mL/kg/min x 15-20 min' },
                 { nome: 'Se instável', valor: 'Repetir bolus 1-2x', detalhe: 'Dobrar infusão se necessário' },
               ],
               interpretacao: 'Iniciar imediatamente ao suspeitar de intoxicação por anestésico local. Se PCR: manter bolus/infusão durante RCP.',
@@ -2339,7 +2344,7 @@ const aclsCalculators = [
             { nome: 'INSULINA (HIET)', valor: `${peso} U bolus`, detalhe: '1 U/kg + Glicose 50% 25g | Intox bloq Ca grave', interpretacao: 'Terapia com alta dose de insulina para intox grave por bloq Ca. Monitorar glicemia rigorosamente.' },
             { nome: 'FLUMAZENIL', valor: '0.2-1 mg IV', detalhe: 'Intox BZD | Max 3-5 mg', warning: 'CONTRAINDICADO em uso crônico de BZD! Risco de convulsões.', interpretacao: 'Meia-vida curta - pode haver ressedação. Observar por 2h após.' },
             { nome: 'SUGAMMADEX', valor: `${Math.round(peso*16)} mg`, detalhe: '16 mg/kg | Reversão imediata rocuronio | Emergência VA' },
-            { nome: 'NEOSTIGMINA', valor: `${(peso*0.05).toFixed(2)} mg`, detalhe: '0.04-0.07 mg/kg + Atropina 0.02 mg/kg' },
+            { nome: 'NEOSTIGMINA', valor: `${numeroBr((peso*0.05), 2)} mg`, detalhe: '0.04-0.07 mg/kg + Atropina 0.02 mg/kg' },
           ],
         },
         {
@@ -2368,8 +2373,8 @@ const aclsCalculators = [
               nome: 'MIDAZOLAM bolus',
               subItens: [
                 { nome: 'Dose', valor: '0.01-0.05 mg/kg', detalhe: 'Sedação' },
-                { nome: 'Min', valor: `${(peso*0.01).toFixed(1)} mg`, detalhe: '0.01 mg/kg' },
-                { nome: 'Max', valor: `${(peso*0.05).toFixed(1)} mg`, detalhe: '0.05 mg/kg' },
+                { nome: 'Min', valor: `${numeroBr((peso*0.01), 1)} mg`, detalhe: '0.01 mg/kg' },
+                { nome: 'Max', valor: `${numeroBr((peso*0.05), 1)} mg`, detalhe: '0.05 mg/kg' },
               ],
             },
             {
@@ -2414,9 +2419,9 @@ const aclsCalculators = [
           key: 'arritmias_controle',
           titulo: 'Arritmias - Controle FC',
           itens: [
-            { nome: 'DILTIAZEM', valor: `${(peso*0.25).toFixed(1)} mg`, detalhe: '0.25 mg/kg em 2 min | FA, Flutter, TSV | Manut 5-15 mg/h' },
-            { nome: 'VERAPAMIL', valor: `${(peso*0.1).toFixed(1)} mg`, detalhe: '0.075-0.15 mg/kg em 2 min | TSV, FA | CI: IC, WPW' },
-            { nome: 'ESMOLOL', valor: `${(peso*0.5).toFixed(0)} mg bolus`, detalhe: '0.5 mg/kg | Infusão 0.05-0.3 mg/kg/min | Ultra-curta ação' },
+            { nome: 'DILTIAZEM', valor: `${numeroBr((peso*0.25), 1)} mg`, detalhe: '0.25 mg/kg em 2 min | FA, Flutter, TSV | Manut 5-15 mg/h' },
+            { nome: 'VERAPAMIL', valor: `${numeroBr((peso*0.1), 1)} mg`, detalhe: '0.075-0.15 mg/kg em 2 min | TSV, FA | CI: IC, WPW' },
+            { nome: 'ESMOLOL', valor: `${numeroBr((peso*0.5))} mg bolus`, detalhe: '0.5 mg/kg | Infusão 0.05-0.3 mg/kg/min | Ultra-curta ação' },
             { nome: 'METOPROLOL', valor: '1-5 mg IV', detalhe: 'Bolus 1 mg, repetir q5min | Max 10-15 mg' },
             { nome: 'AMIODARONA controle', valor: '150 mg em 10 min', detalhe: 'FA refrataria | Manut 1 mg/min x 6h' },
             { nome: 'DIGOXINA', valor: '0.25-0.5 mg IV', detalhe: 'Controle FA | Início lento (2-6h) | Dose total 1 mg/24h' },
@@ -2430,7 +2435,7 @@ const aclsCalculators = [
             { nome: 'TV POLIMORFICA/FV', valor: '200 J NÃO sincronizado', detalhe: 'QRS largo irregular', warning: 'NÃO sincronizar! Tratar como FV - desfibrilação imediata.' },
             { nome: 'FA/FLUTTER', valor: '120-200 J sincronizado', detalhe: 'Bifasico | Iniciar 150 J', interpretacao: 'Sedar paciente antes da cardioversão. Considerar anticoagulação se FA >48h.' },
             { nome: 'TSV estável', valor: '50-100 J sincronizado', detalhe: 'Se Adenosina/Manobra vagal falhar', interpretacao: 'Tentar Adenosina e manobras vagais antes da cardioversão.' },
-            { nome: 'SEDAÇÃO pré-CV', valor: `${(peso*1.5).toFixed(0)} mg Propofol`, detalhe: '1-2 mg/kg | ou Etomidato 0.2-0.3 mg/kg', interpretacao: 'Obrigatório em paciente consciente. Manter via aérea pronta.' },
+            { nome: 'SEDAÇÃO pré-CV', valor: `${numeroBr((peso*1.5))} mg Propofol`, detalhe: '1-2 mg/kg | ou Etomidato 0.2-0.3 mg/kg', interpretacao: 'Obrigatório em paciente consciente. Manter via aérea pronta.' },
             { nome: 'ALERTA Instável', valor: 'CV IMEDIATA', detalhe: 'Hipotensão, dor torácica, alteração consciência, ICC', warning: 'Paciente instável: NÃO esperar - cardioversão imediata!' },
           ],
         },
@@ -2629,17 +2634,17 @@ const hemoCalculators = [
       return {
         score: deficit,
         details: {
-          'Manutenção (4-2-1)': `${manutencao.toFixed(1)} mL/h`,
-          'Deficit total': `${deficit.toFixed(0)} mL`,
-          '1a hora (50%)': `${repo1h.toFixed(0)} mL`,
-          '2a hora (25%)': `${repo2h.toFixed(0)} mL`,
-          '3a hora (25%)': `${repo3h.toFixed(0)} mL`,
+          'Manutenção (4-2-1)': `${numeroBr(manutencao, 1)} mL/h`,
+          'Deficit total': `${numeroBr(deficit)} mL`,
+          '1a hora (50%)': `${numeroBr(repo1h)} mL`,
+          '2a hora (25%)': `${numeroBr(repo2h)} mL`,
+          '3a hora (25%)': `${numeroBr(repo3h)} mL`,
         },
       };
     },
     resultMessage: (result) => {
       if (!result) return 'Preencha peso e tempo de jejum';
-      return `Deficit: ${result.score.toFixed(0)} mL`;
+      return `Deficit: ${numeroBr(result.score)} mL`;
     },
     infoBox: {
       keyPoints: [
@@ -2674,7 +2679,7 @@ const hemoCalculators = [
     },
     resultMessage: (result) => {
       if (!result || !result.details) return 'Informe o peso';
-      return `Manutenção: ${result.details.mlHora.toFixed(1)} mL/h (4-2-1) | ${result.details.ml24h.toFixed(0)} mL/24h (100-50-20)`;
+      return `Manutenção: ${numeroBr(result.details.mlHora, 1)} mL/h (4-2-1) | ${numeroBr(result.details.ml24h)} mL/24h (100-50-20)`;
     },
     infoBox: {
       keyPoints: [
@@ -2758,9 +2763,9 @@ const hemoCalculators = [
         score: classe,
         details: {
           'Classe ATLS': `Classe ${classe}`,
-          'Perda estimada': `${perdaPercent}% (~${perdaEstimada.toFixed(0)} mL)`,
-          'Volume máximo': `${classe === 4 ? 'acima de' : 'ate'} ${perdaMaxima.toFixed(0)} mL`,
-          'Volemia calculada': `${volemia.toFixed(0)} mL (70mL/kg)`,
+          'Perda estimada': `${perdaPercent}% (~${numeroBr(perdaEstimada)} mL)`,
+          'Volume máximo': `${classe === 4 ? 'acima de' : 'ate'} ${numeroBr(perdaMaxima)} mL`,
+          'Volemia calculada': `${numeroBr(volemia)} mL (70mL/kg)`,
           'Conduta': conduta[classe],
         },
       };
@@ -2845,7 +2850,7 @@ const hemoCalculators = [
       return {
         score: indice,
         details: {
-          'Índice de Choque': indice.toFixed(2),
+          'Índice de Choque': numeroBr(indice, 2),
           'Interpretação': interpretacao,
           'FC': `${fc} bpm`,
           'PAS': `${pas} mmHg`,
@@ -2855,7 +2860,7 @@ const hemoCalculators = [
     },
     resultMessage: (result) => {
       if (!result) return 'Preencha FC e PAS';
-      return `IC ${result.score.toFixed(2)} - ${result.details['Interpretação']}`;
+      return `IC ${numeroBr(result.score, 2)} - ${result.details['Interpretação']}`;
     },
     infoBox: {
       keyPoints: [
@@ -2886,15 +2891,15 @@ const hemoCalculators = [
       return {
         score: cristaloide,
         details: {
-          'Perda estimada': `${perda.toFixed(0)} mL`,
-          'Cristaloide (3:1)': `${cristaloide.toFixed(0)} mL`,
+          'Perda estimada': `${numeroBr(perda)} mL`,
+          'Cristaloide (3:1)': `${numeroBr(cristaloide)} mL`,
           'Orientação': 'Ringer Lactato ou SF 0,9%',
         },
       };
     },
     resultMessage: (result) => {
       if (!result) return 'Informe a perda estimada';
-      return `Repor ${result.score.toFixed(0)} mL de cristaloide`;
+      return `Repor ${numeroBr(result.score)} mL de cristaloide`;
     },
     infoBox: {
       keyPoints: [
@@ -2937,11 +2942,11 @@ const hemoCalculators = [
       // Baxter 1968: 4 mL/kg/%SCQ (referência histórica)
       const volumeBaxter = 4 * peso * scq;
 
-      let info8h = `${vol8hISBI.toFixed(0)} mL (${taxa8hISBI.toFixed(0)} mL/h)`;
+      let info8h = `${numeroBr(vol8hISBI)} mL (${numeroBr(taxa8hISBI)} mL/h)`;
       if (horas > 0 && horas < 8) {
         const horasRestantes = 8 - horas;
         const volumeRestante = taxa8hISBI * horasRestantes;
-        info8h = `${volumeRestante.toFixed(0)} mL em ${horasRestantes.toFixed(1)}h restantes (${taxa8hISBI.toFixed(0)} mL/h)`;
+        info8h = `${numeroBr(volumeRestante)} mL em ${numeroBr(horasRestantes, 1)}h restantes (${numeroBr(taxa8hISBI)} mL/h)`;
       } else if (horas >= 8) {
         info8h = 'Período de 8h concluído';
       }
@@ -2949,10 +2954,10 @@ const hemoCalculators = [
       return {
         score: volumeISBI,
         details: {
-          'Volume ISBI 2016 (2 mL/kg)': `${volumeISBI.toFixed(0)} mL/24h`,
+          'Volume ISBI 2016 (2 mL/kg)': `${numeroBr(volumeISBI)} mL/24h`,
           'Primeiras 8h (50%)': info8h,
-          'Próximas 16h (50%)': `${vol16hISBI.toFixed(0)} mL (${taxa16hISBI.toFixed(0)} mL/h)`,
-          'Baxter 1968 (histórico, 4 mL/kg)': `${volumeBaxter.toFixed(0)} mL/24h`,
+          'Próximas 16h (50%)': `${numeroBr(vol16hISBI)} mL (${numeroBr(taxa16hISBI)} mL/h)`,
+          'Baxter 1968 (histórico, 4 mL/kg)': `${numeroBr(volumeBaxter)} mL/24h`,
           'Fluido': 'Ringer Lactato',
           'Meta diurese': '0,5-1 mL/kg/h',
         },
@@ -2960,7 +2965,7 @@ const hemoCalculators = [
     },
     resultMessage: (result) => {
       if (!result) return 'Preencha peso e SCQ';
-      return `Parkland ISBI: ${result.score.toFixed(0)} mL em 24h (2 mL/kg)`;
+      return `Parkland ISBI: ${numeroBr(result.score)} mL em 24h (2 mL/kg)`;
     },
     infoBox: {
       keyPoints: [
@@ -3006,16 +3011,16 @@ const hemoCalculators = [
       return {
         score: mabl,
         details: {
-          'Volemia estimada': `${volemia.toFixed(0)} mL`,
+          'Volemia estimada': `${numeroBr(volemia)} mL`,
           'Hto inicial': `${htoInicial}%`,
           'Hto mínimo': `${htoMinimo}%`,
-          'MABL': `${mabl.toFixed(0)} mL`,
+          'MABL': `${numeroBr(mabl)} mL`,
         },
       };
     },
     resultMessage: (result) => {
       if (!result || !result.details) return 'Informe os dados';
-      return `MABL: ${result.score.toFixed(0)} mL (Volemia: ${result.details['Volemia estimada']})`;
+      return `MABL: ${numeroBr(result.score)} mL (Volemia: ${result.details['Volemia estimada']})`;
     },
     infoBox: {
       keyPoints: [
@@ -3944,14 +3949,14 @@ const utiCalculators = [
         score: resultado.rox,
         risk: resultado.risk,
         details: {
-          'ROX Index': resultado.rox.toFixed(2),
+          'ROX Index': numeroBr(resultado.rox, 2),
           'Interpretação': INTERPRETACAO[resultado.risk],
         },
       };
     },
     resultMessage: (result) => {
       if (!result) return 'Informe SpO2, FiO2 e FR';
-      return `ROX ${result.score.toFixed(2)}: ${result.details['Interpretação']}`;
+      return `ROX ${numeroBr(result.score, 2)}: ${result.details['Interpretação']}`;
     },
     infoBox: {
       keyPoints: [
@@ -4613,7 +4618,7 @@ const periopCalculators = [
       const r = fracaoMacTotal({ agente, idadeAnos: idade, vaporPercent: vapor, n2oPercent: n2o });
       if (!r) return null;
 
-      const br = (n, casas = 2) => n.toFixed(casas).replace('.', ',');
+      const br = (n, casas = 2) => numeroBr(n, casas);
       const macBula = macNaIdade(agente, 40);
 
       const detalhes = {
@@ -4656,7 +4661,7 @@ const periopCalculators = [
     resultMessage: (result) => {
       if (!result) return 'Escolha o agente e informe a idade';
       return result.details['CAM total']
-        ? `CAM total ${result.score.toFixed(2).replace('.', ',')}`
+        ? `CAM total ${numeroBr(result.score, 2)}`
         : `CAM nesta idade: ${result.details['CAM nesta idade']}`;
     },
     infoBox: {
@@ -4970,13 +4975,13 @@ const periopCalculators = [
       const pf = pao2 / fio2;
 
       if (pf >= 300) {
-        return { score: Math.round(pf), risk: 'baixo', riskLabel: 'Normal', details: { 'P/F': `${pf.toFixed(0)} mmHg`, 'Classificação': 'Normal' } };
+        return { score: Math.round(pf), risk: 'baixo', riskLabel: 'Normal', details: { 'P/F': `${numeroBr(pf)} mmHg`, 'Classificação': 'Normal' } };
       } else if (pf >= 200) {
-        return { score: Math.round(pf), risk: 'baixo', riskLabel: 'Leve', details: { 'P/F': `${pf.toFixed(0)} mmHg`, 'Classificação': 'SDRA Leve', 'Mortalidade': '~27%' } };
+        return { score: Math.round(pf), risk: 'baixo', riskLabel: 'Leve', details: { 'P/F': `${numeroBr(pf)} mmHg`, 'Classificação': 'SDRA Leve', 'Mortalidade': '~27%' } };
       } else if (pf >= 100) {
-        return { score: Math.round(pf), risk: 'medio', riskLabel: 'Moderada', details: { 'P/F': `${pf.toFixed(0)} mmHg`, 'Classificação': 'SDRA Moderada', 'Mortalidade': '~32%' } };
+        return { score: Math.round(pf), risk: 'medio', riskLabel: 'Moderada', details: { 'P/F': `${numeroBr(pf)} mmHg`, 'Classificação': 'SDRA Moderada', 'Mortalidade': '~32%' } };
       } else {
-        return { score: Math.round(pf), risk: 'alto', riskLabel: 'Grave', details: { 'P/F': `${pf.toFixed(0)} mmHg`, 'Classificação': 'SDRA Grave', 'Mortalidade': '~45%' } };
+        return { score: Math.round(pf), risk: 'alto', riskLabel: 'Grave', details: { 'P/F': `${numeroBr(pf)} mmHg`, 'Classificação': 'SDRA Grave', 'Mortalidade': '~45%' } };
       }
     },
     resultMessage: (result) => {
@@ -5051,20 +5056,24 @@ const periopCalculators = [
       if (compPts !== null && compPts !== undefined) { soma += compPts; n = 4; }
       const score = soma / n;
 
+      // ⚠️ `score` fica NUMÉRICO: o `resultMessage` abaixo o compara com 2,5.
+      // Devolvê-lo como texto com vírgula fazia `parseFloat('2,5')` dar 2 e a
+      // faixa mudar de lado em silêncio.
       if (score === 0) {
-        return { score: score.toFixed(1), risk: 'baixo', riskLabel: 'Sem lesão', details: { 'Score': `${score.toFixed(1)}/4`, 'Classificação': 'Sem lesão pulmonar' } };
+        return { score, risk: 'baixo', riskLabel: 'Sem lesão', details: { 'Score': `${numeroBr(score, 1)}/4`, 'Classificação': 'Sem lesão pulmonar' } };
       } else if (score <= 2.5) {
-        return { score: score.toFixed(1), risk: 'medio', riskLabel: 'Leve a moderada', details: { 'Score': `${score.toFixed(1)}/4`, 'Classificação': 'Lesão leve-moderada' } };
+        return { score, risk: 'medio', riskLabel: 'Leve a moderada', details: { 'Score': `${numeroBr(score, 1)}/4`, 'Classificação': 'Lesão leve-moderada' } };
       } else {
-        return { score: score.toFixed(1), risk: 'alto', riskLabel: 'SDRA grave', details: { 'Score': `${score.toFixed(1)}/4`, 'Classificação': 'SDRA grave', 'ECMO': 'Considerar se >3.0' } };
+        return { score, risk: 'alto', riskLabel: 'SDRA grave', details: { 'Score': `${numeroBr(score, 1)}/4`, 'Classificação': 'SDRA grave', 'ECMO': 'Considerar se >3.0' } };
       }
     },
     resultMessage: (result) => {
       if (!result) return 'Preencha os campos';
-      const score = parseFloat(result.score);
-      if (score === 0) return `Murray ${result.score}: Sem lesão`;
-      if (score <= 2.5) return `Murray ${result.score}: Leve-moderada`;
-      return `Murray ${result.score}: SDRA grave`;
+      const score = Number(result.score);
+      const txt = numeroBr(score, 1);
+      if (score === 0) return `Murray ${txt}: Sem lesão`;
+      if (score <= 2.5) return `Murray ${txt}: Leve-moderada`;
+      return `Murray ${txt}: SDRA grave`;
     },
     infoBox: {
       keyPoints: [
@@ -5371,7 +5380,7 @@ const riscoCalculators = [
         conduta = 'DASI < 34 associou-se a mais morte e IAM em 30 dias no estudo METS — pesar contra o porte da cirurgia e o RCRI';
       }
 
-      const br = (n, casas = 1) => n.toFixed(casas).replace('.', ',');
+      const br = (n, casas = 1) => numeroBr(n, casas);
 
       return {
         score,
@@ -5387,7 +5396,7 @@ const riscoCalculators = [
     },
     resultMessage: (result) => {
       if (!result) return 'Marque o que o paciente consegue fazer';
-      return `DASI ${result.score.toFixed(2).replace('.', ',')} — ${result.details['Equivalente metabólico']}`;
+      return `DASI ${numeroBr(result.score, 2)} — ${result.details['Equivalente metabólico']}`;
     },
     infoBox: {
       keyPoints: [
@@ -6645,7 +6654,7 @@ const renalCalculators = [
     },
     resultMessage: (result) => {
       if (!result) return 'Preencha os dados';
-      return `ClCr: ${result.score.toFixed(1)} mL/min`;
+      return `ClCr: ${numeroBr(result.score, 1)} mL/min`;
     },
     infoBox: {
       keyPoints: [
@@ -6734,7 +6743,7 @@ const renalCalculators = [
     },
     resultMessage: (result) => {
       if (!result) return 'Preencha os dados';
-      return `TFGe: ${result.score.toFixed(1)} mL/min/1.73m²`;
+      return `TFGe: ${numeroBr(result.score, 1)} mL/min/1.73m²`;
     },
     infoBox: {
       keyPoints: [
@@ -6794,14 +6803,14 @@ const renalCalculators = [
         details: {
           'Interpretação': interpretacao,
           'Fórmula utilizada': `${hillier.formula} (${hillier.factor})`,
-          'Correção aplicada': `+${hillier.correctionRaw.toFixed(1)} mEq/L`,
-          'Comparação Katz (1.6, histórico)': `${katz.correctedRaw.toFixed(1)} mEq/L`,
+          'Correção aplicada': `+${numeroBr(hillier.correctionRaw, 1)} mEq/L`,
+          'Comparação Katz (1.6, histórico)': `${numeroBr(katz.correctedRaw, 1)} mEq/L`,
         },
       };
     },
     resultMessage: (result) => {
       if (!result) return 'Preencha sódio e glicose';
-      return `Na corrigido: ${result.score.toFixed(1)} mEq/L`;
+      return `Na corrigido: ${numeroBr(result.score, 1)} mEq/L`;
     },
     infoBox: {
       keyPoints: [
@@ -6856,13 +6865,13 @@ const renalCalculators = [
         riskLabel,
         details: {
           'Interpretação': interpretacao,
-          'Correção aplicada': correcao >= 0 ? `+${correcao.toFixed(1)} mg/dL` : `${correcao.toFixed(1)} mg/dL`,
+          'Correção aplicada': correcao >= 0 ? `+${numeroBr(correcao, 1)} mg/dL` : `${numeroBr(correcao, 1)} mg/dL`,
         },
       };
     },
     resultMessage: (result) => {
       if (!result) return 'Preencha cálcio e albumina';
-      return `Ca corrigido: ${result.score.toFixed(1)} mg/dL`;
+      return `Ca corrigido: ${numeroBr(result.score, 1)} mg/dL`;
     },
     infoBox: {
       keyPoints: [
@@ -6939,8 +6948,8 @@ const renalCalculators = [
         'Causas comuns': causas,
       };
       if (alb > 0) {
-        details['AG sem correção'] = `${ag.toFixed(1)} mEq/L`;
-        details['Correção albumina'] = `+${correcaoAlb.toFixed(1)} mEq/L`;
+        details['AG sem correção'] = `${numeroBr(ag, 1)} mEq/L`;
+        details['Correção albumina'] = `+${numeroBr(correcaoAlb, 1)} mEq/L`;
       }
 
       return {
@@ -6952,7 +6961,7 @@ const renalCalculators = [
     },
     resultMessage: (result) => {
       if (!result) return 'Preencha Na, Cl e HCO3';
-      return `Anion Gap: ${result.score.toFixed(1)} mEq/L`;
+      return `Anion Gap: ${numeroBr(result.score, 1)} mEq/L`;
     },
     infoBox: {
       keyPoints: [
@@ -7014,15 +7023,15 @@ const renalCalculators = [
         riskLabel,
         details: {
           'Interpretação': interpretacao,
-          'Contribuição Na': `${(2 * na).toFixed(0)} mOsm/L`,
-          'Contribuição glicose': `${(gli / 18).toFixed(1)} mOsm/L`,
-          'Contribuição ureia': `${(ureia / 6).toFixed(1)} mOsm/L`,
+          'Contribuição Na': `${numeroBr((2 * na))} mOsm/L`,
+          'Contribuição glicose': `${numeroBr((gli / 18), 1)} mOsm/L`,
+          'Contribuição ureia': `${numeroBr((ureia / 6), 1)} mOsm/L`,
         },
       };
     },
     resultMessage: (result) => {
       if (!result) return 'Preencha Na, glicose e ureia';
-      return `Osm calculada: ${result.score.toFixed(0)} mOsm/L`;
+      return `Osm calculada: ${numeroBr(result.score)} mOsm/L`;
     },
     infoBox: {
       keyPoints: [
@@ -7087,7 +7096,7 @@ const renalCalculators = [
       });
       if (!r) return null;
 
-      const br = (n, casas = 1) => n.toFixed(casas).replace('.', ',');
+      const br = (n, casas = 1) => numeroBr(n, casas);
       const variacao = naAlvo - naAtual;
 
       const detalhes = {
@@ -7190,14 +7199,14 @@ const renalCalculators = [
         details: {
           'Interpretação': interpretacao,
           'Causas a investigar': causas,
-          'Osm medida': `${osmMedida.toFixed(0)} mOsm/kg`,
-          'Osm calculada': `${osmCalculada.toFixed(0)} mOsm/L`,
+          'Osm medida': `${numeroBr(osmMedida)} mOsm/kg`,
+          'Osm calculada': `${numeroBr(osmCalculada)} mOsm/L`,
         },
       };
     },
     resultMessage: (result) => {
       if (!result) return 'Preencha todos os campos';
-      return `Gap Osmolar: ${result.score.toFixed(0)} mOsm/kg`;
+      return `Gap Osmolar: ${numeroBr(result.score)} mOsm/kg`;
     },
     infoBox: {
       keyPoints: [
@@ -7737,9 +7746,9 @@ const dorCalculators = [
       return {
         score: doseReduzida,
         details: {
-          'Morfina VO equivalente': `${morfinaVOeq.toFixed(1)} mg/dia`,
+          'Morfina VO equivalente': `${numeroBr(morfinaVOeq, 1)} mg/dia`,
           ...(razaoMetadona ? { 'Razão aplicada (metadona)': `${razaoMetadona}:1 — Ripamonti` } : {}),
-          'Equianalgésico bruto': `${doseDestino.toFixed(1)} ${unidadeDestino} (antes da redução)`,
+          'Equianalgésico bruto': `${numeroBr(doseDestino, 1)} ${unidadeDestino} (antes da redução)`,
         },
       };
     },
@@ -7792,7 +7801,7 @@ const dorCalculators = [
       const r = pesosDeReferencia(peso, altura, sexo);
       if (!r) return null;
 
-      const um = (n, casas = 1) => (n === null ? null : n.toFixed(casas).replace('.', ','));
+      const um = (n, casas = 1) => (n === null ? null : numeroBr(n, casas));
       const FAIXA = {
         baixo_peso: 'Baixo peso',
         eutrofico: 'Eutrófico',
@@ -7814,7 +7823,7 @@ const dorCalculators = [
     },
     resultMessage: (result) => {
       if (!result) return 'Informe sexo, peso e altura';
-      return `Peso magro: ${result.score.toFixed(1).replace('.', ',')} kg — é o escalar de dose de indutores e opioides`;
+      return `Peso magro: ${numeroBr(result.score, 1)} kg — é o escalar de dose de indutores e opioides`;
     },
     infoBox: {
       keyPoints: [
@@ -7867,7 +7876,7 @@ const dorCalculators = [
       });
       if (!r) return null;
 
-      const br = (n, casas = 1) => n.toFixed(casas).replace('.', ',');
+      const br = (n, casas = 1) => numeroBr(n, casas);
       const detalhes = {
         'Dose máxima': `${br(r.doseMaximaMg, 0)} mg`,
         'Base do cálculo': `${br(r.mgPorKg)} mg/kg (faixa publicada ${r.faixaMgPorKg})`,
@@ -7886,8 +7895,8 @@ const dorCalculators = [
       if (!result) return 'Escolha o fármaco e informe o peso';
       const vol = result.details['Volume máximo'];
       return vol
-        ? `Máximo ${result.score.toFixed(0)} mg — ${vol.split(' a ')[0]}`
-        : `Máximo ${result.score.toFixed(0)} mg`;
+        ? `Máximo ${numeroBr(result.score)} mg — ${vol.split(' a ')[0]}`
+        : `Máximo ${numeroBr(result.score)} mg`;
     },
     infoBox: {
       keyPoints: [
@@ -8006,7 +8015,7 @@ const dorCalculators = [
             // Dose por kg
             doseMin = doses[0] * peso;
             doseMax = doses.length > 1 ? doses[1] * peso : doseMin;
-            doseCalculada = doseMin === doseMax ? `${doseMin.toFixed(1)}` : `${doseMin.toFixed(1)}-${doseMax.toFixed(1)}`;
+            doseCalculada = doseMin === doseMax ? `${numeroBr(doseMin, 1)}` : `${numeroBr(doseMin, 1)}-${numeroBr(doseMax, 1)}`;
           }
 
           // Determinar unidade para exibicao

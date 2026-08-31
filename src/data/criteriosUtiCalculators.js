@@ -1,3 +1,5 @@
+import { numeroBr } from '../lib/numeroBr';
+
 // Definicoes das 5 calculadoras de triagem UTI pos-operatoria
 // Baseado em revisao sistematica da literatura medica (2023-2025)
 
@@ -84,7 +86,7 @@ export const SORT_CALCULATOR = {
       if (input.type === 'bool') {
         if (val) {
           logit += input.coef;
-          motivos.push({ label: input.label, coef: `+${input.coef.toFixed(3)}` });
+          motivos.push({ label: input.label, coef: `+${numeroBr(input.coef, 3)}` });
         }
       } else {
         const numVal = parseFloat(val);
@@ -93,7 +95,7 @@ export const SORT_CALCULATOR = {
           const opt = input.options.find((o) => o.value === numVal);
           motivos.push({
             label: `${input.label}: ${opt?.label || val}`,
-            coef: `+${numVal.toFixed(3)}`,
+            coef: `+${numeroBr(numVal, 3)}`,
           });
         }
       }
@@ -121,8 +123,8 @@ export const SORT_CALCULATOR = {
     }
 
     return {
-      score: risco.toFixed(1),
-      scoreLabel: `${risco.toFixed(1)}%`,
+      score: risco,
+      scoreLabel: `${numeroBr(risco, 1)}%`,
       scoreMax: '100%',
       nivel,
       conduta,
@@ -1080,8 +1082,8 @@ export const PPOSSUM_CALCULATOR = {
     }
 
     return {
-      score: risco.toFixed(1),
-      scoreLabel: `${risco.toFixed(1)}%`,
+      score: risco,
+      scoreLabel: `${numeroBr(risco, 1)}%`,
       scoreMax: '100%',
       nivel,
       conduta,

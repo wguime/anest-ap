@@ -21,13 +21,13 @@ describe('ped_parkland — a constante pediátrica é 3 mL/kg/%SCQ, não 2', () 
   // própria ABA usa 3 mL/kg/%SCQ somado à manutenção.
   it('20 kg com 30% de SCQ → 1800 mL de reposição (3 × 20 × 30)', () => {
     const r = calc('ped_parkland', { peso: 20, scq: 30, horasDesdeQueimadura: 0 });
-    expect(r.details['Parkland (reposição)']).toContain('1800');
+    expect(r.details['Parkland (reposição)']).toContain('1.800');
   });
 
   it('a manutenção continua somada abaixo de 30 kg', () => {
     const r = calc('ped_parkland', { peso: 20, scq: 30, horasDesdeQueimadura: 0 });
     // Holliday-Segar diário para 20 kg = 1000 + 10×50 = 1500 mL.
-    expect(r.details['Manutenção (Holliday-Segar)']).toContain('1500');
+    expect(r.details['Manutenção (Holliday-Segar)']).toContain('1.500');
     expect(r.score).toBeCloseTo(1800 + 1500, 0);
   });
 
