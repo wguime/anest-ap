@@ -2568,9 +2568,10 @@ const hemoCalculators = [
         'Manutenção: Holliday-Segar 4-2-1 (4 ml/kg/h até 10kg + 2 ml/kg/h até 20kg + 1 ml/kg/h acima)',
         'Déficit de jejum reposto 50%/25%/25% nas 3 primeiras horas (esquema de Furman)',
         'Terceiro espaço: pequeno 2 / médio 4 / grande 6 ml/kg/h (POQI-11)',
-        'Reposição de sangramento: cristaloide 3:1 ou coloide/sangue 1:1',
-        'EBV: 70 ml/kg adulto, 75 ml/kg criança, 80 ml/kg lactente, 85 ml/kg neonato',
+        'Reposição do sangramento CALCULADA: cristaloide 3:1 ou coloide/sangue 1:1',
+        'Volume sanguíneo: 70 ml/kg adulto, 75 ml/kg criança, 80 ml/kg lactente, 85 ml/kg neonato',
         'Meta de diurese: ≥0,5 ml/kg/h adulto, ≥1 ml/kg/h pediátrico',
+        'Diurese em branco = não medida; um 0 digitado é anúria e alerta em vermelho',
         'POQI-11 (2024): terceiro espaço é controverso — preferir normovolemia',
       ],
       interpretation:
@@ -2580,7 +2581,7 @@ const hemoCalculators = [
       warnings: [
         'Calculadora baseada em fórmulas clássicas — não substitui julgamento clínico',
         'Não cobre cenários especiais: queimados (Parkland), sepse (Surviving Sepsis), neuro (hipertônica/manitol), cardíaca em CEC',
-        'Diurese 0 ml/h em uma hora isolada não dispara alerta — só com 2 horas consecutivas medidas',
+        'Oligúria exige 2 horas consecutivas MEDIDAS abaixo da meta; anúria (0 digitado) alerta na hora',
       ],
     },
   },

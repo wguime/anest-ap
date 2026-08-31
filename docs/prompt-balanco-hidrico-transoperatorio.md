@@ -1,5 +1,27 @@
 # Prompt 2 — Reformar o Balanço Hídrico Transoperatório
 
+> ✅ **EXECUTADO em 31/08/2026.** O prompt abaixo fica como registro; não o cole de novo.
+> O resultado está no commit da reforma e as travas em `src/__tests__/lib/fluidBalance.test.js`
+> (53 casos, de 44) e `e2e/balanco-hidrico-layout.spec.ts` (4 casos de geometria).
+>
+> **Quatro coisas que o prompt errava, e que custaram tempo até serem conferidas contra o repo** —
+> valem para escrever o próximo:
+>
+> 1. **Mandava questionar "os valores clássicos de 4/6/8 mL/kg/h" de terceiro espaço.** O app nunca
+>    usou 4/6/8: `src/lib/fluidBalance.js` já trazia **2/4/6**, citando POQI-11 (BJA 2024). Um prompt
+>    que descreve errado o estado atual produz achado falso.
+> 2. **A ETAPA 1 pedia uma auditoria de fontes que já existia**, feita no dia anterior em
+>    `docs/auditoria-calculadoras-uso-real.md` (§ linha 170 e veredito na 384). Prompt de tarefa nova
+>    precisa dizer o que JÁ foi decidido, senão o trabalho é refeito.
+> 3. **Falava de teste como se não houvesse nenhum.** `fluidBalance.test.js` já tinha 44 casos: a
+>    restrição real não era "escreva testes", era "mudar número aqui QUEBRA trava existente".
+> 4. **Referências desatualizadas:** a variante `deitado:` está em `tailwind.config.js:38`, não :27.
+>
+> E três defeitos reais do arquivo que o prompt não mencionava, todos corrigidos na reforma:
+> `bloodReplacement` (3:1) existia, era testada, estava no infoBox e **nenhuma tela a chamava**;
+> diurese `0` nunca disparava alerta, calando a **anúria**; e `Hct`→`Ht` / `ABL`→"perda sanguínea
+> permitida" eram pendências que o próprio dono havia apontado em `docs/revisao-calculadoras.md`.
+
 > Cole o bloco abaixo numa **aba nova** do Claude Code, na raiz do repo. Ele é autossuficiente.
 
 ---

@@ -10,6 +10,7 @@ import {
   bloodReplacement,
   urineGoal,
   evaluateBalance,
+  medido,
 } from '@/lib/fluidBalance';
 
 // Tolerância para comparações de float (1 ml é clinicamente irrelevante).
@@ -247,14 +248,71 @@ describe('evaluateBalance — integração', () => {
     expect(r.alerts.some((a) => a.message.includes('Oligúria'))).toBe(true);
   });
 
-  it('oligúria: diurese 0 (não preenchida) NÃO dispara alerta', () => {
-    // diurese 0 = não medida ainda; só alerta se medido > 0 mas baixo
+  /* ⚠️ ESTE TESTE MUDOU DE LADO em 31/08/2026, a pedido do dono.
+   *
+   * Ele fixava: "diurese 0 NÃO dispara alerta", com a justificativa de que
+   * 0 significava "não medida ainda". A justificativa era uma limitação da
+   * entrada, não uma regra clínica: campo em branco e zero digitado chegavam
+   * os dois como 0, e a única saída era calar os dois. O preço era calar
+   * justamente a ANÚRIA, que é o pior achado urinário possível — o mesmo
+   * defeito que `hemo_perdas_atls` teve até 30/08 ("a anúria não virava
+   * classe IV").
+   *
+   * Com `medido()` os dois casos passaram a ser distinguíveis, então cada um
+   * ganhou o seu teste abaixo: branco segue mudo, zero medido alerta. */
+  it('diurese em BRANCO (não medida) não dispara alerta nenhum', () => {
     const hours = [
-      { cristaloide: 500, sangramento: 0, diurese: 0 },
-      { cristaloide: 500, sangramento: 0, diurese: 0 },
+      { cristaloide: 500, sangramento: 0, diurese: '' },
+      { cristaloide: 500, sangramento: 0, diurese: '' },
     ];
     const r = evaluateBalance({ ...baseAdulto, hours });
     expect(r.alerts.some((a) => a.message.includes('Oligúria'))).toBe(false);
+    expect(r.alerts.some((a) => a.message.includes('Anúria'))).toBe(false);
+  });
+
+  it('diurese 0 MEDIDA dispara anúria em nível destructive', () => {
+    const hours = [
+      { cristaloide: 500, sangramento: 0, diurese: '60' },
+      { cristaloide: 500, sangramento: 0, diurese: '0' },
+    ];
+    const r = evaluateBalance({ ...baseAdulto, hours });
+    const anuria = r.alerts.find((a) => a.message.includes('Anúria'));
+    expect(anuria).toBeDefined();
+    expect(anuria.level).toBe('destructive');
+    expect(anuria.message).toContain('hora 2');
+  });
+
+  it('anúria aponta a hora MAIS RECENTE, que é a acionável', () => {
+    const hours = [
+      { diurese: '0' }, { diurese: '40' }, { diurese: 0 },
+    ];
+    const r = evaluateBalance({ ...baseAdulto, hours });
+    expect(r.alerts.find((a) => a.message.includes('Anúria')).message).toContain('hora 3');
+  });
+
+  it('anúria e oligúria convivem: zero na última, baixas nas duas últimas', () => {
+    const hours = [
+      { diurese: '20' }, { diurese: '10' },
+    ];
+    const r = evaluateBalance({ ...baseAdulto, hours });
+    expect(r.alerts.some((a) => a.message.includes('Oligúria'))).toBe(true);
+    expect(r.alerts.some((a) => a.message.includes('Anúria'))).toBe(false);
+  });
+
+  /* A regra 3:1 / 1:1 estava na lib, testada e citada no infoBox do card —
+   * e nenhuma tela a chamava. Agora `evaluateBalance` a devolve (dono 31/08). */
+  it('devolve a reposição sugerida do sangramento acumulado', () => {
+    const hours = [{ sangramento: 300 }, { sangramento: 100 }];
+    const r = evaluateBalance({ ...baseAdulto, hours });
+    expect(r.totalSangramento).toBe(400);
+    expect(r.reposicaoCristaloide).toBe(1200); // 3:1
+    expect(r.reposicaoColoide).toBe(400); // 1:1
+  });
+
+  it('sem sangramento, a reposição sugerida é 0 nos dois tipos', () => {
+    const r = evaluateBalance({ ...baseAdulto, hours: [{ cristaloide: 500 }] });
+    expect(r.reposicaoCristaloide).toBe(0);
+    expect(r.reposicaoColoide).toBe(0);
   });
 
   it('hipovolemia: balanço < -1000 com sangramento', () => {
@@ -281,6 +339,30 @@ describe('evaluateBalance — integração', () => {
     expect(r.rate).toBe(50);
     // EBV 15*75 = 1125; ABL = 1125 * (35-25)/35 ≈ 321
     expect(r.abl).toBeCloseTo(321.4, 0);
+  });
+});
+
+describe('medido — campo em branco não é zero', () => {
+  it('branco, null e undefined devolvem null', () => {
+    expect(medido('')).toBeNull();
+    expect(medido('   ')).toBeNull();
+    expect(medido(null)).toBeNull();
+    expect(medido(undefined)).toBeNull();
+  });
+
+  it('zero medido devolve 0, não null', () => {
+    expect(medido(0)).toBe(0);
+    expect(medido('0')).toBe(0);
+  });
+
+  it('texto que não é número devolve null', () => {
+    expect(medido('abc')).toBeNull();
+  });
+
+  it('aceita string numérica e número', () => {
+    expect(medido('45')).toBe(45);
+    expect(medido(45)).toBe(45);
+    expect(medido('45.5')).toBe(45.5);
   });
 });
 

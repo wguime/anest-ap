@@ -15,6 +15,23 @@ const num = (v, fallback = 0) => {
 };
 
 /**
+ * Valor MEDIDO, ou null quando o campo não foi preenchido.
+ *
+ * ⚠️ `num()` devolve 0 tanto para "não medi" quanto para "medi 0", e era por
+ * isso que a anúria — diurese 0, o pior achado urinário — ficava muda: o
+ * alerta de oligúria exigia `d > 0` justamente para não disparar em campo
+ * vazio. Separar os dois casos é o que permite alertar sobre o zero sem
+ * alertar sobre o branco. Mesma família do defeito corrigido em
+ * `hemo_perdas_atls` (anúria não virava classe IV).
+ */
+export function medido(v) {
+  if (v === null || v === undefined) return null;
+  if (typeof v === 'string' && v.trim() === '') return null;
+  const n = typeof v === 'number' ? v : parseFloat(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
  * Manutenção horária pela regra 4-2-1 (ml/h).
  *   ≤10 kg     → 4 × peso
  *   10-20 kg   → 40 + 2 × (peso - 10)
@@ -182,6 +199,9 @@ export function evaluateBalance({
     totalOutras += num(h?.outras);
   });
 
+  // ⚠️ `bloodReplacement` existia, estava testada e o infoBox citava a regra
+  // 3:1 / 1:1 — mas NENHUMA tela a chamava. O card prometia uma conta que não
+  // fazia (dono 31/08: "entra na conta").
   const horasN = hours.length;
   const totalManutencao = rate * horasN;
   const totalTerceiroEspaco = tsLoss * horasN;
@@ -190,6 +210,11 @@ export function evaluateBalance({
   const balancoNet = totalInfundido - totalPerdido;
   const ablRestante = Math.max(0, abl - totalSangramento);
   const metaDiureseAcumulada = goalRate * horasN;
+  const reposicaoCristaloide = bloodReplacement(totalSangramento, 'cristaloide');
+  const reposicaoColoide = bloodReplacement(totalSangramento, 'coloide');
+
+  // Diurese hora a hora, preservando a diferença entre não medido (null) e 0.
+  const diureses = hours.map((h) => medido(h?.diurese));
 
   const alerts = [];
 
@@ -200,12 +225,21 @@ export function evaluateBalance({
     });
   }
 
-  if (horasN >= 2) {
-    const ultimas2 = hours.slice(-2);
-    const oliguria = ultimas2.every((h) => {
-      const d = num(h?.diurese);
-      return d > 0 && d < goalRate;
+  // Anúria: zero MEDIDO. Reportada pela hora mais recente, que é a acionável.
+  let horaAnuria = -1;
+  diureses.forEach((d, i) => {
+    if (d === 0) horaAnuria = i;
+  });
+  if (horaAnuria >= 0) {
+    alerts.push({
+      level: 'destructive',
+      message: `Anúria na hora ${horaAnuria + 1}: diurese 0 ml registrada — investigar causa pré-renal, renal ou obstrutiva.`,
     });
+  }
+
+  if (horasN >= 2) {
+    const ultimas2 = diureses.slice(-2);
+    const oliguria = ultimas2.every((d) => d !== null && d > 0 && d < goalRate);
     if (oliguria) {
       alerts.push({
         level: 'warning',
@@ -244,6 +278,9 @@ export function evaluateBalance({
     balancoNet,
     ablRestante,
     metaDiureseAcumulada,
+    reposicaoCristaloide,
+    reposicaoColoide,
+    diureses,
     alerts,
   };
 }

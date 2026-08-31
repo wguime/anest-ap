@@ -2004,7 +2004,16 @@ function CalculatorPage({ calculator, _onBack }) {
        pagava outros 12 — o título ficava com 28px acima contra 16 abaixo, e
        o dono viu o desequilíbrio (26/08). Sem o pt duplicado, os dois vãos
        ficam em 16px. Vale para as 71 calculadoras. */
-    <div className="px-2 pt-0 pb-3 lg:p-6 space-y-4 lg:space-y-6 min-h-dvh bg-background overflow-x-hidden">
+    <div
+      /* ⚠️ `overflow-x-clip`, NÃO `overflow-x-hidden`: com `hidden` o CSS
+         promove `overflow-y` de `visible` para `auto`, este container vira uma
+         caixa de rolagem que NUNCA rola (quem rola é a janela), e todo
+         `position: sticky` descendente fica inerte. Foi o que impediu o
+         "Balanço acumulado" de grudar no Balanço Hídrico (31/08). `clip`
+         recorta igual no eixo x e não cria caixa de rolagem. Vale para as 61
+         calculadoras; nenhuma rolava na horizontal aqui. */
+      className="px-2 pt-0 pb-3 lg:p-6 space-y-4 lg:space-y-6 min-h-dvh bg-background overflow-x-clip"
+    >
       {/* Header — back button e limpar removidos; navegação via header global */}
       <div>
         <h1 className="text-lg font-bold text-foreground leading-tight">{calculator.title}</h1>

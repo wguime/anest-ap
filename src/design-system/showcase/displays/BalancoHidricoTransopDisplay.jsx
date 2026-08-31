@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Droplets,
   Plus,
@@ -9,6 +9,8 @@ import {
   User,
   Baby,
   RotateCcw,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { cn } from '../../utils/tokens';
 import { Input } from '../../components/ui/input';
@@ -20,6 +22,7 @@ import {
   furmanReplacement,
   estimatedBloodVolume,
   categoryForPopulation,
+  medido,
 } from '../../../lib/fluidBalance';
 
 const PORTE_OPTIONS = [
@@ -34,6 +37,25 @@ const PED_CATEGORY_OPTIONS = [
   { value: 'lactente', label: 'Lactente 1-12 meses (80 ml/kg)' },
   { value: 'crianca', label: 'Criança 1-12 anos (75 ml/kg)' },
 ];
+
+/* ⚠️ O caso em andamento sobrevive à recarga.
+ *
+ * O estado era `useState` puro e nada o salvava: numa cirurgia de 6 h, as 12
+ * horas digitadas sumiam em qualquer recarga — e todo deploy renomeia os
+ * chunks e força recarga (docs/deploy-e-ci.md). Só números entram aqui; nada
+ * que identifique o paciente. */
+const CHAVE_RASCUNHO = 'anest-bh-transop-rascunho';
+
+function lerRascunho() {
+  try {
+    const cru = localStorage.getItem(CHAVE_RASCUNHO);
+    if (!cru) return null;
+    const d = JSON.parse(cru);
+    return d && Array.isArray(d.horas) ? d : null;
+  } catch {
+    return null;
+  }
+}
 
 function makeHoraId() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -54,9 +76,10 @@ function emptyHora() {
   };
 }
 
-const fmt = (n, digits = 0) => {
+/** Número no padrão brasileiro — `toFixed` devolve PONTO e não separa milhar. */
+const numeroBr = (n, casas = 0) => {
   if (!Number.isFinite(n)) return '—';
-  return n.toFixed(digits);
+  return n.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
 };
 
 function PillToggle({ value, onChange }) {
@@ -98,7 +121,6 @@ function PillToggle({ value, onChange }) {
 function MetricCard({ label, value, unit, accent = 'default' }) {
   const accentClass = {
     default: 'bg-muted border-border',
-    success: 'bg-success/10 border-success/40 text-success',
     warning: 'bg-warning/10 border-warning/40 text-warning',
     destructive: 'bg-destructive/10 border-destructive/40 text-destructive',
     primary: 'bg-primary/10 border-primary/40 text-primary',
@@ -113,114 +135,118 @@ function MetricCard({ label, value, unit, accent = 'default' }) {
   );
 }
 
-function HoraRow({ index, hora, onChange, onRemove }) {
+/** Diurese hora a hora — é a série que a aba, sozinha, faria desaparecer. */
+function SerieDiurese({ diureses, meta, ativa }) {
+  const valores = diureses.filter((d) => d !== null);
+  if (valores.length === 0) return null;
+  const max = Math.max(meta, ...valores);
+
+  return (
+    <div>
+      <div className="flex items-end gap-[3px] h-8" aria-hidden="true">
+        {diureses.map((d, i) => {
+          const altura = d === null ? 3 : Math.max(3, Math.round((d / max) * 32));
+          return (
+            <div
+              key={i}
+              style={{ height: `${altura}px` }}
+              className={cn(
+                'flex-1 rounded-t-[3px] min-h-[3px]',
+                d === null && 'bg-border',
+                d !== null && d < meta && 'bg-warning',
+                d !== null && d >= meta && (i === ativa ? 'bg-primary' : 'bg-primary/40')
+              )}
+            />
+          );
+        })}
+      </div>
+      <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
+        <span>Diurese h1</span>
+        <span>meta {numeroBr(meta)} ml/h</span>
+        <span>h{diureses.length}</span>
+      </div>
+      <p className="sr-only">
+        Diurese por hora, em ml:{' '}
+        {diureses.map((d, i) => `hora ${i + 1}: ${d === null ? 'não medida' : numeroBr(d)}`).join('; ')}.
+      </p>
+    </div>
+  );
+}
+
+/** Livro-razão: entrada, saída e saldo corrido de cada hora. */
+function LivroRazao({ horas, rate, tsLoss, meta }) {
+  // Saldo corrido pré-calculado: acumular dentro do `map` do JSX é mutação
+  // depois do render e o ESLint (react-hooks/immutability) reprova.
+  const linhas = horas.reduce((acc, h) => {
+    const entrada =
+      (medido(h.cristaloide) ?? 0) + (medido(h.coloide) ?? 0) + (medido(h.sangueDerivados) ?? 0);
+    const saida =
+      (medido(h.sangramento) ?? 0) + (medido(h.diurese) ?? 0) + (medido(h.outras) ?? 0) + rate + tsLoss;
+    const anterior = acc.length > 0 ? acc[acc.length - 1].acumulado : 0;
+    acc.push({ id: h.id, entrada, saida, acumulado: anterior + entrada - saida, diurese: medido(h.diurese) });
+    return acc;
+  }, []);
+
+  return (
+    <div className="rounded-xl border border-border overflow-hidden">
+      <div className="grid grid-cols-[38px_1fr_1fr_72px] gap-1.5 px-2.5 py-1.5 bg-muted text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+        <span>h</span>
+        <span>entrada</span>
+        <span>saída</span>
+        <span className="text-right">saldo</span>
+      </div>
+      {linhas.map((l, i) => (
+        <div
+          key={l.id}
+          className="grid grid-cols-[38px_1fr_1fr_72px] gap-1.5 px-2.5 py-2 text-[13px] tabular-nums border-t border-border"
+        >
+          <span className="font-bold text-primary">h{i + 1}</span>
+          <span>{numeroBr(l.entrada)}</span>
+          <span className={cn(l.diurese !== null && l.diurese < meta && 'text-warning font-semibold')}>
+            {numeroBr(l.saida)}
+          </span>
+          <span className={cn('text-right font-bold', l.acumulado < 0 && 'text-destructive')}>
+            {l.acumulado >= 0 ? '+' : ''}
+            {numeroBr(l.acumulado)}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function HoraCampos({ hora, onChange }) {
   const set = (key) => (e) => {
     const val = e?.target?.value ?? e;
     onChange({ ...hora, [key]: val });
   };
 
   return (
-    <div
-      className={cn(
-        'rounded-xl border border-border-strong bg-card p-3 space-y-3',
-        'md:grid md:grid-cols-[auto_repeat(6,1fr)_auto] md:gap-2 md:space-y-0 md:items-end'
-      )}
-    >
-      <div className="flex items-center justify-between md:block">
-        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs font-semibold">
-          <Clock className="w-3.5 h-3.5" aria-hidden="true" />
-          Hora {index + 1}
-        </span>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onRemove}
-          aria-label={`Remover hora ${index + 1}`}
-          className="md:hidden text-destructive hover:bg-destructive/10 min-h-[44px] min-w-[44px]"
-        >
-          <Trash2 className="w-4 h-4" />
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-1 gap-2 md:gap-0">
-        <Input
-          type="number"
-          label="Cristaloide (ml)"
-          value={hora.cristaloide}
-          onChange={set('cristaloide')}
-          min={0}
-          placeholder="0"
-        />
-        <Input
-          type="number"
-          label="Coloide (ml)"
-          value={hora.coloide}
-          onChange={set('coloide')}
-          min={0}
-          placeholder="0"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-1 gap-2 md:gap-0">
-        <Input
-          type="number"
-          label="Sangue/Hemod. (ml)"
-          value={hora.sangueDerivados}
-          onChange={set('sangueDerivados')}
-          min={0}
-          placeholder="0"
-        />
-        <Input
-          type="number"
-          label="Sangramento (ml)"
-          value={hora.sangramento}
-          onChange={set('sangramento')}
-          min={0}
-          placeholder="0"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-1 gap-2 md:gap-0">
-        <Input
-          type="number"
-          label="Diurese (ml)"
-          value={hora.diurese}
-          onChange={set('diurese')}
-          min={0}
-          placeholder="0"
-        />
-        <Input
-          type="number"
-          label="Outras saídas (ml)"
-          value={hora.outras}
-          onChange={set('outras')}
-          min={0}
-          placeholder="0"
-        />
-      </div>
-
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={onRemove}
-        aria-label={`Remover hora ${index + 1}`}
-        className="hidden md:inline-flex text-destructive hover:bg-destructive/10 min-h-[44px] min-w-[44px]"
-      >
-        <Trash2 className="w-4 h-4" />
-      </Button>
+    <div data-testid="hora-campos" className="grid grid-cols-2 gap-2">
+      <Input type="number" label="Cristaloide (ml)" value={hora.cristaloide} onChange={set('cristaloide')} min={0} placeholder="0" />
+      <Input type="number" label="Coloide (ml)" value={hora.coloide} onChange={set('coloide')} min={0} placeholder="0" />
+      <Input type="number" label="Sangue/Hemod. (ml)" value={hora.sangueDerivados} onChange={set('sangueDerivados')} min={0} placeholder="0" />
+      <Input type="number" label="Sangramento (ml)" value={hora.sangramento} onChange={set('sangramento')} min={0} placeholder="0" />
+      <Input type="number" label="Diurese (ml)" value={hora.diurese} onChange={set('diurese')} min={0} placeholder="não medida" />
+      <Input type="number" label="Outras saídas (ml)" value={hora.outras} onChange={set('outras')} min={0} placeholder="0" />
     </div>
   );
 }
 
 export default function BalancoHidricoTransopDisplay() {
-  const [populacao, setPopulacao] = useState('adulto');
-  const [pedCategory, setPedCategory] = useState('crianca');
-  const [peso, setPeso] = useState('');
-  const [npoHoras, setNpoHoras] = useState('');
-  const [porte, setPorte] = useState('medio');
-  const [hctInicial, setHctInicial] = useState('');
-  const [hctMinimo, setHctMinimo] = useState('25');
-  const [horas, setHoras] = useState([]);
+  const salvo = useMemo(() => lerRascunho(), []);
+
+  const [populacao, setPopulacao] = useState(salvo?.populacao ?? 'adulto');
+  const [pedCategory, setPedCategory] = useState(salvo?.pedCategory ?? 'crianca');
+  const [peso, setPeso] = useState(salvo?.peso ?? '');
+  const [npoHoras, setNpoHoras] = useState(salvo?.npoHoras ?? '');
+  const [porte, setPorte] = useState(salvo?.porte ?? 'medio');
+  const [hctInicial, setHctInicial] = useState(salvo?.hctInicial ?? '');
+  const [hctMinimo, setHctMinimo] = useState(salvo?.hctMinimo ?? '25');
+  const [horas, setHoras] = useState(salvo?.horas ?? []);
+  const [horaAtiva, setHoraAtiva] = useState(Math.max(0, (salvo?.horas?.length ?? 1) - 1));
+  const [verLivro, setVerLivro] = useState(false);
+  const fitaRef = useRef(null);
 
   const isPediatric = populacao === 'pediatrico';
   const category = isPediatric ? pedCategory : categoryForPopulation('adulto');
@@ -228,6 +254,48 @@ export default function BalancoHidricoTransopDisplay() {
   const npoN = parseFloat(npoHoras) || 0;
   const hctIN = parseFloat(hctInicial) || 0;
   const hctMN = parseFloat(hctMinimo) || 0;
+
+  // O rascunho é gravado a cada mudança; recarregar não perde a cirurgia.
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        CHAVE_RASCUNHO,
+        JSON.stringify({ populacao, pedCategory, peso, npoHoras, porte, hctInicial, hctMinimo, horas })
+      );
+    } catch {
+      /* modo privado ou armazenamento cheio: seguir sem persistir */
+    }
+  }, [populacao, pedCategory, peso, npoHoras, porte, hctInicial, hctMinimo, horas]);
+
+  /* A fita mostra a hora ATIVA, não a hora 1. Com 12 horas a aba em uso nasce
+   * fora de vista, e quem recarrega no meio da cirurgia não acha onde digitar.
+   * Ajustado no container em vez de `scrollIntoView`, que arrastaria a PÁGINA
+   * inteira junto e faria a tela pular. */
+  useEffect(() => {
+    const ajustar = () => {
+      const fita = fitaRef.current;
+      if (!fita || fita.clientWidth === 0) return;
+      const alvo = fita.querySelector('[aria-selected="true"]');
+      if (!alvo) return;
+      // ⚠️ por RECT, não por `offsetLeft`: o offsetParent da fita é o BODY (ela
+      // não é posicionada), então offsetLeft carrega junto o deslocamento da
+      // coluna e a conta só acertava na última hora, por saturar no máximo.
+      const caixa = fita.getBoundingClientRect();
+      const aba = alvo.getBoundingClientRect();
+      fita.scrollLeft += aba.left + aba.width / 2 - (caixa.left + caixa.width / 2);
+    };
+    // Num quadro depois: em pé o efeito pegava a largura final, mas DEITADO o
+    // grid de duas colunas ainda não tinha assentado e a conta saía com a
+    // largura errada — medido, a aba ativa nascia fora de vista.
+    const quadro = requestAnimationFrame(ajustar);
+    // `resize` chega DEPOIS de a viewport virar; `orientationchange` do iOS
+    // chega antes e é a armadilha registrada no tailwind.config.js.
+    window.addEventListener('resize', ajustar);
+    return () => {
+      cancelAnimationFrame(quadro);
+      window.removeEventListener('resize', ajustar);
+    };
+  }, [horaAtiva, horas.length]);
 
   const result = useMemo(
     () =>
@@ -251,31 +319,314 @@ export default function BalancoHidricoTransopDisplay() {
   const furman3 = useMemo(() => furmanReplacement(pesoN, npoN, 3), [pesoN, npoN]);
 
   const hasPreop = pesoN > 0;
+  const temHoras = horas.length > 0;
+  const indiceAtivo = Math.min(horaAtiva, Math.max(0, horas.length - 1));
 
-  const addHora = () => setHoras((arr) => [...arr, emptyHora()]);
-  const updateHora = (idx, next) =>
-    setHoras((arr) => arr.map((h, i) => (i === idx ? next : h)));
-  const removeHora = (idx) => setHoras((arr) => arr.filter((_, i) => i !== idx));
+  const addHora = useCallback(() => {
+    setHoras((arr) => {
+      const proximo = [...arr, emptyHora()];
+      setHoraAtiva(proximo.length - 1);
+      return proximo;
+    });
+  }, []);
+
+  const updateHora = (idx, next) => setHoras((arr) => arr.map((h, i) => (i === idx ? next : h)));
+
+  const removeHora = (idx) =>
+    setHoras((arr) => {
+      const proximo = arr.filter((_, i) => i !== idx);
+      setHoraAtiva((a) => Math.max(0, Math.min(a, proximo.length - 1)));
+      return proximo;
+    });
+
   const resetAll = () => {
     setHoras([]);
+    setHoraAtiva(0);
     setPeso('');
     setNpoHoras('');
     setHctInicial('');
+    setVerLivro(false);
+    try {
+      localStorage.removeItem(CHAVE_RASCUNHO);
+    } catch {
+      /* nada a fazer */
+    }
   };
 
   const balancoAccent = (() => {
     const b = result.balancoNet;
-    if (Math.abs(b) < 500) return 'success';
-    if (Math.abs(b) < 1500) return 'warning';
-    return 'destructive';
+    if (Math.abs(b) < 500) return 'text-primary';
+    if (Math.abs(b) < 1500) return 'text-warning';
+    return 'text-destructive';
   })();
 
+  /* Cada alerta mora em UM lugar só. Os vermelhos sobem para a barra grudada,
+   * porque anúria, perda permitida atingida e hipovolemia não podem esperar a
+   * rolagem; os amarelos ficam no bloco de baixo. Repetir os dois lugares
+   * deixava o mesmo texto duas vezes na tela a 375px — é o "informação
+   * duplicada" que o dono já reprovou no card de Inibidores. */
+  const alertasGraves = result.alerts.filter((a) => a.level === 'destructive');
+  const alertasAtencao = result.alerts.filter((a) => a.level !== 'destructive');
+
+  const alertas = alertasAtencao.length > 0 && (
+    <div className="space-y-2" role="alert">
+      {alertasAtencao.map((alert, i) => (
+        <div
+          key={i}
+          className={cn(
+            'flex items-start gap-2 p-3 rounded-lg border text-sm',
+            'bg-warning/10 border-warning/40 text-warning'
+          )}
+        >
+          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+          <span>{alert.message}</span>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
-    <div className="space-y-4">
-      {/* Bloco pré-op */}
+    <div
+      className={cn(
+        'space-y-4',
+        // Deitado sobra largura e faltam 375px de altura: entradas à esquerda,
+        // resultado à direita, e a tela inteira cabe sem rolar.
+        'deitado:space-y-0 deitado:grid deitado:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] deitado:gap-3 deitado:items-start'
+      )}
+    >
+      {/* 1a. RESULTADO GRUDADO — só o número e os três totais.
+          ⚠️ Deliberadamente ENXUTO. A primeira versão trazia junto a série, o
+          botão do livro e os alertas: dava 359px de altura e, num iPhone SE
+          (375×667) com cabeçalho de 49 e barra inferior de 65, sobravam 194px
+          para digitar — metade do necessário. Medido nos três aparelhos. O que
+          precisa estar SEMPRE à vista é o número; o resto rola logo abaixo. */}
+      {hasPreop && temHoras && (
+        <section
+          aria-labelledby="balanco-heading"
+          aria-live="polite"
+          className={cn(
+            'rounded-xl border border-border-strong bg-card px-4 py-3 space-y-1.5',
+            // `top-14` e não `top-0`: o cabeçalho do app é fixo com espaçador
+            // `h-14` (App.jsx:519), e grudar em 0 enfiava o número por baixo
+            // dele — visto ao rolar, nos dois sentidos.
+            'sticky top-14 z-20 shadow-sm',
+            'deitado:col-start-2 deitado:row-start-1'
+          )}
+        >
+          {/* Deitado a coluna tem ~305px: lado a lado, o rótulo quebrava em duas
+              linhas e o "ml" caía sozinho. Empilhado, cabe. */}
+          <div className="flex items-baseline justify-between gap-2 deitado:flex-col deitado:items-start deitado:gap-0">
+            <h3
+              id="balanco-heading"
+              className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground"
+            >
+              Balanço · {horas.length} {horas.length === 1 ? 'hora' : 'horas'}
+            </h3>
+            <p className={cn('text-3xl font-bold leading-none tabular-nums', balancoAccent)}>
+              {result.balancoNet >= 0 ? '+' : ''}
+              {numeroBr(result.balancoNet)}
+              <span className="text-sm font-semibold"> ml</span>
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground tabular-nums">
+            <span>
+              Infundido <b className="text-foreground">{numeroBr(result.totalInfundido)}</b>
+            </span>
+            <span>
+              Diurese <b className="text-foreground">{numeroBr(result.totalDiurese)}</b>/
+              {numeroBr(result.metaDiureseAcumulada)}
+            </span>
+            {result.abl > 0 && (
+              <span>
+                Perda permitida <b className="text-foreground">{numeroBr(result.ablRestante)}</b>
+              </span>
+            )}
+          </div>
+
+          {/* Só os alertas VERMELHOS: anúria, perda permitida atingida e
+              hipovolemia não podem esperar a rolagem. Os amarelos ficam no
+              bloco de baixo — nenhum texto aparece nos dois lugares. */}
+          {alertasGraves.map((a, i) => (
+            <p
+              key={i}
+              className="flex items-start gap-1.5 text-xs font-semibold text-destructive"
+            >
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden="true" />
+              <span>{a.message}</span>
+            </p>
+          ))}
+        </section>
+      )}
+
+      {/* 1b. SÉRIE, LIVRO E ALERTAS — rolam. Ficam acima dos campos, então
+          continuam sendo a primeira coisa lida ao abrir a tela. */}
+      {hasPreop && temHoras && (
+        <section
+          aria-label="Tendência e alertas"
+          className="rounded-xl border border-border-strong bg-card p-4 space-y-3 deitado:col-start-2 deitado:row-start-2"
+        >
+          <SerieDiurese diureses={result.diureses} meta={result.goalRate} ativa={indiceAtivo} />
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setVerLivro((v) => !v)}
+            className="w-full min-h-[44px]"
+            aria-expanded={verLivro}
+          >
+            {verLivro ? (
+              <ChevronUp className="w-4 h-4 mr-1.5" aria-hidden="true" />
+            ) : (
+              <ChevronDown className="w-4 h-4 mr-1.5" aria-hidden="true" />
+            )}
+            {verLivro ? 'ocultar as horas' : `ver as ${horas.length} horas`}
+          </Button>
+
+          {verLivro && (
+            <LivroRazao
+              horas={horas}
+              rate={result.rate}
+              tsLoss={result.tsLoss}
+              meta={result.goalRate}
+            />
+          )}
+
+          {alertas}
+        </section>
+      )}
+
+      {/* 2. ACOMPANHAMENTO — uma hora por vez, fita rolável */}
+      <section
+        aria-labelledby="horas-heading"
+        className={cn(
+          'rounded-xl border border-border-strong bg-card p-4 space-y-3',
+          'deitado:col-start-1 deitado:row-start-1'
+        )}
+      >
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <h3
+            id="horas-heading"
+            className="text-base font-semibold text-foreground flex items-center gap-2"
+          >
+            <Clock className="w-5 h-5 text-primary" aria-hidden="true" />
+            Acompanhamento hora a hora
+          </h3>
+          {temHoras && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={resetAll}
+              className="text-muted-foreground hover:text-destructive min-h-[44px]"
+              aria-label="Limpar todos os registros"
+            >
+              <RotateCcw className="w-4 h-4 mr-1.5" aria-hidden="true" />
+              Limpar
+            </Button>
+          )}
+        </div>
+
+        {!hasPreop && (
+          <p className="text-sm text-muted-foreground italic">
+            Preencha o peso primeiro para iniciar o registro.
+          </p>
+        )}
+
+        {hasPreop && !temHoras && (
+          <p className="text-sm text-muted-foreground italic">
+            Nenhuma hora registrada ainda. Use o botão abaixo para adicionar a 1ª hora.
+          </p>
+        )}
+
+        {hasPreop && temHoras && (
+          <>
+            {/* Fita de horas. Hand-rolled de propósito: o TabsContent do DS
+                DESMONTA o painel inativo, e com o valor digitado dentro da aba
+                trocar de hora APAGARIA o registro. Aqui o array `horas` mora na
+                raiz e a aba só muda um índice. */}
+            <div
+              ref={fitaRef}
+              role="tablist"
+              aria-label="Horas registradas"
+              className="flex gap-1.5 overflow-x-auto p-1 rounded-2xl bg-muted border border-border"
+            >
+              {horas.map((h, i) => {
+                const d = medido(h.diurese);
+                const abaixoDaMeta = d !== null && d < result.goalRate;
+                const ativo = i === indiceAtivo;
+                return (
+                  <button
+                    key={h.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={ativo}
+                    aria-label={`Hora ${i + 1}${abaixoDaMeta ? ', diurese abaixo da meta' : ''}`}
+                    onClick={() => setHoraAtiva(i)}
+                    className={cn(
+                      'shrink-0 min-w-[44px] min-h-[44px] px-3 rounded-xl text-sm font-bold',
+                      'flex items-center justify-center gap-1 transition-colors',
+                      ativo
+                        ? 'bg-card text-primary shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    {i + 1}
+                    {abaixoDaMeta && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-warning" aria-hidden="true" />
+                    )}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={addHora}
+                aria-label={`Adicionar hora ${horas.length + 1}`}
+                className="shrink-0 min-w-[44px] min-h-[44px] px-3 rounded-xl text-primary flex items-center justify-center hover:bg-card/60"
+              >
+                <Plus className="w-4 h-4" aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs font-semibold">
+                <Clock className="w-3.5 h-3.5" aria-hidden="true" />
+                Hora {indiceAtivo + 1}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => removeHora(indiceAtivo)}
+                aria-label={`Remover hora ${indiceAtivo + 1}`}
+                className="text-destructive hover:bg-destructive/10 min-h-[44px] min-w-[44px]"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <HoraCampos
+              hora={horas[indiceAtivo]}
+              onChange={(next) => updateHora(indiceAtivo, next)}
+            />
+          </>
+        )}
+
+        {hasPreop && !temHoras && (
+          <Button
+            variant="outline"
+            onClick={addHora}
+            className="w-full min-h-[44px]"
+            aria-label="Adicionar nova hora"
+          >
+            <Plus className="w-4 h-4 mr-1.5" aria-hidden="true" />
+            Adicionar hora 1
+          </Button>
+        )}
+      </section>
+
+      {/* 3. PRÉ-OP */}
       <section
         aria-labelledby="preop-heading"
-        className="rounded-xl border border-border-strong bg-card p-4 space-y-4"
+        className="rounded-xl border border-border-strong bg-card p-4 space-y-4 deitado:col-span-2 deitado:mt-3"
       >
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <h3 id="preop-heading" className="text-base font-semibold text-foreground flex items-center gap-2">
@@ -285,7 +636,7 @@ export default function BalancoHidricoTransopDisplay() {
           <PillToggle value={populacao} onChange={setPopulacao} />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 deitado:grid-cols-3 gap-3">
           <Input
             type="number"
             label="Peso (kg)"
@@ -324,7 +675,7 @@ export default function BalancoHidricoTransopDisplay() {
           )}
           <Input
             type="number"
-            label="Hct inicial (%)"
+            label="Ht inicial (%)"
             value={hctInicial}
             onChange={(e) => setHctInicial(e.target.value)}
             min={15}
@@ -334,7 +685,7 @@ export default function BalancoHidricoTransopDisplay() {
           />
           <Input
             type="number"
-            label="Hct mínimo aceitável (%)"
+            label="Ht mínimo aceitável (%)"
             value={hctMinimo}
             onChange={(e) => setHctMinimo(e.target.value)}
             min={15}
@@ -345,11 +696,11 @@ export default function BalancoHidricoTransopDisplay() {
         </div>
       </section>
 
-      {/* Estimativas iniciais */}
+      {/* 4. ESTIMATIVAS */}
       {hasPreop && (
         <section
           aria-labelledby="estimativas-heading"
-          className="rounded-xl border border-border-strong bg-card p-4 space-y-3"
+          className="rounded-xl border border-border-strong bg-card p-4 space-y-3 deitado:col-span-2"
         >
           <h3
             id="estimativas-heading"
@@ -359,64 +710,74 @@ export default function BalancoHidricoTransopDisplay() {
             Estimativas iniciais
           </h3>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 deitado:grid-cols-4 gap-3">
+            <MetricCard label="Manutenção" value={numeroBr(result.rate)} unit="ml/h" accent="primary" />
+            <MetricCard label="Déficit jejum" value={numeroBr(deficit)} unit="ml total" />
+            <MetricCard label="3º espaço" value={numeroBr(result.tsLoss)} unit="ml/h" />
+            <MetricCard label="Meta diurese" value={numeroBr(result.goalRate)} unit="ml/h" accent="primary" />
+            <MetricCard label="Volume sanguíneo" value={numeroBr(ebv)} unit="ml" />
             <MetricCard
-              label="Manutenção"
-              value={fmt(result.rate, 0)}
-              unit="ml/h"
-              accent="primary"
-            />
-            <MetricCard label="Déficit jejum" value={fmt(deficit, 0)} unit="ml total" />
-            <MetricCard
-              label="3º espaço"
-              value={fmt(result.tsLoss, 0)}
-              unit="ml/h"
-            />
-            <MetricCard
-              label="Meta diurese"
-              value={fmt(result.goalRate, 0)}
-              unit="ml/h"
-              accent="success"
-            />
-            <MetricCard label="EBV" value={fmt(ebv, 0)} unit="ml" />
-            <MetricCard
-              label="ABL"
-              value={result.abl > 0 ? fmt(result.abl, 0) : '—'}
-              unit={result.abl > 0 ? 'ml' : 'Hct insuf.'}
+              label="Perda permitida"
+              value={result.abl > 0 ? numeroBr(result.abl) : '—'}
+              unit={result.abl > 0 ? 'ml' : 'Ht insuf.'}
               accent={result.abl > 0 ? 'warning' : 'default'}
             />
+            {temHoras && result.totalSangramento > 0 && (
+              <MetricCard
+                label="Repor sangramento"
+                value={numeroBr(result.reposicaoCristaloide)}
+                unit="ml cristaloide (3:1)"
+                accent="warning"
+              />
+            )}
+            {temHoras && result.totalSangramento > 0 && (
+              <MetricCard
+                label="ou coloide/sangue"
+                value={numeroBr(result.reposicaoColoide)}
+                unit="ml (1:1)"
+              />
+            )}
           </div>
 
           <div className="rounded-lg bg-info/10 border border-info/40 p-3 text-xs text-info space-y-1">
             <p className="font-semibold">Plano de reposição do déficit (Furman 50/25/25):</p>
             <p>
-              <span className="font-medium">1ª hora:</span> {fmt(furman1, 0)} ml ·{' '}
-              <span className="font-medium">2ª hora:</span> {fmt(furman2, 0)} ml ·{' '}
-              <span className="font-medium">3ª hora:</span> {fmt(furman3, 0)} ml
+              <span className="font-medium">1ª hora:</span> {numeroBr(furman1)} ml ·{' '}
+              <span className="font-medium">2ª hora:</span> {numeroBr(furman2)} ml ·{' '}
+              <span className="font-medium">3ª hora:</span> {numeroBr(furman3)} ml
             </p>
           </div>
 
           <details className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
             <summary className="cursor-pointer font-semibold text-foreground select-none min-h-[44px] flex items-center">
-              Glossário — EBV, ABL, POQI, Furman 50/25/25
+              Glossário — volume sanguíneo, perda permitida, POQI, Furman 50/25/25
             </summary>
             <dl className="mt-3 space-y-3">
               <div>
-                <dt className="font-semibold text-foreground">EBV (Estimated Blood Volume)</dt>
+                <dt className="font-semibold text-foreground">Volume sanguíneo estimado (EBV)</dt>
                 <dd>
                   Volume sanguíneo estimado do paciente. Calculado por peso × ml/kg conforme faixa
                   etária: 70 ml/kg adulto, 75 criança, 80 lactente, 85 neonato, 95 prematuro. Base
-                  para estimar a perda máxima permitida (ABL) e o impacto do sangramento sobre o
+                  para estimar a perda sanguínea permitida e o impacto do sangramento sobre o
                   hematócrito.
                 </dd>
               </div>
               <div>
-                <dt className="font-semibold text-foreground">ABL (Allowable Blood Loss)</dt>
+                <dt className="font-semibold text-foreground">Perda sanguínea permitida (ABL)</dt>
                 <dd>
-                  Perda sanguínea aceitável — volume máximo de sangue que o paciente pode perder
-                  antes de exigir transfusão, mantendo o hematócrito mínimo escolhido como meta.
-                  Fórmula de Gross (1983): <em>ABL = EBV × (Hct inicial − Hct mínimo) / Hct inicial</em>.
-                  Quando o sangramento acumulado se aproxima da ABL, considerar hemoderivados.
+                  Volume máximo de sangue que o paciente pode perder antes de exigir transfusão,
+                  mantendo o hematócrito mínimo escolhido como meta. Fórmula de Gross (1983):{' '}
+                  <em>perda permitida = volume sanguíneo × (Ht inicial − Ht mínimo) / Ht inicial</em>.
+                  Quando o sangramento acumulado se aproxima dela, considerar hemoderivados.
+                </dd>
+              </div>
+              <div>
+                <dt className="font-semibold text-foreground">Reposição do sangramento</dt>
+                <dd>
+                  Cristaloide na proporção <strong>3:1</strong> (três volumes para cada volume
+                  perdido, porque só um terço permanece no intravascular) ou coloide/hemoderivado{' '}
+                  <strong>1:1</strong>. O cartão &quot;Repor sangramento&quot; aplica a regra ao
+                  sangramento já registrado.
                 </dd>
               </div>
               <div>
@@ -441,158 +802,16 @@ export default function BalancoHidricoTransopDisplay() {
                   2ª e 3ª horas ≈ 330 ml cada.
                 </dd>
               </div>
+              <div>
+                <dt className="font-semibold text-foreground">Diurese não medida × diurese zero</dt>
+                <dd>
+                  O campo de diurese em branco significa <strong>não medida</strong> e não entra em
+                  alerta nenhum. Um <strong>0</strong> digitado é anúria registrada e dispara alerta
+                  vermelho — é o pior achado urinário e não pode ficar mudo.
+                </dd>
+              </div>
             </dl>
           </details>
-        </section>
-      )}
-
-      {/* Acompanhamento hora a hora */}
-      <section
-        aria-labelledby="horas-heading"
-        className="rounded-xl border border-border-strong bg-card p-4 space-y-3"
-      >
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <h3
-            id="horas-heading"
-            className="text-base font-semibold text-foreground flex items-center gap-2"
-          >
-            <Clock className="w-5 h-5 text-primary" aria-hidden="true" />
-            Acompanhamento hora a hora
-          </h3>
-          {horas.length > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={resetAll}
-              className="text-muted-foreground hover:text-destructive min-h-[44px]"
-              aria-label="Limpar todos os registros"
-            >
-              <RotateCcw className="w-4 h-4 mr-1.5" aria-hidden="true" />
-              Limpar
-            </Button>
-          )}
-        </div>
-
-        {!hasPreop && (
-          <p className="text-sm text-muted-foreground italic">
-            Preencha o peso primeiro para iniciar o registro.
-          </p>
-        )}
-
-        {hasPreop && horas.length === 0 && (
-          <p className="text-sm text-muted-foreground italic">
-            Nenhuma hora registrada ainda. Use o botão abaixo para adicionar a 1ª hora.
-          </p>
-        )}
-
-        {horas.map((h, i) => (
-          <HoraRow
-            key={h.id}
-            index={i}
-            hora={h}
-            onChange={(next) => updateHora(i, next)}
-            onRemove={() => removeHora(i)}
-          />
-        ))}
-
-        {hasPreop && (
-          <Button
-            variant="outline"
-            onClick={addHora}
-            className="w-full min-h-[44px]"
-            aria-label="Adicionar nova hora"
-          >
-            <Plus className="w-4 h-4 mr-1.5" aria-hidden="true" />
-            Adicionar hora {horas.length + 1}
-          </Button>
-        )}
-      </section>
-
-      {/* Balanço acumulado */}
-      {hasPreop && horas.length > 0 && (
-        <section
-          aria-labelledby="balanco-heading"
-          aria-live="polite"
-          className="rounded-xl border border-border-strong bg-card p-4 space-y-3"
-        >
-          <h3
-            id="balanco-heading"
-            className="text-base font-semibold text-foreground flex items-center gap-2"
-          >
-            <Droplets className="w-5 h-5 text-primary" aria-hidden="true" />
-            Balanço acumulado ({horas.length} {horas.length === 1 ? 'hora' : 'horas'})
-          </h3>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            <MetricCard
-              label="Infundido"
-              value={fmt(result.totalInfundido, 0)}
-              unit="ml"
-              accent="primary"
-            />
-            <MetricCard
-              label="Sangramento"
-              value={fmt(result.totalSangramento, 0)}
-              unit="ml"
-              accent={result.totalSangramento > 0 ? 'destructive' : 'default'}
-            />
-            <MetricCard
-              label="Diurese"
-              value={fmt(result.totalDiurese, 0)}
-              unit={`ml (meta ${fmt(result.metaDiureseAcumulada, 0)})`}
-              accent={
-                result.totalDiurese >= result.metaDiureseAcumulada ? 'success' : 'warning'
-              }
-            />
-            <MetricCard
-              label="Manutenção (calc.)"
-              value={fmt(result.totalManutencao, 0)}
-              unit="ml acumulados"
-            />
-            <MetricCard
-              label="3º espaço (calc.)"
-              value={fmt(result.totalTerceiroEspaco, 0)}
-              unit="ml acumulados"
-            />
-            <MetricCard
-              label="Balanço net"
-              value={`${result.balancoNet >= 0 ? '+' : ''}${fmt(result.balancoNet, 0)}`}
-              unit="ml"
-              accent={balancoAccent}
-            />
-            <MetricCard
-              label="ABL restante"
-              value={result.abl > 0 ? fmt(result.ablRestante, 0) : '—'}
-              unit={result.abl > 0 ? 'ml até transfusão' : ''}
-              accent={
-                result.abl > 0 && result.ablRestante < result.abl * 0.25
-                  ? 'destructive'
-                  : 'default'
-              }
-            />
-          </div>
-
-          {result.alerts.length > 0 && (
-            <div className="space-y-2 mt-2" role="alert">
-              {result.alerts.map((alert, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    'flex items-start gap-2 p-3 rounded-lg border text-sm',
-                    alert.level === 'destructive'
-                      ? 'bg-destructive/10 border-destructive/40 text-destructive'
-                      : 'bg-warning/10 border-warning/40 text-warning'
-                  )}
-                >
-                  <AlertTriangle
-                    className="w-4 h-4 shrink-0 mt-0.5"
-                    aria-hidden="true"
-                  />
-                  <span>{alert.message}</span>
-                </div>
-              ))}
-            </div>
-          )}
         </section>
       )}
     </div>
