@@ -82,7 +82,9 @@ describe('Conferência — barra de âncoras', () => {
     const barra = screen.getByRole('navigation', { name: /Seções da conferência/i })
     const atalho = (nome) => within(barra).getByRole('button', { name: new RegExp(nome, 'i') })
     expect(atalho('Blocos').textContent).toMatch(/2/)        // 2 blocos
-    expect(atalho('Liberações').textContent).toMatch(/3/)    // 3 nomes na ordem
+    // desde 31/08 o atalho do meio é "Ordem e decisões"; com FERNANDO na ordem
+    // sem cirurgia, o selo âmbar conta a conferência pendente
+    expect(atalho('Ordem e decisões').textContent).toMatch(/1/)
     expect(atalho('Pendências')).toBeTruthy()
     // as seções existem para onde os atalhos rolam
     for (const id of ['conf-blocos', 'conf-liberacoes', 'conf-pendencias']) {
@@ -137,19 +139,23 @@ describe('Conferência — pendências num lugar só', () => {
   // vezes inflava o número de pendências):
   //  · na CAUDA → diz o que vai acontecer (nasce LIBERADO na fila, regra 21/08);
   //  · no MEIO, com vizinho escalado → suspeita de extração torta (IOSC 23/07).
+  // Desde 31/08 (modelo B) o "na ordem sem cirurgia" mora como LINHA DE
+  // DECISÃO no cartão da fila, e a distinção cauda×meio vive na FOLHA dela:
+  // na cauda a folha diz o que vai acontecer (nasce LIBERADO, regra 21/08);
+  // no meio, só a suspeita de extração torta (IOSC 23/07).
   it('quem FECHA a ordem sem cirurgia é nomeado, com o que vai acontecer', async () => {
     const container = await conferir()
+    const ordem = container.querySelector('#conf-liberacoes')
+    const linha = within(ordem).getByText(/FERNANDO — na ordem, sem cirurgia/i)
+    fireEvent.click(linha)
+    const consequencia = await screen.findByText(/vai nascer/i)
+    expect(consequencia.textContent).toMatch(/LIBERADO/)
+    // e não repete o mesmo nome em aviso solto de Pendências
     const pend = container.querySelector('#conf-pendencias')
-    const aviso = within(pend).getByText(/nascer/i)
-    expect(aviso.textContent).toMatch(/FERNANDO/)
-    expect(aviso.textContent).toMatch(/LIBERADO/)
-    // e não repete o mesmo nome no aviso de extração
     expect(within(pend).queryByText(/confira a extração/i)).toBeNull()
-    // o campo de ajuda (que resolve o caso mais comum) fica na mesma seção
-    expect(within(pend).getByText(/Ajuda de outro hospital/i)).toBeTruthy()
   })
 
-  it('no MEIO da ordem, o aviso continua sendo o da extração torta', async () => {
+  it('no MEIO da ordem, a folha fica só com a extração torta', async () => {
     // ERLEI sem cirurgia entre CURY e FERNANDO, que têm — e FERNANDO fecha a
     // ordem COM cirurgia, então não há cauda nenhuma
     const casos = [
@@ -157,18 +163,17 @@ describe('Conferência — pendências num lugar só', () => {
       { sala: 'SALA 2', hora: '08:30', procedimento: 'Colecistectomia', cirurgiao: 'Dirceu', anestesista: 'FERNANDO' },
     ]
     const container = await conferir(casos, ['CURY', 'ERLEI', 'FERNANDO'])
-    const pend = container.querySelector('#conf-pendencias')
-    expect(within(pend).getByText(/confira a extração/i)).toBeTruthy()
-    expect(within(pend).queryByText(/nascer/i)).toBeNull()
+    const ordem = container.querySelector('#conf-liberacoes')
+    fireEvent.click(within(ordem).getByText(/ERLEI — na ordem, sem cirurgia/i))
+    expect(await screen.findByText(/pode ter saído para outra pessoa/i)).toBeTruthy()
+    expect(screen.queryByText(/vai nascer/i)).toBeNull()
   })
 
-  it('some com o aviso do nome sem cirurgia quando a ordem casa com os casos', async () => {
+  it('some com a linha do nome sem cirurgia quando a ordem casa com os casos', async () => {
     const container = await conferir(CASOS, ['CURY', 'ERLEI'])
-    const pend = container.querySelector('#conf-pendencias')
-    expect(within(pend).queryByText(/confira a extração/i)).toBeNull()
-    expect(within(pend).queryByText(/nascer/i)).toBeNull()
-    // o campo de ajuda continua ali — é a seção dele
-    expect(within(pend).getByText(/Ajuda de outro hospital/i)).toBeTruthy()
+    const ordem = container.querySelector('#conf-liberacoes')
+    expect(within(ordem).queryByText(/na ordem, sem cirurgia/i)).toBeNull()
+    expect(within(ordem).queryByText(/Decisões do dia/i)).toBeNull()
   })
 })
 

@@ -386,24 +386,28 @@ describe('Conferência — caso com anestesista fora do rodapé', () => {
     { sala: 'Sala 1', hora: '08:00', anestesista: 'CURY', cirurgiao: 'DR. ANA SOUZA', procedimento: 'Hérnia' },
   ]
 
-  it('avisa quem tem caso e ficou fora da ordem, com a contagem de casos', async () => {
+  it('vira DECISÃO no cartão da fila, com a contagem de casos (31/08)', async () => {
     // rodapé só com CURY — CRISTINA tem 2 casos e não aparece nele
     const container = await importar(EXAMES_CRISTINA, ['CURY'])
     await waitFor(() => expect(blocos(container)).toHaveLength(2))
 
-    const aviso = await screen.findByText(/NÃO está na ordem de liberação nem na ajuda/i)
-    expect(aviso.textContent).toMatch(/Cristina \(2\)/)
-    // e diz as DUAS saídas, porque a causa pode ser azul não lido ou rodapé mal extraído
-    expect(aviso.textContent).toMatch(/AZUL/)
-    expect(aviso.textContent).toMatch(/acrescente na ordem/i)
+    // a linha mora na seção da ordem — era aviso solto no fim da página
+    const linha = await screen.findByText(/Cristina — com caso, fora da ordem/i)
+    expect(linha.closest('button').textContent).toMatch(/2 casos/)
+    // e a folha diz as DUAS saídas, porque a causa pode ser azul não lido
+    // ou rodapé mal extraído
+    fireEvent.click(linha)
+    expect(await screen.findByText(/AZUL/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /acrescentar à ordem/i })).toBeTruthy()
   })
 
-  it('um toque põe o nome na ajuda e o aviso sai', async () => {
+  it('marcar como ajuda pela folha grava e a decisão sai', async () => {
     const container = await importar(EXAMES_CRISTINA, ['CURY'])
     await waitFor(() => expect(blocos(container)).toHaveLength(2))
 
-    fireEvent.click(await screen.findByRole('button', { name: /\+ Cristina como ajuda/i }))
-    await waitFor(() => expect(screen.queryByText(/NÃO está na ordem de liberação nem na ajuda/i)).toBeNull())
+    fireEvent.click(await screen.findByText(/Cristina — com caso, fora da ordem/i))
+    fireEvent.click(await screen.findByRole('button', { name: /marcar como ajuda/i }))
+    await waitFor(() => expect(screen.queryByText(/com caso, fora da ordem/i)).toBeNull())
 
     // e a ajuda vai para o banco no publicar (é o que dá o badge e a posição)
     fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
@@ -414,7 +418,7 @@ describe('Conferência — caso com anestesista fora do rodapé', () => {
   it('quem está no rodapé não é acusado, e sem rodapé o guardrail se cala', async () => {
     const comRodape = await importar(EXAMES_CRISTINA, ['CURY', 'CRISTINA'])
     await waitFor(() => expect(blocos(comRodape)).toHaveLength(2))
-    expect(screen.queryByText(/NÃO está na ordem de liberação nem na ajuda/i)).toBeNull()
+    expect(screen.queryByText(/com caso, fora da ordem/i)).toBeNull()
   })
 })
 
@@ -445,34 +449,38 @@ describe('Conferência — cruzamento com outro hospital', () => {
     svcMock.fetchEscala.mockImplementation(async (_d, h) => (h === 'unimed' ? outraEscala : null))
   })
 
-  it('sugere como ajuda quem está no rodapé do outro hospital e tem caso aqui', async () => {
+  it('quem está no rodapé do outro hospital vira linha AZUL "ajuda de fora?" (31/08)', async () => {
     const container = await importar(casosAqui, ['CURY'])
     await waitFor(() => expect(blocos(container)).toHaveLength(2))
 
-    const aviso = await screen.findByText(/Já publicado em outro hospital hoje/i)
-    expect(aviso.textContent).toMatch(/Fernando \(Unimed\)/)
+    const linha = await screen.findByText(/Fernando — ajuda de fora\?/i)
+    expect(linha.closest('button').textContent).toMatch(/Unimed/)
     // CURY tem caso aqui mas NÃO está no rodapé de lá — não é sugerido
-    expect(aviso.textContent).not.toMatch(/Cury/)
+    expect(screen.queryByText(/Cury — ajuda de fora/i)).toBeNull()
   })
 
-  it('um toque marca como ajuda e a sugestão sai', async () => {
+  it('a folha marca como ajuda e a pergunta vira decisão respondida', async () => {
     const container = await importar(casosAqui, ['CURY'])
     await waitFor(() => expect(blocos(container)).toHaveLength(2))
 
-    fireEvent.click(await screen.findByRole('button', { name: /\+ Fernando como ajuda/i }))
-    await waitFor(() => expect(screen.queryByText(/Já publicado em outro hospital hoje/i)).toBeNull())
+    fireEvent.click(await screen.findByText(/Fernando — ajuda de fora\?/i))
+    fireEvent.click(await screen.findByRole('button', { name: /marcar como ajuda/i }))
+    await waitFor(() => expect(screen.queryByText(/ajuda de fora\?/i)).toBeNull())
+    expect(await screen.findByText(/Fernando — marcado como ajuda/i)).toBeTruthy()
   })
 
-  it('mesma pessoa com casos nos DOIS hospitais vira conflito, não sugestão de ajuda', async () => {
+  it('mesma pessoa com casos nos DOIS hospitais é "em dois hospitais", não ajuda', async () => {
     const container = await importar([
       { sala: 'Sala 1', hora: '08:00', anestesista: 'ADRIANO', cirurgiao: 'DR. ANA SOUZA', procedimento: 'Hérnia' },
     ], ['ADRIANO'])
     await waitFor(() => expect(blocos(container)).toHaveLength(1))
 
-    const aviso = await screen.findByText(/Com casos nos DOIS hospitais no mesmo turno/i)
-    expect(aviso.textContent).toMatch(/Adriano \(Unimed: 1\)/)
-    // e lembra que amarelo = escalado em dois locais de propósito
-    expect(aviso.textContent).toMatch(/AMARELO/)
+    const linha = await screen.findByText(/Adriano — em dois hospitais/i)
+    expect(linha.closest('button').textContent).toMatch(/Unimed: 1/)
+    expect(screen.queryByText(/ajuda de fora\?/i)).toBeNull()
+    // e a folha lembra que amarelo = escalado em dois locais de propósito
+    fireEvent.click(linha)
+    expect(await screen.findByText(/AMARELO/)).toBeTruthy()
   })
 })
 
@@ -641,14 +649,15 @@ describe('Conferência — ordem de liberação numerada', () => {
   it('marca com o ponto âmbar quem está na ordem sem nenhuma cirurgia, sem contar casos', async () => {
     await importar(UM, RODAPE)
     const caixa = (await screen.findByText(/confira contra o rodapé da imagem/i)).parentElement
-    const linhaDe = (nome) => within(caixa).getByText(nome).closest('li')
+    // a FILA continua sem contagem por pessoa; o porquê saiu do aviso solto e
+    // mora na linha de decisão + folha (31/08)
+    const fila = caixa.querySelector('ul')
+    const linhaDe = (nome) => within(fila).getByText(nome).closest('li')
     expect(linhaDe('CURY').textContent).not.toMatch(/caso/)
     expect(linhaDe('CURY').querySelector('[title="na ordem sem nenhuma cirurgia"]')).toBeNull()
     expect(linhaDe('JOAO HENRIQUE').querySelector('[title="na ordem sem nenhuma cirurgia"]')).toBeTruthy()
-    // o aviso explica o porquê UMA vez, sem repetir a lista de nomes
-    const aviso = screen.getByText(/confira a extração/i)
-    expect(aviso.textContent).toMatch(/Um nome está/)
-    expect(aviso.textContent).not.toMatch(/JOAO HENRIQUE/)
+    fireEvent.click(within(caixa).getByText(/na ordem, sem cirurgia/i))
+    expect(await screen.findByText(/pode ter saído para outra pessoa/i)).toBeTruthy()
   })
 
   // A LISTA É A ÚNICA SUPERFÍCIE (dono 11/08): o campo de texto saiu e a

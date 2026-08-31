@@ -258,7 +258,12 @@ describe('o anestesista é perguntado UMA vez por bloco (dono 30/08)', () => {
     expect(screen.queryByText(/defina o do bloco acima/i)).toBeNull()
   })
 
-  it('com DOIS casos o seletor por caso volta — é como se fura o bloco', async () => {
+  it('com DOIS casos a linha LÊ o anestesista — o lápis abre o seletor (31/08)', async () => {
+    // ⚠️ esta trava MUDOU DE LADO em 31/08 (modelo B escolhido em protótipo):
+    // ela travava "o seletor por caso volta com 2+ casos"; renderizado sempre,
+    // ele era a mesma pergunta N vezes no mesmo bloco. Agora a linha do caso lê
+    // o nome herdado e o seletor abre SÓ pelo lápis — furar é exceção (22% das
+    // salas têm 2+ anestesistas, medido no banco).
     svcMock.parseEscalaImagem.mockResolvedValueOnce({
       casos: [
         { ...caso('Exames', 'PAULO', '07:30'), procedimento: 'ENDOSCOPIA' },
@@ -271,7 +276,11 @@ describe('o anestesista é perguntado UMA vez por bloco (dono 30/08)', () => {
     await waitFor(() => expect(abas()).toHaveLength(1))
 
     abrirBlocos()
-    expect(screen.getAllByText(/defina o do bloco acima/i).length).toBe(2)
+    expect(screen.queryByText(/defina o do bloco acima/i)).toBeNull()
+    const lapis = screen.getAllByRole('button', { name: /alterar o anestesista deste caso/i })
+    expect(lapis.length).toBe(2)
+    fireEvent.click(lapis[0])
+    expect(await screen.findByText(/defina o do bloco acima/i)).toBeTruthy()
   })
 })
 
@@ -324,17 +333,20 @@ describe('a troca de aba não pode apagar a conferência', () => {
     await waitFor(() => expect(abas()).toHaveLength(2))
 
     // as duas abas estão montadas: o campo procurado é o da aba VISÍVEL
-    const visivel = (re) => screen.getAllByPlaceholderText(re).find((el) => !el.closest('.hidden'))
-    const ajudaDoHro = visivel(/vão ao fim da liberação/i)
-    fireEvent.change(ajudaDoHro, { target: { value: 'DIEGO' } })
-    expect(ajudaDoHro.value).toBe('DIEGO')
+    // (o Input de ajuda saiu em 31/08 — o proxy de estado agora é a HORA de um
+    // caso, digitada com o bloco aberto)
+    const visivel = (els) => els.find((el) => !el.closest('.hidden'))
+    fireEvent.click(visivel(screen.getAllByRole('button', { name: /Expandir todos os blocos/i })))
+    const horaDoHro = visivel(screen.getAllByPlaceholderText('Hora'))
+    fireEvent.change(horaDoHro, { target: { value: '09:45' } })
+    expect(horaDoHro.value).toBe('09:45')
 
     fireEvent.click(abas().find((b) => b.textContent.includes('Materno')))
     fireEvent.click(abas().find((b) => b.textContent.includes('HRO')))
 
     // o campo é o MESMO nó (nunca desmontou) e guardou o que foi digitado
-    expect(ajudaDoHro.value).toBe('DIEGO')
-    expect(ajudaDoHro.isConnected).toBe(true)
+    expect(horaDoHro.value).toBe('09:45')
+    expect(horaDoHro.isConnected).toBe(true)
   })
 
   it('a aba inativa fica escondida, não removida do DOM', async () => {
@@ -363,7 +375,8 @@ describe('duplicidade entre hospitais — antes da primeira publicação', () =>
     await soltarArquivos(container, [img('hro.png'), img('materno.png')])
     await waitFor(() => expect(abas()).toHaveLength(2))
 
-    expect(await screen.findAllByText(/Duplicidade entre hospitais/i)).not.toHaveLength(0)
+    // desde 31/08 a duplicidade é linha de DECISÃO no cartão da fila de cada aba
+    expect(await screen.findAllByText(/em dois hospitais/i)).not.toHaveLength(0)
     expect(salvarEscalaTurno).not.toHaveBeenCalled()
   })
 
@@ -378,8 +391,12 @@ describe('duplicidade entre hospitais — antes da primeira publicação', () =>
     await soltarArquivos(container, [img('hro.png'), img('materno.png')])
     await waitFor(() => expect(abas()).toHaveLength(2))
 
-    const botoes = await screen.findAllByRole('button', { name: /É intencional/i })
-    fireEvent.click(botoes[0])
+    // a decisão abre pela LINHA da aba visível (folha com as saídas — 31/08);
+    // o cartão-resumo também fala "em dois hospitais", então o filtro é a
+    // seção da ordem, onde a linha mora
+    const linhas = await screen.findAllByText(/em dois hospitais/i)
+    fireEvent.click(linhas.find((l) => !l.closest('.hidden') && l.closest('#conf-liberacoes')))
+    fireEvent.click(await screen.findByRole('button', { name: /trabalha nos dois/i }))
     // as DUAS abas passam a mostrar resolvido — sem um segundo toque
     expect(await screen.findAllByText(/confirmada como intencional/i)).toHaveLength(2)
 

@@ -89,7 +89,10 @@ describe('duplicidade entre hospitais → troca declarada', () => {
     const input = container.querySelector('input[type="file"]')
     fireEvent.change(input, { target: { files: [new File(['x'], 'escala.png', { type: 'image/png' })] } })
     await waitFor(() => expect(svcMock.parseEscalaImagem).toHaveBeenCalled())
-    await screen.findByText(/Duplicidade entre hospitais/i)
+    // desde 31/08 a duplicidade é linha de DECISÃO no cartão da fila; a folha
+    // com o seletor e as saídas abre pelo toque nela
+    fireEvent.click(await screen.findByText(/Dido — em dois hospitais/i))
+    await screen.findByText(/Trocou com quem\?/i)
     return container
   }
 
@@ -97,12 +100,14 @@ describe('duplicidade entre hospitais → troca declarada', () => {
     await importarComDuplicidade()
     // O seletor lista colegas — nunca quem está duplicado (o bug antigo era
     // justamente oferecer "Troca com Guilherme" na linha do Guilherme).
-    expect(screen.queryByRole('button', { name: /Troca com Guilherme/i })).toBeNull()
-    expect(screen.getByText(/Trocou com quem\?/i)).toBeTruthy()
+    fireEvent.click(screen.getByText(/Trocou com quem\?/i))
+    expect(await screen.findByRole('option', { name: 'Paulo Tonini' })).toBeTruthy()
+    expect(screen.queryByRole('option', { name: 'Guilherme Xavier' })).toBeNull()
   })
 
   it('bloqueia publicar enquanto a duplicidade não for classificada', async () => {
     await importarComDuplicidade()
+    fireEvent.keyDown(document.body, { key: 'Escape' })
     fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
     await waitFor(() => expect(screen.getByText(/Confirme as duplicidades/i)).toBeTruthy())
     expect(salvarEscala).not.toHaveBeenCalled()
@@ -113,8 +118,8 @@ describe('duplicidade entre hospitais → troca declarada', () => {
 
     fireEvent.click(screen.getByText(/Trocou com quem\?/i))
     fireEvent.click(await screen.findByText('Paulo Tonini'))
-    fireEvent.click(screen.getByRole('button', { name: /Confirmar troca/i }))
-    await screen.findByText(/Troca declarada com/i)
+    fireEvent.click(screen.getByRole('button', { name: /declarar a troca/i }))
+    await screen.findByText(/troca declarada/i)
 
     fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
     await waitFor(() => expect(svcMock.patchLinhaOverride).toHaveBeenCalled())
@@ -131,7 +136,7 @@ describe('duplicidade entre hospitais → troca declarada', () => {
 
   it('confirmar como intencional publica sem declarar troca nenhuma', async () => {
     await importarComDuplicidade()
-    fireEvent.click(screen.getByRole('button', { name: /É intencional/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Trabalha nos dois/i }))
     fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
     await waitFor(() => expect(salvarEscala).toHaveBeenCalled())
     expect(svcMock.patchLinhaOverride).not.toHaveBeenCalled()
@@ -147,8 +152,8 @@ describe('duplicidade entre hospitais → troca declarada', () => {
     await importarComDuplicidade()
     fireEvent.click(screen.getByText(/Trocou com quem\?/i))
     fireEvent.click(await screen.findByText('Paulo Tonini'))
-    fireEvent.click(screen.getByRole('button', { name: /Confirmar troca/i }))
-    await screen.findByText(/Troca declarada com/i)
+    fireEvent.click(screen.getByRole('button', { name: /declarar a troca/i }))
+    await screen.findByText(/troca declarada/i)
 
     fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
     await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
@@ -191,12 +196,12 @@ describe('duplicidade entre hospitais → troca declarada', () => {
       <ImportarEscalaPage hospital="unimed" data="2026-08-06" onClose={vi.fn()} />, { wrapper: wrap },
     )
     fireEvent.change(container.querySelector('input[type="file"]'), { target: { files: [new File(['x'], 'e.png', { type: 'image/png' })] } })
-    await screen.findByText(/Duplicidade entre hospitais/i)
+    fireEvent.click(await screen.findByText(/Dido — em dois hospitais/i))
 
-    fireEvent.click(screen.getByText(/Trocou com quem\?/i))
+    fireEvent.click(await screen.findByText(/Trocou com quem\?/i))
     fireEvent.click(await screen.findByText('Paulo Tonini'))
-    fireEvent.click(screen.getByRole('button', { name: /Confirmar troca/i }))
-    await screen.findByText(/Troca declarada com/i)
+    fireEvent.click(screen.getByRole('button', { name: /declarar a troca/i }))
+    await screen.findByText(/troca declarada/i)
     fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
 
     await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))

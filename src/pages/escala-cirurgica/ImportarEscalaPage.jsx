@@ -6,8 +6,8 @@
  * apelido importado é aprendido no dicionário (apelido→login) p/ a próxima escala.
  */
 import { useState, useMemo, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react'
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronDown, ChevronsDownUp, ChevronsUpDown, Plus, Trash2, Sparkles, Loader2, Check, AlertTriangle } from 'lucide-react'
-import { Button, ConfirmDialog, DatePicker, FileUpload, Input, Select, useToast } from '@/design-system'
+import { ArrowDown, ArrowLeftRight, ArrowUp, ChevronLeft, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Pencil, Plus, Trash2, Sparkles, Loader2, Check, AlertTriangle, UserPlus } from 'lucide-react'
+import { Button, ConfirmDialog, DatePicker, FileUpload, Input, Select, Sheet, SheetContent, SheetHeader, SheetTitle, useToast } from '@/design-system'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import { useEscalaCirurgicaActions, HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
@@ -122,6 +122,42 @@ function CampoSala({ valor, onCommit, opcoes = [] }) {
 }
 
 const primeiroNomeUpper = (nome) => normNome(String(nome || '').split(/\s+/)[0] || '')
+
+/**
+ * Linha de DECISÃO DO DIA dentro do cartão da fila (dono 31/08, modelo B).
+ * Corpo tocável abre a folha; "Refazer" é botão irmão (nunca aninhado).
+ * `ponto` troca o ícone pelo ponto âmbar — o mesmo da posição na fila.
+ */
+function LinhaDecisao({ tom = 'am', icone = null, ponto = false, titulo, sub, onClick, onRefazer }) {
+  const iconeCls = tom === 'az' ? 'bg-info/15 text-info' : tom === 'vd' ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'
+  const Corpo = onClick ? 'button' : 'div'
+  return (
+    <div className="flex items-center gap-1 border-t border-border/70">
+      <Corpo
+        {...(onClick ? { type: 'button', onClick } : {})}
+        className="flex min-h-[52px] min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2 text-left"
+      >
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] ${iconeCls}`}>
+          {ponto ? <span className="h-[9px] w-[9px] rounded-full bg-warning" aria-hidden="true" /> : icone}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[13px] font-bold text-foreground">{titulo}</span>
+          <span className="block text-[11px] leading-tight text-muted-foreground">{sub}</span>
+        </span>
+        {onClick && <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
+      </Corpo>
+      {onRefazer && (
+        <button
+          type="button"
+          onClick={onRefazer}
+          className="mr-1.5 shrink-0 rounded-lg px-2 py-2.5 text-xs font-semibold text-primary"
+        >
+          Refazer
+        </button>
+      )}
+    </div>
+  )
+}
 
 // Sentinela do seletor por caso: deixar a linha SEM anestesista de propósito
 // ("?" da escala). Valor impossível como uid.
@@ -252,6 +288,8 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     setIgnoradosOutroTurno(Math.max(0, lote.length - selecionados.length))
     setAtribuicoes({})
     setGruposAbertos(new Set())
+    setCasoEmEdicao(null)
+    setDecisaoAberta(null)
     return selecionados
   }
 
@@ -558,6 +596,23 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     if (c.semAnestesista) return SEM_ANESTESISTA
     if (c.anestesistaUserId) return c.anestesistaUserId
     return atribuicoes[chave] || ''
+  }
+
+  // O ANESTESISTA É PERGUNTADO UMA VEZ POR BLOCO (dono 31/08, modelo B do
+  // protótipo). O Select repetido em cada caso era a mesma pergunta N vezes —
+  // medido no banco: 63% dos blocos têm 1 caso e só 22% das salas têm mais de
+  // um anestesista, então ele quase nunca trabalhava. A linha do caso passa a
+  // LER o nome efetivo; o seletor abre só pelo lápis (mesma gravação de antes).
+  const [casoEmEdicao, setCasoEmEdicao] = useState(null)
+  const rotuloAnestesistaCaso = (c, chave) => {
+    if (c.semAnestesista) return { nome: 'Sem anestesista (?)', origem: '' }
+    if (c.anestesistaUserId) {
+      return { nome: apelidoExibicao(chave, c.anestesistaUserId) || c.anestesista, origem: 'deste caso' }
+    }
+    const uid = atribuicoes[chave]
+    if (uid) return { nome: apelidoExibicao(chave, uid), origem: 'do bloco' }
+    const txt = String(c.anestesista || '').trim()
+    return { nome: txt && txt !== '?' ? txt : '—', origem: 'do bloco' }
   }
 
   const preencherRodape = () => {
@@ -967,6 +1022,61 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   // 15% — o "nenhuma das três" pegava 3 dessas 41, enquanto a Imagem se perde em
   // 35. Se as três estão sempre no papel, faltar UMA já é leitura incompleta.
 
+  // ── DECISÕES DO DIA (dono 31/08, modelo B escolhido em protótipo) ─────────
+  //
+  // As decisões operacionais — ajuda de fora, pessoa em dois hospitais, caso
+  // fora da ordem — moravam no FIM da página como avisos espalhados, sem lugar
+  // de preencher. Agora são LINHAS dentro do cartão da fila, porque toda
+  // decisão dessas é sobre quem entra, sai ou muda de lugar NESTA fila; cada
+  // linha abre uma folha com as saídas explícitas. Medido no banco (desde
+  // 25/06): ajuda é semanal, duplicidade ~3/semana, alguém fora da ordem em
+  // 31% dos turnos. Os dados gravados são os MESMOS de sempre (ajudaTexto,
+  // duplicidadeDecisoes, ordemTexto) — a reforma é de superfície.
+  const [decisaoAberta, setDecisaoAberta] = useState(null) // { tipo, key?, nome?, ... }
+
+  // Ajuda marcada que NÃO está na ordem não aparece na lista numerada — sem
+  // esta linha ela ficaria invisível e irremovível (era o Input de texto que
+  // dava a remoção; ele saiu).
+  const ajudasForaDaOrdem = useMemo(() => {
+    const naOrdem = new Set(separarListaRodape(ordemTexto).map(normNome))
+    return separarListaRodape(ajudaTexto).filter((n) => !naOrdem.has(normNome(n)))
+  }, [ajudaTexto, ordemTexto])
+
+  // "Na ordem sem cirurgia" é CONFERÊNCIA, não gravação: a linha existe para a
+  // explicação morar num lugar tocável (a folha), não num aviso solto no fim.
+  const conferenciasSemCirurgia = useMemo(() => {
+    const daCauda = new Set(caudaLiberada.map((p) => p.nome))
+    return [...suspeitosExtracao, ...caudaLiberada.map((p) => p.nome)].map((nome) => ({
+      nome,
+      cauda: daCauda.has(nome),
+      pos: ordemNumerada.findIndex((p) => p.nome === nome) + 1,
+    }))
+  }, [suspeitosExtracao, caudaLiberada, ordemNumerada])
+
+  // A "ajuda provável" do cruzamento (rodapé lá + caso aqui) é a MESMA pessoa
+  // que a lib de duplicidades já pendura como pendência — duas linhas para a
+  // mesma pergunta seria o defeito antigo em outra roupa. A linha fica UMA, a
+  // da duplicidade (azul quando lá é só rodapé); a sugestão do cruzamento só
+  // vira linha própria se nenhuma duplicidade a cobre.
+  const chaveDup = useCallback((nome) => resolver(nome) || normNome(nome), [resolver])
+  const ajudaProvavelSemDup = useMemo(
+    () => cruzamento.ajudaProvavel.filter((a) => !duplicidades.some((d) => d.key === chaveDup(a.nome))),
+    [cruzamento.ajudaProvavel, duplicidades, chaveDup],
+  )
+
+  const decisoesAbertas = duplicidadesPendentes.length + ajudaProvavelSemDup.length
+    + casosForaDoRodape.length
+  const temDecisoes = duplicidades.length > 0 || ajudaProvavelSemDup.length > 0
+    || casosForaDoRodape.length > 0 || ajudasForaDaOrdem.length > 0
+    || conferenciasSemCirurgia.length > 0
+
+  /** Acrescenta um nome (texto) ao FIM da ordem — a saída "caiu do rodapé na leitura". */
+  const acrescentarNaOrdem = (nome) => {
+    const nomes = separarListaRodape(ordemTexto)
+    if (nomes.some((n) => normNome(n) === normNome(nome))) return
+    gravarOrdem([...nomes, nome])
+  }
+
   // ── Publicação ───────────────────────────────────────────────────────────────
   // GUARDRAIL ANTI-PERDA (incidente 23/07: publicar/importar com 1 caso APAGOU os
   // 31 da escala — publicar é DELETE+reinsert). Se a escala já publicada tem MAIS
@@ -1274,9 +1384,9 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     const l = []
     const n = (q, um, muitos) => `${q} ${q === 1 ? um : muitos}`
     if (gruposAmbiguos.length) l.push({ trava: true, txt: `${n(gruposAmbiguos.length, 'nome ambíguo', 'nomes ambíguos')} — escolha o login` })
-    if (duplicidadesPendentes.length) l.push({ trava: true, txt: `${n(duplicidadesPendentes.length, 'pessoa', 'pessoas')} em dois hospitais — classifique` })
+    if (duplicidadesPendentes.length) l.push({ trava: true, txt: `${n(duplicidadesPendentes.length, 'pessoa', 'pessoas')} em dois hospitais — responda em Decisões` })
     if (gruposSemAnestesista) l.push({ trava: false, txt: `${n(gruposSemAnestesista, 'bloco', 'blocos')} sem anestesista` })
-    if (casosForaDoRodape.length) l.push({ trava: false, txt: `${n(casosForaDoRodape.length, 'anestesista', 'anestesistas')} com caso fora da ordem de liberação` })
+    if (casosForaDoRodape.length) l.push({ trava: false, txt: `${n(casosForaDoRodape.length, 'anestesista', 'anestesistas')} com caso fora da ordem — responda em Decisões` })
     if (caudaLiberada.length) l.push({ trava: false, txt: `${n(caudaLiberada.length, 'nome nasce', 'nomes nascem')} LIBERADO sem cirurgia` })
     if (suspeitosExtracao.length) l.push({ trava: false, txt: `${n(suspeitosExtracao.length, 'nome', 'nomes')} na ordem sem nenhum caso` })
     if (conflitos.length) l.push({ trava: false, txt: `${n(conflitos.length, 'conflito', 'conflitos')} de horário` })
@@ -1518,18 +1628,34 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
               <div className="flex gap-1.5 overflow-x-auto">
                 {[
                   { id: 'conf-blocos', label: 'Blocos', n: grupos.length },
-                  { id: 'conf-liberacoes', label: 'Liberações', n: ordemNumerada.length },
+                  // O chip do meio carrega o estado das DECISÕES (dono 31/08):
+                  // âmbar = por responder/conferir; ✓ = todas respondidas;
+                  // sem decisão nenhuma, volta a contar os nomes da ordem.
+                  {
+                    id: 'conf-liberacoes',
+                    label: 'Ordem e decisões',
+                    n: decisoesAbertas + conferenciasSemCirurgia.length > 0
+                      ? decisoesAbertas + conferenciasSemCirurgia.length
+                      : (temDecisoes ? '✓' : ordemNumerada.length),
+                    aten: decisoesAbertas + conferenciasSemCirurgia.length > 0,
+                    ok: decisoesAbertas + conferenciasSemCirurgia.length === 0 && temDecisoes,
+                  },
                   { id: 'conf-pendencias', label: 'Pendências', n: totalPendencias, alerta: bloqueiosConferencia > 0 },
                 ].map((s) => (
                   <button
                     key={s.id}
                     type="button"
                     onClick={() => irPara(s.id)}
-                    className="inline-flex min-h-[34px] shrink-0 items-center gap-1.5 rounded-[10px] bg-muted px-3
+                    className="inline-flex min-h-[34px] shrink-0 items-center gap-1.5 rounded-[10px] bg-muted px-2.5
                                text-xs font-bold text-muted-foreground transition-transform active:scale-95"
                   >
                     {s.label}
-                    <span className={`rounded-md px-1.5 text-[10px] ${s.alerta ? 'bg-destructive text-destructive-foreground' : ''}`}>
+                    <span className={[
+                      'rounded-md px-1.5 text-[10px]',
+                      s.alerta ? 'bg-destructive text-destructive-foreground' : '',
+                      s.aten ? 'bg-warning text-warning-foreground' : '',
+                      s.ok ? 'bg-success text-success-foreground' : '',
+                    ].filter(Boolean).join(' ')}>
                       {s.n}
                     </span>
                   </button>
@@ -1543,7 +1669,9 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
             {resumoPendencias.length > 0 && (
               <button
                 type="button"
-                onClick={() => irPara('conf-pendencias')}
+                // toque leva para onde a resposta mora: decisão aberta → cartão
+                // da fila; só avisos → Pendências (dono 31/08)
+                onClick={() => irPara(decisoesAbertas > 0 ? 'conf-liberacoes' : 'conf-pendencias')}
                 // nome acessível PRÓPRIO: o texto do cartão contém "impede
                 // publicar" e sem isto ele disputa com o botão Publicar
                 aria-label={`Ver as ${resumoPendencias.length} pendência(s) da conferência`}
@@ -1686,22 +1814,37 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                             {/* anestesista DESTE caso: fura a atribuição do bloco
                                 e é como se corrige um "?".
                                 ⚠️ SÓ com 2+ casos (dono 30/08: "aparece duas vezes
-                                para selecionar o anestesista"). Bloco de UM caso
-                                não tem o que furar — o seletor do bloco logo acima
-                                JÁ é o daquele caso, e mostrar os dois é a mesma
-                                pergunta feita duas vezes, uma delas capaz de
-                                divergir da outra. É a mesma queixa de 27/08 sobre
-                                nome duplicado, agora no seletor. */}
-                            {itens.length > 1 && (
+                                para selecionar o anestesista"). E desde 31/08 a
+                                linha LÊ o nome herdado — o seletor abre só pelo
+                                lápis: renderizado sempre, era a mesma pergunta N
+                                vezes no mesmo bloco, e furar é a exceção (22% das
+                                salas têm 2+ anestesistas, medido no banco). */}
+                            {itens.length > 1 && (casoEmEdicao === i ? (
                               <Select
                                 className="w-full"
                                 options={[{ value: SEM_ANESTESISTA, label: 'Sem anestesista (?)' }, ...rosterOpcoes]}
                                 value={valorAnestesistaCaso(c, chave)}
-                                onChange={(v) => definirAnestesistaCaso(i, v)}
+                                onChange={(v) => { definirAnestesistaCaso(i, v); setCasoEmEdicao(null) }}
                                 placeholder="Anestesista (defina o do bloco acima)"
                                 searchable
                               />
-                            )}
+                            ) : (() => {
+                              const r = rotuloAnestesistaCaso(c, chave)
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() => setCasoEmEdicao(i)}
+                                  aria-label={`Alterar o anestesista deste caso (${r.nome})`}
+                                  className="flex min-h-[32px] w-full items-center gap-1.5 rounded-lg bg-muted/55 px-2.5 text-left text-xs"
+                                >
+                                  <span className="min-w-0 flex-1 truncate">
+                                    Com <b className="font-bold">{r.nome}</b>
+                                    {r.origem && <span className="text-muted-foreground"> · {r.origem}</span>}
+                                  </span>
+                                  <Pencil className="h-3.5 w-3.5 shrink-0 text-primary" />
+                                </button>
+                              )
+                            })())}
                           </div>
                         ))}
                       </div>
@@ -1808,6 +1951,104 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                     </p>
                   </div>
                 )}
+                {/* DECISÕES DO DIA (dono 31/08, modelo B): coladas na fila que
+                    elas mudam. A linha aberta abre a folha; a respondida fica
+                    verde com "Refazer". A explicação de cada uma mora na folha,
+                    não em aviso solto no fim da página. */}
+                {temDecisoes && (
+                  <div>
+                    <div className="flex items-center gap-1.5 border-t border-border bg-muted/45 px-2.5 py-2">
+                      <Pencil className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
+                      <span className="text-[11px] font-extrabold uppercase tracking-wide text-primary">Decisões do dia</span>
+                      <span className="ml-auto text-[11px] text-muted-foreground">
+                        {decisoesAbertas > 0 ? `${decisoesAbertas} por responder` : 'tudo respondido'}
+                        {conferenciasSemCirurgia.length > 0 ? ` · ${conferenciasSemCirurgia.length} para conferir` : ''}
+                      </span>
+                    </div>
+
+                    {duplicidades.map((d) => {
+                      const decisao = duplicidadeDecisoes[d.key]
+                      const lados = d.ocorrencias
+                        .filter((o) => o.casos.length > 0)
+                        .map((o) => `${o.hospitalLabel}: ${o.casos.length}`)
+                        .join(' · ')
+                      // rodapé lá SEM caso lá = a forma clássica da AJUDA (é o
+                      // que o cruzamento sugeria) — a linha fica azul e a folha
+                      // abre com "Marcar como ajuda" na frente
+                      const deFora = d.ocorrencias.filter((o) => o.hospital !== hosp)
+                      const soRodapeLa = deFora.length > 0 && deFora.every((o) => o.casos.length === 0)
+                      const hospLa = deFora.find((o) => o.noRodape)?.hospitalLabel || deFora[0]?.hospitalLabel
+                      if (d.ajudaDeclarada) {
+                        // a ajuda marcada AQUI já tem linha verde própria (com o
+                        // Refazer); repetir a mesma pessoa em duas linhas verdes
+                        // é o ruído que esta reforma veio tirar
+                        if (ajudasForaDaOrdem.some((n) => chaveDup(n) === d.key)) return null
+                        return (
+                          <LinhaDecisao key={`dup-${d.key}`} tom="vd" icone={<Check className="h-4 w-4" />}
+                            titulo={`${titleCaseNome(d.nome)} — em dois hospitais`}
+                            sub={`Já está como ajuda no rodapé do ${d.ajudaDeclarada} — nada a classificar.`} />
+                        )
+                      }
+                      if (decisao) {
+                        return (
+                          <LinhaDecisao key={`dup-${d.key}`} tom="vd" icone={<Check className="h-4 w-4" />}
+                            titulo={decisao.tipo === 'troca'
+                              ? `${titleCaseNome(d.nome)} ⇄ ${nomeCirurgiaoCurto(titleCaseNome(decisao.parceiroNome))} — troca declarada`
+                              : `${titleCaseNome(d.nome)} — trabalha nos dois hoje`}
+                            sub={decisao.tipo === 'troca'
+                              ? 'Executa ao publicar · badge nos dois lados.'
+                              : 'Duplicidade confirmada como intencional.'}
+                            onRefazer={() => setDuplicidadeDecisoes((p) => {
+                              const { [d.key]: _fora, ...resto } = p
+                              return resto
+                            })} />
+                        )
+                      }
+                      if (soRodapeLa) {
+                        return (
+                          <LinhaDecisao key={`dup-${d.key}`} tom="az" icone={<UserPlus className="h-4 w-4" />}
+                            titulo={`${titleCaseNome(d.nome)} — ajuda de fora?`}
+                            sub={`No rodapé da ${hospLa} hoje e com caso aqui.`}
+                            onClick={() => setDecisaoAberta({ tipo: 'duplicidade', key: d.key, soRodapeLa: true, hospLa })} />
+                        )
+                      }
+                      return (
+                        <LinhaDecisao key={`dup-${d.key}`} tom="am" icone={<ArrowLeftRight className="h-4 w-4" />}
+                          titulo={`${titleCaseNome(d.nome)} — em dois hospitais`}
+                          sub={`No mesmo turno (${lados}) — troca? intencional? ajuda?`}
+                          onClick={() => setDecisaoAberta({ tipo: 'duplicidade', key: d.key })} />
+                      )
+                    })}
+
+                    {ajudaProvavelSemDup.map((a) => (
+                      <LinhaDecisao key={`aj-${a.nome}`} tom="az" icone={<UserPlus className="h-4 w-4" />}
+                        titulo={`${titleCaseNome(a.nome)} — ajuda de fora?`}
+                        sub={`No rodapé da ${a.hospital} hoje e com caso aqui.`}
+                        onClick={() => setDecisaoAberta({ tipo: 'ajudaSugerida', nome: a.nome, hospital: a.hospital })} />
+                    ))}
+
+                    {ajudasForaDaOrdem.map((nome) => (
+                      <LinhaDecisao key={`ajm-${nome}`} tom="vd" icone={<Check className="h-4 w-4" />}
+                        titulo={`${titleCaseNome(nome)} — marcado como ajuda`}
+                        sub="Vai ao fim da fila e sai primeiro."
+                        onRefazer={() => marcarAjuda(nome, false)} />
+                    ))}
+
+                    {casosForaDoRodape.map((f) => (
+                      <LinhaDecisao key={`fora-${f.nome}`} tom="am" icone={<AlertTriangle className="h-4 w-4" />}
+                        titulo={`${titleCaseNome(f.nome)} — com caso, fora da ordem`}
+                        sub={`${f.casos} caso${f.casos > 1 ? 's' : ''} e não está na ordem nem na ajuda.`}
+                        onClick={() => setDecisaoAberta({ tipo: 'foraDaOrdem', nome: f.nome, casos: f.casos })} />
+                    ))}
+
+                    {conferenciasSemCirurgia.map((p) => (
+                      <LinhaDecisao key={`semc-${p.nome}`} tom="am" ponto
+                        titulo={`${p.nome} — na ordem, sem cirurgia`}
+                        sub={`${p.pos > 0 ? `${p.pos}ª posição · ` : ''}confira a extração contra a foto.`}
+                        onClick={() => setDecisaoAberta({ tipo: 'semCirurgia', nome: p.nome, cauda: p.cauda })} />
+                    ))}
+                  </div>
+                )}
                 <div className="border-t border-border bg-muted/40 px-2.5 py-2">
                   <Select
                     aria-label="Acrescentar anestesista ao fim do rodapé"
@@ -1861,30 +2102,9 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                   ))}
                 </div>
               )}
-              {/* Os nomes já vão marcados na própria posição da fila (ponto âmbar) —
-                  aqui fica só o PORQUÊ, que é o que a secretária precisa ler
-                  uma vez. Repetir a lista fazia procurar o nome no meio dela. */}
-              {suspeitosExtracao.length > 0 && (
-                <p className="rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
-                  ⚠ {suspeitosExtracao.length === 1 ? 'Um nome está' : `${suspeitosExtracao.length} nomes estão`} na ordem
-                  de liberação sem nenhum caso (marcados com o ponto âmbar) — confira a extração: a linha deles pode ter saído
-                  para outra pessoa (foi o que sumiu com Didomenico/Melo no IOSC em 23/07).
-                </p>
-              )}
-
-              {/* O QUE VAI ACONTECER com quem está sem cirurgia (dono 24/08).
-                  Nomeia só a CAUDA — que costuma ser 1 a 3 nomes e é a parte
-                  acionável; repetir a ordem inteira faria procurar o nome no
-                  meio dela (decisão de 17/08, mantida). */}
-              {caudaLiberada.length > 0 && (
-                <p className="rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
-                  ⚠ {caudaLiberada.map((p) => p.nome).join(', ')} {caudaLiberada.length === 1 ? 'fecha' : 'fecham'} a ordem
-                  sem cirurgia neste lote e {caudaLiberada.length === 1 ? 'vai nascer' : 'vão nascer'}{' '}
-                  <b>{caudaLiberada.length === 1 ? 'LIBERADO' : 'LIBERADOS'}</b> (vermelho) na fila.
-                  Se {caudaLiberada.length === 1 ? 'essa pessoa trabalha' : 'alguém dessa lista trabalha'} neste turno, a linha
-                  dela saiu para outra pessoa — corrija antes de publicar.
-                </p>
-              )}
+              {/* "Na ordem sem cirurgia" saiu daqui (dono 31/08): virou linha de
+                  DECISÃO no cartão da fila, com o porquê na folha — o aviso
+                  solto obrigava a ligar o ponto âmbar de lá com o texto daqui. */}
 
               {secoesAusentesHro.length > 0 && (
                 <p className="rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
@@ -1962,144 +2182,11 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                 </div>
               )}
 
-              <label className="text-xs font-medium text-muted-foreground mb-1 block pt-1">
-                Ajuda de outro hospital (nomes em AZUL no rodapé)
-              </label>
-              <Input placeholder="ex.: Diego, Cury — vão ao fim da liberação (primeiros a sair)"
-                value={ajudaTexto} onChange={(e) => setAjudaTexto(e.target.value)} />
-              {/* CRUZAMENTO COM AS OUTRAS ESCALAS DO DIA (dono 30/07): sinal
-                  ESTRUTURAL de ajuda, independente da cor da tinta — que é o que
-                  falhou em 30/07. As regras de cor seguem no prompt da Vision;
-                  isto confirma ou supre. Advisory, nunca bloqueia. */}
-              {cruzamento.ajudaProvavel.length > 0 && (
-                <div className="mt-1.5 rounded-lg bg-info/10 px-3 py-2 text-xs text-info">
-                  <p>
-                    Já publicado em outro hospital hoje, no mesmo turno:{' '}
-                    <b>{cruzamento.ajudaProvavel.map((a) => `${titleCaseNome(a.nome)} (${a.hospital})`).join(', ')}</b>.
-                    Está no rodapé de lá e tem caso aqui — provavelmente é ajuda.
-                  </p>
-                  <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    {cruzamento.ajudaProvavel.map((a) => (
-                      <Button key={a.nome} size="sm" variant="outline"
-                        onClick={() => setAjudaTexto((t) => [...separarListaRodape(t), a.nome].join(', '))}>
-                        + {titleCaseNome(a.nome)} como ajuda
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {duplicidades.length > 0 && (
-                <div className="mt-2 rounded-xl border border-warning/40 bg-warning/10 px-3 py-3 text-xs text-warning">
-                  <p className="font-semibold">⚠ Duplicidade entre hospitais — Com casos nos DOIS hospitais no mesmo turno: {duplicidades.map((d) => `${titleCaseNome(d.nome)} (${d.ocorrencias.filter((o) => o.hospital !== hosp && o.casos.length > 0).map((o) => `${o.hospitalLabel}: ${o.casos.length}`).join(', ')})`).join('; ')}. Nome em AMARELO pode ser intencional; confirme antes de publicar.</p>
-                  <p className="mt-1">
-                    A mesma pessoa aparece em escalas diferentes no mesmo turno. Isso pode ser intencional
-                    ou indicar uma troca.{duplicidadesPendentes.length > 0
-                      ? ' A publicação fica bloqueada até cada item ser classificado.'
-                      : ''}
-                  </p>
-                  <div className="mt-2 space-y-2">
-                    {duplicidades.map((duplicidade) => {
-                      const decisao = duplicidadeDecisoes[duplicidade.key]
-                      return (
-                        <div key={duplicidade.key} className="rounded-lg border border-warning/30 bg-card px-2.5 py-2 text-foreground">
-                          <p className="font-semibold">{titleCaseNome(duplicidade.nome)} ({duplicidade.ocorrencias.filter((o) => o.casos.length > 0).map((o) => `${o.hospitalLabel}: ${o.casos.length}`).join(', ')})</p>
-                          <div className="mt-1 space-y-1">
-                            {duplicidade.ocorrencias.map((ocorrencia) => (
-                              <div key={`${duplicidade.key}-${ocorrencia.hospital}`}>
-                                <p>{formatarOcorrenciaDuplicidade(ocorrencia)}</p>
-                                {ocorrencia.casos.length > 0 && (
-                                  <p className="pl-2 text-muted-foreground">
-                                    {ocorrencia.casos.map((caso) => `${caso.sala} · ${caso.hora} · ${caso.procedimento}`).join(' | ')}
-                                  </p>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                          {duplicidade.ajudaDeclarada ? (
-                            /* o rodapé já respondeu: nome em AZUL é ajuda declarada */
-                            <p className="mt-2 rounded-md bg-info/10 px-2 py-1 text-info">
-                              Já está como ajuda no rodapé do {duplicidade.ajudaDeclarada} — nada a classificar.
-                            </p>
-                          ) : decisao ? (
-                            <div className="mt-2 flex items-center justify-between gap-2 rounded-md bg-success/10 px-2 py-1 text-success">
-                              <span>
-                                {decisao.tipo === 'troca'
-                                  ? `Troca declarada com ${nomeCirurgiaoCurto(decisao.parceiroNome)} — o badge aparece nos dois lados nas Liberações.`
-                                  : 'Duplicidade confirmada como intencional.'}
-                              </span>
-                              <Button size="sm" variant="ghost" onClick={() => setDuplicidadeDecisoes((p) => {
-                                const { [duplicidade.key]: _fora, ...resto } = p
-                                return resto
-                              })}>
-                                Refazer
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="mt-2 space-y-1.5">
-                              {/* Com QUEM a pessoa trocou é escolha da secretária: o
-                                  colega não está deduzível da imagem (a escala mostra
-                                  a duplicidade, não o par). Roster completo, menos a
-                                  própria pessoa — ninguém troca consigo. */}
-                              <Select
-                                searchable
-                                placeholder="Trocou com quem?"
-                                value={trocaEscolhida[duplicidade.key] || ''}
-                                onChange={(v) => setTrocaEscolhida((p) => ({ ...p, [duplicidade.key]: v }))}
-                                options={rosterOpcoes.filter((o) => o.value !== duplicidade.key)}
-                              />
-                              <div className="flex flex-wrap gap-1.5">
-                                <Button
-                                  size="sm"
-                                  disabled={!trocaEscolhida[duplicidade.key]}
-                                  onClick={() => {
-                                    const colega = rosterByUid.get(trocaEscolhida[duplicidade.key])
-                                    if (!colega) return
-                                    setDuplicidadeDecisoes((p) => ({
-                                      ...p,
-                                      // nome COMPLETO do cadastro: o cruzamento entre
-                                      // hospitais casa por normNome do nome completo
-                                      // (mesma regra do ✏️ das Liberações).
-                                      [duplicidade.key]: { tipo: 'troca', parceiroUid: colega.uid, parceiroNome: colega.nome },
-                                    }))
-                                  }}
-                                >
-                                  Confirmar troca
-                                </Button>
-                                <Button size="sm" variant="outline" onClick={() => setDuplicidadeDecisoes((p) => ({ ...p, [duplicidade.key]: { tipo: 'intencional' } }))}>
-                                  É intencional (trabalha nos dois)
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-              {/* GUARDRAIL INVERSO (incidente 30/07 — Cristina nos Exames da
-                  Unimed): quem tem caso e não está no rodapé cai como linha extra
-                  no fim da fila e parece não estar na escala. Fica ao lado do campo
-                  de AJUDA porque a causa mais comum é justamente nome azul que a
-                  Vision não leu como azul. Um toque põe o nome na ajuda. */}
-              {casosForaDoRodape.length > 0 && (
-                <div className="mt-1.5 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
-                  <p>
-                    ⚠ Tem caso mas NÃO está na ordem de liberação nem na ajuda:{' '}
-                    <b>{casosForaDoRodape.map((f) => `${titleCaseNome(f.nome)} (${f.casos})`).join(', ')}</b>.
-                    Sem posição, essa pessoa entra como linha extra no fim da fila. Se o nome estava em
-                    AZUL, marque como ajuda; se caiu do rodapé na leitura, acrescente na ordem acima.
-                  </p>
-                  <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    {casosForaDoRodape.map((f) => (
-                      <Button key={f.nome} size="sm" variant="outline"
-                        onClick={() => setAjudaTexto((t) => [...separarListaRodape(t), f.nome].join(', '))}>
-                        + {titleCaseNome(f.nome)} como ajuda
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* Ajuda, cruzamento, duplicidade e fora-da-ordem SAÍRAM daqui
+                  (dono 31/08, modelo B): viraram DECISÕES DO DIA no cartão da
+                  fila, cada uma com folha própria — aqui era aviso espalhado,
+                  sem lugar de preencher. A gravação é a mesma (ajudaTexto,
+                  duplicidadeDecisoes, ordemTexto). */}
             </section>
           </>
         )}
@@ -2117,6 +2204,184 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
           </Button>
         </div>
       )}
+
+      {/* FOLHA DE DECISÃO (dono 31/08, modelo B): uma pergunta por vez, as
+          saídas explícitas em botões de largura inteira. Cada botão grava o
+          MESMO dado que a superfície antiga gravava — a folha é só o lugar. */}
+      {decisaoAberta && (() => {
+        const fechar = () => setDecisaoAberta(null)
+        const dup = decisaoAberta.tipo === 'duplicidade'
+          ? duplicidades.find((d) => d.key === decisaoAberta.key)
+          : null
+        if (decisaoAberta.tipo === 'duplicidade' && !dup) return null
+        const parceiro = dup ? rosterByUid.get(trocaEscolhida[dup.key]) : null
+        const nomeCurto = (n) => nomeCirurgiaoCurto(titleCaseNome(n))
+        return (
+          <Sheet open onOpenChange={(o) => !o && fechar()}>
+            <SheetContent side="bottom" className="!h-auto max-h-[88vh] overflow-y-auto">
+              {decisaoAberta.tipo === 'duplicidade' && (
+                <>
+                  <SheetHeader>
+                    <SheetTitle className="flex items-center gap-2">
+                      {decisaoAberta.soRodapeLa
+                        ? <UserPlus className="h-5 w-5 shrink-0 text-info" />
+                        : <ArrowLeftRight className="h-5 w-5 shrink-0 text-warning" />}
+                      {decisaoAberta.soRodapeLa
+                        ? `${nomeCurto(dup.nome)} — ajuda de fora?`
+                        : `${nomeCurto(dup.nome)} aparece em dois hospitais`}
+                    </SheetTitle>
+                  </SheetHeader>
+                  <div className="space-y-3 pb-2">
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      {decisaoAberta.soRodapeLa
+                        ? `Está no rodapé da ${decisaoAberta.hospLa} hoje, no mesmo turno, e tem caso aqui. Nome em AZUL no rodapé é ajuda: vai ao fim da fila e sai primeiro.`
+                        : `No mesmo turno (${periodo === 'matutino' ? 'matutino' : 'vespertino'}). Na foto, nome em AMARELO costuma ser intencional — a pessoa trabalha nos dois de propósito.`}
+                    </p>
+                    {decisaoAberta.soRodapeLa && (
+                      <Button className="w-full" onClick={() => { marcarAjuda(dup.nome, true); fechar() }}>
+                        Marcar como ajuda — vai ao fim da fila
+                      </Button>
+                    )}
+                    <div className="space-y-1.5">
+                      {dup.ocorrencias.map((ocorrencia) => (
+                        <div key={`${dup.key}-${ocorrencia.hospital}`}
+                          className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs">
+                          <p className="font-semibold text-foreground">{formatarOcorrenciaDuplicidade(ocorrencia)}</p>
+                          {ocorrencia.casos.length > 0 && (
+                            <p className="mt-0.5 text-muted-foreground">
+                              {ocorrencia.casos.map((caso) => `${caso.sala} · ${caso.hora} · ${caso.procedimento}`).join(' | ')}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {/* Com QUEM trocou é escolha de quem publica: o colega não é
+                        deduzível da imagem. O par simétrico vem pré-sugerido
+                        (sugerirParceiroTroca) quando é único. */}
+                    <Select
+                      searchable
+                      className="w-full"
+                      placeholder="Trocou com quem?"
+                      value={trocaEscolhida[dup.key] || ''}
+                      onChange={(v) => setTrocaEscolhida((p) => ({ ...p, [dup.key]: v }))}
+                      options={rosterOpcoes.filter((o) => o.value !== dup.key)}
+                    />
+                    <div className="space-y-1.5">
+                      <Button
+                        className="w-full"
+                        disabled={!parceiro}
+                        onClick={() => {
+                          if (!parceiro) return
+                          // nome COMPLETO do cadastro: o cruzamento entre
+                          // hospitais casa por normNome do nome completo
+                          setDuplicidadeDecisoes((p) => ({
+                            ...p,
+                            [dup.key]: { tipo: 'troca', parceiroUid: parceiro.uid, parceiroNome: parceiro.nome },
+                          }))
+                          fechar()
+                        }}
+                      >
+                        {parceiro ? `Trocou com ${nomeCurto(parceiro.nome)} — declarar a troca` : 'Declarar a troca — escolha o colega'}
+                      </Button>
+                      <Button variant="outline" className="w-full"
+                        onClick={() => { setDuplicidadeDecisoes((p) => ({ ...p, [dup.key]: { tipo: 'intencional' } })); fechar() }}>
+                        Trabalha nos dois hoje (intencional)
+                      </Button>
+                      {!decisaoAberta.soRodapeLa && (
+                        <Button variant="outline" className="w-full"
+                          onClick={() => { marcarAjuda(dup.nome, true); fechar() }}>
+                          É ajuda aqui — vai ao fim da fila
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-muted-foreground">
+                      A troca declarada executa ao publicar e aparece com badge nos dois lados. Nada muda na ordem publicada.
+                    </p>
+                  </div>
+                </>
+              )}
+
+              {decisaoAberta.tipo === 'ajudaSugerida' && (
+                <>
+                  <SheetHeader>
+                    <SheetTitle className="flex items-center gap-2">
+                      <UserPlus className="h-5 w-5 shrink-0 text-info" />
+                      {nomeCurto(decisaoAberta.nome)} — ajuda de fora?
+                    </SheetTitle>
+                  </SheetHeader>
+                  <div className="space-y-3 pb-2">
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      Está no rodapé da {decisaoAberta.hospital} hoje, no mesmo turno, e tem caso aqui.
+                      Nome em AZUL no rodapé é ajuda: vai ao fim da fila e sai primeiro.
+                    </p>
+                    <div className="space-y-1.5">
+                      <Button className="w-full"
+                        onClick={() => { marcarAjuda(decisaoAberta.nome, true); fechar() }}>
+                        Marcar como ajuda
+                      </Button>
+                      <Button variant="outline" className="w-full"
+                        onClick={() => { acrescentarNaOrdem(decisaoAberta.nome); fechar() }}>
+                        Não é ajuda — acrescentar à ordem no fim
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {decisaoAberta.tipo === 'foraDaOrdem' && (
+                <>
+                  <SheetHeader>
+                    <SheetTitle className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 shrink-0 text-warning" />
+                      {nomeCurto(decisaoAberta.nome)} tem caso e está fora da ordem
+                    </SheetTitle>
+                  </SheetHeader>
+                  <div className="space-y-3 pb-2">
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      Sem posição, entra como linha extra no fim da fila e parece não estar na escala.
+                      Quase sempre é um dos dois: nome em AZUL que a leitura não reconheceu (é ajuda),
+                      ou nome que caiu do rodapé na leitura.
+                    </p>
+                    <div className="space-y-1.5">
+                      <Button className="w-full"
+                        onClick={() => { marcarAjuda(decisaoAberta.nome, true); fechar() }}>
+                        Marcar como ajuda
+                      </Button>
+                      <Button variant="outline" className="w-full"
+                        onClick={() => { acrescentarNaOrdem(decisaoAberta.nome); fechar() }}>
+                        Acrescentar à ordem (no fim)
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {decisaoAberta.tipo === 'semCirurgia' && (
+                <>
+                  <SheetHeader>
+                    <SheetTitle>{decisaoAberta.nome} está na ordem sem nenhuma cirurgia</SheetTitle>
+                  </SheetHeader>
+                  <div className="space-y-3 pb-2">
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      Confira a extração contra a foto: a linha dela pode ter saído para outra pessoa
+                      (foi o que sumiu com Didomenico/Melo no IOSC em 23/07).
+                    </p>
+                    {decisaoAberta.cauda && (
+                      <p className="rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
+                        Fechando a lista sem cirurgia, vai nascer <b>LIBERADO</b> (vermelho) na fila desta publicação.
+                      </p>
+                    )}
+                    <p className="text-[11px] leading-relaxed text-muted-foreground">
+                      Se foi troca, a duplicidade aparece nas decisões quando a escala do outro hospital é lida.
+                    </p>
+                    <Button variant="outline" className="w-full" onClick={fechar}>Entendi</Button>
+                  </div>
+                </>
+              )}
+            </SheetContent>
+          </Sheet>
+        )
+      })()}
 
       {/* Confirmação anti-perda: substituir uma escala maior por uma menor apaga casos */}
       {substituir && (

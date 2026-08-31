@@ -342,6 +342,54 @@ duplicado no título e no placeholder).
 "normal"` + `sala: "Sala 3"`, não há no arquivo o que recuperar — o guardrail de
 27/08 (`normalizarSalaHro(sala, bloco)`) só corrige quando o bloco chegou certo.
 
+## Conferência — DECISÕES DO DIA no cartão da fila (dono 31/08, modelo B em protótipo)
+
+Reforma da superfície da conferência (`ImportarEscalaPage`, serve também cada aba do
+lote) para quem publica sem treinamento: as decisões operacionais moravam no FIM da
+página como avisos espalhados, sem lugar de preencher. Protótipo
+`.tmp/conferencia-decisoes-modelos.html` (3 modelos, 430px, dois temas, medição ao
+lado); o dono escolheu o **B — decisões coladas na fila**. Medição que sustentou o
+desenho (`.tmp/diag-conferencia-uso-real.mjs`, banco desde 25/06): troca = 122
+ações/5 semanas (53% entre hospitais); ajuda = 55 declaradas (origem confirmável em
+33); alguém fora da ordem em 31% dos turnos; duplicidade ~3/semana; posição
+assistencial só tem 2 rótulos reais (SRPA Unimed ×54 · Consultório HRO ×11 — **não
+ganhou controle novo**: situação que não acontece não ganha botão).
+
+- **A barra segue com 3 âncoras**; o chip do meio virou **"Ordem e decisões"** com
+  selo âmbar (nº por responder+conferir), ✓ verde quando tudo respondido, e o nº de
+  nomes quando não há decisão nenhuma.
+- **As decisões são linhas de 52px DENTRO do cartão da fila** (toda decisão é sobre
+  quem entra, sai ou muda de lugar NELA), cada uma abrindo **folha** (Sheet bottom,
+  `!h-auto max-h-[88vh]`) com as saídas em botões de largura inteira. Respondida =
+  linha verde com "Refazer". **Os dados gravados são os MESMOS de antes**
+  (`ajudaTexto`, `duplicidadeDecisoes`/`trocaEscolhida`, `ordemTexto`) — a reforma é
+  de superfície; a publicação, a execução da troca declarada e o bloqueio de
+  duplicidade não mudaram.
+- **UMA linha por pessoa**: a "ajuda provável" do cruzamento (rodapé lá + caso aqui)
+  é a MESMA pessoa que a lib de duplicidades pendura como pendência — eram dois
+  avisos com o mesmo botão. A partição é pela forma: **casos nos DOIS hospitais →
+  âmbar "em dois hospitais"** (folha: Trocou com… pré-sugerido · Trabalha nos dois ·
+  É ajuda aqui); **só rodapé lá → azul "ajuda de fora?"** (mesma folha com "Marcar
+  como ajuda" na frente). "Fora da ordem" ganhou a 2ª saída com botão (**Acrescentar
+  à ordem no fim** — antes era só texto). "Na ordem sem cirurgia" (ponto âmbar) é
+  linha de CONFERÊNCIA: a folha explica (cauda avisa que nasce LIBERADO) e não grava.
+- **O Input de texto da ajuda SAIU**: marcar é pela folha/fila; **remover é o
+  "Refazer"** da linha verde "marcado como ajuda" (ajuda fora da ordem não aparece na
+  lista numerada — sem essa linha ela ficava invisível e irremovível). Pendências
+  ficou só com avisos de conferência contra a foto (seções ausentes, repetidos,
+  conflitos, travessias); o cartão-resumo aponta para onde a resposta mora.
+- **O anestesista é perguntado UMA vez por bloco**: a linha do caso LÊ o nome herdado
+  ("Com RODNEI · do bloco") e o seletor abre só pelo lápis (63% dos blocos têm 1
+  caso; multi-anestesista real = 22% das salas — o Select repetido por caso quase
+  nunca trabalhava). ⚠️ a trava do lote **"com DOIS casos o seletor por caso volta"
+  MUDOU DE LADO** com o porquê no corpo (`importarEscalasLote.test.jsx`).
+- Travas novas em `importarEscalaDecisoesDoDia.test.jsx` (11 casos, todos vermelhos
+  contra o código anterior); `importarEscalaTrocaDuplicidade.test.jsx` segue travando
+  a MECÂNICA (trocaCom na chave do turno; execução na publicação; assunção
+  unilateral) pelo caminho novo da folha. Validação visual real:
+  `.tmp/shot-conferencia.mjs` (login E2E + edge interceptada, cenário 31/08
+  Oscar/Rodnei⇄Janaína) — a folha real pré-sugeriu a Janaína pelo par simétrico.
+
 ## Auditoria da leitura (dono 2026-08-31) — o lote lia SEM as regras
 
 > "Ao publicar a escala de hoje a tarde ela ficou com vários erros. Quero que faça
