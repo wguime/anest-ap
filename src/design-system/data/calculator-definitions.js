@@ -3445,9 +3445,16 @@ const utiCalculators = [
   {
     id: 'uti_saps3',
     title: 'SAPS III',
-    subtitle: 'Prognóstico UTI — Validado para Brasil',
+    // Fora por ESCOPO, não por qualidade: o SAPS 3 é colhido na 1ª hora de
+    // internação na UTI e foi desenhado para "dissociar a avaliação do paciente
+    // da avaliação da UTI" — benchmarking de serviço. Não responde "este
+    // paciente precisa de UTI depois desta cirurgia?" (isso é a seção Indicação
+    // de UTI) nem muda conduta anestésica. O dono respondeu em 31/08/2026 que o
+    // grupo NÃO assume plantão nem visita de UTI, que era o fato de que a
+    // decisão dependia — `docs/auditoria-calculadoras-uso-real.md` §6.3.
+    subtitle: 'Prognóstico UTI (fora do escopo — o grupo não assume UTI)',
     icon: 'BarChart2',
-    status: 'active',
+    status: 'inactive',
     customRender: 'saps3',
     inputs: [],
     compute: () => null,
@@ -4669,6 +4676,140 @@ const periopCalculators = [
     },
   },
   {
+    id: 'periop_padss',
+    title: 'PADSS — Alta para Casa',
+    subtitle: 'Ambulatorial, fase II (≥ 9 de 10)',
+    icon: 'BedDouble',
+    status: 'active',
+    useDropdown: true,
+    // Pergunta DIFERENTE da do Aldrete, que é alta da SRPA (fase I). Este é
+    // fase II: ir para casa. Entrou em 31/08/2026, quando o dono respondeu que
+    // o grupo faz cirurgia ambulatorial — `docs/auditoria-calculadoras-uso-real.md` §7.13.
+    inputs: [
+      {
+        id: 'sinais_vitais',
+        label: 'Sinais vitais (desvio do pré-operatório)',
+        type: 'select',
+        options: [
+          { value: 'sv_2', label: 'Variação até 20% do valor pré-operatório (2)' },
+          { value: 'sv_1', label: 'Variação de 20 a 40% (1)' },
+          { value: 'sv_0', label: 'Variação acima de 40% (0)' },
+        ],
+      },
+      {
+        id: 'deambulacao',
+        label: 'Deambulação',
+        type: 'select',
+        options: [
+          { value: 'de_2', label: 'Marcha firme, sem tontura, no nível pré-operatório (2)' },
+          { value: 'de_1', label: 'Anda com auxílio (1)' },
+          { value: 'de_0', label: 'Não anda ou tem tontura (0)' },
+        ],
+      },
+      {
+        id: 'nausea',
+        label: 'Náusea e vômito',
+        type: 'select',
+        options: [
+          { value: 'nv_2', label: 'Mínimos — tratados com medicação oral (2)' },
+          { value: 'nv_1', label: 'Moderados — tratados com medicação parenteral (1)' },
+          { value: 'nv_0', label: 'Graves — persistem após tratamento repetido (0)' },
+        ],
+      },
+      {
+        id: 'dor',
+        label: 'Dor',
+        type: 'select',
+        options: [
+          { value: 'dor_2', label: 'Mínima ou ausente, aceitável para o paciente, controlada com analgésico oral (2)' },
+          { value: 'dor_1', label: 'Moderada (1)' },
+          { value: 'dor_0', label: 'Intensa (0)' },
+        ],
+      },
+      {
+        id: 'sangramento',
+        label: 'Sangramento cirúrgico',
+        type: 'select',
+        options: [
+          { value: 'sg_2', label: 'Mínimo — não exige troca de curativo (2)' },
+          { value: 'sg_1', label: 'Moderado — até duas trocas de curativo (1)' },
+          { value: 'sg_0', label: 'Intenso — mais de três trocas de curativo (0)' },
+        ],
+      },
+    ],
+    compute: (values) => {
+      const PONTOS = {
+        sv_2: 2, sv_1: 1, sv_0: 0,
+        de_2: 2, de_1: 1, de_0: 0,
+        nv_2: 2, nv_1: 1, nv_0: 0,
+        dor_2: 2, dor_1: 1, dor_0: 0,
+        sg_2: 2, sg_1: 1, sg_0: 0,
+      };
+      const campos = ['sinais_vitais', 'deambulacao', 'nausea', 'dor', 'sangramento'];
+      const respondidos = campos.filter((c) => values[c] !== undefined && values[c] !== '');
+      if (respondidos.length === 0) return null;
+
+      const score = respondidos.reduce((t, c) => t + (PONTOS[values[c]] ?? 0), 0);
+      const completo = respondidos.length === campos.length;
+
+      // Regra de segurança: o total não basta. Sinais vitais têm de valer 2, e
+      // nenhum item pode valer 0 — mesmo que a soma chegue a 9.
+      const svOk = values.sinais_vitais === 'sv_2';
+      const algumZero = respondidos.some((c) => PONTOS[values[c]] === 0);
+      const liberado = completo && score >= 9 && svOk && !algumZero;
+
+      let risk = 'alto';
+      let leitura = 'Ainda não liberado';
+      const motivos = [];
+      if (!completo) motivos.push('faltam itens por responder');
+      if (score < 9) motivos.push(`soma ${score} de 10 — o corte é 9`);
+      if (completo && !svOk) motivos.push('sinais vitais precisam valer 2, qualquer que seja a soma');
+      if (algumZero) motivos.push('há item valendo 0 — nenhum pode ficar em zero, mesmo com soma 9');
+
+      if (liberado) {
+        risk = 'baixo';
+        leitura = 'Critérios de alta domiciliar atendidos';
+      } else if (completo && score >= 9) {
+        risk = 'medio';
+        leitura = 'Soma suficiente, mas a regra de segurança barra';
+      }
+
+      return {
+        score,
+        risk,
+        details: {
+          'Pontuação': `${score} de 10${completo ? '' : ' (itens em branco contam 0)'}`,
+          'Leitura': leitura,
+          ...(motivos.length ? { 'O que falta': motivos.join(' · ') } : {}),
+          'Confirmação': 'Repetir a avaliação: são necessárias DUAS medidas consecutivas com 9 ou mais',
+        },
+      };
+    },
+    resultMessage: (result) => {
+      if (!result) return 'Responda os cinco itens';
+      return `PADSS ${result.score}/10 — ${result.details['Leitura']}`;
+    },
+    infoBox: {
+      keyPoints: [
+        'Cinco itens de 0 a 2: sinais vitais, deambulação, náusea/vômito, dor e sangramento cirúrgico',
+        'Alta domiciliar com 9 ou mais, em DUAS avaliações consecutivas',
+        'Sinais vitais precisam valer 2, e nenhum item pode ficar em 0 — mesmo que a soma chegue a 9',
+        'Aldrete é fase I (sair da SRPA); PADSS é fase II (ir para casa) — perguntas diferentes',
+        'Micção e ingestão oral NÃO são mais exigidas para alta na maioria dos pacientes',
+        'Acompanhante adulto responsável e orientação por escrito continuam sendo pré-requisito, e não entram na soma',
+      ],
+      interpretation:
+        'O escore mede prontidão para ir para casa, não recuperação imediata da anestesia. Um paciente pode ter Aldrete 10 e PADSS 6 — sai da SRPA e ainda não pode ir embora.',
+      warnings: [
+        'A soma sozinha não libera: é a regra de segurança (sinais vitais em 2, nenhum item em 0) que impede alta com um domínio muito ruim compensado pelos outros',
+        'Bloqueio de neuroeixo exige regressão motora e sensitiva documentada antes da alta — não está nesta soma',
+        'O escore não substitui a avaliação do anestesista nem a orientação de retorno',
+      ],
+      reference:
+        'Chung F, Chan VW, Ong D. A post-anesthetic discharge scoring system for home readiness after ambulatory surgery. J Clin Anesth 1995;7:500-6 | Palumbo P, Tellan G et al. Modified PADSS for monitoring outpatients discharge. Ann Ital Chir 2013;84:661-5',
+    },
+  },
+  {
     id: 'periop_ariscat',
     title: 'ARISCAT',
     subtitle: 'Risco Complicação Pulmonar',
@@ -5261,6 +5402,91 @@ const riscoCalculators = [
       ],
       reference:
         'Hlatky MA et al. A brief self-administered questionnaire to determine functional capacity. Am J Cardiol 1989;64:651-4 | Coutinho-Myrrha MA et al. Duke Activity Status Index em Doenças Cardiovasculares: validação da tradução para o português. Arq Bras Cardiol 2014 | Wijeysundera DN et al. Lancet 2018;391:2631-40 (METS)',
+    },
+  },
+  {
+    id: 'risco_fragilidade',
+    title: 'Escala de Fragilidade Clínica',
+    subtitle: 'CFS 2.0 — 9 níveis, julgamento clínico',
+    icon: 'User',
+    status: 'active',
+    useDropdown: true,
+    // A recomendação NOMINAL mais forte de toda a auditoria: ESAIC preop, grau
+    // 1C, duas vezes. Entrou só em 31/08/2026 porque dependia da licença de uso
+    // da Dalhousie, que o dono solicitou e obteve — a escala é protegida por
+    // direito autoral e exige acordo de uso.
+    inputs: [
+      {
+        id: 'nivel',
+        label: 'Nível que melhor descreve o paciente',
+        type: 'select',
+        options: [
+          { value: 'cfs_1', label: '1 — Muito em forma: robusto, ativo, com energia e motivação; exercita-se com regularidade' },
+          { value: 'cfs_2', label: '2 — Em forma: sem sintomas de doença ativa, menos apto que o nível 1; ativo ocasionalmente' },
+          { value: 'cfs_3', label: '3 — Bem controlado: problemas médicos controlados, sem atividade regular além da caminhada de rotina' },
+          { value: 'cfs_4', label: '4 — Fragilidade muito leve: independente, mas os sintomas limitam as atividades; queixa de estar "mais lento"' },
+          { value: 'cfs_5', label: '5 — Fragilidade leve: lentidão evidente; precisa de ajuda nas atividades instrumentais (finanças, transporte, faxina)' },
+          { value: 'cfs_6', label: '6 — Fragilidade moderada: precisa de ajuda em todas as atividades externas e na casa; dificuldade com escadas e banho' },
+          { value: 'cfs_7', label: '7 — Fragilidade grave: dependente para todo o cuidado pessoal, mas estável e sem risco alto de morrer em ~6 meses' },
+          { value: 'cfs_8', label: '8 — Fragilidade muito grave: dependente e aproximando-se do fim da vida; não se recupera nem de doença leve' },
+          { value: 'cfs_9', label: '9 — Doente terminal: expectativa de vida menor que 6 meses, sem fragilidade grave por outra causa' },
+        ],
+      },
+    ],
+    compute: (values) => {
+      const nivel = parseInt(String(values.nivel || '').replace('cfs_', ''), 10);
+      if (!Number.isFinite(nivel) || nivel < 1 || nivel > 9) return null;
+
+      let risk = 'baixo';
+      let leitura = 'Não frágil';
+      let conduta = 'Sem sinalização de fragilidade — seguir a avaliação habitual';
+
+      if (nivel === 4) {
+        risk = 'medio';
+        leitura = 'Fragilidade muito leve — início da transição';
+        conduta = 'Ainda independente, mas já é o ponto de rastrear otimização pré-operatória: anemia, nutrição, cognição e polifarmácia';
+      } else if (nivel >= 7) {
+        risk = 'critico';
+        leitura = nivel === 9 ? 'Doente terminal' : 'Fragilidade grave a muito grave';
+        conduta = 'Discutir metas de cuidado ANTES da anestesia. O ganho esperado da cirurgia precisa ser explícito, e a conversa sobre limitação terapêutica pertence ao pré-operatório, não à intercorrência';
+      } else if (nivel >= 5) {
+        risk = 'alto';
+        leitura = 'Frágil';
+        conduta = 'A partir de 5 muda o consentimento (risco de perda funcional e de delirium), o destino pós-operatório (a conversa com a seção Indicação de UTI) e a indicação de otimização pré-operatória';
+      }
+
+      return {
+        score: nivel,
+        risk,
+        details: {
+          'Nível': `${nivel} de 9`,
+          'Leitura': leitura,
+          'Conduta sugerida': conduta,
+        },
+      };
+    },
+    resultMessage: (result) => {
+      if (!result) return 'Escolha o nível que descreve o paciente';
+      return `CFS ${result.score} — ${result.details['Leitura']}`;
+    },
+    infoBox: {
+      keyPoints: [
+        '1 a 3: não frágil | 4: fragilidade muito leve | 5 a 6: frágil | 7 a 9: fragilidade grave a terminal',
+        'O corte usado no perioperatório é 5 ou mais',
+        'É JULGAMENTO CLÍNICO sobre o estado basal de 2 semanas ANTES da doença atual, não sobre o estado de agora',
+        'Leva segundos e não exige exame nem escala funcional formal',
+        'Vale a partir de 65 anos; não foi feita para adulto jovem com deficiência estável',
+        'Complementa o ASA e o RCRI: nenhum dos dois captura reserva fisiológica',
+      ],
+      interpretation:
+        'A ESAIC recomenda usar a CFS quando o exame pré-anestésico revela fenótipo de fragilidade, e recomenda-a de novo pela alta viabilidade e valor preditivo — as duas com grau 1C. O ACC/AHA 2024 trata fragilidade como modificador de risco ao lado das ferramentas de predição.',
+      warnings: [
+        'Pontuar pelo estado AGUDO superestima a fragilidade: a referência é o basal de 2 semanas antes',
+        'A escala é protegida por direito autoral da Dalhousie University e é usada aqui sob acordo de uso obtido em 31/08/2026',
+        'Não usar isoladamente para negar tratamento — é estratificação de risco, não critério de racionamento',
+      ],
+      reference:
+        'Rockwood K et al. A global clinical measure of fitness and frailty in elderly people. CMAJ 2005;173:489-95 | Clinical Frailty Scale versão 2.0 (2020), © Dalhousie University, usada sob permissão | ESAIC Guideline on preoperative assessment of adults undergoing elective noncardiac surgery',
     },
   },
   {
@@ -7199,9 +7425,14 @@ const neuroCalculators = [
   {
     id: 'neuro_nihss',
     title: 'NIHSS',
-    subtitle: 'AVC Isquemico',
+    // Voltou em 31/08/2026. A triagem a cortou como "de outra especialidade", e
+    // o dono respondeu o fato que faltava: o grupo FAZ anestesia para
+    // trombectomia mecânica em AVC agudo. Nesse cenário o NIHSS é do
+    // anestesista — entra na via aérea, na meta pressórica e no registro antes
+    // e depois do procedimento.
+    subtitle: 'AVC isquêmico — anestesia para trombectomia',
     icon: 'Activity',
-    status: 'inactive',
+    status: 'active',
     useDropdown: true,
     inputs: [
       {
@@ -7934,7 +8165,9 @@ const LEGACY_ID_MAP = {
   'periop_cormack': 'periop_classificacoes',
   // Triagem de 29/08/2026 — `docs/revisao-calculadoras-triagem.md`
   'risco_goldman': 'risco_rcri',      // índice de 1977 superado pelo RCRI (ACC/AHA 2024)
-  'uti_apache2': 'uti_saps3',         // calibração de 1985; SAPS 3 validado p/ América do Sul
+  // 'uti_apache2' NÃO tem mais destino: o SAPS 3 saiu em 31/08/2026 e
+  // redirecionar favorito para card inativo é pior que não redirecionar.
+  // Os dois seguem no arquivo, inteiros, prontos para voltar.
   'ped_cheops': 'ped_flacc',          // CHEOPS não mede dor que persiste após a SRPA
   'seg_mews': 'seg_news2',            // NEWS2 é o sucessor direto do MEWS
   // Auditoria de 30/08/2026 — duplicatas de fluidos

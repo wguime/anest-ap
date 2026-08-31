@@ -329,3 +329,120 @@ describe('todos os cards novos declaram fonte primária', () => {
     expect(c.infoBox?.interpretation, `${id} sem interpretação`).toBeTruthy();
   });
 });
+
+describe('risco_fragilidade (CFS 2.0) — entrou em 31/08 com a licença liberada', () => {
+  it('todos os 9 níveis pontuam, sem chave órfã', () => {
+    for (const valor of opcoes('risco_fragilidade', 'nivel')) {
+      const r = calc('risco_fragilidade', { nivel: valor });
+      expect(r, `${valor} não pontuou`).toBeTruthy();
+    }
+  });
+
+  it.each([[1, 1], [5, 5], [9, 9]])('cfs_%i devolve nível %i', (n, esperado) => {
+    expect(calc('risco_fragilidade', { nivel: `cfs_${n}` }).score).toBe(esperado);
+  });
+
+  it.each([
+    [1, 'baixo'], [2, 'baixo'], [3, 'baixo'],
+    [4, 'medio'],
+    [5, 'alto'], [6, 'alto'],
+    [7, 'critico'], [8, 'critico'], [9, 'critico'],
+  ])('nível %i → risco %s', (n, risk) => {
+    expect(calc('risco_fragilidade', { nivel: `cfs_${n}` }).risk).toBe(risk);
+  });
+
+  it('o corte perioperatório de 5 separa não-frágil de frágil', () => {
+    expect(calc('risco_fragilidade', { nivel: 'cfs_4' }).details['Leitura']).not.toContain('Frágil');
+    expect(calc('risco_fragilidade', { nivel: 'cfs_5' }).details['Leitura']).toBe('Frágil');
+  });
+
+  it('a partir de 5 a conduta fala do que muda: consentimento e destino', () => {
+    const c = calc('risco_fragilidade', { nivel: 'cfs_6' }).details['Conduta sugerida'];
+    expect(c).toContain('consentimento');
+    expect(c).toContain('destino');
+  });
+
+  it('nível 9 é lido como doente terminal, não como fragilidade', () => {
+    expect(calc('risco_fragilidade', { nivel: 'cfs_9' }).details['Leitura']).toContain('terminal');
+  });
+
+  it('a licença da Dalhousie é creditada — o acordo exige atribuição', () => {
+    const card9 = card('risco_fragilidade');
+    expect(card9.infoBox.reference).toContain('Dalhousie');
+    expect(card9.infoBox.warnings.join(' ')).toContain('direito autoral');
+  });
+
+  it('avisa que a referência é o estado BASAL, não o agudo — o erro clássico', () => {
+    expect(card('risco_fragilidade').infoBox.warnings.join(' ')).toContain('basal');
+  });
+
+  it('entrada inválida devolve null', () => {
+    expect(calc('risco_fragilidade', { nivel: 'cfs_99' })).toBeNull();
+    expect(calc('risco_fragilidade', { nivel: 'lixo' })).toBeNull();
+  });
+});
+
+describe('periop_padss — alta para casa, fase II', () => {
+  const perfeito = {
+    sinais_vitais: 'sv_2', deambulacao: 'de_2', nausea: 'nv_2', dor: 'dor_2', sangramento: 'sg_2',
+  };
+
+  it('todas as opções pontuam, sem chave órfã', () => {
+    for (const campo of Object.keys(perfeito)) {
+      for (const valor of opcoes('periop_padss', campo)) {
+        expect(calc('periop_padss', { [campo]: valor }), `${campo}=${valor}`).toBeTruthy();
+      }
+    }
+  });
+
+  it('tudo em 2 → 10 de 10, liberado', () => {
+    const r = calc('periop_padss', perfeito);
+    expect(r.score).toBe(10);
+    expect(r.risk).toBe('baixo');
+    expect(r.details['Leitura']).toContain('atendidos');
+  });
+
+  it('9 de 10 com todos os itens acima de zero libera', () => {
+    const r = calc('periop_padss', { ...perfeito, dor: 'dor_1' });
+    expect(r.score).toBe(9);
+    expect(r.risk).toBe('baixo');
+  });
+
+  it('8 de 10 não libera', () => {
+    const r = calc('periop_padss', { ...perfeito, dor: 'dor_1', nausea: 'nv_1' });
+    expect(r.score).toBe(8);
+    expect(r.risk).toBe('alto');
+  });
+
+  it('a regra de segurança barra soma 9 com sinais vitais abaixo de 2', () => {
+    // 1 + 2 + 2 + 2 + 2 = 9, mas sinais vitais não valem 2.
+    const r = calc('periop_padss', { ...perfeito, sinais_vitais: 'sv_1' });
+    expect(r.score).toBe(9);
+    expect(r.risk).toBe('medio');
+    expect(r.details['O que falta']).toContain('sinais vitais');
+  });
+
+  it('a regra de segurança barra qualquer item em zero, mesmo com soma 9', () => {
+    // Não é possível somar 9 com um zero em 5 itens de 0-2 (máx 8), então o
+    // teste que importa é o inverso: item em zero nunca libera.
+    const r = calc('periop_padss', { ...perfeito, sangramento: 'sg_0' });
+    expect(r.risk).not.toBe('baixo');
+    expect(r.details['O que falta']).toContain('0');
+  });
+
+  it('itens em branco não liberam, mesmo que os respondidos somem bem', () => {
+    const r = calc('periop_padss', { sinais_vitais: 'sv_2', deambulacao: 'de_2' });
+    expect(r.risk).not.toBe('baixo');
+    expect(r.details['O que falta']).toContain('faltam itens');
+  });
+
+  it('lembra que são DUAS medidas consecutivas', () => {
+    expect(calc('periop_padss', perfeito).details['Confirmação']).toContain('DUAS');
+  });
+
+  it('o card diz que é pergunta diferente do Aldrete', () => {
+    const kp = card('periop_padss').infoBox.keyPoints.join(' | ');
+    expect(kp).toContain('Aldrete');
+    expect(kp).toContain('fase II');
+  });
+});

@@ -29,29 +29,44 @@ import {
   getCalculatorById,
 } from '../../design-system/data/calculator-definitions.js';
 
-// Superadas — têm sucessora no app
+// Superadas — têm sucessora ATIVA no app
 const SUPERADAS = {
   risco_goldman: 'risco_rcri',
-  uti_apache2: 'uti_saps3',
   ped_cheops: 'ped_flacc',
   seg_mews: 'seg_news2',
 };
 
+// ⚠️ O APACHE II era o quarto do grupo acima, com destino `uti_saps3`. Em
+// 31/08/2026 o SAPS 3 também saiu (o grupo não assume UTI), e mandar favorito
+// para card inativo é pior que não mandar — então o APACHE II perdeu o destino
+// e passou a resolver para ele mesmo, como as de outra especialidade.
+const PERDEU_A_SUCESSORA = ['uti_apache2'];
+
 // De outra especialidade — sem sucessora
+// `neuro_nihss` SAIU desta lista em 31/08/2026: o dono respondeu que o grupo faz
+// anestesia para trombectomia mecânica, cenário em que o NIHSS é do anestesista.
 const OUTRA_ESPECIALIDADE = [
   'risco_timi', 'risco_heart', 'risco_padua',
   'uti_curb65', 'uti_cpis', 'uti_nutric', 'uti_rox', 'uti_four_score',
   'seg_morse', 'seg_braden',
-  'neuro_nihss', 'periop_murray',
+  'periop_murray',
   'ped_pews', 'ped_psofa', 'ped_pim3', 'ped_prism3',
 ];
 
-const DESATIVADAS = [...Object.keys(SUPERADAS), ...OUTRA_ESPECIALIDADE];
+// Fora do escopo do grupo (31/08/2026): instrumento bom, pergunta que não é a
+// deste app. O SAPS 3 é colhido na 1ª hora de UTI e serve a benchmarking de
+// serviço; o dono confirmou que o grupo não assume plantão nem visita de UTI.
+const FORA_DO_ESCOPO = ['uti_saps3'];
+
+const DESATIVADAS = [
+  ...Object.keys(SUPERADAS), ...PERDEU_A_SUCESSORA,
+  ...OUTRA_ESPECIALIDADE, ...FORA_DO_ESCOPO,
+];
 
 const buscarBruto = (id) => getAllCalculators().find((c) => c.id === id);
 
-describe('as 20 saíram da lista, sem serem apagadas', () => {
-  it('são exatamente 20', () => {
+describe('as desativadas saíram da lista, sem serem apagadas', () => {
+  it('são 20: as da triagem de 29/08, menos o NIHSS que voltou, mais o SAPS 3', () => {
     expect(DESATIVADAS).toHaveLength(20);
   });
 
@@ -84,11 +99,51 @@ describe('LEGACY_ID_MAP — só para quem tem sucessora', () => {
   });
 
   it('as de outra especialidade NÃO ganham destino inventado', () => {
-    for (const id of OUTRA_ESPECIALIDADE) {
+    for (const id of [...OUTRA_ESPECIALIDADE, ...FORA_DO_ESCOPO]) {
       const c = getCalculatorById(id);
       // Resolve para ela mesma (inativa), nunca para outra calculadora.
       expect(c?.id, `${id} foi redirecionada para algo`).toBe(id);
     }
+  });
+
+  it('nenhum destino do mapa aponta para uma calculadora INATIVA', () => {
+    // Foi o que quase aconteceu quando o SAPS 3 saiu: o APACHE II ainda apontava
+    // para ele, e o favorito abriria um card que não existe mais na tela.
+    const ativos = new Set(getActiveCalculators().map((c) => c.id));
+    const antigos = [...Object.keys(SUPERADAS), ...PERDEU_A_SUCESSORA, ...OUTRA_ESPECIALIDADE, ...FORA_DO_ESCOPO];
+    for (const id of antigos) {
+      const destino = getCalculatorById(id);
+      if (destino && destino.id !== id) {
+        expect(ativos.has(destino.id), `${id} → ${destino.id}, que está inativa`).toBe(true);
+      }
+    }
+  });
+
+  it('o APACHE II resolve para ele mesmo desde que o SAPS 3 saiu', () => {
+    expect(getCalculatorById('uti_apache2')?.id).toBe('uti_apache2');
+  });
+});
+
+describe('respostas do dono em 31/08/2026', () => {
+  it('SAPS 3 saiu — o grupo não assume UTI', () => {
+    expect(buscarBruto('uti_saps3')?.status).toBe('inactive');
+    expect(buscarBruto('uti_saps3')?.compute || buscarBruto('uti_saps3')?.customRender).toBeTruthy();
+  });
+
+  it('NIHSS voltou — o grupo faz anestesia para trombectomia', () => {
+    expect(buscarBruto('neuro_nihss')?.status).toBe('active');
+  });
+
+  it('Braden segue FORA de Calculadoras — voltou pelo módulo Qualidade', () => {
+    expect(buscarBruto('seg_braden')?.status).toBe('inactive');
+    const visiveis = getSectionsWithCalculators().flatMap((s) => s.calculators.map((c) => c.id));
+    expect(visiveis).not.toContain('seg_braden');
+  });
+
+  it('a definição do Braden continua inteira, que é o que a rota de Qualidade consome', () => {
+    const braden = buscarBruto('seg_braden');
+    expect(braden?.compute).toBeTypeOf('function');
+    expect(braden?.inputs?.length).toBeGreaterThan(0);
   });
 });
 
@@ -173,11 +228,12 @@ describe('duplicatas de fluidos — auditoria de 30/08/2026', () => {
 });
 
 describe('o que sobra', () => {
-  it('as ativas são 59', () => {
+  it('as ativas são 61', () => {
     // 76 − 20 da triagem = 56; menos ASA/Mallampati/Cormack, mais o card = 54;
     // menos hemo_deficit e ped_fluidos (duplicatas de fluido) = 52;
-    // mais as 7 acrescentadas pela auditoria por recomendação de diretriz = 59.
-    expect(getActiveCalculators()).toHaveLength(59);
+    // mais as 7 da auditoria por recomendação de diretriz = 59;
+    // menos SAPS 3, mais NIHSS, mais CFS e PADSS (31/08) = 61.
+    expect(getActiveCalculators()).toHaveLength(61);
   });
 
   it('nenhuma seção fica vazia na tela', () => {
@@ -188,17 +244,20 @@ describe('o que sobra', () => {
   });
 
   it.each([
-    'risco_rcri', 'risco_caprini', 'risco_fa_anticoag',
-    'uti_saps3', 'uti_sofa_unificado', 'uti_sedacao_delirium', 'seg_news2',
+    'risco_rcri', 'risco_caprini', 'risco_fa_anticoag', 'risco_dasi', 'risco_fragilidade',
+    'uti_sofa_unificado', 'uti_sedacao_delirium', 'seg_news2', 'neuro_nihss',
     'ped_flacc', 'periop_apfel', 'periop_stopbang', 'periop_ariscat',
-  ])('%s continua ativa', (id) => {
+    'periop_4at', 'periop_mac', 'periop_padss', 'periop_jejum_adulto',
+    'dor_peso_dose', 'dor_anestesico_local', 'renal_correcao_sodio',
+  ])('%s está ativa', (id) => {
     expect(buscarBruto(id)?.status).toBe('active');
   });
 
   it('o total de definições só cresce — nada é apagado', () => {
     // 80 originais + 5 de Indicação de UTI + 1 card de Classificações = 86,
-    // + 7 acréscimos com recomendação de diretriz (auditoria §7) = 93.
-    expect(getAllCalculators()).toHaveLength(93);
+    // + 7 acréscimos com recomendação de diretriz (auditoria §7) = 93,
+    // + CFS (licença liberada) e PADSS (o grupo faz ambulatorial) = 95.
+    expect(getAllCalculators()).toHaveLength(95);
   });
 });
 

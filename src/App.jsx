@@ -436,12 +436,28 @@ import { EducacaoDataProvider } from "./pages/educacao/hooks"
 import { CirurgiasParticularesProvider } from "./contexts/CirurgiasParticularesContext"
 
 // Componente wrapper para página de Calculadoras
-function CalculadorasPageWrapper({ _onNavigate, goBack, params }) {
+// `calcFixa` abre UMA calculadora e nunca mostra a grade — é como a Escala de
+// Braden vive no módulo Qualidade sem voltar para a lista de Calculadoras, de
+// onde o dono a tirou. `titulo` acompanha, senão o cabeçalho diria
+// "Calculadoras" numa página que existe justamente para não ser isso.
+function CalculadorasPageWrapper({ _onNavigate, goBack, params, onCalculatorOpen, titulo = 'Calculadoras', calcFixa = null }) {
   // Estado da calculadora selecionada é gerenciado aqui para que o botão
   // "Voltar" do header feche o detalhe antes de sair da página.
   // Deep-link via ⌘K: params.calcId abre a calculadora direto (lazy initializer —
   // useState ignora mudanças de props após mount, mas o case usa key={calcId}).
-  const [selectedCalcId, setSelectedCalcId] = useState(() => params?.calcId || null);
+  const [selectedCalcId, setSelectedCalcId] = useState(() => calcFixa || params?.calcId || null);
+
+  // Uma abertura de calculadora = um evento `feature_use` com o id dela. É o
+  // único jeito de a próxima revisão de calculadoras ser medida em vez de
+  // argumentada — hoje só existe contagem da página inteira.
+  // O id cru vai como `featureId` porque é nele que `scripts/stats-uso-calculadoras.mjs`
+  // agrega. Mesma tabela, mesmo vínculo com o usuário e mesma retenção do
+  // `trackPageView` que já roda — não é categoria nova de dado pessoal.
+  useEffect(() => {
+    if (selectedCalcId && typeof onCalculatorOpen === 'function') {
+      onCalculatorOpen(selectedCalcId);
+    }
+  }, [selectedCalcId, onCalculatorOpen]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const searchPanelId = useId();
@@ -452,10 +468,10 @@ function CalculadorasPageWrapper({ _onNavigate, goBack, params }) {
   };
 
   const handleBack = () => {
-    if (selectedCalcId) {
+    if (selectedCalcId && !calcFixa) {
       setSelectedCalcId(null); // Fecha detalhe, volta pra lista de calculadoras
     } else {
-      goBack(); // Sai da página
+      goBack(); // Sai da página — em `calcFixa` não há lista para onde voltar
     }
   };
 
@@ -477,7 +493,7 @@ function CalculadorasPageWrapper({ _onNavigate, goBack, params }) {
             </button>
           </div>
           <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Calculadoras
+            {titulo}
           </h1>
           <div className="min-w-[70px] flex justify-end">
             {showSearchToggle && (
@@ -632,6 +648,7 @@ const PAGE_TO_CARD = {
   auditorias: 'auditorias',
   auditoriasInterativas: 'auditorias_interativas',
   autoavaliacao: 'autoavaliacao',
+  escalaBraden: 'qualidade', // herda a permissão do card Qualidade
   relatorios: 'relatorios',
   organograma: 'organograma',
   eticaBioetica: 'etica_bioetica',
@@ -861,7 +878,14 @@ function App() {
   useCommandPaletteShortcut(setCommandOpen)
 
   // Activity tracking
-  const { trackPageView } = useActivityTracking()
+  // ⚠️ `trackFeatureUse` existia no hook desde sempre e NENHUM componente o
+  // chamava — por isso havia contagem por PÁGINA e nenhuma por calculadora, e
+  // as duas triagens de calculadora tiveram de se apoiar em literatura e escopo
+  // em vez de uso. Ligado em 31/08/2026 a pedido do dono.
+  // Sai daqui, e não de dentro do CalculatorShowcase, porque o hook dispara
+  // busca de histórico e um intervalo de 5 min ao montar: montá-lo de novo na
+  // tela de calculadora poria essa carga numa página aberta durante a anestesia.
+  const { trackPageView, trackFeatureUse } = useActivityTracking()
 
   // iOS: teclado fechado pode deixar o visual viewport deslocado e o
   // BottomNav/headers `fixed` "flutuando" no meio da página — re-ancora.
@@ -1179,7 +1203,12 @@ function App() {
       case 'menuPage':
         return <MenuPage onNavigate={handleNavigate} goBack={goBack} />
       case 'calculadoras':
-        return <CalculadorasPageWrapper key={`calc-${pageParams?.calcId || 'list'}`} onNavigate={handleNavigate} goBack={goBack} params={pageParams} />
+        return <CalculadorasPageWrapper key={`calc-${pageParams?.calcId || 'list'}`} onNavigate={handleNavigate} goBack={goBack} params={pageParams} onCalculatorOpen={trackFeatureUse} />
+      case 'escalaBraden':
+        // Braden é instrumento de ACREDITAÇÃO (risco de lesão por pressão), não
+        // de ato anestésico — por isso saiu de Calculadoras na triagem de 29/08
+        // e voltou aqui, em Qualidade, por decisão do dono em 31/08/2026.
+        return <CalculadorasPageWrapper key="calc-braden" onNavigate={handleNavigate} goBack={goBack} titulo="Escala de Braden" calcFixa="seg_braden" onCalculatorOpen={trackFeatureUse} />
       case 'criteriosUti':
         return <CriteriosUTIPage onNavigate={handleNavigate} goBack={goBack} />
       // Cateter Peridural

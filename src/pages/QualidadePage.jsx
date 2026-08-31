@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { WidgetCard } from '@/design-system';
-import { TrendingUp, Network, ShieldAlert, GraduationCap, ClipboardList, CheckSquare, PlayCircle } from 'lucide-react';
+import { TrendingUp, Network, ShieldAlert, GraduationCap, ClipboardList, CheckSquare, PlayCircle, Bed } from 'lucide-react';
 import { PageHeader } from '@/components';
 import { useCardPermissions } from '@/hooks/useCardPermissions';
 
@@ -72,6 +72,16 @@ export default function QualidadePage({ onNavigate }) {
               onClick={() => onNavigate('desastres')}
             />
           )}
+          {/* Braden é risco de lesão por pressão — indicador de acreditação, não
+              ato anestésico. Saiu de Calculadoras na triagem de 29/08 e voltou
+              aqui por decisão do dono em 31/08/2026. */}
+          <WidgetCard
+            icon={<Bed className="w-6 h-6" />}
+            title="Escala de Braden"
+            subtitle="Risco de lesao por pressao"
+            variant="interactive"
+            onClick={() => onNavigate('escalaBraden')}
+          />
         </div>
       </div>
 

@@ -66,6 +66,7 @@ export const PAGES = [
   'denunciaDetalhe',
   'denunciaGestao',
   'desastres',
+  'escalaBraden',
   'dilemas',
   'diretrizes',
   'documento-detalhe',
