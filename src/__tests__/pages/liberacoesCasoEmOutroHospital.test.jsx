@@ -9,11 +9,13 @@
  *    "Liberado" — a conta olhava só esta escala, e não ter caso AQUI era lido
  *    como não ter trabalho.
  *
- *  · NA ESCALA ONDE AJUDA (HRO, onde tem cirurgia e não está no rodapé): é o
- *    PRIMEIRO a ser liberado — inclusive antes do plantão do contraturno DAQUI.
- *    "Oscar sai antes de Guilherme Xavier porque Guilherme é plantão do
- *    contraturno mas não está como ajuda." Quem ajuda é de outro hospital e tem
- *    plantão e fila próprios para voltar; segurá-lo prende duas escalas.
+ *  · NA ESCALA ONDE AJUDA (HRO, onde tem cirurgia e não está no rodapé): sai
+ *    antes do plantão do contraturno DAQUI — mas por um motivo ESTREITO, e não
+ *    porque toda ajuda saia primeiro (foi assim que eu li errado em 30/08):
+ *    "Oscar só irá sair antes do plantão do contraturno do HRO porque ele é
+ *    plantão de contraturno de OUTRO hospital e está como ajuda". Os dois
+ *    requisitos juntos. Ajuda que não é plantão em lugar nenhum continua saindo
+ *    depois do plantão daqui, como desde 19/08.
  */
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest'
 import { render, screen } from '@testing-library/react'
@@ -116,13 +118,19 @@ const hro = {
   ],
 }
 
-describe('na escala onde ajuda: sai antes do plantão do contraturno', () => {
-  it('a ajuda FECHA a lista — é a primeira a ir embora', () => {
-    const { container } = render(
-      <LiberacoesView escala={hro} hospital="hro" hospitalLabel="HRO" turno="matutino"
-        canEdit onToggle={() => {}} onSetOverride={() => {}} />,
-      { wrapper: wrap },
-    )
+// Oscar FECHA o rodapé da Unimed no mesmo turno = plantão do contraturno de lá.
+// É esse fato, e não o de estar ajudando, que o põe à frente.
+const oscarPlantaoNaUnimed = [{ nome: 'OSCAR', hospitalLabel: 'Unimed' }]
+
+const montarHro = (props = {}) => render(
+  <LiberacoesView escala={hro} hospital="hro" hospitalLabel="HRO" turno="matutino"
+    canEdit onToggle={() => {}} onSetOverride={() => {}} {...props} />,
+  { wrapper: wrap },
+)
+
+describe('na escala onde ajuda: a exceção é estreita', () => {
+  it('ajuda que é plantão do contraturno DE OUTRO hospital fecha a lista', () => {
+    const { container } = montarHro({ contraturnoOutros: oscarPlantaoNaUnimed })
     const fila = ordemDaFila(container)
     const iOscar = fila.findIndex((t) => t.includes('Oscar'))
     const iGuilherme = fila.findIndex((t) => t.includes('Guilherme'))
@@ -132,12 +140,17 @@ describe('na escala onde ajuda: sai antes do plantão do contraturno', () => {
     expect(iOscar).toBeGreaterThan(iGuilherme)
   })
 
+  it('ajuda que NÃO é plantão em lugar nenhum segue atrás do plantão daqui', () => {
+    // é a metade da regra que eu tinha atropelado em 30/08 generalizando a
+    // exceção: sem plantão de contraturno em outro hospital, vale 19/08
+    const { container } = montarHro()
+    const fila = ordemDaFila(container)
+    expect(fila.findIndex((t) => t.includes('Oscar')))
+      .toBeLessThan(fila.findIndex((t) => t.includes('Guilherme')))
+  })
+
   it('o plantão do contraturno segue com o selo — ele não deixou de ser plantão', () => {
-    render(
-      <LiberacoesView escala={hro} hospital="hro" hospitalLabel="HRO" turno="matutino"
-        canEdit onToggle={() => {}} onSetOverride={() => {}} />,
-      { wrapper: wrap },
-    )
+    montarHro({ contraturnoOutros: oscarPlantaoNaUnimed })
     expect(selosDe('Guilherme Xavier')).toContain('Plantão da tarde')
     expect(selosDe('Oscar Morais')).toContain('Ajuda')
   })

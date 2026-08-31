@@ -121,14 +121,11 @@ describe('ajuda libera na ordem do hospital de ORIGEM (dono 27/08)', () => {
   it('com a escala do HRO carregada, Gustavo (10º lá) sai antes de Alexandre (6º lá)', () => {
     montar({ unimed: UNIMED, hro: HRO })
     const nomes = fila()
-    // ⚠️ MUDOU DE LADO em 30/08: Oscar fecha o rodapé daqui (plantão do
-    // contraturno) e ERA o último da tela. O dono corrigiu no caso
-    // Oscar⇄Guilherme Xavier — a AJUDA sai antes do plantão do contraturno,
-    // porque ela é de outro hospital e tem plantão e fila próprios para voltar.
-    // Ele continua na fila, só não mais atrás das ajudas.
-    expect(nomes.indexOf('Oscar')).toBeLessThan(nomes.indexOf('Alexandre S'))
-    // o que este teste mede não mudou: entre as AJUDAS, a ordem é a do hospital
-    // de ORIGEM — índice MAIOR no rodapé de lá = sai antes lá = mais embaixo aqui
+    // Oscar fecha o rodapé daqui → plantão do contraturno, o último. As ajudas
+    // (Alexandre S e Gustavo) NÃO fecham rodapé de hospital nenhum, então a
+    // exceção de 31/08 não as alcança: seguem saindo depois dele.
+    expect(nomes[nomes.length - 1]).toBe('Oscar')
+    // índice MAIOR no rodapé de origem = sai antes lá = mais embaixo aqui
     expect(nomes.indexOf('Gustavo')).toBeGreaterThan(nomes.indexOf('Alexandre S'))
   })
 
@@ -173,20 +170,15 @@ describe('ajuda libera na ordem do hospital de ORIGEM (dono 27/08)', () => {
     }
     montar({ unimed: marcado, hro: HRO })
     const nomes = fila()
-    // Oscar (plantão do contraturno) subiu em 30/08; a ordem ENTRE as ajudas,
-    // que é o assunto deste teste, seguiu igual
-    expect(nomes.slice(-4)).toEqual(['Oscar', 'Alexandre S', 'Gustavo', 'Romulo'])
+    expect(nomes.slice(-4)).toEqual(['Alexandre S', 'Gustavo', 'Romulo', 'Oscar'])
     expect(screen.getByText('Ajuda (Materno)')).toBeTruthy()
   })
 
   it('sem a escala do outro hospital, a cauda não inventa ordem nenhuma', () => {
     montar({ unimed: UNIMED })
-    // ninguém tem origem conhecida: a fila não quebra, as ajudas seguem no fim
-    // (desde 30/08 elas fecham a lista, à frente do plantão do contraturno) e
-    // nenhuma delas ganha rótulo de origem
+    // ninguém tem origem conhecida: a fila não quebra e o contraturno segue no fim
     const nomes = fila()
-    expect(nomes).toContain('Oscar')
-    expect(nomes.indexOf('Oscar')).toBeLessThan(nomes.indexOf('Alexandre S'))
+    expect(nomes[nomes.length - 1]).toBe('Oscar')
     expect(screen.queryByText('Ajuda (HRO)')).toBeNull()
   })
 })

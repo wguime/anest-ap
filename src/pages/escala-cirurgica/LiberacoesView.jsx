@@ -913,17 +913,28 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // ACRESCENTADO SEM CONSTAR NO RODAPÉ = AJUDA (dono 19/08): quem aparece com
   // caso fora da ordem publicada entra na FILA como ajuda — é o PRIMEIRO a ir
   // embora, sem ocupar posição de ninguém (a ordem publicada segue intocada; a
-  // fila só muda quando o usuário faz troca).
+  // fila só muda quando o usuário faz troca). Interação com o plantão do
+  // contraturno: quando o plantão está ESCALADO ele continua fechando a lista
+  // (sai primeiro) e a ajuda entra logo ACIMA (é liberada depois dele); plantão
+  // não escalado/já liberado é pulado pelo naFila e a ajuda vira a primeira.
   //
-  // ⚠️ A AJUDA SAI ANTES DO PLANTÃO DO CONTRATURNO (dono 30/08, corrigindo a
-  // exceção que valia desde 19/08 — "Oscar sai antes de Guilherme Xavier porque
-  // Guilherme é plantão do contraturno mas não está como ajuda"). A exceção punha
-  // o plantão escalado fechando a lista e a ajuda logo ACIMA dele. Mas quem está
-  // aqui de ajuda é gente de OUTRO hospital, com plantão e fila próprios para
-  // voltar — segurá-la para depois do plantão daqui prende duas escalas de uma
-  // vez. "É o primeiro a ir embora" volta a valer sem exceção.
+  // ⚠️ UMA EXCEÇÃO, E SÓ ELA (dono 31/08, corrigindo minha leitura do dia
+  // anterior — eu tinha generalizado para "ajuda sempre sai primeiro", e ele
+  // devolveu: "A escala de amanhã é uma EXCEÇÃO, Oscar só irá sair antes do
+  // plantão do contraturno do HRO porque ele é plantão de contraturno de OUTRO
+  // hospital e está como ajuda"). Os dois requisitos juntos:
+  //   · está aqui de AJUDA (fora do rodapé daqui), E
+  //   · é quem FECHA o rodapé de outro hospital neste turno (= plantão do
+  //     contraturno de lá — é exatamente o que `contraturnoDe` responde).
+  // Aí ele passa à frente do plantão do contraturno DAQUI: os dois pegam plantão
+  // no próximo turno, e o daqui já está em casa. Ajuda que NÃO é plantão em
+  // lugar nenhum não ganha nada disso — continua saindo depois do plantão daqui,
+  // como desde 19/08.
   const linhasForaDoRodape = doTurno.filter((l) => l.isExtra)
   const linhasOficiais = doTurno.filter((l) => !l.isExtra)
+  const fechaComPlantao = linhasOficiais.length > 0 && linhasOficiais[linhasOficiais.length - 1].isProximoPlantao
+  const ajudaComPlantaoFora = linhasForaDoRodape.filter((l) => contraturnoDe(l))
+  const ajudaSemPlantaoFora = linhasForaDoRodape.filter((l) => !contraturnoDe(l))
   // A FILA SEGUE SEMPRE A ORDEM DO RODAPÉ (dono 11/08, reforçando 27/07).
   // Liberado NÃO afunda mais: quem sai fica na própria posição, riscado e com o
   // selo "Liberado". O afundamento antigo dava a impressão de que a ordem tinha
@@ -932,11 +943,19 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // "inseriram o rodapé fora de ordem". Só saem da ordem quem a regra manda:
   // plantão noturno no topo, e extras/ajudas/plantão-do-turno-seguinte no fim
   // (esses a própria lib já posiciona).
-  const linhasExibicao = [
-    ...linhasFase.filter((l) => l.noturno),
-    ...linhasOficiais,
-    ...linhasForaDoRodape,
-  ]
+  const linhasExibicao = fechaComPlantao
+    ? [
+        ...linhasFase.filter((l) => l.noturno),
+        ...linhasOficiais.slice(0, -1),
+        ...ajudaSemPlantaoFora,
+        linhasOficiais[linhasOficiais.length - 1],
+        ...ajudaComPlantaoFora,
+      ]
+    : [
+        ...linhasFase.filter((l) => l.noturno),
+        ...linhasOficiais,
+        ...linhasForaDoRodape,
+      ]
 
   // TEMPO ESTOURADO (dono 24/08): quem informou um término que já passou e AINDA
   // tem cirurgia aberta. A conta é a mesma que pinta a pílula de âmbar no card —

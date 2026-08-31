@@ -207,15 +207,25 @@ ACIMA do plantão do contraturno e era liberado DEPOIS dele. O dono: *"Oscar sai
 antes de Guilherme Xavier porque Guilherme é plantão do contraturno mas não está
 como ajuda."*
 
-### A regra
+### A regra da ordem — a exceção é ESTREITA
 
-> **A ajuda FECHA a lista — é a primeira a ir embora, sem exceção.** Inclusive na
-> frente do plantão do contraturno ESCALADO daquele hospital.
+> **A ajuda passa à frente do plantão do contraturno DAQUI só quando ela própria
+> é o plantão do contraturno de OUTRO hospital.** Os dois requisitos juntos.
 
-Quem está aqui de ajuda é gente de OUTRO hospital, com plantão e fila próprios
-para voltar; segurá-la para depois do plantão daqui prende duas escalas de uma
-vez. Isso REVOGA a exceção que nasceu junto com a regra de 19/08 (plantão
-escalado fechava a lista, ajuda logo acima) — `fechaComPlantao` não existe mais.
+Dono em 31/08, corrigindo a generalização que eu tinha escrito no dia anterior
+("ajuda sempre sai primeiro, sem exceção"): *"ISSO ESTÁ ERRADO!! A escala de
+amanhã é uma EXCEÇÃO, Oscar só irá sair antes do plantão do contraturno do HRO
+porque ele é plantão de contraturno de outro hospital e está como ajuda."*
+
+Os dois pegam plantão no próximo turno; o daqui já está em casa, o de fora ainda
+precisa atravessar a cidade. **Ajuda que não é plantão em lugar nenhum continua
+saindo depois do plantão daqui**, exatamente como desde 19/08 — `fechaComPlantao`
+continua de pé, e a exceção é uma partição das ajudas por `contraturnoDe(linha)`
+(quem FECHA o rodapé de outro hospital naquele turno).
+
+⚠️ Regra de fila reportada como errada raramente vira regra geral. Antes de
+transformar um caso em "sem exceção", perguntar: **o que neste caso é
+particular?** Aqui era ser plantonista dos dois lados, não ser ajuda.
 
 ### O mecanismo (não crie um segundo)
 
