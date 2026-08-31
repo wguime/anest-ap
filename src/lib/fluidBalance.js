@@ -49,24 +49,91 @@ export function maintenanceRate(weightKg) {
  * Volume sanguíneo estimado por kg conforme faixa.
  * Categorias: 'prematuro' | 'neonato' | 'lactente' | 'crianca' | 'adulto'.
  */
-export function ebvPerKg(category) {
+export function ebvPerKg(category, sexo) {
+  // ⚠️ No ADULTO o volume varia com o sexo: 75 ml/kg no homem, 65 na mulher
+  // (massa magra e hematócrito diferentes). O 70 continua sendo o valor de
+  // quem não informou o sexo — é a média, e era o que o card usava para todo
+  // mundo até 31/08/2026.
+  if (category === 'adulto') {
+    if (sexo === 'masculino') return 75;
+    if (sexo === 'feminino') return 65;
+    return 70;
+  }
   const map = {
     prematuro: 95,
     neonato: 85,
     lactente: 80,
     crianca: 75,
-    adulto: 70,
   };
   return map[category] ?? 70;
 }
 
 /**
- * Volume sanguíneo estimado total (ml).
+ * Volume sanguíneo pela equação de NADLER (1962), em ml.
+ *
+ * BV(L) = k1 × altura(m)³ + k2 × peso(kg) + k3
+ *   homem:  0,3669 / 0,03219 / 0,6041
+ *   mulher: 0,3561 / 0,03308 / 0,1833
+ *
+ * É a equação usada por Medscape e QxMD e a base das derivações posteriores.
+ * Mais fiel que ml/kg porque separa o componente da ESTATURA do componente do
+ * peso — em obeso, ml/kg superestima (tecido adiposo é pouco vascularizado).
+ * Devolve 0 quando falta altura ou sexo: aí quem responde é `ebvPerKg`.
  */
-export function estimatedBloodVolume(weightKg, category) {
+export function bloodVolumeNadler(weightKg, alturaCm, sexo) {
+  const w = num(weightKg);
+  const h = num(alturaCm) / 100;
+  if (w <= 0 || h <= 0) return 0;
+  if (sexo !== 'masculino' && sexo !== 'feminino') return 0;
+  const k = sexo === 'masculino'
+    ? { k1: 0.3669, k2: 0.03219, k3: 0.6041 }
+    : { k1: 0.3561, k2: 0.03308, k3: 0.1833 };
+  return (k.k1 * h ** 3 + k.k2 * w + k.k3) * 1000;
+}
+
+/**
+ * Volume sanguíneo estimado total (ml).
+ *
+ * Nadler quando dá (adulto com altura e sexo), ml/kg no resto. A assinatura
+ * antiga `(peso, categoria)` continua valendo.
+ */
+export function estimatedBloodVolume(weightKg, category, opcoes = {}) {
   const w = num(weightKg);
   if (w <= 0) return 0;
-  return w * ebvPerKg(category);
+  const { alturaCm, sexo } = opcoes;
+  if (category === 'adulto') {
+    const nadler = bloodVolumeNadler(w, alturaCm, sexo);
+    if (nadler > 0) return nadler;
+  }
+  return w * ebvPerKg(category, sexo);
+}
+
+/**
+ * Depuração de creatinina por COCKCROFT-GAULT (ml/min).
+ *
+ * ⚠️ MESMA fórmula do card `renal_cockroft` (calculator-definitions.js), de
+ * propósito: duas contas de ClCr no mesmo app dariam dois números para o mesmo
+ * paciente. ClCr = (140 − idade) × peso / (72 × Cr), × 0,85 se mulher.
+ */
+export function clearanceCockcroftGault(idadeAnos, weightKg, creatinina, sexo) {
+  const idade = num(idadeAnos);
+  const w = num(weightKg);
+  const cr = num(creatinina);
+  if (idade <= 0 || w <= 0 || cr <= 0) return 0;
+  const base = ((140 - idade) * w) / (72 * cr);
+  return sexo === 'feminino' ? base * 0.85 : base;
+}
+
+/** Estágio KDIGO da função renal. Mesmas faixas do card `renal_cockroft`. */
+export function estagioRenal(clcr) {
+  const v = num(clcr);
+  if (v <= 0) return null;
+  if (v >= 90) return { estagio: 'G1', rotulo: 'normal', reduzida: false };
+  if (v >= 60) return { estagio: 'G2', rotulo: 'redução leve', reduzida: false };
+  if (v >= 45) return { estagio: 'G3a', rotulo: 'redução leve a moderada', reduzida: true };
+  if (v >= 30) return { estagio: 'G3b', rotulo: 'redução moderada a grave', reduzida: true };
+  if (v >= 15) return { estagio: 'G4', rotulo: 'redução grave', reduzida: true };
+  return { estagio: 'G5', rotulo: 'falência renal', reduzida: true };
 }
 
 /**
@@ -120,8 +187,8 @@ export function thirdSpaceLoss(weightKg, porte) {
  *
  * Retorna 0 se Hi ≤ Hf (sem margem) ou EBV inválido.
  */
-export function ablGross(weightKg, category, hctInicial, hctMinimo) {
-  const ebv = estimatedBloodVolume(weightKg, category);
+export function ablGross(weightKg, category, hctInicial, hctMinimo, opcoes = {}) {
+  const ebv = estimatedBloodVolume(weightKg, category, opcoes);
   const hi = num(hctInicial);
   const hf = num(hctMinimo);
   if (ebv <= 0 || hi <= 0 || hf <= 0 || hi <= hf) return 0;
@@ -181,18 +248,28 @@ export function evaluateBalance({
   hctMinimo,
   isPediatric,
   hours = [],
+  alturaCm,
+  sexo,
+  idadeAnos,
+  creatinina,
 }) {
   const rate = maintenanceRate(weightKg);
   const tsLoss = thirdSpaceLoss(weightKg, porte);
-  const abl = ablGross(weightKg, category, hctInicial, hctMinimo);
+  const opcoesCorpo = { alturaCm, sexo };
+  const ebv = estimatedBloodVolume(weightKg, category, opcoesCorpo);
+  const abl = ablGross(weightKg, category, hctInicial, hctMinimo, opcoesCorpo);
   const goalRate = urineGoal(weightKg, isPediatric);
+  const clcr = clearanceCockcroftGault(idadeAnos, weightKg, creatinina, sexo);
+  const renal = estagioRenal(clcr);
 
   let totalInfundido = 0;
   let totalSangramento = 0;
   let totalDiurese = 0;
   let totalOutras = 0;
+  let totalColoide = 0;
 
   hours.forEach((h) => {
+    totalColoide += num(h?.coloide);
     totalInfundido += num(h?.cristaloide) + num(h?.coloide) + num(h?.sangueDerivados);
     totalSangramento += num(h?.sangramento);
     totalDiurese += num(h?.diurese);
@@ -243,15 +320,46 @@ export function evaluateBalance({
     if (oliguria) {
       alerts.push({
         level: 'warning',
-        message: `Oligúria: diurese < ${goalRate.toFixed(0)} ml/h em 2 h consecutivas.`,
+        message:
+          `Oligúria: diurese < ${goalRate.toFixed(0)} ml/h em 2 h consecutivas. ` +
+          'Oligúria intraoperatória isolada é preditor fraco de LRA — avaliar volemia antes de expandir.',
       });
     }
+  }
+
+  /* Função renal reduzida muda a leitura do balanço, não a conta.
+   *
+   * ⚠️ NÃO subimos a meta de diurese: oligúria intraoperatória é preditor
+   * FRACO de LRA (valor preditivo positivo de 25,5%) e o paciente oligúrico
+   * hemodinamicamente estável NÃO responde a prova de volume. Perseguir
+   * diurese com expansão em rim ruim troca um risco por outro — o de
+   * sobrecarga, que ele tem menos como desfazer. */
+  if (renal?.reduzida) {
+    alerts.push({
+      level: 'warning',
+      message:
+        `Função renal reduzida (ClCr ${clcr.toFixed(0)} ml/min, KDIGO ${renal.estagio}): ` +
+        'menor capacidade de excretar volume — evitar balanço muito positivo, e não perseguir a meta de diurese com expansão.',
+    });
+  }
+
+  /* Hidroxietilamido (HES) em rim ruim: a autorização europeia foi SUSPENSA em
+   * 2022 e o FDA exige alerta em caixa, por lesão renal e mortalidade. O campo
+   * "coloide" do card é genérico — albumina e gelatina não têm a mesma
+   * restrição —, então o alerta nomeia o HES em vez de condenar o coloide. */
+  if (totalColoide > 0 && clcr > 0 && clcr < 30) {
+    alerts.push({
+      level: 'destructive',
+      message:
+        `Coloide com ClCr ${clcr.toFixed(0)} ml/min: hidroxietilamido (HES) é contraindicado ` +
+        '— autorização suspensa na UE (2022) por lesão renal e mortalidade. Albumina não tem essa restrição.',
+    });
   }
 
   if (abl > 0 && totalSangramento >= abl) {
     alerts.push({
       level: 'destructive',
-      message: 'ABL atingida — considerar transfusão de hemoderivados.',
+      message: 'Perda sanguínea permitida atingida — considerar transfusão de hemoderivados.',
     });
   }
 
@@ -281,6 +389,10 @@ export function evaluateBalance({
     reposicaoCristaloide,
     reposicaoColoide,
     diureses,
+    ebv,
+    clcr,
+    renal,
+    totalColoide,
     alerts,
   };
 }

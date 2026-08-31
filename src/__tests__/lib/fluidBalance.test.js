@@ -11,6 +11,9 @@ import {
   urineGoal,
   evaluateBalance,
   medido,
+  bloodVolumeNadler,
+  clearanceCockcroftGault,
+  estagioRenal,
 } from '@/lib/fluidBalance';
 
 // Tolerância para comparações de float (1 ml é clinicamente irrelevante).
@@ -224,7 +227,13 @@ describe('evaluateBalance — integração', () => {
     const r = evaluateBalance({ ...baseAdulto, hours });
     expect(r.totalSangramento).toBe(2100);
     expect(r.totalInfundido).toBe(2600);
-    expect(r.alerts.some((a) => a.message.includes('ABL atingida'))).toBe(true);
+    /* A string mudou em 31/08/2026 junto com o termo da tela: "ABL" saiu de
+     * TODA a interface porque "perda permitida" sozinho não dizia perda de quê
+     * (dono). O teste segue a mesma invariante — o alerta dispara quando o
+     * sangramento alcança o limite —, só com o texto que o usuário lê. */
+    expect(
+      r.alerts.some((a) => a.message.includes('Perda sanguínea permitida atingida'))
+    ).toBe(true);
   });
 
   it('balanço positivo > 1500 após 3 h → alerta sobrecarga', () => {
@@ -315,6 +324,60 @@ describe('evaluateBalance — integração', () => {
     expect(r.reposicaoColoide).toBe(0);
   });
 
+  it('o sexo muda a perda sanguínea permitida pela via do volume', () => {
+    const h = evaluateBalance({ ...baseAdulto, sexo: 'masculino', hours: [] });
+    const m = evaluateBalance({ ...baseAdulto, sexo: 'feminino', hours: [] });
+    expect(h.ebv).toBe(5250);
+    expect(m.ebv).toBe(4550);
+    expect(h.abl).toBeGreaterThan(m.abl);
+  });
+
+  it('rim reduzido gera aviso, e NÃO muda a meta de diurese', () => {
+    const r = evaluateBalance({
+      ...baseAdulto, sexo: 'masculino', idadeAnos: 72, creatinina: 2.2,
+      hours: [{ cristaloide: '500' }],
+    });
+    expect(r.renal.estagio).toBe('G3b');
+    const aviso = r.alerts.find((a) => a.message.includes('Função renal reduzida'));
+    expect(aviso).toBeDefined();
+    expect(aviso.level).toBe('warning');
+    // a meta continua sendo 0,5 ml/kg/h: perseguir diurese em rim ruim troca
+    // um risco pelo de sobrecarga.
+    expect(r.goalRate).toBe(35);
+  });
+
+  it('função renal normal não gera aviso nenhum', () => {
+    const r = evaluateBalance({
+      ...baseAdulto, sexo: 'masculino', idadeAnos: 30, creatinina: 0.9,
+      hours: [{ cristaloide: '500' }],
+    });
+    expect(r.renal.reduzida).toBe(false);
+    expect(r.alerts.some((a) => a.message.includes('Função renal reduzida'))).toBe(false);
+  });
+
+  it('coloide com ClCr < 30 alerta sobre HES; sem coloide, não', () => {
+    const comColoide = evaluateBalance({
+      ...baseAdulto, sexo: 'feminino', idadeAnos: 80, creatinina: 3.0,
+      hours: [{ coloide: '500' }],
+    });
+    expect(comColoide.clcr).toBeLessThan(30);
+    expect(comColoide.alerts.some((a) => a.message.includes('HES'))).toBe(true);
+
+    const semColoide = evaluateBalance({
+      ...baseAdulto, sexo: 'feminino', idadeAnos: 80, creatinina: 3.0,
+      hours: [{ cristaloide: '500' }],
+    });
+    expect(semColoide.alerts.some((a) => a.message.includes('HES'))).toBe(false);
+  });
+
+  it('sem idade e creatinina, nenhum alerta renal aparece', () => {
+    const r = evaluateBalance({ ...baseAdulto, hours: [{ coloide: '500' }] });
+    expect(r.clcr).toBe(0);
+    expect(r.renal).toBeNull();
+    expect(r.alerts.some((a) => a.message.includes('HES'))).toBe(false);
+    expect(r.alerts.some((a) => a.message.includes('Função renal'))).toBe(false);
+  });
+
   it('hipovolemia: balanço < -1000 com sangramento', () => {
     const hours = [
       { cristaloide: 100, sangramento: 1500, diurese: 50 },
@@ -339,6 +402,90 @@ describe('evaluateBalance — integração', () => {
     expect(r.rate).toBe(50);
     // EBV 15*75 = 1125; ABL = 1125 * (35-25)/35 ≈ 321
     expect(r.abl).toBeCloseTo(321.4, 0);
+  });
+});
+
+describe('volume sanguíneo por sexo', () => {
+  it('adulto: 75 ml/kg homem, 65 mulher, 70 sem sexo informado', () => {
+    expect(ebvPerKg('adulto', 'masculino')).toBe(75);
+    expect(ebvPerKg('adulto', 'feminino')).toBe(65);
+    expect(ebvPerKg('adulto')).toBe(70);
+    expect(ebvPerKg('adulto', '')).toBe(70);
+  });
+
+  it('criança não muda com o sexo — a faixa etária já dá o ml/kg', () => {
+    expect(ebvPerKg('crianca', 'masculino')).toBe(75);
+    expect(ebvPerKg('neonato', 'feminino')).toBe(85);
+    expect(ebvPerKg('prematuro')).toBe(95);
+  });
+
+  it('Nadler homem 70 kg / 175 cm ≈ 4.824 ml', () => {
+    expect(bloodVolumeNadler(70, 175, 'masculino')).toBeCloseTo(4823.7, 0);
+  });
+
+  it('Nadler mulher 60 kg / 162 cm ≈ 3.682 ml', () => {
+    expect(bloodVolumeNadler(60, 162, 'feminino')).toBeCloseTo(3682.1, 0);
+  });
+
+  it('Nadler devolve 0 sem altura ou sem sexo — aí quem responde é ml/kg', () => {
+    expect(bloodVolumeNadler(70, 0, 'masculino')).toBe(0);
+    expect(bloodVolumeNadler(70, 175, '')).toBe(0);
+    expect(bloodVolumeNadler(0, 175, 'masculino')).toBe(0);
+  });
+
+  it('estimatedBloodVolume prefere Nadler quando dá, e cai em ml/kg quando não', () => {
+    expect(estimatedBloodVolume(70, 'adulto', { alturaCm: 175, sexo: 'masculino' })).toBeCloseTo(4823.7, 0);
+    expect(estimatedBloodVolume(70, 'adulto', { sexo: 'masculino' })).toBe(5250);
+    expect(estimatedBloodVolume(70, 'adulto', { sexo: 'feminino' })).toBe(4550);
+  });
+
+  it('a assinatura antiga de 2 argumentos continua valendo (70 ml/kg)', () => {
+    expect(estimatedBloodVolume(70, 'adulto')).toBe(4900);
+  });
+
+  it('em criança, altura e sexo não acionam Nadler', () => {
+    expect(estimatedBloodVolume(15, 'crianca', { alturaCm: 100, sexo: 'masculino' })).toBe(1125);
+  });
+});
+
+describe('função renal — Cockcroft-Gault', () => {
+  it('homem 60 anos, 70 kg, Cr 1,0 → (140-60)×70/(72×1) ≈ 77,8', () => {
+    expect(clearanceCockcroftGault(60, 70, 1.0, 'masculino')).toBeCloseTo(77.8, 1);
+  });
+
+  it('mulher desconta 15%', () => {
+    const h = clearanceCockcroftGault(60, 70, 1.0, 'masculino');
+    const m = clearanceCockcroftGault(60, 70, 1.0, 'feminino');
+    expect(m).toBeCloseTo(h * 0.85, 4);
+  });
+
+  it('sem sexo informado NÃO desconta — o desconto é da mulher', () => {
+    expect(clearanceCockcroftGault(60, 70, 1.0)).toBeCloseTo(77.8, 1);
+  });
+
+  it('faltando qualquer dado devolve 0', () => {
+    expect(clearanceCockcroftGault(0, 70, 1)).toBe(0);
+    expect(clearanceCockcroftGault(60, 0, 1)).toBe(0);
+    expect(clearanceCockcroftGault(60, 70, 0)).toBe(0);
+  });
+
+  it('estágios KDIGO nas fronteiras', () => {
+    expect(estagioRenal(90).estagio).toBe('G1');
+    expect(estagioRenal(89).estagio).toBe('G2');
+    expect(estagioRenal(60).estagio).toBe('G2');
+    expect(estagioRenal(59).estagio).toBe('G3a');
+    expect(estagioRenal(45).estagio).toBe('G3a');
+    expect(estagioRenal(44).estagio).toBe('G3b');
+    expect(estagioRenal(30).estagio).toBe('G3b');
+    expect(estagioRenal(29).estagio).toBe('G4');
+    expect(estagioRenal(14).estagio).toBe('G5');
+    expect(estagioRenal(0)).toBeNull();
+  });
+
+  it('reduzida começa em G3a — G1 e G2 não são', () => {
+    expect(estagioRenal(95).reduzida).toBe(false);
+    expect(estagioRenal(70).reduzida).toBe(false);
+    expect(estagioRenal(50).reduzida).toBe(true);
   });
 });
 

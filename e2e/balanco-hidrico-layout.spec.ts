@@ -157,12 +157,20 @@ test.describe('Balanço Hídrico — layout da reforma', () => {
     expect(await dentroDaFita()).toMatchObject({ aba: '5', dentro: true });
   });
 
-  test('a tela mostra 10 campos, não 76 — o resultado vem antes das entradas', async ({ page }) => {
+  test('uma hora por vez, não as 12 — e o resultado vem antes das entradas', async ({ page }) => {
     await entrar(page, 'light');
     await abrirCard(page);
 
-    // 6 da hora ativa + 4 do pré-op. Antes da reforma eram 76 (12 horas × 6 + 4).
-    await expect(page.locator('input[type="number"]')).toHaveCount(10);
+    /* ⚠️ A invariante é "UMA hora por vez", não um total fixo.
+     *
+     * A 1ª versão exigia exatamente 10 campos (6 da hora + 4 do pré-op) e
+     * quebrou no dia seguinte, quando altura, idade e creatinina entraram —
+     * um teste que reprova a cada campo novo do pré-op não protege nada, só
+     * pede manutenção. O que não pode voltar é a tela com as 12 horas
+     * abertas: 12 × 6 + pré-op = 76 campos, que foi o defeito relatado. */
+    await expect(page.locator('[data-testid="hora-campos"] input[type="number"]')).toHaveCount(6);
+    const total = await page.locator('input[type="number"]').count();
+    expect(total, 'todas as horas voltaram a ser renderizadas juntas').toBeLessThan(30);
 
     const ordem = await page.evaluate(() => {
       const bal = document.querySelector('[aria-labelledby="balanco-heading"]');

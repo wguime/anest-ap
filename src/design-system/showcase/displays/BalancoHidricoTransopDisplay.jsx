@@ -19,16 +19,53 @@ import { Button } from '../../components/ui/button';
 import {
   evaluateBalance,
   fastingDeficit,
+  maintenanceRate,
   furmanReplacement,
-  estimatedBloodVolume,
   categoryForPopulation,
   medido,
 } from '../../../lib/fluidBalance';
+import { pesosDeReferencia } from '../../../lib/pesoCorporal';
 
+/* ⚠️ O rótulo do Select ficava truncado no gatilho ("Médio porte (4 ml/kg/h) —
+   colecistect...", relatado pelo dono): o dropdown do DS herda a largura do
+   gatilho. Por isso o rótulo é CURTO e os exemplos vivem embaixo do campo, onde
+   cabem — e onde dá para listar muitos. */
 const PORTE_OPTIONS = [
-  { value: 'pequeno', label: 'Pequeno porte (2 ml/kg/h) — herniorrafia, ortopedia menor' },
-  { value: 'medio', label: 'Médio porte (4 ml/kg/h) — colecistectomia, histerectomia' },
-  { value: 'grande', label: 'Grande porte (6 ml/kg/h) — laparotomia, toracotomia' },
+  { value: 'pequeno', label: 'Pequeno porte — 2 ml/kg/h' },
+  { value: 'medio', label: 'Médio porte — 4 ml/kg/h' },
+  { value: 'grande', label: 'Grande porte — 6 ml/kg/h' },
+];
+
+const PORTE_EXEMPLOS = {
+  pequeno: {
+    exemplos:
+      'Herniorrafia · ortopedia menor e artroscopia · cirurgia de mama · tireoidectomia · ' +
+      'oftalmológica · RTU de próstata ou bexiga · videolaparoscopia diagnóstica · ' +
+      'histeroscopia · cirurgia de pele e partes moles',
+  },
+  medio: {
+    exemplos:
+      'Colecistectomia · apendicectomia · histerectomia · nefrectomia · artroplastia de quadril ou joelho · ' +
+      'bariátrica laparoscópica · coluna 1–2 níveis · ' +
+      'ROBÓTICAS: prostatectomia radical, histerectomia, miomectomia, nefrectomia parcial, ' +
+      'colectomia, hernioplastia ventral',
+    nota:
+      'Nas robóticas com Trendelenburg acentuado, o volume costuma ser RESTRITO durante o console — ' +
+      'diurese baixa mantém o campo seco até a anastomose, e o excesso vira edema de face e via aérea. ' +
+      'Oligúria nesse período é esperada; reavaliar depois de desfeito o pneumoperitônio.',
+  },
+  grande: {
+    exemplos:
+      'Laparotomia exploradora · toracotomia · esofagectomia · duodenopancreatectomia · ' +
+      'ressecção hepática · cirurgia de aorta · cistectomia radical com derivação · ' +
+      'citorredução com HIPEC · coluna longa · politrauma · ' +
+      'ROBÓTICAS: esofagectomia, cistectomia radical, duodenopancreatectomia, lobectomia pulmonar',
+  },
+};
+
+const SEXO_OPTIONS = [
+  { v: 'masculino', label: 'Homem' },
+  { v: 'feminino', label: 'Mulher' },
 ];
 
 const PED_CATEGORY_OPTIONS = [
@@ -110,6 +147,38 @@ function PillToggle({ value, onChange }) {
             )}
           >
             <Icon className="w-4 h-4" aria-hidden="true" />
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function SexoToggle({ value, onChange }) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Sexo biológico"
+      className="inline-flex p-1 rounded-xl bg-muted border border-border"
+    >
+      {SEXO_OPTIONS.map(({ v, label }) => {
+        const ativo = value === v;
+        return (
+          <button
+            key={v}
+            type="button"
+            role="radio"
+            aria-checked={ativo}
+            // Clicar no que já está selecionado LIMPA: sem isso não há como
+            // voltar para "não informado", que é o estado em que o card usa
+            // 70 ml/kg — a média, e o comportamento de antes de 31/08.
+            onClick={() => onChange(ativo ? '' : v)}
+            className={cn(
+              'px-4 py-2 rounded-lg text-sm font-medium transition-colors min-h-[44px]',
+              ativo ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
             {label}
           </button>
         );
@@ -243,6 +312,10 @@ export default function BalancoHidricoTransopDisplay() {
   const [porte, setPorte] = useState(salvo?.porte ?? 'medio');
   const [hctInicial, setHctInicial] = useState(salvo?.hctInicial ?? '');
   const [hctMinimo, setHctMinimo] = useState(salvo?.hctMinimo ?? '25');
+  const [sexo, setSexo] = useState(salvo?.sexo ?? '');
+  const [altura, setAltura] = useState(salvo?.altura ?? '');
+  const [idade, setIdade] = useState(salvo?.idade ?? '');
+  const [creatinina, setCreatinina] = useState(salvo?.creatinina ?? '');
   const [horas, setHoras] = useState(salvo?.horas ?? []);
   const [horaAtiva, setHoraAtiva] = useState(Math.max(0, (salvo?.horas?.length ?? 1) - 1));
   const [verLivro, setVerLivro] = useState(false);
@@ -254,18 +327,25 @@ export default function BalancoHidricoTransopDisplay() {
   const npoN = parseFloat(npoHoras) || 0;
   const hctIN = parseFloat(hctInicial) || 0;
   const hctMN = parseFloat(hctMinimo) || 0;
+  const alturaN = parseFloat(altura) || 0;
+  const idadeN = parseFloat(idade) || 0;
+  const creatininaN = parseFloat(creatinina) || 0;
 
   // O rascunho é gravado a cada mudança; recarregar não perde a cirurgia.
   useEffect(() => {
     try {
       localStorage.setItem(
         CHAVE_RASCUNHO,
-        JSON.stringify({ populacao, pedCategory, peso, npoHoras, porte, hctInicial, hctMinimo, horas })
+        JSON.stringify({
+          populacao, pedCategory, peso, npoHoras, porte, hctInicial, hctMinimo, horas,
+          sexo, altura, idade, creatinina,
+        })
       );
     } catch {
       /* modo privado ou armazenamento cheio: seguir sem persistir */
     }
-  }, [populacao, pedCategory, peso, npoHoras, porte, hctInicial, hctMinimo, horas]);
+  }, [populacao, pedCategory, peso, npoHoras, porte, hctInicial, hctMinimo, horas,
+      sexo, altura, idade, creatinina]);
 
   /* A fita mostra a hora ATIVA, não a hora 1. Com 12 horas a aba em uso nasce
    * fora de vista, e quem recarrega no meio da cirurgia não acha onde digitar.
@@ -308,12 +388,24 @@ export default function BalancoHidricoTransopDisplay() {
         hctMinimo: hctMN,
         isPediatric,
         hours: horas,
+        alturaCm: alturaN,
+        sexo,
+        idadeAnos: idadeN,
+        creatinina: creatininaN,
       }),
-    [pesoN, npoN, porte, category, hctIN, hctMN, isPediatric, horas]
+    [pesoN, npoN, porte, category, hctIN, hctMN, isPediatric, horas,
+     alturaN, sexo, idadeN, creatininaN]
   );
 
   const deficit = useMemo(() => fastingDeficit(pesoN, npoN), [pesoN, npoN]);
-  const ebv = useMemo(() => estimatedBloodVolume(pesoN, category), [pesoN, category]);
+  /* Peso ideal / magro / ajustado saem da lib compartilhada `pesoCorporal.js`
+   * (criada em 30/08). O card já dizia "em obesidade, prefira peso ideal ou
+   * magro ao peso real" e não oferecia onde calcular — o conselho ficava sem
+   * destino. Precisa de altura E sexo. */
+  const pesos = useMemo(
+    () => (alturaN > 0 && sexo ? pesosDeReferencia(pesoN, alturaN, sexo) : null),
+    [pesoN, alturaN, sexo]
+  );
   const furman1 = useMemo(() => furmanReplacement(pesoN, npoN, 1), [pesoN, npoN]);
   const furman2 = useMemo(() => furmanReplacement(pesoN, npoN, 2), [pesoN, npoN]);
   const furman3 = useMemo(() => furmanReplacement(pesoN, npoN, 3), [pesoN, npoN]);
@@ -345,6 +437,9 @@ export default function BalancoHidricoTransopDisplay() {
     setPeso('');
     setNpoHoras('');
     setHctInicial('');
+    setAltura('');
+    setIdade('');
+    setCreatinina('');
     setVerLivro(false);
     try {
       localStorage.removeItem(CHAVE_RASCUNHO);
@@ -439,7 +534,8 @@ export default function BalancoHidricoTransopDisplay() {
             </span>
             {result.abl > 0 && (
               <span>
-                Perda permitida <b className="text-foreground">{numeroBr(result.ablRestante)}</b>
+                Sangue até transfundir{' '}
+                <b className="text-foreground">{numeroBr(result.ablRestante)}</b>
               </span>
             )}
           </div>
@@ -636,6 +732,20 @@ export default function BalancoHidricoTransopDisplay() {
           <PillToggle value={populacao} onChange={setPopulacao} />
         </div>
 
+        {/* Sexo só no adulto: Nadler e o 75/65 ml/kg são validados em adultos, e
+            na criança o volume por kg já vem da faixa etária. */}
+        {!isPediatric && (
+          <div className="flex items-center gap-3 flex-wrap">
+            <SexoToggle value={sexo} onChange={setSexo} />
+            <p className="text-xs text-muted-foreground flex-1 min-w-[180px]">
+              {sexo
+                ? 'Volume sanguíneo ajustado ao sexo' +
+                  (alturaN > 0 ? ' e à altura (Nadler).' : '. Informe a altura para usar Nadler.')
+                : 'Sem sexo informado, o volume sanguíneo usa a média de 70 ml/kg.'}
+            </p>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 deitado:grid-cols-3 gap-3">
           <Input
             type="number"
@@ -647,6 +757,16 @@ export default function BalancoHidricoTransopDisplay() {
             step={0.1}
             placeholder={isPediatric ? '15' : '70'}
             required
+          />
+          <Input
+            type="number"
+            label="Altura (cm)"
+            value={altura}
+            onChange={(e) => setAltura(e.target.value)}
+            min={40}
+            max={230}
+            step={1}
+            placeholder={isPediatric ? '100' : '170'}
           />
           <Input
             type="number"
@@ -694,6 +814,70 @@ export default function BalancoHidricoTransopDisplay() {
             placeholder="25"
           />
         </div>
+
+        {/* Exemplos do porte escolhido. FORA do Select de propósito: o dropdown
+            do DS herda a largura do gatilho e truncava o rótulo. */}
+        {PORTE_EXEMPLOS[porte] && (
+          <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-2">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              Exemplos de {PORTE_OPTIONS.find((o) => o.value === porte)?.label.toLowerCase()}
+            </p>
+            <p className="text-xs text-foreground leading-relaxed">{PORTE_EXEMPLOS[porte].exemplos}</p>
+            {PORTE_EXEMPLOS[porte].nota && (
+              <p className="text-xs text-warning leading-relaxed">{PORTE_EXEMPLOS[porte].nota}</p>
+            )}
+          </div>
+        )}
+
+        {/* Função renal — opcional. Muda a LEITURA do balanço, não a conta. */}
+        <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-3">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              Função renal (opcional)
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Idade e creatinina calculam a depuração (Cockcroft-Gault) e ligam os avisos de rim.
+              {' '}Ureia fica de fora de propósito — sobe com jejum, catabolismo, corticoide e
+              sangramento digestivo, e não mede filtração.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 deitado:grid-cols-4 gap-3">
+            <Input
+              type="number"
+              label="Idade (anos)"
+              value={idade}
+              onChange={(e) => setIdade(e.target.value)}
+              min={0}
+              max={120}
+              step={1}
+              placeholder="60"
+            />
+            <Input
+              type="number"
+              label="Creatinina (mg/dL)"
+              value={creatinina}
+              onChange={(e) => setCreatinina(e.target.value)}
+              min={0.1}
+              max={20}
+              step={0.1}
+              placeholder="1,0"
+            />
+          </div>
+          {result.clcr > 0 && result.renal && (
+            <div
+              className={cn(
+                'rounded-lg border p-2.5 text-xs font-semibold',
+                result.renal.reduzida
+                  ? 'bg-warning/10 border-warning/40 text-warning'
+                  : 'bg-primary/10 border-primary/40 text-primary'
+              )}
+            >
+              Depuração de creatinina {numeroBr(result.clcr)} ml/min — KDIGO {result.renal.estagio},{' '}
+              {result.renal.rotulo}
+              {!sexo && ' (informe o sexo: na mulher a fórmula desconta 15%)'}
+            </div>
+          )}
+        </div>
       </section>
 
       {/* 4. ESTIMATIVAS */}
@@ -715,11 +899,17 @@ export default function BalancoHidricoTransopDisplay() {
             <MetricCard label="Déficit jejum" value={numeroBr(deficit)} unit="ml total" />
             <MetricCard label="3º espaço" value={numeroBr(result.tsLoss)} unit="ml/h" />
             <MetricCard label="Meta diurese" value={numeroBr(result.goalRate)} unit="ml/h" accent="primary" />
-            <MetricCard label="Volume sanguíneo" value={numeroBr(ebv)} unit="ml" />
             <MetricCard
-              label="Perda permitida"
+              label="Volume sanguíneo"
+              value={numeroBr(result.ebv)}
+              unit={alturaN > 0 && sexo ? 'ml (Nadler)' : `ml (${numeroBr(result.ebv / pesoN, 0)} ml/kg)`}
+            />
+            {/* ⚠️ "Perda permitida" sozinho não dizia perda DE QUÊ (dono 31/08).
+                Sangue é o único jeito de não confundir com perda de volume. */}
+            <MetricCard
+              label="Perda sanguínea permitida"
               value={result.abl > 0 ? numeroBr(result.abl) : '—'}
-              unit={result.abl > 0 ? 'ml' : 'Ht insuf.'}
+              unit={result.abl > 0 ? 'ml de sangue' : 'informe o Ht'}
               accent={result.abl > 0 ? 'warning' : 'default'}
             />
             {temHoras && result.totalSangramento > 0 && (
@@ -739,6 +929,30 @@ export default function BalancoHidricoTransopDisplay() {
             )}
           </div>
 
+          {pesos && (
+            <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-2">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Pesos de referência — IMC {numeroBr(pesos.imc, 1)} kg/m²
+              </p>
+              <div className="grid grid-cols-3 gap-3">
+                <MetricCard label="Peso ideal" value={numeroBr(pesos.pesoIdeal, 1)} unit="kg" />
+                <MetricCard label="Peso magro" value={numeroBr(pesos.pesoMagro, 1)} unit="kg" />
+                <MetricCard label="Peso ajustado" value={numeroBr(pesos.pesoAjustado, 1)} unit="kg" />
+              </div>
+              {/* ⚠️ `pesoAjustado` é null abaixo de 152,4 cm: a Devine é linear a
+                  partir de 5 pés e extrapolada para baixo dá número sem sentido.
+                  Sem essa guarda a frase sairia "de 190 para —". */}
+              {pesos.imc >= 30 && Number.isFinite(pesos.pesoAjustado) && (
+                <p className="text-xs text-warning leading-relaxed">
+                  IMC {numeroBr(pesos.imc, 1)} — em obesidade, a manutenção 4-2-1 pelo peso REAL
+                  superestima o volume. Considere refazer a conta com o peso ajustado
+                  ({numeroBr(pesos.pesoAjustado, 1)} kg): a manutenção cairia de{' '}
+                  {numeroBr(result.rate)} para {numeroBr(maintenanceRate(pesos.pesoAjustado))} ml/h.
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="rounded-lg bg-info/10 border border-info/40 p-3 text-xs text-info space-y-1">
             <p className="font-semibold">Plano de reposição do déficit (Furman 50/25/25):</p>
             <p>
@@ -750,16 +964,19 @@ export default function BalancoHidricoTransopDisplay() {
 
           <details className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
             <summary className="cursor-pointer font-semibold text-foreground select-none min-h-[44px] flex items-center">
-              Glossário — volume sanguíneo, perda permitida, POQI, Furman 50/25/25
+              Glossário — volume sanguíneo, perda sanguínea permitida, função renal, Furman
             </summary>
             <dl className="mt-3 space-y-3">
               <div>
                 <dt className="font-semibold text-foreground">Volume sanguíneo estimado (EBV)</dt>
                 <dd>
-                  Volume sanguíneo estimado do paciente. Calculado por peso × ml/kg conforme faixa
-                  etária: 70 ml/kg adulto, 75 criança, 80 lactente, 85 neonato, 95 prematuro. Base
-                  para estimar a perda sanguínea permitida e o impacto do sangramento sobre o
-                  hematócrito.
+                  Base para a perda sanguínea permitida e para o impacto do sangramento sobre o
+                  hematócrito. Com <strong>sexo e altura</strong>, usa a equação de{' '}
+                  <strong>Nadler (1962)</strong> — BV(L) = k₁ × altura(m)³ + k₂ × peso + k₃ —, que
+                  separa o componente da estatura do componente do peso e por isso não superestima
+                  no obeso, em quem o tecido adiposo é pouco vascularizado. Sem altura, cai em
+                  ml/kg: <strong>75 no homem, 65 na mulher</strong>, 70 se o sexo não foi informado;
+                  na criança, 75 ml/kg, 80 lactente, 85 neonato, 95 prematuro.
                 </dd>
               </div>
               <div>
@@ -778,6 +995,33 @@ export default function BalancoHidricoTransopDisplay() {
                   perdido, porque só um terço permanece no intravascular) ou coloide/hemoderivado{' '}
                   <strong>1:1</strong>. O cartão &quot;Repor sangramento&quot; aplica a regra ao
                   sangramento já registrado.
+                </dd>
+              </div>
+              <div>
+                <dt className="font-semibold text-foreground">Função renal e balanço hídrico</dt>
+                <dd>
+                  A depuração de creatinina sai de <strong>Cockcroft-Gault</strong> — (140 − idade) ×
+                  peso / (72 × creatinina), × 0,85 na mulher — a mesma fórmula do card
+                  &quot;Depuração de Creatinina&quot;, para o app não dar dois números ao mesmo
+                  paciente. <strong>A meta de diurese NÃO sobe com rim ruim.</strong> Oligúria
+                  intraoperatória isolada é preditor fraco de lesão renal aguda (valor preditivo
+                  positivo em torno de 25%) e o paciente oligúrico hemodinamicamente estável não
+                  responde a prova de volume: perseguir diurese com expansão troca um risco pelo de
+                  sobrecarga, que o rim doente tem menos como desfazer. O que muda é a leitura —
+                  evitar balanço muito positivo — e a escolha do coloide:{' '}
+                  <strong>hidroxietilamido (HES)</strong> teve a autorização suspensa na União
+                  Europeia em 2022 por lesão renal e mortalidade, e é contraindicado aqui;
+                  albumina não tem essa restrição.
+                </dd>
+              </div>
+              <div>
+                <dt className="font-semibold text-foreground">Por que não pedimos ureia</dt>
+                <dd>
+                  A ureia sobe por motivos que nada têm a ver com filtração — jejum, catabolismo,
+                  corticoide, dieta hiperproteica e sangramento digestivo — e a razão
+                  ureia/creatinina dificilmente separa causa pré-renal de necrose tubular. Para o
+                  que este card precisa decidir, creatinina com idade, peso e sexo basta e é
+                  acionável.
                 </dd>
               </div>
               <div>
