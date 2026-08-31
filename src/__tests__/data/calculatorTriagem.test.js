@@ -173,10 +173,11 @@ describe('duplicatas de fluidos — auditoria de 30/08/2026', () => {
 });
 
 describe('o que sobra', () => {
-  it('as ativas caem para 52', () => {
+  it('as ativas são 59', () => {
     // 76 − 20 da triagem = 56; menos ASA/Mallampati/Cormack, mais o card = 54;
-    // menos hemo_deficit e ped_fluidos (auditoria de 30/08) = 52.
-    expect(getActiveCalculators()).toHaveLength(52);
+    // menos hemo_deficit e ped_fluidos (duplicatas de fluido) = 52;
+    // mais as 7 acrescentadas pela auditoria por recomendação de diretriz = 59.
+    expect(getActiveCalculators()).toHaveLength(59);
   });
 
   it('nenhuma seção fica vazia na tela', () => {
@@ -194,9 +195,10 @@ describe('o que sobra', () => {
     expect(buscarBruto(id)?.status).toBe('active');
   });
 
-  it('o total de definições não caiu — nada foi apagado', () => {
-    // 80 originais + 5 de Indicação de UTI + 1 card de Classificações = 86
-    expect(getAllCalculators()).toHaveLength(86);
+  it('o total de definições só cresce — nada é apagado', () => {
+    // 80 originais + 5 de Indicação de UTI + 1 card de Classificações = 86,
+    // + 7 acréscimos com recomendação de diretriz (auditoria §7) = 93.
+    expect(getAllCalculators()).toHaveLength(93);
   });
 });
 

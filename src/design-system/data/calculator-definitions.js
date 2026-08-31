@@ -10,6 +10,10 @@ import { apacheII } from '@/lib/apacheII';
 import { fourScore } from '@/lib/fourScore';
 import { roxIndex } from '@/lib/roxIndex';
 import { converterOpioide } from '@/lib/opioidConversion';
+import { pesosDeReferencia } from '@/lib/pesoCorporal';
+import { ANESTESICOS_LOCAIS, doseMaximaAnestesicoLocal } from '@/lib/anestesicoLocal';
+import { SOLUCOES, planoCorrecaoSodio, BOLUS_SINTOMATICO } from '@/lib/correcaoSodio';
+import { NOME_AGENTE, macNaIdade, idadeForaDaValidacao, fracaoMacTotal } from '@/lib/macIdade';
 import {
   sodiumCorrectedHillier,
   sodiumCorrectedKatz,
@@ -1724,8 +1728,14 @@ const pedUtiCalculators = [
 
       if (peso <= 0 || scq <= 0) return null;
 
-      // ISBI 2016: 2 mL/kg/% SCQ (padrão atual; Baxter 4 mL/kg é histórico)
-      const parkland24h = 2 * peso * scq;
+      // ⚠️ 3 mL/kg/%SCQ é a constante PEDIÁTRICA (ABLS/ABA), não 2.
+      // A ABA Clinical Practice Guideline de 2024 recomenda iniciar com
+      // 2 mL/kg/%SCQ e declara escopo de ADULTOS com queimadura >= 20% SCQ.
+      // Para criança, o curso ABLS da própria ABA usa 3 mL/kg/%SCQ SOMADO à
+      // manutenção — e é a manutenção, que este card já fazia, que impede a
+      // criança pequena de ficar sem água livre e glicose.
+      // Trocado em 30/08/2026 — `docs/auditoria-calculadoras-uso-real.md` §8.5.
+      const parkland24h = 3 * peso * scq;
 
       // Manutenção Holliday-Segar (para < 30kg)
       let manutencao24h = 0;
@@ -1778,7 +1788,7 @@ const pedUtiCalculators = [
     },
     infoBox: {
       keyPoints: [
-        'ISBI 2016 / ABA 2024: 2 mL x Peso (kg) x % SCQ',
+        'Pediátrico (ABLS/ABA): 3 mL x Peso (kg) x % SCQ — a constante de 2 mL/kg é a de ADULTO',
         'Crianças < 30kg: Adicionar manutenção Holliday-Segar',
         '50% do volume nas primeiras 8h (desde a queimadura)',
         '50% restante nas próximas 16h',
@@ -4378,6 +4388,287 @@ const periopCalculators = [
   },
   // === CALCULADORAS RESPIRATÓRIAS PARA PERIOPERATÓRIO ===
   {
+    id: 'periop_jejum_adulto',
+    title: 'Jejum Pré-operatório do Adulto',
+    subtitle: 'ASA 2023 — inclui carboidrato e goma',
+    icon: 'Clock',
+    status: 'active',
+    useDropdown: true,
+    inputs: [
+      {
+        id: 'tipo_alimento',
+        label: 'Último alimento ingerido',
+        type: 'select',
+        options: [
+          { value: 'liquido_claro', label: 'Líquidos claros (água, chá, café sem leite, suco sem polpa)' },
+          { value: 'carboidrato', label: 'Bebida com carboidrato (até 400 mL)' },
+          { value: 'leite_nao_humano', label: 'Leite não humano' },
+          { value: 'refeicao_leve', label: 'Refeição leve (torrada, fruta)' },
+          { value: 'refeicao_gordurosa', label: 'Refeição com gordura, fritura ou carne' },
+          { value: 'goma_mascar', label: 'Goma de mascar' },
+        ],
+      },
+    ],
+    compute: (values) => {
+      const tipo = values.tipo_alimento;
+      if (!tipo) return null;
+
+      // ⚠️ Chave IGUAL ao `value` da opção, letra por letra — foi um acento
+      // divergente que deixou o card pediátrico mudo (auditoria §8.1).
+      const TEMPOS = {
+        liquido_claro: { horas: 2, rotulo: 'Líquidos claros', nota: 'Estimular a ingestão até 2 h; jejum prolongado não protege mais' },
+        carboidrato: { horas: 2, rotulo: 'Bebida com carboidrato', nota: 'Até 400 mL, até 2 h antes (ASA 2023) — reduz fome e sede' },
+        leite_nao_humano: { horas: 6, rotulo: 'Leite não humano', nota: 'Esvaziamento semelhante ao de sólido' },
+        refeicao_leve: { horas: 6, rotulo: 'Refeição leve', nota: 'Torrada e líquido claro' },
+        refeicao_gordurosa: { horas: 8, rotulo: 'Refeição gordurosa', nota: 'Gordura, fritura ou carne retardam o esvaziamento' },
+        goma_mascar: { horas: 0, rotulo: 'Goma de mascar', nota: 'NÃO adia a cirurgia (ASA 2023) — só remover antes da indução' },
+      };
+
+      const info = TEMPOS[tipo];
+      if (!info) return null;
+
+      return {
+        score: info.horas,
+        details: {
+          'Alimento': info.rotulo,
+          'Tempo mínimo': info.horas === 0 ? 'Não adia a cirurgia' : `${info.horas} horas`,
+          'Observação': info.nota,
+        },
+      };
+    },
+    resultMessage: (result) => {
+      if (!result || !result.details) return 'Selecione o último alimento ingerido';
+      return `${result.details['Alimento']}: ${result.details['Tempo mínimo']}`;
+    },
+    infoBox: {
+      keyPoints: [
+        'Líquidos claros: 2 h',
+        'Bebida com carboidrato: até 400 mL, até 2 h antes',
+        'Leite não humano: 6 h',
+        'Refeição leve: 6 h',
+        'Refeição gordurosa, fritura ou carne: 8 h',
+        'Goma de mascar: não adia — remover antes da indução',
+        'Emergência, gastroparesia, obstrução ou GLP-1 em uso: assumir estômago cheio',
+      ],
+      interpretation:
+        'A ASA 2023 passou a ESTIMULAR o líquido claro com carboidrato até 2 h antes, em vez de apenas permitir líquido claro. Jejum prolongado não reduz aspiração e aumenta fome, sede e desconforto.',
+      warnings: [
+        'Não há evidência para preferir bebida com proteína à sem proteína (ASA 2023)',
+        'Paciente em agonista GLP-1: estes tempos podem não bastar — ver o card Inibidores de apetite',
+      ],
+      reference:
+        '2023 ASA Practice Guidelines for Preoperative Fasting (modular update do guideline de 2017). Anesthesiology 2023;138:132-51',
+    },
+  },
+  {
+    id: 'periop_4at',
+    title: '4AT — Delirium',
+    subtitle: 'Rastreio na SRPA, paciente acordado',
+    icon: 'Brain',
+    status: 'active',
+    useDropdown: true,
+    // A ESAIC 2024 manda rastrear delirium com ferramenta validada começando na
+    // SALA DE RECUPERAÇÃO. O CAM-ICU que o app já tinha é para o paciente
+    // INTUBADO na UTI — não serve para esse cenário. Auditoria §7.5.
+    inputs: [
+      {
+        id: 'alerta',
+        label: '1. Alerta',
+        type: 'select',
+        options: [
+          { value: 'alerta_normal', label: 'Normal — desperto e não agitado (0)' },
+          { value: 'alerta_sonolencia_leve', label: 'Sonolência leve <10 s ao acordar, depois normal (0)' },
+          { value: 'alerta_anormal', label: 'Claramente anormal — sonolento, estuporoso ou agitado (4)' },
+        ],
+      },
+      {
+        id: 'amt4',
+        label: '2. AMT4 — idade, data de nascimento, local, ano',
+        type: 'select',
+        options: [
+          { value: 'amt4_zero', label: 'Nenhum erro (0)' },
+          { value: 'amt4_um', label: '1 erro (1)' },
+          { value: 'amt4_dois', label: '2 ou mais erros, ou não testável (2)' },
+        ],
+      },
+      {
+        id: 'atencao',
+        label: '3. Atenção — meses do ano de trás para frente',
+        type: 'select',
+        options: [
+          { value: 'atencao_sete', label: '7 meses ou mais corretos (0)' },
+          { value: 'atencao_parcial', label: 'Começa mas acerta menos de 7, ou recusa (1)' },
+          { value: 'atencao_intestavel', label: 'Não testável — sonolento ou incapaz (2)' },
+        ],
+      },
+      {
+        id: 'mudanca',
+        label: '4. Mudança aguda ou curso flutuante nas últimas 2 semanas, ainda presente',
+        type: 'select',
+        options: [
+          { value: 'mudanca_nao', label: 'Não (0)' },
+          { value: 'mudanca_sim', label: 'Sim (4)' },
+        ],
+      },
+    ],
+    compute: (values) => {
+      const PONTOS = {
+        alerta_normal: 0, alerta_sonolencia_leve: 0, alerta_anormal: 4,
+        amt4_zero: 0, amt4_um: 1, amt4_dois: 2,
+        atencao_sete: 0, atencao_parcial: 1, atencao_intestavel: 2,
+        mudanca_nao: 0, mudanca_sim: 4,
+      };
+      const campos = ['alerta', 'amt4', 'atencao', 'mudanca'];
+      const respondidos = campos.filter((c) => values[c] !== undefined && values[c] !== '');
+      if (respondidos.length === 0) return null;
+
+      const score = respondidos.reduce((total, c) => total + (PONTOS[values[c]] ?? 0), 0);
+      const completo = respondidos.length === campos.length;
+
+      let risk = 'baixo';
+      let leitura = 'Delirium e comprometimento cognitivo moderado a grave improváveis';
+      let conduta = 'Sem sinal de delirium neste momento; repetir o rastreio ao menos 1×/dia por 3 dias';
+
+      if (score >= 4) {
+        risk = 'alto';
+        leitura = 'Delirium provável';
+        conduta = 'Procurar causa: dor, retenção urinária, hipóxia, hipoglicemia, sepse, fármacos anticolinérgicos e benzodiazepínicos. Intervenção não farmacológica multicomponente é a primeira linha';
+      } else if (score >= 1) {
+        risk = 'medio';
+        leitura = 'Comprometimento cognitivo possível; delirium menos provável';
+        conduta = 'Pode ser comprometimento cognitivo crônico — comparar com o basal e repetir o rastreio';
+      }
+
+      return {
+        score,
+        risk,
+        details: {
+          'Pontuação': `${score}/12${completo ? '' : ' (itens em branco contam 0)'}`,
+          'Leitura': leitura,
+          'Conduta': conduta,
+        },
+      };
+    },
+    resultMessage: (result) => {
+      if (!result) return 'Responda os quatro itens';
+      return `4AT ${result.score}/12 — ${result.details['Leitura']}`;
+    },
+    infoBox: {
+      keyPoints: [
+        '4 ou mais: delirium provável',
+        '1 a 3: comprometimento cognitivo possível, delirium menos provável',
+        '0: delirium e comprometimento cognitivo moderado a grave improváveis',
+        'Leva ~2 minutos e não exige treinamento formal',
+        'AMT4 = idade, data de nascimento, local (nome do hospital) e ano',
+        'Serve para o paciente ACORDADO — o intubado da UTI é o CAM-ICU (card RASS + CAM-ICU)',
+      ],
+      interpretation:
+        'A ESAIC 2024 recomenda rastrear delirium pós-operatório com ferramenta validada ao menos uma vez por dia, por 3 dias, começando na sala de recuperação ou, no mais tardar, no 1º dia de pós-operatório.',
+      warnings: [
+        'Pontuação 1-3 não distingue delirium de demência prévia — a comparação com o estado basal é o que separa',
+        'Um 4AT negativo não exclui delirium flutuante: repetir',
+      ],
+      reference:
+        '4AT © MacLullich A, Ryan T, Cash H — the4at.com, licença CC BY 4.0 | Update of the ESAIC evidence-based and consensus-based guideline on postoperative delirium in adult patients. Eur J Anaesthesiol 2024;41:81-108',
+    },
+  },
+  {
+    id: 'periop_mac',
+    title: 'CAM Corrigida pela Idade',
+    subtitle: 'Vapor + N₂O, ~6% por década',
+    icon: 'Wind',
+    status: 'active',
+    useDropdown: true,
+    inputs: [
+      {
+        id: 'agente',
+        label: 'Agente inalatório',
+        type: 'select',
+        options: Object.entries(NOME_AGENTE).map(([value, label]) => ({ value, label })),
+      },
+      { id: 'idade', label: 'Idade (anos)', type: 'number', min: 0, max: 110, step: 1 },
+      { id: 'vapor', label: 'Concentração expirada do agente (%)', type: 'number', min: 0, max: 20, step: 0.1 },
+      { id: 'n2o', label: 'N₂O expirado (%) — deixe 0 se não usar', type: 'number', min: 0, max: 100, step: 1 },
+    ],
+    compute: (values) => {
+      const agente = values.agente || 'sevoflurano';
+      const idade = parseFloat(values.idade);
+      if (!Number.isFinite(idade)) return null;
+
+      // ⚠️ Zero é valor aqui: vapor 0 (só N₂O) e N₂O 0 (só vapor) são casos reais.
+      const vapor = numeroOuPadrao(values.vapor, 0);
+      const n2o = numeroOuPadrao(values.n2o, 0);
+
+      const r = fracaoMacTotal({ agente, idadeAnos: idade, vaporPercent: vapor, n2oPercent: n2o });
+      if (!r) return null;
+
+      const br = (n, casas = 2) => n.toFixed(casas).replace('.', ',');
+      const macBula = macNaIdade(agente, 40);
+
+      const detalhes = {
+        'CAM nesta idade': `${br(r.macVapor)}% (aos 40 anos: ${br(macBula)}%)`,
+        'Para 1 CAM, ajustar o vapor em': `${br(n2o > 0 ? r.vaporPara1MacComN2O : r.vaporPara1Mac)}%${n2o > 0 ? ' (já descontando o N₂O)' : ''}`,
+      };
+      if (vapor > 0) detalhes['Fração do vapor'] = `${br(r.fracaoVapor)} CAM`;
+      if (n2o > 0) detalhes['Fração do N₂O'] = `${br(r.fracaoN2O)} CAM (CAM do N₂O nesta idade: ${br(r.macN2O, 0)}%)`;
+
+      const fora = idadeForaDaValidacao(idade);
+      let risk;
+      let leitura;
+      if (vapor > 0 || n2o > 0) {
+        if (r.total < 0.7) {
+          risk = 'alto';
+          leitura = 'Abaixo de 0,7 CAM — profundidade insuficiente é risco de despertar intraoperatório';
+        } else if (r.total < 1) {
+          risk = 'medio';
+          leitura = 'Entre 0,7 e 1 CAM';
+        } else if (r.total <= 1.3) {
+          risk = 'baixo';
+          leitura = 'Faixa usual de manutenção';
+        } else {
+          risk = 'medio';
+          leitura = 'Acima de 1,3 CAM — checar se a profundidade é intencional';
+        }
+        detalhes['CAM total'] = `${br(r.total)} — ${leitura}`;
+      }
+      if (fora) {
+        detalhes['Atenção'] =
+          fora === 'lactente'
+            ? 'Abaixo de 1 ano a CAM tem PICO no lactente e não segue esta reta — usar valor por faixa etária'
+            : fora === 'pre_escolar'
+              ? 'A relação de Mapleson é usada de 5 a 95 anos; abaixo disso é extrapolação'
+              : 'Acima de 95 anos é extrapolação da reta de Mapleson';
+      }
+
+      return { score: vapor > 0 || n2o > 0 ? r.total : r.macVapor, risk, details: detalhes };
+    },
+    resultMessage: (result) => {
+      if (!result) return 'Escolha o agente e informe a idade';
+      return result.details['CAM total']
+        ? `CAM total ${result.score.toFixed(2).replace('.', ',')}`
+        : `CAM nesta idade: ${result.details['CAM nesta idade']}`;
+    },
+    infoBox: {
+      keyPoints: [
+        'A CAM cai ~6% por década a partir dos 40 anos (Mapleson, BJA 1996)',
+        'CAM aos 40 anos: sevoflurano 1,8% | isoflurano 1,17% | desflurano 6,6% | N₂O 104%',
+        'Aos 80 anos a CAM é ~22% menor que aos 40 — o sevoflurano vai de 1,8% para 1,4%',
+        'Vapor e N₂O SOMAM frações: 0,7 CAM de vapor + 0,4 CAM de N₂O = 1,1 CAM',
+        'Manutenção usual: 0,7 a 1,3 CAM, conforme opioide, bloqueio e estímulo',
+        'Abaixo de 0,7 CAM sem outro hipnótico, o risco de despertar sobe',
+      ],
+      interpretation:
+        'A CAM de bula é a de um adulto de 40 anos. Conduzir o idoso por ela é aprofundar sem perceber; conduzir o jovem por ela é o contrário. É a mesma conta que os monitores modernos exibem como "age-adjusted MAC".',
+      warnings: [
+        'Abaixo de 1 ano a CAM tem pico no lactente e NÃO segue a reta de Mapleson',
+        'A CAM é reduzida por opioide, benzodiazepínico, alfa-2 agonista, hipotermia, hiponatremia, gestação e idade; é aumentada por hipertermia, hipernatremia e uso crônico de álcool',
+        'CAM é concentração EXPIRADA em equilíbrio — a do vaporizador não serve para esta conta',
+      ],
+      reference:
+        'Mapleson WW. Effect of age on MAC in humans: a meta-analysis. Br J Anaesth 1996;76:179-85 | Nickalls RWD & Mapleson WW. Age-related iso-MAC charts. Br J Anaesth 2003;91:170-4',
+    },
+  },
+  {
     id: 'periop_ariscat',
     title: 'ARISCAT',
     subtitle: 'Risco Complicação Pulmonar',
@@ -4881,6 +5172,95 @@ const riscoCalculators = [
         'Evento cardíaco maior = IAM, EAP, FV, PCR, BAVT',
       ],
       reference: 'Lee TH et al. Circulation 1999;100(10):1043-1049.',
+    },
+  },
+  {
+    id: 'risco_dasi',
+    title: 'DASI',
+    subtitle: 'Capacidade funcional pré-operatória',
+    icon: 'Activity',
+    status: 'active',
+    // Recomendado nominalmente pela ESAIC (1C, junto com peptídeos
+    // natriuréticos) e citado pelo ACC/AHA 2024 como o questionário estruturado
+    // que PREVIU complicações onde a impressão clínica não previu.
+    // O RCRI dá comorbidade; o DASI dá reserva funcional. Auditoria §7.2.
+    inputs: [
+      { id: 'q1', label: 'Cuidar de si mesmo — comer, vestir-se, tomar banho ou usar o banheiro?', type: 'bool' },
+      { id: 'q2', label: 'Andar dentro de casa?', type: 'bool' },
+      { id: 'q3', label: 'Andar um ou dois quarteirões no plano?', type: 'bool' },
+      { id: 'q4', label: 'Subir um lance de escada ou uma ladeira?', type: 'bool' },
+      { id: 'q5', label: 'Correr uma distância curta?', type: 'bool' },
+      { id: 'q6', label: 'Trabalho leve em casa — tirar pó ou lavar louça?', type: 'bool' },
+      { id: 'q7', label: 'Trabalho moderado em casa — aspirar, varrer ou carregar compras?', type: 'bool' },
+      { id: 'q8', label: 'Trabalho pesado em casa — esfregar o chão ou mover móveis pesados?', type: 'bool' },
+      { id: 'q9', label: 'Trabalho no quintal — juntar folhas, capinar ou empurrar cortador de grama?', type: 'bool' },
+      { id: 'q10', label: 'Ter relações sexuais?', type: 'bool' },
+      { id: 'q11', label: 'Atividade recreativa moderada — dança, boliche, golfe, tênis em duplas?', type: 'bool' },
+      { id: 'q12', label: 'Esporte extenuante — natação, tênis individual, futebol, basquete?', type: 'bool' },
+    ],
+    compute: (values) => {
+      // Pesos originais de Hlatky 1989; somam 58,2.
+      const PESOS = {
+        q1: 2.75, q2: 1.75, q3: 2.75, q4: 5.50, q5: 8.00, q6: 2.70,
+        q7: 3.50, q8: 8.00, q9: 4.50, q10: 5.25, q11: 6.00, q12: 7.50,
+      };
+      const score = Object.entries(PESOS).reduce(
+        (total, [campo, peso]) => (values[campo] ? total + peso : total),
+        0,
+      );
+
+      const vo2 = 0.43 * score + 9.6;
+      const mets = vo2 / 3.5;
+
+      let risk = 'baixo';
+      let leitura = 'Capacidade funcional preservada';
+      let conduta = 'DASI ≥ 34 — risco perioperatório menor; não costuma justificar teste funcional adicional';
+
+      if (mets < 4) {
+        risk = 'alto';
+        leitura = 'Capacidade funcional ruim (< 4 METs)';
+        conduta = 'Abaixo de 4 METs é o corte do ACC/AHA para capacidade funcional ruim — considerar avaliação adicional e otimização antes de cirurgia de risco intermediário ou alto';
+      } else if (score < 34) {
+        risk = 'medio';
+        leitura = 'Capacidade funcional reduzida';
+        conduta = 'DASI < 34 associou-se a mais morte e IAM em 30 dias no estudo METS — pesar contra o porte da cirurgia e o RCRI';
+      }
+
+      const br = (n, casas = 1) => n.toFixed(casas).replace('.', ',');
+
+      return {
+        score,
+        risk,
+        details: {
+          'Pontuação': `${br(score, 2)} de 58,20`,
+          'VO₂ pico estimado': `${br(vo2)} mL/kg/min`,
+          'Equivalente metabólico': `${br(mets)} METs`,
+          'Leitura': leitura,
+          'Conduta sugerida': conduta,
+        },
+      };
+    },
+    resultMessage: (result) => {
+      if (!result) return 'Marque o que o paciente consegue fazer';
+      return `DASI ${result.score.toFixed(2).replace('.', ',')} — ${result.details['Equivalente metabólico']}`;
+    },
+    infoBox: {
+      keyPoints: [
+        'Some o peso de cada atividade que o paciente CONSEGUE fazer; máximo 58,20',
+        'VO₂ pico = (0,43 × DASI) + 9,6 mL/kg/min | METs = VO₂ ÷ 3,5',
+        'DASI < 34: mais morte e IAM em 30 dias (estudo METS, Lancet 2018)',
+        'Menos de 4 METs: capacidade funcional ruim pelo corte do ACC/AHA',
+        'Substitui a pergunta solta "o senhor sobe escada?" por um número comparável',
+        'Complementa o RCRI: um dá comorbidade, o outro dá reserva funcional',
+      ],
+      interpretation:
+        'A ESAIC recomenda (1C) combinar o DASI com peptídeos natriuréticos para avaliar reserva cardíaca em paciente de alto risco indo para cirurgia de alto risco. O ACC/AHA 2024 registra que a avaliação subjetiva da capacidade funcional NÃO previu complicações, e o DASI, sim.',
+      warnings: [
+        'Limitação por artrose, doença vascular periférica ou sequela neurológica derruba o DASI sem que a reserva cardíaca esteja ruim — o número não distingue o motivo',
+        'Os enunciados seguem a versão brasileira validada; a pontuação é a original de Hlatky 1989',
+      ],
+      reference:
+        'Hlatky MA et al. A brief self-administered questionnaire to determine functional capacity. Am J Cardiol 1989;64:651-4 | Coutinho-Myrrha MA et al. Duke Activity Status Index em Doenças Cardiovasculares: validação da tradução para o português. Arq Bras Cardiol 2014 | Wijeysundera DN et al. Lancet 2018;391:2631-40 (METS)',
     },
   },
   {
@@ -6429,6 +6809,107 @@ const renalCalculators = [
     },
   },
   {
+    id: 'renal_correcao_sodio',
+    title: 'Velocidade de Correção do Sódio',
+    subtitle: 'Adrogué-Madias — volume, taxa e teto',
+    icon: 'Beaker',
+    status: 'active',
+    useDropdown: true,
+    // ⚠️ Pergunta DIFERENTE da do card "Sódio Corrigido", que corrige o sódio
+    // pela glicemia. Aqui é "com qual solução, em quanto tempo, sem passar do
+    // teto". A colisão de nomes está registrada na auditoria §7.10.
+    inputs: [
+      { id: 'na_atual', label: 'Sódio sérico atual (mEq/L)', type: 'number', min: 90, max: 190, step: 1 },
+      { id: 'na_alvo', label: 'Sódio alvo em 24 h (mEq/L)', type: 'number', min: 90, max: 190, step: 1 },
+      { id: 'peso', label: 'Peso (kg)', type: 'number', min: 1, max: 250, step: 0.1 },
+      {
+        id: 'perfil',
+        label: 'Perfil (define a água corporal total)',
+        type: 'select',
+        options: [
+          { value: 'homem_adulto', label: 'Homem adulto (0,6 × peso)' },
+          { value: 'mulher_adulta', label: 'Mulher adulta (0,5 × peso)' },
+          { value: 'homem_idoso', label: 'Homem idoso (0,5 × peso)' },
+          { value: 'mulher_idosa', label: 'Mulher idosa (0,45 × peso)' },
+        ],
+      },
+      {
+        id: 'solucao',
+        label: 'Solução',
+        type: 'select',
+        options: Object.entries(SOLUCOES).map(([value, d]) => ({ value, label: d.nome })),
+      },
+      { id: 'alto_risco', label: 'Alto risco de desmielinização (hipocalemia, desnutrição, hepatopatia, alcoolismo)', type: 'bool' },
+    ],
+    compute: (values) => {
+      const naAtual = parseFloat(values.na_atual);
+      const naAlvo = parseFloat(values.na_alvo);
+      const peso = parseFloat(values.peso);
+      if (!Number.isFinite(naAtual) || !Number.isFinite(naAlvo) || !Number.isFinite(peso)) return null;
+
+      const r = planoCorrecaoSodio({
+        naSerico: naAtual,
+        pesoKg: peso,
+        perfil: values.perfil || 'homem_adulto',
+        solucao: values.solucao || 'salina3',
+        variacaoAlvo24h: naAlvo - naAtual,
+        altoRisco: Boolean(values.alto_risco),
+      });
+      if (!r) return null;
+
+      const br = (n, casas = 1) => n.toFixed(casas).replace('.', ',');
+      const variacao = naAlvo - naAtual;
+
+      const detalhes = {
+        'Variação pedida': `${variacao > 0 ? '+' : ''}${br(variacao)} mmol/L em 24 h`,
+        'Teto recomendado': `${r.teto24h} mmol/L em 24 h`,
+        'Água corporal total': `${br(r.act)} L`,
+        'ΔNa por litro de solução': `${r.deltaPorLitro > 0 ? '+' : ''}${br(r.deltaPorLitro, 2)} mmol/L`,
+      };
+
+      let risk = 'baixo';
+      if (!r.direcaoOk) {
+        risk = 'alto';
+        detalhes['Problema'] = `${r.solucaoNome} move o sódio no sentido OPOSTO ao pedido — escolha outra solução`;
+      } else {
+        detalhes['Volume em 24 h'] = `${br(r.volumeMl24h, 0)} mL de ${r.solucaoNome}`;
+        detalhes['Velocidade'] = `${br(r.velocidadeMlH)} mL/h`;
+        if (r.excedeTeto) {
+          risk = 'critico';
+          detalhes['⚠️ Acima do teto'] = `${br(Math.abs(variacao))} mmol/L passa do limite de ${r.teto24h}. ${r.motivoTeto}`;
+        } else {
+          detalhes['Dentro do limite'] = r.motivoTeto;
+        }
+      }
+
+      return { score: r.direcaoOk ? r.velocidadeMlH : 0, risk, details: detalhes };
+    },
+    resultMessage: (result) => {
+      if (!result) return 'Informe sódio atual, alvo e peso';
+      if (result.details['Problema']) return 'Solução no sentido errado — ver detalhes';
+      return `${result.details['Volume em 24 h']} a ${result.details['Velocidade']}`;
+    },
+    infoBox: {
+      keyPoints: [
+        'ΔNa por litro = (Na da solução + K da solução − Na sérico) ÷ (ACT + 1)',
+        'Hiponatremia: não passar de 8 mmol/L em 24 h (a diretriz europeia admite 10 nas primeiras 24 h)',
+        'Na < 115 mEq/L ou alto risco: 8 mmol/L é o limite prudente',
+        'Hipernatremia: baixar no máximo ~10 mmol/L em 24 h, pelo risco de edema cerebral',
+        'NaCl 3% = 513 mEq/L | 0,9% = 154 | Ringer = 130 (+4 de K) | 0,45% = 77 | Glicose 5% = 0',
+        `Hiponatremia SINTOMÁTICA (convulsão, coma): ${BOLUS_SINTOMATICO.solucao} ${BOLUS_SINTOMATICO.volumeMl} ${BOLUS_SINTOMATICO.tempo}, ${BOLUS_SINTOMATICO.repeticoes} — alvo ${BOLUS_SINTOMATICO.alvo}`,
+      ],
+      interpretation:
+        'Este card responde "com qual solução e em que velocidade", e NÃO se confunde com o card Sódio Corrigido, que corrige o sódio medido pela glicemia. O bolus do paciente sintomático é exceção ao teto: ele existe para parar o sintoma, e o que já subiu conta no total das 24 h.',
+      warnings: [
+        'A fórmula é uma ESTIMATIVA ESTÁTICA: ignora perdas urinárias e insensíveis, que são a maior fonte de erro. Sódio de controle a cada 4-6 h vale mais que a conta',
+        'Correção rápida demais causa desmielinização osmótica; correção lenta demais na hiponatremia sintomática deixa o edema cerebral evoluir. Os dois erros são graves',
+        'Há desmielinização descrita mesmo com correção dentro de 10 mmol/L/24 h em Na < 115',
+      ],
+      reference:
+        'Adrogué HJ, Madias NE. Hyponatremia. N Engl J Med 2000;342:1581-9 | Spasovski G et al. Clinical practice guideline on diagnosis and treatment of hyponatraemia. Eur J Endocrinol 2014 | Verbalis JG et al. Am J Med 2013 (painel de especialistas)',
+    },
+  },
+  {
     id: 'renal_gap_osmolar',
     title: 'Gap Osmolar',
     subtitle: 'Lacuna Osmolar',
@@ -7045,6 +7526,153 @@ const dorCalculators = [
         'Ao trocar entre classes (ex: morfina→oxicodona), reduzir 25-50% adicional',
       ],
       reference: 'ASRA Pain Medicine Guidelines 2018 | CDC Clinical Practice Guideline for Prescribing Opioids 2022 | McPherson ML. ASHP 2019',
+    },
+  },
+  {
+    id: 'dor_peso_dose',
+    title: 'Pesos para Dose',
+    subtitle: 'Ideal, magro, ajustado, IMC e superfície',
+    icon: 'Scale',
+    status: 'active',
+    useDropdown: true,
+    // Existe porque o app JÁ MANDA usar peso ideal/magro em três telas e não
+    // dizia onde calcular. Conta pura: sem `risk`, que aqui seria ruído.
+    inputs: [
+      {
+        id: 'sexo',
+        label: 'Sexo',
+        type: 'select',
+        options: [
+          { value: 'masculino', label: 'Masculino' },
+          { value: 'feminino', label: 'Feminino' },
+        ],
+      },
+      { id: 'peso', label: 'Peso real (kg)', type: 'number', min: 1, max: 300, step: 0.1 },
+      { id: 'altura', label: 'Altura (cm)', type: 'number', min: 100, max: 220, step: 1 },
+    ],
+    compute: (values) => {
+      const peso = parseFloat(values.peso);
+      const altura = parseFloat(values.altura);
+      const sexo = values.sexo === 'feminino' ? 'feminino' : 'masculino';
+      const r = pesosDeReferencia(peso, altura, sexo);
+      if (!r) return null;
+
+      const um = (n, casas = 1) => (n === null ? null : n.toFixed(casas).replace('.', ','));
+      const FAIXA = {
+        baixo_peso: 'Baixo peso',
+        eutrofico: 'Eutrófico',
+        sobrepeso: 'Sobrepeso',
+        obesidade_1: 'Obesidade grau I',
+        obesidade_2: 'Obesidade grau II',
+        obesidade_3: 'Obesidade grau III',
+      };
+
+      const detalhes = {
+        'IMC': `${um(r.imc)} kg/m² — ${FAIXA[r.faixaImc]}`,
+        'Peso magro (LBW)': `${um(r.pesoMagro)} kg`,
+        'Peso ideal (IBW)': r.pesoIdeal === null ? 'Devine não se aplica abaixo de 152 cm' : `${um(r.pesoIdeal)} kg`,
+        'Peso ajustado (ABW)': r.pesoAjustado === null ? '—' : `${um(r.pesoAjustado)} kg`,
+        'Superfície corporal': `${um(r.superficieMosteller, 2)} m² (Mosteller) | ${um(r.superficieDuBois, 2)} m² (Du Bois)`,
+      };
+
+      return { score: r.pesoMagro, details: detalhes };
+    },
+    resultMessage: (result) => {
+      if (!result) return 'Informe sexo, peso e altura';
+      return `Peso magro: ${result.score.toFixed(1).replace('.', ',')} kg — é o escalar de dose de indutores e opioides`;
+    },
+    infoBox: {
+      keyPoints: [
+        'Peso MAGRO (LBW): indutores, opioides, remifentanil — o escalar preferido em anestesia',
+        'Peso REAL: succinilcolina, e o cálculo de volemia e de perda sanguínea',
+        'Peso IDEAL (IBW): volume corrente na ventilação protetora (6-8 mL/kg de IBW)',
+        'Peso AJUSTADO (ABW = IBW + 0,4 × excesso): fármacos hidrofílicos em obesos',
+        'Superfície corporal: quimioterápicos e índice cardíaco',
+        'IMC: <18,5 baixo peso | 18,5-25 eutrófico | 25-30 sobrepeso | 30-35 grau I | 35-40 grau II | >40 grau III',
+      ],
+      interpretation:
+        'Dosar pelo peso real em obeso superestima indutor e opioide; dosar pelo peso ideal subestima. O peso magro é o meio-termo com base farmacocinética.',
+      warnings: [
+        'A fórmula de Devine (peso ideal) foi derivada a partir de 5 pés — abaixo de 152 cm o card não a mostra, porque extrapolada ela produz número sem sentido',
+        'Bloqueador neuromuscular NÃO segue o peso magro: a referência é o peso real (succinilcolina) ou o ideal, conforme o fármaco',
+      ],
+      reference:
+        'Devine BJ. Drug Intell Clin Pharm 1974 | Janmahasatian S et al. Clin Pharmacokinet 2005;44:1051-65 | Mosteller RD. N Engl J Med 1987;317:1098 | Du Bois D & Du Bois EF. Arch Intern Med 1916 | Ingrande J & Lemmens HJM. Br J Anaesth 2010;105(Suppl 1):i16-23',
+    },
+  },
+  {
+    id: 'dor_anestesico_local',
+    title: 'Anestésico Local — Dose Máxima',
+    subtitle: 'Teto em mg e o volume que ele vale',
+    icon: 'Syringe',
+    status: 'active',
+    useDropdown: true,
+    // O app já calculava o ANTÍDOTO (emulsão lipídica, no ACLS) e não calculava
+    // a prevenção. Auditoria de 30/08 — §7.3.
+    inputs: [
+      {
+        id: 'farmaco',
+        label: 'Fármaco',
+        type: 'select',
+        options: Object.entries(ANESTESICOS_LOCAIS).map(([value, d]) => ({
+          value,
+          label: `${d.nome} (${d.grupo.toLowerCase()})`,
+        })),
+      },
+      { id: 'peso', label: 'Peso para dose (kg) — magro em obesos', type: 'number', min: 1, max: 300, step: 0.1 },
+      { id: 'concentracao', label: 'Concentração (%)', type: 'number', min: 0.1, max: 5, step: 0.05 },
+      { id: 'vasoconstritor', label: 'Com vasoconstritor (adrenalina)', type: 'bool' },
+    ],
+    compute: (values) => {
+      const r = doseMaximaAnestesicoLocal({
+        farmaco: values.farmaco,
+        pesoKg: parseFloat(values.peso),
+        comVasoconstritor: Boolean(values.vasoconstritor),
+        concentracaoPercent: parseFloat(values.concentracao),
+      });
+      if (!r) return null;
+
+      const br = (n, casas = 1) => n.toFixed(casas).replace('.', ',');
+      const detalhes = {
+        'Dose máxima': `${br(r.doseMaximaMg, 0)} mg`,
+        'Base do cálculo': `${br(r.mgPorKg)} mg/kg (faixa publicada ${r.faixaMgPorKg})`,
+      };
+      if (r.volumeMaximoMl !== null) {
+        detalhes['Volume máximo'] = `${br(r.volumeMaximoMl)} mL a ${br(parseFloat(values.concentracao), 2)}% (${br(r.mgPorMl, 1)} mg/mL)`;
+      }
+      if (r.limitadoPeloTeto) {
+        detalhes['Teto absoluto'] = `${r.tetoAbsoluto} mg — o peso daria ${br(r.doseporPeso, 0)} mg, o teto por dose vence`;
+      }
+      detalhes['Duração aproximada'] = `${r.duracaoMin} min`;
+
+      return { score: r.doseMaximaMg, details: detalhes };
+    },
+    resultMessage: (result) => {
+      if (!result) return 'Escolha o fármaco e informe o peso';
+      const vol = result.details['Volume máximo'];
+      return vol
+        ? `Máximo ${result.score.toFixed(0)} mg — ${vol.split(' a ')[0]}`
+        : `Máximo ${result.score.toFixed(0)} mg`;
+    },
+    infoBox: {
+      keyPoints: [
+        'Lidocaína 3-4,5 mg/kg | com adrenalina 6-7 mg/kg (teto 500 mg)',
+        'Bupivacaína 2-2,5 mg/kg (teto 175 mg) | com adrenalina 2,5-3 mg/kg (teto 225 mg)',
+        'Ropivacaína 2-3 mg/kg | com adrenalina 3-4 mg/kg (teto 225 mg)',
+        'Mepivacaína 4,5-5 mg/kg (teto 400 mg) | com adrenalina 6,6 mg/kg (teto 500 mg)',
+        'Concentrações usuais: 1% = 10 mg/mL, 2% = 20 mg/mL, 0,5% = 5 mg/mL',
+        'Tratamento da intoxicação (emulsão lipídica calculada pelo peso): card ACLS / SAVA Completo',
+      ],
+      interpretation:
+        'Dose máxima é limite de SEGURANÇA, não alvo terapêutico — a maioria dos bloqueios é feita bem abaixo dela. O teto absoluto por dose vence o cálculo por peso: é ele que impede 840 mg de lidocaína num paciente de 120 kg.',
+      warnings: [
+        'Em obesos, a ASRA orienta dosar pelo peso MAGRO — o peso real superestima o teto',
+        'Reduzir a dose em idoso, gestante, hepatopata, insuficiência cardíaca e em bloqueios de área muito vascularizada (intercostal, paracervical)',
+        'A dose máxima NÃO protege de injeção intravascular: aspirar, fracionar e usar dose-teste',
+        'Suspeita de intoxicação (LAST): parar a injeção, via aérea, e emulsão lipídica 20% — bolus 1,5 mL/kg (100 mL se >70 kg) e infusão 0,25 mL/kg/min',
+      ],
+      reference:
+        'Iowa Head and Neck Protocols, University of Iowa — Maximum Recommended Doses and Duration of Local Anesthetics | ASRA Pain Medicine. Checklist for Treatment of Local Anesthetic Systemic Toxicity, 2020',
     },
   },
   {
