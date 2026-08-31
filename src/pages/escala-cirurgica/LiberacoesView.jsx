@@ -68,7 +68,7 @@ const AVISO_MAX = 160
 // que o card mostra, então sai do MESMO mapa que o resto do módulo usa.
 const HOSPITAIS_FILA = ['unimed', 'hro', 'materno'].map((v) => ({ value: v, label: HOSPITAL_LABEL[v] || v }))
 
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onTrocarResponsavel, onDevolverResponsavel, onTrocarPosicao, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, onDefinirOrigem, contraturnoOutros = [], casosForaOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, onGarantirEscala, onNavigate }) {
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onTrocarResponsavel, onDevolverResponsavel, onTrocarPosicao, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, onDefinirOrigem, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, onGarantirEscala, onNavigate }) {
   const { toast } = useToast()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
   // do turno selecionado e o rodapé (ordem de liberação) DAQUELE turno.
@@ -816,20 +816,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // definição (vermelho desde a publicação). Quem TEVE casos e todos encerraram
   // fica ATIVO (o conteúdo sai da linha, mas quem libera é o plantonista).
   //
-  // ⚠️ "SEM CASO AQUI" NÃO É "SEM TRABALHO" (dono 30/08 — caso Oscar: "está como
-  // Liberado na escala da Unimed, o que não é verdade, ele é ajuda no HRO").
-  // A conta olhava só ESTA escala, e quem está de ajuda em outro hospital no
-  // mesmo turno não tem caso aqui por definição: a fila o dava como liberado
-  // desde a publicação, com ele operando do outro lado da cidade. `casosForaOutros`
-  // é derivado das 3 escalas que o context já carrega — sem schema e sem
-  // persistência, e some sozinho quando a escala de lá muda.
-  const casoForaDe = (l) => {
-    const alvo = normNome(l.anestesista)
-    const chave = normNome(l.nomeOriginal || '')
-    return casosForaOutros.find((c) => c.nome === alvo || (chave && c.nome === chave)) || null
-  }
+  // ⚠️ "SEM CASO AQUI" NÃO É "SEM TRABALHO" (dono 30/08 — caso Oscar). Quem está
+  // de ajuda em outro hospital não tem caso aqui por definição, e a fila o dava
+  // como liberado desde a publicação. Quem resolve é `ajudaFora`, na lib: a linha
+  // emprestada nasce com `teveCasos` e nunca cai aqui.
   const naoEscalado = (l) => !l.teveCasos && !l.notaRodape && !(l.salas?.length) && !(l.cirurgioes?.length)
-    && !casoForaDe(l)
   // (o estado "liberada" é calculado por linha no render — ver `liberado` lá
   // embaixo. Não existe mais uma versão aqui em cima porque a exibição parou de
   // separar liberados dos demais: a fila segue a ordem do rodapé, ponto.)
@@ -866,7 +857,12 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       ((linha.uid && p.uid && p.uid === linha.uid) || (p.nome && nomes.has(p.nome))))
     if (!matches.length) return null
     const locais = [...new Set(matches.map((m) => salaLiberacao(m.sala)))].join('/')
-    return { hospital: matches[0].hospitalLabel, locais }
+    // cirurgião e nº de cirurgias entram junto (dono 30/08: "conter no card
+    // local/cirurgia/cirurgião onde ele está") — o card de quem está emprestado
+    // trazia só o destino, e quem lê a fila não sabia com quem ele estava
+    const cirurgioes = [...new Set(matches.map((m) => String(m.cirurgiao || '').trim()).filter(Boolean))]
+      .map((c) => nomeCirurgiaoCurto(c))
+    return { hospital: matches[0].hospitalLabel, locais, cirurgioes, casos: matches.length }
   }
   /**
    * TROCA DECLARADA (dono 30/07): a linha é um dos lados de um par declarado?
@@ -917,13 +913,17 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // ACRESCENTADO SEM CONSTAR NO RODAPÉ = AJUDA (dono 19/08): quem aparece com
   // caso fora da ordem publicada entra na FILA como ajuda — é o PRIMEIRO a ir
   // embora, sem ocupar posição de ninguém (a ordem publicada segue intocada; a
-  // fila só muda quando o usuário faz troca). Interação com o plantão do
-  // contraturno: quando o plantão está ESCALADO ele continua fechando a lista
-  // (sai primeiro) e a ajuda entra logo ACIMA (é liberada depois dele); plantão
-  // não escalado/já liberado é pulado pelo naFila e a ajuda vira a primeira.
+  // fila só muda quando o usuário faz troca).
+  //
+  // ⚠️ A AJUDA SAI ANTES DO PLANTÃO DO CONTRATURNO (dono 30/08, corrigindo a
+  // exceção que valia desde 19/08 — "Oscar sai antes de Guilherme Xavier porque
+  // Guilherme é plantão do contraturno mas não está como ajuda"). A exceção punha
+  // o plantão escalado fechando a lista e a ajuda logo ACIMA dele. Mas quem está
+  // aqui de ajuda é gente de OUTRO hospital, com plantão e fila próprios para
+  // voltar — segurá-la para depois do plantão daqui prende duas escalas de uma
+  // vez. "É o primeiro a ir embora" volta a valer sem exceção.
   const linhasForaDoRodape = doTurno.filter((l) => l.isExtra)
   const linhasOficiais = doTurno.filter((l) => !l.isExtra)
-  const fechaComPlantao = linhasOficiais.length > 0 && linhasOficiais[linhasOficiais.length - 1].isProximoPlantao
   // A FILA SEGUE SEMPRE A ORDEM DO RODAPÉ (dono 11/08, reforçando 27/07).
   // Liberado NÃO afunda mais: quem sai fica na própria posição, riscado e com o
   // selo "Liberado". O afundamento antigo dava a impressão de que a ordem tinha
@@ -932,18 +932,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // "inseriram o rodapé fora de ordem". Só saem da ordem quem a regra manda:
   // plantão noturno no topo, e extras/ajudas/plantão-do-turno-seguinte no fim
   // (esses a própria lib já posiciona).
-  const linhasExibicao = fechaComPlantao
-    ? [
-        ...linhasFase.filter((l) => l.noturno),
-        ...linhasOficiais.slice(0, -1),
-        ...linhasForaDoRodape,
-        linhasOficiais[linhasOficiais.length - 1],
-      ]
-    : [
-        ...linhasFase.filter((l) => l.noturno),
-        ...linhasOficiais,
-        ...linhasForaDoRodape,
-      ]
+  const linhasExibicao = [
+    ...linhasFase.filter((l) => l.noturno),
+    ...linhasOficiais,
+    ...linhasForaDoRodape,
+  ]
 
   // TEMPO ESTOURADO (dono 24/08): quem informou um término que já passou e AINDA
   // tem cirurgia aberta. A conta é a mesma que pinta a pílula de âmbar no card —
@@ -1943,11 +1936,16 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     )}
                     {/* EMPRESTADO (dono 30/07): mantém a posição daqui e o card diz
                         o destino — "Ajuda Hemodinâmica/Unimed" */}
-                    {!liberadoReal && ajudaForaInfo(linha) && (
-                      <p className="mt-0.5 text-[13px] font-medium leading-snug text-info">
-                        Ajuda {ajudaForaInfo(linha).locais}/{ajudaForaInfo(linha).hospital}
-                      </p>
-                    )}
+                    {!liberadoReal && ajudaForaInfo(linha) && (() => {
+                      const fora = ajudaForaInfo(linha)
+                      return (
+                        <p className="mt-0.5 text-[13px] font-medium leading-snug text-info">
+                          Ajuda {fora.locais}/{fora.hospital}
+                          {fora.casos > 1 ? ` · ${fora.casos} cirurgias` : ''}
+                          {fora.cirurgioes.length ? ` · ${fora.cirurgioes.join(', ')}` : ''}
+                        </p>
+                      )
+                    })()}
                     {/* TROCA DECLARADA: com quem e onde o colega está — é o que
                         diz a quem olha a fila que este slot vai mudar de mãos.
                         O DESTAQUE é só o badge roxo (dono 30/07 à noite): esta

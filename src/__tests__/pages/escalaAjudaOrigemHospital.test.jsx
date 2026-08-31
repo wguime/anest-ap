@@ -121,9 +121,14 @@ describe('ajuda libera na ordem do hospital de ORIGEM (dono 27/08)', () => {
   it('com a escala do HRO carregada, Gustavo (10º lá) sai antes de Alexandre (6º lá)', () => {
     montar({ unimed: UNIMED, hro: HRO })
     const nomes = fila()
-    // Oscar fecha o rodapé daqui → plantão do contraturno, sempre o último
-    expect(nomes[nomes.length - 1]).toBe('Oscar')
-    // índice MAIOR no rodapé de origem = sai antes lá = mais embaixo aqui
+    // ⚠️ MUDOU DE LADO em 30/08: Oscar fecha o rodapé daqui (plantão do
+    // contraturno) e ERA o último da tela. O dono corrigiu no caso
+    // Oscar⇄Guilherme Xavier — a AJUDA sai antes do plantão do contraturno,
+    // porque ela é de outro hospital e tem plantão e fila próprios para voltar.
+    // Ele continua na fila, só não mais atrás das ajudas.
+    expect(nomes.indexOf('Oscar')).toBeLessThan(nomes.indexOf('Alexandre S'))
+    // o que este teste mede não mudou: entre as AJUDAS, a ordem é a do hospital
+    // de ORIGEM — índice MAIOR no rodapé de lá = sai antes lá = mais embaixo aqui
     expect(nomes.indexOf('Gustavo')).toBeGreaterThan(nomes.indexOf('Alexandre S'))
   })
 
@@ -168,15 +173,62 @@ describe('ajuda libera na ordem do hospital de ORIGEM (dono 27/08)', () => {
     }
     montar({ unimed: marcado, hro: HRO })
     const nomes = fila()
-    expect(nomes.slice(-4)).toEqual(['Alexandre S', 'Gustavo', 'Romulo', 'Oscar'])
+    // Oscar (plantão do contraturno) subiu em 30/08; a ordem ENTRE as ajudas,
+    // que é o assunto deste teste, seguiu igual
+    expect(nomes.slice(-4)).toEqual(['Oscar', 'Alexandre S', 'Gustavo', 'Romulo'])
     expect(screen.getByText('Ajuda (Materno)')).toBeTruthy()
   })
 
   it('sem a escala do outro hospital, a cauda não inventa ordem nenhuma', () => {
     montar({ unimed: UNIMED })
-    // ninguém tem origem conhecida: a fila não quebra e o contraturno segue no fim
+    // ninguém tem origem conhecida: a fila não quebra, as ajudas seguem no fim
+    // (desde 30/08 elas fecham a lista, à frente do plantão do contraturno) e
+    // nenhuma delas ganha rótulo de origem
     const nomes = fila()
-    expect(nomes[nomes.length - 1]).toBe('Oscar')
+    expect(nomes).toContain('Oscar')
+    expect(nomes.indexOf('Oscar')).toBeLessThan(nomes.indexOf('Alexandre S'))
     expect(screen.queryByText('Ajuda (HRO)')).toBeNull()
+  })
+})
+
+// ── AJUDA EM OUTRO HOSPITAL, VISTA DA ESCALA DELE (dono 30–31/08) ───────────
+// "Oscar deve permanecer na lista de liberações da Unimed, ser marcado como
+// ajuda e conter no card local/cirurgia/cirurgião onde ele está."
+//
+// Aqui o Oscar fecha o rodapé da Unimed SEM cirurgia lá, e tem uma no IOSC do
+// HRO. É a página que precisa cruzar as escalas: a view sozinha não tem como
+// saber. `presencaOutros` passa a carregar os CASOS de lá, com sala e cirurgião.
+describe('quem está de ajuda em outro hospital, na escala DELE', () => {
+  const UNIMED_SEM_OSCAR = {
+    ...UNIMED,
+    casos: UNIMED.casos.filter((c) => c.anestesista !== 'OSCAR'),
+  }
+  const HRO_COM_OSCAR = {
+    ...HRO,
+    casos: [{
+      id: 'h9', sala: 'IOSC', ordem: 0, hora: '13:30', anestesista: 'OSCAR',
+      cirurgiao: 'Mauricio Fabiani', bloco: 'iosc', isContinuacao: false, semAnestesista: false,
+    }],
+  }
+
+  it('não nasce Liberado: sem caso AQUI porque está operando LÁ', () => {
+    montar({ unimed: UNIMED_SEM_OSCAR, hro: HRO_COM_OSCAR })
+    const card = screen.getByLabelText('Editar local/cirurgião de Oscar').closest('[data-linha]')
+    expect(card.textContent).not.toMatch(/Liberado/)
+  })
+
+  it('ganha o badge de Ajuda e o card diz local, hospital e cirurgião', () => {
+    montar({ unimed: UNIMED_SEM_OSCAR, hro: HRO_COM_OSCAR })
+    const card = screen.getByLabelText('Editar local/cirurgião de Oscar').closest('[data-linha]')
+    expect(card.textContent).toMatch(/Ajuda IOSC\/HRO/)
+    expect(card.textContent).toMatch(/Mauricio Fabiani/)
+  })
+
+  it('quem opera nos DOIS hospitais NÃO vira ajuda', () => {
+    // recorte que faltava no cálculo revertido em 04/08 por "falso emprestado":
+    // presença nas duas escalas COM cirurgia nas duas é trabalho nas duas
+    montar({ unimed: UNIMED, hro: HRO_COM_OSCAR })
+    const card = screen.getByLabelText('Editar local/cirurgião de Oscar').closest('[data-linha]')
+    expect(card.textContent).not.toMatch(/Ajuda IOSC/)
   })
 })

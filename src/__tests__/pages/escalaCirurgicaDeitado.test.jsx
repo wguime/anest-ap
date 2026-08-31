@@ -164,6 +164,9 @@ describe('fila de liberação deitada (dono 26/08)', () => {
     // seguinte e a lib a manda para o fim também (dono 29/07). Os dois são
     // exibidos FORA da própria posição — um ordinal ali seria lido como posição
     // na ordem de liberação, que não é o que o número diria.
+    // ⚠️ desde 30/08 a AJUDA fecha a lista (sai antes do plantão do contraturno),
+    // então o Staub é o último e a Karine vem logo acima — os números da coluna
+    // trocaram, o significado deles não.
     for (const nome of ['Guilherme Staub', 'Karine Bedin']) {
       expect(ordinalDoNome(cardDe(nome))).toBeUndefined()
     }
@@ -171,8 +174,8 @@ describe('fila de liberação deitada (dono 26/08)', () => {
     // LISTA (dono 19/08, "numerada na exibição"), não posição da ordem. É a
     // diferença de significado que justifica a divergência — e o retrato, que é
     // o fluxo em uso, não muda.
-    expect(colunaDoNumero(cardDe('Guilherme Staub')).textContent).toBe('3')
-    expect(colunaDoNumero(cardDe('Karine Bedin')).textContent).toBe('4')
+    expect(colunaDoNumero(cardDe('Karine Bedin')).textContent).toBe('3')
+    expect(colunaDoNumero(cardDe('Guilherme Staub')).textContent).toBe('4')
   })
 
   it('as ações ficam numa FILEIRA SÓ, uma coluna por botão, com o alerta inteiro embaixo', () => {

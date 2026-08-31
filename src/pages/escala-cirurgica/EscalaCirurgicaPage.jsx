@@ -223,35 +223,6 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     return out
   }, [escalas, hospital, turno])
 
-  // QUEM TEM CIRURGIA EM OUTRO HOSPITAL NESTE TURNO (dono 30/08 — caso Oscar).
-  // A fila libera sozinha quem está no rodapé sem caso; para quem está de ajuda
-  // noutro hospital isso é falso por construção — ele não tem caso AQUI porque
-  // está operando LÁ. Derivado das escalas que o context já carrega.
-  //
-  // ⚠️ Isto NÃO é o badge de ajuda inferido por casos, revertido em 04/08 por
-  // gerar falso "emprestado": a pergunta aqui é outra e mais simples — "esta
-  // pessoa está trabalhando neste turno?" —, e errar para o lado de NÃO liberar
-  // custa um toque a mais, enquanto errar para o outro dá alguém como livre no
-  // meio de uma cirurgia.
-  const casosForaOutros = useMemo(() => {
-    const porNome = new Map()
-    for (const [h, esc] of Object.entries(escalas)) {
-      if (h === hospital || h === FDS_HOSPITAL || !esc) continue
-      const label = HOSPITAL_LABEL[h] || h
-      for (const c of esc.casos || []) {
-        if ((c.turno || turno) !== turno) continue
-        const bruto = String(c.anestesista || '').trim()
-        if (!bruto || bruto === '//' || /^\?+$/.test(bruto)) continue
-        const nome = normNome(bruto)
-        if (!nome) continue
-        const e = porNome.get(nome) || { nome, hospitalLabel: label, casos: 0 }
-        e.casos += 1
-        porNome.set(nome, e)
-      }
-    }
-    return [...porNome.values()]
-  }, [escalas, hospital, turno])
-
   // casos dos 3 hospitais mesclados, cada um anotado com a origem (campo só de
   // exibição — nunca entra em CASO_FIELDS/persistência)
   const casosFds = useMemo(() => {
@@ -277,15 +248,28 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   // a ordem de liberação". `rodapeIdx` é a posição no rodapé de lá e é o que a
   // lib usa para ordenar a cauda da fila.
   //
-  // ⚠️ SÓ O RODAPÉ, nunca os casos. Em 04/08 (`ebfa726`) este cálculo inteiro foi
-  // trocado por `[]` porque a metade derivada dos CASOS inferia ajuda de quem
+  // ⚠️ A METADE DOS CASOS VOLTOU EM 30/08, COM O RECORTE QUE FALTAVA.
+  // Em 04/08 (`ebfa726`) ela foi trocada por `[]` porque inferia ajuda de quem
   // simplesmente tinha cirurgia em dois hospitais no mesmo turno — falso badge.
-  // A metade do rodapé não tem esse defeito (rodapé é escala publicada, não
-  // coincidência de agenda) e é a única que a ordem precisa. Enquanto `sala` não
-  // for preenchido aqui, `ajudandoFora`/`ajudaForaInfo` seguem desligados —
-  // a inferência de "emprestado" continua fora, como está desde 04/08.
+  // O recorte que corrige isso: só entra quem NÃO tem cirurgia AQUI. Quem opera
+  // nos dois trabalha nos dois e não está emprestado a lugar nenhum; quem tem
+  // caso só lá está deslocado, e é disso que o dono falou ("Oscar deve permanecer
+  // na lista de liberações da Unimed, ser marcado como ajuda e conter no card
+  // local/cirurgia/cirurgião onde ele está").
+  //
+  // Com `sala` preenchido, `ajudandoFora` e `ajudaForaInfo` — desenhados em
+  // 30/07 e parados desde então esperando este dado — ligam sozinhos: a pessoa
+  // MANTÉM a posição de liberação daqui, ganha o badge de Ajuda, o card diz o
+  // destino e ela deixa de nascer liberada (a lib carimba `teveCasos`).
   const presencaOutros = useMemo(() => {
     const out = []
+    // quem tem cirurgia AQUI não está emprestado — trabalha aqui também
+    const daquiComCaso = new Set()
+    for (const c of escalas[hospital]?.casos || []) {
+      if ((c.turno || turno) !== turno) continue
+      const n = normNome(c.anestesista || '')
+      if (n) daquiComCaso.add(n)
+    }
     for (const [h, esc] of Object.entries(escalas)) {
       // 'fds' é a fila única do fim de semana, não um "outro hospital"
       if (h === hospital || h === FDS_HOSPITAL || !esc) continue
@@ -294,6 +278,17 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
         const nm = normNome(n)
         if (nm) out.push({ nome: nm, uid: null, hospital: h, hospitalLabel: label, rodapeIdx: i })
       })
+      for (const c of esc.casos || []) {
+        if ((c.turno || turno) !== turno) continue
+        const bruto = String(c.anestesista || '').trim()
+        if (!bruto || bruto === '//' || /^\?+$/.test(bruto)) continue
+        const nm = normNome(bruto)
+        if (!nm || daquiComCaso.has(nm)) continue
+        out.push({
+          nome: nm, uid: c.anestesistaUserId || null, hospital: h, hospitalLabel: label,
+          sala: c.sala || '', cirurgiao: c.cirurgiao || '',
+        })
+      }
     }
     return out
   }, [escalas, hospital, turno])
@@ -586,7 +581,6 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                      hospital de origem não tem escala publicada (o Materno). */
                   onDefinirOrigem={(linha, origem) => definirOrigemLinha(escalaLib, linha, origem, userInfo, turno)}
                   contraturnoOutros={modoFds ? [] : contraturnoOutros}
-                  casosForaOutros={modoFds ? [] : casosForaOutros}
                   presencaOutros={presencaOutros}
                   paresTroca={modoFds ? [] : paresTroca}
                   onMarcarTroca={modoFds ? undefined : (linha, colega, par) => {

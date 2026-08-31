@@ -191,24 +191,44 @@ label } }`. Quando o hospital de origem TEM escala, o valor aparece como
 - Nada disso encosta em `ordem_liberacao`.
 
 
-## "Sem caso aqui" NÃO é "sem trabalho" (dono 2026-08-30)
+## Quem está de ajuda em OUTRO hospital (dono 2026-08-30/31 — caso Oscar)
 
-> "Veja que Oscar está como Liberado na escala da Unimed, o que não é verdade,
-> ele é ajuda no HRO e é o primeiro a ser liberado."
+Uma pessoa, duas telas, e as duas estavam erradas.
 
-`naoEscalado` respondia olhando UMA escala: quem está no rodapé sem cirurgia é
-liberado pela cauda automática, desde a publicação. Só que **quem está de ajuda
-em outro hospital não tem caso aqui por definição** — a razão de a linha estar
-vazia era ele estar operando do outro lado da cidade.
+**Na escala DELE** (Unimed, onde está no rodapé e não tem cirurgia): nascia
+"Liberado". `naoEscalado` respondia olhando UMA escala, e quem está de ajuda fora
+não tem caso aqui **por definição** — a razão da linha vazia era ele estar
+operando do outro lado da cidade. O dono: *"Oscar deve permanecer na lista de
+liberações da Unimed, ser marcado como ajuda e conter no card
+local/cirurgia/cirurgião onde ele está."*
 
-`casosForaOutros` (derivado em `EscalaCirurgicaPage` das 3 escalas que o context
-já carrega, sem schema e sem persistência) entra em `naoEscalado`: quem tem
-cirurgia em outro hospital **no mesmo turno** não nasce liberado. Some sozinho
-quando a escala de lá muda.
+**Na escala ONDE AJUDA** (HRO, com cirurgia e fora do rodapé de lá): entrava
+ACIMA do plantão do contraturno e era liberado DEPOIS dele. O dono: *"Oscar sai
+antes de Guilherme Xavier porque Guilherme é plantão do contraturno mas não está
+como ajuda."*
 
-⚠️ Isto **não** é o badge de ajuda inferido por casos, revertido em 04/08 por
-gerar falso "emprestado". A pergunta aqui é outra e mais simples — "esta pessoa
-está trabalhando neste turno?" — e a assimetria do erro é o que autoriza: errar
-para o lado de NÃO liberar custa um toque; errar para o outro dá alguém como
-livre no meio de uma cirurgia. No modo FDS a lista vai vazia: lá os três
-hospitais são a MESMA fila, e "outro hospital" não existe.
+### A regra
+
+> **A ajuda FECHA a lista — é a primeira a ir embora, sem exceção.** Inclusive na
+> frente do plantão do contraturno ESCALADO daquele hospital.
+
+Quem está aqui de ajuda é gente de OUTRO hospital, com plantão e fila próprios
+para voltar; segurá-la para depois do plantão daqui prende duas escalas de uma
+vez. Isso REVOGA a exceção que nasceu junto com a regra de 19/08 (plantão
+escalado fechava a lista, ajuda logo acima) — `fechaComPlantao` não existe mais.
+
+### O mecanismo (não crie um segundo)
+
+`ajudandoFora` / `ajudaFora` / `ajudaForaInfo` foram desenhados em **30/07** e
+ficaram parados esperando o dado. Ligar é encher `presencaOutros` com os CASOS
+dos outros hospitais (`sala` + `cirurgiao`), em `EscalaCirurgicaPage`. Daí sai
+tudo de graça: a pessoa MANTÉM a posição de liberação daqui, ganha o badge
+**Ajuda**, o card diz `Ajuda IOSC/HRO · Mauricio Fabiani`, e a lib carimba
+`teveCasos` — então ela não nasce liberada.
+
+⚠️ **O recorte que faltava** (e que causou o revert de 04/08, `ebfa726`, por
+"falso emprestado"): **só entra quem NÃO tem cirurgia AQUI**. Quem opera nos dois
+trabalha nos dois e não está emprestado a lugar nenhum; quem tem caso só lá está
+deslocado. Sem esse recorte a inferência por casos volta a errar.
+
+No modo FDS não existe "outro hospital": os três são a MESMA fila.

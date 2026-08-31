@@ -1468,7 +1468,15 @@ describe('Liberações — acrescentado fora do rodapé entra na fila como Ajuda
     anestesista, cirurgiao: 'Cirurgião X', ...extra,
   })
 
-  it('extra ganha badge Ajuda, entra ACIMA do plantão do contraturno escalado e é liberado após ele', () => {
+  it('extra ganha badge Ajuda e FECHA a lista, à frente do plantão do contraturno', () => {
+    // ⚠️ ESTE TESTE MUDOU DE LADO em 30/08, com o porquê no corpo. Até aqui ele
+    // travava a exceção nascida junto com a regra de 19/08: o plantão do
+    // contraturno ESCALADO fechava a lista e a ajuda entrava logo ACIMA dele,
+    // sendo liberada depois. O dono corrigiu com o caso Oscar⇄Guilherme Xavier:
+    // "Oscar sai antes de Guilherme Xavier porque Guilherme é plantão do
+    // contraturno mas não está como ajuda". Quem ajuda é de OUTRO hospital e tem
+    // plantão e fila próprios para voltar — segurá-lo aqui prende duas escalas
+    // de uma vez. "A ajuda é a primeira a ir embora" volta a valer sem exceção.
     const escala = {
       id: 'e1', hospital: 'unimed', ordemLiberacao: { matutino: ['ANA', 'BRUNO', 'CARLA'] }, liberacoes: {},
       casos: [caso('c1', 'ANA'), caso('c2', 'BRUNO'), caso('c3', 'CARLA'), caso('c4', 'ZILDA')],
@@ -1476,11 +1484,13 @@ describe('Liberações — acrescentado fora do rodapé entra na fila como Ajuda
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" turno="matutino" canEdit
       onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
     const chaves = Array.from(document.querySelectorAll('[data-linha]')).map((e) => e.getAttribute('data-linha'))
-    // ZILDA (fora do rodapé) fica entre a fila e a CARLA (plantão da tarde, fecha a lista)
-    expect(chaves).toEqual(['ANA', 'BRUNO', 'ZILDA', 'CARLA'])
-    // plantão escalado sai PRIMEIRO: é o próximo a ser liberado — não a ajuda
+    // ZILDA (fora do rodapé) fecha a lista, abaixo da CARLA (plantão da tarde)
+    expect(chaves).toEqual(['ANA', 'BRUNO', 'CARLA', 'ZILDA'])
+    // e é ELA a próxima a ser liberada, não o plantão
     const proximo = screen.getByText('Próximo a ser liberado').closest('[data-linha]')
-    expect(proximo.getAttribute('data-linha')).toBe('CARLA')
+    expect(proximo.getAttribute('data-linha')).toBe('ZILDA')
+    // CARLA não deixou de ser o plantão do contraturno — só não sai antes
+    expect(document.querySelector('[data-linha="CARLA"]').textContent).toContain('Plantão da tarde')
     // e a ZILDA carrega o badge de Ajuda (não está em lista nenhuma)
     const zilda = document.querySelector('[data-linha="ZILDA"]')
     expect(zilda.textContent).toContain('Ajuda')
@@ -1708,11 +1718,15 @@ describe('Liberações — a cauda é da ORDEM, não da tela (invariante, dono 2
     { wrapper: wrap },
   )
 
-  it('a visitante entra DEPOIS de quem fecha a ordem (é a exibição que o dono viu)', () => {
+  it('a visitante entra DEPOIS de quem fecha a ordem — e agora depois do contraturno também', () => {
+    // ⚠️ MUDOU DE LADO em 30/08 junto com a regra da ajuda (ver o teste do extra
+    // × plantão do contraturno, acima). A tela daquele dia mostrava
+    // 13 RAUL · 14 VICENTE · 15 GABRIELA · 16 DIDOMENICO — o DIDOMENICO, plantão
+    // do contraturno, fechava tudo. Com a ajuda fechando a lista, ela passa a
+    // vir por último; o resto da ordem é o mesmo.
     montar()
     const chaves = Array.from(document.querySelectorAll('[data-linha]')).map((e) => e.getAttribute('data-linha'))
-    // exatamente o que a tela mostrou: 13 RAUL · 14 VICENTE · 15 GABRIELA · 16 DIDOMENICO
-    expect(chaves).toEqual(['HUMBERTO', 'RAUL', 'VICENTE', 'GABRIELA', 'DIDOMENICO'])
+    expect(chaves).toEqual(['HUMBERTO', 'RAUL', 'VICENTE', 'DIDOMENICO', 'GABRIELA'])
   })
 
   it('VICENTE fecha a ordem sem cirurgia e nasce LIBERADO, apesar da visitante abaixo', () => {
