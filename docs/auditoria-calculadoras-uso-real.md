@@ -36,11 +36,71 @@ Verificação: `npm run lint` com **0 erros** (294 warnings pré-existentes, em 
 `npm run test:run` com **4.605 testes passando** em 251 arquivos; `npm run build` e `npm run dev`
 conferidos.
 
-⚠️ **`ped_parkland` (§8.5) NÃO foi tocado** — a própria auditoria diz que trocar 2 por 3 mL/kg/%SCQ é
-decisão clínica do dono, com fonte, e não conserto automático.
+---
 
-⚠️ **Nada da §7 (o que falta) foi acrescentado**, e nenhuma das 7 perguntas da §9 foi respondida por
-conta própria.
+## SEGUNDA RODADA — 30/08/2026, à noite
+
+O dono mandou resolver o que estava em aberto **"como recomendam as melhores e mais validadas
+evidências científicas"**. Esse critério é ele próprio o filtro: entra o que uma diretriz recomenda
+nominalmente ou o que é equação publicada e validada, com os números conferidos na fonte primária —
+e **fica de fora o que existe só por convenção de mercado**, por mais comum que seja nos concorrentes.
+
+### Corrigido pela evidência
+
+**`ped_parkland`: 2 → 3 mL/kg/%SCQ.** A ABA *Clinical Practice Guideline on Burn Shock Resuscitation*
+(2024) recomenda iniciar com 2 mL/kg/%SCQ e **declara escopo de adultos com queimadura ≥ 20% SCQ**.
+Para criança, o curso ABLS da própria ABA usa **3 mL/kg/%SCQ somado à manutenção** — e a manutenção,
+que este card já fazia, é o que impede a criança pequena de ficar sem água livre e glicose.
+→ **O que muda na conduta:** num paciente de 20 kg com 30% de SCQ, a reposição de 24 h vai de 1.200
+para 1.800 mL. Trava em `calculadorasAuditoria30-08.test.js`.
+
+### Acrescentado — 7 cards, todos com fonte primária conferida
+
+| card | evidência | o que muda na conduta |
+|---|---|---|
+| **DASI** (`risco_dasi`) | ESAIC preop **1C**; ACC/AHA 2024 registra que a avaliação subjetiva da capacidade funcional não previu complicações e o DASI, sim. Pesos originais de Hlatky 1989 (somam 58,20); enunciados pela versão brasileira validada (Coutinho-Myrrha, Arq Bras Cardiol 2014) | Troca "o senhor sobe escada?" por um número comparável. Corte em 34 (estudo METS) e < 4 METs (corte do ACC/AHA). Complementa o RCRI: um dá comorbidade, o outro dá reserva funcional |
+| **Dose máxima de anestésico local** (`dor_anestesico_local`) | Tabela do Iowa Head and Neck Protocols; ASRA (dose pelo peso magro em obesos) | O app já calculava o **antídoto** — emulsão lipídica pelo peso, no ACLS — e não a prevenção. Agora dá o teto em mg **e em mL da concentração da seringa**, com o teto absoluto vencendo o cálculo por peso |
+| **Pesos para dose** (`dor_peso_dose`) | Devine 1974, Janmahasatian 2005, Mosteller 1987, Du Bois 1916; BJA 2010: *"Lean body weight is the optimal dosing scalar for most drugs used in anaesthesia"* | Fecha a incoerência do próprio app, que **mandava** usar peso ideal/magro em três telas e não dizia onde calcular |
+| **4AT** (`periop_4at`) | ESAIC 2024: rastrear delirium com ferramenta validada ≥1×/dia por 3 dias, **começando na sala de recuperação**. Licença **CC BY 4.0**, creditada no card | O CAM-ICU que o app tinha é para o paciente **intubado na UTI**. O confuso na SRPA é cenário de rotina do anestesista e não tinha ferramenta |
+| **CAM corrigida pela idade** (`periop_mac`) | Mapleson, BJA 1996 — `MAC = MAC₄₀ × 10^(−0,00269 × (idade−40))`; MAC₄₀ e a soma vapor + N₂O da sub-rotina do próprio Nickalls (BJA 2003) | Aos 80 anos a CAM do sevoflurano é 1,4% e não 1,8%. Conduzir o idoso pelo valor de bula é aprofundar sem perceber |
+| **Jejum do adulto** (`periop_jejum_adulto`) | ASA 2023 (modular update): até **400 mL** de líquido claro com carboidrato até 2 h; goma de mascar **não adia**; proteína sem evidência de preferência | Só existia a versão pediátrica. A parte do carboidrato e da goma não estava em lugar nenhum |
+| **Velocidade de correção do sódio** (`renal_correcao_sodio`) | Adrogué-Madias (NEJM 2000); tetos de Verbalis 2013 (8 mmol/L/24 h) e da diretriz europeia (10 nas primeiras 24 h) | Pergunta **diferente** da do card "Sódio Corrigido", que corrige pela glicemia — e o nome parecido fazia parar no card errado. Dá volume, velocidade e avisa quando o alvo passa do teto |
+
+**Ativas: 52 → 59. Definições: 86 → 93.** Quatro libs puras novas
+(`pesoCorporal`, `anestesicoLocal`, `correcaoSodio`, `macIdade`), cada uma importada pelo card que a
+usa — lib sem importador de produção é pior que não ter teste.
+
+### NÃO acrescentado, e por quê
+
+| item | motivo |
+|---|---|
+| **Escala de Fragilidade Clínica (CFS)** | ⚠️ **Bloqueio de licença, não de evidência.** É a recomendação mais forte da lista (ESAIC **1C**, duas vezes), mas Dalhousie exige *Permission for Use Agreement* pelo portal. Uso clínico não comercial "usualmente não requer acordo de licença" — ou seja, é provável que saia de graça, mas é **pedido que só o dono pode fazer**. Ver §9.8 |
+| **NSQIP MICA (Gupta)** | Nomeado pelo ACC/AHA 2024, mas o guideline dá Classe 2a para "**uma** ferramenta validada", e o app já tem o RCRI. Além disso, não consegui os coeficientes exatos do modelo logístico em fonte primária — e escore de risco com coeficiente chutado é pior que escore ausente |
+| **Delta PP · conversão de corticoides · conversor mcg/kg/min↔mL/h · interpretador de gasometria** | São **convenção de mercado**, não recomendação. Estão no app da SBA, no Whitebook e no Follie, e **nenhuma diretriz manda calculá-los**. Pelo critério que o dono deu, não passam. Ficam registrados aqui para quando o critério for outro |
+| **PADSS** | Continua dependendo de um fato: o grupo faz cirurgia ambulatorial? Ver §9.5 |
+
+⚠️ **Nenhuma das 7 perguntas da §9 foi respondida por conta própria** — nenhuma delas é questão de
+evidência: dependem de fatos sobre a prática do grupo, e evidência não responde "esse grupo assume
+plantão de UTI?".
+
+⚠️ **Um defeito de exibição ficou mais visível e NÃO foi mexido:** o número grande do resultado sai
+com PONTO decimal (`0.71`, `2.00`) enquanto tudo abaixo dele usa vírgula. É o
+`ResultDisplay.toFixed(2)` genérico, vale para as 59 calculadoras, e está registrado como Frente 4
+(~133 usos) em `docs/revisao-calculadoras.md`. Corrigir alcança o app inteiro — é mudança visual, e
+cai na Regra #2. Deixar só os 7 cards novos com vírgula criaria uma inconsistência nova, pior.
+
+---
+
+## Verificação da segunda rodada
+
+`npm run lint` **0 erros** · `npm run test:run` **4.873 testes** em 258 arquivos (+248) ·
+`npm run build` ok · dev server sobe limpo.
+
+No app logado, a **430px, nos dois temas**, os 7 cards foram abertos, preenchidos e conferidos:
+número esperado presente, zero `undefined`, zero `NaN`, zero estouro horizontal e zero erro de
+página — 14 conferências, 14 verdes. Exemplos medidos na tela real: peso magro 67,5 kg para homem de
+100 kg e 175 cm; 315 mg e 15,8 mL de lidocaína 2% em 70 kg; CAM total 0,71 com sevoflurano 1% aos 80
+anos; 875 mL de NaCl 3% a 36,5 mL/h para levar o sódio de 120 a 128.
 
 ---
 

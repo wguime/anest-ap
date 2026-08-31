@@ -20,12 +20,15 @@ description: Calculadoras clínicas (71 em 13 seções) — padrão de lib pura 
      arquivo que casa os `paths` acima. -->
 
 ## Calculadoras Clínicas
-52 calculadoras ativas em 14 seções (86 definições; 34 `inactive` — nada é apagado).
+59 calculadoras ativas em 14 seções (93 definições; 34 `inactive` — nada é apagado).
 Dados em `src/design-system/data/calculator-definitions.js`. Conferir sempre pelo repo, nunca de
 memória: `grep -c "status: 'active'" src/design-system/data/calculator-definitions.js`.
 
 **Padrão para calculadoras complexas:**
-- Lib pura: `src/lib/<nome>.js` (funções puras, `num()` helper, JSDoc, named exports)
+- Lib pura: `src/lib/<nome>.js` (funções puras, `num()` helper, JSDoc, named exports).
+  Acrescentadas em 30/08/2026: `pesoCorporal` (ideal/magro/ajustado/IMC/SC), `anestesicoLocal`
+  (dose máxima e volume), `correcaoSodio` (Adrogué-Madias e tetos de 24 h), `macIdade`
+  (CAM pela idade, Mapleson). Cada uma é importada pelo card que a usa.
 - Display custom: `src/design-system/showcase/displays/<Nome>Display.jsx` (estado interno, sem props)
 - Teste: `src/__tests__/lib/<nome>.test.js` (Vitest, edge cases obrigatórios)
 - Na definição: `customRender: '<nome>'` + `inputs: []` + `compute: () => null`

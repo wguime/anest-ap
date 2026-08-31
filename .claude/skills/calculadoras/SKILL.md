@@ -1,6 +1,6 @@
 ---
 name: calculadoras
-description: Regras para criar, editar e corrigir as calculadoras clínicas do ANEST (52 ativas em 14 seções, incluindo Indicação de UTI). Use ao mexer em calculator-definitions.js, nos displays do showcase, nas libs puras de src/lib, ou ao investigar conta errada, InfoBox, layout de grid e formatação de número.
+description: Regras para criar, editar e corrigir as calculadoras clínicas do ANEST (59 ativas em 14 seções, incluindo Indicação de UTI). Use ao mexer em calculator-definitions.js, nos displays do showcase, nas libs puras de src/lib, ou ao investigar conta errada, InfoBox, layout de grid e formatação de número.
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 
@@ -17,7 +17,7 @@ aprovação.
 
 | onde | o que tem |
 |---|---|
-| `src/design-system/data/calculator-definitions.js` | **86 definições — 52 `active`, 34 `inactive`** — em 14 seções |
+| `src/design-system/data/calculator-definitions.js` | **93 definições — 59 `active`, 34 `inactive`** — em 14 seções |
 | `src/design-system/showcase/CalculatorShowcase.jsx` | a tela: grid, busca, inputs genéricos, 8 displays inline |
 | `src/design-system/showcase/displays/` | 8 displays com arquivo próprio |
 | `src/lib/*.js` | libs puras (`apacheII`, `fourScore`, `roxIndex`, `electrolyteCorrection`, `saps3`, `sofaScore`, `fluidBalance`…), testadas em `src/__tests__/lib/` |
