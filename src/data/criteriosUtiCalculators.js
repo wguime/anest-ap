@@ -13,7 +13,7 @@ export const SORT_CALCULATOR = {
   categoria: 'pre',
   descricao: '6 variáveis — Risco mortalidade 30 dias',
   melhorPara: 'Cirurgias eletivas e urgentes',
-  auroc: '0.91 (mortalidade 30d)',
+  auroc: '0,91 (mortalidade 30d)',
   references: [
     'Protopapa KL et al. Development and validation of the Surgical Outcome Risk Tool (SORT). Br J Surg 2014;101(13):1774-83.',
     'NCEPOD "Knowing the Risk" — 19.097 pacientes, 326 hospitais.',
@@ -150,8 +150,8 @@ export const ESS_CALCULATOR = {
   fullName: 'Escore de Cirurgia de Emergência',
   categoria: 'pre',
   descricao: '22 variáveis — Predição UTI em emergências',
-  melhorPara: 'Emergências cirúrgicas (c-stat 0.91)',
-  auroc: '0.91 (UTI), 0.94 (mortalidade)',
+  melhorPara: 'Emergências cirúrgicas (c-stat 0,91)',
+  auroc: '0,91 (UTI), 0,94 (mortalidade)',
   references: [
     'Sangji NF et al. Derivation of a novel Emergency Surgery Score (ESS). J Trauma Acute Care Surg 2016;81(5):S2.',
     'Peponis T et al. Validation of ESS for ICU triage. Am J Surg 2019;217(1):150-155.',
@@ -188,12 +188,12 @@ export const ESS_CALCULATOR = {
       title: 'Laboratório',
       sublabel: '0-13 pontos',
       inputs: [
-        { id: 'albumina', label: 'Albumina < 3.0 g/dL', type: 'bool', pts: 1 },
+        { id: 'albumina', label: 'Albumina < 3,0 g/dL', type: 'bool', pts: 1 },
         { id: 'fa', label: 'Fosfatase alcalina > 125 U/L', type: 'bool', pts: 1 },
         { id: 'bun', label: 'BUN > 40 mg/dL', type: 'bool', pts: 1 },
-        { id: 'creatinina', label: 'Creatinina > 1.2 mg/dL', type: 'bool', pts: 2 },
-        { id: 'inr', label: 'INR > 1.5', type: 'bool', pts: 1 },
-        { id: 'plaquetas', label: 'Plaquetas < 150.000', type: 'bool', pts: 1 },
+        { id: 'creatinina', label: 'Creatinina > 1,2 mg/dL', type: 'bool', pts: 2 },
+        { id: 'inr', label: 'INR > 1,5', type: 'bool', pts: 1 },
+        { id: 'plaquetas', label: 'Plaquetas < 150,000', type: 'bool', pts: 1 },
         { id: 'tgo', label: 'TGO > 40 U/L', type: 'bool', pts: 1 },
         { id: 'sodio', label: 'Sódio > 145 mEq/L', type: 'bool', pts: 1 },
         {
@@ -201,10 +201,10 @@ export const ESS_CALCULATOR = {
           label: 'Leucócitos',
           type: 'select',
           options: [
-            { label: 'Normal (4.5-15k)', value: 0 },
-            { label: '< 4.500', value: 1 },
-            { label: '15.000-25.000', value: 1 },
-            { label: '> 25.000', value: 2 },
+            { label: 'Normal (4,5-15k)', value: 0 },
+            { label: '< 4,500', value: 1 },
+            { label: '15,000-25,000', value: 1 },
+            { label: '> 25,000', value: 2 },
           ],
         },
       ],
@@ -313,7 +313,7 @@ export const POTTER_CALCULATOR = {
           dependente: {
             id: 'labs_criticos_dep',
             question: 'Há alterações laboratoriais críticas?',
-            sublabel: 'INR > 1.5, Leucócitos fora 4.5-15k, Hematócrito < 30%',
+            sublabel: 'INR > 1,5, Leucócitos fora 4,5-15k, Hematócrito < 30%',
             type: 'select',
             options: [
               { label: '≥ 2 alterados', value: 'sim' },
@@ -339,8 +339,8 @@ export const POTTER_CALCULATOR = {
                 question: 'Albumina sérica?',
                 type: 'select',
                 options: [
-                  { label: '< 3.0 g/dL', value: 'baixa' },
-                  { label: '≥ 3.0 g/dL', value: 'normal' },
+                  { label: '< 3,0 g/dL', value: 'baixa' },
+                  { label: '≥ 3,0 g/dL', value: 'normal' },
                 ],
                 branches: {
                   baixa: { result: 'moderado_alto', mortalidade: '10-20%' },
@@ -349,8 +349,8 @@ export const POTTER_CALCULATOR = {
                     question: 'Creatinina sérica?',
                     type: 'select',
                     options: [
-                      { label: '> 1.2 mg/dL', value: 'alta' },
-                      { label: '≤ 1.2 mg/dL', value: 'normal' },
+                      { label: '> 1,2 mg/dL', value: 'alta' },
+                      { label: '≤ 1,2 mg/dL', value: 'normal' },
                     ],
                     branches: {
                       alta: { result: 'moderado', mortalidade: '3-10%' },
@@ -385,7 +385,7 @@ export const POTTER_CALCULATOR = {
                   poucas: {
                     id: 'labs_idoso_ind',
                     question: 'Quantos exames laboratoriais alterados?',
-                    sublabel: 'INR > 1.5, Leucócitos fora 4.5-15k, Hematócrito < 30%',
+                    sublabel: 'INR > 1,5, Leucócitos fora 4,5-15k, Hematócrito < 30%',
                     type: 'select',
                     options: [
                       { label: '≥ 2 alterados', value: 'muitos' },
@@ -440,8 +440,8 @@ export const POTTER_CALCULATOR = {
                 question: 'Albumina sérica?',
                 type: 'select',
                 options: [
-                  { label: '< 3.0 g/dL', value: 'baixa' },
-                  { label: '≥ 3.0 g/dL', value: 'normal' },
+                  { label: '< 3,0 g/dL', value: 'baixa' },
+                  { label: '≥ 3,0 g/dL', value: 'normal' },
                 ],
                 branches: {
                   baixa: { result: 'moderado_alto', mortalidade: '10-20%' },
@@ -498,7 +498,7 @@ export const SAS_CALCULATOR = {
   categoria: 'intra',
   descricao: '3 variáveis — Avaliação rápida ao final da cirurgia',
   melhorPara: 'Decisão intraoperatória rápida',
-  auroc: '0.74-0.80 (UTI)',
+  auroc: '0,74-0,80 (UTI)',
   references: [
     'Gawande AA et al. An Apgar Score for Surgery. J Am Coll Surg 2007;204(2):201-208.',
     'Lin YC et al. Association of SAS with ICU admission. Sci Rep 2021;11:1774.',
@@ -510,8 +510,8 @@ export const SAS_CALCULATOR = {
       label: 'Perda sanguínea estimada',
       type: 'select',
       options: [
-        { label: '> 1.000 mL', value: 0, detail: '0 pontos' },
-        { label: '601-1.000 mL', value: 1, detail: '1 ponto' },
+        { label: '> 1,000 mL', value: 0, detail: '0 pontos' },
+        { label: '601-1,000 mL', value: 1, detail: '1 ponto' },
         { label: '101-600 mL', value: 2, detail: '2 pontos' },
         { label: '≤ 100 mL', value: 3, detail: '3 pontos' },
       ],
@@ -816,7 +816,7 @@ export const PPOSSUM_CALCULATOR = {
   categoria: 'composto',
   descricao: '18 variáveis — Score cirúrgico mais validado globalmente',
   melhorPara: 'Cirurgias eletivas e emergentes (pré + intra)',
-  auroc: '0.78-0.88 (mortalidade)',
+  auroc: '0,78-0,88 (mortalidade)',
   references: [
     'Copeland GP et al. POSSUM: A scoring system for surgical audit. Br J Surg 1991;78(3):355-60.',
     'Prytherch DR et al. Portsmouth-POSSUM: A more accurate scoring. Br J Surg 1998;85(6):763-8.',
@@ -909,9 +909,9 @@ export const PPOSSUM_CALCULATOR = {
           type: 'select',
           options: [
             { label: '13-16', value: 1 },
-            { label: '11.5-12.9 ou 16.1-17', value: 2 },
-            { label: '10-11.4 ou 17.1-18', value: 4 },
-            { label: '≤ 9.9 ou ≥ 18.1', value: 8 },
+            { label: '11,5-12,9 ou 16,1-17', value: 2 },
+            { label: '10-11,4 ou 17,1-18', value: 4 },
+            { label: '≤ 9,9 ou ≥ 18,1', value: 8 },
           ],
         },
         {
@@ -920,8 +920,8 @@ export const PPOSSUM_CALCULATOR = {
           type: 'select',
           options: [
             { label: '4-10', value: 1 },
-            { label: '10.1-20 ou 3.1-3.9', value: 2 },
-            { label: '≥ 20.1 ou ≤ 3.0', value: 4 },
+            { label: '10,1-20 ou 3,1-3,9', value: 2 },
+            { label: '≥ 20,1 ou ≤ 3,0', value: 4 },
           ],
         },
         {
@@ -929,10 +929,10 @@ export const PPOSSUM_CALCULATOR = {
           label: 'Ureia (mmol/L)',
           type: 'select',
           options: [
-            { label: '≤ 7.5', value: 1 },
-            { label: '7.6-10', value: 2 },
-            { label: '10.1-15', value: 4 },
-            { label: '≥ 15.1', value: 8 },
+            { label: '≤ 7,5', value: 1 },
+            { label: '7,6-10', value: 2 },
+            { label: '10,1-15', value: 4 },
+            { label: '≥ 15,1', value: 8 },
           ],
         },
         {
@@ -951,10 +951,10 @@ export const PPOSSUM_CALCULATOR = {
           label: 'Potássio (mEq/L)',
           type: 'select',
           options: [
-            { label: '3.5-5.0', value: 1 },
-            { label: '3.2-3.4 ou 5.1-5.3', value: 2 },
-            { label: '2.9-3.1 ou 5.4-5.9', value: 4 },
-            { label: '≤ 2.8 ou ≥ 6.0', value: 8 },
+            { label: '3,5-5,0', value: 1 },
+            { label: '3,2-3,4 ou 5,1-5,3', value: 2 },
+            { label: '2,9-3,1 ou 5,4-5,9', value: 4 },
+            { label: '≤ 2,8 ou ≥ 6,0', value: 8 },
           ],
         },
       ],
@@ -1112,7 +1112,7 @@ export const CFM_CALCULATOR = {
   melhorPara: 'Classificação obrigatória por lei (CFM)',
   auroc: 'Regulatório (não score preditivo)',
   references: [
-    'Conselho Federal de Medicina. Resolução CFM nº 2.156/2016. Diário Oficial da União, 17 nov 2016.',
+    'Conselho Federal de Medicina. Resolução CFM nº 2,156/2016. Diário Oficial da União, 17 nov 2016.',
     'CFM Resolução 2271/2020. Critérios operacionais para UTI/UCI.',
     'AMIB. Endosso do documento sobre critérios de admissão em UTI, 2016.',
   ],

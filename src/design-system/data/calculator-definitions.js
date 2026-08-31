@@ -4,7 +4,7 @@
  * 34 Ativas (portadas do legado) + 50 Em breve
  */
 
-import { numeroBr } from '../../lib/numeroBr';
+import { numeroBr, numeroBrEnxuto, numeroFlexivel } from '../../lib/numeroBr';
 
 import { maintenanceRate } from '@/lib/fluidBalance';
 import { hollidaySegarDaily } from '@/lib/burnFluid';
@@ -62,10 +62,10 @@ const PEDI_CALC_DATA = {
     categoria: 'PCR (Parada Cardiorrespiratória)',
     drogas: [
       { droga: 'ADRENALINA', apresentacao: '1 mg/ml', dosePadrao: 0.01, unidadeDose: 'mg/kg', diluicao: '1ml + 9ml AD', concentracaoFinal: 0.1, obs: 'A cada 3-5 min na PCR. Primeira droga em AESP/Assistolia. Após 2o choque em FV/TV.' },
-      { droga: 'ATROPINA', apresentacao: '0,25 mg/ml', dosePadrao: 0.02, unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', concentracaoFinal: 0.25, doseMinima: 0.1, doseMaxima: 0.5, warning: 'NÃO usar rotineiramente na PCR pediátrica! Indicada apenas para bradicardia vagal.', obs: 'Dose mínima 0.1mg para evitar bradicardia paradoxal.' },
+      { droga: 'ATROPINA', apresentacao: '0,25 mg/ml', dosePadrao: 0.02, unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', concentracaoFinal: 0.25, doseMinima: 0.1, doseMaxima: 0.5, warning: 'NÃO usar rotineiramente na PCR pediátrica! Indicada apenas para bradicardia vagal.', obs: 'Dose mínima 0,1mg para evitar bradicardia paradoxal.' },
       { droga: 'PUSH SF 0,9%', apresentacao: '0,15 mEq/ml', dosePadrao: 20, unidadeDose: 'ml/kg', diluicao: 'PURO', concentracaoFinal: 1, obs: 'Bolus rápido após cada droga IV/IO. Facilita chegada ao coração.' },
       { droga: 'BICA Na 8,4%', apresentacao: '1 mEq/ml', dosePadrao: 1, unidadeDose: 'mEq/kg', diluicao: '20ml + 20ml AD', concentracaoFinal: 0.5, warning: 'NÃO usar rotineiramente! Apenas em acidose grave documentada ou hipercalemia.', obs: 'Infundir lentamente. Incompatível com cálcio na mesma via.' },
-      { droga: 'LIDOCAINA 2%', apresentacao: '20 mg/ml', dosePadrao: 1, unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', concentracaoFinal: 20, obs: 'Alternativa a Amiodarona em FV/TV refrataria. Pode repetir 0.5-0.75 mg/kg.' },
+      { droga: 'LIDOCAINA 2%', apresentacao: '20 mg/ml', dosePadrao: 1, unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', concentracaoFinal: 20, obs: 'Alternativa a Amiodarona em FV/TV refrataria. Pode repetir 0,5-0,75 mg/kg.' },
       { droga: 'GLUCO Ca 10%', apresentacao: '100 mg/ml', dosePadrao: 60, unidadeDose: 'mg/kg', diluicao: '10ml + 10ml AD', concentracaoFinal: 50, doseMaxima: 2000, warning: 'Infusão lenta! Risco de bradicardia e assistolia se rápido.', obs: 'Indicado em hipocalcemia, hipercalemia, intox por bloq Ca.' },
       { droga: 'ADENOSINA', apresentacao: '3 mg/ml', dosePadrao: 0.1, unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', concentracaoFinal: 3, doseMaxima: 6, obs: 'Push MUITO rápido + flush imediato. 1a dose 0,1 mg/kg (máx 6 mg); se falhar, 0,2 mg/kg (máx 12 mg).' },
       { droga: 'GLICOSE 10%', apresentacao: '100 mg/ml', dosePadrao: 500, unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', concentracaoFinal: 100, obs: 'Verificar glicemia capilar. Neonatos tem alto risco de hipoglicemia na PCR.' },
@@ -96,7 +96,7 @@ const PEDI_CALC_DATA = {
       { droga: 'CETAMINA', apresentacao: '50 mg/ml', dosePadrao: 1, unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', concentracaoFinal: 50, obs: 'Dissociativo. Mantém reflexos de VA e PA. Pode causar sialorreia e alucinações.' },
       { droga: 'PANCURONIO', apresentacao: '2 mg/ml', dosePadrao: 0.1, unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', concentracaoFinal: 2, warning: 'Não usar sem sedação adequada! BNM não causa inconsciência.', obs: 'Duração longa (40-60 min). Vagolítico - pode causar taquicardia.' },
       { droga: 'SUCCINILCOLINA', apresentacao: '100 mg/frasco', dosePadrao: 1, unidadeDose: 'mg/kg', diluicao: '1 frasco + 5ml AD', concentracaoFinal: 20, warning: 'CONTRAINDICADA em miopatias, queimados >24h, hipercalemia e HM!', obs: 'ISR pediátrica: 2 mg/kg. Fasciculações podem ser ausentes em lactentes.' },
-      { droga: 'ROCURONIO', apresentacao: '10 mg/ml', dosePadrao: 0.6, unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', concentracaoFinal: 10, obs: 'ISR: 1.2 mg/kg. Reversível com Sugammadex. Sem contraindicações de SCh.' },
+      { droga: 'ROCURONIO', apresentacao: '10 mg/ml', dosePadrao: 0.6, unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', concentracaoFinal: 10, obs: 'ISR: 1,2 mg/kg. Reversível com Sugammadex. Sem contraindicações de SCh.' },
       { droga: 'PROPOFOL', apresentacao: '10 mg/ml', dosePadrao: 2, unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', concentracaoFinal: 10, warning: 'Dor a injeção! Pode causar hipotensão e bradicardia.', obs: 'Reduzir dose em hipovolêmicos. CONTRAINDICADO em <3 anos para sedação prolongada.' },
       { droga: 'THIOPENTAL', apresentacao: '500 mg/frasco', dosePadrao: 4, unidadeDose: 'mg/kg', diluicao: '1 frasco + 20ml AD', concentracaoFinal: 25, warning: 'Necrose se extravasamento! Verificar acesso antes.', obs: 'Anticonvulsivante. Reduzir dose em hipovolêmicos e cardiopatas.' },
     ],
@@ -125,7 +125,7 @@ const PEDI_CALC_DATA = {
   corticoides: {
     categoria: 'Corticoides',
     drogas: [
-      { droga: 'DEXAMETASONA', apresentacao: '4 mg/ml', dosePadrao: 0.15, unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', concentracaoFinal: 4, doseMaxima: 10, obs: 'Antiemet ico: 0.15mg/kg. NVPO: dar no início da cirurgia. Laringite: 0.6mg/kg.' },
+      { droga: 'DEXAMETASONA', apresentacao: '4 mg/ml', dosePadrao: 0.15, unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', concentracaoFinal: 4, doseMaxima: 10, obs: 'Antiemet ico: 0,15mg/kg. NVPO: dar no início da cirurgia. Laringite: 0,6mg/kg.' },
       { droga: 'HIDROCORTISONA', apresentacao: '100 mg/frasco', dosePadrao: 2, unidadeDose: 'mg/kg', diluicao: '1 frasco + 2ml AD', concentracaoFinal: 50, doseMaxima: 100, obs: 'Estresse cirúrgico: 25-50 mg/m2. Insuf adrenal: 100 mg/m2/dia.' },
       { droga: 'METILPREDNISOLONA', apresentacao: '125 mg/frasco', dosePadrao: 1, unidadeDose: 'mg/kg', diluicao: '1 frasco + 2ml AD', concentracaoFinal: 62.5, doseMaxima: 125, obs: 'Anafilaxia: 1-2 mg/kg. Asma grave: 2 mg/kg.' },
     ],
@@ -150,8 +150,8 @@ const PEDI_CALC_DATA = {
       { droga: 'METOCLOPRAMIDA', apresentacao: '5 mg/ml', dosePadrao: 0.15, unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', concentracaoFinal: 5, doseMaxima: 10, warning: 'Risco de reacoes extrapiramidais em crianças!', obs: 'Procinetico. Administrar lentamente.' },
       { droga: 'RANITIDINA', apresentacao: '25 mg/ml', dosePadrao: 1, unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', concentracaoFinal: 25, doseMaxima: 50, obs: 'Redutor de acidez gastrica. Profilaxia de aspiração.' },
       { droga: 'OMEPRAZOL', apresentacao: '40 mg/frasco', dosePadrao: 1, unidadeDose: 'mg/kg', diluicao: '1 frasco + 10ml AD', concentracaoFinal: 4, doseMaxima: 40, obs: 'IBP. Usar em DRGE ou alto risco de aspiração.' },
-      { droga: 'NEOSTIGMINA', apresentacao: '0.5 mg/ml', dosePadrao: 0.04, unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', concentracaoFinal: 0.5, doseMaxima: 2.5, warning: 'Sempre associar com Atropina!', obs: 'Reversão de BNM aminoesteroides. Aguardar TOF >=2.' },
-      { droga: 'ATROPINA (reversão)', apresentacao: '0.25 mg/ml', dosePadrao: 0.02, unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', concentracaoFinal: 0.25, doseMinima: 0.1, doseMaxima: 0.5, obs: 'Previne bradicardia da Neostigmina. Dar junto ou antes.' },
+      { droga: 'NEOSTIGMINA', apresentacao: '0,5 mg/ml', dosePadrao: 0.04, unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', concentracaoFinal: 0.5, doseMaxima: 2.5, warning: 'Sempre associar com Atropina!', obs: 'Reversão de BNM aminoesteroides. Aguardar TOF >=2.' },
+      { droga: 'ATROPINA (reversão)', apresentacao: '0,25 mg/ml', dosePadrao: 0.02, unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', concentracaoFinal: 0.25, doseMinima: 0.1, doseMaxima: 0.5, obs: 'Previne bradicardia da Neostigmina. Dar junto ou antes.' },
       { droga: 'SUGAMADEX', apresentacao: '100 mg/ml', dosePadrao: 2, unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', concentracaoFinal: 100, obs: 'Reversão específica de Rocuronio/Vecuronio. 2mg/kg se TOF>=2. 4mg/kg se PTC>=1-2.' },
       { droga: 'EFEDRINA', apresentacao: '50 mg/ml', dosePadrao: 0.1, unidadeDose: 'mg/kg', diluicao: '1ml + 9ml AD', concentracaoFinal: 5, doseMaxima: 25, obs: 'Vasopressor de ação mista. Pode repetir. Taquifilaxia após doses repetidas.' },
       { droga: 'FENILEFRINA', apresentacao: '10 mg/ml', dosePadrao: 2, unidadeDose: 'mcg/kg', diluicao: '1ml + 99ml AD', concentracaoFinal: 0.1, doseMaxima: 100, obs: 'Alfa-agonista puro. Bradicardia reflexa. Usar em taquicardia + hipotensão.' },
@@ -324,9 +324,9 @@ const pedViaAereaCalculators = [
 
       // Mascara Laringea por peso (LMA pediátrica até 50kg)
       if (peso < 5) lma = '1';
-      else if (peso < 10) lma = '1.5';
+      else if (peso < 10) lma = '1,5';
       else if (peso < 20) lma = '2';
-      else if (peso < 30) lma = '2.5';
+      else if (peso < 30) lma = '2,5';
       else if (peso <= 50) lma = '3';
 
       return {
@@ -348,18 +348,18 @@ const pedViaAereaCalculators = [
     },
     infoBox: {
       warnings: [
-        'Sempre preparar tubos 0.5mm acima e abaixo do calculado',
+        'Sempre preparar tubos 0,5mm acima e abaixo do calculado',
       ],
       keyPoints: [
         'Tubo SEM cuff: Formula de Cole (idade/4 + 4)',
-        'Tubo COM cuff: Formula de Duracher (idade/4 + 3.5) - preferida atualmente',
+        'Tubo COM cuff: Formula de Duracher (idade/4 + 3,5) - preferida atualmente',
         'Profundidade oral = diametro do tubo x 3 cm',
       ],
       doses: [
         'LMA #1: < 5 kg',
-        'LMA #1.5: 5-10 kg',
+        'LMA #1,5: 5-10 kg',
         'LMA #2: 10-20 kg',
-        'LMA #2.5: 20-30 kg',
+        'LMA #2,5: 20-30 kg',
         'LMA #3: 30-50 kg',
       ],
       reference: 'Cole F. AMA J Dis Child. 1957 | Duracher C. Br J Anaesth. 2008 | AHA/PALS Guidelines 2020.',
@@ -408,7 +408,7 @@ const pedViaAereaCalculators = [
         '1º Choque FV/TV sem pulso: 2 J/kg',
         '2º Choque: 4 J/kg',
         'Choques subsequentes: 4-10 J/kg',
-        'Cardioversão sincronizada (TSV/flutter): 0.5-1 J/kg inicial',
+        'Cardioversão sincronizada (TSV/flutter): 0,5-1 J/kg inicial',
         'Repetir cardioversão: 2 J/kg se necessário',
       ],
       interpretation: 'Protocolo PALS (Pediatric Advanced Life Support) para desfibrilação pediátrica.',
@@ -431,15 +431,15 @@ const pedViaAereaCalculators = [
 
       // Tabela atualizada com faixas de peso (LA Peds Ready / Broselow 2025)
       const BROSELOW_TABLE = [
-        { cor: 'Cinza', corEN: 'Grey', min: 46, max: 56, pesoMin: 3, pesoMax: 5, tubo: '3.0-3.5', lma: '1', hex: '#9E9E9E', textColor: '#FFFFFF' },
-        { cor: 'Rosa', corEN: 'Pink', min: 57, max: 66, pesoMin: 6, pesoMax: 7, tubo: '3.5', lma: '1', hex: '#F48FB1', textColor: '#000000' },
-        { cor: 'Vermelho', corEN: 'Red', min: 67, max: 74, pesoMin: 8, pesoMax: 9, tubo: '4.0', lma: '1.5', hex: '#EF5350', textColor: '#FFFFFF' },
-        { cor: 'Roxo', corEN: 'Purple', min: 75, max: 83, pesoMin: 10, pesoMax: 11, tubo: '4.5', lma: '2', hex: '#AB47BC', textColor: '#FFFFFF' },
-        { cor: 'Amarelo', corEN: 'Yellow', min: 84, max: 95, pesoMin: 12, pesoMax: 14, tubo: '5.0', lma: '2', hex: '#FFEE58', textColor: '#000000' },
-        { cor: 'Branco', corEN: 'White', min: 96, max: 107, pesoMin: 15, pesoMax: 18, tubo: '5.5', lma: '2.5', hex: '#FAFAFA', textColor: '#000000' },
-        { cor: 'Azul', corEN: 'Blue', min: 108, max: 119, pesoMin: 19, pesoMax: 23, tubo: '6.0 c/cuff', lma: '2.5-3', hex: '#42A5F5', textColor: '#FFFFFF' },
-        { cor: 'Laranja', corEN: 'Orange', min: 120, max: 131, pesoMin: 24, pesoMax: 29, tubo: '6.5 c/cuff', lma: '3', hex: '#FFA726', textColor: '#000000' },
-        { cor: 'Verde', corEN: 'Green', min: 132, max: 143, pesoMin: 30, pesoMax: 36, tubo: '7.0 c/cuff', lma: '3-4', hex: '#66BB6A', textColor: '#FFFFFF' },
+        { cor: 'Cinza', corEN: 'Grey', min: 46, max: 56, pesoMin: 3, pesoMax: 5, tubo: '3,0-3,5', lma: '1', hex: '#9E9E9E', textColor: '#FFFFFF' },
+        { cor: 'Rosa', corEN: 'Pink', min: 57, max: 66, pesoMin: 6, pesoMax: 7, tubo: '3,5', lma: '1', hex: '#F48FB1', textColor: '#000000' },
+        { cor: 'Vermelho', corEN: 'Red', min: 67, max: 74, pesoMin: 8, pesoMax: 9, tubo: '4,0', lma: '1,5', hex: '#EF5350', textColor: '#FFFFFF' },
+        { cor: 'Roxo', corEN: 'Purple', min: 75, max: 83, pesoMin: 10, pesoMax: 11, tubo: '4,5', lma: '2', hex: '#AB47BC', textColor: '#FFFFFF' },
+        { cor: 'Amarelo', corEN: 'Yellow', min: 84, max: 95, pesoMin: 12, pesoMax: 14, tubo: '5,0', lma: '2', hex: '#FFEE58', textColor: '#000000' },
+        { cor: 'Branco', corEN: 'White', min: 96, max: 107, pesoMin: 15, pesoMax: 18, tubo: '5,5', lma: '2,5', hex: '#FAFAFA', textColor: '#000000' },
+        { cor: 'Azul', corEN: 'Blue', min: 108, max: 119, pesoMin: 19, pesoMax: 23, tubo: '6,0 c/cuff', lma: '2,5-3', hex: '#42A5F5', textColor: '#FFFFFF' },
+        { cor: 'Laranja', corEN: 'Orange', min: 120, max: 131, pesoMin: 24, pesoMax: 29, tubo: '6,5 c/cuff', lma: '3', hex: '#FFA726', textColor: '#000000' },
+        { cor: 'Verde', corEN: 'Green', min: 132, max: 143, pesoMin: 30, pesoMax: 36, tubo: '7,0 c/cuff', lma: '3-4', hex: '#66BB6A', textColor: '#FFFFFF' },
       ];
 
       const faixa = BROSELOW_TABLE.find(f => comprimento >= f.min && comprimento <= f.max);
@@ -949,11 +949,11 @@ const pedUtiCalculators = [
         label: 'Hepático (Bilirrubina mg/dL)',
         type: 'select',
         options: [
-          { value: 0, label: '0 - < 1.2' },
-          { value: 1, label: '1 - 1.2-1.9' },
-          { value: 2, label: '2 - 2.0-5.9' },
-          { value: 3, label: '3 - 6.0-11.9' },
-          { value: 4, label: '4 - >= 12.0' },
+          { value: 0, label: '0 - < 1,2' },
+          { value: 1, label: '1 - 1,2-1,9' },
+          { value: 2, label: '2 - 2,0-5,9' },
+          { value: 3, label: '3 - 6,0-11,9' },
+          { value: 4, label: '4 - >= 12,0' },
         ],
       },
       {
@@ -964,8 +964,8 @@ const pedUtiCalculators = [
           { value: 0, label: '0 - PAM normal para idade (sem vasopressores)' },
           { value: 1, label: '1 - PAM abaixo do normal para idade' },
           { value: 2, label: '2 - Dopamina <= 5 mcg/kg/min OU dobutamina' },
-          { value: 3, label: '3 - Dopamina > 5 OU epinefrina <= 0.1 OU norepinefrina <= 0.1' },
-          { value: 4, label: '4 - Dopamina > 15 OU epinefrina > 0.1 OU norepinefrina > 0.1' },
+          { value: 3, label: '3 - Dopamina > 5 OU epinefrina <= 0,1 OU norepinefrina <= 0,1' },
+          { value: 4, label: '4 - Dopamina > 15 OU epinefrina > 0,1 OU norepinefrina > 0,1' },
         ],
       },
       {
@@ -986,8 +986,8 @@ const pedUtiCalculators = [
         type: 'select',
         options: [
           { value: 0, label: '0 - Normal para idade' },
-          { value: 1, label: '1 - Elevada leve (1.1-1.5x normal)' },
-          { value: 2, label: '2 - Elevada moderada (1.5-2x normal)' },
+          { value: 1, label: '1 - Elevada leve (1,1-1,5x normal)' },
+          { value: 2, label: '2 - Elevada moderada (1,5-2x normal)' },
           { value: 3, label: '3 - Elevada grave (2-3x normal)' },
           { value: 4, label: '4 - Elevada crítica (> 3x normal ou diálise)' },
         ],
@@ -1295,9 +1295,9 @@ const pedUtiCalculators = [
         label: 'pH Arterial',
         type: 'select',
         options: [
-          { value: 0, label: '>= 7.28' },
-          { value: 2, label: '7.0 - 7.28 (acidose)' },
-          { value: 6, label: '< 7.0 (acidose grave)' },
+          { value: 0, label: '>= 7,28' },
+          { value: 2, label: '7,0 - 7,28 (acidose)' },
+          { value: 6, label: '< 7,0 (acidose grave)' },
         ],
       },
       {
@@ -1335,9 +1335,9 @@ const pedUtiCalculators = [
         label: 'Potássio (mEq/L)',
         type: 'select',
         options: [
-          { value: 0, label: '3.0-6.5' },
-          { value: 3, label: '< 3.0 (hipocalemia)' },
-          { value: 3, label: '> 6.5 (hipercalemia)' },
+          { value: 0, label: '3,0-6,5' },
+          { value: 3, label: '< 3,0 (hipocalemia)' },
+          { value: 3, label: '> 6,5 (hipercalemia)' },
         ],
       },
       {
@@ -1354,8 +1354,8 @@ const pedUtiCalculators = [
         label: 'Leucócitos (x10³/mm³)',
         type: 'select',
         options: [
-          { value: 0, label: '3.0-17.0' },
-          { value: 4, label: '< 3.0 (leucopenia)' },
+          { value: 0, label: '3,0-17,0' },
+          { value: 4, label: '< 3,0 (leucopenia)' },
         ],
       },
       {
@@ -2169,10 +2169,10 @@ const aclsCalculators = [
             { nome: 'ADRENALINA', valor: '1 mg IV/IO', detalhe: 'A cada 3-5 min | Após 2º choque (FV/TV) | Imediato (AESP/Assistolia)' },
             { nome: 'AMIODARONA 1ª dose', valor: '300 mg IV push', detalhe: 'Após 3º choque se FV/TV refrataria' },
             { nome: 'AMIODARONA 2ª dose', valor: '150 mg IV', detalhe: '3-5 min após primeira dose' },
-            { nome: 'LIDOCAINA', valor: `${lidocaina} mg`, detalhe: '1-1.5 mg/kg - equivalente a Amiodarona (AHA 2025)' },
+            { nome: 'LIDOCAINA', valor: `${lidocaina} mg`, detalhe: '1-1,5 mg/kg - equivalente a Amiodarona (AHA 2025)' },
             { nome: 'ADENOSINA (TSV)', valor: '6mg → 12mg → 12mg', detalhe: 'Push rápido + flush' },
             { nome: 'SULFATO Mg (Torsades)', valor: '1-2g IV', detalhe: 'Em 2-5 min | Torsades de Pointes' },
-            { nome: 'GLUCONATO Ca 10%', valor: `${gluconatoCa}-${peso} mL`, detalhe: '0.5-1 mL/kg | Hipercalemia, hipocalcemia' },
+            { nome: 'GLUCONATO Ca 10%', valor: `${gluconatoCa}-${peso} mL`, detalhe: '0,5-1 mL/kg | Hipercalemia, hipocalcemia' },
           ],
         },
         {
@@ -2184,7 +2184,7 @@ const aclsCalculators = [
               subItens: [
                 { nome: '30:2 (sem VA)', valor: '30 compressoes : 2 vent', detalhe: '1s por insuflação | ~500mL | Sem VA avancada' },
                 { nome: 'Com VA avancada', valor: '1 vent q6s (10/min)', detalhe: 'IOT/ML | Compressoes continuas' },
-                { nome: 'Via Intratraqueal', valor: 'Dose = 2-2.5x IV', detalhe: 'Diluir 5-10mL SF | NAVEL' },
+                { nome: 'Via Intratraqueal', valor: 'Dose = 2-2,5x IV', detalhe: 'Diluir 5-10mL SF | NAVEL' },
               ],
               interpretacao: 'NAVEL = Naloxona, Atropina (bradicardia), Vasopressina (NÃO PCR), Epinefrina, Lidocaína. Via IO preferível a ET (AHA 2025).',
             },
@@ -2195,11 +2195,11 @@ const aclsCalculators = [
           titulo: 'Bicarbonato de Sódio',
           itens: [
             {
-              nome: 'BICARBONATO DE SODIO 8.4%',
+              nome: 'BICARBONATO DE SODIO 8,4%',
               warning: 'NÃO usar rotineiramente na PCR! Apenas em indicações específicas.',
               subItens: [
                 { nome: 'Dose', valor: `${bicarbMeq} mEq`, detalhe: '1 mEq/kg' },
-                { nome: 'Volume', valor: `${bicarbMeq} mL`, detalhe: 'NaHCO3 8.4% = 1 mEq/mL' },
+                { nome: 'Volume', valor: `${bicarbMeq} mL`, detalhe: 'NaHCO3 8,4% = 1 mEq/mL' },
                 { nome: 'Ampolas', valor: `${bicarbAmp} amp`, detalhe: 'Amp 10mL' },
               ],
               interpretacao: 'Indicações específicas: Hipercalemia grave, Acidose metabólica pré-existente, Intoxicação por TCA ou Salicilatos.',
@@ -2229,10 +2229,10 @@ const aclsCalculators = [
               nome: 'AMIODARONA pós-RCE',
               subItens: [
                 { nome: 'Fase 1', valor: '1 mg/min x 6h', detalhe: 'Início após RCE' },
-                { nome: 'Fase 2', valor: '0.5 mg/min x 18h', detalhe: 'Manutenção' },
-                { nome: 'Preparo', valor: '900mg em 500mL SG5%', detalhe: '1.8 mg/mL' },
+                { nome: 'Fase 2', valor: '0,5 mg/min x 18h', detalhe: 'Manutenção' },
+                { nome: 'Preparo', valor: '900mg em 500mL SG5%', detalhe: '1,8 mg/mL' },
               ],
-              interpretacao: 'Iniciar se usou Amiodarona durante PCR. Dose total 24h: ~1.2g. Monitorar QT.',
+              interpretacao: 'Iniciar se usou Amiodarona durante PCR. Dose total 24h: ~1,2g. Monitorar QT.',
             },
           ],
         },
@@ -2246,14 +2246,14 @@ const aclsCalculators = [
                 { nome: 'IM (1ª LINHA)', valor: '0,3-0,5 mg IM', detalhe: '1:1000 (1 mg/mL) | Vasto lateral da coxa | Repetir q5-15 min' },
                 { nome: 'IV — Grau 2 (periop)', valor: '10-20 mcg IV', detalhe: 'Bolus a cada 1-2 min | Ambiente monitorizado' },
                 { nome: 'IV — Grau 3 (periop)', valor: '100-200 mcg IV', detalhe: 'Bolus a cada 1-2 min | Choque, broncoespasmo grave' },
-                { nome: 'Infusão contínua', valor: '0.05-0.1 mcg/kg/min', detalhe: 'Se refratário a bolus | Titular conforme resposta' },
+                { nome: 'Infusão contínua', valor: '0,05-0,1 mcg/kg/min', detalhe: 'Se refratário a bolus | Titular conforme resposta' },
               ],
               interpretacao: 'IM é 1ª linha (AHA/WAO/AAAAI). IV reservado para perioperatório ou refratário.',
             },
             {
               nome: 'ADJUVANTES',
               subItens: [
-                { nome: 'Difenidramina', valor: `${Math.round(peso*0.5)}-${peso} mg IV`, detalhe: '0.5-1 mg/kg | Anti-H1' },
+                { nome: 'Difenidramina', valor: `${Math.round(peso*0.5)}-${peso} mg IV`, detalhe: '0,5-1 mg/kg | Anti-H1' },
                 { nome: 'Famotidina', valor: '20 mg IV', detalhe: 'Anti-H2 | Ranitidina retirada do mercado (NDMA, 2020)' },
                 { nome: 'Hidrocortisona', valor: '250 mg IV', detalhe: 'ou Metilprednisolona 80 mg | Previne fase tardia' },
               ],
@@ -2270,17 +2270,17 @@ const aclsCalculators = [
             {
               nome: 'NORADRENALINA',
               subItens: [
-                { nome: 'Dose', valor: '0.05-0.5 mcg/kg/min', detalhe: '1ª linha sepse' },
+                { nome: 'Dose', valor: '0,05-0,5 mcg/kg/min', detalhe: '1ª linha sepse' },
                 { nome: 'Diluicao', valor: '4mg/250mL', detalhe: '16 mcg/mL' },
-                { nome: 'Resultado', valor: `${numeroBr(((0.1*peso*60)/16), 1)} - ${numeroBr(((0.3*peso*60)/16), 1)} mL/h`, detalhe: 'Faixa tipica (0.1-0.3 mcg/kg/min)' },
+                { nome: 'Resultado', valor: `${numeroBr(((0.1*peso*60)/16), 1)} - ${numeroBr(((0.3*peso*60)/16), 1)} mL/h`, detalhe: 'Faixa tipica (0,1-0,3 mcg/kg/min)' },
               ],
             },
             {
               nome: 'ADRENALINA infusão',
               subItens: [
-                { nome: 'Dose', valor: '0.01-0.5 mcg/kg/min', detalhe: 'Anafilaxia, choque' },
+                { nome: 'Dose', valor: '0,01-0,5 mcg/kg/min', detalhe: 'Anafilaxia, choque' },
                 { nome: 'Diluicao', valor: '4mg/250mL', detalhe: '16 mcg/mL' },
-                { nome: 'Resultado', valor: `${numeroBr(((0.05*peso*60)/16), 1)} - ${numeroBr(((0.2*peso*60)/16), 1)} mL/h`, detalhe: 'Faixa tipica (0.05-0.2 mcg/kg/min)' },
+                { nome: 'Resultado', valor: `${numeroBr(((0.05*peso*60)/16), 1)} - ${numeroBr(((0.2*peso*60)/16), 1)} mL/h`, detalhe: 'Faixa tipica (0,05-0,2 mcg/kg/min)' },
               ],
             },
             {
@@ -2299,11 +2299,11 @@ const aclsCalculators = [
                 { nome: 'Resultado', valor: `${numeroBr(((5*peso*60)/1000), 1)} - ${numeroBr(((10*peso*60)/1000), 1)} mL/h`, detalhe: 'Faixa tipica (5-10 mcg/kg/min)' },
               ],
             },
-            { nome: 'VASOPRESSINA', valor: '0.03-0.04 U/min', detalhe: '40U/100mL | Dose fixa, adjuvante a Nora' },
+            { nome: 'VASOPRESSINA', valor: '0,03-0,04 U/min', detalhe: '40U/100mL | Dose fixa, adjuvante a Nora' },
             {
               nome: 'FENILEFRINA',
               subItens: [
-                { nome: 'Dose', valor: '0.5-5 mcg/kg/min', detalhe: 'Alfa puro, vasoconstritor' },
+                { nome: 'Dose', valor: '0,5-5 mcg/kg/min', detalhe: 'Alfa puro, vasoconstritor' },
                 { nome: 'Diluicao', valor: '10mg/250mL', detalhe: '40 mcg/mL' },
                 { nome: 'Resultado', valor: `${numeroBr(((1*peso*60)/40), 1)} - ${numeroBr(((2*peso*60)/40), 1)} mL/h`, detalhe: 'Faixa tipica (1-2 mcg/kg/min)' },
               ],
@@ -2311,9 +2311,9 @@ const aclsCalculators = [
             {
               nome: 'MILRINONA',
               subItens: [
-                { nome: 'Dose', valor: '0.375-0.75 mcg/kg/min', detalhe: 'Inodilatador, IC refrataria' },
+                { nome: 'Dose', valor: '0,375-0,75 mcg/kg/min', detalhe: 'Inodilatador, IC refrataria' },
                 { nome: 'Diluicao', valor: '20mg/100mL', detalhe: '200 mcg/mL' },
-                { nome: 'Resultado', valor: `${numeroBr(((0.5*peso*60)/200), 2)} mL/h`, detalhe: 'Dose media (0.5 mcg/kg/min)' },
+                { nome: 'Resultado', valor: `${numeroBr(((0.5*peso*60)/200), 2)} mL/h`, detalhe: 'Dose media (0,5 mcg/kg/min)' },
               ],
             },
           ],
@@ -2326,8 +2326,8 @@ const aclsCalculators = [
               nome: 'EMULSAO LIPIDICA 20% (LAST)',
               warning: 'Dose máxima total: 12 mL/kg. Não exceder mesmo em PCR refrataria.',
               subItens: [
-                { nome: 'Bolus', valor: peso >= 70 ? '100 mL' : `${emulsaoLipidica} mL`, detalhe: peso >= 70 ? '1.5 mL/kg em 2-3 min | >70kg: 100mL fixo' : '1.5 mL/kg em 2-3 min | Intox anest local' },
-                { nome: 'Infusão', valor: `${numeroBr((peso*0.25), 1)} mL/min`, detalhe: '0.25 mL/kg/min x 15-20 min' },
+                { nome: 'Bolus', valor: peso >= 70 ? '100 mL' : `${emulsaoLipidica} mL`, detalhe: peso >= 70 ? '1,5 mL/kg em 2-3 min | >70kg: 100mL fixo' : '1,5 mL/kg em 2-3 min | Intox anest local' },
+                { nome: 'Infusão', valor: `${numeroBr((peso*0.25), 1)} mL/min`, detalhe: '0,25 mL/kg/min x 15-20 min' },
                 { nome: 'Se instável', valor: 'Repetir bolus 1-2x', detalhe: 'Dobrar infusão se necessário' },
               ],
               interpretacao: 'Iniciar imediatamente ao suspeitar de intoxicação por anestésico local. Se PCR: manter bolus/infusão durante RCP.',
@@ -2335,16 +2335,16 @@ const aclsCalculators = [
             {
               nome: 'NALOXONA (Opioides)',
               subItens: [
-                { nome: 'IV titulada', valor: '0.04-0.4 mg', detalhe: 'Iniciar 0.04 mg | Escalonar q2-3 min | Max 2-10 mg' },
+                { nome: 'IV titulada', valor: '0,04-0,4 mg', detalhe: 'Iniciar 0,04 mg | Escalonar q2-3 min | Max 2-10 mg' },
                 { nome: 'Intranasal', valor: '2 mg', detalhe: 'Repetir em 3-5 min se necessário | Narcan spray' },
               ],
               interpretacao: 'Titular para reverter depressão respiratória sem precipitar síndrome de abstinência aguda.',
             },
             { nome: 'GLUCAGON', valor: '3-10 mg IV', detalhe: 'Intox beta-bloq/bloq Ca | Infusão 3-5 mg/h', interpretacao: 'Primeira linha em intoxicação por beta-bloqueadores. Pode causar náuseas.' },
             { nome: 'INSULINA (HIET)', valor: `${peso} U bolus`, detalhe: '1 U/kg + Glicose 50% 25g | Intox bloq Ca grave', interpretacao: 'Terapia com alta dose de insulina para intox grave por bloq Ca. Monitorar glicemia rigorosamente.' },
-            { nome: 'FLUMAZENIL', valor: '0.2-1 mg IV', detalhe: 'Intox BZD | Max 3-5 mg', warning: 'CONTRAINDICADO em uso crônico de BZD! Risco de convulsões.', interpretacao: 'Meia-vida curta - pode haver ressedação. Observar por 2h após.' },
+            { nome: 'FLUMAZENIL', valor: '0,2-1 mg IV', detalhe: 'Intox BZD | Max 3-5 mg', warning: 'CONTRAINDICADO em uso crônico de BZD! Risco de convulsões.', interpretacao: 'Meia-vida curta - pode haver ressedação. Observar por 2h após.' },
             { nome: 'SUGAMMADEX', valor: `${Math.round(peso*16)} mg`, detalhe: '16 mg/kg | Reversão imediata rocuronio | Emergência VA' },
-            { nome: 'NEOSTIGMINA', valor: `${numeroBr((peso*0.05), 2)} mg`, detalhe: '0.04-0.07 mg/kg + Atropina 0.02 mg/kg' },
+            { nome: 'NEOSTIGMINA', valor: `${numeroBr((peso*0.05), 2)} mg`, detalhe: '0,04-0,07 mg/kg + Atropina 0,02 mg/kg' },
           ],
         },
         {
@@ -2356,9 +2356,9 @@ const aclsCalculators = [
             {
               nome: 'PROPOFOL bolus',
               subItens: [
-                { nome: 'Dose', valor: '1-2.5 mg/kg', detalhe: 'Indução anestésica' },
+                { nome: 'Dose', valor: '1-2,5 mg/kg', detalhe: 'Indução anestésica' },
                 { nome: 'Min', valor: `${peso} mg`, detalhe: '1 mg/kg' },
-                { nome: 'Max', valor: `${Math.round(peso*2.5)} mg`, detalhe: '2.5 mg/kg' },
+                { nome: 'Max', valor: `${Math.round(peso*2.5)} mg`, detalhe: '2,5 mg/kg' },
               ],
             },
             {
@@ -2372,20 +2372,20 @@ const aclsCalculators = [
             {
               nome: 'MIDAZOLAM bolus',
               subItens: [
-                { nome: 'Dose', valor: '0.01-0.05 mg/kg', detalhe: 'Sedação' },
-                { nome: 'Min', valor: `${numeroBr((peso*0.01), 1)} mg`, detalhe: '0.01 mg/kg' },
-                { nome: 'Max', valor: `${numeroBr((peso*0.05), 1)} mg`, detalhe: '0.05 mg/kg' },
+                { nome: 'Dose', valor: '0,01-0,05 mg/kg', detalhe: 'Sedação' },
+                { nome: 'Min', valor: `${numeroBr((peso*0.01), 1)} mg`, detalhe: '0,01 mg/kg' },
+                { nome: 'Max', valor: `${numeroBr((peso*0.05), 1)} mg`, detalhe: '0,05 mg/kg' },
               ],
             },
             {
               nome: 'CETAMINA bolus',
               subItens: [
-                { nome: 'Dose', valor: '0.5-2 mg/kg', detalhe: 'Indução dissociativa' },
-                { nome: 'Min', valor: `${Math.round(peso*0.5)} mg`, detalhe: '0.5 mg/kg' },
+                { nome: 'Dose', valor: '0,5-2 mg/kg', detalhe: 'Indução dissociativa' },
+                { nome: 'Min', valor: `${Math.round(peso*0.5)} mg`, detalhe: '0,5 mg/kg' },
                 { nome: 'Max', valor: `${peso*2} mg`, detalhe: '2 mg/kg' },
               ],
             },
-            { nome: 'DEXMEDETOMIDINA', valor: '0.2-1.4 mcg/kg/h', detalhe: '200mcg/50mL | Sedação sem depressão resp' },
+            { nome: 'DEXMEDETOMIDINA', valor: '0,2-1,4 mcg/kg/h', detalhe: '200mcg/50mL | Sedação sem depressão resp' },
           ],
         },
         {
@@ -2396,7 +2396,7 @@ const aclsCalculators = [
               nome: 'DANTROLENE',
               warning: 'NUNCA usar bloqueadores de canal de cálcio junto com Dantrolene! Risco de colapso cardiovascular.',
               subItens: [
-                { nome: 'Dose inicial', valor: `${Math.round(peso*2.5)} mg`, detalhe: '2.5 mg/kg | Repetir q10min até controle' },
+                { nome: 'Dose inicial', valor: `${Math.round(peso*2.5)} mg`, detalhe: '2,5 mg/kg | Repetir q10min até controle' },
                 { nome: 'Frascos necessários', valor: `${Math.ceil((peso*2.5)/20)} frascos`, detalhe: 'Frasco = 20 mg + 3g manitol | Reconstituir 60 mL AD' },
                 { nome: 'Manutenção', valor: `${peso} mg q4-6h`, detalhe: '1 mg/kg a cada 4-6h por ≥36h | Prevenir recorrência' },
               ],
@@ -2419,12 +2419,12 @@ const aclsCalculators = [
           key: 'arritmias_controle',
           titulo: 'Arritmias - Controle FC',
           itens: [
-            { nome: 'DILTIAZEM', valor: `${numeroBr((peso*0.25), 1)} mg`, detalhe: '0.25 mg/kg em 2 min | FA, Flutter, TSV | Manut 5-15 mg/h' },
-            { nome: 'VERAPAMIL', valor: `${numeroBr((peso*0.1), 1)} mg`, detalhe: '0.075-0.15 mg/kg em 2 min | TSV, FA | CI: IC, WPW' },
-            { nome: 'ESMOLOL', valor: `${numeroBr((peso*0.5))} mg bolus`, detalhe: '0.5 mg/kg | Infusão 0.05-0.3 mg/kg/min | Ultra-curta ação' },
+            { nome: 'DILTIAZEM', valor: `${numeroBr((peso*0.25), 1)} mg`, detalhe: '0,25 mg/kg em 2 min | FA, Flutter, TSV | Manut 5-15 mg/h' },
+            { nome: 'VERAPAMIL', valor: `${numeroBr((peso*0.1), 1)} mg`, detalhe: '0,075-0,15 mg/kg em 2 min | TSV, FA | CI: IC, WPW' },
+            { nome: 'ESMOLOL', valor: `${numeroBr((peso*0.5))} mg bolus`, detalhe: '0,5 mg/kg | Infusão 0,05-0,3 mg/kg/min | Ultra-curta ação' },
             { nome: 'METOPROLOL', valor: '1-5 mg IV', detalhe: 'Bolus 1 mg, repetir q5min | Max 10-15 mg' },
             { nome: 'AMIODARONA controle', valor: '150 mg em 10 min', detalhe: 'FA refrataria | Manut 1 mg/min x 6h' },
-            { nome: 'DIGOXINA', valor: '0.25-0.5 mg IV', detalhe: 'Controle FA | Início lento (2-6h) | Dose total 1 mg/24h' },
+            { nome: 'DIGOXINA', valor: '0,25-0,5 mg IV', detalhe: 'Controle FA | Início lento (2-6h) | Dose total 1 mg/24h' },
           ],
         },
         {
@@ -2435,7 +2435,7 @@ const aclsCalculators = [
             { nome: 'TV POLIMORFICA/FV', valor: '200 J NÃO sincronizado', detalhe: 'QRS largo irregular', warning: 'NÃO sincronizar! Tratar como FV - desfibrilação imediata.' },
             { nome: 'FA/FLUTTER', valor: '120-200 J sincronizado', detalhe: 'Bifasico | Iniciar 150 J', interpretacao: 'Sedar paciente antes da cardioversão. Considerar anticoagulação se FA >48h.' },
             { nome: 'TSV estável', valor: '50-100 J sincronizado', detalhe: 'Se Adenosina/Manobra vagal falhar', interpretacao: 'Tentar Adenosina e manobras vagais antes da cardioversão.' },
-            { nome: 'SEDAÇÃO pré-CV', valor: `${numeroBr((peso*1.5))} mg Propofol`, detalhe: '1-2 mg/kg | ou Etomidato 0.2-0.3 mg/kg', interpretacao: 'Obrigatório em paciente consciente. Manter via aérea pronta.' },
+            { nome: 'SEDAÇÃO pré-CV', valor: `${numeroBr((peso*1.5))} mg Propofol`, detalhe: '1-2 mg/kg | ou Etomidato 0,2-0,3 mg/kg', interpretacao: 'Obrigatório em paciente consciente. Manter via aérea pronta.' },
             { nome: 'ALERTA Instável', valor: 'CV IMEDIATA', detalhe: 'Hipotensão, dor torácica, alteração consciência, ICC', warning: 'Paciente instável: NÃO esperar - cardioversão imediata!' },
           ],
         },
@@ -2492,14 +2492,14 @@ const aclsCalculators = [
       let observacao = '';
 
       if (reversor === 'naloxona') {
-        dose = '0.04-0.4 mg IV';
-        doseCalculada = 'Titular (iniciar 0.04 mg)';
+        dose = '0,04-0,4 mg IV';
+        doseCalculada = 'Titular (iniciar 0,04 mg)';
         intervalo = 'A cada 2-3 min';
         maximo = '2 mg total';
         observacao = 'Titular para evitar abstinência/dor súbita';
       } else if (reversor === 'flumazenil') {
-        dose = '0.1-0.2 mg IV';
-        doseCalculada = '0.2 mg inicial';
+        dose = '0,1-0,2 mg IV';
+        doseCalculada = '0,2 mg inicial';
         intervalo = 'A cada 1 min';
         maximo = '1 mg total';
         observacao = 'CI em uso crônico BZD (risco convulsões)';
@@ -2865,9 +2865,9 @@ const hemoCalculators = [
     infoBox: {
       keyPoints: [
         'IC = FC / PAS (Índice de Allgower, 1967)',
-        'Normal: 0.5-0.7',
-        'IC > 0.9: Risco 3x maior de mortalidade',
-        'IC >= 1.0: Indica necessidade de transfusão',
+        'Normal: 0,5-0,7',
+        'IC > 0,9: Risco 3x maior de mortalidade',
+        'IC >= 1,0: Indica necessidade de transfusão',
         'Util mesmo com sinais vitais "normais" isoladamente',
       ],
       reference: 'Allgower M, Burri C. 1967 | Trauma Registry Studies',
@@ -3129,10 +3129,10 @@ const utiCalculators = [
         label: 'Hepático (Bilirrubina mg/dL)',
         type: 'select',
         options: [
-          { value: 0, label: '0 - Bilirrubina < 1.2' },
-          { value: 1, label: '1 - Bilirrubina 1.2-1.9' },
-          { value: 2, label: '2 - Bilirrubina 2.0-5.9' },
-          { value: 3, label: '3 - Bilirrubina 6.0-11.9' },
+          { value: 0, label: '0 - Bilirrubina < 1,2' },
+          { value: 1, label: '1 - Bilirrubina 1,2-1,9' },
+          { value: 2, label: '2 - Bilirrubina 2,0-5,9' },
+          { value: 3, label: '3 - Bilirrubina 6,0-11,9' },
           { value: 4, label: '4 - Bilirrubina >= 12' },
         ],
       },
@@ -3144,8 +3144,8 @@ const utiCalculators = [
           { value: 0, label: '0 - PAM >= 70 mmHg' },
           { value: 1, label: '1 - PAM < 70 mmHg' },
           { value: 2, label: '2 - Dopamina <= 5 ou Dobutamina' },
-          { value: 3, label: '3 - Dopa > 5 ou Nora/Adre <= 0.1' },
-          { value: 4, label: '4 - Dopa > 15 ou Nora/Adre > 0.1' },
+          { value: 3, label: '3 - Dopa > 5 ou Nora/Adre <= 0,1' },
+          { value: 4, label: '4 - Dopa > 15 ou Nora/Adre > 0,1' },
         ],
       },
       {
@@ -3165,11 +3165,11 @@ const utiCalculators = [
         label: 'Renal (Creatinina mg/dL)',
         type: 'select',
         options: [
-          { value: 0, label: '0 - Creatinina < 1.2' },
-          { value: 1, label: '1 - Creatinina 1.2-1.9' },
-          { value: 2, label: '2 - Creatinina 2.0-3.4' },
-          { value: 3, label: '3 - Creatinina 3.5-4.9 ou DU < 500mL/d' },
-          { value: 4, label: '4 - Creatinina >= 5.0 ou DU < 200mL/d' },
+          { value: 0, label: '0 - Creatinina < 1,2' },
+          { value: 1, label: '1 - Creatinina 1,2-1,9' },
+          { value: 2, label: '2 - Creatinina 2,0-3,4' },
+          { value: 3, label: '3 - Creatinina 3,5-4,9 ou DU < 500mL/d' },
+          { value: 4, label: '4 - Creatinina >= 5,0 ou DU < 200mL/d' },
         ],
       },
     ],
@@ -3543,8 +3543,8 @@ const utiCalculators = [
         label: 'Temperatura (°C)',
         type: 'select',
         options: [
-          { value: 0, label: '0 - 36.5 a 38.4' },
-          { value: 1, label: '1 - 38.5 a 38.9' },
+          { value: 0, label: '0 - 36,5 a 38,4' },
+          { value: 1, label: '1 - 38,5 a 38,9' },
           { value: 2, label: '2 - >= 39 ou <= 36' },
         ],
       },
@@ -3754,7 +3754,7 @@ const utiCalculators = [
         'NUTRIC < 5: Baixo risco - menor beneficio relativo da nutrição agressiva',
         'Score modificado sem IL-6 (versao prática)',
         'Alto risco: Iniciar nutrição enteral em 24-48h',
-        'Meta proteica: 1.2-2.0 g/kg/dia em alto risco',
+        'Meta proteica: 1,2-2,0 g/kg/dia em alto risco',
       ],
       reference: 'Heyland DK et al. Crit Care 2011;15(6):R268.',
     },
@@ -4885,7 +4885,7 @@ const periopCalculators = [
       score += durMap[values.duracao] || 0;
 
       if (score < 26) {
-        return { score, risk: 'baixo', riskLabel: 'Baixo risco (1.6%)', details: { 'Pontuação': `${score}/123`, 'Categoria': 'Baixo risco', 'Risco de CPP': '< 1.6%', 'Conduta': 'Manejo padrão' } };
+        return { score, risk: 'baixo', riskLabel: 'Baixo risco (1,6%)', details: { 'Pontuação': `${score}/123`, 'Categoria': 'Baixo risco', 'Risco de CPP': '< 1,6%', 'Conduta': 'Manejo padrão' } };
       } else if (score < 45) {
         return { score, risk: 'medio', riskLabel: 'Intermediário (13%)', details: { 'Pontuação': `${score}/123`, 'Categoria': 'Risco intermediário', 'Risco de CPP': '~13%', 'Conduta': 'Fisioterapia respiratória' } };
       } else {
@@ -4901,7 +4901,7 @@ const periopCalculators = [
     infoBox: {
       keyPoints: [
         'ARISCAT: Assess Respiratory Risk in Surgical Patients in Catalonia',
-        'Baixo risco (<26): 1.6% | Intermediário (26-44): 13% | Alto (≥45): 42%',
+        'Baixo risco (<26): 1,6% | Intermediário (26-44): 13% | Alto (≥45): 42%',
         'CPP: infecção respiratória, insuficiência, atelectasia, broncoespasmo',
       ],
       reference: 'Canet J et al. Anesthesiology 2010;113(6):1338-50',
@@ -4994,7 +4994,7 @@ const periopCalculators = [
     },
     infoBox: {
       keyPoints: [
-        'P/F = PaO2 / FiO2. Ex: 80/0.60 = 133',
+        'P/F = PaO2 / FiO2. Ex: 80/0,60 = 133',
         'Berlin: ≥300 (normal) | 200-299 (leve) | 100-199 (moderada) | <100 (grave)',
       ],
       reference: 'ARDS Definition Task Force. JAMA 2012;307(23):2526-33',
@@ -5064,7 +5064,7 @@ const periopCalculators = [
       } else if (score <= 2.5) {
         return { score, risk: 'medio', riskLabel: 'Leve a moderada', details: { 'Score': `${numeroBr(score, 1)}/4`, 'Classificação': 'Lesão leve-moderada' } };
       } else {
-        return { score, risk: 'alto', riskLabel: 'SDRA grave', details: { 'Score': `${numeroBr(score, 1)}/4`, 'Classificação': 'SDRA grave', 'ECMO': 'Considerar se >3.0' } };
+        return { score, risk: 'alto', riskLabel: 'SDRA grave', details: { 'Score': `${numeroBr(score, 1)}/4`, 'Classificação': 'SDRA grave', 'ECMO': 'Considerar se >3,0' } };
       }
     },
     resultMessage: (result) => {
@@ -5078,7 +5078,7 @@ const periopCalculators = [
     infoBox: {
       keyPoints: [
         'Murray LIS: média de 4 componentes (0-4 cada)',
-        '0: Sem lesão | 0.1-2.5: Leve-moderada | >2.5: SDRA grave',
+        '0: Sem lesão | 0,1-2,5: Leve-moderada | >2,5: SDRA grave',
         'Para classificação de SDRA, preferir Definição de Berlin 2012 (PaO2/FiO2)',
       ],
       warnings: [
@@ -5136,7 +5136,7 @@ const periopCalculators = [
       interpretation:
         'Intervalos entre a última dose e a punção, a retirada do cateter peridural e a reintrodução do fármaco — mais reversores, limiares laboratoriais e suspensão pré-operatória. Números da ASRA 5ª ed. (2025); ESAIC/ESRA 2022 e SBA 2020 como contraponto. Divergindo, prevalece o protocolo do serviço.',
       reference:
-        'ASRA 5th ed. Reg Anesth Pain Med 2025 (10.1136/rapm-2024-105766) | ESAIC/ESRA. Eur J Anaesthesiol 2022;39:100-132 | SBA 2020. Braz J Anesthesiol 2020;70:364-387 | Grottke. Eur J Anaesthesiol 2024;41:327-350 | PAUSE. JAMA Intern Med 2019;179:1469-78',
+        'ASRA 5th ed. Reg Anesth Pain Med 2025 (10,1136/rapm-2024-105766) | ESAIC/ESRA. Eur J Anaesthesiol 2022;39:100-132 | SBA 2020. Braz J Anesthesiol 2020;70:364-387 | Grottke. Eur J Anaesthesiol 2024;41:327-350 | PAUSE. JAMA Intern Med 2019;179:1469-78',
     },
   },
   {
@@ -5204,7 +5204,7 @@ const riscoCalculators = [
 
       let classe = 'I';
       let riscoComplicacao = '<1%';
-      let riscoMorte = '0.2%';
+      let riscoMorte = '0,2%';
       let risk = 'baixo';
 
       if (score > 25) {
@@ -5246,7 +5246,7 @@ const riscoCalculators = [
     },
     infoBox: {
       keyPoints: [
-        'Classe I (0-5 pts): Risco complicação <1%, morte 0.2%',
+        'Classe I (0-5 pts): Risco complicação <1%, morte 0,2%',
         'Classe II (6-12 pts): Risco complicação 7%, morte 2%',
         'Classe III (13-25 pts): Risco complicação 14%, morte 2%',
         'Classe IV (>25 pts): Risco complicação 78%, morte 56%',
@@ -5318,7 +5318,7 @@ const riscoCalculators = [
     },
     infoBox: {
       keyPoints: [
-        '0 fatores: Risco 0.4% | 1 fator: 0.9% | 2 fatores: 6.6% | >=3 fatores: 11%',
+        '0 fatores: Risco 0,4% | 1 fator: 0,9% | 2 fatores: 6,6% | >=3 fatores: 11%',
         'Cirurgia alto risco: Intraperitoneal, intratorácica, vascular suprainguinal',
         'Cardiopatia isquêmica: IAM prévio, angina, teste esforço positivo',
         'ICC: Historia, EAP, B3, estertores, congestão em RX',
@@ -5420,7 +5420,7 @@ const riscoCalculators = [
   {
     id: 'risco_fragilidade',
     title: 'Escala de Fragilidade Clínica',
-    subtitle: 'CFS 2.0 — 9 níveis, julgamento clínico',
+    subtitle: 'CFS 2,0 — 9 níveis, julgamento clínico',
     icon: 'User',
     status: 'active',
     useDropdown: true,
@@ -5499,7 +5499,7 @@ const riscoCalculators = [
         'Não usar isoladamente para negar tratamento — é estratificação de risco, não critério de racionamento',
       ],
       reference:
-        'Rockwood K et al. A global clinical measure of fitness and frailty in elderly people. CMAJ 2005;173:489-95 | Clinical Frailty Scale versão 2.0 (2020), © Dalhousie University, usada sob permissão | ESAIC Guideline on preoperative assessment of adults undergoing elective noncardiac surgery',
+        'Rockwood K et al. A global clinical measure of fitness and frailty in elderly people. CMAJ 2005;173:489-95 | Clinical Frailty Scale versão 2,0 (2020), © Dalhousie University, usada sob permissão | ESAIC Guideline on preoperative assessment of adults undergoing elective noncardiac surgery',
     },
   },
   {
@@ -5548,7 +5548,7 @@ const riscoCalculators = [
 
       if (score === 0) {
         categoria = 'Muito baixo';
-        riscoTEV = '<0.5%';
+        riscoTEV = '<0,5%';
         profilaxia = 'Deambulação precoce apenas';
         return {
           score,
@@ -5561,7 +5561,7 @@ const riscoCalculators = [
         };
       } else if (score <= 2) {
         categoria = 'Baixo';
-        riscoTEV = '1.5%';
+        riscoTEV = '1,5%';
         profilaxia = 'Meias elasticas ou compressão pneumatica';
         return {
           score,
@@ -5608,8 +5608,8 @@ const riscoCalculators = [
     },
     infoBox: {
       keyPoints: [
-        '0 pts: Muito baixo (<0.5%) - Deambulação precoce',
-        '1-2 pts: Baixo (1.5%) - Meias ou compressão pneumatica',
+        '0 pts: Muito baixo (<0,5%) - Deambulação precoce',
+        '1-2 pts: Baixo (1,5%) - Meias ou compressão pneumatica',
         '3-4 pts: Moderado (3%) - Heparina profilatica',
         '>=5 pts: Alto (6%) - Heparina + compressão mecânica',
         'Fatores maiores: AVC recente (+5), Fratura MMII (+5), TEV prévio (+3)',
@@ -5672,7 +5672,7 @@ const riscoCalculators = [
           details: {
             'Pontuação': `${score}/20`,
             'Categoria': 'Baixo risco',
-            'Risco de TEV em 90 dias': '0.3%',
+            'Risco de TEV em 90 dias': '0,3%',
             'Profilaxia': 'Não indicada rotineiramente',
           },
         };
@@ -5685,7 +5685,7 @@ const riscoCalculators = [
     infoBox: {
       keyPoints: [
         'Score >= 4: Alto risco (11% TEV em 90 dias) - Profilaxia indicada',
-        'Score < 4: Baixo risco (0.3% TEV) - Profilaxia não indicada',
+        'Score < 4: Baixo risco (0,3% TEV) - Profilaxia não indicada',
         'Fatores maiores (+3): Neoplasia ativa, TEV prévio, imobilidade, trombofilia',
         'Aplicável a pacientes CLINICOS internados',
         'Para pacientes cirúrgicos usar Caprini',
@@ -5707,7 +5707,7 @@ const riscoCalculators = [
       { id: 'dac_conhecida', label: 'DAC conhecida (estenose >= 50%)', type: 'bool' },
       { id: 'aas', label: 'Uso de AAS nos últimos 7 dias', type: 'bool' },
       { id: 'angina_recente', label: '>= 2 episódios de angina nas últimas 24h', type: 'bool' },
-      { id: 'infra_st', label: 'Infra de ST >= 0.5mm', type: 'bool' },
+      { id: 'infra_st', label: 'Infra de ST >= 0,5mm', type: 'bool' },
       { id: 'marcadores', label: 'Marcadores cardíacos elevados', type: 'bool' },
     ],
     compute: (values) => {
@@ -5746,7 +5746,7 @@ const riscoCalculators = [
         'DAC conhecida (estenose >= 50%) (+1)',
         'Uso de AAS nos últimos 7 dias (+1)',
         '>= 2 episódios de angina nas últimas 24h (+1)',
-        'Infra de ST >= 0.5mm no ECG (+1)',
+        'Infra de ST >= 0,5mm no ECG (+1)',
         'Marcadores cardíacos elevados (troponina/CKMB) (+1)',
         'Score 0-2: Baixo risco | 3-4: Intermediário | 5-7: Alto risco',
       ],
@@ -5825,10 +5825,10 @@ const riscoCalculators = [
       let riscoMACE = '';
       let conduta = '';
       if (score <= 3) {
-        riscoMACE = '0.9-1.7%';
+        riscoMACE = '0,9-1,7%';
         conduta = 'Baixo risco - Considerar alta precoce';
       } else if (score <= 6) {
-        riscoMACE = '12-16.6%';
+        riscoMACE = '12-16,6%';
         conduta = 'Risco intermediário - Observação e investigação';
       } else {
         riscoMACE = '50-65%';
@@ -5947,7 +5947,7 @@ const riscoCalculators = [
     useDropdown: true,
     inputs: [
       { id: 'has_descontrolada', label: 'H - Hipertensao (PAS > 160 mmHg)', type: 'bool' },
-      { id: 'disfuncao_renal', label: 'A - Disfunção renal (diálise, Cr > 2.3 ou transplante)', type: 'bool' },
+      { id: 'disfuncao_renal', label: 'A - Disfunção renal (diálise, Cr > 2,3 ou transplante)', type: 'bool' },
       { id: 'disfuncao_hepatica', label: 'A - Disfunção hepática (cirrose, bili > 2x, TGO/TGP > 3x)', type: 'bool' },
       { id: 'avc', label: 'S - AVC prévio', type: 'bool' },
       { id: 'sangramento', label: 'B - Sangramento prévio ou predisposição', type: 'bool' },
@@ -5972,10 +5972,10 @@ const riscoCalculators = [
       let riscoSangramento = '';
       let interpretacao = '';
       if (score <= 2) {
-        riscoSangramento = '1.0-3.7%';
+        riscoSangramento = '1,0-3,7%';
         interpretacao = 'Baixo risco de sangramento';
       } else {
-        riscoSangramento = '> 3.7%';
+        riscoSangramento = '> 3,7%';
         interpretacao = 'Alto risco de sangramento - Cautela e correção de fatores modificaveis';
       }
 
@@ -6313,9 +6313,9 @@ const segCalculators = [
         label: 'Temperatura (C)',
         type: 'select',
         options: [
-          { value: 'temp_2', label: '<35.0' },
-          { value: 'temp_0', label: '35.0-38.4' },
-          { value: 'temp_2b', label: '≥38.5' },
+          { value: 'temp_2', label: '<35,0' },
+          { value: 'temp_0', label: '35,0-38,4' },
+          { value: 'temp_2b', label: '≥38,5' },
         ],
       },
       {
@@ -6490,11 +6490,11 @@ const segCalculators = [
         label: 'Temperatura (C)',
         type: 'select',
         options: [
-          { value: 'temp_3', label: '≤35.0' },
-          { value: 'temp_1a', label: '35.1-36.0' },
-          { value: 'temp_0', label: '36.1-38.0' },
-          { value: 'temp_1b', label: '38.1-39.0' },
-          { value: 'temp_2', label: '≥39.1' },
+          { value: 'temp_3', label: '≤35,0' },
+          { value: 'temp_1a', label: '35,1-36,0' },
+          { value: 'temp_0', label: '36,1-38,0' },
+          { value: 'temp_1b', label: '38,1-39,0' },
+          { value: 'temp_2', label: '≥39,1' },
         ],
       },
     ],
@@ -6659,7 +6659,7 @@ const renalCalculators = [
     infoBox: {
       keyPoints: [
         'Formula: (140 - idade) x peso / (72 x Cr)',
-        'Multiplicar por 0.85 se sexo feminino',
+        'Multiplicar por 0,85 se sexo feminino',
         '>= 90 mL/min: Normal (estagio 1 se lesão renal)',
         '60-89 mL/min: IRC leve (estagio 2)',
         '30-59 mL/min: IRC moderada (estagio 3)',
@@ -6804,7 +6804,7 @@ const renalCalculators = [
           'Interpretação': interpretacao,
           'Fórmula utilizada': `${hillier.formula} (${hillier.factor})`,
           'Correção aplicada': `+${numeroBr(hillier.correctionRaw, 1)} mEq/L`,
-          'Comparação Katz (1.6, histórico)': `${numeroBr(katz.correctedRaw, 1)} mEq/L`,
+          'Comparação Katz (1,6, histórico)': `${numeroBr(katz.correctedRaw, 1)} mEq/L`,
         },
       };
     },
@@ -6815,14 +6815,14 @@ const renalCalculators = [
     infoBox: {
       keyPoints: [
         'Corrige pseudohiponatremia dilucional da hiperglicemia',
-        'Hillier (2.4): Na + 2.4 x ((Gli - 100) / 100) — PADRÃO ATUAL',
-        'Katz (1.6): histórico — subestima correção em DKA grave',
+        'Hillier (2,4): Na + 2,4 x ((Gli - 100) / 100) — PADRÃO ATUAL',
+        'Katz (1,6): histórico — subestima correção em DKA grave',
         'Normal: 135-145 mEq/L',
         'Katz vs Hillier também exibido nos detalhes para comparação',
       ],
       warnings: [
         'Correção rápida de hiponatremia pode causar mielinólise pontina',
-        'Hillier 2.4 é universalmente recomendado (Iolascon, Kidney Int 2022)',
+        'Hillier 2,4 é universalmente recomendado (Iolascon, Kidney Int 2022)',
       ],
       reference: 'Hillier TA et al. Am J Med 1999 | Iolascon A et al. Kidney Int 2022 | Katz MA. N Engl J Med 1973 (histórico)',
     },
@@ -6876,12 +6876,12 @@ const renalCalculators = [
     infoBox: {
       keyPoints: [
         'Corrige cálcio total para hipoalbuminemia',
-        'Fórmula de Payne: Ca + 0.8 x (4 - Albumina)',
-        'Normal: 8.5-10.5 mg/dL',
-        'Cada 1 g/dL de albumina abaixo de 4 reduz cálcio em 0.8 mg/dL',
+        'Fórmula de Payne: Ca + 0,8 x (4 - Albumina)',
+        'Normal: 8,5-10,5 mg/dL',
+        'Cada 1 g/dL de albumina abaixo de 4 reduz cálcio em 0,8 mg/dL',
       ],
       warnings: [
-        'Se Albumina < 2.5 g/dL ou DRC avançada: fórmula de Payne é imprecisa — preferir Ca iônico (normal: 1.1-1.3 mmol/L)',
+        'Se Albumina < 2,5 g/dL ou DRC avançada: fórmula de Payne é imprecisa — preferir Ca iônico (normal: 1,1-1,3 mmol/L)',
         'Em distúrbios ácido-base graves, Ca iônico é mais confiável que Ca corrigido',
       ],
       reference: 'Payne RB et al. Br Med J 1973 | Bushinsky DA, Monk RD. Lancet 1998',
@@ -6967,7 +6967,7 @@ const renalCalculators = [
       keyPoints: [
         'Formula: Na - (Cl + HCO3)',
         'Normal: 3-12 mEq/L (ou 8-12 sem K)',
-        'Correção albumina: AG + 2.5 x (4 - Alb)',
+        'Correção albumina: AG + 2,5 x (4 - Alb)',
         'AG elevado: MUDPILES - Metanol, Uremia, DKA, Propilenoglicol, INH, Lactato, Etilenoglicol, Salicilatos',
       ],
       warnings: [
@@ -7036,7 +7036,7 @@ const renalCalculators = [
     infoBox: {
       keyPoints: [
         'Formula: 2 x Na + (Glicose/18) + (Ureia/6)',
-        'Se usar BUN: 2 x Na + (Glicose/18) + (BUN/2.8)',
+        'Se usar BUN: 2 x Na + (Glicose/18) + (BUN/2,8)',
         'Normal: 275-295 mOsm/L',
         'Util para calcular gap osmolar quando ha osmolaridade medida',
       ],
@@ -7667,7 +7667,7 @@ const neuroCalculators = [
         'Reavaliar após intervenção para monitorar evolução',
       ],
       warnings: [
-        'Tempo e cerebro: trombolise até 4.5h, trombectomia até 24h em casos selecionados',
+        'Tempo e cerebro: trombolise até 4,5h, trombectomia até 24h em casos selecionados',
       ],
       reference: 'Brott T et al. Stroke 1989 | Powers WJ et al. Stroke 2019 (AHA/ASA Guidelines)',
     },
@@ -7938,10 +7938,10 @@ const dorCalculators = [
         indutores: {
           categoria: 'Indutores',
           drogas: [
-            { droga: 'PROPOFOL', apresentacao: '10 mg/ml', dosePadrao: '1.5-2.5', unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', obs: 'Redução em idosos (1-1.5 mg/kg)' },
-            { droga: 'ETOMIDATO', apresentacao: '2 mg/ml', dosePadrao: '0.2-0.3', unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', obs: 'Estabilidade hemodinâmica' },
+            { droga: 'PROPOFOL', apresentacao: '10 mg/ml', dosePadrao: '1,5-2,5', unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', obs: 'Redução em idosos (1-1,5 mg/kg)' },
+            { droga: 'ETOMIDATO', apresentacao: '2 mg/ml', dosePadrao: '0,2-0,3', unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', obs: 'Estabilidade hemodinâmica' },
             { droga: 'KETAMINA', apresentacao: '50 mg/ml', dosePadrao: '1-2', unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', obs: 'IV. IM: 4-6 mg/kg' },
-            { droga: 'MIDAZOLAM', apresentacao: '5 mg/ml', dosePadrao: '0.1-0.3', unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', obs: 'Co-inducao: 0.03-0.05 mg/kg' },
+            { droga: 'MIDAZOLAM', apresentacao: '5 mg/ml', dosePadrao: '0,1-0,3', unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', obs: 'Co-inducao: 0,03-0,05 mg/kg' },
           ],
         },
         opioides: {
@@ -7949,28 +7949,28 @@ const dorCalculators = [
           drogas: [
             { droga: 'FENTANIL', apresentacao: '50 mcg/ml', dosePadrao: '1-3', unidadeDose: 'mcg/kg', diluicao: 'SEM DILUIR', obs: 'Analgesia: 1-2. IOT: 2-3 mcg/kg' },
             { droga: 'ALFENTANIL', apresentacao: '500 mcg/ml', dosePadrao: '10-30', unidadeDose: 'mcg/kg', diluicao: 'SEM DILUIR', obs: 'Duração curta (10-15 min)' },
-            { droga: 'SUFENTANIL', apresentacao: '5 mcg/ml', dosePadrao: '0.1-0.5', unidadeDose: 'mcg/kg', diluicao: 'SEM DILUIR', obs: '10x mais potente que fentanil' },
-            { droga: 'REMIFENTANIL', apresentacao: '1 mg/frasco', dosePadrao: '0.5-1', unidadeDose: 'mcg/kg', diluicao: '1 frasco + 20ml SF', obs: 'Bolus. Infusão: 0.05-0.2 mcg/kg/min' },
-            { droga: 'MORFINA', apresentacao: '10 mg/ml', dosePadrao: '0.05-0.1', unidadeDose: 'mg/kg', diluicao: '1ml + 9ml AD', obs: 'Max 10-15 mg. Início 15-20 min' },
+            { droga: 'SUFENTANIL', apresentacao: '5 mcg/ml', dosePadrao: '0,1-0,5', unidadeDose: 'mcg/kg', diluicao: 'SEM DILUIR', obs: '10x mais potente que fentanil' },
+            { droga: 'REMIFENTANIL', apresentacao: '1 mg/frasco', dosePadrao: '0,5-1', unidadeDose: 'mcg/kg', diluicao: '1 frasco + 20ml SF', obs: 'Bolus. Infusão: 0,05-0,2 mcg/kg/min' },
+            { droga: 'MORFINA', apresentacao: '10 mg/ml', dosePadrao: '0,05-0,1', unidadeDose: 'mg/kg', diluicao: '1ml + 9ml AD', obs: 'Max 10-15 mg. Início 15-20 min' },
           ],
         },
         bnm: {
           categoria: 'Bloqueadores Neuromusculares',
           drogas: [
-            { droga: 'SUCCINILCOLINA', apresentacao: '100 mg/frasco', dosePadrao: '1-1.5', unidadeDose: 'mg/kg', diluicao: '1 frasco + 10ml AD', obs: 'ISR. CI: hipercalemia, queimados >24h' },
-            { droga: 'ROCURONIO', apresentacao: '10 mg/ml', dosePadrao: '0.6-1.2', unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', obs: '0.6: rotina. 1.2: ISR' },
-            { droga: 'CISATRACURIO', apresentacao: '2 mg/ml', dosePadrao: '0.1-0.2', unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', obs: 'Hofmann. Sem histamina' },
-            { droga: 'ATRACURIO', apresentacao: '10 mg/ml', dosePadrao: '0.4-0.5', unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', obs: 'Pode liberar histamina' },
+            { droga: 'SUCCINILCOLINA', apresentacao: '100 mg/frasco', dosePadrao: '1-1,5', unidadeDose: 'mg/kg', diluicao: '1 frasco + 10ml AD', obs: 'ISR. CI: hipercalemia, queimados >24h' },
+            { droga: 'ROCURONIO', apresentacao: '10 mg/ml', dosePadrao: '0,6-1,2', unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', obs: '0,6: rotina. 1,2: ISR' },
+            { droga: 'CISATRACURIO', apresentacao: '2 mg/ml', dosePadrao: '0,1-0,2', unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', obs: 'Hofmann. Sem histamina' },
+            { droga: 'ATRACURIO', apresentacao: '10 mg/ml', dosePadrao: '0,4-0,5', unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', obs: 'Pode liberar histamina' },
           ],
         },
         reversores: {
           categoria: 'Reversores',
           drogas: [
-            { droga: 'NEOSTIGMINA', apresentacao: '0.5 mg/ml', dosePadrao: '0.04-0.07', unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', obs: 'Max 5 mg. + Atropina 0.02 mg/kg' },
+            { droga: 'NEOSTIGMINA', apresentacao: '0,5 mg/ml', dosePadrao: '0,04-0,07', unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', obs: 'Max 5 mg. + Atropina 0,02 mg/kg' },
             { droga: 'SUGAMMADEX (mod)', apresentacao: '100 mg/ml', dosePadrao: '2', unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', obs: 'Bloqueio moderado (TOF 2+)' },
             { droga: 'SUGAMMADEX (prof)', apresentacao: '100 mg/ml', dosePadrao: '4', unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', obs: 'Bloqueio profundo (PTC 1-2)' },
-            { droga: 'FLUMAZENIL', apresentacao: '0.1 mg/ml', dosePadrao: '0.2-0.5', unidadeDose: 'mg', diluicao: 'SEM DILUIR', obs: 'Repetir 0.2 mg/min. Max 3 mg', fixo: true },
-            { droga: 'NALOXONA', apresentacao: '0.4 mg/ml', dosePadrao: '0.04-0.4', unidadeDose: 'mg', diluicao: 'SEM DILUIR', obs: 'Titular. Cuidado em dependentes', fixo: true },
+            { droga: 'FLUMAZENIL', apresentacao: '0,1 mg/ml', dosePadrao: '0,2-0,5', unidadeDose: 'mg', diluicao: 'SEM DILUIR', obs: 'Repetir 0,2 mg/min. Max 3 mg', fixo: true },
+            { droga: 'NALOXONA', apresentacao: '0,4 mg/ml', dosePadrao: '0,04-0,4', unidadeDose: 'mg', diluicao: 'SEM DILUIR', obs: 'Titular. Cuidado em dependentes', fixo: true },
           ],
         },
         vasopressores: {
@@ -7978,16 +7978,16 @@ const dorCalculators = [
           drogas: [
             { droga: 'EFEDRINA', apresentacao: '50 mg/ml', dosePadrao: '5-10', unidadeDose: 'mg', diluicao: '1ml + 9ml AD', obs: 'Bolus IV. Repetir PRN', fixo: true },
             { droga: 'FENILEFRINA', apresentacao: '10 mg/ml', dosePadrao: '50-200', unidadeDose: 'mcg', diluicao: '1ml + 99ml SF', obs: 'Bolus IV. Alfa-1 puro', fixo: true },
-            { droga: 'NORADRENALINA', apresentacao: '2 mg/ml', dosePadrao: '0.05-0.5', unidadeDose: 'mcg/kg/min', diluicao: '4ml + 96ml SG5%', obs: 'Infusão. Acesso central' },
-            { droga: 'ADRENALINA', apresentacao: '1 mg/ml', dosePadrao: '0.01-0.1', unidadeDose: 'mcg/kg/min', diluicao: '1ml + 99ml SF', obs: 'Infusão. PCR: 1 mg bolus' },
-            { droga: 'VASOPRESSINA', apresentacao: '20 U/ml', dosePadrao: '0.01-0.04', unidadeDose: 'U/min', diluicao: 'SEM DILUIR', obs: 'Choque refratario', fixo: true },
+            { droga: 'NORADRENALINA', apresentacao: '2 mg/ml', dosePadrao: '0,05-0,5', unidadeDose: 'mcg/kg/min', diluicao: '4ml + 96ml SG5%', obs: 'Infusão. Acesso central' },
+            { droga: 'ADRENALINA', apresentacao: '1 mg/ml', dosePadrao: '0,01-0,1', unidadeDose: 'mcg/kg/min', diluicao: '1ml + 99ml SF', obs: 'Infusão. PCR: 1 mg bolus' },
+            { droga: 'VASOPRESSINA', apresentacao: '20 U/ml', dosePadrao: '0,01-0,04', unidadeDose: 'U/min', diluicao: 'SEM DILUIR', obs: 'Choque refratario', fixo: true },
           ],
         },
         adjuvantes: {
           categoria: 'Adjuvantes',
           drogas: [
-            { droga: 'ATROPINA', apresentacao: '0.25 mg/ml', dosePadrao: '0.01-0.02', unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', obs: 'Min 0.1 mg. Max 3 mg total' },
-            { droga: 'LIDOCAINA IV', apresentacao: '20 mg/ml', dosePadrao: '1-1.5', unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', obs: 'Laringoscopia. Max 3 mg/kg' },
+            { droga: 'ATROPINA', apresentacao: '0,25 mg/ml', dosePadrao: '0,01-0,02', unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', obs: 'Min 0,1 mg. Max 3 mg total' },
+            { droga: 'LIDOCAINA IV', apresentacao: '20 mg/ml', dosePadrao: '1-1,5', unidadeDose: 'mg/kg', diluicao: 'SEM DILUIR', obs: 'Laringoscopia. Max 3 mg/kg' },
             { droga: 'DEXAMETASONA', apresentacao: '4 mg/ml', dosePadrao: '4-8', unidadeDose: 'mg', diluicao: 'SEM DILUIR', obs: 'NVPO, edema. Cuidado DM', fixo: true },
             { droga: 'ONDANSETRONA', apresentacao: '2 mg/ml', dosePadrao: '4-8', unidadeDose: 'mg', diluicao: 'SEM DILUIR', obs: 'NVPO. QT longo: cautela', fixo: true },
             { droga: 'DIPIRONA', apresentacao: '500 mg/ml', dosePadrao: '1-2', unidadeDose: 'g', diluicao: 'SEM DILUIR', obs: 'Analgesia, antipiretico', fixo: true },
@@ -8003,14 +8003,22 @@ const dorCalculators = [
         const medicamentos = [];
 
         catData.drogas.forEach((med) => {
-          const doses = med.dosePadrao.split('-').map(d => parseFloat(d));
+          const doses = med.dosePadrao.split('-').map((d) => numeroFlexivel(d));
           let doseMin, doseMax, doseCalculada;
 
           if (med.fixo) {
             // Dose fixa (não depende do peso)
             doseMin = doses[0];
             doseMax = doses.length > 1 ? doses[1] : doses[0];
-            doseCalculada = doseMin === doseMax ? `${doseMin}` : `${doseMin}-${doseMax}`;
+            // ⚠️ este ramo interpolava o NÚMERO cru, então dose fixa saía com
+            // ponto ("0.2-0.5 mg") ao lado da dose por kg com vírgula, na mesma
+            // lista. Enxuto porque as casas variam: 0,2 e 0,04 convivem.
+            // ⚠️ este ramo interpolava o NÚMERO cru, então dose fixa saía com
+            // ponto ("0.2-0.5 mg") ao lado da dose por kg com vírgula, na mesma
+            // lista. Enxuto porque as casas variam: 0,2 e 0,04 convivem.
+            doseCalculada = doseMin === doseMax
+              ? `${numeroBrEnxuto(doseMin)}`
+              : `${numeroBrEnxuto(doseMin)}-${numeroBrEnxuto(doseMax)}`;
           } else {
             // Dose por kg
             doseMin = doses[0] * peso;
