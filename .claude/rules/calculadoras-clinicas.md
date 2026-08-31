@@ -20,7 +20,7 @@ description: Calculadoras clínicas (71 em 13 seções) — padrão de lib pura 
      arquivo que casa os `paths` acima. -->
 
 ## Calculadoras Clínicas
-59 calculadoras ativas em 14 seções (93 definições; 34 `inactive` — nada é apagado).
+61 calculadoras ativas em 14 seções (95 definições; 34 `inactive` — nada é apagado).
 Dados em `src/design-system/data/calculator-definitions.js`. Conferir sempre pelo repo, nunca de
 memória: `grep -c "status: 'active'" src/design-system/data/calculator-definitions.js`.
 

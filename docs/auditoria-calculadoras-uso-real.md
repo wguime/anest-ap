@@ -104,6 +104,53 @@ anos; 875 mL de NaCl 3% a 36,5 mL/h para levar o sódio de 120 a 128.
 
 ---
 
+## TERCEIRA RODADA — 31/08/2026: as perguntas foram respondidas
+
+O dono respondeu as cinco perguntas que dependiam de fatos sobre a prática do grupo, e obteve a
+licença da Dalhousie. **Sete das nove pendências desta auditoria fecharam.**
+
+| pergunta | resposta | o que mudou |
+|---|---|---|
+| Licença da CFS | **obtida** | **Escala de Fragilidade Clínica entrou** (`risco_fragilidade`). Era a recomendação nominal mais forte de todo o levantamento — ESAIC 1C, duas vezes — e a única coisa travada por direito autoral, não por evidência |
+| O grupo assume UTI? | **Não** | **SAPS 3 saiu.** Pelo critério nº 1 da própria triagem, ele nunca deveria ter passado: é colhido na 1ª hora de internação em UTI e foi desenhado para *"dissociar a avaliação do paciente da avaliação da UTI"* — benchmarking de serviço. A triagem cortou o APACHE II por ser superado pelo SAPS 3 e nunca aplicou o critério ao SAPS 3 |
+| Faz anestesia para trombectomia? | **Sim** | **NIHSS voltou.** Cortado como "de outra especialidade", mas nesse cenário é do anestesista: entra na via aérea, na meta pressórica e no registro antes e depois |
+| Faz cirurgia ambulatorial? | **Sim** | **PADSS entrou** (`periop_padss`). O Aldrete que o app tinha é fase I, sair da SRPA; o PADSS é fase II, ir para casa. Um paciente pode ter Aldrete 10 e PADSS 6 |
+| Braden como indicador de acreditação? | **Sim** | **Voltou pelo módulo Qualidade**, não por Calculadoras — risco de lesão por pressão é indicador de acreditação, não ato anestésico. Card em `QualidadePage` → rota `escalaBraden`, que abre a escala direto sem passar pela grade de calculadoras |
+| Ligar a contagem por calculadora? | **Sim** | **`trackFeatureUse` ligado.** Era o passo 4 da triagem de 29/08 e o item 1 da sequência desta auditoria, recomendado duas vezes e nunca feito |
+
+**Ativas: 59 → 61. Definições: 93 → 95.**
+
+### O efeito colateral que quase passou
+
+Tirar o SAPS 3 quebrava um redirecionamento: `LEGACY_ID_MAP` mandava `uti_apache2` para `uti_saps3`, e
+o SAPS 3 acabara de ficar inativo. Quem tivesse o APACHE II favoritado abriria um card que não está
+mais na tela — exatamente o defeito que a triagem de 29/08 documentou ao criar o mapa. O destino foi
+removido, o APACHE II voltou a resolver para ele mesmo, e entrou uma trava genérica:
+**nenhum destino do `LEGACY_ID_MAP` pode apontar para calculadora inativa.**
+
+### A contagem de uso, e o que ela não é
+
+Uma abertura de calculadora passa a gravar um evento `feature_use` com o id dela, na mesma tabela,
+com o mesmo vínculo com o usuário e a mesma retenção do `trackPageView` que já rodava — **não é
+categoria nova de dado pessoal**. O id cru vai como `featureId` porque é nele que
+`scripts/stats-uso-calculadoras.mjs` agrega, então o script passa a responder sem nenhuma mudança.
+
+⚠️ O evento sai do `App.jsx`, e **não** de dentro do `CalculatorShowcase`: montar o hook lá dispararia
+busca de histórico e um intervalo de 5 minutos numa tela aberta durante a anestesia. Travado em teste.
+
+**Em ~3 meses a próxima revisão de calculadora é medida, não argumentada** — que é o que as duas
+rodadas anteriores não puderam ser.
+
+### O que continua em aberto
+
+Só duas coisas, as duas visuais e as duas paradas na **Regra #2**, por decisão do dono ("as outras
+duas perguntas, ignore por enquanto"):
+
+1. Renomear as seções cujo título deixou de descrever o conteúdo (§6.5).
+2. Trocar o ponto por vírgula no número grande do resultado, nas 61 calculadoras.
+
+---
+
 ## 0. O que é medição e o que é impressão
 
 **Rodado hoje, nesta sessão:**

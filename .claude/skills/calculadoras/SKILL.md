@@ -1,6 +1,6 @@
 ---
 name: calculadoras
-description: Regras para criar, editar e corrigir as calculadoras clínicas do ANEST (59 ativas em 14 seções, incluindo Indicação de UTI). Use ao mexer em calculator-definitions.js, nos displays do showcase, nas libs puras de src/lib, ou ao investigar conta errada, InfoBox, layout de grid e formatação de número.
+description: Regras para criar, editar e corrigir as calculadoras clínicas do ANEST (61 ativas em 14 seções, incluindo Indicação de UTI). Use ao mexer em calculator-definitions.js, nos displays do showcase, nas libs puras de src/lib, ou ao investigar conta errada, InfoBox, layout de grid e formatação de número.
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 
@@ -17,7 +17,7 @@ aprovação.
 
 | onde | o que tem |
 |---|---|
-| `src/design-system/data/calculator-definitions.js` | **93 definições — 59 `active`, 34 `inactive`** — em 14 seções |
+| `src/design-system/data/calculator-definitions.js` | **95 definições — 61 `active`, 34 `inactive`** — em 14 seções |
 | `src/design-system/showcase/CalculatorShowcase.jsx` | a tela: grid, busca, inputs genéricos, 8 displays inline |
 | `src/design-system/showcase/displays/` | 8 displays com arquivo próprio |
 | `src/lib/*.js` | libs puras (`apacheII`, `fourScore`, `roxIndex`, `electrolyteCorrection`, `saps3`, `sofaScore`, `fluidBalance`…), testadas em `src/__tests__/lib/` |
@@ -136,5 +136,22 @@ lados não protege nada.
 3. Conferir o tratamento do zero em cada campo numérico (regra 2).
 4. Testar em mobile (1 coluna) e desktop (2 colunas), nos dois temas.
 5. Nada é apagado: calculadora descartada vira `status: 'inactive'`. **`LEGACY_ID_MAP` só para quem
-   tem SUCESSORA** — sem sucessora, inventar um destino é pior que não ter. E a seção "Favoritas"
-   filtra inativas: sem isso, desativar não desativa para quem favoritou.
+   tem SUCESSORA ATIVA** — sem sucessora, inventar um destino é pior que não ter. E a seção
+   "Favoritas" filtra inativas: sem isso, desativar não desativa para quem favoritou.
+   ⚠️ **Ao inativar uma calculadora, conferir se ela é DESTINO de alguém no mapa.** Tirar o SAPS 3 em
+   31/08/2026 quase deixou o `uti_apache2` apontando para card inativo — favorito abrindo tela que
+   não existe mais. Trava genérica em `calculatorTriagem.test.js`.
+
+## Uma calculadora fora da grade de Calculadoras
+
+A Escala de Braden é `inactive` e mesmo assim tem tela: o card mora em `QualidadePage` e a rota
+`escalaBraden` reusa o `CalculadorasPageWrapper` com `calcFixa="seg_braden"` e `titulo` próprio.
+`getCalculatorById` resolve inativas de propósito, então o detalhe renderiza sem que ela volte à
+grade. É o padrão para instrumento de acreditação que não é ato anestésico.
+
+## Contagem de uso por calculadora
+
+`App.jsx` passa `trackFeatureUse` como `onCalculatorOpen` ao `CalculadorasPageWrapper`, que dispara um
+evento por abertura com o id cru da calculadora. ⚠️ **Não montar `useActivityTracking` dentro do
+`CalculatorShowcase`** — o hook busca histórico e arma um intervalo de 5 min ao montar, e essa tela é
+aberta durante a anestesia. Agregação: `node scripts/stats-uso-calculadoras.mjs`.
