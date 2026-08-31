@@ -1832,8 +1832,62 @@ const normalizarCasosImportados = (rows, hosp) => {
       return { ...c, sala, bloco: c.bloco && c.bloco !== 'normal' ? c.bloco : blocoDaSalaUnimed(sala) }
     })
   }
-  if (hosp === 'hro') return rows.map((c) => ({ ...c, sala: normalizarSalaHro(c.sala, c.bloco) }))
+  if (hosp === 'hro') return normalizarCasosHro(rows)
   return rows
+}
+
+/**
+ * Seções que são OUTRA CLÍNICA dentro da escala do HRO, pelo RÓTULO já canônico.
+ * (`SECAO_CLINICA_HRO`, lá em cima, é o caminho inverso — bloco → rótulo.)
+ * Digimax entra aqui e não lá porque o bloco dele é `normal` por decisão do dono,
+ * mas as salas internas dele colidem igual.
+ */
+const BLOCO_DA_SECAO_HRO = {
+  IOSC: 'iosc',
+  'Hospital de Olhos': 'ho',
+  'Centro de Coluna': 'ccoluna',
+  Digimax: 'normal',
+}
+
+/**
+ * DUAS CORREÇÕES DETERMINÍSTICAS na leitura do HRO (dono 2026-08-31, auditoria da
+ * escala vespertina). As duas atacam o MESMO defeito por dois lados: as clínicas
+ * de dentro da escala do HRO (IOSC, Hospital de Olhos, Centro de Coluna, Digimax)
+ * numeram as próprias salas 1, 2, 3 — e esses números COLIDEM com as salas do
+ * HRO. É o erro de 24/07, que voltou.
+ *
+ * R1 — RÓTULO MANDA NO BLOCO: sala "IOSC" com bloco `normal` (foi assim que a
+ * 3ª linha do IOSC saiu em 31/08) some do agrupamento por seção no quadro. Se o
+ * rótulo é de uma seção-clínica, o bloco é o dela. `normalizarSalaHro` já faz o
+ * caminho contrário (bloco corrige a sala, desde 27/08); esta é a volta.
+ *
+ * R2 — "//" CONTINUA NA SEÇÃO DE CIMA: "//" significa "o mesmo anestesista da
+ * linha acima". Se a linha acima é de uma clínica, esta linha é da mesma clínica,
+ * e o "Sala 2" que veio na coluna é a sala INTERNA de lá. Sem isto, em 31/08 a
+ * 2ª linha do IOSC (Persio Beatto, Túnel do Carpo) caiu na Sala 2 do HRO e o "//"
+ * herdou a Daniela — que estava em outra cirurgia, em outro prédio.
+ *
+ * ⚠️ A janela é de UMA linha, de propósito: manter a seção "aberta" por várias
+ * linhas engoliria uma sala numérica de verdade que viesse depois. E só linha com
+ * "//" é movida — linha com nome próprio diz de si mesma.
+ *
+ * ⚠️ NÃO existe guardrail para o caso restante (linha da clínica com nome PRÓPRIO
+ * e sala interna): nada no arquivo a distingue de uma sala do HRO. Medido hoje:
+ * 13% das salas numéricas do HRO em 90 dias têm 2 anestesistas no mesmo turno
+ * legitimamente, então "2 pessoas na mesma sala" não serve de aviso — seria ruído
+ * em 1 de cada 8. Esse caso continua com a conferência.
+ */
+const normalizarCasosHro = (rows) => {
+  let secaoAnterior = ''
+  return rows.map((c) => {
+    const repete = String(c?.anestesista || '').trim() === '//'
+    let sala = normalizarSalaHro(c.sala, c.bloco)
+    let bloco = c.bloco
+    if (repete && secaoAnterior && /^Sala ?\d/.test(sala)) sala = secaoAnterior
+    if (BLOCO_DA_SECAO_HRO[sala]) bloco = BLOCO_DA_SECAO_HRO[sala]
+    secaoAnterior = BLOCO_DA_SECAO_HRO[sala] !== undefined ? sala : ''
+    return { ...c, sala, ...(bloco ? { bloco } : {}) }
+  })
 }
 
 /**

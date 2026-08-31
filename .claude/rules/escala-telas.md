@@ -341,3 +341,51 @@ duplicado no título e no placeholder).
 ⚠️ **Segue de pé:** quando a leitura perde a seção do IOSC e devolve `bloco:
 "normal"` + `sala: "Sala 3"`, não há no arquivo o que recuperar — o guardrail de
 27/08 (`normalizarSalaHro(sala, bloco)`) só corrige quando o bloco chegou certo.
+
+## Auditoria da leitura (dono 2026-08-31) — o lote lia SEM as regras
+
+> "Ao publicar a escala de hoje a tarde ela ficou com vários erros. Quero que faça
+> uma auditoria a respeito da leitura das escalas e regras."
+
+Conferidos linha a linha os três documentos do dia contra o publicado: **4 defeitos
+em 63 casos** (HRO 28/28 e Unimed 35/35 em contagem — nada sumiu, nada sobrou).
+
+**A causa de fundo:** `HOSPITAL_HINT[hospital]` só entra no prompt quando o
+`hospital` é enviado. O **lote de dia útil (27/08) lê cada arquivo SEM hint** — o
+hospital é justamente o que ele quer descobrir —, e com isso a leitura passou a
+rodar **sem nenhuma** das regras por hospital acumuladas desde 24/07: as
+seções-clínicas do HRO, a herança do `//`, os rótulos de sala, os blocos do rodapé
+da Unimed. Elas existiam e simplesmente não chegavam ao modelo pelo caminho que
+virou o padrão. Sem hospital declarado, agora vão **os três** conjuntos (~700
+tokens), com a instrução de aplicar só o do layout reconhecido.
+
+⚠️ **Regra para a próxima vez:** ao trocar o caminho por onde uma leitura passa,
+conferir o que o caminho ANTIGO carregava junto. Aqui o lote herdou a chamada mas
+não o argumento que a instruía — e o efeito só aparece semanas depois, como
+"erro da IA".
+
+**Os 4 defeitos, e o que ficou de guardrail:**
+
+1. **IOSC, 2ª linha → "Sala 2" do HRO com a anestesista de lá.** A clínica numera
+   as próprias salas 1–3 e os números colidem com os do HRO (erro de 24/07 de
+   volta). Como a coluna ANEST era `//`, ela herdou por SALA e pegou a Daniela.
+   → guardrail em `normalizarCasosHro`: **`//` logo abaixo de uma seção-clínica
+   continua na seção**. Janela de UMA linha, e só linha com `//` — manter a seção
+   aberta engoliria uma sala numérica de verdade que viesse depois.
+2. **IOSC, 3ª linha → sala certa, bloco `normal`.** → **o rótulo manda no bloco**
+   (a volta do guardrail de 27/08, que só fazia bloco→sala).
+3. **Unimed: Diego e Fernanda trocados entre Exames e Imagem.** Blocos pequenos e
+   empilhados; os dois no rodapé, então nenhum guardrail de ausência pegou. Só
+   prompt.
+4. **Unimed: os dois Consultórios com o nome do OUTRO na coluna do cirurgião.**
+   Consultório não tem cirurgião. Só prompt.
+
+⚠️ **Não há guardrail para a linha de clínica com NOME PRÓPRIO e sala interna** —
+nada no arquivo a distingue de uma sala do HRO. Medido em 90 dias: **13% das salas
+numéricas do HRO têm 2 anestesistas no mesmo turno legitimamente**, então "2
+pessoas na mesma sala" não serve de aviso: seria ruído em 1 de cada 8. Esse caso
+continua sendo da conferência.
+
+Reparo do dado publicado: `scripts/repair-escala-2026-08-31-vespertino.sql`
+(6 UPDATEs idempotentes, casando pelo valor errado; reimportar zeraria liberações,
+tempos e a troca Rodnei⇄Janaína de um turno em andamento).

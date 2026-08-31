@@ -50,6 +50,7 @@ const HOSPITAL_HINT: Record<string, string> = {
     'Salas agrupadas (C.O - CESAREA, CENTRO CIRÚRGICO - SALA N). "//" na coluna ANEST = mesmo anestesista da linha acima. ' +
     'As seções C.O (CESAREA/SALA N) são o centro obstétrico DA PRÓPRIA UNIMED: bloco "normal" — NUNCA "materno" (materno é OUTRO hospital; marcar materno aqui é erro recorrente já corrigido 2x em produção). ' +
     'Blocos no rodapé: SRPA, EXAMES, IMAGEM, CONSULTORIO, UMANITÁ, ACCURATA. Nesses blocos cada LINHA tem seu PRÓPRIO anestesista na coluna ANEST — copie o da própria linha; NUNCA repita o anestesista da primeira linha nas seguintes (erro real 23/07: 3 linhas de EXAMES saíram todas com o mesmo nome). ' +
+    '⚠️ Esses blocos são pequenos, empilhados e separados por linhas em branco: CONFIRA O ALINHAMENTO VERTICAL antes de fechar o JSON — levar o nome de um bloco para o vizinho é erro real de 31/08 (a 1ª linha de EXAMES ficou com o anestesista da IMAGEM e vice-versa). E dois blocos CONSULTORIO seguidos são DUAS pessoas, uma por linha, nunca a mesma repetida: nessas linhas o CIRURGIÃO fica VAZIO (consultório não tem cirurgião — não copie para lá o nome da outra linha). ' +
     'No rodapé há uma linha com os anestesistas na ORDEM DE LIBERAÇÃO. "SRPA ANEST A" é uma POSIÇÃO ASSISTENCIAL: não entra em casos; devolva em posicoesAssistenciais para manter local, colega trabalhando e ordem de liberação.',
   hro:
     'Formato HRO: colunas Leito, Paciente, Cirurgião, Procedimento, ANEST, Conv., Sala. "//" = mesmo anestesista acima. ' +
@@ -66,6 +67,7 @@ const HOSPITAL_HINT: Record<string, string> = {
     'A escala inclui OUTROS HOSPITAIS que fazem parte dela — extraia TODAS essas seções como casos também, com o cirurgião quando houver (nomes em ROXO são cirurgiões): ' +
     '"IOSC" = bloco iosc; "HO" = bloco ho (Hospital de Olhos); "DIGIMAX" = bloco normal; "CENTRO DE COLUNA"/"C. COLUNA" = bloco ccoluna; "AMBULATORIAL" = bloco normal. ' +
     '⚠️ SALA dessas seções = SÓ O NOME DA SEÇÃO, sem número interno: TODA linha do IOSC → sala "IOSC"; HO → "Hospital de Olhos"; Digimax → "Digimax"; Centro de Coluna → "Centro de Coluna". IGNORE o "SALA 1"/"SALA 2" que aparecer na coluna Sala dessas seções (é a sala interna da clínica — não usamos). NUNCA devolva "Sala 1"/"Sala 2" para uma linha do IOSC/HO/Digimax: cairia junto da sala homônima do HRO e misturaria os anestesistas (erro real 24/07). Todas as linhas de uma seção compartilham a MESMA sala (ex.: "IOSC"), na ordem em que aparecem; cada linha mantém seu próprio anestesista (o board agrupa por anestesista dentro da seção). ' +
+    '⚠️ E ISSO VALE PARA AS LINHAS SEGUINTES, não só para a que traz o rótulo (erro real 31/08): aberta a seção, TODA linha abaixo dela continua na MESMA seção até aparecer OUTRO rótulo na coluna Leito — mesmo que a coluna Sala dessas linhas traga 1, 2 ou 3, e mesmo que a coluna ANEST traga um nome próprio em vez de "//". Em 31/08 o IOSC tinha 3 linhas (salas 1, 2 e 3 INTERNAS) e só a primeira saiu como IOSC: a segunda foi para a Sala 2 do HRO e, por ter "//" na coluna ANEST, herdou a anestesista de lá — que estava em outra cirurgia, em outro prédio. ' +
     'NESSAS seções (IOSC/HO/Digimax/etc.) cada LINHA tem o seu PRÓPRIO anestesista — copie o da linha; NUNCA atribua o mesmo anestesista a todas as linhas da seção (erro real 23/07: as 3 linhas do IOSC saíram para um só e dois anestesistas SUMIRAM da escala); linha sem anestesista visível fica "". ' +
     '⚠️ ANTES DE RESPONDER, CONFIRME ESTES DOIS PONTOS (dono 2026-08-27 — os dois erram várias vezes por semana): ' +
     '(1) NENHUM caso das seções IOSC / HO / DIGIMAX / CENTRO DE COLUNA pode ter sala "Sala 1", "Sala 2" ou "Sala 3" — essas são as salas internas DAQUELAS clínicas e colidem com as salas do próprio HRO, misturando anestesistas de hospitais diferentes na mesma sala. Toda linha dessas seções tem sala = NOME DA SEÇÃO. Reveja linha a linha antes de fechar o JSON. ' +
@@ -436,7 +438,18 @@ Deno.serve(async (req) => {
       })
     }
 
-    const hint = HOSPITAL_HINT[hospital] || ''
+    // ⚠️ SEM HOSPITAL DECLARADO, VÃO OS TRÊS (dono 31/08, auditoria).
+    // O lote de dia útil lê cada arquivo SEM hint — o hospital é justamente o
+    // que ele quer descobrir (27/08) —, e com isso a leitura passou a rodar sem
+    // NENHUMA das regras por hospital acumuladas desde 24/07: as seções-clínicas
+    // do HRO, a herança do "//", os rótulos de sala, os blocos do rodapé da
+    // Unimed. Elas existiam e simplesmente não chegavam ao modelo pelo caminho
+    // que virou o padrão em 27/08. Mandar os três conjuntos custa ~700 tokens por
+    // leitura e devolve todas elas; escolher QUAL aplicar é a mesma decisão que o
+    // modelo já toma para preencher `hospitalDetectado`.
+    const hint = HOSPITAL_HINT[hospital]
+      || `Descubra primeiro de QUAL hospital é o layout (mesmo critério de hospitalDetectado) e aplique SÓ as regras dele, ignorando as dos outros dois:\n`
+        + Object.entries(HOSPITAL_HINT).map(([h, t]) => `• SE FOR ${h.toUpperCase()}: ${t}`).join('\n')
     // datas de referência do FDS (o título "SÁBADO – 15 DE AGOSTO" vem sem ano)
     const iso = (v: unknown) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : '')
     const refs = [iso(refSabado) && `sábado = ${iso(refSabado)}`, iso(refDomingo) && `domingo = ${iso(refDomingo)}`, iso(refFeriado) && `feriado = ${iso(refFeriado)}`]

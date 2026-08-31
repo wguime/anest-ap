@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { chaveSalaHro, LOCAIS_BASE, normalizarSalaHro, normalizarSalaUnimed, salasDoHospital } from '@/pages/escala-cirurgica/utils'
+import { chaveSalaHro, LOCAIS_BASE, normalizarSalaHro, normalizarSalaUnimed, prepararCasosImportados, salasDoHospital } from '@/pages/escala-cirurgica/utils'
 
 describe('salas HRO na conferência', () => {
   it('normaliza blocos e locais especiais sem perder a sala', () => {
@@ -218,5 +218,74 @@ describe('seção-clínica corrige a sala numérica (dono 27/08)', () => {
     // "Hemodinâmica" numa linha marcada iosc é erro de bloco, não de sala:
     // trocar por "IOSC" apagaria o local que a leitura acertou
     expect(normalizarSalaHro('HEMO', 'iosc')).toBe('Hemodinâmica')
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// AS CLÍNICAS DE DENTRO DA ESCALA DO HRO (auditoria do dono, 2026-08-31).
+//
+// IOSC, Hospital de Olhos, Centro de Coluna e Digimax numeram as PRÓPRIAS salas
+// 1, 2, 3 — e esses números colidem com as salas do HRO. Em 31/08 a 2ª linha do
+// IOSC (Persio Beatto, Túnel do Carpo) saiu na "Sala 2" do HRO, e como a coluna
+// ANEST dela era "//", ela herdou a anestesista da Sala 2 (Daniela), que estava
+// em outra cirurgia, em outro prédio. É o erro de 24/07 de volta.
+const caso = (sala, anestesista, extra = {}) => ({
+  sala, anestesista, hora: '13:30', cirurgiao: 'Alguém', procedimento: 'PROC',
+  pacienteIniciais: 'A.B.', bloco: 'normal', ...extra,
+})
+
+describe('seções-clínicas do HRO na importação', () => {
+  it('"//" logo abaixo do IOSC CONTINUA no IOSC — não cai na sala numérica', () => {
+    const [linha1, linha2] = prepararCasosImportados([
+      caso('IOSC', 'FERNANDO', { bloco: 'iosc' }),
+      caso('Sala 2', '//'),
+    ], 'hro')
+    expect(linha1.sala).toBe('IOSC')
+    expect(linha2.sala).toBe('IOSC')
+    expect(linha2.bloco).toBe('iosc')
+  })
+
+  it('o rótulo da seção manda no BLOCO (a volta do guardrail de 27/08)', () => {
+    // 31/08: a 3ª linha do IOSC acertou a sala e veio com bloco `normal` —
+    // some do agrupamento por seção no quadro
+    const [linha] = prepararCasosImportados([caso('IOSC', 'MAURICIO')], 'hro')
+    expect(linha.bloco).toBe('iosc')
+  })
+
+  it('linha com NOME PRÓPRIO não é movida — ela diz de si mesma', () => {
+    const [, linha2] = prepararCasosImportados([
+      caso('IOSC', 'FERNANDO', { bloco: 'iosc' }),
+      caso('Sala 2', 'DANIELA'),
+    ], 'hro')
+    expect(linha2.sala).toBe('Sala 2')
+  })
+
+  it('a janela é de UMA linha: sala numérica depois de outra sala numérica fica', () => {
+    // manter a seção aberta engoliria uma sala do HRO que viesse depois
+    const linhas = prepararCasosImportados([
+      caso('IOSC', 'FERNANDO', { bloco: 'iosc' }),
+      caso('Sala 2', 'DANIELA'),
+      caso('Sala 2', '//'),
+    ], 'hro')
+    expect(linhas[2].sala).toBe('Sala 2')
+  })
+
+  it('vale para Hospital de Olhos e Centro de Coluna também', () => {
+    const [, ho] = prepararCasosImportados([
+      caso('HO', 'GABRIEL', { bloco: 'ho' }), caso('Sala 1', '//'),
+    ], 'hro')
+    expect(ho.sala).toBe('Hospital de Olhos')
+    const [, cc] = prepararCasosImportados([
+      caso('C. COLUNA', 'RAUL', { bloco: 'ccoluna' }), caso('Sala 3', '//'),
+    ], 'hro')
+    expect(cc.sala).toBe('Centro de Coluna')
+  })
+
+  it('"//" numa sala NORMAL do HRO continua onde está', () => {
+    const [, linha2] = prepararCasosImportados([
+      caso('Sala 6', 'JOAO HENRIQUE'), caso('Sala 6', '//'),
+    ], 'hro')
+    expect(linha2.sala).toBe('Sala 6')
+    expect(linha2.bloco).toBe('normal')
   })
 })
