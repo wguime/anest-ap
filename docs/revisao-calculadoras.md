@@ -57,7 +57,7 @@ remoção do arquivo é decisão do dono**.
 fundação está pronta — variante `deitado:`, navegação lateral, Home/Gestão/Menu. Leia aquela frente
 como "aplicar o que já existe às calculadoras": o sistema de calculadoras tem **0 usos** de `deitado:`.
 
-**A fazer, na ordem:** Frente 3c (matemática das demais) · Frente 4 (português e números) ·
+**A fazer, na ordem:** Frente 3c (matemática das demais) · ~~Frente 4 (português e números)~~ **CONCLUÍDA em 31/08/2026** ·
 Frente 1 (card de classificações) · Frente 2 (triagem — é PROPOSTA, não execução) ·
 Frentes 5, 6 e 7 (dependem de aprovação por imagem).
 
@@ -98,7 +98,7 @@ Sem isso a revisão começa cega e o revisor perde tempo redescobrindo. **Tudo a
 | cabeçalho de `calculator-definitions.js` | "84 calculadoras … 34 ativas" | idem — **três fontes, três números, nenhum certo** |
 | skill | "`customRender` — 6 calcs" | **16** (8 com arquivo próprio em `displays/`, 8 inline no Showcase) |
 | skill | "CalculatorShowcase: SEM padding próprio" | tem `px-2 pb-3` |
-| skill | "Score com 2 decimais: `result.score.toFixed(2)`" | ⚠️ ver Frente 4 |
+| skill | "Score com 2 decimais: `result.score.toFixed(2)`" | ✅ **corrigido em 31/08/2026** — a skill agora manda `numeroBr` e proíbe `toFixed` |
 
 Corrija a skill e o agente **primeiro**. Enquanto o caminho estiver morto, qualquer invocação do `calc-validator`
 produz um relatório vazio que parece aprovação.
@@ -282,7 +282,16 @@ Ripamonti C et al. J Clin Oncol 1998;16(10):3216-21 (razão escalonada da metado
 2. **A OXITOCINA exibia `mg` no lugar de `UI`** — a derivação de unidade não
    tinha ramo para `UI/kg` e caía no `mg` final.
 
-**Pendentes de decisão do dono** — são valor de dose, não código:
+**RESOLVIDOS pelo dono em 30/08/2026** — eram valor de dose, não código. Ficam registrados com o
+achado original porque é ele que explica o porquê do valor de hoje:
+
+- **Adenosina:** `doseMaxima` passou para **6 mg absolutos** (`dosePadrao: 0.1 mg/kg`), como o texto
+  abaixo propunha. Trava: `calculatorDosesPediatricas.test.js` § "o teto é absoluto, não por kg",
+  que confere 5 kg → 0,5 mg e 80 kg → 6 mg.
+- **Gluconato de cálcio 10%:** a dose foi corrigida para **60 mg/kg** (era 20, que é a do cloreto),
+  com teto de 2.000 mg. Trava no mesmo arquivo, § "a dose é a do gluconato, não a do cloreto".
+
+<details><summary>O achado original, como foi escrito na auditoria</summary>
 
 3. ⚠️ **ADENOSINA: o teto está em mg/kg num campo aplicado como mg absoluto.**
    O código faz `if (doseCalculada > doseMaxima) doseCalculada = doseMaxima`,
@@ -311,6 +320,8 @@ Ripamonti C et al. J Clin Oncol 1998;16(10):3216-21 (razão escalonada da metado
    corrigir a dose para 60 mg/kg ou renomear para cloreto?**
 
 Fontes: PALS/AHA 2020 (adenosina, cálcio) · StatPearls, Calcium Gluconate.
+
+</details>
 
 #### Tier 1 — as demais: conferidas e SEM defeito
 
@@ -436,6 +447,14 @@ com 7 defeitos clínicos encontrados e corrigidos. Falta o Tier 4 (os ~39 escore
 dano por erro: escore prognóstico não vira conduta imediata como dose e volume.
 
 ## Frente 4 — Português, incluindo os números
+
+> ✅ **CONCLUÍDA em 31/08/2026** (commits `0848cd1` e `7f7bf2d`). A metade dos NÚMEROS foi feita
+> inteira: 139 `toFixed` e 249 strings clínicas passaram para o helper único `src/lib/numeroBr.js`,
+> a skill deixou de mandar `toFixed`, e `formatoNumeroBr.test.js` (9 casos) trava o formato.
+> ⚠️ Dois defeitos que a migração criou e que NÃO davam erro: `score` devolvido como texto fazia
+> `parseFloat('2,5')` virar 2 e a faixa mudar de lado (Murray, SORT); e `dosePadrao` é exibido E
+> parseado, então virar vírgula zeraria a dose — resolvido com o parser tolerante `numeroFlexivel`.
+> A metade das PALAVRAS (anglicismos, siglário) segue como estava.
 
 O dono pediu português em todos os termos e um siglário. Duas metades:
 

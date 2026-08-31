@@ -145,5 +145,7 @@ senão o rgba é comparado com ele mesmo e a razão dá 1.
 do `EscalaCirurgicaHomeCard`, padrão do app para cartão que se destaca sem virar alerta. No escuro o
 `accent` (#212D28) fica quase igual ao `card`, por isso lá o destaque vem da BORDA.
 
-⚠️ **`toFixed()` devolve PONTO decimal** e o app escreve com vírgula ("1,5 mL/kg"). Dois separadores
-na mesma tela fazem duvidar da conta — usar helper de formatação BR.
+⚠️ **`toFixed()` devolve PONTO decimal e não separa milhar** — dois separadores na mesma tela fazem
+duvidar da conta. Use **`numeroBr` de `src/lib/numeroBr.js`**, helper único desde 31/08/2026:
+`numeroBr(12.75, 2)` → "12,75", `numeroBr(4900)` → "4.900", `numeroBr(null)` → "—". `toFixed` em
+texto de tela é regressão.

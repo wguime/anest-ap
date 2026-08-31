@@ -74,6 +74,27 @@ describe('doses_adultos — dose escrita com vírgula não pode virar zero', () 
     }
   });
 
+  /* ⚠️ O campo `dosePadrao` faz DOIS trabalhos: é o texto que aparece na tela E
+   * a fonte de onde a dose é calculada (`split('-').map(numeroFlexivel)`).
+   * Reescrever o texto, portanto, MUDA A DOSE — e falha em silêncio:
+   *
+   *   "1,5-2,5"    → [1,5 · 2,5] → 105-175 mg   (certo)
+   *   "1,5 a 2,5"  → [1,5]       → 105-105 mg   (o teto some)
+   *   "1,5 – 2,5"  → [1,5]       → 105-105 mg   (travessão de copiar-colar)
+   *
+   * Nenhum vira zero, então a trava de "dose não é zero" NÃO pega. Esta pega:
+   * quantos números o TEXTO mostra tem de ser quantos números o parse extrai. */
+  it('o separador da faixa não pode ser reescrito sem quebrar a dose', () => {
+    const quebrados = [];
+    for (const m of dosesDe(70)) {
+      const texto = String(m.dosePadrao);
+      const naTela = (texto.match(/\d+(?:[.,]\d+)?/g) || []).length;
+      const noParse = texto.split('-').map((d) => numeroFlexivel(d)).filter(Number.isFinite).length;
+      if (naTela !== noParse) quebrados.push(`${m.droga}: "${texto}" mostra ${naTela}, extrai ${noParse}`);
+    }
+    expect(quebrados).toEqual([]);
+  });
+
   it('a dose por kg escala com o peso — é o que o parse quebrado apagaria', () => {
     const leve = dosesDe(50);
     const pesado = dosesDe(100);

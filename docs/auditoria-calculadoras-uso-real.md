@@ -83,11 +83,11 @@ usa — lib sem importador de produção é pior que não ter teste.
 evidência: dependem de fatos sobre a prática do grupo, e evidência não responde "esse grupo assume
 plantão de UTI?".
 
-⚠️ **Um defeito de exibição ficou mais visível e NÃO foi mexido:** o número grande do resultado sai
-com PONTO decimal (`0.71`, `2.00`) enquanto tudo abaixo dele usa vírgula. É o
-`ResultDisplay.toFixed(2)` genérico, vale para as 59 calculadoras, e está registrado como Frente 4
-(~133 usos) em `docs/revisao-calculadoras.md`. Corrigir alcança o app inteiro — é mudança visual, e
-cai na Regra #2. Deixar só os 7 cards novos com vírgula criaria uma inconsistência nova, pior.
+⚠️ **Um defeito de exibição ficou mais visível e NÃO foi mexido** *(à época — ✅ resolvido em
+31/08/2026, commits `0848cd1` e `7f7bf2d`)*: o número grande do resultado saía com PONTO decimal
+(`0.71`, `2.00`) enquanto tudo abaixo dele usava vírgula. Era o `ResultDisplay.toFixed(2)` genérico.
+O dono liberou a mudança em 31/08 e ela foi feita para o app inteiro — 139 contas e 249 strings
+clínicas —, com helper único e trava de formato.
 
 ---
 
@@ -143,11 +143,14 @@ rodadas anteriores não puderam ser.
 
 ### O que continua em aberto
 
-Só duas coisas, as duas visuais e as duas paradas na **Regra #2**, por decisão do dono ("as outras
-duas perguntas, ignore por enquanto"):
+Uma só, visual e parada na **Regra #2**:
 
 1. Renomear as seções cujo título deixou de descrever o conteúdo (§6.5).
-2. Trocar o ponto por vírgula no número grande do resultado, nas 61 calculadoras.
+
+~~2. Trocar o ponto por vírgula no número grande do resultado, nas 61 calculadoras.~~
+✅ **Feito em 31/08/2026** (commits `0848cd1` e `7f7bf2d`), depois de o dono liberar: 139 `toFixed`
+e 249 strings clínicas passaram para `src/lib/numeroBr.js`, a skill deixou de mandar `toFixed` e
+`formatoNumeroBr.test.js` trava o formato.
 
 ---
 

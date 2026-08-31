@@ -108,7 +108,11 @@ Regras que mais se perdem numa edição distraída, todas com trava própria:
 
 ⚠️ `toFixed()` devolve PONTO decimal e o resto do card escreve com vírgula ("1,5 mL/kg", "27,0"). O resultado do
 POCUS saía `1.26 mL/kg` ao lado da fórmula com vírgula — dois separadores na mesma tela fazem duvidar da conta.
-Helper `numeroBr` no display; travado no e2e por string exata.
+Helper `numeroBr` no display; travado no e2e por string exata. **Desde 31/08/2026 ele é único e
+mora em `src/lib/numeroBr.js`** — os 139 `toFixed` e as 249 strings clínicas do sistema de
+calculadoras foram migrados, e `toFixed` em texto de tela é regressão. ⚠️ `score` NUNCA vira texto
+(é comparado; `parseFloat('2,5')` dá 2), e campo exibido-e-parseado (`dosePadrao`, `dilution`) é lido
+com `numeroFlexivel`, que aceita os dois formatos.
 
 Travas: `inibidoresApetite.test.js` (42) + e2e `inibidores-apetite.spec.ts`, que é a auditoria de LAYOUT a 375px
 nos dois temas REAIS (`localStorage['anest-theme']` via `addInitScript` — forçar a classe `.dark` no `<html>` não
