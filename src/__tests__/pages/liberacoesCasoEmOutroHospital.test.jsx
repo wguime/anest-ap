@@ -140,6 +140,22 @@ describe('na escala onde ajuda: a exceção é estreita', () => {
     expect(iOscar).toBeGreaterThan(iGuilherme)
   })
 
+  it('vale também para a ajuda escrita EM AZUL no rodapé, não só para o extra', () => {
+    // ⚠️ foi por aqui que a 1ª versão da exceção passou batido (dono 31/08: "na
+    // aba liberações não houve alteração"). No HRO o Oscar chegou pelo rodapé,
+    // em azul: vem com `isAjuda` e SEM `isExtra`, e a partição só olhava extras.
+    const hroComAzul = { ...hro, ajudaExterna: { matutino: ['OSCAR'] } }
+    const { container } = render(
+      <LiberacoesView escala={hroComAzul} hospital="hro" hospitalLabel="HRO" turno="matutino"
+        canEdit contraturnoOutros={oscarPlantaoNaUnimed}
+        onToggle={() => {}} onSetOverride={() => {}} />,
+      { wrapper: wrap },
+    )
+    const fila = ordemDaFila(container)
+    expect(fila.findIndex((t) => t.includes('Oscar')))
+      .toBeGreaterThan(fila.findIndex((t) => t.includes('Guilherme')))
+  })
+
   it('ajuda que NÃO é plantão em lugar nenhum segue atrás do plantão daqui', () => {
     // é a metade da regra que eu tinha atropelado em 30/08 generalizando a
     // exceção: sem plantão de contraturno em outro hospital, vale 19/08

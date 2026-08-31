@@ -223,6 +223,14 @@ saindo depois do plantão daqui**, exatamente como desde 19/08 — `fechaComPlan
 continua de pé, e a exceção é uma partição das ajudas por `contraturnoDe(linha)`
 (quem FECHA o rodapé de outro hospital naquele turno).
 
+⚠️ **"Aqui de ajuda" tem DUAS formas, e a partição precisa das duas.** `isExtra`
+é quem tem caso aqui e não aparece no rodapé daqui; quem está escrito **em AZUL
+no rodapé** (`ajudaExterna`) é ajuda declarada e vem com `isAjuda`, **sem**
+`isExtra` — foi assim que o Oscar chegou no HRO, e a 1ª versão desta exceção
+passou por cima dele ("na aba liberações não houve alteração"). `ajudaFora` fica
+fora das duas: essa é a pessoa NOSSA emprestada para fora, que mantém a posição
+daqui (31/07).
+
 ⚠️ Regra de fila reportada como errada raramente vira regra geral. Antes de
 transformar um caso em "sem exceção", perguntar: **o que neste caso é
 particular?** Aqui era ser plantonista dos dois lados, não ser ajuda.

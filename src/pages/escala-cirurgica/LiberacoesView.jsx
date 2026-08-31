@@ -930,11 +930,22 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // no próximo turno, e o daqui já está em casa. Ajuda que NÃO é plantão em
   // lugar nenhum não ganha nada disso — continua saindo depois do plantão daqui,
   // como desde 19/08.
-  const linhasForaDoRodape = doTurno.filter((l) => l.isExtra)
-  const linhasOficiais = doTurno.filter((l) => !l.isExtra)
+  //
+  // ⚠️ "AQUI DE AJUDA" TEM DUAS FORMAS, e a 1ª versão desta exceção só enxergou
+  // uma (dono 31/08: "na aba liberações não houve alteração"). `isExtra` é quem
+  // tem caso aqui e não aparece no rodapé daqui; mas quem está escrito EM AZUL
+  // no rodapé é ajuda declarada e vem com `isAjuda`, sem `isExtra` — foi assim
+  // que o Oscar chegou no HRO, e a partição passava por cima dele. `ajudaFora`
+  // fica fora das duas: essa é a pessoa NOSSA emprestada para outro hospital,
+  // que mantém a posição daqui (regra de 31/07).
+  const passaNaFrenteDoPlantao = (l) => (
+    !l.isProximoPlantao && !l.ajudaFora && (l.isExtra || l.isAjuda) && !!contraturnoDe(l)
+  )
+  const naFrenteDoPlantao = doTurno.filter(passaNaFrenteDoPlantao)
+  const demais = doTurno.filter((l) => !passaNaFrenteDoPlantao(l))
+  const linhasForaDoRodape = demais.filter((l) => l.isExtra)
+  const linhasOficiais = demais.filter((l) => !l.isExtra)
   const fechaComPlantao = linhasOficiais.length > 0 && linhasOficiais[linhasOficiais.length - 1].isProximoPlantao
-  const ajudaComPlantaoFora = linhasForaDoRodape.filter((l) => contraturnoDe(l))
-  const ajudaSemPlantaoFora = linhasForaDoRodape.filter((l) => !contraturnoDe(l))
   // A FILA SEGUE SEMPRE A ORDEM DO RODAPÉ (dono 11/08, reforçando 27/07).
   // Liberado NÃO afunda mais: quem sai fica na própria posição, riscado e com o
   // selo "Liberado". O afundamento antigo dava a impressão de que a ordem tinha
@@ -947,14 +958,15 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     ? [
         ...linhasFase.filter((l) => l.noturno),
         ...linhasOficiais.slice(0, -1),
-        ...ajudaSemPlantaoFora,
+        ...linhasForaDoRodape,
         linhasOficiais[linhasOficiais.length - 1],
-        ...ajudaComPlantaoFora,
+        ...naFrenteDoPlantao,
       ]
     : [
         ...linhasFase.filter((l) => l.noturno),
         ...linhasOficiais,
         ...linhasForaDoRodape,
+        ...naFrenteDoPlantao,
       ]
 
   // TEMPO ESTOURADO (dono 24/08): quem informou um término que já passou e AINDA
