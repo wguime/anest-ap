@@ -17,6 +17,8 @@
  * página, uma escala de cada vez, pela mesma via de sempre.
  */
 
+import { hospitalPelaEstrutura, decidirHospital } from './escalaHospitalEstrutura'
+
 const HOSPITAIS = ['unimed', 'hro', 'materno']
 
 const texto = (v) => String(v ?? '').trim()
@@ -32,8 +34,11 @@ export function chaveEscala(hospital) {
  *
  * O documento se declara, como no fim de semana: o layout diz o hospital
  * (`hospitalDetectado`, que a edge já devolve hoje) e o cabeçalho diz a data
- * (`dataDetectada`). Excel/CSV é o export padrão da Unimed e não tem nem um nem
- * outro — vale a extensão para o hospital, e a data fica com o lote.
+ * (`dataDetectada`). Desde 30/08 o CONTEÚDO tem voto junto com o layout — IOSC,
+ * Hemodinâmica e Bloco M só existem no HRO; SRPA, Accurata e Umanitá, só na
+ * Unimed —, e é ele que segura o arquivo quando a cor do print não convence a
+ * leitura. Excel/CSV sem marca nenhuma continua sendo o export da Unimed; a
+ * data fica com o lote de todo jeito.
  *
  * Tudo é SUGESTÃO: `confirmar` marca o que a leitura não resolveu, para o item
  * pedir em vez de a tela escolher sozinha (regra da casa: sugere, nunca troca
@@ -42,12 +47,25 @@ export function chaveEscala(hospital) {
  */
 export function classificarAnexoDiaUtil(resposta, { planilha = false, dataDoLote = '' } = {}) {
   const lido = texto(resposta?.hospitalDetectado)
-  const hospital = HOSPITAIS.includes(lido) ? lido : (planilha ? 'unimed' : '')
+  // 2ª fonte, de dentro do documento (dono 30/08: "não está reconhecendo a
+  // escala do HRO"). O layout sozinho falha de dois jeitos, e o segundo é o
+  // caro: quando ele sai VAZIO o arquivo só pergunta de quem é; quando sai
+  // TROCADO, entra na aba do outro hospital por cima dela e a escala do HRO
+  // some sem aviso. Ver `escalaHospitalEstrutura.js`.
+  const { hospital: decidido, origem, conflito } = decidirHospital(lido, hospitalPelaEstrutura(resposta))
+  // Planilha sem marca nenhuma segue sendo o export da Unimed. Mas a marca vem
+  // ANTES da extensão: o mapa do HRO também chega em .xlsx, e "planilha =
+  // Unimed" mandava a escala dele para a aba da Unimed.
+  const hospital = decidido || (planilha ? 'unimed' : '')
   const detectada = texto(resposta?.dataDetectada)
   const bate = ehISO(detectada) && ehISO(dataDoLote) && detectada === dataDoLote
   return {
     hospital,
-    origemHospital: hospital ? (HOSPITAIS.includes(lido) ? 'layout' : 'planilha') : '',
+    origemHospital: decidido ? origem : (hospital ? 'planilha' : ''),
+    hospitalLido: HOSPITAIS.includes(lido) ? lido : '',
+    // leitura e conteúdo discordando não escolhe sozinho: `confirmar` leva o
+    // arquivo para a fila do "de qual hospital é isto?", com o que o conteúdo viu
+    conflitoHospital: conflito,
     // a data do LOTE manda: o anexo não redefine o dia da importação inteira,
     // só avisa quando mostra outro
     dataDivergente: ehISO(detectada) && ehISO(dataDoLote) && !bate ? detectada : '',

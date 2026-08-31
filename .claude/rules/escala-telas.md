@@ -7,6 +7,9 @@ paths:
   - "src/pages/escala-cirurgica/PainelTempo.jsx"
   - "src/pages/escala-cirurgica/DefinirAnestesistaSheet.jsx"
   - "src/pages/escala-cirurgica/ImportarEscalaPage.jsx"
+  - "src/pages/escala-cirurgica/ImportarEscalasPage.jsx"
+  - "src/lib/escalaLoteImportacao.js"
+  - "src/lib/escalaHospitalEstrutura.js"
   - "src/pages/escala-cirurgica/destinatariosPush.js"
   - "src/pages/escala-cirurgica/useAvisoPlantonista.js"
   - "supabase/functions/send-fcm-push/**"
@@ -259,3 +262,43 @@ o recado assim que ele confirmava o próprio).
   se sobrescreveriam). RLS por papel, como o resto do módulo; nada toca `ordem_liberacao`.
 - Hook `useAvisoPlantonista` fica FORA do context: o recado não é parte da escala e o
   context já carrega três hospitais por data.
+
+
+## De quem é o anexo — layout **e** conteúdo (dono 2026-08-30)
+
+> "Tentei anexar as escalas de amanhã de manhã, mas não está reconhecendo a escala do HRO."
+
+O hospital de um arquivo vinha de UMA fonte: o `hospitalDetectado` que a Vision devolve
+olhando o **layout** — e, do lado do Excel, de uma suposição de extensão (`planilha =
+Unimed`, verdade enquanto só a Unimed exportava planilha).
+
+Layout é frágil aqui por uma razão do papel: **o mapa do HRO e o do Materno têm as MESMAS
+colunas** (Leito/Paciente/Cirurgião/Procedimento) e a assinatura do HRO é a **cor** —
+células amarelas e o rodapé vermelho. Print desbotado, foto de lado ou recorte sem o
+rodapé não entregam cor. Os dois desfechos:
+
+- classificação **vazia** → o arquivo cai na fila do "de qual hospital é isto?";
+- classificação **trocada** → o arquivo entra na aba do OUTRO hospital, **por cima dela**,
+  e a escala do HRO simplesmente não aparece. Este é o caro, e era silencioso.
+
+`src/lib/escalaHospitalEstrutura.js` dá a segunda fonte, do conteúdo já lido: **IOSC,
+Hospital de Olhos, Centro de Coluna, Hemodinâmica, Digimax e Bloco M só existem no HRO;
+SRPA, Accurata, Umanitá e as seções C.O - CESAREA / CENTRO CIRÚRGICO, só na Unimed**.
+Exames, Imagem e Consultório ficam de fora de propósito — os dois têm. Em planilha o
+cabeçalho decide: **LEITO** é do HRO, **IDADE/TEMPO** são do export da Unimed.
+
+⚠️ **A assimetria é a regra, não detalhe de implementação:** uma marca **preenche** o que a
+leitura deixou vazio; são precisas **duas** para **contradizer** o que ela afirmou. Encher
+um vazio é barato; derrubar uma leitura afirmativa por causa de um `bloco` solto (a Vision
+erra um de vez em quando) sairia caro. E contradição **não escolhe sozinha** — ela manda
+PERGUNTAR, com o que o conteúdo viu ("o conteúdo é do HRO, mas o layout foi lido como
+Materno"). Regra da casa intacta: sugere, nunca troca sozinho.
+
+⚠️ **Dois arquivos para o mesmo hospital no MESMO lote não é reanexo** — é classificação
+errada de um dos dois. O segundo **pergunta** em vez de substituir; substituir em silêncio
+apagaria uma escala inteira que a tela ACABOU de dizer que leu. Reanexar em OUTRO lote
+continua substituindo, que é o que quem reanexa está mandando fazer.
+
+O fluxo de FIM DE SEMANA (`classificarAnexoMapa`, em `escalaFdsMapas.js`) tem a MESMA
+lacuna e continua só com o layout — não foi tocado por ser outro fluxo; a lib é
+compartilhável quando o dono pedir.

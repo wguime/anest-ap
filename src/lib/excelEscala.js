@@ -125,5 +125,8 @@ export async function parseExcelEscala(input) {
       tipo: /emerg/i.test(procedimento) ? 'emergencia' : /urgenc/i.test(procedimento) ? 'urgencia' : 'eletiva',
     })
   }
-  return { casos, headerScore: header.score }
+  // `headers` sai junto porque o cabeçalho DIZ de quem é a planilha: só o mapa
+  // do HRO tem coluna LEITO, só o export da Unimed tem IDADE e TEMPO
+  // (`escalaHospitalEstrutura.js`, dono 30/08).
+  return { casos, headerScore: header.score, headers: headers.map((h) => String(h ?? '')) }
 }

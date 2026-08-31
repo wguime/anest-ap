@@ -52,6 +52,7 @@ const HOSPITAL_OPCOES = HOSPITAIS_LOTE.map((v) => ({ value: v, label: HOSPITAL_L
 const dataToISO = (d) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const ehPlanilha = (file) => /\.(xlsx?|csv)$/i.test(file?.name || '')
+const rotulo = (h) => HOSPITAL_LABEL[h] || h || 'outro hospital'
 
 /**
  * Selo de estado da aba — CÍRCULO (dono 27/08), mesmo diâmetro do badge do
@@ -150,9 +151,12 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
   // que a tela de uma escala só já tinha.
   const lerArquivo = async (file) => {
     if (ehPlanilha(file)) {
-      const { casos: rows } = await parseExcelEscala(file)
+      const { casos: rows, headers } = await parseExcelEscala(file)
       if (!rows.length) return { erro: 'não consegui ler a planilha' }
-      const cls = classificarAnexoDiaUtil({}, { planilha: true, dataDoLote: dataEscolhida })
+      // cabeçalho + salas vão junto: é o que separa a planilha do HRO (coluna
+      // LEITO) do export da Unimed (IDADE/TEMPO) — antes, toda planilha era
+      // Unimed por definição
+      const cls = classificarAnexoDiaUtil({ casos: rows, headers }, { planilha: true, dataDoLote: dataEscolhida })
       return { cls, lote: { rows, posicoes: [], ordemLiberacao: [], ajudaExterna: [] }, nome: file.name }
     }
     if (!String(file.type || '').startsWith('image/')) {
@@ -210,12 +214,29 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
             problemas.push(`${file.name}: o arquivo mostra ${formatData(r.cls.dataDivergente)}, e o lote é de ${formatData(dataEscolhida)}`)
           }
           if (!r.cls.hospital) {
-            semHospital.push({ id: `${file.name}-${semHospital.length}`, nome: file.name, ...r })
+            // conflito entre layout e conteúdo tem motivo próprio: "não
+            // reconheci" mandaria procurar defeito na foto, e o problema é outro
+            const motivo = r.cls.conflitoHospital
+              ? `o conteúdo é do ${rotulo(r.cls.conflitoHospital)}, mas o layout foi lido como ${rotulo(r.cls.hospitalLido)}.`
+              : 'não reconheci o hospital pelo layout.'
+            semHospital.push({ id: `${file.name}-${semHospital.length}`, nome: file.name, motivo, ...r })
             continue
           }
           const hosp = r.cls.hospital
-          // reanexar o mesmo hospital SUBSTITUI: duas abas do mesmo hospital
-          // publicariam duas vezes sobre a mesma escala
+          // DOIS ARQUIVOS PARA O MESMO HOSPITAL no mesmo lote não é reanexo, é
+          // classificação errada de um dos dois (dono 30/08: a escala do HRO
+          // não aparecia). Substituir em silêncio apagaria uma escala inteira
+          // que a tela já dizia ter lido — então o segundo PERGUNTA de quem é.
+          // Reanexar em OUTRO lote continua substituindo, como sempre.
+          if (prontos[hosp]) {
+            semHospital.push({
+              id: `${file.name}-${semHospital.length}`,
+              nome: file.name,
+              motivo: `o lote já tem uma escala do ${rotulo(hosp)} (${prontos[hosp].nome}).`,
+              ...r,
+            })
+            continue
+          }
           prontos[hosp] = { hospital: hosp, nome: r.nome, arquivo: r.arquivo, truncado: r.truncado, lote: r.lote }
           lidos += 1
         } catch (err) {
@@ -450,7 +471,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
           <div key={p.id} className="space-y-2 rounded-xl border border-warning/40 bg-warning/10 p-3">
             <p className="flex items-center gap-2 text-xs font-semibold text-warning">
               <AlertTriangle className="h-4 w-4 shrink-0" />
-              {p.nome}: não reconheci o hospital pelo layout.
+              {p.nome}: {p.motivo || 'não reconheci o hospital pelo layout.'}
             </p>
             <Select
               options={HOSPITAL_OPCOES}

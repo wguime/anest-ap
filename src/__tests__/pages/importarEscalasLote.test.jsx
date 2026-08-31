@@ -104,14 +104,67 @@ describe('anexo em lote — cada arquivo vai para a aba do seu hospital', () => 
   })
 
   it('reanexar o MESMO hospital substitui a aba, não cria uma segunda', async () => {
+    // reanexo é anexar DE NOVO, num segundo lote — e aí substituir é o certo
     svcMock.parseEscalaImagem
       .mockResolvedValueOnce({ casos: [caso('Sala 1', 'CURY')], hospitalDetectado: 'hro' })
       .mockResolvedValueOnce({ casos: [caso('Sala 9', 'PAULO')], hospitalDetectado: 'hro' })
 
     const { container } = montar()
-    await soltarArquivos(container, [img('hro-velho.png'), img('hro-novo.png')])
+    const anexar = (f) => fireEvent.change(container.querySelector('input[type="file"]'), { target: { files: [f] } })
+    anexar(img('hro-velho.png'))
+    await waitFor(() => expect(abas()).toHaveLength(1))
+
+    // o input é outro nó depois do 1º lote (a caixa vira botão) — reconsultar
+    anexar(img('hro-novo.png'))
+    await waitFor(() => expect(svcMock.parseEscalaImagem).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(abas()).toHaveLength(1))
+    // nada a perguntar: quem reanexa está mandando trocar
+    expect(screen.queryByText(/o lote já tem uma escala/i)).toBeNull()
+  })
+
+  it('dois arquivos para o mesmo hospital NO MESMO lote: o segundo pergunta', async () => {
+    // ⚠️ trava nascida do relato de 30/08 ("não está reconhecendo a escala do
+    // HRO"): dois arquivos caindo no mesmo hospital de uma vez não é reanexo, é
+    // classificação errada de um dos dois. Substituir em silêncio apagaria uma
+    // escala inteira que a tela ACABOU de dizer que leu.
+    svcMock.parseEscalaImagem
+      .mockResolvedValueOnce({ casos: [caso('Sala 1', 'CURY')], hospitalDetectado: 'hro' })
+      .mockResolvedValueOnce({ casos: [caso('Sala 9', 'PAULO')], hospitalDetectado: 'hro' })
+
+    const { container } = montar()
+    await soltarArquivos(container, [img('hro-a.png'), img('hro-b.png')])
 
     await waitFor(() => expect(abas()).toHaveLength(1))
+    expect(await screen.findByText(/o lote já tem uma escala do HRO/i)).toBeTruthy()
+  })
+
+  it('a escala do HRO em planilha não vai para a aba da Unimed', async () => {
+    // "planilha = Unimed" valia enquanto só a Unimed exportava planilha; o mapa
+    // do HRO também chega em .xlsx, e ia inteiro para a aba errada, por cima dela
+    parseExcel.mockResolvedValueOnce({
+      casos: [caso('Sala 3', 'CURY')], headerScore: 6,
+      headers: ['Hora', 'Leito', 'Paciente', 'Cirurgião', 'Procedimento', 'ANEST', 'Conv.', 'Sala'],
+    })
+    const { container } = montar()
+    const input = container.querySelector('input[type="file"]')
+    fireEvent.change(input, { target: { files: [new File(['x'], 'hro.xlsx', { type: '' })] } })
+
+    await waitFor(() => expect(abas()).toHaveLength(1))
+    expect(abas()[0].textContent).toMatch(/HRO/)
+  })
+
+  it('layout e conteúdo discordando: pergunta, e diz o que o conteúdo mostrou', async () => {
+    // HRO e Materno têm as MESMAS colunas — a assinatura do HRO é a cor, que um
+    // print desbotado não entrega. Aí a escala ia para a aba do Materno.
+    svcMock.parseEscalaImagem.mockResolvedValueOnce({
+      casos: [caso('IOSC', 'CURY'), { ...caso('Hemodinâmica', 'PAULO'), bloco: 'hemodinamica' }],
+      hospitalDetectado: 'materno',
+    })
+    const { container } = montar()
+    await soltarArquivos(container, [img('hro-desbotado.png')])
+
+    expect(await screen.findByText(/o conteúdo é do HRO/i)).toBeTruthy()
+    expect(abas()).toHaveLength(0)
   })
 
   it('arquivo que não se declarou PERGUNTA o hospital em vez de chutar', async () => {

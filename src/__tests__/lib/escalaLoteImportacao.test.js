@@ -62,6 +62,51 @@ describe('classificação do anexo — o documento se declara', () => {
     expect(cls.dataDivergente).toBe('')
   })
 
+  it('layout vazio: o CONTEÚDO segura o arquivo (dono 30/08)', () => {
+    // a assinatura do HRO é a cor da planilha, e print desbotado não entrega
+    // cor — mas IOSC e Hemodinâmica não existem em mais nenhuma escala
+    const cls = classificarAnexoDiaUtil(
+      { hospitalDetectado: '', casos: [{ sala: 'IOSC', bloco: 'iosc' }] },
+      { dataDoLote: '2026-08-31' },
+    )
+    expect(cls.hospital).toBe('hro')
+    expect(cls.origemHospital).toBe('estrutura')
+    expect(cls.confirmar).toEqual([])
+  })
+
+  it('planilha COM coluna Leito é do HRO, não da Unimed', () => {
+    // "planilha = Unimed" valia enquanto só a Unimed exportava planilha; o mapa
+    // do HRO em .xlsx ia inteiro para a aba da Unimed, por cima dela
+    const cls = classificarAnexoDiaUtil(
+      { casos: [{ sala: 'Sala 3' }], headers: ['Hora', 'Leito', 'Paciente', 'ANEST'] },
+      { planilha: true, dataDoLote: '2026-08-31' },
+    )
+    expect(cls.hospital).toBe('hro')
+  })
+
+  it('layout e conteúdo discordando PERGUNTA, e diz o que o conteúdo viu', () => {
+    const cls = classificarAnexoDiaUtil(
+      {
+        hospitalDetectado: 'materno',
+        casos: [{ sala: 'IOSC', bloco: 'iosc' }, { sala: 'Hemodinâmica', bloco: 'hemodinamica' }],
+      },
+      { dataDoLote: '2026-08-31' },
+    )
+    expect(cls.hospital).toBe('')
+    expect(cls.conflitoHospital).toBe('hro')
+    expect(cls.hospitalLido).toBe('materno')
+    expect(cls.confirmar).toEqual(['hospital'])
+  })
+
+  it('uma marca solta NÃO derruba o layout que a leitura afirmou', () => {
+    const cls = classificarAnexoDiaUtil(
+      { hospitalDetectado: 'unimed', casos: [{ sala: 'IOSC', bloco: 'iosc' }] },
+      { dataDoLote: '2026-08-31' },
+    )
+    expect(cls.hospital).toBe('unimed')
+    expect(cls.conflitoHospital).toBe('')
+  })
+
   it('a chave do item é o HOSPITAL — reanexar o mesmo hospital substitui', () => {
     // diferente do fim de semana, onde a chave é hospital+dia: aqui o dia é do lote
     expect(chaveEscala('hro')).toBe(chaveEscala('hro'))
