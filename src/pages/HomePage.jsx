@@ -900,6 +900,7 @@ export default function HomePage({ onNavigate }) {
                 meta={formatCardMeta(escalaCardData, null)}
                 sections={getConsultorioSections}
                 canEdit={canEditStaff}
+                editLabel="Editar"
                 onEdit={() => setShowAssignStaffModal('consultorio')}
               />
             )}
