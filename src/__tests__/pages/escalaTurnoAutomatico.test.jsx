@@ -151,13 +151,16 @@ describe('turno acompanha o relógio (dono 15/08)', () => {
     expect(screen.getByLabelText('Importar escala')).toBeTruthy()
   })
 
-  // ⚠️ FRONTEIRA (dono 24/08, 2ª mensagem): o "Importar" em outline SEM ícone
-  // saiu do protótipo do FIM DE SEMANA e foi adotado também no dia útil na
-  // primeira versão. O dono recusou — "não altere a escala de dias úteis".
-  it('DIA ÚTIL: o "Importar" mantém o ícone (ghost), como está desde o começo', () => {
+  // Histórico: em 24/08 o outline sem ícone do protótipo de FDS vazou pro dia
+  // útil e o dono recusou ("não altere a escala de dias úteis") — o ghost com
+  // ícone voltou e este teste o travava. Em 31/08 veio o pedido PRÓPRIO para o
+  // dia a dia: "Importar" no pill modelo "Extrato", igual nos dois modos.
+  it('DIA ÚTIL: o "Importar" é o pill do Extrato, sem ícone (dono 31/08)', () => {
     vi.setSystemTime(new Date('2026-08-17T10:00:00-03:00'))
     montarHoje()
-    expect(screen.getByLabelText('Importar escala').querySelector('svg')).toBeTruthy()
+    const btn = screen.getByLabelText('Importar escala')
+    expect(btn.querySelector('svg')).toBeNull()
+    expect(btn.textContent.trim()).toBe('Importar')
   })
 
   it('o calendário livre "Outra data" SAIU da tela (dono 16/08)', () => {
