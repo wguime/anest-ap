@@ -302,15 +302,26 @@ export function evaluateBalance({
     });
   }
 
-  // Anúria: zero MEDIDO. Reportada pela hora mais recente, que é a acionável.
-  let horaAnuria = -1;
+  /* Anúria é ESTADO ATUAL, não histórico.
+   *
+   * ⚠️ A 1ª versão guardava o último índice com zero e nunca o limpava: um 0 na
+   * hora 1 seguido de diurese normal na hora 2 mantinha o alerta VERMELHO pelo
+   * resto da cirurgia, no presente ("Anúria na hora 1"), com o paciente
+   * urinando (dono 31/08). Além de factualmente errado, é fadiga de alarme — e
+   * zero na primeira hora é comum, com a bexiga recém-esvaziada e a sonda
+   * recém-passada.
+   *
+   * Agora olha só a medição MAIS RECENTE: se ela é 0, há anúria agora; se veio
+   * diurese depois, o episódio passou e o alerta sai. Hora não medida (branco)
+   * não apaga o zero anterior — sem informação nova, o alerta se mantém. */
+  let ultimaMedida = -1;
   diureses.forEach((d, i) => {
-    if (d === 0) horaAnuria = i;
+    if (d !== null) ultimaMedida = i;
   });
-  if (horaAnuria >= 0) {
+  if (ultimaMedida >= 0 && diureses[ultimaMedida] === 0) {
     alerts.push({
       level: 'destructive',
-      message: `Anúria na hora ${horaAnuria + 1}: diurese 0 ml registrada — investigar causa pré-renal, renal ou obstrutiva.`,
+      message: `Anúria na hora ${ultimaMedida + 1}: diurese 0 ml registrada — investigar causa pré-renal, renal ou obstrutiva.`,
     });
   }
 

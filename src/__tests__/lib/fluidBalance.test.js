@@ -291,6 +291,37 @@ describe('evaluateBalance — integração', () => {
     expect(anuria.message).toContain('hora 2');
   });
 
+  /* ⚠️ Defeito relatado pelo dono em 31/08: zero na PRIMEIRA hora deixava o
+   * alerta vermelho na tela pelo resto da cirurgia, mesmo com o paciente
+   * urinando nas horas seguintes. Anúria é ESTADO ATUAL: a frase está no
+   * presente e o alerta é para agir agora. Zero na 1ª hora ainda é comum, com
+   * a bexiga recém-esvaziada. */
+  it('anúria SOME quando uma hora posterior tem diurese', () => {
+    const r = evaluateBalance({
+      ...baseAdulto,
+      hours: [{ diurese: '0' }, { diurese: '40' }],
+    });
+    expect(r.alerts.some((a) => a.message.includes('Anúria'))).toBe(false);
+  });
+
+  it('anúria PERMANECE se a hora seguinte não foi medida — sem informação nova', () => {
+    const r = evaluateBalance({
+      ...baseAdulto,
+      hours: [{ diurese: '0' }, { diurese: '' }],
+    });
+    expect(r.alerts.some((a) => a.message.includes('Anúria'))).toBe(true);
+  });
+
+  it('anúria volta se o zero reaparece depois de ter resolvido', () => {
+    const r = evaluateBalance({
+      ...baseAdulto,
+      hours: [{ diurese: '0' }, { diurese: '40' }, { diurese: '0' }],
+    });
+    const a = r.alerts.find((x) => x.message.includes('Anúria'));
+    expect(a).toBeDefined();
+    expect(a.message).toContain('hora 3');
+  });
+
   it('anúria aponta a hora MAIS RECENTE, que é a acionável', () => {
     const hours = [
       { diurese: '0' }, { diurese: '40' }, { diurese: 0 },

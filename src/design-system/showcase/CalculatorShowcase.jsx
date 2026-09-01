@@ -120,7 +120,7 @@ const SPECIALTY_ICONS = {
 // INFO BOX COMPONENT
 // =============================================================================
 
-function InfoBox({ infoBox, reference }) {
+function InfoBox({ infoBox, reference, colapsado = false }) {
   // Estado para controlar cards colapsiveis
   const [isKeyPointsOpen, setIsKeyPointsOpen] = useState(true);
 
@@ -139,7 +139,7 @@ function InfoBox({ infoBox, reference }) {
 
   if (!hasContent) return null;
 
-  return (
+  const conteudo = (
     <div className="space-y-3">
       {/* 1. AVISOS CRITICOS — destructive (light) / muted neutro (dark) */}
       {warnings.length > 0 && (
@@ -281,6 +281,21 @@ function InfoBox({ infoBox, reference }) {
         </div>
       )}
     </div>
+  );
+
+  /* ⚠️ Colapsar é OPT-IN por calculadora (`infoBoxColapsado` na definição), não
+     o padrão: mudar o comportamento das 61 telas de uma vez é mudança visual em
+     uso clínico e cai na Regra #2. Pedido do dono em 31/08 para o Balanço
+     Hídrico, cuja tela ficou "muito poluída" com os textos abertos. */
+  if (!colapsado) return conteudo;
+
+  return (
+    <details className="rounded-xl border border-border bg-muted/40 p-3">
+      <summary className="cursor-pointer font-semibold text-foreground text-sm select-none min-h-[44px] flex items-center">
+        Avisos, pontos-chave e referências
+      </summary>
+      <div className="mt-3">{conteudo}</div>
+    </details>
   );
 }
 
@@ -2250,7 +2265,11 @@ function CalculatorPage({ calculator, _onBack }) {
       )}
 
       {/* Info Box */}
-      <InfoBox infoBox={calculator.infoBox} reference={calculator.reference} />
+      <InfoBox
+        infoBox={calculator.infoBox}
+        reference={calculator.reference}
+        colapsado={calculator.infoBoxColapsado}
+      />
 
       {/* Disclaimer regulatório CFM 2.454/2026 (Onda I) */}
       <ClinicalDisclaimer />

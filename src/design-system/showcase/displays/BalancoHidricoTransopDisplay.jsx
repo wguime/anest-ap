@@ -35,9 +35,9 @@ import { pesosDeReferencia } from '../../../lib/pesoCorporal';
    largura (~165px a 375px), e o dropdown do DS herda a largura do gatilho. O
    nome por extenso vive no título do bloco de exemplos, logo abaixo. */
 const PORTE_OPTIONS = [
-  { value: 'pequeno', label: 'Pequeno', nome: 'pequeno porte · 2 ml/kg/h' },
-  { value: 'medio', label: 'Médio', nome: 'médio porte · 4 ml/kg/h' },
-  { value: 'grande', label: 'Grande', nome: 'grande porte · 6 ml/kg/h' },
+  { value: 'pequeno', label: 'Pequeno — 2 ml/kg/h', nome: 'pequeno porte' },
+  { value: 'medio', label: 'Médio — 4 ml/kg/h', nome: 'médio porte' },
+  { value: 'grande', label: 'Grande — 6 ml/kg/h', nome: 'grande porte' },
 ];
 
 const PORTE_EXEMPLOS = {
@@ -766,11 +766,14 @@ export default function BalancoHidricoTransopDisplay() {
           </div>
         )}
 
-        {/* Duas colunas em qualquer largura (dono 31/08): peso+altura ·
-            jejum+porte · Ht inicial+Ht mínimo. Os pares são o pedido, então o
-            número de colunas NÃO muda por breakpoint — mudaria o pareamento. */}
-        <div className="grid grid-cols-2 gap-3">
+        {/* Os PARES são o pedido do dono (peso+altura · jejum+porte ·
+            Ht inicial+Ht mínimo), mas em 2 colunas iguais o gatilho do Select
+            cede só 69px ao texto e "Médio — 4 ml/kg/h" não cabe. Em 6 colunas
+            os pares seguem iguais e o porte fica com 4/6 da linha, que é o que
+            faz a taxa caber sem truncar. Medido a 375px. */}
+        <div className="grid grid-cols-12 gap-3">
           <Input
+            className="col-span-6"
             type="number"
             label="Peso (kg)"
             value={peso}
@@ -782,6 +785,7 @@ export default function BalancoHidricoTransopDisplay() {
             required
           />
           <Input
+            className="col-span-6"
             type="number"
             label="Altura (cm)"
             value={altura}
@@ -792,8 +796,9 @@ export default function BalancoHidricoTransopDisplay() {
             placeholder={isPediatric ? '100' : '170'}
           />
           <Input
+            className="col-span-3"
             type="number"
-            label="Horas de jejum"
+            label="Jejum (h)"
             value={npoHoras}
             onChange={(e) => setNpoHoras(e.target.value)}
             min={0}
@@ -802,6 +807,7 @@ export default function BalancoHidricoTransopDisplay() {
             placeholder="8"
           />
           <Select
+            className="col-span-9"
             label="Porte cirúrgico"
             options={PORTE_OPTIONS}
             value={porte}
@@ -809,7 +815,7 @@ export default function BalancoHidricoTransopDisplay() {
             placeholder="Selecione o porte"
           />
           {isPediatric && (
-            <div className="col-span-2">
+            <div className="col-span-12">
               <Select
                 label="Faixa etária pediátrica"
                 options={PED_CATEGORY_OPTIONS}
@@ -818,26 +824,8 @@ export default function BalancoHidricoTransopDisplay() {
               />
             </div>
           )}
-
-          {/* Exemplos logo ABAIXO do porte e alinhados à largura do formulário
-              (dono 31/08). Antes ficavam no fim da seção, longe do campo que
-              explicam. */}
-          {PORTE_EXEMPLOS[porte] && (
-            <div className="col-span-2 rounded-lg border border-border bg-muted/40 p-3 space-y-2">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                Exemplos — {PORTE_OPTIONS.find((o) => o.value === porte)?.nome}
-              </p>
-              <p className="text-xs text-foreground leading-relaxed">
-                {PORTE_EXEMPLOS[porte].exemplos}
-              </p>
-              {PORTE_EXEMPLOS[porte].nota && (
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  {PORTE_EXEMPLOS[porte].nota}
-                </p>
-              )}
-            </div>
-          )}
           <Input
+            className="col-span-6"
             type="number"
             label="Ht inicial (%)"
             value={hctInicial}
@@ -848,8 +836,9 @@ export default function BalancoHidricoTransopDisplay() {
             placeholder="40"
           />
           <Input
+            className="col-span-6"
             type="number"
-            label="Ht mínimo aceitável (%)"
+            label="Ht mínimo (%)"
             value={hctMinimo}
             onChange={(e) => setHctMinimo(e.target.value)}
             min={15}
@@ -859,19 +848,14 @@ export default function BalancoHidricoTransopDisplay() {
           />
         </div>
 
-        {/* Função renal — opcional. Muda a LEITURA do balanço, não a conta. */}
+        {/* Função renal — opcional. Só os CAMPOS: o porquê de pedir creatinina
+            e não ureia mora no dropdown do fim (dono 31/08: "deixe apenas os
+            parâmetros a serem preenchidos"). */}
         <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-3">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-              Função renal (opcional)
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Idade e creatinina calculam a depuração (Cockcroft-Gault) e ligam os avisos de rim.
-              {' '}Ureia fica de fora de propósito — sobe com jejum, catabolismo, corticoide e
-              sangramento digestivo, e não mede filtração.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 deitado:grid-cols-4 gap-3">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            Função renal (opcional)
+          </p>
+          <div className="grid grid-cols-2 gap-3">
             <Input
               type="number"
               label="Idade (anos)"
@@ -925,10 +909,32 @@ export default function BalancoHidricoTransopDisplay() {
           </h3>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 deitado:grid-cols-4 gap-3">
-            <MetricCard label="Manutenção" value={numeroBr(result.rate)} unit="ml/h" accent="primary" />
+            {/* ⚠️ As estimativas CONVERSAM com as horas (dono 31/08: "não
+                apenas cards para consulta"). Cada taxa mostra, ao lado, o que
+                ela já significou nas horas registradas — e a meta de diurese
+                mostra a diurese REAL, que é a comparação que muda conduta. */}
+            <MetricCard
+              label="Manutenção"
+              value={numeroBr(result.rate)}
+              unit={temHoras ? `ml/h · ${numeroBr(result.totalManutencao)} ml em ${horas.length} h` : 'ml/h'}
+              accent="primary"
+            />
             <MetricCard label="Déficit jejum" value={numeroBr(deficit)} unit="ml total" />
-            <MetricCard label="3º espaço" value={numeroBr(result.tsLoss)} unit="ml/h" />
-            <MetricCard label="Meta diurese" value={numeroBr(result.goalRate)} unit="ml/h" accent="primary" />
+            <MetricCard
+              label="3º espaço"
+              value={numeroBr(result.tsLoss)}
+              unit={temHoras ? `ml/h · ${numeroBr(result.totalTerceiroEspaco)} ml em ${horas.length} h` : 'ml/h'}
+            />
+            <MetricCard
+              label="Meta diurese"
+              value={numeroBr(result.goalRate)}
+              unit={
+                temHoras
+                  ? `ml/h · real ${numeroBr(result.totalDiurese / horas.length)} ml/h`
+                  : 'ml/h'
+              }
+              accent="primary"
+            />
             <MetricCard
               label="Volume sanguíneo"
               value={numeroBr(result.ebv)}
@@ -939,7 +945,13 @@ export default function BalancoHidricoTransopDisplay() {
             <MetricCard
               label="Perda sanguínea permitida"
               value={result.abl > 0 ? numeroBr(result.abl) : '—'}
-              unit={result.abl > 0 ? 'ml de sangue' : 'informe o Ht'}
+              unit={
+                result.abl <= 0
+                  ? 'informe o Ht'
+                  : temHoras
+                    ? `ml · restam ${numeroBr(result.ablRestante)}`
+                    : 'ml de sangue'
+              }
               accent={result.abl > 0 ? 'warning' : 'default'}
             />
             {temHoras && result.totalSangramento > 0 && (
@@ -999,9 +1011,25 @@ export default function BalancoHidricoTransopDisplay() {
 
           <details className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
             <summary className="cursor-pointer font-semibold text-foreground select-none min-h-[44px] flex items-center">
-              Glossário — volume sanguíneo, perda sanguínea permitida, função renal, Furman
+              Exemplos por porte, glossário e o que entra na conta
             </summary>
             <dl className="mt-3 space-y-3">
+              {/* Os exemplos dos TRÊS portes vivem aqui, e não no formulário:
+                  quem já sabe o porte não precisa lê-los toda vez, e no meio
+                  dos campos eles poluíam a tela (dono 31/08). */}
+              {PORTE_OPTIONS.map((o) => (
+                <div key={o.value}>
+                  <dt className="font-semibold text-foreground">
+                    Exemplos de {o.nome} — {o.label.split('— ')[1]}
+                  </dt>
+                  <dd>
+                    {PORTE_EXEMPLOS[o.value].exemplos}
+                    {PORTE_EXEMPLOS[o.value].nota && (
+                      <span className="block mt-1">{PORTE_EXEMPLOS[o.value].nota}</span>
+                    )}
+                  </dd>
+                </div>
+              ))}
               <div>
                 <dt className="font-semibold text-foreground">Volume sanguíneo estimado (EBV)</dt>
                 <dd>

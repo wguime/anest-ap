@@ -2568,6 +2568,9 @@ const hemoCalculators = [
     status: 'active',
     customRender: 'balancoHidricoTransop',
     inputs: [],
+    // Tela longa e usada DURANTE a cirurgia: os textos de referência ficam
+    // atrás de um dropdown para não competir com os campos (dono 31/08).
+    infoBoxColapsado: true,
     infoBox: {
       keyPoints: [
         'Manutenção: Holliday-Segar 4-2-1 (4 ml/kg/h até 10kg + 2 ml/kg/h até 20kg + 1 ml/kg/h acima)',

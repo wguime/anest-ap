@@ -79,11 +79,15 @@ test.describe('Calculadora — Holliday-Segar', () => {
     await expect(pesoInput).toBeVisible({ timeout: 10_000 });
     await pesoInput.fill('20');
 
-    // --- Result: 20 kg → 60.0 mL/hora (4-2-1) e 1500 mL/dia (100-50-20) ---
+    /* --- Result: 20 kg → 60,0 mL/hora (4-2-1) e 1.500 mL/dia (100-50-20) ---
+     * ⚠️ Vírgula decimal e ponto de milhar desde 31/08/2026 (commit 0848cd1).
+     * Este teste ficou vermelho na migração e o run daquele dia deu VERDE
+     * FALSO: o dev server servia o módulo de dados antigo em memória. Ao
+     * verificar formatação por e2e, reiniciar o dev server antes. */
     await expect(page.getByText('Manutencao', { exact: true })).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByText('60.0', { exact: true })).toBeVisible();
+    await expect(page.getByText('60,0', { exact: true })).toBeVisible();
     await expect(page.getByText('mL/hora', { exact: true })).toBeVisible();
-    await expect(page.getByText('1500', { exact: true })).toBeVisible();
+    await expect(page.getByText('1.500', { exact: true })).toBeVisible();
     await expect(page.getByText('mL/dia', { exact: true })).toBeVisible();
 
     // --- InfoBox: seção "Pontos-Chave" (colapsível, aberta por default) ---
