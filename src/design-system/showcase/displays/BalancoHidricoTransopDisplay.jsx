@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { numeroBr } from '../../../lib/numeroBr';
 import {
   Droplets,
+  ChevronRight,
   Plus,
   Trash2,
   AlertTriangle,
@@ -336,6 +337,9 @@ export default function BalancoHidricoTransopDisplay() {
   const [horas, setHoras] = useState(salvo?.horas ?? []);
   const [horaAtiva, setHoraAtiva] = useState(Math.max(0, (salvo?.horas?.length ?? 1) - 1));
   const [verLivro, setVerLivro] = useState(false);
+  /* `null` = automático: aberto enquanto não há peso, recolhido depois. Um
+     clique fixa a escolha e ela passa a valer sobre o automático. */
+  const [pacienteAberto, setPacienteAberto] = useState(null);
   const fitaRef = useRef(null);
 
   const isPediatric = populacao === 'pediatrico';
@@ -465,6 +469,22 @@ export default function BalancoHidricoTransopDisplay() {
     }
   };
 
+  /* Resumo do paciente para a linha recolhida. Só entra o que foi preenchido —
+     um resumo com "— kg · — cm" seria pior que nenhum. */
+  const resumoPaciente = [
+    pesoN > 0 && `${numeroBr(pesoN, pesoN % 1 ? 1 : 0)} kg`,
+    alturaN > 0 && `${numeroBr(alturaN / 100, 2)} m`,
+    sexo === 'masculino' ? 'homem' : sexo === 'feminino' ? 'mulher' : null,
+    idadeN > 0 && `${numeroBr(idadeN)} anos`,
+    isPediatric && PED_CATEGORY_OPTIONS.find((o) => o.value === pedCategory)?.label.split(' (')[0],
+    npoN > 0 && `jejum ${numeroBr(npoN)} h`,
+    PORTE_OPTIONS.find((o) => o.value === porte)?.nome,
+    hctIN > 0 && `Ht ${numeroBr(hctIN)} → ${numeroBr(hctMN)}`,
+    result.clcr > 0 && `ClCr ${numeroBr(result.clcr)}`,
+  ].filter(Boolean).join(' · ');
+
+  const mostrarPaciente = pacienteAberto ?? !hasPreop;
+
   const balancoAccent = (() => {
     const b = result.balancoNet;
     if (Math.abs(b) < 500) return 'text-primary';
@@ -509,248 +529,47 @@ export default function BalancoHidricoTransopDisplay() {
         'deitado:space-y-0 deitado:grid deitado:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] deitado:gap-3 deitado:items-start'
       )}
     >
-      {/* 1a. RESULTADO GRUDADO — só o número e os três totais.
-          ⚠️ Deliberadamente ENXUTO. A primeira versão trazia junto a série, o
-          botão do livro e os alertas: dava 359px de altura e, num iPhone SE
-          (375×667) com cabeçalho de 49 e barra inferior de 65, sobravam 194px
-          para digitar — metade do necessário. Medido nos três aparelhos. O que
-          precisa estar SEMPRE à vista é o número; o resto rola logo abaixo. */}
-      {hasPreop && temHoras && (
-        <section
-          aria-labelledby="balanco-heading"
-          aria-live="polite"
-          className={cn(
-            'rounded-xl border border-border-strong bg-card px-4 py-3 space-y-1.5',
-            // `top-14` e não `top-0`: o cabeçalho do app é fixo com espaçador
-            // `h-14` (App.jsx:519), e grudar em 0 enfiava o número por baixo
-            // dele — visto ao rolar, nos dois sentidos.
-            'sticky top-14 z-20 shadow-sm',
-            'deitado:col-start-2 deitado:row-start-1'
-          )}
-        >
-          {/* Deitado a coluna tem ~305px: lado a lado, o rótulo quebrava em duas
-              linhas e o "ml" caía sozinho. Empilhado, cabe. */}
-          <div className="flex items-baseline justify-between gap-2 deitado:flex-col deitado:items-start deitado:gap-0">
-            <h3
-              id="balanco-heading"
-              className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground"
-            >
-              Balanço · {horas.length} {horas.length === 1 ? 'hora' : 'horas'}
-            </h3>
-            <p className={cn('text-3xl font-bold leading-none tabular-nums', balancoAccent)}>
-              {result.balancoNet >= 0 ? '+' : ''}
-              {numeroBr(result.balancoNet)}
-              <span className="text-sm font-semibold"> ml</span>
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground tabular-nums">
-            <span>
-              Infundido <b className="text-foreground">{numeroBr(result.totalInfundido)}</b>
-            </span>
-            <span>
-              Diurese <b className="text-foreground">{numeroBr(result.totalDiurese)}</b>/
-              {numeroBr(result.metaDiureseAcumulada)}
-            </span>
-            {result.abl > 0 && (
-              <span>
-                Pode sangrar mais{' '}
-                <b className="text-foreground">{numeroBr(result.ablRestante)}</b> ml
-              </span>
-            )}
-          </div>
-
-          {/* Só os alertas VERMELHOS: anúria, perda permitida atingida e
-              hipovolemia não podem esperar a rolagem. Os amarelos ficam no
-              bloco de baixo — nenhum texto aparece nos dois lugares. */}
-          {alertasGraves.map((a, i) => (
-            <p
-              key={i}
-              className="flex items-start gap-1.5 text-xs font-semibold text-destructive"
-            >
-              <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden="true" />
-              <span>{a.message}</span>
-            </p>
-          ))}
-        </section>
-      )}
-
-      {/* 1b. SÉRIE, LIVRO E ALERTAS — rolam. Ficam acima dos campos, então
-          continuam sendo a primeira coisa lida ao abrir a tela. */}
-      {hasPreop && temHoras && (
-        <section
-          aria-label="Tendência e alertas"
-          className="rounded-xl border border-border-strong bg-card p-4 space-y-3 deitado:col-start-2 deitado:row-start-2"
-        >
-          <SerieDiurese diureses={result.diureses} meta={result.goalRate} ativa={indiceAtivo} />
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setVerLivro((v) => !v)}
-            className="w-full min-h-[44px]"
-            aria-expanded={verLivro}
-          >
-            {verLivro ? (
-              <ChevronUp className="w-4 h-4 mr-1.5" aria-hidden="true" />
-            ) : (
-              <ChevronDown className="w-4 h-4 mr-1.5" aria-hidden="true" />
-            )}
-            {verLivro ? 'ocultar as horas' : `ver as ${horas.length} horas`}
-          </Button>
-
-          {verLivro && (
-            <LivroRazao
-              horas={horas}
-              rate={result.rate}
-              tsLoss={result.tsLoss}
-              meta={result.goalRate}
-            />
-          )}
-
-          {alertas}
-        </section>
-      )}
-
-      {/* 2. ACOMPANHAMENTO — uma hora por vez, fita rolável */}
+      {/* 3. PRÉ-OP */}
       <section
-        aria-labelledby="horas-heading"
-        className={cn(
-          'rounded-xl border border-border-strong bg-card p-4 space-y-3',
-          'deitado:col-start-1 deitado:row-start-1'
-        )}
+        aria-labelledby="preop-heading"
+        className="rounded-xl border border-border-strong bg-card p-4 space-y-4 deitado:col-span-2 deitado:row-start-1"
       >
-        <div className="flex items-center justify-between gap-2 flex-wrap">
+        {/* ⚠️ O paciente é a PRIMEIRA seção e recolhe sozinha depois de
+            preenchida (dono 31/08: "informações do paciente estão no meio da
+            tela, está errado"). Preenche-se uma vez, no início; durante a
+            cirurgia ela vira uma linha e devolve a tela para o que se usa. */}
+        <div className="flex items-center justify-between gap-2">
           <h3
-            id="horas-heading"
+            id="preop-heading"
             className="text-base font-semibold text-foreground flex items-center gap-2"
           >
-            <Clock className="w-5 h-5 text-primary" aria-hidden="true" />
-            Acompanhamento hora a hora
+            <User className="w-5 h-5 text-primary" aria-hidden="true" />
+            Paciente
           </h3>
-          {temHoras && (
+          {hasPreop && (
             <Button
               variant="ghost"
               size="sm"
-              onClick={resetAll}
-              className="text-muted-foreground hover:text-destructive min-h-[44px]"
-              aria-label="Limpar todos os registros"
+              onClick={() => setPacienteAberto(!mostrarPaciente)}
+              aria-expanded={mostrarPaciente}
+              aria-controls="preop-campos"
+              className="text-muted-foreground min-h-[44px] shrink-0"
             >
-              <RotateCcw className="w-4 h-4 mr-1.5" aria-hidden="true" />
-              Limpar
+              {mostrarPaciente ? 'ocultar' : 'alterar'}
+              <ChevronRight
+                className={cn('w-4 h-4 ml-1 transition-transform', mostrarPaciente && 'rotate-90')}
+                aria-hidden="true"
+              />
             </Button>
           )}
         </div>
 
-        {!hasPreop && (
-          <p className="text-sm text-muted-foreground italic">
-            Preencha o peso primeiro para iniciar o registro.
-          </p>
+        {!mostrarPaciente && resumoPaciente && (
+          <p className="text-[13px] text-muted-foreground leading-relaxed !mt-1">{resumoPaciente}</p>
         )}
 
-        {hasPreop && !temHoras && (
-          <p className="text-sm text-muted-foreground italic">
-            Nenhuma hora registrada ainda. Use o botão abaixo para adicionar a 1ª hora.
-          </p>
-        )}
-
-        {hasPreop && temHoras && (
-          <>
-            {/* Fita de horas. Hand-rolled de propósito: o TabsContent do DS
-                DESMONTA o painel inativo, e com o valor digitado dentro da aba
-                trocar de hora APAGARIA o registro. Aqui o array `horas` mora na
-                raiz e a aba só muda um índice. */}
-            <div
-              ref={fitaRef}
-              role="tablist"
-              aria-label="Horas registradas"
-              className="flex gap-1.5 overflow-x-auto p-1 rounded-2xl bg-muted border border-border"
-            >
-              {horas.map((h, i) => {
-                const d = medido(h.diurese);
-                const abaixoDaMeta = d !== null && d < result.goalRate;
-                const ativo = i === indiceAtivo;
-                return (
-                  <button
-                    key={h.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={ativo}
-                    aria-label={`Hora ${i + 1}${abaixoDaMeta ? ', diurese abaixo da meta' : ''}`}
-                    onClick={() => setHoraAtiva(i)}
-                    className={cn(
-                      'shrink-0 min-w-[44px] min-h-[44px] px-3 rounded-xl text-sm font-bold',
-                      'flex items-center justify-center gap-1 transition-colors',
-                      ativo
-                        ? 'bg-card text-primary shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    {i + 1}
-                    {abaixoDaMeta && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-warning" aria-hidden="true" />
-                    )}
-                  </button>
-                );
-              })}
-              <button
-                type="button"
-                onClick={addHora}
-                aria-label={`Adicionar hora ${horas.length + 1}`}
-                className="shrink-0 min-w-[44px] min-h-[44px] px-3 rounded-xl text-primary flex items-center justify-center hover:bg-card/60"
-              >
-                <Plus className="w-4 h-4" aria-hidden="true" />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs font-semibold">
-                <Clock className="w-3.5 h-3.5" aria-hidden="true" />
-                Hora {indiceAtivo + 1}
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => removeHora(indiceAtivo)}
-                aria-label={`Remover hora ${indiceAtivo + 1}`}
-                className="text-destructive hover:bg-destructive/10 min-h-[44px] min-w-[44px]"
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </div>
-
-            <HoraCampos
-              hora={horas[indiceAtivo]}
-              onChange={(next) => updateHora(indiceAtivo, next)}
-            />
-          </>
-        )}
-
-        {hasPreop && !temHoras && (
-          <Button
-            variant="outline"
-            onClick={addHora}
-            className="w-full min-h-[44px]"
-            aria-label="Adicionar nova hora"
-          >
-            <Plus className="w-4 h-4 mr-1.5" aria-hidden="true" />
-            Adicionar hora 1
-          </Button>
-        )}
-      </section>
-
-      {/* 3. PRÉ-OP */}
-      <section
-        aria-labelledby="preop-heading"
-        className="rounded-xl border border-border-strong bg-card p-4 space-y-4 deitado:col-span-2 deitado:mt-3"
-      >
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <h3 id="preop-heading" className="text-base font-semibold text-foreground flex items-center gap-2">
-            <Droplets className="w-5 h-5 text-primary" aria-hidden="true" />
-            Parâmetros pré-operatórios
-          </h3>
-          <PillToggle value={populacao} onChange={setPopulacao} />
-        </div>
+        <div id="preop-campos" hidden={!mostrarPaciente} className="space-y-4">
+        <PillToggle value={populacao} onChange={setPopulacao} />
 
         {/* Sexo só no adulto: Nadler e o 75/65 ml/kg são validados em adultos, e
             na criança o volume por kg já vem da faixa etária. */}
@@ -892,7 +711,245 @@ export default function BalancoHidricoTransopDisplay() {
             </div>
           )}
         </div>
+        </div>
       </section>
+
+      {/* 1a. RESULTADO GRUDADO — só o número e os três totais.
+          ⚠️ Deliberadamente ENXUTO. A primeira versão trazia junto a série, o
+          botão do livro e os alertas: dava 359px de altura e, num iPhone SE
+          (375×667) com cabeçalho de 49 e barra inferior de 65, sobravam 194px
+          para digitar — metade do necessário. Medido nos três aparelhos. O que
+          precisa estar SEMPRE à vista é o número; o resto rola logo abaixo. */}
+      {hasPreop && temHoras && (
+        <section
+          aria-labelledby="balanco-heading"
+          aria-live="polite"
+          className={cn(
+            /* ⚠️ FAIXA, não cartão. Grudado, um cartão arredondado desliza por
+               CIMA de outro cartão e lê como elemento solto — foi o "cards
+               flutuando" que o dono relatou (31/08). Barra de largura total,
+               com borda em cima e embaixo, é o que se espera que grude. */
+            '-mx-2 px-4 py-2.5 space-y-1 border-y border-border-strong bg-card',
+            // `top-14` e não `top-0`: o cabeçalho do app é fixo com espaçador
+            // `h-14` (App.jsx:519), e grudar em 0 enfiava o número por baixo
+            // dele — visto ao rolar, nos dois sentidos.
+            'sticky top-14 z-20',
+            'deitado:col-start-2 deitado:row-start-2 deitado:mx-0 deitado:rounded-xl deitado:border'
+          )}
+        >
+          {/* Deitado a coluna tem ~305px: lado a lado, o rótulo quebrava em duas
+              linhas e o "ml" caía sozinho. Empilhado, cabe. */}
+          <div className="flex items-baseline justify-between gap-2 deitado:flex-col deitado:items-start deitado:gap-0">
+            <h3
+              id="balanco-heading"
+              className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground"
+            >
+              Balanço · {horas.length} {horas.length === 1 ? 'hora' : 'horas'}
+            </h3>
+            <p className={cn('text-3xl font-bold leading-none tabular-nums', balancoAccent)}>
+              {result.balancoNet >= 0 ? '+' : ''}
+              {numeroBr(result.balancoNet)}
+              <span className="text-sm font-semibold"> ml</span>
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground tabular-nums">
+            <span>
+              Infundido <b className="text-foreground">{numeroBr(result.totalInfundido)}</b>
+            </span>
+            <span>
+              Diurese <b className="text-foreground">{numeroBr(result.totalDiurese)}</b>/
+              {numeroBr(result.metaDiureseAcumulada)}
+            </span>
+            {result.abl > 0 && (
+              <span>
+                Pode sangrar mais{' '}
+                <b className="text-foreground">{numeroBr(result.ablRestante)}</b> ml
+              </span>
+            )}
+          </div>
+
+          {/* Só os alertas VERMELHOS: anúria, perda permitida atingida e
+              hipovolemia não podem esperar a rolagem. Os amarelos ficam no
+              bloco de baixo — nenhum texto aparece nos dois lugares. */}
+          {alertasGraves.map((a, i) => (
+            <p
+              key={i}
+              className="flex items-start gap-1.5 text-xs font-semibold text-destructive"
+            >
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden="true" />
+              <span>{a.message}</span>
+            </p>
+          ))}
+        </section>
+      )}
+
+      {/* 2. ACOMPANHAMENTO — uma hora por vez, fita rolável */}
+      <section
+        aria-labelledby="horas-heading"
+        className={cn(
+          'rounded-xl border border-border-strong bg-card p-4 space-y-3',
+          'deitado:col-start-1 deitado:row-start-2'
+        )}
+      >
+        {/* ⚠️ Sem `flex-wrap`: o título é longo e o "Limpar" caía para a linha
+            de baixo virando um bloco vermelho proeminente — ação destrutiva não
+            deve competir com o conteúdo. Título encurtado e botão só com ícone. */}
+        <div className="flex items-center justify-between gap-2">
+          <h3
+            id="horas-heading"
+            className="text-base font-semibold text-foreground flex items-center gap-2 min-w-0"
+          >
+            <Clock className="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
+            Hora a hora
+          </h3>
+          {temHoras && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={resetAll}
+              className="text-muted-foreground hover:text-destructive min-h-[44px] min-w-[44px] shrink-0"
+              aria-label="Limpar todos os registros"
+              title="Limpar todos os registros"
+            >
+              <RotateCcw className="w-4 h-4" aria-hidden="true" />
+            </Button>
+          )}
+        </div>
+
+        {!hasPreop && (
+          <p className="text-sm text-muted-foreground italic">
+            Preencha o peso primeiro para iniciar o registro.
+          </p>
+        )}
+
+        {hasPreop && !temHoras && (
+          <p className="text-sm text-muted-foreground italic">
+            Nenhuma hora registrada ainda. Use o botão abaixo para adicionar a 1ª hora.
+          </p>
+        )}
+
+        {hasPreop && temHoras && (
+          <>
+            {/* Fita de horas. Hand-rolled de propósito: o TabsContent do DS
+                DESMONTA o painel inativo, e com o valor digitado dentro da aba
+                trocar de hora APAGARIA o registro. Aqui o array `horas` mora na
+                raiz e a aba só muda um índice. */}
+            <div
+              ref={fitaRef}
+              role="tablist"
+              aria-label="Horas registradas"
+              className="flex gap-1.5 overflow-x-auto p-1 rounded-2xl bg-muted border border-border"
+            >
+              {horas.map((h, i) => {
+                const d = medido(h.diurese);
+                const abaixoDaMeta = d !== null && d < result.goalRate;
+                const ativo = i === indiceAtivo;
+                return (
+                  <button
+                    key={h.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={ativo}
+                    aria-label={`Hora ${i + 1}${abaixoDaMeta ? ', diurese abaixo da meta' : ''}`}
+                    onClick={() => setHoraAtiva(i)}
+                    className={cn(
+                      'shrink-0 min-w-[44px] min-h-[44px] px-3 rounded-xl text-sm font-bold',
+                      'flex items-center justify-center gap-1 transition-colors',
+                      ativo
+                        ? 'bg-card text-primary shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    {i + 1}
+                    {abaixoDaMeta && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-warning" aria-hidden="true" />
+                    )}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={addHora}
+                aria-label={`Adicionar hora ${horas.length + 1}`}
+                className="shrink-0 min-w-[44px] min-h-[44px] px-3 rounded-xl text-primary flex items-center justify-center hover:bg-card/60"
+              >
+                <Plus className="w-4 h-4" aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs font-semibold">
+                <Clock className="w-3.5 h-3.5" aria-hidden="true" />
+                Hora {indiceAtivo + 1}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => removeHora(indiceAtivo)}
+                aria-label={`Remover hora ${indiceAtivo + 1}`}
+                className="text-destructive hover:bg-destructive/10 min-h-[44px] min-w-[44px]"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <HoraCampos
+              hora={horas[indiceAtivo]}
+              onChange={(next) => updateHora(indiceAtivo, next)}
+            />
+          </>
+        )}
+
+        {hasPreop && !temHoras && (
+          <Button
+            variant="outline"
+            onClick={addHora}
+            className="w-full min-h-[44px]"
+            aria-label="Adicionar nova hora"
+          >
+            <Plus className="w-4 h-4 mr-1.5" aria-hidden="true" />
+            Adicionar hora 1
+          </Button>
+        )}
+      </section>
+
+      {/* 1b. SÉRIE, LIVRO E ALERTAS — rolam. Ficam acima dos campos, então
+          continuam sendo a primeira coisa lida ao abrir a tela. */}
+      {hasPreop && temHoras && (
+        <section
+          aria-label="Tendência e alertas"
+          className="rounded-xl border border-border-strong bg-card p-4 space-y-3 deitado:col-start-2 deitado:row-start-3"
+        >
+          <SerieDiurese diureses={result.diureses} meta={result.goalRate} ativa={indiceAtivo} />
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setVerLivro((v) => !v)}
+            className="w-full min-h-[44px]"
+            aria-expanded={verLivro}
+          >
+            {verLivro ? (
+              <ChevronUp className="w-4 h-4 mr-1.5" aria-hidden="true" />
+            ) : (
+              <ChevronDown className="w-4 h-4 mr-1.5" aria-hidden="true" />
+            )}
+            {verLivro ? 'ocultar as horas' : `ver as ${horas.length} horas`}
+          </Button>
+
+          {verLivro && (
+            <LivroRazao
+              horas={horas}
+              rate={result.rate}
+              tsLoss={result.tsLoss}
+              meta={result.goalRate}
+            />
+          )}
+
+          {alertas}
+        </section>
+      )}
 
       {/* 4. ESTIMATIVAS */}
       {hasPreop && (
@@ -905,7 +962,7 @@ export default function BalancoHidricoTransopDisplay() {
             className="text-base font-semibold text-foreground flex items-center gap-2"
           >
             <TrendingDown className="w-5 h-5 text-primary" aria-hidden="true" />
-            Estimativas iniciais
+            Números do caso
           </h3>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 deitado:grid-cols-4 gap-3">
