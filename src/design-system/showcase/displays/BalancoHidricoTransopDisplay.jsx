@@ -31,10 +31,13 @@ import { pesosDeReferencia } from '../../../lib/pesoCorporal';
    colecistect...", relatado pelo dono): o dropdown do DS herda a largura do
    gatilho. Por isso o rótulo é CURTO e os exemplos vivem embaixo do campo, onde
    cabem — e onde dá para listar muitos. */
+/* ⚠️ Rótulo CURTO: com a grade em duas colunas o gatilho do Select tem meia
+   largura (~165px a 375px), e o dropdown do DS herda a largura do gatilho. O
+   nome por extenso vive no título do bloco de exemplos, logo abaixo. */
 const PORTE_OPTIONS = [
-  { value: 'pequeno', label: 'Pequeno porte — 2 ml/kg/h' },
-  { value: 'medio', label: 'Médio porte — 4 ml/kg/h' },
-  { value: 'grande', label: 'Grande porte — 6 ml/kg/h' },
+  { value: 'pequeno', label: 'Pequeno', nome: 'pequeno porte · 2 ml/kg/h' },
+  { value: 'medio', label: 'Médio', nome: 'médio porte · 4 ml/kg/h' },
+  { value: 'grande', label: 'Grande', nome: 'grande porte · 6 ml/kg/h' },
 ];
 
 const PORTE_EXEMPLOS = {
@@ -183,18 +186,37 @@ function SexoToggle({ value, onChange }) {
 }
 
 function MetricCard({ label, value, unit, accent = 'default' }) {
+  /* ⚠️ O amarelo saiu do TEXTO. `text-warning` sobre `bg-warning/10` mede
+     1,99:1 contra os 4,5:1 do WCAG AA (.claude/rules/design-tokens.md) — o
+     dono viu como "texto amarelo fora do DS". O sinal semântico continua no
+     FUNDO e na BORDA, que não precisam passar em contraste de texto; quem
+     carrega a leitura é o `foreground`. */
   const accentClass = {
     default: 'bg-muted border-border',
-    warning: 'bg-warning/10 border-warning/40 text-warning',
-    destructive: 'bg-destructive/10 border-destructive/40 text-destructive',
-    primary: 'bg-primary/10 border-primary/40 text-primary',
+    warning: 'bg-warning/10 border-warning/50',
+    destructive: 'bg-destructive/10 border-destructive/50',
+    /* ⚠️ `bg-primary/10` NÃO serve de destaque no claro: --primary é #004225,
+       e 10% dele sobre branco fica MAIS apagado que o --muted (#E8F5E9) dos
+       cartões comuns — o realce lia como o mais fraco da fileira. `accent`
+       (#D4EDDA) é a receita do DS para destacar sem virar alerta; no escuro
+       accent ≈ card, então lá quem destaca é a BORDA. */
+    primary: 'bg-accent border-primary/40 dark:bg-card dark:border-primary/50',
   }[accent];
 
   return (
-    <div className={cn('p-3 rounded-xl border text-center', accentClass)}>
-      <p className="text-[11px] uppercase tracking-wider opacity-70 mb-1">{label}</p>
-      <p className="text-2xl font-bold leading-tight">{value}</p>
-      {unit && <p className="text-xs opacity-70 mt-0.5">{unit}</p>}
+    /* ⚠️ `h-full` + `mt-auto`: quando um rótulo quebra em duas linhas e o
+       vizinho não, o número descia e a fileira ficava torta (dono 31/08).
+       Ancorando valor e unidade na BASE, todos alinham em qualquer rótulo. */
+    <div className={cn('h-full flex flex-col px-2 py-3 rounded-xl border text-center', accentClass)}>
+      {/* `tracking-wide` e não `wider`: com 3 colunas a 375px cada cartão tem
+          ~82px úteis e "AJUSTADO" estourava por 4px. */}
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground leading-tight">
+        {label}
+      </p>
+      <div className="mt-auto pt-1.5">
+        <p className="text-2xl font-bold leading-tight text-foreground">{value}</p>
+        {unit && <p className="text-xs text-muted-foreground mt-0.5 leading-tight">{unit}</p>}
+      </div>
     </div>
   );
 }
@@ -266,7 +288,7 @@ function LivroRazao({ horas, rate, tsLoss, meta }) {
         >
           <span className="font-bold text-primary">h{i + 1}</span>
           <span>{numeroBr(l.entrada)}</span>
-          <span className={cn(l.diurese !== null && l.diurese < meta && 'text-warning font-semibold')}>
+          <span className={cn(l.diurese !== null && l.diurese < meta && 'font-bold text-foreground')}>
             {numeroBr(l.saida)}
           </span>
           <span className={cn('text-right font-bold', l.acumulado < 0 && 'text-destructive')}>
@@ -446,7 +468,10 @@ export default function BalancoHidricoTransopDisplay() {
   const balancoAccent = (() => {
     const b = result.balancoNet;
     if (Math.abs(b) < 500) return 'text-primary';
-    if (Math.abs(b) < 1500) return 'text-warning';
+    // ⚠️ não existe âmbar legível no DS (--warning é #F59E0B e
+    // --warning-foreground é PRETO: o âmbar é preenchimento, não texto).
+    // A faixa intermediária fica NEUTRA — cor só quando há o que sinalizar.
+    if (Math.abs(b) < 1500) return 'text-foreground';
     return 'text-destructive';
   })();
 
@@ -465,7 +490,7 @@ export default function BalancoHidricoTransopDisplay() {
           key={i}
           className={cn(
             'flex items-start gap-2 p-3 rounded-lg border text-sm',
-            'bg-warning/10 border-warning/40 text-warning'
+            'bg-warning/10 border-warning/50 text-foreground'
           )}
         >
           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
@@ -741,7 +766,10 @@ export default function BalancoHidricoTransopDisplay() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 deitado:grid-cols-3 gap-3">
+        {/* Duas colunas em qualquer largura (dono 31/08): peso+altura ·
+            jejum+porte · Ht inicial+Ht mínimo. Os pares são o pedido, então o
+            número de colunas NÃO muda por breakpoint — mudaria o pareamento. */}
+        <div className="grid grid-cols-2 gap-3">
           <Input
             type="number"
             label="Peso (kg)"
@@ -781,12 +809,33 @@ export default function BalancoHidricoTransopDisplay() {
             placeholder="Selecione o porte"
           />
           {isPediatric && (
-            <Select
-              label="Faixa etária pediátrica"
-              options={PED_CATEGORY_OPTIONS}
-              value={pedCategory}
-              onChange={setPedCategory}
-            />
+            <div className="col-span-2">
+              <Select
+                label="Faixa etária pediátrica"
+                options={PED_CATEGORY_OPTIONS}
+                value={pedCategory}
+                onChange={setPedCategory}
+              />
+            </div>
+          )}
+
+          {/* Exemplos logo ABAIXO do porte e alinhados à largura do formulário
+              (dono 31/08). Antes ficavam no fim da seção, longe do campo que
+              explicam. */}
+          {PORTE_EXEMPLOS[porte] && (
+            <div className="col-span-2 rounded-lg border border-border bg-muted/40 p-3 space-y-2">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Exemplos — {PORTE_OPTIONS.find((o) => o.value === porte)?.nome}
+              </p>
+              <p className="text-xs text-foreground leading-relaxed">
+                {PORTE_EXEMPLOS[porte].exemplos}
+              </p>
+              {PORTE_EXEMPLOS[porte].nota && (
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {PORTE_EXEMPLOS[porte].nota}
+                </p>
+              )}
+            </div>
           )}
           <Input
             type="number"
@@ -809,20 +858,6 @@ export default function BalancoHidricoTransopDisplay() {
             placeholder="25"
           />
         </div>
-
-        {/* Exemplos do porte escolhido. FORA do Select de propósito: o dropdown
-            do DS herda a largura do gatilho e truncava o rótulo. */}
-        {PORTE_EXEMPLOS[porte] && (
-          <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-2">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-              Exemplos de {PORTE_OPTIONS.find((o) => o.value === porte)?.label.toLowerCase()}
-            </p>
-            <p className="text-xs text-foreground leading-relaxed">{PORTE_EXEMPLOS[porte].exemplos}</p>
-            {PORTE_EXEMPLOS[porte].nota && (
-              <p className="text-xs text-warning leading-relaxed">{PORTE_EXEMPLOS[porte].nota}</p>
-            )}
-          </div>
-        )}
 
         {/* Função renal — opcional. Muda a LEITURA do balanço, não a conta. */}
         <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-3">
@@ -863,7 +898,7 @@ export default function BalancoHidricoTransopDisplay() {
               className={cn(
                 'rounded-lg border p-2.5 text-xs font-semibold',
                 result.renal.reduzida
-                  ? 'bg-warning/10 border-warning/40 text-warning'
+                  ? 'bg-warning/10 border-warning/50 text-foreground'
                   : 'bg-primary/10 border-primary/40 text-primary'
               )}
             >
@@ -930,15 +965,15 @@ export default function BalancoHidricoTransopDisplay() {
                 Pesos de referência — IMC {numeroBr(pesos.imc, 1)} kg/m²
               </p>
               <div className="grid grid-cols-3 gap-3">
-                <MetricCard label="Peso ideal" value={numeroBr(pesos.pesoIdeal, 1)} unit="kg" />
-                <MetricCard label="Peso magro" value={numeroBr(pesos.pesoMagro, 1)} unit="kg" />
-                <MetricCard label="Peso ajustado" value={numeroBr(pesos.pesoAjustado, 1)} unit="kg" />
+                <MetricCard label="Ideal" value={numeroBr(pesos.pesoIdeal, 1)} unit="kg" />
+                <MetricCard label="Magro" value={numeroBr(pesos.pesoMagro, 1)} unit="kg" />
+                <MetricCard label="Ajustado" value={numeroBr(pesos.pesoAjustado, 1)} unit="kg" />
               </div>
               {/* ⚠️ `pesoAjustado` é null abaixo de 152,4 cm: a Devine é linear a
                   partir de 5 pés e extrapolada para baixo dá número sem sentido.
                   Sem essa guarda a frase sairia "de 190 para —". */}
               {pesos.imc >= 30 && Number.isFinite(pesos.pesoAjustado) && (
-                <p className="text-xs text-warning leading-relaxed">
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   IMC {numeroBr(pesos.imc, 1)} — em obesidade, a manutenção 4-2-1 pelo peso REAL
                   superestima o volume. Considere refazer a conta com o peso ajustado
                   ({numeroBr(pesos.pesoAjustado, 1)} kg): a manutenção cairia de{' '}
@@ -948,9 +983,14 @@ export default function BalancoHidricoTransopDisplay() {
             </div>
           )}
 
-          <div className="rounded-lg bg-info/10 border border-info/40 p-3 text-xs text-info space-y-1">
-            <p className="font-semibold">Plano de reposição do déficit (Furman 50/25/25):</p>
-            <p>
+          {/* Mesma casca dos demais sub-blocos. Era `bg-info/10` + `text-info`:
+              uma caixa AZUL no meio de uma tela verde e âmbar, e a própria rule
+              de tokens registra que o `info` (#007AFF) parece fora do padrão. */}
+          <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-1">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Reposição do déficit — Furman 50/25/25
+            </p>
+            <p className="text-xs text-foreground">
               <span className="font-medium">1ª hora:</span> {numeroBr(furman1)} ml ·{' '}
               <span className="font-medium">2ª hora:</span> {numeroBr(furman2)} ml ·{' '}
               <span className="font-medium">3ª hora:</span> {numeroBr(furman3)} ml
