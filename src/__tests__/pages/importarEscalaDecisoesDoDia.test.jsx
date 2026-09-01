@@ -324,4 +324,54 @@ describe('na ordem sem cirurgia — linha de conferência com a explicação', (
     // o porquê que morava no aviso de Pendências agora é lido aqui
     expect(await screen.findByText(/pode ter saído para outra pessoa/i)).toBeTruthy()
   })
+
+  // A folha não pode ser um beco (dono 31/08: "apenas aparece um card com a
+  // mesma informação e um botão Entendi, nada acontece depois de clicar"). As
+  // saídas reais de quem está na ordem sem cirurgia são as três de sempre:
+  // é ajuda (azul não lido), a posição precisa de conserto, ou o nome sobrou.
+  const IMPORTAR_COM_NATHALIA = () => importar(
+    [
+      { sala: 'Sala 1', hora: '08:00', anestesista: 'CURY', cirurgiao: 'DR. ANA', procedimento: 'Hérnia' },
+      { sala: 'Sala 2', hora: '08:00', anestesista: 'ERLEI', cirurgiao: 'DR. BETO', procedimento: 'CVL' },
+    ],
+    ['CURY', 'NATHALIA', 'ERLEI'],
+  )
+
+  it('a folha oferece marcar como ajuda — e a decisão sai da lista', async () => {
+    const container = await IMPORTAR_COM_NATHALIA()
+    await waitFor(() => expect(blocos(container)).toHaveLength(2))
+
+    fireEvent.click(await within(secaoOrdem(container)).findByText(/sem cirurgia/i))
+    fireEvent.click(await screen.findByRole('button', { name: /marcar como ajuda/i }))
+    await waitFor(() => expect(within(secaoOrdem(container)).queryByText(/sem cirurgia/i)).toBeNull())
+
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+    await waitFor(() => expect(salvarEscala).toHaveBeenCalled())
+    expect(salvarEscala.mock.calls[0][0].ajudaExterna).toEqual({ matutino: ['NATHALIA'] })
+    // ela CONTINUA na ordem — ajuda marcada não remove a posição
+    expect(salvarEscala.mock.calls[0][0].ordemLiberacao).toEqual({ matutino: ['CURY', 'NATHALIA', 'ERLEI'] })
+  })
+
+  it('a folha oferece corrigir a posição — abre o editor da própria fila', async () => {
+    const container = await IMPORTAR_COM_NATHALIA()
+    await waitFor(() => expect(blocos(container)).toHaveLength(2))
+
+    fireEvent.click(await within(secaoOrdem(container)).findByText(/sem cirurgia/i))
+    fireEvent.click(await screen.findByRole('button', { name: /corrigir a posição/i }))
+    // o editor abre na posição da pessoa (2ª), pronto para renomear/mover
+    expect(await screen.findByText(/^Posição 2$/i)).toBeTruthy()
+  })
+
+  it('a folha oferece remover da ordem — e a publicação sai sem o nome', async () => {
+    const container = await IMPORTAR_COM_NATHALIA()
+    await waitFor(() => expect(blocos(container)).toHaveLength(2))
+
+    fireEvent.click(await within(secaoOrdem(container)).findByText(/sem cirurgia/i))
+    fireEvent.click(await screen.findByRole('button', { name: /remover da ordem/i }))
+    await waitFor(() => expect(within(secaoOrdem(container)).queryByText(/sem cirurgia/i)).toBeNull())
+
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+    await waitFor(() => expect(salvarEscala).toHaveBeenCalled())
+    expect(salvarEscala.mock.calls[0][0].ordemLiberacao).toEqual({ matutino: ['CURY', 'ERLEI'] })
+  })
 })

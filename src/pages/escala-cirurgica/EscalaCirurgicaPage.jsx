@@ -278,6 +278,15 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
         const nm = normNome(n)
         if (nm) out.push({ nome: nm, uid: null, hospital: h, hospitalLabel: label, rodapeIdx: i })
       })
+      // AJUDA DECLARADA lá (dono 31/08 — caso Eduardo): quem está na
+      // ajuda_externa de OUTRO hospital foi ajudar lá, com ou sem caso lá — no
+      // Materno, que publica sem rodapé e às vezes sem casos, a declaração é o
+      // ÚNICO sinal. A fila daqui mostra o badge para informação do plantão;
+      // a posição daqui não muda.
+      for (const n of rodapeDoTurno(esc.ajudaExterna, turno)) {
+        const nm = normNome(n)
+        if (nm) out.push({ nome: nm, uid: null, hospital: h, hospitalLabel: label, ajudaDeclarada: true })
+      }
       for (const c of esc.casos || []) {
         if ((c.turno || turno) !== turno) continue
         const bruto = String(c.anestesista || '').trim()

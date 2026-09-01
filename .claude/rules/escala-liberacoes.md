@@ -20,6 +20,31 @@ description: Escala Cirúrgica — fila de liberação: ordem imutável, cauda v
      decisão do dono foi editada ou resumida. Esta rule carrega SÓ quando o Claude lê um
      arquivo que casa os `paths` acima. -->
 
+## Fila — quatro decisões do dono em 31/08 (noite, após usar a tela)
+
+- **Liberado SEM nome riscado**: o card vermelho já diz tudo; o `line-through`
+  por cima era redundância. Fica a opacidade. Trava em
+  `escalaCirurgicaPersonas.test.jsx` (mudou de lado com o porquê no corpo).
+- **Badges de plantão ACOMPANHAM a cor do card**: "Plantão da tarde/manhã"
+  (contraturno) e os selos P1–P4 não somem ao liberar — trocam para o vermelho
+  sólido (`bg-destructive`) quando o card está vermelho (cauda automática OU
+  liberação manual), e seguem verdes em quem trabalha. A informação posicional
+  continua verdadeira; só a tinta combina. `liberacoesLiberadoVisual.test.jsx`.
+- **Materno NÃO tem plantão de contraturno**: "o segundo anestesista no materno
+  não precisa de badge de plantão". `gerarColunaLiberacao` ganhou
+  `plantaoContraturno: false` (a view passa para o Materno): selo E
+  vai-para-o-fim do último nome saem JUNTOS — selo sem a mecânica deixaria a
+  pessoa saindo primeiro sem nada explicando. HRO/Unimed seguem como sempre.
+- **Ajuda DECLARADA em outro hospital ganha o badge aqui** (caso Eduardo:
+  "marquei Eduardo como ajuda no materno e o badge não saiu na fila do HRO").
+  A decisão de 30/07 (emprestado com badge) só ligava com CASO lá;
+  `presencaOutros` agora carrega também a `ajuda_externa` das outras escalas
+  (`ajudaDeclarada: true`) e a linha ganha `isAjuda`/`ajudaFora` + "Ajuda no
+  Materno" no card — no Materno, sem rodapé e às vezes sem casos, a declaração
+  é o ÚNICO sinal. A posição daqui não muda.
+  `liberacoesCasoEmOutroHospital.test.jsx`.
+
+
 ### "Passa para tarde" PERSISTE na tarde (dono 22/08)
 
 O marcador existia desde 20/08 mas só pintava o badge no turno de ORIGEM: a

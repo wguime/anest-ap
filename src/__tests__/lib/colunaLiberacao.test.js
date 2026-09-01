@@ -1285,3 +1285,35 @@ describe('origem informada à mão — o Materno sem escala (dono 27/08)', () =>
     expect(nomes.indexOf('Gustavo')).toBeGreaterThan(nomes.indexOf('Alexandre S'))
   })
 })
+
+// ════════════════════════════════════════════════════════════════════════════
+// MATERNO SEM PLANTÃO DE CONTRATURNO (dono 31/08): "o segundo anestesista no
+// materno não precisa de badge de plantão". A regra do último-do-rodapé (29/07)
+// nasceu do HRO/Unimed; no Materno, com rodapé de 2, ela rotulava o 2º nome
+// como plantão de um turno que não existe lá — e o movia para o fim da fila.
+// `plantaoContraturno: false` desliga o selo E o movimento; o Plantonista (1º)
+// fica.
+// ════════════════════════════════════════════════════════════════════════════
+describe('plantaoContraturno: false — o Materno não tem plantão do turno seguinte', () => {
+  const casos = [
+    caso('Sala 1', 0, 'ANA', 'Cir A'),
+    caso('Sala 2', 0, 'BIA', 'Cir B'),
+  ]
+
+  it('não marca o último como plantão do turno seguinte nem o move', () => {
+    const { linhas } = gerarColunaLiberacao(casos, ['ANA', 'BIA'], {
+      turno: 'matutino', plantaoContraturno: false,
+    })
+    expect(linhas.some((l) => l.isProximoPlantao)).toBe(false)
+    expect(linhas.map((l) => l.anestesista)).toEqual(['Ana', 'Bia'])
+    // o plantonista continua sendo o 1º
+    expect(linhas[0].isPlantonista).toBe(true)
+  })
+
+  it('sem a opção, a regra de sempre segue valendo (HRO/Unimed)', () => {
+    const { linhas } = gerarColunaLiberacao(casos, ['ANA', 'BIA'], { turno: 'matutino' })
+    const ultimo = linhas[linhas.length - 1]
+    expect(ultimo.isProximoPlantao).toBe(true)
+    expect(ultimo.plantaoLabel).toBe('Plantão da tarde')
+  })
+})

@@ -658,7 +658,14 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     if (key && !chavesRodape.includes(key)) chavesRodape.push(key)
   }
   const chaveUltima = chavesRodape[chavesRodape.length - 1] || null
-  if (PLANTAO_LABEL[opts.turno] && chavesRodape.length > 1 && chaveUltima) {
+  // MATERNO NÃO TEM PLANTÃO DE CONTRATURNO (dono 31/08: "o segundo anestesista
+  // no materno não precisa de badge de plantão"). A regra do último-do-rodapé
+  // nasceu do HRO/Unimed; no Materno, com rodapé de 2, ela rotulava o 2º nome
+  // como plantão de um turno que não existe lá — e o movia para o fim. A view
+  // passa `plantaoContraturno: false` para o Materno; selo E movimento saem
+  // juntos (selo sem a mecânica seria pior: a pessoa sairia primeiro sem nada
+  // explicando o porquê).
+  if (PLANTAO_LABEL[opts.turno] && opts.plantaoContraturno !== false && chavesRodape.length > 1 && chaveUltima) {
     const de = principais.some((l) => l.chave === chaveUltima) ? principais : linhasAjuda
     const i = de.findIndex((l) => l.chave === chaveUltima)
     // SEM guard de teveCasos/isAjuda (dono 31/07: "todos os plantões de

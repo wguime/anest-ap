@@ -1042,16 +1042,21 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     return separarListaRodape(ajudaTexto).filter((n) => !naOrdem.has(normNome(n)))
   }, [ajudaTexto, ordemTexto])
 
-  // "Na ordem sem cirurgia" é CONFERÊNCIA, não gravação: a linha existe para a
-  // explicação morar num lugar tocável (a folha), não num aviso solto no fim.
+  // "Na ordem sem cirurgia" agora tem SAÍDAS (dono 31/08: a folha só com
+  // "Entendi" era um beco — "nada acontece depois de clicar, não faz sentido").
+  // Quem já está marcado como AJUDA sai da lista: ajuda sem caso aqui é o
+  // normal dela, não suspeita de extração.
   const conferenciasSemCirurgia = useMemo(() => {
     const daCauda = new Set(caudaLiberada.map((p) => p.nome))
-    return [...suspeitosExtracao, ...caudaLiberada.map((p) => p.nome)].map((nome) => ({
-      nome,
-      cauda: daCauda.has(nome),
-      pos: ordemNumerada.findIndex((p) => p.nome === nome) + 1,
-    }))
-  }, [suspeitosExtracao, caudaLiberada, ordemNumerada])
+    return [...suspeitosExtracao, ...caudaLiberada.map((p) => p.nome)]
+      .filter((nome) => !ehAjuda(nome))
+      .map((nome) => ({
+        nome,
+        cauda: daCauda.has(nome),
+        pos: ordemNumerada.findIndex((p) => p.nome === nome) + 1,
+      }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suspeitosExtracao, caudaLiberada, ordemNumerada, ajudaTexto])
 
   // A "ajuda provável" do cruzamento (rodapé lá + caso aqui) é a MESMA pessoa
   // que a lib de duplicidades já pendura como pendência — duas linhas para a
@@ -1441,8 +1446,10 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   }))
   // Posição aberta para edição — o editor mora FORA das duas colunas da fila
   const posAberta = ordemNumerada.find((p) => p.i === posSel) || null
-  /** Rola até a seção da conferência (o scroll é do container, não da janela). */
-  const irPara = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  /** Rola até a seção da conferência (o scroll é do container, não da janela).
+      Optional call: jsdom não implementa scrollIntoView e o clique vindo da
+      folha de decisão estourava como unhandled error na suíte. */
+  const irPara = (id) => document.getElementById(id)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
   const resumoTexto = (itens) => {
     const r = resumirItensEscala(itens)
     const partes = []
@@ -2045,7 +2052,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                       <LinhaDecisao key={`semc-${p.nome}`} tom="am" ponto
                         titulo={`${p.nome} — na ordem, sem cirurgia`}
                         sub={`${p.pos > 0 ? `${p.pos}ª posição · ` : ''}confira a extração contra a foto.`}
-                        onClick={() => setDecisaoAberta({ tipo: 'semCirurgia', nome: p.nome, cauda: p.cauda })} />
+                        onClick={() => setDecisaoAberta({ tipo: 'semCirurgia', nome: p.nome, cauda: p.cauda, pos: p.pos })} />
                     ))}
                   </div>
                 )}
@@ -2371,10 +2378,34 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                         Fechando a lista sem cirurgia, vai nascer <b>LIBERADO</b> (vermelho) na fila desta publicação.
                       </p>
                     )}
+                    {/* SAÍDAS, não "Entendi" (dono 31/08): as três respostas
+                        reais para o nome sem caso — é ajuda (azul não lido), a
+                        posição precisa de conserto, ou o nome sobrou da leitura. */}
+                    <div className="space-y-1.5">
+                      <Button variant="outline" className="w-full"
+                        onClick={() => { marcarAjuda(decisaoAberta.nome, true); fechar() }}>
+                        Marcar como ajuda (nome em AZUL não lido)
+                      </Button>
+                      {decisaoAberta.pos > 0 && (
+                        <Button variant="outline" className="w-full"
+                          onClick={() => {
+                            fechar()
+                            abrirPosicao(decisaoAberta.pos - 1, decisaoAberta.nome)
+                            irPara('conf-liberacoes')
+                          }}>
+                          Corrigir a posição na ordem
+                        </Button>
+                      )}
+                      {decisaoAberta.pos > 0 && (
+                        <Button variant="outline" className="w-full"
+                          onClick={() => { removerPosicao(decisaoAberta.pos - 1); fechar() }}>
+                          Remover da ordem
+                        </Button>
+                      )}
+                    </div>
                     <p className="text-[11px] leading-relaxed text-muted-foreground">
                       Se foi troca, a duplicidade aparece nas decisões quando a escala do outro hospital é lida.
                     </p>
-                    <Button variant="outline" className="w-full" onClick={fechar}>Entendi</Button>
                   </div>
                 </>
               )}

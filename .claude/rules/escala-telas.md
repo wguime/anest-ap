@@ -389,6 +389,14 @@ ganhou controle novo**: situação que não acontece não ganha botão).
   unilateral) pelo caminho novo da folha. Validação visual real:
   `.tmp/shot-conferencia.mjs` (login E2E + edge interceptada, cenário 31/08
   Oscar/Rodnei⇄Janaína) — a folha real pré-sugeriu a Janaína pelo par simétrico.
+- **A folha "na ordem, sem cirurgia" tem SAÍDAS, não "Entendi"** (dono 31/08, na
+  primeira noite de uso: "apenas aparece um card com a mesma informação e um botão
+  Entendi, nada acontece depois de clicar, não faz sentido"). As três respostas
+  reais para o nome sem caso: **Marcar como ajuda** (azul não lido — grava
+  `ajudaTexto`, e quem é ajuda SAI da lista de conferência: ajuda sem caso aqui é o
+  normal dela), **Corrigir a posição na ordem** (abre o editor da própria fila,
+  `abrirPosicao`) e **Remover da ordem** (`removerPosicao`). Folha informativa sem
+  ação é beco — toda folha de decisão precisa gravar ou levar a quem grava.
 
 ## Auditoria da leitura (dono 2026-08-31) — o lote lia SEM as regras
 

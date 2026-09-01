@@ -171,3 +171,42 @@ describe('na escala onde ajuda: a exceção é estreita', () => {
     expect(selosDe('Oscar Morais')).toContain('Ajuda')
   })
 })
+
+// ════════════════════════════════════════════════════════════════════════════
+// AJUDA DECLARADA em outro hospital, SEM caso lá (dono 31/08 — caso Eduardo):
+// "marquei Eduardo como ajuda no materno, porém o badge de ajuda em Eduardo não
+// saiu na lista de liberações do HRO (deve sair para informação do plantão)".
+//
+// A decisão de 30/07 (emprestado com badge) só ligava com CASO no outro
+// hospital; a declaração humana na ajuda_externa de lá é sinal tão forte quanto
+// — e no Materno, que publica sem rodapé e às vezes sem casos, é o ÚNICO sinal.
+// A pessoa mantém a posição daqui; o card ganha o badge e o destino.
+// ════════════════════════════════════════════════════════════════════════════
+describe('ajuda DECLARADA em outro hospital, sem caso lá (caso Eduardo)', () => {
+  const hroDoEduardo = {
+    id: 'e-hro2', hospital: 'hro', data: '2026-09-01',
+    ordemLiberacao: { matutino: ['LEONARDO', 'EDUARDO'] },
+    ajudaExterna: {}, liberacoes: {}, linhaOverrides: {},
+    casos: [
+      caso('c1', 'Sala 1', 'LEONARDO', 'Cir A'),
+      caso('c2', 'Sala 2', 'EDUARDO', 'Cir B'),
+    ],
+  }
+  const ajudaNoMaterno = [{
+    nome: 'EDUARDO', uid: null, hospital: 'materno', hospitalLabel: 'Materno', ajudaDeclarada: true,
+  }]
+
+  it('o badge de Ajuda e o destino aparecem na fila do hospital dele', () => {
+    render(
+      <LiberacoesView escala={hroDoEduardo} hospital="hro" hospitalLabel="HRO" turno="matutino"
+        canEdit presencaOutros={ajudaNoMaterno}
+        onToggle={() => {}} onSetOverride={() => {}} />,
+      { wrapper: wrap },
+    )
+    expect(selosDe('Eduardo')).toContain('Ajuda')
+    expect(cardDe('Eduardo').textContent).toMatch(/Ajuda no Materno/)
+    // e ele NÃO muda de posição: segue no lugar do rodapé daqui
+    const fila = [...document.querySelectorAll('[data-linha]')].map((n) => n.getAttribute('data-nome'))
+    expect(fila.indexOf('Eduardo')).toBe(1)
+  })
+})

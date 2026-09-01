@@ -44,7 +44,10 @@ const primeiroNomeUpper = (nome) => String(nome || '').trim().split(/\s+/)[0]?.t
 
 // Selo P1–P4: VERDE ESCURO sólido, o mesmo da aba selecionada no seletor
 // segmentado (pedido do dono 24/07 — o azul do variant info destoava).
+// LIBERADO (dono 31/08): o selo acompanha a cor do card — verde sólido dentro
+// do card vermelho destoava; a informação fica, a tinta combina.
 const SELO_NOTURNO = 'gap-1 border-transparent bg-primary text-primary-foreground'
+const SELO_NOTURNO_LIBERADO = 'gap-1 border-transparent bg-destructive text-destructive-foreground'
 
 // P1/P2 são os plantonistas da noite — ficam até o fim e nunca entram na fila do
 // "próximo a ser liberado" (pedido do dono 24/07). P3/P4 seguem a lógica do dia.
@@ -258,13 +261,19 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       // último corromperia a leitura da ordem publicada. `opts.turno` só
       // alimenta essa regra na lib; o namespacing das marcações é da view.
       turno: modoFds ? undefined : turno,
+      // o Materno não tem plantão de contraturno no rodapé (dono 31/08): o selo
+      // e o vai-para-o-fim do último nome são regra do HRO/Unimed
+      plantaoContraturno: hospital !== 'materno',
       resolverUid,
       nomeExibicao,
       assumidas,
       // EMPRESTADOS (dono 30/07): quem tem CASO em outro hospital neste turno foi
       // ajudar lá — mantém a posição do rodapé daqui, com badge (a lib decide).
-      // Só entradas com sala: presença de rodapé sem caso não prova que foi.
-      ajudandoFora: presencaOutros.filter((p) => p.sala),
+      // Entradas com sala (caso de verdade lá) OU com ajuda DECLARADA na
+      // ajuda_externa de lá (dono 31/08, caso Eduardo/Materno): a declaração
+      // humana vale como o caso — e no Materno é o único sinal que existe.
+      // Presença de rodapé sem nada disso segue não provando deslocamento.
+      ajudandoFora: presencaOutros.filter((p) => p.sala || p.ajudaDeclarada),
       // VISITANTES (dono 31/07): rodapés das OUTRAS escalas com o índice de cada
       // nome — quem está aqui de ajuda libera primeiro, na ordem de liberação de lá.
       rodapeOutros: presencaOutros.filter((p) => p.rodapeIdx != null),
@@ -853,9 +862,17 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const ajudaForaInfo = (linha) => {
     if (!linha.ajudaFora) return null
     const nomes = new Set([normNome(linha.nomeOriginal || ''), normNome(linha.anestesista || '')].filter(Boolean))
-    const matches = presencaOutros.filter((p) => p.sala &&
+    const daPessoa = presencaOutros.filter((p) =>
       ((linha.uid && p.uid && p.uid === linha.uid) || (p.nome && nomes.has(p.nome))))
-    if (!matches.length) return null
+    const matches = daPessoa.filter((p) => p.sala)
+    if (!matches.length) {
+      // AJUDA DECLARADA sem caso lá (dono 31/08, caso Eduardo/Materno): o
+      // destino existe — veio da ajuda_externa da outra escala — só não há
+      // sala/cirurgião para detalhar. O card diz "Ajuda no Materno".
+      const declarada = daPessoa.find((p) => p.ajudaDeclarada)
+      if (!declarada) return null
+      return { hospital: declarada.hospitalLabel, locais: '', cirurgioes: [], casos: 0 }
+    }
     const locais = [...new Set(matches.map((m) => salaLiberacao(m.sala)))].join('/')
     // cirurgião e nº de cirurgias entram junto (dono 30/08: "conter no card
     // local/cirurgia/cirurgião onde ele está") — o card de quem está emprestado
@@ -1695,8 +1712,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           const badgeTroca = trocaDe(linha)
           const badgeAssumida = linha.assumida && !badgeTroca
           const badgeAjudaOutro = !liberadoReal && ajudaDeOutro(linha)
-          const badgeProximoPlantao = !liberadoReal && linha.isProximoPlantao
-          const badgeContraturno = !liberadoReal && !linha.isProximoPlantao && contraturnoDe(linha)
+          // Os badges de PLANTÃO não somem ao liberar (dono 31/08): a posição
+          // continua verdadeira — eles trocam de tinta junto com o card
+          // (vermelho no liberado, verde em quem trabalha).
+          const badgeProximoPlantao = linha.isProximoPlantao
+          const badgeContraturno = !linha.isProximoPlantao && contraturnoDe(linha)
           // ver o porquê no JSX, junto do próprio ordinal
           const ordinalDeitado = !!linha.noRodape && !noturno
             && !linha.isProximoPlantao && !linha.isAjuda && !linha.isExtra
@@ -1819,7 +1839,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     os dois truncam o NOME do plantonista ("Leonardo Ferraz…"), que é a
                     identidade do card. É pelo mesmo orçamento que o gap entre selos
                     segue em 6px: 8px custa 4px que não existem nessa largura. */}
-                <p className={['flex items-center gap-1.5 pr-1.5 text-[15px] font-semibold leading-tight', liberadoReal && 'line-through opacity-60'].filter(Boolean).join(' ')}>
+                {/* liberado SEM riscar o nome (dono 31/08): o card vermelho já
+                    diz tudo — o line-through por cima só dificultava ler quem é */}
+                <p className={['flex items-center gap-1.5 pr-1.5 text-[15px] font-semibold leading-tight', liberadoReal && 'opacity-60'].filter(Boolean).join(' ')}>
                   {/* SELO do plantão noturno ANTES do nome (pedido do dono 24/07).
                       No P4 o selo é o BOTÃO que abre "Onde está o P4 hoje?" — área
                       de toque esticada por padding negativo (≥44px sem inchar a linha). */}
@@ -1830,12 +1852,12 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       aria-label="Definir em qual hospital o P4 está hoje"
                       className="-my-2.5 -mx-1 shrink-0 px-1 py-2.5"
                     >
-                      <Badge className={SELO_NOTURNO}>
+                      <Badge className={liberado ? SELO_NOTURNO_LIBERADO : SELO_NOTURNO}>
                         {linha.selo} <Pencil className="h-3 w-3" />
                       </Badge>
                     </button>
                   ) : (
-                    <Badge className={`shrink-0 ${SELO_NOTURNO}`}>{linha.selo}</Badge>
+                    <Badge className={`shrink-0 ${liberado ? SELO_NOTURNO_LIBERADO : SELO_NOTURNO}`}>{linha.selo}</Badge>
                   ))}
                   {/* ORDINAL COLADO AO NOME, só deitado (escolha do dono 26/08):
                       "1º Leonardo Ferrazzo". Aparece SÓ para quem está na ordem
@@ -1901,7 +1923,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       sólido, a cor dos plantões. O rótulo vem da lib — de manhã é
                       "Plantão da tarde", à tarde "Plantão da manhã". */}
                   {badgeProximoPlantao && (
-                    <Badge className="shrink-0 border-transparent bg-primary text-primary-foreground">
+                    <Badge className={`shrink-0 border-transparent ${liberado
+                      ? 'bg-destructive text-destructive-foreground'
+                      : 'bg-primary text-primary-foreground'}`}>
                       {linha.plantaoLabel}
                     </Badge>
                   )}
@@ -1912,7 +1936,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       dos plantões, com o hospital entre parênteses para não
                       confundir com o contraturno DESTA escala. */}
                   {badgeContraturno && (
-                    <Badge className="shrink-0 border-transparent bg-primary/80 text-primary-foreground">
+                    <Badge className={`shrink-0 border-transparent ${liberado
+                      ? 'bg-destructive text-destructive-foreground'
+                      : 'bg-primary/80 text-primary-foreground'}`}>
                       {rotuloPlantao} ({badgeContraturno})
                     </Badge>
                   )}
@@ -1971,7 +1997,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       const fora = ajudaForaInfo(linha)
                       return (
                         <p className="mt-0.5 text-[13px] font-medium leading-snug text-info">
-                          Ajuda {fora.locais}/{fora.hospital}
+                          {/* declarada sem caso lá: só o destino ("Ajuda no Materno") */}
+                          {fora.locais ? `Ajuda ${fora.locais}/${fora.hospital}` : `Ajuda no ${fora.hospital}`}
                           {fora.casos > 1 ? ` · ${fora.casos} cirurgias` : ''}
                           {fora.cirurgioes.length ? ` · ${fora.cirurgioes.join(', ')}` : ''}
                         </p>

@@ -290,10 +290,14 @@ describe('Plantonista — interações na aba Liberações', () => {
     expect(screen.queryByLabelText(/^Subir/)).toBeNull()
     expect(screen.queryByLabelText(/^Descer/)).toBeNull()
   })
-  it('item liberado aparece riscado (Marilio já liberado)', () => {
+  // ⚠️ ESTA TRAVA MUDOU DE LADO EM 31/08 (dono: "ao liberar, o nome não aparece
+  // mais riscado"). O card vermelho já diz que a pessoa saiu; o line-through por
+  // cima era redundância que dificultava ler o nome. O que continua travado é
+  // que o liberado permanece IDENTIFICÁVEL na própria posição, sem sumir.
+  it('item liberado NÃO vem riscado — o card vermelho já diz tudo (dono 31/08)', () => {
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
     const marilio = screen.getByText('Marilio').closest('p')
-    expect(marilio.className).toContain('line-through')
+    expect(marilio.className).not.toContain('line-through')
   })
   it('sem permissão de edição → sem botões de reordenar', () => {
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit={false} onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
