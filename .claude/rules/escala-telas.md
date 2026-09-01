@@ -389,6 +389,20 @@ ganhou controle novo**: situação que não acontece não ganha botão).
   unilateral) pelo caminho novo da folha. Validação visual real:
   `.tmp/shot-conferencia.mjs` (login E2E + edge interceptada, cenário 31/08
   Oscar/Rodnei⇄Janaína) — a folha real pré-sugeriu a Janaína pelo par simétrico.
+- **AZUL DE EMPRESTADO não vira ajuda DAQUI (dono 01/09 — caso Eduardo, corrigido à
+  mão 2× em 2 dias antes da regra).** No mapa do HRO o azul tem dois sentidos; o de
+  "nosso, emprestado" gravado na ajuda daqui joga a pessoa para o fim da fila DAQUI
+  (o oposto do certo) e a ajuda-declarada do lado errado silencia a duplicidade. Na
+  conferência, azul da LEITURA + nome no rodapé daqui + casos em outra escala do dia
+  + nenhum caso REAL daqui (pseudo-linha "MATERNO | EDUARDO" não conta —
+  `PSEUDO_SALAS_HOSPITAL`) = realocado: sai da ajuda daqui (one-shot, marca manual
+  nunca é tocada — lição do campo grudento), vira linha informativa "emprestado ao
+  X" com Refazer, e **a ajuda ATRAVESSA para a aba de DESTINO do lote**
+  (`resumoAba.azuisRealocados` → `irmasPara` → effect de entrada): é a declaração da
+  foto aplicada no lugar certo, e é o que faz "mantém a posição na origem · sai
+  primeiro onde ajuda" valer sem pergunta nova. Com caso REAL aqui o azul fica (caso
+  Tiago 30/07). `azuisEmprestados` puro em utils; travas no describe "azul de quem
+  está no rodapé daqui" (`importarEscalasLote.test.jsx`).
 - **A folha "na ordem, sem cirurgia" tem SAÍDAS, não "Entendi"** (dono 31/08, na
   primeira noite de uso: "apenas aparece um card com a mesma informação e um botão
   Entendi, nada acontece depois de clicar, não faz sentido"). As três respostas

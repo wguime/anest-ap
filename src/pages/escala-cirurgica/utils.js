@@ -693,6 +693,49 @@ export function turnoAtual(d = new Date()) {
   return d.getHours() < 13 ? 'matutino' : 'vespertino'
 }
 
+// ── Azul de EMPRESTADO não é ajuda daqui (dono 01/09 — caso Eduardo) ─────────
+// No mapa do HRO o azul tem DOIS sentidos: gente de fora ajudando AQUI e gente
+// NOSSA emprestada para outro hospital. A leitura devolvia os dois em
+// `ajudaExterna` DESTE hospital — e o segundo sentido, gravado aqui, joga a
+// pessoa para o fim da fila daqui (sai primeiro AQUI, o oposto do certo) e a
+// "ajuda declarada" do lado errado silencia a pergunta de duplicidade. O dono
+// corrigiu o mesmo dado à mão duas vezes em dois dias antes desta regra.
+//
+// A linha de clínica do mapa ("MATERNO | EDUARDO") registra ONDE a pessoa está,
+// não uma cirurgia daqui — por isso sala com nome de hospital não conta como
+// caso real ao desambiguar (com caso REAL aqui vale o caso Tiago 30/07: veio
+// ajudar aqui, o azul fica).
+export const PSEUDO_SALAS_HOSPITAL = new Set(['MATERNO', 'HRO', 'UNIMED'])
+
+/**
+ * Azuis da leitura que são "nosso, emprestado": estão no RODAPÉ daqui, não têm
+ * caso real AQUI e têm cirurgia em OUTRA escala do dia no mesmo turno. A ajuda
+ * deles pertence ao hospital de lá — aqui eles mantêm a posição do rodapé.
+ * @returns {Array<{nome, hospital, hospitalLabel}>}
+ */
+export function azuisEmprestados({ azuis = [], ordem = [], casos = [], outrasEscalas = [], turno, resolver = null, hospitalLabelFor = (h) => h }) {
+  if (!azuis.length || !ordem.length) return []
+  const noRodape = new Set()
+  for (const n of ordem) for (const k of chavesIdentidade(n, null, resolver)) noRodape.add(k)
+  const comCasoRealAqui = new Set()
+  for (const c of casos) {
+    if (PSEUDO_SALAS_HOSPITAL.has(normNome(c?.sala))) continue
+    for (const k of chavesIdentidade(c?.anestesista, c?.anestesistaUserId, resolver)) comCasoRealAqui.add(k)
+  }
+  const out = []
+  for (const nome of azuis) {
+    const chaves = chavesIdentidade(nome, null, resolver)
+    if (!chaves.some((k) => noRodape.has(k))) continue
+    if (chaves.some((k) => comCasoRealAqui.has(k))) continue
+    const la = outrasEscalas.find((o) => (o?.casos || []).some((c) =>
+      (c?.turno || turno) === turno
+      && chavesIdentidade(c?.anestesista, c?.anestesistaUserId, resolver).some((k) => chaves.includes(k))))
+    if (!la) continue
+    out.push({ nome, hospital: la.hospital, hospitalLabel: hospitalLabelFor(la.hospital) })
+  }
+  return out
+}
+
 // ── Convivência manhã/tarde no MESMO dia (decisão do dono 23/07) ─────────────
 // A escala é UMA linha por (data, hospital) e publicar é DELETE+reinsert — por
 // isso publicar a tarde apagava a manhã. Solução SEM mudar o schema: publicar

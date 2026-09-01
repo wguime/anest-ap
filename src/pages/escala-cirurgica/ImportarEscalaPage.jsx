@@ -20,7 +20,7 @@ import { isPermissionError } from '@/services/supabaseEscalaAnestesistaService'
 import { prepararImagemParaVision } from '@/lib/imagemVision'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
-import { linhaVazia, prepararCasosImportados as prepararCasos, normNome, candidatosPrimeiroNome, resumirRodape, casosQuePassamParaOTurno, presencaDoTurno, estaPresente, gruposAnestesista, chavesAnestesista, aplicarAtribuicoes, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital } from './utils'
+import { linhaVazia, prepararCasosImportados as prepararCasos, normNome, candidatosPrimeiroNome, resumirRodape, casosQuePassamParaOTurno, presencaDoTurno, estaPresente, gruposAnestesista, chavesAnestesista, aplicarAtribuicoes, azuisEmprestados, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import { planoCruzamentoUrgencias, salasContrato } from '@/lib/escalaCirurgicaUrgencias'
 import { hospitalPelaEstrutura } from '@/lib/escalaHospitalEstrutura'
@@ -347,6 +347,8 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     carregarLoteImportado(loteInicial.rows || [], hosp, loteInicial.posicoes || [])
     setOrdemTexto((loteInicial.ordemLiberacao || []).join(', '))
     setAjudaTexto((loteInicial.ajudaExterna || []).join(', '))
+    setAzuisDaLeitura(loteInicial.ajudaExterna || [])
+    setAzuisRealocados([])
     setPosSel(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loteInicial])
@@ -500,6 +502,10 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
       // não trouxe fica VAZIO e visível como vazio, para alguém preencher à mão.
       setOrdemTexto((res.ordemLiberacao || []).join(', '))
       setAjudaTexto((res.ajudaExterna || []).join(', '))
+      // azuis DA LEITURA ficam elegíveis à realocação de emprestado (01/09);
+      // marca feita à mão nunca entra aqui — e nunca é tocada
+      setAzuisDaLeitura(res.ajudaExterna || [])
+      setAzuisRealocados([])
       setPosSel(null)   // rodapé novo: nenhuma posição em edição
       // Layout de outro hospital? Sugere (o dono confirma — nunca troca sozinho).
       const det = String(res.hospitalDetectado || '')
@@ -1069,11 +1075,69 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     [cruzamento.ajudaProvavel, duplicidades, chaveDup],
   )
 
+  // AZUL DE EMPRESTADO realocado na leitura (dono 01/09 — caso Eduardo,
+  // corrigido à mão duas vezes em dois dias): o azul de quem está no rodapé
+  // daqui com o trabalho em OUTRO hospital não vira ajuda DAQUI. One-shot por
+  // nome e SÓ sobre o que veio da leitura: a marca manual nunca é tocada
+  // (lição do campo grudento, 30/07). O "mantém a posição na origem / sai
+  // primeiro onde ajuda" já deriva dos casos — nada é gravado no outro lado.
+  const [azuisDaLeitura, setAzuisDaLeitura] = useState([])
+  const [azuisRealocados, setAzuisRealocados] = useState([])
+  useEffect(() => {
+    if (!azuisDaLeitura.length) return
+    const atuais = separarListaRodape(ajudaTexto)
+    const candidatos = azuisDaLeitura.filter((n) => atuais.some((a) => normNome(a) === normNome(n)))
+    if (!candidatos.length) return
+    const emprestados = azuisEmprestados({
+      azuis: candidatos,
+      ordem: separarListaRodape(ordemTexto),
+      casos,
+      outrasEscalas,
+      turno: periodo,
+      resolver,
+      hospitalLabelFor: (h) => HOSPITAL_LABEL[h] || h,
+    })
+    if (!emprestados.length) return
+    const norms = new Set(emprestados.map((e) => normNome(e.nome)))
+    setAjudaTexto(atuais.filter((a) => !norms.has(normNome(a))).join(', '))
+    setAzuisRealocados((p) => [
+      ...p,
+      ...emprestados.filter((e) => !p.some((x) => normNome(x.nome) === normNome(e.nome))),
+    ])
+    setAzuisDaLeitura((p) => p.filter((n) => !norms.has(normNome(n))))
+  }, [azuisDaLeitura, ajudaTexto, ordemTexto, casos, outrasEscalas, periodo, resolver])
+
+  // LADO DE DESTINO da realocação (lote): a irmã que realocou um azul aponta
+  // PARA CÁ — se a pessoa tem caso aqui e ainda não está na ajuda daqui, ela
+  // entra (é a declaração da foto do outro hospital aplicada no lugar certo, e
+  // é o que faz "sai primeiro onde ajuda" valer sem pergunta nova). One-shot
+  // por nome; remover à mão não volta.
+  const [entrantesProcessados, setEntrantesProcessados] = useState([])
+  useEffect(() => {
+    const entrantes = []
+    for (const irma of escalasIrmas || []) {
+      for (const a of irma?.azuisRealocados || []) {
+        if (a?.hospital !== hosp) continue
+        const n = normNome(a.nome)
+        if (!n || entrantesProcessados.includes(n)) continue
+        const temCasoAqui = casos.some((c) => (c.turno || periodo) === periodo
+          && normNome(c.anestesista) === n)
+        if (!temCasoAqui) continue
+        entrantes.push(a.nome)
+      }
+    }
+    if (!entrantes.length) return
+    const atuais = separarListaRodape(ajudaTexto)
+    const novos = entrantes.filter((nome) => !atuais.some((x) => normNome(x) === normNome(nome)))
+    if (novos.length) setAjudaTexto([...atuais, ...novos].join(', '))
+    setEntrantesProcessados((p) => [...p, ...entrantes.map(normNome)])
+  }, [escalasIrmas, hosp, casos, periodo, ajudaTexto, entrantesProcessados])
+
   const decisoesAbertas = duplicidadesPendentes.length + ajudaProvavelSemDup.length
     + casosForaDoRodape.length
   const temDecisoes = duplicidades.length > 0 || ajudaProvavelSemDup.length > 0
     || casosForaDoRodape.length > 0 || ajudasForaDaOrdem.length > 0
-    || conferenciasSemCirurgia.length > 0
+    || conferenciasSemCirurgia.length > 0 || azuisRealocados.length > 0
 
   /** Acrescenta um nome (texto) ao FIM da ordem — a saída "caiu do rodapé na leitura". */
   const acrescentarNaOrdem = (nome) => {
@@ -1419,18 +1483,22 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     totalCasos: casosAtribuidosDoTurno.length,
     ordemLiberacao: separarListaRodape(ordemTexto),
     ajudaExterna: separarListaRodape(ajudaTexto),
+    // azuis realocados DESTA aba (emprestados): a aba de DESTINO os incorpora
+    // à ajuda dela — é a declaração da foto aplicada no lugar certo (01/09)
+    azuisRealocados,
     bloqueios: bloqueiosConferencia,
     avisos: avisosConferencia,
     // guardrail anti-perda por escala, para a folha avisar ANTES: o turno
     // publicado tem mais casos do que este lote (publicar é DELETE+reinsert)
     publicados: (escalaPublicada?.casos || []).filter((c) => (c.turno || periodo) === periodo).length,
-  }), [hosp, casosAtribuidosDoTurno, ordemTexto, ajudaTexto, bloqueiosConferencia,
-    avisosConferencia, escalaPublicada, periodo])
+  }), [hosp, casosAtribuidosDoTurno, ordemTexto, ajudaTexto, azuisRealocados,
+    bloqueiosConferencia, avisosConferencia, escalaPublicada, periodo])
   // Assinatura estável: sem ela, um objeto novo a cada render realimentaria o
   // estado do pai e a árvore inteira giraria em laço.
   const assinaturaAba = [
     hosp, periodo, resumoAba.totalCasos, resumoAba.bloqueios, resumoAba.avisos, resumoAba.publicados,
     resumoAba.ordemLiberacao.join('~'), resumoAba.ajudaExterna.join('~'),
+    azuisRealocados.map((a) => `${a.hospital}:${a.nome}`).join('~'),
     casosAtribuidosDoTurno.map((c) => `${c.sala}:${c.anestesistaUserId || c.anestesista}`).join('~'),
   ].join('|')
   useEffect(() => {
@@ -2039,6 +2107,16 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                         titulo={`${titleCaseNome(nome)} — marcado como ajuda`}
                         sub="Vai ao fim da fila e sai primeiro."
                         onRefazer={() => marcarAjuda(nome, false)} />
+                    ))}
+
+                    {azuisRealocados.map((a) => (
+                      <LinhaDecisao key={`empr-${normNome(a.nome)}`} tom="az" icone={<UserPlus className="h-4 w-4" />}
+                        titulo={`${titleCaseNome(a.nome)} — emprestado ao ${a.hospitalLabel}`}
+                        sub={'O azul do mapa é "nosso, emprestado": mantém a posição daqui e sai primeiro lá.'}
+                        onRefazer={() => {
+                          marcarAjuda(a.nome, true)
+                          setAzuisRealocados((p) => p.filter((x) => normNome(x.nome) !== normNome(a.nome)))
+                        }} />
                     ))}
 
                     {casosForaDoRodape.map((f) => (

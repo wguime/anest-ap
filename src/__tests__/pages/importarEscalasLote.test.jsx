@@ -461,3 +461,89 @@ describe('folha de revisão e publicação em sequência', () => {
     expect(screen.getAllByText(/1 caso\b/).length).toBeGreaterThanOrEqual(2)
   })
 })
+
+// ════════════════════════════════════════════════════════════════════════════
+// AZUL DE EMPRESTADO não é ajuda DAQUI (dono 01/09 — caso Eduardo, corrigido à
+// mão DUAS vezes em dois dias antes desta trava).
+//
+// No mapa do HRO, o azul de quem está no RODAPÉ DAQUI e trabalha em OUTRO
+// hospital significa "nosso, emprestado" — mas a leitura devolvia esse azul em
+// `ajudaExterna` DO HRO, que quer dizer o oposto ("gente de fora ajudando
+// AQUI"): a fila daqui o jogava para o fim (sai primeiro AQUI, errado) e a
+// ajuda-declarada do lado errado silenciava a pergunta de duplicidade. Com o
+// lote na tela, o sinal é inequívoco: rodapé daqui + casos dele na escala irmã
+// + nenhum caso REAL daqui (pseudo-linha "MATERNO | EDUARDO" não conta). A
+// conferência realoca na CARGA, mostra a decisão informativa com a saída de
+// desfazer, e a marca MANUAL nunca é tocada de novo (lição do campo grudento).
+// O "mantém a posição na origem / sai primeiro onde ajuda" já deriva dos casos.
+// ════════════════════════════════════════════════════════════════════════════
+describe('azul de quem está no rodapé daqui com trabalho em outro hospital', () => {
+  const anexarHroEMaterno = async (casosHro) => {
+    svcMock.parseEscalaImagem
+      .mockResolvedValueOnce({
+        casos: casosHro,
+        hospitalDetectado: 'hro',
+        ordemLiberacao: ['CURY', 'EDUARDO'],
+        ajudaExterna: ['EDUARDO'], // o AZUL lido do mapa
+      })
+      .mockResolvedValueOnce({
+        casos: [caso('Sala 2 HC', 'EDUARDO'), { ...caso('Sala 2 HC', 'EDUARDO'), ordem: 1 }],
+        hospitalDetectado: 'materno',
+        ordemLiberacao: [],
+      })
+    const { container } = montar()
+    await soltarArquivos(container, [img('hro.png'), img('materno.png')])
+    await waitFor(() => expect(abas()).toHaveLength(2))
+    return container
+  }
+  const PSEUDO_LINHA = { ...caso('MATERNO', 'EDUARDO'), procedimento: '', cirurgiao: '', pacienteIniciais: '' }
+
+  it('a leitura NÃO grava o azul como ajuda daqui — a ajuda nasce no hospital de DESTINO', async () => {
+    await anexarHroEMaterno([caso('Sala 1', 'CURY'), PSEUDO_LINHA])
+
+    // a linha informativa aparece na aba do HRO, com a saída de desfazer
+    expect(await screen.findByText(/emprestado ao Materno/i)).toBeTruthy()
+    // e a ajuda ATRAVESSA para a aba do Materno (declaração da foto no lugar
+    // certo) — sem isso a duplicidade do Eduardo travaria a publicação
+    expect(await screen.findByText(/marcado como ajuda/i)).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: /revisar e publicar/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /publicar as 2/i }))
+    await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalledTimes(2))
+    const doHro = salvarEscalaTurno.mock.calls.map(([p]) => p).find((p) => p.hospital === 'hro')
+    expect(doHro.ajudaExterna).toEqual([])
+    // o rodapé segue intacto — a posição dele aqui não muda
+    expect(doHro.ordemLiberacao).toEqual(['CURY', 'EDUARDO'])
+    // e o Materno publica com a ajuda declarada NELE — é lá que ele sai primeiro
+    const doMaterno = salvarEscalaTurno.mock.calls.map(([p]) => p).find((p) => p.hospital === 'materno')
+    expect(doMaterno.ajudaExterna).toEqual(['EDUARDO'])
+  })
+
+  it('desfazer devolve a ajuda daqui — e a marca manual não é removida de novo', async () => {
+    await anexarHroEMaterno([caso('Sala 1', 'CURY'), PSEUDO_LINHA])
+    await screen.findByText(/emprestado ao Materno/i)
+
+    const linha = screen.getByText(/emprestado ao Materno/i).closest('div').parentElement
+    fireEvent.click(within(linha).getByRole('button', { name: /refazer/i }))
+    await waitFor(() => expect(screen.queryByText(/emprestado ao Materno/i)).toBeNull())
+
+    fireEvent.click(screen.getByRole('button', { name: /revisar e publicar/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /publicar as 2/i }))
+    await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalledTimes(2))
+    const doHro = salvarEscalaTurno.mock.calls.map(([p]) => p).find((p) => p.hospital === 'hro')
+    expect(doHro.ajudaExterna).toEqual(['EDUARDO'])
+  })
+
+  it('com caso REAL aqui, o azul fica: a pessoa veio ajudar AQUI (caso Tiago 30/07)', async () => {
+    // EDUARDO com cirurgia de verdade no HRO além da presença no materno —
+    // sinal ambíguo, a leitura fica como veio
+    await anexarHroEMaterno([caso('Sala 1', 'CURY'), caso('Sala 3', 'EDUARDO')])
+
+    expect(screen.queryByText(/emprestado ao Materno/i)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /revisar e publicar/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /publicar as 2/i }))
+    await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalledTimes(2))
+    const doHro = salvarEscalaTurno.mock.calls.map(([p]) => p).find((p) => p.hospital === 'hro')
+    expect(doHro.ajudaExterna).toEqual(['EDUARDO'])
+  })
+})

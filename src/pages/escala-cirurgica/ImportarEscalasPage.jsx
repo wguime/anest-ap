@@ -144,6 +144,9 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
         casos: r.casos,
         ordemLiberacao: r.ordemLiberacao,
         ajudaExterna: r.ajudaExterna,
+        // azul de EMPRESTADO realocado na aba de origem (01/09): a aba de
+        // DESTINO o incorpora à ajuda dela — declaração da foto no lugar certo
+        azuisRealocados: r.azuisRealocados,
       }))
   ), [resumos])
 
