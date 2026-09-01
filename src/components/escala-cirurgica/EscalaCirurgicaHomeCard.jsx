@@ -14,7 +14,7 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Skeleton } from '@/design-system'
+import { Skeleton, ACTION_PILL_CLASSES } from '@/design-system'
 import { useEscalaCirurgica, hojeISO, HOSPITAIS, HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
@@ -200,16 +200,9 @@ export function EscalaCirurgicaHomeCard({ onNavigate }) {
             {formatDate(new Date(`${hoje}T12:00:00`), 'medium')}
           </p>
         </div>
-        {/* pill sólido "Acessar" (pedido do dono) — card inteiro segue clicável */}
-        <span
-          className={[
-            'inline-flex shrink-0 items-center justify-center rounded-[12px] px-[14px] py-[7px] text-[12px] font-semibold leading-none',
-            'bg-primary text-white',
-            'dark:bg-[linear-gradient(135deg,#2ECC71_0%,#1E8449_100%)] dark:text-foreground dark:shadow-[0_2px_10px_rgba(46,204,113,0.15)]',
-          ].join(' ')}
-        >
-          Acessar
-        </span>
+        {/* pill sólido "Acessar" (pedido do dono) — card inteiro segue clicável.
+            Visual vem do ActionPill (dono 01/09: "acompanhe os demais"). */}
+        <span className={ACTION_PILL_CLASSES}>Acessar</span>
       </header>
 
       {carregando ? (
