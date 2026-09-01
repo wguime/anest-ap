@@ -186,7 +186,7 @@ function SexoToggle({ value, onChange }) {
   );
 }
 
-function MetricCard({ label, value, unit, accent = 'default' }) {
+function MetricCard({ label, value, unit, detalhe, accent = 'default' }) {
   /* ⚠️ O amarelo saiu do TEXTO. `text-warning` sobre `bg-warning/10` mede
      1,99:1 contra os 4,5:1 do WCAG AA (.claude/rules/design-tokens.md) — o
      dono viu como "texto amarelo fora do DS". O sinal semântico continua no
@@ -208,15 +208,24 @@ function MetricCard({ label, value, unit, accent = 'default' }) {
     /* ⚠️ `h-full` + `mt-auto`: quando um rótulo quebra em duas linhas e o
        vizinho não, o número descia e a fileira ficava torta (dono 31/08).
        Ancorando valor e unidade na BASE, todos alinham em qualquer rótulo. */
-    <div className={cn('h-full flex flex-col px-2 py-3 rounded-xl border text-center', accentClass)}>
+    <div className={cn('h-full flex flex-col px-2.5 py-2 rounded-xl border text-center', accentClass)}>
       {/* `tracking-wide` e não `wider`: com 3 colunas a 375px cada cartão tem
           ~82px úteis e "AJUSTADO" estourava por 4px. */}
       <p className="text-[11px] uppercase tracking-wide text-muted-foreground leading-tight">
         {label}
       </p>
-      <div className="mt-auto pt-1.5">
-        <p className="text-2xl font-bold leading-tight text-foreground">{value}</p>
-        {unit && <p className="text-xs text-muted-foreground mt-0.5 leading-tight">{unit}</p>}
+      <div className="mt-auto pt-1">
+        {/* ⚠️ Unidade À DIREITA do número, na mesma linha (dono 01/09): embaixo
+            ela custava uma linha inteira por cartão. O que sobra — a leitura
+            que conversa com as horas — vai para `detalhe`, e só aparece quando
+            existe, então cartão sem detalhe tem DUAS linhas em vez de três. */}
+        <p className="leading-none text-foreground">
+          <span className="text-2xl font-bold tabular-nums">{value}</span>
+          {unit && <span className="text-xs text-muted-foreground ml-1">{unit}</span>}
+        </p>
+        {detalhe && (
+          <p className="text-[10px] text-muted-foreground mt-1 leading-tight">{detalhe}</p>
+        )}
       </div>
     </div>
   );
@@ -471,17 +480,25 @@ export default function BalancoHidricoTransopDisplay() {
 
   /* Resumo do paciente para a linha recolhida. Só entra o que foi preenchido —
      um resumo com "— kg · — cm" seria pior que nenhum. */
-  const resumoPaciente = [
+  /* Duas linhas, não uma corrida: quem é o PACIENTE e como é o CASO. Numa
+     linha só, "65 kg · 1,70 m · mulher · 47 anos · jejum 8 h · pequeno porte ·
+     Ht 38 → 25 · ClCr 102" quebra no meio de um assunto e não dá para varrer. */
+  const resumoCorpo = [
     pesoN > 0 && `${numeroBr(pesoN, pesoN % 1 ? 1 : 0)} kg`,
     alturaN > 0 && `${numeroBr(alturaN / 100, 2)} m`,
     sexo === 'masculino' ? 'homem' : sexo === 'feminino' ? 'mulher' : null,
     idadeN > 0 && `${numeroBr(idadeN)} anos`,
     isPediatric && PED_CATEGORY_OPTIONS.find((o) => o.value === pedCategory)?.label.split(' (')[0],
+  ].filter(Boolean).join(' · ');
+
+  const resumoCaso = [
     npoN > 0 && `jejum ${numeroBr(npoN)} h`,
     PORTE_OPTIONS.find((o) => o.value === porte)?.nome,
     hctIN > 0 && `Ht ${numeroBr(hctIN)} → ${numeroBr(hctMN)}`,
     result.clcr > 0 && `ClCr ${numeroBr(result.clcr)}`,
   ].filter(Boolean).join(' · ');
+
+  const resumoPaciente = [resumoCorpo, resumoCaso].filter(Boolean).join(' · ');
 
   const mostrarPaciente = pacienteAberto ?? !hasPreop;
 
@@ -532,7 +549,11 @@ export default function BalancoHidricoTransopDisplay() {
       {/* 3. PRÉ-OP */}
       <section
         aria-labelledby="preop-heading"
-        className="rounded-xl border border-border-strong bg-card p-4 space-y-4 deitado:col-span-2 deitado:row-start-1"
+        className={cn(
+          'rounded-xl border border-border-strong bg-card deitado:col-span-2 deitado:row-start-1',
+          // recolhido não precisa do respiro de um formulário aberto
+          mostrarPaciente ? 'p-4 space-y-4' : 'px-4 py-3 space-y-1'
+        )}
       >
         {/* ⚠️ O paciente é a PRIMEIRA seção e recolhe sozinha depois de
             preenchida (dono 31/08: "informações do paciente estão no meio da
@@ -565,7 +586,10 @@ export default function BalancoHidricoTransopDisplay() {
         </div>
 
         {!mostrarPaciente && resumoPaciente && (
-          <p className="text-[13px] text-muted-foreground leading-relaxed !mt-1">{resumoPaciente}</p>
+          <div className="text-[13px] leading-snug">
+            <p className="text-foreground">{resumoCorpo}</p>
+            {resumoCaso && <p className="text-muted-foreground">{resumoCaso}</p>}
+          </div>
         )}
 
         <div id="preop-campos" hidden={!mostrarPaciente} className="space-y-4">
@@ -763,7 +787,7 @@ export default function BalancoHidricoTransopDisplay() {
             </span>
             {result.abl > 0 && (
               <span>
-                Pode sangrar mais{' '}
+                Sangramento máximo{' '}
                 <b className="text-foreground">{numeroBr(result.ablRestante)}</b> ml
               </span>
             )}
@@ -973,43 +997,46 @@ export default function BalancoHidricoTransopDisplay() {
             <MetricCard
               label="Manutenção"
               value={numeroBr(result.rate)}
-              unit={temHoras ? `ml/h · ${numeroBr(result.totalManutencao)} ml em ${horas.length} h` : 'ml/h'}
+              unit="ml/h"
+              detalhe={temHoras ? `${numeroBr(result.totalManutencao)} ml em ${horas.length} h` : null}
               accent="primary"
             />
-            <MetricCard label="Déficit jejum" value={numeroBr(deficit)} unit="ml total" />
+            <MetricCard label="Déficit jejum" value={numeroBr(deficit)} unit="ml" />
             <MetricCard
               label="3º espaço"
               value={numeroBr(result.tsLoss)}
-              unit={temHoras ? `ml/h · ${numeroBr(result.totalTerceiroEspaco)} ml em ${horas.length} h` : 'ml/h'}
+              unit="ml/h"
+              detalhe={temHoras ? `${numeroBr(result.totalTerceiroEspaco)} ml em ${horas.length} h` : null}
             />
             <MetricCard
               label="Meta diurese"
               value={numeroBr(result.goalRate)}
-              unit={
-                temHoras
-                  ? `ml/h · real ${numeroBr(result.totalDiurese / horas.length)} ml/h`
-                  : 'ml/h'
-              }
+              unit="ml/h"
+              detalhe={temHoras ? `real ${numeroBr(result.totalDiurese / horas.length)} ml/h` : null}
               accent="primary"
             />
             <MetricCard
               label="Volume sanguíneo"
               value={numeroBr(result.ebv)}
-              unit={alturaN > 0 && sexo ? 'ml (Nadler)' : `ml (${numeroBr(result.ebv / pesoN, 0)} ml/kg)`}
+              unit="ml"
+              detalhe={alturaN > 0 && sexo ? 'Nadler' : `${numeroBr(result.ebv / pesoN, 0)} ml/kg`}
             />
-            {/* ⚠️ "Perda permitida" sozinho não dizia perda DE QUÊ (dono 31/08).
-                Sangue é o único jeito de não confundir com perda de volume. */}
-            {/* ⚠️ O número em destaque é quanto o paciente AINDA PODE SANGRAR,
-                não o total permitido: é ele que decide transfundir. "Sangue até
-                transfundir" foi lido pelo dono como "sangue A transfundir" —
-                o oposto do que significa (31/08). */}
+            {/* ⚠️ Aqui o número é o TETO deste paciente — quanto ele pode
+                sangrar no total antes de a transfusão ficar indicada. O valor
+                que desconta o que já sangrou vive na FAIXA do topo, que é onde
+                se olha durante a cirurgia (dono 01/09). O detalhe só aparece
+                depois que há sangramento: antes, "restam 1.793 de 1.793" é
+                ruído. */}
             <MetricCard
-              label="Pode sangrar mais"
-              value={result.abl > 0 ? numeroBr(result.ablRestante) : '—'}
-              unit={
+              label="Sangramento máximo permitido"
+              value={result.abl > 0 ? numeroBr(result.abl) : '—'}
+              unit={result.abl > 0 ? 'ml' : ''}
+              detalhe={
                 result.abl <= 0
                   ? 'informe o Ht'
-                  : `ml até transfundir (de ${numeroBr(result.abl)})`
+                  : result.totalSangramento > 0
+                    ? `restam ${numeroBr(result.ablRestante)} ml`
+                    : null
               }
               accent={result.abl > 0 ? 'warning' : 'default'}
             />
@@ -1017,7 +1044,8 @@ export default function BalancoHidricoTransopDisplay() {
               <MetricCard
                 label="Repor sangramento"
                 value={numeroBr(result.reposicaoCristaloide)}
-                unit="ml cristaloide (3:1)"
+                unit="ml"
+                detalhe="cristaloide 3:1"
                 accent="warning"
               />
             )}
@@ -1025,7 +1053,8 @@ export default function BalancoHidricoTransopDisplay() {
               <MetricCard
                 label="ou coloide/sangue"
                 value={numeroBr(result.reposicaoColoide)}
-                unit="ml (1:1)"
+                unit="ml"
+                detalhe="1:1"
               />
             )}
           </div>
