@@ -14,9 +14,9 @@ import { CertificadoExpiracaoBanner } from '../components/educacao/CertificadoEx
 import { EscalaCirurgicaHomeCard } from '../components/escala-cirurgica/EscalaCirurgicaHomeCard';
 import { podeVerEscalaCirurgica } from './escala-cirurgica/gate';
 import { podeVerExtratoFerias } from './ferias/gate';
-import { Header, SearchBar, QuickLinksGrid, SectionCard, Skeleton, PlantaoCard, FeriasCard, StaffScheduleCard, AssignStaffModal, Collapsible, CollapsibleContent } from '@/design-system';
+import { Header, SearchBar, QuickLinksGrid, SectionCard, Skeleton, PlantaoCard, FeriasCard, StaffScheduleCard, AssignStaffModal, Collapsible, CollapsibleContent, ActionPill } from '@/design-system';
 import { useHaptic, usePullToRefresh } from '@/design-system/hooks';
-import { Calendar, User, BookOpen, RefreshCw, Pencil, ChevronRight, Calculator, CheckSquare, Wrench, FileCheck, DollarSign, CalendarDays, ShieldCheck, Briefcase, Receipt, AlertTriangle, TrendingUp, ClipboardCheck, Scale, ShieldAlert, Pill, AlertOctagon, FileBarChart, Library, Bug, FolderOpen, Target, Headphones, GraduationCap, BookMarked, Trophy, Network, Users, Megaphone, ClipboardList, Mail, FileSearch, Sun, Moon, Umbrella, Building2, FileText } from 'lucide-react';
+import { Calendar, User, BookOpen, RefreshCw, ChevronRight, Calculator, CheckSquare, Wrench, FileCheck, DollarSign, CalendarDays, ShieldCheck, Briefcase, Receipt, AlertTriangle, TrendingUp, ClipboardCheck, Scale, ShieldAlert, Pill, AlertOctagon, FileBarChart, Library, Bug, FolderOpen, Target, Headphones, GraduationCap, BookMarked, Trophy, Network, Users, Megaphone, ClipboardList, Mail, FileSearch, Sun, Moon, Umbrella, Building2, FileText } from 'lucide-react';
 
 // Mapa de ícones para busca inline (string → componente)
 const iconMap = {
@@ -734,14 +734,9 @@ export default function HomePage({ onNavigate }) {
           className="mb-4"
           headerAction={
             canEditResidencia && (
-              <button
-                type="button"
-                onClick={() => setShowEstagiosModal(true)}
-                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary hover:bg-muted dark:hover:bg-[rgba(46,204,113,0.15)] transition-colors"
-                aria-label="Editar estágios"
-              >
-                <Pencil className="w-4 h-4" />
-              </button>
+              <ActionPill onClick={() => setShowEstagiosModal(true)} aria-label="Editar estágios">
+                Editar
+              </ActionPill>
             )
           }
         >
@@ -792,14 +787,9 @@ export default function HomePage({ onNavigate }) {
           className="mb-4 p-3 md:p-4"
           headerAction={
             canEditResidencia && (
-              <button
-                type="button"
-                onClick={() => setShowPlantaoModal(true)}
-                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary hover:bg-muted dark:hover:bg-[rgba(46,204,113,0.15)] transition-colors"
-                aria-label="Editar plantão"
-              >
-                <Pencil className="w-4 h-4" />
-              </button>
+              <ActionPill onClick={() => setShowPlantaoModal(true)} aria-label="Editar plantão">
+                Editar
+              </ActionPill>
             )
           }
         >
@@ -856,6 +846,7 @@ export default function HomePage({ onNavigate }) {
               }
               sections={getHospitalSections}
               canEdit={canEditStaff}
+              editLabel="Editar"
               onEdit={() => setShowAssignStaffModal('hospitais')}
             />
 
@@ -874,14 +865,9 @@ export default function HomePage({ onNavigate }) {
               }
               headerAction={
                 canEditSobreaviso && (
-                  <button
-                    type="button"
-                    onClick={() => setShowSobreavisoModal(true)}
-                    className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] w-11 h-11 rounded-lg text-primary hover:bg-muted transition-colors"
-                    aria-label="Editar sobreaviso"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </button>
+                  <ActionPill onClick={() => setShowSobreavisoModal(true)} aria-label="Editar sobreaviso">
+                    Editar
+                  </ActionPill>
                 )
               }
             >

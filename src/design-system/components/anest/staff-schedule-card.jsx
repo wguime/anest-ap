@@ -2,6 +2,7 @@ import * as React from "react"
 import { FileText, Pencil, Umbrella } from "lucide-react"
 
 import { cn } from "@/design-system/utils/tokens"
+import { ActionPill } from "./action-pill"
 import { SectionCard } from "./section-card"
 import { StaffListItem } from "./staff-list-item"
 
@@ -45,26 +46,35 @@ function StaffScheduleCard({
   sections = [],
   onEdit,
   canEdit = true,
+  // Palavra no lugar do lápis (ex.: "Editar" na Home, dono 31/08) — opt-in
+  // para não mudar as outras telas que usam o card.
+  editLabel,
   variant = "default",
   className,
   ...props
 }) {
   // Renderizar botão de edição se canEdit
   const headerAction = canEdit && onEdit ? (
-    <button
-      type="button"
-      onClick={onEdit}
-      className={cn(
-        "inline-flex h-10 w-10 items-center justify-center rounded-full",
-        "text-primary",
-        "hover:bg-muted dark:hover:bg-muted",
-        "transition-colors",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      )}
-      aria-label="Editar escala"
-    >
-      <Pencil className="h-5 w-5" strokeWidth={2} />
-    </button>
+    editLabel ? (
+      <ActionPill onClick={onEdit} aria-label="Editar escala">
+        {editLabel}
+      </ActionPill>
+    ) : (
+      <button
+        type="button"
+        onClick={onEdit}
+        className={cn(
+          "inline-flex h-10 w-10 items-center justify-center rounded-full",
+          "text-primary",
+          "hover:bg-muted dark:hover:bg-muted",
+          "transition-colors",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        )}
+        aria-label="Editar escala"
+      >
+        <Pencil className="h-5 w-5" strokeWidth={2} />
+      </button>
+    )
   ) : null
 
   const titleContent = meta ? (

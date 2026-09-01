@@ -10,6 +10,7 @@ export { EditStaffModal } from "./edit-staff-modal"
 export { AssignStaffModal } from "./assign-staff-modal"
 
 // Cards
+export { ActionPill } from "./action-pill"
 export { SectionCard } from "./section-card"
 export { ComunicadosCard } from "./comunicados-card"
 export { PlantaoCard } from "./plantao-card"

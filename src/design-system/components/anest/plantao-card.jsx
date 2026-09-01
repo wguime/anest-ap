@@ -1,9 +1,10 @@
 import * as React from "react"
-import { Calendar, ChevronRight, ChevronDown, ChevronUp } from "lucide-react"
+import { Calendar } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 
 import { cn } from "@/design-system/utils/tokens"
 import { Badge } from "@/design-system/components/ui"
+import { ActionPill } from "./action-pill"
 import { PlantaoListItem } from "./plantao-list-item"
 
 /**
@@ -132,46 +133,20 @@ function PlantaoCard({
             </Badge>
           ) : null}
 
-          {/* Botão expandir/recolher para fins de semana */}
+          {/* Botão expandir/recolher para fins de semana — pill modelo "Extrato" (dono 31/08) */}
           {expandable && hasMore ? (
-            <button
-              type="button"
+            <ActionPill
               onClick={onToggleExpand}
-              className={cn(
-                "inline-flex items-center gap-1 text-[12px] sm:text-[13px] font-semibold",
-                "text-primary",
-                "hover:opacity-80 transition-opacity",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                "min-h-[44px] px-2"
-              )}
               aria-label={expanded ? "Recolher" : "Ver todos"}
               aria-expanded={expanded}
             >
-              <span>{expanded ? 'Recolher' : 'Ver todos'}</span>
-              {expanded ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-            </button>
+              {expanded ? 'Recolher' : 'Ver todos'}
+            </ActionPill>
           ) : null}
 
           {/* Ver todos - navegação (quando não é expandable) */}
           {!expandable && onViewAll ? (
-            <button
-              type="button"
-              onClick={onViewAll}
-              className={cn(
-                "inline-flex items-center gap-1 text-[12px] sm:text-[13px] font-semibold",
-                "text-primary",
-                "hover:opacity-80 transition-opacity",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                "min-h-[44px] px-2"
-              )}
-            >
-              <span>Ver todos</span>
-              <ChevronRight className="h-4 w-4" />
-            </button>
+            <ActionPill onClick={onViewAll}>Ver todos</ActionPill>
           ) : null}
         </div>
       </div>

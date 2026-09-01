@@ -4,6 +4,7 @@ import { motion } from "framer-motion"
 
 import { cn } from "@/design-system/utils/tokens"
 import { Badge } from "@/design-system/components/ui"
+import { ActionPill } from "./action-pill"
 import { FeriasListItem } from "./ferias-list-item"
 
 /**
@@ -122,22 +123,14 @@ function FeriasCard({
           ) : null}
 
           {actionPill ? (
-            <button
-              type="button"
+            <ActionPill
               onClick={(e) => {
                 e.stopPropagation()
                 actionPill.onClick?.()
               }}
-              className={cn(
-                "inline-flex shrink-0 items-center justify-center rounded-[12px] px-[14px] py-[7px]",
-                "text-[12px] font-semibold leading-none bg-primary text-white",
-                // Dark: gradient espelha o pill "Acessar" do EscalaCirurgicaHomeCard
-                "dark:bg-[linear-gradient(135deg,#2ECC71_0%,#1E8449_100%)] dark:text-foreground dark:shadow-[0_2px_10px_rgba(46,204,113,0.15)]",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              )}
             >
               {actionPill.label}
-            </button>
+            </ActionPill>
           ) : null}
 
           {onViewAll ? (

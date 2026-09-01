@@ -4,9 +4,8 @@
  * todos com seletor segmentado (mesmo estilo do Cateter Peridural).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Upload } from 'lucide-react'
 import { PageHeader } from '@/components'
-import { Button } from '@/design-system'
+import { ActionPill } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { useEscalaDia } from '@/hooks/usePegaPlantao'
 import { useEscalaCirurgica, HOSPITAIS, HOSPITAL_LABEL, hojeISO } from '@/contexts/EscalaCirurgicaContext'
@@ -426,12 +425,11 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
             // O atalho de VÍNCULOS saiu do header (dono 16/08): é manutenção de
             // dicionário, não operação do plantão. A tela de vínculos segue
             // existindo (VinculosSheet) para ser religada onde fizer sentido.
-            // ⚠️ o outline sem ícone é do protótipo do FIM DE SEMANA (dono
-            // 24/08, 2ª mensagem): no dia útil o botão volta ao ghost com o
-            // ícone, como está desde o começo.
-            <Button size="sm" variant={chromeFilaUnica ? 'outline' : 'ghost'} onClick={() => feriado ? setImportandoFds(true) : setImportando(true)} aria-label="Importar escala">
-              {!chromeFilaUnica && <Upload className="w-4 h-4" />} Importar
-            </Button>
+            // Pill modelo "Extrato" nos DOIS modos (dono 31/08) — substitui o
+            // par ghost-com-ícone (dia útil) / outline (FDS) de 24/08.
+            <ActionPill onClick={() => feriado ? setImportandoFds(true) : setImportando(true)} aria-label="Importar escala">
+              Importar
+            </ActionPill>
           ) : null
         }
       />
