@@ -483,12 +483,15 @@ export default function BalancoHidricoTransopDisplay() {
   /* Duas linhas, não uma corrida: quem é o PACIENTE e como é o CASO. Numa
      linha só, "65 kg · 1,70 m · mulher · 47 anos · jejum 8 h · pequeno porte ·
      Ht 38 → 25 · ClCr 102" quebra no meio de um assunto e não dá para varrer. */
+  /* Ordem pedida pelo dono (01/09): quem é a pessoa antes das medidas —
+     "mulher · 47a · 60 kg · 1,70 m". Idade abreviada porque "anos" por extenso
+     empurrava a linha sem acrescentar nada. */
   const resumoCorpo = [
+    sexo === 'masculino' ? 'homem' : sexo === 'feminino' ? 'mulher' : null,
+    idadeN > 0 && `${numeroBr(idadeN)}a`,
+    isPediatric && PED_CATEGORY_OPTIONS.find((o) => o.value === pedCategory)?.label.split(' (')[0],
     pesoN > 0 && `${numeroBr(pesoN, pesoN % 1 ? 1 : 0)} kg`,
     alturaN > 0 && `${numeroBr(alturaN / 100, 2)} m`,
-    sexo === 'masculino' ? 'homem' : sexo === 'feminino' ? 'mulher' : null,
-    idadeN > 0 && `${numeroBr(idadeN)} anos`,
-    isPediatric && PED_CATEGORY_OPTIONS.find((o) => o.value === pedCategory)?.label.split(' (')[0],
   ].filter(Boolean).join(' · ');
 
   const resumoCaso = [
@@ -552,7 +555,7 @@ export default function BalancoHidricoTransopDisplay() {
         className={cn(
           'rounded-xl border border-border-strong bg-card deitado:col-span-2 deitado:row-start-1',
           // recolhido não precisa do respiro de um formulário aberto
-          mostrarPaciente ? 'p-4 space-y-4' : 'px-4 py-3 space-y-1'
+          mostrarPaciente ? 'p-4 space-y-4' : 'px-4 py-2.5 space-y-0.5'
         )}
       >
         {/* ⚠️ O paciente é a PRIMEIRA seção e recolhe sozinha depois de
@@ -574,7 +577,11 @@ export default function BalancoHidricoTransopDisplay() {
               onClick={() => setPacienteAberto(!mostrarPaciente)}
               aria-expanded={mostrarPaciente}
               aria-controls="preop-campos"
-              className="text-muted-foreground min-h-[44px] shrink-0"
+              /* ⚠️ `-my-2`: o botão precisa dos 44px de alvo de toque, mas a
+                 linha do título tem ~24px — sem isso ele estica a linha inteira
+                 e abre o vão que o dono apontou. A área de toque continua
+                 inteira; só o espaço que ela reservava sai. */
+              className="text-muted-foreground min-h-[44px] shrink-0 -my-2 px-2"
             >
               {mostrarPaciente ? 'ocultar' : 'alterar'}
               <ChevronRight
