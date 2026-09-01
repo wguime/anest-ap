@@ -554,8 +554,8 @@ export default function BalancoHidricoTransopDisplay() {
             </span>
             {result.abl > 0 && (
               <span>
-                Sangue até transfundir{' '}
-                <b className="text-foreground">{numeroBr(result.ablRestante)}</b>
+                Pode sangrar mais{' '}
+                <b className="text-foreground">{numeroBr(result.ablRestante)}</b> ml
               </span>
             )}
           </div>
@@ -942,15 +942,17 @@ export default function BalancoHidricoTransopDisplay() {
             />
             {/* ⚠️ "Perda permitida" sozinho não dizia perda DE QUÊ (dono 31/08).
                 Sangue é o único jeito de não confundir com perda de volume. */}
+            {/* ⚠️ O número em destaque é quanto o paciente AINDA PODE SANGRAR,
+                não o total permitido: é ele que decide transfundir. "Sangue até
+                transfundir" foi lido pelo dono como "sangue A transfundir" —
+                o oposto do que significa (31/08). */}
             <MetricCard
-              label="Perda sanguínea permitida"
-              value={result.abl > 0 ? numeroBr(result.abl) : '—'}
+              label="Pode sangrar mais"
+              value={result.abl > 0 ? numeroBr(result.ablRestante) : '—'}
               unit={
                 result.abl <= 0
                   ? 'informe o Ht'
-                  : temHoras
-                    ? `ml · restam ${numeroBr(result.ablRestante)}`
-                    : 'ml de sangue'
+                  : `ml até transfundir (de ${numeroBr(result.abl)})`
               }
               accent={result.abl > 0 ? 'warning' : 'default'}
             />
