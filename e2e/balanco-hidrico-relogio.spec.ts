@@ -130,7 +130,7 @@ test.describe('Balanço Hídrico — relógio do procedimento', () => {
       await page.getByRole('button', { name: /ocultar as horas/i }).click();
 
       await page
-        .locator('[aria-labelledby="horas-heading"]')
+        .locator('[aria-label="Hora a hora"]')
         .screenshot({ path: `e2e/__screenshots__/bh-relogio-${tema}.png` });
     });
   }
@@ -153,7 +153,7 @@ test.describe('Balanço Hídrico — relógio do procedimento', () => {
     await expect(page.getByRole('button', { name: /^Já são \d{2}:\d{2}\. Abrir a hora 3$/ })).toBeVisible();
 
     await page
-      .locator('[aria-labelledby="horas-heading"]')
+      .locator('[aria-label="Hora a hora"]')
       .screenshot({ path: 'e2e/__screenshots__/bh-relogio-virada.png' });
   });
 

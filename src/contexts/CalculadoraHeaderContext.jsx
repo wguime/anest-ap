@@ -10,12 +10,28 @@ import { createContext, useContext, useMemo, useState } from 'react';
  *
  * O display registra a ação quando ela faz sentido (no Balanço, só quando há
  * hora registrada) e a retira ao desmontar.
+ *
+ * São DOIS slots, em dois lugares diferentes da tela:
+ * - `acao` → pill no header do app, ao lado do "Voltar" (é o Transferir).
+ * - `acaoTitulo` → botão de ícone à direita do TÍTULO da calculadora, dentro
+ *   da página (`CalculatorShowcase`). Nasceu do "Limpar" do Balanço Hídrico,
+ *   que o dono tirou de dentro do card (02/09). Sem ninguém registrando, o
+ *   título das outras 60 calculadoras fica exatamente como está.
  */
-const CalculadoraHeaderContext = createContext({ acao: null, registrarAcao: () => {} });
+const CalculadoraHeaderContext = createContext({
+  acao: null,
+  registrarAcao: () => {},
+  acaoTitulo: null,
+  registrarAcaoTitulo: () => {},
+});
 
 export function CalculadoraHeaderProvider({ children }) {
   const [acao, registrarAcao] = useState(null);
-  const valor = useMemo(() => ({ acao, registrarAcao }), [acao]);
+  const [acaoTitulo, registrarAcaoTitulo] = useState(null);
+  const valor = useMemo(
+    () => ({ acao, registrarAcao, acaoTitulo, registrarAcaoTitulo }),
+    [acao, acaoTitulo]
+  );
   return (
     <CalculadoraHeaderContext.Provider value={valor}>{children}</CalculadoraHeaderContext.Provider>
   );

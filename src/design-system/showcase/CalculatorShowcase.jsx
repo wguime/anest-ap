@@ -22,6 +22,7 @@ import { ClinicalDisclaimer } from '../components/anest/clinical-disclaimer';
 import { ClassificacoesDisplay } from './displays/ClassificacoesDisplay';
 import { Input } from '../components/ui/input';
 import { useUser } from '../../contexts/UserContext';
+import { useCalculadoraHeader } from '../../contexts/CalculadoraHeaderContext';
 
 // A seção "Indicação de UTI" reaproveita a renderização que já existe na
 // `CriteriosUTIPage` — árvore de decisão, seções com subtotal e interpretação
@@ -1973,6 +1974,8 @@ function SelectAsCards({ input, value, onChange }) {
 function CalculatorPage({ calculator, _onBack }) {
   const [inputs, setInputs] = useState({});
   const [result, setResult] = useState(null);
+  // Slot à direita do título — vazio em quem não registra (ver o contexto).
+  const { acaoTitulo } = useCalculadoraHeader();
 
   const handleInputChange = (inputId, value) => {
     setInputs((prev) => ({ ...prev, [inputId]: value }));
@@ -2030,10 +2033,30 @@ function CalculatorPage({ calculator, _onBack }) {
          calculadoras; nenhuma rolava na horizontal aqui. */
       className="px-2 pt-0 pb-3 lg:p-6 space-y-4 lg:space-y-6 min-h-dvh bg-background overflow-x-clip"
     >
-      {/* Header — back button e limpar removidos; navegação via header global */}
-      <div>
-        <h1 className="text-lg font-bold text-foreground leading-tight">{calculator.title}</h1>
-        <p className="text-xs text-muted-foreground">{calculator.subtitle}</p>
+      {/* Header — back button e limpar removidos; navegação via header global.
+          ⚠️ O slot da direita só existe quando a calculadora REGISTRA uma ação
+          (`registrarAcaoTitulo`): sem registro o `<div>` extra não muda nada, e
+          as outras 60 telas ficam idênticas. Nasceu do "Limpar" do Balanço
+          Hídrico, que o dono tirou de dentro do card (02/09) — o card perdeu o
+          próprio título, e o botão precisava de casa. */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="text-lg font-bold text-foreground leading-tight">{calculator.title}</h1>
+          <p className="text-xs text-muted-foreground">{calculator.subtitle}</p>
+        </div>
+        {acaoTitulo && (
+          <button
+            type="button"
+            onClick={acaoTitulo.onClick}
+            aria-label={acaoTitulo.ariaLabel}
+            title={acaoTitulo.ariaLabel}
+            /* `-mt-2 -mr-2`: o alvo de 44px não pode empurrar a linha do
+               título, que é a mesma das 61 calculadoras. */
+            className="shrink-0 -mt-2 -mr-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive transition-colors"
+          >
+            {acaoTitulo.icone}
+          </button>
+        )}
       </div>
 
       {/* Boolean inputs as RiskFactorCards */}

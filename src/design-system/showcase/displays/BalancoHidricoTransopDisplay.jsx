@@ -411,7 +411,7 @@ export default function BalancoHidricoTransopDisplay() {
      assume. Sem edição simultânea não há conflito (dono 01/09). */
   const { user } = useUser();
   const { options: colegas } = useRosterAnestesistas();
-  const { registrarAcao } = useCalculadoraHeader();
+  const { registrarAcao, registrarAcaoTitulo } = useCalculadoraHeader();
   const [transferindo, setTransferindo] = useState(false);
   const [colegaId, setColegaId] = useState('');
   const [enviando, setEnviando] = useState(false);
@@ -555,7 +555,10 @@ export default function BalancoHidricoTransopDisplay() {
       return proximo;
     });
 
-  const resetAll = () => {
+  /* `useCallback([])`: o reiniciar virou ação registrada no header do
+     título, e um `resetAll` recriado a cada render faria o effect que o
+     registra rodar sem parar. Só chama setters, que já são estáveis. */
+  const resetAll = useCallback(() => {
     setHoras([]);
     setHoraAtiva(0);
     setInicioData('');
@@ -573,7 +576,7 @@ export default function BalancoHidricoTransopDisplay() {
     } catch {
       /* nada a fazer */
     }
-  };
+  }, []);
 
   /* Resumo do paciente para a linha recolhida. Só entra o que foi preenchido —
      um resumo com "— kg · — cm" seria pior que nenhum. */
@@ -620,6 +623,22 @@ export default function BalancoHidricoTransopDisplay() {
     );
     return () => registrarAcao(null);
   }, [temHoras, registrarAcao]);
+
+  /* O reiniciar mora ao lado do TÍTULO da calculadora, não dentro do card
+     (dono 02/09). Só existe com registro na tela: um botão de apagar sempre
+     visível, numa tela sem nada a apagar, convida ao clique errado. */
+  useEffect(() => {
+    registrarAcaoTitulo(
+      temHoras
+        ? {
+            ariaLabel: 'Limpar todos os registros',
+            onClick: resetAll,
+            icone: <RotateCcw className="w-5 h-5" aria-hidden="true" />,
+          }
+        : null
+    );
+    return () => registrarAcaoTitulo(null);
+  }, [temHoras, registrarAcaoTitulo, resetAll]);
 
   // Uma transferência esperando por mim, se houver.
   useEffect(() => {
@@ -992,16 +1011,19 @@ export default function BalancoHidricoTransopDisplay() {
           aria-labelledby="balanco-heading"
           aria-live="polite"
           className={cn(
-            /* ⚠️ FAIXA, não cartão. Grudado, um cartão arredondado desliza por
-               CIMA de outro cartão e lê como elemento solto — foi o "cards
-               flutuando" que o dono relatou (31/08). Barra de largura total,
-               com borda em cima e embaixo, é o que se espera que grude. */
-            '-mx-2 px-4 py-2.5 space-y-1 border-y border-border-strong bg-card',
+            /* ⚠️ CARTÃO, igual ao do Paciente — dono 02/09: "quero que o card
+               de baixo fique igual ao de cima". Era faixa de largura total
+               desde 31/08, quando o cartão arredondado deslizando sobre os
+               outros foi lido como "cards flutuando"; o dono reviu a decisão
+               com a tela pronta. Continua GRUDADO no topo: o número precisa
+               estar à vista enquanto se digita a hora, e há teste medindo isso
+               (`balanco-hidrico-layout.spec.ts`). */
+            'rounded-xl border border-border-strong bg-card px-4 py-2.5 space-y-1',
             // `top-14` e não `top-0`: o cabeçalho do app é fixo com espaçador
             // `h-14` (App.jsx:519), e grudar em 0 enfiava o número por baixo
             // dele — visto ao rolar, nos dois sentidos.
             'sticky top-14 z-20',
-            'deitado:col-start-2 deitado:row-start-2 deitado:mx-0 deitado:rounded-xl deitado:border'
+            'deitado:col-start-2 deitado:row-start-2'
           )}
         >
           {/* Deitado a coluna tem ~305px: lado a lado, o rótulo quebrava em duas
@@ -1051,39 +1073,19 @@ export default function BalancoHidricoTransopDisplay() {
         </section>
       )}
 
-      {/* 2. ACOMPANHAMENTO — uma hora por vez, fita rolável */}
+      {/* 2. ACOMPANHAMENTO — uma hora por vez, fita rolável.
+          ⚠️ SEM título próprio (dono 02/09): "Hora a hora" repetia o que a fita
+          e a pill da hora já dizem, e o card é o único da tela com um. O
+          "Limpar" que morava ao lado dele foi para a direita do TÍTULO da
+          calculadora, via `registrarAcaoTitulo`. O nome continua existindo para
+          quem usa leitor de tela, no `aria-label` da seção. */}
       <section
-        aria-labelledby="horas-heading"
+        aria-label="Hora a hora"
         className={cn(
           'rounded-xl border border-border-strong bg-card p-4 space-y-3',
           'deitado:col-start-1 deitado:row-start-2'
         )}
       >
-        {/* ⚠️ Sem `flex-wrap`: o título é longo e o "Limpar" caía para a linha
-            de baixo virando um bloco vermelho proeminente — ação destrutiva não
-            deve competir com o conteúdo. Título encurtado e botão só com ícone. */}
-        <div className="flex items-center justify-between gap-2">
-          <h3
-            id="horas-heading"
-            className="text-base font-semibold text-foreground flex items-center gap-2 min-w-0"
-          >
-            <Clock className="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
-            Hora a hora
-          </h3>
-          {temHoras && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={resetAll}
-              className="text-muted-foreground hover:text-destructive min-h-[44px] min-w-[44px] shrink-0"
-              aria-label="Limpar todos os registros"
-              title="Limpar todos os registros"
-            >
-              <RotateCcw className="w-4 h-4" aria-hidden="true" />
-            </Button>
-          )}
-        </div>
-
         {!hasPreop && (
           <p className="text-sm text-muted-foreground italic">
             Preencha o peso primeiro para iniciar o registro.
@@ -1284,6 +1286,12 @@ export default function BalancoHidricoTransopDisplay() {
               </Button>
             </div>
 
+            {/* A série de diurese mora colada na FITA (dono 02/09): as barras
+                são as mesmas horas das abas logo acima, e lidas juntas mostram
+                a tendência sem sair do bloco. O livro e os alertas continuam
+                no cartão de baixo — ali é consulta, aqui é acompanhamento. */}
+            <SerieDiurese diureses={result.diureses} meta={result.goalRate} ativa={indiceAtivo} />
+
             <HoraCampos
               hora={horas[indiceAtivo]}
               onChange={(next) => updateHora(indiceAtivo, next)}
@@ -1304,15 +1312,14 @@ export default function BalancoHidricoTransopDisplay() {
         )}
       </section>
 
-      {/* 1b. SÉRIE, LIVRO E ALERTAS — rolam. Ficam acima dos campos, então
-          continuam sendo a primeira coisa lida ao abrir a tela. */}
+      {/* 1b. LIVRO E ALERTAS — rolam. A série saiu daqui em 02/09 e foi para
+          junto da fita; sobrou o que é CONSULTA: as 12 horas em tabela e os
+          alertas amarelos. */}
       {hasPreop && temHoras && (
         <section
           aria-label="Tendência e alertas"
           className="rounded-xl border border-border-strong bg-card p-4 space-y-3 deitado:col-start-2 deitado:row-start-3"
         >
-          <SerieDiurese diureses={result.diureses} meta={result.goalRate} ativa={indiceAtivo} />
-
           <Button
             variant="outline"
             size="sm"
