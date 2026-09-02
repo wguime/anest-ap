@@ -1,8 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { numeroBr } from '../../../lib/numeroBr';
+import { useUser } from '@/contexts/UserContext';
+import useRosterAnestesistas from '@/hooks/useRosterAnestesistas';
+import { useCalculadoraHeader } from '@/contexts/CalculadoraHeaderContext';
+import {
+  transferirBalanco,
+  buscarTransferenciaPendente,
+  assumirTransferencia,
+  recusarTransferencia,
+} from '@/services/balancoTransferenciaService';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../../components/ui/sheet';
 import {
   Droplets,
   ChevronRight,
+  ArrowDownToLine,
   Plus,
   Trash2,
   AlertTriangle,
@@ -152,6 +163,19 @@ function PillToggle({ value, onChange }) {
       })}
     </div>
   );
+}
+
+/** Resumo curto de um payload recebido — mesma leitura do card do paciente. */
+function resumoDoPayload(payload) {
+  const s = payload?.sexo;
+  return [
+    s === 'masculino' ? 'homem' : s === 'feminino' ? 'mulher' : null,
+    payload?.idade && `${payload.idade}a`,
+    payload?.peso && `${payload.peso} kg`,
+    payload?.altura && `${numeroBr(Number(payload.altura) / 100, 2)} m`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 }
 
 function SexoToggle({ value, onChange }) {
@@ -349,6 +373,18 @@ export default function BalancoHidricoTransopDisplay() {
   /* `null` = automático: aberto enquanto não há peso, recolhido depois. Um
      clique fixa a escolha e ela passa a valer sobre o automático. */
   const [pacienteAberto, setPacienteAberto] = useState(null);
+
+  /* ── Transferência para um colega ──────────────────────────────────────
+     Entrega, não sincronia: quem passa envia e perde o registro; quem recebe
+     assume. Sem edição simultânea não há conflito (dono 01/09). */
+  const { user } = useUser();
+  const { options: colegas } = useRosterAnestesistas();
+  const { registrarAcao } = useCalculadoraHeader();
+  const [transferindo, setTransferindo] = useState(false);
+  const [colegaId, setColegaId] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const [erroTransf, setErroTransf] = useState('');
+  const [recebida, setRecebida] = useState(null);
   const fitaRef = useRef(null);
 
   const isPediatric = populacao === 'pediatrico';
@@ -505,6 +541,97 @@ export default function BalancoHidricoTransopDisplay() {
 
   const mostrarPaciente = pacienteAberto ?? !hasPreop;
 
+  /* O pill "Transferir" só existe quando há hora registrada: sem registro não
+     há o que passar, e botão inerte no header — que é das 61 calculadoras —
+     é pior que a ausência dele. */
+  useEffect(() => {
+    registrarAcao(
+      temHoras
+        ? {
+            label: 'Transferir',
+            ariaLabel: 'Transferir balanço para um colega',
+            onClick: () => {
+              setErroTransf('');
+              setTransferindo(true);
+            },
+          }
+        : null
+    );
+    return () => registrarAcao(null);
+  }, [temHoras, registrarAcao]);
+
+  // Uma transferência esperando por mim, se houver.
+  useEffect(() => {
+    let vivo = true;
+    if (!user) return undefined;
+    buscarTransferenciaPendente(user)
+      .then((t) => vivo && setRecebida(t))
+      .catch(() => {
+        /* sem sinal na sala: a calculadora continua funcionando offline */
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [user]);
+
+  const rascunhoAtual = {
+    populacao, pedCategory, peso, npoHoras, porte, hctInicial, hctMinimo, horas,
+    sexo, altura, idade, creatinina,
+  };
+
+  const enviarTransferencia = async () => {
+    setEnviando(true);
+    setErroTransf('');
+    try {
+      await transferirBalanco({ userInfo: user, paraUserId: colegaId, rascunho: rascunhoAtual });
+      // Entrega limpa: quem passou perde o registro, para não haver dois
+      // lançando no mesmo paciente (decisão do dono 01/09).
+      resetAll();
+      setTransferindo(false);
+      setColegaId('');
+    } catch (e) {
+      setErroTransf(e?.message || 'Não foi possível transferir. Tente de novo.');
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  const assumirRecebida = async () => {
+    try {
+      const payload = await assumirTransferencia({ userInfo: user, id: recebida.id });
+      if (payload) {
+        setPopulacao(payload.populacao ?? 'adulto');
+        setPedCategory(payload.pedCategory ?? 'crianca');
+        setPeso(payload.peso ?? '');
+        setAltura(payload.altura ?? '');
+        setSexo(payload.sexo ?? '');
+        setIdade(payload.idade ?? '');
+        setCreatinina(payload.creatinina ?? '');
+        setNpoHoras(payload.npoHoras ?? '');
+        setPorte(payload.porte ?? 'medio');
+        setHctInicial(payload.hctInicial ?? '');
+        setHctMinimo(payload.hctMinimo ?? '25');
+        setHoras(Array.isArray(payload.horas) ? payload.horas : []);
+        setHoraAtiva(Math.max(0, (payload.horas?.length ?? 1) - 1));
+        setPacienteAberto(false);
+      }
+      setRecebida(null);
+    } catch {
+      setErroTransf('Não foi possível assumir agora.');
+    }
+  };
+
+  const recusarRecebida = async () => {
+    try {
+      await recusarTransferencia({ userInfo: user, id: recebida.id });
+    } finally {
+      setRecebida(null);
+    }
+  };
+
+  const nomeDe = (uid) => colegas?.find((o) => o.value === uid)?.label || 'Um colega';
+  const horasRecebidas = recebida?.payload?.horas?.length ?? 0;
+
   const balancoAccent = (() => {
     const b = result.balancoNet;
     if (Math.abs(b) < 500) return 'text-primary';
@@ -549,6 +676,49 @@ export default function BalancoHidricoTransopDisplay() {
         'deitado:space-y-0 deitado:grid deitado:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] deitado:gap-3 deitado:items-start'
       )}
     >
+      {/* 0. RECEBIDO DE UM COLEGA — antes de tudo: é decisão a tomar antes de
+             olhar qualquer número, e assumir SUBSTITUI o que está na tela. */}
+      {recebida && (
+        <section
+          aria-label="Balanço recebido"
+          className="rounded-xl border border-primary/50 bg-accent dark:bg-card p-4 space-y-3 deitado:col-span-2"
+        >
+          <div className="flex items-start gap-2">
+            <ArrowDownToLine className="w-4 h-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">
+                {nomeDe(recebida.de_user_id)} transferiu um balanço
+              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {horasRecebidas} {horasRecebidas === 1 ? 'hora' : 'horas'}
+                {resumoDoPayload(recebida.payload) && ` · ${resumoDoPayload(recebida.payload)}`}
+              </p>
+            </div>
+          </div>
+
+          {/* ⚠️ Sem este aviso, assumir apagaria em silêncio horas de OUTRO
+              paciente — é a perda que esta tela existe para evitar. */}
+          {temHoras && (
+            <p className="flex items-start gap-2 rounded-lg border border-warning/50 bg-warning/10 p-2.5 text-xs text-foreground">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden="true" />
+              <span>
+                Você tem um balanço de <b>{horas.length} {horas.length === 1 ? 'hora' : 'horas'}</b>{' '}
+                em andamento. Assumir substitui o seu.
+              </span>
+            </p>
+          )}
+
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={recusarRecebida} className="flex-1 min-h-[44px]">
+              Recusar
+            </Button>
+            <Button onClick={assumirRecebida} className="flex-1 min-h-[44px]">
+              Assumir
+            </Button>
+          </div>
+        </section>
+      )}
+
       {/* 3. PRÉ-OP */}
       <section
         aria-labelledby="preop-heading"
@@ -1216,6 +1386,55 @@ export default function BalancoHidricoTransopDisplay() {
           </details>
         </section>
       )}
+      {/* Folha de transferência — aberta pelo pill do header. */}
+      <Sheet open={transferindo} onOpenChange={(o) => !o && setTransferindo(false)}>
+        <SheetContent side="bottom" className="!h-auto max-h-[88vh]">
+          <SheetHeader className="pb-2">
+            <SheetTitle>Transferir balanço</SheetTitle>
+          </SheetHeader>
+
+          <div className="space-y-3 pb-2">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {horas.length} {horas.length === 1 ? 'hora registrada' : 'horas registradas'}
+              {resumoCorpo && ` · ${resumoCorpo}`}. Depois de transferir, o registro sai deste
+              aparelho.
+            </p>
+
+            <Select
+              label="Colega que vai receber"
+              options={(colegas || []).filter((o) => o.value !== user?.uid)}
+              value={colegaId}
+              onChange={setColegaId}
+              placeholder="Escolha o colega"
+              searchable
+            />
+
+            {erroTransf && (
+              <p className="flex items-start gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-2.5 text-xs text-foreground">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden="true" />
+                <span>{erroTransf}</span>
+              </p>
+            )}
+
+            <div className="flex gap-2 pt-1">
+              <Button
+                variant="outline"
+                onClick={() => setTransferindo(false)}
+                className="flex-1 min-h-[44px]"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={enviarTransferencia}
+                disabled={!colegaId || enviando}
+                className="flex-1 min-h-[44px]"
+              >
+                {enviando ? 'Transferindo…' : 'Transferir'}
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

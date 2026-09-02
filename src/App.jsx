@@ -11,6 +11,8 @@ import { BottomNav, ErrorBoundary, useToast, useSwipeBack, useCommandPaletteShor
 const AppCommandPalette = lazy(() => import("./components/AppCommandPalette"))
 import { PageLoadingFallback } from "@/design-system/components/anest/page-loading-fallback"
 import { SearchToggleButton } from "@/design-system/components/anest/search-toggle-button"
+import { ActionPill } from "@/design-system/components/anest/action-pill"
+import { CalculadoraHeaderProvider, useCalculadoraHeader } from "@/contexts/CalculadoraHeaderContext"
 import { SearchBar } from "@/design-system/components/anest/search-bar"
 import { Collapsible, CollapsibleContent } from "@/design-system/components/ui/collapsible"
 
@@ -440,7 +442,18 @@ import { CirurgiasParticularesProvider } from "./contexts/CirurgiasParticularesC
 // Braden vive no módulo Qualidade sem voltar para a lista de Calculadoras, de
 // onde o dono a tirou. `titulo` acompanha, senão o cabeçalho diria
 // "Calculadoras" numa página que existe justamente para não ser isso.
-function CalculadorasPageWrapper({ _onNavigate, goBack, params, onCalculatorOpen, titulo = 'Calculadoras', calcFixa = null }) {
+function CalculadorasPageWrapper(props) {
+  // O provider precisa envolver o CONTEÚDO e o HEADER: o display registra a
+  // ação, o header a consome. Por isso a página virou duas funções.
+  return (
+    <CalculadoraHeaderProvider>
+      <CalculadorasPageConteudo {...props} />
+    </CalculadoraHeaderProvider>
+  );
+}
+
+function CalculadorasPageConteudo({ _onNavigate, goBack, params, onCalculatorOpen, titulo = 'Calculadoras', calcFixa = null }) {
+  const { acao: acaoHeader } = useCalculadoraHeader();
   // Estado da calculadora selecionada é gerenciado aqui para que o botão
   // "Voltar" do header feche o detalhe antes de sair da página.
   // Deep-link via ⌘K: params.calcId abre a calculadora direto (lazy initializer —
@@ -496,6 +509,14 @@ function CalculadorasPageWrapper({ _onNavigate, goBack, params, onCalculatorOpen
             {titulo}
           </h1>
           <div className="min-w-[70px] flex justify-end">
+            {/* Na tela de DETALHE este canto fica vazio (a lupa só existe na
+                lista) — é onde entra a ação que a calculadora aberta declarar.
+                Mesmo ActionPill do "Importar" da Escala (dono 01/09). */}
+            {!showSearchToggle && acaoHeader && (
+              <ActionPill onClick={acaoHeader.onClick} aria-label={acaoHeader.ariaLabel}>
+                {acaoHeader.label}
+              </ActionPill>
+            )}
             {showSearchToggle && (
               <SearchToggleButton
                 size="sm"
