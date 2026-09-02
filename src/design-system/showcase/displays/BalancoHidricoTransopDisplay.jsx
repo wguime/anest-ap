@@ -18,6 +18,7 @@ import {
   Trash2,
   AlertTriangle,
   Clock,
+  CalendarClock,
   TrendingDown,
   User,
   Baby,
@@ -38,6 +39,16 @@ import {
   medido,
 } from '../../../lib/fluidBalance';
 import { pesosDeReferencia } from '../../../lib/pesoCorporal';
+import {
+  inicioProcedimento,
+  camposDoInstante,
+  dataCurta,
+  horaCurta,
+  rotuloHora,
+  faixaHora,
+  tempoDecorrido,
+  horaDoRelogio,
+} from '../../../lib/tempoProcedimento';
 
 /* ⚠️ O rótulo do Select ficava truncado no gatilho ("Médio porte (4 ml/kg/h) —
    colecistect...", relatado pelo dono): o dropdown do DS herda a largura do
@@ -294,7 +305,7 @@ function SerieDiurese({ diureses, meta, ativa }) {
 }
 
 /** Livro-razão: entrada, saída e saldo corrido de cada hora. */
-function LivroRazao({ horas, rate, tsLoss, meta }) {
+function LivroRazao({ horas, rate, tsLoss, meta, inicio }) {
   // Saldo corrido pré-calculado: acumular dentro do `map` do JSX é mutação
   // depois do render e o ESLint (react-hooks/immutability) reprova.
   const linhas = horas.reduce((acc, h) => {
@@ -307,9 +318,15 @@ function LivroRazao({ horas, rate, tsLoss, meta }) {
     return acc;
   }, []);
 
+  /* A coluna da hora abre de 38 para 50px quando há relógio — é o que faz
+     "07:30" caber embaixo do "h1" sem espremer entrada, saída e saldo. */
+  const grade = inicio
+    ? 'grid grid-cols-[50px_1fr_1fr_72px] gap-1.5'
+    : 'grid grid-cols-[38px_1fr_1fr_72px] gap-1.5';
+
   return (
     <div className="rounded-xl border border-border overflow-hidden">
-      <div className="grid grid-cols-[38px_1fr_1fr_72px] gap-1.5 px-2.5 py-1.5 bg-muted text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+      <div className={cn(grade, 'px-2.5 py-1.5 bg-muted text-[10px] font-bold uppercase tracking-wider text-muted-foreground')}>
         <span>h</span>
         <span>entrada</span>
         <span>saída</span>
@@ -318,9 +335,16 @@ function LivroRazao({ horas, rate, tsLoss, meta }) {
       {linhas.map((l, i) => (
         <div
           key={l.id}
-          className="grid grid-cols-[38px_1fr_1fr_72px] gap-1.5 px-2.5 py-2 text-[13px] tabular-nums border-t border-border"
+          className={cn(grade, 'px-2.5 py-2 text-[13px] tabular-nums border-t border-border')}
         >
-          <span className="font-bold text-primary">h{i + 1}</span>
+          <span data-testid="livro-hora" className="font-bold text-primary leading-tight">
+            {`h${i + 1}`}
+            {inicio && (
+              <span className="block text-[10px] font-semibold text-muted-foreground">
+                {rotuloHora(inicio, i + 1)}
+              </span>
+            )}
+          </span>
           <span>{numeroBr(l.entrada)}</span>
           <span className={cn(l.diurese !== null && l.diurese < meta && 'font-bold text-foreground')}>
             {numeroBr(l.saida)}
@@ -370,6 +394,14 @@ export default function BalancoHidricoTransopDisplay() {
   const [horas, setHoras] = useState(salvo?.horas ?? []);
   const [horaAtiva, setHoraAtiva] = useState(Math.max(0, (salvo?.horas?.length ?? 1) - 1));
   const [verLivro, setVerLivro] = useState(false);
+  /* ── Relógio do procedimento ───────────────────────────────────────────
+     Data e hora de início ancoram a série: sem elas a fita é "1 2 3", com elas
+     cada aba ganha o horário real da sala e o card conta o tempo corrido. Só
+     data e hora do CASO — nada que identifique o paciente. */
+  const [inicioData, setInicioData] = useState(salvo?.inicioData ?? '');
+  const [inicioHora, setInicioHora] = useState(salvo?.inicioHora ?? '');
+  const [inicioAberto, setInicioAberto] = useState(false);
+  const [agora, setAgora] = useState(() => new Date());
   /* `null` = automático: aberto enquanto não há peso, recolhido depois. Um
      clique fixa a escolha e ela passa a valer sobre o automático. */
   const [pacienteAberto, setPacienteAberto] = useState(null);
@@ -404,14 +436,14 @@ export default function BalancoHidricoTransopDisplay() {
         CHAVE_RASCUNHO,
         JSON.stringify({
           populacao, pedCategory, peso, npoHoras, porte, hctInicial, hctMinimo, horas,
-          sexo, altura, idade, creatinina,
+          sexo, altura, idade, creatinina, inicioData, inicioHora,
         })
       );
     } catch {
       /* modo privado ou armazenamento cheio: seguir sem persistir */
     }
   }, [populacao, pedCategory, peso, npoHoras, porte, hctInicial, hctMinimo, horas,
-      sexo, altura, idade, creatinina]);
+      sexo, altura, idade, creatinina, inicioData, inicioHora]);
 
   /* A fita mostra a hora ATIVA, não a hora 1. Com 12 horas a aba em uso nasce
    * fora de vista, e quem recarrega no meio da cirurgia não acha onde digitar.
@@ -480,7 +512,33 @@ export default function BalancoHidricoTransopDisplay() {
   const temHoras = horas.length > 0;
   const indiceAtivo = Math.min(horaAtiva, Math.max(0, horas.length - 1));
 
+  const inicio = useMemo(
+    () => inicioProcedimento(inicioData, inicioHora),
+    [inicioData, inicioHora]
+  );
+  const corrido = inicio ? tempoDecorrido(inicio, agora) : null;
+  /* O relógio passou do fim da última hora lançada e não há onde digitar o que
+     está entrando AGORA. Vira um convite de um toque — nunca uma hora criada
+     sozinha: hora em branco no meio da série entraria na conta como se tivesse
+     sido medida (manutenção e terceiro espaço contam por hora registrada). */
+  const horaDoRelogioAgora = inicio ? horaDoRelogio(inicio, agora) : 0;
+  const precisaAbrirHora = horaDoRelogioAgora > horas.length && horas.length > 0;
+
+  /* Um tique por minuto, e só enquanto há relógio para mexer: é o que mantém o
+     tempo corrido e o aviso de virada vivos sem redesenhar a tela à toa. */
+  useEffect(() => {
+    if (!inicio || horas.length === 0) return undefined;
+    const id = setInterval(() => setAgora(new Date()), 30000);
+    return () => clearInterval(id);
+  }, [inicio, horas.length]);
+
   const addHora = useCallback(() => {
+    /* A 1ª hora chega junto com o "agora": é o instante em que se começa a
+       lançar, e quem começou antes corrige a hora ali mesmo — dois toques em
+       vez de um formulário em branco. */
+    const sugerido = camposDoInstante();
+    setInicioData((d) => d || sugerido.data);
+    setInicioHora((h) => h || sugerido.hora);
     setHoras((arr) => {
       const proximo = [...arr, emptyHora()];
       setHoraAtiva(proximo.length - 1);
@@ -500,6 +558,9 @@ export default function BalancoHidricoTransopDisplay() {
   const resetAll = () => {
     setHoras([]);
     setHoraAtiva(0);
+    setInicioData('');
+    setInicioHora('');
+    setInicioAberto(false);
     setPeso('');
     setNpoHoras('');
     setHctInicial('');
@@ -576,7 +637,7 @@ export default function BalancoHidricoTransopDisplay() {
 
   const rascunhoAtual = {
     populacao, pedCategory, peso, npoHoras, porte, hctInicial, hctMinimo, horas,
-    sexo, altura, idade, creatinina,
+    sexo, altura, idade, creatinina, inicioData, inicioHora,
   };
 
   const enviarTransferencia = async () => {
@@ -613,6 +674,11 @@ export default function BalancoHidricoTransopDisplay() {
         setHctMinimo(payload.hctMinimo ?? '25');
         setHoras(Array.isArray(payload.horas) ? payload.horas : []);
         setHoraAtiva(Math.max(0, (payload.horas?.length ?? 1) - 1));
+        // O relógio do procedimento viaja junto: quem assume continua a MESMA
+        // cirurgia, e recomeçar a contagem do zero mentiria sobre o tempo.
+        setInicioData(payload.inicioData ?? '');
+        setInicioHora(payload.inicioHora ?? '');
+        setInicioAberto(false);
         setPacienteAberto(false);
       }
       setRecebida(null);
@@ -1030,6 +1096,80 @@ export default function BalancoHidricoTransopDisplay() {
           </p>
         )}
 
+        {/* ── Início do procedimento ──────────────────────────────────────
+            Faixa fina, não campos soltos: o início ancora a SÉRIE, então mora
+            com ela e continua à vista com o Paciente recolhido — que é onde o
+            tempo corrido importa (decisão do dono 02/09). */}
+        {hasPreop && temHoras && (
+          <div className="rounded-lg border border-border bg-muted px-2.5 py-2 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              {/* ⚠️ DUAS linhas, não uma corrida: a 393px "02/09 · 06:45 ·
+                  5 h 30 de procedimento" mais o "alterar" não cabem, e a linha
+                  única quebrava no meio da hora ("02/09 ·" / "06:45") e
+                  truncava o resto em "de proce…". Medido no e2e mobile. */}
+              <p className="flex flex-col min-w-0 text-xs leading-tight gap-0.5">
+                <span className="flex items-center gap-1.5">
+                  <CalendarClock
+                    className="w-3.5 h-3.5 text-muted-foreground shrink-0"
+                    aria-hidden="true"
+                  />
+                  {inicio ? (
+                    <b className="font-semibold text-foreground tabular-nums whitespace-nowrap">
+                      {dataCurta(inicio)} · {horaCurta(inicio)}
+                    </b>
+                  ) : (
+                    <span className="text-muted-foreground">Início não informado</span>
+                  )}
+                </span>
+                {corrido && (
+                  <span className="text-muted-foreground pl-5">{corrido} de procedimento</span>
+                )}
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setInicioAberto((v) => !v)}
+                aria-expanded={inicioAberto}
+                aria-controls="inicio-campos"
+                /* Mesmo `-my-2` do "alterar" do Paciente: mantém os 44px de
+                   alvo sem esticar a faixa, que é fina de propósito. */
+                className="text-muted-foreground min-h-[44px] shrink-0 -my-2 px-2 text-xs"
+              >
+                {inicioAberto ? 'ocultar' : inicio ? 'alterar' : 'informar'}
+                <ChevronRight
+                  className={cn(
+                    'w-4 h-4 ml-1 transition-transform',
+                    inicioAberto && 'rotate-90'
+                  )}
+                  aria-hidden="true"
+                />
+              </Button>
+            </div>
+
+            {/* ⚠️ Montagem condicional, e NÃO `hidden` como no bloco do
+                Paciente: `[hidden]{display:none}` e a utility `grid` têm a
+                mesma especificidade, e a utility vem depois na folha — o campo
+                ficava aberto o tempo todo (visto no e2e). Lá funciona porque
+                `space-y-4` não declara `display`. */}
+            {inicioAberto && (
+              <div id="inicio-campos" className="grid grid-cols-2 gap-2">
+                <Input
+                  type="date"
+                  label="Data de início"
+                  value={inicioData}
+                  onChange={(e) => setInicioData(e.target.value)}
+                />
+                <Input
+                  type="time"
+                  label="Hora de início"
+                  value={inicioHora}
+                  onChange={(e) => setInicioHora(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
         {hasPreop && temHoras && (
           <>
             {/* Fita de horas. Hand-rolled de propósito: o TabsContent do DS
@@ -1046,25 +1186,41 @@ export default function BalancoHidricoTransopDisplay() {
                 const d = medido(h.diurese);
                 const abaixoDaMeta = d !== null && d < result.goalRate;
                 const ativo = i === indiceAtivo;
+                /* O número FICA e o relógio entra embaixo (dono 02/09): o
+                   número é o que a conta usa e o que os alertas citam ("anúria
+                   na hora 3"); o relógio é como se procura a hora na sala. */
+                const relogio = inicio ? rotuloHora(inicio, i + 1) : '';
                 return (
                   <button
                     key={h.id}
                     type="button"
                     role="tab"
                     aria-selected={ativo}
-                    aria-label={`Hora ${i + 1}${abaixoDaMeta ? ', diurese abaixo da meta' : ''}`}
+                    aria-label={
+                      `Hora ${i + 1}` +
+                      (relogio ? `, ${faixaHora(inicio, i + 1)}` : '') +
+                      (abaixoDaMeta ? ', diurese abaixo da meta' : '')
+                    }
                     onClick={() => setHoraAtiva(i)}
                     className={cn(
-                      'shrink-0 min-w-[44px] min-h-[44px] px-3 rounded-xl text-sm font-bold',
-                      'flex items-center justify-center gap-1 transition-colors',
+                      'shrink-0 min-w-[44px] min-h-[44px] rounded-xl text-sm font-bold',
+                      'flex flex-col items-center justify-center transition-colors',
+                      relogio ? 'px-2.5 leading-tight' : 'px-3',
                       ativo
                         ? 'bg-card text-primary shadow-sm'
                         : 'text-muted-foreground hover:text-foreground'
                     )}
                   >
-                    {i + 1}
-                    {abaixoDaMeta && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-warning" aria-hidden="true" />
+                    <span className="flex items-center gap-1">
+                      {i + 1}
+                      {abaixoDaMeta && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-warning" aria-hidden="true" />
+                      )}
+                    </span>
+                    {relogio && (
+                      <span className="text-[10px] font-semibold opacity-80 tabular-nums">
+                        {relogio}
+                      </span>
                     )}
                   </button>
                 );
@@ -1079,10 +1235,27 @@ export default function BalancoHidricoTransopDisplay() {
               </button>
             </div>
 
+            {/* ⚠️ Convite, não automatismo: a hora nasce de um toque. Uma hora
+                criada sozinha entraria em branco na conta como se tivesse sido
+                medida — manutenção e terceiro espaço contam por hora
+                REGISTRADA (evaluateBalance: `rate * horas.length`). */}
+            {precisaAbrirHora && (
+              <Button
+                variant="outline"
+                onClick={addHora}
+                className="w-full min-h-[44px] border-primary/50 text-primary"
+                aria-label={`Já são ${horaCurta(agora)}. Abrir a hora ${horas.length + 1}`}
+              >
+                <Plus className="w-4 h-4 mr-1.5" aria-hidden="true" />
+                Já são {horaCurta(agora)} — abrir a hora {horas.length + 1}
+              </Button>
+            )}
+
             <div className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs font-semibold">
-                <Clock className="w-3.5 h-3.5" aria-hidden="true" />
+              <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs font-semibold tabular-nums">
+                <Clock className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                 Hora {indiceAtivo + 1}
+                {inicio && ` · ${faixaHora(inicio, indiceAtivo + 1)}`}
               </span>
               <Button
                 variant="ghost"
@@ -1145,6 +1318,7 @@ export default function BalancoHidricoTransopDisplay() {
               rate={result.rate}
               tsLoss={result.tsLoss}
               meta={result.goalRate}
+              inicio={inicio}
             />
           )}
 

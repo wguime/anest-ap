@@ -251,6 +251,24 @@ do scroll — não flutua sobre o cabeçalho fixo, que era o motivo de ele estar
   padrão estava no `InfoBox` do CalculatorShowcase e foi corrigido para TODAS as calculadoras (dono 25/08)** —
   o texto recuava 48px e agora recua 17px.
 
+**Balanço Hídrico Transoperatório — o relógio do procedimento** (dono 02/09/2026: "adicionar data e horário
+de início de procedimento e que acompanhem as horas de procedimento"). Data + hora de início vivem numa faixa
+fina DENTRO do bloco "Hora a hora" (o início ancora a série, e assim continua à vista com o Paciente
+recolhido); cada aba leva o número em cima e o relógio embaixo; a pill diz `Hora 3 · 09:30–10:30`. Aritmética
+em `src/lib/tempoProcedimento.js` (pura, 21 casos em `src/__tests__/lib/tempoProcedimento.test.js`); geometria
+e comportamento em `e2e/balanco-hidrico-relogio.spec.ts`.
+- ⚠️ **Nenhuma hora nasce sozinha.** Quando o relógio passa do fim da última hora lançada, aparece um CONVITE
+  de um toque ("Já são 10:35 — abrir a hora 4"). Hora criada por temporizador entraria em branco na conta como
+  se tivesse sido medida: `evaluateBalance` cobra manutenção e terceiro espaço por hora REGISTRADA
+  (`rate * horas.length`), então uma hora automática inventa volume que ninguém infundiu.
+- ⚠️ **`hidden` perde para uma utility que declara `display`.** `[hidden]{display:none}` e a classe `grid` têm
+  a mesma especificidade e a utility vem depois na folha — o formulário do início ficava aberto o tempo todo.
+  Onde o bloco recolhível também é `grid`/`flex`, montar condicionalmente (`{aberto && …}`); o `hidden` do
+  bloco Paciente só funciona porque `space-y-4` não declara `display`.
+- ⚠️ **O que viaja na transferência é lista fechada** (`balancoTransferenciaService.js`): campo novo do rascunho
+  que não entrar em `CAMPOS_PERMITIDOS` some ao passar o caso para o colega — foi preciso incluir
+  `inicioData`/`inicioHora`, senão quem assume recomeçaria a contagem do zero.
+
 **Critérios UTI** (feature separada): `src/data/criteriosUtiCalculators.js` + `src/pages/CriteriosUTIPage.jsx`
 5 ferramentas (SORT, ESS, SAS, SIAARTI 2025, CFM 2156). POTTER e P-POSSUM saíram em 29/08/2026
 (`docs/criterios-uti-revisao.md`). Desde então NÃO têm card próprio no Menu: entram como a 14ª seção

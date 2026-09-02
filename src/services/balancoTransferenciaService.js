@@ -17,9 +17,14 @@ const TABELA = 'balanco_hidrico_transferencia'
 /** Campos do rascunho que podem viajar. Lista fechada, não `...draft`: */
 /* um dia alguém acrescenta um campo com nome do paciente no rascunho local, e
    sem esta lista ele iria junto para o servidor sem ninguém notar. */
+/* `inicioData`/`inicioHora` são a data e a hora em que o PROCEDIMENTO começou —
+   dado do caso, não da pessoa. Viajam porque quem assume continua a mesma
+   cirurgia: sem eles a série perderia o relógio e o tempo corrido recomeçaria
+   do zero, mentindo sobre há quanto tempo o paciente está na mesa. */
 const CAMPOS_PERMITIDOS = [
   'populacao', 'pedCategory', 'peso', 'altura', 'sexo', 'idade',
   'creatinina', 'npoHoras', 'porte', 'hctInicial', 'hctMinimo', 'horas',
+  'inicioData', 'inicioHora',
 ]
 
 export function sanitizarPayload(rascunho) {
