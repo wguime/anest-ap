@@ -26,6 +26,11 @@ const { atualizarCaso } = vi.hoisted(() => ({ atualizarCaso: vi.fn(async () => {
 vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
   useEscalaCirurgicaActions: () => ({
     atualizarCaso,
+    // o formulário do caso (aberto pela porta "Editar dados da cirurgia") usa
+    // estas três; sem elas o destructuring quebra na montagem
+    adicionarCaso: vi.fn(async () => ({})),
+    excluirCaso: vi.fn(async () => {}),
+    definirSalasUrgencia: vi.fn(async () => {}),
     adicionarAjuda: vi.fn(async () => {}),
     removerAjuda: vi.fn(async () => {}),
     setStatusCirurgia: vi.fn(async () => {}),
@@ -65,9 +70,10 @@ const caso = {
 }
 const escala = { id: 'e1', hospital: 'hro', data: '2026-07-29', ajudaExterna: {}, casos: [caso] }
 
-const abrirDetalhe = () => {
+const abrirDetalhe = (c = caso) => {
   render(
-    <MinhasEscalasView escala={escala} meuAlias="MELO" meuUid="uid-melo" turno="vespertino" onVerBoard={vi.fn()} />,
+    <MinhasEscalasView escala={{ ...escala, casos: [c] }} meuAlias="MELO" meuUid="uid-melo"
+      turno="vespertino" onVerBoard={vi.fn()} />,
     { wrapper: wrap },
   )
   fireEvent.click(screen.getByRole('button', { name: /^Detalhes do caso/ }))
@@ -76,17 +82,13 @@ const abrirDetalhe = () => {
 beforeEach(() => atualizarCaso.mockClear())
 
 describe('Minhas — detalhe do caso vem COMPLETO', () => {
-  it('traz o residente — a linha mostra o valor e o botão abre a lista', () => {
-    abrirDetalhe()
+  it('traz o residente na leitura do painel', () => {
+    // desde 01/09 a linha é LEITURA (o seletor foi para o formulário do caso) e,
+    // como toda linha do cartão, some quando não há valor — antes ela mostrava
+    // "Sem residente" porque carregava o botão de trocar
+    abrirDetalhe({ ...caso, residente: 'Augusto', residenteUserId: 'uid-augusto' })
     expect(screen.getByText('Residente')).toBeTruthy()
-    // sem residente escolhido, a linha diz "Sem residente" (é o valor, não um vazio)
-    expect(screen.getByText('Sem residente')).toBeTruthy()
-    // desde 17/08 a lista já vem ABERTA no sheet do editor (nada de seletor
-    // fechado pedindo um segundo toque) — a Minhas usa o mesmo componente da
-    // Completa, então o que vale lá vale aqui
-    fireEvent.click(screen.getByRole('button', { name: 'Trocar residente' }))
-    expect(screen.getByRole('button', { name: 'Augusto' })).toBeTruthy()
-    expect(screen.queryByRole('combobox')).toBeNull()
+    expect(screen.getByText('Augusto')).toBeTruthy()
   })
 
   it('traz o tempo da cirurgia', () => {
@@ -98,11 +100,23 @@ describe('Minhas — detalhe do caso vem COMPLETO', () => {
     expect(document.querySelector('[data-slot="termino-hora"]')).toBeTruthy()
   })
 
-  it('traz "mudar de sala/local", o cirurgião e a marcação de ajuda', () => {
+  it('traz a sala/local, o cirurgião e a marcação de ajuda', () => {
     abrirDetalhe()
-    expect(screen.getByRole('button', { name: 'Mudar sala/local' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Trocar cirurgião' })).toBeTruthy()
+    expect(screen.getByText('Sala/local')).toBeTruthy()
+    expect(screen.getByText('Cirurgião')).toBeTruthy()
     expect(screen.getByRole('button', { name: /como ajuda/i })).toBeTruthy()
+  })
+
+  // A razão de existir deste arquivo (dono 29/07): a Minhas não pode ser a aba
+  // "pela metade". Quando os dados do caso saíram do painel para o formulário
+  // (01/09), a porta tinha de vir junto — um botão que só funciona na Completa
+  // recria exatamente o beco sem saída que este describe trava.
+  it('a porta para EDITAR o caso existe também aqui, e abre o formulário', async () => {
+    abrirDetalhe()
+    fireEvent.click(screen.getByRole('button', { name: /Editar dados da cirurgia/i }))
+    expect(await screen.findByText('Editar caso')).toBeTruthy()
+    // preenchido com o caso, não em branco
+    expect(screen.getByDisplayValue('FRATURA DA TÍBIA')).toBeTruthy()
   })
 
   it('editar pela Minhas grava no MESMO caminho da Completa', async () => {

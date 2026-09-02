@@ -15,11 +15,16 @@ import { CasoCard } from './BoardView'
 import useAgoraMinuto from './useAgoraMinuto'
 import DefinirAnestesistaSheet from './DefinirAnestesistaSheet'
 import CasoDetalheSheet from './CasoDetalheSheet'
+import AddCasoSheet from './AddCasoSheet'
 
 export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onVerBoard }) {
   const { user } = useUser()
   const [detalhe, setDetalhe] = useState(null)   // caso aberto (mesmo sheet da aba Completa)
   const [definir, setDefinir] = useState(null)   // { sala, caso? }
+  // Editar o caso é o MESMO formulário do "Adicionar" (dono 01/09) e vale nas
+  // TRÊS abas: o detalhe aqui é o mesmo componente, e um botão que só funciona
+  // na Completa seria a "aba pela metade" que a Minhas deixou de ser em 29/07.
+  const [editando, setEditando] = useState(null)
   const isDemo = String(escala?.id).startsWith('demo-')
   const agoraMin = useAgoraMinuto() // um intervalo p/ a lista (tempo faltante dos casos)
   // CARD IDÊNTICO AO DA COMPLETA (dono 29/07): sem `podeEditar` o sheet escondia
@@ -98,6 +103,15 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
           podeEditar={podeEditarCaso}
           podeDefinirAnestesista={podeDefinirAnestesista}
           onDefinirAnestesista={(sala, casoAlvo) => setDefinir({ sala, casosAlvo: casoAlvo ? [casoAlvo] : null })}
+          onEditarCaso={(alvo) => { setDetalhe(null); setEditando(alvo) }}
+        />
+      )}
+      {editando && (
+        <AddCasoSheet
+          escala={escala}
+          turno={turno}
+          caso={editando}
+          onClose={() => setEditando(null)}
         />
       )}
       {definir && (

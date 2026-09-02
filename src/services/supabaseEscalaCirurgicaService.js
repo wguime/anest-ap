@@ -316,11 +316,17 @@ async function updateStatusCirurgia(casoId, status) {
 /**
  * Acrescenta um caso à escala publicada (urgência/encaixe/fora do mapa).
  * Integra como qualquer outro: board re-agrupa e a liberação re-deriva.
+ *
+ * `origem: 'manual'` fica FORA de CASO_FIELDS de propósito (dono 01/09): é a
+ * marca que decide quem pode ser excluído, e só este caminho pode gravá-la —
+ * passando por casoToRow, um `updateCaso` com `origem` no patch converteria um
+ * caso do mapa em apagável. As RPCs de publicação não citam a coluna e caem no
+ * default 'importacao'.
  */
 async function addCaso(escalaId, caso) {
   const { data, error } = await supabase
     .from('escala_cirurgica_caso')
-    .insert(casoToRow(caso, escalaId))
+    .insert({ ...casoToRow(caso, escalaId), origem: 'manual' })
     .select('*')
     .single()
   if (error) handleError(error, 'addCaso')
@@ -396,6 +402,26 @@ async function updateCaso(casoId, updates) {
     .update(toSnakeCase(clean))
     .eq('id', casoId)
   if (error) handleError(error, 'updateCaso')
+}
+
+/**
+ * Apaga UM caso da escala (dono 01/09: "eventualmente procedimento foi
+ * adicionado de forma errada"). Quem decide o alcance é a UI — só o caso com
+ * `origem = 'manual'` oferece o botão. Aqui não há filtro por origem de
+ * propósito: a RLS já governa quem pode apagar, e um WHERE a mais no service
+ * criaria uma segunda regra para manter em dia.
+ *
+ * A cobrança particular criada pelo trigger NÃO some junto (`escala_caso_id` é
+ * referência fraca, sem FK): quem exclui é avisado para cancelá-la em Cirurgias
+ * Particulares. O log `escala_cirurgica_evento` também sobrevive — é insert-only
+ * e denormalizado justamente para isto.
+ */
+async function removeCaso(casoId) {
+  const { error } = await supabase
+    .from('escala_cirurgica_caso')
+    .delete()
+    .eq('id', casoId)
+  if (error) handleError(error, 'removeCaso')
 }
 
 async function removeEscala(escalaId) {
@@ -612,6 +638,7 @@ export default {
   updateAnestesistaCasos,
   addCaso,
   updateCaso,
+  removeCaso,
   removeEscala,
   fetchCasosStatus,
   fetchP4Hospital,

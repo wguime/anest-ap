@@ -204,7 +204,65 @@ explicam metade das queixas e valem para o app inteiro:
   **Observação**: com o recado do plantonista na mesma aba, dois "recados" com sentidos
   diferentes se confundiam.
 
-### Recado do plantonista (dono 17/08) — mensagem na aba Liberações
+### Editar e EXCLUIR o caso publicado (dono 2026-09-01, modelo A em protótipo)
+
+> "ao adicionar novo caso, após adicionado não é possível editar… ou eventualmente
+> procedimento foi adicionado de forma errada."
+
+Estado anterior: o detalhe corrigia **sala, cirurgião, convênio, residente** (um
+editorzinho cada) e **hora, procedimento, paciente e idade não tinham conserto
+nenhum**; excluir não existia em lugar algum. Protótipo
+`.tmp/editar-excluir-caso.html` (2 modelos, 430px, dois temas, medição ao lado);
+o dono escolheu o **A — um formulário só**.
+
+- **`AddCasoSheet` serve os dois sentidos**: sem `caso`, acrescenta; com `caso`,
+  EDITA preenchido ("Editar caso" · botão **Salvar**). O detalhe ganhou a porta
+  única **"Editar dados da cirurgia"** (`onEditarCaso`) e voltou a ser o painel de
+  ESTADO — os quatro mini-editores saíram. Medição que decidiu: com mini-editor
+  para os oito campos o painel iria a **1163px** (rola, excluir 425px abaixo da
+  dobra); assim fica em **721px** e cabe no teto de 88vh.
+- **A porta existe nas TRÊS abas** (Completa, Minhas, faixa de Urgências). Um botão
+  só na Completa recriaria a "aba pela metade" que a Minhas deixou de ser em 29/07.
+- ⚠️ **O ANESTESISTA continua no `DefinirAnestesistaSheet`** e o POSTO do contrato
+  continua no ⚙ da faixa: o primeiro decide dupla/substituição/posição na fila (um
+  Select perderia isso, e salvo vazio apagaria a dupla "A + B"); o segundo é
+  configuração de SALA, não campo do caso.
+- ⚠️ **O patch é DIFF, nunca o formulário inteiro**: `anestesista` e `ordem` não têm
+  campo nesta tela e seriam apagados. Abrir e fechar sem tocar em nada não escreve.
+- ⚠️ **`iniciais()` não é idempotente** — "M.C.G." é um token só e virava "M.".
+  Passava despercebido enquanto o formulário só CRIAVA caso. O guard `soIniciais`
+  usa o MESMO predicado do CHECK do banco (`[[:alpha:]]{3,}`): o que já está na
+  forma aceita lá não é reprocessado.
+- **Hora que cai no outro período PERGUNTA antes de mover** ("15:00 é da tarde —
+  mover?"). O turno é campo próprio desde 26/07, então a hora não o move sozinha, e
+  mover calado faria o caso sumir da tela de quem acabou de editá-lo. Só pergunta
+  quando o turno GRAVADO é matutino/vespertino: sem turno explícito ou no FDS quem
+  filtra o quadro já é a hora, e o caso se move sozinho.
+- **EXCLUIR só o caso `origem = 'manual'`** (coluna nova, migration
+  `20260901130000`). O que veio do mapa se conserta republicando o turno. A marca é
+  do BANCO, não palpite da tela: `addCaso` grava `'manual'` (fora de `CASO_FIELDS`,
+  para nenhum `updateCaso` poder converter um caso do mapa em apagável) e as três
+  RPCs de publicação inserem com lista explícita, caindo no default `'importacao'`.
+- **Backfill do histórico por DUAS condições**, não uma: nasceu ≥30s depois do lote
+  do seu `(escala, turno)` **E** nasceu sozinha (`irmaos = 1`). A segunda veio da
+  validação e vale a lição: `addCaso` insere UMA linha por chamada, então
+  `created_at` compartilhado é lote de publicação. Sem ela, **77 linhas** de três
+  lotes de 23/07 (32, 29 e 16 — sobreviveram por terem `turno NULL` na época) seriam
+  marcadas manuais e ganhariam o botão. Resultado real: 196 manuais / 3.390
+  importados.
+- **A exclusão deixa rastro**: trigger `tr_escala_caso_evento_exclusao` grava em
+  `escala_cirurgica_evento` (`tipo='exclusao'`, autor por `firebase_uid()`), só para
+  `origem='manual'` — logar o lote inteiro de toda republicação seria ruído, e caso
+  do mapa não tem botão. LGPD: como o resto da tabela, não copia paciente/idade.
+- A confirmação **nomeia** a cirurgia e avisa nos dois casos em que excluir
+  provavelmente não é o que se quer: cirurgia já **iniciada** (marque Suspensa) e
+  caso **particular** (a cobrança já criada não some junto).
+- Travas: `addCasoSheetEdicao.test.jsx` (22 casos). ⚠️ os testes de GRAVAÇÃO de
+  residente/sala/cirurgião/convênio **mudaram de arquivo** — saíram de
+  `casoDetalheSheet.test.jsx` e exercitam o mesmo invariante pelo caminho novo;
+  lá ficou o que é do painel (leitura + a porta, que some para quem não edita).
+
+## Recado do plantonista (dono 17/08) — mensagem na aba Liberações
 
 Faixa full-bleed acima de "procedimentos sem anestesista". **Só o plantonista do turno
 manda** (o do selo na fila; para os demais o botão não existe) — botão "Mensagem para

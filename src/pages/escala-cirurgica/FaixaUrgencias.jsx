@@ -353,6 +353,7 @@ export default function FaixaUrgencias({ escala, hospital, turno }) {
         <AddCasoSheet
           escala={escala}
           turno={turno}
+          caso={addCaso.caso || null}
           postoInicial={addCaso.posto}
           salaInicial={addCaso.sala || ''}
           onClose={() => setAddCaso(null)}
@@ -371,6 +372,7 @@ export default function FaixaUrgencias({ escala, hospital, turno }) {
           onClose={() => setDetalhe(null)}
           podeDefinirAnestesista={() => podeEditar}
           onDefinirAnestesista={(sala, casoAlvo) => setDefinir({ sala, casosAlvo: casoAlvo ? [casoAlvo] : null })}
+          onEditarCaso={(alvo) => { setDetalhe(null); setAddCaso({ caso: alvo }) }}
           podeEditar={podeEditar}
         />
       )}

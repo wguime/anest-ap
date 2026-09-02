@@ -313,6 +313,8 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
   })
   const [detalhe, setDetalhe] = useState(null)
   const [definir, setDefinir] = useState(null) // { sala, caso? } — sheet Definir anestesista
+  // `false` fechado · `true` acrescentar · `{ caso }` editar o caso já publicado
+  // — o formulário é o MESMO nos dois sentidos desde 01/09.
   const [addCaso, setAddCaso] = useState(false)
   // Accordion controlado p/ "recolher todas" (pedido 2026-07-21): null = padrão (abertas)
   const [abertas, setAbertas] = useState(null)
@@ -567,6 +569,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
           onClose={() => setDetalhe(null)}
           podeDefinirAnestesista={() => podeDefinir}
           onDefinirAnestesista={(sala, casoAlvo) => setDefinir({ sala, casosAlvo: casoAlvo ? [casoAlvo] : null })}
+          onEditarCaso={(alvo) => { setDetalhe(null); setAddCaso({ caso: alvo }) }}
           podeEditar={podeDefinir}
         />
       )}
@@ -575,6 +578,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
         <AddCasoSheet
           escala={escala}
           turno={turno}
+          caso={addCaso?.caso || null}
           onClose={() => setAddCaso(false)}
           onPreencherCobranca={(novo) => onNavigate?.('novaCirurgiaParticular', { escalaCasoId: novo.id })}
         />

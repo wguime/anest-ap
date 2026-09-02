@@ -16,10 +16,24 @@
  * metadado) e o resto desce em três blocos de peso decrescente — Equipe, Tempo e,
  * por último, o raro (mudar de sala/local). Antes eram três botões empilhados
  * iguais, seis botões de status e três linhas de dados, tudo no mesmo peso.
+ *
+ * OS DADOS DO CASO SAÍRAM DAQUI (dono 01/09, modelo A escolhido em protótipo a
+ * 430px): sala, cirurgião, convênio e residente tinham cada um seu editorzinho
+ * neste painel, e hora, procedimento, paciente e idade não tinham nenhum. Hoje os
+ * oito se corrigem no `AddCasoSheet` — o MESMO formulário do "Adicionar caso",
+ * reaberto preenchido pelo botão "Editar dados da cirurgia" (`onEditarCaso`) — e
+ * este painel voltou a ser só o do ESTADO, que é o que ele diz ser desde 17/08.
+ * Medido no protótipo: com os mini-editores para os oito campos, o painel iria a
+ * 1163px (rola, com o excluir 425px abaixo da dobra); assim ele fica em 721px e
+ * cabe inteiro no teto de 88vh.
+ *
+ * ⚠️ O ANESTESISTA é a exceção e MANTÉM o botão: ele não é campo de texto — o
+ * `DefinirAnestesistaSheet` mostra onde cada colega está, marca dupla na mesma
+ * cirurgia e assume posição na fila.
  */
 import { useMemo, useState } from 'react'
-import { Check, CreditCard, GraduationCap, MapPin, Stethoscope, Timer, UserCog } from 'lucide-react'
-import { Badge, Button, Input, Sheet, SheetContent, SheetHeader, SheetTitle } from '@/design-system'
+import { GraduationCap, MapPin, Pencil, Stethoscope, Timer, UserCog } from 'lucide-react'
+import { Badge, Button, Sheet, SheetContent, SheetHeader, SheetTitle } from '@/design-system'
 import { HOSPITAL_LABEL, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
@@ -29,15 +43,11 @@ import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
 import { carimboDeStatus } from '@/lib/escalaCirurgicaStatus'
 import PainelTempo, { formatFaltante } from './PainelTempo'
 import useAgoraMinuto from './useAgoraMinuto'
-import { conveniosDaEscala, espelhoTempoTotal, nomeAnestesistaExibicao, normalizarSalaHro, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, salasDoHospital, tipoBadge, turnoDoCaso } from './utils'
+import { espelhoTempoTotal, nomeAnestesistaExibicao, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso } from './utils'
 import ChipsEscolha, { GRAVIDADE_CHIPS, TIPOS_CIRURGIA } from './ChipsEscolha'
 
-const SALA_OUTRO = '__outro__'
 // Verbo de cada estado na linha de procedência ("Iniciada às 14:33 por Fulano").
 const STATUS_VERBO = { iniciada: 'Iniciada', terminada: 'Terminada' }
-
-// Sentinela do seletor de residente (valor impossível como uid).
-const SEM_RESIDENTE = '__sem__'
 
 // EIXO PRINCIPAL — exclusivo, é o que pinta o card no quadro.
 const ANDAMENTO = [
@@ -67,19 +77,16 @@ const AVISO = [
   { valor: 'passa_tarde', label: null, cls: 'border-category-purple bg-category-purple text-white' },
 ]
 
-export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDefinirAnestesista, onDefinirAnestesista, podeEditar }) {
+export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDefinirAnestesista, onDefinirAnestesista, onEditarCaso, podeEditar }) {
   const { setStatusCirurgia, atualizarCaso, adicionarAjuda, removerAjuda, setLinhaOverride } = useEscalaCirurgicaActions()
   const { user } = useUser()
-  const { options: opcoesResidente, residenteByUid } = useRosterResidentes()
+  const { residenteByUid } = useRosterResidentes()
   const { rosterByUid } = useRosterAnestesistas()
   const agoraMin = useAgoraMinuto()
   const isDemo = String(escala?.id).startsWith('demo-')
-  // um editor por vez: 'sala' | 'cirurgiao' | 'residente' | 'tempo' | null
+  // Sobrou UM editor nesta folha: o do tempo. Os de sala/cirurgião/convênio/
+  // residente foram para o formulário do caso em 01/09.
   const [editor, setEditor] = useState(null)
-  const [rascSala, setRascSala] = useState('')
-  const [salaOutro, setSalaOutro] = useState(false)
-  const [rascCirurgiao, setRascCirurgiao] = useState('')
-  const [rascConvenio, setRascConvenio] = useState('')
   const [horaExata, setHoraExata] = useState('') // hora exata de término da cirurgia
 
   // caso VIVO: busca a versão atual no estado (id); cai no prop p/ demo/sem id
@@ -100,38 +107,11 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
     ? nomeAnestesistaExibicao({ uid: carimbo.porUid, rosterByUid }) || ''
     : ''
 
-  // Opções de sala/local: salas usadas na escala do dia ∪ base do hospital (IOSC,
-  // Umanitá, salas fixas…). "Outro" abre digitação p/ um local ainda não listado.
-  // MESMA lista do "Adicionar caso" — a montagem local repetia a regra com outro
-  // dedupe e passou a oferecer "Sala 4" E "Bloco A - Sala 4" quando as numéricas
-  // do HRO ganharam o bloco (20/08).
-  const opcoesSala = useMemo(
-    () => salasDoHospital(escala?.hospital, escala?.casos),
-    [escala],
-  )
-
-  // MESMA lista do "Adicionar caso": canônicos + os que a escala do dia trouxe.
-  const opcoesConvenio = conveniosDaEscala(escala?.casos)
-
   if (!vivo) return null
 
   // Um gate só para todos os ajustes do caso: quem edita a escala (canEdit), fora
   // da demo e com o caso já persistido (id) — sem id não há o que atualizar.
   const podeEditarCaso = !!podeEditar && !isDemo && !!vivo.id
-  const abrirEditor = (qual) => {
-    if (qual === 'sala') {
-      const atual = String(vivo.sala || '')
-      setRascSala(atual)
-      setSalaOutro(!!atual && !opcoesSala.some((s) => s.toLowerCase() === atual.toLowerCase()))
-    }
-    if (qual === 'cirurgiao') {
-      const atual = String(vivo.cirurgiao || '')
-      setRascCirurgiao(atual)
-    }
-    if (qual === 'convenio') setRascConvenio('')
-    setEditor((e) => (e === qual ? null : qual))
-  }
-
   /** Reclassifica a cirurgia (eletiva ↔ urgência/emergência).
       Emergência é IMEDIATA por definição na adaptação da NCEPOD, então já nasce
       classificada quando a gravidade está vazia — mesmo pré-preenchimento do
@@ -153,21 +133,6 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
   const mudarGravidade = (nivel) =>
     atualizarCaso(escala, vivo.id, { gravidade: vivo.gravidade === nivel ? null : nivel }).catch(() => {})
 
-  /** Grava um campo de texto do caso (sala/cirurgião) e fecha o editor.
-      Fecha ANTES do servidor: o valor novo já está pintado (context otimista) e
-      erro reverte com toast — a folha presa no spinner era o delay (dono 19/08). */
-  const salvarTexto = (campo, valor, digitado = false) => {
-    // sala do HRO DIGITADA passa pela normalização da importação — rótulo único
-    // (dono 20/08). A escolhida na lista, não: ela já vem canônica ou na grafia
-    // do dia, e reescrever a "Sala 4" de uma escala antiga partiria a sala em
-    // dois blocos no quadro.
-    const bruto = String(valor || '').trim()
-    const novo = digitado && campo === 'sala' && escala?.hospital === 'hro' ? normalizarSalaHro(bruto) : bruto
-    setEditor(null)
-    if (!novo || novo === String(vivo[campo] || '')) return
-    atualizarCaso(escala, vivo.id, { [campo]: novo }).catch(() => {})
-  }
-
   // RESIDENTE do caso (dono 29/07): acompanha, NÃO responde pelo caso — por isso é
   // seletor próprio e não entra em nenhum caminho de anestesista. Grava uid + nome
   // de exibição, como já é feito com anestesista/anestesistaUserId: com o uid, a aba
@@ -175,16 +140,6 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
   const residenteNome = vivo.residente
     || (vivo.residenteUserId && residenteByUid.get(vivo.residenteUserId)?.nome)
     || ''
-  const trocarResidente = (valor) => {
-    const r = valor === SEM_RESIDENTE ? null : residenteByUid.get(valor)
-    if (valor !== SEM_RESIDENTE && !r) return
-    setEditor(null) // fecha no toque — context otimista pinta e reverte em erro
-    atualizarCaso(escala, vivo.id, {
-      residente: r ? r.nome : null,
-      residenteUserId: r ? r.uid : null,
-    }).catch(() => {})
-  }
-
   // TÉRMINO PREVISTO DESTA CIRURGIA (dono 29/07). É o tempo do CASO — o "quanto
   // falta para a pessoa sair" continua sendo o cronômetro da linha, nas Liberações.
   // Este sheet é o mesmo nas duas abas, então preencher aqui atende as duas.
@@ -295,50 +250,22 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
               </p>
             )}
 
-            {/* CONVÊNIO editável (dono 20/08: "esse convênio foi digitado errado e
-                não pode ser alterado" — o caso da tarde entrou como "Sua"). Era o
-                último dado da cirurgia sem conserto depois de publicada, e ele não
-                é cosmético: `familiaConvenio` decide a cor do selo, o agrupamento e
-                a COBRANÇA particular. O badge do cabeçalho segue sendo a leitura
-                rápida; aqui é onde se corrige. */}
-            {podeEditarCaso && (
-              <div className="mt-1">
-                <LinhaDado
-                  icone={<CreditCard className="h-3.5 w-3.5" />}
-                  rotulo="Convênio"
-                  valor={vivo.convenio || '—'}
-                  acao={{ label: 'Trocar', onClick: () => abrirEditor('convenio') }}
-                />
-              </div>
-            )}
-            {editor === 'convenio' && (
-              <EditorSheet
-                titulo="Convênio da cirurgia"
-                nota="Particular gera a cobrança automática. Saindo de Particular, a cobrança já criada NÃO some sozinha — cancele em Cirurgias Particulares."
-                onClose={() => setEditor(null)}
+            {/* EDITAR OS DADOS DA CIRURGIA (dono 01/09, modelo A escolhido em
+                protótipo a 430px): tudo que é DADO do caso — procedimento,
+                paciente, idade, convênio, hora, sala, cirurgião, residente —
+                se corrige numa folha só, a MESMA do "Adicionar caso", agora
+                preenchida. Antes cada campo tinha seu editorzinho aqui, e
+                metade deles (hora, procedimento, paciente) não tinha nenhum.
+                Este painel volta a ser o do ESTADO, que é o que ele diz ser
+                desde 17/08 — e é o que o faz caber sem rolar. */}
+            {podeEditarCaso && onEditarCaso && (
+              <Button
+                variant="outline"
+                className="mt-2.5 w-full"
+                onClick={() => onEditarCaso(vivo)}
               >
-                <ListaEscolha
-                  opcoes={opcoesConvenio.map((o) => ({ value: o, label: o }))}
-                  valor={String(vivo.convenio || '')}
-                  onEscolher={(v) => salvarTexto('convenio', v)}
-                />
-                <div className="border-t border-border pt-2">
-                  <Input
-                    aria-label="Outro convênio"
-                    value={rascConvenio}
-                    onChange={(e) => setRascConvenio(e.target.value)}
-                    placeholder="Outro convênio"
-                    onKeyDown={(e) => { if (e.key === 'Enter') salvarTexto('convenio', rascConvenio) }}
-                  />
-                  <div className="flex gap-2 pt-2">
-                    <Button size="sm" variant="ghost" className="flex-1" onClick={() => setEditor(null)}>Cancelar</Button>
-                    <Button size="sm" className="flex-1" disabled={!rascConvenio.trim()}
-                      onClick={() => salvarTexto('convenio', rascConvenio)}>
-                      Salvar
-                    </Button>
-                  </div>
-                </div>
-              </EditorSheet>
+                <Pencil className="h-4 w-4" /> Editar dados da cirurgia
+              </Button>
             )}
           </article>
 
@@ -507,104 +434,30 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
               }}
             />
 
+            {/* Residente, sala e cirurgião são LEITURA aqui desde 01/09: os
+                três se corrigem no "Editar dados da cirurgia", junto do resto do
+                caso. Manter um segundo caminho para os mesmos campos deixaria
+                duas telas gravando a mesma coisa com validações diferentes. O
+                ANESTESISTA é a exceção e continua com botão: ele não é um campo
+                de texto — o sheet próprio mostra onde cada colega está, marca
+                dupla e assume posição na fila. */}
             <LinhaDado
               icone={<GraduationCap className="h-3.5 w-3.5" />}
               rotulo="Residente"
-              valor={titleCaseNome(residenteNome) || (podeEditarCaso ? 'Sem residente' : '')}
-              acao={podeEditarCaso && { label: 'Trocar', onClick: () => abrirEditor('residente') }}
+              valor={titleCaseNome(residenteNome)}
             />
-            {/* A LISTA JÁ ABERTA (dono 17/08): antes o toque revelava um seletor
-                fechado, e era preciso um segundo toque para ver os nomes. */}
-            {editor === 'residente' && (
-              <EditorSheet
-                titulo="Residente que acompanha"
-                nota="Acompanha o caso — quem responde por ele continua sendo o anestesista."
-                onClose={() => setEditor(null)}
-              >
-                <ListaEscolha
-                  opcoes={[{ value: SEM_RESIDENTE, label: 'Sem residente' }, ...opcoesResidente]}
-                  valor={vivo.residenteUserId || SEM_RESIDENTE}
-                  onEscolher={trocarResidente}
-                />
-              </EditorSheet>
-            )}
 
-            {/* Corrigir ONDE o caso acontece (dono 24/07) — mesma gramática das
-                outras linhas do cartão, em vez de um botão solto no fim do painel. */}
             <LinhaDado
               icone={<MapPin className="h-3.5 w-3.5" />}
               rotulo="Sala/local"
               valor={salaExibicao(vivo.sala)}
-              acao={podeEditarCaso && { label: 'Mudar', onClick: () => abrirEditor('sala') }}
             />
-            {editor === 'sala' && (
-              <EditorSheet
-                titulo="Sala / Local do procedimento"
-                onClose={() => setEditor(null)}
-              >
-                <ListaEscolha
-                  opcoes={opcoesSala.map((o) => ({ value: o, label: o }))}
-                  valor={salaOutro ? '' : String(vivo.sala || '')}
-                  onEscolher={(v) => salvarTexto('sala', v)}
-                />
-                {/* local novo continua possível — digitado, entra na lista das
-                    próximas vezes (regra antiga do campo) */}
-                <div className="border-t border-border pt-2">
-                  <Input
-                    aria-label="Outra sala ou local"
-                    value={rascSala}
-                    onChange={(e) => { setSalaOutro(true); setRascSala(e.target.value) }}
-                    placeholder="Outro local — ex.: IOSC - Sala 1"
-                    onKeyDown={(e) => { if (e.key === 'Enter') salvarTexto('sala', rascSala, true) }}
-                  />
-                  <div className="flex gap-2 pt-2">
-                    <Button size="sm" variant="ghost" className="flex-1" onClick={() => setEditor(null)}>Cancelar</Button>
-                    <Button size="sm" className="flex-1" disabled={!rascSala.trim()}
-                      onClick={() => salvarTexto('sala', rascSala, true)}>
-                      Salvar
-                    </Button>
-                  </div>
-                </div>
-              </EditorSheet>
-            )}
 
-            {/* CIRURGIÃO editável (dono 17/08): o nome vem da importação e sai
-                torto com alguma frequência; era o único dado da cirurgia sem
-                conserto no app — só o campo de EXIBIÇÃO da fila, que não corrige
-                o caso nem o quadro. Grava em `cirurgiao`, o mesmo campo que o
-                "Adicionar caso" já preenche. */}
             <LinhaDado
               icone={<Stethoscope className="h-3.5 w-3.5" />}
               rotulo="Cirurgião"
               valor={titleCaseNome(vivo.cirurgiao)}
-              acao={podeEditarCaso && { label: 'Trocar', onClick: () => abrirEditor('cirurgiao') }}
             />
-            {/* Só DIGITAÇÃO (dono 17/08): o nome do cirurgião vem torto da
-                importação e a lista de sugestões atrapalhava mais do que ajudava
-                — quem corrige aqui já sabe o nome certo. */}
-            {editor === 'cirurgiao' && (
-              <EditorSheet
-                titulo="Cirurgião desta cirurgia"
-                nota="Vale só para esta cirurgia. A fila mostra o cirurgião de cada caso automaticamente."
-                onClose={() => setEditor(null)}
-              >
-                <Input
-                  autoFocus
-                  aria-label="Nome do cirurgião"
-                  value={rascCirurgiao}
-                  onChange={(e) => setRascCirurgiao(e.target.value)}
-                  placeholder="ex.: Eduardo Baldissera"
-                  onKeyDown={(e) => { if (e.key === 'Enter') salvarTexto('cirurgiao', rascCirurgiao) }}
-                />
-                <div className="flex gap-2 pt-1">
-                  <Button size="sm" variant="ghost" className="flex-1" onClick={() => setEditor(null)}>Cancelar</Button>
-                  <Button size="sm" className="flex-1" disabled={!rascCirurgiao.trim()}
-                    onClick={() => salvarTexto('cirurgiao', rascCirurgiao)}>
-                    Salvar
-                  </Button>
-                </div>
-              </EditorSheet>
-            )}
 
             {/* AJUDA de outro hospital (dono 29/07). RÓTULO ÚNICO com o painel da
                 linha (auditoria 17/08): eram dois textos para a mesma marca. */}
@@ -705,36 +558,5 @@ function EditorSheet({ titulo, nota, onClose, children }) {
         <div className="space-y-2 overflow-y-auto pb-4">{children}</div>
       </SheetContent>
     </Sheet>
-  )
-}
-
-/**
- * Lista de escolha com as opções JÁ VISÍVEIS — um toque escolhe e grava. O
- * seletor fechado exigia dois toques para ver os nomes (dono 17/08), e numa lista
- * curta como residente ou sala isso é uma etapa a mais sem ganho nenhum.
- */
-function ListaEscolha({ opcoes, valor, onEscolher }) {
-  return (
-    <ul className="max-h-[52vh] overflow-y-auto rounded-xl border border-border">
-      {opcoes.map((o) => {
-        const atual = String(o.value) === String(valor)
-        return (
-          <li key={o.value} className="border-b border-border last:border-b-0">
-            <button
-              type="button"
-              onClick={() => onEscolher(o.value)}
-              aria-pressed={atual}
-              className={[
-                'flex min-h-[48px] w-full items-center gap-2 px-3 py-2 text-left text-[15px]',
-                atual ? 'bg-primary/10 font-bold text-primary' : 'font-medium',
-              ].join(' ')}
-            >
-              <span className="min-w-0 [overflow-wrap:anywhere]">{o.label}</span>
-              {atual && <Check className="ml-auto h-4 w-4 shrink-0" />}
-            </button>
-          </li>
-        )
-      })}
-    </ul>
   )
 }

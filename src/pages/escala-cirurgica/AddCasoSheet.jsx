@@ -1,12 +1,33 @@
 /**
- * AddCasoSheet — acrescenta um procedimento à escala publicada (urgência,
- * encaixe, cirurgia que não saiu no mapa). O caso entra EXATAMENTE como os
- * demais: board re-agrupa e a coluna de liberação re-deriva sozinha.
+ * AddCasoSheet — o formulário do CASO, nos dois sentidos:
+ *   - sem `caso`: acrescenta um procedimento à escala publicada (urgência,
+ *     encaixe, cirurgia que não saiu no mapa). Entra EXATAMENTE como os demais:
+ *     board re-agrupa e a coluna de liberação re-deriva sozinha.
+ *   - com `caso`: EDITA o que já está publicado (dono 01/09: "eventualmente
+ *     algumas informações precisam ser atualizadas (hora, local, cirurgião…) ou
+ *     eventualmente procedimento foi adicionado de forma errada").
+ *
+ * UM FORMULÁRIO SÓ para os dois (modelo escolhido pelo dono em protótipo a
+ * 430px, 01/09): a alternativa era espalhar mini-editores pelo detalhe do caso,
+ * e o painel passava de 721px (cabe inteiro) para 1163px, com o excluir 425px
+ * abaixo da dobra. Aqui a validação é uma, a tela a aprender é uma, e o detalhe
+ * do caso volta a ser o painel de ESTADO que ele diz ser desde 17/08.
+ *
+ * O que NÃO se edita por aqui, de propósito: o ANESTESISTA (o
+ * `DefinirAnestesistaSheet` decide dupla, substituição e mostra onde cada colega
+ * está — um Select simples perderia tudo isso; e um Select vazio salvo sem
+ * querer apagaria a dupla "A + B") e o POSTO do contrato do HRO, que é
+ * configuração de SALA e não campo do caso.
+ *
+ * EXCLUIR só no caso `origem === 'manual'` (decisão do dono 01/09): o que veio
+ * do mapa se conserta republicando o turno — apagá-lo por engano custaria
+ * reimportar o dia. Ver migration 20260901130000.
+ *
  * LGPD: o nome do paciente é convertido em INICIAIS no blur (CHECK do banco
  * rejeita nome completo).
  */
 import { useMemo, useRef, useState } from 'react'
-import { Loader2, Plus } from 'lucide-react'
+import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, Select, Input, Button, ConfirmDialog } from '@/design-system'
 import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
@@ -21,6 +42,30 @@ import useEstadoUrgencias from './useEstadoUrgencias'
 
 const NOVA_SALA = '__nova__'
 const OUTRO_CONVENIO = '__outro__'
+const SEM_RESIDENTE = '__sem__'
+
+// Turno por extenso nas três regências que a pergunta de mover usa. O módulo
+// inteiro fala "manhã/tarde" na tela e guarda 'matutino'/'vespertino' no banco.
+const TURNO_ARTIGO = { matutino: 'da manhã', vespertino: 'da tarde' }
+const TURNO_PREP = { matutino: 'a manhã', vespertino: 'a tarde' }
+const TURNO_EM = { matutino: 'na manhã', vespertino: 'na tarde' }
+
+/**
+ * Converte NOME em iniciais; o que já ESTÁ em iniciais fica intacto.
+ *
+ * O `iniciais()` cru não é idempotente — "M.C.G." é um token só, e ele devolve
+ * "M.", destruindo o dado. Passava despercebido enquanto o formulário só criava
+ * caso (ninguém abre o "Adicionar" com iniciais prontas); ao reabrir para EDITAR
+ * um caso já publicado, o simples tocar no campo apagaria duas letras.
+ *
+ * O teste é o MESMO predicado do CHECK do banco (`[[:alpha:]]{3,}`): o que não
+ * tem três letras seguidas já é forma aceita como iniciais lá — o guard não
+ * afrouxa a regra LGPD, ele para de reprocessar o que já passou por ela.
+ */
+const soIniciais = (v) => {
+  const bruto = String(v || '').trim()
+  return /\p{L}{3,}/u.test(bruto) ? iniciais(bruto) : bruto
+}
 
 /** Auto-formata a hora enquanto digita: só dígitos → "HH:MM" (pedido do dono 24/07). */
 const formatHora = (v) => {
@@ -57,26 +102,48 @@ const Campo = ({ id, label, children }) => (
   </div>
 )
 
-export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobranca, postoInicial = '', salaInicial = '' }) {
-  const { adicionarCaso, definirSalasUrgencia } = useEscalaCirurgicaActions()
+export default function AddCasoSheet({ escala, turno, caso = null, onClose, onPreencherCobranca, postoInicial = '', salaInicial = '' }) {
+  const { adicionarCaso, atualizarCaso, excluirCaso, definirSalasUrgencia } = useEscalaCirurgicaActions()
   const { user } = useUser()
   const { options: rosterOpcoes, rosterByUid } = useRosterAnestesistas()
   const { options: opcoesResidente, residenteByUid } = useRosterResidentes()
-  const [sala, setSala] = useState(() => salaInicial || '')
-  const [novaSala, setNovaSala] = useState('')
-  const [hora, setHora] = useState('')
-  const [paciente, setPaciente] = useState('')
-  const [idade, setIdade] = useState('')
-  const [procedimento, setProcedimento] = useState('')
-  const [cirurgiao, setCirurgiao] = useState('')
-  const [convenio, setConvenio] = useState('')
-  const [outroConvenio, setOutroConvenio] = useState('')
+  const edicao = !!caso
+  // Em edição os campos abrem com o que está publicado. Sala e convênio guardam
+  // DOIS estados (opção da lista + texto livre): quando o valor gravado não está
+  // entre as opções — sala de um dia antigo, convênio digitado antes da lista de
+  // 20/08 — ele abre no campo livre em vez de sumir do formulário.
+  const salasBase = useMemo(() => salasDoHospital(escala?.hospital, escala?.casos), [escala])
+  const conveniosBase = useMemo(() => conveniosDaEscala(escala?.casos), [escala])
+  const salaAtual = String(caso?.sala || '')
+  const convenioAtual = String(caso?.convenio || '')
+  const salaNaLista = !!salaAtual && salasBase.includes(salaAtual)
+  const convenioNaLista = !!convenioAtual && conveniosBase.includes(convenioAtual)
+
+  const [sala, setSala] = useState(() => {
+    if (!edicao) return salaInicial || ''
+    return salaNaLista ? salaAtual : (salaAtual ? NOVA_SALA : '')
+  })
+  const [novaSala, setNovaSala] = useState(() => (edicao && !salaNaLista ? salaAtual : ''))
+  const [hora, setHora] = useState(() => String(caso?.hora || ''))
+  const [paciente, setPaciente] = useState(() => String(caso?.pacienteIniciais || ''))
+  const [idade, setIdade] = useState(() => String(caso?.idade || ''))
+  const [procedimento, setProcedimento] = useState(() => String(caso?.procedimento || ''))
+  const [cirurgiao, setCirurgiao] = useState(() => String(caso?.cirurgiao || ''))
+  const [convenio, setConvenio] = useState(() => {
+    if (!edicao) return ''
+    return convenioNaLista ? convenioAtual : (convenioAtual ? OUTRO_CONVENIO : '')
+  })
+  const [outroConvenio, setOutroConvenio] = useState(() => (edicao && !convenioNaLista ? convenioAtual : ''))
   const [anestesistaUid, setAnestesistaUid] = useState('')
-  const [residenteUid, setResidenteUid] = useState('')
-  const [tipo, setTipo] = useState('urgencia')
-  const [gravidade, setGravidade] = useState('')
+  const [residenteUid, setResidenteUid] = useState(() => String(caso?.residenteUserId || ''))
+  const [tipo, setTipo] = useState(() => (edicao ? (caso.tipo || 'eletiva') : 'urgencia'))
+  const [gravidade, setGravidade] = useState(() => String(caso?.gravidade || ''))
   const [posto, setPosto] = useState(() => postoInicial || POSTO_AUTO)
   const [salvando, setSalvando] = useState(false)
+  // Confirmações que interrompem o fechamento do formulário: excluir e a hora
+  // que caiu no outro período.
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
+  const [turnoDivergente, setTurnoDivergente] = useState(null) // { de, para, hora }
   // Caso particular recém-adicionado: oferece preencher a cobrança agora
   // (o rascunho em Cirurgias Particulares já nasceu via trigger no banco).
   const [casoParticular, setCasoParticular] = useState(null)
@@ -88,9 +155,9 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
   // TODAS as salas do hospital (não só as que já têm caso hoje): sala que abriu
   // na escala precisa estar aqui — pedido do dono 26/07.
   const salasOpcoes = useMemo(() => [
-    ...salasDoHospital(escala?.hospital, escala?.casos).map((s) => ({ value: s, label: s })),
+    ...salasBase.map((s) => ({ value: s, label: s })),
     { value: NOVA_SALA, label: '+ Nova sala…' },
-  ], [escala])
+  ], [salasBase])
 
   // Sala DIGITADA à mão passa pela MESMA normalização da importação quando é HRO
   // (dono 20/08): "Sala 7" tem de virar "Bloco A - Sala 7 - CO", senão a mesma
@@ -99,17 +166,24 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
   // DIA, que vence de propósito — normalizar a escolha reescreveria a "Sala 4"
   // de uma escala publicada antes de 20/08 e criaria o segundo bloco justamente
   // no caminho que existe para evitá-lo.
+  // ⚠️ e, em EDIÇÃO, nem a digitada quando ela é a sala que já está gravada: o
+  // caso de um dia antigo abre no campo livre (a grafia dele não está na lista),
+  // e normalizar sem ninguém ter tocado em nada renomearia a sala na hora de
+  // salvar — o mesmo estrago, pelo caminho de trás.
   const digitouSala = sala === NOVA_SALA
   const salaBruta = digitouSala ? novaSala.trim() : sala
-  const salaFinal = digitouSala && escala?.hospital === 'hro' ? normalizarSalaHro(salaBruta) : salaBruta
+  const salaIntocada = edicao && salaBruta === salaAtual
+  const salaFinal = !salaIntocada && digitouSala && escala?.hospital === 'hro'
+    ? normalizarSalaHro(salaBruta)
+    : salaBruta
 
   // CONVÊNIO em lista (dono 20/08): campo livre virou "Unirmd"/"Particulae" no
   // banco, e convênio com erro de digitação some do agrupamento por família — e,
   // no particular, da COBRANÇA, que casa o texto. Digitar continua possível.
   const conveniosOpcoes = useMemo(() => [
-    ...conveniosDaEscala(escala?.casos).map((c) => ({ value: c, label: c })),
+    ...conveniosBase.map((c) => ({ value: c, label: c })),
     { value: OUTRO_CONVENIO, label: '+ Outro convênio…' },
-  ], [escala])
+  ], [conveniosBase])
   const convenioFinal = convenio === OUTRO_CONVENIO ? outroConvenio.trim() : convenio
   // OBRIGATÓRIOS (dono 29/07): cirurgião, convênio e tipo entram na exigência.
   // Não é burocracia — cada um alimenta uma decisão a jusante: o CIRURGIÃO agrupa
@@ -129,7 +203,11 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
   // outro dia os dois aplicavam linhas de contrato DIFERENTES, e este campo dizia
   // "CO · ocupado" ao lado de um card de CO livre.
   const { estado } = useEstadoUrgencias(escala, { hospital: 'hro', turno })
-  const mostraPosto = escala?.hospital === 'hro' && exigeGravidade
+  // POSTO fica FORA da edição: ele não é campo do caso, é configuração da SALA
+  // (urgencias_meta) gravada no ato de acrescentar. Reabrir o formulário para
+  // corrigir a hora e, de lambuja, reescrever quem responde pela vaga do
+  // contrato seria efeito colateral invisível — isso se muda no ⚙ da faixa.
+  const mostraPosto = escala?.hospital === 'hro' && exigeGravidade && !edicao
   const postoOpcoes = useMemo(() => {
     if (!mostraPosto) return []
     const tomado = {
@@ -146,6 +224,22 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
   const valido = !!(salaFinal && procedimento.trim() && cirurgiao.trim() && convenioFinal && tipo
     && (!exigeGravidade || gravidade))
 
+  // EXCLUIR só alcança o caso que alguém digitou (dono 01/09). O que veio do
+  // mapa se conserta republicando o turno — e a marca vem do banco, não de um
+  // palpite da tela (coluna `origem`, migration 20260901130000).
+  const podeExcluir = edicao && caso?.origem === 'manual'
+  // A confirmação NOMEIA a cirurgia — "tem certeza?" genérico não dá a quem
+  // opera o meio de perceber que abriu o caso errado. Os dois avisos são as
+  // situações em que excluir provavelmente NÃO é o que a pessoa quer.
+  const jaAconteceu = caso?.statusCirurgia === 'iniciada' || caso?.statusCirurgia === 'terminada'
+  const avisoExclusao = [
+    `${caso?.procedimento || 'Este caso'} — ${[salaAtual, caso?.hora, caso?.cirurgiao].filter(Boolean).join(', ')}.`,
+    'Some do quadro para toda a equipe. Não dá para desfazer.',
+    jaAconteceu && 'Esta cirurgia já foi iniciada: se ela aconteceu, marque Suspensa no detalhe do caso — o excluir é para o caso lançado por engano.',
+    familiaConvenio(caso?.convenio) === 'particular'
+      && 'A cobrança já criada em Cirurgias Particulares NÃO some junto — cancele por lá.',
+  ].filter(Boolean).join(' ')
+
   // Emergência é IMEDIATA por definição na adaptação da NCEPOD, então o campo
   // já nasce preenchido — pré-preenchimento coerente, não default silencioso:
   // só age quando a gravidade ainda está vazia, e continua editável.
@@ -155,8 +249,67 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
     if (novo === 'eletiva') setGravidade('')
   }
 
+  /**
+   * Patch da EDIÇÃO: só o que MUDOU vai para o banco.
+   *
+   * Mandar o formulário inteiro seria destrutivo aqui — o `anestesista` de uma
+   * dupla ("A + B", uid null) e a `ordem` dentro da sala não têm campo nesta
+   * tela, e reenviá-los a partir do estado local os apagaria. Diff também deixa
+   * "abrir e fechar sem tocar em nada" ser literalmente uma operação nula, sem
+   * bater no servidor e sem carimbar `updated_at`.
+   */
+  const patchEdicao = () => {
+    const patch = {}
+    const põe = (campo, novo, atual) => { if (novo !== atual) patch[campo] = novo }
+    põe('sala', salaFinal, salaAtual)
+    põe('hora', hora.trim(), String(caso?.hora || ''))
+    põe('pacienteIniciais', soIniciais(paciente), String(caso?.pacienteIniciais || ''))
+    põe('idade', idade.trim(), String(caso?.idade || ''))
+    põe('procedimento', procedimento.trim(), String(caso?.procedimento || ''))
+    põe('convenio', convenioFinal, convenioAtual)
+    põe('cirurgiao', cirurgiao.trim(), String(caso?.cirurgiao || ''))
+    põe('tipo', tipo, caso?.tipo || 'eletiva')
+    // gravidade só existe em urgência/emergência; voltar para eletiva a LIMPA
+    // (mesma regra do `mudarTipo` do detalhe e do pré-preenchimento daqui).
+    const gravFinal = exigeGravidade ? (gravidade || null) : null
+    if (gravFinal !== (caso?.gravidade || null)) patch.gravidade = gravFinal
+    // residente vai em PAR (nome + uid): gravar só um dos dois deixaria a aba
+    // "Minhas" do residente e o nome no card apontando para pessoas diferentes.
+    const resNovo = residenteUid === SEM_RESIDENTE ? '' : residenteUid
+    if (resNovo !== String(caso?.residenteUserId || '')) {
+      patch.residente = resNovo ? (residenteByUid.get(resNovo)?.nome || null) : null
+      patch.residenteUserId = resNovo || null
+    }
+    return patch
+  }
+
+  const salvarEdicao = async () => {
+    const patch = patchEdicao()
+    if (!Object.keys(patch).length) { onClose?.(); return }
+    setSalvando(true)
+    try {
+      await atualizarCaso(escala, caso.id, patch)
+      // HORA que cai no OUTRO período: pergunta antes de mover (dono 01/09).
+      // O turno é campo PRÓPRIO do caso desde 26/07 (encaixe sem hora ficava nos
+      // dois), então corrigir a hora não o move sozinho — e mover sem avisar
+      // faria o caso sumir da tela de quem acabou de editá-lo.
+      const destino = patch.hora !== undefined ? turnoDeHora(patch.hora) : null
+      // O turno GRAVADO, não `turnoDoCaso`: sem turno explícito (legado) ou no
+      // modo FDS, quem filtra o quadro já é a própria hora — o caso se move
+      // sozinho e perguntar seria pedir permissão para o que já aconteceu.
+      const atual = ['matutino', 'vespertino'].includes(caso?.turno) ? caso.turno : null
+      if (destino && atual && destino !== atual) {
+        setTurnoDivergente({ de: atual, para: destino, hora: patch.hora })
+        return
+      }
+      onClose?.()
+    } catch { /* toast no context */ }
+    finally { setSalvando(false) }
+  }
+
   const submeter = async () => {
     if (!valido || salvando) return
+    if (edicao) return salvarEdicao()
     setSalvando(true)
     try {
       const r = anestesistaUid ? rosterByUid.get(anestesistaUid) : null
@@ -166,7 +319,7 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
         sala: salaFinal,
         ordem: daSala.reduce((m, c) => Math.max(m, c.ordem ?? 0), -1) + 1,
         hora: hora.trim(),
-        pacienteIniciais: iniciais(paciente),
+        pacienteIniciais: soIniciais(paciente),
         idade: idade.trim(),
         procedimento: procedimento.trim(),
         convenio: convenioFinal,
@@ -224,6 +377,58 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
     finally { setSalvando(false) }
   }
 
+  const confirmarExclusao = async () => {
+    setConfirmandoExclusao(false)
+    setSalvando(true)
+    try {
+      await excluirCaso(escala, caso.id)
+      onClose?.()
+    } catch { /* toast no context; a folha fica aberta p/ tentar de novo */ }
+    finally { setSalvando(false) }
+  }
+
+  // MOVER de turno: o caso já foi salvo com a hora nova; falta só decidir onde
+  // ele mora. Ficar é uma resposta legítima (o caso das 15:00 que a equipe
+  // acompanha na tela da manhã), então "Deixar" também fecha sem erro.
+  const moverDeTurno = async () => {
+    const destino = turnoDivergente?.para
+    setTurnoDivergente(null)
+    setSalvando(true)
+    try {
+      await atualizarCaso(escala, caso.id, { turno: destino })
+    } catch { /* toast no context; a hora nova já está gravada */ }
+    finally { setSalvando(false); onClose?.() }
+  }
+
+  if (turnoDivergente) {
+    return (
+      <ConfirmDialog
+        open
+        onClose={() => { setTurnoDivergente(null); onClose?.() }}
+        onConfirm={moverDeTurno}
+        title={`${turnoDivergente.hora} é ${TURNO_ARTIGO[turnoDivergente.para]}`}
+        description={`Este caso está na escala ${TURNO_ARTIGO[turnoDivergente.de]}. Mover para ${TURNO_PREP[turnoDivergente.para]}? Ficando onde está, ele aparece com ${turnoDivergente.hora} no quadro do outro período.`}
+        confirmText={`Mover para ${TURNO_PREP[turnoDivergente.para]}`}
+        cancelText={`Deixar ${TURNO_EM[turnoDivergente.de]}`}
+      />
+    )
+  }
+
+  if (confirmandoExclusao) {
+    return (
+      <ConfirmDialog
+        open
+        variant="danger"
+        onClose={() => setConfirmandoExclusao(false)}
+        onConfirm={confirmarExclusao}
+        title="Excluir este caso?"
+        description={avisoExclusao}
+        confirmText="Excluir"
+        cancelText="Cancelar"
+      />
+    )
+  }
+
   if (casoParticular) {
     return (
       <ConfirmDialog
@@ -251,7 +456,9 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
       <SheetContent side="bottom" className="!h-auto max-h-[90vh]">
         <SheetHeader className="pb-2">
           <SheetTitle className="flex items-center gap-2">
-            <Plus className="w-4 h-4" /> Adicionar caso
+            {edicao
+              ? <><Pencil className="w-4 h-4" /> Editar caso</>
+              : <><Plus className="w-4 h-4" /> Adicionar caso</>}
           </SheetTitle>
         </SheetHeader>
 
@@ -276,7 +483,7 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
                       // nome de verdade (palavra 3+ letras) → memoriza p/ a cobrança de particular
                       if (/\p{L}{3,}/u.test(e.target.value)) nomeCompletoRef.current = e.target.value.trim()
                     }}
-                    onBlur={() => setPaciente(iniciais(paciente))}
+                    onBlur={() => setPaciente(soIniciais(paciente))}
                     placeholder="Nome ou iniciais" />
                 </Campo>
                 <Campo id="ac-idade" label="Idade">
@@ -293,6 +500,16 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
               {convenio === OUTRO_CONVENIO && (
                 <Input value={outroConvenio} onChange={(e) => setOutroConvenio(e.target.value)}
                   placeholder="Nome do convênio" />
+              )}
+              {/* MESMO aviso que o editor de convênio do detalhe já dava: o
+                  trigger cria a cobrança sozinho ao virar Particular, mas sair de
+                  Particular NÃO a apaga — sem isto, corrigir o convênio deixa uma
+                  cobrança viva de uma cirurgia que não é particular. */}
+              {edicao && (
+                <p className="-mt-1 text-[11.5px] leading-snug text-muted-foreground">
+                  Particular gera a cobrança automática. Saindo de Particular, a cobrança já criada
+                  NÃO some sozinha — cancele em Cirurgias Particulares.
+                </p>
               )}
             </div>
           </article>
@@ -353,12 +570,30 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
                 <Input id="ac-cir" value={cirurgiao} onChange={(e) => setCirurgiao(e.target.value)}
                   placeholder="ex.: Mateus Baptistella" />
               </Campo>
-              <Campo id="ac-anest" label="Anestesista">
-                <Select options={rosterOpcoes} value={anestesistaUid} onChange={setAnestesistaUid}
-                  placeholder="Definir depois" searchable />
-              </Campo>
+              {edicao ? (
+                /* Trocar o anestesista é o `DefinirAnestesistaSheet`, no detalhe do
+                   caso: lá se vê onde cada colega está, marca-se dupla na mesma
+                   cirurgia e assume-se a posição na fila. Um Select simples aqui
+                   perderia tudo isso — e, salvo vazio sem querer, apagaria a
+                   dupla "A + B", que não cabe num uid. */
+                <p className="rounded-xl border border-border bg-muted/50 px-3 py-2 text-[11.5px] leading-snug text-muted-foreground">
+                  O <b className="font-semibold text-foreground">anestesista</b> se troca no detalhe
+                  do caso, em “Trocar” — lá dá para ver onde cada colega está e marcar dupla.
+                </p>
+              ) : (
+                <Campo id="ac-anest" label="Anestesista">
+                  <Select options={rosterOpcoes} value={anestesistaUid} onChange={setAnestesistaUid}
+                    placeholder="Definir depois" searchable />
+                </Campo>
+              )}
               <Campo id="ac-residente" label="Residente">
-                <Select options={opcoesResidente} value={residenteUid} onChange={setResidenteUid}
+                {/* Em edição a lista ganha "Sem residente": no formulário novo o
+                    vazio é o placeholder, mas quem já tem residente gravado
+                    precisa de uma opção para TIRAR — sem ela, residente lançado
+                    por engano ficaria no caso para sempre. */}
+                <Select
+                  options={edicao ? [{ value: SEM_RESIDENTE, label: 'Sem residente' }, ...opcoesResidente] : opcoesResidente}
+                  value={residenteUid} onChange={setResidenteUid}
                   placeholder="Sem residente" searchable />
               </Campo>
             </div>
@@ -381,11 +616,33 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
               ].filter(Boolean).join(', ')}.
             </p>
           )}
+          {/* EXCLUIR acima do par e com o peso de destrutivo: contorno vermelho,
+              nunca fundo — o vermelho sólido fica para o botão do diálogo, que é
+              onde a ação acontece de verdade. Fora do par Cancelar/Salvar de
+              propósito: os três lado a lado a 375px dariam 3 alvos de ~110px e o
+              errado é o irreversível. */}
+          {podeExcluir && (
+            <Button
+              variant="outline"
+              onClick={() => setConfirmandoExclusao(true)}
+              disabled={salvando}
+              className="mb-2 w-full border-destructive/55 text-destructive"
+            >
+              <Trash2 className="w-4 h-4" /> Excluir este caso
+            </Button>
+          )}
+          {edicao && !podeExcluir && (
+            <p className="mb-2 text-[11.5px] leading-snug text-muted-foreground">
+              Esta cirurgia veio do mapa importado — para tirá-la da escala, republique o turno.
+            </p>
+          )}
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>
             <Button onClick={submeter} disabled={!valido || salvando} className="flex-1">
-              {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-              Adicionar
+              {salvando
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : (edicao ? <Pencil className="w-4 h-4" /> : <Plus className="w-4 h-4" />)}
+              {edicao ? 'Salvar' : 'Adicionar'}
             </Button>
           </div>
         </div>

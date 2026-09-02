@@ -1165,6 +1165,45 @@ export function EscalaCirurgicaProvider({ children }) {
     }
   }, [toast])
 
+  // Apaga UM caso da escala (dono 01/09). Otimista com rollback, como as demais
+  // escritas de caso: o card some no toque e volta com toast se o servidor
+  // recusar. Dentro das guardas anti-atropelo pelo mesmo motivo do adicionarCaso
+  // (21/08) — durante o RTT do delete, um `loadData` em voo não enxerga a
+  // mutação e reporia o caso apagado.
+  //
+  // Quem pode chamar: a UI só oferece o botão no caso `origem === 'manual'`.
+  // A regra vive lá porque é decisão de produto ("o caso do mapa se conserta
+  // republicando"), não de permissão — no banco, a RLS já deixa quem edita a
+  // escala apagar caso, e a republicação de um turno apaga todos os dele.
+  const excluirCaso = useCallback(async (escala, casoId) => {
+    if (String(escala.id).startsWith('demo-')) {
+      toast({ variant: 'warning', title: 'Indisponível na demonstração' })
+      return
+    }
+    const anteriores = escala.casos || []
+    const alvo = anteriores.find((c) => c.id === casoId)
+    dispatch({
+      type: 'PATCH_HOSPITAL',
+      hospital: escala.hospital,
+      patch: { casos: anteriores.filter((c) => c.id !== casoId) },
+    })
+    marcarEscrita()
+    try {
+      try {
+        await svc.removeCaso(casoId)
+      } finally { encerrarEscrita() }
+      toast({
+        variant: 'success',
+        title: 'Caso excluído',
+        description: `${alvo?.sala || ''} ${alvo?.hora || ''}`.trim() || undefined,
+      })
+    } catch (error) {
+      dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { casos: anteriores } })
+      toast({ variant: 'error', title: 'Erro ao excluir caso', description: error.message })
+      throw error
+    }
+  }, [toast])
+
   // TROCA REMOVIDA DO APP (decisão do dono 29/07): "retire a funcionalidade de
   // troca (apenas deixe um campo em aberto para observação)". Caiu tudo — o
   // sistema de propor/aceitar (aposentado em 23/07), a substituição de posição
@@ -1226,9 +1265,9 @@ export function EscalaCirurgicaProvider({ children }) {
 
   const actionsValue = useMemo(() => ({
     setData, prefetch, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista,
-    setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda,
+    setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, excluirCaso, adicionarAjuda, removerAjuda,
     reordenarAjuda, definirOrigemLinha, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, definirSalasUrgencia, refresh,
-  }), [prefetch, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda, reordenarAjuda, definirOrigemLinha, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, definirSalasUrgencia, refresh])
+  }), [prefetch, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, excluirCaso, adicionarAjuda, removerAjuda, reordenarAjuda, definirOrigemLinha, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, definirSalasUrgencia, refresh])
 
   const stateValue = useMemo(() => ({
     escalas: state.escalas, p4Hospital: state.p4Hospital, data, loading, hoje,
@@ -1247,7 +1286,7 @@ const STATE_FALLBACK = { escalas: { unimed: null, hro: null, materno: null, fds:
 const ACTIONS_FALLBACK = {
   setData: () => {}, prefetch: async () => {}, salvarEscala: async () => {}, salvarEscalaTurno: async () => {}, reordenarLiberacao: async () => {},
   toggleLiberacao: async () => {}, setLocalAnestesista: async () => {}, setAnestesistaCasos: async () => {},
-  atualizarCaso: async () => {}, adicionarAjuda: async () => {}, removerAjuda: async () => {},
+  atualizarCaso: async () => {}, excluirCaso: async () => {}, adicionarAjuda: async () => {}, removerAjuda: async () => {},
   definirP4Hospital: async () => {}, marcarTroca: async () => {}, executarSubstituicao: async () => {},
   desfazerSubstituicao: async () => {}, definirSalasUrgencia: async () => {}, refresh: async () => {},
 }

@@ -11,8 +11,18 @@
  * valor atual com um botão que abre o editor. Os testes seguem o desenho novo —
  * a asserção não afrouxou, mudou o caminho até o mesmo controle.
  *
- * Novo aqui: TROCAR O CIRURGIÃO (dono 17/08). Era o único dado da cirurgia sem
- * conserto no app; grava em `cirurgiao`, o mesmo campo do "Adicionar caso".
+ * ⚠️ 01/09 — OS EDITORES DE CAMPO SAÍRAM DAQUI. Residente, sala, cirurgião e
+ * convênio tinham cada um seu editorzinho neste painel; hoje os quatro (mais
+ * hora, procedimento, paciente e idade, que não tinham nenhum) se corrigem no
+ * `AddCasoSheet` reaberto pelo botão "Editar dados da cirurgia". Os testes que
+ * travavam a GRAVAÇÃO de cada campo mudaram de arquivo, não sumiram: estão em
+ * `addCasoSheetEdicao.test.jsx`, exercitando o mesmo invariante pelo caminho
+ * novo (o par residente+uid, o convênio fora da lista, o campo aberto do
+ * cirurgião). Aqui ficou o que é do PAINEL: os dados aparecem como leitura e
+ * existe uma porta para editá-los — que some para quem não edita a escala.
+ *
+ * O ANESTESISTA é a exceção e mantém o botão próprio: o `DefinirAnestesistaSheet`
+ * não é um campo de texto.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
@@ -71,67 +81,42 @@ const abrirTempo = () =>
 
 beforeEach(() => vi.clearAllMocks())
 
-describe('Residente do caso (dono 29/07)', () => {
-  // A LISTA JÁ ABRE (dono 17/08): o seletor fechado exigia um segundo toque só
-  // para ver os nomes. O editor vem num sheet próprio, de baixo para cima, para o
-  // cartão do caso não mudar de tamanho no meio da leitura.
-  it('escolher o residente grava uid + nome no CASO', async () => {
-    montar()
-    fireEvent.click(screen.getByRole('button', { name: 'Trocar residente' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Augusto' }))
-    await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
-    expect(atualizarCaso.mock.calls[0][2]).toEqual({ residente: 'Augusto', residenteUserId: 'uid-augusto' })
-  })
+describe('Os dados do caso são LEITURA aqui, com UMA porta para editar (dono 01/09)', () => {
+  const completo = { ...caso, residente: 'Augusto', residenteUserId: 'uid-augusto', convenio: 'Sua' }
+  const escalaCompleta = { ...escala, casos: [completo] }
 
-  it('"Sem residente" limpa os dois campos', async () => {
-    const comResidente = { ...caso, residente: 'Augusto', residenteUserId: 'uid-augusto' }
-    montar({}, { ...escala, casos: [comResidente] })
-    fireEvent.click(screen.getByRole('button', { name: 'Trocar residente' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Sem residente' }))
-    await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
-    expect(atualizarCaso.mock.calls[0][2]).toEqual({ residente: null, residenteUserId: null })
-  })
-
-  it('quem não edita vê o residente só como leitura (sem seletor)', () => {
-    const comResidente = { ...caso, residente: 'Augusto', residenteUserId: 'uid-augusto' }
-    montar({ podeEditar: false }, { ...escala, casos: [comResidente] })
+  it('residente, sala e cirurgião aparecem, e nenhum tem editor próprio', () => {
+    montar({ onEditarCaso: vi.fn() }, escalaCompleta)
     expect(screen.getByText('Residente')).toBeTruthy()
-    expect(screen.queryByRole('option')).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Trocar residente' })).toBeNull()
-  })
-
-  it('a interface deixa claro que o residente não responde pelo caso', () => {
-    montar()
-    fireEvent.click(screen.getByRole('button', { name: 'Trocar residente' }))
-    expect(screen.getByText(/quem responde por ele continua sendo o anestesista/i)).toBeTruthy()
-  })
-})
-
-describe('Cirurgião do caso (dono 17/08)', () => {
-  // SÓ DIGITAÇÃO (dono 17/08): a lista de sugestões saiu — quem corrige o nome do
-  // cirurgião aqui já sabe o nome certo, e a lista atrapalhava mais que ajudava.
-  it('trocar o cirurgião grava no CASO — mesmo campo do "Adicionar caso"', async () => {
-    montar()
-    fireEvent.click(screen.getByRole('button', { name: 'Trocar cirurgião' }))
-    fireEvent.change(screen.getByPlaceholderText(/Eduardo Baldissera/), { target: { value: 'Liana W' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
-    await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
-    expect(atualizarCaso.mock.calls[0][2]).toEqual({ cirurgiao: 'Liana W' })
-  })
-
-  it('o editor do cirurgião é campo aberto, sem lista de sugestões', () => {
-    const outro = { ...caso, id: 'c2', ordem: 1, cirurgiao: 'Liana Winkelmann' }
-    montar({}, { ...escala, casos: [caso, outro] })
-    fireEvent.click(screen.getByRole('button', { name: 'Trocar cirurgião' }))
-    expect(screen.getByPlaceholderText(/Eduardo Baldissera/)).toBeTruthy()
-    expect(screen.queryByRole('combobox')).toBeNull()
-    expect(screen.queryByRole('option')).toBeNull()
-  })
-
-  it('quem não edita não troca o cirurgião', () => {
-    montar({ podeEditar: false })
+    expect(screen.getByText('Augusto')).toBeTruthy()
+    expect(screen.getByText('Sala/local')).toBeTruthy()
     expect(screen.getByText('Cirurgião')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Trocar cirurgião' })).toBeNull()
+    // os quatro editorzinhos foram para o formulário do caso
+    for (const rotulo of ['Trocar residente', 'Mudar sala/local', 'Trocar cirurgião', 'Trocar convênio']) {
+      expect(screen.queryByRole('button', { name: rotulo })).toBeNull()
+    }
+  })
+
+  it('"Editar dados da cirurgia" entrega o caso VIVO a quem abre o formulário', () => {
+    const onEditarCaso = vi.fn()
+    montar({ onEditarCaso }, escalaCompleta)
+    fireEvent.click(screen.getByRole('button', { name: /Editar dados da cirurgia/i }))
+    // o caso VIVO (do context), não o prop congelado: é o que já vale para o
+    // resto do sheet desde 21/07 e o que o formulário precisa para preencher.
+    expect(onEditarCaso).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1', convenio: 'Sua' }))
+  })
+
+  it('quem NÃO edita a escala não vê a porta', () => {
+    montar({ podeEditar: false, onEditarCaso: vi.fn() }, escalaCompleta)
+    expect(screen.getByText('Residente')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Editar dados da cirurgia/i })).toBeNull()
+  })
+
+  it('o ANESTESISTA mantém o botão próprio — não é um campo de texto', () => {
+    // o DefinirAnestesistaSheet mostra onde cada colega está, marca dupla na
+    // mesma cirurgia e assume posição na fila; um Select perderia tudo isso
+    montar({ onEditarCaso: vi.fn(), podeDefinirAnestesista: () => true, onDefinirAnestesista: vi.fn() })
+    expect(screen.getByRole('button', { name: 'Trocar anestesista' })).toBeTruthy()
   })
 })
 
@@ -268,13 +253,6 @@ describe('Editores em sheet próprio (dono 17/08)', () => {
     expect(screen.getByText('Tempo faltante')).toBeTruthy()
   })
 
-  it('a lista de sala já vem aberta, com o local atual marcado', () => {
-    montar()
-    fireEvent.click(screen.getByRole('button', { name: 'Mudar sala/local' }))
-    // opções visíveis de imediato — sem um segundo toque para abrir seletor
-    expect(screen.getByRole('button', { name: /Bloco M - Sala 3/i })).toBeTruthy()
-    expect(screen.queryByRole('combobox')).toBeNull()
-  })
 })
 
 /**
@@ -326,36 +304,13 @@ describe('Gravidade da urgência (dono 18/08)', () => {
  * decide o selo, o agrupamento e a COBRANÇA particular.
  */
 describe('Convênio da cirurgia', () => {
-  it('a linha mostra o convênio atual e o editor grava a escolha da lista', async () => {
-    montar({}, { ...escala, casos: [{ ...caso, convenio: 'Sua' }] })
-    // aparece duas vezes de propósito: o selo do cabeçalho (leitura rápida) e a
-    // linha do cartão "A cirurgia" (onde se corrige)
-    expect(screen.getAllByText('Sua')).toHaveLength(2)
-
-    fireEvent.click(screen.getByRole('button', { name: /Trocar convênio/i }))
-    expect(screen.getByText('Convênio da cirurgia')).toBeTruthy()
-    // o aviso da cobrança tem de estar à vista de quem troca
-    expect(screen.getByText(/cancele em Cirurgias Particulares/i)).toBeTruthy()
-
-    fireEvent.click(screen.getByRole('button', { name: 'SUS' }))
-    await waitFor(() => expect(atualizarCaso).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'e1' }), caso.id, { convenio: 'SUS' },
-    ))
-  })
-
-  it('convênio fora da lista entra digitado', async () => {
-    montar({}, { ...escala, casos: [{ ...caso, convenio: 'SUS' }] })
-    fireEvent.click(screen.getByRole('button', { name: /Trocar convênio/i }))
-    fireEvent.change(screen.getByLabelText('Outro convênio'), { target: { value: 'Sindicato Rural' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
-    await waitFor(() => expect(atualizarCaso).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'e1' }), caso.id, { convenio: 'Sindicato Rural' },
-    ))
-  })
-
-  it('quem não edita a escala não vê a linha do convênio', () => {
-    montar({ podeEditar: false }, { ...escala, casos: [{ ...caso, convenio: 'Sua' }] })
+  it('o convênio segue à vista no cabeçalho — a correção é no formulário', () => {
+    montar({ onEditarCaso: vi.fn() }, { ...escala, casos: [{ ...caso, convenio: 'Sua' }] })
+    // uma vez só desde 01/09: o selo do cabeçalho (leitura rápida). A linha
+    // editável do cartão "A cirurgia" virou o botão de editar o caso.
+    expect(screen.getAllByText('Sua')).toHaveLength(1)
     expect(screen.queryByRole('button', { name: /Trocar convênio/i })).toBeNull()
+    expect(screen.getByRole('button', { name: /Editar dados da cirurgia/i })).toBeTruthy()
   })
 })
 
