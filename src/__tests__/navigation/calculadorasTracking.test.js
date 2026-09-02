@@ -27,7 +27,13 @@ describe('cada abertura de calculadora vira um evento', () => {
   });
 
   it('o wrapper aceita o prop e dispara ao abrir uma calculadora', () => {
-    expect(appSrc).toMatch(/function CalculadorasPageWrapper\(\{[^}]*onCalculatorOpen/);
+    /* ⚠️ Não prende o NOME da função. Em 02/09 a página virou duas
+     * (`CalculadorasPageWrapper` só monta o provider do header;
+     * `CalculadorasPageConteudo` é quem recebe os props), e a asserção antiga
+     * reprovou por causa do arranjo, não da invariante. O que precisa ser
+     * verdade é: alguma função da página destrutura `onCalculatorOpen` e o
+     * dispara com o id da calculadora aberta. */
+    expect(appSrc).toMatch(/function CalculadorasPage\w*\(\{[^}]*onCalculatorOpen/);
     expect(appSrc).toMatch(/onCalculatorOpen\(selectedCalcId\)/);
   });
 
