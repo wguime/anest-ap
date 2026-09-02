@@ -8,7 +8,8 @@
 import { describe, it, expect } from 'vitest'
 import {
   aplicarAtribuicoes, alvosTrocaResponsavel, anestesistaDoCasoEh, salasDoHospital,
-  chavesAnestesista, gruposAnestesista, nomesImportados,
+  chavesAnestesista, gruposAnestesista, nomesImportados, nomeAnestesistaExibicao,
+  preAtribuicoesDoDicionario,
 } from '../../pages/escala-cirurgica/utils'
 
 const apelidoDe = (_sala, uid) => `APELIDO-${uid}`
@@ -437,14 +438,32 @@ describe('aplicarAtribuicoes — atribuição por grupo (dono 27/07)', () => {
 describe('aplicarAtribuicoes — cirurgia com DOIS anestesistas', () => {
   const DUPLA = [{ sala: 'CC - Sala 3', anestesista: 'RAQUEL + GABRIELA' }]
 
-  it('preserva os dois nomes mesmo com atribuição no grupo', () => {
+  // ⚠️ A REGRA DE 11/08 NÃO SAIU — MUDOU DE LUGAR (incidente 02/09).
+  // O que o dono pediu em 11/08 foi que a dupla não fosse achatada SOZINHA: a
+  // pré-atribuição pelo dicionário preenchia o grupo e a colega sumia sem
+  // ninguém ter pedido. Essa trava agora mora em `preAtribuicoesDoDicionario`
+  // (testada logo abaixo), que é o único caminho automático até `atribuicoes`.
+  // Aqui a guarda cobrava o preço errado: engolia TAMBÉM o login escolhido à mão
+  // no cabeçalho do bloco. Em 02/09 o dono trocou Oscar⇄Gabriela na conferência
+  // da Unimed e publicou com a dupla intacta e uid nulo — "a troca não foi
+  // efetuada". Toque explícito é decisão de quem está com o mapa na mão.
+  it('atribuição EXPLÍCITA no cabeçalho do bloco troca o dono da dupla (dono 02/09)', () => {
     const out = aplicarAtribuicoes(DUPLA, { 'CC - Sala 3': 'uid-paulo' }, apelidoDe, resolver)
-    expect(out[0].anestesista).toBe('RAQUEL + GABRIELA')
-    expect(out[0].anestesistaUserId).toBeNull()
+    expect(out[0].anestesista).toBe('APELIDO-uid-paulo')
+    expect(out[0].anestesistaUserId).toBe('uid-paulo')
   })
 
   it('sem atribuição também fica intacta (nunca resolve para um só)', () => {
     const out = aplicarAtribuicoes(DUPLA, {}, apelidoDe, resolver)
+    expect(out[0].anestesista).toBe('RAQUEL + GABRIELA')
+    expect(out[0].anestesistaUserId).toBeNull()
+  })
+
+  it('dicionário que resolve a dupla NÃO a achata (só o toque explícito achata)', () => {
+    // "RAQUEL + GABRIELA"→Gabriela chegou a existir no dicionário de produção
+    // (aprendido por engano em 11/08). Mesmo assim a dupla sai inteira.
+    const resolveDupla = (nome) => (String(nome).includes('+') ? 'uid-gabriela' : resolver(nome))
+    const out = aplicarAtribuicoes(DUPLA, {}, apelidoDe, resolveDupla)
     expect(out[0].anestesista).toBe('RAQUEL + GABRIELA')
     expect(out[0].anestesistaUserId).toBeNull()
   })
@@ -540,5 +559,77 @@ describe('anestesistaDoCasoEh', () => {
   it('sem alias e sem uid não é de ninguém', () => {
     expect(anestesistaDoCasoEh({ anestesista: 'RAQUEL + GABRIELA' }, {})).toBe(false)
     expect(anestesistaDoCasoEh(null, eu)).toBe(false)
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// INCIDENTE 02/09 — "a troca de sala entre Oscar e Gabriela não foi efetuada"
+//
+// Cadeia completa, medida no banco:
+//  1. o mapa da Unimed trouxe a CC - Sala 7 como "GABRIELA + ?" (dupla com o
+//     segundo nome ilegível);
+//  2. o dono escolheu OSCAR no cabeçalho do bloco, na conferência;
+//  3. `publicar` aprendeu "GABRIELA + ?"→Oscar no dicionário (o texto não
+//     resolvia para ninguém, então parecia apelido novo). `fetchAliases` ordena
+//     por apelido e o roster usa `apelidos[0]` como rótulo: G < O, então
+//     "GABRIELA + ?" virou O NOME DO OSCAR em toda escrita;
+//  4. `aplicarAtribuicoes` descartava a escolha por causa do "+" — a escala foi
+//     ao ar com a dupla e uid nulo;
+//  5. no quadro publicado, cada tentativa de trocar o responsável gravava
+//     uid=Oscar com o texto "GABRIELA + ?", e o cabeçalho seguia lendo o texto.
+//     Para quem usa: "clico e não muda".
+// ════════════════════════════════════════════════════════════════════════════
+describe('preAtribuicoesDoDicionario — a trava de 11/08 no caminho automático', () => {
+  const grupos = [
+    { chave: 'CC - Sala 3', nome: 'RAQUEL + GABRIELA' },
+    { chave: 'CC - Sala 4', nome: 'PAULO' },
+    { chave: 'CC - Sala 5', nome: '?' },
+  ]
+
+  it('dupla NUNCA é pré-atribuída, mesmo com o dicionário resolvendo o texto', () => {
+    const resolveTudo = () => 'uid-gabriela'
+    expect(preAtribuicoesDoDicionario(grupos, {}, resolveTudo)['CC - Sala 3']).toBeUndefined()
+  })
+
+  it('grupo de uma pessoa continua sendo pré-atribuído', () => {
+    expect(preAtribuicoesDoDicionario(grupos, {}, resolver)['CC - Sala 4']).toBe('uid-paulo')
+  })
+
+  it('escolha já feita nunca é sobrescrita, e "?" fica de fora', () => {
+    const out = preAtribuicoesDoDicionario(grupos, { 'CC - Sala 4': 'uid-costa' }, resolver)
+    expect(out['CC - Sala 4']).toBe('uid-costa')
+    expect(out['CC - Sala 5']).toBeUndefined()
+  })
+
+  it('sem nada a resolver devolve o MESMO objeto (não dispara re-render)', () => {
+    const atual = {}
+    expect(preAtribuicoesDoDicionario(grupos, atual, () => null)).toBe(atual)
+  })
+})
+
+describe('nomeAnestesistaExibicao — o login manda sobre o texto de dupla (02/09)', () => {
+  const rosterByUid = new Map([['uid-oscar', { uid: 'uid-oscar', nome: 'OSCAR MORAIS', apelidos: ['OSCAR'] }]])
+
+  it('texto de dupla COM login exibe a pessoa do login (era o "clico e não muda")', () => {
+    expect(nomeAnestesistaExibicao({ uid: 'uid-oscar', alias: 'GABRIELA + ?', rosterByUid }))
+      .toBe('Oscar Morais')
+  })
+
+  it('dupla de verdade (sem login) continua mostrando os dois primeiros nomes', () => {
+    expect(nomeAnestesistaExibicao({ uid: null, alias: 'RAQUEL + GABRIELA', rosterByUid }))
+      .toBe('Raquel + Gabriela')
+  })
+
+  it('login fora do roster cai no texto importado, como antes', () => {
+    expect(nomeAnestesistaExibicao({ uid: 'uid-desconhecido', alias: 'GARIM', rosterByUid }))
+      .toBe('Garim')
+  })
+})
+
+describe('anestesistaDoCasoEh — caso corrompido pertence a quem tem o login (02/09)', () => {
+  it('texto de dupla COM login é de quem o login diz, não de quem o texto diz', () => {
+    const caso = { anestesista: 'GABRIELA + ?', anestesistaUserId: 'uid-oscar' }
+    expect(anestesistaDoCasoEh(caso, { uid: 'uid-oscar', alias: 'OSCAR' })).toBe(true)
+    expect(anestesistaDoCasoEh(caso, { uid: 'uid-gabriela', alias: 'GABRIELA' })).toBe(false)
   })
 })

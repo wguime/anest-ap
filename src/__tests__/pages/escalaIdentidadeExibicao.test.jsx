@@ -65,8 +65,18 @@ describe('nomeAnestesistaExibicao — fonte única', () => {
   })
 
   it('sala dividida "A + B" mostra só os primeiros nomes', () => {
-    expect(nomeAnestesistaExibicao({ uid: 'uid-staub', alias: 'CURY + MELO', rosterByUid: ROSTER }))
+    // dupla é `uid: null` POR CONSTRUÇÃO (service, conferência e sheet gravam
+    // assim) — é essa a forma em que ela chega aqui na vida real
+    expect(nomeAnestesistaExibicao({ uid: null, alias: 'CURY + MELO', rosterByUid: ROSTER }))
       .toBe('Cury + Melo')
+  })
+
+  it('texto de dupla COM login é corrupção — o login manda (incidente 02/09)', () => {
+    // o dicionário havia aprendido "GABRIELA + ?" como apelido do Oscar, então
+    // trocar o responsável gravava uid novo + texto de dupla. Lendo o texto
+    // primeiro, o cabeçalho seguia mostrando a colega antiga: "clico e não muda".
+    expect(nomeAnestesistaExibicao({ uid: 'uid-staub', alias: 'CURY + MELO', rosterByUid: ROSTER }))
+      .toBe('Guilherme Staub')
   })
 
   it('uid que não está no roster não quebra nem apaga o nome', () => {

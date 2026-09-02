@@ -16,11 +16,11 @@ import { parseExcelEscala } from '@/lib/excelEscala'
 import { nomeCirurgiaoCurto, separarListaRodape, titleCaseNome } from '@/lib/colunaLiberacao'
 import { aplicarHoraPadraoPosicoes, detectarItensDuplicados, ehPosicaoAssistencial, resumirItensEscala } from '@/lib/escalaCirurgicaItens'
 import { ERRO_IA, classificarFalhaVision, mensagemFalhaVision } from '@/lib/escalaVisionFalha'
-import { isPermissionError } from '@/services/supabaseEscalaAnestesistaService'
+import { ehApelidoDePessoa, isPermissionError } from '@/services/supabaseEscalaAnestesistaService'
 import { prepararImagemParaVision } from '@/lib/imagemVision'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
-import { linhaVazia, prepararCasosImportados as prepararCasos, normNome, candidatosPrimeiroNome, resumirRodape, casosQuePassamParaOTurno, presencaDoTurno, estaPresente, gruposAnestesista, chavesAnestesista, aplicarAtribuicoes, azuisEmprestados, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital } from './utils'
+import { linhaVazia, prepararCasosImportados as prepararCasos, normNome, candidatosPrimeiroNome, resumirRodape, casosQuePassamParaOTurno, presencaDoTurno, estaPresente, gruposAnestesista, chavesAnestesista, aplicarAtribuicoes, preAtribuicoesDoDicionario, azuisEmprestados, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import { planoCruzamentoUrgencias, salasContrato } from '@/lib/escalaCirurgicaUrgencias'
 import { hospitalPelaEstrutura } from '@/lib/escalaHospitalEstrutura'
@@ -356,16 +356,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   // Pré-atribui pela resolução do apelido importado (dicionário), sem sobrescrever
   // escolha. Por GRUPO: no IOSC cada anestesista resolve o seu próprio login.
   useEffect(() => {
-    setAtribuicoes((prev) => {
-      let changed = false
-      const next = { ...prev }
-      for (const g of grupos) {
-        if (next[g.chave] !== undefined || !g.nome || g.nome === '?') continue
-        const uid = resolver(g.nome)
-        if (uid) { next[g.chave] = uid; changed = true }
-      }
-      return changed ? next : prev
-    })
+    setAtribuicoes((prev) => preAtribuicoesDoDicionario(grupos, prev, resolver))
   }, [grupos, resolver])
 
   // O login ESCOLHIDO no Select vence o texto importado — antes o texto vencia
@@ -1239,7 +1230,10 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
       const semVinculo = []
       await Promise.all(grupos.map(async (g) => {
         const uid = atribuicoes[g.chave]
-        const txt = g.nome === '?' ? '' : g.nome
+        // Texto que NÃO é nome de pessoa nunca vira apelido (incidente 02/09):
+        // "GABRIELA + ?" aprendido como apelido do Oscar rebatizou o Oscar em
+        // todo o app. `ehApelidoDePessoa` é a mesma regra que o service recusa.
+        const txt = g.nome === '?' || !ehApelidoDePessoa(g.nome) ? '' : g.nome
         if (uid && txt && resolver(txt) == null) {
           try {
             await upsertAlias({ apelido: txt, userId: uid, createdBy: userId })

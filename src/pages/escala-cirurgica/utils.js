@@ -459,6 +459,32 @@ export function gruposAnestesista(casos, hospital) {
 }
 
 /**
+ * Pré-atribuição do dicionário: resolve o texto importado de cada grupo para um
+ * login, SEM tocar em grupo que já tem escolha. Devolve o mapa novo, ou o mesmo
+ * objeto quando nada mudou (o chamador é um setState).
+ *
+ * ⚠️ DUPLA FICA DE FORA (regra do dono 11/08): "RAQUEL + GABRIELA" é a
+ * informação da escala e um login só não a representa — resolver isso sozinho
+ * achataria a sala numa pessoa sem ninguém ter pedido, e a Completa passaria a
+ * mostrar uma onde havia duas. É AQUI que aquela regra mora: trocar o dono de um
+ * bloco de dupla continua possível, mas só pelo toque explícito no seletor.
+ * (O dicionário chegou a guardar "RAQUEL + GABRIELA"→Gabriela e
+ * "GABRIELA + ?"→Oscar, aprendidos por engano até 02/09; sem esta guarda eles
+ * voltariam a achatar duplas na leitura seguinte.)
+ */
+export function preAtribuicoesDoDicionario(grupos = [], atribuicoes = {}, resolverUid = null) {
+  let changed = false
+  const next = { ...atribuicoes }
+  for (const g of grupos) {
+    if (next[g.chave] !== undefined || !g.nome || g.nome === '?') continue
+    if (String(g.nome).includes('+')) continue
+    const uid = resolverUid?.(g.nome)
+    if (uid) { next[g.chave] = uid; changed = true }
+  }
+  return changed ? next : atribuicoes
+}
+
+/**
  * Aplica a atribuição de anestesistas aos casos na publicação: grava
  * `anestesistaUserId` (login) e o `anestesista` (apelido p/ exibição).
  *
@@ -512,11 +538,16 @@ export function aplicarAtribuicoes(casos, atribuicoes, apelidoDe, resolverUid = 
       return { ...c, semAnestesista: true, anestesista: '?', anestesistaUserId: null }
     }
     // SALA DE DOIS ("RAQUEL + GABRIELA", dono 11/08): a dupla é a informação da
-    // escala e um login só não a representa — escolher um no seletor apagava a
-    // colega e a Completa passava a mostrar uma pessoa onde havia duas. O texto
-    // fica como veio; a fila já conta presença dos DOIS (colunaLiberacao separa
-    // pelo "+") e nenhuma transferência de caso mexe em sala compartilhada.
-    if (t.includes('+')) return { ...c, anestesista: t, anestesistaUserId: null }
+    // escala e um login só não a representa — o texto fica como veio; a fila já
+    // conta presença dos DOIS (colunaLiberacao separa pelo "+") e nenhuma
+    // transferência de caso mexe em sala compartilhada.
+    // ⚠️ SÓ quando ninguém escolheu (incidente 02/09): a guarda vinha ANTES da
+    // atribuição e engolia em silêncio o login escolhido à mão no cabeçalho do
+    // bloco — o dono trocou Oscar⇄Gabriela na conferência e publicou a escala
+    // com a dupla intacta e uid nulo ("a troca não foi efetuada"). Pré-atribuição
+    // automática segue proibida em bloco de dupla (ImportarEscalaPage), então o
+    // que chega aqui em `atribuicoes` é sempre um toque deliberado.
+    if (t.includes('+') && !atribuicoes?.[k]) return { ...c, anestesista: t, anestesistaUserId: null }
     // Atribuição do grupo vence (login escolhido > texto importado, lição 23/07);
     // senão preserva o uid da extração e, por último, tenta o dicionário.
     // HERANÇA POR ESCRITO (auditoria 31/08): "//" e a linha vazia significam "o
@@ -1231,12 +1262,18 @@ export function salasDoHospital(hospital, casos) {
  * @returns {string}
  */
 export function nomeAnestesistaExibicao({ uid, alias, rosterByUid } = {}) {
+  // O LOGIN MANDA (incidente 02/09): dupla é `uid: null` por construção — no
+  // service, na conferência e no sheet. Texto de dupla COM login é sempre
+  // corrupção (o dicionário havia aprendido "GABRIELA + ?" como apelido do
+  // Oscar), e ler o texto primeiro fazia o cabeçalho mostrar a colega antiga
+  // depois de o dono já ter trocado o responsável — "não consigo trocar".
+  const r = uid && rosterByUid?.get(uid)
+  if (r?.nome) return nomeCirurgiaoCurto(r.nome)
   // "A + B" = sala dividida entre dois de propósito: só os primeiros nomes, e
   // não há um cadastro único a consultar.
   const partes = String(alias || '').split(/\s*\+\s*/).map((s) => s.trim()).filter(Boolean)
   if (partes.length > 1) return partes.map(primeiroNome).join(' + ')
-  const r = uid && rosterByUid?.get(uid)
-  return r?.nome ? nomeCirurgiaoCurto(r.nome) : titleCaseNome(alias)
+  return titleCaseNome(alias)
 }
 
 export function anestesistaDaSala(casos, sala) {
@@ -1568,8 +1605,11 @@ export function planoExecucaoTroca({ escalas, resolverUid, a, b, turno = null, e
  */
 export function anestesistaDoCasoEh(caso, { uid = null, alias = '' } = {}) {
   const partes = String(caso?.anestesista || '').split(/\s*\+\s*/).map(normNome).filter(Boolean)
-  const dupla = partes.length > 1
-  if (caso?.anestesistaUserId && !dupla) return !!uid && caso.anestesistaUserId === uid
+  // MESMA regra do `nomeAnestesistaExibicao` (02/09): dupla é uid null por
+  // construção, então login gravado é a identidade do caso. Sem isto, o caso com
+  // texto de dupla corrompido some de "Minhas escalas" de quem o assumiu e
+  // aparece na de quem saiu.
+  if (caso?.anestesistaUserId) return !!uid && caso.anestesistaUserId === uid
   const eu = normNome(alias)
   return !!eu && partes.includes(eu)
 }

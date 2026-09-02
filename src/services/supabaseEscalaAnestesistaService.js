@@ -29,6 +29,25 @@ function handleError(error, context) {
   throw err
 }
 
+/**
+ * O texto é o apelido de UMA PESSOA? (guardrail do incidente 02/09)
+ *
+ * A conferência aprende apelido→login sozinha quando o nome importado é
+ * desconhecido do dicionário. O texto do grupo, porém, nem sempre é um apelido:
+ * "GABRIELA + ?" é uma DUPLA com o segundo nome ainda por decidir, e aprendê-lo
+ * como apelido do Oscar (que foi quem o dono escolheu naquela sala) fez o
+ * dicionário rebatizar o Oscar: `fetchAliases` ordena por apelido e o roster usa
+ * `apelidos[0]` como rótulo, então "GABRIELA + ?" (G < O) passou a ser o nome do
+ * Oscar em TODA escrita — o quadro seguia mostrando Gabriela onde o login já era
+ * dele, e trocar o responsável parecia não funcionar.
+ *
+ * Recusa: dupla ("A + B"), interrogação (ausência declarada) e a herança "//".
+ */
+export function ehApelidoDePessoa(apelido) {
+  const ap = normApelido(apelido)
+  return !!ap && !ap.includes('+') && !ap.includes('?') && ap !== '//'
+}
+
 /** Erro de RLS/permissão? (42501, ou 403 quando o PostgREST não devolve code) */
 export function isPermissionError(error) {
   return error?.code === '42501'
@@ -71,6 +90,11 @@ async function fetchAliasesByUser(userId) {
 async function upsertAlias({ apelido, userId, createdBy = null }) {
   const ap = normApelido(apelido)
   if (!ap || !userId) throw new Error('apelido e userId obrigatórios')
+  // Última linha de defesa: nem a conferência nem a VinculosSheet podem gravar
+  // uma dupla ou um "?" como apelido de alguém (ver ehApelidoDePessoa).
+  if (!ehApelidoDePessoa(ap)) {
+    throw new Error(`"${ap}" não é o nome de uma pessoa — dupla ("A + B") e "?" não viram vínculo.`)
+  }
   const { data, error } = await supabase
     .from('escala_anestesista_alias')
     .upsert({ apelido: ap, user_id: userId, created_by: createdBy }, { onConflict: 'apelido' })
