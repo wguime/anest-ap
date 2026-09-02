@@ -166,7 +166,54 @@ test.describe('Balanço Hídrico — relógio do procedimento', () => {
 
     const fita = page.getByRole('tablist', { name: 'Horas registradas' });
     await expect(fita.getByRole('tab', { name: 'Hora 2' })).toBeVisible();
-    await expect(page.getByText("Início não informado")).toBeVisible();
+    await expect(page.getByText('Início não informado')).toBeVisible();
     await expect(page.getByRole('button', { name: /^Já são/ })).toHaveCount(0);
+  });
+});
+
+/* O widget nativo de data escreve no formato do SISTEMA: no iPhone em pt-BR
+   isso é "2 de set. de 2026", quase o dobro do "02/09/2026" que o WebKit
+   headless mostra. Ele não encolhe — a largura intrínseca do widget empurra o
+   item de grid, que nasce com `min-width:auto` — e a caixa da data vazava por
+   baixo da caixa da hora (foto do dono, 02/09/2026). */
+test.describe('Balanço Hídrico — os campos de início não vazam da caixa', () => {
+  test.skip(!EMAIL || !SENHA, 'Set E2E_USER_EMAIL / E2E_USER_PASSWORD para rodar');
+  test.use({ locale: 'pt-BR' });
+
+  test('mesmo com o texto do widget no pior caso, nada ultrapassa a borda', async ({ page }) => {
+    await entrar(page, 'light', rascunho(5, 5));
+    await abrirCard(page);
+    await page.getByRole('button', { name: /alterar/i }).last().click();
+    await expect(page.locator('#inicio-campos input[type="time"]')).toBeVisible();
+
+    /* Inflar a fonte reproduz a pressão do formato longo do iOS, que o browser
+       do teste não escreve. Sem `min-w-0` nos dois níveis (item de grid e
+       control do DS) a caixa estoura aqui. */
+    await page.addStyleTag({ content: '#inicio-campos input { font-size: 26px !important; }' });
+    await page.waitForTimeout(300);
+
+    const m = await page.evaluate(() => {
+      const box = document.querySelector('#inicio-campos');
+      const r = box.getBoundingClientRect();
+      const controls = [...box.querySelectorAll('[data-slot="input-control"]')].map((c) => {
+        const rc = c.getBoundingClientRect();
+        return { left: rc.left, right: rc.right, top: rc.top, bottom: rc.bottom };
+      });
+      return { caixa: { left: r.left, right: r.right }, controls };
+    });
+
+    expect(m.controls).toHaveLength(2);
+    for (const c of m.controls) {
+      expect(c.right, 'o campo vazou pela direita da caixa').toBeLessThanOrEqual(m.caixa.right + 1);
+      expect(c.left, 'o campo vazou pela esquerda da caixa').toBeGreaterThanOrEqual(m.caixa.left - 1);
+    }
+
+    // Empilhados a 390px: se um dia voltarem a dividir a linha, é porque coube
+    // — mas então não podem se sobrepor.
+    const [data, hora] = m.controls;
+    const mesmaLinha = data.top < hora.bottom && hora.top < data.bottom;
+    if (mesmaLinha) {
+      expect(data.right, 'a caixa da data passou por baixo da caixa da hora').toBeLessThanOrEqual(hora.left + 1);
+    }
   });
 });

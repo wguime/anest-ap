@@ -1152,14 +1152,30 @@ export default function BalancoHidricoTransopDisplay() {
                 ficava aberto o tempo todo (visto no e2e). Lá funciona porque
                 `space-y-4` não declara `display`. */}
             {inicioAberto && (
-              <div id="inicio-campos" className="grid grid-cols-2 gap-2">
+              /* ⚠️ Colunas FLUIDAS, não `grid-cols-2`: o widget nativo de data
+                 escreve no formato do sistema, e no iPhone em pt-BR isso é
+                 "2 de set. de 2026" — ~135px de texto que não cabem nos 104px
+                 úteis de meia largura. O input não encolhe (largura intrínseca
+                 do widget), então a caixa vazava POR BAIXO da caixa da hora
+                 (foto do dono, 02/09). Com `auto-fit/minmax(200px)` os dois
+                 campos empilham no celular e voltam a ficar lado a lado onde
+                 sobra largura — deitado, ou em tela grande. */
+              <div
+                id="inicio-campos"
+                className="grid gap-2 grid-cols-[repeat(auto-fit,minmax(200px,1fr))]"
+              >
+                {/* `min-w-0` nos dois níveis: item de grid e o control do DS
+                    nascem com `min-width:auto`, que é o que deixa o conteúdo
+                    intrínseco empurrar a caixa para fora do track. */}
                 <Input
+                  className="min-w-0 [&_[data-slot=input-control]]:min-w-0"
                   type="date"
                   label="Data de início"
                   value={inicioData}
                   onChange={(e) => setInicioData(e.target.value)}
                 />
                 <Input
+                  className="min-w-0 [&_[data-slot=input-control]]:min-w-0"
                   type="time"
                   label="Hora de início"
                   value={inicioHora}

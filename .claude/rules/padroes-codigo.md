@@ -94,4 +94,13 @@ parte o cabeçalho em duas cores no escuro. Neutralizar as duas.
 ⚠️ **Badge é `whitespace-nowrap` e não encolhe** — texto longo dentro dele empurra o resto da linha
 para fora. Quando o rótulo pode crescer, encurtar a string em vez de confiar no wrap.
 
+⚠️ **`input type="date"` escreve no formato do SISTEMA e NÃO encolhe.** No iPhone em pt-BR isso é
+"2 de set. de 2026" (~135px), contra "02/09/2026" do Chrome — e a largura intrínseca do widget
+empurra o item de grid/flex, que nasce com `min-width:auto`: a caixa vaza por baixo da vizinha.
+Onde houver campo de data: colunas fluidas (`grid-cols-[repeat(auto-fit,minmax(200px,1fr))]`, que
+empilha no celular e volta a dividir a linha onde sobra largura) **e `min-w-0` nos dois níveis** —
+no item e no `[data-slot=input-control]` do DS (`[&_[data-slot=input-control]]:min-w-0`). Medir com
+`locale: 'pt-BR'` no projeto `mobile` (WebKit); para o pior caso, inflar a fonte do input no teste,
+porque o browser headless escreve o formato curto.
+
 ⚠️ **`Modal` DS usa props `title`/`description`/`footer`** — não existem `ModalHeader`/`Content`/`Footer`.
