@@ -277,7 +277,8 @@ export function ordemDerivadaDosCasos(casos) {
     if (c.semAnestesista) continue
     const nome = String(c.anestesista || '').trim()
     if (!nome || nome === '//' || /^\?+$/.test(nome)) continue
-    for (const parte of nome.split(/\s*\+\s*/).map((s) => s.trim()).filter(Boolean)) {
+    // "?" não é pessoa (dono 02/09) — ver a mesma regra em gerarColunaLiberacao
+    for (const parte of nome.split(/\s*\+\s*/).map((s) => s.trim()).filter((s) => s && !/^\?+$/.test(s))) {
       const chave = norm(parte)
       const hora = String(c.hora || '').trim()
       const e = porPessoa.get(chave) || { nome: parte, n: 0, ultima: '' }
@@ -356,11 +357,18 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
 
   for (const c of resolvidos) {
     const nome = String(c.anestesista || '').trim()
+    // Nomes REAIS do caso. "?" NÃO É PESSOA (dono 02/09): a dupla lida pela
+    // metade ("OSCAR + ?", o 2º nome ilegível no mapa) abria uma linha para a
+    // interrogação — card sem dono, rotulado Ajuda, encravado no meio dos já
+    // liberados. O lado conhecido conta; o que falta é ausência, não colega.
+    const partes = nome.split(/\s*\+\s*/)
+      .map((s) => s.trim())
+      .filter((s) => s && !/^\?+$/.test(s))
     // Caso "?" explícito (regra 10) OU anestesista literal "?"/"??" OU sem
     // anestesista resolvível (linha órfã sem acima p/ herdar, ou "//" no 1º caso
     // da sala): vira ALERTA no fim da lista com horário/sala/procedimento — o
     // plantonista precisa VER a sala descoberta, nunca sumir em silêncio.
-    if (c.semAnestesista || !nome || nome === '//' || /^\?+$/.test(nome)) {
+    if (c.semAnestesista || !nome || nome === '//' || !partes.length) {
       if (casoConcluido(c)) continue // alerta "?" some quando o caso encerra
       const cir = nomeCirurgiaoCurto(c.cirurgiao) || BLOCO_LABEL[c.bloco] || 'Imagem'
       const ctx = [BLOCO_LABEL[c.bloco] || opts.hospital, c.hora].filter(Boolean).join(' ')
@@ -380,7 +388,6 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     // DOIS anestesistas na mesma sala ("Roberta + Fernando", pedido do dono 23/07):
     // o caso conta para AMBOS → cada um aparece na SUA posição do rodapé, com a
     // sala e o cirurgião. Um único nome segue o caminho normal (com o uid do caso).
-    const partes = nome.split(/\s*\+\s*/).map((s) => s.trim()).filter(Boolean)
     const umSo = partes.length === 1
     for (const parte of partes) {
       const { key, uid } = resolveKey(parte, umSo ? (c.anestesistaUserId || null) : null)

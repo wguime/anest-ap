@@ -680,6 +680,36 @@ describe('chave estável + nome original (persistência — bug 2026-07-22)', ()
   })
 })
 
+describe('dupla lida pela metade ("OSCAR + ?") — dono 02/09', () => {
+  // O mapa da Unimed de 02/09 trouxe "GABRIELA + ?": dois anestesistas na sala,
+  // o segundo ilegível. A fila abria uma linha para a INTERROGAÇÃO — um card sem
+  // dono, com badge de Ajuda, encravado no meio de quem já estava liberado
+  // ("ponto de interrogação não é ajuda"; "não pode haver card amarelo no meio
+  // dos vermelhos"). O que falta é ausência, não colega.
+  it('o "?" não vira linha; o lado conhecido fica com o caso', () => {
+    const r = gerarColunaLiberacao(
+      [caso('CC - Sala 3', 0, 'OSCAR + ?', 'Eduardo Menegat')],
+      ['GABRIELA', 'OSCAR'],
+      {}
+    )
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Gabriela', 'Oscar'])
+    expect(r.linhas.some((l) => /\?/.test(l.anestesista))).toBe(false)
+    expect(r.linhas.find((l) => l.anestesista === 'Oscar').salas).toContain('CC - Sala 3')
+  })
+
+  it('o "?" não entra nem quando ninguém do par está no rodapé', () => {
+    const r = gerarColunaLiberacao([caso('CC - Sala 3', 0, 'OSCAR + ?', 'Eduardo Menegat')], [], {})
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Oscar'])
+  })
+
+  it('nome só de interrogações ("? + ?") cai no ALERTA de sala descoberta', () => {
+    const r = gerarColunaLiberacao([caso('CC - Sala 3', 0, '? + ?', 'Eduardo Menegat')], ['OSCAR'], {})
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Oscar'])
+    expect(r.semAnestesista).toHaveLength(1)
+    expect(r.semAnestesista[0].sala).toBe('CC - Sala 3')
+  })
+})
+
 describe('dois anestesistas na mesma sala ("A + B") — pedido do dono 23/07', () => {
   it('o caso conta para AMBOS: cada um aparece na sua posição do rodapé, com a sala', () => {
     const r = gerarColunaLiberacao(
