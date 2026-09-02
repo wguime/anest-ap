@@ -363,8 +363,8 @@ describe('AssignStaffModal', () => {
         enfermagemQmentum: [],
         ferias: [],
         indisponivel: [
-          { nome: 'ATESTADO', status: 'indisponivel' },
-          { nome: 'ATESTADO', status: 'indisponivel' },
+          { nome: 'Marta', turno: '02/09-08/09', status: 'indisponivel' },
+          { nome: 'Joana', turno: '05/09-07/09', status: 'indisponivel' },
         ],
       },
       consultorioCardData: '2026-09-11',
@@ -389,9 +389,12 @@ describe('AssignStaffModal', () => {
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
     const savedStaff = onSave.mock.calls[0][0]
+    // `indisponivel` é server-owned e volta LITERALMENTE igual — nome e período
+    // inclusive. A regra do Firestore compara a chave inteira: qualquer
+    // reescrita aqui derruba o save com permission-denied.
     expect(savedStaff.consultorio.indisponivel).toEqual([
-      { nome: 'ATESTADO', status: 'indisponivel' },
-      { nome: 'ATESTADO', status: 'indisponivel' },
+      { nome: 'Marta', turno: '02/09-08/09', status: 'indisponivel' },
+      { nome: 'Joana', turno: '05/09-07/09', status: 'indisponivel' },
     ])
     expect(savedStaff.consultorio.recepcao[0]).toMatchObject({
       nome: 'Ana',

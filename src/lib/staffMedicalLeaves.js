@@ -47,6 +47,36 @@ function placeholderList(count) {
   return Array.from({ length: Math.max(0, count) }, () => ({ ...PUBLIC_PLACEHOLDER }))
 }
 
+/**
+ * "2026-09-02" + "2026-09-08" → "02/09-08/09", o formato curto que o card já
+ * usa em Férias (dono 01/09: atestado aparece com nome e período, como os
+ * outros pontos de trabalho).
+ */
+function shortRangeLabel(startsOn, endsOn) {
+  if (!startsOn || !endsOn) return '-'
+  const short = (key) => {
+    const [, month, day] = key.split('-')
+    return month && day ? `${day}/${month}` : null
+  }
+  const inicio = short(startsOn)
+  const fim = short(endsOn)
+  return inicio && fim ? `${inicio}-${fim}` : '-'
+}
+
+// ⚠️ Espelha `leaveToPublicEntry` de functions/src/staffProjectionCore.js — os
+// dois lados precisam produzir a MESMA entrada, senão o save do cliente deixa
+// de bater com a projeção gravada e a regra do Firestore recusa o update.
+function publicLeaveEntry(leave) {
+  return {
+    nome: String(leave?.employeeName || '').trim(),
+    turno: shortRangeLabel(
+      isoFromDateLike(leave?.startsOn || leave?.startsAt),
+      isoFromDateLike(leave?.endsOn || leave?.endsAt)
+    ),
+    status: 'indisponivel',
+  }
+}
+
 function normalizedEmployeeName(value) {
   return String(value || '').trim().toLocaleUpperCase('pt-BR')
 }
@@ -116,7 +146,6 @@ export function sanitizeStaffForPublic(rawStaff, medicalLeaves, dateKey = isoFro
     const group = { ...(sanitized[scope] || {}) }
     SENSITIVE_SECTION_KEYS.forEach((key) => delete group[key])
 
-    let count
     if (Array.isArray(medicalLeaves)) {
       const scopedLeaves = medicalLeaves.filter((leave) => leave.scope === scope)
       const activeLeaves = scopedLeaves.filter((leave) => isMedicalLeaveActiveOn(leave, dateKey))
@@ -135,14 +164,24 @@ export function sanitizeStaffForPublic(rawStaff, medicalLeaves, dateKey = isoFro
         ))
         .forEach((leave) => restorePreviousAssignment(group, leave))
 
-      count = activeNames.size
+      // Mesma forma e mesma ordem que `functions/src/staffProjectionCore.js`
+      // grava — este lado é só a projeção otimista de quem acabou de salvar.
+      group.indisponivel = activeLeaves
+        .slice()
+        .sort((a, b) => normalizedEmployeeName(a.employeeName)
+          .localeCompare(normalizedEmployeeName(b.employeeName), 'pt-BR'))
+        .map(publicLeaveEntry)
     } else if (legacy.length > 0) {
-      count = legacy.filter((leave) => leave.scope === scope).length
+      // Legado não tem datas confiáveis (só DD/MM-DD/MM sem ano), então segue
+      // anônimo até alguém confirmar o intervalo no editor.
+      group.indisponivel = placeholderList(legacy.filter((leave) => leave.scope === scope).length)
     } else {
-      count = Array.isArray(group.indisponivel) ? group.indisponivel.length : 0
+      // LEITURA. `indisponivel` é server-owned: chega pronta das Cloud
+      // Functions e passa adiante como está. Regenerar placeholders aqui
+      // apagava o nome no caminho entre o Firestore e o card.
+      group.indisponivel = Array.isArray(group.indisponivel) ? group.indisponivel : []
     }
 
-    group.indisponivel = placeholderList(count)
     sanitized[scope] = group
   }
 

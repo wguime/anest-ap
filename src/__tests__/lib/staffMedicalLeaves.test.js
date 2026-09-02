@@ -53,7 +53,13 @@ function publicSchedule() {
 
 describe('staffMedicalLeaves', () => {
   describe('sanitizeStaffForPublic', () => {
-    it('remove atestados dos dois escopos e publica apenas placeholders anonimos', () => {
+    // Dono 01/09/2026: o card passou a mostrar NOME e PERÍODO do afastamento,
+    // como já fazia com Férias. A trava do anonimato caiu por decisão dele, não
+    // por conveniência — `staff/schedule` é legível por qualquer usuário
+    // autenticado, então o que sobra de proteção é o que este teste ainda
+    // exige: a seção `atestado` nunca sobrevive, e nada além de nome e período
+    // curto atravessa (sem diagnóstico, sem ano, sem previousAssignment).
+    it('remove a secao atestado e publica nome e periodo curto, sem mais nada', () => {
       const rawStaff = {
         hospitais: {
           hro: [{ nome: 'Ana Operacional', turno: '07:00-13:00', status: 'ativa' }],
@@ -95,16 +101,21 @@ describe('staffMedicalLeaves', () => {
       expect(sanitized.consultorio).not.toHaveProperty('atestado')
       expect(sanitized).not.toHaveProperty('medicalLeaves')
       expect(sanitized).not.toHaveProperty('staffMedicalLeaves')
-      expect(sanitized.hospitais.indisponivel).toEqual([{ ...PUBLIC_PLACEHOLDER }])
-      expect(sanitized.consultorio.indisponivel).toEqual([{ ...PUBLIC_PLACEHOLDER }])
+      expect(sanitized.hospitais.indisponivel).toEqual([
+        { nome: 'Maria Privada', turno: '10/09-14/09', status: 'indisponivel' },
+      ])
+      expect(sanitized.consultorio.indisponivel).toEqual([
+        { nome: 'Joana Privada', turno: '11/09-12/09', status: 'indisponivel' },
+      ])
       expect(sanitized.hospitais.hro[0].nome).toBe('Ana Operacional')
       expect(sanitized.consultorio.recepcao[0].nome).toBe('Beatriz Operacional')
 
       const publicJson = JSON.stringify(sanitized)
-      expect(publicJson).not.toContain('Maria Privada')
-      expect(publicJson).not.toContain('Joana Privada')
+      // O período vai no formato curto: a data ISO com ano continua fora.
       expect(publicJson).not.toContain('2026-09-10')
       expect(publicJson).not.toContain('2026-09-14')
+      expect(publicJson).not.toContain('previousAssignment')
+      expect(publicJson).not.toContain('medicalLeaveId')
     })
 
     it('considera a data futura selecionada e ignora afastamentos cancelados ou fora do dia', () => {
@@ -170,7 +181,7 @@ describe('staffMedicalLeaves', () => {
       )
       expect(firstDayProjection.hospitais.hro).toEqual([])
       expect(firstDayProjection.hospitais.indisponivel).toEqual([
-        { ...PUBLIC_PLACEHOLDER },
+        { nome: 'Maria Privada', turno: '10/09-14/09', status: 'indisponivel' },
       ])
 
       const afterEndProjection = sanitizeStaffForPublic(
@@ -232,10 +243,15 @@ describe('staffMedicalLeaves', () => {
       expect(projection.hospitais.hro).toEqual([])
       expect(projection.hospitais.unimed).toEqual([])
       expect(projection.hospitais.materno).toEqual([])
+      // Um único afastamento vigente = uma única linha, mesmo com um passado e
+      // um futuro do MESMO nome na lista: o que não pode é a pessoa aparecer ao
+      // mesmo tempo na escala e no atestado.
       expect(projection.hospitais.indisponivel).toEqual([
-        { ...PUBLIC_PLACEHOLDER },
+        { nome: 'Maria Privada', turno: '10/09-14/09', status: 'indisponivel' },
       ])
-      expect(JSON.stringify(projection.hospitais)).not.toContain('Maria Privada')
+      const secoesOperacionais = { ...projection.hospitais }
+      delete secoesOperacionais.indisponivel
+      expect(JSON.stringify(secoesOperacionais)).not.toContain('Maria Privada')
     })
   })
 

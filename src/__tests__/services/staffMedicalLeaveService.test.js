@@ -164,7 +164,9 @@ describe('subscribeStaffMedicalLeaves', () => {
 })
 
 describe('saveStaffWithMedicalLeaves', () => {
-  it('salva afastamento privado e agenda publica anonima no mesmo batch com UID real', async () => {
+  // O cliente NÃO projeta: reenvia `indisponivel` como está (server-owned) e
+  // grava o privado no mesmo batch, com o UID real de quem salvou.
+  it('salva o privado e preserva a projecao server-owned no mesmo batch com UID real', async () => {
     const staffData = scheduleWithLeaves([formLeave()])
     const currentPublicStaff = currentPublicSnapshot({
       hospitalUnavailable: 2,
@@ -220,13 +222,15 @@ describe('saveStaffWithMedicalLeaves', () => {
     expect(result.staff.revision).toBe(1)
 
     const publicJson = JSON.stringify(publicWrite[1])
-    // O catálogo pode conter o nome da funcionária; o que não pode vazar é
-    // a associação desse nome a afastamento, datas ou seção médica.
+    // O nome pode estar no catálogo e, desde 01/09, na própria projeção. O que
+    // segue barrado é o SCHEMA privado atravessar para o documento público:
+    // seção `atestado`, campos do afastamento e datas ISO com ano.
     expect(publicWrite[1].staffCatalog).toContain('Maria')
     expect(publicJson).not.toContain('employeeName')
     expect(publicJson).not.toContain('atestado')
     expect(publicJson).not.toContain('startsOn')
     expect(publicJson).not.toContain('startsAt')
+    expect(publicJson).not.toContain('previousAssignment')
     expect(publicJson).not.toContain('2026-09-10')
     expect(publicJson).not.toContain('2026-09-14')
   })
@@ -381,8 +385,10 @@ describe('saveStaffWithMedicalLeaves', () => {
 
     expect(result.staff.hospitais).not.toHaveProperty('atestado')
     expect(result.staff.consultorio).not.toHaveProperty('atestado')
+    // Projeção otimista do perfil só-RH: mesma forma que as Cloud Functions vão
+    // gravar (nome + período curto), para o card não piscar de anônimo p/ nome.
     expect(result.staff.hospitais.indisponivel).toEqual([
-      { nome: 'ATESTADO', status: 'indisponivel' },
+      { nome: 'Maria', turno: '10/09-14/09', status: 'indisponivel' },
     ])
     expect(result.staff.consultorio.indisponivel).toEqual([])
     expect(result.staff.consultorio.recepcao).toEqual([
@@ -469,6 +475,36 @@ describe('saveStaffWithMedicalLeaves', () => {
       .toEqual(currentPublicStaff.consultorio.indisponivel)
     expect(publicWrite[1].revision).toBe(21)
     expect(publicWrite[1].updatedBy).toBe('firebase-uid-combined-editor')
+  })
+
+  // A regra do Firestore exige que o update do cliente reenvie `indisponivel`
+  // IDÊNTICA à gravada — só o Admin SDK (Cloud Functions) a recalcula. Antes
+  // cada item era remapeado para um marcador anônimo, o que só passava enquanto
+  // a projeção era uma lista de placeholders iguais. Desde 01/09 ela carrega
+  // nome e período: remapear devolveria permission-denied na primeira edição da
+  // escala feita depois de alguém entrar de atestado.
+  it('copia a projecao server-owned LITERALMENTE, com o nome e o periodo que ela tiver', async () => {
+    const currentPublicStaff = currentPublicSnapshot({ revision: 6 })
+    currentPublicStaff.hospitais.indisponivel = [
+      { nome: 'Marta', turno: '02/09-08/09', status: 'indisponivel' },
+    ]
+
+    const result = await saveStaffWithMedicalLeaves({
+      staffData: scheduleWithLeaves([]),
+      currentPublicStaff,
+      existingLeaves: [],
+      userId: 'firebase-uid-editor-escala',
+      dateKey: '2026-09-03',
+      updatePublic: true,
+    })
+
+    expect(result.success).toBe(true)
+    const publicWrite = mockBatchSet.mock.calls.find(
+      ([ref]) => ref.collection === 'staff' && ref.id === 'schedule'
+    )
+    expect(publicWrite[1].hospitais.indisponivel).toEqual([
+      { nome: 'Marta', turno: '02/09-08/09', status: 'indisponivel' },
+    ])
   })
 
   it('rejeita updatePublic true sem o snapshot publico atual', async () => {

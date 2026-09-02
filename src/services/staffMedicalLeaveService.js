@@ -14,7 +14,6 @@ import {
   extractMedicalLeavesFromStaff,
   isoFromDateLike,
   sanitizeStaffForPublic,
-  PUBLIC_PLACEHOLDER,
 } from '../lib/staffMedicalLeaves'
 
 const COLLECTION = 'staffMedicalLeaves'
@@ -168,14 +167,17 @@ export async function saveStaffWithMedicalLeaves({
     if (updatePublic) {
       for (const scope of ['hospitais', 'consultorio']) {
         const currentProjection = currentPublicStaff?.[scope]?.indisponivel
-        // Rótulo vem do PUBLIC_PLACEHOLDER da lib — fonte ÚNICA (decisão do
-        // dono 08/08: a escala mostra "ATESTADO", o motivo operacional, sem
-        // datas nem diagnóstico). Este ponto duplicava o texto à mão e escrevia
-        // "INDISPONÍVEL": o documento público e a projeção administrativa
-        // divergiam para o mesmo dado, e o teste que cobrava a coerência ficou
-        // vermelho desde 03/08, segurando o deploy automático.
+        // `indisponivel` é server-owned: a regra do Firestore exige que o update
+        // do cliente reenvie essa chave IDÊNTICA à gravada, e só as Cloud
+        // Functions (Admin SDK) a recalculam. Daí copiar em vez de projetar.
+        //
+        // A cópia tem de ser literal. Antes cada item virava o PUBLIC_PLACEHOLDER
+        // anônimo — o que só passava enquanto a projeção era uma lista de
+        // placeholders iguais entre si. Desde 01/09 ela carrega nome e período
+        // (decisão do dono), então remapear mudaria o conteúdo e o save inteiro
+        // voltaria permission-denied na primeira edição depois de um atestado.
         publicStaff[scope].indisponivel = Array.isArray(currentProjection)
-          ? currentProjection.map(() => ({ ...PUBLIC_PLACEHOLDER }))
+          ? currentProjection.map((entry) => ({ ...entry }))
           : []
       }
       const currentRevision = currentPublicStaff?.revision
