@@ -660,10 +660,17 @@ service cloud.firestore {
       );
     }
 
+    // Atestado acompanha a edicao da escala (dono 01/09): quem edita as escalas de
+    // tecnicas/secretarias tambem gerencia afastamento. A permissao dedicada segue
+    // valendo sozinha, para o perfil de RH que nao edita a escala operacional.
+    // O dado continua isolado nesta colecao — `validPublicStaffSchedule` segue
+    // recusando a chave `atestado` no doc publico /staff/schedule.
     function hasStaffAbsencePrivatePermission() {
-      return isAuthenticated() &&
+      return hasStaffEditPermission() || (
+        isAuthenticated() &&
         exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.get('permissions', {}).get('staff-absence-private', false) == true;
+        get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.get('permissions', {}).get('staff-absence-private', false) == true
+      );
     }
 
     function validPublicStaffSchedule(data) {

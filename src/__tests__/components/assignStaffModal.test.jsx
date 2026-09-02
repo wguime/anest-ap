@@ -334,6 +334,23 @@ describe('AssignStaffModal', () => {
     expect(savedStaff.consultorioCardTurno).toBe('tarde')
   })
 
+  // Dono 01/09: ATESTADO passou a ser um destino de "Mover para" para quem edita a
+  // escala, e nao mais so para o perfil dedicado de RH. A trava real esta em
+  // `useStaff` (quem recebe canManageAbsences); aqui garantimos que a opcao chega
+  // ao seletor nas duas categorias.
+  it.each([
+    ['consultorio'],
+    ['hospitais'],
+  ])('editor operacional de %s tem ATESTADO entre os destinos de "Mover para"', (type) => {
+    renderModal({ type, canManageAbsences: true, canEditOperational: true })
+
+    const moverPara = screen.getAllByLabelText('Mover para')[0]
+    expect(within(moverPara).getByRole('option', { name: 'ATESTADO' })).toBeInTheDocument()
+
+    fireEvent.change(moverPara, { target: { value: 'atestado' } })
+    expect(moverPara).toHaveValue('atestado')
+  })
+
   it('editor operacional sem acesso privado preserva a secao indisponivel', async () => {
     const onSave = vi.fn().mockResolvedValue({ success: true })
     const staff = makeStaff({

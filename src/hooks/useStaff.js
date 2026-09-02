@@ -19,6 +19,8 @@ import {
   mergeMedicalLeavesForEditing,
 } from '../lib/staffMedicalLeaves';
 
+// Permissao dedicada de RH: gerencia afastamento SEM editar a escala operacional.
+// Nao e mais o unico caminho — ver `canManageAbsences`.
 function hasPrivateAbsencePermission(user) {
   if (!user) return false
   return user.permissions?.['staff-absence-private'] === true
@@ -121,7 +123,14 @@ export function useStaff({ loadPrivateAbsences = false } = {}) {
     return false;
   }, [user]);
 
-  const canManageAbsences = hasPrivateAbsencePermission(user)
+  // Atestado acompanha a edicao da escala (dono 01/09): quem edita as escalas de
+  // tecnicas/secretarias tambem move alguem para ATESTADO, sem depender do toggle
+  // "Gerenciar Atestados — Privado". A permissao dedicada continua valendo sozinha,
+  // para o perfil de RH que so cuida de afastamento e nao mexe na escala.
+  // O dado segue morando na colecao privada `staffMedicalLeaves`, nunca no doc
+  // publico — o que mudou foi quem entra nela, espelhado em `firestore.rules`.
+  const canEditOperational = canEdit()
+  const canManageAbsences = hasPrivateAbsencePermission(user) || canEditOperational
   const shouldLoadPrivateAbsences = canManageAbsences && loadPrivateAbsences
 
   useEffect(() => {
@@ -165,8 +174,6 @@ export function useStaff({ loadPrivateAbsences = false } = {}) {
     if (!shouldLoadPrivateAbsences || !privateAbsencesReady) return staff
     return mergeMedicalLeavesForEditing(staff, medicalLeaves, legacyMedicalLeaves)
   }, [staff, shouldLoadPrivateAbsences, privateAbsencesReady, medicalLeaves, legacyMedicalLeaves])
-
-  const canEditOperational = canEdit()
 
   // Save staff schedule
   const saveStaff = useCallback(async (newStaffData) => {
