@@ -176,6 +176,14 @@ def serializar(doc):
     itens = list(doc['louise']['dias'].items())
     for i, (k, v) in enumerate(itens): linhas.append(f'   {j(k)}:{j(v)}{"," if i < len(itens) - 1 else ""}')
     linhas.append('  }'); linhas.append(' },')
+    if 'feriados' in doc:
+        linhas.append(' "feriados":{')
+        linhas.append(f'  "fonte":{j(doc["feriados"]["fonte"])},')
+        linhas.append(f'  "regra":{j(doc["feriados"]["regra"])},')
+        linhas.append('  "dias":{')
+        itens = list(doc['feriados']['dias'].items())
+        for i, (k, v) in enumerate(itens): linhas.append(f'   {j(k)}:{j(v)}{"," if i < len(itens) - 1 else ""}')
+        linhas.append('  }'); linhas.append(' },')
     linhas.append(' "legenda":{')
     itens = list(doc['legenda'].items())
     for i, (k, v) in enumerate(itens): linhas.append(f'  {j(k)}:{j(v)}{"," if i < len(itens) - 1 else ""}')
@@ -195,6 +203,7 @@ def main():
     ano = int(args[1]) if len(args) > 1 else datetime.date.today().year
     dias, legenda, louise, avisos = extrair(pdf_path, ano)
     datas = sorted(dias)
+    anterior = json.loads(Path(out).read_text()) if Path(out).exists() else {}
     doc = {
         'fonte': Path(pdf_path).name,
         'extraidoEm': datetime.date.today().isoformat(),
@@ -207,6 +216,8 @@ def main():
         'dias': {d: dias[d] for d in datas},
         'avisos': avisos,
     }
+    # a escala de FERIADOS vem de outro PDF (scripts/extrair-feriados-numerica.py): preservar
+    if anterior.get('feriados'): doc['feriados'] = anterior['feriados']
     Path(out).write_text(serializar(doc))
     print(f'dias: {len(datas)} ({datas[0]} → {datas[-1]}) · feriados: {sum(1 for d in datas if dias[d]["feriado"])} · legenda: {len(legenda)} · louise: {len(louise)} dias · avisos: {len(avisos)}')
     for a in avisos: print('  aviso:', a)

@@ -39,7 +39,11 @@ if (!args.includes('--sem-ferias')) {
   console.log('⚠ --sem-ferias: lista sai PENDENTE de conferência de férias.\n')
 }
 console.log(`Fonte: ${dados.fonte} · vigência ${dados.vigencia.inicio} → ${dados.vigencia.fim}\n`)
+const impressos = new Set()
 for (const hospital of hospitais) for (const turno of turnos) {
-  console.log(formatarOrdem(montarOrdem(dados, { data, hospital, turno, ferias, ocupantes })))
+  const r = montarOrdem(dados, { data, hospital, turno, ferias, ocupantes })
+  // feriado = fila única de todos os hospitais: uma vez por turno
+  if (r.filaUnica) { if (impressos.has(turno)) continue; impressos.add(turno) }
+  console.log(formatarOrdem(r))
   console.log()
 }

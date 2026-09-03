@@ -45,8 +45,14 @@ rede, e a lista sai pendente), férias `node scripts/ferias-pega-plantao.mjs
   ordenar por valor nem por nome: "44 → 01" é sequência normal. A lib já devolve a tarde
   invertida — quem consumir NÃO inverte de novo.
 - **Colunas em cinza = feriado**: sem validade, há escala própria do feriado. Não usar os
-  números nem reaproveitar o dia anterior; se a escala do feriado não estiver disponível,
-  registrar a ausência. Na edição vigente: 25/08 (Chapecó), 07/09, 12/10, 02/11, 20/11.
+  números nem reaproveitar o dia anterior. Na edição vigente: 25/08 (Chapecó), 07/09, 12/10,
+  02/11, 20/11. **A escala de feriados** (PDF "FERIADOS <ano>", `feriados.dias` no dataset,
+  extraída por `scripts/extrair-feriados-numerica.py`) é uma **FILA ÚNICA por feriado** —
+  todos os hospitais, 20 nomes, **manhã do 1º ao último de cima para baixo, tarde invertida**
+  (dono 03/09). Louise já vem impressa quando trabalha (nada a inserir). Nomes sem sobrenome
+  que casam com 2+ pessoas ("GUILHERME", "JOAO") saem sem número e viram pendência de
+  identidade até o dono dizer quem é. Feriado sem escala própria no dataset = registrar a
+  ausência, nunca reaproveitar a grade.
 - **Exceção da Louise (nº 43):** trabalha só à tarde (13h–19h). Quadro próprio "ESCALA LOUISE —
   POSIÇÕES TURNO VESPERTINO": a **letra é o hospital do dia** e o **ordinal é a POSIÇÃO** em
   que ela entra na ordem da tarde (posição, não número da legenda). Primeiro monta-se a
@@ -54,7 +60,9 @@ rede, e a lista sai pendente), férias `node scripts/ferias-pega-plantao.mjs
   os seguintes descem uma casa; ninguém sai. Só o hospital indicado, só a tarde. Durante a
   exceção o 43 NÃO está na grade (inserir pelo 43 duplicaria). Na edição vigente o quadro vai
   de 24/08 a 20/11 e o 43 volta à grade em 23/11 (o arquivo chega a dezembro apesar do nome).
-  Ordinal em cinza com letra colorida (05/11 e 06/11) é ambíguo → pendência, não dedução.
+  Ordinal em cinza com letra colorida (05/11 e 06/11 na edição de 2026) foi ERRO de
+  formatação (dono 03/09): o quadro vale e a Louise entra normalmente; o extrator só registra
+  o fato (`ordinalCinza`).
 - **Férias (Pega Plantão) — cruzamento obrigatório e SEMPRE na hora** (dono 03/09: "sempre há
   mudanças de última hora" — nunca reaproveitar consulta antiga nem cache): casar identidade
   (legenda × nome completo; `CADASTRO_LEGENDA` na lib espelha o dicionário de apelidos),

@@ -102,9 +102,45 @@ function entradaPosicao(dados, e) {
   return { numero: e.n, nome: nomes.join(' / '), nomes, compartilhada: nomes.length > 1, grupo: dados.legenda?.[e.n]?.grupo ?? null }
 }
 
+/** Nome impresso na escala de feriados → número da legenda (null quando o nome sozinho é ambíguo). */
+export function numeroDaLegenda(dados, nome) {
+  // a barra é separador de PESSOAS e precisa sobreviver à normalização (que apaga pontuação)
+  const partes = (v) => String(v || '').split('/').map(normNomeNumerica).filter(Boolean)
+  const alvo = partes(nome).join(' / ')
+  // entrada compartilhada ("HUMBERTO / ROBERTA") responde pelo par inteiro E por cada nome sozinho
+  const hits = Object.entries(dados?.legenda || {}).filter(([, e]) => {
+    const ps = partes(e.nome)
+    return ps.join(' / ') === alvo || ps.includes(alvo)
+  })
+  return hits.length === 1 ? hits[0][0] : null
+}
+
+/**
+ * Feriado: a escala própria é uma FILA ÚNICA (todos os hospitais), na ordem impressa —
+ * manhã de cima para baixo, tarde invertida (dono 03/09). Louise já vem na lista quando
+ * trabalha; ninguém é inserido. Nome sem sobrenome que casa com 2+ pessoas ("GUILHERME",
+ * "JOAO") sai sem número e vira pendência de identidade.
+ */
+export function ordemFeriado(dados, { data, turno }) {
+  const f = dados?.feriados?.dias?.[data]
+  if (!f) return null
+  const pendencias = []
+  const base = f.lista.map((nome) => {
+    const nomes = String(nome).split('/').map((n) => normNomeNumerica(n)).filter(Boolean)
+    const numero = numeroDaLegenda(dados, nome)
+    if (!numero) pendencias.push(`Feriado ${data}: "${nome}" não identifica uma pessoa só na legenda — confirmar quem é.`)
+    return { numero, nome: nomes.join(' / '), nomes, compartilhada: nomes.length > 1, grupo: numero ? dados.legenda[numero]?.grupo ?? null : null }
+  })
+  return {
+    ok: true, data, hospital: 'todos', turno, filaUnica: true, feriado: f.nome, diaSemana: null, semana: null, corDoHospital: null,
+    posicoes: turno === 'vespertino' ? [...base].reverse() : base, consultorio: [], pendencias,
+  }
+}
+
 /**
  * Ordem-base de um hospital num dia/turno, sem Louise e sem férias.
- * Devolve `{ ok:false, motivo }` para fora da vigência, fim de semana e feriado.
+ * Devolve `{ ok:false, motivo }` para fora da vigência e fim de semana; em feriado devolve a
+ * fila única da escala de feriados (ou `motivo:'feriado'` quando ela não está no dataset).
  */
 export function ordemBase(dados, { data, hospital, turno }) {
   const dia = diaNumerico(dados, data)
@@ -112,7 +148,10 @@ export function ordemBase(dados, { data, hospital, turno }) {
     const fds = /^\d{4}-\d{2}-\d{2}$/.test(data) && [0, 6].includes(new Date(`${data}T12:00:00`).getDay())
     return { ok: false, motivo: fds ? 'fim_de_semana' : 'fora_da_vigencia', data, hospital, turno }
   }
-  if (dia.feriado) return { ok: false, motivo: 'feriado', data, hospital, turno, aviso: 'Coluna em cinza: feriado tem escala própria — a numérica não vale neste dia.' }
+  if (dia.feriado) {
+    return ordemFeriado(dados, { data, turno })
+      || { ok: false, motivo: 'feriado', data, hospital, turno, aviso: 'Coluna em cinza: feriado tem escala própria e ela não está no dataset — registrar a ausência.' }
+  }
   if (!HOSPITAIS_NUMERICA.includes(hospital)) return { ok: false, motivo: 'hospital_invalido', data, hospital, turno }
   const doHospital = dia.coluna.filter((e) => e.hospital === hospital).map((e) => entradaPosicao(dados, e))
   const consultorio = dia.coluna.filter((e) => e.hospital === 'consultorio').map((e) => entradaPosicao(dados, e))
@@ -134,10 +173,8 @@ export function inserirLouise(dados, { data, hospital, turno }, posicoes) {
   const q = dados?.louise?.dias?.[data]
   if (!q || turno !== 'vespertino' || q.hospital !== hospital) return { posicoes, louise: null, pendencias: pend }
   if (q.cinza) return { posicoes, louise: null, pendencias: pend }
-  if (q.ordinalCinza) {
-    pend.push(`Quadro da Louise em ${data}: ordinal em cinza com letra colorida — confirmar se ela trabalha antes de inserir.`)
-    return { posicoes, louise: null, pendencias: pend }
-  }
+  // Ordinal em cinza com a letra colorida (05/11 e 06/11 na edição de 2026): o dono confirmou
+  // em 03/09 que o cinza saiu errado na formatação — o quadro vale e a Louise entra normalmente.
   if (posicoes.some((p) => p.numero === '43')) {
     pend.push(`Louise (43) já está na grade de ${data}; o quadro também a posiciona — não inserida para não duplicar.`)
     return { posicoes, louise: null, pendencias: pend }
@@ -179,7 +216,7 @@ export function excluirFerias(posicoes, ferias, { casar = casarNomeComLegenda } 
 export function montarOrdem(dados, { data, hospital, turno, ferias = null, fonteFerias = 'Pega Plantão', ocupantes = {} }) {
   const base = ordemBase(dados, { data, hospital, turno })
   if (!base.ok) return { ...base, lista: [], consultorio: [], louise: null, excluidos: [], pendencias: [base.aviso].filter(Boolean), feriasConferidas: false }
-  const pendencias = []
+  const pendencias = [...(base.pendencias || [])]
   let posicoes = base.posicoes.map((p) => {
     if (!p.compartilhada) return p
     const quem = ocupantes[p.numero]
@@ -187,7 +224,8 @@ export function montarOrdem(dados, { data, hospital, turno, ferias = null, fonte
     pendencias.push(`Entrada ${p.numero} é compartilhada (${p.nome}): definir quem ocupa em ${data}.`)
     return p
   })
-  const lou = inserirLouise(dados, { data, hospital, turno }, posicoes)
+  // na fila única do feriado a Louise já está impressa quando trabalha — nada a inserir
+  const lou = base.filaUnica ? { posicoes, louise: null, pendencias: [] } : inserirLouise(dados, { data, hospital, turno }, posicoes)
   posicoes = lou.posicoes
   pendencias.push(...lou.pendencias)
   let excluidos = []
@@ -234,8 +272,9 @@ export function formatarOrdem(r) {
   const out = []
   const cab = `${r.data} · ${LABEL_TURNO[r.turno] || r.turno} · ${LABEL_HOSPITAL[r.hospital] || r.hospital}`
   if (!r.ok) return `${cab}\n  sem lista: ${r.motivo}${r.aviso ? ` — ${r.aviso}` : ''}`
-  out.push(`${cab} (${r.diaSemana}, semana ${r.semana}; números em ${r.corDoHospital})`)
-  for (const p of r.lista) out.push(`  ${String(p.posicao).padStart(2)}. ${p.numero} ${p.nome}${p.inserida ? '  ← Louise inserida' : ''}${p.observacao ? `  (${p.observacao})` : ''}`)
+  if (r.filaUnica) out.push(`${r.data} · ${LABEL_TURNO[r.turno] || r.turno} · FERIADO ${r.feriado} — fila única, todos os hospitais`)
+  else out.push(`${cab} (${r.diaSemana}, semana ${r.semana}; números em ${r.corDoHospital})`)
+  for (const p of r.lista) out.push(`  ${String(p.posicao).padStart(2)}. ${p.numero || '??'} ${p.nome}${p.inserida ? '  ← Louise inserida' : ''}${p.observacao ? `  (${p.observacao})` : ''}`)
   if (r.consultorio.length) out.push(`  consultório: ${r.consultorio.map((c) => `${c.numero} ${c.nome}`).join(' · ')}`)
   if (r.louise) out.push(`  Louise: ${r.louise.posicao}ª posição da tarde (${LABEL_HOSPITAL[r.louise.hospital]})`)
   if (r.excluidos.length) out.push(`  excluídos por férias (${r.excluidos[0].fonte}): ${r.excluidos.map((e) => `${e.numero} ${e.nome}`).join(' · ')}`)

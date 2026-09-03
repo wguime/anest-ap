@@ -88,14 +88,58 @@ describe('turno: manhã de cima para baixo, tarde de baixo para cima', () => {
   })
 })
 
-describe('coluna cinza = feriado: sem validade, escala própria', () => {
-  it('25/08 (Chapecó) e 07/09 (Independência) não rendem lista nem reaproveitam o dia anterior', () => {
-    for (const data of ['2026-08-25', '2026-09-07']) {
-      const r = montarOrdem(dados, { data, hospital: 'hro', turno: 'matutino', ferias: [] })
-      expect(r.ok).toBe(false)
-      expect(r.motivo).toBe('feriado')
-      expect(r.lista).toEqual([])
+describe('coluna cinza = feriado: a escala própria é uma FILA ÚNICA', () => {
+  it('a escala de feriados tem 10 datas com 20 nomes cada; 40 pessoas, cada uma em 5 feriados (duas equipes alternadas)', () => {
+    const F = dados.feriados.dias
+    expect(Object.keys(F)).toHaveLength(10)
+    const freq = {}
+    for (const f of Object.values(F)) {
+      expect(f.lista).toHaveLength(20)
+      for (const n of f.lista) freq[n] = (freq[n] || 0) + 1
     }
+    expect(Object.keys(freq)).toHaveLength(40)
+    expect(new Set(Object.values(freq))).toEqual(new Set([5]))
+  })
+  it('25/08 (Dia do Município): a numérica cede lugar à fila do feriado, de cima para baixo de manhã', () => {
+    const r = montarOrdem(dados, { data: '2026-08-25', hospital: 'hro', turno: 'matutino', ferias: [] })
+    expect(r.ok).toBe(true)
+    expect(r.filaUnica).toBe(true)
+    expect(r.feriado).toBe('DIA DO MUNICIPIO')
+    expect(nomes(r)[0]).toBe('FERNANDA')
+    expect(nomes(r).at(-1)).toBe('MATHEUS')
+    expect(r.lista).toHaveLength(20)
+    expect(r.lista[0]).toMatchObject({ posicao: 1, numero: '34' })
+  })
+  it('à tarde a fila do feriado inverte; e o hospital pedido não muda a lista (é de todos)', () => {
+    const m = nomes(montarOrdem(dados, { data: '2026-09-07', hospital: 'unimed', turno: 'matutino', ferias: [] }))
+    const t = nomes(montarOrdem(dados, { data: '2026-09-07', hospital: 'hro', turno: 'vespertino', ferias: [] }))
+    expect(m[0]).toBe('GIOVANA')
+    expect(t).toEqual([...m].reverse())
+    expect(nomes(montarOrdem(dados, { data: '2026-09-07', hospital: 'materno', turno: 'matutino', ferias: [] }))).toEqual(m)
+  })
+  it('"GUILHERME" e "JOAO" sem sobrenome não identificam uma pessoa só: saem sem número e viram pendência', () => {
+    const r = montarOrdem(dados, { data: '2026-08-25', hospital: 'hro', turno: 'matutino', ferias: [] })
+    const amb = r.lista.filter((p) => !p.numero).map((p) => p.nome)
+    expect(amb).toEqual(['JOAO', 'GUILHERME'])
+    expect(r.pendencias.filter((p) => /não identifica uma pessoa só/.test(p))).toHaveLength(2)
+  })
+  it('Louise já vem impressa no feriado: nada é inserido, ela aparece uma vez', () => {
+    const r = montarOrdem(dados, { data: '2026-08-25', hospital: 'unimed', turno: 'vespertino', ferias: [] })
+    expect(r.louise).toBeNull()
+    expect(nomes(r).filter((n) => n === 'LOUISE')).toHaveLength(1)
+  })
+  it('férias também saem da fila do feriado preservando a ordem', () => {
+    const sem = nomes(montarOrdem(dados, { data: '2026-08-25', hospital: 'hro', turno: 'matutino', ferias: [] }))
+    const com = montarOrdem(dados, { data: '2026-08-25', hospital: 'hro', turno: 'matutino', ferias: ['Fernanda Guollo', 'Marcos Tadeu Cury'] })
+    expect(com.excluidos.map((e) => e.nome)).toEqual(['FERNANDA', 'CURY'])
+    expect(nomes(com)).toEqual(sem.filter((n) => !['FERNANDA', 'CURY'].includes(n)))
+  })
+  it('feriado da grade sem escala própria no dataset não inventa lista', () => {
+    const semFeriados = { ...dados, feriados: { dias: {} } }
+    const r = montarOrdem(semFeriados, { data: '2026-08-25', hospital: 'hro', turno: 'matutino', ferias: [] })
+    expect(r.ok).toBe(false)
+    expect(r.motivo).toBe('feriado')
+    expect(r.pendencias[0]).toMatch(/registrar a ausência/)
   })
   it('fora da vigência e fim de semana também não inventam lista', () => {
     expect(montarOrdem(dados, { data: '2026-07-31', hospital: 'hro', turno: 'matutino' }).motivo).toBe('fora_da_vigencia')
@@ -125,10 +169,15 @@ describe('Louise — quadro próprio, só à tarde, inserida (ninguém sai)', ()
     expect(nomes(r).filter((n) => n === 'LOUISE')).toHaveLength(1)
     expect(r.louise).toBeNull()
   })
-  it('ordinal em cinza com letra colorida (05/11 e 06/11) vira pendência, não dedução', () => {
-    const r = montarOrdem(dados, { data: '2026-11-05', hospital: dados.louise.dias['2026-11-05'].hospital, turno: 'vespertino', ferias: [] })
-    expect(r.louise).toBeNull()
-    expect(r.pendencias.some((p) => /Louise/.test(p) && /cinza/.test(p))).toBe(true)
+  it('05/11 e 06/11: o ordinal saiu cinza por erro de formatação (dono 03/09) — Louise entra normalmente', () => {
+    for (const data of ['2026-11-05', '2026-11-06']) {
+      const q = dados.louise.dias[data]
+      expect(q.ordinalCinza).toBe(true) // o fato do PDF fica registrado
+      const r = montarOrdem(dados, { data, hospital: q.hospital, turno: 'vespertino', ferias: [] })
+      expect(r.louise).toEqual({ posicao: q.posicao, hospital: q.hospital })
+      expect(r.lista[q.posicao - 1]).toMatchObject({ numero: '43', nome: 'LOUISE', inserida: true })
+      expect(r.pendencias.some((p) => /Louise/.test(p))).toBe(false)
+    }
   })
   it('inserirLouise é puro e não muda quem estava na lista', () => {
     const base = ordemBase(dados, { data: '2026-08-26', hospital: 'hro', turno: 'vespertino' }).posicoes

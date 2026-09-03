@@ -149,7 +149,8 @@ por férias com a fonte; pendências). O script consulta o Pega Plantão SEMPRE,
 use `--sem-ferias`, e aí a lista sai "férias NÃO conferidas" — nunca dizer que férias foram
 conferidas quando a consulta não rodou. Entrada compartilhada (05, 07) só se
 resolve com `--ocupante 05=HUMBERTO` vindo de fonte confirmada. Regras completas:
-`.claude/rules/escala-numerica.md`. Ao comparar com um rodapé lido, usar
+`.claude/rules/escala-numerica.md`. Em feriado a saída é a fila única da
+escala de feriados (todos os hospitais). Ao comparar com um rodapé lido, usar
 `compararComRodape` (faltam / sobram / fora de ordem) — divergência é sinal de troca, ajuda
 ou consultório escalado, não erro automático.
 
@@ -158,4 +159,6 @@ ou consultório escalado, não erro automático.
 Seguir "Ao receber uma escala numérica NOVA" em `.claude/rules/escala-numerica.md`: copiar
 para `.local/escala-numerica/`, extrair com `scripts/extrair-escala-numerica.py` (venv com
 pdfplumber), olhar as páginas renderizadas, ler os `avisos`, ajustar os testes para a edição
-nova, conferir a legenda contra o dicionário de apelidos e commitar só o JSON.
+nova, conferir a legenda contra o dicionário de apelidos e commitar só o JSON. A escala de
+FERIADOS é outro PDF: `scripts/extrair-feriados-numerica.py <pdf> <ano>` grava `feriados` no
+mesmo JSON (o extrator principal preserva o bloco ao rodar de novo).
