@@ -20,7 +20,8 @@ e é justamente essa divergência que a conferência deve apontar. Nada aqui gra
 Onde mora: dataset `src/data/escalaNumerica.json` (extraído do PDF com cor), lib pura
 `src/lib/escalaNumerica.js` (`ordemBase` → `inserirLouise` → `excluirFerias` → `montarOrdem`,
 `compararComRodape`, `formatarOrdem`), CLI `node scripts/ordem-liberacao-numerica.mjs
-<data> [hospital|todos] [turno|ambos] [--ferias]`, férias `node scripts/ferias-pega-plantao.mjs
+<data> [hospital|todos] [turno|ambos]` (consulta o Pega Plantão sempre; `--sem-ferias` só sem
+rede, e a lista sai pendente), férias `node scripts/ferias-pega-plantao.mjs
 <data>` (login do usuário e2e → proxy; imprime só nomes e datas), testes
 `src/__tests__/lib/escalaNumericaOrdem.test.js`. Skill: `/escala-cirurgica ordem …`.
 
@@ -54,7 +55,8 @@ Onde mora: dataset `src/data/escalaNumerica.json` (extraído do PDF com cor), li
   exceção o 43 NÃO está na grade (inserir pelo 43 duplicaria). Na edição vigente o quadro vai
   de 24/08 a 20/11 e o 43 volta à grade em 23/11 (o arquivo chega a dezembro apesar do nome).
   Ordinal em cinza com letra colorida (05/11 e 06/11) é ambíguo → pendência, não dedução.
-- **Férias (Pega Plantão) — cruzamento obrigatório** antes de fechar a lista: casar identidade
+- **Férias (Pega Plantão) — cruzamento obrigatório e SEMPRE na hora** (dono 03/09: "sempre há
+  mudanças de última hora" — nunca reaproveitar consulta antiga nem cache): casar identidade
   (legenda × nome completo; `CADASTRO_LEGENDA` na lib espelha o dicionário de apelidos),
   excluir quem está de férias no dia preservando a ordem relativa, registrar exclusões e fonte.
   Ausência numa escala de plantão NÃO prova férias. **Ordem das operações: base → inserir
