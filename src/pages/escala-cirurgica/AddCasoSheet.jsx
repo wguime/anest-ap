@@ -33,7 +33,7 @@ import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import useRosterResidentes from '@/hooks/useRosterResidentes'
-import { iniciais } from '@/lib/excelEscala'
+import { iniciaisSeguras as soIniciais } from '@/lib/escalaCirurgicaPaciente'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import { conveniosDaEscala, familiaConvenio, normalizarSalaHro, turnoDeHora, salasDoHospital } from './utils'
 import { chaveSala, CONTRATO_HRO, salasContrato } from '@/lib/escalaCirurgicaUrgencias'
@@ -50,22 +50,10 @@ const TURNO_ARTIGO = { matutino: 'da manhã', vespertino: 'da tarde' }
 const TURNO_PREP = { matutino: 'a manhã', vespertino: 'a tarde' }
 const TURNO_EM = { matutino: 'na manhã', vespertino: 'na tarde' }
 
-/**
- * Converte NOME em iniciais; o que já ESTÁ em iniciais fica intacto.
- *
- * O `iniciais()` cru não é idempotente — "M.C.G." é um token só, e ele devolve
- * "M.", destruindo o dado. Passava despercebido enquanto o formulário só criava
- * caso (ninguém abre o "Adicionar" com iniciais prontas); ao reabrir para EDITAR
- * um caso já publicado, o simples tocar no campo apagaria duas letras.
- *
- * O teste é o MESMO predicado do CHECK do banco (`[[:alpha:]]{3,}`): o que não
- * tem três letras seguidas já é forma aceita como iniciais lá — o guard não
- * afrouxa a regra LGPD, ele para de reprocessar o que já passou por ela.
- */
-const soIniciais = (v) => {
-  const bruto = String(v || '').trim()
-  return /\p{L}{3,}/u.test(bruto) ? iniciais(bruto) : bruto
-}
+// `soIniciais` = `iniciaisSeguras` (lib pura): converte NOME em iniciais e deixa
+// intacto o que já está em iniciais — o `iniciais()` cru não é idempotente
+// ("M.C.G." viraria "M." ao reabrir o caso para editar). A mesma função roda na
+// fronteira do service, então nada chega ao CHECK do banco fora da forma aceita.
 
 /** Auto-formata a hora enquanto digita: só dígitos → "HH:MM" (pedido do dono 24/07). */
 const formatHora = (v) => {

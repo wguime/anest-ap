@@ -9,6 +9,7 @@
  * LGPD: paciente só por iniciais (paciente_iniciais).
  */
 import { supabase } from '@/config/supabase'
+import { iniciaisSeguras } from '@/lib/escalaCirurgicaPaciente'
 
 // ============================================================================
 // FIELD MAPPING — camelCase <-> snake_case
@@ -95,6 +96,10 @@ const CASO_FIELDS = [
 function casoToRow(caso, escalaId) {
   const clean = {}
   for (const f of CASO_FIELDS) if (caso[f] !== undefined) clean[f] = caso[f]
+  // Última linha de defesa do CHECK `paciente_iniciais` (02/09: um paciente com
+  // letras seguidas vindo da Vision derrubou a publicação da Unimed inteira).
+  // Vale para TODO caminho de INSERT — publicação por turno, legado e caso manual.
+  if (typeof clean.pacienteIniciais === 'string') clean.pacienteIniciais = iniciaisSeguras(clean.pacienteIniciais)
   return { ...toSnakeCase(clean), escala_id: escalaId }
 }
 

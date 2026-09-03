@@ -13,19 +13,13 @@
  */
 import * as XLSX from 'xlsx'
 
-const up = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase()
-const PARTICULAS = new Set(['DE', 'DA', 'DO', 'DAS', 'DOS', 'E'])
+import { iniciais } from './escalaCirurgicaPaciente'
 
-/** Iniciais do paciente (LGPD): "Cleidiani de Souza Gelda" → "C.S.G." (máx. 4). */
-export function iniciais(nome) {
-  const tokens = String(nome || '').trim().split(/\s+/).filter(Boolean)
-  const letras = tokens
-    .filter((t) => !PARTICULAS.has(up(t)))
-    .map((t) => up(t)[0])
-    .filter(Boolean)
-    .slice(0, 4)
-  return letras.length ? letras.join('.') + '.' : ''
-}
+const up = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase()
+
+// `iniciais` mora em `escalaCirurgicaPaciente.js` (puro, sem `xlsx`) para o
+// service poder sanitizar na fronteira do banco; segue exportada daqui.
+export { iniciais }
 
 const HEADER_ALIASES = {
   sala: ['SALA', 'CENTRO CIRURGICO', 'CC'],
