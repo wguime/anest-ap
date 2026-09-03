@@ -11,7 +11,8 @@
  * baixo para cima. "44 → 01" é uma sequência normal, não se ordena por valor.
  *
  * Entrada compartilhada ("05 HUMBERTO / ROBERTA", "07 ROSE / ALINE"): nos dias úteis o par é a
- * posição, como impresso; na escala de feriados cada um aparece por si (dono 03/09).
+ * posição, como impresso; na escala de feriados cada um aparece por si; e quando a escala do
+ * turno traz só um dos dois, vale o que saiu na escala — a dupla resolveu (dono 03/09).
  *
  * Louise (nº 43): durante a exceção (13h–19h) ela não está na grade; o quadro próprio diz
  * o hospital e a POSIÇÃO em que ela é INSERIDA na ordem da tarde (quem estava ali e os
@@ -264,20 +265,42 @@ export function montarOrdem(dados, { data, hospital, turno, ferias = null, fonte
   }
 }
 
+const mesmaPessoa = (nome, lido, casar) => normNomeNumerica(nome) === normNomeNumerica(lido) || casar(nome, lido) || casar(lido, nome)
+
+/**
+ * Entrada dupla × escala do turno (dono 03/09): quando a escala em anexo traz SÓ UM dos dois
+ * nomes de "HUMBERTO / ROBERTA" ou "ROSE / ALINE", a dupla já resolveu quem trabalha — vale o
+ * nome que saiu na escala, naquele turno. Com os dois na escala ou nenhum, o par fica como está.
+ */
+export function aplicarEscalaNasDuplas(lista, rodape, { casar = casarNomeComLegenda } = {}) {
+  const resolvidos = []
+  const nova = lista.map((p) => {
+    const partes = String(p.nome).split(' / ').map((n) => normNomeNumerica(n)).filter(Boolean)
+    if (partes.length < 2) return p
+    const naEscala = partes.filter((n) => rodape.some((l) => mesmaPessoa(n, l, casar)))
+    if (naEscala.length !== 1) return p
+    resolvidos.push({ numero: p.numero, par: p.nome, nome: naEscala[0] })
+    return { ...p, nome: naEscala[0], par: p.nome, resolvidoPor: 'escala' }
+  })
+  return { lista: nova, resolvidos }
+}
+
 /**
  * Compara a lista esperada com um rodapé lido (Vision/foto): mesma sequência?
- * Devolve o que falta, o que sobra e as trocas de posição — apoio à conferência.
+ * Devolve o que falta, o que sobra e as trocas de posição — apoio à conferência. As entradas
+ * duplas são resolvidas ANTES pelo próprio rodapé (`aplicarEscalaNasDuplas`).
  */
-export function compararComRodape(lista, rodape, { casar = casarNomeComLegenda } = {}) {
+export function compararComRodape(listaEsperada, rodape, { casar = casarNomeComLegenda } = {}) {
+  const { lista, resolvidos } = aplicarEscalaNasDuplas(listaEsperada, rodape, { casar })
   const lidos = rodape.map((r) => normNomeNumerica(r))
   const esperados = lista.map((p) => p.nome)
-  const posDe = (nome) => lidos.findIndex((l) => l === normNomeNumerica(nome) || casar(nome, l) || casar(l, nome))
+  const posDe = (nome) => lidos.findIndex((l) => mesmaPessoa(nome, l, casar))
   const faltamNoRodape = esperados.filter((n) => posDe(n) < 0)
-  const sobramNoRodape = lidos.filter((l) => !esperados.some((n) => normNomeNumerica(n) === l || casar(n, l) || casar(l, n)))
+  const sobramNoRodape = lidos.filter((l) => !esperados.some((n) => mesmaPessoa(n, l, casar)))
   const comuns = esperados.filter((n) => posDe(n) >= 0)
   const ordemLida = comuns.map((n) => posDe(n))
   const foraDeOrdem = comuns.filter((_, i) => i > 0 && ordemLida[i] < ordemLida[i - 1])
-  return { iguais: !faltamNoRodape.length && !sobramNoRodape.length && !foraDeOrdem.length, faltamNoRodape, sobramNoRodape, foraDeOrdem }
+  return { iguais: !faltamNoRodape.length && !sobramNoRodape.length && !foraDeOrdem.length, faltamNoRodape, sobramNoRodape, foraDeOrdem, resolvidos, lista }
 }
 
 /** Texto do resultado no formato pedido pelo dono (data, turno, hospital, lista, consultório, Louise, exclusões, pendências). */

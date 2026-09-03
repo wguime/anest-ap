@@ -2,7 +2,10 @@
 /**
  * Ordem de liberação esperada pela ESCALA NUMÉRICA — apoio à confecção/conferência.
  *
- * Uso: node scripts/ordem-liberacao-numerica.mjs <AAAA-MM-DD> [hro|unimed|materno|todos] [matutino|vespertino|ambos] [--sem-ferias] [--ocupante 05=HUMBERTO]
+ * Uso: node scripts/ordem-liberacao-numerica.mjs <AAAA-MM-DD> [hro|unimed|materno|todos] [matutino|vespertino|ambos] [--sem-ferias] [--rodape "A / B / C"]
+ *   --rodape  compara a lista esperada com o rodapé lido da escala (nomes separados por " / "):
+ *             mostra quem falta, quem sobra, quem está fora de ordem — e resolve as entradas duplas
+ *             pelo nome que saiu na escala (dono 03/09).
  *   As férias são consultadas SEMPRE no Pega Plantão (dono 03/09: "sempre há mudanças de
  *   última hora") via scripts/ferias-pega-plantao.mjs, na hora, sem cache. `--sem-ferias`
  *   só existe para quando não há rede/credencial — e a lista sai marcada como PENDENTE.
@@ -11,7 +14,7 @@ import { readFileSync } from 'fs'
 import { execFileSync } from 'child_process'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
-import { montarOrdem, formatarOrdem, HOSPITAIS_NUMERICA } from '../src/lib/escalaNumerica.js'
+import { montarOrdem, formatarOrdem, compararComRodape, HOSPITAIS_NUMERICA } from '../src/lib/escalaNumerica.js'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const dados = JSON.parse(readFileSync(resolve(root, 'src/data/escalaNumerica.json'), 'utf8'))
@@ -24,7 +27,11 @@ if (!/^\d{4}-\d{2}-\d{2}$/.test(data || '')) {
 const hospitais = !pos[1] || pos[1] === 'todos' ? HOSPITAIS_NUMERICA : [pos[1]]
 const turnos = !pos[2] || pos[2] === 'ambos' ? ['matutino', 'vespertino'] : [pos[2]]
 const ocupantes = {}
-args.forEach((a, i) => { if (a === '--ocupante' && args[i + 1]) { const [n, q] = args[i + 1].split('='); ocupantes[n] = q } })
+let rodape = null
+args.forEach((a, i) => {
+  if (a === '--ocupante' && args[i + 1]) { const [n, q] = args[i + 1].split('='); ocupantes[n] = q }
+  if (a === '--rodape' && args[i + 1]) rodape = args[i + 1].split('/').map((n) => n.trim()).filter(Boolean)
+})
 let ferias = null
 if (!args.includes('--sem-ferias')) {
   try {
@@ -45,5 +52,13 @@ for (const hospital of hospitais) for (const turno of turnos) {
   // feriado = fila única de todos os hospitais: uma vez por turno
   if (r.filaUnica) { if (impressos.has(turno)) continue; impressos.add(turno) }
   console.log(formatarOrdem(r))
+  if (rodape && r.ok) {
+    const c = compararComRodape(r.lista, rodape)
+    console.log(`  × rodapé lido (${rodape.length} nomes): ${c.iguais ? 'IGUAL à numérica' : 'diverge'}`)
+    for (const d of c.resolvidos) console.log(`    dupla ${d.numero} ${d.par} → ${d.nome} (quem saiu na escala)`)
+    if (c.faltamNoRodape.length) console.log(`    faltam no rodapé: ${c.faltamNoRodape.join(' · ')}`)
+    if (c.sobramNoRodape.length) console.log(`    sobram no rodapé: ${c.sobramNoRodape.join(' · ')}`)
+    if (c.foraDeOrdem.length) console.log(`    fora de ordem: ${c.foraDeOrdem.join(' · ')}`)
+  }
   console.log()
 }

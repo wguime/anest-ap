@@ -148,8 +148,8 @@ por férias com a fonte; pendências). O script consulta o Pega Plantão SEMPRE,
 (dono 03/09: há mudança de última hora; nunca usar consulta antiga); só sem rede/credencial
 use `--sem-ferias`, e aí a lista sai "férias NÃO conferidas" — nunca dizer que férias foram
 conferidas quando a consulta não rodou. Entrada compartilhada (05 HUMBERTO / ROBERTA, 07
-ROSE / ALINE) sai como PAR nos dias úteis — é a regra do dono; `--ocupante 05=HUMBERTO` só
-quando ele informar quem está no dia. Regras completas:
+ROSE / ALINE) sai como PAR nos dias úteis — é a regra do dono; se a escala do turno trouxer
+só um dos dois, vale o que saiu nela (`--rodape "A / B / C"` compara e resolve a dupla). Regras completas:
 `.claude/rules/escala-numerica.md`. Em feriado a saída é a fila única da
 escala de feriados (todos os hospitais). Ao comparar com um rodapé lido, usar
 `compararComRodape` (faltam / sobram / fora de ordem) — divergência é sinal de troca, ajuda

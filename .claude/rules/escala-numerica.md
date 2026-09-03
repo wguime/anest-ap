@@ -41,7 +41,9 @@ rede, e a lista sai pendente), férias `node scripts/ferias-pega-plantao.mjs
   HUMBERTO / ROBERTA", "07 ROSE / ALINE"): nos dias úteis **o par é a posição, exatamente como
   impresso** (dono 03/09) — não se escolhe um dos dois nem vira pendência; `ocupantes` na lib
   só quando o dono informar quem está naquele dia. Na escala de feriados cada um aparece por
-  si, como todos os outros.
+  si, como todos os outros. **Quando a escala do turno (foto/rodapé) traz só UM dos dois, vale o
+  que saiu na escala** — a dupla resolveu entre si (dono 03/09): `aplicarEscalaNasDuplas`/
+  `compararComRodape` trocam o par pelo nome que apareceu e isso NÃO é divergência.
 - **Ordem por hospital e turno:** só os números da cor do hospital, na **posição física** da
   coluna — **manhã de cima para baixo; tarde de baixo para cima** (a manhã invertida). Nunca
   ordenar por valor nem por nome: "44 → 01" é sequência normal. A lib já devolve a tarde

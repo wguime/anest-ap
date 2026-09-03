@@ -10,7 +10,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import {
-  ordemBase, inserirLouise, excluirFerias, montarOrdem, compararComRodape, casarNomeComLegenda, formatarOrdem,
+  ordemBase, inserirLouise, excluirFerias, montarOrdem, compararComRodape, aplicarEscalaNasDuplas, casarNomeComLegenda, formatarOrdem,
 } from '../../lib/escalaNumerica'
 
 const dados = JSON.parse(readFileSync(resolve(__dirname, '../../data/escalaNumerica.json'), 'utf8'))
@@ -262,6 +262,21 @@ describe('compararComRodape — a numérica como conferência do rodapé lido', 
     expect(c.faltamNoRodape).toEqual(['PAULO', 'KLISMAN', 'FERNANDA'])
     expect(c.sobramNoRodape).toEqual(['RAFAEL', 'DANIELA', 'NATHALIA', 'EDUARDO'])
     expect(c.foraDeOrdem).toEqual(['ROMULO'])
+  })
+  it('entrada dupla: se a escala do turno traz só um dos dois, vale o que saiu na escala (dono 03/09)', () => {
+    const r = montarOrdem(dados, { data: '2026-08-03', hospital: 'hro', turno: 'matutino', ferias: [] })
+    expect(nomes(r)).toContain('HUMBERTO / ROBERTA')
+    const rodape = nomes(r).map((n) => (n === 'HUMBERTO / ROBERTA' ? 'ROBERTA' : n === 'ROSE / ALINE' ? 'ALINE' : n))
+    const c = compararComRodape(r.lista, rodape)
+    expect(c.iguais).toBe(true)
+    expect(c.resolvidos).toEqual([{ numero: '05', par: 'HUMBERTO / ROBERTA', nome: 'ROBERTA' }, { numero: '07', par: 'ROSE / ALINE', nome: 'ALINE' }])
+    expect(c.lista.find((p) => p.numero === '05')).toMatchObject({ nome: 'ROBERTA', resolvidoPor: 'escala' })
+  })
+  it('entrada dupla com os dois na escala, ou nenhum, fica como par', () => {
+    const lista = [{ posicao: 1, numero: '05', nome: 'HUMBERTO / ROBERTA' }, { posicao: 2, numero: '09', nome: 'MAURICIO' }]
+    expect(aplicarEscalaNasDuplas(lista, ['HUMBERTO', 'ROBERTA', 'MAURICIO']).resolvidos).toEqual([])
+    expect(aplicarEscalaNasDuplas(lista, ['MAURICIO']).resolvidos).toEqual([])
+    expect(compararComRodape(lista, ['MAURICIO']).faltamNoRodape).toEqual(['HUMBERTO / ROBERTA'])
   })
   it('rodapé idêntico à lista esperada é "iguais"', () => {
     const r = montarOrdem(dados, { data: '2026-08-03', hospital: 'hro', turno: 'matutino', ferias: [] })
