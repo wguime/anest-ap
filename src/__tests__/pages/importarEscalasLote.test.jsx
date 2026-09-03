@@ -302,7 +302,12 @@ describe('a conferência só abre com o lote inteiro lido (dono 27/08)', () => {
     // a primeira já foi lida — e mesmo assim nada de abas
     await waitFor(() => expect(svcMock.parseEscalaImagem).toHaveBeenCalledTimes(2))
     expect(abas()).toHaveLength(0)
-    expect(screen.getByText(/Lendo 2 de 2/i)).toBeTruthy()
+    // desde 03/09 (protótipo L8) a espera é um cartão com barra e um item por arquivo; o
+    // contador diz quantas já TERMINARAM, como na imagem aprovada
+    expect(screen.getByText(/Lendo as escalas/i)).toBeTruthy()
+    expect(screen.getByText('1 de 2')).toBeTruthy()
+    expect(screen.getByText('hro.png')).toBeTruthy()
+    expect(screen.getByText('materno.png')).toBeTruthy()
 
     liberarSegunda({ casos: [caso('Sala 2', 'PAULO')], hospitalDetectado: 'materno' })
     await waitFor(() => expect(abas()).toHaveLength(2))
@@ -421,6 +426,39 @@ describe('duplicidade entre hospitais — antes da primeira publicação', () =>
     // nada a publicar enquanto os dois lados estiverem por classificar
     expect(screen.getByRole('button', { name: /nada a publicar/i }).disabled).toBe(true)
     expect(salvarEscalaTurno).not.toHaveBeenCalled()
+  })
+})
+
+// ESPERA COM ESTADO POR ARQUIVO (dono 03/09, protótipo L8): a leitura leva de 30 a 90 s e
+// mostrava uma linha de texto; o que deu errado chegava num toast de 12 s que sumia sozinho.
+describe('espera da leitura', () => {
+  it('mostra um item por arquivo e o problema FICA na tela depois da leitura', async () => {
+    svcMock.parseEscalaImagem
+      .mockResolvedValueOnce({ casos: [caso('Sala 1', 'CURY')], hospitalDetectado: 'hro', ordemLiberacao: ['CURY'], truncado: true })
+      .mockResolvedValueOnce({ casos: [caso('Sala 2', 'PAULO')], hospitalDetectado: 'materno', ordemLiberacao: ['PAULO'] })
+    const { container } = montar()
+    await soltarArquivos(container, [img('hro.png'), img('materno.png')])
+    await waitFor(() => expect(abas()).toHaveLength(2))
+
+    // terminou a leitura e o aviso da escala cortada continua visível, com o arquivo
+    expect(screen.getByText('hro.png')).toBeTruthy()
+    expect(screen.getByText(/leitura cortada/i)).toBeTruthy()
+    expect(screen.getByText(/HRO · 1 caso/)).toBeTruthy()
+
+    // e sai só quando a pessoa tira
+    fireEvent.click(screen.getByRole('button', { name: /tirar estes avisos/i }))
+    await waitFor(() => expect(screen.queryByText(/leitura cortada/i)).toBeNull())
+  })
+
+  it('leitura sem ressalva nenhuma não deixa cartão na tela', async () => {
+    svcMock.parseEscalaImagem
+      .mockResolvedValueOnce({ casos: [caso('Sala 1', 'CURY')], hospitalDetectado: 'hro', ordemLiberacao: ['CURY'] })
+      .mockResolvedValueOnce({ casos: [caso('Sala 2', 'PAULO')], hospitalDetectado: 'materno', ordemLiberacao: ['PAULO'] })
+    const { container } = montar()
+    await soltarArquivos(container, [img('hro.png'), img('materno.png')])
+    await waitFor(() => expect(abas()).toHaveLength(2))
+    expect(screen.queryByText(/Leitura com ressalvas/i)).toBeNull()
+    expect(screen.queryByRole('button', { name: /tirar estes avisos/i })).toBeNull()
   })
 })
 

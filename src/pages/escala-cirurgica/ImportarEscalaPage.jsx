@@ -6,7 +6,7 @@
  * apelido importado é aprendido no dicionário (apelido→login) p/ a próxima escala.
  */
 import { useState, useMemo, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react'
-import { ArrowDown, ArrowLeftRight, ArrowUp, ChevronLeft, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Pencil, Plus, Trash2, Sparkles, Loader2, Check, AlertTriangle, UserPlus } from 'lucide-react'
+import { ArrowDown, ArrowLeftRight, ArrowUp, Ban, ChevronLeft, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Pencil, Plus, Trash2, Sparkles, Loader2, Check, AlertTriangle, UserPlus } from 'lucide-react'
 import { Button, ConfirmDialog, DatePicker, FileUpload, Input, Select, Sheet, SheetContent, SheetHeader, SheetTitle, useToast } from '@/design-system'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import { useEscalaCirurgicaActions, HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
@@ -1378,7 +1378,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
               } catch { trocasPendentes.push(`${nomeCirurgiaoCurto(bPar.nome)}: a execução falhou — execute pelo ✏️ das Liberações`) }
             } else if (plan.pendencias.length) {
               trocasPendentes.push(...plan.pendencias.map((pe) => pe.motivo === 'sem_uid'
-                ? `${nomeCirurgiaoCurto(pe.pessoa.nome)} sem vínculo de login — vincule pelo 🔗 e execute pelas Liberações`
+                ? `${nomeCirurgiaoCurto(pe.pessoa.nome)} sem vínculo de login — vincule o login e execute pelas Liberações`
                 : `${nomeCirurgiaoCurto(pe.pessoa.nome)} sem posição publicada — executa quando a escala dele(a) for publicada`))
             }
           }
@@ -1449,8 +1449,8 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
           duration: 15000,
           title: `Escala publicada, mas ${semVinculo.length === 1 ? 'um nome ficou' : `${semVinculo.length} nomes ficaram`} sem vínculo`,
           description: soPermissao
-            ? `${nomes}: você só pode vincular o seu próprio login. Peça à secretaria ou a um admin para vincular pelo 🔗 — até lá esse nome aparece duas vezes na fila (uma no rodapé, sem casos, e uma no fim da lista).`
-            : `${nomes}: não foi possível salvar o vínculo. Tente de novo pelo 🔗 — até lá esse nome aparece duas vezes na fila.`,
+            ? `${nomes}: você só pode vincular o seu próprio login. Peça à secretaria ou a um admin para vincular o login — até lá esse nome aparece duas vezes na fila (uma no rodapé, sem casos, e uma no fim da lista).`
+            : `${nomes}: não foi possível salvar o vínculo. Tente de novo pelo botão de vincular — até lá esse nome aparece duas vezes na fila.`,
         })
       }
       // No lote quem fecha a tela é o pai, DEPOIS da última escala — fechar aqui
@@ -1528,15 +1528,21 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     azuisRealocados,
     bloqueios: bloqueiosConferencia,
     avisos: avisosConferencia,
+    // O QUE são as pendências, não só quantas (dono 03/09, protótipo L2): a folha de
+    // revisão mostra as duas primeiras por hospital — "3 avisos" obrigava a sair da
+    // revisão, entrar na aba e voltar só para descobrir do que se tratava.
+    pendencias: resumoPendencias.slice(0, 2).map((x) => x.txt),
+    totalPendencias: resumoPendencias.length,
     // guardrail anti-perda por escala, para a folha avisar ANTES: o turno
     // publicado tem mais casos do que este lote (publicar é DELETE+reinsert)
     publicados: (escalaPublicada?.casos || []).filter((c) => (c.turno || periodo) === periodo).length,
   }), [hosp, casosAtribuidosDoTurno, ordemTexto, ajudaTexto, azuisRealocados,
-    bloqueiosConferencia, avisosConferencia, escalaPublicada, periodo])
+    bloqueiosConferencia, avisosConferencia, resumoPendencias, escalaPublicada, periodo])
   // Assinatura estável: sem ela, um objeto novo a cada render realimentaria o
   // estado do pai e a árvore inteira giraria em laço.
   const assinaturaAba = [
     hosp, periodo, resumoAba.totalCasos, resumoAba.bloqueios, resumoAba.avisos, resumoAba.publicados,
+    resumoAba.pendencias.join('~'),
     resumoAba.ordemLiberacao.join('~'), resumoAba.ajudaExterna.join('~'),
     azuisRealocados.map((a) => `${a.hospital}:${a.nome}`).join('~'),
     casosAtribuidosDoTurno.map((c) => `${c.sala}:${c.anestesistaUserId || c.anestesista}`).join('~'),
@@ -1604,7 +1610,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
       )}
       <div className={embutida ? 'space-y-4' : 'max-w-3xl mx-auto p-4 pb-28 space-y-4'}>
         {!canEdit && (
-          <p className="rounded-lg bg-warning/10 text-warning text-sm p-3">Você não tem permissão para confeccionar escalas.</p>
+          <p className="rounded-lg border-l-4 border-warning bg-warning/10 p-3 text-sm text-foreground dark:bg-warning/15">Você não tem permissão para confeccionar escalas.</p>
         )}
 
         {!embutida && (<>
@@ -1656,9 +1662,9 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
 
         {/* Sugestão pelo layout do anexo — confirmar, nunca trocar sozinho */}
         {sugestaoHosp && (
-          <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 flex items-center gap-2">
+          <div className="rounded-xl border border-l-4 border-warning bg-warning/10 p-3 dark:bg-warning/15 flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
-            <p className="text-xs text-warning flex-1">
+            <p className="text-xs text-foreground flex-1">
               O anexo parece ser do <strong>{HOSPITAL_LABEL[sugestaoHosp.hospital]}</strong>
               {sugestaoHosp.origem === 'excel' && ' (Excel é o export padrão da Unimed)'}
               {sugestaoHosp.origem === 'estrutura' && ' (pelas colunas da planilha)'}
@@ -1671,9 +1677,9 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
         )}
 
         {sugestaoData && (
-          <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 flex items-center gap-2">
+          <div className="rounded-xl border border-l-4 border-warning bg-warning/10 p-3 dark:bg-warning/15 flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
-            <p className="text-xs text-warning flex-1">
+            <p className="text-xs text-foreground flex-1">
               O anexo mostra a data <strong>{formatData(sugestaoData)}</strong>, diferente da data selecionada.
             </p>
             <Button size="sm" variant="outline" onClick={() => { setDataEscolhida(sugestaoData); setSugestaoData(null) }}>
@@ -1791,14 +1797,17 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                 // publicar" e sem isto ele disputa com o botão Publicar
                 aria-label={`Ver as ${resumoPendencias.length} pendência(s) da conferência`}
                 className={[
-                  'w-full rounded-xl border px-3 py-2.5 text-left',
+                  'w-full rounded-xl border border-l-4 px-3 py-2.5 text-left',
+                  // TEXTO NA COR DO CORPO (dono 03/09): âmbar sobre âmbar dava 1,9:1 no tema
+                  // claro, contra os 4,5 que texto pequeno exige. A cor fica na borda e no
+                  // ícone, que é a receita do Alert do DS.
                   bloqueiosConferencia > 0
-                    ? 'border-destructive/40 bg-destructive/10'
-                    : 'border-warning/40 bg-warning/10',
+                    ? 'border-destructive bg-destructive/10 dark:bg-destructive/15'
+                    : 'border-warning bg-warning/10 dark:bg-warning/15',
                 ].join(' ')}
               >
-                <p className={`flex items-center gap-1.5 text-xs font-bold ${bloqueiosConferencia > 0 ? 'text-destructive' : 'text-warning'}`}>
-                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                <p className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                  <AlertTriangle className={`h-3.5 w-3.5 shrink-0 ${bloqueiosConferencia > 0 ? 'text-destructive' : 'text-warning'}`} />
                   {bloqueiosConferencia > 0
                     ? `${bloqueiosConferencia === 1 ? '1 bloqueio impede' : `${bloqueiosConferencia} bloqueios impedem`} publicar`
                     : `${avisosConferencia === 1 ? '1 aviso' : `${avisosConferencia} avisos`} — publica assim mesmo`}
@@ -1806,8 +1815,11 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                 </p>
                 <ul className="mt-1.5 space-y-0.5">
                   {resumoPendencias.slice(0, 4).map((p) => (
-                    <li key={p.txt} className={`flex gap-1.5 text-xs ${p.trava ? 'font-semibold text-destructive' : 'text-warning'}`}>
-                      <span aria-hidden="true">{p.trava ? '⛔' : '·'}</span>{p.txt}
+                    <li key={p.txt} className={`flex gap-1.5 text-xs text-foreground ${p.trava ? 'font-semibold' : ''}`}>
+                      {p.trava
+                        ? <Ban className="mt-0.5 h-3 w-3 shrink-0 text-destructive" aria-hidden="true" />
+                        : <span className="text-muted-foreground" aria-hidden="true">·</span>}
+                      {p.txt}
                     </li>
                   ))}
                   {resumoPendencias.length > 4 && (
@@ -1841,7 +1853,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
               </div>
             </div>
             {gruposSemAnestesista > 0 && (
-              <p className="rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
+              <p className="rounded-lg border-l-4 border-warning bg-warning/10 px-3 py-2 text-xs text-foreground dark:bg-warning/15">
                 {gruposSemAnestesista} bloco(s) ainda sem anestesista atribuído.
               </p>
             )}
@@ -2039,20 +2051,25 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                       onBlur={renomearPosicao}
                       onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }}
                     />
-                    <div className="flex flex-wrap gap-1.5">
-                      <Button size="sm" variant="outline" disabled={posAberta.i === 0}
+                    {/* GRADE 2×2 DE 44px (dono 03/09, protótipo L7). Eram quatro botões
+                        `sm` (36px, abaixo do mínimo de toque) em `flex-wrap`: a 375px eles
+                        somam ~350px contra 321 disponíveis e o "Remover" caía sozinho para
+                        a segunda linha. Na grade o bloco tem a mesma altura nas duas
+                        larguras e nada depende de quanto sobra. */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button variant="outline" disabled={posAberta.i === 0}
                         onClick={() => moverPosicao(posAberta.i, -1)} aria-label="Subir uma posição">
                         <ArrowUp className="h-4 w-4" /> Subir
                       </Button>
-                      <Button size="sm" variant="outline" disabled={posAberta.i === ordemNumerada.length - 1}
+                      <Button variant="outline" disabled={posAberta.i === ordemNumerada.length - 1}
                         onClick={() => moverPosicao(posAberta.i, 1)} aria-label="Descer uma posição">
                         <ArrowDown className="h-4 w-4" /> Descer
                       </Button>
-                      <Button size="sm" variant={posAberta.ajuda ? 'primary' : 'outline'}
+                      <Button variant={posAberta.ajuda ? 'primary' : 'outline'}
                         onClick={() => marcarAjuda(posAberta.nome, !posAberta.ajuda)} aria-pressed={posAberta.ajuda}>
-                        Ajuda
+                        <UserPlus className="h-4 w-4" /> Ajuda
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => removerPosicao(posAberta.i)}>
+                      <Button variant="ghost" className="text-destructive" onClick={() => removerPosicao(posAberta.i)}>
                         <Trash2 className="h-4 w-4" /> Remover
                       </Button>
                     </div>
@@ -2210,17 +2227,18 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                 )}
               </h2>
               {totalPendencias === 0 && (
-                <p className="rounded-lg bg-success/10 px-3 py-2 text-xs text-success">
+                <p className="rounded-lg border-l-4 border-success bg-success/10 px-3 py-2 text-xs text-foreground dark:bg-success/15">
                   Nada pendente — confira os blocos e a ordem e publique.
                 </p>
               )}
 
               {/* NOME AMBÍGUO (dono 11/08) — vermelho: isto impede publicar */}
               {gruposAmbiguos.length > 0 && (
-                <div className="rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                <div className="rounded-lg border-l-4 border-destructive bg-destructive/10 px-3 py-2 text-xs text-foreground dark:bg-destructive/15">
                   {gruposAmbiguos.map(({ grupo, candidatos }) => (
                     <p key={grupo.chave}>
-                      ⛔ <b>{grupo.nome}</b> em {grupo.sala || 'sala sem nome'}: pode ser{' '}
+                      <Ban className="mr-1 inline h-3.5 w-3.5 shrink-0 align-[-2px] text-destructive" />
+                      <b>{grupo.nome}</b> em {grupo.sala || 'sala sem nome'}: pode ser{' '}
                       {candidatos.map((c) => nomeCirurgiaoCurto(titleCaseNome(c.nome))).join(' ou ')}.
                       Escolha o login — sem sobrenome a sala fica sem dono e some da ordem de liberação.
                     </p>
@@ -2232,8 +2250,9 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                   solto obrigava a ligar o ponto âmbar de lá com o texto daqui. */}
 
               {secoesAusentesHro.length > 0 && (
-                <p className="rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
-                  ⚠ A leitura não trouxe nenhuma linha de{' '}
+                <p className="rounded-lg border-l-4 border-warning bg-warning/10 px-3 py-2 text-xs text-foreground dark:bg-warning/15">
+                  <AlertTriangle className="mr-1 inline h-3.5 w-3.5 shrink-0 align-[-2px] text-warning" />
+                  A leitura não trouxe nenhuma linha de{' '}
                   <b>{secoesAusentesHro.join(', ')}</b>. Essas seções ficam fora da grade principal do
                   mapa do HRO e são as que mais escapam da extração — nas escalas publicadas até 28/08,
                   a Imagem chegou em 15% das importações e a Hemodinâmica em 49%. Confira a imagem e
@@ -2243,9 +2262,9 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
 
               {/* Cirurgia da manhã que atravessa e fica sem dono presente */}
               {travessiasOrfas.length > 0 && (
-                <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 space-y-1">
-                  <p className="text-sm font-semibold text-warning flex items-center gap-1.5">
-                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                <div className="rounded-xl border border-l-4 border-warning bg-warning/10 p-3 dark:bg-warning/15 space-y-1">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
                     {travessiasOrfas.length === 1 ? '1 cirurgia da manhã passa para esta tarde' : `${travessiasOrfas.length} cirurgias da manhã passam para esta tarde`}
                   </p>
                   <p className="text-xs text-muted-foreground">
@@ -2255,7 +2274,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                   </p>
                   <ul className="space-y-0.5">
                     {travessiasOrfas.map((c) => (
-                      <li key={c.id} className="text-xs text-warning">
+                      <li key={c.id} className="text-xs text-foreground">
                         {titleCaseNome(c.anestesista || 'sem anestesista')} · {c.sala || 'sem sala'}
                         {c.hora ? ` · ${c.hora}` : ''}{c.cirurgiao ? ` · ${nomeCirurgiaoCurto(titleCaseNome(c.cirurgiao))}` : ''}
                       </li>
@@ -2265,12 +2284,12 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
               )}
 
               {duplicados.length > 0 && (
-                <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 space-y-1">
-                  <p className="text-sm font-semibold text-warning flex items-center gap-1.5">
-                    <AlertTriangle className="w-4 h-4 shrink-0" /> Possíveis cirurgias duplicadas
+                <div className="rounded-xl border border-l-4 border-warning bg-warning/10 p-3 dark:bg-warning/15 space-y-1">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-warning" /> Possíveis cirurgias duplicadas
                   </p>
                   {duplicados.map(({ item, quantidade }, i) => (
-                    <p key={`${item.sala}-${item.hora}-${i}`} className="text-xs text-warning">
+                    <p key={`${item.sala}-${item.hora}-${i}`} className="text-xs text-foreground">
                       {item.sala || 'Sem sala'} · {item.hora || 'sem hora'} · {item.procedimento || item.cirurgiao || 'sem descrição'} aparece {quantidade} vezes. Confira o anexo; nada foi removido automaticamente.
                     </p>
                   ))}
@@ -2279,15 +2298,15 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
 
               {/* Conflitos de horário (aviso, não bloqueia) */}
               {conflitos.length > 0 && (
-                <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 space-y-1.5">
-                  <p className="text-sm font-semibold text-warning flex items-center gap-1.5">
-                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                <div className="rounded-xl border border-l-4 border-warning bg-warning/10 p-3 dark:bg-warning/15 space-y-1.5">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
                     {conflitos.length === 1 ? '1 conflito de horário' : `${conflitos.length} conflitos de horário`}
                   </p>
                   <p className="text-xs text-muted-foreground">Mesmo anestesista em 2 salas no mesmo horário. Pode publicar mesmo assim — revise se foi intencional.</p>
                   <ul className="space-y-0.5">
                     {conflitos.map((c, i) => (
-                      <li key={i} className="text-xs text-warning">{c.nome || 'Anestesista'} — {c.sala1} ({c.hora1}) e {c.sala2} ({c.hora2})</li>
+                      <li key={i} className="text-xs text-foreground">{c.nome || 'Anestesista'} — {c.sala1} ({c.hora1}) e {c.sala2} ({c.hora2})</li>
                     ))}
                   </ul>
                 </div>
@@ -2295,12 +2314,12 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
 
               {/* Blocos multi-anestesista com todas as linhas iguais (aviso, não bloqueia) */}
               {blocosRepetidos.length > 0 && (
-                <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 space-y-1">
-                  <p className="text-sm font-semibold text-warning flex items-center gap-1.5">
-                    <AlertTriangle className="w-4 h-4 shrink-0" /> Mesmo anestesista em todas as linhas
+                <div className="rounded-xl border border-l-4 border-warning bg-warning/10 p-3 dark:bg-warning/15 space-y-1">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-warning" /> Mesmo anestesista em todas as linhas
                   </p>
                   {blocosRepetidos.map((b) => (
-                    <p key={b.sala} className="text-xs text-warning">
+                    <p key={b.sala} className="text-xs text-foreground">
                       {b.sala}: {b.nome} nas {b.n} linhas — nesses blocos cada linha costuma ter o SEU anestesista; confira a imagem.
                     </p>
                   ))}
@@ -2492,7 +2511,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                       (foi o que sumiu com Didomenico/Melo no IOSC em 23/07).
                     </p>
                     {decisaoAberta.cauda && (
-                      <p className="rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
+                      <p className="rounded-lg border-l-4 border-warning bg-warning/10 px-3 py-2 text-xs text-foreground dark:bg-warning/15">
                         Fechando a lista sem cirurgia, vai nascer <b>LIBERADO</b> (vermelho) na fila desta publicação.
                       </p>
                     )}

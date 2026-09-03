@@ -25,7 +25,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, Check, ChevronLeft, ChevronRight, FileText, Loader2, Trash2 } from 'lucide-react'
 import {
-  Button, ConfirmDialog, DatePicker, FileUpload, Select,
+  Button, ConfirmDialog, DatePicker, FileUpload, Progress, Select,
   Sheet, SheetContent, SheetHeader, SheetTitle, useToast,
 } from '@/design-system'
 import svc from '@/services/supabaseEscalaCirurgicaService'
@@ -107,6 +107,10 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
   const [resumos, setResumos] = useState({})
   const [carregando, setCarregando] = useState(false)
   const [progresso, setProgresso] = useState(null) // { feitos, total } durante a leitura
+  // ESTADO POR ARQUIVO (dono 03/09, protótipo L8): a espera durava de 30 a 90 s numa linha
+  // de texto só, e os problemas chegavam num toast de 12 s que sumia sozinho. Agora cada
+  // arquivo diz em que pé está, e o que deu errado FICA na tela até a pessoa tirar.
+  const [arquivos, setArquivos] = useState([]) // [{ nome, estado, resultado, problemas[] }]
   // decisões de duplicidade valem para o LOTE inteiro: a duplicidade é da
   // pessoa, não da aba (dono 30/08) — ver `ImportarEscalaPage`
   const [duplicidadeDecisoes, setDuplicidadeDecisoes] = useState({})
@@ -210,6 +214,8 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
     if (!lista.length) return
     setCarregando(true)
     setProgresso({ feitos: 0, total: lista.length })
+    setArquivos(lista.map((f) => ({ nome: f.name, estado: 'aguardando', problemas: [] })))
+    const marcar = (nome, patch) => setArquivos((prev) => prev.map((a) => (a.nome === nome ? { ...a, ...patch } : a)))
     const problemas = []
     const semHospital = []
     const deduzidos = []
@@ -222,11 +228,14 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
     let lidos = 0
     try {
       for (const [n, file] of lista.entries()) {
+        const meus = []
         try {
+          marcar(file.name, { estado: 'lendo' })
           const r = await lerArquivo(file)
-          if (r.erro) { problemas.push(`${file.name}: ${r.erro}`); continue }
+          if (r.erro) { problemas.push(`${file.name}: ${r.erro}`); marcar(file.name, { estado: 'erro', problemas: [r.erro] }); continue }
           if (r.cls.dataDivergente) {
             problemas.push(`${file.name}: o arquivo mostra ${formatData(r.cls.dataDivergente)}, e o lote é de ${formatData(dataEscolhida)}`)
+            meus.push(`data ${formatData(r.cls.dataDivergente)} ≠ lote ${formatData(dataEscolhida)} — confira se é a escala de hoje`)
           }
           // LEITURA CORTADA NÃO ENTRA EM SILÊNCIO (auditoria 31/08): a tela de
           // uma escala avisa isto desde 06/08 e o lote guardava o flag sem
@@ -235,6 +244,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
           // edge existe para expor.
           if (r.truncado) {
             problemas.push(`${file.name}: a leitura foi cortada — as últimas linhas do mapa podem estar faltando; confira o fim da lista`)
+            meus.push('leitura cortada — confira o fim do mapa')
           }
           if (!r.cls.hospital) {
             // conflito entre layout e conteúdo tem motivo próprio: "não
@@ -243,6 +253,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
               ? `o conteúdo é do ${rotulo(r.cls.conflitoHospital)}, mas o layout foi lido como ${rotulo(r.cls.hospitalLido)}.`
               : 'não reconheci o hospital pelo layout.'
             semHospital.push({ id: `${file.name}-${semHospital.length}`, nome: file.name, motivo, ...r })
+            marcar(file.name, { estado: 'pergunta', problemas: meus, resultado: 'aguardando você dizer o hospital' })
             continue
           }
           const hosp = r.cls.hospital
@@ -259,12 +270,19 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
               colisao: true,
               ...r,
             })
+            marcar(file.name, { estado: 'pergunta', problemas: meus, resultado: 'aguardando você dizer o hospital' })
             continue
           }
           prontos[hosp] = { hospital: hosp, nome: r.nome, arquivo: r.arquivo, truncado: r.truncado, lote: r.lote }
           lidos += 1
+          marcar(file.name, {
+            estado: 'ok', problemas: meus,
+            resultado: `${rotulo(hosp)} · ${(r.lote?.rows || []).length} caso${(r.lote?.rows || []).length === 1 ? '' : 's'}${r.lote?.ordemLiberacao?.length ? ` · ${r.lote.ordemLiberacao.length} na ordem` : ''}`,
+          })
         } catch (err) {
-          problemas.push(`${file.name}: ${err?.name === 'ErroImagem' ? err.message : 'falha na leitura'}`)
+          const msg = err?.name === 'ErroImagem' ? err.message : 'falha na leitura'
+          problemas.push(`${file.name}: ${msg}`)
+          marcar(file.name, { estado: 'erro', problemas: [msg] })
         } finally {
           setProgresso({ feitos: n + 1, total: lista.length })
         }
@@ -290,6 +308,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
         const p = naoIdentificados[0]
         prontos[livres[0]] = { hospital: livres[0], nome: p.nome, arquivo: p.arquivo, truncado: p.truncado, lote: p.lote }
         deduzidos.push({ hospital: livres[0], nome: p.nome })
+        marcar(p.nome, { estado: 'ok', resultado: `${rotulo(livres[0])} · por eliminação`, problemas: [`entrou como ${rotulo(livres[0])} por eliminação — confira a aba`] })
         semHospital.splice(semHospital.indexOf(p), 1)
         lidos += 1
       }
@@ -479,7 +498,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
 
       <div className="mx-auto max-w-3xl space-y-4 p-4 pb-28">
         {!canEdit && (
-          <p className="rounded-lg bg-warning/10 p-3 text-sm text-warning">
+          <p className="rounded-lg border-l-4 border-warning bg-warning/10 p-3 text-sm text-foreground dark:bg-warning/15">
             Você não tem permissão para confeccionar escalas.
           </p>
         )}
@@ -524,18 +543,61 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
           disabled={carregando || !canEdit}
         />
 
-        {carregando && (
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            {progresso?.total > 1
-              ? `Lendo ${Math.min(progresso.feitos + 1, progresso.total)} de ${progresso.total} escalas — a conferência abre quando todas terminarem…`
-              : 'Lendo a escala…'}
-          </p>
+        {/* ESPERA COM ESTADO POR ARQUIVO (dono 03/09, protótipo L8). A leitura leva de 30 a
+            90 s e mostrava uma linha de texto; os problemas chegavam depois, num toast de
+            12 s que cobria o header e sumia sozinho. Agora a barra diz quanto falta, cada
+            arquivo diz em que pé está, e o que deu errado FICA na tela até a pessoa tirar. */}
+        {(carregando || arquivos.some((a) => a.problemas?.length)) && arquivos.length > 0 && (
+          <section className="space-y-2 rounded-2xl border border-border-strong bg-card p-3">
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="text-sm font-semibold text-foreground">
+                {carregando ? 'Lendo as escalas…' : 'Leitura com ressalvas'}
+              </p>
+              {progresso?.total > 1 && (
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  {Math.min(progresso.feitos, progresso.total)} de {progresso.total}
+                </span>
+              )}
+            </div>
+            {carregando && progresso?.total > 0 && (
+              <Progress value={progresso.feitos} max={progresso.total} size="sm" aria-label="Progresso da leitura" />
+            )}
+            <ul className="space-y-1.5">
+              {arquivos.map((a) => (
+                <li key={a.nome} className="space-y-1">
+                  <p className="flex items-start gap-2 text-xs">
+                    {a.estado === 'lendo' && <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-primary" />}
+                    {a.estado === 'ok' && <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" />}
+                    {(a.estado === 'erro' || a.estado === 'pergunta') && <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />}
+                    {a.estado === 'aguardando' && <span className="mt-0.5 h-4 w-4 shrink-0 rounded-full border border-border-strong" />}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium text-foreground">{a.nome}</span>
+                      {a.resultado && <span className="block text-muted-foreground">{a.resultado}</span>}
+                      {a.estado === 'lendo' && <span className="block text-muted-foreground">lendo…</span>}
+                    </span>
+                  </p>
+                  {a.problemas?.map((prob) => (
+                    <p key={prob} className="ml-6 rounded-md border-l-4 border-warning bg-warning/10 px-2 py-1 text-xs text-foreground dark:bg-warning/15">
+                      {prob}
+                    </p>
+                  ))}
+                </li>
+              ))}
+            </ul>
+            {carregando && arquivos.length > 1 && (
+              <p className="text-xs text-muted-foreground">A conferência abre quando todas terminarem.</p>
+            )}
+            {!carregando && (
+              <Button variant="ghost" size="sm" className="w-full" onClick={() => setArquivos([])}>
+                Tirar estes avisos
+              </Button>
+            )}
+          </section>
         )}
 
         {/* Arquivo que não se identificou: PERGUNTA o hospital, não chuta */}
         {pendentes.map((p) => (
-          <div key={p.id} className="space-y-2 rounded-xl border border-warning/40 bg-warning/10 p-3">
+          <div key={p.id} className="space-y-2 rounded-xl border border-l-4 border-warning bg-warning/10 p-3 dark:bg-warning/15">
             <p className="flex items-center gap-2 text-xs font-semibold text-warning">
               <AlertTriangle className="h-4 w-4 shrink-0" />
               {p.nome}: {p.motivo || 'não reconheci o hospital pelo layout.'}
@@ -694,6 +756,14 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
                       {!subiu && !travada && estado.tipo === 'avisa' && ` · publica com ${estado.n} aviso${estado.n > 1 ? 's' : ''}`}
                       {!subiu && encolhe && ` · reduz de ${encolhe.publicados} para ${encolhe.casos}`}
                     </span>
+                    {!subiu && !agora && r?.pendencias?.length > 0 && (
+                      <span className="mt-1 block text-xs text-muted-foreground">
+                        {r.pendencias.map((linha) => <span key={linha} className="block">· {linha}</span>)}
+                        {r.totalPendencias > r.pendencias.length && (
+                          <span className="block">e mais {r.totalPendencias - r.pendencias.length} — toque para ver</span>
+                        )}
+                      </span>
+                    )}
                     {falhou && res.mensagem && (
                       <span className="mt-1.5 block rounded-md border-l-[3px] border-destructive bg-destructive/10 px-2 py-1.5 text-xs text-foreground">
                         {res.mensagem}
@@ -705,7 +775,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
               )
             })}
             {plano.foraDoLote.some((f) => f.motivo === 'bloqueio') && (
-              <p className="rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              <p className="rounded-lg border-l-4 border-destructive bg-destructive/10 px-3 py-2 text-xs text-foreground dark:bg-destructive/15">
                 Quem tem bloqueio fica de fora desta publicação — os outros hospitais publicam
                 normalmente. Toque no hospital para resolver e publique de novo.
               </p>
@@ -745,7 +815,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
           toast, porque o toast some e a tela continua aberta. */}
       {publicados.length > 0 && !publicandoLote && !revisar && (
         <div className="fixed inset-x-0 bottom-[76px] z-modal mx-auto max-w-3xl px-4">
-          <p className="rounded-lg bg-success/10 px-3 py-2 text-xs text-success">
+          <p className="rounded-lg border-l-4 border-success bg-success/10 px-3 py-2 text-xs text-foreground dark:bg-success/15">
             Já publicado neste lote: {publicados.map((h) => HOSPITAL_LABEL[h] || h).join(', ')}.
           </p>
         </div>
