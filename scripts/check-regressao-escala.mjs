@@ -30,6 +30,8 @@ const FONTE = [
   /^src\/services\/supabaseEscalaAnestesistaService\.js$/,
   /^src\/hooks\/useRosterAnestesistas\.js$/,
   /^src\/lib\/(colunaLiberacao|plantaoNoturno|excelEscala|escalaCirurgica[A-Za-z]*)\.js$/,
+  /^src\/lib\/escalaNumerica\.js$/,
+  /^src\/data\/escalaNumerica\.json$/,
   /^src\/components\/escala-cirurgica\//,
 ]
 

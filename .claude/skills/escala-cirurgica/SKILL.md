@@ -138,3 +138,23 @@ mexeu nos status da seed-20 no banco (conferir antes de regenerar).
 - `~/.anest-e2e.env` segue a política de segredos do repositório: só `source`, jamais `cat`.
 - Antes da liberação ao grupo: `cron.unschedule('escala-seed-rollover-daily')` + apagar
   as seeds (checklist no header da migration `20260721200000`).
+
+## Modo `ordem <AAAA-MM-DD> [hro|unimed|materno|todos] [matutino|vespertino|ambos] [--ferias]` — ordem de liberação pela ESCALA NUMÉRICA
+
+Apoio à confecção/conferência (dono 03/09): a escala numérica do grupo é a BASE da ordem do
+rodapé. Rodar `node scripts/ordem-liberacao-numerica.mjs …` e devolver o texto de
+`formatarOrdem` como está (posição · número · nome; consultório à parte; Louise; exclusões
+por férias com a fonte; pendências). Com `--ferias` o script consulta o Pega Plantão pelo
+usuário e2e; sem a flag a lista sai marcada "férias NÃO conferidas" — nunca dizer que
+férias foram conferidas quando a consulta não rodou. Entrada compartilhada (05, 07) só se
+resolve com `--ocupante 05=HUMBERTO` vindo de fonte confirmada. Regras completas:
+`.claude/rules/escala-numerica.md`. Ao comparar com um rodapé lido, usar
+`compararComRodape` (faltam / sobram / fora de ordem) — divergência é sinal de troca, ajuda
+ou consultório escalado, não erro automático.
+
+## Modo `nova-numerica <pdf>` — trocar a edição da escala numérica
+
+Seguir "Ao receber uma escala numérica NOVA" em `.claude/rules/escala-numerica.md`: copiar
+para `.local/escala-numerica/`, extrair com `scripts/extrair-escala-numerica.py` (venv com
+pdfplumber), olhar as páginas renderizadas, ler os `avisos`, ajustar os testes para a edição
+nova, conferir a legenda contra o dicionário de apelidos e commitar só o JSON.
