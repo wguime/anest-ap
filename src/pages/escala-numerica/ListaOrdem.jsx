@@ -28,6 +28,14 @@ export function LinhaOrdem({ p }) {
         {p.nome}
       </span>
       {deFerias && <span className="flex-none text-[10.5px] font-semibold text-warning">(férias)</span>}
+      {p.trocado && (
+        <span
+          className="ml-auto flex-none rounded-[5px] bg-primary/12 px-1 py-0.5 text-[9px] font-extrabold uppercase text-primary"
+          title="Posição mudou por uma troca aceita"
+        >
+          troca
+        </span>
+      )}
       {p.inserida && (
         <span
           className="ml-auto flex-none rounded-[5px] bg-info/15 px-1 py-0.5 text-[9px] font-extrabold text-info"

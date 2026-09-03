@@ -808,6 +808,17 @@ service cloud.firestore {
       allow create, update, delete: if isAuthenticated();
     }
 
+    // Trocas de FERIADO entre anestesistas (fila única do feriado, escala numérica).
+    // Sem coleção de override: a troca aceita É o fato e a tela a aplica na leitura, então
+    // este bloco é o único que governa o assunto. Delete continua só do admin — recusar ou
+    // cancelar é mudança de status, nunca apagar o histórico.
+    match /trocas_feriado/{tradeId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+
     // ==================== GESTÃO DE REUNIÕES ====================
 
     // Reuniões — admin/organizador livre; participante pode alterar apenas campos próprios

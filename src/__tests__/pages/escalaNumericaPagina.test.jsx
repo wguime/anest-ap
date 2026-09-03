@@ -56,11 +56,45 @@ const { getPlantoesPorData } = vi.hoisted(() => ({
 
 vi.mock('@/services/pegaPlantaoApi', () => ({ getFeriasDoAno, invalidarFeriasDoAno, getPlantoesPorData }))
 
-import { ThemeProvider } from '@/design-system'
+/**
+ * A página de Feriados também mostra as trocas, então precisa de identidade (quem sou na
+ * legenda), do roster (apelido → uid) e do Firestore. Aqui o usuário logado é a GIOVANA, que
+ * é a 1ª do feriado de 07/09 — é o que permite testar o pedido de troca de verdade.
+ */
+const { assinantes, criarTroca, notificar } = vi.hoisted(() => ({
+  assinantes: [], criarTroca: vi.fn(), notificar: vi.fn(async () => {}),
+}))
+
+vi.mock('@/contexts/UserContext', () => ({
+  useUser: () => ({ user: { uid: 'uid-giovana', nome: 'Giovana Gomes Noll', email: 'g@x.com' } }),
+}))
+vi.mock('@/contexts/MessagesContext', () => ({
+  useMessages: () => ({ createSystemNotification: notificar }),
+}))
+vi.mock('@/hooks/useRosterAnestesistas', () => ({
+  default: () => ({
+    roster: [{ uid: 'uid-giovana', nome: 'Giovana Gomes Noll', apelidos: ['GIOVANA'] },
+             { uid: 'uid-marilio', nome: 'Marilio Jose Flach', apelidos: ['MARILIO'] }],
+    options: [], resolver: (a) => (String(a).toUpperCase() === 'MARILIO' ? 'uid-marilio' : null),
+    upsertAlias: vi.fn(), refresh: vi.fn(),
+  }),
+}))
+vi.mock('@/services/trocaFeriadoService', () => ({
+  createTradeRequest: criarTroca,
+  acceptTrade: vi.fn(async () => ({ success: true, trade: {} })),
+  rejectTrade: vi.fn(async () => ({ success: true, trade: {} })),
+  cancelTrade: vi.fn(async () => ({ success: true, trade: {} })),
+  subscribeTrocas: (uid, getNumero, cb) => { assinantes.push(cb); cb(estadoTrocas); return () => {} },
+}))
+
+let estadoTrocas = { todas: [], aceitas: [], minhas: [], pendentesParaMim: [], erro: null }
+const publicarTrocas = (estado) => { estadoTrocas = estado; assinantes.forEach((cb) => cb(estado)) }
+
+import { ThemeProvider, ToastProvider } from '@/design-system'
 import EscalaNumericaPage from '@/pages/escala-numerica/EscalaNumericaPage'
 import FeriadosPage from '@/pages/escala-numerica/FeriadosPage'
 
-const wrap = ({ children }) => <ThemeProvider>{children}</ThemeProvider>
+const wrap = ({ children }) => <ThemeProvider><ToastProvider>{children}</ToastProvider></ThemeProvider>
 
 /** Nomes de um bloco, na ordem em que estão na tela (só as linhas da fila). */
 const nomesEm = (raiz) => [...raiz.querySelectorAll('[data-slot="ordem-nome"]')].map((el) => el.textContent)
@@ -70,6 +104,9 @@ const nomesFds = () => [...document.querySelectorAll('[data-slot="fds-nome"]')].
 
 beforeEach(() => {
   vi.clearAllMocks()
+  assinantes.length = 0
+  estadoTrocas = { todas: [], aceitas: [], minhas: [], pendentesParaMim: [], erro: null }
+  criarTroca.mockResolvedValue({ trade: { codigo: 'FR000001' }, error: null })
   vi.useFakeTimers({ shouldAdvanceTime: true })
   vi.setSystemTime(new Date('2026-09-03T10:00:00-03:00')) // quinta
 })
@@ -234,5 +271,70 @@ describe('Feriados — lista e ordem do feriado', () => {
     )
     // uma vez em cada turno — o CARNAVAL é fila única de 20 nomes nos dois
     expect(screen.getAllByText('JANAINA')).toHaveLength(2)
+  })
+})
+
+/**
+ * Trocas de feriado na tela (dono 03/09: com aceite, e a troca aceita muda a fila).
+ * O usuário logado é a GIOVANA (08), 1ª de 07/09.
+ */
+describe('Feriados — trocas', () => {
+  it('quem está na escala vê o botão de pedir troca', async () => {
+    render(<FeriadosPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Trocas de feriado' })).toBeInTheDocument())
+    expect(screen.getByRole('button', { name: /pedir troca/i })).toBeInTheDocument()
+    expect(screen.getByText(/Nenhuma troca sua no momento/i)).toBeInTheDocument()
+  })
+
+  it('a troca ACEITA muda a fila do feriado, e a pendente não', async () => {
+    const troca = {
+      id: 't1', codigo: 'FR111111', status: 'pendente', escopo: 'data',
+      feriadoData: '2026-09-07', feriadoDesejado: '2026-10-12',
+      solicitanteUid: 'uid-giovana', solicitanteNumero: '08', solicitanteNome: 'GIOVANA',
+      destinatarioUid: 'uid-marilio', destinatarioNumero: '36', destinatarioNome: 'MARILIO',
+      descricao: 'viagem',
+    }
+    estadoTrocas = { todas: [troca], aceitas: [], minhas: [troca], pendentesParaMim: [], erro: null }
+    render(<FeriadosPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(screen.getByText('INDEPENDENCIA')).toBeInTheDocument())
+    fireEvent.click(screen.getByText('INDEPENDENCIA').closest('button'))
+    await waitFor(() => expect(screen.getByText('Manhã')).toBeInTheDocument())
+    // pendente: a fila segue com a GIOVANA na 1ª
+    expect(nomesEm(screen.getByText('Manhã').parentElement)[0]).toBe('GIOVANA')
+
+    publicarTrocas({ todas: [{ ...troca, status: 'aceita' }], aceitas: [{ ...troca, status: 'aceita' }], minhas: [{ ...troca, status: 'aceita' }], pendentesParaMim: [], erro: null })
+    await waitFor(() =>
+      expect(nomesEm(screen.getByText('Manhã').parentElement)[0]).toBe('MARILIO')
+    )
+    // e a tarde continua sendo a manhã invertida
+    const manha = nomesEm(screen.getByText('Manhã').parentElement)
+    expect(nomesEm(screen.getByText('Tarde').parentElement)).toEqual([...manha].reverse())
+  })
+
+  it('pedido pendente para mim mostra Aceitar e Recusar; o meu, Cancelar', async () => {
+    const paraMim = {
+      id: 't2', codigo: 'FR222222', status: 'pendente', escopo: 'posicao',
+      feriadoData: '2026-09-07', solicitanteUid: 'uid-marilio', solicitanteNumero: '36',
+      solicitanteNome: 'MARILIO', destinatarioUid: 'uid-giovana', destinatarioNumero: '08',
+      destinatarioNome: 'GIOVANA', descricao: 'consulta',
+    }
+    estadoTrocas = { todas: [paraMim], aceitas: [], minhas: [], pendentesParaMim: [paraMim], erro: null }
+    render(<FeriadosPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Aceitar' })).toBeInTheDocument())
+    expect(screen.getByRole('button', { name: 'Recusar' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /cancelar pedido/i })).not.toBeInTheDocument()
+    expect(screen.getByText(/MARILIO e GIOVANA trocam de posição no feriado de 07\/09/)).toBeInTheDocument()
+  })
+
+  it('o formulário só oferece feriados em que EU estou, e recusa pedido sem motivo', async () => {
+    render(<FeriadosPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(screen.getByRole('button', { name: /pedir troca/i })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: /pedir troca/i }))
+    await waitFor(() => expect(screen.getByText('Pedir troca de feriado')).toBeInTheDocument())
+    // sem escolher nada, o pedido não sai e a tela diz o que falta
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /enviar pedido/i }))
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/Escolha o seu feriado/i))
+    expect(criarTroca).not.toHaveBeenCalled()
   })
 })

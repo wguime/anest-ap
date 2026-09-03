@@ -13,20 +13,15 @@
  */
 import { useState, useMemo } from 'react'
 import { PageHeader } from '@/components'
-import { RefreshCw, ChevronRight, Umbrella, TriangleAlert } from 'lucide-react'
+import { RefreshCw, ChevronRight, Umbrella } from 'lucide-react'
 import dadosNumerica from '@/data/escalaNumerica.json'
-import { ordemFeriado, anotarFerias, LABEL_TURNO } from '@/lib/escalaNumerica'
+import { anotarFerias, LABEL_TURNO } from '@/lib/escalaNumerica'
+import { filasDoFeriado } from '@/lib/trocasFeriado'
+import useTrocaFeriado from '@/hooks/useTrocaFeriado'
 import { LinhaOrdem } from './ListaOrdem'
+import TrocasFeriado from './TrocasFeriado'
 import { useFeriasDoAno, feriasNaData } from './useFeriasDoAno'
 import { paraISO, listarFeriados } from './calendario'
-
-/** Fila única de um turno, já numerada e com a marca de férias. */
-function filaDoTurno(dados, data, turno, ferias) {
-  const r = ordemFeriado(dados, { data, turno })
-  if (!r) return { lista: [], pendencias: [] }
-  const lista = r.posicoes.map((p, i) => ({ ...p, posicao: i + 1 }))
-  return { lista: anotarFerias(lista, ferias), pendencias: r.pendencias || [] }
-}
 
 function ColunaTurno({ rotulo, lista }) {
   return (
@@ -50,18 +45,18 @@ export default function FeriadosPage({ goBack }) {
   const { registros, loading, erro, conferidoEm, recarregar } = useFeriasDoAno(dadosNumerica.ano)
   const ferias = useMemo(() => feriasNaData(registros, aberto?.data), [registros, aberto])
 
+  // as trocas ACEITAS mudam a fila de qualquer feriado — por isso entram na montagem, e não
+  // só na lista de pedidos. A troca aceita é o fato; não há override espelhado no banco.
+  const troca = useTrocaFeriado()
   const turnos = useMemo(() => {
     if (!aberto) return null
+    const filas = filasDoFeriado(dadosNumerica, aberto.data, troca.aceitas)
+    if (!filas) return null
     return {
-      manha: filaDoTurno(dadosNumerica, aberto.data, 'matutino', ferias),
-      tarde: filaDoTurno(dadosNumerica, aberto.data, 'vespertino', ferias),
+      manha: anotarFerias(filas.matutino, ferias),
+      tarde: anotarFerias(filas.vespertino, ferias),
     }
-  }, [aberto, ferias])
-
-  const pendencias = useMemo(
-    () => [...new Set([...(turnos?.manha.pendencias || []), ...(turnos?.tarde.pendencias || [])])],
-    [turnos]
-  )
+  }, [aberto, ferias, troca.aceitas])
 
   return (
     <div className="min-h-dvh bg-background pb-24">
@@ -132,25 +127,16 @@ export default function FeriadosPage({ goBack }) {
               </span>
             </div>
             <p className="mb-2.5 text-[11.5px] leading-snug text-muted-foreground">
-              Fila única do feriado: todos os hospitais, {turnos.manha.lista.length} nomes. A tarde é a manhã invertida.
+              Fila única do feriado: todos os hospitais, {turnos.manha.length} nomes. A tarde é a manhã invertida.
             </p>
             <div className="flex gap-2">
-              <ColunaTurno rotulo={LABEL_TURNO.matutino} lista={turnos.manha.lista} />
-              <ColunaTurno rotulo={LABEL_TURNO.vespertino} lista={turnos.tarde.lista} />
+              <ColunaTurno rotulo={LABEL_TURNO.matutino} lista={turnos.manha} />
+              <ColunaTurno rotulo={LABEL_TURNO.vespertino} lista={turnos.tarde} />
             </div>
           </section>
         )}
 
-        {Boolean(pendencias.length) && (
-          <div className="flex flex-col gap-1.5 rounded-[16px] border border-warning/40 bg-warning/10 p-3">
-            {pendencias.map((p) => (
-              <p key={p} className="flex items-start gap-2 text-[12px] leading-snug">
-                <TriangleAlert className="mt-px size-3.5 flex-none text-warning" aria-hidden="true" />
-                {p}
-              </p>
-            ))}
-          </div>
-        )}
+        <TrocasFeriado troca={troca} hojeISO={hojeISO} />
 
         <p className="flex items-start gap-1.5 px-0.5 text-[11.5px] leading-relaxed text-muted-foreground">
           <Umbrella className="mt-0.5 size-3.5 flex-none" aria-hidden="true" />
