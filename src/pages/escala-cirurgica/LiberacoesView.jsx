@@ -1653,6 +1653,12 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // O vermelho volta a ser só do toque humano, como em 20/08.
           const caudaSemTrabalho = caudaLiberada(linha, idx)
           const liberado = liberadoReal || caudaSemTrabalho
+          // CARD ENXUTO SEGUE O ESTADO EXIBIDO (dono 03/09): quem mostra "Liberado" tem o
+          // MESMO card — nome apagado, badge, lápis — tenha vindo do toque ou da cauda
+          // automática. Antes o enxuto olhava só `liberadoReal`, e a cauda (liberada de
+          // nascença, sem toque) seguia com "+ Tempo total" e o Editar numa 2ª linha:
+          // dois cards para o mesmo estado, lado a lado na mesma fila.
+          const cardEnxuto = liberado
           // ⚠️ o card BRANCO de "Livre" também é de dia útil: na fila única ele
           // fazia metade da lista nascer descolorida na publicação, antes de a
           // primeira cirurgia ser importada. O BADGE "Livre" fica — é
@@ -1841,7 +1847,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     segue em 6px: 8px custa 4px que não existem nessa largura. */}
                 {/* liberado SEM riscar o nome (dono 31/08): o card vermelho já
                     diz tudo — o line-through por cima só dificultava ler quem é */}
-                <p className={['flex items-center gap-1.5 pr-1.5 text-[15px] font-semibold leading-tight', liberadoReal && 'opacity-60'].filter(Boolean).join(' ')}>
+                <p className={['flex items-center gap-1.5 pr-1.5 text-[15px] font-semibold leading-tight', cardEnxuto && 'opacity-60'].filter(Boolean).join(' ')}>
                   {/* SELO do plantão noturno ANTES do nome (pedido do dono 24/07).
                       No P4 o selo é o BOTÃO que abre "Onde está o P4 hoje?" — área
                       de toque esticada por padding negativo (≥44px sem inchar a linha). */}
@@ -2054,7 +2060,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     {/* cirurgiões em ORDEM DE HORÁRIO, 1 por linha, SEM bolinha (pedido do dono 24/07).
                         Cada um leva o tempo faltante DA SUA CIRURGIA num chip cinza pequeno
                         (dono 29/07) — a pílula verde à direita é o total da PESSOA. */}
-                    {!liberadoReal && listaCirurgioes.length > 0 && (
+                    {!cardEnxuto && listaCirurgioes.length > 0 && (
                       <div className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
                         {listaCirurgioes.map((c, i) => {
                           const alvo = terminoDoToken(c)
@@ -2121,7 +2127,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     )}
                     {/* DIA ÚTIL: sala/local ABAIXO do cirurgião (pedido do dono
                         2026-07-20), no tamanho e na cor de sempre. */}
-                    {!modoFds && !liberadoReal && localExibido && (
+                    {!modoFds && !cardEnxuto && localExibido && (
                       <p
                         className={['mt-0.5 truncate text-xs font-semibold', ov?.local ? 'text-primary' : 'text-foreground/80'].join(' ')}
                         title={ov?.local ? 'Local ajustado' : localExibido}
@@ -2134,7 +2140,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         "sai mais cedo", "está no consultório". Fica LOGO ABAIXO do
                         local, onde já moram as infos da linha, e em cor de destaque
                         (é a única coisa do card que ninguém deriva sozinho). */}
-                    {!liberadoReal && observacaoLinha && (
+                    {!cardEnxuto && observacaoLinha && (
                       <p className="mt-0.5 flex items-start gap-1 text-[13px] font-medium leading-snug text-primary">
                         <MessageSquare className="mt-0.5 h-3 w-3 shrink-0" />
                         <span className="min-w-0">{observacaoLinha}</span>
@@ -2148,7 +2154,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         significado em 30/07 e um terceiro relógio devolveria o
                         problema. Some sozinha quando o tempo é atualizado — é a
                         mesma condição que pinta a pílula. */}
-                    {!liberadoReal && cronometro?.atrasada && (
+                    {!cardEnxuto && cronometro?.atrasada && (
                       <p className="mt-0.5 text-[13px] font-medium leading-snug text-warning">
                         Atualize o tempo se a cirurgia não terminou.
                       </p>
@@ -2182,7 +2188,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     'flex shrink-0 flex-col items-end gap-1 pr-2.5',
                     temSeloAoLadoDoNome ? 'mt-2' : '',
                   ].join(' ')}>
-                    {!liberadoReal && (cronometro ? (
+                    {!cardEnxuto && (cronometro ? (
                       <button
                         type="button"
                         disabled={!canEdit}

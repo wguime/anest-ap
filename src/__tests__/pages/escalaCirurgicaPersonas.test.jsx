@@ -545,6 +545,38 @@ describe('Liberações — sem ninguém em cirurgia não há cauda', () => {
   })
 })
 
+// CARD LIBERADO É UM SÓ (dono 03/09, foto das 17h): quem fecha a lista sem cirurgia
+// nasce liberado pela regra da cauda, mas o card dele vinha DIFERENTE do de quem foi
+// liberado no toque — "+ Tempo total" à direita e "Editar" numa 2ª linha, nome sem
+// apagar. Mesmo estado na tela, dois cards. O enxuto passou a seguir o ESTADO exibido.
+describe('Liberações — liberado tem o MESMO card, venha do toque ou da cauda (dono 03/09)', () => {
+  const escala = {
+    id: 'e1', hospital: 'unimed', ordemLiberacao: ['ANA', 'BRUNO', 'CARLA', 'DANI'],
+    liberacoes: { ANA: { liberadoEm: 'x' } }, // ANA: liberada no toque; BRUNO/CARLA/DANI: cauda sem trabalho
+    casos: [{ sala: 'S1', ordem: 0, anestesista: 'ANA', cirurgiao: 'Cir A' }],
+  }
+  const card = (nome) => document.querySelector(`[data-linha="${nome}"]`)
+
+  it('a cauda automática mostra Liberado e NÃO mostra "+ Tempo total"', () => {
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
+    expect(screen.queryAllByText('Liberado').length).toBe(4)
+    for (const nome of ['BRUNO', 'CARLA', 'DANI']) {
+      expect(within(card(nome)).getByText('Liberado')).toBeTruthy()
+      expect(within(card(nome)).queryByText(/Tempo total/)).toBeNull()
+    }
+  })
+
+  it('o nome apagado e o lápis são os mesmos do card liberado no toque', () => {
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
+    const nomeDe = (n) => within(card(n)).getByText(n === 'ANA' ? 'Ana' : n === 'DANI' ? 'Dani' : n).closest('p')
+    expect(nomeDe('ANA').className).toContain('opacity-60')
+    expect(nomeDe('DANI').className).toContain('opacity-60')
+    expect(within(card('ANA')).getByText('Editar')).toBeTruthy()
+    expect(within(card('DANI')).getByText('Editar')).toBeTruthy()
+    expect(within(card('ANA')).queryByText(/Tempo total/)).toBeNull()
+  })
+})
+
 describe('Liberações — caso passa_tarde sinaliza o anestesista', () => {
   it('linha do anestesista com caso passa_tarde ganha badge "Passa para tarde"', () => {
     const escala = {
