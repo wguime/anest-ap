@@ -461,6 +461,31 @@ describe('folha de revisão e publicação em sequência', () => {
     expect(screen.getAllByText(/1 caso\b/).length).toBeGreaterThanOrEqual(2)
   })
 
+  // O hospital com campo que o BANCO recusaria não entra no lote (Onda 1, item 1.2): antes,
+  // ele passava pelo plano com selo de "pronto" e derrubava a própria publicação no meio da
+  // sequência — o incidente de 02/09 visto do lado do lote.
+  it('escala com paciente fora de iniciais fica de fora; a outra publica normalmente', async () => {
+    svcMock.parseEscalaImagem
+      .mockResolvedValueOnce({ casos: [caso('Sala 1', 'CURY')], hospitalDetectado: 'hro', ordemLiberacao: ['CURY'] })
+      .mockResolvedValueOnce({
+        casos: [{ ...caso('Sala 2', 'PAULO'), pacienteIniciais: 'MARIA DA SILVA' }],
+        hospitalDetectado: 'materno', ordemLiberacao: ['PAULO'],
+      })
+    const { container } = montar()
+    await soltarArquivos(container, [img('hro.png'), img('materno.png')])
+    await waitFor(() => expect(abas()).toHaveLength(2))
+
+    fireEvent.click(screen.getByRole('button', { name: /revisar e publicar/i }))
+    // o botão já diz que só uma está pronta
+    const botao = await screen.findByRole('button', { name: /publicar a que está pronta/i })
+    fireEvent.click(botao)
+
+    await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalledTimes(1))
+    expect(salvarEscalaTurno.mock.calls[0][0].hospital).toBe('hro')
+    // e a folha diz por que o Materno ficou de fora
+    expect(screen.getAllByText(/nome em vez de iniciais/i).length).toBeGreaterThan(0)
+  })
+
   // ── PUBLICAÇÃO PARCIAL (dono 02/09 → regra fechada em 03/09) ──────────────
   // Naquela noite HRO e Materno subiram, a Unimed caiu por uma CHECK do banco, e a tela
   // deu três recados ao mesmo tempo — o erro cru do Postgres, um "Escala publicada" VERDE
