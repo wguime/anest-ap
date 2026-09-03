@@ -1653,11 +1653,15 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // O vermelho volta a ser só do toque humano, como em 20/08.
           const caudaSemTrabalho = caudaLiberada(linha, idx)
           const liberado = liberadoReal || caudaSemTrabalho
-          // CARD ENXUTO SEGUE O ESTADO EXIBIDO (dono 03/09): quem mostra "Liberado" tem o
-          // MESMO card — nome apagado, badge, lápis — tenha vindo do toque ou da cauda
-          // automática. Antes o enxuto olhava só `liberadoReal`, e a cauda (liberada de
-          // nascença, sem toque) seguia com "+ Tempo total" e o Editar numa 2ª linha:
-          // dois cards para o mesmo estado, lado a lado na mesma fila.
+          // CARD DE LIBERADO É UM SÓ (dono 03/09, foto das 17h): quem mostra "Liberado"
+          // tem o MESMO card, tenha vindo do toque ou da cauda automática. O que
+          // diferenciava era o CONTROLE DE TEMPO — a cauda, liberada de nascença sem
+          // toque, seguia com "+ Tempo total" à direita, o que empurra o Editar para uma
+          // 2ª linha e deixa o card mais alto que o do vizinho no mesmo estado.
+          // ⚠️ Só o tempo e o apagado do nome seguem o estado exibido: o CONTEÚDO de
+          // trabalho (cirurgião, local, observação) continua preso ao toque, porque à
+          // noite a cirurgia HERDADA da tarde tem de aparecer no card mesmo com a pessoa
+          // liberada (decisão de 15/08, travada em escalaFdsTelaUnica).
           const cardEnxuto = liberado
           // ⚠️ o card BRANCO de "Livre" também é de dia útil: na fila única ele
           // fazia metade da lista nascer descolorida na publicação, antes de a
@@ -2060,7 +2064,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     {/* cirurgiões em ORDEM DE HORÁRIO, 1 por linha, SEM bolinha (pedido do dono 24/07).
                         Cada um leva o tempo faltante DA SUA CIRURGIA num chip cinza pequeno
                         (dono 29/07) — a pílula verde à direita é o total da PESSOA. */}
-                    {!cardEnxuto && listaCirurgioes.length > 0 && (
+                    {!liberadoReal && listaCirurgioes.length > 0 && (
                       <div className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
                         {listaCirurgioes.map((c, i) => {
                           const alvo = terminoDoToken(c)
@@ -2127,7 +2131,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     )}
                     {/* DIA ÚTIL: sala/local ABAIXO do cirurgião (pedido do dono
                         2026-07-20), no tamanho e na cor de sempre. */}
-                    {!modoFds && !cardEnxuto && localExibido && (
+                    {!modoFds && !liberadoReal && localExibido && (
                       <p
                         className={['mt-0.5 truncate text-xs font-semibold', ov?.local ? 'text-primary' : 'text-foreground/80'].join(' ')}
                         title={ov?.local ? 'Local ajustado' : localExibido}
@@ -2140,7 +2144,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         "sai mais cedo", "está no consultório". Fica LOGO ABAIXO do
                         local, onde já moram as infos da linha, e em cor de destaque
                         (é a única coisa do card que ninguém deriva sozinho). */}
-                    {!cardEnxuto && observacaoLinha && (
+                    {!liberadoReal && observacaoLinha && (
                       <p className="mt-0.5 flex items-start gap-1 text-[13px] font-medium leading-snug text-primary">
                         <MessageSquare className="mt-0.5 h-3 w-3 shrink-0" />
                         <span className="min-w-0">{observacaoLinha}</span>
