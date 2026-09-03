@@ -117,11 +117,20 @@ describe('coluna cinza = feriado: a escala própria é uma FILA ÚNICA', () => {
     expect(t).toEqual([...m].reverse())
     expect(nomes(montarOrdem(dados, { data: '2026-09-07', hospital: 'materno', turno: 'matutino', ferias: [] }))).toEqual(m)
   })
-  it('"GUILHERME" e "JOAO" sem sobrenome não identificam uma pessoa só: saem sem número e viram pendência', () => {
+  it('"GUILHERME" é o Melo (04) e "JOAO" é o João Ricardo (06) — dono 03/09; nada fica sem número', () => {
     const r = montarOrdem(dados, { data: '2026-08-25', hospital: 'hro', turno: 'matutino', ferias: [] })
-    const amb = r.lista.filter((p) => !p.numero).map((p) => p.nome)
-    expect(amb).toEqual(['JOAO', 'GUILHERME'])
-    expect(r.pendencias.filter((p) => /não identifica uma pessoa só/.test(p))).toHaveLength(2)
+    expect(r.lista.filter((p) => !p.numero)).toEqual([])
+    expect(r.lista.find((p) => p.impresso === 'GUILHERME')).toMatchObject({ numero: '04', nome: 'MELO' })
+    expect(r.lista.find((p) => p.impresso === 'JOAO')).toMatchObject({ numero: '06', nome: 'JOAO RICARDO' })
+    expect(r.pendencias.filter((p) => /não identifica/.test(p))).toHaveLength(0)
+    // e Humberto/Roberta/Rose/Aline aparecem por si nos feriados, com o número compartilhado
+    expect(r.lista.find((p) => p.nome === 'ROBERTA')).toMatchObject({ numero: '05' })
+    expect(r.lista.find((p) => p.nome === 'ROSE / ALINE')).toMatchObject({ numero: '07' })
+  })
+  it('férias do Guilherme Melo tiram o "GUILHERME" do feriado', () => {
+    const r = montarOrdem(dados, { data: '2026-08-25', hospital: 'hro', turno: 'matutino', ferias: ['Guilherme Souza Melo'] })
+    expect(r.excluidos.map((e) => e.nome)).toEqual(['MELO'])
+    expect(nomes(r)).not.toContain('MELO')
   })
   it('Louise já vem impressa no feriado: nada é inserido, ela aparece uma vez', () => {
     const r = montarOrdem(dados, { data: '2026-08-25', hospital: 'unimed', turno: 'vespertino', ferias: [] })
@@ -255,7 +264,7 @@ describe('compararComRodape — a numérica como conferência do rodapé lido', 
     expect(c.foraDeOrdem).toEqual(['ROMULO'])
   })
   it('rodapé idêntico à lista esperada é "iguais"', () => {
-    const r = montarOrdem(dados, { data: '2026-08-03', hospital: 'hro', turno: 'matutino', ferias: [], ocupantes: { '05': 'HUMBERTO', '07': 'ALINE' } })
+    const r = montarOrdem(dados, { data: '2026-08-03', hospital: 'hro', turno: 'matutino', ferias: [] })
     expect(compararComRodape(r.lista, nomes(r)).iguais).toBe(true)
   })
 })
@@ -268,6 +277,8 @@ describe('formatarOrdem — o resultado que o dono pediu', () => {
     expect(txt).toContain('consultório: 15 GUSTAVO · 17 JANAINA · 19 FERNANDO')
     expect(txt).toContain('Louise: 1ª posição da tarde (Unimed)')
     expect(txt).toContain('excluídos por férias (Pega Plantão): 37 MATHEUS')
-    expect(txt).toContain('Entrada 05 é compartilhada')
+    // dia útil: o par compartilhado é a posição, como impresso — sem pendência (dono 03/09)
+    expect(txt).toContain('05 HUMBERTO / ROBERTA')
+    expect(txt).not.toContain('compartilhada')
   })
 })

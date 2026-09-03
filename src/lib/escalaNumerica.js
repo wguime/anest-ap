@@ -10,6 +10,9 @@
  * posição: a ordem é a POSIÇÃO FÍSICA na coluna — manhã de cima para baixo, tarde de
  * baixo para cima. "44 → 01" é uma sequência normal, não se ordena por valor.
  *
+ * Entrada compartilhada ("05 HUMBERTO / ROBERTA", "07 ROSE / ALINE"): nos dias úteis o par é a
+ * posição, como impresso; na escala de feriados cada um aparece por si (dono 03/09).
+ *
  * Louise (nº 43): durante a exceção (13h–19h) ela não está na grade; o quadro próprio diz
  * o hospital e a POSIÇÃO em que ela é INSERIDA na ordem da tarde (quem estava ali e os
  * seguintes descem uma casa). Fora da exceção o 43 volta à grade e o quadro cala.
@@ -102,11 +105,17 @@ function entradaPosicao(dados, e) {
   return { numero: e.n, nome: nomes.join(' / '), nomes, compartilhada: nomes.length > 1, grupo: dados.legenda?.[e.n]?.grupo ?? null }
 }
 
+/**
+ * Nomes que a escala de FERIADOS imprime sem sobrenome e que casariam com mais de uma pessoa
+ * da legenda — resolvidos pelo dono em 03/09/2026 (edição FERIADOS 2026). Edição nova: conferir.
+ */
+export const APELIDOS_FERIADO = { GUILHERME: 'MELO', JOAO: 'JOAO RICARDO' }
+
 /** Nome impresso na escala de feriados → número da legenda (null quando o nome sozinho é ambíguo). */
 export function numeroDaLegenda(dados, nome) {
   // a barra é separador de PESSOAS e precisa sobreviver à normalização (que apaga pontuação)
   const partes = (v) => String(v || '').split('/').map(normNomeNumerica).filter(Boolean)
-  const alvo = partes(nome).join(' / ')
+  const alvo = APELIDOS_FERIADO[normNomeNumerica(nome)] || partes(nome).join(' / ')
   // entrada compartilhada ("HUMBERTO / ROBERTA") responde pelo par inteiro E por cada nome sozinho
   const hits = Object.entries(dados?.legenda || {}).filter(([, e]) => {
     const ps = partes(e.nome)
@@ -125,11 +134,13 @@ export function ordemFeriado(dados, { data, turno }) {
   const f = dados?.feriados?.dias?.[data]
   if (!f) return null
   const pendencias = []
-  const base = f.lista.map((nome) => {
-    const nomes = String(nome).split('/').map((n) => normNomeNumerica(n)).filter(Boolean)
-    const numero = numeroDaLegenda(dados, nome)
-    if (!numero) pendencias.push(`Feriado ${data}: "${nome}" não identifica uma pessoa só na legenda — confirmar quem é.`)
-    return { numero, nome: nomes.join(' / '), nomes, compartilhada: nomes.length > 1, grupo: numero ? dados.legenda[numero]?.grupo ?? null : null }
+  const base = f.lista.map((impresso) => {
+    const numero = numeroDaLegenda(dados, impresso)
+    if (!numero) pendencias.push(`Feriado ${data}: "${impresso}" não identifica uma pessoa só na legenda — confirmar quem é.`)
+    // nome pelo apelido da legenda quando o impresso é só o primeiro nome ("GUILHERME" → MELO)
+    const resolvido = APELIDOS_FERIADO[normNomeNumerica(impresso)]
+    const nomes = String(resolvido || impresso).split('/').map((n) => normNomeNumerica(n)).filter(Boolean)
+    return { numero, nome: nomes.join(' / '), nomes, compartilhada: nomes.length > 1, grupo: numero ? dados.legenda[numero]?.grupo ?? null : null, ...(resolvido && { impresso: normNomeNumerica(impresso) }) }
   })
   return {
     ok: true, data, hospital: 'todos', turno, filaUnica: true, feriado: f.nome, diaSemana: null, semana: null, corDoHospital: null,
@@ -217,11 +228,13 @@ export function montarOrdem(dados, { data, hospital, turno, ferias = null, fonte
   const base = ordemBase(dados, { data, hospital, turno })
   if (!base.ok) return { ...base, lista: [], consultorio: [], louise: null, excluidos: [], pendencias: [base.aviso].filter(Boolean), feriasConferidas: false }
   const pendencias = [...(base.pendencias || [])]
+  // Entrada compartilhada ("05 HUMBERTO / ROBERTA", "07 ROSE / ALINE"): nos dias úteis o PAR é a
+  // posição, exatamente como impresso (dono 03/09) — não se escolhe um dos dois. `ocupantes`
+  // só existe para quando o dono informar quem está naquele dia.
   let posicoes = base.posicoes.map((p) => {
     if (!p.compartilhada) return p
     const quem = ocupantes[p.numero]
     if (quem && p.nomes.includes(normNomeNumerica(quem))) return { ...p, nome: normNomeNumerica(quem), nomes: [normNomeNumerica(quem)], compartilhada: false }
-    pendencias.push(`Entrada ${p.numero} é compartilhada (${p.nome}): definir quem ocupa em ${data}.`)
     return p
   })
   // na fila única do feriado a Louise já está impressa quando trabalha — nada a inserir
@@ -246,7 +259,7 @@ export function montarOrdem(dados, { data, hospital, turno, ferias = null, fonte
   }
   return {
     ...base,
-    lista: posicoes.map((p, i) => ({ posicao: i + 1, numero: p.numero, nome: p.nome, ...(p.inserida && { inserida: true }), ...(p.observacao && { observacao: p.observacao }) })),
+    lista: posicoes.map((p, i) => ({ posicao: i + 1, numero: p.numero, nome: p.nome, ...(p.inserida && { inserida: true }), ...(p.observacao && { observacao: p.observacao }), ...(p.impresso && { impresso: p.impresso }) })),
     louise: lou.louise, excluidos, pendencias, feriasConferidas,
   }
 }
