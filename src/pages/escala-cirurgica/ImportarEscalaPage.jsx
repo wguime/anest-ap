@@ -21,7 +21,7 @@ import { prepararImagemParaVision } from '@/lib/imagemVision'
 import { iniciaisSeguras } from '@/lib/escalaCirurgicaPaciente'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
-import { linhaVazia, prepararCasosImportados as prepararCasos, normNome, candidatosPrimeiroNome, resumirRodape, casosQuePassamParaOTurno, presencaDoTurno, estaPresente, gruposAnestesista, chavesAnestesista, aplicarAtribuicoes, preAtribuicoesDoDicionario, azuisEmprestados, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital } from './utils'
+import { linhaVazia, prepararCasosImportados as prepararCasos, normNome, candidatosPrimeiroNome, resumirRodape, casosQuePassamParaOTurno, presencaDoTurno, estaPresente, gruposAnestesista, chavesAnestesista, aplicarAtribuicoes, preAtribuicoesDoDicionario, azuisEmprestados, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital, localizarSlotEscala } from './utils'
 import { mensagemErroPublicacao } from '@/lib/escalaPublicacaoErro'
 import { validarCasosParaPublicacao, resumirBloqueiosDeCampo, textoBloqueio } from '@/lib/escalaCirurgicaValidacao'
 import { podeEditarEscalaCirurgica } from './gate'
@@ -1326,6 +1326,16 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
           const agoraIso = () => new Date().toISOString()
 
           for (const [chave, d] of trocas) {
+            // A DECISÃO É DO LOTE, O REGISTRO É DE QUEM ESTÁ AQUI (dono 03/09; audit A3).
+            // A resposta de duplicidade vale para as três abas, mas o loop gravava
+            // `trocaCom` no override das TRÊS escalas — inclusive onde a pessoa não
+            // aparece. O órfão reaparecia em toda publicação futura (`paresDeclarados` o
+            // reencontra), pintava badge "Troca" em qualquer linha dela e auditava um
+            // evento numa escala onde ela não está.
+            const uidDup = rosterByUid.has(chave) ? chave : resolver(chave)
+            const rDup = uidDup ? rosterByUid.get(uidDup) : null
+            const pessoaDup = { uid: uidDup || null, nome: rDup?.nome || chave, apelido: rDup?.apelidos?.[0] || chave }
+            if (!localizarSlotEscala(saved, pessoaDup, resolver, periodo)) continue
             const scoped = `${periodo}:${chave}`
             // cadeia de fallback (defeito D6): o override pode viver em chave
             // legada; ler só a scoped duplicaria a entrada

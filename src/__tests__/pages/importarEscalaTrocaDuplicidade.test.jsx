@@ -134,6 +134,36 @@ describe('duplicidade entre hospitais → troca declarada', () => {
     expect(valor.trocaCom).toMatchObject({ uid: 'uid-paulo', nome: 'PAULO TONINI' })
   })
 
+  // O REGISTRO É DE QUEM ESTÁ AQUI (dono 03/09; audit A3). A resposta de duplicidade vale
+  // para as três abas do lote, mas gravar `trocaCom` em TODAS punha um override órfão numa
+  // escala onde a pessoa não aparece — e ele reaparecia em toda publicação futura, pintava
+  // badge "Troca" em qualquer linha dela e auditava um evento no hospital errado.
+  it('não grava trocaCom no hospital onde a pessoa duplicada não está', async () => {
+    // A decisão vale para o lote inteiro, mas esta escala (Materno) não tem DIDO no rodapé
+    // nem nos casos — gravar o override aqui deixaria um par órfão que ressurge em toda
+    // publicação futura e pinta badge "Troca" numa linha que não existe.
+    svcMock.fetchEscala.mockImplementation(async () => null)
+    svcMock.parseEscalaImagem.mockResolvedValueOnce({
+      casos: [{ sala: 'CO 1', hora: '08:00', procedimento: 'CESARIANA', cirurgiao: 'X', anestesista: 'PAULO' }],
+      ordemLiberacao: ['PAULO'],
+      ajudaExterna: [],
+    })
+    const { container } = render(
+      <ImportarEscalaPage
+        hospital="materno" data="2026-08-06" onClose={vi.fn()}
+        decisoesLote={{ 'uid-dido': { tipo: 'troca', parceiroUid: 'uid-paulo', parceiroNome: 'PAULO TONINI' } }}
+      />, { wrapper: wrap },
+    )
+    fireEvent.change(container.querySelector('input[type="file"]'), {
+      target: { files: [new File(['x'], 'm.png', { type: 'image/png' })] },
+    })
+    await waitFor(() => expect(svcMock.parseEscalaImagem).toHaveBeenCalled())
+
+    fireEvent.click(await screen.findByRole('button', { name: /Publicar/i }))
+    await waitFor(() => expect(salvarEscala).toHaveBeenCalled())
+    expect(svcMock.patchLinhaOverride).not.toHaveBeenCalled()
+  })
+
   it('confirmar como intencional publica sem declarar troca nenhuma', async () => {
     await importarComDuplicidade()
     fireEvent.click(screen.getByRole('button', { name: /Trabalha nos dois/i }))
