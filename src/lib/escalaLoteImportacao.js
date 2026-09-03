@@ -96,11 +96,20 @@ export function estadoEscala({ casos = 0, bloqueios = 0, avisos = 0 } = {}) {
  * nome ambíguo deixaria o centro cirúrgico sem escala nenhuma. O que ficou de
  * fora é DITO, com o motivo, na própria folha.
  */
-export function planoPublicacaoLote(escalas) {
+export function planoPublicacaoLote(escalas, { jaPublicadas = [] } = {}) {
   const publicar = []
   const foraDoLote = []
+  const subiu = new Set(jaPublicadas)
   for (const e of escalas || []) {
     if (!e?.hospital) continue
+    // JÁ PUBLICADA NESTE LOTE fica de fora do próximo toque (dono 03/09: "o segundo toque
+    // deve publicar só o que faltou sem perder as informações já registradas nas outras
+    // escalas publicadas"). Publicar é DELETE+reinsert e zera as liberações do turno —
+    // republicar por engano apagava o que a equipe já tinha marcado na escala que subiu.
+    if (subiu.has(e.hospital)) {
+      foraDoLote.push({ hospital: e.hospital, motivo: 'publicada', n: 0 })
+      continue
+    }
     const estado = estadoEscala(e)
     if (estado.tipo === 'vazio') {
       foraDoLote.push({ hospital: e.hospital, motivo: 'vazia', n: 0 })
@@ -119,12 +128,20 @@ export function planoPublicacaoLote(escalas) {
  * Rótulo do botão da folha. Diz QUANTAS vão — "Publicar as 2 prontas" quando
  * alguma ficou travada é o que evita a leitura de que o lote inteiro saiu.
  */
-export function rotuloPublicacaoLote(plano) {
+export function rotuloPublicacaoLote(plano, { rotulos = {} } = {}) {
   const n = plano?.publicar?.length || 0
-  const fora = (plano?.foraDoLote || []).filter((f) => f.motivo === 'bloqueio').length
-  if (!n) return 'Nada a publicar'
-  if (n === 1) return fora ? 'Publicar a que está pronta' : 'Publicar a escala'
-  return fora ? `Publicar as ${n} prontas` : `Publicar as ${n}`
+  const fora = plano?.foraDoLote || []
+  const bloqueadas = fora.filter((f) => f.motivo === 'bloqueio').length
+  const jaPublicadas = fora.filter((f) => f.motivo === 'publicada').length
+  if (!n) return jaPublicadas ? 'Tudo publicado' : 'Nada a publicar'
+  // Segunda tentativa depois de uma parcial: o rótulo NOMEIA quem falta, para ninguém ler
+  // "Publicar as 3" e achar que as que já estão no ar vão de novo.
+  if (jaPublicadas) {
+    const nomes = plano.publicar.map((p) => rotulos[p.hospital] || p.hospital).join(' e ')
+    return `Tentar de novo · ${nomes}`
+  }
+  if (n === 1) return bloqueadas ? 'Publicar a que está pronta' : 'Publicar a escala'
+  return bloqueadas ? `Publicar as ${n} prontas` : `Publicar as ${n}`
 }
 
 /**

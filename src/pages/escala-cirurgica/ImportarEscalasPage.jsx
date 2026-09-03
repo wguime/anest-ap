@@ -115,6 +115,9 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
   const [publicandoLote, setPublicandoLote] = useState(false)
   const [encolhimentos, setEncolhimentos] = useState(null)
   const [publicados, setPublicados] = useState([])
+  // resultado da última tentativa, por hospital: a FOLHA é a superfície do resultado
+  const [resultados, setResultados] = useState({})
+  const [publicandoAgora, setPublicandoAgora] = useState(null)
   const refs = useRef({})
 
   // trocar o dia ou o período do lote invalida toda decisão já tomada
@@ -369,8 +372,8 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
       casos: resumos[h]?.totalCasos || 0,
       bloqueios: resumos[h]?.bloqueios || 0,
       avisos: resumos[h]?.avisos || 0,
-    }))),
-    [hospitaisDoLote, resumos],
+    })), { jaPublicadas: publicados }),
+    [hospitaisDoLote, resumos, publicados],
   )
 
   // Guardrail anti-perda (incidente 23/07: publicar com 1 caso APAGOU os 31 da
@@ -384,19 +387,30 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
   const publicarLote = async () => {
     setEncolhimentos(null)
     setPublicandoLote(true)
+    setPublicandoAgora(null)
+    setResultados({})
     const resultados = []
     try {
       for (const alvo of plano.publicar) {
         const api = refs.current[alvo.hospital]
-        if (!api?.publicar) { resultados.push({ hospital: alvo.hospital, ok: false }); continue }
+        if (!api?.publicar) {
+          resultados.push({ hospital: alvo.hospital, ok: false, mensagem: 'A aba deste hospital não está pronta — abra e confira.' })
+          setResultados((p) => ({ ...p, [alvo.hospital]: { ok: false, mensagem: 'A aba deste hospital não está pronta — abra e confira.' } }))
+          continue
+        }
         // sequencial de propósito: publicar as três ao mesmo tempo faria três
         // conferências de duplicidade correrem sobre o mesmo dia
-        const r = await api.publicar()
-        resultados.push({ hospital: alvo.hospital, ok: !!r?.ok })
+        setPublicandoAgora(alvo.hospital)
+        // exceção de uma aba não pode derrubar o laço sem resumo (audit A9)
+        let r
+        try { r = await api.publicar() } catch (err) { r = { ok: false, mensagem: err?.message || 'Falha inesperada nesta escala.' } }
+        resultados.push({ hospital: alvo.hospital, ok: !!r?.ok, mensagem: r?.mensagem, motivo: r?.motivo, avisos: r?.avisos })
+        setResultados((p) => ({ ...p, [alvo.hospital]: { ok: !!r?.ok, mensagem: r?.mensagem, avisos: r?.avisos, em: new Date() } }))
       }
-    } finally { setPublicandoLote(false) }
+    } finally { setPublicandoLote(false); setPublicandoAgora(null) }
     const { ok, falhou, tudoCerto } = resumirPublicacaoLote(resultados)
-    setPublicados(ok)
+    // acumula: quem subiu numa tentativa anterior continua publicado
+    setPublicados((prev) => [...new Set([...prev, ...ok])])
     const nomes = (lista) => lista.map((h) => HOSPITAL_LABEL[h] || h).join(', ')
     if (tudoCerto) {
       setRevisar(false)
@@ -409,18 +423,23 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
       return
     }
     // A publicação NÃO é transacional entre hospitais: dizer o que JÁ subiu é o
-    // que evita republicar por cima do que está no ar.
+    // que evita republicar por cima do que está no ar. UM aviso só, com o MOTIVO —
+    // a folha fica aberta mostrando o estado de cada hospital (dono 02/09: o erro cru do
+    // banco, um verde de outra aba e o "publicação parcial" apareceram juntos na tela).
+    const motivo = resultados.find((r) => !r.ok && r.mensagem)?.mensagem
     toast({
       variant: 'error',
       duration: 15000,
-      title: ok.length ? 'Publicação parcial' : 'Não foi possível publicar',
-      description: ok.length
-        ? `Publicadas: ${nomes(ok)}. Ficou faltando: ${nomes(falhou)} — a aba continua aberta, com tudo o que você conferiu.`
-        : `${nomes(falhou)}: nada foi publicado. Nenhuma escala do lote foi alterada.`,
+      title: ok.length ? `Publicada ${ok.length} de ${resultados.length}` : 'Não foi possível publicar',
+      description: [
+        ok.length ? `${nomes(ok)} no ar.` : 'Nenhuma escala do lote foi alterada.',
+        `${nomes(falhou)}: ${motivo || 'não publicou'}.`,
+        ok.length ? 'Corrija e toque de novo — só o que faltou é publicado.' : '',
+      ].filter(Boolean).join(' '),
     })
   }
 
-  const rotuloBotao = rotuloPublicacaoLote(plano)
+  const rotuloBotao = rotuloPublicacaoLote(plano, { rotulos: HOSPITAL_LABEL })
   const podePublicar = plano.publicar.length > 0 && canEdit && !publicandoLote
 
   return (
@@ -647,26 +666,41 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
               const estado = estadoDe(h)
               const travada = estado.tipo === 'trava'
               const encolhe = encolhem.find((e) => e.hospital === h)
+              // A FOLHA É A SUPERFÍCIE DO RESULTADO (dono 02/09): publicada com a hora,
+              // publicando agora, ou não publicada COM O MOTIVO em letra legível.
+              const res = resultados[h]
+              const subiu = publicados.includes(h)
+              const agora = publicandoAgora === h
+              const falhou = res && !res.ok
               return (
                 <button
                   key={h}
                   type="button"
                   onClick={() => { setAbaAtiva(h); setRevisar(false) }}
-                  className={`flex w-full items-center gap-2.5 rounded-[13px] border p-3 text-left
-                    ${travada ? 'border-destructive/50 bg-destructive/10' : 'border-border bg-card-elevated'}`}
+                  className={`flex w-full items-start gap-2.5 rounded-[13px] border p-3 text-left
+                    ${falhou || travada ? 'border-destructive/50 bg-destructive/10' : 'border-border bg-card-elevated'}`}
                 >
-                  <SeloEstado estado={estado} />
+                  {agora
+                    ? <Loader2 className="mt-0.5 h-5 w-5 shrink-0 animate-spin text-primary" />
+                    : <SeloEstado estado={subiu ? { tipo: 'pronto', n: 0 } : estado} ativa={subiu} />}
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-bold">{HOSPITAL_LABEL[h] || h}</span>
                     <span className="mt-0.5 block text-xs text-muted-foreground">
+                      {subiu && `Publicada${res?.em ? ` · ${res.em.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''} · `}
+                      {agora && 'Publicando… · '}
                       {r?.totalCasos || 0} caso{(r?.totalCasos || 0) === 1 ? '' : 's'}
                       {r?.ordemLiberacao?.length ? ` · ${r.ordemLiberacao.length} na ordem` : ''}
-                      {travada && ` · ${estado.n} bloqueio${estado.n > 1 ? 's' : ''} — resolva para publicar`}
-                      {!travada && estado.tipo === 'avisa' && ` · ${estado.n} aviso${estado.n > 1 ? 's' : ''} — publica assim mesmo`}
-                      {encolhe && ` · reduz de ${encolhe.publicados} para ${encolhe.casos}`}
+                      {!subiu && travada && ` · ${estado.n} bloqueio${estado.n > 1 ? 's' : ''} — resolva para publicar`}
+                      {!subiu && !travada && estado.tipo === 'avisa' && ` · publica com ${estado.n} aviso${estado.n > 1 ? 's' : ''}`}
+                      {!subiu && encolhe && ` · reduz de ${encolhe.publicados} para ${encolhe.casos}`}
                     </span>
+                    {falhou && res.mensagem && (
+                      <span className="mt-1.5 block rounded-md border-l-[3px] border-destructive bg-destructive/10 px-2 py-1.5 text-xs text-foreground">
+                        {res.mensagem}
+                      </span>
+                    )}
                   </span>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                 </button>
               )
             })}
@@ -709,7 +743,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
 
       {/* Publicação parcial: as abas que subiram ficam ditas na tela, não só no
           toast, porque o toast some e a tela continua aberta. */}
-      {publicados.length > 0 && !publicandoLote && (
+      {publicados.length > 0 && !publicandoLote && !revisar && (
         <div className="fixed inset-x-0 bottom-[76px] z-modal mx-auto max-w-3xl px-4">
           <p className="rounded-lg bg-success/10 px-3 py-2 text-xs text-success">
             Já publicado neste lote: {publicados.map((h) => HOSPITAL_LABEL[h] || h).join(', ')}.

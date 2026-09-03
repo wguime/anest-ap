@@ -75,8 +75,15 @@ function toCamelCase(row) {
 }
 
 function handleError(error, context) {
-  console.error(`[SupabaseEscalaCirurgicaService] ${context}:`, error)
-  throw new Error(`${context}: ${error.message}`)
+  // `details` do Postgres traz a LINHA que falhou (com paciente) — fica fora do console e
+  // da tela; o que a UI precisa para escrever uma frase humana é o `code` e o nome da
+  // constraint, que já vêm na `message` (ver src/lib/escalaPublicacaoErro.js).
+  console.error(`[SupabaseEscalaCirurgicaService] ${context}: ${error?.code || ''} ${error?.message || error}`)
+  const err = new Error(`${context}: ${error.message}`)
+  err.code = error?.code
+  err.hint = error?.hint
+  err.contexto = context
+  throw err
 }
 
 // Campos aceitos num caso (evita enviar lixo do front, ex. ids client-side).

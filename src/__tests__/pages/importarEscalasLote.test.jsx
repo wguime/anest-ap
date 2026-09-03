@@ -460,6 +460,72 @@ describe('folha de revisão e publicação em sequência', () => {
     expect(folha).toBeTruthy()
     expect(screen.getAllByText(/1 caso\b/).length).toBeGreaterThanOrEqual(2)
   })
+
+  // ── PUBLICAÇÃO PARCIAL (dono 02/09 → regra fechada em 03/09) ──────────────
+  // Naquela noite HRO e Materno subiram, a Unimed caiu por uma CHECK do banco, e a tela
+  // deu três recados ao mesmo tempo — o erro cru do Postgres, um "Escala publicada" VERDE
+  // de outra aba e o "Publicação parcial" — com o botão ainda dizendo "Publicar as 3".
+  // O segundo toque republicaria as duas que já estavam no ar, e publicar é DELETE+reinsert:
+  // apagaria as liberações já marcadas naquele turno. Regra do dono: "o segundo toque deve
+  // publicar só o que faltou sem perder as informações já registradas nas outras escalas".
+  describe('quando uma escala falha', () => {
+    it('a aba embutida NÃO emite toast próprio: sai UM aviso só, com o motivo humano', async () => {
+      salvarEscalaTurno.mockImplementation(async (p) => {
+        if (p.hospital === 'materno') {
+          throw Object.assign(new Error('salvarEscalaTurno:rpc: new row for relation "escala_cirurgica_caso" violates check constraint "escala_cirurgica_caso_paciente_iniciais_check"'), { code: '23514' })
+        }
+        return { id: `e-${p.hospital}`, ...p, casos: [] }
+      })
+      await loteDeDois()
+      fireEvent.click(screen.getByRole('button', { name: /revisar e publicar/i }))
+      fireEvent.click(await screen.findByRole('button', { name: /publicar as 2/i }))
+
+      await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalledTimes(2))
+      // nenhum verde de aba: quem fala é a folha
+      await waitFor(() => expect(screen.queryByText('Escala publicada')).toBeNull())
+      // o aviso diz o que corrigir, não o texto do banco — em lugar nenhum da tela
+      await waitFor(() => expect(screen.getAllByText(/nome em vez de iniciais/i).length).toBeGreaterThan(0))
+      expect(document.body.textContent).not.toMatch(/violates check constraint|new row for relation/i)
+    })
+
+    it('o segundo toque publica SÓ o que faltou, e o botão nomeia quem falta', async () => {
+      salvarEscalaTurno.mockImplementation(async (p) => {
+        if (p.hospital === 'materno') throw Object.assign(new Error('salvarEscalaTurno:rpc: falhou'), { code: '23514' })
+        return { id: `e-${p.hospital}`, ...p, casos: [] }
+      })
+      await loteDeDois()
+      fireEvent.click(screen.getByRole('button', { name: /revisar e publicar/i }))
+      fireEvent.click(await screen.findByRole('button', { name: /publicar as 2/i }))
+      await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalledTimes(2))
+
+      // o HRO subiu: o botão passa a nomear só o Materno
+      const tentarDeNovo = await screen.findByRole('button', { name: /tentar de novo · materno/i })
+      salvarEscalaTurno.mockClear()
+      salvarEscalaTurno.mockImplementation(async (p) => ({ id: `e-${p.hospital}`, ...p, casos: [] }))
+      fireEvent.click(tentarDeNovo)
+
+      await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalledTimes(1))
+      expect(salvarEscalaTurno.mock.calls[0][0].hospital).toBe('materno')
+    })
+
+    it('a folha continua aberta dizendo quem subiu e quem não subiu', async () => {
+      salvarEscalaTurno.mockImplementation(async (p) => {
+        if (p.hospital === 'materno') throw Object.assign(new Error('salvarEscalaTurno:rpc: falhou'), { code: '23514' })
+        return { id: `e-${p.hospital}`, ...p, casos: [] }
+      })
+      await loteDeDois()
+      fireEvent.click(screen.getByRole('button', { name: /revisar e publicar/i }))
+      fireEvent.click(await screen.findByRole('button', { name: /publicar as 2/i }))
+      await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalledTimes(2))
+
+      expect(screen.getByText(/revisar antes de publicar/i)).toBeTruthy()
+      // o card do HRO (na folha, não a aba) diz que subiu; o do Materno, o motivo
+      const cardHro = screen.getAllByText('HRO').map((n) => n.closest('button')).find((b) => /caso/.test(b?.textContent || ''))
+      expect(cardHro.textContent).toMatch(/Publicada/)
+      const cardMaterno = screen.getAllByText('Materno').map((n) => n.closest('button')).find((b) => /caso/.test(b?.textContent || ''))
+      expect(cardMaterno.textContent).not.toMatch(/Publicada/)
+    })
+  })
 })
 
 // ════════════════════════════════════════════════════════════════════════════

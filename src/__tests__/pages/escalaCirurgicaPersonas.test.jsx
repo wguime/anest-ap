@@ -566,6 +566,28 @@ describe('Liberações — liberado tem o MESMO card, venha do toque ou da cauda
     }
   })
 
+  // FRONTEIRA DAS DUAS REGRAS (o CI pegou em 03/09): o enxuto vale para o TEMPO, não para o
+  // trabalho. Quem some com cirurgião/local/observação é só quem foi liberado NO TOQUE — à
+  // noite a cirurgia herdada da tarde tem de continuar visível no card de quem está liberado
+  // automaticamente (decisão de 15/08, travada em `escalaFdsTelaUnica`). Este caso pina o
+  // lado de cá: o conteúdo de trabalho segue o toque, o controle de tempo segue o estado.
+  it('liberado NO TOQUE segue sem cirurgião (regra antiga) e agora também sem o tempo', () => {
+    const comCaso = {
+      ...escala,
+      casos: [
+        { sala: 'S1', ordem: 0, anestesista: 'ANA', cirurgiao: 'Cesar Bombardelli' },
+        { sala: 'S2', ordem: 0, anestesista: 'BRUNO', cirurgiao: 'Cir B' },
+      ],
+    }
+    render(<LiberacoesView escala={comCaso} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
+    expect(within(card('ANA')).getByText('Liberado')).toBeTruthy()
+    expect(within(card('ANA')).queryByText('Cesar Bombardelli')).toBeNull()
+    expect(within(card('ANA')).queryByText(/Tempo total/)).toBeNull()
+    // e quem NÃO está liberado segue com o cirurgião e com o controle de tempo
+    expect(within(card('BRUNO')).getByText('Cir B')).toBeTruthy()
+    expect(within(card('BRUNO')).getByText(/Tempo total/)).toBeTruthy()
+  })
+
   it('o nome apagado e o lápis são os mesmos do card liberado no toque', () => {
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
     const nomeDe = (n) => within(card(n)).getByText(n === 'ANA' ? 'Ana' : n === 'DANI' ? 'Dani' : n).closest('p')

@@ -22,6 +22,7 @@ import { iniciaisSeguras } from '@/lib/escalaCirurgicaPaciente'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
 import { linhaVazia, prepararCasosImportados as prepararCasos, normNome, candidatosPrimeiroNome, resumirRodape, casosQuePassamParaOTurno, presencaDoTurno, estaPresente, gruposAnestesista, chavesAnestesista, aplicarAtribuicoes, preAtribuicoesDoDicionario, azuisEmprestados, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital } from './utils'
+import { mensagemErroPublicacao } from '@/lib/escalaPublicacaoErro'
 import { podeEditarEscalaCirurgica } from './gate'
 import { planoCruzamentoUrgencias, salasContrato } from '@/lib/escalaCirurgicaUrgencias'
 import { hospitalPelaEstrutura } from '@/lib/escalaHospitalEstrutura'
@@ -1145,39 +1146,45 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   const [substituir, setSubstituir] = useState(null) // { atuais, novos }
   const [confirmacaoPublicacao, setConfirmacaoPublicacao] = useState(false)
   const publicar = async ({ confirmacao = false, substituicao = false } = {}) => {
+    // EM LOTE A ABA NÃO FALA (dono 02/09: três toasts ao mesmo tempo, um deles VERDE, com o
+    // hospital que falhou no meio). Ela devolve o que teria dito; a folha de revisão dá UMA
+    // notícia no fim, com o motivo humano de quem não subiu. Fora do lote, nada muda.
+    const avisos = []
+    const avisar = (t) => { if (embutida) avisos.push(t); else toast(t) }
+    const recusar = (motivo, mensagem) => ({ ok: false, hospital: hosp, motivo, mensagem, avisos })
     const loteParaValidar = loteAnexo || casos
     const horario = validarHorarioImportacao(loteParaValidar, periodo)
     if (horario.invalidos.length) {
-      toast({
+      avisar({
         variant: 'error',
         title: 'Hora inválida na escala',
         description: `${horario.invalidos.length} item(ns) têm hora inválida. Corrija antes de publicar (use HH:MM, por exemplo 08:30).`,
       })
-      return { ok: false, hospital: hosp, motivo: 'hora inválida' }
+      return recusar('hora inválida', `${horario.invalidos.length} item(ns) com hora inválida — corrija antes de publicar.`)
     }
     // NOME AMBÍGUO BLOQUEIA (dono 11/08): publicar "JOAO" com dois Joãos no
     // rodapé deixa a sala órfã e o dono dela fora da fila. Só quem está com a
     // imagem na mão sabe o sobrenome.
     if (gruposAmbiguos.length) {
       const { grupo, candidatos } = gruposAmbiguos[0]
-      toast({
+      avisar({
         variant: 'error',
         duration: 12000,
         title: `"${grupo.nome}" — qual deles?`,
         description: `${candidatos.map((c) => nomeCirurgiaoCurto(titleCaseNome(c.nome))).join(' ou ')}. Escolha o login na conferência${gruposAmbiguos.length > 1 ? ` (e em mais ${gruposAmbiguos.length - 1} nome[s] igual[is])` : ''} — sem sobrenome a sala fica sem dono na fila.`,
       })
-      return { ok: false, hospital: hosp, motivo: 'nome ambíguo' }
+      return recusar('nome ambíguo', `"${gruposAmbiguos[0].grupo.nome}" pode ser mais de uma pessoa — escolha o login na conferência.`)
     }
     if (duplicidadesPendentes.length) {
-      toast({
+      avisar({
         variant: 'warning',
         title: 'Confirme as duplicidades antes de publicar',
         description: `${duplicidadesPendentes.length} pessoa(s) aparecem em mais de um hospital no mesmo turno. Diga se trabalha nos dois de propósito ou escolha com quem trocou.`,
       })
-      return { ok: false, hospital: hosp, motivo: 'duplicidade não classificada' }
+      return recusar('duplicidade não classificada', `${duplicidadesPendentes.length} pessoa(s) em dois hospitais — responda em Decisões.`)
     }
     if (horario.incompatíveis.length) {
-      toast({
+      avisar({
         variant: 'warning',
         title: 'Há itens de outro turno',
         description: `${horario.incompatíveis.length} item(ns) têm horário incompatível com o turno ${periodo === 'matutino' ? 'matutino' : 'vespertino'} e ficarão fora desta publicação.`,
@@ -1185,7 +1192,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     }
     if (!confirmacao && salvarEscalaTurno) {
       setConfirmacaoPublicacao(true)
-      return { ok: false, hospital: hosp, motivo: 'aguardando confirmação' }
+      return recusar('aguardando confirmação', '')
     }
     setPublicando(true)
     try {
@@ -1214,7 +1221,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
         if (atuais >= 3 && atuais > casosNovos.length) {
           setPublicando(false)
           setSubstituir({ atuais, novos: casosOut.length })
-          return { ok: false, hospital: hosp, motivo: 'encolhimento não confirmado' }
+          return recusar('encolhimento não confirmado', `Esta publicação reduziria de ${atuais} para ${casosNovos.length} casos.`)
         }
       }
 
@@ -1248,7 +1255,9 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
         legado
           ? { data: dataEscolhida, hospital: hosp, casos: casosOut, ordemLiberacao: ordemPublicacao, ajudaExterna: ajudaPublicacao, status: 'publicada' }
           : { data: dataEscolhida, hospital: hosp, turno: periodo, casos: casosNovos, ordemLiberacao: ordemNova, ajudaExterna: ajudaNova, status: 'publicada' },
-        { userId, userName: user?.displayName }
+        { userId, userName: user?.displayName },
+        // em lote o erro vira a frase da folha; o context não abre toast por cima
+        { silencioso: embutida },
       )
 
       // Nome completo → cobrança: caso PARTICULAR extraído com pacienteNome
@@ -1374,7 +1383,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
         }
       } catch { /* a escala está publicada; o ajuste pode ser feito no card */ }
 
-      toast({
+      avisar({
         variant: 'success',
         title: 'Escala publicada',
         description: trocasExecutadas.length
@@ -1385,7 +1394,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
         const partes = []
         if (cruzadas) partes.push(`${cruzadas} passou para o anestesista desta escala`)
         if (cruzadasSemDono) partes.push(`${cruzadasSemDono} ficou sem anestesista (ninguém escalado na sala) e segue na fila`)
-        toast({
+        avisar({
           variant: cruzadasSemDono ? 'warning' : 'info',
           duration: 12000,
           title: 'Urgência aberta do turno anterior',
@@ -1393,7 +1402,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
         })
       }
       if (trocasPendentes.length) {
-        toast({
+        avisar({
           variant: 'warning', duration: 12000,
           title: 'Troca declarada, ainda não executada',
           description: [...new Set(trocasPendentes)].join(' · '),
@@ -1406,7 +1415,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
       if (semVinculo.length) {
         const nomes = semVinculo.map((v) => titleCaseNome(v.nome)).join(', ')
         const soPermissao = semVinculo.every((v) => v.permissao)
-        toast({
+        avisar({
           variant: 'warning',
           duration: 15000,
           title: `Escala publicada, mas ${semVinculo.length === 1 ? 'um nome ficou' : `${semVinculo.length} nomes ficaram`} sem vínculo`,
@@ -1421,10 +1430,10 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
         // devolve onde publicou → a página aterrissa na escala certa (data/hospital/período)
         onClose?.({ data: dataEscolhida, hospital: hosp, turno: periodo })
       }
-      return { ok: true, hospital: hosp }
-    } catch {
-      /* toast no context */
-      return { ok: false, hospital: hosp }
+      return { ok: true, hospital: hosp, avisos }
+    } catch (err) {
+      // fora do lote o context já avisou; em lote a frase sobe para a folha
+      return { ok: false, hospital: hosp, motivo: 'erro', mensagem: mensagemErroPublicacao(err), avisos }
     } finally { setPublicando(false) }
   }
 

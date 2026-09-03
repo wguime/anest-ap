@@ -11,6 +11,7 @@
  */
 import { createContext, useContext, useReducer, useMemo, useCallback, useEffect, useState, useRef } from 'react'
 import svc from '@/services/supabaseEscalaCirurgicaService'
+import { mensagemErroPublicacao } from '@/lib/escalaPublicacaoErro'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
 import { useToast } from '@/design-system/components/ui/toast'
 import { ajudasPreservadasNoRepasse, escaladosPreservadosNoRepasse, familiaConvenio, lerOverrideAnterior, mergeRodapeTurno, rodapeDoTurno, snapshotCasos } from '@/pages/escala-cirurgica/utils'
@@ -338,13 +339,16 @@ export function EscalaCirurgicaProvider({ children }) {
     }
   }, [toast])
 
-  const salvarEscalaTurno = useCallback(async (payload, userInfo) => {
+  // `opts.silencioso`: quem chama é o LOTE, que dá UMA notícia no fim com o motivo humano
+  // (02/09: o erro cru do banco, o verde de outra aba e o "publicação parcial" apareceram
+  // juntos na tela). Sem a opção, o comportamento é o de sempre.
+  const salvarEscalaTurno = useCallback(async (payload, userInfo, opts = {}) => {
     try {
       const saved = await svc.salvarEscalaTurno(payload, userInfo)
       dispatch({ type: 'SET_HOSPITAL', hospital: payload.hospital, payload: saved })
       return saved
     } catch (error) {
-      toast({ variant: 'error', title: 'Erro ao publicar turno', description: error.message })
+      if (!opts.silencioso) toast({ variant: 'error', title: 'Erro ao publicar turno', description: mensagemErroPublicacao(error) })
       throw error
     }
   }, [toast])

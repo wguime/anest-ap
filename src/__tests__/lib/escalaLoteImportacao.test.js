@@ -219,3 +219,43 @@ describe('relato depois de publicar em sequência', () => {
     expect(r.tudoCerto).toBe(false)
   })
 })
+
+// PUBLICAR SÓ O QUE FALTOU (dono 03/09, depois da parcial de 02/09: HRO e Materno subiram,
+// a Unimed caiu, e o botão seguia dizendo "Publicar as 3" — o segundo toque republicaria as
+// duas que estavam no ar, apagando as liberações já marcadas naquele turno).
+describe('publicação parcial — o segundo toque não republica quem já subiu', () => {
+  const tres = [
+    { hospital: 'unimed', casos: 34, avisos: 3 },
+    { hospital: 'hro', casos: 26, avisos: 6 },
+    { hospital: 'materno', casos: 6, avisos: 0 },
+  ]
+  const rotulos = { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' }
+
+  it('quem já publicou sai do plano com motivo próprio', () => {
+    const plano = planoPublicacaoLote(tres, { jaPublicadas: ['hro', 'materno'] })
+    expect(plano.publicar.map((p) => p.hospital)).toEqual(['unimed'])
+    expect(plano.foraDoLote).toEqual([
+      { hospital: 'hro', motivo: 'publicada', n: 0 },
+      { hospital: 'materno', motivo: 'publicada', n: 0 },
+    ])
+  })
+
+  it('o rótulo do botão NOMEIA quem falta em vez de contar as três', () => {
+    expect(rotuloPublicacaoLote(planoPublicacaoLote(tres), { rotulos })).toBe('Publicar as 3')
+    expect(rotuloPublicacaoLote(planoPublicacaoLote(tres, { jaPublicadas: ['hro', 'materno'] }), { rotulos }))
+      .toBe('Tentar de novo · Unimed')
+    expect(rotuloPublicacaoLote(planoPublicacaoLote(tres, { jaPublicadas: ['materno'] }), { rotulos }))
+      .toBe('Tentar de novo · Unimed e HRO')
+  })
+
+  it('com todas publicadas não sobra o que publicar', () => {
+    const plano = planoPublicacaoLote(tres, { jaPublicadas: ['unimed', 'hro', 'materno'] })
+    expect(plano.publicar).toEqual([])
+    expect(rotuloPublicacaoLote(plano, { rotulos })).toBe('Tudo publicado')
+  })
+
+  it('sem parcial nenhuma o comportamento é o de sempre', () => {
+    expect(planoPublicacaoLote(tres).publicar).toHaveLength(3)
+    expect(planoPublicacaoLote(tres, { jaPublicadas: [] }).foraDoLote).toEqual([])
+  })
+})
