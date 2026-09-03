@@ -1,7 +1,7 @@
  'react';
 import { SectionCard, PlantaoCard, Skeleton, WidgetCard } from '@/design-system';
 import { PageHeader } from '@/components';
-import { RefreshCw, Calendar, CalendarCheck, CalendarClock } from 'lucide-react';
+import { RefreshCw, Calendar, CalendarCheck, CalendarClock, ListOrdered, Flag } from 'lucide-react';
 import { useEscalaDia } from '../hooks/usePegaPlantao';
 import { formatDate } from '@/utils/formatters';
 import { useUser } from '@/contexts/UserContext';
@@ -65,6 +65,24 @@ export default function EscalasPage({ onNavigate, goBack }) {
             subtitle="Sobreaviso e trocas"
             variant="default"
             onClick={() => onNavigate('escalasFuncionarias')}
+          />
+          {/* Consulta da ordem de liberação pela escala numérica do grupo (dono 03/09):
+              qualquer um vê a fila esperada do dia sem depender da conferência. */}
+          <WidgetCard
+            size="small"
+            icon={<ListOrdered className="w-6 h-6" />}
+            title="Escala Numérica"
+            subtitle="Ordem de liberação do dia"
+            variant="default"
+            onClick={() => onNavigate('escalaNumerica')}
+          />
+          <WidgetCard
+            size="small"
+            icon={<Flag className="w-6 h-6" />}
+            title="Feriados"
+            subtitle="Ordem dos feriados do ano"
+            variant="default"
+            onClick={() => onNavigate('feriados')}
           />
         </div>
 

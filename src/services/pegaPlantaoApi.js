@@ -569,7 +569,7 @@ export async function getEscalaSemanal(dataReferencia = new Date()) {
 
 /**
  * Buscar plantões e férias de uma data arbitrária (YYYY-MM-DD).
- * Retorna { plantoes: [{nome, setor, horario, inicio}], ferias: [{nome, inicio, fim, periodo}] }
+ * Retorna { plantoes: [{nome, setor, horario, horarioFim, inicio, fim}], ferias: [{nome, inicio, fim, periodo}] }
  */
 export async function getPlantoesPorData(dateStr) {
   const raw = await getPlantoes({
@@ -593,8 +593,11 @@ export async function getPlantoesPorData(dateStr) {
     } else {
       const inicio = new Date(p.Inicio)
       const horaFormatada = formatDate(inicio, { hour: '2-digit', minute: '2-digit', hour12: false })
+      // `horarioFim` (aditivo, 03/09): a fila Pn do fim de semana precisa da FAIXA — no sábado
+      // P1–P4 são 07–19, P5–P10 só a manhã e P11 vira 24h, e sem o fim isso some da tela
+      const horarioFim = p.Fim ? formatDate(new Date(p.Fim), { hour: '2-digit', minute: '2-digit', hour12: false }) : null
       const setor = p.Setor ? (p.Setor.match(/P(\d+)/i) ? `P${p.Setor.match(/P(\d+)/i)[1]}` : p.Setor) : ''
-      plantoes.push({ nome, setor, horario: horaFormatada, inicio: p.Inicio })
+      plantoes.push({ nome, setor, horario: horaFormatada, horarioFim, inicio: p.Inicio, fim: p.Fim || null })
     }
   }
 

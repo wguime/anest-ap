@@ -150,6 +150,8 @@ const EscalasFuncionariasHubPage = lazy(() => import("./pages/EscalasFuncionaria
 const RefeicaoUnimedPage = lazy(() => import("./pages/RefeicaoUnimedPage"))
 const CodificacaoAnestesicaPage = lazy(() => import("./pages/codificacao-anestesica"))
 const EscalaCirurgicaPage = lazy(() => import("./pages/escala-cirurgica/EscalaCirurgicaPage"))
+const EscalaNumericaPage = lazy(() => import("./pages/escala-numerica/EscalaNumericaPage"))
+const FeriadosPage = lazy(() => import("./pages/escala-numerica/FeriadosPage"))
 // gate leve (sem React) — produção exclusiva do dono durante o piloto
 import { podeVerEscalaCirurgica } from "./pages/escala-cirurgica/gate"
 import { podeVerExtratoFerias } from "./pages/ferias/gate"
@@ -678,6 +680,8 @@ const PAGE_TO_CARD = {
   gestaoDocumental: 'gestao_documental',
   faturamento: 'faturamento',
   escalas: 'escalas',
+  escalaNumerica: 'escalas', // consulta da ordem: mesmo acesso do hub Gestão › Escalas
+  feriados: 'escalas',
   reunioes: 'reunioes',
   reuniaoDetalhe: 'reunioes',
   // Gestao sub-pages (own card IDs in NAV_STRUCTURE)
@@ -1332,6 +1336,10 @@ function App() {
         return <CodificacaoAnestesicaPage onNavigate={handleNavigate} goBack={goBack} />
       case 'escalaCirurgica':
         return <EscalaCirurgicaPage key="escalaCirurgica" onNavigate={handleNavigate} goBack={goBack} />
+      case 'escalaNumerica':
+        return <EscalaNumericaPage key="escalaNumerica" onNavigate={handleNavigate} goBack={goBack} />
+      case 'feriados':
+        return <FeriadosPage key="feriados" onNavigate={handleNavigate} goBack={goBack} />
       case 'extratoFerias':
         return <ExtratoFeriasPage key="extratoFerias" onNavigate={handleNavigate} goBack={goBack} />
       case 'consultaSobreaviso':

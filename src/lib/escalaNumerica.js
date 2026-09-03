@@ -265,6 +265,32 @@ export function montarOrdem(dados, { data, hospital, turno, ferias = null, fonte
   }
 }
 
+/**
+ * Marca quem está de férias SEM tirar da fila — o oposto de `excluirFerias`, e é de propósito.
+ * Na CONFERÊNCIA a pessoa de férias sai da ordem (ela não vai trabalhar); na CONSULTA (tela
+ * "Escala Numérica", dono 03/09) o grupo quer ver a fila do quadro inteira e saber quem não
+ * estará — quem está de férias fica na posição dele, marcado. Ninguém é excluído e ninguém
+ * muda de posição.
+ *
+ * Trabalha na LISTA já montada (`montarOrdem(...).lista`, com `nome` unido por " / "), enquanto
+ * `excluirFerias` trabalha nas POSIÇÕES cruas (que ainda carregam o array `nomes`) — não são
+ * intercambiáveis.
+ *
+ * `ferias` = nomes completos (Pega Plantão) de quem está de férias NO DIA; `null` (ou não-array)
+ * quer dizer "não consultado" e devolve a lista intacta — cabe a quem chama dizer isso na tela.
+ * Entrada compartilhada ("HUMBERTO / ROBERTA") marca só quem estiver de férias: `ferias` traz os
+ * nomes marcados e `todosDeFerias` diz se o par inteiro está fora.
+ */
+export function anotarFerias(lista, ferias, { casar = casarNomeComLegenda } = {}) {
+  if (!Array.isArray(ferias) || !ferias.length) return lista
+  return lista.map((p) => {
+    const nomes = String(p.nome).split(' / ').map((n) => n.trim()).filter(Boolean)
+    const deFerias = nomes.filter((n) => ferias.some((f) => casar(n, f)))
+    if (!deFerias.length) return p
+    return { ...p, ferias: deFerias, todosDeFerias: deFerias.length === nomes.length }
+  })
+}
+
 const mesmaPessoa = (nome, lido, casar) => normNomeNumerica(nome) === normNomeNumerica(lido) || casar(nome, lido) || casar(lido, nome)
 
 /**

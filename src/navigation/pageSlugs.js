@@ -41,6 +41,8 @@ export const PAGES = [
   'biblioteca',
   'codificacaoAnestesica',
   'escalaCirurgica',
+  'escalaNumerica',
+  'feriados',
   'extratoFerias',
   'bulkImport',
   'calculadoras',

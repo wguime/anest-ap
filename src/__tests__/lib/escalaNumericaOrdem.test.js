@@ -10,7 +10,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import {
-  ordemBase, inserirLouise, excluirFerias, montarOrdem, compararComRodape, aplicarEscalaNasDuplas, casarNomeComLegenda, formatarOrdem,
+  ordemBase, inserirLouise, excluirFerias, anotarFerias, montarOrdem, ordemFeriado, compararComRodape, aplicarEscalaNasDuplas, casarNomeComLegenda, formatarOrdem,
 } from '../../lib/escalaNumerica'
 
 const dados = JSON.parse(readFileSync(resolve(__dirname, '../../data/escalaNumerica.json'), 'utf8'))
@@ -295,5 +295,74 @@ describe('formatarOrdem — o resultado que o dono pediu', () => {
     // dia útil: o par compartilhado é a posição, como impresso — sem pendência (dono 03/09)
     expect(txt).toContain('05 HUMBERTO / ROBERTA')
     expect(txt).not.toContain('compartilhada')
+  })
+})
+
+/**
+ * `anotarFerias` é o oposto deliberado de `excluirFerias` (dono 03/09): a tela de consulta
+ * "Escala Numérica" mostra a fila do quadro INTEIRA e marca quem está de férias, em vez de
+ * tirar da lista como faz a conferência. Ninguém sai, ninguém muda de posição.
+ */
+describe('anotarFerias — férias marcam, não excluem', () => {
+  const feriasDoDia = ['Karine Bedin', 'Gabriel Juan Kettenhuber Costa', 'João Ricardo Moreira']
+
+  it('03/09 no HRO: os 3 de férias ficam na posição, marcados, e os 20 continuam lá', () => {
+    const base = montarOrdem(dados, { data: '2026-09-03', hospital: 'hro', turno: 'matutino', ferias: null })
+    const anotada = anotarFerias(base.lista, feriasDoDia)
+    expect(anotada).toHaveLength(20)
+    expect(anotada.map((p) => p.posicao)).toEqual(base.lista.map((p) => p.posicao))
+    expect(anotada.filter((p) => p.ferias).map((p) => `${p.numero} ${p.nome}`))
+      .toEqual(['06 JOAO RICARDO', '10 GABRIEL', '18 KARINE'])
+    expect(anotada.find((p) => p.numero === '18')).toMatchObject({ posicao: 8, ferias: ['KARINE'], todosDeFerias: true })
+  })
+
+  it('é o espelho da conferência: quem montarOrdem TIRA por férias, anotarFerias MARCA na posição', () => {
+    const base = montarOrdem(dados, { data: '2026-09-03', hospital: 'hro', turno: 'matutino', ferias: null })
+    const conferencia = montarOrdem(dados, { data: '2026-09-03', hospital: 'hro', turno: 'matutino', ferias: feriasDoDia })
+    const anotada = anotarFerias(base.lista, feriasDoDia)
+    expect(conferencia.lista).toHaveLength(17)
+    expect(conferencia.excluidos.map((e) => e.numero)).toEqual(anotada.filter((p) => p.ferias).map((p) => p.numero))
+    // a conferência compacta a numeração (1..17); a consulta preserva a do quadro (1..20)
+    expect(conferencia.lista.at(-1).posicao).toBe(17)
+    expect(anotada.at(-1).posicao).toBe(20)
+  })
+
+  it('anotarFerias trabalha na LISTA (nome já unido); excluirFerias, nas POSIÇÕES (com o array nomes)', () => {
+    const base = ordemBase(dados, { data: '2026-09-03', hospital: 'hro', turno: 'matutino' })
+    // excluirFerias exige `nomes`, que só existe antes de montarOrdem achatar a lista
+    expect(base.posicoes[0]).toHaveProperty('nomes')
+    expect(excluirFerias(base.posicoes, feriasDoDia).excluidos).toHaveLength(3)
+    expect(montarOrdem(dados, { data: '2026-09-03', hospital: 'hro', turno: 'matutino', ferias: null }).lista[0])
+      .not.toHaveProperty('nomes')
+  })
+
+  it('entrada compartilhada com só um de férias marca só ele, e o par continua na fila', () => {
+    const lista = [{ posicao: 1, numero: '05', nome: 'HUMBERTO / ROBERTA' }, { posicao: 2, numero: '09', nome: 'MAURICIO' }]
+    const r = anotarFerias(lista, ['Roberta Marina Grando'])
+    expect(r[0]).toMatchObject({ nome: 'HUMBERTO / ROBERTA', ferias: ['ROBERTA'], todosDeFerias: false })
+    expect(r[1].ferias).toBeUndefined()
+    const dois = anotarFerias(lista, ['Roberta Marina Grando', 'Humberto Hepp'])
+    expect(dois[0]).toMatchObject({ ferias: ['HUMBERTO', 'ROBERTA'], todosDeFerias: true })
+  })
+
+  it('sem consulta ao Pega Plantão (null) ou sem ninguém de férias, a lista sai intacta', () => {
+    const base = montarOrdem(dados, { data: '2026-09-03', hospital: 'hro', turno: 'matutino', ferias: null })
+    expect(anotarFerias(base.lista, null)).toBe(base.lista)
+    expect(anotarFerias(base.lista, [])).toBe(base.lista)
+    expect(anotarFerias(base.lista, ['Fulano De Tal']).some((p) => p.ferias)).toBe(false)
+  })
+
+  it('a tarde já vem invertida da lib e a marca acompanha a pessoa, não a posição', () => {
+    const tarde = montarOrdem(dados, { data: '2026-09-03', hospital: 'hro', turno: 'vespertino', ferias: null })
+    const anotada = anotarFerias(tarde.lista, feriasDoDia)
+    expect(anotada[0]).toMatchObject({ numero: '02', nome: 'LEANDRO' })
+    expect(anotada.find((p) => p.numero === '18')).toMatchObject({ posicao: 13, ferias: ['KARINE'] })
+  })
+
+  it('feriado: a fila única também aceita a marca (07/09, ninguém de férias no PP)', () => {
+    const r = ordemFeriado(dados, { data: '2026-09-07', turno: 'matutino' })
+    const lista = r.posicoes.map((p, i) => ({ ...p, posicao: i + 1 }))
+    expect(anotarFerias(lista, ['Thayná Regina Santos']).find((p) => p.numero === '39'))
+      .toMatchObject({ posicao: 14, ferias: ['THAYNA'] })
   })
 })
