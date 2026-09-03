@@ -898,3 +898,59 @@ describe('HRO — aviso das seções que não vieram na leitura', () => {
     expect(screen.queryByText(/não trouxe nenhuma linha de/i)).toBeNull()
   })
 })
+
+// ════════════════════════════════════════════════════════════════════════════
+// O QUE O BANCO RECUSA, A CONFERÊNCIA RECUSA ANTES (dono 03/09, incidente 02/09).
+//
+// Naquela noite a folha dizia "pronto", a Unimed entrou no lote e o INSERT dos 34 casos
+// caiu numa CHECK por causa de UM paciente com nome no lugar das iniciais — sem dizer qual
+// linha. Agora o campo fora do formato TRAVA a aba, com o endereço do caso, e o `publicar`
+// nem chega a chamar o RPC.
+// ════════════════════════════════════════════════════════════════════════════
+describe('campo que o banco recusa trava a aba antes do RPC', () => {
+  const comPacienteErrado = [
+    { sala: 'CC - Sala 5', ordem: 0, hora: '07:30', anestesista: 'CURY', cirurgiao: 'Dr A', pacienteIniciais: 'A.B.' },
+    { sala: 'CC - Sala 5', ordem: 1, hora: '09:00', anestesista: '//', cirurgiao: 'Dr A', pacienteIniciais: 'MARIA DA SILVA' },
+  ]
+
+  it('paciente com nome não publica, e a recusa diz a sala e o caso', async () => {
+    await importar(comPacienteErrado, ['CURY'])
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+    // aparece no placar de pendências E no aviso da recusa — as duas superfícies contam
+    await waitFor(() => expect(screen.getAllByText(/2º caso/).length).toBeGreaterThan(0))
+    expect(screen.getAllByText(/nome em vez de iniciais/i).length).toBeGreaterThan(0)
+    expect(salvarEscala).not.toHaveBeenCalled()
+  })
+
+  it('corrigido na tela, publica — a validação olha o que ESTÁ na conferência', async () => {
+    const container = await importar(comPacienteErrado, ['CURY'])
+    const campo = [...container.querySelectorAll('input')].find((i) => i.value === 'MARIA DA SILVA')
+      || (() => {
+        // o caso vive dentro do bloco: abrir para alcançar os campos
+        fireEvent.click(blocos(container)[0])
+        return [...container.querySelectorAll('input')].find((i) => i.value === 'MARIA DA SILVA')
+      })()
+    fireEvent.change(campo, { target: { value: 'M.S.' } })
+    fireEvent.blur(campo)
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+    await waitFor(() => expect(salvarEscala).toHaveBeenCalled())
+    const casos = salvarEscala.mock.calls[0][0].casos
+    expect(casos.map((c) => c.pacienteIniciais)).toEqual(['A.B.', 'M.S.'])
+  })
+
+  it('hora inválida corrigida na tela também destrava (antes ela relia o lote original)', async () => {
+    const container = await importar([
+      { sala: 'CC - Sala 1', ordem: 0, hora: '25:70', anestesista: 'CURY', cirurgiao: 'Dr A', pacienteIniciais: 'A.B.' },
+    ], ['CURY'])
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+    await waitFor(() => expect(screen.getAllByText(/hora "25:70" não é um horário|hora inválida/i).length).toBeGreaterThan(0))
+    expect(salvarEscala).not.toHaveBeenCalled()
+
+    fireEvent.click(blocos(container)[0])
+    const campoHora = [...container.querySelectorAll('input')].find((i) => i.value === '25:70')
+    fireEvent.change(campoHora, { target: { value: '07:30' } })
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+    await waitFor(() => expect(salvarEscala).toHaveBeenCalled())
+    expect(salvarEscala.mock.calls[0][0].casos[0].hora).toBe('07:30')
+  })
+})

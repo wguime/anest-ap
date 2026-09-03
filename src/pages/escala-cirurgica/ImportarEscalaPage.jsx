@@ -23,6 +23,7 @@ import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
 import { linhaVazia, prepararCasosImportados as prepararCasos, normNome, candidatosPrimeiroNome, resumirRodape, casosQuePassamParaOTurno, presencaDoTurno, estaPresente, gruposAnestesista, chavesAnestesista, aplicarAtribuicoes, preAtribuicoesDoDicionario, azuisEmprestados, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital } from './utils'
 import { mensagemErroPublicacao } from '@/lib/escalaPublicacaoErro'
+import { validarCasosParaPublicacao, resumirBloqueiosDeCampo, textoBloqueio } from '@/lib/escalaCirurgicaValidacao'
 import { podeEditarEscalaCirurgica } from './gate'
 import { planoCruzamentoUrgencias, salasContrato } from '@/lib/escalaCirurgicaUrgencias'
 import { hospitalPelaEstrutura } from '@/lib/escalaHospitalEstrutura'
@@ -44,6 +45,12 @@ const dataToISO = (d) =>
  * mantidas no lote para o usuário ser avisado (o filtro de publicação já as
  * exclui do turno selecionado). Itens sem hora são esperados para SRPA/apoio e
  * pertencem ao turno escolhido.
+ */
+/**
+ * ⚠️ Recebe os casos EDITADOS da conferência, não o lote lido. Até 03/09 a chamada passava
+ * `loteAnexo || casos`: corrigir uma hora inválida na tela não destravava o publicar (ele
+ * relia o valor torto da importação) e uma hora editada para o outro turno sumia da
+ * publicação sem aviso, porque a contagem de incompatíveis também vinha da leitura.
  */
 export const validarHorarioImportacao = (itens, periodo) => {
   const invalidos = []
@@ -1152,8 +1159,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     const avisos = []
     const avisar = (t) => { if (embutida) avisos.push(t); else toast(t) }
     const recusar = (motivo, mensagem) => ({ ok: false, hospital: hosp, motivo, mensagem, avisos })
-    const loteParaValidar = loteAnexo || casos
-    const horario = validarHorarioImportacao(loteParaValidar, periodo)
+    const horario = validarHorarioImportacao(casos, periodo)
     if (horario.invalidos.length) {
       avisar({
         variant: 'error',
@@ -1175,6 +1181,15 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
       })
       return recusar('nome ambíguo', `"${gruposAmbiguos[0].grupo.nome}" pode ser mais de uma pessoa — escolha o login na conferência.`)
     }
+    if (bloqueiosCampo.length) {
+      const r = resumirBloqueiosDeCampo(bloqueiosCampo)
+      avisar({
+        variant: 'error', duration: 12000,
+        title: r.total === 1 ? 'Um caso não pode ser publicado assim' : `${r.total} casos não podem ser publicados assim`,
+        description: `${r.texto}. Corrija na conferência — o banco recusa e a escala inteira não sobe.`,
+      })
+      return recusar('campo inválido', textoBloqueio(bloqueiosCampo[0]))
+    }
     if (duplicidadesPendentes.length) {
       avisar({
         variant: 'warning',
@@ -1184,10 +1199,14 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
       return recusar('duplicidade não classificada', `${duplicidadesPendentes.length} pessoa(s) em dois hospitais — responda em Decisões.`)
     }
     if (horario.incompatíveis.length) {
+      // NOMEIA o caso: "35 casos" na folha e um a menos publicado é invisível quando o
+      // aviso só conta (audit A5b — a Sala 5 caiu por um dígito errado na hora)
+      const quais = horario.incompatíveis.slice(0, 3).map((c) => `${c.sala || 'sem sala'} ${c.hora}`).join(' · ')
       avisar({
         variant: 'warning',
+        duration: 12000,
         title: 'Há itens de outro turno',
-        description: `${horario.incompatíveis.length} item(ns) têm horário incompatível com o turno ${periodo === 'matutino' ? 'matutino' : 'vespertino'} e ficarão fora desta publicação.`,
+        description: `${quais}${horario.incompatíveis.length > 3 ? ` e mais ${horario.incompatíveis.length - 3}` : ''} — ficam fora desta publicação (turno ${periodo === 'matutino' ? 'matutino' : 'vespertino'}).`,
       })
     }
     if (!confirmacao && salvarEscalaTurno) {
@@ -1443,7 +1462,17 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   // rolar, quanta coisa ainda impede publicar. BLOQUEIO é o que o `publicar`
   // recusa — nome ambíguo e duplicidade não classificada; o resto é AVISO, que
   // só pede conferência.
-  const bloqueiosConferencia = gruposAmbiguos.length + duplicidadesPendentes.length
+  const casosAtribuidosDoTurno = useMemo(
+    () => selecionarCasosDoTurno(aplicarAtribuicoes(casos, atribuicoes, apelidoExibicao, resolver), periodo),
+    [casos, atribuicoes, apelidoExibicao, resolver, periodo],
+  )
+  // BLOQUEIOS DE CAMPO (dono 03/09): o que o BANCO recusa passa a travar a aba ANTES do
+  // RPC — até 02/09 a folha dizia "pronto" e o hospital caía no meio do lote (audit A2).
+  const bloqueiosCampo = useMemo(
+    () => validarCasosParaPublicacao(casosAtribuidosDoTurno, { horaValida: (h) => ehHoraSequencialEscala(h) || !!turnoDeHora(h) }),
+    [casosAtribuidosDoTurno],
+  )
+  const bloqueiosConferencia = gruposAmbiguos.length + duplicidadesPendentes.length + bloqueiosCampo.length
   const avisosConferencia = suspeitosExtracao.length + caudaLiberada.length
     + conflitos.length + blocosRepetidos.length + travessiasOrfas.length
     + duplicados.length + casosForaDoRodape.length + gruposSemAnestesista
@@ -1458,6 +1487,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     const n = (q, um, muitos) => `${q} ${q === 1 ? um : muitos}`
     if (gruposAmbiguos.length) l.push({ trava: true, txt: `${n(gruposAmbiguos.length, 'nome ambíguo', 'nomes ambíguos')} — escolha o login` })
     if (duplicidadesPendentes.length) l.push({ trava: true, txt: `${n(duplicidadesPendentes.length, 'pessoa', 'pessoas')} em dois hospitais — responda em Decisões` })
+    if (bloqueiosCampo.length) l.push({ trava: true, txt: resumirBloqueiosDeCampo(bloqueiosCampo).texto })
     if (gruposSemAnestesista) l.push({ trava: false, txt: `${n(gruposSemAnestesista, 'bloco', 'blocos')} sem anestesista` })
     if (casosForaDoRodape.length) l.push({ trava: false, txt: `${n(casosForaDoRodape.length, 'anestesista', 'anestesistas')} com caso fora da ordem — responda em Decisões` })
     if (caudaLiberada.length) l.push({ trava: false, txt: `${n(caudaLiberada.length, 'nome nasce', 'nomes nascem')} LIBERADO sem cirurgia` })
@@ -1470,17 +1500,13 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
       l.push({ trava: false, txt: `sem ${secoesAusentesHro.join(', ')} na leitura — confira o mapa` })
     }
     return l
-  }, [gruposAmbiguos, duplicidadesPendentes, gruposSemAnestesista, casosForaDoRodape, caudaLiberada,
+  }, [gruposAmbiguos, duplicidadesPendentes, bloqueiosCampo, gruposSemAnestesista, casosForaDoRodape, caudaLiberada,
     suspeitosExtracao, conflitos, blocosRepetidos, travessiasOrfas, duplicados, secoesAusentesHro])
 
   // ── O QUE ESTA ABA CONTA AO LOTE (dono 27/08) ────────────────────────────
   // Dois consumidores: o SELO da aba (pronto · trava · avisa, mesma taxonomia
   // da barra de pendências) e as ABAS IRMÃS, que usam estes casos e este rodapé
   // para cruzar duplicidade e ajuda antes de qualquer publicação.
-  const casosAtribuidosDoTurno = useMemo(
-    () => selecionarCasosDoTurno(aplicarAtribuicoes(casos, atribuicoes, apelidoExibicao, resolver), periodo),
-    [casos, atribuicoes, apelidoExibicao, resolver, periodo],
-  )
   const resumoAba = useMemo(() => ({
     hospital: hosp,
     casos: casosAtribuidosDoTurno,
