@@ -19,7 +19,8 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { ThemeProvider, ToastProvider } from '@/design-system'
 import ImportarEscalaFdsPage from '@/pages/escala-cirurgica/ImportarEscalaFdsPage'
 
-const { svcMock, salvarEscalaTurno, upsertAlias, prepararImagem, rosterHolder } = vi.hoisted(() => ({
+const { svcMock, salvarEscalaTurno, upsertAlias, prepararImagem, rosterHolder, getPlantoesMock} = vi.hoisted(() => ({
+  getPlantoesMock: vi.fn(async () => []),
   rosterHolder: { lista: [] },
   svcMock: { parseEscalaImagem: vi.fn() },
   salvarEscalaTurno: vi.fn(async (p) => ({ id: 'fds1', ...p })),
@@ -35,6 +36,7 @@ vi.mock('@/contexts/UserContext', () => ({
 }))
 vi.mock('@/lib/imagemVision', () => ({ prepararImagemParaVision: prepararImagem }))
 vi.mock('@/services/supabaseEscalaAnestesistaService', () => ({ isPermissionError: () => false }))
+vi.mock('@/services/pegaPlantaoApi', () => ({ getPlantoes: (...a) => getPlantoesMock(...a) }))
 vi.mock('@/hooks/useRosterAnestesistas', () => ({
   default: () => ({
     roster: rosterHolder.lista, aliases: [], loading: false,
@@ -435,5 +437,74 @@ describe('feriado — a folha lida é conferida contra a escala publicada', () =
     await waitFor(() => expect(svcMock.parseEscalaImagem).toHaveBeenCalled())
     fireEvent.click(await screen.findByRole('button', { name: /Concluir conferência/ }))
     await waitFor(() => expect(screen.queryByText(/Difere da escala de/i)).toBeNull())
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// A TABELA DE POSIÇÕES É CONFERIDA CONTRA O PEGA PLANTÃO (dono 04/09).
+//
+// Era o buraco que sobrava: no dia útil a escala numérica confere o rodapé, no feriado a
+// folha publicada confere a lista, e no fim de semana a única fonte era a própria foto. O
+// dono apontou a segunda fonte: "a escala é vista no Pega Plantão; de P1 a P4 a ordem pode
+// variar entre esses quatro, de P5 a P12 a ordem está correta". Só o SÁBADO é consultado —
+// a tabela vale os dois dias.
+// ════════════════════════════════════════════════════════════════════════════
+describe('fim de semana — posições conferidas no Pega Plantão', () => {
+  // o documento da fixture traz P1–P4; o Pega Plantão do sábado 15/08 espelha as MESMAS
+  // pessoas, escritas como o sistema de plantão escreve (nome completo, "Di Domenico")
+  const pp = (n, nome) => ({ Setor: `${n} - P${n}`, ProfDePlantao: nome, Inicio: '2026-08-15T07:00:00' })
+  const PP_IGUAL = [
+    pp(1, 'Guilherme Xavier Di Domenico'), pp(2, 'Joao Henrique Salvao Vanni'),
+    pp(3, 'Cristina Bertol Barbosa Marcon'), pp(4, 'Matheus Lemos Vieira da Cunha'),
+    pp(5, 'Gabriela Citron Vedana'), pp(6, 'Erlei Perini'), pp(7, 'Marilio Jose Flach'),
+    pp(8, 'Rafael Pelissaro'), pp(9, 'Roberta Marina Grando'), pp(10, 'Guilherme Jonck Staub'),
+    pp(11, 'Gabriel Juan Kettenhuber Costa'), pp(12, 'Vicente Antonio Alves Pons'),
+  ]
+  const conferir = async () => {
+    await importar()
+    fireEvent.click(await screen.findByRole('button', { name: /Concluir conferência/ }))
+    await waitFor(() => expect(getPlantoesMock).toHaveBeenCalled())
+  }
+
+  it('leitura que bate com o Pega Plantão não gera aviso', async () => {
+    getPlantoesMock.mockResolvedValueOnce(PP_IGUAL)
+    await conferir()
+    expect(screen.queryByText(/Tabela de posições —/i)).toBeNull()
+  })
+
+  it('pessoa que não está no bloco P1–P4 do Pega Plantão é divergência, com os dois lados', async () => {
+    getPlantoesMock.mockResolvedValueOnce([
+      ...PP_IGUAL.slice(0, 2), pp(3, 'Thayna Regina Santos'), ...PP_IGUAL.slice(3),
+    ])
+    await conferir()
+    const aviso = await screen.findByText(/Tabela de posições —/i)
+    expect(aviso.textContent).toMatch(/P3/)
+    expect(aviso.textContent).toMatch(/Thayna/i)
+    expect(aviso.textContent).toMatch(/CRISTINA/i)
+  })
+
+  it('as MESMAS pessoas em posições trocadas dentro de P1–P4 pedem confirmação, não acusam erro', async () => {
+    getPlantoesMock.mockResolvedValueOnce([
+      pp(1, 'Joao Henrique Salvao Vanni'), pp(2, 'Guilherme Xavier Di Domenico'),
+      ...PP_IGUAL.slice(2),
+    ])
+    await conferir()
+    const aviso = await screen.findByText(/Tabela de posições —/i)
+    expect(aviso.textContent).toMatch(/confirme a ordem entre P1 e P4/i)
+    expect(aviso.textContent).not.toMatch(/difere no Pega Plantão/i)
+  })
+
+  it('sem resposta do Pega Plantão a tela não inventa comparação', async () => {
+    getPlantoesMock.mockRejectedValueOnce(new Error('sem rede'))
+    await conferir()
+    expect(screen.queryByText(/Tabela de posições —/i)).toBeNull()
+  })
+
+  it('consulta SÓ o sábado — a tabela vale os dois dias (dono 04/09)', async () => {
+    getPlantoesMock.mockResolvedValueOnce(PP_IGUAL)
+    await conferir()
+    const [filtros] = getPlantoesMock.mock.calls[0]
+    expect(filtros.dataInicio).toMatch(/^2026-08-15/)
+    expect(filtros.dataFim).toMatch(/^2026-08-15/)
   })
 })

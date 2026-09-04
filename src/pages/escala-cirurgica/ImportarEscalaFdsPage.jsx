@@ -37,7 +37,7 @@
  * casos por hospital — MAIS uma chamada por (hospital, dia, turno) com casos,
  * vinda dos mapas. Republicar é idempotente.
  */
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect} from 'react'
 import { AlertTriangle, ArrowDown, ArrowUp, Check, ChevronLeft, FileText, Loader2, Plus, Trash2, X } from 'lucide-react'
 import { Badge, Button, ConfirmDialog, DatePicker, FileUpload, Input, Select, useToast } from '@/design-system'
 import svc from '@/services/supabaseEscalaCirurgicaService'
@@ -56,7 +56,9 @@ import {
   aplicarAtribuicoes, gruposSemIdentidade, gruposAnestesista,
 } from './utils'
 import dadosNumerica from '@/data/escalaNumerica.json'
-import { compararComRodape } from '@/lib/escalaNumerica'
+import { posicoesDoPegaPlantao, compararPosicoesFds, textoComparacaoFds } from '@/lib/escalaFdsPegaPlantao'
+import { getPlantoes } from '@/services/pegaPlantaoApi'
+import { compararComRodape, casarNomeComLegenda } from '@/lib/escalaNumerica'
 import {
   carimbarTurnos, chaveMapa, classificarAnexoMapa, planoPublicacaoMapas,
   resumoMapa, HOSPITAIS_MAPA,
@@ -458,6 +460,41 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
   }
   const todosBloqueios = diasAlvo.flatMap((iso) => turnosOrdem.flatMap((t) =>
     bloqueiosDe(iso, t).map((b) => `${formatData(iso)} · ${TURNO_LABEL[t]}: ${b}`)))
+
+  /**
+   * A TABELA DE POSIÇÕES LIDA × O PEGA PLANTÃO (dono 04/09).
+   *
+   * "A escala é vista no Pega Plantão: de P1 a P4 a ordem pode variar entre esses quatro —
+   * verificação deve ser feita ao adicionar a escala de final de semana; de P5 a P12 a
+   * ordem está correta." É a segunda fonte que faltava no fim de semana: a fila do sábado e
+   * do domingo sai de UMA tabela fotografada e, quando a leitura troca dois nomes, o fim de
+   * semana inteiro nasce errado. Só o SÁBADO é consultado — a tabela vale os dois dias.
+   */
+  const [posicoesPP, setPosicoesPP] = useState(null)
+  useEffect(() => {
+    if (feriado || !sabadoISO) { setPosicoesPP(null); return }
+    let vivo = true
+    getPlantoes({ dataInicio: `${sabadoISO}T00:00:00`, dataFim: `${sabadoISO}T23:59:59` })
+      .then((raw) => { if (vivo) setPosicoesPP(posicoesDoPegaPlantao(raw, sabadoISO)) })
+      .catch(() => { if (vivo) setPosicoesPP(null) })
+    return () => { vivo = false }
+  }, [feriado, sabadoISO])
+
+  const cruzamentoPosicoes = useMemo(() => {
+    if (feriado || !posicoesPP || !Object.keys(posicoesPP).length) return null
+    const lidas = dias[sabadoISO]?.posicoes || {}
+    if (!Object.keys(lidas).length) return null
+    // Três camadas, da mais forte para a mais fraca: o dicionário de apelidos (identidade
+    // real), o mapa curado apelido→cadastro (`casarNomeComLegenda`, que sabe que "COSTA" é
+    // o Marcos e não o Gabriel) e, por último, o casamento por tokens consecutivos da lib,
+    // que resolve "DIDOMENICO" × "Di Domenico".
+    const casar = (a, b) => {
+      const ua = resolver(a); const ub = resolver(b)
+      if (ua && ub) return ua === ub
+      return casarNomeComLegenda(a, b) || casarNomeComLegenda(b, a)
+    }
+    return compararPosicoesFds(lidas, posicoesPP, { casar })
+  }, [feriado, posicoesPP, dias, sabadoISO, resolver])
 
   /**
    * A LISTA LIDA × A ESCALA DE FERIADOS PUBLICADA (dono 03/09; o mesmo cruzamento que a
@@ -883,7 +920,9 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
       : (feriado
           ? 'Lista do feriado — uma ordem, lida em sentidos opostos por turno'
           : 'Documento "ESCALA DE FINAL DE SEMANA" — grade e ordem de liberação'),
-    pendencia: todosBloqueios[0] || textoCruzamentoFeriado(cruzamentoFeriado),
+    pendencia: todosBloqueios[0]
+      || textoCruzamentoFeriado(cruzamentoFeriado)
+      || textoComparacaoFds(cruzamentoPosicoes),
     erro: !!todosBloqueios.length,
   }
 
