@@ -189,6 +189,21 @@ describe('plano de publicação do lote', () => {
     expect(rotuloPublicacaoLote(plano)).toBe('Nada a publicar')
   })
 
+  it('escala publicada que mudou depois do rascunho fica RESERVADA: fora do botão, sem "tentar de novo"', () => {
+    const plano = planoPublicacaoLote([
+      { hospital: 'unimed', casos: 34, bloqueios: 0, avisos: 3 },
+      { hospital: 'hro', casos: 26, bloqueios: 0, avisos: 2 },
+      { hospital: 'materno', casos: 6, bloqueios: 0, avisos: 0 },
+    ], { reservadas: ['hro'] })
+    expect(plano.publicar.map((p) => p.hospital)).toEqual(['unimed', 'materno'])
+    expect(plano.foraDoLote).toEqual([{ hospital: 'hro', motivo: 'republicar', n: 0 }])
+    // não é segunda tentativa: o rótulo conta as que vão, sem "Tentar de novo"
+    expect(rotuloPublicacaoLote(plano, { rotulos: { unimed: 'Unimed', materno: 'Materno' } })).toBe('Publicar as 2')
+    // quem já subiu neste lote continua "publicada", mesmo se também mudou depois
+    const dois = planoPublicacaoLote([{ hospital: 'hro', casos: 26, bloqueios: 0, avisos: 0 }], { jaPublicadas: ['hro'], reservadas: ['hro'] })
+    expect(dois.foraDoLote[0].motivo).toBe('publicada')
+  })
+
   it('item sem hospital é ignorado (o item do lote ainda não se declarou)', () => {
     const plano = planoPublicacaoLote([{ hospital: '', casos: 9, bloqueios: 0, avisos: 0 }])
     expect(plano.publicar).toEqual([])

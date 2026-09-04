@@ -23,9 +23,9 @@
  * folha de revisão só chama, em sequência, o `publicar` de cada aba.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, Check, ChevronLeft, ChevronRight, FileText, Loader2, Trash2 } from 'lucide-react'
+import { AlertTriangle, Check, ChevronLeft, ChevronRight, FileText, Loader2, RefreshCw, Trash2 } from 'lucide-react'
 import {
-  Button, ConfirmDialog, DatePicker, FileUpload, Progress, Select,
+  Alert, Button, ConfirmDialog, DatePicker, FileUpload, Progress, Select,
   Sheet, SheetContent, SheetHeader, SheetTitle, useToast,
 } from '@/design-system'
 import svc from '@/services/supabaseEscalaCirurgicaService'
@@ -39,7 +39,12 @@ import {
   HOSPITAIS_LOTE, classificarAnexoDiaUtil, estadoEscala,
   planoPublicacaoLote, rotuloPublicacaoLote, resumirPublicacaoLote,
 } from '@/lib/escalaLoteImportacao'
-import { formatData, turnoAtual } from './utils'
+import {
+  chaveRascunho, lerRascunho, montarRascunho, criarGravadorRascunho, apagarRascunho,
+  descreverMomentoRascunho, escalaMudouDepoisDoRascunho,
+} from '@/lib/escalaLoteRascunho'
+import { formatData, novaIdLinha, turnoAtual } from './utils'
+import { normalizarTrabalho } from './trabalhoConferencia'
 import { podeEditarEscalaCirurgica } from './gate'
 import ImportarEscalaPage from './ImportarEscalaPage'
 import SegmentedSelector from './SegmentedSelector'
@@ -123,6 +128,28 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
   const [resultados, setResultados] = useState({})
   const [publicandoAgora, setPublicandoAgora] = useState(null)
   const refs = useRef({})
+  // hospital -> TRABALHO da aba (ver `trabalhoConferencia.js`): o pai é o dono para poder
+  // gravar o rascunho; a aba lê e escreve por `onTrabalho(updater)`
+  const [trabalhos, setTrabalhos] = useState({})
+  const onTrabalhoRefs = useRef({})
+  const onTrabalhoDe = (h) => {
+    if (!onTrabalhoRefs.current[h]) {
+      onTrabalhoRefs.current[h] = (updater) => setTrabalhos((prev) => {
+        const atual = prev[h] || null
+        const novo = typeof updater === 'function' ? updater(atual) : updater
+        return novo === atual ? prev : { ...prev, [h]: novo }
+      })
+    }
+    return onTrabalhoRefs.current[h]
+  }
+  // rascunho restaurado ao abrir (faixa + comparação com a escala publicada)
+  const [rascunhoRestaurado, setRascunhoRestaurado] = useState(null)
+  const [descartarAberto, setDescartarAberto] = useState(false)
+  const [republicarAlvo, setRepublicarAlvo] = useState(null)
+  const criadoEmRef = useRef(null)
+  // desligado depois de publicar tudo ou descartar: o efeito de gravação não pode
+  // reescrever o que acabou de ser apagado
+  const rascunhoDesligadoRef = useRef(false)
 
   // trocar o dia ou o período do lote invalida toda decisão já tomada
   useEffect(() => { setDuplicidadeDecisoes({}); setTrocaEscolhida({}) }, [dataEscolhida, periodo])
@@ -133,6 +160,148 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
   )
   const temLote = hospitaisDoLote.length > 0
   const aba = abaAtiva && itens[abaAtiva] ? abaAtiva : hospitaisDoLote[0] || null
+
+  // ── RASCUNHO DURÁVEL (Onda 2; audit A7) ─────────────────────────────────────
+  // A conferência vivia só na memória do React e o app se recarrega sozinho (deploy ao
+  // voltar do 2º plano, a cada 15 min, iOS matando a PWA). Tudo que a secretária faz
+  // vai para `escala-lote:<data>:<turno>` com 500 ms de debounce; ao reabrir a mesma data
+  // e turno, volta com a faixa "Rascunho de HH:MM restaurado". Nunca a imagem.
+  const chave = chaveRascunho(dataEscolhida, periodo)
+  const gravador = useMemo(() => criarGravadorRascunho({ chave }), [chave])
+  // ao trocar de chave (data/período) ou desmontar, o pendente da chave anterior é gravado
+  useEffect(() => () => { gravador.flush() }, [gravador])
+  // a chave mudou COM lote na mão: o trabalho foi junto, então o rascunho antigo sai
+  const chaveAnteriorRef = useRef(chave)
+  useEffect(() => {
+    const anterior = chaveAnteriorRef.current
+    chaveAnteriorRef.current = chave
+    if (anterior && anterior !== chave && temLote) apagarRascunho(anterior)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chave])
+
+  // Restaura ao abrir (e ao trocar data/período sem lote na mão — quem abre de manhã e
+  // vai para "Tarde" encontra a conferência da tarde). Com lote na tela, o que está na
+  // tela manda.
+  useEffect(() => {
+    if (temLote || !chave) return
+    const r = lerRascunho(chave)
+    if (!r.ok) return
+    const { rascunho } = r
+    const itensR = {}
+    const trabalhosR = {}
+    for (const [h, v] of Object.entries(rascunho.hospitais)) {
+      if (!HOSPITAIS_LOTE.includes(h) || !v?.lido?.lote) continue
+      itensR[h] = { hospital: h, nome: v.lido.nome || '', truncado: !!v.lido.truncado, lote: v.lido.lote }
+      if (v.trabalho) trabalhosR[h] = normalizarTrabalho(v.trabalho)
+    }
+    if (!Object.keys(itensR).length) return
+    rascunhoDesligadoRef.current = false
+    criadoEmRef.current = rascunho.criadoEm
+    setItens(itensR)
+    setTrabalhos(trabalhosR)
+    setDuplicidadeDecisoes(rascunho.decisoes || {})
+    setTrocaEscolhida(rascunho.trocas || {})
+    setPublicados((rascunho.publicados || []).filter((h) => itensR[h]))
+    setAbaAtiva(rascunho.abaAtiva && itensR[rascunho.abaAtiva] ? rascunho.abaAtiva : Object.keys(itensR)[0])
+    setRascunhoRestaurado({
+      criadoEm: rascunho.criadoEm,
+      atualizadoEm: rascunho.atualizadoEm,
+      hospitais: Object.fromEntries(Object.keys(itensR).map((h) => [h, {
+        escalaPublicadaUpdatedAt: rascunho.hospitais[h]?.escalaPublicadaUpdatedAt || null,
+      }])),
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chave])
+
+  // Grava a cada mudança (debounce no gravador). O `updated_at` da escala publicada de
+  // cada hospital vai junto — é o que permite avisar, ao restaurar, se ela mudou depois.
+  useEffect(() => {
+    if (!temLote || rascunhoDesligadoRef.current) return
+    const rascunho = montarRascunho({
+      data: dataEscolhida,
+      turno: periodo,
+      hospitais: Object.fromEntries(hospitaisDoLote.map((h) => [h, {
+        lido: { nome: itens[h].nome, truncado: !!itens[h].truncado, lote: itens[h].lote },
+        trabalho: trabalhos[h] || null,
+        escalaPublicadaUpdatedAt: resumos[h]?.publicadaAtualizadaEm || null,
+      }])),
+      decisoes: duplicidadeDecisoes,
+      trocas: trocaEscolhida,
+      publicados,
+      abaAtiva: aba,
+      criadoEm: criadoEmRef.current,
+    })
+    if (!rascunho) return
+    criadoEmRef.current = rascunho.criadoEm
+    gravador.agendar(rascunho)
+  }, [gravador, temLote, hospitaisDoLote, itens, trabalhos, resumos, duplicidadeDecisoes, trocaEscolhida,
+    publicados, aba, dataEscolhida, periodo])
+
+  // O iOS mata a PWA em 2º plano sem esperar timer nenhum: ao esconder a página, grava já.
+  useEffect(() => {
+    const aoEsconder = () => { if (document.visibilityState === 'hidden') gravador.flush() }
+    const aoSair = () => { gravador.flush() }
+    document.addEventListener('visibilitychange', aoEsconder)
+    window.addEventListener('pagehide', aoSair)
+    return () => {
+      document.removeEventListener('visibilitychange', aoEsconder)
+      window.removeEventListener('pagehide', aoSair)
+    }
+  }, [gravador])
+
+  const descartarRascunho = () => {
+    rascunhoDesligadoRef.current = true
+    gravador.apagar()
+    setDescartarAberto(false)
+    setRascunhoRestaurado(null)
+    criadoEmRef.current = null
+    setItens({})
+    setTrabalhos({})
+    setResumos({})
+    setDuplicidadeDecisoes({})
+    setTrocaEscolhida({})
+    setPublicados([])
+    setResultados({})
+    setPendentes([])
+    refs.current = {}
+    setAbaAtiva(null)
+  }
+
+  // Hospitais cuja escala publicada mudou DEPOIS do rascunho (outro aparelho publicou, ou
+  // a equipe marcou liberações): a aba avisa e, na folha, saem do botão grande — publicar
+  // por cima é ação explícita ("Republicar"), como quem já subiu neste lote.
+  const alteradasDepois = useMemo(() => {
+    if (!rascunhoRestaurado) return []
+    return hospitaisDoLote.filter((h) => !publicados.includes(h)
+      && escalaMudouDepoisDoRascunho(rascunhoRestaurado, h, resumos[h]?.publicadaAtualizadaEm))
+  }, [rascunhoRestaurado, hospitaisDoLote, publicados, resumos])
+
+  /**
+   * Leitura nova de um hospital: identidade de linha nasce AQUI (`_lid`), na leitura, para
+   * o rascunho e a aba falarem da mesma linha; e trabalho novo — a aba recarrega a
+   * conferência a partir da leitura (a foto nova manda, como sempre).
+   */
+  const receberLeituras = (novos) => {
+    const carimbados = {}
+    for (const [h, item] of Object.entries(novos)) {
+      const lote = item.lote || {}
+      carimbados[h] = {
+        ...item,
+        lote: {
+          ...lote,
+          rows: (lote.rows || []).map((r) => ({ ...r, _lid: r._lid || novaIdLinha() })),
+          posicoes: (lote.posicoes || []).map((r) => ({ ...r, _lid: r._lid || novaIdLinha() })),
+        },
+      }
+    }
+    rascunhoDesligadoRef.current = false
+    setItens((prev) => ({ ...prev, ...carimbados }))
+    setTrabalhos((prev) => {
+      const p = { ...prev }
+      for (const h of Object.keys(carimbados)) delete p[h]
+      return p
+    })
+  }
 
   /** O que cada aba conta ao lote (selo, folha de revisão e cruzamento). */
   const receberResumo = useCallback((resumo) => {
@@ -314,7 +483,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
       }
     }
     if (Object.keys(prontos).length) {
-      setItens((prev) => ({ ...prev, ...prontos }))
+      receberLeituras(prontos)
       setAbaAtiva((atual) => atual || Object.keys(prontos)[0])
     }
     if (semHospital.length) setPendentes((p) => [...p, ...semHospital])
@@ -355,8 +524,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
           imageBase64: img.base64, mimeType: img.mimeType, hospital: hosp,
         })
         if (!res?.error && (res.casos || []).length) {
-          setItens((prev) => ({
-            ...prev,
+          receberLeituras({
             [hosp]: {
               hospital: hosp, nome: pendente.nome, arquivo: pendente.arquivo, truncado: !!res.truncado,
               lote: {
@@ -364,7 +532,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
                 ordemLiberacao: res.ordemLiberacao || [], ajudaExterna: res.ajudaExterna || [],
               },
             },
-          }))
+          })
           setAbaAtiva((atual) => atual || hosp)
           setCarregando(false)
           return
@@ -373,12 +541,13 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
     }
     // releitura não deu: entra com o que já tinha sido lido, sem perder o anexo
     // (nem a marca de truncado — a leitura antiga cortada continua cortada)
-    setItens((prev) => ({ ...prev, [hosp]: { hospital: hosp, nome: pendente.nome, arquivo: pendente.arquivo, truncado: !!pendente.truncado, lote: pendente.lote } }))
+    receberLeituras({ [hosp]: { hospital: hosp, nome: pendente.nome, arquivo: pendente.arquivo, truncado: !!pendente.truncado, lote: pendente.lote } })
     setAbaAtiva((atual) => atual || hosp)
   }
 
   const removerEscala = (hosp) => {
     setItens((prev) => { const p = { ...prev }; delete p[hosp]; return p })
+    setTrabalhos((prev) => { const p = { ...prev }; delete p[hosp]; return p })
     setResumos((prev) => { const p = { ...prev }; delete p[hosp]; return p })
     delete refs.current[hosp]
     setAbaAtiva(null)
@@ -391,8 +560,8 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
       casos: resumos[h]?.totalCasos || 0,
       bloqueios: resumos[h]?.bloqueios || 0,
       avisos: resumos[h]?.avisos || 0,
-    })), { jaPublicadas: publicados }),
-    [hospitaisDoLote, resumos, publicados],
+    })), { jaPublicadas: publicados, reservadas: alteradasDepois }),
+    [hospitaisDoLote, resumos, publicados, alteradasDepois],
   )
 
   // Guardrail anti-perda (incidente 23/07: publicar com 1 caso APAGOU os 31 da
@@ -403,14 +572,17 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
     .map((p) => ({ ...p, publicados: resumos[p.hospital]?.publicados || 0 }))
     .filter((p) => p.publicados >= 3 && p.publicados > p.casos), [plano, resumos])
 
-  const publicarLote = async () => {
+  const publicarAlvos = async (alvos, { republicacao = false } = {}) => {
     setEncolhimentos(null)
     setPublicandoLote(true)
     setPublicandoAgora(null)
-    setResultados({})
+    // republicar um hospital só limpa o resultado DELE; o lote recomeça do zero
+    setResultados((p) => (republicacao
+      ? Object.fromEntries(Object.entries(p).filter(([h]) => !alvos.some((a) => a.hospital === h)))
+      : {}))
     const resultados = []
     try {
-      for (const alvo of plano.publicar) {
+      for (const alvo of alvos) {
         const api = refs.current[alvo.hospital]
         if (!api?.publicar) {
           resultados.push({ hospital: alvo.hospital, ok: false, mensagem: 'A aba deste hospital não está pronta — abra e confira.' })
@@ -429,8 +601,23 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
     } finally { setPublicandoLote(false); setPublicandoAgora(null) }
     const { ok, falhou, tudoCerto } = resumirPublicacaoLote(resultados)
     // acumula: quem subiu numa tentativa anterior continua publicado
-    setPublicados((prev) => [...new Set([...prev, ...ok])])
+    const noAr = [...new Set([...publicados, ...ok])]
+    setPublicados(noAr)
+    // tudo no ar: o rascunho cumpriu o papel — e não pode voltar amanhã como conferência
+    // pendente de uma escala que já está publicada
+    if (hospitaisDoLote.every((h) => noAr.includes(h))) {
+      rascunhoDesligadoRef.current = true
+      gravador.apagar()
+    }
     const nomes = (lista) => lista.map((h) => HOSPITAL_LABEL[h] || h).join(', ')
+    if (tudoCerto && republicacao) {
+      toast({
+        variant: 'success',
+        title: ok.length > 1 ? `${ok.length} escalas republicadas` : 'Escala republicada',
+        description: `${nomes(ok)} · ${formatData(dataEscolhida)} · ${periodo === 'matutino' ? 'Matutino' : 'Vespertino'}.`,
+      })
+      return
+    }
     if (tudoCerto) {
       setRevisar(false)
       toast({
@@ -457,6 +644,9 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
       ].filter(Boolean).join(' '),
     })
   }
+
+  const publicarLote = () => publicarAlvos(plano.publicar)
+  const republicar = (h) => publicarAlvos([{ hospital: h }], { republicacao: true })
 
   const rotuloBotao = rotuloPublicacaoLote(plano, { rotulos: HOSPITAL_LABEL })
   const podePublicar = plano.publicar.length > 0 && canEdit && !publicandoLote
@@ -501,6 +691,23 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
           <p className="rounded-lg border-l-4 border-warning bg-warning/10 p-3 text-sm text-foreground dark:bg-warning/15">
             Você não tem permissão para confeccionar escalas.
           </p>
+        )}
+
+        {/* RASCUNHO RESTAURADO (Onda 2; protótipo O2-A): a conferência voltou sozinha e a
+            faixa diz de quando é. Fica até ser descartada ou até publicar — some sozinha
+            seria mais uma coisa que "não persistiu". */}
+        {rascunhoRestaurado && temLote && (
+          <Alert
+            variant="info"
+            title={`Rascunho de ${descreverMomentoRascunho(rascunhoRestaurado)} restaurado`}
+            action={{ label: 'Descartar', onClick: () => setDescartarAberto(true) }}
+            data-testid="faixa-rascunho"
+          >
+            {hospitaisDoLote.map(rotulo).join(' · ')}.{' '}
+            {publicados.length
+              ? `Já publicado: ${publicados.map(rotulo).join(', ')}.`
+              : 'Nada foi publicado ainda.'}
+          </Alert>
         )}
 
         {/* Data e período são do LOTE: o dono anexa um turno por vez, e as
@@ -678,6 +885,9 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
             dataLote={dataEscolhida}
             periodoLote={periodo}
             loteInicial={itens[h]?.lote}
+            trabalho={trabalhos[h] || null}
+            onTrabalho={onTrabalhoDe(h)}
+            alteradaDepoisDoRascunho={alteradasDepois.includes(h) ? (resumos[h]?.publicadaAtualizadaEm || null) : null}
             escalasIrmas={irmasPara(h)}
             decisoesLote={duplicidadeDecisoes}
             onDecisoesLote={setDuplicidadeDecisoes}
@@ -732,13 +942,12 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
               // publicando agora, ou não publicada COM O MOTIVO em letra legível.
               const res = resultados[h]
               const subiu = publicados.includes(h)
+              const alterada = alteradasDepois.includes(h)
               const agora = publicandoAgora === h
               const falhou = res && !res.ok
               return (
-                <button
+                <div
                   key={h}
-                  type="button"
-                  onClick={() => { setAbaAtiva(h); setRevisar(false) }}
                   className={`flex w-full items-start gap-2.5 rounded-[13px] border p-3 text-left
                     ${falhou || travada ? 'border-destructive/50 bg-destructive/10' : 'border-border bg-card-elevated'}`}
                 >
@@ -746,6 +955,11 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
                     ? <Loader2 className="mt-0.5 h-5 w-5 shrink-0 animate-spin text-primary" />
                     : <SeloEstado estado={subiu ? { tipo: 'pronto', n: 0 } : estado} ativa={subiu} />}
                   <span className="min-w-0 flex-1">
+                  <button
+                    type="button"
+                    onClick={() => { setAbaAtiva(h); setRevisar(false) }}
+                    className="block w-full text-left"
+                  >
                     <span className="block text-sm font-bold">{HOSPITAL_LABEL[h] || h}</span>
                     <span className="mt-0.5 block text-xs text-muted-foreground">
                       {subiu && `Publicada${res?.em ? ` · ${res.em.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''} · `}
@@ -769,9 +983,31 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
                         {res.mensagem}
                       </span>
                     )}
+                  </button>
+                  {/* Quem já está no ar (subiu neste lote, ou a escala publicada mudou depois do
+                      rascunho) sai do botão grande e ganha o seu "Republicar" — publicar por
+                      cima zera as liberações do turno, então é toque próprio, com aviso. */}
+                  {alterada && !subiu && !agora && (
+                    <span className="mt-1.5 block rounded-md border-l-[3px] border-warning bg-warning/10 px-2 py-1.5 text-xs text-foreground dark:bg-warning/15">
+                      A escala {h === 'unimed' ? 'da Unimed' : `do ${HOSPITAL_LABEL[h] || h}`} mudou às{' '}
+                      {new Date(resumos[h]?.publicadaAtualizadaEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })},
+                      depois deste rascunho. Fica fora de “{rotuloBotao}”: republicar zera as liberações marcadas.
+                    </span>
+                  )}
+                  {(subiu || alterada) && !agora && canEdit && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      disabled={publicandoLote || travada}
+                      onClick={() => setRepublicarAlvo(h)}
+                    >
+                      <RefreshCw className="h-4 w-4" /> Republicar {HOSPITAL_LABEL[h] || h}
+                    </Button>
+                  )}
                   </span>
                   <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                </button>
+                </div>
               )
             })}
             {plano.foraDoLote.some((f) => f.motivo === 'bloqueio') && (
@@ -810,6 +1046,30 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
           cancelText="Cancelar"
         />
       )}
+
+      {/* Descartar o rascunho restaurado: some deste aparelho; as escalas publicadas não mudam */}
+      <ConfirmDialog
+        open={descartarAberto}
+        variant="danger"
+        onClose={() => setDescartarAberto(false)}
+        onConfirm={descartarRascunho}
+        title="Descartar o rascunho?"
+        description={`A conferência de ${hospitaisDoLote.map(rotulo).join(', ')} guardada ${rascunhoRestaurado ? `às ${descreverMomentoRascunho(rascunhoRestaurado)}` : 'neste aparelho'} some daqui. As escalas já publicadas não mudam.`}
+        confirmText="Descartar"
+        cancelText="Manter"
+      />
+
+      {/* Republicar por cima do que está no ar: DELETE+reinsert zera liberações e tempos do turno */}
+      <ConfirmDialog
+        open={!!republicarAlvo}
+        variant="danger"
+        onClose={() => setRepublicarAlvo(null)}
+        onConfirm={() => { const h = republicarAlvo; setRepublicarAlvo(null); if (h) republicar(h) }}
+        title={`Republicar ${republicarAlvo ? (HOSPITAL_LABEL[republicarAlvo] || republicarAlvo) : ''}?`}
+        description={`Publicar por cima substitui o turno inteiro desta escala: as liberações marcadas e os tempos deste turno são zerados e não dá para desfazer. ${formatData(dataEscolhida)} · ${periodo === 'matutino' ? 'Matutino' : 'Vespertino'}.`}
+        confirmText="Republicar por cima"
+        cancelText="Cancelar"
+      />
 
       {/* Publicação parcial: as abas que subiram ficam ditas na tela, não só no
           toast, porque o toast some e a tela continua aberta. */}

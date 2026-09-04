@@ -96,12 +96,20 @@ export function estadoEscala({ casos = 0, bloqueios = 0, avisos = 0 } = {}) {
  * nome ambíguo deixaria o centro cirúrgico sem escala nenhuma. O que ficou de
  * fora é DITO, com o motivo, na própria folha.
  */
-export function planoPublicacaoLote(escalas, { jaPublicadas = [] } = {}) {
+export function planoPublicacaoLote(escalas, { jaPublicadas = [], reservadas = [] } = {}) {
   const publicar = []
   const foraDoLote = []
   const subiu = new Set(jaPublicadas)
+  // RESERVADA = a escala publicada mudou DEPOIS do rascunho restaurado (Onda 2): outro
+  // aparelho publicou, ou a equipe marcou liberações. Sai do botão grande pelo mesmo
+  // motivo de quem já subiu — publicar por cima é ação própria ("Republicar"), com aviso.
+  const reservada = new Set(reservadas)
   for (const e of escalas || []) {
     if (!e?.hospital) continue
+    if (reservada.has(e.hospital) && !subiu.has(e.hospital)) {
+      foraDoLote.push({ hospital: e.hospital, motivo: 'republicar', n: 0 })
+      continue
+    }
     // JÁ PUBLICADA NESTE LOTE fica de fora do próximo toque (dono 03/09: "o segundo toque
     // deve publicar só o que faltou sem perder as informações já registradas nas outras
     // escalas publicadas"). Publicar é DELETE+reinsert e zera as liberações do turno —

@@ -7,7 +7,7 @@
  */
 import { useState, useMemo, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from 'react'
 import { ArrowDown, ArrowLeftRight, ArrowUp, Ban, ChevronLeft, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Pencil, Plus, Trash2, Sparkles, Loader2, Check, AlertTriangle, UserPlus } from 'lucide-react'
-import { Button, ConfirmDialog, DatePicker, FileUpload, Input, Select, Sheet, SheetContent, SheetHeader, SheetTitle, useToast } from '@/design-system'
+import { Alert, Button, ConfirmDialog, DatePicker, FileUpload, Input, Select, Sheet, SheetContent, SheetHeader, SheetTitle, useToast } from '@/design-system'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import { useEscalaCirurgicaActions, HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
@@ -21,6 +21,7 @@ import { prepararImagemParaVision } from '@/lib/imagemVision'
 import { iniciaisSeguras } from '@/lib/escalaCirurgicaPaciente'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
+import { TRABALHO_VAZIO } from './trabalhoConferencia'
 import { linhaVazia, prepararCasosImportados as prepararCasos, normNome, candidatosPrimeiroNome, resumirRodape, casosQuePassamParaOTurno, presencaDoTurno, estaPresente, gruposAnestesista, chavesAnestesista, aplicarAtribuicoes, preAtribuicoesDoDicionario, azuisEmprestados, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital, localizarSlotEscala } from './utils'
 import { mensagemErroPublicacao } from '@/lib/escalaPublicacaoErro'
 import { validarCasosParaPublicacao, resumirBloqueiosDeCampo, textoBloqueio } from '@/lib/escalaCirurgicaValidacao'
@@ -194,6 +195,10 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   embutida = false, oculta = false, loteInicial = null,
   dataLote, periodoLote, escalasIrmas = [], onResumo,
   decisoesLote = null, onDecisoesLote = null, trocasLote = null, onTrocasLote = null,
+  // modo controlado (lote): o trabalho vem do pai e volta por `onTrabalho(updater)`
+  trabalho: trabalhoProp = null, onTrabalho = null,
+  // ISO do `updated_at` da escala publicada quando ela mudou DEPOIS do rascunho restaurado
+  alteradaDepoisDoRascunho = null,
 }, ref) {
   const { toast } = useToast()
   const { salvarEscalaTurno, salvarEscala, executarSubstituicao } = useEscalaCirurgicaActions()
@@ -203,10 +208,34 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   const { user } = useUser()
   const { roster, options: rosterOpcoes, rosterByUid, resolver, upsertAlias } = useRosterAnestesistas()
 
-  const [casos, setCasos] = useState([])
-  const [atribuicoes, setAtribuicoes] = useState({}) // sala -> uid
-  const [ordemTexto, setOrdemTexto] = useState('')
-  const [ajudaTexto, setAjudaTexto] = useState('') // nomes em AZUL (ajuda de outro hospital)
+  // ── TRABALHO: controlado pelo lote ou local (ver TRABALHO_VAZIO) ───────────
+  const [trabalhoLocal, setTrabalhoLocal] = useState(TRABALHO_VAZIO)
+  const controlado = embutida && typeof onTrabalho === 'function'
+  const onTrabalhoRef = useRef(onTrabalho)
+  onTrabalhoRef.current = onTrabalho
+  const trabalho = (controlado ? trabalhoProp : trabalhoLocal) || TRABALHO_VAZIO
+  const atualizar = useCallback((updater) => {
+    const fn = typeof updater === 'function' ? updater : () => updater
+    if (controlado) onTrabalhoRef.current((t) => fn(t || TRABALHO_VAZIO))
+    else setTrabalhoLocal((t) => fn(t || TRABALHO_VAZIO))
+  }, [controlado])
+  // setters com a mesma assinatura dos `setState` de antes (valor ou função); devolver
+  // o MESMO objeto quando nada muda é o que impede laço nos efeitos que os chamam
+  const setCampoTrabalho = useCallback((campo) => (v) => atualizar((t) => {
+    const atual = t[campo]
+    const novo = typeof v === 'function' ? v(atual) : v
+    return Object.is(novo, atual) ? t : { ...t, [campo]: novo }
+  }), [atualizar])
+  const setAtribuicoes = useMemo(() => setCampoTrabalho('atribuicoes'), [setCampoTrabalho])
+  const setOrdemTexto = useMemo(() => setCampoTrabalho('ordemTexto'), [setCampoTrabalho])
+  const setAjudaTexto = useMemo(() => setCampoTrabalho('ajudaTexto'), [setCampoTrabalho])
+  const setAzuisDaLeitura = useMemo(() => setCampoTrabalho('azuisDaLeitura'), [setCampoTrabalho])
+  const setAzuisRealocados = useMemo(() => setCampoTrabalho('azuisRealocados'), [setCampoTrabalho])
+  const setEntrantesProcessados = useMemo(() => setCampoTrabalho('entrantesProcessados'), [setCampoTrabalho])
+  const {
+    lote: loteAnexo, linhas, atribuicoes, ordemTexto, ajudaTexto,
+    azuisDaLeitura, azuisRealocados, entrantesProcessados,
+  } = trabalho
   const [carregando, setCarregando] = useState(false)
   const [publicando, setPublicando] = useState(false)
   // Hospital da escala é escolhido AQUI (pedido do dono 2026-07-21) — entra
@@ -224,9 +253,24 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   const [sugestaoHosp, setSugestaoHosp] = useState(null) // { hospital, origem: 'vision'|'excel' }
   const [sugestaoData, setSugestaoData] = useState(null)
   const [ultimoArquivo, setUltimoArquivo] = useState(null) // p/ reler a imagem com o hint certo
-  // Guarda o lote completo para trocar Manhã↔Tarde sem chamar a Vision de novo.
-  const [loteAnexo, setLoteAnexo] = useState(null)
-  const [ignoradosOutroTurno, setIgnoradosOutroTurno] = useState(0)
+
+  // A LISTA DO TURNO é um filtro do trabalho: o turno de cada linha foi carimbado no
+  // carregamento (hora, senão o período de então) e a edição da hora NÃO o muda — a linha
+  // continua na tela e a publicação avisa "item de outro turno" nomeando o caso (audit A5).
+  const casos = useMemo(
+    () => linhas.filter((c) => (c.turno || periodo) === periodo),
+    [linhas, periodo],
+  )
+  const ignoradosOutroTurno = linhas.length - casos.length
+  /** Edição por IDENTIDADE da linha (`_lid`), nunca por índice — o índice é do filtro. */
+  const editarLinhas = useCallback((lids, fn) => atualizar((t) => ({
+    ...t, linhas: t.linhas.map((c) => (lids.has(c._lid) ? fn(c) : c)),
+  })), [atualizar])
+  const editarLinha = useCallback((lid, fn) => editarLinhas(new Set([lid]), fn), [editarLinhas])
+  /** Substitui a lista inteira (base manual, erro de leitura): cada linha ganha o turno. */
+  const substituirLinhas = useCallback((novas) => atualizar((t) => ({
+    ...t, linhas: (novas || []).map((c) => ({ ...c, turno: c.turno || periodo })),
+  })), [atualizar, periodo])
 
   const canEdit = podeEditarEscalaCirurgica(user)
 
@@ -267,19 +311,15 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   const [gruposAbertos, setGruposAbertos] = useState(() => new Set())
   /** Grupo inteiro SEM anestesista (pedido do dono 26/07) — marca os casos como "?". */
   const definirAnestesistaGrupo = (grupo, valor) => {
-    const alvo = new Set(grupo.indices)
+    const alvo = new Set(grupo.indices.map((i) => casos[i]?._lid).filter(Boolean))
     if (valor === SEM_ANESTESISTA) {
       setAtribuicoes((p) => ({ ...p, [grupo.chave]: '' }))
-      setCasos((cs) => cs.map((c, i) => (alvo.has(i)
-        ? { ...c, semAnestesista: true, anestesistaManual: false, anestesistaUserId: null, anestesista: '?' }
-        : c)))
+      editarLinhas(alvo, (c) => ({ ...c, semAnestesista: true, anestesistaManual: false, anestesistaUserId: null, anestesista: '?' }))
       return
     }
     setAtribuicoes((p) => ({ ...p, [grupo.chave]: valor }))
     // grupo que estava todo "?" volta a ter dono: limpa o flag das linhas
-    setCasos((cs) => cs.map((c, i) => (alvo.has(i) && c.semAnestesista
-      ? { ...c, semAnestesista: false, anestesista: '' }
-      : c)))
+    editarLinhas(alvo, (c) => (c.semAnestesista ? { ...c, semAnestesista: false, anestesista: '' } : c))
   }
 
   /** Valor do seletor do grupo: "?" quando TODOS os casos dele estão sem anestesista. */
@@ -295,41 +335,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   })
   const todasAbertas = grupos.length > 0 && gruposAbertos.size === grupos.length
 
-  /**
-   * Refiltra o lote por turno PRESERVANDO a conferência já feita (dono 03/09; audit A2).
-   *
-   * Antes isto reconstruía tudo a partir da LEITURA e zerava as atribuições: quem tinha
-   * corrigido salas, escolhido logins e ajustado horas perdia o trabalho ao tocar no
-   * período do cartão — em silêncio, porque no lote a troca é do pai e o aviso é dele.
-   * Agora cada linha tem `_lid`: o que já foi editado volta com as edições, e o que entra
-   * do outro turno entra como veio. As atribuições sobrevivem, exceto as de blocos que
-   * deixaram de existir — carregar chave morta reatribuiria a sala à pessoa errada.
-   */
-  const aplicarPeriodoAoLote = (lote, turno = periodo, { editados = null } = {}) => {
-    // o trabalho de TODOS os turnos vive nos refs: sem eles, ir para a tarde e voltar
-    // trazia a manhã como a Vision leu, porque só a lista do momento era considerada
-    for (const c of editados || []) if (c._lid) edicoesRef.current.set(c._lid, c)
-    const porId = edicoesRef.current
-    const selecionados = selecionarCasosDoTurno(lote, turno)
-      .filter((c) => !removidosRef.current.has(c._lid))
-      .map((c) => porId.get(c._lid) || c)
-    setCasos(selecionados)
-    setIgnoradosOutroTurno(Math.max(0, lote.length - selecionados.length))
-    setAtribuicoes((prev) => {
-      const vivas = new Set(chavesAnestesista(selecionados))
-      return Object.fromEntries(Object.entries(prev).filter(([chave]) => vivas.has(chave)))
-    })
-    setGruposAbertos(new Set())
-    setCasoEmEdicao(null)
-    setDecisaoAberta(null)
-    return selecionados
-  }
-
   const carregarLoteImportado = (rows, hospParam, posicoes = []) => {
-    // foto NOVA é outra escala: o trabalho da anterior não se aplica (a substituição por
-    // reanexo é intencional desde 30/07 — ordem e ajuda SUBSTITUEM, não completam)
-    edicoesRef.current = new Map()
-    removidosRef.current = new Set()
     // Itens sem hora pertencem ao período selecionado NO MOMENTO DO UPLOAD.
     // Depois disso, alternar manhã/tarde só filtra; não move SRPA entre turnos.
     // A SRPA da Unimed entra às 09:00 e o mapa nunca escreve esse horário — o
@@ -341,14 +347,31 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
         ...c,
         turno: turnoDeHora(c.hora) || periodo,
       }))
-    setLoteAnexo(lote)
-    return { lote, selecionados: aplicarPeriodoAoLote(lote) }
+    // foto NOVA é outra escala: o trabalho da anterior não se aplica (a substituição por
+    // reanexo é intencional desde 30/07 — ordem e ajuda SUBSTITUEM, não completam)
+    atualizar(() => ({ ...TRABALHO_VAZIO, lote, linhas: lote }))
+    return { lote, selecionados: lote.filter((c) => c.turno === periodo) }
   }
 
+  /**
+   * Trocar o período PRESERVA a conferência já feita (dono 03/09; audit A2): a lista do
+   * turno é um filtro do trabalho, então o que foi corrigido na manhã continua lá quando
+   * se volta da tarde. As atribuições de blocos que não existem no turno novo saem —
+   * a chave é a sala, e carregar "Sala 3" da manhã na "Sala 3" da tarde atribuiria a
+   * sala à pessoa errada.
+   */
   const mudarPeriodo = (novoPeriodo, { silencioso = false } = {}) => {
     setPeriodo(novoPeriodo)
-    if (!loteAnexo) return
-    const selecionados = aplicarPeriodoAoLote(loteAnexo, novoPeriodo, { editados: casos })
+    if (!loteAnexo && !linhas.length) return
+    const selecionados = linhas.filter((c) => (c.turno || novoPeriodo) === novoPeriodo)
+    atualizar((t) => {
+      const vivas = new Set(chavesAnestesista(selecionados))
+      const atribuicoesVivas = Object.fromEntries(Object.entries(t.atribuicoes).filter(([chave]) => vivas.has(chave)))
+      return { ...t, atribuicoes: atribuicoesVivas }
+    })
+    setGruposAbertos(new Set())
+    setCasoEmEdicao(null)
+    setDecisaoAberta(null)
     // No lote quem troca o turno é o cartão do PAI, uma vez só: três instâncias
     // toastando a mesma troca viraria três avisos idênticos na mesma tela.
     if (silencioso) return
@@ -375,11 +398,13 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   }, [embutida, periodoLote])
 
   // O lote desta aba já foi LIDO pelo pai (uma leitura por arquivo, no anexo em
-  // lote). Aqui ele só entra na conferência — a página não relê nada. A
-  // referência do objeto muda quando o mesmo hospital é reanexado: a foto nova
-  // manda, como sempre (incidente 30/07 — ordem/ajuda SUBSTITUEM, não completam).
+  // lote). Aqui ele só entra na conferência — a página não relê nada. Entra SÓ
+  // quando o trabalho está vazio: o pai zera o trabalho ao reanexar o mesmo
+  // hospital (a foto nova manda, como sempre — incidente 30/07: ordem/ajuda
+  // SUBSTITUEM, não completam) e o mantém quando restaura um rascunho — aí a
+  // leitura já foi carregada e o que está no trabalho é a conferência feita.
   useEffect(() => {
-    if (!loteInicial) return
+    if (!loteInicial || trabalho.lote) return
     carregarLoteImportado(loteInicial.rows || [], hosp, loteInicial.posicoes || [])
     setOrdemTexto((loteInicial.ordemLiberacao || []).join(', '))
     setAjudaTexto((loteInicial.ajudaExterna || []).join(', '))
@@ -387,13 +412,13 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     setAzuisRealocados([])
     setPosSel(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loteInicial])
+  }, [loteInicial, trabalho.lote])
 
   // Pré-atribui pela resolução do apelido importado (dicionário), sem sobrescrever
   // escolha. Por GRUPO: no IOSC cada anestesista resolve o seu próprio login.
   useEffect(() => {
     setAtribuicoes((prev) => preAtribuicoesDoDicionario(grupos, prev, resolver))
-  }, [grupos, resolver])
+  }, [grupos, resolver, setAtribuicoes])
 
   // O login ESCOLHIDO no Select vence o texto importado — antes o texto vencia
   // e trocar o anestesista da sala na conferência (Janaina→Cury, 23/07)
@@ -457,7 +482,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
       const { casos: rows, headerScore, headers } = await parseExcelEscala(file)
       if (!rows.length) {
         toast({ variant: 'error', title: 'Não consegui ler a planilha', description: 'Confira o arquivo ou use entrada manual.' })
-        setCasos([linhaVazia()])
+        substituirLinhas([linhaVazia()])
       } else {
         // A PLANILHA SE DECLARA PELO CABEÇALHO (auditoria 31/08): o lote ganhou
         // isso em 30/08 — LEITO é do mapa do HRO; IDADE/TEMPO, do export da
@@ -475,7 +500,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
       }
     } catch {
       toast({ variant: 'error', title: 'Falha ao ler Excel', description: 'Preencha manualmente.' })
-      setCasos([linhaVazia()])
+      substituirLinhas([linhaVazia()])
     } finally { setCarregando(false) }
   }
 
@@ -504,7 +529,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
             'importe a planilha ou preencha à mão',
           ),
         })
-        if (!casos.length) setCasos([linhaVazia()])
+        if (!casos.length) substituirLinhas([linhaVazia()])
         return
       }
       if (res?.error === 'extracao_truncada' || res?.error === 'json_invalido') {
@@ -514,7 +539,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
           title: 'A escala não coube em uma leitura',
           description: 'Envie em duas partes (um print da metade de cima e outro da de baixo), ou preencha manualmente.',
         })
-        if (!casos.length) setCasos([linhaVazia()])
+        if (!casos.length) substituirLinhas([linhaVazia()])
         return
       }
       const { selecionados, lote } = carregarLoteImportado(
@@ -565,7 +590,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
           ? { title: 'A imagem não foi enviada', description: err.message }
           : mensagemFalhaVision(null, 'importe a planilha ou preencha à mão')),
       })
-      if (!casos.length) setCasos([linhaVazia()])
+      if (!casos.length) substituirLinhas([linhaVazia()])
     } finally { setCarregando(false) }
   }
 
@@ -580,53 +605,57 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     if (relerImagem) importarImagem(ultimoArquivo, d)
   }
 
-  // ── Edição da base ───────────────────────────────────────────────────────────
-  const setCampo = (i, campo, valor) => setCasos((cs) => cs.map((c, k) => {
-    if (k !== i) return c
-    const novo = { ...c, [campo]: valor }
-    if (novo._lid) edicoesRef.current.set(novo._lid, novo)
-    return novo
-  }))
+  // ── Edição da base — por IDENTIDADE da linha (`_lid`); o índice é só o da tela ──
+  const setCampo = (i, campo, valor) => {
+    const lid = casos[i]?._lid
+    if (lid) editarLinha(lid, (c) => ({ ...c, [campo]: valor }))
+  }
   // Linha nova nasce com o bloco ABERTO: "+ Linha" criava o bloco "—" colapsado
   // e quem clicava "preencher manualmente" não via campo nenhum (bug 30/07).
   const addLinha = () => {
-    const novos = [...casos, linhaVazia()]
-    setCasos(novos)
+    const nova = { ...linhaVazia(), turno: periodo }
+    const novos = [...casos, nova]
+    atualizar((t) => ({ ...t, linhas: [...t.linhas, nova] }))
     setGruposAbertos((p) => new Set(p).add(chavesAnestesista(novos)[novos.length - 1]))
   }
   // Sala muda a CHAVE do bloco (a linha migra de grupo no commit) — abre o bloco
   // de destino, senão os campos "somem" dentro de um bloco fechado.
   const commitSala = (i, valor) => {
+    const lid = casos[i]?._lid
+    if (!lid) return
     const novos = casos.map((c, k) => (k === i ? { ...c, sala: valor } : c))
-    setCasos(novos)
+    editarLinha(lid, (c) => ({ ...c, sala: valor }))
     setGruposAbertos((p) => new Set(p).add(chavesAnestesista(novos)[i]))
   }
-  const removeLinha = (i) => setCasos((cs) => {
-    const alvo = cs[i]
-    if (alvo?._lid) { removidosRef.current.add(alvo._lid); edicoesRef.current.delete(alvo._lid) }
-    return cs.filter((_, k) => k !== i)
-  })
+  const removeLinha = (i) => {
+    const lid = casos[i]?._lid
+    if (!lid) return
+    atualizar((t) => ({ ...t, linhas: t.linhas.filter((c) => c._lid !== lid) }))
+  }
 
   // Anestesista DO CASO (pedido do dono 26/07): salas multi-anestesista
   // (IOSC/Exames) e correção de caso "?" precisam furar a atribuição por sala.
   // '' = segue a sala · SEM_ANESTESISTA = fica "?" de propósito · uid = manual.
-  const definirAnestesistaCaso = (i, valor) => setCasos((cs) => cs.map((c, k) => {
-    if (k !== i) return c
-    if (valor === SEM_ANESTESISTA) {
-      return { ...c, semAnestesista: true, anestesistaManual: false, anestesistaUserId: null, anestesista: '?' }
-    }
-    if (!valor) {
-      return { ...c, semAnestesista: false, anestesistaManual: false, anestesistaUserId: null, anestesista: '' }
-    }
-    const r = rosterByUid.get(valor)
-    return {
-      ...c,
-      semAnestesista: false,
-      anestesistaManual: true,
-      anestesistaUserId: valor,
-      anestesista: r ? (r.apelidos[0] || primeiroNomeUpper(r.nome)) : c.anestesista,
-    }
-  }))
+  const definirAnestesistaCaso = (i, valor) => {
+    const lid = casos[i]?._lid
+    if (!lid) return
+    editarLinha(lid, (c) => {
+      if (valor === SEM_ANESTESISTA) {
+        return { ...c, semAnestesista: true, anestesistaManual: false, anestesistaUserId: null, anestesista: '?' }
+      }
+      if (!valor) {
+        return { ...c, semAnestesista: false, anestesistaManual: false, anestesistaUserId: null, anestesista: '' }
+      }
+      const r = rosterByUid.get(valor)
+      return {
+        ...c,
+        semAnestesista: false,
+        anestesistaManual: true,
+        anestesistaUserId: valor,
+        anestesista: r ? (r.apelidos[0] || primeiroNomeUpper(r.nome)) : c.anestesista,
+      }
+    })
+  }
 
   /**
    * Valor do seletor de anestesista do caso (deriva do estado, sem estado extra).
@@ -645,11 +674,6 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   // medido no banco: 63% dos blocos têm 1 caso e só 22% das salas têm mais de
   // um anestesista, então ele quase nunca trabalhava. A linha do caso passa a
   // LER o nome efetivo; o seletor abre só pelo lápis (mesma gravação de antes).
-  // TRABALHO DA CONFERÊNCIA POR IDENTIDADE DE LINHA (dono 03/09; audit A2/A4). Refs, não
-  // estado: nada aqui pinta a tela — servem para reconstruir a lista quando o período muda
-  // sem perder o que já foi corrigido, e para o que foi removido continuar removido.
-  const edicoesRef = useRef(new Map())
-  const removidosRef = useRef(new Set())
   const [casoEmEdicao, setCasoEmEdicao] = useState(null)
   const rotuloAnestesistaCaso = (c, chave) => {
     if (c.semAnestesista) return { nome: 'Sem anestesista (?)', origem: '' }
@@ -1154,8 +1178,6 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   // nome e SÓ sobre o que veio da leitura: a marca manual nunca é tocada
   // (lição do campo grudento, 30/07). O "mantém a posição na origem / sai
   // primeiro onde ajuda" já deriva dos casos — nada é gravado no outro lado.
-  const [azuisDaLeitura, setAzuisDaLeitura] = useState([])
-  const [azuisRealocados, setAzuisRealocados] = useState([])
   useEffect(() => {
     if (!azuisDaLeitura.length) return
     const atuais = separarListaRodape(ajudaTexto)
@@ -1178,14 +1200,13 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
       ...emprestados.filter((e) => !p.some((x) => normNome(x.nome) === normNome(e.nome))),
     ])
     setAzuisDaLeitura((p) => p.filter((n) => !norms.has(normNome(n))))
-  }, [azuisDaLeitura, ajudaTexto, ordemTexto, casos, outrasEscalas, periodo, resolver])
+  }, [azuisDaLeitura, ajudaTexto, ordemTexto, casos, outrasEscalas, periodo, resolver, setAjudaTexto, setAzuisDaLeitura, setAzuisRealocados])
 
   // LADO DE DESTINO da realocação (lote): a irmã que realocou um azul aponta
   // PARA CÁ — se a pessoa tem caso aqui e ainda não está na ajuda daqui, ela
   // entra (é a declaração da foto do outro hospital aplicada no lugar certo, e
   // é o que faz "sai primeiro onde ajuda" valer sem pergunta nova). One-shot
   // por nome; remover à mão não volta.
-  const [entrantesProcessados, setEntrantesProcessados] = useState([])
   useEffect(() => {
     const entrantes = []
     for (const irma of escalasIrmas || []) {
@@ -1204,7 +1225,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     const novos = entrantes.filter((nome) => !atuais.some((x) => normNome(x) === normNome(nome)))
     if (novos.length) setAjudaTexto([...atuais, ...novos].join(', '))
     setEntrantesProcessados((p) => [...p, ...entrantes.map(normNome)])
-  }, [escalasIrmas, hosp, casos, periodo, ajudaTexto, entrantesProcessados])
+  }, [escalasIrmas, hosp, casos, periodo, ajudaTexto, entrantesProcessados, setAjudaTexto, setEntrantesProcessados])
 
   const decisoesAbertas = duplicidadesPendentes.length + ajudaProvavelSemDup.length
     + casosForaDoRodape.length
@@ -1618,12 +1639,16 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     // guardrail anti-perda por escala, para a folha avisar ANTES: o turno
     // publicado tem mais casos do que este lote (publicar é DELETE+reinsert)
     publicados: (escalaPublicada?.casos || []).filter((c) => (c.turno || periodo) === periodo).length,
+    // `updated_at` da escala publicada: o rascunho o guarda para avisar, ao restaurar, se
+    // a escala mudou DEPOIS dele (outro aparelho publicou, ou a equipe marcou liberações)
+    publicadaAtualizadaEm: escalaPublicada?.updatedAt || null,
   }), [hosp, casosAtribuidosDoTurno, ordemTexto, ajudaTexto, azuisRealocados,
     bloqueiosConferencia, avisosConferencia, resumoPendencias, escalaPublicada, periodo])
   // Assinatura estável: sem ela, um objeto novo a cada render realimentaria o
   // estado do pai e a árvore inteira giraria em laço.
   const assinaturaAba = [
     hosp, periodo, resumoAba.totalCasos, resumoAba.bloqueios, resumoAba.avisos, resumoAba.publicados,
+    resumoAba.publicadaAtualizadaEm || '',
     resumoAba.pendencias.join('~'),
     resumoAba.ordemLiberacao.join('~'), resumoAba.ajudaExterna.join('~'),
     azuisRealocados.map((a) => `${a.hospital}:${a.nome}`).join('~'),
@@ -1818,6 +1843,15 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
         {/* Conferência da base */}
         {temBase && (
           <>
+            {/* A ESCALA PUBLICADA MUDOU DEPOIS DO RASCUNHO (Onda 2; protótipo O2-A). Outro
+                aparelho publicou, ou a equipe marcou liberações, depois que esta conferência
+                foi guardada: publicar daqui substitui o que está no ar. Aviso, não trava —
+                e na folha de revisão este hospital sai do botão grande e ganha "Republicar". */}
+            {alteradaDepoisDoRascunho && (
+              <Alert variant="warning" title={`A escala ${hosp === 'unimed' ? 'da Unimed' : `do ${HOSPITAL_LABEL[hosp] || hosp}`} mudou às ${new Date(alteradaDepoisDoRascunho).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}, depois deste rascunho`}>
+                Publicar daqui substitui o que está no ar. Confira a aba Completa antes.
+              </Alert>
+            )}
             {/* TRÊS DESTINOS NUMA ROLAGEM SÓ (dono 17/08, escolha em protótipo):
                 Blocos · Liberações · Pendências ROLAM até a seção em vez de trocar
                 de aba — bloco e fila precisam poder ser lidos na mesma passada. A

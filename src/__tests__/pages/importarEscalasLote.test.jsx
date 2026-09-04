@@ -82,8 +82,12 @@ function montar() {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  svcMock.fetchEscala.mockReset()
   svcMock.fetchEscala.mockResolvedValue(null)
   parseExcel.mockResolvedValue({ casos: [], headerScore: 0 })
+  // o rascunho do lote é durável de propósito (Onda 2): sem isto um teste restauraria a
+  // conferência do teste anterior
+  localStorage.clear()
 })
 
 describe('anexo em lote — cada arquivo vai para a aba do seu hospital', () => {
@@ -674,5 +678,142 @@ describe('azul de quem está no rodapé daqui com trabalho em outro hospital', (
     await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalledTimes(2))
     const doHro = salvarEscalaTurno.mock.calls.map(([p]) => p).find((p) => p.hospital === 'hro')
     expect(doHro.ajudaExterna).toEqual(['EDUARDO'])
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// RASCUNHO DURÁVEL (Onda 2 da auditoria de 02/09; audit A7).
+//
+// A conferência vivia só na memória do React, e o app se recarrega sozinho: o
+// `pwaUpdate` recarrega ao voltar do 2º plano quando houve deploy (3 a 5 por dia
+// na janela da escala da tarde) e a cada 15 min; o iOS mata a PWA; Cancelar e o
+// gesto da borda apagavam tudo. É a explicação mais provável de "várias vezes as
+// alterações não persistem". Agora o trabalho vai para `escala-lote:<data>:<turno>`
+// e volta ao reabrir a mesma data e turno — com a faixa dizendo de quando é.
+// ════════════════════════════════════════════════════════════════════════════
+describe('rascunho durável — a conferência sobrevive a desmontar e remontar', () => {
+  const visivel = (els) => els.find((el) => !el.closest('.hidden'))
+  const CHAVE = 'escala-lote:2026-08-27:matutino'
+
+  async function conferirEDesmontar() {
+    // CURY nos dois hospitais = uma duplicidade para responder; rodapé do HRO com 2 nomes
+    svcMock.parseEscalaImagem
+      .mockResolvedValueOnce({ casos: [caso('Sala 1', 'CURY')], hospitalDetectado: 'hro', ordemLiberacao: ['CURY', 'PAULO'] })
+      .mockResolvedValueOnce({ casos: [caso('Sala 2', 'CURY')], hospitalDetectado: 'materno', ordemLiberacao: ['CURY'] })
+    const { container, unmount } = montar()
+    await soltarArquivos(container, [img('hro.png'), img('materno.png')])
+    await waitFor(() => expect(abas()).toHaveLength(2))
+
+    // 1) um CASO editado: a hora da Sala 1 do HRO
+    fireEvent.click(visivel(screen.getAllByRole('button', { name: /Expandir todos os blocos/i })))
+    fireEvent.change(visivel(screen.getAllByPlaceholderText('Hora')), { target: { value: '09:45' } })
+    // 2) a ORDEM editada: a 2ª posição do rodapé do HRO renomeada
+    fireEvent.click(visivel(screen.getAllByRole('button', { name: /^2\s*PAULO/i })))
+    const nome = await screen.findByLabelText(/Nome na posição 2/i)
+    fireEvent.change(nome, { target: { value: 'PAULO R' } })
+    fireEvent.blur(nome)
+    expect(visivel(screen.getAllByText('PAULO R'))).toBeTruthy()
+    // 3) uma DECISÃO respondida: a duplicidade do CURY
+    const linhas = await screen.findAllByText(/em dois hospitais/i)
+    fireEvent.click(linhas.find((l) => !l.closest('.hidden') && l.closest('#conf-liberacoes')))
+    fireEvent.click(await screen.findByRole('button', { name: /trabalha nos dois/i }))
+    expect(await screen.findAllByText(/confirmada como intencional/i)).toHaveLength(2)
+
+    unmount()
+    return { chamadasVision: svcMock.parseEscalaImagem.mock.calls.length }
+  }
+
+  it('desmontar e remontar na MESMA data e turno restaura casos, ordem e decisões — sem reler a imagem', async () => {
+    const { chamadasVision } = await conferirEDesmontar()
+    expect(localStorage.getItem(CHAVE)).not.toBeNull()
+    // nada de imagem no rascunho
+    expect(localStorage.getItem(CHAVE)).not.toContain('AAAA')
+
+    montar()
+    await waitFor(() => expect(abas()).toHaveLength(2))
+    // a faixa diz que voltou, e de quando
+    expect(await screen.findByText(/Rascunho de \d{2}:\d{2} restaurado/i)).toBeTruthy()
+    // a imagem NÃO foi relida
+    expect(svcMock.parseEscalaImagem.mock.calls.length).toBe(chamadasVision)
+
+    // o caso editado
+    fireEvent.click(visivel(screen.getAllByRole('button', { name: /Expandir todos os blocos/i })))
+    expect(visivel(screen.getAllByPlaceholderText('Hora')).value).toBe('09:45')
+    // a ordem editada
+    expect(visivel(screen.getAllByText('PAULO R'))).toBeTruthy()
+    // a decisão respondida — nas duas abas
+    expect(await screen.findAllByText(/confirmada como intencional/i)).toHaveLength(2)
+  })
+
+  it('"Descartar" na faixa pergunta, e confirmado apaga o rascunho e limpa a tela', async () => {
+    await conferirEDesmontar()
+    montar()
+    await waitFor(() => expect(abas()).toHaveLength(2))
+    fireEvent.click(await screen.findByRole('button', { name: /^Descartar$/i }))
+    const dialogo = await screen.findByRole('alertdialog')
+    expect(dialogo.textContent).toMatch(/Descartar o rascunho\?/)
+    fireEvent.click(within(dialogo).getByRole('button', { name: /^Descartar$/i }))
+
+    await waitFor(() => expect(abas()).toHaveLength(0))
+    expect(localStorage.getItem(CHAVE)).toBeNull()
+    expect(screen.queryByText(/Rascunho de/i)).toBeNull()
+  })
+
+  it('publicar TUDO apaga o rascunho: reabrir não restaura nada', async () => {
+    // `vi.clearAllMocks` não desfaz `mockImplementation`: o describe da publicação parcial
+    // deixa o Materno FALHANDO — aqui os dois precisam subir
+    salvarEscalaTurno.mockImplementation(async (p) => ({ id: `e-${p.hospital}`, ...p, casos: [] }))
+    svcMock.parseEscalaImagem
+      .mockResolvedValueOnce({ casos: [caso('Sala 1', 'CURY')], hospitalDetectado: 'hro', ordemLiberacao: ['CURY'] })
+      .mockResolvedValueOnce({ casos: [caso('Sala 2', 'PAULO')], hospitalDetectado: 'materno', ordemLiberacao: ['PAULO'] })
+    const { container, unmount } = montar()
+    await soltarArquivos(container, [img('hro.png'), img('materno.png')])
+    await waitFor(() => expect(abas()).toHaveLength(2))
+    // o rascunho existe enquanto a conferência está aberta (flush no pagehide/unmount;
+    // aqui, o debounce de 500 ms)
+    await waitFor(() => expect(localStorage.getItem(CHAVE)).not.toBeNull(), { timeout: 3000 })
+
+    fireEvent.click(screen.getByRole('button', { name: /revisar e publicar/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /publicar as 2/i }))
+    await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalledTimes(2))
+    // a aba ainda roda o pós-publicação (vínculos, trocas, cruzamento) depois do RPC — sob
+    // carga isso passa de 1 s, e o rascunho só sai quando o lote inteiro devolve o resultado
+    await waitFor(() => expect(localStorage.getItem(CHAVE)).toBeNull(), { timeout: 8000 })
+    unmount()
+    expect(localStorage.getItem(CHAVE)).toBeNull()
+
+    montar()
+    await new Promise((r) => setTimeout(r, 50))
+    expect(abas()).toHaveLength(0)
+    expect(screen.queryByText(/Rascunho de/i)).toBeNull()
+  })
+
+  it('escala publicada que mudou DEPOIS do rascunho: a aba avisa e o hospital sai do botão grande', async () => {
+    svcMock.parseEscalaImagem
+      .mockResolvedValueOnce({ casos: [caso('Sala 1', 'CURY')], hospitalDetectado: 'hro', ordemLiberacao: ['CURY'] })
+      .mockResolvedValueOnce({ casos: [caso('Sala 2', 'PAULO')], hospitalDetectado: 'materno', ordemLiberacao: ['PAULO'] })
+    const { container, unmount } = montar()
+    await soltarArquivos(container, [img('hro.png'), img('materno.png')])
+    await waitFor(() => expect(abas()).toHaveLength(2))
+    unmount()
+
+    // outro aparelho publicou o HRO depois: a escala publicada é mais nova que o rascunho
+    const depois = new Date(Date.now() + 60 * 60 * 1000).toISOString()
+    svcMock.fetchEscala.mockImplementation(async (_data, h) => (h === 'hro'
+      ? { id: 'e-hro', hospital: 'hro', data: '2026-08-27', casos: [], ordemLiberacao: [], ajudaExterna: [], updatedAt: depois }
+      : null))
+    montar()
+    await waitFor(() => expect(abas()).toHaveLength(2))
+    expect(await screen.findByText(/A escala do HRO mudou às \d{2}:\d{2}, depois deste rascunho/i)).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: /revisar e publicar/i }))
+    // só o Materno vai no botão grande; o HRO tem o seu "Republicar"
+    expect(await screen.findByRole('button', { name: /^publicar a escala$/i })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /republicar hro/i }))
+    const dialogo = await screen.findByRole('alertdialog')
+    expect(dialogo.textContent).toMatch(/liberações/i)
+    fireEvent.click(within(dialogo).getByRole('button', { name: /republicar por cima/i }))
+    await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalledTimes(1))
+    expect(salvarEscalaTurno.mock.calls[0][0].hospital).toBe('hro')
   })
 })
