@@ -23,6 +23,8 @@ import { getPlantoesPorData } from '@/services/pegaPlantaoApi'
 import { BlocoOrdem, BlocoConsultorio } from './ListaOrdem'
 import { useFeriasDoAno, feriasNaData } from './useFeriasDoAno'
 import { sabadoDoFimDeSemana, filaPn } from './plantonistasFds'
+import { aplicarPosPlantaoManha, marcarPosPlantaoTarde } from '@/lib/posPlantao'
+import { usePosPlantao } from './usePosPlantao'
 import { paraISO, paraBr, DIA_LONGO } from './calendario'
 
 const TURNOS = [
@@ -130,6 +132,10 @@ export default function EscalaNumericaPage({ goBack }) {
   const { registros, loading, erro, conferidoEm, recarregar } = useFeriasDoAno(dadosNumerica.ano)
   const ferias = useMemo(() => feriasNaData(registros, dataISO), [registros, dataISO])
 
+  // plantão noturno da véspera: na manhã P1/P2 sobem para a 2ª do hospital em que
+  // plantonaram; na tarde ficam onde a numérica os põe, marcados (dono 03/09)
+  const posPlantao = usePosPlantao(dataISO)
+
   const vista = useMemo(() => {
     // qualquer hospital serve de sonda: fim de semana, fora da vigência e feriado (fila única)
     // respondem igual para os três
@@ -143,20 +149,25 @@ export default function EscalaNumericaPage({ goBack }) {
         pendencias: pendenciasReais(base.pendencias),
       }
     }
-    const blocos = HOSPITAIS_NUMERICA.map((hospital) => {
+    const brutos = HOSPITAIS_NUMERICA.map((hospital) => {
       const r = montarOrdem(dadosNumerica, { data: dataISO, hospital, turno, ferias: null })
-      return { hospital, lista: anotarFerias(r.lista, ferias), pendencias: pendenciasReais(r.pendencias) }
+      return { hospital, lista: r.lista, pendencias: pendenciasReais(r.pendencias) }
     })
+    // pós-plantão ANTES das férias: a manhã muda quem está em cada coluna, e marcar antes
+    // de mover deixaria a marca na posição velha
+    const pp = turno === 'matutino'
+      ? aplicarPosPlantaoManha(dadosNumerica, brutos, base.consultorio, posPlantao.noturnos)
+      : marcarPosPlantaoTarde(brutos, base.consultorio, posPlantao.noturnos)
     return {
       tipo: 'dia',
-      blocos,
+      blocos: pp.blocos.map((b) => ({ ...b, lista: anotarFerias(b.lista, ferias) })),
       // o consultório não entra na FILA, mas quem está nele também tira férias (dono 03/09):
       // a marca vale para os três hospitais E para o consultório
-      consultorio: anotarFerias(base.consultorio, ferias),
+      consultorio: anotarFerias(pp.consultorio, ferias),
       diaSemana: base.diaSemana,
-      pendencias: [...new Set(blocos.flatMap((b) => b.pendencias))],
+      pendencias: [...new Set(brutos.flatMap((b) => b.pendencias))],
     }
-  }, [dataISO, turno, ferias])
+  }, [dataISO, turno, ferias, posPlantao.noturnos])
 
   const ehFds = vista.tipo === 'vazio' && vista.motivo === 'fim_de_semana'
   const fds = useFilaFds(dataISO, ehFds)

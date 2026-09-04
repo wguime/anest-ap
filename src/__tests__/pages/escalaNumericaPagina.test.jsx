@@ -42,20 +42,32 @@ const { getFeriasDoAno, invalidarFeriasDoAno } = vi.hoisted(() => {
  * P5–P10 só de manhã e P11 de 24h. A fixture inclui P10 fora de ordem de propósito — a fila
  * ordena pelo NÚMERO, e ordenar como texto poria P10 antes de P2.
  */
-const { getPlantoesPorData } = vi.hoisted(() => ({
-  getPlantoesPorData: vi.fn(async () => ({
-    ferias: [],
-    plantoes: [
-      { nome: 'Erlei Perini', setor: 'P3', horario: '07:00', horarioFim: '19:00' },
-      { nome: 'Gustavo Biesdorf', setor: 'P10', horario: '07:00', horarioFim: '13:00' },
-      { nome: 'Joao Henrique Salvao Vanni', setor: 'P1', horario: '07:00', horarioFim: '19:00' },
-      { nome: 'A. Danieli', setor: 'P11', horario: '07:00', horarioFim: '07:00' },
-      { nome: 'Romulo Santos Roxo', setor: 'P2', horario: '07:00', horarioFim: '19:00' },
-      // sem Pn no setor: fica fora da fila
-      { nome: 'Alguem Do Consultorio', setor: 'Consultório', horario: '08:00', horarioFim: '12:00' },
-    ],
-  })),
-}))
+const { getPlantoesPorData, fetchEscala } = vi.hoisted(() => {
+  const FDS = [
+    { nome: 'Erlei Perini', setor: 'P3', horario: '07:00', horarioFim: '19:00' },
+    { nome: 'Gustavo Biesdorf', setor: 'P10', horario: '07:00', horarioFim: '13:00' },
+    { nome: 'Joao Henrique Salvao Vanni', setor: 'P1', horario: '07:00', horarioFim: '19:00' },
+    { nome: 'A. Danieli', setor: 'P11', horario: '07:00', horarioFim: '07:00' },
+    { nome: 'Romulo Santos Roxo', setor: 'P2', horario: '07:00', horarioFim: '19:00' },
+    // sem Pn no setor: fica fora da fila
+    { nome: 'Alguem Do Consultorio', setor: 'Consultório', horario: '08:00', horarioFim: '12:00' },
+  ]
+  // noite de 03/09 (véspera de sexta 04/09): P1 no HRO e P2 na Unimed
+  const NOITE_03 = [
+    { nome: 'Romulo Santos Roxo', setor: 'P1', horario: '19:00', horarioFim: '07:00' },
+    { nome: 'Klisman Drescher Hilleshein', setor: 'P2', horario: '19:00', horarioFim: '07:00' },
+    { nome: 'Marcos Cardoso Costa', setor: 'P3', horario: '19:00', horarioFim: '23:00' },
+  ]
+  return {
+    getPlantoesPorData: vi.fn(async (data) => ({
+      ferias: [],
+      plantoes: data === '2026-09-03' ? NOITE_03 : FDS,
+    })),
+    fetchEscala: vi.fn(async () => ({ fdsMeta: { grade: { '19-07': { hro: 'MATHEUS', unimed: 'JOAO RICARDO' } } } })),
+  }
+})
+
+vi.mock('@/services/supabaseEscalaCirurgicaService', () => ({ default: { fetchEscala } }))
 
 vi.mock('@/services/pegaPlantaoApi', () => ({ getFeriasDoAno, invalidarFeriasDoAno, getPlantoesPorData }))
 
@@ -103,6 +115,8 @@ const wrap = ({ children }) => <ThemeProvider><ToastProvider>{children}</ToastPr
 const nomesEm = (raiz) => [...raiz.querySelectorAll('[data-slot="ordem-nome"]')].map((el) => el.textContent)
 const nomesDoBloco = (rotulo) => nomesEm(screen.getByRole('heading', { name: rotulo }).closest('section'))
 const pns = () => [...document.querySelectorAll('[data-slot="fds-linha"]')].map((el) => el.firstElementChild.textContent)
+// o rótulo é partido em spans (abaixo de 400px vira só "(pós)"), então casa pelo title
+const posPlantao = () => [...document.querySelectorAll('[title="Pós plantão"]')]
 const nomesFds = () => [...document.querySelectorAll('[data-slot="fds-nome"]')].map((el) => el.textContent)
 
 beforeEach(() => {
@@ -360,5 +374,65 @@ describe('Feriados — trocas', () => {
     fireEvent.click(screen.getByRole('button', { name: /enviar pedido/i }))
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/Escolha o seu feriado/i))
     expect(criarTroca).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * Pós-plantão (dono 03/09): quem fez a noite P1/P2 da véspera assume a 2ª posição do
+ * hospital em que plantonou na manhã seguinte, e à tarde fica na posição da numérica,
+ * marcado. A fixture usa a noite REAL de 03/09 — Romulo P1 (HRO) e Klisman P2 (Unimed) —
+ * e o dia observado é a sexta 04/09, em que a numérica traz os dois na Unimed.
+ */
+describe('Escala Numérica — pós-plantão', () => {
+  it('manhã: o P1 da noite atravessa para a 2ª do HRO e o P2 sobe na Unimed', async () => {
+    vi.setSystemTime(new Date('2026-09-04T10:00:00-03:00'))
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(nomesDoBloco('HRO')[1]).toBe('ROMULO'))
+
+    // busca o plantão da VÉSPERA, não o do dia
+    expect(getPlantoesPorData).toHaveBeenCalledWith('2026-09-03')
+    expect(nomesDoBloco('Unimed')[1]).toBe('KLISMAN')
+    // o 1º de cada hospital não se mexe — a 2ª posição é abaixo do plantão da manhã
+    expect(nomesDoBloco('HRO')[0]).toBe('HUMBERTO / ROBERTA')
+    expect(nomesDoBloco('Unimed')[0]).toBe('MELO')
+    // e o Romulo sai da coluna da Unimed: uma pessoa, um lugar
+    expect(nomesDoBloco('Unimed')).not.toContain('ROMULO')
+    // de manhã eles trabalham: nada de marca nem nome esmaecido
+    expect(posPlantao()).toHaveLength(0)
+  })
+
+  it('tarde: os dois ficam na posição da numérica, marcados como pós plantão', async () => {
+    vi.setSystemTime(new Date('2026-09-04T10:00:00-03:00'))
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Unimed' })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('tab', { name: 'Tarde' }))
+
+    await waitFor(() => expect(posPlantao()).toHaveLength(2))
+    const uni = nomesDoBloco('Unimed')
+    expect(uni[11]).toBe('ROMULO')
+    expect(uni[13]).toBe('KLISMAN')
+    expect(screen.getByText('ROMULO').closest('div').textContent).toMatch(/\(pós/)
+    // ninguém foi tirado da fila da tarde
+    expect(uni).toHaveLength(20)
+  })
+
+  it('na segunda a fonte é o documento do fim de semana, não o Pega Plantão', async () => {
+    vi.setSystemTime(new Date('2026-08-31T10:00:00-03:00')) // segunda
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(fetchEscala).toHaveBeenCalledWith('2026-08-30', 'fds'))
+    // domingo 30/08 não é consultado no Pega Plantão para o plantão noturno
+    expect(getPlantoesPorData).not.toHaveBeenCalledWith('2026-08-30')
+    await waitFor(() => expect(nomesDoBloco('HRO')[1]).toBe('MATHEUS'))
+    expect(nomesDoBloco('Unimed')[1]).toBe('JOAO RICARDO')
+  })
+
+  it('no fim de semana a regra não roda — a véspera nem é consultada', async () => {
+    vi.setSystemTime(new Date('2026-09-05T10:00:00-03:00')) // sábado
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Plantonistas do fim de semana' })).toBeInTheDocument()
+    )
+    expect(getPlantoesPorData).not.toHaveBeenCalledWith('2026-09-04')
+    expect(fetchEscala).not.toHaveBeenCalled()
   })
 })

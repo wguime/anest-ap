@@ -1,6 +1,9 @@
 ---
 paths:
   - "src/lib/escalaNumerica.js"
+  - "src/lib/posPlantao.js"
+  - "src/lib/trocasFeriado.js"
+  - "src/pages/escala-numerica/**"
   - "src/data/escalaNumerica.json"
   - "scripts/extrair-escala-numerica.py"
   - "scripts/ordem-liberacao-numerica.mjs"
@@ -79,6 +82,35 @@ rede, e a lista sai pendente), férias `node scripts/ferias-pega-plantao.mjs
   **pendente de conferência** (a lib faz isso quando `ferias` é `null`).
 - **Resultado** (`formatarOrdem`): data, turno, hospital; lista com posição final, número e
   nome; consultório à parte; Louise quando houver; exclusões por férias com a fonte; pendências.
+
+## Pós-plantão — quem fez a noite da véspera (dono 03/09/2026)
+
+Vale **de segunda a sexta**, na tela de consulta (`src/lib/posPlantao.js`):
+
+- **Manhã:** o P1 da noite (HRO) e o P2 (Unimed) assumem a **2ª posição do hospital em que
+  plantonaram**, abaixo do plantão da manhã. Eles **saem da coluna que a numérica lhes deu** —
+  vale o hospital do plantão, não o da grade. Caso real: na noite de 03/09 o ROMULO foi P1
+  (HRO) e a numérica de 04/09 o traz na Unimed; ele atravessa para o HRO. Quem não está na
+  grade do dia entra assim mesmo, identificado pela legenda; identidade desconhecida NÃO entra.
+- **Tarde:** não são escalados, mas **ficam na posição que a numérica lhes dá**, com
+  "(pós plantão)" ao lado do nome. Ninguém é renumerado (mesma escolha das férias: marcar, não
+  sumir). Abaixo de 400px o rótulo encolhe para "(pós)" — senão o nome é que truncava.
+- **Fonte do plantão noturno:** de terça a sexta é o **Pega Plantão**, na data da VÉSPERA, nos
+  registros que começam às 19h. Na **segunda** a véspera é domingo e o domingo à noite NÃO
+  existe no Pega Plantão (conferido em 23/08 e 30/08: só o P11 de 24h) — vem da faixa `19-07`
+  da **grade do documento de fim de semana** (`escala_cirurgica` linha `hospital='fds'`,
+  `fds_meta.grade`, via `svc.fetchEscala(domingo, 'fds')`).
+- Sexta à noite não gera pós-plantão: o sábado não tem escala numérica.
+- Em **feriado** a tela mostra a fila única e a regra NÃO roda (não há coluna por hospital).
+
+## Trocas de FERIADO (dono 03/09/2026)
+
+Com aceite da contraparte, notificação só para quem precisa agir, e dois escopos: trocar de
+FERIADO com um colega (cada um assume a posição do outro) ou trocar de POSIÇÃO no mesmo
+feriado. Firestore `trocas_feriado`; **não há coleção de override** — a troca aceita é o fato e
+`aplicarTrocasNaFila` a aplica na leitura. ⚠️ A regra do Firestore exige deploy à mão.
+Identidade: `identificarNaLegenda` devolve **null quando ambíguo** — "GUILHERME" casa com MELO
+(04), STAUB (13) e GUILHERME D (41), e as chaves "10"–"44" do JSON vêm ANTES de "01"–"09".
 
 ## Ao receber uma escala numérica NOVA (o dono cola o PDF/imagem aqui)
 

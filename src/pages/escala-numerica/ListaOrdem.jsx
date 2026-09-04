@@ -11,11 +11,12 @@ import { LABEL_HOSPITAL } from '@/lib/escalaNumerica'
 
 export function LinhaOrdem({ p }) {
   const deFerias = Boolean(p.ferias?.length)
+  const apagado = deFerias || p.posPlantao
   return (
     <div data-slot="ordem-linha" className="flex h-7 min-w-0 items-center gap-1 border-b border-border/50">
       <span
         className={`flex size-[17px] flex-none items-center justify-center rounded-md text-[10px] font-bold tabular-nums text-muted-foreground ${
-          deFerias ? 'border border-dashed border-border-strong' : 'bg-muted'
+          apagado ? 'border border-dashed border-border-strong' : 'bg-muted'
         }`}
       >
         {p.posicao}
@@ -24,10 +25,19 @@ export function LinhaOrdem({ p }) {
         {p.numero || '??'}
       </span>
       {/* o nome trunca; a marca de férias NUNCA — por isso ela fica fora do span que trunca */}
-      <span data-slot="ordem-nome" title={p.nome} className={`min-w-0 truncate text-[12.5px] ${deFerias ? 'font-medium text-muted-foreground' : 'font-semibold'}`}>
+      <span data-slot="ordem-nome" title={p.nome} className={`min-w-0 truncate text-[12.5px] ${apagado ? 'font-medium text-muted-foreground' : 'font-semibold'}`}>
         {p.nome}
       </span>
       {deFerias && <span className="flex-none text-[10.5px] font-semibold text-warning">(férias)</span>}
+      {/* pós-plantão: quem fez a noite da véspera. À tarde não é escalado, mas fica na
+          posição da numérica com a marca (dono 03/09) — mesma escolha das férias. */}
+      {p.posPlantao && !deFerias && (
+        // abaixo de 400px o rótulo inteiro rouba ~14px do nome e "ROMULO" virava "ROM…";
+        // o nome é o que importa, então nas telas estreitas fica só "(pós)" — o title diz o resto
+        <span className="flex-none text-[10.5px] font-semibold text-info" title="Pós plantão">
+          (pós<span className="hidden min-[400px]:inline"> plantão</span>)
+        </span>
+      )}
       {p.trocado && (
         <span
           className="ml-auto flex-none rounded-[5px] bg-primary/12 px-1 py-0.5 text-[9px] font-extrabold uppercase text-primary"
@@ -98,17 +108,21 @@ export function BlocoConsultorio({ consultorio }) {
       <div className="flex flex-wrap gap-1.5">
         {consultorio.map((c) => {
           const deFerias = Boolean(c.ferias?.length)
+          const apagadoC = deFerias || c.posPlantao
           return (
             <span
               key={c.numero}
               data-slot="consultorio-chip"
               className={`inline-flex min-h-[32px] items-center gap-1.5 rounded-full px-3 text-[12.5px] ${
-                deFerias ? 'border border-dashed border-border-strong font-medium text-muted-foreground' : 'bg-muted font-semibold'
+                apagadoC ? 'border border-dashed border-border-strong font-medium text-muted-foreground' : 'bg-muted font-semibold'
               }`}
             >
               <span className="text-[11px] tabular-nums text-muted-foreground">{c.numero}</span>
               {c.nome}
               {deFerias && <span className="text-[10.5px] font-semibold text-warning">(férias)</span>}
+              {c.posPlantao && !deFerias && (
+                <span className="text-[10.5px] font-semibold text-info" title="Pós plantão">(pós plantão)</span>
+              )}
             </span>
           )
         })}
