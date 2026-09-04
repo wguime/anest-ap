@@ -22,7 +22,7 @@ import { iniciaisSeguras } from '@/lib/escalaCirurgicaPaciente'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
 import { TRABALHO_VAZIO } from './trabalhoConferencia'
-import { linhaVazia, prepararCasosImportados as prepararCasos, normNome, candidatosPrimeiroNome, resumirRodape, casosQuePassamParaOTurno, presencaDoTurno, estaPresente, gruposAnestesista, chavesAnestesista, aplicarAtribuicoes, preAtribuicoesDoDicionario, azuisEmprestados, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital, localizarSlotEscala } from './utils'
+import { linhaVazia, prepararCasosImportados as prepararCasos, normNome, candidatosPrimeiroNome, resumirRodape, casosQuePassamParaOTurno, presencaDoTurno, estaPresente, gruposAnestesista, chavesAnestesista, aplicarAtribuicoes, preAtribuicoesDoDicionario, migrarAtribuicoes, azuisEmprestados, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital, localizarSlotEscala } from './utils'
 import { mensagemErroPublicacao } from '@/lib/escalaPublicacaoErro'
 import { validarCasosParaPublicacao, resumirBloqueiosDeCampo, textoBloqueio } from '@/lib/escalaCirurgicaValidacao'
 import dadosNumerica from '@/data/escalaNumerica.json'
@@ -356,19 +356,13 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   /**
    * Trocar o período PRESERVA a conferência já feita (dono 03/09; audit A2): a lista do
    * turno é um filtro do trabalho, então o que foi corrigido na manhã continua lá quando
-   * se volta da tarde. As atribuições de blocos que não existem no turno novo saem —
-   * a chave é a sala, e carregar "Sala 3" da manhã na "Sala 3" da tarde atribuiria a
-   * sala à pessoa errada.
+   * se volta da tarde — inclusive as atribuições, porque a chave do bloco é o `_lid` da
+   * linha (item 2.4) e a "Sala 3" da manhã nunca colide com a "Sala 3" da tarde.
    */
   const mudarPeriodo = (novoPeriodo, { silencioso = false } = {}) => {
     setPeriodo(novoPeriodo)
     if (!loteAnexo && !linhas.length) return
     const selecionados = linhas.filter((c) => (c.turno || novoPeriodo) === novoPeriodo)
-    atualizar((t) => {
-      const vivas = new Set(chavesAnestesista(selecionados))
-      const atribuicoesVivas = Object.fromEntries(Object.entries(t.atribuicoes).filter(([chave]) => vivas.has(chave)))
-      return { ...t, atribuicoes: atribuicoesVivas }
-    })
     setGruposAbertos(new Set())
     setCasoEmEdicao(null)
     setDecisaoAberta(null)
@@ -618,19 +612,27 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     atualizar((t) => ({ ...t, linhas: [...t.linhas, nova] }))
     setGruposAbertos((p) => new Set(p).add(chavesAnestesista(novos)[novos.length - 1]))
   }
-  // Sala muda a CHAVE do bloco (a linha migra de grupo no commit) — abre o bloco
-  // de destino, senão os campos "somem" dentro de um bloco fechado.
+  // Sala muda o GRUPO da linha (ela migra de bloco no commit) — abre o bloco de destino,
+  // senão os campos "somem" dentro de um bloco fechado. A escolha de login SEGUE a linha
+  // (`migrarAtribuicoes`, audit A4): corrigir a sala não devolve o bloco ao dicionário.
+  const doTurno = (ls) => ls.filter((c) => (c.turno || periodo) === periodo)
   const commitSala = (i, valor) => {
     const lid = casos[i]?._lid
     if (!lid) return
     const novos = casos.map((c, k) => (k === i ? { ...c, sala: valor } : c))
-    editarLinha(lid, (c) => ({ ...c, sala: valor }))
+    atualizar((t) => {
+      const linhasNovas = t.linhas.map((c) => (c._lid === lid ? { ...c, sala: valor } : c))
+      return { ...t, linhas: linhasNovas, atribuicoes: migrarAtribuicoes(doTurno(t.linhas), t.atribuicoes, doTurno(linhasNovas)) }
+    })
     setGruposAbertos((p) => new Set(p).add(chavesAnestesista(novos)[i]))
   }
   const removeLinha = (i) => {
     const lid = casos[i]?._lid
     if (!lid) return
-    atualizar((t) => ({ ...t, linhas: t.linhas.filter((c) => c._lid !== lid) }))
+    atualizar((t) => {
+      const linhasNovas = t.linhas.filter((c) => c._lid !== lid)
+      return { ...t, linhas: linhasNovas, atribuicoes: migrarAtribuicoes(doTurno(t.linhas), t.atribuicoes, doTurno(linhasNovas)) }
+    })
   }
 
   // Anestesista DO CASO (pedido do dono 26/07): salas multi-anestesista

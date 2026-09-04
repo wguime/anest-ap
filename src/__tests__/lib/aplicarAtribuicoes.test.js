@@ -9,7 +9,7 @@ import { describe, it, expect } from 'vitest'
 import {
   aplicarAtribuicoes, alvosTrocaResponsavel, anestesistaDoCasoEh, salasDoHospital,
   chavesAnestesista, gruposAnestesista, nomesImportados, nomeAnestesistaExibicao,
-  preAtribuicoesDoDicionario,
+  preAtribuicoesDoDicionario, migrarAtribuicoes,
 } from '../../pages/escala-cirurgica/utils'
 
 const apelidoDe = (_sala, uid) => `APELIDO-${uid}`
@@ -631,5 +631,82 @@ describe('anestesistaDoCasoEh — caso corrompido pertence a quem tem o login (0
     const caso = { anestesista: 'GABRIELA + ?', anestesistaUserId: 'uid-oscar' }
     expect(anestesistaDoCasoEh(caso, { uid: 'uid-oscar', alias: 'OSCAR' })).toBe(true)
     expect(anestesistaDoCasoEh(caso, { uid: 'uid-gabriela', alias: 'GABRIELA' })).toBe(false)
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// IDENTIDADE DO GRUPO PELO `_lid` DA LINHA (Onda 2, item 2.4; audit A4).
+//
+// A chave `sala`/`sala|NOME` era derivada de um campo EDITÁVEL: corrigir a sala
+// do bloco trocava a chave, a escolha feita no Select ficava órfã e o dicionário
+// reescolhia por cima ("Cury" virava "Daniela" ao mover Sala 3 → IOSC). Agora o
+// id é o `_lid` da primeira linha, e a escolha SEGUE as linhas. Sem `_lid`
+// (fixtures antigas, acima) a chave semântica continua valendo.
+// ════════════════════════════════════════════════════════════════════════════
+describe('grupo por identidade de linha (_lid)', () => {
+  // `anestesistaImportado` é o carimbo da importação: "//" já vem resolvido para o nome
+  // herdado (é o que `carimbarImportado` faz), senão a linha viraria um grupo próprio
+  const linha = (lid, sala, anestesista, importado = anestesista) => ({ _lid: lid, sala, anestesista, anestesistaImportado: importado })
+
+  it('a chave do grupo é o _lid da primeira linha, não a sala', () => {
+    const casos = [linha('a', 'Sala 3', 'DANIELA'), linha('b', 'Sala 3', '//', 'DANIELA'), linha('c', 'Sala 5', 'PAULO')]
+    expect(chavesAnestesista(casos)).toEqual(['a', 'a', 'c'])
+    const grupos = gruposAnestesista(casos, 'hro')
+    expect(grupos.map((g) => [g.chave, g.sala, g.nome, g.split])).toEqual([['a', 'Sala 3', 'DANIELA', false], ['c', 'Sala 5', 'PAULO', false]])
+    // sala com dois anestesistas continua dividida — um grupo por pessoa, id da 1ª linha de cada
+    const iosc = [linha('x', 'IOSC', 'CURY'), linha('y', 'IOSC', 'MELO'), linha('z', 'IOSC', 'CURY')]
+    expect(chavesAnestesista(iosc)).toEqual(['x', 'y', 'x'])
+    expect(gruposAnestesista(iosc, 'hro').map((g) => g.split)).toEqual([true, true])
+  })
+
+  it('corrigir a SALA do bloco não muda a chave: a escolha de login fica (cenário A4)', () => {
+    const antes = [linha('a', 'Sala 3', 'DANIELA')]
+    const escolha = { a: 'uid-cury' }
+    const depois = [{ ...antes[0], sala: 'IOSC' }]
+    expect(chavesAnestesista(depois)).toEqual(['a'])
+    expect(migrarAtribuicoes(antes, escolha, depois)).toEqual({ a: 'uid-cury' })
+    // e a publicação aplica o login escolhido, não o nome importado
+    const out = aplicarAtribuicoes(depois, migrarAtribuicoes(antes, escolha, depois), apelidoDe, () => 'uid-daniela')
+    expect(out[0].anestesistaUserId).toBe('uid-cury')
+    expect(out[0].sala).toBe('IOSC')
+  })
+
+  it('remover a PRIMEIRA linha do bloco: o grupo ganha outro id e herda a escolha', () => {
+    const antes = [linha('a', 'Sala 3', 'DANIELA'), linha('b', 'Sala 3', '//', 'DANIELA')]
+    const depois = [antes[1]]
+    expect(chavesAnestesista(depois)).toEqual(['b'])
+    expect(migrarAtribuicoes(antes, { a: 'uid-cury' }, depois)).toEqual({ b: 'uid-cury' })
+  })
+
+  it('remover as linhas de B numa sala de dois mantém a escolha de A (variante A4)', () => {
+    const antes = [linha('a', 'Sala 2', 'ANA'), linha('b', 'Sala 2', 'BIA')]
+    const escolhas = { a: 'uid-ana', b: 'uid-bia' }
+    const depois = [antes[0]]
+    // sem `_lid` a chave de A viraria "Sala 2" e a escolha ficaria órfã; com id, nada muda
+    expect(migrarAtribuicoes(antes, escolhas, depois)).toEqual({ a: 'uid-ana' })
+  })
+
+  it('linhas com escolhas DIFERENTES que se juntam ficam sem escolha (nunca chuta entre duas)', () => {
+    const antes = [linha('a', 'Sala 1', 'ANA'), linha('b', 'Sala 2', 'BIA')]
+    const depois = [antes[0], { ...antes[1], sala: 'Sala 1', anestesistaImportado: 'ANA' }]
+    expect(migrarAtribuicoes(antes, { a: 'uid-ana', b: 'uid-bia' }, depois)).toEqual({ a: 'uid-ana' })
+    // mesma escolha nos dois lados: herda
+    const depois2 = [{ ...antes[1], sala: 'Sala 9' }, antes[0]]
+    expect(migrarAtribuicoes(antes, { a: 'uid-x', b: 'uid-x' }, depois2)).toEqual({ b: 'uid-x', a: 'uid-x' })
+  })
+
+  it('"sem anestesista de propósito" (valor vazio) também segue a linha; chaves de outro turno ficam', () => {
+    const antes = [linha('a', 'Sala 3', 'DANIELA')]
+    const depois = [{ ...antes[0], sala: 'Sala 4' }]
+    expect(migrarAtribuicoes(antes, { a: '', tardeX: 'uid-tarde' }, depois)).toEqual({ a: '', tardeX: 'uid-tarde' })
+    expect(migrarAtribuicoes(antes, {}, depois)).toEqual({})
+  })
+
+  it('preAtribuicoesDoDicionario e aplicarAtribuicoes trabalham com o id do grupo', () => {
+    const casos = [linha('a', 'Sala 3', 'PAULO'), linha('b', 'Sala 3', '//', 'PAULO')]
+    const grupos = gruposAnestesista(casos, 'unimed')
+    expect(preAtribuicoesDoDicionario(grupos, {}, resolver)).toEqual({ a: 'uid-paulo' })
+    const out = aplicarAtribuicoes(casos, { a: 'uid-costa' }, apelidoDe, resolver)
+    expect(out.map((c) => c.anestesistaUserId)).toEqual(['uid-costa', 'uid-costa'])
   })
 })

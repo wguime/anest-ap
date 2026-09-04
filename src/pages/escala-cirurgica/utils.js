@@ -407,18 +407,23 @@ function nomesDeGrupo(lista) {
 }
 
 /**
- * Chave do grupo de conferência/atribuição de cada linha (array paralelo a `casos`):
- * a SALA quando ela tem UM anestesista; `sala|NOME` quando tem MAIS DE UM.
+ * Agrupamento de conferência/atribuição de cada linha (array paralelo a `casos`).
  *
- * Pedido do dono 27/07: sala/bloco com vários anestesistas (Exames, IOSC, Umanitá,
- * seções de outros hospitais na mesma escala) é conferido e atribuído POR
- * ANESTESISTA — cada um com o seu cirurgião — em vez de um bloco só. É a mesma
- * regra que a aba Completa já usa (gruposExibicao do BoardView).
- *
- * `anestesistaImportado` (gravado na importação) mantém a chave ESTÁVEL quando a
+ * A REGRA do grupo (dono 27/07): a SALA quando ela tem UM anestesista; `sala|NOME` quando
+ * tem MAIS DE UM — sala/bloco com vários anestesistas (Exames, IOSC, Umanitá, seções de
+ * outros hospitais na mesma escala) é conferido e atribuído POR ANESTESISTA, cada um com o
+ * seu cirurgião. É a mesma regra que a aba Completa usa (gruposExibicao do BoardView).
+ * `anestesistaImportado` (gravado na importação) mantém o grupo ESTÁVEL quando a
  * atribuição troca o texto da linha; sem ele o grupo se dissolveria ao atribuir.
+ *
+ * A IDENTIDADE do grupo (Onda 2, item 2.4; audit A4) é o `_lid` da PRIMEIRA linha dele —
+ * não a sala. A chave `sala`/`sala|NOME` era derivada de um campo editável: corrigir a sala
+ * de um bloco trocava a chave, a escolha de login feita no Select ficava órfã e o
+ * dicionário reescolhia por cima ("Cury" virava "Daniela" ao mover Sala 3 → IOSC). Com o
+ * id na linha, mover a sala, remover uma linha do vizinho ou trocar de período não muda
+ * quem foi escolhido. Sem `_lid` (fixtures antigas), a chave semântica continua valendo.
  */
-export function chavesAnestesista(casos) {
+function agruparLinhas(casos) {
   const lista = casos || []
   const nomes = nomesDeGrupo(lista)
   const porSala = new Map()
@@ -427,10 +432,19 @@ export function chavesAnestesista(casos) {
     if (!porSala.has(sala)) porSala.set(sala, new Set())
     porSala.get(sala).add(normNome(nomes[i]))
   })
+  const idPorSemantica = new Map()
   return lista.map((c, i) => {
     const sala = c.sala || '—'
-    return porSala.get(sala).size > 1 ? `${sala}|${normNome(nomes[i])}` : sala
+    const split = porSala.get(sala).size > 1
+    const semantica = split ? `${sala}|${normNome(nomes[i])}` : sala
+    if (!idPorSemantica.has(semantica)) idPorSemantica.set(semantica, c?._lid ? String(c._lid) : semantica)
+    return { chave: idPorSemantica.get(semantica), semantica, sala, split, nome: nomes[i] || '' }
   })
+}
+
+/** Chave (id do grupo) de cada linha — array paralelo a `casos`. */
+export function chavesAnestesista(casos) {
+  return agruparLinhas(casos).map((l) => l.chave)
 }
 
 /**
@@ -440,22 +454,58 @@ export function chavesAnestesista(casos) {
  */
 export function gruposAnestesista(casos, hospital) {
   const lista = casos || []
-  const chaves = chavesAnestesista(lista)
-  const nomes = nomesDeGrupo(lista)
+  const linhas = agruparLinhas(lista)
   const grupos = new Map()
-  lista.forEach((c, i) => {
-    const chave = chaves[i]
-    const sala = c.sala || '—'
-    if (!grupos.has(chave)) {
-      grupos.set(chave, { chave, sala, nome: nomes[i] || '', split: chave !== sala, indices: [] })
+  linhas.forEach((l, i) => {
+    if (!grupos.has(l.chave)) {
+      grupos.set(l.chave, { chave: l.chave, sala: l.sala, nome: l.nome, split: l.split, indices: [] })
     }
-    grupos.get(chave).indices.push(i)
+    grupos.get(l.chave).indices.push(i)
   })
   const porSala = compararSalas(hospital)
   return [...grupos.values()].sort((a, b) => {
     const d = porSala(a.sala, b.sala)
     return d !== 0 ? d : a.indices[0] - b.indices[0]
   })
+}
+
+/**
+ * Migra as atribuições quando as LINHAS mudam de grupo (Onda 2, item 2.4; audit A4):
+ * corrigir a sala, remover uma linha. O id do grupo é o `_lid` da primeira linha, então
+ * quase sempre nada muda; quando a primeira linha sai, ou linhas se juntam a outro grupo,
+ * a escolha SEGUE as linhas — o grupo novo herda o login quando todas as linhas dele que
+ * tinham escolha vinham da mesma escolha. Linhas com escolhas diferentes que se juntam
+ * ficam sem (pedir de novo é melhor do que chutar entre duas pessoas).
+ *
+ * `antes` e `depois` são a MESMA lista (o turno na tela) antes e depois da edição; chaves
+ * de grupos fora dela (o outro turno) passam intactas.
+ */
+export function migrarAtribuicoes(antes, atribuicoes, depois) {
+  const atual = atribuicoes || {}
+  if (!Object.keys(atual).length) return atual
+  const chavesAntes = chavesAnestesista(antes || [])
+  const escolhaPorLid = new Map()
+  ;(antes || []).forEach((c, i) => {
+    if (c?._lid && chavesAntes[i] in atual) escolhaPorLid.set(String(c._lid), atual[chavesAntes[i]])
+  })
+  const chavesDepois = chavesAnestesista(depois || [])
+  const lidsPorChave = new Map()
+  ;(depois || []).forEach((c, i) => {
+    if (!lidsPorChave.has(chavesDepois[i])) lidsPorChave.set(chavesDepois[i], [])
+    if (c?._lid) lidsPorChave.get(chavesDepois[i]).push(String(c._lid))
+  })
+  const out = {}
+  for (const [chave, lids] of lidsPorChave) {
+    if (chave in atual) { out[chave] = atual[chave]; continue }
+    const escolhas = new Set(lids.filter((l) => escolhaPorLid.has(l)).map((l) => escolhaPorLid.get(l)))
+    if (escolhas.size === 1) out[chave] = [...escolhas][0]
+  }
+  // o que não é deste turno (nem antes, nem depois) fica como está
+  const desteTurno = new Set(chavesAntes)
+  for (const [k, v] of Object.entries(atual)) {
+    if (!(k in out) && !lidsPorChave.has(k) && !desteTurno.has(k)) out[k] = v
+  }
+  return out
 }
 
 /**

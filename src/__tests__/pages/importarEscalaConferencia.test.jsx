@@ -501,6 +501,37 @@ const abrirSeletorDeSala = () =>
   screen.getAllByRole('combobox').find((el) => /Escolher a sala|Sala|IOSC/.test(el.textContent)
     && !/anestesista/i.test(el.textContent))
 
+// ════════════════════════════════════════════════════════════════════════════
+// ESCOLHER O LOGIN E DEPOIS CORRIGIR A SALA (Onda 2, item 2.4; audit A4).
+// A chave do bloco era a SALA: corrigi-la deixava a escolha órfã e o dicionário
+// reescolhia por cima — "troquei e não mudou". A identidade agora é a linha.
+// ════════════════════════════════════════════════════════════════════════════
+describe('a escolha de login sobrevive à correção da sala (audit A4)', () => {
+  it('escolher Cury no bloco e depois mover a sala para IOSC publica Cury na IOSC', async () => {
+    const container = await importar(
+      [{ sala: 'Sala 3', hora: '08:00', anestesista: 'DANIELA', cirurgiao: 'DR. ANA SOUZA', procedimento: 'Hérnia', pacienteIniciais: 'A.B.' }],
+      ['DANIELA'], { hospital: 'hro' },
+    )
+    await waitFor(() => expect(blocos(container)).toHaveLength(1))
+    // 1) o login escolhido no bloco
+    const bloco = blocos(container)[0].parentElement
+    fireEvent.click(within(bloco).getByRole('combobox'))
+    fireEvent.click(await screen.findByRole('option', { name: 'Gustavo Cury' }))
+    // 2) a sala corrigida pela lista
+    fireEvent.click(blocos(container)[0]) // abre os casos
+    fireEvent.click(abrirSeletorDeSala())
+    fireEvent.click(await screen.findByRole('option', { name: 'IOSC' }))
+    await waitFor(() => expect(blocos(container)[0].textContent).toContain('IOSC'))
+
+    // o bloco continua com o Cury — não voltou ao dicionário
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+    await waitFor(() => expect(salvarEscala).toHaveBeenCalled())
+    const [caso] = salvarEscala.mock.calls[0][0].casos
+    expect(caso.sala).toBe('IOSC')
+    expect(caso.anestesistaUserId).toBe('uid-cury')
+  })
+})
+
 describe('Adicionar linha — digitação da Sala (bug 30/07)', () => {
   const UMA = [{ sala: 'Sala 1', hora: '08:00', anestesista: 'CURY', cirurgiao: 'DR. ANA SOUZA', procedimento: 'Catarata', pacienteIniciais: 'A.B.' }]
 
