@@ -22,7 +22,7 @@
  * A publicação continua sendo UMA POR HOSPITAL, pela mesma via de sempre — a
  * folha de revisão só chama, em sequência, o `publicar` de cada aba.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { AlertTriangle, Check, ChevronLeft, ChevronRight, FileText, Loader2, RefreshCw, Trash2 } from 'lucide-react'
 import {
   Alert, Button, ConfirmDialog, DatePicker, FileUpload, Progress, Select,
@@ -43,10 +43,12 @@ import {
   chaveRascunho, lerRascunho, montarRascunho, criarGravadorRascunho, apagarRascunho,
   descreverMomentoRascunho, escalaMudouDepoisDoRascunho,
 } from '@/lib/escalaLoteRascunho'
+import {
+  reduzirLote, estadoInicialLote, hospitaisDoLote as hospitaisDoLoteDe, abaDoLote, hospitaisParaRascunho,
+} from '@/lib/escalaLoteStore'
 import { formatData, novaIdLinha, turnoAtual } from './utils'
 import { segurarAtualizacao, liberarAtualizacao } from '@/lib/atualizacaoAdiada'
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard'
-import { normalizarTrabalho } from './trabalhoConferencia'
 import { podeEditarEscalaCirurgica } from './gate'
 import ImportarEscalaPage from './ImportarEscalaPage'
 import SegmentedSelector from './SegmentedSelector'
@@ -105,12 +107,20 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
   const [periodo, setPeriodo] = useState(() => (
     turnoInicial === 'matutino' || turnoInicial === 'vespertino' ? turnoInicial : turnoAtual()
   ))
-  // hospital -> lote LIDO (rows + rodapé), a matéria-prima da aba
-  const [itens, setItens] = useState({})
+  // ── O LOTE: UMA FONTE DE VERDADE (Onda 2, item 2.1) — ver `lib/escalaLoteStore.js` ──
+  // leitura (imutável) × trabalho (o que a secretária fez, por aba) × decisões × publicados
+  // × aba ativa. É este objeto que o rascunho grava e restaura; as abas são controladas.
+  const [lote, dispatch] = useReducer(reduzirLote, { abaAtiva: hospital || null }, estadoInicialLote)
+  const { leitura: itens, trabalho: trabalhos, decisoes: duplicidadeDecisoes, trocas: trocaEscolhida, publicados } = lote
+  const setAbaAtiva = useCallback((u) => dispatch({ type: 'aba_definida', updater: u }), [])
+  const setPublicados = useCallback((u) => dispatch({ type: 'publicados_definidos', updater: u }), [])
+  // as abas escrevem as decisões como num setState (valor ou função): a duplicidade é da
+  // pessoa, não da aba (dono 30/08) — responder numa aba responde para todas
+  const setDuplicidadeDecisoes = useCallback((u) => dispatch({ type: 'decisoes_definidas', updater: u }), [])
+  const setTrocaEscolhida = useCallback((u) => dispatch({ type: 'trocas_definidas', updater: u }), [])
   // arquivos que a leitura não conseguiu atribuir: o item pede o hospital em
   // vez de a tela escolher sozinha (regra da casa: sugere, nunca troca sozinho)
   const [pendentes, setPendentes] = useState([])
-  const [abaAtiva, setAbaAtiva] = useState(hospital || null)
   const [resumos, setResumos] = useState({})
   const [carregando, setCarregando] = useState(false)
   const [progresso, setProgresso] = useState(null) // { feitos, total } durante a leitura
@@ -118,29 +128,19 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
   // de texto só, e os problemas chegavam num toast de 12 s que sumia sozinho. Agora cada
   // arquivo diz em que pé está, e o que deu errado FICA na tela até a pessoa tirar.
   const [arquivos, setArquivos] = useState([]) // [{ nome, estado, resultado, problemas[] }]
-  // decisões de duplicidade valem para o LOTE inteiro: a duplicidade é da
-  // pessoa, não da aba (dono 30/08) — ver `ImportarEscalaPage`
-  const [duplicidadeDecisoes, setDuplicidadeDecisoes] = useState({})
-  const [trocaEscolhida, setTrocaEscolhida] = useState({})
   const [revisar, setRevisar] = useState(false)
   const [publicandoLote, setPublicandoLote] = useState(false)
   const [encolhimentos, setEncolhimentos] = useState(null)
-  const [publicados, setPublicados] = useState([])
   // resultado da última tentativa, por hospital: a FOLHA é a superfície do resultado
   const [resultados, setResultados] = useState({})
   const [publicandoAgora, setPublicandoAgora] = useState(null)
   const refs = useRef({})
-  // hospital -> TRABALHO da aba (ver `trabalhoConferencia.js`): o pai é o dono para poder
-  // gravar o rascunho; a aba lê e escreve por `onTrabalho(updater)`
-  const [trabalhos, setTrabalhos] = useState({})
+  // a aba lê `trabalho` e escreve por `onTrabalho(updater)` — um callback estável por
+  // hospital, senão os efeitos da aba girariam a cada render do pai
   const onTrabalhoRefs = useRef({})
   const onTrabalhoDe = (h) => {
     if (!onTrabalhoRefs.current[h]) {
-      onTrabalhoRefs.current[h] = (updater) => setTrabalhos((prev) => {
-        const atual = prev[h] || null
-        const novo = typeof updater === 'function' ? updater(atual) : updater
-        return novo === atual ? prev : { ...prev, [h]: novo }
-      })
+      onTrabalhoRefs.current[h] = (updater) => dispatch({ type: 'trabalho_atualizado', hospital: h, updater })
     }
     return onTrabalhoRefs.current[h]
   }
@@ -154,14 +154,11 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
   const rascunhoDesligadoRef = useRef(false)
 
   // trocar o dia ou o período do lote invalida toda decisão já tomada
-  useEffect(() => { setDuplicidadeDecisoes({}); setTrocaEscolhida({}) }, [dataEscolhida, periodo])
+  useEffect(() => { dispatch({ type: 'contexto_mudou' }) }, [dataEscolhida, periodo])
 
-  const hospitaisDoLote = useMemo(
-    () => HOSPITAIS_LOTE.filter((h) => itens[h]),
-    [itens],
-  )
+  const hospitaisDoLote = useMemo(() => hospitaisDoLoteDe(lote), [lote])
   const temLote = hospitaisDoLote.length > 0
-  const aba = abaAtiva && itens[abaAtiva] ? abaAtiva : hospitaisDoLote[0] || null
+  const aba = abaDoLote(lote)
 
   // ── RASCUNHO DURÁVEL (Onda 2; audit A7) ─────────────────────────────────────
   // A conferência vivia só na memória do React e o app se recarrega sozinho (deploy ao
@@ -189,26 +186,15 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
     const r = lerRascunho(chave)
     if (!r.ok) return
     const { rascunho } = r
-    const itensR = {}
-    const trabalhosR = {}
-    for (const [h, v] of Object.entries(rascunho.hospitais)) {
-      if (!HOSPITAIS_LOTE.includes(h) || !v?.lido?.lote) continue
-      itensR[h] = { hospital: h, nome: v.lido.nome || '', truncado: !!v.lido.truncado, lote: v.lido.lote }
-      if (v.trabalho) trabalhosR[h] = normalizarTrabalho(v.trabalho)
-    }
-    if (!Object.keys(itensR).length) return
+    const restaurados = Object.keys(rascunho.hospitais).filter((h) => HOSPITAIS_LOTE.includes(h) && rascunho.hospitais[h]?.lido?.lote)
+    if (!restaurados.length) return
     rascunhoDesligadoRef.current = false
     criadoEmRef.current = rascunho.criadoEm
-    setItens(itensR)
-    setTrabalhos(trabalhosR)
-    setDuplicidadeDecisoes(rascunho.decisoes || {})
-    setTrocaEscolhida(rascunho.trocas || {})
-    setPublicados((rascunho.publicados || []).filter((h) => itensR[h]))
-    setAbaAtiva(rascunho.abaAtiva && itensR[rascunho.abaAtiva] ? rascunho.abaAtiva : Object.keys(itensR)[0])
+    dispatch({ type: 'rascunho_restaurado', rascunho })
     setRascunhoRestaurado({
       criadoEm: rascunho.criadoEm,
       atualizadoEm: rascunho.atualizadoEm,
-      hospitais: Object.fromEntries(Object.keys(itensR).map((h) => [h, {
+      hospitais: Object.fromEntries(restaurados.map((h) => [h, {
         escalaPublicadaUpdatedAt: rascunho.hospitais[h]?.escalaPublicadaUpdatedAt || null,
       }])),
     })
@@ -222,22 +208,17 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
     const rascunho = montarRascunho({
       data: dataEscolhida,
       turno: periodo,
-      hospitais: Object.fromEntries(hospitaisDoLote.map((h) => [h, {
-        lido: { nome: itens[h].nome, truncado: !!itens[h].truncado, lote: itens[h].lote },
-        trabalho: trabalhos[h] || null,
-        escalaPublicadaUpdatedAt: resumos[h]?.publicadaAtualizadaEm || null,
-      }])),
-      decisoes: duplicidadeDecisoes,
-      trocas: trocaEscolhida,
-      publicados,
+      hospitais: hospitaisParaRascunho(lote, resumos),
+      decisoes: lote.decisoes,
+      trocas: lote.trocas,
+      publicados: lote.publicados,
       abaAtiva: aba,
       criadoEm: criadoEmRef.current,
     })
     if (!rascunho) return
     criadoEmRef.current = rascunho.criadoEm
     gravador.agendar(rascunho)
-  }, [gravador, temLote, hospitaisDoLote, itens, trabalhos, resumos, duplicidadeDecisoes, trocaEscolhida,
-    publicados, aba, dataEscolhida, periodo])
+  }, [gravador, temLote, lote, resumos, aba, dataEscolhida, periodo])
 
   // O iOS mata a PWA em 2º plano sem esperar timer nenhum: ao esconder a página, grava já.
   useEffect(() => {
@@ -273,16 +254,11 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
     setDescartarAberto(false)
     setRascunhoRestaurado(null)
     criadoEmRef.current = null
-    setItens({})
-    setTrabalhos({})
+    dispatch({ type: 'lote_descartado' })
     setResumos({})
-    setDuplicidadeDecisoes({})
-    setTrocaEscolhida({})
-    setPublicados([])
     setResultados({})
     setPendentes([])
     refs.current = {}
-    setAbaAtiva(null)
   }
 
   // Hospitais cuja escala publicada mudou DEPOIS do rascunho (outro aparelho publicou, ou
@@ -313,12 +289,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
       }
     }
     rascunhoDesligadoRef.current = false
-    setItens((prev) => ({ ...prev, ...carimbados }))
-    setTrabalhos((prev) => {
-      const p = { ...prev }
-      for (const h of Object.keys(carimbados)) delete p[h]
-      return p
-    })
+    dispatch({ type: 'leituras_recebidas', itens: carimbados })
   }
 
   /** O que cada aba conta ao lote (selo, folha de revisão e cruzamento). */
@@ -564,11 +535,9 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
   }
 
   const removerEscala = (hosp) => {
-    setItens((prev) => { const p = { ...prev }; delete p[hosp]; return p })
-    setTrabalhos((prev) => { const p = { ...prev }; delete p[hosp]; return p })
+    dispatch({ type: 'leitura_removida', hospital: hosp })
     setResumos((prev) => { const p = { ...prev }; delete p[hosp]; return p })
     delete refs.current[hosp]
-    setAbaAtiva(null)
   }
 
   // ── PUBLICAÇÃO ─────────────────────────────────────────────────────────────
