@@ -5,7 +5,7 @@
  * (login), o que resolve a identidade na origem (sem match por nome). Ao atribuir, o
  * apelido importado é aprendido no dicionário (apelido→login) p/ a próxima escala.
  */
-import { useState, useMemo, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from 'react'
 import { ArrowDown, ArrowLeftRight, ArrowUp, Ban, ChevronLeft, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Pencil, Plus, Trash2, Sparkles, Loader2, Check, AlertTriangle, UserPlus } from 'lucide-react'
 import { Button, ConfirmDialog, DatePicker, FileUpload, Input, Select, Sheet, SheetContent, SheetHeader, SheetTitle, useToast } from '@/design-system'
 import svc from '@/services/supabaseEscalaCirurgicaService'
@@ -295,11 +295,30 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   })
   const todasAbertas = grupos.length > 0 && gruposAbertos.size === grupos.length
 
-  const aplicarPeriodoAoLote = (lote, turno = periodo) => {
+  /**
+   * Refiltra o lote por turno PRESERVANDO a conferência já feita (dono 03/09; audit A2).
+   *
+   * Antes isto reconstruía tudo a partir da LEITURA e zerava as atribuições: quem tinha
+   * corrigido salas, escolhido logins e ajustado horas perdia o trabalho ao tocar no
+   * período do cartão — em silêncio, porque no lote a troca é do pai e o aviso é dele.
+   * Agora cada linha tem `_lid`: o que já foi editado volta com as edições, e o que entra
+   * do outro turno entra como veio. As atribuições sobrevivem, exceto as de blocos que
+   * deixaram de existir — carregar chave morta reatribuiria a sala à pessoa errada.
+   */
+  const aplicarPeriodoAoLote = (lote, turno = periodo, { editados = null } = {}) => {
+    // o trabalho de TODOS os turnos vive nos refs: sem eles, ir para a tarde e voltar
+    // trazia a manhã como a Vision leu, porque só a lista do momento era considerada
+    for (const c of editados || []) if (c._lid) edicoesRef.current.set(c._lid, c)
+    const porId = edicoesRef.current
     const selecionados = selecionarCasosDoTurno(lote, turno)
+      .filter((c) => !removidosRef.current.has(c._lid))
+      .map((c) => porId.get(c._lid) || c)
     setCasos(selecionados)
     setIgnoradosOutroTurno(Math.max(0, lote.length - selecionados.length))
-    setAtribuicoes({})
+    setAtribuicoes((prev) => {
+      const vivas = new Set(chavesAnestesista(selecionados))
+      return Object.fromEntries(Object.entries(prev).filter(([chave]) => vivas.has(chave)))
+    })
     setGruposAbertos(new Set())
     setCasoEmEdicao(null)
     setDecisaoAberta(null)
@@ -307,6 +326,10 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   }
 
   const carregarLoteImportado = (rows, hospParam, posicoes = []) => {
+    // foto NOVA é outra escala: o trabalho da anterior não se aplica (a substituição por
+    // reanexo é intencional desde 30/07 — ordem e ajuda SUBSTITUEM, não completam)
+    edicoesRef.current = new Map()
+    removidosRef.current = new Set()
     // Itens sem hora pertencem ao período selecionado NO MOMENTO DO UPLOAD.
     // Depois disso, alternar manhã/tarde só filtra; não move SRPA entre turnos.
     // A SRPA da Unimed entra às 09:00 e o mapa nunca escreve esse horário — o
@@ -325,13 +348,13 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   const mudarPeriodo = (novoPeriodo, { silencioso = false } = {}) => {
     setPeriodo(novoPeriodo)
     if (!loteAnexo) return
-    const selecionados = aplicarPeriodoAoLote(loteAnexo, novoPeriodo)
+    const selecionados = aplicarPeriodoAoLote(loteAnexo, novoPeriodo, { editados: casos })
     // No lote quem troca o turno é o cartão do PAI, uma vez só: três instâncias
     // toastando a mesma troca viraria três avisos idênticos na mesma tela.
     if (silencioso) return
     toast({
       title: novoPeriodo === 'matutino' ? 'Turno matutino selecionado' : 'Turno vespertino selecionado',
-      description: `${resumoTexto(selecionados)} do anexo. As atribuições manuais foram reiniciadas para conferência.`,
+      description: `${resumoTexto(selecionados)} do anexo. O que você já conferiu foi preservado.`,
     })
   }
 
@@ -558,7 +581,12 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   }
 
   // ── Edição da base ───────────────────────────────────────────────────────────
-  const setCampo = (i, campo, valor) => setCasos((cs) => cs.map((c, k) => (k === i ? { ...c, [campo]: valor } : c)))
+  const setCampo = (i, campo, valor) => setCasos((cs) => cs.map((c, k) => {
+    if (k !== i) return c
+    const novo = { ...c, [campo]: valor }
+    if (novo._lid) edicoesRef.current.set(novo._lid, novo)
+    return novo
+  }))
   // Linha nova nasce com o bloco ABERTO: "+ Linha" criava o bloco "—" colapsado
   // e quem clicava "preencher manualmente" não via campo nenhum (bug 30/07).
   const addLinha = () => {
@@ -573,7 +601,11 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     setCasos(novos)
     setGruposAbertos((p) => new Set(p).add(chavesAnestesista(novos)[i]))
   }
-  const removeLinha = (i) => setCasos((cs) => cs.filter((_, k) => k !== i))
+  const removeLinha = (i) => setCasos((cs) => {
+    const alvo = cs[i]
+    if (alvo?._lid) { removidosRef.current.add(alvo._lid); edicoesRef.current.delete(alvo._lid) }
+    return cs.filter((_, k) => k !== i)
+  })
 
   // Anestesista DO CASO (pedido do dono 26/07): salas multi-anestesista
   // (IOSC/Exames) e correção de caso "?" precisam furar a atribuição por sala.
@@ -613,6 +645,11 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   // medido no banco: 63% dos blocos têm 1 caso e só 22% das salas têm mais de
   // um anestesista, então ele quase nunca trabalhava. A linha do caso passa a
   // LER o nome efetivo; o seletor abre só pelo lápis (mesma gravação de antes).
+  // TRABALHO DA CONFERÊNCIA POR IDENTIDADE DE LINHA (dono 03/09; audit A2/A4). Refs, não
+  // estado: nada aqui pinta a tela — servem para reconstruir a lista quando o período muda
+  // sem perder o que já foi corrigido, e para o que foi removido continuar removido.
+  const edicoesRef = useRef(new Map())
+  const removidosRef = useRef(new Set())
   const [casoEmEdicao, setCasoEmEdicao] = useState(null)
   const rotuloAnestesistaCaso = (c, chave) => {
     if (c.semAnestesista) return { nome: 'Sem anestesista (?)', origem: '' }
@@ -1958,7 +1995,10 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                     {aberta && (
                       <div className="space-y-2 border-t border-border p-3">
                         {itens.map(({ c, i }) => (
-                          <div key={i} className="rounded-lg border border-border/70 bg-background p-2.5 space-y-1.5">
+                          // key pela IDENTIDADE da linha, não pelo índice (audit A4): com
+                          // `key={i}`, remover uma linha fazia o campo com rascunho aberto
+                          // passar a escrever na linha do vizinho
+                          <div key={c._lid || i} className="rounded-lg border border-border/70 bg-background p-2.5 space-y-1.5">
                             <div className="flex items-center justify-between gap-2 text-xs">
                               <span className="font-semibold text-muted-foreground">#{i + 1}</span>
                               {c.semAnestesista && (

@@ -1907,9 +1907,13 @@ export function planoDesfazerTroca({ escalas, resolverUid, a, b, turno = null })
 // carimbo de anestesista importado. Duplicar a regra é como o IOSC saiu com
 // três linhas para um anestesista só — mudar um lugar e esquecer o outro.
 
+let seqLinha = 0
+export const novaIdLinha = () => `l${Date.now().toString(36)}${(seqLinha += 1).toString(36)}`
+
 export const linhaVazia = (sala = '') => ({
   sala, hora: '', pacienteIniciais: '', procedimento: '',
   cirurgiao: '', anestesista: '', bloco: 'normal', tipo: 'eletiva',
+  _lid: novaIdLinha(),
 })
 
 // Normalização de salas na importação (pedidos 2026-07-21):
@@ -1986,9 +1990,18 @@ const normalizarCasosHro = (rows) => {
  * e sem o carimbo o grupo do colega se dissolveria no meio da conferência.
  * Campo só desta tela — o whitelist CASO_FIELDS do service não o publica.
  */
+/**
+ * IDENTIDADE LOCAL DA LINHA (`_lid`), só da conferência — o service não a envia (o
+ * `CASO_FIELDS` é uma allowlist) e ela não existe no banco.
+ *
+ * Sem ela a lista de casos só tinha o ÍNDICE como identidade, e índice muda: trocar o
+ * período reconstruía tudo a partir da leitura e apagava a conferência já feita (a hora
+ * corrigida, a sala escolhida, o paciente digitado), e o `key={i}` do React fazia um campo
+ * com rascunho aberto passar a escrever na linha do vizinho depois de remover uma linha.
+ */
 const carimbarImportado = (rows) => {
   const nomes = nomesImportados(rows)
-  return rows.map((c, i) => ({ ...c, anestesistaImportado: nomes[i] }))
+  return rows.map((c, i) => ({ ...c, anestesistaImportado: nomes[i], _lid: c._lid || novaIdLinha() }))
 }
 const posicaoParaCompat = (p) => ({
   ...linhaVazia(String(p?.local || p?.sala || 'SRPA').trim()),

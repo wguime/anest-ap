@@ -1004,3 +1004,50 @@ describe('rodapé × escala numérica', () => {
     await waitFor(() => expect(screen.queryByText(/difere da escala numérica/i)).toBeNull())
   })
 })
+
+// ════════════════════════════════════════════════════════════════════════════
+// TROCAR O PERÍODO NÃO APAGA A CONFERÊNCIA (dono 03/09; audit A2, item 1.7).
+//
+// O cartão de data/período é do LOTE. Quem anexou como "manhã", conferiu, e então corrigiu
+// para "tarde" via cartão perdia tudo em silêncio: a lista era reconstruída a partir da
+// LEITURA e as atribuições eram zeradas. Agora cada linha tem `_lid` e o que já foi
+// editado volta com as edições.
+// ════════════════════════════════════════════════════════════════════════════
+describe('trocar o período preserva o que já foi conferido', () => {
+  // um caso de cada turno: a troca de período FILTRA (caso sem hora fica no turno do
+  // envio, decisão antiga), então o que se testa é ir e VOLTAR sem perder a edição
+  const doisTurnos = [
+    { sala: 'CC - Sala 1', ordem: 0, hora: '07:30', anestesista: 'CURY', cirurgiao: 'Dr A', pacienteIniciais: 'A.B.' },
+    { sala: 'CC - Sala 2', ordem: 0, hora: '14:00', anestesista: 'MELO', cirurgiao: 'Dr B', pacienteIniciais: 'C.D.' },
+  ]
+
+  it('paciente corrigido de manhã continua corrigido ao voltar da tarde', async () => {
+    const container = await importar(doisTurnos, ['CURY', 'MELO'])
+    fireEvent.click(blocos(container)[0])
+    const campo = [...container.querySelectorAll('input')].find((i) => i.value === 'A.B.')
+    fireEvent.change(campo, { target: { value: 'X.Y.' } })
+
+    // o seletor de período da própria página faz a mesma troca que o cartão do lote
+    fireEvent.click(screen.getByRole('tab', { name: /vespertino/i }))
+    await waitFor(() => expect([...container.querySelectorAll('input')].some((i) => i.value === 'C.D.')
+      || blocos(container).length > 0).toBe(true))
+    fireEvent.click(screen.getByRole('tab', { name: /matutino/i }))
+
+    fireEvent.click(await screen.findByRole('button', { name: /Publicar/i }))
+    await waitFor(() => expect(salvarEscala).toHaveBeenCalled())
+    const casos = salvarEscala.mock.calls[0][0].casos
+    expect(casos.map((c) => c.pacienteIniciais)).toEqual(['X.Y.'])
+  })
+
+  it('a identidade da linha é única por linha', async () => {
+    await importar(doisTurnos, ['CURY', 'MELO'])
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+    await waitFor(() => expect(salvarEscala).toHaveBeenCalled())
+    // o payload da página ainda carrega `_lid`; quem o descarta é o CASO_FIELDS do service,
+    // então a garantia real está em `escalaPublicacaoIniciais`/`casoToRow` — aqui basta que
+    // a identidade exista e seja única, que é o que a preservação usa
+    const casos = salvarEscala.mock.calls[0][0].casos
+    const ids = casos.map((c) => c._lid)
+    expect(new Set(ids).size).toBe(ids.length)
+  })
+})

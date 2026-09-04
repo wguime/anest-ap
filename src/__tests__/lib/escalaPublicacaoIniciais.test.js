@@ -65,6 +65,17 @@ describe('salvarEscalaTurno — paciente_iniciais sempre na forma do CHECK', () 
     for (const v of iniciais) expect(CHECK(v), `paciente_iniciais ${JSON.stringify(v)}`).toBe(true)
   })
 
+  it('a identidade LOCAL da linha (_lid) não chega ao banco — CASO_FIELDS é allowlist', async () => {
+    await svc.salvarEscalaTurno({
+      data: '2026-09-03', hospital: 'unimed', turno: 'matutino',
+      casos: [{ _lid: 'lx1', sala: 'CC - Sala 1', hora: '07:30', pacienteIniciais: 'A.B.', anestesista: 'TIAGO' }],
+    }, { userId: 'u1' })
+    const linha = mocks.state.rpcCalls[0].args.p_casos[0]
+    expect(linha._lid).toBeUndefined()
+    expect(Object.keys(linha)).not.toContain('_lid')
+    expect(linha.sala).toBe('CC - Sala 1')
+  })
+
   it('a publicação legada (rpc_salvar_escala_cirurgica) passa pela mesma fronteira', async () => {
     await svc.salvarEscala({
       data: '2026-09-03', hospital: 'hro',
