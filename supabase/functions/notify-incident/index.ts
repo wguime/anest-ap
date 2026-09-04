@@ -7,9 +7,17 @@
  * Env vars necessarias:
  *   SMTP_USER - email Gmail remetente (ex: anestcomiteetica@gmail.com)
  *   SMTP_PASS - App Password de 16 caracteres
+ *
+ * Auth (auditoria 04/09/2026): deploy com --no-verify-jwt. Com verify_jwt=true o
+ * gateway rejeitava o ID token Firebase RS256 (401 UNAUTHORIZED_ASYMMETRIC_JWT) —
+ * desde a Third-Party Auth (10/06) nenhum e-mail do app saía. A verificação passa
+ * a ser feita aqui: Firebase RS256 ou HS256 legado via _shared/verify-auth.ts, e
+ * a anon key do projeto (formulário público, sem sessão) continua aceita como antes.
  */
 
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts"
+import { verifyAuthHeader } from '../_shared/verify-auth.ts'
+import { jwtVerify } from 'https://deno.land/x/jose@v5.2.0/index.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -117,9 +125,44 @@ function buildEmailHtml(payload: NotifyPayload): string {
 </html>`
 }
 
+/**
+ * Quem pode disparar o e-mail: usuário autenticado (Firebase RS256 ou HS256
+ * legado) OU o formulário público, que chama com a anon key como Bearer —
+ * exatamente o que o gateway já aceitava com verify_jwt=true.
+ */
+async function authorize(req: Request): Promise<{ ok: true } | { ok: false; status: number; reason: string }> {
+  const header = req.headers.get('authorization')
+  const auth = await verifyAuthHeader(header)
+  if (auth.ok) return { ok: true }
+
+  // Formulário público: supabase-js sem sessão manda a anon key como Bearer.
+  // É um JWT HS256 assinado pelo segredo do projeto com role=anon e sem `sub`
+  // (por isso verifyAuthHeader recusa). Aceitar exatamente o que verify_jwt=true
+  // aceitava: assinatura válida pelo segredo do projeto.
+  const bearer = header?.startsWith('Bearer ') ? header.slice(7) : ''
+  const jwtSecret = Deno.env.get('JWT_SECRET')
+  if (bearer && jwtSecret) {
+    try {
+      const { payload } = await jwtVerify(bearer, new TextEncoder().encode(jwtSecret), { algorithms: ['HS256'] })
+      if (payload.role === 'anon') return { ok: true }
+    } catch {
+      // não é a anon key do projeto — cai no erro do helper abaixo
+    }
+  }
+  return { ok: false, status: auth.status, reason: auth.reason }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
+  }
+
+  const authz = await authorize(req)
+  if (!authz.ok) {
+    return new Response(
+      JSON.stringify({ error: authz.reason }),
+      { status: authz.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    )
   }
 
   try {

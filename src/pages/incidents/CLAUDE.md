@@ -9,6 +9,12 @@
 - Context: `src/contexts/IncidentsContext.jsx` (1233 linhas — reducer + realtime subscription)
 - Realtime: usa `createReliableSubscription` (helper canônico)
 
+## Envio pelo app (2026-09-04)
+
+- `createIncidente`/`createDenuncia` chamam a RPC `rpc_submit_incidente` (SECURITY DEFINER, migration `20260904190000`). **Nunca voltar ao `.insert(row).select()`**: o RETURNING passa pelas policies de SELECT e relato ANÔNIMO tem `user_id NULL` → 42501 para todo não-admin (admin nunca vê — "funciona comigo"). Anonimato, `user_id` e `lgpd_consent_at` são decididos no servidor pelo `tipoIdentificacao`; o cliente não manda `user_id`. Trava: `supabaseIncidentsService.submit.test.js`.
+- E-mail aos responsáveis (`notify-incident`): deploy com `--no-verify-jwt` e auth dentro da função (`_shared/verify-auth.ts` + anon key HS256 `role=anon` do formulário público). Com `verify_jwt=true` o gateway recusava o ID token Firebase (401 `UNAUTHORIZED_ASYMMETRIC_JWT`) e nenhum e-mail do app saiu entre 10/06 e 04/09. Falha de e-mail vai para `reportError` (o insert antigo em `infra_health_history` usava colunas inexistentes e morria em silêncio).
+- Página de gestão sem o registro (id inválido ou fora da RLS) mostra "não encontrado" — o fallback `|| lista[0]` exibia OUTRO relato.
+
 ## Anexos (2026-07-30)
 - Upload REAL no submit → bucket privado `incidentes-anexos` (migration `20260730220000`); JSONB `attachments` guarda só metadados `{name, path, size, type}` (lib pura `src/lib/incidenteAnexos.js`; componentes `AnexosUploadSection`/`AnexosListSection`). Antes o form guardava só `file.name` e o INSERT descartava até isso — evidência se perdia em silêncio (DEN-20260727-8445).
 - Relato ANÔNIMO → pasta `denuncias-anon/`/`incidentes-anon/`: trigger `tr_incidentes_anexos_scrub_anon` anula `owner_id` no insert (o storage gravaria o UID do uploader). ⚠️ o WHEN do trigger é IMUTÁVEL p/ nós (DROP TRIGGER em storage.objects exige ownership que a Management API não tem) — a lógica vive no corpo de `fn_scrub_anexo_anonimo` (CREATE OR REPLACE sempre disponível; kill switch = RETURN NEW).

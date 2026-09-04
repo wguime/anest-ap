@@ -36,12 +36,12 @@ function InfoRow({ label, value, highlight = false, sensitive = false }) {
 
 
 export default function DenunciaGestaoPage({ onNavigate, goBack, params, denunciaId: propDenunciaId }) {
-  const { denuncias, getDenunciaById, updateGestaoInterna, _updateStatus } = useIncidents();
+  const { getDenunciaById, updateGestaoInterna, _updateStatus } = useIncidents();
   const { incidentResponsibles } = useUsersManagement();
 
   // Find denuncia by ID
-  const denunciaId = propDenunciaId || params?.id || 'den-001';
-  const denuncia = getDenunciaById(denunciaId) || denuncias[0];
+  const denunciaId = propDenunciaId || params?.id || '';
+  const denuncia = denunciaId ? getDenunciaById(denunciaId) : undefined;
   const returnTo = params?.returnTo;
 
   // Internal management state - load from gestaoInterna (where updateGestaoInterna saves)
@@ -131,6 +131,24 @@ export default function DenunciaGestaoPage({ onNavigate, goBack, params, denunci
 
     localStorage.setItem(storageKey, 'true');
   }, [deadlineInfo, denunciaId]);
+
+  // Auditoria 04/09/2026: sem o registro (id inválido ou fora do acesso RLS)
+  // a tela caía em `denuncias[0]` e mostrava OUTRO relato em silêncio.
+  if (!denuncia) {
+    return (
+      <div className="min-h-dvh bg-background pb-24">
+        <PageHeader title="Gestão da Denúncia" onBack={() => (goBack ? goBack() : onNavigate('incidentes'))} />
+        <div className="px-4 pt-4 sm:px-5">
+          <div className="bg-card rounded-2xl p-4 border border-border">
+            <p className="text-sm font-medium text-foreground">Denúncia não encontrada</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              O registro não existe ou não está no seu acesso. Volte à lista e abra novamente.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const statusConfig = STATUS_CONFIG[denuncia.status] || STATUS_CONFIG.pending;
   const tipoConfig = DENUNCIA_TYPES.find(t => t.value === denuncia.denuncia?.tipo) || {};

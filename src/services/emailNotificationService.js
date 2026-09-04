@@ -4,26 +4,25 @@
  * Invoca a Edge Function `notify-incident` para enviar emails.
  *
  * Falhas (incl. SMTP_NOT_CONFIGURED após Fase 4.3) emitem CustomEvent
- * `email-notification-failure` no window e gravam linha em
- * `infra_health_history` (retenção 90d) para que admins percebam.
+ * `email-notification-failure` no window e vão para o sink de erros do app
+ * (`reportError` → Sentry/Analytics). Auditoria 04/09/2026: o insert anterior
+ * em `infra_health_history` usava colunas que a tabela não tem (42703) — a
+ * falha de e-mail era engolida em silêncio desde a Third-Party Auth (10/06).
  */
 import { supabase } from '@/config/supabase'
+import { reportError } from './errorReporting'
 
 async function logEmailFailure(category, payload, errorMessage) {
-  // Best-effort log → infra_health_history. Falha de log não propaga.
+  // Best-effort — falha de log não propaga. Sem dado pessoal: só protocolo e tipo.
   try {
-    await supabase.from('infra_health_history').insert({
-      category: 'email_notification_failure',
-      severity: category === 'denuncia' ? 'critical' : 'warning',
-      message: errorMessage || 'unknown',
-      context: {
-        notification_kind: category,
-        protocolo: payload?.protocolo || null,
-        tipoIdentificacao: payload?.tipoIdentificacao || null,
-      },
+    reportError(new Error(`email_notification_failure(${category}): ${errorMessage || 'unknown'}`), {
+      route: 'incidentes',
+      fatal: false,
+      protocolo: payload?.protocolo || null,
+      tipoIdentificacao: payload?.tipoIdentificacao || null,
     })
   } catch (logErr) {
-    console.warn('[EmailNotification] Failed to log to infra_health_history:', logErr)
+    console.warn('[EmailNotification] Failed to report email failure:', logErr)
   }
   if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
     window.dispatchEvent(new CustomEvent('email-notification-failure', {

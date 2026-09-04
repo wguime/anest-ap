@@ -5,22 +5,24 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // ============================================================================
 const mockInvoke = vi.fn(() => Promise.resolve({ data: null, error: null }));
 
-function createInsertChain(data) {
-  const chain = {
-    select: vi.fn(() => chain),
-    single: vi.fn(() => Promise.resolve({
-      data: { ...data, protocolo: data?.protocolo || 'INC-20260408-0001' },
-      error: null,
-    })),
-  };
-  return chain;
-}
+// Auditoria 04/09/2026: o envio passou a ser a RPC rpc_submit_incidente
+// (SECURITY DEFINER) — o INSERT direto com RETURNING esbarrava na RLS de
+// SELECT em relato anônimo. O mock devolve a linha como o Postgres devolveria.
+const mockRpc = vi.fn((_name, params) => Promise.resolve({
+  data: {
+    id: 'uuid-1',
+    tipo: params.p_tipo,
+    source: params.p_source,
+    protocolo: params.p_protocolo || 'INC-20260408-0001',
+    tracking_code: 'ANEST-2026-ABCDEFGH',
+  },
+  error: null,
+}));
 
 vi.mock('@/config/supabase', () => ({
   supabase: {
-    from: vi.fn(() => ({
-      insert: vi.fn((row) => createInsertChain(row)),
-    })),
+    rpc: (...args) => mockRpc(...args),
+    from: vi.fn(() => { throw new Error('createIncidente/createDenuncia não devem inserir direto na tabela'); }),
     functions: {
       invoke: mockInvoke,
     },

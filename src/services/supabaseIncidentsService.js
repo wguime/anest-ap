@@ -257,48 +257,40 @@ async function getAnexoSignedUrl(path) {
 // ESCRITA
 // ============================================================================
 
-async function createIncidente(incidenteData, userInfo = {}) {
-  const user = getUserInfo(userInfo)
+// Auditoria 04/09/2026: o INSERT direto com `.select()` (RETURNING) passava
+// pelas policies de SELECT; relato ANÔNIMO tem user_id NULL e, para quem não é
+// admin, o Postgres devolvia 42501 "new row violates row-level security
+// policy". A RPC SECURITY DEFINER (migration 20260904190000) insere e devolve
+// a linha; anonimato e user_id são decididos no servidor a partir do JWT —
+// `userInfo` fica só para os campos do e-mail.
+const RPC_SUBMIT_INCIDENTE = 'rpc_submit_incidente'
 
-  const row = {
-    tipo: 'incidente',
-    source: incidenteData.source || 'app',
-    user_id: user.userId,
-    notificante: incidenteData.notificante || {},
-    incidente_data: incidenteData.incidente || incidenteData.incidenteData || {},
-    impacto: incidenteData.impacto || {},
-    contexto_anest: incidenteData.contextoAnest || {},
-    gestao_interna: incidenteData.gestaoInterna || incidenteData.gestao_interna || {},
-    attachments: sanitizeAttachments(incidenteData.attachments),
-    status: incidenteData.status || 'pending',
-    lgpd_consent_at: incidenteData.notificante?.tipoIdentificacao === 'anonimo'
-      ? null
-      : (incidenteData.lgpdConsentAt || new Date().toISOString()),
+async function createIncidente(incidenteData, _userInfo = {}) {
+  const incContext = incidenteData.incidente || incidenteData.incidenteData || {}
+
+  const { data, error } = await supabase.rpc(RPC_SUBMIT_INCIDENTE, {
+    p_tipo: 'incidente',
+    p_source: incidenteData.source || 'app',
+    p_status: incidenteData.status || 'pending',
+    p_protocolo: incidenteData.protocolo || null,
+    p_tracking_code: incidenteData.trackingCode || null,
+    p_notificante: incidenteData.notificante || {},
+    p_incidente_data: incContext,
+    p_impacto: incidenteData.impacto || {},
+    p_contexto_anest: incidenteData.contextoAnest || {},
+    p_gestao_interna: incidenteData.gestaoInterna || incidenteData.gestao_interna || {},
+    p_attachments: sanitizeAttachments(incidenteData.attachments),
+    p_lgpd_consent_at: incidenteData.lgpdConsentAt || null,
     // B9 (2026-05-04): Never Events flags
-    is_never_event: incidenteData.isNeverEvent || false,
-    never_event_code: incidenteData.isNeverEvent && incidenteData.neverEventCode
+    p_is_never_event: !!incidenteData.isNeverEvent,
+    p_never_event_code: incidenteData.isNeverEvent && incidenteData.neverEventCode
       ? incidenteData.neverEventCode
       : null,
-  }
-
-  // Se protocolo foi fornecido externamente, usa-lo (senao o trigger gera)
-  if (incidenteData.protocolo) {
-    row.protocolo = incidenteData.protocolo
-  }
-  if (incidenteData.trackingCode) {
-    row.tracking_code = incidenteData.trackingCode
-  }
-
-  const { data, error } = await supabase
-    .from('incidentes')
-    .insert(row)
-    .select()
-    .single()
+  })
 
   if (error) handleError(error, 'createIncidente')
 
   // Fire-and-forget email notification
-  const incContext = incidenteData.incidente || incidenteData.incidenteData || {}
   notifyNewIncidentEmail({
     protocolo: data.protocolo,
     tipoIdentificacao: incidenteData.notificante?.tipoIdentificacao || 'anonimo',
@@ -312,46 +304,34 @@ async function createIncidente(incidenteData, userInfo = {}) {
     descricaoResumo: incContext.descricao || '',
     isNeverEvent: !!incContext.isNeverEvent,
     neverEventCode: incContext.neverEventCode || '',
-    source: row.source,
+    source: data.source,
   })
 
   return toCamelCase(data)
 }
 
-async function createDenuncia(denunciaData, userInfo = {}) {
-  const user = getUserInfo(userInfo)
+async function createDenuncia(denunciaData, _userInfo = {}) {
+  const denContext = denunciaData.denunciaData || denunciaData.denuncia || {}
 
-  const row = {
-    tipo: 'denuncia',
-    source: denunciaData.source || 'app',
-    user_id: user.userId,
-    denunciante: denunciaData.denunciante || {},
-    denuncia_data: denunciaData.denunciaData || denunciaData.denuncia || {},
-    impacto: denunciaData.impacto || {},
-    attachments: sanitizeAttachments(denunciaData.attachments),
-    status: denunciaData.status || 'pending',
-    lgpd_consent_at: denunciaData.denunciante?.tipoIdentificacao === 'anonimo'
-      ? null
-      : (denunciaData.lgpdConsentAt || new Date().toISOString()),
-  }
-
-  if (denunciaData.protocolo) {
-    row.protocolo = denunciaData.protocolo
-  }
-  if (denunciaData.trackingCode) {
-    row.tracking_code = denunciaData.trackingCode
-  }
-
-  const { data, error } = await supabase
-    .from('incidentes')
-    .insert(row)
-    .select()
-    .single()
+  const { data, error } = await supabase.rpc(RPC_SUBMIT_INCIDENTE, {
+    p_tipo: 'denuncia',
+    p_source: denunciaData.source || 'app',
+    p_status: denunciaData.status || 'pending',
+    p_protocolo: denunciaData.protocolo || null,
+    p_tracking_code: denunciaData.trackingCode || null,
+    p_denunciante: denunciaData.denunciante || {},
+    p_denuncia_data: denContext,
+    p_impacto: denunciaData.impacto || {},
+    // Antes o insert de denúncia descartava o template que a página monta;
+    // agora persiste como no incidente (historicoStatus alimenta o rastreio).
+    p_gestao_interna: denunciaData.gestaoInterna || denunciaData.gestao_interna || {},
+    p_attachments: sanitizeAttachments(denunciaData.attachments),
+    p_lgpd_consent_at: denunciaData.lgpdConsentAt || null,
+  })
 
   if (error) handleError(error, 'createDenuncia')
 
   // Fire-and-forget email notification
-  const denContext = denunciaData.denunciaData || denunciaData.denuncia || {}
   notifyNewDenunciaEmail({
     protocolo: data.protocolo,
     tipoIdentificacao: denunciaData.denunciante?.tipoIdentificacao || 'anonimo',
@@ -359,7 +339,7 @@ async function createDenuncia(denunciaData, userInfo = {}) {
     notificanteEmail: denunciaData.denunciante?.email || '',
     categoriaDenuncia: denContext.tipo || '',
     descricaoResumo: denContext.descricao || '',
-    source: row.source,
+    source: data.source,
   })
 
   return toCamelCase(data)

@@ -33,13 +33,13 @@ function InfoRow({ label, value, highlight = false }) {
 
 
 export default function IncidenteGestaoPage({ onNavigate, goBack, params, incidenteId: propIncidenteId }) {
-  const { incidentes, getIncidenteById, updateGestaoInterna } = useIncidents();
+  const { getIncidenteById, updateGestaoInterna } = useIncidents();
   const { user } = useUser();
   const { incidentResponsibles } = useUsersManagement();
 
   // Find incident by ID
-  const incidenteId = propIncidenteId || params?.id || 'inc-001';
-  const incidente = getIncidenteById(incidenteId) || incidentes[0];
+  const incidenteId = propIncidenteId || params?.id || '';
+  const incidente = incidenteId ? getIncidenteById(incidenteId) : undefined;
   const returnTo = params?.returnTo;
 
   // Internal management state - load from gestaoInterna (where updateGestaoInterna saves)
@@ -130,6 +130,24 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
 
     localStorage.setItem(storageKey, 'true');
   }, [deadlineInfo, incidenteId]);
+
+  // Auditoria 04/09/2026: sem o registro (id inválido ou fora do acesso RLS)
+  // a tela caía em `incidentes[0]` e mostrava OUTRO relato em silêncio.
+  if (!incidente) {
+    return (
+      <div className="min-h-dvh bg-background pb-24">
+        <PageHeader title="Gestão do Incidente" onBack={() => (goBack ? goBack() : onNavigate('incidentes'))} />
+        <div className="px-4 pt-4 sm:px-5">
+          <div className="bg-card rounded-2xl p-4 border border-border">
+            <p className="text-sm font-medium text-foreground">Incidente não encontrado</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              O registro não existe ou não está no seu acesso. Volte à lista e abra novamente.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const statusConfig = STATUS_CONFIG[incidente.status] || STATUS_CONFIG.pending;
   const severityConfig = SEVERITY_LEVELS.find(s => s.value === incidente.incidente?.severidade) || {};
