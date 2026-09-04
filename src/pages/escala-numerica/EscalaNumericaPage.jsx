@@ -78,7 +78,7 @@ function BlocoFds({ dataISO, fila, loading, erro, sabado }) {
           </span>
         </div>
         <p className="mb-2.5 text-[11.5px] leading-snug text-muted-foreground">
-          Ordem pelo número do posto no Pega Plantão.
+          Postos do Pega Plantão, do P1 ao P12.
           {domingo && sabado ? ` O plantão do fim de semana é lançado no sábado (${paraBr(sabado)}) e cobre os dois dias.` : ''}
         </p>
         {loading && <p className="py-2 text-[12.5px] text-muted-foreground">Consultando o Pega Plantão…</p>}
@@ -96,16 +96,17 @@ function BlocoFds({ dataISO, fila, loading, erro, sabado }) {
           </div>
         ))}
       </section>
-      {/* Conferido contra os documentos de 15/08 e 22/08 (03/09): de P5 em diante o número do
-          Pega Plantão é o mesmo do documento; em P1–P4 são as MESMAS quatro pessoas em ordem
-          diferente, e o P12 do documento nunca é lançado lá. Dizer só "ordem P1 a P12" sugeria
-          uma equivalência que não existe, e o mesmo selo Pn aparece na Escala Cirúrgica com o
-          significado do DOCUMENTO. */}
+      {/* Regra do dono (03/09), depois de eu cruzar os FDS de 15/08 e 22/08 com a API:
+          **de P5 a P12 a ordem do Pega Plantão é a ordem real**; **em P1–P4 o Pega Plantão
+          NÃO está em ordem** — os quatro nomes estão certos, mas a ordem deles só sai junto
+          com a escala do fim de semana, na tabela de liberações. O dono mandou manter a lista
+          como está; o que a tela deve fazer é dizer isso, em vez de deixar o leitor supor que
+          os quatro primeiros já estão na ordem de liberação. */}
       <p className="flex items-start gap-1.5 px-0.5 text-[11.5px] leading-relaxed text-muted-foreground">
         <Info className="mt-0.5 size-3.5 flex-none" aria-hidden="true" />
-        Esta fila NÃO faz parte da escala numérica do grupo, que só traz dia útil. O número é o do posto no
-        Pega Plantão: de P5 em diante ele bate com o documento de fim de semana; em P1 a P4 são as mesmas
-        pessoas em ordem diferente, e o P12 do documento não é lançado lá.
+        Esta fila NÃO faz parte da escala numérica do grupo, que só traz dia útil. De P5 em diante a ordem é
+        exatamente a do Pega Plantão. Em P1 a P4 os nomes estão certos, mas a ordem não: a ordem real desses
+        quatro sai junto com a escala do fim de semana, na tabela de liberações.
       </p>
     </>
   )
