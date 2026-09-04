@@ -78,7 +78,7 @@ function BlocoFds({ dataISO, fila, loading, erro, sabado }) {
           </span>
         </div>
         <p className="mb-2.5 text-[11.5px] leading-snug text-muted-foreground">
-          Ordem P1 a P12, do Pega Plantão.
+          Ordem pelo número do posto no Pega Plantão.
           {domingo && sabado ? ` O plantão do fim de semana é lançado no sábado (${paraBr(sabado)}) e cobre os dois dias.` : ''}
         </p>
         {loading && <p className="py-2 text-[12.5px] text-muted-foreground">Consultando o Pega Plantão…</p>}
@@ -96,9 +96,16 @@ function BlocoFds({ dataISO, fila, loading, erro, sabado }) {
           </div>
         ))}
       </section>
+      {/* Conferido contra os documentos de 15/08 e 22/08 (03/09): de P5 em diante o número do
+          Pega Plantão é o mesmo do documento; em P1–P4 são as MESMAS quatro pessoas em ordem
+          diferente, e o P12 do documento nunca é lançado lá. Dizer só "ordem P1 a P12" sugeria
+          uma equivalência que não existe, e o mesmo selo Pn aparece na Escala Cirúrgica com o
+          significado do DOCUMENTO. */}
       <p className="flex items-start gap-1.5 px-0.5 text-[11.5px] leading-relaxed text-muted-foreground">
         <Info className="mt-0.5 size-3.5 flex-none" aria-hidden="true" />
-        Esta fila NÃO faz parte da escala numérica do grupo, que só traz dia útil. Ela vem do plantão lançado no Pega Plantão.
+        Esta fila NÃO faz parte da escala numérica do grupo, que só traz dia útil. O número é o do posto no
+        Pega Plantão: de P5 em diante ele bate com o documento de fim de semana; em P1 a P4 são as mesmas
+        pessoas em ordem diferente, e o P12 do documento não é lançado lá.
       </p>
     </>
   )

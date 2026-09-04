@@ -192,8 +192,10 @@ describe('Escala Numérica — fim de semana (P1..P12 do Pega Plantão)', () => 
     // a ordem é pelo NÚMERO do posto: P2 antes de P10, nunca alfabética
     expect(pns()).toEqual(['P1', 'P2', 'P3', 'P10', 'P11'])
     expect(nomesFds()[0]).toBe('Joao Henrique Salvao Vanni')
-    // e a tela diz de onde vem
+    // e a tela diz de onde vem — inclusive que o Pn de P1 a P4 NÃO é o do documento de FDS
+    // (conferido contra 15/08 e 22/08: as mesmas 4 pessoas, em ordem diferente)
     expect(screen.getByText(/NÃO faz parte da escala numérica/i)).toBeInTheDocument()
+    expect(screen.getByText(/em P1 a P4 são as mesmas pessoas em ordem diferente/i)).toBeInTheDocument()
     // turno não escolhe nada no fim de semana
     expect(screen.queryByRole('tab', { name: 'Tarde' })).not.toBeInTheDocument()
   })
