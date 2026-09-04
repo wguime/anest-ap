@@ -55,6 +55,8 @@ import {
   normNome, candidatosPrimeiroNome, formatData, prepararCasosFimDeSemana,
   aplicarAtribuicoes, gruposSemIdentidade, gruposAnestesista,
 } from './utils'
+import dadosNumerica from '@/data/escalaNumerica.json'
+import { compararComRodape } from '@/lib/escalaNumerica'
 import {
   carimbarTurnos, chaveMapa, classificarAnexoMapa, planoPublicacaoMapas,
   resumoMapa, HOSPITAIS_MAPA,
@@ -95,6 +97,16 @@ const proximoDia = (iso) => {
   d.setDate(d.getDate() + 1)
   const off = d.getTimezoneOffset() * 60000
   return new Date(d.getTime() - off).toISOString().slice(0, 10)
+}
+
+/** Uma frase para o item da lista quando a folha lida diverge da escala de feriados publicada. */
+function textoCruzamentoFeriado(c) {
+  if (!c || c.iguais) return ''
+  const partes = []
+  if (c.faltamNoRodape.length) partes.push(`falta(m): ${c.faltamNoRodape.join(', ')}`)
+  if (c.sobramNoRodape.length) partes.push(`a mais: ${c.sobramNoRodape.join(', ')}`)
+  if (c.foraDeOrdem.length) partes.push(`fora de ordem: ${c.foraDeOrdem.join(', ')}`)
+  return `Difere da escala de ${c.nome} publicada — ${partes.join(' · ')}. Confira contra a foto; troca de plantão explica a diferença.`
 }
 
 export default function ImportarEscalaFdsPage({ data, onClose }) {
@@ -446,6 +458,26 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
   }
   const todosBloqueios = diasAlvo.flatMap((iso) => turnosOrdem.flatMap((t) =>
     bloqueiosDe(iso, t).map((b) => `${formatData(iso)} · ${TURNO_LABEL[t]}: ${b}`)))
+
+  /**
+   * A LISTA LIDA × A ESCALA DE FERIADOS PUBLICADA (dono 03/09; o mesmo cruzamento que a
+   * conferência de dia útil faz com a escala numérica).
+   *
+   * No feriado a fila do dia inteiro sai de UMA folha fotografada: se a leitura troca,
+   * perde ou embaralha um nome, a fila nasce errada e não há segunda fonte na tela. O
+   * documento "FERIADOS <ano>" que o grupo publica é essa segunda fonte, e ele vive no
+   * mesmo dataset da escala numérica. Divergência NÃO é erro — troca de plantão acontece —,
+   * então isto é AVISO, nunca bloqueio.
+   */
+  const cruzamentoFeriado = useMemo(() => {
+    if (!feriado || !sabadoISO) return null
+    const publicada = dadosNumerica?.feriados?.dias?.[sabadoISO]
+    const lida = (dias[sabadoISO]?.listaFeriado || []).map((n) => String(n || '').trim()).filter(Boolean)
+    if (!publicada?.lista?.length || !lida.length) return null
+    const esperada = publicada.lista.map((nome, i) => ({ posicao: i + 1, nome }))
+    const c = compararComRodape(esperada, lida)
+    return c.iguais ? { iguais: true, nome: publicada.nome } : { ...c, iguais: false, nome: publicada.nome }
+  }, [feriado, sabadoISO, dias])
 
   // Mapa sem hospital ou sem data não tem para onde ir — bloqueia, porque
   // publicar "no palpite" põe cirurgia no hospital errado.
@@ -851,7 +883,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
       : (feriado
           ? 'Lista do feriado — uma ordem, lida em sentidos opostos por turno'
           : 'Documento "ESCALA DE FINAL DE SEMANA" — grade e ordem de liberação'),
-    pendencia: todosBloqueios[0] || '',
+    pendencia: todosBloqueios[0] || textoCruzamentoFeriado(cruzamentoFeriado),
     erro: !!todosBloqueios.length,
   }
 
