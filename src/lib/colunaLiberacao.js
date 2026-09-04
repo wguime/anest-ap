@@ -100,11 +100,20 @@ export const notaDoNome = (s) => {
   return m ? String(m[1] ?? m[2] ?? '').trim() || null : null
 }
 
-/** Nota → rótulo exibível ("CONS"/"CONSULT"/"CONSULTÓRIO" → "Consultório"). */
+/**
+ * Nota → rótulo exibível ("CONS"/"CONSULT"/"CONSULTÓRIO" → "Consultório";
+ * "SOBREAV"/"SOBRE AVISO"/"S/A" → "Sobreaviso").
+ *
+ * SOBREAVISO se comporta como o consultório (dono 04/09): a pessoa OCUPA a posição na fila,
+ * não nasce liberada e só sai por toque humano — é posição de trabalho, mesmo sem cirurgia.
+ * Quem faz isso é o `teveCasos = true` que qualquer nota já liga; aqui só se garante que as
+ * grafias do rodapé caiam no mesmo rótulo em vez de virarem título solto.
+ */
 export const rotuloNota = (nota) => {
   if (!nota) return null
   const normalizada = String(nota).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
   if (/^cons/i.test(normalizada)) return 'Consultório'
+  if (/^s\s*\/?\s*a$/i.test(normalizada) || /^sobre\s*av/i.test(normalizada)) return 'Sobreaviso'
   return titleCaseNome(nota)
 }
 

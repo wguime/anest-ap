@@ -1018,6 +1018,27 @@ describe('nota de local entre parênteses no rodapé — "MATHEUS (CONSULT)" (do
     },
   )
 
+  // SOBREAVISO É POSIÇÃO ATIVA, COMO O CONSULTÓRIO (dono 04/09, escolhendo entre as duas
+  // leituras possíveis): quem está de sobreaviso ocupa a posição na fila e não nasce
+  // liberado — sair de lá é decisão humana, igual a todo mundo.
+  it.each(['SOBREAVISO', 'SOBREAV', 'SOBRE AVISO', 'S/A', 'SA'])(
+    'sem caso, (%s) é posição ativa no índice exato do rodapé',
+    (abreviacao) => {
+      const nomeCru = `ANEST B (${abreviacao})`
+      const r = gerarColunaLiberacao(
+        [caso('S1', 0, 'ANEST A', 'Cir')],
+        ['ANEST A', nomeCru, 'ANEST C'],
+      )
+      expect(r.linhas.map((l) => l.nomeOriginal)).toEqual(['ANEST A', nomeCru, 'ANEST C'])
+      expect(r.linhas[1]).toEqual(expect.objectContaining({
+        anestesista: 'Anest B',
+        notaRodape: 'Sobreaviso',
+        teveCasos: true,
+      }))
+      expect(r.linhas[1].liberado).toBeFalsy()
+    },
+  )
+
   it('não divide vírgula dentro da nota e aceita parênteses Unicode', () => {
     expect(separarListaRodape('ANEST A, ANEST B (CONSULT, APOIO), ANEST C（EXAMES）')).toEqual([
       'ANEST A', 'ANEST B (CONSULT, APOIO)', 'ANEST C（EXAMES）',
