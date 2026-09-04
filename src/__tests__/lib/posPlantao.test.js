@@ -87,10 +87,11 @@ describe('MANHÃ — sobe para a 2ª posição do hospital em que plantonou', ()
     const hro = r.blocos.find((b) => b.hospital === 'hro').lista
     const uni = r.blocos.find((b) => b.hospital === 'unimed').lista
 
-    expect(hro[1]).toMatchObject({ posicao: 2, nome: 'ROMULO', movidoPorPlantao: true })
+    // o posto entra nos dois turnos: de manhã é ele que explica a 2ª posição (dono 04/09)
+    expect(hro[1]).toMatchObject({ posicao: 2, nome: 'ROMULO', movidoPorPlantao: true, postoPlantao: 'P1' })
     // de manhã eles TRABALHAM: nada de marca de pós plantão aqui
     expect(hro[1].posPlantao).toBeUndefined()
-    expect(uni[1]).toMatchObject({ posicao: 2, nome: 'KLISMAN', movidoPorPlantao: true })
+    expect(uni[1]).toMatchObject({ posicao: 2, nome: 'KLISMAN', movidoPorPlantao: true, postoPlantao: 'P2' })
     // o 1º de cada hospital não se move — a 2ª é ABAIXO do plantão da manhã
     expect(hro[0].nome).toBe(nomes(blocos, 'hro')[0])
     expect(uni[0].nome).toBe(nomes(blocos, 'unimed')[0])
@@ -118,7 +119,7 @@ describe('MANHÃ — sobe para a 2ª posição do hospital em que plantonou', ()
     const r = aplicarPosPlantaoManha(dados, blocos, [], { hro: 'Adriano Dall Magro', unimed: null })
     const hro = r.blocos[0].lista
     expect(hro.map((p) => p.nome)).toEqual(['MELO', 'ADRIANO', 'GIOVANA'])
-    expect(hro[1]).toMatchObject({ numero: '22', movidoPorPlantao: true })
+    expect(hro[1]).toMatchObject({ numero: '22', movidoPorPlantao: true, postoPlantao: 'P1' })
   })
 
   it('nome que a legenda não reconhece não entra — não se inventa posição', () => {
@@ -159,7 +160,8 @@ describe('TARDE — não é escalado, mas fica na posição da numérica, marcad
 
     expect(uni.map((p) => p.nome)).toEqual(antes)
     expect(uni.map((p) => p.posicao)).toEqual(antes.map((_, i) => i + 1))
-    expect(uni.filter((p) => p.posPlantao).map((p) => `${p.posicao} ${p.nome}`)).toEqual(['12 ROMULO', '14 KLISMAN'])
+    expect(uni.filter((p) => p.posPlantao).map((p) => `${p.posicao} ${p.nome} ${p.postoPlantao}`))
+      .toEqual(['12 ROMULO P1', '14 KLISMAN P2'])
     // ninguém no HRO: os dois estão na coluna da Unimed nesse dia
     expect(r.blocos.find((b) => b.hospital === 'hro').lista.some((p) => p.posPlantao)).toBe(false)
   })
@@ -170,7 +172,7 @@ describe('TARDE — não é escalado, mas fica na posição da numérica, marcad
       [{ numero: '25', nome: 'ERLEI' }, { numero: '27', nome: 'NATHALIA' }],
       { hro: 'Erlei Perini', unimed: null }
     )
-    expect(r.consultorio[0]).toMatchObject({ nome: 'ERLEI', posPlantao: true })
+    expect(r.consultorio[0]).toMatchObject({ nome: 'ERLEI', posPlantao: true, postoPlantao: 'P1' })
     expect(r.consultorio[1].posPlantao).toBeUndefined()
   })
 

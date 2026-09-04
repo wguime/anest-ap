@@ -32,10 +32,21 @@ export function LinhaOrdem({ p }) {
       {/* pós-plantão: quem fez a noite da véspera. À tarde não é escalado, mas fica na
           posição da numérica com a marca (dono 03/09) — mesma escolha das férias. */}
       {p.posPlantao && !deFerias && (
-        // abaixo de 400px o rótulo inteiro rouba ~14px do nome e "ROMULO" virava "ROM…";
-        // o nome é o que importa, então nas telas estreitas fica só "(pós)" — o title diz o resto
-        <span className="flex-none text-[10.5px] font-semibold text-info" title="Pós plantão">
-          (pós<span className="hidden min-[400px]:inline"> plantão</span>)
+        // abaixo de 400px o rótulo inteiro rouba largura do nome e "ROMULO" virava "ROM…";
+        // o nome é o que importa, então nas telas estreitas encolhe — o title diz o resto
+        <span
+          className="flex-none text-[10.5px] font-semibold text-info"
+          title={`Pós plantão${p.postoPlantao ? ` ${p.postoPlantao}` : ''}`}
+        >
+          (pós<span className="hidden min-[400px]:inline"> plantão</span>
+          {p.postoPlantao ? ` ${p.postoPlantao}` : ''})
+        </span>
+      )}
+      {/* de manhã eles trabalham, e o posto entre parênteses é o que explica a 2ª posição
+          (dono 04/09) — sem ele o nome aparecia num hospital diferente do da folha, sem razão */}
+      {p.movidoPorPlantao && p.postoPlantao && (
+        <span className="flex-none text-[10.5px] font-semibold text-info" title={`Plantão ${p.postoPlantao} da noite anterior`}>
+          ({p.postoPlantao})
         </span>
       )}
       {p.trocado && (
@@ -121,7 +132,9 @@ export function BlocoConsultorio({ consultorio }) {
               {c.nome}
               {deFerias && <span className="text-[10.5px] font-semibold text-warning">(férias)</span>}
               {c.posPlantao && !deFerias && (
-                <span className="text-[10.5px] font-semibold text-info" title="Pós plantão">(pós plantão)</span>
+                <span className="text-[10.5px] font-semibold text-info" title="Pós plantão">
+                  (pós plantão{c.postoPlantao ? ` ${c.postoPlantao}` : ''})
+                </span>
               )}
             </span>
           )

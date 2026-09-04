@@ -115,8 +115,9 @@ const wrap = ({ children }) => <ThemeProvider><ToastProvider>{children}</ToastPr
 const nomesEm = (raiz) => [...raiz.querySelectorAll('[data-slot="ordem-nome"]')].map((el) => el.textContent)
 const nomesDoBloco = (rotulo) => nomesEm(screen.getByRole('heading', { name: rotulo }).closest('section'))
 const pns = () => [...document.querySelectorAll('[data-slot="fds-linha"]')].map((el) => el.firstElementChild.textContent)
-// o rótulo é partido em spans (abaixo de 400px vira só "(pós)"), então casa pelo title
-const posPlantao = () => [...document.querySelectorAll('[title="Pós plantão"]')]
+// o rótulo é partido em spans (abaixo de 400px vira só "(pós)") e o title leva o posto,
+// então casa pelo prefixo do title
+const posPlantao = () => [...document.querySelectorAll('[title^="Pós plantão"]')]
 const nomesFds = () => [...document.querySelectorAll('[data-slot="fds-nome"]')].map((el) => el.textContent)
 
 beforeEach(() => {
@@ -397,8 +398,11 @@ describe('Escala Numérica — pós-plantão', () => {
     expect(nomesDoBloco('Unimed')[0]).toBe('MELO')
     // e o Romulo sai da coluna da Unimed: uma pessoa, um lugar
     expect(nomesDoBloco('Unimed')).not.toContain('ROMULO')
-    // de manhã eles trabalham: nada de marca nem nome esmaecido
+    // de manhã eles trabalham: nada de marca de pós plantão nem nome esmaecido…
     expect(posPlantao()).toHaveLength(0)
+    // …mas o POSTO entre parênteses fica, para a 2ª posição não parecer arbitrária
+    expect(screen.getByText('ROMULO').closest('div').textContent).toContain('(P1)')
+    expect(screen.getByText('KLISMAN').closest('div').textContent).toContain('(P2)')
   })
 
   it('tarde: os dois ficam na posição da numérica, marcados como pós plantão', async () => {
@@ -411,7 +415,8 @@ describe('Escala Numérica — pós-plantão', () => {
     const uni = nomesDoBloco('Unimed')
     expect(uni[11]).toBe('ROMULO')
     expect(uni[13]).toBe('KLISMAN')
-    expect(screen.getByText('ROMULO').closest('div').textContent).toMatch(/\(pós/)
+    expect(screen.getByText('ROMULO').closest('div').textContent).toMatch(/\(pós.*P1\)/)
+    expect(screen.getByText('KLISMAN').closest('div').textContent).toMatch(/\(pós.*P2\)/)
     // ninguém foi tirado da fila da tarde
     expect(uni).toHaveLength(20)
   })

@@ -19,8 +19,9 @@
 import { casarNomeComLegenda, normNomeNumerica } from './escalaNumerica.js'
 import { identificarNaLegenda } from './trocasFeriado.js'
 
-/** Hospital de cada posto do plantão noturno. */
+/** Hospital de cada posto do plantão noturno, e o caminho inverso. */
 export const HOSPITAL_DO_POSTO = { P1: 'hro', P2: 'unimed' }
+export const POSTO_DO_HOSPITAL = { hro: 'P1', unimed: 'P2' }
 
 /** Véspera de `dataISO` em 'AAAA-MM-DD'. */
 export function vesperaDe(dataISO) {
@@ -123,8 +124,10 @@ export function aplicarPosPlantaoManha(dados, blocos, consultorio = [], noturnos
     listas[hospital] = [
       ...listas[hospital].slice(0, idx),
       // `movidoPorPlantao` NÃO é a marca da tarde: de manhã eles trabalham, então não
-      // podem aparecer esmaecidos nem rotulados "(pós plantão)" (dono: a marca é da tarde)
-      { ...entrada, movidoPorPlantao: true },
+      // podem aparecer esmaecidos nem rotulados "(pós plantão)" (dono: a marca é da tarde).
+      // `postoPlantao` vai nos dois turnos — é ele que explica, entre parênteses, de qual
+      // plantão a pessoa vem, e por que ela está na 2ª posição (dono 04/09).
+      { ...entrada, movidoPorPlantao: true, postoPlantao: POSTO_DO_HOSPITAL[hospital] },
       ...listas[hospital].slice(idx),
     ]
     movidos.push({ hospital, nome: entrada.nome })
@@ -142,13 +145,16 @@ export function aplicarPosPlantaoManha(dados, blocos, consultorio = [], noturnos
  * ganham a marca (decisão do dono 03/09, mesma escolha das férias: marcar, não sumir).
  */
 export function marcarPosPlantaoTarde(blocos, consultorio = [], noturnos = {}) {
-  const nomes = ['hro', 'unimed'].map((h) => noturnos[h]).filter(Boolean)
-  if (!nomes.length) return { blocos, consultorio, marcados: [] }
+  const postos = ['hro', 'unimed']
+    .filter((h) => noturnos[h])
+    .map((h) => ({ posto: POSTO_DO_HOSPITAL[h], nome: noturnos[h] }))
+  if (!postos.length) return { blocos, consultorio, marcados: [] }
   const marcados = []
   const marcar = (entrada) => {
-    if (!nomes.some((n) => ehAPessoa(entrada, n))) return entrada
+    const dele = postos.find((x) => ehAPessoa(entrada, x.nome))
+    if (!dele) return entrada
     marcados.push(normNomeNumerica(entrada.nome))
-    return { ...entrada, posPlantao: true }
+    return { ...entrada, posPlantao: true, postoPlantao: dele.posto }
   }
   return {
     blocos: blocos.map((b) => ({ ...b, lista: b.lista.map(marcar) })),
