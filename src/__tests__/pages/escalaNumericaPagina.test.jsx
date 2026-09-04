@@ -27,6 +27,9 @@ const { getFeriasDoAno, invalidarFeriasDoAno } = vi.hoisted(() => {
       registro('Karine Bedin', '2026-09-03', 901),
       registro('Gabriel Juan Kettenhuber Costa', '2026-09-03', 902),
       registro('João Ricardo Moreira', '2026-09-03', 903),
+      // Materno (24 CURY) e consultório (25 ERLEI): a marca não é só do HRO
+      registro('Marcos Tadeu Cury', '2026-09-03', 905),
+      registro('Erlei Perini', '2026-09-03', 906),
       // fora do dia consultado: não pode marcar ninguém em 03/09
       registro('Thayná Regina Santos', '2026-10-12', 904),
     ]),
@@ -143,8 +146,8 @@ describe('Escala Numérica — quinta 03/09/2026', () => {
     render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
     await waitFor(() => expect(screen.getAllByText('(férias)').length).toBeGreaterThan(0))
 
-    // os 3 do dia: JOAO RICARDO (06), GABRIEL (10), KARINE (18) — todos no HRO
-    expect(screen.getAllByText('(férias)')).toHaveLength(3)
+    // 3 no HRO + 1 no Materno + 1 no consultório
+    expect(screen.getAllByText('(férias)')).toHaveLength(5)
     const linhaKarine = screen.getByText('KARINE').closest('div')
     expect(linhaKarine.textContent).toContain('(férias)')
     expect(linhaKarine.textContent).toContain('18')
@@ -153,9 +156,26 @@ describe('Escala Numérica — quinta 03/09/2026', () => {
     expect(nomesDoBloco('HRO')).toHaveLength(20)
   })
 
+  it('a marca vale para o MATERNO e para o CONSULTÓRIO, não só para os hospitais da fila', async () => {
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(screen.getAllByText('(férias)').length).toBe(5))
+
+    // Materno: CURY (24) fica na posição dele, marcado
+    const materno = screen.getByRole('heading', { name: 'Materno' }).closest('section')
+    expect(within(materno).getByText('CURY').closest('div').textContent).toContain('(férias)')
+    expect(nomesDoBloco('Materno')).toEqual(['CURY', 'RAQUEL'])
+
+    // Consultório: fica fora da fila, mas ERLEI (25) também aparece marcado
+    const cons = screen.getByRole('heading', { name: 'Consultório' }).closest('section')
+    const chips = [...cons.querySelectorAll('[data-slot="consultorio-chip"]')].map((c) => c.textContent)
+    expect(chips).toHaveLength(3)
+    expect(chips.find((t) => t.includes('ERLEI'))).toContain('(férias)')
+    expect(chips.find((t) => t.includes('EDUARDO'))).not.toContain('(férias)')
+  })
+
   it('THAYNA está de férias em outro dia e NÃO é marcada em 03/09', async () => {
     render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
-    await waitFor(() => expect(screen.getAllByText('(férias)').length).toBe(3))
+    await waitFor(() => expect(screen.getAllByText('(férias)').length).toBe(5))
     const linhaThayna = screen.getByText('THAYNA').closest('div')
     expect(linhaThayna.textContent).not.toContain('(férias)')
   })
@@ -178,6 +198,7 @@ describe('Escala Numérica — quinta 03/09/2026', () => {
     await waitFor(() => expect(screen.getByText(/Férias NÃO conferidas/i)).toBeInTheDocument())
     expect(screen.queryByText('(férias)')).not.toBeInTheDocument()
     expect(nomesDoBloco('HRO')).toHaveLength(20)
+    expect(document.querySelectorAll('[data-slot="consultorio-chip"]')).toHaveLength(3)
   })
 })
 

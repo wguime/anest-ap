@@ -96,15 +96,22 @@ export function BlocoConsultorio({ consultorio }) {
         <span className="text-[11.5px] text-muted-foreground">fora da fila</span>
       </div>
       <div className="flex flex-wrap gap-1.5">
-        {consultorio.map((c) => (
-          <span
-            key={c.numero}
-            className="inline-flex min-h-[32px] items-center gap-1.5 rounded-full bg-muted px-3 text-[12.5px] font-semibold"
-          >
-            <span className="text-[11px] tabular-nums text-muted-foreground">{c.numero}</span>
-            {c.nome}
-          </span>
-        ))}
+        {consultorio.map((c) => {
+          const deFerias = Boolean(c.ferias?.length)
+          return (
+            <span
+              key={c.numero}
+              data-slot="consultorio-chip"
+              className={`inline-flex min-h-[32px] items-center gap-1.5 rounded-full px-3 text-[12.5px] ${
+                deFerias ? 'border border-dashed border-border-strong font-medium text-muted-foreground' : 'bg-muted font-semibold'
+              }`}
+            >
+              <span className="text-[11px] tabular-nums text-muted-foreground">{c.numero}</span>
+              {c.nome}
+              {deFerias && <span className="text-[10.5px] font-semibold text-warning">(férias)</span>}
+            </span>
+          )
+        })}
       </div>
     </section>
   )

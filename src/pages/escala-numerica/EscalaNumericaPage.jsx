@@ -149,7 +149,9 @@ export default function EscalaNumericaPage({ goBack }) {
     return {
       tipo: 'dia',
       blocos,
-      consultorio: base.consultorio,
+      // o consultório não entra na FILA, mas quem está nele também tira férias (dono 03/09):
+      // a marca vale para os três hospitais E para o consultório
+      consultorio: anotarFerias(base.consultorio, ferias),
       diaSemana: base.diaSemana,
       pendencias: [...new Set(blocos.flatMap((b) => b.pendencias))],
     }
