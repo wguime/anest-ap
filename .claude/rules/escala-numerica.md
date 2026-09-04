@@ -103,7 +103,13 @@ Vale **de segunda a sexta**, na tela de consulta (`src/lib/posPlantao.js`):
   da **grade do documento de fim de semana** (`escala_cirurgica` linha `hospital='fds'`,
   `fds_meta.grade`, via `svc.fetchEscala(domingo, 'fds')`).
 - Sexta à noite não gera pós-plantão: o sábado não tem escala numérica.
-- Em **feriado** a tela mostra a fila única e a regra NÃO roda (não há coluna por hospital).
+- Em **feriado NÃO há pós-plantão** (dono 04/09: "siga a lista conforme enviado"): a tela mostra
+  a fila única publicada, sem reordenar e sem marcar. Travado em
+  `src/__tests__/pages/escalaNumericaPagina.test.jsx`.
+- **Segunda-feira fica como está** (dono 04/09): sem o fim de semana publicado, a regra não roda
+  e a tela mostra a numérica pura — não se infere quem plantonou.
+- O par "HUMBERTO / ROBERTA" trunca a 375px e **fica assim** (dono 04/09); a 430px, que é o alvo
+  do desenho, nada corta.
 
 ## Trocas de FERIADO (dono 03/09/2026)
 

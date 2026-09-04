@@ -271,6 +271,32 @@ describe('Escala Numérica — feriado', () => {
     expect(screen.queryByRole('heading', { name: 'HRO' })).not.toBeInTheDocument()
     expect(nomesDoBloco('INDEPENDENCIA')[0]).toBe('GIOVANA')
   })
+
+  /**
+   * "Nos feriados não há pós plantão, siga a lista conforme enviado" (dono 04/09). A fila do
+   * feriado é a publicada, ponto — não há coluna por hospital para ter 2ª posição, e ninguém
+   * é reordenado nem marcado. 07/09 é segunda, então a véspera É consultada; o que não pode é
+   * a resposta mexer na lista.
+   */
+  it('feriado NÃO tem pós-plantão: a fila publicada sai intacta nos dois turnos', async () => {
+    vi.setSystemTime(new Date('2026-09-07T10:00:00-03:00'))
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'INDEPENDENCIA' })).toBeInTheDocument())
+
+    // o mock do documento de FDS põe MATHEUS e JOAO RICARDO na noite; nenhum dos dois pode
+    // saltar para a 2ª posição da fila do feriado
+    const manha = nomesDoBloco('INDEPENDENCIA')
+    expect(manha.slice(0, 3)).toEqual(['GIOVANA', 'EDUARDO', 'JANAINA'])
+    expect(manha).toHaveLength(20)
+    expect(posPlantao()).toHaveLength(0)
+    expect(screen.queryByText('(P1)')).not.toBeInTheDocument()
+    expect(screen.queryByText('(P2)')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Tarde' }))
+    await waitFor(() => expect(nomesDoBloco('INDEPENDENCIA')[0]).toBe('STAUB'))
+    expect(nomesDoBloco('INDEPENDENCIA')).toEqual([...manha].reverse())
+    expect(posPlantao()).toHaveLength(0)
+  })
 })
 
 describe('Feriados — lista e ordem do feriado', () => {
