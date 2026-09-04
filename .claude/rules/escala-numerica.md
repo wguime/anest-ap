@@ -53,7 +53,9 @@ rede, e a lista sai pendente), férias `node scripts/ferias-pega-plantao.mjs
   invertida — quem consumir NÃO inverte de novo.
 - **Colunas em cinza = feriado**: sem validade, há escala própria do feriado. Não usar os
   números nem reaproveitar o dia anterior. Na edição vigente: 25/08 (Chapecó), 07/09, 12/10,
-  02/11, 20/11. **A escala de feriados** (PDF "FERIADOS <ano>", `feriados.dias` no dataset,
+  02/11, 20/11 — e **feriado válido é só o que está no documento** (dono 04/09): 15/11, 24/12,
+  25/12, 31/12 e 01/01 estão em `FERIADOS_2026` do app mas NÃO na folha publicada, e o
+  Carnaval está na folha sem ser fila única no app. **A escala de feriados** (PDF "FERIADOS <ano>", `feriados.dias` no dataset,
   extraída por `scripts/extrair-feriados-numerica.py`) é uma **FILA ÚNICA por feriado** —
   todos os hospitais, 20 nomes, **manhã do 1º ao último de cima para baixo, tarde invertida**
   (dono 03/09). Louise já vem impressa quando trabalha (nada a inserir). Nomes sem sobrenome
@@ -111,6 +113,23 @@ feriado. Firestore `trocas_feriado`; **não há coleção de override** — a tr
 `aplicarTrocasNaFila` a aplica na leitura. ⚠️ A regra do Firestore exige deploy à mão.
 Identidade: `identificarNaLegenda` devolve **null quando ambíguo** — "GUILHERME" casa com MELO
 (04), STAUB (13) e GUILHERME D (41), e as chaves "10"–"44" do JSON vêm ANTES de "01"–"09".
+
+## As três fontes de conferência (dono 03–04/09)
+
+Cada tipo de dia tem uma referência que NÃO passa pela leitura da foto. Divergência é sempre
+AVISO, nunca bloqueio: troca, ajuda e consultório escalado mudam a fila de propósito.
+
+| Dia | Referência | Onde compara | Regra |
+|---|---|---|---|
+| Útil | escala numérica (`dias`) | `ImportarEscalaPage` (rodapé lido) | ordem exata; férias descontadas |
+| Feriado | folha "FERIADOS \<ano\>" (`feriados.dias`) | `ImportarEscalaFdsPage` (lista lida) | ordem exata; **só valem os feriados do documento** (dono 04/09) |
+| Fim de semana | **Pega Plantão**, campo `Setor` ("1 - P1", "E10 - P10") | `ImportarEscalaFdsPage` (tabela de posições) | **só o SÁBADO** é consultado e vale os dois dias; P5+ é posição exata; **P1–P4 é bloco** — as mesmas 4 pessoas em ordem trocada pedem CONFIRMAÇÃO, não são erro; posição que o PP não cobre não vira acusação |
+
+`src/lib/escalaFdsPegaPlantao.js` faz o do fim de semana; `nomesCompativeis` lá dentro casa
+"GUILHERME DIDOMENICO" com "Guilherme Xavier Di Domenico" e "GUILHERME MELO" com "GUILHERME
+M ELO" (token curto consome tokens CONSECUTIVOS do longo, com o primeiro nome batendo). Na
+tela o casamento tem 3 camadas: dicionário de apelidos → `casarNomeComLegenda` (mapa curado:
+"COSTA" é o Marcos, não o Gabriel) → `nomesCompativeis`.
 
 ## Ao receber uma escala numérica NOVA (o dono cola o PDF/imagem aqui)
 
