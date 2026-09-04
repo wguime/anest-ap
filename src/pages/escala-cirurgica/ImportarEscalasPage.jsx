@@ -44,6 +44,8 @@ import {
   descreverMomentoRascunho, escalaMudouDepoisDoRascunho,
 } from '@/lib/escalaLoteRascunho'
 import { formatData, novaIdLinha, turnoAtual } from './utils'
+import { segurarAtualizacao, liberarAtualizacao } from '@/lib/atualizacaoAdiada'
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard'
 import { normalizarTrabalho } from './trabalhoConferencia'
 import { podeEditarEscalaCirurgica } from './gate'
 import ImportarEscalaPage from './ImportarEscalaPage'
@@ -248,6 +250,22 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
       window.removeEventListener('pagehide', aoSair)
     }
   }, [gravador])
+
+  // ── O APP PARA DE SE RECARREGAR NO MEIO (Onda 2, item 2.3) ─────────────────
+  // Com lote aberto, `pwaUpdate` adia o reload (deploy ao voltar do 2º plano, intervalo
+  // de 15 min) até esta tela fechar. Declarado DEPOIS dos efeitos do rascunho de
+  // propósito: ao desmontar, o flush grava antes de o reload devido acontecer.
+  useEffect(() => {
+    if (!temLote) return undefined
+    segurarAtualizacao('escala-lote')
+    return () => liberarAtualizacao('escala-lote')
+  }, [temLote])
+
+  // "Cancelar" com trabalho pendente PERGUNTA (protótipo O2-B). Sair não apaga o rascunho —
+  // ele volta na próxima abertura da mesma data e turno; o diálogo diz isso.
+  const trabalhoPendente = temLote && hospitaisDoLote.some((h) => !publicados.includes(h))
+  const guardaSaida = useUnsavedChangesGuard(trabalhoPendente)
+  const cancelar = () => guardaSaida.requestClose(() => onClose?.())
 
   const descartarRascunho = () => {
     rascunhoDesligadoRef.current = true
@@ -652,7 +670,9 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
   const podePublicar = plano.publicar.length > 0 && canEdit && !publicandoLote
 
   return (
-    <div className="fixed inset-0 z-modal bg-background overflow-y-auto">
+    // `data-no-swipe-back`: o gesto da borda esquerda (`useSwipeBack` no <main> do App) é
+    // desligado com a conferência aberta — ele fechava a tela inteira sem pergunta (audit A7-iii)
+    <div className="fixed inset-0 z-modal bg-background overflow-y-auto" data-no-swipe-back="true">
       {/* Header no padrão do PageHeader do DS — altura 56, sombra, título com
           subtítulo e slot à direita. Continua STICKY em vez de `fixed` (o
           PageHeader é fixed com spacer e, no PWA do iPhone, cobria os
@@ -661,7 +681,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
         <div className="mx-auto flex h-14 max-w-3xl items-center px-4">
           <button
             type="button"
-            onClick={() => onClose?.()}
+            onClick={cancelar}
             aria-label="Cancelar"
             className="flex min-h-[44px] min-w-[70px] items-center gap-1 text-primary active:opacity-60"
           >
@@ -912,7 +932,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
 
       {temLote && canEdit && (
         <div className="fixed inset-x-0 bottom-0 z-modal mx-auto flex max-w-3xl gap-2 border-t border-border bg-card p-3">
-          <Button variant="ghost" onClick={() => onClose?.()} className="flex-1">Cancelar</Button>
+          <Button variant="ghost" onClick={cancelar} className="flex-1">Cancelar</Button>
           <Button onClick={() => setRevisar(true)} className="flex-1">
             <Check className="h-4 w-4" /> Revisar e publicar
           </Button>
@@ -1046,6 +1066,17 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
           cancelText="Cancelar"
         />
       )}
+
+      {/* Sair com trabalho pendente pergunta — e diz que o rascunho fica (protótipo O2-B) */}
+      <ConfirmDialog
+        open={guardaSaida.confirmOpen}
+        onClose={guardaSaida.cancelClose}
+        onConfirm={guardaSaida.confirmClose}
+        title="Sair da conferência?"
+        description={`O que você já conferiu fica guardado neste aparelho e volta quando você abrir de novo a importação de ${formatData(dataEscolhida)} · ${periodo === 'matutino' ? 'Manhã' : 'Tarde'}. Nada foi publicado.`}
+        confirmText="Sair"
+        cancelText="Continuar conferindo"
+      />
 
       {/* Descartar o rascunho restaurado: some deste aparelho; as escalas publicadas não mudam */}
       <ConfirmDialog
