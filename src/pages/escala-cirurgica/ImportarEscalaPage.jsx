@@ -24,6 +24,10 @@ import SegmentedSelector from './SegmentedSelector'
 import { linhaVazia, prepararCasosImportados as prepararCasos, normNome, candidatosPrimeiroNome, resumirRodape, casosQuePassamParaOTurno, presencaDoTurno, estaPresente, gruposAnestesista, chavesAnestesista, aplicarAtribuicoes, preAtribuicoesDoDicionario, azuisEmprestados, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital, localizarSlotEscala } from './utils'
 import { mensagemErroPublicacao } from '@/lib/escalaPublicacaoErro'
 import { validarCasosParaPublicacao, resumirBloqueiosDeCampo, textoBloqueio } from '@/lib/escalaCirurgicaValidacao'
+import dadosNumerica from '@/data/escalaNumerica.json'
+import { montarOrdem, compararComRodape } from '@/lib/escalaNumerica'
+import { getFeriasDoAno } from '@/services/pegaPlantaoApi'
+import { normalizarRegistrosFerias } from '@/lib/extratoFerias'
 import { podeEditarEscalaCirurgica } from './gate'
 import { planoCruzamentoUrgencias, salasContrato } from '@/lib/escalaCirurgicaUrgencias'
 import { hospitalPelaEstrutura } from '@/lib/escalaHospitalEstrutura'
@@ -764,6 +768,38 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     [ordemTexto, ajudaTexto, casos, resolver],
   )
 
+  // ── A ESCALA NUMÉRICA CONFERE O RODAPÉ (dono 03/09; item 1.9 da auditoria) ─────────
+  // O rodapé é a fila sagrada e sai de uma FOTO: quando a leitura troca, perde ou embaralha
+  // um nome, nada na tela sabe dizer. A escala numérica do grupo é a única referência
+  // independente da ordem daquele dia — e é de graça, não passa pela Vision. Divergência
+  // NÃO é erro: troca, ajuda e gente do consultório escalada mudam o rodapé de propósito.
+  // Por isso isto é AVISO, nunca bloqueio.
+  const [feriasAno, setFeriasAno] = useState(null)
+  useEffect(() => {
+    const ano = Number(String(dataEscolhida).slice(0, 4))
+    if (!ano) return
+    let vivo = true
+    // sem invalidar o cache de 30min: aqui a lista é uma DICA de conferência, não a fila
+    // publicada (na tela de consulta, que é o entregável, a consulta é sempre na hora)
+    getFeriasDoAno(ano)
+      .then((raw) => { if (vivo) setFeriasAno(normalizarRegistrosFerias(raw)) })
+      .catch(() => { if (vivo) setFeriasAno(null) })
+    return () => { vivo = false }
+  }, [dataEscolhida])
+
+  const conferenciaNumerica = useMemo(() => {
+    const rodape = separarListaRodape(ordemTexto)
+    if (!rodape.length || !dadosNumerica?.dias?.[dataEscolhida]) return null
+    const ferias = Array.isArray(feriasAno)
+      ? [...new Set(feriasAno.filter((r) => r.data === dataEscolhida).map((r) => r.nome))]
+      : null
+    const esperada = montarOrdem(dadosNumerica, { data: dataEscolhida, hospital: hosp, turno: periodo, ferias })
+    if (!esperada.ok || !esperada.lista.length) return null
+    const c = compararComRodape(esperada.lista, rodape)
+    if (c.iguais) return { iguais: true, feriasConferidas: esperada.feriasConferidas }
+    return { ...c, iguais: false, feriasConferidas: esperada.feriasConferidas, feriado: !!esperada.filaUnica }
+  }, [ordemTexto, dataEscolhida, hosp, periodo, feriasAno])
+
   // Escala JÁ PUBLICADA deste mesmo hospital/dia — é dela que saem as cirurgias
   // da manhã marcadas "passa para tarde" (o lote em conferência não as contém).
   const [escalaPublicada, setEscalaPublicada] = useState(null)
@@ -1483,7 +1519,8 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     [casosAtribuidosDoTurno],
   )
   const bloqueiosConferencia = gruposAmbiguos.length + duplicidadesPendentes.length + bloqueiosCampo.length
-  const avisosConferencia = suspeitosExtracao.length + caudaLiberada.length
+  const avisosConferencia = (conferenciaNumerica && !conferenciaNumerica.iguais ? 1 : 0)
+    + suspeitosExtracao.length + caudaLiberada.length
     + conflitos.length + blocosRepetidos.length + travessiasOrfas.length
     + duplicados.length + casosForaDoRodape.length + gruposSemAnestesista
     + secoesAusentesHro.length
@@ -1509,9 +1546,17 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     if (secoesAusentesHro.length) {
       l.push({ trava: false, txt: `sem ${secoesAusentesHro.join(', ')} na leitura — confira o mapa` })
     }
+    if (conferenciaNumerica && !conferenciaNumerica.iguais) {
+      const partes = []
+      if (conferenciaNumerica.faltamNoRodape.length) partes.push(`${conferenciaNumerica.faltamNoRodape.length} não ${conferenciaNumerica.faltamNoRodape.length === 1 ? 'está' : 'estão'} no rodapé`)
+      if (conferenciaNumerica.sobramNoRodape.length) partes.push(`${conferenciaNumerica.sobramNoRodape.length} a mais`)
+      if (conferenciaNumerica.foraDeOrdem.length) partes.push(`${conferenciaNumerica.foraDeOrdem.length} fora de ordem`)
+      l.push({ trava: false, txt: `rodapé difere da escala numérica: ${partes.join(' · ')}` })
+    }
     return l
   }, [gruposAmbiguos, duplicidadesPendentes, bloqueiosCampo, gruposSemAnestesista, casosForaDoRodape, caudaLiberada,
-    suspeitosExtracao, conflitos, blocosRepetidos, travessiasOrfas, duplicados, secoesAusentesHro])
+    suspeitosExtracao, conflitos, blocosRepetidos, travessiasOrfas, duplicados, secoesAusentesHro,
+    conferenciaNumerica])
 
   // ── O QUE ESTA ABA CONTA AO LOTE (dono 27/08) ────────────────────────────
   // Dois consumidores: o SELO da aba (pronto · trava · avisa, mesma taxonomia
@@ -2209,6 +2254,49 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                   </p>
                 )}
               </div>
+              {/* RODAPÉ × ESCALA NUMÉRICA (dono 03/09). A numérica do grupo é a única
+                  referência independente da ordem do dia, e não passa pela Vision: é ela
+                  que pega o nome que a leitura trocou, perdeu ou embaralhou. Divergência
+                  não é erro — troca, ajuda e consultório escalado mudam o rodapé de
+                  propósito —, por isso a lista NOMEIA e não bloqueia. */}
+              {conferenciaNumerica && !conferenciaNumerica.iguais && (
+                <div className="rounded-xl border border-l-4 border-warning bg-warning/10 p-3 space-y-1 dark:bg-warning/15">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
+                    O rodapé difere da escala numérica
+                  </p>
+                  {conferenciaNumerica.faltamNoRodape.length > 0 && (
+                    <p className="text-xs text-foreground">
+                      <b>Na numérica e não no rodapé:</b>{' '}
+                      {conferenciaNumerica.faltamNoRodape.map((n) => titleCaseNome(n)).join(' · ')}
+                    </p>
+                  )}
+                  {conferenciaNumerica.sobramNoRodape.length > 0 && (
+                    <p className="text-xs text-foreground">
+                      <b>No rodapé e não na numérica:</b>{' '}
+                      {conferenciaNumerica.sobramNoRodape.map((n) => titleCaseNome(n)).join(' · ')}
+                    </p>
+                  )}
+                  {conferenciaNumerica.foraDeOrdem.length > 0 && (
+                    <p className="text-xs text-foreground">
+                      <b>Fora da sequência:</b>{' '}
+                      {conferenciaNumerica.foraDeOrdem.map((n) => titleCaseNome(n)).join(' · ')}
+                    </p>
+                  )}
+                  {conferenciaNumerica.resolvidos?.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Dupla resolvida pela escala:{' '}
+                      {conferenciaNumerica.resolvidos.map((d) => `${d.par} → ${titleCaseNome(d.nome)}`).join(' · ')}.
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Confira contra a foto. Diferença é normal quando houve troca, ajuda de outro
+                    hospital ou alguém do consultório escalado — o rodapé publicado é o que vale.
+                    {!conferenciaNumerica.feriasConferidas && ' Férias não conferidas nesta comparação.'}
+                  </p>
+                </div>
+              )}
+
               {/* NOME AMBÍGUO (dono 11/08) — vermelho: isto impede publicar */}
             </section>
 

@@ -59,9 +59,9 @@ vi.mock('@/hooks/useRosterAnestesistas', () => ({
 const wrap = ({ children }) => <ThemeProvider><ToastProvider>{children}</ToastProvider></ThemeProvider>
 
 /** Sobe uma "imagem" da escala — a extração em si é o mock da Vision. */
-async function importar(casos, ordemLiberacao = [], { hospital = 'hro' } = {}) {
+async function importar(casos, ordemLiberacao = [], { hospital = 'hro', data = '2026-07-28' } = {}) {
   svcMock.parseEscalaImagem.mockResolvedValueOnce({ casos, ordemLiberacao, ajudaExterna: [] })
-  const { container } = render(<ImportarEscalaPage hospital={hospital} data="2026-07-28" onClose={vi.fn()} />, { wrapper: wrap })
+  const { container } = render(<ImportarEscalaPage hospital={hospital} data={data} onClose={vi.fn()} />, { wrapper: wrap })
   const input = container.querySelector('input[type="file"]')
   const file = new File(['x'], 'escala.png', { type: 'image/png' })
   fireEvent.change(input, { target: { files: [file] } })
@@ -952,5 +952,55 @@ describe('campo que o banco recusa trava a aba antes do RPC', () => {
     fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
     await waitFor(() => expect(salvarEscala).toHaveBeenCalled())
     expect(salvarEscala.mock.calls[0][0].casos[0].hora).toBe('07:30')
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// A ESCALA NUMÉRICA CONFERE O RODAPÉ (dono 03/09; item 1.9 da auditoria).
+//
+// O rodapé é a fila sagrada e vem de uma FOTO: quando a leitura troca, perde ou embaralha
+// um nome, nada na tela sabia dizer. A escala numérica do grupo é a única referência
+// independente daquele dia e não passa pela Vision. Divergência NÃO é erro — troca, ajuda
+// e consultório escalado mudam o rodapé de propósito —, então isto é AVISO, nunca bloqueio.
+// A fixture usa o dia real 03/09 no HRO, que é o caso que motivou a auditoria.
+// ════════════════════════════════════════════════════════════════════════════
+describe('rodapé × escala numérica', () => {
+  const casoHro = (anestesista, sala) => ({
+    sala, ordem: 0, hora: '07:30', anestesista, cirurgiao: 'Dr X', pacienteIniciais: 'A.B.',
+  })
+
+  it('rodapé igual ao esperado não gera aviso nenhum', async () => {
+    // 03/09 no HRO, manhã: a ordem da numérica começa em MELO (sem as férias, que o teste
+    // não consulta — a comparação segue valendo e a tela diz que não conferiu)
+    const ordem = ['MELO', 'JOAO RICARDO', 'GIOVANA', 'GABRIEL', 'JOAO HENRIQUE', 'PAULO', 'KLISMAN', 'KARINE',
+      'ROMULO', 'ADRIANO', 'RODNEI', 'GARIM', 'DIEGO', 'FERNANDA', 'MARILIO', 'LEONARDO', 'GABRIELA', 'OSCAR',
+      'CRISTINA', 'LEANDRO']
+    await importar([casoHro('MELO', 'Sala 1')], ordem, { hospital: 'hro', data: '2026-09-03' })
+    await waitFor(() => expect(screen.queryByText(/difere da escala numérica/i)).toBeNull())
+  })
+
+  it('nome trocado no rodapé aparece nomeado, dos dois lados, sem bloquear', async () => {
+    // RAFAEL e DANIELA são da Unimed nesse dia; PAULO e KLISMAN, do HRO — foi exatamente a
+    // troca que a foto de 03/09 trouxe
+    const ordem = ['MELO', 'JOAO RICARDO', 'GIOVANA', 'GABRIEL', 'JOAO HENRIQUE', 'RAFAEL', 'DANIELA', 'KARINE',
+      'ROMULO', 'ADRIANO', 'RODNEI', 'GARIM', 'DIEGO', 'FERNANDA', 'MARILIO', 'LEONARDO', 'GABRIELA', 'OSCAR',
+      'CRISTINA', 'LEANDRO']
+    await importar([casoHro('MELO', 'Sala 1')], ordem, { hospital: 'hro', data: '2026-09-03' })
+
+    const aviso = await screen.findByText(/O rodapé difere da escala numérica/i)
+    expect(aviso).toBeTruthy()
+    const caixa = aviso.closest('div')
+    expect(caixa.textContent).toMatch(/Paulo/)     // está na numérica e sumiu do rodapé
+    expect(caixa.textContent).toMatch(/Klisman/)
+    expect(caixa.textContent).toMatch(/Rafael/)    // apareceu no rodapé e não é do HRO hoje
+    expect(caixa.textContent).toMatch(/Daniela/)
+    // é aviso: o publicar não é recusado por isso
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+    await waitFor(() => expect(salvarEscala).toHaveBeenCalled())
+  })
+
+  it('data fora da vigência da numérica não compara nada', async () => {
+    await importar([casoHro('MELO', 'Sala 1')], ['MELO', 'GIOVANA'], { hospital: 'hro', data: '2027-03-01' })
+    await waitFor(() => expect(screen.queryByText(/difere da escala numérica/i)).toBeNull())
   })
 })
