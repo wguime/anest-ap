@@ -216,6 +216,18 @@ describe('cada saída da folha grava no canal que a fila lê', () => {
     expect(screen.getByText(/2ª posição · Unimed · Matutino/i).textContent).toMatch(/nasce\s+LIBERADO/i)
   })
 
+  it('no passo "trocou com quem?" a folha não repete a consequência da cauda', async () => {
+    await comNathaliaSemCirurgia()
+    const dados = () => screen.getByText((_t, el) => el?.tagName === 'P' && /ª posição ·/.test(el.textContent || ''))
+    expect(dados().textContent).toMatch(/nasce\s+LIBERADO/)
+
+    fireEvent.click(await screen.findByRole('button', { name: /trocou com um colega/i }))
+    await screen.findByText(/trocou com quem\?/i)
+    // a pergunta ali já é outra — repetir "nasce LIBERADO" é ruído (protótipo L4)
+    expect(dados().textContent).not.toMatch(/LIBERADO/)
+    expect(dados().textContent).toMatch(/2ª posição · Unimed · Matutino/)
+  })
+
   it('"Trocou com um colega" declara a troca com a vaga ancorada nesta escala', async () => {
     await comNathaliaSemCirurgia()
     fireEvent.click(await screen.findByRole('button', { name: /trocou com um colega/i }))
