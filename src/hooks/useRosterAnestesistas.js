@@ -52,7 +52,13 @@ function gravarRosterCache(payload) {
   } catch { /* quota/private mode — cache é só aceleração */ }
 }
 
-export default function useRosterAnestesistas() {
+/**
+ * @param {{ inerte?: boolean }} [opts]  `inerte`: a instância não busca os apelidos — para
+ *   componente que recebe o roster de fora (as abas do lote usam o do pai, Onda 2 item 2.5)
+ *   e só chama o hook por causa da regra dos hooks. Sem isso cada aba fazia a sua busca e
+ *   tinha o seu `resolver`, e a chave da duplicidade divergia entre elas (audit A9).
+ */
+export default function useRosterAnestesistas({ inerte = false } = {}) {
   const { users } = useUsersManagement()
   const [aliases, setAliases] = useState([])
   const [loading, setLoading] = useState(true)
@@ -67,7 +73,7 @@ export default function useRosterAnestesistas() {
       setLoading(false)
     }
   }, [])
-  useEffect(() => { refresh() }, [refresh])
+  useEffect(() => { if (!inerte) refresh() }, [refresh, inerte])
 
   // Aliases vivos vencem; enquanto não chegam, o cache resolve (o dicionário
   // muda raramente e o dado vivo corrige em segundos). `aliases` cru — usado

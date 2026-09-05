@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { detectarDuplicidadesEscala, sugerirParceiroTroca } from '@/lib/escalaCirurgicaDuplicidades'
+import { detectarDuplicidadesEscala, sugerirParceiroTroca, carimbarDecisao, localizarDecisao } from '@/lib/escalaCirurgicaDuplicidades'
 
 const resolver = (nome) => ({ 'Alexandre D': 'u-alex', Vicente: 'u-vicente' }[nome] || null)
 
@@ -102,5 +102,45 @@ describe('ajuda declarada no rodapé não é duplicidade por classificar', () =>
   it('ajuda de OUTRA pessoa não resolve a duplicidade desta', () => {
     const [d] = cenario([{ hospitalLabel: 'HRO', nomes: ['GABRIELA'] }])
     expect(d.ajudaDeclarada).toBe('')
+  })
+})
+
+// A CHAVE DA DECISÃO É FIXADA NA HORA DA RESPOSTA (Onda 2, item 2.5; audit A9): a chave da
+// duplicidade é `resolver(nome) || normNome(nome)`, e o `resolver` muda no meio da
+// publicação (upsertAlias → refresh antes do RPC). A resposta dada não pode "sumir".
+describe('decisão respondida sob um nome continua respondida quando a chave vira uid', () => {
+  const normalizar = (n) => String(n).toUpperCase()
+  const semResolver = () => null
+  const comResolver = (n) => (String(n).toUpperCase() === 'JOAO' ? 'uid-joao' : null)
+  const dupAntes = { key: 'JOAO', nome: 'Joao' }       // antes de aprender o apelido
+  const dupDepois = { key: 'uid-joao', nome: 'Joao' }  // depois: a chave saltou
+
+  it('carimba uid (quando resolve) e nome normalizado na decisão', () => {
+    expect(carimbarDecisao({ tipo: 'intencional' }, dupAntes, { resolver: semResolver, normalizar }))
+      .toEqual({ tipo: 'intencional', chave: 'JOAO', uid: null, nomeNorm: 'JOAO' })
+    expect(carimbarDecisao({ tipo: 'intencional' }, dupDepois, { resolver: comResolver, normalizar }))
+      .toEqual({ tipo: 'intencional', chave: 'uid-joao', uid: 'uid-joao', nomeNorm: 'JOAO' })
+    // chave que já é uid sem alias (veio de anestesistaUserId): fica como uid
+    expect(carimbarDecisao({ tipo: 'x' }, { key: 'uid-x', nome: 'Fulano' }, { resolver: semResolver, normalizar }).uid).toBe('uid-x')
+  })
+
+  it('localiza pela chave atual, pela chave antiga (nome) ou pelo carimbo', () => {
+    const decisoes = { JOAO: carimbarDecisao({ tipo: 'intencional' }, dupAntes, { resolver: semResolver, normalizar }) }
+    expect(localizarDecisao(decisoes, dupAntes, { resolver: semResolver, normalizar })?.chave).toBe('JOAO')
+    // o resolver aprendeu o apelido: a chave é o uid, a decisão continua achada — e diz
+    // sob QUAL chave está, para o "Refazer" apagar a certa
+    const achada = localizarDecisao(decisoes, dupDepois, { resolver: comResolver, normalizar })
+    expect(achada).toEqual({ chave: 'JOAO', decisao: expect.objectContaining({ tipo: 'intencional' }) })
+    // o caminho inverso (gravada sob uid, resolver voltou a não resolver) casa pelo carimbo
+    const sobUid = { 'uid-joao': carimbarDecisao({ tipo: 'troca' }, dupDepois, { resolver: comResolver, normalizar }) }
+    expect(localizarDecisao(sobUid, dupAntes, { resolver: semResolver, normalizar })?.decisao.tipo).toBe('troca')
+  })
+
+  it('mapa de valor simples (parceiro escolhido) casa só pela chave; outra pessoa nunca casa', () => {
+    const trocas = { JOAO: 'uid-rafael' }
+    expect(localizarDecisao(trocas, dupDepois, { resolver: comResolver, normalizar })?.decisao).toBe('uid-rafael')
+    expect(localizarDecisao(trocas, { key: 'PAULO', nome: 'Paulo' }, { resolver: comResolver, normalizar })).toBeNull()
+    expect(localizarDecisao({}, dupAntes, { resolver: semResolver, normalizar })).toBeNull()
+    expect(localizarDecisao(null, dupAntes, {})).toBeNull()
   })
 })

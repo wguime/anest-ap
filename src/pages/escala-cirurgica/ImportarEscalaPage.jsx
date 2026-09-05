@@ -34,7 +34,7 @@ import { planoCruzamentoUrgencias, salasContrato } from '@/lib/escalaCirurgicaUr
 import { hospitalPelaEstrutura } from '@/lib/escalaHospitalEstrutura'
 import { ehDataFilaUnica, ehFeriado } from '@/lib/escalaFds'
 import { ehHoraSequencialEscala } from '@/lib/escalaCirurgicaRegras'
-import { detectarDuplicidadesEscala, formatarOcorrenciaDuplicidade, sugerirParceiroTroca } from '@/lib/escalaCirurgicaDuplicidades'
+import { detectarDuplicidadesEscala, formatarOcorrenciaDuplicidade, sugerirParceiroTroca, carimbarDecisao, localizarDecisao } from '@/lib/escalaCirurgicaDuplicidades'
 
 const HOSPITAL_OPCOES = Object.entries(HOSPITAL_LABEL).map(([value, label]) => ({ value, label }))
 const PERIODO_OPCOES = [
@@ -199,6 +199,8 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   trabalho: trabalhoProp = null, onTrabalho = null,
   // ISO do `updated_at` da escala publicada quando ela mudou DEPOIS do rascunho restaurado
   alteradaDepoisDoRascunho = null,
+  // roster COMPARTILHADO pelo lote (item 2.5): um `resolver` só para as três abas
+  roster: rosterCompartilhado = null,
 }, ref) {
   const { toast } = useToast()
   const { salvarEscalaTurno, salvarEscala, executarSubstituicao } = useEscalaCirurgicaActions()
@@ -206,7 +208,10 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   // provider sempre expõe a publicação transacional por turno.
   const publicarEscala = salvarEscalaTurno || salvarEscala
   const { user } = useUser()
-  const { roster, options: rosterOpcoes, rosterByUid, resolver, upsertAlias } = useRosterAnestesistas()
+  // No lote o roster vem do pai (uma instância, um `resolver` — audit A9); a instância
+  // local fica inerte. Fora do lote, é a de sempre.
+  const rosterLocal = useRosterAnestesistas({ inerte: !!rosterCompartilhado })
+  const { roster, options: rosterOpcoes, rosterByUid, resolver, upsertAlias } = rosterCompartilhado || rosterLocal
 
   // ── TRABALHO: controlado pelo lote ou local (ver TRABALHO_VAZIO) ───────────
   const [trabalhoLocal, setTrabalhoLocal] = useState(TRABALHO_VAZIO)
@@ -1046,7 +1051,17 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   // dois de propósito (dono 30/08 — "foi identificado como ajuda e mesmo assim
   // a escala não pôde ser publicada"). O item continua VISÍVEL no painel, como
   // informação; o que ele deixa de fazer é travar a publicação.
-  const duplicidadesPendentes = duplicidades.filter((d) => !d.ajudaDeclarada && !duplicidadeDecisoes[d.key])
+  // A decisão é lida pela chave ATUAL ou pela identidade carimbada na resposta (uid/nome):
+  // o `resolver` muda no meio da publicação e a chave salta de nome para uid (audit A9).
+  const decisaoDe = useCallback(
+    (d) => localizarDecisao(duplicidadeDecisoes, d, { resolver, normalizar: normNome }),
+    [duplicidadeDecisoes, resolver],
+  )
+  const trocaDe = useCallback(
+    (d) => localizarDecisao(trocaEscolhida, d, { resolver, normalizar: normNome })?.decisao || '',
+    [trocaEscolhida, resolver],
+  )
+  const duplicidadesPendentes = duplicidades.filter((d) => !d.ajudaDeclarada && !decisaoDe(d))
 
   // PAR PROPOSTO (Fase 2.2, dono 07/08): a leitura das DUAS escalas sugere o
   // parceiro simétrico (rodapé em A com casos em B ↔ rodapé em B com casos em
@@ -1062,12 +1077,14 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
       const prox = { ...atual }
       for (const [key, parceiroKey] of sugestoes) {
         // só chave que resolve para login vira valor de Select — e nunca por
-        // cima de escolha já feita
-        if (!prox[key] && rosterByUid.has(parceiroKey)) { prox[key] = parceiroKey; mudou = true }
+        // cima de escolha já feita (mesmo sob a chave antiga da pessoa)
+        const dup = duplicidades.find((d) => d.key === key)
+        const jaEscolhido = localizarDecisao(atual, dup || { key }, { resolver, normalizar: normNome })
+        if (!jaEscolhido && rosterByUid.has(parceiroKey)) { prox[key] = parceiroKey; mudou = true }
       }
       return mudou ? prox : atual
     })
-  }, [duplicidades, rosterByUid, setTrocaEscolhida])
+  }, [duplicidades, rosterByUid, setTrocaEscolhida, resolver])
 
   // GUARDRAIL INVERSO (incidente 30/07): anestesista COM CASO que não está no
   // rodapé nem na ajuda. Sem posição na ordem, `gerarColunaLiberacao` o joga como
@@ -1428,7 +1445,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
             // aparece. O órfão reaparecia em toda publicação futura (`paresDeclarados` o
             // reencontra), pintava badge "Troca" em qualquer linha dela e auditava um
             // evento numa escala onde ela não está.
-            const uidDup = rosterByUid.has(chave) ? chave : resolver(chave)
+            const uidDup = d.uid || (rosterByUid.has(chave) ? chave : resolver(chave))
             const rDup = uidDup ? rosterByUid.get(uidDup) : null
             const pessoaDup = { uid: uidDup || null, nome: rDup?.nome || chave, apelido: rDup?.apelidos?.[0] || chave }
             if (!localizarSlotEscala(saved, pessoaDup, resolver, periodo)) continue
@@ -2220,7 +2237,8 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                     </div>
 
                     {duplicidades.map((d) => {
-                      const decisao = duplicidadeDecisoes[d.key]
+                      const achada = decisaoDe(d)
+                      const decisao = achada?.decisao
                       const lados = d.ocorrencias
                         .filter((o) => o.casos.length > 0)
                         .map((o) => `${o.hospitalLabel}: ${o.casos.length}`)
@@ -2252,7 +2270,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                               ? 'Executa ao publicar · badge nos dois lados.'
                               : 'Duplicidade confirmada como intencional.'}
                             onRefazer={() => setDuplicidadeDecisoes((p) => {
-                              const { [d.key]: _fora, ...resto } = p
+                              const { [achada.chave]: _fora, ...resto } = p
                               return resto
                             })} />
                         )
@@ -2522,7 +2540,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
           ? duplicidades.find((d) => d.key === decisaoAberta.key)
           : null
         if (decisaoAberta.tipo === 'duplicidade' && !dup) return null
-        const parceiro = dup ? rosterByUid.get(trocaEscolhida[dup.key]) : null
+        const parceiro = dup ? rosterByUid.get(trocaDe(dup)) : null
         const nomeCurto = (n) => nomeCirurgiaoCurto(titleCaseNome(n))
         return (
           <Sheet open onOpenChange={(o) => !o && fechar()}>
@@ -2570,7 +2588,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                       searchable
                       className="w-full"
                       placeholder="Trocou com quem?"
-                      value={trocaEscolhida[dup.key] || ''}
+                      value={trocaDe(dup)}
                       onChange={(v) => setTrocaEscolhida((p) => ({ ...p, [dup.key]: v }))}
                       options={rosterOpcoes.filter((o) => o.value !== dup.key)}
                     />
@@ -2584,7 +2602,10 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                           // hospitais casa por normNome do nome completo
                           setDuplicidadeDecisoes((p) => ({
                             ...p,
-                            [dup.key]: { tipo: 'troca', parceiroUid: parceiro.uid, parceiroNome: parceiro.nome },
+                            [dup.key]: carimbarDecisao(
+                              { tipo: 'troca', parceiroUid: parceiro.uid, parceiroNome: parceiro.nome },
+                              dup, { resolver, normalizar: normNome },
+                            ),
                           }))
                           fechar()
                         }}
@@ -2592,7 +2613,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                         {parceiro ? `Trocou com ${nomeCurto(parceiro.nome)} — declarar a troca` : 'Declarar a troca — escolha o colega'}
                       </Button>
                       <Button variant="outline" className="w-full"
-                        onClick={() => { setDuplicidadeDecisoes((p) => ({ ...p, [dup.key]: { tipo: 'intencional' } })); fechar() }}>
+                        onClick={() => { setDuplicidadeDecisoes((p) => ({ ...p, [dup.key]: carimbarDecisao({ tipo: 'intencional' }, dup, { resolver, normalizar: normNome }) })); fechar() }}>
                         Trabalha nos dois hoje (intencional)
                       </Button>
                       {!decisaoAberta.soRodapeLa && (

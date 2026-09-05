@@ -17,7 +17,9 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { ThemeProvider, ToastProvider } from '@/design-system'
 import ImportarEscalasPage from '@/pages/escala-cirurgica/ImportarEscalasPage'
 
-const { svcMock, salvarEscalaTurno, prepararImagem, parseExcel } = vi.hoisted(() => ({
+const { svcMock, salvarEscalaTurno, prepararImagem, parseExcel, resolverHolder } = vi.hoisted(() => ({
+  // resolver MUTÁVEL: a trava de A9 troca o dicionário no meio da conferência
+  resolverHolder: { extra: {} },
   svcMock: {
     parseEscalaImagem: vi.fn(),
     fetchEscala: vi.fn(async () => null),
@@ -47,7 +49,10 @@ vi.mock('@/hooks/useRosterAnestesistas', () => ({
     roster: [], aliases: [], loading: false,
     rosterByUid: new Map([['uid-cury', { uid: 'uid-cury', nome: 'GUSTAVO CURY', apelidos: ['CURY'] }]]),
     options: [{ value: 'uid-cury', label: 'Gustavo Cury' }],
-    resolver: (nome) => (String(nome).trim().toUpperCase() === 'CURY' ? 'uid-cury' : null),
+    resolver: (nome) => {
+      const n = String(nome).trim().toUpperCase()
+      return n === 'CURY' ? 'uid-cury' : (resolverHolder.extra[n] || null)
+    },
     refresh: vi.fn(), upsertAlias: vi.fn(async () => {}), removeAlias: vi.fn(),
   }),
 }))
@@ -80,7 +85,7 @@ function montar() {
   )
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks()
   svcMock.fetchEscala.mockReset()
   svcMock.fetchEscala.mockResolvedValue(null)
@@ -88,6 +93,9 @@ beforeEach(() => {
   // o rascunho do lote é durável de propósito (Onda 2): sem isto um teste restauraria a
   // conferência do teste anterior
   localStorage.clear()
+  resolverHolder.extra = {}
+  // o desempilhar do "voltar" do teste anterior (`history.back()`) chega num tick depois
+  await waitFor(() => expect(window.history.state?.anestOverlay).not.toBe(true))
 })
 
 describe('anexo em lote — cada arquivo vai para a aba do seu hospital', () => {
@@ -430,6 +438,37 @@ describe('duplicidade entre hospitais — antes da primeira publicação', () =>
     // nada a publicar enquanto os dois lados estiverem por classificar
     expect(screen.getByRole('button', { name: /nada a publicar/i }).disabled).toBe(true)
     expect(salvarEscalaTurno).not.toHaveBeenCalled()
+  })
+})
+
+// A CHAVE DA DECISÃO É FIXADA NA HORA DA RESPOSTA (Onda 2, item 2.5; audit A9): a chave
+// da duplicidade é `resolver(nome) || normNome(nome)`, e o resolver muda no meio da
+// publicação (upsertAlias → refresh antes do RPC). Aqui o dicionário aprende "JOAO"
+// depois da resposta — e a resposta tem de continuar valendo nas duas abas.
+describe('a decisão respondida sobrevive ao dicionário aprender o apelido (audit A9)', () => {
+  it('JOAO sem vínculo é classificado; o vínculo chega; as abas continuam respondidas', async () => {
+    svcMock.parseEscalaImagem
+      .mockResolvedValueOnce({ casos: [caso('Sala 1', 'JOAO')], hospitalDetectado: 'hro', ordemLiberacao: ['JOAO'] })
+      .mockResolvedValueOnce({ casos: [caso('Sala 2', 'JOAO')], hospitalDetectado: 'materno', ordemLiberacao: ['JOAO'] })
+    const { container } = montar()
+    await soltarArquivos(container, [img('hro.png'), img('materno.png')])
+    await waitFor(() => expect(abas()).toHaveLength(2))
+
+    const linhas = await screen.findAllByText(/em dois hospitais/i)
+    fireEvent.click(linhas.find((l) => !l.closest('.hidden') && l.closest('#conf-liberacoes')))
+    fireEvent.click(await screen.findByRole('button', { name: /trabalha nos dois/i }))
+    expect(await screen.findAllByText(/confirmada como intencional/i)).toHaveLength(2)
+
+    // o dicionário aprende JOAO → uid (é o que `upsertAlias` + `refresh` fazem ao
+    // publicar): a chave da duplicidade salta de "JOAO" para "uid-joao"
+    resolverHolder.extra = { JOAO: 'uid-joao' }
+    fireEvent.click(abas().find((b) => b.textContent.includes('Materno')))
+    fireEvent.click(abas().find((b) => b.textContent.includes('HRO')))
+
+    // a resposta continua valendo — e o lote continua publicável
+    await waitFor(() => expect(screen.getAllByText(/confirmada como intencional/i)).toHaveLength(2))
+    fireEvent.click(screen.getByRole('button', { name: /revisar e publicar/i }))
+    expect(await screen.findByRole('button', { name: /publicar as 2/i })).toBeTruthy()
   })
 })
 

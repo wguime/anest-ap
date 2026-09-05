@@ -31,6 +31,7 @@ import {
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import { HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
+import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { parseExcelEscala } from '@/lib/excelEscala'
 import { prepararImagemParaVision } from '@/lib/imagemVision'
 import { ERRO_IA, classificarFalhaVision, mensagemFalhaVision } from '@/lib/escalaVisionFalha'
@@ -101,6 +102,10 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
   const { toast } = useToast()
   const { user } = useUser()
   const canEdit = podeEditarEscalaCirurgica(user)
+  // UM roster para as três abas (item 2.5; audit A9): com uma instância por aba, o
+  // `upsertAlias` de quem publicava primeiro mudava só o `resolver` dela, e a mesma pessoa
+  // ficava com duas chaves de duplicidade no mesmo lote
+  const rosterCompartilhado = useRosterAnestesistas()
 
   const [dataEscolhida, setDataEscolhida] = useState(data)
   // trocar o dia ou o período do lote invalida toda decisão já tomada
@@ -877,6 +882,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
             trabalho={trabalhos[h] || null}
             onTrabalho={onTrabalhoDe(h)}
             alteradaDepoisDoRascunho={alteradasDepois.includes(h) ? (resumos[h]?.publicadaAtualizadaEm || null) : null}
+            roster={rosterCompartilhado}
             escalasIrmas={irmasPara(h)}
             decisoesLote={duplicidadeDecisoes}
             onDecisoesLote={setDuplicidadeDecisoes}

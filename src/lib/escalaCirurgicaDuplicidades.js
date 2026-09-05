@@ -146,6 +146,44 @@ export function sugerirParceiroTroca(duplicidades) {
   return sugestoes
 }
 
+/**
+ * A CHAVE DA DECISÃO É FIXADA NA HORA DA RESPOSTA (Onda 2, item 2.5; audit A9).
+ *
+ * A chave da duplicidade é `resolver(nome) || normalizar(nome)` — e o `resolver` muda no
+ * meio da publicação: `upsertAlias` aprende "JOAO"→uid e faz `refresh()` ANTES de
+ * `salvarEscalaTurno`. Se a RPC cai (constraint), a chave do João passa de `JOAO` para o
+ * uid, a decisão gravada sob `JOAO` não é mais achada, a pendência volta a 1 e a tela diz
+ * "confirme as duplicidades" — a resposta dada "sumiu". Com o roster compartilhado pelo
+ * lote o mesmo salto acontece nas três abas de uma vez.
+ *
+ * Daí: a decisão leva consigo `uid` e `nomeNorm` de quando foi respondida
+ * (`carimbarDecisao`), e a leitura casa pela chave atual OU por qualquer uma das duas
+ * identidades (`localizarDecisao`). Vale também para mapas de valor simples (o parceiro
+ * escolhido por chave): aí só a chave é comparada.
+ */
+export function carimbarDecisao(decisao, dup, { resolver, normalizar = upperSimples } = {}) {
+  const nome = texto(dup?.nome)
+  const nomeNorm = nome ? normalizar(nome) : ''
+  const uid = resolver?.(nome) || (dup?.key && dup.key !== nomeNorm ? dup.key : null)
+  return { ...(decisao || {}), chave: dup?.key || null, uid: uid || null, nomeNorm }
+}
+
+export function localizarDecisao(mapa, dup, { resolver, normalizar = upperSimples } = {}) {
+  if (!mapa || !dup?.key) return null
+  if (mapa[dup.key] !== undefined) return { chave: dup.key, decisao: mapa[dup.key] }
+  const nome = texto(dup.nome)
+  const nomeNorm = nome ? normalizar(nome) : ''
+  const uid = resolver?.(nome) || null
+  for (const [chave, d] of Object.entries(mapa)) {
+    if (d === undefined) continue
+    if ((uid && chave === uid) || (nomeNorm && chave === nomeNorm)) return { chave, decisao: d }
+    if (d && typeof d === 'object') {
+      if ((uid && d.uid === uid) || (nomeNorm && d.nomeNorm === nomeNorm)) return { chave, decisao: d }
+    }
+  }
+  return null
+}
+
 export const formatarOcorrenciaDuplicidade = (ocorrencia) => {
   const onde = `${ocorrencia.hospitalLabel} · ${ocorrencia.turno === 'matutino' ? 'Matutino' : 'Vespertino'}`
   const posicao = ocorrencia.noRodape ? 'posição no rodapé' : 'sem posição no rodapé'
