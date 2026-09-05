@@ -51,7 +51,7 @@
  *   404 { error: 'no_fcm_token' }                — user não tem token (não opt-in)
  *   500 { error: 'fcm_request_failed', detail }  — FCM rejeitou
  */
-import { SignJWT, importPKCS8 } from 'https://deno.land/x/jose@v5.2.0/index.ts'
+import { SignJWT, importPKCS8, jwtVerify } from 'https://deno.land/x/jose@v5.2.0/index.ts'
 import { verifyAuthHeader } from '../_shared/verify-auth.ts'
 
 const corsHeaders = {
@@ -74,6 +74,24 @@ interface ServiceAccount {
   private_key: string
   project_id: string
   token_uri: string
+}
+
+/**
+ * A service_role key do projeto é um JWT HS256 assinado com JWT_SECRET, com
+ * `role: 'service_role'` e SEM `sub` — por isso verifyAuthHeader a recusa.
+ * O trigger notify_responsaveis_on_incidente a usa (vault + pg_net) para avisar
+ * os responsáveis no celular, já que o push saiu do cliente em 04/09/2026.
+ */
+async function isProjectServiceRole(authHeader: string | null): Promise<boolean> {
+  const bearer = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : ''
+  const secret = Deno.env.get('JWT_SECRET')
+  if (!bearer || !secret) return false
+  try {
+    const { payload } = await jwtVerify(bearer, new TextEncoder().encode(secret), { algorithms: ['HS256'] })
+    return payload.role === 'service_role'
+  } catch {
+    return false
+  }
 }
 
 function jsonResponse(status: number, body: Record<string, unknown>) {
@@ -165,15 +183,21 @@ Deno.serve(async (req) => {
     return jsonResponse(405, { error: 'method_not_allowed' })
   }
 
-  // 1) Validate caller JWT (HS256 legado OU Firebase ID Token RS256).
+  // 1) Validate caller JWT (HS256 legado, Firebase ID Token RS256 OU a
+  //    service_role key do projeto — o trigger de incidentes chama esta edge
+  //    por pg_net e não tem sessão de usuário nenhuma (05/09/2026).
   const auth = await verifyAuthHeader(req.headers.get('authorization'))
-  if (!auth.ok) {
+  let callerSub: string
+  if (auth.ok) {
+    callerSub = auth.uid
+  } else if (await isProjectServiceRole(req.headers.get('authorization'))) {
+    callerSub = 'service_role'
+  } else {
     // Mapeia reasons do helper para o contrato desta função:
     // internal_error (500) → server_misconfigured; missing/invalid_token mantidos.
     const error = auth.reason === 'internal_error' ? 'server_misconfigured' : auth.reason
     return jsonResponse(auth.status, { error })
   }
-  const callerSub = auth.uid
 
   // 2) Parse body.
   let payload: SendPushPayload
