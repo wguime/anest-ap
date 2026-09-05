@@ -408,6 +408,10 @@ export function EscalaCirurgicaProvider({ children }) {
           renovado: true,
           ...(flags.trocaCom && { trocaCom: flags.trocaCom }),
           ...(flags.assumidaPor && { assumidaPor: flags.assumidaPor }),
+          // decisões da conferência (05/09): "trabalha nos dois" e "está certo" são
+          // declaração sobre a pessoa, como origem — sobrevivem à linha renovada
+          ...(flags.duplicidade && { duplicidade: flags.duplicidade }),
+          ...(flags.conferido && { conferido: true }),
           por: userInfo.userId || null, em: new Date().toISOString(),
         }
         linhaOverrides[scoped] = marcador
@@ -465,9 +469,9 @@ export function EscalaCirurgicaProvider({ children }) {
       const patchesOverride = []
       for (const k of [scoped, chave, legada, legada && chaveTurno(turno, legada)].filter(Boolean)) {
         if (!jaForcado && linhaOverrides[k]) {
-          const { trocaCom, assumidaPor } = linhaOverrides[k]
-          const restante = (trocaCom || assumidaPor)
-            ? { ...(trocaCom && { trocaCom }), ...(assumidaPor && { assumidaPor }), por: userInfo.userId || null, em: new Date().toISOString() }
+          const { trocaCom, assumidaPor, duplicidade, conferido } = linhaOverrides[k]
+          const restante = (trocaCom || assumidaPor || duplicidade || conferido)
+            ? { ...(trocaCom && { trocaCom }), ...(assumidaPor && { assumidaPor }), ...(duplicidade && { duplicidade }), ...(conferido && { conferido: true }), por: userInfo.userId || null, em: new Date().toISOString() }
             : null
           if (restante) linhaOverrides[k] = restante
           else delete linhaOverrides[k]
@@ -533,8 +537,14 @@ export function EscalaCirurgicaProvider({ children }) {
       // ajuste de exibição — e é ela que decide a ordem de saída na cauda.
       // Limpar é pelo botão próprio ("Não informar" → `definirOrigemLinha`).
       const origem = anterior.origem || null
-      const valor = (local || cirurgioes || termino || observacao || renovado || trocaCom || assumidaPor || origem)
-        ? { ...(local && { local }), ...(cirurgioes && { cirurgioes }), ...(termino && { termino }), ...(observacao && { observacao }), ...(renovado && { renovado: true }), ...(trocaCom && { trocaCom }), ...(assumidaPor && { assumidaPor }), ...(origem && { origem }), por: userInfo.userId || null, em: new Date().toISOString() }
+      // DECISÕES DA CONFERÊNCIA (05/09): `duplicidade` ("trabalha nos dois") e `conferido`
+      // ("está certo, fica Livre") chegam pela publicação e são da mesma classe de `origem` —
+      // declaração sobre a pessoa, não ajuste de exibição. Esquecê-las aqui as apagaria em
+      // silêncio no primeiro Salvar do editor (classe do bug de `origem`, 27/08).
+      const duplicidade = anterior.duplicidade || null
+      const conferido = anterior.conferido === true
+      const valor = (local || cirurgioes || termino || observacao || renovado || trocaCom || assumidaPor || origem || duplicidade || conferido)
+        ? { ...(local && { local }), ...(cirurgioes && { cirurgioes }), ...(termino && { termino }), ...(observacao && { observacao }), ...(renovado && { renovado: true }), ...(trocaCom && { trocaCom }), ...(assumidaPor && { assumidaPor }), ...(origem && { origem }), ...(duplicidade && { duplicidade }), ...(conferido && { conferido: true }), por: userInfo.userId || null, em: new Date().toISOString() }
         : null
       const linhaOverrides = { ...(escala.linhaOverrides || {}) }
       if (valor) linhaOverrides[scoped] = valor
@@ -581,7 +591,7 @@ export function EscalaCirurgicaProvider({ children }) {
     const semOrigem = { ...anterior }
     delete semOrigem.origem
     // sobra alguma coisa no override além da origem? senão a entrada inteira sai
-    const restou = ['local', 'cirurgioes', 'termino', 'observacao', 'renovado', 'trocaCom', 'assumidaPor']
+    const restou = ['local', 'cirurgioes', 'termino', 'observacao', 'renovado', 'trocaCom', 'assumidaPor', 'duplicidade', 'conferido']
       .some((k) => semOrigem[k])
     const valor = slug
       ? { ...semOrigem, origem: slug, por: userInfo.userId || null, em: new Date().toISOString() }

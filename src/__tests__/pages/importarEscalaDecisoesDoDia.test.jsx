@@ -321,8 +321,10 @@ describe('na ordem sem cirurgia — linha de conferência com a explicação', (
 
     const linha = await within(secaoOrdem(container)).findByText(/sem cirurgia/i)
     fireEvent.click(linha)
-    // o porquê que morava no aviso de Pendências agora é lido aqui
-    expect(await screen.findByText(/pode ter saído para outra pessoa/i)).toBeTruthy()
+    // a folha pergunta ONDE a pessoa está (Onda 3, protótipo L4) e diz a posição, o
+    // hospital e o turno numa linha de dados — o parágrafo com a citação do incidente saiu
+    expect(await screen.findByText(/Onde está Nathalia hoje\?/i)).toBeTruthy()
+    expect(screen.getByText(/2ª posição · HRO/i)).toBeTruthy()
   })
 
   // A folha não pode ser um beco (dono 31/08: "apenas aparece um card com a
@@ -342,7 +344,7 @@ describe('na ordem sem cirurgia — linha de conferência com a explicação', (
     await waitFor(() => expect(blocos(container)).toHaveLength(2))
 
     fireEvent.click(await within(secaoOrdem(container)).findByText(/sem cirurgia/i))
-    fireEvent.click(await screen.findByRole('button', { name: /marcar como ajuda/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /é ajuda de fora/i }))
     await waitFor(() => expect(within(secaoOrdem(container)).queryByText(/sem cirurgia/i)).toBeNull())
 
     fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))

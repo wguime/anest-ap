@@ -11,6 +11,9 @@
  *                  leitura daquele hospital é substituída, e só aí
  *   decisoes / trocas — duplicidades respondidas e parceiro escolhido, do LOTE (a
  *                  duplicidade é da pessoa, não da aba — dono 30/08)
+ *   conferencias — respostas da folha "Onde está X hoje?" (Onda 3), também do LOTE e no
+ *                  MESMO espaço de chaves das decisões: quem está sem cirurgia aqui costuma
+ *                  ser a mesma pessoa que aparece no outro hospital
  *   publicados   — quem já subiu neste lote (publicar só o que falta — dono 03/09)
  *   abaAtiva     — hospital em conferência
  *
@@ -26,6 +29,7 @@ export function estadoInicialLote({ abaAtiva = null } = {}) {
     trabalho: {},
     decisoes: {},
     trocas: {},
+    conferencias: {},
     publicados: [],
     abaAtiva: HOSPITAIS.includes(abaAtiva) ? abaAtiva : null,
   }
@@ -97,6 +101,10 @@ export function reduzirLote(estado, acao) {
       const novo = aplicar(acao.updater, estado.trocas)
       return novo === estado.trocas ? estado : { ...estado, trocas: novo || {} }
     }
+    case 'conferencias_definidas': {
+      const novo = aplicar(acao.updater, estado.conferencias)
+      return novo === estado.conferencias ? estado : { ...estado, conferencias: novo || {} }
+    }
     case 'publicados_definidos': {
       const lista = [...new Set(aplicar(acao.updater, estado.publicados) || [])]
       return { ...estado, publicados: lista }
@@ -108,7 +116,7 @@ export function reduzirLote(estado, acao) {
     // Trocar o dia ou o período do lote invalida toda decisão já tomada (as duplicidades
     // são do dia/turno). Leitura e trabalho ficam: o trabalho é filtrado por turno na aba.
     case 'contexto_mudou':
-      return { ...estado, decisoes: {}, trocas: {} }
+      return { ...estado, decisoes: {}, trocas: {}, conferencias: {} }
     // Rascunho restaurado (ver `escalaLoteRascunho.js`): o lote inteiro volta.
     case 'rascunho_restaurado': {
       const r = acao.rascunho
@@ -125,6 +133,7 @@ export function reduzirLote(estado, acao) {
         trabalho,
         decisoes: r.decisoes && typeof r.decisoes === 'object' ? r.decisoes : {},
         trocas: r.trocas && typeof r.trocas === 'object' ? r.trocas : {},
+        conferencias: r.conferencias && typeof r.conferencias === 'object' ? r.conferencias : {},
         publicados: (r.publicados || []).filter((h) => leitura[h]),
         abaAtiva: r.abaAtiva && leitura[r.abaAtiva] ? r.abaAtiva : Object.keys(leitura)[0],
       }

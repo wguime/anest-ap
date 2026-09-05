@@ -17,17 +17,39 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { ThemeProvider, ToastProvider } from '@/design-system'
 import ImportarEscalasPage from '@/pages/escala-cirurgica/ImportarEscalasPage'
 
-const { svcMock, salvarEscalaTurno, prepararImagem, parseExcel, resolverHolder } = vi.hoisted(() => ({
+const { svcMock, salvarEscalaTurno, executarSubstituicao, publicadasDb, prepararImagem, parseExcel, resolverHolder } = vi.hoisted(() => ({
   // resolver MUTÁVEL: a trava de A9 troca o dicionário no meio da conferência
   resolverHolder: { extra: {} },
+  // BANCO DE MENTIRA das escalas publicadas: `salvarEscalaTurno` escreve aqui e `fetchEscala`
+  // lê — é o que permite exercitar a releitura que a convergência faz antes do snapshot
+  // (item 3.3). Sem isso, publicar não deixava rastro nenhum para a aba seguinte enxergar.
+  publicadasDb: {
+    escalas: {},
+    publicar(p) {
+      const anterior = this.escalas[p.hospital]?.linhaOverrides || {}
+      const linhaOverrides = { ...anterior }
+      for (const [chave, valor] of Object.entries(p.linhaOverrides || {})) {
+        linhaOverrides[`${p.turno}:${chave}`] = { ...(linhaOverrides[`${p.turno}:${chave}`] || {}), ...valor, por: 'u-sec', em: '2026-08-27T10:00:00.000Z' }
+      }
+      const salva = {
+        id: `e-${p.hospital}`, ...p, linhaOverrides,
+        ordemLiberacao: { [p.turno]: p.ordemLiberacao || [] },
+        ajudaExterna: { [p.turno]: p.ajudaExterna || [] },
+        casos: (p.casos || []).map((c, i) => ({ ...c, id: `c-${p.hospital}-${i}`, ordem: i, turno: p.turno })),
+      }
+      this.escalas[p.hospital] = salva
+      return salva
+    },
+  },
   svcMock: {
     parseEscalaImagem: vi.fn(),
     fetchEscala: vi.fn(async () => null),
     patchLinhaOverride: vi.fn(async () => {}),
   },
-  salvarEscalaTurno: vi.fn(async (p) => ({
-    id: `e-${p.hospital}`, ...p, casos: (p.casos || []).map((c, i) => ({ ...c, id: `c${i}`, ordem: i })),
-  })),
+  executarSubstituicao: vi.fn(async () => {}),
+  // emula a RPC: as decisões entram em `linha_overrides` com a chave NAMESPACED pelo turno,
+  // carimbadas pelo servidor — é dessa forma que `paresDeclarados` as reencontra
+  salvarEscalaTurno: vi.fn(async (p) => publicadasDb.publicar(p)),
   prepararImagem: vi.fn(async () => ({ base64: 'AAAA', mimeType: 'image/jpeg', bytes: 3 })),
   parseExcel: vi.fn(async () => ({ casos: [], headerScore: 0 })),
 }))
@@ -36,7 +58,7 @@ vi.mock('@/services/supabaseCirurgiasParticularesService', () => ({
   default: { reservarAvisoTempo: vi.fn(async () => false), completarPacienteDoCaso: vi.fn(async () => {}) },
 }))
 vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
-  useEscalaCirurgicaActions: () => ({ salvarEscalaTurno, executarSubstituicao: vi.fn() }),
+  useEscalaCirurgicaActions: () => ({ salvarEscalaTurno, executarSubstituicao }),
   HOSPITAL_LABEL: { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' },
 }))
 vi.mock('@/contexts/UserContext', () => ({
@@ -47,11 +69,22 @@ vi.mock('@/lib/excelEscala', () => ({ parseExcelEscala: parseExcel }))
 vi.mock('@/hooks/useRosterAnestesistas', () => ({
   default: () => ({
     roster: [], aliases: [], loading: false,
-    rosterByUid: new Map([['uid-cury', { uid: 'uid-cury', nome: 'GUSTAVO CURY', apelidos: ['CURY'] }]]),
-    options: [{ value: 'uid-cury', label: 'Gustavo Cury' }],
+    // DIDO e GARIM existem para a trava do swap entre abas (item 3.3). Nomes novos de
+    // propósito: dar vínculo ao PAULO, que aparece em quase todos os testes deste arquivo,
+    // mudaria a chave de identidade deles de nome para uid.
+    rosterByUid: new Map([
+      ['uid-cury', { uid: 'uid-cury', nome: 'GUSTAVO CURY', apelidos: ['CURY'] }],
+      ['uid-dido', { uid: 'uid-dido', nome: 'GUILHERME XAVIER', apelidos: ['DIDO'] }],
+      ['uid-garim', { uid: 'uid-garim', nome: 'JOSE GARIM', apelidos: ['GARIM'] }],
+    ]),
+    options: [
+      { value: 'uid-cury', label: 'Gustavo Cury' },
+      { value: 'uid-dido', label: 'Guilherme Xavier' },
+      { value: 'uid-garim', label: 'Jose Garim' },
+    ],
     resolver: (nome) => {
       const n = String(nome).trim().toUpperCase()
-      return n === 'CURY' ? 'uid-cury' : (resolverHolder.extra[n] || null)
+      return { CURY: 'uid-cury', DIDO: 'uid-dido', GARIM: 'uid-garim' }[n] || resolverHolder.extra[n] || null
     },
     refresh: vi.fn(), upsertAlias: vi.fn(async () => {}), removeAlias: vi.fn(),
   }),
@@ -87,6 +120,11 @@ function montar() {
 
 beforeEach(async () => {
   vi.clearAllMocks()
+  publicadasDb.escalas = {}
+  // `clearAllMocks` zera as CHAMADAS, não as implementações: sem isto o mock trocado pelos
+  // testes de "quando uma escala falha" vazaria para os seguintes (o swap do lote falhava
+  // no arquivo inteiro e passava sozinho)
+  salvarEscalaTurno.mockImplementation(async (p) => publicadasDb.publicar(p))
   svcMock.fetchEscala.mockReset()
   svcMock.fetchEscala.mockResolvedValue(null)
   parseExcel.mockResolvedValue({ casos: [], headerScore: 0 })
@@ -649,6 +687,74 @@ describe('folha de revisão e publicação em sequência', () => {
 // desfazer, e a marca MANUAL nunca é tocada de novo (lição do campo grudento).
 // O "mantém a posição na origem / sai primeiro onde ajuda" já deriva dos casos.
 // ════════════════════════════════════════════════════════════════════════════
+// ── O SWAP FECHA DENTRO DO LOTE (Onda 3, item 3.3; audit A4) ────────────────────────────
+// A aba enxergava a irmã pelo RESUMO dela, que não tem `id` nem `linha_overrides` — e
+// `paresDeclarados` ignora escala sem id. Resultado: a troca declarada na 1ª aba era
+// invisível para a 2ª, e o lote terminava com o aviso "sem posição publicada — executa
+// quando a escala dele(a) for publicada" a respeito de uma escala publicada 2 s antes.
+// Agora a escala que subiu volta ao lote e a aba relê o banco antes de montar o snapshot.
+describe('troca declarada entre duas abas do lote fecha na própria publicação', () => {
+  /** DIDO está nos dois hospitais e trocou com GARIM, que fecha o rodapé do HRO. */
+  async function loteComTrocaEntreAbas() {
+    // o banco devolve o que já foi publicado — é assim que a aba seguinte enxerga a irmã
+    svcMock.fetchEscala.mockImplementation(async (_data, hospital) => publicadasDb.escalas[hospital] || null)
+    svcMock.parseEscalaImagem
+      .mockResolvedValueOnce({
+        casos: [caso('CC - Sala 1', 'DIDO')], hospitalDetectado: 'unimed', ordemLiberacao: ['DIDO'],
+      })
+      .mockResolvedValueOnce({
+        casos: [caso('Sala 1', 'DIDO'), caso('Sala 2', 'GARIM')], hospitalDetectado: 'hro', ordemLiberacao: ['DIDO', 'GARIM'],
+      })
+    const utils = montar()
+    await soltarArquivos(utils.container, [img('unimed.png'), img('hro.png')])
+    await waitFor(() => expect(abas()).toHaveLength(2))
+    // responde a duplicidade: trocou com Garim (vale para as duas abas)
+    const linhas = await screen.findAllByText(/em dois hospitais/i)
+    fireEvent.click(linhas.find((l) => !l.closest('.hidden') && l.closest('#conf-liberacoes')))
+    // a folha da decisão é a superfície: as três abas ficam montadas (só escondidas), então
+    // o mesmo nome aparece em mais de um seletor — o clique tem de ser DENTRO da folha
+    const folha = await screen.findByRole('dialog')
+    fireEvent.click(await within(folha).findByText(/Trocou com quem\?/i))
+    // as três abas ficam montadas (só escondidas) e o Select abre a lista fora da folha:
+    // o clique tem de ser na opção VISÍVEL, não na homônima da aba oculta
+    const opcoes = await screen.findAllByText('Jose Garim')
+    fireEvent.click(opcoes.find((n) => !n.closest('.hidden')))
+    fireEvent.click(screen.getByRole('button', { name: /declarar a troca/i }))
+    await screen.findAllByText(/troca declarada/i)
+    return utils
+  }
+
+  it('o swap sai com os DOIS lados: a vaga daqui e a recíproca do parceiro', async () => {
+    await loteComTrocaEntreAbas()
+    fireEvent.click(screen.getByRole('button', { name: /revisar e publicar/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /publicar as 2/i }))
+    await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalledTimes(2))
+
+    await waitFor(() => expect(executarSubstituicao).toHaveBeenCalled())
+    const planos = executarSubstituicao.mock.calls.map(([plan]) => plan)
+    const swap = planos.find((plan) => plan.lados.length === 2)
+    expect(swap).toBeTruthy()
+    // um lado em cada escala do lote — é isso que a irmã sem `id` impedia
+    expect(new Set(swap.lados.map((l) => l.escalaId))).toEqual(new Set(['e-unimed', 'e-hro']))
+    // Paulo assume a vaga do Dido na Unimed; Dido assume a do Paulo no HRO
+    expect(swap.lados.find((l) => l.escalaId === 'e-unimed')).toMatchObject({ chaveSlot: 'uid-dido', para: { uid: 'uid-garim' } })
+    expect(swap.lados.find((l) => l.escalaId === 'e-hro')).toMatchObject({ chaveSlot: 'uid-garim', para: { uid: 'uid-dido' } })
+  })
+
+  it('a escala que já subiu entra no snapshot com id e overrides — não o resumo da aba', async () => {
+    await loteComTrocaEntreAbas()
+    fireEvent.click(screen.getByRole('button', { name: /revisar e publicar/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /publicar as 2/i }))
+    await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(executarSubstituicao).toHaveBeenCalled())
+
+    const [, , opts] = executarSubstituicao.mock.calls[executarSubstituicao.mock.calls.length - 1]
+    const snapshot = opts?.escalasOverride || {}
+    expect(snapshot.unimed?.id).toBe('e-unimed')
+    expect(snapshot.unimed?.linhaOverrides?.['matutino:uid-dido']?.trocaCom).toMatchObject({ uid: 'uid-garim' })
+  })
+})
+
 describe('azul de quem está no rodapé daqui com trabalho em outro hospital', () => {
   const anexarHroEMaterno = async (casosHro) => {
     svcMock.parseEscalaImagem

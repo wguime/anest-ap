@@ -6,14 +6,14 @@
  * apelido importado é aprendido no dicionário (apelido→login) p/ a próxima escala.
  */
 import { useState, useMemo, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from 'react'
-import { ArrowDown, ArrowLeftRight, ArrowUp, Ban, ChevronLeft, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Pencil, Plus, Trash2, Sparkles, Loader2, Check, AlertTriangle, UserPlus } from 'lucide-react'
+import { ArrowDown, ArrowLeftRight, ArrowUp, Ban, ChevronLeft, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, FileText, Pencil, Plus, Stethoscope, Trash2, Sparkles, Loader2, Check, AlertTriangle, UserPlus } from 'lucide-react'
 import { Alert, Button, ConfirmDialog, DatePicker, FileUpload, Input, Select, Sheet, SheetContent, SheetHeader, SheetTitle, useToast } from '@/design-system'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import { useEscalaCirurgicaActions, HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { parseExcelEscala } from '@/lib/excelEscala'
-import { nomeCirurgiaoCurto, separarListaRodape, titleCaseNome } from '@/lib/colunaLiberacao'
+import { nomeCirurgiaoCurto, rotuloNota, separarListaRodape, stripNotaRodape, titleCaseNome } from '@/lib/colunaLiberacao'
 import { aplicarHoraPadraoPosicoes, detectarItensDuplicados, ehPosicaoAssistencial, resumirItensEscala } from '@/lib/escalaCirurgicaItens'
 import { ERRO_IA, classificarFalhaVision, mensagemFalhaVision } from '@/lib/escalaVisionFalha'
 import { ehApelidoDePessoa, isPermissionError } from '@/services/supabaseEscalaAnestesistaService'
@@ -22,7 +22,7 @@ import { iniciaisSeguras } from '@/lib/escalaCirurgicaPaciente'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
 import { TRABALHO_VAZIO } from './trabalhoConferencia'
-import { linhaVazia, prepararCasosImportados as prepararCasos, normNome, candidatosPrimeiroNome, resumirRodape, casosQuePassamParaOTurno, presencaDoTurno, estaPresente, gruposAnestesista, chavesAnestesista, aplicarAtribuicoes, preAtribuicoesDoDicionario, migrarAtribuicoes, azuisEmprestados, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital, localizarSlotEscala } from './utils'
+import { linhaVazia, prepararCasosImportados as prepararCasos, normNome, candidatosPrimeiroNome, resumirRodape, casosQuePassamParaOTurno, presencaDoTurno, estaPresente, gruposAnestesista, chavesAnestesista, aplicarAtribuicoes, preAtribuicoesDoDicionario, migrarAtribuicoes, azuisEmprestados, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital } from './utils'
 import { mensagemErroPublicacao } from '@/lib/escalaPublicacaoErro'
 import { validarCasosParaPublicacao, resumirBloqueiosDeCampo, textoBloqueio } from '@/lib/escalaCirurgicaValidacao'
 import dadosNumerica from '@/data/escalaNumerica.json'
@@ -35,6 +35,7 @@ import { hospitalPelaEstrutura } from '@/lib/escalaHospitalEstrutura'
 import { ehDataFilaUnica, ehFeriado } from '@/lib/escalaFds'
 import { ehHoraSequencialEscala } from '@/lib/escalaCirurgicaRegras'
 import { detectarDuplicidadesEscala, formatarOcorrenciaDuplicidade, sugerirParceiroTroca, carimbarDecisao, localizarDecisao } from '@/lib/escalaCirurgicaDuplicidades'
+import { montarLinhaOverrides, montarPreservacao, decisoesPublicadas } from '@/lib/escalaPublicacaoDecisoes'
 
 const HOSPITAL_OPCOES = Object.entries(HOSPITAL_LABEL).map(([value, label]) => ({ value, label }))
 const PERIODO_OPCOES = [
@@ -173,6 +174,32 @@ function LinhaDecisao({ tom = 'am', icone = null, ponto = false, titulo, sub, on
   )
 }
 
+/**
+ * Uma SAÍDA da folha de decisão — mesma anatomia da `LinhaDecisao` (ícone 32 em fundo
+ * tonal · título 13/700 · subtítulo 11 · chevron · 52 px de altura), agrupada em lista
+ * com divisórias. Protótipo L4 aprovado pelo dono; um toque grava e fecha.
+ */
+function OpcaoFolha({ tom = 'am', icone, titulo, sub, destrutivo = false, onClick }) {
+  const fundo = {
+    az: 'bg-info/15 text-info', am: 'bg-warning/15 text-warning', vd: 'bg-success/15 text-success',
+    pr: 'bg-primary/10 text-primary', ds: 'bg-destructive/12 text-destructive',
+  }[tom] || 'bg-warning/15 text-warning'
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex min-h-[52px] w-full items-center gap-2.5 border-t border-border/70 px-3 py-2 text-left first:border-t-0 active:bg-muted/60"
+    >
+      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] ${fundo}`}>{icone}</span>
+      <span className="min-w-0 flex-1">
+        <span className={`block text-[13px] font-bold leading-[17px] ${destrutivo ? 'text-destructive' : 'text-foreground'}`}>{titulo}</span>
+        {sub && <span className="mt-px block text-[11px] leading-[14px] text-muted-foreground">{sub}</span>}
+      </span>
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+    </button>
+  )
+}
+
 // Sentinela do seletor por caso: deixar a linha SEM anestesista de propósito
 // ("?" da escala). Valor impossível como uid.
 const SEM_ANESTESISTA = '__sem__'
@@ -194,7 +221,11 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   hospital, data, turno: turnoInicial, onClose, onAbrirFds,
   embutida = false, oculta = false, loteInicial = null,
   dataLote, periodoLote, escalasIrmas = [], onResumo,
+  // escalas que JÁ subiram neste lote, com id e overrides (item 3.3; audit A4)
+  publicadasNoLote = null,
   decisoesLote = null, onDecisoesLote = null, trocasLote = null, onTrocasLote = null,
+  // respostas da folha "Onde está X hoje?" — do LOTE, como as duplicidades (Onda 3)
+  conferenciasLote = null, onConferenciasLote = null,
   // modo controlado (lote): o trabalho vem do pai e volta por `onTrabalho(updater)`
   trabalho: trabalhoProp = null, onTrabalho = null,
   // ISO do `updated_at` da escala publicada quando ela mudou DEPOIS do rascunho restaurado
@@ -955,14 +986,19 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   // do lote (tela de uma escala só) o estado continua local, como sempre foi.
   const [decisoesLocais, setDecisoesLocais] = useState({})
   const [trocaLocal, setTrocaLocal] = useState({})
+  const [conferenciasLocais, setConferenciasLocais] = useState({})
   const duplicidadeDecisoes = decisoesLote || decisoesLocais
   const setDuplicidadeDecisoes = onDecisoesLote || setDecisoesLocais
   const trocaEscolhida = trocasLote || trocaLocal
   const setTrocaEscolhida = onTrocasLote || setTrocaLocal
+  // "Onde está X hoje?": a resposta é da PESSOA e vale para as três abas — quem está no
+  // rodapé daqui sem cirurgia costuma ser quem aparece no outro hospital
+  const conferencias = conferenciasLote || conferenciasLocais
+  const setConferencias = onConferenciasLote || setConferenciasLocais
   useEffect(() => {
     // quem manda no ciclo de vida do estado compartilhado é o lote
     if (decisoesLote) return
-    setDecisoesLocais({}); setTrocaLocal({})
+    setDecisoesLocais({}); setTrocaLocal({}); setConferenciasLocais({})
   }, [dataEscolhida, hosp, periodo, decisoesLote])
   useEffect(() => {
     let vivo = true
@@ -980,10 +1016,16 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   // nova. Ela entra no lugar da publicada do mesmo hospital; os hospitais que
   // não estão no lote seguem vindo do banco.
   const outrasEscalas = useMemo(() => {
-    const irmas = (escalasIrmas || []).filter((e) => e?.hospital && e.hospital !== hosp)
-    const cobertos = new Set(irmas.map((e) => e.hospital))
-    return [...irmas, ...outrasPublicadas.filter((e) => !cobertos.has(e?.hospital))]
-  }, [escalasIrmas, outrasPublicadas, hosp])
+    // A IRMÃ QUE JÁ PUBLICOU VENCE A EM CONFERÊNCIA (item 3.3; audit A4). O resumo da aba
+    // irmã não tem `id` nem `linha_overrides` — e `paresDeclarados` ignora escala sem id,
+    // então a troca declarada por ela era invisível para esta aba e o swap não fechava
+    // dentro do lote. Depois que ela sobe, o que vale é a escala publicada dela.
+    const doLote = Object.values(publicadasNoLote || {}).filter((e) => e?.hospital && e.hospital !== hosp && e.id)
+    const cobertos = new Set(doLote.map((e) => e.hospital))
+    const irmas = (escalasIrmas || []).filter((e) => e?.hospital && e.hospital !== hosp && !cobertos.has(e.hospital))
+    for (const e of irmas) cobertos.add(e.hospital)
+    return [...doLote, ...irmas, ...outrasPublicadas.filter((e) => !cobertos.has(e?.hospital))]
+  }, [escalasIrmas, outrasPublicadas, publicadasNoLote, hosp])
 
   const cruzamento = useMemo(() => {
     if (!outrasEscalas.length || !casos.length) return { ajudaProvavel: [], conflitos: [] }
@@ -1053,10 +1095,27 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   // informação; o que ele deixa de fazer é travar a publicação.
   // A decisão é lida pela chave ATUAL ou pela identidade carimbada na resposta (uid/nome):
   // o `resolver` muda no meio da publicação e a chave salta de nome para uid (audit A9).
-  const decisaoDe = useCallback(
-    (d) => localizarDecisao(duplicidadeDecisoes, d, { resolver, normalizar: normNome }),
-    [duplicidadeDecisoes, resolver],
-  )
+  // O QUE A ESCALA PUBLICADA JÁ SABE (05/09; audit A6): "trabalha nos dois (intencional)"
+  // passou a viajar na RPC e a sobreviver à republicação — republicar o turno (ou reabrir a
+  // conferência do mesmo dia) não pode fazer a mesma pergunta travar de novo. Sem resposta
+  // local, a decisão vem da escala publicada deste hospital; "Refazer" numa dessas grava
+  // `reaberta` (a pergunta volta) em vez de apagar, senão a publicada responderia de novo.
+  const intencionaisPublicadas = useMemo(() => {
+    const m = new Map()
+    for (const it of decisoesPublicadas(escalaPublicada?.linhaOverrides, periodo)) {
+      if (it.duplicidade === 'intencional') m.set(it.chave, true)
+    }
+    return m
+  }, [escalaPublicada, periodo])
+  const decisaoDe = useCallback((d) => {
+    const local = localizarDecisao(duplicidadeDecisoes, d, { resolver, normalizar: normNome })
+    if (local) return local.decisao?.tipo === 'reaberta' ? null : local
+    if (!intencionaisPublicadas.size || !d?.key) return null
+    const nome = String(d.nome || '').trim()
+    const candidatas = [d.key, nome ? resolver(nome) : null, nome ? normNome(nome) : null].filter(Boolean)
+    if (!candidatas.some((k) => intencionaisPublicadas.has(k))) return null
+    return { chave: d.key, decisao: { tipo: 'intencional', publicada: true } }
+  }, [duplicidadeDecisoes, resolver, intencionaisPublicadas])
   const trocaDe = useCallback(
     (d) => localizarDecisao(trocaEscolhida, d, { resolver, normalizar: normNome })?.decisao || '',
     [trocaEscolhida, resolver],
@@ -1154,7 +1213,16 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   // 25/06): ajuda é semanal, duplicidade ~3/semana, alguém fora da ordem em
   // 31% dos turnos. Os dados gravados são os MESMOS de sempre (ajudaTexto,
   // duplicidadeDecisoes, ordemTexto) — a reforma é de superfície.
-  const [decisaoAberta, setDecisaoAberta] = useState(null) // { tipo, key?, nome?, ... }
+  const [decisaoAberta, setDecisaoAberta] = useState(null) // { tipo, key?, nome?, item? }
+  // passo 2 da folha "Onde está X hoje?" (escolher o colega e de qual escala é a vaga)
+  const [passoTroca, setPassoTroca] = useState(false)
+  const [trocaConf, setTrocaConf] = useState('')
+  const [vagaConf, setVagaConf] = useState('')
+  const [escolhaLocal, setEscolhaLocal] = useState(false)
+  const abrirDecisao = (d) => {
+    setPassoTroca(false); setTrocaConf(''); setVagaConf(''); setEscolhaLocal(false)
+    setDecisaoAberta(d)
+  }
 
   // Ajuda marcada que NÃO está na ordem não aparece na lista numerada — sem
   // esta linha ela ficaria invisível e irremovível (era o Input de texto que
@@ -1168,17 +1236,27 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   // "Entendi" era um beco — "nada acontece depois de clicar, não faz sentido").
   // Quem já está marcado como AJUDA sai da lista: ajuda sem caso aqui é o
   // normal dela, não suspeita de extração.
+  // A MESMA PESSOA NÃO PODE RENDER DUAS PERGUNTAS (audit A7). Quem já aparece na
+  // duplicidade tem lá a linha dela, com as saídas certas — perguntar de novo "onde está
+  // X hoje?" era a mesma decisão em duas roupas, e responder uma não fechava a outra.
   const conferenciasSemCirurgia = useMemo(() => {
     const daCauda = new Set(caudaLiberada.map((p) => p.nome))
+    const naDuplicidade = new Set(duplicidades.map((d) => d.key))
     return [...suspeitosExtracao, ...caudaLiberada.map((p) => p.nome)]
       .filter((nome) => !ehAjuda(nome))
-      .map((nome) => ({
-        nome,
-        cauda: daCauda.has(nome),
-        pos: ordemNumerada.findIndex((p) => p.nome === nome) + 1,
-      }))
+      .filter((nome) => !naDuplicidade.has(resolver(nome) || normNome(nome)))
+      .map((nome) => {
+        const key = resolver(nome) || normNome(nome)
+        return {
+          nome,
+          key,
+          decisao: localizarDecisao(conferencias, { key, nome }, { resolver, normalizar: normNome }),
+          cauda: daCauda.has(nome),
+          pos: ordemNumerada.findIndex((p) => p.nome === nome) + 1,
+        }
+      })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [suspeitosExtracao, caudaLiberada, ordemNumerada, ajudaTexto])
+  }, [suspeitosExtracao, caudaLiberada, ordemNumerada, ajudaTexto, duplicidades, conferencias, resolver])
 
   // A "ajuda provável" do cruzamento (rodapé lá + caso aqui) é a MESMA pessoa
   // que a lib de duplicidades já pendura como pendência — duas linhas para a
@@ -1246,11 +1324,52 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     setEntrantesProcessados((p) => [...p, ...entrantes.map(normNome)])
   }, [escalasIrmas, hosp, casos, periodo, ajudaTexto, entrantesProcessados, setAjudaTexto, setEntrantesProcessados])
 
+  // respondida na folha não é mais pendência (nem no chip, nem no resumo)
+  const conferenciasPendentes = useMemo(
+    () => conferenciasSemCirurgia.filter((p) => !p.decisao),
+    [conferenciasSemCirurgia],
+  )
+  const respondidaSemCirurgia = useCallback(
+    (nome) => conferenciasSemCirurgia.some((p) => p.nome === nome && p.decisao),
+    [conferenciasSemCirurgia],
+  )
+  const caudaPendente = useMemo(() => caudaLiberada.filter((p) => !respondidaSemCirurgia(p.nome)), [caudaLiberada, respondidaSemCirurgia])
+  const suspeitosPendentes = useMemo(() => suspeitosExtracao.filter((n) => !respondidaSemCirurgia(n)), [suspeitosExtracao, respondidaSemCirurgia])
+
   const decisoesAbertas = duplicidadesPendentes.length + ajudaProvavelSemDup.length
     + casosForaDoRodape.length
   const temDecisoes = duplicidades.length > 0 || ajudaProvavelSemDup.length > 0
     || casosForaDoRodape.length > 0 || ajudasForaDaOrdem.length > 0
     || conferenciasSemCirurgia.length > 0 || azuisRealocados.length > 0
+
+  // ── AS SAÍDAS DA FOLHA "ONDE ESTÁ X HOJE?" (Onda 3, item 3.2) ────────────────
+  // Cada uma grava no canal que a FILA já lê: ajuda em `ajuda_externa`, nota de local no
+  // próprio rodapé, troca e "está certo" em `linha_overrides` pela RPC da publicação.
+  const responderConferencia = (item, decisao) => setConferencias((p) => ({
+    ...p,
+    [item.key]: carimbarDecisao(decisao, { key: item.key, nome: item.nome }, { resolver, normalizar: normNome }),
+  }))
+  const refazerConferencia = (item) => setConferencias((p) => {
+    const { [item.decisao?.chave || item.key]: _fora, ...resto } = p
+    return resto
+  })
+  /** Nota de local na POSIÇÃO ("GARIM (CONSULT)") — canal que a lib já lê (rotuloNota). */
+  const marcarNotaPosicao = (item, nota) => {
+    const nomes = separarListaRodape(ordemTexto)
+    const i = item.pos - 1
+    if (i < 0 || i >= nomes.length) return
+    nomes[i] = `${stripNotaRodape(nomes[i])} (${nota})`
+    gravarOrdem(nomes)
+    responderConferencia(item, { tipo: 'local', local: nota })
+  }
+
+  /** A pessoa aparece nesta outra escala, neste turno? (rodapé ou cirurgias) */
+  const estaNaEscala = (esc, nome) => {
+    const alvo = resolver(nome) || normNome(nome)
+    if (rodapeDoTurno(esc?.ordemLiberacao, periodo).some((n) => (resolver(n) || normNome(n)) === alvo)) return true
+    return (esc?.casos || []).some((c) => (c.turno || periodo) === periodo
+      && (c.anestesistaUserId || resolver(c.anestesista) || normNome(c.anestesista)) === alvo)
+  }
 
   /** Acrescenta um nome (texto) ao FIM da ordem — a saída "caiu do rodapé na leitura". */
   const acrescentarNaOrdem = (nome) => {
@@ -1383,10 +1502,33 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
         }
       }))
 
+      // AS DECISÕES VIAJAM NA RPC (dono 05/09; Onda 3 — audit A5/A6/A9). A troca declarada e o
+      // "trabalha nos dois" entram na MESMA transação que substitui casos e rodapé, por chave da
+      // linha; e a RPC preserva, de quem segue na escala, o rastro do override antigo (trocaCom,
+      // assumidaPor, origem, observação, local, término) — a liberação continua zerando.
+      // Registro de quem está AQUI (audit A3): a decisão é do lote, o override é da escala.
+      const carimbo = { por: userId || null, em: new Date().toISOString() }
+      // As duas fontes de decisão vivem no mesmo espaço de chaves: a da duplicidade e a da
+      // folha "Onde está X hoje?" (que também declara troca, e traz `hospitalVaga` explícito).
+      const conferidos = Object.fromEntries(
+        Object.entries(conferencias).filter(([, d]) => d?.tipo === 'conferido'),
+      )
+      const linhaOverrides = montarLinhaOverrides({
+        decisoes: { ...duplicidadeDecisoes, ...conferencias }, conferidos, hospital: hosp,
+        ordem: ordemNova, ajuda: ajudaNova, casos: casosNovos, resolver, normalizar: normNome, carimbo,
+      })
+      const preservar = legado ? null : montarPreservacao({
+        existente, turno: periodo, ordem: ordemNova, ajuda: ajudaNova, casos: casosNovos, resolver, normalizar: normNome,
+      })
+
       const saved = await publicarEscala(
         legado
           ? { data: dataEscolhida, hospital: hosp, casos: casosOut, ordemLiberacao: ordemPublicacao, ajudaExterna: ajudaPublicacao, status: 'publicada' }
-          : { data: dataEscolhida, hospital: hosp, turno: periodo, casos: casosNovos, ordemLiberacao: ordemNova, ajudaExterna: ajudaNova, status: 'publicada' },
+          : {
+            data: dataEscolhida, hospital: hosp, turno: periodo, casos: casosNovos, ordemLiberacao: ordemNova, ajudaExterna: ajudaNova, status: 'publicada',
+            ...(Object.keys(linhaOverrides).length ? { linhaOverrides } : {}),
+            ...(preservar ? { preservar } : {}),
+          },
         { userId, userName: user?.displayName },
         // em lote o erro vira a frase da folha; o context não abre toast por cima
         { silencioso: embutida },
@@ -1419,55 +1561,52 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
 
       // TROCA a partir da conferência (dono 06/08; EXECUÇÃO automática 07/08 —
       // "as trocas não saem de forma automática após leitura das escalas").
-      // A decisão "troca" agora: (1) DECLARA o trocaCom (rastro, badge nos dois
-      // lados) e (2) EXECUTA o swap quando o plano fecha — os dois lados com uid
-      // resolvido, ou assunção de um lado só (colega sem escala publicada). O
-      // que não fecha fica declarado, com o aviso do que falta.
-      //
-      // Snapshot explícito (saved + outras escalas): o estado do context ainda
-      // não viu a publicação — sem corrida com o realtime. Registro ÚNICO na
-      // linha do duplicado; fire-and-forget em relação à publicação (falhar aqui
-      // NUNCA desfaz o que já publicou).
+      // A decisão "troca" (1) DECLAROU o trocaCom DENTRO da publicação (acima) e
+      // (2) EXECUTA o swap quando o plano fecha — os dois lados com uid resolvido,
+      // ou assunção de um lado só (colega sem escala publicada). O que não fecha
+      // fica declarado, com o aviso do que falta.
       let trocasExecutadas = []
       let trocasPendentes = []
-      try {
-        const trocas = Object.entries(duplicidadeDecisoes)
-          .filter(([, d]) => d?.tipo === 'troca' && (d.parceiroUid || d.parceiroNome))
-        if (saved?.id && (trocas.length || outrasEscalas.length)) {
-          const snapshot = { [hosp]: saved }
-          for (const o of outrasEscalas) if (o?.hospital) snapshot[o.hospital] = o
-          const agoraIso = () => new Date().toISOString()
-
-          for (const [chave, d] of trocas) {
-            // A DECISÃO É DO LOTE, O REGISTRO É DE QUEM ESTÁ AQUI (dono 03/09; audit A3).
-            // A resposta de duplicidade vale para as três abas, mas o loop gravava
-            // `trocaCom` no override das TRÊS escalas — inclusive onde a pessoa não
-            // aparece. O órfão reaparecia em toda publicação futura (`paresDeclarados` o
-            // reencontra), pintava badge "Troca" em qualquer linha dela e auditava um
-            // evento numa escala onde ela não está.
-            const uidDup = d.uid || (rosterByUid.has(chave) ? chave : resolver(chave))
-            const rDup = uidDup ? rosterByUid.get(uidDup) : null
-            const pessoaDup = { uid: uidDup || null, nome: rDup?.nome || chave, apelido: rDup?.apelidos?.[0] || chave }
-            if (!localizarSlotEscala(saved, pessoaDup, resolver, periodo)) continue
-            const scoped = `${periodo}:${chave}`
-            // cadeia de fallback (defeito D6): o override pode viver em chave
-            // legada; ler só a scoped duplicaria a entrada
-            const { valor: anterior } = lerOverrideAnterior(saved.linhaOverrides, chave, periodo)
-            const { trocaCom: _sai, por: _p, em: _e, ...resto } = anterior || {}
-            // duplicidade entre hospitais É o tipo 'entre_hospitais' por definição
-            const trocaCom = { uid: d.parceiroUid || null, nome: d.parceiroNome || '', tipo: 'entre_hospitais', por: userId || null, em: agoraIso() }
-            await svc.patchLinhaOverride(saved.id, scoped, { ...resto, trocaCom, por: userId || null, em: agoraIso() }).catch(() => {})
-            // espelha no snapshot: a convergência abaixo lê daqui
-            snapshot[hosp] = {
-              ...snapshot[hosp],
-              linhaOverrides: { ...(snapshot[hosp].linhaOverrides || {}), [scoped]: { ...resto, trocaCom } },
-            }
+      // Caminho LEGADO (rpc_salvar_escala_cirurgica não aceita decisões): grava por patch,
+      // uma a uma — e falha vira aviso na tela, nunca mais `.catch(() => {})` (audit A5).
+      let publicada = saved
+      if (legado && saved?.id) {
+        for (const [chave, valor] of Object.entries(linhaOverrides)) {
+          const scoped = `${periodo}:${chave}`
+          const { valor: anterior } = lerOverrideAnterior(saved.linhaOverrides, chave, periodo)
+          const { por: _p, em: _e, ...resto } = anterior || {}
+          const novo = { ...resto, ...valor, por: userId || null, em: new Date().toISOString() }
+          try {
+            await svc.patchLinhaOverride(saved.id, scoped, novo)
+            publicada = { ...publicada, linhaOverrides: { ...(publicada.linhaOverrides || {}), [scoped]: novo } }
+          } catch (err) {
+            trocasPendentes.push(`a decisão sobre ${nomeCirurgiaoCurto(titleCaseNome(chave))} não foi registrada (${mensagemErroPublicacao(err)}) — refaça pelo ✏️ das Liberações`)
           }
+        }
+      }
+      // Snapshot explícito (publicada + outras escalas): o estado do context ainda
+      // não viu a publicação — sem corrida com o realtime. A RPC devolve o cabeçalho
+      // já com os overrides desta publicação, então o par declarado é lido daqui.
+      try {
+        if (saved?.id && (Object.keys(linhaOverrides).length || outrasEscalas.length)) {
+          const snapshot = { [hosp]: publicada }
+          for (const o of outrasEscalas) if (o?.hospital) snapshot[o.hospital] = o
+          // RELEITURA ANTES DO SNAPSHOT (item 3.3; audit A4): `outrasPublicadas` é buscada uma
+          // vez, no mount, e nunca depois — no lote, a irmã que subiu segundos atrás não estava
+          // lá, e a convergência dizia "sem posição publicada — executa quando a escala dele(a)
+          // for publicada" com ela já no ar. Três leituras, custo desprezível; falha em uma
+          // delas mantém o que já se tinha em mãos.
+          await Promise.all(Object.keys(HOSPITAL_LABEL)
+            .filter((h) => h !== hosp)
+            .map(async (h) => {
+              const fresca = await svc.fetchEscala(dataEscolhida, h).catch(() => null)
+              if (fresca?.id) snapshot[h] = fresca
+            }))
 
           // CONVERGÊNCIA: varre TODOS os pares declarados (os desta publicação e
           // os que esperavam o parceiro chegar — inclusive re-execução pós-
-          // republicação, que zera os overrides) e executa os que fecham. A
-          // idempotência (D10) pula o que já está executado.
+          // republicação) e executa os que fecham. A idempotência (D10) pula o
+          // que já está executado.
           for (const par of paresDeclarados(snapshot)) {
             const aUid = rosterByUid.has(par.chave) ? par.chave : resolver(par.chave)
             const rA = aUid ? rosterByUid.get(aUid) : null
@@ -1496,7 +1635,10 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
             }
           }
         }
-      } catch { /* escala publicada; a troca pode ser declarada/executada pelo ✏️ */ }
+      } catch (err) {
+        // a escala ESTÁ publicada; o que não pode é a troca sumir em silêncio
+        trocasPendentes.push(`a troca declarada não pôde ser executada agora (${err?.message || 'falha inesperada'}) — execute pelo ✏️ das Liberações`)
+      }
 
       // CRUZAMENTO DA URGÊNCIA QUE ATRAVESSA O TURNO (dono 21/08): a urgência
       // aberta é do DIA, não do turno — às 13h ela segue ocupando uma sala, mas
@@ -1572,7 +1714,8 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
         // devolve onde publicou → a página aterrissa na escala certa (data/hospital/período)
         onClose?.({ data: dataEscolhida, hospital: hosp, turno: periodo })
       }
-      return { ok: true, hospital: hosp, avisos }
+      // a escala publicada volta ao lote: é ela que a próxima aba usa para fechar o swap (item 3.3)
+      return { ok: true, hospital: hosp, avisos, escala: publicada }
     } catch (err) {
       // fora do lote o context já avisou; em lote a frase sobe para a folha
       return { ok: false, hospital: hosp, motivo: 'erro', mensagem: mensagemErroPublicacao(err), avisos }
@@ -1597,7 +1740,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   )
   const bloqueiosConferencia = gruposAmbiguos.length + duplicidadesPendentes.length + bloqueiosCampo.length
   const avisosConferencia = (conferenciaNumerica && !conferenciaNumerica.iguais ? 1 : 0)
-    + suspeitosExtracao.length + caudaLiberada.length
+    + suspeitosPendentes.length + caudaPendente.length
     + conflitos.length + blocosRepetidos.length + travessiasOrfas.length
     + duplicados.length + casosForaDoRodape.length + gruposSemAnestesista
     + secoesAusentesHro.length
@@ -1614,8 +1757,8 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     if (bloqueiosCampo.length) l.push({ trava: true, txt: resumirBloqueiosDeCampo(bloqueiosCampo).texto })
     if (gruposSemAnestesista) l.push({ trava: false, txt: `${n(gruposSemAnestesista, 'bloco', 'blocos')} sem anestesista` })
     if (casosForaDoRodape.length) l.push({ trava: false, txt: `${n(casosForaDoRodape.length, 'anestesista', 'anestesistas')} com caso fora da ordem — responda em Decisões` })
-    if (caudaLiberada.length) l.push({ trava: false, txt: `${n(caudaLiberada.length, 'nome nasce', 'nomes nascem')} LIBERADO sem cirurgia` })
-    if (suspeitosExtracao.length) l.push({ trava: false, txt: `${n(suspeitosExtracao.length, 'nome', 'nomes')} na ordem sem nenhum caso` })
+    if (caudaPendente.length) l.push({ trava: false, txt: `${n(caudaPendente.length, 'nome nasce', 'nomes nascem')} LIBERADO sem cirurgia` })
+    if (suspeitosPendentes.length) l.push({ trava: false, txt: `${n(suspeitosPendentes.length, 'nome', 'nomes')} na ordem sem nenhum caso` })
     if (conflitos.length) l.push({ trava: false, txt: `${n(conflitos.length, 'conflito', 'conflitos')} de horário` })
     if (blocosRepetidos.length) l.push({ trava: false, txt: `${n(blocosRepetidos.length, 'bloco', 'blocos')} com o mesmo nome em todas as linhas` })
     if (travessiasOrfas.length) l.push({ trava: false, txt: `${n(travessiasOrfas.length, 'cirurgia que atravessa', 'cirurgias que atravessam')} sem dono presente` })
@@ -1631,8 +1774,8 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
       l.push({ trava: false, txt: `rodapé difere da escala numérica: ${partes.join(' · ')}` })
     }
     return l
-  }, [gruposAmbiguos, duplicidadesPendentes, bloqueiosCampo, gruposSemAnestesista, casosForaDoRodape, caudaLiberada,
-    suspeitosExtracao, conflitos, blocosRepetidos, travessiasOrfas, duplicados, secoesAusentesHro,
+  }, [gruposAmbiguos, duplicidadesPendentes, bloqueiosCampo, gruposSemAnestesista, casosForaDoRodape, caudaPendente,
+    suspeitosPendentes, conflitos, blocosRepetidos, travessiasOrfas, duplicados, secoesAusentesHro,
     conferenciaNumerica])
 
   // ── O QUE ESTA ABA CONTA AO LOTE (dono 27/08) ────────────────────────────
@@ -1893,8 +2036,8 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                     n: decisoesAbertas + conferenciasSemCirurgia.length > 0
                       ? decisoesAbertas + conferenciasSemCirurgia.length
                       : (temDecisoes ? '✓' : ordemNumerada.length),
-                    aten: decisoesAbertas + conferenciasSemCirurgia.length > 0,
-                    ok: decisoesAbertas + conferenciasSemCirurgia.length === 0 && temDecisoes,
+                    aten: decisoesAbertas + conferenciasPendentes.length > 0,
+                    ok: decisoesAbertas + conferenciasPendentes.length === 0 && temDecisoes,
                   },
                   { id: 'conf-pendencias', label: 'Pendências', n: totalPendencias, alerta: bloqueiosConferencia > 0 },
                 ].map((s) => (
@@ -2232,7 +2375,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                       <span className="text-[11px] font-extrabold uppercase tracking-wide text-primary">Decisões do dia</span>
                       <span className="ml-auto text-[11px] text-muted-foreground">
                         {decisoesAbertas > 0 ? `${decisoesAbertas} por responder` : 'tudo respondido'}
-                        {conferenciasSemCirurgia.length > 0 ? ` · ${conferenciasSemCirurgia.length} para conferir` : ''}
+                        {conferenciasPendentes.length > 0 ? ` · ${conferenciasPendentes.length} para conferir` : ''}
                       </span>
                     </div>
 
@@ -2270,6 +2413,8 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                               ? 'Executa ao publicar · badge nos dois lados.'
                               : 'Duplicidade confirmada como intencional.'}
                             onRefazer={() => setDuplicidadeDecisoes((p) => {
+                              // veio da escala publicada: apagar não basta, ela responderia de novo
+                              if (decisao.publicada) return { ...p, [d.key]: carimbarDecisao({ tipo: 'reaberta' }, d, { resolver, normalizar: normNome }) }
                               const { [achada.chave]: _fora, ...resto } = p
                               return resto
                             })} />
@@ -2322,12 +2467,31 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                         onClick={() => setDecisaoAberta({ tipo: 'foraDaOrdem', nome: f.nome, casos: f.casos })} />
                     ))}
 
-                    {conferenciasSemCirurgia.map((p) => (
-                      <LinhaDecisao key={`semc-${p.nome}`} tom="am" ponto
-                        titulo={`${p.nome} — na ordem, sem cirurgia`}
-                        sub={`${p.pos > 0 ? `${p.pos}ª posição · ` : ''}confira a extração contra a foto.`}
-                        onClick={() => setDecisaoAberta({ tipo: 'semCirurgia', nome: p.nome, cauda: p.cauda, pos: p.pos })} />
-                    ))}
+                    {conferenciasSemCirurgia.map((p) => {
+                      const d = p.decisao?.decisao
+                      if (d) {
+                        const texto = {
+                          troca: `${titleCaseNome(p.nome)} ⇄ ${nomeCirurgiaoCurto(titleCaseNome(d.parceiroNome || ''))} — troca declarada`,
+                          local: `${titleCaseNome(p.nome)} — ${rotuloNota(d.local) || d.local}`,
+                          conferido: `${titleCaseNome(p.nome)} — está certo, fica Livre`,
+                        }[d.tipo] || `${titleCaseNome(p.nome)} — respondido`
+                        const sub = {
+                          troca: 'Executa ao publicar · badge nos dois lados.',
+                          local: 'Ocupa a posição na fila e não nasce liberado.',
+                          conferido: 'Sem cirurgia hoje, aguarda a vez na própria posição.',
+                        }[d.tipo] || ''
+                        return (
+                          <LinhaDecisao key={`semc-${p.key}`} tom="vd" icone={<Check className="h-4 w-4" />}
+                            titulo={texto} sub={sub} onRefazer={() => refazerConferencia(p)} />
+                        )
+                      }
+                      return (
+                        <LinhaDecisao key={`semc-${p.key}`} tom="am" ponto
+                          titulo={`${p.nome} — na ordem, sem cirurgia`}
+                          sub={`${p.pos > 0 ? `${p.pos}ª posição · ` : ''}confira a extração contra a foto.`}
+                          onClick={() => abrirDecisao({ tipo: 'semCirurgia', item: p })} />
+                      )
+                    })}
                   </div>
                 )}
                 <div className="border-t border-border bg-muted/40 px-2.5 py-2">
@@ -2685,52 +2849,163 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                 </>
               )}
 
-              {decisaoAberta.tipo === 'semCirurgia' && (
-                <>
-                  <SheetHeader>
-                    <SheetTitle>{decisaoAberta.nome} está na ordem sem nenhuma cirurgia</SheetTitle>
-                  </SheetHeader>
-                  <div className="space-y-3 pb-2">
-                    <p className="text-xs leading-relaxed text-muted-foreground">
-                      Confira a extração contra a foto: a linha dela pode ter saído para outra pessoa
-                      (foi o que sumiu com Didomenico/Melo no IOSC em 23/07).
-                    </p>
-                    {decisaoAberta.cauda && (
-                      <p className="rounded-lg border-l-4 border-warning bg-warning/10 px-3 py-2 text-xs text-foreground dark:bg-warning/15">
-                        Fechando a lista sem cirurgia, vai nascer <b>LIBERADO</b> (vermelho) na fila desta publicação.
+              {decisaoAberta.tipo === 'semCirurgia' && (() => {
+                const item = decisaoAberta.item
+                const curto = nomeCurto(item.nome)
+                // ONDE A VAGA FICOU OBSOLETA (audit A3): a troca move a posição de X para o
+                // colega, e "aqui" é ambíguo quando X aparece em dois hospitais. O lado
+                // pré-marcado é ESTE — é aqui que ele está na ordem sem cirurgia.
+                const ondeMais = outrasEscalas
+                  .filter((o) => o?.hospital && estaNaEscala(o, item.nome))
+                  .map((o) => o.hospital)
+                const vagas = [hosp, ...ondeMais]
+                const parceiroSel = rosterByUid.get(trocaConf)
+                return (
+                  <>
+                    <SheetHeader>
+                      <SheetTitle className="flex items-center gap-2">
+                        {passoTroca
+                          ? <ArrowLeftRight className="h-5 w-5 shrink-0 text-warning" />
+                          : <span className="flex h-5 w-5 shrink-0 items-center justify-center"><span className="h-2.5 w-2.5 rounded-full bg-warning" /></span>}
+                        {passoTroca ? `${curto} trocou com quem?` : `Onde está ${curto} hoje?`}
+                      </SheetTitle>
+                    </SheetHeader>
+                    <div className="space-y-1 pb-2">
+                      {/* UMA linha de dados no lugar do parágrafo (protótipo L4, 05/09) */}
+                      <p className="text-xs leading-4 text-muted-foreground">
+                        {item.pos > 0 ? `${item.pos}ª posição · ` : ''}{HOSPITAL_LABEL[hosp] || hosp}
+                        {' · '}{periodo === 'matutino' ? 'Matutino' : 'Vespertino'}
+                        {item.cauda && <> · nasce <b className="text-foreground">LIBERADO</b> se ficar assim</>}
                       </p>
-                    )}
-                    {/* SAÍDAS, não "Entendi" (dono 31/08): as três respostas
-                        reais para o nome sem caso — é ajuda (azul não lido), a
-                        posição precisa de conserto, ou o nome sobrou da leitura. */}
-                    <div className="space-y-1.5">
-                      <Button variant="outline" className="w-full"
-                        onClick={() => { marcarAjuda(decisaoAberta.nome, true); fechar() }}>
-                        Marcar como ajuda (nome em AZUL não lido)
-                      </Button>
-                      {decisaoAberta.pos > 0 && (
-                        <Button variant="outline" className="w-full"
-                          onClick={() => {
-                            fechar()
-                            abrirPosicao(decisaoAberta.pos - 1, decisaoAberta.nome)
-                            irPara('conf-liberacoes')
-                          }}>
-                          Corrigir a posição na ordem
-                        </Button>
-                      )}
-                      {decisaoAberta.pos > 0 && (
-                        <Button variant="outline" className="w-full"
-                          onClick={() => { removerPosicao(decisaoAberta.pos - 1); fechar() }}>
-                          Remover da ordem
-                        </Button>
+
+                      {passoTroca ? (
+                        <div className="space-y-3 pt-2">
+                          <div>
+                            <p className="mb-1 text-xs font-medium text-muted-foreground">Colega</p>
+                            <Select
+                              searchable
+                              className="w-full"
+                              placeholder="Escolher o colega…"
+                              value={trocaConf}
+                              onChange={setTrocaConf}
+                              options={rosterOpcoes.filter((o) => o.value !== item.key)}
+                            />
+                          </div>
+                          {vagas.length > 1 && (
+                            <div>
+                              <p className="mb-1 text-xs font-medium text-muted-foreground">
+                                A vaga que muda de dono é a de qual escala?
+                              </p>
+                              <div className="grid grid-cols-2 gap-1.5">
+                                {vagas.map((h) => (
+                                  <button
+                                    key={h}
+                                    type="button"
+                                    onClick={() => setVagaConf(h)}
+                                    className={`min-h-[44px] rounded-xl border px-3 text-sm font-semibold transition-colors
+                                      ${(vagaConf || hosp) === h
+                                        ? 'border-primary bg-primary text-primary-foreground'
+                                        : 'border-border-strong bg-card text-muted-foreground'}`}
+                                  >
+                                    {HOSPITAL_LABEL[h] || h}{h === hosp ? ' (esta)' : ''}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          <p className="text-[11px] leading-4 text-muted-foreground">
+                            {parceiroSel ? nomeCurto(parceiroSel.nome) : 'O colega'} assume a posição
+                            de {curto} onde ela ficou vaga, e {curto} assume a do colega no outro hospital.
+                          </p>
+                          <Button
+                            className="w-full"
+                            disabled={!parceiroSel}
+                            onClick={() => {
+                              if (!parceiroSel) return
+                              responderConferencia(item, {
+                                tipo: 'troca',
+                                parceiroUid: parceiroSel.uid,
+                                parceiroNome: parceiroSel.nome,
+                                hospitalVaga: vagaConf || hosp,
+                              })
+                              fechar()
+                            }}
+                          >
+                            {parceiroSel ? `Trocou com ${nomeCurto(parceiroSel.nome)}` : 'Escolha o colega'}
+                          </Button>
+                          <Button variant="ghost" className="w-full" onClick={() => setPassoTroca(false)}>
+                            Voltar às opções
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="px-1 pb-1.5 pt-2.5 text-[11px] font-extrabold uppercase tracking-wide text-muted-foreground">
+                            Está trabalhando
+                          </p>
+                          <div className="overflow-hidden rounded-[13px] border border-border">
+                            <OpcaoFolha
+                              tom="az" icone={<UserPlus className="h-4 w-4" />}
+                              titulo="É ajuda de fora"
+                              sub="azul não lido — vai ao fim da fila e sai primeiro"
+                              onClick={() => { marcarAjuda(item.nome, true); fechar() }} />
+                            <OpcaoFolha
+                              tom="am" icone={<ArrowLeftRight className="h-4 w-4" />}
+                              titulo="Trocou com um colega"
+                              sub="escolha o colega; a troca executa ao publicar"
+                              onClick={() => setPassoTroca(true)} />
+                            <OpcaoFolha
+                              tom="vd" icone={<Stethoscope className="h-4 w-4" />}
+                              titulo="Está no consultório ou de sobreaviso"
+                              sub="sem cirurgia de propósito — ocupa a posição, não nasce liberado"
+                              onClick={() => setEscolhaLocal(true)} />
+                          </div>
+                          {escolhaLocal && (
+                            <div className="grid grid-cols-2 gap-1.5 pt-1.5">
+                              {[['CONSULT', 'Consultório'], ['SOBREAVISO', 'Sobreaviso']].map(([nota, rotulo]) => (
+                                <Button key={nota} variant="outline" className="w-full"
+                                  onClick={() => { marcarNotaPosicao(item, nota); fechar() }}>
+                                  {rotulo}
+                                </Button>
+                              ))}
+                            </div>
+                          )}
+                          <p className="px-1 pb-1.5 pt-3 text-[11px] font-extrabold uppercase tracking-wide text-muted-foreground">
+                            A leitura errou
+                          </p>
+                          <div className="overflow-hidden rounded-[13px] border border-border">
+                            <OpcaoFolha
+                              tom="am" icone={<FileText className="h-4 w-4" />}
+                              titulo="Tem cirurgia — corrigir o bloco"
+                              sub="a linha saiu para outra pessoa; abre os Blocos"
+                              onClick={() => { fechar(); irPara('conf-blocos') }} />
+                            {item.pos > 0 && (
+                              <OpcaoFolha
+                                tom="pr" icone={<Pencil className="h-4 w-4" />}
+                                titulo="Corrigir a posição na ordem"
+                                sub={`abre o editor da ${item.pos}ª posição`}
+                                onClick={() => { fechar(); abrirPosicao(item.pos - 1, item.nome); irPara('conf-liberacoes') }} />
+                            )}
+                            {item.pos > 0 && (
+                              <OpcaoFolha
+                                tom="ds" icone={<Trash2 className="h-4 w-4" />}
+                                titulo="Remover da ordem"
+                                sub="o nome sobrou da extração"
+                                destrutivo
+                                onClick={() => { removerPosicao(item.pos - 1); fechar() }} />
+                            )}
+                          </div>
+                          {/* "Está certo" fecha a decisão sem mudar dado nenhum (audit A8):
+                              a pessoa fica LIVRE na própria posição e aguarda a vez. */}
+                          <Button variant="ghost" className="mt-2 w-full"
+                            onClick={() => { responderConferencia(item, { tipo: 'conferido' }); fechar() }}>
+                            Está certo — fica Livre na posição
+                          </Button>
+                        </>
                       )}
                     </div>
-                    <p className="text-[11px] leading-relaxed text-muted-foreground">
-                      Se foi troca, a duplicidade aparece nas decisões quando a escala do outro hospital é lida.
-                    </p>
-                  </div>
-                </>
-              )}
+                  </>
+                )
+              })()}
             </SheetContent>
           </Sheet>
         )

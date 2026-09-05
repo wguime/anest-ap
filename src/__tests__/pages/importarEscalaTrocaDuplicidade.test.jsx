@@ -164,12 +164,22 @@ describe('duplicidade entre hospitais → troca declarada', () => {
     expect(svcMock.patchLinhaOverride).not.toHaveBeenCalled()
   })
 
-  it('confirmar como intencional publica sem declarar troca nenhuma', async () => {
+  // INTENCIONAL PASSA A SER GRAVADO (dono 05/09; Onda 3 — audit A6). Até 04/09 a resposta
+  // "trabalha nos dois hoje" morria no estado da conferência: republicar o turno, ou reabrir a
+  // importação do mesmo dia, fazia a mesma pergunta travar a publicação de novo, e a fila não
+  // tinha como dizer que a duplicidade era de propósito. O que NÃO mudou, e é o que este teste
+  // sempre protegeu: intencional não declara troca nenhuma e não move ninguém de posição.
+  it('confirmar como intencional grava a duplicidade — sem declarar nem executar troca', async () => {
     await importarComDuplicidade()
     fireEvent.click(screen.getByRole('button', { name: /Trabalha nos dois/i }))
     fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
     await waitFor(() => expect(salvarEscala).toHaveBeenCalled())
-    expect(svcMock.patchLinhaOverride).not.toHaveBeenCalled()
+    // caminho legado (rpc_salvar_escala_cirurgica não aceita decisões): grava por patch
+    await waitFor(() => expect(svcMock.patchLinhaOverride).toHaveBeenCalled())
+    const [, chave, valor] = svcMock.patchLinhaOverride.mock.calls[0]
+    expect(chave).toBe('matutino:uid-dido')
+    expect(valor).toMatchObject({ duplicidade: 'intencional' })
+    expect(valor.trocaCom).toBeUndefined()
     expect(executarSubstituicao).not.toHaveBeenCalled()
   })
 

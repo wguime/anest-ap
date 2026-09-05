@@ -148,8 +148,11 @@ describe('Conferência — pendências num lugar só', () => {
     const ordem = container.querySelector('#conf-liberacoes')
     const linha = within(ordem).getByText(/FERNANDO — na ordem, sem cirurgia/i)
     fireEvent.click(linha)
-    const consequencia = await screen.findByText(/vai nascer/i)
-    expect(consequencia.textContent).toMatch(/LIBERADO/)
+    // a consequência mora na linha de dados do cabeçalho da folha (Onda 3, protótipo L4)
+    const consequencia = await screen.findByText(
+      (_t, el) => el?.tagName === 'P' && /ª posição ·/.test(el.textContent || ''),
+    )
+    expect(consequencia.textContent).toMatch(/nasce\s+LIBERADO/)
     // e não repete o mesmo nome em aviso solto de Pendências
     const pend = container.querySelector('#conf-pendencias')
     expect(within(pend).queryByText(/confira a extração/i)).toBeNull()
@@ -165,8 +168,11 @@ describe('Conferência — pendências num lugar só', () => {
     const container = await conferir(casos, ['CURY', 'ERLEI', 'FERNANDO'])
     const ordem = container.querySelector('#conf-liberacoes')
     fireEvent.click(within(ordem).getByText(/ERLEI — na ordem, sem cirurgia/i))
-    expect(await screen.findByText(/pode ter saído para outra pessoa/i)).toBeTruthy()
-    expect(screen.queryByText(/vai nascer/i)).toBeNull()
+    // no meio da ordem a folha abre igual, mas SEM a consequência da cauda
+    const dados = await screen.findByText(
+      (_t, el) => el?.tagName === 'P' && /ª posição ·/.test(el.textContent || ''),
+    )
+    expect(dados.textContent).not.toMatch(/LIBERADO/)
   })
 
   it('some com a linha do nome sem cirurgia quando a ordem casa com os casos', async () => {

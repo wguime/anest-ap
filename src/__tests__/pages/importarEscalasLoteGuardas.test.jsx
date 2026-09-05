@@ -167,3 +167,47 @@ describe('o gesto da borda e o reload do PWA ficam de fora com a conferência ab
     expect(atualizacaoSegura()).toBe(false)
   })
 })
+
+// ── TIRAR DO LOTE E REANEXAR POR CIMA PERGUNTAM (sobra do item 1.7 da auditoria) ────────
+// Os dois caminhos APAGAM conferência já feita — a leitura nova zera o trabalho daquele
+// hospital, por desenho do store. Sumir com o trabalho da secretária sem perguntar é
+// exatamente a queixa de 02/09 ("as alterações não persistem").
+describe('o que apaga conferência feita pergunta antes', () => {
+  it('"Tirar do lote" abre a pergunta e só remove no "Tirar do lote"', async () => {
+    const { container } = await comLote()
+    fireEvent.click(screen.getByRole('button', { name: /tirar .* do lote/i }))
+    expect(await screen.findByText(/Tirar HRO do lote\?/i)).toBeTruthy()
+
+    // "Manter" devolve a aba intacta
+    fireEvent.click(screen.getByRole('button', { name: /^Manter$/i }))
+    await waitFor(() => expect(screen.queryByText(/Tirar HRO do lote\?/i)).toBeNull())
+    expect(abas()).toHaveLength(1)
+
+    fireEvent.click(screen.getByRole('button', { name: /tirar .* do lote/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Tirar do lote$/i }))
+    await waitFor(() => expect(abas()).toHaveLength(0))
+    expect(container).toBeTruthy()
+  })
+
+  it('resolver um pendente para hospital que já tem aba pergunta antes de substituir', async () => {
+    await comLote()
+    // um segundo arquivo, sem hospital reconhecido, vira pendente
+    svcMock.parseEscalaImagem.mockResolvedValueOnce({
+      casos: [{ sala: 'Sala 9', hora: '08:00', anestesista: 'CURY', procedimento: 'X', cirurgiao: 'Y' }],
+      ordemLiberacao: ['CURY'],
+    })
+    fireEvent.change(document.querySelector('input[type="file"]'), {
+      target: { files: [new File(['x'], 'sem-hospital.png', { type: 'image/png' })] },
+    })
+    await waitFor(() => expect(screen.getByText(/não reconheci o hospital/i)).toBeTruthy())
+
+    // escolher o HRO, que JÁ tem aba, tem de perguntar
+    const seletor = screen.getByText(/Escolher o hospital/i)
+    fireEvent.click(seletor)
+    // "HRO" também é o rótulo da aba: o clique é na OPÇÃO do seletor
+    const opcoes = await screen.findAllByText('HRO')
+    fireEvent.click(opcoes.find((n) => n.closest('[role="option"], li, button') && !n.closest('[role="tab"]')))
+    expect(await screen.findByText(/Substituir a escala HRO do lote\?/i)).toBeTruthy()
+    expect(svcMock.parseEscalaImagem).toHaveBeenCalledTimes(2) // nada foi relido ainda
+  })
+})

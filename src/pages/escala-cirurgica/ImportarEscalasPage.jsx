@@ -117,13 +117,16 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
   // leitura (imutável) × trabalho (o que a secretária fez, por aba) × decisões × publicados
   // × aba ativa. É este objeto que o rascunho grava e restaura; as abas são controladas.
   const [lote, dispatch] = useReducer(reduzirLote, { abaAtiva: hospital || null }, estadoInicialLote)
-  const { leitura: itens, trabalho: trabalhos, decisoes: duplicidadeDecisoes, trocas: trocaEscolhida, publicados } = lote
+  const { leitura: itens, trabalho: trabalhos, decisoes: duplicidadeDecisoes, trocas: trocaEscolhida, conferencias, publicados } = lote
   const setAbaAtiva = useCallback((u) => dispatch({ type: 'aba_definida', updater: u }), [])
   const setPublicados = useCallback((u) => dispatch({ type: 'publicados_definidos', updater: u }), [])
   // as abas escrevem as decisões como num setState (valor ou função): a duplicidade é da
   // pessoa, não da aba (dono 30/08) — responder numa aba responde para todas
   const setDuplicidadeDecisoes = useCallback((u) => dispatch({ type: 'decisoes_definidas', updater: u }), [])
   const setTrocaEscolhida = useCallback((u) => dispatch({ type: 'trocas_definidas', updater: u }), [])
+  // "Onde está X hoje?" também é da PESSOA, não da aba (Onda 3): quem está no rodapé da
+  // Unimed sem cirurgia é o mesmo que aparece no HRO — responder uma vez responde nas três
+  const setConferencias = useCallback((u) => dispatch({ type: 'conferencias_definidas', updater: u }), [])
   // arquivos que a leitura não conseguiu atribuir: o item pede o hospital em
   // vez de a tela escolher sozinha (regra da casa: sugere, nunca troca sozinho)
   const [pendentes, setPendentes] = useState([])
@@ -140,6 +143,12 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
   // resultado da última tentativa, por hospital: a FOLHA é a superfície do resultado
   const [resultados, setResultados] = useState({})
   const [publicandoAgora, setPublicandoAgora] = useState(null)
+  // O QUE CADA HOSPITAL DEVOLVEU AO PUBLICAR (Onda 3, item 3.3; audit A4). `publicados` é só a
+  // lista de slugs; a convergência da troca precisa da ESCALA — com `id` e `linha_overrides` —
+  // porque `paresDeclarados` ignora escala sem id. Sem isto, a irmã que subiu 2 s antes era
+  // invisível para a aba seguinte e o swap entre duas abas do mesmo lote ficava "declarado,
+  // aguardando a escala dele(a) ser publicada" mesmo com ela publicada.
+  const [publicadasNoLote, setPublicadasNoLote] = useState({})
   const refs = useRef({})
   // a aba lê `trabalho` e escreve por `onTrabalho(updater)` — um callback estável por
   // hospital, senão os efeitos da aba girariam a cada render do pai
@@ -154,6 +163,10 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
   const [rascunhoRestaurado, setRascunhoRestaurado] = useState(null)
   const [descartarAberto, setDescartarAberto] = useState(false)
   const [republicarAlvo, setRepublicarAlvo] = useState(null)
+  // tirar do lote e reanexar por cima de aba aberta APAGAM conferência já feita — os dois
+  // perguntam antes (sobra do item 1.7 da auditoria)
+  const [removerAlvo, setRemoverAlvo] = useState(null)
+  const [pendenteColisao, setPendenteColisao] = useState(null) // { pendente, hospital }
   const criadoEmRef = useRef(null)
   // desligado depois de publicar tudo ou descartar: o efeito de gravação não pode
   // reescrever o que acabou de ser apagado
@@ -217,6 +230,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
       hospitais: hospitaisParaRascunho(lote, resumos),
       decisoes: lote.decisoes,
       trocas: lote.trocas,
+      conferencias: lote.conferencias,
       publicados: lote.publicados,
       abaAtiva: aba,
       criadoEm: criadoEmRef.current,
@@ -265,6 +279,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
     dispatch({ type: 'lote_descartado' })
     setResumos({})
     setResultados({})
+    setPublicadasNoLote({})
     setPendentes([])
     refs.current = {}
   }
@@ -297,6 +312,11 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
       }
     }
     rascunhoDesligadoRef.current = false
+    setPublicadasNoLote((p) => {
+      const prox = { ...p }
+      for (const h of Object.keys(carimbados)) delete prox[h]
+      return prox
+    })
     dispatch({ type: 'leituras_recebidas', itens: carimbados })
   }
 
@@ -513,6 +533,13 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
   const resolverPendente = async (pendente, hosp) => {
     setPendentes((p) => p.filter((x) => x.id !== pendente.id))
     if (!hosp) return
+    // aba já aberta daquele hospital: entrar por cima zera a conferência dela (a leitura
+    // nova substitui o trabalho, por desenho do store) — então pergunta antes
+    if (itens[hosp]) { setPendenteColisao({ pendente, hospital: hosp }); return }
+    await entregarPendente(pendente, hosp)
+  }
+
+  const entregarPendente = async (pendente, hosp) => {
     if (pendente.arquivo) {
       setCarregando(true)
       try {
@@ -543,6 +570,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
   }
 
   const removerEscala = (hosp) => {
+    setRemoverAlvo(null)
     dispatch({ type: 'leitura_removida', hospital: hosp })
     setResumos((prev) => { const p = { ...prev }; delete p[hosp]; return p })
     delete refs.current[hosp]
@@ -590,6 +618,9 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
         // exceção de uma aba não pode derrubar o laço sem resumo (audit A9)
         let r
         try { r = await api.publicar() } catch (err) { r = { ok: false, mensagem: err?.message || 'Falha inesperada nesta escala.' } }
+        // a escala recém-publicada fica disponível para as abas seguintes ANTES da próxima
+        // publicação do laço — é ela que fecha o swap dentro do lote (item 3.3)
+        if (r?.ok && r.escala?.id) setPublicadasNoLote((p) => ({ ...p, [alvo.hospital]: r.escala }))
         resultados.push({ hospital: alvo.hospital, ok: !!r?.ok, mensagem: r?.mensagem, motivo: r?.motivo, avisos: r?.avisos })
         setResultados((p) => ({ ...p, [alvo.hospital]: { ok: !!r?.ok, mensagem: r?.mensagem, avisos: r?.avisos, em: new Date() } }))
       }
@@ -887,10 +918,13 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
             alteradaDepoisDoRascunho={alteradasDepois.includes(h) ? (resumos[h]?.publicadaAtualizadaEm || null) : null}
             roster={rosterCompartilhado}
             escalasIrmas={irmasPara(h)}
+            publicadasNoLote={publicadasNoLote}
             decisoesLote={duplicidadeDecisoes}
             onDecisoesLote={setDuplicidadeDecisoes}
             trocasLote={trocaEscolhida}
             onTrocasLote={setTrocaEscolhida}
+            conferenciasLote={conferencias}
+            onConferenciasLote={setConferencias}
             onResumo={receberResumo}
             onClose={() => {}}
           />
@@ -899,7 +933,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
         {temLote && (
           <button
             type="button"
-            onClick={() => removerEscala(aba)}
+            onClick={() => setRemoverAlvo(aba)}
             className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground active:opacity-60"
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -1066,6 +1100,34 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
         description={`A conferência de ${hospitaisDoLote.map(rotulo).join(', ')} guardada ${rascunhoRestaurado ? `às ${descreverMomentoRascunho(rascunhoRestaurado)}` : 'neste aparelho'} some daqui. As escalas já publicadas não mudam.`}
         confirmText="Descartar"
         cancelText="Manter"
+      />
+
+      {/* Tirar do lote apaga a conferência daquele hospital — pergunta antes (item 1.7) */}
+      <ConfirmDialog
+        open={!!removerAlvo}
+        variant="danger"
+        onClose={() => setRemoverAlvo(null)}
+        onConfirm={() => { const h = removerAlvo; if (h) removerEscala(h) }}
+        title={`Tirar ${removerAlvo ? (HOSPITAL_LABEL[removerAlvo] || removerAlvo) : ''} do lote?`}
+        description="A conferência já feita nesta aba — logins escolhidos, horas corrigidas, rodapé — some. A escala publicada não muda; para conferir de novo é preciso anexar o arquivo outra vez."
+        confirmText="Tirar do lote"
+        cancelText="Manter"
+      />
+
+      {/* Resolver um pendente para hospital que JÁ TEM aba substitui a leitura dela (item 1.7) */}
+      <ConfirmDialog
+        open={!!pendenteColisao}
+        variant="danger"
+        onClose={() => setPendenteColisao(null)}
+        onConfirm={() => {
+          const alvo = pendenteColisao
+          setPendenteColisao(null)
+          if (alvo) entregarPendente(alvo.pendente, alvo.hospital)
+        }}
+        title={`Substituir a escala ${pendenteColisao ? (HOSPITAL_LABEL[pendenteColisao.hospital] || pendenteColisao.hospital) : ''} do lote?`}
+        description={`${pendenteColisao?.pendente?.nome || 'O arquivo'} entraria na aba que já está aberta, e a conferência feita nela some. Se o arquivo é de outro hospital, cancele e escolha o hospital certo.`}
+        confirmText="Substituir"
+        cancelText="Cancelar"
       />
 
       {/* Republicar por cima do que está no ar: DELETE+reinsert zera liberações e tempos do turno */}

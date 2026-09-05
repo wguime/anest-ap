@@ -88,12 +88,13 @@ export function limparParaRascunho(valor) {
  * @param {Object} p.hospitais     hospital -> { lido, trabalho, escalaPublicadaUpdatedAt }
  * @param {Object} [p.decisoes]    decisões de duplicidade do lote
  * @param {Object} [p.trocas]      parceiro escolhido por decisão
+ * @param {Object} [p.conferencias] respostas da folha "Onde está X hoje?" (Onda 3)
  * @param {string[]} [p.publicados] hospitais que já subiram neste lote
  * @param {string|null} [p.abaAtiva]
  * @param {string} [p.criadoEm]    ISO do rascunho anterior (mantido entre gravações)
  */
 export function montarRascunho({
-  data, turno, hospitais, decisoes = {}, trocas = {}, publicados = [], abaAtiva = null, criadoEm = null,
+  data, turno, hospitais, decisoes = {}, trocas = {}, conferencias = {}, publicados = [], abaAtiva = null, criadoEm = null,
 } = {}, { agora = Date.now() } = {}) {
   if (!chaveRascunho(data, turno)) return null
   const entradas = Object.entries(hospitais || {}).filter(([, v]) => v && v.lido)
@@ -116,6 +117,7 @@ export function montarRascunho({
     hospitais: hosp,
     decisoes: limparParaRascunho(decisoes) || {},
     trocas: limparParaRascunho(trocas) || {},
+    conferencias: limparParaRascunho(conferencias) || {},
     publicados: Array.isArray(publicados) ? publicados.filter((x) => typeof x === 'string') : [],
     abaAtiva: typeof abaAtiva === 'string' ? abaAtiva : null,
   }
