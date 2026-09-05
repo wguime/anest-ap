@@ -588,7 +588,8 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                      hospital de origem não tem escala publicada (o Materno). */
                   onDefinirOrigem={(linha, origem) => definirOrigemLinha(escalaLib, linha, origem, userInfo, turno)}
                   contraturnoOutros={modoFds ? [] : contraturnoOutros}
-                  presencaOutros={presencaOutros}
+                  // fila única: os três hospitais estão nela — não há "outro" (dono 05/09)
+                  presencaOutros={modoFds ? [] : presencaOutros}
                   paresTroca={modoFds ? [] : paresTroca}
                   onMarcarTroca={modoFds ? undefined : (linha, colega, par) => {
                     // REMOVER mira onde a declaração MORA, não a linha da tela

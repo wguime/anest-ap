@@ -696,3 +696,31 @@ Travas: describe "a NOITE classifica como o dia" em `escalaFdsTelaUnica.test.jsx
 — "SÓ os dois postos ficam verdes" e "a cirurgia herdada APARECE, mas não segura
 ninguém no turno", este último trocando de lado no mesmo dia em que nasceu, com o
 porquê no corpo. Os dois afirmam também que "Retaguarda" sumiu da tela.
+
+### FDS — AJUDA NUNCA É AUTOMÁTICA (dono, sáb 05/09)
+
+"nos finais de semana não existe a opção de ajuda (apenas como exceção), ou seja
+nunca marque ajuda de forma automática; se houver será informado ou marcado de
+forma manual."
+
+O que aconteceu: primeira manhã de fim de semana com o recorte de 30/08
+(`presencaOutros` levando os CASOS dos outros hospitais) em produção. A página
+passava `presencaOutros` para a fila única SEM o gate de `modoFds` —
+`contraturnoOutros` e `paresTroca` tinham o gate, a presença não. No FDS o
+`hospital` da página segue valendo um dos três, então os casos dos outros dois
+entravam como "emprestado": todo mundo com cirurgia no HRO nasceu com o badge
+Ajuda + "Ajuda Sala 4/HRO", 45s depois de publicar. E o toggle "Ajuda de outro
+hospital" do painel NÃO desmarcava: `aria-pressed` lê `isAjuda` (derivado), mas
+a ação procura o nome em `ajuda_externa`, não acha e ADICIONA — e com o nome lá
+a linha cai para o bloco do fim da fila.
+
+Regra, em três gates `modoFds` na view + um na página: `ajudandoFora` e
+`rodapeOutros` vazios (não existe "outro hospital" na fila única — os três estão
+em `casosFds`); o badge derivado de extra ("fora de todos os rodapés = Ajuda",
+19/08) é de DIA ÚTIL — no FDS quem tem cirurgia sem estar na ordem entra na fila
+sem badge; e só `ajuda_externa` da linha 'fds' (toggle do painel / "Adicionar
+ajuda") pinta o badge — essa é a exceção manual. `origem` informada à mão
+continua valendo. Trava: describe "ajuda nunca é automática" em
+`escalaFdsTelaUnica.test.jsx`, com a MESMA fixture provando o badge no dia útil
+(o gate é o modo, não a fixture). Resíduo de 05/09 (o "GUILHERME D" que o toggle
+adicionou + `origem: hro`): `scripts/repair-escala-2026-09-05-fds-ajuda-fantasma.sql`.

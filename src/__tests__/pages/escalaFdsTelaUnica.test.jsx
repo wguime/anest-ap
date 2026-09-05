@@ -19,6 +19,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { ThemeProvider, ToastProvider } from '@/design-system'
 import LiberacoesView from '@/pages/escala-cirurgica/LiberacoesView'
 import BarraControles from '@/pages/escala-cirurgica/BarraControles'
+import { normNome } from '@/pages/escala-cirurgica/utils'
 
 vi.mock('@/services/supabaseEscalaCirurgicaService', () => ({
   default: { fetchLocaisHospital: vi.fn(async () => []), fetchAvisos: vi.fn(async () => []) },
@@ -759,6 +760,82 @@ describe('painel da linha — Hospital, Responsável e Posição só na fila ún
     expect(screen.getAllByText('Sala 4').length).toBeGreaterThan(1)
   })
 })
+
+// ════════════════════════════════════════════════════════════════════════════
+// NA FILA ÚNICA, AJUDA NUNCA É AUTOMÁTICA (dono, sáb 05/09)
+// ════════════════════════════════════════════════════════════════════════════
+/**
+ * "nos finais de semana não existe a opção de ajuda (apenas como exceção), ou
+ * seja nunca marque ajuda de forma automática; se houver será informado ou
+ * marcado de forma manual."
+ *
+ * O que aconteceu na manhã de 05/09: a página cruza as escalas dos OUTROS
+ * hospitais (`presencaOutros`) para marcar quem foi emprestado — caso lá e não
+ * aqui = badge Ajuda + destino (dono 30/08, caso Oscar). No fim de semana não
+ * existe "outro hospital": os casos dos três já estão mesclados em `casosFds`.
+ * Mas a página seguia passando a presença dos outros dois, e todo mundo com
+ * cirurgia no HRO nasceu "Ajuda" sem ninguém ter marcado nada. E o toggle do
+ * painel não desmarcava: a marca não vinha de `ajuda_externa`, então ele
+ * ADICIONAVA o nome — e a linha caía para o bloco do fim da fila.
+ *
+ * A mesma fixture nos dois modos, de propósito: só o gate `modoFds` separa os
+ * resultados. Uma presença que não marcasse ninguém nem no dia útil não
+ * provaria que o gate é o modo.
+ */
+describe('fila única — ajuda nunca é automática: só a marcada à mão', () => {
+  // Gabriel tem cirurgia no HRO (Sala 4). Num dia útil, visto da Unimed, isso
+  // é "emprestado ao HRO"; no fim de semana é só a cirurgia dele na fila.
+  const PRESENCA_HRO = [
+    // `nome` normalizado como a página grava (normNome), senão o card do destino não casa
+    { nome: normNome('GABRIEL'), uid: null, hospital: 'hro', hospitalLabel: 'HRO', sala: 'Sala 4', cirurgiao: 'Plantao Orto' },
+  ]
+  // Marilia opera no HRO sem estar na ordem publicada: no dia útil, "extra
+  // fora de todos os rodapés" vira Ajuda (dono 19/08); no fim de semana, não.
+  const CASO_MARILIA = { id: 'c3', sala: 'Sala 2', ordem: 0, hora: '07:00', turno: 'matutino', anestesista: 'MARILIA', cirurgiao: 'Dr. Y', procedimento: 'HERNIA', hospitalOrigem: 'hro' }
+
+  it('presença em "outro hospital" não marca ninguém — e o toggle do painel nasce DESLIGADO', async () => {
+    render(<LiberacoesView {...props({ presencaOutros: PRESENCA_HRO })} />, { wrapper: wrap })
+    await screen.findByText(/Gabriel/)
+    expect(screen.queryByText('Ajuda')).toBeNull()
+    expect(screen.queryByText(/^Ajuda .*HRO/)).toBeNull()
+    // o painel do Gabriel: "Marcar" (desligado), não "não é ajuda" (ligado) —
+    // era o ligado-sem-fonte que fazia o toque ADICIONAR em vez de remover
+    fireEvent.click(await screen.findByRole('button', { name: /Editar local\/cirurgião de Gabriel/ }))
+    await screen.findByText('Observação')
+    expect(screen.getByRole('button', { name: /Marcar Gabriel como ajuda de outro hospital/ })).toBeTruthy()
+  })
+
+  it('quem tem cirurgia sem estar na ordem entra na fila, mas SEM o badge', async () => {
+    render(<LiberacoesView {...props({ casosFds: [...CASOS_FDS, CASO_MARILIA] })} />, { wrapper: wrap })
+    await screen.findByText(/Marilia/)
+    expect(screen.queryByText('Ajuda')).toBeNull()
+  })
+
+  it('a exceção continua existindo: ajuda MARCADA À MÃO leva o badge e o toggle desliga', async () => {
+    const escala = { ...ESCALA_FDS, ajudaExterna: { matutino: ['MARILIA'] } }
+    render(<LiberacoesView {...props({ escala, casosFds: [...CASOS_FDS, CASO_MARILIA] })} />, { wrapper: wrap })
+    await screen.findByText(/Marilia/)
+    expect(screen.getByText('Ajuda')).toBeTruthy()
+    fireEvent.click(await screen.findByRole('button', { name: /Editar local\/cirurgião de Marilia/ }))
+    await screen.findByText('Observação')
+    expect(screen.getByRole('button', { name: /não é ajuda de outro hospital/ })).toBeTruthy()
+  })
+
+  it('no dia útil a MESMA presença e o MESMO extra marcam Ajuda — o gate é o modo, não a fixture', async () => {
+    const escala = {
+      id: 'e-util', hospital: 'unimed',
+      // Gabriel na ordem sem caso aqui (emprestado ao HRO); Marilia com caso e fora da ordem (extra)
+      ordemLiberacao: { matutino: ['GABRIEL', 'KARINE'] },
+      liberacoes: {}, linhaOverrides: {},
+      casos: [CASOS_FDS[0], { ...CASO_MARILIA, sala: 'CC - Sala 2' }],
+    }
+    render(<LiberacoesView escala={escala} hospital="unimed" hospitalLabel="Unimed" canEdit turno="matutino" onToggle={vi.fn()} presencaOutros={PRESENCA_HRO} />, { wrapper: wrap })
+    await screen.findByText(/Gabriel/)
+    expect(screen.getAllByText('Ajuda').length).toBe(2)
+    expect(screen.getByText(/^Ajuda .*HRO/)).toBeTruthy()
+  })
+})
+
 
 // ════════════════════════════════════════════════════════════════════════════
 // A FRONTEIRA: o que é do fim de semana FICA no fim de semana (dono 24/08)

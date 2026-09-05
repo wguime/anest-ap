@@ -273,10 +273,18 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       // ajuda_externa de lá (dono 31/08, caso Eduardo/Materno): a declaração
       // humana vale como o caso — e no Materno é o único sinal que existe.
       // Presença de rodapé sem nada disso segue não provando deslocamento.
-      ajudandoFora: presencaOutros.filter((p) => p.sala || p.ajudaDeclarada),
+      // ⚠️ NA FILA ÚNICA NÃO EXISTE "OUTRO HOSPITAL" (dono, sáb 05/09: "nunca
+      // marque ajuda de forma automática"): os casos dos três já estão em
+      // `casosFds`, ninguém está emprestado a lugar nenhum. A página segue com
+      // `hospital` valendo um dos três, e a presença que ela cruza é a dos outros
+      // dois — na 1ª manhã com o recorte de 30/08 em produção, todo mundo com
+      // cirurgia no HRO nasceu "Ajuda", e o toggle do painel não desmarcava
+      // (a marca não vinha de `ajuda_externa`; ele ADICIONAVA o nome e a linha
+      // caía para o fim). O gate fica aqui, no mesmo ponto em que `turno` sai.
+      ajudandoFora: modoFds ? [] : presencaOutros.filter((p) => p.sala || p.ajudaDeclarada),
       // VISITANTES (dono 31/07): rodapés das OUTRAS escalas com o índice de cada
       // nome — quem está aqui de ajuda libera primeiro, na ordem de liberação de lá.
-      rodapeOutros: presencaOutros.filter((p) => p.rodapeIdx != null),
+      rodapeOutros: modoFds ? [] : presencaOutros.filter((p) => p.rodapeIdx != null),
       origemManual,
     })
   }, [casosTurno, rodapeTurno, escala, hospitalLabel, turno, turnoBase, resolverUid, nomeExibicao, presencaOutros, origemManual, modoFds])
@@ -1718,7 +1726,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // const que o JSX usa é o que impede a lista de condições de divergir.
           const badgePlantonista = !liberadoReal && !modoFds && linha.isPlantonista
           const badgePlantaoFisico = !liberadoReal && plantaoFisicoDe(linha)
-          const badgeAjuda = !liberadoReal && (linha.isAjuda || (foraDoRodape && !ajudaDeOutro(linha)))
+          // "extra fora de todos os rodapés = Ajuda" (19/08) é regra de DIA ÚTIL:
+          // na fila única ajuda nunca é automática (dono 05/09) — quem tem
+          // cirurgia sem estar na ordem entra na fila, e só `ajuda_externa`
+          // (marcada à mão) pinta o badge.
+          const badgeAjuda = !liberadoReal && (linha.isAjuda || (!modoFds && foraDoRodape && !ajudaDeOutro(linha)))
           const badgeTroca = trocaDe(linha)
           const badgeAssumida = linha.assumida && !badgeTroca
           const badgeAjudaOutro = !liberadoReal && ajudaDeOutro(linha)
