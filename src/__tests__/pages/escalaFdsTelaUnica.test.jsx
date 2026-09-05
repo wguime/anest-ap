@@ -329,12 +329,22 @@ describe('fila única — a ordem de liberação vale mesmo sem cirurgia', () =>
     expect(onToggle).not.toHaveBeenCalled()
   })
 
-  it('o plantão sai sem esbarrar na ordem — está fora dela', async () => {
+  /**
+   * ⚠️ ESTE TESTE MUDOU DE LADO em 05/09. Ele afirmava que o plantão da faixa
+   * "sai sem esbarrar na ordem — está fora dela": um toque liberava. O dono
+   * fechou a regra ao ver o P1 do HRO "Liberado" na noite de 05/09: "sempre os
+   * dois plantões estão trabalhando e portanto SEMPRE devem estar trabalhando e
+   * com a marcação dos badges". Fora da ordem ele continua — mas porque fica
+   * até o fim do turno, não porque sai quando quiser.
+   */
+  it('o plantão está fora da ordem porque FICA — o toque avisa e não libera', async () => {
     const onToggle = vi.fn()
     render(<LiberacoesView {...tarde({ onToggle })} />, { wrapper: wrap })
     await screen.findByText(/Karine/)
     fireEvent.click(screen.getByLabelText('Marcar Karine Bedin liberado'))
-    await waitFor(() => expect(onToggle).toHaveBeenCalledTimes(1))
+    expect(await screen.findByText('Karine Bedin é Plantão Unimed')).toBeTruthy()
+    expect(onToggle).not.toHaveBeenCalled()
+    expect(screen.getByText('Plantão Unimed').className).toMatch(/bg-primary/)
   })
 })
 
@@ -394,6 +404,34 @@ describe('fila única — a NOITE classifica como o dia', () => {
     expect(screen.getByText('Cesar Bombardelli')).toBeTruthy()
     // …e MARILIA e OSCAR estão liberados: só os dois postos ficam
     expect(screen.getAllByText('Liberado')).toHaveLength(2)
+  })
+
+  /**
+   * OS DOIS PLANTÕES DO TURNO ESTÃO SEMPRE TRABALHANDO (dono 05/09: "sempre os
+   * dois plantões estão trabalhando e portanto SEMPRE devem estar trabalhando e
+   * com a marcação dos badges"). Em 05/09 um toque às 12:03 no card da noite do
+   * P1 do HRO o deixou "Liberado" e sem o selo — a fila da noite ficou sem o
+   * plantão do HRO. O posto da grade não se libera: nem por marcação já gravada,
+   * nem por toque, nem pela cauda automática.
+   */
+  it('o posto do turno NUNCA fica liberado: a marcação é ignorada e o toque não libera', async () => {
+    const onToggle = vi.fn(async () => {})
+    render(<LiberacoesView {...noite({
+      onToggle,
+      escala: {
+        ...ESCALA_FDS,
+        ordemLiberacao: { vespertino: ['KARINE', 'GABRIEL', 'MARILIA', 'OSCAR'] },
+        liberacoes: { 'noite:GABRIEL': { em: '2026-09-05T15:03:19Z', por: 'u1', liberadoEm: '2026-09-05T15:03:19.050Z' } },
+      },
+    })} />, { wrapper: wrap })
+    await screen.findByText(/Gabriel/)
+    // só Marilia e Oscar liberados — o posto do HRO segue trabalhando, com o selo
+    expect(screen.getAllByText('Liberado')).toHaveLength(2)
+    expect(screen.getByText('Plantão HRO').className).toMatch(/bg-primary/)
+    // e o toque no círculo dele avisa em vez de liberar: nada é escrito
+    fireEvent.click(screen.getByRole('button', { name: /Marcar Gabriel liberado/ }))
+    expect(await screen.findByText(/Gabriel é Plantão HRO/)).toBeTruthy()
+    expect(onToggle).not.toHaveBeenCalled()
   })
 
   it('o plantão da noite nunca fica "Livre" nem vermelho, mesmo sem cirurgia', async () => {

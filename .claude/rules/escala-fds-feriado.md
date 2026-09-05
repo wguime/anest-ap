@@ -724,3 +724,18 @@ continua valendo. Trava: describe "ajuda nunca é automática" em
 `escalaFdsTelaUnica.test.jsx`, com a MESMA fixture provando o badge no dia útil
 (o gate é o modo, não a fixture). Resíduo de 05/09 (o "GUILHERME D" que o toggle
 adicionou + `origem: hro`): `scripts/repair-escala-2026-09-05-fds-ajuda-fantasma.sql`.
+
+### FDS — OS DOIS PLANTÕES DO TURNO ESTÃO SEMPRE TRABALHANDO (dono, sáb 05/09)
+
+"lembre-se que sempre os dois plantões estão trabalhando e portanto SEMPRE
+devem estar trabalhando e com a marcação dos badges."
+
+Foto das 12:34: na aba Noturno o P1 do HRO aparecia "Liberado" e SEM o selo
+"Plantão HRO" — um toque no círculo às 12:03 tinha gravado `noite:GUILHERME D`
+em `liberacoes`, e o selo da grade sumia com a liberação (`!liberadoReal`). O
+posto da grade (`plantaoFisicoDe` — Plantão Unimed/HRO da faixa exibida; no
+feriado, os dois que fecham a fila) agora é `postoDoTurno` no card: a marcação
+gravada é ignorada, a cauda automática não o alcança, e o toque no círculo avisa
+("X é Plantão HRO — os dois plantões do turno ficam trabalhando até o fim dele")
+sem escrever. Trava: "o posto do turno NUNCA fica liberado" em
+`escalaFdsTelaUnica.test.jsx` (marcação gravada + toque com `onToggle` espiado).

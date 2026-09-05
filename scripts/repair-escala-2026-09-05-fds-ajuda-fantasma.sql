@@ -28,3 +28,15 @@ SET ajuda_externa = jsonb_set(coalesce(ajuda_externa, '{}'::jsonb), '{matutino}'
     linha_overrides = coalesce(linha_overrides, '{}'::jsonb) - 'matutino:LeFdhA2yKzaRujiU9diLhqa0dbB3'
 WHERE data = '2026-09-05' AND hospital = 'fds'
   AND ajuda_externa -> 'matutino' = '["GUILHERME D"]'::jsonb;
+
+-- 2ª parte (dono, 12:34: "hoje a noite o plantão do HRO está sem o badge"):
+-- a liberação "noite:GUILHERME D" era um toque no card da NOITE do P1 do HRO
+-- às 12:03, no meio da mesma tentativa de desmarcar a ajuda — e o selo da grade
+-- sumia junto com a liberação. O código passou a IGNORAR a marcação no posto
+-- do turno (os dois plantões estão sempre trabalhando, dono 05/09) — o selo e
+-- o verde voltam sozinhos com o deploy. Esta parte é higiene: tira a marcação
+-- acidental do registro.
+UPDATE escala_cirurgica
+SET liberacoes = coalesce(liberacoes, '{}'::jsonb) - 'noite:GUILHERME D'
+WHERE data = '2026-09-05' AND hospital = 'fds'
+  AND liberacoes ? 'noite:GUILHERME D';

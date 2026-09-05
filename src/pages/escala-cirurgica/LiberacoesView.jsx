@@ -1027,6 +1027,18 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
    * `bloqueio` = { faltam, proximo } quando a linha não é a próxima.
    */
   const toggle = async (linha, liberado, bloqueio = null) => {
+    // posto do turno não se libera (dono 05/09) — ver `postoDoTurno` no card.
+    // Sem isto o toque gravava a marcação e o card virava "Liberado" sem selo.
+    const posto = modoFds ? plantaoFisicoDe(linha) : null
+    if (posto) {
+      toast({
+        variant: 'warning',
+        duration: 12000,
+        title: `${linha.anestesista} é ${posto}`,
+        description: 'Os dois plantões do turno ficam trabalhando até o fim dele.',
+      })
+      return
+    }
     if (bloqueio) {
       toast({
         variant: 'warning',
@@ -1641,9 +1653,17 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // fila (dono 19/08) — o número é sequência de exibição, não posição
           // da ordem publicada, que segue imutável
           const numeroExibido = ++numeroOrdem
+          // OS DOIS PLANTÕES DO TURNO ESTÃO SEMPRE TRABALHANDO (dono 05/09: "sempre
+          // os dois plantões estão trabalhando e portanto SEMPRE devem estar
+          // trabalhando e com a marcação dos badges"). O posto da grade (Plantão
+          // Unimed/HRO da faixa exibida; no feriado, os dois que fecham a fila) não
+          // se libera: nem por toque — um toque às 12:03 no card da noite do P1 do
+          // HRO deixou a fila da noite sem o plantão do HRO —, nem pela cauda
+          // automática. Marcação gravada, se existir, é ignorada aqui.
+          const postoDoTurno = modoFds && !!plantaoFisicoDe(linha)
           const marcacao = marcaDe(linha)
           const forcadoEscalado = marcacao?.escalado === true // entrou na escala no meio do dia
-          const liberadoReal = !!marcacao && !forcadoEscalado
+          const liberadoReal = !!marcacao && !forcadoEscalado && !postoDoTurno
           // NO MEIO DA FILA o vermelho NUNCA é automático (dono 20/08, depois de o
           // sintoma voltar em produção: Eduardo, 5º de 15, nasceu vermelho 47s
           // depois da publicação da tarde — ele tinha trocado com a Raquel e não
@@ -1659,7 +1679,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // cirúrgico chega separado — muitas vezes depois. Card vermelho ali
           // dizia "já foi embora" de quem tinha acabado de entrar na escala.
           // O vermelho volta a ser só do toque humano, como em 20/08.
-          const caudaSemTrabalho = caudaLiberada(linha, idx)
+          const caudaSemTrabalho = caudaLiberada(linha, idx) && !postoDoTurno
           const liberado = liberadoReal || caudaSemTrabalho
           // CARD DE LIBERADO É UM SÓ (dono 03/09, foto das 17h): quem mostra "Liberado"
           // tem o MESMO card, tenha vindo do toque ou da cauda automática. O que
@@ -1704,7 +1724,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // — e no fim de semana o mapa costuma chegar vazio, então sem esta
           // guarda o plantonista nasce rotulado como quem não está em jogo,
           // bem no card que diz "Plantão Unimed".
-          const plantaoDaFaixa = modoFds && !!plantaoFisicoDe(linha)
+          const plantaoDaFaixa = postoDoTurno
           const livre = (modoFds || !noturno) && !liberado && !plantaoDaFaixa
             && (estaLivre(linha) || (semEscala && !forcadoEscalado))
           const ov = overrideDe(linha)
