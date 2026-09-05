@@ -58,22 +58,22 @@ export function canAccessIncidentManagement(user) {
 
 /**
  * Acesso granular à página `incidente-gestao`.
- * Admin pleno OU responsável com receberIncidentes=true.
+ * SÓ responsável com receberIncidentes=true (decisão do dono 05/09/2026: relatos
+ * são exclusivos de quem está marcado no Centro de Gestão; admin não marcado
+ * não vê — no app e na RLS, migration 20260905000000).
  */
 export function canAccessIncidenteGestao(user) {
   if (!user) return false
-  if (isFullAdmin(user)) return true
   return isIncidentResponsible(user) &&
     !!(user.incidentSettings && user.incidentSettings.receberIncidentes)
 }
 
 /**
  * Acesso granular à página `denuncia-gestao`.
- * Admin pleno OU responsável com receberDenuncias=true.
+ * SÓ responsável com receberDenuncias=true (mesma regra acima).
  */
 export function canAccessDenunciaGestao(user) {
   if (!user) return false
-  if (isFullAdmin(user)) return true
   return isIncidentResponsible(user) &&
     !!(user.incidentSettings && user.incidentSettings.receberDenuncias)
 }
@@ -119,12 +119,11 @@ export function getVisibleCentroGestaoSections(user) {
 
 /**
  * Quais view modes (incidentes/denuncias) o user pode ver no Painel de Ética.
- * - Admin pleno: ambos.
- * - Demais: estritamente o que está marcado em receberIncidentes / receberDenuncias.
- *   Se nenhum estiver marcado, retorna [] (sem acesso a nenhum tipo).
+ * - Estritamente o que está marcado em receberIncidentes / receberDenuncias —
+ *   admin pleno NÃO tem atalho (05/09/2026); ele entra na seção só para gerir
+ *   a aba Responsáveis. Se nenhum estiver marcado, retorna [].
  */
 export function getAllowedIncidentViewModes(user) {
-  if (isFullAdmin(user)) return ['incidentes', 'denuncias']
   const modes = []
   if (user && user.incidentSettings && user.incidentSettings.receberIncidentes) {
     modes.push('incidentes')

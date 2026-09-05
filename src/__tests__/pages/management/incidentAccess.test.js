@@ -383,8 +383,13 @@ describe('getVisibleCentroGestaoSections', () => {
 // ============================================================================
 
 describe('getAllowedIncidentViewModes', () => {
-  it('admin pleno: ambos modos', () => {
-    expect(getAllowedIncidentViewModes(adminPleno)).toEqual(['incidentes', 'denuncias'])
+  it('admin pleno NÃO marcado: nenhum modo (05/09/2026) — só a aba Responsáveis', () => {
+    expect(getAllowedIncidentViewModes(adminPleno)).toEqual([])
+  })
+
+  it('admin marcado como responsável: os tipos marcados, como qualquer um', () => {
+    expect(getAllowedIncidentViewModes({ ...adminPleno, incidentSettings: { isResponsible: true, receberIncidentes: false, receberDenuncias: true } })).toEqual(['denuncias'])
+    expect(canAccessDenunciaGestao({ ...adminPleno, incidentSettings: { isResponsible: true, receberIncidentes: false, receberDenuncias: true } })).toBe(true)
   })
 
   it('responsável que recebe ambos', () => {
@@ -428,8 +433,8 @@ describe('getAllowedIncidentViewModes', () => {
 // ============================================================================
 
 describe('canAccessIncidenteGestao (guard granular incidentes)', () => {
-  it('admin pleno: sempre permitido', () => {
-    expect(canAccessIncidenteGestao(adminPleno)).toBe(true)
+  it('admin pleno NÃO marcado → BLOQUEADO (05/09/2026: relatos só de responsável)', () => {
+    expect(canAccessIncidenteGestao(adminPleno)).toBe(false)
   })
 
   it('responsável com Inc:ON → permitido', () => {
@@ -471,8 +476,8 @@ describe('canAccessIncidenteGestao (guard granular incidentes)', () => {
 // ============================================================================
 
 describe('canAccessDenunciaGestao (guard granular denúncias)', () => {
-  it('admin pleno: sempre permitido', () => {
-    expect(canAccessDenunciaGestao(adminPleno)).toBe(true)
+  it('admin pleno NÃO marcado → BLOQUEADO (05/09/2026: relatos só de responsável)', () => {
+    expect(canAccessDenunciaGestao(adminPleno)).toBe(false)
   })
 
   it('responsável com Den:ON → permitido', () => {
@@ -614,7 +619,8 @@ describe('Sidebar rendering — usuários com permissão única veem APENAS sua 
 
 describe('MATRIZ — política de acesso Centro de Gestão > Incidentes', () => {
   const cases = [
-    { name: 'admin pleno',             user: adminPleno,          canCG: true,  sections: null,           viewModes: ['incidentes','denuncias'], incGestao: true,  denGestao: true },
+    // 05/09/2026: admin NÃO marcado entra no Centro (sections null → gere a aba Responsáveis) mas não vê relatos.
+    { name: 'admin pleno',             user: adminPleno,          canCG: true,  sections: null,           viewModes: [],                        incGestao: false, denGestao: false },
     { name: 'coordenador comum',       user: coordComum,          canCG: true,  sections: 'no-incidentes', viewModes: [],                        incGestao: false, denGestao: false },
     { name: 'coordenador + resp.',     user: coordResponsavel,    canCG: true,  sections: 'has-incidentes', viewModes: ['incidentes'],            incGestao: true,  denGestao: false },
     { name: 'responsável ambos',       user: responsavelPuro,     canCG: true,  sections: ['incidentes'],  viewModes: ['incidentes','denuncias'], incGestao: true,  denGestao: true },

@@ -396,16 +396,15 @@ service cloud.firestore {
 
     // ==================== INCIDENTES E DENÚNCIAS ====================
 
+    // Coleções LEGADAS: incidentes e denúncias vivem no Supabase (tabela incidentes,
+    // RLS por responsável) desde a migração de mar/2026. O formulário público usa
+    // rpc_submit_public_incident. Nada lê nem grava aqui pelo cliente (05/09/2026).
     match /incidentes/{incidenteId} {
-      allow read: if isAdmin();
-      allow create: if true;
-      allow update, delete: if isAdmin();
+      allow read, write: if false;
     }
 
     match /denuncias/{denunciaId} {
-      allow read: if isAdmin();
-      allow create: if true;
-      allow update, delete: if isAdmin();
+      allow read, write: if false;
     }
 
     // ==================== COMITÊS ====================

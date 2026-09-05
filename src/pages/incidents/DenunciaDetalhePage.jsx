@@ -273,8 +273,10 @@ export default function DenunciaDetalhePage({ onNavigate, denunciaId }) {
 
   // LGPD P4: Verificar se o usuário é dono do relato ou admin
   const isOwner = denuncia?.userId && user?.id && denuncia.userId === user.id;
-  const isAdmin = !!(user?.isAdmin || user?.isCoordenador || ['administrador','coordenador'].includes((user?.role||'').toLowerCase()));
-  const hasAccess = isOwner || isAdmin;
+  // 05/09/2026: só o autor ou quem está marcado como responsável pelo tipo
+  // (Centro de Gestão) — admin/coordenador não marcado fica fora, como na RLS.
+  const isResponsavel = !!(user?.incidentSettings?.receberDenuncias);
+  const hasAccess = isOwner || isResponsavel;
 
   if (!denuncia) {
     return (

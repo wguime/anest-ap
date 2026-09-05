@@ -38,8 +38,9 @@ description: Conformidade LGPD — consentimento, anonimização, retenção de 
 
 ## Formulários Públicos
 - `public/formulario-incidente.html` e `public/formulario-denuncia.html`
-- Sem autenticação (create público), leitura requer auth
-- Firestore rules: `allow create: if true; allow read, update, delete: if isAuthenticated();`
+- Sem autenticação: gravam via `rpc_submit_public_incident` (Supabase, SECURITY DEFINER, anon)
+- Firestore `incidentes`/`denuncias` são coleções LEGADAS travadas (`allow read, write: if false`, 05/09/2026)
+- Leitura de relatos: SÓ responsável marcado no Centro de Gestão (`is_incident_responsible`), nunca por ser admin
 
 ## Ao Criar Novas Features com Dados Pessoais
 1. Verificar necessidade de consentimento
