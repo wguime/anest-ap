@@ -221,9 +221,11 @@ async function salvarEscala({ data, hospital, casos = [], ordemLiberacao = [], a
 /**
  * Publica/substitui somente um turno. A RPC trava o cabeçalho diário e faz o
  * replace + reset operacional do turno em uma transação; o outro turno não é
- * apagado nem tem suas liberações/overrides alterados.
+ * apagado nem tem suas liberações/overrides alterados. Desde 05/09 as decisões
+ * da conferência (`linhaOverrides`) e a preservação do rastro de quem segue na
+ * escala (`preservar`) viajam na MESMA transação — nada mais de patch depois.
  */
-async function salvarEscalaTurno({ data, hospital, turno, casos = [], ordemLiberacao = [], ajudaExterna = [], sourceImagePath, status = 'publicada', fdsMeta }, userInfo = {}) {
+async function salvarEscalaTurno({ data, hospital, turno, casos = [], ordemLiberacao = [], ajudaExterna = [], sourceImagePath, status = 'publicada', fdsMeta, linhaOverrides, preservar }, userInfo = {}) {
   if (turno !== 'matutino' && turno !== 'vespertino') {
     throw new Error('salvarEscalaTurno: turno inválido')
   }
@@ -242,6 +244,13 @@ async function salvarEscalaTurno({ data, hospital, turno, casos = [], ordemLiber
   const p_casos = casos.map((c, i) => casoToRow({ ...c, ordem: i, turno }, null))
   const { data: result, error } = await supabase.rpc('rpc_publicar_escala_turno', {
     p_data: data, p_hospital: hospital, p_turno: turno, p_header, p_casos,
+    // DECISÕES DA CONFERÊNCIA E PRESERVAÇÃO (05/09, migration 20260905150000): só entram
+    // no payload quando informadas — o FDS e o caminho legado seguem chamando com as
+    // cinco chaves de sempre. `linhaOverrides` = { chave: { trocaCom?, duplicidade?,
+    // conferido? } } (o servidor prefixa o turno e carimba por/em); `preservar` =
+    // { campos, linhas } de quem segue na escala (ver lib/escalaPublicacaoDecisoes.js).
+    ...(linhaOverrides && Object.keys(linhaOverrides).length ? { p_linha_overrides: linhaOverrides } : {}),
+    ...(preservar ? { p_preservar: preservar } : {}),
   })
   if (error) handleError(error, 'salvarEscalaTurno:rpc')
   const { header, casos: casoRows } = result || {}
