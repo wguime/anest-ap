@@ -473,7 +473,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       // token solto ("JOAO") não gera falso positivo (chave da linha é o nome
       // completo normalizado ou o uid)
       const uid = resolverUid(nome)
-      const chaves = [uid, ...(uid ? [] : candidatosNome(nome).map(normNome))].filter(Boolean)
+      // o nome INTEIRO normalizado entra sempre (sáb 05/09): a linha da noite
+      // pode nascer chaveada pelo nome ("GUILHERME D" sem vínculo, ou com o
+      // vínculo que o resolvedor estrito não alcança) e `candidatosNome` descarta
+      // a inicial — sem esta chave o posto ficava sem selo e podia ser liberado
+      const chaves = [uid, normNome(nome), ...(uid ? [] : candidatosNome(nome).map(normNome))].filter(Boolean)
       for (const k of chaves) if (!m.has(k)) m.set(k, rotulo)
     }
 

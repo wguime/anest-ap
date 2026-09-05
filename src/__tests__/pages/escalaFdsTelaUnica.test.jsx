@@ -33,6 +33,8 @@ vi.mock('@/pages/escala-cirurgica/useAvisoPlantonista', () => ({
 const ROSTER = [
   { uid: 'uid-karine', nome: 'KARINE BEDIN', apelidos: ['KARINE'] },
   { uid: 'uid-marilia', nome: 'MARILIA BASTOS', apelidos: ['MARILIA'] },
+  // nome com INICIAL, como o documento escreve (o defeito de 05/09)
+  { uid: 'uid-dido', nome: 'GUILHERME DIDOMENICO', apelidos: ['GUILHERME D', 'DIDO'] },
 ]
 vi.mock('@/hooks/useRosterAnestesistas', () => ({
   default: () => ({
@@ -432,6 +434,44 @@ describe('fila única — a NOITE classifica como o dia', () => {
     fireEvent.click(screen.getByRole('button', { name: /Marcar Gabriel liberado/ }))
     expect(await screen.findByText(/Gabriel é Plantão HRO/)).toBeTruthy()
     expect(onToggle).not.toHaveBeenCalled()
+  })
+
+  /**
+   * NOME COM INICIAL NA GRADE (sáb 05/09, foto das 13:00): "GUILHERME D" está no
+   * dicionário tal qual, mas `candidatosNome` descarta o "D" e o resolvedor
+   * estrito recusava o "GUILHERME" solto — a linha da noite nascia pelo NOME,
+   * o selo da grade era chaveado pelo LOGIN, e o P1 do HRO ficou "Liberado", sem
+   * "Plantão HRO" e sem sobrenome. A mesma pessoa tem de ter UMA chave.
+   */
+  it('nome com inicial ("GUILHERME D") casa com o login: selo, sobrenome, e a marcação gravada não libera', async () => {
+    render(<LiberacoesView {...noite({
+      fdsMeta: {
+        grade: { '19-07': { unimed: 'KARINE', hro: 'GUILHERME D', ret1: 'MARILIA', ret2: 'OSCAR' } },
+        posicoes: { P1: 'GUILHERME D', P2: 'KARINE' },
+        ordemNoite: ['KARINE', 'GUILHERME D', 'MARILIA', 'OSCAR'],
+      },
+      escala: {
+        ...ESCALA_FDS,
+        ordemLiberacao: { vespertino: ['KARINE', 'GUILHERME D', 'MARILIA', 'OSCAR'] },
+        // exatamente o que ficou gravado em produção às 12:03
+        liberacoes: { 'noite:GUILHERME D': { em: '2026-09-05T15:03:19Z', por: 'u1', liberadoEm: '2026-09-05T15:03:19.050Z' } },
+      },
+    })} />, { wrapper: wrap })
+    const card = (await screen.findByText('Plantão HRO')).closest('[data-linha]')
+    expect(card.getAttribute('data-linha')).toBe('noite:uid-dido')
+    expect(card.textContent).toMatch(/Guilherme Didomenico/)
+    expect(card.textContent).not.toMatch(/Liberado/)
+    expect(screen.getAllByText('Liberado')).toHaveLength(2) // Marilia e Oscar
+  })
+
+  it('nome com inicial SEM vínculo ("GABRIEL S") também leva o selo do posto', async () => {
+    render(<LiberacoesView {...noite({
+      fdsMeta: { grade: { '19-07': { unimed: 'KARINE', hro: 'GABRIEL S', ret1: 'MARILIA', ret2: 'OSCAR' } }, posicoes: {}, ordemNoite: ['KARINE', 'GABRIEL S', 'MARILIA', 'OSCAR'] },
+      escala: { ...ESCALA_FDS, ordemLiberacao: { vespertino: ['KARINE', 'GABRIEL S', 'MARILIA', 'OSCAR'] } },
+    })} />, { wrapper: wrap })
+    const card = (await screen.findByText('Plantão HRO')).closest('[data-linha]')
+    expect(card.textContent).toMatch(/Gabriel S/)
+    expect(card.textContent).not.toMatch(/Liberado/)
   })
 
   it('o plantão da noite nunca fica "Livre" nem vermelho, mesmo sem cirurgia', async () => {

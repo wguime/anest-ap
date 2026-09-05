@@ -244,7 +244,17 @@ export function marcarSelosFds(linhas, posicoes, opts = {}) {
  */
 export function resolverNomeEstrito(nome, resolverUid) {
   if (typeof resolverUid !== 'function') return null
-  const tokens = String(nome || '').trim().split(/\s+/).filter(Boolean)
+  const bruto = String(nome || '').trim()
+  // O NOME EXATO PRIMEIRO (sáb 05/09): "GUILHERME D" existe no dicionário tal
+  // qual, mas `candidatosNome` descarta a inicial "D" e sobra "GUILHERME" — que
+  // a regra abaixo recusa por ser token solto de nome composto. Resultado: a
+  // linha da noite dele nascia SEM login (chave pelo nome) enquanto o selo da
+  // grade era chaveado pelo login — duas chaves para a mesma pessoa, e o P1 do
+  // HRO ficou sem "Plantão HRO" e sem sobrenome. Casar o apelido inteiro é o
+  // casamento mais estrito que existe: não abre a porta do "JOAO RICARDO"→"JOAO".
+  const exato = bruto ? resolverUid(bruto) : null
+  if (exato) return exato
+  const tokens = bruto.split(/\s+/).filter(Boolean)
   const composto = tokens.length > 1
   for (const cand of candidatosNome(nome)) {
     if (composto && !cand.includes(' ')) continue

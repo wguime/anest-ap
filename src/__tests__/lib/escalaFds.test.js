@@ -410,6 +410,21 @@ describe('resolverNomeEstrito — sem colapso por primeiro nome (16/08)', () => 
   it('sem resolver → null', () => {
     expect(resolverNomeEstrito('QUALQUER', null)).toBe(null)
   })
+  /**
+   * NOME COM INICIAL (sáb 05/09): "GUILHERME D" está no dicionário tal qual, mas
+   * `candidatosNome` descarta o "D" e sobra "GUILHERME" — token solto, que a
+   * regra de 16/08 recusa. A linha da noite do P1 do HRO nascia sem login e o
+   * selo "Plantão HRO" (chaveado pelo login) não a encontrava. O apelido
+   * INTEIRO casa primeiro; a regra do token solto continua valendo depois.
+   */
+  it('o apelido INTEIRO casa primeiro — "GUILHERME D" acha o login mesmo com a inicial', () => {
+    const comInicial = (n) => ({ 'GUILHERME D': 'uid-dido', 'GUILHERME': 'uid-dido', 'JOAO': 'uid-jh' }[String(n).toUpperCase()] || null)
+    expect(resolverNomeEstrito('GUILHERME D', comInicial)).toBe('uid-dido')
+    // só o primeiro nome no dicionário: nome composto segue NÃO casando por ele
+    const soPrimeiro = (n) => ({ 'GUILHERME': 'uid-dido', 'JOAO': 'uid-jh' }[String(n).toUpperCase()] || null)
+    expect(resolverNomeEstrito('GUILHERME D', soPrimeiro)).toBe(null)
+    expect(resolverNomeEstrito('JOAO RICARDO', soPrimeiro)).toBe(null)
+  })
 })
 
 describe('marcarSelosFds — badge P1–P12 na fila conforme a posição', () => {

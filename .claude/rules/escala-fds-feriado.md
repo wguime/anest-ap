@@ -739,3 +739,18 @@ gravada é ignorada, a cauda automática não o alcança, e o toque no círculo 
 ("X é Plantão HRO — os dois plantões do turno ficam trabalhando até o fim dele")
 sem escrever. Trava: "o posto do turno NUNCA fica liberado" em
 `escalaFdsTelaUnica.test.jsx` (marcação gravada + toque com `onToggle` espiado).
+
+⚠️ **A correção acima não alcançava o P1 de 05/09 — duas chaves para a mesma
+pessoa (foto das 13:00).** A grade escreve "GUILHERME D"; `candidatosNome`
+descarta a inicial e sobra "GUILHERME", que `resolverNomeEstrito` recusa por ser
+token solto de nome composto (regra de 16/08) → a linha da noite nascia pelo
+NOME (`noite:GUILHERME D`, sem login nem sobrenome), enquanto o selo da grade
+(`plantaoFisico.add`) era chaveado pelo LOGIN, que o dicionário resolve. Sem
+selo, `postoDoTurno` era falso e a marcação liberava. Dois ajustes:
+`resolverNomeEstrito` casa o apelido INTEIRO antes das variantes (é o casamento
+mais estrito, não reabre "JOAO RICARDO"→"JOAO"), e `add` registra também o nome
+inteiro normalizado (cobre "GABRIEL S" sem vínculo, que `candidatosNome` também
+mutila). Travas: `escalaFds.test.js` ("o apelido INTEIRO casa primeiro") e os
+dois casos de nome com inicial em `escalaFdsTelaUnica.test.jsx`. Reproduzido
+antes com os dados reais do dia (grade, posições, ordem da noite, marcação e
+apelidos do dicionário) — o que separou "bundle velho" de "lógica".
