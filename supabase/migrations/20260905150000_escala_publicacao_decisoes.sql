@@ -51,9 +51,16 @@
 -- 05/09 antes de escrever (8.527 chars iguais); o guard abaixo aborta se a viva
 -- não tiver os dois marcadores.
 --
--- Rollback (manual): reaplicar o bloco da RPC de 20260815120000, depois
--- 20260818140000 (gravidade), depois o trigger de 20260730200000; e
---   drop function if exists public.rpc_publicar_escala_turno(date,text,text,jsonb,jsonb,jsonb,jsonb);
+-- Rollback (manual) — ⚠️ A ORDEM IMPORTA, e é o INVERSO do que parece natural. Enquanto as
+-- DUAS assinaturas coexistirem, toda chamada de cinco chaves nomeadas volta a dar 300
+-- "could not choose the best candidate" no PostgREST: é o motivo de existir uma função só.
+-- Então a de SETE argumentos sai ANTES de a antiga voltar, e os quatro passos vão num
+-- `begin/commit` único (cada migration referenciada tem o seu — copiar os corpos):
+--   1. drop function if exists public.rpc_publicar_escala_turno(date,text,text,jsonb,jsonb,jsonb,jsonb);
+--   2. reaplicar o bloco da RPC de 20260815120000 (assinatura de 5 args);
+--   3. reaplicar o patch de gravidade de 20260818140000 (âncora sobre a definição viva);
+--   4. reaplicar o trigger log_escala_troca de 20260730200000 (motivo por `v_new = '{}'`).
+-- Entre 1 e 2 NÃO existe função de publicação: fazer numa janela sem conferência aberta.
 -- ============================================================================
 
 begin;
@@ -183,6 +190,14 @@ begin
        or jsonb_typeof(coalesce(v_pres->'linhas','[]'::jsonb)) <> 'array' then
       raise exception 'payload_formato_invalido' using errcode = '22023';
     end if;
+    -- Cada campo é um NOME de campo do override. `por`/`em` ficam de fora porque são o
+    -- carimbo do servidor: eles voltam junto com o que for preservado (mais abaixo), nunca
+    -- por pedido do cliente. Chamada direta da RPC, fora do app, cai aqui.
+    for v_campo in select jsonb_array_elements_text(coalesce(v_pres->'campos','[]'::jsonb)) loop
+      if btrim(coalesce(v_campo,'')) = '' or v_campo in ('por','em') then
+        raise exception 'payload_formato_invalido' using errcode = '22023';
+      end if;
+    end loop;
   end if;
   if not public.can_write_escala_cirurgica() then
     raise exception 'permission_denied: sem acesso à escala cirúrgica' using errcode = '42501';
@@ -271,6 +286,11 @@ begin
       end if;
       -- liberação (marca de Liberado / marcador do repasse): SÓ quando a linha pede.
       -- Hoje o cliente nunca pede (regra de 23/07 mantida pelo dono em 05/09).
+      -- guarda de tipo em vez de cast cru: valor não-booleano tem de virar o mesmo
+      -- `payload_formato_invalido` do resto, não um erro de cast do Postgres na tela
+      if v_linha ? 'liberacao' and jsonb_typeof(v_linha->'liberacao') <> 'boolean' then
+        raise exception 'payload_formato_invalido' using errcode = '22023';
+      end if;
       if coalesce((v_linha->>'liberacao')::boolean, false) then
         for v_cand in
           select v_chave
