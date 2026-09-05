@@ -2870,12 +2870,16 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                         {passoTroca ? `${curto} trocou com quem?` : `Onde está ${curto} hoje?`}
                       </SheetTitle>
                     </SheetHeader>
-                    <div className="space-y-1 pb-2">
+                    {/* corpo com px-4 e safe-area embaixo (protótipo L4): o SheetContent do DS
+                        não pada os filhos, e a linha de dados encostava na borda da tela */}
+                    <div className="space-y-1 px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
                       {/* UMA linha de dados no lugar do parágrafo (protótipo L4, 05/09) */}
                       <p className="text-xs leading-4 text-muted-foreground">
                         {item.pos > 0 ? `${item.pos}ª posição · ` : ''}{HOSPITAL_LABEL[hosp] || hosp}
                         {' · '}{periodo === 'matutino' ? 'Matutino' : 'Vespertino'}
-                        {item.cauda && <> · nasce <b className="text-foreground">LIBERADO</b> se ficar assim</>}
+                        {/* a consequência é da PERGUNTA "onde está" — no passo da troca ela só
+                            repete ruído: ali a pergunta já é com quem (protótipo L4) */}
+                        {item.cauda && !passoTroca && <> · nasce <b className="text-foreground">LIBERADO</b> se ficar assim</>}
                       </p>
 
                       {passoTroca ? (

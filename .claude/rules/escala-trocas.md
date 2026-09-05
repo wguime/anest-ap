@@ -165,3 +165,57 @@ num loop sobre um snapshot que NÃO é atualizado entre execuções — com A⇄
 declarados no mesmo turno, a segunda execução sobrescreve a primeira
 (last-write-wins) e pode re-transferir casos. Entrada ambígua por natureza;
 consertar exige `executarSubstituicao` devolver o estado resultante.
+
+### As decisões da conferência viajam na PUBLICAÇÃO (Onda 3, 2026-09-05)
+
+`rpc_publicar_escala_turno` (migration `20260905150000`) recebe mais dois parâmetros, com
+default — a chamada de cinco chaves do FDS e do legado continua valendo:
+
+- `p_linha_overrides` = `{ chave: { trocaCom?, duplicidade?, conferido? } }`, SEM prefixo de
+  turno (a RPC prefixa) e SEM `por`/`em` (carimbados no servidor). `assumidaPor`,
+  `liberadoEm` e `escalado` são RECUSADOS: só nascem de execução de troca ou de toque na
+  fila.
+- `p_preservar` = `{ campos, linhas: [{ chave, candidatas, liberacao }] }` — de quem SEGUE
+  na escala, os campos listados do override antigo voltam com o carimbo ORIGINAL.
+  **Decisão do dono (05/09): identidade e rastro sobrevivem à republicação do mesmo turno
+  (`trocaCom`, `assumidaPor`, `origem`, `observacao`, `local`, `termino`,
+  `duplicidade`, `conferido`); a liberação continua zerando (regra 23/07).** As
+  `candidatas` existem porque o apelido aprendido entre duas publicações troca a chave da
+  pessoa de nome para uid. `montarPreservacao` aceita `regraLiberacao`
+  ('nunca' | 'mesma_posicao' | 'na_ordem') para o dia em que essa regra mudar.
+
+Junto: posição assumida preservada RE-APONTA os casos que a foto ainda traz no nome do dono
+antigo (antes viravam a linha extra `chave#casos`), e o trigger `log_escala_troca` rotula o
+`motivo` pelo GUC `anest.publicacao` — `reset_publicacao` para o que a publicação apagou,
+`publicacao` para o que ela declarou, `manual` para o resto (antes o rótulo vinha de
+`v_new = '{}'` e, com a manhã marcada, republicar a tarde gravava tudo como "manual").
+
+⚠️ Campo novo de `linha_overrides` que seja DECLARAÇÃO sobre a pessoa (e não ajuste de
+exibição) precisa entrar em `CAMPOS_RASTRO` (`src/lib/escalaPublicacaoDecisoes.js`) **e** nas
+listas de sobrevivência do context (`setLinhaOverride`, `toggleLiberacao`, `toggleEscalado`,
+`definirOrigemLinha`). Faltando uma, ele é apagado em silêncio no primeiro Salvar do editor —
+é a classe do bug de `origem` de 27/08.
+
+⚠️ Sem teste de PL/pgSQL no repo: `scripts/smoke-rpc-publicar-escala.mjs` exercita a RPC
+contra o banco dentro de uma função que termina em EXCEÇÃO — a transação cai e nada fica
+gravado. É o jeito de conferir mudança nessa RPC antes e depois de aplicar.
+
+### A folha "Onde está X hoje?" (Onda 3, 2026-09-05)
+
+A pergunta do nome que está na ordem sem cirurgia tem SEIS saídas, em dois grupos, mais o
+ghost "Está certo — fica Livre na posição" (`conferido`, audit A8). Cada uma grava no canal
+que a FILA já lê: ajuda em `ajuda_externa`; **trocou com um colega** em `trocaCom` (declara e
+executa na própria publicação, com `hospitalVaga` explícito — a vaga que muda de dono, que no
+lote era ambígua, audit A3); **consultório/sobreaviso** como NOTA na posição do rodapé
+(`(CONSULT)`/`(SOBREAVISO)`, que `rotuloNota` normaliza e que já impede a linha de nascer
+liberada); e as três de conserto de extração (bloco, posição, remover).
+
+A resposta é da PESSOA e é compartilhada pelas três abas do lote (mesmo espaço de chaves das
+duplicidades, mesma dupla `carimbarDecisao`/`localizarDecisao`). Quem já aparece na
+duplicidade NÃO rende uma segunda pergunta (audit A7). `duplicidade: 'intencional'` gravado
+na escala publicada é lido de volta (`decisoesPublicadas`) e a pergunta não trava a
+publicação de novo — "Refazer" ali grava `reaberta`, porque apagar faria a publicada
+responder outra vez (audit A6).
+
+⚠️ **"Está em outro hospital sem troca" NÃO é saída da folha** (dono 04/09: é exceção e fica
+como está) — `emprestadoA` e o painel "Foi para" seguem fora do escopo.

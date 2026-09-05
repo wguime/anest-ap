@@ -86,3 +86,11 @@ quando o plantão do contraturno está ESCALADO, que segue fechando a lista (sai
 primeiro) com a ajuda logo acima (liberada depois dele); plantão não escalado/
 liberado é pulado pelo naFila e a ajuda vira o próximo. A `ordem_liberacao`
 publicada segue intocada — o número é sequência de exibição.
+
+### Republicar o mesmo turno NÃO apaga mais o rastro (dono 2026-09-05)
+
+Republicar continua sendo DELETE+reinsert e continua zerando as liberações marcadas do turno
+(regra 23/07). O que passou a sobreviver, para quem SEGUE na escala, é a identidade e o
+rastro da linha: troca declarada, posição assumida, origem da ajuda, observação, local,
+tempo, "trabalha nos dois" e "está certo". Quem SAI da ordem perde tudo, e o evento sai
+rotulado `reset_publicacao`. Detalhes e o contrato da RPC: `escala-trocas.md`.
