@@ -51,6 +51,7 @@ import { formatData, novaIdLinha, turnoAtual } from './utils'
 import { segurarAtualizacao, liberarAtualizacao } from '@/lib/atualizacaoAdiada'
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard'
 import { podeEditarEscalaCirurgica } from './gate'
+import { useVoltarDoBrowser } from './useVoltarDoBrowser'
 import ImportarEscalaPage from './ImportarEscalaPage'
 import SegmentedSelector from './SegmentedSelector'
 
@@ -252,6 +253,8 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
   const trabalhoPendente = temLote && hospitaisDoLote.some((h) => !publicados.includes(h))
   const guardaSaida = useUnsavedChangesGuard(trabalhoPendente)
   const cancelar = () => guardaSaida.requestClose(() => onClose?.())
+  // o "voltar" do browser é o mesmo Cancelar — pergunta quando há trabalho
+  useVoltarDoBrowser(cancelar)
 
   const descartarRascunho = () => {
     rascunhoDesligadoRef.current = true

@@ -116,7 +116,7 @@ export default function ConferirMapaFdsPage({ mapa, grade, onSalvar, onVoltar, c
   const titulo = `${HOSPITAL_LABEL[mapa?.hospital] || mapa?.hospital || 'Mapa'} · ${formatData(mapa?.data)}`
 
   return (
-    <div className="fixed inset-0 z-modal bg-background overflow-y-auto">
+    <div className="fixed inset-0 z-modal bg-background overflow-y-auto" data-no-swipe-back="true">
       <div className="sticky top-0 z-10 border-b border-border bg-card pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex h-14 max-w-3xl items-center px-4">
           <button type="button" onClick={onVoltar} aria-label="Voltar para os documentos"

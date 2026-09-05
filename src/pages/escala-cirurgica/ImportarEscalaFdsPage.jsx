@@ -65,6 +65,9 @@ import {
 } from '@/lib/escalaFdsMapas'
 import ConferirMapaFdsPage from './ConferirMapaFdsPage'
 import { podeEditarEscalaCirurgica } from './gate'
+import { segurarAtualizacao, liberarAtualizacao } from '@/lib/atualizacaoAdiada'
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard'
+import { useVoltarDoBrowser } from './useVoltarDoBrowser'
 
 // Turnos PUBLICADOS como linha da fila única (a noite não é turno de caso no
 // banco — a fila dela viaja no fds_meta.ordemNoite do mesmo payload).
@@ -147,6 +150,21 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
   // 'lista' (documentos) · 'grade' (conferência da tabela de posições) · chave de um mapa
   const [vista, setVista] = useState('lista')
   const [encolhimentos, setEncolhimentos] = useState(null) // guardrail anti-perda
+
+  // ── AS MESMAS GUARDAS DO LOTE DE DIA ÚTIL (Onda 2, item 2.3) ─────────────────
+  // O fim de semana NÃO tem rascunho: aqui o que protege a conferência é não deixar o
+  // app recarregar no meio (deploy ao voltar do 2º plano, intervalo de 15 min), o gesto
+  // da borda desligado e o "Cancelar"/"voltar" perguntando antes de jogar fora o documento
+  // e os mapas anexados.
+  const temTrabalhoFds = Object.keys(dias).length > 0 || Object.keys(mapas).length > 0
+  useEffect(() => {
+    if (!temTrabalhoFds) return undefined
+    segurarAtualizacao('escala-fds')
+    return () => liberarAtualizacao('escala-fds')
+  }, [temTrabalhoFds])
+  const guardaSaida = useUnsavedChangesGuard(temTrabalhoFds)
+  const cancelar = () => guardaSaida.requestClose(() => onClose?.())
+  useVoltarDoBrowser(cancelar)
 
   const diasAlvo = datasSelecionadas.filter((iso) => dias[iso])
 
@@ -654,7 +672,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
 
   // ── VISTA: conferência da TABELA DE POSIÇÕES (o documento de fim de semana) ─
   const renderGrade = () => (
-    <div className="fixed inset-0 z-modal bg-background overflow-y-auto">
+    <div className="fixed inset-0 z-modal bg-background overflow-y-auto" data-no-swipe-back="true">
       <div className="sticky top-0 z-10 border-b border-border bg-card pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex h-14 max-w-3xl items-center px-4">
           <button type="button" onClick={() => setVista('lista')} aria-label="Voltar para os documentos"
@@ -927,10 +945,10 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
   }
 
   const renderLista = () => (
-    <div className="fixed inset-0 z-modal bg-background overflow-y-auto">
+    <div className="fixed inset-0 z-modal bg-background overflow-y-auto" data-no-swipe-back="true">
       <div className="sticky top-0 z-10 border-b border-border bg-card pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex h-14 max-w-3xl items-center px-4">
-          <button type="button" onClick={() => onClose?.()} aria-label="Cancelar"
+          <button type="button" onClick={cancelar} aria-label="Cancelar"
             className="flex min-h-[44px] min-w-[70px] items-center gap-1 text-primary active:opacity-60">
             <ChevronLeft className="h-5 w-5" />
             <span className="text-sm font-medium">Cancelar</span>
@@ -1098,6 +1116,18 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
           </Button>
         </div>
       </div>
+
+      {/* Sair com documento/mapas anexados pergunta: o fim de semana não tem rascunho */}
+      <ConfirmDialog
+        open={guardaSaida.confirmOpen}
+        variant="danger"
+        onClose={guardaSaida.cancelClose}
+        onConfirm={guardaSaida.confirmClose}
+        title="Sair da conferência?"
+        description="O documento e os mapas anexados serão perdidos — o fim de semana não guarda rascunho. Nada foi publicado."
+        confirmText="Sair"
+        cancelText="Continuar conferindo"
+      />
 
       <ConfirmDialog
         open={!!encolhimentos}

@@ -70,11 +70,13 @@ async function comLote() {
   return utils
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks()
   svcMock.fetchEscala.mockResolvedValue(null)
   localStorage.clear()
   _reiniciarAtualizacaoAdiada()
+  // o desempilhar do teste anterior (`history.back()`) chega num tick depois
+  await waitFor(() => expect(window.history.state?.anestOverlay).not.toBe(true))
 })
 
 describe('Cancelar com trabalho pendente pergunta antes', () => {
@@ -111,6 +113,38 @@ describe('Cancelar com trabalho pendente pergunta antes', () => {
     await waitFor(() => expect(onClose).toHaveBeenCalled())
     unmount()
     expect(localStorage.getItem('escala-lote:2026-08-27:matutino')).not.toBeNull()
+  })
+})
+
+describe('o "voltar" do browser é o mesmo Cancelar', () => {
+  /** O browser voltou: cai na entrada anterior (sem a marca) e dispara popstate. */
+  const voltarDoBrowser = () => {
+    window.history.replaceState({}, '')
+    window.dispatchEvent(new PopStateEvent('popstate', { state: {} }))
+  }
+
+  it('ao abrir, empilha uma entrada marcada; sem lote, voltar fecha direto', async () => {
+    const { onClose, unmount } = montar()
+    expect(window.history.state?.anestOverlay).toBe(true)
+    voltarDoBrowser()
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
+    unmount()
+  })
+
+  it('com lote na tela, voltar pergunta — e "Continuar conferindo" mantém tudo', async () => {
+    const { onClose } = await comLote()
+    voltarDoBrowser()
+    const dialogo = await screen.findByRole('alertdialog')
+    expect(dialogo.textContent).toMatch(/Sair da conferência\?/)
+    expect(onClose).not.toHaveBeenCalled()
+    // a entrada marcada foi reposta: um segundo "voltar" funciona
+    expect(window.history.state?.anestOverlay).toBe(true)
+    fireEvent.click(within(dialogo).getByRole('button', { name: /continuar conferindo/i }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    expect(abas()).toHaveLength(1)
+    voltarDoBrowser()
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: /^Sair$/i }))
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
   })
 })
 
