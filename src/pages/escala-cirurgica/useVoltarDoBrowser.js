@@ -25,6 +25,11 @@ export const MARCA_OVERLAY = 'anestOverlay'
 // vier (histórico vazio), o ouvinte sai sozinho depois de 1 s.
 let ouvinteDesempilhar = null
 let ouvinteTimer = null
+// O desempilhar é ADIADO um tick e cancelado se o overlay remontar antes: no StrictMode do
+// dev o React desmonta e remonta na mesma passada, e um `back()` imediato tirava a única
+// marca depois de a segunda montagem já ter decidido não empilhar (visto no navegador real
+// em 04/09: "voltar" saía da página).
+let desempilharPendente = null
 function marcarDesempilhando() {
   if (ouvinteDesempilhar) window.removeEventListener('popstate', ouvinteDesempilhar)
   if (ouvinteTimer) clearTimeout(ouvinteTimer)
@@ -46,6 +51,7 @@ export function useVoltarDoBrowser(aoVoltar, { ativo = true, marca = MARCA_OVERL
   useEffect(() => {
     if (!ativo || typeof window === 'undefined' || !window.history?.pushState) return undefined
     const h = window.history
+    if (desempilharPendente) { clearTimeout(desempilharPendente); desempilharPendente = null }
     const empilhar = () => {
       try { h.pushState({ ...(h.state && typeof h.state === 'object' ? h.state : {}), [marca]: true }, '') } catch { /* sandbox */ }
     }
@@ -61,8 +67,15 @@ export function useVoltarDoBrowser(aoVoltar, { ativo = true, marca = MARCA_OVERL
     window.addEventListener('popstate', aoPop)
     return () => {
       window.removeEventListener('popstate', aoPop)
-      // fechou por outro caminho: desempilha a marca (assíncrono; o listener já saiu)
-      if (h.state?.[marca]) { try { marcarDesempilhando(); h.back() } catch { /* nada */ } }
+      // fechou por outro caminho: desempilha a marca no próximo tick (o listener já saiu;
+      // se outra montagem vier antes, ela cancela e reaproveita a marca)
+      if (h.state?.[marca]) {
+        desempilharPendente = setTimeout(() => {
+          desempilharPendente = null
+          if (!h.state?.[marca]) return
+          try { marcarDesempilhando(); h.back() } catch { /* nada */ }
+        }, 0)
+      }
     }
   }, [ativo, marca])
 }
