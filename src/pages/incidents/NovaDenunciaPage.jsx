@@ -5,10 +5,7 @@ import { DENUNCIA_TYPES, IDENTIFICATION_TYPES, LOCAIS, SETORES, TURNOS, generate
 import supabaseIncidentsService from '@/services/supabaseIncidentsService';
 import AnexosUploadSection from './components/AnexosUploadSection';
 import { useIncidents } from '@/contexts/IncidentsContext';
-import { useMessages } from '@/contexts/MessagesContext';
 import { useUser } from '@/contexts/UserContext';
-import { useUsersManagement } from '@/contexts/UsersManagementContext';
-import { getResponsaveisIncidentes, buildNewIncidentNotificationPayload } from '@/utils/incidentesResponsaveis';
 import { PrivacyPolicyModal } from '@/components/PrivacyPolicyModal';
 import { PageHeader } from '../../components';
 
@@ -216,9 +213,7 @@ function SuccessModal({ protocolo, trackingCode, tipoIdentificacao, onClose }) {
 
 export default function NovaDenunciaPage({ onNavigate }) {
   const { addDenuncia } = useIncidents();
-  const { createSystemNotification } = useMessages();
   const { user } = useUser();
-  const { incidentResponsibles = [], users = [] } = useUsersManagement();
   const [showSuccess, setShowSuccess] = useState(false);
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
   const [submittedData, setSubmittedData] = useState(null);
@@ -367,27 +362,9 @@ export default function NovaDenunciaPage({ onNavigate }) {
     }
     const trackingCode = createdDenuncia?.trackingCode || null;
 
-    // Notificação in-app LGPD-safe: SEM título/tipo/descrição (pode conter dados sensíveis).
-    // Destinatários: responsáveis configurados (opt-in) → fallback admins/coordenadores.
-    const curadoresIds = incidentResponsibles
-      .filter(r => r.receberDenuncias && r.notificarApp)
-      .map(r => r.id);
-    const responsaveisIds = curadoresIds.length > 0
-      ? curadoresIds
-      : getResponsaveisIncidentes(users);
-
-    if (responsaveisIds.length > 0) {
-      const payload = buildNewIncidentNotificationPayload({
-        tipo: 'denuncia',
-        protocolo,
-        incidenteId: createdDenuncia?.id,
-        recipientIds: responsaveisIds,
-      });
-      payload.senderName = 'Canal de Denúncias';
-      await createSystemNotification(payload);
-    } else {
-      console.warn('[NovaDenuncia] Nenhum responsável encontrado — notificação não enviada', { protocolo });
-    }
+    // Aviso in-app aos responsáveis: trigger notify_responsaveis_on_incidente no
+    // banco (04/09/2026) — só quem está marcado no Centro de Gestão, sem fallback.
+    // E-mail: supabaseIncidentsService.
 
     setSubmittedData({
       protocolo,

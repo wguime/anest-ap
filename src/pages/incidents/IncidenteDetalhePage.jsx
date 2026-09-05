@@ -6,7 +6,7 @@ import { STATUS_CONFIG, SEVERITY_LEVELS, INCIDENT_TYPES, FUNCOES } from '@/data/
 import { useUser } from '@/contexts/UserContext';
 import { useMessages } from '@/contexts/MessagesContext';
 import { useUsersManagement } from '@/contexts/UsersManagementContext';
-import { getResponsaveisIncidentes, buildStatusChangeNotificationPayload } from '@/utils/incidentesResponsaveis';
+import { getResponsaveisOptIn, buildStatusChangeNotificationPayload } from '@/utils/incidentesResponsaveis';
 import { formatDate as fmtDate, formatDateTime as fmtDateTime } from '@/utils/formatters';
 import ExpandableSection from './components/ExpandableSection';
 import AnexosListSection from './components/AnexosListSection';
@@ -210,7 +210,7 @@ export default function IncidenteDetalhePage({ onNavigate, incidenteId }) {
   // Obter incidente do contexto
   const { getIncidenteById, updateStatus: ctxUpdateStatus, updateIncidente } = useIncidents();
   const { createSystemNotification, sendMessage } = useMessages();
-  const { users: contextUsers = [] } = useUsersManagement();
+  const { incidentResponsibles = [] } = useUsersManagement();
   const incidente = getIncidenteById(incidenteId);
 
   // LGPD P4: Verificar se o usuário é dono do relato ou admin
@@ -284,7 +284,7 @@ export default function IncidenteDetalhePage({ onNavigate, incidenteId }) {
       });
       // Notificação de mudança de status — SOMENTE responsáveis
       // (conteúdo sensível, LGPD: sem nome de notificante/dados clínicos)
-      const responsaveisIds = getResponsaveisIncidentes(contextUsers);
+      const responsaveisIds = getResponsaveisOptIn(incidentResponsibles, incidente.tipo);
       if (responsaveisIds.length > 0) {
         const payload = buildStatusChangeNotificationPayload({
           tipo: incidente.tipo,
@@ -295,9 +295,9 @@ export default function IncidenteDetalhePage({ onNavigate, incidenteId }) {
         });
         await createSystemNotification(payload);
       } else {
-        console.warn('[IncidenteDetalhe] Nenhum responsável (admin/coordenador) encontrado — status change notification não enviada', {
+        console.warn('[IncidenteDetalhe] Nenhum responsável opt-in marcado — status change notification não enviada', {
           protocolo: incidente.protocolo,
-          contextUsersLoaded: contextUsers.length,
+          responsaveisCarregados: incidentResponsibles.length,
         });
       }
       // Notificante identificado recebe mensagem direta (sem dados sensíveis)

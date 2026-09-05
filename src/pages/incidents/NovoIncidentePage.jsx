@@ -5,9 +5,6 @@ import supabaseIncidentsService from '@/services/supabaseIncidentsService';
 import AnexosUploadSection from './components/AnexosUploadSection';
 import { INCIDENT_TYPES, SEVERITY_LEVELS, LOCAIS, SETORES, TURNOS, FUNCOES, FASES_PROCEDIMENTO, TIPOS_ANESTESIA, MONITORAMENTOS, IDENTIFICATION_TYPES, NEVER_EVENTS, suggestNeverEventCode, shouldSuggestNeverEvent, getNeverEventConfig, generateIncidentProtocol, createGestaoInternaTemplate } from '@/data/incidentesConfig';
 import { useIncidents } from '@/contexts/IncidentsContext';
-import { useMessages } from '@/contexts/MessagesContext';
-import { useUsersManagement } from '@/contexts/UsersManagementContext';
-import { getResponsaveisIncidentes, buildNewIncidentNotificationPayload } from '@/utils/incidentesResponsaveis';
 import { PrivacyPolicyModal } from '@/components/PrivacyPolicyModal';
 import { useUser } from '@/contexts/UserContext';
 import { PageHeader } from '../../components';
@@ -820,8 +817,6 @@ function SectionHeader({ number, icon: Icon, title, description }) {
 
 export default function NovoIncidentePage({ onNavigate }) {
   const { addIncidente } = useIncidents();
-  const { createSystemNotification } = useMessages();
-  const { incidentResponsibles, users = [] } = useUsersManagement();
   const { user } = useUser();
   const [showSuccess, setShowSuccess] = useState(false);
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
@@ -1004,38 +999,9 @@ export default function NovoIncidentePage({ onNavigate }) {
     }
     const trackingCode = createdIncidente?.trackingCode || null;
 
-    // Notificação in-app LGPD-safe: só protocolo + link, SEM descrição/dados sensíveis.
-    // Destinatários: responsáveis configurados via Centro de Gestão (curados + opt-in).
-    // Fallback: admins/coordenadores do contextUsers se a lista curada estiver vazia.
-    const curadoresIds = incidentResponsibles
-      .filter(r => r.receberIncidentes && r.notificarApp)
-      .map(r => r.id);
-    const fallbackIds = curadoresIds.length === 0
-      ? getResponsaveisIncidentes(users)
-      : [];
-    const responsaveisIds = curadoresIds.length > 0 ? curadoresIds : fallbackIds;
-
-    if (responsaveisIds.length > 0) {
-      const payload = buildNewIncidentNotificationPayload({
-        tipo: 'incidente',
-        protocolo,
-        incidenteId: createdIncidente?.id,
-        recipientIds: responsaveisIds,
-      });
-      // Override priority — incidente grave/crítico OU Never Event = urgente
-      if (incidente.severidade === 'grave' || incidente.severidade === 'critico' || incidente.isNeverEvent) {
-        payload.priority = 'urgente';
-        payload.dismissable = false;
-      }
-      // B9: prefixo [NEVER EVENT] no subject para Never Events
-      if (incidente.isNeverEvent && incidente.neverEventCode) {
-        payload.subject = `[NEVER EVENT ${incidente.neverEventCode}] ${payload.subject || 'Novo incidente registrado'}`;
-      }
-      await createSystemNotification(payload);
-    } else {
-      console.warn('[NovoIncidente] Nenhum responsável encontrado — notificação não enviada', { protocolo });
-    }
-    // Email: handled by supabaseIncidentsService
+    // Aviso in-app aos responsáveis: trigger notify_responsaveis_on_incidente no
+    // banco (04/09/2026) — só quem está marcado no Centro de Gestão, sem fallback;
+    // grave/crítico e Never Event saem como urgente lá. E-mail: supabaseIncidentsService.
 
     setSubmittedData({
       protocolo,

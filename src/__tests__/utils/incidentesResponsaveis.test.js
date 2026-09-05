@@ -1,65 +1,36 @@
 import { describe, it, expect } from 'vitest';
-import { getResponsaveisIncidentes, buildNewIncidentNotificationPayload, buildStatusChangeNotificationPayload } from '../../utils/incidentesResponsaveis';
+import { getResponsaveisOptIn, buildNewIncidentNotificationPayload, buildStatusChangeNotificationPayload } from '../../utils/incidentesResponsaveis';
 
-describe('getResponsaveisIncidentes', () => {
-  const makeUser = (overrides = {}) => ({
-    id: overrides.id || 'u-default',
-    active: overrides.active !== false,
-    isAdmin: false,
-    isCoordenador: false,
-    role: 'anestesiologista',
-    ...overrides,
+describe('getResponsaveisOptIn', () => {
+  const lista = [
+    { id: 'a', receberIncidentes: true, receberDenuncias: false, notificarApp: true },
+    { id: 'b', receberIncidentes: false, receberDenuncias: true, notificarApp: true },
+    { id: 'c', receberIncidentes: true, receberDenuncias: true, notificarApp: false },
+    { id: 'd', receberIncidentes: true, receberDenuncias: true },
+    { receberIncidentes: true, receberDenuncias: true, notificarApp: true },
+  ];
+
+  it('incidente: só quem optou por incidentes e avisa no app', () => {
+    expect(getResponsaveisOptIn(lista, 'incidente')).toEqual(['a', 'd']);
   });
 
-  it('retorna apenas usuários com isAdmin=true', () => {
-    const users = [
-      makeUser({ id: 'a', isAdmin: true }),
-      makeUser({ id: 'b' }),
-    ];
-    expect(getResponsaveisIncidentes(users)).toEqual(['a']);
+  it('denúncia: só quem optou por denúncias e avisa no app', () => {
+    expect(getResponsaveisOptIn(lista, 'denuncia')).toEqual(['b', 'd']);
   });
 
-  it('retorna usuários com isCoordenador=true', () => {
-    const users = [
-      makeUser({ id: 'a' }),
-      makeUser({ id: 'b', isCoordenador: true }),
-    ];
-    expect(getResponsaveisIncidentes(users)).toEqual(['b']);
+  it('notificarApp=false fica fora; ausente conta como ligado', () => {
+    expect(getResponsaveisOptIn(lista, 'incidente')).not.toContain('c');
+    expect(getResponsaveisOptIn(lista, 'incidente')).toContain('d');
   });
 
-  it('retorna usuários com role=coordenador', () => {
-    const users = [
-      makeUser({ id: 'a' }),
-      makeUser({ id: 'b', role: 'coordenador' }),
-    ];
-    expect(getResponsaveisIncidentes(users)).toEqual(['b']);
+  it('não cai para admin/coordenador — flags de cargo são ignoradas', () => {
+    const admins = [{ id: 'adm', isAdmin: true }, { id: 'coord', isCoordenador: true, role: 'coordenador' }];
+    expect(getResponsaveisOptIn(admins, 'denuncia')).toEqual([]);
   });
 
-  it('ignora usuários inativos', () => {
-    const users = [
-      makeUser({ id: 'a', isAdmin: true, active: false }),
-      makeUser({ id: 'b', isAdmin: true }),
-    ];
-    expect(getResponsaveisIncidentes(users)).toEqual(['b']);
-  });
-
-  it('ignora usuários sem id', () => {
-    const users = [
-      { isAdmin: true },
-      makeUser({ id: 'b', isAdmin: true }),
-    ];
-    expect(getResponsaveisIncidentes(users)).toEqual(['b']);
-  });
-
-  it('retorna vazio se não há responsáveis', () => {
-    const users = [makeUser({ id: 'a' }), makeUser({ id: 'b' })];
-    expect(getResponsaveisIncidentes(users)).toEqual([]);
-  });
-
-  it('aceita lista vazia ou undefined', () => {
-    expect(getResponsaveisIncidentes([])).toEqual([]);
-    expect(getResponsaveisIncidentes(undefined)).toEqual([]);
-    expect(getResponsaveisIncidentes(null)).toEqual([]);
+  it('ignora sem id e aceita lista vazia ou undefined', () => {
+    expect(getResponsaveisOptIn([], 'incidente')).toEqual([]);
+    expect(getResponsaveisOptIn(undefined, 'incidente')).toEqual([]);
   });
 });
 

@@ -10,22 +10,21 @@
  */
 
 /**
- * @param {Array<{id: string, active?: boolean, isAdmin?: boolean, isCoordenador?: boolean, role?: string}>} users
- * @returns {string[]} Lista de Firebase UIDs dos responsáveis
+ * Ids dos responsáveis opt-in de um tipo, marcados no Centro de Gestão
+ * (incident_notification_settings: receberIncidentes/receberDenuncias + notificarApp).
+ * Decisão do dono 04/09/2026: NUNCA cai para admin/coordenador — quem não está
+ * marcado não é avisado. O aviso de relato NOVO é do trigger do banco; este
+ * helper serve às notificações disparadas pelo cliente (mudança de status).
+ * @param {Array<{id:string, receberIncidentes?:boolean, receberDenuncias?:boolean, notificarApp?:boolean}>} responsibles
+ * @param {'incidente'|'denuncia'} tipo
+ * @returns {string[]}
  */
-export function getResponsaveisIncidentes(users) {
-  if (!Array.isArray(users)) return [];
-  return users
-    .filter((u) => {
-      if (!u?.id) return false;
-      if (u.active === false) return false;
-      return (
-        u.isAdmin === true ||
-        u.isCoordenador === true ||
-        u.role === 'coordenador'
-      );
-    })
-    .map((u) => u.id);
+export function getResponsaveisOptIn(responsibles, tipo) {
+  if (!Array.isArray(responsibles)) return [];
+  const flag = tipo === 'denuncia' ? 'receberDenuncias' : 'receberIncidentes';
+  return responsibles
+    .filter((r) => r?.id && r[flag] === true && r.notificarApp !== false)
+    .map((r) => r.id);
 }
 
 /**
