@@ -34,6 +34,14 @@ const jsData = { firstName: row.first_name, updatedAt: row.updated_at };
 - IPv6 direto INDISPONÍVEL — sempre usar pooler
 - User: `postgres.vjzrahruvjffyyqyhjny`
 
+## Chamada de edge PARA edge (06/09/2026)
+Autenticar pela chave de serviço comparada por **IGUALDADE**, nunca por `jwtVerify`: as chaves novas
+do Supabase (`sb_secret_…`, `sb_publishable_…`) não são JWT, então a verificação de assinatura
+devolve 401. Foi assim que o e-mail do canal público de denúncias sumiu em silêncio — o disparo é
+fire-and-forget e ninguém percebeu até o teste ponta a ponta. Exemplo: `relato-publico` →
+`notify-incident`. Quando quem chama é o BANCO (trigger), o token vem do vault
+(`edge_fn_service_role`) via `net.http_post` — padrão dos crons.
+
 ## Restrições
 - Schema `auth` NÃO é writable via pooler → funções customizadas no schema `public`
 - `to_tsvector('portuguese', ...)` NÃO é immutable → usar TRIGGER, não GENERATED ALWAYS AS

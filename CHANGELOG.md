@@ -3,6 +3,52 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.8.0 (06/09/2026) — Notificações e Denúncias: auditoria completa do canal
+
+Gatilho: usuários relatando "Erro ao criar denúncia — new row violates row-level security policy".
+
+### Bug Fix (P0) — nenhum não-admin conseguia enviar relato ANÔNIMO
+`createDenuncia`/`createIncidente` faziam `.insert(row).select()`. O RETURNING passa pelas policies de
+SELECT e relato anônimo tem `user_id` nulo, então o Postgres abortava com 42501 — para todo mundo que
+não fosse admin. Admin nunca via o erro. Corrigido com a RPC `rpc_submit_incidente` (SECURITY
+DEFINER), que decide anonimato, autor, consentimento e status no servidor. Trava:
+`supabaseIncidentsService.submit.test.js`.
+
+### Bug Fix (P0) — e-mail aos responsáveis morto desde 10/06
+A edge `notify-incident` seguia com `verify_jwt=true`, anterior à migração Third-Party Auth: o token
+Firebase recebia 401 no gateway e nenhum e-mail saía. O log de falha gravava em colunas inexistentes,
+então a falha era silenciosa. Redeploy com `--no-verify-jwt` e verificação interna.
+
+### Bug Fix (P0) — push do relato novo sumiu por um dia
+Ao mover o aviso para o trigger do banco, o push ficou para trás: vinha de carona no
+`createNotificationBatch` do cliente. O trigger passou a disparar o push pelo servidor (vault +
+`net.http_post` → `send-fcm-push`, que aceita a chave de serviço).
+
+### Bug Fix (P1) — busca global morta para todos
+`rpc_search_global` falhava com `42809: WITHIN GROUP is required for ordered-set aggregate rank`: a
+coluna de relevância do CTE não tinha apelido e `r.rank` virava a chamada do agregado `rank()`.
+
+### Acesso: relato é exclusivo de quem está marcado como responsável (decisão do dono)
+Admin não marcado deixou de ver, gerir e baixar anexo. Policies `inc_*_admin` removidas; leitura do
+balde e de `incident_notification_settings` restritas; aviso in-app e push só para responsáveis
+marcados, sem fallback. `rpc_anonimizar_incidente` passou a exigir admin; a retenção só roda por job;
+trigger novo impede não-admin de mudar as próprias colunas de privilégio em `profiles`.
+
+### Canal público (QR code) passa a aceitar evidência
+Edge `relato-publico` vira a porta única: reserva o protocolo, emite URL de upload assinada, grava e
+manda o e-mail, com limite por origem nas duas ações. 3 arquivos de 10 MB, imagens ou PDF. O
+armazenamento passou a barrar tipo de arquivo, e o app foi alinhado na mesma entrega (accept,
+validação de tipo, MIME derivado da extensão para HEIC). `rpc_submit_public_incident` deixou de ser
+executável pela chave pública.
+
+### Limpeza
+Cloud Functions `sendDenunciaEmail`, `sendIncidentEmail`, `submitPublicDenuncia` e
+`submitPublicIncident` apagadas (sem caller). Cópias mortas em `src/public/` removidas. Coleções
+Firestore `incidentes`/`denuncias` travadas. 132 notificações antigas na caixa de 8 não-responsáveis
+apagadas com backup. INSERT direto na tabela fechado para `anon` e `authenticated`.
+
+Relatório completo, scripts de verificação e backups: `.tmp/auditoria-denuncias-04-09/`.
+
 ## v5.7.0 (23/05/2026) — Centro de Gestão · Fix audit trail + UI/UX overhaul Usuarios/Cargos/Emails/Auditorias
 
 ### Bug Fix (P0) — audit trail vazio em mudanças sensíveis

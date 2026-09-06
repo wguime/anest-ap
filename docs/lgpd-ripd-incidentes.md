@@ -319,6 +319,8 @@ Para cada risco identificado, são aplicadas medidas técnicas (T) e organizacio
 - **T13.4 [I]** Aviso na UI do fluxo anônimo recomendando remover metadados internos (EXIF/autor) antes de anexar; Política de Privacidade (seções 5/9/10) cita anexos, acesso restrito e retenção.
 - **T13.5 [Pe]** Stripping automático de EXIF/metadata client-side antes do upload (avaliar lib battle-tested) — **prazo 90 dias**.
 - **O13.1 [I]** Rota service-role de eliminação `scripts/cleanup-incidentes-anexos.mjs` (órfãos, anonimizados, pedido do DPO) com registro em `permission_audit_log`.
+- **T13.5 [I]** *(2026-09-06)* Anexo pelo canal PÚBLICO (QR code) entra pela edge `relato-publico`: o caminho é montado no servidor (pasta `*-anon` decidida pelo anonimato), o nome original nunca é aceito do cliente em relato anônimo (`evidencia-N.ext` é atribuído na própria edge) e a RPC confere pasta, protocolo e existência do objeto antes de vincular. Tipos limitados a imagem e PDF no balde; 3 arquivos de 10 MB. Sem antivírus: **risco residual aceito**, mitigado por balde privado, ausência de execução e download só por link temporário para o responsável.
+- **T13.6 [I]** *(2026-09-06)* Política de Privacidade das três páginas públicas passou a declarar os anexos: o que é guardado, quem acessa, o aviso de metadados internos (EXIF/autor) e o prazo de retenção igual ao do relato.
 - **O13.2 [Pe]** Orientação formal ao Comitê receptor sobre manuseio de evidências com metadados — **prazo 60 dias**.
 - **Risco residual aceito:** logs do storage-api (camada operador Supabase) registram o request de upload com JWT — inerente ao desenho client-side; acesso restrito ao operador da plataforma (DPA Supabase, ver R8).
 - **Severidade pós:** 3 — Média.

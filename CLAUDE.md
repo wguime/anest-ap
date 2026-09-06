@@ -1,4 +1,4 @@
-# ANEST v5.0.0 — Gestão de Qualidade para Anestesiologia
+# ANEST v5.8.0 — Gestão de Qualidade para Anestesiologia
 
 > **Para humanos:** README.md no root e `docs/dev-onboarding.md`.
 > **Conhecimento por módulo NÃO mora aqui.** Vive em `.claude/rules/*.md`, que o Claude Code carrega
@@ -9,7 +9,7 @@ custom HS256). 71 calculadoras clínicas (13 seções) + 7 critérios UTI, educa
 LGPD/Qmentum, escalas/trocas de plantão, residência, cateteres peridurais, incidentes/denúncias,
 comunicados e mensagens internas.
 
-> Versão `v3.77.0` é manual (tracked em `CHANGELOG.md`); `package.json.version` é `0.0.0`.
+> A versão é manual (tracked em `CHANGELOG.md`); `package.json.version` é `0.0.0`.
 
 ## Regra #1 — Pesquisar antes de implementar
 
@@ -121,7 +121,7 @@ Texto integral com os incidentes que originaram cada regra: `docs/deploy-e-ci.md
 `schedule-shift-reminders` · `send-fcm-push` · `sign-cert` / `verify-cert-public` /
 `verify-cert-uuid-public` / `get-cert-download-url` · `verify-doc-public` · `pdfa-convert` ·
 `watermark-pdf` · `api-v1` · `ai-rag` · `pegaplantao-proxy` · `generate-api-token` ·
-`get-supabase-token` · `parse-escala-cirurgica` (Claude Vision)
+`get-supabase-token` · `parse-escala-cirurgica` (Claude Vision) · `relato-publico`
 
 ⚠️ Edge que recebe JWT não-Supabase (Firebase/custom) exige `--no-verify-jwt`. CORS: allowlist + echo +
 `Vary: Origin` (nunca origin única). Conferir estado atual com `node scripts/diag-edge-fn-config.mjs`.
@@ -188,7 +188,7 @@ sessão). Rule nova = um assunto, `paths` estreito, e conferir com `/context` qu
 | Codificação Anestésica | Gestão → Faturamento | `unimed_tuss_codigos` (read-only) | `faturamento-particulares.md` |
 | Extrato de Férias | pill "Extrato" no card Férias da Home | Pega Plantão + `ferias_movimentacoes` | `ferias.md` |
 | Comunicados | `ComunicadosPage` + card em Gestão | `comunicados*` (3 tabelas) | `comunicados-notificacoes.md` |
-| Notificações e Denúncias | card na `GestaoPage` → `IncidentesPage` | Firestore + Supabase | `comunicados-notificacoes.md` |
+| Notificações e Denúncias | card na `GestaoPage` → `IncidentesPage`; canal público pelo QR (`public/gestao-incidentes.html`) | `incidentes` + Edges `notify-incident` / `relato-publico` | `comunicados-notificacoes.md`, `docs/incidentes-denuncias.md` |
 | Mensagens · Perfil · Escalas & Trocas · Residência · Notícias · Reuniões | `src/pages/{communication,escalas,residencia,noticias,reunioes}/`, `ProfilePage` | Firestore + Supabase | `modulos-diversos.md` |
 | Qualidade (hub) | `QualidadePage` | agrega via `useCardPermissions` | Planos de Ação · Auditorias · Autoavaliação ROP · KPIs · Relatórios · ROPs quiz (640 q.) — `modulos-diversos.md` |
 | Busca global · Pendências · Dashboard executivo | `SearchResultsPage`, `PendenciasPage`, `src/pages/dashboard/` | `supabaseSearchService` etc. | `modulos-diversos.md` |

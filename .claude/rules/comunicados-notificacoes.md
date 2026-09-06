@@ -21,6 +21,20 @@ description: Comunicados (iOS Mail) e Notificações/Denúncias — 4 camadas, s
 
 **Destaque visual — `ComunicadosCard variant="solid"`** (dono 19/08, escolhido em protótipo antes do código): o nome era só metade do problema; a outra era o cartão ser o 1º de TRÊS visualmente idênticos na aba. Solid = `bg-gradient-to-br from-greenMedium to-greenBright` + texto branco + badge branco, **a MESMA tinta nos dois temas de propósito**. ⚠️ a tentação de escurecer o gradiente no dark (`greenDark→greenDarkest`, que é o que o banner da IncidentesPage faz) foi testada e REPROVADA: em L do HSL o cartão ficaria 12,9%→6,7% contra vizinhos de 12,2% e fundo de 8,2% — começa na clareza dos vizinhos e termina mais escuro que a página, então não tem contraste de massa em ponto nenhum e some. A tinta escolhida fica em L 20→36%. É o ÚNICO cartão pintado da aba; pintar um segundo devolve o problema.
 
+## Acesso e avisos de relato (04–06/09/2026)
+
+**Relato é exclusivo de quem está marcado como responsável** no Centro de Gestão, por tipo — admin não
+marcado NÃO vê, não gere e não baixa anexo (decisão do dono 05/09). O aviso in-app e o push saem SÓ
+para os responsáveis marcados, sem fallback para admin; o e-mail vai para as caixas institucionais
+fixas. Único escritor do aviso é o trigger `notify_responsaveis_on_incidente`, que grava a notificação
+**e** dispara o push (vault + `net.http_post` → `send-fcm-push`).
+
+⚠️ Ao mover um aviso do cliente para o banco, levar o PUSH junto: em 04/09 o aviso virou trigger e o
+push sumiu por um dia, porque vinha de carona no `createNotificationBatch` do cliente.
+
+⚠️ `incident_notification_settings` virou fonte de autorização — só admin escreve nela. Detalhes,
+runbook e o canal público (QR code, com anexo) em `docs/incidentes-denuncias.md`.
+
 ## Comunicados
 Design iOS Mail em widget e página. Arquitetura: 4 camadas.
 
