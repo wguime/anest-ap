@@ -413,8 +413,94 @@
     return d.toISOString().slice(0, 10);
   }
 
+  // ==========================================================================
+  // ANEXOS DO CANAL PÚBLICO (06/09/2026)
+  // --------------------------------------------------------------------------
+  // O formulário do QR code não aceitava arquivo nenhum: quem está de fora
+  // relatava sem poder mandar a foto ou o PDF, e a apuração começava sem prova.
+  // Limites decididos pelo dono em 05/09: imagens e PDF, 3 arquivos, 10 MB cada
+  // (o app autenticado segue com 5 × 20 MB).
+  //
+  // Estas regras vivem aqui, num arquivo só, porque as duas páginas usam as
+  // mesmas — duplicar em dois HTML garante que divergiriam na primeira correção.
+  // O que vale de verdade é o servidor: o balde `incidentes-anexos` barra tipo e
+  // tamanho, e a edge `relato-publico` confere antes de emitir o upload.
+  // ==========================================================================
+  var ANEXO_PUBLICO_MAX_COUNT = 3;
+  var ANEXO_PUBLICO_MAX_MB = 10;
+  var ANEXO_PUBLICO_MIMES = [
+    'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'
+  ];
+  // HEIC/HEIF: formato padrão da câmera do iPhone. Sem eles, metade do grupo não
+  // consegue anexar foto nenhuma.
+  var ANEXO_PUBLICO_MIME_POR_EXT = {
+    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp',
+    heic: 'image/heic', heif: 'image/heif', pdf: 'application/pdf'
+  };
+
+  /**
+   * Extensão segura em minúsculas, ou '' quando não serve.
+   * ⚠️ Exige ponto no nome: sem isso, "arquivo" (sem extensão) devolveria a si
+   * mesmo como extensão e acabaria virando `uuid.arquivo` no caminho do anexo.
+   */
+  function anexoExtensao(nome) {
+    var texto = String(nome || '');
+    if (texto.indexOf('.') === -1) return '';
+    var ext = texto.split('.').pop() || '';
+    return /^[a-zA-Z0-9]{1,10}$/.test(ext) ? ext.toLowerCase() : '';
+  }
+
+  /**
+   * MIME do arquivo. O navegador manda `type` vazio com alguma frequência
+   * (HEIC do iPhone é o caso clássico), então cai para a extensão.
+   */
+  function resolveContentType(file) {
+    if (file && file.type && ANEXO_PUBLICO_MIMES.indexOf(file.type) !== -1) return file.type;
+    return ANEXO_PUBLICO_MIME_POR_EXT[anexoExtensao(file && file.name)] || '';
+  }
+
+  /**
+   * Valida uma seleção contra os já escolhidos.
+   * @returns {{ok: boolean, erro?: string}}
+   */
+  function validarAnexosPublico(novos, existentes) {
+    novos = novos || [];
+    existentes = existentes || [];
+    if (existentes.length + novos.length > ANEXO_PUBLICO_MAX_COUNT) {
+      return { ok: false, erro: 'Máximo de ' + ANEXO_PUBLICO_MAX_COUNT + ' arquivos por relato.' };
+    }
+    for (var i = 0; i < novos.length; i++) {
+      var f = novos[i];
+      if (!f || f.size === 0) {
+        return { ok: false, erro: '"' + ((f && f.name) || 'arquivo') + '" está vazio.' };
+      }
+      if (f.size > ANEXO_PUBLICO_MAX_MB * 1024 * 1024) {
+        return { ok: false, erro: '"' + f.name + '" excede ' + ANEXO_PUBLICO_MAX_MB + 'MB.' };
+      }
+      if (!resolveContentType(f)) {
+        return { ok: false, erro: '"' + f.name + '": envie imagem (JPG, PNG, HEIC) ou PDF.' };
+      }
+    }
+    return { ok: true };
+  }
+
+  /** Tamanho humano ("1,2 MB"), mesma regra do app. */
+  function formatAnexoSize(bytes) {
+    var n = Number(bytes);
+    if (!n || n <= 0) return '';
+    if (n < 1024 * 1024) return Math.max(1, Math.round(n / 1024)) + ' KB';
+    return (n / (1024 * 1024)).toFixed(1).replace('.', ',') + ' MB';
+  }
+
   // Expor namespace
   window.ANEST_INCIDENTES = {
+    ANEXO_PUBLICO_MAX_COUNT: ANEXO_PUBLICO_MAX_COUNT,
+    ANEXO_PUBLICO_MAX_MB: ANEXO_PUBLICO_MAX_MB,
+    ANEXO_PUBLICO_MIMES: ANEXO_PUBLICO_MIMES,
+    anexoExtensao: anexoExtensao,
+    resolveContentType: resolveContentType,
+    validarAnexosPublico: validarAnexosPublico,
+    formatAnexoSize: formatAnexoSize,
     INCIDENT_TYPES: INCIDENT_TYPES,
     SEVERITY_LEVELS: SEVERITY_LEVELS,
     NEVER_EVENTS: NEVER_EVENTS,

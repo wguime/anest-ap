@@ -8,7 +8,7 @@
  * Segue o mesmo padrao de supabaseDocumentService.js.
  */
 import { supabase } from '@/config/supabase'
-import { pastaAnexo, anexoExtensao, anexoNomePersistido, buildAnexoPath, sanitizeAttachments } from '@/lib/incidenteAnexos'
+import { pastaAnexo, anexoExtensao, anexoNomePersistido, buildAnexoPath, sanitizeAttachments, resolveContentType } from '@/lib/incidenteAnexos'
 import { notifyNewIncidentEmail, notifyNewDenunciaEmail } from './emailNotificationService'
 import { enqueue as enqueueOffline } from '@/utils/offlineQueue'
 import { registerHandler } from '@/services/offlineQueueProcessor'
@@ -230,7 +230,10 @@ async function uploadAnexos(files, { tipo, anonimo, protocolo }) {
         .upload(path, file, {
           cacheControl: '3600',
           upsert: false, // path tem uuid — imutável, colisão impossível
-          contentType: file.type || 'application/octet-stream',
+          // 06/09/2026: derivado da extensão quando o navegador não informa.
+          // `application/octet-stream` passou a ser recusado pelo balde, e a
+          // falha de upload bloqueia o relato inteiro.
+          contentType: resolveContentType(file) || file.type || 'application/octet-stream',
         })
       if (error) handleError(error, 'uploadAnexos')
       // LGPD B1: anônimo nunca persiste o nome original (identidade em filename)

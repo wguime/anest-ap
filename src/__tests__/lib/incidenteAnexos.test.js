@@ -10,6 +10,7 @@ import {
   sanitizeAttachments,
   anexoNome,
   formatAnexoSize,
+  resolveContentType,
 } from '@/lib/incidenteAnexos'
 
 const MB = 1024 * 1024
@@ -77,8 +78,26 @@ describe('validarAnexos', () => {
   })
 
   it('rejeita arquivo acima do teto de tamanho, no limite passa', () => {
-    expect(validarAnexos([f('grande.mov', ANEXO_MAX_MB * MB + 1)], []).ok).toBe(false)
-    expect(validarAnexos([f('no-limite.mov', ANEXO_MAX_MB * MB)], []).ok).toBe(true)
+    // .jpg, não .mov: desde 06/09/2026 vídeo é recusado por TIPO, e o caso aqui
+    // é o teto de TAMANHO — com .mov o teste passaria pelo motivo errado.
+    expect(validarAnexos([f('grande.jpg', ANEXO_MAX_MB * MB + 1)], []).ok).toBe(false)
+    expect(validarAnexos([f('no-limite.jpg', ANEXO_MAX_MB * MB)], []).ok).toBe(true)
+  })
+
+  it('recusa tipo fora da lista do balde — senão o upload falha e leva o relato junto', () => {
+    // Decisão do dono 05/09/2026: imagens e PDF. Como `allowed_mime_types` é do
+    // balde inteiro, o app segue a mesma regra; e como falha de upload bloqueia
+    // o envio (30/07/2026), barrar aqui é o que evita perder o relato.
+    for (const nome of ['clipe.mov', 'video.mp4', 'audio.mp3', 'planilha.xlsx', 'malware.exe']) {
+      const res = validarAnexos([f(nome, 1024)], [])
+      expect(res.ok, nome).toBe(false)
+      expect(res.erro).toContain('imagem (JPG, PNG, HEIC) ou PDF')
+    }
+  })
+
+  it('aceita HEIC do iPhone mesmo sem o navegador informar o tipo', () => {
+    expect(resolveContentType(f('IMG_0001.HEIC', 1024))).toBe('image/heic')
+    expect(validarAnexos([f('IMG_0001.HEIC', 1024)], []).ok).toBe(true)
   })
 
   it('rejeita arquivo vazio (0 bytes)', () => {

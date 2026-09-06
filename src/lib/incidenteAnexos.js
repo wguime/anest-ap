@@ -14,6 +14,36 @@
 export const ANEXO_MAX_MB = 20
 export const ANEXO_MAX_COUNT = 5
 
+/**
+ * Tipos aceitos (decisão do dono 05/09/2026). Vale para os DOIS canais porque
+ * `allowed_mime_types` é do balde inteiro (migration 20260906120000): num
+ * endereço aberto na internet, executável e compactado não entram.
+ * Aqui a lista existe para dar erro legível ANTES do upload — sem ela, o
+ * servidor recusaria e, como falha de upload bloqueia o envio, o relato inteiro
+ * morreria por causa do anexo.
+ */
+export const ANEXO_MIMES = [
+  'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf',
+]
+/** Para o atributo `accept` do seletor de arquivo. */
+export const ANEXO_ACCEPT = `${ANEXO_MIMES.join(',')},.heic,.heif`
+
+const MIME_POR_EXT = {
+  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp',
+  heic: 'image/heic', heif: 'image/heif', pdf: 'application/pdf',
+}
+
+/**
+ * MIME do arquivo, ou '' quando não é um tipo aceito.
+ * O navegador manda `type` vazio com frequência — HEIC no Chrome/Firefox é o
+ * caso clássico —, e mandar `application/octet-stream` faria o Storage recusar
+ * um arquivo perfeitamente válido.
+ */
+export function resolveContentType(file) {
+  if (file?.type && ANEXO_MIMES.includes(file.type)) return file.type
+  return MIME_POR_EXT[anexoExtensao(file?.name)] || ''
+}
+
 /** Pasta do bucket conforme tipo do relato e anonimato. */
 export function pastaAnexo(tipo, anonimo) {
   const base = tipo === 'denuncia' ? 'denuncias' : 'incidentes'
@@ -22,7 +52,9 @@ export function pastaAnexo(tipo, anonimo) {
 
 /** Extensão segura (só alfanumérica, máx 10 chars) ou 'bin'. */
 export function anexoExtensao(filename) {
-  const ext = String(filename || '').split('.').pop() || ''
+  const nome = String(filename || '')
+  if (!nome.includes('.')) return 'bin'
+  const ext = nome.split('.').pop() || ''
   return /^[a-zA-Z0-9]{1,10}$/.test(ext) ? ext.toLowerCase() : 'bin'
 }
 
@@ -48,6 +80,13 @@ export function validarAnexos(novos, existentes = []) {
   const vazio = novos.find((f) => f.size === 0)
   if (vazio) {
     return { ok: false, erro: `"${vazio.name}" está vazio.` }
+  }
+  // Tipo (06/09/2026): o balde passou a recusar o que não está em ANEXO_MIMES.
+  // Melhor barrar aqui, com nome do arquivo, do que deixar o upload falhar e
+  // levar o relato junto.
+  const tipoRuim = novos.find((f) => !resolveContentType(f))
+  if (tipoRuim) {
+    return { ok: false, erro: `"${tipoRuim.name}": envie imagem (JPG, PNG, HEIC) ou PDF.` }
   }
   return { ok: true }
 }

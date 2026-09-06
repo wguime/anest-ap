@@ -922,6 +922,94 @@
     /* ========================================
        Utility
        ======================================== */
+    /* Anexos do canal público (06/09/2026) — só tokens já existentes, então
+       acompanha o modo escuro sem regra extra. */
+    .anexo-input {
+      position: absolute;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0 0 0 0);
+      white-space: nowrap; border: 0;
+    }
+    .anexo-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 10px 16px;
+      border: 1px dashed var(--input-border);
+      border-radius: 12px;
+      background: var(--input-bg);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .anexo-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .anexo-input:focus-visible + .anexo-btn {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+    .anexo-lista {
+      list-style: none;
+      margin: 12px 0 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .anexo-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 8px 8px 12px;
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      background: var(--card-bg);
+    }
+    .anexo-nome {
+      flex: 1;
+      min-width: 0;
+      font-size: 14px;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .anexo-tam {
+      font-size: 12px;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+    .anexo-remover {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 44px;
+      min-height: 44px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+    .anexo-remover:hover { color: var(--red); }
+    .anexo-erro {
+      margin-top: 8px;
+      font-size: 13px;
+      color: var(--red);
+    }
+    .anexo-aviso {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: var(--banner-bg);
+      border: 1px solid var(--banner-border);
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--text-secondary);
+    }
     .hidden {
       display: none !important;
     }
@@ -1165,6 +1253,23 @@
               <label class="field-label">Impacto observado</label>
               <textarea id="impacto" placeholder="Quais foram as consequências ou potenciais riscos?" rows="2"></textarea>
             </div>
+            <div class="field">
+              <label class="field-label" for="anexoInput">Anexos</label>
+              <p class="field-hint" style="margin-top:0;margin-bottom:8px">Foto, captura de tela ou PDF que ajude a apurar. Até 3 arquivos, 10MB cada. Opcional.</p>
+              <input type="file" id="anexoInput" class="anexo-input" multiple
+                     accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf,.heic,.heif"
+                     onchange="handleAnexoSelect(event)">
+              <label for="anexoInput" class="anexo-btn">
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                Escolher arquivos
+              </label>
+              <p class="anexo-erro hidden" id="anexoErro" role="alert" aria-live="assertive"></p>
+              <ul class="anexo-lista" id="anexoLista"></ul>
+              <p class="anexo-aviso hidden" id="anexoAvisoAnonimo">
+                Relato anônimo: o nome do arquivo não é guardado (vira "evidencia-1"). Lembre que fotos e
+                documentos carregam informações internas, como o aparelho ou o autor do arquivo.
+              </p>
+            </div>
           </div>
         </div>
       </div><!-- end form-card -->
@@ -1282,6 +1387,7 @@
             </div>
           </div>
           <p style="margin-top: 8px;">No canal de denúncias, o campo de gênero é opcional e também é excluído automaticamente em relatos anônimos.</p>
+          <p style="margin-top: 8px;"><strong>Anexos.</strong> Arquivos anexados (foto, captura de tela ou PDF, até 3 por relato) são guardados em repositório privado, acessível apenas a quem está designado como responsável, sempre por link temporário. Em relato anônimo o nome original do arquivo não é guardado e o vínculo com quem enviou não é registrado. Atenção: fotos e documentos costumam carregar informações internas, como o modelo do aparelho ou o autor do arquivo. Os anexos seguem o mesmo prazo de retenção do relato a que pertencem.</p>
         </div>
         <!-- 3 -->
         <div class="privacy-section">
@@ -1585,6 +1691,125 @@
     // ==========================================
     // Submit
     // ==========================================
+    // ANEXOS (06/09/2026)
+    // ------------------------------------------
+    // Guarda os File reais; o upload só acontece no envio, contra URLs assinadas
+    // que a edge `relato-publico` emite. Regras (tipo, tamanho, quantidade) vivem
+    // em incidentes-shared.js — as mesmas para os dois formulários.
+    // ==========================================
+    var anexosSelecionados = [];
+
+    function handleAnexoSelect(event) {
+      var novos = Array.prototype.slice.call(event.target.files || []);
+      event.target.value = '';  // permite reescolher o mesmo arquivo depois de remover
+      if (!novos.length) return;
+      var erroEl = document.getElementById('anexoErro');
+      var res = ANEST.validarAnexosPublico(novos, anexosSelecionados);
+      if (!res.ok) {
+        erroEl.textContent = res.erro;
+        erroEl.classList.remove('hidden');
+        return;
+      }
+      erroEl.classList.add('hidden');
+      anexosSelecionados = anexosSelecionados.concat(novos);
+      renderAnexos();
+    }
+
+    function removerAnexo(indice) {
+      anexosSelecionados.splice(indice, 1);
+      document.getElementById('anexoErro').classList.add('hidden');
+      renderAnexos();
+    }
+
+    function renderAnexos() {
+      var lista = document.getElementById('anexoLista');
+      lista.innerHTML = '';
+      anexosSelecionados.forEach(function (file, i) {
+        var li = document.createElement('li');
+        li.className = 'anexo-item';
+
+        var nome = document.createElement('span');
+        nome.className = 'anexo-nome';
+        nome.textContent = file.name;          // textContent: nada de HTML vindo do nome
+        li.appendChild(nome);
+
+        var tam = document.createElement('span');
+        tam.className = 'anexo-tam';
+        tam.textContent = ANEST.formatAnexoSize(file.size);
+        li.appendChild(tam);
+
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'anexo-remover';
+        btn.setAttribute('aria-label', 'Remover ' + file.name);
+        btn.innerHTML = '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+        btn.onclick = function () { removerAnexo(i); };
+        li.appendChild(btn);
+
+        lista.appendChild(li);
+      });
+      atualizarAvisoAnexoAnonimo();
+    }
+
+    function atualizarAvisoAnexoAnonimo() {
+      var aviso = document.getElementById('anexoAvisoAnonimo');
+      if (!aviso) return;
+      var mostrar = tipoIdentificacao === 'anonimo' && anexosSelecionados.length > 0;
+      aviso.classList.toggle('hidden', !mostrar);
+    }
+
+    /**
+     * Sobe os anexos e devolve os metadados para o envio.
+     * Falha aqui BLOQUEIA o envio: denúncia que promete evidência e chega sem ela
+     * é perda silenciosa — foi o bug de 30/07/2026 no app.
+     */
+    async function subirAnexos(anonimo) {
+      if (!anexosSelecionados.length) return { protocolo: null, attachments: [] };
+
+      var declarados = anexosSelecionados.map(function (f) {
+        return { nome: f.name, tamanho: f.size, mime: ANEST.resolveContentType(f) };
+      });
+      var resp = await fetch(SUPABASE_URL + '/functions/v1/relato-publico', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY },
+        body: JSON.stringify({ acao: 'preparar', tipo: 'denuncia', anonimo: anonimo, arquivos: declarados }),
+      });
+      if (!resp.ok) {
+        var falha = await resp.json().catch(function () { return {}; });
+        throw new Error(falha.error === 'rate_limited'
+          ? 'Muitos envios deste dispositivo. Aguarde alguns minutos e tente de novo.'
+          : 'Não foi possível preparar o envio dos anexos.');
+      }
+      var prep = await resp.json();
+
+      for (var i = 0; i < prep.uploads.length; i++) {
+        var up = prep.uploads[i];
+        var file = anexosSelecionados[i];
+        var enviado = await supabase.storage
+          .from('incidentes-anexos')
+          .uploadToSignedUrl(up.path, up.token, file, {
+            contentType: ANEST.resolveContentType(file),
+          });
+        if (enviado.error) {
+          console.error('Falha no upload do anexo:', enviado.error.message);
+          throw new Error('Não foi possível enviar "' + file.name + '". Verifique a conexão e tente de novo.');
+        }
+      }
+
+      return {
+        protocolo: prep.protocolo,
+        attachments: prep.uploads.map(function (up, i) {
+          return {
+            name: up.name,
+            path: up.path,
+            size: anexosSelecionados[i].size,
+            type: ANEST.resolveContentType(anexosSelecionados[i]),
+          };
+        }),
+      };
+    }
+
+    // ==========================================
     async function handleSubmit() {
       if (!isFormValid()) return;
       const btn = document.getElementById('submitBtn');
@@ -1618,41 +1843,54 @@
       }
       denuncianteData.termos_uso_accepted_at = new Date().toISOString();
       try {
-        const { data: result, error } = await supabase.rpc('rpc_submit_public_incident', {
-          p_tipo: 'denuncia',
-          p_source: 'formulario_publico',
-          p_status: 'pending',
-          p_denunciante: denuncianteData,
-          p_denuncia_data: {
-            tipo: tipo,
-            titulo: titulo,
-            descricao: descricao,
-            dataOcorrencia: dataOcorrencia,
-            pessoasEnvolvidas: pessoasEnvolvidas,
-            denunciadoCargo: denunciadoCargo,
-            denunciadoSetor: denunciadoSetor,
-            denunciadoLocal: denunciadoLocal,
-            testemunhas: testemunhas,
-            impacto: impacto,
-          },
-          p_lgpd_consent_at: tipoIdentificacao === 'anonimo' ? null : new Date().toISOString(),
-        });
-        if (error) throw error;
-        console.log('Denúncia salva com sucesso:', result.protocolo);
-        // Fire-and-forget: invocar Edge Function p/ email (após sucesso do RPC).
-        // Sem await — não bloqueia UX se SMTP não estiver configurado em dev.
-        supabase.functions.invoke('notify-incident', {
-          body: {
+        // 1) Anexos primeiro. Se qualquer upload falhar, `subirAnexos` lança e a
+        //    denúncia NÃO é enviada — relato sem a evidência prometida é perda
+        //    silenciosa (bug de 30/07/2026 no app).
+        const anonimo = tipoIdentificacao === 'anonimo';
+        const anexos = await subirAnexos(anonimo);
+
+        // 2) Envio pela edge `relato-publico` (06/09/2026). Não é mais a RPC
+        //    direta: é ali que mora o limite por IP do canal público, e é a edge
+        //    que dispara o e-mail — antes ele era disparo do navegador sem await,
+        //    que se perdia se a pessoa fechasse a aba na tela de sucesso.
+        const resp = await fetch(SUPABASE_URL + '/functions/v1/relato-publico', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY },
+          body: JSON.stringify({
+            acao: 'enviar',
             tipo: 'denuncia',
-            protocolo: result.protocolo,
-            tipoIdentificacao: tipoIdentificacao,
-            notificanteName: denuncianteData.nome || '',
-            notificanteEmail: denuncianteData.email || '',
-            categoria: tipo,
-            descricaoResumo: descricao || '',
-            source: 'formulario_publico',
-          },
-        }).catch(err => console.warn('[notify-incident] invoke failed:', err));
+            protocolo: anexos.protocolo,
+            attachments: anexos.attachments,
+            denunciante: denuncianteData,
+            denuncia_data: {
+              tipo: tipo,
+              titulo: titulo,
+              descricao: descricao,
+              dataOcorrencia: dataOcorrencia,
+              pessoasEnvolvidas: pessoasEnvolvidas,
+              denunciadoCargo: denunciadoCargo,
+              denunciadoSetor: denunciadoSetor,
+              denunciadoLocal: denunciadoLocal,
+              testemunhas: testemunhas,
+              impacto: impacto,
+            },
+            lgpd_consent_at: anonimo ? null : new Date().toISOString(),
+            email: {
+              notificanteName: denuncianteData.nome || '',
+              notificanteEmail: denuncianteData.email || '',
+              categoria: tipo,
+              descricaoResumo: descricao || '',
+            },
+          }),
+        });
+        if (!resp.ok) {
+          const falha = await resp.json().catch(function () { return {}; });
+          throw new Error(falha.error === 'rate_limited'
+            ? 'Muitos envios deste dispositivo. Aguarde alguns minutos e tente de novo.'
+            : 'Erro ao enviar denúncia. Por favor, tente novamente.');
+        }
+        const result = await resp.json();
+        console.log('Denúncia salva com sucesso:', result.protocolo);
         // Show success modal
         document.getElementById('protocoloValue').textContent = result.protocolo;
         const trackingBox = document.getElementById('successTrackingBox');
@@ -1674,7 +1912,10 @@
         document.getElementById('successModal').classList.add('show');
       } catch (error) {
         console.error('Erro ao enviar denúncia:', error);
-        alert('Erro ao enviar denúncia. Por favor, tente novamente.');
+        // A mensagem de `subirAnexos` e do envio já é legível para quem relata
+        // (anexo que não subiu, limite por IP). Só cai no texto genérico quando
+        // o erro veio de outro lugar.
+        alert((error && error.message) ? error.message : 'Erro ao enviar denúncia. Por favor, tente novamente.');
       }
       // Reset button
       btn.disabled = false;
@@ -1687,6 +1928,9 @@
     function closeSuccessModal() {
       document.getElementById('successModal').classList.remove('show');
       // Reset form
+      anexosSelecionados = [];
+      renderAnexos();
+      document.getElementById('anexoErro').classList.add('hidden');
       document.getElementById('denunciaForm').reset();
       consentimento = false;
       termosAceitos = false;

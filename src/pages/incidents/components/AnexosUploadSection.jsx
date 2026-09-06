@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Upload, X, FileText } from 'lucide-react';
-import { validarAnexos, formatAnexoSize, ANEXO_MAX_COUNT, ANEXO_MAX_MB } from '@/lib/incidenteAnexos';
+import { validarAnexos, formatAnexoSize, ANEXO_MAX_COUNT, ANEXO_MAX_MB, ANEXO_ACCEPT } from '@/lib/incidenteAnexos';
 
 /**
  * Seção "Anexos" dos formulários de denúncia/incidente.
@@ -45,11 +45,15 @@ export default function AnexosUploadSection({ anexos, onChange, inputId = 'anexo
             Toque para selecionar arquivos de evidência
           </p>
           <p className="text-xs text-muted-foreground">
-            Documentos, imagens, áudio ou vídeo — até {ANEXO_MAX_COUNT} arquivos de {ANEXO_MAX_MB}MB
+            Imagens (JPG, PNG, HEIC) ou PDF — até {ANEXO_MAX_COUNT} arquivos de {ANEXO_MAX_MB}MB
           </p>
+          {/* accept + a validação de tipo em validarAnexos: desde 06/09/2026 o
+              balde recusa o que está fora da lista, e falha de upload bloqueia o
+              relato inteiro. Melhor filtrar no seletor do que perder o relato. */}
           <input
             type="file"
             multiple
+            accept={ANEXO_ACCEPT}
             className="hidden"
             id={inputId}
             onChange={handleSelect}
