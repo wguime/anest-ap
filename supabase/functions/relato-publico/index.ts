@@ -257,14 +257,15 @@ Deno.serve(async (req) => {
 
     // E-mail à caixa institucional. Passou a sair daqui (antes era disparo do
     // navegador sem await, que se perdia se a pessoa fechasse a aba na tela de
-    // sucesso). notify-incident aceita a anon key do projeto — a service_role
-    // não serve, porque o helper de auth dela exige `sub` no token.
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
-    if (anonKey && resultado?.protocolo) {
+    // sucesso). Vai com a service role key: o `SUPABASE_ANON_KEY` do ambiente da
+    // edge não é o mesmo JWT que está no HTML público, e a chamada voltava 401 —
+    // o e-mail do canal público sumiu em silêncio até o teste de 06/09/2026.
+    const chaveInterna = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    if (chaveInterna && resultado?.protocolo) {
       const emailBody = (body.email ?? {}) as Record<string, unknown>
       fetch(`${url}/functions/v1/notify-incident`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${anonKey}`, 'Content-Type': 'application/json' },
+        headers: { Authorization: `Bearer ${chaveInterna}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...emailBody,
           tipo,

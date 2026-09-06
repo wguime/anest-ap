@@ -135,18 +135,28 @@ async function authorize(req: Request): Promise<{ ok: true } | { ok: false; stat
   const auth = await verifyAuthHeader(header)
   if (auth.ok) return { ok: true }
 
-  // Formulário público: supabase-js sem sessão manda a anon key como Bearer.
-  // É um JWT HS256 assinado pelo segredo do projeto com role=anon e sem `sub`
-  // (por isso verifyAuthHeader recusa). Aceitar exatamente o que verify_jwt=true
-  // aceitava: assinatura válida pelo segredo do projeto.
   const bearer = header?.startsWith('Bearer ') ? header.slice(7) : ''
+
+  // Chamada interna do próprio projeto: a edge `relato-publico` (canal público do
+  // QR code) manda a service role key. Comparação por IGUALDADE, não por
+  // assinatura: as chaves novas do Supabase (sb_secret_…, sb_publishable_…) não
+  // são JWT, e verificar assinatura devolvia 401 — foi assim que o e-mail do
+  // formulário público sumiu no teste de 06/09/2026.
+  const interna = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  if (bearer && interna && bearer.length === interna.length && bearer === interna) {
+    return { ok: true }
+  }
+
+  // Formulário público antigo: supabase-js sem sessão mandava a anon key como
+  // Bearer — JWT HS256 do projeto com role=anon e sem `sub` (por isso
+  // verifyAuthHeader recusa). Mantido para não quebrar página em cache.
   const jwtSecret = Deno.env.get('JWT_SECRET')
   if (bearer && jwtSecret) {
     try {
       const { payload } = await jwtVerify(bearer, new TextEncoder().encode(jwtSecret), { algorithms: ['HS256'] })
-      if (payload.role === 'anon') return { ok: true }
+      if (payload.role === 'anon' || payload.role === 'service_role') return { ok: true }
     } catch {
-      // não é a anon key do projeto — cai no erro do helper abaixo
+      // não é chave do projeto — cai no erro do helper abaixo
     }
   }
   return { ok: false, status: auth.status, reason: auth.reason }
