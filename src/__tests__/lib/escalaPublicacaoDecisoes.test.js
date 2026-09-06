@@ -118,6 +118,15 @@ describe('montarLinhaOverrides — as decisões que valem NESTA escala', () => {
     expect(o).toEqual({ 'uid-joao': { duplicidade: 'intencional' } })
   })
 
+  it('"Refazer" de decisão publicada grava null — a preservação não a traz de volta', () => {
+    const o = montarLinhaOverrides({
+      decisoes: { NATHALIA: { tipo: 'reaberta', chave: 'NATHALIA', uid: null, nomeNorm: 'NATHALIA' } },
+      hospital: 'hro', ordem: ['NATHALIA'], resolver, normalizar,
+    })
+    // apagar do mapa local não bastaria: `p_preservar` copia `conferido`/`duplicidade` de volta
+    expect(o).toEqual({ NATHALIA: { duplicidade: null, conferido: null } })
+  })
+
   it('"está certo, fica Livre" vira conferido: true', () => {
     const o = montarLinhaOverrides({ conferidos: { NATHALIA: true }, hospital: 'hro', ordem: ['NATHALIA'], resolver, normalizar })
     expect(o).toEqual({ NATHALIA: { conferido: true } })

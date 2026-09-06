@@ -119,6 +119,8 @@ export function montarPreservacao({
  *   - intencional: em toda escala onde a pessoa aparece — a pergunta não volta
  *     em nenhuma das duas.
  * `conferidos` é o "está certo, fica Livre" ({ [chave]: true | { uid, nomeNorm } }).
+ * `tipo: 'reaberta'` é o "Refazer" de uma decisão que veio da escala publicada: grava os
+ * campos como `null`, porque só apagar do mapa local deixaria a preservação trazê-la de volta.
  * `carimbo` ({ por, em }) entra DENTRO do trocaCom, como o TrocaSheet grava; o
  * carimbo de fora é do servidor.
  */
@@ -156,6 +158,12 @@ export function montarLinhaOverrides({
       })
     } else if (d.tipo === 'intencional') {
       gravar(alvo, { duplicidade: 'intencional' })
+    } else if (d.tipo === 'reaberta') {
+      // "Refazer" numa decisão que veio da ESCALA PUBLICADA. Apagar do mapa local não basta:
+      // a preservação copiaria o valor antigo de volta e a resposta antiga voltaria a valer.
+      // `null` explícito vence a preservação no merge do servidor (os leitores comparam por
+      // valor: `=== 'intencional'`, `=== true`).
+      gravar(alvo, { duplicidade: null, conferido: null })
     }
   }
   for (const [chave, v] of Object.entries(conferidos || {})) {

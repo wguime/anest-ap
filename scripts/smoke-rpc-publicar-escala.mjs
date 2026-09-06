@@ -53,7 +53,7 @@ const SQL = `
 create or replace function pg_temp.smoke_publicacao(p_uid text) returns void language plpgsql as $$
 declare
   v_r jsonb; v_id uuid; v_out jsonb;
-  v_over2 jsonb; v_lib2 jsonb; v_casos2 jsonb; v_ev2 jsonb;
+  v_over2 jsonb; v_lib2 jsonb; v_casos2 jsonb; v_ev2 jsonb; v_over2b jsonb;
   v_over3 jsonb; v_ev3 jsonb;
 begin
   perform set_config('request.jwt.claims', json_build_object('sub', p_uid)::text, true);
@@ -86,6 +86,14 @@ begin
   select coalesce(jsonb_agg(jsonb_build_object('para', e.status_para, 'chave', e.anestesista, 'motivo', e.detalhe->>'motivo') order by e.em, e.id), '[]') into v_ev2
     from public.escala_cirurgica_evento e where e.escala_id = v_id and e.tipo = 'troca';
 
+  -- 2b) REABRIR uma decisão preservada: null explícito tem de VENCER a preservação --
+  -- é o Refazer de uma resposta que veio da escala publicada
+  perform public.rpc_publicar_escala_turno('2099-01-01','unimed','matutino',
+    '{"ordem_liberacao":["ANA","BETO"],"ajuda_externa":[]}'::jsonb, '[{"sala":"S1","hora":"08:00","anestesista":"BETO","anestesista_user_id":"smk-beto","paciente_iniciais":"A.B."}]'::jsonb,
+    '{"smk-beto":{"duplicidade":null}}'::jsonb,
+    '{"campos":["trocaCom","assumidaPor","observacao","duplicidade"],"linhas":[{"chave":"smk-ana"},{"chave":"smk-beto"}]}'::jsonb);
+  select e.linha_overrides into v_over2b from public.escala_cirurgica e where e.id = v_id;
+
   -- 3) republica SEM ANA na ordem: o rastro dela some, rotulado como reset da publicação
   perform public.rpc_publicar_escala_turno('2099-01-01','unimed','matutino',
     '{"ordem_liberacao":["BETO"],"ajuda_externa":[]}'::jsonb, '[]'::jsonb, null,
@@ -94,7 +102,7 @@ begin
   select coalesce(jsonb_agg(jsonb_build_object('para', e.status_para, 'chave', e.anestesista, 'motivo', e.detalhe->>'motivo') order by e.em, e.id), '[]') into v_ev3
     from public.escala_cirurgica_evento e where e.escala_id = v_id and e.tipo = 'troca';
 
-  v_out := jsonb_build_object('over2', v_over2, 'lib2', v_lib2, 'casos2', v_casos2, 'ev2', v_ev2, 'over3', v_over3, 'ev3', v_ev3);
+  v_out := jsonb_build_object('over2', v_over2, 'lib2', v_lib2, 'casos2', v_casos2, 'ev2', v_ev2, 'over2b', v_over2b, 'over3', v_over3, 'ev3', v_ev3);
   raise exception 'SMOKE_RESULT %', v_out::text using errcode = 'P0001';
 end $$;
 select pg_temp.smoke_publicacao('${UID}');
@@ -125,6 +133,9 @@ check(Array.isArray(beto2.assumidaPor?.casoIds) && beto2.assumidaPor.casoIds.len
 check(typeof ana2.por === 'string' && typeof ana2.em === 'string', 'override mesclado sai carimbado por/em')
 const decl = (out.ev2 || []).find((e) => e.para === 'troca_declarada' && e.chave === 'matutino:smk-ana')
 check(decl?.motivo === 'publicacao', 'troca declarada NA publicação sai com motivo publicacao')
+const beto2b = out.over2b?.['matutino:smk-beto'] || {}
+check(beto2b.duplicidade === null, 'reabrir uma decisão (null explícito) VENCE a preservação')
+check(beto2b.assumidaPor?.uid === 'smk-carla', 'reabrir uma decisão não derruba o resto do rastro')
 check(!('matutino:smk-ana' in (out.over3 || {})), 'quem saiu da ordem perde o rastro na republicação')
 const desf = (out.ev3 || []).find((e) => e.para === 'troca_desfeita' && e.chave === 'matutino:smk-ana')
 check(desf?.motivo === 'reset_publicacao', 'o rastro apagado pela republicação sai rotulado reset_publicacao')

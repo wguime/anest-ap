@@ -1100,13 +1100,25 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   // conferência do mesmo dia) não pode fazer a mesma pergunta travar de novo. Sem resposta
   // local, a decisão vem da escala publicada deste hospital; "Refazer" numa dessas grava
   // `reaberta` (a pergunta volta) em vez de apagar, senão a publicada responderia de novo.
-  const intencionaisPublicadas = useMemo(() => {
+  const jaPublicadas = useMemo(() => {
     const m = new Map()
-    for (const it of decisoesPublicadas(escalaPublicada?.linhaOverrides, periodo)) {
-      if (it.duplicidade === 'intencional') m.set(it.chave, true)
-    }
+    for (const it of decisoesPublicadas(escalaPublicada?.linhaOverrides, periodo)) m.set(it.chave, it)
     return m
   }, [escalaPublicada, periodo])
+  /** A decisão gravada na escala publicada para esta pessoa (por chave atual, uid ou nome). */
+  const publicadaPara = useCallback((key, nome) => {
+    if (!jaPublicadas.size) return null
+    const n = String(nome || '').trim()
+    for (const k of [key, n ? resolver(n) : null, n ? normNome(n) : null]) {
+      if (k && jaPublicadas.has(k)) return jaPublicadas.get(k)
+    }
+    return null
+  }, [jaPublicadas, resolver])
+  const intencionaisPublicadas = useMemo(() => {
+    const m = new Map()
+    for (const [chave, it] of jaPublicadas) if (it.duplicidade === 'intencional') m.set(chave, true)
+    return m
+  }, [jaPublicadas])
   const decisaoDe = useCallback((d) => {
     const local = localizarDecisao(duplicidadeDecisoes, d, { resolver, normalizar: normNome })
     if (local) return local.decisao?.tipo === 'reaberta' ? null : local
@@ -1121,6 +1133,17 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     [trocaEscolhida, resolver],
   )
   const duplicidadesPendentes = duplicidades.filter((d) => !d.ajudaDeclarada && !decisaoDe(d))
+
+  // A VAGA QUE MUDA DE DONO (audit A3, fechado em 05/09). A troca move a posição de X para o
+  // colega, e "aqui" é ambíguo quando X aparece em dois hospitais: no lote, as DUAS abas
+  // declaravam a troca da mesma pessoa e a convergência chegava a mover também a posição em
+  // que ela FICA. A vaga obsoleta é a do hospital onde X está no rodapé SEM cirurgia nenhuma
+  // — é derivação, não pergunta nova. Quando há mais de uma candidata (a pessoa trabalha nos
+  // dois), a regra ainda é do dono: fica como estava, com aviso na publicação.
+  const hospitalVagaDe = useCallback((dup) => {
+    const obsoletas = (dup?.ocorrencias || []).filter((o) => o.noRodape && !o.casos?.length)
+    return obsoletas.length === 1 ? obsoletas[0].hospital : null
+  }, [])
 
   // PAR PROPOSTO (Fase 2.2, dono 07/08): a leitura das DUAS escalas sugere o
   // parceiro simétrico (rodapé em A com casos em B ↔ rodapé em B com casos em
@@ -1247,16 +1270,21 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
       .filter((nome) => !naDuplicidade.has(resolver(nome) || normNome(nome)))
       .map((nome) => {
         const key = resolver(nome) || normNome(nome)
+        const local = localizarDecisao(conferencias, { key, nome }, { resolver, normalizar: normNome })
+        // Sem resposta nesta conferência, vale a que está na escala PUBLICADA: republicar o
+        // mesmo turno não pode fazer a mesma pergunta de novo (audit A6, agora também aqui).
+        const publicada = local?.decisao?.tipo === 'reaberta' ? null
+          : (local || (publicadaPara(key, nome)?.conferido ? { chave: key, decisao: { tipo: 'conferido', publicada: true } } : null))
         return {
           nome,
           key,
-          decisao: localizarDecisao(conferencias, { key, nome }, { resolver, normalizar: normNome }),
+          decisao: publicada,
           cauda: daCauda.has(nome),
           pos: ordemNumerada.findIndex((p) => p.nome === nome) + 1,
         }
       })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [suspeitosExtracao, caudaLiberada, ordemNumerada, ajudaTexto, duplicidades, conferencias, resolver])
+  }, [suspeitosExtracao, caudaLiberada, ordemNumerada, ajudaTexto, duplicidades, conferencias, resolver, publicadaPara])
 
   // A "ajuda provável" do cruzamento (rodapé lá + caso aqui) é a MESMA pessoa
   // que a lib de duplicidades já pendura como pendência — duas linhas para a
@@ -1350,6 +1378,10 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     [item.key]: carimbarDecisao(decisao, { key: item.key, nome: item.nome }, { resolver, normalizar: normNome }),
   }))
   const refazerConferencia = (item) => setConferencias((p) => {
+    // veio da escala publicada: apagar não basta, a preservação a traria de volta
+    if (item.decisao?.decisao?.publicada) {
+      return { ...p, [item.key]: carimbarDecisao({ tipo: 'reaberta' }, { key: item.key, nome: item.nome }, { resolver, normalizar: normNome }) }
+    }
     const { [item.decisao?.chave || item.key]: _fora, ...resto } = p
     return resto
   })
@@ -1513,10 +1545,19 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
       const conferidos = Object.fromEntries(
         Object.entries(conferencias).filter(([, d]) => d?.tipo === 'conferido'),
       )
+      // "Refazer" de uma decisão publicada viaja como `reaberta` (a lib grava null); sem isso
+      // a preservação devolveria a resposta antiga e o "Refazer" não colaria.
       const linhaOverrides = montarLinhaOverrides({
         decisoes: { ...duplicidadeDecisoes, ...conferencias }, conferidos, hospital: hosp,
         ordem: ordemNova, ajuda: ajudaNova, casos: casosNovos, resolver, normalizar: normNome, carimbo,
       })
+      // Troca de quem trabalha nos DOIS hospitais: qual das duas vagas vai para o colega é
+      // pergunta aberta do dono (auditoria, pergunta 5). Enquanto ela não tem resposta, o
+      // registro sai nos dois lados como sempre saiu — mas dizendo isso, em vez de calado.
+      const vagaAmbigua = duplicidades
+        .filter((d) => !hospitalVagaDe(d) && d.ocorrencias?.length > 1)
+        .filter((d) => decisaoDe(d)?.decisao?.tipo === 'troca')
+        .map((d) => nomeCirurgiaoCurto(titleCaseNome(d.nome)))
       const preservar = legado ? null : montarPreservacao({
         existente, turno: periodo, ordem: ordemNova, ajuda: ajudaNova, casos: casosNovos, resolver, normalizar: normNome,
       })
@@ -1683,6 +1724,13 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
           duration: 12000,
           title: 'Urgência aberta do turno anterior',
           description: `${partes.join(' · ')}.`,
+        })
+      }
+      if (vagaAmbigua.length) {
+        avisar({
+          variant: 'warning', duration: 12000,
+          title: vagaAmbigua.length === 1 ? 'Troca com pessoa que trabalha nos dois' : 'Trocas com pessoas que trabalham nos dois',
+          description: `${[...new Set(vagaAmbigua)].join(' · ')}: com cirurgia nos dois hospitais não dá para saber qual posição ficou vaga — a troca foi declarada dos dois lados. Confira nas Liberações qual mudou de dono.`,
         })
       }
       if (trocasPendentes.length) {
@@ -2764,10 +2812,15 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                           if (!parceiro) return
                           // nome COMPLETO do cadastro: o cruzamento entre
                           // hospitais casa por normNome do nome completo
+                          const vaga = hospitalVagaDe(dup)
                           setDuplicidadeDecisoes((p) => ({
                             ...p,
                             [dup.key]: carimbarDecisao(
-                              { tipo: 'troca', parceiroUid: parceiro.uid, parceiroNome: parceiro.nome },
+                              {
+                                tipo: 'troca', parceiroUid: parceiro.uid, parceiroNome: parceiro.nome,
+                                // a posição que ficou vaga; sem ela o registro sai nos dois hospitais
+                                ...(vaga ? { hospitalVaga: vaga } : {}),
+                              },
                               dup, { resolver, normalizar: normNome },
                             ),
                           }))

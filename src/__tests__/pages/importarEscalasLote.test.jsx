@@ -111,6 +111,13 @@ const abas = () => {
   return lista ? within(lista).queryAllByRole('tab') : []
 }
 
+/** Abre a folha de revisão e publica o lote — o rótulo do botão nomeia quem falta. */
+async function publicarOLote(quantos = 2) {
+  fireEvent.click(screen.getByRole('button', { name: /revisar e publicar/i }))
+  fireEvent.click(await screen.findByRole('button', { name: /^Publicar/i }))
+  await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalledTimes(quantos))
+}
+
 function montar() {
   return render(
     <ImportarEscalasPage data="2026-08-27" turno="matutino" onClose={vi.fn()} onAbrirFds={vi.fn()} />,
@@ -703,12 +710,15 @@ describe('troca declarada entre duas abas do lote fecha na própria publicação
         casos: [caso('CC - Sala 1', 'DIDO')], hospitalDetectado: 'unimed', ordemLiberacao: ['DIDO'],
       })
       .mockResolvedValueOnce({
-        casos: [caso('Sala 1', 'DIDO'), caso('Sala 2', 'GARIM')], hospitalDetectado: 'hro', ordemLiberacao: ['DIDO', 'GARIM'],
+        // DIDO ficou no rodapé do HRO SEM cirurgia: é a vaga que ele deixou ao trocar
+        casos: [caso('Sala 2', 'GARIM')], hospitalDetectado: 'hro', ordemLiberacao: ['DIDO', 'GARIM'],
       })
     const utils = montar()
     await soltarArquivos(utils.container, [img('unimed.png'), img('hro.png')])
     await waitFor(() => expect(abas()).toHaveLength(2))
-    // responde a duplicidade: trocou com Garim (vale para as duas abas)
+    // A aba do HRO é onde DIDO aparece SEM cirurgia — é lá que a linha diz "em dois
+    // hospitais" (na Unimed, onde ele trabalha, a mesma pessoa aparece como "ajuda de fora?").
+    fireEvent.click(within(screen.getByRole('tablist', { name: /hospitais do lote/i })).getByRole('tab', { name: /HRO/ }))
     const linhas = await screen.findAllByText(/em dois hospitais/i)
     fireEvent.click(linhas.find((l) => !l.closest('.hidden') && l.closest('#conf-liberacoes')))
     // a folha da decisão é a superfície: as três abas ficam montadas (só escondidas), então
@@ -717,41 +727,50 @@ describe('troca declarada entre duas abas do lote fecha na própria publicação
     fireEvent.click(await within(folha).findByText(/Trocou com quem\?/i))
     // as três abas ficam montadas (só escondidas) e o Select abre a lista fora da folha:
     // o clique tem de ser na opção VISÍVEL, não na homônima da aba oculta
+    // o nome aparece também no seletor do BLOCO (Garim é o anestesista da Sala 2): a opção
+    // da lista é a que mora num <li> do dropdown
     const opcoes = await screen.findAllByText('Jose Garim')
-    fireEvent.click(opcoes.find((n) => !n.closest('.hidden')))
+    fireEvent.click(opcoes.find((n) => n.closest('li')))
     fireEvent.click(screen.getByRole('button', { name: /declarar a troca/i }))
-    await screen.findAllByText(/troca declarada/i)
+    // o selo da decisão respondida, não a nota de rodapé da folha (que diz "A troca
+    // declarada executa ao publicar" e casava mesmo sem decisão nenhuma)
+    await screen.findAllByText(/⇄ Jose Garim — troca declarada/i)
     return utils
   }
 
-  it('o swap sai com os DOIS lados: a vaga daqui e a recíproca do parceiro', async () => {
+  it('a troca é declarada SÓ no hospital da vaga obsoleta (audit A3)', async () => {
     await loteComTrocaEntreAbas()
-    fireEvent.click(screen.getByRole('button', { name: /revisar e publicar/i }))
-    fireEvent.click(await screen.findByRole('button', { name: /publicar as 2/i }))
-    await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalledTimes(2))
+    await publicarOLote()
+
+    // a vaga que mudou de dono é a do HRO, onde DIDO está no rodapé sem cirurgia.
+    // Na Unimed ele TRABALHA: declarar a troca lá moveria a posição em que ele fica.
+    const porHospital = Object.fromEntries(salvarEscalaTurno.mock.calls.map(([p]) => [p.hospital, p.linhaOverrides]))
+    expect(porHospital.hro).toEqual({ 'uid-dido': { trocaCom: expect.objectContaining({ uid: 'uid-garim' }) } })
+    expect(porHospital.unimed).toBeUndefined()
+  })
+
+  it('o swap fecha com os dois lados, e a posição onde a pessoa FICA não é tocada', async () => {
+    await loteComTrocaEntreAbas()
+    await publicarOLote()
 
     await waitFor(() => expect(executarSubstituicao).toHaveBeenCalled())
-    const planos = executarSubstituicao.mock.calls.map(([plan]) => plan)
-    const swap = planos.find((plan) => plan.lados.length === 2)
-    expect(swap).toBeTruthy()
-    // um lado em cada escala do lote — é isso que a irmã sem `id` impedia
-    expect(new Set(swap.lados.map((l) => l.escalaId))).toEqual(new Set(['e-unimed', 'e-hro']))
-    // Paulo assume a vaga do Dido na Unimed; Dido assume a do Paulo no HRO
-    expect(swap.lados.find((l) => l.escalaId === 'e-unimed')).toMatchObject({ chaveSlot: 'uid-dido', para: { uid: 'uid-garim' } })
-    expect(swap.lados.find((l) => l.escalaId === 'e-hro')).toMatchObject({ chaveSlot: 'uid-garim', para: { uid: 'uid-dido' } })
+    const lados = executarSubstituicao.mock.calls.flatMap(([plan]) => plan.lados)
+    // GARIM assume a vaga que DIDO deixou no HRO
+    expect(lados.some((l) => l.escalaId === 'e-hro' && l.chaveSlot === 'uid-dido' && l.para.uid === 'uid-garim')).toBe(true)
+    // e NADA toca a posição do DIDO na Unimed, onde ele trabalha
+    expect(lados.some((l) => l.escalaId === 'e-unimed')).toBe(false)
   })
 
   it('a escala que já subiu entra no snapshot com id e overrides — não o resumo da aba', async () => {
     await loteComTrocaEntreAbas()
-    fireEvent.click(screen.getByRole('button', { name: /revisar e publicar/i }))
-    fireEvent.click(await screen.findByRole('button', { name: /publicar as 2/i }))
-    await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalledTimes(2))
+    await publicarOLote()
     await waitFor(() => expect(executarSubstituicao).toHaveBeenCalled())
 
     const [, , opts] = executarSubstituicao.mock.calls[executarSubstituicao.mock.calls.length - 1]
     const snapshot = opts?.escalasOverride || {}
+    // a Unimed subiu primeiro e entra no snapshot do HRO com id — é o que a irmã sem id impedia
     expect(snapshot.unimed?.id).toBe('e-unimed')
-    expect(snapshot.unimed?.linhaOverrides?.['matutino:uid-dido']?.trocaCom).toMatchObject({ uid: 'uid-garim' })
+    expect(snapshot.hro?.linhaOverrides?.['matutino:uid-dido']?.trocaCom).toMatchObject({ uid: 'uid-garim' })
   })
 })
 
@@ -785,9 +804,7 @@ describe('azul de quem está no rodapé daqui com trabalho em outro hospital', (
     // certo) — sem isso a duplicidade do Eduardo travaria a publicação
     expect(await screen.findByText(/marcado como ajuda/i)).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: /revisar e publicar/i }))
-    fireEvent.click(await screen.findByRole('button', { name: /publicar as 2/i }))
-    await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalledTimes(2))
+    await publicarOLote()
     const doHro = salvarEscalaTurno.mock.calls.map(([p]) => p).find((p) => p.hospital === 'hro')
     expect(doHro.ajudaExterna).toEqual([])
     // o rodapé segue intacto — a posição dele aqui não muda
@@ -805,9 +822,7 @@ describe('azul de quem está no rodapé daqui com trabalho em outro hospital', (
     fireEvent.click(within(linha).getByRole('button', { name: /refazer/i }))
     await waitFor(() => expect(screen.queryByText(/emprestado ao Materno/i)).toBeNull())
 
-    fireEvent.click(screen.getByRole('button', { name: /revisar e publicar/i }))
-    fireEvent.click(await screen.findByRole('button', { name: /publicar as 2/i }))
-    await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalledTimes(2))
+    await publicarOLote()
     const doHro = salvarEscalaTurno.mock.calls.map(([p]) => p).find((p) => p.hospital === 'hro')
     expect(doHro.ajudaExterna).toEqual(['EDUARDO'])
   })
@@ -818,9 +833,7 @@ describe('azul de quem está no rodapé daqui com trabalho em outro hospital', (
     await anexarHroEMaterno([caso('Sala 1', 'CURY'), caso('Sala 3', 'EDUARDO')])
 
     expect(screen.queryByText(/emprestado ao Materno/i)).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: /revisar e publicar/i }))
-    fireEvent.click(await screen.findByRole('button', { name: /publicar as 2/i }))
-    await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalledTimes(2))
+    await publicarOLote()
     const doHro = salvarEscalaTurno.mock.calls.map(([p]) => p).find((p) => p.hospital === 'hro')
     expect(doHro.ajudaExterna).toEqual(['EDUARDO'])
   })
@@ -918,9 +931,7 @@ describe('rascunho durável — a conferência sobrevive a desmontar e remontar'
     // aqui, o debounce de 500 ms)
     await waitFor(() => expect(localStorage.getItem(CHAVE)).not.toBeNull(), { timeout: 3000 })
 
-    fireEvent.click(screen.getByRole('button', { name: /revisar e publicar/i }))
-    fireEvent.click(await screen.findByRole('button', { name: /publicar as 2/i }))
-    await waitFor(() => expect(salvarEscalaTurno).toHaveBeenCalledTimes(2))
+    await publicarOLote()
     // a aba ainda roda o pós-publicação (vínculos, trocas, cruzamento) depois do RPC — sob
     // carga isso passa de 1 s, e o rascunho só sai quando o lote inteiro devolve o resultado
     await waitFor(() => expect(localStorage.getItem(CHAVE)).toBeNull(), { timeout: 8000 })

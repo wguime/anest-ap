@@ -274,6 +274,38 @@ describe('cada saída da folha grava no canal que a fila lê', () => {
     expect(payload.ordemLiberacao).toEqual(['DIDO', 'NATHALIA'])
   })
 
+  it('o "está certo" gravado na escala publicada não faz a pergunta voltar', async () => {
+    // republicando o MESMO turno: a resposta de ontem à noite está no banco
+    svcMock.fetchEscala.mockImplementation(async (_d, hospital) => (hospital === 'unimed' ? {
+      id: 'e-unimed', hospital: 'unimed',
+      casos: [{ id: 'u1', sala: 'CC - Sala 1', anestesista: 'DIDO', anestesistaUserId: 'uid-dido', turno: 'matutino' }],
+      ordemLiberacao: { matutino: ['DIDO', 'NATHALIA'] },
+      linhaOverrides: { 'matutino:NATHALIA': { conferido: true } },
+    } : null))
+    svcMock.parseEscalaImagem.mockResolvedValueOnce({
+      casos: [{ sala: 'CC - Sala 1', hora: '08:30', procedimento: 'COLECISTECTOMIA', cirurgiao: 'ALBA', anestesista: 'DIDO' }],
+      ordemLiberacao: ['DIDO', 'NATHALIA'],
+      ajudaExterna: [],
+    })
+    const { container } = render(
+      <ImportarEscalaPage hospital="unimed" data="2026-09-05" turno="matutino" onClose={vi.fn()} />, { wrapper: wrap },
+    )
+    fireEvent.change(container.querySelector('input[type="file"]'), {
+      target: { files: [new File(['x'], 'u.png', { type: 'image/png' })] },
+    })
+    await waitFor(() => expect(svcMock.parseEscalaImagem).toHaveBeenCalled())
+
+    // a linha já nasce respondida, sem toque nenhum nesta conferência
+    expect(await screen.findByText(/Nathalia — está certo, fica Livre/i)).toBeTruthy()
+    expect(screen.queryByText(/Nathalia — na ordem, sem cirurgia/i)).toBeNull()
+
+    // e "Refazer" reabre de verdade: viaja como null, senão a preservação a traria de volta
+    fireEvent.click(screen.getByRole('button', { name: /refazer/i }))
+    expect(await screen.findByText(/Nathalia — na ordem, sem cirurgia/i)).toBeTruthy()
+    const payload = await publicar()
+    expect(payload.linhaOverrides).toEqual({ NATHALIA: { duplicidade: null, conferido: null } })
+  })
+
   it('"Remover da ordem" tira o nome da fila publicada', async () => {
     await comNathaliaSemCirurgia()
     fireEvent.click(await screen.findByRole('button', { name: /remover da ordem/i }))
