@@ -824,143 +824,151 @@ export function EscalaCirurgicaProvider({ children }) {
    * avisa — nunca deixa a tela fingindo sucesso (lição F1.6).
    */
   const executarSubstituicao = useCallback(async ({ lados = [], limparTroca = [] }, userInfo = {}, { escalasOverride = null } = {}) => {
-    if (!lados.length) return
+    if (!lados.length) return null
     // escalasOverride (Fase 2, importação): a publicação acabou de acontecer e o
     // estado do context ainda não a viu — o plano opera sobre o snapshot que o
     // chamador montou (saved + outras escalas), sem corrida com o realtime. O
     // dispatch local é pulado: quem usa override recarrega do banco em seguida.
     const escalas = escalasOverride || escalasRef.current
     const agoraIso = new Date().toISOString()
-    const rollback = [] // LIFO
-    const porHospital = {} // patches locais pós-sucesso
-    const patchLocal = (hospital, mut) => {
-      const esc = escalas[hospital]
-      if (!porHospital[hospital]) {
-        porHospital[hospital] = { linhaOverrides: { ...(esc.linhaOverrides || {}) }, casos: [...(esc.casos || [])] }
+    const soDemo = lados.every((l) => String(l.escalaId).startsWith('demo-'))
+    const hospitalPorId = new Map(Object.entries(escalas).filter(([, e]) => e?.id).map(([h, e]) => [e.id, h]))
+
+    /** Valor do override depois da assunção — a mesma forma que o servidor grava. */
+    const valorAssumido = (anterior, lado) => {
+      const { trocaCom: _sai, por: _p, em: _e, ...resto } = anterior || {}
+      return {
+        ...resto,
+        // `casoIds` = o que ESTA execução moveu (incidente 10/08): sem esse
+        // recibo o desfazer devolvia todos os casos abertos do assumente no
+        // hospital, inclusive os do outro turno, que nunca saíram do lugar.
+        // `de` = RECIBO DO DONO do slot (18/08): quem assumiu DUAS posições no
+        // mesmo turno via a segunda ser desfeita junto com a primeira.
+        assumidaPor: {
+          uid: lado.para.uid, nome: lado.para.nome,
+          de: { uid: lado.de?.uid || null, nome: lado.de?.nome || '' },
+          ...(lado.tipo && { tipo: lado.tipo }), ...(lado.motivo && { motivo: lado.motivo }),
+          ...(lado.local && { local: lado.local }),
+          casoIds: lado.casoIds || [],
+          por: userInfo.userId || null, em: agoraIso,
+        },
+        por: userInfo.userId || null, em: agoraIso,
       }
-      mut(porHospital[hospital])
     }
-    const escalaDe = (escalaId) => Object.values(escalas).find((e) => e?.id === escalaId)
-    // ⚠️ ONDE O CASO MORA (dono 24/08, fila única do fim de semana): a linha
-    // 'fds' tem SEMPRE zero casos — as cirurgias ficam nas escalas por hospital.
-    // O snapshot de rollback e o patch otimista liam `lado.hospital`, e num lado
-    // da fila única isso é a linha vazia: a reversão não restauraria nada e o
-    // quadro não pintaria até o realtime chegar. Aqui cada id é resolvido para o
-    // hospital que realmente o guarda. Fora do FDS devolve o próprio lado.
-    const hospitaisDosCasos = (lado) => {
-      const ids = new Set(lado.casoIds || [])
-      if (!ids.size) return []
-      const achados = new Map()
-      for (const [h, esc] of Object.entries(escalas)) {
-        const meus = (esc?.casos || []).filter((c) => ids.has(c.id))
-        if (meus.length) achados.set(h, esc)
-      }
-      return achados.size ? [...achados.entries()] : [[lado.hospital, escalas[lado.hospital]]]
+    /** Este slot já está assumido por quem este lado quer pôr? (idempotência D10) */
+    const jaAssumidoPor = (anterior, lado) => {
+      const asm = anterior?.assumidaPor
+      if (!asm) return false
+      return asm.uid
+        ? asm.uid === lado.para.uid
+        : (!lado.para.uid && normNome(asm.nome || '') === normNome(lado.para.nome || ''))
     }
+
     try {
-      const pendentesLimpar = new Set(limparTroca.map((x) => `${x.escalaId}|${x.chave}`))
-      let ladosPulados = 0
+      // Guard de concorrência: a escala mudou debaixo do plano (outra pessoa publicou,
+      // realtime trouxe outra versão) — melhor recomeçar do que executar sobre o antigo.
       for (const lado of lados) {
         const esc = escalas[lado.hospital]
         if (!esc || esc.id !== lado.escalaId) throw new Error('A escala mudou — recarregue e tente de novo.')
-        const demo = String(lado.escalaId).startsWith('demo-') // demo: só em memória
-        const scoped = chaveTurno(lado.turno, lado.chaveSlot)
-        const anterior = (esc.linhaOverrides || {})[scoped] ?? null
-        // IDEMPOTÊNCIA (defeito D10, 07/08): o slot já está assumido por quem
-        // este lado quer pôr → pular o lado INTEIRO. Re-executar (2º toque,
-        // convergência pós-publicação, dois plantonistas ao mesmo tempo)
-        // re-transferia casos que agora pertencem ao outro lado do swap.
-        const asmAtual = anterior?.assumidaPor
-        const jaAssumido = asmAtual && (
-          asmAtual.uid ? asmAtual.uid === lado.para.uid
-            : (!lado.para.uid && normNome(asmAtual.nome || '') === normNome(lado.para.nome || ''))
-        )
-        if (jaAssumido) { ladosPulados += 1; pendentesLimpar.delete(`${lado.escalaId}|${lado.chaveSlot}`); continue }
-        const { trocaCom: _sai, ...resto } = anterior || {}
-        pendentesLimpar.delete(`${lado.escalaId}|${lado.chaveSlot}`)
-        const valor = {
-          ...resto,
-          // `casoIds` = o que ESTA execução moveu (incidente 10/08): sem esse
-          // recibo o desfazer devolvia todos os casos abertos do assumente no
-          // hospital, inclusive os do outro turno, que nunca saíram do lugar.
-          // `de` = RECIBO DO DONO do slot (18/08). planoDesfazerTroca varre os
-          // assumidaPor do par no turno e deduzia o dono como "o outro do par":
-          // quem assumiu DUAS posições no mesmo turno (dois hospitais) via a
-          // segunda vaga ser desfeita junto com a primeira, devolvida à pessoa
-          // errada e com os casos dela. Registro antigo (sem `de`) mantém o
-          // comportamento anterior.
-          assumidaPor: { uid: lado.para.uid, nome: lado.para.nome, de: { uid: lado.de?.uid || null, nome: lado.de?.nome || '' }, ...(lado.tipo && { tipo: lado.tipo }), ...(lado.motivo && { motivo: lado.motivo }), ...(lado.local && { local: lado.local }), casoIds: lado.casoIds || [], por: userInfo.userId || null, em: agoraIso },
-          por: userInfo.userId || null, em: agoraIso,
-        }
-        if (!demo) {
-          await svc.patchLinhaOverride(lado.escalaId, scoped, valor)
-          rollback.push(() => svc.patchLinhaOverride(lado.escalaId, scoped, anterior))
-        }
-        patchLocal(lado.hospital, (p) => { p.linhaOverrides[scoped] = valor })
-        if (lado.casoIds?.length) {
-          const donos = hospitaisDosCasos(lado)
-          if (!demo) {
-            // Rollback por SNAPSHOT do que estava lá. Reverter com {uid: de.uid}
-            // apagava o anestesista quando o dono não tinha vínculo: uid null
-            // faz o service gravar '?' + sem_anestesista (defeito 07/08).
-            const antes = donos.flatMap(([, e]) => snapshotCasos(e, lado.casoIds))
-            await svc.updateAnestesistaCasos(lado.casoIds, { uid: lado.para.uid, apelido: lado.para.apelido })
-            rollback.push(() => svc.restaurarAnestesistaCasos(antes))
-          }
-          const ids = new Set(lado.casoIds)
-          for (const [h] of donos) {
-            patchLocal(h, (p) => {
-              p.casos = p.casos.map((c) => ids.has(c.id)
-                ? { ...c, anestesista: lado.para.apelido, anestesistaUserId: lado.para.uid, semAnestesista: false }
-                : c)
-            })
+      }
+      const pendentesLimpar = limparTroca.filter(
+        (x) => !lados.some((l) => l.escalaId === x.escalaId && l.chaveSlot === x.chave),
+      )
+
+      let resultado
+      if (soDemo) {
+        // DEMO (DEV): tudo em memória, sem tocar no banco — é a base dos e2e.
+        const escalasPatch = {}
+        const casosPatch = []
+        let pulados = 0
+        for (const lado of lados) {
+          const esc = escalas[lado.hospital]
+          const scoped = chaveTurno(lado.turno, lado.chaveSlot)
+          const anterior = (esc.linhaOverrides || {})[scoped] ?? null
+          if (jaAssumidoPor(anterior, lado)) { pulados += 1; continue }
+          escalasPatch[esc.id] = { ...(escalasPatch[esc.id] || esc.linhaOverrides || {}), [scoped]: valorAssumido(anterior, lado) }
+          for (const id of lado.casoIds || []) {
+            casosPatch.push({ id, anestesista: lado.para.apelido, anestesistaUserId: lado.para.uid, semAnestesista: false })
           }
         }
-      }
-      // trocaCom declarado em OUTRA chave que não os slots (ex.: na linha de quem
-      // assumiu): limpa também — o badge some dos dois lados após a execução.
-      for (const item of limparTroca) {
-        if (!pendentesLimpar.has(`${item.escalaId}|${item.chave}`)) continue
-        const esc = escalaDe(item.escalaId)
-        const scoped = chaveTurno(item.turno, item.chave)
-        const ant = (esc?.linhaOverrides || {})[scoped]
-        if (!ant?.trocaCom) continue
-        const { trocaCom: _t, por: _p, em: _e, ...resto } = ant
-        const v = Object.keys(resto).length ? { ...resto, por: userInfo.userId || null, em: agoraIso } : null
-        if (!String(item.escalaId).startsWith('demo-')) {
-          await svc.patchLinhaOverride(item.escalaId, scoped, v)
-          rollback.push(() => svc.patchLinhaOverride(item.escalaId, scoped, ant))
+        for (const item of pendentesLimpar) {
+          const esc = Object.values(escalas).find((e) => e?.id === item.escalaId)
+          if (!esc) continue
+          const scoped = chaveTurno(item.turno, item.chave)
+          const ant = (escalasPatch[esc.id] || esc.linhaOverrides || {})[scoped]
+          if (!ant?.trocaCom) continue
+          const { trocaCom: _t, ...resto } = ant
+          escalasPatch[esc.id] = { ...(escalasPatch[esc.id] || esc.linhaOverrides || {}) }
+          if (Object.keys(resto).length) escalasPatch[esc.id][scoped] = resto
+          else delete escalasPatch[esc.id][scoped]
         }
-        patchLocal(item.hospital, (p) => {
-          if (v) p.linhaOverrides[scoped] = v
-          else delete p.linhaOverrides[scoped]
-        })
+        resultado = { escalas: escalasPatch, casos: casosPatch, pulados, lados: lados.length }
+      } else {
+        // TUDO NUMA TRANSAÇÃO SÓ (item 3.5): sem rollback no cliente, porque não há
+        // estado pela metade a desfazer. A idempotência e o carimbo são do servidor.
+        marcarEscrita()
+        try {
+          resultado = await svc.executarTrocaAtomica({
+            lados: lados.map((lado) => ({
+              escala_id: lado.escalaId,
+              chave: chaveTurno(lado.turno, lado.chaveSlot),
+              para_uid: lado.para.uid || null,
+              para_apelido: lado.para.apelido || '',
+              caso_ids: lado.casoIds || [],
+              assumida_por: {
+                uid: lado.para.uid, nome: lado.para.nome,
+                de: { uid: lado.de?.uid || null, nome: lado.de?.nome || '' },
+                ...(lado.tipo && { tipo: lado.tipo }), ...(lado.motivo && { motivo: lado.motivo }),
+                ...(lado.local && { local: lado.local }),
+                casoIds: lado.casoIds || [],
+              },
+            })),
+            limpar: pendentesLimpar.map((x) => ({ escala_id: x.escalaId, chave: chaveTurno(x.turno, x.chave) })),
+          })
+        } finally { encerrarEscrita() }
       }
+
+      // Estado resultante direto do servidor (A11): quem passou `escalasOverride`
+      // recarrega sozinho, mas recebe o resultado para atualizar o próprio snapshot.
       if (!escalasOverride) {
-        for (const [hospital, patch] of Object.entries(porHospital)) {
+        const casosPorId = new Map((resultado.casos || []).map((c) => [c.id, c]))
+        const patches = {}
+        for (const [escalaId, overrides] of Object.entries(resultado.escalas || {})) {
+          const hospital = hospitalPorId.get(escalaId)
+          if (!hospital) continue
+          patches[hospital] = { linhaOverrides: overrides }
+        }
+        if (casosPorId.size) {
+          for (const [hospital, esc] of Object.entries(escalas)) {
+            if (!esc?.casos?.some((c) => casosPorId.has(c.id))) continue
+            patches[hospital] = {
+              ...(patches[hospital] || {}),
+              casos: esc.casos.map((c) => (casosPorId.has(c.id) ? { ...c, ...casosPorId.get(c.id) } : c)),
+            }
+          }
+        }
+        for (const [hospital, patch] of Object.entries(patches)) {
           dispatch({ type: 'PATCH_HOSPITAL', hospital, patch })
         }
       }
+
       // todos os lados já estavam no estado-alvo: nada foi escrito (D10)
-      if (ladosPulados === lados.length) {
+      if ((resultado.pulados || 0) === lados.length) {
         toast({ variant: 'success', title: 'Troca já executada', description: 'Nada a refazer — a posição já estava assumida.' })
-        return
+        return resultado
       }
       const nomes = [...new Set(lados.map((l) =>
         `${nomeCirurgiaoCurto(l.para.nome)} → posição de ${titleCaseNome(l.nomeSlot || l.de.nome)}`))]
       toast({ variant: 'success', title: 'Troca executada', description: nomes.join(' · ') })
+      return resultado
     } catch (error) {
-      let restaurou = true
-      for (const desfaz of rollback.reverse()) {
-        try { await desfaz() } catch { restaurou = false }
-      }
+      // Sem estado pela metade: a transação do servidor caiu inteira. O "confira a
+      // lista antes de repetir" saiu junto com o rollback no cliente (item 3.5).
       loadData(dataRef.current, { revalidacao: true })
       toast({
         variant: 'error',
         title: 'Troca não concluída',
-        description: restaurou
-          ? `${error.message} Nada foi alterado.`
-          : `${error.message} Parte foi revertida — confira a lista antes de repetir.`,
+        description: `${error.message} Nada foi alterado.`,
       })
       throw error
     }

@@ -160,11 +160,11 @@ Registro (ninguém se move) não pergunta — não há o que rever.
   carimba `assumidaPor.de` (recibo do dono, jsonb, sem migration) e o desfazer só
   toca o slot certo; registro antigo sem `de` segue pela dedução.
 
-⚠️ **Conhecido, não corrigido:** a convergência da importação executa os pares
-num loop sobre um snapshot que NÃO é atualizado entre execuções — com A⇄B e B⇄C
-declarados no mesmo turno, a segunda execução sobrescreve a primeira
-(last-write-wins) e pode re-transferir casos. Entrada ambígua por natureza;
-consertar exige `executarSubstituicao` devolver o estado resultante.
+✅ **CORRIGIDO em 05/09 (item 3.5):** a convergência executava os pares num loop
+sobre um snapshot que não era atualizado entre execuções — com A⇄B e B⇄C
+declarados no mesmo turno, a segunda sobrescrevia a primeira. `executarSubstituicao`
+passou a devolver o estado resultante (o que a RPC transacional grava) e o loop o
+mescla no snapshot antes da volta seguinte.
 
 ### As decisões da conferência viajam na PUBLICAÇÃO (Onda 3, 2026-09-05)
 
@@ -219,3 +219,25 @@ responder outra vez (audit A6).
 
 ⚠️ **"Está em outro hospital sem troca" NÃO é saída da folha** (dono 04/09: é exceção e fica
 como está) — `emprestadoA` e o painel "Foi para" seguem fora do escopo.
+
+### A execução da troca é uma transação só (item 3.5, 2026-09-05)
+
+`rpc_escala_executar_troca(p_lados, p_limpar)` (migration `20260905220000`) faz, numa
+transação: o `assumidaPor` de cada lado, a saída do `trocaCom` e os casos que mudam de dono
+em todos os hospitais envolvidos. Antes eram 2 a 4 escritas saindo do navegador com desfazer
+LIFO — e o desfazer também podia falhar, deixando "Parte foi revertida, confira a lista"
+com dois anestesistas na mesma sala (audit A15). O rollback do cliente SAIU: não há estado
+pela metade a desfazer.
+
+- **Lock:** os cabeçalhos entram em `for update` ORDENADOS POR ID — sem isso, duas trocas
+  cruzadas simultâneas pegam os mesmos cabeçalhos em ordens opostas e travam uma na outra.
+- **Idempotência (D10)** virou do SERVIDOR: lado já assumido por quem o plano quer pôr é
+  pulado, e a RPC devolve `pulados` (é o que vira o aviso "Troca já executada").
+- **Devolve o estado resultante** (`{escalas, casos, pulados, lados}`): é ele que atualiza o
+  snapshot da convergência entre execuções (A11) e o estado local sem reler a escala.
+- `por`/`em` são carimbados no servidor, dentro e fora do `assumidaPor`.
+- O modo DEMO segue 100% em memória (base dos e2e), pelo mesmo caminho de cálculo.
+
+⚠️ Sem suíte de PL/pgSQL no repo: `scripts/smoke-rpc-executar-troca.mjs` exercita a RPC
+contra o banco dentro de uma função que termina em EXCEÇÃO — a transação cai e nada fica
+gravado. É a cobertura do SQL, inclusive do "tudo ou nada".

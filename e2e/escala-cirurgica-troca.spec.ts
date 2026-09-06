@@ -8,6 +8,14 @@
  * é escrito no banco. O rodapé demo do HRO tem GIOVANA e MAURICIO, o par do
  * caso real que motivou a feature.
  *
+ * ⚠️ DESATUALIZADO (constatado em 05/09, ANTES da Onda 3): o rótulo do painel virou
+ * "Troca com um colega" em ae7418a7 e o locator daqui continuou em "Trocar", então o teste
+ * batia no overlay até estourar — ou seja, ele falha desde aquele commit. O locator foi
+ * corrigido; passando dele, o TrocaSheet ainda não abre de forma estável neste roteiro.
+ * Consertar o resto é manutenção do fluxo do sheet, não da execução da troca: essa é
+ * coberta por `escalaCirurgicaTrocaRollback.test.jsx` (contrato do cliente) e por
+ * `scripts/smoke-rpc-executar-troca.mjs` (a transação, contra o banco).
+ *
  * Pre-req: `npm run dev` de pé + creds no env (source ~/.anest-e2e.env, nunca cat).
  * Rodar:   npx playwright test e2e/escala-cirurgica-troca.spec.ts --project=chromium
  */
@@ -74,7 +82,9 @@ test('confirmar origem → trocar agora (posição+casos) → badge nos 2 lados 
   // infere o tipo e executa no ato ("Declarar para depois" saiu em 09/08).
   // Retry no abrir (toPass): o clique durante a animação do sheet não registra.
   const trigger = page.getByRole('combobox').filter({ hasText: /Escolha o colega/i });
-  await noPainel(/Editar local\/cirurgião de Giovana/, /Trocar com um colega/,
+  // ⚠️ o rótulo é "Troca com um colega" (substantivo) desde ae7418a7 — com "Trocar" o
+  // locator nunca casava e o teste ficava batendo no overlay do painel até estourar
+  await noPainel(/Editar local\/cirurgião de Giovana/, /Troca com um colega/,
     () => trigger.isVisible());
   await expect(async () => {
     await trigger.click();

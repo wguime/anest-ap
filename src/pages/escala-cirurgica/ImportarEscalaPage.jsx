@@ -1662,11 +1662,27 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
             // 1 lado = assunção por colega de fora). Senão: fica declarado.
             if (plan.lados.length && plan.lados.every((l) => l.para.uid)) {
               try {
-                await executarSubstituicao(
+                const res = await executarSubstituicao(
                   { ...plan, lados: plan.lados.map((l) => ({ ...l, ...meta })) },
                   { userId, userName: user?.displayName },
                   { escalasOverride: snapshot },
                 )
+                // O SNAPSHOT ANDA JUNTO (audit A11): o laço executa um par de cada vez
+                // sobre o MESMO snapshot, e com A⇄B e B⇄C declarados no mesmo turno a
+                // segunda execução sobrescrevia a primeira. A RPC devolve o estado
+                // resultante — a próxima volta do laço já enxerga o que acabou de mudar.
+                for (const [escalaId, overrides] of Object.entries(res?.escalas || {})) {
+                  for (const [h, e] of Object.entries(snapshot)) {
+                    if (e?.id === escalaId) snapshot[h] = { ...e, linhaOverrides: overrides }
+                  }
+                }
+                if (res?.casos?.length) {
+                  const porId = new Map(res.casos.map((c) => [c.id, c]))
+                  for (const [h, e] of Object.entries(snapshot)) {
+                    if (!e?.casos?.some((c) => porId.has(c.id))) continue
+                    snapshot[h] = { ...e, casos: e.casos.map((c) => (porId.has(c.id) ? { ...c, ...porId.get(c.id) } : c)) }
+                  }
+                }
                 trocasExecutadas.push(`${nomeCirurgiaoCurto(a.nome)} ⇄ ${nomeCirurgiaoCurto(bPar.nome)}`)
               } catch { trocasPendentes.push(`${nomeCirurgiaoCurto(bPar.nome)}: a execução falhou — execute pelo ✏️ das Liberações`) }
             } else if (plan.pendencias.length) {

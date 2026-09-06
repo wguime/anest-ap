@@ -314,3 +314,55 @@ describe('cada saída da folha grava no canal que a fila lê', () => {
     expect(payload.linhaOverrides).toBeUndefined()
   })
 })
+
+// ── O SNAPSHOT DA CONVERGÊNCIA ANDA JUNTO (item 3.5; audit A11) ────────────────────────
+// A publicação executa os pares declarados num laço, um de cada vez, sobre o mesmo
+// snapshot. Ele não era atualizado entre uma execução e a seguinte: com dois pares no
+// mesmo turno, a segunda escrevia por cima da primeira (last-write-wins) e podia
+// re-transferir casos. A RPC transacional devolve o estado resultante, e é ele que entra
+// no snapshot antes da volta seguinte do laço.
+describe('a execução seguinte enxerga a anterior', () => {
+  it('o snapshot da 2ª execução já traz o assumidaPor que a 1ª gravou', async () => {
+    // duas declarações vivas na escala publicada do HRO: DIDO⇄PAULO e PAULO⇄DIDO não
+    // fecham par consigo; usamos duas chaves distintas para render duas execuções
+    svcMock.fetchEscala.mockImplementation(async (_d, hospital) => (hospital === 'hro' ? {
+      id: 'e-hro', hospital: 'hro',
+      casos: [
+        { id: 'h1', sala: 'Sala 1', anestesista: 'DIDO', anestesistaUserId: 'uid-dido', turno: 'matutino' },
+        { id: 'h2', sala: 'Sala 2', anestesista: 'PAULO', anestesistaUserId: 'uid-paulo', turno: 'matutino' },
+      ],
+      ordemLiberacao: { matutino: ['DIDO', 'PAULO'] },
+      linhaOverrides: {
+        'matutino:uid-dido': { trocaCom: { uid: 'uid-paulo', nome: 'PAULO TONINI' } },
+        'matutino:uid-paulo': { trocaCom: { uid: 'uid-dido', nome: 'GUILHERME XAVIER' } },
+      },
+    } : null))
+    // a 1ª execução devolve o estado que a 2ª tem de enxergar
+    executarSubstituicao.mockResolvedValueOnce({
+      escalas: { 'e-hro': { 'matutino:uid-dido': { assumidaPor: { uid: 'uid-paulo', nome: 'PAULO TONINI' } } } },
+      casos: [{ id: 'h1', anestesista: 'PAULO', anestesistaUserId: 'uid-paulo', semAnestesista: false }],
+      pulados: 0, lados: 1,
+    })
+    svcMock.parseEscalaImagem.mockResolvedValueOnce({
+      casos: [{ sala: 'CC - Sala 1', hora: '08:30', procedimento: 'COLECISTECTOMIA', cirurgiao: 'ALBA', anestesista: 'DIDO' }],
+      ordemLiberacao: ['DIDO'],
+      ajudaExterna: [],
+    })
+    const { container } = render(
+      <ImportarEscalaPage hospital="unimed" data="2026-09-05" turno="matutino" onClose={vi.fn()} />, { wrapper: wrap },
+    )
+    fireEvent.change(container.querySelector('input[type="file"]'), {
+      target: { files: [new File(['x'], 'u.png', { type: 'image/png' })] },
+    })
+    await waitFor(() => expect(svcMock.parseEscalaImagem).toHaveBeenCalled())
+    fireEvent.click(await screen.findByText(/Dido — em dois hospitais/i))
+    fireEvent.click(await screen.findByRole('button', { name: /Trabalha nos dois/i }))
+    await publicar()
+
+    await waitFor(() => expect(executarSubstituicao.mock.calls.length).toBeGreaterThan(1))
+    const [, , opts] = executarSubstituicao.mock.calls[1]
+    // sem o retorno alimentando o snapshot, a 2ª execução ainda veria só o trocaCom
+    expect(opts.escalasOverride.hro.linhaOverrides['matutino:uid-dido'].assumidaPor).toMatchObject({ uid: 'uid-paulo' })
+    expect(opts.escalasOverride.hro.casos.find((c) => c.id === 'h1')).toMatchObject({ anestesistaUserId: 'uid-paulo' })
+  })
+})

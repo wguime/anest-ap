@@ -393,6 +393,26 @@ async function updateAnestesistaCasos(casoIds = [], { uid, apelido, dupla = fals
 }
 
 /**
+ * EXECUTA O SWAP DA TROCA NUMA TRANSAÇÃO SÓ (item 3.5; achados A11 e A15).
+ *
+ * Antes eram 2 a 4 chamadas de patch mais os updates de casos, saindo do navegador uma a
+ * uma, com desfazer em ordem inversa quando alguma falhava — e o desfazer também pode
+ * falhar, deixando dois anestesistas respondendo pela mesma sala. Agora é `rpc_escala_
+ * executar_troca`: ou o swap inteiro vale, ou nada mudou.
+ *
+ * Devolve `{ escalas: { [escalaId]: linha_overrides }, casos: [...], pulados, lados }` — é
+ * com isso que a convergência da importação atualiza o snapshot entre uma execução e a
+ * seguinte (sem isso, A⇄B e B⇄C no mesmo turno se sobrescreviam).
+ */
+async function executarTrocaAtomica({ lados = [], limpar = [] } = {}) {
+  const { data, error } = await supabase.rpc('rpc_escala_executar_troca', {
+    p_lados: lados, p_limpar: limpar,
+  })
+  if (error) handleError(error, 'executarTrocaAtomica')
+  return data || { escalas: {}, casos: [], pulados: 0, lados: lados.length }
+}
+
+/**
  * Restaura o snapshot EXATO de anestesista por caso — caminho de ROLLBACK da
  * troca. Nunca deriva do uid: dono sem vínculo (uid null) viraria '?' pelo
  * updateAnestesistaCasos e o rollback apagaria o anestesista em vez de
@@ -657,6 +677,7 @@ export default {
   patchUrgenciasMeta,
   updateStatusCirurgia,
   updateAnestesistaCasos,
+  executarTrocaAtomica,
   addCaso,
   updateCaso,
   removeCaso,
