@@ -1242,8 +1242,12 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   const [trocaConf, setTrocaConf] = useState('')
   const [vagaConf, setVagaConf] = useState('')
   const [escolhaLocal, setEscolhaLocal] = useState(false)
+  // UMA DECISÃO POR POSIÇÃO na folha da duplicidade (dono 05/09, mesmo padrão do
+  // TrocaSheet): { [hospital]: 'fica' | 'assume' }. Sem isso a resposta ficava limitada
+  // a "de quem é a vaga" e não cabia o que acontece de verdade.
+  const [escolhaDup, setEscolhaDup] = useState({})
   const abrirDecisao = (d) => {
-    setPassoTroca(false); setTrocaConf(''); setVagaConf(''); setEscolhaLocal(false)
+    setPassoTroca(false); setTrocaConf(''); setVagaConf(''); setEscolhaLocal(false); setEscolhaDup({})
     setDecisaoAberta(d)
   }
 
@@ -2489,14 +2493,14 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                           <LinhaDecisao key={`dup-${d.key}`} tom="az" icone={<UserPlus className="h-4 w-4" />}
                             titulo={`${titleCaseNome(d.nome)} — ajuda de fora?`}
                             sub={`No rodapé da ${hospLa} hoje e com caso aqui.`}
-                            onClick={() => setDecisaoAberta({ tipo: 'duplicidade', key: d.key, soRodapeLa: true, hospLa })} />
+                            onClick={() => abrirDecisao({ tipo: 'duplicidade', key: d.key, soRodapeLa: true, hospLa })} />
                         )
                       }
                       return (
                         <LinhaDecisao key={`dup-${d.key}`} tom="am" icone={<ArrowLeftRight className="h-4 w-4" />}
                           titulo={`${titleCaseNome(d.nome)} — em dois hospitais`}
                           sub={`No mesmo turno (${lados}) — troca? intencional? ajuda?`}
-                          onClick={() => setDecisaoAberta({ tipo: 'duplicidade', key: d.key })} />
+                          onClick={() => abrirDecisao({ tipo: 'duplicidade', key: d.key })} />
                       )
                     })}
 
@@ -2769,6 +2773,15 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
           : null
         if (decisaoAberta.tipo === 'duplicidade' && !dup) return null
         const parceiro = dup ? rosterByUid.get(trocaDe(dup)) : null
+        // TODAS as posições em jogo viram cartão — as duas saídas explícitas de cada uma,
+        // como no TrocaSheet. A SUGESTÃO vem da geografia (quem está no rodapé sem
+        // cirurgia deixou aquela vaga), e é corrigível: sugerir nunca é decidir.
+        const sugestaoDup = dup ? hospitalVagaDe(dup) : null
+        const escolhaDaOcorrencia = (o) => escolhaDup[o.hospital]
+          || (sugestaoDup ? (o.hospital === sugestaoDup ? 'assume' : 'fica') : null)
+        const faltaResponderDup = !!dup && dup.ocorrencias.some((o) => !escolhaDaOcorrencia(o))
+        const assumidasDup = dup ? dup.ocorrencias.filter((o) => escolhaDaOcorrencia(o) === 'assume').map((o) => o.hospital) : []
+        const comCirurgiaNosDois = !!dup && dup.ocorrencias.filter((o) => o.casos?.length).length > 1
         const nomeCurto = (n) => nomeCirurgiaoCurto(titleCaseNome(n))
         return (
           <Sheet open onOpenChange={(o) => !o && fechar()}>
@@ -2789,7 +2802,11 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                     <p className="text-xs leading-relaxed text-muted-foreground">
                       {decisaoAberta.soRodapeLa
                         ? `Está no rodapé da ${decisaoAberta.hospLa} hoje, no mesmo turno, e tem caso aqui. Nome em AZUL no rodapé é ajuda: vai ao fim da fila e sai primeiro.`
-                        : `No mesmo turno (${periodo === 'matutino' ? 'matutino' : 'vespertino'}). Na foto, nome em AMARELO costuma ser intencional — a pessoa trabalha nos dois de propósito.`}
+                        : (comCirurgiaNosDois
+                          // dono 05/09: nome com cirurgia nos DOIS quase sempre é o mesmo nome
+                          // lançado duas vezes ao editar uma troca — daí a pergunta abaixo
+                          ? `Com cirurgia nos DOIS, no mesmo turno. Quase sempre é o mesmo nome digitado duas vezes ao lançar uma troca.`
+                          : `No mesmo turno (${periodo === 'matutino' ? 'matutino' : 'vespertino'}). Na foto, nome em AMARELO costuma ser intencional — a pessoa trabalha nos dois de propósito.`)}
                     </p>
                     {decisaoAberta.soRodapeLa && (
                       <Button className="w-full" onClick={() => { marcarAjuda(dup.nome, true); fechar() }}>
@@ -2820,22 +2837,80 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                       onChange={(v) => setTrocaEscolhida((p) => ({ ...p, [dup.key]: v }))}
                       options={rosterOpcoes.filter((o) => o.value !== dup.key)}
                     />
+                    {/* QUEM FICA COM CADA POSIÇÃO (dono 05/09, o padrão que o TrocaSheet já
+                        usa). A pergunta antiga era binária — "de qual escala é a vaga" — e
+                        não cabia o que acontece de verdade: o colega pode assumir os dois
+                        lados, ou nenhum (a escala já saiu trocada, e aí é só o rastro).
+                        Nome duplicado COM cirurgia nos dois quase sempre é o mesmo nome
+                        lançado duas vezes ao editar a troca: marcar "assume" ali desfaz. */}
+                    {parceiro && (
+                      <div>
+                        <p className="mb-2 mt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                          Quem fica com cada posição?
+                        </p>
+                        <div className="space-y-2">
+                          {dup.ocorrencias.map((o) => {
+                            const escolhida = escolhaDaOcorrencia(o)
+                            const rotulo = HOSPITAL_LABEL[o.hospital] || o.hospital
+                            return (
+                              <div key={`esc-${dup.key}-${o.hospital}`} className="rounded-xl border border-border-strong bg-card p-2.5">
+                                <div className="mb-0.5 flex items-baseline justify-between gap-2">
+                                  <p className="text-sm font-semibold">{rotulo}</p>
+                                  <p className="shrink-0 text-xs text-muted-foreground">
+                                    {o.casos?.length ? `${o.casos.length} caso${o.casos.length === 1 ? '' : 's'}` : 'sem casos'}
+                                  </p>
+                                </div>
+                                <p className="mb-2 text-xs text-muted-foreground">
+                                  {o.noRodape ? `Posição de ${nomeCurto(dup.nome)}` : `Cirurgias de ${nomeCurto(dup.nome)} · sem posição no rodapé`}
+                                </p>
+                                {/* o HOSPITAL entra no rótulo da opção: lida sozinha,
+                                    "Fulano assume" não diz assume ONDE (dono 10/08) */}
+                                <div className="flex gap-1.5">
+                                  {[['fica', `${nomeCurto(dup.nome)} fica ${rotulo}`], ['assume', `${nomeCurto(parceiro.nome)} assume ${rotulo}`]].map(([valor, texto]) => (
+                                    <button
+                                      key={valor}
+                                      type="button"
+                                      aria-pressed={escolhida === valor}
+                                      onClick={() => setEscolhaDup((e) => ({ ...e, [o.hospital]: valor }))}
+                                      className={`flex min-h-11 flex-1 items-center justify-center rounded-xl border px-2 text-center text-xs font-medium leading-tight
+                                        ${escolhida === valor
+                                          ? 'border-transparent bg-category-indigo text-white'
+                                          : 'border-border-strong bg-card text-foreground active:opacity-70'}`}
+                                    >
+                                      {texto}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                        {!faltaResponderDup && !assumidasDup.length && (
+                          <p className="mt-1.5 text-[11px] leading-4 text-muted-foreground">
+                            Ninguém muda de lugar: a escala já saiu trocada e fica só o rastro,
+                            com o badge nos dois lados.
+                          </p>
+                        )}
+                      </div>
+                    )}
                     <div className="space-y-1.5">
                       <Button
                         className="w-full"
-                        disabled={!parceiro}
+                        disabled={!parceiro || faltaResponderDup}
                         onClick={() => {
                           if (!parceiro) return
                           // nome COMPLETO do cadastro: o cruzamento entre
-                          // hospitais casa por normNome do nome completo
-                          const vaga = hospitalVagaDe(dup)
+                          // hospitais casa por normNome do nome completo.
+                          // UMA posição muda de dono → é ela a vaga (o registro sai só ali).
+                          // AS DUAS → sem âncora, como sempre foi. NENHUMA → a escala já saiu
+                          // trocada: vira registro (rastro), que a convergência não executa.
                           setDuplicidadeDecisoes((p) => ({
                             ...p,
                             [dup.key]: carimbarDecisao(
                               {
                                 tipo: 'troca', parceiroUid: parceiro.uid, parceiroNome: parceiro.nome,
-                                // a posição que ficou vaga; sem ela o registro sai nos dois hospitais
-                                ...(vaga ? { hospitalVaga: vaga } : {}),
+                                ...(assumidasDup.length === 1 ? { hospitalVaga: assumidasDup[0] } : {}),
+                                ...(assumidasDup.length === 0 ? { apenasRegistro: true } : {}),
                               },
                               dup, { resolver, normalizar: normNome },
                             ),
@@ -2843,7 +2918,13 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                           fechar()
                         }}
                       >
-                        {parceiro ? `Trocou com ${nomeCurto(parceiro.nome)} — declarar a troca` : 'Declarar a troca — escolha o colega'}
+                        {!parceiro
+                          ? 'Declarar a troca — escolha o colega'
+                          : (faltaResponderDup
+                            ? 'Diga quem fica com cada posição'
+                            : (assumidasDup.length
+                              ? `Trocou com ${nomeCurto(parceiro.nome)} — declarar a troca`
+                              : `Registrar a troca com ${nomeCurto(parceiro.nome)}`))}
                       </Button>
                       <Button variant="outline" className="w-full"
                         onClick={() => { setDuplicidadeDecisoes((p) => ({ ...p, [dup.key]: carimbarDecisao({ tipo: 'intencional' }, dup, { resolver, normalizar: normNome }) })); fechar() }}>

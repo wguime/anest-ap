@@ -153,6 +153,9 @@ export function montarLinhaOverrides({
           uid: d.parceiroUid || null, nome: d.parceiroNome || '',
           // duplicidade entre hospitais É o tipo 'entre_hospitais' por definição
           tipo: 'entre_hospitais',
+          // ninguém muda de lugar: a escala já saiu trocada e o que falta é o RASTRO.
+          // `paresDeclarados` ignora registro de propósito — executá-lo DESFARIA a troca real.
+          ...(d.apenasRegistro ? { apenasRegistro: true } : {}),
           ...(carimbo || {}),
         },
       })

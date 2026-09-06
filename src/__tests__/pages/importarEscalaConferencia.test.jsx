@@ -478,9 +478,10 @@ describe('Conferência — cruzamento com outro hospital', () => {
     const linha = await screen.findByText(/Adriano — em dois hospitais/i)
     expect(linha.closest('button').textContent).toMatch(/Unimed: 1/)
     expect(screen.queryByText(/ajuda de fora\?/i)).toBeNull()
-    // e a folha lembra que amarelo = escalado em dois locais de propósito
+    // com cirurgia nos DOIS, a folha diz o que isso costuma ser (dono 05/09: o mesmo nome
+    // lançado duas vezes ao editar a troca) e mostra as duas posições em jogo
     fireEvent.click(linha)
-    expect(await screen.findByText(/AMARELO/)).toBeTruthy()
+    expect(await screen.findByText(/digitado duas vezes/i)).toBeTruthy()
   })
 })
 

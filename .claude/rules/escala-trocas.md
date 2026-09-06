@@ -220,6 +220,27 @@ responder outra vez (audit A6).
 ⚠️ **"Está em outro hospital sem troca" NÃO é saída da folha** (dono 04/09: é exceção e fica
 como está) — `emprestadoA` e o painel "Foi para" seguem fora do escopo.
 
+### A duplicidade decide POR POSIÇÃO, sem resposta limitada (dono 2026-09-05)
+
+Nome duplicado COM cirurgia nos dois hospitais **quase sempre é o mesmo nome lançado duas
+vezes ao editar uma troca** (dono). A folha da duplicidade passa a usar o MESMO padrão do
+`TrocaSheet`: escolhido o colega, cada posição em jogo vira um cartão com as duas saídas
+explícitas — "{X} fica {Hospital}" / "{colega} assume {Hospital}". Nada de pergunta binária:
+"não quero que a resposta seja limitada para não gerar erro".
+
+O que cada combinação grava:
+
+| Marcações | Decisão | Efeito |
+|---|---|---|
+| UM "assume" | `hospitalVaga` = aquele hospital | `trocaCom` só naquela escala; o colega assume a posição e as cirurgias de lá — é o que desfaz o nome lançado a mais |
+| DOIS "assume" | sem âncora | `trocaCom` nos dois lados, como sempre foi |
+| NENHUM "assume" | `apenasRegistro` | badge nos dois lados e **nada se move** — `paresDeclarados` ignora registro de propósito (executá-lo DESFARIA a troca real, caso Rafael⇄Garim 10/08) |
+
+A geografia **sugere** quando dá: quem está no rodapé de um hospital SEM cirurgia deixou
+aquela vaga, e os cartões já nascem marcados assim (corrigível — sugerir nunca é decidir).
+Com cirurgia nos dois nada vem marcado e o botão fica travado até as duas serem respondidas,
+pela mesma razão do D4 de 07/08: meio swap é pior que swap nenhum.
+
 ### A execução da troca é uma transação só (item 3.5, 2026-09-05)
 
 `rpc_escala_executar_troca(p_lados, p_limpar)` (migration `20260905220000`) faz, numa

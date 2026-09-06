@@ -66,6 +66,21 @@ beforeAll(() => vi.setSystemTime(new Date('2026-08-06T13:00:00Z')))
 afterAll(() => vi.useRealTimers())
 beforeEach(() => vi.clearAllMocks())
 
+/**
+ * Responde a folha da duplicidade: escolhe o colega e, quando a pessoa tem cirurgia nos
+ * DOIS hospitais, diz em qual escala o nome está errado (dono 05/09 — nome duplicado com
+ * caso nos dois quase sempre é o mesmo nome lançado duas vezes numa troca).
+ */
+async function declararTrocaCom(colega, { assume = [], fica = [] } = {}) {
+  fireEvent.click(screen.getByText(/Trocou com quem\?/i))
+  fireEvent.click(await screen.findByText(colega))
+  // uma decisão POR POSIÇÃO, como no TrocaSheet: cada hospital em jogo tem as duas saídas
+  for (const h of fica) fireEvent.click(screen.getByRole('button', { name: new RegExp(`fica ${h}$`, 'i') }))
+  for (const h of assume) fireEvent.click(screen.getByRole('button', { name: new RegExp(`assume ${h}$`, 'i') }))
+  fireEvent.click(screen.getByRole('button', { name: /declarar a troca|registrar a troca/i }))
+  await screen.findByText(/troca declarada/i)
+}
+
 describe('duplicidade entre hospitais → troca declarada', () => {
   /** Unimed importando DIDO, que já tem caso no HRO no mesmo turno. */
   async function importarComDuplicidade() {
@@ -116,10 +131,8 @@ describe('duplicidade entre hospitais → troca declarada', () => {
   it('grava trocaCom na chave do turno, para o badge sair nos dois lados', async () => {
     await importarComDuplicidade()
 
-    fireEvent.click(screen.getByText(/Trocou com quem\?/i))
-    fireEvent.click(await screen.findByText('Paulo Tonini'))
-    fireEvent.click(screen.getByRole('button', { name: /declarar a troca/i }))
-    await screen.findByText(/troca declarada/i)
+    // DIDO tem cirurgia na Unimed e no HRO: a folha mostra as duas posições em jogo
+    await declararTrocaCom('Paulo Tonini', { assume: ['Unimed'], fica: ['HRO'] })
 
     fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
     await waitFor(() => expect(svcMock.patchLinhaOverride).toHaveBeenCalled())
@@ -169,6 +182,69 @@ describe('duplicidade entre hospitais → troca declarada', () => {
   // importação do mesmo dia, fazia a mesma pergunta travar a publicação de novo, e a fila não
   // tinha como dizer que a duplicidade era de propósito. O que NÃO mudou, e é o que este teste
   // sempre protegeu: intencional não declara troca nenhuma e não move ninguém de posição.
+  // A VAGA OBSOLETA É DEDUZIDA QUANDO DÁ (dono 05/09). Com a pessoa no rodapé de um
+  // hospital SEM cirurgia nenhuma, aquela é a posição que ficou vaga — não há o que
+  // perguntar, e a folha não pergunta. A pergunta é só para o nome duplicado COM caso
+  // nos dois, que quase sempre é o mesmo nome lançado duas vezes numa troca.
+  it('no rodapé sem cirurgia de um lado: a folha deduz a vaga e não pergunta', async () => {
+    svcMock.fetchEscala.mockImplementation(async (_data, hospital) => (
+      hospital === 'hro'
+        ? { id: 'e-hro', hospital: 'hro', casos: [], ordemLiberacao: { matutino: ['DIDO', 'PAULO'] } }
+        : null
+    ))
+    svcMock.parseEscalaImagem.mockResolvedValueOnce({
+      casos: [{ sala: 'CC - Sala 1', hora: '08:30', procedimento: 'COLECISTECTOMIA', cirurgiao: 'ALBA', anestesista: 'DIDO' }],
+      ordemLiberacao: ['DIDO'],
+      ajudaExterna: [],
+    })
+    const { container } = render(
+      <ImportarEscalaPage hospital="unimed" data="2026-08-06" onClose={vi.fn()} />, { wrapper: wrap },
+    )
+    fireEvent.change(container.querySelector('input[type="file"]'), { target: { files: [new File(['x'], 'e.png', { type: 'image/png' })] } })
+    // no rodapé de lá SEM caso, a linha nasce como "ajuda de fora?" — a mesma folha
+    fireEvent.click(await screen.findByText(/Dido — ajuda de fora/i))
+
+    fireEvent.click(await screen.findByText(/Trocou com quem\?/i))
+    fireEvent.click(await screen.findByText('Paulo Tonini'))
+    // a geografia SUGERE: no HRO ele está no rodapé sem cirurgia, então é aquela a vaga —
+    // os cartões já vêm marcados assim e o botão nasce liberado (sugerir não é decidir)
+    expect(screen.getByRole('button', { name: /assume HRO$/i }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: /fica Unimed$/i }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: /declarar a troca/i }))
+    await screen.findByText(/troca declarada/i)
+
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+    await waitFor(() => expect(salvarEscala).toHaveBeenCalled())
+    // a vaga é a do HRO, onde ele está no rodapé sem cirurgia: nada é gravado aqui
+    expect(svcMock.patchLinhaOverride).not.toHaveBeenCalled()
+  })
+
+  // TODAS AS POSSIBILIDADES, SEM RESPOSTA LIMITADA (dono 05/09). A pergunta binária "de
+  // qual escala é a vaga" não cabia o que acontece de verdade: o colega pode assumir os
+  // DOIS lados, ou NENHUM — quando a escala já saiu trocada e o que falta é só o rastro.
+  it('os dois lados assumidos: a troca sai sem âncora, como sempre saiu', async () => {
+    await importarComDuplicidade()
+    await declararTrocaCom('Paulo Tonini', { assume: ['Unimed', 'HRO'] })
+
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+    await waitFor(() => expect(svcMock.patchLinhaOverride).toHaveBeenCalled())
+    const [, , valor] = svcMock.patchLinhaOverride.mock.calls[0]
+    expect(valor.trocaCom).toMatchObject({ uid: 'uid-paulo' })
+    expect(valor.trocaCom.apenasRegistro).toBeUndefined()
+  })
+
+  it('ninguém muda de lugar: vira REGISTRO, e a convergência não executa nada', async () => {
+    await importarComDuplicidade()
+    await declararTrocaCom('Paulo Tonini', { fica: ['Unimed', 'HRO'] })
+
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+    await waitFor(() => expect(svcMock.patchLinhaOverride).toHaveBeenCalled())
+    const [, , valor] = svcMock.patchLinhaOverride.mock.calls[0]
+    // registro é rastro, não pendência: executá-lo DESFARIA a troca real (caso 10/08)
+    expect(valor.trocaCom).toMatchObject({ uid: 'uid-paulo', apenasRegistro: true })
+    expect(executarSubstituicao).not.toHaveBeenCalled()
+  })
+
   it('confirmar como intencional grava a duplicidade — sem declarar nem executar troca', async () => {
     await importarComDuplicidade()
     fireEvent.click(screen.getByRole('button', { name: /Trabalha nos dois/i }))
@@ -190,10 +266,7 @@ describe('duplicidade entre hospitais → troca declarada', () => {
   // duplicado VAI FICAR nunca é tocada.
   it('decisão troca EXECUTA na publicação: vaga daqui → parceiro; recíproca no hospital dele', async () => {
     await importarComDuplicidade()
-    fireEvent.click(screen.getByText(/Trocou com quem\?/i))
-    fireEvent.click(await screen.findByText('Paulo Tonini'))
-    fireEvent.click(screen.getByRole('button', { name: /declarar a troca/i }))
-    await screen.findByText(/troca declarada/i)
+    await declararTrocaCom('Paulo Tonini', { assume: ['Unimed'], fica: ['HRO'] })
 
     fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
     await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
@@ -238,10 +311,7 @@ describe('duplicidade entre hospitais → troca declarada', () => {
     fireEvent.change(container.querySelector('input[type="file"]'), { target: { files: [new File(['x'], 'e.png', { type: 'image/png' })] } })
     fireEvent.click(await screen.findByText(/Dido — em dois hospitais/i))
 
-    fireEvent.click(await screen.findByText(/Trocou com quem\?/i))
-    fireEvent.click(await screen.findByText('Paulo Tonini'))
-    fireEvent.click(screen.getByRole('button', { name: /declarar a troca/i }))
-    await screen.findByText(/troca declarada/i)
+    await declararTrocaCom('Paulo Tonini', { assume: ['Unimed'], fica: ['HRO'] })
     fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
 
     await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))

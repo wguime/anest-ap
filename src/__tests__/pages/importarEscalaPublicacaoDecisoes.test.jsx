@@ -110,6 +110,9 @@ describe('a decisão da conferência entra no payload da publicação', () => {
     fireEvent.click(await screen.findByText(/Dido — em dois hospitais/i))
     fireEvent.click(await screen.findByText(/Trocou com quem\?/i))
     fireEvent.click(await screen.findByText('Paulo Tonini'))
+    // DIDO tem cirurgia nos dois: a folha mostra as duas posições em jogo (dono 05/09)
+    fireEvent.click(screen.getByRole('button', { name: /assume Unimed$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /fica HRO$/i }))
     fireEvent.click(screen.getByRole('button', { name: /declarar a troca/i }))
     await screen.findByText(/troca declarada/i)
 

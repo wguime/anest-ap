@@ -167,8 +167,8 @@ describe('duplicidade entre hospitais vira decisão na seção da ordem', () => 
     await waitFor(() => expect(blocos(container)).toHaveLength(1))
 
     fireEvent.click(await within(secaoOrdem(container)).findByText(/em dois hospitais/i))
-    // a folha mostra os dois lados e lembra a convenção da foto
-    expect(await screen.findByText(/AMARELO/i)).toBeTruthy()
+    // com cirurgia nos DOIS, a folha diz o que isso costuma ser (dono 05/09)
+    expect(await screen.findByText(/digitado duas vezes/i)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /trabalha nos dois/i }))
 
     // a linha vira respondida, com a saída de refazer
@@ -185,9 +185,15 @@ describe('duplicidade entre hospitais vira decisão na seção da ordem', () => 
 
     fireEvent.click(await within(secaoOrdem(container)).findByText(/em dois hospitais/i))
     // escolhe o parceiro no Select da folha e declara
-    const folha = (await screen.findByText(/AMARELO/i)).closest('[role="dialog"]') || document.body
+    const folha = (await screen.findByText(/digitado duas vezes/i)).closest('[role="dialog"]') || document.body
     fireEvent.click(within(folha).getByRole('combobox'))
     fireEvent.click(await screen.findByRole('option', { name: 'Gustavo Cury' }))
+    // com cirurgia nos dois hospitais nada é sugerido: a folha mostra AS DUAS posições em
+    // jogo, com as duas saídas de cada uma (mesmo padrão do TrocaSheet), e trava até responder
+    expect(screen.getByText(/Quem fica com cada posição\?/i)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /diga quem fica com cada posição/i }).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: /assume HRO$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /fica Unimed$/i }))
     fireEvent.click(screen.getByRole('button', { name: /declarar a troca/i }))
 
     expect(await within(secaoOrdem(container)).findByText(/troca declarada/i)).toBeTruthy()
