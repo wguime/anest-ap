@@ -129,13 +129,19 @@ async function vocabularioDoGrupo() {
   }
 }
 
+/** Uma leitura leva de 15 a 90s; 4 min é hang, não lentidão. */
+const TIMEOUT_LEITURA_MS = 240_000
+
 async function lerFoto(arquivo, token, roster) {
   const bytes = readFileSync(resolve(CORPUS, arquivo))
   const base64 = bytes.toString('base64')
   const mime = MIMES[extname(arquivo).toLowerCase()]
   const t0 = Date.now()
+  // sem timeout, um fetch pendurado trava a rodada inteira em silêncio — foi o
+  // que aconteceu quando um processo órfão do Playwright deixou a máquina sem ar
   const r = await fetch(`${SUPABASE_URL}/functions/v1/parse-escala-cirurgica`, {
     method: 'POST',
+    signal: AbortSignal.timeout(TIMEOUT_LEITURA_MS),
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       imageBase64: base64, mimeType: mime,
