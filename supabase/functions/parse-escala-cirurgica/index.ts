@@ -21,6 +21,19 @@
 // Documentar base legal em docs/escala-cirurgica.md.
 
 import { verifyAuthHeader } from '../_shared/verify-auth.ts'
+import { dimensoesDeBase64, bytesDeBase64 } from '../_shared/imagem-dimensoes.ts'
+import { montarLinhaLog, hashImagem, registrarLeitura } from '../_shared/escala-leitura-log.ts'
+
+/** Modelo da leitura. Trocar exige medir antes (eval do item 4.1). */
+const MODELO = 'claude-opus-4-8'
+
+/**
+ * Versão do prompt/contrato. MUDE A CADA alteração de SYSTEM_PROMPT, das dicas
+ * de hospital ou do schema de saída: é a coluna que separa duas edições no
+ * `escala_leitura_log` e a que invalida o cache de leitura. Sem bumpar, o ANTES
+ * e o DEPOIS se misturam na mesma média e a medição mente.
+ */
+const PROMPT_VERSAO = 'v1-2026-07-01'
 
 const DEFAULT_ALLOWED_ORIGINS = [
   'https://anest-ap.web.app',
@@ -259,10 +272,36 @@ const MAX_TOKENS = 32000
  * conexão precisa continuar recebendo bytes para o gateway não derrubar a
  * função no meio de uma escala grande.
  */
-async function lerRespostaStream(res: Response): Promise<{ texto: string; stopReason: string }> {
+export interface UsoLeitura {
+  input_tokens: number
+  output_tokens: number
+  cache_read_tokens: number
+  cache_write_tokens: number
+}
+
+/**
+ * `usage` também sai do stream (item 4.1): `message_start` traz os tokens de
+ * entrada e o que o cache leu/escreveu; `message_delta` traz os de saída. Sem
+ * isso não há custo por leitura — e a regra da Onda 4 é "só entra o que mantém
+ * ou reduz o custo", que não dá para verificar sem medir.
+ */
+async function lerRespostaStream(
+  res: Response,
+): Promise<{ texto: string; stopReason: string; uso: UsoLeitura }> {
   let texto = ''
   let stopReason = ''
   let buffer = ''
+  const uso: UsoLeitura = {
+    input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0,
+  }
+  const somarUso = (u: Record<string, unknown> | undefined) => {
+    if (!u) return
+    const n = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0)
+    if (n(u.input_tokens)) uso.input_tokens = n(u.input_tokens)
+    if (n(u.output_tokens)) uso.output_tokens = n(u.output_tokens)
+    if (n(u.cache_read_input_tokens)) uso.cache_read_tokens = n(u.cache_read_input_tokens)
+    if (n(u.cache_creation_input_tokens)) uso.cache_write_tokens = n(u.cache_creation_input_tokens)
+  }
   const reader = res.body!.pipeThrough(new TextDecoderStream()).getReader()
   for (;;) {
     const { done, value } = await reader.read()
@@ -283,10 +322,14 @@ async function lerRespostaStream(res: Response): Promise<{ texto: string; stopRe
       } else if (ev.type === 'message_delta') {
         const d = ev.delta as { stop_reason?: string } | undefined
         if (d?.stop_reason) stopReason = d.stop_reason
+        somarUso(ev.usage as Record<string, unknown> | undefined)
+      } else if (ev.type === 'message_start') {
+        const m = ev.message as { usage?: Record<string, unknown> } | undefined
+        somarUso(m?.usage)
       }
     }
   }
-  return { texto, stopReason }
+  return { texto, stopReason, uso }
 }
 
 // Enums aceitos pela tabela escala_cirurgica_caso — sanitiza p/ não violar o CHECK no insert.
@@ -423,10 +466,37 @@ Deno.serve(async (req) => {
       })
     }
 
+    // ── Telemetria por leitura (item 4.1) ────────────────────────────────────
+    // Medida antes de qualquer chamada: hash da foto (identidade da mesma foto
+    // reenviada), dimensões e peso. `registrar` é disparado sem await em TODA
+    // saída daqui para baixo — inclusive nas de erro, que são as que mais
+    // interessam. Telemetria nunca atrasa nem derruba a leitura.
+    const t0 = Date.now()
+    const imagemHash = await hashImagem(imageBase64)
+    const dim = dimensoesDeBase64(imageBase64)
+    const contexto = {
+      uid: auth.uid,
+      modo: modoFds ? 'fds' : 'dia-util',
+      hospital_hint: String(hospital || ''),
+      imagem_hash: imagemHash,
+      imagem_mime: mime,
+      imagem_largura: dim?.largura ?? null,
+      imagem_altura: dim?.altura ?? null,
+      imagem_bytes: bytesDeBase64(imageBase64),
+      modelo: MODELO,
+      prompt_versao: PROMPT_VERSAO,
+    }
+    const registrar = (extra: Record<string, unknown>) => {
+      void registrarLeitura(montarLinhaLog({
+        ...contexto, latencia_ms: Date.now() - t0, ...extra,
+      }))
+    }
+
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
     if (!apiKey) {
       // Mesmo caminho da chave recusada: é problema de configuração, e a tela
       // precisa dizer "avise o administrador" em vez de "tente de novo".
+      registrar({ erro: 'sem_api_key' })
       return new Response(JSON.stringify({
         error: 'ia_falhou',
         iaStatus: 401,
@@ -465,7 +535,7 @@ Deno.serve(async (req) => {
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-opus-4-8',
+        model: MODELO,
         max_tokens: MAX_TOKENS,
         stream: true,
         system: modoFds
@@ -498,6 +568,7 @@ Deno.serve(async (req) => {
         iaTipo = String(corpo?.error?.type || '')
         iaMensagem = String(corpo?.error?.message || detail)
       } catch { /* corpo não-JSON: segue como veio */ }
+      registrar({ erro: `ia_falhou:${res.status}:${iaTipo}`, stop_reason: 'http_error' })
       return new Response(JSON.stringify({
         error: 'ia_falhou',
         iaStatus: res.status,
@@ -509,9 +580,10 @@ Deno.serve(async (req) => {
       })
     }
 
-    const { texto, stopReason } = await lerRespostaStream(res)
+    const { texto, stopReason, uso } = await lerRespostaStream(res)
     const match = texto.match(/\{[\s\S]*\}/)
     if (!match) {
+      registrar({ ...uso, stop_reason: stopReason, erro: 'sem_json' })
       return new Response(JSON.stringify(
         modoFds
           ? { error: 'Resposta sem JSON', dias: [], ignorados: [] }
@@ -528,6 +600,10 @@ Deno.serve(async (req) => {
       parsed = JSON.parse(match[0])
     } catch (e) {
       console.error(`[parse-escala-cirurgica] JSON inválido (stop_reason=${stopReason}):`, e)
+      registrar({
+        ...uso, stop_reason: stopReason,
+        erro: stopReason === 'max_tokens' ? 'extracao_truncada' : 'json_invalido',
+      })
       return new Response(JSON.stringify({
         error: stopReason === 'max_tokens' ? 'extracao_truncada' : 'json_invalido',
         motivo: stopReason,
@@ -537,6 +613,7 @@ Deno.serve(async (req) => {
     // MODO FDS: resposta própria (dias/ignorados) — nada do caminho de casos.
     if (modoFds) {
       const fds = sanitizeFds(parsed)
+      registrar({ ...uso, stop_reason: stopReason, casos: fds.dias.length })
       return new Response(JSON.stringify({ ...fds, truncado: stopReason === 'max_tokens' }), {
         headers: { ...cors, 'Content-Type': 'application/json' },
       })
@@ -553,9 +630,24 @@ Deno.serve(async (req) => {
     const ajudaExterna = Array.isArray(parsed.ajudaExterna)
       ? parsed.ajudaExterna.map((s: unknown) => String(s || '').trim()).filter(Boolean)
       : []
+    const casos = blankAnestesistasForaDoRodape(
+      sanitizeCasos(parsed.casos, comSecoesTurno) as Record<string, unknown>[],
+      ordemLiberacao, ajudaExterna,
+    )
+    const hospitalDetectado = ['unimed', 'hro', 'materno'].includes(String(parsed.hospitalDetectado || ''))
+      ? String(parsed.hospitalDetectado)
+      : ''
+    registrar({
+      ...uso,
+      stop_reason: stopReason,
+      hospital_detectado: hospitalDetectado,
+      casos: casos.length,
+      rodape: ordemLiberacao.length,
+      ajuda: ajudaExterna.length,
+    })
     return new Response(JSON.stringify({
       // guardrail: apaga anestesista ausente do rodapé (alucinação) — só quando há rodapé
-      casos: blankAnestesistasForaDoRodape(sanitizeCasos(parsed.casos, comSecoesTurno) as Record<string, unknown>[], ordemLiberacao, ajudaExterna),
+      casos,
       posicoesAssistenciais: sanitizePosicoes(parsed.posicoesAssistenciais),
       ordemLiberacao,
       ajudaExterna,
@@ -563,9 +655,7 @@ Deno.serve(async (req) => {
         ? String(parsed.dataDetectada)
         : '',
       // Sugestão de hospital pelo layout (a UI pede confirmação — nunca troca sozinha)
-      hospitalDetectado: ['unimed', 'hro', 'materno'].includes(String(parsed.hospitalDetectado || ''))
-        ? String(parsed.hospitalDetectado)
-        : '',
+      hospitalDetectado,
       // A tela avisa em vez de deixar a secretária descobrir na hora da liberação
       truncado: stopReason === 'max_tokens',
     }), { headers: { ...cors, 'Content-Type': 'application/json' } })

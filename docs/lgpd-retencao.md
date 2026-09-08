@@ -27,6 +27,7 @@ A LGPD Art. 16, II permite conservação além do prazo de finalidade quando há
 | Denúncias — identidade do denunciante (`denunciante`) | **100 anos** após `created_at` | Obrigação legal — Decreto 10.153/2019 (Anticrime) + Lei 14.457/2022 | Manter pseudonimizado em coluna restrita; SELECT só por DPO + Comitê de Ética |
 | Denúncias — descrições e fatos (`denuncia_data`, `admin_data`, `gestao_interna`) | **20 anos** após `created_at` | Obrigação legal — apuração disciplinar + compliance regulatório | Manter; após 20a, anonimizar terceiros citados |
 | Audit logs (`permission_audit_log`, `documento_changelog`) | **5 anos** após `created_at` | Compliance + auditoria (LGPD Art. 37, ROPA) | Anonimizar via `rpc_anonimizar_dados_antigos` (já existe) |
+| Telemetria de leitura da escala (`escala_leitura_log`) | **180 dias** após `criado_em` | Legítimo interesse (LGPD Art. 7, IX) — medir a qualidade da extração | Exclusão FÍSICA por `escala_leitura_log_purge()` (pg_cron, domingo 01:17 BRT). Sem dado de paciente por construção: só `uid` de quem enviou, contagens, tokens, tempos e o hash da imagem |
 | Attachments (Supabase Storage `incidentes-anexos/`) | Igual ao registro pai | — | Vínculo de identidade (`owner_id`) anulado pela própria `rpc_anonimizar_incidente` (migration `20260730230000`); exclusão FÍSICA via `scripts/cleanup-incidentes-anexos.mjs` (service-role — pg_cron não remove o objeto do Storage), que também limpa órfãos de submit abortado e atende pedido do DPO por protocolo |
 
 **Notas:**
