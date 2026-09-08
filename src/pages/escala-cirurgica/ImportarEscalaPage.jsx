@@ -18,7 +18,7 @@ import { aplicarHoraPadraoPosicoes, detectarItensDuplicados, ehPosicaoAssistenci
 import { ERRO_IA, classificarFalhaVision, mensagemFalhaVision } from '@/lib/escalaVisionFalha'
 import { ehApelidoDePessoa, isPermissionError } from '@/services/supabaseEscalaAnestesistaService'
 import { prepararImagemParaVision } from '@/lib/imagemVision'
-import { iniciaisSeguras } from '@/lib/escalaCirurgicaPaciente'
+import { iniciaisSeguras, INICIAIS_MAX } from '@/lib/escalaCirurgicaPaciente'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
 import { TRABALHO_VAZIO } from './trabalhoConferencia'
@@ -242,7 +242,11 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   // No lote o roster vem do pai (uma instância, um `resolver` — audit A9); a instância
   // local fica inerte. Fora do lote, é a de sempre.
   const rosterLocal = useRosterAnestesistas({ inerte: !!rosterCompartilhado })
-  const { roster, options: rosterOpcoes, rosterByUid, resolver, upsertAlias } = rosterCompartilhado || rosterLocal
+  const {
+    roster, options: rosterOpcoes, rosterByUid, resolver, upsertAlias,
+    // apelidos do grupo como vocabulário da leitura (Onda 4, item 4.7)
+    vocabulario: rosterVocabulario,
+  } = rosterCompartilhado || rosterLocal
 
   // ── TRABALHO: controlado pelo lote ou local (ver TRABALHO_VAZIO) ───────────
   const [trabalhoLocal, setTrabalhoLocal] = useState(TRABALHO_VAZIO)
@@ -543,7 +547,10 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
       // chegava ao servidor, sem erro em lugar nenhum. Também é o que normaliza
       // HEIC do iPhone, que a Vision recusa.
       const img = await prepararImagemParaVision(file)
-      const res = await svc.parseEscalaImagem({ imageBase64: img.base64, mimeType: img.mimeType, hospital: hospParam })
+      const res = await svc.parseEscalaImagem({
+        imageBase64: img.base64, mimeType: img.mimeType, hospital: hospParam,
+        roster: rosterVocabulario,
+      })
       // Extração cortada no meio (escala longa demais para uma resposta só): o
       // servidor devolve 200 com o motivo em vez de estourar. Sem este ramo a
       // tela publicava a escala faltando as últimas linhas, sem avisar ninguém.
@@ -1687,7 +1694,8 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                     snapshot[h] = { ...e, casos: e.casos.map((c) => (porId.has(c.id) ? { ...c, ...porId.get(c.id) } : c)) }
                   }
                 }
-                trocasExecutadas.push(`${nomeCirurgiaoCurto(a.nome)} ⇄ ${nomeCirurgiaoCurto(bPar.nome)}`)
+                // texto de toast: ícone não cabe numa string, então vai a palavra
+                trocasExecutadas.push(`${nomeCirurgiaoCurto(a.nome)} com ${nomeCirurgiaoCurto(bPar.nome)}`)
               } catch { trocasPendentes.push(`${nomeCirurgiaoCurto(bPar.nome)}: a execução falhou — execute pelo ✏️ das Liberações`) }
             } else if (plan.pendencias.length) {
               trocasPendentes.push(...plan.pendencias.map((pe) => pe.motivo === 'sem_uid'
@@ -2103,7 +2111,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                     label: 'Ordem e decisões',
                     n: decisoesAbertas + conferenciasSemCirurgia.length > 0
                       ? decisoesAbertas + conferenciasSemCirurgia.length
-                      : (temDecisoes ? '✓' : ordemNumerada.length),
+                      : (temDecisoes ? <Check className="size-3" aria-label="tudo respondido" /> : ordemNumerada.length),
                     aten: decisoesAbertas + conferenciasPendentes.length > 0,
                     ok: decisoesAbertas + conferenciasPendentes.length === 0 && temDecisoes,
                   },
@@ -2113,8 +2121,9 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                     key={s.id}
                     type="button"
                     onClick={() => irPara(s.id)}
-                    className="inline-flex min-h-[34px] shrink-0 items-center gap-1.5 rounded-[10px] bg-muted px-2.5
-                               text-xs font-bold text-muted-foreground transition-transform active:scale-95"
+                    className="relative inline-flex min-h-[34px] shrink-0 items-center gap-1.5 rounded-[10px] bg-muted px-2.5
+                               text-xs font-bold text-muted-foreground transition-transform active:scale-95
+                               after:absolute after:-inset-y-[5px] after:inset-x-0 after:content-['']"
                   >
                     {s.label}
                     <span className={[
@@ -2276,13 +2285,24 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                             </div>
                             <div className="grid grid-cols-[1fr_5.5rem] gap-1.5">
                               <CampoSala valor={c.sala} onCommit={(v) => commitSala(i, v)} opcoes={salasDisponiveis} />
-                              <Input placeholder="Hora" value={c.hora} onChange={(e) => setCampo(i, 'hora', e.target.value)} />
+                              <Input
+                                placeholder="Hora" value={c.hora}
+                                onChange={(e) => setCampo(i, 'hora', e.target.value)}
+                                inputMode="numeric" autoComplete="off"
+                              />
                             </div>
                             {!ehPosicaoAssistencial(c) && (
                               <>
                                 <div className="grid grid-cols-2 gap-1.5">
                                   <Input placeholder="Cirurgião" value={c.cirurgiao} onChange={(e) => setCampo(i, 'cirurgiao', e.target.value)} />
-                                  <Input placeholder="Paciente (iniciais)" value={c.pacienteIniciais} onChange={(e) => setCampo(i, 'pacienteIniciais', e.target.value)} onBlur={(e) => setCampo(i, 'pacienteIniciais', iniciaisSeguras(e.target.value))} />
+                                  <Input
+                                    placeholder="Paciente (iniciais)" value={c.pacienteIniciais}
+                                    onChange={(e) => setCampo(i, 'pacienteIniciais', e.target.value)}
+                                    onBlur={(e) => setCampo(i, 'pacienteIniciais', iniciaisSeguras(e.target.value))}
+                                    /* o CHECK do banco recusa mais de 12 caracteres, e o teclado do
+                                       iPhone abre em minúscula numa coluna que é sempre maiúscula */
+                                    maxLength={INICIAIS_MAX} autoCapitalize="characters" autoCorrect="off" spellCheck={false}
+                                  />
                                 </div>
                                 <Input placeholder="Procedimento" value={c.procedimento} onChange={(e) => setCampo(i, 'procedimento', e.target.value)} />
                               </>
@@ -2475,7 +2495,13 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                         return (
                           <LinhaDecisao key={`dup-${d.key}`} tom="vd" icone={<Check className="h-4 w-4" />}
                             titulo={decisao.tipo === 'troca'
-                              ? `${titleCaseNome(d.nome)} ⇄ ${nomeCirurgiaoCurto(titleCaseNome(decisao.parceiroNome))} — troca declarada`
+                              ? (
+                                <>
+                                  {titleCaseNome(d.nome)}{' '}
+                                  <ArrowLeftRight className="inline size-3 align-[-1px]" aria-label="trocou com" />{' '}
+                                  {nomeCirurgiaoCurto(titleCaseNome(decisao.parceiroNome))} — troca declarada
+                                </>
+                              )
                               : `${titleCaseNome(d.nome)} — trabalha nos dois hoje`}
                             sub={decisao.tipo === 'troca'
                               ? 'Executa ao publicar · badge nos dois lados.'
@@ -2539,7 +2565,13 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                       const d = p.decisao?.decisao
                       if (d) {
                         const texto = {
-                          troca: `${titleCaseNome(p.nome)} ⇄ ${nomeCirurgiaoCurto(titleCaseNome(d.parceiroNome || ''))} — troca declarada`,
+                          troca: (
+                            <>
+                              {titleCaseNome(p.nome)}{' '}
+                              <ArrowLeftRight className="inline size-3 align-[-1px]" aria-label="trocou com" />{' '}
+                              {nomeCirurgiaoCurto(titleCaseNome(d.parceiroNome || ''))} — troca declarada
+                            </>
+                          ),
                           local: `${titleCaseNome(p.nome)} — ${rotuloNota(d.local) || d.local}`,
                           conferido: `${titleCaseNome(p.nome)} — está certo, fica Livre`,
                         }[d.tipo] || `${titleCaseNome(p.nome)} — respondido`

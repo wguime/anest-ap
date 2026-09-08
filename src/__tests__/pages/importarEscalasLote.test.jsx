@@ -733,8 +733,15 @@ describe('troca declarada entre duas abas do lote fecha na própria publicação
     fireEvent.click(opcoes.find((n) => n.closest('li')))
     fireEvent.click(screen.getByRole('button', { name: /declarar a troca/i }))
     // o selo da decisão respondida, não a nota de rodapé da folha (que diz "A troca
-    // declarada executa ao publicar" e casava mesmo sem decisão nenhuma)
-    await screen.findAllByText(/⇄ Jose Garim — troca declarada/i)
+    // declarada executa ao publicar" e casava mesmo sem decisão nenhuma).
+    // ⚠️ o casamento é pelos DOIS NOMES + "troca declarada", nunca pelo símbolo
+    // entre eles: o "⇄" virou ícone lucide (L9) e uma asserção presa ao glifo
+    // quebra numa mudança de ícone sem que nada do comportamento mude.
+    await waitFor(() => {
+      const selos = screen.getAllByText(/troca declarada/i)
+        .filter((n) => /Jose Garim/i.test(n.textContent))
+      expect(selos.length).toBeGreaterThan(0)
+    })
     return utils
   }
 
