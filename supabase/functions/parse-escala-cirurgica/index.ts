@@ -23,6 +23,7 @@
 import { verifyAuthHeader } from '../_shared/verify-auth.ts'
 import { dimensoesDeBase64, bytesDeBase64 } from '../_shared/imagem-dimensoes.ts'
 import { montarLinhaLog, hashImagem, registrarLeitura } from '../_shared/escala-leitura-log.ts'
+import { normalizarCasos } from '../_shared/escala-normalizacao.ts'
 
 /** Modelo da leitura. Trocar exige medir antes (eval do item 4.1). */
 const MODELO = 'claude-opus-4-8'
@@ -33,7 +34,7 @@ const MODELO = 'claude-opus-4-8'
  * `escala_leitura_log` e a que invalida o cache de leitura. Sem bumpar, o ANTES
  * e o DEPOIS se misturam na mesma média e a medição mente.
  */
-const PROMPT_VERSAO = 'v1-2026-07-01'
+const PROMPT_VERSAO = 'v2-schema-2026-09-07'
 
 const DEFAULT_ALLOWED_ORIGINS = [
   'https://anest-ap.web.app',
@@ -95,12 +96,12 @@ const HOSPITAL_HINT: Record<string, string> = {
 const SYSTEM_PROMPT = `Você extrai a escala cirúrgica de uma imagem (print de tabela) e devolve SOMENTE JSON válido, sem texto antes/depois.
 
 Escreva o JSON COMPACTO — sem quebras de linha e sem indentação entre os campos. A escala vespertina cheia não cabe na resposta quando o JSON vem formatado, e aí ela chega cortada no meio (a extração se perde inteira). O conteúdo extraído é o mesmo; só a formatação muda.
-Omita os campos que ficariam vazios ("") ou false — quem lê preenche esse padrão sozinho. Exceção: "sala", "ordem" e "anestesista" vão SEMPRE, mesmo vazios, porque posicionam o caso.
+Omita os campos que ficariam vazios ("") ou false — quem lê preenche esse padrão sozinho. Exceção: "sala", "hora" e "anestesista" vão SEMPRE, mesmo vazios, porque posicionam o caso.
 
 Schema:
 {
   "casos": [{
-    "sala": string, "ordem": number, "hora": string, "tempoEstimado": string,
+    "sala": string, "hora": string, "tempoEstimado": string,
     "pacienteIniciais": string, "pacienteNome": string, "idade": string, "procedimento": string, "convenio": string,
     "cirurgiao": string, "anestesista": string,
     "bloco": "normal"|"srpa"|"imagem"|"hemodinamica"|"exames"|"iosc"|"ho"|"consultorio"|"accurata"|"umanita"|"materno"|"simone"|"ccoluna"|"mauricio",
@@ -123,7 +124,6 @@ REGRAS:
 - Prefixo "PED"/"PED."/"Ped." antes do nome = um PEDIDO para aquele anestesista específico realizar o procedimento (ex.: "Ped. Janaína" = pedido para a Janaína). O anestesista é o nome que vem DEPOIS do prefixo — devolva SÓ o nome, sem o "Ped"/"Ped." (ex.: "Ped. Janaína" → anestesista "Janaína"). NÃO é marcador pediátrico e NÃO é o nome do procedimento.
 - Nome de anestesista DESTACADO EM AMARELO: significa que ele está intencionalmente escalado em DOIS locais no dia (a marcação existe para avisá-lo) — mantenha o nome nas duas linhas normalmente; não é erro nem ambiguidade.
 - DOIS ANESTESISTAS NA MESMA LINHA (a célula traz dois nomes — "RAQUEL E GABRIELA", "RAQUEL/GABRIELA", "RAQUEL + GABRIELA", um sobre o outro): os dois assumem AQUELE procedimento juntos. Devolva os dois no campo, separados por " + " (ex.: "RAQUEL + GABRIELA"), na ordem em que aparecem. NUNCA escolha um e descarte o outro, e NUNCA duplique a linha em dois casos — é uma cirurgia só, com dois responsáveis.
-- ordem: índice sequencial do caso dentro da sala (0,1,2...).
 - isContinuacao: true se o procedimento for "CONTINUAÇÃO".
 - semAnestesista: true se a coluna do anestesista for "?".
 - tipo: "emergencia"/"urgencia" se a linha indicar EMERGENCIA/URGENCIA; senão "eletiva".
@@ -332,6 +332,141 @@ async function lerRespostaStream(
   return { texto, stopReason, uso }
 }
 
+// ── STRUCTURED OUTPUT (2026-09-07, Onda 4 item 4.2) ──────────────────────────
+// `output_config.format` com json_schema: a resposta chega como JSON válido que
+// casa com o schema, por construção. Acaba a classe inteira de falha "o modelo
+// escreveu algo antes do JSON", "a regex gulosa pegou a chave errada" e "veio um
+// bloco que não existe no enum" — 06/08 foi um JSON cortado que o parse
+// derrubou, e o modo silencioso (corte logo depois de um `}`) publicava a escala
+// sem os últimos casos.
+//
+// ⚠️ O QUE O SCHEMA **NÃO** GARANTE: `pattern` NÃO é suportado em json_schema
+// (conferido na doc oficial em 07/09 — a proposta da auditoria usava `pattern`
+// em iniciais e hora). Ou seja, "01 EDA" continua cabendo num campo de string.
+// Quem garante o conteúdo é `_shared/escala-normalizacao.ts`, aplicada logo
+// depois do parse. O schema cuida da forma; a normalização, do valor.
+//
+// ⚠️ `required` FICA NO MÍNIMO de propósito. Exigir tudo obrigaria o modelo a
+// emitir "" e false em cada campo de cada caso, e a saída (a parcela CARA:
+// $25/MTok contra $5 da entrada) cresceria 20–30% — o que quebraria a regra de
+// custo do dono de 03/09. Com só `sala`, `hora` e `anestesista` obrigatórios
+// (os três que o prompt já mandava sempre, porque posicionam o caso), a
+// instrução "omita os campos vazios" continua valendo e a economia também.
+const SCHEMA_CASO_PROPS: Record<string, unknown> = {
+  sala: { type: 'string' },
+  hora: { type: 'string' },
+  tempoEstimado: { type: 'string' },
+  pacienteIniciais: { type: 'string' },
+  pacienteNome: { type: 'string' },
+  idade: { type: 'string' },
+  procedimento: { type: 'string' },
+  convenio: { type: 'string' },
+  cirurgiao: { type: 'string' },
+  anestesista: { type: 'string' },
+  bloco: {
+    type: 'string',
+    enum: ['normal', 'srpa', 'imagem', 'hemodinamica', 'exames', 'iosc', 'ho',
+      'consultorio', 'accurata', 'umanita', 'materno', 'simone', 'ccoluna', 'mauricio'],
+  },
+  isContinuacao: { type: 'boolean' },
+  semAnestesista: { type: 'boolean' },
+  tipo: { type: 'string', enum: ['eletiva', 'urgencia', 'emergencia'] },
+}
+
+function schemaEscala(comTurno: boolean): Record<string, unknown> {
+  const props = { ...SCHEMA_CASO_PROPS }
+  if (comTurno) props.turno = { type: 'string', enum: ['', 'matutino', 'vespertino'] }
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['casos', 'ordemLiberacao', 'hospitalDetectado'],
+    properties: {
+      casos: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['sala', 'hora', 'anestesista'],
+          properties: props,
+        },
+      },
+      posicoesAssistenciais: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['local', 'anestesista'],
+          properties: { local: { type: 'string' }, anestesista: { type: 'string' } },
+        },
+      },
+      ordemLiberacao: { type: 'array', items: { type: 'string' } },
+      ajudaExterna: { type: 'array', items: { type: 'string' } },
+      dataDetectada: { type: 'string' },
+      hospitalDetectado: { type: 'string', enum: ['unimed', 'hro', 'materno', ''] },
+    },
+  }
+}
+
+const SCHEMA_FDS: Record<string, unknown> = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['dias'],
+  properties: {
+    dias: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['data'],
+        properties: {
+          data: { type: 'string' },
+          plantoes: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+              P1: { type: 'string' }, P2: { type: 'string' },
+              P3: { type: 'string' }, P4: { type: 'string' },
+            },
+          },
+          grade: {
+            type: 'object',
+            additionalProperties: false,
+            properties: Object.fromEntries(['7-13', '13-19', '19-07'].map((f) => [f, {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                unimed: { type: 'string' }, hro: { type: 'string' },
+                ret1: { type: 'string' }, ret2: { type: 'string' },
+              },
+            }])),
+          },
+          listas: {
+            type: 'object',
+            additionalProperties: false,
+            properties: Object.fromEntries(['matutino', 'vespertino'].map((t) => [t, {
+              type: 'array',
+              items: {
+                type: 'object',
+                additionalProperties: false,
+                required: ['n', 'nome'],
+                properties: { n: { type: 'integer' }, nome: { type: 'string' } },
+              },
+            }])),
+          },
+          ordemLiberacaoDoc: {
+            type: 'object',
+            additionalProperties: false,
+            properties: Object.fromEntries(['matutino', 'vespertino'].map((t) =>
+              [t, { type: 'array', items: { type: 'string' } }])),
+          },
+          listaFeriado: { type: 'array', items: { type: 'string' } },
+        },
+      },
+    },
+    ignorados: { type: 'array', items: { type: 'string' } },
+  },
+}
+
 // Enums aceitos pela tabela escala_cirurgica_caso — sanitiza p/ não violar o CHECK no insert.
 const BLOCOS = new Set(['normal', 'srpa', 'imagem', 'hemodinamica', 'exames', 'iosc', 'ho', 'consultorio', 'accurata', 'umanita', 'materno', 'simone', 'ccoluna', 'mauricio'])
 const TIPOS = new Set(['eletiva', 'urgencia', 'emergencia'])
@@ -538,6 +673,14 @@ Deno.serve(async (req) => {
         model: MODELO,
         max_tokens: MAX_TOKENS,
         stream: true,
+        // JSON válido por construção; o conteúdo dos campos ainda passa pela
+        // normalização determinística logo abaixo (`pattern` não existe aqui).
+        output_config: {
+          format: {
+            type: 'json_schema',
+            schema: modoFds ? SCHEMA_FDS : schemaEscala(comSecoesTurno),
+          },
+        },
         system: modoFds
           ? FDS_SYSTEM_PROMPT
           : (comSecoesTurno ? SYSTEM_PROMPT + SECOES_TURNO_REGRA : SYSTEM_PROMPT),
@@ -630,10 +773,14 @@ Deno.serve(async (req) => {
     const ajudaExterna = Array.isArray(parsed.ajudaExterna)
       ? parsed.ajudaExterna.map((s: unknown) => String(s || '').trim()).filter(Boolean)
       : []
-    const casos = blankAnestesistasForaDoRodape(
+    // sanitizeCasos garante os ENUMS e a regra de LGPD do pacienteNome;
+    // normalizarCasos garante a FORMA do valor (iniciais que passam no CHECK,
+    // hora em HH:MM, ordem pela posição, sem linha repetida) — é o que o schema
+    // não consegue prometer, porque `pattern` não existe em json_schema.
+    const { casos: casosNormalizados, contagem } = normalizarCasos(
       sanitizeCasos(parsed.casos, comSecoesTurno) as Record<string, unknown>[],
-      ordemLiberacao, ajudaExterna,
     )
+    const casos = blankAnestesistasForaDoRodape(casosNormalizados, ordemLiberacao, ajudaExterna)
     const hospitalDetectado = ['unimed', 'hro', 'materno'].includes(String(parsed.hospitalDetectado || ''))
       ? String(parsed.hospitalDetectado)
       : ''
@@ -644,6 +791,7 @@ Deno.serve(async (req) => {
       casos: casos.length,
       rodape: ordemLiberacao.length,
       ajuda: ajudaExterna.length,
+      normalizacoes: contagem,
     })
     return new Response(JSON.stringify({
       // guardrail: apaga anestesista ausente do rodapé (alucinação) — só quando há rodapé
