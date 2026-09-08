@@ -15,8 +15,26 @@
 import { describe, it, expect } from 'vitest'
 import {
   corValida, primeiroNomeNorm, lerRodape,
-  aplicarCorNosCasos, derivarRodape, blanquearForaDoRodape,
+  aplicarCorNosCasos, derivarRodape, blanquearForaDoRodape, rodapeAusente,
 } from '../../../supabase/functions/_shared/escala-cor.ts'
+
+describe('rodapé vazio em HRO/Unimed é leitura incompleta (08/09)', () => {
+  // a foto do HRO devolveu 15 casos e nenhum nome na ordem, com stop_reason
+  // normal, e a escala foi publicada sem fila; a mesma foto lida com as regras
+  // do hospital devolveu os 26 casos e os 17 nomes
+  it('HRO e Unimed sem nenhum nome na ordem', () => {
+    expect(rodapeAusente('hro', [])).toBe(true)
+    expect(rodapeAusente('unimed', undefined)).toBe(true)
+    expect(rodapeAusente('HRO', null)).toBe(true)
+  })
+
+  it('com rodapé não é ausente; Materno e hospital desconhecido nunca são', () => {
+    expect(rodapeAusente('hro', ['ALINE'])).toBe(false)
+    expect(rodapeAusente('materno', [])).toBe(false)
+    expect(rodapeAusente('', [])).toBe(false)
+    expect(rodapeAusente(undefined, [])).toBe(false)
+  })
+})
 
 describe('leitura do rodapé colorido', () => {
   it('aceita o contrato novo com cor por nome', () => {

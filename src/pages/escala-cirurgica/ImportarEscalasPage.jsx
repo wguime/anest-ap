@@ -35,6 +35,7 @@ import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { parseExcelEscala } from '@/lib/excelEscala'
 import { prepararImagemParaVision } from '@/lib/imagemVision'
 import { ERRO_IA, classificarFalhaVision, mensagemFalhaVision } from '@/lib/escalaVisionFalha'
+import { precisaRelerComHint, rodapeAusente } from '@/lib/escalaLeituraRodape'
 import { ehDataFilaUnica, ehFeriado } from '@/lib/escalaFds'
 import {
   HOSPITAIS_LOTE, classificarAnexoDiaUtil, estadoEscala,
@@ -353,7 +354,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
   // se quer descobrir) — é como o fim de semana já lê os mapas desde 22/08.
   // Corrigir o hospital à mão no item RELÊ com o hint certo, que é o mecanismo
   // que a tela de uma escala só já tinha.
-  const lerArquivo = async (file) => {
+  const lerArquivo = async (file, aoReler) => {
     if (ehPlanilha(file)) {
       const { casos: rows, headers } = await parseExcelEscala(file)
       if (!rows.length) return { erro: 'não consegui ler a planilha' }
@@ -367,7 +368,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
       return { erro: 'formato não suportado — envie Excel/CSV ou uma imagem' }
     }
     const img = await prepararImagemParaVision(file)
-    const res = await svc.parseEscalaImagem({
+    let res = await svc.parseEscalaImagem({
       imageBase64: img.base64, mimeType: img.mimeType,
       roster: rosterCompartilhado.vocabulario,
     })
@@ -381,12 +382,29 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
       return { erro: 'a leitura foi cortada — envie um print mais fechado' }
     }
     if (!(res.casos || []).length) return { erro: 'nenhuma cirurgia reconhecida' }
+    // RODAPÉ VAZIO RELÊ COM A DICA DO HOSPITAL (08/09): a foto do HRO lida sem
+    // dica voltou com 15 casos e nenhum nome na ordem — faltaram IOSC, HO,
+    // Exames, Ambulatório e a fila inteira — e a escala foi publicada assim. A
+    // MESMA foto lida com as regras do HRO trouxe os 26 casos e os 17 nomes.
+    // Uma releitura, com o hospital que a própria leitura detectou; se também
+    // vier sem rodapé, fica a primeira e o aviso abaixo diz o que faltou.
+    if (precisaRelerComHint({ hospitalDetectado: res.hospitalDetectado, ordemLiberacao: res.ordemLiberacao, truncado: res.truncado, hint: '' })) {
+      aoReler?.(String(res.hospitalDetectado))
+      try {
+        const segunda = await svc.parseEscalaImagem({
+          imageBase64: img.base64, mimeType: img.mimeType, hospital: String(res.hospitalDetectado),
+          roster: rosterCompartilhado.vocabulario,
+        })
+        if (!segunda?.error && (segunda.casos || []).length && (segunda.ordemLiberacao || []).length) res = segunda
+      } catch { /* fica a primeira leitura, com o aviso de rodapé vazio */ }
+    }
     const cls = classificarAnexoDiaUtil(res, { dataDoLote: dataEscolhida })
     return {
       cls,
       nome: file.name,
       arquivo: file,
       truncado: !!res.truncado,
+      rodapeVazio: rodapeAusente(res.hospitalDetectado, res.ordemLiberacao),
       lote: {
         rows: res.casos || [],
         posicoes: res.posicoesAssistenciais || [],
@@ -420,7 +438,9 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
         const meus = []
         try {
           marcar(file.name, { estado: 'lendo' })
-          const r = await lerArquivo(file)
+          const r = await lerArquivo(file, (hospDet) => marcar(file.name, {
+            estado: 'lendo', resultado: `sem ordem de liberação — relendo com as regras do ${rotulo(hospDet)}`,
+          }))
           if (r.erro) { problemas.push(`${file.name}: ${r.erro}`); marcar(file.name, { estado: 'erro', problemas: [r.erro] }); continue }
           if (r.cls.dataDivergente) {
             problemas.push(`${file.name}: o arquivo mostra ${formatData(r.cls.dataDivergente)}, e o lote é de ${formatData(dataEscolhida)}`)
@@ -434,6 +454,12 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
           if (r.truncado) {
             problemas.push(`${file.name}: a leitura foi cortada — as últimas linhas do mapa podem estar faltando; confira o fim da lista`)
             meus.push('leitura cortada — confira o fim do mapa')
+          }
+          // Releu e AINDA veio sem rodapé: a fila não pode nascer vazia em
+          // silêncio (08/09) — quem confere precisa saber antes de publicar.
+          if (r.rodapeVazio) {
+            problemas.push(`${file.name}: a leitura não trouxe a ordem de liberação — confira o rodapé da foto na aba antes de publicar`)
+            meus.push('sem ordem de liberação — confira o rodapé')
           }
           if (!r.cls.hospital) {
             // conflito entre layout e conteúdo tem motivo próprio: "não

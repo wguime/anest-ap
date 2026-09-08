@@ -108,6 +108,22 @@ export interface RodapeDerivado {
   ajudaExterna: string[]
 }
 
+/** Hospitais cujo mapa de dia útil SEMPRE fecha com a ordem de liberação em vermelho. */
+const COM_RODAPE = new Set(['hro', 'unimed'])
+
+/**
+ * Leitura de HRO/Unimed que voltou SEM a ordem de liberação é leitura
+ * incompleta, mesmo com `stop_reason` normal: em 08/09 a foto do HRO devolveu
+ * 15 casos e rodapé vazio (faltaram IOSC, HO, Exames, Ambulatório e a fila
+ * inteira), e a escala foi publicada assim. A mesma foto, lida com as regras
+ * do hospital, devolveu os 26 casos e os 17 nomes. O Materno não tem rodapé e
+ * fica de fora; hospital desconhecido também.
+ */
+export function rodapeAusente(hospital: unknown, ordemLiberacao: unknown): boolean {
+  if (!COM_RODAPE.has(String(hospital ?? '').trim().toLowerCase())) return false
+  return !(Array.isArray(ordemLiberacao) && ordemLiberacao.length > 0)
+}
+
 /**
  * `ordemLiberacao` e `ajudaExterna` no formato que o cliente já consome,
  * DERIVADOS do rodapé colorido mais o azul que aparecer no corpo.

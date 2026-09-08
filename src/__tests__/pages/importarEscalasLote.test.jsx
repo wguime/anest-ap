@@ -163,8 +163,8 @@ describe('anexo em lote — cada arquivo vai para a aba do seu hospital', () => 
   it('reanexar o MESMO hospital substitui a aba, não cria uma segunda', async () => {
     // reanexo é anexar DE NOVO, num segundo lote — e aí substituir é o certo
     svcMock.parseEscalaImagem
-      .mockResolvedValueOnce({ casos: [caso('Sala 1', 'CURY')], hospitalDetectado: 'hro' })
-      .mockResolvedValueOnce({ casos: [caso('Sala 9', 'PAULO')], hospitalDetectado: 'hro' })
+      .mockResolvedValueOnce({ casos: [caso('Sala 1', 'CURY')], hospitalDetectado: 'hro', ordemLiberacao: ['CURY'] })
+      .mockResolvedValueOnce({ casos: [caso('Sala 9', 'PAULO')], hospitalDetectado: 'hro', ordemLiberacao: ['PAULO'] })
 
     const { container } = montar()
     const anexar = (f) => fireEvent.change(container.querySelector('input[type="file"]'), { target: { files: [f] } })
@@ -185,8 +185,8 @@ describe('anexo em lote — cada arquivo vai para a aba do seu hospital', () => 
     // classificação errada de um dos dois. Substituir em silêncio apagaria uma
     // escala inteira que a tela ACABOU de dizer que leu.
     svcMock.parseEscalaImagem
-      .mockResolvedValueOnce({ casos: [caso('Sala 1', 'CURY')], hospitalDetectado: 'hro' })
-      .mockResolvedValueOnce({ casos: [caso('Sala 9', 'PAULO')], hospitalDetectado: 'hro' })
+      .mockResolvedValueOnce({ casos: [caso('Sala 1', 'CURY')], hospitalDetectado: 'hro', ordemLiberacao: ['CURY'] })
+      .mockResolvedValueOnce({ casos: [caso('Sala 9', 'PAULO')], hospitalDetectado: 'hro', ordemLiberacao: ['PAULO'] })
 
     const { container } = montar()
     await soltarArquivos(container, [img('hro-a.png'), img('hro-b.png')])
@@ -241,7 +241,7 @@ describe('anexo em lote — cada arquivo vai para a aba do seu hospital', () => 
     // não tinha marca nenhuma — as salas eram "Sala 3", "Sala 6", e "Sala N"
     // pelado é dos dois hospitais. O lote sabe o que o arquivo sozinho não sabe.
     svcMock.parseEscalaImagem
-      .mockResolvedValueOnce({ casos: [caso('CC - Sala 1', 'CURY')], hospitalDetectado: 'unimed' })
+      .mockResolvedValueOnce({ casos: [caso('CC - Sala 1', 'CURY')], hospitalDetectado: 'unimed', ordemLiberacao: ['CURY'] })
       .mockResolvedValueOnce({ casos: [caso('Sala 2 HC', 'PAULO')], hospitalDetectado: 'materno' })
       .mockResolvedValueOnce({ casos: [caso('Sala 3', 'CURY'), caso('Sala 6', 'PAULO')], hospitalDetectado: '' })
 
@@ -260,7 +260,7 @@ describe('anexo em lote — cada arquivo vai para a aba do seu hospital', () => 
     // dois arquivos, um identificado: sobra HRO e Materno. Deduzir aqui seria
     // chute, e chute põe a escala na aba errada — o defeito de origem.
     svcMock.parseEscalaImagem
-      .mockResolvedValueOnce({ casos: [caso('CC - Sala 1', 'CURY')], hospitalDetectado: 'unimed' })
+      .mockResolvedValueOnce({ casos: [caso('CC - Sala 1', 'CURY')], hospitalDetectado: 'unimed', ordemLiberacao: ['CURY'] })
       .mockResolvedValueOnce({ casos: [caso('Sala 3', 'PAULO')], hospitalDetectado: '' })
 
     const { container } = montar()
@@ -293,6 +293,51 @@ describe('anexo em lote — cada arquivo vai para a aba do seu hospital', () => 
 
     await waitFor(() => expect(abas()).toHaveLength(1))
     expect(await screen.findByText(/leitura foi cortada/i)).toBeTruthy()
+  })
+
+  it('HRO SEM rodapé é relido com a dica do hospital, e a segunda leitura é a que vale (08/09)', async () => {
+    // a foto do HRO lida sem dica voltou com 15 casos e nenhum nome na ordem —
+    // faltaram IOSC, HO, Exames, Ambulatório e a fila inteira — e foi publicada
+    // assim; a MESMA foto com as regras do HRO trouxe os 26 casos e os 17 nomes
+    svcMock.parseEscalaImagem
+      .mockResolvedValueOnce({ casos: [caso('Sala 1', 'CURY')], hospitalDetectado: 'hro', ordemLiberacao: [] })
+      .mockResolvedValueOnce({
+        casos: [caso('Sala 1', 'CURY'), caso('IOSC', 'DIDO')], hospitalDetectado: 'hro', ordemLiberacao: ['CURY', 'DIDO'],
+      })
+    const { container } = montar()
+    await soltarArquivos(container, [img('hro-pequena.jpg')])
+
+    await waitFor(() => expect(svcMock.parseEscalaImagem).toHaveBeenCalledTimes(2))
+    expect(svcMock.parseEscalaImagem.mock.calls[0][0].hospital).toBeUndefined()
+    expect(svcMock.parseEscalaImagem.mock.calls[1][0].hospital).toBe('hro')
+    await waitFor(() => expect(abas()).toHaveLength(1))
+    // a aba nasce com a leitura completa: dois blocos e sem aviso de rodapé
+    expect(await screen.findByText(/IOSC/)).toBeTruthy()
+    expect(screen.queryByText(/sem ordem de liberação/i)).toBeNull()
+  })
+
+  it('se a releitura TAMBÉM vier sem rodapé, a aba entra com o aviso — nunca em silêncio', async () => {
+    svcMock.parseEscalaImagem
+      .mockResolvedValueOnce({ casos: [caso('Sala 1', 'CURY')], hospitalDetectado: 'hro', ordemLiberacao: [] })
+      .mockResolvedValueOnce({ casos: [caso('Sala 1', 'CURY')], hospitalDetectado: 'hro', ordemLiberacao: [] })
+    const { container } = montar()
+    await soltarArquivos(container, [img('hro-pequena.jpg')])
+
+    await waitFor(() => expect(svcMock.parseEscalaImagem).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(abas()).toHaveLength(1))
+    expect((await screen.findAllByText(/sem ordem de liberação/i)).length).toBeGreaterThan(0)
+  })
+
+  it('Materno sem rodapé NÃO relê — o Materno não tem ordem de liberação', async () => {
+    svcMock.parseEscalaImagem.mockResolvedValueOnce({
+      casos: [caso('Sala 3 HC', 'CURY')], hospitalDetectado: 'materno', ordemLiberacao: [],
+    })
+    const { container } = montar()
+    await soltarArquivos(container, [img('materno.png')])
+
+    await waitFor(() => expect(abas()).toHaveLength(1))
+    expect(svcMock.parseEscalaImagem).toHaveBeenCalledTimes(1)
+    expect(screen.queryByText(/sem ordem de liberação/i)).toBeNull()
   })
 })
 
@@ -349,7 +394,7 @@ describe('a conferência só abre com o lote inteiro lido (dono 27/08)', () => {
     let liberarSegunda
     const segunda = new Promise((resolve) => { liberarSegunda = resolve })
     svcMock.parseEscalaImagem
-      .mockResolvedValueOnce({ casos: [caso('Sala 1', 'CURY')], hospitalDetectado: 'hro' })
+      .mockResolvedValueOnce({ casos: [caso('Sala 1', 'CURY')], hospitalDetectado: 'hro', ordemLiberacao: ['CURY'] })
       .mockImplementationOnce(() => segunda)
 
     const { container } = montar()
@@ -372,7 +417,7 @@ describe('a conferência só abre com o lote inteiro lido (dono 27/08)', () => {
 
   it('o lote entra INTEIRO de uma vez, não uma aba de cada vez', async () => {
     svcMock.parseEscalaImagem
-      .mockResolvedValueOnce({ casos: [caso('Sala 1', 'CURY')], hospitalDetectado: 'hro' })
+      .mockResolvedValueOnce({ casos: [caso('Sala 1', 'CURY')], hospitalDetectado: 'hro', ordemLiberacao: ['CURY'] })
       .mockResolvedValueOnce({ casos: [caso('Sala 2', 'PAULO')], hospitalDetectado: 'materno' })
 
     const { container } = montar()
@@ -413,7 +458,7 @@ describe('a troca de aba não pode apagar a conferência', () => {
 
   it('a aba inativa fica escondida, não removida do DOM', async () => {
     svcMock.parseEscalaImagem
-      .mockResolvedValueOnce({ casos: [caso('Sala 1', 'CURY')], hospitalDetectado: 'hro' })
+      .mockResolvedValueOnce({ casos: [caso('Sala 1', 'CURY')], hospitalDetectado: 'hro', ordemLiberacao: ['CURY'] })
       .mockResolvedValueOnce({ casos: [caso('Sala 2', 'PAULO')], hospitalDetectado: 'materno' })
 
     const { container } = montar()

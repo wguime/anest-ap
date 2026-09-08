@@ -70,8 +70,20 @@ export function iniciaisSeguras(v: unknown): string {
 const SEQUENCIAL = /^(?:AS|A\s+SEGUIR)$/
 
 /**
+ * Data colada na frente da hora: "08/09/2026 07:30", "08/09 7h30",
+ * "2026-09-08T11:00". A 1ª coluna da planilha da Unimed traz DATA e HORA na
+ * mesma célula, e a leitura copia a célula inteira.
+ */
+const DATA_NA_FRENTE = /^(?:\d{1,2}[/.-]\d{1,2}(?:[/.-]\d{2,4})?|\d{4}-\d{2}-\d{2})[\sT,-]+/
+
+/**
  * Hora em HH:MM. "7:30", "07h30", "0730" e "7" viram "07:30"/"07:00"; o
  * marcador sequencial vira "AS"; o que NÃO dá para interpretar volta como veio.
+ *
+ * A data que vier junto sai (08/09: 30 cirurgias da Unimed chegaram à
+ * conferência com "08/09/2026 07:30" no campo da hora — a validação bloqueava
+ * uma a uma e a escala foi publicada sem hora nenhuma). A data já tem campo
+ * próprio (`dataDetectada`); aqui só interessa o horário.
  *
  * Devolver o texto original de propósito: hora ilegível é erro de leitura que a
  * conferência precisa MOSTRAR (`validarHorarioImportacao` bloqueia e nomeia a
@@ -80,9 +92,9 @@ const SEQUENCIAL = /^(?:AS|A\s+SEGUIR)$/
 export function horaCanonica(v: unknown): string {
   const bruto = String(v ?? '').trim()
   if (!bruto) return ''
-  const s = up(bruto).replace(/\s+/g, ' ')
+  const s = up(bruto).replace(/\s+/g, ' ').replace(DATA_NA_FRENTE, '')
   if (SEQUENCIAL.test(s)) return 'AS'
-  const m = s.match(/^(\d{1,2})\s*(?:[:H.]\s*|\s)?(\d{2})?\s*H?$/)
+  const m = s.match(/^(\d{1,2})\s*(?:[:H.]\s*|\s)?(\d{2})?(?::\d{2})?\s*H?$/)
   if (!m) return bruto
   const h = Number(m[1])
   const min = m[2] == null ? 0 : Number(m[2])

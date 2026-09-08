@@ -67,6 +67,21 @@ describe('hora e tempo em HH:MM', () => {
     expect(horaCanonica('À SEGUIR')).toBe('AS')
   })
 
+  it('tira a DATA colada na hora — a 1ª coluna da Unimed traz as duas (08/09)', () => {
+    // 30 cirurgias chegaram à conferência com "08/09/2026 07:30" no campo da
+    // hora: a validação bloqueava uma a uma e a escala saiu sem hora nenhuma
+    expect(horaCanonica('08/09/2026 07:30')).toBe('07:30')
+    expect(horaCanonica('08/09/2026 11:00')).toBe('11:00')
+    expect(horaCanonica('08/09/2026 7h30')).toBe('07:30')
+    expect(horaCanonica('08/09 07:30')).toBe('07:30')
+    expect(horaCanonica('2026-09-08 12:15')).toBe('12:15')
+    expect(horaCanonica('2026-09-08T07:00')).toBe('07:00')
+    expect(horaCanonica('07:30:00')).toBe('07:30')
+    // data SEM hora não é hora: fica visível como veio, para a conferência apontar
+    expect(horaCanonica('08/09/2026')).toBe('08/09/2026')
+    expect(horaCanonica('08/09/2026 AS')).toBe('AS')
+  })
+
   it('NÃO esconde a hora que não dá para interpretar — devolve como veio', () => {
     // esconder com '' faria o caso herdar o período em silêncio; a conferência
     // precisa poder bloquear e nomear a sala (validarHorarioImportacao)

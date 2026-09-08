@@ -16,6 +16,7 @@ import { parseExcelEscala } from '@/lib/excelEscala'
 import { nomeCirurgiaoCurto, rotuloNota, separarListaRodape, stripNotaRodape, titleCaseNome } from '@/lib/colunaLiberacao'
 import { aplicarHoraPadraoPosicoes, detectarItensDuplicados, ehPosicaoAssistencial, resumirItensEscala } from '@/lib/escalaCirurgicaItens'
 import { ERRO_IA, classificarFalhaVision, mensagemFalhaVision } from '@/lib/escalaVisionFalha'
+import { rodapeAusente } from '@/lib/escalaLeituraRodape'
 import { ehApelidoDePessoa, isPermissionError } from '@/services/supabaseEscalaAnestesistaService'
 import { prepararImagemParaVision } from '@/lib/imagemVision'
 import { iniciaisSeguras, INICIAIS_MAX } from '@/lib/escalaCirurgicaPaciente'
@@ -1233,6 +1234,17 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   // 15% — o "nenhuma das três" pegava 3 dessas 41, enquanto a Imagem se perde em
   // 35. Se as três estão sempre no papel, faltar UMA já é leitura incompleta.
 
+  // RODAPÉ VAZIO (08/09): a leitura do HRO voltou com 15 casos e nenhum nome na
+  // ordem de liberação, a lista numerada apareceu vazia e a escala foi
+  // publicada assim — a aba Liberações nasceu sem fila. Vazio em HRO/Unimed é
+  // leitura que parou no meio, nunca "dia sem rodapé"; o lote já relê sozinho
+  // com a dica do hospital, e aqui fica o aviso para o que ainda chegar vazio.
+  // Aviso, não trava: os nomes podem ser acrescentados à mão na lista.
+  const rodapeVazioConferencia = useMemo(
+    () => casos.length > 0 && rodapeAusente(hosp, separarListaRodape(ordemTexto)),
+    [hosp, casos.length, ordemTexto],
+  )
+
   // ── DECISÕES DO DIA (dono 31/08, modelo B escolhido em protótipo) ─────────
   //
   // As decisões operacionais — ajuda de fora, pessoa em dois hospitais, caso
@@ -1819,7 +1831,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     + suspeitosPendentes.length + caudaPendente.length
     + conflitos.length + blocosRepetidos.length + travessiasOrfas.length
     + duplicados.length + casosForaDoRodape.length + gruposSemAnestesista
-    + secoesAusentesHro.length
+    + secoesAusentesHro.length + (rodapeVazioConferencia ? 1 : 0)
   const totalPendencias = bloqueiosConferencia + avisosConferencia
   // O QUE são as pendências, não só quantas (dono 27/08: "quero que a descrição
   // das pendências fique abaixo desses cards"). O número no chip dizia que havia
@@ -1842,6 +1854,9 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     if (secoesAusentesHro.length) {
       l.push({ trava: false, txt: `sem ${secoesAusentesHro.join(', ')} na leitura — confira o mapa` })
     }
+    if (rodapeVazioConferencia) {
+      l.push({ trava: false, txt: 'sem ordem de liberação — a leitura não trouxe o rodapé; confira a foto' })
+    }
     if (conferenciaNumerica && !conferenciaNumerica.iguais) {
       const partes = []
       if (conferenciaNumerica.faltamNoRodape.length) partes.push(`${conferenciaNumerica.faltamNoRodape.length} não ${conferenciaNumerica.faltamNoRodape.length === 1 ? 'está' : 'estão'} no rodapé`)
@@ -1852,7 +1867,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     return l
   }, [gruposAmbiguos, duplicidadesPendentes, bloqueiosCampo, gruposSemAnestesista, casosForaDoRodape, caudaPendente,
     suspeitosPendentes, conflitos, blocosRepetidos, travessiasOrfas, duplicados, secoesAusentesHro,
-    conferenciaNumerica])
+    rodapeVazioConferencia, conferenciaNumerica])
 
   // ── O QUE ESTA ABA CONTA AO LOTE (dono 27/08) ────────────────────────────
   // Dois consumidores: o SELO da aba (pronto · trava · avisa, mesma taxonomia
@@ -2703,6 +2718,16 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                   mapa do HRO e são as que mais escapam da extração — nas escalas publicadas até 28/08,
                   a Imagem chegou em 15% das importações e a Hemodinâmica em 49%. Confira a imagem e
                   acrescente à mão o que faltar (+ Linha), ou reimporte um print que mostre o mapa inteiro.
+                </p>
+              )}
+
+              {rodapeVazioConferencia && (
+                <p className="rounded-lg border-l-4 border-warning bg-warning/10 px-3 py-2 text-xs text-foreground dark:bg-warning/15">
+                  <AlertTriangle className="mr-1 inline h-3.5 w-3.5 shrink-0 align-[-2px] text-warning" />
+                  A leitura não trouxe a <b>ordem de liberação</b>: a lista acima está vazia. No
+                  {hosp === 'unimed' ? ' mapa da Unimed' : ' mapa do HRO'} ela é a última linha, em vermelho — quando
+                  vem vazia, a leitura parou antes do fim e costuma faltar seção também. Reimporte a foto
+                  ou acrescente os nomes na lista, na ordem, antes de publicar.
                 </p>
               )}
 

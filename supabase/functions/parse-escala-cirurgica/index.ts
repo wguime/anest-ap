@@ -25,7 +25,7 @@ import { dimensoesDeBase64, bytesDeBase64 } from '../_shared/imagem-dimensoes.ts
 import { montarLinhaLog, hashImagem, registrarLeitura } from '../_shared/escala-leitura-log.ts'
 import { normalizarCasos } from '../_shared/escala-normalizacao.ts'
 import {
-  lerRodape, aplicarCorNosCasos, derivarRodape, blanquearForaDoRodape,
+  lerRodape, aplicarCorNosCasos, derivarRodape, blanquearForaDoRodape, rodapeAusente,
 } from '../_shared/escala-cor.ts'
 import { prepararRoster, resolverRoster } from '../_shared/escala-roster.ts'
 import { lerRespostaStream, ehLeituraIncompleta } from '../_shared/escala-stream.ts'
@@ -42,7 +42,7 @@ const MODELO = 'claude-opus-4-8'
  * `escala_leitura_log` e a que invalida o cache de leitura. Sem bumpar, o ANTES
  * e o DEPOIS se misturam na mesma média e a medição mente.
  */
-const PROMPT_VERSAO = 'v9-memoria-2026-09-08'
+const PROMPT_VERSAO = 'v10-hora-e-rodape-2026-09-08'
 
 const DEFAULT_ALLOWED_ORIGINS = [
   'https://anest-ap.web.app',
@@ -70,6 +70,7 @@ const HOSPITAL_HINT: Record<string, string> = {
   unimed:
     'Formato Unimed: colunas SALA, PACIENTE, IDADE, PROCEDIMENTO, TEMPO, CIRURGIÃO, CONVÊNIO, ANEST. ' +
     'Salas agrupadas (C.O - CESAREA, CENTRO CIRÚRGICO - SALA N). "//" na coluna ANEST = mesmo anestesista da linha acima. ' +
+    'A 1ª coluna (cabeçalho SALA) traz, em cada linha de caso, a DATA e a HORA juntas ("08/09/2026 07:30"): a hora do caso é só o HH:MM dessa célula, e a sala é o título cinza da seção acima dela (C.O - CESAREA, CENTRO CIRÚRGICO - SALA N) — a célula com data nunca é a sala. ' +
     'As seções C.O (CESAREA/SALA N) são o centro obstétrico da própria Unimed: bloco "normal", nunca "materno" (o Materno é outro hospital). ' +
     'Blocos no rodapé: SRPA, EXAMES, IMAGEM, CONSULTORIO, UMANITÁ, ACCURATA. Nesses blocos cada linha tem o seu próprio anestesista na coluna ANEST — copie o da própria linha e não repita o da primeira nas seguintes. ' +
     'Esses blocos são pequenos, empilhados e separados por linhas em branco; confira o alinhamento vertical antes de fechar o JSON: o nome do bloco de cima chega a atravessar para o vizinho (a 1ª linha de EXAMES sair com o anestesista da IMAGEM e vice-versa). Dois blocos CONSULTORIO seguidos são duas pessoas, uma por linha, nunca a mesma repetida; nessas linhas o cirurgião fica vazio (consultório não tem cirurgião — não copie para lá o nome da outra linha). ' +
@@ -125,7 +126,8 @@ REGRAS:
 - pacienteNome: SOMENTE quando o convênio do caso for PURAMENTE particular ("PARTICULAR", "Part", "Part.") E houver um paciente individual na linha — copie o nome COMPLETO como está na imagem (é usado para a cobrança do honorário). Convênio COMPOSTO/ambíguo (ex.: "PART/SC" — não dá para saber qual paciente é particular) e linhas de LOTE sem paciente individual ("04 FACECTOMIA (04 PCTES)"): "" — não extraia. Para TODOS os demais convênios, "" — nunca inclua o nome (LGPD).
 - idade: idade do paciente quando houver (ex.: "37a" ou "9a"); senão "".
 - tempoEstimado: tempo cirúrgico previsto quando houver (ex.: "01:15"); senão "".
-- anestesista: copie EXATAMENTE a célula DA PRÓPRIA LINHA. Se a célula tem um SINAL DE REPETIÇÃO (//, aspas de repetição ", traço —, seta ↓, ou qualquer marca de "idem / mesmo de cima"), devolva o texto "//" — quem lê aplica o nome da linha ACIMA na mesma sala. Célula vazia ou ilegível: "". Não escreva um nome onde a imagem traz uma marca, e não deixe a célula vazia quando ela traz a marca: vazio e "//" são coisas diferentes, e trocar um pelo outro faz a cirurgia perder o anestesista. Nome de uma linha nunca se espalha para outra que tem nome próprio.
+- hora: só o horário do caso, em HH:MM (ex.: "07:30"). Quando a célula traz DATA e hora juntas ("08/09/2026 07:30"), a hora é o HH:MM e a data vai em dataDetectada — nunca copie a data para "hora" nem para "sala". "AS"/"A SEGUIR" é marcador de sequência: devolva como está.
+- anestesista: copie EXATAMENTE a célula DA PRÓPRIA LINHA. Célula com "?" é conteúdo: devolva "?" — a linha está descoberta de propósito, e vazio herdaria o nome de cima. Se a célula tem um SINAL DE REPETIÇÃO (//, aspas de repetição ", traço —, seta ↓, ou qualquer marca de "idem / mesmo de cima"), devolva o texto "//" — quem lê aplica o nome da linha ACIMA na mesma sala. Célula vazia ou ilegível: "". Não escreva um nome onde a imagem traz uma marca, e não deixe a célula vazia quando ela traz a marca: vazio e "//" são coisas diferentes, e trocar um pelo outro faz a cirurgia perder o anestesista. Nome de uma linha nunca se espalha para outra que tem nome próprio.
 - Prefixo "PED"/"PED."/"Ped." antes do nome = um PEDIDO para aquele anestesista específico realizar o procedimento (ex.: "Ped. Janaína" = pedido para a Janaína). O anestesista é o nome que vem DEPOIS do prefixo — devolva SÓ o nome, sem o "Ped"/"Ped." (ex.: "Ped. Janaína" → anestesista "Janaína"). NÃO é marcador pediátrico e NÃO é o nome do procedimento.
 - cor: a COR EM QUE O NOME DO ANESTESISTA está escrito naquela linha ("" quando é a cor normal do texto). A cor é dado, não enfeite: AZUL = anestesista da escala de OUTRO hospital ajudando aqui; AMARELO = a pessoa está escalada em DOIS locais no dia, de propósito (a marcação existe para avisá-la — mantenha o nome nas duas linhas, não é erro nem ambiguidade); VERMELHO = ordem de liberação; ROXO, no IOSC, é cirurgião. Informe a cor mesmo quando o nome também aparecer no rodapé.
 - Dois anestesistas na mesma linha (a célula traz dois nomes — "RAQUEL E GABRIELA", "RAQUEL/GABRIELA", "RAQUEL + GABRIELA", um sobre o outro): os dois assumem aquele procedimento juntos. Devolva os dois no campo, separados por " + ", na ordem em que aparecem. Não escolha um e descarte o outro, e não duplique a linha em dois casos: é uma cirurgia só, com dois responsáveis.
@@ -849,6 +851,16 @@ Deno.serve(async (req) => {
     const hospitalDetectado = ['unimed', 'hro', 'materno'].includes(String(parsed.hospitalDetectado || ''))
       ? String(parsed.hospitalDetectado)
       : ''
+    // RODAPÉ VAZIO EM HRO/UNIMED É LEITURA INCOMPLETA (08/09): a foto do HRO
+    // voltou com 15 casos e nenhum nome na ordem, `stop_reason` normal, e foi
+    // publicada assim. A tela relê com a dica do hospital ao ver o flag; aqui
+    // ele só é declarado — e a leitura NÃO entra no cache, senão "reler" serviria
+    // a mesma meia escala por 24 h (foi o que aconteceu às 12:15 e 12:17).
+    const rodapeVazio = rodapeAusente(hospitalDetectado || hospital, ordemLiberacao)
+    if (rodapeVazio) {
+      console.error(`[parse-escala-cirurgica] ${hospitalDetectado || hospital}: rodapé vazio — leitura provavelmente incompleta`)
+      contagem.rodapeVazio = 1
+    }
     await registrar({
       ...uso,
       stop_reason: stopReason,
@@ -870,12 +882,14 @@ Deno.serve(async (req) => {
       hospitalDetectado,
       // A tela avisa em vez de deixar a secretária descobrir na hora da liberação
       truncado: incompleta,
+      rodapeVazio,
     }
-    // Guarda a resposta JÁ SANITIZADA (nunca a imagem). Leitura truncada não
-    // entra: servir 24h de uma escala incompleta esconderia justamente o
-    // problema que `truncado` existe para mostrar. `gravarCache` também recusa
-    // sozinho qualquer leitura com nome completo de paciente (LGPD).
-    if (!resposta.truncado) {
+    // Guarda a resposta JÁ SANITIZADA (nunca a imagem). Leitura truncada ou sem
+    // rodapé não entra: servir 24h de uma escala incompleta esconderia
+    // justamente o problema que os dois flags existem para mostrar.
+    // `gravarCache` também recusa sozinho qualquer leitura com nome completo de
+    // paciente (LGPD).
+    if (!resposta.truncado && !rodapeVazio) {
       await gravarCache(chave, resposta, { modo: modoFds ? 'fds' : 'dia-util', promptVersao: PROMPT_VERSAO })
     }
     return new Response(JSON.stringify(resposta), {
