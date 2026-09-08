@@ -438,6 +438,16 @@ if (comando === 'comparar') {
     linha('rodapé (nomes, total)', A.estrutural.rodape, B.estrutural.rodape, '')
     linha('ajuda/azul (total)', A.estrutural.ajuda, B.estrutural.ajuda, '')
     linha('casos sem anestesista', A.estrutural.semAnestesista, B.estrutural.semAnestesista, '')
+    // ⚠️ SUBIR AQUI É O PIOR SINAL DO PLACAR, e por isso ele grita.
+    // Em 08/09 o "//" trocado por um campo opcional fez a marca de repetição
+    // sumir: os casos continuaram todos lá (348 → 348, contagem intacta) e o
+    // ANESTESISTA é que evaporou, de 46 para 180. Nenhuma outra linha do
+    // comparativo denunciava isso.
+    const semA = B.estrutural.semAnestesista - A.estrutural.semAnestesista
+    if (semA > Math.max(3, A.estrutural.semAnestesista * 0.15)) {
+      console.log(`   ⛔ ${semA} caso(s) A MAIS sem anestesista. Contagem de casos intacta esconde isso —`)
+      console.log('      confira se a marca de repetição ("//") continua chegando antes de subir.')
+    }
     // por foto: onde a contagem mudou é onde olhar
     const porA = new Map((A.porFotoEstrutura || []).map((e) => [e.arquivo, e]))
     const mudou = (B.porFotoEstrutura || [])

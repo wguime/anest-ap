@@ -110,8 +110,22 @@ describe('o guardrail continua matando nome inventado', () => {
   })
 })
 
-describe('repeticao substitui o "//"', () => {
-  it('vira "//" para a conferência, que já sabe herdar', () => {
+describe('a marca de repetição', () => {
+  it('"//" atravessa intacto — é o que a conferência herda da linha de cima', () => {
+    const [c] = aplicarCorNosCasos([{ anestesista: '//' }])
+    expect(c.anestesista).toBe('//')
+  })
+
+  it('VAZIO e "//" são coisas diferentes, e trocar um pelo outro perde o anestesista', () => {
+    // em 08/09 o contrato trocou o "//" por um campo booleano OPCIONAL; o modelo
+    // nunca o emitia e devolvia a célula vazia. Os casos continuavam todos lá —
+    // 348 de 348 — e o anestesista é que evaporava, de 46 para 180 vazios.
+    const [vazio] = aplicarCorNosCasos([{ anestesista: '' }])
+    expect(vazio.anestesista).toBe('')
+    expect(vazio.anestesista).not.toBe('//')
+  })
+
+  it('o booleano legado ainda vira "//" (resposta guardada no cache antes da correção)', () => {
     const [c] = aplicarCorNosCasos([{ anestesista: '', repeticao: true }])
     expect(c.anestesista).toBe('//')
   })
