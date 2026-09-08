@@ -39,11 +39,24 @@ Script: `scripts/escala-publicar-turno.mjs` (cabeçalho documenta os dois comand
    em vermelho é anestesista; "Geral" é técnica. Paciente PARTICULAR puro leva `pacienteNome`
    (é o que preenche a cobrança); todo o resto fica por iniciais.
 5. **Montar o lote** `{ data, turno, hospitais: { unimed: {casos, ordemLiberacao, ajudaExterna,
-   posicoesAssistenciais}, hro: …, materno: … } }` e ensaiar:
-   `node scripts/escala-publicar-turno.mjs publicar <lote.json> --ensaio` — leia os avisos
-   (nome fora do rodapé costuma ser azul não lido; "//" sem linha acima; data divergente),
-   corrija o lote e repita. Nome ambíguo no dicionário aborta de propósito: escreva o nome
-   completo, nunca escolha.
+   posicoesAssistenciais, dataDetectada}, hro: …, materno: … } }` e ensaiar:
+   `node scripts/escala-publicar-turno.mjs publicar <lote.json> --ensaio`. O `publicar` roda
+   a MESMA conferência da tela (`src/lib/escalaConferenciaHeadless.js`, pelas mesmas funções):
+   - **bloqueia** como a tela: nome ambíguo, hora inválida, campo que o banco recusa, rodapé
+     vazio no HRO/Unimed, **pessoa em dois hospitais sem decisão**, turno já publicado;
+   - **avisa** como a tela: rodapé contra a **escala numérica com as férias do dia** (Pega
+     Plantão), cauda que nasce liberada, nome na ordem sem caso, caso de quem não está no
+     rodapé (azul não lido), ajuda provável e conflito com outro hospital, conflito de horário,
+     bloco repetido, item duplicado, seções do HRO ausentes, cirurgia da manhã que atravessa sem
+     dono, data da foto divergente, escala que encolhe;
+   - move sozinho o **azul emprestado** para a ajuda do hospital onde a pessoa trabalha.
+   Bloqueio de duplicidade se responde no lote, como na folha da tela:
+   `"decisoes": { "NOME": { "tipo": "intencional" } }` (trabalha nos dois) ou
+   `{ "tipo": "troca", "parceiro": "NOME" }`; "está certo, fica Livre" vai em
+   `"conferidos": ["NOME"]`. As decisões viajam na RPC (`p_linha_overrides`) e, ao republicar, o
+   rastro de quem segue na escala é preservado (`p_preservar`) — igual à tela. Divergência com a
+   numérica é aviso, nunca bloqueio: troca, ajuda e consultório mudam o rodapé de propósito;
+   compare com a foto e siga. Nome ambíguo: escreva o nome completo, nunca escolha.
 6. **Publicar** (sem `--ensaio`). O script recusa turno já publicado: se o pedido é corrigir
    uma escala em uso (status marcados, liberações), o conserto é reparo linha a linha em SQL
    (`scripts/repair-escala-2026-09-08-matutino-leitura.sql` é o modelo) — republicar zera

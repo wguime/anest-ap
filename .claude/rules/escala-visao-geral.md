@@ -82,8 +82,12 @@ A edge `parse-escala-cirurgica` deixou de ser texto livre. O que vale saber ante
 - **Publicar pela foto, sem a tela (dono 08/09):** skill `/publicar-escala` +
   `scripts/escala-publicar-turno.mjs` (`ler` pela edge com a dica do hospital → Claude confere contra
   a foto → `publicar --ensaio` → `publicar`, pela MESMA RPC da tela, assinada como o dono). O script
-  recusa turno já publicado sem `--republicar` e aborta em nome ambíguo. A tarde de 08/09 foi a
-  primeira publicação por esse caminho (Unimed 27, HRO 22, Materno 2).
+  roda a conferência da tela inteira por `src/lib/escalaConferenciaHeadless.js` (mesmas funções
+  puras, carregadas pelo Module Runner do Vite): duplicidade entre hospitais bloqueia até a decisão
+  (`decisoes` no lote → `p_linha_overrides`), numérica + férias do Pega Plantão, cruzamento, cauda,
+  travessias, `p_preservar` ao republicar. ⚠️ A conferência olha SÓ os casos do turno
+  (`carregarLoteImportado` → `selecionados`), como a tela. A tarde de 08/09 foi a primeira publicação
+  por esse caminho (Unimed 27, HRO 22, Materno 2).
 - **Reparo sem republicar** (`scripts/repair-escala-2026-09-08-matutino-leitura.sql`): com o turno em
   uso (status, liberações, observações), republicar zeraria tudo — o conserto é UPDATE/INSERT linha a
   linha, casando por (sala, ordem, iniciais) e abortando se qualquer contagem divergir; o evento
