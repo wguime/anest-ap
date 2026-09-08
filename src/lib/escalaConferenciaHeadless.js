@@ -255,6 +255,21 @@ export function conferirHospital(hospital, entrada, contexto) {
     } else continue
     decisoesCarimbadas[d.key] = carimbarDecisao(decisao, d, { resolver, normalizar: normNome })
   }
+  // Troca DECLARADA no lote fora de uma duplicidade (a escala já saiu trocada e falta só o
+  // rastro, ou o parceiro está no consultório e não aparece em escala nenhuma): entra pela
+  // pessoa presente aqui — `montarLinhaOverrides` descarta quem não está nesta escala.
+  for (const [nome, resposta] of Object.entries(decisoes || {})) {
+    if (!resposta || resposta.tipo !== 'troca' || !resposta.parceiro) continue
+    const key = resolver(nome) || normNome(nome)
+    if (!key || decisoesCarimbadas[key]) continue
+    const decisao = {
+      tipo: 'troca', parceiroNome: texto(resposta.parceiro), parceiroUid: resolver(resposta.parceiro) || null,
+      ...(resposta.hospitalVaga ? { hospitalVaga: resposta.hospitalVaga } : {}),
+      ...(resposta.apenasRegistro ? { apenasRegistro: true } : {}),
+      ...(resposta.local ? { local: texto(resposta.local) } : {}),
+    }
+    decisoesCarimbadas[key] = carimbarDecisao(decisao, { key, nome }, { resolver, normalizar: normNome })
+  }
   const decisaoDe = (d) => {
     const local = localizarDecisao(decisoesCarimbadas, d, { resolver, normalizar: normNome })
     if (local) return local

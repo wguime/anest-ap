@@ -156,6 +156,9 @@ export function montarLinhaOverrides({
           // ninguém muda de lugar: a escala já saiu trocada e o que falta é o RASTRO.
           // `paresDeclarados` ignora registro de propósito — executá-lo DESFARIA a troca real.
           ...(d.apenasRegistro ? { apenasRegistro: true } : {}),
+          // onde o colega está quando não tem posição em escala nenhuma (consultório,
+          // sobreaviso…): o TrocaSheet grava o mesmo campo e a fila o exibe
+          ...(d.local ? { local: d.local } : {}),
           ...(carimbo || {}),
         },
       })

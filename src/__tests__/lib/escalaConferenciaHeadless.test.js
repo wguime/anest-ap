@@ -123,6 +123,20 @@ describe('duplicidade entre hospitais', () => {
     expect(ov?.trocaCom).toMatchObject({ uid: 'uid-beto', nome: 'BETO', tipo: 'entre_hospitais', por: 'u1' })
   })
 
+  it('troca declarada no lote SEM duplicidade (parceiro no consultório) vira registro na linha de quem está aqui', () => {
+    // 09/09: "Rafael (consultório) na posição do Diego no IOSC" — a escala já saiu com o
+    // Rafael no IOSC e o Diego não aparece em escala nenhuma; falta só o rastro
+    const r = conferir(
+      { hro: { rows: [caso('IOSC', 'CURY', '13:30', { bloco: 'iosc' })], ordem: ['CURY'], ajuda: [] } },
+      { decisoes: { CURY: { tipo: 'troca', parceiro: 'BETO', apenasRegistro: true, local: 'Consultório' } }, carimbo: { por: 'u1', em: '2026-09-08T22:00:00.000Z' } },
+    )
+    expect(codigos(r.hospitais.hro)).toEqual([])
+    expect(r.hospitais.hro.payload.linhaOverrides['uid-cury']?.trocaCom)
+      .toMatchObject({ uid: 'uid-beto', nome: 'BETO', tipo: 'entre_hospitais', apenasRegistro: true, local: 'Consultório', por: 'u1' })
+    // quem não está nesta escala não ganha registro aqui
+    expect(r.hospitais.hro.payload.linhaOverrides['uid-ana']).toBeUndefined()
+  })
+
   it('a decisão já gravada na escala publicada não pergunta de novo', () => {
     const existente = {
       id: 'e-unimed', hospital: 'unimed', ordemLiberacao: { vespertino: ['CURY', 'ANA'] }, ajudaExterna: {},
