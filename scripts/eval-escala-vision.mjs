@@ -162,7 +162,7 @@ async function telemetria(hashes, desdeIso) {
     select distinct on (imagem_hash)
       imagem_hash, modelo, prompt_versao, input_tokens, output_tokens,
       cache_read_tokens, cache_write_tokens, stop_reason, latencia_ms,
-      imagem_largura, imagem_altura, imagem_bytes, normalizacoes, erro
+      imagem_largura, imagem_altura, imagem_bytes, normalizacoes, origem, erro
     from public.escala_leitura_log
     where criado_em >= '${desdeIso}' and imagem_hash in (${lista})
     order by imagem_hash, criado_em desc`)
@@ -364,6 +364,10 @@ if (comando === 'rodar') {
       }
       promptVersao = linhas[0].prompt_versao || ''
       modelo = linhas[0].modelo || ''
+      // rodada servida do cache de 24h custa zero e NÃO é medida de leitura:
+      // sem este aviso, repetir o mesmo rótulo daria "$0,0000/leitura" e
+      // pareceria a melhoria do século
+      custo.doCache = linhas.filter((l) => l.origem === 'cache').length
     }
   } catch (e) {
     console.log(`  (telemetria indisponível: ${e.message})`)
@@ -399,6 +403,7 @@ if (comando === 'rodar') {
     }
     if (custo) {
       console.log(`   💵 $${custo.total.toFixed(4)} total → $${custo.medio.toFixed(4)}/leitura  (entrada ${Math.round(custo.entradaMedia)} · saída ${Math.round(custo.saidaMedia)} · cache lido ${Math.round(custo.cacheLidoMedio)})`)
+      if (custo.doCache) console.log(`   ⚠️  ${custo.doCache}/${custo.leituras} leitura(s) vieram do CACHE de 24h — não são medida de leitura nova`)
       console.log(`   ⏱  latência mediana ${(custo.latenciaMediana / 1000).toFixed(1)}s`)
     }
     console.log('\n   ⚠️  ACERTO ainda não medido: nenhum gabarito com "revisado": true.')
@@ -458,6 +463,11 @@ if (comando === 'comparar') {
     linha('rodapé nomes presentes', A.agregado.rodape.acertoNomes, B.agregado.rodape.acertoNomes)
     linha('ajuda (azul)', A.agregado.ajuda.acerto, B.agregado.ajuda.acerto)
     console.log('')
+  }
+  for (const [rot, r] of [[a, A], [b, B]]) {
+    if (r.custo?.doCache) {
+      console.log(`   ⚠ "${rot}": ${r.custo.doCache}/${r.custo.leituras} leitura(s) vieram do CACHE de 24h — o custo dessa rodada não mede leitura nova`)
+    }
   }
   if (A.custo && B.custo) {
     linha('custo por leitura ($)', A.custo.medio, B.custo.medio, '', 4)
