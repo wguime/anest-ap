@@ -35,7 +35,7 @@ test.describe('Authentication', () => {
     await page.goto('/');
 
     // LoginPage form
-    await page.locator('input[type="email"]').first().fill(E2E_USER_EMAIL);
+    await page.locator('input[autocomplete="email"]').first().fill(E2E_USER_EMAIL);
     await page.locator('input[type="password"]').first().fill(E2E_USER_PASSWORD);
     await page.getByRole('button', { name: /entrar/i }).first().click();
 

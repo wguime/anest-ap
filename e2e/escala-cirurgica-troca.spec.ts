@@ -37,7 +37,7 @@ test('confirmar origem → trocar agora (posição+casos) → badge nos 2 lados 
 
   // Login (fluxo do auth.spec; sem networkidle — realtime nunca fica idle)
   await page.goto('/');
-  await page.locator('input[type="email"]').first().fill(E2E_USER_EMAIL);
+  await page.locator('input[autocomplete="email"]').first().fill(E2E_USER_EMAIL);
   await page.locator('input[type="password"]').first().fill(E2E_USER_PASSWORD);
   await page.getByRole('button', { name: /entrar/i }).first().click();
   await expect(page.getByRole('heading', { name: 'Página inicial' })).toBeVisible({ timeout: 20_000 });

@@ -63,7 +63,7 @@ async function entrar(page: Page, tema: 'light' | 'dark') {
     [tema, CHAVE, HORAS] as const,
   );
   await page.goto('/');
-  await page.locator('input[type="email"]').first().fill(EMAIL);
+  await page.locator('input[autocomplete="email"]').first().fill(EMAIL);
   await page.locator('input[type="password"]').first().fill(SENHA);
   await page.getByRole('button', { name: /entrar/i }).first().click();
   await expect(page.getByRole('heading', { name: 'Página inicial' })).toBeVisible({ timeout: 20_000 });

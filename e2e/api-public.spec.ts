@@ -44,7 +44,7 @@ test.describe('Public API tokens', () => {
   test('generate token → 200 on /v1/docs → revoke → 401', async ({ page }) => {
     // --- Login ---
     await page.goto('/');
-    await page.locator('input[type="email"]').first().fill(E2E_ADMIN_EMAIL);
+    await page.locator('input[autocomplete="email"]').first().fill(E2E_ADMIN_EMAIL);
     await page.locator('input[type="password"]').first().fill(E2E_ADMIN_PASSWORD);
     await page.getByRole('button', { name: /entrar/i }).first().click();
 

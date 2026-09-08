@@ -24,7 +24,7 @@ const E2E_USER_PASSWORD = process.env.E2E_USER_PASSWORD || '';
 
 async function login(page) {
   await page.goto('/');
-  await page.locator('input[type="email"]').first().fill(E2E_USER_EMAIL);
+  await page.locator('input[autocomplete="email"]').first().fill(E2E_USER_EMAIL);
   await page.locator('input[type="password"]').first().fill(E2E_USER_PASSWORD);
   await page.getByRole('button', { name: /entrar/i }).first().click();
   // NÃO usar networkidle: a home mantém websockets abertos e a rede nunca acalma.

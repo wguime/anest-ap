@@ -18,7 +18,7 @@ test('lista de documentos do fim de semana', async ({ page }) => {
   test.setTimeout(120_000);
 
   await page.goto('/');
-  await page.locator('input[type="email"]').first().fill(E2E_USER_EMAIL);
+  await page.locator('input[autocomplete="email"]').first().fill(E2E_USER_EMAIL);
   await page.locator('input[type="password"]').first().fill(E2E_USER_PASSWORD);
   await page.getByRole('button', { name: /entrar/i }).first().click();
   await expect(page.getByRole('heading', { name: 'Página inicial' })).toBeVisible({ timeout: 20_000 });

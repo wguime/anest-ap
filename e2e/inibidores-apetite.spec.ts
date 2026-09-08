@@ -19,7 +19,7 @@ async function entrar(page: Page, tema: 'light' | 'dark') {
   // contexto — foi assim que uma rodada de screenshots "dark" saiu falsa.
   await page.addInitScript((t) => localStorage.setItem('anest-theme', t), tema);
   await page.goto('/');
-  await page.locator('input[type="email"]').first().fill(EMAIL);
+  await page.locator('input[autocomplete="email"]').first().fill(EMAIL);
   await page.locator('input[type="password"]').first().fill(SENHA);
   await page.getByRole('button', { name: /entrar/i }).first().click();
   await expect(page.getByRole('heading', { name: 'Página inicial' })).toBeVisible({ timeout: 20_000 });

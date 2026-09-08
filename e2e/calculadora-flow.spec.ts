@@ -42,7 +42,7 @@ test.describe('Calculadora — Holliday-Segar', () => {
   test('fill peso → see result + InfoBox', async ({ page }) => {
     // --- Login (padrão canônico do auth.spec) ---
     await page.goto('/');
-    await page.locator('input[type="email"]').first().fill(E2E_USER_EMAIL);
+    await page.locator('input[autocomplete="email"]').first().fill(E2E_USER_EMAIL);
     await page.locator('input[type="password"]').first().fill(E2E_USER_PASSWORD);
     await page.getByRole('button', { name: /entrar/i }).first().click();
 

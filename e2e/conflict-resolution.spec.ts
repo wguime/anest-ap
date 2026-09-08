@@ -40,7 +40,7 @@ test.describe('Conflict resolution (admin)', () => {
   test('admin resolves conflict via "Aplicar minha versão"', async ({ page }) => {
     // --- Login ---
     await page.goto('/');
-    await page.locator('input[type="email"]').first().fill(E2E_ADMIN_EMAIL);
+    await page.locator('input[autocomplete="email"]').first().fill(E2E_ADMIN_EMAIL);
     await page.locator('input[type="password"]').first().fill(E2E_ADMIN_PASSWORD);
     await page.getByRole('button', { name: /entrar/i }).first().click();
 

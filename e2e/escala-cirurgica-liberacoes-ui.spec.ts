@@ -25,7 +25,7 @@ test('sem setas de reordenar + editor com lista de locais e "Outro"', async ({ p
 
   await page.clock.setFixedTime(DEMO_TIME);
   await page.goto('/');
-  await page.locator('input[type="email"]').first().fill(E2E_USER_EMAIL);
+  await page.locator('input[autocomplete="email"]').first().fill(E2E_USER_EMAIL);
   await page.locator('input[type="password"]').first().fill(E2E_USER_PASSWORD);
   await page.getByRole('button', { name: /entrar/i }).first().click();
   await expect(page.getByRole('heading', { name: 'Página inicial' })).toBeVisible({ timeout: 20_000 });
@@ -66,7 +66,7 @@ test('às 23h de dia útil a lista do dia ZERA e ficam só os plantonistas P1–
   // sem plantão real: o hook cai no mock de dia útil (P1–P4 fixos)
   await page.route('**/functions/v1/pegaplantao-proxy**', (r) => r.abort());
   await page.goto('/');
-  await page.locator('input[type="email"]').first().fill(E2E_USER_EMAIL);
+  await page.locator('input[autocomplete="email"]').first().fill(E2E_USER_EMAIL);
   await page.locator('input[type="password"]').first().fill(E2E_USER_PASSWORD);
   await page.getByRole('button', { name: /entrar/i }).first().click();
   await expect(page.getByRole('heading', { name: 'Página inicial' })).toBeVisible({ timeout: 20_000 });
