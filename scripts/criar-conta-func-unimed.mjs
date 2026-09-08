@@ -5,7 +5,7 @@
  *
  * Contexto (dono 2026-09-08): "quero que crie um usuário para funcionárias da
  * unimed, esse usuário deve ter acesso apenas a escala cirúrgica. senha deve ser
- * 123456. login pode ser: Unimed (sem necessidade de email, não irão receber
+ * [a senha combinada]. login pode ser: Unimed (sem necessidade de email, não irão receber
  * nenhum tipo de informação)". O Firebase Auth exige e-mail, então o login
  * `Unimed` vira `unimed@anest.local` — `.local` é reservado pela RFC 6762 e não
  * é roteável, então nenhuma mensagem sai para a internet. A conversão no app
@@ -21,7 +21,7 @@
  * secret. Ainda assim o script nunca imprime chave, senha ou token: só UID e e-mail.
  *
  * Uso:
- *   node scripts/criar-conta-func-unimed.mjs
+ *   node scripts/criar-conta-func-unimed.mjs <senha>
  */
 import { readFileSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
@@ -31,8 +31,18 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(__dirname, '..');
 
 const EMAIL = 'unimed@anest.local';
-const SENHA = '123456'; // definida pelo dono; conta compartilhada, sem dado pessoal dela
 const NOME = 'Funcionárias Unimed';
+
+// A senha NÃO mora no repositório — mesmo sendo de conta compartilhada, senha em
+// código versionado é senha vazada. Vem por argumento ou ambiente:
+//   node scripts/criar-conta-func-unimed.mjs <senha>
+//   FUNC_UNIMED_SENHA=... node scripts/criar-conta-func-unimed.mjs
+const SENHA = process.argv[2] || process.env.FUNC_UNIMED_SENHA;
+if (!SENHA) {
+  console.error('FALHA: informe a senha — node scripts/criar-conta-func-unimed.mjs <senha>');
+  console.error('       (ou FUNC_UNIMED_SENHA no ambiente). Ela não fica no repositório.');
+  process.exit(1);
+}
 
 // A config do cliente web vive no fonte (src/config/firebase.js), não no .env
 const configPath = resolve(projectRoot, 'src/config/firebase.js');

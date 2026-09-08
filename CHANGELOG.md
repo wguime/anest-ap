@@ -6,7 +6,7 @@
 ## v5.9.0 (08/09/2026) — Conta das funcionárias da Unimed: só a Escala, sem publicar
 
 Pedido do dono: "quero que crie um usuário para funcionárias da unimed, esse usuário deve ter acesso
-apenas a escala cirúrgica. senha deve ser 123456. login pode ser: Unimed (sem necessidade de email,
+apenas a escala cirúrgica. senha deve ser [definida por ele]. login pode ser: Unimed (sem necessidade de email,
 não irão receber nenhum tipo de informação)" — e, sobre o que elas fazem lá dentro: "elas podem
 editar, marcar como iniciada, terminada, urgencia... acrescentar procedimentos... as mesmas
 funcinalidades que os usuários tem ao acessarem as escalas. nao podem publicar escalas apenas."
