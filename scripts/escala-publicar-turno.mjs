@@ -91,7 +91,37 @@ async function carregarLibs() {
   const headless = await runner.import('/src/lib/escalaConferenciaHeadless.js')
   const dadosNumerica = (await runner.import('/src/data/escalaNumerica.json')).default
   const { iniciaisSeguras } = await runner.import('/src/lib/escalaCirurgicaPaciente.js')
-  return { headless, dadosNumerica, iniciaisSeguras, fechar: () => server.close() }
+  const urgencias = await runner.import('/src/lib/escalaCirurgicaUrgencias.js')
+  return { headless, dadosNumerica, iniciaisSeguras, urgencias, fechar: () => server.close() }
+}
+
+/**
+ * O que a tela faz DEPOIS de publicar o HRO: cruza as urgências das salas de contrato
+ * (Sala 5, Sala 7, orto…) com quem a escala nova colocou nelas — a urgência da manhã que
+ * ainda está aberta passa para quem está na sala à tarde, e fica sem dono quando ninguém
+ * está (`planoCruzamentoUrgencias`, `ImportarEscalaPage.jsx` ~1734). `dry` só imprime.
+ */
+async function cruzarUrgenciasHro(urgencias, data, turno, { dry = false } = {}) {
+  // lança em vez de sair: a escala JÁ está publicada quando isto roda
+  const q = async (query, rotulo) => { const r = await sql(query); if (!r.ok) throw new Error(`${rotulo}: ${r.status}`); return Array.isArray(r.body) ? r.body : [] }
+  const [header] = (await q(`select id, urgencias_meta from public.escala_cirurgica where data='${data}' and hospital='hro'`, 'escala do HRO')).map(objCamel)
+  if (!header) return
+  const casos = (await q(`select * from public.escala_cirurgica_caso where escala_id='${header.id}'`, 'casos do HRO')).map(objCamel)
+  const plano = urgencias.planoCruzamentoUrgencias(casos, turno, { salas: urgencias.salasContrato(header.urgenciasMeta, turno) })
+  if (!plano.atribuir.length && !plano.semAnestesista.length) { console.log('   hro: urgências — nada a cruzar'); return }
+  for (const a of plano.atribuir) {
+    console.log(`   hro: urgência ${a.caso.sala} ${a.caso.hora || ''} (${a.caso.procedimento || ''}) ${dry ? 'iria para' : 'passa para'} ${a.apelido}`)
+    if (dry) continue
+    const patch = a.uid
+      ? `anestesista=$j$${a.apelido}$j$, anestesista_user_id='${a.uid}', sem_anestesista=false`
+      : `anestesista=$j$${a.apelido}$j$, anestesista_user_id=null, sem_anestesista=false`
+    await q(`update public.escala_cirurgica_caso set ${patch}, updated_at=now() where id='${a.caso.id}'`, 'cruzar urgência')
+  }
+  if (plano.semAnestesista.length) {
+    const ids = plano.semAnestesista.map((x) => `'${x.caso.id}'`).join(',')
+    console.log(`   hro: ${plano.semAnestesista.length} urgência(s) ${dry ? 'ficariam' : 'ficam'} sem dono (ninguém na sala neste turno): ${plano.semAnestesista.map((x) => `${x.caso.sala} ${x.caso.hora || ''}`).join(', ')}`)
+    if (!dry) await q(`update public.escala_cirurgica_caso set anestesista='?', anestesista_user_id=null, sem_anestesista=true, updated_at=now() where id in (${ids})`, 'urgência sem dono')
+  }
 }
 
 // ── dados do dia ─────────────────────────────────────────────────────────────
@@ -272,9 +302,10 @@ if (cmd === 'publicar') {
   const corpo = `select set_config('request.jwt.claims', ${dq({ sub: uidDono })}::text, true);\n${chamadas.join('\n')}`
   if (ensaio) {
     const r = await sql(`begin;\n${corpo}\nrollback;`)
-    await libs.fechar()
-    if (!r.ok) falhar(`ensaio falhou: ${r.status} ${JSON.stringify(r.body).slice(0, 600)}`)
+    if (!r.ok) { await libs.fechar(); falhar(`ensaio falhou: ${r.status} ${JSON.stringify(r.body).slice(0, 600)}`) }
     console.log(`\n✅ ENSAIO ok (rollback): a RPC aceitou ${chamadas.length} publicação(ões) sem bloqueio. Repita sem --ensaio para publicar.`)
+    if (resultado.hospitais.hro && publicadas.hro) await cruzarUrgenciasHro(libs.urgencias, data, turno, { dry: true })
+    await libs.fechar()
     process.exit(0)
   }
   const r = await sql(`begin;\n${corpo}\ncommit;`)
@@ -301,6 +332,10 @@ if (cmd === 'publicar') {
         from caso where cp.escala_caso_id=caso.id and cp.cancelada_em is null and cp.paciente !~ '[[:alpha:]]{3,}'
       returning cp.id`, 'nome do particular')
     console.log(`   ${pc.hospital}: paciente particular (${pc.sala} ${pc.hora}) ${linhas.length ? 'completado na cobrança' : 'sem rascunho de cobrança para completar'}`)
+  }
+  // Urgências do HRO cruzadas com a escala nova, como a tela faz depois de publicar.
+  if (resultado.hospitais.hro) {
+    try { await cruzarUrgenciasHro(libs.urgencias, data, turno) } catch (e) { console.log(`   ⚠️  hro: cruzamento de urgências não rodou (${e.message}) — ajuste no card`) }
   }
   // Troca declarada (trocaCom) ainda sem execução (assumidaPor): na tela ela fecha com um
   // toque no badge Troca; aqui só se avisa — executar o swap é decisão de quem está no turno.
