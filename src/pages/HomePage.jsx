@@ -10,6 +10,7 @@ import { formatDate } from '@/utils/formatters';
 import { useSearchAll } from '../data/searchLazy';
 import { aplicarDuplasFerias } from '@/lib/feriasDuplas';
 import { NoticiasCarousel } from '../components/noticias/NoticiasCarousel';
+import { ehContaSomenteEscala } from '../utils/userTypes';
 import { CertificadoExpiracaoBanner } from '../components/educacao/CertificadoExpiracaoBanner';
 import { EscalaCirurgicaHomeCard } from '../components/escala-cirurgica/EscalaCirurgicaHomeCard';
 import { podeVerEscalaCirurgica } from './escala-cirurgica/gate';
@@ -134,6 +135,11 @@ export default function HomePage({ onNavigate }) {
   }, [userComunicados, user, isRead]);
 
   const pendenciasCount = totalUnreadCount + eventAlertsUnread + unreadComunicados;
+
+  // Conta de acesso restrito à escala (func-unimed): a Home dela é o card da
+  // Escala e mais nada. Notícias e sino não passam por permissão de card — só
+  // este gate os cala. Para todo mundo, nada muda.
+  const somenteEscala = ehContaSomenteEscala(user);
 
   // Estados dos modais de residência
   const [showEstagiosModal, setShowEstagiosModal] = useState(false);
@@ -466,7 +472,8 @@ export default function HomePage({ onNavigate }) {
         <Header
           greeting={`Olá, ${user.firstName}`}
           userName={`${user.firstName} ${user.lastName}`}
-          notificationCount={pendenciasCount}
+          notificationCount={somenteEscala ? 0 : pendenciasCount}
+          showNotifications={!somenteEscala}
           onNotificationClick={() => onNavigate('inbox')}
           onAvatarClick={() => onNavigate('profile')}
           avatarSrc={user.avatar}
@@ -595,7 +602,7 @@ export default function HomePage({ onNavigate }) {
             colunas abaixo: ele rola na horizontal, e scroll horizontal dentro de
             multi-coluna vaza por cima da coluna vizinha (visto no app, o card do
             artigo cortava o card ao lado). Deitado ele encolhe em vez de sair. */}
-        <NoticiasCarousel onNavigate={onNavigate} />
+        {!somenteEscala && <NoticiasCarousel onNavigate={onNavigate} />}
 
         {/* ⚠️ GRID, não multi-coluna (dono 26/08: "home deveria ser: escala
             cirúrgica - Plantões"). O fluxo de colunas do CSS enche a coluna da

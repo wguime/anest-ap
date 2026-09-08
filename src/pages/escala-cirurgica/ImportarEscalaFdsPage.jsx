@@ -64,7 +64,7 @@ import {
   resumoMapa, HOSPITAIS_MAPA,
 } from '@/lib/escalaFdsMapas'
 import ConferirMapaFdsPage from './ConferirMapaFdsPage'
-import { podeEditarEscalaCirurgica } from './gate'
+import { podePublicarEscalaCirurgica } from './gate'
 import { segurarAtualizacao, liberarAtualizacao } from '@/lib/atualizacaoAdiada'
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard'
 import { useVoltarDoBrowser } from './useVoltarDoBrowser'
@@ -119,7 +119,9 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
   const { salvarEscalaTurno } = useEscalaCirurgicaActions()
   const { user } = useUser()
   const { roster, options: rosterOpcoes, rosterByUid, resolver, upsertAlias } = useRosterAnestesistas()
-  const canEdit = podeEditarEscalaCirurgica(user)
+  // Publicar, não editar (dono 08/09): esta tela SUBSTITUI a escala do turno, e
+  // `func-unimed` opera o dia sem publicar. Mesma fronteira da RPC.
+  const canEdit = podePublicarEscalaCirurgica(user)
 
   // O mesmo fluxo aceita dois formatos: FDS (sábado+domingo) e feriado (um dia).
   // O nome histórico `sabadoISO` é mantido localmente para reduzir o risco de

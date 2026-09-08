@@ -6,13 +6,16 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, se
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { supabase } from '../config/supabase';
+import { resolveLoginEmail } from '../utils/loginIdentifier';
 
 /**
- * Login com email e senha
+ * Login com email e senha.
+ * Aceita tambem identificador sem '@' (dono 2026-09-08): `Unimed` vira
+ * `unimed@anest.local` aqui, no unico ponto por onde todo login passa.
  */
 export async function signIn(email, password) {
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const userCredential = await signInWithEmailAndPassword(auth, resolveLoginEmail(email), password);
     return { user: userCredential.user, error: null };
   } catch (error) {
     return { user: null, error: getErrorMessage(error.code) };
@@ -137,7 +140,7 @@ export async function logOut() {
  */
 export async function resetPassword(email) {
   try {
-    await sendPasswordResetEmail(auth, email);
+    await sendPasswordResetEmail(auth, resolveLoginEmail(email));
     return { success: true, error: null };
   } catch (error) {
     return { success: false, error: getErrorMessage(error.code) };

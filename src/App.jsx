@@ -36,6 +36,7 @@ import { useUser } from "./contexts/UserContext"
 import { reportError } from "@/services/errorReporting"
 import { SUB_CARD_PARENT } from "./data/rolePermissionTemplates"
 import { isBulkImportEnabled } from "./utils/featureFlags"
+import { ehContaSomenteEscala } from "./utils/userTypes"
 import { useActivityTracking } from "./hooks/useActivityTracking"
 import useIosViewportReanchor from "./hooks/useIosViewportReanchor"
 import { PrivacyPolicyModal } from "./components/PrivacyPolicyModal"
@@ -1550,7 +1551,7 @@ function App() {
       {/* Banner opt-in push notifications (Sprint 21 — v5.0.0). Self-gated:
           só aparece se user logado, browser suporta push, permission='default',
           e não foi dispensado nos últimos 7 dias. */}
-      {isAuthenticated && <PushNotificationOptIn />}
+      {isAuthenticated && !ehContaSomenteEscala(user) && <PushNotificationOptIn />}
 
       {/* Prompt de atualizacao do Service Worker */}
       <ReloadPrompt />

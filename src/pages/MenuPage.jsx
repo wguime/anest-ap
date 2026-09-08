@@ -75,15 +75,22 @@ export default function MenuPage({ onNavigate, goBack }) {
               Cirurgias Particulares e Codificação Anestésica moraram aqui até
               2026-07-26 — agora vivem em Gestão (escudo) → Faturamento */}
 
-          {/* Widget Refeição Unimed - Abre página interna (iframe Hoobox) */}
-          <WidgetCard
-            size="small"
-            icon={<Utensils className="w-6 h-6" />}
-            title="Refeição Unimed"
-            subtitle="Solicitação de refeições"
-            variant="default"
-            onClick={() => onNavigate('refeicaoUnimed')}
-          />
+          {/* Widget Refeição Unimed - Abre página interna (iframe Hoobox).
+              Ganhou gate de card em 08/09: era o último item do Menu sem
+              permissão nenhuma, e aparecia até para a conta que só deve ver a
+              Escala Cirúrgica. `refeicao_unimed` não está no NAV_STRUCTURE, e
+              cardId ausente = permitido — então para todo mundo nada muda; só
+              some para quem tem a chave explicitamente `false`. */}
+          {canAccessCard('refeicao_unimed') && (
+            <WidgetCard
+              size="small"
+              icon={<Utensils className="w-6 h-6" />}
+              title="Refeição Unimed"
+              subtitle="Solicitação de refeições"
+              variant="default"
+              onClick={() => onNavigate('refeicaoUnimed')}
+            />
+          )}
 
         </div>
       </div>

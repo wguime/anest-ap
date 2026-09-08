@@ -286,6 +286,10 @@ export const ROLE_PERMISSION_TEMPLATES = {
   farmaceutico: getAllCardIds(true),
   colaborador: getAllCardIds(true),
   secretaria: getAllCardIds(true),
+  // Funcionárias da Unimed (dono 2026-09-08): TUDO desligado. O acesso delas à
+  // Escala Cirúrgica não passa por card — é o gate por papel (`gate.js`) —,
+  // então zerar aqui deixa só a escala de pé, que é o combinado.
+  'func-unimed': getAllCardIds(false),
 };
 
 /**

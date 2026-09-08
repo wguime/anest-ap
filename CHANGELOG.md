@@ -3,6 +3,42 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.9.0 (08/09/2026) — Conta das funcionárias da Unimed: só a Escala, sem publicar
+
+Pedido do dono: "quero que crie um usuário para funcionárias da unimed, esse usuário deve ter acesso
+apenas a escala cirúrgica. senha deve ser 123456. login pode ser: Unimed (sem necessidade de email,
+não irão receber nenhum tipo de informação)" — e, sobre o que elas fazem lá dentro: "elas podem
+editar, marcar como iniciada, terminada, urgencia... acrescentar procedimentos... as mesmas
+funcinalidades que os usuários tem ao acessarem as escalas. nao podem publicar escalas apenas."
+
+### OPERAR ≠ PUBLICAR
+Até aqui `can_write_escala_cirurgica()` respondia pelas duas coisas, e `podeEditar` = `podeVer` no
+front. A migration `20260908190000_escala_papel_func_unimed.sql` separa:
+
+- `can_write_escala_cirurgica()` — OPERAR o dia. Ganha o papel novo `func-unimed`.
+- `can_publicar_escala_cirurgica()` — PUBLICAR/substituir o turno e apagar escala. O conjunto de
+  antes, sem ela. Passa a guardar as duas RPCs de publicação e as policies de INSERT/DELETE do
+  cabeçalho.
+- `pode_publicar_escala_turno(data, hospital, casos)` — a exceção estreita: quem só opera cria a
+  linha VAZIA do dia (o `garantirEscala()` que a tela chama antes de "adicionar caso" num hospital
+  sem escala) e nada mais.
+
+No front, `podePublicarEscalaCirurgica` (gate.js) esconde o pill "Importar" e fecha as três telas de
+importação. Trava: `escalaGatePublicacao.test.js`.
+
+### Login sem e-mail
+O campo de login passa a aceitar identificador sem `@`: `Unimed` vira `unimed@anest.local`
+(`src/utils/loginIdentifier.js`) — `.local` é reservado pela RFC 6762 e não é roteável, então a conta
+não recebe e nem manda nada. Só o LOGIN afrouxou; o cadastro segue exigindo e-mail de verdade.
+⚠️ O formulário no ar é o `LoginFormDark` dentro de `pages/LoginPage.jsx` — `components/LoginForm.jsx`
+é legado. Trava com render da página real: `loginIdentificadorUnimed.test.jsx`.
+
+### A Home dela é o card da Escala e mais nada
+Três superfícies não passam por permissão de card e apareciam mesmo com os 94 cards desligados:
+carrossel de notícias, contador do sino e convite de push. `ehContaSomenteEscala(user)`
+(`utils/userTypes.js`) as cala; o `Header` do DS ganhou `showNotifications` (default `true` — nenhuma
+tela existente muda). O widget "Refeição Unimed" no Menu ganhou o gate de card que ainda não tinha.
+
 ## v5.8.1 (08/09/2026) — Leitura da escala: hora com data colada e rodapé vazio
 
 Gatilho: 1º dia útil depois da Onda 4 — "a leitura de escalas ficou muito pior: hora com data no

@@ -66,6 +66,10 @@ function Header({
   userName,
   notificationCount = 0,
   onNotificationClick,
+  // Sino visível por padrão — nenhuma tela existente muda. `false` é para conta
+  // que não recebe informação nenhuma (func-unimed): sino que não abre nada é
+  // pior do que sino nenhum.
+  showNotifications = true,
   onAvatarClick,
   avatarSrc,
   showDateTime = false,
@@ -146,10 +150,12 @@ function Header({
         {streakDays !== null && streakDays !== undefined && (
           <StreakRing streakDays={streakDays} onClick={onStreakClick} />
         )}
-        <NotificationBell
-          count={notificationCount}
-          onClick={onNotificationClick}
-        />
+        {showNotifications && (
+          <NotificationBell
+            count={notificationCount}
+            onClick={onNotificationClick}
+          />
+        )}
       </div>
     </div>
   )

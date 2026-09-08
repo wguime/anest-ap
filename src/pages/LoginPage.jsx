@@ -13,6 +13,7 @@ import { setPersistence, browserLocalPersistence, browserSessionPersistence } fr
 import { auth } from '../config/firebase';
 import { supabase } from '../config/supabase';
 import { isBiometricAvailable, hasBiometricRegistered, registerBiometric, authenticateWithBiometric } from '../services/biometricService';
+import { ehLoginValido } from '../utils/loginIdentifier';
 
 export default function LoginPage() {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -214,7 +215,10 @@ function LoginFormDark({ onLogin, onForgotPassword, onBiometric, biometricReady,
     const errors = {};
     if (!email.trim()) {
       errors.email = 'E-mail é obrigatório';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    } else if (!ehLoginValido(email)) {
+      // Aceita TAMBÉM identificador sem '@' (dono 08/09): a conta compartilhada
+      // das funcionárias da Unimed entra digitando `Unimed`, e authService
+      // converte para o e-mail interno antes do Firebase.
       errors.email = 'E-mail inválido';
     }
     if (!password) {
@@ -260,7 +264,11 @@ function LoginFormDark({ onLogin, onForgotPassword, onBiometric, biometricReady,
         </label>
         <input
           id={emailId}
-          type="email"
+          // `text` e não `email`: com `type="email"` o próprio browser barra o
+          // submit de quem digita `Unimed`. `inputMode="email"` preserva o
+          // teclado com '@' no celular de quem entra pelo e-mail.
+          type="text"
+          inputMode="email"
           autoComplete="email"
           required
           aria-invalid={!!validationErrors.email}
@@ -473,6 +481,8 @@ function RegisterFormDark({ onRegister, error, isLoading, onShowPrivacyPolicy })
     if (!email.trim()) {
       errors.email = 'E-mail é obrigatório';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      // Cadastro exige e-mail DE VERDADE: o identificador sem '@' vale só no
+      // login (contas internas são criadas à mão, nunca por auto-cadastro).
       errors.email = 'E-mail inválido';
     }
     if (!password) {

@@ -30,7 +30,7 @@ import dadosNumerica from '@/data/escalaNumerica.json'
 import { montarOrdem, compararComRodape } from '@/lib/escalaNumerica'
 import { getFeriasDoAno } from '@/services/pegaPlantaoApi'
 import { normalizarRegistrosFerias } from '@/lib/extratoFerias'
-import { podeEditarEscalaCirurgica } from './gate'
+import { podePublicarEscalaCirurgica } from './gate'
 import { planoCruzamentoUrgencias, salasContrato } from '@/lib/escalaCirurgicaUrgencias'
 import { hospitalPelaEstrutura } from '@/lib/escalaHospitalEstrutura'
 import { ehDataFilaUnica, ehFeriado } from '@/lib/escalaFds'
@@ -313,7 +313,9 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     ...t, linhas: (novas || []).map((c) => ({ ...c, turno: c.turno || periodo })),
   })), [atualizar, periodo])
 
-  const canEdit = podeEditarEscalaCirurgica(user)
+  // Publicar, não editar (dono 08/09): esta tela SUBSTITUI a escala do turno, e
+  // `func-unimed` opera o dia sem publicar. Mesma fronteira da RPC.
+  const canEdit = podePublicarEscalaCirurgica(user)
 
 
   // GRUPOS DA CONFERÊNCIA (pedido do dono 27/07): sala com MAIS DE UM anestesista

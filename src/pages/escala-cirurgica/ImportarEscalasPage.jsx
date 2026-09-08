@@ -51,7 +51,7 @@ import {
 import { formatData, novaIdLinha, turnoAtual } from './utils'
 import { segurarAtualizacao, liberarAtualizacao } from '@/lib/atualizacaoAdiada'
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard'
-import { podeEditarEscalaCirurgica } from './gate'
+import { podePublicarEscalaCirurgica } from './gate'
 import { useVoltarDoBrowser } from './useVoltarDoBrowser'
 import ImportarEscalaPage from './ImportarEscalaPage'
 import SegmentedSelector from './SegmentedSelector'
@@ -103,7 +103,9 @@ function SeloEstado({ estado, ativa }) {
 export default function ImportarEscalasPage({ hospital, data, turno: turnoInicial, onClose, onAbrirFds }) {
   const { toast } = useToast()
   const { user } = useUser()
-  const canEdit = podeEditarEscalaCirurgica(user)
+  // Publicar, não editar (dono 08/09): esta tela SUBSTITUI a escala do turno, e
+  // `func-unimed` opera o dia sem publicar. Mesma fronteira da RPC.
+  const canEdit = podePublicarEscalaCirurgica(user)
   // UM roster para as três abas (item 2.5; audit A9): com uma instância por aba, o
   // `upsertAlias` de quem publicava primeiro mudava só o `resolver` dela, e a mesma pessoa
   // ficava com duas chaves de duplicidade no mesmo lote

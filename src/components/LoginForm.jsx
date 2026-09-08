@@ -1,10 +1,18 @@
 /**
  * LoginForm Component
- * Formulario de login com email e senha
+ * Formulario de login com email (ou identificador) e senha.
+ *
+ * Desde 2026-09-08 o campo aceita TAMBEM um identificador sem '@' — a conta
+ * compartilhada das funcionarias da Unimed entra digitando `Unimed`, e
+ * `resolveLoginEmail` (utils/loginIdentifier) converte para o e-mail interno
+ * antes do Firebase. Por isso o input e `type="text"` com `inputMode="email"`:
+ * `type="email"` faz o browser barrar o submit por conta propria, e o inputMode
+ * preserva o teclado com '@' no celular de quem entra por e-mail.
  */
 import { useState } from 'react';
 import { Button, Input, FormField, Alert } from '@/design-system';
 import { Mail, Lock, Loader2 } from 'lucide-react';
+import { ehLoginValido } from '@/utils/loginIdentifier';
 
 export function LoginForm({ onLogin, onForgotPassword, error, isLoading }) {
   const [email, setEmail] = useState('');
@@ -16,7 +24,7 @@ export function LoginForm({ onLogin, onForgotPassword, error, isLoading }) {
 
     if (!email.trim()) {
       errors.email = 'E-mail e obrigatorio';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    } else if (!ehLoginValido(email)) {
       errors.email = 'E-mail invalido';
     }
 
@@ -52,7 +60,8 @@ export function LoginForm({ onLogin, onForgotPassword, error, isLoading }) {
         error={validationErrors.email}
       >
         <Input
-          type="email"
+          type="text"
+          inputMode="email"
           value={email}
           onChange={(e) => {
             setEmail(e.target.value);

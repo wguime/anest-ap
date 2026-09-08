@@ -23,7 +23,7 @@ import ImportarEscalaFdsPage from './ImportarEscalaFdsPage'
 import TrocaSheet from './TrocaSheet'
 import { meuAliasDe, turnoAtual, casosResolvidos, dataPorExtenso, estadoTrocasDoHistorico, filtrarPorTurnoExibicao, normNome, formatData, rodapeDoTurno, localizarSlotEscala, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca } from './utils'
 import { ehDataFilaUnica, ehFeriado, ehFimDeSemana, FDS_HOSPITAL, FDS_TURNO_CASOS, turnoFdsAtual } from '@/lib/escalaFds'
-import { podeEditarEscalaCirurgica } from './gate'
+import { podeEditarEscalaCirurgica, podePublicarEscalaCirurgica } from './gate'
 
 const HOSPITAL_OPCOES = HOSPITAIS.map((h) => ({ value: h, label: HOSPITAL_LABEL[h] }))
 // Rótulos CURTOS (dono 16/08): "Manhã/Tarde/Noite" cabem no card a 375px —
@@ -404,6 +404,9 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   if (!user) return null
 
   const canEdit = podeEditarEscalaCirurgica(user)
+  // Importar = PUBLICAR (dono 08/09). `func-unimed` opera o dia inteiro mas não
+  // troca a escala publicada: o pill some para ela, e a RPC recusaria de todo jeito.
+  const canPublicar = podePublicarEscalaCirurgica(user)
   const escala = escalaDoHospital
   const turnoCasos = turnoDeCasos
 
@@ -421,7 +424,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
         subtitle={dataPorExtenso(data, hoje)}
         onBack={goBack}
         actions={
-          canEdit ? (
+          canPublicar ? (
             // O atalho de VÍNCULOS saiu do header (dono 16/08): é manutenção de
             // dicionário, não operação do plantão. A tela de vínculos segue
             // existindo (VinculosSheet) para ser religada onde fizer sentido.
