@@ -31,6 +31,9 @@ A edge `parse-escala-cirurgica` deixou de ser texto livre. O que vale saber ante
   ($25/MTok contra $5). Campo novo: primeiro veja se dá para DERIVAR na edge. Foi assim que saíram
   `isContinuacao`, `semAnestesista`, `foraDoRoster` e `secao`. Se o schema for recusado, a edge
   repete a chamada sem `output_config` em vez de derrubar a leitura.
+- **⚠️ Campo que pede uma passada a mais na imagem tem de ser `required`.** Com `cor` OPCIONAL o
+  modelo pulava a análise de cor inteira: a mesma foto do HRO devolvia `ajudaExterna: []` e nenhum
+  caso colorido. Medido em 08/09. Vale para qualquer campo futuro que dependa de olhar de novo.
 - **Cor é dado.** `cor` por caso e por nome do rodapé; **azul em QUALQUER lugar é ajuda** e o
   guardrail anti-alucinação não apaga quem veio azul (era isso que fazia a Unimed publicar sem ajuda,
   30/07). `ordemLiberacao`/`ajudaExterna` são DERIVADOS do rodapé colorido — o cliente não mudou.
