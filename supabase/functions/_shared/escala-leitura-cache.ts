@@ -19,9 +19,17 @@ const key = () => Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
 /**
  * Chave do cache. Tudo que muda o resultado esperado entra: bumpar
  * PROMPT_VERSAO invalida o cache inteiro sozinho, sem precisar limpar nada.
+ *
+ * ⚠️ RECEBE O HASH DA IMAGEM, NUNCA A IMAGEM. A primeira versão concatenava o
+ * base64 inteiro numa string nova e o digeria de novo — uma cópia de centenas de
+ * KB mais um segundo SHA-256 do arquivo todo, em cima do que a telemetria já
+ * fazia. O isolate da edge tem teto de memória, e o preço apareceu medido em
+ * 08/09: uma leitura de 16 morreu com `WORKER_RESOURCE_LIMIT` e outras duas
+ * voltaram com o stream cortado. Hasheando o hash, esta função passa a operar
+ * sobre 64 caracteres.
  */
 export async function chaveCache(partes: {
-  imagemBase64: unknown
+  imagemHash: unknown
   hospital?: unknown
   modo?: unknown
   promptVersao?: unknown
@@ -29,8 +37,10 @@ export async function chaveCache(partes: {
   secoesTurno?: boolean
 }): Promise<string> {
   try {
+    const imagem = String(partes.imagemHash ?? '')
+    if (!imagem) return ''
     const texto = [
-      String(partes.imagemBase64 ?? ''),
+      imagem,
       String(partes.hospital ?? ''),
       String(partes.modo ?? ''),
       String(partes.promptVersao ?? ''),

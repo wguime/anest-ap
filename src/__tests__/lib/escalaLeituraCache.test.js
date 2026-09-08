@@ -19,26 +19,34 @@ import {
   chaveCache, temNomeDePaciente, ehStatusRetentavel, fetchComRetry,
 } from '../../../supabase/functions/_shared/escala-leitura-cache.ts'
 
-const IMG = 'AAAABBBBCCCC'
+const HASH = 'a'.repeat(64) // sha256 da imagem, nunca a imagem
 
 describe('chave do cache', () => {
+  it('⚠️ opera sobre o HASH, nunca sobre a imagem', async () => {
+    // concatenar o base64 inteiro numa string nova e digeri-lo de novo custou
+    // um `WORKER_RESOURCE_LIMIT` em produção (08/09): o isolate da edge tem teto
+    // de memória e a telemetria já hasheia a imagem uma vez
+    expect(await chaveCache({ imagemHash: '' })).toBe('')
+    expect(await chaveCache({ imagemHash: HASH })).toMatch(/^[0-9a-f]{64}$/)
+  })
+
   it('é a mesma para a mesma foto no mesmo contexto', async () => {
-    const a = await chaveCache({ imagemBase64: IMG, promptVersao: 'v5', vocabulario: ['ANA'] })
-    const b = await chaveCache({ imagemBase64: IMG, promptVersao: 'v5', vocabulario: ['ANA'] })
+    const a = await chaveCache({ imagemHash: HASH, promptVersao: 'v5', vocabulario: ['ANA'] })
+    const b = await chaveCache({ imagemHash: HASH, promptVersao: 'v5', vocabulario: ['ANA'] })
     expect(a).toBe(b)
     expect(a).toMatch(/^[0-9a-f]{64}$/)
   })
 
   it('MUDA quando a versão do prompt muda — senão a edição nova não faria efeito por 24h', async () => {
-    const v5 = await chaveCache({ imagemBase64: IMG, promptVersao: 'v5' })
-    const v6 = await chaveCache({ imagemBase64: IMG, promptVersao: 'v6' })
+    const v5 = await chaveCache({ imagemHash: HASH, promptVersao: 'v5' })
+    const v6 = await chaveCache({ imagemHash: HASH, promptVersao: 'v6' })
     expect(v5).not.toBe(v6)
   })
 
   it('muda com a foto, o hospital declarado, o modo, o vocabulário e a flag de turno', async () => {
-    const base = { imagemBase64: IMG, promptVersao: 'v5', hospital: '', modo: '', vocabulario: ['ANA'] }
+    const base = { imagemHash: HASH, promptVersao: 'v5', hospital: '', modo: '', vocabulario: ['ANA'] }
     const k = await chaveCache(base)
-    expect(await chaveCache({ ...base, imagemBase64: 'OUTRA' })).not.toBe(k)
+    expect(await chaveCache({ ...base, imagemHash: 'b'.repeat(64) })).not.toBe(k)
     expect(await chaveCache({ ...base, hospital: 'hro' })).not.toBe(k)
     expect(await chaveCache({ ...base, modo: 'fds' })).not.toBe(k)
     expect(await chaveCache({ ...base, vocabulario: ['ANA', 'BETO'] })).not.toBe(k)

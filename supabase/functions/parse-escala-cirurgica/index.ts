@@ -42,7 +42,7 @@ const MODELO = 'claude-opus-4-8'
  * `escala_leitura_log` e a que invalida o cache de leitura. Sem bumpar, o ANTES
  * e o DEPOIS se misturam na mesma média e a medição mente.
  */
-const PROMPT_VERSAO = 'v8-stream-cortado-2026-09-08'
+const PROMPT_VERSAO = 'v9-memoria-2026-09-08'
 
 const DEFAULT_ALLOWED_ORIGINS = [
   'https://anest-ap.web.app',
@@ -653,7 +653,7 @@ Deno.serve(async (req) => {
     // exatamente a mesma imagem. A chave inclui a versão do prompt, então subir
     // uma edição nova invalida tudo sozinho.
     const chave = await chaveCache({
-      imagemBase64: imageBase64, hospital, modo,
+      imagemHash, hospital, modo,
       promptVersao: PROMPT_VERSAO, vocabulario: rosterNomes, secoesTurno: comSecoesTurno,
     })
     const guardado = await lerCache(chave)
