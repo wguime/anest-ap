@@ -41,7 +41,7 @@ const MODELO = 'claude-opus-4-8'
  * `escala_leitura_log` e a que invalida o cache de leitura. Sem bumpar, o ANTES
  * e o DEPOIS se misturam na mesma média e a medição mente.
  */
-const PROMPT_VERSAO = 'v5-onda4-2026-09-07'
+const PROMPT_VERSAO = 'v6-cor-obrigatoria-2026-09-08'
 
 const DEFAULT_ALLOWED_ORIGINS = [
   'https://anest-ap.web.app',
@@ -406,7 +406,12 @@ function schemaEscala(comTurno: boolean): Record<string, unknown> {
         items: {
           type: 'object',
           additionalProperties: false,
-          required: ['sala', 'hora', 'anestesista'],
+          // ⚠️ `cor` É OBRIGATÓRIA, e isso foi medido: com ela OPCIONAL o
+          // modelo simplesmente parava de olhar a cor — a mesma foto do HRO que
+          // devolvia a ajuda em azul passou a devolver `ajudaExterna: []` e
+          // nenhum caso com cor. Campo opcional que exige OLHAR a imagem de
+          // novo é campo que não é preenchido. Custa ~4 tokens por caso.
+          required: ['sala', 'hora', 'anestesista', 'cor'],
           properties: props,
         },
       },
