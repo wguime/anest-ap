@@ -65,6 +65,24 @@ A edge `parse-escala-cirurgica` deixou de ser texto livre. O que vale saber ante
   em `_shared/escala-stream.ts` cobre isso e o corte por teto de tokens de 06/08.
 - **Erro 400 com "credit balance"** = conta Anthropic sem crédito, não código (lição 17–18/08). A
   classificação em `escalaVisionFalha.js` já diz "avise o administrador"; retry não é feito em 400.
+- **⚠️ Hora com DATA colada (08/09, 1º dia útil da Onda 4).** A 1ª coluna da planilha da Unimed traz
+  "08/09/2026 07:30" e o modelo copia a célula inteira para `hora`; `horaCanonica` devolvia o texto
+  como veio, a conferência bloqueava as 30 cirurgias uma a uma e a escala saiu SEM hora nenhuma. Hoje
+  a normalização tira a data (`DATA_NA_FRENTE`) e o prompt diz onde a hora mora e que "?" na célula
+  é conteúdo. Trava: `escalaNormalizacaoEdge.test.js`. **Medir a hora no eval** ainda é pendência —
+  o placar conta casos e rodapé e não teria pego isto.
+- **⚠️ Rodapé vazio em HRO/Unimed é leitura incompleta, mesmo com `stop_reason` normal (08/09).** A
+  foto do HRO (897×635, WhatsApp) lida SEM dica devolveu 15 casos e nenhum nome — IOSC, HO, Exames,
+  Ambulatório e a fila inteira sumiram — e foi publicada assim; a MESMA foto com a dica do HRO
+  devolveu 26 casos e 17 nomes (e ampliada 2× sem dica, idem). A edge devolve `rodapeVazio`
+  (`rodapeAusente` em `_shared/escala-cor.ts`) e NÃO cacheia essa leitura (o cache serviu a meia
+  escala duas vezes às 12:15 e 12:17); o lote relê UMA vez com o hospital detectado
+  (`precisaRelerComHint`, `src/lib/escalaLeituraRodape.js`) e a conferência avisa se ainda vier
+  vazio. Materno não tem rodapé e fica fora. Trava: `importarEscalasLote.test.jsx`.
+- **Reparo sem republicar** (`scripts/repair-escala-2026-09-08-matutino-leitura.sql`): com o turno em
+  uso (status, liberações, observações), republicar zeraria tudo — o conserto é UPDATE/INSERT linha a
+  linha, casando por (sala, ordem, iniciais) e abortando se qualquer contagem divergir; o evento
+  `publicacao` sai marcado `reparo` para o rastro.
 
 ## Módulo (linha do Mapa de Módulos do CLAUDE.md)
 

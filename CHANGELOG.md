@@ -3,6 +3,28 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.8.1 (08/09/2026) — Leitura da escala: hora com data colada e rodapé vazio
+
+Gatilho: 1º dia útil depois da Onda 4 — "a leitura de escalas ficou muito pior: hora com data no
+lugar, procedimentos e hospitais não lidos". As escalas corretas foram publicadas ANTES da correção
+(reparo linha a linha, sem republicar — o turno já tinha status e liberações marcados).
+
+### Bug Fix (P0) — Unimed sem hora nenhuma
+A 1ª coluna da planilha traz "08/09/2026 07:30" e o modelo passou a copiar a célula inteira para
+`hora`; a normalização da edge devolvia o texto como veio e a conferência bloqueava as 30 cirurgias
+uma a uma. `horaCanonica` agora tira a data colada, e o prompt diz onde a hora mora (v10).
+
+### Bug Fix (P0) — HRO com 15 casos e ordem de liberação vazia
+A foto (897×635) lida sem a dica do hospital parou antes das seções IOSC/HO/Exames/Ambulatório e
+não trouxe o rodapé; a mesma foto com a dica devolve os 26 casos e os 17 nomes. A edge passa a
+devolver `rodapeVazio` e a não cachear essa leitura; o lote relê uma vez com o hospital detectado
+e a conferência avisa quando ainda vier vazio.
+
+### Reparo
+`scripts/repair-escala-2026-09-08-matutino-leitura.sql` — 30 horas da Unimed, cesariana das 11:00
+sem anestesista ("?"), 11 casos e o rodapé de 17 nomes do HRO; status, liberações e observações do
+turno preservados.
+
 ## v5.8.0 (06/09/2026) — Notificações e Denúncias: auditoria completa do canal
 
 Gatilho: usuários relatando "Erro ao criar denúncia — new row violates row-level security policy".
