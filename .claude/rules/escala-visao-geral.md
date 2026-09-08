@@ -46,6 +46,10 @@ A edge `parse-escala-cirurgica` deixou de ser texto livre. O que vale saber ante
   só com candidato único.
 - **`PROMPT_VERSAO` precisa subir a cada mudança de prompt ou schema**: é a coluna que separa duas
   edições em `escala_leitura_log` e é o que invalida o cache de 24 h de `escala_leitura_cache`.
+- **⚠️ O isolate da edge tem teto de memória, e a imagem em base64 é grande.** Hasheie a imagem UMA
+  vez por leitura: `chaveCache` recebe o HASH que a telemetria já calculou, nunca o base64. A versão
+  que concatenava e digeria a imagem de novo custou um `WORKER_RESOURCE_LIMIT` e dois streams
+  cortados numa rodada de 16 fotos (08/09).
 - **Telemetria:** uma linha por leitura em `escala_leitura_log` (sem dado de paciente). O insert é
   **aguardado** de propósito — o isolate da edge morre com a resposta e um fetch não aguardado se
   perde.
