@@ -13,10 +13,17 @@ export default {
       lg: "768px",
       xl: "1024px",
       "2xl": "1440px",
-      // ⚠️ `deitado` NÃO é breakpoint de largura: é o APARELHO DE TOQUE na
-      // horizontal — largura sobrando (dono 26/08, "que o app fique organizado
-      // na posição horizontal"). `pointer: coarse` tira o desktop, cuja janela
-      // não gira. Fonte única do modo horizontal.
+      // ⚠️ `deitado` NÃO é breakpoint de largura: é a TELA NA HORIZONTAL —
+      // largura sobrando (dono 26/08, "que o app fique organizado na posição
+      // horizontal"). Fonte única do modo horizontal.
+      // ⚠️ o `pointer: coarse` SAIU em 08/09, a pedido do dono ("quero que a
+      // configuração do desktop seja igual aos dispositivos móveis em
+      // horizontal"). Ele tirava o desktop com o argumento de que "a janela do
+      // desktop não gira" — verdade que não vem ao caso: o desktop JÁ NASCE
+      // deitado, com a mesma largura sobrando que o modo resolve. Sem isto o
+      // notebook ficava com a barra embaixo, uma coluna só e cards esticados a
+      // 1200px. Janela mais alta que larga volta sozinha ao arranjo em pé, que
+      // é o comportamento certo dos dois lados.
       // ⚠️ o `max-height: 500px` SAIU em 27/08, a pedido do dono ("modificações
       // não foram implementadas em tablets"). Ele separava celular de tablet, e
       // era herança da decisão de 25/08 — que era sobre TRAVAR A ROTAÇÃO, não
@@ -35,7 +42,7 @@ export default {
       // desta lista, e empate de especificidade é decidido por quem vem depois.
       // Declarada antes, `deitado:grid-cols-2` perdia para `lg:grid-cols-3` e a
       // grade da Gestão truncava os rótulos — defeito visto no app.
-      deitado: { raw: "(orientation: landscape) and (pointer: coarse)" },
+      deitado: { raw: "(orientation: landscape)" },
     },
     container: {
       center: true,

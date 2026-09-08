@@ -3,6 +3,32 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.10.0 (08/09/2026) — O desktop passa a usar o mesmo arranjo do celular deitado
+
+Pedido do dono: "quero que a configuração do desktop seja igual aos dispositivos móveis em
+horizontal. verifique (já havia solicitado, nao sei pq nao implementou)".
+
+### Por que não estava implementado
+A variante `deitado:` nasceu em 26/08 como `(orientation: landscape) and (pointer: coarse)`, e o
+comentário no `tailwind.config.js` dizia o motivo do recorte: "`pointer: coarse` tira o desktop,
+cuja janela não gira". O argumento estava errado de premissa — o desktop não precisa girar, ele
+JÁ NASCE deitado, com a mesma largura sobrando que o modo resolve. Em 27/08 o `max-height: 500px`
+caiu para o modo valer em tablets; o `pointer: coarse` ficou, e o notebook continuou com a barra
+embaixo, uma coluna só e cards esticados até 1200px. Não há registro de pedido anterior sobre
+desktop no histórico — o que existe é essa decisão de recorte que nunca foi revista.
+
+### O que mudou
+Uma condição, nas DUAS metades da regra: `tailwind.config.js` (a variante) e `src/index.css` (o
+recuo da faixa lateral e o masonry). Esquecer a segunda deixa o modo pela metade de um jeito
+visível: a faixa aparece e o conteúdo passa por baixo dela, cortado.
+
+No desktop agora: navegação em faixa lateral de 76px, cabeçalho de 44px, Home e Gestão em duas
+colunas, fila de liberação em duas colunas contínuas, salas da Completa lado a lado e as folhas
+como painel lateral. Janela mais alta que larga volta sozinha ao arranjo em pé.
+
+**Em pé nada muda** — Home, Gestão e Escala a 390×844, nos dois temas, com relógio congelado:
+6/6 byte a byte idênticas antes e depois.
+
 ## v5.9.0 (08/09/2026) — Conta das funcionárias da Unimed: só a Escala, sem publicar
 
 Pedido do dono: "quero que crie um usuário para funcionárias da unimed, esse usuário deve ter acesso

@@ -101,8 +101,12 @@
    de fazer sentido e viraria um terço de tela vazio no fim do scroll. */
 /* ⚠️ esta condição tem de ser IDÊNTICA à da variante `deitado:` do
    tailwind.config.js — são as duas metades da mesma regra. O `max-height: 500px`
-   saiu em 27/08 para o modo valer também em tablet (ver o porquê no config). */
-@media (orientation: landscape) and (pointer: coarse) {
+   saiu em 27/08 para o modo valer também em tablet, e o `pointer: coarse` saiu
+   em 08/09 para valer também no desktop (o porquê de cada um está no config).
+   ⚠️ Esquecer esta metade deixa o modo pela metade de um jeito que salta aos
+   olhos: a faixa lateral aparece e o conteúdo passa POR BAIXO dela, cortado — foi
+   o que a primeira foto do desktop mostrou. */
+@media (orientation: landscape) {
   .pb-28, .pb-24, .pb-32 { padding-bottom: 0.75rem; }
 
   /* O conteúdo de TODA página recua a faixa lateral de uma vez só, no body — em
