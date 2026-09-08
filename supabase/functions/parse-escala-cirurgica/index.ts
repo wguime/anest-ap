@@ -24,6 +24,13 @@ import { verifyAuthHeader } from '../_shared/verify-auth.ts'
 import { dimensoesDeBase64, bytesDeBase64 } from '../_shared/imagem-dimensoes.ts'
 import { montarLinhaLog, hashImagem, registrarLeitura } from '../_shared/escala-leitura-log.ts'
 import { normalizarCasos } from '../_shared/escala-normalizacao.ts'
+import {
+  lerRodape, aplicarCorNosCasos, derivarRodape, blanquearForaDoRodape,
+} from '../_shared/escala-cor.ts'
+import { prepararRoster, resolverRoster } from '../_shared/escala-roster.ts'
+import {
+  chaveCache, lerCache, gravarCache, fetchComRetry,
+} from '../_shared/escala-leitura-cache.ts'
 
 /** Modelo da leitura. Trocar exige medir antes (eval do item 4.1). */
 const MODELO = 'claude-opus-4-8'
@@ -34,7 +41,7 @@ const MODELO = 'claude-opus-4-8'
  * `escala_leitura_log` e a que invalida o cache de leitura. Sem bumpar, o ANTES
  * e o DEPOIS se misturam na mesma média e a medição mente.
  */
-const PROMPT_VERSAO = 'v2-schema-2026-09-07'
+const PROMPT_VERSAO = 'v5-onda4-2026-09-07'
 
 const DEFAULT_ALLOWED_ORIGINS = [
   'https://anest-ap.web.app',
@@ -62,9 +69,9 @@ const HOSPITAL_HINT: Record<string, string> = {
   unimed:
     'Formato Unimed: colunas SALA, PACIENTE, IDADE, PROCEDIMENTO, TEMPO, CIRURGIÃO, CONVÊNIO, ANEST. ' +
     'Salas agrupadas (C.O - CESAREA, CENTRO CIRÚRGICO - SALA N). "//" na coluna ANEST = mesmo anestesista da linha acima. ' +
-    'As seções C.O (CESAREA/SALA N) são o centro obstétrico DA PRÓPRIA UNIMED: bloco "normal" — NUNCA "materno" (materno é OUTRO hospital; marcar materno aqui é erro recorrente já corrigido 2x em produção). ' +
-    'Blocos no rodapé: SRPA, EXAMES, IMAGEM, CONSULTORIO, UMANITÁ, ACCURATA. Nesses blocos cada LINHA tem seu PRÓPRIO anestesista na coluna ANEST — copie o da própria linha; NUNCA repita o anestesista da primeira linha nas seguintes (erro real 23/07: 3 linhas de EXAMES saíram todas com o mesmo nome). ' +
-    '⚠️ Esses blocos são pequenos, empilhados e separados por linhas em branco: CONFIRA O ALINHAMENTO VERTICAL antes de fechar o JSON — levar o nome de um bloco para o vizinho é erro real de 31/08 (a 1ª linha de EXAMES ficou com o anestesista da IMAGEM e vice-versa). E dois blocos CONSULTORIO seguidos são DUAS pessoas, uma por linha, nunca a mesma repetida: nessas linhas o CIRURGIÃO fica VAZIO (consultório não tem cirurgião — não copie para lá o nome da outra linha). ' +
+    'As seções C.O (CESAREA/SALA N) são o centro obstétrico da própria Unimed: bloco "normal", nunca "materno" (o Materno é outro hospital). ' +
+    'Blocos no rodapé: SRPA, EXAMES, IMAGEM, CONSULTORIO, UMANITÁ, ACCURATA. Nesses blocos cada linha tem o seu próprio anestesista na coluna ANEST — copie o da própria linha e não repita o da primeira nas seguintes. ' +
+    'Esses blocos são pequenos, empilhados e separados por linhas em branco; confira o alinhamento vertical antes de fechar o JSON: o nome do bloco de cima chega a atravessar para o vizinho (a 1ª linha de EXAMES sair com o anestesista da IMAGEM e vice-versa). Dois blocos CONSULTORIO seguidos são duas pessoas, uma por linha, nunca a mesma repetida; nessas linhas o cirurgião fica vazio (consultório não tem cirurgião — não copie para lá o nome da outra linha). ' +
     'No rodapé há uma linha com os anestesistas na ORDEM DE LIBERAÇÃO. "SRPA ANEST A" é uma POSIÇÃO ASSISTENCIAL: não entra em casos; devolva em posicoesAssistenciais para manter local, colega trabalhando e ordem de liberação.',
   hro:
     'Formato HRO: colunas Leito, Paciente, Cirurgião, Procedimento, ANEST, Conv., Sala. "//" = mesmo anestesista acima. ' +
@@ -73,30 +80,28 @@ const HOSPITAL_HINT: Record<string, string> = {
     'linha só com "CO" = "Sala 7" (o CO do HRO é a sala 7 — bloco normal, o CO do HRO NÃO é materno, nunca use bloco materno aqui); ' +
     'linha só com "EMERGENCIA" = "Sala 5"; "HEMO" = "Hemodinâmica" (bloco hemodinamica); "EXAMES" = "Exames" (bloco exames); ' +
     '"BRAQUI" = "Braquiterapia" (bloco normal); "CONSULT." = "Consultório" (bloco consultorio); "IMAGEM" = "Imagem" (bloco imagem). ' +
-    '⚠️ RÓTULO NA COLUNA LEITO — DUAS FORMAS, e confundi-las FAZ CIRURGIA SUMIR (erro real, medido em produção: Imagem chegou em 15% das importações e Hemodinâmica em 49%, contra 90% de Exames). ' +
+    'RÓTULO NA COLUNA LEITO — duas formas, e confundi-las faz a cirurgia sumir da escala. ' +
     'FORMA 1 — a linha É UM CASO: tem HORA na 1ª coluna e/ou procedimento, paciente ou cirurgião preenchidos, e o rótulo (HEMO, EXAMES, IMAGEM, IOSC, HO, BRAQUI, DIGIMAX, C. COLUNA...) está na MESMA LINHA. Então esse rótulo é a SALA DAQUELA LINHA e a linha vira UM CASO normal. Exemplo real: "09:00 | HEMO | ANGIOPLASTIA INTRALUMINAL – 2H | Alexandre Medeiros" é UMA cirurgia na Hemodinâmica, não um título; "08:00 | EXAMES | 01 RETOSSIGMOID. + 02 COLO + 01 EDA | Luciano" é UMA linha de Exames. É comum haver UMA linha só de Imagem, de Hemo ou de Exames no dia — ela continua sendo um caso. ' +
     'FORMA 2 — a linha é um CABEÇALHO de seção: traz SÓ o rótulo, com hora, procedimento, paciente e cirurgião VAZIOS. Aí ele vale para as linhas ABAIXO, até o próximo rótulo, e o cabeçalho em si NÃO vira caso. ' +
-    'Regra de decisão, nesta ordem: a linha tem hora OU procedimento OU cirurgião OU paciente? → é CASO (forma 1). Só então considere cabeçalho. NUNCA descarte uma linha com hora por achar que o rótulo é um título — é assim que a cirurgia da Hemodinâmica desaparece da escala inteira. ' +
-    'Isso vale mesmo quando o rótulo está DESTACADO (fundo amarelo) ou em cor diferente (o IOSC costuma vir em ROXO, igual aos procedimentos): destaque e cor NÃO decidem — quem decide é a linha ter conteúdo próprio. ' +
+    'Regra de decisão, nesta ordem: a linha tem hora, procedimento, cirurgião ou paciente? Então é CASO (forma 1). Só depois considere cabeçalho. Linha com hora nunca é descartada por o rótulo parecer um título. ' +
+    'Destaque (fundo amarelo) e cor do rótulo não decidem — o IOSC costuma vir em roxo, igual aos procedimentos; quem decide é a linha ter conteúdo próprio. ' +
     'A escala inclui OUTROS HOSPITAIS que fazem parte dela — extraia TODAS essas seções como casos também, com o cirurgião quando houver (nomes em ROXO são cirurgiões): ' +
     '"IOSC" = bloco iosc; "HO" = bloco ho (Hospital de Olhos); "DIGIMAX" = bloco normal; "CENTRO DE COLUNA"/"C. COLUNA" = bloco ccoluna; "AMBULATORIAL" = bloco normal. ' +
-    '⚠️ SALA dessas seções = SÓ O NOME DA SEÇÃO, sem número interno: TODA linha do IOSC → sala "IOSC"; HO → "Hospital de Olhos"; Digimax → "Digimax"; Centro de Coluna → "Centro de Coluna". IGNORE o "SALA 1"/"SALA 2" que aparecer na coluna Sala dessas seções (é a sala interna da clínica — não usamos). NUNCA devolva "Sala 1"/"Sala 2" para uma linha do IOSC/HO/Digimax: cairia junto da sala homônima do HRO e misturaria os anestesistas (erro real 24/07). Todas as linhas de uma seção compartilham a MESMA sala (ex.: "IOSC"), na ordem em que aparecem; cada linha mantém seu próprio anestesista (o board agrupa por anestesista dentro da seção). ' +
-    '⚠️ E ISSO VALE PARA AS LINHAS SEGUINTES, não só para a que traz o rótulo (erro real 31/08): aberta a seção, TODA linha abaixo dela continua na MESMA seção até aparecer OUTRO rótulo na coluna Leito — mesmo que a coluna Sala dessas linhas traga 1, 2 ou 3, e mesmo que a coluna ANEST traga um nome próprio em vez de "//". Em 31/08 o IOSC tinha 3 linhas (salas 1, 2 e 3 INTERNAS) e só a primeira saiu como IOSC: a segunda foi para a Sala 2 do HRO e, por ter "//" na coluna ANEST, herdou a anestesista de lá — que estava em outra cirurgia, em outro prédio. ' +
-    'NESSAS seções (IOSC/HO/Digimax/etc.) cada LINHA tem o seu PRÓPRIO anestesista — copie o da linha; NUNCA atribua o mesmo anestesista a todas as linhas da seção (erro real 23/07: as 3 linhas do IOSC saíram para um só e dois anestesistas SUMIRAM da escala); linha sem anestesista visível fica "". ' +
-    '⚠️ ANTES DE RESPONDER, CONFIRME ESTES DOIS PONTOS (dono 2026-08-27 — os dois erram várias vezes por semana): ' +
-    '(1) NENHUM caso das seções IOSC / HO / DIGIMAX / CENTRO DE COLUNA pode ter sala "Sala 1", "Sala 2" ou "Sala 3" — essas são as salas internas DAQUELAS clínicas e colidem com as salas do próprio HRO, misturando anestesistas de hospitais diferentes na mesma sala. Toda linha dessas seções tem sala = NOME DA SEÇÃO. Reveja linha a linha antes de fechar o JSON. ' +
-    '(2) Toda linha com HORA virou caso? Confira especialmente EXAMES, IMAGEM e HEMO/HEMODINÂMICA: elas costumam aparecer como UMA linha com hora e rótulo destacado no meio da tabela, e são as que mais somem por serem lidas como título de seção. Percorra a imagem INTEIRA, de cima até depois do fim da tabela. Se não existirem na imagem, tudo bem; o que não pode é uma linha COM HORA ter virado cabeçalho. ' +
-    'A ÚLTIMA linha com nomes em VERMELHO é a ORDEM DE LIBERAÇÃO do grupo — copie TODOS os nomes, na ordem exata, sem pular nenhum: essa ordem é sagrada. Uma anotação final entre parênteses faz parte do MESMO slot e deve ser preservada literalmente (ex.: "ANEST B (CONSULTORIO)" continua uma única entrada entre os vizinhos; CONSULT/CONS./CONSULTORIO/CONSULTÓRIO indicam trabalho no Consultório, não ausência nem caso cirúrgico). Consistência: quem aparece nessa ordem normalmente TEM casos ou uma posição indicada entre parênteses — se um nome ficou sem ambos, revise antes de responder.',
+    'SALA dessas seções = só o nome da seção, sem número interno: toda linha do IOSC → sala "IOSC"; HO → "Hospital de Olhos"; Digimax → "Digimax"; Centro de Coluna → "Centro de Coluna". O "SALA 1"/"SALA 2" que aparece na coluna Sala dessas seções é a sala interna da clínica e não é usado — devolvê-lo faria a linha cair junto da sala homônima do HRO, misturando anestesistas de prédios diferentes. Todas as linhas de uma seção compartilham a mesma sala, na ordem em que aparecem; cada linha mantém o seu próprio anestesista. ' +
+    'Isso vale para as linhas SEGUINTES, não só para a que traz o rótulo: aberta a seção, toda linha abaixo dela continua na mesma seção até aparecer outro rótulo na coluna Leito — mesmo que a coluna Sala traga 1, 2 ou 3, e mesmo que a coluna ANEST traga um nome próprio em vez da marca de repetição. Exemplo do que dá errado sem essa regra: o IOSC com 3 linhas (salas internas 1, 2 e 3) em que só a primeira sai como IOSC e a segunda vai para a Sala 2 do HRO. ' +
+    'Nessas seções cada linha tem o seu próprio anestesista — copie o da linha, não atribua o mesmo a todas; linha sem anestesista visível fica vazia. ' +
+    'Dois pontos para conferir antes de fechar o JSON: (1) nenhum caso das seções IOSC, HO, DIGIMAX ou CENTRO DE COLUNA sai com sala "Sala 1", "Sala 2" ou "Sala 3"; (2) toda linha com hora virou caso — em especial EXAMES, IMAGEM e HEMO/HEMODINÂMICA, que costumam aparecer como uma linha só, com rótulo destacado no meio da tabela, e são as que mais somem por serem lidas como título. Percorra a imagem inteira, de cima até depois do fim da tabela. ' +
+    'A última linha com nomes em vermelho é a ORDEM DE LIBERAÇÃO do grupo: copie todos os nomes, na ordem exata, sem pular nenhum. Uma anotação final entre parênteses faz parte do mesmo slot e é preservada literalmente ("ANEST B (CONSULTORIO)" é uma entrada única entre os vizinhos; CONSULT/CONS./CONSULTORIO/CONSULTÓRIO indicam trabalho no Consultório, não ausência nem caso cirúrgico). Quem aparece nessa ordem normalmente tem casos ou uma posição entre parênteses; nome sem os dois merece uma segunda olhada.',
   materno:
     'Formato Materno/HC (G-HOSP "Mapa de cirurgias"): colunas Hora, Leito, Paciente, Cirurgião, Procedimento, ' +
     'Observação, Anestesia, Convênio, Sala, Aparelhos e Instrum-Circulante. Pediátrico. A coluna "Anestesia" contém a TÉCNICA (ex.: Geral), nunca o nome do anestesista. ' +
     'O responsável costuma vir numa anotação grande sobreposta em vermelho (ex.: ANEST A/ANEST B) à direita da tabela; use o alinhamento vertical e a Sala para aplicá-lo ao grupo correspondente. Se não houver nome anotado, deixe anestesista vazio — nunca devolva "Geral" como pessoa.',
 }
 
-const SYSTEM_PROMPT = `Você extrai a escala cirúrgica de uma imagem (print de tabela) e devolve SOMENTE JSON válido, sem texto antes/depois.
+const SYSTEM_PROMPT = `Você extrai a escala cirúrgica de uma imagem (print de tabela) e devolve o JSON do schema abaixo.
 
-Escreva o JSON COMPACTO — sem quebras de linha e sem indentação entre os campos. A escala vespertina cheia não cabe na resposta quando o JSON vem formatado, e aí ela chega cortada no meio (a extração se perde inteira). O conteúdo extraído é o mesmo; só a formatação muda.
-Omita os campos que ficariam vazios ("") ou false — quem lê preenche esse padrão sozinho. Exceção: "sala", "hora" e "anestesista" vão SEMPRE, mesmo vazios, porque posicionam o caso.
+Escreva o JSON compacto, sem quebras de linha nem indentação: a escala vespertina cheia não cabe na resposta quando vem formatada e chega cortada no meio.
+Omita os campos que ficariam vazios ("") ou false — quem lê preenche esse padrão sozinho. Exceção: "sala", "hora" e "anestesista" vão sempre, mesmo vazios, porque posicionam o caso.
 
 Schema:
 {
@@ -104,33 +109,29 @@ Schema:
     "sala": string, "hora": string, "tempoEstimado": string,
     "pacienteIniciais": string, "pacienteNome": string, "idade": string, "procedimento": string, "convenio": string,
     "cirurgiao": string, "anestesista": string,
+    "cor": ""|"vermelho"|"azul"|"amarelo"|"roxo", "repeticao": boolean,
     "bloco": "normal"|"srpa"|"imagem"|"hemodinamica"|"exames"|"iosc"|"ho"|"consultorio"|"accurata"|"umanita"|"materno"|"simone"|"ccoluna"|"mauricio",
-    "isContinuacao": boolean, "semAnestesista": boolean,
     "tipo": "eletiva"|"urgencia"|"emergencia"
   }],
   "posicoesAssistenciais": [{ "local": string, "anestesista": string }],
-  "ordemLiberacao": string[],
-  "ajudaExterna": string[],
+  "rodape": [{ "nome": string, "cor": ""|"preto"|"vermelho"|"azul"|"amarelo"|"roxo" }],
   "dataDetectada": "YYYY-MM-DD"|"",
   "hospitalDetectado": "unimed"|"hro"|"materno"|""
 }
 
 REGRAS:
-- pacienteIniciais: APENAS as iniciais do paciente (ex.: "Maria Silva" -> "M.S."). NUNCA o nome completo. Se não houver paciente, "".
+- pacienteIniciais: apenas as iniciais do paciente (ex.: "Maria Silva" -> "M.S."), nunca o nome completo. Sem paciente na linha, "".
 - pacienteNome: SOMENTE quando o convênio do caso for PURAMENTE particular ("PARTICULAR", "Part", "Part.") E houver um paciente individual na linha — copie o nome COMPLETO como está na imagem (é usado para a cobrança do honorário). Convênio COMPOSTO/ambíguo (ex.: "PART/SC" — não dá para saber qual paciente é particular) e linhas de LOTE sem paciente individual ("04 FACECTOMIA (04 PCTES)"): "" — não extraia. Para TODOS os demais convênios, "" — nunca inclua o nome (LGPD).
 - idade: idade do paciente quando houver (ex.: "37a" ou "9a"); senão "".
 - tempoEstimado: tempo cirúrgico previsto quando houver (ex.: "01:15"); senão "".
-- anestesista: copie EXATAMENTE a célula DA PRÓPRIA LINHA. Se a célula tem um SINAL DE REPETIÇÃO (//, aspas de repetição ", traço —, seta ↓, ou qualquer marca de "idem / mesmo de cima"), devolva "//" (= mesmo anestesista da linha ACIMA na mesma sala). ⚠️ NUNCA CHUTE nem invente um nome quando a célula tem sinal de repetição, está vazia ou ilegível — devolva "//" (se for repetição) ou "" (se vazia); inventar um nome (ex.: ler "//" como "Tiago") é o pior erro possível. NUNCA espalhe o nome de uma linha para outras que têm nome próprio.
+- anestesista: copie EXATAMENTE a célula DA PRÓPRIA LINHA. Se a célula tem um SINAL DE REPETIÇÃO (//, aspas de repetição ", traço —, seta ↓, ou qualquer marca de "idem / mesmo de cima"), deixe "anestesista" vazio e devolva "repeticao": true — quem lê aplica o nome da linha ACIMA na mesma sala. Célula vazia ou ilegível: "anestesista" vazio e "repeticao" ausente. Não escreva um nome onde a imagem traz uma marca: foi assim que "//" saiu lido como "Tiago". Nome de uma linha nunca se espalha para outra que tem nome próprio.
 - Prefixo "PED"/"PED."/"Ped." antes do nome = um PEDIDO para aquele anestesista específico realizar o procedimento (ex.: "Ped. Janaína" = pedido para a Janaína). O anestesista é o nome que vem DEPOIS do prefixo — devolva SÓ o nome, sem o "Ped"/"Ped." (ex.: "Ped. Janaína" → anestesista "Janaína"). NÃO é marcador pediátrico e NÃO é o nome do procedimento.
-- Nome de anestesista DESTACADO EM AMARELO: significa que ele está intencionalmente escalado em DOIS locais no dia (a marcação existe para avisá-lo) — mantenha o nome nas duas linhas normalmente; não é erro nem ambiguidade.
-- DOIS ANESTESISTAS NA MESMA LINHA (a célula traz dois nomes — "RAQUEL E GABRIELA", "RAQUEL/GABRIELA", "RAQUEL + GABRIELA", um sobre o outro): os dois assumem AQUELE procedimento juntos. Devolva os dois no campo, separados por " + " (ex.: "RAQUEL + GABRIELA"), na ordem em que aparecem. NUNCA escolha um e descarte o outro, e NUNCA duplique a linha em dois casos — é uma cirurgia só, com dois responsáveis.
-- isContinuacao: true se o procedimento for "CONTINUAÇÃO".
-- semAnestesista: true se a coluna do anestesista for "?".
+- cor: a COR EM QUE O NOME DO ANESTESISTA está escrito naquela linha ("" quando é a cor normal do texto). A cor é dado, não enfeite: AZUL = anestesista da escala de OUTRO hospital ajudando aqui; AMARELO = a pessoa está escalada em DOIS locais no dia, de propósito (a marcação existe para avisá-la — mantenha o nome nas duas linhas, não é erro nem ambiguidade); VERMELHO = ordem de liberação; ROXO, no IOSC, é cirurgião. Informe a cor mesmo quando o nome também aparecer no rodapé.
+- Dois anestesistas na mesma linha (a célula traz dois nomes — "RAQUEL E GABRIELA", "RAQUEL/GABRIELA", "RAQUEL + GABRIELA", um sobre o outro): os dois assumem aquele procedimento juntos. Devolva os dois no campo, separados por " + ", na ordem em que aparecem. Não escolha um e descarte o outro, e não duplique a linha em dois casos: é uma cirurgia só, com dois responsáveis.
 - tipo: "emergencia"/"urgencia" se a linha indicar EMERGENCIA/URGENCIA; senão "eletiva".
 - bloco: classifique pela seção da imagem (SRPA, EXAMES, IMAGEM, HEMO->hemodinamica, IOSC, etc.); senão "normal". Use "materno" SOMENTE quando a imagem for do próprio hospital Materno — seções C.O/cesárea de OUTROS hospitais são bloco "normal".
-- ordemLiberacao: lista de anestesistas do rodapé NA ORDEM em que aparecem (esquerda para direita). O rodapé costuma ser a ÚLTIMA linha da imagem, com os nomes em VERMELHO; o primeiro nome é o plantonista. Se não houver rodapé, [].
-- Em ordemLiberacao, preserve cada entrada e sua posição literalmente. "NOME (LOCAL)" é UMA pessoa/slot: não remova a nota, não divida por vírgula interna, não ordene e não deduplique. Notas começando por CONS (CONS, CONS., CONSULT, CONSULTORIO, CONSULTÓRIO) indicam posição ativa no Consultório.
-- ajudaExterna: nomes do rodapé escritos em AZUL (anestesistas da escala de OUTRO hospital ajudando neste dia). Liste-os TAMBÉM em ordemLiberacao na posição em que aparecem. Se nenhum nome estiver em azul, [].
+- rodape: os anestesistas do rodapé NA ORDEM em que aparecem (esquerda para direita), cada um com a sua cor. O rodapé costuma ser a ÚLTIMA linha da imagem, com os nomes em VERMELHO; o primeiro nome é o plantonista. Sem rodapé, [].
+- Em rodape, preserve cada entrada e sua posição literalmente. "NOME (LOCAL)" é UMA pessoa/slot: não remova a nota, não divida por vírgula interna, não ordene e não deduplique. Notas começando por CONS (CONS, CONS., CONSULT, CONSULTORIO, CONSULTÓRIO) indicam posição ativa no Consultório. Nome do rodapé escrito em AZUL: cor "azul" — quem lê entende como ajuda de outro hospital.
 - dataDetectada: data impressa no título/cabeçalho da escala, convertida para YYYY-MM-DD (ex.: 03/08/2026 → 2026-08-03); se não estiver legível, "".
 - posicoesAssistenciais: alocações de trabalho sem cirurgia individual (ex.: "SRPA ANEST A"). Preserve o local e o anestesista, mas NÃO as coloque em casos. Títulos e rodapés sem uma pessoa alocada não entram em lugar nenhum.
 - Campos ausentes: "" (string) ou false (boolean).
@@ -346,12 +347,25 @@ async function lerRespostaStream(
 // Quem garante o conteúdo é `_shared/escala-normalizacao.ts`, aplicada logo
 // depois do parse. O schema cuida da forma; a normalização, do valor.
 //
-// ⚠️ `required` FICA NO MÍNIMO de propósito. Exigir tudo obrigaria o modelo a
-// emitir "" e false em cada campo de cada caso, e a saída (a parcela CARA:
-// $25/MTok contra $5 da entrada) cresceria 20–30% — o que quebraria a regra de
-// custo do dono de 03/09. Com só `sala`, `hora` e `anestesista` obrigatórios
-// (os três que o prompt já mandava sempre, porque posicionam o caso), a
-// instrução "omita os campos vazios" continua valendo e a economia também.
+// ⚠️ O NÚMERO DE CAMPOS OPCIONAIS É ORÇAMENTO, e foi medido na marra.
+// Com `additionalProperties: false`, cada propriedade OPCIONAL multiplica a
+// gramática: ela precisa aceitar toda combinação e toda ordem dos campos
+// presentes. Com 19 propriedades e 3 obrigatórias, a API recusou com 400
+// "Schema is too complex" (não eram os enums — tirar todos não resolveu).
+// Declarar TODAS obrigatórias compila, mas obriga o modelo a escrever "" e
+// false em cada campo de cada caso: medido, a saída pulou de 2.027 para 5.015
+// tokens e o custo por leitura foi de $0,09 para $0,14 — a saída é a parcela
+// cara ($25/MTok contra $5 da entrada). Isso quebraria a regra do dono de 03/09.
+// A saída é DERIVAR em vez de perguntar. Saíram do contrato:
+//   `isContinuacao`  → o procedimento diz "CONTINUAÇÃO";
+//   `semAnestesista` → a célula do anestesista traz "?";
+//   `foraDoRoster`   → é o resultado de casar o nome com o roster, não uma
+//                      opinião do modelo (some junto o `nomeLido`, que era só o
+//                      lugar onde ele guardaria o mesmo texto duas vezes);
+//   `secao`          → o `bloco` já carrega a mesma informação, e o cliente já
+//                      corrige a sala a partir dele (`normalizarSalaHro`).
+// Sobram 14 propriedades com 3 obrigatórias — o mesmo tamanho que compilava
+// antes da cor entrar, agora com `cor` e `repeticao` dentro do orçamento.
 const SCHEMA_CASO_PROPS: Record<string, unknown> = {
   sala: { type: 'string' },
   hora: { type: 'string' },
@@ -368,9 +382,15 @@ const SCHEMA_CASO_PROPS: Record<string, unknown> = {
     enum: ['normal', 'srpa', 'imagem', 'hemodinamica', 'exames', 'iosc', 'ho',
       'consultorio', 'accurata', 'umanita', 'materno', 'simone', 'ccoluna', 'mauricio'],
   },
-  isContinuacao: { type: 'boolean' },
-  semAnestesista: { type: 'boolean' },
   tipo: { type: 'string', enum: ['eletiva', 'urgencia', 'emergencia'] },
+  // ── Cor como DADO (item 4.3) ──────────────────────────────────────────────
+  // A cor do mapa é a informação: azul = ajuda de outro hospital, amarelo = a
+  // pessoa está em DOIS locais de propósito, vermelho = ordem de liberação.
+  // Até aqui ela só existia como instrução no prompt e nunca voltava.
+  cor: { type: 'string', enum: ['', 'vermelho', 'azul', 'amarelo', 'roxo'] },
+  // `repeticao` no lugar do texto "//": marca de "idem" não é um nome, e pedir
+  // ao modelo que escreva um nome onde há uma marca é como "//" virou "Tiago"
+  repeticao: { type: 'boolean' },
 }
 
 function schemaEscala(comTurno: boolean): Record<string, unknown> {
@@ -379,7 +399,7 @@ function schemaEscala(comTurno: boolean): Record<string, unknown> {
   return {
     type: 'object',
     additionalProperties: false,
-    required: ['casos', 'ordemLiberacao', 'hospitalDetectado'],
+    required: ['casos', 'rodape', 'hospitalDetectado'],
     properties: {
       casos: {
         type: 'array',
@@ -399,8 +419,21 @@ function schemaEscala(comTurno: boolean): Record<string, unknown> {
           properties: { local: { type: 'string' }, anestesista: { type: 'string' } },
         },
       },
-      ordemLiberacao: { type: 'array', items: { type: 'string' } },
-      ajudaExterna: { type: 'array', items: { type: 'string' } },
+      // O rodapé vem com a COR de cada nome; `ordemLiberacao` e `ajudaExterna`
+      // passam a ser DERIVADOS na edge, no mesmo formato que o cliente já
+      // consome. De quebra o nome de quem ajuda deixa de ser escrito duas vezes.
+      rodape: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['nome', 'cor'],
+          properties: {
+            nome: { type: 'string' },
+            cor: { type: 'string', enum: ['', 'vermelho', 'azul', 'amarelo', 'roxo'] },
+          },
+        },
+      },
       dataDetectada: { type: 'string' },
       hospitalDetectado: { type: 'string', enum: ['unimed', 'hro', 'materno', ''] },
     },
@@ -498,8 +531,13 @@ function sanitizeCasos(raw: unknown, comTurno = false): unknown[] {
       cirurgiao: str(c?.cirurgiao),
       anestesista: str(c?.anestesista),
       bloco: BLOCOS.has(bloco) ? bloco : 'normal',
-      isContinuacao: c?.isContinuacao === true,
-      semAnestesista: c?.semAnestesista === true,
+      // DERIVADOS, não perguntados (o schema tem orçamento de campos opcionais
+      // e cada pergunta a mais custa saída): o prompt já dizia que
+      // `isContinuacao` é o procedimento "CONTINUAÇÃO" e que `semAnestesista` é
+      // a célula com "?" — as duas coisas dão para ler do que já veio.
+      isContinuacao: c?.isContinuacao === true
+        || /CONTINUA[ÇC][ÃA]O/i.test(str(c?.procedimento).normalize('NFC')),
+      semAnestesista: c?.semAnestesista === true || str(c?.anestesista) === '?',
       tipo: TIPOS.has(tipo) ? tipo : 'eletiva',
       // '' = a imagem não trouxe faixa de turno; quem lê decide pelo período
       // escolhido. Fora deste modo o campo nem aparece na resposta.
@@ -527,41 +565,11 @@ function sanitizePosicoes(raw: unknown): { local: string; anestesista: string }[
   return out.slice(0, 30)
 }
 
-// Primeiro nome NORMALIZADO (sem acento, maiúsculo, sem prefixo Ped) — chave de
-// comparação com o rodapé. "JOAO H." e "JOAO HENRIQUE" colapsam em "JOAO".
-function primeiroNomeNorm(s: unknown): string {
-  return String(s ?? '')
-    .normalize('NFD').replace(/[̀-ͯ]/g, '') // tira acentos
-    .replace(/^\s*ped[.\s]+/i, '')                    // tira prefixo Ped
-    .trim().toUpperCase()
-    .split(/\s+/)[0] || ''
-}
-
-// GUARDRAIL anti-alucinação: o rodapé (ordem de liberação + ajuda) lista TODOS os
-// anestesistas do dia — é a fonte autoritativa. Um caso com anestesista que NÃO
-// aparece no rodapé é quase sempre um nome inventado pela leitura (ex.: "//" lido
-// como "Tiago" — erro recorrente 07/2026). Apaga o nome (vira "sem anestesista",
-// visível p/ o plantonista cobrir) em vez de deixar um nome errado — pior erro.
-// Só roda quando há rodapé (senão não há como validar). "//" e "" são preservados.
-function blankAnestesistasForaDoRodape(
-  casos: Record<string, unknown>[], ordem: string[], ajuda: string[],
-): Record<string, unknown>[] {
-  const rodape = new Set([...ordem, ...ajuda].map(primeiroNomeNorm).filter(Boolean))
-  if (rodape.size === 0) return casos
-  let apagados = 0
-  const out = casos.map((c) => {
-    const a = String(c?.anestesista ?? '').trim()
-    if (!a || a === '//') return c
-    if (rodape.has(primeiroNomeNorm(a))) return c
-    apagados++
-    // flag junto com o texto apagado: '' sem semAnestesista herda o vizinho de
-    // sala na conferência (nomesImportados) e o caso era absorvido em silêncio —
-    // o oposto do que este guardrail promete ("visível p/ o plantonista cobrir")
-    return { ...c, anestesista: '', semAnestesista: true }
-  })
-  if (apagados) console.log(`[parse-escala-cirurgica] guardrail: ${apagados} anestesista(s) ausente(s) do rodapé apagado(s) (provável alucinação)`)
-  return out
-}
+// O guardrail anti-alucinação e a derivação do rodapé colorido vivem em
+// `_shared/escala-cor.ts` (item 4.3): a mudança que importa é que AZUL em
+// qualquer lugar é ajuda, e o guardrail deixa de apagar quem veio azul — era ele
+// que fazia a Unimed publicar sem ajuda nenhuma quando o anestesista azul estava
+// no bloco Exames, e não no rodapé (incidente 30/07).
 
 Deno.serve(async (req) => {
   const cors = corsHeadersFor(req)
@@ -577,7 +585,7 @@ Deno.serve(async (req) => {
   console.log(`[parse-escala-cirurgica] parse solicitado por uid=${auth.uid}`)
 
   try {
-    const { imageBase64, mimeType, hospital, modo, refSabado, refDomingo, refFeriado, secoesTurno } = await req.json()
+    const { imageBase64, mimeType, hospital, modo, refSabado, refDomingo, refFeriado, secoesTurno, roster } = await req.json()
     const modoFds = modo === 'fds'
     // turno por FAIXA do documento — só o fluxo de fim de semana pede (ver
     // SECOES_TURNO_REGRA). No modo FDS o documento não tem casos.
@@ -621,17 +629,18 @@ Deno.serve(async (req) => {
       modelo: MODELO,
       prompt_versao: PROMPT_VERSAO,
     }
-    const registrar = (extra: Record<string, unknown>) => {
-      void registrarLeitura(montarLinhaLog({
-        ...contexto, latencia_ms: Date.now() - t0, ...extra,
-      }))
-    }
+    // COM await: o isolate morre junto com a resposta, e um insert disparado e
+    // não aguardado se perde no meio — foi assim que sumiram as linhas das
+    // leituras que falharam, justo as que mais interessam.
+    const registrar = (extra: Record<string, unknown>) => registrarLeitura(montarLinhaLog({
+      ...contexto, latencia_ms: Date.now() - t0, ...extra,
+    }))
 
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
     if (!apiKey) {
       // Mesmo caminho da chave recusada: é problema de configuração, e a tela
       // precisa dizer "avise o administrador" em vez de "tente de novo".
-      registrar({ erro: 'sem_api_key' })
+      await registrar({ erro: 'sem_api_key' })
       return new Response(JSON.stringify({
         error: 'ia_falhou',
         iaStatus: 401,
@@ -653,16 +662,73 @@ Deno.serve(async (req) => {
     // leitura e devolve todas elas; escolher QUAL aplicar é a mesma decisão que o
     // modelo já toma para preencher `hospitalDetectado`.
     const hint = HOSPITAL_HINT[hospital]
-      || `Descubra primeiro de QUAL hospital é o layout (mesmo critério de hospitalDetectado) e aplique SÓ as regras dele, ignorando as dos outros dois:\n`
+      || `Descubra primeiro de qual hospital é o layout (mesmo critério de hospitalDetectado) e aplique só as regras dele, ignorando as dos outros dois:\n`
         + Object.entries(HOSPITAL_HINT).map(([h, t]) => `• SE FOR ${h.toUpperCase()}: ${t}`).join('\n')
+
+    // ── ROSTER COMO VOCABULÁRIO (item 4.7) ──────────────────────────────────
+    // A lista de nomes do grupo vai junto da imagem. É o que ataca na ORIGEM o
+    // "GUILHERME M ELO" (o kerning parte o sobrenome) e o nome inventado onde a
+    // célula traz uma marca de repetição — até aqui isso só era corrigido lá na
+    // frente, pelo dicionário de apelidos da conferência.
+    // A válvula `foraDoRoster` existe porque quem ajuda vindo de outro hospital
+    // pode legitimamente não estar na lista: forçar o nome dele para o mais
+    // parecido do grupo trocaria a pessoa, que é erro pior.
+    const rosterNomes = prepararRoster(roster)
+    const blocoRoster = rosterNomes.length
+      ? `\n\nANESTESISTAS DO GRUPO (vocabulário da coluna do anestesista e do rodapé):\n${rosterNomes.join(' · ')}\n`
+        + 'Use exatamente um destes nomes quando o que você leu for um deles, mesmo que a imagem traga abreviação, acento faltando ou um espaço no meio do sobrenome. '
+        + 'Se o nome lido claramente NÃO é nenhum deles (costuma ser alguém de outro hospital ajudando), copie o texto como está na imagem, em vez de escolher o parecido da lista.'
+      : ''
+
+    // ── SYSTEM CACHEADO (item 4.4) ──────────────────────────────────────────
+    // As dicas de hospital saem do user message e sobem para o system, ANTES da
+    // imagem: no user, depois da imagem, elas nunca seriam prefixo cacheável.
+    // O bloco inteiro (~9k tokens) vai com `cache_control` de 5 min, e as
+    // leituras chegam em rajada — os 3 arquivos do lote em ~1 minuto. Da 2ª em
+    // diante a entrada custa 0,1×, e é esse desconto que paga a saída maior do
+    // schema. O `ttl` de 1h custaria 2× na escrita e não pagaria entre turnos.
+    const systemTexto = modoFds
+      ? FDS_SYSTEM_PROMPT
+      : (comSecoesTurno ? SYSTEM_PROMPT + SECOES_TURNO_REGRA : SYSTEM_PROMPT)
+        + `\n\nREGRAS DO HOSPITAL\n${hint}${blocoRoster}`
+    const system = [{
+      type: 'text',
+      text: systemTexto,
+      cache_control: { type: 'ephemeral' },
+    }]
+
     // datas de referência do FDS (o título "SÁBADO – 15 DE AGOSTO" vem sem ano)
     const iso = (v: unknown) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : '')
     const refs = [iso(refSabado) && `sábado = ${iso(refSabado)}`, iso(refDomingo) && `domingo = ${iso(refDomingo)}`, iso(refFeriado) && `feriado = ${iso(refFeriado)}`]
       .filter(Boolean).join(', ')
     const userText = modoFds
-      ? `Extraia o documento de fila única (fim de semana ou feriado) desta imagem.${refs ? ` Datas de referência: ${refs}.` : ''}\nResponda SOMENTE o JSON.`
-      : `Extraia a escala desta imagem. ${hint}\nResponda SOMENTE o JSON.`
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      ? `Extraia o documento de fila única (fim de semana ou feriado) desta imagem.${refs ? ` Datas de referência: ${refs}.` : ''}`
+      : 'Extraia a escala desta imagem.'
+    // ── CACHE DE 24 H POR HASH DA FOTO (item 4.9) ───────────────────────────
+    // Reanexar a mesma foto pagava a leitura de novo, e o fluxo reenvia por
+    // desenho: "reler com hint", depois de resolver "de qual hospital é?", manda
+    // exatamente a mesma imagem. A chave inclui a versão do prompt, então subir
+    // uma edição nova invalida tudo sozinho.
+    const chave = await chaveCache({
+      imagemBase64: imageBase64, hospital, modo,
+      promptVersao: PROMPT_VERSAO, vocabulario: rosterNomes, secoesTurno: comSecoesTurno,
+    })
+    const guardado = await lerCache(chave)
+    if (guardado) {
+      console.log('[parse-escala-cirurgica] servido do cache de 24h')
+      await registrar({
+        origem: 'cache',
+        hospital_detectado: String(guardado.hospitalDetectado || ''),
+        casos: Array.isArray(guardado.casos) ? guardado.casos.length : 0,
+        rodape: Array.isArray(guardado.ordemLiberacao) ? guardado.ordemLiberacao.length : 0,
+        ajuda: Array.isArray(guardado.ajudaExterna) ? guardado.ajudaExterna.length : 0,
+      })
+      return new Response(JSON.stringify(guardado), {
+        headers: { ...cors, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const corpoRequisicao = {
       method: 'POST',
       headers: {
         'x-api-key': apiKey,
@@ -681,9 +747,7 @@ Deno.serve(async (req) => {
             schema: modoFds ? SCHEMA_FDS : schemaEscala(comSecoesTurno),
           },
         },
-        system: modoFds
-          ? FDS_SYSTEM_PROMPT
-          : (comSecoesTurno ? SYSTEM_PROMPT + SECOES_TURNO_REGRA : SYSTEM_PROMPT),
+        system,
         messages: [{
           role: 'user',
           content: [
@@ -692,7 +756,36 @@ Deno.serve(async (req) => {
           ],
         }],
       }),
-    })
+    }
+    // Retry 1x em 429/529/5xx: um 529 (sobrecarga) virava "tente de novo" na
+    // tela da secretária, às 22h, com o mapa na mão — quando a resposta certa
+    // era esperar dois segundos.
+    let { res, tentativas } = await fetchComRetry('https://api.anthropic.com/v1/messages', corpoRequisicao)
+
+    // ── O SCHEMA NUNCA DERRUBA A LEITURA ────────────────────────────────────
+    // O limite de complexidade do json_schema não é documentado em número: é o
+    // orçamento de propriedades opcionais, e ele foi descoberto batendo nele
+    // (400 "Schema is too complex"). Um campo novo acrescentado no futuro pode
+    // reencontrá-lo — e aí TODA leitura falharia, à noite, com a secretária
+    // esperando. Aqui a recusa do schema vira degradação: repete a mesma
+    // chamada sem `output_config` e segue pelo caminho antigo (o prompt continua
+    // pedindo JSON e o parse tolerante continua no lugar). O aviso fica na
+    // telemetria em vez de virar um incidente.
+    let semSchema = false
+    if (!res.ok && res.status === 400) {
+      const corpo400 = await res.clone().text()
+      if (/schema/i.test(corpo400)) {
+        console.error('[parse-escala-cirurgica] schema recusado — repetindo sem structured output:', corpo400.slice(0, 200))
+        const semFormato = { ...corpoRequisicao }
+        const body = JSON.parse(String(corpoRequisicao.body))
+        delete body.output_config
+        semFormato.body = JSON.stringify(body)
+        const r2 = await fetchComRetry('https://api.anthropic.com/v1/messages', semFormato)
+        res = r2.res
+        tentativas += r2.tentativas
+        semSchema = true
+      }
+    }
 
     if (!res.ok) {
       const detail = await res.text()
@@ -711,7 +804,10 @@ Deno.serve(async (req) => {
         iaTipo = String(corpo?.error?.type || '')
         iaMensagem = String(corpo?.error?.message || detail)
       } catch { /* corpo não-JSON: segue como veio */ }
-      registrar({ erro: `ia_falhou:${res.status}:${iaTipo}`, stop_reason: 'http_error' })
+      await registrar({
+        erro: `ia_falhou:${res.status}:${iaTipo}${tentativas > 1 ? ':retry' : ''}`,
+        stop_reason: 'http_error',
+      })
       return new Response(JSON.stringify({
         error: 'ia_falhou',
         iaStatus: res.status,
@@ -726,7 +822,7 @@ Deno.serve(async (req) => {
     const { texto, stopReason, uso } = await lerRespostaStream(res)
     const match = texto.match(/\{[\s\S]*\}/)
     if (!match) {
-      registrar({ ...uso, stop_reason: stopReason, erro: 'sem_json' })
+      await registrar({ ...uso, stop_reason: stopReason, erro: 'sem_json' })
       return new Response(JSON.stringify(
         modoFds
           ? { error: 'Resposta sem JSON', dias: [], ignorados: [] }
@@ -743,7 +839,7 @@ Deno.serve(async (req) => {
       parsed = JSON.parse(match[0])
     } catch (e) {
       console.error(`[parse-escala-cirurgica] JSON inválido (stop_reason=${stopReason}):`, e)
-      registrar({
+      await registrar({
         ...uso, stop_reason: stopReason,
         erro: stopReason === 'max_tokens' ? 'extracao_truncada' : 'json_invalido',
       })
@@ -756,8 +852,12 @@ Deno.serve(async (req) => {
     // MODO FDS: resposta própria (dias/ignorados) — nada do caminho de casos.
     if (modoFds) {
       const fds = sanitizeFds(parsed)
-      registrar({ ...uso, stop_reason: stopReason, casos: fds.dias.length })
-      return new Response(JSON.stringify({ ...fds, truncado: stopReason === 'max_tokens' }), {
+      const respostaFds = { ...fds, truncado: stopReason === 'max_tokens' }
+      await registrar({ ...uso, stop_reason: stopReason, casos: fds.dias.length })
+      // o documento de FDS não tem dado de paciente nenhum, e é o que mais se
+      // reanexa (sábado e domingo saem do mesmo arquivo)
+      if (!respostaFds.truncado) await gravarCache(chave, respostaFds, { modo: 'fds', promptVersao: PROMPT_VERSAO })
+      return new Response(JSON.stringify(respostaFds), {
         headers: { ...cors, 'Content-Type': 'application/json' },
       })
     }
@@ -767,24 +867,34 @@ Deno.serve(async (req) => {
       // linhas — melhor entregar o que veio, marcado como incompleto.
       console.error('[parse-escala-cirurgica] extração truncada por max_tokens')
     }
-    const ordemLiberacao = Array.isArray(parsed.ordemLiberacao)
-      ? parsed.ordemLiberacao.map((s: unknown) => String(s || '').trim()).filter(Boolean)
-      : []
-    const ajudaExterna = Array.isArray(parsed.ajudaExterna)
-      ? parsed.ajudaExterna.map((s: unknown) => String(s || '').trim()).filter(Boolean)
-      : []
+    // Rodapé COLORIDO (item 4.3), aceitando também o contrato antigo.
+    const rodape = lerRodape(parsed)
     // sanitizeCasos garante os ENUMS e a regra de LGPD do pacienteNome;
     // normalizarCasos garante a FORMA do valor (iniciais que passam no CHECK,
     // hora em HH:MM, ordem pela posição, sem linha repetida) — é o que o schema
-    // não consegue prometer, porque `pattern` não existe em json_schema.
-    const { casos: casosNormalizados, contagem } = normalizarCasos(
-      sanitizeCasos(parsed.casos, comSecoesTurno) as Record<string, unknown>[],
+    // não consegue prometer, porque `pattern` não existe em json_schema;
+    // aplicarCorNosCasos traduz `repeticao` de volta para o "//" que a
+    // conferência sabe herdar e deixa a `secao` corrigir um `bloco` genérico.
+    const { casos: casosComRoster, contagem: contagemRoster } = resolverRoster(
+      aplicarCorNosCasos(sanitizeCasos(parsed.casos, comSecoesTurno) as Record<string, unknown>[]),
+      rosterNomes,
     )
-    const casos = blankAnestesistasForaDoRodape(casosNormalizados, ordemLiberacao, ajudaExterna)
+    const { casos: casosNormalizados, contagem: contagemForma } = normalizarCasos(casosComRoster)
+    const contagem = { ...contagemForma, ...contagemRoster }
+    if (semSchema) contagem.semSchema = 1
+    // AZUL EM QUALQUER LUGAR É AJUDA: o azul do corpo (bloco Exames da Unimed)
+    // entra na ajuda mesmo sem estar no rodapé, e por isso deixa de ser apagado
+    // pelo guardrail — era o que fazia a Unimed publicar sem ajuda (30/07).
+    const { ordemLiberacao, ajudaExterna } = derivarRodape(rodape, casosNormalizados)
+    const { casos, apagados } = blanquearForaDoRodape(casosNormalizados, ordemLiberacao, ajudaExterna)
+    if (apagados) {
+      console.log(`[parse-escala-cirurgica] guardrail: ${apagados} anestesista(s) ausente(s) do rodapé apagado(s) (provável alucinação)`)
+      contagem.foraDoRodape = apagados
+    }
     const hospitalDetectado = ['unimed', 'hro', 'materno'].includes(String(parsed.hospitalDetectado || ''))
       ? String(parsed.hospitalDetectado)
       : ''
-    registrar({
+    await registrar({
       ...uso,
       stop_reason: stopReason,
       hospital_detectado: hospitalDetectado,
@@ -793,8 +903,7 @@ Deno.serve(async (req) => {
       ajuda: ajudaExterna.length,
       normalizacoes: contagem,
     })
-    return new Response(JSON.stringify({
-      // guardrail: apaga anestesista ausente do rodapé (alucinação) — só quando há rodapé
+    const resposta = {
       casos,
       posicoesAssistenciais: sanitizePosicoes(parsed.posicoesAssistenciais),
       ordemLiberacao,
@@ -806,7 +915,17 @@ Deno.serve(async (req) => {
       hospitalDetectado,
       // A tela avisa em vez de deixar a secretária descobrir na hora da liberação
       truncado: stopReason === 'max_tokens',
-    }), { headers: { ...cors, 'Content-Type': 'application/json' } })
+    }
+    // Guarda a resposta JÁ SANITIZADA (nunca a imagem). Leitura truncada não
+    // entra: servir 24h de uma escala incompleta esconderia justamente o
+    // problema que `truncado` existe para mostrar. `gravarCache` também recusa
+    // sozinho qualquer leitura com nome completo de paciente (LGPD).
+    if (!resposta.truncado) {
+      await gravarCache(chave, resposta, { modo: modoFds ? 'fds' : 'dia-util', promptVersao: PROMPT_VERSAO })
+    }
+    return new Response(JSON.stringify(resposta), {
+      headers: { ...cors, 'Content-Type': 'application/json' },
+    })
   } catch (err) {
     console.error('[parse-escala-cirurgica] erro:', err)
     return new Response(JSON.stringify({ error: String(err) }), {

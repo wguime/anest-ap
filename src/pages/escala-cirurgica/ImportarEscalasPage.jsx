@@ -367,7 +367,10 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
       return { erro: 'formato não suportado — envie Excel/CSV ou uma imagem' }
     }
     const img = await prepararImagemParaVision(file)
-    const res = await svc.parseEscalaImagem({ imageBase64: img.base64, mimeType: img.mimeType })
+    const res = await svc.parseEscalaImagem({
+      imageBase64: img.base64, mimeType: img.mimeType,
+      roster: rosterCompartilhado.vocabulario,
+    })
     if (res?.error === ERRO_IA) {
       const m = mensagemFalhaVision(
         classificarFalhaVision({ status: res.iaStatus, tipo: res.iaTipo, mensagem: res.iaMensagem }),
@@ -546,6 +549,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
         const img = await prepararImagemParaVision(pendente.arquivo)
         const res = await svc.parseEscalaImagem({
           imageBase64: img.base64, mimeType: img.mimeType, hospital: hosp,
+          roster: rosterCompartilhado.vocabulario,
         })
         if (!res?.error && (res.casos || []).length) {
           receberLeituras({

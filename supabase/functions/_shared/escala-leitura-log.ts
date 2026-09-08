@@ -102,8 +102,14 @@ export async function hashImagem(base64: unknown): Promise<string> {
 }
 
 /**
- * Grava a linha via PostgREST com service-role. Sem `await` no caminho quente:
- * quem chama dispara e segue — a resposta da escala não espera telemetria.
+ * Grava a linha via PostgREST com service-role.
+ *
+ * ⚠️ ESTE `await` É OBRIGATÓRIO. Na primeira versão o insert era
+ * fire-and-forget ("a resposta da escala não espera telemetria") e o isolate da
+ * edge era derrubado assim que a resposta saía, matando o fetch no meio: parte
+ * das leituras simplesmente não aparecia na tabela — inclusive TODAS as que
+ * terminaram em erro, que são as que mais interessam. O insert leva dezenas de
+ * milissegundos numa chamada que leva de 15 a 90 segundos.
  */
 export async function registrarLeitura(linha: LinhaLeitura): Promise<void> {
   const url = Deno.env.get('SUPABASE_URL')

@@ -19,6 +19,7 @@ import { useUsersManagement } from '@/contexts/UsersManagementContext'
 import { normalizeRole, ehContaDeTeste } from '@/utils/userTypes'
 import svc, { buildResolver } from '@/services/supabaseEscalaAnestesistaService'
 import { titleCaseNome } from '@/lib/colunaLiberacao'
+import { vocabularioVision } from '@/lib/escalaVocabularioVision'
 
 // Cache local do roster derivado (SWR). O UsersManagementContext é Tier 2 —
 // fetch adiado 2s — então todo lugar que resolve apelido→nome (card da Home,
@@ -160,6 +161,9 @@ export default function useRosterAnestesistas({ inerte = false } = {}) {
     return m
   }, [roster, duplicadas])
 
+  /** Apelidos do grupo p/ mandar à Vision como vocabulário fechado (item 4.7). */
+  const vocabulario = useMemo(() => vocabularioVision(roster), [roster])
+
   const upsertAlias = useCallback(async (args) => {
     const saved = await svc.upsertAlias(args)
     await refresh()
@@ -176,5 +180,5 @@ export default function useRosterAnestesistas({ inerte = false } = {}) {
   // em vez de mostrar o texto cru do rodapé e trocar depois (flicker 12-13/08).
   const pronto = usersProntos || cacheInicial != null
 
-  return { roster, rosterByUid, aliases, resolver, canonicalUid, options, loading, pronto, refresh, upsertAlias, removeAlias }
+  return { roster, rosterByUid, aliases, resolver, canonicalUid, options, vocabulario, loading, pronto, refresh, upsertAlias, removeAlias }
 }

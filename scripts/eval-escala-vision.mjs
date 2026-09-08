@@ -114,7 +114,22 @@ const lerGabarito = (arquivo) => {
   } catch { return null }
 }
 
-async function lerFoto(arquivo, token) {
+/**
+ * O MESMO vocabulário que o app manda (item 4.7): os apelidos do grupo. Sem ele
+ * o eval mediria uma leitura que a produção não faz — e, como o roster entra no
+ * bloco cacheado do system, mediria o cache errado também.
+ */
+async function vocabularioDoGrupo() {
+  if (!PAT) return []
+  try {
+    const linhas = await sql('select apelido from public.escala_anestesista_alias order by apelido')
+    return (linhas || []).map((l) => String(l.apelido || '').trim()).filter(Boolean)
+  } catch {
+    return []
+  }
+}
+
+async function lerFoto(arquivo, token, roster) {
   const bytes = readFileSync(resolve(CORPUS, arquivo))
   const base64 = bytes.toString('base64')
   const mime = MIMES[extname(arquivo).toLowerCase()]
@@ -122,7 +137,10 @@ async function lerFoto(arquivo, token) {
   const r = await fetch(`${SUPABASE_URL}/functions/v1/parse-escala-cirurgica`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ imageBase64: base64, mimeType: mime }),
+    body: JSON.stringify({
+      imageBase64: base64, mimeType: mime,
+      ...(roster?.length ? { roster } : {}),
+    }),
   })
   const texto = await r.text()
   if (!r.ok) throw new Error(`edge ${r.status}: ${texto.slice(0, 300)}`)
@@ -243,7 +261,7 @@ if (comando === 'semear') {
     const destino = resolve(GABARITOS, `${basename(arquivo, extname(arquivo))}.json`)
     if (existsSync(destino)) { console.log(`  · ${arquivo}: já existe, pulando (apague para refazer)`); continue }
     try {
-      const { dados } = await lerFoto(arquivo, t)
+      const { dados } = await lerFoto(arquivo, t, await vocabularioDoGrupo())
       const gabarito = {
         arquivo,
         // ⚠️ NASCE FALSO. O placar ignora este arquivo até o dono conferir a
@@ -287,16 +305,18 @@ if (comando === 'rodar') {
   }
   const revisadas = fotos.filter((x) => x.gabarito.revisado === true)
   const t = await token()
+  const vocab = await vocabularioDoGrupo()
   const desde = new Date(Date.now() - 60_000).toISOString()
+  console.log(`Vocabulário do grupo: ${vocab.length} apelido(s).`)
   console.log(`Rodando ${fotos.length} foto(s) — ${revisadas.length} com gabarito revisado (acerto) e ${fotos.length - revisadas.length} só na medida estrutural.\n`)
   const pontuacoes = []
   const estrutura = []
   const hashes = []
   for (const { arquivo, gabarito } of fotos) {
     try {
-      const { dados, latenciaMs, hash } = await lerFoto(arquivo, t)
+      const { dados, latenciaMs, hash } = await lerFoto(arquivo, t, vocab)
       hashes.push(hash)
-      if (dados.error) console.log(`  ⚠ ${arquivo}: ${dados.error}`)
+      if (dados.error) console.log(`  ⚠ ${arquivo}: ${dados.error}${dados.iaMensagem ? ` — ${String(dados.iaMensagem).slice(0, 120)}` : ''}`)
       estrutura.push({
         arquivo, hash,
         casos: dados.casos?.length ?? 0,

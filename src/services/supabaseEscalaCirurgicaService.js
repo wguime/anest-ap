@@ -526,10 +526,16 @@ async function setP4Hospital(data, hospital, { userName = null } = {}) {
  * e a resposta vira { dias: [...], ignorados: [...] } — refSabado/refDomingo
  * dão o ano às datas do FDS; refFeriado identifica a lista simples de um dia.
  */
-async function parseEscalaImagem({ imageBase64, mimeType, hospital, modo, refSabado, refDomingo, refFeriado, secoesTurno }) {
+async function parseEscalaImagem({ imageBase64, mimeType, hospital, modo, refSabado, refDomingo, refFeriado, secoesTurno, roster }) {
   const { data, error } = await supabase.functions.invoke('parse-escala-cirurgica', {
     body: {
       imageBase64, mimeType, hospital,
+      // Vocabulário da leitura (Onda 4, item 4.7): os APELIDOS do grupo, que é
+      // como o mapa escreve. Sem eles o modelo lê a coluna do anestesista com
+      // vocabulário aberto — é de onde saem "GUILHERME M ELO" e o nome
+      // inventado no lugar da marca de repetição. Vazio quando o roster ainda
+      // não carregou; a edge simplesmente não aplica a regra.
+      ...(roster?.length ? { roster } : {}),
       ...(modo ? { modo } : {}),
       ...(refSabado ? { refSabado } : {}),
       ...(refDomingo ? { refDomingo } : {}),
