@@ -51,6 +51,10 @@ A edge `parse-escala-cirurgica` deixou de ser texto livre. O que vale saber ante
   perde.
 - **Medir antes de mudar:** `node scripts/eval-escala-vision.mjs rodar --rotulo <nome>` e
   `comparar <antes> <depois>`. O custo sai da telemetria, não de estimativa.
+- **⚠️ Stream sem `stop_reason` é leitura INCOMPLETA**, mesmo com o JSON fechando. Um SSE completo
+  sempre termina com `message_delta` trazendo `stop_reason`; sem ele a conexão caiu, e o JSON parcial
+  pode parsear (08/09: 20 casos e rodapé VAZIO entregues como escala inteira). `ehLeituraIncompleta`
+  em `_shared/escala-stream.ts` cobre isso e o corte por teto de tokens de 06/08.
 - **Erro 400 com "credit balance"** = conta Anthropic sem crédito, não código (lição 17–18/08). A
   classificação em `escalaVisionFalha.js` já diz "avise o administrador"; retry não é feito em 400.
 
