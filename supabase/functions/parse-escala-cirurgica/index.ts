@@ -28,6 +28,7 @@ import {
   lerRodape, aplicarCorNosCasos, derivarRodape, blanquearForaDoRodape,
 } from '../_shared/escala-cor.ts'
 import { prepararRoster, resolverRoster } from '../_shared/escala-roster.ts'
+import { lerRespostaStream, ehLeituraIncompleta } from '../_shared/escala-stream.ts'
 import {
   chaveCache, lerCache, gravarCache, fetchComRetry,
 } from '../_shared/escala-leitura-cache.ts'
@@ -41,7 +42,7 @@ const MODELO = 'claude-opus-4-8'
  * `escala_leitura_log` e a que invalida o cache de leitura. Sem bumpar, o ANTES
  * e o DEPOIS se misturam na mesma média e a medição mente.
  */
-const PROMPT_VERSAO = 'v7-barra-repeticao-2026-09-08'
+const PROMPT_VERSAO = 'v8-stream-cortado-2026-09-08'
 
 const DEFAULT_ALLOWED_ORIGINS = [
   'https://anest-ap.web.app',
@@ -273,66 +274,6 @@ const MAX_TOKENS = 32000
  * conexão precisa continuar recebendo bytes para o gateway não derrubar a
  * função no meio de uma escala grande.
  */
-export interface UsoLeitura {
-  input_tokens: number
-  output_tokens: number
-  cache_read_tokens: number
-  cache_write_tokens: number
-}
-
-/**
- * `usage` também sai do stream (item 4.1): `message_start` traz os tokens de
- * entrada e o que o cache leu/escreveu; `message_delta` traz os de saída. Sem
- * isso não há custo por leitura — e a regra da Onda 4 é "só entra o que mantém
- * ou reduz o custo", que não dá para verificar sem medir.
- */
-async function lerRespostaStream(
-  res: Response,
-): Promise<{ texto: string; stopReason: string; uso: UsoLeitura }> {
-  let texto = ''
-  let stopReason = ''
-  let buffer = ''
-  const uso: UsoLeitura = {
-    input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0,
-  }
-  const somarUso = (u: Record<string, unknown> | undefined) => {
-    if (!u) return
-    const n = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0)
-    if (n(u.input_tokens)) uso.input_tokens = n(u.input_tokens)
-    if (n(u.output_tokens)) uso.output_tokens = n(u.output_tokens)
-    if (n(u.cache_read_input_tokens)) uso.cache_read_tokens = n(u.cache_read_input_tokens)
-    if (n(u.cache_creation_input_tokens)) uso.cache_write_tokens = n(u.cache_creation_input_tokens)
-  }
-  const reader = res.body!.pipeThrough(new TextDecoderStream()).getReader()
-  for (;;) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buffer += value
-    // eventos SSE são separados por linha em branco; guarda o resto parcial
-    const partes = buffer.split('\n')
-    buffer = partes.pop() || ''
-    for (const linha of partes) {
-      if (!linha.startsWith('data:')) continue
-      const payload = linha.slice(5).trim()
-      if (!payload || payload === '[DONE]') continue
-      let ev: Record<string, unknown>
-      try { ev = JSON.parse(payload) } catch { continue }
-      if (ev.type === 'content_block_delta') {
-        const d = ev.delta as { type?: string; text?: string } | undefined
-        if (d?.type === 'text_delta') texto += d.text || ''
-      } else if (ev.type === 'message_delta') {
-        const d = ev.delta as { stop_reason?: string } | undefined
-        if (d?.stop_reason) stopReason = d.stop_reason
-        somarUso(ev.usage as Record<string, unknown> | undefined)
-      } else if (ev.type === 'message_start') {
-        const m = ev.message as { usage?: Record<string, unknown> } | undefined
-        somarUso(m?.usage)
-      }
-    }
-  }
-  return { texto, stopReason, uso }
-}
-
 // ── STRUCTURED OUTPUT (2026-09-07, Onda 4 item 4.2) ──────────────────────────
 // `output_config.format` com json_schema: a resposta chega como JSON válido que
 // casa com o schema, por construção. Acaba a classe inteira de falha "o modelo
@@ -822,6 +763,18 @@ Deno.serve(async (req) => {
     }
 
     const { texto, stopReason, uso } = await lerRespostaStream(res)
+    // ⚠️ STREAM CORTADO NO MEIO É LEITURA INCOMPLETA, mesmo que o JSON feche.
+    // Um SSE completo SEMPRE termina com `message_delta` trazendo `stop_reason`;
+    // sem ele, a conexão caiu. Medido em 08/09: duas fotos voltaram cortadas aos
+    // 29s, e numa delas o JSON parcial PARSEOU — 20 casos e rodapé VAZIO
+    // entregues como se fossem a escala inteira. É o mesmo modo de falha
+    // silencioso de 06/08 (corte logo depois de um `}`), por outra porta: ali
+    // era o teto de tokens, aqui é a conexão. `truncado` passa a cobrir os dois,
+    // e a tela já sabe dizer "a leitura foi cortada".
+    const incompleta = ehLeituraIncompleta(stopReason)
+    if (!stopReason) {
+      console.error(`[parse-escala-cirurgica] stream terminou SEM stop_reason — leitura incompleta (${uso.output_tokens} tokens de saída)`)
+    }
     const match = texto.match(/\{[\s\S]*\}/)
     if (!match) {
       await registrar({ ...uso, stop_reason: stopReason, erro: 'sem_json' })
@@ -843,10 +796,10 @@ Deno.serve(async (req) => {
       console.error(`[parse-escala-cirurgica] JSON inválido (stop_reason=${stopReason}):`, e)
       await registrar({
         ...uso, stop_reason: stopReason,
-        erro: stopReason === 'max_tokens' ? 'extracao_truncada' : 'json_invalido',
+        erro: incompleta ? 'extracao_truncada' : 'json_invalido',
       })
       return new Response(JSON.stringify({
-        error: stopReason === 'max_tokens' ? 'extracao_truncada' : 'json_invalido',
+        error: incompleta ? 'extracao_truncada' : 'json_invalido',
         motivo: stopReason,
         ...(modoFds ? { dias: [], ignorados: [] } : { casos: [], ordemLiberacao: [] }),
       }), { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } })
@@ -854,7 +807,7 @@ Deno.serve(async (req) => {
     // MODO FDS: resposta própria (dias/ignorados) — nada do caminho de casos.
     if (modoFds) {
       const fds = sanitizeFds(parsed)
-      const respostaFds = { ...fds, truncado: stopReason === 'max_tokens' }
+      const respostaFds = { ...fds, truncado: incompleta }
       await registrar({ ...uso, stop_reason: stopReason, casos: fds.dias.length })
       // o documento de FDS não tem dado de paciente nenhum, e é o que mais se
       // reanexa (sábado e domingo saem do mesmo arquivo)
@@ -863,11 +816,11 @@ Deno.serve(async (req) => {
         headers: { ...cors, 'Content-Type': 'application/json' },
       })
     }
-    if (stopReason === 'max_tokens') {
-      // O JSON até fechou, mas o modelo foi interrompido: faltam casos no fim.
+    if (incompleta) {
+      // O JSON até fechou, mas a geração foi interrompida: faltam casos no fim.
       // Publicar isso em silêncio foi o que fez a escala sair sem as últimas
       // linhas — melhor entregar o que veio, marcado como incompleto.
-      console.error('[parse-escala-cirurgica] extração truncada por max_tokens')
+      console.error(`[parse-escala-cirurgica] extração incompleta (stop_reason=${stopReason || 'ausente'})`)
     }
     // Rodapé COLORIDO (item 4.3), aceitando também o contrato antigo.
     const rodape = lerRodape(parsed)
@@ -916,7 +869,7 @@ Deno.serve(async (req) => {
       // Sugestão de hospital pelo layout (a UI pede confirmação — nunca troca sozinha)
       hospitalDetectado,
       // A tela avisa em vez de deixar a secretária descobrir na hora da liberação
-      truncado: stopReason === 'max_tokens',
+      truncado: incompleta,
     }
     // Guarda a resposta JÁ SANITIZADA (nunca a imagem). Leitura truncada não
     // entra: servir 24h de uma escala incompleta esconderia justamente o
