@@ -17,6 +17,40 @@ description: Escala Cirúrgica — visão geral do módulo, gate, publicação p
      decisão do dono foi editada ou resumida. Esta rule carrega SÓ quando o Claude lê um
      arquivo que casa os `paths` acima. -->
 
+## Leitura da foto pela Vision — o que a Onda 4 deixou (07/09/2026)
+
+A edge `parse-escala-cirurgica` deixou de ser texto livre. O que vale saber antes de tocar nela:
+
+- **`output_config.format` com json_schema.** A resposta é JSON válido por construção. ⚠️ **`pattern`
+  NÃO é suportado** em json_schema — quem garante o CONTEÚDO (iniciais que passam no CHECK, hora em
+  HH:MM) é `_shared/escala-normalizacao.ts`, no servidor, depois do parse.
+- **⚠️ ORÇAMENTO DE CAMPOS OPCIONAIS.** Com `additionalProperties: false`, cada propriedade OPCIONAL
+  multiplica a gramática: 19 propriedades com 3 obrigatórias devolvem **400 "Schema is too complex"**
+  (não são os enums — tirar todos não resolve). Declarar tudo obrigatório compila, mas a saída
+  **medida** pulou de 2.027 para 5.015 tokens e o custo de $0,09 para $0,14 — saída é a parcela cara
+  ($25/MTok contra $5). Campo novo: primeiro veja se dá para DERIVAR na edge. Foi assim que saíram
+  `isContinuacao`, `semAnestesista`, `foraDoRoster` e `secao`. Se o schema for recusado, a edge
+  repete a chamada sem `output_config` em vez de derrubar a leitura.
+- **Cor é dado.** `cor` por caso e por nome do rodapé; **azul em QUALQUER lugar é ajuda** e o
+  guardrail anti-alucinação não apaga quem veio azul (era isso que fazia a Unimed publicar sem ajuda,
+  30/07). `ordemLiberacao`/`ajudaExterna` são DERIVADOS do rodapé colorido — o cliente não mudou.
+- **System cacheado.** Regras gerais + dicas dos 3 hospitais + apelidos do grupo num bloco só com
+  `cache_control` de 5 min. As 3 leituras do lote chegam em ~1 min: da 2ª em diante a entrada cai de
+  ~8.800 para ~1.200 tokens. **Qualquer coisa que mude a ordem ou o conteúdo desse bloco invalida o
+  cache** — por isso `prepararRoster` ordena a lista.
+- **Roster como vocabulário** (`_shared/escala-roster.ts`): os apelidos vão no prompt. Nome que não
+  casa é PRESERVADO como veio — forçar para o mais parecido trocaria a pessoa, que é pior. Casamento
+  só com candidato único.
+- **`PROMPT_VERSAO` precisa subir a cada mudança de prompt ou schema**: é a coluna que separa duas
+  edições em `escala_leitura_log` e é o que invalida o cache de 24 h de `escala_leitura_cache`.
+- **Telemetria:** uma linha por leitura em `escala_leitura_log` (sem dado de paciente). O insert é
+  **aguardado** de propósito — o isolate da edge morre com a resposta e um fetch não aguardado se
+  perde.
+- **Medir antes de mudar:** `node scripts/eval-escala-vision.mjs rodar --rotulo <nome>` e
+  `comparar <antes> <depois>`. O custo sai da telemetria, não de estimativa.
+- **Erro 400 com "credit balance"** = conta Anthropic sem crédito, não código (lição 17–18/08). A
+  classificação em `escalaVisionFalha.js` já diz "avise o administrador"; retry não é feito em 400.
+
 ## Módulo (linha do Mapa de Módulos do CLAUDE.md)
 
 | Módulo | Entrada | Backend | Notas |
