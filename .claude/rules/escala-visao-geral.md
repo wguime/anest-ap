@@ -49,6 +49,10 @@ A edge `parse-escala-cirurgica` deixou de ser texto livre. O que vale saber ante
 - **Telemetria:** uma linha por leitura em `escala_leitura_log` (sem dado de paciente). O insert é
   **aguardado** de propósito — o isolate da edge morre com a resposta e um fetch não aguardado se
   perde.
+- **⚠️ O lote lê os 3 arquivos EM SÉRIE** (`ImportarEscalasPage`, `for` com `await` por arquivo). Com
+  a leitura em ~55s, o lote leva ~3 min. Paralelizar as três chamadas e só depois rodar o
+  processamento NA ORDEM (a colisão "o segundo pergunta de quem é" depende da ordem) devolve o lote a
+  ~1 min, de graça — é o item nº 1 da fila da Onda 4.
 - **Medir antes de mudar:** `node scripts/eval-escala-vision.mjs rodar --rotulo <nome>` e
   `comparar <antes> <depois>`. O custo sai da telemetria, não de estimativa.
 - **⚠️ Stream sem `stop_reason` é leitura INCOMPLETA**, mesmo com o JSON fechando. Um SSE completo
