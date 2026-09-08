@@ -165,7 +165,7 @@ sessão). Rule nova = um assunto, `paths` estreito, e conferir com `/context` qu
 
 `/calculadoras` `/educacao` `/gestao-documental` `/centro-gestao` `/notificacoes` `/nova-pagina`
 `/supabase-migration` `/rotacao-residencia` `/importar-plantoes-residencia` `/escala`
-`/escala-cirurgica` `/cirurgias-particulares` `/cateter-peridural` `/criar-prompt`
+`/escala-cirurgica` `/publicar-escala` `/cirurgias-particulares` `/cateter-peridural` `/criar-prompt`
 
 > `/escala` substitui as antigas `/sobreaviso` e `/hospitais`: um docx único por mês importa as duas
 > escalas de uma vez.

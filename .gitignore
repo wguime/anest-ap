@@ -76,3 +76,6 @@ documentos/
 
 # Temporários da skill do playwright
 .agents/skills/**/.temp-execution-*.js
+
+# lotes da publicação pela foto: iniciais e nome de paciente particular (LGPD)
+.tmp/escala-lote/

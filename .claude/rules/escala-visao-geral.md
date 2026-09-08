@@ -79,6 +79,11 @@ A edge `parse-escala-cirurgica` deixou de ser texto livre. O que vale saber ante
   escala duas vezes às 12:15 e 12:17); o lote relê UMA vez com o hospital detectado
   (`precisaRelerComHint`, `src/lib/escalaLeituraRodape.js`) e a conferência avisa se ainda vier
   vazio. Materno não tem rodapé e fica fora. Trava: `importarEscalasLote.test.jsx`.
+- **Publicar pela foto, sem a tela (dono 08/09):** skill `/publicar-escala` +
+  `scripts/escala-publicar-turno.mjs` (`ler` pela edge com a dica do hospital → Claude confere contra
+  a foto → `publicar --ensaio` → `publicar`, pela MESMA RPC da tela, assinada como o dono). O script
+  recusa turno já publicado sem `--republicar` e aborta em nome ambíguo. A tarde de 08/09 foi a
+  primeira publicação por esse caminho (Unimed 27, HRO 22, Materno 2).
 - **Reparo sem republicar** (`scripts/repair-escala-2026-09-08-matutino-leitura.sql`): com o turno em
   uso (status, liberações, observações), republicar zeraria tudo — o conserto é UPDATE/INSERT linha a
   linha, casando por (sala, ordem, iniciais) e abortando se qualquer contagem divergir; o evento
