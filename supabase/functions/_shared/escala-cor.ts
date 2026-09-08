@@ -78,9 +78,17 @@ export interface CasoComCor extends Record<string, unknown> {
 }
 
 /**
- * Traduz o contrato de cor para o que o cliente já consome, sem mudar a tela:
- *   - `repeticao: true` volta a ser o "//" que a conferência sabe herdar;
- *   - `cor` continua no objeto (o cliente ignora hoje; é o dado que faltava).
+ * Normaliza a cor e mantém o "//" que a conferência sabe herdar.
+ *
+ * ⚠️ O "//" VOLTOU A SER TEXTO NO PRÓPRIO CAMPO `anestesista` (08/09). O contrato
+ * chegou a trocá-lo por um booleano `repeticao`, e o resultado medido foi que o
+ * modelo simplesmente NÃO emitia o booleano (campo opcional é campo pulado): a
+ * marca de repetição sumia e a linha ficava sem anestesista nenhum — 20 de 35
+ * casos numa foto da Unimed, 180 de 348 no corpus inteiro. A justificativa
+ * original ("pedir um nome onde há uma marca é como '//' virou Tiago") não se
+ * sustenta: "//" é a marca copiada literalmente, não um nome inventado; quem
+ * ataca invenção é o roster do item 4.7. O booleano continua ACEITO aqui, para
+ * uma resposta guardada no cache antes desta correção.
  */
 export function aplicarCorNosCasos<T extends CasoComCor>(casos: T[]): T[] {
   return (casos || []).map((c) => {

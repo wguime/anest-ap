@@ -41,7 +41,7 @@ const MODELO = 'claude-opus-4-8'
  * `escala_leitura_log` e a que invalida o cache de leitura. Sem bumpar, o ANTES
  * e o DEPOIS se misturam na mesma média e a medição mente.
  */
-const PROMPT_VERSAO = 'v6-cor-obrigatoria-2026-09-08'
+const PROMPT_VERSAO = 'v7-barra-repeticao-2026-09-08'
 
 const DEFAULT_ALLOWED_ORIGINS = [
   'https://anest-ap.web.app',
@@ -109,7 +109,7 @@ Schema:
     "sala": string, "hora": string, "tempoEstimado": string,
     "pacienteIniciais": string, "pacienteNome": string, "idade": string, "procedimento": string, "convenio": string,
     "cirurgiao": string, "anestesista": string,
-    "cor": ""|"vermelho"|"azul"|"amarelo"|"roxo", "repeticao": boolean,
+    "cor": ""|"vermelho"|"azul"|"amarelo"|"roxo",
     "bloco": "normal"|"srpa"|"imagem"|"hemodinamica"|"exames"|"iosc"|"ho"|"consultorio"|"accurata"|"umanita"|"materno"|"simone"|"ccoluna"|"mauricio",
     "tipo": "eletiva"|"urgencia"|"emergencia"
   }],
@@ -124,7 +124,7 @@ REGRAS:
 - pacienteNome: SOMENTE quando o convênio do caso for PURAMENTE particular ("PARTICULAR", "Part", "Part.") E houver um paciente individual na linha — copie o nome COMPLETO como está na imagem (é usado para a cobrança do honorário). Convênio COMPOSTO/ambíguo (ex.: "PART/SC" — não dá para saber qual paciente é particular) e linhas de LOTE sem paciente individual ("04 FACECTOMIA (04 PCTES)"): "" — não extraia. Para TODOS os demais convênios, "" — nunca inclua o nome (LGPD).
 - idade: idade do paciente quando houver (ex.: "37a" ou "9a"); senão "".
 - tempoEstimado: tempo cirúrgico previsto quando houver (ex.: "01:15"); senão "".
-- anestesista: copie EXATAMENTE a célula DA PRÓPRIA LINHA. Se a célula tem um SINAL DE REPETIÇÃO (//, aspas de repetição ", traço —, seta ↓, ou qualquer marca de "idem / mesmo de cima"), deixe "anestesista" vazio e devolva "repeticao": true — quem lê aplica o nome da linha ACIMA na mesma sala. Célula vazia ou ilegível: "anestesista" vazio e "repeticao" ausente. Não escreva um nome onde a imagem traz uma marca: foi assim que "//" saiu lido como "Tiago". Nome de uma linha nunca se espalha para outra que tem nome próprio.
+- anestesista: copie EXATAMENTE a célula DA PRÓPRIA LINHA. Se a célula tem um SINAL DE REPETIÇÃO (//, aspas de repetição ", traço —, seta ↓, ou qualquer marca de "idem / mesmo de cima"), devolva o texto "//" — quem lê aplica o nome da linha ACIMA na mesma sala. Célula vazia ou ilegível: "". Não escreva um nome onde a imagem traz uma marca, e não deixe a célula vazia quando ela traz a marca: vazio e "//" são coisas diferentes, e trocar um pelo outro faz a cirurgia perder o anestesista. Nome de uma linha nunca se espalha para outra que tem nome próprio.
 - Prefixo "PED"/"PED."/"Ped." antes do nome = um PEDIDO para aquele anestesista específico realizar o procedimento (ex.: "Ped. Janaína" = pedido para a Janaína). O anestesista é o nome que vem DEPOIS do prefixo — devolva SÓ o nome, sem o "Ped"/"Ped." (ex.: "Ped. Janaína" → anestesista "Janaína"). NÃO é marcador pediátrico e NÃO é o nome do procedimento.
 - cor: a COR EM QUE O NOME DO ANESTESISTA está escrito naquela linha ("" quando é a cor normal do texto). A cor é dado, não enfeite: AZUL = anestesista da escala de OUTRO hospital ajudando aqui; AMARELO = a pessoa está escalada em DOIS locais no dia, de propósito (a marcação existe para avisá-la — mantenha o nome nas duas linhas, não é erro nem ambiguidade); VERMELHO = ordem de liberação; ROXO, no IOSC, é cirurgião. Informe a cor mesmo quando o nome também aparecer no rodapé.
 - Dois anestesistas na mesma linha (a célula traz dois nomes — "RAQUEL E GABRIELA", "RAQUEL/GABRIELA", "RAQUEL + GABRIELA", um sobre o outro): os dois assumem aquele procedimento juntos. Devolva os dois no campo, separados por " + ", na ordem em que aparecem. Não escolha um e descarte o outro, e não duplique a linha em dois casos: é uma cirurgia só, com dois responsáveis.
@@ -388,9 +388,6 @@ const SCHEMA_CASO_PROPS: Record<string, unknown> = {
   // pessoa está em DOIS locais de propósito, vermelho = ordem de liberação.
   // Até aqui ela só existia como instrução no prompt e nunca voltava.
   cor: { type: 'string', enum: ['', 'vermelho', 'azul', 'amarelo', 'roxo'] },
-  // `repeticao` no lugar do texto "//": marca de "idem" não é um nome, e pedir
-  // ao modelo que escreva um nome onde há uma marca é como "//" virou "Tiago"
-  repeticao: { type: 'boolean' },
 }
 
 function schemaEscala(comTurno: boolean): Record<string, unknown> {
