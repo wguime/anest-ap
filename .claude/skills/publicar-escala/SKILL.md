@@ -64,6 +64,29 @@ Script: `scripts/escala-publicar-turno.mjs` (cabeçalho documenta os dois comand
 7. **Relatar**: por hospital, quantos casos, rodapé, ajuda, quem ficou com "?", o que foi
    decidido (data, herança, azul) e os avisos que sobraram. Três leituras custam ~US$ 0,40.
 
+## Como ler o recado do dono que vem junto das fotos
+
+O dono manda, no estilo do WhatsApp do grupo, o que a foto não diz. Exemplo real (08/09, para
+a manhã de 09/09):
+
+> Como ajuda + ordem de liberação: 1º Beta Anest – Uni · 2º Joao Moreira – Simone · 3º Garim
+> Anest – Iosc. Trocas: Rafael Anest (consultório) na posição do Diego Anest no Iosc;
+> Nathália Anest Fornari (consultório) na posição da Fernanda Anest no Iosc.
+
+- **"Como ajuda … 1º X – Local"**: X é ajuda de outro hospital no local dito (Beta = ROBERTA na
+  Unimed; João Moreira = JOAO RICARDO na Simone do HRO; Garim no IOSC do HRO). Entra em
+  `ajudaExterna` do hospital certo e o caso dele ganha `cor: "azul"`. A numeração é a ordem em
+  que SAEM; na fila a ÚLTIMA ajuda do array sai primeiro, então quem tem o número menor vai
+  DEPOIS no array (2º João, 3º Garim → `["GARIM","JOAO RICARDO"]`).
+- **"Trocas: A (consultório) na posição do B no Iosc"**: a escala já saiu com A no IOSC e B não
+  está em escala nenhuma (consultório). Não é duplicidade: é REGISTRO de troca na linha de A,
+  `decisoes: { "A": { "tipo": "troca", "parceiro": "B", "apenasRegistro": true, "local":
+  "Consultório" } }` — badge Troca e "Trocado com B (Consultório)" na fila, nada se move. A
+  numérica vai apontar exatamente B faltando e A sobrando: é a confirmação, não um erro.
+- Apelido do WhatsApp → apelido do dicionário: Beta = ROBERTA · Joao Moreira = JOAO RICARDO ·
+  Garim = GARIM · Nathália Fornari = NATHALIA. Na dúvida, o dicionário (`escala_anestesista_alias`)
+  decide; nunca chute.
+
 ## Limites
 
 Nunca publique sem ter conferido a foto; nunca deixe nome completo de paciente fora do caso

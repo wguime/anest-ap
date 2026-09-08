@@ -343,7 +343,8 @@ if (cmd === 'publicar') {
     select e.hospital, k.key as chave
       from public.escala_cirurgica e, jsonb_each(coalesce(e.linha_overrides,'{}'::jsonb)) k
      where e.data='${data}' and k.key like '${turno}:%'
-       and jsonb_typeof(k.value->'trocaCom')='object' and not (k.value ? 'assumidaPor')`, 'trocas pendentes')
+       and jsonb_typeof(k.value->'trocaCom')='object' and not (k.value ? 'assumidaPor')
+       and coalesce((k.value->'trocaCom'->>'apenasRegistro')::boolean, false) = false`, 'trocas pendentes')
   for (const t of pendentesTroca) console.log(`   ⚠️  ${t.hospital}: troca declarada em ${t.chave} ainda não executada — o badge Troca na fila fecha com um toque`)
   await libs.fechar()
   process.exit(0)
