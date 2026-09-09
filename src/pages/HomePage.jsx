@@ -467,7 +467,7 @@ export default function HomePage({ onNavigate }) {
         </div>
       )}
       {/* Container scrollable com padding */}
-      <div className="px-4 pt-6 sm:px-5 lg:px-6 xl:px-8 deitado:!px-3">
+      <div className="px-4 pt-6 sm:px-5 lg:px-6 xl:px-8 faixa:!px-3">
         {/* Header nao fixo - rola com a pagina */}
         <Header
           greeting={`Olá, ${user.firstName}`}
@@ -615,7 +615,20 @@ export default function HomePage({ onNavigate }) {
             `gap` e desalinhariam os topos de cada linha. `items-start` porque os
             cards da Home têm alturas MUITO diferentes (de 129px a 1858px
             medidos): esticar aqui só criaria vão vazio. */}
-        <div className="grade-deitada deitado:grid deitado:grid-cols-2 deitado:gap-3 deitado:items-start [&>*]:deitado:mb-0">
+        {/* ⚠️ DESKTOP usa MULTI-COLUNA, não a grade (dono 08/09: "os vãos vazios
+            me incomodam"). A grade trabalha por LINHA e a linha é tão alta
+            quanto o cartão mais alto dela: com `items-start`, o cartão baixo
+            deixa um buraco abaixo de si — medidos 140px entre Escala e Férias.
+            No iPhone/iPad isso não acontece porque lá o `grade-deitada` vira
+            `grid-lanes` (masonry do WebKit); o Chromium ainda não o tem, e
+            multi-coluna é a outra forma de não deixar buraco.
+            O preço é a ORDEM: a coluna da esquerda enche primeiro. É por isso
+            que ela NÃO vale no celular deitado — lá cabem 1 ou 2 cartões na
+            tela e Plantões sumia da vista (recusado em 26/08). Numa tela de
+            900px de altura Plantões continua visível, logo abaixo da Escala.
+            `mb-3` volta nos filhos: o `gap` da multi-coluna separa COLUNAS, não
+            os cartões empilhados dentro de uma. */}
+        <div className="grade-deitada deitado:grid deitado:grid-cols-2 deitado:gap-3 deitado:items-start [&>*]:deitado:mb-0 desktop:block desktop:columns-2 desktop:gap-3 [&>*]:desktop:mb-3">
         {/* Escala Cirúrgica — plantonista do turno (Comunicados migrou p/ a aba
             Gestão em 2026-07-22). Gate por papel, sem placeholder p/ quem não passa. */}
         {podeVerEscalaCirurgica(user) && (

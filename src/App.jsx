@@ -495,7 +495,7 @@ function CalculadorasPageConteudo({ _onNavigate, goBack, params, onCalculatorOpe
   const showSearchToggle = !selectedCalcId;
 
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm deitado:left-[var(--faixa-lateral)]">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm faixa:left-[var(--faixa-lateral)]">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">

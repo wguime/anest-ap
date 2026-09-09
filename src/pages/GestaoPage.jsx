@@ -23,7 +23,13 @@ const bibliotecaItems = [
 // os 140px de altura mínima do WidgetCard — sem ele o quadrado de ~134px não
 // acontece e a fileira sai desalinhada.
 const QUADRADO_DEITADO = [
-  'deitado:col-span-2 deitado:aspect-square deitado:min-h-0',
+  // ⚠️ o QUADRADO é do aparelho de TOQUE (`faixa:`), não da horizontal inteira.
+  // No desktop 2 das 10 colunas de 1440px dão 270px de LADO: o atalho virava um
+  // retângulo alto com o texto no topo e vazio embaixo — foi a foto que o dono
+  // mandou em 08/09 ("os vãos vazios me incomodam"). Sem o `aspect-square` lá,
+  // vale o `min-h-[140px]` do próprio WidgetCard, que é exatamente a altura dos
+  // cards da página Menu — o que ele pediu na mesma mensagem.
+  'deitado:col-span-2 faixa:aspect-square faixa:min-h-0',
   // ⚠️ o WidgetCard empurra o texto para a BASE com `mt-auto` — desenho do
   // retrato, onde o cartão é mais alto que o conteúdo. Dentro de um quadrado de
   // ~134px isso deixa o nome grudado na borda de baixo (dono 27/08, foto do
@@ -82,7 +88,7 @@ export default function GestaoPage({ onNavigate }) {
           criava 141px de vão vazio dentro dele ("ficou esquisito"); e pôr
           Comunicados na largura inteira deixava dois títulos curtos espalhados
           por 720px. */}
-      <div className="px-4 pt-4 sm:px-5 lg:px-6 xl:px-8 deitado:!px-3 deitado:grid deitado:grid-cols-10 deitado:gap-3 deitado:pt-2 deitado:items-start [&>*]:deitado:mb-0">
+      <div className="px-4 pt-4 sm:px-5 lg:px-6 xl:px-8 faixa:!px-3 deitado:grid deitado:grid-cols-10 deitado:gap-3 faixa:pt-2 deitado:items-start [&>*]:deitado:mb-0">
         {/* Card: Notificações e Denúncias — variant "solid" (dono 19/08). É o único
             cartão pintado da aba: os três eram idênticos e ninguém achava o canal. */}
         {canAccessCard('incidentes') && (
@@ -125,7 +131,10 @@ export default function GestaoPage({ onNavigate }) {
           <div className="mb-4 deitado:col-span-2">
             <ComunicadosCard
               className={[
-                'deitado:aspect-square deitado:p-4',
+                // quadrado só no TOQUE; no desktop ele acompanha a altura dos
+                // atalhos ao lado (140px do WidgetCard), senão a fileira volta a
+                // ficar desigual — que é o mesmo defeito, do outro lado.
+                'faixa:aspect-square deitado:p-4 desktop:h-[140px]',
                 // a lista de títulos some (ver acima)
                 '[&_ul]:deitado:hidden',
                 // ⚠️ num quadrado de ~134px o cabeçalho do cartão precisa EMPILHAR:

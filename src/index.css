@@ -99,14 +99,14 @@
 /* Deitado a navegação sai de baixo e vira faixa lateral: a reserva de altura
    que cada página faz para a barra inferior (pb-28 e parentes, 183 usos) deixa
    de fazer sentido e viraria um terço de tela vazio no fim do scroll. */
-/* ⚠️ esta condição tem de ser IDÊNTICA à da variante `deitado:` do
-   tailwind.config.js — são as duas metades da mesma regra. O `max-height: 500px`
-   saiu em 27/08 para o modo valer também em tablet, e o `pointer: coarse` saiu
-   em 08/09 para valer também no desktop (o porquê de cada um está no config).
-   ⚠️ Esquecer esta metade deixa o modo pela metade de um jeito que salta aos
-   olhos: a faixa lateral aparece e o conteúdo passa POR BAIXO dela, cortado — foi
-   o que a primeira foto do desktop mostrou. */
-@media (orientation: landscape) {
+/* ⚠️ esta condição espelha a variante `faixa:` do tailwind.config.js — são as
+   duas metades da mesma regra, e esquecer esta faz a faixa lateral aparecer com
+   o conteúdo passando POR BAIXO dela, cortado.
+   ⚠️ é `pointer: coarse` e não o `deitado:` puro porque no DESKTOP a navegação
+   voltou para BAIXO (dono 08/09, 2ª rodada): lá não há faixa a recuar, e a
+   reserva de altura do `pb-*` volta a ser necessária, senão o último card fica
+   atrás da barra. */
+@media (orientation: landscape) and (pointer: coarse) {
   .pb-28, .pb-24, .pb-32 { padding-bottom: 0.75rem; }
 
   /* O conteúdo de TODA página recua a faixa lateral de uma vez só, no body — em
@@ -131,12 +131,6 @@
      motor: WebKit 26.4 (o do iPhone e do iPad) suporta; o Chromium ainda não, e
      lá o `@supports` simplesmente não se aplica e vale a grade por linha de
      hoje — o Android continua como está, sem regressão. */
-  @supports (display: grid-lanes) {
-    /* ⚠️ `!important` porque a classe utilitária `deitado:grid` do Tailwind tem a
-       MESMA especificidade (0,1,0) e é emitida depois desta folha — medido: sem
-       ele o computado ficava em `grid` e o masonry nunca ligava. */
-    .grade-deitada { display: grid-lanes !important; }
-  }
 
   /* ⚠️ o Tailwind emite só `break-inside: avoid`, e o WebKit antigo obedece pela
      propriedade com prefixo. Sem ela um card da fila pode ser PARTIDO no pé da
@@ -144,6 +138,26 @@
      do dono é iPhone. Custa uma linha e não muda nada onde já funciona. */
   [class*="deitado:columns-2"] > * {
     -webkit-column-break-inside: avoid;
+  }
+}
+
+/* MASONRY — vale na horizontal inteira, não só no toque: onde o motor tem
+   `grid-lanes` (WebKit 26.4 — iPhone, iPad e o Safari do Mac) a coluna mais
+   curta recebe o próximo cartão e não sobra vão. No Chromium ele ainda não
+   existe: lá o desktop usa multi-coluna (`desktop:columns-2` na Home), que é a
+   outra forma de não deixar buraco. */
+@media (orientation: landscape) {
+  @supports (display: grid-lanes) {
+    /* ⚠️ `!important` porque a classe utilitária `deitado:grid` do Tailwind tem a
+       MESMA especificidade (0,1,0) e é emitida depois desta folha — medido: sem
+       ele o computado ficava em `grid` e o masonry nunca ligava. */
+    .grade-deitada { display: grid-lanes !important; }
+  }
+
+  /* multi-coluna do Chromium: o filho não pode ser partido entre as colunas */
+  [class*="columns-2"] > * {
+    -webkit-column-break-inside: avoid;
+    break-inside: avoid;
   }
 }
 

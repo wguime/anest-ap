@@ -43,6 +43,20 @@ export default {
       // Declarada antes, `deitado:grid-cols-2` perdia para `lg:grid-cols-3` e a
       // grade da Gestão truncava os rótulos — defeito visto no app.
       deitado: { raw: "(orientation: landscape)" },
+      // ⚠️ As DUAS metades do deitado, para o que NÃO é igual nos dois:
+      // `faixa:`   = aparelho de TOQUE deitado — a navegação vira faixa lateral
+      //              e os atalhos da Gestão viram quadrados. É o desenho de
+      //              26–27/08, feito para 844×390: lá a altura é o recurso caro.
+      // `desktop:` = a mesma horizontal, com ALTURA sobrando e mouse. O dono
+      //              (08/09, 2ª rodada): "no desktop (APENAS no desktop) deixe a
+      //              bottom nav na parte inferior da tela e não na lateral" e
+      //              "deixe os cards da página de gestão com a mesma altura dos
+      //              cards da página menu" — num quadrado de 2/10 colunas de
+      //              1440px o atalho virava 270px de altura com o texto no topo.
+      // Vêm DEPOIS de `deitado` de propósito: são mais específicas e precisam
+      // vencer o empate de especificidade, que o Tailwind resolve pela ordem.
+      faixa: { raw: "(orientation: landscape) and (pointer: coarse)" },
+      desktop: { raw: "(orientation: landscape) and (pointer: fine)" },
     },
     container: {
       center: true,

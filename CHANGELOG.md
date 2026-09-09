@@ -3,6 +3,41 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.10.1 (08/09/2026) — Desktop: barra embaixo, cards do tamanho certo e sem vão
+
+Três correções do dono na mesma mensagem, depois de ver a v5.10.0 no notebook: "os vãos vazios me
+incomodam!!", "no desktop (APENAS no desktop) deixe a bottom nav na parte inferior da tela e não na
+lateral" e "deixe os cards da página de gestão com a mesma altura dos cards da página menu".
+
+### O deitado passa a ter duas metades
+`deitado:` (horizontal, os dois) continua valendo para o arranjo — duas colunas, cabeçalho de 44px,
+controles numa linha. Duas variantes novas separam o que NÃO é igual:
+
+- `faixa:` = `(orientation: landscape) and (pointer: coarse)` — aparelho de toque: navegação em
+  faixa lateral, atalhos quadrados, padding apertado. É o desenho de 26–27/08, pensado para 844×390,
+  onde a altura é o recurso caro.
+- `desktop:` = `(orientation: landscape) and (pointer: fine)` — a mesma horizontal com altura
+  sobrando e mouse.
+
+### O que muda no desktop
+- **Barra embaixo**, não na lateral: quatro ícones espalhados por 900px de altura não eram
+  navegação, eram distância. O `@media` do `index.css` volta a exigir toque, então a reserva do
+  `pb-*` também volta — sem ela o último card ficaria atrás da barra.
+- **Atalhos da Gestão com 140px**, a altura do `WidgetCard` que a página Menu usa. O `aspect-square`
+  era do celular: em 2 de 10 colunas de 1440px ele dava 270px de lado, com o texto no topo e o resto
+  vazio. Medido depois: 140px no desktop, 139px (quadrado) no celular deitado.
+- **Home sem vão**: a grade trabalha por LINHA e a linha é tão alta quanto o cartão mais alto dela —
+  eram 140px de buraco entre Escala e Férias. No desktop ela vira multi-coluna, que é como o
+  iPhone/iPad já se comportam (lá o `grid-lanes` do WebKit faz o mesmo). ⚠️ o preço é a ordem: a
+  coluna da esquerda enche primeiro. Por isso NÃO vale no celular deitado, onde cabem 1–2 cartões e
+  Plantões sumiria da vista (recusado em 26/08).
+- Padding lateral e superior voltam ao valor do retrato — o `!px-3` apertado é do celular.
+
+Celular deitado e retrato conferidos por MEDIDA (a comparação byte a byte não serve nessas telas: o
+conteúdo assíncrono flutua entre rodadas). Faixa lateral 76×390 na origem, `padding-left` de 76px e
+atalhos de 139px continuam iguais; no desktop, barra em y=835 com 1440 de largura, `padding-left` 0
+e atalhos de 140px.
+
 ## v5.10.0 (08/09/2026) — O desktop passa a usar o mesmo arranjo do celular deitado
 
 Pedido do dono: "quero que a configuração do desktop seja igual aos dispositivos móveis em

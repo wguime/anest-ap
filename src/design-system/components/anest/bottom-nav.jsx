@@ -39,14 +39,18 @@ function BottomNav({ items = [], onItemClick, className, ...props }) {
       className={cn(
         "fixed bottom-0 left-0 right-0 z-50 w-full",
         "pt-2.5 px-2 sm:px-6 pb-[max(0.625rem,env(safe-area-inset-bottom,0.625rem))]",
-        // Celular DEITADO: a mesma barra vira faixa LATERAL (dono 26/08). Altura
-        // é o que falta na horizontal — 72px embaixo custam 18% da tela —, e
+        // Aparelho de TOQUE deitado: a mesma barra vira faixa LATERAL (dono
+        // 26/08). Altura é o que falta lá — 72px embaixo custam 18% da tela —, e
         // largura é o que sobra. Não é componente novo: mesmos itens, mesmos
         // ícones, mesmos rótulos, mesma pintura; muda o eixo.
-        "deitado:top-0 deitado:right-auto deitado:w-[var(--faixa-lateral)] deitado:h-full",
-        "deitado:pt-[max(0.625rem,env(safe-area-inset-top,0.625rem))] deitado:px-1",
-        "deitado:pb-[max(0.625rem,env(safe-area-inset-bottom,0.625rem))]",
-        "deitado:pl-[max(0.25rem,env(safe-area-inset-left,0.25rem))]",
+        // ⚠️ `faixa:` e não `deitado:` — no DESKTOP a barra fica EMBAIXO (dono
+        // 08/09: "no desktop (APENAS no desktop) deixe a bottom nav na parte
+        // inferior da tela e não na lateral"). Lá a altura não é escassa, e a
+        // faixa vertical espalhava quatro ícones por 900px.
+        "faixa:top-0 faixa:right-auto faixa:w-[var(--faixa-lateral)] faixa:h-full",
+        "faixa:pt-[max(0.625rem,env(safe-area-inset-top,0.625rem))] faixa:px-1",
+        "faixa:pb-[max(0.625rem,env(safe-area-inset-bottom,0.625rem))]",
+        "faixa:pl-[max(0.25rem,env(safe-area-inset-left,0.25rem))]",
         // Liquid Glass (iOS 26 inspired). O blur mora no CSS (`.bottom-nav-glass`,
         // anest-theme.css) e NÃO em utilitário Tailwind: no iOS o backdrop-filter
         // num elemento `position: fixed` faz a barra parecer escorregar com a
@@ -55,9 +59,9 @@ function BottomNav({ items = [], onItemClick, className, ...props }) {
         "bottom-nav-glass",
         // border-border é o token de separador p/ navbars; a borda branca + o
         // realce inset branco liam como um filete claro sobre o fundo verde.
-        "border-t border-border deitado:border-t-0 deitado:border-r",
+        "border-t border-border faixa:border-t-0 faixa:border-r",
         "shadow-[0_-8px_32px_rgba(0,66,37,0.08)] dark:shadow-[0_-8px_32px_rgba(0,0,0,0.35)]",
-        "deitado:shadow-[8px_0_32px_rgba(0,66,37,0.08)] dark:deitado:shadow-[8px_0_32px_rgba(0,0,0,0.35)]",
+        "faixa:shadow-[8px_0_32px_rgba(0,66,37,0.08)] dark:faixa:shadow-[8px_0_32px_rgba(0,0,0,0.35)]",
         className
       )}
       {...props}
@@ -68,7 +72,7 @@ function BottomNav({ items = [], onItemClick, className, ...props }) {
         // espaçamento do modo em pé — os quatro itens ficam simétricos entre si
         // e em relação às bordas (dono 26/08: "os ícones ficam amontoados no
         // topo"). Sem o teto de largura, que na vertical viraria teto de altura.
-        "deitado:flex-col deitado:justify-around deitado:max-w-none deitado:h-full"
+        "faixa:flex-col faixa:justify-around faixa:max-w-none faixa:h-full"
       )}>
         {items.map((item, index) => {
           const isActive = Boolean(item.active)
