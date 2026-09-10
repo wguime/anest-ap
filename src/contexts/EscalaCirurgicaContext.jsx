@@ -14,7 +14,7 @@ import svc from '@/services/supabaseEscalaCirurgicaService'
 import { mensagemErroPublicacao } from '@/lib/escalaPublicacaoErro'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
 import { useToast } from '@/design-system/components/ui/toast'
-import { ajudasPreservadasNoRepasse, escaladosPreservadosNoRepasse, familiaConvenio, lerOverrideAnterior, mergeRodapeTurno, rodapeDoTurno, snapshotCasos } from '@/pages/escala-cirurgica/utils'
+import { ajudasPreservadasNoRepasse, escaladosPreservadosNoRepasse, familiaConvenio, lerOverrideAnterior, marcarAjudaOrdemInformada, mergeRodapeTurno, rodapeDoTurno, snapshotCasos } from '@/pages/escala-cirurgica/utils'
 import { nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
 import { ehDataFilaUnica, FDS_HOSPITAL } from '@/lib/escalaFds'
 import { getDemoEscala } from '@/data/escalaCirurgicaDemo'
@@ -1102,7 +1102,12 @@ export function EscalaCirurgicaProvider({ children }) {
     if (de === para || de < 0 || para < 0 || de >= atual.length || para >= atual.length) return
     const nova = [...atual]
     nova.splice(para, 0, ...nova.splice(de, 1))
-    const ajudaExterna = mergeRodapeTurno(escala.ajudaExterna, turno, nova)
+    // MEXEU NAS SETAS = ORDEM INFORMADA (dono 09/09): a partir daqui é este array
+    // que manda na cauda, e a derivação por hospital de origem (27/08) para de
+    // passar por cima dele — senão o toque não sairia do lugar em quem tem origem.
+    const ajudaExterna = marcarAjudaOrdemInformada(
+      mergeRodapeTurno(escala.ajudaExterna, turno, nova), turno
+    )
     // otimista: a fila reordena na hora e o erro reverte com toast
     dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { ajudaExterna } })
     marcarEscrita()

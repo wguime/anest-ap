@@ -12,7 +12,7 @@
  *       PARTICULAR puro (pré-preenche a cobrança); o resto sai por iniciais (LGPD).
  *
  *   node scripts/escala-publicar-turno.mjs publicar <lote.json> [--ensaio] [--republicar] [--como "GUILHERME MELO"]
- *       lote.json = { data, turno,
+ *       lote.json = { data, turno,   (por hospital: ajudaOrdemInformada:true quando o dono numera as ajudas)
  *                     hospitais: { unimed: { casos, posicoesAssistenciais, ordemLiberacao, ajudaExterna, dataDetectada }, hro: …, materno: … },
  *                     decisoes?: { "NOME": { "tipo": "intencional" } | { "tipo": "troca", "parceiro": "NOME" } },
  *                     conferidos?: ["NOME", …] }
@@ -288,6 +288,7 @@ if (cmd === 'publicar') {
     return out
   }
   const dq = (o) => { const j = JSON.stringify(o); if (j.includes('$j$')) falhar('payload contém $j$'); return `$j$${j}$j$::jsonb` }
+  const ordemInformada = Object.fromEntries(entradas.map(([h, d]) => [h, d.ajudaOrdemInformada === true]))
   const chamadas = []
   const particulares = []
   for (const [h, r] of Object.entries(resultado.hospitais)) {
@@ -297,6 +298,18 @@ if (cmd === 'publicar') {
     const extras = [Object.keys(p.linhaOverrides || {}).length ? dq(p.linhaOverrides) : 'null::jsonb']
     if (p.preservar) extras.push(dq(p.preservar))
     chamadas.push(`select public.rpc_publicar_escala_turno('${data}','${h}','${turno}', ${dq(header)}, ${dq(casos)}, ${extras.join(', ')});`)
+    // ORDEM INFORMADA DA AJUDA (dono 09/09): quando o recado numera as ajudas
+    // ("3º Rafael – Unimed, 4º Alexandre – Unimed"), essa ordem passa a mandar na
+    // cauda da fila e a derivação por hospital de origem (27/08) fica de reserva.
+    // Sem a marca a fila publicava ao contrário do pedido, e as setas somem em
+    // quem tem origem — não havia nem conserto na tela. Publicação SEM numeração
+    // apaga a marca do turno: senão a lista que a Vision monta na ordem da IMAGEM
+    // herdaria autoridade que ninguém deu a ela.
+    chamadas.push(ordemInformada[h]
+      // ⚠️ jsonb_set só cria a ÚLTIMA chave do caminho: com `ordemInformada` ausente,
+      // '{ordemInformada,<turno>}' devolveria o campo intacto, em silêncio.
+      ? `update public.escala_cirurgica set ajuda_externa=jsonb_set(coalesce(ajuda_externa,'{}'::jsonb),'{ordemInformada}',coalesce(ajuda_externa->'ordemInformada','{}'::jsonb)||jsonb_build_object('${turno}',true),true) where data='${data}' and hospital='${h}';`
+      : `update public.escala_cirurgica set ajuda_externa=coalesce(ajuda_externa,'{}'::jsonb) #- '{ordemInformada,${turno}}' where data='${data}' and hospital='${h}';`)
     p.casos.forEach((c, i) => { if (c.pacienteNome && /^PART(ICULAR)?[^A-Z]*$/.test(norm(c.convenio))) particulares.push({ hospital: h, sala: casos[i].sala, ordem: i, hora: c.hora, nome: String(c.pacienteNome).trim() }) })
   }
   const corpo = `select set_config('request.jwt.claims', ${dq({ sub: uidDono })}::text, true);\n${chamadas.join('\n')}`

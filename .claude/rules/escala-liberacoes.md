@@ -191,6 +191,40 @@ página e lib, e é por isso que a trava nova é de PÁGINA (`escalaAjudaOrigemH
   slug: `hospital` é opcional em `rodapeOutros` e gatear pelo slug deixava sem
   rótulo a chamada que só manda nome + índice.
 
+### A ORDEM INFORMADA vence a derivada (dono 09/09)
+
+*"você não seguiu a ordem de liberação, corrija (mantendo a ordem de liberações
+conforme informado)."* — 10/09 de manhã, Unimed: o recado numerava
+*"1º Aline – Iosc · 2º Guilherme – Iosc · 3º Rafael – Unimed · 4º Alexandre – Unimed"*,
+o lote gravou `ajuda_externa` na ordem certa (o ÚLTIMO do array sai primeiro) e a
+fila publicou o inverso — **Alexandre saindo antes do Rafael**. O HRO acertou por
+acaso: lá a Aline fecha o rodapé, então o plantão do contraturno (29/07) já a
+punha em 1º.
+
+**Por que a derivada ganhava:** Alexandre está em 11º no rodapé do HRO, Rafael veio
+do consultório e não está em rodapé nenhum. Pela regra de 27/08 (*ajuda sem origem
+conhecida → ajuda de outro hospital*), quem TEM origem desce e sai antes — e a
+numeração do dono não tinha como se opor, porque o array só decidia entre os que
+não têm origem. Pior: o mesmo trecho zerava o `ajudaIdx` de quem tem origem, e as
+setas do bloco somem sem ele — **o defeito ainda bloqueava o conserto manual**.
+
+- `opts.ajudaOrdemInformada` (bool, por turno) faz o array de ajuda mandar na cauda;
+  quem não está nele cai em `Infinity`, abaixo dos numerados — 27/08 continua valendo
+  para quem ninguém numerou. Sem a marca, NADA muda.
+- Com a marca, `ajudaIdx` sobrevive a ter origem: as setas voltam, e reordenar no
+  toque continua sendo o conserto de última hora do plantonista.
+- **A marca mora em `ajuda_externa.ordemInformada[turno]`** (chave irmã dos arrays;
+  todo leitor passa por `rodapeDoTurno`, que lê `[turno]`). Helpers
+  `ajudaOrdemInformada` / `marcarAjudaOrdemInformada` em `utils.js`.
+- Quem grava: **as setas** (`reordenarAjuda` — mexeu, declarou) e a **publicação por
+  foto** quando o lote traz `ajudaOrdemInformada: true` no hospital. Publicação sem
+  numeração APAGA a marca do turno: a lista que a Vision monta sai na ordem da
+  IMAGEM e não é ordem de ninguém — foi exatamente disso que 27/08 reclamou.
+- Trava de PÁGINA em `escalaAjudaOrigemHospital.test.jsx` (mesma razão de 27/08: a
+  lib já sabia ordenar, o que faltava era o fio). ⚠️ na fixture, o visitante NÃO pode
+  ser o último do rodapé de origem — aí ele vira plantão do contraturno de lá e a
+  exceção de 31/08 o joga para o fim antes de qualquer ordem.
+
 ### "Veio de" — informar o Materno, que quase nunca tem escala (dono 27/08)
 
 *"crie um sistema para informar, pq eventualmente o materno não tem escala e esses

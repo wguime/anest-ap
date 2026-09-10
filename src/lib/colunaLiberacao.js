@@ -763,8 +763,26 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   // antes lá = mais embaixo aqui).
   const MATERNO = 'materno'
   const nivelOrigem = (l) => (hospOrigem(l) === MATERNO ? 1 : 0)
+  // ORDEM INFORMADA VENCE A DERIVADA (dono 09/09). A numeração que o dono manda
+  // junto com as fotos ("1º Aline – Iosc, 2º Guilherme – Iosc, 3º Rafael – Unimed,
+  // 4º Alexandre – Unimed") vira o array `ajudaExterna`, e até aqui a derivação
+  // por origem passava por cima dela: Alexandre está no rodapé do HRO (10º) e
+  // Rafael veio do consultório sem origem, então a regra de 27/08 punha o
+  // Alexandre embaixo — saindo antes, o oposto do pedido. Pior: quem tem origem
+  // derivada perdia o `ajudaIdx` logo abaixo e ficava SEM as setas, então nem à
+  // mão dava para consertar na tela. Com a ordem informada, o array manda e as
+  // setas voltam; sem ela, 27/08 continua sozinha no comando.
+  // Quem NÃO está no array (visitante extra) não foi numerado: cai no fim
+  // (`Infinity`), abaixo dos numerados — sai antes, como a regra de 27/08 diz.
+  const ordemInformada = opts.ajudaOrdemInformada === true
   const fimAjuda = [...linhasAjuda, ...visitantesExtras]
   fimAjuda.sort((a, b) => {
+    if (ordemInformada) {
+      const na = a.ajudaIdx == null ? Infinity : a.ajudaIdx
+      const nb = b.ajudaIdx == null ? Infinity : b.ajudaIdx
+      if (na !== nb) return na - nb
+      // dois fora da lista informada: a derivação por origem segue decidindo
+    }
     const ia = idxOrigem(a)
     const ib = idxOrigem(b)
     if (ia != null && ib != null) {
@@ -778,11 +796,12 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     return 0 // sem origem: mantém a ordem já resolvida (array de ajuda) — sort é estável
   })
   // ordem derivada da origem → sem setas de reordenar (o array de ajuda não manda
-  // mais aqui); e visitante com origem conhecida está TRABALHANDO (veio de fora
+  // mais aqui) — MENOS quando a ordem foi informada, que é justamente o array;
+  // e visitante com origem conhecida está TRABALHANDO (veio de fora
   // p/ isso) — mesmo sem caso restante (repasse) não nasce "não escalado"/liberado.
   for (const l of fimAjuda) {
     if (idxOrigem(l) == null) continue
-    l.ajudaIdx = null
+    if (!ordemInformada) l.ajudaIdx = null
     l.teveCasos = true
   }
   // DE ONDE VEIO, na própria linha — FONTE ÚNICA do badge "Ajuda (HRO)". A view

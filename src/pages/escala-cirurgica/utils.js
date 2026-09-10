@@ -851,6 +851,30 @@ export function mergeRodapeTurno(ordemLiberacao, turno, novaOrdem) {
   return { ...base, [turno]: novaOrdem }
 }
 
+/**
+ * A ordem do bloco de AJUDA foi INFORMADA por gente neste turno? (dono 09/09)
+ *
+ * Mora ao lado dos arrays, em `ajuda_externa.ordemInformada[turno]`, porque a
+ * mesma pergunta tem duas respostas: a numeração que o dono manda com as fotos
+ * ("1º Aline – Iosc, 2º Guilherme…") e as setas do bloco na tela são declaração
+ * humana; a lista que a Vision monta a partir dos nomes AZUIS da foto sai na
+ * ordem da IMAGEM e não é ordem nenhuma. Sem essa distinção, honrar o array
+ * sempre reabriria o relato de 27/08 (a cauda liberava por ordem de encontro).
+ * Chave irmã dos turnos: todo leitor passa por `rodapeDoTurno`, que lê `[turno]`.
+ */
+export function ajudaOrdemInformada(ajudaExterna, turno) {
+  if (!ajudaExterna || Array.isArray(ajudaExterna)) return false
+  return ajudaExterna.ordemInformada?.[turno] === true
+}
+
+/** Marca a ordem do turno como informada, preservando o resto do campo. */
+export function marcarAjudaOrdemInformada(ajudaExterna, turno, informada = true) {
+  const base = Array.isArray(ajudaExterna)
+    ? (ajudaExterna.length ? { matutino: ajudaExterna } : {})
+    : { ...(ajudaExterna || {}) }
+  return { ...base, ordemInformada: { ...(base.ordemInformada || {}), [turno]: informada } }
+}
+
 /** Combina os casos do OUTRO turno (preservados) com os NOVOS do turno publicado. */
 export function mergeCasosPorTurno(existentes, novos, turno) {
   const outro = (existentes || []).filter((c) => turnoDoCaso(c) !== turno)

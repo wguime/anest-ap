@@ -1111,6 +1111,54 @@ describe('visitantes de outro hospital — ordem do rodapé de ORIGEM (dono 31/0
 })
 
 // ════════════════════════════════════════════════════════════════════════════
+// ORDEM INFORMADA vence a DERIVADA (dono 09/09 — caso real 10/09 manhã, Unimed).
+// O dono numerou as ajudas junto com as fotos ("3º Rafael – Unimed, 4º Alexandre
+// – Unimed"), o lote gravou o array na ordem certa (último sai primeiro) e a fila
+// publicou ao contrário: Alexandre está no rodapé do HRO em 10º, Rafael veio do
+// consultório sem origem, e a regra de 27/08 punha o Alexandre embaixo. Sem as
+// setas em quem tem origem, não havia nem conserto manual na tela.
+// ════════════════════════════════════════════════════════════════════════════
+describe('ordem informada da ajuda vence a derivada por origem (dono 09/09)', () => {
+  const casos = [
+    caso('CC - Sala 1', 0, 'GIOVANA', 'Ellen Antoniolli'),
+    caso('CC - Sala 2', 0, 'CRISTINA', 'Ingo Veit'),
+    caso('Exames', 0, 'ALEXANDRE D', 'Marcelo Kruel'),
+    caso('Exames', 1, 'RAFAEL', 'Marcelo Kruel'),
+  ]
+  const rodape = ['GIOVANA', 'CRISTINA']
+  const ajudaExterna = ['ALEXANDRE D', 'RAFAEL'] // 3º Rafael, 4º Alexandre → Rafael embaixo
+  const rodapeOutros = [{ nome: 'ALEXANDRE D', hospital: 'hro', hospitalLabel: 'HRO', rodapeIdx: 10 }]
+
+  it('com a ordem informada, o array manda e o Rafael sai antes do Alexandre', () => {
+    const r = gerarColunaLiberacao(casos, rodape, {
+      ajudaExterna, rodapeOutros, ajudaOrdemInformada: true,
+    })
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(
+      ['Giovana', 'Cristina', 'Alexandre D', 'Rafael']
+    )
+  })
+
+  it('a ordem informada devolve as setas a quem tem origem — sem elas o dono não conserta na tela', () => {
+    const r = gerarColunaLiberacao(casos, rodape, {
+      ajudaExterna, rodapeOutros, ajudaOrdemInformada: true,
+    })
+    const alexandre = r.linhas.find((l) => l.anestesista === 'Alexandre D')
+    const rafael = r.linhas.find((l) => l.anestesista === 'Rafael')
+    expect([alexandre.ajudaIdx, rafael.ajudaIdx]).toEqual([0, 1])
+    // o rótulo de origem continua saindo (quem decide a ordem decide o badge)
+    expect(alexandre.origemLabel).toBe('HRO')
+  })
+
+  it('sem ordem informada, 27/08 segue mandando — o visitante do HRO sai primeiro', () => {
+    const r = gerarColunaLiberacao(casos, rodape, { ajudaExterna, rodapeOutros })
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(
+      ['Giovana', 'Cristina', 'Rafael', 'Alexandre D']
+    )
+    expect(r.linhas.find((l) => l.anestesista === 'Alexandre D').ajudaIdx).toBeNull()
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
 // AZUL DO RODAPÉ SEM CASO AQUI mantém a posição (dono 31/07 — caso LEONARDO):
 // a Cesárea dele na Unimed foi repassada ao Tiago e, sem caso em lugar nenhum,
 // o HRO o rebaixava pro bloco do fim. Azul no NOSSO rodapé é gente NOSSA

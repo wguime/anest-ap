@@ -23,7 +23,7 @@ import useAvisoPlantonista from './useAvisoPlantonista'
 import { AvisoTempoEstourado } from './useAvisoTempoEstourado'
 import PainelTempo, { formatFaltante, fraseCronometro, fraseFaltante } from './PainelTempo'
 import AddCasoSheet from './AddCasoSheet'
-import { casoConcluido, casosDaFilaDoTurno, casosResolvidos, chaveSalaEscolha, compararSalas, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao, turnoDoCaso } from './utils'
+import { ajudaOrdemInformada, casoConcluido, casosDaFilaDoTurno, casosResolvidos, chaveSalaEscolha, compararSalas, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao, turnoDoCaso } from './utils'
 
 // Sentinelas do dropdown de Local (valores impossíveis como nome de sala)
 const LOCAL_AUTO = '__auto__'
@@ -286,6 +286,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       // nome — quem está aqui de ajuda libera primeiro, na ordem de liberação de lá.
       rodapeOutros: modoFds ? [] : presencaOutros.filter((p) => p.rodapeIdx != null),
       origemManual,
+      // ORDEM INFORMADA (dono 09/09): numeração vinda com as fotos ou setas já
+      // usadas neste turno. Quando existe, o array de ajuda manda na cauda e as
+      // setas continuam disponíveis; sem ela, a derivação por origem (27/08) segue.
+      ajudaOrdemInformada: ajudaOrdemInformada(escala?.ajudaExterna, turnoBase),
     })
   }, [casosTurno, rodapeTurno, escala, hospitalLabel, turno, turnoBase, resolverUid, nomeExibicao, presencaOutros, origemManual, modoFds])
 

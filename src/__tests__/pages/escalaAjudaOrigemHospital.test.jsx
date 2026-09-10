@@ -224,3 +224,83 @@ describe('quem está de ajuda em outro hospital, na escala DELE', () => {
     expect(card.textContent).not.toMatch(/Ajuda IOSC/)
   })
 })
+
+// ── ORDEM INFORMADA vence a DERIVADA (dono 09/09) ───────────────────────────
+// "você não seguiu a ordem de liberação, corrija (mantendo a ordem de liberações
+// conforme informado)". Caso real, 10/09 de manhã na Unimed: o dono numerou
+// "3º Rafael – Unimed, 4º Alexandre – Unimed", o lote gravou o array na ordem
+// certa (o último sai primeiro) e a fila publicou ao contrário — Alexandre está
+// em 10º no rodapé do HRO e a regra de 27/08 o punha embaixo. E como quem tem
+// origem derivada perdia o `ajudaIdx`, as setas sumiam justamente nele: não
+// havia conserto manual na tela.
+//
+// ⚠️ De PÁGINA pelo mesmo motivo de 27/08: a lib já sabia ordenar; o que falta
+// provar é que a página LÊ a marca e a entrega à lib.
+describe('ordem informada da ajuda vence a derivada (dono 09/09)', () => {
+  const UNIMED_MANHA = {
+    id: 'u2', hospital: 'unimed', data: '2026-08-27',
+    ordemLiberacao: { matutino: ['GIOVANA', 'CRISTINA'] },
+    ajudaExterna: { matutino: ['ALEXANDRE D', 'RAFAEL'] },
+    liberacoes: {}, linhaOverrides: {},
+    casos: [
+      caso('m1', 'CC - Sala 1', 'GIOVANA', '07:30'),
+      caso('m2', 'CC - Sala 2', 'CRISTINA', '07:30'),
+      caso('m3', 'Exames', 'ALEXANDRE D', '08:00'),
+      caso('m4', 'Exames', 'RAFAEL', '09:00'),
+    ],
+  }
+  const HRO_MANHA = {
+    id: 'h2', hospital: 'hro', data: '2026-08-27',
+    ordemLiberacao: {
+      // rodapé real do HRO em 10/09: Alexandre D em 11º e mais SEIS nomes depois —
+      // ele NÃO fecha o rodapé de lá, então a exceção de 31/08 (plantão do
+      // contraturno de outro hospital sai antes de todos) não o alcança.
+      matutino: ['MAURICIO', 'EDUARDO', 'COSTA', 'STAUB', 'GUSTAVO', 'JANAINA',
+        'FERNANDO', 'TIAGO', 'NATHALIA', 'DANIELA', 'ALEXANDRE D',
+        'MATHEUS (CONSULT)', 'GUILHERME DIDOMENICO', 'VICENTE', 'RAUL', 'HUMBERTO', 'ALINE'],
+    },
+    ajudaExterna: { matutino: [] }, liberacoes: {}, linhaOverrides: {}, casos: [],
+  }
+  const comMarca = {
+    ...UNIMED_MANHA,
+    ajudaExterna: { matutino: ['ALEXANDRE D', 'RAFAEL'], ordemInformada: { matutino: true } },
+  }
+
+  // mesma data do arquivo (o contexto mockado é dela); o que muda é o RELÓGIO,
+  // que põe a tela no turno da manhã.
+  beforeEach(() => vi.setSystemTime(new Date('2026-08-27T08:00:00-03:00')))
+
+  // Cristina fecha o rodapé daqui = plantão do contraturno, e sai antes de todo
+  // mundo (29/07). A disputa é entre as duas AJUDAS, logo acima dela.
+  it('sem a marca, a derivação de 27/08 segue mandando — Alexandre sai antes do Rafael', () => {
+    montar({ unimed: UNIMED_MANHA, hro: HRO_MANHA })
+    const nomes = fila()
+    expect(nomes[nomes.length - 1]).toBe('Cristina')
+    expect(nomes.indexOf('Alexandre D')).toBeGreaterThan(nomes.indexOf('Rafael'))
+  })
+
+  it('com a marca, a fila sai na ordem que o dono informou — Rafael antes de Alexandre', () => {
+    montar({ unimed: comMarca, hro: HRO_MANHA })
+    const nomes = fila()
+    expect(nomes[nomes.length - 1]).toBe('Cristina')
+    expect(nomes.indexOf('Rafael')).toBeGreaterThan(nomes.indexOf('Alexandre D'))
+  })
+
+  it('com a marca, as setas voltam para quem tem origem — o dono conserta na tela', () => {
+    montar({ unimed: comMarca, hro: HRO_MANHA })
+    expect(screen.getByLabelText('Descer Alexandre D na ordem das ajudas')).toBeTruthy()
+    expect(screen.getByLabelText('Subir Rafael na ordem das ajudas')).toBeTruthy()
+  })
+
+  it('sem a marca, quem tem origem continua sem setas (o array não manda ali)', () => {
+    montar({ unimed: UNIMED_MANHA, hro: HRO_MANHA })
+    expect(screen.queryByLabelText('Descer Alexandre D na ordem das ajudas')).toBeNull()
+  })
+
+  it('a marca mexe na ORDEM, não no card: o badge segue sendo o mesmo "Ajuda"', () => {
+    montar({ unimed: comMarca, hro: HRO_MANHA })
+    const card = screen.getByLabelText('Editar local/cirurgião de Alexandre D').closest('[data-linha]')
+    expect(card.textContent).toMatch(/Ajuda/)
+    expect(card.textContent).not.toMatch(/Ajuda \(HRO\)/) // ajuda declarada não duplica o rótulo
+  })
+})

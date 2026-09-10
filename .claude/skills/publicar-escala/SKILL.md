@@ -78,6 +78,12 @@ a manhã de 09/09):
   `ajudaExterna` do hospital certo e o caso dele ganha `cor: "azul"`. A numeração é a ordem em
   que SAEM; na fila a ÚLTIMA ajuda do array sai primeiro, então quem tem o número menor vai
   DEPOIS no array (2º João, 3º Garim → `["GARIM","JOAO RICARDO"]`).
+  ⚠️ **Numerou = `ajudaOrdemInformada: true` no hospital, dentro do lote** (dono 09/09). Sem
+  essa marca a fila ordena a cauda pelo rodapé do hospital de ORIGEM (regra de 27/08) e passa
+  por cima da numeração: em 10/09 o dono pediu "3º Rafael, 4º Alexandre" e a Unimed liberou o
+  Alexandre primeiro, porque ele está em 11º no rodapé do HRO e o Rafael veio do consultório,
+  sem origem. Publicação sem numeração NÃO leva a marca — a lista que a Vision monta sai na
+  ordem da imagem e não é ordem de ninguém.
 - **"Trocas: A (consultório) na posição do B no Iosc"**: a escala já saiu com A no IOSC e B não
   está em escala nenhuma (consultório). Não é duplicidade: é REGISTRO de troca na linha de A,
   `decisoes: { "A": { "tipo": "troca", "parceiro": "B", "apenasRegistro": true, "local":
