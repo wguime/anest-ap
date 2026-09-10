@@ -40,6 +40,21 @@ era promessa vazia todo dia. A tela delas abre na Completa, no hospital da conta
 `scripts/criar-conta-func-unimed.mjs` virou `scripts/criar-conta-hospital-escala.mjs
 <unimed|hro> <senha>`.
 
+### A Home das duas contas deixou de ser só a escala
+Segundo pedido do dono no mesmo dia: "na página home quero que apareçam: Plantão do Dia,
+Estágios Residência, Plantão Residência, Escala de Funcionários e Inbox — mais o carrossel de
+notícias. na aba Menu: quero que apareçam todos os ítens". Férias fica de fora, como das outras
+vezes.
+
+Cada um desses já tinha card, então quem decide voltou a ser a permissão: `CARDS_CONTA_HOSPITAL`
+é uma **allowlist** de 12 cards. Card novo do app nasce desligado para elas — são contas
+compartilhadas e o audit trail grava "Unimed"/"HRO", não a pessoa, então acesso novo é decisão
+do dono, nunca herança. Gestão, Educação e Dashboard seguem fora.
+
+O gate por PAPEL que calava notícias e sino saiu da Home (o Inbox chega por ali). Sobraram nele
+a aba "Minhas" da escala e o convite de push — o token FCM é por APARELHO, e a conta roda em
+vários tablets do centro cirúrgico. `ehContaSomenteEscala` virou `ehContaDeHospital`.
+
 ## v5.10.1 (08/09/2026) — Desktop: barra embaixo, cards do tamanho certo e sem vão
 
 Três correções do dono na mesma mensagem, depois de ver a v5.10.0 no notebook: "os vãos vazios me

@@ -122,9 +122,20 @@ também para o `displayName` das contas. ⚠️ Isso faz `normalizeRole('Unimed'
 passa um campo `role`, mas é a pegadinha a lembrar se alguém normalizar um nome de hospital.
 
 **Dentro da escala essas contas não têm a aba "Minhas"** — elas não assumem sala, e a aba
-seria uma promessa vazia todo dia. Quem esconde é `ehContaSomenteEscala` (o mesmo helper que
-cala notícias, sino e push na Home); a tela delas abre na **Completa**, no **hospital da
-conta** (`hospitalDaConta` em `gate.js`) em vez do padrão fixo `unimed`.
+seria uma promessa vazia todo dia. Quem esconde é `ehContaDeHospital`; a tela delas abre na
+**Completa**, no **hospital da conta** (`hospitalDaConta` em `gate.js`) em vez do padrão fixo
+`unimed`.
+
+⚠️ **Elas deixaram de ser "só a escala" em 09/09.** O dono abriu a Home (Plantão do Dia,
+Estágios e Plantão Residência, Escala de Funcionários, Inbox e o carrossel de notícias — sem
+Férias) e a aba Menu inteira. Isso virou uma **allowlist** em `CARDS_CONTA_HOSPITAL`
+(`data/rolePermissionTemplates.js`), não uma subtração: card novo do app nasce DESLIGADO para
+elas, porque são contas compartilhadas e o audit trail grava "Unimed"/"HRO", não a pessoa.
+Gestão, Educação e Dashboard seguem fora. `ehContaDeHospital` ficou só com as duas coisas que
+não passam por card: a aba "Minhas" e o convite de push (token FCM é por APARELHO, e a conta
+roda em vários tablets). Travas em `escalaGatePublicacao.test.js`, que lista os ligados por
+extenso e exige que o template cubra todo card do `NAV_STRUCTURE` — chave ausente, no
+`useCardPermissions`, vira acesso LIBERADO.
 
 Conta nova do mesmo tipo: `node scripts/criar-conta-hospital-escala.mjs <hospital> <senha>`
 (a senha vem por argumento, nunca no repo), depois `authorized_emails` + `profiles` no

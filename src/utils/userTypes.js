@@ -99,23 +99,31 @@ export const normalizeRole = (role) => {
   return null;
 };
 
-/** Papéis das contas compartilhadas de hospital (só a Escala Cirúrgica). */
-const PAPEIS_SOMENTE_ESCALA = ['func-unimed', 'func-hro'];
+/** Papéis das contas compartilhadas de hospital (Unimed, HRO). */
+const PAPEIS_CONTA_HOSPITAL = ['func-unimed', 'func-hro'];
 
 /**
- * Conta de acesso RESTRITO à Escala Cirúrgica (dono 2026-09-08; 2ª conta 09-09).
+ * Conta COMPARTILHADA de hospital (dono 2026-09-08 Unimed; 09-09 HRO).
  *
- * As contas compartilhadas do centro cirúrgico existem para operar a escala do
- * dia e nada mais — "não irão receber nenhum tipo de informação". Os cards já
- * estão todos desligados em `permissions`, mas três superfícies da Home não
- * passam por card nenhum: o carrossel de notícias, o contador do sino e o
- * convite de notificação push. É este helper que as cala. Na Escala Cirúrgica
- * ele também esconde a aba "Minhas" — elas não assumem sala.
+ * Nasceram restritas à Escala Cirúrgica ("não irão receber nenhum tipo de
+ * informação"), e em 09/09 o dono abriu a Home delas: Plantão do Dia, Estágios
+ * e Plantão Residência, Escala de Funcionários, Inbox e o carrossel de notícias,
+ * mais a aba Menu inteira. O que passa por CARD virou permissão
+ * (`ROLE_PERMISSION_TEMPLATES`); o que sobra aqui são as duas coisas que não têm
+ * card nenhum e continuam valendo por ser conta compartilhada:
+ *
+ *  - a aba "Minhas" da Escala Cirúrgica não existe para elas (não assumem sala);
+ *  - o convite de notificação PUSH não aparece — o token FCM é por APARELHO, e
+ *    numa conta que roda em vários tablets do centro cirúrgico ele espalharia a
+ *    mesma mensagem por todos eles. O sino in-app voltou; o push, não.
+ *
+ * ⚠️ O carrossel de notícias e o sino saíram deste gate em 09/09 — quem os
+ * desliga, se um dia precisar, é permissão de card, não o papel.
  *
  * Papel, não lista de e-mails: a segunda conta assim (HRO) custou uma linha na
  * lista acima, como estava previsto.
  */
-export const ehContaSomenteEscala = (user) => PAPEIS_SOMENTE_ESCALA.includes(normalizeRole(user?.role));
+export const ehContaDeHospital = (user) => PAPEIS_CONTA_HOSPITAL.includes(normalizeRole(user?.role));
 
 /**
  * Conta de TESTE (e2e) — nunca aparece em lista de seleção de gente real.

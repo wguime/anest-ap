@@ -273,6 +273,56 @@ export function getAllCardIds(value = true) {
 }
 
 /**
+ * Cards das contas COMPARTILHADAS de hospital (Unimed, HRO).
+ *
+ * Nasceram com tudo desligado em 08/09 — só a Escala Cirúrgica, que não passa
+ * por card (é o gate por papel do `escala-cirurgica/gate.js`). Em 09/09 o dono
+ * abriu a Home e o Menu, item a item:
+ *
+ *   Home — "Plantão do Dia, Estágios Residência, Plantão Residência, Escala de
+ *   Funcionários e Inbox — mais o carrossel de notícias"
+ *   Menu — "todos os ítens"
+ *
+ * ⚠️ É uma ALLOWLIST, não uma subtração. Card novo que apareça no app nasce
+ * DESLIGADO para estas contas, que é o certo: são contas compartilhadas, o
+ * rastro de auditoria grava "Unimed"/"HRO" e não a pessoa, então acesso novo é
+ * decisão do dono, nunca herança.
+ *
+ * O que ficou de fora e por quê:
+ *  - `ferias` — pedido explícito ("exceto férias"), nas duas vezes que o assunto
+ *    voltou;
+ *  - `comunicados`, `pendencias`, `perfil`, `atalhos` — não estão na lista da
+ *    Home que ele enumerou (⚠️ a página de Perfil NÃO depende deste card: ela
+ *    fica fora do PAGE_TO_CARD, então o botão "Sair" continua alcançável);
+ *  - Gestão, Educação e Dashboard inteiros — denúncia, faturamento, indicador de
+ *    gestão e prontuário de residência não foram pedidos.
+ *
+ * `criterios_uti` entra junto com `calculadoras` porque a Indicação de UTI virou
+ * uma SEÇÃO da tela de calculadoras em 29/08 — a rota antiga ainda responde e
+ * negá-la quebraria link salvo. `cp_novo`/`cp_listagem` entram junto com
+ * `cateter_peridural` senão o widget abre numa tela que o guarda de rota nega.
+ * `manutencao` e `refeicao_unimed` não estão no NAV_STRUCTURE mas são widgets
+ * REAIS do Menu — "todos os ítens" inclui os dois.
+ */
+const CARDS_CONTA_HOSPITAL = {
+  ...getAllCardIds(false),
+  // Home
+  plantao: true,
+  estagios_residencia: true,
+  plantao_residencia: true,
+  escala_funcionarios: true,
+  inbox: true,
+  // Menu
+  calculadoras: true,
+  criterios_uti: true,
+  cateter_peridural: true,
+  cp_novo: true,
+  cp_listagem: true,
+  manutencao: true,
+  refeicao_unimed: true,
+};
+
+/**
  * Default permission templates per role.
  * All cards and sub-cards start as `true` — admin adjusts later.
  *
@@ -286,11 +336,9 @@ export const ROLE_PERMISSION_TEMPLATES = {
   farmaceutico: getAllCardIds(true),
   colaborador: getAllCardIds(true),
   secretaria: getAllCardIds(true),
-  // Contas de hospital (Unimed 2026-09-08, HRO 2026-09-09): TUDO desligado. O
-  // acesso delas à Escala Cirúrgica não passa por card — é o gate por papel
-  // (`gate.js`) —, então zerar aqui deixa só a escala de pé, que é o combinado.
-  'func-unimed': getAllCardIds(false),
-  'func-hro': getAllCardIds(false),
+  // Contas de hospital (Unimed 2026-09-08, HRO 2026-09-09) — ver CARDS_CONTA_HOSPITAL.
+  'func-unimed': CARDS_CONTA_HOSPITAL,
+  'func-hro': CARDS_CONTA_HOSPITAL,
 };
 
 /**

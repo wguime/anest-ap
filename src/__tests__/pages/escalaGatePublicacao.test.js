@@ -82,27 +82,28 @@ describe('gate da escala — contas de hospital operam, não publicam', () => {
   })
 })
 
-// ── Conta de acesso restrito ────────────────────────────────────────────────
-// Notícias, sino e convite de push não passam por permissão de card: se este
-// helper voltar a false para `func-unimed`, a conta que "não recebe nenhum tipo
-// de informação" volta a receber, e nenhum outro teste percebe.
-describe('conta somente-escala', () => {
-  it.each(CONTAS_HOSPITAL)('%s é conta de acesso restrito', async (role) => {
-    const { ehContaSomenteEscala } = await import('@/utils/userTypes')
-    expect(ehContaSomenteEscala({ role })).toBe(true)
+// ── Conta compartilhada de hospital ─────────────────────────────────────────
+// O helper por PAPEL sobrou para duas coisas que não têm card nenhum: a aba
+// "Minhas" da escala e o convite de push (token FCM é por aparelho, e a conta
+// roda em vários tablets). Notícias e sino SAÍRAM daqui em 09/09 — se voltarem,
+// a Home que o dono mandou abrir volta a ser calada pelo papel.
+describe('conta de hospital', () => {
+  it.each(CONTAS_HOSPITAL)('%s é conta compartilhada de hospital', async (role) => {
+    const { ehContaDeHospital } = await import('@/utils/userTypes')
+    expect(ehContaDeHospital({ role })).toBe(true)
   })
 
   it.each(['anestesiologista', 'secretaria', 'tec-enfermagem', 'colaborador', 'medico-residente'])(
-    '%s NÃO é conta restrita — a Home dessa gente não muda',
+    '%s NÃO é conta de hospital — nada dessa gente muda',
     async (role) => {
-      const { ehContaSomenteEscala } = await import('@/utils/userTypes')
-      expect(ehContaSomenteEscala({ role })).toBe(false)
+      const { ehContaDeHospital } = await import('@/utils/userTypes')
+      expect(ehContaDeHospital({ role })).toBe(false)
     },
   )
 
-  it('sem usuário não é conta restrita (evita esconder a Home no primeiro render)', async () => {
-    const { ehContaSomenteEscala } = await import('@/utils/userTypes')
-    expect(ehContaSomenteEscala(null)).toBe(false)
+  it('sem usuário não é conta de hospital (evita calar a Home no primeiro render)', async () => {
+    const { ehContaDeHospital } = await import('@/utils/userTypes')
+    expect(ehContaDeHospital(null)).toBe(false)
   })
 })
 
@@ -140,12 +141,54 @@ describe('rótulo das contas de hospital', () => {
     expect(getRoleName(role).toLowerCase()).not.toContain('funcion')
   })
 
-  it('as duas contas continuam com template de permissão ZERADO', async () => {
+})
+
+// ── O que a Home e o Menu dessas contas mostram (dono 2026-09-09) ───────────
+// "na página home quero que apareçam: Plantão do Dia, Estágios Residência,
+// Plantão Residência, Escala de Funcionários e Inbox — mais o carrossel de
+// notícias. na aba Menu: quero que apareçam todos os ítens".
+//
+// É uma ALLOWLIST: card novo do app nasce desligado para conta compartilhada.
+// Por isso a trava lista os LIGADOS por extenso e exige que todo o resto seja
+// false — um `getAllCardIds(true)` distraído quebra aqui, não em produção.
+describe('cards das contas de hospital', () => {
+  const LIGADOS = [
+    // Home, na ordem em que o dono pediu
+    'plantao', 'estagios_residencia', 'plantao_residencia', 'escala_funcionarios', 'inbox',
+    // Menu — os 4 widgets reais + as sub-rotas sem as quais eles abrem em tela negada
+    'calculadoras', 'criterios_uti', 'cateter_peridural', 'cp_novo', 'cp_listagem',
+    'manutencao', 'refeicao_unimed',
+  ]
+
+  it.each(CONTAS_HOSPITAL)('%s liga exatamente os cards pedidos, e nada mais', async (role) => {
     const { ROLE_PERMISSION_TEMPLATES } = await import('@/data/rolePermissionTemplates')
-    for (const role of CONTAS_HOSPITAL) {
-      const cards = ROLE_PERMISSION_TEMPLATES[role]
-      expect(Object.keys(cards).length).toBeGreaterThan(50)
-      expect(Object.values(cards).every((v) => v === false)).toBe(true)
+    const cards = ROLE_PERMISSION_TEMPLATES[role]
+    const ligados = Object.entries(cards).filter(([, v]) => v === true).map(([k]) => k)
+    expect(ligados.sort()).toEqual([...LIGADOS].sort())
+  })
+
+  it.each(CONTAS_HOSPITAL)('%s não vê Férias — foi o único "exceto" das duas vezes', async (role) => {
+    const { ROLE_PERMISSION_TEMPLATES } = await import('@/data/rolePermissionTemplates')
+    expect(ROLE_PERMISSION_TEMPLATES[role].ferias).toBe(false)
+  })
+
+  it.each(CONTAS_HOSPITAL)('%s segue fora de Gestão, Educação e Dashboard', async (role) => {
+    const { ROLE_PERMISSION_TEMPLATES } = await import('@/data/rolePermissionTemplates')
+    const cards = ROLE_PERMISSION_TEMPLATES[role]
+    for (const id of ['incidentes', 'fazer_denuncia', 'faturamento', 'financeiro',
+                      'dashboard_executivo', 'gestao_documental', 'biblioteca',
+                      'educacao_continuada', 'res_gerenciar', 'qualidade']) {
+      expect(cards[id]).toBe(false)
+    }
+  })
+
+  it('o template cobre TODO card do NAV_STRUCTURE — chave faltando vira acesso liberado', async () => {
+    // useCardPermissions: chave ausente + customPermissions + >5 keys = PERMITE.
+    // Numa allowlist isso é o modo de falha silencioso a evitar.
+    const { ROLE_PERMISSION_TEMPLATES, collectAllPermissionIds } = await import('@/data/rolePermissionTemplates')
+    const cards = ROLE_PERMISSION_TEMPLATES['func-unimed']
+    for (const { id } of collectAllPermissionIds()) {
+      expect(cards, `card "${id}" fora do template`).toHaveProperty(id)
     }
   })
 })

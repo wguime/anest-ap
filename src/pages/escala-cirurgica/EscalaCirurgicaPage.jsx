@@ -24,7 +24,7 @@ import TrocaSheet from './TrocaSheet'
 import { meuAliasDe, turnoAtual, dataPorExtenso, estadoTrocasDoHistorico, normNome, formatData, rodapeDoTurno, localizarSlotEscala, localizarMeuPosto, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca } from './utils'
 import { ehDataFilaUnica, ehFeriado, ehFimDeSemana, FDS_HOSPITAL, FDS_TURNO_CASOS, turnoFdsAtual } from '@/lib/escalaFds'
 import { hospitalDaConta, podeEditarEscalaCirurgica, podePublicarEscalaCirurgica } from './gate'
-import { ehContaSomenteEscala } from '@/utils/userTypes'
+import { ehContaDeHospital } from '@/utils/userTypes'
 
 const HOSPITAL_OPCOES = HOSPITAIS.map((h) => ({ value: h, label: HOSPITAL_LABEL[h] }))
 // Rótulos CURTOS (dono 16/08): "Manhã/Tarde/Noite" cabem no card a 375px —
@@ -228,7 +228,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   // seria uma promessa vazia todo dia. A tela delas abre na Completa.
   // Derivado, não efeito: a conta chega do contexto DEPOIS do primeiro render, e
   // corrigir a aba por setState deixaria um quadro com a aba que não existe.
-  const contaSoEscala = ehContaSomenteEscala(user)
+  const contaSoEscala = ehContaDeHospital(user)
   const abaOpcoes = useMemo(
     () => (contaSoEscala ? ABA_OPCOES.filter((o) => o.value !== 'minhas') : ABA_OPCOES),
     [contaSoEscala]

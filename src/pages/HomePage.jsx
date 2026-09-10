@@ -10,7 +10,6 @@ import { formatDate } from '@/utils/formatters';
 import { useSearchAll } from '../data/searchLazy';
 import { aplicarDuplasFerias } from '@/lib/feriasDuplas';
 import { NoticiasCarousel } from '../components/noticias/NoticiasCarousel';
-import { ehContaSomenteEscala } from '../utils/userTypes';
 import { CertificadoExpiracaoBanner } from '../components/educacao/CertificadoExpiracaoBanner';
 import { EscalaCirurgicaHomeCard } from '../components/escala-cirurgica/EscalaCirurgicaHomeCard';
 import { podeVerEscalaCirurgica } from './escala-cirurgica/gate';
@@ -136,10 +135,12 @@ export default function HomePage({ onNavigate }) {
 
   const pendenciasCount = totalUnreadCount + eventAlertsUnread + unreadComunicados;
 
-  // Conta de acesso restrito à escala (func-unimed): a Home dela é o card da
-  // Escala e mais nada. Notícias e sino não passam por permissão de card — só
-  // este gate os cala. Para todo mundo, nada muda.
-  const somenteEscala = ehContaSomenteEscala(user);
+  // A Home das contas de hospital (Unimed, HRO) deixou de ser só o card da
+  // Escala em 09/09: o dono pediu Plantão do Dia, Estágios e Plantão Residência,
+  // Escala de Funcionários, Inbox e o carrossel de notícias. Cada um desses já
+  // tem o seu card, então quem decide voltou a ser a permissão — o gate por
+  // PAPEL que calava notícias e sino saiu daqui. (O convite de push segue
+  // suprimido no App.jsx: token FCM é por aparelho, e a conta roda em vários.)
 
   // Estados dos modais de residência
   const [showEstagiosModal, setShowEstagiosModal] = useState(false);
@@ -472,8 +473,7 @@ export default function HomePage({ onNavigate }) {
         <Header
           greeting={`Olá, ${user.firstName}`}
           userName={`${user.firstName} ${user.lastName}`}
-          notificationCount={somenteEscala ? 0 : pendenciasCount}
-          showNotifications={!somenteEscala}
+          notificationCount={pendenciasCount}
           onNotificationClick={() => onNavigate('inbox')}
           onAvatarClick={() => onNavigate('profile')}
           avatarSrc={user.avatar}
@@ -602,7 +602,7 @@ export default function HomePage({ onNavigate }) {
             colunas abaixo: ele rola na horizontal, e scroll horizontal dentro de
             multi-coluna vaza por cima da coluna vizinha (visto no app, o card do
             artigo cortava o card ao lado). Deitado ele encolhe em vez de sair. */}
-        {!somenteEscala && <NoticiasCarousel onNavigate={onNavigate} />}
+        <NoticiasCarousel onNavigate={onNavigate} />
 
         {/* ⚠️ GRID, não multi-coluna (dono 26/08: "home deveria ser: escala
             cirúrgica - Plantões"). O fluxo de colunas do CSS enche a coluna da
