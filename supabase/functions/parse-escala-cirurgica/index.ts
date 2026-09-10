@@ -42,7 +42,7 @@ const MODELO = 'claude-opus-4-8'
  * `escala_leitura_log` e a que invalida o cache de leitura. Sem bumpar, o ANTES
  * e o DEPOIS se misturam na mesma média e a medição mente.
  */
-const PROMPT_VERSAO = 'v10-hora-e-rodape-2026-09-08'
+const PROMPT_VERSAO = 'v11-preserva-dupla-2026-09-09'
 
 const DEFAULT_ALLOWED_ORIGINS = [
   'https://anest-ap.web.app',

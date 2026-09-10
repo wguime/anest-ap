@@ -127,3 +127,14 @@ describe('vocabularioVision (o que o cliente manda)', () => {
     expect(vocabularioVision([{ uid: '3' }, { uid: '4', nome: '  ', apelidos: [] }])).toEqual([])
   })
 })
+
+// A célula compartilhada representa duas pessoas, inclusive se uma é desconhecida.
+describe('roster preserva células compartilhadas', () => {
+  it.each(['GABRIELA + DANIELA', 'GABRIELA + CRISTINA', 'GABRIELA + ?'])(
+    'não transforma %s em uma pessoa', (nome) => {
+      expect(casarComRoster(nome, ROSTER)).toBe('')
+      const { casos } = resolverRoster([{ anestesista: nome }], ROSTER)
+      expect(casos[0].anestesista).toBe(nome)
+    },
+  )
+})

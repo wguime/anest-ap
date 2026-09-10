@@ -69,6 +69,8 @@ export function prepararRoster(nomes: unknown): string[] {
  *      nome ambíguo é nulo).
  */
 export function casarComRoster(nomeLido: unknown, roster: string[]): string {
+  // Uma célula compartilhada não pode casar com o prefixo da primeira pessoa.
+  if (String(nomeLido ?? '').includes('+')) return ''
   const alvo = compacto(nomeLido)
   if (!alvo || !Array.isArray(roster) || roster.length === 0) return ''
 
