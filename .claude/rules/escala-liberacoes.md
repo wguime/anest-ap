@@ -220,6 +220,18 @@ setas do bloco somem sem ele — **o defeito ainda bloqueava o conserto manual**
   foto** quando o lote traz `ajudaOrdemInformada: true` no hospital. Publicação sem
   numeração APAGA a marca do turno: a lista que a Vision monta sai na ordem da
   IMAGEM e não é ordem de ninguém — foi exatamente disso que 27/08 reclamou.
+- **A exceção de 31/08 também cede à numeração** (dono 10/09, HRO da manhã). A Aline
+  fecha o rodapé do HRO e o Guilherme Melo fecha o da Unimed; a partição da view
+  (`passaNaFrenteDoPlantao`) jogava o Guilherme para depois dela e ele saía primeiro,
+  ao contrário do recado. A razão que o dono deu, e que 31/08 não cobria:
+  *"os dois plantões do contraturno estão trabalhando, e há ajudas saídas do HRO para
+  a Unimed; nesse caso o primeiro a ser liberado é o plantão do contraturno que tem
+  ajudas emprestadas para outro hospital, na sequência o plantão do contraturno do
+  hospital que recebeu ajuda."* Em 31/08 a direção era a inversa (a Unimed emprestou o
+  Oscar ao HRO, e ele saiu antes do plantão do HRO) — por isso as duas leituras
+  convivem. **Hoje quem resolve isso é a NUMERAÇÃO, não a derivação**: entre linhas
+  numeradas a exceção não se aplica; quem está fora da lista informada segue com
+  31/08 inteiro.
 - Trava de PÁGINA em `escalaAjudaOrigemHospital.test.jsx` (mesma razão de 27/08: a
   lib já sabia ordenar, o que faltava era o fio). ⚠️ na fixture, o visitante NÃO pode
   ser o último do rodapé de origem — aí ele vira plantão do contraturno de lá e a

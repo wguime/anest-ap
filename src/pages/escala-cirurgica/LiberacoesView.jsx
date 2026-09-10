@@ -169,6 +169,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
 
   // Ajuda externa DO TURNO (nomes azuis) + opções do roster p/ o sheet de adicionar.
   const ajudaTurno = useMemo(() => rodapeDoTurno(escala?.ajudaExterna, turnoBase), [escala, turnoBase])
+  // A ordem da ajuda foi INFORMADA neste turno? (dono 09/09) Manda na cauda da
+  // lib e, aqui embaixo, desliga a exceção de 31/08 entre quem foi numerado.
+  const ordemAjudaInformada = useMemo(
+    () => ajudaOrdemInformada(escala?.ajudaExterna, turnoBase), [escala, turnoBase]
+  )
 
   // Anestesista LIVRE (pedido do dono 24/07): teve casos no turno e TODOS já
   // encerraram (terminada/suspensa) → badge "Livre". Conta por chave IGUAL à do
@@ -289,9 +294,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       // ORDEM INFORMADA (dono 09/09): numeração vinda com as fotos ou setas já
       // usadas neste turno. Quando existe, o array de ajuda manda na cauda e as
       // setas continuam disponíveis; sem ela, a derivação por origem (27/08) segue.
-      ajudaOrdemInformada: ajudaOrdemInformada(escala?.ajudaExterna, turnoBase),
+      ajudaOrdemInformada: ordemAjudaInformada,
     })
-  }, [casosTurno, rodapeTurno, escala, hospitalLabel, turno, turnoBase, resolverUid, nomeExibicao, presencaOutros, origemManual, modoFds])
+  }, [casosTurno, rodapeTurno, escala, hospitalLabel, turno, turnoBase, resolverUid, nomeExibicao, presencaOutros, origemManual, modoFds, ordemAjudaInformada])
 
   // Locais do hospital p/ o editor de linha (dropdown, pedido do dono 2026-07-22):
   // salas da escala do dia (ordem do board) + locais APRENDIDOS do histórico
@@ -971,8 +976,16 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // que o Oscar chegou no HRO, e a partição passava por cima dele. `ajudaFora`
   // fica fora das duas: essa é a pessoa NOSSA emprestada para outro hospital,
   // que mantém a posição daqui (regra de 31/07).
+  //
+  // ⚠️ E A EXCEÇÃO PARA DE VALER QUANDO O DONO NUMEROU (dono 10/09, HRO da manhã).
+  // O recado dizia "1º Aline – Iosc · 2º Guilherme – Iosc"; a Aline fecha o rodapé
+  // do HRO e o Guilherme fecha o da Unimed, então esta partição o jogava para
+  // DEPOIS dela — e ele saía primeiro, ao contrário do pedido. Numerar é declarar
+  // quem sai antes de quem: entre os numerados não sobra pergunta para a exceção
+  // responder. Quem NÃO está na lista informada segue com 31/08 inteiro.
   const passaNaFrenteDoPlantao = (l) => (
     !l.isProximoPlantao && !l.ajudaFora && (l.isExtra || l.isAjuda) && !!contraturnoDe(l)
+    && !(ordemAjudaInformada && l.ajudaIdx != null)
   )
   const naFrenteDoPlantao = doTurno.filter(passaNaFrenteDoPlantao)
   const demais = doTurno.filter((l) => !passaNaFrenteDoPlantao(l))

@@ -165,6 +165,34 @@ describe('na escala onde ajuda: a exceção é estreita', () => {
       .toBeLessThan(fila.findIndex((t) => t.includes('Guilherme')))
   })
 
+  // ── e a exceção CEDE quando o dono numerou (dono 10/09) ──────────────────
+  // HRO da manhã de 10/09: "1º Aline – Iosc · 2º Guilherme – Iosc". A Aline fecha
+  // o rodapé do HRO e o Guilherme fecha o da Unimed — a exceção de 31/08 o punha
+  // depois dela, e ele saía primeiro. Numerar é dizer quem sai antes de quem.
+  it('com a ordem informada, quem foi numerado NÃO pula o plantão daqui', () => {
+    const hroNumerado = {
+      ...hro,
+      ajudaExterna: { matutino: ['OSCAR'], ordemInformada: { matutino: true } },
+    }
+    const { container } = render(
+      <LiberacoesView escala={hroNumerado} hospital="hro" hospitalLabel="HRO" turno="matutino"
+        canEdit contraturnoOutros={oscarPlantaoNaUnimed}
+        onToggle={() => {}} onSetOverride={() => {}} />,
+      { wrapper: wrap },
+    )
+    const fila = ordemDaFila(container)
+    // Guilherme (plantão daqui) volta a fechar a lista = sai primeiro
+    expect(fila.findIndex((t) => t.includes('Oscar')))
+      .toBeLessThan(fila.findIndex((t) => t.includes('Guilherme')))
+  })
+
+  it('sem numeração, a exceção de 31/08 continua inteira', () => {
+    const { container } = montarHro({ contraturnoOutros: oscarPlantaoNaUnimed })
+    const fila = ordemDaFila(container)
+    expect(fila.findIndex((t) => t.includes('Oscar')))
+      .toBeGreaterThan(fila.findIndex((t) => t.includes('Guilherme')))
+  })
+
   it('o plantão do contraturno segue com o selo — ele não deixou de ser plantão', () => {
     montarHro({ contraturnoOutros: oscarPlantaoNaUnimed })
     expect(selosDe('Guilherme Xavier')).toContain('Plantão da tarde')
