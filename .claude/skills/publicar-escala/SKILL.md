@@ -89,6 +89,15 @@ a manhã de 09/09):
   `decisoes: { "A": { "tipo": "troca", "parceiro": "B", "apenasRegistro": true, "local":
   "Consultório" } }` — badge Troca e "Trocado com B (Consultório)" na fila, nada se move. A
   numérica vai apontar exatamente B faltando e A sobrando: é a confirmação, não um erro.
+- ⚠️ **Troca do recado é SEMPRE `apenasRegistro: true`** — inclusive quando os DOIS estão nesta
+  escala ("Troca particular: Joao H. e Klisman", 09/09). O que o dono manda já aconteceu; a foto
+  já saiu certa e o que falta é só o rastro. Sem o campo, a decisão vira DECLARAÇÃO PENDENTE:
+  o badge nasce outline em vez do sólido de sempre (`LiberacoesView.jsx:1950`) e a convergência
+  da próxima importação do turno EXECUTA um swap que ninguém pediu — desfazendo a troca real
+  (`escalaPublicacaoDecisoes.js`: "`paresDeclarados` ignora registro de propósito"). Publicada
+  sem ele, o conserto é acrescentá-lo no jsonb pela `rpc_escala_patch_liberacao`, sem republicar.
+  Não perguntar ao dono entre "registro" e "executar": desde a reforma de 07/08 as 40 trocas em
+  produção são registro, e o modo que executa é do TrocaSheet, com um toque na fila.
 - Apelido do WhatsApp → apelido do dicionário: Beta = ROBERTA · Joao Moreira = JOAO RICARDO ·
   Garim = GARIM · Nathália Fornari = NATHALIA. Na dúvida, o dicionário (`escala_anestesista_alias`)
   decide; nunca chute.
