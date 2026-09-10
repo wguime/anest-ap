@@ -231,7 +231,11 @@ setas do bloco somem sem ele — **o defeito ainda bloqueava o conserto manual**
   Oscar ao HRO, e ele saiu antes do plantão do HRO) — por isso as duas leituras
   convivem. **Hoje quem resolve isso é a NUMERAÇÃO, não a derivação**: entre linhas
   numeradas a exceção não se aplica; quem está fora da lista informada segue com
-  31/08 inteiro.
+  31/08 inteiro. ⚠️ **Perguntado na hora se o app devia DEDUZIR a direção do
+  empréstimo sozinho, o dono escolheu manter a numeração como autoridade** (10/09)
+  — não reabrir isso por conta própria. A direção não é derivável sem escolher uma
+  regra nova: em 10/09 a Unimed também "emprestou" alguém ao HRO (o próprio
+  plantonista dela), e generalizar foi exatamente o erro de 30/08.
 - Trava de PÁGINA em `escalaAjudaOrigemHospital.test.jsx` (mesma razão de 27/08: a
   lib já sabia ordenar, o que faltava era o fio). ⚠️ na fixture, o visitante NÃO pode
   ser o último do rodapé de origem — aí ele vira plantão do contraturno de lá e a
