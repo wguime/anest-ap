@@ -42,7 +42,7 @@ const MODELO = 'claude-opus-4-8'
  * `escala_leitura_log` e a que invalida o cache de leitura. Sem bumpar, o ANTES
  * e o DEPOIS se misturam na mesma média e a medição mente.
  */
-const PROMPT_VERSAO = 'v11-preserva-dupla-2026-09-09'
+const PROMPT_VERSAO = 'v12-preserva-cor-2026-09-10'
 
 const DEFAULT_ALLOWED_ORIGINS = [
   'https://anest-ap.web.app',
@@ -475,6 +475,9 @@ function sanitizeCasos(raw: unknown, comTurno = false): unknown[] {
       convenio: str(c?.convenio),
       cirurgiao: str(c?.cirurgiao),
       anestesista: str(c?.anestesista),
+      // Consumidos por aplicarCorNosCasos antes do guardrail do rodapé.
+      cor: str(c?.cor),
+      repeticao: c?.repeticao === true,
       bloco: BLOCOS.has(bloco) ? bloco : 'normal',
       // DERIVADOS, não perguntados (o schema tem orçamento de campos opcionais
       // e cada pergunta a mais custa saída): o prompt já dizia que
