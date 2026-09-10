@@ -10,18 +10,30 @@
  *
  * Histórico: 2026-07-21→22 piloto do dono; 07-22 liberado ao grupo clínico;
  * 07-24 incluídos técnicos de enfermagem (escala colaborativa); 09-08 entra
- * `func-unimed` (funcionárias da Unimed) — opera o dia como os demais, mas NÃO
- * publica: daí `podePublicarEscalaCirurgica` viver aqui também.
+ * `func-unimed` (a conta "Unimed") — opera o dia como os demais, mas NÃO
+ * publica: daí `podePublicarEscalaCirurgica` viver aqui também; 09-09 entra a
+ * irmã dela, `func-hro` (conta "HRO"), com exatamente o mesmo acesso.
  */
 import { normalizeRole } from '@/utils/userTypes'
 
-const PAPEIS_COM_ACESSO = ['anestesiologista', 'medico-residente', 'tec-enfermagem', 'secretaria', 'func-unimed']
+const PAPEIS_COM_ACESSO = ['anestesiologista', 'medico-residente', 'tec-enfermagem', 'secretaria', 'func-unimed', 'func-hro']
+
+/**
+ * Conta de HOSPITAL → o hospital dela. As contas compartilhadas do centro
+ * cirúrgico operam um hospital só na prática, então a tela nasce nele em vez do
+ * padrão fixo 'unimed' (dono 09/09) — o seletor continua livre para as três.
+ * Papel, não lista de e-mails: a conta seguinte do mesmo tipo é uma linha aqui.
+ */
+const HOSPITAL_DA_CONTA = { 'func-unimed': 'unimed', 'func-hro': 'hro' }
+
+/** Hospital em que a tela abre para uma conta de hospital; null para o resto. */
+export const hospitalDaConta = (user) => HOSPITAL_DA_CONTA[normalizeRole(user?.role)] || null
 
 /**
  * Quem PUBLICA a escala (importar a foto, substituir o turno). Subconjunto de
  * PAPEIS_COM_ACESSO — espelha a RLS `can_publicar_escala_cirurgica()`.
- * `func-unimed` (funcionárias da Unimed, dono 2026-09-08) opera o dia inteiro
- * mas fica de fora daqui: publicar é da equipe.
+ * As contas de hospital (`func-unimed` 2026-09-08, `func-hro` 2026-09-09)
+ * operam o dia inteiro mas ficam de fora daqui: publicar é da equipe.
  */
 const PAPEIS_QUE_PUBLICAM = ['anestesiologista', 'medico-residente', 'tec-enfermagem', 'secretaria']
 

@@ -21,9 +21,10 @@ import LiberacoesView from './LiberacoesView'
 import ImportarEscalasPage from './ImportarEscalasPage'
 import ImportarEscalaFdsPage from './ImportarEscalaFdsPage'
 import TrocaSheet from './TrocaSheet'
-import { meuAliasDe, turnoAtual, casosResolvidos, dataPorExtenso, estadoTrocasDoHistorico, filtrarPorTurnoExibicao, normNome, formatData, rodapeDoTurno, localizarSlotEscala, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca } from './utils'
+import { meuAliasDe, turnoAtual, dataPorExtenso, estadoTrocasDoHistorico, normNome, formatData, rodapeDoTurno, localizarSlotEscala, localizarMeuPosto, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca } from './utils'
 import { ehDataFilaUnica, ehFeriado, ehFimDeSemana, FDS_HOSPITAL, FDS_TURNO_CASOS, turnoFdsAtual } from '@/lib/escalaFds'
-import { podeEditarEscalaCirurgica, podePublicarEscalaCirurgica } from './gate'
+import { hospitalDaConta, podeEditarEscalaCirurgica, podePublicarEscalaCirurgica } from './gate'
+import { ehContaSomenteEscala } from '@/utils/userTypes'
 
 const HOSPITAL_OPCOES = HOSPITAIS.map((h) => ({ value: h, label: HOSPITAL_LABEL[h] }))
 // Rótulos CURTOS (dono 16/08): "Manhã/Tarde/Noite" cabem no card a 375px —
@@ -169,31 +170,75 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     setTurno(t)
   }, [turnoDoRelogio])
 
-  // Abre já no hospital+turno onde o usuário está escalado (pedido do dono 23/07:
-  // abria fixo em Unimed/Minhas e vinha em branco p/ quem estava no HRO/Materno).
-  // Uma vez, quando as escalas carregam; prefere o turno atual; não sobrescreve
-  // escolha manual depois.
+  // Quem sou eu na escala — o apelido casa a coluna do anestesista, o uid casa o
+  // vínculo (e o residente, que acompanha por `residenteUserId`).
+  const meuAlias = meuAliasDe(user)
+  const meuUid = user?.uid || user?.id || null
+
+  // ── "MINHAS" LEVA ONDE EU ESTOU (dono 2026-09-09) ──────────────────────────
+  // "se o usuário está escalado na unimed e clica em minhas estando o HRO
+  // marcado, nada aparece. quero que ao clicar em minhas apareçam as cirurgias e
+  // as marcações no cabeçalho fiquem marcadas de forma automática onde o usuário
+  // está". Nada muda de layout: quem passa a dizer ONDE e QUANDO são os trilhos
+  // de hospital e de turno que já existem — a aba só os move para o meu posto.
+  //
+  // Roda a CADA toque na aba, não uma vez por sessão: entre uma abertura e
+  // outra o dia muda (assumi uma sala, virou o turno, alguém me passou um caso),
+  // e uma varredura só no mount devolveria a tela vazia de novo.
+  const irOndeEuEstou = useCallback(() => {
+    const posto = localizarMeuPosto({
+      escalas,
+      hospitais: HOSPITAIS,
+      eu: { uid: meuUid, alias: meuAlias },
+      turnoPreferido: turnoDoRelogio(),
+    })
+    if (!posto) return false
+    setHospital(posto.hospital)
+    // Passa pelo `escolherTurno` de propósito: se o meu posto é no OUTRO turno,
+    // o relógio fica pausado nesta faixa — senão o efeito do minuto seguinte
+    // devolveria o turno em curso e as cirurgias sumiriam sob o dedo.
+    escolherTurno(posto.turno)
+    return true
+  }, [escalas, meuUid, meuAlias, turnoDoRelogio, escolherTurno])
+
+  // Abertura da tela: mesma varredura, porque a aba que abre É a Minhas (pedido
+  // do dono 23/07 — abria fixo em Unimed e vinha em branco p/ quem estava no
+  // HRO/Materno). Uma vez, quando as escalas chegam; depois é o toque na aba.
   const autoSelRef = useRef(false)
   useEffect(() => {
     if (autoSelRef.current || loading || !user) return
-    const uid = user.uid || user.id
-    const alvo = normNome(meuAliasDe(user))
-    // residente acompanha por uid (dono 29/07) — abre no hospital dele também
-    const temCaso = (e, t) => filtrarPorTurnoExibicao(casosResolvidos(e), t).some(
-      (c) => c.residenteUserId === uid
-        || (c.anestesistaUserId ? c.anestesistaUserId === uid : (alvo && normNome(c.anestesista) === alvo))
-    )
-    const tNow = turnoAtual()
-    const carregou = HOSPITAIS.some((h) => escalas[h]?.casos?.length)
-    if (!carregou) return
-    for (const h of HOSPITAIS) {
-      if (!escalas[h]?.casos?.length) continue
-      for (const t of [tNow, tNow === 'matutino' ? 'vespertino' : 'matutino']) {
-        if (temCaso(escalas[h], t)) { setHospital(h); escolherTurno(t); autoSelRef.current = true; return }
-      }
-    }
-    autoSelRef.current = true // escalas carregaram mas o user não está em nenhuma
-  }, [escalas, loading, user])
+    if (!HOSPITAIS.some((h) => escalas[h]?.casos?.length)) return
+    irOndeEuEstou()
+    autoSelRef.current = true // escalas carregaram; achando ou não, não insiste
+  }, [escalas, loading, user, irOndeEuEstou])
+
+  // CONTA DE HOSPITAL abre no hospital dela (dono 09/09) em vez do padrão fixo
+  // 'unimed'. Depende da string, não do objeto `user`: um snapshot novo do
+  // contexto não pode arrastar o seletor de volta debaixo de quem o tocou.
+  const hospitalConta = hospitalDaConta(user)
+  const contaHospitalRef = useRef(null)
+  useEffect(() => {
+    if (!hospitalConta || contaHospitalRef.current === hospitalConta) return
+    contaHospitalRef.current = hospitalConta
+    setHospital(hospitalConta)
+  }, [hospitalConta])
+
+  // A aba "Minhas" não existe para as contas de hospital (dono 09/09): elas
+  // operam a escala do centro cirúrgico e não assumem sala nenhuma, então a aba
+  // seria uma promessa vazia todo dia. A tela delas abre na Completa.
+  // Derivado, não efeito: a conta chega do contexto DEPOIS do primeiro render, e
+  // corrigir a aba por setState deixaria um quadro com a aba que não existe.
+  const contaSoEscala = ehContaSomenteEscala(user)
+  const abaOpcoes = useMemo(
+    () => (contaSoEscala ? ABA_OPCOES.filter((o) => o.value !== 'minhas') : ABA_OPCOES),
+    [contaSoEscala]
+  )
+  const abaVisivel = contaSoEscala && aba === 'minhas' ? 'board' : aba
+
+  const escolherAba = useCallback((v) => {
+    setAba(v)
+    if (v === 'minhas') irOndeEuEstou()
+  }, [irOndeEuEstou])
 
 
   // TROCA REMOVIDA (dono 29/07): `substituirPosicao`/`localizarPosicao` saíram
@@ -410,8 +455,6 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const escala = escalaDoHospital
   const turnoCasos = turnoDeCasos
 
-  const meuAlias = meuAliasDe(user)
-  const meuUid = user?.uid || user?.id
   const userInfo = { userId: meuUid, userName: user?.displayName }
 
   return (
@@ -466,9 +509,9 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           hospitalOpcoes={chromeFilaUnica ? null : HOSPITAL_OPCOES}
           hospital={hospital}
           onEscolherHospital={setHospital}
-          abaOpcoes={chromeFilaUnica ? null : ABA_OPCOES}
-          aba={aba}
-          onEscolherAba={setAba}
+          abaOpcoes={chromeFilaUnica ? null : abaOpcoes}
+          aba={abaVisivel}
+          onEscolherAba={escolherAba}
         />
 
         {/* Aterrissou noutra data (ex.: publicou pela importação): rótulo + volta */}
@@ -487,10 +530,10 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
         )}
 
         <div className="pt-1">
-          {!modoFds && aba === 'minhas' && (
+          {!modoFds && abaVisivel === 'minhas' && (
             <MinhasEscalasView escala={escala} meuAlias={meuAlias} meuUid={meuUid} turno={turnoCasos} onVerBoard={() => setAba('board')} />
           )}
-          {!modoFds && aba === 'board' && (
+          {!modoFds && abaVisivel === 'board' && (
             <>
               {/* Urgências do HRO (dono 18/08): ocupação das 2 salas do contrato +
                   fila. FORA da BoardView de propósito — os EmptyStates dela matariam
@@ -501,7 +544,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               <BoardView escala={escala} meuAlias={meuAlias} meuUid={meuUid} turno={turnoCasos} onNavigate={onNavigate} />
             </>
           )}
-          {(modoFds || aba === 'liberacoes') && (() => {
+          {(modoFds || abaVisivel === 'liberacoes') && (() => {
             // MODO FDS: a view opera sobre a linha 'fds' (fila única + marcações)
             // e os casos mesclados dos 3 hospitais; troca/P4-coringa ficam fora.
             const escalaLib = modoFds ? escalas.fds : escala

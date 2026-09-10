@@ -8,9 +8,13 @@ export const TIPOS_USUARIO = {
   tecnico_enfermagem: { label: 'Téc. Enfermagem', cor: '#06b6d4' }, // alias legado
   'tec-enfermagem': { label: 'Téc. Enfermagem', cor: '#06b6d4' },
   secretaria: { label: 'Secretária', cor: '#f59e0b' },
-  // Conta compartilhada das funcionárias da Unimed (dono 2026-09-08): só a
-  // Escala Cirúrgica, e lá dentro tudo menos publicar.
-  'func-unimed': { label: 'Funcionária Unimed', cor: '#0ea5e9' },
+  // Contas compartilhadas do centro cirúrgico (dono 2026-09-08 e 09-09): só a
+  // Escala Cirúrgica, e lá dentro tudo menos publicar. O rótulo é o HOSPITAL e
+  // nada mais — "quero que nao tenha mais a palavra 'funcionária', quero apenas
+  // Unimed (quando o login for realizado pela Unimed) e HRO (quando o login for
+  // realizado pelo HRO)". Quem opera a escala lê o hospital, não o cargo.
+  'func-unimed': { label: 'Unimed', cor: '#0ea5e9' },
+  'func-hro': { label: 'HRO', cor: '#0ea5e9' },
   farmaceutico: { label: 'Farmacêutico', cor: '#ec4899' },
   administrativo: { label: 'Colaborador', cor: '#6366f1' }, // alias legado
   colaborador: { label: 'Colaborador', cor: '#6366f1' },
@@ -26,7 +30,8 @@ export const ROLES = [
   { id: 'farmaceutico', name: 'Farmacêutico', color: '#ec4899' },
   { id: 'colaborador', name: 'Colaborador', color: '#6366f1' },
   { id: 'secretaria', name: 'Secretária', color: '#f59e0b' },
-  { id: 'func-unimed', name: 'Funcionária Unimed', color: '#0ea5e9' },
+  { id: 'func-unimed', name: 'Unimed', color: '#0ea5e9' },
+  { id: 'func-hro', name: 'HRO', color: '#0ea5e9' },
 ];
 
 // Função adicional (pode ser marcada simultaneamente a qualquer cargo)
@@ -94,19 +99,23 @@ export const normalizeRole = (role) => {
   return null;
 };
 
+/** Papéis das contas compartilhadas de hospital (só a Escala Cirúrgica). */
+const PAPEIS_SOMENTE_ESCALA = ['func-unimed', 'func-hro'];
+
 /**
- * Conta de acesso RESTRITO à Escala Cirúrgica (dono 2026-09-08).
+ * Conta de acesso RESTRITO à Escala Cirúrgica (dono 2026-09-08; 2ª conta 09-09).
  *
- * A conta compartilhada das funcionárias da Unimed existe para operar a escala
- * do dia e nada mais — "não irão receber nenhum tipo de informação". Os cards
- * já estão todos desligados em `permissions`, mas três superfícies da Home não
+ * As contas compartilhadas do centro cirúrgico existem para operar a escala do
+ * dia e nada mais — "não irão receber nenhum tipo de informação". Os cards já
+ * estão todos desligados em `permissions`, mas três superfícies da Home não
  * passam por card nenhum: o carrossel de notícias, o contador do sino e o
- * convite de notificação push. É este helper que as cala.
+ * convite de notificação push. É este helper que as cala. Na Escala Cirúrgica
+ * ele também esconde a aba "Minhas" — elas não assumem sala.
  *
- * Papel, não lista de e-mails: se amanhã houver uma segunda conta assim, basta
- * o cargo.
+ * Papel, não lista de e-mails: a segunda conta assim (HRO) custou uma linha na
+ * lista acima, como estava previsto.
  */
-export const ehContaSomenteEscala = (user) => normalizeRole(user?.role) === 'func-unimed';
+export const ehContaSomenteEscala = (user) => PAPEIS_SOMENTE_ESCALA.includes(normalizeRole(user?.role));
 
 /**
  * Conta de TESTE (e2e) — nunca aparece em lista de seleção de gente real.

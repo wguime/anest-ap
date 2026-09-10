@@ -2150,3 +2150,47 @@ export function gruposSemIdentidade(mapa) {
   return out
 }
 
+
+/**
+ * ONDE EU ESTOU no dia — hospital + turno em que a pessoa tem cirurgia ou posição.
+ *
+ * Pedido do dono 2026-09-09: "ao clicar em minhas apareçam as cirurgias e as
+ * marcações no cabeçalho fiquem marcadas de forma automática onde o usuário
+ * está". Até aqui a aba Minhas filtrava pela escala do hospital SELECIONADO e
+ * pelo turno selecionado — quem estava no HRO e abria a tela na Unimed lia
+ * "Você não está escalado aqui" com duas cirurgias suas no dia. O layout não
+ * muda: quem responde "onde" e "quando" são os trilhos que já existem, movidos
+ * por este helper.
+ *
+ * ⚠️ O TURNO MANDA MAIS QUE O HOSPITAL. A varredura antiga (autoSelRef, 23/07)
+ * era hospital por fora e turno por dentro: quem tinha cirurgia de manhã na
+ * Unimed e à tarde no HRO caía em Unimed/Manhã às 14h, porque 'unimed' vem
+ * antes na lista e o laço de dentro achava o turno errado primeiro. Com o turno
+ * por fora, o turno EM CURSO é procurado nos três hospitais antes de qualquer
+ * outro — que é o que o dono pediu em "sempre marque o turno em curso".
+ *
+ * O residente entra por `residenteUserId` (dono 29/07): a escala dele é a dos
+ * casos que acompanha, e ele também abre a tela onde está.
+ *
+ * @param {object}   escalas         { unimed, hro, materno, fds } do context
+ * @param {string[]} hospitais       ordem de desempate dentro do turno
+ * @param {object}   eu              { uid, alias }
+ * @param {string}   turnoPreferido  turno do relógio — procurado primeiro
+ * @param {string[]} turnos          turnos a varrer, na ordem de fallback
+ * @returns {{hospital: string, turno: string}|null}
+ */
+export function localizarMeuPosto({ escalas, hospitais, eu, turnoPreferido, turnos = ['matutino', 'vespertino'] }) {
+  const uid = eu?.uid || null
+  const alias = eu?.alias || ''
+  if (!uid && !alias) return null
+  const meuCaso = (c) => (uid && c.residenteUserId === uid) || anestesistaDoCasoEh(c, { uid, alias })
+  const ordemTurnos = [turnoPreferido, ...turnos].filter((t, i, a) => t && a.indexOf(t) === i)
+  for (const turno of ordemTurnos) {
+    for (const hospital of hospitais) {
+      const casos = casosResolvidos(escalas?.[hospital])
+      if (!casos.length) continue
+      if (filtrarPorTurnoExibicao(casos, turno).some(meuCaso)) return { hospital, turno }
+    }
+  }
+  return null
+}

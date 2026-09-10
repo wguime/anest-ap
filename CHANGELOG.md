@@ -3,6 +3,43 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.11.0 (10/09/2026) — "Minhas" leva onde você está, e a conta HRO
+
+Quatro pedidos do dono na mesma mensagem, todos sobre a Escala Cirúrgica.
+
+### "Minhas" para de vir vazia
+A aba filtrava pela escala do hospital SELECIONADO e pelo turno selecionado: quem estava
+escalado no HRO e abria a tela na Unimed lia "Você não está escalado aqui" com duas cirurgias
+suas no dia. Agora tocar em **Minhas** move os trilhos de hospital e turno para o posto da
+pessoa — **nada mudou de layout** ("nao quero que mude nada do layout que já existe"): quem
+diz ONDE e QUANDO são os controles que já estavam lá.
+
+A varredura (`localizarMeuPosto`, pura) roda a cada toque na aba e na abertura da tela, não
+uma vez por sessão — entre uma abertura e outra o dia muda. Casa por uid, por apelido, pela
+dupla "A + B" e pelo `residenteUserId` do residente.
+
+### O turno segue o relógio de verdade
+⚠️ A varredura antiga era **hospital por fora, turno por dentro**: quem tinha cirurgia de
+manhã na Unimed e à tarde no HRO abria o app às 14h em Unimed/**Manhã**, e o relógio ficava
+PAUSADO ali (escolha de turno divergente segura o automático na faixa). Invertida a ordem, o
+turno em curso é procurado nos três hospitais antes de qualquer outro. A trava do teste falha
+contra a ordem antiga.
+
+### Conta HRO, irmã da conta Unimed
+Papel `func-hro` com exatamente o recorte da `func-unimed`: opera o dia inteiro (status,
+urgência, acrescentar caso, liberar, ajuda, observação) e **não publica**. Migration
+`20260910120000_escala_papel_func_hro.sql` mexe em duas coisas — o CHECK de `profiles.role` e
+`can_write_escala_cirurgica()` —, e deliberadamente não toca em `can_publicar_*`.
+
+### O cargo é o hospital, sem "funcionária"
+"quero apenas Unimed (quando o login for realizado pela Unimed) e HRO (quando o login for
+realizado pelo HRO)": o rótulo do papel e o nome das contas passam a ser só o hospital. E,
+dentro da escala, essas contas **não têm mais a aba "Minhas"** — não assumem sala, então a aba
+era promessa vazia todo dia. A tela delas abre na Completa, no hospital da conta.
+
+`scripts/criar-conta-func-unimed.mjs` virou `scripts/criar-conta-hospital-escala.mjs
+<unimed|hro> <senha>`.
+
 ## v5.10.1 (08/09/2026) — Desktop: barra embaixo, cards do tamanho certo e sem vão
 
 Três correções do dono na mesma mensagem, depois de ver a v5.10.0 no notebook: "os vãos vazios me
