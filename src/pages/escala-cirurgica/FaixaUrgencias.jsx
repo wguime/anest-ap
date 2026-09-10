@@ -10,17 +10,24 @@
  *
  * Desenho escolhido em protótipo (18/08, 3 rodadas de revisão a 430px nos dois
  * temas — .tmp/urgencias-hro-prototype.html):
- * - grade 2×2 com os POSTOS do contrato, um card de UMA linha (36px) cada:
- *   selo da sala + nome + meta à direita; conteúdo SEM negrito (14h15);
+ * - grade 2×2 com os POSTOS do contrato, um card por posto;
  * - sala fora do contrato = card PRÓPRIO de largura inteira com rótulo EXTRA
  *   ("não está claro" foi a crítica da 2ª rodada — o excedente não pode se
  *   confundir com os postos pagos);
  * - fila em uma linha, sem "Sala · convênio" (segue no detalhe, a um toque);
- * - cores: as receitas que a tela já ensina — selo de sala bg-primary/20,
- *   tinta de iniciada bg-success/[0.14] dark:/20, vermelho SÓ no excedente
- *   (verde sobre fundo vermelho foi vetado como "vitral" na 2ª rodada);
+ * - cores: as receitas que a tela já ensina — tinta de iniciada
+ *   bg-success/[0.14] dark:/20, vermelho SÓ no excedente (verde sobre fundo
+ *   vermelho foi vetado como "vitral" na 2ª rodada);
  * - toque em card com caso abre o CasoDetalheSheet — a MESMA superfície onde
  *   se marca Iniciada/Terminada: quem precisa do dado facilita produzi-lo.
+ *
+ * REVISÃO 09/09 — modelo B, escolhido pelo dono entre três a 430px nos dois
+ * temas (.tmp/urgencias-cards-modelos.html) depois de "as informações nesses
+ * cards não ficam muito claras". O card passou a ter TRÊS linhas de papel fixo
+ * (papel · quem · onde+carga), o dedicado ganhou barra cinza à esquerda para
+ * dizer "fora da conta", e o cabeçalho trocou as DUAS contagens que se
+ * contradiziam ("0 de 2 salas" ao lado de "2 livres") pelo turno do contrato
+ * mais uma pastilha por vaga. Detalhe de cada decisão nos blocos abaixo.
  *
  * Fica FORA da BoardView de propósito: os EmptyStates dela matariam a faixa
  * justamente no dia sem escala publicada com urgência adicionada à mão (8 de 9
@@ -37,7 +44,6 @@
  */
 import { useState } from 'react'
 import { ChevronRight, Settings2 } from 'lucide-react'
-import { Badge } from '@/design-system'
 import { fraseClinica } from '@/lib/colunaLiberacao'
 import { GRAVIDADE_LABEL } from '@/lib/escalaCirurgicaUrgencias'
 import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
@@ -52,8 +58,10 @@ import SalasUrgenciaSheet from './SalasUrgenciaSheet'
 import AddCasoSheet from './AddCasoSheet'
 
 const PAPEL_LABEL = { plantonista: 'Plantão', sobreaviso: 'Sobreaviso' }
-const DEDICADO_LABEL = { orto: 'Orto', co: 'CO' }
-const DEDICADO_NOME = { orto: 'Ortopedia', co: 'CO' }
+/** Papel do dedicado por EXTENSO — ele virou o TÍTULO do card (dono 09/09), e
+ *  "CO" abreviado no canto direito era lido como estado, não como quem cobre. */
+const DEDICADO_TITULO = { orto: 'Ortopedia', co: 'Centro obstétrico' }
+const SEM_NOME = 'sem anestesista'
 
 /** Espera/decorrido: "48min" · "2h10". */
 export const formatEspera = (min) => {
@@ -66,26 +74,69 @@ export const formatEspera = (min) => {
 const CARD_BOX = 'w-full overflow-hidden rounded-[10px] border px-2 py-1 text-left'
 
 /**
- * Card do POSTO em DUAS LINHAS (dono 21/08): sala em cima, anestesista embaixo.
- * Numa linha só, o selo da sala e o nome disputavam ~150px e os dois perdiam —
- * "BLOCO A - SALA 5 - EMERGÊNCIA" empurrou o nome para fora do card e sobrou uma
- * pastilha muda. Empilhado, a sala tem a largura inteira e o nome também.
+ * Card em TRÊS LINHAS, modelo B aprovado pelo dono em 09/09 (protótipo
+ * `.tmp/urgencias-cards-modelos.html`, 430px nos dois temas):
+ *   1. o PAPEL — é o título fixo do card e diz o que aquela caixa é;
+ *   2. QUEM está;
+ *   3. ONDE e QUANTO pesa ("Sala 7 · 2 cir.").
+ * Antes, sala em cima e nome embaixo com o papel espremido à direita: os quatro
+ * cards pareciam irmãos sendo duas espécies (o contrato CONTA, o dedicado não),
+ * o canto direito falava cinco idiomas ("livre", "Orto", "2 cir.", "48min",
+ * "fora do contrato") e a vaga livre tinha silhueta diferente da ocupada.
  */
-const CARD_BASE = `flex min-h-[44px] flex-col justify-center gap-0.5 ${CARD_BOX}`
+const CARD_BASE = `flex min-h-[48px] flex-col justify-center gap-px ${CARD_BOX}`
 
 /** Linha da FILA: continua em UMA linha — ali não há sala, e o que se lê de
  *  relance é gravidade → procedimento → espera, nessa ordem, lado a lado. */
 const CARD_FILA = `flex min-h-[36px] items-center gap-1.5 ${CARD_BOX}`
 
-/** Selo de sala — MESMA receita do cabeçalho de sala do quadro (primary/20). */
-const SeloSala = ({ children, tom = 'primary' }) => (
+/** Título do card: o papel, sempre no mesmo lugar e no mesmo tamanho. */
+const Papel = ({ children, tom = 'muted' }) => (
   <span
     className={[
-      'shrink-0 whitespace-nowrap rounded-[5px] px-1 text-[9.5px] font-extrabold uppercase leading-[14px] tracking-wide',
-      tom === 'destructive' ? 'bg-destructive/15 text-destructive' : 'bg-primary/20 text-primary',
+      'truncate text-[9.5px] font-extrabold uppercase leading-[13px] tracking-[0.06em]',
+      tom === 'primary' ? 'text-primary' : tom === 'destructive' ? 'text-destructive' : 'text-muted-foreground',
     ].join(' ')}
   >
     {children}
+  </span>
+)
+
+/** Nome de quem está — a linha que se procura no card. */
+const Quem = ({ children, vazio = false }) => (
+  <span className={`truncate text-[13.5px] leading-[17px]${vazio ? ' text-muted-foreground' : ''}`}>{children}</span>
+)
+
+/** Onde e quanto pesa. */
+const Onde = ({ children, tom = 'muted' }) => (
+  <span
+    className={`truncate text-[10.5px] tabular-nums ${tom === 'destructive' ? 'text-destructive' : 'text-muted-foreground'}`}
+  >
+    {children}
+  </span>
+)
+
+/**
+ * Vagas do contrato: uma pastilha por vaga (cheia = usada) + uma vermelha por
+ * sala ACIMA dele. Substitui as duas contagens que o cabeçalho trazia — "0 de 2
+ * salas" ao lado de "2 livres", com duas salas cheias logo abaixo, era a
+ * contradição que o dono apontou em 09/09.
+ */
+const Vagas = ({ ocupadas, capacidade }) => (
+  <span
+    role="img"
+    aria-label={`${ocupadas} de ${capacidade} vagas de urgência ocupadas`}
+    className="ml-auto flex items-center gap-[3px]"
+  >
+    {Array.from({ length: capacidade }, (_, i) => (
+      <i
+        key={i}
+        className={`h-[9px] w-[9px] rounded-[3px] border-[1.5px] ${i < ocupadas ? 'border-primary bg-primary' : 'border-primary/55'}`}
+      />
+    ))}
+    {Array.from({ length: Math.max(0, ocupadas - capacidade) }, (_, i) => (
+      <i key={`x${i}`} className="h-[9px] w-[9px] rounded-[3px] border-[1.5px] border-destructive bg-destructive" />
+    ))}
   </span>
 )
 
@@ -126,6 +177,9 @@ export default function FaixaUrgencias({ escala, hospital, turno }) {
   const tituloOcupacao = (it) =>
     [it.qtd > 1 ? `${it.qtd} cirurgias` : null, it.desdeMin != null ? `em sala há ${formatEspera(it.desdeMin)}` : null]
       .filter(Boolean).join(' · ') || undefined
+  /** 3ª linha do card: onde está e o que carrega, na mesma frase. */
+  const ondeOcupacao = (it) => [salaLiberacao(it.sala), metaOcupacao(it)].filter(Boolean).join(' · ')
+  const ondeDedicado = (d) => [salaLiberacao(d.sala), d.qtd ? `${d.qtd} cir.` : ''].filter(Boolean).join(' · ')
 
   // Postos e excedente vêm da LIB (distribuirPostos): sala marcada casa
   // primeiro, o resto por ordem de início — testável fora do React.
@@ -145,21 +199,16 @@ export default function FaixaUrgencias({ escala, hospital, turno }) {
           acima ? 'border-destructive/40' : 'border-border',
         ].join(' ')}
       >
-        {/* cabeçalho: título + situação + contador (a ação vem junto do nível) */}
-        <div className="mb-1.5 flex items-baseline gap-2">
+        {/* cabeçalho: título + em que linha do contrato estamos + vagas.
+            O turno vem junto porque é o RELÓGIO que decide a capacidade (de
+            manhã o CO tem dedicado; à tarde ele vira vaga de urgência) — sem
+            ele, "por que a Sala 7 agora conta?" não tinha resposta na tela. */}
+        <div className="mb-1.5 flex items-center gap-2">
           <span className="text-sm font-extrabold">Urgências</span>
-          <span className="text-xs text-muted-foreground">
-            {acima ? 'acima do contrato' : `${estado.ocupadas} de ${estado.capacidade} salas`}
+          <span className={`truncate text-xs ${acima ? 'font-semibold text-destructive' : 'text-muted-foreground'}`}>
+            {acima ? 'acima do contrato' : `${estado.turnoLabel} · contrato de ${estado.capacidade}`}
           </span>
-          <span className="ml-auto text-xs font-semibold tabular-nums text-muted-foreground">
-            {estado.nivel === 'cheio' && (
-              <Badge variant="destructive" badgeStyle="subtle">{estado.ocupadas} de {estado.capacidade}</Badge>
-            )}
-            {acima && (
-              <Badge variant="destructive" badgeStyle="solid">{estado.ocupadas} de {estado.capacidade}</Badge>
-            )}
-            {estado.nivel !== 'cheio' && !acima && `${estado.livres} livre${estado.livres === 1 ? '' : 's'}`}
-          </span>
+          <Vagas ocupadas={estado.ocupadas} capacidade={estado.capacidade} />
           {podeEditar && (
             <button
               type="button"
@@ -189,13 +238,9 @@ export default function FaixaUrgencias({ escala, hospital, turno }) {
                 item.emAndamento ? 'bg-success/[0.14] dark:bg-success/20' : 'bg-muted/55',
               ].join(' ')}
             >
-              <span className="flex"><SeloSala>{salaLiberacao(item.sala)}</SeloSala></span>
-              <span className="flex items-baseline gap-1.5">
-                <span className="min-w-0 flex-1 truncate text-[13px]">
-                  {nomeDe(item.anestesista) || PAPEL_LABEL[papel] || papel}
-                </span>
-                <span className="shrink-0 text-[10.5px] tabular-nums text-muted-foreground">{metaOcupacao(item)}</span>
-              </span>
+              <Papel tom="primary">{PAPEL_LABEL[papel] || papel}</Papel>
+              <Quem vazio={!nomeDe(item.anestesista)}>{nomeDe(item.anestesista) || SEM_NOME}</Quem>
+              <Onde>{ondeOcupacao(item)}</Onde>
             </button>
           ) : (
             <button
@@ -205,11 +250,10 @@ export default function FaixaUrgencias({ escala, hospital, turno }) {
               onClick={() => setAddCaso({ posto: papel === 'plantonista' ? 'plantao' : papel })}
               className={`${CARD_BASE} border-dashed border-border bg-transparent`}
             >
-              {/* posto LIVRE não tem sala: uma linha só, centrada na mesma altura */}
-              <span className="flex flex-1 items-center gap-1.5">
-                <span className="min-w-0 flex-1 truncate text-[13px]">{PAPEL_LABEL[papel] || papel}</span>
-                <span className="shrink-0 text-[10.5px] text-muted-foreground">livre</span>
-              </span>
+              {/* posto LIVRE: mesma silhueta da ocupada, sem a linha do "onde" —
+                  o card não muda de forma quando alguém entra nele. */}
+              <Papel tom="primary">{PAPEL_LABEL[papel] || papel}</Papel>
+              <Quem vazio>livre</Quem>
             </button>
           ))}
           {estado.dedicados.map((d) => {
@@ -224,18 +268,17 @@ export default function FaixaUrgencias({ escala, hospital, turno }) {
                     : {})}
                 className={[
                   CARD_BASE,
-                  'border-border',
+                  // barra cinza à esquerda = "fora da conta". É o único sinal que
+                  // separa o dedicado dos postos pagos — antes, só a palavra
+                  // "Orto"/"CO" no canto, no mesmo lugar onde aparece "livre".
+                  'border-border border-l-[3px] border-l-border-strong',
                   // urgência em andamento na sala dedicada pinta como as demais
                   d.item?.emAndamento ? 'bg-success/[0.14] dark:bg-success/20' : 'bg-muted/55',
                 ].join(' ')}
               >
-                <span className="flex"><SeloSala>{salaLiberacao(d.sala)}</SeloSala></span>
-                <span className="flex items-baseline gap-1.5">
-                  <span className="min-w-0 flex-1 truncate text-[13px]">
-                    {nomeDe(d.anestesista) || DEDICADO_NOME[d.papel]}
-                  </span>
-                  <span className="shrink-0 text-[10.5px] text-muted-foreground">{DEDICADO_LABEL[d.papel]}</span>
-                </span>
+                <Papel>{DEDICADO_TITULO[d.papel] || d.papel}</Papel>
+                <Quem vazio={!nomeDe(d.anestesista)}>{nomeDe(d.anestesista) || SEM_NOME}</Quem>
+                <Onde>{ondeDedicado(d)}</Onde>
               </Comp>
             )
           })}
@@ -249,16 +292,9 @@ export default function FaixaUrgencias({ escala, hospital, turno }) {
             onClick={() => setDetalhe(it.caso)}
             className={`${CARD_BASE} mt-1.5 border-destructive/50 bg-destructive/10 dark:bg-destructive/15`}
           >
-            <span className="flex items-center gap-1.5">
-              <span className="shrink-0 text-[11px] font-extrabold uppercase tracking-wide text-destructive">Extra</span>
-              <SeloSala tom="destructive">{salaLiberacao(it.sala)}</SeloSala>
-            </span>
-            <span className="flex items-baseline gap-1.5">
-              <span className="min-w-0 flex-1 truncate text-[13px]">{nomeDe(it.anestesista)}</span>
-              <span className="shrink-0 text-[10.5px] tabular-nums text-destructive">
-                fora do contrato{metaOcupacao(it) ? ` · ${metaOcupacao(it)}` : ''}
-              </span>
-            </span>
+            <Papel tom="destructive">Extra — fora do contrato</Papel>
+            <Quem vazio={!nomeDe(it.anestesista)}>{nomeDe(it.anestesista) || SEM_NOME}</Quem>
+            <Onde tom="destructive">{ondeOcupacao(it)}</Onde>
           </button>
         ))}
         {acima && (

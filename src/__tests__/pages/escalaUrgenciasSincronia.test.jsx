@@ -142,8 +142,9 @@ describe('o quadro da tarde alcança a urgência que atravessou o turno', () => 
 describe('as duas superfícies contam a MESMA cirurgia', () => {
   it('a faixa conta as abertas da manhã e o quadro as exibe', async () => {
     montarFaixa()
-    // 2 vagas do contrato ocupadas pelas urgências abertas do dia
-    expect(await screen.findByText(/de 2 salas/)).toBeTruthy()
+    // 2 vagas do contrato ocupadas pelas urgências abertas do dia — desde o
+    // modelo B (dono 09/09) a contagem vive nas pastilhas de vaga, não no texto
+    expect(await screen.findByLabelText(/de 2 vagas de urgência ocupadas/)).toBeTruthy()
     cleanup()
     montarQuadro()
     expect(await screen.findByText('Ainda abertas')).toBeTruthy()

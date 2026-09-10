@@ -121,13 +121,27 @@ describe('quando a faixa existe', () => {
 })
 
 describe('postos do contrato', () => {
-  it('ocupado mostra sala + anestesista; vago mostra o papel e "livre"', () => {
+  it('ocupado mostra papel + quem + onde; vago mostra o papel e "livre"', () => {
+    // MODELO B (dono 09/09): o card tem três linhas de papel fixo — papel,
+    // quem está, onde e quanto pesa. O papel é o TÍTULO, não uma palavra
+    // espremida no canto direito junto de "livre"/"48min"/"2 cir.".
     montar([iniciada('c1', 'Sala 6')])
-    expect(screen.getByText('Sala 6')).toBeTruthy()
+    expect(screen.getByText('Plantão')).toBeTruthy()
     expect(screen.getByText('Marcelo')).toBeTruthy()
+    expect(screen.getByText('Sala 6 · 40min')).toBeTruthy()
     expect(screen.getByText('Sobreaviso')).toBeTruthy()
     expect(screen.getByText('livre')).toBeTruthy()
-    expect(screen.getByText('1 de 2 salas')).toBeTruthy()
+  })
+
+  it('o cabeçalho diz em que LINHA do contrato estamos, e não duas contagens', () => {
+    // A queixa de 09/09 era o cabeçalho: "0 de 2 salas" ao lado de "2 livres",
+    // com duas salas cheias logo abaixo. Agora o texto é o turno do contrato —
+    // é o RELÓGIO que decide a capacidade — e a contagem é uma só, nas vagas.
+    montar([iniciada('c1', 'Sala 6')])
+    expect(screen.getByText('Manhã · contrato de 2')).toBeTruthy()
+    expect(screen.queryByText('1 de 2 salas')).toBeNull()
+    expect(screen.queryByText('1 livre')).toBeNull()
+    expect(screen.getByLabelText('1 de 2 vagas de urgência ocupadas')).toBeTruthy()
   })
 
   it('de manhã Ortopedia e CO aparecem como cards dedicados, com quem cobre a sala', () => {
@@ -136,10 +150,13 @@ describe('postos do contrato', () => {
       caso('orto', 'Sala 4', { tipo: 'eletiva', anestesista: 'RAFAEL', anestesistaUserId: 'u-rafael' }),
       caso('co', 'Sala 7 - CO', { tipo: 'eletiva', anestesista: 'CRISTINA', anestesistaUserId: 'u-cristina' }),
     ])
-    expect(screen.getByText('Orto')).toBeTruthy()
-    expect(screen.getByText('CO')).toBeTruthy()
+    // papel POR EXTENSO como título (dono 09/09): "CO" no canto direito era
+    // lido como estado, do lado de "livre", e não como quem cobre a sala.
+    expect(screen.getByText('Ortopedia')).toBeTruthy()
+    expect(screen.getByText('Centro obstétrico')).toBeTruthy()
     expect(screen.getByText('Rafael')).toBeTruthy()
     expect(screen.getByText('Cristina')).toBeTruthy()
+    expect(screen.getByText('Sala 4 · 1 cir.')).toBeTruthy()
   })
 
   it('à tarde o CO SAI dos dedicados e passa a OCUPAR uma vaga (dono 20/08)', () => {
@@ -151,11 +168,11 @@ describe('postos do contrato', () => {
        caso('co', 'Sala 7 - CO', { tipo: 'eletiva', turno: 'vespertino', anestesista: 'CRISTINA', anestesistaUserId: 'u-cristina' })],
       { turno: 'vespertino' },
     )
-    expect(screen.getByText('Orto')).toBeTruthy()
-    expect(screen.queryByText('CO')).toBeNull() // não é mais card de dedicado
+    expect(screen.getByText('Ortopedia')).toBeTruthy()
+    expect(screen.queryByText('Centro obstétrico')).toBeNull() // não é mais card de dedicado
     expect(screen.getByText('Sala 7 - CO')).toBeTruthy()
     expect(screen.getByText('Cristina')).toBeTruthy()
-    expect(screen.getByText('2 de 2')).toBeTruthy()
+    expect(screen.getByLabelText('2 de 2 vagas de urgência ocupadas')).toBeTruthy()
   })
 
   it('sala com várias cirurgias é UM card, com a contagem à direita', () => {
@@ -166,9 +183,9 @@ describe('postos do contrato', () => {
        caso('co2', 'Sala 7 - CO', { gravidade: 'urgente', procedimento: 'Cesarianas', turno: 'vespertino', anestesista: 'GABRIEL', anestesistaUserId: 'u-gabriel' })],
       { turno: 'vespertino' },
     )
-    expect(screen.getAllByText('Sala 7 - CO')).toHaveLength(1)
-    expect(screen.getByText('2 cir.')).toBeTruthy() // abreviado p/ o nome caber em 196px
-    expect(screen.getByText('1 de 2 salas')).toBeTruthy()
+    // sala e contagem viraram a MESMA linha do card (modelo B): um card só.
+    expect(screen.getAllByText('Sala 7 - CO · 2 cir.')).toHaveLength(1)
+    expect(screen.getByLabelText('1 de 2 vagas de urgência ocupadas')).toBeTruthy()
     expect(screen.queryByText(/Fila —/)).toBeNull() // a cesárea seguinte é trabalho DESTA sala
   })
 })
@@ -183,17 +200,21 @@ describe('excedente — acima do contrato', () => {
   it('a 3ª sala vira card EXTRA próprio, e o cabeçalho diz "acima do contrato"', () => {
     montar(tres)
     expect(screen.getByText('acima do contrato')).toBeTruthy()
-    expect(screen.getByText('Extra')).toBeTruthy()
+    // o rótulo do excedente é o TÍTULO do card, na mesma posição do papel dos
+    // outros — "Extra" no canto de cima e "fora do contrato" no de baixo eram
+    // duas metades da mesma frase em lugares diferentes.
+    expect(screen.getByText('Extra — fora do contrato')).toBeTruthy()
     // o excedente é quem INICIOU por último (os 2 mais antigos ocupam o contrato)
-    expect(screen.getByText(/fora do contrato/)).toBeTruthy()
     expect(screen.getByText('Fernando')).toBeTruthy()
-    expect(screen.getByText('3 de 2')).toBeTruthy()
+    // a vaga acima do contrato acende uma pastilha a mais
+    expect(screen.getByLabelText('3 de 2 vagas de urgência ocupadas')).toBeTruthy()
   })
 
-  it('2 de 2 mostra o badge de cheio, sem card extra', () => {
+  it('2 de 2 acende as duas vagas, sem card extra', () => {
     montar(tres.slice(0, 2))
-    expect(screen.getByText('2 de 2')).toBeTruthy()
-    expect(screen.queryByText('Extra')).toBeNull()
+    expect(screen.getByLabelText('2 de 2 vagas de urgência ocupadas')).toBeTruthy()
+    expect(screen.queryByText(/^Extra/)).toBeNull()
+    expect(screen.queryByText('acima do contrato')).toBeNull()
   })
 })
 
@@ -259,7 +280,7 @@ describe('qualidade do dado', () => {
   it('iniciada há mais de 4h sai da conta, vira pergunta, e "Terminada" grava direto', () => {
     montar([iniciada('c1', 'Sala 6', { statusAtualizadoEm: `${HOJE}T05:00:00` })])
     expect(screen.getByText(/ainda em andamento\?/)).toBeTruthy()
-    expect(screen.getByText('0 de 2 salas')).toBeTruthy() // saiu da ocupação
+    expect(screen.getByLabelText('0 de 2 vagas de urgência ocupadas')).toBeTruthy() // saiu da ocupação
     fireEvent.click(screen.getByRole('button', { name: 'Terminada' }))
     // o 4º argumento é quem tocou — o carimbo otimista precisa dele para o
     // detalhe dizer "por Fulano" já no ato (dono 21/08)
@@ -308,7 +329,7 @@ describe('salas configuráveis por dia/turno', () => {
       { wrapper: wrap },
     )
     // o card da ortopedia agora aponta a Sala 3 e quem a cobre
-    const orto = screen.getByText('Orto').closest('div')
+    const orto = screen.getByText('Ortopedia').closest('div')
     expect(orto.textContent).toContain('Sala 3')
     expect(orto.textContent).toContain('Rafael')
   })
@@ -324,7 +345,7 @@ describe('salas configuráveis por dia/turno', () => {
       />,
       { wrapper: wrap },
     )
-    expect(screen.getByText('1 de 2 salas')).toBeTruthy() // ocupou o plantonista
+    expect(screen.getByLabelText('1 de 2 vagas de urgência ocupadas')).toBeTruthy() // ocupou o plantonista
   })
 
   it('marcar o plantão numa sala coloca a sala na CONTAGEM (dono 20/08)', () => {
@@ -339,7 +360,7 @@ describe('salas configuráveis por dia/turno', () => {
         hospital="hro" turno="matutino" hoje={HOJE} />,
       { wrapper: wrap },
     )
-    expect(screen.getByText('1 de 2 salas')).toBeTruthy()
+    expect(screen.getByLabelText('1 de 2 vagas de urgência ocupadas')).toBeTruthy()
     expect(screen.getByText('Sala 6')).toBeTruthy()
     expect(screen.getByText('Marcelo')).toBeTruthy()
   })
@@ -415,8 +436,8 @@ describe('cirurgias do mesmo anestesista', () => {
       caso('a', 'Sala 7 - CO', { anestesistaUserId: 'u-gab', anestesista: 'GABRIEL', tipo: 'eletiva', turno: 'vespertino' }),
       caso('b', 'Sala 7 - CO', { anestesistaUserId: 'u-gab', anestesista: 'GABRIEL', turno: 'vespertino' }),
     ], { turno: 'vespertino' })
-    expect(screen.getByText('1 de 2 salas')).toBeTruthy()
-    expect(screen.getByText('2 cir.')).toBeTruthy()
+    expect(screen.getByLabelText('1 de 2 vagas de urgência ocupadas')).toBeTruthy()
+    expect(screen.getByText('Sala 7 - CO · 2 cir.')).toBeTruthy()
     expect(screen.queryByText(/Fila —/)).toBeNull()
   })
 })
