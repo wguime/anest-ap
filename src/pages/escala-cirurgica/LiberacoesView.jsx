@@ -2042,11 +2042,20 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       </p>
                     )}
                     {/* EMPRESTADO (dono 30/07): mantém a posição daqui e o card diz
-                        o destino — "Ajuda Hemodinâmica/Unimed" */}
+                        o destino — "Ajuda Hemodinâmica/Unimed".
+                        A LINHA NÃO É AZUL (dono 09/09): "não quero que tenham
+                        tonalidade azul, mantenha a mesma configuração e disposição
+                        dos demais cards, mantenha apenas o badge de ajuda em azul
+                        para sinalizar". O card já leva o badge `Ajuda` (o
+                        emprestado nasce com `isAjuda` na lib), então o azul no
+                        texto era o mesmo aviso dado duas vezes — e a frase mais
+                        longa do card puxava o olho antes do nome. Mesma receita
+                        das linhas irmãs daqui (papel no plantão, troca declarada):
+                        `text-[13px] leading-snug text-muted-foreground`. */}
                     {!liberadoReal && ajudaForaInfo(linha) && (() => {
                       const fora = ajudaForaInfo(linha)
                       return (
-                        <p className="mt-0.5 text-[13px] font-medium leading-snug text-info">
+                        <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
                           {/* declarada sem caso lá: só o destino ("Ajuda no Materno") */}
                           {fora.locais ? `Ajuda ${fora.locais}/${fora.hospital}` : `Ajuda no ${fora.hospital}`}
                           {fora.casos > 1 ? ` · ${fora.casos} cirurgias` : ''}

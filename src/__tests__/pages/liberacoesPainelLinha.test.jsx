@@ -643,6 +643,20 @@ describe('Emprestado mantém posição na origem (caso TIAGO)', () => {
     expect(within(card).queryByLabelText(/na ordem das ajudas/)).toBeNull()
   })
 
+  it('o destino NÃO é azul — quem sinaliza a ajuda é só o badge (dono 09/09)', () => {
+    // "não quero que tenham tonalidade azul, mantenha a mesma configuração e
+    // disposição dos demais cards, mantenha apenas o badge de ajuda em azul".
+    // O texto usava `text-info` E o card já trazia o badge: o mesmo aviso duas
+    // vezes, com a frase mais longa puxando o olho antes do nome.
+    montar({ presencaOutros: presenca }, escalaOrigem)
+    const card = document.querySelector('[data-linha="TIAGO"]')
+    const destino = within(card).getByText('Ajuda Hemodinâmica/Unimed')
+    expect(destino.className).not.toMatch(/text-info/)
+    expect(destino.className).toMatch(/text-muted-foreground/)
+    // o sinal continua existindo, no badge
+    expect(within(card).getByText('Ajuda')).toBeTruthy()
+  })
+
   it('sem o cruzamento carregado, o azul volta ao comportamento clássico (fim)', () => {
     montar({}, escalaOrigem)
     const card = document.querySelector('[data-linha="TIAGO"]')
