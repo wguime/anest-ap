@@ -1525,17 +1525,25 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
       // A publicação é transacional e substitui somente o turno selecionado; o
       // servidor preserva casos, liberações e rodapé do outro turno.
       let existente = null
-      try { existente = await svc.fetchEscala(dataEscolhida, hosp) } catch { existente = null }
+      try { existente = await svc.fetchEscala(dataEscolhida, hosp) } catch (err) {
+        avisar({ variant: 'error', title: 'Não foi possível conferir a escala publicada',
+          description: 'A publicação foi interrompida. Tente novamente; sua conferência foi mantida.' })
+        throw err
+      }
       const legado = !salvarEscalaTurno
       const casosOut = legado ? mergeCasosPorTurno(existente?.casos || [], casosNovos, periodo) : casosNovos
       const ordemPublicacao = legado ? mergeRodapeTurno(existente?.ordemLiberacao, periodo, ordemNova) : ordemNova
       const ajudaPublicacao = legado ? mergeRodapeTurno(existente?.ajudaExterna, periodo, ajudaNova) : ajudaNova
       // Guardrail anti-perda: alerta apenas se o turno selecionado encolher.
-      if (!substituicao) {
+      {
         const atuais = (existente?.casos || []).filter((c) => (c.turno || periodo) === periodo).length
-        if (atuais >= 3 && atuais > casosNovos.length) {
+        const conferidos = (escalaPublicada?.casos || []).filter((c) => (c.turno || periodo) === periodo).length
+        // A confirmação do lote cobre só a contagem mostrada na revisão.
+        // Uma publicação de outro aparelho pode ter aumentado o turno desde então.
+        if (atuais >= 3 && atuais > casosNovos.length && (!substituicao || atuais > conferidos)) {
           setPublicando(false)
-          setSubstituir({ atuais, novos: casosOut.length })
+          setEscalaPublicada(existente)
+          if (!embutida) setSubstituir({ atuais, novos: casosOut.length })
           return recusar('encolhimento não confirmado', `Esta publicação reduziria de ${atuais} para ${casosNovos.length} casos.`)
         }
       }

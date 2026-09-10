@@ -250,6 +250,19 @@ describe('publicação em lote', () => {
     expect(tarde.casos.every((c) => c.semAnestesista === true)).toBe(true)
   })
 
+  it('falha na consulta anti-perda impede publicar filas e mapas', async () => {
+    const { container } = await abrir()
+    await anexarGrade(container, [diaFds('2026-08-22')])
+    await anexarMapa(container, MAPA_HRO_SABADO, 'hro.png')
+    svcMock.fetchEscala.mockRejectedValue(new Error('rede indisponível'))
+    fireEvent.click(await screen.findByRole('button', { name: /Publicar fim de semana/ }))
+    await waitFor(() => expect(svcMock.fetchEscala).toHaveBeenCalled())
+    // Espera o fim da tentativa, não só o início do fetch.
+    await waitFor(() => expect(screen.getByRole('button', { name: /Publicar fim de semana/ })).not.toBeDisabled())
+    expect(salvarEscalaTurno).not.toHaveBeenCalled()
+    expect(await screen.findByText(/Não foi possível conferir a escala publicada/)).toBeInTheDocument()
+  })
+
   it('guardrail anti-perda: anexo menor que o publicado pede confirmação', async () => {
     svcMock.fetchEscala.mockImplementation(async (data, hospital) => (
       hospital === 'hro'

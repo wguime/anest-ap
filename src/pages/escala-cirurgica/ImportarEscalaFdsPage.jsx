@@ -557,7 +557,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
     for (const item of planoMapas) {
       const k = `${item.data}|${item.hospital}`
       if (!porEscala.has(k)) {
-        porEscala.set(k, await svc.fetchEscala(item.data, item.hospital).catch(() => null))
+        porEscala.set(k, await svc.fetchEscala(item.data, item.hospital))
       }
       const existente = porEscala.get(k)
       const atuais = (existente?.casos || []).filter((c) => (c.turno || 'matutino') === item.turno).length
@@ -573,7 +573,11 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
     if (!confirmado && planoMapas.length) {
       setPublicando(true)
       let achados = []
-      try { achados = await conferirEncolhimento() } finally { setPublicando(false) }
+      try { achados = await conferirEncolhimento() } catch {
+        toast({ variant: 'error', title: 'Não foi possível conferir a escala publicada',
+          description: 'A publicação foi interrompida. Tente novamente; sua conferência foi mantida.' })
+        return
+      } finally { setPublicando(false) }
       if (achados.length) { setEncolhimentos(achados); return }
     }
     setPublicando(true)

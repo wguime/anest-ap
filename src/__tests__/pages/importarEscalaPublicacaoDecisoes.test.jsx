@@ -13,6 +13,7 @@
  *  2. leva também a lista de preservação — rastro sim, liberação não (dono 05/09);
  *  3. `intencional` gravado na escala publicada não faz a pergunta travar de novo.
  */
+import { createRef } from 'react'
 import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest'
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 
@@ -67,7 +68,7 @@ afterAll(() => vi.useRealTimers())
 beforeEach(() => vi.clearAllMocks())
 
 /** Unimed em conferência: DIDO com caso aqui e TAMBÉM no HRO publicado — a duplicidade clássica. */
-async function conferirUnimed({ publicadaUnimed = null } = {}) {
+async function conferirUnimed({ publicadaUnimed = null, apiRef = null } = {}) {
   svcMock.fetchEscala.mockImplementation(async (_data, hospital) => {
     if (hospital === 'hro') {
       return {
@@ -87,7 +88,7 @@ async function conferirUnimed({ publicadaUnimed = null } = {}) {
     ajudaExterna: [],
   })
   const { container } = render(
-    <ImportarEscalaPage hospital="unimed" data="2026-09-05" turno="matutino" onClose={vi.fn()} />, { wrapper: wrap },
+    <ImportarEscalaPage ref={apiRef} hospital="unimed" data="2026-09-05" turno="matutino" onClose={vi.fn()} />, { wrapper: wrap },
   )
   fireEvent.change(container.querySelector('input[type="file"]'), {
     target: { files: [new File(['x'], 'u.png', { type: 'image/png' })] },
@@ -143,6 +144,30 @@ describe('republicar o mesmo turno preserva o rastro de quem segue na escala (do
     linhaOverrides: { 'matutino:uid-dido': { observacao: 'saiu mais cedo', trocaCom: { uid: 'uid-paulo', nome: 'PAULO TONINI' } } },
     liberacoes: { 'matutino:uid-dido': { liberadoEm: '2026-09-05T11:00:00.000Z' } },
   }
+
+  it('falha ao consultar a escala existente impede publicar e perder seu rastro', async () => {
+    const apiRef = createRef()
+    await conferirUnimed({ publicadaUnimed: publicadaComRastro, apiRef })
+    fireEvent.click(await screen.findByText(/Dido — em dois hospitais/i))
+    fireEvent.click(await screen.findByRole('button', { name: /Trabalha nos dois/i }))
+    svcMock.fetchEscala.mockRejectedValue(new Error('rede indisponível'))
+    const resultado = await apiRef.current.publicar()
+    expect(resultado.ok).toBe(false)
+    expect(salvarEscalaTurno).not.toHaveBeenCalled()
+  })
+
+  it('o lote recusa encolhimento que surgiu depois de abrir a conferência', async () => {
+    const apiRef = createRef()
+    await conferirUnimed({ publicadaUnimed: publicadaComRastro, apiRef })
+    fireEvent.click(await screen.findByText(/Dido — em dois hospitais/i))
+    fireEvent.click(await screen.findByRole('button', { name: /Trabalha nos dois/i }))
+    svcMock.fetchEscala.mockResolvedValue({ ...publicadaComRastro,
+      casos: Array.from({ length: 10 }, (_, i) => ({ id: `novo-${i}`, turno: 'matutino' })),
+    })
+    const resultado = await apiRef.current.publicar()
+    expect(resultado.ok).toBe(false)
+    expect(salvarEscalaTurno).not.toHaveBeenCalled()
+  })
 
   it('a publicação manda a lista de preservação: rastro sim, liberação não', async () => {
     await conferirUnimed({ publicadaUnimed: publicadaComRastro })
