@@ -695,7 +695,21 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     // pessoa levava os DOIS selos e era MOVIDA para o fim — e o fim libera
     // primeiro: o plantonista viraria o primeiro a sair. Segurar o plantão do
     // hospital prevalece; a pessoa mantém os dois selos e fica no topo.
-    if (i >= 0 && !de[i].isPlantonista) {
+    // ⚠️ EXCEÇÃO 2: QUEM O DONO NUMEROU (dono 11/09, Unimed da manhã). O recado
+    // pedia "1º Giovana · 2º Aline · 3º Marílio" e a fila saiu com a ALINE
+    // saindo primeiro — ela fecha o rodapé da Unimed E está na lista de ajuda
+    // numerada. O `splice` daqui a tirava de `linhasAjuda` ANTES do sort por
+    // `ajudaIdx` (mais abaixo) e a grudava no fim da lista, onde se libera
+    // primeiro: a numeração não tinha como alcançá-la.
+    // É o MESMO defeito que 10/09 corrigiu em `passaNaFrenteDoPlantao`, no
+    // outro ponto que deriva posição a partir do plantão do contraturno — a
+    // decisão de 09/09 ("a ORDEM INFORMADA vence a derivada") vale nos dois:
+    // numerar é declarar quem sai antes de quem, e não sobra pergunta para a
+    // derivação responder. Quem não foi numerado segue com 29/07 inteiro.
+    // O SELO FICA (ela pega mesmo o plantão do contraturno) — só o movimento
+    // sai, exatamente como no caso do plantonista logo acima.
+    const numeradaNaAjuda = opts.ajudaOrdemInformada === true && posAjuda.has(chaveUltima)
+    if (i >= 0 && !de[i].isPlantonista && !numeradaNaAjuda) {
       de[i].isProximoPlantao = true
       de[i].plantaoLabel = PLANTAO_LABEL[opts.turno]
       proximoPlantao = de.splice(i, 1)[0]

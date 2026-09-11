@@ -1416,3 +1416,66 @@ describe('plantaoContraturno: false — o Materno não tem plantão do turno seg
     expect(ultimo.plantaoLabel).toBe('Plantão da tarde')
   })
 })
+
+// ════════════════════════════════════════════════════════════════════════════
+// A NUMERAÇÃO ALCANÇA O PLANTÃO DO CONTRATURNO DAQUI (dono 11/09 — Unimed manhã).
+// Recado: "1º Giovana · 2º Aline · 3º Marílio", e a fila saiu com a ALINE sendo
+// a primeira a ir embora. Ela fecha o rodapé da Unimed E está na ajuda numerada:
+// a promoção a `proximoPlantao` (29/07) a tirava de `linhasAjuda` por `splice`
+// ANTES do sort por `ajudaIdx` e a grudava no fim da lista, onde se libera
+// primeiro — a numeração não tinha como alcançá-la. Mesmo defeito que 10/09
+// corrigiu no outro ponto que deriva posição do plantão do contraturno.
+//
+// ⚠️ A fixture precisa da GIOVANA fechando o rodapé do HRO: sem isso, "Giovana
+// por último" também sairia da derivação por origem (27/08) e o teste não
+// separaria as duas hipóteses — passaria sem a correção de 11/09 valer de nada.
+// ════════════════════════════════════════════════════════════════════════════
+describe('a ordem informada alcança quem fecha o rodapé daqui (dono 11/09)', () => {
+  const casos = [
+    caso('CC - Sala 5', 0, 'HUMBERTO', 'Luis Farret'),
+    caso('CO - Sala 3', 0, 'MARILIO', 'Mauricio Silva'),
+    caso('CC - Sala 2', 0, 'GIOVANA', 'Mateus Baptistella'),
+    caso('Exames', 0, 'ALINE', 'Rodrigo'),
+  ]
+  // ALINE fecha o rodapé da Unimed → plantão do contraturno DAQUI
+  const rodape = ['HUMBERTO', 'ALINE']
+  // 1º Giovana, 2º Aline, 3º Marílio → o primeiro a sair fica por ÚLTIMO no array
+  const ajudaExterna = ['MARILIO', 'ALINE', 'GIOVANA']
+  // GIOVANA fecha o rodapé do HRO (plantão do contraturno de LÁ); MARILIO é 8º
+  const rodapeOutros = [
+    { nome: 'MARILIO', hospital: 'hro', hospitalLabel: 'HRO', rodapeIdx: 8 },
+    { nome: 'GIOVANA', hospital: 'hro', hospitalLabel: 'HRO', rodapeIdx: 14 },
+  ]
+
+  it('numerada, a Aline obedece o array e a Giovana é quem sai primeiro', () => {
+    const r = gerarColunaLiberacao(casos, rodape, {
+      ajudaExterna, rodapeOutros, ajudaOrdemInformada: true, turno: 'matutino',
+    })
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(
+      ['Humberto', 'Marilio', 'Aline', 'Giovana']
+    )
+  })
+
+  it('o selo de plantão do contraturno FICA — só o movimento sai', () => {
+    const r = gerarColunaLiberacao(casos, rodape, {
+      ajudaExterna, rodapeOutros, ajudaOrdemInformada: true, turno: 'matutino',
+    })
+    const aline = r.linhas.find((l) => l.anestesista === 'Aline')
+    expect(aline.isProximoPlantao).toBe(true)
+    expect(aline.plantaoLabel).toBe('Plantão da tarde')
+    // e ela continua reordenável na tela, como as outras numeradas
+    expect(r.linhas.map((l) => l.ajudaIdx)).toEqual([null, 0, 1, 2])
+  })
+
+  it('SEM ordem informada, 29/07 segue inteira — a Aline fecha a lista', () => {
+    const r = gerarColunaLiberacao(casos, rodape, {
+      ajudaExterna, rodapeOutros, turno: 'matutino',
+    })
+    // sem numeração manda 27/08: índice do rodapé de origem ASCENDENTE, então o
+    // Marílio (8º no HRO) fica acima da Giovana (14º lá, sai antes lá e aqui)
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(
+      ['Humberto', 'Marilio', 'Giovana', 'Aline']
+    )
+    expect(r.linhas[3].isProximoPlantao).toBe(true)
+  })
+})

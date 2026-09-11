@@ -651,10 +651,42 @@ describe('Emprestado mantém posição na origem (caso TIAGO)', () => {
     montar({ presencaOutros: presenca }, escalaOrigem)
     const card = document.querySelector('[data-linha="TIAGO"]')
     const destino = within(card).getByText('Ajuda Hemodinâmica/Unimed')
-    expect(destino.className).not.toMatch(/text-info/)
-    expect(destino.className).toMatch(/text-muted-foreground/)
+    // ⚠️ a cor mora no BLOCO desde 11/09, quando os cirurgiões viraram uma linha
+    // cada (antes era tudo uma frase só, e a classe ficava no próprio <p>). A
+    // asserção subiu junto e ficou mais estrita: nem o bloco nem nenhuma linha
+    // dentro dele pode ser azul — pintar só o nome do cirurgião quebra igual.
+    const bloco = destino.closest('div')
+    expect(bloco.className).toMatch(/text-muted-foreground/)
+    expect(bloco.className).not.toMatch(/text-info/)
+    for (const p of bloco.querySelectorAll('p')) expect(p.className).not.toMatch(/text-info/)
     // o sinal continua existindo, no badge
     expect(within(card).getByText('Ajuda')).toBeTruthy()
+  })
+
+  /**
+   * OS CIRURGIÕES EM COLUNA, SEM CONTAGEM (dono 11/09, foto da fila da Unimed:
+   * "lista de cirurgiões está desconfigurada, deve ser organizada em coluna
+   * como os outros cards, não deve conter número de procedimentos, apenas
+   * cirurgiões"). A linha nasceu em 30/08 como UMA frase concatenada com "·",
+   * enquanto o bloco de cirurgiões do card (24/07) já era um <p> por nome.
+   * ⚠️ a fixture tem DOIS cirurgiões de propósito: com um só, coluna e frase
+   * renderizam igual e o teste passaria sem a correção valer de nada.
+   */
+  it('os cirurgiões saem um por linha e o nº de cirurgias NÃO aparece', () => {
+    const doisCasos = [
+      { nome: 'TIAGO', uid: 'uid-tiago-x', hospitalLabel: 'Unimed', sala: 'CC - Sala 2', cirurgiao: 'Mateus Baptistella' },
+      { nome: 'TIAGO', uid: 'uid-tiago-x', hospitalLabel: 'Unimed', sala: 'CC - Sala 2', cirurgiao: 'Mauricio Spagnol' },
+    ]
+    montar({ presencaOutros: doisCasos }, escalaOrigem)
+    const card = document.querySelector('[data-linha="TIAGO"]')
+    const destino = within(card).getByText('Ajuda CC - Sala 2/Unimed')
+    const bloco = destino.closest('div')
+    // destino + um <p> por cirurgião — nenhum nome dividindo linha com outro
+    expect([...bloco.querySelectorAll('p')].map((p) => p.textContent)).toEqual(
+      ['Ajuda CC - Sala 2/Unimed', 'Mateus Baptistella', 'Mauricio Spagnol']
+    )
+    // a contagem saiu: o número de linhas já diz quantas são
+    expect(bloco.textContent).not.toMatch(/cirurgias/)
   })
 
   it('sem o cruzamento carregado, o azul volta ao comportamento clássico (fim)', () => {

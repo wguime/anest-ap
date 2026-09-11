@@ -892,15 +892,16 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       // sala/cirurgião para detalhar. O card diz "Ajuda no Materno".
       const declarada = daPessoa.find((p) => p.ajudaDeclarada)
       if (!declarada) return null
-      return { hospital: declarada.hospitalLabel, locais: '', cirurgioes: [], casos: 0 }
+      return { hospital: declarada.hospitalLabel, locais: '', cirurgioes: [] }
     }
     const locais = [...new Set(matches.map((m) => salaLiberacao(m.sala)))].join('/')
-    // cirurgião e nº de cirurgias entram junto (dono 30/08: "conter no card
-    // local/cirurgia/cirurgião onde ele está") — o card de quem está emprestado
-    // trazia só o destino, e quem lê a fila não sabia com quem ele estava
+    // o cirurgião entra junto (dono 30/08: "conter no card local/cirurgia/cirurgião
+    // onde ele está") — o card de quem está emprestado trazia só o destino, e quem
+    // lê a fila não sabia com quem ele estava. ⚠️ o Nº DE CIRURGIAS saiu em 11/09:
+    // com os nomes em coluna a contagem virou o número de linhas.
     const cirurgioes = [...new Set(matches.map((m) => String(m.cirurgiao || '').trim()).filter(Boolean))]
       .map((c) => nomeCirurgiaoCurto(c))
-    return { hospital: matches[0].hospitalLabel, locais, cirurgioes, casos: matches.length }
+    return { hospital: matches[0].hospitalLabel, locais, cirurgioes }
   }
   /**
    * TROCA DECLARADA (dono 30/07): a linha é um dos lados de um par declarado?
@@ -2065,15 +2066,26 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         longa do card puxava o olho antes do nome. Mesma receita
                         das linhas irmãs daqui (papel no plantão, troca declarada):
                         `text-[13px] leading-snug text-muted-foreground`. */}
+                    {/* ⚠️ OS CIRURGIÕES EM COLUNA, COMO EM TODO CARD (dono 11/09:
+                        "lista de cirurgiões está desconfigurada, deve ser organizada
+                        em coluna como os outros cards, não deve conter número de
+                        procedimentos, apenas cirurgiões"). Esta linha nasceu em 30/08
+                        como UMA frase concatenada com "·", enquanto o bloco de
+                        cirurgiões do card (24/07) já era um `<p>` por nome — dois
+                        códigos para a mesma informação, e só este ficou fora do
+                        padrão. Com 2+ cirurgiões a frase furava a largura do card.
+                        O Nº DE CIRURGIAS SAIU: quem lê a fila quer saber com quem a
+                        pessoa está, e a contagem já é o número de linhas. */}
                     {!liberadoReal && ajudaForaInfo(linha) && (() => {
                       const fora = ajudaForaInfo(linha)
                       return (
-                        <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
+                        <div className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
                           {/* declarada sem caso lá: só o destino ("Ajuda no Materno") */}
-                          {fora.locais ? `Ajuda ${fora.locais}/${fora.hospital}` : `Ajuda no ${fora.hospital}`}
-                          {fora.casos > 1 ? ` · ${fora.casos} cirurgias` : ''}
-                          {fora.cirurgioes.length ? ` · ${fora.cirurgioes.join(', ')}` : ''}
-                        </p>
+                          <p className="truncate">
+                            {fora.locais ? `Ajuda ${fora.locais}/${fora.hospital}` : `Ajuda no ${fora.hospital}`}
+                          </p>
+                          {fora.cirurgioes.map((c) => <p key={c} className="truncate">{c}</p>)}
+                        </div>
                       )
                     })()}
                     {/* TROCA DECLARADA: com quem e onde o colega está — é o que
