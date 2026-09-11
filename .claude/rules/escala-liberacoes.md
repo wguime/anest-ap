@@ -367,21 +367,31 @@ nem o bloco nem nenhuma linha dentro dele pode ser azul. Trava em
 `liberacoesPainelLinha.test.jsx`, com DOIS cirurgiões de propósito: com um só,
 coluna e frase renderizam igual e o teste passaria sem a correção valer de nada.
 
-### Turno próprio — jornada especial sai fora da ordem (dono 11/09/2026)
+### Turno próprio — jornada especial PODE sair fora da ordem (dono 11/09/2026)
 
 *"A Louise deve sair da escala às 19h (ou criar a possibilidade de liberar ela às 19h), a
 escala especial dela o turno é das 13 às 19h."* Ela é a 4ª de 15 no rodapé do HRO, então a
 ordem só chegaria nela em **12º lugar**: a trava de 27/07 recusava o toque, e restavam duas
 saídas ruins — liberar 11 colegas que ainda operavam, ou deixar a saída dela sem registro.
 
-`linha_overrides[<turno>:<chave>].turnoProprio = { ate: 'HH:MM' }` tira a linha da ORDEM
-(`naFila` → false na `LiberacoesView`), **pelo mesmo caminho que já isenta o plantão do turno
-na fila única**: sair não fura a vez de ninguém *e* tira a pessoa da conta de "faltam N" dos
-outros. A mecânica já existia — o que faltava era a marca que a aciona.
+`linha_overrides[<turno>:<chave>].turnoProprio = { ate: 'HH:MM' }` isenta a linha **só do
+bloqueio de liberar** (`bloqueioOrdem`, lado `liberar`, na `LiberacoesView`): o toque nela
+nunca é recusado, esteja a fila onde estiver. Ela **continua na ordem** (`naFila`): quando a
+fila chega nela é ELA o "próximo a ser liberado", conta no "faltam N" de quem está acima, e
+quem está acima espera por ela. A hora combinada é um **teto para a espera dela**, nunca um
+motivo para os de cima saírem antes.
 
-O card **diz o porquê** ("Turno até 19:00 · sai fora da ordem"), na receita das linhas irmãs
-(13px, muted, sem cor nem ícone). Sem a frase, ver alguém do meio da fila sair antes dos de
-baixo lê como fila furada — que é exatamente o que a trava existe para impedir.
+⚠️ **A 1ª versão (manhã de 11/09) a tirava da fila inteira** (`naFila` → false, o caminho do
+plantão do turno na fila única) — e às 18h09 do mesmo dia o dono mandou a foto: HRO da tarde,
+5º–15º liberados, Louise (4ª) em sala com "Turno até 19:00", e o **3º do rodapé** com o cartão
+amarelo "Próximo a ser liberado". *"próximo a ser liberado está errado na escala, corrija."*
+"Sair fora da ordem" tinha virado "ser pulada": os de cima passavam na frente dela antes das
+19h. A frase "tira da conta de faltam N" era o próprio defeito, não a virtude.
+
+O card **diz o porquê** ("Turno até 19:00 · pode sair fora da ordem"), na receita das linhas
+irmãs (13px, muted, sem cor nem ícone). Sem a frase, ver alguém do meio da fila sair antes dos
+de baixo lê como fila furada — que é exatamente o que a trava existe para impedir. "Pode", e
+não "sai": quando a fila chega nela o card traz a frase E o cartão amarelo, sem contradição.
 
 ⚠️ **NÃO trava a liberação antes da hora, de propósito.** A hora é informação no card e quem
 libera é gente olhando o relógio; travar criaria um modo de falha novo (relógio do aparelho,
@@ -405,4 +415,6 @@ não pode simplesmente sobrescrever a declaração humana (é a lição de `orig
 Travas: `escalaNumericaOrdem.test.js` (describe da `excecaoTurnoDoDia` — o caso que mais vale é
 "fora da vigência a marca some SOZINHA", porque é ele que dispensa alguém de lembrar de
 desmarcar) e `liberacoesPainelLinha.test.jsx` (describe "Turno próprio"; a fixture marca quem
-está no MEIO do rodapé, senão qualquer regra passaria).
+está no MEIO do rodapé, senão qualquer regra passaria). Os dois últimos casos do describe são a
+trava das 18h09 — "com os de baixo liberados, é ELA o próximo" e "liberar o 1º com ela em sala é
+recusado" — e os dois FALHAM contra a 1ª versão (conferido trocando a view pela de `origin/main`).

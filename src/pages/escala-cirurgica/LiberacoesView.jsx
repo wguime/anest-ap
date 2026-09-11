@@ -378,15 +378,21 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
    * TURNO PRÓPRIO (dono 11/09, caso LOUISE: "a Louise deve sair da escala às 19h
    * — a escala especial dela o turno é das 13 às 19h").
    *
-   * Quem tem contrato com hora de saída própria não segue a fila: a Louise é a 4ª
-   * de 15 no rodapé do HRO, então a ordem só chegaria nela em 12º lugar e a trava
-   * de 27/07 a impedia de sair às 19h — o app não tinha como registrar a saída de
-   * quem combinou horário à parte.
+   * Quem tem contrato com hora de saída própria PODE sair fora da fila: a Louise é
+   * a 4ª de 15 no rodapé do HRO, então a ordem só chegaria nela em 12º lugar e a
+   * trava de 27/07 a impedia de sair às 19h — o app não tinha como registrar a
+   * saída de quem combinou horário à parte.
    *
-   * A mecânica de isentar alguém da ordem JÁ EXISTE (`naFila` → false, o mesmo
-   * caminho do plantão do turno na fila única): sair da fila também tira da conta
-   * de "faltam N" dos outros, então liberar esta pessoa não fura a vez de ninguém
-   * e ninguém precisa esperar por ela. O que faltava era a marca que aciona isso.
+   * A marca isenta a pessoa SÓ do bloqueio de ordem do lado de liberar
+   * (`bloqueioOrdem`): o toque nela nunca é recusado, esteja a fila onde estiver.
+   * Ela CONTINUA na ordem (`naFila`): quando a fila chega nela é ELA o "próximo a
+   * ser liberado", e quem está acima dela espera — a hora combinada é um teto
+   * para a espera dela, nunca um motivo para os de cima saírem antes.
+   * ⚠️ A 1ª versão (manhã de 11/09) a tirava da fila inteira (`naFila` → false,
+   * o caminho do plantão do turno na fila única) e às 18h09 o 3º do rodapé do HRO
+   * apareceu como "próximo" com a Louise (4ª) ainda em sala — dono: "próximo a
+   * ser liberado está errado". "Sair fora da ordem" tinha virado "ser pulada":
+   * os de cima passavam na frente dela antes mesmo das 19h.
    *
    * Mora em `linha_overrides[<turno>:<chave>].turnoProprio = { ate: 'HH:MM' }` —
    * declaração sobre a PESSOA naquele turno, como `origem` e `trocaCom`, e pelo
@@ -1622,9 +1628,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             // de ordem (liberar o plantão nunca fura fila) e o tira da conta de
             // "faltam N" — como já acontece com o P1/P2 da noite.
             if (modoFds && !l.noturno && plantaoFisicoDe(l)) return false
-            // TURNO PRÓPRIO (dono 11/09): hora de saída combinada à parte não
-            // espera a fila, e também não faz a fila esperar por ela.
-            if (turnoProprioDe(l)) return false
+            // TURNO PRÓPRIO (dono 11/09) NÃO sai daqui: a pessoa continua na ordem
+            // e conta no "faltam N" de quem está acima. A marca isenta só o
+            // bloqueio de LIBERAR (ver `bloqueioOrdem`). Tirá-la da fila fazia os
+            // de cima saírem antes dela — 18h09 do mesmo dia: o 3º "próximo" com
+            // a 4ª em sala ("próximo a ser liberado está errado").
             // extra (fora do rodapé) ENTRA na fila como ajuda (dono 19/08):
             // é o primeiro a ir embora e é liberado como qualquer um
             const m = marcaDe(l)
@@ -1762,7 +1770,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             ? ((idxConvocar >= 0 && idx > idxProximo && idx !== idxConvocar && voltaPraFila(linha))
                 ? { modo: 'convocar', proximo: nomeConvocar }
                 : null)
-            : ((idxProximo >= 0 && idx !== idxProximo && naFila(linha, idx))
+            // TURNO PRÓPRIO: o toque nela nunca é recusado — pode sair fora da
+            // ordem na hora combinada (dono 11/09). Só o toque NELA: quem está
+            // acima continua esperando por ela, porque ela segue no `naFila`.
+            : ((idxProximo >= 0 && idx !== idxProximo && naFila(linha, idx) && !turnoProprioDe(linha))
                 ? { modo: 'liberar', faltam: linhasExibicao.slice(idx + 1).filter((l, k) => naFila(l, idx + 1 + k)).length, proximo: proximoNome }
                 : null)
           // LIVRE = a pessoa não está em sala e AGUARDA o toque de quem libera, na
@@ -2120,15 +2131,17 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       )
                     })()}
                     {/* TURNO PRÓPRIO (dono 11/09): o card precisa DIZER por que esta
-                        pessoa sai fora da ordem — sem a frase, ver alguém do meio da
-                        fila ser liberado antes dos de baixo lê como fila furada, que
-                        é exatamente o que a trava de 27/07 existe para impedir.
+                        pessoa PODE sair fora da ordem — sem a frase, ver alguém do meio
+                        da fila ser liberado antes dos de baixo lê como fila furada, que
+                        é exatamente o que a trava de 27/07 existe para impedir. "Pode",
+                        e não "sai": ela segue na ordem e vira "próximo" quando a fila
+                        chega nela (correção das 18h09).
                         Mesma receita das linhas irmãs daqui (papel no plantão, ajuda
                         emprestada, troca declarada): `text-[13px] leading-snug
                         text-muted-foreground`, sem cor nem ícone próprios. */}
                     {!liberadoReal && turnoProprioDe(linha) && (
                       <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
-                        Turno até {turnoProprioDe(linha)} · sai fora da ordem
+                        Turno até {turnoProprioDe(linha)} · pode sair fora da ordem
                       </p>
                     )}
                     {/* TROCA DECLARADA: com quem e onde o colega está — é o que

@@ -703,17 +703,33 @@ describe('Emprestado mantém posição na origem (caso TIAGO)', () => {
  *
  * Ela era a 4ª de 15 no rodapé, então a fila só chegaria nela em 12º lugar e a
  * trava de 27/07 recusava o toque — o app não registrava a saída de quem combinou
- * horário à parte. A marca tira a linha da ORDEM pelo mesmo caminho que já isenta
- * o plantão do turno, então sair não fura a vez de ninguém e ninguém espera por ela.
+ * horário à parte. A marca isenta a pessoa SÓ do bloqueio de liberar: o toque nela
+ * nunca é recusado. Ela CONTINUA na ordem — quando a fila chega nela, é ela o
+ * "próximo", e quem está acima espera por ela.
+ *
+ * ⚠️ A 1ª versão (manhã do mesmo dia) a tirava da fila inteira, e às 18h09 o 3º do
+ * rodapé apareceu como "próximo" com a 4ª ainda em sala — dono: "próximo a ser
+ * liberado está errado". A hora combinada é um TETO para a espera dela, nunca um
+ * motivo para os de cima saírem antes. Os dois últimos testes são a trava disso.
  *
  * ⚠️ A fixture põe a marca em quem está no MEIO do rodapé (MARILIO, 2º de 3), de
  * propósito: no fim da fila qualquer regra deixaria liberar, e o teste passaria
  * sem a correção valer nada.
  */
-describe('Turno próprio — sai fora da ordem (dono 11/09)', () => {
+describe('Turno próprio — pode sair fora da ordem (dono 11/09)', () => {
   const comTurnoProprio = {
     ...escalaBase,
     linhaOverrides: { 'matutino:MARILIO': { turnoProprio: { ate: '19:00' } } },
+  }
+  // a fila CHEGOU nela: todo mundo abaixo do Marilio (Karine, a ajuda e o extra)
+  // já saiu — só Leonardo (1º) e Marilio (2º) seguem em sala
+  const filaChegouNela = {
+    ...comTurnoProprio,
+    liberacoes: {
+      'matutino:KARINE': { liberadoEm: 'x' },
+      'matutino:CURY': { liberadoEm: 'x' },
+      'matutino:PAULO': { liberadoEm: 'x' },
+    },
   }
   const cardDe = (nome) => screen.getByText(nome).closest('[data-linha]')
 
@@ -724,21 +740,39 @@ describe('Turno próprio — sai fora da ordem (dono 11/09)', () => {
     expect(onToggle).not.toHaveBeenCalled()
   })
 
-  it('com a marca, o toque libera — a ordem não a alcança mais', async () => {
+  it('com a marca, o toque libera mesmo com os de baixo em sala — ela PODE sair fora da ordem', async () => {
     const onToggle = vi.fn()
     montar({ onToggle }, comTurnoProprio)
     fireEvent.click(screen.getByLabelText('Marcar Marilio Flach liberado'))
     await waitFor(() => expect(onToggle).toHaveBeenCalledTimes(1))
   })
 
-  it('o card DIZ por que ela sai fora da ordem', () => {
+  it('o card DIZ por que ela pode sair fora da ordem', () => {
     montar({}, comTurnoProprio)
-    expect(within(cardDe('Marilio Flach')).getByText(/Turno até 19:00 · sai fora da ordem/)).toBeTruthy()
+    expect(within(cardDe('Marilio Flach')).getByText(/Turno até 19:00 · pode sair fora da ordem/)).toBeTruthy()
   })
 
   it('a marca NÃO libera sozinha — ela continua trabalhando até alguém tocar', () => {
     montar({}, comTurnoProprio)
     expect(within(cardDe('Marilio Flach')).queryByText(/^Liberado$/)).toBeNull()
     expect(screen.getByLabelText('Marcar Marilio Flach liberado')).toBeTruthy()
+  })
+
+  // ⚠️ os dois abaixo separam "pode sair fora da ordem" de "está fora da ordem":
+  // com a marca tirando a linha do `naFila`, o Leonardo vira o "próximo" e o
+  // toque nele passa — era o quadro das 18h09.
+  it('a marca NÃO a tira da ordem: com os de baixo liberados, é ELA o próximo, não quem está acima', () => {
+    montar({}, filaChegouNela)
+    expect(within(cardDe('Marilio Flach')).getByText('Próximo a ser liberado')).toBeTruthy()
+    expect(within(cardDe('Leonardo Ferrazzo')).queryByText('Próximo a ser liberado')).toBeNull()
+  })
+
+  it('quem está acima dela espera por ela: liberar o 1º com ela em sala é recusado', async () => {
+    const onToggle = vi.fn()
+    montar({ onToggle }, filaChegouNela)
+    fireEvent.click(screen.getByLabelText('Marcar Leonardo Ferrazzo liberado'))
+    expect(await screen.findByText('Libere Marilio Flach primeiro')).toBeTruthy()
+    expect(await screen.findByText(/Falta 1 anestesista antes de Leonardo Ferrazzo/)).toBeTruthy()
+    expect(onToggle).not.toHaveBeenCalled()
   })
 })
