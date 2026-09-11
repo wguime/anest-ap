@@ -74,6 +74,22 @@ rede, e a lista sai pendente), férias `node scripts/ferias-pega-plantao.mjs
   Ordinal em cinza com letra colorida (05/11 e 06/11 na edição de 2026) foi ERRO de
   formatação (dono 03/09): o quadro vale e a Louise entra normalmente; o extrator só registra
   o fato (`ordinalCinza`).
+- ⚠️ **A exceção vale também na FILA DE LIBERAÇÕES (dono 11/09/2026).** Quem o quadro traz
+  tem **jornada própria** e sai no horário dela, fora da ordem — a Louise era a 4ª de 15 no
+  rodapé do HRO, então a fila só chegaria nela em 12º lugar e a trava de 27/07 impedia a
+  saída às 19h. `excecaoTurnoDoDia(dados, { data, hospital, turno })` (lib) devolve
+  `{ numero, nome, ate }`, e a publicação — a skill pela `escalaConferenciaHeadless` e a
+  TELA pela `ImportarEscalaPage`, as duas por `montarLinhaOverrides` — grava
+  `linha_overrides[<turno>:<chave>].turnoProprio = { ate }`, que é o que a fila lê.
+  **O DOCUMENTO manda:** a marca é recarimbada a cada publicação, então no dia em que o
+  quadro não trouxer mais a pessoa (edição de 2026: depois de **20/11**, quando o 43 volta
+  à grade) ela deixa de ser gravada e a pessoa volta a seguir a ordem como todo mundo —
+  **nada a desmarcar à mão**. `cinza` no dia = não trabalha = sem marca.
+  ⚠️ **Edição nova com mais de uma pessoa:** a função já lê `excecoes` (lista de
+  `{ numero, nome, excecao, dias }`) além do `louise` da edição atual — o extrator pode
+  passar a emitir `excecoes` e a fila funciona **sem código novo**. A hora sai do TEXTO do
+  quadro ("vespertino 13h-19h"); sem hora legível a função devolve `null` em vez de chutar.
+  Ver `.claude/rules/escala-liberacoes.md` → *Turno próprio*.
 - **Férias (Pega Plantão) — cruzamento obrigatório e SEMPRE na hora** (dono 03/09: "sempre há
   mudanças de última hora" — nunca reaproveitar consulta antiga nem cache): casar identidade
   (legenda × nome completo; `CADASTRO_LEGENDA` na lib espelha o dicionário de apelidos),

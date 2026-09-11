@@ -28,7 +28,7 @@ import { validarCasosParaPublicacao, textoBloqueio } from '@/lib/escalaCirurgica
 import { detectarItensDuplicados, aplicarHoraPadraoPosicoes } from '@/lib/escalaCirurgicaItens'
 import { detectarDuplicidadesEscala, carimbarDecisao, localizarDecisao } from '@/lib/escalaCirurgicaDuplicidades'
 import { montarLinhaOverrides, montarPreservacao, decisoesPublicadas } from '@/lib/escalaPublicacaoDecisoes'
-import { montarOrdem, compararComRodape } from '@/lib/escalaNumerica'
+import { montarOrdem, compararComRodape, excecaoTurnoDoDia } from '@/lib/escalaNumerica'
 
 export const HOSPITAL_LABEL = { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' }
 const COM_RODAPE = new Set(['hro', 'unimed'])
@@ -403,9 +403,11 @@ export function conferirHospital(hospital, entrada, contexto) {
 
   // 10. payload da RPC, pelas mesmas funções da tela
   const conferidosMapa = Object.fromEntries((conferidos || []).map((n) => [resolver(n) || normNome(n), { uid: resolver(n) || null, nomeNorm: normNome(n) }]))
+  // escala especial do dia vinda da NUMÉRICA — o documento é a fonte (dono 11/09)
+  const excecaoTurno = dadosNumerica ? excecaoTurnoDoDia(dadosNumerica, { data, hospital, turno }) : null
   const linhaOverrides = montarLinhaOverrides({
     decisoes: decisoesCarimbadas, conferidos: conferidosMapa, hospital, ordem, ajuda, casos: casosNovos,
-    resolver, normalizar: normNome, carimbo,
+    resolver, normalizar: normNome, carimbo, excecaoTurno,
   })
   const preservar = existente
     ? montarPreservacao({ existente, turno, ordem, ajuda, casos: casosNovos, resolver, normalizar: normNome })

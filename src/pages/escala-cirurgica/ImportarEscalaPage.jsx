@@ -27,7 +27,7 @@ import { linhaVazia, prepararCasosImportados as prepararCasos, normNome, candida
 import { mensagemErroPublicacao } from '@/lib/escalaPublicacaoErro'
 import { validarCasosParaPublicacao, resumirBloqueiosDeCampo, textoBloqueio } from '@/lib/escalaCirurgicaValidacao'
 import dadosNumerica from '@/data/escalaNumerica.json'
-import { montarOrdem, compararComRodape } from '@/lib/escalaNumerica'
+import { montarOrdem, compararComRodape, excecaoTurnoDoDia } from '@/lib/escalaNumerica'
 import { getFeriasDoAno } from '@/services/pegaPlantaoApi'
 import { normalizarRegistrosFerias } from '@/lib/extratoFerias'
 import { podePublicarEscalaCirurgica } from './gate'
@@ -1572,9 +1572,13 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
       )
       // "Refazer" de uma decisão publicada viaja como `reaberta` (a lib grava null); sem isso
       // a preservação devolveria a resposta antiga e o "Refazer" não colaria.
+      // ESCALA ESPECIAL DO DIA (dono 11/09): quem a numérica traz com jornada própria
+      // sai da fila no horário dela. O documento é a fonte e a marca é recarimbada a
+      // cada publicação — quando o quadro acabar, deixa de ser gravada sozinha.
       const linhaOverrides = montarLinhaOverrides({
         decisoes: { ...duplicidadeDecisoes, ...conferencias }, conferidos, hospital: hosp,
         ordem: ordemNova, ajuda: ajudaNova, casos: casosNovos, resolver, normalizar: normNome, carimbo,
+        excecaoTurno: excecaoTurnoDoDia(dadosNumerica, { data: dataEscolhida, hospital: hosp, turno: periodo }),
       })
       // Troca de quem trabalha nos DOIS hospitais: qual das duas vagas vai para o colega é
       // pergunta aberta do dono (auditoria, pergunta 5). Enquanto ela não tem resposta, o

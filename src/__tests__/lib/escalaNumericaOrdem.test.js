@@ -10,8 +10,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import {
-  ordemBase, inserirLouise, excluirFerias, anotarFerias, montarOrdem, ordemFeriado, compararComRodape, aplicarEscalaNasDuplas, casarNomeComLegenda, formatarOrdem,
-} from '../../lib/escalaNumerica'
+  ordemBase, inserirLouise, excluirFerias, anotarFerias, montarOrdem, ordemFeriado, compararComRodape, aplicarEscalaNasDuplas, casarNomeComLegenda, formatarOrdem, excecaoTurnoDoDia } from '../../lib/escalaNumerica'
 
 const dados = JSON.parse(readFileSync(resolve(__dirname, '../../data/escalaNumerica.json'), 'utf8'))
 const nomes = (r) => r.lista.map((p) => p.nome)
@@ -364,5 +363,65 @@ describe('anotarFerias — férias marcam, não excluem', () => {
     const lista = r.posicoes.map((p, i) => ({ ...p, posicao: i + 1 }))
     expect(anotarFerias(lista, ['Thayná Regina Santos']).find((p) => p.numero === '39'))
       .toMatchObject({ posicao: 14, ferias: ['THAYNA'] })
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// ESCALA ESPECIAL — quem manda é o DOCUMENTO (dono 11/09/2026).
+// "Mantenha a Louise nesse esquema enquanto a escala numérica vier com a escala
+// especial para ela. A partir do momento que não houver escala especial, deixar as
+// regras conforme os outros anestesistas. Deixe a regra registrada para que se
+// houver novas escalas especiais a regra já seja configurada."
+// O valor destes casos é provar que a marca SOME sozinha — é isso que dispensa
+// alguém de lembrar de desmarcar quando o quadro acabar.
+// ════════════════════════════════════════════════════════════════════════════
+describe('excecaoTurnoDoDia — a jornada própria vem do documento (dono 11/09)', () => {
+  const dados = {
+    louise: {
+      excecao: 'vespertino 13h-19h; inserida na posição indicada da ordem da TARDE do hospital do dia',
+      vigencia: { inicio: '2026-08-24', fim: '2026-11-20' },
+      dias: {
+        '2026-09-11': { hospital: 'hro', posicao: 4, cinza: false },
+        '2026-09-07': { hospital: 'hro', posicao: 2, cinza: true }, // cinza = não trabalha
+      },
+    },
+  }
+  const pede = (data, hospital, turno) => excecaoTurnoDoDia(dados, { data, hospital, turno })
+
+  it('no dia e hospital do quadro, devolve a hora de saída', () => {
+    expect(pede('2026-09-11', 'hro', 'vespertino')).toEqual({ numero: '43', nome: 'LOUISE', ate: '19:00' })
+  })
+
+  it('no OUTRO hospital do mesmo dia, não vale — o quadro diz onde ela está', () => {
+    expect(pede('2026-09-11', 'unimed', 'vespertino')).toBeNull()
+  })
+
+  it('de manhã não vale — a jornada própria é da tarde', () => {
+    expect(pede('2026-09-11', 'hro', 'matutino')).toBeNull()
+  })
+
+  it('dia em CINZA = ela não trabalha, então não há jornada a marcar', () => {
+    expect(pede('2026-09-07', 'hro', 'vespertino')).toBeNull()
+  })
+
+  it('FORA da vigência a marca some SOZINHA — é o que dispensa desmarcar à mão', () => {
+    expect(pede('2026-11-23', 'hro', 'vespertino')).toBeNull()
+    expect(pede('2026-12-01', 'unimed', 'vespertino')).toBeNull()
+  })
+
+  it('lê o formato `excecoes` (lista) para quando houver mais de uma pessoa', () => {
+    const futuro = {
+      excecoes: [{
+        numero: '57', nome: 'FULANA', excecao: 'vespertino 13h-18h',
+        dias: { '2026-12-01': { hospital: 'unimed', posicao: 2, cinza: false } },
+      }],
+    }
+    expect(excecaoTurnoDoDia(futuro, { data: '2026-12-01', hospital: 'unimed', turno: 'vespertino' }))
+      .toEqual({ numero: '57', nome: 'FULANA', ate: '18:00' })
+  })
+
+  it('sem hora legível no texto do quadro, devolve null em vez de chutar 19h', () => {
+    const semHora = { louise: { excecao: 'vespertino', dias: { '2026-09-11': { hospital: 'hro', cinza: false } } } }
+    expect(excecaoTurnoDoDia(semHora, { data: '2026-09-11', hospital: 'hro', turno: 'vespertino' })).toBeNull()
   })
 })

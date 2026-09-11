@@ -180,6 +180,46 @@ export function ordemBase(dados, { data, hospital, turno }) {
  * só dentro da vigência do quadro, nunca em coluna cinza. Se o 43 já estiver na grade do
  * dia (regime normal), não insere — inserir duplicaria.
  */
+/**
+ * ESCALA ESPECIAL (jornada própria) DE UM DIA — quem ela é e até que horas vai.
+ *
+ * Dono 11/09/2026: *"mantenha a Louise nesse esquema ENQUANTO a escala numérica vier com a
+ * escala especial para ela. A partir do momento que não houver escala especial, deixar as
+ * regras conforme os outros anestesistas. Deixe a regra registrada para que se houver novas
+ * escalas especiais a regra já seja configurada."*
+ *
+ * O DOCUMENTO é a fonte: enquanto o quadro existir para a data, a pessoa tem jornada própria
+ * e sai da fila no horário dela (`turnoProprio` no `linha_overrides`, ver
+ * `.claude/rules/escala-liberacoes.md`); quando o quadro acabar — na edição vigente, depois
+ * de 20/11, quando o 43 volta à grade — esta função devolve `null` sozinha e a pessoa volta a
+ * seguir a ordem como todo mundo. **Nada a desmarcar à mão.**
+ *
+ * Lê os DOIS formatos de propósito: `excecoes` (lista, para quando houver mais de uma pessoa)
+ * e `louise` (o quadro único da edição de 2026). Uma edição nova que traga `excecoes` funciona
+ * sem código novo — é o "já configurada" que o dono pediu.
+ *
+ * ⚠️ `cinza` no dia = ela NÃO trabalha (mesma leitura de `inserirLouise`) → sem exceção.
+ * ⚠️ A hora vem do TEXTO do quadro ("vespertino 13h-19h"); sem hora legível devolve `null`
+ * em vez de chutar 19h — inventar horário de saída é pior que não ter a marca.
+ */
+const HORA_FIM = /(\d{1,2})\s*h\s*[-–a]\s*(\d{1,2})\s*h/i
+export function excecaoTurnoDoDia(dados, { data, hospital, turno } = {}) {
+  const quadros = Array.isArray(dados?.excecoes)
+    ? dados.excecoes
+    : (dados?.louise ? [{ numero: '43', nome: 'LOUISE', ...dados.louise }] : [])
+  for (const q of quadros) {
+    const dia = q?.dias?.[data]
+    if (!dia || dia.cinza) continue
+    if (hospital && dia.hospital && dia.hospital !== hospital) continue
+    const m = HORA_FIM.exec(String(q.excecao || ''))
+    if (!m) continue
+    const turnoQuadro = /vespertin/i.test(String(q.excecao || '')) ? 'vespertino' : null
+    if (turno && turnoQuadro && turno !== turnoQuadro) continue
+    return { numero: q.numero || null, nome: q.nome || null, ate: `${String(m[2]).padStart(2, '0')}:00` }
+  }
+  return null
+}
+
 export function inserirLouise(dados, { data, hospital, turno }, posicoes) {
   const pend = []
   const q = dados?.louise?.dias?.[data]

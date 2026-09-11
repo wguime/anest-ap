@@ -126,7 +126,7 @@ export function montarPreservacao({
  */
 export function montarLinhaOverrides({
   decisoes = {}, conferidos = {}, hospital, ordem = [], ajuda = [], casos = [],
-  resolver, normalizar = upperSimples, carimbo = null,
+  resolver, normalizar = upperSimples, carimbo = null, excecaoTurno = null,
 } = {}) {
   const presentes = linhasPresentes({ ordem, ajuda, casos, resolver, normalizar })
   const indice = new Map() // chave OU candidata → chave da linha
@@ -176,6 +176,18 @@ export function montarLinhaOverrides({
     if (!v) continue
     const alvo = chaveDaPessoa(chave, typeof v === 'object' ? v : null)
     if (alvo) gravar(alvo, { conferido: true })
+  }
+  // ESCALA ESPECIAL DO DIA (dono 11/09): quem a escala NUMÉRICA traz com jornada
+  // própria sai da fila no horário dela em vez de esperar a ordem — a marca que a
+  // `LiberacoesView` lê (`turnoProprio`). Quem decide é o DOCUMENTO, e por isso ela
+  // é recarimbada a cada publicação: no dia em que o quadro não trouxer mais a
+  // pessoa (edição de 2026: depois de 20/11), `excecaoTurnoDoDia` devolve null, a
+  // marca deixa de ser gravada e ela volta a seguir a ordem como todo mundo — sem
+  // nada a desmarcar à mão. Vale para QUALQUER nome que o quadro traga, não só a
+  // Louise: é o chamador que resolve a exceção do dia e passa `{ nome, ate }`.
+  if (excecaoTurno?.ate && excecaoTurno?.nome) {
+    const alvo = chaveDaPessoa(normalizar(excecaoTurno.nome), { nomeNorm: normalizar(excecaoTurno.nome) })
+    if (alvo) gravar(alvo, { turnoProprio: { ate: excecaoTurno.ate } })
   }
   return out
 }

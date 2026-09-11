@@ -366,3 +366,43 @@ só existia para aquela frase).
 nem o bloco nem nenhuma linha dentro dele pode ser azul. Trava em
 `liberacoesPainelLinha.test.jsx`, com DOIS cirurgiões de propósito: com um só,
 coluna e frase renderizam igual e o teste passaria sem a correção valer de nada.
+
+### Turno próprio — jornada especial sai fora da ordem (dono 11/09/2026)
+
+*"A Louise deve sair da escala às 19h (ou criar a possibilidade de liberar ela às 19h), a
+escala especial dela o turno é das 13 às 19h."* Ela é a 4ª de 15 no rodapé do HRO, então a
+ordem só chegaria nela em **12º lugar**: a trava de 27/07 recusava o toque, e restavam duas
+saídas ruins — liberar 11 colegas que ainda operavam, ou deixar a saída dela sem registro.
+
+`linha_overrides[<turno>:<chave>].turnoProprio = { ate: 'HH:MM' }` tira a linha da ORDEM
+(`naFila` → false na `LiberacoesView`), **pelo mesmo caminho que já isenta o plantão do turno
+na fila única**: sair não fura a vez de ninguém *e* tira a pessoa da conta de "faltam N" dos
+outros. A mecânica já existia — o que faltava era a marca que a aciona.
+
+O card **diz o porquê** ("Turno até 19:00 · sai fora da ordem"), na receita das linhas irmãs
+(13px, muted, sem cor nem ícone). Sem a frase, ver alguém do meio da fila sair antes dos de
+baixo lê como fila furada — que é exatamente o que a trava existe para impedir.
+
+⚠️ **NÃO trava a liberação antes da hora, de propósito.** A hora é informação no card e quem
+libera é gente olhando o relógio; travar criaria um modo de falha novo (relógio do aparelho,
+plantão que acaba antes) para resolver algo que a fila nunca teve — ninguém libera colega por
+engano. A marca também **não libera sozinha**: a pessoa segue trabalhando até alguém tocar.
+
+⚠️ **QUEM DECIDE É A ESCALA NUMÉRICA, não a mão (dono 11/09, no mesmo dia).** *"Mantenha a
+Louise nesse esquema enquanto a escala numérica vier com a escala especial para ela. A partir
+do momento que não houver, deixar as regras conforme os outros anestesistas."* A marca é
+**recarimbada a cada publicação** a partir de `excecaoTurnoDoDia` — nos DOIS caminhos, a skill
+(`escalaConferenciaHeadless`) e a tela (`ImportarEscalaPage`), porque as duas passam por
+`montarLinhaOverrides`. Quando o quadro acabar (edição de 2026: depois de 20/11), a função
+devolve `null`, a marca deixa de ser gravada e a pessoa volta à ordem — **sem nada a
+desmarcar**. Escala especial nova no dataset já funciona sozinha: ver
+`.claude/rules/escala-numerica.md` para o formato (`excecoes`).
+
+⚠️ Não existe UI para marcar à mão, e é de propósito: a fonte é o documento. Se um dia precisar
+de marcação avulsa, o lugar é o painel "Editar" da linha, junto de "Veio de" — e aí a derivada
+não pode simplesmente sobrescrever a declaração humana (é a lição de `origemManual`, 27/08).
+
+Travas: `escalaNumericaOrdem.test.js` (describe da `excecaoTurnoDoDia` — o caso que mais vale é
+"fora da vigência a marca some SOZINHA", porque é ele que dispensa alguém de lembrar de
+desmarcar) e `liberacoesPainelLinha.test.jsx` (describe "Turno próprio"; a fixture marca quem
+está no MEIO do rodapé, senão qualquer regra passaria).
