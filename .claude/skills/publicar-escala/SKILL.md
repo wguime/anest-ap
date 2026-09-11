@@ -1,18 +1,44 @@
 ---
 name: publicar-escala
-description: Publica a escala cirúrgica de um turno a partir das fotos que o dono cola no chat (Unimed, HRO, Materno), sem passar pela tela de importação — lê pela edge, confere contra a foto, publica pela RPC como o dono e verifica. Use quando o dono anexar fotos da escala e pedir para publicar ("publique as escalas da tarde", "escalas de amanhã", "UNIMED [foto] HRO [foto] MATERNO [foto]"), ou quando pedir para corrigir uma escala já publicada a partir da foto.
+description: Publica a escala cirúrgica de um turno a partir das fotos que o dono cola no chat (Unimed, HRO, Materno), sem passar pela tela de importação e SEM consumir a API — você transcreve a foto que já está no contexto, a conferência da tela valida, e a publicação é a mesma RPC, assinada como o dono. Use quando o dono anexar fotos da escala e pedir para publicar ("publique as escalas da tarde", "escalas de amanhã", "UNIMED [foto] HRO [foto] MATERNO [foto]"), ou quando pedir para corrigir uma escala já publicada a partir da foto.
 allowed-tools: Read, Bash, Write, Edit, Grep, Glob
 user-invocable: true
 ---
 
 # Publicar escala pela foto
 
-O dono manda as fotos e quer a escala no ar sem explicar nada (08/09/2026). O caminho é o
-mesmo da tela de importação, só que quem confere é você, olhando a foto: a leitura pela
-edge é boa mas não é confiável sozinha (08/09 ela devolveu hora com data colada e um HRO
-pela metade), e a publicação é a MESMA RPC da tela, assinada como o dono.
+O dono manda as fotos e quer a escala no ar sem explicar nada (08/09/2026). A publicação é a
+MESMA RPC da tela, com a MESMA conferência, assinada como o dono.
 
-Script: `scripts/escala-publicar-turno.mjs` (cabeçalho documenta os dois comandos).
+## ⛔ A LEITURA É SUA — não chame a edge (dono 11/09/2026)
+
+> *"Quero que tudo seja realizado pelo Claude Code sem consumir a API. Tudo está sendo
+> realizado no chat, não faz sentido descontar."*
+
+**As fotos já estão no seu contexto.** Mandá-las para a edge `parse-escala-cirurgica` é pagar
+a Vision para reler o que você está vendo — US$ 0,19 por publicação de três fotos, cobrados na
+conta de API do dono. **Transcreva você mesmo** e o custo é zero.
+
+Não é só o dinheiro: a edge some com os erros que ela mesma introduz. Medido nas 7 leituras de
+10–11/09, e cada um destes eu já tinha de corrigir à mão depois — `ajudaExterna` no hospital
+errado **4 de 4** · PARTICULAR sem nome do paciente **5 de 8 no HRO** · `GUILHERME M ELO`
+partido **4 de 4** · célula do anestesista vazia 5× (azuis e as seções IMAGEM/C.O/Exames) ·
+data do HRO errada ou ausente **3 de 3**. A conferência contra a foto sempre foi a leitura que
+manda; a da edge era um rascunho que eu reescrevia. Transcrever tira a passada intermediária,
+não a conferência.
+
+E some o que quebrou em 11/09: timeout aos ~66s (a edge termina, cobra, e a resposta não chega)
+e as falhas de rede. Transcrever não tem nenhum dos dois.
+
+**Verificado (11/09):** `parse-escala-cirurgica` é a ÚNICA edge do repo que chama a API
+Anthropic, e a única chamada a ela no script está dentro de `if (cmd === 'ler')`. O comando
+`publicar` toca só `api.supabase.com` (SQL) e `pegaplantao-proxy` (férias) — **não usar o `ler`
+zera o consumo, e nada mais precisa mudar**. ⚠️ A edge continua existindo e sendo usada pela
+TELA de importação, que é como a equipe publica; isto vale só para a skill.
+
+Script: `scripts/escala-publicar-turno.mjs` — use o comando **`publicar`**. O comando `ler`
+fica como último recurso (foto ilegível, volume que você não consegue transcrever com
+segurança); usá-lo é uma decisão a comunicar ao dono, com o custo, não o caminho normal.
 
 ## Passos
 
@@ -23,29 +49,48 @@ Script: `scripts/escala-publicar-turno.mjs` (cabeçalho documenta os dois comand
    coerência entre as três fotos e diga no relatório o que assumiu.
 2. **Guardar as fotos.** O caminho do WhatsApp é temporário: copie para
    `.tmp/escala-lote/<data>-<turno>/` (pasta fora do git — tem iniciais de paciente).
-3. **Ler as três em paralelo**, cada uma com a dica do hospital (o layout diz qual é: Unimed =
-   grade branca SALA/PACIENTE/IDADE/…; HRO = Excel colorido Leito/ANEST/Conv./Sala com rodapé
-   vermelho; Materno = relatório G-HOSP "Mapa de cirurgias"):
-   `node scripts/escala-publicar-turno.mjs ler <foto> --hospital <h> --out .tmp/escala-lote/<data>-<turno>/<h>.json`
+3. **Transcrever as três fotos** — você lendo a imagem, sem edge e sem custo. Grave um JSON por
+   hospital em `.tmp/escala-lote/<data>-<turno>/<h>.json` com a forma que o `publicar` espera:
 
-   ⚠️ **A leitura demora, e o cliente pode cortar antes dela terminar.** Medido em 30 dias:
-   **75% das leituras de HRO e Unimed passam de 60s** (pior caso 139s) — lentidão é o normal,
-   não sintoma. Em 11/09 o caminho de rede passou a cortar aos **~66s** com
-   `SocketError: other side closed` e `bytesRead: 0`: o payload subiu inteiro e a resposta
-   nunca voltou. **A edge TERMINOU assim mesmo** — as três leituras cortadas daquele dia estão
-   em `escala_leitura_log` com `stop_reason: end_turn` e custaram **US$ 0,36 sem entregar nada**.
-   Então, ao ver esse erro: **conferir o log ANTES de repetir**
-   (`select criado_em, hospital_hint, casos, stop_reason, latencia_ms from escala_leitura_log
-   order by criado_em desc limit 5`) — repetir é pagar de novo pela mesma leitura.
-   ⚠️ **Reduzir a imagem NÃO resolve**: testado 370 KB → 254 KB (1600 → 1300px), falhou no
-   mesmo ponto, aos 66s. O corte é de TEMPO, não de tamanho. Persistindo, **transcreva da foto**
-   (passo abaixo) — custa US$ 0 de API e sai mais rápido que a 3ª tentativa.
+   ```jsonc
+   { "hospital": "unimed",
+     "casos": [{ "sala": "CENTRO CIRÚRGICO - SALA 1", "ordem": 0, "hora": "13:30",
+                 "tempoEstimado": "02:15", "pacienteIniciais": "Z.S.S.A.", "idade": "83a 2m 1d",
+                 "procedimento": "...", "convenio": "", "cirurgiao": "...",
+                 "anestesista": "ERLEI", "bloco": "normal", "isContinuacao": false,
+                 "semAnestesista": false, "tipo": "eletiva", "cor": "" }],
+     "posicoesAssistenciais": [{ "local": "SRPA", "anestesista": "VICENTE" }],
+     "ordemLiberacao": ["ROSE", "ROBERTA", "..."],
+     "ajudaExterna": [], "dataDetectada": "2026-09-11" }
+   ```
+
+   Escreva por um script Python com a tabela em literal (foi assim que a Unimed de 34 casos saiu
+   em 11/09): `ordem` reinicia por sala, as iniciais saem do nome por regra, e o `pacienteNome`
+   entra só onde o convênio é PARTICULAR — errar isso à mão em 34 linhas é fácil, num laço não.
+   **Não escreva sala canônica**: transcreva o rótulo como está na foto ("CENTRO CIRÚRGICO -
+   SALA 1", "UMANITA", "C.O") — `normalizarCasosImportados` converte para "CC - Sala 1",
+   "Umanitá", "Sala 7 - CO" e é ela que decide, não você.
+
+   **O que a edge fazia por baixo e agora é seu:**
+   - **LGPD** — `pacienteNome` SÓ em convênio PARTICULAR puro (é o que abre a cobrança). Todo o
+     resto vai por iniciais, e nome completo de paciente não-particular não entra no JSON.
+   - **`dataDetectada`** — a data que a FOTO diz, não a da publicação; é ela que dispara o aviso
+     de divergência. HRO costuma trazer a do dia anterior ou nenhuma: transcreva o que está lá.
+   - **`semAnestesista: true`** com `anestesista: "?"` onde a foto traz "?" / "???" / vazio.
+
+   ⚠️ **Transcreva o que a foto mostra, não o que faria sentido.** A cor é dado (azul = ajuda de
+   outro hospital, amarelo = a pessoa em dois locais de propósito), "//" é igualdade com a linha
+   de cima **sempre**, e "AS" é hora válida. Onde a foto estiver ambígua, diga no relatório em
+   vez de escolher.
 
    💡 **O Materno é o MESMO documento nos dois turnos do dia** ("Mapa de cirurgias" traz o dia
-   inteiro). Se a manhã já foi publicada por aqui, o rascunho está em
-   `.tmp/escala-lote/<data>-matutino/materno.json`: reaproveite os casos do outro turno em vez
-   de reler. Só o nome anotado à mão muda de lugar entre os turnos — conferir esse na foto basta.
-4. **Conferir cada rascunho contra a foto** — é o passo que não pode ser pulado. O que mais
+   inteiro). Se a manhã já foi publicada por aqui, os casos estão em
+   `.tmp/escala-lote/<data>-matutino/materno.json` — reaproveite e confira só o nome à mão, que
+   MUDA DE LINHA entre os turnos.
+
+4. **Reler a foto contra o JSON montado** — é o passo que não pode ser pulado, e continua
+   existindo mesmo sem a edge: antes ele pegava os erros dela, agora pega os seus. Confira linha
+   a linha, na foto, não no que você lembra de ter escrito. O que mais
    erra: hora (só HH:MM; "AS" fica "AS"); anestesista por linha (**"//" é IGUALDADE e vale
    SEMPRE a linha de cima na mesma sala** — dono 11/09: "isso já está definido nas regras". Não
    perguntar. A dúvida que motivou o esclarecimento: uma ajuda de fora entrou no meio da sala e a
@@ -59,19 +104,20 @@ Script: `scripts/escala-publicar-turno.mjs` (cabeçalho documenta os dois comand
    em vermelho é anestesista; "Geral" é técnica. Paciente PARTICULAR puro leva `pacienteNome`
    (é o que preenche a cobrança); todo o resto fica por iniciais.
 
-   **O que a leitura erra de fato** — medido nas 7 leituras de 10–11/09, em ordem de frequência.
-   Conferir estes primeiro rende mais que reler o rascunho inteiro:
+   **Comece por estes seis.** É o que a leitura automática errava, medido nas 7 leituras de
+   10–11/09 — ou seja, é o que a escala tem de difícil, e continua difícil quando quem lê é
+   você. Os três primeiros falham **em silêncio depois de publicados**:
 
    | erro | frequência | como reconhecer |
    |---|---|---|
-   | **`ajudaExterna` no hospital errado** | **4 de 4** | a edge põe a ajuda no hospital **onde o nome está ESCRITO**, e ela pertence ao hospital **onde a pessoa vai TRABALHAR**. Azul no rodapé do HRO + caso azul na Unimed = ajuda **da Unimed**. Sempre reescrever os dois lados à mão. |
-   | **PARTICULAR sem `pacienteNome`** | **5 de 8 no HRO**, 1 de 6 na Unimed | o HRO escreve nome e idade na mesma célula e a edge devolve só as iniciais. Sem o nome o gatilho não abre a cobrança, **em silêncio**. Varrer todo caso `convenio` PART/PARTICULAR. |
-   | **nome PARTIDO no meio** | **4 de 4** | sempre o mesmo: `GUILHERME M ELO` → `GUILHERME MELO`. Um espaço no meio do sobrenome vira nome que o dicionário não resolve. |
-   | **anestesista NÃO lido (célula vazia)** | 5 | dois padrões: nome em **AZUL** (3×) e seções de baixo — **IMAGEM, C.O, Exames** (2×). Nunca aceitar célula vazia sem olhar a foto: `""` ≠ "sem anestesista". |
-   | **data do HRO** | 2 erradas + 1 ausente em 3 | o HRO traz a data do dia ANTERIOR no título, ou nenhuma. Unimed e Materno trazem a certa em cada linha — decidir por elas. |
-   | **SRPA / posição assistencial** | 1 de 2 | intermitente: em 11/09 a edge leu `SRPA · COSTA` sozinha, em 10/09 perdeu `SRPA · GABRIELA`. Conferir, não assumir nem que falta nem que veio. |
+   | **`ajudaExterna` no hospital errado** | **4 de 4** | a armadilha: a ajuda pertence ao hospital **onde a pessoa vai TRABALHAR**, e o nome está ESCRITO no outro. Azul no rodapé do HRO + caso azul na Unimed = ajuda **da Unimed**. Sempre reescrever os dois lados à mão. |
+   | **PARTICULAR sem `pacienteNome`** | **5 de 8 no HRO**, 1 de 6 na Unimed | o HRO escreve nome e idade na mesma célula e é fácil levar só as iniciais. Sem o nome o gatilho não abre a cobrança, **em silêncio**. Varrer todo caso `convenio` PART/PARTICULAR. |
+   | **nome que o dicionário não resolve** | **4 de 4** | `GUILHERME M ELO` era o vício da edge; o seu é escrever o nome do WhatsApp em vez do apelido do dicionário. Resolver todo nome em `escala_anestesista_alias` antes do ensaio. |
+   | **anestesista das seções de baixo** | 5 | onde a leitura automática mais falhava: nomes em **AZUL** (3×) e as seções **IMAGEM, C.O, Exames, SRPA, Umanitá** (2×), que ficam fora da grade principal e são fáceis de pular na transcrição. Varrer a foto de cima a baixo, não só a grade. |
+   | **data do HRO** | 2 erradas + 1 ausente em 3 | o HRO traz a data do dia ANTERIOR no título, ou nenhuma — transcreva o que está lá e deixe o aviso aparecer. Unimed e Materno trazem a certa em cada linha — decidir por elas. |
+   | **SRPA / posição assistencial** | 1 de 2 | uma linha solta entre as seções, sem hora — some com facilidade. Vai em `posicoesAssistenciais`, não em `casos`. |
 
-   ⚠️ **No Materno o nome à mão MUDA DE LINHA entre os turnos** e a edge tende a colá-lo na
+   ⚠️ **No Materno o nome à mão MUDA DE LINHA entre os turnos** e é fácil colá-lo na
    primeira linha da sala. Em 10/09 ela pôs RAFAEL na linha das 07:30 quando a anotação estava
    na de 13:30 — com a sala inteira herdando "//", o turno errado fica com o dono errado.
 5. **Montar o lote** `{ data, turno, hospitais: { unimed: {casos, ordemLiberacao, ajudaExterna,
@@ -104,11 +150,11 @@ Script: `scripts/escala-publicar-turno.mjs` (cabeçalho documenta os dois comand
 7. **Relatar**: por hospital, quantos casos, rodapé, ajuda, quem ficou com "?", o que foi
    decidido (data, herança, azul) e os avisos que sobraram.
 
-   **Custo** (medido, `claude-opus-4-8` a US$ 5/M entrada e US$ 25/M saída, de
-   `escala_leitura_log`): **~US$ 0,19 por publicação de três fotos** — Unimed US$ 0,07–0,17
-   conforme o tamanho, HRO US$ 0,07–0,10, Materno US$ 0,04. Quase tudo é SAÍDA: o custo sobe
-   com o **número de casos**, não com o tamanho da imagem. Sai da conta de API do dono, não do
-   plano do Claude Code. Transcrever da foto custa US$ 0.
+   **Custo: US$ 0.** Com a transcrição no chat nada sai da conta de API do dono — verificado em
+   11/09: no fluxo de `publicar` as únicas chamadas externas são `api.supabase.com` (SQL) e
+   `pegaplantao-proxy` (férias). Se por exceção você tiver usado o `ler`, diga quanto custou
+   (`escala_leitura_log`: ~US$ 0,19 por três fotos, quase tudo em tokens de SAÍDA — escala com o
+   nº de casos, não com o tamanho da imagem).
 
 ## Como ler o recado do dono que vem junto das fotos
 
@@ -157,7 +203,9 @@ a manhã de 09/09):
 
 ## Limites
 
-Nunca publique sem ter conferido a foto; nunca deixe nome completo de paciente fora do caso
-PARTICULAR; a pasta `.tmp/escala-lote/` não entra em commit; nenhum deploy ou migration faz
-parte disto. Se a leitura vier truncada ou com rodapé vazio, releia com a dica (o script já
-passa) e, persistindo, transcreva da foto.
+Nunca publique sem ter relido a foto contra o JSON; nunca deixe nome completo de paciente fora
+do caso PARTICULAR; a pasta `.tmp/escala-lote/` não entra em commit; nenhum deploy ou migration
+faz parte disto. **Não chame a edge de leitura** — ver o bloco no topo; se algum dia precisar
+dela (foto ilegível que você não consegue transcrever), avise o dono antes, com o custo, e
+saiba que o `ler` corta aos ~66s desde 11/09 **mesmo quando a edge termina e cobra**: conferir
+`escala_leitura_log` antes de repetir, porque repetir paga de novo pela mesma leitura.
