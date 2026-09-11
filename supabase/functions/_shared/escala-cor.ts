@@ -43,6 +43,11 @@ export function primeiroNomeNorm(s: unknown): string {
   return norm(s).replace(/^PED[.\s]+/, '').split(/\s+/)[0] || ''
 }
 
+// Deduplicar ajuda exige o nome inteiro: JOAO HENRIQUE não é JOAO PEDRO.
+// A nota de local pertence ao slot, não à identidade da pessoa.
+const chaveAjuda = (s: unknown) => norm(s).replace(/^PED[.\s]+/, '')
+  .replace(/\s*(?:\([^()]*\)|（[^（）]*）)\s*$/, '').replace(/\s+/g, ' ').trim()
+
 export interface EntradaRodape {
   nome: string
   cor: Cor
@@ -63,12 +68,12 @@ export function lerRodape(parsed: Record<string, unknown>): EntradaRodape[] {
   const ordem = Array.isArray(parsed?.ordemLiberacao) ? parsed.ordemLiberacao : []
   const ajuda = new Set(
     (Array.isArray(parsed?.ajudaExterna) ? parsed.ajudaExterna : [])
-      .map((s: unknown) => primeiroNomeNorm(s)).filter(Boolean),
+      .map((s: unknown) => chaveAjuda(s)).filter(Boolean),
   )
   return (ordem as unknown[])
     .map((s) => String(s ?? '').trim())
     .filter(Boolean)
-    .map((nome) => ({ nome, cor: (ajuda.has(primeiroNomeNorm(nome)) ? 'azul' : '') as Cor }))
+    .map((nome) => ({ nome, cor: (ajuda.has(chaveAjuda(nome)) ? 'azul' : '') as Cor }))
 }
 
 export interface CasoComCor extends Record<string, unknown> {
@@ -137,7 +142,7 @@ export function derivarRodape(rodape: EntradaRodape[], casos: CasoComCor[]): Rod
   const ajuda: string[] = []
   const vistos = new Set<string>()
   const juntar = (nome: string) => {
-    const chave = primeiroNomeNorm(nome)
+    const chave = chaveAjuda(nome)
     if (!chave || vistos.has(chave)) return
     vistos.add(chave)
     ajuda.push(nome)

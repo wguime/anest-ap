@@ -168,3 +168,18 @@ describe('primeiroNomeNorm', () => {
     expect(primeiroNomeNorm('')).toBe('')
   })
 })
+
+
+describe('ajudas homônimas são pessoas distintas', () => {
+  it('preserva os dois nomes azuis e a sequência do rodapé', () => {
+    const rodape = [{ nome: 'JOAO HENRIQUE', cor: 'azul' }, { nome: 'JOAO PEDRO', cor: 'azul' }]
+    const r = derivarRodape(rodape, [{ anestesista: 'João Pedro', cor: 'azul' }])
+    expect(r.ordemLiberacao).toEqual(['JOAO HENRIQUE', 'JOAO PEDRO'])
+    expect(r.ajudaExterna).toEqual(['JOAO HENRIQUE', 'JOAO PEDRO'])
+  })
+
+  it('o contrato legado não pinta o homônimo de azul', () => {
+    expect(lerRodape({ ordemLiberacao: ['JOAO HENRIQUE', 'JOAO PEDRO'], ajudaExterna: ['JOAO PEDRO'] }))
+      .toEqual([{ nome: 'JOAO HENRIQUE', cor: '' }, { nome: 'JOAO PEDRO', cor: 'azul' }])
+  })
+})
