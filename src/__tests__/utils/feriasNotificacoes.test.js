@@ -1,7 +1,9 @@
 /**
  * Notificação agregada de férias — diff de violações, destinatários
- * (allowlist do gate: Guilherme 2 contas, Fernanda, Leandro) e payload SÓ
- * COM CONTAGENS (postura do projeto: sem nomes em notificação).
+ * (lista de fiscalização do gate: Guilherme 2 contas, Fernanda, Leandro, João
+ * Ricardo — NÃO todo anestesiologista, mesmo depois de 11/09 quando a leitura
+ * do extrato abriu ao cargo) e payload SÓ COM CONTAGENS (postura do projeto:
+ * sem nomes em notificação).
  */
 import { describe, it, expect } from 'vitest'
 import {
@@ -10,7 +12,7 @@ import {
   buildFeriasNotificationPayload,
 } from '../../utils/feriasNotificacoes'
 
-describe('getDestinatariosFerias — allowlist por e-mail', () => {
+describe('getDestinatariosFerias — lista de fiscalização por e-mail', () => {
   const users = [
     { id: 'u-melo1', active: true, email: 'wguime@yahoo.com.br' },
     { id: 'u-melo2', active: true, email: 'Anestesista.Guilherme@gmail.com' }, // case-insensitive
@@ -18,9 +20,10 @@ describe('getDestinatariosFerias — allowlist por e-mail', () => {
     { id: 'u-lea', active: false, email: 'leandrobernardes03@hotmail.com' }, // inativo fica fora
     { id: 'u-adm', active: true, isAdmin: true, email: 'outro@gmail.com' }, // admin NÃO entra
     { id: 'u-coord', active: true, isCoordenador: true, email: 'coord@gmail.com' }, // coordenador NÃO entra
+    { id: 'u-anest', active: true, role: 'anestesiologista', email: 'colega@gmail.com' }, // vê o extrato, mas NÃO é avisado
   ]
 
-  it('só quem está no allowlist e ativo (admin/coordenador de fora)', () => {
+  it('só quem está na lista e ativo (admin/coordenador/anestesiologista comum de fora)', () => {
     expect(getDestinatariosFerias(users).sort()).toEqual(['u-fer', 'u-melo1', 'u-melo2'])
   })
 

@@ -1,4 +1,4 @@
-# ANEST v5.11.0 — Gestão de Qualidade para Anestesiologia
+# ANEST v5.12.0 — Gestão de Qualidade para Anestesiologia
 
 > **Para humanos:** README.md no root e `docs/dev-onboarding.md`.
 > **Conhecimento por módulo NÃO mora aqui.** Vive em `.claude/rules/*.md`, que o Claude Code carrega

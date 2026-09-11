@@ -9,12 +9,13 @@
  */
 
 import { REGRA_LABEL } from '@/lib/extratoFeriasRegras'
-import { EMAILS_EXTRATO_FERIAS, EMAILS_COMITE_ETICA } from '@/pages/ferias/gate'
+import { EMAILS_ALERTAS_FERIAS, EMAILS_COMITE_ETICA } from '@/pages/ferias/gate'
 
 /**
- * Destinatários = exatamente quem tem acesso ao extrato (allowlist do gate:
- * Guilherme [2 contas], Fernanda e Leandro — dono 03/08). Notificar fora da
- * lista mandaria alguém para uma rota que o gate devolve à Home.
+ * Destinatários = a lista de fiscalização em gate.js (Guilherme [2 contas],
+ * Fernanda, Leandro e João Ricardo — dono 03–04/08). Até 11/09 coincidia com
+ * quem via o extrato; desde então todo anestesiologista vê, mas o aviso
+ * diário continua só com estes (dono abriu a leitura, não a notificação).
  * @returns {string[]} Firebase UIDs
  */
 export function getDestinatariosFerias(users) {
@@ -24,7 +25,7 @@ export function getDestinatariosFerias(users) {
       (u) =>
         u?.id &&
         u.active !== false &&
-        EMAILS_EXTRATO_FERIAS.includes((u.email || '').trim().toLowerCase())
+        EMAILS_ALERTAS_FERIAS.includes((u.email || '').trim().toLowerCase())
     )
     .map((u) => u.id)
 }

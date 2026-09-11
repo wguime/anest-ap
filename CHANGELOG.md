@@ -3,6 +3,31 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.0 (11/09/2026) — Extrato de Férias aberto a todo anestesiologista
+
+Pedido do dono: "quero que libere a funcionalidade de conferência de extrato de férias para todos os
+anestesistas (NÃO é para liberar para funcionários, enfermeiros, farmacêuticos, residentes...)".
+
+### O gate passa a ser o cargo
+Desde 03/08 o Extrato era uma allowlist de 5 e-mails (Guilherme — 2 contas —, Fernanda, Leandro e
+João Ricardo) espelhada em dois lugares: `podeVerExtratoFerias` no front e `can_access_extrato_ferias()`
+na RLS. Os dois espelhos passam a ler o MESMO papel — `profiles.role = 'anestesiologista'` (48 contas
+ativas em produção; os 5 da lista têm esse cargo, ninguém perde acesso). Sem escape de admin: quem
+administra com outro cargo fica de fora, como pedido. Migration
+`20260911180000_extrato_ferias_todos_anestesiologistas.sql` aplicada.
+
+### O que NÃO muda
+- **Agendar** continua só para quem tem sócio mapeado (`EMAIL_TO_SOCIO` ↔ `ferias_nome_socio()`):
+  anestesiologista fora do mapa vê o extrato e não ganha a aba.
+- **A notificação diária de alertas** continua indo aos mesmos 5 (a lista virou
+  `EMAILS_ALERTAS_FERIAS`): o dono abriu a leitura, não o aviso — 48 pessoas recebendo o mesmo
+  alerta seria ruído.
+- A pill **Extrato** no card Férias da Home aparece para quem passa no gate; layout intocado.
+
+Trava: `extratoFeriasGate.test.js` desliga o escape de DEV e mede os dois lados do pedido — entra
+anestesiologista que nunca esteve em lista nenhuma (inclusive pelo alias legado `medico`) e fica de
+fora cada cargo que o dono nomeou, mesmo com `isAdmin`. Rodado contra o gate antigo: 3 falhas.
+
 ## v5.11.0 (10/09/2026) — "Minhas" leva onde você está, e a conta HRO
 
 Quatro pedidos do dono na mesma mensagem, todos sobre a Escala Cirúrgica.

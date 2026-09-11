@@ -1,15 +1,30 @@
 /**
  * Gate do Extrato de Férias.
  *
- * Decisão do dono (2026-08-03, revisada na mesma noite): acesso RESTRITO a
- * três pessoas — Guilherme Melo (as DUAS contas dele — decisão 27/07 de
- * manter ambas), Fernanda Guollo e Leandro Bernardes. Allowlist por E-MAIL
- * (estável entre Firestore/Supabase; uid ficaria órfão numa recriação de
- * conta). A RLS de ferias_violacoes_vistas espelha esta mesma lista
- * (migration 20260803233000). Dev local segue aberto.
+ * Quem VÊ o extrato: todo ANESTESIOLOGISTA (dono 2026-09-11 — "libere a
+ * funcionalidade de conferência de extrato de férias para todos os
+ * anestesistas; NÃO é para liberar para funcionários, enfermeiros,
+ * farmacêuticos, residentes"). Papel, não lista de e-mails: o cargo é
+ * exatamente o recorte que o dono descreveu. A RLS `can_access_extrato_ferias()`
+ * (migration 20260911180000) lê o MESMO papel em profiles.role — mudar um =
+ * mudar o outro. Sem escape de admin: administrador que não é anestesiologista
+ * fica de fora, como pedido. Dev local segue aberto.
+ *
+ * Histórico: 03/08 nasceu restrito a três pessoas por e-mail (Guilherme — as
+ * DUAS contas, decisão 27/07 de manter ambas —, Fernanda e Leandro); 04/08
+ * entrou João Ricardo; 11/09 abriu ao cargo. A lista por e-mail sobrevive
+ * abaixo com OUTRO papel: quem recebe a notificação agregada de alertas
+ * (EMAILS_ALERTAS_FERIAS) e quem pode marcar as próprias férias (EMAIL_TO_SOCIO).
  */
+import { normalizeRole } from '@/utils/userTypes'
 
-export const EMAILS_EXTRATO_FERIAS = [
+/**
+ * Destinatários da notificação agregada diária de alertas de férias (1/dia,
+ * só contagens). Era a allowlist de acesso até 11/09; o dono abriu a LEITURA
+ * ao cargo sem mexer em quem é avisado — avisar 48 pessoas do mesmo alerta
+ * seria ruído, e a fiscalização continua com estes.
+ */
+export const EMAILS_ALERTAS_FERIAS = [
   'wguime@yahoo.com.br',            // Guilherme Melo (conta 1)
   'anestesista.guilherme@gmail.com', // Guilherme Souza Melo (conta 2)
   'guollofernanda@gmail.com',       // Fernanda Guollo
@@ -21,7 +36,8 @@ export const EMAILS_EXTRATO_FERIAS = [
  * E-mail → nome do sócio no Pega Plantão (chave de identidade do extrato).
  * ESPELHA a função SQL `ferias_nome_socio()` (migration 20260804120000),
  * usada no WITH CHECK que impede marcar férias em nome de outro — mudar
- * aqui exige mudar lá.
+ * aqui exige mudar lá. Quem não está aqui VÊ o extrato (se anestesiologista)
+ * mas não ganha a aba Agendar.
  */
 export const EMAIL_TO_SOCIO = {
   'wguime@yahoo.com.br': 'G. MELO',
@@ -45,8 +61,9 @@ export const EMAILS_COMITE_ETICA = [
 
 const emailDe = (user) => (user?.email || '').trim().toLowerCase()
 
+/** Ver o extrato = ser anestesiologista (alias legado 'medico' conta, via normalizeRole). */
 export const podeVerExtratoFerias = (user) =>
-  import.meta.env.DEV || EMAILS_EXTRATO_FERIAS.includes(emailDe(user))
+  import.meta.env.DEV || normalizeRole(user?.role) === 'anestesiologista'
 
 /**
  * Sócio que o usuário pode marcar/desmarcar (self-service: só o próprio).

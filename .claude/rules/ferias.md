@@ -16,6 +16,16 @@ description: Extrato de Férias — allowlist de acesso, metade da cota por seme
      decisão do dono foi editada ou resumida. Esta rule carrega SÓ quando o Claude lê um
      arquivo que casa os `paths` acima. -->
 
+> ⚠️ **Atualização 2026-09-11 (dono): a LEITURA do extrato abriu a todo anestesiologista.**
+> `podeVerExtratoFerias` = `normalizeRole(user.role) === 'anestesiologista'` (sem admin, sem
+> e-mail) e `can_access_extrato_ferias()` lê o mesmo `profiles.role` (migration
+> `20260911180000_extrato_ferias_todos_anestesiologistas.sql`). Explicitamente FORA: residentes,
+> enfermeiros, técnicos, farmacêuticos, secretárias, colaboradores e contas de hospital. O que o
+> texto abaixo chama de "allowlist"/"acesso RESTRITO" virou duas listas com outro papel:
+> `EMAILS_ALERTAS_FERIAS` (quem recebe a notificação diária — os mesmos 5) e `EMAIL_TO_SOCIO`
+> (quem pode marcar — inalterado, ainda espelha `ferias_nome_socio()`). Anestesiologista fora do
+> mapa vê o extrato e não ganha a aba Agendar. Trava: `src/__tests__/pages/extratoFeriasGate.test.js`.
+
 ## Extrato de Férias (linha do Mapa de Módulos do CLAUDE.md)
 
 | Módulo | Entrada | Backend | Notas |

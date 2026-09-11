@@ -1,7 +1,8 @@
 /**
  * ExtratoFeriasPage — extrato anual de férias do grupo (Pega Plantão).
  *
- * Acesso RESTRITO (gate.js): Guilherme (2 contas), Fernanda e Leandro.
+ * Acesso: todo anestesiologista (gate.js, dono 11/09); a aba Agendar só para
+ * quem tem sócio mapeado em EMAIL_TO_SOCIO.
  * Redesign 03/08 (referência: leave trackers tipo Timetastic/BambooHR —
  * saldo como número-herói + barra de progresso; detalhes atrás de um
  * toque): 3 tiles de resumo, alertas escondidos num bottom-sheet aberto
