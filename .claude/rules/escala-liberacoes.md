@@ -236,6 +236,22 @@ setas do bloco somem sem ele — **o defeito ainda bloqueava o conserto manual**
   — não reabrir isso por conta própria. A direção não é derivável sem escolher uma
   regra nova: em 10/09 a Unimed também "emprestou" alguém ao HRO (o próprio
   plantonista dela), e generalizar foi exatamente o erro de 30/08.
+- ⚠️ **A promoção a `proximoPlantao` também cede à numeração (dono 11/09, Unimed da
+  manhã).** O recado dizia *"1º Giovana · 2º Aline · 3º Marílio"* e a **Aline saiu
+  primeiro**: ela fecha o rodapé da Unimed E está na ajuda numerada, e o `splice` de
+  29/07 (`colunaLiberacao.js`, bloco `PLANTAO_LABEL`) a tirava de `linhasAjuda`
+  **antes** do sort por `ajudaIdx` e a grudava no fim de `linhas` — onde se libera
+  primeiro. A numeração não tinha como alcançá-la: ela nunca chegava ao sort.
+  É o MESMO defeito de 10/09, no OUTRO ponto que deriva posição a partir do plantão
+  do contraturno — o gate daquele dia entrou só em `passaNaFrenteDoPlantao`.
+  `opts.ajudaOrdemInformada && posAjuda.has(chaveUltima)` cai no `else if` que já
+  existia para o plantonista (D11, 07/08): **o selo fica, só o movimento sai**.
+  ⚠️ **Ao tocar qualquer regra que derive posição do plantão do contraturno,
+  procurar os DOIS pontos** — a lista de exceções de 29/07 e a partição da view.
+  Trava de LIB em `colunaLiberacao.test.js` (aqui o fio já existia; o que errava era
+  a lib). ⚠️ na fixture, a ajuda que deve sair primeiro PRECISA fechar o rodapé de
+  origem: sem isso a derivação de 27/08 produz a mesma ordem e o teste passa sem a
+  correção valer de nada.
 - Trava de PÁGINA em `escalaAjudaOrigemHospital.test.jsx` (mesma razão de 27/08: a
   lib já sabia ordenar, o que faltava era o fio). ⚠️ na fixture, o visitante NÃO pode
   ser o último do rodapé de origem — aí ele vira plantão do contraturno de lá e a
@@ -325,3 +341,28 @@ trabalha nos dois e não está emprestado a lugar nenhum; quem tem caso só lá 
 deslocado. Sem esse recorte a inferência por casos volta a errar.
 
 No modo FDS não existe "outro hospital": os três são a MESMA fila.
+
+### O card de quem está EMPRESTADO usa o mesmo desenho dos outros (dono 11/09)
+
+*"Lista de cirurgiões está desconfigurada, deve ser organizada em coluna como os
+outros cards, não deve conter número de procedimentos, apenas cirurgiões
+(verifique porque saiu do padrão e corrija)."*
+
+Por que saiu do padrão: a linha "Ajuda CC - Sala 2/Unimed · 2 cirurgias · Mateus
+Baptistella, Mauricio Spagnol" nasceu em **30/08** como UMA frase concatenada com
+"·", enquanto o bloco de cirurgiões do card já era **um `<p>` por nome desde
+24/07**. Dois códigos para a mesma informação, escritos com um mês de distância —
+e só o mais novo ficou fora do padrão. Com 2+ cirurgiões a frase furava a largura
+do card.
+
+Hoje o bloco é um `<div>` com a cor (`text-[13px] leading-snug
+text-muted-foreground`) e um `<p class="truncate">` por linha: destino primeiro,
+cirurgiões abaixo. **O nº de cirurgias saiu** — com os nomes em coluna a contagem
+virou o número de linhas, e `ajudaForaInfo` deixou de devolver `casos` (o campo
+só existia para aquela frase).
+
+⚠️ A asserção de 09/09 ("o destino não é azul") olhava a `className` do próprio
+`<p>`; com a cor no bloco, ela subiu para o container **e ficou mais estrita** —
+nem o bloco nem nenhuma linha dentro dele pode ser azul. Trava em
+`liberacoesPainelLinha.test.jsx`, com DOIS cirurgiões de propósito: com um só,
+coluna e frase renderizam igual e o teste passaria sem a correção valer de nada.
