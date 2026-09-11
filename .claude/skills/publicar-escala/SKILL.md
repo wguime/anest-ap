@@ -1,6 +1,6 @@
 ---
 name: publicar-escala
-description: Publica a escala cirúrgica de um turno a partir das fotos que o dono cola no chat (Unimed, HRO, Materno), sem passar pela tela de importação e SEM consumir a API — você transcreve a foto que já está no contexto, a conferência da tela valida, e a publicação é a mesma RPC, assinada como o dono. Use quando o dono anexar fotos da escala e pedir para publicar ("publique as escalas da tarde", "escalas de amanhã", "UNIMED [foto] HRO [foto] MATERNO [foto]"), ou quando pedir para corrigir uma escala já publicada a partir da foto.
+description: Publica a escala cirúrgica de um turno a partir das fotos que o dono cola no chat (Unimed, HRO, Materno), sem passar pela tela de importação e SEM consumir a API — você transcreve a foto que já está no contexto, a conferência da tela valida, e a publicação é a mesma RPC, assinada como o dono. Use quando o dono anexar fotos da escala e pedir para publicar ("publique as escalas da tarde", "escalas de amanhã", "UNIMED [foto] HRO [foto] MATERNO [foto]"), ou quando pedir para corrigir uma escala já publicada a partir da foto. Cobre também o FIM DE SEMANA ("publique as escalas de final de semana", tabela de posições + mapas de sábado e domingo): fila única por turno na linha 'fds', mapas sem rodapé — comando `publicar-fds`.
 allowed-tools: Read, Bash, Write, Edit, Grep, Glob
 user-invocable: true
 ---
@@ -164,6 +164,78 @@ segurança); usá-lo é uma decisão a comunicar ao dono, com o custo, não o ca
    (`escala_leitura_log`: ~US$ 0,19 por três fotos, quase tudo em tokens de SAÍDA — escala com o
    nº de casos, não com o tamanho da imagem).
 
+## Fim de semana (sáb/dom) — é OUTRO fluxo, não o de dia útil com duas datas
+
+O dono manda tudo junto na sexta: a **tabela "ESCALA DE FINAL DE SEMANA"** (sábado e domingo
+na mesma foto) e **um mapa por hospital por dia** (Unimed sáb, HRO sáb, Unimed dom, HRO dom;
+Materno raramente). No app isso é `ImportarEscalaFdsPage`, não `ImportarEscalaPage`, e o que
+muda não é detalhe — é o modelo (regra completa em `.claude/rules/escala-fds-feriado.md`):
+
+| | dia útil | fim de semana |
+|---|---|---|
+| fila de liberação | uma por HOSPITAL, no rodapé vermelho do mapa | **UMA por TURNO para os 3 hospitais**, vinda da TABELA; vive na linha pseudo-hospital `'fds'` (`casos: []`, `fds_meta`) |
+| o mapa traz rodapé? | sim, é a ordem | **não** — `ordemLiberacao: []` no mapa, senão nasce uma 2ª ordem concorrendo com a única |
+| turnos | manhã e tarde | manhã, tarde e **noite** (a fila da noite mora em `fds_meta.ordemNoite`, porque o banco só aceita matutino/vespertino como turno de caso) |
+| ajuda / duplicidade / troca | conferência completa | **não existem** (dono 05/09: "nos finais de semana não existe a opção de ajuda… nunca marque ajuda de forma automática"); quem está em dois hospitais só está |
+| numérica | o rodapé é conferido contra a escala numérica | as POSIÇÕES são conferidas contra o **Pega Plantão** do sábado (P5–P12 exatos; P1–P4 é um bloco cuja ordem só a foto decide — dono 04/09) |
+| sala sem nome | "?" | "?" — exceto na **manhã de sábado**, onde a sala sem nome recebe quem a grade põe no posto (`anestesistaDoPosto`; qualquer outro turno fica "?", dono 29/08) |
+| quem publica | `publicar` | **`publicar-fds`** — 4 linhas 'fds' + 1 chamada por (hospital, dia, turno) com casos, numa transação |
+
+**Lote** (um só, `.tmp/escala-lote/<sábado>-fds/lote.json`; o cabeçalho do script documenta o
+formato): `dias` com `grade` (3 faixas × unimed/hro/ret1/ret2), `posicoes` (Pn→nome),
+`escalacao` (Pn por turno, na ordem da lista numerada) e `ordemDoc` (a linha "1º→último a ser
+liberado" **como está no documento**, em tokens Pn); `mapas` com os casos de cada hospital/dia.
+O que é seu ao transcrever a TABELA:
+
+- **A ordem vai na direção do documento; a inversão é do script.** "P4, P3, P12, … P2, P1" entra
+  assim. `rodapeDeOrdemDoc` inverte UMA vez — quem inverte à mão publica a fila ao contrário
+  (foi o defeito de 24/08 no feriado). Linha vazia = sugestão pela escalação (postos → numerados
+  → retaguarda), marcada "sugerida", igual à tela. **A noite nunca vem no documento**: deixe
+  `noturno: []` e o script monta grade 19-07 + `FDS_NOITE_NUMERADOS` (sáb P11,P8,P7 · dom
+  P11,P6,P5 — ordem ditada pelo dono em 16/08).
+- **A retaguarda que a linha da tarde omite entra no fim do rodapé** (sai primeiro). A linha
+  "P11, P10, P9, P5, P6, P4, P3" da tarde de sábado vem assim quase toda semana e omite P1 e P2
+  como implícitos — eles pegam o plantão 19-07 e descansam antes. Ordem do dono em 15/08
+  (migration `20260815223000`) e de novo em 29/08. O script faz isso sozinho
+  (`completarRodapeFds`) e imprime "acrescentado ao fim"; a tela NÃO faz (05/09 saiu sem os
+  dois) — se o dono mandar diferente, é ele quem decide, não a lib.
+- **Domingo herda as posições do sábado e a cor diz a troca.** Só o sábado tem a grade rotulada
+  (P1 DANIELA…); no domingo cada nome tem a COR da sua posição. Nome novo numa cor = troca
+  pessoal daquele Pn (12/09: KLISMAN roxo = P3 do LEANDRO) → escreva só a posição trocada em
+  `posicoes` do domingo, o resto herda. O bloco do domingo costuma ser "8º X 7º Y ·
+  EMERGENCIA: 11º Z · P1 P2 P3 P4", sem linha de liberação → `escalacao: [P8, P7, P11]` nos
+  dois turnos e `ordemDoc` vazio (a tela publica assim desde 22/08, marcado "sugerida").
+- **`PLANTÃO MATERNO` são funcionárias, nunca posição** (MARTA, ELISETE — têm escala
+  própria); vai em `ignorados`, só para o relatório. O "11º GIOVANA" ali é a mesma P11 da lista.
+- **Divergência com o Pega Plantão em P1–P4 não é erro** — em 12/09 ele tinha KLISMAN no
+  bloco e o documento tinha LEANDRO no sábado (troca pessoal; KLISMAN voltou ao P3 no domingo).
+  O documento manda; a frase do script é para você conferir a foto de novo, e dizer no
+  relatório o que viu. "G. Staub" ≠ "STAUB" no casador é ruído, não divergência.
+
+O que é seu ao transcrever os MAPAS:
+
+- **Carimbe `turno` por linha com a FAIXA do documento** (MATUTINO/VESPERTINO). As linhas "AS"
+  do HRO não têm hora e, sem a faixa, caem na manhã — em 12/09 três cirurgias da tarde foram
+  parar na manhã no primeiro ensaio, coladas ao "//" errado. A hora vence a faixa quando existe.
+- **Célula vazia é `""` (não `"?"`)** — a lib é quem decide entre "?" e a sugestão do posto na
+  manhã de sábado; `semAnestesista: true` só para "?" explícito no documento.
+- O resto é igual ao dia útil: PARTICULAR com `pacienteNome`, iniciais por regra, "//" herda,
+  cor amarela = a pessoa em dois locais de propósito (VICENTE no C.O e nos Exames). A tarde do
+  fim de semana costuma chegar SEM anestesista nos dois hospitais — publique "?" e a fila única
+  distribui; não invente dono.
+- **Acréscimo do dono por texto** ("artrodese toracolombar sábado 13h, particular, Penteado"):
+  é um caso a mais no mapa do hospital onde o cirurgião opera (conferir no banco:
+  `cirurgiao ilike '%penteado%'` → HRO, Sala 3). Sem nome de paciente o gatilho **não abre a
+  cobrança** — avise; as iniciais/nome informadas depois pelo app (`UPDATE OF paciente_iniciais`
+  dispara o mesmo gatilho) abrem.
+
+Ensaio, publicação e relatório como no dia útil (`publicar-fds <lote> --ensaio`, depois sem).
+Bloqueia: ordem vazia de manhã/tarde, Pn sem dono, nome ambíguo, campo que o banco recusa,
+turno já publicado sem `--republicar`. Avisa: Pega Plantão, sala sem nome, posto sugerido,
+encolhimento. No relatório, as três filas por dia (com quem foi acrescentado e o que é
+"sugerida"), os casos por hospital/turno, os particulares que abriram cobrança e o que ficou
+sem — e a troca de P1–P4 que a foto mostrou.
+
 ## Como ler o recado do dono que vem junto das fotos
 
 O dono manda, no estilo do WhatsApp do grupo, o que a foto não diz. Exemplo real (08/09, para
@@ -213,7 +285,7 @@ a manhã de 09/09):
 
 Nunca publique sem ter relido a foto contra o JSON; nunca deixe nome completo de paciente fora
 do caso PARTICULAR; a pasta `.tmp/escala-lote/` não entra em commit; nenhum deploy ou migration
-faz parte disto. **Não chame a edge de leitura** — ver o bloco no topo; se algum dia precisar
+faz parte disto; **feriado** (lista simples, `ordensDocumentoFeriado`) ainda não tem comando — o script recusa a data e a publicação é pela tela. **Não chame a edge de leitura** — ver o bloco no topo; se algum dia precisar
 dela (foto ilegível que você não consegue transcrever), avise o dono antes, com o custo, e
 saiba que o `ler` corta aos ~66s desde 11/09 **mesmo quando a edge termina e cobra**: conferir
 `escala_leitura_log` antes de repetir, porque repetir paga de novo pela mesma leitura.

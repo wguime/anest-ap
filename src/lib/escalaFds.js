@@ -434,6 +434,45 @@ export function rodapeDeOrdemDoc(ordemDoc, posicoes = {}) {
 }
 
 /**
+ * QUEM ESTÁ NA FAIXA E NÃO FOI CITADO NUNCA SOME (turno de DIA).
+ *
+ * A linha "1º→último a ser liberado" da tarde de sábado costuma vir com sete
+ * posições ("P11, P10, P9, P5, P6, P4, P3") e omitir P1 e P2 como implícitos —
+ * eles são a retaguarda da faixa 13-19 e pegam o plantão noturno 19-07. Ordem
+ * do dono em 15/08 (migration `20260815223000`) e de novo em 29/08
+ * (`20260829210000`): os dois entram no FIM do rodapé, ou seja, são os
+ * PRIMEIROS a serem liberados — saem antes para descansar. Pelo mesmo motivo os
+ * POSTOS da faixa (Unimed/HRO) que faltarem entram na FRENTE: saem por último.
+ *
+ * Só turnos de dia: a noite já resolve isto na leitura (`linhasNoturnasFds`
+ * põe na frente quem está na grade e não foi citado), e lá a retaguarda é
+ * ordem de chamada, não quem sai primeiro. Numerado da lista fora da ordem não
+ * ganha vaga aqui — o documento é que decide onde ele entra.
+ *
+ * `opts.resolverUid` compara por login quando os dois lados resolvem ("GUILHERME
+ * DIDOMENICO" na ordem × "GUILHERME D" na grade); senão por nome normalizado.
+ */
+export function completarRodapeFds(rodape, faixa, opts = {}) {
+  const resolverUid = typeof opts.resolverUid === 'function' ? opts.resolverUid : () => null
+  const chave = (nome) => resolverUid(nome) || normPadrao(nome)
+  const base = (rodape || []).map((n) => String(n || '').trim()).filter(Boolean)
+  const presentes = new Set(base.map(chave))
+  const faltantes = (cols) => {
+    const out = []
+    for (const col of cols) {
+      const nome = String(faixa?.[col] || '').trim()
+      if (!nome || presentes.has(chave(nome))) continue
+      presentes.add(chave(nome))
+      out.push(nome)
+    }
+    return out
+  }
+  const frente = faltantes(['unimed', 'hro'])
+  const fim = faltantes(['ret1', 'ret2'])
+  return { rodape: [...frente, ...base, ...fim], acrescentados: [...frente, ...fim] }
+}
+
+/**
  * Lista simples do FERIADO → ordens na convenção do DOCUMENTO (1º→último a ser
  * liberado), para a publicação inverter UMA vez só em `rodapeDeOrdemDoc`.
  *

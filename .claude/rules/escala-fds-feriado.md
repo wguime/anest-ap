@@ -754,3 +754,24 @@ mutila). Travas: `escalaFds.test.js` ("o apelido INTEIRO casa primeiro") e os
 dois casos de nome com inicial em `escalaFdsTelaUnica.test.jsx`. Reproduzido
 antes com os dados reais do dia (grade, posições, ordem da noite, marcação e
 apelidos do dicionário) — o que separou "bundle velho" de "lógica".
+
+### FDS publicado pelo chat — `publicar-fds` (dono 11/09)
+
+"quero que publique as escalas de final de semana … verifique as regras e incorpore na skill de
+escalas." A skill `/publicar-escala` ganhou o comando `publicar-fds` em
+`scripts/escala-publicar-turno.mjs`: o Claude transcreve a tabela e os mapas (sem edge, custo
+zero), e o script faz o que `ImportarEscalaFdsPage` faz — 4 linhas `'fds'` com `fds_meta`
+(`ordemNoite` pela grade 19-07 + `FDS_NOITE_NUMERADOS`), mapas por (hospital, dia, turno) com
+`ordemLiberacao: []`, `anestesistaDoPosto` só na manhã de sábado, cruzamento com o Pega
+Plantão — pelas MESMAS libs, carregadas pelo Module Runner do Vite.
+
+**`completarRodapeFds` (lib pura, `escalaFds.js`)** é a regra de 15/08 + 29/08 em código:
+quem está na faixa da grade e ficou fora da linha do documento nunca some — posto (Unimed/HRO)
+na frente do rodapé, retaguarda (ret1/ret2) no fim (sai primeiro; pega o plantão 19-07). Só
+turnos de DIA; a noite já resolve na leitura. ⚠️ **O script usa; a tela NÃO** — em 05/09 a tarde
+de sábado saiu pela tela sem P1/P2 e ninguém reclamou. Ligar na tela é decisão do dono
+(Regra #2), não "de passagem". Trava: describe "completarRodapeFds" em `escalaFds.test.js`,
+com o valor da migration `20260815223000` caractere por caractere.
+
+Feriado não passa pelo comando (lista simples, sem grade): o script recusa a data. Lote e fotos
+em `.tmp/escala-lote/<sábado>-fds/` (fora do git).

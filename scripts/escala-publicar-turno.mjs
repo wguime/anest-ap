@@ -26,6 +26,20 @@
  *       como o dono. `--ensaio` termina em ROLLBACK. Depois do commit completa o nome do
  *       paciente PARTICULAR na cobrança e imprime a verificação por SELECT.
  *
+ *   node scripts/escala-publicar-turno.mjs publicar-fds <lote.json> [--ensaio] [--republicar] [--como "GUILHERME MELO"]
+ *       FIM DE SEMANA (sáb/dom) — o que a tela `ImportarEscalaFdsPage` publica, pelas mesmas libs:
+ *       lote.json = { sabado: 'YYYY-MM-DD',
+ *                     dias: { 'YYYY-MM-DD': { grade: {'7-13'|'13-19'|'19-07': {unimed,hro,ret1,ret2}},
+ *                                             posicoes: {P1..P12: nome}, escalacao: {matutino:[Pn], vespertino:[Pn]},
+ *                                             ordemDoc: {matutino:[Pn|nome], vespertino:[…], noturno:[…]} } },
+ *                     ignorados?: ['PLANTÃO MATERNO: …'],
+ *                     mapas: [{ hospital, data, dataDetectada, casos, posicoesAssistenciais }] }
+ *       `ordemDoc` é a linha "1º→último a ser LIBERADO" como está no documento — a inversão para o
+ *       rodapé acontece UMA vez aqui (`rodapeDeOrdemDoc`); linha vazia = sugestão (`sugerirRodapeFds`,
+ *       marcada "sugerida"). Publica até 4 linhas hospital='fds' (casos [] + fds_meta com a fila da
+ *       noite em ordemNoite) e uma chamada por (hospital, dia, turno) COM casos, sem rodapé nem ajuda —
+ *       no FDS a fila é a da linha 'fds'. Domingo herda as posições do sábado (lacunas).
+ *
  * Credenciais lidas de `.env.local` dentro do processo, nunca impressas:
  *   SUPABASE_JWT_SECRET · SUPABASE_ACCESS_TOKEN · VITE_SUPABASE_URL
  */
@@ -92,7 +106,17 @@ async function carregarLibs() {
   const dadosNumerica = (await runner.import('/src/data/escalaNumerica.json')).default
   const { iniciaisSeguras } = await runner.import('/src/lib/escalaCirurgicaPaciente.js')
   const urgencias = await runner.import('/src/lib/escalaCirurgicaUrgencias.js')
-  return { headless, dadosNumerica, iniciaisSeguras, urgencias, fechar: () => server.close() }
+  const fds = await runner.import('/src/lib/escalaFds.js')
+  const fdsMapas = await runner.import('/src/lib/escalaFdsMapas.js')
+  const fdsPP = await runner.import('/src/lib/escalaFdsPegaPlantao.js')
+  const numerica = await runner.import('/src/lib/escalaNumerica.js')
+  const utils = await runner.import('/src/pages/escala-cirurgica/utils.js')
+  const validacao = await runner.import('/src/lib/escalaCirurgicaValidacao.js')
+  const regras = await runner.import('/src/lib/escalaCirurgicaRegras.js')
+  return {
+    headless, dadosNumerica, iniciaisSeguras, urgencias, fds, fdsMapas, fdsPP, numerica, utils, validacao, regras,
+    fechar: () => server.close(),
+  }
 }
 
 /**
@@ -144,13 +168,11 @@ async function carregarPublicadas(data) {
   return out
 }
 
-/** Nomes completos de quem está de férias em `data`, pelo Pega Plantão (mesmo filtro da tela). null = não consultado. */
-async function feriasDoDia(data, uid) {
+/** Plantões do Pega Plantão num intervalo, pelo proxy (o mesmo `getPlantoes` da tela). null = não consultado. */
+async function plantoesPegaPlantao(dataInicio, dataFim, uid) {
   try {
-    const [ano, mes] = data.split('-')
-    const ultimo = new Date(Number(ano), Number(mes), 0).getDate()
     const endpoint = '/api/v1/plantoes?' + new URLSearchParams({
-      'filtro.dataInicio': `${ano}-${mes}-01T00:00:00`, 'filtro.dataFim': `${ano}-${mes}-${String(ultimo).padStart(2, '0')}T23:59:59`,
+      'filtro.dataInicio': dataInicio, 'filtro.dataFim': dataFim,
     }).toString()
     const r = await fetch(`${SUPABASE_URL}/functions/v1/pegaplantao-proxy`, {
       method: 'POST', signal: AbortSignal.timeout(60_000),
@@ -159,7 +181,19 @@ async function feriasDoDia(data, uid) {
     })
     if (!r.ok) return null
     const dados = await r.json()
-    const lista = Array.isArray(dados) ? dados : (dados?.data || dados?.items || [])
+    return Array.isArray(dados) ? dados : (dados?.data || dados?.items || [])
+  } catch {
+    return null
+  }
+}
+
+/** Nomes completos de quem está de férias em `data`, pelo Pega Plantão (mesmo filtro da tela). null = não consultado. */
+async function feriasDoDia(data, uid) {
+  try {
+    const [ano, mes] = data.split('-')
+    const ultimo = new Date(Number(ano), Number(mes), 0).getDate()
+    const lista = await plantoesPegaPlantao(`${ano}-${mes}-01T00:00:00`, `${ano}-${mes}-${String(ultimo).padStart(2, '0')}T23:59:59`, uid)
+    if (lista === null) return null
     const nomes = new Set()
     for (const p of lista) {
       if (!p?.Setor || !/f[ée]rias/i.test(p.Setor)) continue
@@ -293,7 +327,7 @@ if (cmd === 'publicar') {
   const particulares = []
   for (const [h, r] of Object.entries(resultado.hospitais)) {
     const p = r.payload
-    const header = { data, hospital: h, status: 'publicada', ordem_liberacao: p.ordemLiberacao, ajuda_externa: p.ajudaExterna, source_image_path: null }
+    const header = { data, hospital: h, status: 'publicada', ordem_liberacao: p.ordemLiberacao, ajuda_externa: p.ajudaExterna, source_image_path: null, published_by_name: comoApelido }
     const casos = p.casos.map(linhaDoCaso)
     const extras = [Object.keys(p.linhaOverrides || {}).length ? dq(p.linhaOverrides) : 'null::jsonb']
     if (p.preservar) extras.push(dq(p.preservar))
@@ -363,5 +397,279 @@ if (cmd === 'publicar') {
   process.exit(0)
 }
 
-console.error('uso: ler <foto> --hospital H --out rascunho.json | publicar <lote.json> [--ensaio] [--republicar] [--como APELIDO]')
+if (cmd === 'publicar-fds') {
+  const arquivo = args[1]
+  if (!arquivo || !existsSync(arquivo)) falhar('uso: publicar-fds <lote.json> [--ensaio] [--republicar] [--como "GUILHERME MELO"]')
+  const lote = JSON.parse(readFileSync(arquivo, 'utf8'))
+  const ensaio = flag('ensaio')
+  const republicar = flag('republicar')
+  const comoApelido = opt('como', 'GUILHERME MELO')
+  const libs = await carregarLibs()
+  const { headless, iniciaisSeguras, fds, fdsMapas, fdsPP, numerica, utils, validacao, regras } = libs
+  const sair = async (msg) => { await libs.fechar(); falhar(msg) }
+
+  // ── o fim de semana ────────────────────────────────────────────────────────
+  const TURNOS_FDS = ['matutino', 'vespertino']           // turnos de PUBLICAÇÃO (o CHECK do banco)
+  const TURNOS_ORDEM = [...TURNOS_FDS, 'noturno']         // + a fila da noite, que viaja em fds_meta.ordemNoite
+  const datas = Object.keys(lote.dias || {}).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort()
+  if (!datas.length) await sair('lote.dias vazio — precisa de pelo menos o sábado')
+  for (const d of datas) {
+    if (fds.ehFeriado(d)) await sair(`${d} é FERIADO: a folha do feriado é uma lista simples (ordensDocumentoFeriado) e este comando só cobre sáb/dom — publique pela tela`)
+    if (!fds.ehFimDeSemana(d)) await sair(`${d} não é sábado nem domingo`)
+  }
+  const sabado = String(lote.sabado || fds.sabadoDoFimDeSemana(datas[0]))
+  if (!datas.every((d) => fds.sabadoDoFimDeSemana(d) === sabado)) await sair(`os dias do lote não pertencem ao fim de semana de ${sabado}`)
+
+  const { perfis, aliases } = await carregarIdentidade()
+  const identidade = headless.montarRoster({ perfis, aliases })
+  const { roster, rosterByUid, resolver } = identidade
+  const uidDono = resolver(comoApelido)
+  if (!uidDono) await sair(`não achei quem é "${comoApelido}" no dicionário`)
+  const primeiroNomeUpper = (nome) => utils.normNome(String(nome || '').split(/\s+/)[0] || '')
+  const apelidoCanonico = (uid, fallback) => {
+    const r = rosterByUid.get(uid)
+    return r ? (r.apelidos?.[0] || primeiroNomeUpper(r.nome)) : fallback
+  }
+
+  // ── 1. tabela de posições: grade + posições + ordens, dia a dia ────────────
+  const dias = {}
+  let posicoesAnteriores = {}
+  const bloqueiosTabela = []
+  const avisosTabela = []
+  for (const iso of datas) {
+    const d = lote.dias[iso] || {}
+    const grade = {}
+    for (const faixa of fds.FAIXAS_FDS) {
+      const l = d.grade?.[faixa] || {}
+      grade[faixa] = { unimed: norm(l.unimed), hro: norm(l.hro), ret1: norm(l.ret1), ret2: norm(l.ret2) }
+    }
+    const posicoes = {}
+    for (const [codigo, nome] of Object.entries(d.posicoes || {})) {
+      const pn = fds.normalizarPn(codigo)
+      if (pn && norm(nome)) posicoes[pn] = norm(nome)
+    }
+    // domingo herda do sábado só as LACUNAS: o dado do próprio dia vence (troca pessoal)
+    for (const [pn, nome] of Object.entries(posicoesAnteriores)) if (!posicoes[pn]) posicoes[pn] = nome
+    posicoesAnteriores = posicoes
+    const escalacao = { matutino: [], vespertino: [] }
+    for (const t of TURNOS_FDS) {
+      for (const tok of d.escalacao?.[t] || []) { const pn = fds.normalizarPn(tok); if (pn && !escalacao[t].includes(pn)) escalacao[t].push(pn) }
+    }
+    const ordem = {}
+    const ordemFonte = {}
+    const acrescentados = {}
+    for (const turno of TURNOS_ORDEM) {
+      const tokens = (d.ordemDoc?.[turno] || []).map((t) => fds.normalizarPn(t) || norm(t)).filter(Boolean)
+      let rodape
+      if (tokens.length) {
+        const r = fds.rodapeDeOrdemDoc(tokens, posicoes)
+        rodape = r.rodape
+        ordemFonte[turno] = 'documento'
+        if (r.semDono.length) bloqueiosTabela.push(`${iso} · ${turno}: posição sem pessoa no mapeamento: ${r.semDono.join(', ')}`)
+      } else {
+        // sem linha no documento: sugestão = a própria ordem de escalação (a tela marca "Sugerida")
+        rodape = fds.sugerirRodapeFds({ grade, posicoes, escalacao, data: iso }, turno)
+        ordemFonte[turno] = 'sugerida'
+      }
+      if (!rodape.length && turno !== 'noturno') bloqueiosTabela.push(`${iso} · ${turno}: ordem de liberação vazia — sem ela a fila seria inventada dos casos`)
+      // QUEM ESTÁ NA FAIXA E NÃO FOI CITADO NUNCA SOME (dono 15/08, 29/08) — só turnos de dia;
+      // à noite `linhasNoturnasFds` já põe na frente quem está na grade e ficou fora da ordem.
+      if (turno !== 'noturno' && rodape.length) {
+        const c = fds.completarRodapeFds(rodape, grade[fds.FDS_TURNO_FAIXA[turno]], { resolverUid: resolver })
+        rodape = c.rodape
+        if (c.acrescentados.length) acrescentados[turno] = c.acrescentados
+      }
+      // identidade: nome ambíguo BLOQUEIA (incidente "JOAO" 11/08); sem vínculo só avisa
+      for (const nome of rodape) {
+        if (resolver(nome)) continue
+        if (utils.candidatosPrimeiroNome(nome, roster).length >= 2) bloqueiosTabela.push(`${iso} · ${turno}: "${nome}" tem mais de um candidato no cadastro — escreva o nome completo`)
+        else avisosTabela.push(`${iso} · ${turno}: "${nome}" não está no dicionário — publica como texto, sem login`)
+      }
+      ordem[turno] = rodape
+    }
+    dias[iso] = { grade, posicoes, escalacao, ordem, ordemFonte, acrescentados }
+  }
+
+  // ── 2. a tabela lida × o Pega Plantão (dono 04/09) — aviso, nunca bloqueio ──
+  const registrosPP = await plantoesPegaPlantao(`${sabado}T00:00:00`, `${sabado}T23:59:59`, uidDono)
+  let textoPP = ''
+  if (registrosPP === null) textoPP = 'Pega Plantão não consultado — posições conferidas só contra a foto'
+  else if (dias[sabado]) {
+    const posicoesPP = fdsPP.posicoesDoPegaPlantao(registrosPP, sabado)
+    if (Object.keys(posicoesPP).length) {
+      const casar = (a, b) => {
+        const ua = resolver(a); const ub = resolver(b)
+        if (ua && ub) return ua === ub
+        return numerica.casarNomeComLegenda(a, b) || numerica.casarNomeComLegenda(b, a)
+      }
+      const c = fdsPP.compararPosicoesFds(dias[sabado].posicoes, posicoesPP, { casar })
+      textoPP = c.iguais ? 'posições iguais ao Pega Plantão' : fdsPP.textoComparacaoFds(c)
+      if (!c.iguais && !textoPP) textoPP = `posições: só diferenças que o Pega Plantão não cobre (${c.sobrando.map((x) => x.pn).join(', ')})`
+      // o dado por trás da frase: quem decide entre documento e Pega Plantão é quem lê a foto
+      textoPP += `\n   Pega Plantão em ${sabado}: ${Object.entries(posicoesPP).sort((a, b) => Number(a[0].slice(1)) - Number(b[0].slice(1))).map(([pn, n]) => `${pn} ${n}`).join(' · ')}`
+    } else textoPP = `Pega Plantão sem posições registradas em ${sabado}`
+  }
+
+  // ── 3. mapas: casos por (hospital, dia, turno), como ConferirMapaFdsPage ───
+  const publicadasPorData = {}
+  for (const iso of datas) publicadasPorData[iso] = await carregarPublicadas(iso)
+  const planos = []          // { hospital, data, turno, casos, avisos, bloqueios }
+  for (const m of lote.mapas || []) {
+    const hospital = String(m.hospital || '')
+    const data = String(m.data || '')
+    if (!fdsMapas.HOSPITAIS_MAPA.includes(hospital)) await sair(`mapa com hospital inválido: "${hospital}"`)
+    if (!dias[data]) await sair(`mapa de ${hospital} em ${data}: a data não está em lote.dias`)
+    const rows = (m.casos || []).map((c) => ({ ...utils.linhaVazia(), ...c }))
+    const preparados = utils.prepararCasosFimDeSemana(rows, hospital, m.posicoesAssistenciais || [])
+    for (const turno of fdsMapas.TURNOS_MAPA) {
+      const casosDoTurno = preparados.filter((c) => c.turno === turno)
+      if (!casosDoTurno.length) continue     // turno vazio não é publicado (a RPC substitui o turno inteiro)
+      const avisos = []
+      const bloqueios = []
+      if (m.dataDetectada && m.dataDetectada !== data) avisos.push(`a foto diz ${m.dataDetectada} e a publicação é de ${data}`)
+      const grupos = utils.gruposAnestesista(casosDoTurno, hospital)
+      const lidas = fdsMapas.sugerirAtribuicoesLidas(grupos, resolver)
+      // posto da grade: só a MANHÃ DE SÁBADO, só grupo SEM nome (dono 29/08)
+      const nomePosto = fdsMapas.anestesistaDoPosto(dias[data].grade, hospital, turno, data)
+      const doPosto = fdsMapas.sugerirAtribuicoesDoPosto(grupos, nomePosto, resolver)
+      for (const [chave, v] of Object.entries(doPosto)) {
+        const g = grupos.find((x) => x.chave === chave)
+        avisos.push(`${g?.sala || chave}: sem nome no mapa — sugerido pelo posto da grade: ${v.nome}`)
+      }
+      const atribuicoes = { ...lidas, ...Object.fromEntries(Object.entries(doPosto).map(([k, v]) => [k, v.uid])) }
+      for (const g of grupos) {
+        const lido = String(g.nome || '').trim()
+        if (atribuicoes[g.chave]) continue
+        if (!lido || /^\?+$/.test(lido)) { avisos.push(`${g.sala || g.chave}: sala sem anestesista (fica "?")`); continue }
+        if (lido.includes('+')) { avisos.push(`${g.sala || g.chave}: dupla "${lido}" — fica como texto, a fila conta os dois`); continue }
+        if (utils.candidatosPrimeiroNome(lido, roster).length >= 2) bloqueios.push(`${g.sala || g.chave}: "${lido}" pode ser mais de uma pessoa — escreva o nome completo no lote`)
+        else avisos.push(`${g.sala || g.chave}: "${lido}" não está no dicionário — publica como texto, sem login`)
+      }
+      const nomePorChave = Object.fromEntries(grupos.map((g) => [g.chave, g.nome]))
+      const casos = utils.aplicarAtribuicoes(casosDoTurno, atribuicoes, (chave, uid) => apelidoCanonico(uid, nomePorChave[chave] ? utils.normNome(nomePorChave[chave]) : ''), resolver)
+      for (const b of validacao.validarCasosParaPublicacao(casos, { horaValida: (h) => regras.ehHoraSequencialEscala(h) || !!utils.turnoDeHora(h) })) bloqueios.push(validacao.textoBloqueio(b))
+      const existente = publicadasPorData[data]?.[hospital] || null
+      const antes = (existente?.casos || []).filter((c) => (c.turno || 'matutino') === turno).length
+      if (existente?.publicacaoTurnos?.[turno] && !republicar) bloqueios.push(`${hospital} ${data} ${turno} já está publicado (${antes} casos) — republicar zera status e liberações; use --republicar se for isso mesmo`)
+      else if (antes >= 3 && antes > casos.length) avisos.push(`a escala publicada tem ${antes} casos e a nova tem ${casos.length} — publicar apaga os anteriores`)
+      planos.push({ hospital, data, turno, casos, avisos, bloqueios })
+    }
+  }
+  // a linha 'fds' já publicada também trava sem --republicar (a RPC substitui o turno)
+  for (const iso of datas) {
+    const linhaFds = publicadasPorData[iso]?.fds
+    for (const turno of TURNOS_FDS) {
+      if (linhaFds?.publicacaoTurnos?.[turno] && !republicar) bloqueiosTabela.push(`${iso} · ${turno}: a fila única já está publicada — use --republicar se for isso mesmo (liberações e marcações do turno são preservadas pela RPC só onde o nome continua)`)
+    }
+  }
+
+  // ── relatório ──────────────────────────────────────────────────────────────
+  console.log(`\n== FIM DE SEMANA de ${sabado} · ${datas.join(' + ')} · Pega Plantão: ${textoPP}`)
+  for (const iso of datas) {
+    const d = dias[iso]
+    console.log(`\n-- ${iso}`)
+    for (const faixa of fds.FAIXAS_FDS) console.log(`   ${faixa.padEnd(5)} | Unimed ${d.grade[faixa].unimed.padEnd(14)} | HRO ${d.grade[faixa].hro.padEnd(14)} | ret ${d.grade[faixa].ret1}, ${d.grade[faixa].ret2}`)
+    console.log(`   posições: ${Object.entries(d.posicoes).sort((a, b) => Number(a[0].slice(1)) - Number(b[0].slice(1))).map(([pn, n]) => `${pn} ${n}`).join(' · ')}`)
+    for (const turno of TURNOS_ORDEM) {
+      console.log(`   ${turno.padEnd(10)} (${d.ordemFonte[turno]}): ${d.ordem[turno].map((n, i) => `${i + 1}.${n}`).join(' / ')}`)
+      if (d.acrescentados[turno]) console.log(`      ↳ acrescentado ao fim (retaguarda da faixa fora da linha — regra de 15/08): ${d.acrescentados[turno].join(', ')}`)
+    }
+  }
+  for (const a of avisosTabela) console.log(`   ⚠️  ${a}`)
+  for (const b of bloqueiosTabela) console.log(`   ❌ ${b}`)
+  for (const s of lote.ignorados || []) console.log(`   (fora da escala: ${s})`)
+  let totalBloqueios = bloqueiosTabela.length
+  for (const pl of planos) {
+    console.log(`\n== ${pl.hospital.toUpperCase()} · ${pl.data} · ${pl.turno} · ${pl.casos.length} caso(s)`)
+    for (const c of pl.casos) {
+      console.log(`   ${String(c.sala).padEnd(18)} | ${String(c.hora || '').padEnd(5)} | ${String(c.procedimento || '').slice(0, 38).padEnd(38)} | ${String(c.anestesista || '').padEnd(16)} | ${c.anestesistaUserId ? 'uid' : (c.semAnestesista ? 'SEM' : 'sem vínculo')} | ${c.convenio || ''}`)
+    }
+    for (const a of pl.avisos) console.log(`   ⚠️  ${a}`)
+    for (const b of pl.bloqueios) console.log(`   ❌ ${b}`)
+    totalBloqueios += pl.bloqueios.length
+  }
+  if (totalBloqueios) await sair(`${totalBloqueios} bloqueio(s) — a tela também recusaria. Corrija o lote e repita.`)
+
+  // ── payload: 4 linhas 'fds' + mapas, numa transação como o dono ────────────
+  const CASO_FIELDS = ['sala', 'ordem', 'hora', 'tempoEstimado', 'terminoPrevisto', 'pacienteIniciais', 'idade', 'procedimento',
+    'convenio', 'cirurgiao', 'cirurgiaoDisplay', 'anestesista', 'anestesistaUserId', 'residente', 'residenteUserId', 'bloco',
+    'isContinuacao', 'semAnestesista', 'tipo', 'gravidade', 'turno']
+  const snake = (s) => s.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`)
+  const dq = (o) => { const j = JSON.stringify(o); if (j.includes('$j$')) falhar('payload contém $j$'); return `$j$${j}$j$::jsonb` }
+  const chamadas = []
+  for (const iso of datas) {
+    const d = dias[iso]
+    for (const turno of TURNOS_FDS) {
+      const header = {
+        data: iso, hospital: fds.FDS_HOSPITAL, status: 'publicada',
+        ordem_liberacao: d.ordem[turno], ajuda_externa: [], source_image_path: null, published_by_name: comoApelido,
+        // o meta COMPLETO vai em toda publicação (a RPC preserva quando ausente; não há "limpar")
+        fds_meta: {
+          grade: d.grade, posicoes: d.posicoes, escalacao: d.escalacao, tipo: 'fim_de_semana',
+          ordemFonte: d.ordemFonte,
+          // a fila da NOITE mora aqui porque 'noturno' não é turno de publicação no banco
+          ordemNoite: d.ordem.noturno,
+        },
+      }
+      chamadas.push(`select public.rpc_publicar_escala_turno('${iso}','${fds.FDS_HOSPITAL}','${turno}', ${dq(header)}, '[]'::jsonb);`)
+    }
+  }
+  const particulares = []
+  for (const pl of planos) {
+    const header = { data: pl.data, hospital: pl.hospital, status: 'publicada', ordem_liberacao: [], ajuda_externa: [], source_image_path: null, published_by_name: comoApelido }
+    const casos = pl.casos.map((c, i) => {
+      const out = {}
+      for (const f of CASO_FIELDS) if (c[f] !== undefined) out[snake(f)] = c[f]
+      if (typeof out.paciente_iniciais === 'string') out.paciente_iniciais = iniciaisSeguras(out.paciente_iniciais)
+      out.ordem = i
+      out.turno = pl.turno
+      return out
+    })
+    chamadas.push(`select public.rpc_publicar_escala_turno('${pl.data}','${pl.hospital}','${pl.turno}', ${dq(header)}, ${dq(casos)});`)
+    pl.casos.forEach((c, i) => { if (c.pacienteNome && /^PART(ICULAR)?[^A-Z]*$/.test(norm(c.convenio))) particulares.push({ hospital: pl.hospital, data: pl.data, turno: pl.turno, sala: casos[i].sala, ordem: i, hora: c.hora, nome: String(c.pacienteNome).trim() }) })
+  }
+  const corpo = `select set_config('request.jwt.claims', ${dq({ sub: uidDono })}::text, true);\n${chamadas.join('\n')}`
+  if (ensaio) {
+    const r = await sql(`begin;\n${corpo}\nrollback;`)
+    if (!r.ok) await sair(`ensaio falhou: ${r.status} ${JSON.stringify(r.body).slice(0, 600)}`)
+    console.log(`\n✅ ENSAIO ok (rollback): a RPC aceitou ${chamadas.length} publicação(ões) — ${datas.length * TURNOS_FDS.length} fila(s) única(s) + ${planos.length} turno(s) de hospital. Repita sem --ensaio para publicar.`)
+    await libs.fechar()
+    process.exit(0)
+  }
+  const r = await sql(`begin;\n${corpo}\ncommit;`)
+  if (!r.ok) await sair(`publicação falhou (nada gravado): ${r.status} ${JSON.stringify(r.body).slice(0, 600)}`)
+
+  // ── verificação por SELECT + nome do paciente PARTICULAR na cobrança ───────
+  const verif = await sqlOuFalha(`
+    select e.data, e.hospital, e.id,
+           jsonb_array_length(coalesce(e.ordem_liberacao->'matutino','[]'::jsonb)) as rod_manha,
+           jsonb_array_length(coalesce(e.ordem_liberacao->'vespertino','[]'::jsonb)) as rod_tarde,
+           jsonb_array_length(coalesce(e.fds_meta->'ordemNoite','[]'::jsonb)) as rod_noite,
+           (select count(*) from public.escala_cirurgica_caso c where c.escala_id=e.id and c.turno='matutino') as casos_manha,
+           (select count(*) from public.escala_cirurgica_caso c where c.escala_id=e.id and c.turno='vespertino') as casos_tarde,
+           e.published_by_name
+      from public.escala_cirurgica e where e.data in (${datas.map((d) => `'${d}'`).join(',')}) order by e.data, e.hospital`, 'verificação')
+  console.log('\n✅ PUBLICADO:')
+  for (const v of verif) {
+    if (v.hospital === 'fds') console.log(`   ${v.data} fila única: manhã ${v.rod_manha} · tarde ${v.rod_tarde} · noite ${v.rod_noite} · por ${v.published_by_name}`)
+    else console.log(`   ${v.data} ${v.hospital}: manhã ${v.casos_manha} caso(s) · tarde ${v.casos_tarde} caso(s) · por ${v.published_by_name}`)
+  }
+  for (const pc of particulares) {
+    const escala = verif.find((v) => v.hospital === pc.hospital && v.data === pc.data)
+    if (!escala) continue
+    const linhas = await sqlOuFalha(`
+      with caso as (
+        select id from public.escala_cirurgica_caso
+         where escala_id='${escala.id}' and turno='${pc.turno}' and sala=${dq(pc.sala)}#>>'{}' and ordem=${pc.ordem} limit 1)
+      update public.cirurgias_particulares cp
+         set paciente=${dq(pc.nome)}#>>'{}', updated_at=now(), updated_by='${uidDono}', updated_by_name='${comoApelido.replace(/'/g, "''")}'
+        from caso where cp.escala_caso_id=caso.id and cp.cancelada_em is null and cp.paciente !~ '[[:alpha:]]{3,}'
+      returning cp.id`, 'nome do particular')
+    console.log(`   ${pc.hospital} ${pc.data}: paciente particular (${pc.sala} ${pc.hora}) ${linhas.length ? 'completado na cobrança' : 'sem rascunho de cobrança para completar'}`)
+  }
+  await libs.fechar()
+  process.exit(0)
+}
+
+console.error('uso: ler <foto> --hospital H --out rascunho.json | publicar <lote.json> [--ensaio] [--republicar] [--como APELIDO] | publicar-fds <lote.json> [--ensaio] [--republicar] [--como APELIDO]')
 process.exit(1)

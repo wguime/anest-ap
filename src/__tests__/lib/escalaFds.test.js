@@ -25,6 +25,7 @@ import {
   resolverNomeEstrito,
   sugerirRodapeFds,
   rodapeDeOrdemDoc,
+  completarRodapeFds,
   ordensDocumentoFeriado,
   normalizarParseFds,
 } from '../../lib/escalaFds'
@@ -541,5 +542,60 @@ describe('normalizarParseFds — resposta da edge → modelo da conferência', (
     )
     expect(dias[0].posicoes.P7).toBe('THAYNA')
     expect(dias[0].posicoes.P10).toBe('STAUB')
+  })
+})
+
+describe('completarRodapeFds — quem está na faixa e não foi citado nunca some (dono 15/08)', () => {
+  // A tarde de sábado 15/08: o documento trazia sete posições ("P11, P10, P9,
+  // P5, P6, P4, P3") e a ordem do dono tem nove — P1 (GUILHERME DIDOMENICO) e
+  // P2 (JOAO HENRIQUE), a retaguarda da faixa 13-19, no FIM do rodapé (primeiros
+  // a serem liberados: pegam o plantão 19-07 e saem antes para descansar). É o
+  // valor gravado pela migration 20260815223000, caractere por caractere.
+  const { rodape: doDocumento } = rodapeDeOrdemDoc(
+    ['P11', 'P10', 'P9', 'P5', 'P6', 'P4', 'P3'], POSICOES_SAB,
+  )
+
+  it('acrescenta a retaguarda da faixa no fim do rodapé (sai primeiro)', () => {
+    const { rodape, acrescentados } = completarRodapeFds(doDocumento, GRADE_SAB['13-19'])
+    expect(rodape).toEqual([
+      'CRISTINA', 'MATHEUS', 'ERLEI', 'GABRIELA', 'ROBERTA', 'STAUB', 'GABRIEL',
+      'GUILHERME DIDOMENICO', 'JOAO HENRIQUE',
+    ])
+    expect(acrescentados).toEqual(['GUILHERME DIDOMENICO', 'JOAO HENRIQUE'])
+    // o invariante clínico: quem sai primeiro é a retaguarda, e os plantões da
+    // faixa continuam fechando a fila
+    const casos = rodape.map((nome, i) => ({
+      id: `c${i}`, sala: `Sala ${i + 1}`, anestesista: nome, cirurgiao: 'DR. X', status: 'agendada',
+    }))
+    const { linhas } = gerarColunaLiberacao(casos, rodape)
+    expect(linhas.at(-1).anestesista.toUpperCase()).toBe('JOAO HENRIQUE')
+    expect(linhas[0].anestesista.toUpperCase()).toBe('CRISTINA')
+  })
+
+  it('posto da faixa que falta entra na FRENTE (sai por último)', () => {
+    const { rodape, acrescentados } = completarRodapeFds(
+      ['ERLEI', 'GABRIELA'], { unimed: 'CRISTINA', hro: 'MATHEUS', ret1: '', ret2: '' },
+    )
+    expect(rodape).toEqual(['CRISTINA', 'MATHEUS', 'ERLEI', 'GABRIELA'])
+    expect(acrescentados).toEqual(['CRISTINA', 'MATHEUS'])
+  })
+
+  it('ordem completa fica intocada — a manhã de sábado cita os quatro', () => {
+    const { rodape: manha } = rodapeDeOrdemDoc(
+      ['P4', 'P3', 'P12', 'P9', 'P10', 'P11', 'P6', 'P5', 'P8', 'P7', 'P2', 'P1'], POSICOES_SAB,
+    )
+    const { rodape, acrescentados } = completarRodapeFds(manha, GRADE_SAB['7-13'])
+    expect(rodape).toEqual(manha)
+    expect(acrescentados).toEqual([])
+  })
+
+  it('compara por login quando os dois lados resolvem (apelido diferente na grade)', () => {
+    const resolverUid = (n) => (/^GUILHERME D/i.test(String(n)) ? 'uid-gd' : null)
+    const { acrescentados } = completarRodapeFds(
+      ['CRISTINA', 'GUILHERME DIDOMENICO'],
+      { unimed: 'CRISTINA', hro: '', ret1: 'GUILHERME D', ret2: '' },
+      { resolverUid },
+    )
+    expect(acrescentados).toEqual([])
   })
 })
