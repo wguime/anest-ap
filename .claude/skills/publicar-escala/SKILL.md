@@ -27,9 +27,29 @@ Script: `scripts/escala-publicar-turno.mjs` (cabeçalho documenta os dois comand
    grade branca SALA/PACIENTE/IDADE/…; HRO = Excel colorido Leito/ANEST/Conv./Sala com rodapé
    vermelho; Materno = relatório G-HOSP "Mapa de cirurgias"):
    `node scripts/escala-publicar-turno.mjs ler <foto> --hospital <h> --out .tmp/escala-lote/<data>-<turno>/<h>.json`
+
+   ⚠️ **A leitura demora, e o cliente pode cortar antes dela terminar.** Medido em 30 dias:
+   **75% das leituras de HRO e Unimed passam de 60s** (pior caso 139s) — lentidão é o normal,
+   não sintoma. Em 11/09 o caminho de rede passou a cortar aos **~66s** com
+   `SocketError: other side closed` e `bytesRead: 0`: o payload subiu inteiro e a resposta
+   nunca voltou. **A edge TERMINOU assim mesmo** — as três leituras cortadas daquele dia estão
+   em `escala_leitura_log` com `stop_reason: end_turn` e custaram **US$ 0,36 sem entregar nada**.
+   Então, ao ver esse erro: **conferir o log ANTES de repetir**
+   (`select criado_em, hospital_hint, casos, stop_reason, latencia_ms from escala_leitura_log
+   order by criado_em desc limit 5`) — repetir é pagar de novo pela mesma leitura.
+   ⚠️ **Reduzir a imagem NÃO resolve**: testado 370 KB → 254 KB (1600 → 1300px), falhou no
+   mesmo ponto, aos 66s. O corte é de TEMPO, não de tamanho. Persistindo, **transcreva da foto**
+   (passo abaixo) — custa US$ 0 de API e sai mais rápido que a 3ª tentativa.
+
+   💡 **O Materno é o MESMO documento nos dois turnos do dia** ("Mapa de cirurgias" traz o dia
+   inteiro). Se a manhã já foi publicada por aqui, o rascunho está em
+   `.tmp/escala-lote/<data>-matutino/materno.json`: reaproveite os casos do outro turno em vez
+   de reler. Só o nome anotado à mão muda de lugar entre os turnos — conferir esse na foto basta.
 4. **Conferir cada rascunho contra a foto** — é o passo que não pode ser pulado. O que mais
-   erra: hora (só HH:MM; "AS" fica "AS"); anestesista por linha ("//" herda o de cima NA MESMA
-   sala; célula vazia ou "?" é linha descoberta → `"?"` e `semAnestesista: true`; nome em AZUL é
+   erra: hora (só HH:MM; "AS" fica "AS"); anestesista por linha (**"//" é IGUALDADE e vale
+   SEMPRE a linha de cima na mesma sala** — dono 11/09: "isso já está definido nas regras". Não
+   perguntar. A dúvida que motivou o esclarecimento: uma ajuda de fora entrou no meio da sala e a
+   linha seguinte era "//" — mesmo assim o "//" é dela, não de quem abriu a sala; célula vazia ou "?" é linha descoberta → `"?"` e `semAnestesista: true`; nome em AZUL é
    ajuda de outro hospital → entra em `ajudaExterna` e no caso; AMARELO é a pessoa em dois
    locais de propósito, mantém nos dois); seções fora da grade (Exames, Imagem, Hemodinâmica,
    IOSC, HO, Ambulatório, Braqui, Simone); rodapé completo NA ORDEM, com notas entre parênteses
@@ -38,6 +58,22 @@ Script: `scripts/escala-publicar-turno.mjs` (cabeçalho documenta os dois comand
    "Bloco M - Sala 3" e "Bloco M - Sala 2" — escreva o nome). No Materno só o nome anotado à mão
    em vermelho é anestesista; "Geral" é técnica. Paciente PARTICULAR puro leva `pacienteNome`
    (é o que preenche a cobrança); todo o resto fica por iniciais.
+
+   **O que a leitura erra de fato** — medido nas 7 leituras de 10–11/09, em ordem de frequência.
+   Conferir estes primeiro rende mais que reler o rascunho inteiro:
+
+   | erro | frequência | como reconhecer |
+   |---|---|---|
+   | **`ajudaExterna` no hospital errado** | **4 de 4** | a edge põe a ajuda no hospital **onde o nome está ESCRITO**, e ela pertence ao hospital **onde a pessoa vai TRABALHAR**. Azul no rodapé do HRO + caso azul na Unimed = ajuda **da Unimed**. Sempre reescrever os dois lados à mão. |
+   | **PARTICULAR sem `pacienteNome`** | **5 de 8 no HRO**, 1 de 6 na Unimed | o HRO escreve nome e idade na mesma célula e a edge devolve só as iniciais. Sem o nome o gatilho não abre a cobrança, **em silêncio**. Varrer todo caso `convenio` PART/PARTICULAR. |
+   | **nome PARTIDO no meio** | **4 de 4** | sempre o mesmo: `GUILHERME M ELO` → `GUILHERME MELO`. Um espaço no meio do sobrenome vira nome que o dicionário não resolve. |
+   | **anestesista NÃO lido (célula vazia)** | 5 | dois padrões: nome em **AZUL** (3×) e seções de baixo — **IMAGEM, C.O, Exames** (2×). Nunca aceitar célula vazia sem olhar a foto: `""` ≠ "sem anestesista". |
+   | **data do HRO** | 2 erradas + 1 ausente em 3 | o HRO traz a data do dia ANTERIOR no título, ou nenhuma. Unimed e Materno trazem a certa em cada linha — decidir por elas. |
+   | **SRPA / posição assistencial** | 1 de 2 | intermitente: em 11/09 a edge leu `SRPA · COSTA` sozinha, em 10/09 perdeu `SRPA · GABRIELA`. Conferir, não assumir nem que falta nem que veio. |
+
+   ⚠️ **No Materno o nome à mão MUDA DE LINHA entre os turnos** e a edge tende a colá-lo na
+   primeira linha da sala. Em 10/09 ela pôs RAFAEL na linha das 07:30 quando a anotação estava
+   na de 13:30 — com a sala inteira herdando "//", o turno errado fica com o dono errado.
 5. **Montar o lote** `{ data, turno, hospitais: { unimed: {casos, ordemLiberacao, ajudaExterna,
    posicoesAssistenciais, dataDetectada}, hro: …, materno: … } }` e ensaiar:
    `node scripts/escala-publicar-turno.mjs publicar <lote.json> --ensaio`. O `publicar` roda
@@ -57,12 +93,22 @@ Script: `scripts/escala-publicar-turno.mjs` (cabeçalho documenta os dois comand
    rastro de quem segue na escala é preservado (`p_preservar`) — igual à tela. Divergência com a
    numérica é aviso, nunca bloqueio: troca, ajuda e consultório mudam o rodapé de propósito;
    compare com a foto e siga. Nome ambíguo: escreva o nome completo, nunca escolha.
-6. **Publicar** (sem `--ensaio`). O script recusa turno já publicado: se o pedido é corrigir
+6. **Publicar** (sem `--ensaio`). ⚠️ Se a publicação falhar por **rede** (`ETIMEDOUT`/
+   `EHOSTUNREACH` — aconteceu 2× em 11/09), **conferir o banco antes de repetir**: a RPC roda
+   `begin … commit` numa chamada só, então ou gravou tudo ou nada, e o script não sabe qual foi.
+   `select hospital, publicacao_turnos->'<turno>'->>'casos' from escala_cirurgica where data='<data>'`
+   — `null` significa que não gravou e pode repetir à vontade. O script recusa turno já publicado: se o pedido é corrigir
    uma escala em uso (status marcados, liberações), o conserto é reparo linha a linha em SQL
    (`scripts/repair-escala-2026-09-08-matutino-leitura.sql` é o modelo) — republicar zera
    o trabalho do turno. Só use `--republicar` quando o dono pedir isso e ninguém marcou nada.
 7. **Relatar**: por hospital, quantos casos, rodapé, ajuda, quem ficou com "?", o que foi
-   decidido (data, herança, azul) e os avisos que sobraram. Três leituras custam ~US$ 0,40.
+   decidido (data, herança, azul) e os avisos que sobraram.
+
+   **Custo** (medido, `claude-opus-4-8` a US$ 5/M entrada e US$ 25/M saída, de
+   `escala_leitura_log`): **~US$ 0,19 por publicação de três fotos** — Unimed US$ 0,07–0,17
+   conforme o tamanho, HRO US$ 0,07–0,10, Materno US$ 0,04. Quase tudo é SAÍDA: o custo sobe
+   com o **número de casos**, não com o tamanho da imagem. Sai da conta de API do dono, não do
+   plano do Claude Code. Transcrever da foto custa US$ 0.
 
 ## Como ler o recado do dono que vem junto das fotos
 
@@ -78,6 +124,12 @@ a manhã de 09/09):
   `ajudaExterna` do hospital certo e o caso dele ganha `cor: "azul"`. A numeração é a ordem em
   que SAEM; na fila a ÚLTIMA ajuda do array sai primeiro, então quem tem o número menor vai
   DEPOIS no array (2º João, 3º Garim → `["GARIM","JOAO RICARDO"]`).
+  ⚠️ **A ajuda numerada PODE estar no rodapé do próprio hospital** (ALINE, 11/09: 17ª e última
+  da Unimed e 2ª na ordem de saída). Isso é legítimo — transcreva os dois: o rodapé como está na
+  foto E o nome na `ajudaExterna`. Até 11/09 o app ignorava a numeração nesse caso, porque quem
+  fecha o rodapé virava "plantão do contraturno" e saía da fila antes do sort; corrigido em
+  `colunaLiberacao.js` (ver `.claude/rules/escala-liberacoes.md`). Se a ordem publicada sair
+  diferente do recado, é defeito de código — não conserte mexendo no lote.
   ⚠️ **Numerou = `ajudaOrdemInformada: true` no hospital, dentro do lote** (dono 09/09). Sem
   essa marca a fila ordena a cauda pelo rodapé do hospital de ORIGEM (regra de 27/08) e passa
   por cima da numeração: em 10/09 o dono pediu "3º Rafael, 4º Alexandre" e a Unimed liberou o
@@ -99,8 +151,9 @@ a manhã de 09/09):
   Não perguntar ao dono entre "registro" e "executar": desde a reforma de 07/08 as 40 trocas em
   produção são registro, e o modo que executa é do TrocaSheet, com um toque na fila.
 - Apelido do WhatsApp → apelido do dicionário: Beta = ROBERTA · Joao Moreira = JOAO RICARDO ·
-  Garim = GARIM · Nathália Fornari = NATHALIA. Na dúvida, o dicionário (`escala_anestesista_alias`)
-  decide; nunca chute.
+  Garim = GARIM · Nathália Fornari = NATHALIA · **Dani Resi = DANIELA (Reis, não "residente")** ·
+  Rafael = PELISSARO (mesmo cadastro; a fila mostra o apelido canônico, não o que o dono
+  escreveu). Na dúvida, o dicionário (`escala_anestesista_alias`) decide; nunca chute.
 
 ## Limites
 
