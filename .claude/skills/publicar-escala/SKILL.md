@@ -33,8 +33,16 @@ e as falhas de rede. Transcrever não tem nenhum dos dois.
 **Verificado (11/09):** `parse-escala-cirurgica` é a ÚNICA edge do repo que chama a API
 Anthropic, e a única chamada a ela no script está dentro de `if (cmd === 'ler')`. O comando
 `publicar` toca só `api.supabase.com` (SQL) e `pegaplantao-proxy` (férias) — **não usar o `ler`
-zera o consumo, e nada mais precisa mudar**. ⚠️ A edge continua existindo e sendo usada pela
-TELA de importação, que é como a equipe publica; isto vale só para a skill.
+zera o consumo, e nada mais precisa mudar**.
+
+⛔ **ISTO VALE SÓ PARA A SKILL — o app não muda** (dono 11/09, no mesmo fôlego): *"mantenha
+assim as leituras realizadas aqui no Claude Code, mas não troque a forma como as escalas são
+lidas quando anexadas via app."* A tela `ImportarEscalaPage` e a edge `parse-escala-cirurgica`
+são como a EQUIPE publica, e continuam exatamente como estão. Nada aqui autoriza mexer na
+edge, no prompt dela, no cache, na tela de importação ou no `escalaCirurgicaService` — nem
+"de passagem", nem porque esta skill mediu erros de leitura. Os números da tabela abaixo são
+para VOCÊ conferir melhor, não backlog de correção da edge. Mudança ali é pedido próprio do
+dono (Regra #2). O comando `ler` também fica no script, intacto.
 
 Script: `scripts/escala-publicar-turno.mjs` — use o comando **`publicar`**. O comando `ler`
 fica como último recurso (foto ilegível, volume que você não consegue transcrever com
