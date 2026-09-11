@@ -42,7 +42,7 @@ const MODELO = 'claude-opus-4-8'
  * `escala_leitura_log` e a que invalida o cache de leitura. Sem bumpar, o ANTES
  * e o DEPOIS se misturam na mesma média e a medição mente.
  */
-const PROMPT_VERSAO = 'v13-ajudas-homonimas-2026-09-11'
+const PROMPT_VERSAO = 'v14-preserva-linhas-2026-09-11'
 
 const DEFAULT_ALLOWED_ORIGINS = [
   'https://anest-ap.web.app',
@@ -831,7 +831,7 @@ Deno.serve(async (req) => {
     const rodape = lerRodape(parsed)
     // sanitizeCasos garante os ENUMS e a regra de LGPD do pacienteNome;
     // normalizarCasos garante a FORMA do valor (iniciais que passam no CHECK,
-    // hora em HH:MM, ordem pela posição, sem linha repetida) — é o que o schema
+    // hora em HH:MM, ordem pela posição, preservando cada linha) — é o que o schema
     // não consegue prometer, porque `pattern` não existe em json_schema;
     // aplicarCorNosCasos traduz `repeticao` de volta para o "//" que a
     // conferência sabe herdar e deixa a `secao` corrigir um `bloco` genérico.

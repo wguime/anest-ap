@@ -118,12 +118,12 @@ describe('normalizarCasos', () => {
     expect(contagem.hora).toBe(1)
   })
 
-  it('derruba a linha repetida em TODOS os campos, e só ela', () => {
+  it('conta a linha repetida sem removê-la da conferência', () => {
     const linha = { sala: 'Exames', hora: '08:00', pacienteIniciais: 'A.B.', procedimento: 'EDA', cirurgiao: 'X', anestesista: 'ANA' }
     const { casos, contagem } = normalizarCasos([
       linha, { ...linha }, { ...linha, pacienteIniciais: 'C.D.' },
     ])
-    expect(casos).toHaveLength(2)
+    expect(casos).toHaveLength(3)
     expect(contagem.duplicada).toBe(1)
   })
 
@@ -148,5 +148,28 @@ describe('normalizarCasos', () => {
   it('sobrevive a lista vazia e a campos ausentes', () => {
     expect(normalizarCasos([]).casos).toEqual([])
     expect(normalizarCasos([{}]).casos).toHaveLength(1)
+  })
+})
+
+describe('normalização não escolhe quais cirurgias existem', () => {
+  const linha = { sala: 'Exames', hora: '08:00', pacienteIniciais: 'A.B.', procedimento: 'EDA', anestesista: 'ANA' }
+
+  it('mantém linhas de turnos diferentes com os mesmos campos clínicos', () => {
+    const { casos } = normalizarCasos([{ ...linha, turno: 'matutino' }, { ...linha, turno: 'vespertino' }])
+    expect(casos.map((c) => c.turno)).toEqual(['matutino', 'vespertino'])
+  })
+
+  it('a conversão para iniciais não funde dois pacientes sintéticos', () => {
+    const { casos } = normalizarCasos([
+      { ...linha, pacienteIniciais: 'Ana Bela' },
+      { ...linha, pacienteIniciais: 'Alice Barros' },
+    ])
+    expect(casos).toHaveLength(2)
+    expect(casos.map((c) => c.pacienteIniciais)).toEqual(['A.B.', 'A.B.'])
+  })
+
+  it('não perde a linha azul quando outra igual veio antes em preto', () => {
+    const { casos } = normalizarCasos([{ ...linha, cor: '' }, { ...linha, cor: 'azul' }])
+    expect(casos.map((c) => c.cor)).toEqual(['', 'azul'])
   })
 })

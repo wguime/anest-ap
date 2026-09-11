@@ -156,16 +156,15 @@ export function normalizarCasos<T extends CasoBruto>(casos: T[]): ResultadoNorma
     return { ...c, sala, hora, tempoEstimado: tempo, pacienteIniciais: ini }
   })
 
-  // DEDUPE: a mesma linha lida duas vezes acontece quando o modelo repete um
-  // bloco. Só cai fora o que é idêntico em TODOS os campos que identificam a
-  // cirurgia — duas cataratas às 08:00 na mesma sala com pacientes diferentes
-  // continuam sendo duas cirurgias.
+  // Conta possíveis repetições, mas preserva TODAS as linhas para conferência.
+  // Iniciais iguais não identificam um paciente, e turno/cor também podem diferir.
+  // detectarItensDuplicados, no cliente, apresenta o aviso para decisão humana.
   const vistos = new Set<string>()
   const unicos: T[] = []
   for (const c of normalizados) {
     const chave = [c.sala, c.hora, c.pacienteIniciais, c.procedimento, c.cirurgiao, c.anestesista]
       .map((v) => up(v)).join('|')
-    if (chave.replace(/\|/g, '') && vistos.has(chave)) { conta('duplicada'); continue }
+    if (chave.replace(/\|/g, '') && vistos.has(chave)) conta('duplicada')
     vistos.add(chave)
     unicos.push(c as T)
   }
