@@ -696,3 +696,49 @@ describe('Emprestado mantém posição na origem (caso TIAGO)', () => {
     expect(within(card).queryByText(/Ajuda .+\//)).toBeNull()
   })
 })
+
+/**
+ * TURNO PRÓPRIO (dono 11/09 — caso LOUISE no HRO da tarde: "a Louise deve sair da
+ * escala às 19h, a escala especial dela o turno é das 13 às 19h").
+ *
+ * Ela era a 4ª de 15 no rodapé, então a fila só chegaria nela em 12º lugar e a
+ * trava de 27/07 recusava o toque — o app não registrava a saída de quem combinou
+ * horário à parte. A marca tira a linha da ORDEM pelo mesmo caminho que já isenta
+ * o plantão do turno, então sair não fura a vez de ninguém e ninguém espera por ela.
+ *
+ * ⚠️ A fixture põe a marca em quem está no MEIO do rodapé (MARILIO, 2º de 3), de
+ * propósito: no fim da fila qualquer regra deixaria liberar, e o teste passaria
+ * sem a correção valer nada.
+ */
+describe('Turno próprio — sai fora da ordem (dono 11/09)', () => {
+  const comTurnoProprio = {
+    ...escalaBase,
+    linhaOverrides: { 'matutino:MARILIO': { turnoProprio: { ate: '19:00' } } },
+  }
+  const cardDe = (nome) => screen.getByText(nome).closest('[data-linha]')
+
+  it('sem a marca, a trava de ordem recusa liberar quem está no meio da fila', () => {
+    const onToggle = vi.fn()
+    montar({ onToggle }, escalaBase)
+    fireEvent.click(screen.getByLabelText('Marcar Marilio Flach liberado'))
+    expect(onToggle).not.toHaveBeenCalled()
+  })
+
+  it('com a marca, o toque libera — a ordem não a alcança mais', async () => {
+    const onToggle = vi.fn()
+    montar({ onToggle }, comTurnoProprio)
+    fireEvent.click(screen.getByLabelText('Marcar Marilio Flach liberado'))
+    await waitFor(() => expect(onToggle).toHaveBeenCalledTimes(1))
+  })
+
+  it('o card DIZ por que ela sai fora da ordem', () => {
+    montar({}, comTurnoProprio)
+    expect(within(cardDe('Marilio Flach')).getByText(/Turno até 19:00 · sai fora da ordem/)).toBeTruthy()
+  })
+
+  it('a marca NÃO libera sozinha — ela continua trabalhando até alguém tocar', () => {
+    montar({}, comTurnoProprio)
+    expect(within(cardDe('Marilio Flach')).queryByText(/^Liberado$/)).toBeNull()
+    expect(screen.getByLabelText('Marcar Marilio Flach liberado')).toBeTruthy()
+  })
+})

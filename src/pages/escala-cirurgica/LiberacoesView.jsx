@@ -374,6 +374,34 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // (o espelho do tempo total no detalhe do caso preserva a mesma conversão).
   const observacaoDe = (ov) => observacaoDaLinha(ov, HOSPITAL_LABEL)
 
+  /**
+   * TURNO PRÓPRIO (dono 11/09, caso LOUISE: "a Louise deve sair da escala às 19h
+   * — a escala especial dela o turno é das 13 às 19h").
+   *
+   * Quem tem contrato com hora de saída própria não segue a fila: a Louise é a 4ª
+   * de 15 no rodapé do HRO, então a ordem só chegaria nela em 12º lugar e a trava
+   * de 27/07 a impedia de sair às 19h — o app não tinha como registrar a saída de
+   * quem combinou horário à parte.
+   *
+   * A mecânica de isentar alguém da ordem JÁ EXISTE (`naFila` → false, o mesmo
+   * caminho do plantão do turno na fila única): sair da fila também tira da conta
+   * de "faltam N" dos outros, então liberar esta pessoa não fura a vez de ninguém
+   * e ninguém precisa esperar por ela. O que faltava era a marca que aciona isso.
+   *
+   * Mora em `linha_overrides[<turno>:<chave>].turnoProprio = { ate: 'HH:MM' }` —
+   * declaração sobre a PESSOA naquele turno, como `origem` e `trocaCom`, e pelo
+   * mesmo motivo sobrevive a salvar o painel: não é ajuste de exibição.
+   *
+   * ⚠️ NÃO trava a liberação antes da hora, de propósito. A hora é informação no
+   * card ("Turno até 19h"), e quem libera é gente olhando o relógio — travar
+   * criaria um modo de falha novo (relógio do aparelho, plantão que termina antes)
+   * para resolver algo que a fila nunca teve: ninguém libera colega por engano.
+   */
+  const turnoProprioDe = (l) => {
+    const ate = String(overrideDe(l)?.turnoProprio?.ate || '').trim()
+    return /^\d{1,2}:\d{2}$/.test(ate) ? ate : null
+  }
+
   // FASE NOTURNA (decisões do dono 23/07 + redesenho 24/07): seg–sex (feriado
   // incluso), escala de HOJE — das 19h às 22h cada plantonista noturno vira um
   // CARD da lista com selo P1–P4 (HRO P1→P4 · Unimed P2→P3→P4 · Materno P4) e a
@@ -1594,6 +1622,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             // de ordem (liberar o plantão nunca fura fila) e o tira da conta de
             // "faltam N" — como já acontece com o P1/P2 da noite.
             if (modoFds && !l.noturno && plantaoFisicoDe(l)) return false
+            // TURNO PRÓPRIO (dono 11/09): hora de saída combinada à parte não
+            // espera a fila, e também não faz a fila esperar por ela.
+            if (turnoProprioDe(l)) return false
             // extra (fora do rodapé) ENTRA na fila como ajuda (dono 19/08):
             // é o primeiro a ir embora e é liberado como qualquer um
             const m = marcaDe(l)
@@ -2088,6 +2119,18 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         </div>
                       )
                     })()}
+                    {/* TURNO PRÓPRIO (dono 11/09): o card precisa DIZER por que esta
+                        pessoa sai fora da ordem — sem a frase, ver alguém do meio da
+                        fila ser liberado antes dos de baixo lê como fila furada, que
+                        é exatamente o que a trava de 27/07 existe para impedir.
+                        Mesma receita das linhas irmãs daqui (papel no plantão, ajuda
+                        emprestada, troca declarada): `text-[13px] leading-snug
+                        text-muted-foreground`, sem cor nem ícone próprios. */}
+                    {!liberadoReal && turnoProprioDe(linha) && (
+                      <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
+                        Turno até {turnoProprioDe(linha)} · sai fora da ordem
+                      </p>
+                    )}
                     {/* TROCA DECLARADA: com quem e onde o colega está — é o que
                         diz a quem olha a fila que este slot vai mudar de mãos.
                         O DESTAQUE é só o badge roxo (dono 30/07 à noite): esta
