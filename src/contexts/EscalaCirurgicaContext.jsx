@@ -553,7 +553,7 @@ export function EscalaCirurgicaProvider({ children }) {
       const linhaOverrides = { ...(escala.linhaOverrides || {}) }
       let marcador = null
       if (jaLiberado) {
-        const flags = linhaOverrides[scoped] || linhaOverrides[chave] || (legada ? linhaOverrides[legada] : null) || {}
+        const flags = linhaOverrides[scoped] || (scopedLegada ? linhaOverrides[scopedLegada] : null) || linhaOverrides[chave] || (legada ? linhaOverrides[legada] : null) || {}
         // declarações sobre a pessoa (troca, assunção, origem, conferência, equipe,
         // turno próprio) sobrevivem à linha renovada — só a EXIBIÇÃO recomeça
         marcador = {

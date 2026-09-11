@@ -48,3 +48,21 @@ describe('renovar a linha preserva de qual hospital a ajuda veio', () => {
     expect(svc.patchLinhaOverride).toHaveBeenCalledWith('e1', 'matutino:ANA', expect.objectContaining({ origem: 'materno' }))
   })
 })
+
+
+it('desfazer liberação por UID preserva a identidade guardada no apelido do mesmo turno', async () => {
+  const flags = { origem: 'materno', assumidaPor: { uid: 'uid-beto', nome: 'BETO' },
+    trocaCom: { uid: 'uid-carla', nome: 'CARLA' }, duplicidade: 'intencional', conferido: true }
+  const escala = { id: 'e1', hospital: 'unimed', data: '2026-09-08', casos: [],
+    liberacoes: { 'matutino:ANA': { liberadoEm: 'antes' } },
+    linhaOverrides: { 'matutino:ANA': flags, 'vespertino:ANA': { origem: 'hro' } } }
+  svc.fetchEscala.mockImplementation(async (_dia, h) => h === 'unimed' ? escala : null)
+  const { result } = renderHook(() => useEscalaCirurgica(), { wrapper })
+  await waitFor(() => expect(result.current.loading).toBe(false))
+  await act(async () => { await result.current.toggleLiberacao(escala,
+    { chave: 'uid-ana', anestesista: 'ANA' }, { userId: 'secretaria-real' }, 'matutino') })
+  expect(result.current.escalas.unimed.linhaOverrides['matutino:uid-ana']).toMatchObject(flags)
+  expect(result.current.escalas.unimed.linhaOverrides['matutino:ANA']).toBeUndefined()
+  expect(result.current.escalas.unimed.linhaOverrides['vespertino:ANA']).toEqual({ origem: 'hro' })
+  expect(svc.patchLinhaOverride).toHaveBeenCalledWith('e1', 'matutino:uid-ana', expect.objectContaining(flags))
+})
