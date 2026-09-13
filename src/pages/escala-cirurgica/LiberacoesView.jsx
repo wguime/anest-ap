@@ -1607,6 +1607,13 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // No FDS o selo é o Pn da PESSOA (não o posto) — quem está fora da fila
           // à noite são as cols Unimed/HRO da grade, marcadas com `foraDaFila`
           // (o substituto da noite pode nem ter Pn, caso João Ricardo 16/08).
+          // ⚠️ `return false` AQUI significa que a fila PULA a pessoa: quem está
+          // acima dela passa na frente e ela sai da conta de "faltam N" dos
+          // outros. Só cabe a quem NUNCA sai por esta fila (P1/P2 da noite, posto
+          // do FDS, já liberado, cauda). Quem só precisa poder SAIR a qualquer
+          // hora (turno próprio, 11/09) fica AQUI DENTRO e é isentado em
+          // `bloqueioOrdem` — confundir os dois pôs o cartão amarelo no 3º do
+          // rodapé com a 4ª ainda em sala. Trava: liberacoesTurnoProprioRecorte1109.
           const naFila = (l, i) => {
             // cauda que já nasce liberada não ocupa posição a ser liberada
             if (caudaLiberada(l, i)) return false
