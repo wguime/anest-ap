@@ -5,7 +5,9 @@
  * escala nessa data), viewport mobile 375px.
  *
  * Cobre o essencial do modo:
- *  - a aba Liberações troca o seletor de hospital pelo rótulo de fila única;
+ *  - as abas de dia útil existem no FDS (dono 13/09); na Liberações o seletor de
+ *    hospital some (a fila é única) e na Completa ele volta;
+ *  - o bloco "sem anestesista" da fila única é por CIRURGIÃO (dono 13/09);
  *  - a fila segue o rodapé publicado (invertido do documento) com badge Pn;
  *  - "Próximo a ser liberado" cruza hospitais (Matheus fecha o rodapé com caso
  *    no HRO);
@@ -47,8 +49,19 @@ test('fila única do FDS: rótulo, badges Pn, plantão físico e próximo cross-
     await expect(tabLiberacoes).toHaveAttribute('aria-selected', 'true', { timeout: 1_000 });
   }).toPass({ timeout: 15_000 });
 
-  // rótulo da fila única no lugar do seletor de hospital
-  await expect(page.getByText('Fim de semana — fila de liberação única (todos os hospitais)')).toBeVisible();
+  // 13/09: as abas de dia útil existem no FDS; na Liberações o seletor de
+  // hospital SOME (a fila é única e ele não filtraria nada) e volta na Completa
+  await expect(page.getByRole('tab', { name: 'Completa' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Unimed' })).toHaveCount(0);
+
+  // "sem anestesista" por CIRURGIÃO na fila única: um card por cirurgião +
+  // hospital, com a ação de assumir o grupo como frase abaixo do texto
+  const grupo = page.getByRole('group', { name: /Franco Foresti: 2 procedimentos sem anestesista/ });
+  await expect(grupo).toBeVisible({ timeout: 15_000 });
+  await expect(grupo).toContainText('HRO');
+  await expect(grupo).toContainText('Toque para assumir os 2 procedimentos');
+  // e NÃO um card por procedimento (o desenho de dia útil)
+  await expect(page.getByText('Toque para definir o anestesista')).toHaveCount(0);
 
   // rodapé invertido do doc: 12 posições; a 1ª é P1 (sai por último) e a última
   // é P4 (sai primeiro). Badge Pn vem do data-selo do card.
@@ -69,4 +82,14 @@ test('fila única do FDS: rótulo, badges Pn, plantão físico e próximo cross-
 
   // registro visual (rodar 2× com E2E_COLOR_SCHEME=light|dark cobre o dual theme)
   await page.screenshot({ path: `test-results/escala-fds-fila-unica-375-${SCHEME}.png`, fullPage: true });
+
+  // a Completa por hospital no fim de semana (dono 13/09): o seletor volta e o
+  // quadro por sala é o de dia útil
+  const tabCompleta = page.getByRole('tab', { name: 'Completa' });
+  await expect(async () => {
+    await tabCompleta.click();
+    await expect(tabCompleta).toHaveAttribute('aria-selected', 'true', { timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
+  await expect(page.getByRole('tab', { name: 'Unimed' })).toBeVisible();
+  await page.screenshot({ path: `test-results/escala-fds-completa-375-${SCHEME}.png`, fullPage: true });
 });

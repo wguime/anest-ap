@@ -26,6 +26,7 @@ import {
   sugerirRodapeFds,
   rodapeDeOrdemDoc,
   completarRodapeFds,
+  agruparSemAnestesistaPorCirurgiao,
   ordensDocumentoFeriado,
   normalizarParseFds,
 } from '../../lib/escalaFds'
@@ -597,5 +598,35 @@ describe('completarRodapeFds — quem está na faixa e não foi citado nunca som
       { resolverUid },
     )
     expect(acrescentados).toEqual([])
+  })
+})
+
+describe('agruparSemAnestesistaPorCirurgiao — o bloco da fila única por cirurgião (dono 13/09)', () => {
+  // recorte real de sáb 12/09 à tarde: Amauri Biazi opera nos DOIS hospitais
+  const ITENS = [
+    { id: 'u1', hora: '13:00', sala: 'CC - Sala 10', procedimento: 'Prostatovesiculectomia', cirurgiao: 'Marcelo Zeni', hosp: 'unimed' },
+    { id: 'h1', hora: '13:00', sala: 'Sala 4', procedimento: 'Luxação', cirurgiao: 'Amauri Biazi', hosp: 'hro' },
+    { id: 'u2', hora: '15:30', sala: 'CC - Sala 6', procedimento: 'Reconstrução do ligamento', cirurgiao: 'Amauri Biazi', hosp: 'unimed' },
+    { id: 'h2', hora: 'AS', sala: 'Sala 4', procedimento: 'Fratura do antebraço', cirurgiao: 'Amauri Biazi', hosp: 'hro' },
+    { id: 'h3', hora: 'AS', sala: 'Sala 4', procedimento: 'Tenorrafia', cirurgiao: 'amauri biazi', hosp: 'hro' },
+  ]
+  const grupos = agruparSemAnestesistaPorCirurgiao(ITENS, { hospitalDe: (i) => i.hosp })
+
+  it('cirurgião + hospital é a chave: o mesmo cirurgião em dois hospitais vira duas listas', () => {
+    expect(grupos.map((g) => [g.cirurgiao, g.hospital, g.itens.map((i) => i.id)])).toEqual([
+      ['Marcelo Zeni', 'unimed', ['u1']],
+      ['Amauri Biazi', 'hro', ['h1', 'h2', 'h3']],   // grafia diferente ("amauri biazi") cai no mesmo grupo
+      ['Amauri Biazi', 'unimed', ['u2']],
+    ])
+  })
+
+  it('a ordem é a de primeira aparição (a lista já vem por horário) e os itens ficam na ordem em que vieram', () => {
+    expect(grupos[1].itens.map((i) => i.hora)).toEqual(['13:00', 'AS', 'AS'])
+  })
+
+  it('sem hospitalDe, tudo cai num hospital só; sem cirurgião, o grupo é "?"', () => {
+    const g = agruparSemAnestesistaPorCirurgiao([{ id: 'a', cirurgiao: '' }, { id: 'b', cirurgiao: 'X' }])
+    expect(g.map((x) => [x.cirurgiao, x.hospital])).toEqual([['', ''], ['X', '']])
+    expect(g[0].chave).toBe('?|')
   })
 })

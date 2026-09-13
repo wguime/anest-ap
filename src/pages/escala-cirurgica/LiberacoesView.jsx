@@ -13,7 +13,7 @@ import {
 } from '@/design-system'
 import { gerarColunaLiberacao, nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
 import { faseLiberacoes, plantonistasNoturnos, candidatosNome, linhasNoturnas, fundirLinhasNoturnas, marcarSelosNoTurno, ehDiaUtil, casarPorInicialSobrenome, P4_HOSPITAIS } from '@/lib/plantaoNoturno'
-import { marcarSelosFds, linhasNoturnasFds, plantonistasFaixaFds, FDS_TURNO_FAIXA, resolverNomeEstrito, ehFeriado } from '@/lib/escalaFds'
+import { marcarSelosFds, linhasNoturnasFds, plantonistasFaixaFds, FDS_TURNO_FAIXA, resolverNomeEstrito, ehFeriado, agruparSemAnestesistaPorCirurgiao } from '@/lib/escalaFds'
 import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
 import { hojeISO, HOSPITAIS, HOSPITAL_LABEL, OBSERVACAO_MAX } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
@@ -297,6 +297,14 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       ajudaOrdemInformada: ordemAjudaInformada,
     })
   }, [casosTurno, rodapeTurno, escala, hospitalLabel, turno, turnoBase, resolverUid, nomeExibicao, presencaOutros, origemManual, modoFds, ordemAjudaInformada])
+  // SEM ANESTESISTA POR CIRURGIÃO — só na fila única (dono 13/09; ver
+  // `cartaoGrupoCirurgiao`). O hospital de cada alerta é o do caso de origem.
+  const gruposSemAnest = useMemo(
+    () => (modoFds
+      ? agruparSemAnestesistaPorCirurgiao(semAnestesista, { hospitalDe: (i) => casosTurno.find((x) => x.id === i.id)?.hospitalOrigem || '' })
+      : []),
+    [modoFds, semAnestesista, casosTurno],
+  )
 
   // Locais do hospital p/ o editor de linha (dropdown, pedido do dono 2026-07-22):
   // salas da escala do dia (ordem do board) + locais APRENDIDOS do histórico
@@ -819,6 +827,71 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             )
   }
 
+  // SEM ANESTESISTA POR CIRURGIÃO — só na fila única (dono 13/09, modelo A
+  // escolhido em protótipo a 430px com os 17 casos reais de 12/09 à tarde):
+  // "agrupe por cirurgião, para facilitar que os anestesistas assumam os
+  // procedimentos". Um card por cirurgião + HOSPITAL (Amauri Biazi com 4 no HRO
+  // e 1 na Unimed são duas listas — quem assume uma não assume a outra), uma
+  // linha por procedimento. Medido: 17 cards de 1.774px viram 11 de 1.129px
+  // (−36%); o modelo B (cabeçalho por cirurgião + os cards de hoje) ficava
+  // 264px MAIOR que hoje. O toque no card assume o GRUPO (mesmo `onDefinirCasos`,
+  // com todos os ids); o toque numa LINHA define só aquele procedimento, como o
+  // card de sempre. A ação é a frase abaixo do texto, como decidido em 24/08.
+  // ⛔ dia útil intocado (escolha do dono na mesma rodada): lá segue um card por
+  // procedimento — raramente há mais de 2–3 "?" e a Completa já agrupa por sala.
+  const cartaoGrupoCirurgiao = (g) => {
+    const n = g.itens.length
+    const definivel = canEdit && !!onDefinirCasos && g.itens.some((i) => i.id)
+    const abrirGrupo = () => { setAlvoSemAnest({ grupo: true, ...g }); setSemAnestUid('') }
+    return (
+      <div
+        key={g.chave}
+        role="group"
+        aria-label={`${g.cirurgiao || 'Sem cirurgião'}: ${n} procedimento${n > 1 ? 's' : ''} sem anestesista`}
+        onClick={definivel ? abrirGrupo : undefined}
+        className={[
+          'w-full rounded-xl border border-warning/50 bg-warning/10 p-2.5 text-left text-sm',
+          'dark:border-warning/60 dark:bg-warning/15',
+          definivel && 'active:opacity-70',
+        ].filter(Boolean).join(' ')}
+      >
+        <div className="flex items-center gap-2">
+          <span className="min-w-0 truncate font-bold" title={g.cirurgiao}>{g.cirurgiao || '—'}</span>
+          {g.hospital && <span className="shrink-0 text-xs font-semibold text-muted-foreground">{HOSPITAL_LABEL[g.hospital] || g.hospital}</span>}
+          <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">{n} proced.</span>
+        </div>
+        {g.itens.map((i, k) => {
+          const linhaDefinivel = definivel && !!i.id
+          const Linha = linhaDefinivel ? 'button' : 'div'
+          return (
+            <Linha
+              key={i.id || k}
+              {...(linhaDefinivel ? {
+                type: 'button',
+                onClick: (e) => { e.stopPropagation(); setAlvoSemAnest(i); setSemAnestUid('') },
+                'aria-label': `Definir anestesista de ${[i.hora, salaLiberacao(i.sala), i.procedimento].filter(Boolean).join(' · ')}`,
+              } : {})}
+              className={['mt-0.5 flex w-full items-baseline gap-1.5 text-left text-[13px] leading-[18px]', linhaDefinivel && 'active:opacity-70'].filter(Boolean).join(' ')}
+            >
+              <span className="min-w-[38px] shrink-0 font-bold tabular-nums">{i.hora || '—'}</span>
+              {i.sala && <span className="shrink-0 font-semibold text-foreground/85">{salaLiberacao(i.sala)}</span>}
+              <span className="min-w-0 truncate text-foreground/90" title={i.procedimento}>{i.procedimento}</span>
+            </Linha>
+          )
+        })}
+        {definivel && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); abrirGrupo() }}
+            className="mt-1 flex items-center gap-1 text-xs font-medium text-primary active:opacity-70"
+          >
+            <UserPlus className="h-3 w-3 shrink-0" /> Toque para assumir {n > 1 ? `os ${n} procedimentos` : 'o procedimento'}
+          </button>
+        )}
+      </div>
+    )
+  }
+
   // ⚠️ deitado o 1º alerta vai ao lado dos botões e o resto desce inteiro; em pé
   // a lista é a mesma de sempre, só partida em dois blocos coladinhos.
   const acoesTopo = canEdit && (podeAddCaso || fase !== 'zerada') ? (
@@ -1257,12 +1330,19 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // Alerta "?" → dono: grava no caso (o alerta sai daqui E da Completa juntos).
   const confirmarSemAnest = async () => {
     const r = rosterByUid.get(semAnestUid)
-    if (!r || !alvoSemAnest?.id) return
+    const alvo = alvoSemAnest
+    // GRUPO DO CIRURGIÃO (dono 13/09): todos os casos do grupo numa chamada só —
+    // são do MESMO hospital por construção (o grupo é cirurgião + hospital), e é
+    // pelo 1º id que a página acha a escala dona.
+    const ids = alvo?.grupo ? alvo.itens.map((i) => i.id).filter(Boolean) : [alvo?.id].filter(Boolean)
+    if (!r || !ids.length) return
     try {
-      await onDefinirCasos?.([alvoSemAnest.id], {
+      await onDefinirCasos?.(ids, {
         uid: r.uid,
         apelido: r.apelidos?.[0] || primeiroNomeUpper(r.nome),
-        rotulo: [alvoSemAnest.hora, salaLiberacao(alvoSemAnest.sala)].filter(Boolean).join(' '),
+        rotulo: alvo.grupo
+          ? `${alvo.cirurgiao} · ${ids.length} procedimento${ids.length > 1 ? 's' : ''}`
+          : [alvo.hora, salaLiberacao(alvo.sala)].filter(Boolean).join(' '),
       })
       setAlvoSemAnest(null)
       setSemAnestUid('')
@@ -1500,7 +1580,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Procedimentos sem anestesista
           </p>
           <div className="space-y-1.5">
-            {semAnestesista.map(cartaoSemAnestesista)}
+            {modoFds ? gruposSemAnest.map(cartaoGrupoCirurgiao) : semAnestesista.map(cartaoSemAnestesista)}
           </div>
         </div>
       )}
@@ -3180,19 +3260,39 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       <Sheet open={!!alvoSemAnest} onOpenChange={(o) => { if (!o) { setAlvoSemAnest(null); setSemAnestUid('') } }}>
         <SheetContent side="bottom">
           <SheetHeader>
-            <SheetTitle>Quem assume este procedimento?</SheetTitle>
+            <SheetTitle>{alvoSemAnest?.grupo && alvoSemAnest.itens.length > 1 ? `Quem assume estes ${alvoSemAnest.itens.length} procedimentos?` : 'Quem assume este procedimento?'}</SheetTitle>
           </SheetHeader>
           {alvoSemAnest && (
             <div className="space-y-3 p-1">
               <div className="rounded-xl border border-border bg-muted/30 p-2.5 text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold tabular-nums">{alvoSemAnest.hora || '—'}</span>
-                  {alvoSemAnest.sala && <span className="min-w-0 truncate font-semibold">{salaLiberacao(alvoSemAnest.sala)}</span>}
-                </div>
-                {(alvoSemAnest.procedimento || alvoSemAnest.cirurgiao) && (
-                  <p className="mt-0.5 text-muted-foreground">
-                    {[alvoSemAnest.procedimento, alvoSemAnest.cirurgiao].filter(Boolean).join(' · ')}
-                  </p>
+                {alvoSemAnest.grupo ? (
+                  <>
+                    {/* grupo do cirurgião (dono 13/09): o mesmo bloco do card, para
+                        quem confirma ver exatamente o que vai assumir */}
+                    <div className="flex items-center gap-2">
+                      <span className="min-w-0 truncate font-bold">{alvoSemAnest.cirurgiao || '—'}</span>
+                      {alvoSemAnest.hospital && <span className="shrink-0 text-xs font-semibold text-muted-foreground">{HOSPITAL_LABEL[alvoSemAnest.hospital] || alvoSemAnest.hospital}</span>}
+                    </div>
+                    {alvoSemAnest.itens.map((i, k) => (
+                      <p key={i.id || k} className="mt-0.5 flex items-baseline gap-1.5 text-[13px] leading-[18px] text-muted-foreground">
+                        <span className="min-w-[38px] shrink-0 font-bold tabular-nums text-foreground">{i.hora || '—'}</span>
+                        {i.sala && <span className="shrink-0 font-semibold">{salaLiberacao(i.sala)}</span>}
+                        <span className="min-w-0 truncate">{i.procedimento}</span>
+                      </p>
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold tabular-nums">{alvoSemAnest.hora || '—'}</span>
+                      {alvoSemAnest.sala && <span className="min-w-0 truncate font-semibold">{salaLiberacao(alvoSemAnest.sala)}</span>}
+                    </div>
+                    {(alvoSemAnest.procedimento || alvoSemAnest.cirurgiao) && (
+                      <p className="mt-0.5 text-muted-foreground">
+                        {[alvoSemAnest.procedimento, alvoSemAnest.cirurgiao].filter(Boolean).join(' · ')}
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
               <Select className="w-full" searchable options={opcoesRoster} value={semAnestUid}

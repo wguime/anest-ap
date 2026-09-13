@@ -775,3 +775,41 @@ com o valor da migration `20260815223000` caractere por caractere.
 
 Feriado não passa pelo comando (lista simples, sem grade): o script recusa a data. Lote e fotos
 em `.tmp/escala-lote/<sábado>-fds/` (fora do git).
+
+### FDS — as ABAS voltam; a fila única fica; "sem anestesista" por CIRURGIÃO (dono 13/09)
+
+Três capturas do sábado 12/09 às 13:37: a tarde chegou com 17 procedimentos sem
+anestesista (12 Unimed + 5 HRO) e a tela única mostrava um card por procedimento —
+**1.774px, 2,3 telas de rolagem** até a primeira linha da fila. Dois pedidos:
+
+1. *"agrupe por cirurgião, para facilitar que os anestesistas assumam os
+   procedimentos"* → **`agruparSemAnestesistaPorCirurgiao`** (lib pura em
+   `escalaFds.js`) e `cartaoGrupoCirurgiao` na `LiberacoesView`, **só em `modoFds`**
+   (escolha do dono na mesma rodada: o dia útil raramente tem mais de 2–3 "?" e a
+   Completa já agrupa por sala). Grupo = cirurgião + HOSPITAL (Amauri Biazi com 4 no
+   HRO e 1 na Unimed são duas listas; e `onDefinirCasos` acha a escala pelo 1º id,
+   então um grupo não pode misturar hospitais). Modelo A escolhido em protótipo
+   (`.tmp/fds-cirurgiao-completa.html`, 430px, dois temas, os 17 casos reais): um
+   card por cirurgião, uma linha por procedimento — **1.129px (−36%)**; o modelo B
+   (cabeçalho por cirurgião + os cards de hoje) ficava **264px MAIOR** que hoje.
+   Toque no card assume o GRUPO pelo MESMO sheet da fila ("Quem assume estes N
+   procedimentos?", uma chamada com todos os ids); toque na LINHA define um só. A
+   ação segue sendo a frase abaixo do texto (24/08).
+2. *"mostre a escala completa (dividida por hospitais) como é mostrado em dias
+   úteis, mas mantenha a liberação única"* → a **tela única de 24/08 é parcialmente
+   superada**: as três abas (Minhas · Completa · Liberações) voltam ao sáb/dom/feriado;
+   Minhas e Completa são as views de dia útil, por hospital; **Liberações continua a
+   fila única**, e é a ÚNICA aba em que o seletor de hospital some (B1, escolhido em
+   protótipo contra B2 = hospital sempre, mesmo sem efeito). `hospitalOpcoes` é
+   decidido por `chromeFilaUnica && abaVisivel === 'liberacoes'` — calendário + aba,
+   não fetch: o cabeçalho continua sem oscilar (29/08). A Faixa de Urgências segue
+   fora do FDS (`!modoFds`), como antes.
+
+O que NÃO mudou: o card da fila (modelo A de 24/08), o painel da linha, "Terminei"
+ausente, ajuda nunca automática, os plantões sempre trabalhando. Travas: describe
+"sem anestesista por cirurgião" em `escalaFdsTelaUnica.test.jsx` (grupo por
+cirurgião+hospital, sheet de grupo com todos os ids, linha define um só, e o dia
+útil com um card por procedimento), "FDS: as abas de dia útil existem; o hospital
+some SÓ nas Liberações" + "SÁBADO carregando" em `escalaTurnoAutomatico.test.jsx`
+(os dois MUDARAM DE LADO com o porquê no corpo), e `agruparSemAnestesistaPorCirurgiao`
+em `escalaFds.test.js`.

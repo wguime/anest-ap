@@ -6,6 +6,11 @@
  * botão "Terminei", e com o painel da linha ganhando Hospital, Responsável e
  * Posição na fila.
  *
+ * ⚠️ 13/09: as ABAS VOLTARAM ao fim de semana (dono: "mostre a escala completa,
+ * dividida por hospitais, como em dias úteis, mas mantenha a liberação única").
+ * O que segue único é a aba Liberações — e é só nela que o seletor de hospital
+ * some. O bloco "sem anestesista" da fila única passou a ser por CIRURGIÃO.
+ *
  * ⚠️ O DIA ÚTIL NÃO MUDA — NADA daqui atravessa (dono 24/08, 2ª mensagem:
  * "faça apenas o solicitado sem alterar a escala de dias úteis"). Na primeira
  * versão o recado do plantonista, o botão "Importar", o "Terminei", a pastilha
@@ -14,7 +19,7 @@
  * cruzada uma vez.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 
 import { ThemeProvider, ToastProvider } from '@/design-system'
 import LiberacoesView from '@/pages/escala-cirurgica/LiberacoesView'
@@ -67,6 +72,9 @@ const props = (extra = {}) => ({
 
 beforeEach(() => vi.clearAllMocks())
 
+// Contrato do COMPONENTE: `null` num eixo = "não há esse eixo aqui". Quem decide
+// quando passar null é a página — em 13/09 passou a ser só o hospital, e só na aba
+// Liberações (ver escalaTurnoAutomatico.test.jsx). A barra em si não mudou.
 describe('barra de controles — o fim de semana perde os eixos que não tem', () => {
   const base = {
     opcoesData: [{ value: 'hoje', label: 'Hoje' }], modoData: 'hoje', onEscolherData: vi.fn(),
@@ -788,7 +796,9 @@ describe('alerta de sem anestesista — a ação fica ABAIXO do texto', () => {
       cirurgiao: 'Carlos Yora', hospitalOrigem: 'unimed',
     }]
     render(<LiberacoesView {...props({ casosFds: comOrfa, onDefinirCasos: vi.fn() })} />, { wrapper: wrap })
-    expect(await screen.findByText(/Toque para definir o anestesista/)).toBeTruthy()
+    // 13/09: na fila única o card é por CIRURGIÃO e a frase é "assumir" — mas
+    // continua sendo uma FRASE abaixo do texto, nunca a pastilha inline
+    expect(await screen.findByText(/Toque para assumir o procedimento/)).toBeTruthy()
     expect(screen.queryByText('Adicionar anestesista')).toBeNull()
     expect(screen.queryByText('Assumir')).toBeNull()
   })
@@ -973,5 +983,79 @@ describe('o desenho da fila única não atravessa para o dia útil', () => {
     expect(sala.compareDocumentPosition(cir) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy()
     // hospital em linha própria é do fim de semana: aqui a tela toda é de um só
     expect(card.textContent).not.toMatch(/UNIMED/)
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// "SEM ANESTESISTA" POR CIRURGIÃO — só na fila única (dono 13/09)
+// ════════════════════════════════════════════════════════════════════════════
+/**
+ * Três capturas de sáb 12/09 às 13:37: 17 procedimentos sem anestesista, um card
+ * por procedimento, 2,3 telas de rolagem até a fila. "Agrupe por cirurgião, para
+ * facilitar que os anestesistas assumam os procedimentos." Modelo A escolhido em
+ * protótipo: um card por cirurgião + HOSPITAL, uma linha por procedimento; o toque
+ * no card assume o grupo, o toque na linha define um só. Dia útil intocado.
+ */
+describe('sem anestesista por CIRURGIÃO — só na fila única (dono 13/09)', () => {
+  // sáb 12/09 em miniatura: Amauri Biazi nos DOIS hospitais
+  const ORFAS_HRO = [
+    { id: 'h1', sala: 'Sala 4', ordem: 0, hora: '07:00', turno: 'matutino', anestesista: '?', semAnestesista: true, procedimento: 'LUXACAO METACARPO', cirurgiao: 'Amauri Biazi', hospitalOrigem: 'hro' },
+    { id: 'h2', sala: 'Sala 4', ordem: 1, hora: 'AS', turno: 'matutino', anestesista: '?', semAnestesista: true, procedimento: 'FRATURA DO ANTEBRACO', cirurgiao: 'Amauri Biazi', hospitalOrigem: 'hro' },
+  ]
+  const ORFAS = [...CASOS_FDS, ...ORFAS_HRO,
+    { id: 'u1', sala: 'CC - Sala 6', ordem: 0, hora: '09:30', turno: 'matutino', anestesista: '?', semAnestesista: true, procedimento: 'LIGAMENTO CRUZADO', cirurgiao: 'Amauri Biazi', hospitalOrigem: 'unimed' },
+    { id: 'u2', sala: 'CC - Sala 10', ordem: 0, hora: '07:30', turno: 'matutino', anestesista: '?', semAnestesista: true, procedimento: 'PROSTATECTOMIA', cirurgiao: 'Marcelo Zeni', hospitalOrigem: 'unimed' },
+  ]
+  const escolherMarilia = async () => {
+    const combo = screen.getAllByRole('combobox').pop()
+    fireEvent.click(combo)
+    fireEvent.click(await screen.findByText('MARILIA BASTOS'))
+    fireEvent.click(screen.getByRole('button', { name: 'Definir anestesista' }))
+  }
+
+  it('um card por cirurgião + hospital, uma linha por procedimento — nunca um card por procedimento', async () => {
+    render(<LiberacoesView {...props({ casosFds: ORFAS, onDefinirCasos: vi.fn() })} />, { wrapper: wrap })
+    expect(await screen.findByText(/Procedimentos sem anestesista/)).toBeTruthy()
+    const grupos = screen.getAllByRole('group', { name: /sem anestesista/ })
+    // Amauri Biazi no HRO, Marcelo Zeni na Unimed, Amauri Biazi na Unimed: três, não quatro
+    expect(grupos).toHaveLength(3)
+    const amauriHro = screen.getByRole('group', { name: 'Amauri Biazi: 2 procedimentos sem anestesista' })
+    expect(within(amauriHro).getByText('HRO')).toBeTruthy()
+    expect(within(amauriHro).getAllByRole('button', { name: /Definir anestesista de/ })).toHaveLength(2)
+    expect(within(amauriHro).getByText(/Toque para assumir os 2 procedimentos/)).toBeTruthy()
+    // o card de dia útil não aparece na fila única
+    expect(screen.queryByText(/Toque para definir o anestesista/)).toBeNull()
+  })
+
+  it('o toque no grupo assume TODOS os procedimentos do cirurgião naquele hospital, numa chamada só', async () => {
+    const onDefinirCasos = vi.fn(async () => {})
+    render(<LiberacoesView {...props({ casosFds: ORFAS, onDefinirCasos })} />, { wrapper: wrap })
+    fireEvent.click(await screen.findByRole('button', { name: /Toque para assumir os 2 procedimentos/ }))
+    expect(await screen.findByText('Quem assume estes 2 procedimentos?')).toBeTruthy()
+    await escolherMarilia()
+    await waitFor(() => expect(onDefinirCasos).toHaveBeenCalledTimes(1))
+    const [ids, info] = onDefinirCasos.mock.calls[0]
+    // os dois do HRO, e SÓ eles — o da Unimed é outro grupo (outra escala dona)
+    expect(ids).toEqual(['h1', 'h2'])
+    expect(info.uid).toBe('uid-marilia')
+    expect(info.rotulo).toMatch(/Amauri Biazi · 2 procedimentos/)
+  })
+
+  it('o toque numa LINHA define só aquele procedimento, pelo sheet de sempre', async () => {
+    const onDefinirCasos = vi.fn(async () => {})
+    render(<LiberacoesView {...props({ casosFds: ORFAS, onDefinirCasos })} />, { wrapper: wrap })
+    fireEvent.click(await screen.findByRole('button', { name: /Definir anestesista de AS · Sala 4/ }))
+    expect(await screen.findByText('Quem assume este procedimento?')).toBeTruthy()
+    await escolherMarilia()
+    await waitFor(() => expect(onDefinirCasos).toHaveBeenCalledTimes(1))
+    expect(onDefinirCasos.mock.calls[0][0]).toEqual(['h2'])
+  })
+
+  it('no DIA ÚTIL segue um card por procedimento — o agrupamento é da fila única', async () => {
+    const escalaHro = { id: 'hro-1', hospital: 'hro', ordemLiberacao: { matutino: ['GABRIEL'] }, liberacoes: {}, linhaOverrides: {}, casos: [CASOS_FDS[1], ...ORFAS_HRO] }
+    render(<LiberacoesView {...props({ modoFds: false, casosFds: null, fdsMeta: null, hospital: 'hro', hospitalLabel: 'HRO', escala: escalaHro, onDefinirCasos: vi.fn() })} />, { wrapper: wrap })
+    expect(await screen.findAllByText(/Toque para definir o anestesista/)).toHaveLength(2)
+    expect(screen.queryByRole('group', { name: /sem anestesista/ })).toBeNull()
+    expect(screen.queryByText(/Toque para assumir/)).toBeNull()
   })
 })

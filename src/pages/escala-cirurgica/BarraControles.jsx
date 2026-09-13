@@ -109,15 +109,18 @@ export default function BarraControles({
       </div>
 
       {/* Hospital SEMPRE visível (dono 16/08) e na mesma altura do turno.
-          ⚠️ some no FIM DE SEMANA (dono 24/08): lá a fila é ÚNICA e já cobre os
-          três hospitais — o seletor não filtraria nada e só faria perguntar qual
+          ⚠️ some na aba LIBERAÇÕES do fim de semana (dono 24/08, mantido em 13/09
+          quando as abas voltaram ao FDS): lá a fila é ÚNICA e já cobre os três
+          hospitais — o seletor não filtraria nada e só faria perguntar qual
           escolher. Quem passa `null` está dizendo "não há esse eixo aqui". */}
       {hospitalOpcoes && (
         <Trilho className={cresce(hospitalOpcoes.length)} options={hospitalOpcoes} value={hospital} onChange={onEscolherHospital} />
       )}
 
       {/* Abas em verde sólido (dono 24/07) — separa "o que vejo" de "o que filtro".
-          Também somem no fim de semana: lá existe uma tela só. */}
+          Sumiram no fim de semana em 24/08 (tela única) e VOLTARAM em 13/09: o dono
+          quis a Completa por hospital também no sáb/dom, com a fila única nas
+          Liberações. `null` continua significando "não há esse eixo aqui". */}
       {abaOpcoes && (
         <SegmentedSelector
           options={abaOpcoes}

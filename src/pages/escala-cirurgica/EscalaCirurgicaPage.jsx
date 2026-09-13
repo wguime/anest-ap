@@ -501,15 +501,19 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           turnoOpcoes={fimDeSemana ? TURNO_OPCOES_FDS : TURNO_OPCOES}
           turno={turno}
           onEscolherTurno={escolherTurno}
-          // TELA ÚNICA NO FIM DE SEMANA (dono 24/08): sem abas e sem seletor de
-          // hospital. A fila única já cobre os três hospitais, e o quadro por
-          // sala resolvia um problema que o sábado não tem — 12 salas contra as
-          // 42 de um dia útil, com o agravante de obrigar a trocar de hospital
-          // para alcançar cada sala. O dia útil segue com os três controles.
-          hospitalOpcoes={chromeFilaUnica ? null : HOSPITAL_OPCOES}
+          // AS ABAS VOLTARAM AO FIM DE SEMANA (dono 13/09: "quero que mostre a
+          // escala completa, dividida por hospitais, como é mostrado em dias
+          // úteis, mas mantenha a liberação única"). A tela única de 24/08 tirava
+          // abas e hospital; o que sobrevive dela é a FILA: nas Liberações do
+          // sáb/dom/feriado a fila é única e cobre os três, então o seletor de
+          // hospital não filtraria nada e some SÓ nessa aba (B1, escolhido em
+          // protótipo contra B2 = hospital sempre). Minhas e Completa filtram por
+          // hospital como num dia útil. Decidido pelo CALENDÁRIO + aba, não pelo
+          // fetch — o cabeçalho continua sem oscilar (29/08).
+          hospitalOpcoes={chromeFilaUnica && abaVisivel === 'liberacoes' ? null : HOSPITAL_OPCOES}
           hospital={hospital}
           onEscolherHospital={setHospital}
-          abaOpcoes={chromeFilaUnica ? null : abaOpcoes}
+          abaOpcoes={abaOpcoes}
           aba={abaVisivel}
           onEscolherAba={escolherAba}
         />
@@ -530,10 +534,12 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
         )}
 
         <div className="pt-1">
-          {!modoFds && abaVisivel === 'minhas' && (
+          {/* Minhas e Completa também no fim de semana (dono 13/09) — por hospital,
+              como num dia útil; só a Faixa de Urgências fica de fora do FDS. */}
+          {abaVisivel === 'minhas' && (
             <MinhasEscalasView escala={escala} meuAlias={meuAlias} meuUid={meuUid} turno={turnoCasos} onVerBoard={() => setAba('board')} />
           )}
-          {!modoFds && abaVisivel === 'board' && (
+          {abaVisivel === 'board' && (
             <>
               {/* Urgências do HRO (dono 18/08): ocupação das 2 salas do contrato +
                   fila. FORA da BoardView de propósito — os EmptyStates dela matariam
@@ -544,7 +550,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               <BoardView escala={escala} meuAlias={meuAlias} meuUid={meuUid} turno={turnoCasos} onNavigate={onNavigate} />
             </>
           )}
-          {(modoFds || abaVisivel === 'liberacoes') && (() => {
+          {abaVisivel === 'liberacoes' && (() => {
             // MODO FDS: a view opera sobre a linha 'fds' (fila única + marcações)
             // e os casos mesclados dos 3 hospitais; troca/P4-coringa ficam fora.
             const escalaLib = modoFds ? escalas.fds : escala

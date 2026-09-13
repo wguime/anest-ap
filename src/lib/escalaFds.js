@@ -473,6 +473,36 @@ export function completarRodapeFds(rodape, faixa, opts = {}) {
 }
 
 /**
+ * BLOCO "SEM ANESTESISTA" POR CIRURGIÃO, na fila única (dono 13/09, modelo A
+ * escolhido em protótipo a 430px com os 17 casos reais de sáb 12/09 à tarde):
+ * "agrupe por cirurgião, para facilitar que os anestesistas assumam os
+ * procedimentos". No fim de semana a tarde chega quase sempre SEM anestesista
+ * nos dois hospitais e a fila mostrava um card por procedimento — 17 cards,
+ * 1.774px, 2,3 telas de rolagem até a primeira linha da fila.
+ *
+ * Grupo = cirurgião + HOSPITAL: Amauri Biazi com 4 no HRO e 1 na Unimed são
+ * duas listas, porque quem assume uma não assume a outra (e o caso mora na
+ * escala do hospital — `onDefinirCasos` resolve a escala pelo 1º id, então um
+ * grupo não pode misturar hospitais). A ordem dos grupos é a de primeira
+ * aparição — `semAnestesista` já vem por horário, então é o 1º horário de cada
+ * cirurgião; dentro do grupo os itens ficam na ordem em que vieram.
+ *
+ * `hospitalDe(item)` diz o hospital de cada item (na fila única é o
+ * `hospitalOrigem` do caso); sem ela todos caem no mesmo hospital vazio.
+ */
+export function agruparSemAnestesistaPorCirurgiao(itens, { hospitalDe } = {}) {
+  const grupos = new Map()
+  for (const item of itens || []) {
+    const hospital = typeof hospitalDe === 'function' ? String(hospitalDe(item) || '') : ''
+    const cirurgiao = String(item?.cirurgiao || '').trim()
+    const chave = `${normPadrao(cirurgiao) || '?'}|${hospital}`
+    if (!grupos.has(chave)) grupos.set(chave, { chave, cirurgiao, hospital, itens: [] })
+    grupos.get(chave).itens.push(item)
+  }
+  return [...grupos.values()]
+}
+
+/**
  * Lista simples do FERIADO → ordens na convenção do DOCUMENTO (1º→último a ser
  * liberado), para a publicação inverter UMA vez só em `rodapeDeOrdemDoc`.
  *

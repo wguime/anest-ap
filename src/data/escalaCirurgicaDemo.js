@@ -127,6 +127,10 @@ const hroFds = {
   casos: [
     c('Sala 1', 0, '07:00', '', '', '', 'Emergência/CO', '', 'MATHEUS', 'BRF', { tipo: 'emergencia', turno: 'matutino' }),
     c('Sala 2', 0, '08:00', 'R.W.', '63a', '', 'Artroplastia total de joelho com implantes', 'Airton Pagani', 'STAUB', 'SUS', { turno: 'matutino' }),
+    // duas cirurgias SEM anestesista do mesmo cirurgião: é o que o bloco "sem
+    // anestesista" da fila única agrupa por cirurgião (dono 13/09) — base do e2e
+    c('Sala 3', 0, '07:00', 'N.L.', '52a', '', 'Pseudartroses - tratamento cirúrgico', 'Franco Foresti', '?', 'PART', { turno: 'matutino', semAnestesista: true }),
+    c('Sala 3', 1, 'AS', 'M.S.', '76a', '', 'Artroplastia total de joelho com implantes', 'Franco Foresti', '?', 'PART', { turno: 'matutino', semAnestesista: true }),
     c('Sala 4', 0, '13:00', 'A.F.', '59a', '', 'Artroplastia de quadril + tenotomia', 'Rodolfo Pagani', 'GABRIEL', 'SUS', { turno: 'vespertino' }),
   ],
 }
