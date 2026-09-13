@@ -3,6 +3,17 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.1 (13/09/2026) — Comparativo por ano ocupa o card no desktop
+
+Pedido do dono (11/09, captura do Mapa de Férias): "ajuste para visualização em desktop". A célula
+fixa de 12px deixava as 52 semanas em 777px, 60% de um card de 1370px — o resto, vazio.
+
+Escolhido por imagem (`.tmp/ferias-comparativo-desktop.html`, dois temas, atual × A × B): **A** —
+no `desktop:` a grade vira 52 colunas iguais que ocupam o card e a célula fica quadrada no tamanho
+que a largura der (22px a 1440px). A régua de meses usa as mesmas colunas, então segue alinhada às
+semanas sem conta. `--semanas` vem do dado (52 ou 53) e a classe fica estática. Medido no app:
+grade de 1331px numa linha de 1366px; no celular retrato nada muda (flex, 12px, rolagem lateral).
+
 ## v5.12.0 (11/09/2026) — Extrato de Férias aberto a todo anestesiologista
 
 Pedido do dono: "quero que libere a funcionalidade de conferência de extrato de férias para todos os

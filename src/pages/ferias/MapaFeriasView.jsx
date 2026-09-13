@@ -29,8 +29,18 @@ import {
 
 const titleCase = (n) => n.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase())
 
-/** Plurianual: linha por ano × semanas ISO, cor = média semanal. */
-function HeatmapPlurianual({ seriesPorAno }) {
+/**
+ * Plurianual: linha por ano × semanas ISO, cor = média semanal.
+ *
+ * Célula de 12px fixos com rolagem lateral — o desenho do celular. No
+ * DESKTOP (dono 11/09, escolheu por imagem: `.tmp/ferias-comparativo-desktop.html`)
+ * a grade vira fluida: 52 colunas iguais ocupam o card inteiro e a célula
+ * fica QUADRADA no tamanho que a largura der (21px num card de 1370px, onde
+ * os 12px fixos paravam em 60%). A régua de meses usa as mesmas colunas, então
+ * continua alinhada com as semanas sem conta nenhuma. `--semanas` é 52 ou 53:
+ * a coluna vem do dado, a classe fica estática (Tailwind purga classe montada).
+ */
+export function HeatmapPlurianual({ seriesPorAno }) {
   const anos = Object.keys(seriesPorAno).map(Number).sort()
   const maxSemanas = Math.max(...anos.map((a) => seriesPorAno[a].length))
   // Régua de meses no topo (dono 04/08): rótulo na semana ISO em que o mês
@@ -45,19 +55,22 @@ function HeatmapPlurianual({ seriesPorAno }) {
     return out
   }, [anoRef, maxSemanas])
 
+  // rótulo de 2rem (= w-8) + uma coluna por semana; só o desktop lê isto
+  const linha = 'flex items-center gap-[3px] desktop:grid desktop:grid-cols-[2rem_repeat(var(--semanas),minmax(0,1fr))]'
+
   return (
-    <div className="overflow-x-auto pb-1 -mx-1 px-1">
-      <div className="flex items-center gap-[3px] mb-1">
+    <div className="overflow-x-auto pb-1 -mx-1 px-1" style={{ '--semanas': maxSemanas }}>
+      <div className={`${linha} mb-1`}>
         <span className="w-8 shrink-0" />
         {mesesNaSemana.map((rotulo, i) => (
-          <span key={i} className="w-3 shrink-0 text-[9px] leading-none text-muted-foreground overflow-visible whitespace-nowrap">
+          <span key={i} className="w-3 shrink-0 text-[9px] leading-none text-muted-foreground overflow-visible whitespace-nowrap desktop:w-auto">
             {rotulo}
           </span>
         ))}
       </div>
       <div className="space-y-[3px]">
         {anos.map((ano) => (
-          <div key={ano} className="flex items-center gap-[3px]">
+          <div key={ano} className={linha}>
             <span className="w-8 shrink-0 text-[10px] font-semibold tabular-nums text-muted-foreground">{ano}</span>
             {Array.from({ length: maxSemanas }, (_, i) => {
               const s = seriesPorAno[ano][i]
@@ -66,7 +79,7 @@ function HeatmapPlurianual({ seriesPorAno }) {
                 <span
                   key={i}
                   title={`${ano} semana ${i + 1}: média ${s ? s.media.toFixed(1) : 0}`}
-                  className={`h-3 w-3 shrink-0 rounded-[3px] ${s ? classeOcupacao(media) : 'bg-transparent'}`}
+                  className={`h-3 w-3 shrink-0 rounded-[3px] desktop:h-auto desktop:w-auto desktop:min-w-0 desktop:aspect-square ${s ? classeOcupacao(media) : 'bg-transparent'}`}
                 />
               )
             })}
