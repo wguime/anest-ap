@@ -229,8 +229,14 @@ describe('modo SALA opera só no turno exibido (bug 31/07)', () => {
 })
 
 // DUPLA NA MESMA CIRURGIA (dono 11/08): duas anestesistas no mesmo procedimento
-// não cabem num uid — o texto "A + B" é o dado. Só existe no modo CASO: sala com
-// anestesistas diferentes em cirurgias diferentes segue com um bloco para cada.
+// não cabem num uid — o texto "A + B" é o dado.
+//
+// EM TODOS OS MODOS (dono 14/09): "só no modo CASO" deixou o dono sem caminho — a
+// Hemodinâmica da tarde tinha 3 linhas ("//" herdado), ele abriu pelo cabeçalho da
+// sala, a linha "Dois anestesistas" não existia, confirmou uma pessoa e a dupla das
+// três sumiu. A dupla vale para os ALVOS (no modo SALA, as cirurgias que mudam de
+// mão), e o primeiro pode ser quem JÁ responde — acrescentar alguém não exige
+// re-escolher quem está lá num seletor que nasce vazio.
 describe('Segundo anestesista (mesma cirurgia)', () => {
   const abrirCaso = () => render(
     <DefinirAnestesistaSheet escala={escalaComRodape} sala="Sala 5" casosAlvo={[caso()]} onClose={vi.fn()} />,
@@ -240,22 +246,53 @@ describe('Segundo anestesista (mesma cirurgia)', () => {
   // a linha abre o campo
   // o card ASSUME não é mais combobox (virou folha), então o único Select que
   // sobra no painel é o do segundo anestesista
-  const segundoSelect = () => {
-    fireEvent.click(screen.getByRole('button', { name: /Dois anestesistas nesta cirurgia/i }))
+  const segundoSelect = (nome = /Dois anestesistas nesta cirurgia/i) => {
+    fireEvent.click(screen.getByRole('button', { name: nome }))
     return screen.getByRole('combobox')
   }
 
-  it('só aparece depois de escolher o responsável, e só no modo CASO', async () => {
+  it('já aparece de cara quando quem responde tem login: é acrescentar, não trocar', () => {
     abrirCaso()
+    expect(screen.getByRole('button', { name: /Dois anestesistas nesta cirurgia/i })).toBeTruthy()
+  })
+
+  it('quem já é dupla (sem uid) ou "?" precisa de um primeiro escolhido', async () => {
+    const jaDupla = caso({ anestesista: 'STAUB + CURY', anestesistaUserId: null })
+    render(<DefinirAnestesistaSheet escala={escalaComRodape} sala="Sala 5" casosAlvo={[jaDupla]} onClose={vi.fn()} />, { wrapper: wrap })
     expect(screen.queryByRole('button', { name: /Dois anestesistas/i })).toBeNull()
     escolherCury()
     expect(await screen.findByRole('button', { name: /Dois anestesistas nesta cirurgia/i })).toBeTruthy()
   })
 
-  it('modo SALA não oferece dupla (a dupla é da cirurgia, não da sala)', () => {
-    render(<DefinirAnestesistaSheet escala={escalaComRodape} sala="Sala 5" onClose={vi.fn()} />, { wrapper: wrap })
-    escolherCury()
-    expect(screen.queryByRole('button', { name: /Dois anestesistas/i })).toBeNull()
+  it('acrescenta o segundo a quem já responde, sem re-escolher o primeiro', async () => {
+    abrirCaso()
+    // nada escolhido no card ASSUME: o primeiro da dupla é o Staub, que já está lá
+    fireEvent.click(segundoSelect())
+    fireEvent.click(await screen.findByRole('option', { name: 'GUSTAVO CURY' }))
+    const btn = screen.getByRole('button', { name: /Confirmar os dois anestesistas/i })
+    expect(btn).not.toBeDisabled()
+    fireEvent.click(btn)
+    await waitFor(() => expect(setAnestesistaCasos).toHaveBeenCalled())
+    const [, ids, quem] = setAnestesistaCasos.mock.calls[0]
+    expect(ids).toEqual(['c1'])
+    expect(quem).toEqual({ uid: null, apelido: 'STAUB + CURY', dupla: true })
+  })
+
+  // A Hemodinâmica de 14/09: três linhas da mesma pessoa, uma já terminada.
+  it('modo SALA oferece a dupla e ela vai para TODAS as cirurgias que mudam de mão', async () => {
+    const tresLinhas = {
+      ...escalaComRodape,
+      casos: [caso(), caso({ id: 'c3', hora: '09:00' }), caso({ id: 'c2', hora: '10:00', statusCirurgia: 'terminada' })],
+    }
+    render(<DefinirAnestesistaSheet escala={tresLinhas} sala="Sala 5" onClose={vi.fn()} />, { wrapper: wrap })
+    fireEvent.click(segundoSelect(/Dois anestesistas nestas 2 cirurgias/i))
+    fireEvent.click(await screen.findByRole('option', { name: 'GUSTAVO CURY' }))
+    fireEvent.click(screen.getByRole('button', { name: /Confirmar os dois anestesistas/i }))
+    await waitFor(() => expect(setAnestesistaCasos).toHaveBeenCalled())
+    const [, ids, quem] = setAnestesistaCasos.mock.calls[0]
+    expect(ids).toEqual(['c1', 'c3']) // a terminada fica com quem a fez
+    expect(quem).toEqual({ uid: null, apelido: 'STAUB + CURY', dupla: true })
+    expect(executarSubstituicao).not.toHaveBeenCalled()
   })
 
   it('escolhido o segundo, grava "A + B" sem uid e marcado como dupla', async () => {

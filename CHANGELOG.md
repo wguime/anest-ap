@@ -35,6 +35,33 @@ bolinhas azuis e a lista "Eventos deste mês" de "Consultar Plantões" liam só 
   estática crua sem estar na allowlist com motivo (provado contra o formulário antigo). Rule nova
   `.claude/rules/escalas-trocas.md` carrega ao abrir os arquivos de troca.
 
+## v5.12.2 (14/09/2026) — Dois anestesistas na mesma cirurgia em qualquer modo da folha
+
+Pedido do dono (14/09, tarde): "precisei mudar manualmente o segundo anestesista escalado na
+hemodinâmica, mas não há opção de adicionar um segundo anestesista (tenho impressão que já tínhamos
+corrigido isso)". Tinha sido corrigido em 11/08 (v5.7.x, `0eea4917`) — mas só no modo CASO do
+`DefinirAnestesistaSheet`, e só depois de escolher um primeiro nome.
+
+### O que aconteceu
+A Hemodinâmica da Unimed saiu com "GUILHERME MELO + ADRIANO" na continuação das 13:00 e "//" nas
+duas linhas seguintes. O dono abriu pelo cabeçalho da sala na Completa — modo SALA, três alvos — e a
+linha "Dois anestesistas nesta cirurgia" não existia ali. Confirmou ADRIANO e as três linhas ficaram
+com uma pessoa (12h34). A regra de 11/08 ("dupla é da cirurgia, não da sala") protegia a sala
+multi-anestesista, mas essa já chega split por pessoa no board; no modo SALA os alvos são
+exatamente as cirurgias que mudam de mão, e a dupla vale para elas.
+
+### O que muda
+- A linha "Dois anestesistas" existe em TODOS os modos e diz a quantas cirurgias vai ("nestas 3
+  cirurgias"). Vai para os alvos — a terminada fica com quem a fez, como sempre.
+- O primeiro da dupla pode ser quem JÁ responde: acrescentar a Gabriela ao Adriano não exige
+  re-escolher o Adriano no seletor que nasce vazio de propósito. O botão vira "Confirmar os dois
+  anestesistas" e grava `{ uid: null, apelido: 'ADRIANO + GABRIELA', dupla: true }`, o mesmo patch de
+  sempre. Quem já é dupla ou "?" (sem uid) continua precisando escolher o primeiro.
+- Reparo do dia em `scripts/repair-escala-2026-09-14-hemodinamica-dupla.sql` (ensaiado com rollback
+  e aplicado): as três linhas voltaram a "ADRIANO + GABRIELA" sem republicar o turno.
+- Testes em `definirAnestesistaAssumirPosicao.test.jsx`: dupla no modo SALA alcança todos os alvos,
+  acrescentar sem re-escolher, e o caso "já é dupla" exige o primeiro.
+
 ## v5.12.1 (13/09/2026) — Comparativo por ano ocupa o card no desktop
 
 Pedido do dono (11/09, captura do Mapa de Férias): "ajuste para visualização em desktop". A célula

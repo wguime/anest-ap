@@ -165,22 +165,37 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
   // DUPLA NA MESMA CIRURGIA (dono 11/08). Duas pessoas não cabem num uid: o
   // texto "A + B" É o dado — a Completa mostra as duas no cabeçalho, a fila
   // conta presença das duas e nenhuma transferência mexe em sala compartilhada.
-  // Só no modo CASO: dupla é da CIRURGIA, não da sala (sala com anestesistas
-  // diferentes em cirurgias diferentes segue com um bloco para cada, 27/07).
-  const podeDupla = !!casoUnico && !!escolhido && escolhido !== SEM_ANESTESISTA
+  //
+  // EM TODOS OS MODOS (dono 14/09). Até aqui era "só no modo CASO", e foi assim
+  // que a Hemodinâmica da tarde perdeu a dupla: o dono abriu pelo cabeçalho da
+  // sala (modo SALA, 3 linhas com "//" herdado), a linha "Dois anestesistas" não
+  // existia, confirmou uma pessoa e as três ficaram com ela. A dupla vale para os
+  // ALVOS — no modo SALA são os casos não terminados que mudam de mão, e sala
+  // multi-anestesista já chega SPLIT por pessoa (BoardView), então a lição de
+  // 27/07 (um bloco por anestesista) continua de pé.
+  //
+  // O PRIMEIRO da dupla é quem foi escolhido — ou, sem escolha, quem JÁ responde:
+  // "acrescentar a Gabriela ao Adriano" não pode exigir re-escolher o Adriano num
+  // seletor que nasce vazio de propósito. Quem já é dupla ("A + B") ou "?" não
+  // tem uid, e aí o primeiro precisa ser escolhido.
+  const primeiroUid = escolhido === SEM_ANESTESISTA ? '' : (escolhido || atual.uid || '')
+  const podeDupla = !!primeiroUid && alvos.length > 0
   const opcoesSegundo = useMemo(
-    () => [{ value: '', label: 'Só um anestesista' }, ...(rosterOpcoes || []).filter((o) => o.value !== escolhido)],
-    [rosterOpcoes, escolhido]
+    () => [{ value: '', label: 'Só um anestesista' }, ...(rosterOpcoes || []).filter((o) => o.value !== primeiroUid)],
+    [rosterOpcoes, primeiroUid]
   )
-  const segundo = podeDupla && uidSegundo ? rosterByUid.get(uidSegundo) : null
+  const segundo = podeDupla && uidSegundo && uidSegundo !== primeiroUid ? rosterByUid.get(uidSegundo) : null
+  const primeiro = segundo ? rosterByUid.get(primeiroUid) : null
   const apelidoDe = (r) => r?.apelidos?.[0] || primeiroNomeUpper(r?.nome)
   const nomeEscolhido = escolhido && escolhido !== SEM_ANESTESISTA
     ? nomeAnestesistaExibicao({ uid: escolhido, alias: '', rosterByUid })
     : ''
+  const nomeSegundo = segundo ? nomeAnestesistaExibicao({ uid: segundo.uid, alias: '', rosterByUid }) : ''
 
   const confirmar = async () => {
     const semAnest = escolhido === SEM_ANESTESISTA
-    const r = semAnest ? null : rosterByUid.get(escolhido)
+    // com segundo, o primeiro pode ser quem já responde (nenhuma escolha nova)
+    const r = segundo ? primeiro : (semAnest ? null : rosterByUid.get(escolhido))
     if (!semAnest && !r) return
     if (!segundo && !semAnest && assumirPosicao && ofereceAssumir) {
       // assumir a posição é TRANSACIONAL (rollback LIFO) — espera a persistência
@@ -271,10 +286,14 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
                   'block text-[15px] font-bold leading-tight [overflow-wrap:anywhere]',
                   escolhido ? '' : 'text-primary',
                 ].join(' ')}>
-                  {escolhido === SEM_ANESTESISTA ? 'Sem anestesista' : (nomeEscolhido || 'Escolher…')}
+                  {escolhido === SEM_ANESTESISTA
+                    ? 'Sem anestesista'
+                    : segundo
+                      ? `${nomeEscolhido || nomeAtual} + ${nomeSegundo}`
+                      : (nomeEscolhido || 'Escolher…')}
                 </span>
                 <span className="block text-[11px] text-muted-foreground">
-                  {escolhido ? 'toque para trocar' : 'toque para ver a lista'}
+                  {escolhido || segundo ? 'toque para trocar' : 'toque para ver a lista'}
                 </span>
               </span>
               {rosterLoading
@@ -313,9 +332,8 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
             </p>
           )}
 
-          {/* DUPLA na mesma cirurgia (dono 11/08) — só no modo CASO. No modo
-              SALA a linha nem existe: "só no modo cirurgia" era uma frase que
-              não dizia nada a quem estava olhando (dono 17/08). */}
+          {/* DUPLA (dono 11/08; em todos os modos desde 14/09). A linha diz a
+              quantas cirurgias a dupla vai — no modo SALA são as que mudam de mão. */}
           {podeDupla && (
             <>
               <button
@@ -323,9 +341,11 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
                 onClick={() => setAbrirSegundo((v) => !v)}
                 className="flex min-h-[48px] w-full items-center gap-2 border-t border-border py-2 text-left"
               >
-                <span className="text-[14.5px] font-semibold">Dois anestesistas nesta cirurgia</span>
+                <span className="text-[14.5px] font-semibold">
+                  {alvos.length === 1 ? 'Dois anestesistas nesta cirurgia' : `Dois anestesistas nestas ${alvos.length} cirurgias`}
+                </span>
                 <span className="ml-auto text-[11.5px] text-muted-foreground">
-                  {segundo ? nomeAnestesistaExibicao({ uid: segundo.uid, alias: '', rosterByUid }) : 'não'}
+                  {segundo ? nomeSegundo : 'não'}
                 </span>
                 <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${abrirSegundo ? 'rotate-180' : ''}`} />
               </button>
@@ -340,7 +360,9 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
                     placeholder="Só um anestesista"
                   />
                   <p className="mt-1.5 text-[11.5px] text-muted-foreground">
-                    A cirurgia fica com os dois no cabeçalho da Completa e conta presença dos dois na fila.
+                    {alvos.length === 1
+                      ? 'A cirurgia fica com os dois no cabeçalho da Completa e conta presença dos dois na fila.'
+                      : 'As cirurgias ficam com os dois no cabeçalho da Completa e contam presença dos dois na fila.'}
                   </p>
                 </div>
               )}
@@ -365,7 +387,8 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
             <Button variant="outline" className="flex-1" onClick={() => onClose?.()}>Cancelar</Button>
             <Button
               className="flex-1"
-              disabled={salvando || !escolhido || escolhido === atual.uid || !alvos.length}
+              /* com segundo, "o mesmo primeiro" é justamente o caso de acrescentar alguém */
+              disabled={salvando || !alvos.length || (segundo ? false : (!escolhido || escolhido === atual.uid))}
               onClick={confirmar}
             >
               {salvando

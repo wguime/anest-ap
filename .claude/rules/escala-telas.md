@@ -227,6 +227,15 @@ o dono escolheu o **A — um formulário só**.
   continua no ⚙ da faixa: o primeiro decide dupla/substituição/posição na fila (um
   Select perderia isso, e salvo vazio apagaria a dupla "A + B"); o segundo é
   configuração de SALA, não campo do caso.
+- **A dupla "A + B" existe em TODOS os modos da folha** (dono 14/09). Era "só no modo
+  CASO" desde 11/08, e foi assim que a Hemodinâmica da tarde de 14/09 perdeu a dupla:
+  o dono abriu pelo cabeçalho da sala (modo SALA, 3 linhas com "//"), a linha "Dois
+  anestesistas" não existia, confirmou uma pessoa e as três ficaram só com ela. A
+  dupla vai para os ALVOS (no modo SALA, as cirurgias que mudam de mão; sala
+  multi-anestesista já chega split por pessoa). E o **primeiro da dupla pode ser quem
+  já responde**: acrescentar a Gabriela ao Adriano não exige re-escolher o Adriano no
+  seletor que nasce vazio. Quem já é dupla ou "?" (sem uid) precisa escolher o
+  primeiro. Reparo do dia: `scripts/repair-escala-2026-09-14-hemodinamica-dupla.sql`.
 - ⚠️ **O patch é DIFF, nunca o formulário inteiro**: `anestesista` e `ordem` não têm
   campo nesta tela e seriam apagados. Abrir e fechar sem tocar em nada não escreve.
 - ⚠️ **`iniciais()` não é idempotente** — "M.C.G." é um token só e virava "M.".
