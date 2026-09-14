@@ -2746,8 +2746,8 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Marcadas “passa para tarde” e o anestesista delas não está nesta ordem de liberação.
-                    Publique e resolva na aba Completa (grupo “Ainda abertas — Manhã”): reatribua a quem está na sala à tarde,
-                    ou desmarque o “passa para tarde”. Elas não entram na fila desta tarde.
+                    A continuação deve vir na própria escala da tarde; se não veio, acrescente o caso na Completa
+                    ou desmarque o “passa para tarde” na manhã. Elas não entram na fila desta tarde.
                   </p>
                   <ul className="space-y-0.5">
                     {travessiasOrfas.map((c) => (

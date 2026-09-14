@@ -13,7 +13,7 @@ import { useUser } from '@/contexts/UserContext'
 import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
 import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
-import { anestesistaDoCasoEh, casoConcluido, casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, casosQuePassamParaOTurno, turnoDoCaso, compararSalas, parseHoraMinutos, salaExibicao, nomeAnestesistaExibicao, convenioExibicao, idadeExibicao } from './utils'
+import { anestesistaDoCasoEh, casoConcluido, casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, turnoDoCaso, compararSalas, parseHoraMinutos, salaExibicao, nomeAnestesistaExibicao, convenioExibicao, idadeExibicao } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import { formatFaltante } from './PainelTempo'
 import useAgoraMinuto from './useAgoraMinuto'
@@ -331,21 +331,25 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
   // as duas não têm como discordar. Fora do HRO vem vazia e nada muda.
   const { herdados } = useEstadoUrgencias(escala, { hospital: escala?.hospital, turno })
   const idsDoTurno = useMemo(() => new Set(casos.map((c) => c.id).filter(Boolean)), [casos])
-  // "Passa para tarde" entra no MESMO grupo (dono 2026-08-22): também é cirurgia
-  // que atravessou o turno, e o grupo já existe e já foi escolhido para isso. A
-  // diferença é a origem — as urgências vêm do contrato do HRO e só de lá; esta
-  // vale em qualquer hospital, porque a marcação é do quadro.
+  // SÓ as urgências herdadas (dono 14/09). De 22/08 a 14/09 a cirurgia marcada
+  // "Passa para tarde" entrava no mesmo grupo; saiu porque a escala do turno novo
+  // JÁ traz a continuação ("CONTINUAÇÃO RM", "CONTINUAÇÃO +-14h") — a RM da
+  // manhã aparecia à tarde como "Ainda aberta" ao lado da própria continuação,
+  // e o dono leu como informação repetida. A urgência do contrato do HRO fica:
+  // ela não vem na foto da tarde, e sem card aqui ninguém a marca Terminada
+  // (era o relato de 21/08). A marcação "passa para tarde" em si não muda —
+  // a fila do turno seguinte continua contando a cirurgia para quem está lá.
   const herdadasVisiveis = useMemo(() => {
     const vistos = new Set()
     const out = []
-    for (const c of [...herdados, ...casosQuePassamParaOTurno(casosResolvidos(escala), turno)]) {
+    for (const c of herdados) {
       const chave = c.id || `${c.sala}|${c.ordem}|${c.procedimento}`
       if (vistos.has(chave) || (c.id && idsDoTurno.has(c.id))) continue
       vistos.add(chave)
       out.push(c)
     }
     return out
-  }, [herdados, idsDoTurno, escala, turno])
+  }, [herdados, idsDoTurno])
   const grupos = useMemo(() => agruparPorSala(casos), [casos])
   // MARGEM ÚNICA DO QUADRO (dono 18/08): quem não tem horário recua igual, em
   // qualquer sala — a urgência acrescentada à mão vira sala própria sem horário

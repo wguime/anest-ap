@@ -35,6 +35,23 @@ bolinhas azuis e a lista "Eventos deste mês" de "Consultar Plantões" liam só 
   estática crua sem estar na allowlist com motivo (provado contra o formulário antigo). Rule nova
   `.claude/rules/escalas-trocas.md` carrega ao abrir os arquivos de troca.
 
+## v5.12.3 (14/09/2026) — A Completa da tarde deixa de listar a cirurgia da manhã "ainda aberta"
+
+Pedido do dono (14/09, captura da Completa da Unimed): "essa informação de 'ainda abertas' não é
+necessária. As escalas são corrigidas quando enviadas no novo turno". A RM das 07:30 (Gustavo),
+marcada "Passa para tarde", aparecia no grupo "Ainda abertas — Manhã" da aba Tarde ao lado da
+própria "CONTINUAÇÃO RM" que a foto da tarde já trazia.
+
+- O grupo "Ainda abertas — Manhã" volta a ser SÓ das urgências herdadas do contrato do HRO
+  (pedido de 21/08): elas não vêm na foto da tarde e, sem card ali, ninguém as marca Terminada.
+  A cirurgia marcada "passa para tarde" (entrou no grupo em 22/08) sai dele.
+- A marcação em si não muda: a fila do turno seguinte continua contando a cirurgia para quem
+  está lá, a aba Minhas continua mostrando, e o badge segue no card da manhã.
+- O aviso "cirurgia da manhã passa para esta tarde" da conferência e do script de publicação
+  deixa de mandar para o grupo: a continuação deve vir na escala da tarde; se não veio,
+  acrescenta-se o caso na Completa ou desmarca-se o "passa para tarde" na manhã.
+- Teste: cirurgia "passa para tarde" da manhã não entra no grupo; urgência herdada continua.
+
 ## v5.12.2 (14/09/2026) — Dois anestesistas na mesma cirurgia em qualquer modo da folha
 
 Pedido do dono (14/09, tarde): "precisei mudar manualmente o segundo anestesista escalado na

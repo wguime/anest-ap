@@ -104,7 +104,7 @@ describe('o que NÃO pode mudar junto', () => {
 // A cirurgia dela das 07:00 ficou marcada "passa para tarde" e à tarde ela
 // estava escalada no HRO. A fila da tarde da Unimed ganhou uma linha dela no
 // fim, com badge "Ajuda" — o app afirmando o que não era verdade. A cirurgia
-// não some: segue no quadro da Completa, no grupo "Ainda abertas — Manhã".
+// não some: segue no quadro da MANHÃ e na aba Minhas (na Completa da tarde deixou de aparecer em 14/09).
 // ════════════════════════════════════════════════════════════════════════════
 describe('INVARIANTE: a travessia não inventa gente na fila', () => {
   const G_MANHA = caso({ id: 'g1', anestesista: 'GABRIELA', anestesistaUserId: 'uid-gab', hora: '07:00', statusExtra: 'passa_tarde' })

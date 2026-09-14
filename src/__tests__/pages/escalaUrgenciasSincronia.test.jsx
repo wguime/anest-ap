@@ -237,3 +237,32 @@ describe('INVARIANTE: nada que a faixa conta fica inalcançável no quadro', () 
     expect(casosHerdados(estado, 'vespertino')).toEqual([])
   })
 })
+
+// ════════════════════════════════════════════════════════════════════════════
+// A CIRURGIA MARCADA "PASSA PARA TARDE" NÃO ENTRA NO GRUPO (dono 14/09):
+// "essa informação de 'ainda abertas' não é necessária — as escalas são
+// corrigidas quando enviadas no novo turno". A foto da tarde já traz a
+// continuação ("CONTINUAÇÃO RM"), e a RM da manhã aparecia ao lado dela como
+// "Ainda aberta". De 22/08 a 14/09 ela entrava no mesmo grupo das urgências
+// herdadas; o grupo segue existindo SÓ para a urgência do contrato do HRO.
+// ════════════════════════════════════════════════════════════════════════════
+describe('cirurgia "passa para tarde" fica fora do grupo "Ainda abertas" (dono 14/09)', () => {
+  const rmDaManha = caso('rm1', {
+    sala: 'Imagem', tipo: 'eletiva', gravidade: null, hora: '07:30', procedimento: '08 RM (06 PCTES)',
+    statusCirurgia: 'iniciada', statusExtra: 'passa_tarde', anestesista: 'GUSTAVO', anestesistaUserId: 'u-gustavo',
+  })
+
+  it('na Unimed (sem contrato de urgência) o grupo nem aparece', () => {
+    const unimed = { ...escalaBase, hospital: 'unimed', casos: [rmDaManha, ...escalaBase.casos.filter((c) => c.turno === 'vespertino')] }
+    montarQuadro(unimed)
+    expect(screen.queryByText('Ainda abertas')).toBeNull()
+    expect(screen.queryByText(/06 pctes/i)).toBeNull()
+  })
+
+  it('no HRO o grupo continua com as urgências herdadas, e sem a eletiva que passa', async () => {
+    montarQuadro({ ...escalaBase, casos: [rmDaManha, ...escalaBase.casos] })
+    expect(await screen.findByText('Ainda abertas')).toBeTruthy()
+    expect(screen.getByText(/Desbridamento mse/i)).toBeTruthy() // urgência da manhã segue com card
+    expect(screen.queryByText(/06 pctes/i)).toBeNull()          // a RM da manhã não
+  })
+})

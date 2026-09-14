@@ -57,11 +57,13 @@ acontecer. Agora ela ATRAVESSA: `casoSegueParaOTurno` (utils, puro) +
 matutino→vespertino: à tarde o rótulo é "Passa para noite" e a noite já enxerga
 os casos da tarde (`FDS_TURNO_CASOS.noturno`).
 
-Superfícies: **Completa** entrega a cirurgia ao MESMO grupo "Ainda abertas —
-Manhã" que as urgências herdadas já usam (o grupo existe e foi escolhido para
-exatamente esta forma de problema; a diferença é a origem — urgência vem do
-contrato do HRO, esta vale em qualquer hospital) · **Minhas** e a **fila de
-Liberações** contam a cirurgia na tarde. ⚠️ o badge "Passa para tarde/noite" da
+Superfícies: **Completa** NÃO a mostra mais na tarde (dono 14/09: "essa informação
+de 'ainda abertas' não é necessária, as escalas são corrigidas quando enviadas no
+novo turno" — a foto da tarde já traz "CONTINUAÇÃO RM"/"CONTINUAÇÃO +-14h", e a RM
+da manhã aparecia ao lado da própria continuação). De 22/08 a 14/09 ela entrava no
+grupo "Ainda abertas — Manhã" das urgências herdadas; o grupo segue existindo SÓ
+para a urgência do contrato do HRO, que não vem na foto · **Minhas** e a **fila de
+Liberações** seguem contando a cirurgia na tarde. ⚠️ o badge "Passa para tarde/noite" da
 FILA continua saindo só do caso DAQUELE turno (`turnoDoCaso(c) !== turnoBase`
 pula): o rótulo nomeia quem SAI do turno, e ela entrou nele.
 
@@ -103,9 +105,10 @@ cirurgia nenhuma, saiu de LIBERADO para "Livre".
   cirurgia própria dele — e nunca inventa posição para quem não está. O Humberto,
   que também tinha uma marcada "passa para tarde" e ESTÁ no rodapé da tarde,
   segue com a cirurgia na linha dele (era o comportamento certo desde 22/08). A
-  cirurgia da Gabriela **não some**: continua no quadro da **Completa**, no grupo
-  "Ainda abertas — Manhã", e na aba **Minhas** dela — lá a pergunta é "esta
-  cirurgia existe?", na fila é "quem está nesta fila?". Identidade tolerante por
+  cirurgia da Gabriela **não some**: continua na aba **Minhas** dela e no quadro
+  da MANHÃ (na Completa da tarde ela deixou de aparecer em 14/09 — a escala da
+  tarde traz a continuação) — lá a pergunta é "esta cirurgia existe?", na fila é
+  "quem está nesta fila?". Identidade tolerante por
   desenho (`chavesIdentidade`: uid E nome, as duas metades de uma dupla "A + B"):
   casar demais preserva o comportamento de hoje, casar de menos some com a linha
   de quem está trabalhando.

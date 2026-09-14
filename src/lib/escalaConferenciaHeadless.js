@@ -371,7 +371,7 @@ export function conferirHospital(hospital, entrada, contexto) {
     if (atravessam.length) {
       const presentes = presencaDoTurno(ordem, casosNovos, resolver)
       for (const c of atravessam.filter((x) => !estaPresente(presentes, x, resolver))) {
-        aviso('travessia órfã', `${c.sala} ${c.hora || ''} (${c.anestesista || '?'}) passa para a tarde e o anestesista não está nesta escala — reatribua na Completa ou desmarque`)
+        aviso('travessia órfã', `${c.sala} ${c.hora || ''} (${c.anestesista || '?'}) passa para a tarde e o anestesista não está nesta escala — a continuação deve vir na escala da tarde; se não veio, acrescente na Completa ou desmarque na manhã`)
       }
     }
   }
