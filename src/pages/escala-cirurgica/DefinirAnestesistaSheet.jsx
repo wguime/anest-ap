@@ -43,8 +43,10 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
   const { setAnestesistaCasos, executarSubstituicao } = useEscalaCirurgicaActions()
   const { options: rosterOpcoes, rosterByUid, resolver, loading: rosterLoading } = useRosterAnestesistas()
   const [uidEscolhido, setUidEscolhido] = useState('')
-  const [uidSegundo, setUidSegundo] = useState('') // dupla na MESMA cirurgia
-  const [abrirSegundo, setAbrirSegundo] = useState(false)
+  // `undefined` = ainda não tocado: a dupla já gravada preenche o segundo por baixo
+  // (ver `duplaAtual`); '' = "Só um anestesista" escolhido de propósito.
+  const [uidSegundo, setUidSegundo] = useState(undefined) // dupla na MESMA cirurgia
+  const [abrirSegundo, setAbrirSegundo] = useState(null) // null = aberto se já há dupla
   // SELETOR EM FOLHA (dono 17/08, 3ª rodada): o dropdown do Select do DS herda a
   // LARGURA DO GATILHO (`width = triggerWidth` em computePosition), e o gatilho
   // aqui é meio card — a lista saía num popover estreito, com os nomes quebrando.
@@ -178,24 +180,67 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
   // "acrescentar a Gabriela ao Adriano" não pode exigir re-escolher o Adriano num
   // seletor que nasce vazio de propósito. Quem já é dupla ("A + B") ou "?" não
   // tem uid, e aí o primeiro precisa ser escolhido.
-  const primeiroUid = escolhido === SEM_ANESTESISTA ? '' : (escolhido || atual.uid || '')
+  // DUPLA JÁ GRAVADA ("A + B", uid nulo por construção): as duas metades resolvidas
+  // pelo dicionário. Com as duas resolvidas a folha nasce com o par PREENCHIDO
+  // (dono 14/09: "quero que o segundo anestesista já venha preenchido, conforme
+  // veio do mapa") — trocar UM dos dois, ou desmarcar o segundo, vira um toque.
+  // Antes, uma dupla abria a folha sem uid nenhum: era preciso escolher os dois de
+  // novo, e o dono leu como "não há opção de trocar um dos anestesistas".
+  const duplaAtual = useMemo(() => {
+    const alias = String(atual.alias || '')
+    if (!alias.includes('+')) return null
+    const metades = alias.split(/\s*\+\s*/).map((s) => s.trim()).filter((s) => s && !/^\?+$/.test(s))
+    if (metades.length !== 2) return null
+    const [p, s] = metades.map((m) => resolver(m) || null)
+    // `textos` guarda a grafia ORIGINAL de cada metade: a metade que não muda volta
+    // como estava, nunca reescrita pelo dicionário (apelidos[0] é o primeiro em
+    // ordem alfabética — "GUILHERME M ELO" —, o dicionário envenenado de 02/09)
+    return p && s && p !== s ? { primeiro: p, segundo: s, textos: { [p]: metades[0], [s]: metades[1] } } : null
+  }, [atual.alias, resolver])
+  const primeiroUid = escolhido === SEM_ANESTESISTA ? '' : (escolhido || atual.uid || duplaAtual?.primeiro || '')
   const podeDupla = !!primeiroUid && alvos.length > 0
   const opcoesSegundo = useMemo(
     () => [{ value: '', label: 'Só um anestesista' }, ...(rosterOpcoes || []).filter((o) => o.value !== primeiroUid)],
     [rosterOpcoes, primeiroUid]
   )
-  const segundo = podeDupla && uidSegundo && uidSegundo !== primeiroUid ? rosterByUid.get(uidSegundo) : null
-  const primeiro = segundo ? rosterByUid.get(primeiroUid) : null
-  const apelidoDe = (r) => r?.apelidos?.[0] || primeiroNomeUpper(r?.nome)
+  // segundo não tocado numa dupla: a outra metade. Se o novo PRIMEIRO escolhido é
+  // justamente quem era o segundo, as metades trocam de lugar em vez de a dupla
+  // virar uma pessoa só em silêncio.
+  const segundoUid = uidSegundo !== undefined
+    ? uidSegundo
+    : !duplaAtual ? ''
+      : (escolhido && escolhido === duplaAtual.segundo) ? duplaAtual.primeiro : duplaAtual.segundo
+  const segundo = podeDupla && segundoUid && segundoUid !== primeiroUid ? rosterByUid.get(segundoUid) : null
+  const primeiro = primeiroUid ? rosterByUid.get(primeiroUid) || null : null
+  const segundoAberto = abrirSegundo ?? !!duplaAtual
+  const apelidoDe = (r) => duplaAtual?.textos?.[r?.uid] || r?.apelidos?.[0] || primeiroNomeUpper(r?.nome)
   const nomeEscolhido = escolhido && escolhido !== SEM_ANESTESISTA
     ? nomeAnestesistaExibicao({ uid: escolhido, alias: '', rosterByUid })
     : ''
   const nomeSegundo = segundo ? nomeAnestesistaExibicao({ uid: segundo.uid, alias: '', rosterByUid }) : ''
+  // nome do PRIMEIRO no card ASSUME: o escolhido; sem escolha, quem já responde (na
+  // dupla, a primeira metade — `nomeAtual` inteiro repetiria "A + B + B")
+  const nomePrimeiro = nomeEscolhido
+    || (duplaAtual ? nomeAnestesistaExibicao({ uid: duplaAtual.primeiro, alias: '', rosterByUid }) : nomeAtual)
+  // O QUE VAI SER GRAVADO, comparado com o que já está: Confirmar só acende quando
+  // muda alguma coisa (o botão morto do print de 29/07 continua proibido). Na dupla
+  // já gravada, "desmarcar o segundo" e "trocar uma metade" SÃO mudanças.
+  const resultado = escolhido === SEM_ANESTESISTA
+    ? { tipo: 'sem' }
+    : segundo && primeiro
+      ? { tipo: 'dupla', a: primeiro.uid, b: segundo.uid }
+      : primeiro ? { tipo: 'um', a: primeiro.uid } : null
+  const semMudanca = !resultado
+    || (resultado.tipo === 'um' && !duplaAtual && resultado.a === atual.uid)
+    || (resultado.tipo === 'dupla' && !!duplaAtual && duplaAtual.primeiro === resultado.a && duplaAtual.segundo === resultado.b)
+    || (resultado.tipo === 'sem' && jaSemAnestesista)
 
   const confirmar = async () => {
     const semAnest = escolhido === SEM_ANESTESISTA
     // com segundo, o primeiro pode ser quem já responde (nenhuma escolha nova)
-    const r = segundo ? primeiro : (semAnest ? null : rosterByUid.get(escolhido))
+    // o primeiro pode ser quem já responde (nenhuma escolha nova) — inclusive a
+    // primeira metade de uma dupla já gravada
+    const r = semAnest ? null : primeiro
     if (!semAnest && !r) return
     if (!segundo && !semAnest && assumirPosicao && ofereceAssumir) {
       // assumir a posição é TRANSACIONAL (rollback LIFO) — espera a persistência
@@ -289,7 +334,7 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
                   {escolhido === SEM_ANESTESISTA
                     ? 'Sem anestesista'
                     : segundo
-                      ? `${nomeEscolhido || nomeAtual} + ${nomeSegundo}`
+                      ? `${nomePrimeiro} + ${nomeSegundo}`
                       : (nomeEscolhido || 'Escolher…')}
                 </span>
                 <span className="block text-[11px] text-muted-foreground">
@@ -338,7 +383,7 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
             <>
               <button
                 type="button"
-                onClick={() => setAbrirSegundo((v) => !v)}
+                onClick={() => setAbrirSegundo(!segundoAberto)}
                 className="flex min-h-[48px] w-full items-center gap-2 border-t border-border py-2 text-left"
               >
                 <span className="text-[14.5px] font-semibold">
@@ -349,13 +394,13 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
                 </span>
                 <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${abrirSegundo ? 'rotate-180' : ''}`} />
               </button>
-              {abrirSegundo && (
+              {segundoAberto && (
                 <div className="mb-2 rounded-xl border border-border bg-muted/30 p-3">
                   <Select
                     className="w-full"
                     searchable
                     options={opcoesSegundo}
-                    value={uidSegundo}
+                    value={segundoUid}
                     onChange={setUidSegundo}
                     placeholder="Só um anestesista"
                   />
@@ -387,8 +432,7 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
             <Button variant="outline" className="flex-1" onClick={() => onClose?.()}>Cancelar</Button>
             <Button
               className="flex-1"
-              /* com segundo, "o mesmo primeiro" é justamente o caso de acrescentar alguém */
-              disabled={salvando || !alvos.length || (segundo ? false : (!escolhido || escolhido === atual.uid))}
+              disabled={salvando || !alvos.length || semMudanca}
               onClick={confirmar}
             >
               {salvando

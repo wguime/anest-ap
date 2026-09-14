@@ -442,6 +442,11 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   // liberação corre de baixo para cima. Nomes em AZUL (ajuda de outro hospital)
   // vão para o FIM — são os primeiros a serem liberados.
   const azuis = new Set((opts.ajudaExterna || []).map((n) => resolveKey(n).key).filter(Boolean))
+  // "NÃO É AJUDA" declarado à mão (dono 14/09): chaves (uid ou nome normalizado)
+  // cuja marca DERIVADA de ajuda deve ser ignorada — vem de
+  // `linha_overrides[turno:chave].semAjuda`. A ajuda escrita em `ajudaExterna`
+  // não passa por aqui: essa se desfaz removendo o nome do array.
+  const semAjuda = opts.semAjuda instanceof Set ? opts.semAjuda : new Set(opts.semAjuda || [])
   // Cirurgiões EM ORDEM DE HORÁRIO (pedido do dono 24/07); sem hora → fim.
   const cirurgioesOrdenados = (g) =>
     g ? [...g.tokens].sort((a, b) => (g.tokenHora[a] || '99:99').localeCompare(g.tokenHora[b] || '99:99')) : []
@@ -552,9 +557,10 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
       // emprestado/azul avaliados pela pessoa que ASSUMIU — a linha agora é ela
       // (avaliar pelo antigo dono marcava "Ajuda (destino)" no slot recém-assumido).
       const emprestadoAsm = foraKeys.has(keyAsm) || (nAsm && foraKeys.has(nAsm))
+      const suprimidaAsm = semAjuda.has(keyAsm) || semAjuda.has(key) || (nAsm && semAjuda.has(nAsm))
       l = linha(displayDe(asm.nome, uidAsm || asm.uid || null), grupos.get(keyAsm), {
-        isAjuda: azuis.has(key) || azuis.has(keyAsm) || emprestadoAsm,
-        ajudaFora: emprestadoAsm,
+        isAjuda: !suprimidaAsm && (azuis.has(key) || azuis.has(keyAsm) || emprestadoAsm),
+        ajudaFora: !suprimidaAsm && emprestadoAsm,
         chave: key, uid: uidAsm || asm.uid || null, nomeOriginal: nomeRodape,
         // deNomeOriginal = nome CRU do rodapé (defeito D8, 07/08): o desfazer
         // casa o dono por normNome, e o display curto ("G. Staub") não bate com
@@ -575,9 +581,14 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
       // quem tem caso AQUI (veio ajudar aqui, regra do caso TIAGO 30/07).
       const azulSemCasoAqui = azuis.has(key) && !grupos.has(key)
       const notaRodape = rotuloNota(notaDoNome(nomeRodape))
+      // "NÃO É AJUDA" declarado à mão (dono 14/09): a marca derivada (emprestado
+      // pelo cruzamento de escalas, azul do rodapé) some, mas a posição, o
+      // `teveCasos` e o resto da linha ficam como estão — é só o rótulo e o
+      // bloco de saída que a declaração desfaz.
+      const suprimida = semAjuda.has(key) || semAjuda.has(norm(nomeRodape))
       l = linha(displayDe(nomeRodape, uid), grupos.get(key), {
-        isAjuda: azuis.has(key) || emprestado,
-        ajudaFora: emprestado || azulSemCasoAqui,
+        isAjuda: !suprimida && (azuis.has(key) || emprestado),
+        ajudaFora: !suprimida && (emprestado || azulSemCasoAqui),
         chave: key, uid: uid || null, nomeOriginal: nomeRodape,
         // "MATHEUS (CONSULT)": a nota diz ONDE a pessoa está — vira o local do
         // card quando a escala não traz sala p/ ela (dono 31/07)
@@ -749,10 +760,16 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   // onde derivar a origem. A marca VENCE a derivada: é declaração humana sobre
   // uma pessoa que a estrutura não consegue enxergar.
   const manual = opts.origemManual || {}
+  // "NÃO É AJUDA" (dono 14/09) alcança também a origem DERIVADA: quem foi declarado
+  // da casa não é visitante de outro rodapé, então não desce para a cauda nem
+  // ganha "Ajuda (Unimed)". A origem informada à mão continua valendo — são duas
+  // declarações humanas, e a segunda (origem) é mais específica.
+  const semAjudaDe = (l) => semAjuda.has(l.chave) || (l.uid != null && semAjuda.has(l.uid)) || semAjuda.has(norm(l.nomeOriginal || ''))
   const marcaDe = (l) => manual[l.chave] || (l.uid != null ? manual[l.uid] : null) || null
-  const hospOrigem = (l) => marcaDe(l)?.hospital || porChave(origemHosp, l) || null
+  const hospOrigem = (l) => marcaDe(l)?.hospital || (semAjudaDe(l) ? null : porChave(origemHosp, l)) || null
   const idxOrigem = (l) => {
     const m = marcaDe(l)
+    if (!m && semAjudaDe(l)) return null
     const derivado = porChave(origemIdx, l)
     if (!m) return derivado
     // marcada como sendo do MESMO hospital em que ela já aparece: a posição real

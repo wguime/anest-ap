@@ -49,7 +49,7 @@ const ABA_OPCOES = [
 
 export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const { user } = useUser()
-  const { escalas, data, loading, p4Hospital, hoje, setData, prefetch, salvarEscalaTurno, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, reordenarAjuda, definirOrigemLinha, definirP4Hospital, setAnestesistaCasos, marcarTroca, executarSubstituicao, desfazerSubstituicao } = useEscalaCirurgica()
+  const { escalas, data, loading, p4Hospital, hoje, setData, prefetch, salvarEscalaTurno, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, reordenarAjuda, definirOrigemLinha, definirSemAjudaLinha, definirP4Hospital, setAnestesistaCasos, atualizarCaso, marcarTroca, executarSubstituicao, desfazerSubstituicao } = useEscalaCirurgica()
   // Roster p/ resolver os lados do par da troca declarada (uid/nome/apelido)
   const { resolver: resolverRoster, rosterByUid } = useRosterAnestesistas()
   // P1–P4 do dia (card Plantões/PegaPlantao) — alimentam a fase noturna das Liberações
@@ -634,11 +634,22 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                   onToggle={(anest) => toggleLiberacao(escalaLib, anest, userInfo, turno)}
                   onToggleEscalado={(anest) => toggleEscalado(escalaLib, anest, userInfo, turno)}
                   onSetOverride={(anest, override) => setLinhaOverride(escalaLib, anest, override, userInfo, turno)}
+                  // ESPELHO INVERSO DO TEMPO (dono 14/09): a pílula do total, com
+                  // UMA só cirurgia aberta, grava também o término dela. O caso
+                  // mora na escala do hospital (na fila única, não na linha 'fds').
+                  // Silencioso: a pílula já pintou; "Caso atualizado" seria ruído.
+                  onDefinirTerminoCaso={(casoId, hhmm) => {
+                    const dona = modoFds ? escalaDoCaso(casoId) || escala : escala
+                    return atualizarCaso(dona, casoId, { terminoPrevisto: hhmm || null }, { silencioso: true })
+                  }}
                   onAddAjuda={(nome) => adicionarAjuda(escalaLib, turno, nome)}
                   onReordenarAjuda={(de, para) => reordenarAjuda(escalaLib, turno, de, para)}
                   /* DE ONDE A AJUDA VEIO (dono 27/08) — informado à mão quando o
                      hospital de origem não tem escala publicada (o Materno). */
                   onDefinirOrigem={(linha, origem) => definirOrigemLinha(escalaLib, linha, origem, userInfo, turno)}
+                  /* "NÃO É AJUDA" (dono 14/09): desfaz o badge DERIVADO com uma
+                     declaração persistida na linha; null volta ao automático. */
+                  onDefinirSemAjuda={(linha, valor) => definirSemAjudaLinha(escalaLib, linha, valor, userInfo, turno)}
                   contraturnoOutros={modoFds ? [] : contraturnoOutros}
                   // fila única: os três hospitais estão nela — não há "outro" (dono 05/09)
                   presencaOutros={modoFds ? [] : presencaOutros}

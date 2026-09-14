@@ -234,7 +234,14 @@ o dono escolheu o **A — um formulário só**.
   dupla vai para os ALVOS (no modo SALA, as cirurgias que mudam de mão; sala
   multi-anestesista já chega split por pessoa). E o **primeiro da dupla pode ser quem
   já responde**: acrescentar a Gabriela ao Adriano não exige re-escolher o Adriano no
-  seletor que nasce vazio. Quem já é dupla ou "?" (sem uid) precisa escolher o
+  seletor que nasce vazio. **A dupla já gravada nasce PREENCHIDA** (`duplaAtual`: as
+  duas metades resolvidas pelo dicionário, campo do segundo já aberto): trocar só uma
+  metade é um toque no card ASSUME (primeiro) ou no Select (segundo); "Só um
+  anestesista" desmarca o segundo e grava o primeiro com login; escolher como primeiro
+  quem era o segundo INVERTE a ordem em vez de apagar uma metade; a metade que não
+  mudou volta com a grafia ORIGINAL, nunca reescrita pelo dicionário (`apelidos[0]` é
+  o alfabético — "GUILHERME M ELO"). Confirmar só acende quando algo muda. Só "?" e
+  dupla com metade que o dicionário não resolve ("OSCAR + ?") ainda exigem escolher o
   primeiro. Reparo do dia: `scripts/repair-escala-2026-09-14-hemodinamica-dupla.sql`.
 - ⚠️ **O patch é DIFF, nunca o formulário inteiro**: `anestesista` e `ordem` não têm
   campo nesta tela e seriam apagados. Abrir e fechar sem tocar em nada não escreve.

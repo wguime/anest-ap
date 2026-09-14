@@ -25,6 +25,8 @@ const executarSubstituicao = vi.fn(async () => {})
 const ROSTER = new Map([
   ['uid-staub', { uid: 'uid-staub', nome: 'GUILHERME STAUB', apelidos: ['STAUB'] }],
   ['uid-cury', { uid: 'uid-cury', nome: 'GUSTAVO CURY', apelidos: ['CURY'] }],
+  // terceira pessoa: é o que permite trocar UMA metade de uma dupla já gravada
+  ['uid-aline', { uid: 'uid-aline', nome: 'ALINE BONFANTE', apelidos: ['ALINE'] }],
 ])
 
 vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
@@ -256,12 +258,68 @@ describe('Segundo anestesista (mesma cirurgia)', () => {
     expect(screen.getByRole('button', { name: /Dois anestesistas nesta cirurgia/i })).toBeTruthy()
   })
 
-  it('quem já é dupla (sem uid) ou "?" precisa de um primeiro escolhido', async () => {
-    const jaDupla = caso({ anestesista: 'STAUB + CURY', anestesistaUserId: null })
-    render(<DefinirAnestesistaSheet escala={escalaComRodape} sala="Sala 5" casosAlvo={[jaDupla]} onClose={vi.fn()} />, { wrapper: wrap })
+  it('"?" (sem uid) precisa de um primeiro escolhido', async () => {
+    const semDono = caso({ anestesista: '?', anestesistaUserId: null, semAnestesista: true })
+    render(<DefinirAnestesistaSheet escala={escalaComRodape} sala="Sala 5" casosAlvo={[semDono]} onClose={vi.fn()} />, { wrapper: wrap })
     expect(screen.queryByRole('button', { name: /Dois anestesistas/i })).toBeNull()
     escolherCury()
     expect(await screen.findByRole('button', { name: /Dois anestesistas nesta cirurgia/i })).toBeTruthy()
+  })
+
+  // DUPLA JÁ GRAVADA NASCE PREENCHIDA (dono 14/09): "quero que o segundo anestesista
+  // já venha preenchido, conforme veio do mapa" — e "não há opção de trocar um dos
+  // anestesistas". Antes, "A + B" (uid nulo) abria a folha vazia: era escolher os
+  // dois de novo para mudar um.
+  describe('dupla já gravada ("STAUB + CURY", uid nulo)', () => {
+    const jaDupla = caso({ anestesista: 'STAUB + CURY', anestesistaUserId: null })
+    const abrirDupla = () => render(
+      <DefinirAnestesistaSheet escala={escalaComRodape} sala="Sala 5" casosAlvo={[jaDupla]} onClose={vi.fn()} />,
+      { wrapper: wrap },
+    )
+    const escolherNoSelect = async (nome) => {
+      fireEvent.click(screen.getByRole('combobox'))
+      fireEvent.click(await screen.findByRole('option', { name: nome }))
+    }
+
+    it('nasce com as duas metades resolvidas, o campo do segundo aberto, e Confirmar desabilitado', () => {
+      abrirDupla()
+      // a linha da dupla existe sem escolher ninguém, e já diz o segundo
+      const linha = screen.getByRole('button', { name: /Dois anestesistas nesta cirurgia/i })
+      expect(linha.textContent).toMatch(/Gustavo Cury/i)
+      // o campo já está aberto — desmarcar é um toque, não dois
+      expect(screen.getByRole('combobox')).toBeTruthy()
+      // nada mudou → o botão não acende (botão morto de 29/07 continua proibido)
+      expect(screen.getByRole('button', { name: /Confirmar os dois anestesistas/i })).toBeDisabled()
+    })
+
+    it('trocar SÓ o segundo grava "STAUB + ALINE"', async () => {
+      abrirDupla()
+      await escolherNoSelect('ALINE BONFANTE')
+      const btn = screen.getByRole('button', { name: /Confirmar os dois anestesistas/i })
+      expect(btn).not.toBeDisabled()
+      fireEvent.click(btn)
+      await waitFor(() => expect(setAnestesistaCasos).toHaveBeenCalled())
+      expect(setAnestesistaCasos.mock.calls[0][2]).toEqual({ uid: null, apelido: 'STAUB + ALINE', dupla: true })
+    })
+
+    it('desmarcar o segundo ("Só um anestesista") grava só o primeiro, com login', async () => {
+      abrirDupla()
+      await escolherNoSelect('Só um anestesista')
+      const btn = screen.getByRole('button', { name: /Confirmar responsável/i })
+      expect(btn).not.toBeDisabled()
+      fireEvent.click(btn)
+      await waitFor(() => expect(setAnestesistaCasos).toHaveBeenCalled())
+      expect(setAnestesistaCasos.mock.calls[0][2]).toEqual({ uid: 'uid-staub', apelido: 'STAUB' })
+    })
+
+    it('trocar SÓ o primeiro (card ASSUME) mantém o segundo: "ALINE + CURY"', async () => {
+      abrirDupla()
+      fireEvent.click(screen.getByRole('button', { name: 'Escolher quem assume' }))
+      fireEvent.click(screen.getByRole('option', { name: /ALINE BONFANTE/ }))
+      fireEvent.click(screen.getByRole('button', { name: /Confirmar os dois anestesistas/i }))
+      await waitFor(() => expect(setAnestesistaCasos).toHaveBeenCalled())
+      expect(setAnestesistaCasos.mock.calls[0][2]).toEqual({ uid: null, apelido: 'ALINE + CURY', dupla: true })
+    })
   })
 
   it('acrescenta o segundo a quem já responde, sem re-escolher o primeiro', async () => {

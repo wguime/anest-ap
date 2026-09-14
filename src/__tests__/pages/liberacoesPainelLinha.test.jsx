@@ -776,3 +776,113 @@ describe('Turno próprio — pode sair fora da ordem (dono 11/09)', () => {
     expect(onToggle).not.toHaveBeenCalled()
   })
 })
+
+// ════════════════════════════════════════════════════════════════════════════
+// ESPELHO INVERSO DO TEMPO (dono 14/09): com UMA só cirurgia aberta, o total da
+// pessoa É o término dela. O caminho caso→total existe desde 30/07 (o detalhe do
+// caso espelha na pílula); a volta não existia — ajustar a pílula deixava "faltam
+// 2min" no caso e "32min" na pílula, e o chip do caso voltava porque divergiam.
+// Com 2+ cirurgias o total segue manual e independente (nunca soma de estimativas).
+// ════════════════════════════════════════════════════════════════════════════
+describe('a pílula do total espelha no término da cirurgia quando ela é a única aberta', () => {
+  const definirUmaHora = (nome) => {
+    fireEvent.click(screen.getByLabelText(`Definir tempo faltante de ${nome}`))
+    fireEvent.click(screen.getByRole('button', { name: '1h' }))
+  }
+
+  it('uma cirurgia aberta: grava o total E o terminoPrevisto do caso, com o MESMO horário', async () => {
+    const onSetOverride = vi.fn(async () => {})
+    const onDefinirTerminoCaso = vi.fn(async () => {})
+    montar({ onSetOverride, onDefinirTerminoCaso })
+    definirUmaHora('Marilio Flach') // Marilio tem só a Sala 2
+    await waitFor(() => expect(onSetOverride).toHaveBeenCalled())
+    const termino = onSetOverride.mock.calls[0][1].termino
+    expect(termino).toMatch(/^\d{2}:\d{2}$/)
+    await waitFor(() => expect(onDefinirTerminoCaso).toHaveBeenCalledWith('Sala 2-0', termino))
+  })
+
+  it('duas cirurgias abertas: só o total muda — o caso não é tocado', async () => {
+    const onSetOverride = vi.fn(async () => {})
+    const onDefinirTerminoCaso = vi.fn(async () => {})
+    const duas = { ...escalaBase, casos: [...escalaBase.casos, caso('Sala 2', 1, 'MARILIO', 'Outro C', '10:00')] }
+    montar({ onSetOverride, onDefinirTerminoCaso }, duas)
+    definirUmaHora('Marilio Flach')
+    await waitFor(() => expect(onSetOverride).toHaveBeenCalled())
+    expect(onDefinirTerminoCaso).not.toHaveBeenCalled()
+  })
+
+  it('dupla "A + B" não espelha: o total de um não é o término da cirurgia dos dois', async () => {
+    const onSetOverride = vi.fn(async () => {})
+    const onDefinirTerminoCaso = vi.fn(async () => {})
+    const dupla = {
+      ...escalaBase,
+      casos: escalaBase.casos.map((c) => (c.id === 'Sala 2-0' ? { ...c, anestesista: 'MARILIO + KARINE', anestesistaUserId: null } : c)),
+    }
+    montar({ onSetOverride, onDefinirTerminoCaso }, dupla)
+    definirUmaHora('Marilio Flach')
+    await waitFor(() => expect(onSetOverride).toHaveBeenCalled())
+    expect(onDefinirTerminoCaso).not.toHaveBeenCalled()
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// "NÃO É AJUDA" PARA O BADGE DERIVADO (dono 14/09: "quando usuários estão
+// marcados como ajuda, algumas vezes não aparece a opção de desfazer ajuda").
+// O badge de Ajuda que a fila DERIVA — emprestado pelo cruzamento de escalas,
+// extra fora de todo rodapé — é recalculado a cada render: não há entrada em
+// `ajuda_externa` para remover. Antes, o painel mostrava o botão DESLIGADO
+// ("Marcar como ajuda") embaixo de um badge ligado, e o toque ADICIONAVA a pessoa
+// ao array (ela caía para o fim da fila). Agora badge e botão saem do mesmo
+// predicado, e desfazer grava `linha_overrides[turno:chave].semAjuda`.
+// ════════════════════════════════════════════════════════════════════════════
+describe('badge de Ajuda derivado tem "não é ajuda", e desfazer é uma declaração na linha', () => {
+  // Leonardo está no rodapé daqui E com sala na escala da Unimed → "emprestado"
+  const emprestado = [{ nome: 'LEONARDO', hospitalLabel: 'Unimed', sala: 'CC - Sala 1' }]
+
+  it('emprestado: o botão diz "não é ajuda" e o toque grava semAjuda — nunca adiciona ao array', async () => {
+    const onAddAjuda = vi.fn(async () => {})
+    const onDefinirSemAjuda = vi.fn(async () => {})
+    montar({ onAddAjuda, onDefinirSemAjuda, presencaOutros: emprestado })
+    abrirEditor('Leonardo Ferrazzo')
+    fireEvent.click(screen.getByRole('button', { name: /Leonardo Ferrazzo não é ajuda de outro hospital/ }))
+    await waitFor(() => expect(onDefinirSemAjuda).toHaveBeenCalledTimes(1))
+    expect(onDefinirSemAjuda.mock.calls[0][0]).toMatchObject({ chave: 'uid-leo' })
+    expect(onDefinirSemAjuda.mock.calls[0][1]).toBe(true)
+    expect(onAddAjuda).not.toHaveBeenCalled()
+  })
+
+  it('com a declaração gravada o badge some, o botão volta a "Marcar", e o toque limpa a declaração', async () => {
+    const onAddAjuda = vi.fn(async () => {})
+    const onDefinirSemAjuda = vi.fn(async () => {})
+    const declarada = { ...escalaBase, linhaOverrides: { 'matutino:uid-leo': { semAjuda: true } } }
+    montar({ onAddAjuda, onDefinirSemAjuda, presencaOutros: emprestado }, declarada)
+    // nenhum "não é ajuda" para o Leonardo: o badge derivado foi suprimido
+    abrirEditor('Leonardo Ferrazzo')
+    expect(screen.queryByRole('button', { name: /Leonardo Ferrazzo não é ajuda/ })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Marcar Leonardo Ferrazzo como ajuda de outro hospital/ }))
+    await waitFor(() => expect(onDefinirSemAjuda).toHaveBeenCalledTimes(1))
+    expect(onDefinirSemAjuda.mock.calls[0][1]).toBeNull()
+    expect(onAddAjuda).not.toHaveBeenCalled()
+  })
+
+  it('extra fora de todo rodapé (Paulo, nos Exames) desfaz do mesmo jeito', async () => {
+    const onAddAjuda = vi.fn(async () => {})
+    const onDefinirSemAjuda = vi.fn(async () => {})
+    montar({ onAddAjuda, onDefinirSemAjuda })
+    abrirEditor('Paulo Tonini')
+    fireEvent.click(screen.getByRole('button', { name: /Paulo Tonini não é ajuda de outro hospital/ }))
+    await waitFor(() => expect(onDefinirSemAjuda).toHaveBeenCalledTimes(1))
+    expect(onDefinirSemAjuda.mock.calls[0][0]).toMatchObject({ chave: 'uid-paulo' })
+    expect(onAddAjuda).not.toHaveBeenCalled()
+  })
+
+  it('ajuda escrita no array continua saindo do array (não vira declaração)', async () => {
+    const onRemoveAjuda = vi.fn(async () => {})
+    const onDefinirSemAjuda = vi.fn(async () => {})
+    montar({ onRemoveAjuda, onDefinirSemAjuda })
+    abrirEditor('Marcos Cury')
+    fireEvent.click(screen.getByRole('button', { name: /não é ajuda de outro hospital/ }))
+    await waitFor(() => expect(onRemoveAjuda).toHaveBeenCalledWith('CURY'))
+    expect(onDefinirSemAjuda).not.toHaveBeenCalled()
+  })
+})

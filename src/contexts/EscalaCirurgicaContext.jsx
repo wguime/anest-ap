@@ -543,8 +543,11 @@ export function EscalaCirurgicaProvider({ children }) {
       // silêncio no primeiro Salvar do editor (classe do bug de `origem`, 27/08).
       const duplicidade = anterior.duplicidade || null
       const conferido = anterior.conferido === true
-      const valor = (local || cirurgioes || termino || observacao || renovado || trocaCom || assumidaPor || origem || duplicidade || conferido)
-        ? { ...(local && { local }), ...(cirurgioes && { cirurgioes }), ...(termino && { termino }), ...(observacao && { observacao }), ...(renovado && { renovado: true }), ...(trocaCom && { trocaCom }), ...(assumidaPor && { assumidaPor }), ...(origem && { origem }), ...(duplicidade && { duplicidade }), ...(conferido && { conferido: true }), por: userInfo.userId || null, em: new Date().toISOString() }
+      // "NÃO É AJUDA" (dono 14/09): declaração sobre a pessoa, como `origem` —
+      // sobrevive ao editor e ao "Restaurar"; limpa-se pelo botão de ajuda.
+      const semAjuda = anterior.semAjuda === true
+      const valor = (local || cirurgioes || termino || observacao || renovado || trocaCom || assumidaPor || origem || duplicidade || conferido || semAjuda)
+        ? { ...(local && { local }), ...(cirurgioes && { cirurgioes }), ...(termino && { termino }), ...(observacao && { observacao }), ...(renovado && { renovado: true }), ...(trocaCom && { trocaCom }), ...(assumidaPor && { assumidaPor }), ...(origem && { origem }), ...(duplicidade && { duplicidade }), ...(conferido && { conferido: true }), ...(semAjuda && { semAjuda: true }), por: userInfo.userId || null, em: new Date().toISOString() }
         : null
       const linhaOverrides = { ...(escala.linhaOverrides || {}) }
       if (valor) linhaOverrides[scoped] = valor
@@ -591,7 +594,7 @@ export function EscalaCirurgicaProvider({ children }) {
     const semOrigem = { ...anterior }
     delete semOrigem.origem
     // sobra alguma coisa no override além da origem? senão a entrada inteira sai
-    const restou = ['local', 'cirurgioes', 'termino', 'observacao', 'renovado', 'trocaCom', 'assumidaPor', 'duplicidade', 'conferido']
+    const restou = ['local', 'cirurgioes', 'termino', 'observacao', 'renovado', 'trocaCom', 'assumidaPor', 'duplicidade', 'conferido', 'semAjuda']
       .some((k) => semOrigem[k])
     const valor = slug
       ? { ...semOrigem, origem: slug, por: userInfo.userId || null, em: new Date().toISOString() }
@@ -609,6 +612,45 @@ export function EscalaCirurgicaProvider({ children }) {
     } catch (error) {
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { linhaOverrides: escala.linhaOverrides || {} } })
       toast({ variant: 'error', title: 'Erro ao informar a origem', description: error.message })
+      throw error
+    }
+  }, [toast])
+
+  /**
+   * "NÃO É AJUDA" declarado à mão (dono 14/09: "quando usuários estão marcados como
+   * ajuda, algumas vezes não aparece a opção de desfazer ajuda"). O badge de Ajuda
+   * DERIVADO — emprestado pelo cruzamento de escalas, extra fora de todo rodapé,
+   * visitante de outro rodapé — é recalculado a cada render, então desfazê-lo exige
+   * uma declaração persistida: `linha_overrides[turno:chave].semAjuda = true`. A
+   * fila a lê e a lib deixa de carimbar a linha. `semAjuda = null` volta ao
+   * automático. Mesma mecânica (e mesmos cuidados) de `definirOrigemLinha`.
+   */
+  const definirSemAjudaLinha = useCallback(async (escala, linhaArg, semAjuda, userInfo = {}, turno) => {
+    const linha = linhaDe(linhaArg)
+    const chave = linha.chave || linha.anestesista
+    const scoped = chaveTurno(turno, chave)
+    const anterior = escala.linhaOverrides?.[scoped] || {}
+    const marcar = semAjuda === true
+    if ((anterior.semAjuda === true) === marcar) return
+    const resto = { ...anterior }
+    delete resto.semAjuda
+    const restou = ['local', 'cirurgioes', 'termino', 'observacao', 'renovado', 'trocaCom', 'assumidaPor', 'origem', 'duplicidade', 'conferido']
+      .some((k) => resto[k])
+    const valor = marcar
+      ? { ...resto, semAjuda: true, por: userInfo.userId || null, em: new Date().toISOString() }
+      : (restou ? { ...resto, por: userInfo.userId || null, em: new Date().toISOString() } : null)
+    const linhaOverrides = { ...(escala.linhaOverrides || {}) }
+    if (valor) linhaOverrides[scoped] = valor
+    else delete linhaOverrides[scoped]
+    try {
+      dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { linhaOverrides } })
+      marcarEscrita()
+      try {
+        if (!String(escala.id).startsWith('demo-')) await svc.patchLinhaOverride(escala.id, scoped, valor)
+      } finally { encerrarEscrita() }
+    } catch (error) {
+      dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { linhaOverrides: escala.linhaOverrides || {} } })
+      toast({ variant: 'error', title: marcar ? 'Erro ao desfazer a ajuda' : 'Erro ao voltar ao automático', description: error.message })
       throw error
     }
   }, [toast])
@@ -1055,7 +1097,10 @@ export function EscalaCirurgicaProvider({ children }) {
   // Edita SALA/LOCAL (ou outro campo) de UM caso — aba Completa → detalhe do caso
   // (pedido do dono 24/07: além do anestesista, poder corrigir onde o procedimento
   // acontece). Otimista; board re-agrupa e a coluna de liberação re-deriva (realtime).
-  const atualizarCaso = useCallback(async (escala, casoId, updates) => {
+  // `silencioso`: sem o toast de sucesso — para a escrita que acompanha OUTRA ação
+  // (o espelho inverso do tempo, 14/09: a pílula da fila já pintou; "Caso
+  // atualizado" em cima dela seria ruído sobre uma ação que a pessoa não pediu).
+  const atualizarCaso = useCallback(async (escala, casoId, updates, { silencioso = false } = {}) => {
     if (String(escala.id).startsWith('demo-')) {
       toast({ variant: 'warning', title: 'Indisponível na demonstração' })
       return
@@ -1070,7 +1115,7 @@ export function EscalaCirurgicaProvider({ children }) {
       try {
         await svc.updateCaso(casoId, updates)
       } finally { encerrarEscrita() }
-      toast({ variant: 'success', title: 'Caso atualizado' })
+      if (!silencioso) toast({ variant: 'success', title: 'Caso atualizado' })
     } catch (error) {
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { casos: escala.casos || [] } })
       toast({ variant: 'error', title: 'Erro ao atualizar caso', description: error.message })
@@ -1293,8 +1338,8 @@ export function EscalaCirurgicaProvider({ children }) {
   const actionsValue = useMemo(() => ({
     setData, prefetch, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista,
     setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, excluirCaso, adicionarAjuda, removerAjuda,
-    reordenarAjuda, definirOrigemLinha, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, definirSalasUrgencia, refresh,
-  }), [prefetch, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, excluirCaso, adicionarAjuda, removerAjuda, reordenarAjuda, definirOrigemLinha, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, definirSalasUrgencia, refresh])
+    reordenarAjuda, definirOrigemLinha, definirSemAjudaLinha, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, definirSalasUrgencia, refresh,
+  }), [prefetch, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, excluirCaso, adicionarAjuda, removerAjuda, reordenarAjuda, definirOrigemLinha, definirSemAjudaLinha, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, definirSalasUrgencia, refresh])
 
   const stateValue = useMemo(() => ({
     escalas: state.escalas, p4Hospital: state.p4Hospital, data, loading, hoje,

@@ -71,7 +71,7 @@ const AVISO_MAX = 160
 // que o card mostra, então sai do MESMO mapa que o resto do módulo usa.
 const HOSPITAIS_FILA = ['unimed', 'hro', 'materno'].map((v) => ({ value: v, label: HOSPITAL_LABEL[v] || v }))
 
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onTrocarResponsavel, onDevolverResponsavel, onTrocarPosicao, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, onDefinirOrigem, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, onGarantirEscala, onNavigate }) {
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onDefinirTerminoCaso, onDefinirSemAjuda, onTrocarResponsavel, onDevolverResponsavel, onTrocarPosicao, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, onDefinirOrigem, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, onGarantirEscala, onNavigate }) {
   const { toast } = useToast()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
   // do turno selecionado e o rodapé (ordem de liberação) DAQUELE turno.
@@ -242,6 +242,25 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     }
     return out
   }, [escala, turnoBase])
+  /**
+   * "NÃO É AJUDA" declarado à mão (dono 14/09): chaves com
+   * `linha_overrides[turno:chave].semAjuda`. O badge de Ajuda derivado (emprestado
+   * pelo cruzamento de escalas, extra fora de todo rodapé, visitante de outro
+   * rodapé) é recalculado a cada render — sem uma declaração persistida não havia
+   * como desfazê-lo, e o toque no painel ADICIONAVA a pessoa à ajuda em vez disso
+   * ("algumas vezes não aparece a opção de desfazer ajuda"). Mesma classe de
+   * `origem`: declaração humana vence a derivada. Namespaced por turno.
+   */
+  const semAjudaManual = useMemo(() => {
+    const out = new Set()
+    const prefixo = (turnoBase === 'matutino' || turnoBase === 'vespertino') ? `${turnoBase}:` : ''
+    for (const [rawKey, ov] of Object.entries(escala?.linhaOverrides || {})) {
+      if (ov?.semAjuda !== true) continue
+      if (prefixo && !String(rawKey).startsWith(prefixo)) continue
+      out.add(prefixo ? String(rawKey).slice(prefixo.length) : rawKey)
+    }
+    return out
+  }, [escala, turnoBase])
 
   const { linhas, semAnestesista } = useMemo(() => {
     // FDS: a fila publicada existe ANTES das listas de procedimentos (são
@@ -291,12 +310,13 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       // nome — quem está aqui de ajuda libera primeiro, na ordem de liberação de lá.
       rodapeOutros: modoFds ? [] : presencaOutros.filter((p) => p.rodapeIdx != null),
       origemManual,
+      semAjuda: semAjudaManual,
       // ORDEM INFORMADA (dono 09/09): numeração vinda com as fotos ou setas já
       // usadas neste turno. Quando existe, o array de ajuda manda na cauda e as
       // setas continuam disponíveis; sem ela, a derivação por origem (27/08) segue.
       ajudaOrdemInformada: ordemAjudaInformada,
     })
-  }, [casosTurno, rodapeTurno, escala, hospitalLabel, turno, turnoBase, resolverUid, nomeExibicao, presencaOutros, origemManual, modoFds, ordemAjudaInformada])
+  }, [casosTurno, rodapeTurno, escala, hospitalLabel, turno, turnoBase, resolverUid, nomeExibicao, presencaOutros, origemManual, semAjudaManual, modoFds, ordemAjudaInformada])
   // SEM ANESTESISTA POR CIRURGIÃO — só na fila única (dono 13/09; ver
   // `cartaoGrupoCirurgiao`). O hospital de cada alerta é o do caso de origem.
   const gruposSemAnest = useMemo(
@@ -982,6 +1002,16 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     return linha.origemLabel || null
   }
   /**
+   * UM predicado só para "esta linha está com Ajuda" (dono 14/09). O badge da fila
+   * e o botão do painel liam fontes diferentes (badge: `isAjuda` OU extra fora de
+   * todo rodapé; botão: só `isAjuda`) — o badge derivado aparecia com o botão
+   * desligado, "Marcar como ajuda", e o toque adicionava a pessoa ao array em vez
+   * de desfazer. Badge e botão passam a sair daqui. Na fila única ajuda nunca é
+   * automática (dono 05/09) e o card noturno não tem ajuda.
+   */
+  const ehAjudaVisivel = (linha) => !!linha && !semAjudaManual.has(linha.chave)
+    && (!!linha.isAjuda || (!modoFds && !linha.noturno && !!linha.isExtra && !ajudaDeOutro(linha)))
+  /**
    * Destino de quem foi EMPRESTADO (dono 30/07): a linha fica na posição do rodapé
    * daqui, e o card diz para onde a pessoa foi — "Ajuda Hemodinâmica/Unimed".
    * Só entradas COM sala (caso de verdade lá); rodapé de outro hospital sem caso
@@ -1326,6 +1356,21 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       termino: terminoHHMM || '',
       observacao: observacaoDe(ov),
     })?.catch?.(() => {})
+    // ESPELHO INVERSO (dono 14/09). Com UMA só cirurgia aberta, o total da pessoa
+    // É o término dela: o caminho caso→total existe desde 30/07 (`espelhoTempoTotal`,
+    // no detalhe do caso), mas a volta não existia — informar o término no card e
+    // depois ajustar a pílula deixava "faltam 2min" no caso e "32min" na pílula,
+    // e o chip do caso voltava a aparecer porque os dois divergiam. As mesmas
+    // guardas do espelho de ida: um caso com id, sem dupla ("A + B" é de dois
+    // donos, o total de um não é o término dos dois) e sem "?". Com 2+ casos o
+    // total segue 100% manual (nunca é soma de estimativas).
+    if (linha.casosAtivos === 1 && linha.casoIds?.length === 1 && onDefinirTerminoCaso) {
+      const c = casosTurno.find((x) => x.id === linha.casoIds[0])
+      const n = String(c?.anestesista || '').trim()
+      if (c && n && !n.includes('+') && !/^\?+$/.test(n) && (c.terminoPrevisto || '') !== (terminoHHMM || '')) {
+        onDefinirTerminoCaso(c.id, terminoHHMM || '')?.catch?.(() => {})
+      }
+    }
   }
   // Alerta "?" → dono: grava no caso (o alerta sai daqui E da Completa juntos).
   const confirmarSemAnest = async () => {
@@ -1361,12 +1406,33 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
    * Ao ADICIONAR, entra no FIM do array, que é a ordem que a fila respeita: a
    * ÚLTIMA ajuda escrita é a primeira a sair.
    */
-  const nomeAjudaDe = (linha) =>
-    ajudaTurno.find((n) => (resolverUid(n) || normNome(n)) === linha.chave) || null
+  // Identidade TOLERANTE (dono 14/09): a chave da linha pode ser o uid do vínculo,
+  // o nome normalizado, ou — na posição assumida — a chave do DONO do slot; e a
+  // entrada do array pode ter sido resolvida pelo uid do caso. Casar só
+  // `linha.chave` deixava "não é ajuda" sem efeito nesses casos (o toque
+  // ADICIONAVA de novo e o context saía em silêncio).
+  const nomeAjudaDe = (linha) => {
+    const alvos = new Set([linha.chave, linha.uid, normNome(linha.nomeOriginal), normNome(linha.anestesista)].filter(Boolean))
+    return ajudaTurno.find((n) => {
+      const uid = resolverUid(n)
+      return (uid && alvos.has(uid)) || alvos.has(normNome(n))
+    }) || null
+  }
+  // O que o toque FAZ acompanha o que o botão MOSTRA (`ehAjudaVisivel`):
+  //   ajuda escrita no array → sai do array;
+  //   badge DERIVADO (emprestado/extra/visitante) → declaração "não é ajuda"
+  //   persistida na linha (sem ela o badge voltaria no próximo render);
+  //   linha com a declaração → limpa a declaração (volta ao automático);
+  //   linha comum → entra no array, no FIM (sai primeiro).
   const toggleAjuda = async (linha) => {
     const existente = nomeAjudaDe(linha)
-    if (existente) await onRemoveAjuda?.(existente)
-    else await onAddAjuda?.(linha.nomeOriginal || linha.anestesista)
+    if (existente) { await onRemoveAjuda?.(existente); return }
+    if (ehAjudaVisivel(linha)) {
+      if (onDefinirSemAjuda) { await onDefinirSemAjuda(linha, true); return }
+    } else if (semAjudaManual.has(linha.chave) && onDefinirSemAjuda) {
+      await onDefinirSemAjuda(linha, null); return
+    }
+    await onAddAjuda?.(linha.nomeOriginal || linha.anestesista)
   }
 
   // adicionar ajuda: resolve o roster → nome (apelido p/ casar no dicionário) → onAddAjuda
@@ -1796,7 +1862,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // liberação feita À NOITE (P3/P4 seguem a lógica normal) persiste sozinha.
           const noturno = !!linha.noturno
           const semEscala = (modoFds || !noturno) && naoEscalado(linha)
-          const foraDoRodape = !noturno && linha.isExtra
           // ajuda acrescentada (fora do rodapé) também é numerada: ela está NA
           // fila (dono 19/08) — o número é sequência de exibição, não posição
           // da ordem publicada, que segue imutável
@@ -1901,7 +1966,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // na fila única ajuda nunca é automática (dono 05/09) — quem tem
           // cirurgia sem estar na ordem entra na fila, e só `ajuda_externa`
           // (marcada à mão) pinta o badge.
-          const badgeAjuda = !liberadoReal && (linha.isAjuda || (!modoFds && foraDoRodape && !ajudaDeOutro(linha)))
+          const badgeAjuda = !liberadoReal && ehAjudaVisivel(linha)
           const badgeTroca = trocaDe(linha)
           const badgeAssumida = linha.assumida && !badgeTroca
           const badgeAjudaOutro = !liberadoReal && ajudaDeOutro(linha)
@@ -2771,10 +2836,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   /* fecha no toque (dono 19/08): o badge pinta pelo otimista do
                      context; erro reverte + toast */
                   onClick={() => { toggleAjuda(editor).catch(() => {}); setEditor(null) }}
-                  aria-pressed={!!editor.isAjuda}
+                  aria-pressed={!!ehAjudaVisivel(editor)}
                   /* nome acessível igual ao do detalhe do caso: os dois escrevem
                      no MESMO ajudaExterna e tinham dois rótulos (auditoria 17/08) */
-                  aria-label={editor.isAjuda
+                  aria-label={ehAjudaVisivel(editor)
                     ? `${editor.anestesista} não é ajuda de outro hospital`
                     : `Marcar ${editor.anestesista} como ajuda de outro hospital`}
                   className="flex min-h-[48px] w-full items-center gap-2 border-b border-border py-2 text-left"
@@ -2782,11 +2847,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   <span className="text-[14.5px] font-semibold">Ajuda de outro hospital</span>
                   <span className={[
                     'relative ml-auto h-[26px] w-11 shrink-0 rounded-full border transition-colors',
-                    editor.isAjuda ? 'border-primary bg-primary' : 'border-muted-foreground/25 bg-muted-foreground/30',
+                    ehAjudaVisivel(editor) ? 'border-primary bg-primary' : 'border-muted-foreground/25 bg-muted-foreground/30',
                   ].join(' ')}>
                     <span className={[
                       'absolute top-[2px] h-5 w-5 rounded-full bg-white shadow transition-all',
-                      editor.isAjuda ? 'left-[22px]' : 'left-[2px]',
+                      ehAjudaVisivel(editor) ? 'left-[22px]' : 'left-[2px]',
                     ].join(' ')} />
                   </span>
                 </button>

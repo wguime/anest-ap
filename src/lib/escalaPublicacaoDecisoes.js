@@ -29,6 +29,8 @@
 /** Campos do override que são IDENTIDADE/RASTRO da linha e sobrevivem à republicação. */
 export const CAMPOS_RASTRO = Object.freeze([
   'trocaCom', 'assumidaPor', 'origem', 'observacao', 'local', 'termino', 'duplicidade', 'conferido',
+  // "não é ajuda" declarado à mão (14/09) — mesma classe de `origem`
+  'semAjuda',
 ])
 
 const texto = (v) => String(v ?? '').trim()

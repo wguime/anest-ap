@@ -3,6 +3,46 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.5 (14/09/2026) — Dupla preenchida na folha, tempo espelhado nos dois sentidos e "não é ajuda" de verdade
+
+Três queixas do dono na tarde de 14/09, todas na fila de Liberações e na folha "Definir anestesista".
+
+### Dupla já gravada nasce preenchida — trocar uma metade é um toque
+"Se eu quiser trocar um dos anestesistas escalados agora, não há opção." A dupla "A + B" tem uid
+nulo por construção, então a folha abria vazia: era escolher os dois de novo. Agora `duplaAtual`
+resolve as duas metades pelo dicionário e a folha nasce com o par preenchido e o campo do segundo
+aberto. Trocar o primeiro é o card ASSUME; trocar o segundo é o Select; "Só um anestesista"
+desmarca o segundo e grava o primeiro com login; escolher como primeiro quem era o segundo
+INVERTE a ordem em vez de apagar uma metade. A metade que não mudou volta com a grafia ORIGINAL,
+nunca reescrita por `apelidos[0]` (o alfabético — "GUILHERME M ELO"). Confirmar só acende quando
+algo muda. Vale pelo cabeçalho da sala (todos os procedimentos do bloco) e pelo card de um
+procedimento. Só "?" e dupla com metade que o dicionário não resolve ainda pedem o primeiro.
+
+### O tempo total volta para a cirurgia quando ela é a única
+Desde 30/07 o término informado no card da cirurgia espelha na pílula do total quando a pessoa
+tem uma só cirurgia aberta. A volta não existia: ajustar a pílula deixava "faltam 2min" no caso e
+"32min" na pílula, e o chip do caso reaparecia porque os dois divergiam. `definirTempo` passa a
+gravar também o `terminoPrevisto` do caso (prop `onDefinirTerminoCaso`; `atualizarCaso` ganhou
+`{ silencioso }` para não avisar "Caso atualizado" em cima da pílula), com as mesmas guardas do
+espelho de ida: um caso com id, sem dupla, sem "?". Com 2+ cirurgias o total segue manual e
+independente — nunca é soma de estimativas (decisão de 29/07).
+
+### "Não é ajuda" existe para todo badge de Ajuda
+"Quando usuários estão marcados como ajuda, algumas vezes não aparece a opção de desfazer." O
+badge da fila e o botão do painel liam fontes diferentes: badge derivado (emprestado pelo
+cruzamento de escalas, extra fora de todo rodapé, visitante de outro rodapé) aparecia com o
+botão DESLIGADO, e o toque ADICIONAVA a pessoa ao array — ela caía para o fim da fila. Agora os
+dois saem de `ehAjudaVisivel`; desfazer um badge derivado grava
+`linha_overrides[turno:chave].semAjuda` (`definirSemAjudaLinha`, mesma mecânica de `origem`,
+sobrevive ao editor, ao Restaurar e à republicação — `CAMPOS_RASTRO`), a lib deixa de carimbar
+`isAjuda`/`ajudaFora` e a origem derivada; tocar de novo limpa a declaração. Ajuda escrita no
+array continua saindo do array, e o casamento da entrada ficou tolerante à identidade (uid,
+nome do rodapé, nome exibido — o slot assumido e a chave por uid do caso não casavam).
+
+### Fora deste commit
+A visualização dos tempos por procedimento (2+ cirurgias, 1 término) espera a escolha do dono
+entre as opções A/B/C da maquete `.tmp/tempos-por-cirurgia.html`.
+
 ## v5.12.4 (14/09/2026) — Trocas de plantão: marcação, formulários e lembretes seguem a escala EFETIVA
 
 Foto de um residente (27/07, via dono): "Tinha trocado meu dia 20 pelo 19, mas continuou marcando

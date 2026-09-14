@@ -282,6 +282,38 @@ label } }`. Quando o hospital de origem TEM escala, o valor aparece como
 - `origem` sobrevive a QUALQUER salvar do editor e ao "Restaurar automático", pela
   mesma razão de `trocaCom`/`assumidaPor`: é declaração sobre a pessoa, não ajuste
   de exibição — e é ela que decide a ordem de saída. Limpar é só pelo "Não informar".
+
+### "Não é ajuda" para o badge DERIVADO (dono 14/09)
+
+"Quando usuários estão marcados como ajuda, algumas vezes não aparece a opção de desfazer
+ajuda." Sete fontes fazem uma linha ser Ajuda; só a entrada em `ajuda_externa` tinha
+desfazer. O badge da fila lia `isAjuda` OU "extra fora de todo rodapé"; o botão do painel
+lia só `isAjuda` — badge derivado (emprestado pelo cruzamento de escalas, extra sem origem,
+visitante de outro rodapé) aparecia com o botão DESLIGADO, e o toque ADICIONAVA a pessoa ao
+array (ela caía para o fim da fila; no slot assumido adicionava o nome do DONO do slot).
+
+- **Um predicado só:** `ehAjudaVisivel(linha)` na `LiberacoesView` decide badge E botão.
+- **Desfazer um badge derivado é declaração persistida:** `linha_overrides[turno:chave]
+  .semAjuda = true` (`definirSemAjudaLinha` no context, mesma mecânica de `origem`; em
+  `CAMPOS_RASTRO`, então sobrevive ao editor, ao Restaurar e à republicação). A view passa
+  `opts.semAjuda` (Set de chaves) à lib, que deixa de carimbar `isAjuda`/`ajudaFora` e a
+  ORIGEM derivada (`idxOrigem`/`hospOrigem` devolvem null) — posição, `teveCasos` e o resto
+  da linha ficam. Tocar de novo limpa a declaração (volta ao automático); linha comum sem
+  declaração entra no array como sempre. Ajuda ESCRITA no array continua saindo do array.
+- **Casamento tolerante** em `nomeAjudaDe`: uid, `nomeOriginal` e nome exibido, além da chave.
+- FDS intacto: o badge derivado de extra já era só de dia útil (05/09).
+
+### Espelho do tempo nos DOIS sentidos (dono 14/09)
+
+Com UMA só cirurgia aberta, o total da pessoa É o término dela. O caminho caso→total existe
+desde 30/07 (`espelhoTempoTotal`, no detalhe do caso); a volta não existia, e ajustar a
+pílula deixava "faltam 2min" no caso e "32min" na pílula. `definirTempo` (view) agora grava
+também `terminoPrevisto` no caso pela prop `onDefinirTerminoCaso` (página →
+`atualizarCaso(..., { silencioso: true })`; na fila única a escala é a do hospital do caso),
+com as guardas do espelho de ida: `casosAtivos === 1 && casoIds.length === 1`, sem dupla
+"A + B" (é de dois donos), sem "?". Com 2+ cirurgias o total segue 100% manual — nunca soma
+de estimativas (29/07). Trava: `liberacoesPainelLinha.test.jsx`, describe "a pílula do total
+espelha…".
 - Nada disso encosta em `ordem_liberacao`.
 
 
