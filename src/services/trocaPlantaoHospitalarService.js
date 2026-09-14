@@ -12,7 +12,7 @@
  *   - Cobertura (unidirecional): só dataPlantao. Aceitadora cobre o(s) plantão(ões).
  *   - Swap bidirecional: dataPlantao + dataDesejada. Ambas trocam dias.
  */
-import { collection, addDoc, getDocs, doc, updateDoc, writeBatch, query, where, orderBy, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, writeBatch, query, where, orderBy, documentId, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { createFirestoreSubscription } from './firestoreSubscriptionHelper';
 import { getHospitaisBase, FUNCIONARIAS_HOSPITAIS } from '../data/hospitaisTecnicas2026';
@@ -59,21 +59,57 @@ async function escalaBaseDoDia(dateKey) {
 }
 
 /**
+ * Overrides de `hospitaisDiario` da data ({ '{data}_{hospital}_{turno}': funcionariaId }).
+ * Os ids dos docs começam pela data, então um range em documentId() pega os 3 slots do dia.
+ * Sem eles o serviço julgava "quem está escalada" pela base pura e contradizia o
+ * formulário (que já aplicava as trocas): a funcionária que RECEBEU um slot numa troca
+ * era recusada com "não está escalada nessa data" ao tentar oferecê-lo de novo.
+ */
+async function overridesDoDia(dateKey) {
+  try {
+    const snap = await getDocs(query(
+      collection(db, OVERRIDE_COLLECTION),
+      where(documentId(), '>=', `${dateKey}_`),
+      where(documentId(), '<=', `${dateKey}_`),
+    ));
+    const map = {};
+    snap.docs.forEach((d) => {
+      const data = d.data();
+      if (data?.funcionariaOverride) map[d.id] = data.funcionariaOverride;
+    });
+    return map;
+  } catch (error) {
+    console.warn('[trocaPlantaoHospitalar] não leu os overrides do dia:', error?.message || error);
+    return {};
+  }
+}
+
+/**
  * Retorna lista de slots em que a funcionária está escalada na data informada.
- * Considera apenas o agendamento base (sem overrides).
+ * Base do dia + overrides de trocas já aceitas (`hospitaisDiario`): um slot com
+ * override é de quem está no override, não de quem a base imprime.
  * @returns {Array<{hospital: 'hro'|'unimed'|'plantao_pago', turno: 'manha'|'tarde'}>}
  */
-export function slotsDaFuncionariaNaData(funcionariaId, dateKey, escala = getHospitaisBase()[dateKey]) {
+export function slotsDaFuncionariaNaData(funcionariaId, dateKey, escala = getHospitaisBase()[dateKey], overrides = {}) {
   if (!escala) return [];
   const nome = nomeFromFuncionariaId(funcionariaId);
   if (!nome) return [];
   const slots = [];
   for (const [hospitalKey, hospitalField] of Object.entries(HOSPITAL_KEYS)) {
-    if (escala[hospitalField] === nome) {
-      slots.push({ hospital: hospitalKey, turno: SLOT_TURNOS[hospitalKey] });
+    const turno = SLOT_TURNOS[hospitalKey];
+    const overrideId = overrides?.[overrideDocId(dateKey, hospitalKey, turno)];
+    const escalada = overrideId ? overrideId === funcionariaId : escala[hospitalField] === nome;
+    if (escalada) {
+      slots.push({ hospital: hospitalKey, turno });
     }
   }
   return slots;
+}
+
+/** Base + overrides da data, lidos juntos — o par que `slotsDaFuncionariaNaData` precisa. */
+async function escalaEfetivaDoDia(dateKey) {
+  const [escala, overrides] = await Promise.all([escalaBaseDoDia(dateKey), overridesDoDia(dateKey)]);
+  return { escala, overrides };
 }
 
 export async function createTradeRequest({
@@ -112,8 +148,9 @@ export async function createTradeRequest({
       return { trade: null, error: 'Selecione hospital e turno do slot desejado' };
     }
 
-    // Solicitante deve estar escalada no(s) slot(s)
-    const slotsSolicitante = slotsDaFuncionariaNaData(solicitanteFuncionariaId, dataPlantao, await escalaBaseDoDia(dataPlantao));
+    // Solicitante deve estar escalada no(s) slot(s) — na escala EFETIVA (trocas aceitas contam)
+    const dia = await escalaEfetivaDoDia(dataPlantao);
+    const slotsSolicitante = slotsDaFuncionariaNaData(solicitanteFuncionariaId, dataPlantao, dia.escala, dia.overrides);
     if (slotsSolicitante.length === 0) {
       return { trade: null, error: 'Você não está escalada nessa data' };
     }
@@ -168,9 +205,12 @@ export async function acceptTrade(codigo, userId, userName, userFuncionariaId) {
       return { success: false, error: 'Esta troca foi direcionada a outra funcionária', trade };
     }
 
+    // Escala EFETIVA do dia oferecido: base + trocas já aceitas
+    const diaPlantao = await escalaEfetivaDoDia(trade.dataPlantao);
+
     // Aceitadora não pode estar escalada em conflito com slot a assumir
     if (trade.escopo === 'slot') {
-      const slotsAceitadoraNaData = slotsDaFuncionariaNaData(userFuncionariaId, trade.dataPlantao, await escalaBaseDoDia(trade.dataPlantao));
+      const slotsAceitadoraNaData = slotsDaFuncionariaNaData(userFuncionariaId, trade.dataPlantao, diaPlantao.escala, diaPlantao.overrides);
       const conflito = slotsAceitadoraNaData.some((s) => s.hospital === trade.hospital && s.turno === trade.turno);
       if (conflito) {
         return { success: false, error: 'Você já está escalada neste slot', trade };
@@ -189,10 +229,11 @@ export async function acceptTrade(codigo, userId, userName, userFuncionariaId) {
       atualizadoEm: serverTimestamp(),
     });
 
-    // Aplica overrides do plantão da solicitante → aceitadora
+    // Aplica overrides do plantão da solicitante → aceitadora (os slots que ela TEM hoje,
+    // contando trocas anteriores — não os que a base imprimia)
     const slotsParaTransferir = trade.escopo === 'slot'
       ? [{ hospital: trade.hospital, turno: trade.turno }]
-      : slotsDaFuncionariaNaData(trade.solicitanteFuncionariaId, trade.dataPlantao, await escalaBaseDoDia(trade.dataPlantao));
+      : slotsDaFuncionariaNaData(trade.solicitanteFuncionariaId, trade.dataPlantao, diaPlantao.escala, diaPlantao.overrides);
 
     slotsParaTransferir.forEach(({ hospital, turno }) => {
       batch.set(doc(db, OVERRIDE_COLLECTION, overrideDocId(trade.dataPlantao, hospital, turno)), {
@@ -206,9 +247,10 @@ export async function acceptTrade(codigo, userId, userName, userFuncionariaId) {
 
     // Swap bidirecional: slots da aceitadora → solicitante
     if (trade.dataDesejada) {
+      const diaDesejado = trade.escopo === 'slot' ? null : await escalaEfetivaDoDia(trade.dataDesejada);
       const slotsRetorno = trade.escopo === 'slot'
         ? [{ hospital: trade.hospitalDesejado, turno: trade.turnoDesejado }]
-        : slotsDaFuncionariaNaData(userFuncionariaId, trade.dataDesejada, await escalaBaseDoDia(trade.dataDesejada));
+        : slotsDaFuncionariaNaData(userFuncionariaId, trade.dataDesejada, diaDesejado.escala, diaDesejado.overrides);
 
       slotsRetorno.forEach(({ hospital, turno }) => {
         batch.set(doc(db, OVERRIDE_COLLECTION, overrideDocId(trade.dataDesejada, hospital, turno)), {

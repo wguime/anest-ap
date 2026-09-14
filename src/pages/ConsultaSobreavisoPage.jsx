@@ -6,17 +6,23 @@
  * Marcadores no calendário:
  *   - Bolinha amarela: feriados cadastrados em FERIADOS_2026.
  *   - Bolinha azul: dias em que a funcionária logada está de sobreaviso.
+ *
+ * Tudo aqui é escala EFETIVA (base + overrides de troca aceita/ajuste manual):
+ * as bolinhas, o detalhe do dia e o card dos hospitais. Até 14/09/2026 só o
+ * detalhe aplicava o override — bolinhas e hospitais liam a base pura, o mesmo
+ * defeito que marcou o residente no dia errado em "Consultar Plantões".
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { CalendarDays, Shuffle, Pencil } from 'lucide-react';
 import { SectionCard, Calendar, StaffScheduleCard } from '@/design-system';
 import { PageHeader } from '../components';
-import { getSobreavisoBase, FUNCIONARIAS_SOBREAVISO, getSobreavisoParaData, getSobreavisoEfetivo, getHorarioSobreaviso } from '../data/sobreavisoMaterno2026';
+import { getSobreavisoBase, FUNCIONARIAS_SOBREAVISO, getSobreavisoParaData, getSobreavisoEfetivo, getHorarioSobreaviso, getDatasDaSobreavisista } from '../data/sobreavisoMaterno2026';
 import { useEscalasFuncionariasBase } from '../contexts/EscalasFuncionariasBaseContext';
 import { FERIADOS_2026, FERIADO_LABELS } from '../data/plantao2026';
 import { toDateKey } from '../data/residencia2026';
-import { getHospitaisParaData, isDiaAutomaticoHospitais, TURNO_MANHA as HOSPITAIS_TURNO_MANHA, TURNO_TARDE as HOSPITAIS_TURNO_TARDE, TURNO_FUNC_UNIMED as HOSPITAIS_TURNO_FUNC_UNIMED } from '../data/hospitaisTecnicas2026';
-import { getSobreavisoDiario } from '../services/sobreavisoMaternoService';
+import { getHospitaisEfetivos, isDiaAutomaticoHospitais, TURNO_MANHA as HOSPITAIS_TURNO_MANHA, TURNO_TARDE as HOSPITAIS_TURNO_TARDE, TURNO_FUNC_UNIMED as HOSPITAIS_TURNO_FUNC_UNIMED } from '../data/hospitaisTecnicas2026';
+import { useSobreavisoOverrides } from '../hooks/useOverridesDiario';
+import { useHospitaisOverrides } from '../hooks/useHospitaisOverrides';
 import { useTrocaSobreaviso } from '../hooks/useTrocaSobreaviso';
 
 // Range do calendário derivado da base ativa (estático + meses publicados no
@@ -64,24 +70,14 @@ export default function ConsultaSobreavisoPage({ goBack }) {
     if (ef > maxDate) return maxDate;
     return ef;
   });
-  const [overrideDoc, setOverrideDoc] = useState(null);
-  const [loading, setLoading] = useState(false);
+  // Coleções inteiras em tempo real: a mesma fonte alimenta bolinhas, detalhe
+  // do dia e card dos hospitais.
+  const { overrides, docs: overrideDocs, loading } = useSobreavisoOverrides();
+  const { overrides: hospitaisOverrides } = useHospitaisOverrides();
 
   const dateKey = useMemo(() => toDateKey(selectedDate), [selectedDate]);
-  const hasSchedule = !!getSobreavisoBase()[dateKey];
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setOverrideDoc(null);
-    getSobreavisoDiario(dateKey).then(({ data }) => {
-      if (!cancelled) {
-        setOverrideDoc(data);
-        setLoading(false);
-      }
-    });
-    return () => { cancelled = true; };
-  }, [dateKey]);
+  const overrideDoc = overrideDocs[dateKey] || null;
+  const hasSchedule = !!getSobreavisoBase()[dateKey] || !!overrideDoc;
 
   const events = useMemo(() => {
     const list = [];
@@ -94,11 +90,10 @@ export default function ConsultaSobreavisoPage({ goBack }) {
         color: COLOR_FERIADO,
       });
     }
-    // Dias da funcionária logada
+    // Dias EFETIVOS da funcionária logada (base + trocas aceitas)
     if (userFuncionariaId) {
       const f = FUNCIONARIAS_SOBREAVISO.find((x) => x.id === userFuncionariaId);
-      for (const [key, fid] of Object.entries(getSobreavisoBase())) {
-        if (fid !== userFuncionariaId) continue;
+      for (const key of getDatasDaSobreavisista(userFuncionariaId, minKey, overrides)) {
         list.push({
           date: new Date(`${key}T12:00:00`),
           label: `Meu sobreaviso${f ? ` (${f.nome})` : ''}`,
@@ -107,7 +102,7 @@ export default function ConsultaSobreavisoPage({ goBack }) {
       }
     }
     return list;
-  }, [userFuncionariaId, minKey, maxKey, baseVersion]);
+  }, [userFuncionariaId, minKey, maxKey, baseVersion, overrides]);
 
   const base = useMemo(() => getSobreavisoParaData(selectedDate), [selectedDate, baseVersion]);
   const funcionariaId = overrideDoc?.funcionariaOverride ?? base?.id;
@@ -120,7 +115,9 @@ export default function ConsultaSobreavisoPage({ goBack }) {
 
   const hospitalSections = useMemo(() => {
     if (!isDiaAutomaticoHospitais(selectedDate)) return [];
-    const auto = getHospitaisParaData(selectedDate);
+    // COM overrides — a Home e o Hub já liam assim; aqui a base pura mostrava a
+    // funcionária que tinha trocado o plantão
+    const auto = getHospitaisEfetivos(selectedDate, hospitaisOverrides);
     if (!auto) return [];
     const sections = [];
     if (auto.hro) {
@@ -148,7 +145,7 @@ export default function ConsultaSobreavisoPage({ goBack }) {
       });
     }
     return sections;
-  }, [selectedDate, baseVersion]);
+  }, [selectedDate, baseVersion, hospitaisOverrides]);
 
   return (
     <div className="flex flex-col min-h-dvh bg-background">

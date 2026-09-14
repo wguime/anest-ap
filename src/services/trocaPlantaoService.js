@@ -3,7 +3,10 @@
  * Funcoes para gerenciar solicitacoes de troca de plantao no Firestore.
  *
  * Ao aceitar uma troca, também grava override em residenciaPlantaoDiario/{data}
- * para que a escala reflita automaticamente o novo plantonista.
+ * para que a escala reflita automaticamente o novo plantonista — e espelha o
+ * override em Supabase (`residencia_plantao_diario_overrides`), que é o que a
+ * edge de lembretes `schedule-shift-reminders` lê. Sem o espelho, o "Plantão
+ * amanhã" saía para o residente da tabela, não para o da troca (julho/2026).
  *
  * Modos de troca:
  *   - Cobertura (unidirecional): só dataPlantao. Aceitador cobre o plantão.
@@ -13,6 +16,7 @@
 import { collection, addDoc, getDocs, doc, updateDoc, writeBatch, query, where, orderBy, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { createFirestoreSubscription } from './firestoreSubscriptionHelper';
+import { espelharOverridesResidencia } from './residenciaPlantaoOverridesMirror';
 
 const COLLECTION = 'trocas_plantao';
 const OVERRIDE_COLLECTION = 'residenciaPlantaoDiario';
@@ -134,6 +138,14 @@ export async function acceptTrade(codigo, userId, userName, userResidenteId) {
     }
 
     await batch.commit();
+
+    // Espelho para a edge de lembretes (best-effort; a troca já está gravada)
+    const espelho = [{ dateKey: trade.dataPlantao, residenteOverride: userResidenteId, origem: 'troca', trocaId: trade.codigo }];
+    if (trade.dataDesejada) {
+      espelho.push({ dateKey: trade.dataDesejada, residenteOverride: trade.solicitanteResidenteId, origem: 'troca', trocaId: trade.codigo });
+    }
+    await espelharOverridesResidencia(espelho, userId);
+
     return { success: true, error: null, trade };
   } catch (error) {
     console.error('Erro ao aceitar troca:', error);

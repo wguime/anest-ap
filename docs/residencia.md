@@ -45,6 +45,29 @@ GerenciarResidenciaPage.jsx
 ## Firestore Collections
 - `residencia/estagios` — Lista de residentes com estágios
 - `residencia/plantao` — Plantão atual do residente
+- `residenciaPlantaoDiario/{YYYY-MM-DD}` — override do residente do dia (`residenteOverride`,
+  `origem: 'troca'|'manual'`, `trocaId`). Aceitar troca grava 1 (cobertura) ou 2 (swap) docs.
+
+## Escala EFETIVA = tabela + overrides (v5.12.4, 14/09/2026)
+A escala dos residentes é a tabela estática `PLANTOES_2026` (`src/data/plantao2026.js`); toda troca
+aceita ou ajuste manual vira override em `residenciaPlantaoDiario`. **Ler a tabela direto é ler a
+escala de ANTES das trocas** — foi assim que, em julho/2026, quem trocou o dia 20 pelo 19 continuou
+marcado no 20 em "Consultar Plantões" (o detalhe do dia lia o override; as bolinhas, não).
+
+- `getResidenteEfetivo(dateKey, overrides)` / `getDatasDoResidente(id, overrides)` — as únicas
+  funções que respondem "de quem é o plantão". Overrides vêm de `useResidenciaPlantaoOverrides()`
+  (`src/hooks/useOverridesDiario.js`, coleção inteira em tempo real; mesmo desenho do
+  `useHospitaisOverrides`).
+- Formulário de troca: destinatário auto-selecionado e validação (`src/lib/trocaResidenciaValidacao.js`)
+  julgam pela escala efetiva; não se oferece um dia que já foi cedido.
+- **Lembretes "Plantão amanhã" vêm da edge `schedule-shift-reminders` (pg_cron 3×/dia), que NÃO lê
+  Firestore:** ela consulta `residencia_plantao_diario_overrides` (Supabase) e cai na tabela sem a
+  linha. A tabela só existe desde a migration `20260914150000`; toda escrita no Firestore é espelhada
+  por `src/services/residenciaPlantaoOverridesMirror.js` (best-effort — falha não desfaz a troca, só
+  avisa no console). O hook `useResidenteShiftReminders` (admin, client-side) lê o Firestore; os dois
+  produzem o mesmo `related_entity_id`, então a dedup do banco segura a duplicata quando concordam.
+  Sinal de drift: dois residentes com "Plantão amanhã" para o mesmo dia em `notifications`
+  (`related_entity_type = 'plantao-residencia'`).
 
 ## Badge por Ano
 R1 = azul | R2 = laranja | R3 = verde

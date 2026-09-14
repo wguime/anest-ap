@@ -12,6 +12,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Button, Select, Textarea } from '@/design-system';
 import { FUNCIONARIAS_SOBREAVISO, getDatasDaSobreavisista } from '../../data/sobreavisoMaterno2026';
+import { useSobreavisoOverrides } from '../../hooks/useOverridesDiario';
 import { formatDate } from '@/utils/formatters';
 
 function todayKey() {
@@ -63,15 +64,20 @@ function SobreavisoTradeRequestForm({
     setSobreavisoDelaKey('');
   }, [effectiveSolicitanteId]);
 
+  // Escala EFETIVA (base + trocas aceitas): quem recebeu um sobreaviso numa
+  // troca pode oferecê-lo; quem o cedeu não o vê mais aqui. O helper já aceitava
+  // os overrides — o formulário é que não os passava.
+  const { overrides } = useSobreavisoOverrides();
+
   const meusSobreavisos = useMemo(
-    () => getDatasDaSobreavisista(effectiveSolicitanteId, todayKey()),
-    [effectiveSolicitanteId]
+    () => getDatasDaSobreavisista(effectiveSolicitanteId, todayKey(), overrides),
+    [effectiveSolicitanteId, overrides]
   );
 
   const sobreavisosDela = useMemo(() => {
     if (!destinatarioId) return [];
-    return getDatasDaSobreavisista(destinatarioId, todayKey()).filter((k) => k !== meuSobreavisoKey);
-  }, [destinatarioId, meuSobreavisoKey]);
+    return getDatasDaSobreavisista(destinatarioId, todayKey(), overrides).filter((k) => k !== meuSobreavisoKey);
+  }, [destinatarioId, meuSobreavisoKey, overrides]);
 
   const meuSobreavisoOptions = useMemo(() => {
     if (!effectiveSolicitanteId) {

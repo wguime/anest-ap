@@ -444,3 +444,28 @@ export function getPlantaoParaData(date) {
   if (!r) return null;
   return { ...r, data: key, horario: getHorarioPlantao(date) };
 }
+
+/**
+ * Residente EFETIVO de um dia: o override de `residenciaPlantaoDiario` (troca
+ * aceita ou ajuste manual) vence a tabela estática. É por aqui que se responde
+ * "de quem é o plantão" — ler PLANTOES_2026 direto é ler a escala de ANTES das
+ * trocas (foi assim que, em julho/2026, quem trocou o dia 20 pelo 19 continuou
+ * marcado no 20 e o lembrete "plantão amanhã" saiu para a pessoa errada).
+ * @param {string} dateKey — 'YYYY-MM-DD'
+ * @param {Object} overrides — { 'YYYY-MM-DD': residenteId }
+ */
+export function getResidenteEfetivo(dateKey, overrides = {}) {
+  return overrides?.[dateKey] || PLANTOES_2026[dateKey] || null;
+}
+
+/**
+ * Datas em que o residente está de plantão JÁ com as trocas aplicadas — o que
+ * alimenta as bolinhas do calendário e a lista "Meu plantão". Ordenadas.
+ */
+export function getDatasDoResidente(residenteId, overrides = {}, { aPartirDe = null } = {}) {
+  if (!residenteId) return [];
+  const chaves = new Set([...Object.keys(PLANTOES_2026), ...Object.keys(overrides || {})]);
+  return [...chaves]
+    .filter((key) => (!aPartirDe || key >= aPartirDe) && getResidenteEfetivo(key, overrides) === residenteId)
+    .sort();
+}

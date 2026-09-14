@@ -2,14 +2,20 @@
  * ConsultaPlantoesPage
  * Consulta de plantões por data. Qualquer usuário autenticado pode
  * selecionar uma data no calendário e ver quem está de plantão.
+ *
+ * A escala mostrada é a EFETIVA: tabela estática (PLANTOES_2026) + overrides de
+ * `residenciaPlantaoDiario` (troca aceita ou ajuste manual). As bolinhas
+ * "Meu plantão" também — até 14/09/2026 elas liam só a tabela e um residente
+ * que tinha trocado o dia 20 pelo 19 continuava marcado no 20 (o detalhe do dia
+ * já dizia o certo; as bolinhas e a lista do mês, não).
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { CalendarDays, Shuffle, Pencil } from 'lucide-react';
 import { SectionCard, Calendar } from '@/design-system';
 import { PageHeader } from '../components';
-import { PLANTOES_2026, FERIADOS_2026, FERIADO_LABELS, getPlantaoParaData, getPlantaoEfetivo } from '../data/plantao2026';
+import { PLANTOES_2026, FERIADOS_2026, FERIADO_LABELS, getPlantaoParaData, getPlantaoEfetivo, getHorarioPlantao, getDatasDoResidente } from '../data/plantao2026';
 import { RESIDENTES_2026, toDateKey } from '../data/residencia2026';
-import { getPlantaoDiario } from '../services/residenciaPlantaoDiarioService';
+import { useResidenciaPlantaoOverrides } from '../hooks/useOverridesDiario';
 import { useTrocaPlantao } from '../hooks/useTrocaPlantao';
 
 const MIN_DATE = new Date('2026-03-01T00:00:00');
@@ -37,6 +43,9 @@ function ResidenteIcon({ ano }) {
 
 export default function ConsultaPlantoesPage({ goBack }) {
   const { userResidenteId } = useTrocaPlantao();
+  // Coleção inteira em tempo real: a mesma fonte alimenta as bolinhas do mês e
+  // o detalhe do dia — antes cada um lia de um lugar e divergiam.
+  const { overrides, docs: overrideDocs, loading } = useResidenciaPlantaoOverrides();
 
   const [selectedDate, setSelectedDate] = useState(() => {
     const ef = getPlantaoEfetivo();
@@ -45,26 +54,12 @@ export default function ConsultaPlantoesPage({ goBack }) {
     if (ef > MAX_DATE) return MAX_DATE;
     return ef;
   });
-  const [overrideDoc, setOverrideDoc] = useState(null);
-  const [loading, setLoading] = useState(false);
 
   const dateKey = useMemo(() => toDateKey(selectedDate), [selectedDate]);
-  const hasSchedule = !!PLANTOES_2026[dateKey];
+  const overrideDoc = overrideDocs[dateKey] || null;
+  const hasSchedule = !!PLANTOES_2026[dateKey] || !!overrideDoc;
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setOverrideDoc(null);
-    getPlantaoDiario(dateKey).then(({ data }) => {
-      if (!cancelled) {
-        setOverrideDoc(data);
-        setLoading(false);
-      }
-    });
-    return () => { cancelled = true; };
-  }, [dateKey]);
-
-  // Feriados (amarelo) + dias do residente logado (azul)
+  // Feriados (amarelo) + dias EFETIVOS do residente logado (azul)
   const events = useMemo(() => {
     const list = [...FERIADOS_2026].map((key) => ({
       date: new Date(`${key}T12:00:00`),
@@ -73,8 +68,7 @@ export default function ConsultaPlantoesPage({ goBack }) {
     }));
     if (userResidenteId) {
       const r = RESIDENTES_2026.find((x) => x.id === userResidenteId);
-      for (const [key, rid] of Object.entries(PLANTOES_2026)) {
-        if (rid !== userResidenteId) continue;
+      for (const key of getDatasDoResidente(userResidenteId, overrides)) {
         list.push({
           date: new Date(`${key}T12:00:00`),
           label: `Meu plantão${r ? ` (${r.nome})` : ''}`,
@@ -83,7 +77,7 @@ export default function ConsultaPlantoesPage({ goBack }) {
       }
     }
     return list;
-  }, [userResidenteId]);
+  }, [userResidenteId, overrides]);
 
   const base = useMemo(() => getPlantaoParaData(selectedDate), [selectedDate]);
   const residenteId = overrideDoc?.residenteOverride ?? base?.id;
@@ -92,7 +86,7 @@ export default function ConsultaPlantoesPage({ goBack }) {
     : null;
 
   const feriadoLabel = FERIADO_LABELS[dateKey] || null;
-  const horario = base?.horario;
+  const horario = base?.horario ?? (hasSchedule ? getHorarioPlantao(selectedDate) : null);
 
   return (
     <div className="flex flex-col min-h-dvh bg-background">

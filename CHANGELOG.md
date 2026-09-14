@@ -3,6 +3,35 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.4 (14/09/2026) — Trocas de plantão: marcação, formulários e lembretes seguem a escala EFETIVA
+
+Foto de um residente (27/07, via dono): "Tinha trocado meu dia 20 pelo 19, mas continuou marcando
+como dia 20". Reproduzido com os dados reais: o Firestore tinha 19 e 21/07 = Roosewelt e 20 e 26/07
+= Augusto (TR475677 e TR240201, aceitas em 26/06) e o detalhe do dia já dizia o certo — mas as
+bolinhas azuis e a lista "Eventos deste mês" de "Consultar Plantões" liam só a tabela estática.
+
+- **Residência — Consultar Plantões:** bolinhas, lista do mês e detalhe do dia saem da MESMA fonte
+  (`residenciaPlantaoDiario` inteiro em tempo real + tabela). Helpers puros `getResidenteEfetivo`
+  e `getDatasDoResidente` em `plantao2026.js`; hook `useOverridesDiario`.
+- **Residência — formulário de troca:** o destinatário auto-selecionado e a validação usam a escala
+  efetiva; e passa a recusar oferecer um dia que não é seu ("confira as trocas já aceitas") ou sem
+  plantão cadastrado. Regras puras em `src/lib/trocaResidenciaValidacao.js`.
+- **Residência — lembretes "Plantão amanhã":** a edge `schedule-shift-reminders` (pg_cron) lia a
+  tabela `residencia_plantao_diario_overrides`, que nunca existiu, e avisava o residente da tabela
+  (18/07 → Augusto pelo 19/07 do Roosewelt; em setembro, dois residentes avisados do mesmo dia).
+  Migration cria a tabela com RLS + backfill dos 60 overrides e o app espelha toda escrita do
+  Firestore nela (`residenciaPlantaoOverridesMirror.js`, best-effort). Sem redeploy da edge.
+- **Sobreaviso materno — Consultar Sobreaviso:** mesmo defeito, mesma correção (bolinhas e detalhe);
+  o card dos hospitais passa a aplicar `hospitaisDiario` como a Home e o Hub já faziam. O formulário
+  de troca passa os overrides ao helper que já os aceitava.
+- **Plantão hospitalar (funcionárias):** o serviço julgava "quem está escalada" pela base pura e
+  contradizia o formulário — quem RECEBEU um slot numa troca era recusada ao oferecê-lo de novo.
+  Validação e aceite leem os overrides do dia (`hospitaisDiario`, range por documentId).
+- **Feriados (escala numérica):** "meu feriado", colegas e validação (formulário E serviço) usam a
+  fila EFETIVA (`filaEfetiva` = impressa + trocas aceitas); a página já mostrava assim.
+- Testes: caso real de julho (página + helpers), validação com o caso de agosto (TR974269/TR984249),
+  espelho Supabase, serviço hospitalar com override, feriados com trocas aceitas.
+
 ## v5.12.1 (13/09/2026) — Comparativo por ano ocupa o card no desktop
 
 Pedido do dono (11/09, captura do Mapa de Férias): "ajuste para visualização em desktop". A célula

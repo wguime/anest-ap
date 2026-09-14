@@ -10,7 +10,7 @@ import { Modal, Button, Select, Textarea, useToast } from '@/design-system'
 import { ArrowLeftRight, Check, X, Clock, Ban } from 'lucide-react'
 import dadosNumerica from '@/data/escalaNumerica.json'
 import SegmentedSelector from '../escala-cirurgica/SegmentedSelector'
-import { feriadosDaPessoa, filaImpressa, validarPedido, resumirTroca, mesmaEntrada } from '@/lib/trocasFeriado'
+import { feriadosDaPessoa, filaEfetiva, validarPedido, resumirTroca, mesmaEntrada } from '@/lib/trocasFeriado'
 
 const FORM_ID = 'form-troca-feriado'
 const brData = (iso) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : '')
@@ -28,11 +28,11 @@ const STATUS = {
 }
 
 /** Todo mundo que aparece em algum feriado dali para frente — o universo de colegas. */
-function colegasPossiveis(hojeISO, eu) {
+function colegasPossiveis(hojeISO, eu, trocas) {
   const vistos = new Map()
   for (const data of Object.keys(dadosNumerica.feriados?.dias || {})) {
     if (data < hojeISO) continue
-    for (const p of filaImpressa(dadosNumerica, data) || []) {
+    for (const p of filaEfetiva(dadosNumerica, data, trocas) || []) {
       if (mesmaEntrada(p, eu)) continue
       const chave = p.numero || p.nome
       if (!vistos.has(chave)) vistos.set(chave, { numero: p.numero, nome: p.nome })
@@ -41,7 +41,12 @@ function colegasPossiveis(hojeISO, eu) {
   return [...vistos.values()].sort((a, b) => a.nome.localeCompare(b.nome))
 }
 
-function FormTroca({ eu, hojeISO, onSubmit, loading }) {
+/**
+ * `trocas` = as já ACEITAS. Tudo que o formulário oferece ("meu feriado", colegas, "feriado
+ * do colega") sai da fila EFETIVA, a mesma que a página mostra — quem recebeu um feriado
+ * numa troca pode oferecê-lo, quem o cedeu não o vê mais.
+ */
+function FormTroca({ eu, hojeISO, onSubmit, loading, trocas = [] }) {
   const [escopo, setEscopo] = useState('data')
   const [feriadoData, setFeriadoData] = useState('')
   const [colega, setColega] = useState('')
@@ -49,26 +54,29 @@ function FormTroca({ eu, hojeISO, onSubmit, loading }) {
   const [descricao, setDescricao] = useState('')
   const [erro, setErro] = useState(null)
 
-  const meusFeriados = useMemo(() => feriadosDaPessoa(dadosNumerica, eu, { aPartirDe: hojeISO }), [eu, hojeISO])
+  const meusFeriados = useMemo(
+    () => feriadosDaPessoa(dadosNumerica, eu, { aPartirDe: hojeISO, trocas }),
+    [eu, hojeISO, trocas],
+  )
 
   // na troca de POSIÇÃO o colega tem de estar no MESMO feriado; na de DATA, em qualquer um
   const colegas = useMemo(() => {
     if (escopo === 'posicao') {
       if (!feriadoData) return []
-      return (filaImpressa(dadosNumerica, feriadoData) || [])
+      return (filaEfetiva(dadosNumerica, feriadoData, trocas) || [])
         .filter((p) => !mesmaEntrada(p, eu))
         .map((p) => ({ numero: p.numero, nome: p.nome }))
     }
-    return colegasPossiveis(hojeISO, eu)
-  }, [escopo, feriadoData, eu, hojeISO])
+    return colegasPossiveis(hojeISO, eu, trocas)
+  }, [escopo, feriadoData, eu, hojeISO, trocas])
 
   const colegaSel = useMemo(() => colegas.find((c) => (c.numero || c.nome) === colega) || null, [colegas, colega])
 
   const feriadosDoColega = useMemo(() => {
     if (escopo !== 'data' || !colegaSel) return []
-    return feriadosDaPessoa(dadosNumerica, colegaSel, { aPartirDe: hojeISO })
+    return feriadosDaPessoa(dadosNumerica, colegaSel, { aPartirDe: hojeISO, trocas })
       .filter((f) => f.data !== feriadoData)
-  }, [escopo, colegaSel, hojeISO, feriadoData])
+  }, [escopo, colegaSel, hojeISO, feriadoData, trocas])
 
   const enviar = (e) => {
     e.preventDefault()
@@ -79,7 +87,7 @@ function FormTroca({ eu, hojeISO, onSubmit, loading }) {
       feriadoData,
       feriadoDesejado: escopo === 'data' ? feriadoDesejado : null,
     }
-    const problema = validarPedido(dadosNumerica, pedido) || (descricao.trim() ? null : 'Escreva o motivo da troca')
+    const problema = validarPedido(dadosNumerica, pedido, trocas) || (descricao.trim() ? null : 'Escreva o motivo da troca')
     if (problema) { setErro(problema); return }
     setErro(null)
     onSubmit({
@@ -278,7 +286,7 @@ export default function TrocasFeriado({ troca, hojeISO }) {
         }
       >
         <Modal.Body>
-          <FormTroca eu={eu} hojeISO={hojeISO} onSubmit={enviar} loading={salvando} />
+          <FormTroca eu={eu} hojeISO={hojeISO} onSubmit={enviar} loading={salvando} trocas={troca.aceitas} />
         </Modal.Body>
       </Modal>
     </section>

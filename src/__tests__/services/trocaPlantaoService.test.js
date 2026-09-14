@@ -69,6 +69,12 @@ vi.mock('firebase/firestore', () => ({
 
 vi.mock('../../config/firebase', () => ({ db: {} }));
 
+// Espelho Supabase (o que a edge de lembretes lê) — só interessa COM O QUE foi chamado
+const { mockEspelhar } = vi.hoisted(() => ({ mockEspelhar: vi.fn(() => Promise.resolve({ success: true, error: null })) }));
+vi.mock('../../services/residenciaPlantaoOverridesMirror', () => ({
+  espelharOverridesResidencia: mockEspelhar,
+}));
+
 // ---------------------------------------------------------------------------
 // Imports AFTER mocks registered
 // ---------------------------------------------------------------------------
@@ -530,4 +536,65 @@ describe('trocaPlantaoService — residentes trocando plantões', () => {
     });
   });
 
+});
+
+// ===========================================================================
+// F. Espelho Supabase — o que a edge schedule-shift-reminders lê.
+//
+// Em julho/2026 o "Plantão amanhã 19/07" foi para o Augusto (tabela) e não
+// para o Roosewelt (troca TR475677), porque a edge lê
+// residencia_plantao_diario_overrides e ninguém escrevia lá. Todo aceite
+// espelha as MESMAS datas que gravou no Firestore.
+// ===========================================================================
+describe('F. Espelho Supabase a cada aceite', () => {
+  it('F1 — swap Augusto⇄Roosewelt espelha as duas datas com quem ficou em cada uma', async () => {
+    const trade = makeTrade({
+      codigo: 'TR475677',
+      solicitanteId: R.augusto.uid,
+      solicitanteResidenteId: R.augusto.residenteId,
+      dataPlantao: '2026-07-19',
+      dataDesejada: '2026-07-26',
+      destinatarioId: R.roosewelt.residenteId,
+      destinatarioNome: R.roosewelt.nome,
+    });
+    seedTradeSnapshot(trade);
+
+    const result = await acceptTrade('TR475677', R.roosewelt.uid, R.roosewelt.nome, R.roosewelt.residenteId);
+    expect(result.success).toBe(true);
+
+    expect(mockEspelhar).toHaveBeenCalledTimes(1);
+    const [entries, userId] = mockEspelhar.mock.calls[0];
+    expect(userId).toBe(R.roosewelt.uid);
+    expect(entries).toEqual([
+      { dateKey: '2026-07-19', residenteOverride: R.roosewelt.residenteId, origem: 'troca', trocaId: 'TR475677' },
+      { dateKey: '2026-07-26', residenteOverride: R.augusto.residenteId, origem: 'troca', trocaId: 'TR475677' },
+    ]);
+    // e é o MESMO que foi para o Firestore
+    const byPath = Object.fromEntries(mockBatchSet.mock.calls.map(([ref, data]) => [ref.path, data]));
+    expect(byPath['residenciaPlantaoDiario/2026-07-19'].residenteOverride).toBe(R.roosewelt.residenteId);
+    expect(byPath['residenciaPlantaoDiario/2026-07-26'].residenteOverride).toBe(R.augusto.residenteId);
+  });
+
+  it('F2 — cobertura espelha só a data coberta; aceite recusado não espelha nada', async () => {
+    seedTradeSnapshot(makeTrade({ codigo: 'TR300001', dataPlantao: '2026-05-15' }));
+    await acceptTrade('TR300001', R.raffaela.uid, R.raffaela.nome, R.raffaela.residenteId);
+    expect(mockEspelhar).toHaveBeenCalledWith(
+      [{ dateKey: '2026-05-15', residenteOverride: R.raffaela.residenteId, origem: 'troca', trocaId: 'TR300001' }],
+      R.raffaela.uid,
+    );
+
+    mockEspelhar.mockClear();
+    seedTradeSnapshot(makeTrade({ codigo: 'TR300002', status: 'aceita' }));
+    const r = await acceptTrade('TR300002', R.raffaela.uid, R.raffaela.nome, R.raffaela.residenteId);
+    expect(r.success).toBe(false);
+    expect(mockEspelhar).not.toHaveBeenCalled();
+  });
+
+  it('F3 — espelho falhando NÃO desfaz o aceite (o Firestore já gravou)', async () => {
+    mockEspelhar.mockResolvedValueOnce({ success: false, error: 'RLS' });
+    seedTradeSnapshot(makeTrade({ codigo: 'TR300003' }));
+    const r = await acceptTrade('TR300003', R.raffaela.uid, R.raffaela.nome, R.raffaela.residenteId);
+    expect(r.success).toBe(true);
+    expect(mockBatchCommit).toHaveBeenCalledTimes(1);
+  });
 });

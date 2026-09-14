@@ -6,10 +6,15 @@
  * da tabela estática em src/data/plantao2026.js.
  *
  * Usa coleção top-level para evitar conflito com o doc legado residencia/plantao.
+ *
+ * Toda escrita é ESPELHADA em Supabase (`residencia_plantao_diario_overrides`),
+ * que é o que a edge de lembretes `schedule-shift-reminders` lê — ela não lê
+ * Firestore. Ver residenciaPlantaoOverridesMirror.js.
  */
 import { doc, getDoc, setDoc, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { createFirestoreSubscription } from './firestoreSubscriptionHelper';
+import { espelharOverridesResidencia } from './residenciaPlantaoOverridesMirror';
 
 const COLLECTION = 'residenciaPlantaoDiario';
 
@@ -60,6 +65,7 @@ export async function updatePlantaoDiario(dateKey, payload, userId) {
     const { residenteOverride, origem, trocaId } = payload || {};
     if (!residenteOverride) {
       await deleteDoc(docRefFor(dateKey));
+      await espelharOverridesResidencia([{ dateKey }], userId);
       return { success: true, error: null };
     }
     const data = {
@@ -70,6 +76,7 @@ export async function updatePlantaoDiario(dateKey, payload, userId) {
     };
     if (trocaId) data.trocaId = trocaId;
     await setDoc(docRefFor(dateKey), data);
+    await espelharOverridesResidencia([{ dateKey, residenteOverride, origem: data.origem, trocaId }], userId);
     return { success: true, error: null };
   } catch (error) {
     console.error('Erro ao salvar plantao diario:', error);
@@ -101,6 +108,10 @@ export async function batchUpdatePlantoesDiarios(entries, userId) {
       batch.set(docRefFor(dateKey), data);
     }
     await batch.commit();
+    await espelharOverridesResidencia(
+      entries.map(({ dateKey, residenteOverride, origem, trocaId }) => ({ dateKey, residenteOverride, origem: origem || 'troca', trocaId })),
+      userId,
+    );
     return { success: true, error: null };
   } catch (error) {
     console.error('Erro no batch de plantao diario:', error);

@@ -9,7 +9,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import {
-  mesmaEntrada, identificarNaLegenda, filaImpressa, feriadosDaPessoa,
+  mesmaEntrada, identificarNaLegenda, filaImpressa, filaEfetiva, feriadosDaPessoa,
   aplicarTrocasNaFila, filasDoFeriado, validarPedido, resumirTroca,
 } from '../../lib/trocasFeriado'
 
@@ -199,5 +199,48 @@ describe('resumirTroca — a frase que o card e a notificação usam', () => {
   it('descreve a troca de posição com uma data só', () => {
     expect(resumirTroca({ escopo: 'posicao', feriadoData: '2026-09-07', solicitanteNome: 'GIOVANA', destinatarioNome: 'EDUARDO' }))
       .toBe('GIOVANA e EDUARDO trocam de posição no feriado de 07/09')
+  })
+})
+
+/**
+ * Fila EFETIVA — o formulário e a validação enxergam as trocas ACEITAS.
+ *
+ * Até 14/09/2026 `feriadosDaPessoa` e `validarPedido` liam a fila IMPRESSA: depois de
+ * GIOVANA ⇄ MARILIO (07/09 ⇄ 12/10) aceita, o formulário ainda oferecia o 07/09 à
+ * GIOVANA (que já o tinha cedido) e recusava o MARILIO com "você não está escalado
+ * neste feriado" — o mesmo tipo de divergência das trocas de plantão da residência.
+ */
+describe('fila efetiva — quem recebeu pode oferecer, quem cedeu não', () => {
+  const aceitas = [trocaDeData()]
+
+  it('feriadosDaPessoa com as trocas: GIOVANA passa a ter o 12/10 e perde o 07/09', () => {
+    const giovana = feriadosDaPessoa(dados, GIOVANA, { trocas: aceitas }).map((f) => f.data)
+    expect(giovana).toContain('2026-10-12')
+    expect(giovana).not.toContain('2026-09-07')
+    const marilio = feriadosDaPessoa(dados, MARILIO, { trocas: aceitas }).map((f) => f.data)
+    expect(marilio).toContain('2026-09-07')
+    expect(marilio).not.toContain('2026-10-12')
+  })
+
+  it('sem as trocas continua a fila impressa (a hipótese contrária)', () => {
+    expect(feriadosDaPessoa(dados, GIOVANA).map((f) => f.data)).toContain('2026-09-07')
+    expect(feriadosDaPessoa(dados, MARILIO).map((f) => f.data)).toContain('2026-10-12')
+  })
+
+  it('validarPedido: GIOVANA não pode oferecer o 07/09 que cedeu; MARILIO pode', () => {
+    const outro = filaImpressa(dados, '2026-10-12').find((p) => !mesmaEntrada(p, MARILIO) && !mesmaEntrada(p, GIOVANA))
+    expect(validarPedido(dados, {
+      escopo: 'data', solicitante: GIOVANA, destinatario: outro, feriadoData: '2026-09-07', feriadoDesejado: '2026-10-12',
+    }, aceitas)).toMatch(/não está escalado neste feriado/)
+
+    // MARILIO (agora no 07/09) troca com GIOVANA (agora no 12/10)
+    expect(validarPedido(dados, {
+      escopo: 'data', solicitante: MARILIO, destinatario: GIOVANA, feriadoData: '2026-09-07', feriadoDesejado: '2026-10-12',
+    }, aceitas)).toBeNull()
+  })
+
+  it('filaEfetiva sem trocas é a impressa; feriado inexistente é null', () => {
+    expect(filaEfetiva(dados, '2026-09-07')).toEqual(filaImpressa(dados, '2026-09-07'))
+    expect(filaEfetiva(dados, '2026-01-01', aceitas)).toBeNull()
   })
 })

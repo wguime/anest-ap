@@ -36,6 +36,18 @@ async function acharPorCodigo(codigo) {
 
 const nomeFeriado = (data) => dadosNumerica.feriados?.dias?.[data]?.nome || null
 
+/** Trocas já aceitas — a fila efetiva é a impressa com estas aplicadas. */
+async function trocasAceitas() {
+  try {
+    const snap = await getDocs(query(collection(db, COLLECTION), where('status', '==', 'aceita')))
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+  } catch (e) {
+    // sem elas a validação usa a fila impressa — o mesmo que fazia até 14/09/2026
+    console.warn('[trocaFeriado] não leu as trocas aceitas para validar:', e?.message)
+    return []
+  }
+}
+
 export async function createTradeRequest({
   solicitanteUid,
   solicitanteNome,
@@ -52,14 +64,16 @@ export async function createTradeRequest({
     if (!solicitanteUid) return { trade: null, error: 'Solicitante não identificado' }
     if (!descricao?.trim()) return { trade: null, error: 'Escreva o motivo da troca' }
 
-    // a mesma validação do formulário, de novo aqui: o formulário pode ser burlado
+    // a mesma validação do formulário, de novo aqui: o formulário pode ser burlado.
+    // Contra a fila EFETIVA (trocas já aceitas lidas do banco, não do formulário):
+    // quem cedeu um feriado não pode oferecê-lo de novo; quem o recebeu, pode.
     const erro = validarPedido(dadosNumerica, {
       escopo,
       solicitante: { numero: solicitanteNumero, nome: solicitanteNome },
       destinatario: { numero: destinatarioNumero, nome: destinatarioNome },
       feriadoData,
       feriadoDesejado,
-    })
+    }, await trocasAceitas())
     if (erro) return { trade: null, error: erro }
 
     const codigo = gerarCodigo()

@@ -37,6 +37,7 @@ vi.mock('firebase/firestore', () => ({
   query: mockQuery,
   where: mockWhere,
   orderBy: mockOrderBy,
+  documentId: vi.fn(() => '__name__'),
   serverTimestamp: vi.fn(() => ({ _type: 'serverTimestamp' })),
   updateDoc: mockUpdateDoc,
   writeBatch: mockWriteBatch,
@@ -236,6 +237,52 @@ describe('trocaPlantaoHospitalarService', () => {
       });
       expect(trade).toBeNull();
       expect(error).toMatch(/escalada|slot|hospital/i);
+    });
+
+    /**
+     * Escala EFETIVA: o serviço julgava "quem está escalada" pela base pura e
+     * contradizia o formulário (que já aplicava hospitaisDiario) — quem RECEBEU um
+     * slot numa troca era recusada ao tentar oferecê-lo de novo.
+     */
+    it('B8 quem recebeu o slot por override pode oferecê-lo; quem o cedeu, não', async () => {
+      // override real do dia: HRO 04/04 passou de Renata para Marta
+      const overrideHro = { empty: false, docs: [{ id: '2026-04-04_hro_manha', data: () => ({ funcionariaOverride: 'marta' }) }] };
+
+      mockGetDocs.mockResolvedValueOnce(overrideHro);
+      const marta = await createTradeRequest({
+        solicitanteId: F.marta.uid,
+        solicitanteNome: 'Marta',
+        solicitanteFuncionariaId: F.marta.funcionariaId,
+        escopo: 'slot',
+        dataPlantao: '2026-04-04',
+        hospital: 'hro',
+        turno: 'manha',
+        descricao: 'devolvendo',
+      });
+      expect(marta.error).toBeNull();
+      expect(marta.trade).not.toBeNull();
+
+      mockGetDocs.mockResolvedValueOnce(overrideHro);
+      const renata = await createTradeRequest({
+        solicitanteId: F.renata.uid,
+        solicitanteNome: 'Renata',
+        solicitanteFuncionariaId: F.renata.funcionariaId,
+        escopo: 'slot',
+        dataPlantao: '2026-04-04',
+        hospital: 'hro',
+        turno: 'manha',
+        descricao: 'x',
+      });
+      expect(renata.trade).toBeNull();
+      expect(renata.error).toMatch(/escalada/i);
+    });
+
+    it('B9 slotsDaFuncionariaNaData com overrides: o slot é de quem está no override', () => {
+      const overrides = { '2026-04-04_hro_manha': 'marta' };
+      expect(slotsDaFuncionariaNaData('marta', '2026-04-04', undefined, overrides)).toEqual([{ hospital: 'hro', turno: 'manha' }]);
+      expect(slotsDaFuncionariaNaData('renata', '2026-04-04', undefined, overrides)).toEqual([]);
+      // sem overrides, a base
+      expect(slotsDaFuncionariaNaData('renata', '2026-04-04')).toEqual([{ hospital: 'hro', turno: 'manha' }]);
     });
   });
 

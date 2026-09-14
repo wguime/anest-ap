@@ -66,15 +66,28 @@ export function filaImpressa(dados, data) {
 }
 
 /**
- * Feriados em que a pessoa está escalada, com a posição dela.
- * É o que alimenta o "meu feriado para trocar" do formulário.
+ * Fila impressa com as trocas ACEITAS aplicadas — "de quem é o feriado" DEPOIS dos aceites.
+ * É a fila que vale para perguntar quem pode oferecer o quê: quem recebeu um feriado numa
+ * troca pode oferecê-lo de novo, e quem o cedeu não pode. Sem `trocas`, é a impressa.
  */
-export function feriadosDaPessoa(dados, pessoa, { aPartirDe = null } = {}) {
+export function filaEfetiva(dados, data, trocas = []) {
+  const base = filaImpressa(dados, data)
+  if (!base) return null
+  return trocas?.length ? aplicarTrocasNaFila(base, data, trocas) : base
+}
+
+/**
+ * Feriados em que a pessoa está escalada, com a posição dela.
+ * É o que alimenta o "meu feriado para trocar" do formulário — por isso recebe as trocas
+ * aceitas: sem elas, o formulário listava o feriado que a pessoa já tinha cedido e
+ * escondia o que ela tinha recebido.
+ */
+export function feriadosDaPessoa(dados, pessoa, { aPartirDe = null, trocas = [] } = {}) {
   if (!pessoa) return []
   const out = []
   for (const [data, f] of Object.entries(dados?.feriados?.dias || {})) {
     if (aPartirDe && data < aPartirDe) continue
-    const fila = filaImpressa(dados, data)
+    const fila = filaEfetiva(dados, data, trocas)
     const eu = fila?.find((p) => mesmaEntrada(p, pessoa))
     if (eu) out.push({ data, nome: f.nome, posicao: eu.posicao, numero: eu.numero })
   }
@@ -128,9 +141,8 @@ export function aplicarTrocasNaFila(posicoes, data, trocas = []) {
  * A tarde é a manhã invertida e renumerada — nunca calculada à parte.
  */
 export function filasDoFeriado(dados, data, trocas = []) {
-  const base = filaImpressa(dados, data)
-  if (!base) return null
-  const impressa = aplicarTrocasNaFila(base, data, trocas)
+  const impressa = filaEfetiva(dados, data, trocas)
+  if (!impressa) return null
   return {
     matutino: impressa.map((p, i) => ({ ...p, posicao: i + 1 })),
     vespertino: [...impressa].reverse().map((p, i) => ({ ...p, posicao: i + 1 })),
@@ -140,15 +152,16 @@ export function filasDoFeriado(dados, data, trocas = []) {
 /**
  * Regras de quem pode pedir o quê. Devolve a mensagem do primeiro problema, ou `null`.
  * O serviço revalida antes de gravar — isto aqui é para o formulário não deixar pedir.
+ * `trocas` são as já aceitas: "você está escalado" é julgado pela fila EFETIVA.
  */
-export function validarPedido(dados, { escopo, solicitante, feriadoData, destinatario, feriadoDesejado }) {
+export function validarPedido(dados, { escopo, solicitante, feriadoData, destinatario, feriadoDesejado }, trocas = []) {
   if (!solicitante?.numero && !solicitante?.nome) return 'Você não foi identificado na escala de feriados'
   if (!['data', 'posicao'].includes(escopo)) return 'Escolha o tipo de troca'
   if (!feriadoData) return 'Escolha o seu feriado'
   if (!destinatario) return 'Escolha o colega'
   if (mesmaEntrada(solicitante, destinatario)) return 'Você não pode trocar com você mesmo'
 
-  const minhaFila = filaImpressa(dados, feriadoData)
+  const minhaFila = filaEfetiva(dados, feriadoData, trocas)
   if (!minhaFila) return 'Feriado sem escala publicada'
   if (!minhaFila.some((p) => mesmaEntrada(p, solicitante))) return 'Você não está escalado neste feriado'
 
@@ -159,7 +172,7 @@ export function validarPedido(dados, { escopo, solicitante, feriadoData, destina
 
   if (!feriadoDesejado) return 'Escolha o feriado do colega'
   if (feriadoDesejado === feriadoData) return 'Para trocar de posição no mesmo feriado, use a troca de posição'
-  const filaDele = filaImpressa(dados, feriadoDesejado)
+  const filaDele = filaEfetiva(dados, feriadoDesejado, trocas)
   if (!filaDele) return 'Feriado sem escala publicada'
   if (!filaDele.some((p) => mesmaEntrada(p, destinatario))) return 'O colega não está escalado no feriado escolhido'
   if (filaDele.some((p) => mesmaEntrada(p, solicitante))) return 'Você já está escalado no feriado do colega'

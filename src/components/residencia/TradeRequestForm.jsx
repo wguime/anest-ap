@@ -7,10 +7,17 @@
  *
  * O form NÃO inclui botões — quem renderiza (Modal) é responsável por eles
  * via footer/Button com `type="submit" form={formId}`.
+ *
+ * "De quem é o plantão" é sempre a escala EFETIVA (tabela + trocas já aceitas):
+ * quem recebeu um dia numa troca pode oferecê-lo de novo, e quem o cedeu não
+ * pode — lendo só a tabela, o formulário auto-selecionava o destinatário errado
+ * e recusava a segunda troca com "não está de plantão na data desejada".
  */
 import { useState, useMemo } from 'react';
 import { Button, DatePicker, Select, Textarea } from '@/design-system';
-import { PLANTOES_2026 } from '../../data/plantao2026';
+import { getResidenteEfetivo } from '../../data/plantao2026';
+import { validarPedidoTrocaResidencia } from '../../lib/trocaResidenciaValidacao';
+import { useResidenciaPlantaoOverrides } from '../../hooks/useOverridesDiario';
 
 function toDateKey(d) {
   if (!d) return null;
@@ -34,11 +41,12 @@ function TradeRequestForm({
   const [descricao, setDescricao] = useState('');
   const [destinatarioId, setDestinatarioId] = useState('');
   const [errors, setErrors] = useState({});
+  const { overrides } = useResidenciaPlantaoOverrides();
 
   const residentesComNome = residentes.filter((r) => r.nome && r.nome.trim() !== '');
 
+  const dataPlantaoKey = toDateKey(dataPlantao);
   const dataDesejadaKey = toDateKey(dataDesejada);
-  const plantonistaDaDataDesejada = dataDesejadaKey ? PLANTOES_2026[dataDesejadaKey] : null;
 
   const destinatarioOptions = useMemo(
     () => [
@@ -53,21 +61,15 @@ function TradeRequestForm({
   const residenteSelecionado = residentesComNome.find((r) => r.id === destinatarioId);
 
   const validate = () => {
-    const newErrors = {};
-    if (!dataPlantao) newErrors.dataPlantao = 'Informe a data do plantão';
-    if (!descricao || !descricao.trim()) newErrors.descricao = 'Informe o motivo da troca';
-
-    if (dataDesejada) {
-      if (!destinatarioId) {
-        newErrors.destinatarioId = 'Selecione o residente para trocar';
-      } else if (plantonistaDaDataDesejada && plantonistaDaDataDesejada !== destinatarioId) {
-        newErrors.destinatarioId = 'Destinatário não está de plantão na data desejada';
-      }
-      if (dataPlantao && dataDesejada && toDateKey(dataPlantao) === toDateKey(dataDesejada)) {
-        newErrors.dataDesejada = 'Datas devem ser diferentes';
-      }
-    }
-
+    // Regras puras em src/lib/trocaResidenciaValidacao.js (testadas com o caso real de julho)
+    const newErrors = validarPedidoTrocaResidencia({
+      dataPlantaoKey,
+      dataDesejadaKey,
+      descricao,
+      destinatarioId,
+      userResidenteId,
+      overrides,
+    });
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -111,9 +113,11 @@ function TradeRequestForm({
             setDataDesejada(date);
             if (errors.dataDesejada) setErrors((prev) => ({ ...prev, dataDesejada: '' }));
             // Auto-preenche destinatário com quem está escalado nessa data
+            // (escala efetiva: quem recebeu o dia numa troca é quem está lá)
             const key = toDateKey(date);
-            if (key && PLANTOES_2026[key]) {
-              setDestinatarioId(PLANTOES_2026[key]);
+            const escalado = key ? getResidenteEfetivo(key, overrides) : null;
+            if (escalado) {
+              setDestinatarioId(escalado);
             } else if (!date) {
               setDestinatarioId('');
             }
