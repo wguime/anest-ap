@@ -1193,50 +1193,45 @@ export function terminoEncadeado(escala, caso, minutos, agoraMin) {
 }
 
 /**
- * ESPELHO DO TEMPO TOTAL (dono 30/07; ampliado em 14/09 e 15/09): o que gravar no
- * cronômetro da PESSOA quando o término de UMA cirurgia dela muda — ou quando ela
- * SAI da fila (terminada/suspensa) ou volta.
+ * ESPELHO DO TEMPO TOTAL (dono 30/07; ampliado em 14/09): o que gravar no
+ * cronômetro da PESSOA quando o término de UMA cirurgia dela muda.
  *
- * A regra desde 15/09 é uma só: **o total da pessoa é o ÚLTIMO término informado
- * entre as cirurgias ABERTAS dela** — na linha do tempo, a soma das durações
- * encadeadas por `terminoEncadeado`. Cirurgia sem término não contribui; cirurgia
- * que saiu da fila não contribui mais. Daí:
- *
- *  - UMA cirurgia aberta: o término dela É o horário de saída (30/07) — inclusive
+ *  - UMA cirurgia ativa: o término dela É o horário de saída (30/07) — inclusive
  *    limpar: os dois campos divergiam e ninguém sabia qual valia.
- *  - 2+ cirurgias, TODAS com término (14/09, "some os tempos"): o último término.
- *  - 2+ cirurgias, ALGUMA sem término (15/09, foto do card do dono: "faltam 1h56"
- *    na cirurgia e "2h29" na pílula — "tempo informado não corresponde ao tempo
- *    total"): o último término entre as que TÊM. A regra de 29/07 ("com 2+ o total
- *    é 100% manual") vale só enquanto NENHUMA cirurgia tem término — aí a pílula
- *    é a única informação e fica como a pessoa deixou.
- *  - NENHUMA cirurgia aberta com término (limpou a última, ou a que tinha saiu da
- *    fila): se o total ainda é o que este espelho gravou, sai junto — "para que
- *    não continue contando como tempo" (dono 15/09); total mexido à mão fica.
+ *  - TODAS as cirurgias ativas com término (14/09, "some os tempos"): o total é o
+ *    ÚLTIMO término — na linha do tempo, é a soma das durações encadeadas por
+ *    `terminoEncadeado`.
+ *  - 2+ cirurgias e alguma sem término: o total segue 100% manual (nunca soma de
+ *    estimativas parciais, 29/07) — devolve null. Exceção: LIMPAR o término de uma
+ *    delas quando o total ainda é a soma que este espelho gravou limpa o total
+ *    junto (a soma deixou de valer); total mexido à mão fica como está.
  *
- * `patch` (opcional) é o que muda no caso ALÉM do término — o status, quando é a
- * transição de status que chama (`setStatusCirurgia`): "terminada"/"suspensa"
- * tiram o caso da fila; voltar a "iniciada"/"agendada" o devolve.
+ * ⚠️ NÃO reintroduzir o espelho PARCIAL (v5.12.8, 15/09, revertido no mesmo dia):
+ * "com alguma informada, o total vira o último término entre as que têm" ficou
+ * 30 min em produção e o dono decidiu — "quero que mantenha o sistema em que é
+ * informado o tempo total independente dos tempos individuais das cirurgias".
+ * A pílula é a estimativa da PESSOA para o turno; a foto que motivou a tentativa
+ * ("faltam 1h56" na cirurgia, "2h29" na pílula) era um total gravado à mão às
+ * 14:56 convivendo com um término informado depois — divergência esperada, não
+ * defeito. Pelo mesmo motivo, mudar o STATUS de uma cirurgia (terminada/suspensa)
+ * não chama este helper: `setStatusCirurgia` zera o término DA CIRURGIA e para aí.
  *
- * Chamado ao gravar `terminoPrevisto` (detalhe do caso e pílula da fila) e ao
- * mudar o status; devolve `{ chave, nome, override }` prontos p/ `setLinhaOverride`
- * — override COMPLETO porque gravar parcial apagaria local/cirurgião/observação —
- * ou `null` quando não há o que espelhar (guardas em `casosAtivosDaPessoa`, valor
- * já igual, total manual sem cirurgia informada).
+ * Chamado ao gravar `terminoPrevisto` (detalhe do caso e pílula → caso único);
+ * devolve `{ chave, nome, override }` prontos p/ `setLinhaOverride` — override
+ * COMPLETO porque gravar parcial apagaria local/cirurgião/observação — ou `null`
+ * quando não há o que espelhar (guardas em `casosAtivosDaPessoa`, valor já igual).
  */
-export function espelhoTempoTotal(escala, caso, terminoHHMM, { hospitalLabels, patch = null } = {}) {
+export function espelhoTempoTotal(escala, caso, terminoHHMM, { hospitalLabels } = {}) {
   const ctx = casosAtivosDaPessoa(escala, caso)
   if (!ctx) return null
-  const { ativos: ativosAntes, chave, nomeBruto, turno, uid } = ctx
-  const termino = String(terminoHHMM || '').trim()
-  // o caso DEPOIS da mudança: término novo e, vindo da transição de status, o
-  // status novo — é ele que decide se o caso ainda está na fila
-  const casoDepois = { ...caso, ...(patch || {}), terminoPrevisto: termino }
-  const outros = ativosAntes.filter((c) => !mesmoCaso(c, caso))
-  const depois = casoConcluido(casoDepois) || casoDepois.semAnestesista ? outros : [...outros, casoDepois]
-  if (!ativosAntes.length && !depois.length) return null // já estava fora e continua fora
-  const terminoDe = (c) => String(c.terminoPrevisto || '').trim()
-  const maxDe = (lista) => lista.map(terminoDe).reduce((a, b) => (a > b ? a : b), '')
+  const { ativos, chave, nomeBruto, turno, uid } = ctx
+  if (!ativos.length) return null
+  const editado = ativos.find((c) => mesmoCaso(c, caso))
+  if (!editado) return null // caso editado já concluído: não está na fila
+  const termino = terminoHHMM || ''
+  const terminoDe = (c) => String((c === editado ? termino : c.terminoPrevisto) || '').trim()
+  const antesDe = (c) => String(c.terminoPrevisto || '').trim()
+  const maxDe = (fn) => ativos.map(fn).reduce((a, b) => (a > b ? a : b), '')
   // leitura pela MESMA cadeia do setLinhaOverride, turno primeiro: o override
   // vivo mora em `${turno}:${chave}` — ler só a chave crua devolvia null e o
   // override "completo" montado abaixo zerava local/cirurgiões/observação.
@@ -1246,11 +1241,13 @@ export function espelhoTempoTotal(escala, caso, terminoHHMM, { hospitalLabels, p
     ?? lo[nomeBruto]
   const ov = typeof bruto === 'string' ? { local: bruto } : bruto || null
   const atual = ov?.termino || ''
-  const informadas = depois.filter(terminoDe)
-  let novo
-  if (depois.length === 1 && mesmoCaso(depois[0], caso)) novo = termino // única: o total É o término dela (30/07), inclusive vazio
-  else if (informadas.length) novo = maxDe(informadas) // o último término entre as que têm (parcial ou completo)
-  else novo = atual && atual === maxDe(ativosAntes) ? '' : null // era o espelho → sai junto; à mão → fica
+  let novo = null
+  if (ativos.length === 1) novo = termino
+  else if (ativos.every((c) => terminoDe(c))) novo = maxDe(terminoDe)
+  else if (!termino && ativos.every((c) => antesDe(c))) {
+    // limpou uma das cirurgias: a soma que estava gravada deixou de valer
+    novo = atual && atual === maxDe(antesDe) ? '' : null
+  }
   if (novo == null || atual === novo) return null // nada a espelhar
   void uid
   return {

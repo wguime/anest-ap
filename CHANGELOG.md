@@ -3,6 +3,23 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.9 (15/09/2026) — Reverte o espelho parcial da v5.12.8: o tempo total é informado independente dos tempos individuais
+
+Dono (15/09, à tarde, ao ler a explicação da v5.12.8): "quero que mantenha o sistema em que é
+informado o tempo total independente dos tempos individuais das cirurgias". A pílula 19:00 da foto
+tinha sido gravada à mão às 14:56 (três cirurgias sem término) e o 18:27 da cirurgia veio depois —
+divergência esperada entre a estimativa da pessoa e o tempo de uma cirurgia, não defeito.
+- **Volta a v5.12.7 no total da pessoa:** uma cirurgia ↔ total (30/07 e 14/09), todas informadas →
+  soma (14/09), alguma sem término → manual (29/07). O espelho parcial ("alguma informada → o
+  último término entre as que têm") sai, e mudar o status de uma cirurgia (terminada/suspensa)
+  deixa de recalcular a pílula.
+- **Fica:** "terminada" zera o `terminoPrevisto` daquela cirurgia (otimista + banco), nos dois
+  botões (detalhe do caso e faixa de urgências). Só o tempo da cirurgia; a pílula não muda.
+- Subtítulo do painel "Tempo faltante" volta ao texto de antes.
+
+Travas: `espelhoTempoTotal.test.js` (describe "o total é independente dos tempos individuais"),
+`escalaTerminadaZeraTempo.test.jsx` (describe "o total NÃO muda com o status").
+
 ## v5.12.8 (15/09/2026) — Tempo informado = tempo total; "terminada" zera o tempo da cirurgia
 
 Dono (15/09, foto do próprio card às 16:31: "13:00 Varizes · faltam 1h56" na cirurgia e "2h29" na

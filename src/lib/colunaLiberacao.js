@@ -464,9 +464,8 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     anestesista: display,
     cirurgioes: cirurgioesOrdenados(g),
     // término previsto POR CIRURGIÃO exibido (dono 29/07): { [token]: "HH:MM" }.
-    // É o tempo de UMA CIRURGIA — o total da pessoa é outro campo
-    // (linha_overrides[chave].termino), que o espelho mantém como o último
-    // término informado entre as abertas (utils.espelhoTempoTotal, 14–15/09).
+    // É o tempo de UMA CIRURGIA — o total da pessoa é outro número, manual e
+    // independente (linha_overrides[chave].termino), e nunca a soma destes.
     tokenTermino: g ? { ...g.tokenTermino } : {},
     // qual token está EM ANDAMENTO: só ele conta o tempo regressivo na fila
     tokenAndamento: g ? { ...g.tokenAndamento } : {},

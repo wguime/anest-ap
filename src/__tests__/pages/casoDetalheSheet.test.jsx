@@ -184,17 +184,13 @@ describe('Término DESTA cirurgia (dono 29/07)', () => {
     expect(override.termino).toBe(patch.terminoPrevisto)
   })
 
-  it('com 2+ cirurgias ativas e a outra SEM término, o total vira o término informado (dono 15/09)', async () => {
-    // até 14/09 este caso deixava o total manual; a foto do dono em 15/09 ("faltam
-    // 1h56" na cirurgia, "2h29" na pílula) é exatamente esta situação
+  it('com 2+ cirurgias ativas NÃO espelha — o total da pessoa segue manual', async () => {
     const segundo = { ...caso, id: 'c2', ordem: 1, hora: '09:00', cirurgiao: 'Liana W' }
     montar({}, { ...escala, casos: [caso, segundo] })
     abrirTempo()
     fireEvent.click(screen.getByRole('button', { name: '1h' }))
     await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
-    const patch = atualizarCaso.mock.calls[0][2]
-    await waitFor(() => expect(setLinhaOverride).toHaveBeenCalled())
-    expect(setLinhaOverride.mock.calls[0][2].termino).toBe(patch.terminoPrevisto)
+    expect(setLinhaOverride).not.toHaveBeenCalled()
   })
 
   it('o rótulo separa os dois tempos para o plantonista não confundir', () => {

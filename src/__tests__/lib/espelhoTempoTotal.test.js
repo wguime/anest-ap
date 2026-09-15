@@ -2,13 +2,9 @@
  * ESPELHO DO TEMPO TOTAL (dono 30/07): com UMA só cirurgia ativa no turno, gravar
  * o término da cirurgia preenche sozinho o cronômetro da pessoa nas Liberações —
  * os dois campos divergiam ("caso 18:30, pílula 17:00") e ninguém sabia qual valia.
- * Estes testes travam o contrato do helper puro: QUANDO espelha, quando NÃO
- * ("A + B", sem anestesista, posição assumida, total manual sem cirurgia informada)
- * e que o override devolvido é COMPLETO (parcial apagaria local/cirurgião/observação).
- *
- * ⚠️ 15/09: a regra de 29/07 "com 2+ cirurgias o total é 100% manual" vale SÓ
- * enquanto nenhuma tem término. Com alguma informada, o total é o ÚLTIMO término
- * entre as abertas — ver o describe do fim ("tempo informado = tempo total").
+ * Estes testes travam o contrato do helper puro: QUANDO espelha (1 caso ativo),
+ * quando NÃO (2+ casos, "A + B", sem anestesista, posição assumida) e que o
+ * override devolvido é COMPLETO (parcial apagaria local/cirurgião/observação).
  */
 import { describe, it, expect } from 'vitest'
 import { espelhoTempoTotal, observacaoDaLinha } from '../../pages/escala-cirurgica/utils'
@@ -78,10 +74,9 @@ describe('espelhoTempoTotal — quando espelha', () => {
 describe('espelhoTempoTotal — quando NÃO espelha', () => {
   const c1 = caso('c1', 'MARILIO', { anestesistaUserId: 'uid-mar' })
 
-  it('2+ casos ativos, NENHUM com término, e a pessoa LIMPA o dela: o total manual fica', () => {
-    // a pílula é a única informação que existe — mexer nela seria inventar
+  it('2+ casos ativos no turno (o total nunca é soma de estimativas)', () => {
     const c2 = caso('c2', 'MARILIO', { anestesistaUserId: 'uid-mar' })
-    expect(espelhoTempoTotal(escalaCom([c1, c2], { 'matutino:uid-mar': { termino: '19:00' } }), c1, '')).toBeNull()
+    expect(espelhoTempoTotal(escalaCom([c1, c2]), c1, '18:30')).toBeNull()
   })
 
   it('sala compartilhada "A + B" no caso editado', () => {
@@ -178,8 +173,8 @@ describe('espelhoTempoTotal — soma quando TODAS as cirurgias têm término (do
     expect(r.override.termino).toBe('11:15')
   })
 
-  it('a segunda ainda sem término → o total é o término da que TEM (15/09; era manual até 14/09)', () => {
-    expect(espelhoTempoTotal(escalaCom([c1, c2]), c1, '10:05').override.termino).toBe('10:05')
+  it('a segunda ainda sem término → nada a espelhar (total manual)', () => {
+    expect(espelhoTempoTotal(escalaCom([c1, c2]), c1, '10:05')).toBeNull()
   })
 
   it('a maior é a que vale, mesmo editando a mais cedo', () => {
@@ -188,23 +183,15 @@ describe('espelhoTempoTotal — soma quando TODAS as cirurgias têm término (do
     expect(r.override.termino).toBe('11:15')
   })
 
-  it('limpar uma delas: o total volta a ser o término da que sobrou informada', () => {
+  it('limpar uma delas quando o total É a soma gravada limpa o total junto', () => {
     const c2b = { ...c2, terminoPrevisto: '11:15' }
     const r = espelhoTempoTotal(escalaCom([c1, c2b], { 'matutino:MARILIO': { termino: '11:15' } }), c2b, '')
-    expect(r.override.termino).toBe('10:00')
-  })
-
-  it('limpar a ÚLTIMA informada quando o total era o espelho: o total sai junto', () => {
-    const c1b = { ...c1, terminoPrevisto: '' }
-    const c2b = { ...c2, terminoPrevisto: '11:15' }
-    const r = espelhoTempoTotal(escalaCom([c1b, c2b], { 'matutino:MARILIO': { termino: '11:15' } }), c2b, '')
     expect(r.override.termino).toBe('')
   })
 
-  it('limpar a ÚLTIMA informada quando o total foi mexido à mão: o total fica', () => {
-    const c1b = { ...c1, terminoPrevisto: '' }
+  it('limpar uma delas quando o total foi mexido à mão NÃO toca no total', () => {
     const c2b = { ...c2, terminoPrevisto: '11:15' }
-    expect(espelhoTempoTotal(escalaCom([c1b, c2b], { 'matutino:MARILIO': { termino: '12:00' } }), c2b, '')).toBeNull()
+    expect(espelhoTempoTotal(escalaCom([c1, c2b], { 'matutino:MARILIO': { termino: '12:00' } }), c2b, '')).toBeNull()
   })
 
   it('total já igual à soma → nada a gravar', () => {
@@ -244,84 +231,31 @@ describe('terminoEncadeado — a duração de quem ainda não começou vale depo
 })
 
 // ════════════════════════════════════════════════════════════════════════════
-// TEMPO INFORMADO = TEMPO TOTAL (dono 15/09, foto do próprio card: "13:00 Varizes
-// · faltam 1h56" e a pílula em "2h29" — "tempo informado não corresponde ao tempo
-// total"; "ao clicar em terminada o tempo referente àquela cirurgia fique zerado
-// para que não continue contando como tempo"). Reproduzido com os dados reais do
-// HRO de 15/09 à tarde: total 19:00 gravado à mão às 14:56 com 3 cirurgias sem
-// término; às 16:27 uma terminou, outra ganhou 18:27 e a terceira seguiu sem
-// término — e a pílula ficou em 19:00.
+// O TOTAL É INFORMADO INDEPENDENTE DOS TEMPOS INDIVIDUAIS (dono 15/09, à tarde).
+// A v5.12.8 tentou o espelho PARCIAL ("com alguma informada, o total vira o último
+// término entre as que têm") a partir da foto do card do dono — "faltam 1h56" na
+// cirurgia, "2h29" na pílula — e foi revertida no mesmo dia: "quero que mantenha o
+// sistema em que é informado o tempo total independente dos tempos individuais das
+// cirurgias". Estes casos são a trava: o helper devolve null onde a v5.12.8 gravava.
 // ════════════════════════════════════════════════════════════════════════════
-describe('espelhoTempoTotal — tempo informado = tempo total (dono 15/09)', () => {
-  // `turno` publicado como em produção: "AS" (a seguir) não tem hora, e sem a
-  // coluna o caso cairia na manhã — fora do turno da pílula
+describe('espelhoTempoTotal — o total é independente dos tempos individuais (dono 15/09)', () => {
+  // o cenário real do HRO de 15/09 à tarde (turno publicado: "AS" não tem hora)
   const uid = { anestesistaUserId: 'uid-melo', turno: 'vespertino' }
   const leticia = caso('c-let', 'MELO', { ...uid, hora: '13:00', statusCirurgia: 'iniciada' })
-  const helio1 = caso('c-h1', 'MELO', { ...uid, hora: 'AS', statusCirurgia: 'iniciada' })
   const helio2 = caso('c-h2', 'MELO', { ...uid, hora: 'AS' })
   const totalManual = { 'vespertino:uid-melo': { termino: '19:00' } }
 
-  it('o caso real: 18:27 numa cirurgia, a outra sem término → a pílula vira 18:27 (era 19:00 à mão)', () => {
-    const r = espelhoTempoTotal(escalaCom([leticia, helio2], totalManual), leticia, '18:27')
-    expect(r.override.termino).toBe('18:27')
+  it('a foto do dono: 18:27 numa cirurgia com a outra sem término NÃO mexe na pílula (19:00 à mão)', () => {
+    expect(espelhoTempoTotal(escalaCom([leticia, helio2], totalManual), leticia, '18:27')).toBeNull()
   })
 
-  it('duas informadas, uma não → o total é o ÚLTIMO término entre as informadas', () => {
+  it('limpar o término de uma cirurgia com outra sem término também não mexe (não era a soma)', () => {
     const l = { ...leticia, terminoPrevisto: '18:27' }
-    const r = espelhoTempoTotal(escalaCom([l, helio1, helio2]), helio1, '19:10')
-    expect(r.override.termino).toBe('19:10')
+    expect(espelhoTempoTotal(escalaCom([l, helio2], totalManual), l, '')).toBeNull()
   })
 
-  describe('terminada tira a cirurgia da conta (`patch` = o status novo)', () => {
-    const terminada = { statusCirurgia: 'terminada' }
-
-    it('a que tinha o término do total termina → o total vira o término da que ficou', () => {
-      const l = { ...leticia, terminoPrevisto: '18:27' }
-      const h = { ...helio1, terminoPrevisto: '19:00' }
-      const r = espelhoTempoTotal(escalaCom([l, h], totalManual), h, '', { patch: terminada })
-      expect(r.override.termino).toBe('18:27')
-    })
-
-    it('termina a ÚNICA informada e o total era ela → o total sai junto ("não continue contando")', () => {
-      const h = { ...helio1, terminoPrevisto: '19:00' }
-      const r = espelhoTempoTotal(escalaCom([leticia, h, helio2], totalManual), h, '', { patch: terminada })
-      expect(r.override.termino).toBe('')
-    })
-
-    it('termina uma SEM término com o total à mão → o total fica (a pílula era a única informação)', () => {
-      expect(espelhoTempoTotal(escalaCom([leticia, helio1, helio2], totalManual), helio1, '', { patch: terminada })).toBeNull()
-    })
-
-    it('termina a última cirurgia aberta e o total era o espelho dela → sai junto', () => {
-      const l = { ...leticia, terminoPrevisto: '18:27' }
-      const r = espelhoTempoTotal(escalaCom([l], { 'vespertino:uid-melo': { termino: '18:27' } }), l, '', { patch: terminada })
-      expect(r.override.termino).toBe('')
-    })
-
-    it('SUSPENSA (eixo extra) também sai da conta — e voltar da suspensão entra de novo', () => {
-      const l = { ...leticia, terminoPrevisto: '18:27' }
-      const h = { ...helio1, terminoPrevisto: '19:00' }
-      const esc = escalaCom([l, h], { 'vespertino:uid-melo': { termino: '19:00' } })
-      expect(espelhoTempoTotal(esc, h, '19:00', { patch: { statusExtra: 'suspensa' } }).override.termino).toBe('18:27')
-      const hs = { ...h, statusExtra: 'suspensa' }
-      const esc2 = escalaCom([l, hs], { 'vespertino:uid-melo': { termino: '18:27' } })
-      expect(espelhoTempoTotal(esc2, hs, '19:00', { patch: { statusExtra: null } }).override.termino).toBe('19:00')
-    })
-
-    it('reabrir uma terminada (sem término, já zerado) não mexe num total que já é o espelho', () => {
-      const l = { ...leticia, terminoPrevisto: '18:27' }
-      const done = { ...helio1, statusCirurgia: 'terminada', terminoPrevisto: null }
-      const esc = escalaCom([l, done], { 'vespertino:uid-melo': { termino: '18:27' } })
-      expect(espelhoTempoTotal(esc, done, '', { patch: { statusCirurgia: 'iniciada' } })).toBeNull()
-    })
-
-    it('a chave e o override completo saem como nos outros caminhos (local/observação preservados)', () => {
-      const h = { ...helio1, terminoPrevisto: '19:00' }
-      const esc = escalaCom([h], { 'vespertino:uid-melo': { termino: '19:00', local: 'Bloco M', observacao: 'recado' } })
-      expect(espelhoTempoTotal(esc, h, '', { patch: terminada })).toEqual({
-        chave: 'uid-melo', nome: 'MELO',
-        override: { local: 'Bloco M', cirurgioes: '', termino: '', observacao: 'recado' },
-      })
-    })
+  it('o helper não aceita "status novo": terminar/suspender uma cirurgia não passa por aqui', () => {
+    // a assinatura não tem `patch`; se alguém reintroduzir, este teste passa a falhar
+    expect(espelhoTempoTotal.length).toBe(3)
   })
 })

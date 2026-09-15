@@ -1,20 +1,22 @@
 /**
- * TERMINADA ZERA O TEMPO DA CIRURGIA — e o total da pessoa acompanha (dono 15/09).
+ * TERMINADA ZERA O TEMPO DA CIRURGIA — e SÓ dela (dono 15/09).
  *
  * A foto do próprio card do dono, 16:31 de 15/09: "13:00 Varizes · faltam 1h56" na
  * cirurgia e "2h29" na pílula. Reproduzido com os dados reais do HRO à tarde: a
  * pílula (19:00) tinha sido gravada à mão às 14:56 com três cirurgias sem término;
  * às 16:27 uma foi marcada terminada, outra ganhou 18:27 e a terceira seguiu sem
- * término — e nada disso mexeu na pílula, porque "terminada" não tocava no
- * `terminoPrevisto` e o espelho só escrevia o total com TODAS informadas.
+ * término. O pedido: "ao clicar em terminada o tempo referente àquela cirurgia
+ * fique zerado para que não continue contando como tempo".
  *
- * O pedido: "ao clicar em terminada o tempo referente àquela cirurgia fique zerado
- * para que não continue contando como tempo". Este teste trava o caminho inteiro
- * no context, que é o funil dos dois botões (detalhe do caso e faixa de urgências):
+ * ⚠️ A pílula do total NÃO entra: "quero que mantenha o sistema em que é informado
+ * o tempo total independente dos tempos individuais das cirurgias" (dono, 15/09 à
+ * tarde, revertendo o recálculo que a v5.12.8 fazia aqui). Este teste trava o
+ * caminho no context, que é o funil dos dois botões (detalhe do caso e faixa de
+ * urgências):
  *   · o otimista pinta `terminoPrevisto: null` junto com o status
  *   · o banco recebe o status pela RPC E o término zerado pelo `updateCaso`
- *   · o total da linha é recalculado sem a cirurgia que saiu
  *   · erro na RPC reverte o término junto com o status
+ *   · o total da linha (linha_overrides.termino) fica exatamente como estava
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, waitFor, act } from '@testing-library/react'
@@ -121,50 +123,31 @@ describe('marcar TERMINADA zera o término da cirurgia (dono 15/09)', () => {
   })
 })
 
-describe('o total da pessoa acompanha a cirurgia que saiu da fila (dono 15/09)', () => {
-  it('o caso real: termina a de 19:00 → a pílula vira 18:27, o término da que ficou', async () => {
+describe('o total da pessoa NÃO muda com o status — é informado independente (dono 15/09)', () => {
+  it('termina a de 19:00 → a pílula segue 19:00 e nada é gravado em linha_overrides', async () => {
     await montar()
     await act(async () => { await actions.setStatusCirurgia(hro(), casoDe('c-h1'), 'terminada', { userId: 'uid-melo' }) })
-    expect(totalDe()).toBe('18:27')
-    // gravado pela MESMA chave namespaced da pílula, com o resto do override preservado
-    const [escalaId, chave, valor] = svcMock.patchLinhaOverride.mock.calls[0]
-    expect(escalaId).toBe('esc-hro')
-    expect(chave).toBe('vespertino:uid-melo')
-    expect(valor).toMatchObject({ termino: '18:27', local: 'Bloco M - Sala 4', por: 'uid-melo' })
-  })
-
-  it('termina a ÚLTIMA cirurgia informada e o total era ela → a pílula some ("não continue contando")', async () => {
-    await montar()
-    await act(async () => { await actions.setStatusCirurgia(hro(), casoDe('c-let'), 'terminada', { userId: 'uid-melo' }) })
-    // ficou só a de 19:00 → total 19:00 (já era); agora termina ela também
-    await act(async () => { await actions.setStatusCirurgia(hro(), casoDe('c-h1'), 'terminada', { userId: 'uid-melo' }) })
-    expect(totalDe()).toBeNull()
-    // (a última chamada é a limpeza da chave legada pelo nome — a gravação é a da chave do uid)
-    const ultimo = svcMock.patchLinhaOverride.mock.calls.filter((c) => c[1] === 'vespertino:uid-melo').at(-1)
-    // o override sobrevive sem o término (local/observação ficam)
-    expect(ultimo[2]).toMatchObject({ local: 'Bloco M - Sala 4' })
-    expect(ultimo[2].termino).toBeUndefined()
-  })
-
-  it('total à mão e a cirurgia que terminou não tinha término → a pílula fica como estava', async () => {
-    svcMock.fetchEscala.mockImplementation(async (_d, hosp) => {
-      if (hosp !== 'hro') return null
-      const e = escalaBase()
-      e.casos = e.casos.map((c) => ({ ...c, terminoPrevisto: null })) // ninguém informou nada
-      return e
-    })
-    await montar()
-    await act(async () => { await actions.setStatusCirurgia(hro(), casoDe('c-h1'), 'terminada', { userId: 'uid-melo' }) })
+    expect(casoDe('c-h1').terminoPrevisto).toBeNull()
     expect(totalDe()).toBe('19:00')
     expect(svcMock.patchLinhaOverride).not.toHaveBeenCalled()
   })
 
-  it('SUSPENSA (eixo extra) também sai da conta; desfazer a suspensão devolve', async () => {
+  it('termina TODAS as cirurgias → a pílula continua como a pessoa deixou', async () => {
+    await montar()
+    for (const id of ['c-let', 'c-h1', 'c-h2']) {
+      await act(async () => { await actions.setStatusCirurgia(hro(), casoDe(id), 'terminada', { userId: 'uid-melo' }) })
+    }
+    expect(totalDe()).toBe('19:00')
+    expect(svcMock.patchLinhaOverride).not.toHaveBeenCalled()
+  })
+
+  it('suspensa / reabrir também não encostam na pílula nem no término da cirurgia', async () => {
     await montar()
     await act(async () => { await actions.setStatusCirurgia(hro(), casoDe('c-h1'), 'suspensa', { userId: 'uid-melo' }) })
-    expect(casoDe('c-h1').terminoPrevisto).toBe('19:00') // suspensa NÃO zera: pode voltar
-    expect(totalDe()).toBe('18:27')
+    expect(casoDe('c-h1').terminoPrevisto).toBe('19:00')
     await act(async () => { await actions.setStatusCirurgia(hro(), casoDe('c-h1'), 'suspensa', { userId: 'uid-melo' }) })
+    await act(async () => { await actions.setStatusCirurgia(hro(), casoDe('c-h1'), 'agendada', { userId: 'uid-melo' }) })
     expect(totalDe()).toBe('19:00')
+    expect(svcMock.patchLinhaOverride).not.toHaveBeenCalled()
   })
 })
