@@ -31,6 +31,9 @@ bolinhas azuis e a lista "Eventos deste mês" de "Consultar Plantões" liam só 
   fila EFETIVA (`filaEfetiva` = impressa + trocas aceitas); a página já mostrava assim.
 - Testes: caso real de julho (página + helpers), validação com o caso de agosto (TR974269/TR984249),
   espelho Supabase, serviço hospitalar com override, feriados com trocas aceitas.
+- **Trava:** `escalaEfetivaTripwire.test.js` varre `src/` e falha para qualquer arquivo que leia a tabela
+  estática crua sem estar na allowlist com motivo (provado contra o formulário antigo). Rule nova
+  `.claude/rules/escalas-trocas.md` carrega ao abrir os arquivos de troca.
 
 ## v5.12.1 (13/09/2026) — Comparativo por ano ocupa o card no desktop
 

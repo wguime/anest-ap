@@ -153,6 +153,7 @@ tarefa DO DONO (secrets via `firebase functions:secrets:set`).
 | `escala-urgencias.md` | `escalaCirurgicaUrgencias`, `FaixaUrgencias`, `BoardView` |
 | `escala-trocas.md` | `TrocaSheet`, `DefinirAnestesistaSheet`, importação |
 | `escala-telas.md` | sheets e painéis da escala (`CasoDetalheSheet`, `PainelTempo`, …) |
+| `escalas-trocas.md` | trocas de plantão da residência, sobreaviso, hospitais e feriados (`Consulta*Page`, `Trocas*Page`, `services/troca*`, `useOverridesDiario`, edge `schedule-shift-reminders`) — escala EFETIVA = base + override |
 | `escala-numerica.md` | `escalaNumerica.js/.json`, `extrair-escala-numerica.py`, `ordem-liberacao-numerica.mjs` (escala numérica do grupo = base da ordem de liberação) |
 | `calculadoras-clinicas.md` | libs e displays de calculadora |
 | `cateter-peridural.md` · `comunicados-notificacoes.md` · `faturamento-particulares.md` · `ferias.md` | os módulos homônimos |
