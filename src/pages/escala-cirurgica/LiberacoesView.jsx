@@ -2247,7 +2247,17 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     vão de ~14px entre o nome e a linha do hospital, que no
                     protótipo vêm coladas. Alinhados ao topo, hospital, sala e
                     cirurgiões descem direto do nome. */}
-                <div className="flex items-start justify-between gap-2">
+                {/* A FILEIRA DE BAIXO RECUA PARA BAIXO DO CÍRCULO (dono 15/09, opção C
+                    escolhida em maquete): "há bastante sobra de espaço à esquerda do
+                    card, abaixo do círculo". As colunas do número (w-5) e do círculo
+                    (w-9) só servem à linha do NOME; abaixo dela, os 56px eram vão. A
+                    margem negativa devolve essa largura às cirurgias, à sala e à
+                    observação — é o que faz "09:30 Colecistectomia · 7min além" caber
+                    numa linha a 375px mesmo com "+ Tempo total" à direita. Deitado o
+                    número sai da coluna (só o círculo fica): 36px. O `mt-2` afasta a
+                    primeira linha do círculo visual (28px, termina a 36px do topo). A
+                    coluna da direita não muda: `items-end` a mantém na borda. */}
+                <div className="-ml-14 mt-2 flex items-start justify-between gap-2 deitado:-ml-9">
                   <div className="min-w-0 flex-1">
                     {/* card vermelho + "Liberado" = liberação FEITA, sempre. Sem
                         caso e sem marcação a linha mostra "Livre" e espera o toque
@@ -2383,15 +2393,14 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                               const rotulo = nomeCurtoProcedimento(c.procedimento) || fraseClinica(c.procedimento) || '—'
                               const podeInformar = canEdit && !!c.id && !!onDefinirTerminoCaso
                               const abrir = () => { setHoraExataCaso(''); setAlvoTempoCaso({ linha, cirurgia: c }) }
-                              // A 375px sem tempo total definido, o "+ Tempo total" à direita
-                              // deixa ~170px para esta linha: hora + nome + "+ término" não
-                              // cabem. O nome tem largura MÍNIMA para ler ("Colecistectomia")
-                              // e o término/"+ término" DESCE para uma 2ª linha, à direita,
-                              // só quando não cabe (`flex-wrap`) — medido em 14/09: 375/390/430.
+                              // UMA LINHA SÓ, tempo colado ao nome (dono 15/09: "informações
+                              // devem estar na mesma linha"). O que dá a largura é a fileira
+                              // ter recuado para baixo do círculo (acima); só um nome muito
+                              // longo encurta com "…" — o tempo nunca desce de linha.
                               return (
-                                <p key={c.id || `${token}-${j}`} className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 pl-2.5 text-[12.5px]">
+                                <p key={c.id || `${token}-${j}`} className="flex items-center gap-1.5 pl-2.5 text-[12.5px]">
                                   <span className="shrink-0 font-semibold tabular-nums text-foreground/70">{c.hora || '—'}</span>
-                                  <span className="min-w-[84px] flex-1 truncate">{rotulo}</span>
+                                  <span className="min-w-0 truncate">{rotulo}</span>
                                   {(falta || hora) && !espelhaOTotal ? (
                                     podeInformar ? (
                                       <button
@@ -2399,12 +2408,12 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                                         onClick={abrir}
                                         aria-label={`Ajustar término de ${rotulo} (${c.hora || 'sem hora'})`}
                                         /* alvo de toque de 44px sem crescer a linha: padding vertical com margem negativa */
-                                        className={['ml-auto shrink-0 -my-2 py-2 text-xs', falta?.atrasada ? 'font-medium text-warning' : 'text-muted-foreground'].join(' ')}
+                                        className={['shrink-0 -my-2 py-2 text-xs', falta?.atrasada ? 'font-medium text-warning' : 'text-muted-foreground'].join(' ')}
                                       >
                                         · {falta ? fraseFaltante(falta) : `até ${hora}`}
                                       </button>
                                     ) : (
-                                      <span className={['ml-auto shrink-0 text-xs', falta?.atrasada ? 'font-medium text-warning' : 'text-muted-foreground'].join(' ')}>
+                                      <span className={['shrink-0 text-xs', falta?.atrasada ? 'font-medium text-warning' : 'text-muted-foreground'].join(' ')}>
                                         · {falta ? fraseFaltante(falta) : `até ${hora}`}
                                       </span>
                                     )
@@ -2414,7 +2423,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                                       onClick={abrir}
                                       aria-label={`Informar término de ${rotulo} (${c.hora || 'sem hora'})`}
                                       /* mesmo tracejado do "+ Tempo total": vazio tem cara de ação (dono 30/07) */
-                                      className="ml-auto shrink-0 -my-1 rounded-md border border-dashed border-border-strong px-1.5 py-1 text-[11px] font-medium leading-none text-muted-foreground active:bg-muted"
+                                      className="shrink-0 -my-1 rounded-md border border-dashed border-border-strong px-1.5 py-1 text-[11px] font-medium leading-none text-muted-foreground active:bg-muted"
                                     >
                                       + término
                                     </button>

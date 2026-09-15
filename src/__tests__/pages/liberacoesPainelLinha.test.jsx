@@ -963,3 +963,32 @@ describe('cirurgias sob o cirurgião, com "+ término" por cirurgia (dono 14/09)
     expect(within(card).getByTitle(/toque para ajustar/)).toBeTruthy()
   })
 })
+
+// ════════════════════════════════════════════════════════════════════════════
+// A FILEIRA DE BAIXO RECUA PARA BAIXO DO CÍRCULO (dono 15/09, opção C): os 56px
+// das colunas do número e do círculo eram vão abaixo da linha do nome; a fileira
+// das cirurgias/sala/observação os recupera com margem negativa, e a linha de cada
+// cirurgia passa a ser uma só, com o tempo colado ao nome (nunca desce de linha).
+// ════════════════════════════════════════════════════════════════════════════
+describe('a fileira das cirurgias fica sob o círculo, numa linha só (dono 15/09)', () => {
+  it('a fileira recua 56px (36px deitado) e desce para não encostar no círculo', () => {
+    montar()
+    const card = document.querySelector('[data-linha="uid-leo"]')
+    const fileira = within(card).getByText('Liana W').closest('.flex.items-start.justify-between')
+    expect(fileira.className).toContain('-ml-14')
+    expect(fileira.className).toContain('deitado:-ml-9')
+    expect(fileira.className).toContain('mt-2')
+  })
+
+  it('a linha da cirurgia não quebra: sem flex-wrap, e o tempo colado ao nome (sem ml-auto)', () => {
+    const duas = {
+      ...escalaBase,
+      casos: [caso('Sala 1', 0, 'LEONARDO', 'Liana W', '07:30', { procedimento: 'COLECISTECTOMIA', terminoPrevisto: '23:30', statusCirurgia: 'iniciada' })],
+    }
+    montar({ onDefinirTerminoCaso: vi.fn(async () => {}) }, duas)
+    const card = document.querySelector('[data-linha="uid-leo"]')
+    const linha = linhaDaCirurgia(card, 'Liana W')
+    expect(linha.className).not.toContain('flex-wrap')
+    expect([...linha.querySelectorAll('button,span')].some((el) => el.className.includes('ml-auto'))).toBe(false)
+  })
+})

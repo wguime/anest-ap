@@ -312,6 +312,13 @@ agendada) ou o tracejado **"+ término"** para informar. A frase "N cirurgias ·
 término informado" saiu. Só no dia a dia da linha: renovada, cirurgião ajustado à mão e
 card sintético (noite) seguem no desenho antigo (uma linha por cirurgião).
 
+- **A fileira de baixo fica SOB O CÍRCULO (dono 15/09, opção C em maquete):** "há bastante
+  sobra de espaço à esquerda do card, abaixo do círculo". As colunas do número (w-5) e do
+  círculo (w-9) só servem à linha do nome; abaixo dela, a fileira [infos | pílula/Editar]
+  recua `-ml-14` (`deitado:-ml-9`, sem a coluna do número) e desce `mt-2` para não encostar
+  no círculo visual. É essa largura que faz cada cirurgia caber numa LINHA SÓ, com o tempo
+  colado ao nome (sem `flex-wrap`, sem `ml-auto`) — só um nome muito longo encurta com "…".
+  Medido em 15/09 a 375/390/430: sem quebra, sem corte. A coluna da direita não muda.
 - **Dados:** `linha.cirurgias` (`colunaLiberacao.js`): as cirurgias ABERTAS da pessoa em
   ordem de horário — `{ id, hora, token, procedimento, terminoPrevisto, andamento, sala }`,
   sem dado de paciente. O token continua existindo para o desenho antigo.

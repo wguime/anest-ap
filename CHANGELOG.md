@@ -35,6 +35,16 @@ tempos e coloque no tempo total".
 - O caminho da fila grava pela página, que aplica o encadeamento e o espelho, então informar um
   término em qualquer aba aparece nas outras, inclusive ao lado da cirurgia na fila.
 
+### Ajuste de 15/09 — a fileira de baixo sob o círculo, cada cirurgia numa linha só (opção C)
+Dono, sobre a captura: "há bastante sobra de espaço à esquerda do card, abaixo da marcação de
+liberação (círculo) … ou deixar a informação de tempo da cirurgia à esquerda para não ficar em nova
+linha (informações devem estar na mesma linha)". Escolhida em maquete a opção C, as duas juntas:
+- Abaixo da linha do nome, a fileira de cirurgiões/cirurgias, sala e observação recua para baixo do
+  número e do círculo (56px; 36px deitado), que só servem à linha do nome. A coluna da direita
+  (tempo total, Editar) não muda.
+- Cada cirurgia é uma linha só: hora, nome curto e o término (ou "+ término") colados, sem quebra;
+  só um nome muito longo encurta com "…". Medido a 375/390/430 nos dois temas: sem quebra, sem corte.
+
 ## v5.12.5 (14/09/2026) — Dupla preenchida na folha, tempo espelhado nos dois sentidos e "não é ajuda" de verdade
 
 Três queixas do dono na tarde de 14/09, todas na fila de Liberações e na folha "Definir anestesista".
