@@ -3,6 +3,17 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.7 (15/09/2026) — Fila: sai o "+ término" por cirurgia; o tempo aparece ao lado da cirurgia só quando informado no card
+
+Dono (15/09, foto do card da Giovana Noll com quatro tracejados): "retire o badge de tempo ao lado
+das cirurgias, quero que apenas adicione o tempo correspondente à cirurgia quando adicionado tempo
+no card".
+- O tracejado "+ término" e o toque no tempo já informado ("Ajustar") saíram da fila, junto com a
+  folha "Término de …". Sem término, a linha da cirurgia acaba no nome.
+- O tempo de cada cirurgia continua sendo informado no card dela (Completa e Minhas). Informado lá,
+  aparece ao lado da cirurgia na fila ("faltam 12min" na iniciada, "até 12:05" na agendada).
+- O espelho pílula → cirurgia única e a soma no total (v5.12.6) não mudam.
+
 ## v5.12.6 (14/09/2026) — Fila: cirurgião uma vez, cirurgias abaixo com hora, nome curto e término; total vira a soma
 
 Pedido do dono (14/09, à tarde, sobre a captura da fila): "melhore a visualização para tempos de

@@ -111,9 +111,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const [abaPainel, setAbaPainel] = useState(null)
   const [alvoTempo, setAlvoTempo] = useState(null) // linha do sheet "Tempo faltante"
   const [horaExata, setHoraExata] = useState('') // hora exata de término (HH:MM, Select DS)
-  // "+ término" de UMA cirurgia da linha (dono 14/09): { linha, cirurgia }
-  const [alvoTempoCaso, setAlvoTempoCaso] = useState(null)
-  const [horaExataCaso, setHoraExataCaso] = useState('')
   const [ajudaSheet, setAjudaSheet] = useState(false) // sheet "adicionar ajuda"
   const [ajudaUid, setAjudaUid] = useState('')
   const [p4Sheet, setP4Sheet] = useState(false) // sheet "Onde está o P4 hoje?"
@@ -2374,8 +2371,13 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     )}
                     {/* CIRURGIÃO UMA VEZ, CIRURGIAS ABAIXO (dono 14/09, escolhido em maquete):
                         cada cirurgia aberta da pessoa numa linha — hora, nome curto
-                        (`nomeCurtoProcedimento`) e o término DELA ao lado, ou "+ término"
-                        para informar. A pílula verde à direita segue sendo o total da PESSOA.
+                        (`nomeCurtoProcedimento`) e o término DELA ao lado, QUANDO informado.
+                        ⚠️ SÓ MOSTRA, NÃO INFORMA (dono 15/09, foto do card da Giovana: "retire o
+                        badge de tempo ao lado das cirurgias, quero que apenas adicione o tempo
+                        correspondente à cirurgia quando adicionado tempo no card"): o "+ término"
+                        e o "Ajustar" da fila saíram; o tempo de cada cirurgia se informa no CARD
+                        dela (Completa/Minhas, `CasoDetalheSheet`), como decidido em 31/07. A
+                        pílula verde à direita segue sendo o total da PESSOA.
                         Linha RENOVADA, cirurgião ajustado à mão e card sintético (noite) caem
                         no desenho antigo: uma linha por cirurgião, sem tempos derivados. */}
                     {!liberadoReal && usaGrupos && (
@@ -2391,43 +2393,20 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                               // da linha é espelhado do término dela — fica a pílula.
                               const espelhaOTotal = linha.cirurgias.length === 1 && alvo != null && alvo === terminoLinhaMin && !!cronometro
                               const rotulo = nomeCurtoProcedimento(c.procedimento) || fraseClinica(c.procedimento) || '—'
-                              const podeInformar = canEdit && !!c.id && !!onDefinirTerminoCaso
-                              const abrir = () => { setHoraExataCaso(''); setAlvoTempoCaso({ linha, cirurgia: c }) }
                               // UMA LINHA SÓ, tempo colado ao nome (dono 15/09: "informações
                               // devem estar na mesma linha"). O que dá a largura é a fileira
                               // ter recuado para baixo do círculo (acima); só um nome muito
-                              // longo encurta com "…" — o tempo nunca desce de linha.
+                              // longo encurta com "…" — o tempo nunca desce de linha. Sem
+                              // término informado a linha acaba no nome: nada de tracejado.
                               return (
                                 <p key={c.id || `${token}-${j}`} className="flex items-center gap-1.5 pl-2.5 text-[12.5px]">
                                   <span className="shrink-0 font-semibold tabular-nums text-foreground/70">{c.hora || '—'}</span>
                                   <span className="min-w-0 truncate">{rotulo}</span>
-                                  {(falta || hora) && !espelhaOTotal ? (
-                                    podeInformar ? (
-                                      <button
-                                        type="button"
-                                        onClick={abrir}
-                                        aria-label={`Ajustar término de ${rotulo} (${c.hora || 'sem hora'})`}
-                                        /* alvo de toque de 44px sem crescer a linha: padding vertical com margem negativa */
-                                        className={['shrink-0 -my-2 py-2 text-xs', falta?.atrasada ? 'font-medium text-warning' : 'text-muted-foreground'].join(' ')}
-                                      >
-                                        · {falta ? fraseFaltante(falta) : `até ${hora}`}
-                                      </button>
-                                    ) : (
-                                      <span className={['shrink-0 text-xs', falta?.atrasada ? 'font-medium text-warning' : 'text-muted-foreground'].join(' ')}>
-                                        · {falta ? fraseFaltante(falta) : `até ${hora}`}
-                                      </span>
-                                    )
-                                  ) : (podeInformar && !espelhaOTotal && (
-                                    <button
-                                      type="button"
-                                      onClick={abrir}
-                                      aria-label={`Informar término de ${rotulo} (${c.hora || 'sem hora'})`}
-                                      /* mesmo tracejado do "+ Tempo total": vazio tem cara de ação (dono 30/07) */
-                                      className="shrink-0 -my-1 rounded-md border border-dashed border-border-strong px-1.5 py-1 text-[11px] font-medium leading-none text-muted-foreground active:bg-muted"
-                                    >
-                                      + término
-                                    </button>
-                                  ))}
+                                  {(falta || hora) && !espelhaOTotal && (
+                                    <span className={['shrink-0 text-xs', falta?.atrasada ? 'font-medium text-warning' : 'text-muted-foreground'].join(' ')}>
+                                      · {falta ? fraseFaltante(falta) : `até ${hora}`}
+                                    </span>
+                                  )}
                                 </p>
                               )
                             })}
@@ -3364,37 +3343,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 horaExata={horaExata}
                 onHoraExata={setHoraExata}
                 onDefinir={(hhmm) => definirTempo(alvoTempo, hhmm)}
-              />
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
-
-      {/* Término de UMA cirurgia da linha (dono 14/09) — o MESMO painel do detalhe do
-          caso; grava pela página (`onDefinirTerminoCaso`), que encadeia a duração e
-          espelha no total. Fecha no toque, como a pílula. */}
-      <Sheet open={!!alvoTempoCaso} onOpenChange={(o) => { if (!o) { setAlvoTempoCaso(null); setHoraExataCaso('') } }}>
-        <SheetContent side="bottom" className="!h-auto max-h-[88vh]">
-          <SheetHeader className="pb-2">
-            <SheetTitle className="flex items-center gap-2 text-[17px]">
-              <Timer className="w-4 h-4 shrink-0" /> Término de {alvoTempoCaso ? (nomeCurtoProcedimento(alvoTempoCaso.cirurgia.procedimento) || fraseClinica(alvoTempoCaso.cirurgia.procedimento) || 'cirurgia') : '—'}
-            </SheetTitle>
-            <p className="mt-1 text-[11.5px] leading-snug text-muted-foreground">
-              {alvoTempoCaso?.cirurgia?.hora ? `${alvoTempoCaso.cirurgia.hora} · ` : ''}{alvoTempoCaso?.cirurgia?.token || ''}{alvoTempoCaso?.linha?.anestesista ? ` · ${alvoTempoCaso.linha.anestesista}` : ''}
-              {' — '}só desta cirurgia. Com todas as cirurgias com término, o tempo total passa a ser a soma.
-            </p>
-          </SheetHeader>
-          {alvoTempoCaso && (
-            <div className="space-y-5 px-1 pb-6 pt-2">
-              <PainelTempo
-                atual={alvoTempoCaso.cirurgia.terminoPrevisto || ''}
-                horaExata={horaExataCaso}
-                onHoraExata={setHoraExataCaso}
-                onDefinir={(hhmm, meta) => {
-                  onDefinirTerminoCaso?.(alvoTempoCaso.cirurgia.id, hhmm || '', meta)?.catch?.(() => {})
-                  setAlvoTempoCaso(null)
-                  setHoraExataCaso('')
-                }}
               />
             </div>
           )}

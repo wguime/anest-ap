@@ -308,9 +308,18 @@ array (ela caía para o fim da fila; no slot assumido adicionava o nome do DONO 
 Escolhido em maquete (`.tmp/tempos-por-cirurgia-c.html`, 430px, dois temas). No card da
 fila, cada cirurgião aberto da pessoa é um TÍTULO, e cada cirurgia dele uma linha embaixo:
 **hora · nome curto · término** ("faltam 12min" na que está em andamento, "até 12:05" na
-agendada) ou o tracejado **"+ término"** para informar. A frase "N cirurgias · M com
-término informado" saiu. Só no dia a dia da linha: renovada, cirurgião ajustado à mão e
-card sintético (noite) seguem no desenho antigo (uma linha por cirurgião).
+agendada) — o término SÓ quando informado; sem ele a linha acaba no nome. A frase "N
+cirurgias · M com término informado" saiu. Só no dia a dia da linha: renovada, cirurgião
+ajustado à mão e card sintético (noite) seguem no desenho antigo (uma linha por cirurgião).
+
+⚠️ **A fila só MOSTRA o término, não informa (dono 15/09, foto do card da Giovana):** *"retire
+o badge de tempo ao lado das cirurgias, quero que apenas adicione o tempo correspondente à
+cirurgia quando adicionado tempo no card"*. O tracejado "+ término" e o "Ajustar" por cirurgia
+(nascidos em 14/09) SAÍRAM, junto com a folha "Término de …" da view. O tempo de cada cirurgia
+se informa no CARD dela — `CasoDetalheSheet`, nas abas Completa e Minhas — como já estava
+decidido em 31/07 ("é LÁ que se informa o tempo de cada cirurgia"); a fila reflete pelo
+realtime. O texto do término na linha é `<span>`, não botão. `onDefinirTerminoCaso` continua
+como prop da view porque o espelho inverso (pílula → caso único, seção abaixo) grava por ela.
 
 - **A fileira de baixo fica SOB O CÍRCULO (dono 15/09, opção C em maquete):** "há bastante
   sobra de espaço à esquerda do card, abaixo do círculo". As colunas do número (w-5) e do
@@ -327,14 +336,14 @@ card sintético (noite) seguem no desenho antigo (uma linha por cirurgião).
   ENDOSCOPICA DA PROSTATA" → RTU; "PROSTATOVESICULECTOMIA…" → Prostatectomia) + fallback
   que tira a embalagem e fica com a cabeça da frase. Lista de conferência do dono em
   `.tmp/nomes-curtos-procedimentos.md`. Rótulo errado = entrada nova no dicionário, com teste.
-- **"+ término" por cirurgia** abre o MESMO `PainelTempo` do detalhe do caso, grava pela
-  página (`onDefinirTerminoCaso(casoId, hhmm, meta)`), e o tempo já informado é um botão que
-  reabre o painel. `PainelTempo` passou a devolver `meta.minutos` quando a escolha foi
-  DURAÇÃO (atalho ou "Outro tempo…"); hora exata não traz meta.
+- **`PainelTempo` devolve `meta.minutos`** quando a escolha foi DURAÇÃO (atalho ou "Outro
+  tempo…"); hora exata não traz meta. Quem consome é o detalhe do caso — a fila deixou de
+  abrir o painel por cirurgia em 15/09. O handler `onDefinirTerminoCaso(casoId, hhmm, meta)`
+  da página segue existindo para o espelho inverso da pílula.
 - **Duração encadeada** (`terminoEncadeado`, utils): na cirurgia EM ANDAMENTO "1h" é agora
   + 1h; na que ainda não começou é **término da anterior da mesma pessoa + 1h** (a última,
   por hora, que já tem término; sem anterior com término, agora). Vale no detalhe do caso
-  (Minhas/Completa) e na fila — as três abas gravam a mesma coisa.
+  (Minhas/Completa) — a fila só mostra o resultado (15/09).
 - **SOMA no total** (`espelhoTempoTotal`, ampliado): com UMA cirurgia o total espelha o
   término dela (30/07); com TODAS as cirurgias da pessoa com término, o total vira o ÚLTIMO
   término (= soma das durações encadeadas). Alguma sem término → total manual (29/07
@@ -343,7 +352,7 @@ card sintético (noite) seguem no desenho antigo (uma linha por cirurgião).
   (caminho da fila). A pílula da pessoa continua editável e vence quando editada à mão.
 - ⚠️ Isto SUPERSEDE, para o caso "todas informadas", a regra de 29/07 de que o total nunca é
   soma — decisão explícita do dono em 14/09. Travas: `liberacoesPainelLinha.test.jsx`
-  (grupos, "+ término", espelho único), `casoDetalheSheet.test.jsx` (encadeamento e soma),
+  (grupos, término só quando informado, espelho único), `casoDetalheSheet.test.jsx` (encadeamento e soma),
   `espelhoTempoTotal.test.js`, `colunaLiberacao.test.js` (`cirurgias`),
   `escalaProcedimentoCurto.test.js`.
 

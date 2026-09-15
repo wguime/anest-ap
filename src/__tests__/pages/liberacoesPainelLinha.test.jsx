@@ -895,10 +895,13 @@ describe('badge de Ajuda derivado tem "não é ajuda", e desfazer é uma declara
 // ════════════════════════════════════════════════════════════════════════════
 // CIRURGIÃO UMA VEZ, CIRURGIAS ABAIXO (dono 14/09, escolhido em maquete): "se um
 // cirurgião tiver mais de uma cirurgia, o nome aparece uma vez e as cirurgias
-// abaixo; ao informar término, a informação aparece ao lado do nome da cirurgia;
-// mantenha a opção de informar tempo ao lado de cada cirurgia".
+// abaixo; ao informar término, a informação aparece ao lado do nome da cirurgia".
+// ⚠️ 15/09 (foto do card da Giovana): "retire o badge de tempo ao lado das
+// cirurgias, quero que apenas adicione o tempo correspondente à cirurgia quando
+// adicionado tempo no card" — o "+ término" e o "Ajustar" da fila SAÍRAM; o tempo
+// se informa no card da cirurgia (Completa/Minhas) e a fila só MOSTRA.
 // ════════════════════════════════════════════════════════════════════════════
-describe('cirurgias sob o cirurgião, com "+ término" por cirurgia (dono 14/09)', () => {
+describe('cirurgias sob o cirurgião: a fila só MOSTRA o término informado no card (dono 14/09 → 15/09)', () => {
   const duas = {
     ...escalaBase,
     casos: [
@@ -907,46 +910,54 @@ describe('cirurgias sob o cirurgião, com "+ término" por cirurgia (dono 14/09)
       caso('Sala 2', 0, 'MARILIO', 'Taciana A', '07:30'),
     ],
   }
+  const linhasDe = (card) => [...within(card).getByText('Liana W').closest('div').querySelectorAll('p')]
+    .slice(1).map((p) => p.textContent.replace(/\s+/g, ' ').trim())
 
   it('o cirurgião aparece UMA vez e cada cirurgia embaixo, com hora e nome curto', () => {
     montar({ onDefinirTerminoCaso: vi.fn(async () => {}) }, duas)
     const card = document.querySelector('[data-linha="uid-leo"]')
     expect(within(card).getAllByText('Liana W')).toHaveLength(1)
-    const grupo = within(card).getByText('Liana W').closest('div')
-    const linhas = [...grupo.querySelectorAll('p')].slice(1).map((p) => p.textContent.replace(/\s+/g, ' ').trim())
+    const linhas = linhasDe(card)
     expect(linhas[0]).toMatch(/^07:30 ?Colecistectomia/)
     expect(linhas[0]).toMatch(/faltam|além/)
-    expect(linhas[1]).toMatch(/^10:00 ?Herniorrafia/)
-    expect(linhas[1]).toContain('+ término')
+    // sem término informado a linha acaba no nome — nada de tracejado (15/09)
+    expect(linhas[1]).toMatch(/^10:00 ?Herniorrafia$/)
     // a frase "N cirurgias · M com término informado" saiu: cada cirurgia se mostra
     expect(card.textContent).not.toMatch(/com término informado/)
   })
 
-  it('"+ término" abre o painel da cirurgia e grava pela página, com a DURAÇÃO escolhida', async () => {
-    const onDefinirTerminoCaso = vi.fn(async () => {})
-    montar({ onDefinirTerminoCaso }, duas)
-    fireEvent.click(screen.getByRole('button', { name: /Informar término de Herniorrafia/ }))
-    expect(screen.getByText(/Término de Herniorrafia/)).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: '1h' }))
-    await waitFor(() => expect(onDefinirTerminoCaso).toHaveBeenCalledTimes(1))
-    const [id, hhmm, meta] = onDefinirTerminoCaso.mock.calls[0]
-    expect(id).toBe('Sala 1-1')
-    expect(hhmm).toMatch(/^\d{2}:\d{2}$/)
-    expect(meta).toEqual({ minutos: 60 })
-  })
-
-  it('o término já informado é um botão que reabre o painel daquela cirurgia', () => {
+  it('a fila NÃO tem "+ término" nem "Ajustar": o término entra pelo card da cirurgia (dono 15/09)', () => {
     montar({ onDefinirTerminoCaso: vi.fn(async () => {}) }, duas)
-    fireEvent.click(screen.getByRole('button', { name: /Ajustar término de Colecistectomia/ }))
-    expect(screen.getByText(/Término de Colecistectomia/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Informar término/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Ajustar término/ })).toBeNull()
+    expect(screen.queryByText('+ término')).toBeNull()
+    const card = document.querySelector('[data-linha="uid-leo"]')
+    // o tempo é texto, não botão — nada abre a partir da linha da cirurgia
+    expect(linhaDaCirurgia(card, 'Liana W').querySelector('button')).toBeNull()
+    expect(screen.queryByText(/Término de Colecistectomia/)).toBeNull()
   })
 
-  it('sem permissão de edição não há "+ término", mas o tempo informado continua visível', () => {
+  it('o término informado no card aparece ao lado da cirurgia: "faltam" na iniciada, "até HH:MM" na agendada', () => {
+    const comTermino = {
+      ...duas,
+      casos: [
+        duas.casos[0],
+        caso('Sala 1', 1, 'LEONARDO', 'Liana W', '10:00', { procedimento: 'HERNIORRAFIA INGUINAL', terminoPrevisto: '23:45' }),
+        duas.casos[2],
+      ],
+    }
+    montar({}, comTermino)
+    const card = document.querySelector('[data-linha="uid-leo"]')
+    const linhas = linhasDe(card)
+    expect(linhas[0]).toMatch(/faltam|além/)
+    expect(linhas[1]).toMatch(/^10:00 ?Herniorrafia ?· até 23:45$/)
+  })
+
+  it('sem permissão de edição o tempo informado continua visível', () => {
     render(
       <LiberacoesView escala={duas} hospital="hro" hospitalLabel="HRO" turno="matutino" canEdit={false} onToggle={() => {}} onSetOverride={() => {}} />,
       { wrapper: wrap },
     )
-    expect(screen.queryByRole('button', { name: /Informar término/ })).toBeNull()
     const card = document.querySelector('[data-linha="uid-leo"]')
     expect(linhaDaCirurgia(card, 'Liana W').textContent).toMatch(/faltam|além/)
   })
