@@ -3,6 +3,29 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.8 (15/09/2026) — Tempo informado = tempo total; "terminada" zera o tempo da cirurgia
+
+Dono (15/09, foto do próprio card às 16:31: "13:00 Varizes · faltam 1h56" na cirurgia e "2h29" na
+pílula): "tempo informado não corresponde ao tempo total"; "ao clicar em terminada o tempo referente
+àquela cirurgia fique zerado para que não continue contando como tempo". Reproduzido com os dados
+reais do HRO à tarde: a pílula (19:00) tinha sido gravada à mão às 14:56 com três cirurgias sem
+término; às 16:27 uma foi marcada terminada, outra ganhou 18:27 e a terceira seguiu sem término — e
+nada disso mexia na pílula.
+- **O total da pessoa é o ÚLTIMO término informado entre as cirurgias abertas dela** — com uma, com
+  todas (v5.12.6) e agora também com ALGUMA sem término (a regra "com 2+ o total é manual", de 29/07,
+  vale só enquanto nenhuma cirurgia tem término; a pílula continua editável e vence até a próxima
+  mudança numa cirurgia). Na foto: 18:27 na cirurgia → 18:27 na pílula.
+- **Terminada zera o `terminoPrevisto` da cirurgia** (otimista + banco) e o total se recalcula sem
+  ela: sobrou outra informada → vira o término dela; não sobrou e o total era o espelho → a pílula
+  some; total à mão sem cirurgia informada → fica. Suspensa também sai da conta (sem zerar: pode
+  voltar); reabrir devolve. Vale nos dois botões de status (detalhe do caso e faixa de urgências),
+  porque o funil é o `setStatusCirurgia` do context.
+- Subtítulo do painel "Tempo faltante": saiu o "e nunca é a soma delas" (desde 14/09 o total
+  acompanha os términos informados).
+
+Travas: `espelhoTempoTotal.test.js` (describe "tempo informado = tempo total"),
+`escalaTerminadaZeraTempo.test.jsx` (context, com o cenário real do HRO), `casoDetalheSheet.test.jsx`.
+
 ## v5.12.7 (15/09/2026) — Fila: sai o "+ término" por cirurgia; o tempo aparece ao lado da cirurgia só quando informado no card
 
 Dono (15/09, foto do card da Giovana Noll com quatro tracejados): "retire o badge de tempo ao lado

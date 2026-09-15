@@ -344,17 +344,39 @@ como prop da view porque o espelho inverso (pílula → caso único, seção aba
   + 1h; na que ainda não começou é **término da anterior da mesma pessoa + 1h** (a última,
   por hora, que já tem término; sem anterior com término, agora). Vale no detalhe do caso
   (Minhas/Completa) — a fila só mostra o resultado (15/09).
-- **SOMA no total** (`espelhoTempoTotal`, ampliado): com UMA cirurgia o total espelha o
-  término dela (30/07); com TODAS as cirurgias da pessoa com término, o total vira o ÚLTIMO
-  término (= soma das durações encadeadas). Alguma sem término → total manual (29/07
-  continua valendo aí). Limpar o término de uma delas quando o total ainda é a soma gravada
-  limpa o total; total mexido à mão fica. Chamado no detalhe do caso e no handler da página
-  (caminho da fila). A pílula da pessoa continua editável e vence quando editada à mão.
-- ⚠️ Isto SUPERSEDE, para o caso "todas informadas", a regra de 29/07 de que o total nunca é
-  soma — decisão explícita do dono em 14/09. Travas: `liberacoesPainelLinha.test.jsx`
-  (grupos, término só quando informado, espelho único), `casoDetalheSheet.test.jsx` (encadeamento e soma),
-  `espelhoTempoTotal.test.js`, `colunaLiberacao.test.js` (`cirurgias`),
+- **O total da pessoa é o ÚLTIMO término informado entre as cirurgias ABERTAS dela**
+  (`espelhoTempoTotal`; 30/07 → 14/09 → 15/09). Com UMA cirurgia, o término dela (inclusive
+  limpar); com 2+, o último término entre as que TÊM — todas informadas (14/09, "some os
+  tempos" = soma das durações encadeadas) ou só algumas (15/09). Nenhuma informada → o total
+  é manual e fica como a pessoa deixou; se a última informada some (limpou, terminou) e o
+  total era o espelho, o total sai junto. Chamado no detalhe do caso, no handler da página
+  (pílula → caso único) e no `setStatusCirurgia` do context. A pílula continua editável e
+  vence até a próxima mudança numa cirurgia.
+- ⚠️ Isto SUPERSEDE a regra de 29/07 ("com 2+ cirurgias o total é 100% manual, nunca soma de
+  estimativas") — em 14/09 para "todas informadas" e em **15/09 para "algumas informadas"**,
+  pela foto do próprio card do dono ("13:00 Varizes · faltam 1h56" e a pílula em "2h29":
+  *"tempo informado não corresponde ao tempo total"*). Reproduzido com os dados reais: pílula
+  19:00 à mão às 14:56 com três cirurgias sem término; às 16:27 uma terminou, outra ganhou
+  18:27 e a terceira seguiu sem término — nada mexia na pílula. Travas:
+  `liberacoesPainelLinha.test.jsx` (grupos, término só quando informado, espelho único),
+  `casoDetalheSheet.test.jsx` (encadeamento, soma, parcial), `espelhoTempoTotal.test.js`
+  (describe "tempo informado = tempo total"), `colunaLiberacao.test.js` (`cirurgias`),
   `escalaProcedimentoCurto.test.js`.
+
+### "Terminada" zera o tempo da cirurgia (dono 15/09)
+
+*"Ao clicar em terminada o tempo referente àquela cirurgia fique zerado para que não continue
+contando como tempo."* O funil é o `setStatusCirurgia` do context (os dois botões — detalhe do
+caso e faixa de urgências — passam por ele):
+- `terminada` grava `terminoPrevisto: null` no otimista e no banco (`updateCaso` depois da RPC
+  do status, que não conhece a coluna; só quando havia o que zerar). Erro na RPC reverte os
+  dois. `iniciada`/`agendada` e os avisos (atrasada/passa_tarde) não encostam no término.
+- Depois do status, o MESMO `espelhoTempoTotal` recalcula o total da pessoa com `patch` = o
+  status novo: terminada/suspensa tiram a cirurgia da conta; reabrir/dessuspender devolve.
+  Suspensa NÃO zera o término (pode voltar). O espelho roda FORA do try do status: o status
+  já valeu, e um erro ali reverte e avisa por conta do `setLinhaOverride`.
+- Trava: `escalaTerminadaZeraTempo.test.jsx` (context, com o cenário real do HRO de 15/09) e
+  o describe "terminada tira a cirurgia da conta" em `espelhoTempoTotal.test.js`.
 
 ### Espelho do tempo nos DOIS sentidos (dono 14/09)
 
@@ -364,9 +386,9 @@ pílula deixava "faltam 2min" no caso e "32min" na pílula. `definirTempo` (view
 também `terminoPrevisto` no caso pela prop `onDefinirTerminoCaso` (página →
 `atualizarCaso(..., { silencioso: true })`; na fila única a escala é a do hospital do caso),
 com as guardas do espelho de ida: `casosAtivos === 1 && casoIds.length === 1`, sem dupla
-"A + B" (é de dois donos), sem "?". Com 2+ cirurgias o total segue 100% manual — nunca soma
-de estimativas (29/07). Trava: `liberacoesPainelLinha.test.jsx`, describe "a pílula do total
-espelha…".
+"A + B" (é de dois donos), sem "?". Com 2+ cirurgias a pílula NÃO escreve nos casos; é o
+caminho de ida (o último término informado, seção acima) que a mantém alinhada. Trava:
+`liberacoesPainelLinha.test.jsx`, describe "a pílula do total espelha…".
 - Nada disso encosta em `ordem_liberacao`.
 
 

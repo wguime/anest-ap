@@ -14,7 +14,7 @@ import svc from '@/services/supabaseEscalaCirurgicaService'
 import { mensagemErroPublicacao } from '@/lib/escalaPublicacaoErro'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
 import { useToast } from '@/design-system/components/ui/toast'
-import { ajudasPreservadasNoRepasse, escaladosPreservadosNoRepasse, familiaConvenio, lerOverrideAnterior, marcarAjudaOrdemInformada, mergeRodapeTurno, rodapeDoTurno, snapshotCasos } from '@/pages/escala-cirurgica/utils'
+import { ajudasPreservadasNoRepasse, escaladosPreservadosNoRepasse, espelhoTempoTotal, familiaConvenio, lerOverrideAnterior, marcarAjudaOrdemInformada, mergeRodapeTurno, rodapeDoTurno, snapshotCasos, turnoDoCaso } from '@/pages/escala-cirurgica/utils'
 import { nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
 import { ehDataFilaUnica, FDS_HOSPITAL } from '@/lib/escalaFds'
 import { getDemoEscala } from '@/data/escalaCirurgicaDemo'
@@ -678,11 +678,17 @@ export function EscalaCirurgicaProvider({ children }) {
     // no refetch: o "vai e volta" que o dono relatou.
     // No eixo EXTRA não se carimba — espelhando a RPC corrigida em 21/08: marcar
     // "Atrasada" não pode zerar o relógio de quem está operando desde as 10h.
+    // TERMINADA ZERA O TEMPO DA CIRURGIA (dono 15/09: "ao clicar em terminada o
+    // tempo referente àquela cirurgia fique zerado para que não continue contando
+    // como tempo"). O `terminoPrevisto` sai junto com o status — no otimista e no
+    // banco — e o total da pessoa se recalcula sem ela (espelho abaixo).
+    const zeraTermino = status === 'terminada'
     const patch = EXTRAS.includes(status)
       ? { statusExtra: vivo.statusExtra === status ? null : status }
       : {
         statusCirurgia: status,
         ...(status === 'terminada' && { statusExtra: null }),
+        ...(zeraTermino && { terminoPrevisto: null }),
         statusAtualizadoEm: agora().toISOString(),
         statusAtualizadoPor: userInfo.userId || null,
       }
@@ -691,6 +697,7 @@ export function EscalaCirurgicaProvider({ children }) {
       statusExtra: vivo.statusExtra ?? null,
       statusAtualizadoEm: vivo.statusAtualizadoEm ?? null,
       statusAtualizadoPor: vivo.statusAtualizadoPor ?? null,
+      ...(zeraTermino && { terminoPrevisto: vivo.terminoPrevisto ?? null }),
     }
     const alvo = caso.id ? { ids: [caso.id] } : { refCaso: vivo }
     // OTIMISTA: pinta a UI já (a demora do RPC deixava o botão "morto" — reclamação
@@ -699,7 +706,11 @@ export function EscalaCirurgicaProvider({ children }) {
     marcarEscrita()
     try {
       try {
-        if (!isDemo && caso.id) await svc.updateStatusCirurgia(caso.id, status)
+        if (!isDemo && caso.id) {
+          await svc.updateStatusCirurgia(caso.id, status)
+          // só quando havia o que zerar — a RPC do status não conhece a coluna
+          if (zeraTermino && vivo.terminoPrevisto) await svc.updateCaso(caso.id, { terminoPrevisto: null })
+        }
       } finally { encerrarEscrita() }
       // (Os avisos "sala encerrou" e "anestesista livre" p/ o plantonista saíram
       // em 30/07 junto com as demais notificações da escala — ver nota no topo.)
@@ -711,7 +722,17 @@ export function EscalaCirurgicaProvider({ children }) {
       toast({ variant: 'error', title: 'Erro ao atualizar status', description: error.message })
       throw error
     }
-  }, [toast])
+    // TOTAL DA PESSOA ACOMPANHA A FILA (dono 15/09): a cirurgia que saiu
+    // (terminada/suspensa) não conta mais no cronômetro da linha — o mesmo
+    // helper das três abas recalcula a partir do que ficou aberto; quem volta
+    // para a fila (reabrir) entra de novo. Fora do try do status de propósito:
+    // o status já está gravado, e um erro aqui reverte e avisa por conta do
+    // próprio `setLinhaOverride` — não pode desfazer o "terminada" que valeu.
+    const esp = espelhoTempoTotal(escala, vivo, zeraTermino ? '' : (vivo.terminoPrevisto || ''), { hospitalLabels: HOSPITAL_LABEL, patch })
+    if (esp) {
+      await setLinhaOverride(escala, { chave: esp.chave, anestesista: esp.nome }, esp.override, userInfo, turnoDoCaso(vivo)).catch(() => {})
+    }
+  }, [toast, setLinhaOverride])
 
   // Troca o responsável de CASOS específicos (substitui o sistema de trocas,
   // aposentado 2026-07-23). ⚠️ Recebe IDS decididos por alvosTrocaResponsavel —

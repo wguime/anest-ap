@@ -8,9 +8,10 @@
  * rejeitado. Um componente só evita a terceira.
  *
  * O tempo é 100% MANUAL (decisão do dono 23/07): a estimativa automática enchia a
- * coluna de "+8h53" e ninguém confiava. NÃO reintroduzir — e, pela mesma razão, o
- * total da PESSOA nunca é a soma dos tempos das cirurgias dela: estimativa que
- * estoura não converge para zero, então somar as partes só acumula o erro.
+ * coluna de "+8h53" e ninguém confiava. NÃO reintroduzir. O total da PESSOA, por
+ * sua vez, acompanha o que foi INFORMADO nas cirurgias dela (último término entre
+ * as abertas — `espelhoTempoTotal`, 14/09 e 15/09); só fica manual enquanto
+ * nenhuma cirurgia tem término.
  */
 import { useState } from 'react'
 import { Button, Input, Select } from '@/design-system'

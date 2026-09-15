@@ -154,7 +154,8 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
       // ESPELHO (dono 30/07): com UMA só cirurgia ativa no turno, o término dela
       // é o horário de saída da pessoa — o cronômetro da linha (Liberações)
       // acompanha sozinho, senão os dois campos divergiam e ninguém sabia qual
-      // valia. Com 2+ casos o total segue 100% manual (nunca é soma de estimativas).
+      // valia. Com 2+ casos o total é o ÚLTIMO término informado entre as abertas
+      // (14/09 e 15/09) — manual só enquanto nenhuma tem término.
       const esp = isDemo ? null : espelhoTempoTotal(escala, vivo, hhmm, { hospitalLabels: HOSPITAL_LABEL })
       if (esp) {
         await setLinhaOverride(escala, { chave: esp.chave, anestesista: esp.nome }, esp.override,

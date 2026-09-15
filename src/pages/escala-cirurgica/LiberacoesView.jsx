@@ -1363,8 +1363,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     // depois ajustar a pílula deixava "faltam 2min" no caso e "32min" na pílula,
     // e o chip do caso voltava a aparecer porque os dois divergiam. As mesmas
     // guardas do espelho de ida: um caso com id, sem dupla ("A + B" é de dois
-    // donos, o total de um não é o término dos dois) e sem "?". Com 2+ casos o
-    // total segue 100% manual (nunca é soma de estimativas).
+    // donos, o total de um não é o término dos dois) e sem "?". Com 2+ casos a
+    // pílula não escreve nos casos: é o caminho de ida (caso → total, o último
+    // término informado) que a mantém alinhada — 14/09 e 15/09.
     if (linha.casosAtivos === 1 && linha.casoIds?.length === 1 && onDefinirTerminoCaso) {
       const c = casosTurno.find((x) => x.id === linha.casoIds[0])
       const n = String(c?.anestesista || '').trim()
@@ -3328,7 +3329,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             <p className="mt-1 text-[11.5px] leading-snug text-muted-foreground">
               Quando {alvoTempo?.anestesista ? 'essa pessoa' : 'ela'} fica livre — vale para
               {alvoTempo?.casosAtivos
-                ? ` as ${alvoTempo.casosAtivos} ${alvoTempo.casosAtivos === 1 ? 'cirurgia' : 'cirurgias'} dela, e nunca é a soma delas.`
+                ? ` as ${alvoTempo.casosAtivos} ${alvoTempo.casosAtivos === 1 ? 'cirurgia' : 'cirurgias'} dela.`
                 : ' o turno todo.'}
             </p>
           </SheetHeader>
@@ -3336,8 +3337,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             <div className="space-y-5 px-1 pb-6 pt-2">
               {/* Sem parágrafo explicativo (dono 29/07: "muito texto e ninguém vai
                   ler"). O subtítulo do header carrega o essencial — é o TOTAL dos
-                  casos da pessoa, não o término de UMA cirurgia. E nunca é a soma
-                  deles: estimativa que estoura não converge para zero. */}
+                  casos da pessoa, não o término de UMA cirurgia. O "e nunca é a
+                  soma delas" saiu em 15/09: desde 14/09 o total ACOMPANHA os
+                  términos informados nas cirurgias (o último deles). */}
               <PainelTempo
                 atual={overrideDe(alvoTempo)?.termino || ''}
                 horaExata={horaExata}
