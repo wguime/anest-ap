@@ -153,3 +153,79 @@ describe('observacaoDaLinha', () => {
     expect(observacaoDaLinha({})).toBe('')
   })
 })
+
+// ════════════════════════════════════════════════════════════════════════════
+// SOMA DOS TEMPOS (dono 14/09): "se for adicionado tempo em todas as cirurgias,
+// some os tempos e coloque no tempo total". Na linha do tempo a soma é o ÚLTIMO
+// término — cada duração escolhida numa cirurgia que ainda não começou é
+// encadeada depois da anterior (`terminoEncadeado`). Com alguma cirurgia sem
+// término o total segue manual (29/07); limpar uma delas desfaz a soma gravada.
+// ════════════════════════════════════════════════════════════════════════════
+import { terminoEncadeado } from '../../pages/escala-cirurgica/utils'
+
+describe('espelhoTempoTotal — soma quando TODAS as cirurgias têm término (dono 14/09)', () => {
+  const c1 = caso('c1', 'MARILIO', { hora: '07:30', terminoPrevisto: '10:00', statusCirurgia: 'iniciada' })
+  const c2 = caso('c2', 'MARILIO', { hora: '10:15' })
+
+  it('a segunda ganha término → o total vira o ÚLTIMO término (= soma encadeada)', () => {
+    const r = espelhoTempoTotal(escalaCom([c1, c2]), c2, '11:15')
+    expect(r).not.toBeNull()
+    expect(r.override.termino).toBe('11:15')
+  })
+
+  it('a segunda ainda sem término → nada a espelhar (total manual)', () => {
+    expect(espelhoTempoTotal(escalaCom([c1, c2]), c1, '10:05')).toBeNull()
+  })
+
+  it('a maior é a que vale, mesmo editando a mais cedo', () => {
+    const c2b = { ...c2, terminoPrevisto: '11:15' }
+    const r = espelhoTempoTotal(escalaCom([c1, c2b]), c1, '10:20')
+    expect(r.override.termino).toBe('11:15')
+  })
+
+  it('limpar uma delas quando o total É a soma gravada limpa o total junto', () => {
+    const c2b = { ...c2, terminoPrevisto: '11:15' }
+    const r = espelhoTempoTotal(escalaCom([c1, c2b], { 'matutino:MARILIO': { termino: '11:15' } }), c2b, '')
+    expect(r.override.termino).toBe('')
+  })
+
+  it('limpar uma delas quando o total foi mexido à mão NÃO toca no total', () => {
+    const c2b = { ...c2, terminoPrevisto: '11:15' }
+    expect(espelhoTempoTotal(escalaCom([c1, c2b], { 'matutino:MARILIO': { termino: '12:00' } }), c2b, '')).toBeNull()
+  })
+
+  it('total já igual à soma → nada a gravar', () => {
+    const c2b = { ...c2, terminoPrevisto: '11:15' }
+    expect(espelhoTempoTotal(escalaCom([c1, c2b], { 'matutino:MARILIO': { termino: '11:15' } }), c2b, '11:15')).toBeNull()
+  })
+})
+
+describe('terminoEncadeado — a duração de quem ainda não começou vale depois da anterior', () => {
+  const agora = 9 * 60 + 40 // 09:40
+  const emCurso = caso('c1', 'MARILIO', { hora: '07:30', terminoPrevisto: '10:00', statusCirurgia: 'iniciada' })
+  const proxima = caso('c2', 'MARILIO', { hora: '10:15' })
+
+  it('cirurgia em andamento: agora + duração', () => {
+    expect(terminoEncadeado(escalaCom([emCurso, proxima]), emCurso, 60, agora)).toBe('10:40')
+  })
+  it('cirurgia agendada com anterior já com término: término da anterior + duração', () => {
+    expect(terminoEncadeado(escalaCom([emCurso, proxima]), proxima, 60, agora)).toBe('11:00')
+  })
+  it('sem anterior com término: agora + duração (comportamento de sempre)', () => {
+    const semTermino = { ...emCurso, terminoPrevisto: '' }
+    expect(terminoEncadeado(escalaCom([semTermino, proxima]), proxima, 45, agora)).toBe('10:25')
+  })
+  it('anterior que termina ANTES de agora não puxa para trás', () => {
+    const atrasada = { ...emCurso, terminoPrevisto: '09:00' }
+    expect(terminoEncadeado(escalaCom([atrasada, proxima]), proxima, 30, agora)).toBe('10:10')
+  })
+  it('cirurgia POSTERIOR por hora não é base da anterior', () => {
+    const depois = { ...proxima, terminoPrevisto: '13:00' }
+    const meio = caso('c3', 'MARILIO', { hora: '09:50' })
+    expect(terminoEncadeado(escalaCom([emCurso, meio, depois]), meio, 30, agora)).toBe('10:30')
+  })
+  it('sem minutos válidos devolve vazio', () => {
+    expect(terminoEncadeado(escalaCom([emCurso]), emCurso, 0, agora)).toBe('')
+    expect(terminoEncadeado(escalaCom([emCurso]), emCurso, 'x', agora)).toBe('')
+  })
+})

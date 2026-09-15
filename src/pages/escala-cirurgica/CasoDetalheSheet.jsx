@@ -43,7 +43,7 @@ import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
 import { carimboDeStatus } from '@/lib/escalaCirurgicaStatus'
 import PainelTempo, { formatFaltante } from './PainelTempo'
 import useAgoraMinuto from './useAgoraMinuto'
-import { espelhoTempoTotal, nomeAnestesistaExibicao, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso } from './utils'
+import { espelhoTempoTotal, nomeAnestesistaExibicao, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso, terminoEncadeado } from './utils'
 import ChipsEscolha, { GRAVIDADE_CHIPS, TIPOS_CIRURGIA } from './ChipsEscolha'
 
 // Verbo de cada estado na linha de procedência ("Iniciada às 14:33 por Fulano").
@@ -143,8 +143,12 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
   // TÉRMINO PREVISTO DESTA CIRURGIA (dono 29/07). É o tempo do CASO — o "quanto
   // falta para a pessoa sair" continua sendo o cronômetro da linha, nas Liberações.
   // Este sheet é o mesmo nas duas abas, então preencher aqui atende as duas.
-  const definirTerminoCaso = async (hhmm) => {
+  const definirTerminoCaso = async (hhmmEscolhido, meta) => {
     setHoraExata('') // limpa no toque; o chip pinta pelo otimista do context
+    // DURAÇÃO numa cirurgia que ainda não começou vale DEPOIS da anterior da mesma
+    // pessoa (dono 14/09, "some os tempos"): o painel diz que foi duração (`meta.minutos`);
+    // hora exata digitada passa como veio. Mesma regra do "+ término" da fila.
+    const hhmm = meta?.minutos ? (terminoEncadeado(escala, vivo, meta.minutos, agoraMin) || hhmmEscolhido) : hhmmEscolhido
     try {
       await atualizarCaso(escala, vivo.id, { terminoPrevisto: hhmm || null })
       // ESPELHO (dono 30/07): com UMA só cirurgia ativa no turno, o término dela
@@ -401,7 +405,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                         atual={vivo.terminoPrevisto || ''}
                         horaExata={horaExata}
                         onHoraExata={setHoraExata}
-                        onDefinir={(v) => { definirTerminoCaso(v); setEditor(null) }}
+                        onDefinir={(v, meta) => { definirTerminoCaso(v, meta); setEditor(null) }}
                       />
                     </EditorSheet>
                   )}

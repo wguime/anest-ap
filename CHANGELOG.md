@@ -3,6 +3,38 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.6 (14/09/2026) — Fila: cirurgião uma vez, cirurgias abaixo com hora, nome curto e término; total vira a soma
+
+Pedido do dono (14/09, à tarde, sobre a captura da fila): "melhore a visualização para tempos de
+procedimentos individualizados". Escolhido em maquete, com ajustes dele: "se um cirurgião tiver mais
+de uma cirurgia, quero que apareça o nome do cirurgião apenas uma vez e as cirurgias abaixo do nome;
+ao informar término de cirurgia a informação apareça ao lado do nome da cirurgia; mantenha a opção
+de informar tempo ao lado de cada cirurgia; se for adicionado tempo em todas as cirurgias, some os
+tempos e coloque no tempo total".
+
+### O card da fila
+- Cada cirurgião aberto da pessoa é um título; cada cirurgia dele, uma linha embaixo com hora,
+  nome curto e o término dela ("faltam 12min" na que está em andamento, "até 12:05" na agendada) ou
+  o tracejado "+ término" para informar. O tempo já informado é um botão que reabre o painel. A
+  frase "N cirurgias · M com término informado" saiu. A pílula verde do total da pessoa não muda.
+- Nome curto por regra (`nomeCurtoProcedimento`): dicionário por família calibrado nos 1.203
+  procedimentos distintos dos últimos 30 dias ("RESSECCAO ENDOSCOPICA DA PROSTATA" → RTU,
+  "PROSTATOVESICULECTOMIA RADICAL ROBOTICA" → Prostatectomia) mais um fallback que tira a embalagem.
+  Lista de conferência em `.tmp/nomes-curtos-procedimentos.md`.
+- Linha renovada, cirurgião ajustado à mão e card da noite seguem no desenho anterior.
+
+### Os tempos
+- `PainelTempo` devolve os minutos quando a escolha foi duração. Numa cirurgia que ainda não começou,
+  "1h" vale depois do término da cirurgia anterior da mesma pessoa (`terminoEncadeado`); na que está
+  em andamento, depois de agora. Hora exata digitada vale como veio. Mesma regra no detalhe do caso
+  (Minhas e Completa) e na fila, pelo mesmo helper.
+- `espelhoTempoTotal` ampliado: com todas as cirurgias da pessoa com término, o total vira o último
+  término, que na linha do tempo é a soma das durações. Alguma sem término, o total segue manual.
+  Limpar uma delas quando o total ainda é a soma gravada limpa o total. Isso substitui, para esse
+  caso, a regra de 29/07 de que o total nunca é soma.
+- O caminho da fila grava pela página, que aplica o encadeamento e o espelho, então informar um
+  término em qualquer aba aparece nas outras, inclusive ao lado da cirurgia na fila.
+
 ## v5.12.5 (14/09/2026) — Dupla preenchida na folha, tempo espelhado nos dois sentidos e "não é ajuda" de verdade
 
 Três queixas do dono na tarde de 14/09, todas na fila de Liberações e na folha "Definir anestesista".

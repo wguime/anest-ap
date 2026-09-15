@@ -1099,27 +1099,19 @@ export function lerOverrideAnterior(overrides, chave, turno, nomesLegados = []) 
 }
 
 /**
- * ESPELHO DO TEMPO TOTAL (dono 30/07): quando a pessoa tem UMA só cirurgia ativa
- * no turno, o término da cirurgia É o horário de saída dela — deixar o término do
- * caso e o cronômetro da linha independentes gerava divergência (caso 18:30,
- * pílula 17:00) sem ninguém saber qual valia. Chamado ao gravar `terminoPrevisto`
- * no detalhe do caso; devolve `{ chave, nome, override }` prontos p/
- * `setLinhaOverride` — override COMPLETO porque gravar parcial apagaria
- * local/cirurgião/observação já ajustados — ou `null` quando o espelho não se
- * aplica: 2+ casos ativos (o total NUNCA é soma de estimativas), sala "A + B",
- * caso sem anestesista, pessoa envolvida em posição assumida (a identidade do
- * slot vive em OUTRA chave — escrever aqui iria para a linha errada) ou valor
- * já igual ao gravado.
+ * CASOS ATIVOS DA PESSOA no turno do caso — a mesma resolução da fila ("//"/vazio
+ * herdam por sala dentro do turno; nome→uid pelos próprios casos, nome ambíguo
+ * fica de fora). Devolve null quando o caso não tem UM dono com identidade
+ * própria (sem anestesista, "?", "//", dupla "A + B") ou quando a posição da
+ * pessoa foi ASSUMIDA em qualquer direção — a chave da linha não é dela.
+ * Compartilhado por `espelhoTempoTotal` e `terminoEncadeado`.
  */
-export function espelhoTempoTotal(escala, caso, terminoHHMM, { hospitalLabels } = {}) {
+export function casosAtivosDaPessoa(escala, caso) {
   const nomeBruto = String(caso?.anestesista || '').trim()
   if (!caso || caso.semAnestesista || !nomeBruto || nomeBruto === '//'
     || /^\?+$/.test(nomeBruto) || nomeBruto.includes('+')) return null
   const turno = turnoDoCaso(caso)
-  // mesma resolução da fila: "//"/vazio herdam por sala DENTRO do turno
   const doTurno = resolverAnestesistas(filtrarPorTurno(escala?.casos || [], turno))
-  // vínculo nome→uid pelos PRÓPRIOS casos (regra do uidLocalPorNome da lib:
-  // nome que aponta p/ 2+ uids é ambíguo e fica de fora)
   const uidPorNome = new Map()
   {
     const ambiguos = new Set()
@@ -1136,19 +1128,15 @@ export function espelhoTempoTotal(escala, caso, terminoHHMM, { hospitalLabels } 
   const uid = caso.anestesistaUserId || uidPorNome.get(normNome(nomeBruto)) || null
   const chave = uid || normNome(nomeBruto)
   // posição assumida em qualquer direção → a chave da linha não é a desta pessoa.
-  // As chaves do override são namespaced por turno ("matutino:uid") desde a
-  // migração 20260805130000, e SÓ o turno DESTE caso interessa — assunção da
-  // manhã não bloqueia o espelho da tarde. Comparar a chave CRUA aqui deixava o
-  // guard morto (nunca casava) e, pior, a leitura do override lá embaixo voltava
-  // vazia: definir o término APAGAVA local/observação da linha (defeito 07/08).
+  // Chaves namespaced por turno ("matutino:uid") desde a migração 20260805130000;
+  // SÓ o turno DESTE caso interessa (comparar a chave crua deixava o guard morto).
   for (const [k, ov] of Object.entries(escala?.linhaOverrides || {})) {
     const asm = ov?.assumidaPor
     if (!asm) continue
     const sep = k.indexOf(':')
-    // chave sem prefixo é legado e vale como matutino (regra da migração)
     const [pref, resto] = sep >= 0 ? [k.slice(0, sep), k.slice(sep + 1)] : ['matutino', k]
     if (pref !== turno) continue
-    if (resto === chave) return null // a posição desta pessoa foi assumida por outro
+    if (resto === chave) return null
     if ((asm.uid && asm.uid === uid) || (asm.nome && normNome(asm.nome) === normNome(nomeBruto))) return null
   }
   const ativos = doTurno.filter((c) => {
@@ -1161,8 +1149,79 @@ export function espelhoTempoTotal(escala, caso, terminoHHMM, { hospitalLabels } 
       return (u || normNome(parte)) === chave || (uid && u === uid)
     })
   })
-  if (ativos.length !== 1) return null
-  if (caso.id ? ativos[0].id !== caso.id : normNome(ativos[0].anestesista) !== normNome(nomeBruto)) return null
+  return { ativos, uid, chave, nomeBruto, turno }
+}
+
+/** O caso editado, entre os ativos: por id; sem id (otimista/demo), por sala+ordem. */
+const mesmoCaso = (a, b) => (a?.id && b?.id) ? a.id === b.id : (a?.sala === b?.sala && (a?.ordem ?? 0) === (b?.ordem ?? 0))
+const hhmmDeMinutos = (m) => {
+  const t = ((Math.round(m) % 1440) + 1440) % 1440
+  return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`
+}
+
+/**
+ * TÉRMINO ENCADEADO (dono 14/09: "se for adicionado tempo em todas as cirurgias,
+ * some os tempos e coloque no tempo total"). A DURAÇÃO escolhida no painel
+ * ("1h") vale a partir de AGORA na cirurgia em andamento — e, numa cirurgia que
+ * ainda não começou, a partir do término da cirurgia ANTERIOR da mesma pessoa
+ * (a última, por hora, que já tem término). Assim os términos ficam numa linha
+ * do tempo só, e o "último término" da pessoa é a soma das durações. Sem
+ * anterior com término, vale agora (comportamento de sempre). Hora EXATA
+ * digitada não passa por aqui.
+ * @returns {string} "HH:MM"
+ */
+export function terminoEncadeado(escala, caso, minutos, agoraMin) {
+  const dur = Number(minutos)
+  if (!Number.isFinite(dur) || dur <= 0 || agoraMin == null) return ''
+  let base = agoraMin
+  if ((caso?.statusCirurgia || 'agendada') !== 'iniciada') {
+    const ctx = casosAtivosDaPessoa(escala, caso)
+    const horaCaso = parseHoraMinutos(caso?.hora)
+    let ultimo = null
+    for (const c of ctx?.ativos || []) {
+      if (mesmoCaso(c, caso)) continue
+      const t = parseHoraMinutos(c.terminoPrevisto)
+      if (t == null) continue
+      const h = parseHoraMinutos(c.hora)
+      // só o que vem ANTES desta cirurgia (por hora); sem hora nos dois lados, conta
+      if (horaCaso != null && h != null && h > horaCaso) continue
+      if (ultimo == null || t > ultimo) ultimo = t
+    }
+    if (ultimo != null && ultimo > base) base = ultimo
+  }
+  return hhmmDeMinutos(base + dur)
+}
+
+/**
+ * ESPELHO DO TEMPO TOTAL (dono 30/07; ampliado em 14/09): o que gravar no
+ * cronômetro da PESSOA quando o término de UMA cirurgia dela muda.
+ *
+ *  - UMA cirurgia ativa: o término dela É o horário de saída (30/07) — inclusive
+ *    limpar: os dois campos divergiam e ninguém sabia qual valia.
+ *  - TODAS as cirurgias ativas com término (14/09, "some os tempos"): o total é o
+ *    ÚLTIMO término — na linha do tempo, é a soma das durações encadeadas por
+ *    `terminoEncadeado`.
+ *  - 2+ cirurgias e alguma sem término: o total segue 100% manual (nunca soma de
+ *    estimativas parciais, 29/07) — devolve null. Exceção: LIMPAR o término de uma
+ *    delas quando o total ainda é a soma que este espelho gravou limpa o total
+ *    junto (a soma deixou de valer); total mexido à mão fica como está.
+ *
+ * Chamado ao gravar `terminoPrevisto` (detalhe do caso e "+ término" da fila);
+ * devolve `{ chave, nome, override }` prontos p/ `setLinhaOverride` — override
+ * COMPLETO porque gravar parcial apagaria local/cirurgião/observação — ou `null`
+ * quando não há o que espelhar (guardas em `casosAtivosDaPessoa`, valor já igual).
+ */
+export function espelhoTempoTotal(escala, caso, terminoHHMM, { hospitalLabels } = {}) {
+  const ctx = casosAtivosDaPessoa(escala, caso)
+  if (!ctx) return null
+  const { ativos, chave, nomeBruto, turno, uid } = ctx
+  if (!ativos.length) return null
+  const editado = ativos.find((c) => mesmoCaso(c, caso))
+  if (!editado) return null // caso editado já concluído: não está na fila
+  const termino = terminoHHMM || ''
+  const terminoDe = (c) => String((c === editado ? termino : c.terminoPrevisto) || '').trim()
+  const antesDe = (c) => String(c.terminoPrevisto || '').trim()
+  const maxDe = (fn) => ativos.map(fn).reduce((a, b) => (a > b ? a : b), '')
   // leitura pela MESMA cadeia do setLinhaOverride, turno primeiro: o override
   // vivo mora em `${turno}:${chave}` — ler só a chave crua devolvia null e o
   // override "completo" montado abaixo zerava local/cirurgiões/observação.
@@ -1171,15 +1230,23 @@ export function espelhoTempoTotal(escala, caso, terminoHHMM, { hospitalLabels } 
     ?? lo[`${turno}:${normNome(nomeBruto)}`] ?? lo[normNome(nomeBruto)]
     ?? lo[nomeBruto]
   const ov = typeof bruto === 'string' ? { local: bruto } : bruto || null
-  const termino = terminoHHMM || ''
-  if ((ov?.termino || '') === termino) return null // nada a espelhar
+  const atual = ov?.termino || ''
+  let novo = null
+  if (ativos.length === 1) novo = termino
+  else if (ativos.every((c) => terminoDe(c))) novo = maxDe(terminoDe)
+  else if (!termino && ativos.every((c) => antesDe(c))) {
+    // limpou uma das cirurgias: a soma que estava gravada deixou de valer
+    novo = atual && atual === maxDe(antesDe) ? '' : null
+  }
+  if (novo == null || atual === novo) return null // nada a espelhar
+  void uid
   return {
     chave,
     nome: nomeBruto,
     override: {
       local: ov?.local || '',
       cirurgioes: ov?.cirurgioes || '',
-      termino,
+      termino: novo,
       observacao: observacaoDaLinha(ov, hospitalLabels),
     },
   }

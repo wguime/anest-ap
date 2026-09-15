@@ -21,7 +21,7 @@ import LiberacoesView from './LiberacoesView'
 import ImportarEscalasPage from './ImportarEscalasPage'
 import ImportarEscalaFdsPage from './ImportarEscalaFdsPage'
 import TrocaSheet from './TrocaSheet'
-import { meuAliasDe, turnoAtual, dataPorExtenso, estadoTrocasDoHistorico, normNome, formatData, rodapeDoTurno, localizarSlotEscala, localizarMeuPosto, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca } from './utils'
+import { meuAliasDe, turnoAtual, dataPorExtenso, estadoTrocasDoHistorico, normNome, formatData, rodapeDoTurno, localizarSlotEscala, localizarMeuPosto, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca, espelhoTempoTotal, terminoEncadeado } from './utils'
 import { ehDataFilaUnica, ehFeriado, ehFimDeSemana, FDS_HOSPITAL, FDS_TURNO_CASOS, turnoFdsAtual } from '@/lib/escalaFds'
 import { hospitalDaConta, podeEditarEscalaCirurgica, podePublicarEscalaCirurgica } from './gate'
 import { ehContaDeHospital } from '@/utils/userTypes'
@@ -638,9 +638,23 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                   // UMA só cirurgia aberta, grava também o término dela. O caso
                   // mora na escala do hospital (na fila única, não na linha 'fds').
                   // Silencioso: a pílula já pintou; "Caso atualizado" seria ruído.
-                  onDefinirTerminoCaso={(casoId, hhmm) => {
+                  onDefinirTerminoCaso={async (casoId, hhmmEscolhido, meta) => {
                     const dona = modoFds ? escalaDoCaso(casoId) || escala : escala
-                    return atualizarCaso(dona, casoId, { terminoPrevisto: hhmm || null }, { silencioso: true })
+                    const alvo = (dona?.casos || []).find((c) => c.id === casoId)
+                    // DURAÇÃO numa cirurgia que ainda não começou vale DEPOIS da anterior
+                    // (dono 14/09) — mesma regra do detalhe do caso; hora exata passa como veio
+                    const agoraD = new Date()
+                    const hhmm = meta?.minutos && alvo
+                      ? (terminoEncadeado(dona, alvo, meta.minutos, agoraD.getHours() * 60 + agoraD.getMinutes()) || hhmmEscolhido)
+                      : hhmmEscolhido
+                    await atualizarCaso(dona, casoId, { terminoPrevisto: hhmm || null }, { silencioso: true })
+                    // ESPELHO no total da pessoa (30/07 para uma cirurgia; 14/09 a soma quando
+                    // todas têm término) — o MESMO helper do detalhe do caso, para as três
+                    // abas gravarem a mesma coisa. Vindo da pílula (uma cirurgia) o valor já
+                    // é igual e o helper devolve null — sem ida e volta.
+                    const esp = alvo && !String(dona?.id || '').startsWith('demo-')
+                      ? espelhoTempoTotal(dona, alvo, hhmm || '', { hospitalLabels: HOSPITAL_LABEL }) : null
+                    if (esp) await setLinhaOverride(dona, { chave: esp.chave, anestesista: esp.nome }, esp.override, userInfo, turno)
                   }}
                   onAddAjuda={(nome) => adicionarAjuda(escalaLib, turno, nome)}
                   onReordenarAjuda={(de, para) => reordenarAjuda(escalaLib, turno, de, para)}

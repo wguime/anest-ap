@@ -1479,3 +1479,40 @@ describe('a ordem informada alcança quem fecha o rodapé daqui (dono 11/09)', (
     expect(r.linhas[3].isProximoPlantao).toBe(true)
   })
 })
+
+// ════════════════════════════════════════════════════════════════════════════
+// CIRURGIAS DA PESSOA, UMA A UMA (dono 14/09): a fila lista cada cirurgia sob o
+// cirurgião, com hora, nome curto e o término DELA. O token colapsava dois casos
+// do mesmo cirurgião e guardava só o término mais próximo; `cirurgias` traz os
+// dois, em ordem de horário. Sem dado de paciente.
+// ════════════════════════════════════════════════════════════════════════════
+describe('cirurgias — as cirurgias abertas da pessoa, uma a uma', () => {
+  const comTermino = (sala, ordem, anest, cirurgiao, hora, extra = {}) =>
+    ({ ...caso(sala, ordem, anest, cirurgiao), hora, procedimento: 'COLECISTECTOMIA', ...extra })
+
+  it('dois casos do mesmo cirurgião viram DUAS cirurgias, em ordem de horário', () => {
+    const r = gerarColunaLiberacao([
+      comTermino('S1', 1, 'LEONARDO', 'Liana Winkelmann', '10:00', { id: 'b', terminoPrevisto: '11:00' }),
+      comTermino('S1', 0, 'LEONARDO', 'Liana Winkelmann', '07:30', { id: 'a', terminoPrevisto: '12:00', statusCirurgia: 'iniciada' }),
+    ], ['LEONARDO'], { turno: 'matutino' })
+    const cir = r.linhas[0].cirurgias
+    expect(cir.map((c) => c.id)).toEqual(['a', 'b'])
+    expect(cir[0]).toMatchObject({ hora: '07:30', token: 'Liana Winkelmann', terminoPrevisto: '12:00', andamento: true })
+    expect(cir[1]).toMatchObject({ hora: '10:00', terminoPrevisto: '11:00', andamento: false })
+    expect(Object.keys(cir[0])).not.toContain('pacienteIniciais')
+  })
+
+  it('caso encerrado fica de fora; sem hora vai para o fim', () => {
+    const r = gerarColunaLiberacao([
+      comTermino('S1', 0, 'LEONARDO', 'Liana Winkelmann', '07:30', { id: 'a', statusCirurgia: 'terminada' }),
+      comTermino('S1', 1, 'LEONARDO', 'Liana Winkelmann', '', { id: 'b' }),
+      comTermino('S1', 2, 'LEONARDO', 'Liana Winkelmann', '09:00', { id: 'c' }),
+    ], ['LEONARDO'], { turno: 'matutino' })
+    expect(r.linhas[0].cirurgias.map((c) => c.id)).toEqual(['c', 'b'])
+  })
+
+  it('linha do rodapé sem caso tem lista vazia', () => {
+    const r = gerarColunaLiberacao([], ['LEONARDO'], { turno: 'matutino' })
+    expect(r.linhas[0].cirurgias).toEqual([])
+  })
+})

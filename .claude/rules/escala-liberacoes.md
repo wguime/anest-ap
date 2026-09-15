@@ -303,6 +303,43 @@ array (ela caía para o fim da fila; no slot assumido adicionava o nome do DONO 
 - **Casamento tolerante** em `nomeAjudaDe`: uid, `nomeOriginal` e nome exibido, além da chave.
 - FDS intacto: o badge derivado de extra já era só de dia útil (05/09).
 
+### Cirurgião uma vez, cirurgias abaixo — tempo por cirurgia e SOMA no total (dono 14/09, tarde)
+
+Escolhido em maquete (`.tmp/tempos-por-cirurgia-c.html`, 430px, dois temas). No card da
+fila, cada cirurgião aberto da pessoa é um TÍTULO, e cada cirurgia dele uma linha embaixo:
+**hora · nome curto · término** ("faltam 12min" na que está em andamento, "até 12:05" na
+agendada) ou o tracejado **"+ término"** para informar. A frase "N cirurgias · M com
+término informado" saiu. Só no dia a dia da linha: renovada, cirurgião ajustado à mão e
+card sintético (noite) seguem no desenho antigo (uma linha por cirurgião).
+
+- **Dados:** `linha.cirurgias` (`colunaLiberacao.js`): as cirurgias ABERTAS da pessoa em
+  ordem de horário — `{ id, hora, token, procedimento, terminoPrevisto, andamento, sala }`,
+  sem dado de paciente. O token continua existindo para o desenho antigo.
+- **Nome curto:** `nomeCurtoProcedimento` (`src/lib/escalaProcedimentoCurto.js`) — dicionário
+  por família calibrado nos 1.203 procedimentos distintos dos 30 dias até 14/09 ("RESSECCAO
+  ENDOSCOPICA DA PROSTATA" → RTU; "PROSTATOVESICULECTOMIA…" → Prostatectomia) + fallback
+  que tira a embalagem e fica com a cabeça da frase. Lista de conferência do dono em
+  `.tmp/nomes-curtos-procedimentos.md`. Rótulo errado = entrada nova no dicionário, com teste.
+- **"+ término" por cirurgia** abre o MESMO `PainelTempo` do detalhe do caso, grava pela
+  página (`onDefinirTerminoCaso(casoId, hhmm, meta)`), e o tempo já informado é um botão que
+  reabre o painel. `PainelTempo` passou a devolver `meta.minutos` quando a escolha foi
+  DURAÇÃO (atalho ou "Outro tempo…"); hora exata não traz meta.
+- **Duração encadeada** (`terminoEncadeado`, utils): na cirurgia EM ANDAMENTO "1h" é agora
+  + 1h; na que ainda não começou é **término da anterior da mesma pessoa + 1h** (a última,
+  por hora, que já tem término; sem anterior com término, agora). Vale no detalhe do caso
+  (Minhas/Completa) e na fila — as três abas gravam a mesma coisa.
+- **SOMA no total** (`espelhoTempoTotal`, ampliado): com UMA cirurgia o total espelha o
+  término dela (30/07); com TODAS as cirurgias da pessoa com término, o total vira o ÚLTIMO
+  término (= soma das durações encadeadas). Alguma sem término → total manual (29/07
+  continua valendo aí). Limpar o término de uma delas quando o total ainda é a soma gravada
+  limpa o total; total mexido à mão fica. Chamado no detalhe do caso e no handler da página
+  (caminho da fila). A pílula da pessoa continua editável e vence quando editada à mão.
+- ⚠️ Isto SUPERSEDE, para o caso "todas informadas", a regra de 29/07 de que o total nunca é
+  soma — decisão explícita do dono em 14/09. Travas: `liberacoesPainelLinha.test.jsx`
+  (grupos, "+ término", espelho único), `casoDetalheSheet.test.jsx` (encadeamento e soma),
+  `espelhoTempoTotal.test.js`, `colunaLiberacao.test.js` (`cirurgias`),
+  `escalaProcedimentoCurto.test.js`.
+
 ### Espelho do tempo nos DOIS sentidos (dono 14/09)
 
 Com UMA só cirurgia aberta, o total da pessoa É o término dela. O caminho caso→total existe

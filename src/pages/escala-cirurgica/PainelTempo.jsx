@@ -59,7 +59,7 @@ export const rotuloDuracao = (min) =>
  */
 export function opcoesTempoFaltante(passo = 15, maxMin = 480) {
   const out = []
-  for (let m = passo; m <= maxMin; m += passo) out.push({ value: emMinutos(m), label: rotuloDuracao(m) })
+  for (let m = passo; m <= maxMin; m += passo) out.push({ value: emMinutos(m), label: rotuloDuracao(m), min: m })
   return out
 }
 
@@ -165,7 +165,11 @@ export default function PainelTempo({ horarios, atual, horaExata, onHoraExata, o
   // um valor gravado — o que está salvo é uma HORA, e escondê-la atrás da outra
   // aba faria o painel abrir sem mostrar o que já vale.
   const [modo, setModo] = useState(valor ? 'hora' : 'falta')
-  const gravar = (hhmm) => { onHoraExata(hhmm); onDefinir(hhmm) }
+  // `meta.minutos` acompanha a DURAÇÃO escolhida (atalho ou "Outro tempo…"):
+  // quem grava numa cirurgia que ainda não começou encadeia a duração depois da
+  // anterior (dono 14/09) — e só sabe que foi duração, e não hora exata, por aqui.
+  // Quem não usa o segundo argumento continua recebendo só o "HH:MM".
+  const gravar = (hhmm, meta) => { onHoraExata(hhmm); onDefinir(hhmm, meta) }
 
   return (
     <div className="space-y-3">
@@ -209,7 +213,7 @@ export default function PainelTempo({ horarios, atual, horaExata, onHoraExata, o
                 key={min}
                 variant="outline"
                 className="min-h-[44px] font-bold"
-                onClick={() => gravar(emMinutos(min))}
+                onClick={() => gravar(emMinutos(min), { minutos: min })}
               >
                 {rotuloDuracao(min)}
               </Button>
@@ -218,7 +222,7 @@ export default function PainelTempo({ horarios, atual, horaExata, onHoraExata, o
           {/* respiro: sem ele o seletor encostava na fileira de atalhos e os três
               viravam um bloco só (dono 17/08) */}
           <Select className="mt-4 w-full" options={opcoes} value=""
-            onChange={gravar}
+            onChange={(v) => gravar(v, { minutos: opcoes.find((o) => o.value === v)?.min })}
             placeholder="Outro tempo…" aria-label="Outro tempo faltante" />
         </>
       ) : (

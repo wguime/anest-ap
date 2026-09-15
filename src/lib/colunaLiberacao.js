@@ -401,7 +401,7 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     for (const parte of partes) {
       const { key, uid } = resolveKey(parte, umSo ? (c.anestesistaUserId || null) : null)
       if (!grupos.has(key)) {
-        grupos.set(key, { display: displayDe(parte, uid), tokens: [], tokenHora: {}, tokenTermino: {}, tokenAndamento: {}, casosAtivos: 0, casoIds: [], salas: [], teveCasos: false, uid: uid || null, nomeOriginal: parte })
+        grupos.set(key, { display: displayDe(parte, uid), tokens: [], tokenHora: {}, tokenTermino: {}, tokenAndamento: {}, casosAtivos: 0, casoIds: [], casos: [], salas: [], teveCasos: false, uid: uid || null, nomeOriginal: parte })
         ordemEncontro.push(key)
       }
       const g = grupos.get(key)
@@ -413,6 +413,16 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
       // id (otimista/demo) não tem o que atualizar no servidor.
       if (c.id) g.casoIds.push(c.id)
       const tok = tokenCirurgiao(c)
+      // AS CIRURGIAS ABERTAS DA PESSOA, UMA A UMA (dono 14/09): a fila passa a
+      // listar cada cirurgia sob o cirurgião, com hora, nome curto e o término
+      // DELA — o token (acima) colapsava dois casos do mesmo cirurgião num só e
+      // guardava só o término mais próximo. Sem dado de paciente: é rótulo de fila.
+      g.casos.push({
+        id: c.id || null, ordem: c.ordem ?? null, hora: String(c.hora || '').trim(), sala: String(c.sala || '').trim(),
+        token: tok || '', procedimento: String(c.procedimento || '').trim(),
+        terminoPrevisto: String(c.terminoPrevisto || '').trim(),
+        andamento: (c.statusCirurgia || 'agendada') === 'iniciada',
+      })
       if (tok) {
         // A cirurgia EM ANDAMENTO é a única que pode mostrar contagem regressiva
         // (pesquisa + decisão do dono 29/07): é assim que quadro de centro
@@ -465,6 +475,9 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     casosAtivos: g ? g.casosAtivos : 0,
     // ids das cirurgias abertas — alimenta o "Terminei" da linha
     casoIds: g ? [...g.casoIds] : [],
+    // as cirurgias abertas, em ORDEM DE HORÁRIO (sem hora → fim, depois pela ordem
+    // da sala): é o que a fila lista sob cada cirurgião desde 14/09
+    cirurgias: g ? [...g.casos].sort((a, b) => (a.hora || '99:99').localeCompare(b.hora || '99:99') || ((a.ordem ?? 0) - (b.ordem ?? 0))) : [],
     casosComTermino: g ? Object.keys(g.tokenTermino).length : 0,
     salas: g ? g.salas : [],
     // chave ESTÁVEL p/ marcações (uid do vínculo ou nome normalizado) + nome

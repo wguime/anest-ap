@@ -24,7 +24,7 @@
  * O ANESTESISTA é a exceção e mantém o botão próprio: o `DefinirAnestesistaSheet`
  * não é um campo de texto.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 
 import { ThemeProvider, ToastProvider } from '@/design-system'
@@ -350,5 +350,56 @@ describe('Andamento — quando mudou e por quem', () => {
   it('carimbo de OUTRO dia não vira horário solto', () => {
     montar({}, comCarimbo({ statusAtualizadoEm: '2026-07-28T14:33:07' }))
     expect(screen.queryByText(/Iniciada às/)).toBeNull()
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// SOMA DOS TEMPOS E DURAÇÃO ENCADEADA (dono 14/09): "se for adicionado tempo em
+// todas as cirurgias, some os tempos e coloque no tempo total". O detalhe do caso
+// (abas Minhas e Completa) grava pelo MESMO helper da fila: a duração escolhida
+// numa cirurgia que ainda não começou vale depois da anterior, e com todas as
+// cirurgias com término o total da pessoa vira o último término.
+// ⚠️ relógio real: os términos do fixture ficam no fim do dia (22:00/23:00) para
+// que "anterior + 1h" seja depois de agora em qualquer hora de execução.
+// ════════════════════════════════════════════════════════════════════════════
+describe('duas cirurgias: duração encadeada e soma no total (dono 14/09)', () => {
+  // relógio FIXO às 09:40 (a suíte roda a qualquer hora, inclusive à noite, quando
+  // "22:00" já teria passado e a base do encadeamento cairia em "agora")
+  beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: true }); vi.setSystemTime(new Date('2026-07-29T09:40:00')) })
+  afterEach(() => { vi.useRealTimers() })
+  const emCurso = { ...caso, id: 'c1', hora: '07:30', terminoPrevisto: '22:00', statusCirurgia: 'iniciada' }
+  const proxima = { ...caso, id: 'c2', ordem: 1, hora: '10:15', cirurgiao: 'Liana W', procedimento: 'Herniorrafia' }
+  const esc = { ...escala, casos: [emCurso, proxima] }
+  const montarSegunda = () => render(
+    <CasoDetalheSheet escala={esc} caso={proxima} onClose={vi.fn()} podeEditar />,
+    { wrapper: wrap },
+  )
+
+  it('"1h" na cirurgia que ainda não começou vale DEPOIS da anterior (22:00 → 23:00)', async () => {
+    montarSegunda()
+    abrirTempo()
+    fireEvent.click(screen.getByRole('button', { name: '1h' }))
+    await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
+    expect(atualizarCaso.mock.calls[0][2]).toEqual({ terminoPrevisto: '23:00' })
+  })
+
+  it('com as DUAS com término, o total da pessoa vira o último término (a soma)', async () => {
+    montarSegunda()
+    abrirTempo()
+    fireEvent.click(screen.getByRole('button', { name: '1h' }))
+    await waitFor(() => expect(setLinhaOverride).toHaveBeenCalled())
+    const [, linha, override] = setLinhaOverride.mock.calls[0]
+    expect(linha.chave).toBe('MARILIO')
+    expect(override.termino).toBe('23:00')
+  })
+
+  it('hora EXATA digitada não é encadeada — vale como veio', async () => {
+    montarSegunda()
+    abrirTempo()
+    fireEvent.click(screen.getByRole('tab', { name: 'Horário de término' }))
+    const campo = document.querySelector('[data-slot="termino-hora"] input') || document.querySelector('[data-slot="termino-hora"]')
+    fireEvent.change(campo, { target: { value: '2330' } })
+    await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
+    expect(atualizarCaso.mock.calls[0][2]).toEqual({ terminoPrevisto: '23:30' })
   })
 })
