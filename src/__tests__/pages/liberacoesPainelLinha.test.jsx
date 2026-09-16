@@ -982,13 +982,13 @@ describe('cirurgias sob o cirurgião: a fila só MOSTRA o término informado no 
 // cirurgia passa a ser uma só, com o tempo colado ao nome (nunca desce de linha).
 // ════════════════════════════════════════════════════════════════════════════
 describe('a fileira das cirurgias fica sob o círculo, numa linha só (dono 15/09)', () => {
-  it('a fileira recua 56px (36px deitado) e desce para não encostar no círculo', () => {
+  it('a fileira recua 56px (36px deitado) e desce 4px (mt-1, dono 16/09: mais perto da bolinha)', () => {
     montar()
     const card = document.querySelector('[data-linha="uid-leo"]')
     const fileira = within(card).getByText('Liana W').closest('.flex.items-start.justify-between')
     expect(fileira.className).toContain('-ml-14')
     expect(fileira.className).toContain('deitado:-ml-9')
-    expect(fileira.className).toContain('mt-2')
+    expect(fileira.className).toContain('mt-1')
   })
 
   it('a linha da cirurgia não quebra: sem flex-wrap, e o tempo colado ao nome (sem ml-auto)', () => {

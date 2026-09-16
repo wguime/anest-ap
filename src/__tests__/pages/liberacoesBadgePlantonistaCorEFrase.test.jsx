@@ -122,6 +122,10 @@ describe('opção B (dono 16/09, modelo .tmp/fila-alinhamento-430.html)', () => 
     expect(bolinha.closest('button').className).toContain('h-11 w-9')
     const corpo = linhaDoNome(card).parentElement
     expect(corpo.className).toContain('pt-[13px]')
+    // fileira mais perto da bolinha (dono 16/09, 2ª foto): mt-1, não mt-2
+    const fileira = card.querySelector('div.-ml-14')
+    expect(fileira.className).toContain('mt-1')
+    expect(fileira.className).not.toContain('mt-2')
   })
 
 })

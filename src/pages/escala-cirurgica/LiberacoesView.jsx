@@ -2296,7 +2296,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     aqui, nas duas orientações — o que muda por orientação é o recuo,
                     não o respiro. Custa 6px da linha a 375px; o nome do procedimento
                     é o que encurta com "…", o tempo continua na mesma linha. */}
-                <div className="-ml-14 mt-2 flex items-start justify-between gap-2 pl-1.5 deitado:-ml-9">
+                {/* mt-1 (dono 16/09, foto: "deixe as linhas abaixo da bolinha um pouco mais
+                    próximas da bolinha"): com a bolinha de 24px sobrou folga; era mt-2. */}
+                <div className="-ml-14 mt-1 flex items-start justify-between gap-2 pl-1.5 deitado:-ml-9">
                   <div className="min-w-0 flex-1">
                     {/* TROCA DECLARADA — abaixo do nome, na margem das infos (dono 16/09).
                         O DESTAQUE é só o badge roxo ao lado do nome (dono 30/07): esta

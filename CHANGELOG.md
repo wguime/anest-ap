@@ -3,6 +3,12 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.16 (16/09/2026) — Fila: fileira das cirurgias mais perto da bolinha
+
+Dono (16/09, 16h04, foto): "deixe as linhas abaixo da bolinha um pouco mais próximas da bolinha".
+- O bloco recuado (turno, troca, cirurgiões, cirurgias, sala) desce `mt-1` (4px) abaixo da linha do
+  nome, em vez de `mt-2` (8px) — a bolinha de 24px da v5.12.15 deixou folga sobrando.
+
 ## v5.12.15 (16/09/2026) — Fila: uma margem esquerda só, bolinha Ø24 com o nome centrado, badge Plantonista verde, "Turno encerra às", rótulo de plantão sem repetir o selo
 
 Dono (16/09, 15h27–15h33, fotos da fila): "melhorar o alinhamento à esquerda do card, quero que
