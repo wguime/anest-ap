@@ -78,7 +78,11 @@ test.describe('Realtime Broadcast — canais privados', () => {
     expect(pessoal[0][1], pessoal[0][0]).toBe('ok');
     expect(erros, 'nenhum CHANNEL_ERROR/TIMED_OUT do helper').toEqual([]);
 
-    // 3. policy aplicada: tópico pessoal de OUTRO uid tem de ser recusado
+    // 3. policy aplicada: tópico pessoal de OUTRO uid tem de ser recusado.
+    // Só em dev: o import por URL do módulo do app é coisa do Vite; contra a URL
+    // publicada (E2E_BASE_URL) o bundle não expõe o client — os itens 1 e 2 já
+    // provam o JOIN e a policy positiva.
+    test.skip(!/localhost|127\.0\.0\.1/.test(String(page.url())), 'negativo só em dev (import por URL do Vite)');
     const statusOutro = await page.evaluate(async () => {
       const mod = await import('/src/config/supabase.js');
       const supabase = mod.supabase;
