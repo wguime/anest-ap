@@ -23,9 +23,36 @@ import { turnoAtual, rodapeDoTurno, filtrarPorTurno, normNome } from '@/pages/es
 import { ehDataFilaUnica, ehFeriado, FDS_HOSPITAL, faixaFdsAtual, plantonistasFaixaFds } from '@/lib/escalaFds'
 import { formatDate } from '@/utils/formatters'
 import useAgoraMinuto from '@/pages/escala-cirurgica/useAgoraMinuto'
+import { devClockAtivo } from '@/lib/devClock'
 
 const TURNO_LABEL = { matutino: 'Matutino', vespertino: 'Vespertino' }
 const FAIXA_LABEL = { '7-13': '7–13h', '13-19': '13–19h', '19-07': '19–07h' }
+
+/**
+ * SNAPSHOT DO CARD (dono 16/09/2026: "demora a mostrar os nomes; quando a escala
+ * é publicada os plantões serão os mesmos — que fique sempre visível e na
+ * memória"). O que o card exibe é estável dentro de um turno: hospital + nome
+ * resolvido. Guarda-se exatamente isso (nunca caso, nunca paciente), chaveado
+ * por dia+turno (ou dia+faixa no FDS): ao abrir o app o card já mostra os
+ * nomes do último dado real deste turno; o dado vivo sempre vence e regrava.
+ * Chave de outro dia/turno é ignorada (a virada das 13h troca a chave).
+ * Relógio de dev congelado ignora o snapshot (determinismo dos testes/mocks).
+ */
+export const HOME_CARD_SNAPSHOT_KEY = 'anest-escala-home-snapshot-v1'
+export function lerSnapshotCard(chave) {
+  try {
+    const s = JSON.parse(localStorage.getItem(HOME_CARD_SNAPSHOT_KEY) || 'null')
+    if (!s || s.chave !== chave || typeof s.rotulo !== 'string' || !Array.isArray(s.linhas) || !s.linhas.length) return null
+    return { rotulo: s.rotulo, linhas: s.linhas }
+  } catch {
+    return null // localStorage indisponível/corrompido — segue sem snapshot
+  }
+}
+export function gravarSnapshotCard(chave, conteudo) {
+  try {
+    localStorage.setItem(HOME_CARD_SNAPSHOT_KEY, JSON.stringify({ chave, rotulo: conteudo.rotulo, linhas: conteudo.linhas, em: new Date().toISOString() }))
+  } catch { /* quota/private mode — snapshot é só aceleração */ }
+}
 
 export function EscalaCirurgicaHomeCard({ onNavigate }) {
   const { escalas, data, loading } = useEscalaCirurgica()
@@ -168,6 +195,28 @@ export function EscalaCirurgicaHomeCard({ onNavigate }) {
   const carregando = (linhas.length === 0 && fonteCarregando) || (linhas.length > 0 && aguardandoRoster)
   const abrir = () => onNavigate?.('escalaCirurgica')
 
+  // ── Conteúdo vivo × snapshot ────────────────────────────────────────────
+  const turno = turnoAtual()
+  const chaveSnapshot = fdsAtivo
+    ? `${diaFdsRef}:fds:${ehFeriado(diaFdsRef) ? 'feriado' : (faixaFdsAtual(agoraMin) || '')}`
+    : `${hoje}:${turno}`
+  const conteudoVivo = useMemo(() => {
+    if (carregando) return null
+    if (linhasFds) return { rotulo: `Plantão · ${linhasFds.rotulo || FAIXA_LABEL[linhasFds.faixa]}`, linhas: linhasFds.linhas }
+    if (linhas.length > 0) return { rotulo: `Plantonista · ${TURNO_LABEL[turno]}`, linhas }
+    return null
+  }, [carregando, linhasFds, linhas, turno])
+  const snapshot = useMemo(() => (devClockAtivo() ? null : lerSnapshotCard(chaveSnapshot)), [chaveSnapshot])
+  const assinaturaVivo = conteudoVivo ? JSON.stringify(conteudoVivo) : ''
+  useEffect(() => {
+    if (!conteudoVivo || devClockAtivo()) return
+    gravarSnapshotCard(chaveSnapshot, conteudoVivo)
+  }, [assinaturaVivo, chaveSnapshot]) // eslint-disable-line react-hooks/exhaustive-deps
+  // vivo vence; sem vivo, o snapshot deste dia+turno segura a tela (inclusive
+  // enquanto o cadastro resolve apelidos e quando o fetch falha — escala
+  // publicada não some no meio do turno); sem nenhum, skeleton ou vazio
+  const conteudo = conteudoVivo || snapshot
+
   return (
     <motion.div
       data-slot="anest-escala-cirurgica-home-card"
@@ -205,21 +254,16 @@ export function EscalaCirurgicaHomeCard({ onNavigate }) {
         <span className={ACTION_PILL_CLASSES}>Acessar</span>
       </header>
 
-      {carregando ? (
-        <div className="mt-4 grid gap-2">
-          <Skeleton className="h-4 w-3/4" />
-          <Skeleton className="h-4 w-2/3" />
-        </div>
-      ) : (linhasFds || linhas.length > 0) ? (
+      {conteudo ? (
         <>
           {/* turno vira rótulo da lista (desceu do topo — pedido do dono);
               no FDS o rótulo é a FAIXA da grade (7–13/13–19/19–07) */}
           <div className="mt-4 flex items-center gap-2 text-[11.5px] font-semibold uppercase tracking-[0.5px] text-primary">
-            <span>{linhasFds ? `Plantão · ${linhasFds.rotulo || FAIXA_LABEL[linhasFds.faixa]}` : `Plantonista · ${TURNO_LABEL[turnoAtual()]}`}</span>
+            <span>{conteudo.rotulo}</span>
             <span className="h-px flex-1 bg-primary/10" aria-hidden="true" />
           </div>
           <ul className="mt-3 grid gap-[11px]">
-            {(linhasFds ? linhasFds.linhas : linhas).map((l) => (
+            {conteudo.linhas.map((l) => (
               <li key={`${l.hospital}-${l.nome}`} className="flex items-center gap-3">
                 {/* hospital em chip tonal de largura fixa (Opção B) — peso equilibrado com o nome */}
                 <span className="w-[5.25rem] shrink-0 rounded-[8px] bg-primary/10 px-2 py-1 text-center text-[11px] font-bold uppercase tracking-wide text-primary">
@@ -232,6 +276,11 @@ export function EscalaCirurgicaHomeCard({ onNavigate }) {
             ))}
           </ul>
         </>
+      ) : carregando ? (
+        <div className="mt-4 grid gap-2">
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-4 w-2/3" />
+        </div>
       ) : (
         <p className="mt-4 text-[14px] font-medium text-muted-foreground">
           Sem escala publicada hoje

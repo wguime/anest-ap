@@ -34,7 +34,13 @@ vi.mock('@/hooks/useRosterAnestesistas', () => ({
   default: () => estado.roster,
 }))
 
-import { EscalaCirurgicaHomeCard } from '@/components/escala-cirurgica/EscalaCirurgicaHomeCard'
+import { EscalaCirurgicaHomeCard, HOME_CARD_SNAPSHOT_KEY } from '@/components/escala-cirurgica/EscalaCirurgicaHomeCard'
+import { turnoAtual } from '@/pages/escala-cirurgica/utils'
+
+// o snapshot do card (16/09) persiste em localStorage entre testes do mesmo
+// arquivo: cada caso parte sem snapshot, salvo quando o próprio caso o grava
+beforeEach(() => { localStorage.clear() })
+afterEach(() => { localStorage.clear() })
 
 // escala publicada com o apelido "DIDO" no rodapé (array legado = vale p/ os 2 turnos)
 const escalasComDido = {
@@ -223,5 +229,68 @@ describe('modo FDS — plantões físicos da faixa da grade (dono 15/08)', () =>
     render(<EscalaCirurgicaHomeCard />)
     expect(screen.getByText('Gustavo Biesdorf')).toBeTruthy()
     expect(screen.queryByText(/Plantão · /)).toBeNull()
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// SNAPSHOT DO CARD (dono 16/09/2026): "demora a mostrar os nomes; quando a
+// escala é publicada os plantões serão os mesmos — que fique sempre visível e
+// na memória". O card guarda em localStorage só o que exibe (hospital + nome
+// resolvido + rótulo), por dia+turno, e mostra isso enquanto o dado vivo não
+// chega; o vivo sempre vence e regrava. Nunca caso, nunca paciente.
+// ════════════════════════════════════════════════════════════════════════════
+describe('snapshot do card — nomes na hora, sem esperar o fetch', () => {
+  const chaveHoje = () => `${hojeLocalISO()}:${turnoAtual()}`
+  const gravar = (chave, linhas) => localStorage.setItem(HOME_CARD_SNAPSHOT_KEY, JSON.stringify({ chave, rotulo: 'Plantonista · Teste', linhas }))
+
+  beforeEach(() => {
+    localStorage.clear()
+    estado.roster = rosterVazio(false)
+  })
+  afterEach(() => { localStorage.clear() })
+
+  it('context ainda carregando + snapshot deste turno → nomes na hora, sem skeleton', () => {
+    gravar(chaveHoje(), [{ hospital: 'UNIMED', nome: 'Gustavo Biesdorf' }])
+    estado.ctx = { escalas: { unimed: null, hro: null, materno: null }, data: hojeLocalISO(), loading: true }
+    const { container } = render(<EscalaCirurgicaHomeCard />)
+    expect(screen.getByText('Gustavo Biesdorf')).toBeInTheDocument()
+    expect(screen.getByText('Plantonista · Teste')).toBeInTheDocument()
+    expect(container.querySelectorAll('[data-slot="skeleton"], .animate-pulse').length).toBe(0)
+  })
+
+  it('snapshot de OUTRO turno/dia é ignorado → skeleton normal', () => {
+    gravar(`${hojeLocalISO()}:outro-turno`, [{ hospital: 'UNIMED', nome: 'Gustavo Biesdorf' }])
+    estado.ctx = { escalas: { unimed: null, hro: null, materno: null }, data: hojeLocalISO(), loading: true }
+    render(<EscalaCirurgicaHomeCard />)
+    expect(screen.queryByText('Gustavo Biesdorf')).not.toBeInTheDocument()
+  })
+
+  it('dado vivo chega → vence o snapshot e regrava a chave deste turno', () => {
+    gravar(chaveHoje(), [{ hospital: 'UNIMED', nome: 'Nome Antigo' }])
+    estado.roster = rosterComDido()
+    estado.ctx = { escalas: escalasComDido, data: hojeLocalISO(), loading: false }
+    render(<EscalaCirurgicaHomeCard />)
+    expect(screen.getByText('Gustavo Biesdorf')).toBeInTheDocument()
+    expect(screen.queryByText('Nome Antigo')).not.toBeInTheDocument()
+    const gravado = JSON.parse(localStorage.getItem(HOME_CARD_SNAPSHOT_KEY))
+    expect(gravado.chave).toBe(chaveHoje())
+    expect(gravado.linhas).toEqual([{ hospital: 'UNIMED', nome: 'Gustavo Biesdorf' }])
+    expect(JSON.stringify(gravado)).not.toMatch(/paciente|casos/)
+  })
+
+  it('fetch vazio/falho no meio do turno com snapshot → mantém os nomes (escala publicada não some)', () => {
+    gravar(chaveHoje(), [{ hospital: 'HRO', nome: 'Raul Perizzolo' }])
+    estado.roster = rosterComDido()
+    estado.ctx = { escalas: { unimed: null, hro: null, materno: null }, data: hojeLocalISO(), loading: false }
+    render(<EscalaCirurgicaHomeCard />)
+    expect(screen.getByText('Raul Perizzolo')).toBeInTheDocument()
+    expect(screen.queryByText('Sem escala publicada hoje')).not.toBeInTheDocument()
+  })
+
+  it('sem snapshot e sem escala → estado vazio como antes', () => {
+    estado.roster = rosterComDido()
+    estado.ctx = { escalas: { unimed: null, hro: null, materno: null }, data: hojeLocalISO(), loading: false }
+    render(<EscalaCirurgicaHomeCard />)
+    expect(screen.getByText('Sem escala publicada hoje')).toBeInTheDocument()
   })
 })
