@@ -24,6 +24,8 @@ const { svcMock } = vi.hoisted(() => ({
     updateAjudaExterna: vi.fn(async () => {}),
     patchLiberacao: vi.fn(async () => {}),
     patchLinhaOverride: vi.fn(async () => {}),
+    updateCaso: vi.fn(async () => {}),
+    addCaso: vi.fn(async (escalaId, c) => ({ id: 'novo-1', ...c })),
   },
 }))
 vi.mock('@/services/supabaseEscalaCirurgicaService', () => ({ default: svcMock }))
@@ -119,6 +121,30 @@ describe('setAnestesistaCasos limpa a anotação da linha de quem recebe casos',
       await actions.setAnestesistaCasos(unimed(), ['c3'], { uid: 'uid-osc', apelido: 'OSCAR' }, { userId: 'u-dono' })
     })
     expect(svcMock.patchLinhaOverride).not.toHaveBeenCalled()
+  })
+
+  it('adicionarCaso para alguém com linha anotada: a anotação cede', async () => {
+    await montar()
+    await act(async () => {
+      await actions.adicionarCaso(unimed(), { sala: 'CC - Sala 2', ordem: 0, hora: '15:00', procedimento: 'HERNIORRAFIA', anestesista: 'KARINE', anestesistaUserId: 'uid-kar', turno: 'vespertino', semAnestesista: false })
+    })
+    expect(svcMock.patchLinhaOverride).toHaveBeenCalledWith('esc-uni', 'vespertino:uid-kar', null)
+    expect(unimed().linhaOverrides['vespertino:uid-kar']).toBeUndefined()
+  })
+
+  it('atualizarCaso com sala nova limpa a anotação da pessoa do caso; só hora, não', async () => {
+    await montar()
+    await act(async () => {
+      await actions.atualizarCaso(unimed(), 'c2', { hora: '14:00' }, { silencioso: true })
+    })
+    expect(svcMock.patchLinhaOverride).not.toHaveBeenCalled()
+    await act(async () => {
+      await actions.atualizarCaso(unimed(), 'c2', { sala: 'CO - Sala 3' }, { silencioso: true })
+    })
+    const gravado = svcMock.patchLinhaOverride.mock.calls.find((c) => c[1] === 'vespertino:uid-adr')?.[2]
+    expect(gravado).toBeTruthy()
+    expect(gravado).not.toHaveProperty('local')
+    expect(gravado.termino).toBe('19:00')
   })
 
   it('dupla (A + B) não mexe em anotação de ninguém', async () => {
