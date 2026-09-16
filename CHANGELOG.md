@@ -3,6 +3,26 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.17 (16/09/2026) — Fila espelha a Completa: marca de "desfazer liberação" cede à cirurgia aberta, emprestado mostra o procedimento, SRPA uma vez só
+
+Dono (16/09, 16h15, com a tarde no ar): "há anestesista (Karine) sem os procedimentos informados na aba
+completa … Romulo também está sem informações sobre procedimentos … Anestesista da SRPA está com a
+informação duplicada, verifique para que apareça apenas uma vez". Reproduzido em produção interceptando
+as respostas no navegador (sem gravar nada) — os três eram código da fila, não dado:
+- **Karine**: a Louise liberou e desfez; a marca `renovado` do desfazer escondia a Accurata EM CURSO
+  (`LiberacoesView`: `renovado` suprimia grupos, sala e cirurgiões). Agora a marca só vale quando a
+  pessoa NÃO tem cirurgia aberta no turno — cirurgia aberta vence a marca, a mesma regra de
+  `limparAnotacaoDaLinha` (v5.12.13), valendo também para a marca já gravada.
+- **Rômulo** (emprestado ao HRO no C.O, caso sem cirurgião): o card dizia "Ajuda Sala 7/HRO" e "…".
+  `presencaOutros` leva o `procedimento` e `ajudaForaInfo` usa o procedimento quando o caso de lá não
+  tem cirurgião (regra do token da fila desde 21/07); o "…" de cirurgião desconhecido não aparece em
+  quem está emprestado — o destino já está no card.
+- **SRPA** (posição assistencial vira caso sem hora nem procedimento): "SRPA | — — | SRPA". A linha da
+  cirurgia que não acrescenta nada ao título do grupo não existe (com hora, fica só a hora — vale
+  para "13:30 Consultório" sob "Consultório"); a sala igual ao título de um grupo sai da linha da sala.
+- Testes: `liberacoesFilaEspelhaCompleta1609.test.jsx` (novo); `escalaCirurgicaPersonas` — a linha
+  renovada esconde só cirurgia ENCERRADA; com cirurgia aberta mostra.
+
 ## v5.12.16 (16/09/2026) — Fila: fileira das cirurgias mais perto da bolinha
 
 Dono (16/09, 16h04, foto): "deixe as linhas abaixo da bolinha um pouco mais próximas da bolinha".

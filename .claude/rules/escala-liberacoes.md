@@ -554,6 +554,24 @@ posição" (RPC `executarTrocaAtomica`) preservam a anotação do slot de propó
 Ao investigar "a fila não mudou", olhar `linha_overrides` ANTES de suspeitar do realtime: a troca de aba no
 mesmo aparelho nem passa por ele.
 
+**A marca `renovado` cede à cirurgia ABERTA (dono 16/09, 16h15, caso Karine).** A Louise liberou a
+Karine e desfez; a marca escondeu a Accurata em curso e o card ficou em branco enquanto a Completa a
+mostrava. Na view, `renovado = !!ov.renovado && !(linha.cirurgias.length > 0)` — `linha.cirurgias` já
+traz só as abertas (a lib descarta `casoConcluido`), então a marca só tem efeito quando não há nada
+aberto: aí segue escondendo o "…" e o passa-tarde da escala que acabou (29/07). Teste:
+`liberacoesFilaEspelhaCompleta1609.test.jsx` + `escalaCirurgicaPersonas` ("linha renovada").
+
+**Cada informação uma vez só no card (dono 16/09, SRPA).** Posição assistencial e bloco nomeado viram
+caso cuja sala é o próprio rótulo do grupo ("SRPA", "Consultório"), sem hora nem procedimento — o card
+dizia "SRPA | — — | SRPA". Na fileira de grupos: a linha da cirurgia que não acrescenta nada ao título
+(`repeteTitulo && !c.hora`) não existe; com hora, fica só a hora ("Consultório" / "13:30"); a sala
+igual ao título de um grupo sai de `salasAuto` (a nota do rodapé só cobre quem não tem sala nenhuma).
+
+**Emprestado sem cirurgião no caso de lá mostra o procedimento (dono 16/09, Rômulo no C.O do HRO).**
+`presencaOutros` (page) leva `procedimento`; `ajudaForaInfo` lista `nomeCirurgiaoCurto(cirurgiao)` ou,
+sem cirurgião, `fraseClinica(procedimento)` — a mesma regra do token da fila (21/07). E o "…" de
+cirurgião desconhecido não aparece em linha `ajudaFora`: o destino e o que a pessoa faz lá já estão no card.
+
 ## Fila — opção B do card (dono 16/09/2026, maquete `.tmp/fila-alinhamento-430.html`)
 
 - **Uma margem esquerda só abaixo do nome**: "Trocado com …" e "Assumiu a posição de …" saíram de
