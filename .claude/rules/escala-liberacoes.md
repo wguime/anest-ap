@@ -509,7 +509,7 @@ amarelo "Próximo a ser liberado". *"próximo a ser liberado está errado na esc
 "Sair fora da ordem" tinha virado "ser pulada": os de cima passavam na frente dela antes das
 19h. A frase "tira da conta de faltam N" era o próprio defeito, não a virtude.
 
-O card **diz o porquê** ("Turno até 19:00 · pode sair fora da ordem"), na receita das linhas
+O card **diz o porquê** ("Turno encerra às 19:00h" — frase do dono em 16/09; até então "Turno até 19:00 · pode sair fora da ordem"), na receita das linhas
 irmãs (13px, muted, sem cor nem ícone). Sem a frase, ver alguém do meio da fila sair antes dos
 de baixo lê como fila furada — que é exatamente o que a trava existe para impedir. "Pode", e
 não "sai": quando a fila chega nela o card traz a frase E o cartão amarelo, sem contradição.
@@ -553,3 +553,16 @@ origem e decisões da conferência sobrevivem; sem resto, o override some. A tro
 posição" (RPC `executarTrocaAtomica`) preservam a anotação do slot de propósito — são fluxos da própria fila.
 Ao investigar "a fila não mudou", olhar `linha_overrides` ANTES de suspeitar do realtime: a troca de aba no
 mesmo aparelho nem passa por ele.
+
+## Fila — opção B do card (dono 16/09/2026, maquete `.tmp/fila-alinhamento-430.html`)
+
+- **Uma margem esquerda só abaixo do nome**: "Trocado com …" e "Assumiu a posição de …" saíram de
+  sob o nome (decisão de 15/09, superada) e moram no bloco recuado `-ml-14`, na margem de
+  turno/cirurgiões/sala (`data-troca-linha` / `data-assumida-linha`). Pedido: "melhorar o
+  alinhamento à esquerda do card, quero que fique mais harmônico".
+- **Bolinha Ø24** (`h-6 w-6`; toque segue 36×44) e **nome centrado com a bolinha**: corpo
+  `pt-[13px] pb-2 pl-1` (botão de 44px → centro em 22px; linha do nome de 18px).
+- **Badge Plantonista no verde do DS** (`bg-primary`), não `secondary` (cinza).
+- **"Plantão da manhã" some quando a linha já leva selo P1–P4** (`badgeProximoPlantao` na
+  view): o selo diz mais; posição e saída não mudam.
+- Travas: `liberacoesBadgePlantonistaCorEFrase.test.jsx`, `liberacoesTrocaDeclarada.test.jsx`.
