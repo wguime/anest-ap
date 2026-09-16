@@ -3,6 +3,25 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.13 (16/09/2026) — Banco no plano free: refetch da escala coalescido, histórico só no dashboard, índices e crons
+
+Dono (16/09, 11h15–13h): o banco (Supabase free, compute Nano) saturou na troca de turno — 60–75 %
+das chamadas em timeout por ~2 h, Home e escala sem carregar. Ontem no mesmo horário, zero erros.
+Medido em `pg_stat_statements` desde 08/02, 92 % do tempo de CPU do banco estava em três consumidores.
+- **Escala em tempo real** (`EscalaCirurgicaContext`): cada evento realtime virava uma recarga completa
+  por cliente (~10 requisições) e um toque de liberação emite 2–3 eventos, com ~45 clientes conectados.
+  Evento de outra data/escala não recarrega nada; a rajada vira UMA recarga (`REALTIME_COALESCE_MS`).
+- **Histórico de atividade** (`useActivityTracking`): montado no App para todo usuário, baixava 30 dias
+  de `user_activity_log` (até 5.000 linhas, 290 ms) no mount e a cada 5 min, e repintava a árvore a cada
+  30 s. Passa a carregar só com `{ historico: true }`, usado apenas no Dashboard de Gestão.
+- **Migration `20260916170000_perf_plano_free`** (aplicada): índices que faltavam
+  (`escala_cirurgica_evento (escala_id, tipo, em)`: 320 ms → 1,4 ms; `user_activity_log (created_at)`),
+  2 índices duplicados e 2 nunca usados removidos, `trocas_cirurgicas` fora da publication,
+  `idle_in_transaction_session_timeout` de 5 min no role da Management API, crons `translate-pending`
+  1/min → 1/10 min e `reap-stale-translations` 1/2 → 1/30 min, 3 policies RLS em forma initplan.
+- Operacional (dono): `VACUUM FULL net._http_response` — 146 MB → 400 kB; banco 245 MB → 84 MB.
+- Sem mudança visual. Testes: `escalaRealtimeCoalescido`, `useActivityTracking`.
+
 ## v5.12.12 (16/09/2026) — BottomNav para de andar pela tela no iPhone: reconciliação que funciona com a página no fim + âncora no viewport visível
 
 Dono (16/09, print da barra no meio da tela): "botton nav com frequencia fica movimentando ao longo
