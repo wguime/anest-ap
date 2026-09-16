@@ -110,6 +110,63 @@ describe('useIosViewportReanchor', () => {
     expect(scrollToSpy).toHaveBeenCalledWith(window.scrollX, 1730)
   })
 
+  // 16/09: página no FIM da lista (gatilho típico: sheet aberto a partir do
+  // último card) — o scrollTo clampava e o offset ficava. Agora o documento
+  // ganha espaço para absorver o offset e o devolve depois de aplicado.
+  it('dá espaço ao documento ANTES do scrollTo e devolve depois de aplicado', () => {
+    const html = document.documentElement
+    html.style.minHeight = ''
+    let minHeightNoScroll = null
+    scrollToSpy.mockImplementation(() => {
+      minHeightNoScroll = html.style.minHeight
+      vv.offsetTop = 0 // o WebKit aplicou o scroll: offset zerou
+    })
+    renderHook(() => useIosViewportReanchor())
+    vv.offsetTop = 480
+    vv.pageTop = 1730
+    dispararResize()
+    expect(scrollToSpy).toHaveBeenCalledWith(window.scrollX, 1730)
+    // jsdom: scrollHeight = 0 → 0 + 480 + 1
+    expect(minHeightNoScroll).toBe('481px')
+    act(() => { vi.advanceTimersByTime(100) })
+    expect(html.style.minHeight).toBe('')
+  })
+
+  it('devolve o espaço mesmo se o hook desmontar no meio da reconciliação', () => {
+    const html = document.documentElement
+    html.style.minHeight = ''
+    const { unmount } = renderHook(() => useIosViewportReanchor())
+    vv.offsetTop = 480
+    vv.pageTop = 1730
+    dispararResize()
+    expect(html.style.minHeight).toBe('481px')
+    unmount()
+    expect(html.style.minHeight).toBe('')
+  })
+
+  it('offset que persiste → tenta de novo com jiggle, no máximo 3 vezes', () => {
+    renderHook(() => useIosViewportReanchor())
+    vv.offsetTop = 480
+    vv.pageTop = 1730
+    dispararResize()
+    act(() => { vi.advanceTimersByTime(100) })
+    act(() => { vi.advanceTimersByTime(100) })
+    act(() => { vi.advanceTimersByTime(100) })
+    expect(scrollToSpy).toHaveBeenCalledTimes(3)
+    expect(window.scrollBy).toHaveBeenCalledWith(0, 1)
+  })
+
+  it('rolagem do documento que assenta (inércia acabou) também reconcilia', () => {
+    renderHook(() => useIosViewportReanchor())
+    vv.offsetTop = 480
+    vv.pageTop = 1730
+    act(() => {
+      window.dispatchEvent(new Event('scroll'))
+      vi.advanceTimersByTime(300)
+    })
+    expect(scrollToSpy).toHaveBeenCalledWith(window.scrollX, 1730)
+  })
+
   it('fora do iOS (CSS.supports false) → nenhum listener age', () => {
     CSS.supports.mockReturnValue(false)
     renderHook(() => useIosViewportReanchor())

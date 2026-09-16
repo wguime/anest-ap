@@ -118,3 +118,11 @@ mesmos tokens.
 ⚠️ Bug conhecido `src/App.jsx:1011` (TODO BUG-06): BottomNav global pode duplicar com BottomNav
 per-page (createPortal). Decisão arquitetural pendente. **Em página nova, NÃO renderizar BottomNav
 próprio.**
+
+⚠️ **Barra "no meio da tela" no iPhone (4 rodadas, 24/07 → 16/09)** é o visual viewport deslocado do
+layout viewport depois do teclado de um sheet — `position: fixed` ancora no layout viewport. Duas
+proteções, NÃO remover nenhuma: `useIosViewportReanchor` (App.jsx) zera o offset rolando o documento
+e dá `min-height` ao `<html>` durante a reconciliação porque com a página no fim o `scrollTo` clampa;
+`useVisualViewportAnchor` (dentro da BottomNav) compensa a barra por `transform` até a borda visível.
+Nada disso roda fora do iOS. Sintoma novo do mesmo tipo: medir `visualViewport.offsetTop`/`height`
+e `scale` no aparelho ANTES de propor outra hipótese (blur/GPU já foram descartados em jul/2026).

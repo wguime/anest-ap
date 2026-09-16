@@ -17,3 +17,5 @@ export { useFocusTrap } from "./useFocusTrap.js"
 export { useHaptic } from "./useHaptic.js"
 
 export { usePullToRefresh } from "./usePullToRefresh.js"
+
+export { useVisualViewportAnchor, ehIos } from "./useVisualViewportAnchor.js"

@@ -3,6 +3,26 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.12 (16/09/2026) — BottomNav para de andar pela tela no iPhone: reconciliação que funciona com a página no fim + âncora no viewport visível
+
+Dono (16/09, print da barra no meio da tela): "botton nav com frequencia fica movimentando ao longo
+da tela no app. quero que corrija de forma definitiva esse problema (já solicitei a correção outras
+vezes, mas o problema ainda persiste)". Quarta rodada do mesmo bug (24/07, 29/07, 30/07).
+- **Causa que sobrou:** o hook de 30/07 (`useIosViewportReanchor`) zera o offset residual do visual
+  viewport rolando o documento até `pageTop` — e isso só funciona se a página tiver espaço para rolar
+  `offsetTop` px além de onde está. O gatilho típico (abrir um sheet a partir de um card no FIM da
+  lista) deixa a página já no fim: o `scrollTo` clampava, o offset ficava e a barra seguia no meio.
+  E a nova tentativa só vinha ao soltar o dedo — um `scrollTo` no meio da inércia era engolido.
+- **Reconciliação:** o `<html>` ganha `min-height` só durante a reconciliação (espaço para o scroll
+  absorver o offset) e devolve em seguida; também roda quando a rolagem assenta e ao voltar do
+  segundo plano.
+- **Garantia para a barra:** `useVisualViewportAnchor` (novo, dentro da própria BottomNav) mede onde
+  a barra está e compensa por `transform` até a borda visível — malha fechada, converge em um passo.
+  Estado saudável = transform vazio; teclado aberto e pinch-zoom seguem o comportamento nativo do iOS;
+  fora do iOS não faz nada. Vale também para a faixa lateral do modo deitado.
+- Sem mudança visual. 24 testes de unidade cobrindo os dois hooks (página no fim, tecla de recolher o
+  teclado com input focado, zoom, faixa lateral, unmount).
+
 ## v5.12.11 (16/09/2026) — Fila: a fileira das cirurgias ganha o mesmo respiro do card amarelo
 
 Dono (16/09, 9h12, foto deitado): "lista de cirurgiões/cirurgias ficaram muito colados na lateral

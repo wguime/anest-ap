@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "framer-motion"
 import { Home, Shield, FileText, Menu, Calculator, GraduationCap, BarChart3, LayoutDashboard } from "lucide-react"
 
 import { cn } from "@/design-system/utils/tokens"
+import { useVisualViewportAnchor } from "@/design-system/hooks/useVisualViewportAnchor"
 
 const ICONS = {
   Home,
@@ -31,9 +32,17 @@ const DEFAULT_LABELS = {
 
 function BottomNav({ items = [], onItemClick, className, ...props }) {
   const shouldReduceMotion = useReducedMotion()
+  // iOS: `position: fixed` ancora no layout viewport; quando o teclado de um
+  // sheet fecha e deixa o visual viewport deslocado, a barra aparece no meio
+  // da tela (dono 24/07 → 16/09). A âncora mede e compensa por transform —
+  // no estado saudável é vazia, e fora do iOS não faz nada. No modo deitado
+  // (faixa lateral de altura cheia) o mesmo deslocamento vale para a faixa.
+  const navRef = React.useRef(null)
+  useVisualViewportAnchor(navRef)
 
   return (
     <nav
+      ref={navRef}
       data-slot="anest-bottom-nav"
       aria-label="Navegação principal"
       className={cn(
