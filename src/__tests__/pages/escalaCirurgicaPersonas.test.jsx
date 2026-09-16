@@ -779,16 +779,30 @@ describe('Notificações — disparo por login', () => {
   })
 
   it('linha renovada não mostra sala/cirurgião/cronômetro derivados NEM o badge passa-tarde', () => {
+    // a marca vale para o que já ACABOU (29/07): cirurgia encerrada não ressuscita.
+    // Cirurgia ABERTA é outra história — ver o teste seguinte (dono 16/09).
+    const escala = {
+      id: 'e1', hospital: 'unimed', ordemLiberacao: ['LEONARDO'], liberacoes: {},
+      linhaOverrides: { Leonardo: { renovado: true } },
+      casos: [{ sala: 'SALA 4', ordem: 0, hora: '08:00', tempoEstimado: '01:00', anestesista: 'LEONARDO', cirurgiao: 'Liana Winkelmann', statusCirurgia: 'terminada' }],
+    }
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} onSetOverride={() => {}} />, { wrapper: wrap })
+    expect(screen.queryByText('SALA 4')).toBeNull()
+    expect(screen.queryByText('Liana Winkelmann')).toBeNull()
+    expect(screen.queryByText('Passa para tarde')).toBeNull() // era da escala de antes
+    expect(screen.queryByText('…')).toBeNull() // renovada: nem o "…" de cirurgião desconhecido
+    expect(screen.getByLabelText('Definir tempo faltante de Leonardo')).toBeTruthy()
+  })
+
+  it('linha renovada COM cirurgia aberta mostra a cirurgia: a Completa manda (dono 16/09, caso Karine)', () => {
     const escala = {
       id: 'e1', hospital: 'unimed', ordemLiberacao: ['LEONARDO'], liberacoes: {},
       linhaOverrides: { Leonardo: { renovado: true } },
       casos: [{ sala: 'SALA 4', ordem: 0, hora: '08:00', tempoEstimado: '01:00', anestesista: 'LEONARDO', cirurgiao: 'Liana Winkelmann', statusCirurgia: 'passa_tarde' }],
     }
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} onSetOverride={() => {}} />, { wrapper: wrap })
-    expect(screen.queryByText('SALA 4')).toBeNull()
-    expect(screen.queryByText('Liana Winkelmann')).toBeNull()
-    expect(screen.queryByText('Passa para tarde')).toBeNull() // era da escala de antes
-    expect(screen.getByLabelText('Definir tempo faltante de Leonardo')).toBeTruthy()
+    expect(screen.getByText('SALA 4')).toBeTruthy()
+    expect(screen.getByText('Liana Winkelmann')).toBeTruthy()
   })
 
   it('marcar não-escalado como escalado também zera o override antigo', async () => {

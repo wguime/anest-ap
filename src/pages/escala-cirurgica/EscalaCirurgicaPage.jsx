@@ -339,7 +339,9 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
         if (!nm || daquiComCaso.has(nm)) continue
         out.push({
           nome: nm, uid: c.anestesistaUserId || null, hospital: h, hospitalLabel: label,
-          sala: c.sala || '', cirurgiao: c.cirurgiao || '',
+          // procedimento junto: sem cirurgião (C.O, exames) é ele que diz o que a
+          // pessoa faz lá (dono 16/09, caso Rômulo)
+          sala: c.sala || '', cirurgiao: c.cirurgiao || '', procedimento: c.procedimento || '',
         })
       }
     }

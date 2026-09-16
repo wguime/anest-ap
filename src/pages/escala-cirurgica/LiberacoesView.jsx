@@ -1037,8 +1037,13 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     // onde ele está") — o card de quem está emprestado trazia só o destino, e quem
     // lê a fila não sabia com quem ele estava. ⚠️ o Nº DE CIRURGIAS saiu em 11/09:
     // com os nomes em coluna a contagem virou o número de linhas.
-    const cirurgioes = [...new Set(matches.map((m) => String(m.cirurgiao || '').trim()).filter(Boolean))]
-      .map((c) => nomeCirurgiaoCurto(c))
+    // Sem cirurgião no caso de lá (C.O do HRO, exames), o PROCEDIMENTO diz o que
+    // a pessoa faz — mesma regra do token da fila (dono 21/07); sem isto o Rômulo
+    // aparecia só com "Ajuda Sala 7/HRO" enquanto a Completa do HRO tinha
+    // "04 cesáreas" (dono 16/09).
+    const cirurgioes = [...new Set(matches
+      .map((m) => (String(m.cirurgiao || '').trim() ? nomeCirurgiaoCurto(m.cirurgiao) : fraseClinica(m.procedimento)))
+      .filter(Boolean))]
     return { hospital: matches[0].hospitalLabel, locais, cirurgioes }
   }
   /**
@@ -1947,7 +1952,15 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           const ov = overrideDe(linha)
           // linha RENOVADA (voltou de liberação): infos da manhã não valem mais —
           // derivado suprimido; só o que for preenchido manualmente aparece.
-          const renovado = !!ov?.renovado
+          // ⚠️ CIRURGIA ABERTA VENCE A MARCA (dono 16/09, caso Karine): a marca nasceu
+          // para não ressuscitar sala/cirurgião de cirurgia já encerrada (29/07). Com
+          // cirurgia ABERTA neste turno, escondê-la é a fila contradizer a Completa —
+          // a Karine tinha a Accurata em curso e o card ficou em branco porque a
+          // Louise liberou e desfez. Mesma regra de `limparAnotacaoDaLinha` (o caso
+          // que diz onde a pessoa está vence a anotação), valendo também para a
+          // marca já gravada. Sem cirurgia aberta a marca segue: nada de "…" nem
+          // de passa-tarde de uma escala que já acabou.
+          const renovado = !!ov?.renovado && !(linha.cirurgias?.length > 0)
           // Badge do turno seguinte: some ao liberar, na linha RENOVADA (o
           // passa-tarde era da escala de antes) e no card noturno. Fica AQUI, e não
           // junto de `liberado`, porque depende de `renovado`, que nasce do override
@@ -1990,7 +2003,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // >1 cirurgião = lista (1 por linha); override manual = 1 linha como digitado
           const listaCirurgioes = ov?.cirurgioes
             ? [ov.cirurgioes]
-            : (renovado || semEscala) ? [] : linha.cirurgioes.length ? linha.cirurgioes : ['…']
+            // emprestado (dono 16/09, caso Rômulo): o card já diz onde está e o que faz
+            // lá (`ajudaForaInfo`); "…" embaixo disso lia como cirurgião desconhecido.
+            : (renovado || semEscala) ? [] : linha.cirurgioes.length ? linha.cirurgioes : (linha.ajudaFora ? [] : ['…'])
           // GRUPOS POR CIRURGIÃO (dono 14/09): as cirurgias abertas da pessoa
           // (`linha.cirurgias`, em ordem de horário) agrupadas pelo cirurgião, na
           // ordem em que aparecem. Só no dia a dia da linha: renovada, ajustada à
@@ -2008,7 +2023,13 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           })() : []
           // nota do rodapé ("MATHEUS (CONSULT)" → Consultório) cobre quem não tem
           // sala na escala — diz onde a pessoa está sem ninguém precisar editar
-          const salasAuto = renovado ? '' : ((linha.salas || []).map(salaLiberacao).join('/') || linha.notaRodape || '')
+          // UMA VEZ SÓ (dono 16/09, SRPA): posição assistencial e bloco nomeado viram
+          // caso cuja sala é o próprio rótulo do grupo ("SRPA", "Consultório") — o
+          // card dizia a mesma palavra no título e na linha da sala. A sala que já
+          // é título sai daqui; a nota do rodapé só cobre quem não tem sala nenhuma.
+          const titulosGrupos = new Set(gruposCirurgias.map((g) => normNome(g.token)))
+          const salasVisiveis = (linha.salas || []).map(salaLiberacao).filter((sl) => !titulosGrupos.has(normNome(sl)))
+          const salasAuto = renovado ? '' : (salasVisiveis.join('/') || (linha.salas?.length ? '' : (linha.notaRodape || '')))
           const localExibido = ov?.local || salasAuto
           // HOSPITAL da linha (dono 24/08): o ajustado à mão vence o derivado dos
           // casos. Fora do modo FDS `hospitaisDe` devolve null e a linha nem
@@ -2435,7 +2456,15 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                               // MESMO HORÁRIO, UMA VEZ SÓ (dono 18/08): com UMA cirurgia o total
                               // da linha é espelhado do término dela — fica a pílula.
                               const espelhaOTotal = linha.cirurgias.length === 1 && alvo != null && alvo === terminoLinhaMin && !!cronometro
-                              const rotulo = nomeCurtoProcedimento(c.procedimento) || fraseClinica(c.procedimento) || '—'
+                              // UMA VEZ SÓ (dono 16/09, SRPA): caso sem hora nem procedimento
+                              // (posição assistencial) ou cujo nome é o próprio título do grupo
+                              // ("CONSULTÓRIO" no grupo Consultório) não tem o que acrescentar —
+                              // "— —" sob "SRPA" era a mesma palavra três vezes no card. Sem
+                              // hora a linha não existe; com hora, fica só a hora.
+                              const rotuloBruto = nomeCurtoProcedimento(c.procedimento) || fraseClinica(c.procedimento) || ''
+                              const repeteTitulo = !rotuloBruto || normNome(rotuloBruto) === normNome(token)
+                              if (repeteTitulo && !c.hora) return null
+                              const rotulo = repeteTitulo ? '' : rotuloBruto
                               // UMA LINHA SÓ, tempo colado ao nome (dono 15/09: "informações
                               // devem estar na mesma linha"). O que dá a largura é a fileira
                               // ter recuado para baixo do círculo (acima); só um nome muito
@@ -2444,7 +2473,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                               return (
                                 <p key={c.id || `${token}-${j}`} className="flex items-center gap-1.5 pl-2.5 text-[12.5px]">
                                   <span className="shrink-0 font-semibold tabular-nums text-foreground/70">{c.hora || '—'}</span>
-                                  <span className="min-w-0 truncate">{rotulo}</span>
+                                  {rotulo && <span className="min-w-0 truncate">{rotulo}</span>}
                                   {(falta || hora) && !espelhaOTotal && (
                                     <span className={['shrink-0 text-xs', falta?.atrasada ? 'font-medium text-warning' : 'text-muted-foreground'].join(' ')}>
                                       · {falta ? fraseFaltante(falta) : `até ${hora}`}
