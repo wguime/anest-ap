@@ -1974,7 +1974,12 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // Os badges de PLANTÃO não somem ao liberar (dono 31/08): a posição
           // continua verdadeira — eles trocam de tinta junto com o card
           // (vermelho no liberado, verde em quem trabalha).
-          const badgeProximoPlantao = linha.isProximoPlantao
+          // "Plantão da manhã" é quem fecha o rodapé da tarde. Quando essa pessoa
+          // já carrega o selo P1–P4 (entra no plantão noturno hoje), o selo diz
+          // mais e o rótulo genérico sai (dono 16/09: "quando o plantão da manhã
+          // for plantão noturno, não quero que mantenha o badge de plantão da
+          // manhã"). Só o BADGE some: posição e mecânica de saída não mudam.
+          const badgeProximoPlantao = linha.isProximoPlantao && !(turno === 'vespertino' && linha.selo)
           const badgeContraturno = !linha.isProximoPlantao && contraturnoDe(linha)
           // ver o porquê no JSX, junto do próprio ordinal
           const ordinalDeitado = !!linha.noRodape && !noturno
@@ -2090,19 +2095,25 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 aria-label={liberado ? `Desfazer liberação de ${linha.anestesista}` : `Marcar ${linha.anestesista} liberado`}
                 className={['flex h-11 w-9 shrink-0 items-center justify-center', canEdit ? 'cursor-pointer' : 'cursor-default'].join(' ')}
               >
+                {/* Ø24 (dono 16/09, opção B do modelo .tmp/fila-alinhamento-430.html):
+                    a bolinha de 28 pesava mais que o nome ao lado; a área de toque
+                    segue 36×44 no botão em volta. */}
                 <span className={[
-                  'flex h-7 w-7 items-center justify-center rounded-full border-2',
+                  'flex h-6 w-6 items-center justify-center rounded-full border-2',
                   // vazio precisa de presença: border-border sumia sobre os cards tintados no dark
                   liberado
                     ? 'border-destructive bg-destructive text-white'
                     : 'border-muted-foreground/50 bg-background/40 text-transparent dark:border-muted-foreground/80',
                 ].join(' ')}>
-                  <Check className="w-4 h-4" />
+                  <Check className="h-3.5 w-3.5" />
                 </span>
               </button>
 
-              {/* corpo em 2 níveis: nome em destaque, cirurgião(ões) abaixo */}
-              <div className="min-w-0 flex-1 py-2 pl-1">
+              {/* corpo em 2 níveis: nome em destaque, cirurgião(ões) abaixo.
+                  NOME CENTRALIZADO COM A BOLINHA (dono 16/09): o botão tem 44px e a
+                  bolinha fica no meio (22px); a linha do nome tem 18px, então nasce
+                  a 13px do topo para o centro dela cair nos mesmos 22px. */}
+              <div className="min-w-0 flex-1 pb-2 pl-1 pt-[13px]">
                 {/* flex + truncate: badge SEMPRE ao lado do nome (sem quebrar p/ baixo).
                     `pr-1.5` (24/08) é o piso da margem direita: os selos são `shrink-0`
                     e só o nome cede, então com nome longo + 3 selos o último parava a
@@ -2150,9 +2161,12 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       No FDS o genérico "Plantonista" dá lugar ao badge ESPECÍFICO
                       "Plantão Unimed/HRO" da faixa atual (grade importada) — na
                       fila única, dizer QUAL hospital é a informação. */}
+                  {/* VERDE DO DS (dono 16/09: "cor do badge de plantonista deve manter
+                      cor do DS"): `secondary` é cinza (#6B7280) — o verde institucional
+                      é o `default`, o mesmo dos selos P1–P4 e do plantão do turno
+                      seguinte, logo ao lado. */}
                   {badgePlantonista && (
-                    <Badge variant="secondary"
-                      className="shrink-0 dark:bg-[hsl(var(--badge-success))] dark:text-[hsl(var(--badge-success-foreground))]">
+                    <Badge className="shrink-0 border-transparent bg-primary text-primary-foreground">
                       Plantonista
                     </Badge>
                   )}
@@ -2251,30 +2265,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     isso mora AQUI, fora do `-ml-14`, e ocupa a largura toda do
                     corpo: o cronômetro só disputa espaço com a fileira. `pr-1.5`
                     é o mesmo piso da linha do nome, pela mesma borda arredondada. */}
-                {trocaDe(linha) && (
-                  <p className="mt-0.5 pr-1.5 text-[13px] leading-snug text-muted-foreground">
-                    Trocado com {trocaDe(linha).outroNome}
-                    {trocaDe(linha).outroHospitalLabel ? ` (${trocaDe(linha).outroHospitalLabel})` : ''}
-                    {trocaDe(linha).par?.motivo ? ` · ${trocaDe(linha).par.motivo}` : ''}
-                  </p>
-                )}
-                {/* SLOT ASSUMIDO (troca executada): a linha já exibe quem
-                    assumiu; esta nota permanece mesmo após a liberação para
-                    deixar claro que o slot continua sendo o do titular. É o
-                    outro lado da MESMA troca — vai alinhada ao nome pelo mesmo
-                    motivo da linha acima. */}
-                {linha.assumida && (
-                  <p className="mt-0.5 flex items-center gap-1 pr-1.5 text-[13px] leading-snug text-muted-foreground">
-                    <ArrowLeftRight className="h-3 w-3 shrink-0" />
-                    <span className="min-w-0">
-                      Assumiu a posição de {linha.assumida.deNome}
-                      {/* de onde veio quem chegou (consultório/folga): sem isso a
-                          fila não conta o outro lado da troca (dono 13/08) */}
-                      {linha.assumida.local ? ` · ${linha.assumida.local}` : ''}
-                      {linha.assumida.motivo ? ` · ${linha.assumida.motivo}` : ''}
-                    </span>
-                  </p>
-                )}
+                {/* A linha da troca e a nota do slot assumido moram no bloco recuado,
+                    logo abaixo (dono 16/09, opção B: "uma margem esquerda só" — a troca
+                    continua ABAIXO do nome, só que na mesma margem de turno, cirurgiões
+                    e sala). */}
                 {/* 2ª linha: infos à esquerda; cronômetro + lápis à direita (o nome acima
                     fica com a LARGURA TODA — badge ao lado sem truncar o nome) */}
                 {/* ITEMS-START também aqui (dono 24/08): a coluna da direita é
@@ -2304,6 +2298,32 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     é o que encurta com "…", o tempo continua na mesma linha. */}
                 <div className="-ml-14 mt-2 flex items-start justify-between gap-2 pl-1.5 deitado:-ml-9">
                   <div className="min-w-0 flex-1">
+                    {/* TROCA DECLARADA — abaixo do nome, na margem das infos (dono 16/09).
+                        O DESTAQUE é só o badge roxo ao lado do nome (dono 30/07): esta
+                        linha fica na cor padrão das infos, sem ícone. */}
+                    {trocaDe(linha) && (
+                      <p className="text-[13px] leading-snug text-muted-foreground" data-troca-linha>
+                        Trocado com {trocaDe(linha).outroNome}
+                        {trocaDe(linha).outroHospitalLabel ? ` (${trocaDe(linha).outroHospitalLabel})` : ''}
+                        {trocaDe(linha).par?.motivo ? ` · ${trocaDe(linha).par.motivo}` : ''}
+                      </p>
+                    )}
+                    {/* SLOT ASSUMIDO (troca executada): a linha já exibe quem assumiu;
+                        esta nota permanece mesmo após a liberação para deixar claro que
+                        o slot continua sendo o do titular — o outro lado da MESMA troca,
+                        na mesma margem. */}
+                    {linha.assumida && (
+                      <p className="flex items-center gap-1 text-[13px] leading-snug text-muted-foreground" data-assumida-linha>
+                        <ArrowLeftRight className="h-3 w-3 shrink-0" />
+                        <span className="min-w-0">
+                          Assumiu a posição de {linha.assumida.deNome}
+                          {/* de onde veio quem chegou (consultório/folga): sem isso a
+                              fila não conta o outro lado da troca (dono 13/08) */}
+                          {linha.assumida.local ? ` · ${linha.assumida.local}` : ''}
+                          {linha.assumida.motivo ? ` · ${linha.assumida.motivo}` : ''}
+                        </span>
+                      </p>
+                    )}
                     {/* card vermelho + "Liberado" = liberação FEITA, sempre. Sem
                         caso e sem marcação a linha mostra "Livre" e espera o toque
                         de quem libera (dono 20/08 — ver o bloco `liberado` acima). */}
@@ -2367,7 +2387,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         text-muted-foreground`, sem cor nem ícone próprios. */}
                     {!liberadoReal && turnoProprioDe(linha) && (
                       <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
-                        Turno até {turnoProprioDe(linha)} · pode sair fora da ordem
+                        Turno encerra às {turnoProprioDe(linha)}h
                       </p>
                     )}
                     {/* ⚠️ HOSPITAL ISOLADO + SALA ANTES DOS CIRURGIÕES é o card do
