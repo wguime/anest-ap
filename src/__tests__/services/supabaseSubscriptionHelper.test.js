@@ -85,6 +85,7 @@ describe('topicoDe', () => {
     expect(topicoDe('notifications', 'recipient_id=eq.u1')).toEqual({ topic: 'u:notifications:u1', filtroLocal: { coluna: 'recipient_id', valor: 'u1' } })
     expect(topicoDe('messages', 'sender_id=eq.u1').topic).toBe('u:messages:u1')
     expect(topicoDe('incident_notification_settings', 'user_id=eq.u1').topic).toBe('u:incident_notification_settings:u1')
+    expect(topicoDe('incidentes', 'user_id=eq.u1').topic).toBe('u:incidentes:u1')
   })
   it('sem filtro, ou filtro fora do escopo pessoal, é o tópico da tabela', () => {
     expect(topicoDe('documentos')).toEqual({ topic: 't:documentos', filtroLocal: null })
