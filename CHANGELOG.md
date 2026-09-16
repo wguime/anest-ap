@@ -3,6 +3,30 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.14 (16/09/2026) — Realtime por Broadcast (sinal + busca por chave); Escala completa → Liberações; card da Home com snapshot
+
+Dono (16/09): "corrija tudo" (sem pagar) → decisão pelo modelo "sinal + busca por id" em PR separado.
+`postgres_changes` fazia o Realtime consultar o WAL a cada ~100 ms enquanto houvesse um assinante em
+qualquer tabela — 59 % do tempo de CPU do banco desde 08/02, 10–39 s por rodada no dia da saturação.
+- **Broadcast do banco** (migration `20260916203000`, aplicada): trigger `rt_sinal` em 13 tabelas emite
+  só `{ table, op, pk, chaves, antes }` — nunca a linha, porque o canal entrega a mesma mensagem a todo
+  assinante e a RLS da tabela não vale nele. Tópicos `t:<tabela>` e `u:<tabela>:<uid>`; `t:incidentes`
+  só para responsáveis. Policy única em `realtime.messages`. O cliente (`supabaseSubscriptionHelper`,
+  mesma API) busca a linha pela PK via PostgREST, onde a RLS vale; um canal por tópico por cliente.
+  Nenhum `postgres_changes` sobra no app. As 13 tabelas seguem na publication até o bundle novo estar
+  em todos os clientes. Doc: `docs/realtime-broadcast.md`.
+- **Escala completa → Liberações** (dono, 14h13: trocou ADRIANO e PAULO e "na aba Liberações nada
+  aconteceu"): `local`/`cirurgioes` editados à mão e `renovado` vencem o derivado dos casos. Quando um
+  caso passa a dizer onde a pessoa está (recebeu casos, caso novo, sala/cirurgião editados), a linha
+  perde esses três; tempo, observação, troca, assunção, origem e decisões da conferência sobrevivem.
+- **Tempo de atualização**: recarga busca casos e histórico em paralelo (3 idas → 2, ~1,3 s → ~0,7 s);
+  coalescência da rajada de um toque em 500 ms.
+- **Card Escala Cirúrgica na Home** (dono: "demora a mostrar os nomes"): snapshot em localStorage do
+  que o card exibe (hospital + nome + rótulo), por dia+turno; nomes na hora ao abrir, o dado vivo vence
+  e regrava; fetch falho no meio do turno mantém os nomes. Nunca caso nem paciente no aparelho.
+- Sem mudança visual. Testes: `supabaseSubscriptionHelper`, `incidentsRealtimePorPapel`,
+  `escalaDefinirAnestesistaLimpaAnotacao`, `escalaCirurgicaHomeCard` (snapshot).
+
 ## v5.12.13 (16/09/2026) — Banco no plano free: refetch da escala coalescido, histórico só no dashboard, índices e crons
 
 Dono (16/09, 11h15–13h): o banco (Supabase free, compute Nano) saturou na troca de turno — 60–75 %

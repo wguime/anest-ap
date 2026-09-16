@@ -49,14 +49,29 @@ fire-and-forget e ninguém percebeu até o teste ponta a ponta. Exemplo: `relato
 ## reconcileFromSupabase
 Sync Firestore ↔ Supabase profiles. Firestore é source of truth para perfis, Supabase para dados de negócio.
 
-## Real-time
+## Real-time — Broadcast (sinal + busca por chave), NÃO `postgres_changes` (16/09/2026)
+`postgres_changes` faz o Realtime consultar o WAL a cada ~100 ms enquanto houver UM assinante em
+qualquer tabela (foi 59 % do tempo de CPU do banco; 10–39 s por rodada no dia em que o Nano do plano
+free saturou). O trigger `public.rt_sinal` (migration `20260916203000`) emite por `realtime.send` só um
+SINAL `{ table, op, pk, chaves, antes }` — nunca a linha, porque o canal entrega a mesma mensagem a
+todo assinante e a RLS da tabela não vale dentro dele. O helper busca a linha pela PK via PostgREST
+(RLS vale; linha invisível = evento descartado).
 ```javascript
-createReliableSubscription(tableName, callback, {
-  retryDelay: 1000,        // Exponential backoff
-  maxRetries: 10,
-  onError: handleError
-});
+const { cleanup } = createReliableSubscription({
+  table: 'notifications',
+  filter: 'recipient_id=eq.<uid>',   // coluna de escopo pessoal → tópico u:<tabela>:<uid>
+  callback: ({ eventType, new: novo, old: velho }) => …,
+  onRefetch: recarregar,             // reconexão
+  conteudo: false,                   // opcional: só pk + chaves, sem buscar a linha (escala)
+})
 ```
+- Tabela nova com tela ao vivo: acrescentar o trigger `tr_rt_sinal` (com as colunas da PK como
+  argumentos) na migration; sem trigger, a assinatura nunca dispara.
+- Escopo pessoal (`u:`) só existe para notifications, messages e incident_notification_settings —
+  a lista vive em `ESCOPO_PESSOAL` do helper, no `rt_sinal()` e na policy de `realtime.messages`;
+  os três têm de bater.
+- Um canal por tópico por cliente (o realtime-js devolve o mesmo canal e `subscribe()` é único):
+  o helper compartilha ouvintes. Nunca chamar `supabase.channel(...).on('postgres_changes', …)`.
 
 ## Referências
 - Config: `src/config/supabase.js`

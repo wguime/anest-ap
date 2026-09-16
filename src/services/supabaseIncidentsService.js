@@ -8,6 +8,7 @@
  * Segue o mesmo padrao de supabaseDocumentService.js.
  */
 import { supabase } from '@/config/supabase'
+import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
 import { pastaAnexo, anexoExtensao, anexoNomePersistido, buildAnexoPath, sanitizeAttachments, resolveContentType } from '@/lib/incidenteAnexos'
 import { notifyNewIncidentEmail, notifyNewDenunciaEmail } from './emailNotificationService'
 import { enqueue as enqueueOffline } from '@/utils/offlineQueue'
@@ -507,28 +508,26 @@ async function anonymizeIncidente(id) {
 // ============================================================================
 
 function subscribeToAll(callback) {
-  const channel = supabase
-    .channel('incidentes-changes')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'incidentes' },
-      (payload) => {
-        callback({
-          eventType: payload.eventType,
-          new: payload.new ? toCamelCase(payload.new) : null,
-          old: payload.old ? toCamelCase(payload.old) : null,
-        })
-      }
-    )
-    .subscribe()
-
-  return channel
+  // Broadcast (sinal + busca por chave) pelo helper — ver supabaseSubscriptionHelper.js;
+  // postgres_changes mantinha o Realtime consultando o WAL a cada 100 ms (16/09/2026).
+  return createReliableSubscription({
+    channelName: 'incidentes-changes',
+    table: 'incidentes',
+    callback: ({ eventType, new: novo, old: velho }) => {
+      callback({
+        eventType,
+        new: novo ? toCamelCase(novo) : null,
+        old: velho ? toCamelCase(velho) : null,
+      })
+    },
+  })
 }
 
-function unsubscribe(channel) {
-  if (channel) {
-    supabase.removeChannel(channel)
-  }
+function unsubscribe(sub) {
+  if (!sub) return
+  // assinatura do helper ({ cleanup }) ou canal legado do supabase-js
+  if (typeof sub.cleanup === 'function') sub.cleanup()
+  else supabase.removeChannel(sub)
 }
 
 // ============================================================================

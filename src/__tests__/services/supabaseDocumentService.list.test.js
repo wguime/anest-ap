@@ -47,6 +47,7 @@ const mocks = vi.hoisted(() => {
       order: vi.fn(() => chain),
       limit: vi.fn(() => chain),
       single: vi.fn(() => Promise.resolve(state.single)),
+      maybeSingle: vi.fn(() => Promise.resolve(state.single)),
       then: (resolve) => Promise.resolve(state.select).then(resolve),
     }
     return chain
@@ -331,33 +332,45 @@ describe('supabaseDocumentService — Listings & Storage', () => {
   })
 
   describe('subscribeToAll / unsubscribe', () => {
-    it('cria channel com listener postgres_changes e subscribe', () => {
+    // Desde 16/09/2026 o transporte é Broadcast: canal PRIVADO cujo nome é o
+    // tópico da tabela, evento 'sinal' do trigger rt_sinal — não postgres_changes
+    // (polling do WAL). Ver supabaseSubscriptionHelper.js.
+    it('entra no canal privado t:documentos e ouve o evento "sinal" (broadcast)', () => {
       const cb = vi.fn()
 
-      svc.subscribeToAll(cb)
+      const sub = svc.subscribeToAll(cb)
 
-      expect(mocks.channelMock).toHaveBeenCalledWith('documentos-changes')
+      expect(mocks.channelMock).toHaveBeenCalledWith('t:documentos', { config: { private: true } })
       expect(mocks.state.channelEvents).toHaveLength(1)
-      expect(mocks.state.channelEvents[0].event).toBe('postgres_changes')
-      expect(mocks.state.channelEvents[0].opts.table).toBe('documentos')
+      expect(mocks.state.channelEvents[0].event).toBe('broadcast')
+      expect(mocks.state.channelEvents[0].opts).toEqual({ event: 'sinal' })
+      expect(typeof sub.cleanup).toBe('function')
+      sub.cleanup()
     })
 
-    it('callback é invocado com eventType + new/old em camelCase', () => {
+    it('sinal INSERT → busca o documento pela PK (RLS) e entrega em camelCase', async () => {
       const cb = vi.fn()
-      svc.subscribeToAll(cb)
+      mocks.state.single = { data: { id: 'd1', created_by: 'u-1', titulo: 'T' }, error: null }
+      const sub = svc.subscribeToAll(cb)
       const handler = mocks.state.channelEvents[0].cb
 
-      handler({
-        eventType: 'INSERT',
-        new: { id: 'd1', created_by: 'u-1', titulo: 'T' },
-        old: null,
-      })
+      handler({ payload: { table: 'documentos', op: 'INSERT', pk: { id: 'd1' }, chaves: {} } })
+      await new Promise((r) => setTimeout(r, 0))
 
+      expect(mocks.state.lastTable).toBe('documentos')
+      expect(mocks.state.lastEq).toContainEqual(['id', 'd1'])
       expect(cb).toHaveBeenCalledWith({
         eventType: 'INSERT',
         new: expect.objectContaining({ createdBy: 'u-1', titulo: 'T' }),
         old: null,
       })
+      sub.cleanup()
+    })
+
+    it('unsubscribe encerra a assinatura do helper', () => {
+      const cleanup = vi.fn()
+      svc.unsubscribe({ cleanup })
+      expect(cleanup).toHaveBeenCalledTimes(1)
     })
 
     it('unsubscribe chama removeChannel', () => {

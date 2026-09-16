@@ -23,7 +23,7 @@ import { CheckCircle, XCircle, FileText, Clock, Loader2 } from 'lucide-react'
 import { Skeleton } from '@/design-system'
 import ApprovalModal from '../components/ApprovalModal'
 import { notifyUser, notifyUsers } from '@/services/notificationService'
-import { supabase } from '@/config/supabase'
+import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
 import { isSelfApproval } from './approvalUtils'
 import { formatDate as formatDateBR } from '@/utils/formatters'
 
@@ -446,30 +446,33 @@ function ApprovalQueue() {
       }
     }
 
-    const channel = supabase
-      .channel('approval-queue-pending')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'documentos', filter: 'status=eq.pendente' },
-        (payload) => notifyApprovers(payload.new)
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'documentos', filter: 'status=eq.pendente' },
-        (payload) => {
-          const oldStatus = payload.old?.status
-          const newStatus = payload.new?.status
-          // Only fire when transitioning INTO pendente
-          if (oldStatus !== 'pendente' && newStatus === 'pendente') {
-            notifyApprovers(payload.new)
-          }
+    // Broadcast (sinal + busca por chave): o helper busca o documento pela PK
+    // com a RLS do aprovador e entrega `old.status` (o trigger manda o status
+    // anterior no sinal) — ver supabaseSubscriptionHelper.js.
+    const inserido = createReliableSubscription({
+      channelName: 'approval-queue-pending',
+      table: 'documentos',
+      event: 'INSERT',
+      filter: 'status=eq.pendente',
+      callback: ({ new: doc }) => { if (!cancelled && doc) notifyApprovers(doc) },
+    })
+    const atualizado = createReliableSubscription({
+      channelName: 'approval-queue-pending',
+      table: 'documentos',
+      event: 'UPDATE',
+      filter: 'status=eq.pendente',
+      callback: ({ new: doc, old: antes }) => {
+        // Only fire when transitioning INTO pendente
+        if (!cancelled && doc && antes?.status !== 'pendente' && doc.status === 'pendente') {
+          notifyApprovers(doc)
         }
-      )
-      .subscribe()
+      },
+    })
 
     return () => {
       cancelled = true
-      supabase.removeChannel(channel)
+      inserido.cleanup()
+      atualizado.cleanup()
     }
   }, [user?.isAdmin, user?.uid, user?.id])
 
