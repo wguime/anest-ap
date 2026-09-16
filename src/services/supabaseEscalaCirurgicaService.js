@@ -126,21 +126,19 @@ async function fetchEscala(data, hospital) {
   if (error) handleError(error, 'fetchEscala:header')
   if (!header) return null
 
-  const { data: casos, error: casosErr } = await supabase
-    .from('escala_cirurgica_caso')
-    .select('*')
-    .eq('escala_id', header.id)
-    .order('sala', { ascending: true })
-    .order('ordem', { ascending: true })
-
-  if (casosErr) handleError(casosErr, 'fetchEscala:casos')
-
+  // Casos e histórico dependem só do header: as duas leituras vão JUNTAS (16/09 —
+  // cada recarga da escala pagava três idas em sequência, ~1,3 s; agora duas).
   // O histórico de trocas é somente leitura e serve para manter o contexto no
   // card mesmo quando a troca foi desfeita e o override operacional foi limpo.
   // Falha nessa consulta não pode esconder a escala principal.
-  let trocasHistorico = []
-  try {
-    const { data: eventos, error: eventosErr } = await supabase
+  const [casosRes, eventosRes] = await Promise.all([
+    supabase
+      .from('escala_cirurgica_caso')
+      .select('*')
+      .eq('escala_id', header.id)
+      .order('sala', { ascending: true })
+      .order('ordem', { ascending: true }),
+    supabase
       .from('escala_cirurgica_evento')
       .select('anestesista,detalhe,status_para,em,tipo')
       .eq('escala_id', header.id)
@@ -149,8 +147,13 @@ async function fetchEscala(data, hospital) {
       // janela: o consumo reduz ao último posicao_assumida por chave; sem teto,
       // um dia agitado (republicações geram rajadas) crescia sem limite (D9)
       .limit(60)
-    if (!eventosErr) trocasHistorico = (eventos || []).map(toCamelCase)
-  } catch { /* histórico é complementar */ }
+      .then((r) => r, (e) => ({ data: null, error: e })),
+  ])
+  const { data: casos, error: casosErr } = casosRes
+  if (casosErr) handleError(casosErr, 'fetchEscala:casos')
+
+  let trocasHistorico = []
+  if (!eventosRes?.error) trocasHistorico = (eventosRes?.data || []).map(toCamelCase)
 
   return { ...toCamelCase(header), casos: (casos || []).map(toCamelCase), trocasHistorico }
 }
