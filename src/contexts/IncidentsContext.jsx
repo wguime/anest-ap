@@ -17,6 +17,7 @@ import supabaseIncidentsService from '@/services/supabaseIncidentsService'
 import { incidentsToCamelCase } from '@/services/supabaseIncidentsService'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
 import { useDeferredReady } from './DeferredReadyContext'
+import { useUser } from './UserContext'
 import { useToast } from '@/design-system/components/ui/toast'
 
 // ============================================================================
@@ -122,37 +123,60 @@ export function IncidentsProvider({ children }) {
 
   // Load from Supabase (Tier 2: fetch adiado 2s — ver DeferredReadyContext)
   const deferredReady = useDeferredReady()
+  // Realtime por Broadcast (16/09/2026): o canal t:incidentes só aceita RESPONSÁVEL
+  // (policy de realtime.messages espelha a RLS da tabela — existência e status de
+  // um relato não chegam a quem não pode lê-lo); quem não é responsável entraria
+  // em CHANNEL_ERROR e ficaria 20 tentativas retentando. O autor de um relato
+  // identificado acompanha o seu pelo tópico pessoal (user_id=eq.<uid>).
+  const { user } = useUser()
+  const meuUid = user?.uid || user?.id || null
+  const responsavel = !!user?.incidentSettings?.isResponsible
   useEffect(() => {
     if (!deferredReady) return
     loadData()
 
-    // Real-time subscription with retry/reconnection
-    const { cleanup } = createReliableSubscription({
-      channelName: 'incidentes-changes',
-      table: 'incidentes',
-      transformRow: incidentsToCamelCase,
-      callback: ({ eventType, new: newRow }) => {
-        if (!newRow) return
+    const aoEvento = ({ eventType, new: newRow }) => {
+      if (!newRow) return
 
-        if (eventType === 'INSERT') {
-          if (newRow.tipo === 'denuncia') {
-            dispatch({ type: 'ADD_DENUNCIA', payload: newRow })
-          } else {
-            dispatch({ type: 'ADD_INCIDENTE', payload: newRow })
-          }
-        } else if (eventType === 'UPDATE') {
-          if (newRow.tipo === 'denuncia') {
-            dispatch({ type: 'UPDATE_DENUNCIA', payload: newRow })
-          } else {
-            dispatch({ type: 'UPDATE_INCIDENTE', payload: newRow })
-          }
+      if (eventType === 'INSERT') {
+        if (newRow.tipo === 'denuncia') {
+          dispatch({ type: 'ADD_DENUNCIA', payload: newRow })
+        } else {
+          dispatch({ type: 'ADD_INCIDENTE', payload: newRow })
         }
-      },
-      onRefetch: loadData,
-    })
+      } else if (eventType === 'UPDATE') {
+        if (newRow.tipo === 'denuncia') {
+          dispatch({ type: 'UPDATE_DENUNCIA', payload: newRow })
+        } else {
+          dispatch({ type: 'UPDATE_INCIDENTE', payload: newRow })
+        }
+      }
+    }
 
-    return () => cleanup()
-  }, [deferredReady, loadData])
+    const subs = []
+    if (responsavel) {
+      subs.push(createReliableSubscription({
+        channelName: 'incidentes-changes',
+        table: 'incidentes',
+        transformRow: incidentsToCamelCase,
+        callback: aoEvento,
+        onRefetch: loadData,
+      }))
+    }
+    if (meuUid) {
+      subs.push(createReliableSubscription({
+        channelName: `incidentes-proprios-${meuUid}`,
+        table: 'incidentes',
+        filter: `user_id=eq.${meuUid}`,
+        transformRow: incidentsToCamelCase,
+        callback: aoEvento,
+        // só um dos dois precisa recarregar tudo na reconexão
+        onRefetch: responsavel ? undefined : loadData,
+      }))
+    }
+
+    return () => subs.forEach((s) => s.cleanup())
+  }, [deferredReady, loadData, responsavel, meuUid])
 
 
   const addIncidente = useCallback(async (incidente) => {

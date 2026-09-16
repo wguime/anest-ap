@@ -51,6 +51,9 @@ export const ESCOPO_PESSOAL = {
   notifications: ['recipient_id'],
   messages: ['sender_id', 'recipient_id'],
   incident_notification_settings: ['user_id'],
+  // o canal t:incidentes é só de responsáveis (policy); o autor de um relato
+  // identificado acompanha o seu por user_id=eq.<uid>
+  incidentes: ['user_id'],
 }
 
 const FILTRO_EQ = /^([a-zA-Z_][a-zA-Z0-9_]*)=eq\.(.+)$/
