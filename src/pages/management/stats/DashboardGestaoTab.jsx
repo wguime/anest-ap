@@ -121,7 +121,7 @@ function DashboardGestaoTab() {
     dailyActiveUsers, avgSessionDuration, peakHours,
     loginsToday, docsOpenedToday,
     isLoading: _activityLoading,
-  } = useActivityTracking()
+  } = useActivityTracking({ historico: true })
 
   const {
     isLoading: infraLoading,

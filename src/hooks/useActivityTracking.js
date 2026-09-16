@@ -67,7 +67,17 @@ const FEATURE_LABELS = {
 // Hook
 // ---------------------------------------------------------------------------
 
-export function useActivityTracking() {
+/**
+ * @param {object} [opts]
+ * @param {boolean} [opts.historico=false] — carregar e manter os agregados
+ *   históricos (loginHistory, topPages, DAU…). Só o DashboardGestaoTab os lê;
+ *   montado no App para TODO usuário, o hook baixava 30 dias de
+ *   user_activity_log (até 5.000 linhas, 290 ms no banco) no mount e a cada
+ *   5 min — 10 % de todo o tempo de banco do projeto (medido em 16/09/2026,
+ *   plano free saturado). Sem a opção fica só o que todos precisam: presença,
+ *   rastreio de eventos, login e session_end.
+ */
+export function useActivityTracking({ historico = false } = {}) {
   const { user, firebaseUser, isAuthenticated } = useUser()
 
   // Derive stable user identity
@@ -79,7 +89,7 @@ export function useActivityTracking() {
   const [onlineUsersCount, setOnlineUsersCount] = useState(0)
   const [onlineUsersList, setOnlineUsersList] = useState([])
   const [sessionDuration, setSessionDuration] = useState(0)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(historico)
 
   // Historical aggregated data
   const [loginHistory, setLoginHistory] = useState([])
@@ -148,15 +158,20 @@ export function useActivityTracking() {
 
     document.addEventListener('visibilitychange', handleVisibilityChange)
 
-    // Update sessionDuration state every 30 seconds
-    sessionIntervalRef.current = setInterval(() => {
-      let totalMs = accumulatedRef.current
-      if (pausedAtRef.current === null) {
-        // Currently visible: add live elapsed
-        totalMs += Date.now() - sessionStartRef.current
-      }
-      setSessionDuration(Math.floor(totalMs / 1000))
-    }, SESSION_UPDATE_INTERVAL)
+    // Update sessionDuration state every 30 seconds — só quem mostra o valor
+    // paga o tick; montado no App, o setState fazia a árvore inteira repintar a
+    // cada 30 s sem ninguém ler `sessionDuration`. Os refs continuam sendo
+    // mantidos acima porque o session_end (6b) os usa.
+    if (historico) {
+      sessionIntervalRef.current = setInterval(() => {
+        let totalMs = accumulatedRef.current
+        if (pausedAtRef.current === null) {
+          // Currently visible: add live elapsed
+          totalMs += Date.now() - sessionStartRef.current
+        }
+        setSessionDuration(Math.floor(totalMs / 1000))
+      }, SESSION_UPDATE_INTERVAL)
+    }
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
@@ -165,7 +180,7 @@ export function useActivityTracking() {
         sessionIntervalRef.current = null
       }
     }
-  }, [isAuthenticated])
+  }, [isAuthenticated, historico])
 
   // =========================================================================
   // 2. Presence tracking (Supabase Realtime) — singleton channel
@@ -494,7 +509,7 @@ export function useActivityTracking() {
   // =========================================================================
 
   useEffect(() => {
-    if (!isAuthenticated) return
+    if (!isAuthenticated || !historico) return
 
     fetchHistoricalData()
 
@@ -509,7 +524,7 @@ export function useActivityTracking() {
         historicalIntervalRef.current = null
       }
     }
-  }, [isAuthenticated, fetchHistoricalData])
+  }, [isAuthenticated, historico, fetchHistoricalData])
 
   // =========================================================================
   // 6. Log login event on mount
