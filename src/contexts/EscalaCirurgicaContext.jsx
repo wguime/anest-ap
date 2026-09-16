@@ -30,10 +30,11 @@ export const HOSPITAL_LABEL = { unimed: 'Unimed', hro: 'HRO', materno: 'Materno'
  * Janela em que eventos realtime seguidos viram UMA recarga (trailing). Um toque
  * na fila emite 2–3 eventos (caso + escala + evento) e cada recarga são ~10
  * requisições por cliente; na troca de turno há ~45 clientes. Em 16/09/2026 o
- * banco (plano free) saturou exatamente nesse padrão. 1 s ainda é "ao vivo" na
- * tela e corta a rajada pela raiz.
+ * banco (plano free) saturou exatamente nesse padrão. Os eventos de um mesmo
+ * toque saem da MESMA transação e chegam juntos: 500 ms cobre a rajada e é o
+ * teto do atraso que a coalescência acrescenta.
  */
-export const REALTIME_COALESCE_MS = 1000
+export const REALTIME_COALESCE_MS = 500
 
 /**
  * Teto da observação da linha (dono 29/07). É recado operacional curto, lido de
@@ -768,6 +769,44 @@ export function EscalaCirurgicaProvider({ children }) {
     }
   }, [toast])
 
+  /**
+   * ANOTAÇÃO DA LINHA CEDE AOS CASOS (dono 16/09/2026: "ajustes na Escala completa
+   * devem sincronizar com a aba Liberações"). Na fila, `local`/`cirurgioes`
+   * editados à mão e `renovado` (marca do desfazer liberação) VENCEM o derivado
+   * dos casos — ADRIANO seguiu mostrando "CO - Cesárea · Cesária > Junior" e
+   * PAULO em branco depois de a Escala completa trocar as cirurgias dos dois.
+   * Quando um caso passa a dizer onde a pessoa está (recebeu casos, caso novo,
+   * sala/cirurgião editados), a linha dela perde esses três; tempo informado,
+   * observação, troca, assunção, origem e decisões da conferência sobrevivem;
+   * sem nada restando o override some. Best-effort: falha aqui não desfaz a
+   * escrita do caso (o editor da linha cobre).
+   */
+  const limparAnotacaoDaLinha = useCallback(async (escala, { chaves, turnos, userId = null }) => {
+    try {
+      const linhaOverrides = { ...(escala.linhaOverrides || {}) }
+      let mudou = false
+      for (const turno of turnos) {
+        for (const chave of [...new Set((chaves || []).filter(Boolean))]) {
+          const scoped = chaveTurno(turno, chave)
+          const atual = linhaOverrides[scoped]
+          if (!atual || !(atual.local || atual.cirurgioes || atual.renovado)) continue
+          const resto = { ...atual }
+          delete resto.local
+          delete resto.cirurgioes
+          delete resto.renovado
+          const restou = ['termino', 'observacao', 'trocaCom', 'assumidaPor', 'origem', 'duplicidade', 'conferido', 'semAjuda']
+            .some((k) => resto[k])
+          const valor = restou ? { ...resto, por: userId, em: new Date().toISOString() } : null
+          if (!String(escala.id).startsWith('demo-')) await svc.patchLinhaOverride(escala.id, scoped, valor)
+          if (valor) linhaOverrides[scoped] = valor
+          else delete linhaOverrides[scoped]
+          mudou = true
+        }
+      }
+      if (mudou) dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { linhaOverrides } })
+    } catch { /* a escrita do caso já aconteceu; o editor da linha cobre */ }
+  }, [])
+
   // Troca o responsável de CASOS específicos (substitui o sistema de trocas,
   // aposentado 2026-07-23). ⚠️ Recebe IDS decididos por alvosTrocaResponsavel —
   // NUNCA a sala inteira às cegas: o update sala-wide achatou o IOSC (multi-
@@ -838,39 +877,10 @@ export function EscalaCirurgicaProvider({ children }) {
           dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { liberacoes } })
         }
       } catch { /* repasse já está feito; o toggle manual cobre */ }
-      // ANOTAÇÃO DA LINHA CEDE AOS CASOS (dono 16/09: "ajustes na Escala completa
-      // devem sincronizar com a aba Liberações"). A linha de quem RECEBE casos
-      // podia estar com `local`/`cirurgioes` editados à mão ou `renovado` (marca
-      // do desfazer liberação) — e na fila esses três VENCEM o derivado dos
-      // casos: ADRIANO seguiu mostrando "CO - Cesárea · Cesária > Junior" e PAULO
-      // em branco depois de a Escala completa trocar as cirurgias dos dois. Os
-      // casos agora dizem onde a pessoa está; tempo, observação, troca, assunção,
-      // origem e decisões da conferência sobrevivem. Best-effort, como acima.
+      // ANOTAÇÃO DA LINHA CEDE AOS CASOS (dono 16/09) — ver limparAnotacaoDaLinha.
       if (uid && !dupla) {
-        try {
-          const turnos = [...new Set(ids.map((id) => casos.find((c) => c.id === id)?.turno).filter(Boolean))]
-          const linhaOverrides = { ...(escala.linhaOverrides || {}) }
-          let mudou = false
-          for (const turno of turnos) {
-            for (const chave of [...new Set([uid, apelido].filter(Boolean))]) {
-              const scoped = chaveTurno(turno, chave)
-              const atual = linhaOverrides[scoped]
-              if (!atual || !(atual.local || atual.cirurgioes || atual.renovado)) continue
-              const resto = { ...atual }
-              delete resto.local
-              delete resto.cirurgioes
-              delete resto.renovado
-              const restou = ['termino', 'observacao', 'trocaCom', 'assumidaPor', 'origem', 'duplicidade', 'conferido', 'semAjuda']
-                .some((k) => resto[k])
-              const valor = restou ? { ...resto, por: userId, em: new Date().toISOString() } : null
-              if (!String(escala.id).startsWith('demo-')) await svc.patchLinhaOverride(escala.id, scoped, valor)
-              if (valor) linhaOverrides[scoped] = valor
-              else delete linhaOverrides[scoped]
-              mudou = true
-            }
-          }
-          if (mudou) dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { linhaOverrides } })
-        } catch { /* repasse já está feito; o editor da linha cobre */ }
+        const turnos = [...new Set(ids.map((id) => casos.find((c) => c.id === id)?.turno).filter(Boolean))]
+        await limparAnotacaoDaLinha(escala, { chaves: [uid, apelido], turnos, userId })
       }
       toast({
         variant: 'success',
@@ -883,7 +893,7 @@ export function EscalaCirurgicaProvider({ children }) {
       toast({ variant: 'error', title: 'Erro ao definir anestesista', description: error.message })
       throw error
     }
-  }, [toast])
+  }, [toast, limparAnotacaoDaLinha])
 
   // ── TROCA DECLARADA (dono 30/07) — par declarado + execução de um toque ────
   // NÃO é a troca antiga (removida 2×): é um PAR de pessoas do dia, badge nos
@@ -1204,13 +1214,20 @@ export function EscalaCirurgicaProvider({ children }) {
       try {
         await svc.updateCaso(casoId, updates)
       } finally { encerrarEscrita() }
+      // sala/cirurgião editados: o caso passa a dizer onde a pessoa está
+      if (updates && ('sala' in updates || 'cirurgiao' in updates)) {
+        const caso = casos.find((c) => c.id === casoId)
+        if (caso && (caso.anestesistaUserId || caso.anestesista) && caso.turno) {
+          await limparAnotacaoDaLinha(escala, { chaves: [caso.anestesistaUserId, caso.anestesista], turnos: [caso.turno], userId: updates.updatedBy || null })
+        }
+      }
       if (!silencioso) toast({ variant: 'success', title: 'Caso atualizado' })
     } catch (error) {
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { casos: escala.casos || [] } })
       toast({ variant: 'error', title: 'Erro ao atualizar caso', description: error.message })
       throw error
     }
-  }, [toast])
+  }, [toast, limparAnotacaoDaLinha])
 
   // Acrescenta um anestesista de OUTRO hospital (AJUDA) à coluna de liberação DO
   // TURNO (pedido do dono 24/07): vai para o FIM (primeiro a ser liberado, badge
@@ -1318,13 +1335,17 @@ export function EscalaCirurgicaProvider({ children }) {
         novo = await svc.addCaso(escala.id, caso)
         dispatch({ type: 'ADD_CASO', hospital: escala.hospital, caso: novo })
       } finally { encerrarEscrita() }
+      // caso novo para alguém: o caso passa a dizer onde a pessoa está
+      if ((novo?.anestesistaUserId || novo?.anestesista) && novo?.turno && !novo.semAnestesista) {
+        await limparAnotacaoDaLinha(escala, { chaves: [novo.anestesistaUserId, novo.anestesista], turnos: [novo.turno], userId: caso?.createdBy || null })
+      }
       toast({ variant: 'success', title: 'Caso adicionado', description: `${novo.sala || ''} ${novo.hora || ''}`.trim() })
       return novo
     } catch (error) {
       toast({ variant: 'error', title: 'Erro ao adicionar caso', description: error.message })
       throw error
     }
-  }, [toast])
+  }, [toast, limparAnotacaoDaLinha])
 
   // Apaga UM caso da escala (dono 01/09). Otimista com rollback, como as demais
   // escritas de caso: o card some no toque e volta com toast se o servidor

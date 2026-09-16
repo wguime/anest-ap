@@ -539,3 +539,17 @@ desmarcar) e `liberacoesPainelLinha.test.jsx` (describe "Turno próprio"; a fixt
 está no MEIO do rodapé, senão qualquer regra passaria). Os dois últimos casos do describe são a
 trava das 18h09 — "com os de baixo liberados, é ELA o próximo" e "liberar o 1º com ela em sala é
 recusado" — e os dois FALHAM contra a 1ª versão (conferido trocando a view pela de `origin/main`).
+
+## Anotação manual da linha × casos (dono 16/09/2026)
+
+Na fila, `linha_overrides[turno:chave].local` e `.cirurgioes` (editor da linha) e `.renovado` (marca do
+desfazer liberação) **vencem** o que vem dos casos (`LiberacoesView`: `localExibido = ov.local || salasAuto`,
+`listaCirurgioes = ov.cirurgioes ? […] : …`, `usaGrupos = !renovado && !ov.cirurgioes && …`). Foi assim que
+trocar ADRIANO↔PAULO na Escala completa "não mudou nada" na Liberações: a anotação da LOUISE e o `renovado`
+seguiram na tela. Regra: **quando um caso passa a dizer onde a pessoa está, a anotação cede** —
+`limparAnotacaoDaLinha` (contexto) apaga os três em `setAnestesistaCasos` (quem recebe casos),
+`adicionarCaso` e `atualizarCaso` (sala/cirurgião editados); tempo informado, observação, troca, assunção,
+origem e decisões da conferência sobrevivem; sem resto, o override some. A troca simultânea e o "assumir
+posição" (RPC `executarTrocaAtomica`) preservam a anotação do slot de propósito — são fluxos da própria fila.
+Ao investigar "a fila não mudou", olhar `linha_overrides` ANTES de suspeitar do realtime: a troca de aba no
+mesmo aparelho nem passa por ele.
