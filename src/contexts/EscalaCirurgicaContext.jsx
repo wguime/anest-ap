@@ -838,6 +838,40 @@ export function EscalaCirurgicaProvider({ children }) {
           dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { liberacoes } })
         }
       } catch { /* repasse já está feito; o toggle manual cobre */ }
+      // ANOTAÇÃO DA LINHA CEDE AOS CASOS (dono 16/09: "ajustes na Escala completa
+      // devem sincronizar com a aba Liberações"). A linha de quem RECEBE casos
+      // podia estar com `local`/`cirurgioes` editados à mão ou `renovado` (marca
+      // do desfazer liberação) — e na fila esses três VENCEM o derivado dos
+      // casos: ADRIANO seguiu mostrando "CO - Cesárea · Cesária > Junior" e PAULO
+      // em branco depois de a Escala completa trocar as cirurgias dos dois. Os
+      // casos agora dizem onde a pessoa está; tempo, observação, troca, assunção,
+      // origem e decisões da conferência sobrevivem. Best-effort, como acima.
+      if (uid && !dupla) {
+        try {
+          const turnos = [...new Set(ids.map((id) => casos.find((c) => c.id === id)?.turno).filter(Boolean))]
+          const linhaOverrides = { ...(escala.linhaOverrides || {}) }
+          let mudou = false
+          for (const turno of turnos) {
+            for (const chave of [...new Set([uid, apelido].filter(Boolean))]) {
+              const scoped = chaveTurno(turno, chave)
+              const atual = linhaOverrides[scoped]
+              if (!atual || !(atual.local || atual.cirurgioes || atual.renovado)) continue
+              const resto = { ...atual }
+              delete resto.local
+              delete resto.cirurgioes
+              delete resto.renovado
+              const restou = ['termino', 'observacao', 'trocaCom', 'assumidaPor', 'origem', 'duplicidade', 'conferido', 'semAjuda']
+                .some((k) => resto[k])
+              const valor = restou ? { ...resto, por: userId, em: new Date().toISOString() } : null
+              if (!String(escala.id).startsWith('demo-')) await svc.patchLinhaOverride(escala.id, scoped, valor)
+              if (valor) linhaOverrides[scoped] = valor
+              else delete linhaOverrides[scoped]
+              mudou = true
+            }
+          }
+          if (mudou) dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { linhaOverrides } })
+        } catch { /* repasse já está feito; o editor da linha cobre */ }
+      }
       toast({
         variant: 'success',
         title: dupla ? 'Dois anestesistas na cirurgia' : uid ? 'Responsável atualizado' : 'Caso sem anestesista',
