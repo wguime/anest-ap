@@ -3,6 +3,23 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.10 (16/09/2026) — Fila: a linha da troca volta a ficar sob o nome, não sob as cirurgias
+
+Dono (15/09, 23h51, fotos dos cards do Gustavo e do Staub na aba Liberações): "quero que a
+informação de troca fique alinhada abaixo do nome do anestesista em destaque e não alinhada com os
+procedimentos cirúrgicos". Quando a fileira de baixo recuou para sob o círculo (v5.12.6, opção C),
+ela levou "Trocado com …" junto — e a troca é da PESSOA, como o badge ao lado do nome, não das
+cirurgias.
+- **"Trocado com …" e "Assumiu a posição de …" saem do container recuado (`-ml-14`)** e passam a
+  ser irmãs do `<p>` do nome, na mesma coluna dele (com selo P1–P4 antes do nome, alinham ao selo —
+  é o início da linha do nome). Ocupam a largura toda do corpo: só a fileira disputa espaço com o
+  cronômetro. Mesma receita de texto de antes; `pr-1.5` é o piso da linha do nome.
+- Cirurgião, cirurgias, sala, observação e as outras linhas da fileira continuam recuadas como na
+  v5.12.6. Nada muda no dado.
+
+Trava: `liberacoesTrocaDeclarada.test.jsx` (describe "A linha da troca fica alinhada ao NOME") —
+falha no código anterior (2 testes), passa no novo.
+
 ## v5.12.9 (15/09/2026) — Reverte o espelho parcial da v5.12.8: o tempo total é informado independente dos tempos individuais
 
 Dono (15/09, à tarde, ao ler a explicação da v5.12.8): "quero que mantenha o sistema em que é

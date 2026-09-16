@@ -2236,6 +2236,45 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     </Badge>
                   )}
                 </p>
+                {/* TROCA DECLARADA: com quem e onde o colega está — é o que
+                    diz a quem olha a fila que este slot vai mudar de mãos.
+                    O DESTAQUE é só o badge roxo (dono 30/07 à noite): esta
+                    linha fica na cor padrão das infos do card, sem ícone —
+                    roxo + ⇆ + badge era o mesmo aviso gritado três vezes.
+                    ALINHADA AO NOME, NÃO À FILEIRA (dono 15/09 à noite, fotos do
+                    Gustavo e do Staub: "quero que a informação de troca fique
+                    alinhada abaixo do nome do anestesista em destaque e não
+                    alinhada com os procedimentos cirúrgicos"). Quando a fileira
+                    de baixo recuou para sob o círculo (opção C, mais cedo no
+                    mesmo dia) ela levou esta linha junto — e a troca é da
+                    PESSOA, como o badge ao lado do nome, não das cirurgias. Por
+                    isso mora AQUI, fora do `-ml-14`, e ocupa a largura toda do
+                    corpo: o cronômetro só disputa espaço com a fileira. `pr-1.5`
+                    é o mesmo piso da linha do nome, pela mesma borda arredondada. */}
+                {trocaDe(linha) && (
+                  <p className="mt-0.5 pr-1.5 text-[13px] leading-snug text-muted-foreground">
+                    Trocado com {trocaDe(linha).outroNome}
+                    {trocaDe(linha).outroHospitalLabel ? ` (${trocaDe(linha).outroHospitalLabel})` : ''}
+                    {trocaDe(linha).par?.motivo ? ` · ${trocaDe(linha).par.motivo}` : ''}
+                  </p>
+                )}
+                {/* SLOT ASSUMIDO (troca executada): a linha já exibe quem
+                    assumiu; esta nota permanece mesmo após a liberação para
+                    deixar claro que o slot continua sendo o do titular. É o
+                    outro lado da MESMA troca — vai alinhada ao nome pelo mesmo
+                    motivo da linha acima. */}
+                {linha.assumida && (
+                  <p className="mt-0.5 flex items-center gap-1 pr-1.5 text-[13px] leading-snug text-muted-foreground">
+                    <ArrowLeftRight className="h-3 w-3 shrink-0" />
+                    <span className="min-w-0">
+                      Assumiu a posição de {linha.assumida.deNome}
+                      {/* de onde veio quem chegou (consultório/folga): sem isso a
+                          fila não conta o outro lado da troca (dono 13/08) */}
+                      {linha.assumida.local ? ` · ${linha.assumida.local}` : ''}
+                      {linha.assumida.motivo ? ` · ${linha.assumida.motivo}` : ''}
+                    </span>
+                  </p>
+                )}
                 {/* 2ª linha: infos à esquerda; cronômetro + lápis à direita (o nome acima
                     fica com a LARGURA TODA — badge ao lado sem truncar o nome) */}
                 {/* ITEMS-START também aqui (dono 24/08): a coluna da direita é
@@ -2320,33 +2359,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     {!liberadoReal && turnoProprioDe(linha) && (
                       <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
                         Turno até {turnoProprioDe(linha)} · pode sair fora da ordem
-                      </p>
-                    )}
-                    {/* TROCA DECLARADA: com quem e onde o colega está — é o que
-                        diz a quem olha a fila que este slot vai mudar de mãos.
-                        O DESTAQUE é só o badge roxo (dono 30/07 à noite): esta
-                        linha fica na cor padrão das infos do card, sem ícone —
-                        roxo + ⇆ + badge era o mesmo aviso gritado três vezes. */}
-                    {trocaDe(linha) && (
-                      <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
-                        Trocado com {trocaDe(linha).outroNome}
-                        {trocaDe(linha).outroHospitalLabel ? ` (${trocaDe(linha).outroHospitalLabel})` : ''}
-                        {trocaDe(linha).par?.motivo ? ` · ${trocaDe(linha).par.motivo}` : ''}
-                      </p>
-                    )}
-                    {/* SLOT ASSUMIDO (troca executada): a linha já exibe quem
-                        assumiu; esta nota permanece mesmo após a liberação para
-                        deixar claro que o slot continua sendo o do titular. */}
-                    {linha.assumida && (
-                      <p className="mt-0.5 flex items-center gap-1 text-[13px] leading-snug text-muted-foreground">
-                        <ArrowLeftRight className="h-3 w-3 shrink-0" />
-                        <span className="min-w-0">
-                          Assumiu a posição de {linha.assumida.deNome}
-                          {/* de onde veio quem chegou (consultório/folga): sem isso a
-                              fila não conta o outro lado da troca (dono 13/08) */}
-                          {linha.assumida.local ? ` · ${linha.assumida.local}` : ''}
-                          {linha.assumida.motivo ? ` · ${linha.assumida.motivo}` : ''}
-                        </span>
                       </p>
                     )}
                     {/* ⚠️ HOSPITAL ISOLADO + SALA ANTES DOS CIRURGIÕES é o card do

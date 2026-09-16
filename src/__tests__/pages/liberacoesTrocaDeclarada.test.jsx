@@ -345,3 +345,31 @@ describe('Slot assumido (troca executada)', () => {
     expect(linha.assumida?.deNome).toBe('Marilio Flach')
   })
 })
+
+describe('A linha da troca fica alinhada ao NOME, não à fileira das cirurgias (dono 15/09)', () => {
+  // Quando a fileira de baixo recuou para sob o círculo (opção C, 15/09) ela
+  // levou "Trocado com …" junto; o dono pediu a linha de volta sob o nome. A
+  // troca é da PESSOA (como o badge ao lado do nome) — mora no mesmo pai do
+  // <p> do nome e fora do container que recua (`-ml-14`).
+  const paiDoNome = (card) => within(card).getByText(card.getAttribute('data-nome')).closest('p').parentElement
+
+  it('"Trocado com" é irmã do nome e não entra na fileira recuada', () => {
+    montar({ paresTroca: [PAR] })
+    const card = document.querySelector('[data-linha="uid-mar"]')
+    const troca = within(card).getByText(/Trocado com Marcos Cury \(Unimed\)/)
+    expect(troca.parentElement).toBe(paiDoNome(card))
+    expect(troca.closest('.-ml-14')).toBeNull()
+  })
+
+  it('"Assumiu a posição de" (o outro lado da mesma troca) segue a mesma regra', () => {
+    const escala = {
+      ...escalaBase,
+      linhaOverrides: { 'matutino:uid-mar': { assumidaPor: { uid: 'uid-cury', nome: 'MARCOS TADEU CURY' } } },
+    }
+    montar({ paresTroca: [] }, escala)
+    const card = document.querySelector('[data-linha="uid-mar"]')
+    const nota = within(card).getByText(/Assumiu a posição de Marilio Flach/).closest('p')
+    expect(nota.parentElement).toBe(paiDoNome(card))
+    expect(nota.closest('.-ml-14')).toBeNull()
+  })
+})
