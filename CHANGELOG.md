@@ -3,6 +3,15 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.11 (16/09/2026) — Fila: a fileira das cirurgias ganha o mesmo respiro do card amarelo
+
+Dono (16/09, 9h12, foto deitado): "lista de cirurgiões/cirurgias ficaram muito colados na lateral
+esquerda do card. quero que mantenha um espaço, assim como está no card amarelo". O recuo da v5.12.6
+devolvia a largura das colunas inteira e o texto nascia a 4px da borda.
+- **`pl-1.5` no container recuado**: cirurgião, cirurgias, sala, observação e o badge "Liberado"
+  passam a nascer a 10px da borda — o `p-2.5` do card amarelo do caso sem anestesista — nas duas
+  orientações. Custa 6px da linha a 375px; só o nome do procedimento encurta com "…".
+
 ## v5.12.10 (16/09/2026) — Fila: a linha da troca volta a ficar sob o nome, não sob as cirurgias
 
 Dono (15/09, 23h51, fotos dos cards do Gustavo e do Staub na aba Liberações): "quero que a

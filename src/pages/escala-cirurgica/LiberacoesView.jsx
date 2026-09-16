@@ -2292,8 +2292,17 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     numa linha a 375px mesmo com "+ Tempo total" à direita. Deitado o
                     número sai da coluna (só o círculo fica): 36px. O `mt-2` afasta a
                     primeira linha do círculo visual (28px, termina a 36px do topo). A
-                    coluna da direita não muda: `items-end` a mantém na borda. */}
-                <div className="-ml-14 mt-2 flex items-start justify-between gap-2 deitado:-ml-9">
+                    coluna da direita não muda: `items-end` a mantém na borda.
+                    RESPIRO DE 10px NA BORDA (dono 16/09, 9h12, foto deitado: "lista de
+                    cirurgiões/cirurgias ficaram muito colados na lateral esquerda do
+                    card. quero que mantenha um espaço, assim como está no card
+                    amarelo"): o recuo devolvia a largura das colunas INTEIRA e o texto
+                    nascia a 4px da borda (só o `pl-1` do corpo). O card amarelo do caso
+                    sem anestesista é `p-2.5` = 10px; `pl-1.5` completa os mesmos 10px
+                    aqui, nas duas orientações — o que muda por orientação é o recuo,
+                    não o respiro. Custa 6px da linha a 375px; o nome do procedimento
+                    é o que encurta com "…", o tempo continua na mesma linha. */}
+                <div className="-ml-14 mt-2 flex items-start justify-between gap-2 pl-1.5 deitado:-ml-9">
                   <div className="min-w-0 flex-1">
                     {/* card vermelho + "Liberado" = liberação FEITA, sempre. Sem
                         caso e sem marcação a linha mostra "Livre" e espera o toque
