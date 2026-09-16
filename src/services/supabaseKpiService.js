@@ -8,6 +8,7 @@
  * Segue o mesmo padrão de supabaseIncidentsService.js
  */
 import { supabase } from '@/config/supabase'
+import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
 
 // ============================================================================
 // FIELD MAPPING — camelCase <-> snake_case
@@ -239,32 +240,30 @@ async function deleteKpiDado(id) {
  * @returns {Object} Supabase channel (use with unsubscribe)
  */
 function subscribeToKpiChanges(callback) {
-  const channel = supabase
-    .channel('kpi-dados-changes')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'kpi_dados_mensais' },
-      (payload) => {
-        callback({
-          eventType: payload.eventType,
-          new: payload.new ? toCamelCase(payload.new) : null,
-          old: payload.old ? toCamelCase(payload.old) : null,
-        })
-      }
-    )
-    .subscribe()
-
-  return channel
+  // Broadcast (sinal + busca por chave) pelo helper — ver supabaseSubscriptionHelper.js;
+  // postgres_changes mantinha o Realtime consultando o WAL a cada 100 ms (16/09/2026).
+  return createReliableSubscription({
+    channelName: 'kpi-dados-changes',
+    table: 'kpi_dados_mensais',
+    callback: ({ eventType, new: novo, old: velho }) => {
+      callback({
+        eventType,
+        new: novo ? toCamelCase(novo) : null,
+        old: velho ? toCamelCase(velho) : null,
+      })
+    },
+  })
 }
 
 /**
  * Unsubscribe from real-time channel
  * @param {Object} channel - Supabase channel object
  */
-function unsubscribe(channel) {
-  if (channel) {
-    supabase.removeChannel(channel)
-  }
+function unsubscribe(sub) {
+  if (!sub) return
+  // assinatura do helper ({ cleanup }) ou canal legado do supabase-js
+  if (typeof sub.cleanup === 'function') sub.cleanup()
+  else supabase.removeChannel(sub)
 }
 
 // ============================================================================

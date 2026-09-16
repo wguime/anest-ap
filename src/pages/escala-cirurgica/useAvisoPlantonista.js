@@ -66,6 +66,7 @@ export default function useAvisoPlantonista({ escalaId, turno, userId, userName,
         table,
         callback: carregar,
         onRefetch: carregar,
+        conteudo: false, // `carregar` relê tudo; o sinal basta
       })
     )
     return () => subs.forEach((s) => s.cleanup())

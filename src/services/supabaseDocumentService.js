@@ -13,6 +13,7 @@
  *   5. Retorna o documento atualizado
  */
 import { supabase } from '@/config/supabase'
+import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
 import { DOCUMENT_CATEGORIES, QMENTUM_CATEGORIES, validateStatusTransition } from '@/types/documents'
 import { requireUserId, tryRequireUserId } from '@/utils/audit'
 import { validateFile, ACCEPTED_DOCUMENT_TYPES } from '@/services/uploadService'
@@ -1649,31 +1650,29 @@ async function getApprovalSteps(docId) {
  * @returns {RealtimeChannel} — call unsubscribe(channel) to stop
  */
 function subscribeToAll(callback) {
-  const channel = supabase
-    .channel('documentos-changes')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'documentos' },
-      (payload) => {
-        callback({
-          eventType: payload.eventType, // INSERT | UPDATE | DELETE
-          new: payload.new ? toCamelCase(payload.new) : null,
-          old: payload.old ? toCamelCase(payload.old) : null,
-        })
-      }
-    )
-    .subscribe()
-
-  return channel
+  // Broadcast (sinal + busca por chave) pelo helper — ver supabaseSubscriptionHelper.js;
+  // postgres_changes mantinha o Realtime consultando o WAL a cada 100 ms (16/09/2026).
+  return createReliableSubscription({
+    channelName: 'documentos-changes',
+    table: 'documentos',
+    callback: ({ eventType, new: novo, old: velho }) => {
+      callback({
+        eventType,
+        new: novo ? toCamelCase(novo) : null,
+        old: velho ? toCamelCase(velho) : null,
+      })
+    },
+  })
 }
 
 /**
  * Unsubscribe from a real-time channel
  */
-function unsubscribe(channel) {
-  if (channel) {
-    supabase.removeChannel(channel)
-  }
+function unsubscribe(sub) {
+  if (!sub) return
+  // assinatura do helper ({ cleanup }) ou canal legado do supabase-js
+  if (typeof sub.cleanup === 'function') sub.cleanup()
+  else supabase.removeChannel(sub)
 }
 
 // ============================================================================
