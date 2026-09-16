@@ -27,6 +27,15 @@ export const HOSPITAIS = ['unimed', 'hro', 'materno']
 export const HOSPITAL_LABEL = { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' }
 
 /**
+ * Janela em que eventos realtime seguidos viram UMA recarga (trailing). Um toque
+ * na fila emite 2–3 eventos (caso + escala + evento) e cada recarga são ~10
+ * requisições por cliente; na troca de turno há ~45 clientes. Em 16/09/2026 o
+ * banco (plano free) saturou exatamente nesse padrão. 1 s ainda é "ao vivo" na
+ * tela e corta a rajada pela raiz.
+ */
+export const REALTIME_COALESCE_MS = 1000
+
+/**
  * Teto da observação da linha (dono 29/07). É recado operacional curto, lido de
  * relance no card da fila — e é campo aberto que o grupo TODO enxerga, então o
  * limite também segura o impulso de escrever mais do que a escala pode guardar
@@ -153,6 +162,7 @@ export function EscalaCirurgicaProvider({ children }) {
   const escritasRef = useRef(0)
   const mutSeqRef = useRef(0)
   const revalidacaoTimerRef = useRef(null)
+  const realtimeTimerRef = useRef(null)
   /** Toda action OTIMISTA chama marcar após o dispatch e encerrar no finally. */
   const marcarEscrita = () => { mutSeqRef.current++; escritasRef.current++ }
   const encerrarEscrita = () => { escritasRef.current = Math.max(0, escritasRef.current - 1) }
@@ -290,19 +300,46 @@ export function EscalaCirurgicaProvider({ children }) {
 
   // Subscriptions realtime — montadas uma única vez (loadData é estável). Separadas
   // da troca de data p/ não abrir janela de eventos perdidos ao reconectar canais.
+  //
+  // Cada evento virava UMA recarga completa em cada cliente (3 hospitais × header
+  // + casos + eventos + P4). Agora: evento de OUTRA data/escala não recarrega
+  // nada (quem está no calendário não paga pela troca de turno de hoje) e a
+  // rajada vira uma recarga só (REALTIME_COALESCE_MS, trailing) — inclusive as
+  // 3 reconexões (onRefetch) que o helper dispara ao voltar do 2º plano.
   useEffect(() => {
+    const idsCarregados = () =>
+      new Set(Object.values(escalasRef.current || {}).map((e) => e?.id).filter(Boolean))
+    const eventoDestaTela = (table, ev) => {
+      const novo = ev?.new && Object.keys(ev.new).length ? ev.new : null
+      const row = novo || ev?.old
+      if (!row) return true // sem payload: não arrisca perder
+      if (table === 'escala_cirurgica_caso') {
+        if (!row.escala_id) return true // DELETE traz só a PK
+        return idsCarregados().has(row.escala_id)
+      }
+      if (row.data) return row.data === dataRef.current
+      return true
+    }
+    const agendar = () => {
+      clearTimeout(realtimeTimerRef.current)
+      realtimeTimerRef.current = setTimeout(
+        () => loadData(dataRef.current, { revalidacao: true }),
+        REALTIME_COALESCE_MS
+      )
+    }
     const subs = ['escala_cirurgica', 'escala_cirurgica_caso', 'escala_plantao_p4_diario'].map((table) =>
       createReliableSubscription({
         channelName: `${table}-changes`,
         table,
         // revalidação: MESMA data já na tela — sem repinte do cache (bug 19/08)
-        callback: () => loadData(dataRef.current, { revalidacao: true }),
-        onRefetch: () => loadData(dataRef.current, { revalidacao: true }),
+        callback: (ev) => { if (eventoDestaTela(table, ev)) agendar() },
+        onRefetch: agendar,
       })
     )
     return () => {
       subs.forEach((s) => s.cleanup())
       clearTimeout(revalidacaoTimerRef.current)
+      clearTimeout(realtimeTimerRef.current)
     }
   }, [loadData])
 

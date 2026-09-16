@@ -43,7 +43,7 @@ vi.mock('@/services/supabaseSubscriptionHelper', () => ({
   },
 }))
 
-import { EscalaCirurgicaProvider, useEscalaCirurgica, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
+import { EscalaCirurgicaProvider, useEscalaCirurgica, useEscalaCirurgicaActions, REALTIME_COALESCE_MS } from '@/contexts/EscalaCirurgicaContext'
 
 // promise que nunca resolve no teste: se a action esperar por ela antes de
 // pintar, o assert de estado imediato falha — é o próprio detector do delay
@@ -103,7 +103,8 @@ describe('recarga não atropela o toque (dono 19/08: "vai para outra opção e d
     // do servidor SEM o nosso toque (agendada) — não pode sobrescrever a tela
     await act(async () => {
       subCallbacks.forEach((cb) => cb())
-      await new Promise((r) => setTimeout(r, 0))
+      // evento coalescido (16/09): a recarga parte depois de REALTIME_COALESCE_MS
+      await new Promise((r) => setTimeout(r, REALTIME_COALESCE_MS + 50))
     })
     expect(unimed().casos[0].statusCirurgia).toBe('iniciada')
   })
@@ -116,7 +117,11 @@ describe('recarga não atropela o toque (dono 19/08: "vai para outra opção e d
       if (hosp !== 'unimed') return res(null)
       soltarFetch = () => res(escalaBase())
     }))
-    act(() => { subCallbacks.forEach((cb) => cb()) })
+    await act(async () => {
+      subCallbacks.forEach((cb) => cb())
+      await new Promise((r) => setTimeout(r, REALTIME_COALESCE_MS + 50))
+    })
+    expect(soltarFetch).toBeTypeOf('function') // a recarga está mesmo em voo
     // toque no meio do voo
     svcMock.updateStatusCirurgia.mockImplementation(pendente)
     act(() => {
@@ -391,7 +396,12 @@ describe('adicionarCaso não é atropelado pela recarga', () => {
         ? new Promise((res) => { entregarSnapshot = () => res(escalaBase()) })
         : Promise.resolve(null)
     ))
-    await act(async () => { subCallbacks.forEach((cb) => cb?.()); await Promise.resolve() })
+    // desde 16/09 o evento realtime é coalescido: a recarga só parte depois da
+    // janela REALTIME_COALESCE_MS — espera-se por ela para o voo existir
+    await act(async () => {
+      subCallbacks.forEach((cb) => cb?.())
+      await new Promise((r) => setTimeout(r, REALTIME_COALESCE_MS + 50))
+    })
 
     // o caso entra ENQUANTO a recarga está no ar
     await act(async () => {
