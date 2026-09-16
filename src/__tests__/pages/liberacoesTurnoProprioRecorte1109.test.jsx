@@ -164,7 +164,7 @@ describe('HRO 11/09 18h09 — a fila chegou na Louise (turno próprio, 4ª de 15
   it('o cartão amarelo é da LOUISE — não do 3º, que era o que a foto mostrava', () => {
     montar(AS_18H09)
     expect(within(card('u-louise')).getByText('Próximo a ser liberado')).toBeTruthy()
-    expect(within(card('u-louise')).getByText(/Turno até 19:00 · pode sair fora da ordem/)).toBeTruthy()
+    expect(within(card('u-louise')).getByText(/Turno encerra às 19:00h/)).toBeTruthy()
     expect(within(card('u-melo')).queryByText('Próximo a ser liberado')).toBeNull()
     expect(screen.getAllByText('Próximo a ser liberado')).toHaveLength(1)
   })

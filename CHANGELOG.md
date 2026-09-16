@@ -3,6 +3,25 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.15 (16/09/2026) — Fila: uma margem esquerda só, bolinha Ø24 com o nome centrado, badge Plantonista verde, "Turno encerra às", rótulo de plantão sem repetir o selo
+
+Dono (16/09, 15h27–15h33, fotos da fila): "melhorar o alinhamento à esquerda do card, quero que
+fique mais harmônico … (revise para melhorar a disposição em conformidade com o alinhamento à
+esquerda do card), verifique se tamanho da bola de marcação está compatível" · "troque a frase
+para: Turno encerra as 19:00h" · "cor do badge de plantonista deve manter cor do DS. Quando o
+plantão da manhã for plantão noturno, não quero que mantenha o badge de plantão da manhã".
+Escolha em maquete (`.tmp/fila-alinhamento-430.html`): **opção B** + "nome centralizado com a bolinha".
+- **Uma margem só**: "Trocado com …" e "Assumiu a posição de …" descem para o bloco recuado, na
+  margem de turno/cirurgiões/sala (supera 15/09, quando ficavam sob o nome).
+- **Bolinha Ø24** (era 28; área de toque segue 36×44) e o nome nasce a 13px para ficar centrado
+  com ela.
+- **Badge Plantonista** no verde institucional (era o cinza de `secondary`).
+- **"Turno encerra às 19:00h"** no lugar de "Turno até 19:00 · pode sair fora da ordem".
+- **"Plantão da manhã"** (quem fecha o rodapé da tarde) não aparece quando a mesma pessoa já leva
+  o selo P1–P4 do plantão noturno — só o badge; posição e saída iguais.
+- Testes: `liberacoesBadgePlantonistaCorEFrase` (novo), `liberacoesTrocaDeclarada` (regra
+  invertida), frase atualizada em `liberacoesPainelLinha` e `liberacoesTurnoProprioRecorte1109`.
+
 ## v5.12.14 (16/09/2026) — Realtime por Broadcast (sinal + busca por chave); Escala completa → Liberações; card da Home com snapshot
 
 Dono (16/09): "corrija tudo" (sem pagar) → decisão pelo modelo "sinal + busca por id" em PR separado.

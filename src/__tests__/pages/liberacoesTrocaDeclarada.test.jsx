@@ -346,19 +346,19 @@ describe('Slot assumido (troca executada)', () => {
   })
 })
 
-describe('A linha da troca fica alinhada ao NOME, não à fileira das cirurgias (dono 15/09)', () => {
-  // Quando a fileira de baixo recuou para sob o círculo (opção C, 15/09) ela
-  // levou "Trocado com …" junto; o dono pediu a linha de volta sob o nome. A
-  // troca é da PESSOA (como o badge ao lado do nome) — mora no mesmo pai do
-  // <p> do nome e fora do container que recua (`-ml-14`).
+describe('A linha da troca fica na MARGEM DAS INFOS, no bloco recuado (dono 16/09, opção B)', () => {
+  // 15/09: o dono pediu a troca sob o NOME. 16/09, foto da fila: "quero que fique mais
+  // harmônico … em conformidade com o alinhamento à esquerda do card" — escolheu em
+  // maquete (.tmp/fila-alinhamento-430.html) UMA margem esquerda só: a troca continua
+  // ABAIXO do nome, mas na mesma margem de turno, cirurgiões e sala (dentro do `-ml-14`).
   const paiDoNome = (card) => within(card).getByText(card.getAttribute('data-nome')).closest('p').parentElement
 
-  it('"Trocado com" é irmã do nome e não entra na fileira recuada', () => {
+  it('"Trocado com" entra na fileira recuada e não é irmã direta do nome', () => {
     montar({ paresTroca: [PAR] })
     const card = document.querySelector('[data-linha="uid-mar"]')
     const troca = within(card).getByText(/Trocado com Marcos Cury \(Unimed\)/)
-    expect(troca.parentElement).toBe(paiDoNome(card))
-    expect(troca.closest('.-ml-14')).toBeNull()
+    expect(troca.closest('.-ml-14')).toBeTruthy()
+    expect(troca.parentElement).not.toBe(paiDoNome(card))
   })
 
   it('"Assumiu a posição de" (o outro lado da mesma troca) segue a mesma regra', () => {
@@ -369,7 +369,7 @@ describe('A linha da troca fica alinhada ao NOME, não à fileira das cirurgias 
     montar({ paresTroca: [] }, escala)
     const card = document.querySelector('[data-linha="uid-mar"]')
     const nota = within(card).getByText(/Assumiu a posição de Marilio Flach/).closest('p')
-    expect(nota.parentElement).toBe(paiDoNome(card))
-    expect(nota.closest('.-ml-14')).toBeNull()
+    expect(nota.closest('.-ml-14')).toBeTruthy()
+    expect(nota.parentElement).not.toBe(paiDoNome(card))
   })
 })

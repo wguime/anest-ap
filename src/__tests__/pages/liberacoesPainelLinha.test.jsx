@@ -753,7 +753,7 @@ describe('Turno próprio — pode sair fora da ordem (dono 11/09)', () => {
 
   it('o card DIZ por que ela pode sair fora da ordem', () => {
     montar({}, comTurnoProprio)
-    expect(within(cardDe('Marilio Flach')).getByText(/Turno até 19:00 · pode sair fora da ordem/)).toBeTruthy()
+    expect(within(cardDe('Marilio Flach')).getByText(/Turno encerra às 19:00h/)).toBeTruthy()
   })
 
   it('a marca NÃO libera sozinha — ela continua trabalhando até alguém tocar', () => {
