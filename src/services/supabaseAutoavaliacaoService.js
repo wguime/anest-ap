@@ -8,6 +8,7 @@
  * Segue o mesmo padrao de supabasePlanosAcaoService.js.
  */
 import { supabase } from '@/config/supabase'
+import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
 
 // ============================================================================
 // FIELD MAPPING — camelCase <-> snake_case
@@ -126,28 +127,26 @@ async function remove(id) {
 // ============================================================================
 
 function subscribeToAll(callback) {
-  const channel = supabase
-    .channel('autoavaliacao-rop-changes')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'autoavaliacao_rop' },
-      (payload) => {
-        callback({
-          eventType: payload.eventType,
-          new: payload.new ? toCamelCase(payload.new) : null,
-          old: payload.old ? toCamelCase(payload.old) : null,
-        })
-      }
-    )
-    .subscribe()
-
-  return channel
+  // Broadcast (sinal + busca por chave) pelo helper — ver supabaseSubscriptionHelper.js;
+  // postgres_changes mantinha o Realtime consultando o WAL a cada 100 ms (16/09/2026).
+  return createReliableSubscription({
+    channelName: 'autoavaliacao-rop-changes',
+    table: 'autoavaliacao_rop',
+    callback: ({ eventType, new: novo, old: velho }) => {
+      callback({
+        eventType,
+        new: novo ? toCamelCase(novo) : null,
+        old: velho ? toCamelCase(velho) : null,
+      })
+    },
+  })
 }
 
-function unsubscribe(channel) {
-  if (channel) {
-    supabase.removeChannel(channel)
-  }
+function unsubscribe(sub) {
+  if (!sub) return
+  // assinatura do helper ({ cleanup }) ou canal legado do supabase-js
+  if (typeof sub.cleanup === 'function') sub.cleanup()
+  else supabase.removeChannel(sub)
 }
 
 // ============================================================================

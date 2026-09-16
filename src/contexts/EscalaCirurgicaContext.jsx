@@ -334,6 +334,9 @@ export function EscalaCirurgicaProvider({ children }) {
         // revalidação: MESMA data já na tela — sem repinte do cache (bug 19/08)
         callback: (ev) => { if (eventoDestaTela(table, ev)) agendar() },
         onRefetch: agendar,
+        // só o sinal (pk + escala_id/data/hospital): a recarga é do loadData,
+        // buscar a linha aqui seria uma requisição a mais por evento
+        conteudo: false,
       })
     )
     return () => {
