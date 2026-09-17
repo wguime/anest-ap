@@ -27,6 +27,12 @@ Dono (16/09, 20h35, com a noite no ar), três pedidos:
   do canto direito era `shrink-0`; com "Iniciada" + "Passa para noite" ao lado de "Hemodinâmica V.A.P.
   46a" não cabia. Agora quebra linha (`flex-wrap`, sem `shrink-0`): a ocorrência desce para a 2ª linha,
   ainda no canto.
+- **Infra (16/09, 21h40, sem mudança de app)**: migration `20260917003000_realtime_publication_sem_tabelas`
+  tira as 13 tabelas da publication `supabase_realtime` (a publication fica). Fecha a transição para
+  Broadcast de 16/09 (`20260916203000`): com `realtime.subscription` = 0 (conferido antes; o bloco recusa
+  rodar se houver assinante), nenhum cliente antigo pode mais reativar o polling do WAL
+  (`realtime.list_changes`, 59 % do tempo de CPU do banco desde 08/02). Ensaiada em `begin … rollback`
+  e validada pelo `migration-validator` antes de aplicar. Rollback documentado no arquivo.
 - Testes: `escalaTurnoAutomatico` (reescrito para a regra nova: trilho só com escolha, subtítulo com o
   turno, manhã sai às 13h, "Noite" às 20h no dia útil, "Tarde | Noite" no FDS), `escalaMinhasAbaVaiAoPosto`
   (a aba não leva ao turno que saiu), `escalaBarraControles` (trilho oculto com uma opção),
