@@ -70,13 +70,13 @@ responder, ela ganha uma linha depois de publicar); perguntar ao dono o que "Rec
 
 | frase | vira |
 |---|---|
-| "Como ajuda … 1º X – Local · 2º Y – Local" | X, Y em `ajudaExterna` do hospital do LOCAL, `cor: 'azul'` no caso; a ÚLTIMA do array sai primeiro (2º Y, 3º Z → `['Z','Y']`); **`ajuda_ordem_informada=True`** naquele hospital. A ajuda numerada pode estar no rodapé do próprio hospital — transcreva os dois. |
+| "Como ajuda … 1º X – Local · 2º Y – Local" | X, Y em `ajudaExterna` do hospital do LOCAL, `cor: 'azul'` no caso; a ÚLTIMA do array sai primeiro (2º Y, 3º Z → `['Z','Y']`); **`ajuda_ordem_informada=True`** naquele hospital. A ajuda numerada pode estar no rodapé do próprio hospital — transcreva os dois. Se a fila publicada sair em ordem diferente do recado, é defeito de código, não do lote. |
 | "Trocas: A (consultório) na posição do B no HRO" | `'A': {tipo:'troca', parceiro:'B', apenasRegistro:True, local:'Consultório'}` — B fora de escala. |
 | "A na posição do B" com os DOIS em escala | registro nos dois lados: `'A': {…parceiro:'B', local:'<hospital de B>'}` e `'B': {…parceiro:'A', local:'<hospital de A>'}`. |
 | qualquer troca do recado | **sempre `apenasRegistro: True`** — já aconteceu, a foto já saiu certa; sem o campo vira declaração pendente e a próxima importação executa um swap. Não perguntar "registro ou executar". |
 | "X na equipe da Unimed até as 19h" / "no HRO até as 13h" | X é membro da equipe daquele hospital no turno. Nada de ajuda, troca ou `turnoProprio` ("até as 19h" = fim do turno). A numérica aponta "a mais"/"faltando" — é a confirmação. |
 | linha `MATERNO` do HRO + mapa HC com a mesma pessoa | duplicidade esperada: responde pela troca do recado ou `'NOME': {tipo:'intencional'}`. |
-| apelidos | Beta = ROBERTA · Joao Moreira = JOAO RICARDO · Garim = GARIM · Nathália Fornari = NATHALIA · Dani Resi = DANIELA (Reis) · Rafael = PELISSARO. O ensaio recusa o que não resolver. |
+| apelidos | Beta = ROBERTA · Joao Moreira = JOAO RICARDO · Garim = GARIM · Nathália Fornari = NATHALIA · Dani Resi = DANIELA (Reis) · Rafael = PELISSARO. Nome ambíguo (dois GUILHERME, dois JOAO): escreva o nome completo, nunca escolha; o ensaio recusa o que não resolver. |
 
 ## O que o ensaio faz com o lote
 
@@ -131,7 +131,8 @@ anestesista nos dois hospitais — publique vazio, a fila única distribui. Acr�
 texto ("artrodese toracolombar sábado 13h, particular, Penteado") é um caso a mais no hospital
 onde o cirurgião opera (`cirurgiao ilike '%penteado%'` no banco → HRO, Sala 3); sem nome de
 paciente a cobrança não abre — avise. Bloqueia: ordem vazia de manhã/tarde, Pn sem dono, nome
-ambíguo, campo recusado, turno já publicado. Relatório: as três filas por dia (quem foi
+ambíguo, campo recusado, turno já publicado. Avisa: Pega Plantão, sala sem nome, posto sugerido,
+encolhimento. Relatório: as três filas por dia (quem foi
 acrescentado, o que é "sugerida"), casos por hospital/turno, particulares com e sem cobrança, a
 troca de P1–P4 que a foto mostrou.
 
@@ -140,4 +141,6 @@ troca de P1–P4 que a foto mostrou.
 Nunca publicar sem reler a foto contra o ensaio; nome completo de paciente só em particular;
 `.tmp/escala-lote/` não entra em commit; nenhum deploy ou migration faz parte disto; **feriado**
 (lista simples, `ordensDocumentoFeriado`) não tem comando — o script recusa a data e a publicação é
-pela tela; **nunca a edge de leitura** — foto ilegível é pergunta ao dono, com o custo.
+pela tela; **nunca a edge de leitura** — foto ilegível é pergunta ao dono, com o custo; **o app não
+muda** (edge, prompt dela, cache, `ImportarEscalaPage`, `escalaCirurgicaService` ficam como estão —
+é como a equipe publica; mudança lá é pedido próprio do dono, Regra #2).
