@@ -6,9 +6,15 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
+  <!-- A página tem tema claro E escuro (prefers-color-scheme): declarar os dois evita
+       que o Chrome Android / Samsung Internet apliquem o escuro forçado por cima. -->
+  <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#006837">
   <title>Nova Notificação - ANEST</title>
   <link rel="icon" href="/logo-anest.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     /* ========================================
        CSS VARIABLES (Light Mode)
@@ -160,7 +166,7 @@
       box-sizing: border-box;
     }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       background-color: var(--bg);
       color: var(--text);
       line-height: 1.5;
