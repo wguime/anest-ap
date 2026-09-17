@@ -293,7 +293,15 @@ if (cmd === 'publicar') {
     const p = r.payload
     console.log(`\n== ${h.toUpperCase()} · ${data} · ${turno} · ${p.casos.length} caso(s) · rodapé ${p.ordemLiberacao.length} · ajuda ${JSON.stringify(p.ajudaExterna)}`)
     for (const c of p.casos) {
-      console.log(`   ${String(c.sala).padEnd(18)} | ${String(c.hora || '').padEnd(5)} | ${String(c.procedimento || '').slice(0, 38).padEnd(38)} | ${String(c.anestesista || '').padEnd(20)} | ${c.anestesistaUserId ? 'uid' : (c.semAnestesista ? 'SEM' : 'sem vínculo')}${c.isContinuacao ? ' | cont.' : ''}${c.tipo && c.tipo !== 'eletiva' ? ` | ${c.tipo}` : ''}`)
+      // a linha impressa é a unidade da releitura contra a foto (skill, passo 3): cor, particular
+      // e nome do paciente aparecem aqui para não exigir abrir o JSON
+      const partic = /^PART(ICULAR)?[^A-Z]*$/.test(norm(c.convenio))
+      console.log(`   ${String(c.sala).padEnd(18)} | ${String(c.hora || '').padEnd(5)} | ${String(c.procedimento || '').slice(0, 38).padEnd(38)} | ${String(c.anestesista || '').padEnd(20)} | ${c.anestesistaUserId ? 'uid' : (c.semAnestesista ? 'SEM' : 'sem vínculo')}${c.cor ? ` | ${c.cor}` : ''}${c.isContinuacao ? ' | cont.' : ''}${c.tipo && c.tipo !== 'eletiva' ? ` | ${c.tipo}` : ''}${partic ? ` | PART${c.pacienteNome ? ': ' + c.pacienteNome : ' SEM NOME'}` : ''}`)
+    }
+    // PARTICULAR sem nome do paciente: a cobrança não abre, em silêncio (5 de 8 no HRO nas leituras
+    // de 10–11/09). Aviso, não bloqueio — "04 FACO" particular sem paciente é legítimo.
+    for (const c of p.casos) {
+      if (/^PART(ICULAR)?[^A-Z]*$/.test(norm(c.convenio)) && !c.pacienteNome && c.pacienteIniciais) r.avisos.push({ codigo: 'particular sem nome', texto: `${c.sala} ${c.hora || ''} (${c.pacienteIniciais}): convênio particular sem pacienteNome — a cobrança não abre; confira a foto` })
     }
     if (p.ordemLiberacao.length) console.log(`   rodapé: ${r.ordemNumerada.map((o) => `${o.i + 1}.${o.nome}${o.casos ? '' : '°'}${o.ajuda ? '*' : ''}`).join(' / ')}  (° sem caso · * ajuda)`)
     if (r.numerica) console.log(`   numérica: ${r.numerica.iguais ? 'igual ao rodapé' : 'difere'}${r.numerica.feriasConferidas ? ' (férias conferidas)' : ''}`)

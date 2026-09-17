@@ -7,345 +7,137 @@ user-invocable: true
 
 # Publicar escala pela foto
 
-O dono manda as fotos e quer a escala no ar sem explicar nada (08/09/2026). A publicação é a
-MESMA RPC da tela, com a MESMA conferência, assinada como o dono.
+O dono manda as fotos e quer a escala no ar sem explicar nada. **Você transcreve** (as fotos já
+estão no contexto — a edge `parse-escala-cirurgica` custa US$ 0,19 por lote, erra mais e corta aos
+66 s; nunca chamá-la, e o app continua lendo do jeito dele). O `publicar` roda a MESMA conferência
+da tela (`escalaConferenciaHeadless.js`) e a MESMA RPC, assinada como o dono. **Meta: ≤ 4 min do
+pedido ao PUBLICADO.** O porquê de cada regra está em `REFERENCIA.md` — não é leitura de rotina.
 
-## ⛔ A LEITURA É SUA — não chame a edge (dono 11/09/2026)
+## Roteiro — 3 chamadas de ferramenta
 
-> *"Quero que tudo seja realizado pelo Claude Code sem consumir a API. Tudo está sendo
-> realizado no chat, não faz sentido descontar."*
+1. **Write** `.tmp/escala-lote/<data>-<turno>/gerar.py` a partir de `gerar-template.py` (helpers em
+   `lote.py`): só as tabelas dos três hospitais, rodapés, `decisoes` e `conferidos`. Data e turno
+   vêm da mensagem; sem isso, hoje em `America/Sao_Paulo` e o turno pelas horas (13:00+ = tarde).
+2. **Bash**: `cp` das fotos para a pasta (o caminho do WhatsApp é temporário; a pasta é fora do git)
+   + `python3 gerar.py` + `node scripts/escala-publicar-turno.mjs publicar <lote.json> --ensaio`.
+3. **Reler a foto contra a saída do ensaio**, linha a linha — o único passo que não se pula. Sem
+   bloqueio e sem aviso que aponte erro seu → **Bash** `publicar` (sem `--ensaio`).
+4. Relatório curto: por hospital "N casos · rodapé N · ajuda […]", quem ficou com "?", o que o
+   recado virou, avisos que sobraram. Custo US$ 0.
 
-**As fotos já estão no seu contexto.** Mandá-las para a edge `parse-escala-cirurgica` é pagar
-a Vision para reler o que você está vendo — US$ 0,19 por publicação de três fotos, cobrados na
-conta de API do dono. **Transcreva você mesmo** e o custo é zero.
+**Não fazer** — cada item custou minutos em 17/09: consultar `escala_anestesista_alias` (o ensaio
+resolve todo nome e bloqueia o ambíguo); consultar o banco antes do ensaio (ele diz "já
+publicado"; o turno é carimbado pelo lote e, no Materno, as horas < 13:00 ficam fora da tarde
+sozinhas); rodar `ordem-liberacao-numerica.mjs` (o ensaio compara com a numérica + férias); ler
+o gerar.py de outro dia ou código do app para lembrar convenção (a ficha abaixo responde — se não
+responder, ela ganha uma linha depois de publicar); perguntar ao dono o que "Recado" já decide.
 
-Não é só o dinheiro: a edge some com os erros que ela mesma introduz. Medido nas 7 leituras de
-10–11/09, e cada um destes eu já tinha de corrigir à mão depois — `ajudaExterna` no hospital
-errado **4 de 4** · PARTICULAR sem nome do paciente **5 de 8 no HRO** · `GUILHERME M ELO`
-partido **4 de 4** · célula do anestesista vazia 5× (azuis e as seções IMAGEM/C.O/Exames) ·
-data do HRO errada ou ausente **3 de 3**. A conferência contra a foto sempre foi a leitura que
-manda; a da edge era um rascunho que eu reescrevia. Transcrever tira a passada intermediária,
-não a conferência.
+## Ficha de transcrição
 
-E some o que quebrou em 11/09: timeout aos ~66s (a edge termina, cobra, e a resposta não chega)
-e as falhas de rede. Transcrever não tem nenhum dos dois.
-
-**Verificado (11/09):** `parse-escala-cirurgica` é a ÚNICA edge do repo que chama a API
-Anthropic, e a única chamada a ela no script está dentro de `if (cmd === 'ler')`. O comando
-`publicar` toca só `api.supabase.com` (SQL) e `pegaplantao-proxy` (férias) — **não usar o `ler`
-zera o consumo, e nada mais precisa mudar**.
-
-⛔ **ISTO VALE SÓ PARA A SKILL — o app não muda** (dono 11/09, no mesmo fôlego): *"mantenha
-assim as leituras realizadas aqui no Claude Code, mas não troque a forma como as escalas são
-lidas quando anexadas via app."* A tela `ImportarEscalaPage` e a edge `parse-escala-cirurgica`
-são como a EQUIPE publica, e continuam exatamente como estão. Nada aqui autoriza mexer na
-edge, no prompt dela, no cache, na tela de importação ou no `escalaCirurgicaService` — nem
-"de passagem", nem porque esta skill mediu erros de leitura. Os números da tabela abaixo são
-para VOCÊ conferir melhor, não backlog de correção da edge. Mudança ali é pedido próprio do
-dono (Regra #2). O comando `ler` também fica no script, intacto.
-
-Script: `scripts/escala-publicar-turno.mjs` — use o comando **`publicar`**. O comando `ler`
-fica como último recurso (foto ilegível, volume que você não consegue transcrever com
-segurança); usá-lo é uma decisão a comunicar ao dono, com o custo, não o caminho normal.
-
-## ⏱️ Ritmo: do pedido ao PUBLICADO em ≤ 4 min (dono 17/09)
-
-*"Demorou em torno de 10 min para concluir, deve ser mais ágil."* Medido em 17/09: o script gasta
-~5 s na conferência e ~15 s com a RPC. Os 10 min foram **pesquisa** — reler o gerar.py do dia
-anterior, consultar o dicionário de apelidos, conferir o banco antes do ensaio, rodar a numérica à
-parte, ler código do app para lembrar convenção, perguntar ao dono o que a ficha responde. Nada
-disso é passo. O roteiro é de **quatro chamadas de ferramenta** entre a foto e o PUBLICADO:
-
-1. `mkdir -p .tmp/escala-lote/<data>-<turno>` + `cp` das três fotos — um Bash.
-2. Escrever `gerar.py` a partir de **`gerar-template.py`** (nesta pasta): só as três tabelas,
-   rodapés, `decisoes` e `conferidos`; os helpers moram em **`lote.py`** (iniciais por regra,
-   `pacienteNome` só em particular, ordem por sala, resumo dos especiais) — um Write. Não ler o
-   gerar.py de outro dia: o template já carrega os exemplos de cada seção.
-3. `python3 gerar.py && node scripts/escala-publicar-turno.mjs publicar <lote> --ensaio` — um Bash.
-   Reler a foto contra o que o ensaio imprimiu (é o passo 4 abaixo, o único que não se pula).
-4. Sem bloqueio e sem aviso que aponte erro seu → `publicar` — um Bash. Relatório **curto**: por
-   hospital "N casos · rodapé N · ajuda […]", quem ficou com "?", o que o recado virou, avisos
-   que sobraram. Sem tabela longa.
-
-**Não fazer** (cada item custou minutos em 17/09):
-- Não consultar `escala_anestesista_alias`: o ensaio resolve todo nome (coluna `uid` /
-  `sem vínculo`) e **bloqueia** o ambíguo — nome desconhecido aparece ali, não numa query.
-- Não consultar o banco antes do ensaio (turno já publicado? quantos casos de manhã? formato do
-  jsonb?): o ensaio diz "já publicado", e o turno é carimbado pelo lote — no Materno, as linhas
-  com hora < 13:00 ficam fora da tarde sozinhas.
-- Não rodar `ordem-liberacao-numerica.mjs`: o ensaio já compara o rodapé com a numérica + férias.
-- Não ler `utils.js`/`escalaPublicacaoDecisoes.js` para lembrar convenção: a ficha abaixo
-  responde. Se não responder, a ficha ganha uma linha depois — a sessão não para para pesquisar.
-- Não perguntar ao dono o que "Como ler o recado" já decide.
-
-**Ficha de convenções** (o que 17/09 pesquisou; já está decidido):
 - **Sala = rótulo da foto**; quem canoniza é `normalizarCasosImportados`. Unimed: `C.O - CESAREA`,
   `C.O - SALA 3`, `HEMODINAMICA`, `CENTRO CIRÚRGICO - SALA N` (`… SALA 10 ROBOTICA`), `EXAMES`,
   `IMAGEM`, `ACCURATA`, `UMANITA`, `CLINICA CIRURGICA`. HRO: `Sala N` (Bloco A), `Bloco M - Sala N`
-  (o "//" **não** herda entre salas do Bloco M), `C.O` (vira Sala 7), `HEMO`, `EXAMES`, `IOSC` (as
-  três salas internas viram `IOSC`), `HO`, `MATERNO`, `CONSULT.`, `AMBULAT.`, `Centro de Coluna`,
-  `SIMONE`. Materno: `Sala N HC`.
-- **"//" abaixo de "?"** = descoberta também → escreva `"?"` (o "?" nunca vira base; um "//" ali
-  cairia no 1º nome da sala). **Materno da tarde sem nome nas primeiras linhas → `"?"` explícito**,
-  nunca `""`/`"//"` — herdariam o nome anotado mais abaixo pela base da sala.
-- Quem **fecha o rodapé sem caso** (plantão do contraturno / noite) → `conferidos`. SRPA vai em
-  `posicoesAssistenciais` e conta como ocupado.
-- **AMARELO** = a pessoa em dois locais de propósito → `cor: 'amarelo'` nos dois, sem decisão. Se um
-  dos locais é a linha `MATERNO` do HRO e há mapa HC, a duplicidade se responde pela **troca do
-  recado** ou por `{'tipo': 'intencional'}`. Célula de DATA amarela na planilha da Unimed é marca
-  da planilha, não cor de anestesista.
-- `turnoProprio` (Louise) é **automático** pela numérica. `RAFAEL` sai como `PELISSARO` na saída do
-  script — mesmo cadastro. FAS / SC / BRF / UNIMED FUNDACAO não são particular.
-- Nome no recado ≠ nome do rodapé (Joao Moreira = JOAO RICARDO, Dani Resi = DANIELA): lista em
-  "Como ler o recado"; o ensaio recusa o que não resolver.
+  (o "//" **não** herda entre salas do Bloco M — escreva o nome), `C.O` (vira Sala 7), `HEMO`,
+  `EXAMES`, `IOSC` (as três salas internas viram `IOSC`), `HO`, `MATERNO`, `CONSULT.`, `AMBULAT.`,
+  `Centro de Coluna`, `SIMONE`, `Braqui`. Materno: `Sala N HC`.
+- **Hora** só `HH:MM`; `AS` é hora válida. **Data** (`dataDetectada`) é a que a FOTO diz — a Unimed
+  traz em cada linha, o Materno no topo, o HRO às vezes a do dia anterior ou nenhuma (`''`): decida
+  pela coerência das três e deixe o aviso aparecer.
+- **Anestesista por linha**: nome da foto · `//` = igual à linha de cima na MESMA sala, **sempre**
+  (mesmo se quem está acima é ajuda de fora) · `?`/vazio = descoberta (`"?"`, `semAnestesista`).
+  **"//" abaixo de "?"** também é descoberta → escreva `"?"` (um "//" ali cairia no 1º nome da sala).
+  **Materno da tarde sem nome nas primeiras linhas → `"?"` explícito**, nunca vazio/`//` (herdariam
+  o nome anotado mais abaixo). No Materno só o nome À MÃO em vermelho é anestesista; "Geral" é técnica
+  e o nome **muda de linha** entre manhã e tarde.
+- **Cor é dado**: AZUL = ajuda de outro hospital → `cor: 'azul'` no caso **e** em `ajudaExterna` do
+  hospital onde a pessoa vai TRABALHAR (o nome pode estar escrito no outro — azul no rodapé de A com
+  caso azul em B = ajuda de B; transcreva os dois lados como a cor diz, o script realoca). AMARELO =
+  a pessoa em dois locais de propósito → `cor: 'amarelo'` nos dois, sem decisão. Célula de DATA
+  amarela na Unimed é marca da planilha. `"02 ANEST"` amarelo sem 2º nome: nota no procedimento, "//".
+- **Seções fora da grade** são casos (Exames, Imagem, Hemodinâmica, Accurata, Umanitá, IOSC, HO,
+  Ambulatório, Braqui, Simone, Consultório, e a linha `MATERNO | NN PROCEDIMENTOS | NOME` do HRO).
+  `SRPA | NOME` vai em `posicoesAssistenciais` (conta como ocupado). "CONTINUAÇÃO ±14h" é caso com
+  `cont=True`. Varrer a foto de cima a baixo — é onde a leitura mais perde nome.
+- **Rodapé** completo, NA ORDEM, com as notas ("MATHEUS (CONSULT)" é uma posição). Quem fecha o
+  rodapé **sem caso** (plantão do contraturno/noite) → `conferidos`.
+- **LGPD**: `pacienteNome` só em PARTICULAR/PART (o template faz; é o que abre a cobrança); FAS,
+  SC, BRF, UNIMED FUNDACAO não são particular. Todo o resto por iniciais; nome de não-particular
+  não entra no JSON.
+- `turnoProprio` (Louise) é automático pela numérica. `RAFAEL` sai como `PELISSARO` — mesmo
+  cadastro. Ambíguo na foto: diga no relatório em vez de escolher.
 
-## Passos
+## Recado do dono → lote
 
-1. **Data e turno.** Vêm da mensagem ("da tarde", "de amanhã"); sem isso, a data é hoje em
-   `America/Sao_Paulo` e o turno vem das horas da foto (13:00 em diante = vespertino). A
-   planilha da Unimed traz a data em cada linha; o HRO às vezes traz uma data velha no título
-   (08/09 dizia 04/09 e era de 08/09 — a continuação das cirurgias da manhã prova). Decida pela
-   coerência entre as três fotos e diga no relatório o que assumiu.
-2. **Guardar as fotos.** O caminho do WhatsApp é temporário: copie para
-   `.tmp/escala-lote/<data>-<turno>/` (pasta fora do git — tem iniciais de paciente).
-3. **Transcrever as três fotos** — você lendo a imagem, sem edge e sem custo. Grave um JSON por
-   hospital em `.tmp/escala-lote/<data>-<turno>/<h>.json` com a forma que o `publicar` espera:
+| frase | vira |
+|---|---|
+| "Como ajuda … 1º X – Local · 2º Y – Local" | X, Y em `ajudaExterna` do hospital do LOCAL, `cor: 'azul'` no caso; a ÚLTIMA do array sai primeiro (2º Y, 3º Z → `['Z','Y']`); **`ajuda_ordem_informada=True`** naquele hospital. A ajuda numerada pode estar no rodapé do próprio hospital — transcreva os dois. |
+| "Trocas: A (consultório) na posição do B no HRO" | `'A': {tipo:'troca', parceiro:'B', apenasRegistro:True, local:'Consultório'}` — B fora de escala. |
+| "A na posição do B" com os DOIS em escala | registro nos dois lados: `'A': {…parceiro:'B', local:'<hospital de B>'}` e `'B': {…parceiro:'A', local:'<hospital de A>'}`. |
+| qualquer troca do recado | **sempre `apenasRegistro: True`** — já aconteceu, a foto já saiu certa; sem o campo vira declaração pendente e a próxima importação executa um swap. Não perguntar "registro ou executar". |
+| "X na equipe da Unimed até as 19h" / "no HRO até as 13h" | X é membro da equipe daquele hospital no turno. Nada de ajuda, troca ou `turnoProprio` ("até as 19h" = fim do turno). A numérica aponta "a mais"/"faltando" — é a confirmação. |
+| linha `MATERNO` do HRO + mapa HC com a mesma pessoa | duplicidade esperada: responde pela troca do recado ou `'NOME': {tipo:'intencional'}`. |
+| apelidos | Beta = ROBERTA · Joao Moreira = JOAO RICARDO · Garim = GARIM · Nathália Fornari = NATHALIA · Dani Resi = DANIELA (Reis) · Rafael = PELISSARO. O ensaio recusa o que não resolver. |
 
-   ```jsonc
-   { "hospital": "unimed",
-     "casos": [{ "sala": "CENTRO CIRÚRGICO - SALA 1", "ordem": 0, "hora": "13:30",
-                 "tempoEstimado": "02:15", "pacienteIniciais": "Z.S.S.A.", "idade": "83a 2m 1d",
-                 "procedimento": "...", "convenio": "", "cirurgiao": "...",
-                 "anestesista": "ERLEI", "bloco": "normal", "isContinuacao": false,
-                 "semAnestesista": false, "tipo": "eletiva", "cor": "" }],
-     "posicoesAssistenciais": [{ "local": "SRPA", "anestesista": "VICENTE" }],
-     "ordemLiberacao": ["ROSE", "ROBERTA", "..."],
-     "ajudaExterna": [], "dataDetectada": "2026-09-11" }
-   ```
+## O que o ensaio faz com o lote
 
-   Escreva por um script Python com a tabela em literal — **`gerar-template.py` desta pasta,
-   com os helpers de `lote.py`** (foi assim que a Unimed de 34 casos saiu em 11/09): `ordem`
-   reinicia por sala, as iniciais saem do nome por regra, e o `pacienteNome` entra só onde o
-   convênio é PARTICULAR — errar isso à mão em 34 linhas é fácil, num laço não.
+**Bloqueia** (a tela também recusaria): nome ambíguo, hora inválida, campo que o banco recusa,
+rodapé vazio (HRO/Unimed), pessoa em dois hospitais sem decisão, turno já publicado. **Avisa**:
+rodapé × numérica com férias do dia (troca, ajuda e consultório mudam o rodapé de propósito —
+compare com a foto e siga), cauda que nasce liberada, nome na ordem sem caso, caso de quem não
+está no rodapé (azul não lido?), ajuda provável, conflito de horário, bloco/item repetido, seção
+do HRO ausente, travessia da manhã sem dono, data divergente, escala que encolhe, **particular sem
+nome** (a cobrança não abre). Realoca sozinho o azul emprestado. Respostas no lote: `decisoes`
+(`intencional` | `troca`) e `conferidos` ("está certo, fica Livre"); viajam na RPC e o rastro de
+quem segue sobrevive a republicar.
 
-   **Não escreva sala canônica**: transcreva o rótulo como está na foto ("CENTRO CIRÚRGICO -
-   SALA 1", "UMANITA", "C.O") — `normalizarCasosImportados` converte para "CC - Sala 1",
-   "Umanitá", "Sala 7 - CO" e é ela que decide, não você.
+**Publicar**: falhou por rede (`ETIMEDOUT`/`EHOSTUNREACH`) → antes de repetir,
+`select hospital, publicacao_turnos->'<turno>'->>'casos' from escala_cirurgica where data='<data>'`
+(a RPC é uma transação: `null` = não gravou, pode repetir). **`--republicar` zera status e
+liberações** — só a pedido do dono e com ninguém tendo marcado nada; escala em uso se conserta
+linha a linha em SQL (`scripts/repair-escala-2026-09-08-matutino-leitura.sql`), ou no jsonb pela
+`rpc_escala_patch_liberacao` sem republicar.
 
-   **O que a edge fazia por baixo e agora é seu:**
-   - **LGPD** — `pacienteNome` SÓ em convênio PARTICULAR puro (é o que abre a cobrança). Todo o
-     resto vai por iniciais, e nome completo de paciente não-particular não entra no JSON.
-   - **`dataDetectada`** — a data que a FOTO diz, não a da publicação; é ela que dispara o aviso
-     de divergência. HRO costuma trazer a do dia anterior ou nenhuma: transcreva o que está lá.
-   - **`semAnestesista: true`** com `anestesista: "?"` onde a foto traz "?" / "???" / vazio.
+## Fim de semana (sáb/dom) — outro fluxo
 
-   ⚠️ **Transcreva o que a foto mostra, não o que faria sentido.** A cor é dado (azul = ajuda de
-   outro hospital, amarelo = a pessoa em dois locais de propósito), "//" é igualdade com a linha
-   de cima **sempre**, e "AS" é hora válida. Onde a foto estiver ambígua, diga no relatório em
-   vez de escolher.
-
-   💡 **O Materno é o MESMO documento nos dois turnos do dia** ("Mapa de cirurgias" traz o dia
-   inteiro). Se a manhã já foi publicada por aqui, os casos estão em
-   `.tmp/escala-lote/<data>-matutino/materno.json` — reaproveite e confira só o nome à mão, que
-   MUDA DE LINHA entre os turnos.
-
-4. **Reler a foto contra o JSON montado** — é o passo que não pode ser pulado, e continua
-   existindo mesmo sem a edge: antes ele pegava os erros dela, agora pega os seus. Confira linha
-   a linha, na foto, não no que você lembra de ter escrito. O que mais
-   erra: hora (só HH:MM; "AS" fica "AS"); anestesista por linha (**"//" é IGUALDADE e vale
-   SEMPRE a linha de cima na mesma sala** — dono 11/09: "isso já está definido nas regras". Não
-   perguntar. A dúvida que motivou o esclarecimento: uma ajuda de fora entrou no meio da sala e a
-   linha seguinte era "//" — mesmo assim o "//" é dela, não de quem abriu a sala; célula vazia ou "?" é linha descoberta → `"?"` e `semAnestesista: true`; nome em AZUL é
-   ajuda de outro hospital → entra em `ajudaExterna` e no caso; AMARELO é a pessoa em dois
-   locais de propósito, mantém nos dois); seções fora da grade (Exames, Imagem, Hemodinâmica,
-   IOSC, HO, Ambulatório, Braqui, Simone); rodapé completo NA ORDEM, com notas entre parênteses
-   ("MATHEUS (CONSULT.)" é uma posição); continuações ("CONTINUAÇÃO ±14h" é caso, com
-   `isContinuacao`); Bloco M do HRO com salas internas diferentes (o "//" não herda entre
-   "Bloco M - Sala 3" e "Bloco M - Sala 2" — escreva o nome). No Materno só o nome anotado à mão
-   em vermelho é anestesista; "Geral" é técnica. Paciente PARTICULAR puro leva `pacienteNome`
-   (é o que preenche a cobrança); todo o resto fica por iniciais.
-
-   **Comece por estes seis.** É o que a leitura automática errava, medido nas 7 leituras de
-   10–11/09 — ou seja, é o que a escala tem de difícil, e continua difícil quando quem lê é
-   você. Os três primeiros falham **em silêncio depois de publicados**:
-
-   | erro | frequência | como reconhecer |
-   |---|---|---|
-   | **`ajudaExterna` no hospital errado** | **4 de 4** | a armadilha: a ajuda pertence ao hospital **onde a pessoa vai TRABALHAR**, e o nome está ESCRITO no outro. Azul no rodapé do HRO + caso azul na Unimed = ajuda **da Unimed**. Sempre reescrever os dois lados à mão. |
-   | **PARTICULAR sem `pacienteNome`** | **5 de 8 no HRO**, 1 de 6 na Unimed | o HRO escreve nome e idade na mesma célula e é fácil levar só as iniciais. Sem o nome o gatilho não abre a cobrança, **em silêncio**. Varrer todo caso `convenio` PART/PARTICULAR. |
-   | **nome que o dicionário não resolve** | **4 de 4** | `GUILHERME M ELO` era o vício da edge; o seu é escrever o nome do WhatsApp em vez do apelido do dicionário. Escreva o apelido do rodapé (lista em "Como ler o recado"); o **ensaio** resolve e bloqueia o que não achar — não consulte a tabela antes. |
-   | **anestesista das seções de baixo** | 5 | onde a leitura automática mais falhava: nomes em **AZUL** (3×) e as seções **IMAGEM, C.O, Exames, SRPA, Umanitá** (2×), que ficam fora da grade principal e são fáceis de pular na transcrição. Varrer a foto de cima a baixo, não só a grade. |
-   | **data do HRO** | 2 erradas + 1 ausente em 3 | o HRO traz a data do dia ANTERIOR no título, ou nenhuma — transcreva o que está lá e deixe o aviso aparecer. Unimed e Materno trazem a certa em cada linha — decidir por elas. |
-   | **SRPA / posição assistencial** | 1 de 2 | uma linha solta entre as seções, sem hora — some com facilidade. Vai em `posicoesAssistenciais`, não em `casos`. |
-
-   ⚠️ **No Materno o nome à mão MUDA DE LINHA entre os turnos** e é fácil colá-lo na
-   primeira linha da sala. Em 10/09 ela pôs RAFAEL na linha das 07:30 quando a anotação estava
-   na de 13:30 — com a sala inteira herdando "//", o turno errado fica com o dono errado.
-5. **Montar o lote** `{ data, turno, hospitais: { unimed: {casos, ordemLiberacao, ajudaExterna,
-   posicoesAssistenciais, dataDetectada}, hro: …, materno: … } }` e ensaiar:
-   `node scripts/escala-publicar-turno.mjs publicar <lote.json> --ensaio`. O `publicar` roda
-   a MESMA conferência da tela (`src/lib/escalaConferenciaHeadless.js`, pelas mesmas funções):
-   - **bloqueia** como a tela: nome ambíguo, hora inválida, campo que o banco recusa, rodapé
-     vazio no HRO/Unimed, **pessoa em dois hospitais sem decisão**, turno já publicado;
-   - **avisa** como a tela: rodapé contra a **escala numérica com as férias do dia** (Pega
-     Plantão), cauda que nasce liberada, nome na ordem sem caso, caso de quem não está no
-     rodapé (azul não lido), ajuda provável e conflito com outro hospital, conflito de horário,
-     bloco repetido, item duplicado, seções do HRO ausentes, cirurgia da manhã que atravessa sem
-     dono, data da foto divergente, escala que encolhe;
-   - move sozinho o **azul emprestado** para a ajuda do hospital onde a pessoa trabalha.
-   Bloqueio de duplicidade se responde no lote, como na folha da tela:
-   `"decisoes": { "NOME": { "tipo": "intencional" } }` (trabalha nos dois) ou
-   `{ "tipo": "troca", "parceiro": "NOME" }`; "está certo, fica Livre" vai em
-   `"conferidos": ["NOME"]`. As decisões viajam na RPC (`p_linha_overrides`) e, ao republicar, o
-   rastro de quem segue na escala é preservado (`p_preservar`) — igual à tela. Divergência com a
-   numérica é aviso, nunca bloqueio: troca, ajuda e consultório mudam o rodapé de propósito;
-   compare com a foto e siga. Nome ambíguo: escreva o nome completo, nunca escolha.
-6. **Publicar** (sem `--ensaio`). ⚠️ Se a publicação falhar por **rede** (`ETIMEDOUT`/
-   `EHOSTUNREACH` — aconteceu 2× em 11/09), **conferir o banco antes de repetir**: a RPC roda
-   `begin … commit` numa chamada só, então ou gravou tudo ou nada, e o script não sabe qual foi.
-   `select hospital, publicacao_turnos->'<turno>'->>'casos' from escala_cirurgica where data='<data>'`
-   — `null` significa que não gravou e pode repetir à vontade. O script recusa turno já publicado: se o pedido é corrigir
-   uma escala em uso (status marcados, liberações), o conserto é reparo linha a linha em SQL
-   (`scripts/repair-escala-2026-09-08-matutino-leitura.sql` é o modelo) — republicar zera
-   o trabalho do turno. Só use `--republicar` quando o dono pedir isso e ninguém marcou nada.
-7. **Relatar**: por hospital, quantos casos, rodapé, ajuda, quem ficou com "?", o que foi
-   decidido (data, herança, azul) e os avisos que sobraram.
-
-   **Custo: US$ 0.** Com a transcrição no chat nada sai da conta de API do dono — verificado em
-   11/09: no fluxo de `publicar` as únicas chamadas externas são `api.supabase.com` (SQL) e
-   `pegaplantao-proxy` (férias). Se por exceção você tiver usado o `ler`, diga quanto custou
-   (`escala_leitura_log`: ~US$ 0,19 por três fotos, quase tudo em tokens de SAÍDA — escala com o
-   nº de casos, não com o tamanho da imagem).
-
-## Fim de semana (sáb/dom) — é OUTRO fluxo, não o de dia útil com duas datas
-
-O dono manda tudo junto na sexta: a **tabela "ESCALA DE FINAL DE SEMANA"** (sábado e domingo
-na mesma foto) e **um mapa por hospital por dia** (Unimed sáb, HRO sáb, Unimed dom, HRO dom;
-Materno raramente). No app isso é `ImportarEscalaFdsPage`, não `ImportarEscalaPage`, e o que
-muda não é detalhe — é o modelo (regra completa em `.claude/rules/escala-fds-feriado.md`):
+Na sexta chegam a **tabela "ESCALA DE FINAL DE SEMANA"** (sáb + dom na mesma foto) e **um mapa por
+hospital por dia**. Roteiro igual, com `gerar-fds-template.py` (`Mapa`, `salvar_fds`) em
+`.tmp/escala-lote/<sábado>-fds/` e o comando **`publicar-fds`** (`--ensaio`, depois sem). O modelo
+muda (regra completa em `.claude/rules/escala-fds-feriado.md`):
 
 | | dia útil | fim de semana |
 |---|---|---|
-| fila de liberação | uma por HOSPITAL, no rodapé vermelho do mapa | **UMA por TURNO para os 3 hospitais**, vinda da TABELA; vive na linha pseudo-hospital `'fds'` (`casos: []`, `fds_meta`) |
-| o mapa traz rodapé? | sim, é a ordem | **não** — `ordemLiberacao: []` no mapa, senão nasce uma 2ª ordem concorrendo com a única |
-| turnos | manhã e tarde | manhã, tarde e **noite** (a fila da noite mora em `fds_meta.ordemNoite`, porque o banco só aceita matutino/vespertino como turno de caso) |
-| ajuda / duplicidade / troca | conferência completa | **não existem** (dono 05/09: "nos finais de semana não existe a opção de ajuda… nunca marque ajuda de forma automática"); quem está em dois hospitais só está |
-| numérica | o rodapé é conferido contra a escala numérica | as POSIÇÕES são conferidas contra o **Pega Plantão** do sábado (P5–P12 exatos; P1–P4 é um bloco cuja ordem só a foto decide — dono 04/09) |
-| sala sem nome | "?" | "?" — exceto na **manhã de sábado**, onde a sala sem nome recebe quem a grade põe no posto (`anestesistaDoPosto`; qualquer outro turno fica "?", dono 29/08) |
-| quem publica | `publicar` | **`publicar-fds`** — 4 linhas 'fds' + 1 chamada por (hospital, dia, turno) com casos, numa transação |
+| fila | uma por hospital, no rodapé do mapa | **uma por turno para os 3 hospitais**, da TABELA; linha pseudo-hospital `'fds'` |
+| rodapé no mapa | é a ordem | **não há** — o mapa vai sem `ordemLiberacao` |
+| turnos | manhã, tarde | manhã, tarde, **noite** (`fds_meta.ordemNoite`) |
+| ajuda / duplicidade / troca | conferência completa | **não existem**; quem está em dois hospitais só está |
+| numérica | rodapé × numérica | posições × **Pega Plantão** do sábado (P5–P12 exatos; P1–P4 é bloco que só a foto ordena) |
+| sala sem nome | "?" | `''` — a lib decide ("?"; na **manhã de sábado**, o posto da grade) |
 
-**Lote** (um só, `.tmp/escala-lote/<sábado>-fds/lote.json`; o cabeçalho do script documenta o
-formato): `dias` com `grade` (3 faixas × unimed/hro/ret1/ret2), `posicoes` (Pn→nome),
-`escalacao` (Pn por turno, na ordem da lista numerada) e `ordemDoc` (a linha "1º→último a ser
-liberado" **como está no documento**, em tokens Pn); `mapas` com os casos de cada hospital/dia.
-O que é seu ao transcrever a TABELA:
+Tabela: `grade` (3 faixas × unimed/hro/ret1/ret2), `posicoes` (Pn→nome, só o sábado é rotulado),
+`escalacao` (Pn por turno, na ordem da lista numerada), `ordemDoc` = a linha "1º→último a ser
+LIBERADO" **como está no documento** (a inversão é do script, uma vez; linha ausente = `[]` →
+sugestão pela escalação, marcada "sugerida"; **noite sempre `[]`** — grade 19-07 + sáb P11,P8,P7 ·
+dom P11,P6,P5). A retaguarda que a linha da tarde omite (P1, P2) entra no fim do rodapé pelo script
+(`completarRodapeFds`, imprime "acrescentado ao fim") — se o dono mandar diferente, é ele quem
+decide. **Domingo herda as posições do sábado; a COR diz a troca pessoal** (nome novo na cor de um
+Pn → só essa posição em `posicoes` do domingo); o bloco "8º X 7º Y · EMERGENCIA: 11º Z · P1 P2 P3
+P4" sem linha de liberação → `escalacao: ['P8','P7','P11']` nos dois turnos, `ordemDoc` vazio.
+`PLANTÃO MATERNO` (MARTA, ELISETE) são funcionárias → `ignorados`. Divergência com o Pega Plantão
+em P1–P4 é troca pessoal, não erro — o documento manda; "G. Staub" ≠ "STAUB" no casador é ruído.
 
-- **A ordem vai na direção do documento; a inversão é do script.** "P4, P3, P12, … P2, P1" entra
-  assim. `rodapeDeOrdemDoc` inverte UMA vez — quem inverte à mão publica a fila ao contrário
-  (foi o defeito de 24/08 no feriado). Linha vazia = sugestão pela escalação (postos → numerados
-  → retaguarda), marcada "sugerida", igual à tela. **A noite nunca vem no documento**: deixe
-  `noturno: []` e o script monta grade 19-07 + `FDS_NOITE_NUMERADOS` (sáb P11,P8,P7 · dom
-  P11,P6,P5 — ordem ditada pelo dono em 16/08).
-- **A retaguarda que a linha da tarde omite entra no fim do rodapé** (sai primeiro). A linha
-  "P11, P10, P9, P5, P6, P4, P3" da tarde de sábado vem assim quase toda semana e omite P1 e P2
-  como implícitos — eles pegam o plantão 19-07 e descansam antes. Ordem do dono em 15/08
-  (migration `20260815223000`) e de novo em 29/08. O script faz isso sozinho
-  (`completarRodapeFds`) e imprime "acrescentado ao fim"; a tela NÃO faz (05/09 saiu sem os
-  dois) — se o dono mandar diferente, é ele quem decide, não a lib.
-- **Domingo herda as posições do sábado e a cor diz a troca.** Só o sábado tem a grade rotulada
-  (P1 DANIELA…); no domingo cada nome tem a COR da sua posição. Nome novo numa cor = troca
-  pessoal daquele Pn (12/09: KLISMAN roxo = P3 do LEANDRO) → escreva só a posição trocada em
-  `posicoes` do domingo, o resto herda. O bloco do domingo costuma ser "8º X 7º Y ·
-  EMERGENCIA: 11º Z · P1 P2 P3 P4", sem linha de liberação → `escalacao: [P8, P7, P11]` nos
-  dois turnos e `ordemDoc` vazio (a tela publica assim desde 22/08, marcado "sugerida").
-- **`PLANTÃO MATERNO` são funcionárias, nunca posição** (MARTA, ELISETE — têm escala
-  própria); vai em `ignorados`, só para o relatório. O "11º GIOVANA" ali é a mesma P11 da lista.
-- **Divergência com o Pega Plantão em P1–P4 não é erro** — em 12/09 ele tinha KLISMAN no
-  bloco e o documento tinha LEANDRO no sábado (troca pessoal; KLISMAN voltou ao P3 no domingo).
-  O documento manda; a frase do script é para você conferir a foto de novo, e dizer no
-  relatório o que viu. "G. Staub" ≠ "STAUB" no casador é ruído, não divergência.
-
-O que é seu ao transcrever os MAPAS:
-
-- **Carimbe `turno` por linha com a FAIXA do documento** (MATUTINO/VESPERTINO). As linhas "AS"
-  do HRO não têm hora e, sem a faixa, caem na manhã — em 12/09 três cirurgias da tarde foram
-  parar na manhã no primeiro ensaio, coladas ao "//" errado. A hora vence a faixa quando existe.
-- **Célula vazia é `""` (não `"?"`)** — a lib é quem decide entre "?" e a sugestão do posto na
-  manhã de sábado; `semAnestesista: true` só para "?" explícito no documento.
-- O resto é igual ao dia útil: PARTICULAR com `pacienteNome`, iniciais por regra, "//" herda,
-  cor amarela = a pessoa em dois locais de propósito (VICENTE no C.O e nos Exames). A tarde do
-  fim de semana costuma chegar SEM anestesista nos dois hospitais — publique "?" e a fila única
-  distribui; não invente dono.
-- **Acréscimo do dono por texto** ("artrodese toracolombar sábado 13h, particular, Penteado"):
-  é um caso a mais no mapa do hospital onde o cirurgião opera (conferir no banco:
-  `cirurgiao ilike '%penteado%'` → HRO, Sala 3). Sem nome de paciente o gatilho **não abre a
-  cobrança** — avise; as iniciais/nome informadas depois pelo app (`UPDATE OF paciente_iniciais`
-  dispara o mesmo gatilho) abrem.
-
-Ensaio, publicação e relatório como no dia útil (`publicar-fds <lote> --ensaio`, depois sem).
-Bloqueia: ordem vazia de manhã/tarde, Pn sem dono, nome ambíguo, campo que o banco recusa,
-turno já publicado sem `--republicar`. Avisa: Pega Plantão, sala sem nome, posto sugerido,
-encolhimento. No relatório, as três filas por dia (com quem foi acrescentado e o que é
-"sugerida"), os casos por hospital/turno, os particulares que abriram cobrança e o que ficou
-sem — e a troca de P1–P4 que a foto mostrou.
-
-## Como ler o recado do dono que vem junto das fotos
-
-O dono manda, no estilo do WhatsApp do grupo, o que a foto não diz. Exemplo real (08/09, para
-a manhã de 09/09):
-
-> Como ajuda + ordem de liberação: 1º Beta Anest – Uni · 2º Joao Moreira – Simone · 3º Garim
-> Anest – Iosc. Trocas: Rafael Anest (consultório) na posição do Diego Anest no Iosc;
-> Nathália Anest Fornari (consultório) na posição da Fernanda Anest no Iosc.
-
-- **"Como ajuda … 1º X – Local"**: X é ajuda de outro hospital no local dito (Beta = ROBERTA na
-  Unimed; João Moreira = JOAO RICARDO na Simone do HRO; Garim no IOSC do HRO). Entra em
-  `ajudaExterna` do hospital certo e o caso dele ganha `cor: "azul"`. A numeração é a ordem em
-  que SAEM; na fila a ÚLTIMA ajuda do array sai primeiro, então quem tem o número menor vai
-  DEPOIS no array (2º João, 3º Garim → `["GARIM","JOAO RICARDO"]`).
-  ⚠️ **A ajuda numerada PODE estar no rodapé do próprio hospital** (ALINE, 11/09: 17ª e última
-  da Unimed e 2ª na ordem de saída). Isso é legítimo — transcreva os dois: o rodapé como está na
-  foto E o nome na `ajudaExterna`. Até 11/09 o app ignorava a numeração nesse caso, porque quem
-  fecha o rodapé virava "plantão do contraturno" e saía da fila antes do sort; corrigido em
-  `colunaLiberacao.js` (ver `.claude/rules/escala-liberacoes.md`). Se a ordem publicada sair
-  diferente do recado, é defeito de código — não conserte mexendo no lote.
-  ⚠️ **Numerou = `ajudaOrdemInformada: true` no hospital, dentro do lote** (dono 09/09). Sem
-  essa marca a fila ordena a cauda pelo rodapé do hospital de ORIGEM (regra de 27/08) e passa
-  por cima da numeração: em 10/09 o dono pediu "3º Rafael, 4º Alexandre" e a Unimed liberou o
-  Alexandre primeiro, porque ele está em 11º no rodapé do HRO e o Rafael veio do consultório,
-  sem origem. Publicação sem numeração NÃO leva a marca — a lista que a Vision monta sai na
-  ordem da imagem e não é ordem de ninguém.
-- **"Trocas: A (consultório) na posição do B no Iosc"**: a escala já saiu com A no IOSC e B não
-  está em escala nenhuma (consultório). Não é duplicidade: é REGISTRO de troca na linha de A,
-  `decisoes: { "A": { "tipo": "troca", "parceiro": "B", "apenasRegistro": true, "local":
-  "Consultório" } }` — badge Troca e "Trocado com B (Consultório)" na fila, nada se move. A
-  numérica vai apontar exatamente B faltando e A sobrando: é a confirmação, não um erro.
-- ⚠️ **Troca do recado é SEMPRE `apenasRegistro: true`** — inclusive quando os DOIS estão nesta
-  escala ("Troca particular: Joao H. e Klisman", 09/09). O que o dono manda já aconteceu; a foto
-  já saiu certa e o que falta é só o rastro. Sem o campo, a decisão vira DECLARAÇÃO PENDENTE:
-  o badge nasce outline em vez do sólido de sempre (`LiberacoesView.jsx:1950`) e a convergência
-  da próxima importação do turno EXECUTA um swap que ninguém pediu — desfazendo a troca real
-  (`escalaPublicacaoDecisoes.js`: "`paresDeclarados` ignora registro de propósito"). Publicada
-  sem ele, o conserto é acrescentá-lo no jsonb pela `rpc_escala_patch_liberacao`, sem republicar.
-  Não perguntar ao dono entre "registro" e "executar": desde a reforma de 07/08 as 40 trocas em
-  produção são registro, e o modo que executa é do TrocaSheet, com um toque na fila.
-- **"X na equipe da Unimed até as 19h" / "X no HRO até as 13h"** (dono 17/09): X foi TROCADO de
-  hospital pelo turno inteiro — sai da escala original e **fica como se fosse da equipe daquele
-  hospital**. "Até as 13h"/"até as 19h" é só o fim do turno (manhã/tarde), **não é horário de
-  saída**: nada de `turnoProprio`, nada de `ajudaExterna`/`cor: "azul"`, nenhuma decisão de troca
-  (não há parceiro). Transcreva o rodapé como está na foto e siga; a numérica vai apontá-lo "a
-  mais" aqui e "faltando" lá — é a confirmação, não um erro. Não perguntar ao dono (17/09 ele
-  respondeu "aprenda para as próximas" a exatamente esta pergunta).
-- Apelido do WhatsApp → apelido do dicionário: Beta = ROBERTA · Joao Moreira = JOAO RICARDO ·
-  Garim = GARIM · Nathália Fornari = NATHALIA · **Dani Resi = DANIELA (Reis, não "residente")** ·
-  Rafael = PELISSARO (mesmo cadastro; a fila mostra o apelido canônico, não o que o dono
-  escreveu). Na dúvida, o dicionário (`escala_anestesista_alias`) decide; nunca chute.
+Mapas: `m.vesp()` ao cruzar o título VESPERTINO (as linhas "AS" só têm turno pela faixa; a hora
+vence quando existe); célula vazia é `''`, `?` só quando escrito; a tarde costuma vir sem
+anestesista nos dois hospitais — publique vazio, a fila única distribui. Acréscimo do dono por
+texto ("artrodese toracolombar sábado 13h, particular, Penteado") é um caso a mais no hospital
+onde o cirurgião opera (`cirurgiao ilike '%penteado%'` no banco → HRO, Sala 3); sem nome de
+paciente a cobrança não abre — avise. Bloqueia: ordem vazia de manhã/tarde, Pn sem dono, nome
+ambíguo, campo recusado, turno já publicado. Relatório: as três filas por dia (quem foi
+acrescentado, o que é "sugerida"), casos por hospital/turno, particulares com e sem cobrança, a
+troca de P1–P4 que a foto mostrou.
 
 ## Limites
 
-Nunca publique sem ter relido a foto contra o JSON; nunca deixe nome completo de paciente fora
-do caso PARTICULAR; a pasta `.tmp/escala-lote/` não entra em commit; nenhum deploy ou migration
-faz parte disto; **feriado** (lista simples, `ordensDocumentoFeriado`) ainda não tem comando — o script recusa a data e a publicação é pela tela. **Não chame a edge de leitura** — ver o bloco no topo; se algum dia precisar
-dela (foto ilegível que você não consegue transcrever), avise o dono antes, com o custo, e
-saiba que o `ler` corta aos ~66s desde 11/09 **mesmo quando a edge termina e cobra**: conferir
-`escala_leitura_log` antes de repetir, porque repetir paga de novo pela mesma leitura.
+Nunca publicar sem reler a foto contra o ensaio; nome completo de paciente só em particular;
+`.tmp/escala-lote/` não entra em commit; nenhum deploy ou migration faz parte disto; **feriado**
+(lista simples, `ordensDocumentoFeriado`) não tem comando — o script recusa a data e a publicação é
+pela tela; **nunca a edge de leitura** — foto ilegível é pergunta ao dono, com o custo.

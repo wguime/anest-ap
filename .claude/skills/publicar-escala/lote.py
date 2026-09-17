@@ -2,7 +2,8 @@
 Helpers do gerar.py da skill /publicar-escala — o gerar.py de cada turno é SÓ dados.
 
     import sys; sys.path.insert(0, '.claude/skills/publicar-escala')
-    from lote import montar, salvar
+    from lote import hospital, salvar            # dia útil (gerar-template.py)
+    from lote import Mapa, salvar_fds            # fim de semana (gerar-fds-template.py)
 
 `montar(linhas)` recebe tuplas (sala, hora, paciente, idade, procedimento, cirurgiao, anestesista,
 convenio[, cor[, tempo[, cont]]]) e devolve os casos na forma que `publicar` espera: `ordem` reinicia
@@ -82,3 +83,55 @@ def salvar(pasta, unimed, hro, materno, lote):
                 print(' ', h['hospital'], '|', c['sala'], c['hora'], '|', c['pacienteIniciais'], c.get('pacienteNome', ''),
                       '|', c['convenio'], '|', c['anestesista'], c['cor'],
                       'CONT' if c['isContinuacao'] else '', 'SEM' if c['semAnestesista'] else '')
+
+
+# ── Fim de semana ─────────────────────────────────────────────────────────────
+class Mapa:
+    """Mapa de UM hospital num dia do FDS. As linhas levam a FAIXA do documento (`turno`): a
+    linha "AS" não tem hora e só a faixa diz de que turno ela é — `m.vesp()` ao cruzar o título
+    VESPERTINO. Célula de anestesista vazia fica `''` (a lib decide: "?" ou o posto na manhã de
+    sábado); `semAnestesista` só para "?" explícito.
+
+        m = Mapa('hro', '2026-09-12')
+        m.add('Sala 1', '07:00', 'Nome', '52', 'PROCEDIMENTO', 'Cirurgiao', 'JOAO HENRIQUE', 'PART')
+        m.vesp(); m.add('Sala 4', '13:00', 'Nome', '54', 'PROCEDIMENTO', 'Cirurgiao', '', 'SUS')
+    """
+
+    def __init__(self, hospital, data, data_detectada=None):
+        self.hospital, self.data = hospital, data
+        self.data_detectada = data if data_detectada is None else data_detectada
+        self.faixa = 'matutino'
+        self.casos = []
+
+    def mat(self):
+        self.faixa = 'matutino'
+
+    def vesp(self):
+        self.faixa = 'vespertino'
+
+    def add(self, sala, hora, paciente, idade, proc, cir, anest, conv, cor='', tempo='', bloco='normal', cont=False):
+        c = caso(sala, 0, hora, paciente, idade, proc, cir, anest, conv, cor, tempo, cont)
+        c['anestesista'] = anest            # '' fica '' — a lib decide
+        c['semAnestesista'] = anest == '?'
+        c['bloco'] = bloco
+        c['turno'] = self.faixa
+        self.casos.append(c)
+
+    def payload(self):
+        por_sala = {}
+        for c in self.casos:
+            c['ordem'] = por_sala.get(c['sala'], 0)
+            por_sala[c['sala']] = c['ordem'] + 1
+        return {'hospital': self.hospital, 'data': self.data, 'dataDetectada': self.data_detectada,
+                'casos': self.casos, 'posicoesAssistenciais': []}
+
+
+def salvar_fds(pasta, lote):
+    with open(os.path.join(pasta, 'lote.json'), 'w', encoding='utf-8') as f:
+        json.dump(lote, f, ensure_ascii=False, indent=1)
+    for m in lote['mapas']:
+        print(f"\n== {m['hospital']} {m['data']}: {len(m['casos'])} casos")
+        for c in m['casos']:
+            print(f"  {c['turno'][:4]} | {c['sala'][:26]:26} | {c['hora']:5} | {c['procedimento'][:40]:40} | "
+                  f"{c['anestesista']:14} | {c['convenio'][:12]:12} | {c['pacienteIniciais']:10} | {c.get('pacienteNome', '')}"
+                  f"{' ' + c['cor'] if c['cor'] else ''}")
