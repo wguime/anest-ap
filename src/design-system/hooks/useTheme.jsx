@@ -247,11 +247,62 @@ function getInitialTheme() {
   return getSystemPreference();
 }
 
+/**
+ * Cor da MOLDURA do sistema (barra de status/endereço no Android e no Safari 15+)
+ * por tema = o fundo da página que o tripleto `--background` de anest-theme.css
+ * renderiza (light 136 100% 97% → #F0FFF4; dark 157 19% 8% → #111815, o nominal
+ * #111916 arredondado pelo browser). O iPhone em PWA (`black-translucent`) nunca
+ * mostrou moldura; o Android mostrava #004225 fixo por cima de uma página clara —
+ * era uma das "tonalidades diferentes" entre aparelhos (16/09/2026).
+ * `src/__tests__/styles/anestTheme.test.js` confere estes hex contra o CSS.
+ */
+export const THEME_COLOR = Object.freeze({
+  [THEMES.LIGHT]: '#F0FFF4',
+  [THEMES.DARK]: '#111815',
+});
+
+/** `only light` = opt-out do escuro forçado (Chrome Android / Samsung Internet)
+ *  enquanto o app está claro; `dark` avisa que a página já é escura. */
+const META_COLOR_SCHEME = Object.freeze({
+  [THEMES.LIGHT]: 'only light',
+  [THEMES.DARK]: 'dark',
+});
+
+function setMeta(name, content) {
+  let meta = document.head.querySelector(`meta[name="${name}"]`);
+  if (!meta) {
+    meta = document.createElement('meta');
+    meta.setAttribute('name', name);
+    document.head.appendChild(meta);
+  }
+  if (meta.getAttribute('content') !== content) meta.setAttribute('content', content);
+}
+
+/**
+ * Sincroniza a moldura do sistema com o tema em vigor. Uma página pode "segurar"
+ * outra cor enquanto está montada (LoginPage: verde institucional) gravando-a em
+ * `document.documentElement.dataset.themeColorHold` — o tema não a sobrescreve.
+ */
+export function syncThemeMeta(theme) {
+  if (typeof document === 'undefined') return;
+  const resolved = theme === THEMES.DARK ? THEMES.DARK : THEMES.LIGHT;
+  const hold = document.documentElement.dataset.themeColorHold;
+  setMeta('theme-color', hold || THEME_COLOR[resolved]);
+  setMeta('color-scheme', META_COLOR_SCHEME[resolved]);
+}
+
+/** Tema em vigor lido do DOM (para quem não está dentro do ThemeProvider). */
+export function currentThemeFromDocument() {
+  if (typeof document === 'undefined') return THEMES.LIGHT;
+  return document.documentElement.classList.contains(THEMES.DARK) ? THEMES.DARK : THEMES.LIGHT;
+}
+
 function applyThemeToDocument(theme) {
   if (typeof document !== 'undefined') {
     document.documentElement.setAttribute('data-theme', theme);
     document.documentElement.classList.remove('light', 'dark');
     document.documentElement.classList.add(theme);
+    syncThemeMeta(theme);
   }
 }
 

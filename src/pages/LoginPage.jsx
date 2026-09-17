@@ -5,6 +5,7 @@
  */
 import { useState, useEffect, useId } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent, AnimatedBackground, useToast } from '@/design-system';
+import { syncThemeMeta, currentThemeFromDocument } from '@/design-system/hooks/useTheme';
 import { ForgotPasswordModal } from '../components/ForgotPasswordModal';
 import { PrivacyPolicyModal } from '../components/PrivacyPolicyModal';
 import { useUser } from '../contexts/UserContext';
@@ -38,12 +39,18 @@ export default function LoginPage() {
   // e do AnimatedBackground gradient start) enquanto LoginPage está montada.
   // Garante que qualquer área exposta pelo viewport iOS (safe area, overscroll)
   // mostre o verde institucional. Restaura no unmount.
+  // A moldura do sistema (theme-color) acompanha: verde enquanto o login está na
+  // tela, e de volta ao fundo do tema no unmount (useTheme sincroniza o resto).
   useEffect(() => {
     const body = document.body;
     const prev = body.style.backgroundColor;
     body.style.backgroundColor = '#006837';
+    document.documentElement.dataset.themeColorHold = '#006837';
+    syncThemeMeta(currentThemeFromDocument());
     return () => {
       body.style.backgroundColor = prev;
+      delete document.documentElement.dataset.themeColorHold;
+      syncThemeMeta(currentThemeFromDocument());
     };
   }, []);
 

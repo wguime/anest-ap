@@ -60,11 +60,11 @@ function BottomNav({ items = [], onItemClick, className, ...props }) {
         "faixa:pt-[max(0.625rem,env(safe-area-inset-top,0.625rem))] faixa:px-1",
         "faixa:pb-[max(0.625rem,env(safe-area-inset-bottom,0.625rem))]",
         "faixa:pl-[max(0.25rem,env(safe-area-inset-left,0.25rem))]",
-        // Liquid Glass (iOS 26 inspired). O blur mora no CSS (`.bottom-nav-glass`,
-        // anest-theme.css) e NÃO em utilitário Tailwind: no iOS o backdrop-filter
-        // num elemento `position: fixed` faz a barra parecer escorregar com a
-        // página, e lá o blur é desligado por @supports — utilitário Tailwind
-        // vem depois no cascade e venceria o desligamento.
+        // Fundo por token, quase opaco e SEM blur em toda plataforma (16/09/2026;
+        // `.bottom-nav-glass` em anest-theme.css). Nada de `backdrop-blur-*` aqui:
+        // no iOS o backdrop-filter num `position: fixed` fazia a barra escorregar
+        // com a página, e o blur que sobrava no Android/desktop mudava o tom da
+        // barra conforme o conteúdo por baixo — era a diferença entre aparelhos.
         "bottom-nav-glass",
         // border-border é o token de separador p/ navbars; a borda branca + o
         // realce inset branco liam como um filete claro sobre o fundo verde.

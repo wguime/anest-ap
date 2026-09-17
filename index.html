@@ -25,11 +25,17 @@
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json" />
 
-    <!-- Color scheme: must come before theme-color for Android Chrome -->
-    <meta name="color-scheme" content="light dark" />
+    <!-- Esquema de cor: o tema é por classe (.dark), não por prefers-color-scheme.
+         "only light" é o opt-out do escuro forçado (Chrome Android Auto Dark,
+         Samsung Internet Force Dark). useTheme.jsx troca para "dark" quando o
+         tema escuro entra. Vem antes do theme-color (exigência do Chrome Android). -->
+    <meta name="color-scheme" content="only light" />
 
-    <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#004225" />
+    <!-- PWA Meta Tags. theme-color = FUNDO da página do tema ativo (aqui o valor da
+         primeira pintura, tema claro); useTheme.jsx mantém sincronizado e a LoginPage
+         pinta #006837 enquanto está montada. Antes era #004225 fixo e o Android
+         mostrava uma moldura verde-escura que o iPhone (black-translucent) nunca teve. -->
+    <meta name="theme-color" content="#F0FFF4" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="ANEST" />
