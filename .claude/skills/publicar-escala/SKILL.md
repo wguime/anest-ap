@@ -48,6 +48,57 @@ Script: `scripts/escala-publicar-turno.mjs` — use o comando **`publicar`**. O 
 fica como último recurso (foto ilegível, volume que você não consegue transcrever com
 segurança); usá-lo é uma decisão a comunicar ao dono, com o custo, não o caminho normal.
 
+## ⏱️ Ritmo: do pedido ao PUBLICADO em ≤ 4 min (dono 17/09)
+
+*"Demorou em torno de 10 min para concluir, deve ser mais ágil."* Medido em 17/09: o script gasta
+~5 s na conferência e ~15 s com a RPC. Os 10 min foram **pesquisa** — reler o gerar.py do dia
+anterior, consultar o dicionário de apelidos, conferir o banco antes do ensaio, rodar a numérica à
+parte, ler código do app para lembrar convenção, perguntar ao dono o que a ficha responde. Nada
+disso é passo. O roteiro é de **quatro chamadas de ferramenta** entre a foto e o PUBLICADO:
+
+1. `mkdir -p .tmp/escala-lote/<data>-<turno>` + `cp` das três fotos — um Bash.
+2. Escrever `gerar.py` a partir de **`gerar-template.py`** (nesta pasta): só as três tabelas,
+   rodapés, `decisoes` e `conferidos`; os helpers moram em **`lote.py`** (iniciais por regra,
+   `pacienteNome` só em particular, ordem por sala, resumo dos especiais) — um Write. Não ler o
+   gerar.py de outro dia: o template já carrega os exemplos de cada seção.
+3. `python3 gerar.py && node scripts/escala-publicar-turno.mjs publicar <lote> --ensaio` — um Bash.
+   Reler a foto contra o que o ensaio imprimiu (é o passo 4 abaixo, o único que não se pula).
+4. Sem bloqueio e sem aviso que aponte erro seu → `publicar` — um Bash. Relatório **curto**: por
+   hospital "N casos · rodapé N · ajuda […]", quem ficou com "?", o que o recado virou, avisos
+   que sobraram. Sem tabela longa.
+
+**Não fazer** (cada item custou minutos em 17/09):
+- Não consultar `escala_anestesista_alias`: o ensaio resolve todo nome (coluna `uid` /
+  `sem vínculo`) e **bloqueia** o ambíguo — nome desconhecido aparece ali, não numa query.
+- Não consultar o banco antes do ensaio (turno já publicado? quantos casos de manhã? formato do
+  jsonb?): o ensaio diz "já publicado", e o turno é carimbado pelo lote — no Materno, as linhas
+  com hora < 13:00 ficam fora da tarde sozinhas.
+- Não rodar `ordem-liberacao-numerica.mjs`: o ensaio já compara o rodapé com a numérica + férias.
+- Não ler `utils.js`/`escalaPublicacaoDecisoes.js` para lembrar convenção: a ficha abaixo
+  responde. Se não responder, a ficha ganha uma linha depois — a sessão não para para pesquisar.
+- Não perguntar ao dono o que "Como ler o recado" já decide.
+
+**Ficha de convenções** (o que 17/09 pesquisou; já está decidido):
+- **Sala = rótulo da foto**; quem canoniza é `normalizarCasosImportados`. Unimed: `C.O - CESAREA`,
+  `C.O - SALA 3`, `HEMODINAMICA`, `CENTRO CIRÚRGICO - SALA N` (`… SALA 10 ROBOTICA`), `EXAMES`,
+  `IMAGEM`, `ACCURATA`, `UMANITA`, `CLINICA CIRURGICA`. HRO: `Sala N` (Bloco A), `Bloco M - Sala N`
+  (o "//" **não** herda entre salas do Bloco M), `C.O` (vira Sala 7), `HEMO`, `EXAMES`, `IOSC` (as
+  três salas internas viram `IOSC`), `HO`, `MATERNO`, `CONSULT.`, `AMBULAT.`, `Centro de Coluna`,
+  `SIMONE`. Materno: `Sala N HC`.
+- **"//" abaixo de "?"** = descoberta também → escreva `"?"` (o "?" nunca vira base; um "//" ali
+  cairia no 1º nome da sala). **Materno da tarde sem nome nas primeiras linhas → `"?"` explícito**,
+  nunca `""`/`"//"` — herdariam o nome anotado mais abaixo pela base da sala.
+- Quem **fecha o rodapé sem caso** (plantão do contraturno / noite) → `conferidos`. SRPA vai em
+  `posicoesAssistenciais` e conta como ocupado.
+- **AMARELO** = a pessoa em dois locais de propósito → `cor: 'amarelo'` nos dois, sem decisão. Se um
+  dos locais é a linha `MATERNO` do HRO e há mapa HC, a duplicidade se responde pela **troca do
+  recado** ou por `{'tipo': 'intencional'}`. Célula de DATA amarela na planilha da Unimed é marca
+  da planilha, não cor de anestesista.
+- `turnoProprio` (Louise) é **automático** pela numérica. `RAFAEL` sai como `PELISSARO` na saída do
+  script — mesmo cadastro. FAS / SC / BRF / UNIMED FUNDACAO não são particular.
+- Nome no recado ≠ nome do rodapé (Joao Moreira = JOAO RICARDO, Dani Resi = DANIELA): lista em
+  "Como ler o recado"; o ensaio recusa o que não resolver.
+
 ## Passos
 
 1. **Data e turno.** Vêm da mensagem ("da tarde", "de amanhã"); sem isso, a data é hoje em
@@ -72,9 +123,11 @@ segurança); usá-lo é uma decisão a comunicar ao dono, com o custo, não o ca
      "ajudaExterna": [], "dataDetectada": "2026-09-11" }
    ```
 
-   Escreva por um script Python com a tabela em literal (foi assim que a Unimed de 34 casos saiu
-   em 11/09): `ordem` reinicia por sala, as iniciais saem do nome por regra, e o `pacienteNome`
-   entra só onde o convênio é PARTICULAR — errar isso à mão em 34 linhas é fácil, num laço não.
+   Escreva por um script Python com a tabela em literal — **`gerar-template.py` desta pasta,
+   com os helpers de `lote.py`** (foi assim que a Unimed de 34 casos saiu em 11/09): `ordem`
+   reinicia por sala, as iniciais saem do nome por regra, e o `pacienteNome` entra só onde o
+   convênio é PARTICULAR — errar isso à mão em 34 linhas é fácil, num laço não.
+
    **Não escreva sala canônica**: transcreva o rótulo como está na foto ("CENTRO CIRÚRGICO -
    SALA 1", "UMANITA", "C.O") — `normalizarCasosImportados` converte para "CC - Sala 1",
    "Umanitá", "Sala 7 - CO" e é ela que decide, não você.
@@ -120,7 +173,7 @@ segurança); usá-lo é uma decisão a comunicar ao dono, com o custo, não o ca
    |---|---|---|
    | **`ajudaExterna` no hospital errado** | **4 de 4** | a armadilha: a ajuda pertence ao hospital **onde a pessoa vai TRABALHAR**, e o nome está ESCRITO no outro. Azul no rodapé do HRO + caso azul na Unimed = ajuda **da Unimed**. Sempre reescrever os dois lados à mão. |
    | **PARTICULAR sem `pacienteNome`** | **5 de 8 no HRO**, 1 de 6 na Unimed | o HRO escreve nome e idade na mesma célula e é fácil levar só as iniciais. Sem o nome o gatilho não abre a cobrança, **em silêncio**. Varrer todo caso `convenio` PART/PARTICULAR. |
-   | **nome que o dicionário não resolve** | **4 de 4** | `GUILHERME M ELO` era o vício da edge; o seu é escrever o nome do WhatsApp em vez do apelido do dicionário. Resolver todo nome em `escala_anestesista_alias` antes do ensaio. |
+   | **nome que o dicionário não resolve** | **4 de 4** | `GUILHERME M ELO` era o vício da edge; o seu é escrever o nome do WhatsApp em vez do apelido do dicionário. Escreva o apelido do rodapé (lista em "Como ler o recado"); o **ensaio** resolve e bloqueia o que não achar — não consulte a tabela antes. |
    | **anestesista das seções de baixo** | 5 | onde a leitura automática mais falhava: nomes em **AZUL** (3×) e as seções **IMAGEM, C.O, Exames, SRPA, Umanitá** (2×), que ficam fora da grade principal e são fáceis de pular na transcrição. Varrer a foto de cima a baixo, não só a grade. |
    | **data do HRO** | 2 erradas + 1 ausente em 3 | o HRO traz a data do dia ANTERIOR no título, ou nenhuma — transcreva o que está lá e deixe o aviso aparecer. Unimed e Materno trazem a certa em cada linha — decidir por elas. |
    | **SRPA / posição assistencial** | 1 de 2 | uma linha solta entre as seções, sem hora — some com facilidade. Vai em `posicoesAssistenciais`, não em `casos`. |
@@ -276,6 +329,13 @@ a manhã de 09/09):
   sem ele, o conserto é acrescentá-lo no jsonb pela `rpc_escala_patch_liberacao`, sem republicar.
   Não perguntar ao dono entre "registro" e "executar": desde a reforma de 07/08 as 40 trocas em
   produção são registro, e o modo que executa é do TrocaSheet, com um toque na fila.
+- **"X na equipe da Unimed até as 19h" / "X no HRO até as 13h"** (dono 17/09): X foi TROCADO de
+  hospital pelo turno inteiro — sai da escala original e **fica como se fosse da equipe daquele
+  hospital**. "Até as 13h"/"até as 19h" é só o fim do turno (manhã/tarde), **não é horário de
+  saída**: nada de `turnoProprio`, nada de `ajudaExterna`/`cor: "azul"`, nenhuma decisão de troca
+  (não há parceiro). Transcreva o rodapé como está na foto e siga; a numérica vai apontá-lo "a
+  mais" aqui e "faltando" lá — é a confirmação, não um erro. Não perguntar ao dono (17/09 ele
+  respondeu "aprenda para as próximas" a exatamente esta pergunta).
 - Apelido do WhatsApp → apelido do dicionário: Beta = ROBERTA · Joao Moreira = JOAO RICARDO ·
   Garim = GARIM · Nathália Fornari = NATHALIA · **Dani Resi = DANIELA (Reis, não "residente")** ·
   Rafael = PELISSARO (mesmo cadastro; a fila mostra o apelido canônico, não o que o dono
