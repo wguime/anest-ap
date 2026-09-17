@@ -3,6 +3,36 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.18 (16/09/2026) — Turno em curso no cabeçalho (seletor só com escolha), card noturno nunca é ajuda, selos do caso quebram linha
+
+Dono (16/09, 20h35, com a noite no ar), três pedidos:
+- **"quero que o turno válido comece a aparecer aqui [subtítulo]… não quero mais que apareçam as opções
+  de turno para clicar, quero apenas que apareça o turno em curso. Ao adicionar uma nova escala ela deve
+  aparecer como opção… na virada de turno a escala anterior sai, exceto na transição do turno vespertino
+  para noturno"**. O subtítulo do cabeçalho passa a ser `Hoje · Quarta, 16/09 · Tarde` (o turno EXIBIDO;
+  no dia útil, das 19h em diante, "Noite" — a escala da tarde fica, é a exceção). O trilho de turno some
+  e volta SÓ quando a página oferece mais de um: o em curso + os SEGUINTES já publicados (`publicacaoTurnos`
+  da RPC ou caso carimbado no turno); às 13h a manhã sai; no FDS às 19h ficam "Tarde | Noite" (o documento
+  cobre o dia inteiro, e sáb/dom valem os três desde o calendário, sem esperar rede). Outra data (amanhã):
+  o que está publicado. "Minhas" só leva a turnos que a tela oferece (`localizarMeuPosto` recebe
+  `turnos`). `EscalaCirurgicaPage` (`turnosPublicados`/`turnoOpcoes`/`rotuloTurno`), `BarraControles`
+  (trilho oculto com uma opção, como o de data desde 16/08).
+- **"matheus é P3 hoje à noite, foi escalado numa sala e surgiu o badge como ajuda, e não há como retirar
+  a marcação"**. Matheus estava no rodapé da TARDE do HRO e ganhou a Artrodese das 19h30 na Unimed: na
+  fila da tarde ele é extra com origem derivada HRO (badge legítimo); às 19h o card P3 herdava a linha do
+  dia com `origemLabel` e mostrava "Ajuda (HRO)" — `isAjuda: false` da fusão só calava o badge escrito, e
+  o painel do card noturno não oferece "não é ajuda". `fundirLinhasNoturnas` zera `origemHospital`/
+  `origemLabel` e a view não desenha o badge derivado em card noturno.
+- **Foto de 14/09 19h01 (Minhas): o selo "Passa para noite" saía pela borda do card.** O grupo de selos
+  do canto direito era `shrink-0`; com "Iniciada" + "Passa para noite" ao lado de "Hemodinâmica V.A.P.
+  46a" não cabia. Agora quebra linha (`flex-wrap`, sem `shrink-0`): a ocorrência desce para a 2ª linha,
+  ainda no canto.
+- Testes: `escalaTurnoAutomatico` (reescrito para a regra nova: trilho só com escolha, subtítulo com o
+  turno, manhã sai às 13h, "Noite" às 20h no dia útil, "Tarde | Noite" no FDS), `escalaMinhasAbaVaiAoPosto`
+  (a aba não leva ao turno que saiu), `escalaBarraControles` (trilho oculto com uma opção),
+  `plantaoNoturno` (fusão zera a origem), `liberacoesFilaEspelhaCompleta1609` (Matheus: "Ajuda (HRO)" de
+  dia, nada à noite), `escalaCompletaQuadroDenso` (selos quebram).
+
 ## v5.12.17 (16/09/2026) — Fila espelha a Completa: marca de "desfazer liberação" cede à cirurgia aberta, emprestado mostra o procedimento, SRPA uma vez só
 
 Dono (16/09, 16h15, com a tarde no ar): "há anestesista (Karine) sem os procedimentos informados na aba

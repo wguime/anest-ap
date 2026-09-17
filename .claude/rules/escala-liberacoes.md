@@ -303,6 +303,25 @@ array (ela caía para o fim da fila; no slot assumido adicionava o nome do DONO 
 - **Casamento tolerante** em `nomeAjudaDe`: uid, `nomeOriginal` e nome exibido, além da chave.
 - FDS intacto: o badge derivado de extra já era só de dia útil (05/09).
 
+### Card noturno NUNCA é ajuda — nem a derivada (dono 16/09, caso Matheus)
+
+"matheus é P3 hoje à noite, foi escalado numa sala e surgiu o badge como ajuda, e não há como
+retirar a marcação de ajuda, matheus não é ajuda!!". Ele estava no rodapé da TARDE do HRO (7º)
+e ganhou a Artrodese das 19h30 na Unimed: na fila da tarde da Unimed é extra com origem derivada
+HRO — e ali "Ajuda (HRO)" é legítimo. Às 19h ele vira P3 e `fundirLinhasNoturnas` HOISTA a linha
+do dia (`{ ...base, ...selo }`): o `isAjuda: false` do selo só calava o badge escrito em
+`ajuda_externa`; `origemLabel`/`origemHospital` passavam e a view desenhava o derivado. E o
+painel do card noturno não oferece "não é ajuda" (é `!editor.noturno` de propósito) — não havia
+saída.
+
+Regra: quem está de plantão não veio de lugar nenhum. A fusão zera `origemHospital`/`origemLabel`
+no card noturno (lib, fonte única) e a view não desenha `badgeAjudaOutro` quando `noturno`
+(segunda trava). A linha do dia de quem NÃO entra no plantão continua com a origem. `ajudaFora`
+(nosso emprestado, "Ajuda Sala 7/HRO") não foi mexido — não foi relatado. Travas:
+`plantaoNoturno.test.js` ("quem está de plantão não veio de outro hospital") e
+`liberacoesFilaEspelhaCompleta1609.test.jsx` ("card noturno de quem estava no rodapé de outro
+hospital": às 15h tem o badge, às 20h não).
+
 ### Cirurgião uma vez, cirurgias abaixo — tempo por cirurgia e SOMA no total (dono 14/09, tarde)
 
 Escolhido em maquete (`.tmp/tempos-por-cirurgia-c.html`, 430px, dois temas). No card da

@@ -136,3 +136,32 @@ describe('data no subtítulo do cabeçalho', () => {
     expect(dataPorExtenso('xx-xx')).toBe('')
   })
 })
+
+// ── TRILHO DE TURNO SÓ COM ESCOLHA (dono 16/09) ─────────────────────────────
+// "não quero mais que apareçam as opções de turno para clicar, quero apenas que
+// apareça o turno em curso" — uma opção só não é escolha (mesma regra do botão
+// de data, 16/08): o trilho some e o turno mora no subtítulo do cabeçalho. A
+// PÁGINA decide quais turnos oferecer (o em curso + a escala nova publicada);
+// aqui a trava é que a barra só desenha o trilho quando há mais de um.
+describe('trilho de turno (dono 16/09)', () => {
+  it('com UMA opção o trilho de turno não existe — hospital e abas seguem', () => {
+    montar({ turnoOpcoes: [{ value: 'vespertino', label: 'Tarde' }], turno: 'vespertino' })
+    expect(screen.queryByRole('tab', { name: 'Tarde' })).toBeNull()
+    for (const nome of ['Unimed', 'HRO', 'Materno', 'Minhas', 'Completa', 'Liberações']) {
+      expect(screen.getByRole('tab', { name: nome })).toBeTruthy()
+    }
+  })
+
+  it('com DUAS (escala nova publicada) o trilho volta, com o exibido marcado', () => {
+    montar({ turnoOpcoes: [{ value: 'matutino', label: 'Manhã' }, { value: 'vespertino', label: 'Tarde' }], turno: 'matutino' })
+    expect(screen.getByRole('tab', { name: 'Manhã' }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tab', { name: 'Tarde' })).toBeTruthy()
+  })
+
+  it('sem escolha de data NEM de turno, a linha de cima não é desenhada (sem faixa vazia)', () => {
+    const { container } = montar({ turnoOpcoes: [{ value: 'vespertino', label: 'Tarde' }], turno: 'vespertino' })
+    // o primeiro filho da barra passa a ser o trilho de hospital
+    const primeiro = container.firstElementChild.firstElementChild
+    expect(primeiro.textContent).toContain('Unimed')
+  })
+})

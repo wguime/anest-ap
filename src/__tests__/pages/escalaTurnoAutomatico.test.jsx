@@ -10,6 +10,14 @@
  * (As viradas 19h/23h são da fase noturna, derivada do relógio dentro da view
  * — cobertas em plantaoNoturno.test.js/liberacoesFdsUnificada.test.jsx; a das
  * 7h é a virada do dia, já coberta pelo comportamento existente.)
+ *
+ * 16/09 — O SELETOR DE TURNO SÓ EXISTE COM ESCOLHA (dono): "não quero mais que
+ * apareçam as opções de turno para clicar, quero apenas que apareça o turno em
+ * curso. Ao adicionar uma nova escala ela deve aparecer como opção para clicar
+ * no turno… na virada de turno a escala anterior sai, exceto na transição do
+ * turno vespertino para noturno." O turno exibido passou ao SUBTÍTULO do
+ * cabeçalho ("Hoje · Quarta, 16/09 · Tarde"); o trilho volta só quando a tela
+ * oferece mais de um turno (em curso + seguinte publicado; tarde + noite).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, act } from '@testing-library/react'
@@ -62,9 +70,22 @@ beforeEach(() => {
 })
 afterEach(() => vi.useRealTimers())
 
-/** Turno selecionado, lido do próprio seletor (o subtítulo virou a data). */
+/** Turno selecionado no TRILHO (só existe quando há mais de um para escolher). */
 const turnoAtivo = () => ['Manhã', 'Tarde', 'Noite']
   .find((n) => screen.queryByRole('tab', { name: n })?.getAttribute('aria-selected') === 'true') || null
+/** Turno EXIBIDO, lido do subtítulo do cabeçalho ("Hoje · Sábado, 15/08 · Tarde"). */
+const turnoNoTitulo = () => (screen.getByText(/^(Hoje|Amanhã) · /).textContent.match(/· (Manhã|Tarde|Noite)$/) || [])[1] || null
+const trilhoDeTurno = () => ['Manhã', 'Tarde', 'Noite'].filter((n) => screen.queryByRole('tab', { name: n }))
+
+/** Escala de um hospital com casos carimbados nos turnos dados (= turnos publicados). */
+const escalaComTurnos = (hospital, turnos) => ({
+  id: `e-${hospital}`, hospital, status: 'publicada', data: hojeLocalISO(),
+  ordemLiberacao: { matutino: [], vespertino: [] }, ajudaExterna: {}, liberacoes: {}, linhaOverrides: {},
+  casos: turnos.map((t, i) => ({
+    id: `c-${hospital}-${t}-${i}`, sala: 'CC - Sala 1', turno: t, hora: t === 'matutino' ? '08:00' : '14:00',
+    anestesista: 'OUTRO', anestesistaUserId: 'uid-outro', procedimento: 'Hérnia', cirurgiao: 'Dr. B', pacienteIniciais: 'J.P.L.',
+  })),
+})
 
 const montarHoje = () => {
   const hoje = hojeLocalISO()
@@ -77,12 +98,80 @@ const montarHoje = () => {
 
 describe('turno acompanha o relógio (dono 15/08)', () => {
   it('às 13h a tela vira sozinha do matutino para o vespertino', async () => {
-    vi.setSystemTime(new Date('2026-08-15T12:59:00-03:00'))
+    vi.setSystemTime(new Date('2026-08-17T12:59:00-03:00')) // segunda
     montarHoje()
-    expect(turnoAtivo()).toBe('Manhã')
+    expect(turnoNoTitulo()).toBe('Manhã')
     // 12:59 → 13:01 — o tick do relógio (30s) dispara a virada, sem toque
     await act(async () => { vi.advanceTimersByTime(2 * 60_000) })
-    expect(turnoAtivo()).toBe('Tarde')
+    expect(turnoNoTitulo()).toBe('Tarde')
+  })
+
+  // ── 16/09: o trilho só existe com escolha ─────────────────────────────────
+  it('dia útil, SÓ a manhã publicada: nenhum trilho de turno; o subtítulo diz "Manhã"', () => {
+    vi.setSystemTime(new Date('2026-08-17T10:00:00-03:00'))
+    const hoje = hojeLocalISO()
+    estado.ctx = {
+      escalas: { unimed: escalaComTurnos('unimed', ['matutino']), hro: null, materno: null, fds: null },
+      p4Hospital: null, data: hoje, hoje, loading: false, ...acoes(),
+    }
+    render(<EscalaCirurgicaPage onNavigate={() => {}} goBack={() => {}} />, { wrapper: wrap })
+    expect(trilhoDeTurno()).toEqual([])
+    expect(turnoNoTitulo()).toBe('Manhã')
+  })
+
+  it('a escala da TARDE publicada durante a manhã vira opção: "Manhã | Tarde"; às 13h a manhã sai', async () => {
+    vi.setSystemTime(new Date('2026-08-17T12:59:00-03:00'))
+    const hoje = hojeLocalISO()
+    estado.ctx = {
+      escalas: { unimed: escalaComTurnos('unimed', ['matutino', 'vespertino']), hro: null, materno: null, fds: null },
+      p4Hospital: null, data: hoje, hoje, loading: false, ...acoes(),
+    }
+    render(<EscalaCirurgicaPage onNavigate={() => {}} goBack={() => {}} />, { wrapper: wrap })
+    expect(trilhoDeTurno()).toEqual(['Manhã', 'Tarde'])
+    expect(turnoAtivo()).toBe('Manhã')
+    expect(turnoNoTitulo()).toBe('Manhã')
+    // espiar a tarde de propósito: o subtítulo acompanha o exibido
+    fireEvent.click(screen.getByRole('tab', { name: 'Tarde' }))
+    expect(turnoNoTitulo()).toBe('Tarde')
+    // virada das 13h: a manhã SAI da tela — sobra a tarde, sem trilho
+    await act(async () => { vi.advanceTimersByTime(2 * 60_000) })
+    expect(trilhoDeTurno()).toEqual([])
+    expect(turnoNoTitulo()).toBe('Tarde')
+  })
+
+  it('dia útil às 20h: a escala da tarde FICA (exceção vespertino→noturno) e o subtítulo diz "Noite"', () => {
+    vi.setSystemTime(new Date('2026-08-17T20:00:00-03:00'))
+    const hoje = hojeLocalISO()
+    estado.ctx = {
+      escalas: { unimed: escalaComTurnos('unimed', ['matutino', 'vespertino']), hro: null, materno: null, fds: null },
+      p4Hospital: null, data: hoje, hoje, loading: false, ...acoes(),
+    }
+    render(<EscalaCirurgicaPage onNavigate={() => {}} goBack={() => {}} />, { wrapper: wrap })
+    expect(trilhoDeTurno()).toEqual([]) // nem manhã (saiu às 13h) nem noite (é fase da aba)
+    expect(turnoNoTitulo()).toBe('Noite')
+    // e as cirurgias da tarde seguem na tela
+    expect(screen.queryByText('Nenhum caso neste turno')).toBeNull()
+  })
+
+  it('FDS às 20h: "Tarde | Noite" — a tarde fica quando a noite entra, a manhã já saiu', () => {
+    vi.setSystemTime(new Date('2026-08-15T20:00:00-03:00')) // sábado
+    const hoje = hojeLocalISO()
+    estado.ctx = {
+      escalas: {
+        unimed: null, hro: null, materno: null,
+        fds: {
+          id: 'fds-1', hospital: 'fds', status: 'publicada', data: hoje,
+          ordemLiberacao: { matutino: ['A'], vespertino: ['B'] }, ajudaExterna: {},
+          liberacoes: {}, linhaOverrides: {}, casos: [],
+          fdsMeta: { grade: { '19-07': { unimed: 'JOAO HENRIQUE', hro: 'GUILHERME DIDOMENICO', ret1: 'MATHEUS', ret2: 'CRISTINA' } }, posicoes: {} },
+        },
+      },
+      p4Hospital: null, data: hoje, hoje, loading: false, ...acoes(),
+    }
+    render(<EscalaCirurgicaPage onNavigate={() => {}} goBack={() => {}} />, { wrapper: wrap })
+    expect(trilhoDeTurno()).toEqual(['Tarde', 'Noite'])
+    expect(turnoAtivo()).toBe('Noite')
+    expect(turnoNoTitulo()).toBe('Noite')
   })
 
   it('FDS: às 19h o turno vira NOTURNO (3 turnos no seletor: 7h/13h/19h)', async () => {
@@ -101,16 +190,20 @@ describe('turno acompanha o relógio (dono 15/08)', () => {
       p4Hospital: null, data: hoje, hoje, loading: false, ...acoes(),
     }
     render(<EscalaCirurgicaPage onNavigate={() => {}} goBack={() => {}} />, { wrapper: wrap })
-    // seletor tem os 3 turnos do fim de semana, com rótulos CURTOS (dono 16/08:
-    // Manhã/Tarde/Noite cabem ao lado do 'Hoje' a 375px)
+    // seletor tem a tarde (em curso) e a noite (publicada — o documento do FDS
+    // cobre o dia inteiro), com rótulos CURTOS (dono 16/08: Manhã/Tarde/Noite
+    // cabem ao lado do 'Hoje' a 375px). A manhã já saiu na virada das 13h (16/09).
     expect(screen.getByRole('tab', { name: 'Noite' })).toBeTruthy()
+    expect(screen.queryByRole('tab', { name: 'Manhã' })).toBeNull()
     // ⚠️ a comparação com o trilho de HOSPITAL saiu em 24/08: no fim de semana ele
     // não existe mais (tela única). O que este teste cobre é a VIRADA do turno —
     // a separação dos trilhos segue coberta no dia útil, logo abaixo.
     expect(turnoAtivo()).toBe('Tarde')
-    // 18:59 → 19:01: a virada das 19h leva a tela para o noturno sozinha
+    // 18:59 → 19:01: a virada das 19h leva a tela para o noturno sozinha — e a
+    // tarde FICA como opção (exceção vespertino→noturno, dono 16/09)
     await act(async () => { vi.advanceTimersByTime(2 * 60_000) })
     expect(turnoAtivo()).toBe('Noite')
+    expect(screen.getByRole('tab', { name: 'Tarde' })).toBeTruthy()
   })
 
   // ⚠️ ESTE TESTE JÁ MUDOU DE LADO DUAS VEZES, e o porquê fica aqui em vez de o
@@ -190,30 +283,44 @@ describe('turno acompanha o relógio (dono 15/08)', () => {
       p4Hospital: null, data: hoje, hoje, loading: true, ...acoes(),
     }
     render(<EscalaCirurgicaPage onNavigate={() => {}} goBack={() => {}} />, { wrapper: wrap })
-    expect(screen.getByRole('tab', { name: 'Manhã' })).toBeTruthy()
+    // 16/09: a manhã já SAIU (virada das 13h); ficam a tarde (exceção
+    // vespertino→noturno) e a noite — e isso vem do CALENDÁRIO, sem esperar rede
+    expect(screen.queryByRole('tab', { name: 'Manhã' })).toBeNull()
     expect(screen.getByRole('tab', { name: 'Tarde' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Noite' })).toBeTruthy()
     // e já abre no turno certo do relógio (20h = noite), sem trocar depois
     expect(turnoAtivo()).toBe('Noite')
   })
 
-  it('dia útil NÃO tem turno Noturno (é conceito do fim de semana)', () => {
+  it('dia útil NÃO tem turno Noturno no seletor (é conceito do fim de semana)', () => {
     vi.setSystemTime(new Date('2026-08-17T10:00:00-03:00')) // segunda
-    montarHoje()
+    const hoje = hojeLocalISO()
+    estado.ctx = {
+      escalas: { unimed: escalaComTurnos('unimed', ['matutino', 'vespertino']), hro: null, materno: null, fds: null },
+      p4Hospital: null, data: hoje, hoje, loading: false, ...acoes(),
+    }
+    render(<EscalaCirurgicaPage onNavigate={() => {}} goBack={() => {}} />, { wrapper: wrap })
     expect(screen.queryByRole('tab', { name: 'Noite' })).toBeNull()
     expect(screen.getByRole('tab', { name: 'Manhã' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Tarde' })).toBeTruthy()
   })
 
   it('escolha manual divergente NÃO é desfeita pelo relógio na mesma faixa', async () => {
-    vi.setSystemTime(new Date('2026-08-15T14:00:00-03:00')) // tarde
-    montarHoje()
-    expect(turnoAtivo()).toBe('Tarde')
-    // usuário consulta a manhã de propósito…
-    fireEvent.click(screen.getByRole('tab', { name: 'Manhã' }))
+    vi.setSystemTime(new Date('2026-08-17T11:00:00-03:00')) // manhã, tarde já publicada
+    const hoje = hojeLocalISO()
+    estado.ctx = {
+      escalas: { unimed: escalaComTurnos('unimed', ['matutino', 'vespertino']), hro: null, materno: null, fds: null },
+      p4Hospital: null, data: hoje, hoje, loading: false, ...acoes(),
+    }
+    render(<EscalaCirurgicaPage onNavigate={() => {}} goBack={() => {}} />, { wrapper: wrap })
     expect(turnoAtivo()).toBe('Manhã')
+    // usuário consulta a tarde de propósito…
+    fireEvent.click(screen.getByRole('tab', { name: 'Tarde' }))
+    expect(turnoAtivo()).toBe('Tarde')
     // …e os ticks seguintes não roubam a tela de volta
     await act(async () => { vi.advanceTimersByTime(5 * 60_000) })
-    expect(turnoAtivo()).toBe('Manhã')
+    expect(turnoAtivo()).toBe('Tarde')
+    expect(turnoNoTitulo()).toBe('Tarde')
   })
 })
 

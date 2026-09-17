@@ -1983,7 +1983,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           const badgeAjuda = !liberadoReal && ehAjudaVisivel(linha)
           const badgeTroca = trocaDe(linha)
           const badgeAssumida = linha.assumida && !badgeTroca
-          const badgeAjudaOutro = !liberadoReal && ajudaDeOutro(linha)
+          // card noturno nunca é ajuda (dono 16/09, caso Matheus) — a lib já
+          // zera a origem na fusão; o gate aqui é a segunda trava
+          const badgeAjudaOutro = !liberadoReal && !noturno && ajudaDeOutro(linha)
           // Os badges de PLANTÃO não somem ao liberar (dono 31/08): a posição
           // continua verdadeira — eles trocam de tinta junto com o card
           // (vermelho no liberado, verde em quem trabalha).

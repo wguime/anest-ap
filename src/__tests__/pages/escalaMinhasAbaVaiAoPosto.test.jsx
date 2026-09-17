@@ -72,7 +72,9 @@ const EU = { uid: 'uid-guilherme', role: 'anestesiologista', displayName: 'Guilh
 const marcado = (...nomes) => nomes
   .find((n) => screen.queryByRole('tab', { name: n })?.getAttribute('aria-selected') === 'true') || null
 const hospitalMarcado = () => marcado('Unimed', 'HRO', 'Materno')
-const turnoMarcado = () => marcado('Manhã', 'Tarde', 'Noite')
+// 16/09: o trilho de turno só existe com mais de um turno para escolher; o turno
+// EXIBIDO mora no subtítulo do cabeçalho ("Hoje · Quarta, 16/09 · Tarde")
+const turnoMarcado = () => (screen.getByText(/^(Hoje|Amanhã) · /).textContent.match(/· (Manhã|Tarde|Noite)$/) || [])[1] || null
 const abaMarcada = () => marcado('Minhas', 'Completa', 'Liberações')
 
 const escalaCom = (hospital, casos) => ({
@@ -141,11 +143,25 @@ describe('aba "Minhas" leva ao meu posto', () => {
     expect(hospitalMarcado()).toBe('HRO')
   })
 
-  it('sem nada no turno em curso, a aba leva ao outro turno em vez de deixar a tela vazia', async () => {
-    vi.setSystemTime(new Date('2026-09-09T14:00:00-03:00')) // tarde
-    montar({ escalas: { unimed: escalaCom('unimed', [meuCaso('matutino')]) } })
-    expect(turnoMarcado()).toBe('Manhã')
+  it('sem nada no turno em curso, a aba leva ao turno SEGUINTE já publicado em vez de deixar a tela vazia', async () => {
+    vi.setSystemTime(new Date('2026-09-09T10:00:00-03:00')) // manhã; a tarde já está publicada
+    montar({ escalas: { unimed: escalaCom('unimed', [casoDeOutro('matutino'), meuCaso('vespertino')]) } })
+    expect(turnoMarcado()).toBe('Tarde')
     expect(hospitalMarcado()).toBe('Unimed')
+    // e o trilho está lá, porque há dois turnos para escolher
+    expect(screen.getByRole('tab', { name: 'Tarde' }).getAttribute('aria-selected')).toBe('true')
+  })
+
+  // 16/09 (dono): "na virada de turno a escala anterior sai" — às 14h a manhã
+  // não é mais uma escolha, então a aba não leva para lá, mesmo que o meu caso
+  // seja de manhã. O que atravessa (passa para tarde) continua no quadro da
+  // tarde por outra regra (22/08).
+  it('depois da virada a escala da MANHÃ saiu: a aba não leva para ela', async () => {
+    vi.setSystemTime(new Date('2026-09-09T14:00:00-03:00')) // tarde
+    montar({ escalas: { unimed: escalaCom('unimed', [meuCaso('matutino'), casoDeOutro('vespertino')]) } })
+    expect(turnoMarcado()).toBe('Tarde')
+    expect(screen.queryByRole('tab', { name: 'Manhã' })).toBeNull()
+    expect(screen.getByText('Você não está escalado aqui')).toBeTruthy()
   })
 
   it('quem não está escalado em lugar nenhum não tem o cabeçalho mexido', async () => {

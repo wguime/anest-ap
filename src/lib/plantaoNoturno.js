@@ -271,6 +271,15 @@ export function fundirLinhasNoturnas(linhas, linhasNoite, opts = {}) {
       noturno: true,
       ...(opts.forcarEmSala === false ? {} : { teveCasos: true }),
       isAjuda: false,
+      // …e a ORIGEM DERIVADA vai junto (dono 16/09, caso Matheus: P3 da noite
+      // com "Ajuda (HRO)" porque estava no rodapé da tarde do HRO e ganhou uma
+      // sala aqui à noite). `isAjuda: false` só calava o badge escrito em
+      // ajuda_externa; o derivado (`origemLabel`, de quem é extra aqui e consta
+      // em rodapé de lá) passava — e não tinha como ser desfeito, porque o
+      // painel do card noturno não oferece "não é ajuda". Quem está de plantão
+      // não veio de lugar nenhum: a posição da noite é dele.
+      origemHospital: null,
+      origemLabel: null,
       // FDS (linhasNoturnasFds): cols Unimed/HRO da faixa 19-07 são FIXAS no
       // hospital — fora do "próximo a ser liberado". O equivalente de dia útil
       // é o SELO_SEM_PROXIMO (P1/P2), que no FDS não serve: o selo lá é o Pn

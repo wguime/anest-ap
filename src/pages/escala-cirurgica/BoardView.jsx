@@ -231,7 +231,12 @@ function CasoCardBase({ caso, destaque, salaLabel, onClick, agoraMin = null, mol
                 {procedimento}
               </span>
             )}
-            <span className="ml-auto flex shrink-0 items-center justify-end gap-1">
+            {/* QUEBRA EM VEZ DE VAZAR (dono 16/09, foto de 14/09 19h): "Iniciada" +
+                "Passa para noite" não cabem ao lado de "Hemodinâmica V.A.P. 46a" e o
+                grupo `shrink-0` saía pela borda do card. Com `flex-wrap` (e sem o
+                `shrink-0`) a ocorrência desce para uma 2ª linha, ainda encostada no
+                canto direito; o Badge do DS segue `whitespace-nowrap`. */}
+            <span className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1">
               {/* à ESQUERDA: o que a cirurgia É — urgência/emergência */}
               {tb && <Badge variant={tb.variant} badgeStyle={tb.style}>{tb.label}</Badge>}
               {/* o estado da cirurgia, sempre na mesma vertical */}

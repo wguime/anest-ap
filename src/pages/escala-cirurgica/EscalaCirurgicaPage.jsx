@@ -21,8 +21,9 @@ import LiberacoesView from './LiberacoesView'
 import ImportarEscalasPage from './ImportarEscalasPage'
 import ImportarEscalaFdsPage from './ImportarEscalaFdsPage'
 import TrocaSheet from './TrocaSheet'
-import { meuAliasDe, turnoAtual, dataPorExtenso, estadoTrocasDoHistorico, normNome, formatData, rodapeDoTurno, localizarSlotEscala, localizarMeuPosto, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca, espelhoTempoTotal, terminoEncadeado } from './utils'
-import { ehDataFilaUnica, ehFeriado, ehFimDeSemana, FDS_HOSPITAL, FDS_TURNO_CASOS, turnoFdsAtual } from '@/lib/escalaFds'
+import { meuAliasDe, turnoAtual, dataPorExtenso, estadoTrocasDoHistorico, normNome, formatData, rodapeDoTurno, localizarSlotEscala, localizarMeuPosto, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca, espelhoTempoTotal, terminoEncadeado, turnoDoCaso } from './utils'
+import { ehDataFilaUnica, ehFeriado, ehFimDeSemana, FDS_HOSPITAL, FDS_TURNO_CASOS, FDS_TURNOS, turnoFdsAtual } from '@/lib/escalaFds'
+import { faseLiberacoes } from '@/lib/plantaoNoturno'
 import { hospitalDaConta, podeEditarEscalaCirurgica, podePublicarEscalaCirurgica } from './gate'
 import { ehContaDeHospital } from '@/utils/userTypes'
 
@@ -170,6 +171,70 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     setTurno(t)
   }, [turnoDoRelogio])
 
+  // ── TURNOS QUE A TELA OFERECE (dono 16/09) ─────────────────────────────────
+  // "não quero mais que apareçam as opções de turno para clicar, quero apenas
+  // que apareça o turno em curso. Ao adicionar uma nova escala ela deve aparecer
+  // como opção para clicar no turno… na virada de turno a escala anterior sai,
+  // exceto na transição do turno vespertino para noturno."
+  //
+  // PUBLICADO = a escala do turno existe em algum hospital: carimbo da RPC em
+  // `publicacaoTurnos`, ou caso carimbado no turno (escala montada à mão, sem
+  // RPC). No fim de semana o documento cobre o dia inteiro e a noite herda a
+  // tarde — sáb/dom valem os três desde o CALENDÁRIO, sem esperar a linha 'fds'
+  // (mesma razão do cabeçalho que não oscila, 29/08).
+  const turnosPublicados = useMemo(() => {
+    const out = new Set()
+    for (const esc of Object.values(escalas)) {
+      if (!esc) continue
+      for (const t of ['matutino', 'vespertino']) if (esc.publicacaoTurnos?.[t]) out.add(t)
+      for (const c of esc.casos || []) out.add(turnoDoCaso(c))
+    }
+    if (fimDeSemana && (loading || escalas.fds?.status === 'publicada')) for (const t of FDS_TURNOS) out.add(t)
+    if (fimDeSemana && out.has('vespertino')) out.add('noturno')
+    return out
+  }, [escalas, fimDeSemana, loading])
+  // Hoje: o turno EM CURSO + os turnos SEGUINTES já publicados (a escala nova
+  // aparece como opção; a anterior sai na virada). Exceção vespertino→noturno:
+  // a tarde FICA quando a noite entra — as cirurgias da noite são as da tarde.
+  // No dia útil a noite não é turno do seletor (é a fase das 19h dentro da aba),
+  // então lá a tarde já fica sozinha até virar o dia. Outra data (amanhã): o que
+  // está publicado; nada publicado → a manhã, para a tela não ficar sem turno.
+  // `agoraMin` entra nas deps para a lista virar junto com o relógio.
+  const turnoOpcoes = useMemo(() => {
+    const todas = fimDeSemana ? TURNO_OPCOES_FDS : TURNO_OPCOES
+    if (data !== hoje) {
+      const pub = todas.filter((o) => turnosPublicados.has(o.value))
+      return pub.length ? pub : [todas[0]]
+    }
+    const emCurso = turnoDoRelogio()
+    const i = todas.findIndex((o) => o.value === emCurso)
+    const out = todas.filter((o, j) => j === i || (j > i && turnosPublicados.has(o.value)))
+    if (emCurso === 'noturno' && turnosPublicados.has('vespertino')) {
+      out.unshift(todas.find((o) => o.value === 'vespertino'))
+    }
+    return out
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- agoraMin: o relógio muda a lista (turnoDoRelogio lê new Date())
+  }, [fimDeSemana, data, hoje, turnoDoRelogio, turnosPublicados, agoraMin])
+  // Turno fora do que a tela oferece (virou o turno com escolha manual parada,
+  // mudou a data, a escala de amanhã só tem a tarde): cai no primeiro oferecido,
+  // que é o em curso.
+  useEffect(() => {
+    if (turnoOpcoes.some((o) => o.value === turno)) return
+    turnoManualRef.current = null
+    setTurno(turnoOpcoes[0].value)
+  }, [turnoOpcoes, turno])
+  // TURNO NO SUBTÍTULO (dono 16/09: "quero que o turno válido comece a aparecer
+  // aqui"). É o turno EXIBIDO — sem trilho, é o em curso. No dia útil, das 19h
+  // em diante a escala da tarde segue na tela e o rótulo diz "Noite": é o turno
+  // que está em curso (P1–P4 no topo da fila), e a tarde ficou de propósito.
+  const rotuloTurno = useMemo(() => {
+    const todas = fimDeSemana ? TURNO_OPCOES_FDS : TURNO_OPCOES
+    const noiteDiaUtil = !fimDeSemana && data === hoje && turno === 'vespertino' && !(modoFds && feriado)
+      && faseLiberacoes({ agoraMin, dataEscala: data, hojeIso: hoje, fds: modoFds }) !== 'dia'
+    if (noiteDiaUtil) return 'Noite'
+    return todas.find((o) => o.value === turno)?.label || ''
+  }, [fimDeSemana, data, hoje, turno, modoFds, feriado, agoraMin])
+
   // Quem sou eu na escala — o apelido casa a coluna do anestesista, o uid casa o
   // vínculo (e o residente, que acompanha por `residenteUserId`).
   const meuAlias = meuAliasDe(user)
@@ -186,20 +251,28 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   // outra o dia muda (assumi uma sala, virou o turno, alguém me passou um caso),
   // e uma varredura só no mount devolveria a tela vazia de novo.
   const irOndeEuEstou = useCallback(() => {
+    // só os turnos que a tela oferece (dono 16/09): a escala do turno que já
+    // virou saiu da tela — levar para lá seria levar a um turno que não existe
+    // mais no seletor; o turno seguinte já publicado continua valendo
+    const permitidos = turnoOpcoes.map((o) => o.value)
+    const relogio = turnoDoRelogio()
     const posto = localizarMeuPosto({
       escalas,
       hospitais: HOSPITAIS,
       eu: { uid: meuUid, alias: meuAlias },
-      turnoPreferido: turnoDoRelogio(),
+      turnoPreferido: permitidos.includes(relogio) ? relogio : permitidos[0],
+      turnos: permitidos,
     })
     if (!posto) return false
     setHospital(posto.hospital)
     // Passa pelo `escolherTurno` de propósito: se o meu posto é no OUTRO turno,
     // o relógio fica pausado nesta faixa — senão o efeito do minuto seguinte
     // devolveria o turno em curso e as cirurgias sumiriam sob o dedo.
-    escolherTurno(posto.turno)
+    // À noite do FDS as cirurgias são as da tarde: achar o posto na tarde não
+    // tira a tela da noite.
+    escolherTurno(turno === 'noturno' && posto.turno === 'vespertino' ? 'noturno' : posto.turno)
     return true
-  }, [escalas, meuUid, meuAlias, turnoDoRelogio, escolherTurno])
+  }, [escalas, meuUid, meuAlias, turnoDoRelogio, escolherTurno, turnoOpcoes, turno])
 
   // Abertura da tela: mesma varredura, porque a aba que abre É a Minhas (pedido
   // do dono 23/07 — abria fixo em Unimed e vinha em branco p/ quem estava no
@@ -466,7 +539,10 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
         // Subtítulo = DATA da escala (dono 16/08). Hospital e turno saíram
         // daqui: os botões logo abaixo já dizem, e a data não estava em lugar
         // nenhum depois que o botão "Hoje" deixou de aparecer sozinho.
-        subtitle={dataPorExtenso(data, hoje)}
+        // …e o TURNO exibido voltou ao subtítulo em 16/09 (dono: "quero que o
+        // turno válido comece a aparecer aqui"), porque o trilho de turno só
+        // existe quando há mais de um para escolher.
+        subtitle={[dataPorExtenso(data, hoje), rotuloTurno].filter(Boolean).join(' · ')}
         onBack={goBack}
         actions={
           canPublicar ? (
@@ -500,7 +576,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
             if (v === 'amanha') { setData(amanha); setTurno('matutino') } // manhã seguinte
             else setData(hoje)
           }}
-          turnoOpcoes={fimDeSemana ? TURNO_OPCOES_FDS : TURNO_OPCOES}
+          turnoOpcoes={turnoOpcoes}
           turno={turno}
           onEscolherTurno={escolherTurno}
           // AS ABAS VOLTARAM AO FIM DE SEMANA (dono 13/09: "quero que mostre a
