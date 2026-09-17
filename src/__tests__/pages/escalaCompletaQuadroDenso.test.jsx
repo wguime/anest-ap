@@ -344,3 +344,27 @@ describe('Completa — alinhamento de quem não tem horário', () => {
     }
   })
 })
+
+// ── SELOS QUEBRAM LINHA EM VEZ DE VAZAR (dono 16/09, foto de 14/09 19h01) ────
+// "Hemodinâmica V.A.P. 46a" + "Iniciada" + "Passa para noite" não cabem numa
+// linha a 375px, e o grupo de selos era `shrink-0`: a ocorrência saía pela borda
+// direita do card. Agora o grupo pode encolher e quebrar — a ocorrência desce
+// para a 2ª linha, ainda encostada no canto.
+describe('Completa — os selos do canto direito quebram linha em vez de vazar (dono 16/09)', () => {
+  const grupoDeSelos = (over) => {
+    const { container } = render(
+      <CasoCard caso={caso(over)} moldura="linha" onClick={() => {}} />, { wrapper: wrap },
+    )
+    const linha1 = container.querySelectorAll(':scope > button > div > span:last-child > span')[0]
+    return linha1.querySelector('span.ml-auto')
+  }
+
+  it('o grupo aceita quebra (flex-wrap) e pode encolher (sem shrink-0)', () => {
+    const box = grupoDeSelos({ sala: 'Hemodinâmica', pacienteIniciais: 'V.A.P.', idade: '46a', statusCirurgia: 'iniciada', statusExtra: 'passa_tarde' })
+    expect(box.className).toContain('flex-wrap')
+    expect(box.className).not.toContain('shrink-0')
+    // e os dois selos continuam lá, na ordem estado → ocorrência
+    expect(box.textContent).toContain('Iniciada')
+    expect(box.lastElementChild.textContent).toBe('Passa para noite')
+  })
+})

@@ -88,25 +88,36 @@ export default function BarraControles({
   // Uma opção só de data = apenas "Hoje", que não é escolha nenhuma: a linha
   // some e a data fica no subtítulo do cabeçalho.
   const temEscolhaDeData = opcoesData.length > 1
+  // Turno idem (dono 16/09): "não quero mais que apareçam as opções de turno
+  // para clicar, quero apenas que apareça o turno em curso". Uma opção só não é
+  // escolha — o turno em curso mora no subtítulo do cabeçalho, ao lado da data.
+  // O trilho volta SÓ quando a página oferece mais de um: escala nova publicada
+  // para o turno seguinte, ou a tarde que fica junto da noite (a página decide
+  // quais; aqui só se mostra o que ela mandou).
+  const temEscolhaDeTurno = (turnoOpcoes || []).length > 1
 
   return (
     <div className="space-y-2 deitado:flex deitado:items-center deitado:gap-2 deitado:space-y-0">
-      <div className={`flex items-stretch gap-2 ${cresce((temEscolhaDeData ? opcoesData.length : 0) + turnoOpcoes.length)}`}>
-        {temEscolhaDeData && (
-          <Trilho
-            className="shrink-0"
-            options={opcoesData}
-            value={modoData === 'outra' ? '' : modoData}
-            onChange={onEscolherData}
-          />
-        )}
-        <Trilho
-          className="min-w-0 flex-1"
-          options={turnoOpcoes}
-          value={turno}
-          onChange={onEscolherTurno}
-        />
-      </div>
+      {(temEscolhaDeData || temEscolhaDeTurno) && (
+        <div className={`flex items-stretch gap-2 ${cresce((temEscolhaDeData ? opcoesData.length : 0) + (temEscolhaDeTurno ? turnoOpcoes.length : 0))}`}>
+          {temEscolhaDeData && (
+            <Trilho
+              className="shrink-0"
+              options={opcoesData}
+              value={modoData === 'outra' ? '' : modoData}
+              onChange={onEscolherData}
+            />
+          )}
+          {temEscolhaDeTurno && (
+            <Trilho
+              className="min-w-0 flex-1"
+              options={turnoOpcoes}
+              value={turno}
+              onChange={onEscolherTurno}
+            />
+          )}
+        </div>
+      )}
 
       {/* Hospital SEMPRE visível (dono 16/08) e na mesma altura do turno.
           ⚠️ some na aba LIBERAÇÕES do fim de semana (dono 24/08, mantido em 13/09

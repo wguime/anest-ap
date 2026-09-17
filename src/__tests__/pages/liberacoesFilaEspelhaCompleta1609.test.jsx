@@ -15,7 +15,7 @@
  *    na sala. Cada informação aparece UMA vez: título do grupo; a linha da
  *    cirurgia só existe se acrescenta algo (hora); a sala igual ao título sai.
  */
-import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 import { ThemeProvider, ToastProvider } from '@/design-system'
@@ -27,6 +27,7 @@ const ROSTER = [
   { uid: 'uid-rom', nome: 'RÔMULO ROXO', apelidos: ['ROMULO'] },
   { uid: 'uid-joa', nome: 'JOÃO RICARDO MOREIRA', apelidos: ['JOAO RICARDO'] },
   { uid: 'uid-raq', nome: 'RAQUEL FELICIANI', apelidos: ['RAQUEL'] },
+  { uid: 'uid-mat', nome: 'MATHEUS CUNHA', apelidos: ['MATHEUS'] },
 ]
 const APELIDO_UID = Object.fromEntries(ROSTER.flatMap((r) => r.apelidos.map((a) => [a, r.uid])))
 
@@ -161,5 +162,49 @@ describe('SRPA e Consultório — cada informação uma vez só', () => {
     const t = textoDe('Raquel Feliciani')
     expect(vezes(t, 'Consultório')).toBe(1)
     expect(t).toMatch(/13:30/)
+  })
+})
+
+// ── CARD NOTURNO SEM "Ajuda (HRO)" (dono 16/09, 20h35, caso Matheus) ──────────
+// "matheus é P3 hoje a noite, foi escalado numa sala e surgiu o badge como
+// ajuda, e não há como retirar a marcação de ajuda, matheus não é ajuda!!".
+// Matheus estava no rodapé da TARDE do HRO (7º) e ganhou a Artrodese das 19h30
+// na Unimed: na fila da tarde da Unimed ele é extra com origem derivada HRO — e
+// aí o badge "Ajuda (HRO)" é legítimo. Às 19h ele vira P3 e o card noturno
+// herda a linha do dia: o badge tem de sumir, porque plantão não é ajuda.
+describe('card noturno de quem estava no rodapé de outro hospital (dono 16/09)', () => {
+  const artrodese = {
+    id: 'c-mat', sala: 'CC - Sala 3', ordem: 0, hora: '19:30', anestesista: 'MATHEUS', anestesistaUserId: 'uid-mat',
+    cirurgiao: 'CLEITON PIEKALA', procedimento: 'ARTRODESE DA COLUNA VERTEBRAL', turno: 'vespertino', statusCirurgia: 'agendada',
+  }
+  const daLouise = {
+    id: 'c-lou', sala: 'CC - Sala 7', ordem: 0, hora: '14:00', anestesista: 'LOUISE', anestesistaUserId: 'uid-lou',
+    cirurgiao: 'MAURICIO FABIANI', procedimento: 'MANGUITO', turno: 'vespertino', statusCirurgia: 'iniciada',
+  }
+  // o que a página cruza do HRO: Matheus no rodapé da tarde de lá (7º)
+  const rodapeHro = [{ nome: 'MATHEUS', uid: null, hospital: 'hro', hospitalLabel: 'HRO', rodapeIdx: 6 }]
+  const plantoes = [{ setor: 'P3', nome: 'MATHEUS CUNHA' }]
+  const cardComTexto = (t) => [...document.querySelectorAll('[data-linha]')].find((el) => el.textContent.includes(t))
+
+  afterEach(() => vi.setSystemTime(new Date('2026-09-16T15:00:00-03:00')))
+
+  it('DE DIA (15h) a linha extra dele diz de onde veio: "Ajuda (HRO)"', () => {
+    montar(escalaCom([daLouise, artrodese]), { presencaOutros: rodapeHro, plantoes })
+    const card = cardComTexto('Matheus Cunha')
+    expect(card).toBeTruthy()
+    expect(card.textContent).toContain('Ajuda (HRO)')
+  })
+
+  it('À NOITE (20h) o card P3 dele NÃO tem "Ajuda (HRO)" — e mantém a sala e o cirurgião', () => {
+    vi.setSystemTime(new Date('2026-09-16T20:35:00-03:00'))
+    montar(escalaCom([daLouise, artrodese]), { presencaOutros: rodapeHro, plantoes })
+    const card = cardComTexto('Matheus Cunha')
+    expect(card).toBeTruthy()
+    expect(card.textContent).toContain('P3')
+    expect(card.textContent).not.toContain('Ajuda (HRO)')
+    expect(card.textContent).not.toMatch(/Ajuda/)
+    expect(card.textContent).toContain('Cleiton Piekala')
+    expect(card.textContent).toContain('19:30')
+    expect(card.textContent).toContain('CC - Sala 3')
   })
 })

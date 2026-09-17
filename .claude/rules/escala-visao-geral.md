@@ -175,6 +175,39 @@ turno, o relógio fica pausado nesta faixa — senão o efeito do minuto seguint
 turno em curso e as cirurgias sumiriam sob o dedo. Sem posto nenhum, nada se move e o
 `EmptyState` continua valendo.
 
+⚠️ **16/09: a aba só leva a turnos que a tela OFERECE** — ver a seção abaixo. Às 14h a manhã já
+saiu do seletor, então quem só tem cirurgia de manhã fica na tarde com o `EmptyState` (o que
+atravessou "passa para tarde" continua no quadro por outra regra, 22/08). `localizarMeuPosto`
+recebe `turnos` com a lista oferecida e `turnoPreferido` é o do relógio quando ele está nela.
+
+### Seletor de turno só com escolha; o turno em curso mora no subtítulo (dono 2026-09-16)
+
+Pedido: "quero que o turno válido comece a aparecer aqui [subtítulo do cabeçalho], não quero
+mais que apareçam as opções de turno para clicar, quero apenas que apareça o turno em curso. Ao
+adicionar uma nova escala ela deve aparecer como opção para clicar no turno… na virada de turno
+a escala anterior sai, exceto na transição do turno vespertino para noturno".
+
+- **Subtítulo** = `dataPorExtenso · rótulo do turno EXIBIDO` ("Hoje · Quarta, 16/09 · Tarde").
+  Sem trilho, exibido = em curso. No dia útil, das 19h em diante (`faseLiberacoes` ≠ 'dia'), o
+  rótulo é **"Noite"** com a escala da tarde na tela — é a exceção pedida: a noite do dia útil é
+  fase da aba, não turno do seletor, e as cirurgias da noite são as da tarde.
+- **`turnosPublicados`** (página): um turno está publicado quando alguma escala do dia tem
+  `publicacaoTurnos[turno]` (carimbo da RPC) OU caso carimbado nele (`turnoDoCaso`). Sáb/dom
+  valem os três desde o CALENDÁRIO (`loading` ou linha 'fds' publicada) — o documento cobre o
+  dia inteiro e a noite herda a tarde; decidir por rede faria o trilho piscar (29/08).
+- **`turnoOpcoes`** (página): hoje = o turno do relógio + os SEGUINTES publicados; `emCurso ===
+  'noturno'` (FDS) acrescenta a tarde na frente. Outra data = o que está publicado (nada → a
+  manhã). Um efeito devolve `turno` ao primeiro oferecido quando ele sai da lista (virada com
+  escolha manual parada, troca de data, amanhã só com a tarde).
+- **`BarraControles`** desenha o trilho de turno SÓ com mais de uma opção (mesma regra do botão
+  de data, 16/08) e não desenha a linha de cima quando nem data nem turno têm escolha — sem
+  faixa vazia. A página decide QUAIS; a barra só mostra.
+- O relógio continua mandando (15/08): virada às 13h troca sozinha; escolha manual divergente
+  (espiar a tarde de manhã) segura o automático na faixa. Nada disso mudou.
+
+Travas: `escalaTurnoAutomatico.test.jsx` (reescrito), `escalaBarraControles.test.jsx` ("trilho
+de turno"), `escalaMinhasAbaVaiAoPosto.test.jsx`.
+
 ### Sobreaviso é posição ATIVA (dono 2026-09-04)
 
 Nota `(SOBREAVISO)`/`(SOBREAV)`/`(S/A)` no rodapé se comporta como `(CONSULT)`: a pessoa

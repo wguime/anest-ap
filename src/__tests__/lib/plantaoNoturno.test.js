@@ -407,3 +407,46 @@ describe('casarPorInicialSobrenome', () => {
     expect(casarPorInicialSobrenome('A. Schmidt', [], norma)).toBeNull()
   })
 })
+
+// ── CARD NOTURNO NUNCA É AJUDA — nem a derivada (dono 16/09, caso Matheus) ────
+// P3 da noite na Unimed, escalado numa sala às 19h30, estava no rodapé da tarde
+// do HRO: a linha do dia dele era "extra com origem HRO" e o card noturno, que
+// herda a linha do dia, saiu com "Ajuda (HRO)" — sem como desfazer (o painel do
+// card noturno não oferece "não é ajuda"). `isAjuda: false` já existia para o
+// badge escrito; a origem derivada tem de ser zerada junto.
+describe('fundirLinhasNoturnas — quem está de plantão não veio de outro hospital (dono 16/09)', () => {
+  const noite = [{ setor: 'P3', nome: 'MATHEUS CUNHA', papel: 'Plantão noturno', isPlantonista: false }]
+  const diaDoMatheus = {
+    chave: 'uid-mat', uid: 'uid-mat', anestesista: 'Matheus Cunha', nomeOriginal: 'MATHEUS',
+    cirurgioes: ['CLEITON PIEKALA'], salas: ['CC - Sala 3'], teveCasos: true,
+    isExtra: true, isAjuda: false, origemHospital: 'hro', origemLabel: 'HRO',
+  }
+  const opts = { resolverUid: (n) => (/MATHEUS/.test(n) ? 'uid-mat' : null) }
+
+  it('a linha do dia HOISTADA perde a origem derivada (origemHospital/origemLabel)', () => {
+    const [card] = fundirLinhasNoturnas([diaDoMatheus], noite, opts)
+    expect(card.noturno).toBe(true)
+    expect(card.selo).toBe('P3')
+    expect(card.isAjuda).toBe(false)
+    expect(card.origemHospital).toBeNull()
+    expect(card.origemLabel).toBeNull()
+    // o conteúdo do dia continua no card: a sala e o cirurgião são dele
+    expect(card.salas).toEqual(['CC - Sala 3'])
+    expect(card.cirurgioes).toEqual(['CLEITON PIEKALA'])
+  })
+
+  it('card SINTÉTICO (sem linha no dia) nasce sem origem', () => {
+    const [card] = fundirLinhasNoturnas([], noite, opts)
+    expect(card.sintetico).toBe(true)
+    expect(card.origemHospital).toBeNull()
+    expect(card.origemLabel).toBeNull()
+  })
+
+  it('a linha do dia de quem NÃO entra no plantão continua com a origem (o badge é dela)', () => {
+    const outro = { ...diaDoMatheus, chave: 'uid-out', uid: 'uid-out', anestesista: 'Outro', nomeOriginal: 'OUTRO' }
+    const out = fundirLinhasNoturnas([diaDoMatheus, outro], noite, opts)
+    const linhaOutro = out.find((l) => l.chave === 'uid-out')
+    expect(linhaOutro.noturno).toBeUndefined()
+    expect(linhaOutro.origemLabel).toBe('HRO')
+  })
+})

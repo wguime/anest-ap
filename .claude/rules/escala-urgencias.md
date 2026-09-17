@@ -351,3 +351,12 @@ na aba Tarde o quadro mostrava UMA, e as outras quatro não tinham card para toc
   alcançável no quadro, e nada duas vezes") — é ele que protege, não a persona, porque o tema
   "isolar por turno" já regrediu três vezes neste módulo. Mais `escalaCirurgicaStatus.test.js`,
   `escalaRelogioUnico.test.jsx` e os casos novos em `escalaCirurgicaOtimista.test.jsx`.
+
+## Selos do caso quebram linha em vez de vazar (dono 16/09, foto de 14/09 19h01)
+
+No `CasoCard` do quadro (Minhas/Completa) o grupo de selos do canto superior direito era
+`shrink-0`: com "Iniciada" + "Passa para noite" ao lado de "Hemodinâmica V.A.P. 46a" a
+ocorrência saía pela borda do card. Agora o grupo é `flex-wrap` sem `shrink-0` — a ocorrência
+desce para uma 2ª linha, ainda encostada no canto (`justify-end` vale por linha). O Badge do DS
+segue `whitespace-nowrap` (padroes-codigo.md): encolher o texto não estava em pauta. Trava em
+`escalaCompletaQuadroDenso.test.jsx` ("os selos do canto direito quebram linha").
