@@ -5,6 +5,7 @@
 # Copiar para .tmp/escala-lote/<data>-<turno>/gerar.py e preencher SÓ as tabelas. Convenções na
 # "Ficha" da SKILL.md; helpers em lote.py (iniciais, particular, ordem por sala, resumo).
 import os, sys
+sys.dont_write_bytecode = True  # senão nasce um __pycache__ untracked dentro da skill
 # .tmp/escala-lote/<data>-<turno>/gerar.py → três níveis acima é a raiz do repo
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', '.claude', 'skills', 'publicar-escala'))
 from lote import hospital, salvar
