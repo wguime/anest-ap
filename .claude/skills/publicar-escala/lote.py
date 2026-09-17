@@ -14,6 +14,7 @@ releitura contra a foto.
 """
 import json
 import os
+import re
 from unicodedata import normalize
 
 PARTICULAS = {'DE', 'DA', 'DO', 'DAS', 'DOS', 'E'}
@@ -48,13 +49,59 @@ def caso(sala, ordem, hora, paciente, idade, proc, cir, anest, conv, cor='', tem
     return c
 
 
+HORA = re.compile(r'^(\d{1,2}:\d{2}|AS)$')
+TEMPO = re.compile(r'^(\d{1,2}:\d{2})?$')
+CORES = ('', 'azul', 'amarelo')
+# o que só um PROCEDIMENTO tem — na folha do HRO o cirurgião vem ANTES do procedimento e a tupla
+# é (procedimento, cirurgiao): trocar os dois é o erro de digitação mais provável
+# forte: só o que um nome de gente nunca tem (CESAR é nome; CESAREA não)
+PROC_FORTE = re.compile(r'(TOMIA|PLASTIA|RESSEC|FRATURA|ARTROD|DEBRID|RAFIA|SCOPIA|ECTOMIA|IMPLANTE|CESAR(EA|IANA)|TRATAMENTO|'
+                        r'RECONSTRU|CIRURG|TRIPSIA|CONTINUA|\d+ (EDA|COLO|FACO|RM|TC|PROCEDIMENTO|CESAREA|VITRECT|ANGIO))', re.I)
+# amplo: qualquer cheiro de procedimento — basta para dizer "isto NÃO é nome de cirurgião"
+PROC_AMPLO = re.compile(PROC_FORTE.pattern + r'|LASER|GRAFIA|LISE|PEXIA|CENTESE|ANASTOMOSE|ENXERTO|RETIRADA|COLOCACAO|DRENAGEM|'
+                        r'BIOPSIA|EXERESE|CORRECAO|SUTURA|AMPUTACAO|LAPAROT|VARIZES|HERNIA|TUMOR|LESAO|CATETER|MARCAPASSO|STENT|'
+                        r'ANGIO|CURETAGEM|PARTO|\bDIU\b|BLOQUEIO|CONSULT|EXAME|PROCEDIMENTO|INFILTRA|DENERVA|REVIS|OSTEO|ARTRO|'
+                        r'PROTESE|MAMA|COLUNA|VESICAL|PROSTATA|ABLAC|ESTUDO|\bRM\b|\bTC\b|\bEDA\b|\bCOLO\b|FACO|VITRECT', re.I)
+NOME_PESSOA = re.compile(r"^[A-Za-zÀ-ÿ'.]+( [A-Za-zÀ-ÿ'.]+){1,3}$")
+
+
+class LoteInvalido(Exception):
+    pass
+
+
+def validar_linha(i, sala, hora, paciente, idade, proc, cir, anest, conv, cor='', tempo='', cont=False, ultimo_anest=None, fds=False):
+    """Erro de transcrição que dá para pegar ANTES do ensaio — o gerar.py para na linha certa."""
+    onde = f'linha {i + 1} ({sala} {hora})'
+    if not sala:
+        raise LoteInvalido(f'{onde}: sala vazia')
+    if not HORA.match(str(hora)):
+        raise LoteInvalido(f'{onde}: hora "{hora}" — só HH:MM ou AS')
+    if cor not in CORES:
+        raise LoteInvalido(f'{onde}: cor "{cor}" — só "", "azul", "amarelo" (posição 9 da tupla)')
+    if not TEMPO.match(str(tempo)):
+        raise LoteInvalido(f'{onde}: tempo "{tempo}" — só HH:MM ou "" (posição 10 da tupla)')
+    if anest == '//' and ultimo_anest is None:
+        raise LoteInvalido(f'{onde}: "//" na 1ª linha da sala — não há linha de cima para herdar')
+    if anest == '//' and ultimo_anest == '?' and not fds:
+        raise LoteInvalido(f'{onde}: "//" abaixo de "?" — a linha também está descoberta: escreva "?"')
+    if PROC_FORTE.search(cir or '') and not PROC_AMPLO.search(proc or '') and NOME_PESSOA.match(proc or ''):
+        raise LoteInvalido(f'{onde}: cirurgião e procedimento parecem trocados (cirurgiao="{cir}", procedimento="{proc}") — a tupla é (…, procedimento, cirurgiao, …)')
+    if conv and particular(conv) and not paciente and idade:
+        raise LoteInvalido(f'{onde}: particular com idade mas sem nome do paciente — a cobrança não abre')
+
+
 def montar(linhas):
-    out, ordem, ultima = [], 0, None
-    for l in linhas:
+    out, ordem, ultima, ultimo_anest = [], 0, None, None
+    for i, l in enumerate(linhas):
         sala = l[0]
+        if sala != ultima:
+            ultimo_anest = None
         ordem = ordem + 1 if sala == ultima else 0
         ultima = sala
-        out.append(caso(sala, ordem, *l[1:]))
+        validar_linha(i, *l, ultimo_anest=ultimo_anest)
+        c = caso(sala, ordem, *l[1:])
+        out.append(c)
+        ultimo_anest = c['anestesista'] if c['anestesista'] != '//' else ultimo_anest
     return out
 
 
@@ -72,7 +119,52 @@ def hospital(nome, linhas, ordem=(), ajuda=(), posicoes=(), data='', ajuda_ordem
     return h
 
 
+def _com_caso(h):
+    """Nomes que aparecem em algum caso (o "//" já resolvido por sala) ou em posição assistencial."""
+    nomes, por_sala = set(), {}
+    for c in h['casos']:
+        a = c['anestesista']
+        if a == '//':
+            a = por_sala.get(c['sala'])
+        elif a != '?':
+            por_sala[c['sala']] = a
+        if a and a != '?':
+            nomes.add(up(a))
+    for p in h['posicoesAssistenciais']:
+        nomes.add(up(p['anestesista']))
+    return nomes
+
+
+def conferir_rodape(h, conferidos):
+    """Rodapé × casos ANTES do ensaio. Nome sem caso no MEIO do rodapé é quase sempre uma linha da
+    foto que ficou de fora; na CAUDA é o plantão do contraturno e vai em `conferidos`. Só avisa —
+    o ensaio decide — mas avisa antes de gastar a rodada."""
+    ordem = h['ordemLiberacao']
+    if not ordem:
+        return
+    com_caso = _com_caso(h)
+    sem_caso = [i for i, n in enumerate(ordem) if up(n.split('(')[0].strip()) not in com_caso]
+    cauda = set(range(len(ordem) - 1, -1, -1))
+    n = len(ordem)
+    k = n
+    while k > 0 and (k - 1) in sem_caso:
+        k -= 1
+    conf = {up(c) for c in conferidos}
+    for i in sem_caso:
+        nome = ordem[i]
+        if i >= k:
+            if up(nome.split('(')[0].strip()) not in conf and up(nome) not in conf:
+                print(f'  ⚠️  {h["hospital"]}: {i + 1}º {nome} fecha o rodapé sem caso — plantão do contraturno? falta em `conferidos`')
+        else:
+            print(f'  ⚠️  {h["hospital"]}: {i + 1}º de {n} — {nome} está no MEIO do rodapé sem nenhum caso: linha da foto esquecida? (ou ajuda em azul sem caso aqui)')
+    for c in conferidos:
+        if up(c) in {up(x) for x in ordem} and up(c) in com_caso:
+            print(f'  ⚠️  {h["hospital"]}: {c} está em `conferidos` mas TEM caso — tire da lista')
+
+
 def salvar(pasta, unimed, hro, materno, lote):
+    for h in (unimed, hro):
+        conferir_rodape(h, lote.get('conferidos', []))
     for nome, obj in (('unimed.json', unimed), ('hro.json', hro), ('materno.json', materno), ('lote.json', lote)):
         with open(os.path.join(pasta, nome), 'w', encoding='utf-8') as f:
             json.dump(obj, f, ensure_ascii=False, indent=1)
@@ -110,6 +202,10 @@ class Mapa:
         self.faixa = 'vespertino'
 
     def add(self, sala, hora, paciente, idade, proc, cir, anest, conv, cor='', tempo='', bloco='normal', cont=False):
+        ultimo = next((x['anestesista'] for x in reversed(self.casos) if x['sala'] == sala and x['anestesista'] != '//'), None)
+        if any(x['sala'] == sala for x in self.casos) and ultimo is None:
+            ultimo = ''
+        validar_linha(len(self.casos), sala, hora, paciente, idade, proc, cir, anest, conv, cor, tempo, cont, ultimo_anest=ultimo, fds=True)
         c = caso(sala, 0, hora, paciente, idade, proc, cir, anest, conv, cor, tempo, cont)
         c['anestesista'] = anest            # '' fica '' — a lib decide
         c['semAnestesista'] = anest == '?'

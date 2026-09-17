@@ -41,7 +41,8 @@ unimed = hospital(
 
 # ── HRO (título "DD/MM/AAAA – HRO"; sem data → data='' e o aviso aparece) ─────
 HRO = [
-    # Bloco A → 'Sala N'; Bloco M → 'Bloco M - Sala N' ("//" NÃO herda entre salas do Bloco M)
+    # ⚠️ a folha do HRO traz CIRURGIÃO antes do PROCEDIMENTO; a tupla é (…, procedimento, cirurgiao, …) — trocar para
+    # o gerar.py (lote.py acusa). Bloco A → 'Sala N'; Bloco M → 'Bloco M - Sala N' ("//" NÃO herda entre salas do Bloco M)
     # ('Sala 1', '13:00', '', '', 'CONTINUAÇÃO', 'Cirurgiao', 'JOAO HENRIQUE', 'SUS', '', '', True),
     # ('Sala 4', '13:00', 'Nome Sobrenome', '24a', 'PROCEDIMENTO', 'Cirurgiao', 'LOUISE', 'SUS'),
     # ('Sala 4', 'AS', 'Nome Sobrenome', '66a', 'PROCEDIMENTO', 'Cirurgiao', '//', 'SUS'),

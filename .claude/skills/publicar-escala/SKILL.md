@@ -20,8 +20,16 @@ pedido ao PUBLICADO.** O porquê de cada regra está em `REFERENCIA.md` — não
    vêm da mensagem; sem isso, hoje em `America/Sao_Paulo` e o turno pelas horas (13:00+ = tarde).
 2. **Bash**: `cp` das fotos para a pasta (o caminho do WhatsApp é temporário; a pasta é fora do git)
    + `python3 gerar.py` + `node scripts/escala-publicar-turno.mjs publicar <lote.json> --ensaio`.
-3. **Reler a foto contra a saída do ensaio**, linha a linha — o único passo que não se pula. Sem
-   bloqueio e sem aviso que aponte erro seu → **Bash** `publicar` (sem `--ensaio`).
+3. **Reler a foto contra a saída do ensaio** — o único passo que não se pula; é a saída, não o JSON.
+   Na ordem, por hospital: (a) **contagem por sala** — cada linha da foto tem uma linha no ensaio
+   (a linha esquecida é o erro silencioso); (b) **anestesista por linha**, seguindo cada corrente
+   de "//" e cada "?"; (c) **cor** — todo azul/amarelo da foto aparece como `azul`/`amarelo`, e a
+   ajuda está no hospital onde a pessoa trabalha; (d) **`PART: nome`** em todo particular;
+   (e) **rodapé** nome a nome, na ordem; (f) **seções de baixo + SRPA** presentes; (g) os avisos
+   restantes têm explicação na foto ou no recado. Sem bloqueio e sem aviso que aponte erro seu →
+   **Bash** `publicar` (sem `--ensaio`). O `gerar.py` já parou antes em erro de forma (hora, cor e
+   tempo na posição errada, "//" sem base ou abaixo de "?", cirurgião trocado com procedimento,
+   particular sem nome) e avisou nome sem caso no meio do rodapé.
 4. Relatório curto: por hospital "N casos · rodapé N · ajuda […]", quem ficou com "?", o que o
    recado virou, avisos que sobraram. Custo US$ 0.
 
@@ -30,7 +38,9 @@ resolve todo nome e bloqueia o ambíguo); consultar o banco antes do ensaio (ele
 publicado"; o turno é carimbado pelo lote e, no Materno, as horas < 13:00 ficam fora da tarde
 sozinhas); rodar `ordem-liberacao-numerica.mjs` (o ensaio compara com a numérica + férias); ler
 o gerar.py de outro dia ou código do app para lembrar convenção (a ficha abaixo responde — se não
-responder, ela ganha uma linha depois de publicar); perguntar ao dono o que "Recado" já decide.
+responder, ela ganha uma linha depois de publicar); perguntar ao dono o que a ficha ou "Recado"
+já decidem — pergunte só o que nem a foto nem o recado dizem (célula ilegível, nome que não é
+apelido conhecido).
 
 ## Ficha de transcrição
 
@@ -59,7 +69,9 @@ responder, ela ganha uma linha depois de publicar); perguntar ao dono o que "Rec
   `SRPA | NOME` vai em `posicoesAssistenciais` (conta como ocupado). "CONTINUAÇÃO ±14h" é caso com
   `cont=True`. Varrer a foto de cima a baixo — é onde a leitura mais perde nome.
 - **Rodapé** completo, NA ORDEM, com as notas ("MATHEUS (CONSULT)" é uma posição). Quem fecha o
-  rodapé **sem caso** (plantão do contraturno/noite) → `conferidos`.
+  rodapé **sem caso** (plantão do contraturno/noite) → `conferidos` — só a **cauda contígua**. Nome
+  sem caso no MEIO do rodapé é quase sempre linha da foto esquecida (ou azul não lido): volte à
+  foto antes de pôr em `conferidos`; o `gerar.py` avisa os dois casos.
 - **LGPD**: `pacienteNome` só em PARTICULAR/PART (o template faz; é o que abre a cobrança); FAS,
   SC, BRF, UNIMED FUNDACAO não são particular. Todo o resto por iniciais; nome de não-particular
   não entra no JSON.
