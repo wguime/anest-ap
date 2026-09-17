@@ -33,6 +33,11 @@ Dono (16/09, 20h35, com a noite no ar), três pedidos:
   rodar se houver assinante), nenhum cliente antigo pode mais reativar o polling do WAL
   (`realtime.list_changes`, 59 % do tempo de CPU do banco desde 08/02). Ensaiada em `begin … rollback`
   e validada pelo `migration-validator` antes de aplicar. Rollback documentado no arquivo.
+- **Infra (17/09, 00h05)**: migration `20260917010000_incident_settings_replica_identity_default` —
+  `incident_notification_settings` volta a `replica identity default` (PK). O FULL de 12/05 servia ao
+  DELETE do `postgres_changes`; sem publication e com o trigger usando o OLD, era só WAL a mais. Único
+  caso em `public`. Ensaiada em `begin … rollback`; apontada pelo validador na migration anterior.
+  Aplicação em produção pelo terminal do dono (o classificador do auto mode barrou o `apply-migration`).
 - Testes: `escalaTurnoAutomatico` (reescrito para a regra nova: trilho só com escolha, subtítulo com o
   turno, manhã sai às 13h, "Noite" às 20h no dia útil, "Tarde | Noite" no FDS), `escalaMinhasAbaVaiAoPosto`
   (a aba não leva ao turno que saiu), `escalaBarraControles` (trilho oculto com uma opção),
