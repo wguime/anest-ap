@@ -4,6 +4,13 @@
  * procedimentos distintos publicados entre 15/08 e 14/09/2026 (os mais frequentes
  * primeiro). O que o dicionário não conhece cai no fallback, que tira a embalagem
  * e fica com a cabeça da frase.
+ *
+ * Dono 17/09, com fotos da fila: "a descrição de alguns procedimentos está
+ * incompleta, melhore a informação, quero que continue sendo direta". O rótulo
+ * passa a levar o qualificador que muda a cirurgia (RTU de próstata × de bexiga,
+ * artrodese cervical × de coluna, a contagem de "02 PROCEDIMENTOS") e o fallback
+ * mantém o verbo ("Ressecção de osso de pé", não "Osso"). Recalibrado nos 1366
+ * procedimentos distintos publicados entre 15/08 e 17/09.
  */
 import { describe, it, expect } from 'vitest'
 import { nomeCurtoProcedimento } from '@/lib/escalaProcedimentoCurto'
@@ -11,13 +18,14 @@ import { nomeCurtoProcedimento } from '@/lib/escalaProcedimentoCurto'
 const casos = [
   // os três exemplos do dono
   ['COLECISTECTOMIA SEM COLANGIOGRAFIA POR VIDEOLAPAROSCOPICA', 'Colecistectomia'],
-  ['RESSECCAO ENDOSCOPICA DA PROSTATA', 'RTU'],
+  ['RESSECCAO ENDOSCOPICA DA PROSTATA', 'RTU de próstata'],
   ['RTU', 'RTU'],
   ['PROSTATOVESICULECTOMIA RADICAL ROBOTICA', 'Prostatectomia'],
   // os mais frequentes do corpus
   ['CESARIANA', 'Cesariana'],
   ['CESARIANA (FETO ÚNICO OU MÚLTIPLO)', 'Cesariana'],
-  ['02 CESAREAS', 'Cesariana'],
+  ['02 CESAREAS', '2 cesarianas'],
+  ['CENTRO OBSTETRICO – 01 CESAREA', '1 cesariana'],
   ['AMIGDALECTOMIA', 'Amigdalectomia'],
   ['AMIGDALECTOMIA COM ADENOIDECTOMIA / TURBINECTOMIA', 'Adenoamigdalectomia'],
   ['ADENOIDECTOMIA POR VIDEOENDOSCOPIA', 'Adenoidectomia'],
@@ -35,12 +43,13 @@ const casos = [
   ['HEMORROIDECTOMIA ABERTA OU FECHADA COM OU SEM ESFINCTEROTOMIA', 'Hemorroidectomia'],
   ['SEPTOPLASTIA POR VIDEOENDOSCOPIA', 'Septoplastia'],
   ['SEPTOPLASTIA + RINOPLASTIA', 'Rinosseptoplastia'],
-  ['DEBRIDAMENTO DE ÚLCERA / DE TECIDOS DESVITALIZADOS', 'Debridamento'],
+  ['DEBRIDAMENTO DE ÚLCERA / DE TECIDOS DESVITALIZADOS', 'Debridamento de úlcera'],
+  ['DEBRIDAMENTO CIRURGICO - POR UNIDADE TOPOGRAFICA (UT)', 'Debridamento'],
   ['CONSULTORIO', 'Consultório'],
   ['CONSULTORIO – AJUDA', 'Consultório (ajuda)'],
   ['CONTINUAÇÃO +-14H', 'Continuação'],
   ['CONTINUAÇÃO RM', 'Continuação'],
-  ['ARTRODESE DA COLUNA COM INSTRUMENT POR SEGMENTO', 'Artrodese'],
+  ['ARTRODESE DA COLUNA COM INSTRUMENT POR SEGMENTO', 'Artrodese de coluna'],
   ['MICROCIRURGIA PARA TUMOR INTRACRANIANO', 'Tumor intracraniano'],
   ['URETEROLITOTRIPSIA TRANSURETEROSCÓPICA', 'Ureterolitotripsia'],
   ['CATETERISMO CARDIACO E E/OU D COM CINEANGIOCORONARIOGRAFIA E VENTRICULOGRAFIA', 'Cateterismo'],
@@ -75,7 +84,8 @@ const casos = [
   ['PLEURECTOMIA + RESSECÇÃO EM CUNHA, TUMORECTOMIA', 'Cirurgia torácica'],
   ['RECONSTRUÇÃO MAMÁRIA - RETALHOS CUTÂNEOS REGIONAIS', 'Reconstrução mamária'],
   ['AMPUTAÇÃO / DESARTICULAÇÃO DE DEDO', 'Amputação'],
-  ['07 PROCEDIMENTOS', 'Procedimentos'],
+  ['07 PROCEDIMENTOS', '7 procedimentos'],
+  ['01 PROCEDIMENTO', '1 procedimento'],
   ['TRATAMENTO ODONTOLÓGICO PARA PACIENTES COM NECESSIDADES ESPECIAIS', 'Odontologia'],
   ['VITRECTOMIA VIAS PARS PLANA', 'Vitrectomia'],
   ['URETROPLASTIA AUTÓGENA', 'Uretroplastia'],
@@ -84,21 +94,61 @@ const casos = [
   ['EXPLANTE DE PRÓTESE', 'Explante'],
 ]
 
+// Os cinco da foto do dono (17/09): o rótulo identificava a família, não a cirurgia.
+const incompletos = [
+  ['ANGIOGRAFIA POR CATETERISMO SELETIVO DE RAMO PRIMARIO - POR VASO', 'Angiografia por cateterismo'],
+  ['RESSECCAO DE OSSO DE PE - TRATAMENTO CIRURGICO', 'Ressecção de osso de pé'],
+  ['RESSECÇÃO ENDOSCÓPICA DE PRÓSTATA', 'RTU de próstata'],
+  ['RESSECÇÃO ENDOSCÓPICA DE TUMOR VESICAL', 'RTU de bexiga'],
+  ['TUMOR VESICAL - RESSECCAO ENDOSCOPICA', 'RTU de bexiga'],
+  ['ARTRODESE VIA PÓSTERO-LATERAL UM NÍVEL', 'Artrodese de coluna'],
+  ['ARTRODESE CERVICAL ANTERIOR UM NÍVEL', 'Artrodese cervical'],
+  ['ARTRODESE TORACO-LOMBO-SACRA POSTERIOR, QUATRO NÍVEIS', 'Artrodese toracolombar'],
+  ['ARTRODESE INTERFALANGEANA / METACARPOFALANGEANA - TRATAMENTO CIRURGICO', 'Artrodese de dedo'],
+  ['02 PROCEDIMENTOS', '2 procedimentos'],
+  // o cateterismo cardíaco continua "Cateterismo" — é a angiografia que estava escondida atrás dele
+  ['CATETERISMO CARDIACO E E/OU D COM CINEANGIOCORONARIOGRAFIA E VENTRICULOGRAFIA', 'Cateterismo'],
+  // da mesma fila: a vitrectomia vinha como "FACO" e a lipoabdominoplastia como "Lipoaspiração"
+  ['01 VITRECT. C/FACO + 01 VITRECT.', 'Vitrectomia'],
+  ['LIPOABDOMINOPLASTIA + LIPOENXERTIA GLÚTEA', 'Lipoabdominoplastia'],
+  ['TRATAMENTO MICROCIRURGICO DAS NEUROPATIAS COMPRESSIVAS (TUMO', 'Neuropatias compressivas'],
+]
+
 describe('nomeCurtoProcedimento — dicionário calibrado no corpus de 30 dias', () => {
   it.each(casos)('%s → %s', (texto, esperado) => {
     expect(nomeCurtoProcedimento(texto)).toBe(esperado)
   })
 })
 
-describe('nomeCurtoProcedimento — fallback para o que o dicionário não conhece', () => {
-  it('tira a embalagem e fica com a cabeça da frase', () => {
-    expect(nomeCurtoProcedimento('TRATAMENTO CIRÚRGICO DE HIDRADENITE AXILAR - BILATERAL')).toBe('Hidradenite')
-    expect(nomeCurtoProcedimento('GASTRECTOMIA PARCIAL COM RECONSTRUÇÃO')).toBe('Gastrectomia')
+describe('nomeCurtoProcedimento — os incompletos da foto de 17/09', () => {
+  it.each(incompletos)('%s → %s', (texto, esperado) => {
+    expect(nomeCurtoProcedimento(texto)).toBe(esperado)
   })
-  it('palavra genérica leva o complemento junto', () => {
+})
+
+describe('nomeCurtoProcedimento — fallback para o que o dicionário não conhece', () => {
+  it('tira a embalagem e fica com a cabeça da frase, sem passar de 4 palavras de conteúdo', () => {
+    expect(nomeCurtoProcedimento('TRATAMENTO CIRÚRGICO DE HIDRADENITE AXILAR - BILATERAL')).toBe('Hidradenite axilar')
+    expect(nomeCurtoProcedimento('GASTRECTOMIA PARCIAL COM RECONSTRUÇÃO')).toBe('Gastrectomia parcial')
+    expect(nomeCurtoProcedimento('RESSECÇÃO DE TUMOR DE PARTES MOLES EM ONCOLOGIA')).toBe('Ressecção de tumor de partes moles')
+    expect(nomeCurtoProcedimento('PROTESE PENIANA 2H')).toBe('Prótese peniana')
+  })
+  it('mantém o verbo da cirurgia — uma palavra sozinha era o que virava "Osso"', () => {
+    expect(nomeCurtoProcedimento('RETIRADA DE PONTOS - 1H')).toBe('Retirada de pontos')
+    expect(nomeCurtoProcedimento('RETIRADA DE ÓLEO DE SILICONE VIA PARS PLANA')).toBe('Retirada de óleo de silicone')
+    expect(nomeCurtoProcedimento('IMPLANTE DE CATETER')).toBe('Implante de cateter')
+    // "TRATAMENTO CIRÚRGICO DOS OSSOS…" comia o "DOS" pela metade e sobrava "S"
+    expect(nomeCurtoProcedimento('TRATAMENTO CIRÚRGICO DOS OSSOS DO ANTEBRAÇO')).toBe('Ossos do antebraço')
+    expect(nomeCurtoProcedimento('TRATAMENTO CIRÚRGICO DE PÉ TORTO CONGÊNITO')).toBe('Pé torto congênito')
+  })
+  it('palavra genérica leva o complemento junto; sentence case como o dicionário', () => {
     expect(nomeCurtoProcedimento('LESÃO LABRAL - PROCEDIMENTO VIDEOARTROSCÓPICO DE OMBRO')).toBe('Artroscopia')
     expect(nomeCurtoProcedimento('RETIRADA DE CORPO ESTRANHO DO OUVIDO')).toBe('Corpo estranho')
-    expect(nomeCurtoProcedimento('TROCA DE GERADOR')).toBe('Troca de Gerador')
+    expect(nomeCurtoProcedimento('TROCA DE GERADOR')).toBe('Troca de gerador')
+  })
+  it('"C/", "P/", "S/" são abreviações, não separam cirurgias', () => {
+    expect(nomeCurtoProcedimento('RESSECCAO DE TUMOR DE MEDIASTINO P/VIDEO')).toBe('Ressecção de tumor de mediastino')
+    expect(nomeCurtoProcedimento('01 REINTERVENÇÃO c/ tópica')).toBe('Reintervenção')
   })
   it('vazio e nulo devolvem vazio', () => {
     expect(nomeCurtoProcedimento('')).toBe('')

@@ -2,6 +2,17 @@
  * NOME CURTO DA CIRURGIA para a fila de Liberações (dono 14/09: "quero apenas um
  * nome para identificar a cirurgia — colecistectomia, RTU, prostatectomia").
  *
+ * Dono 17/09, com fotos da fila: *"a descrição de alguns procedimentos está
+ * incompleta, melhore a informação, quero que continue sendo direta"*. Os cinco
+ * exemplos — "Cateterismo" (era angiografia), "Osso" (ressecção de osso do pé),
+ * "RTU" duas vezes (próstata e bexiga), "Artrodese" (de coluna), "Procedimentos"
+ * (02) — têm o mesmo defeito: o rótulo identificava a FAMÍLIA e não a cirurgia.
+ * Onde um qualificador muda o que a pessoa vai fazer, ele entra no rótulo
+ * ("RTU de próstata", "Artrodese cervical", "2 procedimentos"); a embalagem
+ * continua fora. O fallback deixou de ficar com UMA palavra: mantém o verbo da
+ * cirurgia ("Ressecção de osso do pé", "Retirada de pontos") e vai até 4 palavras
+ * de conteúdo — uma palavra sozinha era exatamente o que virava "Osso".
+ *
  * O texto do mapa é o descritivo da tabela ("COLECISTECTOMIA SEM COLANGIOGRAFIA
  * POR VIDEOLAPAROSCOPICA", "TRATAMENTO CIRÚRGICO DE FRATURA DA DIÁFISE DO FÊMUR");
  * na fila ele precisa caber ao lado da hora, numa linha de 12,5px. Duas camadas:
@@ -29,8 +40,12 @@ const SIGLAS = new Set(['EDA', 'RTU', 'LCA', 'LCP', 'TC', 'RM', 'FACO', 'DIU', '
 /**
  * Dicionário por família — a ORDEM importa (a primeira que casa vence): as
  * específicas vêm antes das genéricas ("HEMORROIDECTOMIA" antes de qualquer
- * "…ECTOMIA" cair no fallback; "RTU" antes de "RESSECÇÃO").
+ * "…ECTOMIA" cair no fallback; "RTU" antes de "RESSECÇÃO"). O rótulo pode ser
+ * uma função `(match, textoNormalizado) => string` quando o qualificador vem do
+ * próprio texto (contagem, lado, segmento).
  */
+const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`
+const contagem = (m) => parseInt(m[1], 10)
 const DICIONARIO = [
   // ── blocos e seções (fora da grade) ────────────────────────────────────
   [/\bCONTINUACAO\b/, 'Continuação'],
@@ -40,11 +55,15 @@ const DICIONARIO = [
   [/\bTC\b.*\bRM\b|\bRM\b.*\bTC\b/, 'TC + RM'],
   [/\bRM\b/, 'RM'],
   [/\bTC\b/, 'TC'],
-  [/\bFACO\w*|FACECTOMIA|FACOEMULSIFICACAO/, 'FACO'],
+  // vitrectomia antes da FACO: "01 VITRECT. C/FACO" é vitrectomia (com faco junto)
   [/\bVITRECT\w*/, 'Vitrectomia'],
+  [/\bFACO\w*|FACECTOMIA|FACOEMULSIFICACAO/, 'FACO'],
   [/\bECO ?TRANSESOFAG\w*/, 'Eco transesofágico'],
+  // "02 PROCEDIMENTOS" no mapa do HRO: a contagem É a informação (dono 17/09)
+  [/^(\d+)\s+PROCEDIMENTOS?\b/, (m) => plural(contagem(m), 'procedimento', 'procedimentos')],
   [/\bPROCEDIMENTOS?\b$/, 'Procedimentos'],
   [/\bODONTO\w*|TRATAMENTO ODONTOLOGICO/, 'Odontologia'],
+  [/(\d+)\s+CESAR(EA|IANA)S?\b/, (m) => plural(contagem(m), 'cesariana', 'cesarianas')],
   [/\bCESAR(EA|IANA)S?\b/, 'Cesariana'],
   [/\bPARTO\b/, 'Parto'],
   [/\bCURETAGEM\b|\bAMIU\b/, 'Curetagem'],
@@ -52,13 +71,18 @@ const DICIONARIO = [
   [/\bANGIOPLASTIA\b|\bANGIO\b/, 'Angioplastia'],
   [/\bSTENT\b/, 'Stent'],
   [/\bMARCAPASSO\b/, 'Marcapasso'],
-  [/\bCATETERISMO\b/, 'Cateterismo'],
+  // "ANGIOGRAFIA POR CATETERISMO SELETIVO…" é angiografia, não o cateterismo cardíaco (dono 17/09)
+  [/\bANGIOGRAFIA\b.*\bCATETERISMO\b/, 'Angiografia por cateterismo'],
+  [/\bCATETERISMO\b|^CAT\.? CARD/, 'Cateterismo'],
   [/\bABLACAO\b/, 'Ablação'],
   [/\bANGIOGRAFIA\b/, 'Angiografia'],
   [/\bOCLUSAO PERCUTANEA\b/, 'Oclusão percutânea'],
   [/\bVALVAR\b/, 'Cirurgia valvar'],
   [/\bFISTULA AV\b|\bHEMODIALISE\b/, 'Fístula AV'],
   // ── urologia ───────────────────────────────────────────────────────────
+  // próstata e bexiga são cirurgias diferentes com a mesma sigla (dono 17/09)
+  [/(\bRTU\b|RESSECCAO ENDOSCOPICA).*\bPROSTATA\b|\bPROSTATA\b.*RESSECCAO ENDOSCOPICA/, 'RTU de próstata'],
+  [/(\bRTU\b|RESSECCAO ENDOSCOPICA).*\b(VESICAL|BEXIGA)\b|\b(VESICAL|BEXIGA)\b.*RESSECCAO ENDOSCOPICA/, 'RTU de bexiga'],
   [/\bRTU\b|RESSECCAO ENDOSCOPICA/, 'RTU'],
   [/\bPROSTATOVESICULECTOMIA\b|\bPROSTATECTOMIA\b/, 'Prostatectomia'],
   [/\bBIOPSIAS? DE PROSTATA\b/, 'Biópsia de próstata'],
@@ -118,6 +142,7 @@ const DICIONARIO = [
   [/\bRINOPLASTIA\b/, 'Rinoplastia'],
   [/\bBLEFAROPLASTIA\b/, 'Blefaroplastia'],
   [/\bLIFTING\b/, 'Lifting'],
+  [/\bLIPOABDOMINOPLASTIA\b/, 'Lipoabdominoplastia'],
   [/\bDERMOLIPECTOMIA\b|\bABDOMINOPLASTIA\b/, 'Abdominoplastia'],
   [/\bLIPO(ASPIRACAO|ENXERTIA)?\b/, 'Lipoaspiração'],
   [/\bBRAQUIOPLASTIA\b/, 'Braquioplastia'],
@@ -140,12 +165,21 @@ const DICIONARIO = [
   [/\bARTROPLASTIA\b.*\b(OMBRO|ESCAPULO)\b/, 'Artroplastia de ombro'],
   [/\bARTROPLASTIA\b/, 'Artroplastia'],
   [/\bACROMIOPLASTIA\b/, 'Acromioplastia'],
+  // o segmento diz qual artrodese é (dono 17/09: "Artrodese" sozinha estava incompleta)
+  [/\bARTRODESE\b.*\bCERVIC\w*/, 'Artrodese cervical'],
+  [/\bARTRODESE\b.*\bTORACO-?LOMB\w*/, 'Artrodese toracolombar'],
+  [/\bARTRODESE\b.*\bLOMB\w*/, 'Artrodese lombar'],
+  [/\bARTRODESE\b.*\b(COLUNA|INTERSOMATICA|POSTERO-?LATERAL|VIA ANTERIOR|SEGMENTO|NIVE(L|IS))\b/, 'Artrodese de coluna'],
+  [/\bARTRODESE\b.*\b(INTERFALANG\w*|METACARPO\w*|METATARSO\w*)/, 'Artrodese de dedo'],
+  [/\bARTRODESE\b.*\b(TARSO|MEDIO PE)\b/, 'Artrodese de tarso'],
   [/\bARTRODESE\b/, 'Artrodese'],
   [/\bHERNIA DE DISCO\b|\bDISCECTOMIA\b/, 'Hérnia de disco'],
   [/\bDENERVACAO\b/, 'Denervação'],
   [/\bINFILTRACAO\b|\bBLOQUEIO FENOLICO\b/, 'Infiltração'],
   [/\bDESCOMPRESSAO MEDULAR\b/, 'Descompressão medular'],
   [/\bTUNEL DO CARPO\b|\bNEUROLISE\b|\bSINDROMES COMPRESSIVAS\b/, 'Túnel do carpo'],
+  [/\bNEUROPATIAS COMPRESSIVAS\b/, 'Neuropatias compressivas'],
+  [/\bDEDO EM (MARTELO|GARRA|BOTOEIRA|BOTEIRA)\b/, (m) => `Dedo em ${m[1].toLowerCase()}`],
   [/\bHALLUX VALGUS\b/, 'Hallux valgus'],
   [/\bTENDAO DE AQUILES\b/, 'Tendão de Aquiles'],
   [/\bTENO(PLASTIA|RRAFIA|TOMIA)\b|\bENXERTO DE TENDAO\b/, 'Tendão'],
@@ -156,7 +190,9 @@ const DICIONARIO = [
   [/\bFIOS PINOS\b|\bFIOS OU PINOS\b|\bHASTES METALICAS\b/, 'Fixação com pinos'],
   [/\bALONGAMENTO\b/, 'Alongamento ósseo'],
   [/\bAMPUTACAO\b|\bDESARTICULACAO\b/, 'Amputação'],
-  [/\bDEBRIDAMENTO\b/, 'Debridamento'],
+  [/\bDES?BRIDAMENTO\b.*\bULCERA\b/, 'Debridamento de úlcera'],
+  [/\bDES?BRIDAMENTO\b.*\bFERIDA\w*/, 'Debridamento de ferida'],
+  [/\bDES?BRIDAMENTO\b/, 'Debridamento'],
   [/\bMANIPULACAO ARTICULAR\b/, 'Manipulação articular'],
   [/\bPUNCAO ARTICULAR\b/, 'Punção articular'],
   [/\bLUXACAO\b.*\bTEMPORO-?MANDIBULAR\b|\bATM\b|\bMANDIBULAR POR ARTROSCOPIA\b/, 'ATM'],
@@ -200,56 +236,96 @@ const DICIONARIO = [
 
 /** O que é embalagem no descritivo e some antes de olhar a cabeça da frase. */
 const PREFIXOS = [
-  /^TRATAMENTO CIRURGICO (DE|DA|DO|DAS|DOS)?\s*/, /^CORRECAO CIRURGICA (DE|DA|DO)?\s*/, /^CIRURGIA (DE|DA|DO|PARA)\s*/,
-  /^PROCEDIMENTO \w+ (DE|DO|DA)\s*/, /^RESSECCAO (DE|DA|DO)\s*/, /^IMPLANTE (CIRURGICO )?(DE|DA|DO)\s*/,
-  /^COLOCACAO (DE|DA|DO)\s*/, /^RETIRADA (CIRURGICA )?(DE|DA|DO)\s*/, /^\d+\s+/,
+  // "TRATAMENTO CIRURGICO DE X" → X; o \b depois da preposição evita comer o "DOS" pela metade
+  /^TRAT(AMENTO|\.)? (MICRO)?CIRURGICO\b\s*(?:(?:DE|DA|DO|DAS|DOS)\b\s*)?/,
+  /^CORRECAO CIRURGICA\b\s*(?:(?:DE|DA|DO|DAS|DOS)\b\s*)?/,
+  /^CIRURGIA (DE|DA|DO|DAS|DOS|PARA)\b\s*/,
+  /^PROCEDIMENTO \w+ (DE|DO|DA)\b\s*/,
+  /^\d+\s+/,
 ]
-const CORTES = [/\s+[-–]\s+.*$/, /\s*\(.*$/, /,.*$/, /\s+(POR|COM|SEM|EM|VIA|PARA|NO|NA|NOS|NAS|CONFORME|UNI|UNILATERAL|BILATERAL|QUALQUER)\b.*$/]
-const GENERICAS = new Set(['FRATURA', 'HERNIA', 'LUXACAO', 'TUMOR', 'LESAO', 'ROTURA', 'RUPTURA', 'IMPLANTE', 'RETIRADA',
-  'EXERESE', 'BIOPSIA', 'DEBRIDAMENTO', 'AMPUTACAO', 'RECONSTRUCAO', 'DESCOMPRESSAO', 'COLOCACAO', 'CORRECAO', 'REPARO',
-  'SUTURA', 'RESSECCAO', 'DRENAGEM', 'TRANSPLANTE', 'TRATAMENTO', 'CIRURGIA', 'PROCEDIMENTO', 'PLASTICA', 'TROCA',
-  'EXPLORACAO', 'CONFECCAO', 'PUNCAO', 'MANIPULACAO'])
-const STOP = new Set(['DE', 'DA', 'DO', 'DAS', 'DOS', 'E', 'OU', 'A', 'O', 'AS', 'OS', 'UM', 'UMA', 'EM', 'POR', 'COM', 'SEM', 'PARA', 'VIA', 'AO', 'NO', 'NA'])
+// Onde a frase acaba: o resto é via, lado, técnica, duração — embalagem.
+const CORTES = [
+  /\s+[-–]\s*.*$/, /\s*\(.*$/, /,.*$/, /;.*$/,
+  /\s+(POR|COM|SEM|EM|VIA|PARA|NO|NA|NOS|NAS|CONFORME|UNI|UNILATERAL|BILATERAL|QUALQUER|AO NIVEL|C\/|S\/|P\/)\b.*$/,
+  /\s+\d+\s*H(\d+)?\b.*$/, /\s+\d+\s*MIN\b.*$/, // "2H", "4H30", "45MIN" colados sem hífen
+]
+const STOP = new Set(['DE', 'DA', 'DO', 'DAS', 'DOS', 'E', 'OU', 'A', 'O', 'AS', 'OS', 'UM', 'UMA', 'AO'])
+/** Até quantas palavras de CONTEÚDO (fora as preposições) o rótulo do fallback leva. */
+const MAX_PALAVRAS = 4
 
-/** Title case que respeita siglas e preposições curtas ("Fratura do fêmur", "LCA"). */
-function titulo(palavras) {
+/**
+ * O mapa da Unimed vem sem acento ("RESSECCAO DE OSSO DE PE"): o rótulo devolve a
+ * grafia certa para as palavras que o fallback mais deixa passar. Quem já vem
+ * acentuado do texto mantém o que veio.
+ */
+const ACENTOS = {
+  RESSECCAO: 'ressecção', CORRECAO: 'correção', COLOCACAO: 'colocação', AMPUTACAO: 'amputação', LESAO: 'lesão',
+  LESOES: 'lesões', EXERESE: 'exérese', BIOPSIA: 'biópsia', RECONSTRUCAO: 'reconstrução', DESCOMPRESSAO: 'descompressão',
+  PUNCAO: 'punção', MANIPULACAO: 'manipulação', CONFECCAO: 'confecção', EXPLORACAO: 'exploração', TRANSPOSICAO: 'transposição',
+  LUXACAO: 'luxação', FIXACAO: 'fixação', EMBOLIZACAO: 'embolização', MALFORMACAO: 'malformação', DILATACAO: 'dilatação',
+  REVISAO: 'revisão', EXTRACAO: 'extração', CAPTACAO: 'captação', DERIVACAO: 'derivação', REMOCAO: 'remoção',
+  HERNIA: 'hérnia', PROTESE: 'prótese', ORTESE: 'órtese', FEMUR: 'fêmur', TIBIA: 'tíbia', UMERO: 'úmero', RADIO: 'rádio',
+  CALCANEO: 'calcâneo', ULCERA: 'úlcera', ABDOMEN: 'abdômen', TORAX: 'tórax', PELVICO: 'pélvico', PELVICA: 'pélvica',
+  CIRURGICO: 'cirúrgico', CIRURGICA: 'cirúrgica', MAO: 'mão', CRANIO: 'crânio', MANDIBULA: 'mandíbula', ORBITA: 'órbita',
+  MUSCULO: 'músculo', UTERO: 'útero', OVARIO: 'ovário', VESICULA: 'vesícula', ESOFAGO: 'esôfago', ESTOMAGO: 'estômago',
+  COLON: 'cólon', TENDAO: 'tendão', PE: 'pé', OLEO: 'óleo', OSSEA: 'óssea', OSSEO: 'ósseo', UNICA: 'única',
+  ORGAOS: 'órgãos', OBSTETRICO: 'obstétrico', VALVULA: 'válvula', FISTULA: 'fístula', CONGENITO: 'congênito',
+  CONGENITA: 'congênita', URACO: 'úraco', NODULO: 'nódulo', PRE: 'pré', CARDIACO: 'cardíaco', CELULAS: 'células',
+  ANATOMICA: 'anatômica', PAVILHAO: 'pavilhão', PENIS: 'pênis', GLANDULA: 'glândula', ADERENCIAS: 'aderências',
+  ELETROFISIOLOGICO: 'eletrofisiológico', CICATRIZ: 'cicatriz', SUBMANDIBULAR: 'submandibular', HEMATOMA: 'hematoma',
+  DIGITOS: 'dígitos', PROXIMO: 'próximo', MEDIO: 'médio', TORACICA: 'torácica', TORACICO: 'torácico', GLUTEO: 'glúteo',
+  GLUTEA: 'glútea', SEPTICA: 'séptica', RESSECAO: 'ressecção', CRONICA: 'crônica', CRONICAS: 'crônicas',
+  EMERGENCIA: 'emergência', REVASCULARIZACAO: 'revascularização', MIOCARDIO: 'miocárdio', SUSPENSAO: 'suspensão',
+  SUBOCLUSAO: 'suboclusão', PERCUTANEA: 'percutânea', RECONSTITUICAO: 'reconstituição', RECOLOCACAO: 'recolocação',
+  LAPAROSCOPICA: 'laparoscópica', LAPAROSCOPICO: 'laparoscópico', DENTARIOS: 'dentários', ECTOPICA: 'ectópica',
+  CUTANEA: 'cutânea', CLAVICULA: 'clavícula', LIQUORICA: 'liquórica', NEUROLITICO: 'neurolítico',
+  SUBARACNOIDEO: 'subaracnóideo', BRONQUICA: 'brônquica', CUPULA: 'cúpula', NAO: 'não', FASCIA: 'fáscia',
+  OPERATORIO: 'operatório', 'INTRA-HEPATICA': 'intra-hepática', FEMORO: 'fêmoro', PERIFERICO: 'periférico',
+  ARTERIA: 'artéria', ESTOMATOLOGICO: 'estomatológico', TRAQUEIA: 'traqueia', VESICAL: 'vesical',
+}
+
+/** Sentence case que respeita siglas ("Ressecção de osso do pé", "Implante de cateter", "LCA"). */
+function frase(palavras) {
   return palavras.map((p, i) => {
     const up = norm(p)
     if (SIGLAS.has(up)) return up
-    if (i > 0 && STOP.has(up)) return p.toLowerCase()
-    return p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()
+    const base = p.toLowerCase()
+    return i === 0 ? base.charAt(0).toUpperCase() + base.slice(1) : base
   }).join(' ')
 }
 
 function fallback(bruto) {
   let s = norm(bruto)
   for (const p of PREFIXOS) s = s.replace(p, '')
+  // "C/ TOPICA", "P/VIDEO", "S/ PROTESE": abreviação de com/para/sem, não é separador de cirurgias
+  s = s.replace(/\s+[CSP]\/.*$/, '')
   // "A + B" e "A / B": a primeira já identifica a cirurgia
   s = s.split(/\s*[+/]\s*/)[0] || s
   for (const c of CORTES) s = s.replace(c, '')
-  const tokens = s.split(' ').filter((t) => t && !/^\d+$/.test(t))
+  const tokens = s.split(' ').map((t) => t.replace(/[(),;:]/g, '')).filter((t) => t && !/^\d+$/.test(t))
   if (!tokens.length) return ''
-  // dois nomes quando o primeiro é genérico: "FRATURA" sozinha não diz nada
-  let n = 1
-  if (GENERICAS.has(tokens[0]) && tokens.length > 1) {
-    n = 2
-    while (n < tokens.length && STOP.has(tokens[n - 1])) n += 1
-    if (n < tokens.length && STOP.has(tokens[n])) n += 2 // "FRATURA DO FEMUR" → 3 tokens
-  }
-  // devolve com a grafia ORIGINAL (acentos) das palavras escolhidas
-  const originais = String(bruto || '').normalize('NFC').replace(/\s+/g, ' ').trim().split(' ')
+  // até MAX_PALAVRAS de conteúdo, com as preposições que ficam ENTRE elas; nunca termina em preposição
   const escolhidas = []
-  let vistos = 0
-  for (const o of originais) {
-    const up = norm(o).replace(/[(),]/g, '')
-    if (!up || /^\d+$/.test(up)) continue
-    if (tokens[vistos] && up.startsWith(tokens[vistos].replace(/[(),]/g, ''))) {
-      escolhidas.push(o.replace(/[(),]/g, ''))
-      vistos += 1
-      if (vistos >= n) break
-    } else if (vistos > 0) break
+  let conteudo = 0
+  for (const t of tokens) {
+    if (!STOP.has(t)) {
+      if (conteudo === MAX_PALAVRAS) break
+      conteudo += 1
+    }
+    escolhidas.push(t)
   }
-  return titulo(escolhidas.length ? escolhidas : tokens.slice(0, n))
+  while (escolhidas.length && STOP.has(escolhidas[escolhidas.length - 1])) escolhidas.pop()
+  // grafia ORIGINAL (acentos) de cada palavra escolhida; sem acento no texto, o mapa completa
+  const originais = new Map()
+  for (const o of String(bruto || '').normalize('NFC').trim().split(/[\s/+]+/)) {
+    const limpo = o.replace(/[(),;:]/g, '')
+    const up = norm(limpo)
+    if (up && !originais.has(up)) originais.set(up, limpo)
+  }
+  return frase(escolhidas.map((t) => {
+    const o = originais.get(t) || t
+    return semAcento(o) === o && ACENTOS[t] ? ACENTOS[t] : o
+  }))
 }
 
 /**
@@ -260,7 +336,10 @@ export function nomeCurtoProcedimento(procedimento) {
   const bruto = String(procedimento || '').trim()
   if (!bruto) return ''
   const s = norm(bruto)
-  for (const [re, rotulo] of DICIONARIO) if (re.test(s)) return rotulo
+  for (const [re, rotulo] of DICIONARIO) {
+    const m = re.exec(s)
+    if (m) return typeof rotulo === 'function' ? rotulo(m, s) : rotulo
+  }
   return fallback(bruto)
 }
 

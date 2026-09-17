@@ -3,6 +3,28 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.19 (17/09/2026) — Fila: o nome curto da cirurgia diz QUAL cirurgia (RTU de próstata × de bexiga, artrodese por segmento, angiografia, "2 procedimentos")
+
+Dono (17/09, 12h33, cinco fotos da fila da tarde): **"a descrição de alguns procedimentos está incompleta,
+melhore a informação, quero que continue sendo direta"**. Os cinco tinham o mesmo defeito — o rótulo de
+`nomeCurtoProcedimento` (v5.12.6) identificava a FAMÍLIA e não a cirurgia:
+- "Cateterismo" para ANGIOGRAFIA POR CATETERISMO SELETIVO → **Angiografia por cateterismo** (o cateterismo
+  cardíaco continua "Cateterismo") · "RTU" duas vezes na Sala 9 → **RTU de próstata** e **RTU de bexiga** ·
+  "Artrodese" → **cervical / toracolombar / lombar / de coluna / de dedo / de tarso**, pelo segmento do texto ·
+  "Procedimentos" para "02 PROCEDIMENTOS" → **2 procedimentos** (a contagem é a informação; "01 CESAREA" →
+  "1 cesariana") · "Osso" para RESSECCAO DE OSSO DE PE → **Ressecção de osso de pé**.
+- **O fallback deixou de ficar com uma palavra.** Tirava o verbo da cirurgia como se fosse embalagem
+  (RESSECCAO/RETIRADA/IMPLANTE/COLOCACAO DE…) e parava na cabeça da frase — era o que virava "Osso", "Óleo",
+  "Pontos", "Cisto". Agora mantém o verbo e vai até 4 palavras de conteúdo; corta em via/lado/duração como
+  antes; devolve o acento ao que a planilha da Unimed manda sem ("pé", "ressecção", "úlcera"); sai em
+  sentence case como o dicionário ("Retirada de óleo de silicone", "Pé torto congênito", "Ossos do antebraço"
+  — este saía "S", o prefixo comia o DOS pela metade).
+- Da mesma fila: "01 VITRECT. C/FACO" era "FACO" (vitrectomia vence a FACO), LIPOABDOMINOPLASTIA era
+  "Lipoaspiração", "C/ P/ S/" deixam de partir a frase, "Debridamento de úlcera" no HRO (22 casos/mês).
+- Recalibrado nos **1366 procedimentos distintos** publicados entre 15/08 e 17/09: 267 rótulos mudam,
+  conferidos um a um; nenhum rótulo do dicionário de 14/09 ficou mais curto. Sem mudança de layout — o
+  nome longo continua encurtando com "…" na linha da cirurgia. 93 testes (19 novos travam os cinco da foto).
+
 ## v5.12.18 (16/09/2026) — Turno em curso no cabeçalho (seletor só com escolha), card noturno nunca é ajuda, selos do caso quebram linha
 
 Dono (16/09, 20h35, com a noite no ar), três pedidos:
