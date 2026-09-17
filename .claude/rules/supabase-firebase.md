@@ -72,6 +72,9 @@ const { cleanup } = createReliableSubscription({
   os três têm de bater.
 - Um canal por tópico por cliente (o realtime-js devolve o mesmo canal e `subscribe()` é único):
   o helper compartilha ouvintes. Nunca chamar `supabase.channel(...).on('postgres_changes', …)`.
+- A publication `supabase_realtime` está SEM tabelas desde 17/09 (migration `20260917003000`,
+  aplicada com `realtime.subscription` = 0). Tabela nova NÃO entra na publication — entra com o
+  trigger `tr_rt_sinal`. Se alguém voltar a `add table`, o polling do WAL volta junto.
 
 ## Referências
 - Config: `src/config/supabase.js`
