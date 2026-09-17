@@ -6,6 +6,7 @@ import { motion } from "framer-motion"
 import { cn } from "@/design-system/utils/tokens"
 import { Badge, Button } from "@/design-system/components/ui"
 import { formatDate } from "@/utils/formatters"
+import { hexComAlpha } from "@/lib/corAlpha"
 
 /**
  * NotificationCard - Card de notificacao do sistema
@@ -150,7 +151,7 @@ function NotificationCard({
         {/* Category icon circle */}
         <div
           className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-          style={{ backgroundColor: `color-mix(in srgb, var(--notif-color, ${colorLight}) 15%, transparent)` }}
+          style={{ backgroundColor: `var(--notif-color-soft, ${hexComAlpha(colorLight, 0.15)})` }}
         >
           <IconComponent
             className="w-5 h-5"
@@ -253,9 +254,11 @@ function NotificationCard({
       <style>{`
         [data-slot="notification-card"][data-category="${category}"] {
           --notif-color: ${colorLight};
+          --notif-color-soft: ${hexComAlpha(colorLight, 0.15)};
         }
         .dark [data-slot="notification-card"][data-category="${category}"] {
           --notif-color: ${colorDark};
+          --notif-color-soft: ${hexComAlpha(colorDark, 0.15)};
         }
       `}</style>
     </motion.div>

@@ -5,6 +5,7 @@ import { Card, CardContent, Avatar, Badge, Button, useTheme, ConfirmDialog } fro
 import { PageHeader } from "@/components"
 import { useMessages } from "@/contexts/MessagesContext"
 import { formatDate } from "@/utils/formatters"
+import { hexComAlpha } from "@/lib/corAlpha"
 
 const CATEGORY_ICONS = {
   plantao: Stethoscope,
@@ -252,7 +253,7 @@ export default function MessageDetailPage({ onNavigate, goBack, params }) {
               {isNotification && CatIcon ? (
                 <div
                   className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: `color-mix(in srgb, ${catColor} 15%, transparent)` }}
+                  style={{ backgroundColor: hexComAlpha(catColor, 0.15) }}
                 >
                   <CatIcon className="w-5 h-5" style={{ color: catColor }} />
                 </div>
