@@ -11,6 +11,14 @@ description: Paleta de cores, tipografia, espaçamentos e sombras do Design Syst
 NUNCA usar hex hardcoded. SEMPRE usar tokens semânticos Tailwind (`bg-card`, `text-foreground`, `border-border`).
 Para paleta completa: `src/design-system/Tokens.json`
 
+⚠️ **O que o app renderiza é o TRIPLETO HSL de `src/styles/anest-theme.css`, não o hex** do
+`Tokens.json` nem o hex dos comentários — os hex desta rule são nominais. Auditoria de 16/09/2026:
+26 tokens tinham hex a ≥2 ΔE do que o tripleto renderiza, e os maiores desvios são ajuste de
+propósito para contraste AA (ex.: `--category-orange-fg` claro renderiza #B33B00, nominal #E65100
+que reprovava sobre o pastel; `--category-purple-fg` escuro renderiza #AC8BF9, 5,7:1, contra 3,6:1
+do nominal). **"Corrigir" um tripleto para o hex é mudança de cor no app inteiro** — Regra #2.
+`src/__tests__/styles/anestTheme.test.js` trava tripleto ↔ hex do comentário (ΔE < 2).
+
 ## Cores Institucionais
 - greenDarkest: #002215 (texto principal verde)
 - greenDark: #004225 (botões, badges, avatars)
@@ -106,8 +114,39 @@ sm: 10px (badges) | md: 12px (botões) | lg: 16px (inputs) | xl: 20px (cards) | 
 - Dark glow: `rgba(46, 204, 113, 0.3)`
 
 ## Tipografia
-Font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif
+Font: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif
+(`src/index.css` `body`; o Tokens.json ainda lista `-apple-system` primeiro — está desatualizado)
 h1/h2: 20px/700 | h3: 18px/700 | h4: 16px/700 | body: 15px/600 | small: 14px/500 | caption: 13px/500 | tiny: 11px/600
+
+## Plataformas — o que é igual por construção e o que NÃO é bug (16/09/2026)
+
+Origem: "aparelhos que não são iPhone têm tonalidades diferentes do DS". 50 usuários no iPhone,
+14 no Android (9 Chrome, 5 Samsung Internet), 12 em desktop (login de 90 dias).
+
+**Igual em todo aparelho, por construção — não reintroduzir:**
+- **Barra inferior**: UMA regra em `anest-theme.css` (`.bottom-nav-glass`, alpha 0,97, sem
+  `backdrop-filter`). Era só iOS; Android/desktop levavam blur + `saturate(180%)` e a barra mudava
+  de tom com o conteúdo por baixo (#D6EBDB vs #E1F2E6 sobre o verde). ⚠️ O WebKit de desktop do
+  Playwright NÃO casa `@supports (-webkit-touch-callout)` — um ramo iOS ali nunca é testado.
+- **Moldura do sistema** (`theme-color`): `useTheme.jsx` mantém = fundo da página do tema
+  (`THEME_COLOR`); LoginPage segura #006837 via `dataset.themeColorHold`. Só o Android e o Safari
+  15+ pintam isso; o iPhone em PWA (`black-translucent`) nunca mostrou.
+- **Escuro forçado** (Chrome Android Auto Dark, Samsung Force Dark): `:root { color-scheme: only
+  light }` + meta `only light` no claro, `dark` no escuro. O tema é por CLASSE; sem `only` o
+  navegador acha que a página "não tem" escuro e recalcula as cores sozinho.
+- **`color-mix()`** não existe no Chrome < 111 / Samsung < 22 — use `hexComAlpha` de
+  `src/lib/corAlpha.js` para "15% da cor".
+
+**Diferença que NÃO é bug (não abrir correção):**
+- **Texto mais pesado/escuro fora da Apple**: `antialiased` (`-webkit-font-smoothing`) só age no
+  macOS/iOS; no Android e Windows o corpo em Inter 600 sai mais encorpado. Só o peso base (600→500)
+  mudaria isso, e é mudança de DS para todo mundo.
+- **Painel do aparelho**: Samsung "Vívido" estica o sRGB para P3, "Proteção ocular"/Night Light
+  esquentam tudo. Screenshot bate com o hex e a tela não → é o painel. Protocolo de 4 âncoras em
+  `.tmp/PLANO-tonalidades-fora-do-iphone.md` §3.
+- **Tema inicial segue o SO e fica por aparelho** (`localStorage 'anest-theme'`): Android com SO
+  escuro abre escuro, iPhone claro abre claro. Perfil → Modo Escuro resolve; sincronizar no perfil
+  só se o pedido se repetir (decisão 16/09).
 
 ## Badges — variantes que enganam (medido 25–26/08, vale para o app inteiro)
 
