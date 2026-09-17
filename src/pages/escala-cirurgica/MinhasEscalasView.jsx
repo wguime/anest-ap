@@ -5,11 +5,12 @@
  * uma sala usa "Definir anestesista da sala" (no detalhe do caso ou na Completa).
  */
 import { useMemo, useState } from 'react'
-import { CalendarClock, MapPin } from 'lucide-react'
+import { CalendarClock, MapPin, Moon } from 'lucide-react'
 import { Badge, EmptyState } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
+import { useEscalaCirurgica } from '@/contexts/EscalaCirurgicaContext'
 import { ehPosicaoAssistencial, resumirItensEscala } from '@/lib/escalaCirurgicaItens'
-import { anestesistaDoCasoEh, casosResolvidos, filtrarPorTurnoExibicao, salaExibicao } from './utils'
+import { anestesistaDoCasoEh, casosResolvidos, filtrarPorTurnoExibicao, limparConcluidosNaVirada, salaExibicao, visaoNoturna } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import { CasoCard } from './BoardView'
 import useAgoraMinuto from './useAgoraMinuto'
@@ -27,6 +28,11 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
   const [editando, setEditando] = useState(null)
   const isDemo = String(escala?.id).startsWith('demo-')
   const agoraMin = useAgoraMinuto() // um intervalo p/ a lista (tempo faltante dos casos)
+  const { hoje } = useEscalaCirurgica()
+  // VIRADA DAS 19h (dono 17/09): a mesma regra da Completa — sai o que JÁ
+  // ESTAVA terminado/suspenso às 19h; o que termina depois fica. Minhas
+  // cirurgias da tarde já fechadas são poluição para quem segue de plantão.
+  const noite = visaoNoturna({ agoraMin, dataEscala: escala?.data, hojeIso: hoje, turno })
   // CARD IDÊNTICO AO DA COMPLETA (dono 29/07): sem `podeEditar` o sheet escondia
   // residente, tempo da cirurgia, ajuda e "trocar sala/local" — o detalhe aberto
   // pela Minhas vinha pela metade, e mudar algo numa aba não aparecia na outra
@@ -37,7 +43,7 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
   // Identidade robusta: casa por login (uid) quando o caso tem; senão cai p/ o apelido (demo/legado).
   // O RESIDENTE (dono 29/07) também tem os casos dele aqui: ele acompanha por
   // `residenteUserId`, que só existe via seletor — sempre uid, nunca texto.
-  const meus = useMemo(
+  const meusDoTurno = useMemo(
     () => filtrarPorTurnoExibicao(casosResolvidos(escala), turno).filter((c) =>
       (!!meuUid && c.residenteUserId === meuUid)
       // dupla "A + B" entra para as DUAS (o helper trata; uid é null nela)
@@ -45,7 +51,22 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
     ),
     [escala, meuAlias, meuUid, turno]
   )
+  const meus = useMemo(
+    () => (noite ? limparConcluidosNaVirada(meusDoTurno, { dataEscala: escala?.data }) : meusDoTurno),
+    [meusDoTurno, noite, escala?.data],
+  )
 
+  // Tinha caso e a noite escondeu tudo: dizer isso, não "você não está escalado".
+  if (!meus.length && meusDoTurno.length) {
+    return (
+      <EmptyState
+        icon={<Moon className="w-6 h-6" />}
+        title="Nenhuma cirurgia sua em andamento"
+        description="Na virada das 19h saem as cirurgias já terminadas ou suspensas — as suas da tarde já tinham acabado."
+        action={onVerBoard && { label: 'Ver completa', onClick: onVerBoard }}
+      />
+    )
+  }
   if (!meus.length) {
     return (
       <EmptyState

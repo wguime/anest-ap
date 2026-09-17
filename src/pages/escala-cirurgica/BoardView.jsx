@@ -4,16 +4,17 @@
  * abre um bottom-sheet com o detalhe.
  */
 import { memo, useMemo, useState } from 'react'
-import { ChevronsDownUp, ChevronsUpDown, Stethoscope, Timer, UserCog, Plus } from 'lucide-react'
+import { ChevronsDownUp, ChevronsUpDown, Moon, Stethoscope, Timer, UserCog, Plus } from 'lucide-react'
 import {
   Accordion, AccordionItem, AccordionTrigger, AccordionContent,
   Badge, Button, EmptyState,
 } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
+import { useEscalaCirurgica } from '@/contexts/EscalaCirurgicaContext'
 import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
 import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
-import { anestesistaDoCasoEh, casoConcluido, casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, turnoDoCaso, compararSalas, parseHoraMinutos, salaExibicao, nomeAnestesistaExibicao, convenioExibicao, idadeExibicao } from './utils'
+import { anestesistaDoCasoEh, casoConcluido, casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, turnoDoCaso, compararSalas, parseHoraMinutos, salaExibicao, nomeAnestesistaExibicao, convenioExibicao, idadeExibicao, limparConcluidosNaVirada, visaoNoturna } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import { formatFaltante } from './PainelTempo'
 import useAgoraMinuto from './useAgoraMinuto'
@@ -326,7 +327,17 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
   // UM intervalo p/ o board inteiro (não um por card) — alimenta o tempo faltante
   // de cada cirurgia nos CasoCard.
   const agoraMin = useAgoraMinuto()
-  const casos = useMemo(() => filtrarPorTurno(casosResolvidos(escala), turno), [escala, turno])
+  // `hoje` do context (fonte única desde 21/08) — decide se a escala é a de hoje
+  const { hoje } = useEscalaCirurgica()
+  // VIRADA DAS 19h (dono 17/09): o quadro da tarde perde o que JÁ ESTAVA
+  // terminado/suspenso às 19h — e com isso as salas que já fecharam. O que sobra
+  // é o que a noite opera: as cirurgias que atravessam e as urgências. Quem
+  // termina DEPOIS das 19h fica no quadro, como em qualquer turno (2ª rodada).
+  const noite = visaoNoturna({ agoraMin, dataEscala: escala?.data, hojeIso: hoje, turno })
+  const casos = useMemo(() => {
+    const doTurno = filtrarPorTurno(casosResolvidos(escala), turno)
+    return noite ? limparConcluidosNaVirada(doTurno, { dataEscala: escala?.data }) : doTurno
+  }, [escala, turno, noite])
   // AINDA ABERTAS DO OUTRO TURNO (dono 21/08, o relato que abriu a revisão): a
   // faixa de urgências conta o DIA INTEIRO e o quadro só o turno — medido em
   // produção, das 5 urgências abertas do HRO às 15h, QUATRO eram da manhã e não
@@ -418,7 +429,11 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
   }
   // ⚠️ o EmptyState não pode engolir as herdadas: o turno sem caso nenhum é
   // exatamente a situação em que a urgência que atravessou precisa ser vista.
-  if (!casos.length && !herdadasVisiveis.length) {
+  // À NOITE o quadro vazio é o caso NORMAL (todas as da tarde terminaram) e não
+  // pode levar o "Adicionar caso" junto: é justamente a hora da urgência. O
+  // vazio noturno é tratado abaixo, com a barra de ações de pé.
+  const quadroVazio = !casos.length && !herdadasVisiveis.length
+  if (quadroVazio && !noite) {
     return (
       <EmptyState
         icon={<Stethoscope className="w-6 h-6" />}
@@ -438,23 +453,35 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
 
   return (
     <>
-      <div className="mb-2 flex gap-2">
-        {canEdit && !isDemo && (
-          <Button size="sm" variant="outline" onClick={() => setAddCaso(true)} className="min-w-0 flex-1">
-            <Plus className="w-4 h-4" /> Adicionar caso (urgência/encaixe)
-          </Button>
-        )}
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setAbertas(algumaAberta ? [] : chavesGrupos)}
-          aria-label={algumaAberta ? 'Recolher todas as salas' : 'Expandir todas as salas'}
-          className={canEdit && !isDemo ? 'shrink-0' : 'w-full'}
-        >
-          {algumaAberta ? <ChevronsDownUp className="w-4 h-4" /> : <ChevronsUpDown className="w-4 h-4" />}
-          {canEdit && !isDemo ? null : (algumaAberta ? 'Recolher todas' : 'Expandir todas')}
-        </Button>
-      </div>
+      {(!quadroVazio || (canEdit && !isDemo)) && (
+        <div className="mb-2 flex gap-2">
+          {canEdit && !isDemo && (
+            <Button size="sm" variant="outline" onClick={() => setAddCaso(true)} className="min-w-0 flex-1">
+              <Plus className="w-4 h-4" /> Adicionar caso (urgência/encaixe)
+            </Button>
+          )}
+          {/* sem sala no quadro não há o que recolher */}
+          {!quadroVazio && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setAbertas(algumaAberta ? [] : chavesGrupos)}
+              aria-label={algumaAberta ? 'Recolher todas as salas' : 'Expandir todas as salas'}
+              className={canEdit && !isDemo ? 'shrink-0' : 'w-full'}
+            >
+              {algumaAberta ? <ChevronsDownUp className="w-4 h-4" /> : <ChevronsUpDown className="w-4 h-4" />}
+              {canEdit && !isDemo ? null : (algumaAberta ? 'Recolher todas' : 'Expandir todas')}
+            </Button>
+          )}
+        </div>
+      )}
+      {quadroVazio && (
+        <EmptyState
+          icon={<Moon className="w-6 h-6" />}
+          title="Nenhuma cirurgia em andamento"
+          description="Na virada das 19h saem as cirurgias já terminadas ou suspensas. Urgências e encaixes entram aqui."
+        />
+      )}
       {/* QUADRO DENSO (dono 17/08): as salas viram faixas full-bleed com divisórias
           em vez de cartões soltos — cabem 6 casos na tela contra 4, e o cabeçalho
           fica sendo a única superfície com moldura. `-mx-4` desfaz o padding
@@ -466,6 +493,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
           vazia. Multi-coluna porque a sala é um bloco inteiro que não pode ser
           partido (`break-inside-avoid`) e a leitura continua sendo de cima para
           baixo, coluna a coluna. */}
+      {!quadroVazio && (
       <Accordion type="multiple" value={abertasAtual} onValueChange={setAbertas} className="-mx-4 divide-y-0 deitado:columns-2 deitado:gap-4 deitado:[column-rule:1px_solid_hsl(var(--border-strong))] [&>*]:deitado:break-inside-avoid">
         {gruposExibicao.map((g) => {
           const nomeGrupo = g.anestesista ? displayGrupo(g) : (g.split ? '?' : '')
@@ -569,6 +597,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
           </AccordionItem>
         )}
       </Accordion>
+      )}
 
       {detalhe && (
         <CasoDetalheSheet

@@ -143,6 +143,43 @@ discussão: as telas convivem com ela.
   quem a fila usa). Ordinal colado ao nome (`1º Matheus`), Pn acima em peso menor; mover/
   remover e o par texto+login abrem fora das colunas. Os dois dias seguem empilhados.
 
+### Virada das 19h limpa o que JÁ ESTAVA terminado/suspenso (dono 2026-09-17)
+
+*"Na transição da escala da tarde para noite, quero que exclua todos os procedimentos
+terminados e/ou suspensos [...] a partir das 19 seguem os procedimentos da tarde que ainda
+não terminaram e urgências."* E, na 2ª rodada do mesmo dia: *"após as 19h selecionar
+'terminada' não deve excluir da aba completa, deve permanecer assim como é nos outros
+turnos, deve apenas haver a limpeza [...] na transição do turno vespertino para noturno."*
+
+É um **EVENTO da virada, não um filtro contínuo**: a Completa e a Minhas, a partir das
+**19h da escala de HOJE** e só sobre os casos da **tarde**, escondem quem **já estava**
+terminado/suspenso às 19h; quem termina ou é suspenso depois fica no quadro com o selo,
+como em qualquer turno — um "Terminada" tocado por engano à noite continua ao alcance.
+A sala que só tinha caso fechado some junto. A fila de Liberações já escondia caso
+encerrado — nada mudou ali.
+
+- Helpers puros em `utils.js`: `visaoNoturna({ agoraMin, dataEscala, hojeIso, turno })`
+  (só `vespertino`, só hoje, ≥ `INICIO_NOTURNO_MIN` — regra do relógio como a fase da fila,
+  mas **sem** `faseLiberacoes`, que exclui sáb/dom sem fila única por causa dos P1–P4) ·
+  `concluidoAntesDaNoite(caso, { dataEscala })` · `limparConcluidosNaVirada(casos, …)`.
+- **QUANDO concluiu vem do carimbo de cada eixo**: terminada (e "suspensa" legada no eixo
+  principal) → `statusAtualizadoEm`; o toggle **Suspensa** do eixo extra NÃO carimba desde
+  21/08 (é aviso, não transição) → só `updatedAt`, que é o que sobra para datar a suspensão.
+  Consequência assumida: suspensa da tarde **editada** à noite volta ao quadro (o erro é para
+  o lado de mostrar). Sem carimbo nenhum (legado/demo) conta como concluído antes.
+- Por isso o **otimista carimba `updatedAt` nos DOIS ramos** (`setStatusCirurgia`), como a
+  RPC (`updated_at = now()` em ambos): sem ele, suspender às 19h30 sumia até o refetch e
+  voltava — o "vai e volta" de 21/08 de novo.
+- **Outra data e a manhã consultada à noite ficam inteiras** — a noite é continuação da
+  tarde, e o registro do dia continua legível no dia seguinte.
+- **Quadro vazio à noite NÃO é o "Nenhum caso neste turno"**: é o caso normal (tudo limpo
+  na virada) e leva um vazio próprio ("Nenhuma cirurgia em andamento") com o **"Adicionar
+  caso" de pé** — é a hora da urgência; o "Recolher todas" some porque não há sala.
+  Na Minhas, tinha caso e a virada limpou tudo → "Nenhuma cirurgia sua em andamento";
+  sem caso meu nenhum → o vazio de sempre.
+- Travas: `escalaCompletaNoite.test.jsx` + `updatedAt` no otimista em
+  `escalaCirurgicaOtimista.test.jsx`.
+
 ### Superfícies de ação da escala (dono 17/08) — os painéis que abrem por cima
 
 Mesmo método (protótipo a 430px nos dois temas, medição ao lado, escolha por imagem),

@@ -3,6 +3,27 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.20 (17/09/2026) — Completa e Minhas: a virada das 19h limpa o que já estava terminado/suspenso
+
+Dono (17/09): "na transição da escala da tarde para noite, quero que exclua todos os procedimentos
+terminados e/ou suspensos. quero diminuir a poluição dos procedimentos cirúrgicos da tarde no período
+noturno, já que a partir das 19 seguem os procedimentos da tarde que ainda não terminaram e urgências".
+E, na 2ª rodada: "após as 19h selecionar 'terminada' não deve excluir da aba completa, deve permanecer
+assim como é nos outros turnos, deve apenas haver a limpeza [...] na transição do vespertino para noturno".
+- **Evento da virada, não filtro contínuo**: escala de HOJE, ≥19h, casos da TARDE → a Completa e a
+  Minhas escondem quem JÁ ESTAVA terminado/suspenso às 19h (`concluidoAntesDaNoite`: terminada pelo
+  `statusAtualizadoEm`, suspensa do eixo extra pelo `updatedAt`, que é o único carimbo do toggle). Quem
+  termina depois fica no quadro com o selo, como em qualquer turno. A sala que só tinha caso fechado
+  some junto; iniciadas, agendadas e urgências abertas ficam. Outra data e a manhã consultada à noite
+  seguem inteiras. Vale em qualquer dia (não passa por `faseLiberacoes`, que é dos P1–P4).
+- **Otimista carimba `updatedAt` nos dois ramos** (`setStatusCirurgia`), como a RPC — sem isso,
+  suspender às 19h30 sumia do quadro até o refetch e voltava.
+- **Quadro vazio à noite** ganha vazio próprio ("Nenhuma cirurgia em andamento") com o "Adicionar
+  caso" de pé — é a hora da urgência. Minhas: "Nenhuma cirurgia sua em andamento" quando a virada
+  limpou tudo; sem caso meu, o vazio de sempre.
+- A fila de Liberações já escondia os casos encerrados — não mudou. Travas: `escalaCompletaNoite.test.jsx`
+  + `escalaCirurgicaOtimista.test.jsx`.
+
 ## v5.12.19 (17/09/2026) — Fila: o nome curto da cirurgia diz QUAL cirurgia (RTU de próstata × de bexiga, artrodese por segmento, angiografia, "2 procedimentos")
 
 Dono (17/09, 12h33, cinco fotos da fila da tarde): **"a descrição de alguns procedimentos está incompleta,

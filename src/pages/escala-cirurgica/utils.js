@@ -6,6 +6,7 @@ import { STATUS_CONCLUIDO, casoConcluido, casoTerminado } from '@/lib/escalaCiru
 import { casoPassaDeTurno } from '@/lib/escalaCirurgicaRegras'
 import { ehPosicaoAssistencial, filtrarItensImportados } from '@/lib/escalaCirurgicaItens'
 import { TURNOS_MAPA, turnoDoCasoImportado } from '@/lib/escalaFdsMapas'
+import { INICIO_NOTURNO_MIN } from '@/lib/plantaoNoturno'
 
 /** Normaliza nome p/ comparação (acento/caixa/PED-insensível). */
 export const normNome = (s) =>
@@ -696,6 +697,65 @@ export function casosQuePassamParaOTurno(casos, turno) {
 export function filtrarPorTurnoExibicao(casos, turno) {
   if (!turno) return casos
   return (casos || []).filter((c) => turnoDoCaso(c) === turno || casoSegueParaOTurno(c, turno))
+}
+
+/**
+ * LIMPEZA NA VIRADA DAS 19h (dono 17/09: "na transição da escala da tarde para
+ * noite, exclua todos os procedimentos terminados e/ou suspensos [...] a partir
+ * das 19 seguem os procedimentos da tarde que ainda não terminaram e urgências").
+ * A partir das 19h a tarde SEGUE — o que continua são as cirurgias ainda abertas
+ * e as urgências —, e as terminadas/suspensas viravam poluição na Completa e na
+ * Minhas: dez salas fechadas entre as duas em andamento.
+ *
+ * ⚠️ É um EVENTO da virada, não um filtro contínuo (dono 17/09, 2ª rodada:
+ * "após as 19h selecionar 'terminada' não deve excluir da aba completa, deve
+ * permanecer assim como é nos outros turnos"). Sai quem JÁ ESTAVA terminado ou
+ * suspenso às 19h; quem termina depois fica no quadro, como em qualquer turno —
+ * um "Terminada" tocado por engano à noite continua ao alcance do dedo.
+ *
+ * `visaoNoturna` decide SE a limpeza vale: regra do RELÓGIO, como a fase noturna
+ * da fila (plantaoNoturno) — escala de HOJE, ≥19h, e só sobre os casos da TARDE
+ * (a noite é continuação da tarde; o quadro da manhã aberto de propósito à noite
+ * segue inteiro, e outra data nunca vira noite). Não consulta `faseLiberacoes`
+ * porque aquela exclui sáb/dom sem fila única (regra dos P1–P4); aqui a poluição
+ * é a mesma em qualquer dia.
+ */
+export function visaoNoturna({ agoraMin, dataEscala, hojeIso, turno }) {
+  return turno === 'vespertino'
+    && !!dataEscala && dataEscala === hojeIso
+    && agoraMin != null && agoraMin >= INICIO_NOTURNO_MIN
+}
+
+const isoLocal = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+/**
+ * O caso JÁ ESTAVA terminado/suspenso às 19h? É o que a virada limpa.
+ *
+ * QUANDO ele concluiu vem do carimbo que cada eixo deixa: terminada (e a
+ * "suspensa" legada no eixo principal) grava `status_atualizado_em`; o toggle
+ * "Suspensa" do eixo extra NÃO carimba desde 21/08 (é aviso, não transição) e
+ * só toca `updated_at` — que é o que sobra para datar a suspensão. Uma suspensa
+ * da tarde editada à noite volta ao quadro por isso; é raro e o erro é para o
+ * lado de MOSTRAR. Sem carimbo nenhum (legado/demo) conta como concluído antes.
+ */
+export function concluidoAntesDaNoite(caso, { dataEscala } = {}) {
+  if (!casoConcluido(caso)) return false
+  const noEixoPrincipal = STATUS_CONCLUIDO.includes(caso?.statusCirurgia || 'agendada')
+  const bruto = noEixoPrincipal
+    ? (caso?.statusAtualizadoEm || caso?.status_atualizado_em)
+    : (caso?.updatedAt || caso?.updated_at)
+  if (!bruto) return true
+  const d = new Date(bruto)
+  if (Number.isNaN(d.getTime())) return true
+  const iso = isoLocal(d)
+  if (dataEscala && iso !== dataEscala) return iso < dataEscala // concluído em dia anterior
+  return d.getHours() * 60 + d.getMinutes() < INICIO_NOTURNO_MIN
+}
+
+/** O que sobrevive à virada das 19h: tudo que não estava terminado/suspenso àquela hora. */
+export function limparConcluidosNaVirada(casos, { dataEscala } = {}) {
+  return (casos || []).filter((c) => !concluidoAntesDaNoite(c, { dataEscala }))
 }
 
 /**

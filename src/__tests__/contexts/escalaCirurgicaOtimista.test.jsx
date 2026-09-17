@@ -322,6 +322,22 @@ describe('carimbo do status entra junto com o toque', () => {
     expect(casoDe('c1').statusAtualizadoEm).toBe(carimboInicial)
     expect(casoDe('c1').statusAtualizadoPor).toBe('u-eu')
   })
+
+  // `updated_at` a RPC toca nos DOIS ramos, e é o ÚNICO carimbo que o toggle
+  // "Suspensa" deixa: a limpeza da virada das 19h (utils.concluidoAntesDaNoite)
+  // lê dele QUANDO a cirurgia foi suspensa. Sem ele no otimista, suspender às
+  // 19h30 sumia do quadro até o refetch — e voltava (dono 17/09).
+  it('o toggle de aviso e a transição carimbam updatedAt já no otimista', async () => {
+    await montar()
+    svcMock.updateStatusCirurgia.mockImplementation(pendente)
+    await act(async () => { actions.setStatusCirurgia(unimed(), casoDe('c1'), 'suspensa', { userId: 'u-eu' }) })
+    expect(casoDe('c1').statusExtra).toBe('suspensa')
+    expect(casoDe('c1').updatedAt).toBeTruthy()
+    const doToggle = casoDe('c1').updatedAt
+    await act(async () => { actions.setStatusCirurgia(unimed(), casoDe('c2'), 'terminada', { userId: 'u-eu' }) })
+    expect(casoDe('c2').updatedAt).toBeTruthy()
+    expect(casoDe('c1').updatedAt).toBe(doToggle) // o de outro caso não muda
+  })
 })
 
 // ════════════════════════════════════════════════════════════════════════════

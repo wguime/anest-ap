@@ -728,14 +728,19 @@ export function EscalaCirurgicaProvider({ children }) {
     // reverter o espelho parcial da v5.12.8). O total muda pela pílula ou pelos
     // espelhos que já existiam (uma cirurgia; todas informadas), nunca pelo status.
     const zeraTermino = status === 'terminada'
+    // `updatedAt` nos DOIS ramos, como a RPC (`updated_at = now()` em ambos): é o
+    // único carimbo que o toggle "Suspensa" deixa, e a limpeza da virada das 19h
+    // (utils.concluidoAntesDaNoite) lê dele QUANDO a cirurgia foi suspensa. Sem
+    // ele no otimista, suspender às 19h30 sumia do quadro até o refetch — e voltava.
     const patch = EXTRAS.includes(status)
-      ? { statusExtra: vivo.statusExtra === status ? null : status }
+      ? { statusExtra: vivo.statusExtra === status ? null : status, updatedAt: agora().toISOString() }
       : {
         statusCirurgia: status,
         ...(status === 'terminada' && { statusExtra: null }),
         ...(zeraTermino && { terminoPrevisto: null }),
         statusAtualizadoEm: agora().toISOString(),
         statusAtualizadoPor: userInfo.userId || null,
+        updatedAt: agora().toISOString(),
       }
     const antes = {
       statusCirurgia: vivo.statusCirurgia ?? null,
@@ -743,6 +748,7 @@ export function EscalaCirurgicaProvider({ children }) {
       statusAtualizadoEm: vivo.statusAtualizadoEm ?? null,
       statusAtualizadoPor: vivo.statusAtualizadoPor ?? null,
       ...(zeraTermino && { terminoPrevisto: vivo.terminoPrevisto ?? null }),
+      updatedAt: vivo.updatedAt ?? null,
     }
     const alvo = caso.id ? { ids: [caso.id] } : { refCaso: vivo }
     // OTIMISTA: pinta a UI já (a demora do RPC deixava o botão "morto" — reclamação
