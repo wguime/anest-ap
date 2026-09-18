@@ -3,7 +3,10 @@
  *
  * Dono (04/09): "a escala é vista no pega plantão (de P1 a P4 a ordem pode variar entre
  * esses 4 — verificação deve ser feita ao adicionar a escala de final de semana para saber
- * a ordem exata; de P5 a P12 a ordem está correta)".
+ * a ordem exata; de P5 a P12 a ordem está correta)". E fechando o ponto (18/09): "no pega
+ * plantão de P1-P4 a ordem não importa, o que importa é a tabela de liberações" — entre os
+ * quatro, o documento manda e ninguém precisa confirmar nada; só gente de FORA do bloco é
+ * divergência.
  *
  * É o mesmo papel que a escala numérica faz no dia útil e a folha "FERIADOS" faz no
  * feriado: uma referência que NÃO passa pela leitura da foto. Sem ela, quando a Vision
@@ -33,15 +36,22 @@ const tokens = (v) => String(v || '')
  * token a token perde os três casos. Aqui cada token do nome mais curto pode consumir
  * tokens CONSECUTIVOS do mais longo, e o primeiro nome tem de bater — sem isso dois
  * sobrenomes iguais casariam pessoas diferentes.
+ *
+ * INICIAL (dono 18/09: "G Staub = Guilherme Staub, A Danieli = Alexandre Danieli"): o Pega
+ * Plantão abrevia o primeiro nome, e "G. Staub" × "Guilherme Staub" tem de casar — uma
+ * letra sozinha vale pelo nome que começa com ela, só na posição do primeiro nome.
  */
 export function nomesCompativeis(a, b) {
   const [x, y] = [tokens(a), tokens(b)]
   if (!x.length || !y.length) return false
   const [curto, longo] = x.join('').length <= y.join('').length ? [x, y] : [y, x]
-  if (curto[0] !== longo[0]) return false
+  const inicial = (t, nome) => t.length === 1 && nome.length > 1 && nome.startsWith(t)
+  if (curto[0] !== longo[0] && !inicial(curto[0], longo[0]) && !inicial(longo[0], curto[0])) return false
   let j = 0
-  for (const alvo of curto) {
+  for (const [i, alvo] of curto.entries()) {
     let achou = false
+    // o primeiro nome já casou acima (igual ou pela inicial): consome o 1º token do longo
+    if (i === 0) { j = 1; continue }
     while (j < longo.length && !achou) {
       let acc = ''
       let k = j
@@ -86,10 +96,10 @@ export const ehBlocoInicial = (pn) => num(pn) >= 1 && num(pn) <= 4
  * Compara a tabela de posições LIDA do documento com a do Pega Plantão.
  *
  * - **P5 em diante**: a posição é exata; nome diferente é divergência.
- * - **P1 a P4**: o conjunto é o que vale. Se as mesmas quatro pessoas estão lá em ordem
- *   diferente, isso NÃO é erro — é o aviso para confirmar a ordem na foto, que é
- *   exatamente o que o dono pede que se faça ao anexar. Pessoa que não está no bloco dos
- *   quatro do Pega Plantão é divergência de verdade.
+ * - **P1 a P4**: o conjunto é o que vale. As mesmas quatro pessoas em ordem diferente
+ *   NÃO é erro nem pergunta (dono 18/09: "a ordem não importa, o que importa é a tabela
+ *   de liberações") — fica em `conferirOrdem` só como dado, e `iguais` não olha para ele.
+ *   Pessoa que não está no bloco dos quatro do Pega Plantão é divergência de verdade.
  * - Posição que só existe de um lado entra em `faltando`/`sobrando`.
  *
  * `casar(nomeLido, nomeDoPegaPlantao)` decide identidade; sem ela, comparação por texto.
@@ -123,7 +133,7 @@ export function compararPosicoesFds(lidas, doPegaPlantao, { casar } = {}) {
     divergentes.push({ pn, lido, esperado })
   }
   return {
-    iguais: !divergentes.length && !faltando.length && !sobrando.length && !conferirOrdem.length,
+    iguais: !divergentes.length && !faltando.length && !sobrando.length,
     divergentes, faltando, sobrando, conferirOrdem,
   }
 }
@@ -133,7 +143,8 @@ export function textoComparacaoFds(c) {
   if (!c || c.iguais) return ''
   const partes = []
   if (c.divergentes.length) partes.push(`difere no Pega Plantão: ${c.divergentes.map((d) => `${d.pn} lido ${d.lido}, no Pega Plantão ${d.esperado}`).join(' · ')}`)
-  if (c.conferirOrdem.length) partes.push(`confirme a ordem entre P1 e P4 (as mesmas pessoas, em posições trocadas: ${c.conferirOrdem.map((d) => d.pn).join(', ')})`)
+  // `conferirOrdem` (P1–P4 trocados entre si) fica FORA da frase: entre os quatro quem
+  // manda é a tabela de liberações do documento (dono 18/09) — não há o que confirmar.
   if (c.faltando.length) partes.push(`sem nome na leitura: ${c.faltando.map((d) => `${d.pn} (${d.esperado})`).join(' · ')}`)
   // `sobrando` fica no dado mas FORA da frase: posição que o Pega Plantão não cobre não é
   // prova de erro de leitura — ele pode simplesmente não ter aquela vaga registrada (no

@@ -65,6 +65,12 @@ describe('nomesCompativeis — o mesmo nome com espaços diferentes', () => {
     ['GUILHERME MELO', 'GUILHERME M ELO', true],
     ['KLISMAN', 'Klisman Drescher Hilleshein', true],
     ['A. DANIELI', 'A. Danieli', true],
+    // INICIAL (dono 18/09): o Pega Plantão abrevia o primeiro nome
+    ['Guilherme Staub', 'G. Staub', true],
+    ['Alexandre Danieli', 'A. Danieli', true],
+    ['GUILHERME MELO', 'G. Staub', false],
+    ['Aline Boff', 'A. Danieli', false],
+    ['STAUB', 'G. Staub', false], // apelido sem o nome do cadastro: quem resolve é o roster (script)
     ['TIAGO', 'Tiago Iop Viana', true],
     ['GUILHERME DIDOMENICO', 'Guilherme Souza Melo', false],
     ['THAYNA', 'Tiago Iop Viana', false],
@@ -94,11 +100,15 @@ describe('compararPosicoesFds', () => {
     expect(textoComparacaoFds(c)).toMatch(/P7 lido THAYNA, no Pega Plantão Tiago Iop Viana/)
   })
 
-  it('P1 a P4 trocados entre si: pede CONFIRMAÇÃO da ordem, não acusa erro', () => {
+  it('P1 a P4 trocados entre si: é o documento que manda — nem erro, nem pergunta', () => {
+    // ⚠️ MUDOU DE LADO em 18/09: pedia "confirme a ordem entre P1 e P4". Dono: "no pega
+    // plantão de P1-P4 a ordem não importa, o que importa é a tabela de liberações".
+    // O dado continua em `conferirOrdem`; a frase e o `iguais` não olham para ele.
     const c = compararPosicoesFds({ ...lidasCertas, P1: 'ROMULO', P2: 'JOAO HENRIQUE' }, pp, { casar })
     expect(c.divergentes).toEqual([])
     expect(c.conferirOrdem.map((d) => d.pn)).toEqual(['P1', 'P2'])
-    expect(textoComparacaoFds(c)).toMatch(/confirme a ordem entre P1 e P4/)
+    expect(c.iguais).toBe(true)
+    expect(textoComparacaoFds(c)).toBe('')
   })
 
   it('pessoa de FORA do bloco aparecendo em P1–P4 é divergência de verdade', () => {

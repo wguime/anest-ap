@@ -472,6 +472,46 @@ export function completarRodapeFds(rodape, faixa, opts = {}) {
   return { rodape: [...frente, ...base, ...fim], acrescentados: [...frente, ...fim] }
 }
 
+/** Domingo civil (a data ISO, ao meio-dia local — sem borda de fuso). */
+export function ehDomingo(dataIso) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dataIso || ''))) return false
+  return new Date(`${dataIso}T12:00:00`).getDay() === 0
+}
+
+/**
+ * DOMINGO — P7 E P8 SÓ ENTRAM NA ESCALA COM CIRURGIA ELETIVA (dono 18/09/2026):
+ * "Nos domingos P7 e P8 só são escalados se cirurgias eletivas (se não houver
+ * cirurgia eletiva eles não entram na escala, mantenha eles na lista como
+ * liberados ao final da lista e informe o motivo; se algum dos plantonistas
+ * estiver fazendo cirurgia eletiva e entrar uma urgência P7/P8 podem ser
+ * acionados conforme ordem de escalação e turno)".
+ *
+ * Decide na TELA, não na publicação: a eletiva pode entrar no mapa depois (e a
+ * pessoa volta sozinha à posição publicada), e "acionar" é o toque de sempre no
+ * card liberado (`{ escalado: true }`), que também a devolve à posição. Quem está
+ * sem escalação vai para o FIM da lista — depois da retaguarda, na ordem em que
+ * já estava, que é a da escalação do documento ("8º JANAINA 7º CRISTINA") — e
+ * leva `semEletivaDomingo: true` para o card dizer o porquê. No fim da lista a
+ * cauda automática (29/08) já pinta os dois de liberados. Só turnos de DIA: a
+ * fila da noite de domingo é P11, P6, P5 e não os tem.
+ *
+ * `escalado(l)` é a pergunta da view ("tem sala/cirurgião/caso neste turno, ou
+ * foi acionada?"); a lib não sabe respondê-la sozinha. `ordem_liberacao` NÃO
+ * muda — é exibição, como a ajuda e o plantão do turno seguinte no dia útil.
+ */
+export function aplicarDomingoP7P8(linhas, { dataIso, turno, escalado } = {}) {
+  const lista = linhas || []
+  if (!lista.length || !ehDomingo(dataIso) || !(turno === 'matutino' || turno === 'vespertino')) return lista
+  const fica = []
+  const fim = []
+  for (const l of lista) {
+    const pn = String(l?.selo || '').toUpperCase()
+    const semEletiva = (pn === 'P7' || pn === 'P8') && !l.noturno && !(typeof escalado === 'function' && escalado(l))
+    ;(semEletiva ? fim : fica).push(semEletiva ? { ...l, semEletivaDomingo: true } : l)
+  }
+  return fim.length ? [...fica, ...fim] : lista
+}
+
 /**
  * BLOCO "SEM ANESTESISTA" POR CIRURGIÃO, na fila única (dono 13/09, modelo A
  * escolhido em protótipo a 430px com os 17 casos reais de sáb 12/09 à tarde):

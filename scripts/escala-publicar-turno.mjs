@@ -508,6 +508,16 @@ if (cmd === 'publicar-fds') {
       const casar = (a, b) => {
         const ua = resolver(a); const ub = resolver(b)
         if (ua && ub) return ua === ub
+        // um lado é apelido do dicionário ("STAUB", "ALEXANDRE D") e o outro é como o Pega
+        // Plantão escreve ("G. Staub", "A. Danieli"): compara pelo NOME DO CADASTRO de quem
+        // resolveu, com a inicial valendo pelo primeiro nome (dono 18/09: "G Staub =
+        // Guilherme Staub, A Danieli = Alexandre Danieli")
+        const pelaPessoa = (uid, texto) => {
+          const r = uid ? rosterByUid.get(uid) : null
+          if (!r) return false
+          return [r.nome, ...(r.apelidos || [])].some((n) => n && fdsPP.nomesCompativeis(n, texto))
+        }
+        if (pelaPessoa(ua, b) || pelaPessoa(ub, a)) return true
         return numerica.casarNomeComLegenda(a, b) || numerica.casarNomeComLegenda(b, a)
       }
       const c = fdsPP.compararPosicoesFds(dias[sabado].posicoes, posicoesPP, { casar })

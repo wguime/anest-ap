@@ -813,3 +813,37 @@ cirurgião+hospital, sheet de grupo com todos os ids, linha define um só, e o d
 some SÓ nas Liberações" + "SÁBADO carregando" em `escalaTurnoAutomatico.test.jsx`
 (os dois MUDARAM DE LADO com o porquê no corpo), e `agruparSemAnestesistaPorCirurgiao`
 em `escalaFds.test.js`.
+
+### DOMINGO — P7 e P8 só entram na escala com cirurgia ELETIVA (dono 18/09)
+
+*"Nos domingos P7 e P8 só são escalados se cirurgias eletivas (se não houver cirurgia
+eletiva eles não entram na escala, mantenha eles na lista como liberados ao final da lista e
+informe o motivo; se algum dos plantonistas estiver fazendo cirurgia eletiva e entrar uma
+urgência P7/P8 podem ser acionados conforme ordem de escalação e turno)."*
+
+Decidido na TELA, não na publicação (`aplicarDomingoP7P8`, lib pura em `escalaFds.js`,
+chamada na `LiberacoesView` sobre a lista de exibição, só `modoFds && !feriado`, turnos de
+dia): a linha com selo **P7/P8** que não tem sala/cirurgião/caso no turno vai para o **fim da
+lista** (depois da retaguarda, na ordem em que já estava — a da escalação do documento, "8º
+JANAINA 7º CRISTINA"), a **cauda de 29/08 a pinta de Liberada**, e o card diz o porquê
+("Sem cirurgia eletiva no domingo · entra só em urgência", mesma receita da linha "Turno até").
+Por que na tela: a eletiva pode entrar no mapa depois (a pessoa volta sozinha à posição
+publicada) e **acionar em urgência é o toque de sempre no card liberado** — grava
+`{ escalado: true }` e a devolve à posição, sem aviso, como já era. `ordem_liberacao` não muda.
+A noite de domingo (P11, P6, P5) e o sábado não têm a regra. Recorte real de dom 20/09: Janaína
+(P8) tem os 2 procedimentos da Simone e fica; Cristina (P7) vai para o fim. Travas:
+`escalaFds.test.js` (describe `aplicarDomingoP7P8`) e `escalaFdsTelaUnica.test.jsx` (describe
+"DOMINGO" — 2 dos 5 falham sem o fio na view; os outros 3 travam as fronteiras: acionada,
+sábado, toque).
+
+### Pega Plantão × tabela — P1–P4 é bloco, o documento manda (dono 18/09)
+
+*"No pega plantão de P1-P4 a ordem não importa, o que importa é a tabela de liberações."*
+`compararPosicoesFds` deixa de PEDIR confirmação quando as mesmas quatro pessoas estão em
+posições trocadas (o dado segue em `conferirOrdem`; `iguais` e a frase não olham para ele).
+Gente de fora do bloco em P1–P4 e P5+ trocado continuam divergência. E o casador entende a
+**inicial** do Pega Plantão (*"G Staub = Guilherme Staub, A Danieli = Alexandre Danieli"*):
+`nomesCompativeis` aceita letra solta no primeiro nome, e o script compara o apelido do
+documento pelo NOME DO CADASTRO de quem resolveu (`pelaPessoa` em `escala-publicar-turno.mjs`).
+Dois testes mudaram de lado com o porquê no corpo (`escalaFdsPegaPlantao.test.js`,
+`importarEscalaFds.test.jsx`).

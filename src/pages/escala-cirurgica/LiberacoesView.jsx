@@ -13,7 +13,7 @@ import {
 } from '@/design-system'
 import { fraseClinica, gerarColunaLiberacao, nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
 import { faseLiberacoes, plantonistasNoturnos, candidatosNome, linhasNoturnas, fundirLinhasNoturnas, marcarSelosNoTurno, ehDiaUtil, casarPorInicialSobrenome, P4_HOSPITAIS } from '@/lib/plantaoNoturno'
-import { marcarSelosFds, linhasNoturnasFds, plantonistasFaixaFds, FDS_TURNO_FAIXA, resolverNomeEstrito, ehFeriado, agruparSemAnestesistaPorCirurgiao } from '@/lib/escalaFds'
+import { marcarSelosFds, linhasNoturnasFds, plantonistasFaixaFds, FDS_TURNO_FAIXA, resolverNomeEstrito, ehFeriado, agruparSemAnestesistaPorCirurgiao, aplicarDomingoP7P8 } from '@/lib/escalaFds'
 import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
 import { hojeISO, HOSPITAIS, HOSPITAL_LABEL, OBSERVACAO_MAX } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
@@ -1144,7 +1144,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // "inseriram o rodapé fora de ordem". Só saem da ordem quem a regra manda:
   // plantão noturno no topo, e extras/ajudas/plantão-do-turno-seguinte no fim
   // (esses a própria lib já posiciona).
-  const linhasExibicao = fechaComPlantao
+  const linhasExibicaoBase = fechaComPlantao
     ? [
         ...linhasFase.filter((l) => l.noturno),
         ...linhasOficiais.slice(0, -1),
@@ -1158,6 +1158,16 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
         ...linhasForaDoRodape,
         ...naFrenteDoPlantao,
       ]
+  // DOMINGO (dono 18/09): P7/P8 sem cirurgia eletiva vão para o FIM da lista —
+  // a cauda de 29/08 os pinta de liberados — com o porquê no card; acionar em
+  // urgência é o toque de sempre, que os devolve à posição. `aplicarDomingoP7P8`
+  // decide; aqui só se responde "está escalado neste turno, ou foi acionado?".
+  const linhasExibicao = modoFds && !feriado && !noiteFds
+    ? aplicarDomingoP7P8(linhasExibicaoBase, {
+      dataIso: escala?.data, turno,
+      escalado: (l) => !naoEscalado(l) || marcaDe(l)?.escalado === true,
+    })
+    : linhasExibicaoBase
 
   // TEMPO ESTOURADO (dono 24/08): quem informou um término que já passou e AINDA
   // tem cirurgia aberta. A conta é a mesma que pinta a pílula de âmbar no card —
@@ -2423,6 +2433,15 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     {!liberadoReal && turnoProprioDe(linha) && (
                       <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
                         Turno encerra às {turnoProprioDe(linha)}h
+                      </p>
+                    )}
+                    {/* DOMINGO — P7/P8 SEM CIRURGIA ELETIVA (dono 18/09): a pessoa está
+                        no fim da lista, liberada, e o card diz o porquê; em urgência o
+                        toque de sempre a aciona e ela volta à posição publicada. Mesma
+                        receita da linha acima. */}
+                    {linha.semEletivaDomingo && (
+                      <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
+                        Sem cirurgia eletiva no domingo · entra só em urgência
                       </p>
                     )}
                     {/* ⚠️ HOSPITAL ISOLADO + SALA ANTES DOS CIRURGIÕES é o card do

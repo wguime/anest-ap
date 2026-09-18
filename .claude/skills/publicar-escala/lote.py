@@ -129,7 +129,10 @@ def _com_caso(h):
         elif a != '?':
             por_sala[c['sala']] = a
         if a and a != '?':
-            nomes.add(up(a))
+            # dupla "A + B" (bloco de 2 anestesistas): os dois têm caso
+            for parte in re.split(r'\s*\+\s*', a):
+                if parte.strip():
+                    nomes.add(up(parte.strip()))
     for p in h['posicoesAssistenciais']:
         nomes.add(up(p['anestesista']))
     return nomes

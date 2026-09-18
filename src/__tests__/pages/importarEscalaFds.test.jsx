@@ -483,15 +483,19 @@ describe('fim de semana — posições conferidas no Pega Plantão', () => {
     expect(aviso.textContent).toMatch(/CRISTINA/i)
   })
 
-  it('as MESMAS pessoas em posições trocadas dentro de P1–P4 pedem confirmação, não acusam erro', async () => {
+  it('as MESMAS pessoas em posições trocadas dentro de P1–P4: nem aviso, nem erro — o documento manda', async () => {
+    // ⚠️ MUDOU DE LADO em 18/09 (pedia "confirme a ordem entre P1 e P4"). Dono: "no pega
+    // plantão de P1-P4 a ordem não importa, o que importa é a tabela de liberações".
     getPlantoesMock.mockResolvedValueOnce([
       pp(1, 'Joao Henrique Salvao Vanni'), pp(2, 'Guilherme Xavier Di Domenico'),
       ...PP_IGUAL.slice(2),
     ])
     await conferir()
-    const aviso = await screen.findByText(/Tabela de posições —/i)
-    expect(aviso.textContent).toMatch(/confirme a ordem entre P1 e P4/i)
-    expect(aviso.textContent).not.toMatch(/difere no Pega Plantão/i)
+    // a comparação é assíncrona (mesmo caminho do caso "divergente" logo abaixo): dá o
+    // tempo dela e afirma que NADA apareceu — nem a frase, nem "difere no Pega Plantão"
+    await new Promise((r) => setTimeout(r, 50))
+    expect(screen.queryByText(/Tabela de posições —/i)).toBeNull()
+    expect(screen.queryByText(/difere no Pega Plantão/i)).toBeNull()
   })
 
   it('sem resposta do Pega Plantão a tela não inventa comparação', async () => {

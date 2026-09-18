@@ -26,6 +26,8 @@ import {
   sugerirRodapeFds,
   rodapeDeOrdemDoc,
   completarRodapeFds,
+  aplicarDomingoP7P8,
+  ehDomingo,
   agruparSemAnestesistaPorCirurgiao,
   ordensDocumentoFeriado,
   normalizarParseFds,
@@ -628,5 +630,67 @@ describe('agruparSemAnestesistaPorCirurgiao — o bloco da fila única por cirur
     const g = agruparSemAnestesistaPorCirurgiao([{ id: 'a', cirurgiao: '' }, { id: 'b', cirurgiao: 'X' }])
     expect(g.map((x) => [x.cirurgiao, x.hospital])).toEqual([['', ''], ['X', '']])
     expect(g[0].chave).toBe('?|')
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// DOMINGO — P7 e P8 só entram na escala com cirurgia ELETIVA (dono 18/09/2026):
+// "se não houver cirurgia eletiva eles não entram na escala, mantenha eles na
+// lista como liberados ao final da lista e informe o motivo; se algum dos
+// plantonistas estiver fazendo cirurgia eletiva e entrar uma urgência P7/P8 podem
+// ser acionados conforme ordem de escalação e turno". Recorte real de dom 20/09:
+// Janaína (P8) tem os 2 procedimentos da Simone; Cristina (P7) não tem nada.
+// ════════════════════════════════════════════════════════════════════════════
+describe('aplicarDomingoP7P8 — sem eletiva vai para o fim, com o porquê', () => {
+  const L = (nome, selo, extra = {}) => ({ anestesista: nome, chave: nome, selo, noRodape: true, ...extra })
+  const manha = () => [L('TIAGO', 'P3'), L('NATHALIA', 'P4'), L('JANAINA', 'P8'), L('CRISTINA', 'P7'), L('MAURICIO', 'P11'), L('STAUB', 'P2'), L('ROMULO', 'P1')]
+  const comCaso = new Set(['TIAGO', 'NATHALIA', 'JANAINA'])
+  const escalado = (l) => comCaso.has(l.chave)
+  const nomes = (ls) => ls.map((l) => l.anestesista)
+
+  it('domingo de manhã: Cristina (P7, sem eletiva) vai para o FIM; Janaína (P8, Simone) fica onde está', () => {
+    const out = aplicarDomingoP7P8(manha(), { dataIso: '2026-09-20', turno: 'matutino', escalado })
+    expect(nomes(out)).toEqual(['TIAGO', 'NATHALIA', 'JANAINA', 'MAURICIO', 'STAUB', 'ROMULO', 'CRISTINA'])
+    expect(out[6].semEletivaDomingo).toBe(true)
+    expect(out[2].semEletivaDomingo).toBeUndefined()
+  })
+
+  it('os dois sem eletiva vão para o fim NA ORDEM em que estavam (a da escalação: 8º, 7º)', () => {
+    const out = aplicarDomingoP7P8(manha(), { dataIso: '2026-09-20', turno: 'vespertino', escalado: (l) => l.chave === 'TIAGO' })
+    expect(nomes(out).slice(-2)).toEqual(['JANAINA', 'CRISTINA'])
+  })
+
+  it('acionada em urgência (escalado: true na marcação) volta à posição publicada', () => {
+    const out = aplicarDomingoP7P8(manha(), { dataIso: '2026-09-20', turno: 'matutino', escalado: (l) => comCaso.has(l.chave) || l.chave === 'CRISTINA' })
+    expect(nomes(out)).toEqual(nomes(manha()))
+    expect(out.some((l) => l.semEletivaDomingo)).toBe(false)
+  })
+
+  it('SÁBADO não tem a regra: a lista sai como entrou', () => {
+    const entrada = manha()
+    expect(aplicarDomingoP7P8(entrada, { dataIso: '2026-09-19', turno: 'matutino', escalado })).toBe(entrada)
+  })
+
+  it('a NOITE de domingo não tem a regra (a fila da noite é P11, P6, P5)', () => {
+    const entrada = manha()
+    expect(aplicarDomingoP7P8(entrada, { dataIso: '2026-09-20', turno: 'noturno', escalado })).toBe(entrada)
+  })
+
+  it('só P7 e P8: P11 sem caso fica onde a ordem o pôs', () => {
+    const out = aplicarDomingoP7P8(manha(), { dataIso: '2026-09-20', turno: 'matutino', escalado })
+    expect(nomes(out).indexOf('MAURICIO')).toBe(3)
+  })
+
+  it('não muda a lista de entrada (é exibição, a ordem publicada é imutável)', () => {
+    const entrada = manha()
+    const copia = JSON.parse(JSON.stringify(entrada))
+    aplicarDomingoP7P8(entrada, { dataIso: '2026-09-20', turno: 'matutino', escalado })
+    expect(entrada).toEqual(copia)
+  })
+
+  it('ehDomingo lê a data ISO sem borda de fuso', () => {
+    expect(ehDomingo('2026-09-20')).toBe(true)
+    expect(ehDomingo('2026-09-19')).toBe(false)
+    expect(ehDomingo('')).toBe(false)
   })
 })

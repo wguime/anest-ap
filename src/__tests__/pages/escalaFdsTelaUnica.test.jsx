@@ -367,6 +367,83 @@ describe('fila única — a ordem de liberação vale mesmo sem cirurgia', () =>
  * única a noite é um turno próprio e a lista só tem cards noturnos, então não
  * há para onde afundar — e o que sobra é a classificação.
  */
+// ════════════════════════════════════════════════════════════════════════════
+// DOMINGO — P7 E P8 SÓ ENTRAM NA ESCALA COM CIRURGIA ELETIVA (dono 18/09): "se não
+// houver cirurgia eletiva eles não entram na escala, mantenha eles na lista como
+// liberados ao final da lista e informe o motivo; se algum dos plantonistas estiver
+// fazendo cirurgia eletiva e entrar uma urgência P7/P8 podem ser acionados conforme
+// ordem de escalação e turno". Recorte real de dom 20/09 de manhã: Janaína (P8) tem
+// os 2 procedimentos da Simone, Cristina (P7) não tem nada.
+// ════════════════════════════════════════════════════════════════════════════
+describe('fila única — DOMINGO: P7/P8 sem cirurgia eletiva ficam liberados no fim, com o porquê', () => {
+  const GRADE_DOM = { '7-13': { unimed: 'TIAGO', hro: 'NATHALIA', ret1: 'STAUB', ret2: 'ROMULO' } }
+  const POSICOES = { P1: 'ROMULO', P2: 'STAUB', P3: 'TIAGO', P4: 'NATHALIA', P7: 'CRISTINA', P8: 'JANAINA', P11: 'MAURICIO' }
+  const ORDEM = ['TIAGO', 'NATHALIA', 'JANAINA', 'CRISTINA', 'MAURICIO', 'STAUB', 'ROMULO']
+  const CASO = (id, quem, sala, hospitalOrigem, procedimento) => ({
+    id, sala, ordem: 0, hora: '08:00', turno: 'matutino', anestesista: quem, cirurgiao: 'Simone', procedimento, hospitalOrigem,
+  })
+  const CASOS_DOM = [
+    CASO('d1', 'TIAGO', 'CC - Sala 2', 'unimed', 'ARTRODESE DA COLUNA'),
+    CASO('d2', 'NATHALIA', 'Sala 7', 'hro', 'CO/EMERG.'),
+    CASO('d3', 'JANAINA', 'SIMONE', 'hro', '02 PROCEDIMENTO'),
+  ]
+  const domingo = (extra = {}) => props({
+    turno: 'matutino',
+    fdsMeta: { grade: GRADE_DOM, posicoes: POSICOES },
+    escala: { ...ESCALA_FDS, data: '2026-09-20', ordemLiberacao: { matutino: ORDEM } },
+    casosFds: CASOS_DOM,
+    ...extra,
+  })
+  const MOTIVO = 'Sem cirurgia eletiva no domingo · entra só em urgência'
+  const ordemCards = () => Array.from(document.querySelectorAll('[data-linha]')).map((el) => el.getAttribute('data-linha'))
+
+  it('Cristina (P7, sem eletiva) vai para o FIM da lista, nasce Liberada e o card diz o porquê', async () => {
+    render(<LiberacoesView {...domingo()} />, { wrapper: wrap })
+    await screen.findByText(/Cristina/)
+    expect(ordemCards()).toEqual(['TIAGO', 'NATHALIA', 'JANAINA', 'MAURICIO', 'STAUB', 'ROMULO', 'CRISTINA'])
+    const cristina = document.querySelector('[data-linha="CRISTINA"]')
+    expect(within(cristina).getByText('Liberado')).toBeTruthy()
+    expect(within(cristina).getByText(MOTIVO)).toBeTruthy()
+  })
+
+  it('Janaína (P8) TEM eletiva (Simone): fica na posição publicada, trabalhando, sem o aviso', async () => {
+    render(<LiberacoesView {...domingo()} />, { wrapper: wrap })
+    await screen.findByText(/Janaina/)
+    const janaina = document.querySelector('[data-linha="JANAINA"]')
+    expect(within(janaina).queryByText('Liberado')).toBeNull()
+    expect(within(janaina).queryByText(MOTIVO)).toBeNull()
+    expect(screen.getAllByText(MOTIVO)).toHaveLength(1)
+  })
+
+  it('acionada em urgência (toque no card liberado → escalado: true) volta à posição publicada, sem o aviso', async () => {
+    render(<LiberacoesView {...domingo({
+      escala: { ...ESCALA_FDS, data: '2026-09-20', ordemLiberacao: { matutino: ORDEM }, liberacoes: { 'matutino:CRISTINA': { escalado: true } } },
+    })} />, { wrapper: wrap })
+    await screen.findByText(/Cristina/)
+    expect(ordemCards()).toEqual(ORDEM)
+    const cristina = document.querySelector('[data-linha="CRISTINA"]')
+    expect(within(cristina).queryByText('Liberado')).toBeNull()
+    expect(screen.queryByText(MOTIVO)).toBeNull()
+  })
+
+  it('o toque no card liberado da Cristina é o acionamento — não é recusado pela ordem', async () => {
+    const onToggleEscalado = vi.fn()
+    render(<LiberacoesView {...domingo({ onToggleEscalado })} />, { wrapper: wrap })
+    await screen.findByText(/Cristina/)
+    fireEvent.click(screen.getByLabelText('Desfazer liberação de Cristina'))
+    await waitFor(() => expect(onToggleEscalado).toHaveBeenCalledTimes(1))
+  })
+
+  it('SÁBADO não tem a regra: a mesma fila sai na ordem publicada, sem aviso', async () => {
+    render(<LiberacoesView {...domingo({
+      escala: { ...ESCALA_FDS, data: '2026-09-19', ordemLiberacao: { matutino: ORDEM } },
+    })} />, { wrapper: wrap })
+    await screen.findByText(/Cristina/)
+    expect(ordemCards()).toEqual(ORDEM)
+    expect(screen.queryByText(MOTIVO)).toBeNull()
+  })
+})
+
 describe('fila única — a NOITE classifica como o dia', () => {
   const GRADE_NOITE = { '19-07': { unimed: 'KARINE', hro: 'GABRIEL', ret1: 'MARILIA', ret2: 'OSCAR' } }
   const noite = (extra = {}) => props({

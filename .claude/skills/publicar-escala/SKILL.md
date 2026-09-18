@@ -64,6 +64,9 @@ apelido conhecido).
   caso azul em B = ajuda de B; transcreva os dois lados como a cor diz, o script realoca). AMARELO =
   a pessoa em dois locais de propósito → `cor: 'amarelo'` nos dois, sem decisão. Célula de DATA
   amarela na Unimed é marca da planilha. `"02 ANEST"` amarelo sem 2º nome: nota no procedimento, "//".
+  **Dois nomes na célula ("PAULO + GUILHERME MELO")** → anestesista `"A + B"` tal qual: é bloco de dupla no
+  app (uid nulo por desenho, a fila conta os dois pelo "+", o "//" abaixo herda a dupla inteira); o ensaio
+  avisa "sem vínculo" e "na ordem sem caso" para os dois — esperado, não é erro do lote (18/09).
 - **Seções fora da grade** são casos (Exames, Imagem, Hemodinâmica, Accurata, Umanitá, IOSC, HO,
   Ambulatório, Braqui, Simone, Consultório, e a linha `MATERNO | NN PROCEDIMENTOS | NOME` do HRO).
   `SRPA | NOME` vai em `posicoesAssistenciais` (conta como ocupado). "CONTINUAÇÃO ±14h" é caso com
@@ -135,7 +138,10 @@ decide. **Domingo herda as posições do sábado; a COR diz a troca pessoal** (n
 Pn → só essa posição em `posicoes` do domingo); o bloco "8º X 7º Y · EMERGENCIA: 11º Z · P1 P2 P3
 P4" sem linha de liberação → `escalacao: ['P8','P7','P11']` nos dois turnos, `ordemDoc` vazio.
 `PLANTÃO MATERNO` (MARTA, ELISETE) são funcionárias → `ignorados`. Divergência com o Pega Plantão
-em P1–P4 é troca pessoal, não erro — o documento manda; "G. Staub" ≠ "STAUB" no casador é ruído.
+em P1–P4 é troca pessoal, não erro — o documento manda, e desde 18/09 o script nem avisa (só gente de
+fora do bloco); "G. Staub"/"A. Danieli" são a inicial do Pega Plantão e o casador resolve pelo cadastro.
+**Domingo**: P7/P8 sem cirurgia eletiva no mapa aparecem no FIM da fila, liberados, com o motivo no
+card (regra da tela, 18/09) — diga no relatório quem está nessa situação; acionar em urgência é o toque.
 
 Mapas: `m.vesp()` ao cruzar o título VESPERTINO (as linhas "AS" só têm turno pela faixa; a hora
 vence quando existe); célula vazia é `''`, `?` só quando escrito; a tarde costuma vir sem
