@@ -921,7 +921,7 @@ describe('cirurgias sob o cirurgião: a fila só MOSTRA o término informado no 
     expect(linhas[0]).toMatch(/^07:30 ?Colecistectomia/)
     expect(linhas[0]).toMatch(/faltam|além/)
     // sem término informado a linha acaba no nome — nada de tracejado (15/09)
-    expect(linhas[1]).toMatch(/^10:00 ?Herniorrafia$/)
+    expect(linhas[1]).toMatch(/^10:00 ?Herniorrafia inguinal$/)
     // a frase "N cirurgias · M com término informado" saiu: cada cirurgia se mostra
     expect(card.textContent).not.toMatch(/com término informado/)
   })
@@ -950,7 +950,7 @@ describe('cirurgias sob o cirurgião: a fila só MOSTRA o término informado no 
     const card = document.querySelector('[data-linha="uid-leo"]')
     const linhas = linhasDe(card)
     expect(linhas[0]).toMatch(/faltam|além/)
-    expect(linhas[1]).toMatch(/^10:00 ?Herniorrafia ?· até 23:45$/)
+    expect(linhas[1]).toMatch(/^10:00 ?Herniorrafia inguinal ?· até 23:45$/)
   })
 
   it('sem permissão de edição o tempo informado continua visível', () => {

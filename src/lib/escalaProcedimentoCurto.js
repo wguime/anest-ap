@@ -45,6 +45,15 @@ const SIGLAS = new Set(['EDA', 'RTU', 'LCA', 'LCP', 'TC', 'RM', 'FACO', 'DIU', '
  * próprio texto (contagem, lado, segmento).
  */
 const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`
+/** Entre vários qualificadores possíveis, o que aparece PRIMEIRO no texto ("A + B" é a A). */
+const primeiro = (s, pares) => {
+  let melhor = null
+  for (const [re, rotulo] of pares) {
+    const i = s.search(re)
+    if (i >= 0 && (melhor === null || i < melhor.i)) melhor = { i, rotulo }
+  }
+  return melhor ? melhor.rotulo : null
+}
 const contagem = (m) => parseInt(m[1], 10)
 const DICIONARIO = [
   // ── blocos e seções (fora da grade) ────────────────────────────────────
@@ -87,6 +96,11 @@ const DICIONARIO = [
   [/\bPROSTATOVESICULECTOMIA\b|\bPROSTATECTOMIA\b/, 'Prostatectomia'],
   [/\bBIOPSIAS? DE PROSTATA\b/, 'Biópsia de próstata'],
   [/\bURETER(O)?RRENOLITOTRIPSIA\b|\bURETEROLITOTRIPSIA\b|\bLITOTRIPSIA\b/, 'Ureterolitotripsia'],
+  // DUPLO J: retirada × colocação é o que a pessoa vai fazer (dono 18/09: "retirada ou
+  // colocação de duplo J?"); o mapa que diz só "DUPLO J" não tem de onde tirar o verbo
+  [/\bRETIRADA\b.*\bDUPLO J\b/, 'Retirada de duplo J'],
+  [/\b(COLOCACAO|INSTALACAO|IMPLANTE|PASSAGEM|INSERCAO)\b.*\bDUPLO J\b/, 'Colocação de duplo J'],
+  [/\bTROCA\b.*\bDUPLO J\b/, 'Troca de duplo J'],
   [/\bDUPLO J\b/, 'Duplo J'],
   [/\bCISTOSCOPIA\b|\bURETEROSCOPIA\b/, 'Cistoscopia'],
   [/\bNEFRECTOMIA\b/, 'Nefrectomia'],
@@ -117,7 +131,17 @@ const DICIONARIO = [
   [/\bHEMORROIDECTOMIA\b/, 'Hemorroidectomia'],
   [/\bFISSURECTOMIA\b|\bESFINCTEROTOMIA\b/, 'Fissurectomia'],
   [/\bFISTULECTOMIA\b/, 'Fistulectomia'],
-  [/\bHERNIO(RRAFIA|PLASTIA)\b|\bHERNIA (INGUINAL|UMBILICAL|EPIGASTRICA|INCISIONAL)\b/, 'Herniorrafia'],
+  // HÉRNIA: o sítio muda a cirurgia (dono 18/09: "herniorrafia de que?") — o PRIMEIRO
+  // sítio do texto vence ("EPIGÁSTRICA + UMBILICAL" é a epigástrica); sem sítio, só o verbo
+  [/\bHERNIA ENCARCERADA\b/, 'Hérnia encarcerada'],
+  [/\bHERNIO(RRAFIA|PLASTIA)\b|\bHERNIA (INGUINAL|UMBILICAL|EPIGASTRICA|INCISIONAL|CRURAL|FEMORAL|VENTRAL)\b/, (m, s) => {
+    const sitio = primeiro(s, [
+      [/\bINGUINAL\b/, 'inguinal'], [/\bUMBILICAL\b/, 'umbilical'], [/\bEPIGASTRICA\b/, 'epigástrica'],
+      [/\bINCISIONAL\b/, 'incisional'], [/\b(CRURAL|FEMORAL)\b/, 'crural'], [/\bVENTRAL\b/, 'ventral'],
+      [/\bRECIDIVANTE\b/, 'recidivante'],
+    ])
+    return sitio ? `Herniorrafia ${sitio}` : 'Herniorrafia'
+  }],
   [/\bHERNIA DE HI\w*|\bREFLUXO GASTROESOFAGICO\b/, 'Hérnia de hiato'],
   [/\bGASTROPLASTIA\b|\bOBESIDADE\b/, 'Gastroplastia'],
   [/\bCOLECTOMIA\b|\bHEMICOLECTOMIA\b/, 'Colectomia'],
@@ -154,6 +178,7 @@ const DICIONARIO = [
   [/\bSEPTOPLASTIA\b/, 'Septoplastia'],
   [/\bTIMPANOPLASTIA\b|\bMIRINGOPLASTIA\b/, 'Timpanoplastia'],
   [/\bMICROCIRURGIA OTOLOGICA\b/, 'Microcirurgia otológica'],
+  [/\bEXERESE DE PAPILOMA\b/, 'Exérese de papiloma'], // antes da laringe: o papiloma é a cirurgia
   [/\bFARINGECTOMIA\b|\bLARINGE\b/, 'Cirurgia de laringe'],
   // ── ortopedia ──────────────────────────────────────────────────────────
   [/\bMANGUITO ROTADOR\b/, 'Manguito rotador'],
@@ -228,7 +253,26 @@ const DICIONARIO = [
   [/\bMEDULA OSSEA\b|\bBMO\b/, 'Aspiração de medula'],
   [/\bCELULA TRONCO\b/, 'Célula-tronco'],
   [/\bDRENAGEM\b/, 'Drenagem'],
-  [/\bEXERESE\b|\bEXTIRPACAO\b|\bTUMOR DE PELE\b/, 'Exérese'],
+  // EXÉRESE: "de quê" é o que identifica (dono 18/09: "exérese de que?"). Objetos vistos nos
+  // 60 dias até 18/09: pele/mucosas, cervical (tumor/cisto/fístula), cisto branquial/
+  // tireoglosso/escrotal, gânglio, nódulo, papiloma, tumor de partes moles, conjuntiva,
+  // trombose hemorroidária, ferimentos/cicatrizes com retalho. Fora da lista, "Exérese de"
+  // + o objeto que vem depois de "DE" no próprio texto (até 2 palavras).
+  [/\bEXERESE\b|\bEXTIRPACAO\b|\bTUMOR DE PELE\b/, (m, s) => {
+    const objeto = primeiro(s, [
+      [/\bPELE\b/, 'lesão de pele'], [/\bMAMA\b/, 'lesão de mama'], [/\bCERVICAL\b/, 'tumor cervical'],
+      [/\bCISTO BRANQUIAL\b/, 'cisto branquial'], [/\bCISTO TIREOGLOSSO\b/, 'cisto tireoglosso'],
+      [/\bCISTO ESCROTAL\b/, 'cisto escrotal'], [/\bGANGLIO\b|\bLINFONODO\b/, 'gânglio'],
+      [/\bNODULO\b/, 'nódulo'], [/\bPAPILOMA\b/, 'papiloma'], [/\bPARTES? MOLES\b/, 'tumor de partes moles'],
+      [/\bCONJUNTIVA\b/, 'tumor de conjuntiva'], [/\bTROMBOSE\b/, 'trombose hemorroidária'],
+      [/\bLIPOMA\b/, 'lipoma'], [/\bNEVUS?\b|\bNEVO\b/, 'nevo'],
+      [/\b(FERIMENTOS?|CICATRIZES)\b/, 'ferimento/cicatriz'],
+    ])
+    if (objeto) return `Exérese de ${objeto}`
+    const depois = /\b(?:EXERESE|EXTIRPACAO)\s+(?:E\s+SUPRESSAO\s+)?DE\s+(.+)$/.exec(s)?.[1] || ''
+    const tokens = depois.split(/\s*[+/,(]\s*|\s+(?:COM|POR|OU|E)\s+/)[0].split(' ').filter((t) => t && !STOP.has(t)).slice(0, 2)
+    return tokens.length ? `Exérese de ${frase(tokens.map((t) => ACENTOS[t] || t.toLowerCase())).toLowerCase()}` : 'Exérese'
+  }],
   [/\bTRANSPLANTE OSSEO\b/, 'Transplante ósseo'],
   [/\bNEUROMA\b/, 'Neuroma'],
   [/\bCORPOS? ESTRANHOS?\b/, 'Corpo estranho'],

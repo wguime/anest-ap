@@ -355,6 +355,13 @@ como prop da view porque o espelho inverso (pílula → caso único, seção aba
   ENDOSCOPICA DA PROSTATA" → RTU; "PROSTATOVESICULECTOMIA…" → Prostatectomia) + fallback
   que tira a embalagem e fica com a cabeça da frase. Lista de conferência do dono em
   `.tmp/nomes-curtos-procedimentos.md`. Rótulo errado = entrada nova no dicionário, com teste.
+  ⚠️ **A família não basta quando o qualificador muda a cirurgia** (dono 18/09, três fotos:
+  "herniorrafia de que?", "exérese de que?", "retirada ou colocação de duplo J?"): hérnia
+  leva o SÍTIO (inguinal/umbilical/epigástrica/incisional — o primeiro do texto vence),
+  exérese leva o OBJETO (lesão de pele, tumor cervical, cisto branquial… e, fora da lista,
+  o que vem depois de "DE" no próprio texto), duplo J leva o VERBO (retirada/colocação/
+  troca; o mapa que diz só "DUPLO J" fica "Duplo J"). Helper `primeiro(s, pares)` no
+  dicionário para "o qualificador que aparece antes no texto".
 - **`PainelTempo` devolve `meta.minutos`** quando a escolha foi DURAÇÃO (atalho ou "Outro
   tempo…"); hora exata não traz meta. Quem consome é o detalhe do caso — a fila deixou de
   abrir o painel por cirurgia em 15/09. O handler `onDefinirTerminoCaso(casoId, hhmm, meta)`
