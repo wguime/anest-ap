@@ -213,9 +213,12 @@ describe('turno acompanha o relógio (dono 15/08)', () => {
   // mostrado em dias úteis, mas mantenha a liberação única" — as abas voltam,
   // Minhas/Completa filtram por hospital, e o seletor de hospital some SÓ na aba
   // Liberações, onde a fila é única e ele não filtraria nada (B1, escolhido em
-  // protótipo contra "hospital sempre"). O que a trava protege segue o mesmo:
-  // a tela não pede "qual hospital?" onde a fila é única.
-  it('FDS: as abas de dia útil existem; o hospital some SÓ nas Liberações (dono 13/09)', () => {
+  // protótipo contra "hospital sempre"). 18/09, TERCEIRA volta, com a foto da
+  // barra: "mantenha essa estrutura nos finais de semana, quando clicar em
+  // liberações mostre a fila única (sem movimentar os seletores)" — o seletor de
+  // hospital fica nas três abas; a fila continua única e não o consulta. O que
+  // a trava protege agora: a barra NÃO muda de forma ao trocar de aba.
+  it('FDS: as abas de dia útil existem e a barra é a MESMA nas três — o hospital fica nas Liberações (dono 18/09)', () => {
     vi.setSystemTime(new Date('2026-08-15T10:00:00-03:00'))
     const hoje = hojeLocalISO()
     estado.ctx = {
@@ -234,9 +237,9 @@ describe('turno acompanha o relógio (dono 15/08)', () => {
     for (const a of ['Minhas', 'Completa', 'Liberações']) expect(screen.getByRole('tab', { name: a })).toBeTruthy()
     // abre na Minhas: o hospital filtra, então está na tela
     for (const h of ['Unimed', 'HRO', 'Materno']) expect(screen.getByRole('tab', { name: h })).toBeTruthy()
-    // nas Liberações a fila é única: o seletor de hospital some, o turno fica
+    // nas Liberações a fila é única, mas o seletor de hospital FICA (sem movimentar a barra)
     fireEvent.click(screen.getByRole('tab', { name: 'Liberações' }))
-    for (const h of ['Unimed', 'HRO', 'Materno']) expect(screen.queryByRole('tab', { name: h })).toBeNull()
+    for (const h of ['Unimed', 'HRO', 'Materno']) expect(screen.getByRole('tab', { name: h })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Manhã' })).toBeTruthy()
     // e volta na Completa, que é por hospital
     fireEvent.click(screen.getByRole('tab', { name: 'Completa' }))
@@ -345,10 +348,11 @@ describe('cabeçalho não oscila entre dia útil e fim de semana (dono 29/08)', 
     return render(<EscalaCirurgicaPage onNavigate={() => {}} goBack={() => {}} />, { wrapper: wrap })
   }
 
-  // ⚠️ MUDOU DE LADO em 13/09: as abas voltaram ao fim de semana. O que não
-  // oscila continua sendo decidido pelo CALENDÁRIO + aba: desde o 1º render o
-  // sábado abre com as três abas e os três turnos; o hospital só some quando a
-  // aba é Liberações — e isso não depende de rede.
+  // ⚠️ MUDOU DE LADO em 13/09 (as abas voltaram ao fim de semana) e de novo em
+  // 18/09 (o hospital fica nas Liberações — "sem movimentar os seletores"). O
+  // que não oscila continua sendo decidido pelo CALENDÁRIO: desde o 1º render o
+  // sábado abre com as três abas, o hospital e os três turnos, e trocar de aba
+  // não muda a forma da barra — nada disso depende de rede.
   it('SÁBADO carregando: já abre com as abas, o hospital e os 3 turnos', () => {
     vi.setSystemTime(new Date('2026-08-29T10:00:00-03:00')) // sábado
     montar('2026-08-29', { loading: true })
@@ -357,10 +361,10 @@ describe('cabeçalho não oscila entre dia útil e fim de semana (dono 29/08)', 
     expect(screen.getByRole('tab', { name: 'Unimed' })).toBeTruthy()
     // o eixo que só existe no fim de semana está lá desde o 1º render
     expect(screen.getByRole('tab', { name: 'Noite' })).toBeTruthy()
-    // e, ainda carregando, as Liberações já escondem o hospital — sem esperar a
-    // linha 'fds' chegar (é isso que o cabeçalho não oscilar quer dizer)
+    // e, ainda carregando, as Liberações mantêm o hospital na barra — sem esperar
+    // a linha 'fds' chegar (é isso que o cabeçalho não oscilar quer dizer)
     fireEvent.click(screen.getByRole('tab', { name: 'Liberações' }))
-    expect(screen.queryByRole('tab', { name: 'Unimed' })).toBeNull()
+    expect(screen.getByRole('tab', { name: 'Unimed' })).toBeTruthy()
   })
 
   it('FERIADO carregando: idem — a fila única também vale nele', () => {
@@ -368,7 +372,7 @@ describe('cabeçalho não oscila entre dia útil e fim de semana (dono 29/08)', 
     montar('2026-08-25', { loading: true })
     expect(screen.getByRole('tab', { name: 'Completa' })).toBeTruthy()
     fireEvent.click(screen.getByRole('tab', { name: 'Liberações' }))
-    expect(screen.queryByRole('tab', { name: 'Unimed' })).toBeNull()
+    expect(screen.getByRole('tab', { name: 'Unimed' })).toBeTruthy()
   })
 
   it('DIA ÚTIL carregando: abas e hospital continuam desde o 1º render', () => {

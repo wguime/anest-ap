@@ -49,10 +49,10 @@ test('fila única do FDS: rótulo, badges Pn, plantão físico e próximo cross-
     await expect(tabLiberacoes).toHaveAttribute('aria-selected', 'true', { timeout: 1_000 });
   }).toPass({ timeout: 15_000 });
 
-  // 13/09: as abas de dia útil existem no FDS; na Liberações o seletor de
-  // hospital SOME (a fila é única e ele não filtraria nada) e volta na Completa
+  // 13/09: as abas de dia útil existem no FDS. 18/09: o seletor de hospital FICA
+  // também nas Liberações ("sem movimentar os seletores") — a fila segue única
   await expect(page.getByRole('tab', { name: 'Completa' })).toBeVisible();
-  await expect(page.getByRole('tab', { name: 'Unimed' })).toHaveCount(0);
+  await expect(page.getByRole('tab', { name: 'Unimed' })).toBeVisible();
 
   // "sem anestesista" por CIRURGIÃO na fila única: um card por cirurgião +
   // hospital, com a ação de assumir o grupo como frase abaixo do texto

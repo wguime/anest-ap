@@ -799,19 +799,22 @@ anestesista (12 Unimed + 5 HRO) e a tela única mostrava um card por procediment
    úteis, mas mantenha a liberação única"* → a **tela única de 24/08 é parcialmente
    superada**: as três abas (Minhas · Completa · Liberações) voltam ao sáb/dom/feriado;
    Minhas e Completa são as views de dia útil, por hospital; **Liberações continua a
-   fila única**, e é a ÚNICA aba em que o seletor de hospital some (B1, escolhido em
-   protótipo contra B2 = hospital sempre, mesmo sem efeito). `hospitalOpcoes` é
-   decidido por `chromeFilaUnica && abaVisivel === 'liberacoes'` — calendário + aba,
-   não fetch: o cabeçalho continua sem oscilar (29/08). A Faixa de Urgências segue
-   fora do FDS (`!modoFds`), como antes.
+   fila única**. Em 13/09 o seletor de hospital sumia SÓ nessa aba (B1, escolhido em
+   protótipo contra B2 = hospital sempre); **em 18/09 o dono virou para o B2 vendo a
+   barra encolher a cada troca de aba**: *"mantenha essa estrutura nos finais de semana,
+   quando clicar em liberações mostre a fila única (sem movimentar os seletores)"* —
+   `hospitalOpcoes` é sempre `HOSPITAL_OPCOES`; nas Liberações do FDS o hospital escolhido
+   segue valendo para Minhas/Completa e a fila o ignora. Três testes mudaram de lado com
+   o porquê no corpo (`escalaTurnoAutomatico.test.jsx`) + o e2e `escala-cirurgica-fds`.
+   A Faixa de Urgências segue fora do FDS (`!modoFds`), como antes.
 
 O que NÃO mudou: o card da fila (modelo A de 24/08), o painel da linha, "Terminei"
 ausente, ajuda nunca automática, os plantões sempre trabalhando. Travas: describe
 "sem anestesista por cirurgião" em `escalaFdsTelaUnica.test.jsx` (grupo por
 cirurgião+hospital, sheet de grupo com todos os ids, linha define um só, e o dia
-útil com um card por procedimento), "FDS: as abas de dia útil existem; o hospital
-some SÓ nas Liberações" + "SÁBADO carregando" em `escalaTurnoAutomatico.test.jsx`
-(os dois MUDARAM DE LADO com o porquê no corpo), e `agruparSemAnestesistaPorCirurgiao`
+útil com um card por procedimento), "FDS: as abas de dia útil existem e a barra é a
+MESMA nas três" + "SÁBADO carregando" em `escalaTurnoAutomatico.test.jsx` (mudaram de
+lado em 13/09 e de novo em 18/09, com o porquê no corpo), e `agruparSemAnestesistaPorCirurgiao`
 em `escalaFds.test.js`.
 
 ### DOMINGO — P7 e P8 só entram na escala com cirurgia ELETIVA (dono 18/09)

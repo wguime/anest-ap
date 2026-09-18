@@ -78,7 +78,9 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   // ele quem decide os EIXOS enquanto a linha não chegou. Se o fetch revelar que
   // não há fila publicada, a tela cai no comportamento por hospital — uma
   // transição só, no caso raro, em vez de uma a cada abertura.
-  const chromeFilaUnica = dataFilaUnica && (loading || modoFds)
+  // ⚠️ 18/09: o único eixo que ainda dependia de `chromeFilaUnica` era o seletor de
+  // HOSPITAL, e ele passou a ficar nas três abas ("sem movimentar os seletores") —
+  // a constante saiu; abas e turnos já vêm só do calendário (`dataFilaUnica`).
   // turno do relógio: 2 faixas no dia útil, 3 no FDS (7h/13h/19h)
   // ⚠️ Depende da DATA, não da linha 'fds' (defeito 16/08: "pisca com
   // informações antigas"). Ligar os 3 turnos ao fetch fazia a tela abrir com
@@ -588,7 +590,13 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           // protótipo contra B2 = hospital sempre). Minhas e Completa filtram por
           // hospital como num dia útil. Decidido pelo CALENDÁRIO + aba, não pelo
           // fetch — o cabeçalho continua sem oscilar (29/08).
-          hospitalOpcoes={chromeFilaUnica && abaVisivel === 'liberacoes' ? null : HOSPITAL_OPCOES}
+          // ⚠️ 18/09 (dono, com a foto da barra): "mantenha essa estrutura nos finais
+          // de semana, quando clicar em liberações mostre a fila única (sem movimentar
+          // os seletores)". O B1 de 13/09 tirava o seletor de hospital só nessa aba, e
+          // a barra encolhia e voltava a cada troca de aba. Agora a barra é a mesma
+          // nas três abas; nas Liberações do fim de semana o hospital escolhido segue
+          // valendo para Minhas/Completa e a fila continua única, ignorando-o.
+          hospitalOpcoes={HOSPITAL_OPCOES}
           hospital={hospital}
           onEscolherHospital={setHospital}
           abaOpcoes={abaOpcoes}
