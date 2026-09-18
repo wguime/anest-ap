@@ -524,13 +524,17 @@ describe('Liberações — sem ninguém em cirurgia não há cauda', () => {
     expect(screen.queryAllByText('Liberado')).toHaveLength(0)
   })
 
-  it('todos aparecem como Livre, aguardando na própria posição', () => {
-    // Livre é o estado de quem está sem caso (dono 20/08): aguarda na posição, o
-    // `naFila` a pula, e por isso não existe "próximo a ser liberado" aqui — o
+  it('todos aparecem como Livre, aguardando na própria posição — e o último é o próximo', () => {
+    // Livre é o estado de quem está sem caso (dono 20/08): aguarda na posição — o
     // que NÃO pode é a fila inteira nascer vermelha, dizendo que todos já saíram.
+    // ⚠️ MUDOU DE LADO em 18/09: até então o `naFila` pulava quem está sem caso e
+    // não havia "próximo" nenhum aqui; o dono fechou a regra ("o último da lista
+    // deve ser SEMPRE o próximo a ser liberado"), então a Thayna, que fecha a
+    // lista, espera o toque com o cartão — e a ordem trava quem tentar sair antes.
     render(<LiberacoesView escala={semDono} hospitalLabel="HRO" turno="vespertino" canEdit onToggle={() => {}} />, { wrapper: wrap })
     expect(screen.queryAllByText('Livre').length).toBe(4)
-    expect(screen.queryByText('Próximo a ser liberado')).toBeNull()
+    const proximo = screen.getByText('Próximo a ser liberado').closest('[data-linha]')
+    expect(proximo.getAttribute('data-linha')).toBe('THAYNA')
   })
 
   it('com UM nome em cirurgia, a cauda depois dele volta a nascer liberada', () => {
@@ -1603,6 +1607,78 @@ describe('Liberações — acrescentado fora do rodapé entra na fila como Ajuda
       onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
     // com origem conhecida, quem diz de onde veio é o badge derivado — sem duplicar
     expect(screen.getByText('Ajuda (HRO)')).toBeTruthy()
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// A FILA É A LISTA (dono 18/09): "o último da lista deve ser SEMPRE o próximo a
+// ser liberado e NUNCA o próximo a ser liberado deve estar no meio da lista."
+// Recorte real da Unimed, manhã de 18/09: rodapé …GABRIEL · JOAO HENRIQUE (plantão
+// da tarde, sem caso → cauda vermelha) e MATHEUS acrescentado à mão como ajuda às
+// 08:29, sem caso. O `naFila` pulava a ajuda por "não estar em sala" e a cauda não
+// a alcançava por não ter posição: o amarelo caiu no Gabriel com o Matheus verde
+// "Livre" logo abaixo. Ajuda manual NASCE sem caso — o caso vem depois, conforme
+// a necessidade — e espera o toque na própria posição como todo mundo.
+// ════════════════════════════════════════════════════════════════════════════
+describe('Liberações — a fila é a lista: o amarelo nunca pula uma linha verde (dono 18/09)', () => {
+  const unimed1809 = {
+    id: 'e1', hospital: 'unimed',
+    ordemLiberacao: { matutino: ['LEANDRO', 'GUILHERME MELO', 'JOAO RICARDO', 'GABRIEL', 'JOAO HENRIQUE'] },
+    ajudaExterna: { matutino: ['MATHEUS'] },
+    liberacoes: {}, linhaOverrides: {},
+    casos: [
+      { id: 'c1', sala: 'Consultório', ordem: 0, hora: '07:45', turno: 'matutino', anestesista: 'LEANDRO', procedimento: 'CONSULTORIO' },
+      { id: 'c2', sala: 'CC - Sala 7', ordem: 0, hora: '09:45', turno: 'matutino', anestesista: 'GUILHERME MELO', cirurgiao: 'Airton Pagani', procedimento: 'MENISCO' },
+      { id: 'c3', sala: 'Umanitá', ordem: 0, hora: '08:00', turno: 'matutino', anestesista: 'JOAO RICARDO', cirurgiao: 'Harymy', procedimento: 'FACO' },
+      { id: 'c4', sala: 'Hemodinâmica', ordem: 0, hora: '08:00', turno: 'matutino', anestesista: 'GABRIEL', cirurgiao: 'Pedro Meira', procedimento: 'CATETERISMO' },
+    ],
+  }
+  const card = (chave) => document.querySelector(`[data-linha="${chave}"]`)
+  const proximo = () => screen.getByText('Próximo a ser liberado').closest('[data-linha]').getAttribute('data-linha')
+
+  it('a ajuda sem caso, última da lista antes do plantão liberado, é o PRÓXIMO — não o Gabriel', () => {
+    render(<LiberacoesView escala={unimed1809} hospitalLabel="Unimed" turno="matutino" canEdit
+      onToggle={() => {}} />, { wrapper: wrap })
+    // o plantão da tarde fecha a lista sem caso: cauda, nasce Liberado (21/08, intacto)
+    expect(within(card('JOAO HENRIQUE')).getByText('Liberado')).toBeTruthy()
+    // o Matheus continua Livre (informação verdadeira) e Ajuda — e é ele o próximo
+    expect(within(card('MATHEUS')).getByText('Livre')).toBeTruthy()
+    expect(within(card('MATHEUS')).queryByText('Liberado')).toBeNull()
+    expect(proximo()).toBe('MATHEUS')
+  })
+
+  it('liberar o Gabriel com o Matheus verde embaixo é recusado: "Libere Matheus primeiro"', async () => {
+    const onToggle = vi.fn()
+    render(<LiberacoesView escala={unimed1809} hospitalLabel="Unimed" turno="matutino" canEdit
+      onToggle={onToggle} />, { wrapper: wrap })
+    fireEvent.click(screen.getByLabelText('Marcar Gabriel liberado'))
+    expect(onToggle).not.toHaveBeenCalled()
+    expect(await screen.findByText('Libere Matheus primeiro')).toBeTruthy()
+  })
+
+  it('liberado o Matheus, o amarelo sobe para o Gabriel — a fila anda de baixo para cima', () => {
+    const escala = { ...unimed1809, liberacoes: { 'matutino:MATHEUS': { liberadoEm: 'x' } } }
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" turno="matutino" canEdit
+      onToggle={() => {}} />, { wrapper: wrap })
+    expect(within(card('MATHEUS')).getByText('Liberado')).toBeTruthy()
+    expect(proximo()).toBe('GABRIEL')
+  })
+
+  it('no MEIO da lista: com todos abaixo liberados, a linha sem caso é o próximo — nunca pulada', () => {
+    // par do "MESMO com todos abaixo já liberados, segue Livre" logo abaixo: Livre
+    // continua (a decisão é humana), e por isso mesmo é ELA que espera o toque agora.
+    const escala = {
+      id: 'e1', hospital: 'unimed', ordemLiberacao: ['ANA', 'BRUNO', 'CARLA'],
+      liberacoes: { CARLA: { liberadoEm: 'x' } },
+      casos: [
+        { sala: 'S1', ordem: 0, anestesista: 'ANA', cirurgiao: 'Cir A' },
+        { sala: 'S3', ordem: 0, anestesista: 'CARLA', cirurgiao: 'Cir C' },
+      ],
+    }
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit
+      onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
+    expect(within(card('BRUNO')).getByText('Livre')).toBeTruthy()
+    expect(proximo()).toBe('BRUNO')
   })
 })
 

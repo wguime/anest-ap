@@ -603,3 +603,41 @@ cirurgião desconhecido não aparece em linha `ajudaFora`: o destino e o que a p
 - **"Plantão da manhã" some quando a linha já leva selo P1–P4** (`badgeProximoPlantao` na
   view): o selo diz mais; posição e saída não mudam.
 - Travas: `liberacoesBadgePlantonistaCorEFrase.test.jsx`, `liberacoesTrocaDeclarada.test.jsx`.
+
+## A fila é a lista — o amarelo nunca pula uma linha verde (dono 18/09/2026)
+
+Foto das 10:01, Unimed da manhã: **Gabriel (16º) com "Próximo a ser liberado", Matheus (17º, Ajuda,
+Livre) verde logo abaixo, João Henrique (18º, plantão da tarde) vermelho**. *"revise esse problema de o
+próximo a ser liberado estar no meio dos cards de quem ainda está trabalhando, já tinhamos corrigido"*.
+
+O que havia: o Matheus foi acrescentado à mão às 08:29 ("Adicionar ajuda" da fila — a publicação saiu
+com `ajuda []`; o recado o punha no HRO/HO, e lá ele saiu primeiro, certo). Sem caso na Unimed, a linha
+caía num limbo que nenhuma regra cobria: `naFila` a PULAVA por "não estar em sala" (19/08) e a cauda
+não a alcançava por não ter posição (`temPosicao`, 24/08) — nem na fila, nem vermelha. As correções de
+24/08, 27/08, 29/08 e 11/09 estavam intactas; o buraco era o recorte de 24/08, escrito para a visitante
+COM cirurgia (Gabriela) sem pensar em ajuda sem caso nenhum.
+
+A regra, nas palavras dele: *"Quando a ajuda é acrescentada manualmente, ela nasce sem caso e será
+acrescentada conforme necessidade. O último da lista deve ser SEMPRE o próximo a ser liberado e NUNCA o
+próximo a ser liberado deve estar no meio da lista."* Duas coisas: a ajuda manual nasce sem caso **de
+propósito** (então "nasce Liberada" seria errado), e a fila é a lista exibida — de baixo para cima, sem
+pular ninguém.
+
+- `naFila` (dia útil): estar sem caso **não tira ninguém da fila**. Quem não está em jogo já saiu antes
+  — cauda que nasceu liberada, liberado no toque, P1/P2 da noite. O resto espera o toque na própria
+  posição, que é o que o badge "Livre" sempre prometeu (20/08). Consequências que valem: a linha do
+  MEIO sem caso passa a ser o próximo quando a fila chega nela (antes era pulada — e o amarelo subia
+  para cima dela com ela verde embaixo, o mesmo defeito); e a fila inteira sem cirurgia (22/08) tem
+  cartão no último e trava a ordem, em vez de nenhum cartão e liberação livre.
+- **Fila única intocada**: no sáb/dom/feriado extra, ajuda e visitante seguem por "está em sala?" —
+  o recorte de 29/08 existe porque lá a ajuda avulsa sem caso roubava o próximo de quem fecha o
+  rodapé (fixture real de 15/08), e ajuda no FDS é exceção manual (05/09).
+- O vermelho automático continua SÓ na cauda da ordem (20–21/08): a ajuda sem caso fica verde, com
+  "Livre" — e é justamente por isso que ela precisa ser o próximo, não ser pulada.
+
+Travas em `escalaCirurgicaPersonas.test.jsx`, describe "a fila é a lista": o recorte real de 18/09
+(Matheus é o próximo; liberar o Gabriel avisa "Libere Matheus primeiro"; liberado o Matheus, o amarelo
+sobe), a metade "no MEIO da lista, com todos abaixo liberados, a linha sem caso é o próximo", e o teste
+de 22/08 que **mudou de lado** com o porquê no corpo (a Thayna fecha a lista e leva o cartão). Os quatro
+FALHAM contra o `naFila` anterior. ⚠️ **Não existe "quem tocou" em `ajuda_externa`** — o array não
+guarda `por`/`em`; a única evidência de 18/09 foi o `PATCH` no cabeçalho nos edge logs.

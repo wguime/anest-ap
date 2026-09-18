@@ -1806,13 +1806,23 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             // com a fila inteira sem caso, TODO MUNDO ficava fora da ordem e
             // qualquer um podia ser liberado a qualquer hora, sem bloqueio.
             //
-            // ⚠️ vale só para quem TEM POSIÇÃO (`noRodape`): extra, ajuda e
-            // visitante entram no fim da exibição e não ocupam vaga na fila
-            // (regra de 24/08) — para eles continua valendo "está em sala?",
-            // que é o que põe a ajuda COM cirurgia na frente da saída (19/08).
+            // ⚠️ na fila única vale só para quem TEM POSIÇÃO (`noRodape`): extra,
+            // ajuda e visitante entram no fim da exibição e não ocupam vaga na
+            // fila (regra de 24/08) — para eles continua valendo "está em sala?"
+            // (sem esse recorte a ajuda avulsa sem caso roubava o "próximo" de
+            // quem fecha o rodapé, fixture real de 15/08).
             if (modoFds && !l.noturno && l.noRodape) return true
-            const emSala = m?.escalado === true || !naoEscalado(l)
-            return emSala
+            if (modoFds) return m?.escalado === true || !naoEscalado(l)
+            // DIA ÚTIL — A FILA É A LISTA (dono 18/09): "o último da lista deve ser
+            // SEMPRE o próximo a ser liberado e NUNCA o próximo a ser liberado deve
+            // estar no meio da lista". Estar sem caso não tira ninguém da fila: a
+            // ajuda acrescentada à mão NASCE sem caso (o caso vem depois, conforme
+            // a necessidade), e o "está em sala?" daqui a pulava — na Unimed da manhã
+            // de 18/09 o amarelo ficou no Gabriel com o Matheus (ajuda, Livre) verde
+            // logo abaixo e o plantão da tarde vermelho embaixo dele. Quem não está em
+            // jogo já saiu acima (cauda, liberado, P1/P2); o resto aguarda o toque na
+            // própria posição, que é o que "Livre" sempre prometeu.
+            return true
           }
           // A ORDEM (quem pode sair agora) = ÚLTIMO não-liberado da fila.
           let idxProximo = -1
@@ -1920,8 +1930,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           const estado = liberado ? 'liberado' : idx === idxCartao ? 'proximo' : 'escalado'
           // Bloqueio nos DOIS sentidos: só o "próximo" sai e só o "próximo a
           // convocar" volta. Quem NÃO está na fila nunca bloqueia — P1/P2 da noite
-          // e quem está sem caso (não ocupa posição, então nem sair nem voltar fura
-          // ordem nenhuma). Do lado de liberar, o `naFila` é a fonte única: o guard
+          // e a cauda que já nasceu liberada (no dia útil, desde 18/09, estar sem
+          // caso NÃO tira ninguém da fila). Do lado de liberar, o `naFila` é a fonte única: o guard
           // antigo por `semEscala` isentava também quem tinha o marcador do
           // repasse, e essa pessoa TRABALHOU — aguarda a vez como todo mundo.
           const bloqueioOrdem = liberadoReal
@@ -1938,8 +1948,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // própria posição, o dia inteiro se preciso. Dois caminhos chegam aqui e
           // são o mesmo fato para quem lê a fila: terminou todos os casos do turno,
           // ou está no rodapé sem caso nenhum (nunca escalado / ficou sem caso num
-          // repasse). O `naFila` continua pulando a linha sem caso, então ela não
-          // trava o "próximo" de ninguém.
+          // repasse). No dia útil ela ESTÁ na fila (dono 18/09): quando a fila chega
+          // nela, é ela o próximo — o amarelo nunca pula uma linha verde.
           // ⚠️ O PLANTÃO DA FAIXA NUNCA FICA "LIVRE" na fila única (dono 29/08:
           // "os plantões sempre trabalhando (HRO, Unimed)"). Ele cobre o
           // hospital as 6 horas inteiras, tenha ou não cirurgia marcada no mapa
