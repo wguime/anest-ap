@@ -317,6 +317,38 @@ describe('fila única — a ordem de liberação vale mesmo sem cirurgia', () =>
   })
 
   /**
+   * ACIONADO CONTA COMO ESCALAÇÃO (dono 19/09, duas fotos do sábado à tarde): o toque
+   * no card liberado do 6º (Leandro) o deixou verde, mas o amarelo ficou no 5º (Aline),
+   * acima dele. "O próximo a ser liberado sempre seja o último a ser acionado e não
+   * alguém no meio da lista." Aqui: Thayna fecha a lista liberada pela cauda; acionada,
+   * é ELA o cartão — e o Oscar volta ao verde.
+   */
+  it('acionada no toque (escalado: true), a última da lista vira o cartão amarelo e quem estava acima fica verde', async () => {
+    render(<LiberacoesView {...tarde({
+      escala: { ...ESCALA_FDS, ordemLiberacao: { vespertino: ['GABRIEL', 'KARINE', 'MARILIA', 'OSCAR', 'THAYNA'] }, liberacoes: { 'vespertino:THAYNA': { escalado: true } } },
+    })} />, { wrapper: wrap })
+    await screen.findByText(/Thayna/)
+    const cartoes = screen.getAllByText('Próximo a ser liberado')
+    expect(cartoes).toHaveLength(1)
+    expect(cartoes[0].closest('[data-linha]').getAttribute('data-linha')).toBe('THAYNA')
+    expect(screen.queryAllByText('Liberado')).toHaveLength(0)
+    const thayna = document.querySelector('[data-linha="THAYNA"]')
+    expect(within(thayna).queryByText('Livre')).toBeNull() // acionada não é "livre"
+  })
+
+  it('acionada, a ordem trava quem está acima dela: liberar o Oscar avisa "Libere Thayna primeiro"', async () => {
+    const onToggle = vi.fn()
+    render(<LiberacoesView {...tarde({
+      onToggle,
+      escala: { ...ESCALA_FDS, ordemLiberacao: { vespertino: ['GABRIEL', 'KARINE', 'MARILIA', 'OSCAR', 'THAYNA'] }, liberacoes: { 'vespertino:THAYNA': { escalado: true } } },
+    })} />, { wrapper: wrap })
+    await screen.findByText(/Thayna/)
+    fireEvent.click(screen.getByLabelText('Marcar Oscar liberado'))
+    expect(await screen.findByText('Libere Thayna primeiro')).toBeTruthy()
+    expect(onToggle).not.toHaveBeenCalled()
+  })
+
+  /**
    * O estado normal de um turno do fim de semana RECÉM-TROCADO (dono 29/08): a
    * fila publicada está lá, o mapa cirúrgico ainda não. Sem ninguém trabalhando
    * não há cauda (guarda de 22/08), então todos continuam na ordem — mas o

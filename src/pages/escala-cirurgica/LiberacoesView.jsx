@@ -1852,12 +1852,18 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // ⛔ SÓ NA FILA ÚNICA: no dia útil o cartão segue sendo o `idxProximo`,
           // como está desde 27/07. A regra nasceu olhando a tela do sábado e o
           // dia útil é o fluxo estabelecido da equipe (Regra #2 do CLAUDE.md).
+          // ⚠️ ACIONADO CONTA COMO ESCALAÇÃO (dono 19/09, duas fotos do sábado à
+          // tarde): o toque no card liberado do Leandro (6º) o deixou verde, mas o
+          // amarelo ficou na Aline (5º), acima dele — "trabalhando" aqui era só ter
+          // cirurgia, e quem foi acionado ainda não tem. "O próximo a ser liberado
+          // sempre seja o último a ser acionado e não alguém no meio da lista":
+          // a marca `{ escalado: true }` é escalação, e o cartão desce para ela.
           let idxCartao = idxProximo
           if (modoFds) {
             idxCartao = -1
             for (let i = linhasExibicao.length - 1; i >= 0; i--) {
               const l = linhasExibicao[i]
-              if (naFila(l, i) && !naoEscalado(l)) { idxCartao = i; break }
+              if (naFila(l, i) && (!naoEscalado(l) || marcaDe(l)?.escalado === true)) { idxCartao = i; break }
             }
           }
           // CONVOCAR TAMBÉM SEGUE A ORDEM (dono 20/08): desfazer a liberação é

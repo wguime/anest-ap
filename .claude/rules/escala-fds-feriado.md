@@ -850,3 +850,22 @@ Gente de fora do bloco em P1–P4 e P5+ trocado continuam divergência. E o casa
 documento pelo NOME DO CADASTRO de quem resolveu (`pelaPessoa` em `escala-publicar-turno.mjs`).
 Dois testes mudaram de lado com o porquê no corpo (`escalaFdsPegaPlantao.test.js`,
 `importarEscalaFds.test.jsx`).
+
+### FILA ÚNICA — acionado no toque É o cartão amarelo (dono 19/09)
+
+Duas fotos do sábado 19/09 à tarde: Aline (5º, com a fratura de úmero das 15h) com o
+cartão amarelo e, embaixo, a cauda vermelha; o toque no card liberado do Leandro (6º) o
+deixou VERDE — e o amarelo ficou na Aline, acima dele. *"Ao clicar no próximo a ser
+escalado ele deve ficar com a cor amarela (próximo a ser liberado) e o que estava acima
+deve ficar com a cor verde. O próximo a ser liberado sempre seja o último a ser acionado
+e não alguém no meio da lista."*
+
+Causa: o `idxCartao` de 29/08 ("a tinta é de quem TRABALHA") lia trabalho como
+`!naoEscalado(l)` — ter sala/cirurgião/caso — e a marca `{ escalado: true }` do toque não
+entrava. Agora a marca conta como escalação: o cartão desce para o último acionado, quem
+estava acima volta ao verde, e a ordem trava quem tentar sair antes dele ("Libere X
+primeiro"). É o mesmo invariante do dia útil de 18/09 (amarelo nunca com verde embaixo),
+sem tocar em 29/08 no que ele decide: fila sem ninguém trabalhando e sem ninguém acionado
+segue sem cartão. Travas em `escalaFdsTelaUnica.test.jsx` ("acionada no toque…" falha
+contra o código anterior; "acionada, a ordem trava quem está acima").
+
