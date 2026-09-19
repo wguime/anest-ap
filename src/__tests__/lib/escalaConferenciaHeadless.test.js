@@ -123,6 +123,18 @@ describe('duplicidade entre hospitais', () => {
     expect(ov?.trocaCom).toMatchObject({ uid: 'uid-beto', nome: 'BETO', tipo: 'entre_hospitais', por: 'u1' })
   })
 
+  it('a troca que responde uma DUPLICIDADE também leva o `local` do recado (RAFAEL no Materno + HRO, 15/09)', () => {
+    // o ramo da duplicidade montava a decisão sem `local`: o badge saía "Trocado com X" sem
+    // o "(Materno)" que o recado dava. O ramo sem duplicidade (09/09) já carregava.
+    const r = conferir(dois, {
+      decisoes: { CURY: { tipo: 'troca', parceiro: 'BETO', apenasRegistro: true, local: 'Materno' } },
+      carimbo: { por: 'u1', em: '2026-09-15T10:00:00.000Z' },
+    })
+    expect(codigos(r.hospitais.hro)).not.toContain('duplicidade')
+    expect(r.hospitais.hro.payload.linhaOverrides['uid-cury']?.trocaCom)
+      .toMatchObject({ uid: 'uid-beto', tipo: 'entre_hospitais', apenasRegistro: true, local: 'Materno' })
+  })
+
   it('troca declarada no lote SEM duplicidade (parceiro no consultório) vira registro na linha de quem está aqui', () => {
     // 09/09: "Rafael (consultório) na posição do Diego no IOSC" — a escala já saiu com o
     // Rafael no IOSC e o Diego não aparece em escala nenhuma; falta só o rastro

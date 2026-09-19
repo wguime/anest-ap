@@ -251,6 +251,9 @@ export function conferirHospital(hospital, entrada, contexto) {
         tipo: 'troca', parceiroNome: texto(resposta.parceiro), parceiroUid: resolver(resposta.parceiro) || null,
         ...(resposta.hospitalVaga ? { hospitalVaga: resposta.hospitalVaga } : {}),
         ...(resposta.apenasRegistro ? { apenasRegistro: true } : {}),
+        // o local informado ("Consultório") vai entre parênteses no badge (dono 16/08) — vale
+        // também quando a troca responde uma duplicidade (RAFAEL no Materno + linha do HRO, 15/09)
+        ...(resposta.local ? { local: texto(resposta.local) } : {}),
       }
     } else continue
     decisoesCarimbadas[d.key] = carimbarDecisao(decisao, d, { resolver, normalizar: normNome })
