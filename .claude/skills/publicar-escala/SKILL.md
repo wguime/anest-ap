@@ -148,7 +148,11 @@ vence quando existe); célula vazia é `''`, `?` só quando escrito; a tarde cos
 anestesista nos dois hospitais — publique vazio, a fila única distribui. Acréscimo do dono por
 texto ("artrodese toracolombar sábado 13h, particular, Penteado") é um caso a mais no hospital
 onde o cirurgião opera (`cirurgiao ilike '%penteado%'` no banco → HRO, Sala 3); sem nome de
-paciente a cobrança não abre — avise. Bloqueia: ordem vazia de manhã/tarde, Pn sem dono, nome
+paciente a cobrança não abre — avise. **O caso leva só o que o recado diz**: procedimento
+desconhecido fica `''` (o card mostra "AS —"), sala desconhecida fica o que dá para afirmar
+("CC") — nunca texto seu no campo (19/09: "CIRURGIA (RECADO DO DONO)" foi para o card de todos).
+Turno em uso: acréscimo é `repair-escala-<data>-*.sql` pela Management API, não republicação; e
+antes de dizer "fulano voltou a trabalhar", leia `liberacoes` da linha — marcação de toque vence o caso. Bloqueia: ordem vazia de manhã/tarde, Pn sem dono, nome
 ambíguo, campo recusado, turno já publicado. Avisa: Pega Plantão, sala sem nome, posto sugerido,
 encolhimento. Relatório: as três filas por dia (quem foi
 acrescentado, o que é "sugerida"), casos por hospital/turno, particulares com e sem cobrança, a
