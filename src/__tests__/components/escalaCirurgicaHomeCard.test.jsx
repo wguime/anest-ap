@@ -244,10 +244,15 @@ describe('snapshot do card — nomes na hora, sem esperar o fetch', () => {
   const gravar = (chave, linhas) => localStorage.setItem(HOME_CARD_SNAPSHOT_KEY, JSON.stringify({ chave, rotulo: 'Plantonista · Teste', linhas }))
 
   beforeEach(() => {
+    // ⚠️ DIA ÚTIL FIXO: o snapshot é do card de dia útil; no sáb/dom o card lê a linha
+    // 'fds' e a chave é outra. Sem relógio fixo este describe passava de segunda a sexta
+    // e quebrou o CI no sábado 19/09 (3 testes, sem mudança de código).
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-20T10:00:00-03:00')) // quinta, manhã
     localStorage.clear()
     estado.roster = rosterVazio(false)
   })
-  afterEach(() => { localStorage.clear() })
+  afterEach(() => { localStorage.clear(); vi.useRealTimers() })
 
   it('context ainda carregando + snapshot deste turno → nomes na hora, sem skeleton', () => {
     gravar(chaveHoje(), [{ hospital: 'UNIMED', nome: 'Gustavo Biesdorf' }])
