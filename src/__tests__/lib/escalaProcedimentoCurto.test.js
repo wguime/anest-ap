@@ -75,6 +75,34 @@ const casos = [
   ['TRATAMENTO CIRÚRGICO DE FRATURA DA DIÁFISE DA TÍBIA', 'Fratura de tíbia'],
   ['FRATURA-LUXAÇÃO DO TORNOZELO', 'Fratura de tornozelo'],
   // o sítio entra no rótulo (dono 18/09: "herniorrafia de que?"); o primeiro do texto vence
+  // varredura de 20/09 (dono, foto do Materno: "Osteotomia" era hálux valgo, "Dedo" era dedo em gatilho):
+  // a técnica ou a parte não é a cirurgia; o qualificador que muda o ato entra no rótulo
+  ['TRATAMENTO CIRÚRGICO DO HALUX VALGUS COM OSTEOTOMIA DO PRIMEIRO OSSO METATARSIANO', 'Hálux valgo'],
+  ['TRATAMENTO CIRÚRGICO DE DEDO EM GATILHO', 'Dedo em gatilho'],
+  ['OSTEOTOMIAS OU PSEUDARTROSE DOS METATARSOS FALANGES - TRATAMENTO CIRURGICO', 'Osteotomia de metatarso'],
+  ['PSEUDARTROSES – TRATAMENTO CIRÚRGICO', 'Pseudartrose'],
+  ['OSTEOCONDROPLASTIA - ESTABILIZAÇÃO, RESSECÇÃO E OU PLASTIA', 'Osteocondroplastia'],
+  ['PROCEDIMENTO VIDEOARTROSCÓPICO DE JOELHO', 'Artroscopia de joelho'],
+  ['TENORRAFIA ÚNICA EM TÚNEL OSTEO-FIBROSO', 'Tenorrafia'],
+  ['TENOPLASTIA OU ENXERTO DE TENDÃO ÚNICO', 'Tenoplastia'],
+  ['LINFADENECTOMIA AXILAR', 'Linfadenectomia axilar'],
+  ['LINFADENECTOMIA SELETIVA GUIADA (LINFONODO SENTINELA)', 'Linfonodo sentinela'],
+  ['LAPAROSCOPIA GINECOLÓGICA COM OU SEM BIÓPSIA (INCLUI A CROMOTUBAGEM)', 'Laparoscopia ginecológica'],
+  ['BIÓPSIA DE GÂNGLIO LINFÁTICO', 'Biópsia de gânglio'],
+  ['COLUNA VERTEBRAL: INFILTRACAO FORAMINAL OU FACETARIA OU ARTICULAR', 'Infiltração de coluna'],
+  ['TRATAMENTO CIRÚRGICO DE LUXAÇÃO DO QUADRIL', 'Luxação de quadril'],
+  ['FRATURA DOS OSSOS NASAIS - REDUCAO CIRURGICA', 'Fratura nasal'],
+  ['IMPLANTE DE STENT CORONARIO', 'Stent coronário'],
+  ['FECHAMENTO DE COLOSTOMIA OU ENTEROSTOMIA', 'Fechamento de ostomia'],
+  ['JEJUNOSTOMIA / ILEOSTOMIA', 'Ileostomia'],
+  ['DRENAGEM DE ABSCESSO RENAL', 'Drenagem de abscesso'],
+  ['RECONSTRUÇÃO LIGAMENTAR + MENISCECTOMIA', 'Reconstrução ligamentar'],
+  ['LESOES LIGAMENTARES CRONICAS AO NIVEL DO TORNOZELO', 'Ligamento de tornozelo'],
+  // abreviações à mão do HRO
+  ['CESÁRIA', 'Cesariana'], ['CASARIANA', 'Cesariana'], ['CAT', 'Cateterismo'], ['02 LAPARO', 'Laparoscopia'],
+  ['CO/EMERG.', 'CO / Emergência'], ['JJ', 'Duplo J'], ['RMN', 'RM'], ['02 BLEFARO 4H', 'Blefaroplastia'],
+  ['MASTO C/ TROCA PROTESE+REF. BLEFARO - (04HS)', 'Masto'], // a 1ª cirurgia é a masto; BLEFARO só vale no início
+  ['APENDICITE', 'Apendicectomia'], ['TAVI – 2H', 'TAVI'],
   ['HERNIORRAFIA INGUINAL - UNILATERAL POR VIDEOLAPAROSCOPIA', 'Herniorrafia inguinal'],
   ['HERNIOPLASTIA INCISIONAL', 'Herniorrafia incisional'],
   ['HERNIOPLASTIA INGUINAL / CRURAL (UNILATERAL)', 'Herniorrafia inguinal'],
@@ -100,7 +128,8 @@ const casos = [
   ['EXERESE DE LIPOMA DE DORSO', 'Exérese de lipoma'],
   ['GASTROPLASTIA PARA OBESIDADE MORBIDA VIA LAPAROSCOPICA', 'Gastroplastia'],
   ['02 ANGIOPLASTIA – 4H', 'Angioplastia'],
-  ['ABLAÇÃO PERCUTÂNEA POR CATETER PARA TRATAMENTO DE ARRITMIAS CARDÍACAS', 'Ablação'],
+  ['ABLAÇÃO PERCUTÂNEA POR CATETER PARA TRATAMENTO DE ARRITMIAS CARDÍACAS', 'Ablação de arritmia'],
+  ['ABLAÇAO PROSTATICA A LASER', 'Ablação prostática'],
   ['COLOCACAO DE CATETER VENOSO CENTRAL OU PORTOCATH', 'Cateter central'],
   ['INCONTINENCIA URINARIA COM COLPOPLASTIA ANTERIOR', 'Sling'],
   ['MASTOPEXIA COM PROTESE - 4H30', 'Mastopexia'],
@@ -108,9 +137,11 @@ const casos = [
   ['ACROMIOPLASTIA OMBRO', 'Acromioplastia'],
   ['CURETAGEM POS ABORTAMENTO', 'Curetagem'],
   ['COLECTOMIA PARCIAL (HEMICOLECTOMIA)', 'Colectomia'],
-  ['PLEURECTOMIA + RESSECÇÃO EM CUNHA, TUMORECTOMIA', 'Cirurgia torácica'],
+  ['PLEURECTOMIA + RESSECÇÃO EM CUNHA, TUMORECTOMIA', 'Pleurectomia'],
+  ['DECORTICAÇÃO PULMONAR VIDEOTORACOSCOPIA', 'Decorticação pulmonar'],
   ['RECONSTRUÇÃO MAMÁRIA - RETALHOS CUTÂNEOS REGIONAIS', 'Reconstrução mamária'],
-  ['AMPUTAÇÃO / DESARTICULAÇÃO DE DEDO', 'Amputação'],
+  ['AMPUTAÇÃO / DESARTICULAÇÃO DE DEDO', 'Amputação de dedo'],
+  ['AMPUTAÇÃO/DESARTICULAÇÃO DE MEMBROS INFERIORES', 'Amputação de membro inferior'],
   ['07 PROCEDIMENTOS', '7 procedimentos'],
   ['01 PROCEDIMENTO', '1 procedimento'],
   ['TRATAMENTO ODONTOLÓGICO PARA PACIENTES COM NECESSIDADES ESPECIAIS', 'Odontologia'],
@@ -169,7 +200,7 @@ describe('nomeCurtoProcedimento — fallback para o que o dicionário não conhe
     expect(nomeCurtoProcedimento('TRATAMENTO CIRÚRGICO DE PÉ TORTO CONGÊNITO')).toBe('Pé torto congênito')
   })
   it('palavra genérica leva o complemento junto; sentence case como o dicionário', () => {
-    expect(nomeCurtoProcedimento('LESÃO LABRAL - PROCEDIMENTO VIDEOARTROSCÓPICO DE OMBRO')).toBe('Artroscopia')
+    expect(nomeCurtoProcedimento('LESÃO LABRAL - PROCEDIMENTO VIDEOARTROSCÓPICO DE OMBRO')).toBe('Artroscopia de ombro')
     expect(nomeCurtoProcedimento('RETIRADA DE CORPO ESTRANHO DO OUVIDO')).toBe('Corpo estranho')
     expect(nomeCurtoProcedimento('TROCA DE GERADOR')).toBe('Troca de gerador')
   })

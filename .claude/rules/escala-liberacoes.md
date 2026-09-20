@@ -362,6 +362,23 @@ como prop da view porque o espelho inverso (pílula → caso único, seção aba
   o que vem depois de "DE" no próprio texto), duplo J leva o VERBO (retirada/colocação/
   troca; o mapa que diz só "DUPLO J" fica "Duplo J"). Helper `primeiro(s, pares)` no
   dicionário para "o qualificador que aparece antes no texto".
+  ⚠️ **3ª volta (dono 20/09, foto do Materno: "Osteotomia" era hálux valgo, "Dedo" era dedo em
+  gatilho — "já tinhamos corrigido, verifique").** Duas causas que a calibração anterior não
+  cobria: (1) o dicionário casa em QUALQUER ponto do texto, então a TÉCNICA ("com osteotomia")
+  vencia a cirurgia ("hálux valgus") — a específica tem de vir antes; (2) o corte do fallback em
+  " EM " decepa nomes compostos ("dedo em gatilho"). A resposta foi uma varredura: as 2.051
+  grafias dos 60 dias passaram pela função e cada rótulo de UMA palavra foi julgado —
+  190 grafias (340 casos) mudaram: hálux valgo, dedo em gatilho, osteotomia/pseudartrose com o
+  osso, artroscopia com a articulação (osteocondroplastia é ela mesma), tenorrafia/tenoplastia/
+  tenotomia em vez de "Tendão", linfadenectomia com o sítio, ablação de arritmia × prostática,
+  biópsia com o objeto, infiltração de coluna × articular, luxação e ligamento com a
+  articulação, amputação com o segmento, colostomia/ileostomia/fechamento em vez de "Ostomia",
+  decorticação/ressecção pulmonar/pleurectomia em vez de "Cirurgia torácica", stent com o vaso,
+  fratura nasal/de coluna, e as abreviações à mão do HRO (CAT, LAPARO, BRONCO, BLEFARO no
+  início, NINFO, HEMORROID., JJ, RMN, CESÁRIA/CASARIANA, APENDICITE, DVE/DVP/TAVI). **Ao mexer
+  de novo: rodar a varredura** (procedimentos distintos dos 60 dias → `nomeCurtoProcedimento`,
+  listar os rótulos de uma palavra por frequência e o diff antes×depois) em vez de corrigir só a
+  foto — é o que impede a 4ª volta.
 - **`PainelTempo` devolve `meta.minutos`** quando a escolha foi DURAÇÃO (atalho ou "Outro
   tempo…"); hora exata não traz meta. Quem consome é o detalhe do caso — a fila deixou de
   abrir o painel por cirurgia em 15/09. O handler `onDefinirTerminoCaso(casoId, hhmm, meta)`

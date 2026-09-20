@@ -34,7 +34,7 @@ const semAcento = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, ''
 const norm = (s) => semAcento(s).toUpperCase().replace(/\s+/g, ' ').trim()
 
 /** Siglas que ficam em caixa alta no rótulo final. */
-const SIGLAS = new Set(['EDA', 'RTU', 'LCA', 'LCP', 'TC', 'RM', 'FACO', 'DIU', 'AMIU', 'HIPEC', 'ESD', 'BMO', 'NPP',
+const SIGLAS = new Set(['EDA', 'RTU', 'LCA', 'LCP', 'TC', 'RM', 'FACO', 'DIU', 'AMIU', 'HIPEC', 'ESD', 'BMO', 'NPP', 'DVE', 'DVP', 'TAVI', 'CO',
   'QT', 'US', 'CPRE', 'PTGI', 'ATM', 'RN', 'UTI', 'HD', 'AV', 'CTI'])
 
 /**
@@ -58,11 +58,12 @@ const contagem = (m) => parseInt(m[1], 10)
 const DICIONARIO = [
   // ── blocos e seções (fora da grade) ────────────────────────────────────
   [/\bCONTINUACAO\b/, 'Continuação'],
+  [/\bCO\/EMERG\w*|\bEMERGENCIA\/CO\b/, 'CO / Emergência'],
   [/\bCONSULTORIO\b.*AJUDA/, 'Consultório (ajuda)'],
   [/\bCONSULTORIO\b|\bCONSULTAS?\b/, 'Consultório'],
-  [/\b(EDA|COLO|COLONO|RETOSSIG\w*|ENDOSCOPIA|ECOEDA|ESD|CPRE|COLANGIOPANCREATOGRAFIA|GASTROSTOMIA ENDOSCOPICA|BRONCOSCOPIA)\b/, 'Endoscopia'],
+  [/\b(EDA|COLO|COLONO|RETOSSIG\w*|ENDOSCOPIA|ECOEDA|ESD|CPRE|COLANGIOPANCREATOGRAFIA|GASTROSTOMIA ENDOSCOPICA|BRONCOSCOP\w*|BRONCO|ECOBRONCO)\b/, 'Endoscopia'],
   [/\bTC\b.*\bRM\b|\bRM\b.*\bTC\b/, 'TC + RM'],
-  [/\bRM\b/, 'RM'],
+  [/\bRMN?\b|\bRESSONANCIA\b/, 'RM'],
   [/\bTC\b/, 'TC'],
   // vitrectomia antes da FACO: "01 VITRECT. C/FACO" é vitrectomia (com faco junto)
   [/\bVITRECT\w*/, 'Vitrectomia'],
@@ -73,16 +74,21 @@ const DICIONARIO = [
   [/\bPROCEDIMENTOS?\b$/, 'Procedimentos'],
   [/\bODONTO\w*|TRATAMENTO ODONTOLOGICO/, 'Odontologia'],
   [/(\d+)\s+CESAR(EA|IANA)S?\b/, (m) => plural(contagem(m), 'cesariana', 'cesarianas')],
-  [/\bCESAR(EA|IANA)S?\b/, 'Cesariana'],
+  [/\bCESAR(EA|IANA|IA|A)S?\b|\bCASARIANA\b/, 'Cesariana'],
   [/\bPARTO\b/, 'Parto'],
   [/\bCURETAGEM\b|\bAMIU\b/, 'Curetagem'],
   // ── hemodinâmica / cardio ─────────────────────────────────────────────
   [/\bANGIOPLASTIA\b|\bANGIO\b/, 'Angioplastia'],
-  [/\bSTENT\b/, 'Stent'],
+  [/\bSTENT\b/, (m, s) => {
+    const vaso = primeiro(s, [[/\bCORONAR\w*/, 'coronário'], [/\bINTRACRANIAN\w*/, 'intracraniano'], [/\bCAROT\w*|\bSUPRA-?AORTIC\w*/, 'carotídeo'], [/\bILIAC\w*|\bFEMORAL\b|\bPOPLITE\w*/, 'periférico']])
+    return vaso ? `Stent ${vaso}` : 'Stent'
+  }],
   [/\bMARCAPASSO\b/, 'Marcapasso'],
   // "ANGIOGRAFIA POR CATETERISMO SELETIVO…" é angiografia, não o cateterismo cardíaco (dono 17/09)
   [/\bANGIOGRAFIA\b.*\bCATETERISMO\b/, 'Angiografia por cateterismo'],
-  [/\bCATETERISMO\b|^CAT\.? CARD/, 'Cateterismo'],
+  [/\bCATETERISMO\b|^CAT\.? CARD|^(\d+\s+)?CATE?\b/, 'Cateterismo'],
+  [/\bABLACAO\b.*\bPROSTAT\w*/, 'Ablação prostática'],
+  [/\bABLACAO\b.*\b(ARRITMIA|CATETER)\b/, 'Ablação de arritmia'],
   [/\bABLACAO\b/, 'Ablação'],
   [/\bANGIOGRAFIA\b/, 'Angiografia'],
   [/\bOCLUSAO PERCUTANEA\b/, 'Oclusão percutânea'],
@@ -101,7 +107,7 @@ const DICIONARIO = [
   [/\bRETIRADA\b.*\bDUPLO J\b/, 'Retirada de duplo J'],
   [/\b(COLOCACAO|INSTALACAO|IMPLANTE|PASSAGEM|INSERCAO)\b.*\bDUPLO J\b/, 'Colocação de duplo J'],
   [/\bTROCA\b.*\bDUPLO J\b/, 'Troca de duplo J'],
-  [/\bDUPLO J\b/, 'Duplo J'],
+  [/\bDUPLO J\b|^JJ$/, 'Duplo J'],
   [/\bCISTOSCOPIA\b|\bURETEROSCOPIA\b/, 'Cistoscopia'],
   [/\bNEFRECTOMIA\b/, 'Nefrectomia'],
   [/\bPOSTECTOMIA\b/, 'Postectomia'],
@@ -122,13 +128,14 @@ const DICIONARIO = [
   [/\bOOFORECTOMIA\b|\bOOFOROPLASTIA\b/, 'Ooforectomia'],
   [/\bDIU\b/, 'DIU'],
   [/\bLAPAROTOMIA\b/, 'Laparotomia'],
-  [/\bLAPAROSCOPIA\b$/, 'Laparoscopia'],
+  [/\bLAPAROSCOPIA GINECOLOGICA\b/, 'Laparoscopia ginecológica'],
+  [/\bLAPAROSCOPIA\b$|^(\d+\s+)?LAPARO\b/, 'Laparoscopia'],
   [/\bCOLPOPLASTIA\b|\bPERINEOPLASTIA\b/, 'Colpoplastia'],
-  [/\bNINFOPLASTIA\b|\bPEQUENOS LABIOS\b/, 'Ninfoplastia'],
+  [/\bNINFOPLASTIA\b|\bPEQUENOS LABIOS\b|^NINFO\b/, 'Ninfoplastia'],
   // ── geral / digestivo ──────────────────────────────────────────────────
   [/\bCOLECISTECTOMIA\b/, 'Colecistectomia'],
-  [/\bAPENDICECTOMIA\b/, 'Apendicectomia'],
-  [/\bHEMORROIDECTOMIA\b/, 'Hemorroidectomia'],
+  [/\bAPENDICECTOMIA\b|^APE\b|\bAPENDICE\b|\bAPENDICITE\b/, 'Apendicectomia'],
+  [/\bHEMORROIDECTOMIA\b|^HEMORROID\b/, 'Hemorroidectomia'],
   [/\bFISSURECTOMIA\b|\bESFINCTEROTOMIA\b/, 'Fissurectomia'],
   [/\bFISTULECTOMIA\b/, 'Fistulectomia'],
   // HÉRNIA: o sítio muda a cirurgia (dono 18/09: "herniorrafia de que?") — o PRIMEIRO
@@ -147,7 +154,9 @@ const DICIONARIO = [
   [/\bCOLECTOMIA\b|\bHEMICOLECTOMIA\b/, 'Colectomia'],
   [/\bRETOSSIGMOIDECTOMIA\b/, 'Retossigmoidectomia'],
   [/\bENTERECTOMIA\b/, 'Enterectomia'],
-  [/\bCOLOSTOMIA\b|\bILEOSTOMIA\b|\bJEJUNOSTOMIA\b/, 'Ostomia'],
+  [/\bFECHAMENTO\b.*\b(COLOSTOMIA|ILEOSTOMIA|ENTEROSTOMIA)\b/, 'Fechamento de ostomia'],
+  [/\bCOLOSTOMIA\b/, 'Colostomia'],
+  [/\bILEOSTOMIA\b|\bJEJUNOSTOMIA\b/, 'Ileostomia'],
   [/\bHEPATECTOMIA\b/, 'Hepatectomia'],
   [/\bHIPEC\b|\bCITORREDUTORA\b/, 'HIPEC'],
   [/\bTIREOIDECTOMIA\b/, 'Tireoidectomia'],
@@ -155,7 +164,11 @@ const DICIONARIO = [
   // ── mama / plástica ────────────────────────────────────────────────────
   [/\bMASTECTOMIA\b/, 'Mastectomia'],
   [/\bQUADRANTECTOMIA\b|\bSETORECTOMIA\b|\bSEGMENTECTOMIA\b|\bLESAO (NAO PALPAVEL )?(DE|DA) MAMA\b|\bMARCACAO ESTEREOTAXICA\b/, 'Setorectomia de mama'],
-  [/\bLINFONODO SENTINELA\b|\bLINFADENECTOMIA\b/, 'Linfadenectomia'],
+  [/\bLINFONODO SENTINELA\b/, 'Linfonodo sentinela'],
+  [/\bLINFADENECTOMIA\b/, (m, s) => {
+    const sitio = primeiro(s, [[/\bAXILAR\b/, 'axilar'], [/\bCERVICAL\b/, 'cervical'], [/\bINGUINAL\b/, 'inguinal'], [/\bSUPRACLAVICULAR\b/, 'supraclavicular'], [/\bPELVICA\b/, 'pélvica'], [/\bRETROPERITON\w*/, 'retroperitoneal']])
+    return sitio ? `Linfadenectomia ${sitio}` : 'Linfadenectomia'
+  }],
   [/\bMASTOPEXIA\b/, 'Mastopexia'],
   [/\bMAMOPLASTIA\b|\bMASTOPLASTIA\b|\bHIPERTROFIA MAMARIA\b/, 'Mamoplastia'],
   [/\bPROTESE DE MAMA\b|\bIMPLANTE DE MAMA\b/, 'Prótese de mama'],
@@ -164,7 +177,7 @@ const DICIONARIO = [
   [/\bRINOSSEPTOPLASTIA\b/, 'Rinosseptoplastia'],
   [/\bSEPTOPLASTIA\b.*\bRINOPLASTIA\b|\bRINOPLASTIA\b.*\bSEPTOPLASTIA\b/, 'Rinosseptoplastia'],
   [/\bRINOPLASTIA\b/, 'Rinoplastia'],
-  [/\bBLEFAROPLASTIA\b/, 'Blefaroplastia'],
+  [/\bBLEFAROPLASTIA\b|^(\d+\s+)?BLEFARO\b/, 'Blefaroplastia'],
   [/\bLIFTING\b/, 'Lifting'],
   [/\bLIPOABDOMINOPLASTIA\b/, 'Lipoabdominoplastia'],
   [/\bDERMOLIPECTOMIA\b|\bABDOMINOPLASTIA\b/, 'Abdominoplastia'],
@@ -183,7 +196,11 @@ const DICIONARIO = [
   // ── ortopedia ──────────────────────────────────────────────────────────
   [/\bMANGUITO ROTADOR\b/, 'Manguito rotador'],
   [/\bLCA\b|\bLIGAMENTO CRUZADO\b/, 'LCA'],
-  [/\bLIGAMENTO\b/, 'Ligamento'],
+  [/\bLIGAMENTO\b|\bLIGAMENTAR\w*/, (m, s) => {
+    const art = primeiro(s, [[/\bTORNOZELO\b/, 'de tornozelo'], [/\bJOELHO\b/, 'de joelho'], [/\bPUNHO\b/, 'de punho'], [/\bMAO\b/, 'de mão'], [/\bOMBRO\b/, 'de ombro'], [/\bCOTOVELO\b/, 'de cotovelo']])
+    if (art) return `Ligamento ${art}`
+    return /\bRECONSTRU/.test(s) ? 'Reconstrução ligamentar' : 'Ligamento'
+  }],
   [/\bMENISC(O|ECTOMIA)\b/, 'Menisco'],
   [/\bARTROPLASTIA\b.*\bJOELHO\b|\bJOELHO\b.*\bARTROPLASTIA\b/, 'Artroplastia de joelho'],
   [/\bARTROPLASTIA\b.*\bQUADRIL\b|\bQUADRIL\b.*\bARTROPLASTIA\b/, 'Artroplastia de quadril'],
@@ -200,21 +217,45 @@ const DICIONARIO = [
   [/\bARTRODESE\b/, 'Artrodese'],
   [/\bHERNIA DE DISCO\b|\bDISCECTOMIA\b/, 'Hérnia de disco'],
   [/\bDENERVACAO\b/, 'Denervação'],
-  [/\bINFILTRACAO\b|\bBLOQUEIO FENOLICO\b/, 'Infiltração'],
+  [/\bBLOQUEIO FENOLICO\b|\bTOXINA BOTULINICA\b/, 'Bloqueio com toxina'],
+  [/\bINFILTRACAO\b|\bPUNCAO ARTICULAR\b/, (m, s) => {
+    const alvo = primeiro(s, [[/\bCOLUNA\b|\bFORAMINAL\b|\bFACET\w*/, 'de coluna'], [/\bARTICULAR\b|\bJOELHO\b|\bQUADRIL\b|\bOMBRO\b/, 'articular']])
+    return alvo ? `Infiltração ${alvo}` : 'Infiltração'
+  }],
   [/\bDESCOMPRESSAO MEDULAR\b/, 'Descompressão medular'],
   [/\bTUNEL DO CARPO\b|\bNEUROLISE\b|\bSINDROMES COMPRESSIVAS\b/, 'Túnel do carpo'],
   [/\bNEUROPATIAS COMPRESSIVAS\b/, 'Neuropatias compressivas'],
   [/\bDEDO EM (MARTELO|GARRA|BOTOEIRA|BOTEIRA)\b/, (m) => `Dedo em ${m[1].toLowerCase()}`],
   [/\bHALLUX VALGUS\b/, 'Hallux valgus'],
   [/\bTENDAO DE AQUILES\b/, 'Tendão de Aquiles'],
-  [/\bTENO(PLASTIA|RRAFIA|TOMIA)\b|\bENXERTO DE TENDAO\b/, 'Tendão'],
-  [/\bOSTEOCONDROPLASTIA\b|\bCONDROPLASTIA\b|\bVIDEOARTROSCOP\w*/, 'Artroscopia'],
-  [/\bOSTEOTOMIA\b|\bPSEUDARTROSE\b/, 'Osteotomia'],
+  [/\bTENORRAFIA\b/, 'Tenorrafia'],
+  [/\bTENOPLASTIA\b|\bENXERTO DE TENDAO\b/, 'Tenoplastia'],
+  [/\bTENOTOMIA\b/, 'Tenotomia'],
+  [/\bTENOLISE\b/, 'Tenólise'],
+  [/\bTENOSINOVECTOMIA\b/, 'Tenosinovectomia'],
+  [/\bOSTEOCONDROPLASTIA\b/, 'Osteocondroplastia'],
+  [/\bCONDROPLASTIA\b|\bVIDEOARTROSCOP\w*|\bARTROSCOPIA\b/, (m, s) => {
+    const art = primeiro(s, [[/\bOMBRO\b/, 'de ombro'], [/\bJOELHO\b/, 'de joelho'], [/\bQUADRIL\b/, 'de quadril'], [/\bTORNOZELO\b/, 'de tornozelo'], [/\bPUNHO\b/, 'de punho'], [/\bCOTOVELO\b/, 'de cotovelo']])
+    return art ? `Artroscopia ${art}` : 'Artroscopia'
+  }],
+  // dono 20/09 (foto do Materno): "Osteotomia" era hálux valgo e "Dedo" era dedo em gatilho —
+  // a técnica/parte não é a cirurgia; o nome dela é
+  [/\bHAL+UX VALGUS\b|\bHALUX\b/, 'Hálux valgo'],
+  [/\bDEDO EM GATILHO\b/, 'Dedo em gatilho'],
+  [/\bOSTEOTOMIA\w*\b|\bPSEUD[O]?ARTROSE\w*\b/, (m, s) => {
+    const osso = primeiro(s, [[/\bMETATARS\w*|\bFALANG\w*/, 'de metatarso'], [/\bOSSOS LONGOS\b/, 'de osso longo'], [/\bJOELHO\b/, 'de joelho'], [/\bCINTURA ESCAPULAR\b|\bESCAPUL\w*/, 'de cintura escapular'], [/\bQUADRIL\b|\bCOXOFEMORAL\b|\bPELVE\b/, 'de quadril'], [/\bFEMUR\b/, 'de fêmur'], [/\bTIBIA\b/, 'de tíbia'], [/\bMANDIBULA\b|\bMAXILA\w*|\bMALAR\b/, 'de face'], [/\bALVEOL\w*|\bPALATIN\w*/, 'alveolopalatina']])
+    // pseudartrose sem osteotomia no texto é pseudartrose, não osteotomia
+    const verbo = /\bOSTEOTOMIA/.test(s) ? 'Osteotomia' : 'Pseudartrose'
+    return osso ? `${verbo} ${osso}` : verbo
+  }],
   [/\bOSTEOSSINTESE\b/, 'Osteossíntese'],
   [/\bRETIRADA DE (FIO|PINO|PLACA|MATERIAL|FIXADOR)\w*|\bRETIRADA DE PLACA\b/, 'Retirada de material'],
   [/\bFIOS PINOS\b|\bFIOS OU PINOS\b|\bHASTES METALICAS\b/, 'Fixação com pinos'],
   [/\bALONGAMENTO\b/, 'Alongamento ósseo'],
-  [/\bAMPUTACAO\b|\bDESARTICULACAO\b/, 'Amputação'],
+  [/\bAMPUTACAO\b|\bDESARTICULACAO\b/, (m, s) => {
+    const seg = primeiro(s, [[/\bDEDO\w*/, 'de dedo'], [/\bPE\b|\bTARSO\b/, 'de pé'], [/\bMEMBROS? INFERIOR\w*|\bCOXA\b|\bPERNA\b/, 'de membro inferior'], [/\bMEMBROS? SUPERIOR\w*|\bBRACO\b|\bANTEBRACO\b/, 'de membro superior'], [/\bMAO\b/, 'de mão']])
+    return seg ? `Amputação ${seg}` : 'Amputação'
+  }],
   [/\bDES?BRIDAMENTO\b.*\bULCERA\b/, 'Debridamento de úlcera'],
   [/\bDES?BRIDAMENTO\b.*\bFERIDA\w*/, 'Debridamento de ferida'],
   [/\bDES?BRIDAMENTO\b/, 'Debridamento'],
@@ -233,8 +274,13 @@ const DICIONARIO = [
   [/\bFRATURA\w*\b.*\b(QUADRIL|ACETABULO|PELVICO|PELVE)\b/, 'Fratura de quadril'],
   [/\bFRATURA\w*\b.*\bCOTOVELO\b/, 'Fratura de cotovelo'],
   [/\bFRATURA\w*\b.*\b(ZIGOMATICO|ORBITO|MAXILA\w*|MANDIBULA)\b/, 'Fratura de face'],
+  [/\bFRATURA\w*\b.*\bNASA\w*/, 'Fratura nasal'],
+  [/\bFRATURA\w*\b.*\bCOLUNA\b|\bFRATURA\w*\b.*\bVERTEBR\w*/, 'Fratura de coluna'],
   [/\bFRATURA\w*\b/, 'Fratura'],
-  [/\bLUXACAO\b|\bLUXACOES\b/, 'Luxação'],
+  [/\bLUXACAO\b|\bLUXACOES\b/, (m, s) => {
+    const art = primeiro(s, [[/\bQUADRIL\b|\bCOXOFEMORAL\b/, 'de quadril'], [/\bOMBRO\b|\bACROMIO\w*/, 'de ombro'], [/\bCOTOVELO\b/, 'de cotovelo'], [/\bPATEL\w*|\bJOELHO\b/, 'de patela'], [/\bTORNOZELO\b/, 'de tornozelo']])
+    return art ? `Luxação ${art}` : 'Luxação'
+  }],
   // ── neuro ──────────────────────────────────────────────────────────────
   [/\bMICROCIRURGIA\b.*\bINTRACRANIAN\w+|\bTUMOR(ES)? INTRACRANIAN\w+/, 'Tumor intracraniano'],
   [/\bTUMOR MEDULAR\b/, 'Tumor medular'],
@@ -244,14 +290,22 @@ const DICIONARIO = [
   // ── vascular / tórax ───────────────────────────────────────────────────
   [/\bVARIZES\b/, 'Varizes'],
   [/\bSIMPATECTOMIA\b/, 'Simpatectomia'],
-  [/\bDECORTICACAO\b|\bPLEUR(ECTOMIA|ODESE)\b|\bRESSECCAO EM CUNHA\b/, 'Cirurgia torácica'],
+  // torácica: "A + B" leva a que vem PRIMEIRO no texto (era "Cirurgia torácica" para todas)
+  [/\bDECORTICACAO\b|\bRESSECCAO EM CUNHA\b|\bPLEURECTOMIA\b|\bPLEURODESE\b/, (m, s) => primeiro(s, [
+    [/\bDECORTICACAO\b/, 'Decorticação pulmonar'], [/\bRESSECCAO EM CUNHA\b/, 'Ressecção pulmonar'],
+    [/\bPLEURECTOMIA\b/, 'Pleurectomia'], [/\bPLEURODESE\b/, 'Pleurodese'],
+  ])],
   // ── oftalmo ────────────────────────────────────────────────────────────
   [/\bESTRABISMO\b/, 'Estrabismo'],
   [/\bTRANSPLANTE CONJUNTIVAL\b|\bPTERIGIO\b/, 'Pterígio'],
   // ── outros ─────────────────────────────────────────────────────────────
-  [/\bBIOPSIA\b/, 'Biópsia'],
+  [/\bBIOPSIAS?\b/, (m, s) => {
+    const obj = primeiro(s, [[/\bGANGLIO\b|\bLINFONODO\b/, 'de gânglio'], [/\bOSSE\w*|\bOSSOS?\b/, 'óssea'], [/\bMAMA\b/, 'de mama'], [/\bPELE\b/, 'de pele'], [/\bFIGADO\b|\bHEPATIC\w*/, 'hepática'], [/\bRENAL\b|\bRIM\b/, 'renal'], [/\bPULM\w*/, 'pulmonar'], [/\bTOMOGRAFIA\b|\bTC\b/, 'por TC'], [/\bMUSCUL\w*/, 'muscular']])
+    return obj ? `Biópsia ${obj}` : 'Biópsia'
+  }],
   [/\bMEDULA OSSEA\b|\bBMO\b/, 'Aspiração de medula'],
   [/\bCELULA TRONCO\b/, 'Célula-tronco'],
+  [/\bDRENAGEM\b.*\bABSCESSO\b|\bABSCESSO\b.*\bDRENAGEM\b/, 'Drenagem de abscesso'],
   [/\bDRENAGEM\b/, 'Drenagem'],
   // EXÉRESE: "de quê" é o que identifica (dono 18/09: "exérese de que?"). Objetos vistos nos
   // 60 dias até 18/09: pele/mucosas, cervical (tumor/cisto/fístula), cisto branquial/
