@@ -29,6 +29,7 @@ import { detectarItensDuplicados, aplicarHoraPadraoPosicoes } from '@/lib/escala
 import { detectarDuplicidadesEscala, carimbarDecisao, localizarDecisao } from '@/lib/escalaCirurgicaDuplicidades'
 import { montarLinhaOverrides, montarPreservacao, decisoesPublicadas } from '@/lib/escalaPublicacaoDecisoes'
 import { montarOrdem, compararComRodape, excecaoTurnoDoDia } from '@/lib/escalaNumerica'
+import { aplicarPosPlantaoManha, excluirPosPlantaoTarde } from '@/lib/posPlantao'
 
 export const HOSPITAL_LABEL = { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' }
 const COM_RODAPE = new Set(['hro', 'unimed'])
@@ -145,7 +146,7 @@ export function realocarAzuisEmprestados(hospitais, turno, resolver) {
 export function conferirHospital(hospital, entrada, contexto) {
   const {
     data, turno, roster = [], resolver, rosterByUid = new Map(), existente = null, outrasEscalas = [],
-    dadosNumerica = null, ferias = null, decisoes = {}, conferidos = [], republicar = false, carimbo = null,
+    dadosNumerica = null, ferias = null, noturnosVespera = null, decisoes = {}, conferidos = [], republicar = false, carimbo = null,
   } = contexto
   const bloqueios = []
   const avisos = []
@@ -384,14 +385,32 @@ export function conferirHospital(hospital, entrada, contexto) {
   if (ordem.length && dadosNumerica?.dias?.[data]) {
     const esperada = montarOrdem(dadosNumerica, { data, hospital, turno, ferias })
     if (esperada.ok && esperada.lista.length) {
-      const c = compararComRodape(esperada.lista, ordem)
-      numerica = { ...c, feriasConferidas: esperada.feriasConferidas, feriado: !!esperada.filaUnica, esperada: esperada.lista.map((p) => p.nome) }
+      // PÓS-PLANTÃO (dono 21/09: "Nathalia e Tiago são pós plantão"): a mesma regra da tela de
+      // consulta (03/09) — de manhã quem fez a noite da véspera vai para a 2ª posição do hospital
+      // em que plantonou; à tarde não é escalado. Sem o dado da véspera a numérica confere pura.
+      let listaEsperada = esperada.lista
+      let posPlantao = ''
+      if (!esperada.filaUnica && noturnosVespera && (noturnosVespera.hro || noturnosVespera.unimed)) {
+        if (turno === 'matutino') {
+          const pp = aplicarPosPlantaoManha(dadosNumerica, [{ hospital, lista: listaEsperada }], esperada.consultorio || [], noturnosVespera)
+          listaEsperada = pp.blocos[0]?.lista || listaEsperada
+          if (pp.movidos.length) posPlantao = ` · pós-plantão na 2ª posição: ${pp.movidos.map((m) => m.nome).join(', ')}`
+        } else {
+          const ex = excluirPosPlantaoTarde(listaEsperada, noturnosVespera)
+          listaEsperada = ex.lista
+          if (ex.excluidos.length) posPlantao = ` · pós-plantão descontado: ${ex.excluidos.join(', ')}`
+        }
+      }
+      const c = compararComRodape(listaEsperada, ordem)
+      const feriasDupla = (esperada.excluidos || []).filter((e) => e.observacao).map((e) => e.nome)
+      numerica = { ...c, feriasConferidas: esperada.feriasConferidas, feriado: !!esperada.filaUnica, esperada: listaEsperada.map((p) => p.nome), posPlantao, feriasDupla }
       if (!c.iguais) {
         const partes = []
         if (c.faltamNoRodape.length) partes.push(`faltam no rodapé: ${c.faltamNoRodape.join(', ')}`)
         if (c.sobramNoRodape.length) partes.push(`a mais no rodapé: ${c.sobramNoRodape.join(', ')}`)
         if (c.foraDeOrdem.length) partes.push(`fora de ordem: ${c.foraDeOrdem.join(', ')}`)
-        aviso('escala numérica', `rodapé difere da escala numérica${ferias ? ' (férias conferidas)' : ' (férias NÃO conferidas)'}: ${partes.join(' · ')}`)
+        const contexto = `${ferias ? 'férias conferidas' : 'férias NÃO conferidas'}${feriasDupla.length ? `, dupla de férias: ${feriasDupla.join('; ')}` : ''}${posPlantao}`
+        aviso('escala numérica', `rodapé difere da escala numérica (${contexto}): ${partes.join(' · ')}`)
       }
     }
   }
@@ -430,7 +449,7 @@ export function conferirHospital(hospital, entrada, contexto) {
  * um a um. `hospitais` = { [h]: { rows, posicoes, ordem, ajuda, dataDetectada } }.
  */
 export function conferirLote({
-  data, turno, hospitais, publicadas = {}, roster, resolver, rosterByUid, dadosNumerica = null, ferias = null,
+  data, turno, hospitais, publicadas = {}, roster, resolver, rosterByUid, dadosNumerica = null, ferias = null, noturnosVespera = null,
   decisoes = {}, conferidos = [], republicar = false, carimbo = null,
 }) {
   const nomes = Object.keys(hospitais)
@@ -462,7 +481,7 @@ export function conferirLote({
     const doBanco = Object.values(publicadas).filter((p) => p?.hospital && p.hospital !== h && !cobertos.has(p.hospital))
     resultado.hospitais[h] = conferirHospital(h, { ...hospitais[h], ordem: abas[h].ordem, ajuda: abas[h].ajuda }, {
       data, turno, roster, resolver, rosterByUid, existente: publicadas[h] || null,
-      outrasEscalas: [...irmas, ...doBanco], dadosNumerica, ferias,
+      outrasEscalas: [...irmas, ...doBanco], dadosNumerica, ferias, noturnosVespera,
       decisoes: decisoes[h] || decisoes, conferidos, republicar, carimbo,
     })
   }

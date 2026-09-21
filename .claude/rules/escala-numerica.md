@@ -47,6 +47,9 @@ rede, e a lista sai pendente), férias `node scripts/ferias-pega-plantao.mjs
   si, como todos os outros. **Quando a escala do turno (foto/rodapé) traz só UM dos dois, vale o
   que saiu na escala** — a dupla resolveu entre si (dono 03/09): `aplicarEscalaNasDuplas`/
   `compararComRodape` trocam o par pelo nome que apareceu e isso NÃO é divergência.
+  **As férias das duplas são sempre JUNTAS (dono 21/09):** férias de um é férias da POSIÇÃO —
+  `excluirFerias` tira a entrada inteira (observação "dupla tira férias junto"). O Pega Plantão
+  costuma registrar só um dos dois (21/09: Roberta, e a conferência cobrava o Humberto).
 - **Ordem por hospital e turno:** só os números da cor do hospital, na **posição física** da
   coluna — **manhã de cima para baixo; tarde de baixo para cima** (a manhã invertida). Nunca
   ordenar por valor nem por nome: "44 → 01" é sequência normal. A lib já devolve a tarde
@@ -140,6 +143,14 @@ Identidade: `identificarNaLegenda` devolve **null quando ambíguo** — "GUILHER
 
 Cada tipo de dia tem uma referência que NÃO passa pela leitura da foto. Divergência é sempre
 AVISO, nunca bloqueio: troca, ajuda e consultório escalado mudam a fila de propósito.
+**A conferência aplica o pós-plantão desde 21/09** (dono: "Nathalia e Tiago são pós plantão" —
+a tarde de 21/09 cobrava os dois no rodapé e a manhã acusava o Tiago fora de ordem, quando ele
+estava na 2ª da Unimed, que é onde 03/09 o põe): `conferirHospital` recebe `noturnosVespera`
+({hro, unimed}) e, de manhã, `aplicarPosPlantaoManha` põe quem fez a noite na 2ª do hospital em
+que plantonou; à tarde `excluirPosPlantaoTarde` tira os dois da lista esperada. Quem busca a
+noite é o script (`noturnosDaVespera`): segunda → faixa 19-07 do documento de FDS publicado
+(`fds_meta.grade` do domingo); ter–sex → Pega Plantão da véspera. Sem o dado, confere pura e
+avisa. O texto do aviso diz o que descontou ("dupla de férias: …", "pós-plantão descontado: …").
 
 | Dia | Referência | Onde compara | Regra |
 |---|---|---|---|

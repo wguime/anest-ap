@@ -249,9 +249,11 @@ export function excluirFerias(posicoes, ferias, { casar = casarNomeComLegenda } 
   for (const p of posicoes) {
     const deFerias = p.nomes.filter((n) => ferias.some((f) => casar(n, f)))
     if (!deFerias.length) { restantes.push(p); continue }
+    // Entrada compartilhada ("05 HUMBERTO / ROBERTA", "07 ROSE / ALINE"): as férias das duplas
+    // são SEMPRE juntas (dono 21/09) — férias de um é férias da POSIÇÃO. O Pega Plantão costuma
+    // registrar só um dos dois (21/09: Roberta, e a numérica cobrava o Humberto no rodapé).
     if (deFerias.length < p.nomes.length) {
-      const fica = p.nomes.filter((n) => !deFerias.includes(n))
-      restantes.push({ ...p, nome: fica.join(' / '), nomes: fica, compartilhada: fica.length > 1, observacao: `${deFerias.join(' e ')} de férias` })
+      excluidos.push({ numero: p.numero, nome: p.nome, motivo: 'ferias', observacao: `dupla tira férias junto — ${deFerias.join(' e ')} no registro` })
       continue
     }
     excluidos.push({ numero: p.numero, nome: p.nome, motivo: 'ferias' })

@@ -97,8 +97,10 @@ apelido conhecido).
 
 **Bloqueia** (a tela também recusaria): nome ambíguo, hora inválida, campo que o banco recusa,
 rodapé vazio (HRO/Unimed), pessoa em dois hospitais sem decisão, turno já publicado. **Avisa**:
-rodapé × numérica com férias do dia (troca, ajuda e consultório mudam o rodapé de propósito —
-compare com a foto e siga), cauda que nasce liberada, nome na ordem sem caso, caso de quem não
+rodapé × numérica com férias do dia, férias da DUPLA (Rose/Aline, Humberto/Roberta tiram junto)
+e pós-plantão (P1/P2 da noite da véspera: 2ª posição de manhã, fora à tarde) já descontados —
+o que sobra é troca, ajuda e consultório, que mudam o rodapé de propósito (compare com a foto e
+siga; não relate como "faltando" quem o aviso já diz que foi descontado), cauda que nasce liberada, nome na ordem sem caso, caso de quem não
 está no rodapé (azul não lido?), ajuda provável, conflito de horário, bloco/item repetido, seção
 do HRO ausente, travessia da manhã sem dono, data divergente, escala que encolhe, **particular sem
 nome** (a cobrança não abre). Realoca sozinho o azul emprestado. Respostas no lote: `decisoes`

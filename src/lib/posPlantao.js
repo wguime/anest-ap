@@ -141,6 +141,23 @@ export function aplicarPosPlantaoManha(dados, blocos, consultorio = [], noturnos
 }
 
 /**
+ * TARDE, na CONFERÊNCIA do rodapé (publicação por foto, dono 21/09): quem fez a noite não é
+ * escalado à tarde, então não pode ser cobrado como "faltando no rodapé". A tela de consulta
+ * MARCA (abaixo); a conferência EXCLUI da lista esperada — "Nathalia e Tiago são pós plantão".
+ */
+export function excluirPosPlantaoTarde(lista, noturnos = {}) {
+  const nomes = ['hro', 'unimed'].map((h) => noturnos?.[h]).filter(Boolean)
+  if (!nomes.length) return { lista, excluidos: [] }
+  const excluidos = []
+  const restante = (lista || []).filter((p) => {
+    const bate = nomes.some((n) => ehAPessoa(p, n))
+    if (bate) excluidos.push(p.nome)
+    return !bate
+  })
+  return { lista: renumerar(restante), excluidos }
+}
+
+/**
  * TARDE: eles não são escalados, mas continuam na posição que a numérica lhes dá — só
  * ganham a marca (decisão do dono 03/09, mesma escolha das férias: marcar, não sumir).
  */

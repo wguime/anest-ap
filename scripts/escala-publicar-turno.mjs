@@ -113,8 +113,9 @@ async function carregarLibs() {
   const utils = await runner.import('/src/pages/escala-cirurgica/utils.js')
   const validacao = await runner.import('/src/lib/escalaCirurgicaValidacao.js')
   const regras = await runner.import('/src/lib/escalaCirurgicaRegras.js')
+  const posPlantao = await runner.import('/src/lib/posPlantao.js')
   return {
-    headless, dadosNumerica, iniciaisSeguras, urgencias, fds, fdsMapas, fdsPP, numerica, utils, validacao, regras,
+    headless, dadosNumerica, iniciaisSeguras, urgencias, fds, fdsMapas, fdsPP, numerica, utils, validacao, regras, posPlantao,
     fechar: () => server.close(),
   }
 }
@@ -207,6 +208,41 @@ async function feriasDoDia(data, uid) {
   }
 }
 
+/**
+ * P1 (HRO) / P2 (Unimed) da NOITE DA VÉSPERA, para o pós-plantão da conferência (dono 21/09:
+ * "Nathalia e Tiago são pós plantão"). Mesma fonte da tela de consulta (`usePosPlantao`): na
+ * segunda a véspera é domingo e a noite vem da faixa 19-07 do documento de FDS publicado; de
+ * terça a sexta vem do Pega Plantão, lançado na véspera às 19h. null = sem dado (a numérica
+ * confere pura, sem inventar quem plantonou).
+ */
+async function noturnosDaVespera(data, uid, posPlantao) {
+  const fonte = posPlantao.fonteDoNoturno(data)
+  if (!fonte) return null
+  const vespera = posPlantao.vesperaDe(data)
+  try {
+    if (fonte === 'documento-fds') {
+      const rows = await sqlOuFalha(`select fds_meta from public.escala_cirurgica where data='${vespera}' and hospital='fds'`, 'fila única da véspera')
+      const grade = rows[0]?.fds_meta?.grade
+      if (!grade) return null
+      return { vespera, fonte, ...posPlantao.noturnosDoDocumentoFds(grade) }
+    }
+    const lista = await plantoesPegaPlantao(`${vespera}T00:00:00`, `${vespera}T23:59:59`, uid)
+    if (lista === null) return null
+    const plantoes = lista.map((p) => {
+      const m = String(p?.Setor || '').match(/P(\d+)/i)
+      const inicio = p?.Inicio ? new Date(p.Inicio) : null
+      return {
+        nome: (p?.ProfDePlantao || p?.ProfFixo || '').trim(),
+        setor: m ? `P${m[1]}` : String(p?.Setor || ''),
+        horario: inicio && !Number.isNaN(inicio.getTime()) ? `${String(inicio.getHours()).padStart(2, '0')}:${String(inicio.getMinutes()).padStart(2, '0')}` : '',
+      }
+    })
+    return { vespera, fonte, ...posPlantao.noturnosDoPegaPlantao(plantoes) }
+  } catch {
+    return null
+  }
+}
+
 // ── comandos ─────────────────────────────────────────────────────────────────
 const args = process.argv.slice(2)
 const cmd = args[0]
@@ -263,7 +299,7 @@ if (cmd === 'publicar') {
   const comoApelido = opt('como', 'GUILHERME MELO')
 
   const libs = await carregarLibs()
-  const { headless, dadosNumerica, iniciaisSeguras } = libs
+  const { headless, dadosNumerica, iniciaisSeguras, posPlantao } = libs
   const { perfis, aliases } = await carregarIdentidade()
   const identidade = headless.montarRoster({ perfis, aliases })
   const uidDono = identidade.resolver(comoApelido)
@@ -272,6 +308,9 @@ if (cmd === 'publicar') {
   const ferias = await feriasDoDia(data, uidDono)
   if (ferias === null) console.log('⚠️  férias do Pega Plantão não consultadas — a numérica confere sem férias')
   else console.log(`férias em ${data} (Pega Plantão): ${ferias.length ? ferias.join(', ') : 'ninguém'}`)
+  const noturnosVespera = await noturnosDaVespera(data, uidDono, posPlantao)
+  if (noturnosVespera) console.log(`noite de ${noturnosVespera.vespera} (${noturnosVespera.fonte === 'documento-fds' ? 'documento de FDS' : 'Pega Plantão'}): HRO ${noturnosVespera.hro || '—'} · Unimed ${noturnosVespera.unimed || '—'} → pós-plantão`)
+  else console.log('⚠️  noite da véspera não encontrada — a numérica confere sem pós-plantão')
 
   const hospitais = {}
   for (const [h, d] of entradas) {
@@ -281,7 +320,7 @@ if (cmd === 'publicar') {
     }
   }
   const resultado = headless.conferirLote({
-    data, turno, hospitais, publicadas, ...identidade, dadosNumerica, ferias,
+    data, turno, hospitais, publicadas, ...identidade, dadosNumerica, ferias, noturnosVespera,
     decisoes: lote.decisoes || {}, conferidos: lote.conferidos || [], republicar,
     carimbo: { por: uidDono, em: new Date().toISOString() },
   })
@@ -304,7 +343,7 @@ if (cmd === 'publicar') {
       if (/^PART(ICULAR)?[^A-Z]*$/.test(norm(c.convenio)) && !c.pacienteNome && c.pacienteIniciais) r.avisos.push({ codigo: 'particular sem nome', texto: `${c.sala} ${c.hora || ''} (${c.pacienteIniciais}): convênio particular sem pacienteNome — a cobrança não abre; confira a foto` })
     }
     if (p.ordemLiberacao.length) console.log(`   rodapé: ${r.ordemNumerada.map((o) => `${o.i + 1}.${o.nome}${o.casos ? '' : '°'}${o.ajuda ? '*' : ''}`).join(' / ')}  (° sem caso · * ajuda)`)
-    if (r.numerica) console.log(`   numérica: ${r.numerica.iguais ? 'igual ao rodapé' : 'difere'}${r.numerica.feriasConferidas ? ' (férias conferidas)' : ''}`)
+    if (r.numerica) console.log(`   numérica: ${r.numerica.iguais ? 'igual ao rodapé' : 'difere'}${r.numerica.feriasConferidas ? ' (férias conferidas)' : ''}${r.numerica.feriasDupla?.length ? ` · dupla de férias: ${r.numerica.feriasDupla.join('; ')}` : ''}${r.numerica.posPlantao || ''}`)
     if (Object.keys(p.linhaOverrides || {}).length) console.log(`   decisões: ${JSON.stringify(p.linhaOverrides)}`)
     if (p.preservar) console.log(`   preservar: ${p.preservar.linhas.length} linha(s) com rastro`)
     for (const b of r.bloqueios) console.log(`   ❌ ${b.codigo}: ${b.texto}`)

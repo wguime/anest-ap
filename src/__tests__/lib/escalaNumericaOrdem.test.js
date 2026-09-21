@@ -216,9 +216,15 @@ describe('férias (Pega Plantão) — exclusão preserva a ordem relativa', () =
     expect(nomes(r).slice(0, 2)).toEqual(['LOUISE', 'MARILIO'])
     expect(r.louise.posicao).toBe(2)
   })
-  it('entrada compartilhada com um dos dois de férias fica com o outro; com os dois, sai', () => {
+  it('entrada compartilhada: férias de UM dos dois é férias da posição — a dupla tira junto (dono 21/09)', () => {
+    // ⚠️ MUDOU DE LADO em 21/09: até então "fica com o outro". Dono: "as férias das duplas
+    // Rose/Aline e Humberto/Roberta sempre são juntos" — em 21/09 o Pega Plantão só tinha a
+    // Roberta, e a numérica cobrava o Humberto no rodapé da Unimed.
     const base = [{ numero: '05', nome: 'HUMBERTO / ROBERTA', nomes: ['HUMBERTO', 'ROBERTA'], compartilhada: true }]
-    expect(excluirFerias(base, ['Humberto Hepp']).posicoes[0]).toMatchObject({ nome: 'ROBERTA', observacao: 'HUMBERTO de férias' })
+    const um = excluirFerias(base, ['Roberta Marina Grando'])
+    expect(um.posicoes).toEqual([])
+    expect(um.excluidos[0]).toMatchObject({ numero: '05', nome: 'HUMBERTO / ROBERTA', motivo: 'ferias' })
+    expect(um.excluidos[0].observacao).toMatch(/dupla tira férias junto/)
     expect(excluirFerias(base, ['Humberto Hepp', 'Roberta Marina Grando']).excluidos).toHaveLength(1)
   })
   it('sem consulta ao Pega Plantão a lista sai marcada como pendente', () => {

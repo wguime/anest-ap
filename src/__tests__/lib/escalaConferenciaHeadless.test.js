@@ -250,4 +250,43 @@ describe('escala numérica e férias', () => {
     const semConsulta = conferir({ hro: { rows: [caso('Sala 1', semFerias[0])], ordem: semFerias, ajuda: [] } })
     expect(semConsulta.hospitais.hro.avisos.find((a) => a.codigo === 'escala numérica').texto).toMatch(/férias NÃO conferidas/)
   })
+
+  // PÓS-PLANTÃO (dono 21/09, segunda 21/09: "Nathalia e Tiago são pós plantão") — a conferência
+  // aplicava a numérica pura e cobrava os dois no rodapé da tarde; de manhã acusava o Tiago
+  // "fora de ordem" (ele estava na 2ª da Unimed, que é onde a regra de 03/09 o põe).
+  it('TARDE: quem fez a noite da véspera sai da lista esperada — rodapé sem ele é igual', () => {
+    const semThayna = esperada.filter((n) => n !== 'THAYNA')
+    expect(semThayna.length).toBe(esperada.length - 1)
+    const r = conferir(
+      { hro: { rows: [caso('Sala 1', semThayna[0])], ordem: semThayna, ajuda: [] } },
+      { ferias: [], noturnosVespera: { hro: 'Thayná Regina Santos', unimed: null } },
+    )
+    expect(r.hospitais.hro.numerica?.iguais).toBe(true)
+    expect(r.hospitais.hro.numerica?.posPlantao).toMatch(/pós-plantão descontado: THAYNA/)
+    // sem o dado da véspera, a mesma foto seria cobrada
+    const puro = conferir({ hro: { rows: [caso('Sala 1', semThayna[0])], ordem: semThayna, ajuda: [] } }, { ferias: [] })
+    expect(puro.hospitais.hro.avisos.find((a) => a.codigo === 'escala numérica').texto).toMatch(/faltam no rodapé: THAYNA/)
+  })
+
+  it('MANHÃ: quem fez a noite no HRO é esperado na 2ª posição do HRO', () => {
+    const manha = montarOrdem(dadosNumerica, { data: '2026-09-08', hospital: 'hro', turno: 'matutino', ferias: null }).lista.map((p) => p.nome)
+    const semThayna = manha.filter((n) => n !== 'THAYNA')
+    const rodape = [semThayna[0], 'THAYNA', ...semThayna.slice(1)]
+    const r = conferir(
+      { hro: { rows: [caso('Sala 1', rodape[0])], ordem: rodape, ajuda: [] } },
+      { turno: 'matutino', ferias: [], noturnosVespera: { hro: 'Thayná Regina Santos', unimed: null } },
+    )
+    expect(r.hospitais.hro.numerica?.iguais).toBe(true)
+    expect(r.hospitais.hro.numerica?.posPlantao).toMatch(/2ª posição: THAYNA/)
+  })
+
+  it('dupla que tira férias junto: só um no Pega Plantão, e a posição inteira sai da lista esperada', () => {
+    // HUMBERTO / ROBERTA é a entrada 05; a lista esperada de 08/09 à tarde no HRO a contém?
+    const comPar = esperada.some((n) => /HUMBERTO/.test(n))
+    if (!comPar) return // a fixture do dia não tem o par no HRO — o caso está travado na lib (escalaNumericaOrdem)
+    const semPar = esperada.filter((n) => !/HUMBERTO/.test(n))
+    const r = conferir({ hro: { rows: [caso('Sala 1', semPar[0])], ordem: semPar, ajuda: [] } }, { ferias: ['Roberta Marina Grando'] })
+    expect(r.hospitais.hro.numerica?.iguais).toBe(true)
+    expect(r.hospitais.hro.numerica?.feriasDupla).toEqual(['HUMBERTO / ROBERTA'])
+  })
 })

@@ -15,7 +15,7 @@ import { resolve } from 'path'
 import { montarOrdem, HOSPITAIS_NUMERICA } from '../../lib/escalaNumerica'
 import {
   vesperaDe, ehDiaUtilNumerica, fonteDoNoturno, noturnosDoPegaPlantao, noturnosDoDocumentoFds,
-  aplicarPosPlantaoManha, marcarPosPlantaoTarde,
+  aplicarPosPlantaoManha, marcarPosPlantaoTarde, excluirPosPlantaoTarde,
 } from '../../lib/posPlantao'
 
 const dados = JSON.parse(readFileSync(resolve(__dirname, '../../data/escalaNumerica.json'), 'utf8'))
@@ -148,6 +148,25 @@ describe('MANHÃ — sobe para a 2ª posição do hospital em que plantonou', ()
     const r = aplicarPosPlantaoManha(dados, blocos, consultorio, { hro: 'Erlei Perini', unimed: null })
     expect(r.consultorio.map((c) => c.nome)).toEqual(['NATHALIA'])
     expect(r.blocos[0].lista.map((p) => p.nome)).toEqual(['MELO', 'ERLEI'])
+  })
+})
+
+describe('TARDE na CONFERÊNCIA — quem fez a noite sai da lista esperada (dono 21/09)', () => {
+  // "Nathalia e Tiago são pós plantão": a tela marca, a conferência do rodapé não pode cobrar
+  it('04/09: Romulo e Klisman saem da lista da Unimed, renumerada; o HRO não muda', () => {
+    const { blocos } = grade('2026-09-04', 'vespertino')
+    const uni = blocos.find((b) => b.hospital === 'unimed').lista
+    const r = excluirPosPlantaoTarde(uni, NOTURNOS_03_09)
+    expect(r.excluidos).toEqual(['ROMULO', 'KLISMAN'])
+    expect(r.lista.map((p) => p.nome)).toEqual(uni.map((p) => p.nome).filter((n) => !['ROMULO', 'KLISMAN'].includes(n)))
+    expect(r.lista.map((p) => p.posicao)).toEqual(r.lista.map((_, i) => i + 1))
+    const hro = blocos.find((b) => b.hospital === 'hro').lista
+    expect(excluirPosPlantaoTarde(hro, NOTURNOS_03_09).lista).toEqual(hro)
+  })
+  it('sem o dado da véspera a lista sai como entrou', () => {
+    const { blocos } = grade('2026-09-04', 'vespertino')
+    const uni = blocos.find((b) => b.hospital === 'unimed').lista
+    expect(excluirPosPlantaoTarde(uni, { hro: null, unimed: null })).toEqual({ lista: uni, excluidos: [] })
   })
 })
 
