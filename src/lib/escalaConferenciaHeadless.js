@@ -425,6 +425,26 @@ export function conferirHospital(hospital, entrada, contexto) {
       }
     }
   }
+  // 8b. MATERNO não tem rodapé, mas a numérica diz quem é o PLANTÃO do turno lá (azul) — e o
+  // dono quer isso conferido SEMPRE (21/09: "confira também sempre quem é o plantão do turno no
+  // materno infantil, confira pela escala numérica"). Compara com quem assina caso no turno;
+  // a ordem não importa (não há fila), só quem falta e quem sobra. Aviso, nunca bloqueio — e
+  // nunca preenche o "?" do mapa com o nome da numérica (o nome à mão é o dado).
+  if (!ordem.length && hospital === 'materno' && dadosNumerica?.dias?.[data]) {
+    const esperada = montarOrdem(dadosNumerica, { data, hospital, turno, ferias })
+    if (esperada.ok && esperada.lista.length && !esperada.filaUnica) {
+      const noMapa = [...new Set(casosNovos.map((c) => texto(c.anestesista)).filter((n) => n && n !== '?' && n !== '//'))]
+      const c = compararComRodape(esperada.lista, noMapa)
+      const iguais = !c.faltamNoRodape.length && !c.sobramNoRodape.length
+      numerica = { ...c, iguais, foraDeOrdem: [], plantao: true, noMapa, feriasConferidas: esperada.feriasConferidas, feriado: false, esperada: esperada.lista.map((p) => p.nome) }
+      if (!iguais) {
+        const partes = []
+        if (c.faltamNoRodape.length) partes.push(`sem caso no mapa: ${c.faltamNoRodape.join(', ')}`)
+        if (c.sobramNoRodape.length) partes.push(`no mapa e fora da numérica: ${c.sobramNoRodape.join(', ')}`)
+        aviso('plantão materno', `numérica diz ${numerica.esperada.join(', ')} no Materno neste turno${ferias ? ' (férias conferidas)' : ' (férias NÃO conferidas)'}; no mapa: ${noMapa.join(', ') || 'ninguém'} — ${partes.join(' · ')}`)
+      }
+    }
+  }
 
   // 9. guardrail anti-perda: publicar com menos casos apaga os anteriores
   const publicadosAntes = (existente?.casos || []).filter((c) => (c.turno || 'matutino') === turno).length

@@ -25,12 +25,16 @@ pedido ao PUBLICADO.** O porquê de cada regra está em `REFERENCIA.md` — não
    (a linha esquecida é o erro silencioso); (b) **anestesista por linha**, seguindo cada corrente
    de "//" e cada "?"; (c) **cor** — todo azul/amarelo da foto aparece como `azul`/`amarelo`, e a
    ajuda está no hospital onde a pessoa trabalha; (d) **`PART: nome`** em todo particular;
-   (e) **rodapé** nome a nome, na ordem; (f) **seções de baixo + SRPA** presentes; (g) os avisos
+   (e) **rodapé** nome a nome, na ordem; (f) **seções de baixo + SRPA** presentes; (g) **plantão do
+   Materno pela numérica** — o ensaio imprime "numérica: plantão do Materno neste turno = X, Y · no
+   mapa: … → confere/DIFERE"; DIFERE = voltar ao nome à mão do mapa (troca real fica, leitura errada
+   se corrige, "?" não se preenche com a numérica) e dizer no relatório; (h) os avisos
    restantes têm explicação na foto ou no recado. Sem bloqueio e sem aviso que aponte erro seu →
    **Bash** `publicar` (sem `--ensaio`). O `gerar.py` já parou antes em erro de forma (hora, cor e
    tempo na posição errada, "//" sem base ou abaixo de "?", cirurgião trocado com procedimento,
    particular sem nome) e avisou nome sem caso no meio do rodapé.
-4. Relatório curto: por hospital "N casos · rodapé N · ajuda […]", quem ficou com "?", o que o
+4. Relatório curto: por hospital "N casos · rodapé N · ajuda […]", quem ficou com "?", **quem é o
+   plantão do Materno pela numérica e se o mapa bate** (dono 21/09: conferir sempre), o que o
    recado virou, avisos que sobraram. Custo US$ 0.
 
 **Não fazer** — cada item custou minutos em 17/09: consultar `escala_anestesista_alias` (o ensaio
@@ -80,6 +84,9 @@ apelido conhecido).
   não entra no JSON.
 - `turnoProprio` (Louise) é automático pela numérica. `RAFAEL` sai como `PELISSARO` — mesmo
   cadastro. Ambíguo na foto: diga no relatório em vez de escolher.
+- **Materno**: a numérica (azul) diz quem é o plantão do turno lá; o ensaio compara com quem assina
+  caso no mapa (aviso `plantão materno`, nunca bloqueio). O nome à mão continua sendo o dado — a
+  numérica confere, não preenche.
 
 ## Recado do dono → lote
 

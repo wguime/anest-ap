@@ -343,7 +343,8 @@ if (cmd === 'publicar') {
       if (/^PART(ICULAR)?[^A-Z]*$/.test(norm(c.convenio)) && !c.pacienteNome && c.pacienteIniciais) r.avisos.push({ codigo: 'particular sem nome', texto: `${c.sala} ${c.hora || ''} (${c.pacienteIniciais}): convênio particular sem pacienteNome — a cobrança não abre; confira a foto` })
     }
     if (p.ordemLiberacao.length) console.log(`   rodapé: ${r.ordemNumerada.map((o) => `${o.i + 1}.${o.nome}${o.casos ? '' : '°'}${o.ajuda ? '*' : ''}`).join(' / ')}  (° sem caso · * ajuda)`)
-    if (r.numerica) console.log(`   numérica: ${r.numerica.iguais ? 'igual ao rodapé' : 'difere'}${r.numerica.feriasConferidas ? ' (férias conferidas)' : ''}${r.numerica.feriasDupla?.length ? ` · dupla de férias: ${r.numerica.feriasDupla.join('; ')}` : ''}${r.numerica.posPlantao || ''}`)
+    if (r.numerica?.plantao) console.log(`   numérica: plantão do Materno neste turno = ${r.numerica.esperada.join(', ')} · no mapa: ${r.numerica.noMapa.join(', ') || 'ninguém'} → ${r.numerica.iguais ? 'confere' : 'DIFERE'}${r.numerica.feriasConferidas ? ' (férias conferidas)' : ''}`)
+    else if (r.numerica) console.log(`   numérica: ${r.numerica.iguais ? 'igual ao rodapé' : 'difere'}${r.numerica.feriasConferidas ? ' (férias conferidas)' : ''}${r.numerica.feriasDupla?.length ? ` · dupla de férias: ${r.numerica.feriasDupla.join('; ')}` : ''}${r.numerica.posPlantao || ''}`)
     if (Object.keys(p.linhaOverrides || {}).length) console.log(`   decisões: ${JSON.stringify(p.linhaOverrides)}`)
     if (p.preservar) console.log(`   preservar: ${p.preservar.linhas.length} linha(s) com rastro`)
     for (const b of r.bloqueios) console.log(`   ❌ ${b.codigo}: ${b.texto}`)

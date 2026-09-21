@@ -3,6 +3,22 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.23 (21/09/2026) — Liberações: a linha contada mostra as quantidades; publicação confere o plantão do Materno pela numérica
+
+Dono (21/09), com recortes dos mapas: "nos exames ou quando há mais de uma cirurgia na mesma linha,
+quero que informe no card de liberações as quantidades, assim como já é informado na escala completa".
+- **Nome curto da linha CONTADA** (`escalaProcedimentoCurto`): "08 EDA + 02 COLO (08 PCTES)" → "8 EDA +
+  2 COLO (8 pctes)", "05 FACO + 01 GLAUCOMA c/ bloqueio" → "5 FACO + 1 glaucoma", "07 RM + 02 TC" → "7 RM
+  + 2 TC", "01 ANGIOPLASTIA – 1H" → "1 angioplastia". Item a item, com a contagem e a palavra do mapa;
+  sigla de exame fica; "c/ SIGLA" fica ("1 COLO c/ EDA" é um paciente fazendo os dois); "c/ tópica",
+  duração e parênteses seguem fora. Linha sem contagem não muda (a primeira cirurgia identifica, 14/09).
+- **Plantão do Materno pela numérica** (dono 21/09: "confira também sempre quem é o plantão do turno no
+  materno infantil, confira pela escala numérica"): o Materno não tem rodapé e a conferência da
+  numérica nunca rodava lá. O ensaio/publicação (`escalaConferenciaHeadless`, passo 8b) agora compara
+  quem a numérica escala no turno com quem assina caso no mapa — aviso `plantão materno` quando falta
+  ou sobra alguém; a ordem não importa e o "?" do mapa nunca é preenchido. Skill `/publicar-escala`
+  passa a relatar.
+
 ## v5.12.22 (21/09/2026) — Liberações: hora de saída — Louise e "Equipe até 13h/19h" saem a partir da hora, e o card desce para baixo do "próximo"
 
 Dono (21/09): "quem estiver com essa marcação deve ser liberado às 13h e/ou às 19h, eles podem ser
