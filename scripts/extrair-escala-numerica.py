@@ -32,7 +32,7 @@ COR = {
 HOSP = {'R': 'hro', 'U': 'unimed', 'M': 'materno'}
 DATA_RE = re.compile(r'^\d{2}/\d{2}$')
 NUM_RE = re.compile(r'^\d{2}$')
-ORD_RE = re.compile(r'^(\d)[ºo°]?$')
+ORD_RE = re.compile(r'^(\d)[ºo°]*$')   # "3°°" (símbolo digitado 2×, edição de 21/09/2026) é um 3º
 
 def cor_de(w):
     c = w.get('non_stroking_color')
@@ -93,7 +93,7 @@ def extrair(pdf_path, ano):
                 if eh_louise:
                     letras = [w for w in bloco if w['text'] in ('U', 'R', 'M')]
                     # "1°" às vezes sai como "1" (vermelho) + "°" (preto): o dígito manda
-                    ords = [w for w in bloco if re.match(r'^\d[ºo°]?$', w['text'])]
+                    ords = [w for w in bloco if ORD_RE.match(w['text'])]
                     letras.sort(key=lambda w: w['x0']); ords.sort(key=lambda w: w['x0'])
                     if len(letras) != 5 or len(ords) != 5:
                         avisos.append(f'Louise {cab["ini"]}: {len(letras)} letras / {len(ords)} ordinais')

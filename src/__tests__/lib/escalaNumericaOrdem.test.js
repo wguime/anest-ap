@@ -177,6 +177,26 @@ describe('Louise — quadro próprio, só à tarde, inserida (ninguém sai)', ()
     expect(nomes(r).filter((n) => n === 'LOUISE')).toHaveLength(1)
     expect(r.louise).toBeNull()
   })
+  it('edição de 21/09 (quadro da Louise reemitido): a partir de 21/09 valem as posições novas; 24/08–18/09 não mudou', () => {
+    // dono 21/09: só o quadro dela mudou — a grade dos 44 e a legenda são as mesmas da edição de 03/09
+    const q = dados.louise.dias
+    expect(q['2026-09-18']).toMatchObject({ hospital: 'hro', posicao: 2 })     // última semana igual à edição anterior
+    expect(q['2026-09-21']).toMatchObject({ hospital: 'unimed', posicao: 2 }) // era 3ª
+    expect(q['2026-09-23']).toMatchObject({ hospital: 'hro', posicao: 2 })    // era 4ª
+    expect(q['2026-09-25']).toMatchObject({ hospital: 'unimed', posicao: 3 }) // era 1ª
+    // 28/09 a 02/10 no documento: U R R U U · 3° 3° 3°° 4° 4° — o "3°°" é símbolo digitado 2×, não outro valor,
+    // e o 02/10 (5º ordinal) NÃO pode sumir da semana
+    expect(q['2026-09-28']).toMatchObject({ hospital: 'unimed', posicao: 3 })
+    expect(q['2026-09-30']).toMatchObject({ hospital: 'hro', posicao: 3 })
+    expect(q['2026-10-02']).toMatchObject({ hospital: 'unimed', posicao: 4 })
+    expect(q['2026-11-20']).toMatchObject({ hospital: 'unimed', posicao: 1, cinza: true })
+    expect(Object.keys(q)).toHaveLength(65)
+    // a inserção segue a mesma regra: 21/09 Unimed tarde, Louise em 2º, ninguém sai
+    const r = montarOrdem(dados, { data: '2026-09-21', hospital: 'unimed', turno: 'vespertino', ferias: [] })
+    expect(r.louise).toEqual({ posicao: 2, hospital: 'unimed' })
+    expect(r.lista[1]).toMatchObject({ posicao: 2, numero: '43', nome: 'LOUISE', inserida: true })
+    expect(r.lista).toHaveLength(dados.dias['2026-09-21'].coluna.filter((e) => e.hospital === 'unimed').length + 1)
+  })
   it('05/11 e 06/11: o ordinal saiu cinza por erro de formatação (dono 03/09) — Louise entra normalmente', () => {
     for (const data of ['2026-11-05', '2026-11-06']) {
       const q = dados.louise.dias[data]
