@@ -80,6 +80,7 @@ lote = {
         # 'GIOVANA': {'tipo': 'troca', 'parceiro': 'THAYNA', 'apenasRegistro': True, 'local': 'HRO'},
         # 'DANIELA': {'tipo': 'troca', 'parceiro': 'CRISTINA', 'apenasRegistro': True, 'local': 'Consultório'},
         # linha MATERNO do HRO + mapa HC sem troca no recado → 'NOME': {'tipo': 'intencional'},
+        # "X na equipe da Unimed até as 19h" → X no rodapé de lá + selo "Equipe até 19h": 'X': {'tipo': 'equipe'},
     },
     # quem fecha o rodapé SEM caso (plantão do contraturno / noite) — "está certo, fica Livre"
     'conferidos': [],

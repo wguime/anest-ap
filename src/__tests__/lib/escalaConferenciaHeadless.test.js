@@ -149,6 +149,19 @@ describe('duplicidade entre hospitais', () => {
     expect(r.hospitais.hro.payload.linhaOverrides['uid-ana']).toBeUndefined()
   })
 
+  it('"X na equipe da Unimed até as 19h" (tipo equipe) grava naEquipe com o fim do turno, só onde X está; não responde duplicidade', () => {
+    // 21/09: "@Guilherme e @Cury Anest na equipe da Unimed no período vespertino" — o Cury está
+    // no rodapé da Unimed como da casa; o que falta é o selo "Equipe até 19h" no card
+    const so = { unimed: { rows: [caso('CC - Sala 1', 'CURY')], ordem: ['CURY', 'ANA'], ajuda: [] } }
+    const r = conferir(so, { decisoes: { CURY: { tipo: 'equipe' } }, carimbo: { por: 'u1', em: '2026-09-21T14:00:00.000Z' } })
+    expect(codigos(r.hospitais.unimed)).toEqual([])
+    expect(r.hospitais.unimed.payload.linhaOverrides['uid-cury']).toEqual({ naEquipe: { ate: '19:00' } })
+    expect(r.hospitais.unimed.payload.linhaOverrides['uid-ana']).toBeUndefined()
+    // em dois hospitais, "equipe" NÃO é resposta: a duplicidade continua bloqueando
+    const dup = conferir(dois, { decisoes: { CURY: { tipo: 'equipe' } } })
+    expect(codigos(dup.hospitais.unimed)).toContain('duplicidade')
+  })
+
   it('a decisão já gravada na escala publicada não pergunta de novo', () => {
     const existente = {
       id: 'e-unimed', hospital: 'unimed', ordemLiberacao: { vespertino: ['CURY', 'ANA'] }, ajudaExterna: {},

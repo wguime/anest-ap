@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import {
-  CAMPOS_RASTRO, linhasPresentes, montarPreservacao, montarLinhaOverrides, decisoesPublicadas,
+  CAMPOS_RASTRO, FIM_TURNO, linhasPresentes, montarPreservacao, montarLinhaOverrides, decisoesPublicadas,
 } from '@/lib/escalaPublicacaoDecisoes'
 
 const normalizar = (s) => String(s || '').replace(/\s*\([^)]*\)\s*$/, '').trim().toUpperCase()
@@ -130,6 +130,28 @@ describe('montarLinhaOverrides — as decisões que valem NESTA escala', () => {
   it('"está certo, fica Livre" vira conferido: true', () => {
     const o = montarLinhaOverrides({ conferidos: { NATHALIA: true }, hospital: 'hro', ordem: ['NATHALIA'], resolver, normalizar })
     expect(o).toEqual({ NATHALIA: { conferido: true } })
+  })
+
+  // "X na equipe da Unimed até as 19h" (dono 21/09): membro da equipe deste hospital no turno —
+  // o card ganha "Equipe até 13h/19h"; a hora é o FIM DO TURNO (dono 17/09), nunca chutada
+  describe('tipo equipe → naEquipe { ate } com a hora do fim do turno', () => {
+    const equipe = { tipo: 'equipe', chave: 'uid-dido', uid: 'uid-dido', nomeNorm: 'DIDO' }
+    it('tarde → 19:00; manhã → 13:00; só onde a pessoa está', () => {
+      const tarde = montarLinhaOverrides({ decisoes: { 'uid-dido': equipe }, hospital: 'unimed', ordem: ['DIDO'], resolver, normalizar, turno: 'vespertino' })
+      expect(tarde).toEqual({ 'uid-dido': { naEquipe: { ate: '19:00' } } })
+      const manha = montarLinhaOverrides({ decisoes: { 'uid-dido': equipe }, hospital: 'unimed', ordem: ['DIDO'], resolver, normalizar, turno: 'matutino' })
+      expect(manha).toEqual({ 'uid-dido': { naEquipe: { ate: '13:00' } } })
+      expect(montarLinhaOverrides({ decisoes: { 'uid-dido': equipe }, hospital: 'hro', ordem: ['PAULO'], resolver, normalizar, turno: 'vespertino' })).toEqual({})
+    })
+    it('sem turno conhecido não grava — hora inventada é pior que selo nenhum', () => {
+      expect(montarLinhaOverrides({ decisoes: { 'uid-dido': equipe }, hospital: 'unimed', ordem: ['DIDO'], resolver, normalizar })).toEqual({})
+      expect(montarLinhaOverrides({ decisoes: { 'uid-dido': equipe }, hospital: 'unimed', ordem: ['DIDO'], resolver, normalizar, turno: 'fds' })).toEqual({})
+    })
+    it('a marca veio do RECADO, não do documento: sobrevive à republicação (CAMPOS_RASTRO), ao contrário de turnoProprio', () => {
+      expect(CAMPOS_RASTRO).toContain('naEquipe')
+      expect(CAMPOS_RASTRO).not.toContain('turnoProprio')
+      expect(FIM_TURNO).toEqual({ matutino: '13:00', vespertino: '19:00' })
+    })
   })
 })
 

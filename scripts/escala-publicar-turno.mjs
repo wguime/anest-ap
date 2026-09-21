@@ -14,7 +14,7 @@
  *   node scripts/escala-publicar-turno.mjs publicar <lote.json> [--ensaio] [--republicar] [--como "GUILHERME MELO"]
  *       lote.json = { data, turno,   (por hospital: ajudaOrdemInformada:true quando o dono numera as ajudas)
  *                     hospitais: { unimed: { casos, posicoesAssistenciais, ordemLiberacao, ajudaExterna, dataDetectada }, hro: …, materno: … },
- *                     decisoes?: { "NOME": { "tipo": "intencional" } | { "tipo": "troca", "parceiro": "NOME" } },
+ *                     decisoes?: { "NOME": { "tipo": "intencional" } | { "tipo": "troca", "parceiro": "NOME" } | { "tipo": "equipe" } },
  *                     conferidos?: ["NOME", …] }
  *       Roda `conferirLote` de `src/lib/escalaConferenciaHeadless.js` — a conferência da tela,
  *       pelas mesmas funções, carregadas pelo Module Runner do Vite —, com o dicionário de

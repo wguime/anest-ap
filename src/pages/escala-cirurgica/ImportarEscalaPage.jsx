@@ -1579,6 +1579,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
         decisoes: { ...duplicidadeDecisoes, ...conferencias }, conferidos, hospital: hosp,
         ordem: ordemNova, ajuda: ajudaNova, casos: casosNovos, resolver, normalizar: normNome, carimbo,
         excecaoTurno: excecaoTurnoDoDia(dadosNumerica, { data: dataEscolhida, hospital: hosp, turno: periodo }),
+        turno: periodo,
       })
       // Troca de quem trabalha nos DOIS hospitais: qual das duas vagas vai para o colega é
       // pergunta aberta do dono (auditoria, pergunta 5). Enquanto ela não tem resposta, o

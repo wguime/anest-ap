@@ -3,6 +3,24 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.21 (21/09/2026) — Liberações: selo "Equipe até 13h/19h" para quem está em outro hospital no turno
+
+Dono (21/09), com o recado *"@Guilherme e @Cury Anest na equipe da Unimed no período vespertino"*:
+"quando houver a informação que o anestesista está em outro hospital no período da manhã ou vespertino
+quero que contenha o badge: até as 13h (matutino) e até as 19h (vespertino)". Cor: "outra cor que fique
+na mesma faixa de Ajuda e Troca" (o roxo já é o Passa para tarde).
+- **Marca `naEquipe { ate }`** em `linha_overrides[turno:chave]`, gravada pela publicação a partir do
+  lote da skill (`decisoes['X'] = {tipo:'equipe'}`; hora = fim do turno, 13:00/19:00) e preservada na
+  republicação (`CAMPOS_RASTRO`). Não é ajuda, troca nem `turnoProprio`, e não responde duplicidade.
+- **Selo "Equipe até 19h" / "Equipe até 13h"** no card da fila, ciano sólido (`category-cyan-fg` +
+  foreground), depois de Ajuda; some no card enxuto do liberado. A fila não muda por causa dele.
+  Inscrição escolhida por protótipo (`.tmp/badge-equipe-outro-hospital.html`): "até as 19h" sozinho
+  lia como hora de saída.
+- Escala numérica: quadro da Louise reemitido pelo grupo (posições novas de 21/09 a 20/11); extrator
+  tolera "3°°" (símbolo digitado 2× fazia o 02/10 sumir).
+- Repair `scripts/repair-escala-2026-09-21-equipe-unimed.sql` grava a marca no turno de hoje, publicado
+  antes do selo existir.
+
 ## v5.12.20 (17/09/2026) — Completa e Minhas: a virada das 19h limpa o que já estava terminado/suspenso
 
 Dono (17/09): "na transição da escala da tarde para noite, quero que exclua todos os procedimentos

@@ -436,6 +436,22 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     const ate = String(overrideDe(l)?.turnoProprio?.ate || '').trim()
     return /^\d{1,2}:\d{2}$/.test(ate) ? ate : null
   }
+  /**
+   * EQUIPE DE OUTRO HOSPITAL (dono 21/09): recado "X na equipe da Unimed até as 19h" =
+   * X é membro da equipe DESTE hospital no turno — não é ajuda, não é troca, não sai
+   * fora da ordem (dono 17/09: "até as 19h" é o fim do turno, não hora de saída). A
+   * fila já o tratava como da casa; o que faltava era DIZER isso no card, senão quem
+   * olha a lista não entende por que um nome da numérica do HRO está na Unimed.
+   * Mora em `linha_overrides[<turno>:<chave>].naEquipe = { ate: 'HH:MM' }`, gravado
+   * pela publicação (lote `{ tipo: 'equipe' }`) e preservado na republicação. Devolve
+   * "13h"/"19h" (ou "13h30") — o selo diz "Equipe até 19h".
+   */
+  const naEquipeDe = (l) => {
+    const ate = String(overrideDe(l)?.naEquipe?.ate || '').trim()
+    const m = /^(\d{1,2}):(\d{2})$/.exec(ate)
+    if (!m) return null
+    return `${Number(m[1])}h${m[2] === '00' ? '' : m[2]}`
+  }
 
   // FASE NOTURNA (decisões do dono 23/07 + redesenho 24/07): seg–sex (feriado
   // incluso), escala de HOJE — das 19h às 22h cada plantonista noturno vira um
@@ -2019,6 +2035,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // card noturno nunca é ajuda (dono 16/09, caso Matheus) — a lib já
           // zera a origem na fusão; o gate aqui é a segunda trava
           const badgeAjudaOutro = !liberadoReal && !noturno && ajudaDeOutro(linha)
+          // some no card enxuto do liberado, como Plantonista e Ajuda: é identidade de quem trabalha
+          const badgeEquipe = !liberadoReal && !noturno && naEquipeDe(linha)
           // Os badges de PLANTÃO não somem ao liberar (dono 31/08): a posição
           // continua verdadeira — eles trocam de tinta junto com o card
           // (vermelho no liberado, verde em quem trabalha).
@@ -2033,7 +2051,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           const ordinalDeitado = !!linha.noRodape && !noturno
             && !linha.isProximoPlantao && !linha.isAjuda && !linha.isExtra
           const temSeloAoLadoDoNome = !!(badgePlantonista || badgePlantaoFisico || badgeAjuda
-            || badgeTroca || badgeAssumida || badgeAjudaOutro || badgeProximoPlantao
+            || badgeTroca || badgeAssumida || badgeAjudaOutro || badgeEquipe || badgeProximoPlantao
             || badgeContraturno || livre || mostraPassaTurno)
           // >1 cirurgião = lista (1 por linha); override manual = 1 linha como digitado
           const listaCirurgioes = ov?.cirurgioes
@@ -2261,6 +2279,17 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       de origem, porque a marca não veio de ajuda_externa */}
                   {badgeAjudaOutro && (
                     <Badge variant="info" className="shrink-0">Ajuda ({badgeAjudaOutro})</Badge>
+                  )}
+                  {/* EQUIPE DE OUTRO HOSPITAL (dono 21/09): "Equipe até 13h/19h". CIANO
+                      sólido — o dono pediu a faixa de Ajuda (azul) e Troca (índigo), e o
+                      roxo já é o "Passa para tarde" da mesma linha. O tom `-fg` como fundo
+                      (#007C8F/branco no claro, #42DBF0/preto no escuro) porque o par
+                      `category-cyan`/branco não tem contraste no claro. Protótipo
+                      `.tmp/badge-equipe-outro-hospital.html`, escolha B + "fundo". */}
+                  {badgeEquipe && (
+                    <Badge className="shrink-0 border-transparent bg-category-cyan-fg text-category-cyan-foreground">
+                      Equipe até {badgeEquipe}
+                    </Badge>
                   )}
                   {/* último nome escalado do rodapé = plantonista do turno SEGUINTE:
                       sai primeiro (regra do dono 29/07, nos dois turnos). Verde

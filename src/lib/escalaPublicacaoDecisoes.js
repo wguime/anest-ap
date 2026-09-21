@@ -31,7 +31,16 @@ export const CAMPOS_RASTRO = Object.freeze([
   'trocaCom', 'assumidaPor', 'origem', 'observacao', 'local', 'termino', 'duplicidade', 'conferido',
   // "não é ajuda" declarado à mão (14/09) — mesma classe de `origem`
   'semAjuda',
+  // "na equipe da Unimed até as 19h" (21/09): veio do recado, não do documento — sobrevive
+  // à republicação como `origem`; `turnoProprio` fica de fora porque é recarimbado do quadro
+  'naEquipe',
 ])
+
+/**
+ * Fim de cada turno de dia útil — a hora que o selo "Equipe até 13h/19h" mostra.
+ * "Até as 13h/19h" no recado é o FIM DO TURNO, nunca horário de saída (dono 17/09).
+ */
+export const FIM_TURNO = Object.freeze({ matutino: '13:00', vespertino: '19:00' })
 
 const texto = (v) => String(v ?? '').trim()
 const upperSimples = (s) => texto(s).toLocaleUpperCase('pt-BR')
@@ -125,10 +134,13 @@ export function montarPreservacao({
  * campos como `null`, porque só apagar do mapa local deixaria a preservação trazê-la de volta.
  * `carimbo` ({ por, em }) entra DENTRO do trocaCom, como o TrocaSheet grava; o
  * carimbo de fora é do servidor.
+ * `tipo: 'equipe'` é o recado "X na equipe da Unimed até as 19h" (dono 21/09): X é membro
+ * da equipe DESTE hospital neste turno (não é ajuda, não é troca, não é `turnoProprio`) e o
+ * card ganha o selo "Equipe até 13h/19h" — a hora é o fim do `turno`, nunca chutada.
  */
 export function montarLinhaOverrides({
   decisoes = {}, conferidos = {}, hospital, ordem = [], ajuda = [], casos = [],
-  resolver, normalizar = upperSimples, carimbo = null, excecaoTurno = null,
+  resolver, normalizar = upperSimples, carimbo = null, excecaoTurno = null, turno = null,
 } = {}) {
   const presentes = linhasPresentes({ ordem, ajuda, casos, resolver, normalizar })
   const indice = new Map() // chave OU candidata → chave da linha
@@ -166,6 +178,9 @@ export function montarLinhaOverrides({
       })
     } else if (d.tipo === 'intencional') {
       gravar(alvo, { duplicidade: 'intencional' })
+    } else if (d.tipo === 'equipe') {
+      // só com o turno conhecido: sem ele não há hora, e hora inventada é pior que selo nenhum
+      if (FIM_TURNO[turno]) gravar(alvo, { naEquipe: { ate: FIM_TURNO[turno] } })
     } else if (d.tipo === 'reaberta') {
       // "Refazer" numa decisão que veio da ESCALA PUBLICADA. Apagar do mapa local não basta:
       // a preservação copiaria o valor antigo de volta e a resposta antiga voltaria a valer.

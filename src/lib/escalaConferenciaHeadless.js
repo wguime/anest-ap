@@ -140,7 +140,7 @@ export function realocarAzuisEmprestados(hospitais, turno, resolver) {
  * `contexto` = { data, turno, roster, resolver, rosterByUid, existente (escala publicada
  *   deste hospital, camelCase, ou null), outrasEscalas (irmãs do lote + publicadas dos
  *   demais), dadosNumerica, ferias (nomes completos de férias no dia, ou null),
- *   decisoes ({ NOME: { tipo: 'intencional' } | { tipo: 'troca', parceiro } }),
+ *   decisoes ({ NOME: { tipo: 'intencional' } | { tipo: 'troca', parceiro } | { tipo: 'equipe' } }),
  *   conferidos (nomes "está certo, fica Livre"), republicar, carimbo }
  */
 export function conferirHospital(hospital, entrada, contexto) {
@@ -274,9 +274,20 @@ export function conferirHospital(hospital, entrada, contexto) {
     }
     decisoesCarimbadas[key] = carimbarDecisao(decisao, { key, nome }, { resolver, normalizar: normNome })
   }
+  // "X na equipe da Unimed até as 19h" (dono 21/09): X é da equipe deste hospital no turno —
+  // a foto já saiu certa, e o que falta é o SELO "Equipe até 13h/19h" no card. Entra pela
+  // pessoa presente aqui; não responde duplicidade (se X também aparece em outro hospital, o
+  // lote responde com intencional/troca como sempre).
+  for (const [nome, resposta] of Object.entries(decisoes || {})) {
+    if (!resposta || resposta.tipo !== 'equipe') continue
+    const key = resolver(nome) || normNome(nome)
+    if (!key || decisoesCarimbadas[key]) continue
+    decisoesCarimbadas[key] = carimbarDecisao({ tipo: 'equipe' }, { key, nome }, { resolver, normalizar: normNome })
+  }
   const decisaoDe = (d) => {
     const local = localizarDecisao(decisoesCarimbadas, d, { resolver, normalizar: normNome })
-    if (local) return local
+    // "equipe" é selo, não resposta: a pessoa em dois hospitais continua pendente
+    if (local && local.decisao?.tipo !== 'equipe') return local
     const pub = publicadaPara(d.key, d.nome)
     return pub?.duplicidade === 'intencional' ? { chave: d.key, decisao: { tipo: 'intencional', publicada: true } } : null
   }
@@ -429,7 +440,7 @@ export function conferirHospital(hospital, entrada, contexto) {
   const excecaoTurno = dadosNumerica ? excecaoTurnoDoDia(dadosNumerica, { data, hospital, turno }) : null
   const linhaOverrides = montarLinhaOverrides({
     decisoes: decisoesCarimbadas, conferidos: conferidosMapa, hospital, ordem, ajuda, casos: casosNovos,
-    resolver, normalizar: normNome, carimbo, excecaoTurno,
+    resolver, normalizar: normNome, carimbo, excecaoTurno, turno,
   })
   const preservar = existente
     ? montarPreservacao({ existente, turno, ordem, ajuda, casos: casosNovos, resolver, normalizar: normNome })

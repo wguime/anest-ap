@@ -584,6 +584,39 @@ está no MEIO do rodapé, senão qualquer regra passaria). Os dois últimos caso
 trava das 18h09 — "com os de baixo liberados, é ELA o próximo" e "liberar o 1º com ela em sala é
 recusado" — e os dois FALHAM contra a 1ª versão (conferido trocando a view pela de `origin/main`).
 
+### Equipe de outro hospital — selo "Equipe até 13h/19h" (dono 21/09/2026)
+
+Recado do plantonista *"@Guilherme e @Cury Anest na equipe da Unimed no período vespertino"*.
+Pela regra de 17/09 os dois entram no rodapé da Unimed **como da casa** (não é ajuda, não é
+troca, não é `turnoProprio`; "até as 19h" é o fim do turno). O que faltava era o card DIZER
+isso: *"quando houver a informação que o anestesista está em outro hospital no período da manhã
+ou vespertino quero que contenha o badge: até as 13h (matutino) e até as 19h (vespertino)"*.
+
+- **Marca:** `linha_overrides[<turno>:<chave>].naEquipe = { ate: 'HH:MM' }`. Nasce na
+  publicação a partir do lote da skill (`decisoes['X'] = {tipo:'equipe'}` →
+  `montarLinhaOverrides`, hora = `FIM_TURNO[turno]`, 13:00/19:00; sem turno não grava) e
+  **sobrevive à republicação** (`CAMPOS_RASTRO`) porque veio do recado, não do documento —
+  ao contrário de `turnoProprio`, que é recarimbado do quadro da numérica a cada publicação.
+  `equipe` **não responde duplicidade**: pessoa em dois hospitais continua pedindo
+  intencional/troca.
+- **Selo:** "Equipe até 19h" (à tarde) / "Equipe até 13h" (de manhã), na fileira de selos
+  colados ao nome, depois de Ajuda. **Ciano** sólido (`bg-category-cyan-fg` +
+  `text-category-cyan-foreground`: #007C8F/branco no claro, #42DBF0/preto no escuro) — o dono
+  pediu "outra cor na mesma faixa de Ajuda e Troca" depois de recusar o roxo, que já é o
+  "Passa para tarde" da mesma linha; o par `category-cyan`/branco perdia contraste no claro.
+  Inscrição escolhida entre "até as 19h" (lia como hora de saída, igual à linha da Louise),
+  "Equipe até 19h" e "Na equipe até 19h" — protótipo `.tmp/badge-equipe-outro-hospital.html`.
+  Some no card enxuto do liberado, como Plantonista e Ajuda.
+- **A fila não muda por causa do selo**: a pessoa segue na ordem publicada, conta no "faltam
+  N" e é liberada como qualquer um. É informação, não regra.
+- Não há UI para marcar à mão: a fonte é o recado, que entra pela skill (`/publicar-escala`).
+  Recado que chega DEPOIS da publicação → republicar com a decisão no lote ou repair SQL
+  (`scripts/repair-escala-2026-09-21-equipe-unimed.sql` é o modelo).
+
+Travas: `escalaPublicacaoDecisoes.test.js` (describe "tipo equipe"), `escalaConferenciaHeadless.test.js`
+(lote → payload; não responde duplicidade) e `liberacoesEquipeOutroHospital.test.jsx` (selo por turno,
+só em quem tem a marca, some no liberado, fila inalterada).
+
 ## Anotação manual da linha × casos (dono 16/09/2026)
 
 Na fila, `linha_overrides[turno:chave].local` e `.cirurgioes` (editor da linha) e `.renovado` (marca do
