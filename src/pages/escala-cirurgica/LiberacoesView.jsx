@@ -1702,15 +1702,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // conforme os de baixo fossem liberados — decisão automática de novo,
           // que é justamente o que não pode acontecer.
           //
-          // ⚠️ E a conta é sobre a ORDEM PUBLICADA (`noRodape`), não sobre a lista
-          // que está na tela. A exibição acrescenta no FIM quem não está na ordem
-          // — extras, ajudas e visitantes de outro hospital —, e um deles COM
-          // cirurgia empurrava a fronteira para depois de quem fecha o rodapé:
-          // em 24/08 a Unimed publicou a tarde com o Vicente fechando a ordem sem
-          // cirurgia, e ele apareceu "Livre" porque uma visitante do HRO entrou
-          // atrás dele com um caso. Quem não está na ordem não tem posição na
-          // fila, então não pode definir onde a fila termina — nem nascer
-          // liberado por estar depois do fim dela.
+          // ⚠️ Quem NASCE liberado é sempre gente da ORDEM (`noRodape`): extra, ajuda e
+          // visitante nunca nascem liberados (24/08). Onde a fronteira fica é outra
+          // pergunta — ver o bloco de 21/09 logo abaixo.
           //
           // ⚠️ NA FILA ÚNICA O PLANTÃO DA FAIXA CONTA COMO TRABALHO (dono 29/08:
           // "os plantões sempre trabalhando"), mesmo sem cirurgia no mapa: ele
@@ -1736,11 +1730,24 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // está trabalhando no turno.
           const semEscalacaoNoTurno = (l) => (noiteFds ? !plantaoFisicoDe(l) : naoEscalado(l))
 
+          // ⚠️ DIA ÚTIL: A FRONTEIRA É DA LISTA, NÃO DA ORDEM (dono 21/09, foto da Unimed:
+          // Marcos Costa, 16º sem cirurgia, nasceu "Liberado" ACIMA do Alexandre Danieli e da
+          // Fernanda, ajudas com cirurgia — "liberado fora de ordem"). As regras, nas palavras
+          // dele: "ordem do rodapé é imutável; plantão do contraturno sempre é o último da
+          // lista; ajudas que não estejam no rodapé sempre são os primeiros a serem liberados
+          // (exceção é o plantão do contraturno, esse sempre é o primeiro)". Logo quem está
+          // no rodapé sem cirurgia ACIMA de uma ajuda espera a vez — não nasce liberado.
+          // O recorte de 24/08 ("a cauda é da ORDEM") existia por causa de uma visitante
+          // FALSA (travessia da manhã); a travessia deixou de criar linha no mesmo dia, e
+          // hoje toda ajuda na lista é real. A cauda continua sendo só o que vem DEPOIS do
+          // último com trabalho — na LISTA. Fila única segue pela ordem (29/08).
           let idxUltimoTrabalho = -1
           for (let i = linhasExibicao.length - 1; i >= 0; i--) {
             const l = linhasExibicao[i]
             const trabalha = !semEscalacaoNoTurno(l) || (modoFds && !!plantaoFisicoDe(l))
-            if (temPosicao(l) && trabalha) { idxUltimoTrabalho = i; break }
+            // no dia útil o card noturno (P1–P4 no topo, "em sala" por carimbo) não define fronteira
+            const conta = modoFds ? temPosicao(l) : !l.noturno
+            if (conta && trabalha) { idxUltimoTrabalho = i; break }
           }
           // ⚠️ NINGUÉM DA ORDEM com cirurgia = NÃO EXISTE CAUDA (dono 22/08). Sem esta
           // guarda o `idx > -1` é verdade para a fila INTEIRA e todo mundo nasce

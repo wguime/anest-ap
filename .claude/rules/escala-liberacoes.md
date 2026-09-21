@@ -95,7 +95,8 @@ cirurgia nenhuma, saiu de LIBERADO para "Livre".
 - **A cauda é da ordem** (`linha.noRodape`, novo na lib): a exibição acrescenta no
   fim extras, ajudas e visitantes, e nenhum deles ocupa posição na fila — então
   nenhum deles define onde a fila termina nem nasce liberado por estar depois do
-  fim dela. Antes a fronteira era o último índice da LISTA, e qualquer visitante
+  fim dela. ⚠️ **A metade "não define onde a fila termina" caiu em 21/09** (ver
+  § "A cauda é o fim da LISTA"); a metade "não nasce liberado" continua. Antes a fronteira era o último índice da LISTA, e qualquer visitante
   com cirurgia a empurrava; é por isso que o sintoma era frequente (visitante de
   outro hospital é rotina). `proximoPlantao` continua sendo do rodapé, mesmo
   exibido por último.
@@ -665,3 +666,41 @@ sobe), a metade "no MEIO da lista, com todos abaixo liberados, a linha sem caso 
 de 22/08 que **mudou de lado** com o porquê no corpo (a Thayna fecha a lista e leva o cartão). Os quatro
 FALHAM contra o `naFila` anterior. ⚠️ **Não existe "quem tocou" em `ajuda_externa`** — o array não
 guarda `por`/`em`; a única evidência de 18/09 foi o `PATCH` no cabeçalho nos edge logs.
+
+## A cauda é o fim da LISTA — ninguém da ordem nasce liberado acima de uma ajuda (dono 21/09/2026)
+
+Foto da Unimed, 09h35: **Marcos Costa (16º, sem cirurgia) vermelho "Liberado" acima do
+Alexandre Danieli (17º, ajuda, Sala 7 repassada) e da Fernanda (18º, ajuda do HRO, Sala 4
+repassada), os dois trabalhando; Staub (19º, plantão da tarde) vermelho embaixo.** *"Novamente o
+erro de liberado fora de ordem e fora da ordem do rodapé!! (…) regras: ordem do rodapé é
+imutável, plantão do contraturno sempre é o último da lista, ajudas que não estejam no rodapé
+sempre são os primeiros a serem liberados (exceção é o plantão do contraturno, esse sempre é o
+primeiro a ser liberado), se os dois plantões do contraturno estão trabalhando o plantão do
+contraturno que está como ajuda é liberado antes do plantão do contraturno que não é ajuda."*
+
+Auditoria das quatro regras contra o código:
+
+| regra | onde vive | estado |
+|---|---|---|
+| ordem do rodapé imutável | `ordem_liberacao` nunca muda pela view; a fila é `[...principais, extras, ajudas, contraturno]` | ok (11/08) |
+| contraturno é o último da lista | `proximoPlantao` sai do sort e fecha a lista (29/07); exceções decididas pelo dono: plantonista do turno (D11, 07/08) e quem ele NUMEROU na ajuda (11/09) | ok |
+| ajudas fora do rodapé saem primeiro, depois do contraturno | `fimAjuda` entre os principais e o contraturno (19/08); ajuda que é contraturno de OUTRO hospital passa à frente (31/08) | ok |
+| dois contraturnos trabalhando: o que está de ajuda sai antes | `passaNaFrenteDoPlantao` (31/08), cedendo à numeração (10/09) | ok |
+| **quem nasce liberado** | `caudaLiberada` — a fronteira era o último com trabalho **na ORDEM** (24/08) | **era o defeito** |
+
+O recorte de 24/08 ("a cauda é da ORDEM, não da tela") nasceu de uma visitante FALSA (a
+travessia da manhã punha a Gabriela na tarde da Unimed); a travessia deixou de criar linha no
+mesmo dia, e desde então toda ajuda na lista é real — mas a fronteira continuou ignorando quem
+não tem posição, e com ajudas reais isso pinta de vermelho quem está no rodapé ACIMA delas.
+Agora, no dia útil, **a fronteira é o último com trabalho NA LISTA** (ajuda/extra com cirurgia
+inclusive; o card noturno do topo não conta): a cauda é só o que vem depois dele — na foto, só
+o Staub. O Costa fica "Livre" e espera; o próximo é a Fernanda; liberar o Costa avisa "Libere
+Fernanda primeiro"; liberadas as duas ajudas, ele passa a ser o próximo. Quem nasce liberado
+segue sendo gente da ORDEM (extra/ajuda nunca). Fila única segue pela ordem (29/08).
+
+Travas em `escalaCirurgicaPersonas.test.jsx`: o describe de 24/08 **mudou de lado** na
+asserção do Vicente (com a visitante trabalhando abaixo ele espera) e o recorte real de 21/09
+(4 testes; todos falham contra a fronteira antiga). ⚠️ Ao tocar em quem "nasce liberado",
+perguntar antes: **há alguém trabalhando ABAIXO dele na lista?** Se há, ele não está fora do
+jogo — está esperando.
+
