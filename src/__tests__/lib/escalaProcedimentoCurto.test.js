@@ -11,6 +11,11 @@
  * artrodese cervical × de coluna, a contagem de "02 PROCEDIMENTOS") e o fallback
  * mantém o verbo ("Ressecção de osso de pé", não "Osso"). Recalibrado nos 1366
  * procedimentos distintos publicados entre 15/08 e 17/09.
+ *
+ * Dono 21/09, com recortes dos mapas: "nos exames ou quando há mais de uma cirurgia
+ * na mesma linha, quero que informe no card de liberações as quantidades, assim como
+ * já é informado na escala completa". A linha contada sai item a item com a
+ * contagem ("8 EDA + 2 COLO (8 pctes)"); a linha sem contagem não muda.
  */
 import { describe, it, expect } from 'vitest'
 import { nomeCurtoProcedimento } from '@/lib/escalaProcedimentoCurto'
@@ -34,7 +39,7 @@ const casos = [
   ['POSTECTOMIA', 'Postectomia'],
   ['DENERVACAO PERCUTANEA DE FACETAS ARTICULAR - POR SEGMENTO', 'Denervação'],
   ['FACECTOMIA COM LENTE INTRA-OCULAR COM FACOEMULSIFICAÇÃO', 'FACO'],
-  ['05 FACO c/ bloqueio', 'FACO'],
+  ['05 FACO c/ bloqueio', '5 FACO'],
   ['APENDICECTOMIA', 'Apendicectomia'],
   ['FRATURA DOS OSSOS DO ANTEBRAÇO', 'Fratura de antebraço'],
   ['ARTROPLASTIA TOTAL PRIMÁRIA DO JOELHO', 'Artroplastia de joelho'],
@@ -54,11 +59,11 @@ const casos = [
   ['URETEROLITOTRIPSIA TRANSURETEROSCÓPICA', 'Ureterolitotripsia'],
   ['CATETERISMO CARDIACO E E/OU D COM CINEANGIOCORONARIOGRAFIA E VENTRICULOGRAFIA', 'Cateterismo'],
   ['HISTEROSCOPIA COM RESSECTOSCÓPIO PARA MIOMECTOMIA', 'Histeroscopia'],
-  ['01 BRONCOSCOPIA', 'Endoscopia'],
-  ['05 EDA + 02 COLO + 01 DILATAÇÃO', 'Endoscopia'],
-  ['01 COLO C/ EDA + 04 COLO', 'Endoscopia'],
-  ['08 RM (06 PCTES)', 'RM'],
-  ['01 TC + 09 RM (07 PCTES)', 'TC + RM'],
+  ['01 BRONCOSCOPIA', '1 broncoscopia'],
+  ['05 EDA + 02 COLO + 01 DILATAÇÃO', '5 EDA + 2 COLO + 1 dilatação'],
+  ['01 COLO C/ EDA + 04 COLO', '1 COLO c/ EDA + 4 COLO'],
+  ['08 RM (06 PCTES)', '8 RM (6 pctes)'],
+  ['01 TC + 09 RM (07 PCTES)', '1 TC + 9 RM (7 pctes)'],
   ['CIRURGIA ESTERELIZADORA MASCULINA CONFORME DIRETRIZ DE UTILIZA', 'Vasectomia'],
   ['EXERESE DE LESAO DA MAMA POR MARCACAO ESTEREOTAXICA OU ROLL', 'Setorectomia de mama'],
   ['MENISCECTOMIA - UM MENISCO', 'Menisco'],
@@ -99,8 +104,8 @@ const casos = [
   ['RECONSTRUÇÃO LIGAMENTAR + MENISCECTOMIA', 'Reconstrução ligamentar'],
   ['LESOES LIGAMENTARES CRONICAS AO NIVEL DO TORNOZELO', 'Ligamento de tornozelo'],
   // abreviações à mão do HRO
-  ['CESÁRIA', 'Cesariana'], ['CASARIANA', 'Cesariana'], ['CAT', 'Cateterismo'], ['02 LAPARO', 'Laparoscopia'],
-  ['CO/EMERG.', 'CO / Emergência'], ['JJ', 'Duplo J'], ['RMN', 'RM'], ['02 BLEFARO 4H', 'Blefaroplastia'],
+  ['CESÁRIA', 'Cesariana'], ['CASARIANA', 'Cesariana'], ['CAT', 'Cateterismo'], ['02 LAPARO', '2 laparoscopia'],
+  ['CO/EMERG.', 'CO / Emergência'], ['JJ', 'Duplo J'], ['RMN', 'RM'], ['02 BLEFARO 4H', '2 blefaroplastia'],
   ['MASTO C/ TROCA PROTESE+REF. BLEFARO - (04HS)', 'Masto'], // a 1ª cirurgia é a masto; BLEFARO só vale no início
   ['APENDICITE', 'Apendicectomia'], ['TAVI – 2H', 'TAVI'],
   ['HERNIORRAFIA INGUINAL - UNILATERAL POR VIDEOLAPAROSCOPIA', 'Herniorrafia inguinal'],
@@ -127,7 +132,7 @@ const casos = [
   ['EXERESE DE LESAO + ENXERTIA', 'Exérese de lesão'],
   ['EXERESE DE LIPOMA DE DORSO', 'Exérese de lipoma'],
   ['GASTROPLASTIA PARA OBESIDADE MORBIDA VIA LAPAROSCOPICA', 'Gastroplastia'],
-  ['02 ANGIOPLASTIA – 4H', 'Angioplastia'],
+  ['02 ANGIOPLASTIA – 4H', '2 angioplastia'],
   ['ABLAÇÃO PERCUTÂNEA POR CATETER PARA TRATAMENTO DE ARRITMIAS CARDÍACAS', 'Ablação de arritmia'],
   ['ABLAÇAO PROSTATICA A LASER', 'Ablação prostática'],
   ['COLOCACAO DE CATETER VENOSO CENTRAL OU PORTOCATH', 'Cateter central'],
@@ -167,13 +172,42 @@ const incompletos = [
   // o cateterismo cardíaco continua "Cateterismo" — é a angiografia que estava escondida atrás dele
   ['CATETERISMO CARDIACO E E/OU D COM CINEANGIOCORONARIOGRAFIA E VENTRICULOGRAFIA', 'Cateterismo'],
   // da mesma fila: a vitrectomia vinha como "FACO" e a lipoabdominoplastia como "Lipoaspiração"
-  ['01 VITRECT. C/FACO + 01 VITRECT.', 'Vitrectomia'],
+  ['01 VITRECT. C/FACO + 01 VITRECT.', '1 vitrectomia c/ FACO + 1 vitrectomia'],
   ['LIPOABDOMINOPLASTIA + LIPOENXERTIA GLÚTEA', 'Lipoabdominoplastia'],
   ['TRATAMENTO MICROCIRURGICO DAS NEUROPATIAS COMPRESSIVAS (TUMO', 'Neuropatias compressivas'],
 ]
 
 describe('nomeCurtoProcedimento — dicionário calibrado no corpus de 30 dias', () => {
   it.each(casos)('%s → %s', (texto, esperado) => {
+    expect(nomeCurtoProcedimento(texto)).toBe(esperado)
+  })
+})
+
+// os recortes que o dono mandou em 21/09 (Unimed Exames/Umanitá, HRO Hemo/Braqui/Exames/IOSC/HO/Ambulat./Digimax)
+const contadas = [
+  ['01 EDA', '1 EDA'],
+  ['08 EDA + 02 COLO (08 PCTES)', '8 EDA + 2 COLO (8 pctes)'],
+  ['03 COLO', '3 COLO'],
+  ['05 FACO + 01 GLAUCOMA c/ bloqueio', '5 FACO + 1 glaucoma'],
+  ['01 ANGIOPLASTIA – 1H', '1 angioplastia'],
+  ['04 PROCEDIMENTOS +-até 12h', '4 procedimentos'],
+  ['01 COLO C/ EDA + 02 EDA + 02 COLO', '1 COLO c/ EDA + 2 EDA + 2 COLO'],
+  ['03 EDA', '3 EDA'],
+  ['03 FACO c/ tópica', '3 FACO'],
+  ['07 RM + 02 TC', '7 RM + 2 TC'],
+  ['01 CATETERISMO + 01 ANGIOPLASTIA - 2H', '1 cateterismo + 1 angioplastia'],
+  ['01 PROCEDIMENTO', '1 procedimento'],
+  ['02 RTU', '2 RTU'],
+  // sem contagem, nada muda: a primeira cirurgia identifica a linha (dono 14/09); duração continua fora
+  ['PROTOCOLO DE IMPLANTES – 3H', 'Protocolo de implantes'],
+  ['HÉRNIA DE DISCO + LAMINECTOMIA', 'Hérnia de disco'],
+  ['MASTOPEXIA COM PROTESE - 4H', 'Mastopexia'],
+  // o traço sem espaço é parte da palavra, não corte
+  ['ADENO-AMIGDALECTOMIA', 'Adenoamigdalectomia'],
+]
+
+describe('nomeCurtoProcedimento — linha contada mostra as quantidades (dono 21/09)', () => {
+  it.each(contadas)('%s → %s', (texto, esperado) => {
     expect(nomeCurtoProcedimento(texto)).toBe(esperado)
   })
 })
@@ -206,7 +240,7 @@ describe('nomeCurtoProcedimento — fallback para o que o dicionário não conhe
   })
   it('"C/", "P/", "S/" são abreviações, não separam cirurgias', () => {
     expect(nomeCurtoProcedimento('RESSECCAO DE TUMOR DE MEDIASTINO P/VIDEO')).toBe('Ressecção de tumor de mediastino')
-    expect(nomeCurtoProcedimento('01 REINTERVENÇÃO c/ tópica')).toBe('Reintervenção')
+    expect(nomeCurtoProcedimento('01 REINTERVENÇÃO c/ tópica')).toBe('1 reintervenção')
   })
   it('vazio e nulo devolvem vazio', () => {
     expect(nomeCurtoProcedimento('')).toBe('')

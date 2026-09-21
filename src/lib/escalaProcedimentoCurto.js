@@ -26,6 +26,18 @@
  *     palavra, ou duas quando a primeira é genérica ("Fratura do fêmur", "Tumor
  *     intracraniano").
  *
+ * Dono 21/09, com recortes dos mapas: *"nos exames ou quando há mais de uma
+ * cirurgia na mesma linha, quero que informe no card de liberações as quantidades,
+ * assim como já é informado na escala completa"*. A linha CONTADA ("08 EDA + 02 COLO
+ * (08 PCTES)", "05 FACO + 01 GLAUCOMA c/ bloqueio", "07 RM + 02 TC") deixa de virar o
+ * nome da família ("Endoscopia", "FACO", "TC + RM") e sai item a item com a contagem
+ * do mapa — "8 EDA + 2 COLO (8 pctes)", "5 FACO + 1 glaucoma", "7 RM + 2 TC". A
+ * palavra é a do mapa (não se pluraliza "angioplastia" por conta própria); a sigla
+ * de exame fica como está; "c/ SIGLA" fica porque diz que o mesmo paciente faz os
+ * dois ("1 COLO c/ EDA"); "c/ tópica", "c/ bloqueio", duração e parênteses continuam
+ * sendo embalagem. Linha sem contagem ("HÉRNIA DE DISCO + LAMINECTOMIA") não muda:
+ * a primeira cirurgia segue identificando a linha (dono 14/09).
+ *
  * Puro, sem acesso a nada. O texto completo continua no card da Completa e no
  * detalhe do caso — aqui é só o rótulo.
  */
@@ -55,12 +67,77 @@ const primeiro = (s, pares) => {
   return melhor ? melhor.rotulo : null
 }
 const contagem = (m) => parseInt(m[1], 10)
+
+/** Siglas de exame que ficam como no mapa dentro de uma linha contada ("8 EDA + 2 COLO"). */
+const SIGLAS_EXAME = new Set(['EDA', 'COLO', 'COLONO', 'RM', 'TC', 'FACO', 'US', 'CPRE', 'ESD', 'ECOEDA', 'RX', 'PET', 'RTU'])
+/** "(08 PCTES)" no fim da linha de exames: quantos pacientes fazem os N exames. */
+const PACIENTES = /\((\d+)\s*(?:PCTE?S?|PACIENTES?)\.?\)/
+
+/** Primeira letra minúscula depois do número ("1 angioplastia"), a não ser que comece por sigla ("1 RTU de próstata"). */
+const aposNumero = (rotulo) => {
+  const [primeira] = rotulo.split(' ')
+  return SIGLAS.has(norm(primeira)) || SIGLAS_EXAME.has(norm(primeira)) ? rotulo : rotulo.charAt(0).toLowerCase() + rotulo.slice(1)
+}
+
+/**
+ * Linha CONTADA do mapa (dono 21/09): "08 EDA + 02 COLO (08 PCTES)" → "8 EDA + 2 COLO (8 pctes)".
+ * Item a item, com a contagem do mapa e a palavra do mapa; a sigla de exame fica; "c/ SIGLA" fica
+ * ("1 COLO c/ EDA" é um paciente fazendo os dois); "c/ tópica", "c/ bloqueio", "– 1H", "+-até 12h" e
+ * qualquer outro parêntese são embalagem. O que não é sigla passa pelo dicionário/fallback
+ * ("01 VITRECT." → "1 vitrectomia"). Devolve '' quando não sobra item — o chamador segue.
+ */
+function rotuloContado(bruto) {
+  // trabalha no texto ORIGINAL (acentos preservados para o fallback); `norm` só decide
+  const texto = String(bruto || '').normalize('NFC').replace(/\s+/g, ' ').trim()
+  const mp = PACIENTES.exec(norm(texto))
+  const pacientes = mp ? parseInt(mp[1], 10) : null
+  let linha = texto.replace(/\s*\(.*?\)/g, '').replace(/\s*\(.*$/, '')
+  // duração no fim: "– 1H", "- 4H30", "+-ATE 12H", "3H" colado
+  // (espaço ANTES do traço: "ADENO-AMIGDALECTOMIA" e "FRATURA-LUXAÇÃO" não são cortes)
+  linha = linha.replace(/\s+\+?\s*[-–]\s*.*$/, '').replace(/\s+\d+\s*H(\d+)?\b.*$/i, '')
+  const itens = []
+  for (const parte of linha.split(/\s*\+\s*/)) {
+    const item = parte.trim()
+    if (!item) continue
+    const mc = /^(\d+)\s+(.+)$/.exec(item)
+    const n = mc ? parseInt(mc[1], 10) : null
+    let resto = (mc ? mc[2] : item).trim()
+    // "C/ EDA" fica (mesmo paciente, dois exames); "C/ TOPICA", "S/ PROTESE", "P/ VIDEO" caem
+    let com = ''
+    const mcom = /^(.*?)\s*\b[CSP]\/\s*(.*)$/i.exec(resto)
+    if (mcom) {
+      resto = mcom[1].trim()
+      const alvo = norm(mcom[2]).split(' ')[0].replace(/\.$/, '')
+      if (alvo && SIGLAS_EXAME.has(alvo)) com = ` c/ ${alvo}`
+    }
+    resto = resto.replace(/\.$/, '')
+    if (!resto) continue
+    const chave = norm(resto)
+    let rotulo
+    if (SIGLAS_EXAME.has(chave) || SIGLAS.has(chave)) rotulo = chave
+    else if (/^PROCEDIMENTOS?$/.test(chave)) rotulo = n === 1 ? 'Procedimento' : 'Procedimentos'
+    else if (/^CESAR(EA|IANA)S?$/.test(chave)) rotulo = n === 1 ? 'Cesariana' : 'Cesarianas'
+    else {
+      rotulo = nomeCurtoProcedimento(resto)
+      // a família engoliria o exame que o mapa nomeou: "01 BRONCOSCOPIA" é "1 broncoscopia", não "1 endoscopia"
+      if (rotulo === 'Endoscopia' && !/\s/.test(resto)) rotulo = resto.toLowerCase()
+    }
+    if (!rotulo) continue
+    itens.push((n == null ? rotulo : `${n} ${aposNumero(rotulo)}`) + com)
+  }
+  if (!itens.length) return ''
+  return itens.join(' + ') + (pacientes != null ? ` (${pacientes} pctes)` : '')
+}
+
 const DICIONARIO = [
   // ── blocos e seções (fora da grade) ────────────────────────────────────
   [/\bCONTINUACAO\b/, 'Continuação'],
   [/\bCO\/EMERG\w*|\bEMERGENCIA\/CO\b/, 'CO / Emergência'],
   [/\bCONSULTORIO\b.*AJUDA/, 'Consultório (ajuda)'],
   [/\bCONSULTORIO\b|\bCONSULTAS?\b/, 'Consultório'],
+  // linha CONTADA ("01 EDA", "08 EDA + 02 COLO (08 PCTES)", "07 RM + 02 TC"): as quantidades são a
+  // informação (dono 21/09) — vem ANTES das famílias, senão "Endoscopia" engole a contagem
+  [/^\d+\s+\S/, (m, s, bruto) => rotuloContado(bruto) || null],
   [/\b(EDA|COLO|COLONO|RETOSSIG\w*|ENDOSCOPIA|ECOEDA|ESD|CPRE|COLANGIOPANCREATOGRAFIA|GASTROSTOMIA ENDOSCOPICA|BRONCOSCOP\w*|BRONCO|ECOBRONCO)\b/, 'Endoscopia'],
   [/\bTC\b.*\bRM\b|\bRM\b.*\bTC\b/, 'TC + RM'],
   [/\bRMN?\b|\bRESSONANCIA\b/, 'RM'],
@@ -436,7 +513,9 @@ export function nomeCurtoProcedimento(procedimento) {
   const s = norm(bruto)
   for (const [re, rotulo] of DICIONARIO) {
     const m = re.exec(s)
-    if (m) return typeof rotulo === 'function' ? rotulo(m, s) : rotulo
+    if (!m) continue
+    const r = typeof rotulo === 'function' ? rotulo(m, s, bruto) : rotulo
+    if (r != null) return r   // null = "esta regra não decide" (linha contada sem item): segue para a próxima
   }
   return fallback(bruto)
 }
