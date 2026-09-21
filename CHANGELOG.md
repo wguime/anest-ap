@@ -3,6 +3,21 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.22 (21/09/2026) — Liberações: hora de saída — Louise e "Equipe até 13h/19h" saem a partir da hora, e o card desce para baixo do "próximo"
+
+Dono (21/09): "quem estiver com essa marcação deve ser liberado às 13h e/ou às 19h, eles podem ser
+liberados a partir desses horários mesmo que estejam no meio da lista, ao serem liberados devem ficar
+abaixo do próximo a ser liberado na lista (para não quebrar o padrão de cores), implemente isso para
+Louise que trabalha até as 19h na escala especial (apenas enquanto ela estiver nessa escala)".
+- **Uma regra para `turnoProprio` (Louise) e `naEquipe`** (`horaSaidaDe`/`chegouHoraDe`): antes da hora
+  a ordem vale como para todo mundo (o aviso diz "A partir das 19:00 X pode sair fora da ordem");
+  a partir dela o toque passa no meio da lista. Muda o 11/09, que isentava a Louise a qualquer hora.
+  A marca continua não liberando sozinha; quem está acima segue esperando.
+- **Liberada fora da vez, a linha desce para logo abaixo do "próximo a ser liberado"** (topo do bloco
+  vermelho), mantendo o número da posição publicada — exibição, não ordem (11/08). Quem saiu na vez
+  não se mexe.
+- Louise: só enquanto o quadro da numérica a trouxer (marca recarimbada a cada publicação).
+
 ## v5.12.21 (21/09/2026) — Liberações: selo "Equipe até 13h/19h" para quem está em outro hospital no turno
 
 Dono (21/09), com o recado *"@Guilherme e @Cury Anest na equipe da Unimed no período vespertino"*:

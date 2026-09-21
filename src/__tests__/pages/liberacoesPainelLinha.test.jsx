@@ -707,9 +707,12 @@ describe('Emprestado mantém posição na origem (caso TIAGO)', () => {
  *
  * Ela era a 4ª de 15 no rodapé, então a fila só chegaria nela em 12º lugar e a
  * trava de 27/07 recusava o toque — o app não registrava a saída de quem combinou
- * horário à parte. A marca isenta a pessoa SÓ do bloqueio de liberar: o toque nela
- * nunca é recusado. Ela CONTINUA na ordem — quando a fila chega nela, é ela o
- * "próximo", e quem está acima espera por ela.
+ * horário à parte. A marca isenta a pessoa SÓ do bloqueio de liberar, e desde 21/09
+ * SÓ A PARTIR DA HORA COMBINADA (dono: "podem ser liberados a partir desses horários
+ * mesmo que estejam no meio da lista") — antes dela, a ordem vale como para todo
+ * mundo. Ela CONTINUA na ordem — quando a fila chega nela, é ela o "próximo", e
+ * quem está acima espera por ela. Liberada fora da vez, o card desce para baixo do
+ * "próximo" (padrão de cores), com o número da posição publicada.
  *
  * ⚠️ A 1ª versão (manhã do mesmo dia) a tirava da fila inteira, e às 18h09 o 3º do
  * rodapé apareceu como "próximo" com a 4ª ainda em sala — dono: "próximo a ser
@@ -744,11 +747,42 @@ describe('Turno próprio — pode sair fora da ordem (dono 11/09)', () => {
     expect(onToggle).not.toHaveBeenCalled()
   })
 
-  it('com a marca, o toque libera mesmo com os de baixo em sala — ela PODE sair fora da ordem', async () => {
+  it('com a marca, ANTES da hora o toque é recusado como para todo mundo — e o aviso diz a partir de quando passa (dono 21/09)', async () => {
     const onToggle = vi.fn()
-    montar({ onToggle }, comTurnoProprio)
+    montar({ onToggle }, comTurnoProprio) // relógio do arquivo: 10:00
     fireEvent.click(screen.getByLabelText('Marcar Marilio Flach liberado'))
-    await waitFor(() => expect(onToggle).toHaveBeenCalledTimes(1))
+    expect(await screen.findByText('Libere Karine Bedin primeiro')).toBeTruthy()
+    expect(await screen.findByText(/A partir das 19:00 Marilio Flach pode sair fora da ordem/)).toBeTruthy()
+    expect(onToggle).not.toHaveBeenCalled()
+  })
+
+  it('a partir da hora, o toque libera mesmo com os de baixo em sala — ela PODE sair fora da ordem', async () => {
+    vi.setSystemTime(new Date('2026-07-29T19:00:00-03:00'))
+    try {
+      const onToggle = vi.fn()
+      montar({ onToggle }, comTurnoProprio)
+      fireEvent.click(screen.getByLabelText('Marcar Marilio Flach liberado'))
+      await waitFor(() => expect(onToggle).toHaveBeenCalledTimes(1))
+    } finally {
+      vi.setSystemTime(new Date('2026-07-29T10:00:00-03:00'))
+    }
+  })
+
+  it('liberada fora da vez, a linha desce para logo abaixo do "próximo" e mantém o número da posição (dono 21/09)', () => {
+    // Marilio (2º) saiu às 19h com a Karine (3ª) ainda em sala: a lista fica
+    // Leonardo · Karine (próximo, amarelo) · Marilio (vermelho, ainda "2") · ajuda/extra
+    const saiuNaHora = { ...comTurnoProprio, liberacoes: { 'matutino:MARILIO': { liberadoEm: 'x' } } }
+    const { unmount } = montar({}, saiuNaHora)
+    const posicao = (nome) => Array.from(document.querySelectorAll('[data-linha]')).indexOf(cardDe(nome))
+    expect(posicao('Marilio Flach')).toBe(posicao('Karine Bedin') + 1)
+    expect(posicao('Leonardo Ferrazzo')).toBe(0)
+    expect(within(cardDe('Karine Bedin')).getByText('Próximo a ser liberado')).toBeTruthy()
+    expect(within(cardDe('Marilio Flach')).getByText('Liberado')).toBeTruthy()
+    expect(within(cardDe('Marilio Flach')).getByText('2')).toBeTruthy()
+    unmount()
+    // sem a marca, quem sai no meio NÃO afunda (regra de 11/08 intacta)
+    montar({}, { ...escalaBase, liberacoes: { 'matutino:MARILIO': { liberadoEm: 'x' } } })
+    expect(posicao('Marilio Flach')).toBe(posicao('Leonardo Ferrazzo') + 1)
   })
 
   it('o card DIZ por que ela pode sair fora da ordem', () => {

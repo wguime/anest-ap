@@ -452,6 +452,35 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     if (!m) return null
     return `${Number(m[1])}h${m[2] === '00' ? '' : m[2]}`
   }
+  /**
+   * HORA DE SAÍDA (dono 21/09): quem tem `turnoProprio` (Louise, só enquanto o quadro
+   * da numérica a trouxer) ou `naEquipe` (equipe de outro hospital) "deve ser liberado
+   * às 13h e/ou às 19h — podem ser liberados a partir desses horários mesmo que
+   * estejam no meio da lista". ANTES da hora seguem a ordem como todo mundo (muda o
+   * 11/09, que isentava a Louise a qualquer hora); A PARTIR dela o toque passa, esteja
+   * a fila onde estiver; e liberada fora da vez, a linha desce para logo abaixo do
+   * "próximo a ser liberado" (ver `ordemRender`), para a lista seguir verde → amarelo
+   * → vermelho. A marca continua não liberando sozinha. Devolve 'HH:MM' ou null.
+   */
+  const horaSaidaDe = (l) => {
+    const ov = overrideDe(l)
+    for (const ate of [ov?.turnoProprio?.ate, ov?.naEquipe?.ate]) {
+      const s = String(ate || '').trim()
+      if (/^\d{1,2}:\d{2}$/.test(s)) return s
+    }
+    return null
+  }
+  // Já passou da hora combinada? Escala de um dia anterior = passou; de um dia
+  // futuro = ainda não; hoje = relógio do aparelho (o mesmo `agoraMin` da fase noturna).
+  const chegouHoraDe = (l) => {
+    const ate = horaSaidaDe(l)
+    const dataEscala = String(escala?.data || '')
+    if (!ate || !dataEscala) return false
+    const hoje = hojeISO()
+    if (dataEscala !== hoje) return dataEscala < hoje
+    const [h, m] = ate.split(':').map(Number)
+    return agoraMin >= h * 60 + m
+  }
 
   // FASE NOTURNA (decisões do dono 23/07 + redesenho 24/07): seg–sex (feriado
   // incluso), escala de HOJE — das 19h às 22h cada plantonista noturno vira um
@@ -1243,7 +1272,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             }
           : {
               title: `Libere ${bloqueio.proximo} primeiro`,
-              description: `${bloqueio.faltam === 1 ? 'Falta 1 anestesista' : `Faltam ${bloqueio.faltam} anestesistas`} antes de ${linha.anestesista} na ordem de liberação.`,
+              description: `${bloqueio.faltam === 1 ? 'Falta 1 anestesista' : `Faltam ${bloqueio.faltam} anestesistas`} antes de ${linha.anestesista} na ordem de liberação.${
+                // hora combinada (turno próprio / equipe de outro hospital): a partir dela o toque passa
+                bloqueio.horaSaida ? ` A partir das ${bloqueio.horaSaida} ${linha.anestesista} pode sair fora da ordem.` : ''}`,
             }),
       })
       return
@@ -1907,8 +1938,22 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             if (jaLiberada(linhasExibicao[i]) && voltaPraFila(linhasExibicao[i])) { idxConvocar = i; break }
           }
           const nomeConvocar = idxConvocar >= 0 ? linhasExibicao[idxConvocar].anestesista : null
-          let numeroOrdem = 0
-          return linhasExibicao.map((linha, idx) => {
+          // LIBERADA FORA DA VEZ, NA HORA DELA (dono 21/09): "ao serem liberados devem
+          // ficar abaixo do próximo a ser liberado na lista (para não quebrar o padrão
+          // de cores)". Só quem tem hora de saída e saiu ANTES de a fila chegar nela
+          // (está acima do "próximo") desce — para logo abaixo dele, no topo do bloco
+          // vermelho. O NÚMERO do card segue o da posição publicada (`idx + 1`): muda
+          // a exibição, não a ordem — afundar renumerando foi lido como "rodapé
+          // publicado errado" em 11/08. Quem já está abaixo do "próximo" saiu na vez e
+          // não se mexe; toda a lógica de fila acima continua sobre `linhasExibicao`.
+          const indices = linhasExibicao.map((_, i) => i)
+          const desceu = (i) => i < idxProximo && !!horaSaidaDe(linhasExibicao[i]) && jaLiberada(linhasExibicao[i])
+          const descidas = idxProximo > 0 ? indices.filter(desceu) : []
+          const ordemRender = descidas.length
+            ? [...indices.filter((i) => i <= idxProximo && !desceu(i)), ...descidas, ...indices.filter((i) => i > idxProximo)]
+            : indices
+          return ordemRender.map((idx) => {
+          const linha = linhasExibicao[idx]
           // PLANTÃO NOTURNO (pedido do dono 24/07): ao virar P1–P4 a pessoa SAI da
           // posição em que estava — independente de hospital e de já ter sido
           // liberada no dia — e assume o posto TRABALHANDO (card verde). Nada da
@@ -1920,7 +1965,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // ajuda acrescentada (fora do rodapé) também é numerada: ela está NA
           // fila (dono 19/08) — o número é sequência de exibição, não posição
           // da ordem publicada, que segue imutável
-          const numeroExibido = ++numeroOrdem
+          const numeroExibido = idx + 1
           // OS DOIS PLANTÕES DO TURNO ESTÃO SEMPRE TRABALHANDO (dono 05/09: "sempre
           // os dois plantões estão trabalhando e portanto SEMPRE devem estar
           // trabalhando e com a marcação dos badges"). O posto da grade (Plantão
@@ -1977,11 +2022,19 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             ? ((idxConvocar >= 0 && idx > idxProximo && idx !== idxConvocar && voltaPraFila(linha))
                 ? { modo: 'convocar', proximo: nomeConvocar }
                 : null)
-            // TURNO PRÓPRIO: o toque nela nunca é recusado — pode sair fora da
-            // ordem na hora combinada (dono 11/09). Só o toque NELA: quem está
-            // acima continua esperando por ela, porque ela segue no `naFila`.
-            : ((idxProximo >= 0 && idx !== idxProximo && naFila(linha, idx) && !turnoProprioDe(linha))
-                ? { modo: 'liberar', faltam: linhasExibicao.slice(idx + 1).filter((l, k) => naFila(l, idx + 1 + k)).length, proximo: proximoNome }
+            // HORA DE SAÍDA (dono 21/09, no lugar do "nunca é recusado" de 11/09): o
+            // toque em quem tem hora combinada passa A PARTIR dela, esteja a fila
+            // onde estiver; antes, a ordem vale como para todo mundo. Só o toque
+            // NELA: quem está acima continua esperando por ela (`naFila`).
+            : ((idxProximo >= 0 && idx !== idxProximo && naFila(linha, idx) && !chegouHoraDe(linha))
+                ? {
+                    modo: 'liberar',
+                    faltam: linhasExibicao.slice(idx + 1).filter((l, k) => naFila(l, idx + 1 + k)).length,
+                    proximo: proximoNome,
+                    // o aviso diz a partir de quando o toque passa, senão "libere X
+                    // primeiro" lê como se a hora combinada não existisse
+                    horaSaida: horaSaidaDe(linha),
+                  }
                 : null)
           // LIVRE = a pessoa não está em sala e AGUARDA o toque de quem libera, na
           // própria posição, o dia inteiro se preciso. Dois caminhos chegam aqui e

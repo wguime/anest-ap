@@ -540,11 +540,12 @@ ordem só chegaria nela em **12º lugar**: a trava de 27/07 recusava o toque, e 
 saídas ruins — liberar 11 colegas que ainda operavam, ou deixar a saída dela sem registro.
 
 `linha_overrides[<turno>:<chave>].turnoProprio = { ate: 'HH:MM' }` isenta a linha **só do
-bloqueio de liberar** (`bloqueioOrdem`, lado `liberar`, na `LiberacoesView`): o toque nela
-nunca é recusado, esteja a fila onde estiver. Ela **continua na ordem** (`naFila`): quando a
-fila chega nela é ELA o "próximo a ser liberado", conta no "faltam N" de quem está acima, e
-quem está acima espera por ela. A hora combinada é um **teto para a espera dela**, nunca um
-motivo para os de cima saírem antes.
+bloqueio de liberar** (`bloqueioOrdem`, lado `liberar`, na `LiberacoesView`) — e, **desde
+21/09, só A PARTIR da hora combinada** (ver *Hora de saída* abaixo): antes dela o toque é
+recusado como para todo mundo. Ela **continua na ordem** (`naFila`): quando a fila chega nela
+é ELA o "próximo a ser liberado", conta no "faltam N" de quem está acima, e quem está acima
+espera por ela. A hora combinada é um **teto para a espera dela**, nunca um motivo para os de
+cima saírem antes.
 
 ⚠️ **A 1ª versão (manhã de 11/09) a tirava da fila inteira** (`naFila` → false, o caminho do
 plantão do turno na fila única) — e às 18h09 do mesmo dia o dono mandou a foto: HRO da tarde,
@@ -558,10 +559,9 @@ irmãs (13px, muted, sem cor nem ícone). Sem a frase, ver alguém do meio da fi
 de baixo lê como fila furada — que é exatamente o que a trava existe para impedir. "Pode", e
 não "sai": quando a fila chega nela o card traz a frase E o cartão amarelo, sem contradição.
 
-⚠️ **NÃO trava a liberação antes da hora, de propósito.** A hora é informação no card e quem
-libera é gente olhando o relógio; travar criaria um modo de falha novo (relógio do aparelho,
-plantão que acaba antes) para resolver algo que a fila nunca teve — ninguém libera colega por
-engano. A marca também **não libera sozinha**: a pessoa segue trabalhando até alguém tocar.
+⚠️ **Até 21/09 NÃO travava antes da hora, de propósito** (relógio do aparelho, plantão que
+acaba antes). O dono decidiu o contrário em 21/09 — *Hora de saída*, abaixo. A marca segue
+**não liberando sozinha**: a pessoa trabalha até alguém tocar.
 
 ⚠️ **QUEM DECIDE É A ESCALA NUMÉRICA, não a mão (dono 11/09, no mesmo dia).** *"Mantenha a
 Louise nesse esquema enquanto a escala numérica vier com a escala especial para ela. A partir
@@ -607,15 +607,48 @@ ou vespertino quero que contenha o badge: até as 13h (matutino) e até as 19h (
   Inscrição escolhida entre "até as 19h" (lia como hora de saída, igual à linha da Louise),
   "Equipe até 19h" e "Na equipe até 19h" — protótipo `.tmp/badge-equipe-outro-hospital.html`.
   Some no card enxuto do liberado, como Plantonista e Ajuda.
-- **A fila não muda por causa do selo**: a pessoa segue na ordem publicada, conta no "faltam
-  N" e é liberada como qualquer um. É informação, não regra.
+- **A ordem não muda por causa do selo**: a pessoa segue na ordem publicada e conta no "faltam
+  N". O que a marca dá é a *Hora de saída* (abaixo) — igual à Louise.
 - Não há UI para marcar à mão: a fonte é o recado, que entra pela skill (`/publicar-escala`).
   Recado que chega DEPOIS da publicação → republicar com a decisão no lote ou repair SQL
   (`scripts/repair-escala-2026-09-21-equipe-unimed.sql` é o modelo).
 
 Travas: `escalaPublicacaoDecisoes.test.js` (describe "tipo equipe"), `escalaConferenciaHeadless.test.js`
 (lote → payload; não responde duplicidade) e `liberacoesEquipeOutroHospital.test.jsx` (selo por turno,
-só em quem tem a marca, some no liberado, fila inalterada).
+só em quem tem a marca, some no liberado, ordem inalterada).
+
+### Hora de saída — `turnoProprio` e `naEquipe` (dono 21/09/2026)
+
+*"Quem estiver com essa marcação deve ser liberado às 13h e/ou às 19h, eles podem ser liberados
+a partir desses horários mesmo que estejam no meio da lista, ao serem liberados devem ficar
+abaixo do próximo a ser liberado na lista (para não quebrar o padrão de cores), implemente
+isso para Louise que trabalha até as 19h na escala especial (apenas enquanto ela estiver nessa
+escala)."* Uma regra para as duas marcas (`horaSaidaDe` na view lê `turnoProprio.ate` e
+`naEquipe.ate`):
+
+- **Antes da hora:** a ordem vale como para todo mundo — o toque no meio da lista é recusado, e
+  o aviso acrescenta *"A partir das 19:00 X pode sair fora da ordem."* (senão "libere Y
+  primeiro" lê como se a hora combinada não existisse). **Muda o 11/09**, que isentava a Louise
+  a qualquer hora.
+- **A partir da hora** (`chegouHoraDe`: escala de HOJE pelo `agoraMin`; dia anterior = passou;
+  dia futuro = ainda não): o toque nela passa, esteja a fila onde estiver. Só o toque NELA — quem
+  está acima segue esperando (`naFila` intacto). A marca **não libera sozinha**.
+- **Liberada fora da vez** (está acima do "próximo"): o card **desce para logo abaixo do
+  "próximo a ser liberado"**, no topo do bloco vermelho — a lista fica verde → amarelo →
+  vermelho. `ordemRender` é uma permutação de exibição: toda a lógica de fila (`idxProximo`,
+  `bloqueioOrdem`, `caudaLiberada`, convocar) continua sobre `linhasExibicao`, e o **número do
+  card é o da posição publicada** (`idx + 1`), porque afundar renumerando foi lido como "rodapé
+  publicado errado" em 11/08. Quem saiu na vez (já abaixo do "próximo") não se mexe; sem
+  ninguém em jogo (`idxProximo < 0`) ninguém desce.
+- Louise: vale **enquanto o quadro da numérica a trouxer** — `turnoProprio` é recarimbado a cada
+  publicação por `excecaoTurnoDoDia`; depois de 20/11 (edição de 2026) a marca some sozinha e
+  ela volta à ordem comum. Nada a desmarcar.
+
+Travas: `liberacoesPainelLinha.test.jsx` (describe "Turno próprio": recusa às 10h com a hora no
+aviso, passa às 19h, desce mantendo o "2", sem a marca não afunda), `liberacoesTurnoProprioRecorte1109`
+(18h09 recusa; 19h passa; desce para baixo da Fernanda como 4ª com tudo vermelho abaixo) e
+`liberacoesEquipeOutroHospital.test.jsx` (describe "hora de saída": 18h40 recusa, 19h passa, não
+libera sozinho, desce abaixo do Cury sem renumerar, dia da escala).
 
 ## Anotação manual da linha × casos (dono 16/09/2026)
 

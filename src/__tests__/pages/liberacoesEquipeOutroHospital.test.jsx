@@ -14,8 +14,8 @@
  * marca, some no card enxuto do liberado, e a FILA não muda por causa dele (a pessoa
  * segue na ordem — o selo é informação, não regra).
  */
-import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from 'vitest'
+import { render, screen, within, fireEvent, waitFor } from '@testing-library/react'
 
 import { ThemeProvider, ToastProvider } from '@/design-system'
 import LiberacoesView from '@/pages/escala-cirurgica/LiberacoesView'
@@ -69,9 +69,9 @@ const escalaDe = ({ turno = 'vespertino', overrides = {}, liberacoes = {}, casos
   liberacoes, linhaOverrides: overrides, casos,
 })
 
-const montar = (escala, turno = 'vespertino') => render(
+const montar = (escala, turno = 'vespertino', props = {}) => render(
   <LiberacoesView escala={escala} hospital="unimed" hospitalLabel="Unimed" turno={turno}
-    canEdit onToggle={() => {}} onSetOverride={() => {}} presencaOutros={[]} />,
+    canEdit onToggle={() => {}} onSetOverride={() => {}} presencaOutros={[]} {...props} />,
   { wrapper: wrap }
 )
 const card = (uid) => document.querySelector(`[data-linha="${uid}"]`)
@@ -81,6 +81,8 @@ beforeAll(() => {
   vi.setSystemTime(new Date('2026-09-21T15:30:00-03:00'))
 })
 afterAll(() => vi.useRealTimers())
+// cada teste recomeça às 15h30 de 21/09 — os de "hora de saída" mexem no relógio
+beforeEach(() => vi.setSystemTime(new Date('2026-09-21T15:30:00-03:00')))
 
 describe('selo "Equipe até 19h" — Unimed 21/09 à tarde', () => {
   const OVERRIDES = {
@@ -125,6 +127,63 @@ describe('selo "Equipe até 19h" — Unimed 21/09 à tarde', () => {
   it('a marca é do turno: a mesma chave na manhã não pinta a tarde', () => {
     montar(escalaDe({ overrides: { 'matutino:u-melo': { naEquipe: { ate: '13:00' } } } }))
     expect(screen.queryByText(/^Equipe até/)).toBeNull()
+  })
+})
+
+describe('hora de saída — "podem ser liberados a partir desses horários mesmo que estejam no meio da lista" (dono 21/09)', () => {
+  const OVERRIDES = { 'vespertino:u-melo': { naEquipe: { ate: '19:00' } } }
+  const montarCom = (extra = {}) => {
+    const onToggle = vi.fn()
+    montar(escalaDe({ overrides: OVERRIDES, ...extra }), 'vespertino', { onToggle })
+    return onToggle
+  }
+
+  it('antes das 19h o Melo (4º de 6, com os de baixo em sala) é recusado como todo mundo, e o aviso diz a hora', async () => {
+    vi.setSystemTime(new Date('2026-09-21T18:40:00-03:00'))
+    const onToggle = montarCom()
+    fireEvent.click(screen.getByLabelText('Marcar Guilherme Melo liberado'))
+    expect(await screen.findByText('Libere Marcos Cury primeiro')).toBeTruthy()
+    expect(await screen.findByText(/A partir das 19:00 Guilherme Melo pode sair fora da ordem/)).toBeTruthy()
+    expect(onToggle).not.toHaveBeenCalled()
+  })
+
+  it('às 19h o toque nele passa, com o Cury (abaixo) ainda em sala', async () => {
+    vi.setSystemTime(new Date('2026-09-21T19:00:00-03:00'))
+    const onToggle = montarCom()
+    fireEvent.click(screen.getByLabelText('Marcar Guilherme Melo liberado'))
+    await waitFor(() => expect(onToggle).toHaveBeenCalledTimes(1))
+  })
+
+  it('a marca não libera sozinha às 19h: ele segue trabalhando até o toque', () => {
+    vi.setSystemTime(new Date('2026-09-21T19:10:00-03:00'))
+    montarCom()
+    expect(within(card('u-melo')).queryByText('Liberado')).toBeNull()
+  })
+
+  it('liberado fora da vez, o card desce para logo abaixo do "próximo" (Cury), com o número 4 — o padrão de cores fica inteiro', () => {
+    vi.setSystemTime(new Date('2026-09-21T19:05:00-03:00'))
+    montarCom({ liberacoes: { 'vespertino:u-melo': { liberadoEm: '2026-09-21T22:03:00Z' } } })
+    const chaves = Array.from(document.querySelectorAll('[data-linha]')).map((e) => e.getAttribute('data-linha'))
+    expect(chaves.indexOf('u-melo')).toBe(chaves.indexOf('u-cury') + 1)
+    expect(chaves.slice(0, 3)).toEqual(['u-staub', 'u-louise', 'u-costa'])
+    expect(within(card('u-cury')).getByText('Próximo a ser liberado')).toBeTruthy()
+    expect(within(card('u-melo')).getByText('Liberado')).toBeTruthy()
+    expect(within(card('u-melo')).getByText('4')).toBeTruthy()
+    expect(within(card('u-cury')).getByText('5')).toBeTruthy() // ninguém é renumerado
+    // e ele NÃO vira o "próximo a convocar" de ninguém: convocar o Gustavo (plantão da manhã) segue livre
+  })
+
+  it('a hora é do DIA da escala: escala de ontem já passou, de amanhã ainda não', async () => {
+    vi.setSystemTime(new Date('2026-09-22T10:00:00-03:00')) // consultando a tarde de ontem
+    let onToggle = montarCom()
+    fireEvent.click(screen.getByLabelText('Marcar Guilherme Melo liberado'))
+    await waitFor(() => expect(onToggle).toHaveBeenCalledTimes(1))
+    document.body.innerHTML = ''
+    vi.setSystemTime(new Date('2026-09-20T23:00:00-03:00')) // véspera, às 23h
+    onToggle = montarCom()
+    fireEvent.click(screen.getByLabelText('Marcar Guilherme Melo liberado'))
+    expect(await screen.findByText('Libere Marcos Cury primeiro')).toBeTruthy()
+    expect(onToggle).not.toHaveBeenCalled()
   })
 })
 

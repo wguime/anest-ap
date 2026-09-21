@@ -187,11 +187,47 @@ describe('HRO 11/09 18h09 — a fila chegou na Louise (turno próprio, 4ª de 15
 })
 
 describe('HRO 11/09 mais cedo — a fila ainda não chegou nela (5º–9º em sala)', () => {
-  it('ela PODE sair fora da ordem: o toque nela passa mesmo com cinco abaixo em sala', async () => {
+  // ⚠️ MUDOU EM 21/09 (dono): "podem ser liberados a partir desses horários mesmo que
+  // estejam no meio da lista". Às 18h09, antes das 19h, ela espera a vez como todo
+  // mundo; o aviso diz a partir de quando o toque passa.
+  it('antes das 19h o toque nela é recusado como para todo mundo — e o aviso diz a hora', async () => {
     const onToggle = vi.fn()
     montar(MAIS_CEDO, { onToggle })
     fireEvent.click(screen.getByLabelText('Marcar Louise Warnava liberado'))
-    await waitFor(() => expect(onToggle).toHaveBeenCalledTimes(1))
+    expect(await screen.findByText('Libere Fernanda Cadillo primeiro')).toBeTruthy()
+    expect(await screen.findByText(/A partir das 19:00 Louise Warnava pode sair fora da ordem/)).toBeTruthy()
+    expect(onToggle).not.toHaveBeenCalled()
+  })
+
+  it('às 19h ela PODE sair fora da ordem: o toque nela passa mesmo com cinco abaixo em sala', async () => {
+    vi.setSystemTime(new Date('2026-09-11T19:00:00-03:00'))
+    try {
+      const onToggle = vi.fn()
+      montar(MAIS_CEDO, { onToggle })
+      fireEvent.click(screen.getByLabelText('Marcar Louise Warnava liberado'))
+      await waitFor(() => expect(onToggle).toHaveBeenCalledTimes(1))
+    } finally {
+      vi.setSystemTime(new Date('2026-09-11T18:09:00-03:00'))
+    }
+  })
+
+  it('saiu às 19h com cinco em sala: o card dela desce para logo abaixo do "próximo", ainda como 4ª (dono 21/09)', () => {
+    vi.setSystemTime(new Date('2026-09-11T19:02:00-03:00'))
+    try {
+      montar(escalaDe(lib('u-klisman', 'u-paulo', 'u-adriano', 'u-staub', 'u-rodnei', 'u-louise')))
+      const chaves = Array.from(document.querySelectorAll('[data-linha]')).map((e) => e.getAttribute('data-linha'))
+      // verdes até a Fernanda (próximo), Louise logo abaixo (vermelha), depois o bloco vermelho
+      expect(chaves.indexOf('u-louise')).toBe(chaves.indexOf('u-fernanda') + 1)
+      expect(chaves.slice(0, 3)).toEqual(['u-giovana', 'u-joaor', 'u-melo'])
+      expect(within(card('u-fernanda')).getByText('Próximo a ser liberado')).toBeTruthy()
+      expect(within(card('u-louise')).getByText('Liberado')).toBeTruthy()
+      expect(within(card('u-louise')).getByText('4')).toBeTruthy()
+      // ninguém verde abaixo dela: o padrão verde → amarelo → vermelho fica inteiro
+      const depois = chaves.slice(chaves.indexOf('u-louise') + 1)
+      for (const uid of depois) expect(within(card(uid)).getByText('Liberado')).toBeTruthy()
+    } finally {
+      vi.setSystemTime(new Date('2026-09-11T18:09:00-03:00'))
+    }
   })
 
   it('só ela: o 3º continua preso à ordem, e o amarelo é de quem fecha a fila de verdade', async () => {
