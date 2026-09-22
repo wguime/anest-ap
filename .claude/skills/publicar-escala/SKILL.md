@@ -87,9 +87,6 @@ apelido conhecido).
 - **Materno**: a numérica (azul) diz quem é o plantão do turno lá; o ensaio compara com quem assina
   caso no mapa (aviso `plantão materno`, nunca bloqueio). O nome à mão continua sendo o dado — a
   numérica confere, não preenche.
-- **GARIM na numérica e em nenhum mapa** = está em **Coronel Freitas**, fora da escala (dono 22/09):
-  no relatório vira "GARIM fora (Coronel Freitas)", nunca pendência. Se o nome APARECER num mapa, é
-  escala normal.
 
 ## Recado do dono → lote
 
