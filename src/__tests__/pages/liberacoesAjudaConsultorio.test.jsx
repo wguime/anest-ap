@@ -20,6 +20,7 @@ const ROSTER = [
   ['u-alex-s', 'ALEXANDRE SCHMIDT', ['ALEXANDRE S', 'ALEXANDRE SCHMIDT']],
   ['u-raul', 'RAUL LIMA', ['RAUL']],
   ['u-joao-r', 'JOAO RICARDO MOREIRA', ['JOAO RICARDO']],
+  ['u-cris', 'CRISTINA MARCON', ['CRISTINA']],
 ].map(([uid, nome, apelidos]) => ({ uid, nome, apelidos }))
 const APELIDO_UID = Object.fromEntries(ROSTER.flatMap((r) => r.apelidos.map((a) => [a, r.uid])))
 
@@ -74,6 +75,37 @@ beforeAll(() => {
   vi.setSystemTime(new Date('2026-09-22T09:00:00-03:00'))
 })
 afterAll(() => vi.useRealTimers())
+
+describe('nota de local no rodapé — "CRISTINA (CONSULT)" (dono 22/09)', () => {
+  // a nota faz a pessoa OCUPAR a posição mesmo sem cirurgia (04/09); o card dizia
+  // "…" (cirurgião desconhecido) em cima do "Consultório" e parecia incompleto
+  const COM_NOTA = ['JANAINA', 'CRISTINA (CONSULT)', 'RAUL']
+  const escalaNota = () => ({
+    id: 'hro-nota', hospital: 'hro', data: '2026-09-22',
+    ordemLiberacao: { matutino: COM_NOTA, vespertino: [] },
+    ajudaExterna: { matutino: [], vespertino: [] }, liberacoes: {}, linhaOverrides: {},
+    casos: [
+      caso('Sala 4', '07:00', 'JANAINA', 'FRATURA DA DIÁFISE DO ÚMERO', 'Robson Chiesa', 'iniciada'),
+      caso('Sala 1', '07:00', 'RAUL', 'HÉRNIA DE DISCO', 'Guilherme Martins', 'iniciada'),
+    ],
+  })
+
+  it('diz o local e NÃO mostra o traço de cirurgião desconhecido', () => {
+    montar(escalaNota())
+    const alvo = card('u-cris')
+    expect(within(alvo).getByText('Consultório')).toBeTruthy()
+    expect(alvo.textContent).not.toContain('…')
+    // quem tem cirurgia segue com o cirurgião, e o traço continua para quem não tem local
+    expect(within(card('u-janaina')).getByText(/Robson/)).toBeTruthy()
+  })
+
+  it('a posição é dela: fica na ordem publicada e não nasce liberada', () => {
+    montar(escalaNota())
+    const chaves = Array.from(document.querySelectorAll('[data-linha]')).map((e) => e.getAttribute('data-linha'))
+    expect(chaves).toEqual(['u-janaina', 'u-cris', 'u-raul'])
+    expect(within(card('u-cris')).queryByText('Liberado')).toBeNull()
+  })
+})
 
 describe('selo "Ajuda" pela linha "CONSULTORIO - AJUDA" do mapa (dono 21/09)', () => {
   it('aparece no card de quem tem a linha, e só nele — o consultório comum não ganha selo', () => {

@@ -3,6 +3,14 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.26 (22/09/2026) — Liberações: quem tem local anotado no rodapé não mostra o traço de cirurgião desconhecido
+
+Dono (22/09), foto do card da Cristina: a linha "CRISTINA (CONSULT)" trazia "…" (cirurgião
+desconhecido) em cima do "Consultório" e o card parecia incompleto. Mesma razão de 16/09 no
+emprestado: o card já diz onde a pessoa está, e quem está no consultório não tem cirurgião.
+- `listaCirurgioes` deixa de cair no "…" quando `linha.notaRodape` existe — vale para
+  "(CONSULT)", "(SOBREAV)" e qualquer nota de local.
+
 ## v5.12.25 (22/09/2026) — Publicação: a nota do rodapé não é identidade — o selo de Troca não some de quem vai ao consultório
 
 Dono (22/09), na publicação da manhã de 23/09: *"CRISTINA ESTÁ NO CONSULTÓRIO, GUILHERME XAVIER ESTÁ NO

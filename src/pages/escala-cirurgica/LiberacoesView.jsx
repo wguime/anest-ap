@@ -2121,7 +2121,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             ? [ov.cirurgioes]
             // emprestado (dono 16/09, caso Rômulo): o card já diz onde está e o que faz
             // lá (`ajudaForaInfo`); "…" embaixo disso lia como cirurgião desconhecido.
-            : (renovado || semEscala) ? [] : linha.cirurgioes.length ? linha.cirurgioes : (linha.ajudaFora ? [] : ['…'])
+            // NOTA DE LOCAL no rodapé ("CRISTINA (CONSULT)") tem o mesmo problema (dono 22/09,
+            // foto do card dela): a linha já diz "Consultório" logo abaixo, e o traço em cima
+            // fazia o card parecer incompleto — quem está no consultório não tem cirurgião.
+            : (renovado || semEscala) ? [] : linha.cirurgioes.length ? linha.cirurgioes : ((linha.ajudaFora || linha.notaRodape) ? [] : ['…'])
           // GRUPOS POR CIRURGIÃO (dono 14/09): as cirurgias abertas da pessoa
           // (`linha.cirurgias`, em ordem de horário) agrupadas pelo cirurgião, na
           // ordem em que aparecem. Só no dia a dia da linha: renovada, ajustada à
