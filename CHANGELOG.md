@@ -3,6 +3,18 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.24 (21/09/2026) — Liberações: CPRE é CPRE; selo "Ajuda" pela linha "CONSULTORIO - AJUDA" do mapa
+
+Dono (21/09, fotos dos cards da manhã de 22/09):
+- **"quando vier esse nome coloque apenas CPRE e não endoscopia"** — "COLANGIOPANCREATOGRAFIA RETROGRADA
+  ENDOSCOPICA" saía como "Endoscopia" (família). Entrada própria no dicionário antes da família: "CPRE"
+  (e "2 CPRE" na linha contada). A colangiografia da colecistectomia continua "Colecistectomia".
+- **"não saiu com o badge de ajuda"** (Alexandre S, 8º no HRO, caso "CONSULTORIO - AJUDA"): a linha do
+  mapa já diz que a pessoa está ajudando — o selo "Ajuda" passa a sair dela (`ajudaNoConsultorio` em
+  `LiberacoesView`), sem ninguém marcar `ajuda_externa` e **sem mexer na fila** (a pessoa segue na
+  posição do rodapé; ajuda no array continua sendo a de outro hospital). Só cirurgia aberta; o toque no
+  painel desmarca como no badge derivado (`semAjuda`); some no card enxuto do liberado.
+
 ## v5.12.23 (21/09/2026) — Liberações: a linha contada mostra as quantidades; publicação confere o plantão do Materno pela numérica
 
 Dono (21/09), com recortes dos mapas: "nos exames ou quando há mais de uma cirurgia na mesma linha,

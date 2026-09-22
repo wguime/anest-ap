@@ -1055,8 +1055,18 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
    * de desfazer. Badge e botão passam a sair daqui. Na fila única ajuda nunca é
    * automática (dono 05/09) e o card noturno não tem ajuda.
    */
+  /**
+   * AJUDA NO CONSULTÓRIO (dono 21/09, foto do card do Alexandre S: "não saiu com o badge
+   * de ajuda"): a linha do mapa "CONSULTORIO - AJUDA" já diz que a pessoa está ajudando —
+   * o selo sai dela, sem ninguém marcar ajuda_externa e SEM mexer na fila (a pessoa segue
+   * na posição do rodapé; ajuda no array continua sendo a de outro hospital, que muda a
+   * cauda). Só cirurgia ainda aberta: "Terminei" no consultório apaga o selo. O toque no
+   * painel desmarca do mesmo jeito que o badge derivado (declaração `semAjuda`).
+   */
+  const ajudaNoConsultorio = (linha) => !modoFds && !linha.noturno && (linha.cirurgias || []).some((c) =>
+    /CONSULT/i.test(String(c.sala || '')) && /\bAJUDA\b/i.test(String(c.procedimento || '')))
   const ehAjudaVisivel = (linha) => !!linha && !semAjudaManual.has(linha.chave)
-    && (!!linha.isAjuda || (!modoFds && !linha.noturno && !!linha.isExtra && !ajudaDeOutro(linha)))
+    && (!!linha.isAjuda || ajudaNoConsultorio(linha) || (!modoFds && !linha.noturno && !!linha.isExtra && !ajudaDeOutro(linha)))
   /**
    * Destino de quem foi EMPRESTADO (dono 30/07): a linha fica na posição do rodapé
    * daqui, e o card diz para onde a pessoa foi — "Ajuda Hemodinâmica/Unimed".
