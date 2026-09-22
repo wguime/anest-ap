@@ -206,6 +206,20 @@ const contadas = [
   ['ADENO-AMIGDALECTOMIA', 'Adenoamigdalectomia'],
 ]
 
+describe('nomeCurtoProcedimento — CPRE é CPRE (dono 21/09, foto do card "Endoscopia" na CC - Sala 3)', () => {
+  it.each([
+    ['COLANGIOPANCREATOGRAFIA RETROGRADA ENDOSCOPICA', 'CPRE'],
+    ['COLANGIOPANCREATOGRAFIA RETRÓGRADA ENDOSCÓPICA COM PAPILOTOMIA', 'CPRE'],
+    ['CPRE', 'CPRE'],
+    ['02 CPRE', '2 CPRE'],
+    ['01 EDA + 01 CPRE', '1 EDA + 1 CPRE'],
+    // a colangiografia da colecistectomia não é CPRE
+    ['COLECISTECTOMIA COM COLANGIOGRAFIA POR VIDEOLAPAROSCOPIA', 'Colecistectomia'],
+  ])('%s → %s', (texto, esperado) => {
+    expect(nomeCurtoProcedimento(texto)).toBe(esperado)
+  })
+})
+
 describe('nomeCurtoProcedimento — linha contada mostra as quantidades (dono 21/09)', () => {
   it.each(contadas)('%s → %s', (texto, esperado) => {
     expect(nomeCurtoProcedimento(texto)).toBe(esperado)

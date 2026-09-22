@@ -138,7 +138,9 @@ const DICIONARIO = [
   // linha CONTADA ("01 EDA", "08 EDA + 02 COLO (08 PCTES)", "07 RM + 02 TC"): as quantidades são a
   // informação (dono 21/09) — vem ANTES das famílias, senão "Endoscopia" engole a contagem
   [/^\d+\s+\S/, (m, s, bruto) => rotuloContado(bruto) || null],
-  [/\b(EDA|COLO|COLONO|RETOSSIG\w*|ENDOSCOPIA|ECOEDA|ESD|CPRE|COLANGIOPANCREATOGRAFIA|GASTROSTOMIA ENDOSCOPICA|BRONCOSCOP\w*|BRONCO|ECOBRONCO)\b/, 'Endoscopia'],
+  // CPRE é CPRE (dono 21/09, foto do card: "quando vier esse nome coloque apenas CPRE e não endoscopia")
+  [/\bCPRE\b|\bCOLANGIOPANCREATOGRAFIA\b|\bCOLANGIO ?PANCREATO\w*/, 'CPRE'],
+  [/\b(EDA|COLO|COLONO|RETOSSIG\w*|ENDOSCOPIA|ECOEDA|ESD|GASTROSTOMIA ENDOSCOPICA|BRONCOSCOP\w*|BRONCO|ECOBRONCO)\b/, 'Endoscopia'],
   [/\bTC\b.*\bRM\b|\bRM\b.*\bTC\b/, 'TC + RM'],
   [/\bRMN?\b|\bRESSONANCIA\b/, 'RM'],
   [/\bTC\b/, 'TC'],
