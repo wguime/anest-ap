@@ -26,6 +26,8 @@
  * `escalaCirurgicaDuplicidades.js`: a lib não conhece o roster.
  */
 
+import { stripNotaRodape } from '@/lib/colunaLiberacao'
+
 /** Campos do override que são IDENTIDADE/RASTRO da linha e sobrevivem à republicação. */
 export const CAMPOS_RASTRO = Object.freeze([
   'trocaCom', 'assumidaPor', 'origem', 'observacao', 'local', 'termino', 'duplicidade', 'conferido',
@@ -64,8 +66,13 @@ export function linhasPresentes({ ordem = [], ajuda = [], casos = [], resolver, 
   const out = new Map()
   const entrar = (nome, uidCaso, posicao) => {
     if (!ehNomeDePessoa(nome)) return
-    const norm = normalizar(nome)
-    const uid = uidCaso || resolver?.(nome) || null
+    // A NOTA do rodapé ("CRISTINA (CONSULT)", "ADRIANO (REUNIAO 11H)") não é identidade: o
+    // dicionário guarda apelidos limpos e `gerarColunaLiberacao` resolve o nome SEM ela. Resolver
+    // com a nota devolvia null e a linha era chaveada pelo NOME — a fila, chaveada pelo uid, não
+    // achava o override e o selo de Troca sumia justo de quem foi para o consultório (dono 22/09).
+    const limpo = stripNotaRodape(nome)
+    const norm = normalizar(limpo)
+    const uid = uidCaso || resolver?.(limpo) || null
     const chave = uid || norm
     if (!chave) return
     const atual = out.get(chave) || { chave, candidatas: [], posicao: null }
@@ -100,8 +107,9 @@ export function montarPreservacao({
   const posAntiga = new Map()
   rodapeDoTurnoSeguro(existente.ordemLiberacao, turno).forEach((n, i) => {
     if (!ehNomeDePessoa(n)) return
-    const uid = resolver?.(n) || null
-    for (const k of [uid, normalizar(n)]) if (k && !posAntiga.has(k)) posAntiga.set(k, i)
+    const limpo = stripNotaRodape(n)
+    const uid = resolver?.(limpo) || null
+    for (const k of [uid, normalizar(limpo)]) if (k && !posAntiga.has(k)) posAntiga.set(k, i)
   })
   const linhas = [...presentes.values()].map((l) => {
     const linha = { chave: l.chave, ...(l.candidatas.length ? { candidatas: l.candidatas } : {}) }

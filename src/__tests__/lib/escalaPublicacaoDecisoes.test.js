@@ -35,6 +35,36 @@ describe('linhasPresentes — a chave é a da fila, com as grafias alternativas'
   })
 })
 
+// O dicionário REAL (montarRoster) casa apelido exato: "CRISTINA (CONSULT)" não é apelido de
+// ninguém. Este resolver estrito é o que reproduz o defeito de 22/09 — o `normalizar` do arquivo
+// tira a nota e mascararia tudo.
+const resolverEstrito = (nome) => ({ CRISTINA: 'uid-cris', ADRIANO: 'uid-adriano' }[String(nome || '').trim().toUpperCase()] || null)
+
+describe('nota do rodapé não é identidade (dono 22/09: o selo de Troca sumiu de quem foi ao consultório)', () => {
+  it('"CRISTINA (CONSULT)" é chaveada pelo UID, como a fila faz — não pelo nome', () => {
+    const m = linhasPresentes({ ordem: ['CRISTINA (CONSULT)'], resolver: resolverEstrito, normalizar })
+    expect([...m.keys()]).toEqual(['uid-cris'])
+    expect(m.get('uid-cris')).toMatchObject({ chave: 'uid-cris', candidatas: ['CRISTINA'], posicao: 0 })
+  })
+
+  it('a decisão de troca cai na linha de quem tem a nota', () => {
+    const ov = montarLinhaOverrides({
+      decisoes: { CRISTINA: { tipo: 'troca', parceiroUid: 'uid-gui', parceiroNome: 'GUILHERME XAVIER', apenasRegistro: true, local: 'Consultório' } },
+      ordem: ['ADRIANO (REUNIAO 11H)', 'CRISTINA (CONSULT)'], resolver: resolverEstrito, normalizar, hospital: 'hro',
+    })
+    expect(Object.keys(ov)).toEqual(['uid-cris'])
+    expect(ov['uid-cris'].trocaCom).toMatchObject({ uid: 'uid-gui', local: 'Consultório', apenasRegistro: true })
+  })
+
+  it('preservação acha a posição antiga do nome anotado (o rastro sobrevive à republicação)', () => {
+    const p = montarPreservacao({
+      existente: { ordemLiberacao: { matutino: ['ADRIANO (REUNIAO 11H)', 'CRISTINA (CONSULT)'] } },
+      turno: 'matutino', ordem: ['ADRIANO', 'CRISTINA'], resolver: resolverEstrito, normalizar,
+    })
+    expect(p.linhas.map((l) => l.chave).sort()).toEqual(['uid-adriano', 'uid-cris'])
+  })
+})
+
 describe('montarPreservacao — o que a RPC copia do override antigo', () => {
   const existente = { ordemLiberacao: { matutino: ['DIDO', 'PAULO', 'NATHALIA'] } }
 

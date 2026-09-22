@@ -3,6 +3,19 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.25 (22/09/2026) — Publicação: a nota do rodapé não é identidade — o selo de Troca não some de quem vai ao consultório
+
+Dono (22/09), na publicação da manhã de 23/09: *"CRISTINA ESTÁ NO CONSULTÓRIO, GUILHERME XAVIER ESTÁ NO
+HRO e marque como troca"*. Ao anotar a linha como "CRISTINA (CONSULT)" — a nota que faz a pessoa OCUPAR
+a posição em vez de nascer livre (04/09) — o selo de Troca dela sumia.
+- **`linhasPresentes` / `montarPreservacao` (`escalaPublicacaoDecisoes`) passam o nome por
+  `stripNotaRodape` antes de resolver o uid.** O dicionário guarda apelidos limpos: com a nota, o
+  `resolver` devolvia `null` e a linha era chaveada pelo NOME, enquanto a fila
+  (`gerarColunaLiberacao`, que já tira a nota) a procura pelo UID — `linha_overrides` nunca casava.
+  Perdiam-se trocaCom, duplicidade intencional, conferido e a preservação do rastro de qualquer nome
+  com nota ("(CONSULT)", "(SOBREAV)", "(REUNIAO 11H)").
+- Vale para as duas portas de publicação: a tela de importação e a skill `/publicar-escala`.
+
 ## v5.12.24 (21/09/2026) — Liberações: CPRE é CPRE; selo "Ajuda" pela linha "CONSULTORIO - AJUDA" do mapa
 
 Dono (21/09, fotos dos cards da manhã de 22/09):
