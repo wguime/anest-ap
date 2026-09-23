@@ -338,9 +338,11 @@ export function EscalaCirurgicaProvider({ children }) {
   const prefetch = useCallback(async (dia) => {
     if (!dia || cacheRef.current.has(dia)) return
     try {
+      // Falha em qualquer hospital não cacheia: o conjunto parcial pintaria "Sem escala"
+      // no hospital que só não respondeu, e o `has(dia)` acima barraria a nova tentativa.
       const [results, fdsRow] = await Promise.all([
-        Promise.all(HOSPITAIS.map((h) => svc.fetchEscala(dia, h).catch(() => null))),
-        ehDataFilaUnica(dia) ? svc.fetchEscala(dia, FDS_HOSPITAL).catch(() => null) : Promise.resolve(null),
+        Promise.all(HOSPITAIS.map((h) => svc.fetchEscala(dia, h))),
+        ehDataFilaUnica(dia) ? svc.fetchEscala(dia, FDS_HOSPITAL) : Promise.resolve(null),
       ])
       if (!results.some(Boolean) && !fdsRow) return // nada publicado: não cacheia
       const escalas = { fds: fdsRow }

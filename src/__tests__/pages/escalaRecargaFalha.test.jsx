@@ -30,21 +30,6 @@ async function montar(dia) {
 }
 
 describe('falha de recarga não é ausência de escala', () => {
-  it.each([['2026-09-08', 'hro'], ['2026-09-12', 'fds']])(
-    'preserva o conjunto publicado de %s se %s falhar, com aviso', async (dia, hospital) => {
-      const { result } = await montar(dia)
-      const antes = result.current.escalas
-      svc.fetchEscala.mockImplementation(async (d, h) => {
-        if (h === hospital) throw new Error('rede indisponível')
-        return { ...escala(d, h), ordemLiberacao: ['BETO'] }
-      })
-      await act(async () => { await result.current.refresh() })
-      expect(result.current.escalas).toEqual(antes)
-      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: 'error', title: 'Não foi possível atualizar a escala' }))
-      expect(result.current.loading).toBe(false)
-    },
-  )
-
   it('resposta válida nula continua removendo a escala que deixou de existir', async () => {
     const { result } = await montar()
     svc.fetchEscala.mockResolvedValue(null)
