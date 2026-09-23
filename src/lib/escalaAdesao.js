@@ -33,7 +33,7 @@ export const ORDEM_CARGO = ['anest', 'enf', 'res', 'sec', 'hosp']
 export const SITUACOES = {
   ok: { label: 'Engajado', tom: 'ok', rank: 5 },
   mid: { label: 'Pode melhorar', tom: 'mid', rank: 4 },
-  nm: { label: 'Não marca término', tom: 'low', rank: 3 },
+  nm: { label: 'Não marca início/término', tom: 'low', rank: 3 },
   bx: { label: 'Baixo uso', tom: 'low', rank: 2 },
   sem: { label: 'Sem uso na semana', tom: 'crit', rank: 1 },
   nun: { label: 'Nunca abriu', tom: 'crit', rank: 0 },

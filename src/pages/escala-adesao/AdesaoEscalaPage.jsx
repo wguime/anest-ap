@@ -276,7 +276,7 @@ export default function AdesaoEscalaPage({ goBack }) {
             <li><b className="text-foreground">Tempo total:</b> dos turnos dela, em quantos informou a que horas termina (meta 80%).</li>
             <li>Enfermagem, residentes, secretaria e contas dos hospitais não têm cirurgias próprias: aparece o número de marcações que fizeram.</li>
             <li>Cores: verde na meta · amarelo metade ou mais · laranja abaixo da metade · vermelho zero.</li>
-            <li>Situação (sempre 30 dias): <b className="text-foreground">Engajado</b> usa 15+ dias e marca o término em metade ou mais; <b className="text-foreground">Não marca término</b> abre mas marca menos de 20%; <b className="text-foreground">Baixo uso</b> menos de 8 dias; <b className="text-foreground">Sem uso na semana</b> não abriu em 7 dias.</li>
+            <li>Situação (sempre 30 dias): <b className="text-foreground">Engajado</b> usa 15+ dias e marca o término em metade ou mais; <b className="text-foreground">Não marca início/término</b> abre mas marca menos de 20%; <b className="text-foreground">Baixo uso</b> menos de 8 dias; <b className="text-foreground">Sem uso na semana</b> não abriu em 7 dias.</li>
             <li>Toque numa pessoa para ver a ficha: os números dela, a meta, os colegas que mais usam e o próximo passo.</li>
           </ul>
         )}
