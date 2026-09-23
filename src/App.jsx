@@ -152,6 +152,7 @@ const RefeicaoUnimedPage = lazy(() => import("./pages/RefeicaoUnimedPage"))
 const CodificacaoAnestesicaPage = lazy(() => import("./pages/codificacao-anestesica"))
 const EscalaCirurgicaPage = lazy(() => import("./pages/escala-cirurgica/EscalaCirurgicaPage"))
 const EscalaNumericaPage = lazy(() => import("./pages/escala-numerica/EscalaNumericaPage"))
+const AdesaoEscalaPage = lazy(() => import("./pages/escala-adesao/AdesaoEscalaPage"))
 const FeriadosPage = lazy(() => import("./pages/escala-numerica/FeriadosPage"))
 // gate leve (sem React) — produção exclusiva do dono durante o piloto
 import { podeVerEscalaCirurgica } from "./pages/escala-cirurgica/gate"
@@ -1339,6 +1340,10 @@ function App() {
         return <EscalaCirurgicaPage key="escalaCirurgica" onNavigate={handleNavigate} goBack={goBack} />
       case 'escalaNumerica':
         return <EscalaNumericaPage key="escalaNumerica" onNavigate={handleNavigate} goBack={goBack} />
+      // Relatório de adesão à Escala (dono 23/09/2026): card na linha dos Destaques Científicos.
+      // Aberto a todos por decisão do dono; o gate é o da RPC (usuário ativo).
+      case 'adesaoEscala':
+        return <AdesaoEscalaPage key="adesaoEscala" goBack={goBack} />
       case 'feriados':
         return <FeriadosPage key="feriados" onNavigate={handleNavigate} goBack={goBack} />
       case 'extratoFerias':

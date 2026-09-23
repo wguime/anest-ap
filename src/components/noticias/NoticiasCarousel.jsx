@@ -6,7 +6,8 @@
  * Usar HScroll próprio.
  *
  * Lê do contexto (cache stale-while-revalidate). Não dispara fetch novo.
- * Esconde-se inteiramente se highlights estiver vazio.
+ * Some só enquanto os destaques não carregaram; o 1º item é o card do relatório de adesão
+ * à Escala (dono 23/09), que mantém a linha mesmo sem artigos.
  */
 import { useEffect, useMemo } from 'react'
 import { ChevronRight, Sparkles } from 'lucide-react'
@@ -14,6 +15,7 @@ import { useNoticias } from '@/contexts/NoticiasContext'
 import { ordenarDestaques } from '@/lib/noticiasDestaques'
 import { NoticiaCard } from './NoticiaCard'
 import { HScroll } from './HScroll'
+import { AdesaoEscalaCard } from './AdesaoEscalaCard'
 
 export function NoticiasCarousel({ onNavigate }) {
   const { highlights, highlightsLoaded, loadHighlights } = useNoticias()
@@ -27,7 +29,8 @@ export function NoticiasCarousel({ onNavigate }) {
     [highlights],
   )
 
-  if (!highlightsLoaded || top10.length === 0) {
+  // O card do relatório de adesão (1º item, dono 23/09) mantém a linha viva mesmo sem artigos.
+  if (!highlightsLoaded) {
     return null
   }
 
@@ -50,6 +53,7 @@ export function NoticiasCarousel({ onNavigate }) {
         </button>
       </div>
       <HScroll ariaLabel="Lista horizontal de destaques" showDots loop>
+        <AdesaoEscalaCard key="adesao-escala" onClick={() => onNavigate?.('adesaoEscala')} />
         {top10.map((noticia) => (
           <NoticiaCard
             key={noticia.id}
