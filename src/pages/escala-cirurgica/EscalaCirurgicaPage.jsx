@@ -558,7 +558,9 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
             // existindo (VinculosSheet) para ser religada onde fizer sentido.
             // Pill modelo "Extrato" nos DOIS modos (dono 31/08) — substitui o
             // par ghost-com-ícone (dia útil) / outline (FDS) de 24/08.
-            <ActionPill onClick={() => feriado ? setImportandoFds(true) : setImportando(true)} aria-label="Importar escala">
+            <ActionPill
+              // toque de 44px sem mudar o pill (revisão 23/09): ele mede ~21px de altura
+              className="relative after:absolute after:-inset-x-1 after:-inset-y-3 after:content-['']" onClick={() => feriado ? setImportandoFds(true) : setImportando(true)} aria-label="Importar escala">
               Importar
             </ActionPill>
           ) : null

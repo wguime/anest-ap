@@ -976,7 +976,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       )}
       {fase !== 'zerada' && onAddAjuda && (
         <Button
-          size="sm" variant="outline" className="min-w-0 flex-1 deitado:h-auto"
+          size="sm" variant="outline" className="relative min-w-0 flex-1 deitado:h-auto after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']"
           aria-label="Adicionar anestesista (ajuda)"
           onClick={() => setAjudaSheet(true)}
         >
@@ -1734,7 +1734,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             <span className="hidden deitado:inline">Mensagem</span>
           </Button>
         )}
-        <Button size="sm" variant="outline" className="min-w-0 flex-1 deitado:h-auto"
+        <Button size="sm" variant="outline" className="relative min-w-0 flex-1 deitado:h-auto after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']"
           aria-label="Histórico de mensagens" onClick={() => setHistoricoSheet(true)}>
           <History className="w-4 h-4 shrink-0" />
           <span className="deitado:hidden">Histórico de mensagens</span>
@@ -2830,7 +2830,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                            pela FORMA, sem precisar ler. Preenchido continua sendo a
                            pílula verde sólida, logo acima — a única coisa no card com
                            peso de badge, porque é ela que dirige a ordem da fila. */
-                        className="rounded-md border border-dashed border-border-strong bg-transparent px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground active:bg-muted"
+                        className="relative rounded-md border border-dashed border-border-strong bg-transparent px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground active:bg-muted after:absolute after:-inset-x-2 after:-top-3.5 after:-bottom-1.5 after:content-['']"
                       >
                         + Tempo total
                       </button>
@@ -2950,7 +2950,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             )}
           </SheetHeader>
           {editor && (
-            <div className="px-1 pb-4">
+            <div className="px-4 pb-4">
               {/* Os CASOS da pessoa saíram do painel (dono 30/07): ver e abrir
                   cirurgias é papel das abas Completa/Minhas — aqui ficou só o
                   que é da LINHA da fila (recado, ajuda, troca, local, cirurgião).
@@ -3452,7 +3452,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   editor está aberta — ela tem o próprio Salvar, e dois botões com
                   o mesmo nome na mesma tela é escolha que ninguém deveria ter. */}
               {!abaPainel && (
-              <div className="sticky bottom-0 -mx-1 mt-3 flex gap-2 border-t border-border bg-card px-1 pb-1 pt-3">
+              <div className="sticky bottom-0 -mx-4 mt-3 flex gap-2 border-t border-border bg-card px-4 pb-1 pt-3">
                 <Button variant="outline" className="flex-1" onClick={restaurarEditor}>
                   Restaurar automático
                 </Button>
@@ -3583,7 +3583,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             </p>
           </SheetHeader>
           {alvoTempo && (
-            <div className="space-y-5 px-1 pb-6 pt-2">
+            <div className="space-y-5 px-4 pb-6 pt-2">
               {/* Sem parágrafo explicativo (dono 29/07: "muito texto e ninguém vai
                   ler"). O subtítulo do header carrega o essencial — é o TOTAL dos
                   casos da pessoa, não o término de UMA cirurgia. E nunca é a soma
@@ -3786,8 +3786,8 @@ function EditorPainel({ titulo, descricao, onFechar, onSalvar, children }) {
             <p className="mt-1 text-[11.5px] leading-snug text-muted-foreground">{descricao}</p>
           )}
         </SheetHeader>
-        <div className="px-1 pb-3">{children}</div>
-        <div className="sticky bottom-0 flex gap-2 border-t border-border bg-card px-1 pb-4 pt-3">
+        <div className="px-4 pb-3">{children}</div>
+        <div className="sticky bottom-0 flex gap-2 border-t border-border bg-card px-4 pb-4 pt-3">
           <Button variant="outline" className="flex-1" onClick={onFechar}>Cancelar</Button>
           <Button className="flex-1" onClick={onSalvar}>
             Salvar

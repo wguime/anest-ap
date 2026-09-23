@@ -239,7 +239,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
             pergunta por cartão — que cirurgia é · como ela vai · quem está e onde.
             "Decisão ganha cartão" é a mesma regra das telas grandes; antes tudo
             vinha em uma coluna só, no mesmo peso. */}
-        <div className="space-y-2.5 px-1 pb-4">
+        <div className="space-y-2.5 px-4 pb-4">
           <article className="rounded-2xl border border-border-strong bg-card-elevated p-3">
             {/* MESMA grafia do card no quadro (`fraseClinica`): o texto importado
                 vem em CAIXA ALTA e o painel repetia assim — o mesmo procedimento

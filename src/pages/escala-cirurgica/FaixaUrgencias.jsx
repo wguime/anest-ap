@@ -214,7 +214,7 @@ export default function FaixaUrgencias({ escala, hospital, turno }) {
               type="button"
               onClick={() => setConfigurar(true)}
               aria-label="Configurar salas do contrato"
-              className="-my-1 flex min-h-[32px] min-w-[32px] items-center justify-center text-muted-foreground active:opacity-60"
+              className="relative -my-1 flex min-h-[32px] min-w-[32px] items-center justify-center text-muted-foreground active:opacity-60 after:absolute after:-inset-1.5 after:content-['']"
             >
               <Settings2 className="h-3.5 w-3.5" />
             </button>
@@ -365,7 +365,7 @@ export default function FaixaUrgencias({ escala, hospital, turno }) {
                 /* `.catch` obrigatório: a action dá throw depois do toast, e este
                    era o único call site sem tratamento — rejeição não tratada. */
                 onClick={() => setStatusCirurgia(escala, it.caso, 'terminada', { userId: user?.uid || user?.id }).catch(() => {})}
-                className="shrink-0 rounded-[9px] border border-warning/50 px-2 py-1 font-bold text-warning"
+                className="relative shrink-0 rounded-[9px] border border-warning/50 px-2 py-1 font-bold text-warning after:absolute after:-inset-x-1 after:-inset-y-2.5 after:content-['']"
               >
                 Terminada
               </button>
@@ -376,7 +376,7 @@ export default function FaixaUrgencias({ escala, hospital, turno }) {
           <button
             type="button"
             onClick={() => setDetalhe(estado.suspeitas[0].caso)}
-            className="mt-1 py-0.5 text-left text-[11px] text-warning"
+            className="relative mt-1 py-0.5 text-left text-[11px] text-warning after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-['']"
           >
             {estado.suspeitas.length === 1
               ? `${salaLiberacao(estado.suspeitas[0].sala)} marcada ${estado.suspeitas[0].caso?.hora || ''} pode já ter começado`

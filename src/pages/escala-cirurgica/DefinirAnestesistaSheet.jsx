@@ -306,7 +306,7 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
           {contexto && <p className="mt-1 text-[11.5px] leading-snug text-muted-foreground">{contexto}</p>}
         </SheetHeader>
 
-        <div className="px-1 pb-4">
+        <div className="px-4 pb-4">
           {/* ── DE → PARA (dono 17/08): quem sai e quem assume lado a lado, no
               topo, logo abaixo do título. O card ASSUME É o seletor: o Select do
               DS (o mesmo que está em produção, com busca) fica INVISÍVEL por
@@ -428,7 +428,7 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
           )}
         </div>
 
-        <div className="sticky bottom-0 z-10 flex gap-2 border-t border-border bg-card px-1 pb-4 pt-3">
+        <div className="sticky bottom-0 z-10 flex gap-2 border-t border-border bg-card px-4 pb-4 pt-3">
             <Button variant="outline" className="flex-1" onClick={() => onClose?.()}>Cancelar</Button>
             <Button
               className="flex-1"
@@ -465,7 +465,7 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
                 />
               </div>
             </SheetHeader>
-            <div role="listbox" aria-label="Anestesistas" className="px-1 pb-4">
+            <div role="listbox" aria-label="Anestesistas" className="px-4 pb-4">
               {lista.map((o) => {
                 const marcado = escolhido === o.value
                 return (

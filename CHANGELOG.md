@@ -3,6 +3,17 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.32 (23/09/2026) — Escala: folhas com margem de 16px e área de toque de 44px sem mudar o desenho
+
+Aprovado pelo dono por imagem (23/09).
+- **Margem 16px** no corpo das folhas: painel da linha (e seus editores), tempo faltante, definir
+  anestesista e detalhe do caso — antes o conteúdo ficava a 4px da borda e o título a 24px.
+- **Toque ≥ 44px por pseudo-elemento** (o desenho não muda): "Importar", "+ Tempo total",
+  "Adicionar ajuda", "Histórico de mensagens", "Recolher/Expandir todas", cabeçalho da sala,
+  ⚙ e avisos da faixa de Urgências.
+- Selos "Próximo a ser liberado"/"Liberado": mantidos (dono). "Equipe até"/"Sai às" continuam só
+  pela publicação (dono).
+
 ## v5.12.31 (23/09/2026) — Escala: "Desfazer" em quatro ações sem volta + vibração ao liberar
 
 Pedido do dono (23/09), na revisão do módulo.

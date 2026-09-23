@@ -467,7 +467,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
               variant="outline"
               onClick={() => setAbertas(algumaAberta ? [] : chavesGrupos)}
               aria-label={algumaAberta ? 'Recolher todas as salas' : 'Expandir todas as salas'}
-              className={canEdit && !isDemo ? 'shrink-0' : 'w-full'}
+              className={`relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] ${canEdit && !isDemo ? 'shrink-0' : 'w-full'}`}
             >
               {algumaAberta ? <ChevronsDownUp className="w-4 h-4" /> : <ChevronsUpDown className="w-4 h-4" />}
               {canEdit && !isDemo ? null : (algumaAberta ? 'Recolher todas' : 'Expandir todas')}
@@ -509,7 +509,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
                    clara estava neutralizada — no escuro o botão ficava `bg-card` e
                    o resto do cabeçalho `bg-card-elevated`, partindo a faixa em duas
                    cores na vertical, bem no meio do nome e do ⚙ */
-                className="px-3 py-2 group-data-[state=open]:bg-transparent dark:group-data-[state=open]:bg-transparent"
+                className="relative px-3 py-2 group-data-[state=open]:bg-transparent dark:group-data-[state=open]:bg-transparent after:absolute after:inset-x-0 after:-inset-y-[3px] after:content-['']"
                 headerClassName="sticky top-14 z-10 deitado:static border-y border-border bg-card-elevated"
                 iconAfterActions
                 iconClassName="group-data-[state=open]:bg-transparent dark:group-data-[state=open]:bg-transparent"
@@ -563,7 +563,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
         {herdadasVisiveis.length > 0 && (
           <AccordionItem value={CHAVE_HERDADAS} className="border-0">
             <AccordionTrigger
-              className="px-3 py-2 group-data-[state=open]:bg-transparent dark:group-data-[state=open]:bg-transparent"
+              className="relative px-3 py-2 group-data-[state=open]:bg-transparent dark:group-data-[state=open]:bg-transparent after:absolute after:inset-x-0 after:-inset-y-[3px] after:content-['']"
               headerClassName="sticky top-14 z-10 deitado:static border-y border-border bg-card-elevated"
               iconAfterActions
               iconClassName="group-data-[state=open]:bg-transparent dark:group-data-[state=open]:bg-transparent"
