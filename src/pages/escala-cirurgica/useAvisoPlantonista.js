@@ -38,6 +38,9 @@ import { destinatariosEscala } from './destinatariosPush'
 /** Teto de recados na frente da fila (dono 17/08). */
 export const MAX_AVISOS = 3
 
+/** Janela do "Desfazer" da exclusão do recado — a mesma duração do toast. */
+export const JANELA_DESFAZER_MS = 6000
+
 export default function useAvisoPlantonista({ escalaId, turno, userId, userName, hospitalLabel }) {
   const [avisos, setAvisos] = useState([])
   const [enviando, setEnviando] = useState(false)
@@ -46,12 +49,25 @@ export default function useAvisoPlantonista({ escalaId, turno, userId, userName,
   const ref = useRef({ escalaId, turno, hospitalLabel })
   ref.current = { escalaId, turno, hospitalLabel }
 
+  // Exclusões PENDENTES (revisão 23/09): o recado some da tela no toque, mas só é
+  // apagado no banco depois da janela do "Desfazer" — apagar é para todos e o X é
+  // pequeno. Enquanto pendente, nem o realtime o traz de volta.
+  const pendentesRef = useRef(new Map()) // avisoId → timer
   const carregar = useCallback(async () => {
     const { escalaId: id, turno: t } = ref.current
     if (!id || String(id).startsWith('demo-') || !t) { setAvisos([]); return }
     try {
-      setAvisos(await svc.fetchAvisos(id, t))
+      const todos = await svc.fetchAvisos(id, t)
+      setAvisos(todos.filter((a) => !pendentesRef.current.has(a.id)))
     } catch { /* toast do service; a tela segue sem o recado */ }
+  }, [])
+  // saindo da tela com exclusão pendente, ela acontece — quem tocou em "excluir" quis excluir
+  useEffect(() => () => {
+    for (const [id, timer] of pendentesRef.current) {
+      clearTimeout(timer)
+      svc.excluirAviso(id).catch(() => {})
+    }
+    pendentesRef.current.clear()
   }, [])
 
   useEffect(() => { carregar() }, [carregar, escalaId, turno])
@@ -123,12 +139,31 @@ export default function useAvisoPlantonista({ escalaId, turno, userId, userName,
     } catch { carregar() /* falhou: volta ao que o banco diz */ }
   }, [carregar, userId, userName])
 
-  const excluir = useCallback(async (avisoId) => {
-    if (!avisoId) return
+  /**
+   * Some da tela já; apaga no banco depois de `JANELA_DESFAZER_MS`. Devolve
+   * `desfazer()`, que cancela e traz o recado de volta. `aoFalhar` é chamado se a
+   * exclusão no banco falhar — antes a falha era silenciosa e o recado "voltava".
+   */
+  const excluir = useCallback((avisoId, { aoFalhar } = {}) => {
+    if (!avisoId || pendentesRef.current.has(avisoId)) return () => {}
     setAvisos((prev) => prev.filter((a) => a.id !== avisoId)) // otimista
-    try {
-      await svc.excluirAviso(avisoId)
-    } catch { carregar() /* falhou: volta ao que o banco diz */ }
+    const timer = setTimeout(async () => {
+      pendentesRef.current.delete(avisoId)
+      try {
+        await svc.excluirAviso(avisoId)
+      } catch (err) {
+        carregar() // falhou: volta ao que o banco diz
+        aoFalhar?.(err)
+      }
+    }, JANELA_DESFAZER_MS)
+    pendentesRef.current.set(avisoId, timer)
+    return () => {
+      const t = pendentesRef.current.get(avisoId)
+      if (!t) return
+      clearTimeout(t)
+      pendentesRef.current.delete(avisoId)
+      carregar()
+    }
   }, [carregar])
 
   // HISTÓRICO: todas as mensagens do turno, inclusive as que EU já confirmei

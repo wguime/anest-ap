@@ -650,7 +650,11 @@ export function EscalaCirurgicaProvider({ children }) {
   // Plantonista ajusta a LINHA de um anestesista na coluna (local e/ou cirurgião),
   // conforme o plantão evolui. Override estruturado { local?, cirurgioes? } por chave;
   // override = null limpa (volta ao derivado dos casos).
-  const setLinhaOverride = useCallback(async (escala, linhaArg, override, userInfo = {}, turno) => {
+  const setLinhaOverride = useCallback(async (escalaArg, linhaArg, override, userInfo = {}, turno) => {
+    // estado FRESCO (mesmo motivo do toggleLiberacao): o "Desfazer" da restauração
+    // chega pelo callback de um render anterior
+    const fresca = escalasRef.current?.[escalaArg?.hospital]
+    const escala = fresca && fresca.id === escalaArg?.id ? fresca : escalaArg
     const linha = linhaDe(linhaArg)
     const chave = linha.chave || linha.anestesista
     const legada = !linha.selo && linha.anestesista && linha.anestesista !== chave ? linha.anestesista : null
@@ -672,7 +676,8 @@ export function EscalaCirurgicaProvider({ children }) {
       // preencher só o tempo não pode ressuscitar sala/cirurgião da manhã.
       const scoped = chaveTurno(turno, chave)
       const anterior = escala.linhaOverrides?.[scoped] || escala.linhaOverrides?.[chave] || (legada ? escala.linhaOverrides?.[legada] : null) || {}
-      const renovado = !restaurar && !!anterior.renovado
+      // `override.renovado` só vem do "Desfazer" da restauração (devolve a marca apagada)
+      const renovado = !restaurar && (!!anterior.renovado || override?.renovado === true)
       // DECLARAÇÕES sobre a pessoa (CAMPOS_DECLARACAO) sobrevivem a QUALQUER salvar
       // do editor E ao "Restaurar automático": restaurar limpa a EXIBIÇÃO da linha
       // (local/cirurgião/tempo/observação). trocaCom/assumidaPor se desfazem pelos
@@ -803,6 +808,24 @@ export function EscalaCirurgicaProvider({ children }) {
   // e extra (atrasada/suspensa/passa_tarde, toggle; terminada limpa e bloqueia).
   // Espelha a regra da RPC no update otimista. Qualquer clínico atualiza.
   // Quando a ÚLTIMA cirurgia da sala conclui (terminada ou suspensa), o plantonista é avisado.
+  const desfazerTerminada = useCallback(async (hospital, casoId, antes) => {
+    const alvo = { ids: [casoId] }
+    const otimista = {
+      statusCirurgia: antes.statusCirurgia || 'agendada', statusExtra: antes.statusExtra ?? null,
+      statusAtualizadoEm: antes.statusAtualizadoEm ?? null, statusAtualizadoPor: antes.statusAtualizadoPor ?? null,
+      ...('terminoPrevisto' in antes && { terminoPrevisto: antes.terminoPrevisto ?? null }),
+    }
+    dispatch({ type: 'PATCH_CASOS', hospital, ...alvo, patch: otimista })
+    marcarEscrita()
+    try {
+      const restaurou = await svc.desfazerTerminada(casoId, antes)
+      if (!restaurou) throw new Error('A cirurgia mudou de estado nesse meio-tempo — nada foi alterado.')
+    } catch (error) {
+      dispatch({ type: 'PATCH_CASOS', hospital, ...alvo, patch: { statusCirurgia: 'terminada', statusExtra: null, terminoPrevisto: null } })
+      toast({ variant: 'error', title: 'Não foi possível desfazer', description: error.message })
+    } finally { encerrarEscrita() }
+  }, [toast])
+
   const setStatusCirurgia = useCallback(async (escala, caso, status, userInfo = {}) => {
     const EXTRAS = ['atrasada', 'suspensa', 'passa_tarde']
     const isDemo = String(escala.id).startsWith('demo-')
@@ -859,6 +882,16 @@ export function EscalaCirurgicaProvider({ children }) {
           if (zeraTermino && vivo.terminoPrevisto) await svc.updateCaso(caso.id, { terminoPrevisto: null })
         }
       } finally { encerrarEscrita() }
+      // DESFAZER O "TERMINADA" (revisão 23/09): marcado por engano, voltar pela RPC de
+      // status recarimbava o início e o "em sala há X" se perdia. O servidor devolve o
+      // estado de antes com o carimbo original; o término zerado volta por updateCaso.
+      if (status === 'terminada' && vivo.statusCirurgia !== 'terminada' && !isDemo && caso.id) {
+        toast({
+          title: 'Cirurgia terminada',
+          duration: 8000,
+          action: { label: 'Desfazer', onClick: () => { desfazerTerminada(escala.hospital, caso.id, antes) } },
+        })
+      }
       // (Os avisos "sala encerrou" e "anestesista livre" p/ o plantonista saíram
       // em 30/07 junto com as demais notificações da escala — ver nota no topo.)
     } catch (error) {
@@ -869,7 +902,7 @@ export function EscalaCirurgicaProvider({ children }) {
       toast({ variant: 'error', title: 'Erro ao atualizar status', description: error.message })
       throw error
     }
-  }, [toast])
+  }, [toast, desfazerTerminada])
 
   /**
    * ANOTAÇÃO DA LINHA CEDE AOS CASOS (dono 16/09/2026: "ajustes na Escala completa
@@ -1400,10 +1433,32 @@ export function EscalaCirurgicaProvider({ children }) {
     }
   }, [toast])
 
+  // DESFAZER "REMOVER AJUDA" (revisão 23/09): a pessoa volta para a MESMA posição
+  // no bloco de ajuda — antes ela voltava para o fim e perdia a numeração. Lê a
+  // escala FRESCA (o toast vive mais que o render que o criou).
+  const restaurarAjuda = useCallback(async (hospital, turno, nome, idx) => {
+    const escala = escalasRef.current?.[hospital]
+    if (!escala?.id || String(escala.id).startsWith('demo-')) return
+    const atual = rodapeDoTurno(escala.ajudaExterna, turno)
+    if (atual.some((n) => normNome(n) === normNome(nome))) return // já voltou
+    const novo = [...atual]
+    novo.splice(Math.min(Math.max(idx, 0), novo.length), 0, nome)
+    const ajudaExterna = mergeRodapeTurno(escala.ajudaExterna, turno, novo)
+    dispatch({ type: 'PATCH_HOSPITAL', hospital, patch: { ajudaExterna } })
+    marcarEscrita()
+    try {
+      await svc.updateAjudaExterna(escala.id, ajudaExterna)
+    } catch (error) {
+      dispatch({ type: 'PATCH_HOSPITAL', hospital, patch: { ajudaExterna: escala.ajudaExterna } })
+      toast({ variant: 'error', title: 'Erro ao desfazer', description: error.message })
+    } finally { encerrarEscrita() }
+  }, [toast])
+
   const removerAjuda = useCallback(async (escala, turno, nome) => {
     if (String(escala.id).startsWith('demo-')) return
     try {
       const atual = rodapeDoTurno(escala.ajudaExterna, turno)
+      const idx = atual.findIndex((n) => normNome(n) === normNome(nome))
       const ajudaExterna = mergeRodapeTurno(escala.ajudaExterna, turno, atual.filter((n) => normNome(n) !== normNome(nome)))
       // otimista (dono 19/08): erro reverte + toast
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { ajudaExterna } })
@@ -1411,12 +1466,19 @@ export function EscalaCirurgicaProvider({ children }) {
       try {
         await svc.updateAjudaExterna(escala.id, ajudaExterna)
       } finally { encerrarEscrita() }
+      if (idx >= 0) {
+        const nomeOriginal = atual[idx]
+        toast({
+          title: `${nomeOriginal} saiu da ajuda`,
+          action: { label: 'Desfazer', onClick: () => { restaurarAjuda(escala.hospital, turno, nomeOriginal, idx) } },
+        })
+      }
     } catch (error) {
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { ajudaExterna: escala.ajudaExterna } })
       toast({ variant: 'error', title: 'Erro ao remover ajuda', description: error.message })
       throw error
     }
-  }, [toast])
+  }, [toast, restaurarAjuda])
 
   // Acrescenta um procedimento à escala do dia (urgência/encaixe/fora do mapa).
   // Integra como os demais: board re-agrupa e a coluna de liberação re-deriva.

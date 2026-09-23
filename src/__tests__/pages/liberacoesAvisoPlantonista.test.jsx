@@ -168,8 +168,12 @@ describe('O recado na tela', () => {
     fetchAvisos.mockResolvedValue([AVISO])
     const { unmount } = montar({ meuUid: 'uid-leo', meuAlias: 'LEONARDO' })
     fireEvent.click(await screen.findByRole('button', { name: /Excluir recado/ }))
-    await waitFor(() => expect(excluirAviso).toHaveBeenCalledWith('aviso-1'))
+    // some da tela na hora, mas o banco só apaga ao fim da janela do "Desfazer"
+    // (revisão 23/09) — ou quando a tela fecha com a exclusão pendente
+    await waitFor(() => expect(screen.queryByRole('button', { name: /Excluir recado/ })).toBeNull())
+    expect(excluirAviso).not.toHaveBeenCalled()
     unmount()
+    expect(excluirAviso).toHaveBeenCalledWith('aviso-1')
     montar({ meuUid: 'uid-mar', meuAlias: 'MARILIO' })
     await screen.findByText('Guilherme libera Alexandre S.')
     expect(screen.queryByRole('button', { name: /Excluir recado/ })).toBeNull()
@@ -202,8 +206,9 @@ describe('Histórico e aparência do recado (dono 17/08)', () => {
     expect(screen.queryByRole('button', { name: /Excluir recado/ })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /Histórico de mensagens/ }))
     fireEvent.click(await screen.findByRole('button', { name: /Excluir mensagem/ }))
-    await waitFor(() => expect(excluirAviso).toHaveBeenCalledWith('aviso-1'))
-  })
+    // janela do "Desfazer" (6s) — a exclusão no banco vem depois dela
+    await waitFor(() => expect(excluirAviso).toHaveBeenCalledWith('aviso-1'), { timeout: 8000 })
+  }, 12000)
 
   it('quem não é plantonista lê o histórico mas não apaga', async () => {
     fetchAvisos.mockResolvedValue([AVISO])

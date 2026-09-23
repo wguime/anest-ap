@@ -3,6 +3,21 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.31 (23/09/2026) — Escala: "Desfazer" em quatro ações sem volta + vibração ao liberar
+
+Pedido do dono (23/09), na revisão do módulo.
+- **Terminada → Desfazer** (8s): devolve o retrato de antes do toque — status, extra, carimbo do
+  início ("em sala há X") e o término zerado. Só grava se o caso ainda estiver terminado. Sem RPC
+  nova: a que reconstruía o carimbo pela trilha de eventos erraria depois de republicar (o
+  migration-validator barrou) — o app devolve o que ele mesmo guardou.
+- **Remover ajuda → Desfazer**: a pessoa volta na MESMA posição do bloco de ajuda.
+- **Restaurar automático → Desfazer**: local, hospital, cirurgião, tempo, observação e a marca
+  `renovado` voltam.
+- **Excluir recado → Desfazer**: some na hora; o banco só apaga ao fim da janela de 6s (ou ao sair
+  da tela). A falha da exclusão deixou de ser silenciosa.
+- **Vibração** ao liberar e no toque recusado pela ordem (Android; o Safari do iPhone não vibra).
+- `setLinhaOverride` passa a ler a escala fresca do estado (mesmo motivo do Desfazer de 23/09).
+
 ## v5.12.30 (23/09/2026) — Escala: republicar preserva o andamento das cirurgias e as urgências adicionadas à mão
 
 Decisão do dono (23/09), na revisão: "preservar as duas". Migration `20260923160000` (validada pelo

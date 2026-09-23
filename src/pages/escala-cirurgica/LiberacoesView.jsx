@@ -11,6 +11,7 @@ import {
   Badge, Button, ConfirmDialog, EmptyState, Input, Select, useToast,
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/design-system'
+import { useHaptic } from '@/design-system/hooks'
 import { fraseClinica, gerarColunaLiberacao, nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
 import { faseLiberacoes, plantonistasNoturnos, candidatosNome, linhasNoturnas, fundirLinhasNoturnas, marcarSelosNoTurno, ehDiaUtil, casarPorInicialSobrenome, P4_HOSPITAIS } from '@/lib/plantaoNoturno'
 import { marcarSelosFds, linhasNoturnasFds, plantonistasFaixaFds, FDS_TURNO_FAIXA, resolverNomeEstrito, ehFeriado, agruparSemAnestesistaPorCirurgiao, aplicarDomingoP7P8 } from '@/lib/escalaFds'
@@ -74,6 +75,7 @@ const HOSPITAIS_FILA = ['unimed', 'hro', 'materno'].map((v) => ({ value: v, labe
 
 export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onDefinirTerminoCaso, onDefinirSemAjuda, onTrocarResponsavel, onDevolverResponsavel, onTrocarPosicao, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, onDefinirOrigem, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, onGarantirEscala, onNavigate }) {
   const { toast } = useToast()
+  const haptic = useHaptic()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
   // do turno selecionado e o rodapé (ordem de liberação) DAQUELE turno.
   // Turno NOTURNO do FDS não tem casos próprios (o CHECK do banco só aceita
@@ -1262,6 +1264,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     // Sem isto o toque gravava a marcação e o card virava "Liberado" sem selo.
     const posto = modoFds ? plantaoFisicoDe(linha) : null
     if (posto) {
+      haptic('warning')
       toast({
         variant: 'warning',
         duration: 12000,
@@ -1271,6 +1274,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       return
     }
     if (bloqueio) {
+      // RESPOSTA TÁTIL (revisão 23/09): quem libera costuma estar com uma mão só, entre
+      // cirurgias, sem olhar a tela — o toque recusado e o aceito têm de se distinguir
+      // no dedo. No iPhone é no-op (o Safari não tem navigator.vibrate).
+      haptic('warning')
       toast({
         variant: 'warning',
         // 12s: o aviso é a única resposta ao toque — sumir em 5s no meio do
@@ -1294,6 +1301,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       // aguarda a persistência ANTES do toast — sucesso mentiroso em falha de RPC
       // foi flagrado na auditoria F1.6 (toast aparecia e o banco ficava vazio)
       await onToggle?.(linha)
+      haptic('success')
       if (!liberado) {
         toast({
           variant: 'success',
@@ -1302,6 +1310,20 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
         })
       }
     } catch { /* toast de erro já vem do context */ }
+  }
+
+  // EXCLUIR RECADO COM DESFAZER (revisão 23/09): apaga para todos, e o X é pequeno.
+  // O hook adia a exclusão no banco pela janela do toast; "Desfazer" cancela.
+  const excluirRecado = (avisoId) => {
+    const desfazer = excluirAviso(avisoId, {
+      aoFalhar: (err) => toast({ variant: 'error', title: 'Não foi possível excluir o recado', description: err?.message }),
+    })
+    haptic('light')
+    toast({
+      title: 'Recado excluído',
+      duration: 6000, // = JANELA_DESFAZER_MS do hook
+      action: { label: 'Desfazer', onClick: () => desfazer() },
+    })
   }
 
   const abrirEditor = (linha) => {
@@ -1406,8 +1428,24 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   }
 
   const restaurarEditor = () => {
+    const linha = editor
+    // o que a restauração vai apagar — é isso que o "Desfazer" devolve (revisão 23/09:
+    // o botão tem o mesmo peso de Salvar e apagava local/cirurgião/tempo/observação)
+    const ov = overrideDe(linha) || {}
+    const exibicao = {
+      local: ov.local || '', hospital: ov.hospital || '', cirurgioes: ov.cirurgioes || '',
+      termino: ov.termino || '', observacao: ov.observacao || '', renovado: ov.renovado === true,
+    }
+    const tinhaAlgo = Object.values(exibicao).some(Boolean)
     setEditor(null)
-    onSetOverride?.(editor, null)?.catch?.(() => {}) // null = restauração explícita (limpa flags)
+    const restauracao = onSetOverride?.(linha, null) // null = restauração explícita (limpa flags)
+    restauracao?.catch?.(() => {})
+    if (tinhaAlgo) {
+      Promise.resolve(restauracao).then(() => toast({
+        title: `Linha de ${linha.anestesista} restaurada`,
+        action: { label: 'Desfazer', onClick: () => { onSetOverride?.(linha, exibicao)?.catch?.(() => {}) } },
+      })).catch(() => {})
+    }
   }
 
   // "Tempo faltante": grava override.termino (agora + duração, ou hora exata),
@@ -1656,7 +1694,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             {canEdit && souPlantonista && (
               <button
                 type="button"
-                onClick={() => excluirAviso(a.id)}
+                onClick={() => excluirRecado(a.id)}
                 aria-label={`Excluir recado "${a.texto}"`}
                 className="-my-2 flex h-9 w-7 shrink-0 items-center justify-center text-category-purple-fg active:opacity-60"
               >
@@ -3467,7 +3505,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 {canEdit && souPlantonista && (
                   <button
                     type="button"
-                    onClick={() => excluirAviso(a.id)}
+                    onClick={() => excluirRecado(a.id)}
                     aria-label={`Excluir mensagem "${a.texto}"`}
                     className="-my-1 flex h-9 w-8 shrink-0 items-center justify-center text-muted-foreground active:opacity-60"
                   >

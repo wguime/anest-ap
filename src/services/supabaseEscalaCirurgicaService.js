@@ -330,6 +330,33 @@ async function patchUrgenciasMeta(escalaId, turno, valor) {
  * Atualiza o STATUS da cirurgia (agendada/iniciada/terminada) — RPC com audit
  * carimbado server-side (status_atualizado_por/em = firebase_uid()/now()).
  */
+/**
+ * Desfaz o "terminada" (dono 23/09) devolvendo o RETRATO de antes do toque — status,
+ * extra, carimbo e término — que o próprio app guardou no otimista. UPDATE direto
+ * (a policy escala_caso_update já permite a quem edita a escala) e condicionado a o
+ * caso AINDA estar terminado: se alguém mexeu nele no meio, nada é gravado.
+ * Não é RPC de propósito: uma RPC que reconstruísse o carimbo pela trilha de
+ * eventos erraria depois de uma republicação (que preserva o andamento sem evento)
+ * e num segundo desfazer (validação da migration de 23/09).
+ * @returns {boolean} true se restaurou
+ */
+async function desfazerTerminada(casoId, antes) {
+  const { data, error } = await supabase
+    .from('escala_cirurgica_caso')
+    .update({
+      status_cirurgia: antes.statusCirurgia || 'agendada',
+      status_extra: antes.statusExtra ?? null,
+      status_atualizado_em: antes.statusAtualizadoEm ?? null,
+      status_atualizado_por: antes.statusAtualizadoPor ?? null,
+      ...('terminoPrevisto' in antes && { termino_previsto: antes.terminoPrevisto ?? null }),
+    })
+    .eq('id', casoId)
+    .eq('status_cirurgia', 'terminada')
+    .select('id')
+  if (error) handleError(error, 'desfazerTerminada')
+  return (data || []).length > 0
+}
+
 async function updateStatusCirurgia(casoId, status) {
   const { error } = await supabase.rpc('rpc_escala_status_cirurgia', {
     p_caso_id: casoId, p_status: status,
@@ -685,6 +712,7 @@ export default {
   patchLinhaOverride,
   patchUrgenciasMeta,
   updateStatusCirurgia,
+  desfazerTerminada,
   updateAnestesistaCasos,
   executarTrocaAtomica,
   addCaso,
