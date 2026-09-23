@@ -14,6 +14,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { RefreshCw, ChevronDown, TriangleAlert } from 'lucide-react'
 import { PageHeader } from '@/components'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/design-system'
+import { useMediaQuery } from '@/design-system/hooks'
 import SegmentedSelector from '../escala-cirurgica/SegmentedSelector'
 import { useAdesaoEscala } from '@/hooks/useAdesaoEscala'
 import {
@@ -100,7 +101,7 @@ function Comparativo({ titulo, detalhe, valor, meta, topo, max = 100, sufixo = '
   )
 }
 
-function Ficha({ pessoa, pessoas, janela, onClose }) {
+function Ficha({ pessoa, pessoas, janela, lado = 'bottom', onClose }) {
   const j = janela
   const passo = proximoPasso(pessoa)
   const topo = useMemo(() => ({
@@ -113,7 +114,7 @@ function Ficha({ pessoa, pessoas, janela, onClose }) {
   const metaUso = j === '30' ? META.uso30 : META.uso60
   return (
     <Sheet open onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="bottom" className="!h-auto max-h-[88vh] overflow-y-auto">
+      <SheetContent side={lado} className={lado === 'bottom' ? '!h-auto max-h-[88vh] overflow-y-auto' : 'overflow-y-auto'}>
         <SheetHeader className="pb-2">
           <SheetTitle className="text-[16px] font-extrabold leading-tight">{pessoa.nome}</SheetTitle>
           <div className="flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
@@ -202,12 +203,123 @@ function LinhaPessoa({ p, janela, onAbrir }) {
   )
 }
 
+/**
+ * Tablet/desktop (lg+, dono 23/09: "informações muito longe e dispersas; mais completo que no
+ * celular"): uma TABELA por cargo, com largura limitada (os números ficam junto do nome) e mais
+ * colunas que o celular — dias na semana/janela/outra janela, aberturas por dia, início, término,
+ * tempo da cirurgia, tempo total (com "n de N" e a outra janela embaixo), trocas e ações.
+ * O `thead` gruda sob o header (top-14; deitado/desktop o header tem 44px → top-11). Nenhum
+ * ancestral pode ter overflow (sticky morre) — por isso a tabela não fica numa caixa rolável.
+ */
+function CelulaLarga({ valor, meta, texto, sub, sub2 }) {
+  return (
+    <td className="p-1">
+      <span className={`flex min-h-[40px] flex-col items-center justify-center rounded-md px-1 py-0.5 leading-tight tabular-nums ${TOM[faixa(valor, meta)]}`}>
+        <b className="whitespace-nowrap text-[13px]">{texto ?? formatarPct(valor)}</b>
+        {sub && <small className="hidden text-[10px] font-normal opacity-85 xl:block">{sub}</small>}
+        {sub2 && <small className="text-[10px] font-normal opacity-85">{sub2}</small>}
+      </span>
+    </td>
+  )
+}
+
+function TabelaCargo({ cargo, lista, janela, onAbrir }) {
+  const j = janela
+  const o = j === '30' ? '60' : '30'
+  const metaUso = j === '30' ? META.uso30 : META.uso60
+  const anest = cargo === 'anest'
+  const th = 'sticky top-14 deitado:top-11 z-10 bg-muted px-1 py-1.5 text-center align-bottom text-[10.5px] font-semibold leading-tight text-muted-foreground'
+  const n = (a, b) => `${a ?? 0} de ${b ?? 0}`
+  return (
+    <table className="w-full border-separate border-spacing-0 rounded-xl border border-border bg-card">
+      <thead>
+        <tr>
+          <th className={`${th} rounded-tl-xl pl-3 text-left`}>
+            <span className="block text-[12.5px] font-extrabold uppercase tracking-wide text-primary">{CARGOS[cargo]} · {lista.length}</span>
+            <span className="font-normal">últimos {j} dias · embaixo, {o} dias</span>
+          </th>
+          <th className={th}>Situação</th>
+          <th className={th}>Dias de uso<span className="hidden font-normal xl:block">semana / {j}d · meta {metaUso}</span></th>
+          <th className={th}>Aberturas<span className="hidden font-normal xl:block">por dia usado</span></th>
+          <th className={th}>{anest ? 'Marca início' : 'Inícios'}<span className="hidden font-normal xl:block">{anest ? '% das suas · meta 80%' : 'marcações'}</span></th>
+          <th className={th}>{anest ? 'Marca término' : 'Términos'}<span className="hidden font-normal xl:block">{anest ? '% das suas · meta 80%' : 'marcações'}</span></th>
+          <th className={th}>Tempo da cirurgia<span className="hidden font-normal xl:block">{anest ? '% das suas · meta 50%' : 'não se aplica'}</span></th>
+          <th className={th}>Tempo total<span className="hidden font-normal xl:block">{anest ? '% dos turnos · meta 80%' : 'não se aplica'}</span></th>
+          <th className={th}>Trocas</th>
+          <th className={`${th} rounded-tr-xl`}>Ações<span className="hidden font-normal xl:block">na escala</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {lista.map((p) => (
+          <tr key={p.chave} onClick={() => onAbrir(p)} className="cursor-pointer border-t border-border hover:bg-muted/60">
+            <td className="border-t border-border py-1.5 pl-3 pr-2">
+              <button type="button" onClick={(e) => { e.stopPropagation(); onAbrir(p) }} className="text-left text-[13.5px] font-semibold leading-tight hover:underline">
+                {p.nome}
+              </button>
+              {p.sub && <span className="block text-[11px] text-muted-foreground">{p.sub}</span>}
+            </td>
+            <td className="whitespace-nowrap border-t border-border px-1 text-center"><Tag situacao={p.situacao} /></td>
+            <CelulaLarga valor={p[`d${j}`]} meta={metaUso} texto={`${p.d7} / ${p[`d${j}`]}`} sub={`${o}d: ${p[`d${o}`]}`} />
+            <td className="border-t border-border text-center text-[13px] tabular-nums">{p.aberturasPorDia ?? '—'}</td>
+            {p.anest ? (
+              <>
+                <CelulaLarga valor={p[`ini${j}`]} meta={META.ini} sub={j === '30' ? n(p.iniEu30, p.casos30) : null} sub2={`${o}d: ${formatarPct(p[`ini${o}`])}`} />
+                <CelulaLarga valor={p[`ter${j}`]} meta={META.ter} sub={j === '30' ? n(p.terEu30, p.casos30) : null} sub2={`${o}d: ${formatarPct(p[`ter${o}`])}`} />
+                <CelulaLarga valor={p[`tp${j}`]} meta={META.tp} sub={j === '30' ? n(p.tpInf30, p.casos30) : null} sub2={`${o}d: ${formatarPct(p[`tp${o}`])}`} />
+                <CelulaLarga valor={p[`tot${j}`]} meta={META.tot} sub={j === '30' ? n(p.totEu30, p.turnos30) : null} sub2={`${o}d: ${formatarPct(p[`tot${o}`])}`} />
+              </>
+            ) : (
+              <>
+                <CelulaLarga valor={p.nunca ? 0 : p[`iniN${j}`]} meta={10} texto={p[`iniN${j}`]} sub={`${o}d: ${p[`iniN${o}`]}`} />
+                <CelulaLarga valor={p.nunca ? 0 : p[`terN${j}`]} meta={10} texto={p[`terN${j}`]} sub={`${o}d: ${p[`terN${o}`]}`} />
+                <CelulaLarga valor={null} meta={1} texto="—" />
+                <CelulaLarga valor={null} meta={1} texto="—" />
+              </>
+            )}
+            <td className="border-t border-border text-center text-[13px] tabular-nums">{p[`trocas${j}`]}<span className="block text-[10px] text-muted-foreground">{o}d: {p[`trocas${o}`]}</span></td>
+            <td className="border-t border-border text-center text-[13px] tabular-nums">{p[`acoes${j}`]}<span className="block text-[10px] text-muted-foreground">{o}d: {p[`acoes${o}`]}</span></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
+/** Resumo por cargo (tablet/desktop): o que no celular fica espalhado em chips. */
+function ResumoCargos({ cargos, janela }) {
+  const metaUso = janela === '30' ? META.uso30 : META.uso60
+  return (
+    <section className="rounded-xl border border-border bg-card" aria-label="Resumo por cargo">
+      <div className="grid grid-cols-[minmax(120px,1fr)_repeat(6,64px)] items-end gap-1 rounded-t-xl bg-muted px-3 py-1.5 text-center text-[10.5px] font-semibold leading-tight text-muted-foreground">
+        <span className="text-left text-[12px] font-extrabold uppercase tracking-wide text-primary">Por cargo</span>
+        <span>Abriram na semana</span><span>Dias (mediana)</span><span>Início</span><span>Término</span><span>Tempo total</span><span>Com alerta</span>
+      </div>
+      {cargos.map((c) => {
+        const dias = janela === '30' ? c.dias30 : c.dias60
+        return (
+          <div key={c.cargo} className="grid grid-cols-[minmax(120px,1fr)_repeat(6,64px)] items-center gap-1 border-t border-border px-3 py-1.5">
+            <span className="text-[13px] font-semibold leading-tight">{CARGOS[c.cargo]} <span className="text-[11px] font-normal text-muted-foreground">{c.total}</span></span>
+            <Celula valor={(c.abriramSemana / c.total) * 100} meta={80} texto={`${c.abriramSemana}/${c.total}`} />
+            <Celula valor={dias} meta={metaUso} texto={dias == null ? '—' : `${Math.round(dias)} d`} />
+            <Celula valor={c.ini30} meta={META.ini} />
+            <Celula valor={c.ter30} meta={META.ter} />
+            <Celula valor={c.tot30} meta={META.tot} />
+            <Celula valor={c.alertas ? 0 : 100} meta={80} texto={c.alertas} />
+          </div>
+        )
+      })}
+      <p className="border-t border-border px-3 py-1.5 text-[10.5px] text-muted-foreground">Início, término e tempo total: mediana dos anestesistas, últimos 30 dias.</p>
+    </section>
+  )
+}
+
 export default function AdesaoEscalaPage({ goBack }) {
   const [janela, setJanela] = useState('30')
   const [cargo, setCargo] = useState('todos')
   const [ordem, setOrdem] = useState('sit')
   const [aberta, setAberta] = useState(null)
   const [comoLer, setComoLer] = useState(false)
+  const largo = useMediaQuery('(min-width: 768px)')
 
   // As duas janelas sempre: a situação é da janela de 30; os números mostrados seguem o alternador.
   const r30 = useAdesaoEscala(30)
@@ -232,6 +344,31 @@ export default function AdesaoEscalaPage({ goBack }) {
     .map((c) => ({ cargo: c, lista: ordenarPessoas(pessoas.filter((p) => p.cargo === c), ordem) }))
     .filter((b) => b.lista.length > 0)
 
+  const hospitais = rel && (
+    <section className="rounded-xl border border-border bg-card" aria-label="Onde falta informação, por hospital">
+      <div className="grid grid-cols-[1fr_repeat(4,52px)] gap-1 rounded-t-xl bg-muted px-2 py-1.5 text-center text-[10px] font-semibold leading-tight text-muted-foreground lg:grid-cols-[minmax(110px,1fr)_repeat(4,64px)] lg:px-3 lg:text-[10.5px]">
+        <span className="text-left text-[12px] font-extrabold uppercase tracking-wide text-primary">Por hospital</span>
+        <span>Início</span><span>Término</span><span>Tempo cir.</span><span>Tempo total</span>
+      </div>
+      {HOSPITAIS.map(([k, nome]) => {
+        const h = hospital(rel, k)
+        if (!h) return null
+        const v = (n, d) => (d ? (n / d) * 100 : null)
+        return (
+          <div key={k} className="grid grid-cols-[1fr_repeat(4,52px)] items-center gap-1 border-t border-border px-2 py-1.5 lg:grid-cols-[minmax(110px,1fr)_repeat(4,64px)] lg:px-3">
+            <span className={`text-[13px] ${k === 'total' ? 'font-extrabold' : 'font-semibold'}`}>
+              {nome} <span className="text-[11px] font-normal text-muted-foreground">{h.casos} cirurgias</span>
+            </span>
+            <Celula valor={v(h.com_ini, h.casos)} meta={META.ini} />
+            <Celula valor={v(h.com_ter, h.casos)} meta={META.ter} />
+            <Celula valor={v(h.com_tp, h.casos)} meta={META.tp} />
+            <Celula valor={v(h.com_total, h.turnos)} meta={META.tot} />
+          </div>
+        )
+      })}
+    </section>
+  )
+
   return (
     <div className="min-h-dvh bg-background pb-24">
       <PageHeader
@@ -251,13 +388,16 @@ export default function AdesaoEscalaPage({ goBack }) {
         }
       />
 
-      <div className="flex flex-col gap-3 px-4 pt-3 sm:px-5">
-        <SegmentedSelector options={JANELAS} value={janela} onChange={setJanela} />
-
-        <p className="text-[13px] leading-snug text-muted-foreground">
-          Quem usa a escala, quem marca início e término e quem informa o tempo que falta.
-          Mede só se o app foi informado, não a qualidade do trabalho na sala. {periodo && `Período: ${periodo}.`}
-        </p>
+      <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-3 px-4 pt-3 sm:px-5 lg:gap-4 lg:px-6 lg:pt-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+          <p className="text-[13px] leading-snug text-muted-foreground lg:order-1 lg:max-w-[62ch]">
+            Quem usa a escala, quem marca início e término e quem informa o tempo que falta.
+            Mede só se o app foi informado, não a qualidade do trabalho na sala. {periodo && `Período: ${periodo}.`}
+          </p>
+          <div className="lg:order-2 lg:w-[360px] lg:shrink-0">
+            <SegmentedSelector options={JANELAS} value={janela} onChange={setJanela} />
+          </div>
+        </div>
 
         <button
           type="button"
@@ -269,14 +409,14 @@ export default function AdesaoEscalaPage({ goBack }) {
           <ChevronDown className={`h-4 w-4 transition-transform ${comoLer ? 'rotate-180' : ''}`} aria-hidden="true" />
         </button>
         {comoLer && (
-          <ul className="flex flex-col gap-1.5 rounded-xl border border-border bg-card px-4 py-3 text-[12.5px] leading-snug text-muted-foreground">
+          <ul className="grid gap-1.5 rounded-xl border border-border bg-card px-4 py-3 text-[12.5px] leading-snug text-muted-foreground lg:grid-cols-2 lg:gap-x-8">
             <li><b className="text-foreground">Dias:</b> em quantos dias a pessoa abriu a escala (meta: 15 em 30 dias, 30 em 60).</li>
             <li><b className="text-foreground">Início / Término:</b> das cirurgias em que era o anestesista, em quantas ela mesma tocou em "Iniciada" / "Terminada" (meta 80%).</li>
             <li><b className="text-foreground">Tempo cir.:</b> das cirurgias dela, em quantas havia o tempo que falta preenchido (meta 50%).</li>
             <li><b className="text-foreground">Tempo total:</b> dos turnos dela, em quantos informou a que horas termina (meta 80%).</li>
             <li>Enfermagem, residentes, secretaria e contas dos hospitais não têm cirurgias próprias: aparece o número de marcações que fizeram.</li>
             <li>Cores: verde na meta · amarelo metade ou mais · laranja abaixo da metade · vermelho zero.</li>
-            <li>Situação (sempre 30 dias): <b className="text-foreground">Engajado</b> usa 15+ dias e marca o término em metade ou mais; <b className="text-foreground">Não marca início/término</b> abre mas marca menos de 20%; <b className="text-foreground">Baixo uso</b> menos de 8 dias; <b className="text-foreground">Sem uso na semana</b> não abriu em 7 dias.</li>
+            <li>Situação (sempre 30 dias): <b className="text-foreground">Engajado</b> usa 15+ dias e marca o término em metade ou mais; <b className="text-foreground">Não marca início/término</b> abre mas marca o término em menos de 20%; <b className="text-foreground">Baixo uso</b> menos de 8 dias; <b className="text-foreground">Sem uso na semana</b> não abriu em 7 dias.</li>
             <li>Toque numa pessoa para ver a ficha: os números dela, a meta, os colegas que mais usam e o próximo passo.</li>
           </ul>
         )}
@@ -293,76 +433,65 @@ export default function AdesaoEscalaPage({ goBack }) {
 
         {rel && grupo && (
           <>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
               <Indicador titulo="Início marcado" valor={grupo.ini} meta={META.ini} detalhe={`${grupo.n.ini} de ${grupo.casos}`} />
               <Indicador titulo="Término marcado" valor={grupo.ter} meta={META.ter} detalhe={`${grupo.n.ter} de ${grupo.casos}`} />
               <Indicador titulo="Tempo da cirurgia" valor={grupo.tp} meta={META.tp} detalhe={`${grupo.n.tp} de ${grupo.casos}`} />
               <Indicador titulo="Tempo total" valor={grupo.tot} meta={META.tot} detalhe={`${grupo.n.tot} de ${grupo.turnos} turnos`} />
+              <div className="col-span-2 hidden lg:col-span-1 lg:block">
+                <Indicador titulo={`Usam a escala ${metaUso}+ dias`} valor={(usamMuito / Math.max(1, pessoas.length)) * 100} meta={80} detalhe={`${usamMuito} de ${pessoas.length} pessoas`} />
+              </div>
             </div>
-            <p className="text-[12.5px] text-muted-foreground">
+            <p className="text-[12.5px] text-muted-foreground lg:hidden">
               <b className="text-foreground">{usamMuito} de {pessoas.length}</b> pessoas abriram a escala em {metaUso}+ dias no período.
             </p>
 
-            <section className="overflow-hidden rounded-xl border border-border bg-card" aria-label="Onde falta informação, por hospital">
-              <div className="grid grid-cols-[1fr_repeat(4,52px)] gap-1 bg-muted px-2 py-1.5 text-center text-[10px] font-semibold leading-tight text-muted-foreground">
-                <span className="text-left text-[12px] font-extrabold uppercase tracking-wide text-primary">Por hospital</span>
-                <span>Início</span><span>Término</span><span>Tempo cir.</span><span>Tempo total</span>
+            <div className="flex flex-col gap-3 xl:grid xl:grid-cols-2 xl:items-start">
+              {hospitais}
+              {largo && <ResumoCargos cargos={cargos} janela={janela} />}
+            </div>
+
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+              <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [&::-webkit-scrollbar]:hidden lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:pb-0" role="tablist" aria-label="Cargo">
+                {[{ cargo: 'todos', total: pessoas.length, alertas: cargos.reduce((s, c) => s + c.alertas, 0) }, ...cargos].map((c) => (
+                  <button
+                    key={c.cargo}
+                    type="button"
+                    role="tab"
+                    aria-selected={cargo === c.cargo}
+                    onClick={() => setCargo(c.cargo)}
+                    className={`min-h-[36px] shrink-0 rounded-full border px-3 text-[12px] font-semibold ${cargo === c.cargo ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-foreground'}`}
+                  >
+                    {c.cargo === 'todos' ? 'Todos' : CARGOS[c.cargo]} · {c.total}
+                    {c.alertas > 0 && <span className="ml-1 opacity-80">({c.alertas} alerta{c.alertas > 1 ? 's' : ''})</span>}
+                  </button>
+                ))}
               </div>
-              {HOSPITAIS.map(([k, nome]) => {
-                const h = hospital(rel, k)
-                if (!h) return null
-                const v = (n, d) => (d ? (n / d) * 100 : null)
-                return (
-                  <div key={k} className="grid grid-cols-[1fr_repeat(4,52px)] items-center gap-1 border-t border-border px-2 py-1.5">
-                    <span className={`text-[13px] ${k === 'total' ? 'font-extrabold' : 'font-semibold'}`}>
-                      {nome} <span className="text-[11px] font-normal text-muted-foreground">{h.casos}</span>
-                    </span>
-                    <Celula valor={v(h.com_ini, h.casos)} meta={META.ini} />
-                    <Celula valor={v(h.com_ter, h.casos)} meta={META.ter} />
-                    <Celula valor={v(h.com_tp, h.casos)} meta={META.tp} />
-                    <Celula valor={v(h.com_total, h.turnos)} meta={META.tot} />
-                  </div>
-                )
-              })}
-            </section>
-
-            <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Cargo">
-              {[{ cargo: 'todos', total: pessoas.length, alertas: cargos.reduce((s, c) => s + c.alertas, 0) }, ...cargos].map((c) => (
-                <button
-                  key={c.cargo}
-                  type="button"
-                  role="tab"
-                  aria-selected={cargo === c.cargo}
-                  onClick={() => setCargo(c.cargo)}
-                  className={`min-h-[36px] shrink-0 rounded-full border px-3 text-[12px] font-semibold ${cargo === c.cargo ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-foreground'}`}
-                >
-                  {c.cargo === 'todos' ? 'Todos' : CARGOS[c.cargo]} · {c.total}
-                  {c.alertas > 0 && <span className="ml-1 opacity-80">({c.alertas} alerta{c.alertas > 1 ? 's' : ''})</span>}
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-1.5" role="group" aria-label="Ordenar">
-              {ORDENS.map((o) => (
-                <button
-                  key={o.value}
-                  type="button"
-                  onClick={() => setOrdem(o.value)}
-                  aria-pressed={ordem === o.value}
-                  className={`min-h-[32px] rounded-lg px-2.5 text-[12px] font-medium ${ordem === o.value ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
-                >
-                  {o.label}
-                </button>
-              ))}
+              <div className="flex shrink-0 gap-1.5" role="group" aria-label="Ordenar">
+                {ORDENS.map((o) => (
+                  <button
+                    key={o.value}
+                    type="button"
+                    onClick={() => setOrdem(o.value)}
+                    aria-pressed={ordem === o.value}
+                    className={`min-h-[32px] rounded-lg px-2.5 text-[12px] font-medium ${ordem === o.value ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {blocos.map((b) => (
+            {blocos.map((b) => (largo ? (
+              <TabelaCargo key={b.cargo} cargo={b.cargo} lista={b.lista} janela={janela} onAbrir={setAberta} />
+            ) : (
               <section key={b.cargo} className="rounded-xl border border-border bg-card" aria-label={CARGOS[b.cargo]}>
                 <CabecalhoCargo cargo={b.cargo} total={b.lista.length} />
                 {b.lista.map((p) => (
                   <LinhaPessoa key={p.chave} p={p} janela={janela} onAbrir={setAberta} />
                 ))}
               </section>
-            ))}
+            )))}
 
             <p className="text-[11.5px] leading-snug text-muted-foreground">
               Fonte: registros do ANEST. Ficam fora cirurgias suspensas, linhas sem anestesista e a conta de testes.
@@ -374,7 +503,7 @@ export default function AdesaoEscalaPage({ goBack }) {
       </div>
 
       {aberta && (
-        <Ficha pessoa={aberta} pessoas={pessoas} janela={janela} onClose={() => setAberta(null)} />
+        <Ficha pessoa={aberta} pessoas={pessoas} janela={janela} lado={largo ? 'right' : 'bottom'} onClose={() => setAberta(null)} />
       )}
     </div>
   )
