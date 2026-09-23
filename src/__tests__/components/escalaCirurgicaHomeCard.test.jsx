@@ -299,3 +299,59 @@ describe('snapshot do card — nomes na hora, sem esperar o fetch', () => {
     expect(screen.getByText('Sem escala publicada hoje')).toBeInTheDocument()
   })
 })
+
+describe('plantonista da Home = o da fila de liberação (revisão 23/09)', () => {
+  const rosterDois = () => ({
+    resolver: (nome) => ({ DIDO: 'uid-gustavo', PAULO: 'uid-paulo', 'PAULO TONINI': 'uid-paulo' })[String(nome).trim().toUpperCase()] || null,
+    rosterByUid: new Map([
+      ['uid-gustavo', { uid: 'uid-gustavo', nome: 'GUSTAVO BIESDORF' }],
+      ['uid-paulo', { uid: 'uid-paulo', nome: 'PAULO TONINI' }],
+    ]),
+    pronto: true,
+  })
+  const caso = (anest, hora = '08:00', turno = 'matutino') => ({ sala: 'Sala 1', hora, anestesista: anest, turno, statusCirurgia: 'agendada' })
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-20T10:00:00-03:00'))
+    estado.roster = rosterDois()
+  })
+  afterEach(() => vi.useRealTimers())
+
+  it('troca executada: quem ASSUMIU a posição do plantonista aparece, não o dono antigo', () => {
+    estado.ctx = {
+      data: hojeLocalISO(), loading: false,
+      escalas: {
+        unimed: {
+          status: 'publicada', hospital: 'unimed',
+          ordemLiberacao: { matutino: ['DIDO', 'PAULO'] },
+          linhaOverrides: { 'matutino:uid-gustavo': { assumidaPor: { uid: 'uid-paulo', nome: 'PAULO TONINI' } } },
+          casos: [caso('PAULO TONINI')],
+        },
+        hro: null, materno: null,
+      },
+    }
+    render(<EscalaCirurgicaHomeCard />)
+    expect(screen.getByText('Paulo Tonini')).toBeTruthy()
+    expect(screen.queryByText('Gustavo Biesdorf')).toBeNull()
+  })
+
+  it('às 13h o card troca para o plantonista da TARDE sem esperar a escala mudar', () => {
+    vi.setSystemTime(new Date('2026-08-20T12:58:00-03:00'))
+    estado.ctx = {
+      data: hojeLocalISO(), loading: false,
+      escalas: {
+        unimed: {
+          status: 'publicada', hospital: 'unimed',
+          ordemLiberacao: { matutino: ['DIDO'], vespertino: ['PAULO'] },
+          casos: [caso('DIDO'), caso('PAULO', '14:00', 'vespertino')],
+        },
+        hro: null, materno: null,
+      },
+    }
+    render(<EscalaCirurgicaHomeCard />)
+    expect(screen.getByText('Gustavo Biesdorf')).toBeTruthy()
+    act(() => { vi.advanceTimersByTime(3 * 60_000) })
+    expect(screen.getByText('Paulo Tonini')).toBeTruthy()
+    expect(screen.queryByText('Gustavo Biesdorf')).toBeNull()
+  })
+})

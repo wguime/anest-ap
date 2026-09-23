@@ -1,7 +1,7 @@
 /**
  * Helpers de apresentação da escala cirúrgica (puro, sem React).
  */
-import { resolverAnestesistas, nomeCirurgiaoCurto, titleCaseNome, primeiroNome, stripNotaRodape, fraseClinica } from '@/lib/colunaLiberacao'
+import { gerarColunaLiberacao, resolverAnestesistas, nomeCirurgiaoCurto, titleCaseNome, primeiroNome, stripNotaRodape, fraseClinica } from '@/lib/colunaLiberacao'
 import { STATUS_CONCLUIDO, casoConcluido, casoTerminado } from '@/lib/escalaCirurgicaStatus'
 import { casoPassaDeTurno } from '@/lib/escalaCirurgicaRegras'
 import { ehPosicaoAssistencial, filtrarItensImportados } from '@/lib/escalaCirurgicaItens'
@@ -2355,4 +2355,71 @@ export function localizarMeuPosto({ escalas, hospitais, eu, turnoPreferido, turn
     }
   }
   return null
+}
+
+/**
+ * PLANTONISTA DO TURNO pela MESMA lib da fila de liberação (revisão 23/09).
+ *
+ * O card da Home lia `rodapé[0]` cru: ignorava a posição ASSUMIDA numa troca
+ * executada (`linha_overrides[turno:chave].assumidaPor`) e o azul (ajuda de outro
+ * hospital) abrindo o rodapé — a fila mostrava um plantonista e a Home, outro.
+ * Aqui entram o rodapé do turno, os casos que contam para a fila, as ajudas e as
+ * assunções; o cruzamento com as OUTRAS escalas (emprestados/visitantes) fica de
+ * fora — é da tela da fila, e para o 1º nome do rodapé só importa o azul declarado.
+ * Sem rodapé (Materno), a lib deriva dos casos, como antes.
+ */
+export function plantonistaDoTurno(escala, turno, { resolverUid = () => null, hospital = '' } = {}) {
+  if (!escala || escala.status !== 'publicada') return null
+  const rodape = rodapeDoTurno(escala.ordemLiberacao, turno)
+  const casos = casosDaFilaDoTurno(escala.casos || [], turno, rodape, resolverUid)
+  if (!rodape.length && !casos.length) return null
+  const prefixo = `${turno}:`
+  const assumidas = {}
+  for (const [rawKey, ov] of Object.entries(escala.linhaOverrides || {})) {
+    if (!String(rawKey).startsWith(prefixo)) continue
+    if (ov?.assumidaPor?.uid || ov?.assumidaPor?.nome) assumidas[String(rawKey).slice(prefixo.length)] = ov.assumidaPor
+  }
+  const { plantonista } = gerarColunaLiberacao(casos, rodape, {
+    hospital, turno, resolverUid, assumidas,
+    ajudaExterna: rodapeDoTurno(escala.ajudaExterna, turno),
+    plantaoContraturno: escala.hospital !== 'materno',
+  })
+  return plantonista || null
+}
+
+/**
+ * O que REPUBLICAR este turno por cima perde (revisão 23/09).
+ *
+ * A RPC apaga os casos do turno e insere os do documento: status das cirurgias
+ * (iniciada/terminada/suspensa) e casos adicionados à mão no app (`origem =
+ * 'manual'`, quase sempre urgência) não voltam; as liberações do turno zeram de
+ * propósito (regra 23/07). Tempo, observação e trocas de quem segue na escala são
+ * PRESERVADOS (CAMPOS_RASTRO, 05/09) — o aviso antigo dizia "os tempos são
+ * zerados", o que não é verdade desde então, e calava o resto.
+ * @returns {null | { liberacoes:number, andamento:number, manuais:number }}
+ */
+export function perdaNaRepublicacao(escala, turno) {
+  if (!escala) return null
+  const casos = (escala.casos || []).filter((c) => (c.turno || turno) === turno)
+  const andamento = casos.filter((c) => c.statusCirurgia && c.statusCirurgia !== 'agendada').length
+  const manuais = casos.filter((c) => c.origem === 'manual').length
+  const liberacoes = Object.entries(escala.liberacoes || {})
+    .filter(([k, v]) => String(k).startsWith(`${turno}:`) && v && v.escalado !== true).length
+  if (!casos.length && !liberacoes) return null
+  return { liberacoes, andamento, manuais }
+}
+
+/** Frase do aviso — só cita o que existe; null quando não há nada a perder. */
+export function frasePerdaRepublicacao(perda) {
+  if (!perda) return null
+  const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`
+  const itens = [
+    perda.liberacoes && plural(perda.liberacoes, 'liberação marcada', 'liberações marcadas'),
+    perda.andamento && plural(perda.andamento, 'cirurgia com andamento (iniciada/terminada/suspensa)', 'cirurgias com andamento (iniciada/terminada/suspensa)'),
+    perda.manuais && plural(perda.manuais, 'caso adicionado à mão no app', 'casos adicionados à mão no app'),
+  ].filter(Boolean)
+  const base = 'Este turno já está publicado.'
+  const mantidos = 'Tempo, observação e trocas de quem continua na escala são mantidos.'
+  if (!itens.length) return `${base} ${mantidos}`
+  return `${base} Publicar por cima perde: ${itens.join('; ')} — e não dá para desfazer. ${mantidos}`
 }

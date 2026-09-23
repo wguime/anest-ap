@@ -18,8 +18,8 @@ import { Skeleton, ACTION_PILL_CLASSES } from '@/design-system'
 import { useEscalaCirurgica, hojeISO, HOSPITAIS, HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
-import { nomeCirurgiaoCurto, titleCaseNome, ordemDerivadaDosCasos } from '@/lib/colunaLiberacao'
-import { turnoAtual, rodapeDoTurno, filtrarPorTurno, normNome } from '@/pages/escala-cirurgica/utils'
+import { nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
+import { turnoAtual, rodapeDoTurno, normNome, plantonistaDoTurno } from '@/pages/escala-cirurgica/utils'
 import { ehDataFilaUnica, ehFeriado, FDS_HOSPITAL, faixaFdsAtual, plantonistasFaixaFds } from '@/lib/escalaFds'
 import { formatDate } from '@/utils/formatters'
 import useAgoraMinuto from '@/pages/escala-cirurgica/useAgoraMinuto'
@@ -175,21 +175,20 @@ export function EscalaCirurgicaHomeCard({ onNavigate }) {
     return out.length ? { faixa, linhas: out } : null
   }, [fdsAtivo, fdsRow, agoraMin, resolver, rosterByUid, diaFdsRef, hoje, fonte])
 
+  // turno do RELÓGIO COMPARTILHADO: o memo abaixo depende dele — sem isso, às 13h
+  // o card seguia com o plantonista da manhã sob o rótulo "Vespertino" (e gravava
+  // esse snapshot) até a escala mudar por outro motivo (revisão 23/09)
+  const turnoVivo = turnoAtual()
   const linhas = useMemo(() => HOSPITAIS.flatMap((h) => {
     const e = fonte?.[h]
-    // plantonista do TURNO atual (rodapé por-turno; array legado = o dia todo).
-    // Sem rodapé (o mapa do Materno não traz a lista vermelha), deriva dos casos
-    // pela MESMA regra da aba Liberações — antes o Materno nunca tinha plantonista.
-    const turno = turnoAtual()
-    const plantonista = e?.status === 'publicada'
-      ? (rodapeDoTurno(e.ordemLiberacao, turno)[0]
-         || ordemDerivadaDosCasos(filtrarPorTurno(e.casos || [], turno))[0]
-         || null)
-      : null
+    // plantonista do TURNO atual pela MESMA lib da aba Liberações (revisão 23/09):
+    // posição assumida numa troca e azul no topo do rodapé contam; sem rodapé (o
+    // Materno), deriva dos casos — antes o Materno nunca tinha plantonista.
+    const plantonista = plantonistaDoTurno(e, turnoVivo, { resolverUid: resolver, hospital: HOSPITAL_LABEL[h] })
     if (!plantonista) return []
     const cadastro = rosterByUid.get(resolver(plantonista) || '')?.nome
     return [{ hospital: HOSPITAL_LABEL[h], nome: cadastro ? nomeCirurgiaoCurto(cadastro) : titleCaseNome(plantonista) }]
-  }), [fonte, resolver, rosterByUid])
+  }), [fonte, resolver, rosterByUid, turnoVivo])
 
   const fonteCarregando = contextEhHoje ? loading : fallback == null
   const carregando = (linhas.length === 0 && fonteCarregando) || (linhas.length > 0 && aguardandoRoster)

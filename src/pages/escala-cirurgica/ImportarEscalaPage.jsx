@@ -23,7 +23,7 @@ import { iniciaisSeguras, INICIAIS_MAX } from '@/lib/escalaCirurgicaPaciente'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
 import { TRABALHO_VAZIO } from './trabalhoConferencia'
-import { linhaVazia, prepararCasosImportados as prepararCasos, normNome, candidatosPrimeiroNome, resumirRodape, casosQuePassamParaOTurno, presencaDoTurno, estaPresente, gruposAnestesista, chavesAnestesista, aplicarAtribuicoes, preAtribuicoesDoDicionario, migrarAtribuicoes, azuisEmprestados, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital } from './utils'
+import { perdaNaRepublicacao, frasePerdaRepublicacao, linhaVazia, prepararCasosImportados as prepararCasos, normNome, candidatosPrimeiroNome, resumirRodape, casosQuePassamParaOTurno, presencaDoTurno, estaPresente, gruposAnestesista, chavesAnestesista, aplicarAtribuicoes, preAtribuicoesDoDicionario, migrarAtribuicoes, azuisEmprestados, detectarConflitos, lerOverrideAnterior, paresDeclarados, planoExecucaoDeclarada, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital } from './utils'
 import { mensagemErroPublicacao } from '@/lib/escalaPublicacaoErro'
 import { validarCasosParaPublicacao, resumirBloqueiosDeCampo, textoBloqueio } from '@/lib/escalaCirurgicaValidacao'
 import dadosNumerica from '@/data/escalaNumerica.json'
@@ -920,6 +920,13 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     return () => { vivo = false }
   }, [dataEscolhida, hosp])
 
+  // Republicar por cima (revisão 23/09): a confirmação dizia só "Confirmar publicação" —
+  // nada avisava que já havia escala em uso neste turno e o que se perde com ela.
+  const fraseRepublicacao = useMemo(
+    () => frasePerdaRepublicacao(perdaNaRepublicacao(escalaPublicada, periodo)),
+    [escalaPublicada, periodo],
+  )
+
   // ── O QUE A PUBLICAÇÃO VAI FAZER COM QUEM ESTÁ SEM CIRURGIA (dono 24/08) ──
   // "Nenhum dos dois apareceu na tela de confirmação antes da publicação."
   // O aviso de extração acima existe desde 23/07, mas ele fala de SUSPEITA
@@ -1607,16 +1614,15 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
 
       // Nome completo → cobrança: caso PARTICULAR extraído com pacienteNome
       // (Vision/Excel) completa o rascunho auto-criado pelo trigger. Match por
-      // sala|ordem (a RPC devolve os casos salvos ordenados por sala,ordem; a
-      // ordem efetiva replica `{ ordem: i, ...c }` do service). Fire-and-forget:
-      // falha deixa o rascunho com iniciais + badge "Completar dados".
+      // sala|ordem, com a ordem que o SERVICE grava: `ordem: i`, o índice do caso
+      // DENTRO deste turno (salvarEscalaTurno). Revisão 23/09: casava por `c.ordem`,
+      // o índice da leitura no lote inteiro — no Materno à tarde, ou com linha
+      // removida na conferência, a chave deslocava e o nome ia para o particular
+      // errado da mesma sala. Fire-and-forget: falha deixa o rascunho com
+      // iniciais + badge "Completar dados".
       try {
-        const ordemEfetiva = (c, i) => {
-          const o = 'ordem' in c ? c.ordem : i
-          return Number.isFinite(Number(o)) ? Number(o) : 0
-        }
         const comNome = casosNovos
-          .map((c, i) => ({ c, key: `${c.sala}|${ordemEfetiva(c, i)}` }))
+          .map((c, i) => ({ c, key: `${c.sala}|${i}` }))
           .filter(({ c }) => c.pacienteNome && familiaConvenio(c.convenio) === 'particular')
         if (comNome.length && saved?.casos?.length) {
           const idPorChave = new Map(saved.casos.map((s) => [`${s.sala}|${s.ordem}`, s.id]))
@@ -3251,7 +3257,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
         onClose={() => setConfirmacaoPublicacao(false)}
         onConfirm={() => { setConfirmacaoPublicacao(false); publicar({ confirmacao: true }) }}
         title="Confirmar publicação da escala"
-        description={`${HOSPITAL_LABEL[hosp]} · ${formatData(dataEscolhida)} · ${periodo === 'matutino' ? 'Matutino' : 'Vespertino'}. Serão publicados ${resumoTexto(selecionarCasosDoTurno(casos, periodo))}. Confirme hospital, data e turno antes de continuar.`}
+        description={`${HOSPITAL_LABEL[hosp]} · ${formatData(dataEscolhida)} · ${periodo === 'matutino' ? 'Matutino' : 'Vespertino'}. Serão publicados ${resumoTexto(selecionarCasosDoTurno(casos, periodo))}. Confirme hospital, data e turno antes de continuar.${fraseRepublicacao ? ` ${fraseRepublicacao}` : ''}`}
         confirmText="Publicar escala"
         cancelText="Voltar e revisar"
       />

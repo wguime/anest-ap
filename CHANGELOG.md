@@ -3,6 +3,19 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.28 (23/09/2026) — Escala: nome do particular no caso certo, card da Home igual à fila, aviso de republicar honesto
+
+Segunda leva da revisão de 23/09.
+- **Nome do paciente particular → cobrança casa pelo índice do TURNO** (o que o service grava), não
+  pela ordem que a leitura deu no lote. No Materno à tarde, ou com linha removida na conferência, o
+  nome ia para o particular errado da mesma sala.
+- **Card da Home usa a mesma lib da fila** (`plantonistaDoTurno`): posição assumida numa troca
+  executada e azul no topo do rodapé contam; às 13h troca para o plantonista da tarde sozinho (o
+  memo não dependia do turno e gravava o snapshot errado).
+- **Aviso de republicar:** a confirmação da publicação avisa quando o turno já está no ar e diz o que
+  se perde (liberações, andamento das cirurgias, casos adicionados à mão) e o que fica (tempo,
+  observação, trocas). O diálogo do lote dizia "os tempos são zerados" — falso desde 05/09.
+
 ## v5.12.27 (23/09/2026) — Escala: seis defeitos silenciosos da revisão de 23/09
 
 Revisão do módulo (fluxos, telas e uso real em produção) pedida pelo dono em 23/09. Só defeitos que
