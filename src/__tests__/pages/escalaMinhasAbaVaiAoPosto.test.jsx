@@ -38,6 +38,7 @@ vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
     setLinhaOverride: vi.fn(),
   }),
   hojeISO: (d) => hojeLocalISO(d),
+  diaOperacionalISO: (d) => hojeLocalISO(d),
   HOSPITAIS: ['unimed', 'hro', 'materno'],
   HOSPITAL_LABEL: { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' },
   OBSERVACAO_MAX: 120,

@@ -17,7 +17,7 @@ import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { anestesistaDoCasoEh, casoConcluido, casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, turnoDoCaso, compararSalas, parseHoraMinutos, salaExibicao, nomeAnestesistaExibicao, convenioExibicao, idadeExibicao, limparConcluidosNaVirada, visaoNoturna } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import { formatFaltante } from './PainelTempo'
-import useAgoraMinuto from './useAgoraMinuto'
+import useAgoraMinutoEscala from './useAgoraMinutoEscala'
 import useEstadoUrgencias from './useEstadoUrgencias'
 import DefinirAnestesistaSheet from './DefinirAnestesistaSheet'
 import AddCasoSheet from './AddCasoSheet'
@@ -326,7 +326,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
   const [abertas, setAbertas] = useState(null)
   // UM intervalo p/ o board inteiro (não um por card) — alimenta o tempo faltante
   // de cada cirurgia nos CasoCard.
-  const agoraMin = useAgoraMinuto()
+  const agoraMin = useAgoraMinutoEscala()
   // `hoje` do context (fonte única desde 21/08) — decide se a escala é a de hoje
   const { hoje } = useEscalaCirurgica()
   // VIRADA DAS 19h (dono 17/09): o quadro da tarde perde o que JÁ ESTAVA

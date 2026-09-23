@@ -287,15 +287,30 @@ const SALAS_CONHECIDAS_HRO = new Set(
  * passthrough. Ler só `createdAt` daria undefined e a fila ordenaria por NaN, em
  * silêncio.
  */
+/**
+ * Minuto de um carimbo na linha do tempo do DIA OPERACIONAL de `dataEscala` (dono
+ * 23/09: o dia vira às 7h). Mesmo dia → minutos do dia; madrugada do dia SEGUINTE
+ * (antes das 7h) → 24h+, na mesma régua do relógio da escala (useAgoraMinutoEscala);
+ * qualquer outro dia → null (não é deste turno).
+ */
+function minutoNoDiaOperacional(d, dataEscala) {
+  const isoDe = (x) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`
+  const min = d.getHours() * 60 + d.getMinutes()
+  if (!dataEscala || isoDe(d) === dataEscala) return min
+  const seguinte = new Date(`${dataEscala}T12:00:00`)
+  seguinte.setDate(seguinte.getDate() + 1)
+  if (isoDe(d) === isoDe(seguinte) && min < 7 * 60) return min + 1440
+  return null
+}
+
 export function chegadaDaUrgencia(caso, { dataEscala } = {}) {
   const bruto = caso?.created_at || caso?.createdAt
   if (!bruto) return null
   const d = new Date(bruto)
   if (Number.isNaN(d.getTime())) return null
-  const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   // Caso criado noutro dia (escala importada na véspera): a chegada não é do turno.
-  if (dataEscala && iso !== dataEscala) return null
-  return d.getHours() * 60 + d.getMinutes()
+  // A madrugada seguinte ainda é (plantão da noite, dia operacional).
+  return minutoNoDiaOperacional(d, dataEscala)
 }
 
 /** Ordenação da fila: gravidade → chegada → ordem na sala → id (estável). */
@@ -569,7 +584,9 @@ export function estadoUrgencias(casos = [], opts = {}) {
       })
 
       // Hora marcada já passou e ninguém iniciou: provavelmente começou sem marcar.
-      const horaMin = horaEmMinutos(it.caso?.hora)
+      // de madrugada o relógio da escala vale 24h+: a urgência marcada 01:30 é 25:30
+      const horaBruta = horaEmMinutos(it.caso?.hora)
+      const horaMin = horaBruta != null && agoraMin >= 1440 && horaBruta < 7 * 60 ? horaBruta + 1440 : horaBruta
       if (!rodando && ehUrgencia(it.caso) && horaMin != null
         && agoraMin - horaMin > LIMITE_SUSPEITA_MIN && !it.caso?.semAnestesista) {
         suspeitas.push({ ...it, atrasoMin: agoraMin - horaMin })
@@ -814,9 +831,7 @@ export function inicioDaUrgencia(caso, { dataEscala } = {}) {
   if (!bruto) return null
   const d = new Date(bruto)
   if (Number.isNaN(d.getTime())) return null
-  const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  if (dataEscala && iso !== dataEscala) return null
-  return d.getHours() * 60 + d.getMinutes()
+  return minutoNoDiaOperacional(d, dataEscala)
 }
 
 /**

@@ -15,10 +15,10 @@ import { fraseClinica, gerarColunaLiberacao, nomeCirurgiaoCurto, titleCaseNome }
 import { faseLiberacoes, plantonistasNoturnos, candidatosNome, linhasNoturnas, fundirLinhasNoturnas, marcarSelosNoTurno, ehDiaUtil, casarPorInicialSobrenome, P4_HOSPITAIS } from '@/lib/plantaoNoturno'
 import { marcarSelosFds, linhasNoturnasFds, plantonistasFaixaFds, FDS_TURNO_FAIXA, resolverNomeEstrito, ehFeriado, agruparSemAnestesistaPorCirurgiao, aplicarDomingoP7P8 } from '@/lib/escalaFds'
 import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
-import { hojeISO, HOSPITAIS, HOSPITAL_LABEL, OBSERVACAO_MAX } from '@/contexts/EscalaCirurgicaContext'
+import { diaOperacionalISO, HOSPITAIS, HOSPITAL_LABEL, OBSERVACAO_MAX } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
-import useAgoraMinuto from './useAgoraMinuto'
+import useAgoraMinutoEscala from './useAgoraMinutoEscala'
 import useAvisoPlantonista from './useAvisoPlantonista'
 import { AvisoTempoEstourado } from './useAvisoTempoEstourado'
 import PainelTempo, { formatFaltante, fraseCronometro, fraseFaltante } from './PainelTempo'
@@ -143,7 +143,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // Cronômetro em tempo real: o texto é derivado puro de `agoraMin`. O hook
   // recalcula ao voltar do segundo plano (iOS/PWA mata o setInterval na
   // suspensão — pills congeladas o dia todo em produção, bug 2026-07-22).
-  const agoraMin = useAgoraMinuto()
+  const agoraMin = useAgoraMinutoEscala()
 
   // Anestesistas com caso reagendado p/ a tarde (status passa_tarde no board) —
   // compara por nome normalizado: a linha usa titleCase, o caso o texto importado.
@@ -476,7 +476,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     const ate = horaSaidaDe(l)
     const dataEscala = String(escala?.data || '')
     if (!ate || !dataEscala) return false
-    const hoje = hojeISO()
+    const hoje = diaOperacionalISO()
     if (dataEscala !== hoje) return dataEscala < hoje
     const [h, m] = ate.split(':').map(Number)
     return agoraMin >= h * 60 + m
@@ -498,7 +498,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const feriado = modoFds && ehFeriado(escala?.data)
   const fase = feriado
     ? 'dia'
-    : faseLiberacoes({ agoraMin, dataEscala: escala?.data, hojeIso: hojeISO(), fds: modoFds })
+    : faseLiberacoes({ agoraMin, dataEscala: escala?.data, hojeIso: diaOperacionalISO(), fds: modoFds })
   // CAUDA VERMELHA AUTOMÁTICA — quem fecha a fila sem cirurgia nasce Liberado.
   //
   //   dia útil ........... sempre (regra de 21/08)
@@ -715,7 +715,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // sem selo na de manhã. Quem entra no plantão à noite carrega o selo nos DOIS
   // turnos da escala de HOJE — é informação da pessoa, não do turno.
   const avisarSelos = (!modoFds || feriado) && fase === 'dia'
-    && escala?.data === hojeISO() && ehDiaUtil(escala?.data)
+    && escala?.data === diaOperacionalISO() && ehDiaUtil(escala?.data)
   const fundidas = linhasNoite.length
     ? fundirLinhasNoturnas(linhas, linhasNoite, {
         // FDS: matching ESTRITO — sem ele "JOAO RICARDO" casava com o alias

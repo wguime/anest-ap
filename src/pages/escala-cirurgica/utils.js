@@ -835,6 +835,15 @@ export function turnoAtual(d = new Date()) {
   return d.getHours() < 13 ? 'matutino' : 'vespertino'
 }
 
+/**
+ * Turno corrente do DIA OPERACIONAL (dono 23/09: o dia vira às 7h). De madrugada a
+ * tela está no plantão da noite, que no dia útil lê as cirurgias da TARDE — sem
+ * isto, às 01h o seletor abria na manhã do dia que já acabou.
+ */
+export function turnoAtualOperacional(d = agora()) {
+  return d.getHours() < 7 ? 'vespertino' : turnoAtual(d)
+}
+
 // ── Azul de EMPRESTADO não é ajuda daqui (dono 01/09 — caso Eduardo) ─────────
 // No mapa do HRO o azul tem DOIS sentidos: gente de fora ajudando AQUI e gente
 // NOSSA emprestada para outro hospital. A leitura devolvia os dois em

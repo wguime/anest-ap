@@ -14,7 +14,8 @@ import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import SegmentedSelector from './SegmentedSelector'
 import BarraControles from './BarraControles'
-import useAgoraMinuto from './useAgoraMinuto'
+import useAgoraMinutoEscala from './useAgoraMinutoEscala'
+import { minutosDoDia } from './useAgoraMinuto'
 import MinhasEscalasView from './MinhasEscalasView'
 import BoardView from './BoardView'
 import FaixaUrgencias from './FaixaUrgencias'
@@ -22,7 +23,7 @@ import LiberacoesView from './LiberacoesView'
 import ImportarEscalasPage from './ImportarEscalasPage'
 import ImportarEscalaFdsPage from './ImportarEscalaFdsPage'
 import TrocaSheet from './TrocaSheet'
-import { meuAliasDe, turnoAtual, dataPorExtenso, estadoTrocasDoHistorico, normNome, formatData, rodapeDoTurno, localizarSlotEscala, localizarMeuPosto, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca, espelhoTempoTotal, terminoEncadeado, turnoDoCaso } from './utils'
+import { meuAliasDe, turnoAtualOperacional, dataPorExtenso, estadoTrocasDoHistorico, normNome, formatData, rodapeDoTurno, localizarSlotEscala, localizarMeuPosto, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca, espelhoTempoTotal, terminoEncadeado, turnoDoCaso } from './utils'
 import { ehDataFilaUnica, ehFeriado, ehFimDeSemana, FDS_HOSPITAL, FDS_TURNO_CASOS, FDS_TURNOS, turnoFdsAtual } from '@/lib/escalaFds'
 import { faseLiberacoes } from '@/lib/plantaoNoturno'
 import { hospitalDaConta, podeEditarEscalaCirurgica, podePublicarEscalaCirurgica } from './gate'
@@ -58,7 +59,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const { plantoes: plantoesDia } = useEscalaDia()
   const [hospital, setHospital] = useState('unimed')
   const [aba, setAba] = useState('minhas')
-  const [turno, setTurno] = useState(() => turnoAtual())
+  const [turno, setTurno] = useState(() => (ehFimDeSemana(data) ? turnoFdsAtual(minutosDoDia()) : turnoAtualOperacional()))
   // sáb/dom é dado do CALENDÁRIO — não espera rede (ver turnoDoRelogio)
   const fimDeSemana = ehFimDeSemana(data)
   const feriado = ehFeriado(data)
@@ -90,7 +91,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   // Sábado e domingo são conhecidos pelo calendário: decidir por eles é
   // instantâneo e o primeiro render já sai certo.
   const turnoDoRelogio = useCallback(
-    () => (fimDeSemana ? turnoFdsAtual(new Date().getHours() * 60 + new Date().getMinutes()) : turnoAtual()),
+    () => (fimDeSemana ? turnoFdsAtual(minutosDoDia()) : turnoAtualOperacional()),
     [fimDeSemana]
   )
   const [importando, setImportando] = useState(false)
@@ -155,11 +156,11 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   // virada do dia acima. Escolha manual de turno divergente pausa o automático
   // até a PRÓXIMA virada do relógio (consultar o outro turno de propósito não
   // pode ser desfeito sob o dedo); outra data nunca é mexida.
-  const agoraMin = useAgoraMinuto()
+  const agoraMin = useAgoraMinutoEscala()
   useEffect(() => {
     // 'noturno' só existe no FDS: saindo dele (outra data/dia útil), a tela
     // volta para o turno do relógio em vez de ficar num turno inexistente.
-    if (!fimDeSemana && turno === 'noturno') { turnoManualRef.current = null; setTurno(turnoAtual()); return }
+    if (!fimDeSemana && turno === 'noturno') { turnoManualRef.current = null; setTurno(turnoAtualOperacional()); return }
     if (data !== hoje) return
     const atual = turnoDoRelogio()
     if (turnoManualRef.current === atual) return // escolha manual vale nesta faixa

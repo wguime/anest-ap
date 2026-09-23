@@ -3,6 +3,17 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.29 (23/09/2026) — Escala: o dia vira às 7h — de madrugada a tela segue no plantão em andamento
+
+Decisão do dono (23/09), na revisão do módulo. A virada à meia-noite (24/07) tirava da tela, entre
+0h e 7h, o plantão da noite e as urgências abertas (não havia "ontem" no seletor), e no FDS mostrava
+domingo à 1h a equipe da noite de domingo, que só entra às 19h.
+- `diaOperacionalISO`: antes das 7h o "hoje" da escala é a véspera; às 7h a data avança sozinha.
+- `useAgoraMinutoEscala`: no plantão em andamento, 01:00 conta como 25:00 — a fase segue "zerada"
+  (só os P1–P4), a lista do dia não volta inteira, e espera/início das urgências da madrugada
+  entram na mesma régua.
+- Turno de madrugada no dia útil abre no vespertino (a noite lê as cirurgias da tarde).
+
 ## v5.12.28 (23/09/2026) — Escala: nome do particular no caso certo, card da Home igual à fila, aviso de republicar honesto
 
 Segunda leva da revisão de 23/09.

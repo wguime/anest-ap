@@ -57,6 +57,23 @@ export function hojeISO(d = agora()) {
   return new Date(d.getTime() - off).toISOString().slice(0, 10)
 }
 
+/** Minuto do dia em que o DIA OPERACIONAL da escala vira: 07:00, a troca de plantão. */
+export const CORTE_DIA_OPERACIONAL_MIN = 7 * 60
+
+/**
+ * DIA OPERACIONAL (dono 23/09: "virar às 7h"). A madrugada pertence ao plantão da
+ * noite ANTERIOR — a mesma regra de `chavePlantaoDoDia` (Pega Plantão) e do card da
+ * Home. Virar à meia-noite (24/07) tirava da tela, entre 0h e 7h, o plantão em
+ * andamento e as urgências abertas (não havia "ontem" no seletor), e no FDS mostrava
+ * domingo à 1h a equipe da noite de domingo, que só entra às 19h.
+ */
+export function diaOperacionalISO(d = agora()) {
+  if (d.getHours() * 60 + d.getMinutes() >= CORTE_DIA_OPERACIONAL_MIN) return hojeISO(d)
+  const ontem = new Date(d)
+  ontem.setDate(ontem.getDate() - 1)
+  return hojeISO(ontem)
+}
+
 // DECLARAÇÕES SOBRE A PESSOA em `linha_overrides` (não ajuste de exibição): sobrevivem a
 // salvar o editor, "Restaurar automático", desfazer liberação e marcar escalado; cada
 // uma se limpa pelo próprio botão. Lista ÚNICA (revisão 23/09): eram seis listas à mão
@@ -142,7 +159,7 @@ function reducer(state, action) {
 
 export function EscalaCirurgicaProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState)
-  const [data, setData] = useState(() => hojeISO())
+  const [data, setData] = useState(() => diaOperacionalISO())
   const [loading, setLoading] = useState(true)
   // hospitais cuja leitura FALHOU sem nada anterior para mostrar ({ unimed: true, … })
   const [erroCarga, setErroCarga] = useState(null)
@@ -337,20 +354,21 @@ export function EscalaCirurgicaProvider({ children }) {
   // Recarrega quando a data muda (sem recriar subscriptions).
   useEffect(() => { loadData(data) }, [data, loadData])
 
-  // VIRADA DA MEIA-NOITE (pedido do dono 24/07): quem deixa o app aberto durante
-  // o plantão ficava vendo a escala de ONTEM — e a lista voltava INTEIRA, porque
-  // a fase noturna só vale p/ a escala de hoje (00h05 = 'dia' na data de ontem).
-  // Passada a meia-noite, a data avança sozinha e só a escala do dia novo fica.
+  // VIRADA DO DIA ÀS 7h (dono 23/09; antes à meia-noite, pedido de 24/07): quem
+  // deixa o app aberto no plantão segue vendo o plantão da noite até a troca das
+  // 7h; aí a data avança sozinha. A lista não "volta inteira" de madrugada porque
+  // o relógio da escala (useAgoraMinutoEscala) conta a madrugada como 24h+ do dia
+  // operacional — a fase segue 'zerada'.
   // Só mexe em quem estava vendo HOJE: quem foi ao calendário continua onde está.
   // Timer + visibilitychange/pageshow/focus porque iOS/PWA mata o setInterval na
   // suspensão (mesma lição do cronômetro, bug 2026-07-22).
   // `hoje` é ESTADO (não useMemo na página): só assim o rótulo "Hoje" e o atalho
   // "Amanhã" acompanham a virada num app que ficou aberto a noite toda.
-  const [hoje, setHoje] = useState(() => hojeISO())
+  const [hoje, setHoje] = useState(() => diaOperacionalISO())
   const hojeRef = useRef(hoje)
   useEffect(() => {
     const checar = () => {
-      const novo = hojeISO()
+      const novo = diaOperacionalISO()
       if (novo === hojeRef.current) return
       const anterior = hojeRef.current
       hojeRef.current = novo
@@ -1546,7 +1564,7 @@ export function EscalaCirurgicaProvider({ children }) {
   )
 }
 
-const STATE_FALLBACK = { escalas: { unimed: null, hro: null, materno: null, fds: null }, p4Hospital: null, data: hojeISO(), loading: true, hoje: hojeISO(), erroCarga: null }
+const STATE_FALLBACK = { escalas: { unimed: null, hro: null, materno: null, fds: null }, p4Hospital: null, data: diaOperacionalISO(), loading: true, hoje: diaOperacionalISO(), erroCarga: null }
 const ACTIONS_FALLBACK = {
   setData: () => {}, prefetch: async () => {}, salvarEscala: async () => {}, salvarEscalaTurno: async () => {}, reordenarLiberacao: async () => {},
   toggleLiberacao: async () => {}, setLocalAnestesista: async () => {}, setAnestesistaCasos: async () => {},

@@ -677,10 +677,11 @@ describe('Liberações — caso passa_tarde sinaliza o anestesista', () => {
 // NOTIFICAÇÕES (contexto) — escalado/liberado por login (uid)
 // ════════════════════════════════════════════════════════════════════════════
 // ════════════════════════════════════════════════════════════════════════════
-// Virada da meia-noite (pedido do dono 24/07): passada a meia-noite a escala do
-// dia anterior sai da tela e fica só a do dia seguinte.
+// Virada do DIA às 7h (dono 23/09; antes à meia-noite, pedido de 24/07): de
+// madrugada a tela segue no plantão da noite em andamento; às 7h, a troca de
+// plantão, a escala do dia anterior sai e fica só a do dia seguinte.
 // ════════════════════════════════════════════════════════════════════════════
-describe('Virada da meia-noite', () => {
+describe('Virada do dia às 7h', () => {
   const providerWrap = async () => {
     const { EscalaCirurgicaProvider } = await import('@/contexts/EscalaCirurgicaContext')
     return ({ children }) => <ThemeProvider><ToastProvider><EscalaCirurgicaProvider>{children}</EscalaCirurgicaProvider></ToastProvider></ThemeProvider>
@@ -690,13 +691,15 @@ describe('Virada da meia-noite', () => {
     const Wrapper = await providerWrap()
     return renderHook(() => useEscalaCirurgica(), { wrapper: Wrapper })
   }
-  const passarDaMeiaNoite = async () => {
+  const irPara = async (d) => {
     await act(async () => {
-      vi.setSystemTime(new Date(2026, 6, 24, 0, 5, 0)) // 00h05 do dia seguinte
-      vi.advanceTimersByTime(31_000)                   // o checador roda a cada 30s
+      vi.setSystemTime(d)
+      vi.advanceTimersByTime(31_000) // o checador roda a cada 30s
       await flush()
     })
   }
+  const madrugada = () => irPara(new Date(2026, 6, 24, 0, 5, 0))   // 00h05
+  const trocaDePlantao = () => irPara(new Date(2026, 6, 24, 7, 1, 0)) // 07h01
 
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
@@ -704,17 +707,26 @@ describe('Virada da meia-noite', () => {
   })
   afterEach(() => { cleanup(); vi.useRealTimers() })
 
-  it('quem está vendo HOJE avança sozinho para o dia seguinte', async () => {
+  it('de madrugada a tela SEGUE no plantão da noite (o dia operacional ainda é ontem)', async () => {
     const { result } = await montar()
     expect(result.current.data).toBe('2026-07-23')
-    await passarDaMeiaNoite()
-    expect(result.current.data).toBe('2026-07-24')
-    expect(result.current.hoje).toBe('2026-07-24')
+    await madrugada()
+    expect(result.current.data).toBe('2026-07-23')
+    expect(result.current.hoje).toBe('2026-07-23')
   })
 
-  it('a escala do dia anterior é recarregada para a data nova (sai da tela)', async () => {
-    await montar()
-    await passarDaMeiaNoite()
+  it('abrir o app de madrugada já cai no plantão em andamento, não no dia novo', async () => {
+    vi.setSystemTime(new Date(2026, 6, 24, 2, 30, 0))
+    const { result } = await montar()
+    expect(result.current.data).toBe('2026-07-23')
+  })
+
+  it('às 7h quem está vendo HOJE avança sozinho para o dia seguinte', async () => {
+    const { result } = await montar()
+    await madrugada()
+    await trocaDePlantao()
+    expect(result.current.data).toBe('2026-07-24')
+    expect(result.current.hoje).toBe('2026-07-24')
     const datas = svcMock.fetchEscala.mock.calls.map((c) => c[0])
     expect(datas).toContain('2026-07-24')
   })
@@ -722,7 +734,7 @@ describe('Virada da meia-noite', () => {
   it('quem foi ao CALENDÁRIO ver outra data continua onde está', async () => {
     const { result } = await montar()
     await act(async () => { result.current.setData('2026-07-20'); await flush() })
-    await passarDaMeiaNoite()
+    await trocaDePlantao()
     expect(result.current.data).toBe('2026-07-20') // não sequestra a navegação
     expect(result.current.hoje).toBe('2026-07-24') // mas sabe que o dia virou
   })

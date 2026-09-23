@@ -220,3 +220,39 @@ describe('5 · término que atravessa a meia-noite', () => {
     expect(diffRelogioMin(m('14:00'), m('13:00'))).toBe(60)
   })
 })
+
+describe('madrugada: o relógio da escala conta 24h+ no plantão em andamento (dono 23/09)', () => {
+  it('01:00 vendo o dia operacional vale 25:00; outra data segue 01:00', async () => {
+    const { minutoOperacional } = await import('@/pages/escala-cirurgica/useAgoraMinutoEscala')
+    expect(minutoOperacional(60, { data: '2026-09-22', hoje: '2026-09-22' })).toBe(1500)
+    expect(minutoOperacional(60, { data: '2026-09-23', hoje: '2026-09-22' })).toBe(60)
+    expect(minutoOperacional(8 * 60, { data: '2026-09-23', hoje: '2026-09-23' })).toBe(480)
+  })
+
+  it('com o relógio em 25:00 a fase continua ZERADA (a lista não volta inteira)', async () => {
+    const { faseLiberacoes } = await import('@/lib/plantaoNoturno')
+    // quarta 23/09 é dia útil
+    expect(faseLiberacoes({ agoraMin: 1500, dataEscala: '2026-09-23', hojeIso: '2026-09-23' })).toBe('zerada')
+  })
+
+  it('urgência que chegou 00:40 do dia seguinte entra na régua do plantão (24:40), outra data não', async () => {
+    const { chegadaDaUrgencia } = await import('@/lib/escalaCirurgicaUrgencias')
+    const madrugada = new Date(2026, 8, 24, 0, 40).toISOString()
+    const tarde = new Date(2026, 8, 24, 14, 0).toISOString()
+    expect(chegadaDaUrgencia({ createdAt: madrugada }, { dataEscala: '2026-09-23' })).toBe(24 * 60 + 40)
+    expect(chegadaDaUrgencia({ createdAt: tarde }, { dataEscala: '2026-09-23' })).toBeNull()
+  })
+
+  it('diaOperacionalISO: antes das 7h é a véspera; às 7h vira', async () => {
+    const { diaOperacionalISO } = await import('@/contexts/EscalaCirurgicaContext')
+    expect(diaOperacionalISO(new Date(2026, 8, 24, 6, 59))).toBe('2026-09-23')
+    expect(diaOperacionalISO(new Date(2026, 8, 24, 7, 0))).toBe('2026-09-24')
+  })
+
+  it('turno do dia operacional: de madrugada é a TARDE (a noite lê as cirurgias da tarde)', async () => {
+    const { turnoAtualOperacional } = await import('@/pages/escala-cirurgica/utils')
+    expect(turnoAtualOperacional(new Date(2026, 8, 24, 3, 0))).toBe('vespertino')
+    expect(turnoAtualOperacional(new Date(2026, 8, 24, 8, 0))).toBe('matutino')
+    expect(turnoAtualOperacional(new Date(2026, 8, 24, 14, 0))).toBe('vespertino')
+  })
+})

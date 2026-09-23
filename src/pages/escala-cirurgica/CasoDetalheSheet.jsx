@@ -42,7 +42,7 @@ import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
 import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
 import { carimboDeStatus } from '@/lib/escalaCirurgicaStatus'
 import PainelTempo, { formatFaltante } from './PainelTempo'
-import useAgoraMinuto from './useAgoraMinuto'
+import useAgoraMinutoEscala from './useAgoraMinutoEscala'
 import { espelhoTempoTotal, nomeAnestesistaExibicao, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso, terminoEncadeado } from './utils'
 import ChipsEscolha, { GRAVIDADE_CHIPS, TIPOS_CIRURGIA } from './ChipsEscolha'
 
@@ -82,7 +82,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
   const { user } = useUser()
   const { residenteByUid } = useRosterResidentes()
   const { rosterByUid } = useRosterAnestesistas()
-  const agoraMin = useAgoraMinuto()
+  const agoraMin = useAgoraMinutoEscala()
   const isDemo = String(escala?.id).startsWith('demo-')
   // Sobrou UM editor nesta folha: o do tempo. Os de sala/cirurgião/convênio/
   // residente foram para o formulário do caso em 01/09.

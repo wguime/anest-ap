@@ -13,7 +13,7 @@ import { ehPosicaoAssistencial, resumirItensEscala } from '@/lib/escalaCirurgica
 import { anestesistaDoCasoEh, casosResolvidos, filtrarPorTurnoExibicao, limparConcluidosNaVirada, salaExibicao, visaoNoturna } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import { CasoCard } from './BoardView'
-import useAgoraMinuto from './useAgoraMinuto'
+import useAgoraMinutoEscala from './useAgoraMinutoEscala'
 import DefinirAnestesistaSheet from './DefinirAnestesistaSheet'
 import CasoDetalheSheet from './CasoDetalheSheet'
 import AddCasoSheet from './AddCasoSheet'
@@ -27,7 +27,7 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
   // na Completa seria a "aba pela metade" que a Minhas deixou de ser em 29/07.
   const [editando, setEditando] = useState(null)
   const isDemo = String(escala?.id).startsWith('demo-')
-  const agoraMin = useAgoraMinuto() // um intervalo p/ a lista (tempo faltante dos casos)
+  const agoraMin = useAgoraMinutoEscala() // um intervalo p/ a lista (tempo faltante dos casos)
   const { hoje } = useEscalaCirurgica()
   // VIRADA DAS 19h (dono 17/09): a mesma regra da Completa — sai o que JÁ
   // ESTAVA terminado/suspenso às 19h; o que termina depois fica. Minhas

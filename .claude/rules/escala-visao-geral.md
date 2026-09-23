@@ -229,6 +229,20 @@ Término "HH:MM" que atravessa a meia-noite: `diffRelogioMin` (utils) é a únic
 `maxDe` do espelho do tempo total. A volta de 24h só vale na janela da noite (agora ≥ 18h com
 alvo < 06h, ou o inverso); de dia, término esquecido continua "13h além".
 
+### O dia da escala vira às 7h, não à meia-noite (dono 2026-09-23)
+
+`hoje`/`data` do context são o DIA OPERACIONAL (`diaOperacionalISO`): antes das 7h vale a véspera —
+a mesma regra de `chavePlantaoDoDia` (Pega Plantão) e do card da Home. A virada à meia-noite
+(24/07) tirava da tela o plantão em andamento e as urgências abertas, e no FDS mostrava domingo à
+1h a equipe da noite de domingo. Para a lista não "voltar inteira" de madrugada (o motivo do
+pedido de 24/07), as telas da escala usam `useAgoraMinutoEscala`: vendo o dia operacional antes
+das 7h, 01:00 vale 1500 (25:00) — toda regra em minutos do dia segue certa (≥ 23h = 'zerada',
+faixa 19–07, espera da urgência). Carimbos e horas de caso da madrugada seguinte entram na mesma
+régua (`minutoNoDiaOperacional` nas urgências). Turno de madrugada no dia útil =
+`turnoAtualOperacional` → 'vespertino' (a noite lê a tarde). O card da Home segue com
+`useAgoraMinuto` e a regra própria dele. Trava: "Virada do dia às 7h" (personas) +
+`escalaRevisao2309.test.jsx`.
+
 ### Sobreaviso é posição ATIVA (dono 2026-09-04)
 
 Nota `(SOBREAVISO)`/`(SOBREAV)`/`(S/A)` no rodapé se comporta como `(CONSULT)`: a pessoa

@@ -16,10 +16,10 @@
 import { useMemo } from 'react'
 import { casosHerdados, estadoUrgenciasDaEscala } from '@/lib/escalaCirurgicaUrgencias'
 import { useEscalaCirurgica } from '@/contexts/EscalaCirurgicaContext'
-import useAgoraMinuto from './useAgoraMinuto'
+import useAgoraMinutoEscala from './useAgoraMinutoEscala'
 
 export default function useEstadoUrgencias(escala, { hospital, turno, fds = false } = {}) {
-  const agoraMin = useAgoraMinuto()
+  const agoraMin = useAgoraMinutoEscala()
   const { hoje } = useEscalaCirurgica()
 
   return useMemo(() => {

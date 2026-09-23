@@ -39,6 +39,7 @@ vi.mock('@/services/supabaseEscalaCirurgicaService', () => ({ default: svcMock }
 vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
   useEscalaCirurgica: () => estado.ctx,
   hojeISO: (d) => hojeLocalISO(d),
+  diaOperacionalISO: (d) => hojeLocalISO(d),
   HOSPITAIS: ['unimed', 'hro', 'materno'],
   HOSPITAL_LABEL: { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' },
   OBSERVACAO_MAX: 120,
