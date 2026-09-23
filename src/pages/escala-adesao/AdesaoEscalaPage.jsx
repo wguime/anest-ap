@@ -213,11 +213,11 @@ function LinhaPessoa({ p, janela, onAbrir }) {
  */
 function CelulaLarga({ valor, meta, texto, sub, sub2 }) {
   return (
-    <td className="p-1">
-      <span className={`flex min-h-[40px] flex-col items-center justify-center rounded-md px-1 py-0.5 leading-tight tabular-nums ${TOM[faixa(valor, meta)]}`}>
+    <td className="p-1 lg:px-1.5 xl:px-1">
+      <span className={`flex min-h-[44px] flex-col items-center justify-center rounded-md px-1 py-0.5 leading-tight tabular-nums ${TOM[faixa(valor, meta)]}`}>
         <b className="whitespace-nowrap text-[13px]">{texto ?? formatarPct(valor)}</b>
         {sub && <small className="hidden text-[10px] font-normal opacity-85 xl:block">{sub}</small>}
-        {sub2 && <small className="text-[10px] font-normal opacity-85">{sub2}</small>}
+        {sub2 && <small className="whitespace-nowrap text-[10px] font-normal opacity-85">{sub2}</small>}
       </span>
     </td>
   )
@@ -238,29 +238,31 @@ function TabelaCargo({ cargo, lista, janela, onAbrir }) {
             <span className="block text-[12.5px] font-extrabold uppercase tracking-wide text-primary">{CARGOS[cargo]} · {lista.length}</span>
             <span className="font-normal">últimos {j} dias · embaixo, {o} dias</span>
           </th>
-          <th className={th}>Situação</th>
+          <th className={`${th} hidden xl:table-cell`}>Situação</th>
           <th className={th}>Dias de uso<span className="hidden font-normal xl:block">semana / {j}d · meta {metaUso}</span></th>
-          <th className={th}>Aberturas<span className="hidden font-normal xl:block">por dia usado</span></th>
+          <th className={`${th} hidden xl:table-cell`}>Aberturas<span className="hidden font-normal xl:block">por dia usado</span></th>
           <th className={th}>{anest ? 'Marca início' : 'Inícios'}<span className="hidden font-normal xl:block">{anest ? '% das suas · meta 80%' : 'marcações'}</span></th>
           <th className={th}>{anest ? 'Marca término' : 'Términos'}<span className="hidden font-normal xl:block">{anest ? '% das suas · meta 80%' : 'marcações'}</span></th>
           <th className={th}>Tempo da cirurgia<span className="hidden font-normal xl:block">{anest ? '% das suas · meta 50%' : 'não se aplica'}</span></th>
-          <th className={th}>Tempo total<span className="hidden font-normal xl:block">{anest ? '% dos turnos · meta 80%' : 'não se aplica'}</span></th>
-          <th className={th}>Trocas</th>
-          <th className={`${th} rounded-tr-xl`}>Ações<span className="hidden font-normal xl:block">na escala</span></th>
+          <th className={`${th} rounded-tr-xl xl:rounded-tr-none`}>Tempo total<span className="hidden font-normal xl:block">{anest ? '% dos turnos · meta 80%' : 'não se aplica'}</span></th>
+          <th className={`${th} hidden xl:table-cell`}>Trocas</th>
+          <th className={`${th} hidden rounded-tr-xl xl:table-cell`}>Ações<span className="hidden font-normal xl:block">na escala</span></th>
         </tr>
       </thead>
       <tbody>
         {lista.map((p) => (
           <tr key={p.chave} onClick={() => onAbrir(p)} className="cursor-pointer border-t border-border hover:bg-muted/60">
-            <td className="border-t border-border py-1.5 pl-3 pr-2">
+            <td className="border-t border-border py-2 pl-3 pr-2 xl:py-1.5">
               <button type="button" onClick={(e) => { e.stopPropagation(); onAbrir(p) }} className="text-left text-[13.5px] font-semibold leading-tight hover:underline">
                 {p.nome}
               </button>
               {p.sub && <span className="block text-[11px] text-muted-foreground">{p.sub}</span>}
+              {/* tablet em pé: a situação vai para baixo do nome (a coluna própria só a partir de xl) */}
+              <span className="mt-1 block xl:hidden"><Tag situacao={p.situacao} /></span>
             </td>
-            <td className="whitespace-nowrap border-t border-border px-1 text-center"><Tag situacao={p.situacao} /></td>
+            <td className="hidden whitespace-nowrap border-t border-border px-1 text-center xl:table-cell"><Tag situacao={p.situacao} /></td>
             <CelulaLarga valor={p[`d${j}`]} meta={metaUso} texto={`${p.d7} / ${p[`d${j}`]}`} sub={`${o}d: ${p[`d${o}`]}`} />
-            <td className="border-t border-border text-center text-[13px] tabular-nums">{p.aberturasPorDia ?? '—'}</td>
+            <td className="hidden border-t border-border text-center text-[13px] tabular-nums xl:table-cell">{p.aberturasPorDia ?? '—'}</td>
             {p.anest ? (
               <>
                 <CelulaLarga valor={p[`ini${j}`]} meta={META.ini} sub={j === '30' ? n(p.iniEu30, p.casos30) : null} sub2={`${o}d: ${formatarPct(p[`ini${o}`])}`} />
@@ -276,8 +278,8 @@ function TabelaCargo({ cargo, lista, janela, onAbrir }) {
                 <CelulaLarga valor={null} meta={1} texto="—" />
               </>
             )}
-            <td className="border-t border-border text-center text-[13px] tabular-nums">{p[`trocas${j}`]}<span className="block text-[10px] text-muted-foreground">{o}d: {p[`trocas${o}`]}</span></td>
-            <td className="border-t border-border text-center text-[13px] tabular-nums">{p[`acoes${j}`]}<span className="block text-[10px] text-muted-foreground">{o}d: {p[`acoes${o}`]}</span></td>
+            <td className="hidden border-t border-border text-center text-[13px] tabular-nums xl:table-cell">{p[`trocas${j}`]}<span className="block text-[10px] text-muted-foreground">{o}d: {p[`trocas${o}`]}</span></td>
+            <td className="hidden border-t border-border text-center text-[13px] tabular-nums xl:table-cell">{p[`acoes${j}`]}<span className="block text-[10px] text-muted-foreground">{o}d: {p[`acoes${o}`]}</span></td>
           </tr>
         ))}
       </tbody>
@@ -433,16 +435,16 @@ export default function AdesaoEscalaPage({ goBack }) {
 
         {rel && grupo && (
           <>
-            <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
+            <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 xl:grid-cols-5">
               <Indicador titulo="Início marcado" valor={grupo.ini} meta={META.ini} detalhe={`${grupo.n.ini} de ${grupo.casos}`} />
               <Indicador titulo="Término marcado" valor={grupo.ter} meta={META.ter} detalhe={`${grupo.n.ter} de ${grupo.casos}`} />
               <Indicador titulo="Tempo da cirurgia" valor={grupo.tp} meta={META.tp} detalhe={`${grupo.n.tp} de ${grupo.casos}`} />
               <Indicador titulo="Tempo total" valor={grupo.tot} meta={META.tot} detalhe={`${grupo.n.tot} de ${grupo.turnos} turnos`} />
-              <div className="col-span-2 hidden lg:col-span-1 lg:block">
+              <div className="hidden xl:block">
                 <Indicador titulo={`Usam a escala ${metaUso}+ dias`} valor={(usamMuito / Math.max(1, pessoas.length)) * 100} meta={80} detalhe={`${usamMuito} de ${pessoas.length} pessoas`} />
               </div>
             </div>
-            <p className="text-[12.5px] text-muted-foreground lg:hidden">
+            <p className="text-[12.5px] text-muted-foreground xl:hidden">
               <b className="text-foreground">{usamMuito} de {pessoas.length}</b> pessoas abriram a escala em {metaUso}+ dias no período.
             </p>
 
@@ -451,7 +453,7 @@ export default function AdesaoEscalaPage({ goBack }) {
               {largo && <ResumoCargos cargos={cargos} janela={janela} />}
             </div>
 
-            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
               <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [&::-webkit-scrollbar]:hidden lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:pb-0" role="tablist" aria-label="Cargo">
                 {[{ cargo: 'todos', total: pessoas.length, alertas: cargos.reduce((s, c) => s + c.alertas, 0) }, ...cargos].map((c) => (
                   <button
