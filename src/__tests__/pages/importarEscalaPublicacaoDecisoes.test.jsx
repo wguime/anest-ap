@@ -264,12 +264,12 @@ describe('cada saída da folha grava no canal que a fila lê', () => {
     expect(payload.ordemLiberacao).toEqual(['DIDO', 'NATHALIA (SOBREAVISO)'])
   })
 
-  it('"Está certo — fica Livre" grava conferido e tira a linha da lista (audit A8)', async () => {
+  it('"Está certo — sem cirurgia hoje" grava conferido e tira a linha da lista (audit A8)', async () => {
     const container = await comNathaliaSemCirurgia()
-    fireEvent.click(await screen.findByRole('button', { name: /está certo — fica livre/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /está certo — sem cirurgia hoje/i }))
     // a linha some das pendências e vira registro respondido
     await waitFor(() => expect(within(container).queryByText(/Nathalia — na ordem, sem cirurgia/i)).toBeNull())
-    expect(within(container).getByText(/Nathalia — está certo, fica Livre/i)).toBeTruthy()
+    expect(within(container).getByText(/Nathalia — está certo, sem cirurgia hoje/i)).toBeTruthy()
 
     const payload = await publicar()
     expect(payload.linhaOverrides).toEqual({ NATHALIA: { conferido: true } })
@@ -299,7 +299,7 @@ describe('cada saída da folha grava no canal que a fila lê', () => {
     await waitFor(() => expect(svcMock.parseEscalaImagem).toHaveBeenCalled())
 
     // a linha já nasce respondida, sem toque nenhum nesta conferência
-    expect(await screen.findByText(/Nathalia — está certo, fica Livre/i)).toBeTruthy()
+    expect(await screen.findByText(/Nathalia — está certo, sem cirurgia hoje/i)).toBeTruthy()
     expect(screen.queryByText(/Nathalia — na ordem, sem cirurgia/i)).toBeNull()
 
     // e "Refazer" reabre de verdade: viaja como null, senão a preservação a traria de volta

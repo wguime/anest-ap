@@ -137,7 +137,7 @@ export function montarPreservacao({
  *     onde a pessoa aparece (comportamento anterior à âncora explícita);
  *   - intencional: em toda escala onde a pessoa aparece — a pergunta não volta
  *     em nenhuma das duas.
- * `conferidos` é o "está certo, fica Livre" ({ [chave]: true | { uid, nomeNorm } }).
+ * `conferidos` é o "está certo, sem cirurgia hoje" ({ [chave]: true | { uid, nomeNorm } }).
  * `tipo: 'reaberta'` é o "Refazer" de uma decisão que veio da escala publicada: grava os
  * campos como `null`, porque só apagar do mapa local deixaria a preservação trazê-la de volta.
  * `carimbo` ({ por, em }) entra DENTRO do trocaCom, como o TrocaSheet grava; o

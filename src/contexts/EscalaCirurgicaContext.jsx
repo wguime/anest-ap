@@ -57,6 +57,20 @@ export function hojeISO(d = agora()) {
   return new Date(d.getTime() - off).toISOString().slice(0, 10)
 }
 
+// DECLARAÇÕES SOBRE A PESSOA em `linha_overrides` (não ajuste de exibição): sobrevivem a
+// salvar o editor, "Restaurar automático", desfazer liberação e marcar escalado; cada
+// uma se limpa pelo próprio botão. Lista ÚNICA (revisão 23/09): eram seis listas à mão
+// e `naEquipe`/`turnoProprio` faltavam em todas — um toque comum apagava o selo
+// "Equipe até 19h" e o turno da Louise. Campo novo desta classe entra AQUI e em
+// `CAMPOS_RASTRO` (escalaPublicacaoDecisoes.js), como pede a rule escala-trocas.
+export const CAMPOS_DECLARACAO = Object.freeze([
+  'trocaCom', 'assumidaPor', 'origem', 'duplicidade', 'conferido', 'semAjuda', 'naEquipe', 'turnoProprio',
+])
+// Ajustes de EXIBIÇÃO da linha (editor): somem no Restaurar e na linha renovada.
+const CAMPOS_EXIBICAO = Object.freeze(['local', 'hospital', 'cirurgioes', 'termino', 'observacao', 'renovado'])
+const declaracoesDe = (ov) => Object.fromEntries(CAMPOS_DECLARACAO.filter((k) => ov?.[k]).map((k) => [k, ov[k]]))
+const temAlgumCampo = (ov) => [...CAMPOS_EXIBICAO, ...CAMPOS_DECLARACAO].some((k) => ov?.[k])
+
 const EscalaStateContext = createContext(null)
 const EscalaActionsContext = createContext(null)
 
@@ -130,6 +144,10 @@ export function EscalaCirurgicaProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState)
   const [data, setData] = useState(() => hojeISO())
   const [loading, setLoading] = useState(true)
+  // hospitais cuja leitura FALHOU sem nada anterior para mostrar ({ unimed: true, … })
+  const [erroCarga, setErroCarga] = useState(null)
+  const erroCargaRef = useRef(null)
+  const marcarErroCarga = (v) => { erroCargaRef.current = v; setErroCarga(v) }
   const { toast } = useToast()
 
   // evita stale closure no onRefetch da subscription
@@ -182,6 +200,7 @@ export function EscalaCirurgicaProvider({ children }) {
     // aparece na hora. Em REVALIDAÇÃO da mesma data ele era o bug: repintava o
     // snapshot de antes do toque (a opção "voltava") até o fetch fresco chegar.
     if (!revalidacao) {
+      marcarErroCarga(null)
       const emCache = cacheRef.current.get(dia)
       if (emCache) {
         dispatch({ type: 'SET_ALL', payload: emCache.escalas })
@@ -193,21 +212,44 @@ export function EscalaCirurgicaProvider({ children }) {
         setLoading(true)
       }
     }
+    // O que está (ou vai estar) na tela ANTES desta resposta: é o que fica quando a
+    // leitura de um hospital FALHA. Revalidação = o estado atual (mesma data, já
+    // conferido abaixo); troca de data = o cache pintado acima (ou nada).
+    const base = revalidacao ? escalasRef.current : (cacheRef.current.get(dia)?.escalas || null)
+    // o `base` de um hospital só vale se era CONHECIDO (inclusive "não publicada");
+    // o que já estava em erro, ou a data nova sem cache, não sabe nada
+    const conhecido = (h) => (revalidacao ? !erroCargaRef.current?.[h] : !!base)
+    // ERRO ≠ "NÃO PUBLICADA" (revisão 23/09). O `.catch(() => null)` antigo fazia
+    // uma falha de rede virar "Sem escala publicada" — informação falsa com o banco
+    // estrangulado (16/09) — e, pior, a revalidação do realtime punha `null` por
+    // cima da escala boa: um toque em "Adicionar caso" nesse estado publicava um
+    // turno VAZIO por cima do real (a RPC apaga os casos do turno).
+    const tentar = (p) => p.then((v) => ({ ok: true, v }), (e) => ({ ok: false, e }))
     try {
-      const [results, fdsRow] = await Promise.all([
-        Promise.all(HOSPITAIS.map((h) => svc.fetchEscala(dia, h).catch(() => null))),
+      const [results, fdsRes] = await Promise.all([
+        Promise.all(HOSPITAIS.map((h) => tentar(svc.fetchEscala(dia, h)))),
         // fila única: linha pseudo-hospital 'fds' (sáb/dom e feriados).
-        // Dia útil nem faz a request; falha cai em null (modo FDS não liga e a
-        // tela segue no comportamento por hospital — rollout seguro).
-        ehDataFilaUnica(dia) ? svc.fetchEscala(dia, FDS_HOSPITAL).catch(() => null) : Promise.resolve(null),
+        // Dia útil nem faz a request.
+        ehDataFilaUnica(dia) ? tentar(svc.fetchEscala(dia, FDS_HOSPITAL)) : Promise.resolve({ ok: true, v: null }),
       ])
       if (seq !== loadSeqRef.current || dataRef.current !== dia) return
       if (escritasRef.current > 0 || mutSeqRef.current !== mutAntes) { reagendar(); return }
       // Fixture demo é ferramenta de DEV/e2e (testes determinísticos) — PRODUÇÃO
       // nunca vê demo (pedido do dono 23/07: botão e dados de demonstração excluídos).
-      const escalas = { fds: fdsRow || (import.meta.env.DEV ? getDemoEscala(dia, FDS_HOSPITAL) : null) }
-      HOSPITAIS.forEach((h, i) => { escalas[h] = results[i] || (import.meta.env.DEV ? getDemoEscala(dia, h) : null) })
+      // Em DEV a falha (e2e sem backend) segue caindo na demo, como sempre.
+      const erros = {}
+      const resolver = (res, h) => {
+        if (res.ok) return res.v || (import.meta.env.DEV ? getDemoEscala(dia, h) : null)
+        if (import.meta.env.DEV) { const demo = getDemoEscala(dia, h); if (demo) return demo }
+        // falhou: mantém o que já estava na tela; sem nada, a tela diz que FALHOU
+        if (!conhecido(h)) { erros[h] = true; return null }
+        return base?.[h] || null
+      }
+      const escalas = { fds: resolver(fdsRes, FDS_HOSPITAL) }
+      HOSPITAIS.forEach((h, i) => { escalas[h] = resolver(results[i], h) })
+      const falhou = !fdsRes.ok || results.some((r) => !r.ok)
       dispatch({ type: 'SET_ALL', payload: escalas })
+      marcarErroCarga(Object.keys(erros).length ? erros : null)
       // marcação do P4 do dia (fase noturna das Liberações) — falha vira null,
       // que é o padrão seguro: o coringa aparece nos 3 hospitais.
       let p4 = null
@@ -217,10 +259,13 @@ export function EscalaCirurgicaProvider({ children }) {
       if (seq !== loadSeqRef.current || dataRef.current !== dia) return
       if (escritasRef.current > 0 || mutSeqRef.current !== mutAntes) { reagendar(); return }
       dispatch({ type: 'SET_P4_HOSPITAL', payload: p4 })
-      // guarda para a próxima visita à mesma data (o realtime revalida)
-      cacheRef.current.set(dia, { escalas, p4Hospital: p4 })
-      if (cacheRef.current.size > 8) {
-        cacheRef.current.delete(cacheRef.current.keys().next().value)
+      // guarda para a próxima visita à mesma data (o realtime revalida) — leitura
+      // com falha NÃO entra no cache: repintaria o buraco na próxima visita
+      if (!falhou) {
+        cacheRef.current.set(dia, { escalas, p4Hospital: p4 })
+        if (cacheRef.current.size > 8) {
+          cacheRef.current.delete(cacheRef.current.keys().next().value)
+        }
       }
     } catch (err) {
       console.error('[EscalaCirurgicaContext] load falhou:', err)
@@ -228,6 +273,44 @@ export function EscalaCirurgicaProvider({ children }) {
       if (seq === loadSeqRef.current) setLoading(false)
     }
   }, [])
+
+  /** "Tentar de novo" da tela de falha: mostra o carregando e busca do zero. */
+  const recarregar = useCallback(() => {
+    // erroCarga fica até a resposta: é ele que diz "não conhecido" à revalidação
+    setLoading(true)
+    return loadData(dataRef.current, { revalidacao: true })
+  }, [loadData])
+
+  /**
+   * Escala do hospital na data, CRIANDO uma vazia só se o SERVIDOR confirmar que
+   * não existe (dono 16/08: o Materno costuma não ter escala e ficava sem ação).
+   * A tela sozinha não basta: `null` no estado pode ser leitura que falhou ou que
+   * ainda não chegou — e publicar vazio por cima do turno real o apagaria.
+   */
+  const garantirEscala = useCallback(async ({ data: dia, hospital, turno }, userInfo) => {
+    const naTela = escalasRef.current?.[hospital]
+    if (naTela?.id && !String(naTela.id).startsWith('demo-')) return naTela
+    let existente
+    try {
+      existente = await svc.fetchEscala(dia, hospital)
+    } catch (error) {
+      toast({ variant: 'error', title: 'Não foi possível confirmar a escala', description: 'Verifique a conexão e tente de novo. Nada foi alterado.' })
+      throw error
+    }
+    if (existente) {
+      if (dataRef.current === dia) dispatch({ type: 'SET_HOSPITAL', hospital, payload: existente })
+      return existente
+    }
+    const saved = await svc.salvarEscalaTurno({
+      data: dia, hospital, turno,
+      casos: [], ordemLiberacao: [], ajudaExterna: [], status: 'publicada',
+    }, userInfo).catch((error) => {
+      toast({ variant: 'error', title: 'Erro ao publicar turno', description: mensagemErroPublicacao(error) })
+      throw error
+    })
+    if (dataRef.current === dia) dispatch({ type: 'SET_HOSPITAL', hospital, payload: saved })
+    return saved
+  }, [toast])
 
   /**
    * Pré-carrega uma data em segundo plano (dono 16/08: "transição de hoje para
@@ -416,7 +499,13 @@ export function EscalaCirurgicaProvider({ children }) {
   const linhaDe = (l) => (typeof l === 'string' ? { chave: l, anestesista: l, uid: null } : l)
   const chaveTurno = (turno, chave) => turno && (turno === 'matutino' || turno === 'vespertino') ? `${turno}:${chave}` : chave
 
-  const toggleLiberacao = useCallback(async (escala, linhaArg, userInfo = {}, turno) => {
+  const toggleLiberacao = useCallback(async (escalaArg, linhaArg, userInfo = {}, turno, { apenasDesfazer = false } = {}) => {
+    // ESTADO ATUAL, não o do render que criou o callback (revisão 23/09): o
+    // "Desfazer" do toast guardava a escala de ANTES da liberação, via "não
+    // liberado" e liberava de novo — quem liberou a pessoa errada achava que
+    // tinha desfeito. Mesma escala (id) no estado → vale a versão fresca.
+    const fresca = escalasRef.current?.[escalaArg?.hospital]
+    const escala = fresca && fresca.id === escalaArg?.id ? fresca : escalaArg
     const linha = linhaDe(linhaArg)
     const chave = linha.chave || linha.anestesista
     const legada = !linha.selo && linha.anestesista && linha.anestesista !== chave ? linha.anestesista : null
@@ -430,6 +519,8 @@ export function EscalaCirurgicaProvider({ children }) {
       // marcador e anunciar "liberado" — a pessoa continuava na fila (dono 20/08).
       const entradaAtual = atual[scoped] ?? (scopedLegada ? atual[scopedLegada] : undefined) ?? atual[chave] ?? (legada ? atual[legada] : undefined)
       const jaLiberado = !!entradaAtual && entradaAtual.escalado !== true
+      // "Desfazer" só DESFAZ: se alguém já desliberou, não vira uma liberação nova
+      if (apenasDesfazer && !jaLiberado) return
       const valor = jaLiberado ? null : { liberadoEm: new Date().toISOString(), por: userInfo.userId || null }
       const liberacoes = { ...atual }
       if (jaLiberado) { delete liberacoes[scoped]; if (scopedLegada) delete liberacoes[scopedLegada]; delete liberacoes[chave]; if (legada) delete liberacoes[legada] }
@@ -445,14 +536,11 @@ export function EscalaCirurgicaProvider({ children }) {
       let marcador = null
       if (jaLiberado) {
         const flags = linhaOverrides[scoped] || linhaOverrides[chave] || (legada ? linhaOverrides[legada] : null) || {}
+        // declarações sobre a pessoa (troca, assunção, origem, conferência, equipe,
+        // turno próprio) sobrevivem à linha renovada — só a EXIBIÇÃO recomeça
         marcador = {
           renovado: true,
-          ...(flags.trocaCom && { trocaCom: flags.trocaCom }),
-          ...(flags.assumidaPor && { assumidaPor: flags.assumidaPor }),
-          // decisões da conferência (05/09): "trabalha nos dois" e "está certo" são
-          // declaração sobre a pessoa, como origem — sobrevivem à linha renovada
-          ...(flags.duplicidade && { duplicidade: flags.duplicidade }),
-          ...(flags.conferido && { conferido: true }),
+          ...declaracoesDe(flags),
           por: userInfo.userId || null, em: new Date().toISOString(),
         }
         linhaOverrides[scoped] = marcador
@@ -510,9 +598,9 @@ export function EscalaCirurgicaProvider({ children }) {
       const patchesOverride = []
       for (const k of [scoped, chave, legada, legada && chaveTurno(turno, legada)].filter(Boolean)) {
         if (!jaForcado && linhaOverrides[k]) {
-          const { trocaCom, assumidaPor, duplicidade, conferido } = linhaOverrides[k]
-          const restante = (trocaCom || assumidaPor || duplicidade || conferido)
-            ? { ...(trocaCom && { trocaCom }), ...(assumidaPor && { assumidaPor }), ...(duplicidade && { duplicidade }), ...(conferido && { conferido: true }), por: userInfo.userId || null, em: new Date().toISOString() }
+          const decl = declaracoesDe(linhaOverrides[k])
+          const restante = Object.keys(decl).length
+            ? { ...decl, por: userInfo.userId || null, em: new Date().toISOString() }
             : null
           if (restante) linhaOverrides[k] = restante
           else delete linhaOverrides[k]
@@ -565,30 +653,20 @@ export function EscalaCirurgicaProvider({ children }) {
       const scoped = chaveTurno(turno, chave)
       const anterior = escala.linhaOverrides?.[scoped] || escala.linhaOverrides?.[chave] || (legada ? escala.linhaOverrides?.[legada] : null) || {}
       const renovado = !restaurar && !!anterior.renovado
-      // trocaCom/assumidaPor sobrevivem a QUALQUER salvar do editor E ao "Restaurar
-      // automático": restaurar limpa a EXIBIÇÃO da linha (local/cirurgião/tempo/
-      // observação); troca declarada e posição assumida se desfazem pelos botões
-      // próprios — apagá-las aqui devolveria o slot ao dono antigo em silêncio.
-      const trocaCom = anterior.trocaCom || null
-      const assumidaPor = anterior.assumidaPor || null
-      // ORIGEM da ajuda (dono 27/08): de qual hospital a pessoa veio, informada à
-      // mão quando ela não está em escala publicada nenhuma (o caso do Materno).
-      // Sobrevive a QUALQUER salvar do editor e ao "Restaurar automático" pela
-      // mesma razão de trocaCom/assumidaPor: é declaração sobre a pessoa, não
-      // ajuste de exibição — e é ela que decide a ordem de saída na cauda.
-      // Limpar é pelo botão próprio ("Não informar" → `definirOrigemLinha`).
-      const origem = anterior.origem || null
-      // DECISÕES DA CONFERÊNCIA (05/09): `duplicidade` ("trabalha nos dois") e `conferido`
-      // ("está certo, fica Livre") chegam pela publicação e são da mesma classe de `origem` —
-      // declaração sobre a pessoa, não ajuste de exibição. Esquecê-las aqui as apagaria em
-      // silêncio no primeiro Salvar do editor (classe do bug de `origem`, 27/08).
-      const duplicidade = anterior.duplicidade || null
-      const conferido = anterior.conferido === true
-      // "NÃO É AJUDA" (dono 14/09): declaração sobre a pessoa, como `origem` —
-      // sobrevive ao editor e ao "Restaurar"; limpa-se pelo botão de ajuda.
-      const semAjuda = anterior.semAjuda === true
-      const valor = (local || cirurgioes || termino || observacao || renovado || trocaCom || assumidaPor || origem || duplicidade || conferido || semAjuda)
-        ? { ...(local && { local }), ...(cirurgioes && { cirurgioes }), ...(termino && { termino }), ...(observacao && { observacao }), ...(renovado && { renovado: true }), ...(trocaCom && { trocaCom }), ...(assumidaPor && { assumidaPor }), ...(origem && { origem }), ...(duplicidade && { duplicidade }), ...(conferido && { conferido: true }), ...(semAjuda && { semAjuda: true }), por: userInfo.userId || null, em: new Date().toISOString() }
+      // DECLARAÇÕES sobre a pessoa (CAMPOS_DECLARACAO) sobrevivem a QUALQUER salvar
+      // do editor E ao "Restaurar automático": restaurar limpa a EXIBIÇÃO da linha
+      // (local/cirurgião/tempo/observação). trocaCom/assumidaPor se desfazem pelos
+      // botões próprios — apagá-los aqui devolveria o slot ao dono antigo em
+      // silêncio; `origem` (27/08) decide a ordem de saída e limpa só pelo "Não
+      // informar"; `duplicidade`/`conferido` (05/09) vêm da conferência; `semAjuda`
+      // (14/09) limpa pelo botão de ajuda; `naEquipe`/`turnoProprio` (21/09) vêm do
+      // recado e do quadro da numérica.
+      const decl = declaracoesDe(anterior)
+      // HOSPITAL da linha (painel no FDS): o editor mandava e aqui era descartado
+      const hospitalLinha = String(override?.hospital || '').trim()
+      const exib = { ...(local && { local }), ...(hospitalLinha && { hospital: hospitalLinha }), ...(cirurgioes && { cirurgioes }), ...(termino && { termino }), ...(observacao && { observacao }), ...(renovado && { renovado: true }) }
+      const valor = (Object.keys(exib).length || Object.keys(decl).length)
+        ? { ...exib, ...decl, por: userInfo.userId || null, em: new Date().toISOString() }
         : null
       const linhaOverrides = { ...(escala.linhaOverrides || {}) }
       if (valor) linhaOverrides[scoped] = valor
@@ -635,8 +713,7 @@ export function EscalaCirurgicaProvider({ children }) {
     const semOrigem = { ...anterior }
     delete semOrigem.origem
     // sobra alguma coisa no override além da origem? senão a entrada inteira sai
-    const restou = ['local', 'cirurgioes', 'termino', 'observacao', 'renovado', 'trocaCom', 'assumidaPor', 'duplicidade', 'conferido', 'semAjuda']
-      .some((k) => semOrigem[k])
+    const restou = temAlgumCampo(semOrigem)
     const valor = slug
       ? { ...semOrigem, origem: slug, por: userInfo.userId || null, em: new Date().toISOString() }
       : (restou ? { ...semOrigem, por: userInfo.userId || null, em: new Date().toISOString() } : null)
@@ -675,8 +752,7 @@ export function EscalaCirurgicaProvider({ children }) {
     if ((anterior.semAjuda === true) === marcar) return
     const resto = { ...anterior }
     delete resto.semAjuda
-    const restou = ['local', 'cirurgioes', 'termino', 'observacao', 'renovado', 'trocaCom', 'assumidaPor', 'origem', 'duplicidade', 'conferido']
-      .some((k) => resto[k])
+    const restou = temAlgumCampo(resto)
     const valor = marcar
       ? { ...resto, semAjuda: true, por: userInfo.userId || null, em: new Date().toISOString() }
       : (restou ? { ...resto, por: userInfo.userId || null, em: new Date().toISOString() } : null)
@@ -795,13 +871,13 @@ export function EscalaCirurgicaProvider({ children }) {
         for (const chave of [...new Set((chaves || []).filter(Boolean))]) {
           const scoped = chaveTurno(turno, chave)
           const atual = linhaOverrides[scoped]
-          if (!atual || !(atual.local || atual.cirurgioes || atual.renovado)) continue
+          if (!atual || !(atual.local || atual.hospital || atual.cirurgioes || atual.renovado)) continue
           const resto = { ...atual }
           delete resto.local
+          delete resto.hospital
           delete resto.cirurgioes
           delete resto.renovado
-          const restou = ['termino', 'observacao', 'trocaCom', 'assumidaPor', 'origem', 'duplicidade', 'conferido', 'semAjuda']
-            .some((k) => resto[k])
+          const restou = temAlgumCampo(resto)
           const valor = restou ? { ...resto, por: userId, em: new Date().toISOString() } : null
           if (!String(escala.id).startsWith('demo-')) await svc.patchLinhaOverride(escala.id, scoped, valor)
           if (valor) linhaOverrides[scoped] = valor
@@ -1454,12 +1530,12 @@ export function EscalaCirurgicaProvider({ children }) {
   const actionsValue = useMemo(() => ({
     setData, prefetch, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista,
     setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, excluirCaso, adicionarAjuda, removerAjuda,
-    reordenarAjuda, definirOrigemLinha, definirSemAjudaLinha, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, definirSalasUrgencia, refresh,
-  }), [prefetch, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, excluirCaso, adicionarAjuda, removerAjuda, reordenarAjuda, definirOrigemLinha, definirSemAjudaLinha, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, definirSalasUrgencia, refresh])
+    reordenarAjuda, definirOrigemLinha, definirSemAjudaLinha, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, definirSalasUrgencia, refresh, recarregar, garantirEscala,
+  }), [prefetch, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, excluirCaso, adicionarAjuda, removerAjuda, reordenarAjuda, definirOrigemLinha, definirSemAjudaLinha, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, definirSalasUrgencia, refresh, recarregar, garantirEscala])
 
   const stateValue = useMemo(() => ({
-    escalas: state.escalas, p4Hospital: state.p4Hospital, data, loading, hoje,
-  }), [state.escalas, state.p4Hospital, data, loading, hoje])
+    escalas: state.escalas, p4Hospital: state.p4Hospital, data, loading, hoje, erroCarga,
+  }), [state.escalas, state.p4Hospital, data, loading, hoje, erroCarga])
 
   return (
     <EscalaActionsContext.Provider value={actionsValue}>
@@ -1470,13 +1546,14 @@ export function EscalaCirurgicaProvider({ children }) {
   )
 }
 
-const STATE_FALLBACK = { escalas: { unimed: null, hro: null, materno: null, fds: null }, p4Hospital: null, data: hojeISO(), loading: true, hoje: hojeISO() }
+const STATE_FALLBACK = { escalas: { unimed: null, hro: null, materno: null, fds: null }, p4Hospital: null, data: hojeISO(), loading: true, hoje: hojeISO(), erroCarga: null }
 const ACTIONS_FALLBACK = {
   setData: () => {}, prefetch: async () => {}, salvarEscala: async () => {}, salvarEscalaTurno: async () => {}, reordenarLiberacao: async () => {},
   toggleLiberacao: async () => {}, setLocalAnestesista: async () => {}, setAnestesistaCasos: async () => {},
   atualizarCaso: async () => {}, excluirCaso: async () => {}, adicionarAjuda: async () => {}, removerAjuda: async () => {},
   definirP4Hospital: async () => {}, marcarTroca: async () => {}, executarSubstituicao: async () => {},
   desfazerSubstituicao: async () => {}, definirSalasUrgencia: async () => {}, refresh: async () => {},
+  recarregar: async () => {}, garantirEscala: async () => null,
 }
 
 export function useEscalaCirurgicaActions() {

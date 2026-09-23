@@ -208,6 +208,27 @@ a escala anterior sai, exceto na transição do turno vespertino para noturno".
 Travas: `escalaTurnoAutomatico.test.jsx` (reescrito), `escalaBarraControles.test.jsx` ("trilho
 de turno"), `escalaMinhasAbaVaiAoPosto.test.jsx`.
 
+### Erro de leitura ≠ "sem escala publicada" (revisão 2026-09-23)
+
+`loadData` distingue as três respostas por hospital: escala, `null` (não publicada) e FALHA.
+A falha mantém o que já era conhecido (inclusive "não publicada"); sem nada conhecido, marca
+`erroCarga[hospital]` e a página mostra "Não foi possível carregar a escala" + "Tentar de novo"
+(`recarregar`). Enquanto a 1ª leitura não chega, só o "Carregando…" — o EmptyState "Sem escala
+publicada" aparecia junto. Leitura com falha não entra no cache. `garantirEscala` (Adicionar
+caso sem escala, o Materno) é action do CONTEXTO e só cria a escala vazia depois que o servidor
+confirma que não existe — antes, com o estado `null` por falha, publicava um turno VAZIO por
+cima do real (a RPC apaga os casos do turno). Em DEV a falha ainda cai na demo quando a data tem
+demo (e2e). Trava: `escalaRevisao2309.test.jsx`.
+
+O "Desfazer" do toast de liberação chama `toggleLiberacao(..., { apenasDesfazer: true })`, e a
+action lê a escala FRESCA do estado (mesmo id) em vez da do closure — antes o toast guardava a
+escala de antes da liberação e liberava de novo.
+
+Término "HH:MM" que atravessa a meia-noite: `diffRelogioMin` (utils) é a única conta de
+"falta/estourou" — `formatFaltante`, `formatRestante`, alvos da push de tempo estourado e o
+`maxDe` do espelho do tempo total. A volta de 24h só vale na janela da noite (agora ≥ 18h com
+alvo < 06h, ou o inverso); de dia, término esquecido continua "13h além".
+
 ### Sobreaviso é posição ATIVA (dono 2026-09-04)
 
 Nota `(SOBREAVISO)`/`(SOBREAV)`/`(S/A)` no rodapé se comporta como `(CONSULT)`: a pessoa

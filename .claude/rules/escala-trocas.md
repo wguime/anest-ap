@@ -191,10 +191,13 @@ antigo (antes viravam a linha extra `chave#casos`), e o trigger `log_escala_troc
 `v_new = '{}'` e, com a manhã marcada, republicar a tarde gravava tudo como "manual").
 
 ⚠️ Campo novo de `linha_overrides` que seja DECLARAÇÃO sobre a pessoa (e não ajuste de
-exibição) precisa entrar em `CAMPOS_RASTRO` (`src/lib/escalaPublicacaoDecisoes.js`) **e** nas
-listas de sobrevivência do context (`setLinhaOverride`, `toggleLiberacao`, `toggleEscalado`,
-`definirOrigemLinha`). Faltando uma, ele é apagado em silêncio no primeiro Salvar do editor —
-é a classe do bug de `origem` de 27/08.
+exibição) precisa entrar em `CAMPOS_RASTRO` (`src/lib/escalaPublicacaoDecisoes.js`) **e** em
+`CAMPOS_DECLARACAO` (`EscalaCirurgicaContext.jsx`) — desde 23/09 a lista ÚNICA que
+`setLinhaOverride`, `toggleLiberacao`, `toggleEscalado`, `definirOrigemLinha`,
+`definirSemAjudaLinha` e `limparAnotacaoDaLinha` usam. Antes eram seis listas à mão, e
+`naEquipe`/`turnoProprio` faltavam em todas: desliberar ou salvar a linha apagava o selo "Equipe
+até 19h" e o turno da Louise. É a classe do bug de `origem` de 27/08. Trava:
+`escalaRevisao2309.test.jsx`.
 
 ⚠️ Sem teste de PL/pgSQL no repo: `scripts/smoke-rpc-publicar-escala.mjs` exercita a RPC
 contra o banco dentro de uma função que termina em EXCEÇÃO — a transação cai e nada fica
@@ -203,7 +206,8 @@ gravado. É o jeito de conferir mudança nessa RPC antes e depois de aplicar.
 ### A folha "Onde está X hoje?" (Onda 3, 2026-09-05)
 
 A pergunta do nome que está na ordem sem cirurgia tem SEIS saídas, em dois grupos, mais o
-ghost "Está certo — fica Livre na posição" (`conferido`, audit A8). Cada uma grava no canal
+ghost "Está certo — sem cirurgia hoje" (`conferido`, audit A8; até 23/09 dizia "fica Livre na
+posição", mas a cauda nasce Liberada — dono 23/09: vale a regra da cauda, mudou o texto). Cada uma grava no canal
 que a FILA já lê: ajuda em `ajuda_externa`; **trocou com um colega** em `trocaCom` (declara e
 executa na própria publicação, com `hospitalVaga` explícito — a vaga que muda de dono, que no
 lote era ambígua, audit A3); **consultório/sobreaviso** como NOTA na posição do rodapé

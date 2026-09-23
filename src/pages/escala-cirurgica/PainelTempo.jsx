@@ -16,6 +16,7 @@ import { useState } from 'react'
 import { Button, Input, Select } from '@/design-system'
 import { agora } from '@/lib/devClock'
 import SegmentedSelector from './SegmentedSelector'
+import { diffRelogioMin } from './utils'
 
 /** Atalhos de duração da grade (minutos) — o resto vive em "Outro tempo…". */
 export const ATALHOS_MIN = [30, 45, 60, 90, 120, 180]
@@ -76,7 +77,8 @@ export function emMinutos(min) {
  * @returns {{texto:string, atrasada:boolean}}
  */
 export function formatFaltante(alvoMin, agoraMin) {
-  const diff = alvoMin - agoraMin
+  // meia-noite: "01:30" pedido às 21:30 ainda FALTA (ver diffRelogioMin)
+  const diff = diffRelogioMin(alvoMin, agoraMin)
   const abs = Math.abs(diff)
   const fmt = abs >= 60 ? `${Math.floor(abs / 60)}h${String(abs % 60).padStart(2, '0')}` : `${abs}min`
   return { texto: diff >= 0 ? `~${fmt}` : `+${fmt}`, atrasada: diff < 0 }

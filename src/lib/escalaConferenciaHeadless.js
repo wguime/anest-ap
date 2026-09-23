@@ -141,7 +141,7 @@ export function realocarAzuisEmprestados(hospitais, turno, resolver) {
  *   deste hospital, camelCase, ou null), outrasEscalas (irmãs do lote + publicadas dos
  *   demais), dadosNumerica, ferias (nomes completos de férias no dia, ou null),
  *   decisoes ({ NOME: { tipo: 'intencional' } | { tipo: 'troca', parceiro } | { tipo: 'equipe' } }),
- *   conferidos (nomes "está certo, fica Livre"), republicar, carimbo }
+ *   conferidos (nomes "está certo, sem cirurgia hoje"), republicar, carimbo }
  */
 export function conferirHospital(hospital, entrada, contexto) {
   const {

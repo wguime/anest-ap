@@ -7,6 +7,7 @@ import { casoPassaDeTurno } from '@/lib/escalaCirurgicaRegras'
 import { ehPosicaoAssistencial, filtrarItensImportados } from '@/lib/escalaCirurgicaItens'
 import { TURNOS_MAPA, turnoDoCasoImportado } from '@/lib/escalaFdsMapas'
 import { INICIO_NOTURNO_MIN } from '@/lib/plantaoNoturno'
+import { agora } from '@/lib/devClock'
 
 /** Normaliza nome p/ comparação (acento/caixa/PED-insensível). */
 export const normNome = (s) =>
@@ -972,6 +973,25 @@ export function dataPorExtenso(iso, hojeIso = null) {
   return iso === amanhaIso ? `Amanhã · ${corpo}` : corpo
 }
 
+/**
+ * alvo − agora em minutos, ATRAVESSANDO A MEIA-NOITE (revisão 23/09).
+ *
+ * O término é gravado como "HH:MM" sem data: às 21:30, "+4h" vira "01:30", e a
+ * conta crua (90 − 1290) dizia que estourou há 20h — pílula âmbar na hora e push
+ * falso de "passou do tempo" justo no P1–P4 da noite (e a reserva do banco gastava
+ * o aviso, então o verdadeiro nunca chegava).
+ *
+ * A volta só vale na JANELA DA NOITE (agora ≥ 18h com alvo < 06h, ou o inverso):
+ * de dia, um término das 08:00 esquecido às 21:00 continua "13h além" — virar
+ * "faltam 11h" seria mentir sobre um caso esquecido.
+ */
+export function diffRelogioMin(alvoMin, agoraMin) {
+  const d = alvoMin - agoraMin
+  if (agoraMin >= 18 * 60 && alvoMin < 6 * 60) return d + 1440
+  if (agoraMin < 6 * 60 && alvoMin >= 18 * 60) return d - 1440
+  return d
+}
+
 /** "HH:MM" → minutos do dia; null se inválido/vazio (mesma regex de turnoDeHora). */
 export function parseHoraMinutos(hora) {
   const m = /^(\d{1,2}):?(\d{2})?/.exec(String(hora || '').trim())
@@ -1291,7 +1311,12 @@ export function espelhoTempoTotal(escala, caso, terminoHHMM, { hospitalLabels } 
   const termino = terminoHHMM || ''
   const terminoDe = (c) => String((c === editado ? termino : c.terminoPrevisto) || '').trim()
   const antesDe = (c) => String(c.terminoPrevisto || '').trim()
-  const maxDe = (fn) => ativos.map(fn).reduce((a, b) => (a > b ? a : b), '')
+  // o MAIS TARDE dos términos, na linha do tempo do relógio: "01:30" depois de
+  // "23:30" à noite (comparar a string punha "23:30" na frente — revisão 23/09)
+  const agoraD = agora()
+  const agoraMin = agoraD.getHours() * 60 + agoraD.getMinutes()
+  const posicao = (t) => { const m = parseHoraMinutos(t); return m == null ? -Infinity : diffRelogioMin(m, agoraMin) }
+  const maxDe = (fn) => ativos.map(fn).reduce((a, b) => (!a ? b : !b ? a : (posicao(b) > posicao(a) ? b : a)), '')
   // leitura pela MESMA cadeia do setLinhaOverride, turno primeiro: o override
   // vivo mora em `${turno}:${chave}` — ler só a chave crua devolvia null e o
   // override "completo" montado abaixo zerava local/cirurgiões/observação.
@@ -1349,7 +1374,7 @@ export function estimativaTerminoSala(casos, sala) {
 
 /** Texto do cronômetro: diferença entre a estimativa e agora (minutos do dia). */
 export function formatRestante(fimMin, agoraMin) {
-  const diff = fimMin - agoraMin
+  const diff = diffRelogioMin(fimMin, agoraMin)
   const abs = Math.abs(diff)
   const txt = abs >= 60 ? `${Math.floor(abs / 60)}h${String(abs % 60).padStart(2, '0')}` : `${abs}min`
   return diff >= 0 ? `termina em ~${txt}` : `há ${txt} além do previsto`

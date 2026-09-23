@@ -3,6 +3,24 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.27 (23/09/2026) — Escala: seis defeitos silenciosos da revisão de 23/09
+
+Revisão do módulo (fluxos, telas e uso real em produção) pedida pelo dono em 23/09. Só defeitos que
+fazem a equipe ver ou gravar dado errado; as duas telas novas foram aprovadas por imagem.
+- **Erro de rede ≠ "Sem escala publicada".** A leitura que falha não vira `null`: mantém o que já era
+  conhecido e, sem nada, mostra "Não foi possível carregar a escala" + "Tentar de novo". Enquanto a 1ª
+  leitura não chega aparece só o "Carregando…" (o "Sem escala publicada" aparecia junto).
+- **"Adicionar caso" nunca mais publica turno vazio por cima do real:** `garantirEscala` confirma no
+  servidor que a escala não existe antes de criar.
+- **"Desfazer" do toast de liberação desfaz** — lia a escala de antes da liberação e liberava de novo.
+- **Declarações sobre a pessoa sobrevivem** a desliberar, salvar e restaurar a linha: `naEquipe`
+  ("Equipe até 19h"), `turnoProprio`, `origem` e `semAjuda` eram apagados. Lista única
+  `CAMPOS_DECLARACAO`. O "Hospital" do painel da linha (FDS) passa a gravar.
+- **Término que atravessa a meia-noite** ("01:30" pedido às 21:30) não é mais lido como estourado —
+  sem pílula âmbar nem push falso no plantão da noite (`diffRelogioMin`).
+- **Conferência:** o botão "Está certo — fica Livre na posição" virou "Está certo — sem cirurgia hoje";
+  quem fecha a ordem sem cirurgia continua nascendo Liberado (decisão do dono 23/09).
+
 ## v5.12.26 (22/09/2026) — Liberações: quem tem local anotado no rodapé não mostra o traço de cirurgião desconhecido
 
 Dono (22/09), foto do card da Cristina: a linha "CRISTINA (CONSULT)" trazia "…" (cirurgião

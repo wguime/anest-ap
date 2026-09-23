@@ -2595,7 +2595,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                             </>
                           ),
                           local: `${titleCaseNome(p.nome)} — ${rotuloNota(d.local) || d.local}`,
-                          conferido: `${titleCaseNome(p.nome)} — está certo, fica Livre`,
+                          conferido: `${titleCaseNome(p.nome)} — está certo, sem cirurgia hoje`,
                         }[d.tipo] || `${titleCaseNome(p.nome)} — respondido`
                         const sub = {
                           troca: 'Executa ao publicar · badge nos dois lados.',
@@ -3213,10 +3213,13 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                             )}
                           </div>
                           {/* "Está certo" fecha a decisão sem mudar dado nenhum (audit A8):
-                              a pessoa fica LIVRE na própria posição e aguarda a vez. */}
+                              confirma que a falta de cirurgia não é erro de leitura. A fila
+                              segue a regra dela — no meio da ordem a pessoa fica Livre; no
+                              FIM, nasce Liberada (dono 23/09: o texto antigo, "fica Livre na
+                              posição", prometia o verde e a cauda pintava vermelho). */}
                           <Button variant="ghost" className="mt-2 w-full"
                             onClick={() => { responderConferencia(item, { tipo: 'conferido' }); fechar() }}>
-                            Está certo — fica Livre na posição
+                            Está certo — sem cirurgia hoje
                           </Button>
                         </>
                       )}

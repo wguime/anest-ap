@@ -5,7 +5,8 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PageHeader } from '@/components'
-import { ActionPill } from '@/design-system'
+import { WifiOff } from 'lucide-react'
+import { ActionPill, EmptyState } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { useEscalaDia } from '@/hooks/usePegaPlantao'
 import { useEscalaCirurgica, HOSPITAIS, HOSPITAL_LABEL, hojeISO } from '@/contexts/EscalaCirurgicaContext'
@@ -50,7 +51,7 @@ const ABA_OPCOES = [
 
 export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const { user } = useUser()
-  const { escalas, data, loading, p4Hospital, hoje, setData, prefetch, salvarEscalaTurno, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, reordenarAjuda, definirOrigemLinha, definirSemAjudaLinha, definirP4Hospital, setAnestesistaCasos, atualizarCaso, marcarTroca, executarSubstituicao, desfazerSubstituicao } = useEscalaCirurgica()
+  const { escalas, data, loading, erroCarga, p4Hospital, hoje, setData, recarregar, garantirEscala: garantirEscalaNoServidor, prefetch, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, reordenarAjuda, definirOrigemLinha, definirSemAjudaLinha, definirP4Hospital, setAnestesistaCasos, atualizarCaso, marcarTroca, executarSubstituicao, desfazerSubstituicao } = useEscalaCirurgica()
   // Roster p/ resolver os lados do par da troca declarada (uid/nome/apelido)
   const { resolver: resolverRoster, rosterByUid } = useRosterAnestesistas()
   // P1–P4 do dia (card Plantões/PegaPlantao) — alimentam a fase noturna das Liberações
@@ -510,18 +511,17 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
    * existir (dono 16/08: "mesmo sem casos publicados adicione a opção de
    * adicionar caso e ajuda" — o Materno costuma não ter escala importada e
    * ficava sem nenhuma ação disponível).
-   * ⚠️ Só cria quando NÃO há escala: publicar por cima de uma existente
-   * apagaria o rodapé do turno (a RPC substitui `ordem_liberacao`).
+   * ⚠️ Só cria quando o SERVIDOR confirma que não há escala (revisão 23/09):
+   * publicar por cima de uma existente apagaria o turno, e `null` na tela pode
+   * ser só uma leitura que falhou.
    */
   const garantirEscala = useCallback(async () => {
     if (escalaDoHospital?.id && !String(escalaDoHospital.id).startsWith('demo-')) return escalaDoHospital
-    return salvarEscalaTurno({
-      // publicação vai no turno de CASOS: o CHECK do banco só aceita
-      // matutino/vespertino, e 'noturno' não é turno de publicação
-      data, hospital, turno: turnoDeCasos,
-      casos: [], ordemLiberacao: [], ajudaExterna: [], status: 'publicada',
-    }, { userId: user?.uid || user?.id || null, userName: user?.displayName })
-  }, [escalaDoHospital, data, hospital, turnoDeCasos, salvarEscalaTurno, user])
+    // publicação vai no turno de CASOS: o CHECK do banco só aceita
+    // matutino/vespertino, e 'noturno' não é turno de publicação
+    return garantirEscalaNoServidor({ data, hospital, turno: turnoDeCasos },
+      { userId: user?.uid || user?.id || null, userName: user?.displayName })
+  }, [escalaDoHospital, data, hospital, turnoDeCasos, garantirEscalaNoServidor, user])
 
   if (!user) return null
 
@@ -530,6 +530,10 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   // troca a escala publicada: o pill some para ela, e a RPC recusaria de todo jeito.
   const canPublicar = podePublicarEscalaCirurgica(user)
   const escala = escalaDoHospital
+  // a escala que a aba visível lê: na fila única do FDS, a linha 'fds'
+  const chaveCarga = abaVisivel === 'liberacoes' && modoFds ? 'fds' : hospital
+  const semDadoAinda = !escalas[chaveCarga] && (loading || !!erroCarga?.[chaveCarga])
+  const erroAqui = !!erroCarga?.[chaveCarga]
   const turnoCasos = turnoDeCasos
 
   const userInfo = { userId: meuUid, userName: user?.displayName }
@@ -620,6 +624,20 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
         )}
 
         <div className="pt-1">
+          {/* SEM DADO AINDA ≠ SEM ESCALA (revisão 23/09): enquanto a primeira leitura
+              não chega, a tela mostra só o "Carregando…" — o EmptyState "Sem escala
+              publicada" aparecia junto e quem estava no 4G fechava o app. Leitura que
+              FALHOU diz que falhou, com saída. */}
+          {semDadoAinda ? (
+            erroAqui && !loading ? (
+              <EmptyState
+                icon={<WifiOff className="w-6 h-6" />}
+                title="Não foi possível carregar a escala"
+                description="Verifique a conexão. Nada foi alterado."
+                action={{ label: 'Tentar de novo', onClick: recarregar }}
+              />
+            ) : null
+          ) : (<>
           {/* Minhas e Completa também no fim de semana (dono 13/09) — por hospital,
               como num dia útil; só a Faixa de Urgências fica de fora do FDS. */}
           {abaVisivel === 'minhas' && (
@@ -717,7 +735,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                     })),
                     limparTroca: [],
                   }, userInfo)) : undefined}
-                  onToggle={(anest) => toggleLiberacao(escalaLib, anest, userInfo, turno)}
+                  onToggle={(anest, opts) => toggleLiberacao(escalaLib, anest, userInfo, turno, opts)}
                   onToggleEscalado={(anest) => toggleEscalado(escalaLib, anest, userInfo, turno)}
                   onSetOverride={(anest, override) => setLinhaOverride(escalaLib, anest, override, userInfo, turno)}
                   // ESPELHO INVERSO DO TEMPO (dono 14/09): a pílula do total, com
@@ -785,6 +803,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               </>
             )
           })()}
+          </>)}
         </div>
 
         {loading && <p className="text-center text-sm text-muted-foreground py-4">Carregando…</p>}

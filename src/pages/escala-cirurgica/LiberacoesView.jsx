@@ -24,7 +24,7 @@ import { AvisoTempoEstourado } from './useAvisoTempoEstourado'
 import PainelTempo, { formatFaltante, fraseCronometro, fraseFaltante } from './PainelTempo'
 import { nomeCurtoProcedimento } from '@/lib/escalaProcedimentoCurto'
 import AddCasoSheet from './AddCasoSheet'
-import { ajudaOrdemInformada, casoConcluido, casosDaFilaDoTurno, casosResolvidos, chaveSalaEscolha, compararSalas, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao, turnoDoCaso } from './utils'
+import { ajudaOrdemInformada, casoConcluido, casosDaFilaDoTurno, casosResolvidos, chaveSalaEscolha, compararSalas, diffRelogioMin, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao, turnoDoCaso } from './utils'
 
 // Sentinelas do dropdown de Local (valores impossíveis como nome de sala)
 const LOCAL_AUTO = '__auto__'
@@ -1237,7 +1237,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     const alvo = ovL?.termino
     if (!alvo) return acc
     const alvoMin = parseHoraMinutos(alvo)
-    if (alvoMin == null || alvoMin >= agoraMin) return acc
+    // a MESMA conta da pílula (formatFaltante) — inclusive na virada da meia-noite
+    if (alvoMin == null || diffRelogioMin(alvoMin, agoraMin) >= 0) return acc
     const marca = marcaDe(l)
     const jaLiberado = !!marca && marca.escalado !== true
     if (jaLiberado || estaLivre(l) || !(l.casosAtivos > 0)) return acc
@@ -1297,7 +1298,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
         toast({
           variant: 'success',
           title: `${linha.anestesista} liberado`,
-          action: { label: 'Desfazer', onClick: () => onToggle?.(linha) },
+          action: { label: 'Desfazer', onClick: () => onToggle?.(linha, { apenasDesfazer: true })?.catch?.(() => {}) },
         })
       }
     } catch { /* toast de erro já vem do context */ }

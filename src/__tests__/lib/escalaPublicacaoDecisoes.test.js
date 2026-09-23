@@ -157,7 +157,7 @@ describe('montarLinhaOverrides — as decisões que valem NESTA escala', () => {
     expect(o).toEqual({ NATHALIA: { duplicidade: null, conferido: null } })
   })
 
-  it('"está certo, fica Livre" vira conferido: true', () => {
+  it('"está certo, sem cirurgia hoje" vira conferido: true', () => {
     const o = montarLinhaOverrides({ conferidos: { NATHALIA: true }, hospital: 'hro', ordem: ['NATHALIA'], resolver, normalizar })
     expect(o).toEqual({ NATHALIA: { conferido: true } })
   })
