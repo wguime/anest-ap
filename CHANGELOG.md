@@ -3,6 +3,20 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.30 (23/09/2026) — Escala: republicar preserva o andamento das cirurgias e as urgências adicionadas à mão
+
+Decisão do dono (23/09), na revisão: "preservar as duas". Migration `20260923160000` (validada pelo
+migration-validator, ensaiada com rollback em produção e aplicada em 23/09).
+- A RPC `rpc_publicar_escala_turno` não apaga mais os casos `origem='manual'`: a urgência adicionada
+  no app continua depois de republicar (se a foto também a trouxer, aparece repetida — exclui-se pelo
+  "Excluir caso").
+- O andamento (status, extra, carimbo, término) dos casos importados volta no caso novo de mesma
+  sala, hora e iniciais, escrito no INSERT — sem evento de status falso na auditoria.
+- Aviso de republicar (tela, lote e skill) diz o que realmente zera: só as liberações.
+- O nome do particular casa só os casos IMPORTADOS do turno (tela e skill) — um manual com a mesma
+  sala|ordem levaria o nome ao caso errado.
+- Smoke permanente: `scripts/smoke-rpc-republicar-andamento.mjs` (sem gravar).
+
 ## v5.12.29 (23/09/2026) — Escala: o dia vira às 7h — de madrugada a tela segue no plantão em andamento
 
 Decisão do dono (23/09), na revisão do módulo. A virada à meia-noite (24/07) tirava da tela, entre

@@ -1625,7 +1625,12 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
           .map((c, i) => ({ c, key: `${c.sala}|${i}` }))
           .filter(({ c }) => c.pacienteNome && familiaConvenio(c.convenio) === 'particular')
         if (comNome.length && saved?.casos?.length) {
-          const idPorChave = new Map(saved.casos.map((s) => [`${s.sala}|${s.ordem}`, s.id]))
+          // só os casos IMPORTADOS deste turno: a RPC devolve os dois turnos e, desde
+          // 20260923160000, os manuais que sobrevivem à republicação — um deles com a
+          // mesma sala|ordem levaria o nome do paciente ao caso errado (LGPD)
+          const idPorChave = new Map(saved.casos
+            .filter((s) => (s.turno || periodo) === periodo && s.origem !== 'manual')
+            .map((s) => [`${s.sala}|${s.ordem}`, s.id]))
           await Promise.all(comNome.map(({ c, key }) => {
             const casoId = idPorChave.get(key)
             if (!casoId) return null

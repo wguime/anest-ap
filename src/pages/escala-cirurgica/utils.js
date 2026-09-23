@@ -2399,18 +2399,18 @@ export function plantonistaDoTurno(escala, turno, { resolverUid = () => null, ho
 /**
  * O que REPUBLICAR este turno por cima perde (revisão 23/09).
  *
- * A RPC apaga os casos do turno e insere os do documento: status das cirurgias
- * (iniciada/terminada/suspensa) e casos adicionados à mão no app (`origem =
- * 'manual'`, quase sempre urgência) não voltam; as liberações do turno zeram de
- * propósito (regra 23/07). Tempo, observação e trocas de quem segue na escala são
- * PRESERVADOS (CAMPOS_RASTRO, 05/09) — o aviso antigo dizia "os tempos são
- * zerados", o que não é verdade desde então, e calava o resto.
+ * Desde a migration 20260923160000 (dono 23/09, "preservar as duas") a RPC NÃO apaga
+ * os casos adicionados à mão (`origem='manual'`) e devolve o andamento (status e
+ * término) ao caso novo de MESMA sala, hora e iniciais. O que ainda se perde: as
+ * liberações do turno (de propósito, regra 23/07) e o andamento de cirurgia que a
+ * foto nova traz DIFERENTE (outra sala/hora). Tempo, observação e trocas de quem
+ * segue na escala sobrevivem (CAMPOS_RASTRO, 05/09).
  * @returns {null | { liberacoes:number, andamento:number, manuais:number }}
  */
 export function perdaNaRepublicacao(escala, turno) {
   if (!escala) return null
   const casos = (escala.casos || []).filter((c) => (c.turno || turno) === turno)
-  const andamento = casos.filter((c) => c.statusCirurgia && c.statusCirurgia !== 'agendada').length
+  const andamento = casos.filter((c) => c.origem !== 'manual' && c.statusCirurgia && c.statusCirurgia !== 'agendada').length
   const manuais = casos.filter((c) => c.origem === 'manual').length
   const liberacoes = Object.entries(escala.liberacoes || {})
     .filter(([k, v]) => String(k).startsWith(`${turno}:`) && v && v.escalado !== true).length
@@ -2418,17 +2418,14 @@ export function perdaNaRepublicacao(escala, turno) {
   return { liberacoes, andamento, manuais }
 }
 
-/** Frase do aviso — só cita o que existe; null quando não há nada a perder. */
+/** Frase do aviso — só cita o que existe; null quando não há nada a dizer. */
 export function frasePerdaRepublicacao(perda) {
   if (!perda) return null
   const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`
-  const itens = [
-    perda.liberacoes && plural(perda.liberacoes, 'liberação marcada', 'liberações marcadas'),
-    perda.andamento && plural(perda.andamento, 'cirurgia com andamento (iniciada/terminada/suspensa)', 'cirurgias com andamento (iniciada/terminada/suspensa)'),
-    perda.manuais && plural(perda.manuais, 'caso adicionado à mão no app', 'casos adicionados à mão no app'),
-  ].filter(Boolean)
-  const base = 'Este turno já está publicado.'
-  const mantidos = 'Tempo, observação e trocas de quem continua na escala são mantidos.'
-  if (!itens.length) return `${base} ${mantidos}`
-  return `${base} Publicar por cima perde: ${itens.join('; ')} — e não dá para desfazer. ${mantidos}`
+  const partes = ['Este turno já está publicado.']
+  if (perda.liberacoes) partes.push(`Publicar por cima zera ${plural(perda.liberacoes, 'liberação marcada', 'liberações marcadas')} e não dá para desfazer.`)
+  if (perda.andamento) partes.push(`O andamento de ${plural(perda.andamento, 'cirurgia', 'cirurgias')} só volta se ela vier igual na foto (mesma sala, hora e paciente).`)
+  if (perda.manuais) partes.push(`${plural(perda.manuais, 'caso adicionado à mão continua', 'casos adicionados à mão continuam')} — se a foto também trouxer, exclua o repetido.`)
+  partes.push('Tempo, observação e trocas de quem continua na escala são mantidos.')
+  return partes.join(' ')
 }

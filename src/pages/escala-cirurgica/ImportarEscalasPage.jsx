@@ -1162,15 +1162,15 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
         cancelText="Cancelar"
       />
 
-      {/* Republicar por cima do que está no ar: DELETE+reinsert perde liberações, andamento e casos
-          manuais do turno; tempo/observação/trocas sobrevivem (CAMPOS_RASTRO, 05/09) */}
+      {/* Republicar por cima do que está no ar: zera liberações; casos manuais e andamento de
+          cirurgia igual sobrevivem (migration 20260923160000); tempo/observação/trocas também */}
       <ConfirmDialog
         open={!!republicarAlvo}
         variant="danger"
         onClose={() => setRepublicarAlvo(null)}
         onConfirm={() => { const h = republicarAlvo; setRepublicarAlvo(null); if (h) republicar(h) }}
         title={`Republicar ${republicarAlvo ? (HOSPITAL_LABEL[republicarAlvo] || republicarAlvo) : ''}?`}
-        description={`Publicar por cima substitui o turno inteiro desta escala: perde as liberações marcadas, o andamento das cirurgias (iniciada/terminada/suspensa) e os casos adicionados à mão no app, e não dá para desfazer. Tempo, observação e trocas de quem continua na escala são mantidos. ${formatData(dataEscolhida)} · ${periodo === 'matutino' ? 'Matutino' : 'Vespertino'}.`}
+        description={`Publicar por cima substitui as cirurgias do turno pelas da foto e zera as liberações marcadas — não dá para desfazer. Continuam: casos adicionados à mão, o andamento das cirurgias que vierem iguais (mesma sala, hora e paciente) e o tempo, a observação e as trocas de quem segue na escala. ${formatData(dataEscolhida)} · ${periodo === 'matutino' ? 'Matutino' : 'Vespertino'}.`}
         confirmText="Republicar por cima"
         cancelText="Cancelar"
       />

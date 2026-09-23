@@ -421,7 +421,8 @@ if (cmd === 'publicar') {
     const linhas = await sqlOuFalha(`
       with caso as (
         select id from public.escala_cirurgica_caso
-         where escala_id='${escala.id}' and turno='${turno}' and sala=${dq(pc.sala)}#>>'{}' and ordem=${pc.ordem} limit 1)
+         where escala_id='${escala.id}' and turno='${turno}' and origem <> 'manual'
+           and sala=${dq(pc.sala)}#>>'{}' and ordem=${pc.ordem} limit 1)
       update public.cirurgias_particulares cp
          set paciente=${dq(pc.nome)}#>>'{}', updated_at=now(), updated_by='${uidDono}', updated_by_name='${comoApelido.replace(/'/g, "''")}'
         from caso where cp.escala_caso_id=caso.id and cp.cancelada_em is null and cp.paciente !~ '[[:alpha:]]{3,}'
@@ -608,7 +609,7 @@ if (cmd === 'publicar-fds') {
       for (const b of validacao.validarCasosParaPublicacao(casos, { horaValida: (h) => regras.ehHoraSequencialEscala(h) || !!utils.turnoDeHora(h) })) bloqueios.push(validacao.textoBloqueio(b))
       const existente = publicadasPorData[data]?.[hospital] || null
       const antes = (existente?.casos || []).filter((c) => (c.turno || 'matutino') === turno).length
-      if (existente?.publicacaoTurnos?.[turno] && !republicar) bloqueios.push(`${hospital} ${data} ${turno} já está publicado (${antes} casos) — republicar zera status e liberações; use --republicar se for isso mesmo`)
+      if (existente?.publicacaoTurnos?.[turno] && !republicar) bloqueios.push(`${hospital} ${data} ${turno} já está publicado (${antes} casos) — republicar zera as liberações (casos manuais e andamento de cirurgia igual ficam); use --republicar se for isso mesmo`)
       else if (antes >= 3 && antes > casos.length) avisos.push(`a escala publicada tem ${antes} casos e a nova tem ${casos.length} — publicar apaga os anteriores`)
       planos.push({ hospital, data, turno, casos, avisos, bloqueios })
     }
