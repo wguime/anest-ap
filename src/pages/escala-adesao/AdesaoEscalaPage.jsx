@@ -15,18 +15,14 @@ import { RefreshCw, ChevronDown, TriangleAlert } from 'lucide-react'
 import { PageHeader } from '@/components'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/design-system'
 import { useMediaQuery } from '@/design-system/hooks'
-import SegmentedSelector from '../escala-cirurgica/SegmentedSelector'
-import { useAdesaoEscala } from '@/hooks/useAdesaoEscala'
+import { useAdesaoEscala, useAdesaoMes, useAdesaoEvolucao } from '@/hooks/useAdesaoEscala'
+import GraficoEvolucao from './GraficoEvolucao'
 import {
   META, CARGOS, ORDEM_CARGO, SITUACOES,
   montarPessoas, ordenarPessoas, resumirCargos, indicadoresGrupo, hospital,
-  faixa, formatarPct, melhores10, proximoPasso,
+  faixa, formatarPct, melhores10, proximoPasso, montarVista, rotuloMes, mesAnterior,
 } from '@/lib/escalaAdesao'
 
-const JANELAS = [
-  { value: '30', label: 'Últimos 30 dias' },
-  { value: '60', label: 'Últimos 60 dias' },
-]
 
 /** faixa → classes com tokens do tema (claro e escuro já resolvidos pelo tripleto HSL) */
 const TOM = {
@@ -101,8 +97,9 @@ function Comparativo({ titulo, detalhe, valor, meta, topo, max = 100, sufixo = '
   )
 }
 
-function Ficha({ pessoa, pessoas, janela, lado = 'bottom', onClose }) {
-  const j = janela
+function Ficha({ pessoa, pessoas, vista, lado = 'bottom', onClose }) {
+  // os campos "30" são sempre o período principal da vista (ver `montarVista`)
+  const j = '30'
   const passo = proximoPasso(pessoa)
   const topo = useMemo(() => ({
     d: melhores10(pessoas, `d${j}`),
@@ -111,7 +108,7 @@ function Ficha({ pessoa, pessoas, janela, lado = 'bottom', onClose }) {
     tp: melhores10(pessoas, `tp${j}`),
     tot: melhores10(pessoas, `tot${j}`),
   }), [pessoas, j])
-  const metaUso = j === '30' ? META.uso30 : META.uso60
+  const metaUso = vista.metaUso
   return (
     <Sheet open onOpenChange={(o) => !o && onClose()}>
       <SheetContent side={lado} className={lado === 'bottom' ? '!h-auto max-h-[88vh] overflow-y-auto' : 'overflow-y-auto'}>
@@ -128,9 +125,9 @@ function Ficha({ pessoa, pessoas, janela, lado = 'bottom', onClose }) {
           </p>
           <Comparativo
             titulo="Usa a escala"
-            detalhe={`dias em que abriu nos últimos ${j}`}
+            detalhe={`dias em que abriu · ${vista.rotA}`}
             valor={pessoa[`d${j}`]} meta={metaUso} topo={pessoa.anest ? topo.d : null}
-            max={Number(j)} sufixo=" d"
+            max={vista.maxDias} sufixo=" d"
           />
           {pessoa.anest ? (
             <>
@@ -145,7 +142,7 @@ function Ficha({ pessoa, pessoas, janela, lado = 'bottom', onClose }) {
           ) : (
             <p className="text-[13px] text-muted-foreground">
               Marcou o início de <b className="text-foreground">{pessoa[`iniN${j}`]}</b> e o término de{' '}
-              <b className="text-foreground">{pessoa[`terN${j}`]}</b> cirurgias (qualquer sala) nos últimos {j} dias.
+              <b className="text-foreground">{pessoa[`terN${j}`]}</b> cirurgias (qualquer sala) · {vista.rotA}.
             </p>
           )}
           <p className="text-[12px] text-muted-foreground">
@@ -170,9 +167,9 @@ function CabecalhoCargo({ cargo, total }) {
   )
 }
 
-function LinhaPessoa({ p, janela, onAbrir }) {
-  const j = janela
-  const metaUso = j === '30' ? META.uso30 : META.uso60
+function LinhaPessoa({ p, vista, onAbrir }) {
+  const j = '30'
+  const metaUso = vista.metaUso
   return (
     <button
       type="button"
@@ -223,10 +220,10 @@ function CelulaLarga({ valor, meta, texto, sub, sub2 }) {
   )
 }
 
-function TabelaCargo({ cargo, lista, janela, onAbrir }) {
-  const j = janela
-  const o = j === '30' ? '60' : '30'
-  const metaUso = j === '30' ? META.uso30 : META.uso60
+function TabelaCargo({ cargo, lista, vista, onAbrir }) {
+  const j = '30'
+  const o = '60'
+  const metaUso = vista.metaUso
   const anest = cargo === 'anest'
   const th = 'sticky top-14 deitado:top-11 z-10 bg-muted px-1 py-1.5 text-center align-bottom text-[10.5px] font-semibold leading-tight text-muted-foreground'
   const n = (a, b) => `${a ?? 0} de ${b ?? 0}`
@@ -236,10 +233,10 @@ function TabelaCargo({ cargo, lista, janela, onAbrir }) {
         <tr>
           <th className={`${th} rounded-tl-xl pl-3 text-left`}>
             <span className="block text-[12.5px] font-extrabold uppercase tracking-wide text-primary">{CARGOS[cargo]} · {lista.length}</span>
-            <span className="font-normal">últimos {j} dias · embaixo, {o} dias</span>
+            <span className="font-normal">{vista.rotA} · embaixo, {vista.rotB}</span>
           </th>
           <th className={`${th} hidden xl:table-cell`}>Situação</th>
-          <th className={th}>Dias de uso<span className="hidden font-normal xl:block">semana / {j}d · meta {metaUso}</span></th>
+          <th className={th}>Dias de uso<span className="hidden font-normal xl:block">semana / período · meta {metaUso}</span></th>
           <th className={`${th} hidden xl:table-cell`}>Aberturas<span className="hidden font-normal xl:block">por dia usado</span></th>
           <th className={th}>{anest ? 'Marca início' : 'Inícios'}<span className="hidden font-normal xl:block">{anest ? '% das suas · meta 80%' : 'marcações'}</span></th>
           <th className={th}>{anest ? 'Marca término' : 'Términos'}<span className="hidden font-normal xl:block">{anest ? '% das suas · meta 80%' : 'marcações'}</span></th>
@@ -261,25 +258,25 @@ function TabelaCargo({ cargo, lista, janela, onAbrir }) {
               <span className="mt-1 block xl:hidden"><Tag situacao={p.situacao} /></span>
             </td>
             <td className="hidden whitespace-nowrap border-t border-border px-1 text-center xl:table-cell"><Tag situacao={p.situacao} /></td>
-            <CelulaLarga valor={p[`d${j}`]} meta={metaUso} texto={`${p.d7} / ${p[`d${j}`]}`} sub={`${o}d: ${p[`d${o}`]}`} />
+            <CelulaLarga valor={p[`d${j}`]} meta={metaUso} texto={`${p.d7} / ${p[`d${j}`]}`} sub={`${vista.curtoB}: ${p[`d${o}`]}`} />
             <td className="hidden border-t border-border text-center text-[13px] tabular-nums xl:table-cell">{p.aberturasPorDia ?? '—'}</td>
             {p.anest ? (
               <>
-                <CelulaLarga valor={p[`ini${j}`]} meta={META.ini} sub={j === '30' ? n(p.iniEu30, p.casos30) : null} sub2={`${o}d: ${formatarPct(p[`ini${o}`])}`} />
-                <CelulaLarga valor={p[`ter${j}`]} meta={META.ter} sub={j === '30' ? n(p.terEu30, p.casos30) : null} sub2={`${o}d: ${formatarPct(p[`ter${o}`])}`} />
-                <CelulaLarga valor={p[`tp${j}`]} meta={META.tp} sub={j === '30' ? n(p.tpInf30, p.casos30) : null} sub2={`${o}d: ${formatarPct(p[`tp${o}`])}`} />
-                <CelulaLarga valor={p[`tot${j}`]} meta={META.tot} sub={j === '30' ? n(p.totEu30, p.turnos30) : null} sub2={`${o}d: ${formatarPct(p[`tot${o}`])}`} />
+                <CelulaLarga valor={p[`ini${j}`]} meta={META.ini} sub={n(p.iniEu30, p.casos30)} sub2={`${vista.curtoB}: ${formatarPct(p[`ini${o}`])}`} />
+                <CelulaLarga valor={p[`ter${j}`]} meta={META.ter} sub={n(p.terEu30, p.casos30)} sub2={`${vista.curtoB}: ${formatarPct(p[`ter${o}`])}`} />
+                <CelulaLarga valor={p[`tp${j}`]} meta={META.tp} sub={n(p.tpInf30, p.casos30)} sub2={`${vista.curtoB}: ${formatarPct(p[`tp${o}`])}`} />
+                <CelulaLarga valor={p[`tot${j}`]} meta={META.tot} sub={n(p.totEu30, p.turnos30)} sub2={`${vista.curtoB}: ${formatarPct(p[`tot${o}`])}`} />
               </>
             ) : (
               <>
-                <CelulaLarga valor={p.nunca ? 0 : p[`iniN${j}`]} meta={10} texto={p[`iniN${j}`]} sub={`${o}d: ${p[`iniN${o}`]}`} />
-                <CelulaLarga valor={p.nunca ? 0 : p[`terN${j}`]} meta={10} texto={p[`terN${j}`]} sub={`${o}d: ${p[`terN${o}`]}`} />
+                <CelulaLarga valor={p.nunca ? 0 : p[`iniN${j}`]} meta={10} texto={p[`iniN${j}`]} sub={`${vista.curtoB}: ${p[`iniN${o}`]}`} />
+                <CelulaLarga valor={p.nunca ? 0 : p[`terN${j}`]} meta={10} texto={p[`terN${j}`]} sub={`${vista.curtoB}: ${p[`terN${o}`]}`} />
                 <CelulaLarga valor={null} meta={1} texto="—" />
                 <CelulaLarga valor={null} meta={1} texto="—" />
               </>
             )}
-            <td className="hidden border-t border-border text-center text-[13px] tabular-nums xl:table-cell">{p[`trocas${j}`]}<span className="block text-[10px] text-muted-foreground">{o}d: {p[`trocas${o}`]}</span></td>
-            <td className="hidden border-t border-border text-center text-[13px] tabular-nums xl:table-cell">{p[`acoes${j}`]}<span className="block text-[10px] text-muted-foreground">{o}d: {p[`acoes${o}`]}</span></td>
+            <td className="hidden border-t border-border text-center text-[13px] tabular-nums xl:table-cell">{p[`trocas${j}`]}<span className="block text-[10px] text-muted-foreground">{vista.curtoB}: {p[`trocas${o}`]}</span></td>
+            <td className="hidden border-t border-border text-center text-[13px] tabular-nums xl:table-cell">{p[`acoes${j}`]}<span className="block text-[10px] text-muted-foreground">{vista.curtoB}: {p[`acoes${o}`]}</span></td>
           </tr>
         ))}
       </tbody>
@@ -288,8 +285,8 @@ function TabelaCargo({ cargo, lista, janela, onAbrir }) {
 }
 
 /** Resumo por cargo (tablet/desktop): o que no celular fica espalhado em chips. */
-function ResumoCargos({ cargos, janela }) {
-  const metaUso = janela === '30' ? META.uso30 : META.uso60
+function ResumoCargos({ cargos, vista }) {
+  const metaUso = vista.metaUso
   return (
     <section className="rounded-xl border border-border bg-card" aria-label="Resumo por cargo">
       <div className="grid grid-cols-[minmax(120px,1fr)_repeat(6,64px)] items-end gap-1 rounded-t-xl bg-muted px-3 py-1.5 text-center text-[10.5px] font-semibold leading-tight text-muted-foreground">
@@ -297,7 +294,7 @@ function ResumoCargos({ cargos, janela }) {
         <span>Abriram na semana</span><span>Dias (mediana)</span><span>Início</span><span>Término</span><span>Tempo total</span><span>Com alerta</span>
       </div>
       {cargos.map((c) => {
-        const dias = janela === '30' ? c.dias30 : c.dias60
+        const dias = c.dias30
         return (
           <div key={c.cargo} className="grid grid-cols-[minmax(120px,1fr)_repeat(6,64px)] items-center gap-1 border-t border-border px-3 py-1.5">
             <span className="text-[13px] font-semibold leading-tight">{CARGOS[c.cargo]} <span className="text-[11px] font-normal text-muted-foreground">{c.total}</span></span>
@@ -310,35 +307,55 @@ function ResumoCargos({ cargos, janela }) {
           </div>
         )
       })}
-      <p className="border-t border-border px-3 py-1.5 text-[10.5px] text-muted-foreground">Início, término e tempo total: mediana dos anestesistas, últimos 30 dias.</p>
+      <p className="border-t border-border px-3 py-1.5 text-[10.5px] text-muted-foreground">Início, término e tempo total: mediana dos anestesistas no período.</p>
     </section>
   )
 }
 
 export default function AdesaoEscalaPage({ goBack }) {
-  const [janela, setJanela] = useState('30')
+  // aba: '30' | '60' (janelas ao vivo) | 'AAAA-MM' (mês, do histórico diário)
+  const [aba, setAba] = useState('30')
   const [cargo, setCargo] = useState('todos')
   const [ordem, setOrdem] = useState('sit')
   const [aberta, setAberta] = useState(null)
   const [comoLer, setComoLer] = useState(false)
   const largo = useMediaQuery('(min-width: 768px)')
 
-  // As duas janelas sempre: a situação é da janela de 30; os números mostrados seguem o alternador.
+  // As duas janelas ao vivo sempre (a situação de "60 dias" vem da janela de 30); o mês e o mês
+  // anterior só quando uma aba de mês está aberta; a evolução traz a lista de meses (as abas).
   const r30 = useAdesaoEscala(30)
   const r60 = useAdesaoEscala(60)
+  const evo = useAdesaoEvolucao()
+  const ehMes = /^\d{4}-\d{2}$/.test(aba)
+  const meses = evo.dados?.meses ?? []
+  const temAnterior = ehMes && meses.includes(mesAnterior(aba))
+  const mA = useAdesaoMes(ehMes ? aba : null)
+  const mB = useAdesaoMes(temAnterior ? mesAnterior(aba) : null)
 
   useEffect(() => { window.scrollTo(0, 0) }, [])
 
-  const pessoas = useMemo(() => montarPessoas(r30.dados, r60.dados), [r30.dados, r60.dados])
+  const vista = montarVista(aba, { r30: r30.dados, r60: r60.dados, mesA: mA.dados, mesB: mB.dados })
+  const pessoas = useMemo(() => {
+    const lista = montarPessoas(vista.relA, vista.relB)
+    if (!vista.situacaoDe30) return lista
+    // aba de 60 dias: a situação continua sendo a dos últimos 30 (é a régua do painel)
+    const sit30 = new Map(montarPessoas(r30.dados, null).map((p) => [p.chave, p.situacao]))
+    return lista.map((p) => ({ ...p, situacao: sit30.get(p.chave) ?? p.situacao }))
+  }, [vista.relA, vista.relB, vista.situacaoDe30, r30.dados])
   const cargos = useMemo(() => resumirCargos(pessoas), [pessoas])
-  const rel = janela === '30' ? r30.dados : r60.dados
+  const rel = vista.relA
   const grupo = indicadoresGrupo(rel)
-  const carregando = r30.carregando || r60.carregando
-  const erro = r30.erro || r60.erro
-  const metaUso = janela === '30' ? META.uso30 : META.uso60
-  const usamMuito = pessoas.filter((p) => p[`d${janela}`] >= metaUso).length
+  const carregando = r30.carregando || r60.carregando || evo.carregando || mA.carregando || mB.carregando
+  const erro = ehMes ? mA.erro : (r30.erro || r60.erro)
+  const metaUso = vista.metaUso
+  const usamMuito = pessoas.filter((p) => p.d30 >= metaUso).length
+  const abas = [
+    { value: '30', label: '30 dias' },
+    { value: '60', label: '60 dias' },
+    ...meses.map((m) => ({ value: m, label: rotuloMes(m) })),
+  ]
 
-  const recarregar = () => { r30.recarregar(); r60.recarregar() }
+  const recarregar = () => { r30.recarregar(); r60.recarregar(); evo.recarregar(); mA.recarregar(); mB.recarregar() }
   const atualizado = r30.em ? new Date(r30.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : null
   const periodo = rel ? `${new Date(`${rel.desde}T12:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} a ${new Date(`${rel.ate}T12:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}` : ''
 
@@ -395,9 +412,21 @@ export default function AdesaoEscalaPage({ goBack }) {
           <p className="text-[13px] leading-snug text-muted-foreground lg:order-1 lg:max-w-[62ch]">
             Quem usa a escala, quem marca início e término e quem informa o tempo que falta.
             Mede só se o app foi informado, não a qualidade do trabalho na sala. {periodo && `Período: ${periodo}.`}
+            {ehMes && ' Os meses são gravados todo dia às 3h15 com o dia anterior; a comparação (número pequeno) é com o mês anterior.'}
           </p>
-          <div className="lg:order-2 lg:w-[360px] lg:shrink-0">
-            <SegmentedSelector options={JANELAS} value={janela} onChange={setJanela} />
+          <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 [&::-webkit-scrollbar]:hidden lg:order-2 lg:mx-0 lg:shrink-0 lg:flex-wrap lg:justify-end lg:overflow-visible lg:px-0" role="tablist" aria-label="Período">
+            {abas.map((a, i) => (
+              <button
+                key={a.value}
+                type="button"
+                role="tab"
+                aria-selected={aba === a.value}
+                onClick={() => setAba(a.value)}
+                className={`min-h-[40px] shrink-0 rounded-xl border px-3.5 text-[13px] font-semibold ${aba === a.value ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-foreground'} ${i === 2 ? 'ml-2' : ''}`}
+              >
+                {a.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -450,8 +479,10 @@ export default function AdesaoEscalaPage({ goBack }) {
 
             <div className="flex flex-col gap-3 xl:grid xl:grid-cols-2 xl:items-start">
               {hospitais}
-              {largo && <ResumoCargos cargos={cargos} janela={janela} />}
+              {largo && <ResumoCargos cargos={cargos} vista={vista} />}
             </div>
+
+            {evo.dados?.semanas && <GraficoEvolucao semanas={evo.dados.semanas} compacto={!largo} />}
 
             <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
               <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [&::-webkit-scrollbar]:hidden lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:pb-0" role="tablist" aria-label="Cargo">
@@ -485,12 +516,12 @@ export default function AdesaoEscalaPage({ goBack }) {
             </div>
 
             {blocos.map((b) => (largo ? (
-              <TabelaCargo key={b.cargo} cargo={b.cargo} lista={b.lista} janela={janela} onAbrir={setAberta} />
+              <TabelaCargo key={b.cargo} cargo={b.cargo} lista={b.lista} vista={vista} onAbrir={setAberta} />
             ) : (
               <section key={b.cargo} className="rounded-xl border border-border bg-card" aria-label={CARGOS[b.cargo]}>
                 <CabecalhoCargo cargo={b.cargo} total={b.lista.length} />
                 {b.lista.map((p) => (
-                  <LinhaPessoa key={p.chave} p={p} janela={janela} onAbrir={setAberta} />
+                  <LinhaPessoa key={p.chave} p={p} vista={vista} onAbrir={setAberta} />
                 ))}
               </section>
             )))}
@@ -505,7 +536,7 @@ export default function AdesaoEscalaPage({ goBack }) {
       </div>
 
       {aberta && (
-        <Ficha pessoa={aberta} pessoas={pessoas} janela={janela} lado={largo ? 'right' : 'bottom'} onClose={() => setAberta(null)} />
+        <Ficha pessoa={aberta} pessoas={pessoas} vista={vista} lado={largo ? 'right' : 'bottom'} onClose={() => setAberta(null)} />
       )}
     </div>
   )

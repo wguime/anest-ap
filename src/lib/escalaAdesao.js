@@ -235,3 +235,97 @@ export function resumoCard(rel) {
     alertas: pessoas.filter((p) => SIT_ALERTA.includes(p.situacao)).length,
   }
 }
+
+// ─── Abas por mês e evolução (dono 23/09: "uma nova aba para cada novo mês", "gráfico evolutivo") ───
+
+const MESES_CURTOS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+
+/** '2026-09' → 'set/26' */
+export function rotuloMes(mes) {
+  const [a, m] = String(mes).split('-').map(Number)
+  return `${MESES_CURTOS[m - 1]}/${String(a).slice(2)}`
+}
+
+/** '2026-09' → '2026-08' */
+export function mesAnterior(mes) {
+  const [a, m] = String(mes).split('-').map(Number)
+  return m === 1 ? `${a - 1}-12` : `${a}-${String(m - 1).padStart(2, '0')}`
+}
+
+const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+/**
+ * Limites de um mês para a RPC: do dia 1 ao último dia — ou até ONTEM, se for o mês corrente
+ * (o dia de hoje ainda não foi gravado; o cron grava às 03:15). `hoje` é injetável para teste.
+ */
+export function limitesMes(mes, hoje = new Date()) {
+  const [a, m] = String(mes).split('-').map(Number)
+  const primeiro = new Date(a, m - 1, 1)
+  const ultimo = new Date(a, m, 0)
+  const ontem = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - 1)
+  const ate = ultimo < ontem ? ultimo : ontem
+  const dias = Math.max(0, Math.round((ate - primeiro) / 864e5) + 1)
+  return { desde: iso(primeiro), ate: iso(ate), dias, parcial: ate < ultimo }
+}
+
+/**
+ * O que a página mostra numa aba: período principal (A, campos "30" de montarPessoas), período de
+ * comparação (B, campos "60"), rótulos e a meta de dias. Nas abas de mês a comparação é o mês
+ * anterior e a meta de dias é proporcional aos dias do período (15 em 30).
+ */
+export function montarVista(aba, { r30, r60, mesA, mesB, hoje = new Date() } = {}) {
+  if (aba === '60') {
+    return { relA: r60, relB: r30, rotA: 'últimos 60 dias', rotB: 'últimos 30 dias', curtoB: '30d', metaUso: META.uso60, maxDias: 60, situacaoDe30: true }
+  }
+  if (/^\d{4}-\d{2}$/.test(aba || '')) {
+    const lim = limitesMes(aba, hoje)
+    const ant = mesAnterior(aba)
+    return {
+      relA: mesA, relB: mesB,
+      rotA: lim.parcial ? `${rotuloMes(aba)} (até ${lim.ate.slice(8, 10)}/${lim.ate.slice(5, 7)})` : rotuloMes(aba),
+      rotB: rotuloMes(ant), curtoB: rotuloMes(ant),
+      metaUso: Math.max(1, Math.round((META.uso30 * lim.dias) / 30)),
+      maxDias: Math.max(1, lim.dias),
+      situacaoDe30: false,
+    }
+  }
+  return { relA: r30, relB: r60, rotA: 'últimos 30 dias', rotB: 'últimos 60 dias', curtoB: '60d', metaUso: META.uso30, maxDias: 30, situacaoDe30: false }
+}
+
+/**
+ * Séries semanais em % a partir de `escala_adesao_evolucao().semanas`. Semana COMPLETA = o
+ * domingo dela já passou (não "o último dia gravado é domingo": semana sem escala no fim de
+ * semana termina na sexta e continua completa).
+ */
+export function serieEvolucao(semanas = [], hoje = new Date()) {
+  const hojeIso = iso(hoje)
+  const domingo = (seg) => {
+    const [a, m, d] = String(seg).split('-').map(Number)
+    return iso(new Date(a, m - 1, d + 6))
+  }
+  return semanas.map((s) => ({
+    semana: s.semana,
+    de: s.de,
+    ate: s.ate,
+    ini: razao(s.com_ini, s.casos),
+    ter: razao(s.com_ter, s.casos),
+    terAnest: razao(s.ter_eu, s.casos_anest),
+    tot: razao(s.com_total, s.turnos),
+    tp: razao(s.com_tp, s.casos),
+    pessoas: s.pessoas,
+    porCargo: { anest: s.anest, enf: s.enf, res: s.res, outros: s.outros },
+    completa: domingo(s.semana) < hojeIso,
+  }))
+}
+
+/**
+ * Tendência de um indicador: última semana COMPLETA contra 4 semanas antes (ou a mais antiga que
+ * houver). null se não há duas semanas completas.
+ */
+export function tendencia(serie, campo) {
+  const completas = serie.filter((s) => s.completa && s[campo] != null)
+  if (completas.length < 2) return null
+  const atual = completas[completas.length - 1]
+  const antes = completas[Math.max(0, completas.length - 5)]
+  return { atual: atual[campo], antes: antes[campo], delta: atual[campo] - antes[campo], desde: antes.semana }
+}

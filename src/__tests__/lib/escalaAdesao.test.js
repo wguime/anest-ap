@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   tituloNome, razao, faixa, formatarPct, classificarSituacao, montarPessoas, ordenarPessoas,
   resumirCargos, indicadoresGrupo, melhores10, proximoPasso, resumoCard, mediana,
+  rotuloMes, mesAnterior, limitesMes, montarVista, serieEvolucao, tendencia,
 } from '@/lib/escalaAdesao'
 
 const linha = (over = {}) => ({
@@ -156,5 +157,52 @@ describe('escalaAdesao — ordem, cargos, grupo, ficha e card', () => {
     const r = rel([linha({ ter_eu: 2 }), linha({ nome: 'OUTRO' })], [{ hospital: 'total', casos: 10, com_ini: 5, com_ter: 6, com_tp: 0, turnos: 5, com_total: 1 }])
     expect(resumoCard(r)).toEqual({ ini: 50, ter: 60, tot: 20, alertas: 1 })
     expect(resumoCard(null)).toBeNull()
+  })
+})
+
+describe('escalaAdesao — abas por mês e evolução', () => {
+  it('rótulo e mês anterior, inclusive na virada do ano', () => {
+    expect(rotuloMes('2026-09')).toBe('set/26')
+    expect(rotuloMes('2027-01')).toBe('jan/27')
+    expect(mesAnterior('2026-09')).toBe('2026-08')
+    expect(mesAnterior('2027-01')).toBe('2026-12')
+  })
+
+  it('mês fechado vai do dia 1 ao último; mês corrente para em ONTEM', () => {
+    const hoje = new Date(2026, 8, 23) // 23/09/2026
+    expect(limitesMes('2026-08', hoje)).toEqual({ desde: '2026-08-01', ate: '2026-08-31', dias: 31, parcial: false })
+    expect(limitesMes('2026-09', hoje)).toEqual({ desde: '2026-09-01', ate: '2026-09-22', dias: 22, parcial: true })
+    expect(limitesMes('2026-02', hoje).ate).toBe('2026-02-28')
+  })
+
+  it('vista: 30/60 comparam entre si; mês compara com o anterior e a meta de dias é proporcional', () => {
+    const hoje = new Date(2026, 8, 23)
+    const v30 = montarVista('30', { r30: 'A', r60: 'B', hoje })
+    expect([v30.relA, v30.relB, v30.metaUso, v30.curtoB]).toEqual(['A', 'B', 15, '60d'])
+    const v60 = montarVista('60', { r30: 'A', r60: 'B', hoje })
+    expect([v60.relA, v60.relB, v60.metaUso, v60.situacaoDe30]).toEqual(['B', 'A', 30, true])
+    const vset = montarVista('2026-09', { mesA: 'M', mesB: 'N', hoje })
+    expect(vset.relA).toBe('M')
+    expect(vset.rotA).toBe('set/26 (até 22/09)')
+    expect(vset.curtoB).toBe('ago/26')
+    expect(vset.metaUso).toBe(11) // 15 × 22/30
+    expect(montarVista('2026-08', { hoje }).metaUso).toBe(16) // 15 × 31/30
+  })
+
+  it('série semanal em % e semana completa = o domingo dela já passou', () => {
+    const hoje = new Date(2026, 8, 23)
+    const [s] = serieEvolucao([{ semana: '2026-09-14', de: '2026-09-14', ate: '2026-09-18', casos: 200, com_ini: 100, com_ter: 150, com_tp: 10, turnos: 100, com_total: 20, ter_eu: 40, casos_anest: 190, pessoas: 50, anest: 40, enf: 5, res: 3, outros: 2 }], hoje)
+    expect([s.ini, s.ter, s.tot, s.tp]).toEqual([50, 75, 20, 5])
+    expect(Math.round(s.terAnest)).toBe(21)
+    expect(s.completa).toBe(true) // terminou na sexta (sem escala no FDS) e é completa
+    const [p] = serieEvolucao([{ semana: '2026-09-21', de: '2026-09-21', ate: '2026-09-22', casos: 1, com_ini: 0, com_ter: 0, com_tp: 0, turnos: 1, com_total: 0 }], hoje)
+    expect(p.completa).toBe(false)
+  })
+
+  it('tendência: última semana completa contra 4 semanas antes; semana parcial não conta', () => {
+    const serie = [10, 20, 30, 40, 50, 60].map((ter, i) => ({ semana: `s${i}`, ter, completa: true }))
+    serie.push({ semana: 'parcial', ter: 99, completa: false })
+    expect(tendencia(serie, 'ter')).toEqual({ atual: 60, antes: 20, delta: 40, desde: 's1' })
+    expect(tendencia([{ ter: 5, completa: true }], 'ter')).toBeNull()
   })
 })
