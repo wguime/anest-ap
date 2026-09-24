@@ -11,7 +11,7 @@
  * overflow, senão o sticky morre (memória overflow-hidden-mata-sticky).
  */
 import { useEffect, useMemo, useState } from 'react'
-import { RefreshCw, ChevronDown, TriangleAlert } from 'lucide-react'
+import { RefreshCw, TriangleAlert } from 'lucide-react'
 import { PageHeader } from '@/components'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/design-system'
 import { useMediaQuery } from '@/design-system/hooks'
@@ -31,6 +31,18 @@ const TOM = {
   low: 'bg-category-orange-bg text-category-orange-fg',
   crit: 'bg-category-red-bg text-category-red-fg',
   na: 'bg-muted text-muted-foreground font-normal',
+}
+
+/**
+ * Células de número: o FUNDO diz a faixa e o texto é sempre o mesmo (dono 24/09 — "24%" laranja
+ * ao lado de "25%" preto parecia erro). As tags de situação seguem com o `TOM` colorido.
+ */
+const TOM_CELULA = {
+  ok: 'bg-category-green-bg text-foreground',
+  mid: 'bg-warning/20 text-foreground',
+  low: 'bg-category-orange-bg text-foreground',
+  crit: 'bg-category-red-bg text-foreground',
+  na: 'bg-muted text-foreground font-normal',
 }
 
 const ORDENS = [
@@ -57,7 +69,7 @@ function Tag({ situacao }) {
 
 function Celula({ valor, meta, texto }) {
   return (
-    <span className={`flex h-7 items-center justify-center rounded-md text-[12px] font-bold tabular-nums ${TOM[faixa(valor, meta)]}`}>
+    <span className={`flex h-7 items-center justify-center rounded-md text-[12px] font-bold tabular-nums ${TOM_CELULA[faixa(valor, meta)]}`}>
       {texto ?? formatarPct(valor)}
     </span>
   )
@@ -157,7 +169,9 @@ function Ficha({ pessoa, pessoas, vista, lado = 'bottom', onClose }) {
           ) : (
             <p className="text-[13px] text-muted-foreground">
               Marcou o início de <b className="text-foreground">{pessoa[`iniN${j}`]}</b> e o término de{' '}
-              <b className="text-foreground">{pessoa[`terN${j}`]}</b> cirurgias (qualquer sala) · {vista.rotA}.
+              <b className="text-foreground">{pessoa[`terN${j}`]}</b> cirurgias e informou o tempo da cirurgia em{' '}
+              <b className="text-foreground">{pessoa[`tpN${j}`]}</b> e o tempo total em{' '}
+              <b className="text-foreground">{pessoa[`totN${j}`]}</b> (qualquer sala) · {vista.rotA}.
             </p>
           )}
           <p className="text-[12px] text-muted-foreground">
@@ -171,7 +185,7 @@ function Ficha({ pessoa, pessoas, vista, lado = 'bottom', onClose }) {
 
 function CabecalhoCargo({ cargo, total }) {
   const anest = cargo === 'anest'
-  const cols = anest ? ['Uso', 'Início', 'Término', 'Tempo cir.', 'Tempo total'] : ['Uso', 'Inícios', 'Términos', '', '']
+  const cols = anest ? ['Uso', 'Início', 'Término', 'Tempo cir.', 'Tempo total'] : ['Uso', 'Inícios', 'Términos', 'Tempo cir.', 'Tempo total']
   return (
     <div className="sticky top-14 deitado:top-11 z-10 grid grid-cols-[1fr_repeat(5,40px)] items-end gap-1 rounded-t-xl border-b border-border bg-muted px-2 py-1.5 text-center text-[10px] font-semibold leading-tight text-muted-foreground">
       <span className="text-left text-[12px] font-extrabold uppercase tracking-wide text-primary">
@@ -207,8 +221,9 @@ function LinhaPessoa({ p, vista, onAbrir }) {
         <>
           <Celula valor={p.nunca ? 0 : p[`iniN${j}`]} meta={10} texto={p[`iniN${j}`]} />
           <Celula valor={p.nunca ? 0 : p[`terN${j}`]} meta={10} texto={p[`terN${j}`]} />
-          <Celula valor={null} meta={1} texto="—" />
-          <Celula valor={null} meta={1} texto="—" />
+          {/* tempos preenchidos pela pessoa em qualquer linha — sem meta para estes cargos */}
+          <Celula valor={null} meta={1} texto={p[`tpN${j}`]} />
+          <Celula valor={null} meta={1} texto={p[`totN${j}`]} />
         </>
       )}
     </button>
@@ -226,7 +241,7 @@ function LinhaPessoa({ p, vista, onAbrir }) {
 function CelulaLarga({ valor, meta, texto, sub, sub2 }) {
   return (
     <td className="p-1 lg:px-1.5 xl:px-1">
-      <span className={`flex min-h-[44px] flex-col items-center justify-center rounded-md px-1 py-0.5 leading-tight tabular-nums ${TOM[faixa(valor, meta)]}`}>
+      <span className={`flex min-h-[44px] flex-col items-center justify-center rounded-md px-1 py-0.5 leading-tight tabular-nums ${TOM_CELULA[faixa(valor, meta)]}`}>
         <b className="whitespace-nowrap text-[13px]">{texto ?? formatarPct(valor)}</b>
         {sub && <small className="hidden text-[10px] font-normal opacity-85 xl:block">{sub}</small>}
         {sub2 && <small className="whitespace-nowrap text-[10px] font-normal opacity-85">{sub2}</small>}
@@ -283,8 +298,8 @@ function TabelaCargo({ cargo, lista, vista, onAbrir }) {
               <>
                 <CelulaLarga valor={p.nunca ? 0 : p[`iniN${j}`]} meta={10} texto={p[`iniN${j}`]} sub={`${vista.curtoB}: ${p[`iniN${o}`]}`} />
                 <CelulaLarga valor={p.nunca ? 0 : p[`terN${j}`]} meta={10} texto={p[`terN${j}`]} sub={`${vista.curtoB}: ${p[`terN${o}`]}`} />
-                <CelulaLarga valor={null} meta={1} texto="—" />
-                <CelulaLarga valor={null} meta={1} texto="—" />
+                <CelulaLarga valor={null} meta={1} texto={p[`tpN${j}`]} sub={`${vista.curtoB}: ${p[`tpN${o}`]}`} />
+                <CelulaLarga valor={null} meta={1} texto={p[`totN${j}`]} sub={`${vista.curtoB}: ${p[`totN${o}`]}`} />
               </>
             )}
             <td className="hidden border-t border-border text-center text-[13px] tabular-nums xl:table-cell">{p[`acoes${j}`]}<span className="block text-[10px] text-muted-foreground">{vista.curtoB}: {p[`acoes${o}`]}</span></td>
@@ -328,7 +343,6 @@ export default function AdesaoEscalaPage({ goBack }) {
   const [cargo, setCargo] = useState('todos')
   const [ordem, setOrdem] = useState('sit')
   const [aberta, setAberta] = useState(null)
-  const [comoLer, setComoLer] = useState(false)
   const largo = useMediaQuery('(min-width: 768px)')
 
   // As duas janelas ao vivo sempre (a situação de "60 dias" vem da janela de 30); o mês e o mês
@@ -443,28 +457,6 @@ export default function AdesaoEscalaPage({ goBack }) {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setComoLer((v) => !v)}
-          aria-expanded={comoLer}
-          className="flex min-h-[44px] items-center justify-between rounded-xl border border-border bg-card px-3 text-[13px] font-semibold"
-        >
-          Como ler os números
-          <ChevronDown className={`h-4 w-4 transition-transform ${comoLer ? 'rotate-180' : ''}`} aria-hidden="true" />
-        </button>
-        {comoLer && (
-          <ul className="grid gap-1.5 rounded-xl border border-border bg-card px-4 py-3 text-[12.5px] leading-snug text-muted-foreground lg:grid-cols-2 lg:gap-x-8">
-            <li><b className="text-foreground">Uso (anestesistas):</b> índice de 0 a 100 que junta os 5 itens — abrir a escala, marcar início, marcar término, tempo da cirurgia e tempo total —, cada um contado contra a própria meta. Engajado a partir de {INDICE.ok}.</li>
-            <li><b className="text-foreground">Abre a escala:</b> dos dias em que a pessoa trabalhou, em quantos abriu o app (meta 70%). Anestesista: dias na escala publicada. Demais cargos: dias úteis, feriados incluídos — para eles, é o próprio uso.</li>
-            <li><b className="text-foreground">Início / Término:</b> das cirurgias em que era o anestesista, em quantas ele mesmo tocou em "Iniciada" / "Terminada" (meta 80%). Embaixo, a sala marcada por qualquer pessoa.</li>
-            <li><b className="text-foreground">Tempo cir.:</b> das cirurgias dela, em quantas havia o tempo que falta preenchido (meta 50%).</li>
-            <li><b className="text-foreground">Tempo total:</b> dos turnos dela, em quantos informou a que horas termina (meta 80%).</li>
-            <li>Enfermagem, residentes, secretaria e contas dos hospitais não têm cirurgias próprias: aparece o número de marcações que fizeram.</li>
-            <li>Cores: verde na meta · amarelo metade ou mais · laranja abaixo da metade · vermelho zero.</li>
-            <li>Situação (sempre 30 dias): <b className="text-foreground">Engajado</b> índice {INDICE.ok}+; <b className="text-foreground">Não marca início/término</b> marcou o término de menos de 20% das próprias cirurgias; <b className="text-foreground">Baixo acesso</b> abriu a escala em menos de 40% dos dias trabalhados; <b className="text-foreground">Sem uso na semana</b> trabalhou nos últimos 7 dias e não abriu.</li>
-            <li>Toque numa pessoa para ver a ficha: os números dela, a meta, a média dos colegas com os valores mais altos e o próximo passo.</li>
-          </ul>
-        )}
 
         {erro && !rel && (
           <div className="flex items-start gap-2 rounded-xl border border-border bg-category-red-bg px-3 py-2.5 text-[13px] text-category-red-fg">
@@ -540,13 +532,30 @@ export default function AdesaoEscalaPage({ goBack }) {
               </section>
             )))}
 
+            {/* critérios sempre visíveis no FIM (dono 24/09: quem lê até o fim — ou vê na reunião — precisa
+                dos cortes sem abrir nada; antes ficavam num "Como ler os números" fechado no topo) */}
+            <section className="rounded-xl border border-border bg-card px-4 py-3" aria-label="Critérios">
+              <h2 className="mb-2 text-[12px] font-extrabold uppercase tracking-wide text-primary">Critérios</h2>
+              <ul className="grid gap-1.5 text-[12.5px] leading-snug text-muted-foreground lg:grid-cols-2 lg:gap-x-8">
+                <li><b className="text-foreground">Uso (anestesistas):</b> índice de 0 a 100 que junta os 5 itens — abrir a escala, marcar início, marcar término, tempo da cirurgia e tempo total —, cada um contado contra a própria meta. Engajado a partir de {INDICE.ok}.</li>
+                <li><b className="text-foreground">Abre a escala:</b> dos dias em que a pessoa trabalhou, em quantos abriu o app (meta 70%). Anestesista: dias na escala publicada. Demais cargos: dias úteis, feriados incluídos — para eles, é o próprio uso.</li>
+                <li><b className="text-foreground">Início / Término:</b> das cirurgias em que era o anestesista, em quantas ele mesmo tocou em "Iniciada" / "Terminada" (meta 80%). Embaixo, a sala marcada por qualquer pessoa.</li>
+                <li><b className="text-foreground">Tempo cir.:</b> das cirurgias dela, em quantas havia o tempo que falta preenchido (meta 50%).</li>
+                <li><b className="text-foreground">Tempo total:</b> dos turnos dela, em quantos informou a que horas termina (meta 80%).</li>
+                <li>Enfermagem, residentes, secretaria e contas dos hospitais não têm cirurgias próprias: aparece quantas vezes marcaram início e término e informaram o tempo da cirurgia e o tempo total, em qualquer sala. O tempo da cirurgia só registra quem preencheu a partir de 24/09.</li>
+                <li>Cor do fundo de cada número: verde na meta · amarelo metade ou mais · laranja abaixo da metade · vermelho zero · cinza quando não há meta (contagens de tempo dos demais cargos).</li>
+                <li>Situação (sempre 30 dias): <b className="text-foreground">Engajado</b> índice {INDICE.ok}+; <b className="text-foreground">Não marca início/término</b> marcou o término de menos de 20% das próprias cirurgias; <b className="text-foreground">Baixo acesso</b> abriu a escala em menos de 40% dos dias trabalhados; <b className="text-foreground">Sem uso na semana</b> trabalhou nos últimos 7 dias e não abriu.</li>
+                <li>Toque numa pessoa para ver a ficha: os números dela, a meta, a média dos colegas com os valores mais altos e o próximo passo.</li>
+              </ul>
+            </section>
+
             <p className="text-[11.5px] leading-snug text-muted-foreground">
               Fonte: registros do ANEST. Ficam fora cirurgias suspensas, linhas sem anestesista, a conta de testes
               e quem não trabalhou nenhum dia no período.
               Se uma troca não foi registrada no app, a cirurgia conta para quem estava escalado. Dia trabalhado:
               cirurgia no nome ou nome no rodapé do hospital — no fim de semana só com cirurgia, e rodapé anotado
               "consultório" não conta. O tempo total pode sair um pouco menor que o real quando outra pessoa editou a
-              linha depois; o tempo da cirurgia conta o preenchido por qualquer pessoa (o app não guarda quem preencheu).
+              linha depois; no índice dos anestesistas, o tempo da cirurgia conta o preenchido por qualquer pessoa.
             </p>
           </>
         )}

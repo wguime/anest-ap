@@ -117,6 +117,16 @@ describe('escalaAdesao — montarPessoas', () => {
     expect(p.tot30).toBe(50)
   })
 
+  it('todo cargo traz quantos tempos preencheu (tempo da cirurgia e tempo total), com 60 dias ao lado', () => {
+    const [p] = montarPessoas(
+      rel([linha({ cargo: 'enf', role: 'tec-enfermagem', casos: 0, tp_n: 2, tot_n: 3 })]),
+      rel([linha({ cargo: 'enf', role: 'tec-enfermagem', casos: 0, tp_n: 5, tot_n: 7 })]),
+    )
+    expect([p.tpN30, p.totN30, p.tpN60, p.totN60]).toEqual([2, 3, 5, 7])
+    const [velho] = montarPessoas(rel([linha()]), null) // JSON sem os campos
+    expect([velho.tpN30, velho.totN30]).toEqual([0, 0])
+  })
+
   it('só abrir o app não basta: abre 100% sem marcar nada tem índice 20 e fica em "não marca"', () => {
     const [p] = montarPessoas(rel([linha({ dne: 20, ini_eu: 0, ter_eu: 0, tp_inf: 0, tot_eu: 0 })]), null)
     expect(p.abre30).toBe(100)

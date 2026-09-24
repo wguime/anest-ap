@@ -179,6 +179,10 @@ export function montarPessoas(r30, r60) {
       iniEu30: a.ini_eu, terEu30: a.ter_eu, tpInf30: a.tp_inf, totEu30: a.tot_eu,
       iniN30: a.ini_n || 0, iniN60: b.ini_n || 0,
       terN30: a.ter_n || 0, terN60: b.ter_n || 0,
+      // quantos tempos a pessoa PREENCHEU, em qualquer linha (todo cargo — dono 24/09); o tempo
+      // da cirurgia só tem autor gravado desde 24/09
+      tpN30: a.tp_n || 0, tpN60: b.tp_n || 0,
+      totN30: a.tot_n || 0, totN60: b.tot_n || 0,
       trocas30: a.trocas || 0, trocas60: b.trocas || 0,
       acoes30: a.acoes || 0, acoes60: b.acoes || 0,
     }

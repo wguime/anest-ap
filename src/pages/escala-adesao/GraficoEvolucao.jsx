@@ -52,7 +52,9 @@ function Tendencia({ linha, t }) {
 
 export default function GraficoEvolucao({ semanas, compacto = false }) {
   const serie = useMemo(() => serieEvolucao(semanas), [semanas])
-  const [ligadas, setLigadas] = useState(() => new Set(['ter', 'ini', 'terAnest', 'tot']))
+  // todas as linhas visíveis ao abrir (dono 24/09: "deixe as informações completas"); o toque na
+  // legenda continua ocultando/mostrando
+  const [ligadas, setLigadas] = useState(() => new Set(LINHAS.map((l) => l.campo)))
 
   if (serie.length < 2) {
     return (
