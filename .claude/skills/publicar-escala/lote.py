@@ -31,7 +31,8 @@ def iniciais(nome):
 
 
 def particular(conv):
-    return up(conv).strip() in ('PART', 'PARTICULAR')
+    # Espelho do classificador canônico (^PART(ICULAR)?[^A-Z]*$): "Part." é particular, "PART/SC" não.
+    return re.match(r'^PART(ICULAR)?[^A-Z]*$', up(conv).strip()) is not None
 
 
 def caso(sala, ordem, hora, paciente, idade, proc, cir, anest, conv, cor='', tempo='', cont=False):
