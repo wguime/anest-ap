@@ -8,7 +8,7 @@
  * `ativo=false` adia a busca (ex.: Home antes do sinal do DeferredReadyContext; aba de mês que
  * ninguém abriu).
  */
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   buscarAdesao, buscarAdesaoPeriodo, buscarAdesaoEvolucao, lerCacheAdesao,
 } from '@/services/escalaAdesaoService'
@@ -51,11 +51,18 @@ export function useAdesaoEscala(dias, opcoes) {
   return useConsultaAdesao(dias, () => buscarAdesao(dias), opcoes)
 }
 
-/** Um mês ('2026-09') a partir do histórico diário; null = não buscar. */
-export function useAdesaoMes(mes, opcoes) {
+/**
+ * Um mês ('2026-09') a partir do histórico diário; null = não buscar. `gravadoAte` (da evolução)
+ * deixa o mês corrente ir até HOJE quando o dia já foi gravado à noite (dono 24/09).
+ */
+export function useAdesaoMes(mes, gravadoAte = null, opcoes) {
   const id = mes ? `mes:${mes}` : null
+  // ref: `carregar` é memoizado pelo id — o valor mais recente precisa chegar mesmo assim
+  // (o efeito abaixo roda antes do efeito de busca do useConsultaAdesao, declarado depois)
+  const gravado = useRef(gravadoAte)
+  useEffect(() => { gravado.current = gravadoAte }, [gravadoAte])
   return useConsultaAdesao(id, () => {
-    const { desde, ate } = limitesMes(mes)
+    const { desde, ate } = limitesMes(mes, new Date(), gravado.current)
     return buscarAdesaoPeriodo(id, desde, ate)
   }, opcoes)
 }

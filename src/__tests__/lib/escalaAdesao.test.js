@@ -2,17 +2,18 @@ import { describe, it, expect } from 'vitest'
 import {
   tituloNome, razao, faixa, formatarPct, classificarSituacao, montarPessoas, ordenarPessoas,
   resumirCargos, indicadoresGrupo, melhores10, proximoPasso, resumoCard, mediana,
-  rotuloMes, mesAnterior, limitesMes, montarVista, serieEvolucao, tendencia,
+  rotuloMes, mesAnterior, limitesMes, montarVista, serieEvolucao, tendencia, tamanhoTopo,
 } from '@/lib/escalaAdesao'
 
 const linha = (over = {}) => ({
   cargo: 'anest', role: 'anestesiologista', nome: 'FULANO DE TAL',
   d7: 5, dn: 20, aberturas: 100, acoes: 50, trocas: 0, ini_n: 10, ter_n: 10,
-  casos: 40, ini_eu: 20, ter_eu: 24, tp_inf: 4, turnos: 20, tot_eu: 10, nunca: false,
+  de: 20, de7: 5, dne: 16, d7e: 5, dnu: 16, d7u: 5,
+  casos: 40, ini_eu: 20, ter_eu: 24, ini_qq: 30, ter_qq: 36, tp_inf: 4, turnos: 20, tot_eu: 10, nunca: false,
   ...over,
 })
 
-const rel = (pessoas, hospitais = []) => ({ dias: 30, desde: '2026-08-24', ate: '2026-09-22', pessoas, hospitais })
+const rel = (pessoas, hospitais = []) => ({ dias: 30, desde: '2026-08-24', ate: '2026-09-22', uteis: 20, uteis7: 5, pessoas, hospitais })
 
 describe('escalaAdesao — formatação', () => {
   it('nome em caixa alta vira título com partículas minúsculas', () => {
@@ -44,23 +45,29 @@ describe('escalaAdesao — formatação', () => {
 })
 
 describe('escalaAdesao — situação (janela de 30 dias)', () => {
-  const base = { nunca: false, d7: 5, d30: 20, anest: true, ter30: 60, iniN30: 0, terN30: 0 }
+  const base = { nunca: false, d7: 5, base7: 5, uso7: 100, d30: 16, base30: 20, uso30: 80, anest: true, ter30: 60, iniN30: 0, terN30: 0 }
 
   it('ordem de precedência: nunca > sem uso na semana > baixo uso > não marca término', () => {
     expect(classificarSituacao({ ...base, nunca: true, d7: 0 })).toBe('nun')
-    expect(classificarSituacao({ ...base, d7: 0 })).toBe('sem')
-    expect(classificarSituacao({ ...base, d7: 3, d30: 7 })).toBe('bx')
+    expect(classificarSituacao({ ...base, d7: 0, uso7: 0 })).toBe('sem')
+    expect(classificarSituacao({ ...base, d7: 2, uso7: 40, uso30: 35 })).toBe('bx')
     expect(classificarSituacao({ ...base, ter30: 19 })).toBe('nm')
   })
 
-  it('baixo uso exige menos de 8 dias no mês E menos de 5 na semana', () => {
-    expect(classificarSituacao({ ...base, d7: 5, d30: 7 })).toBe('ok')
-    expect(classificarSituacao({ ...base, d7: 4, d30: 8, ter30: 60 })).toBe('mid') // não é frequente
+  it('semana sem nenhum dia na escala (férias, consultório) não vira "sem uso na semana"', () => {
+    expect(classificarSituacao({ ...base, d7: 0, base7: 0, uso7: null, uso30: 78 })).toBe('ok')
   })
 
-  it('engajado: frequente (15+ no mês ou 5+ na semana) e término ≥ 50%', () => {
-    expect(classificarSituacao({ ...base, d7: 2, d30: 15, ter30: 50 })).toBe('ok')
-    expect(classificarSituacao({ ...base, d7: 2, d30: 15, ter30: 49 })).toBe('mid')
+  it('baixo uso exige menos de 40% no mês E semana sem uso forte (80% com 3+ dias)', () => {
+    expect(classificarSituacao({ ...base, uso30: 35, d7: 4, base7: 5, uso7: 80 })).toBe('ok') // semana forte
+    expect(classificarSituacao({ ...base, uso30: 35, d7: 2, base7: 2, uso7: 100 })).toBe('bx') // semana curta não salva
+    expect(classificarSituacao({ ...base, uso30: 40, d7: 1, uso7: 20 })).toBe('mid') // não é frequente
+  })
+
+  it('engajado: uso ≥ 70% (ou semana forte) e término ≥ 50%', () => {
+    expect(classificarSituacao({ ...base, d7: 2, uso7: 40, uso30: 70, ter30: 50 })).toBe('ok')
+    expect(classificarSituacao({ ...base, d7: 2, uso7: 40, uso30: 70, ter30: 49 })).toBe('mid')
+    expect(classificarSituacao({ ...base, d7: 2, uso7: 40, uso30: 69, ter30: 90 })).toBe('mid')
   })
 
   it('quem não tem cirurgia própria é julgado pelas marcações (10+)', () => {
@@ -71,25 +78,60 @@ describe('escalaAdesao — situação (janela de 30 dias)', () => {
 })
 
 describe('escalaAdesao — montarPessoas', () => {
-  it('junta 30 e 60 dias por cargo+nome e calcula as porcentagens da própria pessoa', () => {
-    const [p] = montarPessoas(rel([linha()]), rel([linha({ dn: 35, casos: 80, ter_eu: 40 })]))
+  it('uso do anestesista = dias em que abriu ÷ dias em que estava na escala', () => {
+    const [p] = montarPessoas(rel([linha({ de: 9, dne: 7, de7: 2, d7e: 0 })]), null)
+    expect(p.base30).toBe(9)
+    expect(p.d30).toBe(7)
+    expect(Math.round(p.uso30)).toBe(78)
+    expect(p.base7).toBe(2)
+  })
+
+  it('demais cargos: base = dias úteis da janela (feriado conta)', () => {
+    const [p] = montarPessoas(rel([linha({ cargo: 'enf', role: 'tec-enfermagem', casos: 0, dnu: 15, d7u: 4 })]), null)
+    expect(p.base30).toBe(20)
+    expect(p.uso30).toBe(75)
+    expect(p.base7).toBe(5)
+    expect(p.uso7).toBe(80)
+  })
+
+  it('quem não trabalhou nenhum dia no período sai da lista (sem rótulo de férias — dono 24/09)', () => {
+    const lista = montarPessoas(rel([linha({ nome: 'FERIAS', de: 0, de7: 0, dne: 0, d7e: 0, casos: 0, nunca: true }), linha()]), null)
+    expect(lista.map((p) => p.nome)).toEqual(['Fulano de Tal'])
+  })
+
+  it('nome curto = primeiro + último, como na escala; sobrenome composto inteiro', () => {
+    const [a, b] = montarPessoas(rel([linha({ nome: 'MATHEUS LEMOS VIEIRA DA CUNHA' }), linha({ nome: 'ADRIANO DALL MAGRO' })]), null)
+    expect(a.nomeCurto).toBe('Matheus Cunha')
+    expect(a.primeiro).toBe('Matheus')
+    expect(b.nomeCurto).toBe('Adriano Dall Magro')
+  })
+
+  it('marcação: meta = cirurgia marcada por qualquer um; o próprio fica ao lado', () => {
+    const [p] = montarPessoas(rel([linha()]), rel([linha({ dn: 35, casos: 80, ter_eu: 40, ter_qq: 60 })]))
     expect(p.nome).toBe('Fulano de Tal')
-    expect(p.d30).toBe(20)
-    expect(p.d60).toBe(35)
-    expect(p.ter30).toBe(60)
-    expect(p.ter60).toBe(50)
+    expect(p.ter30).toBe(90)
+    expect(p.terProprio30).toBe(60)
+    expect(p.ini30).toBe(75)
+    expect(p.iniProprio30).toBe(50)
+    expect(p.ter60).toBe(75)
+    expect(p.terProprio60).toBe(50)
     expect(p.tot30).toBe(50)
     expect(p.aberturasPorDia).toBe(5)
     expect(p.situacao).toBe('ok')
   })
 
-  it('d7 é limitado a 7 (a janela de 7×24h pode cruzar 8 datas)', () => {
-    const [p] = montarPessoas(rel([linha({ d7: 8 })]), null)
-    expect(p.d7).toBe(7)
+  it('JSON antigo (cache de antes de 24/09) cai nos dias corridos e no "próprio"', () => {
+    const velho = linha()
+    for (const k of ['de', 'de7', 'dne', 'd7e', 'dnu', 'd7u', 'ini_qq', 'ter_qq']) delete velho[k]
+    const [p] = montarPessoas({ dias: 30, pessoas: [{ ...velho, d7: 8 }], hospitais: [] }, null)
+    expect(p.base30).toBe(30)
+    expect(p.d30).toBe(20)
+    expect(p.d7).toBe(7) // a janela de 7×24h pode cruzar 8 datas
+    expect(p.ter30).toBe(60)
   })
 
   it('anestesista sem nenhuma cirurgia no período não é tratado como "0%"', () => {
-    const [p] = montarPessoas(rel([linha({ casos: 0, turnos: 0, ini_eu: 0, ter_eu: 0, tot_eu: 0 })]), null)
+    const [p] = montarPessoas(rel([linha({ casos: 0, turnos: 0, ini_eu: 0, ter_eu: 0, ini_qq: 0, ter_qq: 0, tot_eu: 0 })]), null)
     expect(p.anest).toBe(false)
     expect(p.ter30).toBeNull()
   })
@@ -103,17 +145,18 @@ describe('escalaAdesao — montarPessoas', () => {
   it('sem a janela de 60 dias, os campos de 60 repetem os de 30', () => {
     const [p] = montarPessoas(rel([linha()]), null)
     expect(p.d60).toBe(p.d30)
+    expect(p.uso60).toBe(p.uso30)
     expect(p.ter60).toBe(p.ter30)
   })
 })
 
 describe('escalaAdesao — ordem, cargos, grupo, ficha e card', () => {
   const pessoas = montarPessoas(rel([
-    linha({ nome: 'ANA', ter_eu: 36 }),               // ok (90%)
-    linha({ nome: 'BRUNO', ter_eu: 2 }),              // nm
-    linha({ nome: 'CARLA', d7: 0 }),                  // sem
+    linha({ nome: 'ANA', ter_qq: 36 }),               // ok (90%)
+    linha({ nome: 'BRUNO', ter_qq: 2 }),              // nm
+    linha({ nome: 'CARLA', d7e: 0 }),                 // sem
     linha({ cargo: 'enf', role: 'tec-enfermagem', nome: 'DORA', casos: 0, ini_n: 30, ter_n: 30 }), // ok
-    linha({ cargo: 'sec', role: 'secretaria', nome: 'EVA', d7: 0, dn: 0, aberturas: 0, casos: 0, ini_n: 0, ter_n: 0, nunca: true }),
+    linha({ cargo: 'sec', role: 'secretaria', nome: 'EVA', d7: 0, dn: 0, dnu: 0, d7u: 0, aberturas: 0, casos: 0, ini_n: 0, ter_n: 0, nunca: true }),
   ]), null)
 
   it('alertas primeiro: nunca/sem uso antes de não marca, engajados por último', () => {
@@ -138,8 +181,10 @@ describe('escalaAdesao — ordem, cargos, grupo, ficha e card', () => {
     expect(indicadoresGrupo(rel([]))).toBeNull()
   })
 
-  it('melhores 10% = média do decil superior dos anestesistas (não a média do grupo)', () => {
+  it('média top N = média dos 10% de anestesistas com o valor mais alto (não a média do grupo)', () => {
     const lista = Array.from({ length: 20 }, (_, i) => ({ anest: true, ter30: i * 5 }))
+    expect(tamanhoTopo(lista)).toBe(2)
+    expect(tamanhoTopo(Array.from({ length: 46 }, () => ({ anest: true })))).toBe(5)
     expect(melhores10(lista, 'ter30')).toBe(92.5) // 2 melhores: 95 e 90
     expect(melhores10([{ anest: false, ter30: 10 }], 'ter30')).toBeNull()
   })
@@ -150,11 +195,11 @@ describe('escalaAdesao — ordem, cargos, grupo, ficha e card', () => {
     const eva = pessoas.find((p) => p.nome === 'Eva')
     expect(proximoPasso(eva).texto).toMatch(/Ainda não abriu/)
     const carla = pessoas.find((p) => p.nome === 'Carla')
-    expect(proximoPasso(carla).texto).toMatch(/7 dias/)
+    expect(proximoPasso(carla).texto).toMatch(/nesta semana/)
   })
 
   it('card: 4 mini-indicadores e contagem de alertas', () => {
-    const r = rel([linha({ ter_eu: 2 }), linha({ nome: 'OUTRO' })], [{ hospital: 'total', casos: 10, com_ini: 5, com_ter: 6, com_tp: 0, turnos: 5, com_total: 1 }])
+    const r = rel([linha({ ter_qq: 2 }), linha({ nome: 'OUTRO' })], [{ hospital: 'total', casos: 10, com_ini: 5, com_ter: 6, com_tp: 0, turnos: 5, com_total: 1 }])
     expect(resumoCard(r)).toEqual({ ini: 50, ter: 60, tot: 20, alertas: 1 })
     expect(resumoCard(null)).toBeNull()
   })
@@ -175,18 +220,25 @@ describe('escalaAdesao — abas por mês e evolução', () => {
     expect(limitesMes('2026-02', hoje).ate).toBe('2026-02-28')
   })
 
-  it('vista: 30/60 comparam entre si; mês compara com o anterior e a meta de dias é proporcional', () => {
+  it('mês corrente vai até HOJE quando o dia já foi gravado à noite (escala de amanhã publicada)', () => {
+    const hoje = new Date(2026, 8, 23, 21, 0)
+    expect(limitesMes('2026-09', hoje, '2026-09-23').ate).toBe('2026-09-23')
+    expect(limitesMes('2026-09', hoje, '2026-09-22').ate).toBe('2026-09-22')
+    expect(limitesMes('2026-09', hoje, '2026-09-30').ate).toBe('2026-09-22') // futuro é ignorado
+    expect(montarVista('2026-09', { hoje, gravadoAte: '2026-09-23' }).rotA).toBe('set/26 (até 23/09)')
+  })
+
+  it('vista: 30/60 comparam entre si; mês compara com o anterior; meta de uso é 70% em toda aba', () => {
     const hoje = new Date(2026, 8, 23)
     const v30 = montarVista('30', { r30: 'A', r60: 'B', hoje })
-    expect([v30.relA, v30.relB, v30.metaUso, v30.curtoB]).toEqual(['A', 'B', 15, '60d'])
+    expect([v30.relA, v30.relB, v30.metaUso, v30.curtoB]).toEqual(['A', 'B', 70, '60d'])
     const v60 = montarVista('60', { r30: 'A', r60: 'B', hoje })
-    expect([v60.relA, v60.relB, v60.metaUso, v60.situacaoDe30]).toEqual(['B', 'A', 30, true])
+    expect([v60.relA, v60.relB, v60.metaUso, v60.situacaoDe30]).toEqual(['B', 'A', 70, true])
     const vset = montarVista('2026-09', { mesA: 'M', mesB: 'N', hoje })
     expect(vset.relA).toBe('M')
     expect(vset.rotA).toBe('set/26 (até 22/09)')
     expect(vset.curtoB).toBe('ago/26')
-    expect(vset.metaUso).toBe(11) // 15 × 22/30
-    expect(montarVista('2026-08', { hoje }).metaUso).toBe(16) // 15 × 31/30
+    expect(vset.metaUso).toBe(70)
   })
 
   it('série semanal em % e semana completa = o domingo dela já passou', () => {

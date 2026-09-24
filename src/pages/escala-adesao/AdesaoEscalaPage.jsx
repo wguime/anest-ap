@@ -20,7 +20,7 @@ import GraficoEvolucao from './GraficoEvolucao'
 import {
   META, CARGOS, ORDEM_CARGO, SITUACOES,
   montarPessoas, ordenarPessoas, resumirCargos, indicadoresGrupo, hospital,
-  faixa, formatarPct, melhores10, proximoPasso, montarVista, rotuloMes, mesAnterior,
+  faixa, formatarPct, melhores10, tamanhoTopo, proximoPasso, montarVista, rotuloMes, mesAnterior,
 } from '@/lib/escalaAdesao'
 
 
@@ -76,11 +76,14 @@ function Indicador({ titulo, valor, meta, detalhe }) {
   )
 }
 
-/** Barra do comparativo da ficha: pessoa × meta × melhores 10%. */
-function Comparativo({ titulo, detalhe, valor, meta, topo, max = 100, sufixo = '%' }) {
+/**
+ * Barra do comparativo da ficha: a pessoa (pelo primeiro nome — quem lê a ficha nem sempre é ela,
+ * "você" confundia, dono 24/09) × meta × média top N. `linhas` = [[rótulo, valor, cor], …] antes da meta.
+ */
+function Comparativo({ titulo, detalhe, linhas, meta, topo, rotuloTopo, max = 100, sufixo = '%' }) {
   const linha = (rotulo, v, cor) => (
-    <div className="grid grid-cols-[92px_1fr_44px] items-center gap-2 text-[11.5px] text-muted-foreground">
-      <span>{rotulo}</span>
+    <div key={rotulo} className="grid grid-cols-[112px_1fr_44px] items-center gap-2 text-[11.5px] text-muted-foreground">
+      <span className="truncate">{rotulo}</span>
       <span className="h-2 overflow-hidden rounded-full bg-muted">
         <span className={`block h-full rounded-full ${cor}`} style={{ width: `${Math.min(100, ((v ?? 0) / max) * 100)}%` }} />
       </span>
@@ -90,9 +93,9 @@ function Comparativo({ titulo, detalhe, valor, meta, topo, max = 100, sufixo = '
   return (
     <div className="flex flex-col gap-1">
       <p className="text-[13px] font-semibold">{titulo} <span className="font-normal text-muted-foreground">· {detalhe}</span></p>
-      {linha('Você', valor, 'bg-foreground')}
+      {linhas.map(([rotulo, v, cor]) => linha(rotulo, v, cor))}
       {linha('Meta', meta, 'bg-primary')}
-      {topo != null && linha('Melhores 10%', topo, 'bg-muted-foreground')}
+      {topo != null && linha(rotuloTopo, topo, 'bg-muted-foreground')}
     </div>
   )
 }
@@ -102,13 +105,19 @@ function Ficha({ pessoa, pessoas, vista, lado = 'bottom', onClose }) {
   const j = '30'
   const passo = proximoPasso(pessoa)
   const topo = useMemo(() => ({
-    d: melhores10(pessoas, `d${j}`),
+    uso: melhores10(pessoas, `uso${j}`),
     ini: melhores10(pessoas, `ini${j}`),
     ter: melhores10(pessoas, `ter${j}`),
     tp: melhores10(pessoas, `tp${j}`),
     tot: melhores10(pessoas, `tot${j}`),
   }), [pessoas, j])
   const metaUso = vista.metaUso
+  const n = tamanhoTopo(pessoas)
+  const rotuloTopo = `Média top ${n}`
+  const quem = pessoa.primeiro
+  const eu = (v) => [[quem, v, 'bg-foreground']]
+  // início/término: a meta é a cirurgia marcada por qualquer um; o que a pessoa tocou vem embaixo
+  const marcado = (qq, proprio) => [['Por qualquer um', qq, 'bg-foreground'], [`Por ${quem}`, proprio, 'bg-foreground/45']]
   return (
     <Sheet open onOpenChange={(o) => !o && onClose()}>
       <SheetContent side={lado} className={lado === 'bottom' ? '!h-auto max-h-[88vh] overflow-y-auto' : 'overflow-y-auto'}>
@@ -125,18 +134,17 @@ function Ficha({ pessoa, pessoas, vista, lado = 'bottom', onClose }) {
           </p>
           <Comparativo
             titulo="Usa a escala"
-            detalhe={`dias em que abriu · ${vista.rotA}`}
-            valor={pessoa[`d${j}`]} meta={metaUso} topo={pessoa.anest ? topo.d : null}
-            max={vista.maxDias} sufixo=" d"
+            detalhe={`abriu em ${pessoa[`d${j}`]} de ${pessoa[`base${j}`]} dias trabalhados · ${vista.rotA}`}
+            linhas={eu(pessoa[`uso${j}`])} meta={metaUso} topo={pessoa.anest ? topo.uso : null} rotuloTopo={rotuloTopo}
           />
           {pessoa.anest ? (
             <>
-              <Comparativo titulo="Marca o início" detalhe="% das suas cirurgias" valor={pessoa[`ini${j}`]} meta={META.ini} topo={topo.ini} />
-              <Comparativo titulo="Marca o término" detalhe="% das suas cirurgias" valor={pessoa[`ter${j}`]} meta={META.ter} topo={topo.ter} />
-              <Comparativo titulo="Informa o tempo da cirurgia" detalhe="% das suas cirurgias" valor={pessoa[`tp${j}`]} meta={META.tp} topo={topo.tp} />
-              <Comparativo titulo="Informa o tempo total" detalhe="% dos seus turnos" valor={pessoa[`tot${j}`]} meta={META.tot} topo={topo.tot} />
+              <Comparativo titulo="Início marcado" detalhe={`% das cirurgias de ${quem}`} linhas={marcado(pessoa[`ini${j}`], pessoa[`iniProprio${j}`])} meta={META.ini} topo={topo.ini} rotuloTopo={rotuloTopo} />
+              <Comparativo titulo="Término marcado" detalhe={`% das cirurgias de ${quem}`} linhas={marcado(pessoa[`ter${j}`], pessoa[`terProprio${j}`])} meta={META.ter} topo={topo.ter} rotuloTopo={rotuloTopo} />
+              <Comparativo titulo="Tempo da cirurgia informado" detalhe={`% das cirurgias de ${quem}`} linhas={eu(pessoa[`tp${j}`])} meta={META.tp} topo={topo.tp} rotuloTopo={rotuloTopo} />
+              <Comparativo titulo="Tempo total informado" detalhe={`% dos turnos de ${quem}`} linhas={eu(pessoa[`tot${j}`])} meta={META.tot} topo={topo.tot} rotuloTopo={rotuloTopo} />
               <p className="text-[11.5px] text-muted-foreground">
-                "Melhores 10%" é a média dos anestesistas com o maior valor em cada item. {pessoa[`casos${j}`]} cirurgias e {pessoa[`turnos${j}`]} turnos no período.
+                {rotuloTopo}: média dos {n} anestesistas com o valor mais alto em cada item. {pessoa[`casos${j}`]} cirurgias e {pessoa[`turnos${j}`]} turnos no período.
               </p>
             </>
           ) : (
@@ -156,7 +164,7 @@ function Ficha({ pessoa, pessoas, vista, lado = 'bottom', onClose }) {
 
 function CabecalhoCargo({ cargo, total }) {
   const anest = cargo === 'anest'
-  const cols = anest ? ['Dias', 'Início', 'Término', 'Tempo cir.', 'Tempo total'] : ['Dias', 'Inícios', 'Términos', '', '']
+  const cols = anest ? ['Uso', 'Início', 'Término', 'Tempo cir.', 'Tempo total'] : ['Uso', 'Inícios', 'Términos', '', '']
   return (
     <div className="sticky top-14 deitado:top-11 z-10 grid grid-cols-[1fr_repeat(5,40px)] items-end gap-1 rounded-t-xl border-b border-border bg-muted px-2 py-1.5 text-center text-[10px] font-semibold leading-tight text-muted-foreground">
       <span className="text-left text-[12px] font-extrabold uppercase tracking-wide text-primary">
@@ -177,10 +185,10 @@ function LinhaPessoa({ p, vista, onAbrir }) {
       className="grid min-h-[48px] w-full grid-cols-[1fr_repeat(5,40px)] items-center gap-1 border-b border-border bg-card px-2 py-1.5 text-left last:border-b-0 active:bg-muted"
     >
       <span className="min-w-0">
-        <span className="block truncate text-[13px] font-semibold leading-tight">{p.nome}</span>
+        <span className="block truncate text-[13px] font-semibold leading-tight">{p.nomeCurto}</span>
         <Tag situacao={p.situacao} />
       </span>
-      <Celula valor={p[`d${j}`]} meta={metaUso} texto={p[`d${j}`]} />
+      <Celula valor={p[`uso${j}`]} meta={metaUso} />
       {p.anest ? (
         <>
           <Celula valor={p[`ini${j}`]} meta={META.ini} />
@@ -236,11 +244,11 @@ function TabelaCargo({ cargo, lista, vista, onAbrir }) {
             <span className="font-normal">{vista.rotA} · embaixo, {vista.rotB}</span>
           </th>
           <th className={`${th} hidden xl:table-cell`}>Situação</th>
-          <th className={th}>Dias de uso<span className="hidden font-normal xl:block">semana / período · meta {metaUso}</span></th>
+          <th className={th}>Uso<span className="hidden font-normal xl:block">% dos dias trabalhados · meta {metaUso}%</span></th>
           <th className={`${th} hidden xl:table-cell`}>Aberturas<span className="hidden font-normal xl:block">por dia usado</span></th>
-          <th className={th}>{anest ? 'Marca início' : 'Inícios'}<span className="hidden font-normal xl:block">{anest ? '% das suas · meta 80%' : 'marcações'}</span></th>
-          <th className={th}>{anest ? 'Marca término' : 'Términos'}<span className="hidden font-normal xl:block">{anest ? '% das suas · meta 80%' : 'marcações'}</span></th>
-          <th className={th}>Tempo da cirurgia<span className="hidden font-normal xl:block">{anest ? '% das suas · meta 50%' : 'não se aplica'}</span></th>
+          <th className={th}>{anest ? 'Início marcado' : 'Inícios'}<span className="hidden font-normal xl:block">{anest ? '% das cirurgias · meta 80%' : 'marcações'}</span></th>
+          <th className={th}>{anest ? 'Término marcado' : 'Términos'}<span className="hidden font-normal xl:block">{anest ? '% das cirurgias · meta 80%' : 'marcações'}</span></th>
+          <th className={th}>Tempo da cirurgia<span className="hidden font-normal xl:block">{anest ? '% das cirurgias · meta 50%' : 'não se aplica'}</span></th>
           <th className={`${th} rounded-tr-xl xl:rounded-tr-none`}>Tempo total<span className="hidden font-normal xl:block">{anest ? '% dos turnos · meta 80%' : 'não se aplica'}</span></th>
           <th className={`${th} hidden xl:table-cell`}>Trocas</th>
           <th className={`${th} hidden rounded-tr-xl xl:table-cell`}>Ações<span className="hidden font-normal xl:block">na escala</span></th>
@@ -251,19 +259,19 @@ function TabelaCargo({ cargo, lista, vista, onAbrir }) {
           <tr key={p.chave} onClick={() => onAbrir(p)} className="cursor-pointer border-t border-border hover:bg-muted/60">
             <td className="border-t border-border py-2 pl-3 pr-2 xl:py-1.5">
               <button type="button" onClick={(e) => { e.stopPropagation(); onAbrir(p) }} className="text-left text-[13.5px] font-semibold leading-tight hover:underline">
-                {p.nome}
+                {p.nomeCurto}
               </button>
               {p.sub && <span className="block text-[11px] text-muted-foreground">{p.sub}</span>}
               {/* tablet em pé: a situação vai para baixo do nome (a coluna própria só a partir de xl) */}
               <span className="mt-1 block xl:hidden"><Tag situacao={p.situacao} /></span>
             </td>
             <td className="hidden whitespace-nowrap border-t border-border px-1 text-center xl:table-cell"><Tag situacao={p.situacao} /></td>
-            <CelulaLarga valor={p[`d${j}`]} meta={metaUso} texto={`${p.d7} / ${p[`d${j}`]}`} sub={`${vista.curtoB}: ${p[`d${o}`]}`} />
+            <CelulaLarga valor={p[`uso${j}`]} meta={metaUso} sub={`${p[`d${j}`]} de ${p[`base${j}`]} dias`} sub2={`${vista.curtoB}: ${formatarPct(p[`uso${o}`])}`} />
             <td className="hidden border-t border-border text-center text-[13px] tabular-nums xl:table-cell">{p.aberturasPorDia ?? '—'}</td>
             {p.anest ? (
               <>
-                <CelulaLarga valor={p[`ini${j}`]} meta={META.ini} sub={n(p.iniEu30, p.casos30)} sub2={`${vista.curtoB}: ${formatarPct(p[`ini${o}`])}`} />
-                <CelulaLarga valor={p[`ter${j}`]} meta={META.ter} sub={n(p.terEu30, p.casos30)} sub2={`${vista.curtoB}: ${formatarPct(p[`ter${o}`])}`} />
+                <CelulaLarga valor={p[`ini${j}`]} meta={META.ini} sub={`por ${p.primeiro}: ${formatarPct(p[`iniProprio${j}`])}`} sub2={`${vista.curtoB}: ${formatarPct(p[`ini${o}`])}`} />
+                <CelulaLarga valor={p[`ter${j}`]} meta={META.ter} sub={`por ${p.primeiro}: ${formatarPct(p[`terProprio${j}`])}`} sub2={`${vista.curtoB}: ${formatarPct(p[`ter${o}`])}`} />
                 <CelulaLarga valor={p[`tp${j}`]} meta={META.tp} sub={n(p.tpInf30, p.casos30)} sub2={`${vista.curtoB}: ${formatarPct(p[`tp${o}`])}`} />
                 <CelulaLarga valor={p[`tot${j}`]} meta={META.tot} sub={n(p.totEu30, p.turnos30)} sub2={`${vista.curtoB}: ${formatarPct(p[`tot${o}`])}`} />
               </>
@@ -291,15 +299,14 @@ function ResumoCargos({ cargos, vista }) {
     <section className="rounded-xl border border-border bg-card" aria-label="Resumo por cargo">
       <div className="grid grid-cols-[minmax(120px,1fr)_repeat(6,64px)] items-end gap-1 rounded-t-xl bg-muted px-3 py-1.5 text-center text-[10.5px] font-semibold leading-tight text-muted-foreground">
         <span className="text-left text-[12px] font-extrabold uppercase tracking-wide text-primary">Por cargo</span>
-        <span>Abriram na semana</span><span>Dias (mediana)</span><span>Início</span><span>Término</span><span>Tempo total</span><span>Com alerta</span>
+        <span>Abriram na semana</span><span>Uso (mediana)</span><span>Início</span><span>Término</span><span>Tempo total</span><span>Com alerta</span>
       </div>
       {cargos.map((c) => {
-        const dias = c.dias30
         return (
           <div key={c.cargo} className="grid grid-cols-[minmax(120px,1fr)_repeat(6,64px)] items-center gap-1 border-t border-border px-3 py-1.5">
             <span className="text-[13px] font-semibold leading-tight">{CARGOS[c.cargo]} <span className="text-[11px] font-normal text-muted-foreground">{c.total}</span></span>
             <Celula valor={(c.abriramSemana / c.total) * 100} meta={80} texto={`${c.abriramSemana}/${c.total}`} />
-            <Celula valor={dias} meta={metaUso} texto={dias == null ? '—' : `${Math.round(dias)} d`} />
+            <Celula valor={c.uso30} meta={metaUso} />
             <Celula valor={c.ini30} meta={META.ini} />
             <Celula valor={c.ter30} meta={META.ter} />
             <Celula valor={c.tot30} meta={META.tot} />
@@ -329,12 +336,13 @@ export default function AdesaoEscalaPage({ goBack }) {
   const ehMes = /^\d{4}-\d{2}$/.test(aba)
   const meses = evo.dados?.meses ?? []
   const temAnterior = ehMes && meses.includes(mesAnterior(aba))
-  const mA = useAdesaoMes(ehMes ? aba : null)
-  const mB = useAdesaoMes(temAnterior ? mesAnterior(aba) : null)
+  const gravadoAte = evo.dados?.gravado_ate ?? null
+  const mA = useAdesaoMes(ehMes ? aba : null, gravadoAte)
+  const mB = useAdesaoMes(temAnterior ? mesAnterior(aba) : null, gravadoAte)
 
   useEffect(() => { window.scrollTo(0, 0) }, [])
 
-  const vista = montarVista(aba, { r30: r30.dados, r60: r60.dados, mesA: mA.dados, mesB: mB.dados })
+  const vista = montarVista(aba, { r30: r30.dados, r60: r60.dados, mesA: mA.dados, mesB: mB.dados, gravadoAte })
   const pessoas = useMemo(() => {
     const lista = montarPessoas(vista.relA, vista.relB)
     if (!vista.situacaoDe30) return lista
@@ -348,7 +356,7 @@ export default function AdesaoEscalaPage({ goBack }) {
   const carregando = r30.carregando || r60.carregando || evo.carregando || mA.carregando || mB.carregando
   const erro = ehMes ? mA.erro : (r30.erro || r60.erro)
   const metaUso = vista.metaUso
-  const usamMuito = pessoas.filter((p) => p.d30 >= metaUso).length
+  const usamMuito = pessoas.filter((p) => (p.uso30 ?? 0) >= metaUso).length
   const abas = [
     { value: '30', label: '30 dias' },
     { value: '60', label: '60 dias' },
@@ -411,8 +419,10 @@ export default function AdesaoEscalaPage({ goBack }) {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
           <p className="text-[13px] leading-snug text-muted-foreground lg:order-1 lg:max-w-[62ch]">
             Quem usa a escala, quem marca início e término e quem informa o tempo que falta.
-            Mede só se o app foi informado, não a qualidade do trabalho na sala. {periodo && `Período: ${periodo}.`}
-            {ehMes && ' Os meses são gravados todo dia às 3h15 com o dia anterior; a comparação (número pequeno) é com o mês anterior.'}
+            Mede só se o app foi informado, não a qualidade do trabalho na sala. Tudo é contado apenas nos
+            dias em que a pessoa trabalhou: férias, pós-plantão, consultório e folgas ficam fora. {periodo && `Período: ${periodo}.`}
+            {' '}O dia entra quando a escala do dia seguinte é publicada.
+            {ehMes && ' A comparação (número pequeno) é com o mês anterior.'}
           </p>
           <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 [&::-webkit-scrollbar]:hidden lg:order-2 lg:mx-0 lg:shrink-0 lg:flex-wrap lg:justify-end lg:overflow-visible lg:px-0" role="tablist" aria-label="Período">
             {abas.map((a, i) => (
@@ -441,14 +451,14 @@ export default function AdesaoEscalaPage({ goBack }) {
         </button>
         {comoLer && (
           <ul className="grid gap-1.5 rounded-xl border border-border bg-card px-4 py-3 text-[12.5px] leading-snug text-muted-foreground lg:grid-cols-2 lg:gap-x-8">
-            <li><b className="text-foreground">Dias:</b> em quantos dias a pessoa abriu a escala (meta: 15 em 30 dias, 30 em 60).</li>
-            <li><b className="text-foreground">Início / Término:</b> das cirurgias em que era o anestesista, em quantas ela mesma tocou em "Iniciada" / "Terminada" (meta 80%).</li>
+            <li><b className="text-foreground">Uso:</b> dos dias em que a pessoa trabalhou, em quantos abriu a escala (meta 70%). Anestesista: dias em que estava na escala publicada. Demais cargos: dias úteis, feriados incluídos.</li>
+            <li><b className="text-foreground">Início / Término:</b> das cirurgias em que era o anestesista, em quantas alguém tocou em "Iniciada" / "Terminada" (meta 80%). A ficha mostra também quantas a própria pessoa marcou.</li>
             <li><b className="text-foreground">Tempo cir.:</b> das cirurgias dela, em quantas havia o tempo que falta preenchido (meta 50%).</li>
             <li><b className="text-foreground">Tempo total:</b> dos turnos dela, em quantos informou a que horas termina (meta 80%).</li>
             <li>Enfermagem, residentes, secretaria e contas dos hospitais não têm cirurgias próprias: aparece o número de marcações que fizeram.</li>
             <li>Cores: verde na meta · amarelo metade ou mais · laranja abaixo da metade · vermelho zero.</li>
-            <li>Situação (sempre 30 dias): <b className="text-foreground">Engajado</b> usa 15+ dias e marca o término em metade ou mais; <b className="text-foreground">Não marca início/término</b> abre mas marca o término em menos de 20%; <b className="text-foreground">Baixo uso</b> menos de 8 dias; <b className="text-foreground">Sem uso na semana</b> não abriu em 7 dias.</li>
-            <li>Toque numa pessoa para ver a ficha: os números dela, a meta, os colegas que mais usam e o próximo passo.</li>
+            <li>Situação (sempre 30 dias): <b className="text-foreground">Engajado</b> uso de 70%+ e término marcado em metade ou mais; <b className="text-foreground">Não marca início/término</b> término marcado em menos de 20%; <b className="text-foreground">Baixo uso</b> uso abaixo de 40%; <b className="text-foreground">Sem uso na semana</b> trabalhou nos últimos 7 dias e não abriu.</li>
+            <li>Toque numa pessoa para ver a ficha: os números dela, a meta, a média dos colegas com os valores mais altos e o próximo passo.</li>
           </ul>
         )}
 
@@ -470,11 +480,11 @@ export default function AdesaoEscalaPage({ goBack }) {
               <Indicador titulo="Tempo da cirurgia" valor={grupo.tp} meta={META.tp} detalhe={`${grupo.n.tp} de ${grupo.casos}`} />
               <Indicador titulo="Tempo total" valor={grupo.tot} meta={META.tot} detalhe={`${grupo.n.tot} de ${grupo.turnos} turnos`} />
               <div className="hidden xl:block">
-                <Indicador titulo={`Usam a escala ${metaUso}+ dias`} valor={(usamMuito / Math.max(1, pessoas.length)) * 100} meta={80} detalhe={`${usamMuito} de ${pessoas.length} pessoas`} />
+                <Indicador titulo={`Uso de ${metaUso}%+`} valor={(usamMuito / Math.max(1, pessoas.length)) * 100} meta={80} detalhe={`${usamMuito} de ${pessoas.length} pessoas`} />
               </div>
             </div>
             <p className="text-[12.5px] text-muted-foreground xl:hidden">
-              <b className="text-foreground">{usamMuito} de {pessoas.length}</b> pessoas abriram a escala em {metaUso}+ dias no período.
+              <b className="text-foreground">{usamMuito} de {pessoas.length}</b> pessoas abriram a escala em {metaUso}% ou mais dos dias trabalhados.
             </p>
 
             <div className="flex flex-col gap-3 xl:grid xl:grid-cols-2 xl:items-start">
@@ -527,7 +537,8 @@ export default function AdesaoEscalaPage({ goBack }) {
             )))}
 
             <p className="text-[11.5px] leading-snug text-muted-foreground">
-              Fonte: registros do ANEST. Ficam fora cirurgias suspensas, linhas sem anestesista e a conta de testes.
+              Fonte: registros do ANEST. Ficam fora cirurgias suspensas, linhas sem anestesista, a conta de testes
+              e quem não trabalhou nenhum dia no período.
               Se uma troca não foi registrada no app, a cirurgia conta para quem estava escalado. O tempo total
               pode sair um pouco menor que o real quando outra pessoa editou a linha depois.
             </p>

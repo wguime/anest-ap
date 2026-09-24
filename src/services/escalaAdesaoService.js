@@ -13,7 +13,7 @@ import { supabase } from '@/config/supabase'
 
 export const IDADE_CARD_MS = 30 * 60 * 1000
 
-const chave = (id) => `anest-escala-adesao-v1:${id}`
+const chave = (id) => `anest-escala-adesao-v2:${id}`
 
 /** `id`: 30 | 60 (janelas ao vivo) | 'mes:2026-09' | 'evolucao'. */
 export function lerCacheAdesao(id) {
