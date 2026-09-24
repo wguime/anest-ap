@@ -160,7 +160,7 @@ O script Python gera todo o arquivo via string concatenation (ver histórico em 
 
 **Primeira vez adicionando ano novo (ex: 2027)**: refatorar o dispatcher. Opções:
 
-### Opção A — arquivo único dispatcher
+### Padrão — arquivo único dispatcher
 Criar `src/data/plantao.js` (sem ano) que importa `plantao2026.js` e `plantao2027.js` e devolve o correto via date:
 
 ```js
@@ -190,10 +190,9 @@ lista hoje 12, e não só a residência: `src/lib/escalaFds.js` (escala cirúrgi
 funcionárias e a Home leem `FERIADOS_2026`/`FERIADO_LABELS` e ficariam sem os feriados do ano novo.
 O dispatcher precisa expor também `getResidenteEfetivo` (`TradeRequestForm.jsx`) e `getDatasDoResidente`.
 
-### Opção B — atualizar referência direta
+### Alternativa — só se o ano anterior nunca mais for consultado
 Se o novo ano substitui completamente o anterior (ex: nunca mais consulta 2026), basta trocar os imports de `./plantao2026` para `./plantao2027` nos mesmos arquivos. Mais simples, porém perde histórico.
 
-Recomendar **Opção A** na skill.
 
 ---
 

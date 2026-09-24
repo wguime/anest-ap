@@ -1,6 +1,6 @@
 ---
 description: Audita o(s) arquivo(s) atual(is) contra checklist LGPD — base legal, consentimento, anonimização, retenção, direitos do titular
-allowed-tools: Read, Grep, Glob
+allowed-tools: Read, Grep, Glob, Bash(git diff:*)
 argument-hint: "[caminho-do-arquivo]"
 ---
 

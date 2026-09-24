@@ -49,7 +49,7 @@ preenche os elementos por ele, inferindo do conhecimento do projeto o que ele n�
 5. **Entregar o prompt em um único bloco de código** pronto para copiar, seguido de 1-2 linhas
    dizendo o que foi inferido (para o usuário corrigir se a inferência errou).
 
-## Exemplo
+## Exemplo (ilustrativo, do tipo Tarefa; os outros tipos seguem o passo 3)
 
 Pedido: *"crie um prompt para corrigir o bug do tagsService.createTag"*
 

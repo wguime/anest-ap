@@ -8,7 +8,7 @@ paths:
   - "src/lib/escalaCirurgicaItens.js"
   - "src/__tests__/**/planoTroca*"
   - "src/__tests__/**/importarEscalaConferencia*"
-description: Escala Cirúrgica — trocas e posição assumida: TrocaSheet, execução na importação, duplicidade entre hospitais
+description: Escala Cirúrgica — trocas e posição assumida (TrocaSheet, execução na importação, duplicidade entre hospitais)
 ---
 
 <!-- Movido do CLAUDE.md em 2026-08-26 (otimização de contexto): o arquivo passou de

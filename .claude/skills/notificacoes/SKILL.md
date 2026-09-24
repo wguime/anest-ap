@@ -16,6 +16,9 @@ allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 - E-mail (ver `emailNotificationService.js`)
 - Push com tela bloqueada (ver `pushDispatchService.js` → edge `send-fcm-push`; o `EventAlertsContext` é só o alerta local de eventos)
 - Firestore `reunioesNotificacoes` (convocação de reunião — Firestore, não Supabase)
+- Evento da Escala Cirúrgica ou do cateter: por decisão do dono, a escala não grava notificação (sobram dois
+  push, de `useAvisoPlantonista` e `useAvisoTempoEstourado`) e do cateter só saem os lembretes do pg_cron
+  — rules `escala-*` e `cateter-peridural`
 
 ## Arquitetura
 

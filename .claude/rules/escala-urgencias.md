@@ -8,7 +8,7 @@ paths:
   - "src/pages/escala-cirurgica/BoardView.jsx"
   - "src/__tests__/**/escalaCirurgicaUrgencias*"
   - "src/__tests__/**/escalaUrgenciasSincronia*"
-description: Escala Cirúrgica — urgências do HRO: contrato por turno, salas-estação, fila e sincronia das superfícies
+description: Escala Cirúrgica — urgências do HRO (contrato por turno, salas-estação, fila e sincronia das superfícies)
 ---
 
 <!-- Movido do CLAUDE.md em 2026-08-26 (otimização de contexto): o arquivo passou de

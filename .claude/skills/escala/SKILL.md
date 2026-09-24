@@ -10,7 +10,7 @@ disable-model-invocation: true
 
 Repo canônico: `/Users/guilherme/dev/anest`. Um docx por mês cobre **as duas escalas**; a mesma pessoa preenche.
 
-> **⚠️ Import agora é IN-APP (31/07/2026):** o caminho oficial para importar o docx preenchido
+> **⚠️ O import é IN-APP (desde 31/07/2026):** o caminho oficial para importar o docx preenchido
 > é **Hub Escalas Funcionárias → ícone Importar (header)** — parseia no browser
 > (`src/lib/escalaFuncionariasDocx.js`), mostra a conferência e publica em
 > `escalasFuncionarias/{YYYY-MM}` no Firestore, **sem deploy** (todos veem na hora; write
@@ -92,6 +92,6 @@ manual só se o CI falhar, com confirmação do dono.
 - Trocas (`sobreavisoMaternoDiario` / `hospitaisDiario` no Firestore) continuam; overrides não são apagados.
 - MATERNO/Férias/Atestado em dias úteis seguem manuais via Firestore.
 
-## Anomalias herdadas (do formato antigo, já não ocorrem no template novo)
-- Export do Numbers grudava domingo na célula do sábado e usava células multi-linha → era a maior fonte de erro de parsing. O template gerado por esta skill elimina isso (um valor por célula).
-- Typos em DIA/SEMANA (`QURTA`) eram inofensivos — o parser usa a coluna DATA, não DIA.
+## Formato do docx
+- Use o template gerado por esta skill (um valor por célula): o export do Numbers gruda o domingo na célula do sábado e usa células multi-linha, e isso quebra o parsing.
+- O parser usa a coluna DATA, não DIA/SEMANA: typo no dia da semana (ex.: `QURTA`) é inofensivo.

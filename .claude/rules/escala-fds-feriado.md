@@ -10,7 +10,7 @@ paths:
   - "e2e/escala-cirurgica-fds*"
   - "e2e/escala-cirurgica-feriado*"
   - "e2e/importar-fds-mapas*"
-description: Escala Cirúrgica — fim de semana e feriado: fila única, linha pseudo-hospital 'fds', mapas na mesma entrada
+description: Escala Cirúrgica — fim de semana e feriado (fila única, linha pseudo-hospital 'fds', mapas na mesma entrada)
 ---
 
 <!-- Movido do CLAUDE.md em 2026-08-26 (otimização de contexto): o arquivo passou de

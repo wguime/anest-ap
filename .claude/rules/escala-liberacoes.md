@@ -12,7 +12,7 @@ paths:
   - "src/__tests__/**/escalaOrdemLiberacao*"
   - "src/__tests__/**/liberacoes*"
   - "src/__tests__/**/escalaPassaDeTurno*"
-description: Escala Cirúrgica — fila de liberação: ordem imutável, cauda vermelha, plantão noturno, travessia de turno, resposta tátil
+description: Escala Cirúrgica — fila de liberação (ordem imutável, cauda vermelha, plantão noturno, travessia de turno, resposta tátil)
 ---
 
 <!-- Movido do CLAUDE.md em 2026-08-26 (otimização de contexto): o arquivo passou de

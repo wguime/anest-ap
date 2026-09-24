@@ -8,7 +8,7 @@ description: Padrões de navegação React. KEY prop, goBack, scroll to top, PAG
 # Navegação ANEST
 
 ## Sistema de Navegação (F2 Etapa A — 2026-06-10)
-Switch-based em App.jsx (142 cases no renderAppPage()) **com URL como fonte de
+Switch-based em App.jsx (um case por página no renderAppPage()) **com URL como fonte de
 verdade** via react-router v7 declarative mode (`BrowserRouter` em main.jsx).
 Cada case renderiza um componente com `key={pageName}` e `onNavigate` prop —
 a interface `onNavigate(page, params)` das páginas NÃO mudou.
@@ -76,11 +76,12 @@ Já é central: `App.jsx` rola ao topo a cada troca de página (effect de `curre
 ## PAGE_TO_CARD Mapping
 Mapa de página → card de permissão. Usado para verificar acesso.
 ```jsx
+// src/App.jsx, escopo de módulo
 const PAGE_TO_CARD = {
-  'calculadoras': 'calculadoras',
-  'escalas': 'escalas',
-  'qualidade': 'qualidade',
-  // ... 38+ entries
+  comunicados: 'comunicados',
+  incidentes: 'incidentes',
+  extratoFerias: 'ferias', // + gate de papel por cima
+  // ...
 };
 ```
 Se página precisa de permissão, DEVE ter entrada no PAGE_TO_CARD.
@@ -94,7 +95,8 @@ onNavigate('documento-detalhe', { documentoId: doc.id, returnTo: 'biblioteca' })
 `/verificar/:uuid` — Verificação de certificados (sem auth).
 
 ## User null check
-ProfilePage e páginas que acessam user: SEMPRE verificar `if (!user) return null;`
+Página que lê `user` trata o `null` antes de acessar propriedades — o ProfilePage mostra um placeholder
+("Carregando perfil...") em vez de tela em branco.
 
 ## Header Fixo
 Usar `PageHeader` (`src/components/PageHeader.jsx`; props `title`, `subtitle`, `onBack`, `actions`):

@@ -44,7 +44,7 @@ Números da **ASRA 5ª ed. (2025)**, com ESAIC/ESRA 2022 e SBA 2020 (nomes ANVIS
 ⚠️ a SBA é mais conservadora nos DOACs (72 h para qualquer dose contra 24–36 h da ASRA em dose baixa); trocar a
 fonte primária é 1 linha por fármaco. `resolverJanela` ajusta por ClCr e idade, e a PRIMEIRA regra que casa
 vence (renal antes de idade). ⚠️ `resumo` existe porque badge é `whitespace-nowrap` e não encolhe: a frase do
-GP IIb/IIIa deixava o nome do fármaco com 49px. Travas: `anticoagulantes.test.js` (43), com invariantes de
+GP IIb/IIIa deixava o nome do fármaco com 49px. Travas: `anticoagulantes.test.js`, com invariantes de
 comprimento de rótulo — foi assim que o defeito nasceu.
 
 **Inibidores de apetite** (card `periop_inibidores_apetite`, seção Perioperatório e Via Aérea, 2026-08-25):
@@ -114,7 +114,7 @@ calculadoras foram migrados, e `toFixed` em texto de tela é regressão. ⚠️ 
 (é comparado; `parseFloat('2,5')` dá 2), e campo exibido-e-parseado (`dosePadrao`, `dilution`) é lido
 com `numeroFlexivel`, que aceita os dois formatos.
 
-Travas: `inibidoresApetite.test.js` (42) + e2e `inibidores-apetite.spec.ts`, que é a auditoria de LAYOUT a 375px
+Travas: `inibidoresApetite.test.js` + e2e `inibidores-apetite.spec.ts`, que é a auditoria de LAYOUT a 375px
 nos dois temas REAIS (`localStorage['anest-theme']` via `addInitScript` — forçar a classe `.dark` no `<html>` não
 muda `TabsList`/`TabsTrigger`, que leem `useTheme()` do contexto, e rende screenshot "dark" falso). Ela mede barra
 de abas × cards, truncamento por `scrollWidth > clientWidth`, alvo de toque e estouro horizontal. Dois achados

@@ -146,8 +146,8 @@ Origem: "aparelhos que não são iPhone têm tonalidades diferentes do DS". 50 u
   macOS/iOS; no Android e Windows o corpo em Inter 600 sai mais encorpado. Só o peso base (600→500)
   mudaria isso, e é mudança de DS para todo mundo.
 - **Painel do aparelho**: Samsung "Vívido" estica o sRGB para P3, "Proteção ocular"/Night Light
-  esquentam tudo. Screenshot bate com o hex e a tela não → é o painel. Protocolo de 4 âncoras em
-  `.tmp/PLANO-tonalidades-fora-do-iphone.md` §3.
+  esquentam tudo. Screenshot bate com o hex e a tela não → é o painel. Âncoras para o conta-gotas:
+  fundo `#F0FFF4`, card `#FFFFFF`, botão primário `#004225`; no escuro, card `#1A2420` e primário `#2ECC71`.
 - **Tema inicial segue o SO e fica por aparelho** (`localStorage 'anest-theme'`): Android com SO
   escuro abre escuro, iPhone claro abre claro. Perfil → Modo Escuro resolve; sincronizar no perfil
   só se o pedido se repetir (decisão 16/09).

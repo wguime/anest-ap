@@ -7,7 +7,6 @@ paths:
   - "src/design-system/components/anest/comunicados-card.jsx"
   - "src/pages/management/comunicados/**"
   - "src/pages/incidents/**"
-  - "src/pages/IncidentesPage.jsx"
 description: Comunicados (iOS Mail) e Notificações/Denúncias — 4 camadas, sino unificado, nome das superfícies de entrada
 ---
 

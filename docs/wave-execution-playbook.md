@@ -21,7 +21,7 @@
 ## Workflow Anthropic: Explore → Plan → Implement → Commit
 
 ### Fase 1 — Explore (plan mode opcional)
-- Ler `docs/planejamento-melhorias-2026-05-16.md` (seção da wave)
+- Ler o plano da wave, quando houver (as waves do plano v5.x estão em `docs/planejamento-melhorias-2026-05-16.md`)
 - Consultar a memória do projeto (o índice `MEMORY.md` já entra no contexto; abrir só os arquivos relevantes)
 - Não escrever código nesta fase
 - Fazer o pre-flight (próxima seção)
