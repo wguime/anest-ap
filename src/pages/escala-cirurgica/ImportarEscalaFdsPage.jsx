@@ -64,6 +64,10 @@ import {
   resumoMapa, HOSPITAIS_MAPA,
 } from '@/lib/escalaFdsMapas'
 import ConferirMapaFdsPage from './ConferirMapaFdsPage'
+import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
+import { validarCasosParaPublicacao, textoBloqueio } from '@/lib/escalaCirurgicaValidacao'
+import { ehHoraSequencialEscala } from '@/lib/escalaCirurgicaRegras'
+import { familiaConvenio, turnoDeHora } from './utils'
 import { podePublicarEscalaCirurgica } from './gate'
 import { segurarAtualizacao, liberarAtualizacao } from '@/lib/atualizacaoAdiada'
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard'
@@ -544,6 +548,39 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
   const planoMapas = useMemo(() => planoPublicacaoMapas(listaMapas), [listaMapas])
   const totalCasos = planoMapas.reduce((n, p) => n + p.casos.length, 0)
 
+  /** Casos de um item do plano com as atribuições de login do mapa aplicadas. */
+  const casosDoItem = (item) => aplicarAtribuicoes(
+    item.casos,
+    mapas[item.mapaId]?.atribuicoes?.[item.turno] || {},
+    (chave, uid) => {
+      const r = rosterByUid.get(uid)
+      if (r) return r.apelidos?.[0] || primeiroNomeUpper(r.nome)
+      const g = gruposAnestesista(item.casos, item.hospital).find((x) => x.chave === chave)
+      return g?.nome ? normNome(g.nome) : ''
+    },
+    resolver,
+  )
+
+  // MAPAS CONFEREM O QUE A SKILL CONFERE (dono 23/09: "igualar a tela à skill"). A skill
+  // (`publicar-fds`) barrava primeiro nome ambíguo e caso inválido; a tela publicava.
+  //  • nome do mapa sem login que casa com 2+ pessoas do cadastro → escolher o login;
+  //  • os mesmos bloqueios de campo da publicação de dia útil (validarCasosParaPublicacao).
+  const bloqueiosConteudoMapas = []
+  for (const item of planoMapas) {
+    const rotulo = `${HOSPITAL_LABEL[item.hospital] || item.hospital} ${formatData(item.data)} ${TURNO_LABEL[item.turno]}`
+    const atrib = mapas[item.mapaId]?.atribuicoes?.[item.turno] || {}
+    for (const g of gruposAnestesista(item.casos, item.hospital)) {
+      const lido = String(g.nome || '').trim()
+      if (atrib[g.chave] || !lido || /^\?+$/.test(lido) || lido.includes('+') || resolver(lido)) continue
+      if (candidatosPrimeiroNome(lido, roster).length >= 2) {
+        bloqueiosConteudoMapas.push(`${rotulo} · ${g.sala || g.chave}: "${lido}" pode ser mais de uma pessoa — escolha o login no mapa.`)
+      }
+    }
+    for (const b of validarCasosParaPublicacao(casosDoItem(item), { horaValida: (h) => ehHoraSequencialEscala(h) || !!turnoDeHora(h) })) {
+      bloqueiosConteudoMapas.push(`${rotulo}: ${textoBloqueio(b)}`)
+    }
+  }
+
   // ── publicação ────────────────────────────────────────────────────────────
   /**
    * GUARDRAIL ANTI-PERDA (incidente 23/07 no fluxo de dia útil: publicar com 1
@@ -569,7 +606,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
   }
 
   const publicar = async ({ confirmado = false } = {}) => {
-    if (publicando || !diasAlvo.length || todosBloqueios.length || bloqueiosMapas.length) return
+    if (publicando || !diasAlvo.length || todosBloqueios.length || bloqueiosMapas.length || bloqueiosConteudoMapas.length) return
     if (!confirmado && planoMapas.length) {
       setPublicando(true)
       let achados = []
@@ -632,21 +669,10 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
       // caso nenhum não é publicado — a RPC substitui o turno inteiro, e mandar
       // vazio apagaria o que já estivesse lá.
       for (const item of planoMapas) {
-        const atribuicoesDoTurno = mapas[item.mapaId]?.atribuicoes?.[item.turno] || {}
-        const casos = aplicarAtribuicoes(
-          item.casos,
-          atribuicoesDoTurno,
-          (chave, uid) => {
-            const r = rosterByUid.get(uid)
-            if (r) return r.apelidos?.[0] || primeiroNomeUpper(r.nome)
-            const g = gruposAnestesista(item.casos, item.hospital).find((x) => x.chave === chave)
-            return g?.nome ? normNome(g.nome) : ''
-          },
-          resolver,
-        )
+        const casos = casosDoItem(item)
         const rotulo = `${HOSPITAL_LABEL[item.hospital] || item.hospital} ${formatData(item.data)} ${TURNO_LABEL[item.turno]}`
         try {
-          await salvarEscalaTurno({
+          const salvo = await salvarEscalaTurno({
             data: item.data, hospital: item.hospital, turno: item.turno,
             casos,
             // No fim de semana o mapa NÃO traz rodapé: a fila é a da linha 'fds'.
@@ -655,6 +681,19 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
             status: 'publicada',
           }, { userName: user?.displayName })
           publicados.push(`${rotulo} (${casos.length})`)
+          // NOME DO PARTICULAR → COBRANÇA, como a tela de dia útil e a skill: casa pelo
+          // índice DO TURNO (o que o service grava) e só entre os casos IMPORTADOS.
+          // Fire-and-forget: falha deixa o rascunho com iniciais + "Completar dados".
+          const idPorChave = new Map((salvo?.casos || [])
+            .filter((c) => (c.turno || item.turno) === item.turno && c.origem !== 'manual')
+            .map((c) => [`${c.sala}|${c.ordem}`, c.id]))
+          await Promise.all(casos.map((c, i) => {
+            if (!c.pacienteNome || familiaConvenio(c.convenio) !== 'particular') return null
+            const casoId = idPorChave.get(`${c.sala}|${i}`)
+            return casoId
+              ? cirurgiasSvc.completarPacienteDoCaso(casoId, c.pacienteNome, { userId: user?.uid || user?.id, userName: user?.displayName }).catch(() => {})
+              : null
+          }))
         } catch (err) {
           falhas.push(`${rotulo}: ${err.message}`)
         }
@@ -1098,7 +1137,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
           </p>
         )}
 
-        {[...todosBloqueios, ...bloqueiosMapas].map((b, i) => (
+        {[...todosBloqueios, ...bloqueiosMapas, ...bloqueiosConteudoMapas].map((b, i) => (
           <p key={i} className="flex items-start gap-1.5 rounded-lg bg-destructive/10 p-2 text-xs font-medium text-destructive">
             <X className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {b}
           </p>
@@ -1114,7 +1153,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
           </p>
           <Button
             className="w-full"
-            disabled={!canEdit || publicando || !gradeLida || !!todosBloqueios.length || !!bloqueiosMapas.length}
+            disabled={!canEdit || publicando || !gradeLida || !!todosBloqueios.length || !!bloqueiosMapas.length || !!bloqueiosConteudoMapas.length}
             onClick={() => publicar()}
           >
             {publicando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}

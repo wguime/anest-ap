@@ -3,6 +3,17 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.33 (23/09/2026) — Escala: a tela do fim de semana confere o que a skill confere
+
+Decisão do dono (23/09): "igualar a tela à skill". A importação de FDS pela tela publicava mapas
+que a skill `publicar-fds` teria barrado.
+- Nome do mapa sem login que casa com 2+ pessoas do cadastro **barra** a publicação ("escolha o
+  login no mapa") — o incidente "JOAO" de 11/08, agora também nos mapas.
+- Os mesmos bloqueios de campo da publicação de dia útil (`validarCasosParaPublicacao`).
+- O nome do paciente particular completa a cobrança, casando pelo índice do turno e só entre os
+  casos importados (como a tela de dia útil e a skill).
+- Aviso "nasce LIBERADO" da conferência: mantido como está (dono).
+
 ## v5.12.32 (23/09/2026) — Escala: folhas com margem de 16px e área de toque de 44px sem mudar o desenho
 
 Aprovado pelo dono por imagem (23/09).
