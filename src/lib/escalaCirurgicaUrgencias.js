@@ -282,10 +282,10 @@ const SALAS_CONHECIDAS_HRO = new Set(
  * urgências do HRO estavam SEM `hora` — a urgência nasce à mão pelo AddCasoSheet,
  * não pela importação. Por isso a fila NUNCA ordena por `hora`.
  *
- * ⚠️ o campo chega como `caso.created_at` (snake), não `createdAt`: `fetchEscala`
- * usa select('*') e `created_at` não está no CAMEL_TO_SNAKE, então o conversor faz
- * passthrough. Ler só `createdAt` daria undefined e a fila ordenaria por NaN, em
- * silêncio.
+ * ⚠️ o service entrega `createdAt` (`created_at` está no CAMEL_TO_SNAKE e o `fetchEscala`
+ * passa os casos por `toCamelCase`), mas linha crua de outro caminho traz `created_at`.
+ * Por isso a leitura aceita os dois: ler um nome só daria undefined e a fila ordenaria
+ * por NaN, em silêncio.
  */
 /**
  * Minuto de um carimbo na linha do tempo do DIA OPERACIONAL de `dataEscala` (dono
@@ -824,7 +824,7 @@ export function estadoUrgenciasDaEscala(escala, { hospital, turno, agoraMin, hoj
  * pareceria estar em andamento há 4h às 11:00 e cairia em `aConfirmar` sem nunca ter
  * sido esquecido. `status_atualizado_em` é carimbado pela RPC a cada mudança de
  * status (254/254 casos iniciados em produção têm o carimbo) e chega em camelCase,
- * porque `statusAtualizadoEm` ESTÁ no CAMEL_TO_SNAKE — ao contrário de `created_at`.
+ * porque `statusAtualizadoEm` está no CAMEL_TO_SNAKE.
  */
 export function inicioDaUrgencia(caso, { dataEscala } = {}) {
   const bruto = caso?.statusAtualizadoEm || caso?.status_atualizado_em

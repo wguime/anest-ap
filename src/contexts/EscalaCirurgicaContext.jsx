@@ -1095,9 +1095,9 @@ export function EscalaCirurgicaProvider({ children }) {
   /**
    * Executa a substituição (plano de utils: planoExecucaoTroca ou 1 lado do
    * DefinirAnestesistaSheet). Por lado: assumidaPor no slot + casos transferidos.
-   * Os efeitos vão JUNTOS ou NENHUM: falha no meio desfaz o que já foi escrito
-   * (rollback best-effort) e, se o rollback também falhar, recarrega do banco e
-   * avisa — nunca deixa a tela fingindo sucesso (lição F1.6).
+   * Os efeitos vão JUNTOS ou NENHUM: a RPC `rpc_escala_executar_troca` grava tudo
+   * numa transação; se falhar, nada foi gravado, e a tela recarrega do banco e avisa
+   * — nunca finge sucesso (lição F1.6). No DEMO (DEV), tudo em memória.
    */
   const executarSubstituicao = useCallback(async ({ lados = [], limparTroca = [] }, userInfo = {}, { escalasOverride = null } = {}) => {
     if (!lados.length) return null

@@ -2,9 +2,9 @@
 // (print de WhatsApp) via Claude Vision. Retorna { casos, ordemLiberacao }.
 //
 // Deploy:
-//   bash scripts/deploy-edge-with-pat.sh parse-escala-cirurgica
-//   (use --no-verify-jwt SE o app enviar JWT custom; com Third-Party Auth nativo
-//    o gateway valida o token e a flag não é necessária.)
+//   bash scripts/deploy-edge-with-pat.sh parse-escala-cirurgica --no-verify-jwt
+//   (a função está com verify_jwt=false e valida o token por dentro, em
+//    _shared/verify-auth.ts; deployar sem a flag a devolve para true.)
 //
 // Auth: validação INTERNA via _shared/verify-auth.ts (JWT HS256 legado OU Firebase
 // ID Token) — independe da flag do gateway. Sem token válido: 401 e nada chega à
@@ -307,8 +307,9 @@ const MAX_TOKENS = 32000
 //                      lugar onde ele guardaria o mesmo texto duas vezes);
 //   `secao`          → o `bloco` já carrega a mesma informação, e o cliente já
 //                      corrige a sala a partir dele (`normalizarSalaHro`).
-// Sobram 14 propriedades com 3 obrigatórias — o mesmo tamanho que compilava
-// antes da cor entrar, agora com `cor` e `repeticao` dentro do orçamento.
+// Sobram 13 propriedades (14 com `turno`) e 4 obrigatórias (`sala`, `hora`,
+// `anestesista`, `cor`). O `repeticao` chegou a entrar e foi revertido com medida:
+// o "//" voltou a ser texto.
 const SCHEMA_CASO_PROPS: Record<string, unknown> = {
   sala: { type: 'string' },
   hora: { type: 'string' },
