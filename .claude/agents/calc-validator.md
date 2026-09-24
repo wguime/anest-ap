@@ -1,7 +1,7 @@
 ---
 name: calc-validator
 description: Validates clinical calculator math, formulas, units, and edge cases. Use when modifying or reviewing calculadoras in src/design-system/data/calculator-definitions.js, src/design-system/showcase/displays/, src/data/criteriosUtiCalculators.js or the pure libs in src/lib/. Critical for medical safety — wrong math = patient risk.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 color: red
 ---
 
@@ -32,7 +32,7 @@ o `compute` da calculadora realmente chama.
 Para cada calculadora que você revisar:
 
 ### 1. Fórmula
-- [ ] Confronte a fórmula contra fonte primária (UpToDate, BJA, Anesthesiology, ASA guidelines, ou paper citado no código)
+- [ ] Confronte a fórmula contra fonte primária (UpToDate, BJA, Anesthesiology, ASA guidelines, ou paper citado no código), aberta com WebSearch/WebFetch — se não conseguir acessá-la, diga isso em vez de conferir de memória
 - [ ] Cite a fonte usada na sua resposta
 - [ ] Se a fórmula tem variantes (ex: peso ideal — Devine, Robinson, Hamwi), confirme qual está implementada
 
