@@ -1,6 +1,6 @@
 ---
 name: rotacao-residencia
-description: Importar PDF anual de rotação dos residentes (24 quinzenas × 8 residentes) e gerar arquivo de dados automaticamente usado pelo card "Estágios Residência". Rollover 12h/19h é automático.
+description: Importar PDF anual de rotação dos residentes (24 quinzenas × 8 residentes) e gerar arquivo de dados automaticamente usado pelo card "Estágios Residência".
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 user-invocable: true
 disable-model-invocation: true
@@ -135,7 +135,7 @@ export function getEstagiosParaData(date) {
 }
 ```
 
-3. **NÃO mudar** o hook `useResidencia.js` — ele continua importando do mesmo lugar.
+3. O hook `useResidencia.js` continua importando do mesmo lugar; só o conjunto de feriados que ele passa a `getSlotEfetivo` (`FERIADOS_2026`, no `useState` e no intervalo) precisa cobrir também os feriados do ano novo.
 4. Manter `RESIDENTES_2026` exportado (hook usa como fallback).
 
 ### Opção B — Ano subsequente (quando registry já existe)
@@ -187,13 +187,13 @@ npx eslint src/data/residencia<ANO>.js src/data/residencia2026.js
 
 ---
 
-## 6. Deploy (seguir AGENTS.md)
+## 6. Commit e publicação (seguir AGENTS.md → Deploy)
 
 1. `npm run build`
-2. `git add src/data/residencia<ANO>.js src/data/residencia2026.js`
-3. `git commit -m "feat(residencia): importa escala <ANO>"`
-4. `git push origin main`
-5. `firebase deploy --only hosting:anest-ap`
+2. `git add src/data/residencia<ANO>.js` (arquivo novo) e
+   `git commit --only -m "feat(residencia): importa escala <ANO>" -- src/data/residencia<ANO>.js src/data/residencia2026.js`
+   (+ `src/hooks/useResidencia.js` se o passo 3 do registry mexeu nele) — só estes caminhos: o tree é compartilhado com outras sessões.
+3. Push desse commit para a `main` (`git push origin <sha>:main`; com a main local atrás da `origin/main`, cherry-pick num worktree a partir dela) — o push já publica pelo job `deploy` do CI. `firebase deploy` manual só se o CI falhar.
 
 ---
 
@@ -203,7 +203,7 @@ npx eslint src/data/residencia<ANO>.js src/data/residencia2026.js
 - **IDs de residente**: se um residente mudar de ID entre anos, os overrides antigos não migram. Manter IDs estáveis (só prefixo R1/R2/R3 muda).
 - **Estágios novos no PDF**: se o PDF novo trouxer string inédita (ex: `DOR`, `CARDIO`), `formatEstagio` já lida automaticamente (first-letter-cap por palavra, com APA/GO preservados). Não precisa adicionar regras novas.
 - **Data Brasil (BRT, UTC-3)**: o hook usa `new Date()` local do browser. Em produção isso é o horário do usuário — consistente se todos estiverem no Brasil.
-- **Rollover automático**: não mexer em `getSlotEfetivo` — a lógica 00h/12h/19h é fixa e independente do ano.
+- **Rollover automático**: não mexer em `getSlotEfetivo` — vira às 11h (tarde) e às 18h (manhã do dia seguinte), e com o conjunto de feriados pula para o próximo dia útil; as horas são fixas, os feriados são do ano (passo 3 do registry).
 
 ## Referências
 - Arquivo canônico: `src/data/residencia2026.js`

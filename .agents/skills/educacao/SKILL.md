@@ -1,6 +1,6 @@
 ---
 name: educacao
-description: Módulo educação continuada. Hierarquia Trilha→Curso→Módulo→Aula, CascadeCreator, ROPs quiz (600+ questões), certificados, admin 3 painéis.
+description: Módulo de educação continuada (Trilha→Treinamento/curso→Módulo→Aula, CascadeCreator, quiz de ROPs, certificados com QR, admin em 3 painéis). Use ao criar ou editar trilhas, cursos, módulos e aulas, ou ao mexer no AdminConteudoPage, no CascadeCreator, no quiz de ROPs, nos certificados ou no educacaoService.
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 
@@ -28,8 +28,9 @@ src/pages/educacao/
 │   │   ├── CascadeCreator.jsx   # Wizard 4 steps
 │   │   ├── StepAula.jsx         # Campos por tipo (video/audio/texto/quiz)
 │   │   ├── EntitySelector.jsx   # Vincular entidades existentes
-│   │   ├── TreeNavigator.jsx    # Árvore hierárquica
-│   │   └── TrilhaBanner.jsx     # Banner com herança de imagem
+│   │   └── TreeNavigator.jsx    # Árvore hierárquica
+├── components/
+│   └── TrilhaBanner.jsx         # Banner com herança de imagem
 ├── hooks/
 │   ├── useEducacaoData.js       # CRUD principal + forceRefreshFromFirestore()
 │   ├── useProgressoUsuario.js

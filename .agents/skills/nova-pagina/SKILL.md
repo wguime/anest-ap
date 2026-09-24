@@ -26,7 +26,7 @@ export function MinhaPagina({ onNavigate, user }) {
 
   return (
     <div className={cn("min-h-screen", isDark && "dark")}>
-      {/* Header via createPortal */}
+      {/* <PageHeader title="…" onBack={…} /> */}
       {/* Conteúdo */}
     </div>
   );
@@ -39,7 +39,7 @@ No `renderAppPage()`, adicionar:
 case 'minha-pagina':
   return <MinhaPagina key="minha-pagina" onNavigate={handleNavigate} user={user} />;
 ```
-Para referência: App.jsx tem 80+ cases — seguir padrão existente.
+Junto do case, a entrada em `PAGES` de `src/navigation/pageSlugs.js` (a URL é a fonte de verdade; página com parâmetro no path entra também em `PAGE_PARAM`). O teste `src/__tests__/navigation/pageSlugs.test.js` quebra se um case ficar sem slug.
 
 ### 3. PAGE_TO_CARD (se precisa permissão)
 ```jsx
@@ -64,17 +64,16 @@ Adicionar link de outra página:
 ```jsx
 onNavigate('minha-pagina', { prop1: 'valor' });
 ```
-Ou adicionar ao BottomNav se for seção principal.
+A BottomNav tem 4 abas fixas e visual travado (AGENTS.md): página nova entra por card ou link, nunca como aba, e não renderiza BottomNav própria.
 
 ### 7. Header Fixo
-Usar `createPortal` para renderizar Header no container fixo do App.
-Copiar padrão de qualquer página existente.
+`<PageHeader title="…" onBack={…} />` de `@/components` — ele já faz o portal para o topo fixo.
 
 ## Checklist
 - [ ] Página criada com useTheme + cn()
 - [ ] Case adicionado em App.jsx com key prop
 - [ ] PAGE_TO_CARD mapeado (se precisa permissão)
-- [ ] Header fixo via createPortal
+- [ ] Header via `<PageHeader>`
 - [ ] Scroll to top no useEffect
 - [ ] Dark/Light mode testado
 - [ ] Mobile responsividade verificada

@@ -14,14 +14,17 @@ allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 
 ## NÃO usar para
 - E-mail (ver `emailNotificationService.js`)
-- Push notifications (ver `EventAlertsContext`)
+- Push com tela bloqueada (ver `pushDispatchService.js` → edge `send-fcm-push`; o `EventAlertsContext` é só o alerta local de eventos)
 - Firestore `reunioesNotificacoes` (convocação de reunião — Firestore, não Supabase)
+- Evento da Escala Cirúrgica ou do cateter: por decisão do dono, a escala não grava notificação (sobram dois
+  push, de `useAvisoPlantonista` e `useAvisoTempoEstourado`) e do cateter só saem os lembretes do pg_cron
+  — rules `escala-*` e `cateter-peridural`
 
 ## Arquitetura
 
 ```
 [Call site da UI/Context]
-  └── createSystemNotification(payload)         ← MessagesContext.jsx:664
+  └── createSystemNotification(payload)         ← MessagesContext.jsx
         ├── recipientIds? batch → notifications[]  (Supabase)
         └── sem recipientIds? broadcast-local   (apenas cu) ⚠️ fallback silencioso
 ```
@@ -98,7 +101,7 @@ if (recipientIds.length > 0) {
 
 ## Armadilhas recorrentes
 
-1. **`recipientIds: undefined` ou `[]`** → cai no fallback broadcast-local do MessagesContext.jsx:708, apenas o autor da ação vê. **Sempre guard** `if (recipientIds.length > 0)`.
+1. **`recipientIds: undefined` ou `[]`** → cai no fallback broadcast-local do `createSystemNotification` (MessagesContext.jsx), apenas o autor da ação vê. **Sempre guard** `if (recipientIds.length > 0)`.
 2. **`actionParams` ausente** → clique na inbox vai à página genérica mas não abre o item específico. Sempre inclua `{ id }` ou `{ protocolo }` equivalente.
 3. **`related_entity_id` ausente** → impede dedup via script ou Edge Function. Scripts como `resend-recent-comunicados.js` dependem dele.
 4. **LGPD violation**: `subject` ou `content` contendo nome/descrição/tipo específico de incidente/denúncia/paciente. Exemplos reais que existiam:
@@ -122,7 +125,9 @@ Em `src/services/notificationService.js`:
 
 Helpers LGPD-safe especializados:
 - `src/utils/incidentesResponsaveis.js` → `getResponsaveisIncidentes`, `buildNewIncidentNotificationPayload`, `buildStatusChangeNotificationPayload`
-- `src/utils/cateterNotifications.js` → `getCateterRecipients`, `pacienteIniciais`, `buildCateterNotificationPayload`
+- ⚠️ `src/utils/cateterNotifications.js` foi **DELETADO** (30/07): a escala e o cateter não
+  notificam mais por evento. Para LGPD por iniciais, o equivalente vivo é `cateter_iniciais`
+  (SQL, no cron) — ver `.claude/rules/cateter-peridural.md`. Não recriar o helper client-side.
 - `src/utils/reuniaoNotifications.js` → `buildReuniaoNotificationPayload`
 - `src/utils/tradeNotifications.js` → `getTradeNotificationRecipients`, `buildTradeNotificationContent`
 - `src/utils/sobreavisoNotifications.js` → idem para funcionárias
@@ -148,9 +153,9 @@ describe('buildXNotificationPayload', () => {
 
 ## Navegação ao clicar (deep-link)
 
-**InboxPage.jsx:249-259** chama `onNavigate(actionUrl, actionParams)`. Garanta que:
+**InboxPage.jsx** chama `onNavigate(notification.actionUrl, notification.actionParams)` no clique. Garanta que:
 1. `actionUrl` é um case válido no `renderAppPage()` do `App.jsx`
-2. A página destino **reage a `params`** via `useEffect` (exemplo: `ComunicadosPage.jsx:258`)
+2. A página destino **reage a `params`** via `useEffect` (exemplo: o effect de `params?.comunicadoId` em `ComunicadosPage.jsx`)
 3. O effect depende tanto de `params` quanto do array carregado pelo context (senão navegação perde quando context carrega depois)
 
 ## Ativação manual / backfill

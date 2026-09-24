@@ -65,7 +65,7 @@ Os residentes avançam um ano por ciclo. Exemplo 2026 → 2027:
 
 ## 3. Script Python de extração
 
-Rodar via `python3 <<'EOF' ... EOF` no Bash. Estrutura canônica (copiar de `/tmp/` ou reescrever):
+Rodar via `python3 <<'EOF' ... EOF` no Bash. Estrutura canônica (abaixo):
 
 ```python
 import openpyxl, datetime
@@ -148,6 +148,8 @@ export function isPlantao24h(date) { /* idêntico a 2026 */ }
 export function getHorarioPlantao(date) { /* idêntico a 2026 */ }
 export function getPlantaoEfetivo(now = new Date()) { /* idêntico a 2026 */ }
 export function getPlantaoParaData(date) { /* idêntico a 2026 */ }
+export function getResidenteEfetivo(dateKey, overrides = {}) { /* idêntico a 2026 */ }
+export function getDatasDoResidente(residenteId, overrides = {}, { aPartirDe = null } = {}) { /* idêntico a 2026 */ }
 ```
 
 O script Python gera todo o arquivo via string concatenation (ver histórico em `git log -p -- src/data/plantao2026.js`).
@@ -158,7 +160,7 @@ O script Python gera todo o arquivo via string concatenation (ver histórico em 
 
 **Primeira vez adicionando ano novo (ex: 2027)**: refatorar o dispatcher. Opções:
 
-### Opção A — arquivo único dispatcher
+### Padrão — arquivo único dispatcher
 Criar `src/data/plantao.js` (sem ano) que importa `plantao2026.js` e `plantao2027.js` e devolve o correto via date:
 
 ```js
@@ -183,16 +185,14 @@ export const FERIADO_LABELS = { ...p2026.FERIADO_LABELS, ...p2027.FERIADO_LABELS
 export const FERIADOS_ALL = new Set([...p2026.FERIADOS_2026, ...p2027.FERIADOS_2027]);
 ```
 
-E trocar imports em:
-- `src/hooks/useResidencia.js` (usa `getPlantaoEfetivo`, `getPlantaoParaData`)
-- `src/components/residencia/EditPlantaoModal.jsx` (`getPlantaoParaData`)
-- `src/components/residencia/TradeRequestForm.jsx` (`PLANTOES_2026` — adaptar para dispatcher ou expor `PLANTOES_ALL`)
-- `src/pages/ConsultaPlantoesPage.jsx` (`FERIADOS_2026`, `FERIADO_LABELS`, helpers)
+E trocar os imports de `plantao2026` em TODOS os consumidores — `git grep -l "plantao2026['\"]" -- src ':!src/__tests__'`
+lista hoje 12, e não só a residência: `src/lib/escalaFds.js` (escala cirúrgica), a escala das
+funcionárias e a Home leem `FERIADOS_2026`/`FERIADO_LABELS` e ficariam sem os feriados do ano novo.
+O dispatcher precisa expor também `getResidenteEfetivo` (`TradeRequestForm.jsx`) e `getDatasDoResidente`.
 
-### Opção B — atualizar referência direta
+### Alternativa — só se o ano anterior nunca mais for consultado
 Se o novo ano substitui completamente o anterior (ex: nunca mais consulta 2026), basta trocar os imports de `./plantao2026` para `./plantao2027` nos mesmos arquivos. Mais simples, porém perde histórico.
 
-Recomendar **Opção A** na skill.
 
 ---
 
@@ -218,15 +218,17 @@ Deve listar número esperado (365/366) + plantonistas corretos.
 
 ---
 
-## 7. Build + deploy (seguir AGENTS.md)
+## 7. Build, commit e publicação (seguir AGENTS.md → Deploy)
 
 ```bash
 npm run build
-git add -A
-git commit -m "feat(plantoes): importa escala <ANO>"
-git push origin main
-firebase deploy --only hosting:anest-ap
+git add src/data/plantao<ANO>.js   # arquivo novo; os demais já são rastreados
+git commit --only -m "feat(plantoes): importa escala <ANO>" -- src/data/plantao<ANO>.js <arquivos do registry>
 ```
+Nunca `git add -A`: o tree é compartilhado com outras sessões e o commit levaria o trabalho delas
+para produção. O push desse commit para a `main` já publica (job `deploy` do CI: lint/build/test →
+hosting) — `git push origin <sha>:main`, ou cherry-pick num worktree a partir da `origin/main` se a
+main local estiver atrás. `firebase deploy` manual só se o CI falhar.
 
 ---
 

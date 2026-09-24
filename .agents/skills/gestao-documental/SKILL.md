@@ -1,6 +1,6 @@
 ---
 name: gestao-documental
-description: Gestão documental. Biblioteca com accordions, 9 tipos com cores, versionamento, aprovação, arquivamento. Design unificado v3.15.2.
+description: Gestão documental (Biblioteca, Relatórios, Gestão Documental do Centro de Gestão e o detalhe unificado; tipos e cores, versionamento, aprovação, arquivamento). Use ao criar ou editar documentos, tipos e cores, o fluxo de versão, aprovação e arquivamento, ou as páginas BibliotecaPage, RelatoriosPage, GestaoDocumentalPage e DocumentoDetalhePage.
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 
@@ -18,25 +18,11 @@ Criar/editar documentos, modificar tipos ou cores, trabalhar com versionamento/a
 ## Design Unificado
 Stats Grid → Título → SearchBar → SectionHeader (accordions) → Grid 2 cols DocumentoCard → InfoFooter
 
-## 9 Tipos de Documento (TIPO_CONFIG)
-| Tipo | Cor | Ordem |
-|------|-----|-------|
-| protocolo | #059669 | 1 |
-| politica | #6366F1 | 2 |
-| formulario | #F59E0B | 3 |
-| manual | #EC4899 | 4 |
-| relatorio | #3B82F6 | 5 |
-| processo | #8B5CF6 | 6 |
-| termo | #14B8A6 | 7 |
-| risco | #DC2626 | 8 |
-| plano | #0891B2 | 9 |
-
-## 3 Tipos de Relatório (RELATORIO_TIPO_CONFIG)
-| Tipo | Cor |
-|------|-----|
-| trimestral | #3B82F6 |
-| incidentes | #DC2626 |
-| indicadores | #059669 |
+## Tipos e cores
+- Documentos: `TIPO_CONFIG` (rótulo + cor) e `SUBCATEGORIA_CONFIG` em `src/types/documents.js`. A
+  taxonomia atual está no topo do mapa; `protocolo`/`politica`/`formulario`/`manual`/… no fim são
+  legados mantidos por compatibilidade.
+- Relatórios: `RELATORIO_TIPO_CONFIG` em `src/data/relatoriosConfig.js`.
 
 ## Navegação Unificada
 ```javascript
@@ -45,7 +31,7 @@ onNavigate('documento-detalhe', { documentoId: doc.id, returnTo: 'biblioteca' })
 ```
 
 ## DocumentoDetalhePage — Busca Unificada
-Busca primeiro em mockDocumentos, depois em mockRelatorios.
+Pasta `src/pages/DocumentoDetalhePage/`: `hooks/useDocumentDetail.js` resolve o documento pelo `DocumentsContext` e pelo `supabaseDocumentService`.
 
 ## Versionamento
 ```javascript
@@ -54,7 +40,7 @@ Busca primeiro em mockDocumentos, depois em mockRelatorios.
 Modal: `max-h-[90vh] flex flex-col`, content `overflow-y-auto flex-1`.
 
 ## Gestão Contextual (Admin Only)
-Menu engrenagem (só admins): Editar, Upload PDF, Nova versão, Excluir.
+Botoeira de admin do detalhe (`DocumentApproval.jsx`): Editar, Nova versão, Histórico e Arquivar. Documento sai de circulação por arquivamento (`ArchiveDocumentModal`), não por exclusão — o arquivamento fecha o ciclo documental do Qmentum.
 
 ## DocumentCard Layout (v3.38.0)
 - Card: `h-full flex flex-col`, content `flex-1`

@@ -11,9 +11,9 @@ disable-model-invocation: true
 Modos por argumento; sem argumento = `status`. Contexto: **LIBERADO AO GRUPO em
 2026-07-22** (gate por papel clínico/secretária/admin em `gate.js`); as escalas seed
 foram APAGADAS e o cron `escala-seed-rollover-daily` desligado no checklist de
-liberação. Cron ativo: `escala-amanha-check` (18h BRT dom–qui; destinatário ainda é o
-dono — trocar para secretaria/admin quando houver secretária, marcado na migration
-`20260721210000`). Doc-mãe: `docs/escala-cirurgica-automacoes.md`.
+liberação. A escala não manda aviso nenhum (dono 30/07): não há cron de notificação — os
+crons dela são a adesão diária e as purgas da leitura (`escala-%`). Doc-mãe:
+`docs/escala-cirurgica-automacoes.md`.
 
 **Leitura de produção via** `node .agents/skills/escala-cirurgica/scripts/query-ro.mjs "<select>"`.
 O wrapper bloqueia verbos de escrita e CTEs modificadoras; não use o endpoint read-write
@@ -29,18 +29,19 @@ Rodar as 4 checagens e responder com veredito curto por linha (✓/⚠️ + 1 fr
     order by data desc limit 7
    ```
    ⚠️ Se aparecer QUALQUER `created_by like 'seed-teste%'`, algo recriou seed — investigar.
-2. **Cron do aviso rodou?**
+2. **Crons da escala rodaram?** (adesão diária e purgas da leitura)
    ```sql
    select j.jobname, j.schedule, d.status, d.start_time
      from cron.job j
      left join lateral (select status, start_time from cron.job_run_details
                          where jobid = j.jobid order by start_time desc limit 1) d on true
-    where j.jobname = 'escala-amanha-check'
+    where j.jobname like 'escala-%'
    ```
 3. **Edge atualizada?** `node scripts/diag-edge-fn-config.mjs parse-escala-cirurgica`
    + `git log -1 --format='%cI %h %s' -- supabase/functions/parse-escala-cirurgica/`.
    Commit mais novo que `updated=` → **DEPLOY PENDENTE** (foi assim que a edge ficou 3
-   semanas atrasada sem ninguém notar). Deploy: `bash scripts/deploy-edge-with-pat.sh parse-escala-cirurgica`.
+   semanas atrasada sem ninguém notar). Deploy: `bash scripts/deploy-edge-with-pat.sh parse-escala-cirurgica --no-verify-jwt`
+   (a função está com `verify_jwt=false`; sem a flag o deploy a devolve para `true`).
 4. **Eventos coletando?**
    ```sql
    select tipo, count(*), min(em)::date as de, max(em)::date as ate
@@ -111,7 +112,7 @@ agrupar pelo texto e listar variantes suspeitas do mesmo nome; nunca extrapolar)
    `created_by like 'seed-teste-claude%'`), casos com status marcado vs total, liberações
    (`tipo='liberacao'`) e trocas declaradas (`escala_cirurgica_evento.tipo='troca'`).
 
-Salvar o arquivo no branch atual. Commit só quando o pedido do usuário incluir commit/deploy.
+Salvar o arquivo no branch atual. Commit só quando o pedido incluir commit/deploy.
 
 ## Modo `smoke` — regressão visual das 3 abas (PAUSADO 2026-07-22)
 
@@ -136,5 +137,28 @@ mexeu nos status da seed-20 no banco (conferir antes de regenerar).
 - Queries via Management API rodam como `postgres` → RLS não filtra nada; conteúdo de
   paciente são só iniciais (LGPD by design), mesmo assim não colar dumps grandes no chat.
 - `~/.anest-e2e.env` segue a política de segredos do repositório: só `source`, jamais `cat`.
-- Antes da liberação ao grupo: `cron.unschedule('escala-seed-rollover-daily')` + apagar
-  as seeds (checklist no header da migration `20260721200000`).
+
+## Modo `ordem <AAAA-MM-DD> [hro|unimed|materno|todos] [matutino|vespertino|ambos]` — ordem de liberação pela ESCALA NUMÉRICA
+
+Apoio à confecção/conferência (dono 03/09): a escala numérica do grupo é a BASE da ordem do
+rodapé. Rodar `node scripts/ordem-liberacao-numerica.mjs …` e devolver o texto de
+`formatarOrdem` como está (posição · número · nome; consultório à parte; Louise; exclusões
+por férias com a fonte; pendências). O script consulta o Pega Plantão SEMPRE, na hora
+(dono 03/09: há mudança de última hora; nunca usar consulta antiga); só sem rede/credencial
+use `--sem-ferias`, e aí a lista sai "férias NÃO conferidas" — nunca dizer que férias foram
+conferidas quando a consulta não rodou. Entrada compartilhada (05 HUMBERTO / ROBERTA, 07
+ROSE / ALINE) sai como PAR nos dias úteis — é a regra do dono; se a escala do turno trouxer
+só um dos dois, vale o que saiu nela (`--rodape "A / B / C"` compara e resolve a dupla). Regras completas:
+`.claude/rules/escala-numerica.md`. Em feriado a saída é a fila única da
+escala de feriados (todos os hospitais). Ao comparar com um rodapé lido, usar
+`compararComRodape` (faltam / sobram / fora de ordem) — divergência é sinal de troca, ajuda
+ou consultório escalado, não erro automático.
+
+## Modo `nova-numerica <pdf>` — trocar a edição da escala numérica
+
+Seguir "Ao receber uma escala numérica NOVA" em `.claude/rules/escala-numerica.md`: copiar
+para `.local/escala-numerica/`, extrair com `scripts/extrair-escala-numerica.py` (venv com
+pdfplumber), olhar as páginas renderizadas, ler os `avisos`, ajustar os testes para a edição
+nova, conferir a legenda contra o dicionário de apelidos e commitar só o JSON. A escala de
+FERIADOS é outro PDF: `scripts/extrair-feriados-numerica.py <pdf> <ano>` grava `feriados` no
+mesmo JSON (o extrator principal preserva o bloco ao rodar de novo).

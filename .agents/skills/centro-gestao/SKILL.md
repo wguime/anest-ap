@@ -1,6 +1,6 @@
 ---
 name: centro-gestao
-description: Centro de Gestão administrativo. 9 abas, ManagementLayout, permissões simplificadas (card toggle + admin flag), audit trail, sync Firebase↔Supabase.
+description: Centro de Gestão administrativo (ManagementLayout com seções de usuários, documentos, comunicados, incidentes, residência, educação, funcionários e painel; permissões por card + flag admin; audit trail; sync Firebase↔Supabase). Use ao mexer no CentroGestaoPage, ManagementLayout, PermissionsModal, NAV_STRUCTURE (rolePermissionTemplates), UsersManagementContext ou supabaseUsersService.
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 
@@ -9,18 +9,10 @@ allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 ## Quando Usar
 Editar CentroGestaoPage, ManagementLayout, PermissionsModal. Trabalhar com abas, UsersManagementContext, supabaseUsersService.
 
-## 9 Abas
-| Aba | Ícone | Conteúdo |
-|-----|-------|----------|
-| Usuários | Users | CRUD, permissões, audit |
-| Emails | Mail | Emails autorizados |
-| Documentos | FileText | 6 sub-seções (ética, comitês, auditorias, relatórios, biblioteca, financeiro) |
-| Auditorias | Shield | Audit trail |
-| Comitês | Briefcase | 9 tipos de comitê |
-| Estatísticas | BarChart3 | Métricas |
-| Comunicados | MessageSquare | 3 tabs (rascunho, aprovado, publicado) |
-| Incidentes | AlertTriangle | Gestão interna |
-| Residência | User | Gestão residentes |
+## Seções
+A navegação vive em `NAVIGATION_ITEMS` (`ManagementLayout.jsx`), com grupos e subitens; cada id
+folha é um `case` de `renderContent()` no `CentroGestaoPage.jsx`. Documentos tem 6 sub-seções
+(ética, comitês, auditorias, relatórios, biblioteca, financeiro).
 
 ## Permissões Simplificadas (v3.20.0)
 ```
@@ -28,14 +20,10 @@ Toggle Card ON = Acesso/Visibilidade
 Admin flag = CREATE/EDIT/DELETE automático em tudo acessível
 ```
 
-## NAV_STRUCTURE (5 seções, 38 cards)
-| Seção | Cards |
-|-------|-------|
-| HOME | 10 |
-| GESTÃO | 22 |
-| DASHBOARD | 1 |
-| EDUCAÇÃO | 3 |
-| MENU | 2 |
+## NAV_STRUCTURE
+Seções (home, gestão, dashboard, educação, menu) e cards de permissão em `NAV_STRUCTURE`
+(`src/data/rolePermissionTemplates.js`). Card novo entra ali e no template de cada papel: o teste
+`escalaGatePublicacao.test.js` quebra quando um card fica sem chave — chave faltando vira acesso liberado.
 
 ## PermissionsModal
 - Container: `max-h-[85vh]`
@@ -62,10 +50,10 @@ Requer `isAdmin` OU `isCoordenador` para acessar Centro de Gestão.
 - **ChangeLogTimeline**: tempo relativo
 - changedBy: SEMPRE userId real (nunca hardcoded)
 
-## 9 Tipos de Comitê
-regimento_interno (#2563eb), executivo (#059669), financeiro (#059669), gestao_pessoas (#7c3aed), escalas (#f59e0b), tecnologia (#2563eb), qualidade (#2563eb), educacao (#dc2626), etica_conduta (#7c3aed)
+## Tipos de Comitê
+Tipos e cores em `src/data/comitesConfig.js`.
 
 ## Integrações
-- UserContext (isAdministrator, isCoordenador)
+- UserContext (`isAdmin`, `isCoordenador`)
 - Firestore + Supabase (sync bidirecional)
 - Todos os módulos (cada aba integra seu respectivo módulo)

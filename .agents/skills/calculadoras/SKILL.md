@@ -1,6 +1,6 @@
 ---
 name: calculadoras
-description: Regras para criar, editar e corrigir as calculadoras clínicas do ANEST (56 ativas em 14 seções, incluindo Indicação de UTI). Use ao mexer em calculator-definitions.js, nos displays do showcase, nas libs puras de src/lib, ou ao investigar conta errada, InfoBox, layout de grid e formatação de número.
+description: Regras para criar, editar e corrigir as calculadoras clínicas do ANEST (incluindo Indicação de UTI). Use ao mexer em calculator-definitions.js, nos displays do showcase, nas libs puras de src/lib, ou ao investigar conta errada, InfoBox, layout de grid e formatação de número.
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 
@@ -17,23 +17,23 @@ aprovação.
 
 | onde | o que tem |
 |---|---|
-| `src/design-system/data/calculator-definitions.js` | **85 definições — 56 `active`, 29 `inactive`** — em 14 seções |
+| `src/design-system/data/calculator-definitions.js` | **95 definições — 61 `active`, 34 `inactive`** — em 14 seções |
 | `src/design-system/showcase/CalculatorShowcase.jsx` | a tela: grid, busca, inputs genéricos, 8 displays inline |
 | `src/design-system/showcase/displays/` | 8 displays com arquivo próprio |
 | `src/lib/*.js` | libs puras (`apacheII`, `fourScore`, `roxIndex`, `electrolyteCorrection`, `saps3`, `sofaScore`, `fluidBalance`…), testadas em `src/__tests__/lib/` |
 | `src/data/criteriosUtiCalculators.js` + `src/pages/CriteriosUTIPage.jsx` | as **5 ferramentas de Indicação de UTI** — renderização própria, consumida pela seção via `customRender: 'criterioUti'` |
-| `src/App.jsx:506` | o wrapper com `px-4 sm:px-5 py-4` |
+| `CalculadorasPageWrapper` em `src/App.jsx` | o wrapper com `px-4 sm:px-5 py-4` |
 
 Contar sempre pelo repo, nunca de memória:
 `grep -c "status: 'active'" src/design-system/data/calculator-definitions.js`
 
 ## Propriedades especiais
 
-- **`useDropdown: true` — 35 calculadoras** (não 9; a lista antiga só tinha as pediátricas).
-  Para ver quais: `grep -B20 "useDropdown: true" … | grep "id:"`.
-- **`customRender: '<chave>'` — 17 chaves distintas em 23 usos** (`hollidaySegar` serve duas; `criterioUti` serve as 5 da seção Indicação de UTI).
-  8 têm arquivo em `displays/`; 8 são inline no `CalculatorShowcase.jsx`; `criterioUti` reaproveita a
-  `CalculatorDetailPage` exportada da `CriteriosUTIPage` (lazy + Suspense local).
+- **`useDropdown: true`** — para ver quais: `grep -B20 "useDropdown: true" … | grep "id:"`.
+- **`customRender: '<chave>'`** — `hollidaySegar` serve duas; `criterioUti` serve a seção Indicação de UTI.
+  O display mora em `displays/` ou inline no `CalculatorShowcase.jsx`; `criterioUti` reaproveita a
+  `CalculatorDetailPage` exportada da `CriteriosUTIPage` (lazy + Suspense local). Quantas e quais:
+  `grep -oE "customRender: '[^']+'" src/design-system/data/calculator-definitions.js | sort | uniq -c`.
 
 ## Regras obrigatórias
 
@@ -61,11 +61,23 @@ const fr = Number.isFinite(n) ? n : 16;
 ```
 
 Custou 8 pontos de APACHE II em produção (FR = 0 e leucócitos = 0 valem +4 cada, e os dois inputs
-têm `min: 0`). Só use `|| 0` quando zero for genuinamente equivalente a "campo vazio" — peso, altura,
-dose. Nunca em variável fisiológica que pode ser zero.
+têm `min: 0`) e, depois, a **classe IV do ATLS**: em `hemo_perdas_atls`, `diurese || 30` trocava
+anúria por diurese normal e derrubava o paciente para classe I — o teste não pegava porque usava
+`diurese: 2`, que passa pelo `||`. Só use `|| 0` quando zero for genuinamente equivalente a "campo
+vazio" — peso, altura, dose. Nunca em variável fisiológica que pode ser zero.
+
+Helper pronto no topo de `calculator-definitions.js`: `numeroOuPadrao(valor, padrao)`.
+
+### 2b. ⚠️ Chave de mapa tem de bater LETRA POR LETRA com o `value` da opção
+`value: 'liquido_claro'` contra a chave `líquido_claro` devolve `undefined`, o `compute` lança, e o
+`catch { setResult(null) }` do `CalculatorShowcase.jsx` engole — a opção fica **muda na tela**,
+sem erro em lugar nenhum. Aconteceu em `ped_jejum`, na opção mais escolhida do card.
+Quando o fallback do mapa por acaso vale o mesmo que a chave certa (`crianca`/`criança` em
+`ped_mabl`), o número sai certo e o defeito fica latente até alguém mudar o default.
+Trava genérica: `src/__tests__/data/calculatorOpcoesSelect.test.js`.
 
 ### 3. `risk` acende o badge de risco
-`CalculatorShowcase.jsx:284` lê `result.risk`. Use quando o escore TEM estratificação clínica
+`CalculatorShowcase.jsx` lê `result.risk` (fallback `result.riskLevel`). Use quando o escore TEM estratificação clínica
 (`baixo`/`medio`/`alto`/`critico` — 18 calculadoras usam); omita em conta pura, onde o badge é ruído.
 
 ### 4. Formato de warnings
@@ -117,9 +129,8 @@ Foi assim que a SAPS III ficou sem gravar nenhuma seleção. Trava:
 
 ## Layout
 
-- Padding do wrapper: `src/App.jsx:506` (`px-4 sm:px-5 py-4`).
-- ⚠️ O `CalculatorShowcase` **tem** padding próprio: `px-2 pt-0 pb-3 lg:p-6` (`:1997`) — a regra
-  antiga dizia "SEM padding próprio".
+- Padding do wrapper: `CalculadorasPageWrapper` em `src/App.jsx` (`px-4 sm:px-5 py-4`).
+- O `CalculatorShowcase` **tem** padding próprio: `px-2 pt-0 pb-3 lg:p-6`.
 - Grid: 2 colunas, `gap-3 mt-3`, sem `ml-2`.
 - Hierarquia: Header → SearchBar → SectionHeader (accordion) → Grid de WidgetCards.
 
@@ -144,5 +155,22 @@ lados não protege nada.
 3. Conferir o tratamento do zero em cada campo numérico (regra 2).
 4. Testar em mobile (1 coluna) e desktop (2 colunas), nos dois temas.
 5. Nada é apagado: calculadora descartada vira `status: 'inactive'`. **`LEGACY_ID_MAP` só para quem
-   tem SUCESSORA** — sem sucessora, inventar um destino é pior que não ter. E a seção "Favoritas"
-   filtra inativas: sem isso, desativar não desativa para quem favoritou.
+   tem SUCESSORA ATIVA** — sem sucessora, inventar um destino é pior que não ter. E a seção
+   "Favoritas" filtra inativas: sem isso, desativar não desativa para quem favoritou.
+   ⚠️ **Ao inativar uma calculadora, conferir se ela é DESTINO de alguém no mapa.** Tirar o SAPS 3 em
+   31/08/2026 quase deixou o `uti_apache2` apontando para card inativo — favorito abrindo tela que
+   não existe mais. Trava genérica em `calculatorTriagem.test.js`.
+
+## Uma calculadora fora da grade de Calculadoras
+
+A Escala de Braden é `inactive` e mesmo assim tem tela: o card mora em `QualidadePage` e a rota
+`escalaBraden` reusa o `CalculadorasPageWrapper` com `calcFixa="seg_braden"` e `titulo` próprio.
+`getCalculatorById` resolve inativas de propósito, então o detalhe renderiza sem que ela volte à
+grade. É o padrão para instrumento de acreditação que não é ato anestésico.
+
+## Contagem de uso por calculadora
+
+`App.jsx` passa `trackFeatureUse` como `onCalculatorOpen` ao `CalculadorasPageWrapper`, que dispara um
+evento por abertura com o id cru da calculadora. ⚠️ **Não montar `useActivityTracking` dentro do
+`CalculatorShowcase`** — o hook busca histórico e arma um intervalo de 5 min ao montar, e essa tela é
+aberta durante a anestesia. Agregação: `node scripts/stats-uso-calculadoras.mjs`.
