@@ -127,8 +127,11 @@ Com base na resposta, aplique a regra de progressão:
 | 4 sanções anteriores (I + II + III + IV) | **Nível V** — Multa de 25% da remuneração mensal |
 
 **Exceções por gravidade:**
-- Infrações GRAVES podem pular níveis (ex: ir direto ao Nível III sem histórico)
-- Infrações GRAVÍSSIMAS → encaminhar para Assembleia Geral (exclusão)
+- Infrações GRAVES ou GRAVÍSSIMAS (ex.: risco ao paciente, dolo) podem pular níveis (ex: ir direto ao
+  Nível III sem histórico), mas seguem a escada: a gravidade escolhe o nível, não leva à exclusão
+- Exclusão só por dois caminhos do Regimento: situação do item 4.3 (drogadição, apropriação indébita)
+  → exclusão sumária, fora da escada; ou reincidência depois do Nível V → a Assembleia Geral decide
+  (Cl.13ª, §2º)
 - Agravantes (reincidência <12 meses, dolo) → elevar 1 nível
 
 Apresente a recomendação e peça confirmação do nível ao usuário.
@@ -269,7 +272,7 @@ A skill `/sancao-anest-decisao` irá:
 3. **SEMPRE pergunte sobre o histórico** — não assuma
 4. **Linguagem formal e objetiva** — sem julgamentos subjetivos
 5. **Sigilo** — lembre o usuário que o documento é INTERNO – CONFIDENCIAL
-6. **Se a denúncia for GRAVÍSSIMA** (drogadição, apropriação indébita) → informe que o caso é de exclusão sumária e não se aplica o sistema de níveis progressivos
+6. **Se a denúncia for de uma situação do item 4.3 do Regimento** (drogadição, apropriação indébita) → informe que o caso é de exclusão sumária e não se aplica o sistema de níveis progressivos. Risco ao paciente, mesmo gravíssimo, segue a escada de níveis
 7. **Apuração exclusivamente interna — NUNCA cite, envolva ou proponha comunicação a instâncias externas** (CRM-SC, CFM como órgão, hospital, programa de residência, Ministério Público, Judiciário ou qualquer outra) em Notificação, Decisão, instruções ao Comitê ou resumo de revisão. Citar normas como fundamento (CEM, Resoluções CFM, CF/88, leis) é permitido; propor "comunicar ao CRM", "dar ciência ao hospital", "comunicar ao Coordenador de Residência" etc. NÃO é. O acionamento de outra instância só será avaliado pelo Comitê após encerrada a apuração e **apenas quando o usuário solicitar essa análise de forma expressa** — se não for solicitado, não faça. (Decisão do Comitê em 21/09/2026, processo 003/2026.)
 
 ---
