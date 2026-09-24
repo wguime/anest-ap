@@ -189,6 +189,14 @@ describe('avisos — a tela publica assim mesmo, mas diz', () => {
     expect(ok.hospitais.unimed.payload.linhaOverrides['uid-ana']?.conferido).toBe(true)
   })
 
+  it('nome com nota no rodapé ("(REUNIÃO 15:30)") é posição ocupada: nem cauda nem "na ordem sem caso"', () => {
+    const hospitais = { unimed: { rows: [caso('CC - Sala 1', 'CURY'), caso('CC - Sala 10', 'BETO', '13:30', { isContinuacao: true })], ordem: ['CURY', 'ANA (CONSULT)', 'BETO (REUNIÃO 15:30)', 'EDUARDO'], ajuda: [] } }
+    const r = conferir(hospitais)
+    const textos = r.hospitais.unimed.avisos.filter((a) => ['cauda', 'na ordem sem caso'].includes(a.codigo)).map((a) => a.texto).join(' | ')
+    expect(textos).not.toMatch(/BETO|ANA/)
+    expect(r.hospitais.unimed.cauda.map((p) => p.nome)).toEqual(['EDUARDO'])
+  })
+
   it('caso de quem não está no rodapé nem na ajuda avisa (azul não lido)', () => {
     const r = conferir({ unimed: { rows: [caso('CC - Sala 1', 'CURY'), caso('Exames', 'EDUARDO', '13:30', { bloco: 'exames' })], ordem: ['CURY'], ajuda: [] } })
     expect(avisos(r.hospitais.unimed)).toContain('fora da ordem')

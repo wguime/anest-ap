@@ -29,6 +29,7 @@ import { detectarItensDuplicados, aplicarHoraPadraoPosicoes } from '@/lib/escala
 import { detectarDuplicidadesEscala, carimbarDecisao, localizarDecisao } from '@/lib/escalaCirurgicaDuplicidades'
 import { montarLinhaOverrides, montarPreservacao, decisoesPublicadas } from '@/lib/escalaPublicacaoDecisoes'
 import { montarOrdem, compararComRodape, excecaoTurnoDoDia } from '@/lib/escalaNumerica'
+import { notaDoNome } from '@/lib/colunaLiberacao'
 import { aplicarPosPlantaoManha, excluirPosPlantaoTarde } from '@/lib/posPlantao'
 
 export const HOSPITAL_LABEL = { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' }
@@ -342,8 +343,12 @@ export function conferirHospital(hospital, entrada, contexto) {
     const flags = ordem.map(temCaso)
     rodapeSuspeitos = ordem.filter((n, i) => !flags[i] && (flags[i - 1] || flags[i + 1]))
   }
+  // nota no rodapé ("ADRIANO (REUNIÃO 15:30)", "MATHEUS (CONSULT)") é posição de trabalho: a
+  // fila (`colunaLiberacao`) liga `teveCasos` e a pessoa nunca nasce liberada — nem cauda nem
+  // suspeita aqui (24/09: o aviso falso fez tirar a nota que o dono queria)
+  const ocupado = (p) => p.casos > 0 || p.ajuda || !!notaDoNome(p.nome)
   let ultimo = -1
-  for (let i = ordemNumerada.length - 1; i >= 0; i--) if (ordemNumerada[i].casos > 0 || ordemNumerada[i].ajuda) { ultimo = i; break }
+  for (let i = ordemNumerada.length - 1; i >= 0; i--) if (ocupado(ordemNumerada[i])) { ultimo = i; break }
   const caudaLiberada = ultimo < 0 ? [] : ordemNumerada.slice(ultimo + 1).filter((p) => p.casos === 0 && !p.ajuda)
   const nomesCauda = new Set(caudaLiberada.map((p) => p.nome))
   const suspeitosExtracao = rodapeSuspeitos.filter((n) => !nomesCauda.has(n))
@@ -356,6 +361,7 @@ export function conferirHospital(hospital, entrada, contexto) {
     return !!publicadaPara(key, nome)?.conferido
   }
   const semCirurgia = [...suspeitosExtracao, ...caudaLiberada.map((p) => p.nome)]
+    .filter((nome) => !notaDoNome(nome))
     .filter((nome) => !ehAjuda(nome))
     .filter((nome) => !naDuplicidade.has(resolver(nome) || normNome(nome)))
   for (const nome of semCirurgia) {

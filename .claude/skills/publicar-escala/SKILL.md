@@ -27,20 +27,25 @@ pedido ao PUBLICADO.** O porquê de cada regra está em `REFERENCIA.md` — não
    `! cp ~/dev/Anest/.env.local ~/dev/anest-wt-escala/`.
 3. **Reler a foto contra a saída do ensaio** — o único passo que não se pula; é a saída, não o JSON.
    Na ordem, por hospital: (a) **contagem por sala** — cada linha da foto tem uma linha no ensaio
-   (a linha esquecida é o erro silencioso); (b) **anestesista por linha**, seguindo cada corrente
+   (a linha esquecida é o erro silencioso; o total "N caso(s)" inclui a SRPA — conte sala a sala, não
+   pelo total: em 24/09 duas linhas com hora de manhã sumiram e o total pareceu certo); (b) **anestesista por linha**, seguindo cada corrente
    de "//" e cada "?"; (c) **cor** — todo azul/amarelo da foto aparece como `azul`/`amarelo`, e a
    ajuda está no hospital onde a pessoa trabalha; (d) **`PART: nome`** em todo particular;
    (e) **rodapé** nome a nome, na ordem; (f) **seções de baixo + SRPA** presentes; (g) **plantão do
    Materno pela numérica** — o ensaio imprime "numérica: plantão do Materno neste turno = X, Y · no
    mapa: … → confere/DIFERE"; DIFERE = voltar ao nome à mão do mapa (troca real fica, leitura errada
    se corrige, "?" não se preenche com a numérica) e dizer no relatório; (h) os avisos
-   restantes têm explicação na foto ou no recado. Sem bloqueio e sem aviso que aponte erro seu →
+   restantes têm explicação na foto ou no recado; (h) o bloco **"faltantes da numérica"** do ensaio
+   já classifica cada faltante (rodapé de outro hospital · pós-plantão da véspera no Pega Plantão ·
+   férias) — só os `❓` ficam: confira o recado (consultório, troca) e relate ao dono só o que
+   sobrar. Sem bloqueio e sem aviso que aponte erro seu →
    **Bash** `publicar` (sem `--ensaio`). O `gerar.py` já parou antes em erro de forma (hora, cor e
    tempo na posição errada, "//" sem base ou abaixo de "?", cirurgião trocado com procedimento,
    particular sem nome) e avisou nome sem caso no meio do rodapé.
 4. Relatório curto: por hospital "N casos · rodapé N · ajuda […]", quem ficou com "?", **quem é o
    plantão do Materno pela numérica e se o mapa bate** (dono 21/09: conferir sempre), o que o
-   recado virou, avisos que sobraram. Custo US$ 0.
+   recado virou, avisos que sobraram. Faltantes da numérica: diga o motivo de cada um (pós-plantão,
+   férias, outro hospital, recado) — "faltam X, Y" sem motivo não serve ao dono (24/09). Custo US$ 0.
 
 **Não fazer** — cada item custou minutos em 17/09: consultar `escala_anestesista_alias` (o ensaio
 resolve todo nome e bloqueia o ambíguo); consultar o banco antes do ensaio (ele diz "já
@@ -59,7 +64,10 @@ apelido conhecido).
   (o "//" **não** herda entre salas do Bloco M — escreva o nome), `C.O` (vira Sala 7), `HEMO`,
   `EXAMES`, `IOSC` (as três salas internas viram `IOSC`), `HO`, `MATERNO`, `CONSULT.`, `AMBULAT.`,
   `Centro de Coluna`, `SIMONE`, `Braqui`. Materno: `Sala N HC`.
-- **Hora** só `HH:MM`; `AS` é hora válida. **Data** (`dataDetectada`) é a que a FOTO diz — a Unimed
+- **Hora** só `HH:MM`; `AS` é hora válida. **Hora do outro turno na foto da tarde é digitação**
+  (dono 24/09): "08:45" logo abaixo da 1ª da tarde na mesma sala e mesmo cirurgião → `AS`; seção
+  de baixo com nome do rodapé da tarde ("EXAMES 08:00 … RAUL") → `13:30`. Transcrita como está, a
+  publicação DESCARTA a linha em silêncio (o turno corta pela hora) e o nome fica sem caso. **Data** (`dataDetectada`) é a que a FOTO diz — a Unimed
   traz em cada linha, o Materno no topo, o HRO às vezes a do dia anterior ou nenhuma (`''`): decida
   pela coerência das três e deixe o aviso aparecer.
 - **Anestesista por linha**: nome da foto · `//` = igual à linha de cima na MESMA sala, **sempre**
@@ -80,7 +88,9 @@ apelido conhecido).
   Ambulatório, Braqui, Simone, Consultório, e a linha `MATERNO | NN PROCEDIMENTOS | NOME` do HRO).
   `SRPA | NOME` vai em `posicoesAssistenciais` (conta como ocupado). "CONTINUAÇÃO ±14h" é caso com
   `cont=True`. Varrer a foto de cima a baixo — é onde a leitura mais perde nome.
-- **Rodapé** completo, NA ORDEM, com as notas ("MATHEUS (CONSULT)" é uma posição). Quem fecha o
+- **Rodapé** completo, NA ORDEM, com as notas ("MATHEUS (CONSULT)" é uma posição; "ADRIANO
+  (REUNIÃO 15:30)" também — **nunca tirar a nota**: nome com nota é posição ocupada e não nasce
+  liberado). Quem fecha o
   rodapé **sem caso** (plantão do contraturno/noite) → `conferidos` — só a **cauda contígua**. Nome
   sem caso no MEIO do rodapé é quase sempre linha da foto esquecida (ou azul não lido): volte à
   foto antes de pôr em `conferidos`; o `gerar.py` avisa os dois casos.

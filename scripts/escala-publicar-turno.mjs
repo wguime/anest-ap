@@ -243,6 +243,48 @@ async function noturnosDaVespera(data, uid, posPlantao) {
   }
 }
 
+/**
+ * Quem a numérica esperava e não está no rodapé (dono 24/09): antes de relatar "faltando",
+ * conferir se a pessoa está no rodapé de OUTRO hospital do lote, de PÓS-PLANTÃO (plantão
+ * noturno da véspera no Pega Plantão, que termina no dia) ou de FÉRIAS. Só o que sobra sem
+ * explicação vai ao dono — em 24/09 João Ricardo e Nathalia (P2/P1 da véspera) saíram como
+ * "faltam" e só a consulta à mão mostrou que eram pós-plantão.
+ */
+async function explicarFaltantes({ data, resultado, resolver, uidDono, ferias }) {
+  const faltantes = Object.entries(resultado.hospitais)
+    .flatMap(([h, r]) => (r.numerica?.faltamNoRodape || []).map((nome) => [h, nome]))
+  if (!faltantes.length) return
+  const semNota = (s) => String(s || '').replace(/\s*\([^()]*\)\s*$/, '')
+  const mesmo = (curto, outro) => {
+    const u = resolver(semNota(curto))
+    if (u && u === resolver(semNota(outro))) return true
+    // Pega Plantão traz nome completo ou inicial ("G. Staub"): todo token do apelido no nome
+    const tc = norm(semNota(curto)).split(' ').filter(Boolean)
+    const to = norm(outro).replace(/\./g, ' ').split(' ').filter(Boolean)
+    return tc.length > 0 && tc.every((t) => to.includes(t))
+  }
+  const v = new Date(`${data}T12:00:00Z`)
+  v.setUTCDate(v.getUTCDate() - 1)
+  const vespera = v.toISOString().slice(0, 10)
+  const plantoes = await plantoesPegaPlantao(`${vespera}T00:00:00`, `${data}T23:59:59`, uidDono)
+  const noturnos = (plantoes || []).filter((p) => !/f[ée]rias/i.test(p?.Setor || '')
+    && String(p.Inicio || '').startsWith(vespera) && String(p.Fim || '').startsWith(data))
+  const hhmm = (s) => String(s || '').slice(11, 16)
+  console.log('\n== faltantes da numérica × outro hospital / pós-plantão / férias')
+  if (plantoes === null) console.log('   ⚠️  Pega Plantão não respondeu — pós-plantão NÃO conferido')
+  for (const [h, nome] of faltantes) {
+    const outro = Object.entries(resultado.hospitais)
+      .find(([h2, r2]) => h2 !== h && r2.payload.ordemLiberacao.some((n) => mesmo(nome, n)))
+    const pos = noturnos.find((p) => mesmo(nome, p.ProfDePlantao || p.ProfFixo || ''))
+    const fer = (ferias || []).find((f) => mesmo(nome, f))
+    const motivo = outro ? `no rodapé do ${outro[0].toUpperCase()}`
+      : pos ? `pós-plantão (${pos.Setor} ${vespera.slice(8)}/${vespera.slice(5, 7)} ${hhmm(pos.Inicio)}→${hhmm(pos.Fim)})`
+        : fer ? 'férias'
+          : '❓ sem explicação no lote nem no Pega Plantão — confira o recado (consultório, troca) ou relate ao dono'
+    console.log(`   ${h.toUpperCase().padEnd(7)} ${String(nome).padEnd(16)} → ${motivo}`)
+  }
+}
+
 // ── comandos ─────────────────────────────────────────────────────────────────
 const args = process.argv.slice(2)
 const cmd = args[0]
@@ -351,6 +393,7 @@ if (cmd === 'publicar') {
     for (const a of r.avisos) console.log(`   ⚠️  ${a.codigo}: ${a.texto}`)
     totalBloqueios += r.bloqueios.length
   }
+  await explicarFaltantes({ data, resultado, resolver: identidade.resolver, uidDono, ferias })
   if (totalBloqueios) {
     await libs.fechar()
     falhar(`${totalBloqueios} bloqueio(s) — a tela também recusaria. Corrija o lote (ou responda em decisoes/conferidos) e repita.`)
