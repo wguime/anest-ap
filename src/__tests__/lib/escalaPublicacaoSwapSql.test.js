@@ -2,8 +2,8 @@ import { beforeAll, afterAll, beforeEach, describe, it, expect } from 'vitest'
 import { PGlite } from '@electric-sql/pglite'
 import { readFileSync, existsSync } from 'node:fs'
 
-const antiga = readFileSync('supabase/migrations/20260905150000_escala_publicacao_decisoes.sql', 'utf8')
-const nova = 'supabase/migrations/20260909120000_escala_republicacao_swap.sql'
+const antiga = readFileSync('supabase/migrations/20260923160000_escala_republicar_preserva_andamento.sql', 'utf8')
+const nova = 'supabase/migrations/20260923200000_escala_republicacao_swap.sql'
 let db
 beforeAll(async () => {
   db = new PGlite()
@@ -25,7 +25,10 @@ beforeAll(async () => {
       idade text, procedimento text, convenio text, cirurgiao text, cirurgiao_display text,
       anestesista text, anestesista_user_id text, residente text, residente_user_id text,
       bloco text, is_continuacao boolean, sem_anestesista boolean, tipo text, gravidade text,
-      turno text, status_cirurgia text default 'agendada');
+      turno text, status_cirurgia text default 'agendada', status_extra text,
+      status_atualizado_em timestamptz, status_atualizado_por text,
+      origem text not null default 'importacao', created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now());
   `)
   const inicio = antiga.indexOf('create or replace function public.rpc_publicar_escala_turno(')
   await db.exec(antiga.slice(inicio, antiga.indexOf('\n$$;', inicio) + 4))
@@ -89,6 +92,17 @@ describe('republicação preserva os dois lados da troca', () => {
     const preservar = await preparar([['a','b']])
     const r = await publicar([caso('c','S3')], preservar)
     expect(r.header.linha_overrides['matutino:a'].assumidaPor.casoIds).toEqual([])
+  })
+
+  it('urgência manual fica com quem atende numa troca A↔B', async () => {
+    const preservar = await preparar([['a','b'], ['b','a']])
+    const { rows: [{ id }] } = await db.query('select id from escala_cirurgica')
+    await db.query(`insert into escala_cirurgica_caso (escala_id, sala, anestesista, anestesista_user_id, turno, origem)
+      values ($1, 'Urgência', 'B', 'b', 'matutino', 'manual')`, [id])
+    const r = await publicar([caso('a','S1'), caso('b','S2')], preservar)
+    expect(r.casos.find((c) => c.sala === 'Urgência').anestesista_user_id).toBe('b')
+    expect(r.casos.find((c) => c.sala === 'S1').anestesista_user_id).toBe('b')
+    expect(r.casos.find((c) => c.sala === 'S2').anestesista_user_id).toBe('a')
   })
 
   it('migration pode ser reaplicada sem alterar a definição', async () => {

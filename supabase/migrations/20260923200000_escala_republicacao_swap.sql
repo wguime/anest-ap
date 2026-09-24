@@ -1,9 +1,11 @@
 -- Republicação preserva swaps/ciclos e renova os recibos dos casos.
--- Autorizada para revisão LOCAL em 08/09. Não aplicada em produção.
--- Só substitui o trecho conhecido; assinatura, privilégios, lock, auditoria e
--- reset de liberação continuam os mesmos. Não altera tabelas nem políticas.
--- Rollback: substituir este bloco pelo bloco antigo abaixo, na mesma transação;
--- isso reintroduz o defeito. Não há dados a desfazer nesta migration.
+-- Escrita na revisão independente de 09/09 (branch codex); aplicada em 23/09 sobre a
+-- RPC de 20260923160000 (republicar preserva andamento). Renomeada para depois dela:
+-- reaplicada em ordem, a de 23/09 desfaria o fix. Só substitui o trecho conhecido;
+-- assinatura, privilégios, lock, auditoria e reset de liberação continuam os mesmos.
+-- Casos origem='manual' (urgências do app, preservados desde 23/09) ficam FORA do
+-- re-apontar: já estão com quem atende, e numa troca A↔B voltariam ao dono antigo.
+-- Rollback: reaplicar a função de 20260923160000. Sem dados a desfazer.
 begin;
 set local lock_timeout = '3s';
 do $migration$
@@ -44,14 +46,14 @@ declare
   end loop;
 $old$;
   trecho_novo text := $new$  -- RE-APONTAR pelo snapshot original: A→B não vira entrada de B→A.
-  -- revisao-swap-snapshot-v1 (marcador de idempotência da migration)
+  -- revisao-swap-snapshot-v2 (marcador de idempotência da migration)
   declare
     v_casos_originais jsonb;
   begin
     select coalesce(jsonb_agg(jsonb_build_object('id', c.id, 'uid', c.anestesista_user_id)), '[]'::jsonb)
       into v_casos_originais
       from public.escala_cirurgica_caso c
-     where c.escala_id = v_id and c.turno = p_turno;
+     where c.escala_id = v_id and c.turno = p_turno and c.origem <> 'manual';
   for v_chave, v_valor in select key, value from jsonb_each(v_over) loop
     if left(v_chave, length(v_prefixo)) <> v_prefixo then continue; end if;
     v_asm := v_valor -> 'assumidaPor';
