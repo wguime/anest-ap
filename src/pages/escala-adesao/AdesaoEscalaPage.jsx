@@ -18,7 +18,7 @@ import { useMediaQuery } from '@/design-system/hooks'
 import { useAdesaoEscala, useAdesaoMes, useAdesaoEvolucao } from '@/hooks/useAdesaoEscala'
 import GraficoEvolucao from './GraficoEvolucao'
 import {
-  META, CARGOS, ORDEM_CARGO, SITUACOES,
+  META, INDICE, CARGOS, ORDEM_CARGO, SITUACOES,
   montarPessoas, ordenarPessoas, resumirCargos, indicadoresGrupo, hospital,
   faixa, formatarPct, melhores10, tamanhoTopo, proximoPasso, montarVista, rotuloMes, mesAnterior,
 } from '@/lib/escalaAdesao'
@@ -106,18 +106,18 @@ function Ficha({ pessoa, pessoas, vista, lado = 'bottom', onClose }) {
   const passo = proximoPasso(pessoa)
   const topo = useMemo(() => ({
     uso: melhores10(pessoas, `uso${j}`),
+    abre: melhores10(pessoas, `abre${j}`),
     ini: melhores10(pessoas, `ini${j}`),
     ter: melhores10(pessoas, `ter${j}`),
     tp: melhores10(pessoas, `tp${j}`),
     tot: melhores10(pessoas, `tot${j}`),
   }), [pessoas, j])
-  const metaUso = vista.metaUso
   const n = tamanhoTopo(pessoas)
   const rotuloTopo = `Média top ${n}`
   const quem = pessoa.primeiro
   const eu = (v) => [[quem, v, 'bg-foreground']]
-  // início/término: a meta é a cirurgia marcada por qualquer um; o que a pessoa tocou vem embaixo
-  const marcado = (qq, proprio) => [['Por qualquer um', qq, 'bg-foreground'], [`Por ${quem}`, proprio, 'bg-foreground/45']]
+  // início/término: conta o que a pessoa tocou; a sala marcada por qualquer um vem embaixo
+  const marcado = (proprio, sala) => [[`Por ${quem}`, proprio, 'bg-foreground'], ['Por qualquer um', sala, 'bg-foreground/45']]
   return (
     <Sheet open onOpenChange={(o) => !o && onClose()}>
       <SheetContent side={lado} className={lado === 'bottom' ? '!h-auto max-h-[88vh] overflow-y-auto' : 'overflow-y-auto'}>
@@ -132,15 +132,22 @@ function Ficha({ pessoa, pessoas, vista, lado = 'bottom', onClose }) {
           <p className="rounded-xl bg-muted px-3 py-2.5 text-[14px] leading-snug">
             {passo.texto} <strong className="text-primary">Próximo passo:</strong> {passo.passo}
           </p>
+          {pessoa.anest && (
+            <Comparativo
+              titulo="Índice de uso"
+              detalhe={`os 5 itens abaixo, cada um contra a meta · ${vista.rotA}`}
+              linhas={eu(pessoa[`uso${j}`])} meta={INDICE.ok} topo={topo.uso} rotuloTopo={rotuloTopo}
+            />
+          )}
           <Comparativo
-            titulo="Usa a escala"
-            detalhe={`abriu em ${pessoa[`d${j}`]} de ${pessoa[`base${j}`]} dias trabalhados · ${vista.rotA}`}
-            linhas={eu(pessoa[`uso${j}`])} meta={metaUso} topo={pessoa.anest ? topo.uso : null} rotuloTopo={rotuloTopo}
+            titulo="Abre a escala"
+            detalhe={`abriu em ${pessoa[`d${j}`]} de ${pessoa[`base${j}`]} dias trabalhados${pessoa.anest ? '' : ` · ${vista.rotA}`}`}
+            linhas={eu(pessoa[`abre${j}`])} meta={META.uso} topo={pessoa.anest ? topo.abre : null} rotuloTopo={rotuloTopo}
           />
           {pessoa.anest ? (
             <>
-              <Comparativo titulo="Início marcado" detalhe={`% das cirurgias de ${quem}`} linhas={marcado(pessoa[`ini${j}`], pessoa[`iniProprio${j}`])} meta={META.ini} topo={topo.ini} rotuloTopo={rotuloTopo} />
-              <Comparativo titulo="Término marcado" detalhe={`% das cirurgias de ${quem}`} linhas={marcado(pessoa[`ter${j}`], pessoa[`terProprio${j}`])} meta={META.ter} topo={topo.ter} rotuloTopo={rotuloTopo} />
+              <Comparativo titulo="Início marcado" detalhe={`% das cirurgias de ${quem}`} linhas={marcado(pessoa[`ini${j}`], pessoa[`iniSala${j}`])} meta={META.ini} topo={topo.ini} rotuloTopo={rotuloTopo} />
+              <Comparativo titulo="Término marcado" detalhe={`% das cirurgias de ${quem}`} linhas={marcado(pessoa[`ter${j}`], pessoa[`terSala${j}`])} meta={META.ter} topo={topo.ter} rotuloTopo={rotuloTopo} />
               <Comparativo titulo="Tempo da cirurgia informado" detalhe={`% das cirurgias de ${quem}`} linhas={eu(pessoa[`tp${j}`])} meta={META.tp} topo={topo.tp} rotuloTopo={rotuloTopo} />
               <Comparativo titulo="Tempo total informado" detalhe={`% dos turnos de ${quem}`} linhas={eu(pessoa[`tot${j}`])} meta={META.tot} topo={topo.tot} rotuloTopo={rotuloTopo} />
               <p className="text-[11.5px] text-muted-foreground">
@@ -244,13 +251,11 @@ function TabelaCargo({ cargo, lista, vista, onAbrir }) {
             <span className="font-normal">{vista.rotA} · embaixo, {vista.rotB}</span>
           </th>
           <th className={`${th} hidden xl:table-cell`}>Situação</th>
-          <th className={th}>Uso<span className="hidden font-normal xl:block">% dos dias trabalhados · meta {metaUso}%</span></th>
-          <th className={`${th} hidden xl:table-cell`}>Aberturas<span className="hidden font-normal xl:block">por dia usado</span></th>
-          <th className={th}>{anest ? 'Início marcado' : 'Inícios'}<span className="hidden font-normal xl:block">{anest ? '% das cirurgias · meta 80%' : 'marcações'}</span></th>
-          <th className={th}>{anest ? 'Término marcado' : 'Términos'}<span className="hidden font-normal xl:block">{anest ? '% das cirurgias · meta 80%' : 'marcações'}</span></th>
-          <th className={th}>Tempo da cirurgia<span className="hidden font-normal xl:block">{anest ? '% das cirurgias · meta 50%' : 'não se aplica'}</span></th>
-          <th className={`${th} rounded-tr-xl xl:rounded-tr-none`}>Tempo total<span className="hidden font-normal xl:block">{anest ? '% dos turnos · meta 80%' : 'não se aplica'}</span></th>
-          <th className={`${th} hidden xl:table-cell`}>Trocas</th>
+          <th className={th}>Uso<span className="hidden font-normal xl:block">{anest ? `índice · engajado ${INDICE.ok}+` : '% dos dias trabalhados'}</span></th>
+          <th className={th}>{anest ? 'Início marcado' : 'Inícios'}</th>
+          <th className={th}>{anest ? 'Término marcado' : 'Términos'}</th>
+          <th className={th}>Tempo da cirurgia</th>
+          <th className={`${th} rounded-tr-xl xl:rounded-tr-none`}>Tempo total</th>
           <th className={`${th} hidden rounded-tr-xl xl:table-cell`}>Ações<span className="hidden font-normal xl:block">na escala</span></th>
         </tr>
       </thead>
@@ -266,12 +271,11 @@ function TabelaCargo({ cargo, lista, vista, onAbrir }) {
               <span className="mt-1 block xl:hidden"><Tag situacao={p.situacao} /></span>
             </td>
             <td className="hidden whitespace-nowrap border-t border-border px-1 text-center xl:table-cell"><Tag situacao={p.situacao} /></td>
-            <CelulaLarga valor={p[`uso${j}`]} meta={metaUso} sub={`${p[`d${j}`]} de ${p[`base${j}`]} dias`} sub2={`${vista.curtoB}: ${formatarPct(p[`uso${o}`])}`} />
-            <td className="hidden border-t border-border text-center text-[13px] tabular-nums xl:table-cell">{p.aberturasPorDia ?? '—'}</td>
+            <CelulaLarga valor={p[`uso${j}`]} meta={metaUso} sub={`abriu ${p[`d${j}`]} de ${p[`base${j}`]} dias`} sub2={`${vista.curtoB}: ${formatarPct(p[`uso${o}`])}`} />
             {p.anest ? (
               <>
-                <CelulaLarga valor={p[`ini${j}`]} meta={META.ini} sub={`por ${p.primeiro}: ${formatarPct(p[`iniProprio${j}`])}`} sub2={`${vista.curtoB}: ${formatarPct(p[`ini${o}`])}`} />
-                <CelulaLarga valor={p[`ter${j}`]} meta={META.ter} sub={`por ${p.primeiro}: ${formatarPct(p[`terProprio${j}`])}`} sub2={`${vista.curtoB}: ${formatarPct(p[`ter${o}`])}`} />
+                <CelulaLarga valor={p[`ini${j}`]} meta={META.ini} sub={`sala: ${formatarPct(p[`iniSala${j}`])}`} sub2={`${vista.curtoB}: ${formatarPct(p[`ini${o}`])}`} />
+                <CelulaLarga valor={p[`ter${j}`]} meta={META.ter} sub={`sala: ${formatarPct(p[`terSala${j}`])}`} sub2={`${vista.curtoB}: ${formatarPct(p[`ter${o}`])}`} />
                 <CelulaLarga valor={p[`tp${j}`]} meta={META.tp} sub={n(p.tpInf30, p.casos30)} sub2={`${vista.curtoB}: ${formatarPct(p[`tp${o}`])}`} />
                 <CelulaLarga valor={p[`tot${j}`]} meta={META.tot} sub={n(p.totEu30, p.turnos30)} sub2={`${vista.curtoB}: ${formatarPct(p[`tot${o}`])}`} />
               </>
@@ -283,7 +287,6 @@ function TabelaCargo({ cargo, lista, vista, onAbrir }) {
                 <CelulaLarga valor={null} meta={1} texto="—" />
               </>
             )}
-            <td className="hidden border-t border-border text-center text-[13px] tabular-nums xl:table-cell">{p[`trocas${j}`]}<span className="block text-[10px] text-muted-foreground">{vista.curtoB}: {p[`trocas${o}`]}</span></td>
             <td className="hidden border-t border-border text-center text-[13px] tabular-nums xl:table-cell">{p[`acoes${j}`]}<span className="block text-[10px] text-muted-foreground">{vista.curtoB}: {p[`acoes${o}`]}</span></td>
           </tr>
         ))}
@@ -451,13 +454,14 @@ export default function AdesaoEscalaPage({ goBack }) {
         </button>
         {comoLer && (
           <ul className="grid gap-1.5 rounded-xl border border-border bg-card px-4 py-3 text-[12.5px] leading-snug text-muted-foreground lg:grid-cols-2 lg:gap-x-8">
-            <li><b className="text-foreground">Uso:</b> dos dias em que a pessoa trabalhou, em quantos abriu a escala (meta 70%). Anestesista: dias em que estava na escala publicada. Demais cargos: dias úteis, feriados incluídos.</li>
-            <li><b className="text-foreground">Início / Término:</b> das cirurgias em que era o anestesista, em quantas alguém tocou em "Iniciada" / "Terminada" (meta 80%). A ficha mostra também quantas a própria pessoa marcou.</li>
+            <li><b className="text-foreground">Uso (anestesistas):</b> índice de 0 a 100 que junta os 5 itens — abrir a escala, marcar início, marcar término, tempo da cirurgia e tempo total —, cada um contado contra a própria meta. Engajado a partir de {INDICE.ok}; baixo uso abaixo de {INDICE.bx}.</li>
+            <li><b className="text-foreground">Abre a escala:</b> dos dias em que a pessoa trabalhou, em quantos abriu o app (meta 70%). Anestesista: dias na escala publicada. Demais cargos: dias úteis, feriados incluídos — para eles, é o próprio uso.</li>
+            <li><b className="text-foreground">Início / Término:</b> das cirurgias em que era o anestesista, em quantas ele mesmo tocou em "Iniciada" / "Terminada" (meta 80%). Embaixo, a sala marcada por qualquer pessoa.</li>
             <li><b className="text-foreground">Tempo cir.:</b> das cirurgias dela, em quantas havia o tempo que falta preenchido (meta 50%).</li>
             <li><b className="text-foreground">Tempo total:</b> dos turnos dela, em quantos informou a que horas termina (meta 80%).</li>
             <li>Enfermagem, residentes, secretaria e contas dos hospitais não têm cirurgias próprias: aparece o número de marcações que fizeram.</li>
             <li>Cores: verde na meta · amarelo metade ou mais · laranja abaixo da metade · vermelho zero.</li>
-            <li>Situação (sempre 30 dias): <b className="text-foreground">Engajado</b> uso de 70%+ e término marcado em metade ou mais; <b className="text-foreground">Não marca início/término</b> término marcado em menos de 20%; <b className="text-foreground">Baixo uso</b> uso abaixo de 40%; <b className="text-foreground">Sem uso na semana</b> trabalhou nos últimos 7 dias e não abriu.</li>
+            <li>Situação (sempre 30 dias): <b className="text-foreground">Engajado</b> índice {INDICE.ok}+; <b className="text-foreground">Não marca início/término</b> marcou o término de menos de 20% das próprias cirurgias; <b className="text-foreground">Baixo uso</b> índice abaixo de {INDICE.bx}; <b className="text-foreground">Sem uso na semana</b> trabalhou nos últimos 7 dias e não abriu.</li>
             <li>Toque numa pessoa para ver a ficha: os números dela, a meta, a média dos colegas com os valores mais altos e o próximo passo.</li>
           </ul>
         )}
@@ -480,11 +484,11 @@ export default function AdesaoEscalaPage({ goBack }) {
               <Indicador titulo="Tempo da cirurgia" valor={grupo.tp} meta={META.tp} detalhe={`${grupo.n.tp} de ${grupo.casos}`} />
               <Indicador titulo="Tempo total" valor={grupo.tot} meta={META.tot} detalhe={`${grupo.n.tot} de ${grupo.turnos} turnos`} />
               <div className="hidden xl:block">
-                <Indicador titulo={`Uso de ${metaUso}%+`} valor={(usamMuito / Math.max(1, pessoas.length)) * 100} meta={80} detalhe={`${usamMuito} de ${pessoas.length} pessoas`} />
+                <Indicador titulo={`Uso ${metaUso}+`} valor={(usamMuito / Math.max(1, pessoas.length)) * 100} meta={80} detalhe={`${usamMuito} de ${pessoas.length} pessoas`} />
               </div>
             </div>
             <p className="text-[12.5px] text-muted-foreground xl:hidden">
-              <b className="text-foreground">{usamMuito} de {pessoas.length}</b> pessoas abriram a escala em {metaUso}% ou mais dos dias trabalhados.
+              <b className="text-foreground">{usamMuito} de {pessoas.length}</b> pessoas com uso {metaUso} ou mais.
             </p>
 
             <div className="flex flex-col gap-3 xl:grid xl:grid-cols-2 xl:items-start">
@@ -539,8 +543,10 @@ export default function AdesaoEscalaPage({ goBack }) {
             <p className="text-[11.5px] leading-snug text-muted-foreground">
               Fonte: registros do ANEST. Ficam fora cirurgias suspensas, linhas sem anestesista, a conta de testes
               e quem não trabalhou nenhum dia no período.
-              Se uma troca não foi registrada no app, a cirurgia conta para quem estava escalado. O tempo total
-              pode sair um pouco menor que o real quando outra pessoa editou a linha depois.
+              Se uma troca não foi registrada no app, a cirurgia conta para quem estava escalado. Dia trabalhado:
+              cirurgia no nome ou nome no rodapé do hospital — no fim de semana só com cirurgia, e rodapé anotado
+              "consultório" não conta. O tempo total pode sair um pouco menor que o real quando outra pessoa editou a
+              linha depois; o tempo da cirurgia conta o preenchido por qualquer pessoa (o app não guarda quem preencheu).
             </p>
           </>
         )}

@@ -5,22 +5,27 @@
  * (migrations 20260923120000 → 20260924120000). As definições dos números moram na migration;
  * aqui ficam só as REGRAS de leitura:
  *
- *  - USO (dono 24/09): % dos dias em que a pessoa podia usar a escala em que ela abriu.
+ *  - ÍNDICE DE USO (coluna "Uso", dono 24/09 à tarde): média dos 5 itens do anestesista, cada um
+ *    como % da própria meta, limitado a 100% — abre a escala, início, término (os dois marcados
+ *    PELA PESSOA), tempo da cirurgia e tempo total. Engajado 50+, baixo uso < 30. Só "abrir o app"
+ *    deixou 29 de 46 engajados (contra 3 na régua de 23/09); o índice deu 3.
+ *    Demais cargos (sem cirurgia própria): índice = abre a escala.
+ *  - ABRE A ESCALA (dono 24/09): % dos dias em que a pessoa podia usar a escala em que ela abriu.
  *    Anestesista → dias em que estava NA ESCALA PUBLICADA (caso ou rodapé): férias, atestado,
  *    consultório e pós-plantão ficam fora sozinhos; feriado e fim de semana escalados entram.
  *    Demais cargos → dias ÚTEIS (seg–sex, feriado conta) — a escala deles não tem histórico.
  *    Meta 70% (≈ os 15 dias de ~21 úteis da régua antiga). Quem não trabalhou nenhum dia no
  *    período (base 0) não entra na lista — sem rótulo próprio de férias (dono 24/09).
- *  - MARCAÇÃO (dono 24/09): início/término = cirurgia da pessoa marcada por QUALQUER um (o mesmo
- *    critério do quadro por hospital); o que ela mesma tocou fica ao lado ("próprio").
+ *  - MARCAÇÃO: início/término contam o que a PRÓPRIA pessoa tocou (ini30/ter30); a sala marcada
+ *    por qualquer um (iniSala30/terSala30, o critério do quadro por hospital) fica ao lado.
  *  - metas: uso 70% · início 80% · término 80% · tempo da cirurgia 50% · tempo total 80%
  *  - faixas de cor: zero → crit · abaixo da metade da meta → low · metade ou mais → mid ·
  *    na meta → ok · sem denominador → na
- *  - situação (sempre pela janela de 30 dias): nunca abriu > sem uso
- *    na semana (só se esteve na escala na semana) > baixo uso (< 40% e sem semana forte) >
- *    [anestesista] não marca (término < 20%) > engajado (uso ≥ 70% ou semana forte, E término
- *    ≥ 50%) > pode melhorar. Quem não tem cirurgia própria (enfermagem, residência, secretaria,
- *    contas dos hospitais) é engajado com uso frequente E 10+ marcações de início/término no mês.
+ *  - situação (sempre pela janela de 30 dias): nunca abriu > sem uso na semana (só se esteve na
+ *    escala na semana) > [anestesista] baixo uso (índice < 30) > não marca (término próprio < 20%)
+ *    > engajado (índice ≥ 50) > pode melhorar. Quem não tem cirurgia própria (enfermagem,
+ *    residência, secretaria, contas dos hospitais): baixo uso = abre < 40% sem semana forte;
+ *    engajado = abre ≥ 70% (ou semana forte) E 10+ marcações de início/término no mês.
  *  - comparação da ficha: "média top N" = média dos N anestesistas (10% do grupo) com o valor
  *    mais alto no item, não a média do grupo (Cochrane, Ivers et al. 2025: comparar com a média
  *    não teve efeito). O rótulo "melhores 10%" confundia (dono 24/09).
@@ -30,6 +35,14 @@
 import { nomeCirurgiaoCurto, primeiroNome } from '@/lib/colunaLiberacao'
 
 export const META = { uso: 70, ini: 80, ter: 80, tp: 50, tot: 80 }
+/** Faixas do índice de uso (dono 24/09): engajado a partir de 50, baixo uso abaixo de 30. */
+export const INDICE = { ok: 50, bx: 30 }
+
+/** Índice de uso do anestesista: média dos 5 itens como % da meta, cada um limitado a 100. */
+export function indiceUso({ abre, ini, ter, tp, tot }) {
+  const c = (v, meta) => Math.min(100, ((v ?? 0) / meta) * 100)
+  return (c(abre, META.uso) + c(ini, META.ini) + c(ter, META.ter) + c(tp, META.tp) + c(tot, META.tot)) / 5
+}
 
 export const CARGOS = {
   anest: 'Anestesiologistas',
@@ -97,13 +110,14 @@ export function classificarSituacao(p) {
   if (p.nunca) return 'nun'
   const semanaConta = p.base7 > 0
   if (semanaConta && p.d7 === 0) return 'sem'
-  const semanaForte = p.base7 >= 3 && p.uso7 >= 80
-  if ((p.uso30 ?? 0) < 40 && !semanaForte) return 'bx'
-  const frequente = (p.uso30 ?? 0) >= META.uso || semanaForte
   if (p.anest) {
+    if ((p.uso30 ?? 0) < INDICE.bx) return 'bx'
     if ((p.ter30 ?? 0) < 20) return 'nm'
-    return frequente && p.ter30 >= 50 ? 'ok' : 'mid'
+    return p.uso30 >= INDICE.ok ? 'ok' : 'mid'
   }
+  const semanaForte = p.base7 >= 3 && p.abre7 >= 80
+  if ((p.abre30 ?? 0) < 40 && !semanaForte) return 'bx'
+  const frequente = (p.abre30 ?? 0) >= META.uso || semanaForte
   return frequente && p.iniN30 + p.terN30 >= 10 ? 'ok' : 'mid'
 }
 
@@ -147,16 +161,16 @@ export function montarPessoas(r30, r60) {
       sub: subtituloDe(a),
       nunca: Boolean(a.nunca),
       anest,
-      d7: u30.abriu7, base7: u30.base7, uso7: razao(u30.abriu7, u30.base7),
-      d30: u30.abriu, base30: u30.base, uso30: razao(u30.abriu, u30.base),
-      d60: u60.abriu, base60: u60.base, uso60: razao(u60.abriu, u60.base),
+      d7: u30.abriu7, base7: u30.base7, abre7: razao(u30.abriu7, u30.base7),
+      d30: u30.abriu, base30: u30.base, abre30: razao(u30.abriu, u30.base),
+      d60: u60.abriu, base60: u60.base, abre60: razao(u60.abriu, u60.base),
       aberturasPorDia: a.dn ? Math.round(a.aberturas / a.dn) : null,
       casos30: a.casos, casos60: b.casos,
       turnos30: a.turnos, turnos60: b.turnos,
-      ini30: razao(iniQ(a), a.casos), ini60: razao(iniQ(b), b.casos),
-      ter30: razao(terQ(a), a.casos), ter60: razao(terQ(b), b.casos),
-      iniProprio30: razao(a.ini_eu, a.casos), iniProprio60: razao(b.ini_eu, b.casos),
-      terProprio30: razao(a.ter_eu, a.casos), terProprio60: razao(b.ter_eu, b.casos),
+      ini30: razao(a.ini_eu, a.casos), ini60: razao(b.ini_eu, b.casos),
+      ter30: razao(a.ter_eu, a.casos), ter60: razao(b.ter_eu, b.casos),
+      iniSala30: razao(iniQ(a), a.casos), iniSala60: razao(iniQ(b), b.casos),
+      terSala30: razao(terQ(a), a.casos), terSala60: razao(terQ(b), b.casos),
       tp30: razao(a.tp_inf, a.casos), tp60: razao(b.tp_inf, b.casos),
       tot30: razao(a.tot_eu, a.turnos), tot60: razao(b.tot_eu, b.turnos),
       iniQq30: iniQ(a), terQq30: terQ(a),
@@ -165,6 +179,11 @@ export function montarPessoas(r30, r60) {
       terN30: a.ter_n || 0, terN60: b.ter_n || 0,
       trocas30: a.trocas || 0, trocas60: b.trocas || 0,
       acoes30: a.acoes || 0, acoes60: b.acoes || 0,
+    }
+    for (const j of ['30', '60']) {
+      p[`uso${j}`] = anest
+        ? indiceUso({ abre: p[`abre${j}`], ini: p[`ini${j}`], ter: p[`ter${j}`], tp: p[`tp${j}`], tot: p[`tot${j}`] })
+        : p[`abre${j}`]
     }
     p.situacao = classificarSituacao(p)
     return p
@@ -209,6 +228,7 @@ export function resumirCargos(pessoas) {
       abriramSemana: g.filter((p) => p.d7 > 0).length,
       uso30: mediana(g.map((p) => p.uso30)),
       uso60: mediana(g.map((p) => p.uso60)),
+      abre30: mediana(g.map((p) => p.abre30)),
       ini30: anest ? mediana(g.map((p) => p.ini30)) : null,
       ter30: anest ? mediana(g.map((p) => p.ter30)) : null,
       tot30: anest ? mediana(g.map((p) => p.tot30)) : null,
@@ -257,13 +277,14 @@ export function proximoPasso(p) {
   if (p.nunca) return { texto: 'Ainda não abriu a escala.', passo: 'abrir a escala do dia no app pelo menos uma vez por dia útil.' }
   if (p.base7 > 0 && p.d7 === 0) return { texto: 'Não abriu a escala nos dias em que esteve escalado nesta semana.', passo: 'voltar a abrir a escala todo dia escalado, pela aba Minhas.' }
   if (!p.anest) {
-    return (p.uso30 ?? 0) < META.uso
+    return (p.abre30 ?? 0) < META.uso
       ? { texto: `Abriu a escala em ${p.d30} de ${p.base30} dias úteis.`, passo: 'abrir todo dia útil e marcar início e término das cirurgias da sua sala.' }
       : { texto: 'Usa a escala com frequência.', passo: 'continuar marcando início e término, que é o que faz a fila andar.' }
   }
   const lacunas = [
-    { g: META.ter - (p.ter30 ?? 0), texto: `Término marcado em ${formatarPct(p.ter30)} das cirurgias (meta 80%).`, passo: 'tocar "Terminada" ao sair da sala.' },
-    { g: META.ini - (p.ini30 ?? 0), texto: `Início marcado em ${formatarPct(p.ini30)} das cirurgias (meta 80%).`, passo: 'tocar "Iniciada" quando a cirurgia começar.' },
+    { g: META.uso - (p.abre30 ?? 0), texto: `Abriu a escala em ${p.d30} de ${p.base30} dias trabalhados.`, passo: 'abrir a escala em todo dia escalado, pela aba Minhas.' },
+    { g: META.ter - (p.ter30 ?? 0), texto: `Marcou o término em ${formatarPct(p.ter30)} das próprias cirurgias (meta 80%).`, passo: 'tocar "Terminada" ao sair da sala.' },
+    { g: META.ini - (p.ini30 ?? 0), texto: `Marcou o início em ${formatarPct(p.ini30)} das próprias cirurgias (meta 80%).`, passo: 'tocar "Iniciada" quando a cirurgia começar.' },
     { g: (META.tot - (p.tot30 ?? 0)) * 0.8, texto: `Tempo total informado em ${formatarPct(p.tot30)} dos turnos (meta 80%).`, passo: 'informar a que horas termina o turno, para a fila saber quem libera primeiro.' },
   ].sort((a, b) => b.g - a.g)
   if (lacunas[0].g <= 0) return { texto: 'Está na meta nas marcações.', passo: 'manter e ajudar os colegas da sala.' }
@@ -324,12 +345,12 @@ export function limitesMes(mes, hoje = new Date(), gravadoAte = null) {
 
 /**
  * O que a página mostra numa aba: período principal (A, campos "30" de montarPessoas), período de
- * comparação (B, campos "60") e rótulos. Nas abas de mês a comparação é o mês anterior. A meta de
- * uso é a mesma em toda aba (70% dos dias em que podia usar — dono 24/09).
+ * comparação (B, campos "60") e rótulos. Nas abas de mês a comparação é o mês anterior. `metaUso`
+ * é o corte de engajado do índice (50), o mesmo em toda aba.
  */
 export function montarVista(aba, { r30, r60, mesA, mesB, hoje = new Date(), gravadoAte = null } = {}) {
   if (aba === '60') {
-    return { relA: r60, relB: r30, rotA: 'últimos 60 dias', rotB: 'últimos 30 dias', curtoB: '30d', metaUso: META.uso, situacaoDe30: true }
+    return { relA: r60, relB: r30, rotA: 'últimos 60 dias', rotB: 'últimos 30 dias', curtoB: '30d', metaUso: INDICE.ok, situacaoDe30: true }
   }
   if (/^\d{4}-\d{2}$/.test(aba || '')) {
     const lim = limitesMes(aba, hoje, gravadoAte)
@@ -338,11 +359,11 @@ export function montarVista(aba, { r30, r60, mesA, mesB, hoje = new Date(), grav
       relA: mesA, relB: mesB,
       rotA: lim.parcial ? `${rotuloMes(aba)} (até ${lim.ate.slice(8, 10)}/${lim.ate.slice(5, 7)})` : rotuloMes(aba),
       rotB: rotuloMes(ant), curtoB: rotuloMes(ant),
-      metaUso: META.uso,
+      metaUso: INDICE.ok,
       situacaoDe30: false,
     }
   }
-  return { relA: r30, relB: r60, rotA: 'últimos 30 dias', rotB: 'últimos 60 dias', curtoB: '60d', metaUso: META.uso, situacaoDe30: false }
+  return { relA: r30, relB: r60, rotA: 'últimos 30 dias', rotB: 'últimos 60 dias', curtoB: '60d', metaUso: INDICE.ok, situacaoDe30: false }
 }
 
 /**
