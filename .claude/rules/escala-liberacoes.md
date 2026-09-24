@@ -122,7 +122,10 @@ cirurgia nenhuma, saiu de LIBERADO para "Livre".
   sai do aviso de extração (dizia a mesma coisa e contava a pessoa duas vezes no
   contador de pendências); o ponto âmbar na posição cobre os dois casos. A
   conferência agora busca também a escala JÁ PUBLICADA do próprio hospital — é
-  dela que saem as cirurgias marcadas, que o lote em conferência não contém.
+  dela que saem as cirurgias marcadas, que o lote em conferência não contém. Desde 21/09
+  a fila mede a cauda pela LISTA (§ "A cauda é o fim da LISTA"): com ajuda trabalhando
+  abaixo, quem fecha a ordem sem cirurgia espera "Livre" em vez de nascer LIBERADO. O aviso
+  da conferência segue pela ORDEM — mantido assim pelo dono em 23/09 (CHANGELOG v5.12.33).
 - Travas: describe "a cauda é da ORDEM, não da tela" (recorte real de 24/08:
   Humberto · Raul · Vicente · Gabriela visitante · Didomenico) + "passa para tarde
   de quem não está na tarde" em `escalaCirurgicaPersonas.test.jsx`; invariante "a
@@ -180,9 +183,10 @@ HRO tinha ALEXANDRE S em 6º e GUSTAVO em 10º, e a Unimed liberava o Alexandre
 primeiro. ⚠️ o teste de lib passava o tempo todo — o que quebrou foi o FIO entre
 página e lib, e é por isso que a trava nova é de PÁGINA (`escalaAjudaOrigemHospital.test.jsx`).
 
-- `presencaOutros` voltou **só com o rodapé** (`{ nome, uid, hospital, hospitalLabel, rodapeIdx }`).
-  Enquanto ele não tiver `sala`, `ajudandoFora`/`ajudaForaInfo` seguem desligados —
-  a inferência de "emprestado" continua fora, como está desde 04/08.
+- `presencaOutros` voltou **só com o rodapé** (`{ nome, uid, hospital, hospitalLabel, rodapeIdx }`)
+  em 27/08. A metade dos CASOS (`sala` + `cirurgiao`; `procedimento` desde 16/09) voltou em
+  30/08, com o recorte de quem NÃO tem cirurgia aqui, e ligou `ajudandoFora`/`ajudaForaInfo`
+  — ver § "O mecanismo (não crie um segundo)".
 - Níveis da cauda, de quem sai por ÚLTIMO para quem sai PRIMEIRO: fila → ajuda sem
   origem conhecida → ajuda de outro hospital (índice do rodapé de lá ASCENDENTE:
   maior índice lá = sai antes lá = mais embaixo aqui) → **Materno** → plantão do
@@ -441,8 +445,9 @@ pílula deixava "faltam 2min" no caso e "32min" na pílula. `definirTempo` (view
 também `terminoPrevisto` no caso pela prop `onDefinirTerminoCaso` (página →
 `atualizarCaso(..., { silencioso: true })`; na fila única a escala é a do hospital do caso),
 com as guardas do espelho de ida: `casosAtivos === 1 && casoIds.length === 1`, sem dupla
-"A + B" (é de dois donos), sem "?". Com 2+ cirurgias o total segue 100% manual — nunca soma
-de estimativas (29/07). Trava: `liberacoesPainelLinha.test.jsx`, describe "a pílula do total
+"A + B" (é de dois donos), sem "?". Com 2+ cirurgias a pílula não grava em caso nenhum; o
+total é manual enquanto alguma estiver sem término (29/07) e vira o último término quando
+todas têm (14/09, acima). Trava: `liberacoesPainelLinha.test.jsx`, describe "a pílula do total
 espelha…".
 - Nada disso encosta em `ordem_liberacao`.
 
@@ -556,8 +561,9 @@ amarelo "Próximo a ser liberado". *"próximo a ser liberado está errado na esc
 
 O card **diz o porquê** ("Turno encerra às 19:00h" — frase do dono em 16/09; até então "Turno até 19:00 · pode sair fora da ordem"), na receita das linhas
 irmãs (13px, muted, sem cor nem ícone). Sem a frase, ver alguém do meio da fila sair antes dos
-de baixo lê como fila furada — que é exatamente o que a trava existe para impedir. "Pode", e
-não "sai": quando a fila chega nela o card traz a frase E o cartão amarelo, sem contradição.
+de baixo lê como fila furada — que é exatamente o que a trava existe para impedir. Quando a
+fila chega nela o card traz a frase E o cartão amarelo, sem contradição; o "pode sair fora da
+ordem" fica no aviso do toque recusado (§ *Hora de saída*).
 
 ⚠️ **Até 21/09 NÃO travava antes da hora, de propósito** (relógio do aparelho, plantão que
 acaba antes). O dono decidiu o contrário em 21/09 — *Hora de saída*, abaixo. A marca segue
@@ -723,7 +729,7 @@ pular ninguém.
 - **Fila única intocada**: no sáb/dom/feriado extra, ajuda e visitante seguem por "está em sala?" —
   o recorte de 29/08 existe porque lá a ajuda avulsa sem caso roubava o próximo de quem fecha o
   rodapé (fixture real de 15/08), e ajuda no FDS é exceção manual (05/09).
-- O vermelho automático continua SÓ na cauda da ordem (20–21/08): a ajuda sem caso fica verde, com
+- O vermelho automático continua SÓ em gente da ORDEM (20–21/08; onde a cauda começa é a regra de 21/09, abaixo): a ajuda sem caso fica verde, com
   "Livre" — e é justamente por isso que ela precisa ser o próximo, não ser pulada.
 
 Travas em `escalaCirurgicaPersonas.test.jsx`, describe "a fila é a lista": o recorte real de 18/09
@@ -769,4 +775,74 @@ asserção do Vicente (com a visitante trabalhando abaixo ele espera) e o recort
 (4 testes; todos falham contra a fronteira antiga). ⚠️ Ao tocar em quem "nasce liberado",
 perguntar antes: **há alguém trabalhando ABAIXO dele na lista?** Se há, ele não está fora do
 jogo — está esperando.
+
+### Card da fila — coluna à direita, selos e tempo estourado (dono 21–24/08)
+
+<!-- Movido de escala-urgencias.md: os paths de lá não carregam com LiberacoesView/PainelTempo. -->
+
+- **Fila: coluna à direita, badge do turno com respiro e "Editar" por extenso (dono 21/08):**
+  o tempo fica em cima e o **"Editar" no canto INFERIOR direito**, os dois com a mesma margem
+  da borda (11px a 375px) e na mesma vertical do "Passa para tarde/noite" — que usa `ml-auto`
+  mas encostava na borda porque o corpo do card não tem padding à direita (`mr-2.5`). Antes a
+  direita tinha DOIS layouts (linha; coluna quando havia setas de ajuda) e um `mr-10` só para
+  alinhá-los entre si — com uma coluna só, o alinhamento é o padrão e o hack saiu. O **lápis
+  virou badge "Editar"** (`badgeStyle` outline): o ícone não dizia o que abria, e o painel não
+  é "editar a linha" — é observação, local, cirurgião, ajuda e troca. Outline = ação (o
+  vocabulário dos botões do topo da aba); os badges de ESTADO são sólidos, então nada se
+  confunde. `aria-label` inalterado (`Editar local/cirurgião de {nome}`) — é o que distingue
+  16 botões iguais no leitor de tela e o que testes e e2e usam. O botão leva **44px de alvo com
+  `-my-2`** (truque do selo P4: toque confortável sem esticar 17 cards) — por isso o e2e mede
+  o BADGE, não o botão, senão acusa sobreposição onde a tela mostra empilhamento. O ✏️ do selo
+  P4 FICA: ali ele marca que o selo é editável, outra função.
+- **Badge do turno não encosta no cronômetro (dono 21/08, "amontoado"):** o badge fica na
+  linha do nome e a coluna direita começa logo abaixo — medido, o badge terminava em 32px e a
+  pílula do cronômetro começava em 32px, e dois pills sólidos colados liam como um bloco de
+  duas cores. `mt-2` na coluna **só quando o badge existe** (`mostraPassaTurno`): folga fixa
+  esticaria os 17 cards. ⚠️ `mostraPassaTurno` é declarado DEPOIS de `renovado` — declarar
+  junto de `liberado`, como tentei, cai na zona morta e derruba a aba inteira com o
+  ErrorBoundary. Os três pills ficam com 8px entre si.
+- **Seta do cirurgião e "~" do cronômetro: fora (dono 24/08):** o ▶ que marcava "cirurgia em
+  andamento" antes do nome do cirurgião saiu — a própria linha já distingue (a iniciada conta
+  "faltam 45min", a agendada mostra "até 15:45"), e o glifo repetia isso num símbolo que só se
+  entendia pelo tooltip, que no celular não existe. `andando` segue decidindo contagem × hora;
+  só o desenho saiu. E a pílula do total mostra **`1h18`**, sem til: o `~` sai em
+  `fraseCronometro`, NÃO em `formatFaltante`, que é compartilhado — a coluna de tempo do
+  quadro da Completa (`~45min`, desenho de 18/08) fica como está.
+- **TEMPO ESTOURADO pede atualização (dono 24/08):** "após terminar o tempo estabelecido, quero
+  que o usuário receba uma mensagem para atualizar o tempo, caso o procedimento não tenha
+  terminado". São DUAS metades e elas falham diferente. **(1) Tela**, 100% confiável: a pílula
+  vira **âmbar** (era verde, a cor de "está tudo correndo", enquanto o texto já dizia "25min
+  além" — número e tinta discordavam) e o card ganha "Atualize o tempo se a cirurgia não
+  terminou". Âmbar aqui já significa "passou do previsto" (tempo da cirurgia estourada, badge
+  Atrasada). **(2) Push** para a pessoa do cronômetro, ⚠️ **best-effort**: quem dispara é o
+  aparelho de quem estiver com a aba Liberações aberta — sem nenhuma tela aberta naquele
+  minuto, ninguém recebe e só o âmbar aparece depois. Um cron no servidor resolveria, ao custo
+  de refazer em SQL a resolução de identidade da fila (as 4 camadas de matching), que é onde
+  este módulo mais errou. Só entra quem tem login vinculado, não foi liberado e AINDA tem
+  cirurgia aberta; card noturno entra (P1–P4 têm cronômetro e é quem mais fica sem ninguém
+  olhando a tela). ⚠️ **a trava de "N telas, uma push" é a PK do banco**, não código:
+  `escala_cirurgica_aviso_tempo` (migration `20260824120000`, aplicada) com
+  `upsert + ignoreDuplicates` → `ON CONFLICT DO NOTHING`, e só manda quem conseguiu inserir.
+  `ignoreDuplicates` é opção de **upsert**; em `insert` ela é descartada em silêncio e o
+  perdedor leva 23505 — foi achado na revisão. O `alvo` (HH:MM) está na chave: atualizar o
+  tempo rearma o aviso; repetir o MESMO horário não. A policy de SELECT parece órfã e **não
+  é** — é o `.select()` que revela quem ganhou a corrida; removê-la mata a push em silêncio.
+- **A folga é de TODO selo, não só do roxo (dono 24/08, "alguns badges muito próximos"):** a
+  correção de 21/08 travou o `mt-2` em `mostraPassaTurno` e o defeito seguiu de pé para os
+  outros oito selos — medido a 375px com a escala real, "Plantão da tarde" terminava a **0px**
+  do "+ Tempo total". A coluna da direita é `items-center` na 2ª linha, então quando as infos
+  da esquerda são curtas (linha liberada, linha sem cirurgião) **ela vira o elemento mais alto
+  do card** e começa colada no fim da 1ª linha: acontece em METADE da fila. Hoje a condição é
+  `temSeloAoLadoDoNome`, e os nove selos viraram consts que o JSX e a folga consomem — a lista
+  não tem como divergir. Junto: `pr-1.5` na linha do nome (com nome longo + 3 selos o último
+  parava a **1px** da borda arredondada) e o roxo trocou `mr-2.5` por `mr-1`, que somado ao
+  `pr` fecha os mesmos 10px do `pr-2.5` da coluna. ⚠️ **6px entre selos é TETO medido, não
+  escolha estética**: a linha tem 282px a 375px e "Leonardo Ferrazzo" + Plantonista + Troca
+  gasta 275,5 — `pr-2` e `pr-2.5 + gap-2` foram testados no app e os dois truncam o NOME do
+  plantonista ("Leonardo Ferraz…"), que é a identidade do card; `flex-wrap` joga "Troca" órfã
+  numa 2ª linha e contraria "badge ao lado do nome". A 430px sobram 64px, se um dia valer abrir
+  o gap só acima de ~400px. Trava: `liberacoesSelosPosicao.test.jsx` é **invariante** ("havendo
+  selo, há folga"), não o caso de um selo — foi exatamente a trava estreita que deixou 21/08
+  passar; e a varredura de geometria (nenhum par < 6px, nada encostando na borda) vive no e2e
+  `escala-cirurgica-acoes-layout.spec.ts`, porque jsdom não mede layout.
 

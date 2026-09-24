@@ -11,13 +11,16 @@ description: Compliance Qmentum — ciclo documental (criação→aprovação→
 
 ## Categorias com Pesos
 ```javascript
-QMENTUM_CATEGORIES = {
+QMENTUM_CATEGORIES = {   // chave = DOCUMENT_CATEGORIES.*; cada uma leva a sua ropArea
   etica: { weight: 1.2 },
   comites: { weight: 1.0 },
   auditorias: { weight: 1.5 },
   relatorios: { weight: 1.0 },
   biblioteca: { weight: 0.8 },
-  financeiro: { weight: 1.1 }
+  financeiro: { weight: 1.1 },
+  medicamentos: { weight: 1.0 },
+  infeccoes: { weight: 1.0 },
+  desastres: { weight: 1.0 }
 }
 ```
 
@@ -40,13 +43,12 @@ Status: `REVISAO_PENDENTE` com transições válidas definidas.
 ```javascript
 {
   qmentumScore,           // Score ponderado por QMENTUM_CATEGORIES
-  ropAdherence,          // Aderência por área ROP (6 áreas)
+  ropAdherence,          // Aderência por área ROP (uma por categoria: 9)
   reviewComplianceRate,  // % revisões em dia
   approvalCycleTime,     // Tempo médio aprovação (dias)
   overdueByCategory,     // Docs vencidos por categoria
   documentCoverage,      // Existentes vs recomendados
-  lgpdSolicitacoes,      // { pendentes, resolvidas }
-  lgpdRespostaMedia      // Tempo resposta (dias)
+  lgpdMetrics            // { totalSolicitacoes, pendentes, resolvidas, tempoMedioResposta (dias) }
 }
 ```
 

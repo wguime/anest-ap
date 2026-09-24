@@ -19,7 +19,12 @@ pedido ao PUBLICADO.** O porquê de cada regra está em `REFERENCIA.md` — não
    `lote.py`): só as tabelas dos três hospitais, rodapés, `decisoes` e `conferidos`. Data e turno
    vêm da mensagem; sem isso, hoje em `America/Sao_Paulo` e o turno pelas horas (13:00+ = tarde).
 2. **Bash**: `cp` das fotos para a pasta (o caminho do WhatsApp é temporário; a pasta é fora do git)
-   + `python3 gerar.py` + `node scripts/escala-publicar-turno.mjs publicar <lote.json> --ensaio`.
+   + `python3 gerar.py` + o ensaio no worktree **`~/dev/anest-wt-escala`**, detached na `origin/main`
+   (a pasta principal fica centenas de commits atrás e o ensaio perde regra que já está no ar):
+   `git -C ~/dev/anest-wt-escala fetch -q origin && git -C ~/dev/anest-wt-escala checkout -q --detach origin/main`
+   e `cd ~/dev/anest-wt-escala && node scripts/escala-publicar-turno.mjs publicar ~/dev/Anest/.tmp/escala-lote/<pasta>/lote.json --ensaio`.
+   O `publicar` do passo 3 roda do mesmo worktree. Sem `.env.local` lá o login falha — peça ao dono
+   `! cp ~/dev/Anest/.env.local ~/dev/anest-wt-escala/`.
 3. **Reler a foto contra a saída do ensaio** — o único passo que não se pula; é a saída, não o JSON.
    Na ordem, por hospital: (a) **contagem por sala** — cada linha da foto tem uma linha no ensaio
    (a linha esquecida é o erro silencioso); (b) **anestesista por linha**, seguindo cada corrente
@@ -111,14 +116,16 @@ siga; não relate como "faltando" quem o aviso já diz que foi descontado), caud
 está no rodapé (azul não lido?), ajuda provável, conflito de horário, bloco/item repetido, seção
 do HRO ausente, travessia da manhã sem dono, data divergente, escala que encolhe, **particular sem
 nome** (a cobrança não abre). Realoca sozinho o azul emprestado. Respostas no lote: `decisoes`
-(`intencional` | `troca`) e `conferidos` ("está certo, fica Livre"); viajam na RPC e o rastro de
+(`intencional` | `troca` | `equipe`) e `conferidos` ("está certo, fica Livre"); viajam na RPC e o rastro de
 quem segue sobrevive a republicar.
 
 **Publicar**: falhou por rede (`ETIMEDOUT`/`EHOSTUNREACH`) → antes de repetir,
 `select hospital, publicacao_turnos->'<turno>'->>'casos' from escala_cirurgica where data='<data>'`
-(a RPC é uma transação: `null` = não gravou, pode repetir). **`--republicar` zera status e
-liberações** — só a pedido do dono e com ninguém tendo marcado nada; escala em uso se conserta
-linha a linha em SQL (`scripts/repair-escala-2026-09-08-matutino-leitura.sql`), ou no jsonb pela
+(a RPC é uma transação: `null` = não gravou, pode repetir). **`--republicar` zera as liberações
+do turno** (casos manuais e o andamento da cirurgia que continua igual ficam; na linha `'fds'` a
+RPC só preserva liberação onde o nome continua) — só a pedido do dono e com ninguém tendo marcado
+nada; escala em uso se conserta linha a linha em SQL
+(`scripts/repair-escala-2026-09-08-matutino-leitura.sql`), ou no jsonb pela
 `rpc_escala_patch_liberacao` sem republicar.
 
 ## Fim de semana (sáb/dom) — outro fluxo

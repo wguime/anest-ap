@@ -11,7 +11,7 @@ paths:
   - "src/__tests__/lib/inibidoresApetite*"
   - "src/__tests__/lib/agrupamentoFarmacos*"
   - "e2e/inibidores-apetite*"
-description: Calculadoras clínicas (71 em 13 seções) — padrão de lib pura + display, Anticoagulantes, Inibidores de apetite, agrupamento por medicação
+description: Calculadoras clínicas (61 ativas em 14 seções) — padrão de lib pura + display, Anticoagulantes, Inibidores de apetite, agrupamento por medicação
 ---
 
 <!-- Movido do CLAUDE.md em 2026-08-26 (otimização de contexto): o arquivo passou de
@@ -82,7 +82,7 @@ O alerta "Quando fazer" do POCUS era `info` (azul) e virou `success` (verde) a p
 
 ⚠️ **A hierarquia de fontes é INVERTIDA em relação ao card de Anticoagulantes**: aqui a primária é a **nota SBA
 C.SBA-01744/2026, de 15/05/2026** (consenso SBA + SBD + ABESO), e ANZCA/SPAQI/AOA-RCOA/ASA-ASMBS 2025 entram como
-contraponto na aba Conduta. Motivo: é brasileira, é a mais recente e traz o algoritmo INTEIRO. Decisão reforçada
+contraponto na aba Referência. Motivo: é brasileira, é a mais recente e traz o algoritmo INTEIRO. Decisão reforçada
 pelo dono no meio da implementação — *"as recomendações de suspensão devem ser baseadas nas recomendações da SBA;
 mantenha outras situações mas o norte deve ser a SBA"*. Daí `avaliarPreOperatorio` citar o item da nota em cada
 conduta (itens 3, 3.3, 4 e 5), travado em teste.
@@ -217,8 +217,8 @@ digitado é bug, não estilo.
 branco. Daí as regras nos dois cards de consulta: `subtle` só com `default`; status colorido sempre `solid`; e
 NADA usa `success` com texto — vira `default`, que mantém o sentido "ok" e passa com folga. Sobre o cabeçalho
 tonal (#D4EDDA) o `secondary` cai para 3,90, então lá os atributos usam `default` outline (9,37). ⚠️ Os tokens
-NÃO foram mexidos (alcançariam o app inteiro); a correção é por uso. Outros displays ainda usam `success` com
-texto (`BalancoHidricoTransopDisplay`, `SofaDisplay`) — não tocados, ficam para decisão do dono. Trava no e2e
+NÃO foram mexidos (alcançariam o app inteiro); a correção é por uso. O `SofaDisplay` ainda usa `success` com
+texto — não tocado, fica para decisão do dono. Trava no e2e
 mede o RENDERIZADO compondo o alfa sobre o primeiro ancestral opaco: sem isso o rgba do badge é comparado com
 ele mesmo e dá razão 1 (foi o que o meu 1º medidor fez).
 

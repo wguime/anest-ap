@@ -11,9 +11,9 @@ disable-model-invocation: true
 Modos por argumento; sem argumento = `status`. Contexto: **LIBERADO AO GRUPO em
 2026-07-22** (gate por papel clínico/secretária/admin em `gate.js`); as escalas seed
 foram APAGADAS e o cron `escala-seed-rollover-daily` desligado no checklist de
-liberação. Cron ativo: `escala-amanha-check` (18h BRT dom–qui; destinatário ainda é o
-dono — trocar para secretaria/admin quando houver secretária, marcado na migration
-`20260721210000`). Doc-mãe: `docs/escala-cirurgica-automacoes.md`.
+liberação. A escala não manda aviso nenhum (dono 30/07): não há cron de notificação — os
+crons dela são a adesão diária e as purgas da leitura (`escala-%`). Doc-mãe:
+`docs/escala-cirurgica-automacoes.md`.
 
 **Leitura de produção via** `node .claude/skills/escala-cirurgica/scripts/query-ro.mjs "<select>"`.
 O wrapper bloqueia verbos de escrita e CTEs modificadoras; não use o endpoint read-write
@@ -29,18 +29,19 @@ Rodar as 4 checagens e responder com veredito curto por linha (✓/⚠️ + 1 fr
     order by data desc limit 7
    ```
    ⚠️ Se aparecer QUALQUER `created_by like 'seed-teste%'`, algo recriou seed — investigar.
-2. **Cron do aviso rodou?**
+2. **Crons da escala rodaram?** (adesão diária e purgas da leitura)
    ```sql
    select j.jobname, j.schedule, d.status, d.start_time
      from cron.job j
      left join lateral (select status, start_time from cron.job_run_details
                          where jobid = j.jobid order by start_time desc limit 1) d on true
-    where j.jobname = 'escala-amanha-check'
+    where j.jobname like 'escala-%'
    ```
 3. **Edge atualizada?** `node scripts/diag-edge-fn-config.mjs parse-escala-cirurgica`
    + `git log -1 --format='%cI %h %s' -- supabase/functions/parse-escala-cirurgica/`.
    Commit mais novo que `updated=` → **DEPLOY PENDENTE** (foi assim que a edge ficou 3
-   semanas atrasada sem ninguém notar). Deploy: `bash scripts/deploy-edge-with-pat.sh parse-escala-cirurgica`.
+   semanas atrasada sem ninguém notar). Deploy: `bash scripts/deploy-edge-with-pat.sh parse-escala-cirurgica --no-verify-jwt`
+   (a função está com `verify_jwt=false`; sem a flag o deploy a devolve para `true`).
 4. **Eventos coletando?**
    ```sql
    select tipo, count(*), min(em)::date as de, max(em)::date as ate
@@ -136,8 +137,6 @@ mexeu nos status da seed-20 no banco (conferir antes de regenerar).
 - Queries via Management API rodam como `postgres` → RLS não filtra nada; conteúdo de
   paciente são só iniciais (LGPD by design), mesmo assim não colar dumps grandes no chat.
 - `~/.anest-e2e.env` segue a política de segredos do repositório: só `source`, jamais `cat`.
-- Antes da liberação ao grupo: `cron.unschedule('escala-seed-rollover-daily')` + apagar
-  as seeds (checklist no header da migration `20260721200000`).
 
 ## Modo `ordem <AAAA-MM-DD> [hro|unimed|materno|todos] [matutino|vespertino|ambos]` — ordem de liberação pela ESCALA NUMÉRICA
 

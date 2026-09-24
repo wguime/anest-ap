@@ -10,11 +10,15 @@ description: Arquitetura híbrida Firebase Auth + Supabase. JWT flow, RLS, field
 
 # Supabase + Firebase — Arquitetura Híbrida
 
-## JWT Flow
+## JWT Flow (caminho duplo — `getSupabaseToken` em `src/config/supabase.js`)
 1. User login → Firebase Auth → Firebase ID Token
-2. Edge Function recebe ID Token → valida → emite Supabase JWT (HS256)
-3. JWT inclui: `sub` = Firebase UID, `role` = 'authenticated'
-4. Cache: 50 minutos, refresh: 10 minutos antes de expirar
+2. Preferencial (desde 10/06/2026): o próprio ID Token (RS256) vai ao Supabase pelo `accessToken` do
+   client e o Third-Party Auth valida no gateway. Exige o claim `role: 'authenticated'` (Cloud Function
+   `setRoleClaimOnCreate` + backfill `functions/set-role-claims.js`).
+3. Fallback legado, até o descomissionamento: usuário sem o claim cai na Edge `get-supabase-token`, que
+   valida o ID Token e emite JWT HS256 (`sub` = Firebase UID, `role` = 'authenticated'); cache de 50 min
+   para token de 60.
+4. As Edge Functions aceitam os dois formatos (`_shared/verify-auth.ts`).
 5. Token error: custom event `supabase-token-error` → toast
 
 ## _authReady Promise

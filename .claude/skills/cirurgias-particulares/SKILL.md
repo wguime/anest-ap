@@ -1,6 +1,6 @@
 ---
 name: cirurgias-particulares
-description: Opera o sistema de verificação/aprendizado da cobrança de cirurgias particulares — status do módulo, rodar a verificação manualmente, ver histórico de achados e EXECUTAR O PROTOCOLO DE APRENDIZADO quando surge convênio suspeito (nova abreviação tipo "Part") ou erro de importação. Usar quando o dono relatar cirurgia particular faltando/errada na cobrança, quando uma notificação "Cirurgias Particulares — verificação diária" apontar suspeitos, ou ao mexer no classificador de convênio.
+description: Opera o sistema de verificação/aprendizado da cobrança de cirurgias particulares — status do módulo, rodar a verificação manualmente, ver histórico de achados e EXECUTAR O PROTOCOLO DE APRENDIZADO quando surge convênio suspeito (nova abreviação tipo "Part") ou erro de importação. Usar quando o dono relatar cirurgia particular faltando/errada na cobrança, quando a verificação diária (`cirurgias_particulares_check_log`) trouxer suspeitos, ou ao mexer no classificador de convênio.
 ---
 
 # /cirurgias-particulares — verificação, correção e aprendizado
@@ -13,16 +13,13 @@ e lote sem paciente NUNCA; na dúvida, perguntar, nunca adivinhar (é dinheiro).
 
 O sistema roda sozinho todo dia às 20:30 BRT (pg_cron `cirurgias-particulares-check`):
 auto-corrige elegíveis sem lançamento, sinaliza suspeitos p/ decisão humana,
-aponta suspensos e incompletos, grava em `cirurgias_particulares_check_log` e
-notifica os admins. Esta skill é o lado HUMANO/AGENTE do loop.
+aponta suspensos e incompletos e grava em `cirurgias_particulares_check_log` — sem
+notificar ninguém (dono 30/07): o log é a única saída. Esta skill é o lado HUMANO/AGENTE do loop.
 
-**Alertas pós-turno de GUIA NÃO PREENCHIDA** (nome/CPF/valor —
-`fn_alertar_guias_nao_preenchidas`, migration `20260723200000`): pg_cron
-`guias-pendentes-matutino` 13:30 BRT (casos c/ hora < 13h) e
-`guias-pendentes-vespertino` 20:00 BRT (dia inteiro, inclui manuais/sem hora).
-Anestesista da guia recebe as SUAS; admins o total. Dedup 1/dia×turno×pessoa.
-Teste manual sem notificar:
-`node scripts/deploy-sp21-mgmt-api.mjs query "select public.fn_alertar_guias_nao_preenchidas('vespertino', current_date, false)"`
+**Guia não preenchida** (nome/CPF/valor): o aviso é só o banner âmbar da listagem
+(`precisaCompletar` em `src/lib/cirurgiasParticulares.js`) — não há cron nem notificação
+(os crons `guias-pendentes-*` e `fn_alertar_guias_nao_preenchidas` saíram na migration
+`20260730160000`).
 
 ## Comandos
 
@@ -68,7 +65,8 @@ relatar particular faltando:
 2. **Perguntar ao dono** antes de qualquer mudança de classificação — a regra é
    dele; composto/lote só importam se ELE desmembrar (editar o caso na escala
    identificando o paciente — o trigger dispara sozinho no UPDATE).
-3. **Codificar a decisão nos 5 ESPELHOS do classificador** (mudar um = mudar todos):
+3. **Codificar a decisão nos 7 ESPELHOS do classificador** (mudar um = mudar todos; os de
+   regex aparecem com `git grep -n "PART(ICULAR)"`, o `lote.py` não usa regex):
    - `fn_convenio_particular` + trigger (migration nova; validar com
      migration-validator; aplicar via `node scripts/deploy-sp21-mgmt-api.mjs apply-migration`)
    - `familiaConvenio` em `src/pages/escala-cirurgica/utils.js`
@@ -77,13 +75,18 @@ relatar particular faltando:
      parse-escala-cirurgica --no-verify-jwt` e CONFERIR verify_jwt=false depois)
    - `src/lib/excelEscala.js` (pacienteNome do caminho Excel)
    - `casoImportavel` em `src/lib/cirurgiasParticulares.js`
+   - `scripts/escala-publicar-turno.mjs` (publicação pela `/publicar-escala`: descarta o
+     `pacienteNome` fora do particular e avisa "particular sem nome")
+   - `particular()` em `.claude/skills/publicar-escala/lote.py` (decide quem leva `pacienteNome`
+     no lote da skill)
 4. **Testes** — casos novos em `src/__tests__/lib/cirurgiasParticulares.test.js`
    (positivo E negativo da variante) + `npm run lint` + build.
 5. **Retroagir** — rodar `verificar` (o self-heal importa o que a regra nova
    liberou; janela 7 dias — mais velho que isso, INSERT manual pelo padrão do
    backfill `20260722500000`).
-6. **Registrar** — docs/cirurgias-particulares.md + CLAUDE.md (linha do módulo)
-   + memória do agente (arquivo feedback_*) com a decisão e o porquê.
+6. **Registrar** — docs/cirurgias-particulares.md + `.claude/rules/faturamento-particulares.md`
+   (a regra do módulo mora lá; o CLAUDE.md só aponta) + memória do agente (arquivo feedback_*)
+   com a decisão e o porquê.
 
 ## Limites
 - NUNCA cancelar/alterar lançamento com valor/CPF/pagamento preenchidos sem

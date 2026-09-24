@@ -54,12 +54,14 @@ discussão: as telas convivem com ela.
   cartão único "Para qual escala" (hospital · data · período); o atalho do documento de FDS
   desceu para depois do anexo — é desvio de rota, não etapa. As sugestões do anexo seguem
   sugerindo, nunca trocando sozinhas.
-- **Importar · conferência**: barra fixa **Blocos · Liberações · Pendências** que ROLA até a
+- **Importar · conferência**: barra fixa **Blocos · Ordem e decisões · Pendências** (o chip
+  do meio era "Liberações" até 31/08) que ROLA até a
   seção (`#conf-blocos`/`#conf-liberacoes`/`#conf-pendencias`) — não troca de aba, porque
   bloco e fila precisam ser lidos na mesma passada — com faixa vermelha contando o que
   impede publicar. Fila de liberação em **2 colunas correndo para baixo** e **SEM contagem
   de casos por pessoa** (o número confundia): quem está na ordem sem cirurgia nenhuma leva
-  **ponto âmbar** e o porquê é lido uma vez em Pendências. Editor da posição abre FORA das
+  **ponto âmbar** e o porquê é lido uma vez, na linha de decisão dentro do cartão da fila
+  (31/08, § "Conferência — DECISÕES DO DIA"). Editor da posição abre FORA das
   colunas. Botão diz **"Publicar N casos"**. **SRPA da Unimed entra às 09:00** (dono 18/08):
   o mapa nunca escreve esse horário — 34 das 37 publicações com SRPA vieram sem hora — e sem
   ele a posição fica fora de toda conta de tempo, então é regra da casa e mora no código
@@ -201,8 +203,9 @@ explicam metade das queixas e valem para o app inteiro:
   assunto** — a cirurgia · **Andamento** · Quem está e onde. O primeiro é leitura; o
   segundo traz os dois eixos (principal pinta o card, aviso convive com iniciada e é
   bloqueado por terminada) mais o término desta cirurgia; o terceiro traz cirurgião,
-  anestesista, residente, sala/local e ajuda. **Cirurgião virou editável** (grava
-  `cirurgiao`, o mesmo campo do Adicionar caso). Cada editor abre em **folha de baixo
+  anestesista, residente, sala/local e ajuda. Sala, cirurgião, convênio e residente se
+  corrigem pelo **"Editar dados da cirurgia"** (desde 01/09 — os mini-editores daqui saíram,
+  § "Editar e EXCLUIR"); o editor que sobrou, o do tempo, abre em **folha de baixo
   para cima**, com o caso parado atrás — expandir dentro do cartão mudava a altura no
   meio da leitura. Nome do anestesista e grafia do procedimento saem das MESMAS funções
   do quadro (`nomeAnestesistaExibicao`, `fraseClinica`).
@@ -215,7 +218,7 @@ explicam metade das queixas e valem para o app inteiro:
   cabeçalho não é decoração: foi ele que denunciou o bug de turno de 31/07.
 - **Tempo** (`PainelTempo`, fonte única da pessoa e da cirurgia): o **"ou" virou
   alternador segmentado** — "Tempo faltante" × "Horário de término", um caminho por vez.
-  As duas rotas ocupam a MESMA caixa (`h-[154px]`; medido no app: 413px nas duas) porque
+  As duas rotas ocupam a MESMA caixa (`h-[172px]`; a conta está no comentário do `PainelTempo`) porque
   o card mudar de tamanho debaixo do dedo piora a leitura. Atalhos em grade de 6 +
   "Outro tempo…"; campo de horário estreito e centrado. **"Definir" saiu** — era morto,
   já que atalho, seletor e campo gravam na escolha.
@@ -410,9 +413,9 @@ errada de um dos dois. O segundo **pergunta** em vez de substituir; substituir e
 apagaria uma escala inteira que a tela ACABOU de dizer que leu. Reanexar em OUTRO lote
 continua substituindo, que é o que quem reanexa está mandando fazer.
 
-O fluxo de FIM DE SEMANA (`classificarAnexoMapa`, em `escalaFdsMapas.js`) tem a MESMA
-lacuna e continua só com o layout — não foi tocado por ser outro fluxo; a lib é
-compartilhável quando o dono pedir.
+O fluxo de FIM DE SEMANA (`classificarAnexoMapa`, em `escalaFdsMapas.js`) usa a mesma
+lib e a mesma assimetria desde 31/08 (`decidirHospital` + estrutura; contradição devolve
+`conflitoHospital` e pergunta) — § "Auditoria ponta a ponta", item 4.
 
 
 ## 2ª rodada do lote (dono 2026-08-30, noite) — quatro defeitos
@@ -516,12 +519,11 @@ ganhou controle novo**: situação que não acontece não ganha botão).
   está no rodapé daqui" (`importarEscalasLote.test.jsx`).
 - **A folha "na ordem, sem cirurgia" tem SAÍDAS, não "Entendi"** (dono 31/08, na
   primeira noite de uso: "apenas aparece um card com a mesma informação e um botão
-  Entendi, nada acontece depois de clicar, não faz sentido"). As três respostas
-  reais para o nome sem caso: **Marcar como ajuda** (azul não lido — grava
-  `ajudaTexto`, e quem é ajuda SAI da lista de conferência: ajuda sem caso aqui é o
-  normal dela), **Corrigir a posição na ordem** (abre o editor da própria fila,
-  `abrirPosicao`) e **Remover da ordem** (`removerPosicao`). Folha informativa sem
-  ação é beco — toda folha de decisão precisa gravar ou levar a quem grava.
+  Entendi, nada acontece depois de clicar, não faz sentido"). As saídas vigentes (seis, em
+  dois grupos, mais "Está certo — sem cirurgia hoje") moram em
+  `.claude/rules/escala-trocas.md` § "A folha 'Onde está X hoje?'". Quem já está marcado
+  como ajuda SAI da lista de conferência: ajuda sem caso aqui é o normal dela. Folha
+  informativa sem ação é beco — toda folha de decisão precisa gravar ou levar a quem grava.
 
 ## Auditoria da leitura (dono 2026-08-31) — o lote lia SEM as regras
 
@@ -531,8 +533,8 @@ ganhou controle novo**: situação que não acontece não ganha botão).
 Conferidos linha a linha os três documentos do dia contra o publicado: **4 defeitos
 em 63 casos** (HRO 28/28 e Unimed 35/35 em contagem — nada sumiu, nada sobrou).
 
-**A causa de fundo:** `HOSPITAL_HINT[hospital]` só entra no prompt quando o
-`hospital` é enviado. O **lote de dia útil (27/08) lê cada arquivo SEM hint** — o
+**A causa de fundo:** até 31/08, `HOSPITAL_HINT[hospital]` só entrava no prompt quando o
+`hospital` era enviado. O **lote de dia útil (27/08) lê cada arquivo sem `hospital`** — o
 hospital é justamente o que ele quer descobrir —, e com isso a leitura passou a
 rodar **sem nenhuma** das regras por hospital acumuladas desde 24/07: as
 seções-clínicas do HRO, a herança do `//`, os rótulos de sala, os blocos do rodapé
@@ -609,3 +611,13 @@ turno, não defeito atual); "fora do rodapé" = 45 pessoas-turno em 108 turnos
 `scripts/repair-escala-2026-08-31-matutino-e-blocos.sql`, que também zera o
 cirurgião dos 2 Consultórios da MATUTINA de 31/08 — mesmos defeitos do
 vespertino, no turno que o reparo do dono não cobriu).
+
+### `send-fcm-push` em lote (24/08)
+
+<!-- Movido de escala-urgencias.md: os paths de lá não carregam com a edge. -->
+
+- **`send-fcm-push` aceita `userIds` (lote, 24/08):** o recado alcança ~70 pessoas e uma
+  chamada por destinatário seriam 70 requisições saindo do celular de quem escreveu, no meio
+  do turno. O OAuth do Google resolve UMA vez e os lookups vão em blocos de 10. Contrato de 1
+  pessoa (`userId` + 404 `no_fcm_token`) intacto — as mensagens internas dependem dele; os
+  dois foram verificados contra a edge em produção depois do deploy.

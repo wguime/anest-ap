@@ -27,15 +27,24 @@ CREATE TABLE public.minha_tabela (
 );
 
 ALTER TABLE public.minha_tabela ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.minha_tabela FORCE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can read" ON public.minha_tabela
-  FOR SELECT USING (auth.role() = 'authenticated');
-
-CREATE POLICY "Users can insert" ON public.minha_tabela
-  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+-- Uma policy por verbo que o app usa: verbo sem policy devolve 0 linhas sem erro
+-- (UPDATE vira PGRST116). Verbo que fica sem policy de propósito vai comentado aqui.
+-- Quem pode = helper SECURITY DEFINER do módulo, no padrão firebase_uid()/is_admin().
+CREATE POLICY "minha_tabela_select" ON public.minha_tabela
+  FOR SELECT TO authenticated USING ((select public.can_write_minha_tabela()));
+CREATE POLICY "minha_tabela_insert" ON public.minha_tabela
+  FOR INSERT TO authenticated WITH CHECK ((select public.can_write_minha_tabela()));
+CREATE POLICY "minha_tabela_update" ON public.minha_tabela
+  FOR UPDATE TO authenticated
+  USING ((select public.can_write_minha_tabela()))
+  WITH CHECK ((select public.can_write_minha_tabela()));
+CREATE POLICY "minha_tabela_delete" ON public.minha_tabela
+  FOR DELETE TO authenticated USING ((select public.can_write_minha_tabela()));
 ```
 
-Executar via: `mcp__supabase__apply_migration`
+Antes de aplicar, o agente `migration-validator` revisa o SQL (CLAUDE.md). Aplicar com `node scripts/deploy-sp21-mgmt-api.mjs apply-migration <path>` (o CLI do Supabase não está instalado) ou `mcp__supabase__apply_migration`.
 
 ### 2. Criar Service
 `src/services/supabase[Nome]Service.js`
@@ -67,7 +76,7 @@ Service canônico: `src/services/supabaseIncidentsService.js`
 `src/contexts/[Nome]Context.jsx`
 
 ```jsx
-import { createReliableSubscription } from '../services/supabaseRealtimeService';
+import { createReliableSubscription } from '../services/supabaseSubscriptionHelper';
 
 // Provider com:
 // - loading/error states
@@ -77,10 +86,12 @@ import { createReliableSubscription } from '../services/supabaseRealtimeService'
 
 Context canônico: `src/contexts/ComunicadosContext.jsx`
 
+Tela ao vivo exige, na migration, o trigger `tr_rt_sinal` com as colunas da PK como argumentos — sem ele a assinatura nunca dispara (o Realtime daqui é Broadcast de sinal, não `postgres_changes`; rule `supabase-firebase`).
+
 ### 4. Registrar Provider
 Adicionar no `src/main.jsx`:
 - Se leve → `AuthGatedProviders`
-- Se pesado → `DeferredProviders` (2s delay)
+- Se pesado → `DeferredProviders`: monta junto com a árvore e adia só o primeiro fetch, lendo `useDeferredReady()` como os outros providers Tier 2. Condicionar a montagem remonta o App inteiro aos 2s.
 
 ### 5. Audit Trail
 Toda mutation deve incluir `changedBy: currentUserId` (NUNCA hardcoded).
@@ -95,9 +106,6 @@ Schema `auth` NÃO writable via pooler → funções customizadas no schema `pub
 
 ### to_tsvector
 `to_tsvector('portuguese', ...)` NÃO é immutable → usar TRIGGER, não GENERATED ALWAYS AS.
-
-### DeferredProviders
-Contexts pesados (com real-time) vão em DeferredProviders (2s delay após mount).
 
 ## Referências
 - Migration canônica: `supabase/migrations/019_comunicados.sql`

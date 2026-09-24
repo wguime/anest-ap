@@ -6,10 +6,10 @@
 ## TL;DR — 10 regras de ouro
 
 1. **Explore → Plan → Implement → Commit** (workflow Anthropic, 4 fases).
-2. **Pre-flight obrigatório** com 3 agentes paralelos (libs, map files, gaps).
+2. **Pre-flight antes de codar**: libs novas, arquivos a tocar, premissas de stack (subagente só para checagem ampla).
 3. **`migration-validator` agent** antes de aplicar SQL.
 4. **`AskUserQuestion`** para decisões arquiteturais — não assumir.
-5. **`TaskCreate` no início**, **`TaskUpdate` em tempo real**.
+5. **Lista de entregas no início**, cada item marcado ao terminar (nunca tudo no fim).
 6. **`npm run dev` cedo** (não só `build`) — esbuild ≠ rollup.
 7. **Build verde a cada bloco lógico** (checkpoint).
 8. **Commits granulares** por bloco (deps / backend / UX / DS tokens).
@@ -22,18 +22,18 @@
 
 ### Fase 1 — Explore (plan mode opcional)
 - Ler `docs/planejamento-melhorias-2026-05-16.md` (seção da wave)
-- Ler memórias relevantes em `~/.claude/projects/-Users-guilherme-Documents-IA-ANEST-V2/memory/`
+- Consultar a memória do projeto (o índice `MEMORY.md` já entra no contexto; abrir só os arquivos relevantes)
 - Não escrever código nesta fase
-- Despachar 3 agentes paralelos (próxima seção)
+- Fazer o pre-flight (próxima seção)
 
 ### Fase 2 — Plan
 - Resumo do que vai mudar (arquivos novos, refatorações, schemas)
 - `AskUserQuestion` para decisões arquiteturais não cobertas pelo plano
-- `TaskCreate` granular (1 task por entrega lógica)
+- Lista de entregas granular (1 item por entrega lógica)
 - Estimar onde libs novas serão necessárias e validar critérios
 
 ### Fase 3 — Implement
-- Pegar tasks em ordem, marcar `in_progress` antes de começar
+- Pegar as entregas em ordem
 - Build verde a cada bloco
 - Commits granulares
 - Não fazer refactor oportunista (regra `feedback_scope_discipline`)
@@ -48,9 +48,10 @@
 
 ---
 
-## Pre-flight obrigatório — 3 agentes paralelos
+## Pre-flight — antes de qualquer implementação
 
-Disparar **antes** de qualquer implementação:
+Três checagens. Despache subagente só para a que for ampla (várias libs, muitos diretórios) — se
+forem duas ou três, no mesmo turno; a que couber em poucas leituras, faça direto:
 
 ### Agente A — Validação de libs novas
 ```
@@ -79,7 +80,7 @@ Exemplo Wave 1.5: plano assumia Supabase, educação vive em Firestore →
 4 tasks precisaram redesenhar stack.
 ```
 
-**Quando os 3 voltam:** consolidar em resumo executivo, `AskUserQuestion` para decisões grandes, prosseguir.
+**Com as três checagens feitas:** consolidar em resumo executivo, `AskUserQuestion` para decisões grandes, prosseguir.
 
 ---
 
@@ -92,7 +93,7 @@ Exemplo Wave 1.5: plano assumia Supabase, educação vive em Firestore →
 | `lgpd-reviewer` | Feature toca dado pessoal/saúde, ranking, opt-in | Checklist LGPD com gaps |
 | `qmentum-auditor` | Feature de compliance (ROPs, auditoria, documentos) | Impact em score Qmentum |
 | `calc-validator` | Calculadora clínica (matemática) | Fórmulas + edge cases |
-| `test-writer` | Áreas sem cobertura testada | Vitest stubs no padrão 38 existentes |
+| `test-writer` | Áreas sem cobertura testada | Vitest no padrão dos testes existentes |
 
 ---
 
@@ -116,21 +117,12 @@ Exemplo Wave 1.5: plano assumia Supabase, educação vive em Firestore →
 
 ---
 
-## TaskCreate / TaskUpdate — disciplina
+## Lista de entregas — disciplina
 
-### Quando criar
-- Wave com 5+ entregas distintas → criar todas no início
-- Task descoberta durante implementação → criar imediatamente, não no final
-
-### Quando atualizar
-- `in_progress` ANTES de começar (não depois)
-- `completed` IMEDIATAMENTE ao terminar (não em batch)
-- `deferred` com `description` explicando POR QUE (escopo, complexidade, dependência)
-
-### Antipatrões
-- ❌ Criar todas como `completed` no final ("já fiz")
-- ❌ Atualizar batch a cada 5 tasks
-- ❌ `completed` sem ter build verde
+- Wave com 5+ entregas distintas → listar todas no início; entrega descoberta no meio entra na lista
+  na hora, não no final.
+- Cada entrega é marcada como feita ao terminar, e só com build verde. Entrega adiada leva o porquê
+  (escopo, complexidade, dependência).
 
 ---
 
@@ -183,11 +175,6 @@ node scripts/deploy-sp21-mgmt-api.mjs apply-migration supabase/migrations/AAAAMM
 
 ## Erros comuns + soluções (aprendi nas Waves 1.1–1.5)
 
-### "No matching export `_foo`" em dev
-Causa: hook antigo de auto-eslint renomeou imports não-usados para `_*`. Quebra ESM.
-Fix: cleanup em batch — script node varre `src/**/*.{js,jsx}` removendo `_*` de blocos `import {}`.
-Após Wave 1.5 esse hook foi removido — não deve mais acontecer.
-
 ### "Invalid secret key HTTPS://..."
 Causa: user colou valor (URL) como **nome** do secret no `secrets:set`.
 Fix: `firebase functions:secrets:set NOME_DO_SECRET` SEM nada depois. Aí cole o valor no prompt mascarado.
@@ -224,8 +211,8 @@ Fix: grep + delete; adicionar `* 2.*` ao `.gitignore` (já feito).
 
 - [ ] `npm run build` verde
 - [ ] `npm run dev` sobe sem erro
-- [ ] `npm run lint` sem NOVOS errors (24 pré-existentes em main, OK)
-- [ ] Testes Vitest sem regressão (8 falhas pré-existentes em main, OK)
+- [ ] `npm run lint` sem errors
+- [ ] Testes Vitest verdes (o deploy automático da main exige lint, build e test verdes)
 - [ ] Agentes de revisão despachados (security/lgpd/qmentum conforme escopo)
 - [ ] Playwright resize 375x812 + 1280x800 sem layout break
 - [ ] Touch targets ≥44px em CTAs

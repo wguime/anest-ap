@@ -33,7 +33,8 @@ description: Conformidade LGPD — consentimento, anonimização, retenção de 
 ## Solicitações LGPD
 - 3 tipos: export, deletion, portability
 - Per-source tracking de consentimento
-- DS Green uniforme (#059669) para todas as ações LGPD
+- Cor das ações LGPD por token semântico, como no resto do app (a aba de solicitações usa `bg-success`);
+  `#059669` só aparece como variável CSS de sucesso nos `public/formulario-*.html`, que têm CSS próprio
 - Painel de solicitações no Centro de Gestão
 
 ## Formulários Públicos

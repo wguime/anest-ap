@@ -8,7 +8,8 @@ description: Paleta de cores, tipografia, espaçamentos e sombras do Design Syst
 # Design Tokens ANEST
 
 ## Regra Principal
-NUNCA usar hex hardcoded. SEMPRE usar tokens semânticos Tailwind (`bg-card`, `text-foreground`, `border-border`).
+Cor vem de token semântico Tailwind (`bg-card`, `text-foreground`, `border-border`), nunca de hex: hex cru
+não troca com o tema escuro e foge do verde institucional. Única exceção: `fill`/`stroke` do Recharts (ver Charts/SVG).
 Para paleta completa: `src/design-system/Tokens.json`
 
 ⚠️ **O que o app renderiza é o TRIPLETO HSL de `src/styles/anest-theme.css`, não o hex** do
@@ -106,7 +107,10 @@ Para Tooltip/ReferenceLine do Recharts que aceitam CSS vars via `contentStyle`, 
 | Popover | 1400 |
 
 ## Border Radius
-sm: 10px (badges) | md: 12px (botões) | lg: 16px (inputs) | xl: 20px (cards) | full: 50% (avatars)
+Classes Tailwind (`--radius: 1rem`; só `sm`/`md`/`lg` foram sobrescritas): `rounded-sm` 12px ·
+`rounded-md` 14px (Button) · `rounded-lg` 16px (Card do DS) · `rounded-xl` 12px (padrão do Tailwind —
+MENOR que o `lg`) · `rounded-full` (avatars, pills). O Badge usa `rounded-[10px]`. Os nomes do
+`Tokens.json` (`borderRadius`: badge 10, icon 12, search 16, card 20, avatar 50%) são nominais, não classes.
 
 ## Sombras
 - Light: `rgba(0,66,37, 0.08/0.1/0.15)` — sm/md/lg
@@ -174,8 +178,8 @@ Só o `default` passa em `subtle`, e o `success` reprova **até sólido** (#34C7
 texto branco). Daí: `subtle` só com `default`; status colorido sempre `solid`; e **nada usa `success`
 com texto** — vira `default`, que mantém o sentido "ok" e passa com folga. Sobre cabeçalho tonal
 (#D4EDDA) o `secondary` cai para 3,90 → usar `default` outline (9,37). ⚠️ Os tokens NÃO foram
-mexidos (alcançariam o app inteiro): a correção é **por uso**. `BalancoHidricoTransopDisplay` e
-`SofaDisplay` ainda usam `success` com texto — pendente de decisão do dono (Regra #2).
+mexidos (alcançariam o app inteiro): a correção é **por uso**. O
+`SofaDisplay` ainda usa `success` com texto — pendente de decisão do dono (Regra #2).
 
 ⚠️ Ao medir contraste de badge renderizado, compor o alfa sobre o primeiro ancestral OPACO —
 senão o rgba é comparado com ele mesmo e a razão dá 1.

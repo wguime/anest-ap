@@ -3,10 +3,12 @@ paths:
   - "src/pages/communication/**"
   - "src/pages/ProfilePage.jsx"
   - "src/pages/EscalasPage.jsx"
-  - "src/pages/escalas/**"
-  - "src/pages/residencia/**"
+  - "src/pages/EscalasFuncionariasHubPage.jsx"
+  - "src/pages/escalas-funcionarias/**"
+  - "src/pages/Residencia*Page.jsx"
+  - "src/pages/GerenciarResidenciaPage.jsx"
   - "src/pages/reunioes/**"
-  - "src/pages/noticias/**"
+  - "src/pages/*Noticia*Page.jsx"
   - "src/pages/NoticiasPage.jsx"
   - "src/pages/planos-acao/**"
   - "src/pages/auditorias*/**"
@@ -46,6 +48,6 @@ description: Módulos sem seção própria — mensagens, perfil, escalas & troc
 | ROPs quiz | `src/pages/rops/` | `supabaseROPsService` → `rop_areas`/`rop_subdivisoes`/`rop_questions`/`rop_user_attempts` | 640 questões (32 ROPs × 20) |
 | Pendências | PendenciasPage | agrega comunicados não-lidos + docs vencidos + ROPs pendentes | |
 | Busca global | SearchResultsPage + `AppCommandPalette` | `supabaseSearchService` | 15+ tipos; atalhos custom via PersonalizarAtalhosPage |
-| Faturamento | `src/pages/faturamento/` | `src/data/cbhpmData.js` (12 portes CBHPM 2020) | **Em construção** — páginas placeholder |
+| Faturamento | `FaturamentoPage` (hub em Gestão → Faturamento, desde 26/07) | cada módulo tem o seu | Hub de Cirurgias Particulares e Codificação Anestésica, ambos EM PRODUÇÃO (detalhe em `faturamento-particulares.md`). As páginas de notas/eventos/convênios existem em `src/pages/faturamento/`, sobre `src/data/cbhpmData.js` (12 portes CBHPM 2020), mas seguem sem card no hub |
 | Dashboard executivo | `src/pages/dashboard/` | `useDashboardExecutivo` | Oculto da nav; admin-only; 21+ KPIs |
 | Refeição Unimed | card em MenuPage → `src/pages/RefeicaoUnimedPage.jsx` | externo (form Hoobox, embed iframe) | Rota interna `/refeicao-unimed`; URL fixa do QR do mural (Unimed Chapecó); abre no app, não em aba externa; sem gate de permissão |

@@ -14,7 +14,7 @@ Testa uma calculadora clínica do ANEST executando inputs **limites + edge cases
 ## Procedimento
 
 ### 1. Localizar a calculadora
-- Grep em `src/pages/calculadoras/` por arquivo correspondente a `$ARGUMENTS`
+- Localizar a definição pelo `id` em `src/design-system/data/calculator-definitions.js`; se o `compute` chamar uma lib de `src/lib/`, é a lib que roda (mapa completo no agent `calc-validator`)
 - Ler o arquivo para entender:
   - Inputs (campos, tipos, faixas declaradas)
   - Fórmula usada
@@ -53,7 +53,7 @@ Para cada input da calculadora, executar:
 
 ### 5. Capturar evidências
 - Screenshot de cada teste
-- Console errors no browser (Chrome DevTools MCP se disponível)
+- Console errors no browser (`browser_console_messages` do Playwright MCP)
 - Network errors
 
 ### 6. Reportar

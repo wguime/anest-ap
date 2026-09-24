@@ -70,12 +70,8 @@ atual do history antes de navegar — back restaura a página de origem com
 esse estado.
 
 ## Scroll to Top
-Toda navegação deve resetar scroll:
-```jsx
-useEffect(() => {
-  window.scrollTo(0, 0);
-}, []);
-```
+Já é central: `App.jsx` rola ao topo a cada troca de página (effect de `currentPage` e effect de
+`location`, que cobre back/forward). Página nova não precisa de `window.scrollTo` próprio no mount.
 
 ## PAGE_TO_CARD Mapping
 Mapa de página → card de permissão. Usado para verificar acesso.
@@ -101,8 +97,9 @@ onNavigate('documento-detalhe', { documentoId: doc.id, returnTo: 'biblioteca' })
 ProfilePage e páginas que acessam user: SEMPRE verificar `if (!user) return null;`
 
 ## Header Fixo
-Cada página implementa Header via createPortal para o container fixo do App.
-Seguir padrão existente em qualquer página.
+Usar `PageHeader` (`src/components/PageHeader.jsx`; props `title`, `subtitle`, `onBack`, `actions`):
+ele faz o `createPortal` para o `body`, põe o espaçador de altura (`h-14`, `deitado:h-11`) e recua
+na `faixa:` lateral. `createPortal` à mão perde os três.
 
 ## Bottom Nav — visual TRAVADO (dono 14/08)
 
@@ -112,10 +109,10 @@ em `App.jsx`).
 Barra **SEM badge/dot** — removido 2× pelo dono (`8663996` e 13/08): estado clínico pertence ao card do
 módulo, não à navegação. Cor por TOKEN em `.bottom-nav-glass` (`anest-theme.css`): light `--muted`
 #E8F5E9 (o nível 0 #F0FFF4 sobre cards brancos lia como "barra branca"), dark `--background` #111916;
-`border-border`, sem inset/borda branca (viravam "filete" sobre o verde). O ramo iOS (blur off) usa os
-mesmos tokens.
+`border-border`, sem inset/borda branca (viravam "filete" sobre o verde). É uma regra só, sem
+`backdrop-filter`, em toda plataforma (16/09) — não existe mais ramo iOS.
 
-⚠️ Bug conhecido `src/App.jsx:1011` (TODO BUG-06): BottomNav global pode duplicar com BottomNav
+⚠️ Bug conhecido em `src/App.jsx` (comentário `TODO BUG-06`): BottomNav global pode duplicar com BottomNav
 per-page (createPortal). Decisão arquitetural pendente. **Em página nova, NÃO renderizar BottomNav
 próprio.**
 

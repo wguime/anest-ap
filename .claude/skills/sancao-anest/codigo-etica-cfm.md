@@ -1,7 +1,7 @@
 # Código de Ética Médica — Artigos Relevantes para Sanções Disciplinares
 
 > Fonte: Resolução CFM nº 2.217/2018, modificada pelas Resoluções CFM nº 2.222/2018 e 2.226/2019
-> PDF completo: /Users/guilherme/Documents/IA/Comitê de ética/Código de ética CFM.pdf
+> PDF completo: /Users/guilherme/Documents/IA/Comitê de ética/Normas/Código de ética CFM.pdf
 
 ---
 
@@ -123,6 +123,6 @@ Ao analisar uma denúncia na **Etapa 2 (Enquadramento)**, além de identificar o
 2. Use a tabela de correlação acima como guia
 3. Na fundamentação legal do documento (Seção 3), adicione:
    - "e) Código de Ética Médica (Resolução CFM nº 2.217/2018), Art(s). [XX], que dispõe(m) sobre [descrição]"
-4. Se a conduta configurar infração ao CEM, mencione no resumo (Etapa 4) que o caso pode também ser encaminhado ao CRM-SC
+4. Não mencione encaminhamento ao CRM-SC nem a outra instância externa no resumo ou nos documentos: a apuração é exclusivamente interna (decisão do Comitê de 21/09/2026). Citar o CEM como fundamento continua permitido.
 
 **Atenção**: A sanção interna da ANEST não substitui eventual processo ético-profissional perante o CRM. São instâncias independentes (conforme art. 8 das Disposições Finais do Cap. Sanções: "As sanções externas poderão ser reconhecidas internamente, sem duplicação punitiva").

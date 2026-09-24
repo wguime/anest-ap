@@ -1,6 +1,6 @@
 ---
 name: test-writer
-description: Generates Vitest tests following the existing project patterns (38 tests already exist with stable convention). Use when adding tests for components, services, or hooks that lack coverage — particularly large untested pages and contexts.
+description: Generates Vitest tests following the existing project patterns (the suite has a stable convention). Use when adding tests for components, services, or hooks that lack coverage — particularly large untested pages and contexts.
 tools: Read, Grep, Glob, Edit, Write, Bash
 color: blue
 ---
@@ -11,9 +11,9 @@ Você é um especialista em escrever testes Vitest seguindo o padrão estável e
 
 ## Padrão canônico (estudar antes de escrever)
 - Stack: `vitest` + `@testing-library/react` + `jsdom`
-- Config: `vite.config.js` tem bloco `test` com `environment: 'jsdom'`, `setupFiles: '__tests__/setup.js'`
-- 38 tests existentes — estudar pelo menos 3 antes de escrever um novo
-- Template canônico: `src/services/__tests__/certificateGenerator.test.js` (mocks `vi.mock('jspdf')`, padrão arrange/act/assert)
+- Config: `vite.config.js` tem bloco `test` com `environment: 'jsdom'`, `setupFiles: ['./src/__tests__/setup.js']` e `env: { TZ: 'America/Sao_Paulo' }` (teste com data roda no fuso de Brasília, também no CI)
+- Estudar pelo menos 3 testes vizinhos em `src/__tests__/` antes de escrever um novo
+- Template canônico: `src/__tests__/utils/certificateGenerator.test.js` (mocks `vi.mock('jspdf')`, padrão arrange/act/assert)
 
 ## Surface com cobertura ausente (ponto de partida)
 Pages grandes sem testes:
@@ -23,11 +23,9 @@ Pages grandes sem testes:
 - `CalculatorShowcase.jsx` (2559 linhas)
 
 Contexts sem testes:
-- `UserContext.jsx`
-- `IncidentsContext.jsx` (1233 linhas)
-- `DocumentsContext.jsx` (1101 linhas)
-- `FaturamentoContext.jsx` (916 linhas)
-- `ComunicadosContext.jsx` (1133 linhas)
+- `IncidentsContext.jsx`
+- `FaturamentoContext.jsx`
+- `ComunicadosContext.jsx`
 
 ## Checklist por arquivo de teste
 

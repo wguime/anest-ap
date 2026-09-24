@@ -16,7 +16,7 @@ description: Escala Cirúrgica — trocas e posição assumida: TrocaSheet, exec
      decisão do dono foi editada ou resumida. Esta rule carrega SÓ quando o Claude lê um
      arquivo que casa os `paths` acima. -->
 
-### Reforma das trocas (2026-08-07) — plano em ~/.claude/plans/com-rela-ao-as-escalas-memoized-hamming.md
+### Reforma das trocas (2026-08-07)
 
 Dores do dono: troca não saía sozinha da importação; informações confusas ao
 adicionar. Decisões travadas: 1 pessoa executa (sem aceite — aposentado 2×),
@@ -30,8 +30,8 @@ com cadeia de fallback (`lerOverrideAnterior`); par histórico SÓ nasce de
 `posicao_assumida` (`estadoTrocasDoHistorico` — troca_desfeita ressuscitava
 badge; a execução gera `troca_desfeita` no eixo de declaração, ambíguo por
 construção → estado vivo = SÓ `linha_overrides`); slot devolve o TURNO onde
-foi achado e o turno da tela é PREFERÊNCIA (par manhã↔tarde fechava meio swap
-calado); idempotência (lado já assumido é pulado — pré-requisito da
+foi achado (o turno da tela como PREFERÊNCIA, que fechava meio swap calado no par manhã↔tarde,
+valeu só até 13/08 — hoje é filtro EXATO, ver TURNOS INDEPENDENTES abaixo); idempotência (lado já assumido é pulado — pré-requisito da
 convergência); plantonista que fecha o rodapé NÃO desce ao fim da fila;
 matching NUNCA por nome de exibição (`assumida.deNomeOriginal`); linha-espelho
 `chave#casos` não aceita troca; `trocasHistorico` com limit(60).

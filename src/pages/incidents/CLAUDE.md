@@ -6,7 +6,7 @@
 - Páginas seguem padrão: `IncidentesPage.jsx` (lista) → `IncidenteDetalhePage.jsx` (detalhe) → `NovoIncidente*` (form)
 - Mesmo padrão para denúncias: `DenunciaGestaoPage` → `DenunciaDetalhePage` → form público em `public/formulario-denuncia.html`
 - Service: `src/services/supabaseIncidentsService.js`
-- Context: `src/contexts/IncidentsContext.jsx` (1233 linhas — reducer + realtime subscription)
+- Context: `src/contexts/IncidentsContext.jsx` (reducer + realtime subscription)
 - Realtime: usa `createReliableSubscription` (helper canônico)
 
 ## Envio pelo app (2026-09-04)
@@ -38,7 +38,8 @@
 ## Permissões
 - Verificar entry em `PAGE_TO_CARD['incidentes']` em `src/App.jsx`
 - Public forms (`public/formulario-incidente.html`, `public/formulario-denuncia.html`):
-  - Firestore rule: `allow create: if true; allow read,update,delete: if isAuthenticated();`
+  - gravam SÓ pela edge `relato-publico` (anônima por desenho, limite por IP em
+    `rpc_check_relato_publico_rate_limit`) — nenhuma collection com `allow create: if true`
 - Ownership validation nas páginas de detalhe (impede ver incidente alheio)
 
 ## Ao adicionar feature

@@ -21,7 +21,10 @@ Alterações em permissões de usuário devem gerar log com:
 - changedBy (quem alterou)
 
 ## Padrão de Implementação
-Seguir pattern em: `src/services/supabaseUsersService.js:fetchAuditLog`
+Na fronteira de toda mutation, `requireUserId` de `@/utils/audit`: lança `MissingUserIdError` sem uid,
+e o chamador mostra toast/re-auth em vez de gravar trilha forjada. Log de permissão:
+`logPermissionChange` em `src/services/supabaseUsersService.js` (o `fetchAuditLog` do mesmo arquivo é a
+LEITURA que alimenta a aba de auditoria).
 
 ## AuditTrailModal
 - Filtros: ação + período

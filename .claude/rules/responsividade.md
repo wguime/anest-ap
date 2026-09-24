@@ -17,6 +17,16 @@ description: Breakpoints, Tailwind classes responsivas, mobile layouts, touch ta
 | xl: | 1024px | Desktop/Tablet (iPad Pro) |
 | 2xl: | 1440px | Desktop grande |
 
+Orientação (não é largura; o porquê de cada uma está em `tailwind.config.js`):
+| Prefix | Media query | Uso |
+|--------|-------------|-----|
+| deitado: | `(orientation: landscape)` | tela na horizontal — celular, tablet e desktop; fonte única do modo horizontal |
+| faixa: | landscape + `pointer: coarse` | toque deitado: a navegação vira faixa lateral |
+| desktop: | landscape + `pointer: fine` | horizontal com mouse: a barra continua embaixo |
+
+Arranjo por orientação é CSS, nunca JS: o `orientationchange` do iOS chega antes de a viewport virar e a
+tela pula.
+
 ## Touch Targets
 Mínimo 44x44px para: botões, links, ícones clicáveis, checkboxes, inputs, list items.
 

@@ -112,7 +112,9 @@ cirurgias da tarde sairiam no nome dela, em silêncio. Daí
 deixa a tarde em branco, que é o caso do mapa de fim de semana (no dia útil a
 tarde traz nomes próprios).
 
-**Sugestão pelo posto da grade** (dono 22/08): sala sem nenhum nome no mapa entra
+**Sugestão pelo posto da grade** (dono 22/08; **superado em 29/08: só na manhã de sábado** — fora dela
+`anestesistaDoPosto` devolve `''`, ver *quatro regras que uniformizam com o dia útil*, regra 2): sala
+sem nenhum nome no mapa entra
 pré-selecionada com quem a grade põe naquele hospital naquele turno
 (`anestesistaDoPosto` — HRO 13–19h = Rômulo), marcada "Sugerido pelo posto da
 grade". Só alcança grupo SEM nome lido, e só se o login resolver — nunca chuta
@@ -125,7 +127,7 @@ Guardrail anti-perda espelha o do dia útil: anexo menor que o turno já publica
 (≥3 casos) pede "Republicar por cima". Refs: `src/lib/escalaFdsMapas.js` (lib
 pura) · `ConferirMapaFdsPage.jsx` · testes `escalaFdsMapas.test.js` +
 `importarEscalaFdsMapas.test.jsx` · e2e visual `importar-fds-mapas.spec.ts`.
-⚠️ a edge `parse-escala-cirurgica` PRECISA de re-deploy para a faixa valer.
+A faixa é lida pela edge `parse-escala-cirurgica` (flag `secoesTurno`).
 
 ### FDS — UMA TELA SÓ (dono 24/08), depois da análise dos 5 fins de semana
 
@@ -140,7 +142,9 @@ podia sumir sem levar junto a ação mais usada: no fim de semana quase toda
 marcação é na cirurgia **de outra pessoa** (19 de 20 em 22/08), por 1 a 3 pessoas
 no dia — alguém cobrindo o grupo.
 
-**A tela:** sáb/dom perdem as ABAS e o SELETOR DE HOSPITAL (`BarraControles`
+**A tela:** **(superado em 13/09 e 18/09:** as abas e o seletor de hospital voltaram ao sáb/dom e a
+barra é a mesma nas três abas — ver *FDS — as ABAS voltam*; o card descrito abaixo segue valendo.**)**
+sáb/dom perdem as ABAS e o SELETOR DE HOSPITAL (`BarraControles`
 aceita `null` nesses eixos = "não existe esse eixo aqui"); sobra a fila, com
 data e turno. Dia útil intocado. Card no **modelo A** (ações empilhadas à
 direita, escolhido em protótipo): **hospital ISOLADO** em caixa alta logo abaixo
@@ -194,6 +198,10 @@ bloco de sem-anestesista (→ volta "Toque para definir o anestesista"); e a
 cirurgiões → volta sala ABAIXO do cirurgião, desenho de 20/07). O gate é
 `modoFds` em cada ponto. (O "Terminei" saiu de vez horas depois — ver acima.)
 
+**(Superado em 29/08:** a cauda nasce vermelha também na fila única — `caudaAutomatica = true`, ver
+*FILA ÚNICA — quatro regras que uniformizam com o dia útil*, regra 4; a trava vigente é o describe
+"fila única — a cauda nasce liberada, como no dia útil". A saída da pastilha do alerta, no fim deste
+bloco, segue valendo.**)**
 ⚠️ **PUBLICAÇÃO PINTA TODO MUNDO DE VERDE na fila única (dono 24/08):** "ao
 publicar escala de final de semana, todos os usuários apareçam com o card verde".
 A cauda vermelha automática (21/08) e o card BRANCO de "Livre" (20/08) nasceram
@@ -349,7 +357,9 @@ as duas assinaturas do HRO no prompt — e casa quase palavra por palavra com a
 descrição do MATERNO. `redefinirMapa` já re-chaveava e re-preparava o lote com
 as salas canônicas do hospital novo; só faltava o caminho até ele.
 
-**CAUDA VERMELHA: SÓ NA MANHÃ DO FERIADO.** O mapa desta linha, por turno:
+**CAUDA VERMELHA: SÓ NA MANHÃ DO FERIADO.** **(Superado em 29/08:** `caudaAutomatica` é `true` em
+todo dia e todo turno — ver *FILA ÚNICA — quatro regras que uniformizam com o dia útil*, regra 4. O
+quadro, a fórmula e a trava abaixo são o registro de 25/08.**)** O mapa desta linha, por turno:
 
 | | cauda vermelha? |
 |---|---|
@@ -565,7 +575,7 @@ da ordem do turno), então ele sempre existe e a cauda sempre nasce.
 cabeçalho de dias úteis (mostrando abas: minhas, completa e liberações)."*
 `modoFds` depende do FETCH da linha 'fds' e o contexto ZERA `escalas` ao trocar de
 data sem cache — nessa janela o sábado abria com as abas e o seletor de hospital
-do dia útil. `chromeFilaUnica = dataFilaUnica && (loading || modoFds)` decide os
+do dia útil. `dataFilaUnica` (sáb/dom/feriado) decide os
 EIXOS pelo CALENDÁRIO, que não espera rede: é o mesmo remédio do defeito irmão de
 16/08 (o seletor piscando de 2 para 3 turnos). Sem fila publicada, cai no modo por
 hospital depois de carregar — uma transição no caso raro, em vez de uma por
@@ -594,6 +604,9 @@ só nos cards noturnos — não há para onde afundar, e o que sobra do carimbo 
 classificação falsa. `fundirLinhasNoturnas` ganhou `opts.forcarEmSala`, desligado
 só em `modoFds`.
 
+**(Superado no mesmo dia, 29/08:** à noite só os dois postos ficam verdes e a cirurgia herdada da
+tarde não segura ninguém — ver *a troca de turno LIBERA TODO MUNDO menos os dois postos*; a trava
+vigente é o teste "SÓ os dois postos ficam verdes — todo o resto da fila nasce LIBERADO".**)**
 Com isso a noite passa a ler como qualquer turno: **os dois postos da faixa
 19-07 sempre verdes** (regra do plantão, que também os mantém fora do "próximo"),
 **quem herdou cirurgia da tarde verde** (`FDS_TURNO_CASOS.noturno` = vespertino) e

@@ -1,12 +1,12 @@
 ---
-description: Deploy guardrail — roda build, mostra status git, pede confirmação antes do firebase deploy
+description: Deploy guardrail — roda build, mostra status git, pede confirmação antes do commit e do push que publicam pelo CI
 allowed-tools: Bash, Read
 argument-hint: "[--dry-run]"
 ---
 
 # /safe-deploy
 
-Versão guardrail do deploy do ANEST. Executa a sequência obrigatória do CLAUDE.md, mas **pausa antes do `firebase deploy`** para confirmação humana.
+Versão guardrail do deploy do ANEST. Executa a sequência do CLAUDE.md (o push na main publica pelo CI), mas **pausa antes do commit e do push** para confirmação humana.
 
 ## Sequência
 
@@ -34,21 +34,20 @@ Versão guardrail do deploy do ANEST. Executa a sequência obrigatória do CLAUD
    Lint: ✓ ou ⚠️ X warnings
    
    Próximas ações:
-   - git add -A && git commit -m "deploy: <descrição>"
-   - git push origin main
-   - firebase deploy --only hosting:anest-ap
+   - git add <arquivos deste trabalho> && git commit -m "deploy: <descrição>"
+   - git push origin main  (o job `deploy` do ci.yml publica)
    ```
 
-6. **Aguardar confirmação do usuário** antes de executar 6.1, 6.2, 6.3.
-   Se `--dry-run` foi passado em `$ARGUMENTS`, NÃO executar 6 — apenas mostrar resumo.
+6. **Aguardar confirmação do usuário** antes de executar o passo 7.
+   Se `--dry-run` foi passado em `$ARGUMENTS`, NÃO executar o passo 7 — apenas mostrar resumo.
 
-7. **Executar deploy completo após OK**
-   1. `git add -A`
-   2. Pedir descrição do deploy ao usuário
-   3. `git commit -m "deploy: <descrição>"`
+7. **Publicar após OK** — o push na main dispara o job `deploy` do `ci.yml`, que roda lint/build/test e publica o MESMO artefato testado
+   1. Pedir descrição do deploy ao usuário
+   2. `git add` só dos arquivos deste trabalho — o working tree é compartilhado entre sessões e `git add -A` levaria trabalho alheio para o commit
+   3. `git commit -m "deploy: <descrição>"` e conferir `git log origin/main..HEAD` antes do push
    4. `git push origin main`
-   5. `firebase deploy --only hosting:anest-ap`
-   6. Confirmar URL pública e versão deployada
+   5. Acompanhar o job `deploy` (`gh run watch`) e confirmar a URL pública
+   6. `firebase deploy --only hosting:anest-ap` só como fallback, se o job `deploy` falhar
 
 ## Argumentos
 

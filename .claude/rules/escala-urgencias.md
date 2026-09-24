@@ -18,7 +18,7 @@ description: Escala Cirúrgica — urgências do HRO: contrato por turno, salas-
 
 ### Urgências do HRO — contador de contrato + fila (dono 18–20/08)
 
-O contrato do HRO paga por turno: manhã 1 orto (Sala 4) + 1 CO (Sala 7 - CO) + plantonista
+O contrato do HRO paga por turno: manhã 1 orto (Sala 4) + 1 CO (Sala 7) + plantonista
 + sobreaviso; tarde sem CO; noite só plantonista + sobreaviso → **2 vagas de urgência
 simultâneas**. A 3ª exige gente que o hospital não paga, e a faixa no topo da aba
 **Completa** mostra isso enquanto acontece. Escala do HRO com casos ⇒ faixa VISÍVEL mesmo
@@ -60,8 +60,9 @@ não gasta vaga — marcar não é reservar. Tinta verde só com cirurgia EM AND
   urgência da manhã ainda aberta às 14h ocupa o plantonista da tarde. Exclusão é pela SALA
   (a mesma colono conta no CC e não conta em `Exames`), via `papelDaSalaHro` NORMALIZADO —
   produção tem "Sala 5"/"Sala 5 - Emergência" para a mesma sala. Fila ordena
-  gravidade→`created_at` (⚠️ chega em **snake_case** — não está no CAMEL_TO_SNAKE;
-  `createdAt` = NaN silencioso); NUNCA por `hora` (18/08: 9 de 9 urgências sem hora).
+  gravidade→`created_at` (⚠️ lido como `caso.created_at || caso.createdAt`: o service
+  entrega `createdAt`, que está no CAMEL_TO_SNAKE, e o fallback cobre linha crua — ler um nome
+  só pode dar NaN silencioso); NUNCA por `hora` (18/08: 9 de 9 urgências sem hora).
   Iniciada há >4h (`statusAtualizadoEm`, nunca a chegada) sai da ocupação e vira pergunta —
   36% das urgências ficam sem marcação, e o app não afirma o que não sabe.
 - **Coluna `gravidade`** (migration `20260818140000`): imediata|urgente|aguarda (adaptação
@@ -75,8 +76,10 @@ não gasta vaga — marcar não é reservar. Tinta verde só com cirurgia EM AND
 - **UI** `FaixaUrgencias.jsx` em EscalaCirurgicaPage (branch board, fora do modo FDS),
   **FORA da BoardView** — os EmptyStates dela matariam a faixa no dia sem escala com
   urgência à mão (8 de 9 em 18/08). Desenho fechado em 3 rodadas de protótipo
-  (`.tmp/urgencias-hro-prototype.html`): grade 2×2 de UMA linha (36px, sem negrito, sem
-  subtítulo), postos = plantão/sobreaviso + dedicados do turno; **excedente = card PRÓPRIO
+  (`.tmp/urgencias-hro-prototype.html`): grade 2×2 de cards em TRÊS linhas de papel fixo
+  — papel · quem · onde+carga ("Sala 7 · 2 cir."), modelo B do dono em 09/09
+  (`.tmp/urgencias-cards-modelos.html`) —, postos = plantão/sobreaviso + dedicados do turno (o
+  dedicado leva barra cinza à esquerda: fica fora da conta); **excedente = card PRÓPRIO
   full-width com rótulo EXTRA** (nunca chip igual aos outros); fila em 1 linha
   (nº+gravidade+procedimento+espera), teto 3 + "ver todas"; cores = receitas existentes
   (selo `bg-primary/20`, tinta `bg-success/[0.14] dark:/20`); **vermelho SÓ no
@@ -129,9 +132,9 @@ não gasta vaga — marcar não é reservar. Tinta verde só com cirurgia EM AND
   com a MESMA lista do formulário + digitação. ⚠️ o aviso da folha é regra de negócio, não
   decoração: trocar PARA Particular cria a cobrança pelo trigger, mas SAIR de Particular
   não apaga a cobrança já criada — ela precisa de cancelamento em Cirurgias Particulares.
-- **Rótulos de sala (dono 20/08):** "Sala 7" → **"Sala 7 - CO"** é rótulo ÚNICO
-  (`normalizarSalaHro`, idempotente), e a normalização passou a valer para sala digitada à
-  mão no `AddCasoSheet` e no "Mudar" do detalhe, não só na importação. `MATERNO` entrou na
+- **Rótulos de sala (dono 20/08; rótulo CURTO desde 21/08, item abaixo):** `normalizarSalaHro`
+  (idempotente) vale para sala digitada à mão no `AddCasoSheet` e no "Mudar" do detalhe, não só
+  na importação, e devolve o rótulo curto (`Sala 7 - CO` → `Sala 7`).
   lista canônica de exclusão e `PADROES_FORA_DO_CONTRATO_HRO` (regex) é a rede para o
   rótulo digitado — "AMBULAT.", "Ambulatorial BERA", "Odonto ambulatorial" e "MATERNO"
   caíam em 'geral' e uma urgência ali entrava na conta das 2 vagas do HRO.
@@ -170,76 +173,8 @@ não gasta vaga — marcar não é reservar. Tinta verde só com cirurgia EM AND
   `cirurgias_particulares` é o HOSPITAL e não a sala, e `liberacoes`/`linha_overrides` são
   chaveados por PESSOA — reimportar, que era a alternativa, zeraria as liberações do turno em
   pleno feriado.
-- **Fila: coluna à direita, badge do turno com respiro e "Editar" por extenso (dono 21/08):**
-  o tempo fica em cima e o **"Editar" no canto INFERIOR direito**, os dois com a mesma margem
-  da borda (11px a 375px) e na mesma vertical do "Passa para tarde/noite" — que usa `ml-auto`
-  mas encostava na borda porque o corpo do card não tem padding à direita (`mr-2.5`). Antes a
-  direita tinha DOIS layouts (linha; coluna quando havia setas de ajuda) e um `mr-10` só para
-  alinhá-los entre si — com uma coluna só, o alinhamento é o padrão e o hack saiu. O **lápis
-  virou badge "Editar"** (`badgeStyle` outline): o ícone não dizia o que abria, e o painel não
-  é "editar a linha" — é observação, local, cirurgião, ajuda e troca. Outline = ação (o
-  vocabulário dos botões do topo da aba); os badges de ESTADO são sólidos, então nada se
-  confunde. `aria-label` inalterado (`Editar local/cirurgião de {nome}`) — é o que distingue
-  16 botões iguais no leitor de tela e o que testes e e2e usam. O botão leva **44px de alvo com
-  `-my-2`** (truque do selo P4: toque confortável sem esticar 17 cards) — por isso o e2e mede
-  o BADGE, não o botão, senão acusa sobreposição onde a tela mostra empilhamento. O ✏️ do selo
-  P4 FICA: ali ele marca que o selo é editável, outra função.
-- **Badge do turno não encosta no cronômetro (dono 21/08, "amontoado"):** o badge fica na
-  linha do nome e a coluna direita começa logo abaixo — medido, o badge terminava em 32px e a
-  pílula do cronômetro começava em 32px, e dois pills sólidos colados liam como um bloco de
-  duas cores. `mt-2` na coluna **só quando o badge existe** (`mostraPassaTurno`): folga fixa
-  esticaria os 17 cards. ⚠️ `mostraPassaTurno` é declarado DEPOIS de `renovado` — declarar
-  junto de `liberado`, como tentei, cai na zona morta e derruba a aba inteira com o
-  ErrorBoundary. Os três pills ficam com 8px entre si.
-- **Seta do cirurgião e "~" do cronômetro: fora (dono 24/08):** o ▶ que marcava "cirurgia em
-  andamento" antes do nome do cirurgião saiu — a própria linha já distingue (a iniciada conta
-  "faltam 45min", a agendada mostra "até 15:45"), e o glifo repetia isso num símbolo que só se
-  entendia pelo tooltip, que no celular não existe. `andando` segue decidindo contagem × hora;
-  só o desenho saiu. E a pílula do total mostra **`1h18`**, sem til: o `~` sai em
-  `fraseCronometro`, NÃO em `formatFaltante`, que é compartilhado — a coluna de tempo do
-  quadro da Completa (`~45min`, desenho de 18/08) fica como está.
-- **TEMPO ESTOURADO pede atualização (dono 24/08):** "após terminar o tempo estabelecido, quero
-  que o usuário receba uma mensagem para atualizar o tempo, caso o procedimento não tenha
-  terminado". São DUAS metades e elas falham diferente. **(1) Tela**, 100% confiável: a pílula
-  vira **âmbar** (era verde, a cor de "está tudo correndo", enquanto o texto já dizia "25min
-  além" — número e tinta discordavam) e o card ganha "Atualize o tempo se a cirurgia não
-  terminou". Âmbar aqui já significa "passou do previsto" (tempo da cirurgia estourada, badge
-  Atrasada). **(2) Push** para a pessoa do cronômetro, ⚠️ **best-effort**: quem dispara é o
-  aparelho de quem estiver com a aba Liberações aberta — sem nenhuma tela aberta naquele
-  minuto, ninguém recebe e só o âmbar aparece depois. Um cron no servidor resolveria, ao custo
-  de refazer em SQL a resolução de identidade da fila (as 4 camadas de matching), que é onde
-  este módulo mais errou. Só entra quem tem login vinculado, não foi liberado e AINDA tem
-  cirurgia aberta; card noturno entra (P1–P4 têm cronômetro e é quem mais fica sem ninguém
-  olhando a tela). ⚠️ **a trava de "N telas, uma push" é a PK do banco**, não código:
-  `escala_cirurgica_aviso_tempo` (migration `20260824120000`, aplicada) com
-  `upsert + ignoreDuplicates` → `ON CONFLICT DO NOTHING`, e só manda quem conseguiu inserir.
-  `ignoreDuplicates` é opção de **upsert**; em `insert` ela é descartada em silêncio e o
-  perdedor leva 23505 — foi achado na revisão. O `alvo` (HH:MM) está na chave: atualizar o
-  tempo rearma o aviso; repetir o MESMO horário não. A policy de SELECT parece órfã e **não
-  é** — é o `.select()` que revela quem ganhou a corrida; removê-la mata a push em silêncio.
-- **`send-fcm-push` aceita `userIds` (lote, 24/08):** o recado alcança ~70 pessoas e uma
-  chamada por destinatário seriam 70 requisições saindo do celular de quem escreveu, no meio
-  do turno. O OAuth do Google resolve UMA vez e os lookups vão em blocos de 10. Contrato de 1
-  pessoa (`userId` + 404 `no_fcm_token`) intacto — as mensagens internas dependem dele; os
-  dois foram verificados contra a edge em produção depois do deploy.
-- **A folga é de TODO selo, não só do roxo (dono 24/08, "alguns badges muito próximos"):** a
-  correção de 21/08 travou o `mt-2` em `mostraPassaTurno` e o defeito seguiu de pé para os
-  outros oito selos — medido a 375px com a escala real, "Plantão da tarde" terminava a **0px**
-  do "+ Tempo total". A coluna da direita é `items-center` na 2ª linha, então quando as infos
-  da esquerda são curtas (linha liberada, linha sem cirurgião) **ela vira o elemento mais alto
-  do card** e começa colada no fim da 1ª linha: acontece em METADE da fila. Hoje a condição é
-  `temSeloAoLadoDoNome`, e os nove selos viraram consts que o JSX e a folga consomem — a lista
-  não tem como divergir. Junto: `pr-1.5` na linha do nome (com nome longo + 3 selos o último
-  parava a **1px** da borda arredondada) e o roxo trocou `mr-2.5` por `mr-1`, que somado ao
-  `pr` fecha os mesmos 10px do `pr-2.5` da coluna. ⚠️ **6px entre selos é TETO medido, não
-  escolha estética**: a linha tem 282px a 375px e "Leonardo Ferrazzo" + Plantonista + Troca
-  gasta 275,5 — `pr-2` e `pr-2.5 + gap-2` foram testados no app e os dois truncam o NOME do
-  plantonista ("Leonardo Ferraz…"), que é a identidade do card; `flex-wrap` joga "Troca" órfã
-  numa 2ª linha e contraria "badge ao lado do nome". A 430px sobram 64px, se um dia valer abrir
-  o gap só acima de ~400px. Trava: `liberacoesSelosPosicao.test.jsx` é **invariante** ("havendo
-  selo, há folga"), não o caso de um selo — foi exatamente a trava estreita que deixou 21/08
-  passar; e a varredura de geometria (nenhum par < 6px, nada encostando na borda) vive no e2e
-  `escala-cirurgica-acoes-layout.spec.ts`, porque jsdom não mede layout.
+- Card da fila de Liberações (coluna à direita, selos, cronômetro, tempo estourado): em
+  `escala-liberacoes.md`; `send-fcm-push` em lote: em `escala-telas.md`.
 - **A TARDE HERDA AS SALAS DE URGÊNCIA DA MANHÃ (dono 21/08):** `salasContrato` faz fallback
   campo a campo `vespertino → matutino`. Quem marca onde está o plantão às 7h não remarca às
   13h, e sem a herança a tarde nascia toda em automático: a sala perdia o posto, deixava de
@@ -283,11 +218,14 @@ não gasta vaga — marcar não é reservar. Tinta verde só com cirurgia EM AND
   titulares = uma ocupação (21/08). ⚠️ consequência aceita: uma pessoa em duas salas LIGA
   essas salas, então um terceiro numa delas cai no mesmo componente — o erro passa a ser para
   MENOS, que é o oposto do que o dono recusou.
-- **Urgências: card do posto em DUAS LINHAS + fila com uma linha por CIRURGIA (dono 21/08).**
-  Card: sala em cima, anestesista embaixo — numa linha só os dois disputavam ~150px e o rótulo
-  longo empurrou o nome para fora, sobrando uma pastilha muda. A LINHA DA FILA continua em uma
+- **Urgências: card do posto em TRÊS LINHAS + fila com uma linha por CIRURGIA (dono 21/08; card
+  refeito em 09/09).** Card: papel · quem · onde+carga, modelo B escolhido pelo dono entre três a
+  430px ("as informações nesses cards não ficam muito claras"): no desenho anterior, sala em cima e
+  nome embaixo com o papel espremido à direita, contrato e dedicado pareciam a mesma espécie. O
+  cabeçalho mostra o turno do contrato + uma pastilha por vaga, no lugar de "0 de 2 salas" ao lado
+  de "2 livres" (detalhe no cabeçalho de `FaixaUrgencias.jsx`). A LINHA DA FILA continua em uma
   linha (`CARD_FILA`): ali não há sala, e o que se lê de relance é gravidade → procedimento →
-  espera. ⚠️ **a fila recebia só o que sobrava dos postos** e os dois agrupamentos a
+  espera.
   esvaziavam: "uma pessoa, uma vaga" colapsava as cirurgias do mesmo titular num card, e a sala
   DEDICADA nem chegava a `candidatos`. Em 21/08 havia 6 urgências abertas (3 cesarianas no CO,
   2 na Emergência, 1 na Sala 8) e a tela dizia "2 de 2 salas" com fila VAZIA. Hoje a OCUPAÇÃO

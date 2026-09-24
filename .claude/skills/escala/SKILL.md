@@ -1,6 +1,6 @@
 ---
 name: escala
-description: Importa a escala mensal UNIFICADA das funcionárias (sobreaviso materno + hospitais HRO/UNIMED/Plantão Pago) de um único docx, ou gera o template do mês para preenchimento. Atualiza src/data/sobreavisoMaterno2026.js e src/data/hospitaisTecnicas2026.js. Substitui as skills antigas /sobreaviso e /hospitais.
+description: Gera o template docx do mês da escala das funcionárias (sobreaviso materno + hospitais HRO/UNIMED/Plantão Pago) e, só como fallback do import in-app (Hub Escalas Funcionárias → Importar), importa o docx preenchido para src/data/sobreavisoMaterno2026.js e src/data/hospitaisTecnicas2026.js.
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 user-invocable: true
 disable-model-invocation: true
@@ -72,25 +72,20 @@ Cada import muda contagens e ranges. Atualize **antes** de rodar:
 4. `toHaveLength(N)` → total (abr+mai+jun+jul = 38; +mês = +nº de FDS/feriados).
 5. Regex de key: `/^2026-(04|05|06|07|...)-\d{2}$/` — incluir o novo mês.
 
-Página de consulta:
-6. `src/pages/ConsultaSobreavisoPage.jsx` → `const MAX_DATE = new Date('2026-07-31T00:00:00')` para o último dia do mês importado (senão o calendário não avança). Hospitais não tem MAX_DATE.
-
 ```bash
 npm run test -- --run src/__tests__/data/sobreavisoMaterno2026.test.js src/__tests__/data/hospitaisTecnicas2026.test.js
 npm run build
-git add src/data/sobreavisoMaterno2026.js src/data/hospitaisTecnicas2026.js \
-        src/__tests__/data/sobreavisoMaterno2026.test.js src/__tests__/data/hospitaisTecnicas2026.test.js \
-        src/pages/ConsultaSobreavisoPage.jsx
-git commit -m "feat(escala): importa <MÊS>/<ANO> (sobreaviso N dias + hospitais M dias)"
-git push origin main
+git commit --only -m "feat(escala): importa <MÊS>/<ANO> (sobreaviso N dias + hospitais M dias)" -- \
+        src/data/sobreavisoMaterno2026.js src/data/hospitaisTecnicas2026.js \
+        src/__tests__/data/sobreavisoMaterno2026.test.js src/__tests__/data/hospitaisTecnicas2026.test.js
 ```
 
-## Deploy (autorização explícita)
-O classificador bloqueia `firebase deploy` quando a skill foi invocada só com o arquivo — e autorização de import anterior NÃO vale para o próximo. Faça commit+push e **confirme com o usuário** antes:
-```bash
-rm -f .firebase/hosting.*.cache && firebase deploy --only hosting:anest-ap
-```
-Ou peça que o usuário rode `! firebase deploy --only hosting:anest-ap`.
+## Publicação
+`--only` leva só estes arquivos: o tree é compartilhado com outras sessões, e `git add` + `git commit`
+varreria o index delas. O push desse commit para a `main` já publica — o job `deploy` do CI roda
+lint/build/test e sobe o mesmo artefato (CLAUDE.md → Deploy). Push pelo SHA (`git push origin <sha>:main`);
+com a main local atrás da `origin/main`, cherry-pick num worktree a partir dela. `firebase deploy`
+manual só se o CI falhar, com confirmação do dono.
 
 ## O que muda no app
 - Card "Sobreaviso Materno" e "Técnicas de Enfermagem" (Home + hub Escalas Funcionárias) passam a refletir o novo mês, com rollover às 07h.

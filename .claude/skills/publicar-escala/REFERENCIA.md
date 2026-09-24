@@ -71,8 +71,9 @@ lista do que não fazer.
 - **Data do HRO**: 08/09 dizia 04/09 e era de 08/09 — a continuação das cirurgias da manhã provou.
 - **Falha de rede na publicação** (2× em 11/09): a RPC roda `begin … commit` numa chamada só, então
   ou gravou tudo ou nada; `publicacao_turnos->'<turno>'->>'casos'` nulo = pode repetir.
-- **Reparo de escala em uso**: republicar zera status e liberações; o modelo de conserto linha a
-  linha é `scripts/repair-escala-2026-09-08-matutino-leitura.sql`.
+- **Reparo de escala em uso**: republicar zera as liberações do turno (casos manuais e andamento da
+  cirurgia igual ficam, migration `20260923160000_escala_republicar_preserva_andamento`); o modelo
+  de conserto linha a linha é `scripts/repair-escala-2026-09-08-matutino-leitura.sql`.
 
 ## Fim de semana — incidentes
 

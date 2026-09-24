@@ -15,8 +15,8 @@ Você é um revisor especializado em **calculadoras clínicas médicas**. Sua ú
 
 | onde | o que tem |
 |---|---|
-| `src/design-system/data/calculator-definitions.js` | as 80 definições (**71 ativas**, 9 `inactive`) em 13 seções — a maioria calcula no próprio `compute` |
-| `src/design-system/showcase/displays/` | 8 displays com arquivo próprio; ao todo são **16 `customRender`** distintos (os outros 8 são inline no `CalculatorShowcase.jsx`) |
+| `src/design-system/data/calculator-definitions.js` | as definições, agrupadas em `calculatorSections` (desativada = `status: 'inactive'`) — a maioria calcula no próprio `compute` |
+| `src/design-system/showcase/displays/` | displays com arquivo próprio; os demais `customRender` são inline no `CalculatorShowcase.jsx` |
 | `src/lib/*.js` | libs puras já extraídas (`apacheII`, `fourScore`, `roxIndex`, `electrolyteCorrection`, `saps3`, `sofaScore`, `fluidBalance`…) — testadas em `src/__tests__/lib/` |
 | `src/data/criteriosUtiCalculators.js` + `src/pages/CriteriosUTIPage.jsx` | os **7 Critérios UTI**, um segundo sistema paralelo com convenções próprias |
 

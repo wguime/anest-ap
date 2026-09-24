@@ -1,6 +1,6 @@
 ---
 name: criar-prompt
-description: Gera um prompt pronto no padrão oficial Anthropic/Fable 5 a partir de uma descrição curta do usuário. Usar quando o usuário pedir "crie um prompt para X", "monte o prompt de Y", "preciso de um prompt para a função/tarefa Z" — para tarefa nova, mandato overnight, subagente ou skill.
+description: Gera um prompt pronto no padrão oficial Anthropic (rule `prompting`) a partir de uma descrição curta do usuário. Usar quando o usuário pedir "crie um prompt para X", "monte o prompt de Y", "preciso de um prompt para a função/tarefa Z" — para tarefa nova, mandato overnight, subagente ou skill.
 allowed-tools: Read, Grep, Glob
 ---
 
@@ -29,8 +29,7 @@ preenche os elementos por ele, inferindo do conhecimento do projeto o que ele n�
    > Estou trabalhando em [tarefa maior] para [quem]. Precisa de [o que o resultado habilita].
    > Com isso em mente: [pedido específico].
    > Pronto quando: [critério verificável + comando de check].
-   - Overnight acrescenta: critério de parada explícito, intervalo de auto-verificação
-     ("verifique a cada N tarefas contra a especificação, com subagentes"), grounding
+   - Overnight acrescenta: critério de parada explícito, grounding
      ("audite cada claim de progresso contra um tool result; teste falhou = reportar com output"),
      e o que NÃO fazer (boundaries — ex.: sem features novas, sem deploy).
 
@@ -43,7 +42,7 @@ preenche os elementos por ele, inferindo do conhecimento do projeto o que ele n�
 
 4. **Auto-checagem antes de entregar** (a razão de cada item está na rule `prompting`):
    - Tem motivo, não só pedido? Tem critério de pronto executável?
-   - Nada de "explique/mostre seu raciocínio" (refusal `reasoning_extraction` no Fable 5)
+   - Nada de "explique/mostre seu raciocínio" (vira refusal `reasoning_extraction` nos modelos atuais)
    - Instrução curta com porquê no lugar de checklist enumerado
    - Pausas previstas só para destrutivo / escopo / input que só o usuário tem
 

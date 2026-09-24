@@ -156,7 +156,7 @@ avisa. O texto do aviso diz o que descontou ("dupla de férias: …", "pós-plan
 |---|---|---|---|
 | Útil | escala numérica (`dias`) | `ImportarEscalaPage` (rodapé lido) | ordem exata; férias descontadas |
 | Feriado | folha "FERIADOS \<ano\>" (`feriados.dias`) | `ImportarEscalaFdsPage` (lista lida) | ordem exata; **só valem os feriados do documento** (dono 04/09) |
-| Fim de semana | **Pega Plantão**, campo `Setor` ("1 - P1", "E10 - P10") | `ImportarEscalaFdsPage` (tabela de posições) | **só o SÁBADO** é consultado e vale os dois dias; P5+ é posição exata; **P1–P4 é bloco** — as mesmas 4 pessoas em ordem trocada pedem CONFIRMAÇÃO, não são erro; posição que o PP não cobre não vira acusação |
+| Fim de semana | **Pega Plantão**, campo `Setor` ("1 - P1", "E10 - P10") | `ImportarEscalaFdsPage` (tabela de posições) | **só o SÁBADO** é consultado e vale os dois dias; P5+ é posição exata; **P1–P4 é bloco** — as mesmas 4 pessoas em ordem trocada NÃO pedem confirmação: entre os quatro manda a tabela de liberações do documento (dono 18/09; o dado segue em `conferirOrdem`); posição que o PP não cobre não vira acusação |
 
 `src/lib/escalaFdsPegaPlantao.js` faz o do fim de semana; `nomesCompativeis` lá dentro casa
 "GUILHERME DIDOMENICO" com "Guilherme Xavier Di Domenico" e "GUILHERME MELO" com "GUILHERME

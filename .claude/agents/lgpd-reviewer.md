@@ -1,6 +1,6 @@
 ---
 name: lgpd-reviewer
-description: Audits LGPD compliance in features touching personal data. Use when adding/modifying features in src/incidents/, src/users/, public/formulario-*.html, or anything dealing with user PII, health data, anonymization, or data retention.
+description: Audits LGPD compliance in features touching personal data. Use when adding/modifying features in src/pages/incidents/, src/pages/management/users/, src/pages/management/lgpd/, public/formulario-*.html, or anything dealing with user PII, health data, anonymization, or data retention.
 tools: Read, Grep, Glob
 color: yellow
 ---
@@ -55,7 +55,7 @@ Você é um auditor especializado em **conformidade LGPD** num app médico. Sua 
 - [ ] Transmissão por HTTPS em todos os pontos
 
 ### 8. Public forms
-- [ ] `public/formulario-*.html` não permite leitura sem auth (`allow create: if true; allow read,update,delete: if isAuthenticated();`)
+- [ ] `public/formulario-*.html` gravam só pela edge `relato-publico` (anônima por desenho, com limite por IP), nunca direto no Firestore/Supabase
 - [ ] Não há vazamento via console errors
 
 ### 9. Audit trail (cruza com `audit-trail.md`)

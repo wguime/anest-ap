@@ -4,8 +4,9 @@
 > **Conhecimento por módulo NÃO mora aqui.** Vive em `.claude/rules/*.md`, que o Claude Code carrega
 > sozinho quando abre um arquivo daquele módulo. Este arquivo guarda só o que vale em TODA sessão.
 
-App médico em uso clínico diário: React 19 + Vite + Tailwind 3 + Firebase Auth + Supabase (RLS via JWT
-custom HS256). 71 calculadoras clínicas (13 seções) + 7 critérios UTI, educação, gestão documental,
+App médico em uso clínico diário: React 19 + Vite + Tailwind 3 + Firebase Auth + Supabase (RLS; o ID
+Token do Firebase entra por Third-Party Auth, com fallback HS256). Calculadoras clínicas e critérios de
+UTI, educação, gestão documental,
 LGPD/Qmentum, escalas/trocas de plantão, residência, cateteres peridurais, incidentes/denúncias,
 comunicados e mensagens internas.
 
@@ -20,8 +21,7 @@ MCPs ativos (3, enxugados em 2026-08-06 — o notebook é um Air M1 de 8 GB e ca
 - **firebase** — Firestore CRUD + Auth direto
 
 Doc de libs (React, Tailwind, Framer Motion, Firebase, Supabase) e registry do shadcn: **WebSearch/
-WebFetch na doc oficial** — `docfork`/`shadcn`/`context7`/`chrome-devtools`/`lighthouse`/`firecrawl`
-foram removidos por não-uso (0–1 invocações em 34 sessões). GitHub é pelo **`gh` CLI**, não por MCP.
+WebFetch na doc oficial**. GitHub é pelo **`gh` CLI**, não por MCP.
 
 ## Regra #2 — Layout/DS congelado (dono 14/08)
 
@@ -40,14 +40,15 @@ medição ao lado (altura dos controles, y do 1º item, quantos itens cabem sem 
 `:root`/`.dark` de um protótipo em `.tmp/` e **abrir no navegador dele** (`open .tmp/<arquivo>.html`) —
 o dono escolhe por imagem; só então `src/` muda.
 
-## Solicitações & Prompts (Fable 5)
+## Solicitações & Prompts
 
 - Pedido novo: dar o motivo junto — "[contexto/para quem] → [o que habilita] → [pedido] → [pronto
   quando: critério verificável]"
 - Runs longos: antes de reportar progresso, auditar cada claim contra um tool result da sessão; teste
   falhou = reportar com output; não verificado = dizer explicitamente
 - Escrever skill/agent/prompt/subagente: seguir `.claude/rules/prompting.md` (nunca pedir "mostre seu
-  raciocínio" — refusal no Fable 5; instrução curta com porquê > checklist enumerado)
+  raciocínio" — vira refusal `reasoning_extraction` nos modelos atuais; instrução curta com porquê >
+  checklist enumerado)
 - Responder sempre em **português** — respostas, relatórios, resumos e AskUserQuestion. Código,
   identificadores e mensagens de commit seguem a convenção do repo
 
@@ -91,7 +92,7 @@ publica o MESMO artefato testado. Fallback manual: `npm run build` · commit · 
 - ⚠️ **A suíte roda em `America/Sao_Paulo`** (`test.env.TZ` no `vite.config.js`), não no UTC do runner.
   **Sintoma a reconhecer: "passa aqui, falha lá" em teste com data/hora = FUSO, antes de qualquer outra
   hipótese.** Reproduzir com `TZ=UTC npm run test:run`.
-- ⚠️ **Cada deploy renomeia os hashes e as 137 páginas são `React.lazy`**: cliente no bundle velho pede
+- ⚠️ **Cada deploy renomeia os hashes e as páginas são `React.lazy`**: cliente no bundle velho pede
   um chunk que não existe e recebe `index.html` (200, `text/html`) → a rota não renderiza. A recuperação
   em `errorReporting.js` é **one-shot por sessão** (`anest-chunk-reload-attempted`, nunca rearmada).
   Daí: **evitar deploy com turno em andamento** e, quando houver, avisar para fechar e reabrir o app.
@@ -108,12 +109,12 @@ Texto integral com os incidentes que originaram cada regra: `docs/deploy-e-ci.md
   ESTÁVEL desde o 1º render; o Tier 2 adia só o FETCH 2s via `DeferredReadyContext`. ⚠️ voltar a
   condicionar a MONTAGEM remonta o App inteiro aos 2s (bug "Home recarrega sozinha", fix 31/07).
   `EscalaCirurgica` não consulta o gate (o card da Home busca já no mount).
-- **Componentes DS**: `src/design-system/components/ui/` (61) + `anest/` (31).
+- **Componentes DS**: `src/design-system/components/ui/` + `anest/`.
 - **Tokens (fonte da verdade)**: `src/design-system/Tokens.json`.
 - **Navegação**: switch em `App.jsx` com a URL como fonte de verdade (react-router v7). Página nova =
   case no switch + entrada em `pageSlugs.js` + `PAGE_TO_CARD` se exigir permissão.
 - **Bottom Nav**: 4 abas (Home · Gestão · Educação · Menu), visual TRAVADO, sem badge/dot. Em página
-  nova, **NÃO** renderizar BottomNav próprio (`App.jsx:1011`, TODO BUG-06).
+  nova, **NÃO** renderizar BottomNav próprio: o global já existe (ver o `TODO BUG-06` no `App.jsx`).
 
 ## Edge Functions (`supabase/functions/`)
 
@@ -128,10 +129,10 @@ Texto integral com os incidentes que originaram cada regra: `docs/deploy-e-ci.md
 
 ## Tarefas multi-step (wave com 5+ tarefas)
 
-Seguir `docs/wave-execution-playbook.md`: Explore → Plan → Implement → Commit, pre-flight com agentes
-paralelos, SQL validado pelo agente `migration-validator` ANTES de aplicar, `AskUserQuestion` para
-decisão arquitetural, build verde a cada bloco lógico, commits granulares. Deploy de Cloud Function é
-tarefa DO DONO (secrets via `firebase functions:secrets:set`).
+Seguir `docs/wave-execution-playbook.md`: Explore → Plan → Implement → Commit, pre-flight antes de
+codar (libs novas, arquivos a tocar, premissas de stack), SQL validado pelo agente `migration-validator`
+ANTES de aplicar, `AskUserQuestion` para decisão arquitetural, build verde a cada bloco lógico, commits
+granulares. Deploy de Cloud Function é tarefa DO DONO (secrets via `firebase functions:secrets:set`).
 
 ## Onde está o resto
 
@@ -168,8 +169,7 @@ sessão). Rule nova = um assunto, `paths` estreito, e conferir com `/context` qu
 `/supabase-migration` `/rotacao-residencia` `/importar-plantoes-residencia` `/escala`
 `/escala-cirurgica` `/publicar-escala` `/cirurgias-particulares` `/cateter-peridural` `/criar-prompt`
 
-> `/escala` substitui as antigas `/sobreaviso` e `/hospitais`: um docx único por mês importa as duas
-> escalas de uma vez.
+> `/escala` importa o docx mensal único que traz as duas escalas: sobreaviso e hospitais.
 
 ### `docs/`
 
@@ -193,7 +193,7 @@ sessão). Rule nova = um assunto, `paths` estreito, e conferir com `/context` qu
 | Mensagens · Perfil · Escalas & Trocas · Residência · Notícias · Reuniões | `src/pages/{communication,escalas,residencia,noticias,reunioes}/`, `ProfilePage` | Firestore + Supabase | `modulos-diversos.md` |
 | Qualidade (hub) | `QualidadePage` | agrega via `useCardPermissions` | Planos de Ação · Auditorias · Autoavaliação ROP · KPIs · Relatórios · ROPs quiz (640 q.) — `modulos-diversos.md` |
 | Busca global · Pendências · Dashboard executivo | `SearchResultsPage`, `PendenciasPage`, `src/pages/dashboard/` | `supabaseSearchService` etc. | `modulos-diversos.md` |
-| Centro de Gestão · Educação | `ManagementLayout`, `EducacaoPage` | 9 abas / Trilha→Curso→Módulo→Aula | `/centro-gestao`, `/educacao` |
+| Centro de Gestão · Educação | `ManagementLayout`, `EducacaoPage` | seções em `NAVIGATION_ITEMS` / Trilha→Curso→Módulo→Aula | `/centro-gestao`, `/educacao` |
 
 <!-- Manutenção: este arquivo tem alvo de <200 linhas (guia oficial Anthropic). Antes de acrescentar,
      perguntar "removendo isto, o Claude erraria?" e "isto vale em TODA sessão ou só neste módulo?".

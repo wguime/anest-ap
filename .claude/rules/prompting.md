@@ -6,16 +6,16 @@ paths:
   - ".claude/commands/**"
   - ".claude/rules/**"
   - "docs/wave-execution-playbook.md"
-description: Otimização de prompts e solicitações — práticas oficiais Anthropic (Fable 5)
+description: Otimização de prompts e solicitações — práticas oficiais Anthropic
 ---
 
-# Prompting — Práticas Oficiais Anthropic (Fable 5)
+# Prompting — Práticas Oficiais Anthropic
 
 ## Princípio: altitude certa
 Instrução específica o bastante para guiar, flexível o bastante para o modelo aplicar julgamento.
-Fable 5 segue instruções breves com fidelidade — 1 frase com o *porquê* supera 10 bullets de
-MUST/NEVER, porque a razão cobre os edge cases que a regra rígida perde. Buscar sempre o menor
-conjunto de tokens de alto sinal.
+Os modelos atuais seguem instruções breves com fidelidade — 1 frase com o *porquê* supera 10
+bullets de MUST/NEVER, porque a razão cobre os edge cases que a regra rígida perde. Buscar sempre o
+menor conjunto de tokens de alto sinal.
 
 ## Como formular solicitações (template)
 > "Estou trabalhando em **[tarefa maior]** para **[quem]**. Precisa de **[o que o resultado
@@ -41,12 +41,12 @@ Exemplos ANEST:
 - **ALL-CAPS NEVER/ALWAYS sem o porquê é yellow flag oficial** — reescrever explicando a razão
   (ex.: em vez de "NUNCA usar elipses", dizer "o TTS não sabe pronunciar elipses, então evite-as").
 - **Nunca instruir o modelo a "explicar/transcrever/mostrar seu raciocínio" no texto da resposta**
-  — dispara refusal `reasoning_extraction` no Fable 5; visibilidade de raciocínio vem dos blocos
-  `thinking` da API, não do output.
+  — dispara refusal `reasoning_extraction` nos modelos atuais; visibilidade de raciocínio vem dos
+  blocos `thinking` da API, não do output.
 - **Não pedir "relate progresso a cada passo"** — usar os checkpoints já existentes (build verde
-  por bloco, TaskUpdate em tempo real).
+  por bloco).
 - Pausar/AskUserQuestion só para: ação destrutiva/irreversível, mudança real de escopo, ou input
-  que só o usuário tem (referências corretas: skills `rotacao-residencia`, `sobreaviso`, `hospitais`).
+  que só o usuário tem (referência correta: skill `rotacao-residencia`).
 
 ## Prompts para subagentes e workflows
 O subagente não vê a conversa — todo prompt de despacho leva os 4 elementos oficiais:
@@ -54,12 +54,10 @@ O subagente não vê a conversa — todo prompt de despacho leva os 4 elementos 
 **boundaries** (o que NÃO fazer). Sem eles: trabalho duplicado e gaps.
 - Escala de spawning: 1 agente para fato simples, 2–4 para comparações, 10+ só para research
   complexa. Tarefas independentes → despacho paralelo no mesmo turno.
-- Verificação por subagente de contexto limpo supera autocrítica do mesmo contexto.
 
 ## Runs longos/autônomos
 Comportamento always-on (grounding de progresso) está no CLAUDE.md. Regra de autoria: todo
-mandato overnight inclui critério de parada explícito + intervalo de auto-verificação
-("verifique seu trabalho a cada [X] contra a especificação, com subagentes").
+mandato overnight inclui critério de parada explícito.
 
 ## Manutenção
 Tratar esta rule e o CLAUDE.md como prompt: podar quando ignorado, testar se a mudança altera

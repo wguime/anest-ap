@@ -22,18 +22,18 @@ aprovação.
 | `src/design-system/showcase/displays/` | 8 displays com arquivo próprio |
 | `src/lib/*.js` | libs puras (`apacheII`, `fourScore`, `roxIndex`, `electrolyteCorrection`, `saps3`, `sofaScore`, `fluidBalance`…), testadas em `src/__tests__/lib/` |
 | `src/data/criteriosUtiCalculators.js` + `src/pages/CriteriosUTIPage.jsx` | as **5 ferramentas de Indicação de UTI** — renderização própria, consumida pela seção via `customRender: 'criterioUti'` |
-| `src/App.jsx:506` | o wrapper com `px-4 sm:px-5 py-4` |
+| `CalculadorasPageWrapper` em `src/App.jsx` | o wrapper com `px-4 sm:px-5 py-4` |
 
 Contar sempre pelo repo, nunca de memória:
 `grep -c "status: 'active'" src/design-system/data/calculator-definitions.js`
 
 ## Propriedades especiais
 
-- **`useDropdown: true` — 35 calculadoras** (não 9; a lista antiga só tinha as pediátricas).
-  Para ver quais: `grep -B20 "useDropdown: true" … | grep "id:"`.
-- **`customRender: '<chave>'` — 17 chaves distintas em 23 usos** (`hollidaySegar` serve duas; `criterioUti` serve as 5 da seção Indicação de UTI).
-  8 têm arquivo em `displays/`; 8 são inline no `CalculatorShowcase.jsx`; `criterioUti` reaproveita a
-  `CalculatorDetailPage` exportada da `CriteriosUTIPage` (lazy + Suspense local).
+- **`useDropdown: true`** — para ver quais: `grep -B20 "useDropdown: true" … | grep "id:"`.
+- **`customRender: '<chave>'`** — `hollidaySegar` serve duas; `criterioUti` serve a seção Indicação de UTI.
+  O display mora em `displays/` ou inline no `CalculatorShowcase.jsx`; `criterioUti` reaproveita a
+  `CalculatorDetailPage` exportada da `CriteriosUTIPage` (lazy + Suspense local). Quantas e quais:
+  `grep -oE "customRender: '[^']+'" src/design-system/data/calculator-definitions.js | sort | uniq -c`.
 
 ## Regras obrigatórias
 
@@ -70,14 +70,14 @@ Helper pronto no topo de `calculator-definitions.js`: `numeroOuPadrao(valor, pad
 
 ### 2b. ⚠️ Chave de mapa tem de bater LETRA POR LETRA com o `value` da opção
 `value: 'liquido_claro'` contra a chave `líquido_claro` devolve `undefined`, o `compute` lança, e o
-`catch { setResult(null) }` de `CalculatorShowcase.jsx:1974` engole — a opção fica **muda na tela**,
+`catch { setResult(null) }` do `CalculatorShowcase.jsx` engole — a opção fica **muda na tela**,
 sem erro em lugar nenhum. Aconteceu em `ped_jejum`, na opção mais escolhida do card.
 Quando o fallback do mapa por acaso vale o mesmo que a chave certa (`crianca`/`criança` em
 `ped_mabl`), o número sai certo e o defeito fica latente até alguém mudar o default.
 Trava genérica: `src/__tests__/data/calculatorOpcoesSelect.test.js`.
 
 ### 3. `risk` acende o badge de risco
-`CalculatorShowcase.jsx:284` lê `result.risk`. Use quando o escore TEM estratificação clínica
+`CalculatorShowcase.jsx` lê `result.risk` (fallback `result.riskLevel`). Use quando o escore TEM estratificação clínica
 (`baixo`/`medio`/`alto`/`critico` — 18 calculadoras usam); omita em conta pura, onde o badge é ruído.
 
 ### 4. Formato de warnings
@@ -129,9 +129,8 @@ Foi assim que a SAPS III ficou sem gravar nenhuma seleção. Trava:
 
 ## Layout
 
-- Padding do wrapper: `src/App.jsx:506` (`px-4 sm:px-5 py-4`).
-- ⚠️ O `CalculatorShowcase` **tem** padding próprio: `px-2 pt-0 pb-3 lg:p-6` (`:1997`) — a regra
-  antiga dizia "SEM padding próprio".
+- Padding do wrapper: `CalculadorasPageWrapper` em `src/App.jsx` (`px-4 sm:px-5 py-4`).
+- O `CalculatorShowcase` **tem** padding próprio: `px-2 pt-0 pb-3 lg:p-6`.
 - Grid: 2 colunas, `gap-3 mt-3`, sem `ml-2`.
 - Hierarquia: Header → SearchBar → SectionHeader (accordion) → Grid de WidgetCards.
 

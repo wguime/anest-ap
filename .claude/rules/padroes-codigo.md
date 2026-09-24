@@ -9,23 +9,23 @@ description: Padrões de código ANEST — estrutura de componente, Header com c
 
 ## Estrutura de Componente
 ```jsx
-import { useTheme } from '@/design-system/hooks';
-import { cn } from '@/lib/utils';
+import { cn } from '@/design-system/utils/tokens';
 
 export function MeuComponente({ prop1, prop2, className }) {
-  const { isDark } = useTheme();
-
   return (
-    <div className={cn("base-classes", isDark && "dark-classes", className)}>
+    <div className={cn("bg-card text-foreground rounded-lg", className)}>
       {/* conteúdo */}
     </div>
   );
 }
 ```
+O escuro vem do token semântico, que troca sozinho com a classe `.dark`; o que for só do escuro vai
+em variante `dark:`. `useTheme()` (de `@/design-system/hooks`) fica para quando a LÓGICA depende do tema.
 
-## Header Fixo via createPortal
-Cada página renderiza seu Header no container fixo do App via `createPortal`.
-Seguir padrão de qualquer página existente.
+## Header Fixo
+Usar `PageHeader` (`src/components/PageHeader.jsx`; props `title`, `subtitle`, `onBack`, `actions`):
+ele faz o `createPortal` para o `body`, põe o espaçador de altura (`h-14`, `deitado:h-11`) e recua
+na `faixa:` lateral. `createPortal` à mão perde os três.
 
 ## Animações Framer Motion
 ```jsx
