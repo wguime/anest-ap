@@ -30,12 +30,16 @@ Você é o assistente do Comitê de Ética da ANEST. Esta skill é a **FASE B** 
 
 ## Convenção de nomenclatura na pasta do processo
 
+Uma pasta por protocolo: `Processos/[NNN-AAAA Nome do Profissional]/` (ex.: `123-2026 Dr. Fulano de Tal`). O mesmo profissional pode ter várias pastas, uma por processo.
+
 ```
-Processos/[Nome do Profissional]/
+Processos/[NNN-AAAA Nome do Profissional]/
+├── Denuncia_Original_[AAAA-MM-DD].(pdf|jpg|txt)      # peça de origem
 ├── Notificacao_[Nome]_[AAAA-MM-DD].docx              # Fase A (gerado)
 ├── Notificacao_[Nome]_[AAAA-MM-DD]_assinada.pdf      # scan c/ ciência
 ├── processo_NNN-AAAA.json                            # sidecar (auto)
 ├── Defesa_[Nome]_[AAAA-MM-DD].(pdf|docx|txt)         # se houver
+├── Parecer_Relator_WhatsApp_NNN-AAAA_[AAAA-MM-DD].txt # parecer p/ deliberação
 ├── Sancao_NivelX_[Nome]_[AAAA-MM-DD].docx            # Fase B (gerado)
 └── Sancao_NivelX_[Nome]_[AAAA-MM-DD]_assinada.pdf    # scan final
 ```
@@ -47,9 +51,10 @@ Processos/[Nome do Profissional]/
 ### ETAPA 1 — Varredura automática da pasta
 
 1. Extraia o nome do profissional de `$ARGUMENTS`
-2. Liste o conteúdo da pasta:
+2. Localize a(s) pasta(s) do profissional — uma por protocolo — e liste o conteúdo:
    ```bash
-   ls -la "/Users/guilherme/Documents/IA/Comitê de ética/Processos/[Nome]/"
+   ls -d "/Users/guilherme/Documents/IA/Comitê de ética/Processos/"*"[Nome]"*/
+   ls -la "/Users/guilherme/Documents/IA/Comitê de ética/Processos/[NNN-AAAA Nome]/"
    ```
 3. Identifique e classifique cada arquivo encontrado:
    - **Sidecar JSON** (`processo_*.json`) — fonte primária dos dados estruturados
@@ -58,7 +63,7 @@ Processos/[Nome do Profissional]/
    - **Defesa** (`Defesa_*.{pdf,docx,txt}`) — defesa do profissional
    - **Sanção anterior** (`Sancao_*.docx`) — caso já exista uma Fase B prévia
 
-4. **Se múltiplos sidecars** (mais de um processo na mesma pasta), pergunte ao usuário qual processo está sendo julgado (pelo número do protocolo).
+4. **Se houver mais de uma pasta para o mesmo profissional** (um processo por pasta), pergunte ao usuário qual protocolo está sendo julgado — nunca misture peças de processos distintos.
 5. **Se nenhum sidecar**, informe que a Fase A precisa ser refeita ou que se trata de processo legado sem sidecar (nesse caso, peça os dados manualmente).
 
 Apresente ao usuário um **inventário** dos arquivos encontrados:
@@ -206,7 +211,7 @@ Estrutura:
 Após geração, abra o documento:
 
 ```bash
-open "/Users/guilherme/Documents/IA/Comitê de ética/Processos/[Nome]/Sancao_NivelX_[Nome]_[Data].docx"
+open "/Users/guilherme/Documents/IA/Comitê de ética/Processos/[NNN-AAAA Nome]/Sancao_NivelX_[Nome]_[Data].docx"
 ```
 
 **Informe ao usuário:**
@@ -226,6 +231,7 @@ open "/Users/guilherme/Documents/IA/Comitê de ética/Processos/[Nome]/Sancao_Ni
 4. **A defesa deve ser analisada** objetivamente, sem pré-julgamento
 5. **Sigilo**: INTERNO – CONFIDENCIAL
 6. **Se faltar sidecar**, oriente o usuário a refazer Fase A ou colete dados manualmente para processos legados
+7. **Apuração exclusivamente interna — NUNCA cite, envolva ou proponha comunicação a instâncias externas** (CRM-SC, CFM como órgão, hospital, programa de residência, Ministério Público, Judiciário ou qualquer outra) em Notificação, Decisão, instruções ao Comitê ou resumo de revisão. Citar normas como fundamento (CEM, Resoluções CFM, CF/88, leis) é permitido; propor "comunicar ao CRM", "dar ciência ao hospital", "comunicar ao Coordenador de Residência" etc. NÃO é. O acionamento de outra instância só será avaliado pelo Comitê após encerrada a apuração e **apenas quando o usuário solicitar essa análise de forma expressa** — se não for solicitado, não faça. (Decisão do Comitê em 21/09/2026, processo 003/2026.)
 
 ---
 

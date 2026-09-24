@@ -20,13 +20,13 @@ Consulte estes arquivos para fundamentação:
 - [Regimento e Capítulo de Sanções](regimento-sancoes.md)
 - [Tabela de Níveis e Critérios](niveis-sancao.md)
 - [Código de Ética Médica — CFM](codigo-etica-cfm.md) — Artigos correlatos + tabela de correlação CEM × Regimento ANEST
-- PDF completo do CEM (se precisar consultar artigos adicionais): `/Users/guilherme/Documents/IA/Comitê de ética/Código de ética CFM.pdf`
+- PDF completo do CEM (se precisar consultar artigos adicionais): `/Users/guilherme/Documents/IA/Comitê de ética/Normas/Código de ética CFM.pdf`
 
 ## Diretório dos templates e script
 
-- Templates .docx: `/Users/guilherme/Documents/IA/Comitê de ética/`
+- Templates .docx (modelos em branco): `/Users/guilherme/Documents/IA/Comitê de ética/Modelos/`
 - Script de preenchimento: `/Users/guilherme/Documents/IA/Comitê de ética/preencher_sancao.py`
-- Destino dos documentos: `/Users/guilherme/Documents/IA/Comitê de ética/Processos/[Nome do Profissional]/`
+- Destino dos documentos: `/Users/guilherme/Documents/IA/Comitê de ética/Processos/[NNN-AAAA Nome do Profissional]/` — uma pasta por protocolo (ex.: `123-2026 Dr. Fulano de Tal`); o gerador cria a pasta a partir do protocolo
 
 ## Fluxo obrigatório — 5 etapas
 
@@ -167,7 +167,6 @@ ENQUADRAMENTO — REGIMENTO INTERNO
 
 ENQUADRAMENTO — CÓDIGO DE ÉTICA MÉDICA (CFM)
   Artigos violados: [lista com descrição breve]
-  Recomendação CRM: [Sim/Não — se sim, indicar motivo]
 
 SANÇÃO RECOMENDADA
   Nível: [X] — [nome da sanção]
@@ -235,7 +234,7 @@ O JSON deve conter `"tipo": "notificacao"`:
 Após a geração, abra o documento:
 
 ```bash
-open "/Users/guilherme/Documents/IA/Comitê de ética/Processos/[Nome]/Notificacao_[Nome]_[Data].docx"
+open "/Users/guilherme/Documents/IA/Comitê de ética/Processos/[NNN-AAAA Nome]/Notificacao_[Nome]_[Data].docx"
 ```
 
 **Informe ao usuário:**
@@ -271,6 +270,7 @@ A skill `/sancao-anest-decisao` irá:
 4. **Linguagem formal e objetiva** — sem julgamentos subjetivos
 5. **Sigilo** — lembre o usuário que o documento é INTERNO – CONFIDENCIAL
 6. **Se a denúncia for GRAVÍSSIMA** (drogadição, apropriação indébita) → informe que o caso é de exclusão sumária e não se aplica o sistema de níveis progressivos
+7. **Apuração exclusivamente interna — NUNCA cite, envolva ou proponha comunicação a instâncias externas** (CRM-SC, CFM como órgão, hospital, programa de residência, Ministério Público, Judiciário ou qualquer outra) em Notificação, Decisão, instruções ao Comitê ou resumo de revisão. Citar normas como fundamento (CEM, Resoluções CFM, CF/88, leis) é permitido; propor "comunicar ao CRM", "dar ciência ao hospital", "comunicar ao Coordenador de Residência" etc. NÃO é. O acionamento de outra instância só será avaliado pelo Comitê após encerrada a apuração e **apenas quando o usuário solicitar essa análise de forma expressa** — se não for solicitado, não faça. (Decisão do Comitê em 21/09/2026, processo 003/2026.)
 
 ---
 
