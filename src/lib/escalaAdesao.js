@@ -7,8 +7,8 @@
  *
  *  - ÍNDICE DE USO (coluna "Uso", dono 24/09 à tarde): média dos 5 itens do anestesista, cada um
  *    como % da própria meta, limitado a 100% — abre a escala, início, término (os dois marcados
- *    PELA PESSOA), tempo da cirurgia e tempo total. Engajado 50+, baixo uso < 30. Só "abrir o app"
- *    deixou 29 de 46 engajados (contra 3 na régua de 23/09); o índice deu 3.
+ *    PELA PESSOA), tempo da cirurgia e tempo total. Engajado 50+. Só "abrir o app" deixou 29 de 46
+ *    engajados (contra 3 na régua de 23/09); o índice deu 3.
  *    Demais cargos (sem cirurgia própria): índice = abre a escala.
  *  - ABRE A ESCALA (dono 24/09): % dos dias em que a pessoa podia usar a escala em que ela abriu.
  *    Anestesista → dias em que estava NA ESCALA PUBLICADA (caso ou rodapé): férias, atestado,
@@ -22,9 +22,10 @@
  *  - faixas de cor: zero → crit · abaixo da metade da meta → low · metade ou mais → mid ·
  *    na meta → ok · sem denominador → na
  *  - situação (sempre pela janela de 30 dias): nunca abriu > sem uso na semana (só se esteve na
- *    escala na semana) > [anestesista] baixo uso (índice < 30) > não marca (término próprio < 20%)
- *    > engajado (índice ≥ 50) > pode melhorar. Quem não tem cirurgia própria (enfermagem,
- *    residência, secretaria, contas dos hospitais): baixo uso = abre < 40% sem semana forte;
+ *    escala na semana) > baixo acesso (abre < 40% dos dias trabalhados, sem semana forte — todo
+ *    cargo; era "baixo uso" por índice < 30 e rotulava quem abre todo dia, dono 24/09) >
+ *    [anestesista] não marca (término próprio < 20%) > engajado (índice ≥ 50) > pode melhorar.
+ *    Quem não tem cirurgia própria (enfermagem, residência, secretaria, contas dos hospitais):
  *    engajado = abre ≥ 70% (ou semana forte) E 10+ marcações de início/término no mês.
  *  - comparação da ficha: "média top N" = média dos N anestesistas (10% do grupo) com o valor
  *    mais alto no item, não a média do grupo (Cochrane, Ivers et al. 2025: comparar com a média
@@ -35,8 +36,8 @@
 import { nomeCirurgiaoCurto, primeiroNome } from '@/lib/colunaLiberacao'
 
 export const META = { uso: 70, ini: 80, ter: 80, tp: 50, tot: 80 }
-/** Faixas do índice de uso (dono 24/09): engajado a partir de 50, baixo uso abaixo de 30. */
-export const INDICE = { ok: 50, bx: 30 }
+/** Corte do índice de uso (dono 24/09): engajado a partir de 50. */
+export const INDICE = { ok: 50 }
 
 /** Índice de uso do anestesista: média dos 5 itens como % da meta, cada um limitado a 100. */
 export function indiceUso({ abre, ini, ter, tp, tot }) {
@@ -58,7 +59,7 @@ export const SITUACOES = {
   ok: { label: 'Engajado', tom: 'ok', rank: 5 },
   mid: { label: 'Pode melhorar', tom: 'mid', rank: 4 },
   nm: { label: 'Não marca início/término', tom: 'low', rank: 3 },
-  bx: { label: 'Baixo uso', tom: 'low', rank: 2 },
+  bx: { label: 'Baixo acesso', tom: 'low', rank: 2 },
   sem: { label: 'Sem uso na semana', tom: 'crit', rank: 1 },
   nun: { label: 'Nunca abriu', tom: 'crit', rank: 0 },
 }
@@ -110,13 +111,14 @@ export function classificarSituacao(p) {
   if (p.nunca) return 'nun'
   const semanaConta = p.base7 > 0
   if (semanaConta && p.d7 === 0) return 'sem'
+  // "Baixo acesso" mede SÓ acesso, para todo cargo (dono 24/09): quem abre quase todo dia e não
+  // marca é "Não marca início/término", nunca "baixo acesso"
+  const semanaForte = p.base7 >= 3 && p.abre7 >= 80
+  if ((p.abre30 ?? 0) < 40 && !semanaForte) return 'bx'
   if (p.anest) {
-    if ((p.uso30 ?? 0) < INDICE.bx) return 'bx'
     if ((p.ter30 ?? 0) < 20) return 'nm'
     return p.uso30 >= INDICE.ok ? 'ok' : 'mid'
   }
-  const semanaForte = p.base7 >= 3 && p.abre7 >= 80
-  if ((p.abre30 ?? 0) < 40 && !semanaForte) return 'bx'
   const frequente = (p.abre30 ?? 0) >= META.uso || semanaForte
   return frequente && p.iniN30 + p.terN30 >= 10 ? 'ok' : 'mid'
 }

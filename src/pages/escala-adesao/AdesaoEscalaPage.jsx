@@ -454,14 +454,14 @@ export default function AdesaoEscalaPage({ goBack }) {
         </button>
         {comoLer && (
           <ul className="grid gap-1.5 rounded-xl border border-border bg-card px-4 py-3 text-[12.5px] leading-snug text-muted-foreground lg:grid-cols-2 lg:gap-x-8">
-            <li><b className="text-foreground">Uso (anestesistas):</b> índice de 0 a 100 que junta os 5 itens — abrir a escala, marcar início, marcar término, tempo da cirurgia e tempo total —, cada um contado contra a própria meta. Engajado a partir de {INDICE.ok}; baixo uso abaixo de {INDICE.bx}.</li>
+            <li><b className="text-foreground">Uso (anestesistas):</b> índice de 0 a 100 que junta os 5 itens — abrir a escala, marcar início, marcar término, tempo da cirurgia e tempo total —, cada um contado contra a própria meta. Engajado a partir de {INDICE.ok}.</li>
             <li><b className="text-foreground">Abre a escala:</b> dos dias em que a pessoa trabalhou, em quantos abriu o app (meta 70%). Anestesista: dias na escala publicada. Demais cargos: dias úteis, feriados incluídos — para eles, é o próprio uso.</li>
             <li><b className="text-foreground">Início / Término:</b> das cirurgias em que era o anestesista, em quantas ele mesmo tocou em "Iniciada" / "Terminada" (meta 80%). Embaixo, a sala marcada por qualquer pessoa.</li>
             <li><b className="text-foreground">Tempo cir.:</b> das cirurgias dela, em quantas havia o tempo que falta preenchido (meta 50%).</li>
             <li><b className="text-foreground">Tempo total:</b> dos turnos dela, em quantos informou a que horas termina (meta 80%).</li>
             <li>Enfermagem, residentes, secretaria e contas dos hospitais não têm cirurgias próprias: aparece o número de marcações que fizeram.</li>
             <li>Cores: verde na meta · amarelo metade ou mais · laranja abaixo da metade · vermelho zero.</li>
-            <li>Situação (sempre 30 dias): <b className="text-foreground">Engajado</b> índice {INDICE.ok}+; <b className="text-foreground">Não marca início/término</b> marcou o término de menos de 20% das próprias cirurgias; <b className="text-foreground">Baixo uso</b> índice abaixo de {INDICE.bx}; <b className="text-foreground">Sem uso na semana</b> trabalhou nos últimos 7 dias e não abriu.</li>
+            <li>Situação (sempre 30 dias): <b className="text-foreground">Engajado</b> índice {INDICE.ok}+; <b className="text-foreground">Não marca início/término</b> marcou o término de menos de 20% das próprias cirurgias; <b className="text-foreground">Baixo acesso</b> abriu a escala em menos de 40% dos dias trabalhados; <b className="text-foreground">Sem uso na semana</b> trabalhou nos últimos 7 dias e não abriu.</li>
             <li>Toque numa pessoa para ver a ficha: os números dela, a meta, a média dos colegas com os valores mais altos e o próximo passo.</li>
           </ul>
         )}

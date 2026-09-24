@@ -47,11 +47,17 @@ describe('escalaAdesao — formatação', () => {
 describe('escalaAdesao — situação (janela de 30 dias)', () => {
   const base = { nunca: false, d7: 5, base7: 5, abre7: 100, abre30: 80, anest: true, uso30: 60, ter30: 60, iniN30: 0, terN30: 0 }
 
-  it('anestesista: nunca > sem uso na semana > baixo uso (índice < 30) > não marca (término próprio < 20%)', () => {
+  it('anestesista: nunca > sem uso na semana > baixo acesso (abre < 40%) > não marca (término próprio < 20%)', () => {
     expect(classificarSituacao({ ...base, nunca: true, d7: 0 })).toBe('nun')
     expect(classificarSituacao({ ...base, d7: 0 })).toBe('sem')
-    expect(classificarSituacao({ ...base, uso30: 29, ter30: 10 })).toBe('bx')
+    expect(classificarSituacao({ ...base, abre30: 39, d7: 1, abre7: 20, ter30: 10 })).toBe('bx')
     expect(classificarSituacao({ ...base, uso30: 45, ter30: 19 })).toBe('nm')
+  })
+
+  it('"baixo acesso" mede só acesso: abre quase todo dia com índice baixo NÃO é baixo acesso (dono 24/09)', () => {
+    expect(classificarSituacao({ ...base, abre30: 84, uso30: 23, ter30: 0 })).toBe('nm')
+    expect(classificarSituacao({ ...base, abre30: 67, uso30: 29, ter30: 26 })).toBe('mid')
+    expect(classificarSituacao({ ...base, abre30: 35, d7: 4, abre7: 80, uso30: 60 })).toBe('ok') // semana forte
   })
 
   it('anestesista: engajado com índice 50+ (dono 24/09), pode melhorar abaixo', () => {
@@ -111,11 +117,11 @@ describe('escalaAdesao — montarPessoas', () => {
     expect(p.tot30).toBe(50)
   })
 
-  it('só abrir o app não basta: abre 100% sem marcar nada fica em baixo uso', () => {
+  it('só abrir o app não basta: abre 100% sem marcar nada tem índice 20 e fica em "não marca"', () => {
     const [p] = montarPessoas(rel([linha({ dne: 20, ini_eu: 0, ter_eu: 0, tp_inf: 0, tot_eu: 0 })]), null)
     expect(p.abre30).toBe(100)
     expect(p.uso30).toBe(20)
-    expect(p.situacao).toBe('bx')
+    expect(p.situacao).toBe('nm')
   })
 
   it('quem não trabalhou nenhum dia no período sai da lista (sem rótulo de férias — dono 24/09)', () => {
