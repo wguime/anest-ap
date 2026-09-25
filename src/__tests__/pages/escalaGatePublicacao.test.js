@@ -159,7 +159,7 @@ describe('cards das contas de hospital', () => {
     'calculadoras', 'criterios_uti', 'cateter_peridural', 'cp_novo', 'cp_listagem',
     'manutencao', 'refeicao_unimed',
     // Gestão (dono 2026-09-25): Notificações e Denúncias, Biblioteca, Comunicados, Escalas
-    'incidentes', 'relatar_notificacao', 'fazer_denuncia', 'meus_relatos', 'notificacao_unimed',
+    'incidentes', 'relatar_notificacao', 'fazer_denuncia', 'notificacao_unimed', 'qrcode_generator',
     'biblioteca', 'comunicados', 'escalas', 'escalas_sobreaviso', 'consulta_sobreaviso',
   ]
 
@@ -179,7 +179,8 @@ describe('cards das contas de hospital', () => {
     const { ROLE_PERMISSION_TEMPLATES } = await import('@/data/rolePermissionTemplates')
     const cards = ROLE_PERMISSION_TEMPLATES[role]
     // troca é pedido de uma pessoa; a conta é compartilhada (dono 25/09 abriu Escalas, não trocas)
-    for (const id of ['faturamento', 'financeiro', 'qrcode_generator', 'trocas_sobreaviso',
+    // relato não é público no tablet compartilhado (dono 25/09): sem Meus Relatos
+    for (const id of ['faturamento', 'financeiro', 'meus_relatos', 'trocas_sobreaviso',
                       'dashboard_executivo', 'gestao_documental',
                       'educacao_continuada', 'res_gerenciar', 'qualidade']) {
       expect(cards[id]).toBe(false)

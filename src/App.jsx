@@ -692,8 +692,10 @@ const PAGE_TO_CARD = {
   meusRelatos: 'meus_relatos',
   qrcodeGenerator: 'qrcode_generator',
   // Gestao sub-pages (inherit parent card)
-  acompanhamentoIncidente: 'incidentes',
-  acompanhamentoDenuncia: 'incidentes',
+  // Acompanhamento só se alcança por Meus Relatos — mesma permissão (dono 25/09:
+  // as contas de hospital relatam, mas relato não é público no tablet compartilhado).
+  acompanhamentoIncidente: 'meus_relatos',
+  acompanhamentoDenuncia: 'meus_relatos',
   'incidente-gestao': 'incidentes',
   'denuncia-gestao': 'incidentes',
   incidenteGestao: 'incidentes',

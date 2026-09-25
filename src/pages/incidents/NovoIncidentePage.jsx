@@ -7,6 +7,7 @@ import { INCIDENT_TYPES, SEVERITY_LEVELS, LOCAIS, SETORES, TURNOS, FUNCOES, FASE
 import { useIncidents } from '@/contexts/IncidentsContext';
 import { PrivacyPolicyModal } from '@/components/PrivacyPolicyModal';
 import { useUser } from '@/contexts/UserContext';
+import { ehContaDeHospital } from '@/utils/userTypes';
 import { PageHeader } from '../../components';
 
 // Input field component
@@ -159,7 +160,7 @@ function IdentificationTypeSelector({ selected, onSelect }) {
 }
 
 // Seção 1: Notificante
-function SecaoNotificante({ data, onChange, onOpenPrivacy }) {
+function SecaoNotificante({ data, onChange, onOpenPrivacy, semRastreio }) {
   const updateField = (field, value) => {
     onChange({ ...data, [field]: value });
   };
@@ -200,9 +201,9 @@ function SecaoNotificante({ data, onChange, onOpenPrivacy }) {
                 Relato anônimo — leia antes de prosseguir
               </p>
               <ul className="text-xs text-warning mt-1 space-y-1 list-disc list-inside">
-                <li>Você receberá um <strong>código de rastreio</strong> (ANEST-AAAA-XXXXXXXX) para consultar o andamento na página "Rastrear Relato".</li>
+                {!semRastreio && <li>Você receberá um <strong>código de rastreio</strong> (ANEST-AAAA-XXXXXXXX) para consultar o andamento na página "Rastrear Relato".</li>}
                 <li>O Comitê de Ética <strong>não conseguirá entrar em contato</strong> com você diretamente.</li>
-                <li>Eventuais devolutivas aparecerão apenas pelo código de rastreio — guarde-o em local seguro.</li>
+                {!semRastreio && <li>Eventuais devolutivas aparecerão apenas pelo código de rastreio — guarde-o em local seguro.</li>}
                 <li>Esta escolha é <strong>irreversível</strong>: a identidade não pode ser anexada depois (LGPD Art. 12).</li>
               </ul>
             </div>
@@ -728,12 +729,16 @@ function SecaoContexto({ data, onChange }) {
   );
 }
 
+// Conta compartilhada de hospital (Unimed/HRO, dono 25/09): "relatos não são
+// públicos". O código de rastreio abre o andamento sem login, e no tablet do
+// centro cirúrgico quem vem depois o veria — então essas contas relatam, mas
+// não recebem código nem caminho de acompanhamento (Meus Relatos também off).
 // Modal de sucesso
-function SuccessModal({ protocolo, trackingCode, tipoIdentificacao, onClose }) {
+function SuccessModal({ protocolo, trackingCode, tipoIdentificacao, semRastreio, onClose }) {
   // B1 (2026-05-04): tracking code agora é exibido para TODOS os relatos
   // (incluindo Identificado), não apenas anônimo/confidencial. O código é a
   // forma canônica de acompanhar o relato fora do app (Rastrear Relato).
-  const showTrackingCode = !!trackingCode;
+  const showTrackingCode = !!trackingCode && !semRastreio;
   const isAnonOrConf = tipoIdentificacao === 'anonimo' || tipoIdentificacao === 'confidencial';
 
   return (
@@ -1034,7 +1039,7 @@ export default function NovoIncidentePage({ onNavigate }) {
             title="Identificação"
             description="Como deseja se identificar"
           />
-          <SecaoNotificante data={notificante} onChange={setNotificante} onOpenPrivacy={() => setShowPrivacyPolicy(true)} />
+          <SecaoNotificante data={notificante} onChange={setNotificante} onOpenPrivacy={() => setShowPrivacyPolicy(true)} semRastreio={ehContaDeHospital(user)} />
         </div>
 
         {/* Seção 2: Dados do Incidente */}
@@ -1142,6 +1147,7 @@ export default function NovoIncidentePage({ onNavigate }) {
         <SuccessModal
           protocolo={submittedData.protocolo}
           trackingCode={submittedData.trackingCode}
+          semRastreio={ehContaDeHospital(user)}
           tipoIdentificacao={submittedData.tipoIdentificacao}
           onClose={handleSuccessClose}
         />

@@ -322,9 +322,11 @@ const CARDS_CONTA_HOSPITAL = {
   cp_listagem: true,
   manutencao: true,
   refeicao_unimed: true,
-  // Gestão (dono 2026-09-25, por print dos cards): Notificações e Denúncias,
-  // Biblioteca, Comunicados e Escalas. `qrcode_generator` fica fora — é ferramenta
-  // de quem divulga o canal, não de quem relata. No hub Escalas, "Escalas
+  // Gestão (dono 2026-09-25, por print dos cards): Notificações e Denúncias
+  // (com o Gerar QR Code), Biblioteca, Comunicados e Escalas. `meus_relatos` fica
+  // FORA: "relatos não são públicos" — a conta roda em tablet compartilhado, então
+  // quem vem depois veria o que o anterior relatou (o modal de envio também não
+  // mostra o código de rastreio a elas). No hub Escalas, "Escalas
   // Funcionárias" abre pela `escalas_sobreaviso`, então ela e a consulta entram;
   // `trocas_sobreaviso` NÃO: troca é pedido de uma PESSOA, e a conta é
   // compartilhada. A gestão de relatos segue fechada por `incidentAccess.js`
@@ -332,8 +334,8 @@ const CARDS_CONTA_HOSPITAL = {
   incidentes: true,
   relatar_notificacao: true,
   fazer_denuncia: true,
-  meus_relatos: true,
   notificacao_unimed: true,
+  qrcode_generator: true,
   biblioteca: true,
   comunicados: true,
   escalas: true,

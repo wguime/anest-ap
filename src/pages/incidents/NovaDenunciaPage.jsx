@@ -6,6 +6,7 @@ import supabaseIncidentsService from '@/services/supabaseIncidentsService';
 import AnexosUploadSection from './components/AnexosUploadSection';
 import { useIncidents } from '@/contexts/IncidentsContext';
 import { useUser } from '@/contexts/UserContext';
+import { ehContaDeHospital } from '@/utils/userTypes';
 import { PrivacyPolicyModal } from '@/components/PrivacyPolicyModal';
 import { PageHeader } from '../../components';
 
@@ -148,10 +149,14 @@ function IdentificationTypeSelector({ selected, onSelect }) {
   );
 }
 
+// Conta compartilhada de hospital (Unimed/HRO, dono 25/09): "relatos não são
+// públicos". O código de rastreio abre o andamento sem login, e no tablet do
+// centro cirúrgico quem vem depois o veria — então essas contas relatam, mas
+// não recebem código nem caminho de acompanhamento (Meus Relatos também off).
 // Modal de sucesso
-function SuccessModal({ protocolo, trackingCode, tipoIdentificacao, onClose }) {
+function SuccessModal({ protocolo, trackingCode, tipoIdentificacao, semRastreio, onClose }) {
   // B1 (2026-05-04): tracking code exibido para TODOS os relatos (incluindo Identificado).
-  const showTrackingCode = !!trackingCode;
+  const showTrackingCode = !!trackingCode && !semRastreio;
   const isAnonOrConf = tipoIdentificacao === 'anonimo' || tipoIdentificacao === 'confidencial';
 
   return (
@@ -214,6 +219,7 @@ function SuccessModal({ protocolo, trackingCode, tipoIdentificacao, onClose }) {
 export default function NovaDenunciaPage({ onNavigate }) {
   const { addDenuncia } = useIncidents();
   const { user } = useUser();
+  const semRastreio = ehContaDeHospital(user);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
   const [submittedData, setSubmittedData] = useState(null);
@@ -398,7 +404,7 @@ export default function NovaDenunciaPage({ onNavigate }) {
                   Canal Seguro e Confidencial
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Sua identidade será protegida. Você receberá um código de rastreio para acompanhar o andamento da denúncia.
+                  Sua identidade será protegida.{!semRastreio && ' Você receberá um código de rastreio para acompanhar o andamento da denúncia.'}
                 </p>
               </div>
             </div>
@@ -445,9 +451,9 @@ export default function NovaDenunciaPage({ onNavigate }) {
                     <div className="text-xs text-warning">
                       <p className="font-medium mb-1">Denúncia anônima — leia antes de prosseguir</p>
                       <ul className="space-y-1 list-disc list-inside">
-                        <li>Você receberá um <strong>código de rastreio</strong> para consultar o andamento em "Rastrear Relato".</li>
+                        {!semRastreio && <li>Você receberá um <strong>código de rastreio</strong> para consultar o andamento em "Rastrear Relato".</li>}
                         <li>O Comitê <strong>não conseguirá entrar em contato</strong> com você diretamente.</li>
-                        <li>Devolutivas aparecerão apenas pelo código de rastreio — guarde-o em local seguro.</li>
+                        {!semRastreio && <li>Devolutivas aparecerão apenas pelo código de rastreio — guarde-o em local seguro.</li>}
                         <li>Esta escolha é <strong>irreversível</strong> (LGPD Art. 12).</li>
                       </ul>
                     </div>
@@ -803,6 +809,7 @@ export default function NovaDenunciaPage({ onNavigate }) {
         <SuccessModal
           protocolo={submittedData.protocolo}
           trackingCode={submittedData.trackingCode}
+          semRastreio={semRastreio}
           tipoIdentificacao={submittedData.tipoIdentificacao}
           onClose={handleSuccessClose}
         />
