@@ -84,6 +84,8 @@ apelido conhecido).
   **Dois nomes na célula ("PAULO + GUILHERME MELO")** → anestesista `"A + B"` tal qual: é bloco de dupla no
   app (uid nulo por desenho, a fila conta os dois pelo "+", o "//" abaixo herda a dupla inteira); o ensaio
   avisa "sem vínculo" e "na ordem sem caso" para os dois — esperado, não é erro do lote (18/09).
+  **Com "/" ("ROMULO / MARILIO") é UM OU OUTRO, não dupla** → o nome de quem já tem a sala; sem dono antes,
+  pergunte (dono 25/09: a dupla deixou o caso sem login de ninguém).
 - **Seções fora da grade** são casos (Exames, Imagem, Hemodinâmica, Accurata, Umanitá, IOSC, HO,
   Ambulatório, Braqui, Simone, Consultório, e a linha `MATERNO | NN PROCEDIMENTOS | NOME` do HRO).
   `SRPA | NOME` vai em `posicoesAssistenciais` (conta como ocupado). "CONTINUAÇÃO ±14h" é caso com
@@ -109,11 +111,12 @@ apelido conhecido).
 |---|---|
 | "Como ajuda … 1º X – Local · 2º Y – Local" | X, Y em `ajudaExterna` do hospital do LOCAL, `cor: 'azul'` no caso; a ÚLTIMA do array sai primeiro (2º Y, 3º Z → `['Z','Y']`); **`ajuda_ordem_informada=True`** naquele hospital. A ajuda numerada pode estar no rodapé do próprio hospital — transcreva os dois. Se a fila publicada sair em ordem diferente do recado, é defeito de código, não do lote. |
 | "Trocas: A (consultório) na posição do B no HRO" | `'A': {tipo:'troca', parceiro:'B', apenasRegistro:True, local:'Consultório'}` — B fora de escala. |
+| "Trocas consultório: R1 com X" (X no rodapé da foto; o R1 com caso e fora dele) | o R1 **ASSUME a posição de X no rodapé**: na `ordem`, troque o nome de X pelo do R1 (MELO→THAYNA) e só o R1 leva `{tipo:'troca', parceiro:'X', apenasRegistro:True, local:'Consultório'}`; X vai ao consultório, sem caso inventado. R1 fora do rodapé nasce com selo "Ajuda" no card (dono 25/09: "já foi corrigido e está voltando"); o aviso "fora da ordem: R1 tem caso" no ensaio é esse erro. |
 | "A na posição do B" com os DOIS em escala | registro nos dois lados: `'A': {…parceiro:'B', local:'<hospital de B>'}` e `'B': {…parceiro:'A', local:'<hospital de A>'}`. |
 | qualquer troca do recado | **sempre `apenasRegistro: True`** — já aconteceu, a foto já saiu certa; sem o campo vira declaração pendente e a próxima importação executa um swap. Não perguntar "registro ou executar". |
 | "X na equipe da Unimed até as 19h" / "no HRO até as 13h" / "na equipe da Unimed no período vespertino" | X é membro da equipe daquele hospital no turno: transcreva-o no rodapé como está na foto **e** `'X': {tipo:'equipe'}` em `decisoes` — a publicação grava `naEquipe` na linha e o card mostra o selo **"Equipe até 13h/19h"** (dono 21/09). Nada de ajuda, troca ou `turnoProprio` ("até as 19h" = fim do turno). A numérica aponta "a mais"/"faltando" — é a confirmação. Se X também estiver em outro hospital, `equipe` NÃO responde a duplicidade (responda com intencional/troca). |
 | linha `MATERNO` do HRO + mapa HC com a mesma pessoa | duplicidade esperada: responde pela troca do recado ou `'NOME': {tipo:'intencional'}`. |
-| apelidos | Beta = ROBERTA · Joao Moreira = JOAO RICARDO · Garim = GARIM · Nathália Fornari = NATHALIA · Dani Resi = DANIELA (Reis) · Rafael = PELISSARO. Nome ambíguo (dois GUILHERME, dois JOAO): escreva o nome completo, nunca escolha; o ensaio recusa o que não resolver. |
+| apelidos | Beta = ROBERTA · Joao Moreira = JOAO RICARDO · Garim = GARIM · Nathália Fornari = NATHALIA · Dani Resi = DANIELA (Reis) · Rafael = PELISSARO · Guilherme R1 = GUILHERME XAVIER (o mesmo login de "GUILHERME D"/DIDOMENICO) · "@Guilherme" no recado = GUILHERME MELO. Nome ambíguo (dois GUILHERME, dois JOAO): escreva o nome completo, nunca escolha; o ensaio recusa o que não resolver. |
 
 ## O que o ensaio faz com o lote
 
