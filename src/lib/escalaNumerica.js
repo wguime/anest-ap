@@ -80,9 +80,13 @@ export function casarNomeComLegenda(nomeLegenda, nomeCompleto) {
   const L = normNomeNumerica(nomeLegenda)
   const C = tokens(nomeCompleto)
   if (!L || !C.length) return false
+  // O Pega Plantão abrevia o primeiro nome ("G. Staub", "G. Melo", "A. Danieli", "A. Schmidt" —
+  // dono 25/09): a letra sozinha vale pelo primeiro nome do cadastro que começa com ela.
+  const abreviado = C.length >= 2 && C[0].length === 1
   for (const cad of CADASTRO_LEGENDA[L] || []) {
     const K = tokens(cad)
     if (K.join('') === C.join('') || subsequenciaComPrimeiroNome(K, C)) return true
+    if (abreviado && K[0].length > 1 && K[0].startsWith(C[0]) && subsequenciaComPrimeiroNome(K, [K[0], ...C.slice(1)])) return true
   }
   const T = tokens(L)
   if (T.length >= 2 && subsequenciaComPrimeiroNome(T, C)) return true

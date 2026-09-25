@@ -12,7 +12,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
-import { montarOrdem, HOSPITAIS_NUMERICA } from '../../lib/escalaNumerica'
+import { montarOrdem, HOSPITAIS_NUMERICA, casarNomeComLegenda } from '../../lib/escalaNumerica'
 import {
   vesperaDe, ehDiaUtilNumerica, fonteDoNoturno, noturnosDoPegaPlantao, noturnosDoDocumentoFds,
   aplicarPosPlantaoManha, marcarPosPlantaoTarde, excluirPosPlantaoTarde,
@@ -200,5 +200,43 @@ describe('TARDE — não é escalado, mas fica na posição da numérica, marcad
     const r = marcarPosPlantaoTarde(blocos, consultorio, {})
     expect(r.blocos).toBe(blocos)
     expect(r.marcados).toEqual([])
+  })
+})
+
+describe('Pega Plantão com o primeiro nome abreviado (dono 25/09: "G. Staub = Guilherme Staub")', () => {
+  // Caso real: na noite de 24/09 o P2 (Unimed) foi "G. Staub" e à tarde de 25/09 ele não saiu
+  // como pós-plantão — o casador exigia o primeiro nome por extenso.
+  it('25/09 tarde: Staub é marcado e sai da lista esperada da conferência', () => {
+    const noturnos = { hro: 'Matheus Vieira da Cunha', unimed: 'G. Staub' }
+    const { blocos, consultorio } = grade('2026-09-25', 'vespertino')
+    const todos = [...blocos.flatMap((b) => b.lista), ...consultorio]
+    expect(todos.some((p) => p.nome === 'STAUB')).toBe(true)
+
+    const r = marcarPosPlantaoTarde(blocos, consultorio, noturnos)
+    const marcados = [...r.blocos.flatMap((b) => b.lista), ...r.consultorio].filter((p) => p.posPlantao)
+    expect(marcados.map((p) => `${p.nome} ${p.postoPlantao}`).sort()).toEqual(['MATHEUS P1', 'STAUB P2'])
+
+    const lista = blocos.find((b) => b.lista.some((p) => p.nome === 'STAUB')).lista
+    expect(excluirPosPlantaoTarde(lista, noturnos).excluidos).toContain('STAUB')
+  })
+
+  it('25/09 manhã: Staub sobe para a 2ª posição da Unimed', () => {
+    const { blocos, consultorio } = grade('2026-09-25', 'matutino')
+    const r = aplicarPosPlantaoManha(dados, blocos, consultorio, { hro: null, unimed: 'G. Staub' })
+    expect(nomes(r.blocos, 'unimed')[1]).toBe('STAUB')
+  })
+
+  // Todas as grafias de P1/P2 registradas no Pega Plantão de jun a set/2026: cada uma casa com
+  // UMA pessoa da legenda — a inicial não pode abrir casamento com quem tem o mesmo sobrenome.
+  const DO_PEGA_PLANTAO = {
+    'A. Danieli': 'ALEXANDRE D', 'A. Schmidt': 'ALEXANDRE S', 'G. Melo': 'MELO', 'G. Staub': 'STAUB',
+    'Guilherme Xavier Di Domenico': 'GUILHERME D', 'Eduardo Savoldi': 'EDUARDO', 'Matheus Vieira da Cunha': 'MATHEUS',
+    'João Ricardo Moreira': 'JOAO RICARDO', 'Joao Henrique Salvao Vanni': 'JOAO HENRIQUE', 'Gustavo Almansa Garim': 'GARIM',
+    'Gustavo Biesdorf': 'GUSTAVO', 'Gabriel Juan Kettenhuber Costa': 'GABRIEL', 'Nathalia Fornari Fernandes': 'NATHALIA',
+    'Thayná Regina Santos': 'THAYNA', 'Romulo Santos Roxo': 'ROMULO', 'Tiago Iop Viana': 'TIAGO',
+  }
+  const legenda = Object.values(dados.legenda).flatMap((e) => String(e.nome).split('/').map((s) => s.trim()))
+  it.each(Object.entries(DO_PEGA_PLANTAO))('%s → só %s', (doPP, esperado) => {
+    expect(legenda.filter((n) => casarNomeComLegenda(n, doPP))).toEqual([esperado])
   })
 })
