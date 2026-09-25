@@ -68,7 +68,7 @@ function Turno({ rotulo, vista }) {
         <div className="fn-col">
           {col('materno')}
           {vista.consultorio?.length > 0 && (
-            <Coluna titulo="Consultório" meta="fora da fila" lista={vista.consultorio} semPosicao />
+            <Coluna titulo="Consultório" lista={vista.consultorio} semPosicao />
           )}
         </div>
       </div>

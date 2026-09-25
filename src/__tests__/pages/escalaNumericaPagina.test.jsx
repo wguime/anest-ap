@@ -524,3 +524,18 @@ describe('Escala Numérica — imprimir (dono 25/09: o turno ou o dia)', () => {
     expect(screen.queryByRole('button', { name: 'Imprimir a escala numérica' })).toBeNull()
   })
 })
+
+describe('Escala Numérica — folha impressa sem "fora da fila" (dono 25/09)', () => {
+  it('o Consultório sai só com o título na folha', async () => {
+    vi.setSystemTime(new Date('2026-09-04T10:00:00-03:00'))
+    window.print = vi.fn()
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Unimed' })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: 'Imprimir a escala numérica' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /O dia inteiro/ }))
+    await waitFor(() => expect(window.print).toHaveBeenCalled())
+    const folha = document.querySelector('.folha-numerica')
+    expect([...folha.querySelectorAll('h4')].some((h) => h.textContent.trim() === 'Consultório')).toBe(true)
+    expect(folha.textContent).not.toContain('fora da fila')
+  })
+})
