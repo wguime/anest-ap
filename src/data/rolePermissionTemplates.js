@@ -295,7 +295,9 @@ export function getAllCardIds(value = true) {
  *    Home que ele enumerou (⚠️ a página de Perfil NÃO depende deste card: ela
  *    fica fora do PAGE_TO_CARD, então o botão "Sair" continua alcançável);
  *  - Gestão, Educação e Dashboard inteiros — denúncia, faturamento, indicador de
- *    gestão e prontuário de residência não foram pedidos.
+ *    gestão e prontuário de residência não foram pedidos. (Em 25/09 o dono abriu
+ *    quatro cards de Gestão — ver o bloco no fim da lista. Publicações e
+ *    Universidade Unimed, na Educação, não têm card: já eram de todo logado.)
  *
  * `criterios_uti` entra junto com `calculadoras` porque a Indicação de UTI virou
  * uma SEÇÃO da tela de calculadoras em 29/08 — a rota antiga ainda responde e
@@ -320,6 +322,23 @@ const CARDS_CONTA_HOSPITAL = {
   cp_listagem: true,
   manutencao: true,
   refeicao_unimed: true,
+  // Gestão (dono 2026-09-25, por print dos cards): Notificações e Denúncias,
+  // Biblioteca, Comunicados e Escalas. `qrcode_generator` fica fora — é ferramenta
+  // de quem divulga o canal, não de quem relata. No hub Escalas, "Escalas
+  // Funcionárias" abre pela `escalas_sobreaviso`, então ela e a consulta entram;
+  // `trocas_sobreaviso` NÃO: troca é pedido de uma PESSOA, e a conta é
+  // compartilhada. A gestão de relatos segue fechada por `incidentAccess.js`
+  // (admin pleno ou responsável), independente do card.
+  incidentes: true,
+  relatar_notificacao: true,
+  fazer_denuncia: true,
+  meus_relatos: true,
+  notificacao_unimed: true,
+  biblioteca: true,
+  comunicados: true,
+  escalas: true,
+  escalas_sobreaviso: true,
+  consulta_sobreaviso: true,
 };
 
 /**

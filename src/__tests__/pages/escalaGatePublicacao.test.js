@@ -158,6 +158,9 @@ describe('cards das contas de hospital', () => {
     // Menu — os 4 widgets reais + as sub-rotas sem as quais eles abrem em tela negada
     'calculadoras', 'criterios_uti', 'cateter_peridural', 'cp_novo', 'cp_listagem',
     'manutencao', 'refeicao_unimed',
+    // Gestão (dono 2026-09-25): Notificações e Denúncias, Biblioteca, Comunicados, Escalas
+    'incidentes', 'relatar_notificacao', 'fazer_denuncia', 'meus_relatos', 'notificacao_unimed',
+    'biblioteca', 'comunicados', 'escalas', 'escalas_sobreaviso', 'consulta_sobreaviso',
   ]
 
   it.each(CONTAS_HOSPITAL)('%s liga exatamente os cards pedidos, e nada mais', async (role) => {
@@ -172,11 +175,12 @@ describe('cards das contas de hospital', () => {
     expect(ROLE_PERMISSION_TEMPLATES[role].ferias).toBe(false)
   })
 
-  it.each(CONTAS_HOSPITAL)('%s segue fora de Gestão, Educação e Dashboard', async (role) => {
+  it.each(CONTAS_HOSPITAL)('%s segue fora do resto de Gestão, Educação e Dashboard', async (role) => {
     const { ROLE_PERMISSION_TEMPLATES } = await import('@/data/rolePermissionTemplates')
     const cards = ROLE_PERMISSION_TEMPLATES[role]
-    for (const id of ['incidentes', 'fazer_denuncia', 'faturamento', 'financeiro',
-                      'dashboard_executivo', 'gestao_documental', 'biblioteca',
+    // troca é pedido de uma pessoa; a conta é compartilhada (dono 25/09 abriu Escalas, não trocas)
+    for (const id of ['faturamento', 'financeiro', 'qrcode_generator', 'trocas_sobreaviso',
+                      'dashboard_executivo', 'gestao_documental',
                       'educacao_continuada', 'res_gerenciar', 'qualidade']) {
       expect(cards[id]).toBe(false)
     }
