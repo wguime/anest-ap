@@ -467,3 +467,60 @@ describe('Escala Numérica — pós-plantão', () => {
     expect(fetchEscala).not.toHaveBeenCalled()
   })
 })
+
+describe('Escala Numérica — imprimir (dono 25/09: o turno ou o dia)', () => {
+  const folha = () => document.querySelector('.folha-numerica')
+  const turnosDaFolha = () => [...folha().querySelectorAll('h3')].map((h) => h.textContent)
+  const abrirMenu = () => fireEvent.click(screen.getByRole('button', { name: 'Imprimir a escala numérica' }))
+
+  beforeEach(() => {
+    vi.setSystemTime(new Date('2026-09-04T10:00:00-03:00')) // sexta, com pós-plantão da noite de 03/09
+    window.print = vi.fn()
+  })
+
+  it('"O dia inteiro" põe manhã e tarde na mesma folha, com as marcas da tela, e abre a impressão', async () => {
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(nomesDoBloco('HRO')[1]).toBe('ROMULO'))
+    expect(folha()).toBeNull() // a folha só existe enquanto imprime
+
+    abrirMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: /O dia inteiro/ }))
+    await waitFor(() => expect(window.print).toHaveBeenCalledTimes(1))
+
+    expect(turnosDaFolha()).toEqual(['Manhã', 'Tarde'])
+    const [manha, tarde] = folha().querySelectorAll('.fn-turno')
+    // manhã: o Romulo na 2ª do HRO com o posto; tarde: marcado como pós plantão
+    expect(manha.textContent).toMatch(/2\d*ROMULO \(P1\)/)
+    expect(tarde.textContent).toContain('ROMULO (pós plantão P1)')
+    expect(tarde.textContent).toContain('KLISMAN (pós plantão P2)')
+
+    // fechou o diálogo: a folha sai do DOM
+    window.dispatchEvent(new Event('afterprint'))
+    await waitFor(() => expect(folha()).toBeNull())
+  })
+
+  it('"Só a tarde" imprime o turno que está na tela, e o rótulo acompanha o seletor', async () => {
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Unimed' })).toBeInTheDocument())
+    abrirMenu()
+    expect(screen.getByRole('menuitem', { name: /Só a manhã/ })).toBeInTheDocument()
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Tarde' }))
+    await waitFor(() => expect(posPlantao()).toHaveLength(2))
+    abrirMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: /Só a tarde/ }))
+    await waitFor(() => expect(window.print).toHaveBeenCalled())
+    expect(turnosDaFolha()).toEqual(['Tarde'])
+    // HRO · Unimed · Materno + Consultório
+    expect([...folha().querySelectorAll('h4')].map((h) => h.firstChild.textContent.trim()))
+      .toEqual(['HRO', 'Unimed', 'Materno', 'Consultório'])
+  })
+
+  it('no fim de semana não há o que imprimir da numérica — o botão não aparece', async () => {
+    vi.setSystemTime(new Date('2026-09-05T10:00:00-03:00'))
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(pns().length).toBeGreaterThan(0))
+    expect(screen.queryByRole('button', { name: 'Imprimir a escala numérica' })).toBeNull()
+  })
+})

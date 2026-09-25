@@ -1,0 +1,29 @@
+/*
+ * Folha impressa da Escala Numérica (FolhaImpressao.jsx). Tudo escopado pela presença da folha
+ * (`:has`), que só existe no DOM enquanto a impressão está aberta — imprimir outra tela do app
+ * não é afetado. Cor fixa preto/branco: papel não tem tema.
+ */
+@page numerica { size: A4 portrait; margin: 10mm; }
+@media screen { .folha-numerica { display: none !important; } }
+@media print {
+  html:has(.folha-numerica), body:has(> .folha-numerica) { background: #fff !important; margin: 0 !important; padding: 0 !important; }
+  body:has(> .folha-numerica) > *:not(.folha-numerica) { display: none !important; }
+  .folha-numerica { display: block; page: numerica; color: #000; font: 9pt/1.25 -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
+  .folha-numerica .fn-cab { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px;
+    border-bottom: 1.5px solid #000; padding-bottom: 4px; margin-bottom: 4px; }
+  .folha-numerica .fn-cab b { display: block; font-size: 13pt; font-weight: 800; }
+  .folha-numerica .fn-cab small { font-size: 7.5pt; color: #555; text-align: right; }
+  .folha-numerica .fn-turno { break-inside: avoid; }
+  .folha-numerica h3 { font-size: 10.5pt; font-weight: 800; margin: 8px 0 3px; text-transform: uppercase; letter-spacing: .05em; }
+  .folha-numerica .fn-grade { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; align-items: start; }
+  .folha-numerica h4 { margin: 0 0 1px; font-size: 9.5pt; font-weight: 700; border-bottom: 1px solid #000; display: flex; justify-content: space-between; }
+  .folha-numerica h4 span { font-weight: 400; color: #555; }
+  .folha-numerica .fn-col > section + section { margin-top: 8px; }
+  .folha-numerica table { width: 100%; border-collapse: collapse; }
+  .folha-numerica td { border-bottom: .5px solid #bbb; padding: 1.2px 2px; white-space: nowrap; }
+  .folha-numerica .fn-pos { width: 1.6em; font-weight: 700; text-align: right; padding-right: 4px; }
+  .folha-numerica .fn-num { width: 1.6em; color: #666; }
+  .folha-numerica .fn-apagado td { color: #666; }
+  .folha-numerica em { font-style: normal; font-size: 7.5pt; font-weight: 600; }
+  .folha-numerica .fn-rodape { margin: 8px 0 0; font-size: 7.5pt; color: #444; }
+}

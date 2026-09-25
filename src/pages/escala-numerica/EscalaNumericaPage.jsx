@@ -13,14 +13,15 @@
  * Regras completas: `.claude/rules/escala-numerica.md`.
  */
 import { useState, useMemo, useEffect } from 'react'
-import { DatePicker } from '@/design-system'
+import { DatePicker, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, DropdownLabel } from '@/design-system'
 import { PageHeader } from '@/components'
-import { RefreshCw, CalendarClock, Umbrella, TriangleAlert, Info } from 'lucide-react'
+import { RefreshCw, CalendarClock, Umbrella, TriangleAlert, Info, Printer, Clock, CalendarDays } from 'lucide-react'
 import SegmentedSelector from '../escala-cirurgica/SegmentedSelector'
 import dadosNumerica from '@/data/escalaNumerica.json'
 import { montarOrdem, anotarFerias, HOSPITAIS_NUMERICA, LABEL_HOSPITAL, LABEL_TURNO } from '@/lib/escalaNumerica'
 import { getPlantoesPorData } from '@/services/pegaPlantaoApi'
 import { BlocoOrdem, BlocoConsultorio } from './ListaOrdem'
+import FolhaImpressao from './FolhaImpressao'
 import { useFeriasDoAno, feriasNaData } from './useFeriasDoAno'
 import { sabadoDoFimDeSemana, filaPn } from './plantonistasFds'
 import { aplicarPosPlantaoManha, marcarPosPlantaoTarde } from '@/lib/posPlantao'
@@ -114,6 +115,43 @@ function BlocoFds({ dataISO, fila, loading, erro, sabado }) {
   )
 }
 
+/**
+ * A lista de um turno, como a tela mostra. Função e não `useMemo` porque a impressão do dia
+ * inteiro monta os DOIS turnos com as mesmas regras (pós-plantão antes das férias).
+ */
+function montarVista(dataISO, turno, ferias, noturnos) {
+  // qualquer hospital serve de sonda: fim de semana, fora da vigência e feriado (fila única)
+  // respondem igual para os três
+  const base = montarOrdem(dadosNumerica, { data: dataISO, hospital: 'hro', turno, ferias: null })
+  if (!base.ok) return { tipo: 'vazio', motivo: base.motivo, aviso: base.aviso }
+  if (base.filaUnica) {
+    return {
+      tipo: 'feriado',
+      feriado: base.feriado,
+      lista: anotarFerias(base.lista, ferias),
+      pendencias: pendenciasReais(base.pendencias),
+    }
+  }
+  const brutos = HOSPITAIS_NUMERICA.map((hospital) => {
+    const r = montarOrdem(dadosNumerica, { data: dataISO, hospital, turno, ferias: null })
+    return { hospital, lista: r.lista, pendencias: pendenciasReais(r.pendencias) }
+  })
+  // pós-plantão ANTES das férias: a manhã muda quem está em cada coluna, e marcar antes
+  // de mover deixaria a marca na posição velha
+  const pp = turno === 'matutino'
+    ? aplicarPosPlantaoManha(dadosNumerica, brutos, base.consultorio, noturnos)
+    : marcarPosPlantaoTarde(brutos, base.consultorio, noturnos)
+  return {
+    tipo: 'dia',
+    blocos: pp.blocos.map((b) => ({ ...b, lista: anotarFerias(b.lista, ferias) })),
+    // o consultório não entra na FILA, mas quem está nele também tira férias (dono 03/09):
+    // a marca vale para os três hospitais E para o consultório
+    consultorio: anotarFerias(pp.consultorio, ferias),
+    diaSemana: base.diaSemana,
+    pendencias: [...new Set(brutos.flatMap((b) => b.pendencias))],
+  }
+}
+
 function Vazio({ icone: Icone, titulo, texto }) {
   return (
     <section className="flex flex-col items-center gap-2 rounded-[20px] border border-border bg-card px-5 py-7 text-center">
@@ -136,43 +174,38 @@ export default function EscalaNumericaPage({ goBack }) {
   // plantonaram; na tarde ficam onde a numérica os põe, marcados (dono 03/09)
   const posPlantao = usePosPlantao(dataISO)
 
-  const vista = useMemo(() => {
-    // qualquer hospital serve de sonda: fim de semana, fora da vigência e feriado (fila única)
-    // respondem igual para os três
-    const base = montarOrdem(dadosNumerica, { data: dataISO, hospital: 'hro', turno, ferias: null })
-    if (!base.ok) return { tipo: 'vazio', motivo: base.motivo, aviso: base.aviso }
-    if (base.filaUnica) {
-      return {
-        tipo: 'feriado',
-        feriado: base.feriado,
-        lista: anotarFerias(base.lista, ferias),
-        pendencias: pendenciasReais(base.pendencias),
-      }
-    }
-    const brutos = HOSPITAIS_NUMERICA.map((hospital) => {
-      const r = montarOrdem(dadosNumerica, { data: dataISO, hospital, turno, ferias: null })
-      return { hospital, lista: r.lista, pendencias: pendenciasReais(r.pendencias) }
-    })
-    // pós-plantão ANTES das férias: a manhã muda quem está em cada coluna, e marcar antes
-    // de mover deixaria a marca na posição velha
-    const pp = turno === 'matutino'
-      ? aplicarPosPlantaoManha(dadosNumerica, brutos, base.consultorio, posPlantao.noturnos)
-      : marcarPosPlantaoTarde(brutos, base.consultorio, posPlantao.noturnos)
-    return {
-      tipo: 'dia',
-      blocos: pp.blocos.map((b) => ({ ...b, lista: anotarFerias(b.lista, ferias) })),
-      // o consultório não entra na FILA, mas quem está nele também tira férias (dono 03/09):
-      // a marca vale para os três hospitais E para o consultório
-      consultorio: anotarFerias(pp.consultorio, ferias),
-      diaSemana: base.diaSemana,
-      pendencias: [...new Set(brutos.flatMap((b) => b.pendencias))],
-    }
-  }, [dataISO, turno, ferias, posPlantao.noturnos])
+  const vista = useMemo(
+    () => montarVista(dataISO, turno, ferias, posPlantao.noturnos),
+    [dataISO, turno, ferias, posPlantao.noturnos]
+  )
 
   const ehFds = vista.tipo === 'vazio' && vista.motivo === 'fim_de_semana'
   const fds = useFilaFds(dataISO, ehFds)
 
   const subtitulo = `${DIA_LONGO[data.getDay()]}, ${paraBr(dataISO)}`
+
+  // Impressão (dono 25/09): 'turno' = o que está na tela · 'dia' = manhã e tarde. A folha só
+  // monta enquanto a impressão está aberta; o diálogo abre no quadro seguinte, com ela no DOM.
+  const [impressao, setImpressao] = useState(null)
+  useEffect(() => {
+    if (!impressao) return undefined
+    const fim = () => setImpressao(null)
+    window.addEventListener('afterprint', fim)
+    const raf = requestAnimationFrame(() => window.print())
+    return () => { cancelAnimationFrame(raf); window.removeEventListener('afterprint', fim) }
+  }, [impressao])
+
+  const turnosImpressos = !impressao ? [] : impressao === 'dia'
+    ? TURNOS.map((t) => ({
+      rotulo: t.label,
+      vista: t.value === turno ? vista : montarVista(dataISO, t.value, ferias, posPlantao.noturnos),
+    }))
+    : [{ rotulo: LABEL_TURNO[turno], vista }]
+  const notaFerias = erro
+    ? 'Férias NÃO conferidas'
+    : conferidoEm
+      ? `Férias do Pega Plantão conferidas às ${conferidoEm.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+      : ''
 
   return (
     <div className="min-h-dvh bg-background pb-24">
@@ -181,17 +214,45 @@ export default function EscalaNumericaPage({ goBack }) {
         subtitle={subtitulo}
         onBack={goBack}
         actions={
-          <button
-            type="button"
-            onClick={recarregar}
-            disabled={loading}
-            className="p-2 text-primary transition-opacity hover:opacity-70 disabled:opacity-50"
-            aria-label="Consultar as férias de novo"
-          >
-            <RefreshCw className={`size-5 ${loading ? 'animate-spin' : ''}`} />
-          </button>
+          <div className="flex items-center">
+            {vista.tipo !== 'vazio' && (
+              <DropdownMenu>
+                <DropdownTrigger asChild>
+                  <button
+                    type="button"
+                    className="p-2 text-primary transition-opacity hover:opacity-70"
+                    aria-label="Imprimir a escala numérica"
+                  >
+                    <Printer className="size-5" />
+                  </button>
+                </DropdownTrigger>
+                <DropdownContent align="end" className="w-[232px]">
+                  <DropdownLabel>Imprimir</DropdownLabel>
+                  <DropdownItem icon={<Clock className="size-5 text-primary" />} onClick={() => setImpressao('turno')}>
+                    <b className="block text-[14.5px] font-semibold">Só a {LABEL_TURNO[turno].toLowerCase()}</b>
+                    <span className="block text-[12px] text-muted-foreground">o turno na tela · 1 página</span>
+                  </DropdownItem>
+                  <DropdownItem icon={<CalendarDays className="size-5 text-primary" />} onClick={() => setImpressao('dia')}>
+                    <b className="block text-[14.5px] font-semibold">O dia inteiro</b>
+                    <span className="block text-[12px] text-muted-foreground">manhã e tarde · 1 página</span>
+                  </DropdownItem>
+                </DropdownContent>
+              </DropdownMenu>
+            )}
+            <button
+              type="button"
+              onClick={recarregar}
+              disabled={loading}
+              className="p-2 text-primary transition-opacity hover:opacity-70 disabled:opacity-50"
+              aria-label="Consultar as férias de novo"
+            >
+              <RefreshCw className={`size-5 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
         }
       />
+
+      {impressao && <FolhaImpressao dia={subtitulo} turnos={turnosImpressos} notaFerias={notaFerias} />}
 
       <div className="flex flex-col gap-3 px-4 pt-3 sm:px-5">
         <DatePicker value={data} onChange={(d) => d && setData(d)} />
