@@ -230,6 +230,34 @@ describe('terminoEncadeado — a duração de quem ainda não começou vale depo
   })
 })
 
+// A FOLHA DO TEMPO TOTAL DIZ, ANTES DO TOQUE, DE ONDE A DURAÇÃO CONTA (dono 25/09):
+// "Ainda não começou: a duração conta a partir das 10:00". A frase sai de
+// `inicioDaDuracao` e o valor gravado de `terminoEncadeado`, que soma a duração à
+// MESMA base — se as duas divergissem, a folha prometeria um horário e gravaria outro.
+import { inicioDaDuracao } from '../../pages/escala-cirurgica/utils'
+
+describe('inicioDaDuracao — a base que a folha anuncia é a que terminoEncadeado grava', () => {
+  const agora = 9 * 60 + 40 // 09:40
+  const emCurso = caso('c1', 'MARILIO', { hora: '07:30', terminoPrevisto: '10:00', statusCirurgia: 'iniciada' })
+  const proxima = caso('c2', 'MARILIO', { hora: '10:15' })
+
+  it('agendada depois de uma com término: base = término da anterior, e ela é anunciada', () => {
+    const r = inicioDaDuracao(escalaCom([emCurso, proxima]), proxima, agora)
+    expect(r).toEqual({ baseMin: 10 * 60, anterior: '10:00' })
+    // a mesma base que o valor gravado usa
+    expect(terminoEncadeado(escalaCom([emCurso, proxima]), proxima, 60, agora)).toBe('11:00')
+  })
+  it('em andamento: conta de agora, sem anterior para anunciar', () => {
+    expect(inicioDaDuracao(escalaCom([emCurso, proxima]), emCurso, agora)).toEqual({ baseMin: agora, anterior: null })
+  })
+  it('anterior sem término ou que já passou: conta de agora, sem frase', () => {
+    const semTermino = { ...emCurso, terminoPrevisto: '' }
+    expect(inicioDaDuracao(escalaCom([semTermino, proxima]), proxima, agora).anterior).toBeNull()
+    const passou = { ...emCurso, terminoPrevisto: '09:00' }
+    expect(inicioDaDuracao(escalaCom([passou, proxima]), proxima, agora)).toEqual({ baseMin: agora, anterior: null })
+  })
+})
+
 // ════════════════════════════════════════════════════════════════════════════
 // O TOTAL É INFORMADO INDEPENDENTE DOS TEMPOS INDIVIDUAIS (dono 15/09, à tarde).
 // A v5.12.8 tentou o espelho PARCIAL ("com alguma informada, o total vira o último

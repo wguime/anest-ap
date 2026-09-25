@@ -3,6 +3,21 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.34 (25/09/2026) — Escala: "+ Tempo total" também informa o término de cada cirurgia
+
+Pedido do dono (25/09), modelo A escolhido em protótipo (`.tmp/tempo-total-com-cirurgias.html`).
+- A folha do tempo total ganha, abaixo do que já existia, **"Término de cada cirurgia"**: uma linha
+  por cirurgia aberta da pessoa (hora · nome curto · cirurgião). O toque sobe o mesmo painel só para
+  ela, por cima; ao escolher, volta para a folha do total. O card da fila não muda.
+- Grava no mesmo campo do detalhe do caso (`termino_previsto`), então Completa e Minhas mostram o
+  término pelo tempo real, como já faziam.
+- Regras de 14–15/09 mantidas: com UMA cirurgia o tempo da folha é o término dela (não há lista);
+  com todas informadas o total vira o término da última; com alguma sem término o total segue o
+  informado à mão.
+- Numa cirurgia que ainda não começou, a folha diz de onde a duração conta ("a partir das 16:30,
+  quando termina a anterior") — pela mesma função que grava (`inicioDaDuracao`).
+- Frase da folha corrigida: "…e nunca é a soma delas" estava errada desde 14/09.
+
 ## v5.12.33 (23/09/2026) — Escala: a tela do fim de semana confere o que a skill confere
 
 Decisão do dono (23/09): "igualar a tela à skill". A importação de FDS pela tela publicava mapas

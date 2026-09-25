@@ -23,7 +23,7 @@ import LiberacoesView from './LiberacoesView'
 import ImportarEscalasPage from './ImportarEscalasPage'
 import ImportarEscalaFdsPage from './ImportarEscalaFdsPage'
 import TrocaSheet from './TrocaSheet'
-import { meuAliasDe, turnoAtualOperacional, dataPorExtenso, estadoTrocasDoHistorico, normNome, formatData, rodapeDoTurno, localizarSlotEscala, localizarMeuPosto, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca, espelhoTempoTotal, terminoEncadeado, turnoDoCaso } from './utils'
+import { meuAliasDe, turnoAtualOperacional, dataPorExtenso, estadoTrocasDoHistorico, normNome, formatData, rodapeDoTurno, localizarSlotEscala, localizarMeuPosto, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca, espelhoTempoTotal, inicioDaDuracao, terminoEncadeado, turnoDoCaso } from './utils'
 import { ehDataFilaUnica, ehFeriado, ehFimDeSemana, FDS_HOSPITAL, FDS_TURNO_CASOS, FDS_TURNOS, turnoFdsAtual } from '@/lib/escalaFds'
 import { faseLiberacoes } from '@/lib/plantaoNoturno'
 import { hospitalDaConta, podeEditarEscalaCirurgica, podePublicarEscalaCirurgica } from './gate'
@@ -762,6 +762,15 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                     const esp = alvo && !String(dona?.id || '').startsWith('demo-')
                       ? espelhoTempoTotal(dona, alvo, hhmm || '', { hospitalLabels: HOSPITAL_LABEL }) : null
                     if (esp) await setLinhaOverride(dona, { chave: esp.chave, anestesista: esp.nome }, esp.override, userInfo, turno)
+                  }}
+                  // DE ONDE CONTA A DURAÇÃO de uma cirurgia (dono 25/09): a folha do tempo
+                  // total diz, antes do toque, que "1h" numa cirurgia que ainda não começou
+                  // vale depois da anterior — pela MESMA escala dona e a MESMA função que o
+                  // handler acima usa para gravar, senão a frase e o valor discordariam.
+                  inicioDuracaoCaso={(casoId, agoraMin) => {
+                    const dona = modoFds ? escalaDoCaso(casoId) || escala : escala
+                    const alvo = (dona?.casos || []).find((c) => c.id === casoId)
+                    return alvo && agoraMin != null ? inicioDaDuracao(dona, alvo, agoraMin) : null
                   }}
                   onAddAjuda={(nome) => adicionarAjuda(escalaLib, turno, nome)}
                   onReordenarAjuda={(de, para) => reordenarAjuda(escalaLib, turno, de, para)}

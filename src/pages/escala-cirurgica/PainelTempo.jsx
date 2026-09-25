@@ -1,16 +1,19 @@
 /**
  * PainelTempo — FONTE ÚNICA da UI de "tempo faltante" da Escala Cirúrgica.
  *
- * Usado em três lugares que precisam concordar: o cronômetro da PESSOA (pílula do
- * card na fila e painel da linha) e o término de UMA CIRURGIA (detalhe do caso,
- * dono 29/07). Antes de 29/07 já havia duas cópias divergentes — uma delas com o
- * input de hora nativo, que abre o picker cru do browser e o dono já tinha
- * rejeitado. Um componente só evita a terceira.
+ * Usado nos lugares que precisam concordar: o cronômetro da PESSOA (pílula do card
+ * na fila) e o término de UMA CIRURGIA (detalhe do caso, dono 29/07; e, desde
+ * 25/09, a folha "Término · …" que sobe da própria folha do tempo total). Antes de
+ * 29/07 já havia duas cópias divergentes — uma delas com o input de hora nativo,
+ * que abre o picker cru do browser e o dono já tinha rejeitado. Um componente só
+ * evita a terceira.
  *
  * O tempo é 100% MANUAL (decisão do dono 23/07): a estimativa automática enchia a
- * coluna de "+8h53" e ninguém confiava. NÃO reintroduzir — e, pela mesma razão, o
- * total da PESSOA nunca é a soma dos tempos das cirurgias dela: estimativa que
- * estoura não converge para zero, então somar as partes só acumula o erro.
+ * coluna de "+8h53" e ninguém confiava. NÃO reintroduzir. O total da PESSOA é
+ * informado à mão e independente das cirurgias (15/09) — com uma exceção, decidida
+ * em 14/09: com o término de TODAS informado, ele vira o da última
+ * (`espelhoTempoTotal`). Soma parcial não existe: estimativa que estoura não
+ * converge para zero, então somar só algumas partes acumula o erro.
  */
 import { useState } from 'react'
 import { Button, Input, Select } from '@/design-system'

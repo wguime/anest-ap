@@ -344,6 +344,9 @@ se informa no CARD dela — `CasoDetalheSheet`, nas abas Completa e Minhas — c
 decidido em 31/07 ("é LÁ que se informa o tempo de cada cirurgia"); a fila reflete pelo
 realtime. O texto do término na linha é `<span>`, não botão. `onDefinirTerminoCaso` continua
 como prop da view porque o espelho inverso (pílula → caso único, seção abaixo) grava por ela.
+↳ Isto segue valendo para o CARD. Desde 25/09 a FOLHA do "+ Tempo total" também informa o
+término de cada cirurgia — pedido próprio do dono, seção "Término de cada cirurgia na folha do
+tempo total" abaixo. Não é a volta do "+ término" de 14/09: nada nasce no card.
 
 - **A fileira de baixo fica SOB O CÍRCULO (dono 15/09, opção C em maquete):** "há bastante
   sobra de espaço à esquerda do card, abaixo do círculo". As colunas do número (w-5) e do
@@ -450,6 +453,35 @@ total é manual enquanto alguma estiver sem término (29/07) e vira o último t�
 todas têm (14/09, acima). Trava: `liberacoesPainelLinha.test.jsx`, describe "a pílula do total
 espelha…".
 - Nada disso encosta em `ordem_liberacao`.
+
+### Término de cada cirurgia na folha do tempo total (dono 25/09, modelo A em protótipo)
+
+*"Ao clicar em '+ tempo total' quero que também seja possível inserir os tempos individuais de
+cada cirurgia em que o anestesista está designado"* — escolhido em maquete
+(`.tmp/tempo-total-com-cirurgias.html`, 430px, dois temas) contra o modelo B (alvos no topo e um
+painel só: era um MODO, gravar na cirurgia achando que é o total, e exigia a folha não fechar no
+toque).
+- **O que existia fica intacto.** Abaixo do "Limpar", com 2+ cirurgias abertas, a lista
+  "Término de cada cirurgia": uma linha por `linha.cirurgias` com id (hora · nome curto ·
+  cirurgião · em andamento/agendada), término + "faltam X" ou "Definir término". É a mesma linha
+  do `CasoDetalheSheet` ("Término desta cirurgia"). O toque sobe a folha "Término · {hora} {nome}"
+  por cima (z-1200, mesmo `PainelTempo`); escolher fecha SÓ ela — a do total fica aberta.
+- **Grava pelo `onDefinirTerminoCaso`** (o mesmo do espelho inverso): a página encadeia a duração
+  (`meta.minutos` → `terminoEncadeado`), grava `termino_previsto` sem toast e aplica
+  `espelhoTempoTotal` (todas informadas → total = término da última; alguma sem → total manual).
+  Completa/Minhas leem o mesmo campo (`CasoCard` mostra "→HH:MM") — a sincronia é o realtime.
+- **Uma cirurgia só: sem lista.** O tempo da folha É o término dela (`casoUnicoDoTotal`, a MESMA
+  guarda do espelho inverso — dupla e "?" ficam fora); a cirurgia aparece só como texto.
+- **A folha lê a linha AO VIVO** (`linhaTempo`: `linhasExibicao` pela chave) — `alvoTempo` é a
+  foto do toque, e o término de cada cirurgia muda com a folha aberta.
+- **Encadeamento dito antes do toque:** numa cirurgia agendada, "Ainda não começou: a duração
+  conta a partir das HH:MM, quando termina a anterior" — `inicioDaDuracao` (utils), a base que
+  `terminoEncadeado` soma, via prop `inicioDuracaoCaso` da página (mesma escala dona que grava).
+- **Frase da folha:** "…e nunca é a soma delas" (errada desde 14/09) virou três frases —
+  uma cirurgia: "é também o término da cirurgia dela"; 2+: "Com o término das N cirurgias
+  informado, vira o término da última"; nenhuma: "vale para o turno todo".
+- Travas: `liberacoesTempoPorCirurgia.test.jsx` (8 dos 10 falham contra a view anterior) e o
+  describe `inicioDaDuracao` em `espelhoTempoTotal.test.js`.
 
 
 ## Quem está de ajuda em OUTRO hospital (dono 2026-08-30/31 — caso Oscar)

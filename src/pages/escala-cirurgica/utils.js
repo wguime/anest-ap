@@ -1262,7 +1262,21 @@ const hhmmDeMinutos = (m) => {
 export function terminoEncadeado(escala, caso, minutos, agoraMin) {
   const dur = Number(minutos)
   if (!Number.isFinite(dur) || dur <= 0 || agoraMin == null) return ''
+  return hhmmDeMinutos(inicioDaDuracao(escala, caso, agoraMin).baseMin + dur)
+}
+
+/**
+ * DE ONDE conta a duração escolhida para uma cirurgia — a base de
+ * `terminoEncadeado`, separada para a folha do tempo total (dono 25/09) poder
+ * DIZER, antes do toque, que "1h" numa cirurgia que ainda não começou vale depois
+ * da anterior: sem a frase, tocar "1h" às 15:45 e ver 17:30 parecia erro. Uma
+ * função só decide a base, para a frase e o valor gravado nunca discordarem.
+ * @returns {{ baseMin:number, anterior:string|null }} `anterior` é o "HH:MM" do
+ *   término da cirurgia anterior quando a duração encadeia; null = conta de agora.
+ */
+export function inicioDaDuracao(escala, caso, agoraMin) {
   let base = agoraMin
+  let anterior = null
   if ((caso?.statusCirurgia || 'agendada') !== 'iniciada') {
     const ctx = casosAtivosDaPessoa(escala, caso)
     const horaCaso = parseHoraMinutos(caso?.hora)
@@ -1276,9 +1290,9 @@ export function terminoEncadeado(escala, caso, minutos, agoraMin) {
       if (horaCaso != null && h != null && h > horaCaso) continue
       if (ultimo == null || t > ultimo) ultimo = t
     }
-    if (ultimo != null && ultimo > base) base = ultimo
+    if (ultimo != null && ultimo > base) { base = ultimo; anterior = hhmmDeMinutos(ultimo) }
   }
-  return hhmmDeMinutos(base + dur)
+  return { baseMin: base, anterior }
 }
 
 /**
