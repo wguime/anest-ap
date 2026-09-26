@@ -3,6 +3,17 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.35 (25/09/2026) — Escala: captura para o aprendizado (estimativas e escala publicada)
+
+Pedido do dono (25/09), a partir da revisão `docs/escala-cirurgica-metricas/2026-W39-aprendizado.md`.
+Só banco — nada muda na tela. Migration `20260925220000` (validada, ensaiada com rollback e aplicada).
+- Tabela `escala_cirurgica_captura`, gravada por triggers: cada término informado de uma cirurgia
+  (inclusive o que "Terminada" zera), cada tempo total da pessoa, cada caso como foi publicado, cada
+  troca de anestesista no caso e a ordem de liberação de cada turno.
+- Separada do log de eventos para não mudar o relatório de adesão; leitura só admin; nenhum dado de
+  paciente.
+- Hora real de início/fim: mantida a hora do toque (dono).
+
 ## v5.12.34 (25/09/2026) — Escala: "+ Tempo total" também informa o término de cada cirurgia
 
 Pedido do dono (25/09), modelo A escolhido em protótipo (`.tmp/tempo-total-com-cirurgias.html`).

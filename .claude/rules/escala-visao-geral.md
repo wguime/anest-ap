@@ -218,6 +218,16 @@ Mobile-first: data (`DatePicker` DS) + turno + hospital (Unimed/HRO/Materno) + *
 
 **Log de eventos invisível** `escala_cirurgica_evento` (Fase 0 da previsão de tempos): triggers status (2 eixos) + liberações c/ snapshot da ordem — NUNCA bloqueia operação clínica.
 
+**Captura para o aprendizado** `escala_cirurgica_captura` (dono 25/09, migration `20260925220000`,
+aplicada): `estimativa` (cada `termino_previsto`, inclusive o que "terminada" zera), `estimativa_total`
+(`linha_overrides[turno:chave].termino`), `alocacao` (caso como foi gravado — publicação ou manual),
+`realocacao` (troca de anestesista no caso) e `ordem` (ordem de liberação por turno); `detalhe.publicacao`
+separa o que a RPC gravou (GUC `anest.publicacao`). ⚠️ **Captura nova vai para ESTA tabela, nunca para
+`escala_cirurgica_evento`**: o relatório de adesão conta TODO evento de lá com autor como "ação". Leitura
+só admin (desempenho de pessoa; nenhuma tela lê), escrita só por trigger. Hora real de início/fim NÃO é
+capturada — o dono manteve a hora do toque (25/09). Análise: `docs/escala-cirurgica-metricas/2026-W39-aprendizado*`.
+Trava: `escalaCapturaAprendizadoSql.test.js` (PGlite).
+
 ⚠️ coluna nova lida no front → `CAMEL_TO_SNAKE` do service (`statusExtra` incluso).
 
 ⚠️ INTEGRIDADE (lição 22/07): `liberacoes`/`linha_overrides` são gravados pela CHAVE ESTÁVEL da linha (`linha.chave` = uid do vínculo ou nome normalizado, fallback de leitura no display legado) e reordenação persiste `linha.nomeOriginal` — NUNCA gravar o nome exibido (muda com vínculos → marcações órfãs + rodapé duplicado, reparado em prod). Secret `ANTHROPIC_API_KEY` (dono).

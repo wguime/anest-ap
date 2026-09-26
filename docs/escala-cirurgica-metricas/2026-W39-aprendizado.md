@@ -83,9 +83,24 @@ não a quantidade de dados. Lacunas, da mais para a menos importante:
 Nota LGPD (baixa): 2 de 6.664 eventos de status trazem a idade do paciente dentro do texto do
 procedimento, que o log copia.
 
+## O que foi feito em 25/09
+
+- **Lacunas 2 e 3 fechadas** — migration `20260925220000_escala_captura_aprendizado.sql` (validada
+  pelo migration-validator, ensaiada em produção com rollback, aplicada às ~20h50 de 25/09):
+  tabela `escala_cirurgica_captura` com `estimativa`, `estimativa_total`, `alocacao`, `realocacao` e
+  `ordem`. Tabela própria porque o relatório de adesão conta todo evento de `escala_cirurgica_evento`
+  como ação. Leitura só admin. A captura começa em 25/09 — não há retroativo.
+- **Lacuna 1 recusada pelo dono** (protótipo `.tmp/hora-real-inicio-fim.html`): *"quero que o horário
+  seja registrado ao tocar em terminar, não quero adicionar novas funcionalidades nesse momento"*.
+  A duração continua vindo da hora do toque; a análise segue descartando a marcação em lote, e as
+  estimativas capturadas (erro de 18,6 min, informadas por quem está em sala) passam a ser a outra
+  fonte de tempo.
+- Pendência LGPD (do validador, não bloqueante): `escala_cirurgica_captura` e `escala_cirurgica_evento`
+  são dado de saúde pseudonimizado sem retenção documentada em `docs/lgpd-retencao.md`.
+
 ## Quando reavaliar
 
-Com as lacunas 1–3 fechadas, rodar de novo este backtest. Critério para começar a sugestão: erro
+Com algumas semanas de captura, rodar de novo este backtest somando as estimativas. Critério para começar a sugestão: erro
 mediano < 25 min nos pares limpos **e** uma alocação sugerida que, reaplicada aos dias do teste com as
 durações reais, gere menos pares invertidos que a alocação feita à mão. A sugestão entra na
 conferência da importação como SUGESTÃO rotulada (nunca automática — princípio do módulo), e nunca
