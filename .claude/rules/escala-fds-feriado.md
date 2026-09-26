@@ -882,3 +882,18 @@ sem tocar em 29/08 no que ele decide: fila sem ninguém trabalhando e sem ningu�
 segue sem cartão. Travas em `escalaFdsTelaUnica.test.jsx` ("acionada no toque…" falha
 contra o código anterior; "acionada, a ordem trava quem está acima").
 
+
+### FILA ÚNICA — "Passa para tarde/noite" chega SEM ANESTESISTA no turno seguinte (dono 26/09)
+
+"sempre que alguém marcar 'passa para tarde' 'passa para noite' mantenha o card da cirurgia em escala
+completa e adicione como sem anestesista no próximo turno (o plantão irá decidir quem irá anestesiar,
+assim como já é feito com as cirurgias que não têm anestesista)". No dia útil a travessia segue presa a
+quem já está no turno (`casosDaFilaDoTurno`, caso Gabriela 24/08); na fila única (`modoFds`, inclui
+feriado) a fila usa `casosDaFilaFds(casos, turnoExibido)`: manhã→tarde e tarde→noite viram CÓPIA com
+`anestesista:'?'`, `semAnestesista:true`, `passouDoTurno` e caem no bloco "sem anestesista por cirurgião".
+O caso NÃO é alterado ao marcar — a Completa segue mostrando o anestesista de origem. Quando o plantão
+define o dono pelo alerta, `patchDefinicaoNoTurnoSeguinte` grava junto (mesmo `setAnestesistaCasos`,
+`extraPorId`) `turno` do turno seguinte ('vespertino' também para a noite — CHECK) e `status_extra=null`;
+sem isso o caso voltaria ao alerta. ⚠️ efeito aceito: depois de definido, o caso é da TARDE — republicar
+a tarde por cima o substitui, como qualquer caso da tarde. Travas: describe "fila única — passa vira sem
+anestesista" em `escalaPassaDeTurno.test.js` + describe homônimo em `escalaFdsTelaUnica.test.jsx`.

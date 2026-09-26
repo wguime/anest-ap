@@ -396,7 +396,7 @@ async function addCaso(escalaId, caso) {
 const ehErroDeRede = (error) =>
   !error?.code && /load failed|failed to fetch|network/i.test(error?.message || '')
 
-async function updateAnestesistaCasos(casoIds = [], { uid, apelido, dupla = false }) {
+async function updateAnestesistaCasos(casoIds = [], { uid, apelido, dupla = false }, { extraPorId = null } = {}) {
   const ids = (casoIds || []).filter(Boolean)
   if (!ids.length) return
   // DUPLA na MESMA cirurgia (dono 11/08): duas pessoas não cabem num uid — o
@@ -420,6 +420,17 @@ async function updateAnestesistaCasos(casoIds = [], { uid, apelido, dupla = fals
     ;({ error } = await gravar())
   }
   if (error) handleError(error, 'updateAnestesistaCasos')
+  // Travessia de turno na fila única (dono 26/09): o caso que ganhou dono no
+  // turno seguinte passa a ser dele — `turno` e o fim do "passa", por caso.
+  for (const [id, extra] of Object.entries(extraPorId || {})) {
+    if (!ids.includes(id) || !extra) continue
+    const row = {}
+    if ('statusExtra' in extra) row.status_extra = extra.statusExtra
+    if (extra.turno) row.turno = extra.turno
+    if (!Object.keys(row).length) continue
+    const { error: e2 } = await supabase.from('escala_cirurgica_caso').update(row).eq('id', id)
+    if (e2) handleError(e2, 'updateAnestesistaCasos:turno')
+  }
 }
 
 /**

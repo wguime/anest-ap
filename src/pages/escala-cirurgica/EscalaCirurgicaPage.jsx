@@ -23,7 +23,7 @@ import LiberacoesView from './LiberacoesView'
 import ImportarEscalasPage from './ImportarEscalasPage'
 import ImportarEscalaFdsPage from './ImportarEscalaFdsPage'
 import TrocaSheet from './TrocaSheet'
-import { meuAliasDe, turnoAtualOperacional, dataPorExtenso, estadoTrocasDoHistorico, normNome, formatData, rodapeDoTurno, localizarSlotEscala, localizarMeuPosto, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca, espelhoTempoTotal, inicioDaDuracao, terminoEncadeado, turnoDoCaso } from './utils'
+import { meuAliasDe, turnoAtualOperacional, dataPorExtenso, estadoTrocasDoHistorico, normNome, formatData, rodapeDoTurno, localizarSlotEscala, localizarMeuPosto, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca, espelhoTempoTotal, inicioDaDuracao, terminoEncadeado, turnoDoCaso, patchDefinicaoNoTurnoSeguinte } from './utils'
 import { ehDataFilaUnica, ehFeriado, ehFimDeSemana, FDS_HOSPITAL, FDS_TURNO_CASOS, FDS_TURNOS, turnoFdsAtual } from '@/lib/escalaFds'
 import { faseLiberacoes } from '@/lib/plantaoNoturno'
 import { hospitalDaConta, podeEditarEscalaCirurgica, podePublicarEscalaCirurgica } from './gate'
@@ -695,7 +695,17 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                   onDefinirCasos={(casoIds, { uid, apelido, rotulo }) => {
                     // na fila única o caso pertence à escala do hospital de origem
                     const dona = modoFds ? escalaDoCaso(casoIds[0]) || escala : escala
-                    return setAnestesistaCasos(dona, casoIds, { uid, apelido }, { rotulo, resolverUid: resolverRoster, userId: user?.uid || user?.id || null })
+                    // cirurgia que ATRAVESSOU para este turno (dono 26/09): com
+                    // dono definido pelo plantão ela passa a ser do turno
+                    // seguinte e perde o "passa" — senão voltaria ao alerta
+                    const extraPorId = {}
+                    if (modoFds && uid) {
+                      for (const id of casoIds) {
+                        const extra = patchDefinicaoNoTurnoSeguinte((dona?.casos || []).find((c) => c.id === id), turno)
+                        if (extra) extraPorId[id] = extra
+                      }
+                    }
+                    return setAnestesistaCasos(dona, casoIds, { uid, apelido }, { rotulo, resolverUid: resolverRoster, userId: user?.uid || user?.id || null, extraPorId })
                   }}
                   // RESPONSÁVEL DA POSIÇÃO (dono 24/08) — assunção unilateral na
                   // fila única: o slot fica com quem assumiu, a posição e a ordem

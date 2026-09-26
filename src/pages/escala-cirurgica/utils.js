@@ -792,6 +792,53 @@ export function casosDaFilaDoTurno(casos, turno, ordemTurno = [], resolverUid = 
   return [...nativos, ...atravessam.filter((c) => estaPresente(presentes, c, resolverUid))]
 }
 
+const ORDEM_TURNO_FILA = { matutino: 0, vespertino: 1, noturno: 2 }
+
+/**
+ * FILA ÚNICA (sáb/dom/feriado): "Passa para tarde"/"Passa para noite" entra no
+ * turno SEGUINTE como SEM ANESTESISTA (dono 26/09: "mantenha o card da cirurgia
+ * em escala completa e adicione como sem anestesista no próximo turno — o
+ * plantão irá decidir quem irá anestesiar, assim como já é feito com as
+ * cirurgias que não têm anestesista").
+ *
+ * No dia útil a travessia segue presa a quem já está no turno
+ * (`casosDaFilaDoTurno`); no fim de semana a pessoa que marcou está SAINDO, e
+ * quem assume é decisão do plantão. O caso não muda: o card da Completa segue
+ * com o anestesista de origem — só a CÓPIA da fila perde o nome e vai para o
+ * alerta "sem anestesista". Quando o plantão define alguém, o caso passa a ser
+ * do turno seguinte (`patchDefinicaoNoTurnoSeguinte`) e sai desta regra.
+ *
+ * Turno seguinte: manhã → tarde (e segue descoberta na noite enquanto ninguém
+ * decidir); tarde → noite. A noite lê os casos da tarde (FDS_TURNO_CASOS).
+ */
+export function casosDaFilaFds(casos, turno) {
+  const exib = ORDEM_TURNO_FILA[turno]
+  if (exib == null) return casos || []
+  const base = turno === 'noturno' ? 'vespertino' : turno
+  const out = []
+  for (const c of casos || []) {
+    const tc = turnoDoCaso(c)
+    const atravessou = casoPassaDeTurno(c) && !casoConcluido(c) && ORDEM_TURNO_FILA[tc] < exib
+    if (atravessou) out.push({ ...c, anestesista: '?', anestesistaUserId: null, semAnestesista: true, passouDoTurno: tc })
+    else if (tc === base) out.push(c)
+  }
+  return out
+}
+
+/**
+ * O que gravar no caso quando o plantão define o anestesista de uma cirurgia que
+ * ATRAVESSOU para o turno exibido: ela vira do turno seguinte (a noite grava
+ * 'vespertino' — o CHECK só aceita os dois turnos de dia) e perde o "passa",
+ * senão voltaria ao alerta no próximo render. `null` = caso nativo do turno,
+ * nada além do anestesista.
+ */
+export function patchDefinicaoNoTurnoSeguinte(caso, turnoExibido) {
+  const exib = ORDEM_TURNO_FILA[turnoExibido]
+  if (exib == null || !caso || !casoPassaDeTurno(caso) || casoConcluido(caso)) return null
+  if (!(ORDEM_TURNO_FILA[turnoDoCaso(caso)] < exib)) return null
+  return { statusExtra: null, turno: turnoExibido === 'noturno' ? 'vespertino' : turnoExibido }
+}
+
 /**
  * Chaves de identidade de um anestesista: uid do vínculo E nome normalizado, e
  * as duas coisas para CADA metade de uma dupla "A + B".

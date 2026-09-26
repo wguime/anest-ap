@@ -25,7 +25,7 @@ import { AvisoTempoEstourado } from './useAvisoTempoEstourado'
 import PainelTempo, { formatFaltante, fraseCronometro, fraseFaltante } from './PainelTempo'
 import { nomeCurtoProcedimento } from '@/lib/escalaProcedimentoCurto'
 import AddCasoSheet from './AddCasoSheet'
-import { ajudaOrdemInformada, casoConcluido, casosDaFilaDoTurno, casosResolvidos, chaveSalaEscolha, compararSalas, diffRelogioMin, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao, turnoDoCaso } from './utils'
+import { ajudaOrdemInformada, casoConcluido, casosDaFilaDoTurno, casosDaFilaFds, casosResolvidos, chaveSalaEscolha, compararSalas, diffRelogioMin, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao, turnoDoCaso } from './utils'
 
 // Sentinelas do dropdown de Local (valores impossíveis como nome de sala)
 const LOCAL_AUTO = '__auto__'
@@ -94,9 +94,14 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // (caso Gabriela, Unimed, 24/08). No quadro da Completa e na aba Minhas ela
   // segue aparecendo: lá a pergunta é "esta cirurgia existe?", aqui é "quem
   // está nesta fila?".
+  // FILA ÚNICA (dono 26/09): a travessia não fica com quem marcou — entra no
+  // turno seguinte como "sem anestesista" para o plantão decidir (`casosDaFilaFds`).
+  // Recebe o turno EXIBIDO (inclusive 'noturno'), não o `turnoBase`.
   const casosTurno = useMemo(
-    () => casosDaFilaDoTurno((modoFds && casosFds) ? casosFds : (escala?.casos || []), turnoBase, rodapeTurno, resolverUid),
-    [escala, turnoBase, modoFds, casosFds, rodapeTurno, resolverUid]
+    () => ((modoFds && casosFds)
+      ? casosDaFilaFds(casosFds, turno || turnoBase)
+      : casosDaFilaDoTurno(escala?.casos || [], turnoBase, rodapeTurno, resolverUid)),
+    [escala, turno, turnoBase, modoFds, casosFds, rodapeTurno, resolverUid]
   )
   const [editor, setEditor] = useState(null) // linha em edição (sheet)
   const [rascLocal, setRascLocal] = useState('')
@@ -160,6 +165,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       // para noite" — ela passou para DENTRO deste turno, não para fora dele.
       // Sem turno informado (chamada legada) não há o que recortar.
       if (turnoBase && turnoDoCaso(c) !== turnoBase) continue
+      // a da tarde que passou para a NOITE já chega aqui sem dono (fila única)
+      if (c.passouDoTurno) continue
       // extra no campo novo; aceita o legado no principal (demo/dados antigos)
       if ((c.statusExtra === 'passa_tarde' || c.statusCirurgia === 'passa_tarde') && c.anestesista) {
         s.add(normNome(c.anestesista))

@@ -1168,3 +1168,34 @@ describe('sem anestesista por CIRURGIÃO — só na fila única (dono 13/09)', (
     expect(screen.queryByText(/Toque para assumir/)).toBeNull()
   })
 })
+
+/**
+ * "PASSA PARA TARDE/NOITE" NA FILA ÚNICA (dono 26/09): "mantenha o card da
+ * cirurgia em escala completa e adicione como sem anestesista no próximo turno
+ * (o plantão irá decidir quem irá anestesiar)".
+ */
+describe('fila única — cirurgia que passa de turno chega sem anestesista', () => {
+  const ESCALA_TARDE = { ...ESCALA_FDS, ordemLiberacao: { matutino: ['KARINE', 'GABRIEL'], vespertino: ['KARINE', 'GABRIEL'] } }
+  const PASSA = { ...CASOS_FDS[0], statusExtra: 'passa_tarde' }
+
+  it('na TARDE ela vai para o bloco de sem anestesista, e a Karine não fica presa a ela', async () => {
+    const onDefinirCasos = vi.fn(async () => {})
+    render(<LiberacoesView {...props({ escala: ESCALA_TARDE, turno: 'vespertino', casosFds: [PASSA, CASOS_FDS[1]], onDefinirCasos })} />, { wrapper: wrap })
+    expect(await screen.findByText(/Procedimentos sem anestesista/)).toBeTruthy()
+    expect(screen.getByRole('group', { name: /Lucas Martins: 1 procedimento sem anestesista/ })).toBeTruthy()
+    // o plantão decide pelo mesmo sheet das órfãs
+    fireEvent.click(screen.getByRole('button', { name: /Definir anestesista de 07:30/ }))
+    expect(await screen.findByText('Quem assume este procedimento?')).toBeTruthy()
+    fireEvent.click(screen.getAllByRole('combobox').pop())
+    fireEvent.click(await screen.findByText('MARILIA BASTOS'))
+    fireEvent.click(screen.getByRole('button', { name: 'Definir anestesista' }))
+    await waitFor(() => expect(onDefinirCasos).toHaveBeenCalledTimes(1))
+    expect(onDefinirCasos.mock.calls[0][0]).toEqual(['c1'])
+  })
+
+  it('na MANHÃ ela segue com quem está nela — sem alerta', async () => {
+    render(<LiberacoesView {...props({ casosFds: [PASSA, CASOS_FDS[1]], onDefinirCasos: vi.fn() })} />, { wrapper: wrap })
+    expect(await screen.findByText('Lucas Martins')).toBeTruthy()
+    expect(screen.queryByText(/Procedimentos sem anestesista/)).toBeNull()
+  })
+})

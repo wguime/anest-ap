@@ -3,6 +3,20 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.36 (26/09/2026) — Escala: no fim de semana, "Passa para tarde/noite" chega sem anestesista no turno seguinte
+
+Pedido do dono (26/09). Só na fila única (sáb/dom/feriado); o dia útil não muda.
+- A cirurgia marcada "Passa para tarde" (manhã) ou "Passa para noite" (tarde) segue igual na Escala
+  Completa, com o anestesista de origem; na fila do turno seguinte ela entra no bloco "Procedimentos
+  sem anestesista" (por cirurgião), e quem marcou deixa de ficar preso a ela.
+- O plantão define quem assume pelo mesmo toque das órfãs. Ao definir, o caso passa a ser da tarde
+  (a noite também grava tarde — o banco só aceita os dois turnos de dia) e perde o "passa"; sem isso
+  ele voltaria ao alerta. Consequência aceita: republicar a tarde por cima substitui o caso, como
+  qualquer caso da tarde.
+- Da manhã, se ninguém assumir à tarde, continua descoberta à noite. Terminada/suspensa não atravessa.
+- `casosDaFilaFds` + `patchDefinicaoNoTurnoSeguinte` (`utils.js`); `setAnestesistaCasos` ganha
+  `extraPorId`. Travas: `escalaPassaDeTurno.test.js` e `escalaFdsTelaUnica.test.jsx`.
+
 ## v5.12.35 (25/09/2026) — Escala: captura para o aprendizado (estimativas e escala publicada)
 
 Pedido do dono (25/09), a partir da revisão `docs/escala-cirurgica-metricas/2026-W39-aprendizado.md`.

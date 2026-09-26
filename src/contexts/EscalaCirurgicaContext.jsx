@@ -950,7 +950,7 @@ export function EscalaCirurgicaProvider({ children }) {
   // `resolverUid` (apelido→uid do dicionário, opcional) alimenta o
   // ajudasPreservadasNoRepasse: sem ele a decisão "é gente daqui?" cai no
   // fallback por grafia e texto torto da Vision vira ajuda indevida (19/08).
-  const setAnestesistaCasos = useCallback(async (escala, casoIds, { uid, apelido, dupla = false }, { rotulo = '', resolverUid, userId = null } = {}) => {
+  const setAnestesistaCasos = useCallback(async (escala, casoIds, { uid, apelido, dupla = false }, { rotulo = '', resolverUid, userId = null, extraPorId = null } = {}) => {
     if (String(escala.id).startsWith('demo-')) {
       toast({ variant: 'warning', title: 'Indisponível na demonstração' })
       return
@@ -965,14 +965,16 @@ export function EscalaCirurgicaProvider({ children }) {
       : uid
         ? { anestesista: apelido, anestesistaUserId: uid, semAnestesista: false }
         : { anestesista: '?', anestesistaUserId: null, semAnestesista: true }
-    const casos = (escala.casos || []).map((c) => (idSet.has(c.id) ? { ...c, ...patch } : c))
+    // `extraPorId` (dono 26/09): cirurgia que atravessou o turno na fila única
+    // passa a ser do turno seguinte quando o plantão define o dono — mesma escrita
+    const casos = (escala.casos || []).map((c) => (idSet.has(c.id) ? { ...c, ...patch, ...(extraPorId?.[c.id] || {}) } : c))
     // OTIMISTA (dono 19/08, 2ª queixa de demora — esta era a única escrita das
     // abas que ainda esperava o RTT): pinta no toque; erro reverte + toast.
     dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { casos } })
     marcarEscrita()
     try {
       try {
-        await svc.updateAnestesistaCasos(ids, { uid, apelido, dupla })
+        await svc.updateAnestesistaCasos(ids, { uid, apelido, dupla }, { extraPorId })
       } finally { encerrarEscrita() }
       // VISITANTE PRESERVADO NO REPASSE (dono 31/07 — caso LEONARDO): quem veio
       // de OUTRO HOSPITAL e ficou sem caso aqui entra em ajuda_externa[turno] — a

@@ -15,6 +15,7 @@ import { describe, it, expect } from 'vitest'
 import {
   filtrarPorTurno, filtrarPorTurnoExibicao, casoSegueParaOTurno,
   casosQuePassamParaOTurno, casosTransferiveis, casosResolvidos, casosDaFilaDoTurno,
+  casosDaFilaFds, patchDefinicaoNoTurnoSeguinte,
 } from '@/pages/escala-cirurgica/utils'
 import { casoPassaDeTurno, extraDoCaso } from '@/lib/escalaCirurgicaRegras'
 
@@ -141,5 +142,61 @@ describe('INVARIANTE: a travessia não inventa gente na fila', () => {
   it('sem nenhuma travessia, devolve exatamente o filtro estrito do turno', () => {
     expect(casosDaFilaDoTurno([MANHA_COMUM, TARDE], 'vespertino', ['THAYNA']).map((c) => c.id))
       .toEqual(filtrarPorTurno([MANHA_COMUM, TARDE], 'vespertino').map((c) => c.id))
+  })
+})
+
+/**
+ * FILA ÚNICA (dono 26/09): no fim de semana a travessia NÃO fica com quem
+ * marcou — entra no turno seguinte como SEM ANESTESISTA, e o plantão decide.
+ * O caso em si não muda (o card da Completa segue com o anestesista de origem).
+ */
+describe('fila única — "passa" vira sem anestesista no turno seguinte', () => {
+  const TARDE_PASSA = { ...TARDE, id: 't2', anestesista: 'OSCAR', statusExtra: 'passa_tarde' }
+
+  it('manhã → tarde: a cópia da fila perde o dono e vai para o alerta', () => {
+    const fila = casosDaFilaFds([MANHA_PASSA, MANHA_COMUM, TARDE], 'vespertino')
+    expect(fila.map((c) => c.id)).toEqual(['p1', 't1'])
+    const p1 = fila.find((c) => c.id === 'p1')
+    expect(p1).toMatchObject({ anestesista: '?', anestesistaUserId: null, semAnestesista: true, passouDoTurno: 'matutino' })
+    // o caso original não é tocado — é o que a Completa mostra
+    expect(MANHA_PASSA.anestesista).toBe('THAYNA')
+  })
+
+  it('na manhã a cirurgia marcada segue com quem está nela', () => {
+    const fila = casosDaFilaFds([MANHA_PASSA, TARDE], 'matutino')
+    expect(fila).toEqual([MANHA_PASSA])
+  })
+
+  it('tarde → noite: a da tarde marcada entra na noite sem dono; a da tarde comum segue com o dono', () => {
+    const fila = casosDaFilaFds([TARDE, TARDE_PASSA], 'noturno')
+    expect(fila.find((c) => c.id === 't1').anestesista).toBe('THAYNA')
+    expect(fila.find((c) => c.id === 't2')).toMatchObject({ anestesista: '?', semAnestesista: true, passouDoTurno: 'vespertino' })
+    // e na própria tarde ela ainda é de quem marcou
+    expect(casosDaFilaFds([TARDE_PASSA], 'vespertino')[0].anestesista).toBe('OSCAR')
+  })
+
+  it('a da manhã que ninguém assumiu à tarde continua descoberta à noite', () => {
+    expect(casosDaFilaFds([MANHA_PASSA], 'noturno')[0]).toMatchObject({ id: 'p1', semAnestesista: true })
+  })
+
+  it('terminada ou suspensa não atravessa', () => {
+    expect(casosDaFilaFds([{ ...MANHA_PASSA, statusCirurgia: 'terminada' }], 'vespertino')).toHaveLength(0)
+    // a da tarde terminada segue como caso da tarde, com o dono — nunca vira alerta
+    expect(casosDaFilaFds([{ ...TARDE_PASSA, statusCirurgia: 'terminada' }], 'noturno')[0]).toMatchObject({ anestesista: 'OSCAR' })
+  })
+
+  it('definir o dono no turno seguinte muda o turno do caso e tira o "passa"', () => {
+    expect(patchDefinicaoNoTurnoSeguinte(MANHA_PASSA, 'vespertino')).toEqual({ statusExtra: null, turno: 'vespertino' })
+    expect(patchDefinicaoNoTurnoSeguinte(MANHA_PASSA, 'noturno')).toEqual({ statusExtra: null, turno: 'vespertino' })
+    expect(patchDefinicaoNoTurnoSeguinte(TARDE_PASSA, 'noturno')).toEqual({ statusExtra: null, turno: 'vespertino' })
+    // depois de aplicado, o caso sai da regra: fica com o dono novo na fila
+    const definido = { ...MANHA_PASSA, anestesista: 'MARILIA', ...patchDefinicaoNoTurnoSeguinte(MANHA_PASSA, 'vespertino') }
+    expect(casosDaFilaFds([definido], 'vespertino')[0].anestesista).toBe('MARILIA')
+  })
+
+  it('caso nativo do turno (ou sem "passa") não ganha patch', () => {
+    expect(patchDefinicaoNoTurnoSeguinte(TARDE_PASSA, 'vespertino')).toBeNull()
+    expect(patchDefinicaoNoTurnoSeguinte(MANHA_COMUM, 'vespertino')).toBeNull()
+    expect(patchDefinicaoNoTurnoSeguinte(MANHA_PASSA, 'matutino')).toBeNull()
   })
 })
