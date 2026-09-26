@@ -240,3 +240,43 @@ describe('Pega Plantão com o primeiro nome abreviado (dono 25/09: "G. Staub = G
     expect(legenda.filter((n) => casarNomeComLegenda(n, doPP))).toEqual([esperado])
   })
 })
+
+describe('documento de FDS com NOME CURTO — segunda 28/09 (caso real)', () => {
+  // A grade de domingo 27/09 grava a noite como HRO = "GUILHERME DIDOMENICO" e
+  // Unimed = "GUSTAVO". O cadastro do GARIM é "GUSTAVO ALMANSA GARIM": o casamento
+  // aproximado dava o P2 ao Garim (vem antes na Unimed). O plantonista é o GUSTAVO (Biesdorf).
+  const noturnos = noturnosDoDocumentoFds({ '19-07': { hro: 'GUILHERME DIDOMENICO', unimed: 'GUSTAVO' } })
+
+  it('manhã: o GUSTAVO sobe para a 2ª da Unimed e o GARIM fica onde estava', () => {
+    const g = grade('2026-09-28', 'matutino')
+    const r = aplicarPosPlantaoManha(dados, g.blocos, g.consultorio, noturnos)
+    const unimed = r.blocos.find((b) => b.hospital === 'unimed').lista
+    expect(unimed[1]).toMatchObject({ nome: 'GUSTAVO', postoPlantao: 'P2' })
+    expect(unimed.find((p) => p.nome === 'GARIM')?.postoPlantao).toBeUndefined()
+    expect(r.blocos.flatMap((b) => b.lista).filter((p) => p.nome === 'GARIM')).toHaveLength(1)
+    const hro = r.blocos.find((b) => b.hospital === 'hro').lista
+    expect(hro[1]).toMatchObject({ nome: 'GUILHERME D', postoPlantao: 'P1' })
+  })
+
+  it('tarde: a marca vai para o GUSTAVO, nunca para o GARIM', () => {
+    const g = grade('2026-09-28', 'vespertino')
+    const r = marcarPosPlantaoTarde(g.blocos, g.consultorio, noturnos)
+    const todos = [...r.blocos.flatMap((b) => b.lista), ...r.consultorio]
+    expect(todos.find((p) => p.nome === 'GARIM')?.posPlantao).toBeUndefined()
+    expect(todos.filter((p) => p.posPlantao).map((p) => p.nome).sort()).toEqual(['GUILHERME D', 'GUSTAVO'])
+  })
+
+  it('conferência da tarde: sai o GUSTAVO da lista esperada, o GARIM fica', () => {
+    const g = grade('2026-09-28', 'vespertino')
+    const unimed = g.blocos.find((b) => b.hospital === 'unimed').lista
+    const r = excluirPosPlantaoTarde(unimed, noturnos)
+    expect(r.excluidos).not.toContain('GARIM')
+    expect(r.lista.some((p) => p.nome === 'GARIM')).toBe(unimed.some((p) => p.nome === 'GARIM'))
+  })
+
+  it('nome de uma palavra só que não está na legenda não casa com ninguém', () => {
+    const g = grade('2026-09-28', 'matutino')
+    const r = aplicarPosPlantaoManha(dados, g.blocos, g.consultorio, { hro: null, unimed: 'JOAO' })
+    expect(r.movidos).toEqual([])
+  })
+})

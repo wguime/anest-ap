@@ -121,6 +121,12 @@ Vale **de segunda a sexta**, na tela de consulta (`src/lib/posPlantao.js`):
   existe no Pega Plantão (conferido em 23/08 e 30/08: só o P11 de 24h) — vem da faixa `19-07`
   da **grade do documento de fim de semana** (`escala_cirurgica` linha `hospital='fds'`,
   `fds_meta.grade`, via `svc.fetchEscala(domingo, 'fds')`).
+  ⚠️ **O documento de FDS escreve a noite com o NOME CURTO da legenda** ("GUSTAVO"), não o
+  completo. Nome idêntico a uma entrada da legenda casa SÓ com ela, e nome de uma palavra nunca
+  casa por aproximação — em 28/09 o "GUSTAVO" da noite de domingo (Gustavo Biesdorf, como está
+  na escala publicada) virou P2 no GARIM. A escala publicada é a fonte: **na dúvida de nome,
+  perguntar ao dono — nunca resolver por semelhança** (dono 26/09). Trava em
+  `posPlantao.test.js` ("documento de FDS com NOME CURTO").
 - Sexta à noite não gera pós-plantão: o sábado não tem escala numérica.
 - Em **feriado NÃO há pós-plantão** (dono 04/09: "siga a lista conforme enviado"): a tela mostra
   a fila única publicada, sem reordenar e sem marcar. Travado em

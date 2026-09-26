@@ -76,8 +76,29 @@ export function noturnosDoDocumentoFds(grade) {
   }
 }
 
-const ehAPessoa = (entrada, nomeCompleto) =>
-  String(entrada?.nome || '').split(' / ').some((n) => casarNomeComLegenda(n, nomeCompleto))
+/**
+ * A entrada da grade é a pessoa que plantonou?
+ *
+ * O documento de FDS escreve a noite com o NOME CURTO da legenda ("GUSTAVO"), não com o
+ * nome completo do Pega Plantão. Casamento aproximado com nome curto erra: o cadastro do
+ * GARIM é "GUSTAVO ALMANSA GARIM", mesmo primeiro nome — e na manhã de 28/09 o Garim, que
+ * vem antes na Unimed, levou o P2 do GUSTAVO (Biesdorf). Por isso: nome IGUAL a uma
+ * entrada da legenda casa só com ela, e nome de uma palavra só nunca casa por aproximação
+ * (identidade ambígua é nula).
+ */
+const partesDaEntrada = (entrada) => String(entrada?.nome || '').split('/').map((n) => n.trim()).filter(Boolean)
+const ehAPessoa = (entrada, nomeCompleto, legendaExata = false) => {
+  const alvo = normNomeNumerica(nomeCompleto)
+  const partes = partesDaEntrada(entrada)
+  if (partes.some((n) => normNomeNumerica(n) === alvo)) return true
+  if (legendaExata || !alvo.includes(' ')) return false
+  return partes.some((n) => casarNomeComLegenda(n, nomeCompleto))
+}
+
+/** O nome é, letra por letra, uma entrada da legenda (nome curto do documento de FDS)? */
+const nomesDaLegendaNorm = (dados) => new Set(
+  Object.values(dados?.legenda || {}).flatMap((e) => String(e.nome).split('/').map(normNomeNumerica).filter(Boolean)),
+)
 
 const renumerar = (lista) => lista.map((p, i) => ({ ...p, posicao: i + 1 }))
 
@@ -93,6 +114,7 @@ export function aplicarPosPlantaoManha(dados, blocos, consultorio = [], noturnos
   const alvos = ['hro', 'unimed'].filter((h) => noturnos[h])
   if (!alvos.length) return { blocos, consultorio, movidos: [] }
 
+  const legenda = nomesDaLegendaNorm(dados)
   let listas = Object.fromEntries(blocos.map((b) => [b.hospital, [...b.lista]]))
   let cons = [...consultorio]
   const movidos = []
@@ -101,15 +123,21 @@ export function aplicarPosPlantaoManha(dados, blocos, consultorio = [], noturnos
   // 1) retirar de onde estiver — uma pessoa ocupa um lugar só
   for (const hospital of alvos) {
     const nomeCompleto = noturnos[hospital]
+    const exata = legenda.has(normNomeNumerica(nomeCompleto))
     let entrada = null
     for (const h of Object.keys(listas)) {
-      const i = listas[h].findIndex((p) => ehAPessoa(p, nomeCompleto))
+      const i = listas[h].findIndex((p) => ehAPessoa(p, nomeCompleto, exata))
       if (i >= 0) { entrada = listas[h][i]; listas[h] = listas[h].filter((_, k) => k !== i) }
     }
-    const ic = cons.findIndex((c) => ehAPessoa(c, nomeCompleto))
+    const ic = cons.findIndex((c) => ehAPessoa(c, nomeCompleto, exata))
     if (ic >= 0) { entrada = entrada || cons[ic]; cons = cons.filter((_, k) => k !== ic) }
     if (!entrada) {
-      const naLegenda = identificarNaLegenda(dados, nomeCompleto)
+      const numero = exata
+        ? Object.keys(dados?.legenda || {}).find((n) => String(dados.legenda[n].nome).split('/').map(normNomeNumerica).includes(normNomeNumerica(nomeCompleto)))
+        : null
+      const naLegenda = numero
+        ? { numero, nome: normNomeNumerica(nomeCompleto) }
+        : (normNomeNumerica(nomeCompleto).includes(' ') ? identificarNaLegenda(dados, nomeCompleto) : null)
       if (!naLegenda) continue
       entrada = { numero: naLegenda.numero, nome: naLegenda.nome }
     }
@@ -149,8 +177,10 @@ export function excluirPosPlantaoTarde(lista, noturnos = {}) {
   const nomes = ['hro', 'unimed'].map((h) => noturnos?.[h]).filter(Boolean)
   if (!nomes.length) return { lista, excluidos: [] }
   const excluidos = []
+  // nome idêntico na lista → só ele sai (ver ehAPessoa: "GUSTAVO" não pode tirar o GARIM)
+  const exata = (n) => (lista || []).some((p) => partesDaEntrada(p).some((x) => normNomeNumerica(x) === normNomeNumerica(n)))
   const restante = (lista || []).filter((p) => {
-    const bate = nomes.some((n) => ehAPessoa(p, n))
+    const bate = nomes.some((n) => ehAPessoa(p, n, exata(n)))
     if (bate) excluidos.push(p.nome)
     return !bate
   })
@@ -166,9 +196,15 @@ export function marcarPosPlantaoTarde(blocos, consultorio = [], noturnos = {}) {
     .filter((h) => noturnos[h])
     .map((h) => ({ posto: POSTO_DO_HOSPITAL[h], nome: noturnos[h] }))
   if (!postos.length) return { blocos, consultorio, marcados: [] }
+  // nome idêntico em algum lugar da grade → só ele leva a marca (ver ehAPessoa)
+  const todas = [...blocos.flatMap((b) => b.lista), ...consultorio]
+  for (const x of postos) {
+    const alvo = normNomeNumerica(x.nome)
+    x.exata = todas.some((e) => partesDaEntrada(e).some((n) => normNomeNumerica(n) === alvo))
+  }
   const marcados = []
   const marcar = (entrada) => {
-    const dele = postos.find((x) => ehAPessoa(entrada, x.nome))
+    const dele = postos.find((x) => ehAPessoa(entrada, x.nome, x.exata))
     if (!dele) return entrada
     marcados.push(normNomeNumerica(entrada.nome))
     return { ...entrada, posPlantao: true, postoPlantao: dele.posto }
