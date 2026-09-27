@@ -82,6 +82,12 @@ Semana ISO via `date +%G-W%V`. Seções (regras de honestidade do doc técnico: 
 "insuficiente p/ mediana"; cirurgião/procedimento são texto livre até a Fase 1 —
 agrupar pelo texto e listar variantes suspeitas do mesmo nome; nunca extrapolar):
 
+⚠️ Desde 25/09 a base é `docs/escala-cirurgica-metricas/2026-W39-aprendizado-queries.sql`: par =
+1ª iniciada + 1ª terminada posterior, lote (3+ marcações da mesma pessoa em ≤60 s) fora, família
+por `nomeCurtoProcedimento`. Estimativas, alocação publicada, trocas no caso e ordem por turno estão
+em `escala_cirurgica_captura` (leitura só admin → Management API). As queries 2–3 abaixo são a
+versão ingênua de julho (dá duração negativa — Achado 2 do W30); servem só de conferência rápida.
+
 1. **Integridade da coleta** — query 4 do `status` + últimas 24h.
 2. **Durações** por cirurgião×procedimento:
    ```sql
