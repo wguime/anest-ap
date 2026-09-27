@@ -70,7 +70,7 @@ const acoes = () => ({
   setStatusCirurgia: vi.fn(), adicionarCaso: vi.fn(), definirSalasUrgencia: vi.fn(),
 })
 
-// Unimed da tarde: Gabriela (plantonista) · Marilio · Oscar (fecha o rodapé =
+// Unimed da tarde: Gabriela (plantonista) · Marílio · Oscar (fecha o rodapé =
 // plantão do contraturno). Gustavo, Alexandre S e Rômulo têm caso aqui e não
 // estão neste rodapé — entram na cauda.
 const UNIMED = {
@@ -137,20 +137,20 @@ describe('ajuda libera na ordem do hospital de ORIGEM (dono 27/08)', () => {
 
   it('o painel “Veio de” existe na ajuda e grava o hospital escolhido', () => {
     montar({ unimed: UNIMED, hro: HRO })
-    fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Romulo'))
+    fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Rômulo'))
     fireEvent.click(screen.getByRole('button', { name: /^Veio de/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Materno' }))
     expect(estado.ctx.setLinhaOverride).not.toHaveBeenCalled() // não é o editor de exibição
     expect(estado.ctx.definirOrigemLinha).toHaveBeenCalledTimes(1)
     const [, linha, origem, , turno] = estado.ctx.definirOrigemLinha.mock.calls[0]
-    expect(linha.anestesista).toBe('Romulo')
+    expect(linha.anestesista).toBe('Rômulo')
     expect(origem).toBe('materno')
     expect(turno).toBe('vespertino')
   })
 
   it('“Veio de” não oferece o hospital em que a fila já está', () => {
     montar({ unimed: UNIMED, hro: HRO })
-    fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Romulo'))
+    fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Rômulo'))
     fireEvent.click(screen.getByRole('button', { name: /^Veio de/ }))
     expect(screen.getByRole('button', { name: 'Materno' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'HRO' })).toBeTruthy()
@@ -160,7 +160,7 @@ describe('ajuda libera na ordem do hospital de ORIGEM (dono 27/08)', () => {
 
   it('quem é do rodapé daqui não tem “Veio de” — não há pergunta a fazer', () => {
     montar({ unimed: UNIMED, hro: HRO })
-    fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Marilio'))
+    fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Marílio'))
     expect(screen.queryByRole('button', { name: /^Veio de/ })).toBeNull()
   })
 
@@ -171,7 +171,7 @@ describe('ajuda libera na ordem do hospital de ORIGEM (dono 27/08)', () => {
     }
     montar({ unimed: marcado, hro: HRO })
     const nomes = fila()
-    expect(nomes.slice(-4)).toEqual(['Alexandre S', 'Gustavo', 'Romulo', 'Oscar'])
+    expect(nomes.slice(-4)).toEqual(['Alexandre S', 'Gustavo', 'Rômulo', 'Oscar'])
     expect(screen.getByText('Ajuda (Materno)')).toBeTruthy()
   })
 
@@ -200,7 +200,7 @@ describe('quem está de ajuda em outro hospital, na escala DELE', () => {
     ...HRO,
     casos: [{
       id: 'h9', sala: 'IOSC', ordem: 0, hora: '13:30', anestesista: 'OSCAR',
-      cirurgiao: 'Mauricio Fabiani', bloco: 'iosc', isContinuacao: false, semAnestesista: false,
+      cirurgiao: 'Maurício Fabiani', bloco: 'iosc', isContinuacao: false, semAnestesista: false,
     }],
   }
 
@@ -214,7 +214,7 @@ describe('quem está de ajuda em outro hospital, na escala DELE', () => {
     montar({ unimed: UNIMED_SEM_OSCAR, hro: HRO_COM_OSCAR })
     const card = screen.getByLabelText('Editar local/cirurgião de Oscar').closest('[data-linha]')
     expect(card.textContent).toMatch(/Ajuda IOSC\/HRO/)
-    expect(card.textContent).toMatch(/Mauricio Fabiani/)
+    expect(card.textContent).toMatch(/Maurício Fabiani/)
   })
 
   it('quem opera nos DOIS hospitais NÃO vira ajuda', () => {

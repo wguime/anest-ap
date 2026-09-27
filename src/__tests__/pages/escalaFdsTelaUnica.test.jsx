@@ -440,7 +440,7 @@ describe('fila única — DOMINGO: P7/P8 sem cirurgia eletiva ficam liberados no
 
   it('Janaína (P8) TEM eletiva (Simone): fica na posição publicada, trabalhando, sem o aviso', async () => {
     render(<LiberacoesView {...domingo()} />, { wrapper: wrap })
-    await screen.findByText(/Janaina/)
+    await screen.findByText(/Janaína/)
     const janaina = document.querySelector('[data-linha="JANAINA"]')
     expect(within(janaina).queryByText('Liberado')).toBeNull()
     expect(within(janaina).queryByText(MOTIVO)).toBeNull()
@@ -514,13 +514,13 @@ describe('fila única — a NOITE classifica como o dia', () => {
     render(<LiberacoesView {...noite({
       casosFds: [{
         id: 'n1', sala: 'CC - Sala 6', ordem: 0, hora: '15:45', turno: 'vespertino',
-        anestesista: 'MARILIA', cirurgiao: 'Cesar Bombardelli', procedimento: 'HERNIORRAFIA',
+        anestesista: 'MARILIA', cirurgiao: 'César Bombardelli', procedimento: 'HERNIORRAFIA',
         hospitalOrigem: 'unimed',
       }],
     })} />, { wrapper: wrap })
     await screen.findByText(/Marilia/)
     // a cirurgia da tarde segue na tela…
-    expect(screen.getByText('Cesar Bombardelli')).toBeTruthy()
+    expect(screen.getByText('César Bombardelli')).toBeTruthy()
     // …e MARILIA e OSCAR estão liberados: só os dois postos ficam
     expect(screen.getAllByText('Liberado')).toHaveLength(2)
   })

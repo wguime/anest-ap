@@ -61,7 +61,7 @@ const escalaBase = {
   ],
 }
 
-// par declarado na linha do Marilio (aqui) com o Cury (Unimed)
+// par declarado na linha do Marílio (aqui) com o Cury (Unimed)
 const PAR = {
   hospital: 'hro', hospitalLabel: 'HRO', escalaId: 'e1', chave: 'uid-mar',
   a: { uid: 'uid-mar', nome: 'MARILIO JOSE FLACH', apelido: 'MARILIO' },
@@ -105,7 +105,7 @@ describe('Badge "Troca" nos dois lados do par', () => {
     montar({ paresTroca: [PAR] }, escala)
     const cardCury = document.querySelector('[data-linha="uid-cury"]')
     expect(within(cardCury).getByText('Troca')).toBeTruthy()
-    expect(within(cardCury).getByText(/Trocado com Marilio Flach \(HRO\)/)).toBeTruthy()
+    expect(within(cardCury).getByText(/Trocado com Marílio Flach \(HRO\)/)).toBeTruthy()
     // e o lado declarado segue com o dele
     expect(within(document.querySelector('[data-linha="uid-mar"]')).getByText('Troca')).toBeTruthy()
   })
@@ -120,21 +120,21 @@ describe('Badge "Troca" nos dois lados do par', () => {
     // painel oferecia "Executar troca" de novo, sem saída na UI
     montar({ paresTroca: [{ ...PAR, historica: true }] })
     expect(screen.queryByText('Troca')).toBeNull()
-    fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Marilio Flach'))
+    fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Marílio Flach'))
     expect(screen.queryByText(/Executar agora/)).toBeNull()
     expect(screen.queryByText(/Desfazer troca/)).toBeNull()
   })
 
   it('linha-espelho `chave#casos` não oferece troca (defeito D7 — gravaria em chave órfã)', () => {
-    // republicação conflituosa: slot do Marilio assumido pela Karine, e os casos
-    // do Marilio re-importados no nome dele → linha extra `uid-mar#casos`
+    // republicação conflituosa: slot do Marílio assumido pela Karine, e os casos
+    // do Marílio re-importados no nome dele → linha extra `uid-mar#casos`
     const escala = {
       ...escalaBase,
       linhaOverrides: { 'matutino:uid-mar': { assumidaPor: { uid: 'uid-kar', nome: 'KARINE BEDIN' } } },
     }
     montar({}, escala)
-    // a linha-espelho do Marilio existe (os casos não somem em silêncio)…
-    fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Marilio Flach'))
+    // a linha-espelho do Marílio existe (os casos não somem em silêncio)…
+    fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Marílio Flach'))
     // …mas o bloco de troca fica de fora: trocaCom em `uid-mar#casos` seria órfão
     expect(screen.queryByText(/Trocar com um colega/)).toBeNull()
   })
@@ -189,7 +189,7 @@ describe('Painel ✏️ — declarar, executar e desfazer a troca', () => {
     const onReorder = vi.fn()
     const onReordenarAjuda = vi.fn()
     montar({ paresTroca: [PAR], onExecutarTroca, onSetOverride, onReorder, onReordenarAjuda })
-    abrirEditor('Marilio Flach')
+    abrirEditor('Marílio Flach')
     fireEvent.click(screen.getByRole('button', { name: /^Troca/ }))
     fireEvent.click(screen.getByRole('button', { name: /Executar agora — Marcos Cury assume aqui/ }))
     // POP-UP ANTES DE CONCLUIR (dono 18/08): nenhum caminho executa o swap sem
@@ -206,7 +206,7 @@ describe('Painel ✏️ — declarar, executar e desfazer a troca', () => {
   it('desfazer a declaração chama onMarcarTroca(linha, null)', async () => {
     const onMarcarTroca = vi.fn(async () => {})
     montar({ paresTroca: [PAR], onMarcarTroca })
-    abrirEditor('Marilio Flach')
+    abrirEditor('Marílio Flach')
     fireEvent.click(screen.getByRole('button', { name: /^Troca/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Desfazer troca' }))
     await waitFor(() => expect(onMarcarTroca).toHaveBeenCalled())
@@ -219,7 +219,7 @@ describe('Painel ✏️ — declarar, executar e desfazer a troca', () => {
     const onExecutarTroca = vi.fn(async () => {})
     const onMarcarTroca = vi.fn(async () => {})
     montar({ paresTroca: [{ ...PAR, apenasRegistro: true }], onExecutarTroca, onMarcarTroca })
-    abrirEditor('Marilio Flach')
+    abrirEditor('Marílio Flach')
     fireEvent.click(screen.getByRole('button', { name: /^Troca/ }))
     expect(screen.queryByText(/Executar agora/)).toBeNull()
     expect(screen.getByText(/já saiu com os dois no lugar certo/i)).toBeTruthy()
@@ -236,7 +236,7 @@ describe('Painel ✏️ — declarar, executar e desfazer a troca', () => {
   // cards continuavam com o badge. Quem sabe onde ela mora é o PAR.
   it('desfazer pelo lado do COLEGA mira a escala/chave de quem declarou', async () => {
     const onMarcarTroca = vi.fn(async () => {})
-    // Cury entra aqui como ajuda: o badge dele vem do par declarado no Marilio
+    // Cury entra aqui como ajuda: o badge dele vem do par declarado no Marílio
     const escala = {
       ...escalaBase,
       ajudaExterna: { matutino: ['CURY'] },
@@ -261,7 +261,7 @@ describe('Painel ✏️ — declarar, executar e desfazer a troca', () => {
   it('REGISTRO oferece "Trocar de posição na escala" (reabre o sheet no modo posição)', () => {
     const onAbrirTroca = vi.fn()
     montar({ paresTroca: [{ ...PAR, apenasRegistro: true }], onAbrirTroca })
-    abrirEditor('Marilio Flach')
+    abrirEditor('Marílio Flach')
     fireEvent.click(screen.getByRole('button', { name: /^Troca/ }))
     fireEvent.click(screen.getByRole('button', { name: /Trocar de posição na escala/ }))
     expect(onAbrirTroca).toHaveBeenCalled()
@@ -289,7 +289,7 @@ describe('Painel ✏️ — declarar, executar e desfazer a troca', () => {
 })
 
 describe('Slot assumido (troca executada)', () => {
-  // pós-execução: assumidaPor no slot do Marilio; os casos dele já são do Cury
+  // pós-execução: assumidaPor no slot do Marílio; os casos dele já são do Cury
   const escalaAssumida = {
     ...escalaBase,
     linhaOverrides: { 'matutino:uid-mar': { assumidaPor: { uid: 'uid-cury', nome: 'MARCOS TADEU CURY' } } },
@@ -306,7 +306,7 @@ describe('Slot assumido (troca executada)', () => {
     expect(chaves).toEqual(['uid-leo', 'uid-mar', 'uid-kar']) // chave do SLOT não muda
     const slot = document.querySelector('[data-linha="uid-mar"]')
     expect(within(slot).getByText('Marcos Cury')).toBeTruthy()
-    expect(within(slot).getByText(/Assumiu a posição de Marilio Flach/)).toBeTruthy()
+    expect(within(slot).getByText(/Assumiu a posição de Marílio Flach/)).toBeTruthy()
     // badge enxuto (dono 09/08): "Troca", não "Troca executada"
     expect(within(slot).getByText('Troca')).toBeTruthy()
     expect(within(slot).getByText('Taciana A')).toBeTruthy() // os casos vieram junto
@@ -322,7 +322,7 @@ describe('Slot assumido (troca executada)', () => {
     const slot = document.querySelector('[data-linha="uid-mar"]')
     expect(within(slot).getByText('Marcos Cury')).toBeTruthy()
     expect(within(slot).getByText('Troca')).toBeTruthy()
-    expect(within(slot).getByText(/Assumiu a posição de Marilio Flach/)).toBeTruthy()
+    expect(within(slot).getByText(/Assumiu a posição de Marílio Flach/)).toBeTruthy()
   })
 
   it('o aviso "libere na ordem" nomeia quem ASSUMIU, não o nome do rodapé', async () => {
@@ -342,7 +342,7 @@ describe('Slot assumido (troca executada)', () => {
     const linha = onDesfazerSubstituicao.mock.calls[0][0]
     expect(linha.chave).toBe('uid-mar')
     expect(linha.uid).toBe('uid-cury')
-    expect(linha.assumida?.deNome).toBe('Marilio Flach')
+    expect(linha.assumida?.deNome).toBe('Marílio Flach')
   })
 })
 
@@ -368,7 +368,7 @@ describe('A linha da troca fica na MARGEM DAS INFOS, no bloco recuado (dono 16/0
     }
     montar({ paresTroca: [] }, escala)
     const card = document.querySelector('[data-linha="uid-mar"]')
-    const nota = within(card).getByText(/Assumiu a posição de Marilio Flach/).closest('p')
+    const nota = within(card).getByText(/Assumiu a posição de Marílio Flach/).closest('p')
     expect(nota.closest('.-ml-14')).toBeTruthy()
     expect(nota.parentElement).not.toBe(paiDoNome(card))
   })

@@ -6,7 +6,7 @@
  *    a Accurata EM CURSO. Regra: cirurgia ABERTA neste turno vence a marca; sem
  *    cirurgia aberta a marca segue valendo (nada de "…" de escala que já acabou).
  *
- *  · "Romulo também está sem informações sobre procedimentos" — emprestado ao
+ *  · "Rômulo também está sem informações sobre procedimentos" — emprestado ao
  *    HRO num caso SEM cirurgião (C.O, 04 cesáreas): o card dizia só "Ajuda Sala
  *    7/HRO" e um "…". Sem cirurgião, o PROCEDIMENTO diz o que a pessoa faz lá.
  *
@@ -120,9 +120,9 @@ describe('Rômulo — emprestado a um caso SEM cirurgião: o procedimento diz o 
   })
 
   it('com cirurgião no caso de lá, continua o nome do cirurgião (30/08), não o procedimento', () => {
-    montar(escalaCom([daLouise]), { presencaOutros: [{ ...noHro[0], cirurgiao: 'Mauricio Fabiani' }] })
+    montar(escalaCom([daLouise]), { presencaOutros: [{ ...noHro[0], cirurgiao: 'Maurício Fabiani' }] })
     const t = textoDe('Rômulo Roxo')
-    expect(t).toMatch(/Mauricio Fabiani/)
+    expect(t).toMatch(/Maurício Fabiani/)
     expect(t).not.toMatch(/04 cesareas/i)
   })
 })

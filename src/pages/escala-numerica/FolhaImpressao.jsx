@@ -12,6 +12,7 @@
  */
 import { createPortal } from 'react-dom'
 import { LABEL_HOSPITAL } from '@/lib/escalaNumerica'
+import { nomeExibicao } from './nomeExibicao'
 import './folhaImpressao.css'
 
 function marcas(p) {
@@ -33,7 +34,7 @@ function Coluna({ titulo, meta, lista, semPosicao = false }) {
             <tr key={`${p.numero || ''}-${p.nome}-${i}`} className={p.ferias?.length || p.posPlantao ? 'fn-apagado' : undefined}>
               <td className="fn-pos">{semPosicao ? '·' : p.posicao}</td>
               <td className="fn-num">{p.numero || ''}</td>
-              <td>{p.nome}{marcas(p)}</td>
+              <td>{nomeExibicao(p.nome)}{marcas(p)}</td>
             </tr>
           ))}
         </tbody>

@@ -71,7 +71,7 @@ describe('Completa — arranjo do caso', () => {
     // 2ª: só o procedimento
     expect(linhas[1].textContent).toMatch(/Artroplastia total primária do quadril/i)
     // 3ª: quem opera + o convênio no canto inferior direito
-    expect(within(linhas[2]).getByText(/Mauricio Sanagiotto/i)).toBeTruthy()
+    expect(within(linhas[2]).getByText(/Maurício Sanagiotto/i)).toBeTruthy()
     expect(within(linhas[2]).getByText('SUS')).toBeTruthy()
   })
 
@@ -199,7 +199,7 @@ describe('Completa — cabeçalho da sala', () => {
     ])
     expect(screen.getAllByText('IOSC')).toHaveLength(2)
     expect(screen.getByText('Roberta')).toBeTruthy()
-    expect(screen.getByText('Mauricio')).toBeTruthy()
+    expect(screen.getByText('Maurício')).toBeTruthy()
   })
 })
 
@@ -297,7 +297,7 @@ describe('Completa — caso sem paciente identificado', () => {
     expect(linhas).toHaveLength(2)
     expect(linhas[0].textContent).toMatch(/06 EDA \+ 05 COLO/)
     expect(within(linhas[0]).getByText('Terminada')).toBeTruthy()
-    expect(within(linhas[1]).getByText(/Mauricio Sanagiotto/i)).toBeTruthy()
+    expect(within(linhas[1]).getByText(/Maurício Sanagiotto/i)).toBeTruthy()
   })
 
   it('com paciente, o procedimento continua na própria linha', () => {

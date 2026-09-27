@@ -133,7 +133,7 @@ describe('modo FDS — plantões físicos da faixa da grade (dono 15/08)', () =>
     render(<EscalaCirurgicaHomeCard />)
     expect(screen.getByText('Plantão · 7–13h')).toBeTruthy()
     expect(screen.getByText('Guilherme Didomenico')).toBeTruthy()
-    expect(screen.getByText('Joao Henrique')).toBeTruthy()
+    expect(screen.getByText('João Henrique')).toBeTruthy()
     expect(screen.queryByText('Gustavo Biesdorf')).toBeNull()
   })
 
@@ -189,7 +189,7 @@ describe('modo FDS — plantões físicos da faixa da grade (dono 15/08)', () =>
       render(<EscalaCirurgicaHomeCard />)
       expect(screen.getByText('Fernanda Guollo')).toBeTruthy()
       expect(screen.getByText('Daniela Reis')).toBeTruthy()
-      expect(screen.queryByText('Marilio Flach')).toBeNull()   // era o nome errado
+      expect(screen.queryByText('Marílio Flach')).toBeNull()   // era o nome errado
     })
 
     it('às 13h o card VIRA junto com a fila — Home e escala não divergem', () => {
@@ -198,7 +198,7 @@ describe('modo FDS — plantões físicos da faixa da grade (dono 15/08)', () =>
       vi.setSystemTime(new Date('2026-08-25T14:00:00-03:00'))
       estado.ctx = ctxFeriado({ tipo: 'feriado', grade: {}, posicoes: {} })
       render(<EscalaCirurgicaHomeCard />)
-      expect(screen.getByText('Marilio Flach')).toBeTruthy()
+      expect(screen.getByText('Marílio Flach')).toBeTruthy()
       expect(screen.getByText('Daniela Reis')).toBeTruthy()
       expect(screen.queryByText('Fernanda Guollo')).toBeNull()
     })

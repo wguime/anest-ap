@@ -217,7 +217,7 @@ describe('Término DESTA cirurgia (dono 29/07)', () => {
 describe('Ajuda marcada pela aba Completa (dono 29/07)', () => {
   it('marca a ajuda no turno DO CASO — a fila lê o mesmo ajudaExterna', async () => {
     montar()
-    fireEvent.click(screen.getByRole('button', { name: /Marcar Marilio como ajuda/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Marcar Marílio como ajuda/ }))
     await waitFor(() => expect(adicionarAjuda).toHaveBeenCalled())
     const [, turno, nome] = adicionarAjuda.mock.calls[0]
     expect(turno).toBe('matutino')
@@ -226,7 +226,7 @@ describe('Ajuda marcada pela aba Completa (dono 29/07)', () => {
 
   it('quem já é ajuda desmarca (volta ao estado anterior)', async () => {
     montar({}, { ...escala, ajudaExterna: { matutino: ['MARILIO'] } })
-    fireEvent.click(screen.getByRole('button', { name: /Marilio não é ajuda/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Marílio não é ajuda/ }))
     await waitFor(() => expect(removerAjuda).toHaveBeenCalledWith(expect.anything(), 'matutino', 'MARILIO'))
   })
 

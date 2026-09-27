@@ -2,6 +2,7 @@ import * as React from "react"
 import { Plane, Palmtree, PartyPopper, Martini, Sun, Beer, Hospital } from "lucide-react"
 
 import { cn } from "@/design-system/utils/tokens"
+import { acentuarNome } from "@/lib/nomeAcentos"
 
 // Rotação de ícones de férias — viagem/praia/descanso (Plane, Palmtree, Sun)
 // mais toque festivo: festa (PartyPopper) e bebidas (Martini, Beer), que
@@ -107,7 +108,7 @@ function FeriasListItem({
           data-slot="anest-ferias-list-item-title"
           className="truncate text-[15px] font-semibold text-foreground"
         >
-          {nome}
+          {acentuarNome(nome)}
         </div>
         {periodo ? (
           <div

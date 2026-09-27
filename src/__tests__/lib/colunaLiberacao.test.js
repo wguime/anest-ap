@@ -45,7 +45,7 @@ describe('nomeCirurgiaoCurto — regra 3 (primeiro nome + inicial do último sob
 
 describe('titleCaseNome — regra 17 (sem caixa alta, primeira maiúscula)', () => {
   it('capitaliza cada palavra do nome do anestesista', () => {
-    expect(titleCaseNome('JOAO HENRIQUE')).toBe('Joao Henrique')
+    expect(titleCaseNome('JOAO HENRIQUE')).toBe('João Henrique')
     expect(titleCaseNome('GUILHERME MELO')).toBe('Guilherme Melo')
   })
 })
@@ -89,7 +89,7 @@ describe('gerarColunaLiberacao — golden Unimed 26/06/2026', () => {
     caso('C.O - CESAREA', 4, '//', 'Fernanda Regina Becker', { hora: '18:00' }),
     // C.O - SALA 3 → JOAO HENRIQUE
     caso('C.O - SALA 3', 1, 'JOAO HENRIQUE', 'Achylles Neto', { hora: '13:30' }),
-    caso('C.O - SALA 3', 2, '//', 'Eduardo Jose Prochazka Frigeri', { hora: '16:30' }),
+    caso('C.O - SALA 3', 2, '//', 'Eduardo José Prochazka Frigeri', { hora: '16:30' }),
     // SALA 1 → EDUARDO / PED EDUARDO
     caso('SALA 1', 1, 'EDUARDO', 'Rodrigo Souza', { hora: '13:30' }),
     caso('SALA 1', 2, 'PED EDUARDO', 'Benito Bodanese', { hora: '16:00' }),
@@ -118,7 +118,7 @@ describe('gerarColunaLiberacao — golden Unimed 26/06/2026', () => {
     // EXAMES (lógica invertida → cirurgião à esquerda, anestesista à direita)
     caso('EXAMES', 1, 'ADRIANO', 'Elton', { bloco: 'exames', hora: '13:30' }),
     caso('EXAMES', 2, 'CURY', 'Farret', { bloco: 'exames', hora: '13:30' }),
-    caso('EXAMES', 3, 'GUILHERME MELO', 'Claudia', { bloco: 'exames', hora: '13:30' }),
+    caso('EXAMES', 3, 'GUILHERME MELO', 'Cláudia', { bloco: 'exames', hora: '13:30' }),
     // IMAGEM → "?" (sem anestesista)
     caso('IMAGEM', 1, '', 'Ana', { bloco: 'imagem', semAnestesista: true, hora: '16:00' }),
     // CONSULTORIO → TIAGO (sem cirurgião)
@@ -136,7 +136,7 @@ describe('gerarColunaLiberacao — golden Unimed 26/06/2026', () => {
   it('produz uma linha por anestesista do rodapé, na ordem do rodapé (regra 1)', () => {
     expect(r.linhas.map((l) => l.texto)).toEqual([
       'Leonardo — Liana Winkelmann',
-      'Marilio — Leandro Trevizan/Eduardo Menegat',
+      'Marílio — Leandro Trevizan/Eduardo Menegat',
       'Diego — Taciana Alflen/Fernanda Becker',
       'Garim — SRPA',
       'Rodnei — Venilton Vieira/Juliano Esbissigo/Ariane Fransozi',
@@ -145,10 +145,10 @@ describe('gerarColunaLiberacao — golden Unimed 26/06/2026', () => {
       'Adriano — Elton (Exames)',
       'Eduardo — Rodrigo Souza/Benito Bodanese',
       'Staub — Dirceu Junior',
-      'Joao Henrique — Achylles Neto/Eduardo Frigeri',
+      'João Henrique — Achylles Neto/Eduardo Frigeri',
       'Tiago — Consultório',
-      'Guilherme Melo — Claudia (Exames)',
-      'Joao Ricardo — …',
+      'Guilherme Melo — Cláudia (Exames)',
+      'João Ricardo — …',
       'Cristina — …',
       'Raquel — …',
     ])
@@ -179,7 +179,7 @@ describe('gerarColunaLiberacao — HRO (Hemodinâmica, IOSC, emergência)', () =
     caso('HEMO', 2, '//', 'Alexandre Medeiros', { bloco: 'hemodinamica', hora: '15:00' }),
     // IOSC → ROBERTA / MAURICIO (cirurgião informado)
     caso('IOSC-2', 1, 'ROBERTA', 'Rafael', { bloco: 'iosc', isContinuacao: true, hora: '13:00' }),
-    caso('IOSC-3', 1, 'MAURICIO', 'Marco Antonio', { bloco: 'iosc', isContinuacao: true, hora: '13:00' }),
+    caso('IOSC-3', 1, 'MAURICIO', 'Marco Antônio', { bloco: 'iosc', isContinuacao: true, hora: '13:00' }),
   ]
   const rodape = ['DANIELA', 'MAURICIO', 'ROSE', 'ROBERTA']
   const r = gerarColunaLiberacao(casos, rodape, { hospital: 'HRO' })
@@ -194,7 +194,7 @@ describe('gerarColunaLiberacao — HRO (Hemodinâmica, IOSC, emergência)', () =
   })
   it('acrescenta (IOSC) aos blocos IOSC (regra 6)', () => {
     expect(r.linhas.find((l) => l.anestesista === 'Roberta').texto).toBe('Roberta — Rafael (IOSC)')
-    expect(r.linhas.find((l) => l.anestesista === 'Mauricio').texto).toBe('Mauricio — Marco Antonio (IOSC)')
+    expect(r.linhas.find((l) => l.anestesista === 'Maurício').texto).toBe('Maurício — Marco Antônio (IOSC)')
   })
 })
 
@@ -210,7 +210,7 @@ describe('gerarColunaLiberacao — Materno/HC (pediátrico)', () => {
   const r = gerarColunaLiberacao(casos, ['ROMULO'], { hospital: 'Materno' })
 
   it('agrupa todos os cirurgiões do anestesista, dedup, na ordem', () => {
-    expect(r.linhas[0].texto).toBe('Romulo — Larissa Marchi/Vanessa Bau')
+    expect(r.linhas[0].texto).toBe('Rômulo — Larissa Marchi/Vanessa Bau')
   })
 })
 
@@ -344,7 +344,7 @@ describe('nomes em AZUL — ajuda de outro hospital (F1.8)', () => {
   })
   it('sem ajudaExterna nada muda (retrocompat golden)', () => {
     const r = gerarColunaLiberacao([caso('S1', 0, 'LEONARDO', 'Liana W')], ['LEONARDO', 'MARILIO'])
-    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marilio'])
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marílio'])
     expect(r.linhas.every((l) => !l.isAjuda)).toBe(true)
   })
 })
@@ -363,7 +363,7 @@ describe('plantão do turno seguinte — último nome escalado do rodapé', () =
   ]
   it('vai para o FIM da lista e ganha isProximoPlantao', () => {
     const r = gerarColunaLiberacao(casos, ['LEONARDO', 'MARILIO', 'KARINE'], { turno: 'matutino' })
-    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marilio', 'Karine'])
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marílio', 'Karine'])
     expect(r.linhas[2].isProximoPlantao).toBe(true)
     expect(r.linhas[0].isPlantonista).toBe(true) // o plantonista do turno segue sendo o 1º
   })
@@ -393,7 +393,7 @@ describe('plantão do turno seguinte — último nome escalado do rodapé', () =
     const r = gerarColunaLiberacao(comAjuda, ['LEONARDO', 'MARILIO', 'KARINE'], {
       turno: 'matutino', ajudaExterna: ['DIEGO'],
     })
-    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marilio', 'Diego', 'Karine'])
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marílio', 'Diego', 'Karine'])
     expect(r.linhas[2].isAjuda).toBe(true)
     expect(r.linhas[3].isProximoPlantao).toBe(true)
   })
@@ -402,7 +402,7 @@ describe('plantão do turno seguinte — último nome escalado do rodapé', () =
     const r = gerarColunaLiberacao(comAjudas, ['LEONARDO', 'MARILIO', 'KARINE'], {
       turno: 'matutino', ajudaExterna: ['PAULO', 'JANAINA'],
     })
-    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marilio', 'Paulo', 'Janaina', 'Karine'])
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marílio', 'Paulo', 'Janaína', 'Karine'])
   })
   // ── HRO 30/07: o rodapé terminava em FERNANDO, que estava em AZUL. O app marcou
   // a JANAÍNA (último nome NÃO-azul) como "Plantão da tarde" e o dono corrigiu: a
@@ -413,7 +413,7 @@ describe('plantão do turno seguinte — último nome escalado do rodapé', () =
       turno: 'matutino', ajudaExterna: ['FERNANDO'],
     })
     // Fernando fecha a lista (sai primeiro) — e NÃO a Karine, que é o último não-azul
-    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marilio', 'Karine', 'Fernando'])
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marílio', 'Karine', 'Fernando'])
     expect(r.linhas[3].isProximoPlantao).toBe(true)
     expect(r.linhas[3].plantaoLabel).toBe('Plantão da tarde')
     // carrega os DOIS selos: é ajuda de outro hospital E pega o plantão da tarde
@@ -440,7 +440,7 @@ describe('plantão do turno seguinte — último nome escalado do rodapé', () =
     // 31/07: nem ADRIANO (HRO) nem ALEXANDRE D (Unimed) mostravam o selo por
     // estarem sem caso — o dono pediu o badge em todos os contraturnos.
     const r = gerarColunaLiberacao(casos.slice(0, 2), ['LEONARDO', 'MARILIO', 'KARINE'], { turno: 'matutino' })
-    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marilio', 'Karine'])
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marílio', 'Karine'])
     expect(r.linhas[2].isProximoPlantao).toBe(true)
     expect(r.linhas[2].plantaoLabel).toBe('Plantão da tarde')
     expect(r.linhas[2].teveCasos).toBe(false) // sem caso: nasce liberado, mas identificado
@@ -453,7 +453,7 @@ describe('plantão do turno seguinte — último nome escalado do rodapé', () =
   // está escalado à tarde sai primeiro pela mesma razão (descansar).
   it('no VESPERTINO a regra também vale, com rótulo "Plantão da manhã"', () => {
     const r = gerarColunaLiberacao(casos, ['LEONARDO', 'MARILIO', 'KARINE'], { turno: 'vespertino' })
-    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marilio', 'Karine'])
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marílio', 'Karine'])
     expect(r.linhas[2].isProximoPlantao).toBe(true)
     expect(r.linhas[2].plantaoLabel).toBe('Plantão da manhã')
     expect(r.linhas[0].isPlantonista).toBe(true)
@@ -463,7 +463,7 @@ describe('plantão do turno seguinte — último nome escalado do rodapé', () =
     const r = gerarColunaLiberacao(comAjuda, ['LEONARDO', 'MARILIO', 'KARINE'], {
       turno: 'vespertino', ajudaExterna: ['DIEGO'],
     })
-    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marilio', 'Diego', 'Karine'])
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marílio', 'Diego', 'Karine'])
     expect(r.linhas[3].isProximoPlantao).toBe(true)
   })
   it('sem turno informado (chamada legada) a regra não dispara', () => {
@@ -631,7 +631,7 @@ describe('casos encerrados saem da linha em tempo real (pedido 2026-07-21)', () 
     expect(giovana.teveCasos).toBe(true) // encerrou tudo ≠ nunca escalado
     const staub = r.linhas.find((l) => l.anestesista === 'Staub')
     expect(staub.cirurgioes).toEqual(['Theodoro Gonzalez']) // o suspenso saiu
-    const romulo = r.linhas.find((l) => l.anestesista === 'Romulo')
+    const romulo = r.linhas.find((l) => l.anestesista === 'Rômulo')
     expect(romulo.teveCasos).toBe(false) // nunca escalado → view auto-libera
   })
 
@@ -713,7 +713,7 @@ describe('dupla lida pela metade ("OSCAR + ?") — dono 02/09', () => {
 describe('dois anestesistas na mesma sala ("A + B") — pedido do dono 23/07', () => {
   it('o caso conta para AMBOS: cada um aparece na sua posição do rodapé, com a sala', () => {
     const r = gerarColunaLiberacao(
-      [caso('Hemodinâmica', 0, 'ROBERTA + FERNANDO', 'Claudio Ferreira')],
+      [caso('Hemodinâmica', 0, 'ROBERTA + FERNANDO', 'Cláudio Ferreira')],
       ['GUSTAVO', 'ROBERTA', 'FERNANDO'], // ordem enviada: Roberta e Fernando em posições distintas
       {}
     )
@@ -743,8 +743,8 @@ describe('prefixo de PEDIDO "PED"/"PED."/"Ped." (regra do dono 24/07)', () => {
       ['JANAINA'],
       {}
     )
-    const janaina = r.linhas.filter((l) => l.anestesista === 'Janaina')
-    expect(janaina).toHaveLength(1) // não vira linha órfã "Ped. Janaina"
+    const janaina = r.linhas.filter((l) => l.anestesista === 'Janaína')
+    expect(janaina).toHaveLength(1) // não vira linha órfã "Ped. Janaína"
     expect(janaina[0].salas.sort()).toEqual(['Sala 3', 'Sala 6']) // escalada nos 2 locais
   })
   it('não estraga nome que começa com "Ped" (Pedro)', () => {
@@ -853,7 +853,7 @@ describe('emprestado a outro hospital mantém a posição do rodapé', () => {
       ajudaExterna: ['TIAGO'],
       ajudandoFora: [{ nome: 'TIAGO', uid: 'uid-tiago', sala: 'Hemodinâmica' }],
     })
-    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Tiago', 'Marilio', 'Karine'])
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Tiago', 'Marílio', 'Karine'])
     const tiago = r.linhas[1]
     expect(tiago.isAjuda).toBe(true)      // badge
     expect(tiago.ajudaFora).toBe(true)    // o card mostra o destino
@@ -867,7 +867,7 @@ describe('emprestado a outro hospital mantém a posição do rodapé', () => {
       ajudaExterna: ['DIEGO'],
     })
     // Diego (azul, caso AQUI) desce para o fim — chegou para ajudar
-    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marilio', 'Diego', 'Karine'])
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marílio', 'Diego', 'Karine'])
     expect(r.linhas[2].ajudaFora).toBe(false)
   })
 
@@ -877,7 +877,7 @@ describe('emprestado a outro hospital mantém a posição do rodapé', () => {
       turno: 'vespertino',
       ajudandoFora: [{ nome: 'TIAGO', uid: null, sala: 'Hemodinâmica' }],
     })
-    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marilio', 'Tiago', 'Karine'])
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marílio', 'Tiago', 'Karine'])
     expect(r.linhas[2].isAjuda).toBe(true)
     expect(r.linhas[2].ajudaFora).toBe(true)
   })
@@ -903,7 +903,7 @@ describe('slot assumido (troca declarada, dono 30/07)', () => {
 
   it('caso Giovana↔Maurício: ela ocupa a posição dele — SEM linha extra no fim', () => {
     const r = gerarColunaLiberacao(casosPos, ['ANDRE', 'MAURICIO', 'CARLA'], { assumidas })
-    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Andre', 'Giovana Silva', 'Carla'])
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['André', 'Giovana Silva', 'Carla'])
     expect(r.linhas.some((l) => l.isExtra)).toBe(false)
     const slot = r.linhas[1]
     expect(slot.chave).toBe('MAURICIO') // chave ESTÁVEL: marcações do slot não órfãm
@@ -911,7 +911,7 @@ describe('slot assumido (troca declarada, dono 30/07)', () => {
     expect(slot.nomeOriginal).toBe('MAURICIO') // nada reescreve o rodapé
     // deNomeOriginal = nome CRU do rodapé (D8): é por ele que o desfazer casa o dono
     // `local` = de onde veio quem assumiu quando não estava em escala nenhuma
-    expect(slot.assumida).toEqual({ deNome: 'Mauricio', deNomeOriginal: 'MAURICIO', deUid: null, motivo: null, local: null })
+    expect(slot.assumida).toEqual({ deNome: 'Maurício', deNomeOriginal: 'MAURICIO', deUid: null, motivo: null, local: null })
     expect(slot.cirurgioes).toEqual(['Taciana Alflen']) // consome o grupo dela
     expect(slot.teveCasos).toBe(true) // nunca nasce "não escalado"/liberado
   })
@@ -949,7 +949,7 @@ describe('slot assumido (troca declarada, dono 30/07)', () => {
         BEATRIZ: { uid: 'uid-ant', nome: 'ANTONIO REIS' },
       },
     })
-    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Beatriz Lima', 'Antonio Reis'])
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Beatriz Lima', 'Antônio Reis'])
     expect(r.linhas.map((l) => l.cirurgioes)).toEqual([['Liana Winkelmann'], ['Taciana Alflen']])
     expect(r.linhas.some((l) => l.isExtra)).toBe(false)
   })
@@ -968,7 +968,7 @@ describe('slot assumido (troca declarada, dono 30/07)', () => {
     expect(slot.anestesista).toBe('Giovana Silva')
     expect(slot.teveCasos).toBe(true)
     const extra = r.linhas.find((l) => l.isExtra)
-    expect(extra?.anestesista).toBe('Mauricio')
+    expect(extra?.anestesista).toBe('Maurício')
   })
 
   it('quem assumiu também some do bloco de ajuda avulsa (sem linha dupla)', () => {
@@ -1069,7 +1069,7 @@ describe('visitantes de outro hospital — ordem do rodapé de ORIGEM (dono 31/0
     caso('CO - Cesárea', 0, 'LEONARDO', 'Cristiane Melo'),
     caso('CC - Sala 3', 0, 'PAULO + GUILHERME MELO', 'Eduardo Menegat'),
     caso('CC - Sala 6', 0, 'GABRIELA', 'Leonardo Winkelmann'),
-    caso('S9', 0, 'RAUL', 'Barbara Anahy'),
+    caso('S9', 0, 'RAUL', 'Bárbara Anahy'),
   ]
   const rodapeOutros = [
     { nome: 'GUILHERME MELO', rodapeIdx: 6 },
@@ -1167,14 +1167,14 @@ describe('ordem informada da ajuda vence a derivada por origem (dono 09/09)', ()
 describe('azul do rodapé sem caso aqui mantém a posição (dono 31/07)', () => {
   const casos = [
     caso('S1', 0, 'MARILIO', 'Eduardo Baldissera'),
-    caso('S9', 0, 'KARINE', 'Barbara Anahy'),
+    caso('S9', 0, 'KARINE', 'Bárbara Anahy'),
   ]
 
   it('fica na posição do rodapé, com badge e sem nascer liberado', () => {
     const r = gerarColunaLiberacao(casos, ['MARILIO', 'LEONARDO', 'KARINE'], {
       ajudaExterna: ['LEONARDO'],
     })
-    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Marilio', 'Leonardo', 'Karine'])
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Marílio', 'Leonardo', 'Karine'])
     const leo = r.linhas[1]
     expect(leo.isAjuda).toBe(true)
     expect(leo.teveCasos).toBe(true) // está trabalhando — em outro lugar
@@ -1184,10 +1184,10 @@ describe('azul do rodapé sem caso aqui mantém a posição (dono 31/07)', () =>
     const r = gerarColunaLiberacao(casos, ['LEONARDO', 'MARILIO', 'KARINE'], {
       ajudaExterna: ['LEONARDO'],
     })
-    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marilio', 'Karine'])
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marílio', 'Karine'])
     expect(r.linhas[0].isPlantonista).toBe(false)
     expect(r.linhas[1].isPlantonista).toBe(true) // 1º dos NOSSOS
-    expect(r.plantonista).toBe('Marilio')
+    expect(r.plantonista).toBe('Marílio')
   })
 
   it('azul com caso AQUI segue descendo pro fim (regra do caso TIAGO intacta)', () => {
@@ -1195,7 +1195,7 @@ describe('azul do rodapé sem caso aqui mantém a posição (dono 31/07)', () =>
     const r = gerarColunaLiberacao(comCasoAqui, ['MARILIO', 'DIEGO', 'KARINE'], {
       ajudaExterna: ['DIEGO'],
     })
-    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Marilio', 'Karine', 'Diego'])
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Marílio', 'Karine', 'Diego'])
   })
 })
 
@@ -1246,7 +1246,7 @@ describe('identidade da linha — nunca pelo display', () => {
     // call sites reais SEMPRE passam nomeOriginal; o contrato é que ele venha do
     // RODAPÉ (cru), nunca do texto exibido na tela
     expect(r.linhas[0].nomeOriginal).toBe('MARILIO')
-    expect(r.linhas[0].anestesista).toBe('Marilio') // display é outra coisa
+    expect(r.linhas[0].anestesista).toBe('Marílio') // display é outra coisa
   })
 })
 
@@ -1297,7 +1297,7 @@ describe('cauda da fila: Materno antes dos outros hospitais (dono 27/08)', () =>
     const nomes = r.linhas.map((l) => l.anestesista)
     // cauda, de cima para baixo: Alexandre (HRO 6º) · Gustavo (HRO 10º) · Rômulo
     // (Materno) · Oscar (contraturno). O fim libera primeiro.
-    expect(nomes.slice(-4)).toEqual(['Alexandre S', 'Gustavo', 'Romulo', 'Oscar'])
+    expect(nomes.slice(-4)).toEqual(['Alexandre S', 'Gustavo', 'Rômulo', 'Oscar'])
   })
 
   it('o Materno vem primeiro mesmo sendo o 1º do rodapé de lá — hospital manda antes do índice', () => {
@@ -1309,7 +1309,7 @@ describe('cauda da fila: Materno antes dos outros hospitais (dono 27/08)', () =>
       ],
     })
     const nomes = r.linhas.map((l) => l.anestesista)
-    expect(nomes.indexOf('Romulo')).toBeGreaterThan(nomes.indexOf('Alexandre S'))
+    expect(nomes.indexOf('Rômulo')).toBeGreaterThan(nomes.indexOf('Alexandre S'))
   })
 
   it('sem `hospital` na origem o comportamento de 31/07 é idêntico (só o índice manda)', () => {
@@ -1349,14 +1349,14 @@ describe('origem informada à mão — o Materno sem escala (dono 27/08)', () =>
     })
     const nomes = r.linhas.map((l) => l.anestesista)
     // recorte real de 27/08 na Unimed: o fim libera primeiro
-    expect(nomes.slice(-4)).toEqual(['Alexandre S', 'Gustavo', 'Romulo', 'Oscar'])
+    expect(nomes.slice(-4)).toEqual(['Alexandre S', 'Gustavo', 'Rômulo', 'Oscar'])
   })
 
   it('sem a marca, quem não está em rodapé nenhum não tem ordem de origem e sai por último', () => {
     const r = gerarColunaLiberacao(casos, rodape, { turno: 'vespertino', rodapeOutros: doHro })
     const nomes = r.linhas.map((l) => l.anestesista)
     // é exatamente este buraco que a marca fecha — Rômulo acima dos dois do HRO
-    expect(nomes.indexOf('Romulo')).toBeLessThan(nomes.indexOf('Alexandre S'))
+    expect(nomes.indexOf('Rômulo')).toBeLessThan(nomes.indexOf('Alexandre S'))
   })
 
   it('a marca é a fonte do RÓTULO do badge, não só da ordem', () => {
@@ -1365,13 +1365,13 @@ describe('origem informada à mão — o Materno sem escala (dono 27/08)', () =>
       origemManual: { ROMULO: { hospital: 'materno', label: 'Materno' } },
     })
     const porNome = Object.fromEntries(r.linhas.map((l) => [l.anestesista, l]))
-    expect(porNome.Romulo.origemLabel).toBe('Materno')
-    expect(porNome.Romulo.origemHospital).toBe('materno')
+    expect(porNome.Rômulo.origemLabel).toBe('Materno')
+    expect(porNome.Rômulo.origemHospital).toBe('materno')
     // derivada do rodapé de origem entrega o mesmo par, sem marca nenhuma
     expect(porNome.Gustavo.origemLabel).toBe('HRO')
     expect(porNome.Gustavo.origemHospital).toBe('hro')
     // quem é da casa não tem origem
-    expect(porNome.Marilio.origemHospital).toBeNull()
+    expect(porNome.Marílio.origemHospital).toBeNull()
   })
 
   it('marca do MESMO hospital em que a pessoa já aparece preserva a posição real de lá', () => {
@@ -1433,7 +1433,7 @@ describe('plantaoContraturno: false — o Materno não tem plantão do turno seg
 describe('a ordem informada alcança quem fecha o rodapé daqui (dono 11/09)', () => {
   const casos = [
     caso('CC - Sala 5', 0, 'HUMBERTO', 'Luis Farret'),
-    caso('CO - Sala 3', 0, 'MARILIO', 'Mauricio Silva'),
+    caso('CO - Sala 3', 0, 'MARILIO', 'Maurício Silva'),
     caso('CC - Sala 2', 0, 'GIOVANA', 'Mateus Baptistella'),
     caso('Exames', 0, 'ALINE', 'Rodrigo'),
   ]
@@ -1452,7 +1452,7 @@ describe('a ordem informada alcança quem fecha o rodapé daqui (dono 11/09)', (
       ajudaExterna, rodapeOutros, ajudaOrdemInformada: true, turno: 'matutino',
     })
     expect(r.linhas.map((l) => l.anestesista)).toEqual(
-      ['Humberto', 'Marilio', 'Aline', 'Giovana']
+      ['Humberto', 'Marílio', 'Aline', 'Giovana']
     )
   })
 
@@ -1474,7 +1474,7 @@ describe('a ordem informada alcança quem fecha o rodapé daqui (dono 11/09)', (
     // sem numeração manda 27/08: índice do rodapé de origem ASCENDENTE, então o
     // Marílio (8º no HRO) fica acima da Giovana (14º lá, sai antes lá e aqui)
     expect(r.linhas.map((l) => l.anestesista)).toEqual(
-      ['Humberto', 'Marilio', 'Giovana', 'Aline']
+      ['Humberto', 'Marílio', 'Giovana', 'Aline']
     )
     expect(r.linhas[3].isProximoPlantao).toBe(true)
   })

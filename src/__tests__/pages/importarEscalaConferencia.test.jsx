@@ -691,7 +691,7 @@ describe('Conferência — ordem de liberação numerada', () => {
     fireEvent.click(within(caixa).getByText(/na ordem, sem cirurgia/i))
     // a folha pergunta ONDE a pessoa está (Onda 3): o parágrafo com a citação do
     // incidente saiu e o contexto virou uma linha de dados no cabeçalho
-    expect(await screen.findByText(/Onde está Joao Henrique hoje\?/i)).toBeTruthy()
+    expect(await screen.findByText(/Onde está João Henrique hoje\?/i)).toBeTruthy()
   })
 
   // A LISTA É A ÚNICA SUPERFÍCIE (dono 11/08): o campo de texto saiu e a

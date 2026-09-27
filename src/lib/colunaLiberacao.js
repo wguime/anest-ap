@@ -18,6 +18,7 @@
  *   - semAnestesista: caso "?" (vai para o fim da lista, separado por linha em branco).
  */
 import { casoConcluido } from '@/lib/escalaCirurgicaStatus'
+import { acentuarNome } from '@/lib/nomeAcentos'
 
 /** Blocos cujo rótulo é acrescentado entre parênteses após o cirurgião (regras 4/6/13). */
 export const BLOCO_LABEL = {
@@ -49,13 +50,13 @@ const PREFIXOS_SOBRENOME = new Set(['dal', 'dall', 'dalla', 'del', 'della', 'di'
 const titleCaseToken = (s) =>
   s ? s.charAt(0).toLocaleUpperCase('pt-BR') + s.slice(1).toLocaleLowerCase('pt-BR') : s
 
-/** "JOAO HENRIQUE" -> "Joao Henrique"; "guilherme melo" -> "Guilherme Melo" (regra 17). */
+/** "JOAO HENRIQUE" -> "João Henrique"; "guilherme melo" -> "Guilherme Melo" (regra 17; acentos por `acentuarNome`). */
 export const titleCaseNome = (s) =>
-  String(s || '')
+  acentuarNome(String(s || '')
     .trim()
     .split(/\s+/)
     .map(titleCaseToken)
-    .join(' ')
+    .join(' '))
 
 /**
  * Grafia clínica (pedido do dono 2026-07-21): texto TODO EM CAIXA ALTA vira
@@ -159,7 +160,7 @@ export function nomeCirurgiaoCurto(full) {
   const tokens = String(full).trim().split(/\s+/).filter(Boolean)
   if (tokens.length === 0) return null
   const first = titleCaseToken(tokens[0])
-  if (tokens.length === 1) return first
+  if (tokens.length === 1) return acentuarNome(first)
   // último token significativo (ignora partículas finais soltas)
   let i = tokens.length - 1
   for (let j = tokens.length - 1; j >= 1; j--) {
@@ -171,13 +172,13 @@ export function nomeCirurgiaoCurto(full) {
   // sobrenome COMPOSTO vem inteiro ("Dall Magro", "Dal Piva") — o prefixo nunca
   // é o primeiro nome (guarda i-1 >= 1)
   while (i - 1 >= 1 && PREFIXOS_SOBRENOME.has(tokens[i - 1].toLowerCase())) i--
-  return `${first} ${tokens.slice(i).map(titleCaseToken).join(' ')}`
+  return acentuarNome(`${first} ${tokens.slice(i).map(titleCaseToken).join(' ')}`)
 }
 
 /** Só o primeiro nome (salas com 2 anestesistas na Completa). "GUILHERME MELO" → "Guilherme". */
 export const primeiroNome = (s) => {
   const t = String(s || '').trim().split(/\s+/).filter(Boolean)
-  return t.length ? titleCaseToken(t[0]) : ''
+  return t.length ? acentuarNome(titleCaseToken(t[0])) : ''
 }
 
 /**

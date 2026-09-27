@@ -46,7 +46,7 @@ const { getPlantoesPorData, fetchEscala } = vi.hoisted(() => {
   const FDS = [
     { nome: 'Erlei Perini', setor: 'P3', horario: '07:00', horarioFim: '19:00' },
     { nome: 'Gustavo Biesdorf', setor: 'P10', horario: '07:00', horarioFim: '13:00' },
-    { nome: 'Joao Henrique Salvao Vanni', setor: 'P1', horario: '07:00', horarioFim: '19:00' },
+    { nome: 'João Henrique Salvão Vanni', setor: 'P1', horario: '07:00', horarioFim: '19:00' },
     { nome: 'A. Danieli', setor: 'P11', horario: '07:00', horarioFim: '07:00' },
     { nome: 'Romulo Santos Roxo', setor: 'P2', horario: '07:00', horarioFim: '19:00' },
     // sem Pn no setor: fica fora da fila
@@ -112,7 +112,8 @@ import FeriadosPage from '@/pages/escala-numerica/FeriadosPage'
 const wrap = ({ children }) => <ThemeProvider><ToastProvider>{children}</ToastProvider></ThemeProvider>
 
 /** Nomes de um bloco, na ordem em que estão na tela (só as linhas da fila). */
-const nomesEm = (raiz) => [...raiz.querySelectorAll('[data-slot="ordem-nome"]')].map((el) => el.textContent)
+// a ordem se confere pelo nome da LEGENDA (data-legenda); a tela mostra primeiro + último
+const nomesEm = (raiz) => [...raiz.querySelectorAll('[data-slot="ordem-nome"]')].map((el) => el.dataset.legenda)
 const nomesDoBloco = (rotulo) => nomesEm(screen.getByRole('heading', { name: rotulo }).closest('section'))
 const pns = () => [...document.querySelectorAll('[data-slot="fds-linha"]')].map((el) => el.firstElementChild.textContent)
 // o rótulo é partido em spans (abaixo de 400px vira só "(pós)") e o title leva o posto,
@@ -152,9 +153,25 @@ describe('Escala Numérica — quinta 03/09/2026', () => {
     // consultório fora da fila, sem numeração de posição
     const cons = screen.getByRole('heading', { name: 'Consultório' }).closest('section')
     expect(within(cons).getByText('fora da fila')).toBeInTheDocument()
-    for (const n of ['EDUARDO', 'ERLEI', 'NATHALIA']) {
+    for (const n of ['Eduardo Savoldi', 'Erlei Perini', 'Nathalia Fernandes']) {
       expect(within(cons).getByText(n)).toBeInTheDocument()
     }
+  })
+
+  it('a tela mostra primeiro + último do cadastro, como a escala cirúrgica (dono 26/09)', async () => {
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(nomesDoBloco('HRO').length).toBe(20))
+    const exibido = (legenda) =>
+      [...document.querySelectorAll('[data-slot="ordem-nome"]')].find((el) => el.dataset.legenda === legenda)?.textContent
+    // a legenda impressa traz só um nome — "COSTA" e "GABRIEL" (Gabriel Costa) confundiam
+    expect(exibido('COSTA')).toBe('Marcos Costa')
+    expect(exibido('MELO')).toBe('Guilherme Melo')
+    expect(exibido('GUILHERME D')).toBe('Guilherme Xavier')
+    // dupla: só o primeiro nome de cada um (dono 27/09) — com sobrenome cortava a 430px
+    expect(exibido('HUMBERTO / ROBERTA')).toBe('Humberto / Roberta')
+    // acento na tela, embora a legenda e o cadastro venham sem (dono 27/09)
+    expect(exibido('JOAO RICARDO')).toBe('João Moreira')
+    expect(exibido('MAURICIO')).toBe('Maurício Bastos')
   })
 
   it('quem está de férias FICA na posição, marcado — não é excluído', async () => {
@@ -163,7 +180,7 @@ describe('Escala Numérica — quinta 03/09/2026', () => {
 
     // 3 no HRO + 1 no Materno + 1 no consultório
     expect(screen.getAllByText('(férias)')).toHaveLength(5)
-    const linhaKarine = screen.getByText('KARINE').closest('div')
+    const linhaKarine = screen.getByText('Karine Bedin').closest('div')
     expect(linhaKarine.textContent).toContain('(férias)')
     expect(linhaKarine.textContent).toContain('18')
     // a posição do quadro é preservada: KARINE é a 8ª da manhã do HRO
@@ -177,21 +194,21 @@ describe('Escala Numérica — quinta 03/09/2026', () => {
 
     // Materno: CURY (24) fica na posição dele, marcado
     const materno = screen.getByRole('heading', { name: 'Materno' }).closest('section')
-    expect(within(materno).getByText('CURY').closest('div').textContent).toContain('(férias)')
+    expect(within(materno).getByText('Marcos Cury').closest('div').textContent).toContain('(férias)')
     expect(nomesDoBloco('Materno')).toEqual(['CURY', 'RAQUEL'])
 
     // Consultório: fica fora da fila, mas ERLEI (25) também aparece marcado
     const cons = screen.getByRole('heading', { name: 'Consultório' }).closest('section')
     const chips = [...cons.querySelectorAll('[data-slot="consultorio-chip"]')].map((c) => c.textContent)
     expect(chips).toHaveLength(3)
-    expect(chips.find((t) => t.includes('ERLEI'))).toContain('(férias)')
-    expect(chips.find((t) => t.includes('EDUARDO'))).not.toContain('(férias)')
+    expect(chips.find((t) => t.includes('Erlei Perini'))).toContain('(férias)')
+    expect(chips.find((t) => t.includes('Eduardo Savoldi'))).not.toContain('(férias)')
   })
 
   it('THAYNA está de férias em outro dia e NÃO é marcada em 03/09', async () => {
     render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
     await waitFor(() => expect(screen.getAllByText('(férias)').length).toBe(5))
-    const linhaThayna = screen.getByText('THAYNA').closest('div')
+    const linhaThayna = screen.getByText('Thayna Santos').closest('div')
     expect(linhaThayna.textContent).not.toContain('(férias)')
   })
 
@@ -227,7 +244,7 @@ describe('Escala Numérica — fim de semana (P1..P12 do Pega Plantão)', () => 
     expect(screen.queryByRole('heading', { name: 'HRO' })).not.toBeInTheDocument()
     // a ordem é pelo NÚMERO do posto: P2 antes de P10, nunca alfabética
     expect(pns()).toEqual(['P1', 'P2', 'P3', 'P10', 'P11'])
-    expect(nomesFds()[0]).toBe('Joao Henrique Salvao Vanni')
+    expect(nomesFds()[0]).toBe('João Henrique Salvão Vanni')
     // e a tela diz até onde a ordem vale (regra do dono 03/09): de P5 em diante a ordem do
     // Pega Plantão é a real; em P1–P4 os nomes estão certos mas a ordem sai com a escala
     expect(screen.getByText(/NÃO faz parte da escala numérica/i)).toBeInTheDocument()
@@ -335,7 +352,7 @@ describe('Feriados — lista e ordem do feriado', () => {
       expect(screen.getByText(/Fila única do feriado: todos os hospitais, 20 nomes/)).toBeInTheDocument()
     )
     // uma vez em cada turno — o CARNAVAL é fila única de 20 nomes nos dois
-    expect(screen.getAllByText('JANAINA')).toHaveLength(2)
+    expect(screen.getAllByText('Janaína Favorito')).toHaveLength(2)
   })
 })
 
@@ -427,8 +444,8 @@ describe('Escala Numérica — pós-plantão', () => {
     // de manhã eles trabalham: nada de marca de pós plantão nem nome esmaecido…
     expect(posPlantao()).toHaveLength(0)
     // …mas o POSTO entre parênteses fica, para a 2ª posição não parecer arbitrária
-    expect(screen.getByText('ROMULO').closest('div').textContent).toContain('(P1)')
-    expect(screen.getByText('KLISMAN').closest('div').textContent).toContain('(P2)')
+    expect(screen.getByText('Rômulo Roxo').closest('div').textContent).toContain('(P1)')
+    expect(screen.getByText('Klisman Hilleshein').closest('div').textContent).toContain('(P2)')
   })
 
   it('tarde: os dois ficam na posição da numérica, marcados como pós plantão', async () => {
@@ -441,8 +458,8 @@ describe('Escala Numérica — pós-plantão', () => {
     const uni = nomesDoBloco('Unimed')
     expect(uni[11]).toBe('ROMULO')
     expect(uni[13]).toBe('KLISMAN')
-    expect(screen.getByText('ROMULO').closest('div').textContent).toMatch(/\(pós.*P1\)/)
-    expect(screen.getByText('KLISMAN').closest('div').textContent).toMatch(/\(pós.*P2\)/)
+    expect(screen.getByText('Rômulo Roxo').closest('div').textContent).toMatch(/\(pós.*P1\)/)
+    expect(screen.getByText('Klisman Hilleshein').closest('div').textContent).toMatch(/\(pós.*P2\)/)
     // ninguém foi tirado da fila da tarde
     expect(uni).toHaveLength(20)
   })
@@ -490,9 +507,9 @@ describe('Escala Numérica — imprimir (dono 25/09: o turno ou o dia)', () => {
     expect(turnosDaFolha()).toEqual(['Manhã', 'Tarde'])
     const [manha, tarde] = folha().querySelectorAll('.fn-turno')
     // manhã: o Romulo na 2ª do HRO com o posto; tarde: marcado como pós plantão
-    expect(manha.textContent).toMatch(/2\d*ROMULO \(P1\)/)
-    expect(tarde.textContent).toContain('ROMULO (pós plantão P1)')
-    expect(tarde.textContent).toContain('KLISMAN (pós plantão P2)')
+    expect(manha.textContent).toMatch(/2\d*Rômulo Roxo \(P1\)/) // folha = nome da tela (dono 27/09)
+    expect(tarde.textContent).toContain('Rômulo Roxo (pós plantão P1)')
+    expect(tarde.textContent).toContain('Klisman Hilleshein (pós plantão P2)')
 
     // fechou o diálogo: a folha sai do DOM
     window.dispatchEvent(new Event('afterprint'))

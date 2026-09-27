@@ -8,6 +8,7 @@
  * Quem está de férias FICA na posição, marcado — a exclusão é da conferência, não da consulta.
  */
 import { LABEL_HOSPITAL } from '@/lib/escalaNumerica'
+import { nomeExibicao } from './nomeExibicao'
 
 export function LinhaOrdem({ p }) {
   const deFerias = Boolean(p.ferias?.length)
@@ -25,8 +26,8 @@ export function LinhaOrdem({ p }) {
         {p.numero || '??'}
       </span>
       {/* o nome trunca; a marca de férias NUNCA — por isso ela fica fora do span que trunca */}
-      <span data-slot="ordem-nome" title={p.nome} className={`min-w-0 truncate text-[12.5px] ${apagado ? 'font-medium text-muted-foreground' : 'font-semibold'}`}>
-        {p.nome}
+      <span data-slot="ordem-nome" data-legenda={p.nome} title={nomeExibicao(p.nome)} className={`min-w-0 truncate text-[12.5px] ${apagado ? 'font-medium text-muted-foreground' : 'font-semibold'}`}>
+        {nomeExibicao(p.nome)}
       </span>
       {deFerias && <span className="flex-none text-[10.5px] font-semibold text-warning">(férias)</span>}
       {/* pós-plantão: quem fez a noite da véspera. À tarde não é escalado, mas fica na
@@ -124,12 +125,13 @@ export function BlocoConsultorio({ consultorio }) {
             <span
               key={c.numero}
               data-slot="consultorio-chip"
+              data-legenda={c.nome}
               className={`inline-flex min-h-[32px] items-center gap-1.5 rounded-full px-3 text-[12.5px] ${
                 apagadoC ? 'border border-dashed border-border-strong font-medium text-muted-foreground' : 'bg-muted font-semibold'
               }`}
             >
               <span className="text-[11px] tabular-nums text-muted-foreground">{c.numero}</span>
-              {c.nome}
+              {nomeExibicao(c.nome)}
               {deFerias && <span className="text-[10.5px] font-semibold text-warning">(férias)</span>}
               {c.posPlantao && !deFerias && (
                 <span className="text-[10.5px] font-semibold text-info" title="Pós plantão">

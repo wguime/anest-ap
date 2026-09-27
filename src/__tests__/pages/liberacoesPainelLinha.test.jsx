@@ -76,7 +76,7 @@ const linhaDaCirurgia = (card, cirurgiao) => within(card).getByText(cirurgiao).c
 describe('controle de edição da linha', () => {
   it('mostra a palavra "Editar", não só o ícone', () => {
     montar()
-    const botao = screen.getByLabelText('Editar local/cirurgião de Marilio Flach')
+    const botao = screen.getByLabelText('Editar local/cirurgião de Marílio Flach')
     expect(botao.textContent.trim()).toBe('Editar')
     // continua com alvo de toque de 44px (regra de responsividade do app)
     expect(botao.className).toContain('h-11')
@@ -115,7 +115,7 @@ beforeEach(() => vi.clearAllMocks())
 describe('Troca REMOVIDA — a aba não mexe mais na ordem nem no dono do caso (dono 29/07)', () => {
   it('o painel da linha não tem mais "Quem está nesta posição" nem substituir', () => {
     montar()
-    abrirEditor('Marilio Flach')
+    abrirEditor('Marílio Flach')
     expect(screen.queryByText('Quem está nesta posição')).toBeNull()
     expect(screen.queryByRole('button', { name: /Substituir/i })).toBeNull()
     expect(screen.queryByRole('button', { name: /Confirmar troca/i })).toBeNull()
@@ -125,7 +125,7 @@ describe('Troca REMOVIDA — a aba não mexe mais na ordem nem no dono do caso (
     const onSetOverride = vi.fn(async () => {})
     const onDefinirCasos = vi.fn(async () => {})
     montar({ onSetOverride, onDefinirCasos })
-    abrirEditor('Marilio Flach')
+    abrirEditor('Marílio Flach')
     abrirObservacao()
     fireEvent.change(screen.getByPlaceholderText(/saiu para a Hemodinâmica/), { target: { value: 'foi para o HRO' } })
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
@@ -140,7 +140,7 @@ describe('Troca REMOVIDA — a aba não mexe mais na ordem nem no dono do caso (
     const onReorder = vi.fn()
     const onSubstituir = vi.fn()
     montar({ onReorder, onSubstituir })
-    abrirEditor('Marilio Flach')
+    abrirEditor('Marílio Flach')
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     expect(onReorder).not.toHaveBeenCalled()
     expect(onSubstituir).not.toHaveBeenCalled()
@@ -151,7 +151,7 @@ describe('Observação da linha (dono 29/07)', () => {
   it('aparece no card da fila e avisa que não é lugar de dado de paciente', () => {
     montar({}, { ...escalaBase, linhaOverrides: { 'uid-mar': { observacao: 'trocou com o Cury no HRO' } } })
     expect(screen.getByText('trocou com o Cury no HRO')).toBeTruthy()
-    abrirEditor('Marilio Flach')
+    abrirEditor('Marílio Flach')
     abrirObservacao()
     // o aviso encurtou no redesenho 17/08, mas a regra LGPD continua dita na tela
     expect(screen.getByText(/Sem nome de paciente/)).toBeTruthy()
@@ -160,7 +160,7 @@ describe('Observação da linha (dono 29/07)', () => {
   it('abre o painel já preenchida e limpa quando esvaziada', async () => {
     const onSetOverride = vi.fn(async () => {})
     montar({ onSetOverride }, { ...escalaBase, linhaOverrides: { 'uid-mar': { observacao: 'sai mais cedo' } } })
-    abrirEditor('Marilio Flach')
+    abrirEditor('Marílio Flach')
     abrirObservacao()
     const campo = screen.getByPlaceholderText(/saiu para a Hemodinâmica/)
     expect(campo.value).toBe('sai mais cedo')
@@ -184,7 +184,7 @@ describe('Observação da linha (dono 29/07)', () => {
   it('definir o tempo da pessoa NÃO apaga a observação já salva', async () => {
     const onSetOverride = vi.fn(async () => {})
     montar({ onSetOverride }, { ...escalaBase, linhaOverrides: { 'uid-mar': { observacao: 'no consultório' } } })
-    fireEvent.click(screen.getByLabelText('Definir tempo faltante de Marilio Flach'))
+    fireEvent.click(screen.getByLabelText('Definir tempo faltante de Marílio Flach'))
     // atalho de duração em grade (redesenho 17/08): um toque grava
     fireEvent.click(screen.getByRole('button', { name: '1h' }))
     await waitFor(() => expect(onSetOverride).toHaveBeenCalled())
@@ -196,7 +196,7 @@ describe('Ajuda marcada à mão (dono 29/07)', () => {
   it('linha comum oferece marcar; a ajuda entra no FIM do array (sai primeiro)', async () => {
     const onAddAjuda = vi.fn(async () => {})
     montar({ onAddAjuda })
-    abrirEditor('Marilio Flach')
+    abrirEditor('Marílio Flach')
     fireEvent.click(screen.getByRole('button', { name: /Marcar .* como ajuda de outro hospital/ }))
     await waitFor(() => expect(onAddAjuda).toHaveBeenCalledWith('MARILIO'))
   })
@@ -279,7 +279,7 @@ describe('Painel da linha — SEM a lista de casos (dono 30/07)', () => {
     // A ponte de 29/07 poluía o painel repetindo o que a Completa já mostra
     // (pedido do dono 30/07). O cirurgião aparece só na LINHA da fila.
     montar()
-    abrirEditor('Marilio Flach')
+    abrirEditor('Marílio Flach')
     expect(screen.queryByText('Casos no turno')).toBeNull()
     expect(screen.queryByText(/Toque no caso/)).toBeNull()
     // 1×: só a linha da fila. Os hints "Automático (dos casos)" agora vivem
@@ -289,7 +289,7 @@ describe('Painel da linha — SEM a lista de casos (dono 30/07)', () => {
 
   it('mostra o valor automático de local e cirurgião ao abrir os ajustes', () => {
     montar()
-    abrirEditor('Marilio Flach')
+    abrirEditor('Marílio Flach')
     // a lista já resume os dois valores na própria linha…
     expect(document.querySelector('[data-slot="sheet-content"]').textContent).toMatch(/Sala \d · automático/)
     expect(screen.queryByText(/Automático \(dos casos\)/)).toBeNull()
@@ -302,13 +302,13 @@ describe('Painel da linha — SEM a lista de casos (dono 30/07)', () => {
     // esconder um valor ajustado atrás de um toque é pior que gastar a altura:
     // quem abre precisa ver que a linha não está mais no automático
     montar({}, { ...escalaBase, linhaOverrides: { 'uid-mar': { local: 'Coronel Freitas' } } })
-    abrirEditor('Marilio Flach')
+    abrirEditor('Marílio Flach')
     expect(screen.getByDisplayValue('Coronel Freitas')).toBeTruthy()
   })
 
   it('a observação é a última linha do painel e conta os caracteres', () => {
     montar()
-    abrirEditor('Marilio Flach')
+    abrirEditor('Marílio Flach')
     expect(screen.getAllByText('Observação').length).toBeGreaterThan(0)
     abrirObservacao()
     expect(screen.getByPlaceholderText(/Hemodinâmica/)).toBeTruthy()
@@ -321,8 +321,8 @@ describe('Painel da linha — SEM a lista de casos (dono 30/07)', () => {
     // campo, "tempo faltante" no aria-label e "Tempo para término ou horário de
     // término de todos os seus casos" no subtítulo (auditoria 17/08)
     montar()
-    fireEvent.click(screen.getByLabelText('Definir tempo faltante de Marilio Flach'))
-    expect(screen.getByText(/Tempo faltante de Marilio Flach/)).toBeTruthy()
+    fireEvent.click(screen.getByLabelText('Definir tempo faltante de Marílio Flach'))
+    expect(screen.getByText(/Tempo faltante de Marílio Flach/)).toBeTruthy()
     expect(screen.queryByText(/Tempo para término ou horário de término/)).toBeNull()
     // e o painel acompanha o conteúdo em vez de nascer com 85% da tela
     expect(document.querySelector('[data-slot="sheet-content"]').className).toContain('!h-auto')
@@ -330,7 +330,7 @@ describe('Painel da linha — SEM a lista de casos (dono 30/07)', () => {
 
   it('o cabeçalho repete o contexto que o card da fila dá', () => {
     montar()
-    abrirEditor('Marilio Flach')
+    abrirEditor('Marílio Flach')
     // quantas cirurgias e onde — é o que decide o ajuste, e sumia ao abrir o painel
     expect(document.querySelector('[data-slot="sheet-header"]').textContent).toMatch(/1 cirurgia/)
   })
@@ -361,7 +361,7 @@ describe('Reordenar o bloco de ajuda (dono 30/07)', () => {
     // ajuda tem seta; quem está no rodapé principal, não
     expect(screen.getByLabelText(/Subir Marcos Cury na ordem das ajudas/)).toBeTruthy()
     expect(screen.queryByLabelText(/Subir Leonardo Ferrazzo na ordem das ajudas/)).toBeNull()
-    expect(screen.queryByLabelText(/Subir Marilio Flach/)).toBeNull()
+    expect(screen.queryByLabelText(/Subir Marílio Flach/)).toBeNull()
   })
 
   it('descer o 1º da ajuda grava o array reordenado — e NADA de ordem_liberacao', () => {
@@ -542,9 +542,9 @@ describe('Clareza dos dois tempos no card (dono 30/07)', () => {
 
   it('estado VAZIO tem cara de ação: "+ Tempo total", tracejado e sem ícone', () => {
     montar({}, comTempos)
-    // Marilio não tem override de tempo → estado vazio
+    // Marílio não tem override de tempo → estado vazio
     const card = document.querySelector('[data-linha="uid-mar"]')
-    const botao = within(card).getByLabelText(/Definir tempo faltante de Marilio/)
+    const botao = within(card).getByLabelText(/Definir tempo faltante de Marílio/)
     expect(botao.textContent).toContain('+ Tempo total')
     expect(botao.className).toContain('border-dashed')
     // sem ícone: com contorno cheio + ⏱ ele parecia valor JÁ preenchido
@@ -590,7 +590,7 @@ describe('Ajuda derivada de outro hospital (caso TIAGO)', () => {
   })
 
   it('quem está no rodapé LOCAL não ganha o badge derivado, mesmo cruzando', () => {
-    // Marilio aparece também na escala do HRO (cross-listado) — é da casa aqui
+    // Marílio aparece também na escala do HRO (cross-listado) — é da casa aqui
     montar({ presencaOutros: [...presenca, { nome: 'MARILIO', uid: null, hospital: 'hro', hospitalLabel: 'HRO', rodapeIdx: 2 }] }, comExtra)
     const card = document.querySelector('[data-linha="uid-mar"]')
     expect(within(card).queryByText(/Ajuda \(/)).toBeNull()
@@ -679,7 +679,7 @@ describe('Emprestado mantém posição na origem (caso TIAGO)', () => {
   it('os cirurgiões saem um por linha e o nº de cirurgias NÃO aparece', () => {
     const doisCasos = [
       { nome: 'TIAGO', uid: 'uid-tiago-x', hospitalLabel: 'Unimed', sala: 'CC - Sala 2', cirurgiao: 'Mateus Baptistella' },
-      { nome: 'TIAGO', uid: 'uid-tiago-x', hospitalLabel: 'Unimed', sala: 'CC - Sala 2', cirurgiao: 'Mauricio Spagnol' },
+      { nome: 'TIAGO', uid: 'uid-tiago-x', hospitalLabel: 'Unimed', sala: 'CC - Sala 2', cirurgiao: 'Maurício Spagnol' },
     ]
     montar({ presencaOutros: doisCasos }, escalaOrigem)
     const card = document.querySelector('[data-linha="TIAGO"]')
@@ -687,7 +687,7 @@ describe('Emprestado mantém posição na origem (caso TIAGO)', () => {
     const bloco = destino.closest('div')
     // destino + um <p> por cirurgião — nenhum nome dividindo linha com outro
     expect([...bloco.querySelectorAll('p')].map((p) => p.textContent)).toEqual(
-      ['Ajuda CC - Sala 2/Unimed', 'Mateus Baptistella', 'Mauricio Spagnol']
+      ['Ajuda CC - Sala 2/Unimed', 'Mateus Baptistella', 'Maurício Spagnol']
     )
     // a contagem saiu: o número de linhas já diz quantas são
     expect(bloco.textContent).not.toMatch(/cirurgias/)
@@ -728,8 +728,8 @@ describe('Turno próprio — pode sair fora da ordem (dono 11/09)', () => {
     ...escalaBase,
     linhaOverrides: { 'matutino:MARILIO': { turnoProprio: { ate: '19:00' } } },
   }
-  // a fila CHEGOU nela: todo mundo abaixo do Marilio (Karine, a ajuda e o extra)
-  // já saiu — só Leonardo (1º) e Marilio (2º) seguem em sala
+  // a fila CHEGOU nela: todo mundo abaixo do Marílio (Karine, a ajuda e o extra)
+  // já saiu — só Leonardo (1º) e Marílio (2º) seguem em sala
   const filaChegouNela = {
     ...comTurnoProprio,
     liberacoes: {
@@ -743,16 +743,16 @@ describe('Turno próprio — pode sair fora da ordem (dono 11/09)', () => {
   it('sem a marca, a trava de ordem recusa liberar quem está no meio da fila', () => {
     const onToggle = vi.fn()
     montar({ onToggle }, escalaBase)
-    fireEvent.click(screen.getByLabelText('Marcar Marilio Flach liberado'))
+    fireEvent.click(screen.getByLabelText('Marcar Marílio Flach liberado'))
     expect(onToggle).not.toHaveBeenCalled()
   })
 
   it('com a marca, ANTES da hora o toque é recusado como para todo mundo — e o aviso diz a partir de quando passa (dono 21/09)', async () => {
     const onToggle = vi.fn()
     montar({ onToggle }, comTurnoProprio) // relógio do arquivo: 10:00
-    fireEvent.click(screen.getByLabelText('Marcar Marilio Flach liberado'))
+    fireEvent.click(screen.getByLabelText('Marcar Marílio Flach liberado'))
     expect(await screen.findByText('Libere Karine Bedin primeiro')).toBeTruthy()
-    expect(await screen.findByText(/A partir das 19:00 Marilio Flach pode sair fora da ordem/)).toBeTruthy()
+    expect(await screen.findByText(/A partir das 19:00 Marílio Flach pode sair fora da ordem/)).toBeTruthy()
     expect(onToggle).not.toHaveBeenCalled()
   })
 
@@ -761,7 +761,7 @@ describe('Turno próprio — pode sair fora da ordem (dono 11/09)', () => {
     try {
       const onToggle = vi.fn()
       montar({ onToggle }, comTurnoProprio)
-      fireEvent.click(screen.getByLabelText('Marcar Marilio Flach liberado'))
+      fireEvent.click(screen.getByLabelText('Marcar Marílio Flach liberado'))
       await waitFor(() => expect(onToggle).toHaveBeenCalledTimes(1))
     } finally {
       vi.setSystemTime(new Date('2026-07-29T10:00:00-03:00'))
@@ -769,31 +769,31 @@ describe('Turno próprio — pode sair fora da ordem (dono 11/09)', () => {
   })
 
   it('liberada fora da vez, a linha desce para logo abaixo do "próximo" e mantém o número da posição (dono 21/09)', () => {
-    // Marilio (2º) saiu às 19h com a Karine (3ª) ainda em sala: a lista fica
-    // Leonardo · Karine (próximo, amarelo) · Marilio (vermelho, ainda "2") · ajuda/extra
+    // Marílio (2º) saiu às 19h com a Karine (3ª) ainda em sala: a lista fica
+    // Leonardo · Karine (próximo, amarelo) · Marílio (vermelho, ainda "2") · ajuda/extra
     const saiuNaHora = { ...comTurnoProprio, liberacoes: { 'matutino:MARILIO': { liberadoEm: 'x' } } }
     const { unmount } = montar({}, saiuNaHora)
     const posicao = (nome) => Array.from(document.querySelectorAll('[data-linha]')).indexOf(cardDe(nome))
-    expect(posicao('Marilio Flach')).toBe(posicao('Karine Bedin') + 1)
+    expect(posicao('Marílio Flach')).toBe(posicao('Karine Bedin') + 1)
     expect(posicao('Leonardo Ferrazzo')).toBe(0)
     expect(within(cardDe('Karine Bedin')).getByText('Próximo a ser liberado')).toBeTruthy()
-    expect(within(cardDe('Marilio Flach')).getByText('Liberado')).toBeTruthy()
-    expect(within(cardDe('Marilio Flach')).getByText('2')).toBeTruthy()
+    expect(within(cardDe('Marílio Flach')).getByText('Liberado')).toBeTruthy()
+    expect(within(cardDe('Marílio Flach')).getByText('2')).toBeTruthy()
     unmount()
     // sem a marca, quem sai no meio NÃO afunda (regra de 11/08 intacta)
     montar({}, { ...escalaBase, liberacoes: { 'matutino:MARILIO': { liberadoEm: 'x' } } })
-    expect(posicao('Marilio Flach')).toBe(posicao('Leonardo Ferrazzo') + 1)
+    expect(posicao('Marílio Flach')).toBe(posicao('Leonardo Ferrazzo') + 1)
   })
 
   it('o card DIZ por que ela pode sair fora da ordem', () => {
     montar({}, comTurnoProprio)
-    expect(within(cardDe('Marilio Flach')).getByText(/Turno encerra às 19:00h/)).toBeTruthy()
+    expect(within(cardDe('Marílio Flach')).getByText(/Turno encerra às 19:00h/)).toBeTruthy()
   })
 
   it('a marca NÃO libera sozinha — ela continua trabalhando até alguém tocar', () => {
     montar({}, comTurnoProprio)
-    expect(within(cardDe('Marilio Flach')).queryByText(/^Liberado$/)).toBeNull()
-    expect(screen.getByLabelText('Marcar Marilio Flach liberado')).toBeTruthy()
+    expect(within(cardDe('Marílio Flach')).queryByText(/^Liberado$/)).toBeNull()
+    expect(screen.getByLabelText('Marcar Marílio Flach liberado')).toBeTruthy()
   })
 
   // ⚠️ os dois abaixo separam "pode sair fora da ordem" de "está fora da ordem":
@@ -801,7 +801,7 @@ describe('Turno próprio — pode sair fora da ordem (dono 11/09)', () => {
   // toque nele passa — era o quadro das 18h09.
   it('a marca NÃO a tira da ordem: com os de baixo liberados, é ELA o próximo, não quem está acima', () => {
     montar({}, filaChegouNela)
-    expect(within(cardDe('Marilio Flach')).getByText('Próximo a ser liberado')).toBeTruthy()
+    expect(within(cardDe('Marílio Flach')).getByText('Próximo a ser liberado')).toBeTruthy()
     expect(within(cardDe('Leonardo Ferrazzo')).queryByText('Próximo a ser liberado')).toBeNull()
   })
 
@@ -809,7 +809,7 @@ describe('Turno próprio — pode sair fora da ordem (dono 11/09)', () => {
     const onToggle = vi.fn()
     montar({ onToggle }, filaChegouNela)
     fireEvent.click(screen.getByLabelText('Marcar Leonardo Ferrazzo liberado'))
-    expect(await screen.findByText('Libere Marilio Flach primeiro')).toBeTruthy()
+    expect(await screen.findByText('Libere Marílio Flach primeiro')).toBeTruthy()
     expect(await screen.findByText(/Falta 1 anestesista antes de Leonardo Ferrazzo/)).toBeTruthy()
     expect(onToggle).not.toHaveBeenCalled()
   })
@@ -832,7 +832,7 @@ describe('a pílula do total espelha no término da cirurgia quando ela é a ún
     const onSetOverride = vi.fn(async () => {})
     const onDefinirTerminoCaso = vi.fn(async () => {})
     montar({ onSetOverride, onDefinirTerminoCaso })
-    definirUmaHora('Marilio Flach') // Marilio tem só a Sala 2
+    definirUmaHora('Marílio Flach') // Marílio tem só a Sala 2
     await waitFor(() => expect(onSetOverride).toHaveBeenCalled())
     const termino = onSetOverride.mock.calls[0][1].termino
     expect(termino).toMatch(/^\d{2}:\d{2}$/)
@@ -844,7 +844,7 @@ describe('a pílula do total espelha no término da cirurgia quando ela é a ún
     const onDefinirTerminoCaso = vi.fn(async () => {})
     const duas = { ...escalaBase, casos: [...escalaBase.casos, caso('Sala 2', 1, 'MARILIO', 'Outro C', '10:00')] }
     montar({ onSetOverride, onDefinirTerminoCaso }, duas)
-    definirUmaHora('Marilio Flach')
+    definirUmaHora('Marílio Flach')
     await waitFor(() => expect(onSetOverride).toHaveBeenCalled())
     expect(onDefinirTerminoCaso).not.toHaveBeenCalled()
   })
@@ -857,7 +857,7 @@ describe('a pílula do total espelha no término da cirurgia quando ela é a ún
       casos: escalaBase.casos.map((c) => (c.id === 'Sala 2-0' ? { ...c, anestesista: 'MARILIO + KARINE', anestesistaUserId: null } : c)),
     }
     montar({ onSetOverride, onDefinirTerminoCaso }, dupla)
-    definirUmaHora('Marilio Flach')
+    definirUmaHora('Marílio Flach')
     await waitFor(() => expect(onSetOverride).toHaveBeenCalled())
     expect(onDefinirTerminoCaso).not.toHaveBeenCalled()
   })

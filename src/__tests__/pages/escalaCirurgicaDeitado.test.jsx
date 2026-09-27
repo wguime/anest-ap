@@ -143,7 +143,7 @@ describe('fila de liberação deitada (dono 26/08)', () => {
 
   it('INVARIANTE: os dois números NUNCA aparecem juntos — coluna em pé, ordinal deitado', () => {
     montar()
-    for (const nome of ['Leonardo Ferrazzo', 'Marilio Flach']) {
+    for (const nome of ['Leonardo Ferrazzo', 'Marílio Flach']) {
       const card = cardDe(nome)
       // a coluna existe (é o retrato) e some deitado
       expect(colunaDoNumero(card).className).toContain('deitado:hidden')

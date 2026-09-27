@@ -18,6 +18,7 @@ import { PageHeader } from '@/components'
 import { RefreshCw, CalendarClock, Umbrella, TriangleAlert, Info, Printer, Clock, CalendarDays } from 'lucide-react'
 import SegmentedSelector from '../escala-cirurgica/SegmentedSelector'
 import dadosNumerica from '@/data/escalaNumerica.json'
+import { acentuarNome } from '@/lib/nomeAcentos'
 import { montarOrdem, anotarFerias, HOSPITAIS_NUMERICA, LABEL_HOSPITAL, LABEL_TURNO } from '@/lib/escalaNumerica'
 import { getPlantoesPorData } from '@/services/pegaPlantaoApi'
 import { BlocoOrdem, BlocoConsultorio } from './ListaOrdem'
@@ -94,7 +95,7 @@ function BlocoFds({ dataISO, fila, loading, erro, sabado }) {
             <span className="flex w-8 flex-none items-center justify-center rounded-md bg-muted py-1 text-[11px] font-bold tabular-nums text-muted-foreground">
               {p.pn}
             </span>
-            <span data-slot="fds-nome" className="min-w-0 flex-1 truncate text-[13.5px] font-semibold">{p.nome}</span>
+            <span data-slot="fds-nome" className="min-w-0 flex-1 truncate text-[13.5px] font-semibold">{acentuarNome(p.nome)}</span>
             <span className="flex-none text-[11px] tabular-nums text-muted-foreground">{p.faixa}</span>
           </div>
         ))}

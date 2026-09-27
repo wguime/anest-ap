@@ -170,6 +170,16 @@ M ELO" (token curto consome tokens CONSECUTIVOS do longo, com o primeiro nome ba
 tela o casamento tem 3 camadas: dicionário de apelidos → `casarNomeComLegenda` (mapa curado:
 "COSTA" é o Marcos, não o Gabriel) → `nomesCompativeis`.
 
+## Nome na tela e na folha impressa (dono 26–27/09/2026)
+
+A legenda imprime um nome só ("COSTA", "GUSTAVO") e confundia. Tela, folha impressa e seletor de
+trocas mostram **primeiro + último do cadastro** (`nomeExibicao` em `pages/escala-numerica/`, via
+`CADASTRO_LEGENDA[nome][0]` = `profiles.nome` → `nomeCirurgiaoCurto`, o mesmo da escala cirúrgica).
+**Dupla** mostra só o primeiro nome de cada um ("Humberto / Roberta", "Rosemary / Aline") — com
+sobrenome cortava a 430px. `p.nome` continua o da LEGENDA (casa férias, trocas, rodapé); o teste
+lê a ordem por `data-legenda`. Por isso a 1ª entrada de `CADASTRO_LEGENDA` tem de ser o nome do
+cadastro. Acentos: `acentuarNome` (`src/lib/nomeAcentos.js`), só exibição, dicionário fechado.
+
 ## Ao receber uma escala numérica NOVA (o dono cola o PDF/imagem aqui)
 
 1. Copiar o arquivo para `.local/escala-numerica/` (gitignored — o PDF tem os nomes do grupo;

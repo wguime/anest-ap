@@ -204,14 +204,14 @@ describe('Plantonista — coluna de liberação (18 regras) nos 3 hospitais demo
 describe('Plantonista — interações na aba Liberações', () => {
   const escala = {
     // ⚠️ liberacoes é chaveado pelo NOME DE EXIBIÇÃO (titleCase), não por uid — fragilidade anotada no veredito.
-    id: 'e1', hospital: 'unimed', ordemLiberacao: ['LEONARDO', 'MARILIO', 'DIEGO'], liberacoes: { Marilio: { liberadoEm: 'x' } },
+    id: 'e1', hospital: 'unimed', ordemLiberacao: ['LEONARDO', 'MARILIO', 'DIEGO'], liberacoes: { Marílio: { liberadoEm: 'x' } },
     casos: [
       { sala: 'SALA 4', ordem: 0, anestesista: 'LEONARDO', cirurgiao: 'Liana Winkelmann' },
       { sala: 'SALA 3', ordem: 0, anestesista: 'MARILIO', cirurgiao: 'Leandro Trevizan' },
       { sala: 'C.O - CESAREA', ordem: 0, anestesista: 'DIEGO', cirurgiao: 'Taciana Alflen' },
     ],
   }
-  // Exibição: Marilio (liberado) afunda → [Leonardo, Diego, Marilio]. A fila corre
+  // Exibição: Marílio (liberado) afunda → [Leonardo, Diego, Marílio]. A fila corre
   // de baixo p/ cima, então o PRÓXIMO a ser liberado é o Diego.
   it('clicar liberar no PRÓXIMO dispara onToggle com a LINHA (chave estável)', () => {
     const onToggle = vi.fn()
@@ -234,8 +234,8 @@ describe('Plantonista — interações na aba Liberações', () => {
   it('convocar quem está ACIMA da fila ativa não bloqueia (não fura ordem de ninguém)', () => {
     const onToggle = vi.fn()
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={onToggle} />, { wrapper: wrap })
-    fireEvent.click(screen.getByLabelText('Desfazer liberação de Marilio'))
-    expect(onToggle).toHaveBeenCalledWith(expect.objectContaining({ anestesista: 'Marilio' }))
+    fireEvent.click(screen.getByLabelText('Desfazer liberação de Marílio'))
+    expect(onToggle).toHaveBeenCalledWith(expect.objectContaining({ anestesista: 'Marílio' }))
   })
 
   // CONVOCAR TAMBÉM SEGUE A ORDEM (dono 20/08): "assim como não é possível liberar
@@ -296,7 +296,7 @@ describe('Plantonista — interações na aba Liberações', () => {
   // que o liberado permanece IDENTIFICÁVEL na própria posição, sem sumir.
   it('item liberado NÃO vem riscado — o card vermelho já diz tudo (dono 31/08)', () => {
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
-    const marilio = screen.getByText('Marilio').closest('p')
+    const marilio = screen.getByText('Marílio').closest('p')
     expect(marilio.className).not.toContain('line-through')
   })
   it('sem permissão de edição → sem botões de reordenar', () => {
@@ -359,9 +359,9 @@ describe('Plantonista — interações na aba Liberações', () => {
   it('Restaurar automático dispara onSetOverride(null)', () => {
     const onSetOverride = vi.fn()
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} onSetOverride={onSetOverride} />, { wrapper: wrap })
-    fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Marilio'))
+    fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Marílio'))
     fireEvent.click(screen.getByRole('button', { name: 'Restaurar automático' }))
-    expect(onSetOverride).toHaveBeenCalledWith(expect.objectContaining({ anestesista: 'Marilio' }), null)
+    expect(onSetOverride).toHaveBeenCalledWith(expect.objectContaining({ anestesista: 'Marílio' }), null)
   })
 })
 
@@ -579,13 +579,13 @@ describe('Liberações — liberado tem o MESMO card, venha do toque ou da cauda
     const comCaso = {
       ...escala,
       casos: [
-        { sala: 'S1', ordem: 0, anestesista: 'ANA', cirurgiao: 'Cesar Bombardelli' },
+        { sala: 'S1', ordem: 0, anestesista: 'ANA', cirurgiao: 'César Bombardelli' },
         { sala: 'S2', ordem: 0, anestesista: 'BRUNO', cirurgiao: 'Cir B' },
       ],
     }
     render(<LiberacoesView escala={comCaso} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
     expect(within(card('ANA')).getByText('Liberado')).toBeTruthy()
-    expect(within(card('ANA')).queryByText('Cesar Bombardelli')).toBeNull()
+    expect(within(card('ANA')).queryByText('César Bombardelli')).toBeNull()
     expect(within(card('ANA')).queryByText(/Tempo total/)).toBeNull()
     // e quem NÃO está liberado segue com o cirurgião e com o controle de tempo
     expect(within(card('BRUNO')).getByText('Cir B')).toBeTruthy()
@@ -1262,19 +1262,19 @@ describe('Liberações — cards do plantão noturno (P1–P4)', () => {
 
   it('Unimed: P2 → P3 → P4 e a lista vespertina ABAIXO', () => {
     renderNoite({ hospital: 'unimed', hospitalLabel: 'Unimed' })
-    expect(ordemCards()).toEqual(['Bruno Costa', 'Carla Dias', 'Davi Rocha', 'Leonardo', 'Marilio'])
+    expect(ordemCards()).toEqual(['Bruno Costa', 'Carla Dias', 'Davi Rocha', 'Leonardo', 'Marílio'])
     expect(['P2', 'P3', 'P4'].map((s) => !!screen.getByText(s))).toEqual([true, true, true])
   })
 
   it('HRO: P1 → P4 → vespertina', () => {
     renderNoite({ hospital: 'hro', hospitalLabel: 'HRO' })
-    expect(ordemCards()).toEqual(['Ana Paula', 'Davi Rocha', 'Leonardo', 'Marilio'])
+    expect(ordemCards()).toEqual(['Ana Paula', 'Davi Rocha', 'Leonardo', 'Marílio'])
     expect(screen.queryByText('P2')).toBeNull()
   })
 
   it('Materno: só o P4, e ele é o plantonista', () => {
     renderNoite({ hospital: 'materno', hospitalLabel: 'Materno' })
-    expect(ordemCards()).toEqual(['Davi Rocha', 'Leonardo', 'Marilio'])
+    expect(ordemCards()).toEqual(['Davi Rocha', 'Leonardo', 'Marílio'])
     expect(screen.getByText('Plantonista')).toBeTruthy() // badge do noturno, não do diurno
   })
 
@@ -1288,7 +1288,7 @@ describe('Liberações — cards do plantão noturno (P1–P4)', () => {
     expect(ordemCards()).toContain('Davi Rocha')
     unmount()
     renderNoite({ hospital: 'hro', hospitalLabel: 'HRO', p4Hospital: 'unimed' })
-    expect(ordemCards()).toEqual(['Ana Paula', 'Leonardo', 'Marilio'])
+    expect(ordemCards()).toEqual(['Ana Paula', 'Leonardo', 'Marílio'])
   })
 
   it('sem marcação o P4 diz que está nos três hospitais', () => {
@@ -1319,7 +1319,7 @@ describe('Liberações — cards do plantão noturno (P1–P4)', () => {
       hospital: 'unimed', hospitalLabel: 'Unimed', turno: 'vespertino',
       plantoes: [{ setor: 'P3', nome: 'Leonardo' }, { setor: 'P4', nome: 'Davi Rocha' }],
     })
-    expect(ordemCards()).toEqual(['Leonardo', 'Marilio']) // ordem do dia, intacta
+    expect(ordemCards()).toEqual(['Leonardo', 'Marílio']) // ordem do dia, intacta
     expect(document.querySelector('[data-linha="LEONARDO"]').getAttribute('data-selo')).toBe('P3')
     // quem não está na lista deste hospital não vira card à tarde
     expect(document.querySelector('[data-selo="P4"]')).toBeNull()
@@ -1329,12 +1329,12 @@ describe('Liberações — cards do plantão noturno (P1–P4)', () => {
     vi.setSystemTime(new Date(2026, 6, 23, 14, 0, 0))
     renderNoite({
       hospital: 'unimed', hospitalLabel: 'Unimed', turno: 'vespertino',
-      plantoes: [{ setor: 'P3', nome: 'Marilio' }],
+      plantoes: [{ setor: 'P3', nome: 'Marílio' }],
     })
     // Leonardo é o 1º do rodapé → segue com o badge Plantonista do dia
     const leonardo = document.querySelector('[data-linha="LEONARDO"]')
     expect(leonardo.textContent).toContain('Plantonista')
-    // e Marilio, marcado como P3 da noite, continua na posição/lógica do dia
+    // e Marílio, marcado como P3 da noite, continua na posição/lógica do dia
     const marilio = document.querySelector('[data-linha="MARILIO"]')
     expect(marilio.getAttribute('data-selo')).toBe('P3')
     expect(marilio.textContent).toContain('Próximo a ser liberado')
@@ -1373,14 +1373,14 @@ describe('Liberações — cards do plantão noturno (P1–P4)', () => {
   it('liberação do DIA não atravessa a virada: quem vira P1–P4 assume TRABALHANDO', () => {
     const liberadoNoDia = { ...escala, liberacoes: { 'BRUNO COSTA': { liberadoEm: 'x' } } }
     renderNoite({ escala: liberadoNoDia, hospital: 'unimed', hospitalLabel: 'Unimed' })
-    expect(ordemCards()).toEqual(['Bruno Costa', 'Carla Dias', 'Davi Rocha', 'Leonardo', 'Marilio'])
+    expect(ordemCards()).toEqual(['Bruno Costa', 'Carla Dias', 'Davi Rocha', 'Leonardo', 'Marílio'])
     expect(document.querySelector('[data-selo="P2"]').textContent).not.toContain('Liberado')
   })
 
   it('liberação feita À NOITE vale e o card fica na posição do selo (não afunda)', () => {
     const liberadoNaNoite = { ...escala, liberacoes: { 'noite:BRUNO COSTA': { liberadoEm: 'x' } } }
     renderNoite({ escala: liberadoNaNoite, hospital: 'unimed', hospitalLabel: 'Unimed' })
-    expect(ordemCards()).toEqual(['Bruno Costa', 'Carla Dias', 'Davi Rocha', 'Leonardo', 'Marilio'])
+    expect(ordemCards()).toEqual(['Bruno Costa', 'Carla Dias', 'Davi Rocha', 'Leonardo', 'Marílio'])
     expect(document.querySelector('[data-selo="P2"]').textContent).toContain('Liberado')
   })
 
@@ -1421,7 +1421,7 @@ describe('Liberações — cards do plantão noturno (P1–P4)', () => {
   it('às 22h ainda é fase noturna (o corte é às 23h)', () => {
     vi.setSystemTime(new Date(2026, 6, 23, 22, 30, 0))
     renderNoite({ hospital: 'unimed', hospitalLabel: 'Unimed' })
-    expect(ordemCards()).toEqual(['Bruno Costa', 'Carla Dias', 'Davi Rocha', 'Leonardo', 'Marilio'])
+    expect(ordemCards()).toEqual(['Bruno Costa', 'Carla Dias', 'Davi Rocha', 'Leonardo', 'Marílio'])
   })
 
   it('a partir das 23h ficam SÓ os plantonistas P1–P4 do hospital', () => {
@@ -1803,7 +1803,7 @@ describe('Liberações — vermelho automático SÓ na cauda (invariante, dono 2
       id: 'e1', hospital: 'unimed', liberacoes: {},
       ordemLiberacao: ['EDUARDO', 'ERLEI', 'SCHMIDT', 'RAFAEL', 'DANIELA', 'DANIELI'],
       casos: [
-        { sala: 'Bloco A - Sala 9', ordem: 0, anestesista: 'EDUARDO', cirurgiao: 'Vinicius Rubin' },
+        { sala: 'Bloco A - Sala 9', ordem: 0, anestesista: 'EDUARDO', cirurgiao: 'Vinícius Rubin' },
         { sala: 'Ambulatorial', ordem: 0, anestesista: 'ERLEI', cirurgiao: 'Le Face' },
         { sala: 'Bloco A - Sala 6', ordem: 0, anestesista: 'SCHMIDT', cirurgiao: 'Gabriel Radaelli' },
       ],
@@ -1955,7 +1955,7 @@ describe('Liberações — recorte de 21/09: ninguém da ordem nasce liberado ac
     ordemLiberacao: { matutino: ['CURY', 'MAURICIO', 'COSTA', 'STAUB'] },
     casos: [
       mat({ id: 'c1', sala: 'Umanitá', anestesista: 'CURY', cirurgiao: 'Matheus' }),
-      mat({ id: 'c2', sala: 'Hemodinâmica', hora: '08:00', anestesista: 'MAURICIO', cirurgiao: 'Mario Goto' }),
+      mat({ id: 'c2', sala: 'Hemodinâmica', hora: '08:00', anestesista: 'MAURICIO', cirurgiao: 'Mário Goto' }),
       mat({ id: 'c3', sala: 'CC - Sala 7', hora: '09:00', anestesista: 'ALEXANDRE D', cirurgiao: 'Leandro Schulhan' }),
       mat({ id: 'c4', sala: 'CC - Sala 4', anestesista: 'FERNANDA', cirurgiao: 'Gustavo Guerreiro' }),
     ],

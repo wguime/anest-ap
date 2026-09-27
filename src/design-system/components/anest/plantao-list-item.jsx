@@ -2,6 +2,7 @@ import * as React from "react"
 import { Calendar } from "lucide-react"
 
 import { cn } from "@/design-system/utils/tokens"
+import { acentuarNome } from "@/lib/nomeAcentos"
 
 // Cor única do quadrado (verde pastel) no Light Mode — sem variação por item.
 // Dark mode usa bg-muted + border (abaixo).
@@ -107,7 +108,7 @@ function PlantaoListItem({
           data-slot="anest-plantao-list-item-title"
           className="truncate text-[15px] font-bold text-foreground"
         >
-          {hospital}
+          {acentuarNome(hospital)}
         </div>
         {data && !setor ? (
           <div

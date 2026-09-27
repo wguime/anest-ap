@@ -9,6 +9,7 @@ import { useState, useMemo } from 'react'
 import { Modal, Button, Select, Textarea, useToast } from '@/design-system'
 import { ArrowLeftRight, Check, X, Clock, Ban } from 'lucide-react'
 import dadosNumerica from '@/data/escalaNumerica.json'
+import { nomeExibicao } from './nomeExibicao'
 import SegmentedSelector from '../escala-cirurgica/SegmentedSelector'
 import { feriadosDaPessoa, filaEfetiva, validarPedido, resumirTroca, mesmaEntrada } from '@/lib/trocasFeriado'
 
@@ -124,7 +125,7 @@ function FormTroca({ eu, hojeISO, onSubmit, loading, trocas = [] }) {
       <Select
         label="Colega"
         placeholder={escopo === 'posicao' && !feriadoData ? 'Escolha o seu feriado antes' : 'Escolha o colega'}
-        options={colegas.map((c) => ({ value: c.numero || c.nome, label: `${c.numero ? `${c.numero} ` : ''}${c.nome}` }))}
+        options={colegas.map((c) => ({ value: c.numero || c.nome, label: `${c.numero ? `${c.numero} ` : ''}${nomeExibicao(c.nome)}` }))}
         value={colega}
         onChange={(v) => { setColega(v); setFeriadoDesejado('') }}
         disabled={loading || !colegas.length}
@@ -132,7 +133,7 @@ function FormTroca({ eu, hojeISO, onSubmit, loading, trocas = [] }) {
 
       {escopo === 'data' && colegaSel && (
         <Select
-          label={`Feriado de ${colegaSel.nome}`}
+          label={`Feriado de ${nomeExibicao(colegaSel.nome)}`}
           placeholder={feriadosDoColega.length ? 'Escolha o feriado do colega' : 'O colega não tem outro feriado à frente'}
           options={feriadosDoColega.map((f) => ({ value: f.data, label: `${brData(f.data)} · ${f.nome} · ${f.posicao}ª posição` }))}
           value={feriadoDesejado}

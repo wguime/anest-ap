@@ -80,7 +80,7 @@ vi.mock('@/hooks/useRosterAnestesistas', () => ({
     options: [
       { value: 'uid-cury', label: 'Gustavo Cury' },
       { value: 'uid-dido', label: 'Guilherme Xavier' },
-      { value: 'uid-garim', label: 'Jose Garim' },
+      { value: 'uid-garim', label: 'José Garim' },
     ],
     resolver: (nome) => {
       const n = String(nome).trim().toUpperCase()
@@ -774,7 +774,7 @@ describe('troca declarada entre duas abas do lote fecha na própria publicação
     // o clique tem de ser na opção VISÍVEL, não na homônima da aba oculta
     // o nome aparece também no seletor do BLOCO (Garim é o anestesista da Sala 2): a opção
     // da lista é a que mora num <li> do dropdown
-    const opcoes = await screen.findAllByText('Jose Garim')
+    const opcoes = await screen.findAllByText('José Garim')
     fireEvent.click(opcoes.find((n) => n.closest('li')))
     fireEvent.click(screen.getByRole('button', { name: /declarar a troca/i }))
     // o selo da decisão respondida, não a nota de rodapé da folha (que diz "A troca
@@ -784,7 +784,7 @@ describe('troca declarada entre duas abas do lote fecha na própria publicação
     // quebra numa mudança de ícone sem que nada do comportamento mude.
     await waitFor(() => {
       const selos = screen.getAllByText(/troca declarada/i)
-        .filter((n) => /Jose Garim/i.test(n.textContent))
+        .filter((n) => /José Garim/i.test(n.textContent))
       expect(selos.length).toBeGreaterThan(0)
     })
     return utils

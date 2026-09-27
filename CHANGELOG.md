@@ -3,6 +3,20 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.37 (27/09/2026) — Escalas: nome e sobrenome na numérica, duplas pelo primeiro nome e acentos
+
+Pedido do dono (26–27/09).
+- Escala numérica (tela, folha impressa e seletor de trocas de feriado): primeiro + último nome do
+  cadastro, como na escala cirúrgica ("Marcos Costa" × "Gabriel Costa"); a legenda impressa trazia um
+  nome só. Duplas mostram só o primeiro nome de cada um ("Humberto / Roberta"). A ordem, as férias e
+  as trocas seguem casando pelo nome da legenda.
+- Acentos nos nomes em todas as escalas (João, Maurício, Marílio, Rômulo, Janaína…): escala
+  cirúrgica, numérica, plantões e férias do Pega Plantão. Só na exibição — `acentuarNome`
+  (`src/lib/nomeAcentos.js`), dicionário fechado; grafia dupla (Thayna, Luis) fica como veio.
+  Entra em `titleCaseNome`/`nomeCirurgiaoCurto`/`primeiroNome`; comparações já ignoravam acento.
+- Travas: `nomeAcentos.test.js` e `escalaNumericaPagina.test.jsx`; testes da escala passam a esperar o
+  nome acentuado.
+
 ## v5.12.36 (26/09/2026) — Escala: no fim de semana, "Passa para tarde/noite" chega sem anestesista no turno seguinte
 
 Pedido do dono (26/09). Só na fila única (sáb/dom/feriado); o dia útil não muda.

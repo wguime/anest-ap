@@ -80,7 +80,7 @@ const montar = (props = {}, escala = escalaDuas) => render(
   { wrapper: wrap }
 )
 
-const abrirTempoTotal = () => fireEvent.click(screen.getByLabelText('Definir tempo faltante de Marilio Flach'))
+const abrirTempoTotal = () => fireEvent.click(screen.getByLabelText('Definir tempo faltante de Marílio Flach'))
 // a folha que está por cima (a da cirurgia, quando aberta)
 const folhaDeCima = () => { const d = screen.getAllByRole('dialog'); return d[d.length - 1] }
 
@@ -144,7 +144,7 @@ describe('"+ Tempo total" com o término de cada cirurgia (dono 25/09)', () => {
     expect(onSetOverride).not.toHaveBeenCalled()
     // a folha da cirurgia fechou; a do total continua, pronta para a próxima
     await waitFor(() => expect(screen.queryByText(`Término · 16:00 ${rot(OSTEO)}`)).toBeNull())
-    expect(screen.getByText('Tempo faltante de Marilio Flach')).toBeInTheDocument()
+    expect(screen.getByText('Tempo faltante de Marílio Flach')).toBeInTheDocument()
     expect(screen.getByText('Término de cada cirurgia')).toBeInTheDocument()
   })
 

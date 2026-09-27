@@ -68,7 +68,7 @@ const unimed = {
   casos: [caso('c1', 'CC - Sala 1', 'LEONARDO', 'Liana W')],
 }
 // A cirurgia dele está no HRO — é o que `presencaOutros` carrega com `sala`.
-const noHro = [{ nome: 'OSCAR', uid: null, hospital: 'hro', hospitalLabel: 'HRO', sala: 'IOSC', cirurgiao: 'Mauricio Fabiani' }]
+const noHro = [{ nome: 'OSCAR', uid: null, hospital: 'hro', hospitalLabel: 'HRO', sala: 'IOSC', cirurgiao: 'Maurício Fabiani' }]
 
 describe('na escala dele: fica na fila, marcado como ajuda, com o destino no card', () => {
   const montar = (props = {}) => render(
@@ -93,7 +93,7 @@ describe('na escala dele: fica na fila, marcado como ajuda, com o destino no car
   it('o card diz ONDE ele está: local, hospital e cirurgião', () => {
     montar({ presencaOutros: noHro })
     expect(cardDe('Oscar Morais').textContent).toMatch(/Ajuda IOSC\/HRO/)
-    expect(cardDe('Oscar Morais').textContent).toMatch(/Mauricio Fabiani/)
+    expect(cardDe('Oscar Morais').textContent).toMatch(/Maurício Fabiani/)
   })
 
   it('quem opera nos DOIS hospitais não é ajuda de ninguém', () => {
@@ -114,7 +114,7 @@ const hro = {
   casos: [
     caso('h1', 'Sala 1', 'LEONARDO', 'Liana W'),
     caso('h2', 'Sala 4', 'GUILHERME X', 'Taciana A'),
-    caso('h3', 'IOSC', 'OSCAR', 'Mauricio Fabiani'),
+    caso('h3', 'IOSC', 'OSCAR', 'Maurício Fabiani'),
   ],
 }
 

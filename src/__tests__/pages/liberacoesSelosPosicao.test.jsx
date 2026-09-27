@@ -93,7 +93,7 @@ const selosDe = (card) => [...linhaDoNome(card).querySelectorAll('[data-slot="ba
 describe('Selos da 1ª linha × coluna do cronômetro (dono 24/08)', () => {
   it('INVARIANTE: havendo QUALQUER selo ao lado do nome, a coluna da direita desce', () => {
     montar()
-    for (const nome of ['Leonardo Ferrazzo', 'Marilio Flach', 'Karine Bedin']) {
+    for (const nome of ['Leonardo Ferrazzo', 'Marílio Flach', 'Karine Bedin']) {
       const card = cardDe(nome)
       const temSelo = selosDe(card).length > 0
       const desce = colunaDireita(card).className.includes('mt-2')
@@ -107,14 +107,14 @@ describe('Selos da 1ª linha × coluna do cronômetro (dono 24/08)', () => {
     // provaria nada — é este caso que garante que ele está exercitando algo
     expect(selosDe(cardDe('Leonardo Ferrazzo'))).toContain('Plantonista')
     expect(selosDe(cardDe('Karine Bedin'))).toContain('Plantão da tarde')
-    expect(selosDe(cardDe('Marilio Flach'))).toEqual([])
+    expect(selosDe(cardDe('Marílio Flach'))).toEqual([])
   })
 
   it('a linha do nome tem piso de margem à direita — selo não encosta na borda do card', () => {
     montar()
     // `shrink-0` nos selos + `truncate` só no nome = com 3 selos o último ia até
     // a borda arredondada. O `pr` é o que garante a folga quando a linha estoura.
-    for (const nome of ['Leonardo Ferrazzo', 'Marilio Flach', 'Karine Bedin']) {
+    for (const nome of ['Leonardo Ferrazzo', 'Marílio Flach', 'Karine Bedin']) {
       expect(linhaDoNome(cardDe(nome)).className).toContain('pr-1.5')
     }
   })

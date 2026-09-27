@@ -571,7 +571,7 @@ describe('completarRodapeFds — quem está na faixa e não foi citado nunca som
       id: `c${i}`, sala: `Sala ${i + 1}`, anestesista: nome, cirurgiao: 'DR. X', status: 'agendada',
     }))
     const { linhas } = gerarColunaLiberacao(casos, rodape)
-    expect(linhas.at(-1).anestesista.toUpperCase()).toBe('JOAO HENRIQUE')
+    expect(linhas.at(-1).anestesista.toUpperCase()).toBe('JOÃO HENRIQUE') // exibição acentuada (dono 27/09)
     expect(linhas[0].anestesista.toUpperCase()).toBe('CRISTINA')
   })
 
