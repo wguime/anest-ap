@@ -33,8 +33,9 @@ pedido ao PUBLICADO.** O porquê de cada regra está em `REFERENCIA.md` — não
    ajuda está no hospital onde a pessoa trabalha; (d) **`PART: nome`** em todo particular;
    (e) **rodapé** nome a nome, na ordem; (f) **seções de baixo + SRPA** presentes; (g) **plantão do
    Materno pela numérica** — o ensaio imprime "numérica: plantão do Materno neste turno = X, Y · no
-   mapa: … → confere/DIFERE"; DIFERE = voltar ao nome à mão do mapa (troca real fica, leitura errada
-   se corrige, "?" não se preenche com a numérica) e dizer no relatório; (h) os avisos
+   mapa: … → confere/DIFERE"; a lista é ORDENADA — X é o plantão, Y o 2º (ver Ficha, **Materno**).
+   Só o plantão que não assina o mapa é DIFERE de verdade: voltar ao nome à mão (troca real fica,
+   leitura errada se corrige, "?" não se preenche com a numérica) e dizer no relatório; (h) os avisos
    restantes têm explicação na foto ou no recado; (h) o bloco **"faltantes da numérica"** do ensaio
    já classifica cada faltante (rodapé de outro hospital · pós-plantão da véspera no Pega Plantão ·
    férias) — só os `❓` ficam: confira o recado (consultório, troca) e relate ao dono só o que
@@ -43,7 +44,7 @@ pedido ao PUBLICADO.** O porquê de cada regra está em `REFERENCIA.md` — não
    tempo na posição errada, "//" sem base ou abaixo de "?", cirurgião trocado com procedimento,
    particular sem nome) e avisou nome sem caso no meio do rodapé.
 4. Relatório curto: por hospital "N casos · rodapé N · ajuda […]", quem ficou com "?", **quem é o
-   plantão do Materno pela numérica e se o mapa bate** (dono 21/09: conferir sempre), o que o
+   plantão do Materno pela numérica e se o mapa bate, e onde está o 2º** (dono 21/09: conferir sempre), o que o
    recado virou, avisos que sobraram. Faltantes da numérica: diga o motivo de cada um (pós-plantão,
    férias, outro hospital, recado) — "faltam X, Y" sem motivo não serve ao dono (24/09). Custo US$ 0.
 
@@ -101,15 +102,21 @@ apelido conhecido).
   não entra no JSON.
 - `turnoProprio` (Louise) é automático pela numérica. `RAFAEL` sai como `PELISSARO` — mesmo
   cadastro. Ambíguo na foto: diga no relatório em vez de escolher.
-- **Materno**: a numérica (azul) diz quem é o plantão do turno lá; o ensaio compara com quem assina
-  caso no mapa (aviso `plantão materno`, nunca bloqueio). O nome à mão continua sendo o dado — a
-  numérica confere, não preenche.
+- **Materno**: a numérica (azul) traz DOIS nomes por turno, em ordem — **1º = plantão** (assina o mapa
+  HC), **2º = segundo**, não outro plantão; a ordem inverte entre manhã e tarde (01/10: manhã Vicente,
+  Raul · tarde Raul, Vicente). O ensaio compara com quem assina caso no mapa (aviso `plantão materno`,
+  nunca bloqueio). O 2º tem três leituras: nome à mão no mapa → está no Materno · em **azul em outro
+  hospital** → ajuda vinda do Materno (`cor:'azul'` + `ajuda` de onde opera) · **em lugar nenhum** →
+  **não foi escalado** no turno. Nas duas últimas o aviso "sem caso no mapa" e o `❓` dos faltantes
+  são esperados: não relatar como faltante, não perguntar, não preencher o "?" do mapa. Relatório:
+  "Materno: plantão X (mapa confere) · 2º Y → ajuda na Unimed | não escalado" (dono 30/09 e 01/10).
+  O nome à mão continua sendo o dado — a numérica confere, não preenche.
 
 ## Recado do dono → lote
 
 | frase | vira |
 |---|---|
-| "Como ajuda … 1º X – Local · 2º Y – Local" | X, Y em `ajudaExterna` do hospital do LOCAL, `cor: 'azul'` no caso; a ÚLTIMA do array sai primeiro (2º Y, 3º Z → `['Z','Y']`); **`ajuda_ordem_informada=True`** naquele hospital. A ajuda numerada pode estar no rodapé do próprio hospital — transcreva os dois. Se a fila publicada sair em ordem diferente do recado, é defeito de código, não do lote. |
+| "Como ajuda … 1º X – Local · 2º Y – Local" | X, Y em `ajudaExterna` do hospital do LOCAL, `cor: 'azul'` no caso; a ÚLTIMA do array sai primeiro (2º Y, 3º Z → `['Z','Y']`); **`ajuda_ordem_informada=True`** naquele hospital. A ajuda numerada pode estar no rodapé do próprio hospital — transcreva os dois. Ajuda de FORA do recado (o 2º do Materno em azul) sai ANTES da numerada; o plantão do contraturno de outro hospital sai antes de todos (01/10: Tiago → Raul → Oscar, Unimed `['OSCAR','RAUL']`). Se a fila publicada sair em ordem diferente do recado, é defeito de código, não do lote. |
 | "Trocas: A (consultório) na posição do B no HRO" | `'A': {tipo:'troca', parceiro:'B', apenasRegistro:True, local:'Consultório'}` — B fora de escala. |
 | "Trocas consultório: R1 com X" (X no rodapé da foto; o R1 com caso e fora dele) | o R1 **ASSUME a posição de X no rodapé**: na `ordem`, troque o nome de X pelo do R1 (MELO→THAYNA) e só o R1 leva `{tipo:'troca', parceiro:'X', apenasRegistro:True, local:'Consultório'}`; X vai ao consultório, sem caso inventado. R1 fora do rodapé nasce com selo "Ajuda" no card (dono 25/09: "já foi corrigido e está voltando"); o aviso "fora da ordem: R1 tem caso" no ensaio é esse erro. |
 | "A na posição do B" com os DOIS em escala | registro nos dois lados: `'A': {…parceiro:'B', local:'<hospital de B>'}` e `'B': {…parceiro:'A', local:'<hospital de A>'}`. |
