@@ -524,6 +524,52 @@ export function conferirHospital(hospital, entrada, contexto) {
   }
 }
 
+const CONVENIO_PARTICULAR = /^PART(ICULAR)?[^A-Z]*$/
+const normCirurgiao = (s) => normNome(s).replace(/[^A-Z ]/g, '').replace(/\s+/g, ' ').trim()
+
+/**
+ * CONTINUAÇÃO herda o caso da manhã (dono 02/10: "busque as informações da cirurgia
+ * correspondente da manhã e transporte os dados para o turno subsequente para não ficar
+ * apenas a informação de continuação no card"). A foto da tarde traz só "CONTINUAÇÃO
+ * +-14h" + cirurgião; o caso de origem é o da MANHÃ publicada, mesmo hospital, mesmo
+ * cirurgião, não terminado — preferindo o marcado "passa para a tarde" e, entre vários,
+ * o da mesma sala e o último da sequência (é ele que atravessa).
+ *
+ * Herdam: iniciais, idade e procedimento ("<procedimento da manhã> · CONTINUAÇÃO +-14h" —
+ * o texto da foto fica). O convênio herda, EXCETO o particular: com convênio particular
+ * e iniciais o gatilho `fn_sync_cirurgia_particular` abriria uma 2ª cobrança da MESMA
+ * cirurgia (a da manhã já abriu). Campo que a foto já preencheu não é sobrescrito.
+ * @returns {{ casos: object[], continuacoes: object[] }}
+ */
+export function completarContinuacoes(casosTarde, casosPublicados) {
+  const manha = (casosPublicados || []).filter((c) => (c.turno || 'matutino') === 'matutino' && !c.isContinuacao)
+  const continuacoes = []
+  const casos = (casosTarde || []).map((row) => {
+    if (!row?.isContinuacao) return row
+    const cir = normCirurgiao(row.cirurgiao)
+    const cands = cir ? manha.filter((c) => normCirurgiao(c.cirurgiao) === cir && c.statusCirurgia !== 'terminada' && c.statusExtra !== 'suspensa') : []
+    if (!cands.length) {
+      continuacoes.push({ sala: row.sala, cirurgiao: row.cirurgiao, origem: null })
+      return row
+    }
+    const peso = (c) => (c.statusExtra === 'passa_tarde' ? 4 : 0) + (normNome(c.sala) === normNome(row.sala) ? 2 : 0)
+    const origem = [...cands].sort((a, b) => (peso(b) - peso(a)) || ((b.ordem ?? 0) - (a.ordem ?? 0)))[0]
+    const procFoto = texto(row.procedimento)
+    const procManha = texto(origem.procedimento)
+    const particular = CONVENIO_PARTICULAR.test(normNome(origem.convenio || ''))
+    const novo = {
+      ...row,
+      pacienteIniciais: texto(row.pacienteIniciais) || texto(origem.pacienteIniciais),
+      idade: texto(row.idade) || texto(origem.idade),
+      procedimento: procManha && !normNome(procFoto).includes(normNome(procManha)) ? [procManha, procFoto].filter(Boolean).join(' · ') : procFoto,
+      convenio: texto(row.convenio) || (particular ? '' : texto(origem.convenio)),
+    }
+    continuacoes.push({ sala: row.sala, cirurgiao: row.cirurgiao, origem: { id: origem.id, sala: origem.sala, hora: origem.hora, iniciais: origem.pacienteIniciais, procedimento: procManha, convenio: origem.convenio, passaTarde: origem.statusExtra === 'passa_tarde' }, particular })
+    return novo
+  })
+  return { casos, continuacoes }
+}
+
 /**
  * O lote inteiro: realoca azuis emprestados, monta as irmãs de cada hospital (irmã em
  * conferência vence a publicada do mesmo hospital; os demais vêm do banco) e confere
@@ -534,6 +580,18 @@ export function conferirLote({
   decisoes = {}, conferidos = [], republicar = false, carimbo = null,
 }) {
   const nomes = Object.keys(hospitais)
+  // a continuação da tarde herda o caso da manhã publicada (dono 02/10)
+  const continuacoes = {}
+  if (turno === 'vespertino') {
+    hospitais = { ...hospitais }
+    for (const h of nomes) {
+      const casosPub = publicadas[h]?.casos
+      if (!casosPub?.length || !(hospitais[h].rows || []).some((r) => r?.isContinuacao)) continue
+      const r = completarContinuacoes(hospitais[h].rows, casosPub)
+      hospitais[h] = { ...hospitais[h], rows: r.casos }
+      continuacoes[h] = r.continuacoes
+    }
+  }
   // pré-passada: casos atribuídos de cada aba, para o cruzamento e a realocação do azul
   const abas = {}
   for (const h of nomes) {
@@ -555,7 +613,7 @@ export function conferirLote({
     }
   }
   const realocados = realocarAzuisEmprestados(abas, turno, resolver)
-  const resultado = { data, turno, realocados, hospitais: {} }
+  const resultado = { data, turno, realocados, continuacoes, hospitais: {} }
   for (const h of nomes) {
     const irmas = nomes.filter((o) => o !== h).map((o) => ({ hospital: o, casos: abas[o].casos, ordemLiberacao: abas[o].ordem, ajudaExterna: abas[o].ajuda }))
     const cobertos = new Set(irmas.map((i) => i.hospital))

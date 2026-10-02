@@ -270,6 +270,13 @@ async function explicarFaltantes({ data, resultado, resolver, uidDono, ferias })
   const noturnos = (plantoes || []).filter((p) => !/f[ée]rias/i.test(p?.Setor || '')
     && String(p.Inicio || '').startsWith(vespera) && String(p.Fim || '').startsWith(data))
   const hhmm = (s) => String(s || '').slice(11, 16)
+  // Materno: a numérica traz DOIS nomes em ordem — 1º plantão, 2º segundo. O 2º sem caso no mapa não
+  // foi escalado no turno (ou foi de ajuda a outro hospital, já explicado acima). Antes saía como ❓ e
+  // eu relatava ao dono como faltante — duas vezes (01/10 e 02/10: Leandro).
+  const segundoMaterno = (h, nome) => {
+    const esp = resultado.hospitais[h]?.numerica?.esperada || []
+    return h === 'materno' && esp.length >= 2 && esp.slice(1).some((n) => mesmo(nome, n) || mesmo(n, nome))
+  }
   console.log('\n== faltantes da numérica × outro hospital / pós-plantão / férias')
   if (plantoes === null) console.log('   ⚠️  Pega Plantão não respondeu — pós-plantão NÃO conferido')
   for (const [h, nome] of faltantes) {
@@ -280,6 +287,7 @@ async function explicarFaltantes({ data, resultado, resolver, uidDono, ferias })
     const motivo = outro ? `no rodapé do ${outro[0].toUpperCase()}`
       : pos ? `pós-plantão (${pos.Setor} ${vespera.slice(8)}/${vespera.slice(5, 7)} ${hhmm(pos.Inicio)}→${hhmm(pos.Fim)})`
         : fer ? 'férias'
+          : segundoMaterno(h, nome) ? '2º do Materno sem caso no mapa = não escalado no turno (NÃO é faltante — não relatar; dono 01/10 e 02/10)'
           : '❓ sem explicação no lote nem no Pega Plantão — confira o recado (consultório, troca) ou relate ao dono'
     console.log(`   ${h.toUpperCase().padEnd(7)} ${String(nome).padEnd(16)} → ${motivo}`)
   }
@@ -369,6 +377,12 @@ if (cmd === 'publicar') {
 
   // ── relatório da conferência ──────────────────────────────────────────────
   let totalBloqueios = 0
+  for (const [h, lista] of Object.entries(resultado.continuacoes || {})) {
+    for (const c of lista) {
+      if (!c.origem) console.log(`⚠️  continuação sem origem: ${h} ${c.sala} (${c.cirurgiao || 'sem cirurgião'}) — nenhum caso da manhã aberto desse cirurgião; fica só "CONTINUAÇÃO"`)
+      else console.log(`↪️  continuação ${h} ${c.sala} (${c.cirurgiao}) ← manhã ${c.origem.sala} ${c.origem.hora} ${c.origem.iniciais || ''} ${c.origem.procedimento}${c.origem.passaTarde ? ' [passa p/ tarde]' : ''}${c.particular ? ' — particular: convênio fica vazio (a cobrança da manhã já existe)' : ''}`)
+    }
+  }
   for (const r of resultado.realocados) console.log(`↔️  azul emprestado: ${r.nome} sai da ajuda do ${r.de} e entra na ajuda do ${r.para}`)
   for (const [h, r] of Object.entries(resultado.hospitais)) {
     const p = r.payload

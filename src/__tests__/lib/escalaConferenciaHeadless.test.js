@@ -11,7 +11,7 @@
 import { describe, it, expect } from 'vitest'
 import dadosNumerica from '@/data/escalaNumerica.json'
 import { montarOrdem } from '@/lib/escalaNumerica'
-import { conferirLote, montarRoster, validarHorario } from '@/lib/escalaConferenciaHeadless'
+import { conferirLote, montarRoster, validarHorario, completarContinuacoes } from '@/lib/escalaConferenciaHeadless'
 
 const perfis = [
   { id: 'uid-cury', nome: 'GUSTAVO CURY', role: 'anestesiologista' },
@@ -323,5 +323,43 @@ describe('escala numérica e férias', () => {
     const r = conferir({ hro: { rows: [caso('Sala 1', semPar[0])], ordem: semPar, ajuda: [] } }, { ferias: ['Roberta Marina Grando'] })
     expect(r.hospitais.hro.numerica?.iguais).toBe(true)
     expect(r.hospitais.hro.numerica?.feriasDupla).toEqual(['HUMBERTO / ROBERTA'])
+  })
+})
+
+describe('continuação da tarde herda o caso da manhã (dono 02/10)', () => {
+  const manha = [
+    { id: 'm1', turno: 'matutino', sala: 'IOSC', hora: '07:30', ordem: 1, cirurgiao: 'Guilherme Dalul', procedimento: 'RUPTURA DO MANGUITO ROTADOR', pacienteIniciais: 'O.F.', convenio: 'SC', statusCirurgia: 'terminada' },
+    { id: 'm2', turno: 'matutino', sala: 'IOSC', hora: 'AS', ordem: 2, cirurgiao: 'Guilherme Dalul', procedimento: 'RUPTURA DO MANGUITO ROTADOR', pacienteIniciais: 'N.S.', convenio: 'FAS', statusCirurgia: 'iniciada' },
+    { id: 'm3', turno: 'matutino', sala: 'IOSC', hora: 'AS', ordem: 3, cirurgiao: 'Guilherme Dalul', procedimento: 'RUPTURA DO MANGUITO ROTADOR', pacienteIniciais: 'J.R.', convenio: 'SC', statusCirurgia: 'agendada', statusExtra: 'passa_tarde' },
+    { id: 'm4', turno: 'matutino', sala: 'IOSC', hora: '07:30', ordem: 4, cirurgiao: 'Rafael Tirapelle', procedimento: 'CERVICOPLASTIA + LIFTING FACIAL', pacienteIniciais: 'M.Z.', convenio: 'PART', statusCirurgia: 'iniciada' },
+  ]
+  const cont = (cirurgiao) => ({ sala: 'IOSC', hora: '13:00', cirurgiao, procedimento: 'CONTINUAÇÃO +-14h', pacienteIniciais: '', idade: '', convenio: '', isContinuacao: true, anestesista: 'X' })
+
+  it('prefere o caso marcado "passa para a tarde" e mantém o texto da foto', () => {
+    const { casos, continuacoes } = completarContinuacoes([cont('Guilherme Dalul')], manha)
+    expect(casos[0]).toMatchObject({ pacienteIniciais: 'J.R.', convenio: 'SC', procedimento: 'RUPTURA DO MANGUITO ROTADOR · CONTINUAÇÃO +-14h', isContinuacao: true })
+    expect(continuacoes[0].origem.id).toBe('m3')
+  })
+
+  it('particular herda iniciais e procedimento, mas NÃO o convênio (senão o gatilho abre 2ª cobrança)', () => {
+    const { casos, continuacoes } = completarContinuacoes([cont('RAFAEL TIRAPELLE')], manha)
+    expect(casos[0]).toMatchObject({ pacienteIniciais: 'M.Z.', convenio: '', procedimento: 'CERVICOPLASTIA + LIFTING FACIAL · CONTINUAÇÃO +-14h' })
+    expect(continuacoes[0].particular).toBe(true)
+  })
+
+  it('sem caso aberto do cirurgião de manhã, a linha fica como veio e é apontada', () => {
+    const { casos, continuacoes } = completarContinuacoes([cont('Outro Cirurgiao')], manha)
+    expect(casos[0].procedimento).toBe('CONTINUAÇÃO +-14h')
+    expect(continuacoes[0].origem).toBeNull()
+  })
+
+  it('o lote da tarde aplica a herança antes de conferir', () => {
+    const r = conferirLote({
+      data: '2026-09-08', turno: 'vespertino', ...identidade, dadosNumerica,
+      hospitais: { hro: { rows: [caso('Sala 1', 'CURY', '13:00'), { ...cont('Guilherme Dalul'), anestesista: 'BETO' }], ordem: ['CURY', 'BETO'], ajuda: [] } },
+      publicadas: { hro: { id: 'e1', hospital: 'hro', ordemLiberacao: {}, ajudaExterna: {}, linhaOverrides: {}, publicacaoTurnos: {}, casos: manha } },
+    })
+    expect(r.continuacoes.hro[0].origem.id).toBe('m3')
+    expect(r.hospitais.hro.payload.casos.some((c) => /RUPTURA DO MANGUITO ROTADOR · CONTINUAÇÃO/.test(c.procedimento))).toBe(true)
   })
 })

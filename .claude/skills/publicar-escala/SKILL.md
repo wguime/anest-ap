@@ -92,7 +92,10 @@ apelido conhecido).
 - **Seções fora da grade** são casos (Exames, Imagem, Hemodinâmica, Accurata, Umanitá, IOSC, HO,
   Ambulatório, Braqui, Simone, Consultório, e a linha `MATERNO | NN PROCEDIMENTOS | NOME` do HRO).
   `SRPA | NOME` vai em `posicoesAssistenciais` (conta como ocupado). "CONTINUAÇÃO ±14h" é caso com
-  `cont=True`. Varrer a foto de cima a baixo — é onde a leitura mais perde nome.
+  `cont=True` — transcreva só o que a foto traz; o ensaio herda iniciais, idade, procedimento e
+  convênio do caso da manhã publicado (mesmo cirurgião, preferindo o "passa para a tarde") e imprime
+  `↪️ continuação … ← manhã …`. Particular herda tudo menos o convênio (a cobrança é a da manhã).
+  `⚠️ continuação sem origem` = card só com "CONTINUAÇÃO": confira o cirurgião (dono 02/10). Varrer a foto de cima a baixo — é onde a leitura mais perde nome.
 - **Rodapé** completo, NA ORDEM, com as notas ("MATHEUS (CONSULT)" é uma posição; "ADRIANO
   (REUNIÃO 15:30)" também — **nunca tirar a nota**: nome com nota é posição ocupada e não nasce
   liberado). Quem fecha o
@@ -113,6 +116,8 @@ apelido conhecido).
   **não foi escalado** no turno. Nas duas últimas o aviso "sem caso no mapa" e o `❓` dos faltantes
   são esperados: não relatar como faltante, não perguntar, não preencher o "?" do mapa. Relatório:
   "Materno: plantão X (mapa confere) · 2º Y → ajuda na Unimed | não escalado" (dono 30/09 e 01/10).
+  O bloco de faltantes já imprime o 2º como "2º do Materno … NÃO é faltante" — nunca relatá-lo como
+  sem explicação (02/10: Leandro, 2ª vez).
   O nome à mão continua sendo o dado — a numérica confere, não preenche.
 
 ## Recado do dono → lote
