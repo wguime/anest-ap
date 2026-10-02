@@ -94,7 +94,8 @@ apelido conhecido).
   `SRPA | NOME` vai em `posicoesAssistenciais` (conta como ocupado). "CONTINUAÇÃO ±14h" é caso com
   `cont=True` — transcreva só o que a foto traz; o ensaio herda iniciais, idade, procedimento e
   convênio do caso da manhã publicado (mesmo cirurgião, preferindo o "passa para a tarde") e imprime
-  `↪️ continuação … ← manhã …`. Particular herda tudo menos o convênio (a cobrança é a da manhã).
+  `↪️ continuação … ← manhã …`. Particular herda até o convênio — o gatilho da cobrança ignora
+  continuação (migration 20261002160000), a cobrança segue sendo a da manhã.
   `⚠️ continuação sem origem` = card só com "CONTINUAÇÃO": confira o cirurgião (dono 02/10). Varrer a foto de cima a baixo — é onde a leitura mais perde nome.
 - **Rodapé** completo, NA ORDEM, com as notas ("MATHEUS (CONSULT)" é uma posição; "ADRIANO
   (REUNIÃO 15:30)" também — **nunca tirar a nota**: nome com nota é posição ocupada e não nasce

@@ -379,8 +379,8 @@ if (cmd === 'publicar') {
   let totalBloqueios = 0
   for (const [h, lista] of Object.entries(resultado.continuacoes || {})) {
     for (const c of lista) {
-      if (!c.origem) console.log(`⚠️  continuação sem origem: ${h} ${c.sala} (${c.cirurgiao || 'sem cirurgião'}) — nenhum caso da manhã aberto desse cirurgião; fica só "CONTINUAÇÃO"`)
-      else console.log(`↪️  continuação ${h} ${c.sala} (${c.cirurgiao}) ← manhã ${c.origem.sala} ${c.origem.hora} ${c.origem.iniciais || ''} ${c.origem.procedimento}${c.origem.passaTarde ? ' [passa p/ tarde]' : ''}${c.particular ? ' — particular: convênio fica vazio (a cobrança da manhã já existe)' : ''}`)
+      if (!c.origem) console.log(`⚠️  continuação sem origem: ${h} ${c.sala} (${c.cirurgiao || 'sem cirurgião'}) — nenhum caso da manhã aberto desse cirurgião; fica só "CONTINUAÇÃO"${c.particular ? ' — PARTICULAR: a continuação não abre cobrança, abra à mão em Cirurgias Particulares' : ''}`)
+      else console.log(`↪️  continuação ${h} ${c.sala} (${c.cirurgiao}) ← manhã ${c.origem.sala} ${c.origem.hora} ${c.origem.iniciais || ''} ${c.origem.procedimento}${c.origem.passaTarde ? ' [passa p/ tarde]' : ''}${c.particular ? ' — particular: a cobrança é a da manhã (a continuação não abre outra)' : ''}`)
     }
   }
   for (const r of resultado.realocados) console.log(`↔️  azul emprestado: ${r.nome} sai da ajuda do ${r.de} e entra na ajuda do ${r.para}`)

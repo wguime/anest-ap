@@ -3,6 +3,17 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.38 (02/10/2026) — Escala: continuação com os dados da cirurgia da manhã e conferência da publicação igual à fila
+
+- **Continuação da tarde mostra a cirurgia** (pedido do dono): a linha "CONTINUAÇÃO +-14h" da foto
+  herda iniciais, idade, convênio e procedimento do caso da manhã (mesmo hospital e cirurgião, não
+  terminado; o marcado "passa para a tarde" primeiro). O card diz "<procedimento> · CONTINUAÇÃO +-14h".
+- **Cobrança de particular**: o gatilho `fn_sync_cirurgia_particular` ignora continuação — a cobrança
+  é a do caso de origem, não abre uma segunda (migration `20261002160000`).
+- **Publicação pela foto confere a cauda como a fila**: quem está no rodapé sem cirurgia acima de uma
+  ajuda que trabalha não "nasce Liberado" — aviso `livre acima de ajuda` (02/10, Klisman/Gabriela).
+- **Faltantes da numérica**: o 2º do Materno sem caso no mapa sai como "não escalado", não como faltante.
+
 ## v5.12.37 (27/09/2026) — Escalas: nome e sobrenome na numérica, duplas pelo primeiro nome e acentos
 
 Pedido do dono (26–27/09).

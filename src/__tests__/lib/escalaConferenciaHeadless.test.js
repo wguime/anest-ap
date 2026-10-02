@@ -341,9 +341,9 @@ describe('continuação da tarde herda o caso da manhã (dono 02/10)', () => {
     expect(continuacoes[0].origem.id).toBe('m3')
   })
 
-  it('particular herda iniciais e procedimento, mas NÃO o convênio (senão o gatilho abre 2ª cobrança)', () => {
+  it('particular herda também o convênio (o gatilho da cobrança ignora continuação — migration 20261002160000)', () => {
     const { casos, continuacoes } = completarContinuacoes([cont('RAFAEL TIRAPELLE')], manha)
-    expect(casos[0]).toMatchObject({ pacienteIniciais: 'M.Z.', convenio: '', procedimento: 'CERVICOPLASTIA + LIFTING FACIAL · CONTINUAÇÃO +-14h' })
+    expect(casos[0]).toMatchObject({ pacienteIniciais: 'M.Z.', convenio: 'PART', isContinuacao: true, procedimento: 'CERVICOPLASTIA + LIFTING FACIAL · CONTINUAÇÃO +-14h' })
     expect(continuacoes[0].particular).toBe(true)
   })
 
@@ -351,6 +351,9 @@ describe('continuação da tarde herda o caso da manhã (dono 02/10)', () => {
     const { casos, continuacoes } = completarContinuacoes([cont('Outro Cirurgiao')], manha)
     expect(casos[0].procedimento).toBe('CONTINUAÇÃO +-14h')
     expect(continuacoes[0].origem).toBeNull()
+    expect(continuacoes[0].particular).toBe(false)
+    const part = completarContinuacoes([{ ...cont('Outro Cirurgiao'), convenio: 'PART', pacienteIniciais: 'A.B.' }], manha)
+    expect(part.continuacoes[0]).toMatchObject({ origem: null, particular: true })
   })
 
   it('o lote da tarde aplica a herança antes de conferir', () => {

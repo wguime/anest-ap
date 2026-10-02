@@ -535,10 +535,11 @@ const normCirurgiao = (s) => normNome(s).replace(/[^A-Z ]/g, '').replace(/\s+/g,
  * cirurgião, não terminado — preferindo o marcado "passa para a tarde" e, entre vários,
  * o da mesma sala e o último da sequência (é ele que atravessa).
  *
- * Herdam: iniciais, idade e procedimento ("<procedimento da manhã> · CONTINUAÇÃO +-14h" —
- * o texto da foto fica). O convênio herda, EXCETO o particular: com convênio particular
- * e iniciais o gatilho `fn_sync_cirurgia_particular` abriria uma 2ª cobrança da MESMA
- * cirurgia (a da manhã já abriu). Campo que a foto já preencheu não é sobrescrito.
+ * Herdam: iniciais, idade, convênio e procedimento ("<procedimento da manhã> · CONTINUAÇÃO
+ * +-14h" — o texto da foto fica). Particular herda o convênio também: desde a migration
+ * 20261002160000 o `fn_sync_cirurgia_particular` ignora `is_continuacao`, então não abre uma
+ * 2ª cobrança da MESMA cirurgia (a da manhã já tem a sua). `particular` segue no retorno só
+ * para o relatório. Campo que a foto já preencheu não é sobrescrito.
  * @returns {{ casos: object[], continuacoes: object[] }}
  */
 export function completarContinuacoes(casosTarde, casosPublicados) {
@@ -549,7 +550,8 @@ export function completarContinuacoes(casosTarde, casosPublicados) {
     const cir = normCirurgiao(row.cirurgiao)
     const cands = cir ? manha.filter((c) => normCirurgiao(c.cirurgiao) === cir && c.statusCirurgia !== 'terminada' && c.statusExtra !== 'suspensa') : []
     if (!cands.length) {
-      continuacoes.push({ sala: row.sala, cirurgiao: row.cirurgiao, origem: null })
+      // particular sem origem: o gatilho ignora continuação, então a cobrança NÃO abre (validador 02/10)
+      continuacoes.push({ sala: row.sala, cirurgiao: row.cirurgiao, origem: null, particular: CONVENIO_PARTICULAR.test(normNome(row.convenio || '')) })
       return row
     }
     const peso = (c) => (c.statusExtra === 'passa_tarde' ? 4 : 0) + (normNome(c.sala) === normNome(row.sala) ? 2 : 0)
@@ -562,7 +564,7 @@ export function completarContinuacoes(casosTarde, casosPublicados) {
       pacienteIniciais: texto(row.pacienteIniciais) || texto(origem.pacienteIniciais),
       idade: texto(row.idade) || texto(origem.idade),
       procedimento: procManha && !normNome(procFoto).includes(normNome(procManha)) ? [procManha, procFoto].filter(Boolean).join(' · ') : procFoto,
-      convenio: texto(row.convenio) || (particular ? '' : texto(origem.convenio)),
+      convenio: texto(row.convenio) || texto(origem.convenio),
     }
     continuacoes.push({ sala: row.sala, cirurgiao: row.cirurgiao, origem: { id: origem.id, sala: origem.sala, hora: origem.hora, iniciais: origem.pacienteIniciais, procedimento: procManha, convenio: origem.convenio, passaTarde: origem.statusExtra === 'passa_tarde' }, particular })
     return novo
