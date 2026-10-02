@@ -19,7 +19,7 @@ import { describe, it, expect, vi } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
 import {
-  duracaoMin, ehDiaOperacionalAtual, erroHorarioReal, gravarInicioReal, horarioRealNaTransicao, rotuloMinutos,
+  duracaoMin, ehDiaOperacionalAtual, erroHorarioReal, gravarInicioReal, gravarTerminoReal, horarioRealNaTransicao, rotuloMinutos,
 } from '@/lib/escalaHorarioReal'
 import { inicioDaUrgencia } from '@/lib/escalaCirurgicaUrgencias'
 
@@ -45,6 +45,11 @@ describe('o horário anda junto com o status (espelho do trigger)', () => {
     const vivo = { statusCirurgia: 'iniciada', statusAtualizadoEm: '2026-10-02T14:33:00-03:00' }
     expect(horarioRealNaTransicao(vivo, 'terminada', { agoraD: AGORA }))
       .toEqual({ inicioReal: '14:33', terminoReal: '15:45' })
+  })
+
+  it('término INFORMADO (02/10, tarde) vence a hora do toque, como o início', () => {
+    expect(horarioRealNaTransicao({ statusCirurgia: 'iniciada', inicioReal: '14:05' }, 'terminada', { agoraD: AGORA, terminoInformado: '15:30' }))
+      .toEqual({ inicioReal: '14:05', terminoReal: '15:30' })
   })
 
   it('agendada direto para terminada: só o término (não há de onde tirar o início)', () => {
@@ -183,5 +188,28 @@ describe('faixa de urgências: "em sala há" conta do início real', () => {
     expect(inicioDaUrgencia(caso, { dataEscala: '2026-10-02' })).toBe(23 * 60 + 50)
     const depois = { ...caso, inicioReal: '00:05' }
     expect(inicioDaUrgencia(depois, { dataEscala: '2026-10-02' })).toBe(24 * 60 + 5)
+  })
+})
+
+describe('gravarTerminoReal — informar o término marca Terminada (dono 02/10, tarde)', () => {
+  const deps = () => ({ setStatusCirurgia: vi.fn(async () => {}), atualizarCaso: vi.fn(async () => {}) })
+  const escala = { id: 'e1' }
+
+  it('cirurgia aberta (iniciada ou agendada): vai pelo status, com o horário junto', async () => {
+    for (const statusCirurgia of ['iniciada', 'agendada']) {
+      const d = deps()
+      const caso = { id: 'c1', statusCirurgia }
+      await gravarTerminoReal({ escala, caso, hhmm: '15:30', userId: 'u1', ...d })
+      expect(d.setStatusCirurgia).toHaveBeenCalledWith(escala, caso, 'terminada', { userId: 'u1', terminoReal: '15:30' })
+      expect(d.atualizarCaso).not.toHaveBeenCalled()
+    }
+  })
+
+  it('já terminada: só corrige o horário; vazio só apaga', async () => {
+    const d = deps()
+    await gravarTerminoReal({ escala, caso: { id: 'c1', statusCirurgia: 'terminada' }, hhmm: '15:10', ...d })
+    await gravarTerminoReal({ escala, caso: { id: 'c1', statusCirurgia: 'iniciada' }, hhmm: '', ...d })
+    expect(d.atualizarCaso.mock.calls.map((c) => c[2])).toEqual([{ terminoReal: '15:10' }, { terminoReal: null }])
+    expect(d.setStatusCirurgia).not.toHaveBeenCalled()
   })
 })

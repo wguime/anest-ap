@@ -37,24 +37,32 @@ export function hhmmDe(d) {
  *                real some (cirurgia reaberta não terminou);
  *   → terminada: término = o que já havia ou a hora do toque; início vazio de quem
  *                estava iniciada = a hora em que foi marcada iniciada.
- * Sem mudança de status, só o início informado (ou nada).
+ * Sem mudança de status, só o horário informado (ou nada). O TÉRMINO informado
+ * (dono 02/10, tarde: "informar o término marca Terminada") vence a hora do toque
+ * do mesmo jeito que o início.
  *
  * @param {object} vivo  o caso antes do toque
  * @param {string} status
- * @param {{agoraD?: Date, inicioInformado?: string|null}} [opts]
+ * @param {{agoraD?: Date, inicioInformado?: string|null, terminoInformado?: string|null}} [opts]
  * @returns {{inicioReal?: string|null, terminoReal?: string|null}}
  */
-export function horarioRealNaTransicao(vivo, status, { agoraD = agora(), inicioInformado = null } = {}) {
+export function horarioRealNaTransicao(vivo, status, { agoraD = agora(), inicioInformado = null, terminoInformado = null } = {}) {
   const antes = vivo?.statusCirurgia || 'agendada'
   if (!['agendada', 'iniciada', 'terminada'].includes(status) || status === antes) {
-    return inicioInformado ? { inicioReal: inicioInformado } : {}
+    return {
+      ...(inicioInformado && { inicioReal: inicioInformado }),
+      ...(terminoInformado && { terminoReal: terminoInformado }),
+    }
   }
   if (status === 'agendada') return { inicioReal: null, terminoReal: null }
   if (status === 'iniciada') {
     return { inicioReal: inicioInformado || vivo?.inicioReal || hhmmDe(agoraD), terminoReal: null }
   }
   const doCarimbo = antes === 'iniciada' && vivo?.statusAtualizadoEm ? hhmmDe(new Date(vivo.statusAtualizadoEm)) : null
-  return { inicioReal: vivo?.inicioReal || doCarimbo || null, terminoReal: vivo?.terminoReal || hhmmDe(agoraD) }
+  return {
+    inicioReal: inicioInformado || vivo?.inicioReal || doCarimbo || null,
+    terminoReal: terminoInformado || vivo?.terminoReal || hhmmDe(agoraD),
+  }
 }
 
 /**
@@ -127,4 +135,22 @@ export function gravarInicioReal({ escala, caso, hhmm, userId = null, setStatusC
     return setStatusCirurgia(escala, caso, 'iniciada', { userId, inicioReal: hhmm })
   }
   return atualizarCaso(escala, caso.id, { inicioReal: hhmm || null }, { silencioso: true })
+}
+
+/**
+ * Grava o TÉRMINO informado à mão — par do `gravarInicioReal` (dono 02/10, tarde:
+ * "apenas a possibilidade de colocar o horário exato, tanto no início quanto no
+ * final"; informar o término marca Terminada). Numa cirurgia ainda aberta vai pelo
+ * `setStatusCirurgia` com o horário junto (o context grava o término antes da RPC, o
+ * trigger não o troca pela hora do toque, e o "Terminada" zera a previsão como
+ * sempre); já terminada, é só a correção. Vazio só apaga o horário.
+ *
+ * @returns {Promise<void>}
+ */
+export function gravarTerminoReal({ escala, caso, hhmm, userId = null, setStatusCirurgia, atualizarCaso }) {
+  if (!caso?.id) return Promise.resolve()
+  if (hhmm && (caso.statusCirurgia || 'agendada') !== 'terminada') {
+    return setStatusCirurgia(escala, caso, 'terminada', { userId, terminoReal: hhmm })
+  }
+  return atualizarCaso(escala, caso.id, { terminoReal: hhmm || null }, { silencioso: true })
 }

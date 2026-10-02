@@ -53,20 +53,20 @@ test('pill do cronômetro avança com o tempo e recalcula ao voltar do backgroun
   // Cronômetro é 100% MANUAL (decisão 23/07): nasce em branco — preenche via
   // "Tempo faltante" (1 toque em 1h) e só então a pill aparece e conta.
   await expect(page.locator('button[title*="toque para ajustar"]')).toHaveCount(0);
-  // PainelTempo (29/07): os botões de atalho de duração viraram opções do
-  // Select "Falta". Retry com REABERTURA: o tap durante a animação de subida
-  // do sheet cai no overlay e fecha o painel (mesma classe do spec da troca).
-  const selFalta = page.getByRole('combobox').filter({ hasText: /Falta/ });
-  const opcao1h = page.getByRole('option', { name: '1h', exact: true });
+  // PainelTempo: abre no "Horário de término" (dono 02/10); a duração é a aba
+  // "Tempo faltante", com os atalhos em grade (17/08). Retry com REABERTURA: o tap
+  // durante a animação de subida do sheet cai no overlay e fecha o painel.
+  const abaFaltante = page.getByRole('tab', { name: 'Tempo faltante' });
+  const atalho1h = page.getByRole('button', { name: '1h', exact: true });
   await expect(async () => {
-    if (!(await selFalta.isVisible().catch(() => false))) {
+    if (!(await abaFaltante.isVisible().catch(() => false))) {
       await page.getByRole('button', { name: /^Definir tempo faltante de/ }).first().click({ timeout: 2_000 });
-      await expect(selFalta).toBeVisible({ timeout: 3_000 });
+      await expect(abaFaltante).toBeVisible({ timeout: 3_000 });
     }
-    await selFalta.click({ timeout: 2_000 });
-    await expect(opcao1h).toBeVisible({ timeout: 1_500 });
+    await abaFaltante.click({ timeout: 2_000 });
+    await expect(atalho1h).toBeVisible({ timeout: 1_500 });
   }).toPass({ timeout: 20_000 });
-  await opcao1h.click();
+  await atalho1h.click();
   const pill = page.locator('button[title*="toque para ajustar"]').first();
   await expect(pill).toBeVisible({ timeout: 10_000 });
   const antes = (await pill.textContent())?.trim(); // ~1h

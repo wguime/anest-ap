@@ -112,6 +112,19 @@ describe('início INFORMADO numa cirurgia agendada', () => {
   })
 })
 
+describe('término INFORMADO numa cirurgia aberta (02/10, tarde)', () => {
+  it('pinta o término informado e o grava ANTES da RPC; a previsão zera como no Terminada', async () => {
+    await montar()
+    await act(async () => {
+      await actions.setStatusCirurgia(unimed(), casoDe('c-ini'), 'terminada', { userId: 'u1', terminoReal: '15:30' })
+    })
+    expect(casoDe('c-ini')).toMatchObject({ statusCirurgia: 'terminada', inicioReal: '14:33', terminoReal: '15:30', terminoPrevisto: null })
+    expect(svcMock.updateCaso).toHaveBeenCalledWith('c-ini', { terminoReal: '15:30' })
+    const ordemTermino = svcMock.updateCaso.mock.invocationCallOrder[0]
+    expect(ordemTermino).toBeLessThan(svcMock.updateStatusCirurgia.mock.invocationCallOrder[0])
+  })
+})
+
 describe('Desfazer o Terminada', () => {
   it('tira o término real e mantém o início', async () => {
     await montar()

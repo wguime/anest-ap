@@ -463,6 +463,17 @@ espelha…".
 > agora ("Horário da cirurgia")**, só para o início: o término dela segue sendo o tempo de cima,
 > mostrado sem botão ("o tempo acima"). O resto desta seção continua valendo pelo bloco TÉRMINO (mesmo
 > nome acessível "Término de 16:00 …"). Ver `escala-telas.md` § "Horário da cirurgia".
+>
+> ↳ **02/10, tarde (protótipo `.tmp/horario-compacto.html`)**: a folha chama-se **"Tempo total
+> estimado · Nome"** e diz "Até quando X termina **todas as N cirurgias** em que está escalado" (o
+> dono pediu dito "de forma direta"). Em cada cirurgia, o **tempo estimado AO LADO DO NOME**
+> (`BotaoEstimado`, nome acessível "Tempo estimado de 16:00 …", folha "Tempo estimado · …" — é o
+> término previsto desta seção, a mesma gravação de sempre) e, embaixo, INÍCIO e TÉRMINO **exatos**
+> nos blocos compactos, abrindo a CONFIRMAÇÃO do horário; o término marca Terminada e a cirurgia
+> sai da lista (`onDefinirTerminoRealCaso` → `gravarTerminoReal`). Com UMA cirurgia o estimado dela
+> aparece como "estimado = tempo acima" (sem botão). ⚠️ **O CARD da fila não mudou**: o tempo
+> estimado segue ao lado da cirurgia ("faltam 12min" / "até 12:05") — o dono pediu isso
+> expressamente; trava em `escalaHorarioCirurgia.test.jsx`.
 
 *"Ao clicar em '+ tempo total' quero que também seja possível inserir os tempos individuais de
 cada cirurgia em que o anestesista está designado"* — escolhido em maquete

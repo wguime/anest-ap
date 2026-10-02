@@ -21,6 +21,13 @@
  * "Definir" saiu por ser morto no caminho comum (atalho, seletor e campo já
  * gravam). "Falta" virou "Tempo faltante", as duas correções que o dono pediu
  * antes de comparar as propostas.
+ *
+ * REVISÃO 02/10 (dono, aprovada em protótipo `.tmp/horario-compacto.html`): "quero que
+ * a primeira opção que aparece é de horário de término" — o painel abre SEMPRE no
+ * horário (antes, vazio, nascia na duração); a duração virou grade 4×2 (15min a 3h +
+ * "Outro" na 8ª casa), o "Limpar" foi para a linha da prévia e a frase "Dois jeitos de
+ * dizer a mesma coisa" saiu ("aproveite melhor os espaços"). As travas de GRAVAÇÃO
+ * abaixo são as mesmas; o que mudou é o caminho (um toque na aba "Tempo faltante").
  */
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
@@ -42,13 +49,15 @@ const montar = (props = {}) => {
 
 /** Combobox pelo texto visível (o DS usa aria-labelledby, que vence aria-label). */
 const combo = (re) => screen.getAllByRole('combobox').find((c) => re.test(c.textContent))
+/** O painel abre no horário (02/10); a duração fica na outra aba. */
 /** Vai para a rota do horário digitado (a outra metade do alternador). */
 const abaHorario = () => fireEvent.click(screen.getByRole('tab', { name: 'Horário de término' }))
 /** Vai para a rota da duração. */
 const abaFaltante = () => fireEvent.click(screen.getByRole('tab', { name: 'Tempo faltante' }))
 /** Escolhe no seletor de DURAÇÃO (rótulo é duração; o valor gravado é a hora). */
 const escolherDuracao = async (rotulo) => {
-  fireEvent.click(combo(/Outro tempo/i))
+  fireEvent.click(screen.getByRole('tab', { name: 'Tempo faltante' }))
+  fireEvent.click(combo(/Outro/i))
   fireEvent.click(await screen.findByRole('option', { name: rotulo }))
 }
 /** Roletas de hora e minuto, escopadas pelo rótulo do bloco (o DS não deixa
@@ -60,21 +69,27 @@ const digitarHorario = (hhmm) =>
   fireEvent.change(campoHora(), { target: { value: hhmm.replace(':', '') } })
 
 describe('PainelTempo — duas entradas para o mesmo campo (dono 29/07)', () => {
-  it('oferece TEMPO FALTANTE e HORÁRIO DE TÉRMINO — uma OU outra, nunca as duas', () => {
+  it('oferece HORÁRIO DE TÉRMINO e TEMPO FALTANTE — uma OU outra, nunca as duas', () => {
     montar()
-    // vazio nasce na duração: é como quem está em sala pensa
-    expect(screen.getByRole('tab', { name: 'Tempo faltante' })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByRole('button', { name: '1h30' })).toBeTruthy()
-    expect(campoHora()).toBeNull() // a outra rota não está na tela
-    expect(screen.getByText(/Dois jeitos de dizer a mesma coisa/)).toBeTruthy()
-    abaHorario()
-    // horário é campo mascarado (mesma máscara do "Adicionar caso")
+    // 02/10: abre SEMPRE no horário, e ele é a 1ª aba ("a primeira opção que aparece")
+    const abas = screen.getAllByRole('tab').map((t) => t.textContent)
+    expect(abas).toEqual(['Horário de término', 'Tempo faltante'])
+    expect(screen.getByRole('tab', { name: 'Horário de término' })).toHaveAttribute('aria-selected', 'true')
     expect(campoHora()).toBeTruthy()
-    expect(screen.queryByRole('button', { name: '1h30' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '1h30' })).toBeNull() // a outra rota não está na tela
+    expect(screen.queryByText(/Dois jeitos de dizer a mesma coisa/)).toBeNull()
+    abaFaltante()
+    // grade 4×2: sete atalhos e o "Outro" na 8ª casa
+    for (const rot of ['15min', '30min', '45min', '1h', '1h30', '2h', '3h']) {
+      expect(screen.getByRole('button', { name: rot })).toBeTruthy()
+    }
+    expect(combo(/Outro/)).toBeTruthy()
+    expect(campoHora()).toBeNull()
   })
 
   it('os atalhos gravam em UM toque (é o caminho do meio do plantão)', () => {
     const { onDefinir } = montar()
+    abaFaltante()
     fireEvent.click(screen.getByRole('button', { name: '1h30' }))
     expect(onDefinir).toHaveBeenCalledTimes(1)
     expect(onDefinir.mock.calls[0][0]).toMatch(/^([01][0-9]|2[0-3]):[0-5][0-9]$/)
@@ -88,7 +103,6 @@ describe('PainelTempo — duas entradas para o mesmo campo (dono 29/07)', () => 
 
   it('hora incompleta NÃO grava — "18:3" no meio da digitação não é um término', () => {
     const { onDefinir } = montar()
-    abaHorario()
     fireEvent.change(campoHora(), { target: { value: '183' } })
     expect(onDefinir).not.toHaveBeenCalled()
     // e hora inválida também não (25:00 não existe)
@@ -113,9 +127,9 @@ describe('PainelTempo — duas entradas para o mesmo campo (dono 29/07)', () => 
 
   it('não finge um valor escolhido quando não há nenhum', () => {
     montar()
-    abaHorario()
     expect(campoHora().value).toBe('')
     expect(screen.queryByText(/Acaba às/)).toBeNull()
+    expect(screen.getByText('Sem tempo informado.')).toBeTruthy()
   })
 
   it('a prévia traduz a hora em quanto falta — sem conta de cabeça', () => {

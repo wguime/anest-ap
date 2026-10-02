@@ -1075,7 +1075,9 @@ describe('Liberações — Tempo faltante e lista de cirurgiões (F1.9d)', () =>
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} onSetOverride={onSetOverride} />, { wrapper: wrap })
     fireEvent.click(screen.getByLabelText('Definir tempo faltante de Rodnei'))
     // os atalhos de duração VOLTARAM como grade (dono 17/08): um toque grava, e o
-    // "Outro tempo…" cobre o resto da lista
+    // "Outro tempo…" cobre o resto da lista. Desde 02/10 a duração é a 2ª aba: o
+    // painel abre no "Horário de término" (dono: "a primeira opção que aparece")
+    fireEvent.click(screen.getByRole('tab', { name: 'Tempo faltante' }))
     fireEvent.click(screen.getByRole('button', { name: '1h' }))
     expect(onSetOverride).toHaveBeenCalledWith(
       expect.objectContaining({ anestesista: 'Rodnei' }),

@@ -24,7 +24,7 @@ import ImportarEscalasPage from './ImportarEscalasPage'
 import ImportarEscalaFdsPage from './ImportarEscalaFdsPage'
 import TrocaSheet from './TrocaSheet'
 import { meuAliasDe, turnoAtualOperacional, dataPorExtenso, estadoTrocasDoHistorico, normNome, formatData, rodapeDoTurno, localizarSlotEscala, localizarMeuPosto, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca, espelhoTempoTotal, inicioDaDuracao, terminoEncadeado, turnoDoCaso, patchDefinicaoNoTurnoSeguinte } from './utils'
-import { gravarInicioReal } from '@/lib/escalaHorarioReal'
+import { gravarInicioReal, gravarTerminoReal } from '@/lib/escalaHorarioReal'
 import { ehDataFilaUnica, ehFeriado, ehFimDeSemana, FDS_HOSPITAL, FDS_TURNO_CASOS, FDS_TURNOS, turnoFdsAtual } from '@/lib/escalaFds'
 import { faseLiberacoes } from '@/lib/plantaoNoturno'
 import { hospitalDaConta, podeEditarEscalaCirurgica, podePublicarEscalaCirurgica } from './gate'
@@ -782,6 +782,13 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                     const dona = modoFds ? escalaDoCaso(casoId) || escala : escala
                     const alvo = (dona?.casos || []).find((c) => c.id === casoId)
                     await gravarInicioReal({ escala: dona, caso: alvo, hhmm, userId: userInfo.userId, setStatusCirurgia, atualizarCaso })
+                  }}
+                  // TÉRMINO REAL pela mesma folha (dono 02/10, tarde): informar o término
+                  // marca Terminada — mesma função do detalhe do caso.
+                  onDefinirTerminoRealCaso={async (casoId, hhmm) => {
+                    const dona = modoFds ? escalaDoCaso(casoId) || escala : escala
+                    const alvo = (dona?.casos || []).find((c) => c.id === casoId)
+                    await gravarTerminoReal({ escala: dona, caso: alvo, hhmm, userId: userInfo.userId, setStatusCirurgia, atualizarCaso })
                   }}
                   // DE ONDE CONTA A DURAÇÃO de uma cirurgia (dono 25/09): a folha do tempo
                   // total diz, antes do toque, que "1h" numa cirurgia que ainda não começou

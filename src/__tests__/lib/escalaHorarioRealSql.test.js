@@ -89,6 +89,14 @@ describe('o toque no status preenche o horário (trigger)', () => {
     expect(c.termino_real).toBe(await agoraSP())
   })
 
+  it('o término INFORMADO antes do toque (o "Confirmar" do card, 02/10) não é trocado pela hora do toque', async () => {
+    await publicar()
+    await status('13:30', 'iniciada')
+    await db.query("update escala_cirurgica_caso set termino_real = '15:10' where hora = '13:30'")
+    await status('13:30', 'terminada')
+    expect(await caso('13:30')).toMatchObject({ status_cirurgia: 'terminada', termino_real: '15:10' })
+  })
+
   it('iniciada ANTES do recurso (sem início) → terminada: o início vem do carimbo antigo', async () => {
     await publicar()
     await db.query(`update escala_cirurgica_caso set status_cirurgia = 'iniciada',

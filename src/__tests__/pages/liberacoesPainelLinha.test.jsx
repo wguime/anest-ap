@@ -185,7 +185,9 @@ describe('Observação da linha (dono 29/07)', () => {
     const onSetOverride = vi.fn(async () => {})
     montar({ onSetOverride }, { ...escalaBase, linhaOverrides: { 'uid-mar': { observacao: 'no consultório' } } })
     fireEvent.click(screen.getByLabelText('Definir tempo faltante de Marílio Flach'))
-    // atalho de duração em grade (redesenho 17/08): um toque grava
+    // atalho de duração em grade (redesenho 17/08): um toque grava — desde 02/10 a
+    // duração é a 2ª aba (o painel abre no "Horário de término")
+    fireEvent.click(screen.getByRole('tab', { name: 'Tempo faltante' }))
     fireEvent.click(screen.getByRole('button', { name: '1h' }))
     await waitFor(() => expect(onSetOverride).toHaveBeenCalled())
     expect(onSetOverride.mock.calls[0][1].observacao).toBe('no consultório')
@@ -322,7 +324,9 @@ describe('Painel da linha — SEM a lista de casos (dono 30/07)', () => {
     // término de todos os seus casos" no subtítulo (auditoria 17/08)
     montar()
     fireEvent.click(screen.getByLabelText('Definir tempo faltante de Marílio Flach'))
-    expect(screen.getByText(/Tempo faltante de Marílio Flach/)).toBeTruthy()
+    // 02/10: "Tempo total estimado" — o nome da pílula que abriu ("+ Tempo total") e o
+    // que o dono pediu dito com todas as letras: é o total de TODAS as cirurgias
+    expect(screen.getByText(/Tempo total estimado · Marílio Flach/)).toBeTruthy()
     expect(screen.queryByText(/Tempo para término ou horário de término/)).toBeNull()
     // e o painel acompanha o conteúdo em vez de nascer com 85% da tela
     expect(document.querySelector('[data-slot="sheet-content"]').className).toContain('!h-auto')
@@ -825,6 +829,7 @@ describe('Turno próprio — pode sair fora da ordem (dono 11/09)', () => {
 describe('a pílula do total espelha no término da cirurgia quando ela é a única aberta', () => {
   const definirUmaHora = (nome) => {
     fireEvent.click(screen.getByLabelText(`Definir tempo faltante de ${nome}`))
+    fireEvent.click(screen.getByRole('tab', { name: 'Tempo faltante' })) // 2ª aba desde 02/10
     fireEvent.click(screen.getByRole('button', { name: '1h' }))
   }
 

@@ -93,13 +93,13 @@ describe('Minhas — detalhe do caso vem COMPLETO', () => {
 
   it('traz o tempo da cirurgia', () => {
     abrirDetalhe()
-    // sem término informado o bloco é um convite explícito, não um campo vazio.
-    // 02/10: o término subiu para o cartão "Horário da cirurgia" (bloco TÉRMINO, ao
-    // lado do INÍCIO) — o botão se chama pelo que é ("Término desta cirurgia: …")
-    // e o convite "Definir término" é o texto visível dentro dele
-    const bloco = screen.getByRole('button', { name: 'Término desta cirurgia: não informado' })
-    expect(bloco.textContent).toContain('Definir término')
-    fireEvent.click(bloco)
+    // sem tempo informado o botão é um convite explícito, não um campo vazio.
+    // 02/10: o tempo da cirurgia (a previsão) é o botão "Tempo estimado" no topo do
+    // cartão "Horário da cirurgia"; o painel abre no horário e a duração é a outra aba
+    const botao = screen.getByRole('button', { name: 'Tempo estimado desta cirurgia: não informado' })
+    expect(botao.textContent).toContain('Tempo estimado')
+    fireEvent.click(botao)
+    fireEvent.click(screen.getByRole('tab', { name: 'Tempo faltante' }))
     expect(screen.getByRole('button', { name: '1h30' })).toBeTruthy()
     fireEvent.click(screen.getByRole('tab', { name: 'Horário de término' }))
     expect(document.querySelector('[data-slot="termino-hora"]')).toBeTruthy()
@@ -126,7 +126,7 @@ describe('Minhas — detalhe do caso vem COMPLETO', () => {
 
   it('editar pela Minhas grava no MESMO caminho da Completa', async () => {
     abrirDetalhe()
-    fireEvent.click(screen.getByRole('button', { name: /Término desta cirurgia/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Tempo estimado desta cirurgia/ }))
     fireEvent.click(screen.getByRole('tab', { name: 'Horário de término' }))
     // horário é campo mascarado: digitar 1800 → "18:00" e grava
     fireEvent.change(document.querySelector('[data-slot="termino-hora"]'), { target: { value: '1800' } })

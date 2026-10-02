@@ -295,6 +295,43 @@ escolheu o **A — dois blocos lado a lado** (o B era linha do tempo com barra) 
   (context), `escalaHorarioReal.test.js` (lib + par com o trigger), `escalaHorarioRealSql.test.js`
   (PGlite: trigger, desfazer, script sem carimbo, republicação).
 
+#### Revisão da tarde (dono 02/10, protótipo `.tmp/horario-compacto.html`) — o que vale HOJE
+
+O dono usou a versão da manhã e mandou oito prints. O que mudou (e substitui o que estiver
+acima em conflito):
+
+- **Cartão 35% mais baixo** (94px contra 145px): blocos de UMA linha (`BlocoHorario`, em
+  `BlocoHorario.jsx`, fonte única do detalhe e das Liberações) — rótulo e uma referência à
+  esquerda, horário à direita (20px, 22px a partir de 400px). ⚠️ "agendada 13:30" SAIU do bloco:
+  a 375/390px era cortada (a hora agendada já está no cabeçalho da folha); no lugar, o que só o
+  bloco diz — "há 40min" no início, "faltam 45min"/"X além" (pela previsão) ou "durou 1h17" no
+  término. ⚠️ colunas `grid-cols-2` (minmax(0,1fr)): com `1fr` puro o 2º bloco vazava do cartão
+  a 375px.
+- **"Editar dados da cirurgia" virou a pílula "Editar"** no canto do 1º cartão — o `ActionPill`
+  do DS, o mesmo "Editar" do Estágios/Plantão da Home (alvo de toque crescido por `after:`).
+- **INÍCIO e TÉRMINO são horários EXATOS**, e **o TÉRMINO deixou de ser a previsão**: o bloco é o
+  horário real em que acabou. Informar o término marca **Terminada** (decisão do dono, "andam
+  juntos", espelho do início); `gravarTerminoReal` + `setStatusCirurgia(..., { terminoReal })`.
+- **O TEMPO ESTIMADO** (a previsão de término de sempre — `terminoPrevisto`, a fila, a pílula, o
+  "→15:30" do quadro) é o botão `BotaoEstimado` no topo do cartão ("+ Tempo estimado" / "Estimado
+  15:30"); some depois de Terminada.
+- **CONFIRMAR O HORÁRIO** (`ConfirmarHorario`): tocar em **Iniciada/Terminada** (Andamento) ou no
+  bloco **INÍCIO/TÉRMINO** abre o card "Início/Término da cirurgia" com o horário proposto em 40px
+  (o já informado → a hora em que foi MARCADA iniciada, para quem começou antes de 02/10 → agora),
+  "Confirmar início às HH:MM" e "Foi em outro horário? Digite o correto" (4 dígitos, grava ao
+  completar). Pelo BOTÃO, confirmar aplica o status do botão (reabrir uma terminada pelo
+  "Iniciada" vale); tocar o botão do status em que ela já está só CORRIGE o horário (reenviar o
+  status recarimbaria o "Iniciada às…"). Pelo BLOCO vale a regra de `gravarInicioReal`/
+  `gravarTerminoReal`. "Limpar horário" só pelo bloco, com horário gravado. Agendada e os avisos
+  gravam no toque, como sempre. O "Terminada" da faixa de urgências (cirurgia esquecida) também
+  passa pelo card.
+- **PainelTempo** (as três folhas): abre SEMPRE no **"Horário de término"** (1ª aba); "Tempo
+  faltante" em grade **4×2** (15min, 30, 45, 1h, 1h30, 2h, 3h + "Outro" na 8ª casa — o gatilho do
+  Select do DS tem padding INLINE, encolhido por `[&_[role=combobox]]:!px-2`); "Limpar" na linha da
+  prévia; a frase "Dois jeitos de dizer a mesma coisa" saiu; caixa de 104px (era 172).
+- Travas novas/atualizadas: `escalaHorarioCirurgia.test.jsx` (25 casos), `painelTempo.test.jsx`,
+  `escalaUrgenciasFaixa.test.jsx` (o "Terminada" confirma antes de gravar).
+
 ### Editar e EXCLUIR o caso publicado (dono 2026-09-01, modelo A em protótipo)
 
 > "ao adicionar novo caso, após adicionado não é possível editar… ou eventualmente

@@ -277,18 +277,22 @@ describe('toque abre o detalhe — onde Iniciada/Terminada já são marcados', (
 })
 
 describe('qualidade do dado', () => {
-  it('iniciada há mais de 4h sai da conta, vira pergunta, e "Terminada" grava direto', () => {
+  it('iniciada há mais de 4h sai da conta, vira pergunta, e "Terminada" CONFIRMA o horário antes de gravar', () => {
     montar([iniciada('c1', 'Sala 6', { statusAtualizadoEm: `${HOJE}T05:00:00` })])
     expect(screen.getByText(/ainda em andamento\?/)).toBeTruthy()
     expect(screen.getByLabelText('0 de 2 vagas de urgência ocupadas')).toBeTruthy() // saiu da ocupação
     fireEvent.click(screen.getByRole('button', { name: 'Terminada' }))
+    // 02/10 (dono, tarde): o toque abre o card "Término da cirurgia" — nada é gravado
+    // até confirmar (é aqui, na cirurgia esquecida, que a hora do toque mais erra)
+    expect(setStatusCirurgia).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: /^Confirmar término às \d{2}:\d{2}$/ }))
     // o 4º argumento é quem tocou — o carimbo otimista precisa dele para o
-    // detalhe dizer "por Fulano" já no ato (dono 21/08)
+    // detalhe dizer "por Fulano" já no ato (dono 21/08) — e o horário confirmado
     expect(setStatusCirurgia).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'e1' }),
       expect.objectContaining({ id: 'c1' }),
       'terminada',
-      expect.objectContaining({ userId: 'u-eu' }),
+      expect.objectContaining({ userId: 'u-eu', terminoReal: expect.stringMatching(/^\d{2}:\d{2}$/) }),
     )
   })
 
@@ -304,6 +308,7 @@ describe('invariantes do módulo', () => {
     // o componente chamasse setLinhaOverride/reordenarLiberacao, quebraria aqui.
     montar([iniciada('c1', 'Sala 6', { statusAtualizadoEm: `${HOJE}T05:00:00` })])
     fireEvent.click(screen.getByRole('button', { name: 'Terminada' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Confirmar término às/ }))
     expect(setStatusCirurgia).toHaveBeenCalledTimes(1)
   })
 })

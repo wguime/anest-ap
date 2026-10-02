@@ -75,9 +75,15 @@ const montar = (props = {}, esc = escala) => render(
   { wrapper: wrap }
 )
 
-/** Abre o bloco de tempo (a linha mostra o valor; o botão abre o editor). */
-const abrirTempo = () =>
-  fireEvent.click(screen.getByRole('button', { name: /Término desta cirurgia/ }))
+/** Abre o TEMPO ESTIMADO desta cirurgia e vai à aba da duração.
+ *  ⚠️ 02/10 (tarde, protótipo `.tmp/horario-compacto.html`): o tempo estimado (a
+ *  previsão de término que estas travas sempre cobriram) virou o botão "Estimado" no
+ *  topo do cartão do horário — o bloco TÉRMINO passou a ser o horário REAL — e o painel
+ *  abre no "Horário de término"; a duração é um toque na aba "Tempo faltante". */
+const abrirTempo = () => {
+  fireEvent.click(screen.getByRole('button', { name: /Tempo estimado desta cirurgia/ }))
+  fireEvent.click(screen.getByRole('tab', { name: 'Tempo faltante' }))
+}
 
 beforeEach(() => vi.clearAllMocks())
 
@@ -200,9 +206,9 @@ describe('Término DESTA cirurgia (dono 29/07)', () => {
     // cartão "Horário da cirurgia" (bloco TÉRMINO); o nome acessível e o título do
     // editor continuam dizendo que é desta cirurgia.
     expect(screen.getByRole('article', { name: 'Horário da cirurgia' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Término desta cirurgia/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Tempo estimado desta cirurgia/ })).toBeTruthy()
     abrirTempo()
-    expect(screen.getByText(/Só desta cirurgia/)).toBeTruthy()
+    expect(screen.getByText(/Quando esta cirurgia deve terminar/)).toBeTruthy()
     // as duas entradas são ALTERNATIVAS: o painel abre numa e o alternador leva à outra
     expect(screen.getByRole('button', { name: '1h30' })).toBeTruthy()
     fireEvent.click(screen.getByRole('tab', { name: 'Horário de término' }))
@@ -248,10 +254,10 @@ describe('Ajuda marcada pela aba Completa (dono 29/07)', () => {
 describe('Editores em sheet próprio (dono 17/08)', () => {
   // Expandindo dentro do cartão, o painel mudava de altura no meio da leitura e a
   // pessoa perdia o lugar. Agora cada editor chega por cima, de baixo para cima.
-  it('"Definir término" abre um sheet por cima, sem crescer o cartão', () => {
+  it('o tempo estimado abre um sheet por cima, sem crescer o cartão', () => {
     montar()
     const antes = document.querySelectorAll('[data-slot="sheet-content"], [role="dialog"]').length
-    fireEvent.click(screen.getByRole('button', { name: /Definir término|Término desta cirurgia/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Tempo estimado desta cirurgia/i }))
     const depois = document.querySelectorAll('[data-slot="sheet-content"], [role="dialog"]').length
     expect(depois).toBeGreaterThan(antes)
     expect(screen.getByText('Tempo faltante')).toBeTruthy()

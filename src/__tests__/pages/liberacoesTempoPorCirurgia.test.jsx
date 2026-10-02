@@ -23,6 +23,13 @@
  * cirurgia (cirurgião · andamento) saiu de dentro do botão e virou a linha acima dos
  * blocos, e o convite vazio é "Definir" (o rótulo TÉRMINO já está no bloco). Com UMA
  * cirurgia a lista aparece agora, só para o início (ver o describe dela).
+ *
+ * ⚠️ 02/10, tarde (protótipo `.tmp/horario-compacto.html`): o bloco TÉRMINO virou o
+ * horário REAL (confirmado no card) e o término PREVISTO de cada cirurgia — o que estas
+ * travas sempre cobriram — virou o botão "Tempo estimado" AO LADO DO NOME da cirurgia
+ * (nome acessível "Tempo estimado de 16:00 …", folha "Tempo estimado · …"). A folha do
+ * total chama-se "Tempo total estimado · Nome" e diz que é de TODAS as N cirurgias. O
+ * painel abre no "Horário de término"; a duração é um toque na aba "Tempo faltante".
  */
 import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest'
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
@@ -89,6 +96,10 @@ const montar = (props = {}, escala = escalaDuas) => render(
 )
 
 const abrirTempoTotal = () => fireEvent.click(screen.getByLabelText('Definir tempo faltante de Marílio Flach'))
+// o botão do tempo estimado de UMA cirurgia (o nome acessível termina com o valor)
+const estimado = (hora, proc) => screen.getByRole('button', { name: new RegExp(`^Tempo estimado de ${hora} ${proc}`) })
+// a duração é a 2ª aba do painel (02/10): o toque vai na folha de cima
+const abaDuracao = (folha = folhaDeCima()) => fireEvent.click(within(folha).getByRole('tab', { name: 'Tempo faltante' }))
 // a folha que está por cima (a da cirurgia, quando aberta)
 const folhaDeCima = () => { const d = screen.getAllByRole('dialog'); return d[d.length - 1] }
 
@@ -100,26 +111,29 @@ afterAll(() => vi.useRealTimers())
 beforeEach(() => vi.clearAllMocks())
 
 describe('"+ Tempo total" com o término de cada cirurgia (dono 25/09)', () => {
-  it('2 cirurgias: a folha lista "Horário de cada cirurgia", uma linha por cirurgia, com o término ou "Definir"', () => {
+  it('2 cirurgias: a folha lista "Horário de cada cirurgia", o tempo estimado ao lado do nome', () => {
     montar()
     abrirTempoTotal()
     expect(screen.getByText('Horário de cada cirurgia')).toBeInTheDocument()
-    const primeira = screen.getByRole('button', { name: `Término de 13:00 ${rot(ARTRODESE)}` })
-    const segunda = screen.getByRole('button', { name: `Término de 16:00 ${rot(OSTEO)}` })
+    const primeira = estimado('13:00', rot(ARTRODESE))
+    const segunda = estimado('16:00', rot(OSTEO))
     // em andamento, com término: o horário e quanto falta (15:45 → 16:30)
     expect(within(primeira).getByText('16:30')).toBeInTheDocument()
     expect(within(primeira).getByText('faltam 45min')).toBeInTheDocument()
     expect(screen.getByText(/Eduardo Baldissera · em andamento/)).toBeInTheDocument()
-    // agendada, sem término: o convite
-    expect(within(segunda).getByText('Definir')).toBeInTheDocument()
+    // agendada, sem estimativa: o convite
+    expect(within(segunda).getByText('Tempo estimado')).toBeInTheDocument()
     expect(screen.getByText(/Carlos Fogaca · agendada/)).toBeInTheDocument()
   })
 
-  it('a frase "nunca é a soma delas" saiu: com 2+ a folha diz que, informadas todas, vira o término da última', () => {
+  it('direto ao ponto (02/10): é o tempo total estimado de TODAS as cirurgias da pessoa', () => {
     montar()
     abrirTempoTotal()
-    expect(screen.queryByText(/nunca é a soma/)).toBeNull()
-    expect(screen.getByText('Quando essa pessoa fica livre. Com o término das 2 cirurgias informado, vira o término da última.')).toBeInTheDocument()
+    const folha = screen.getByRole('dialog')
+    expect(within(folha).getByText('Tempo total estimado · Marílio Flach')).toBeInTheDocument()
+    expect(folha.textContent).toContain('Até quando Marílio termina todas as 2 cirurgias em que está escalado.')
+    expect(folha.textContent).toContain('Com o tempo de cada cirurgia informado abaixo, ele vira o término da última.')
+    expect(within(folha).queryByText(/nunca é a soma/)).toBeNull()
   })
 
   it('o painel de cima continua sendo o TOTAL: "1h" grava a pílula e fecha a folha, sem tocar em caso nenhum', async () => {
@@ -127,6 +141,7 @@ describe('"+ Tempo total" com o término de cada cirurgia (dono 25/09)', () => {
     const onDefinirTerminoCaso = vi.fn(async () => {})
     montar({ onSetOverride, onDefinirTerminoCaso })
     abrirTempoTotal()
+    abaDuracao()
     fireEvent.click(screen.getByRole('button', { name: '1h' }))
     await waitFor(() => expect(onSetOverride).toHaveBeenCalledTimes(1))
     expect(onSetOverride.mock.calls[0][1].termino).toBe('16:45')
@@ -139,9 +154,10 @@ describe('"+ Tempo total" com o término de cada cirurgia (dono 25/09)', () => {
     const onDefinirTerminoCaso = vi.fn(async () => {})
     montar({ onSetOverride, onDefinirTerminoCaso })
     abrirTempoTotal()
-    fireEvent.click(screen.getByRole('button', { name: `Término de 16:00 ${rot(OSTEO)}` }))
+    fireEvent.click(estimado('16:00', rot(OSTEO)))
     const folha = folhaDeCima()
-    expect(within(folha).getByText(`Término · 16:00 ${rot(OSTEO)}`)).toBeInTheDocument()
+    expect(within(folha).getByText(`Tempo estimado · 16:00 ${rot(OSTEO)}`)).toBeInTheDocument()
+    abaDuracao(folha)
     fireEvent.click(within(folha).getByRole('button', { name: '1h' }))
     await waitFor(() => expect(onDefinirTerminoCaso).toHaveBeenCalledTimes(1))
     const [casoId, hhmm, meta] = onDefinirTerminoCaso.mock.calls[0]
@@ -151,22 +167,22 @@ describe('"+ Tempo total" com o término de cada cirurgia (dono 25/09)', () => {
     expect(meta).toEqual({ minutos: 60 })
     expect(onSetOverride).not.toHaveBeenCalled()
     // a folha da cirurgia fechou; a do total continua, pronta para a próxima
-    await waitFor(() => expect(screen.queryByText(`Término · 16:00 ${rot(OSTEO)}`)).toBeNull())
-    expect(screen.getByText('Tempo faltante de Marílio Flach')).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByText(`Tempo estimado · 16:00 ${rot(OSTEO)}`)).toBeNull())
+    expect(screen.getByText('Tempo total estimado · Marílio Flach')).toBeInTheDocument()
     expect(screen.getByText('Horário de cada cirurgia')).toBeInTheDocument()
   })
 
   it('cirurgia que ainda não começou: a folha diz de onde a duração conta (fim da anterior)', () => {
     montar()
     abrirTempoTotal()
-    fireEvent.click(screen.getByRole('button', { name: `Término de 16:00 ${rot(OSTEO)}` }))
+    fireEvent.click(estimado('16:00', rot(OSTEO)))
     expect(within(folhaDeCima()).getByText(/Ainda não começou: a duração conta a partir das 16:30, quando termina a anterior\./)).toBeInTheDocument()
   })
 
   it('cirurgia em andamento: conta de agora — sem a frase do encadeamento', () => {
     montar()
     abrirTempoTotal()
-    fireEvent.click(screen.getByRole('button', { name: `Término de 13:00 ${rot(ARTRODESE)}` }))
+    fireEvent.click(estimado('13:00', rot(ARTRODESE)))
     const folha = folhaDeCima()
     expect(within(folha).getByText(/Só desta cirurgia \(Eduardo Baldissera\)\./)).toBeInTheDocument()
     expect(within(folha).queryByText(/Ainda não começou/)).toBeNull()
@@ -177,7 +193,7 @@ describe('"+ Tempo total" com o término de cada cirurgia (dono 25/09)', () => {
     const onDefinirTerminoCaso = vi.fn(async () => {})
     montar({ onSetOverride, onDefinirTerminoCaso })
     abrirTempoTotal()
-    fireEvent.click(screen.getByRole('button', { name: `Término de 13:00 ${rot(ARTRODESE)}` }))
+    fireEvent.click(estimado('13:00', rot(ARTRODESE)))
     fireEvent.click(within(folhaDeCima()).getByRole('button', { name: 'Limpar' }))
     await waitFor(() => expect(onDefinirTerminoCaso).toHaveBeenCalledWith('Sala 3-0', '', undefined))
     expect(onSetOverride).not.toHaveBeenCalled()
@@ -186,32 +202,32 @@ describe('"+ Tempo total" com o término de cada cirurgia (dono 25/09)', () => {
   it('a folha lê a linha AO VIVO: o término gravado com ela aberta (outro aparelho, realtime) aparece na linha', () => {
     const { rerender } = montar()
     abrirTempoTotal()
-    expect(within(screen.getByRole('button', { name: `Término de 16:00 ${rot(OSTEO)}` })).getByText('Definir')).toBeInTheDocument()
+    expect(within(estimado('16:00', rot(OSTEO))).getByText('Tempo estimado')).toBeInTheDocument()
     const depois = { ...escalaDuas, casos: escalaDuas.casos.map((c) => (c.id === 'Sala 3-1' ? { ...c, terminoPrevisto: '17:30' } : c)) }
     rerender(
       <LiberacoesView escala={depois} hospital="unimed" hospitalLabel="Unimed" turno="vespertino"
         canEdit onToggle={() => {}} onSetOverride={() => {}} />
     )
-    const linha = screen.getByRole('button', { name: `Término de 16:00 ${rot(OSTEO)}` })
+    const linha = estimado('16:00', rot(OSTEO))
     expect(within(linha).getByText('17:30')).toBeInTheDocument()
     expect(within(linha).getByText('faltam 1h45')).toBeInTheDocument()
   })
 })
 
 describe('uma cirurgia só: o tempo da folha É o término dela (espelho de 14/09)', () => {
-  it('o término dela NÃO é segunda entrada; a frase diz que é também o término da cirurgia', () => {
-    montar({}, escalaUma)
+  it('o tempo estimado dela NÃO é segunda entrada; a frase diz que é também o tempo dela', () => {
+    // os blocos só viram botão com quem grava (a página passa os dois handlers)
+    montar({ onDefinirInicioCaso: vi.fn(async () => {}), onDefinirTerminoRealCaso: vi.fn(async () => {}) }, escalaUma)
     abrirTempoTotal()
-    // 02/10: a lista aparece com UMA cirurgia ("Horário da cirurgia"), mas só para o
-    // INÍCIO — o término dela é o tempo de cima, mostrado sem botão
+    // 02/10: a lista aparece com UMA cirurgia ("Horário da cirurgia") para o início e o
+    // término REAIS; o tempo estimado dela é o tempo de cima, mostrado sem botão
     expect(screen.queryByText('Horário de cada cirurgia')).toBeNull()
     expect(screen.getByText('Horário da cirurgia')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: `Início de 13:00 ${rot(ARTRODESE)}` })).toBeInTheDocument()
-    expect(screen.getByText('o tempo acima')).toBeInTheDocument()
-    expect(screen.getByText('Quando essa pessoa fica livre — é também o término da cirurgia dela.')).toBeInTheDocument()
-    // a cirurgia de que se trata, como texto (não é botão: não há segunda entrada)
+    expect(screen.getByRole('button', { name: new RegExp(`^Início de 13:00 ${rot(ARTRODESE)}`) })).toBeInTheDocument()
+    expect(screen.getByText('estimado = tempo acima')).toBeInTheDocument()
+    expect(screen.getByRole('dialog').textContent).toContain('Até quando Marílio termina a cirurgia em que está escalado — é também o tempo estimado dela.')
     expect(within(screen.getByRole('dialog')).getByText(rot(ARTRODESE))).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: new RegExp(`^Término de 13:00`) })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Tempo estimado de 13:00/ })).toBeNull()
   })
 
   it('"1h" grava o total E o término da cirurgia, com o mesmo horário (como já era)', async () => {
@@ -219,6 +235,7 @@ describe('uma cirurgia só: o tempo da folha É o término dela (espelho de 14/0
     const onDefinirTerminoCaso = vi.fn(async () => {})
     montar({ onSetOverride, onDefinirTerminoCaso }, escalaUma)
     abrirTempoTotal()
+    abaDuracao()
     fireEvent.click(screen.getByRole('button', { name: '1h' }))
     await waitFor(() => expect(onSetOverride).toHaveBeenCalledTimes(1))
     const termino = onSetOverride.mock.calls[0][1].termino

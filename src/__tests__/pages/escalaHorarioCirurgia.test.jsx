@@ -1,21 +1,21 @@
 /**
- * "Horário da cirurgia" — início e término de cada procedimento (dono 02/10, modelo A
- * escolhido em protótipo `.tmp/inicio-termino-cirurgia.html`): "quero que seja
- * possível adicionar o horário de início e fim de cada procedimento [...] tanto
- * clicando no card do procedimento na aba completa como na aba liberações ao clicar
- * em adicionar tempo [...] quero que essa informação ganhe destaque e que fique acima
- * dos cards de andamento".
+ * "Horário da cirurgia" — início e término de cada procedimento (dono 02/10).
  *
- * Travas (todas falham contra o código anterior — o cartão e o bloco INÍCIO não
- * existiam):
- *  · DETALHE DO CASO (Completa, Minhas, Urgências): o cartão vem ANTES do Andamento e
- *    o "Término desta cirurgia" saiu do Andamento; informar o início de uma cirurgia
- *    agendada a marca como iniciada; corrigir não mexe no status; horário no futuro é
- *    recusado; depois de Terminada o término é o real;
- *  · LIBERAÇÕES (folha do "+ Tempo total"): cada cirurgia tem o INÍCIO ao lado do
- *    TÉRMINO e o toque grava pelo mesmo `onDefinirInicioCaso`;
- *  · SINCRONIA: as duas telas leem o MESMO campo do caso — o horário gravado por uma
- *    (o context devolve a escala nova, como o realtime faz) aparece na outra.
+ * Manhã (modelo A em `.tmp/inicio-termino-cirurgia.html`): cartão do horário ACIMA do
+ * Andamento, nas abas Completa/Minhas/Urgências e na folha do "+ Tempo total".
+ * Tarde (revisão em `.tmp/horario-compacto.html`), as travas deste arquivo:
+ *  · cartão 35% mais baixo, blocos de uma linha; "Editar dados da cirurgia" virou a
+ *    pílula "Editar" (o ActionPill da Home);
+ *  · INÍCIO e TÉRMINO são horários EXATOS — tocar no bloco OU no botão Iniciada/
+ *    Terminada abre o card que CONFIRMA o horário (agora, ou o já informado) e aceita o
+ *    correto digitado; informar o término marca Terminada, como o início marca Iniciada;
+ *  · o TEMPO ESTIMADO (a previsão de término de sempre) é um botão próprio: no topo do
+ *    cartão e, nas Liberações, ao lado do nome de cada cirurgia; o painel abre no
+ *    "Horário de término";
+ *  · o tempo estimado CONTINUA ao lado da cirurgia no card da fila (dono, mesma tarde:
+ *    "deve manter a configuração de tempos estimados conforme já havia sido
+ *    estabelecido");
+ *  · SINCRONIA: as telas leem o mesmo campo do caso.
  */
 import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest'
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
@@ -55,18 +55,19 @@ const wrap = ({ children }) => <ThemeProvider><ToastProvider>{children}</ToastPr
 
 const COLE = 'COLECISTECTOMIA VIDEOLAPAROSCOPICA'
 const HERNIA = 'HERNIORRAFIA INGUINAL'
+const rot = (p) => nomeCurtoProcedimento(p)
 const base = { sala: 'CC - Sala 3', anestesista: 'PAULO', anestesistaUserId: 'uid-paulo', cirurgiao: 'Marcos Zanella', turno: 'vespertino', bloco: 'normal' }
 const emCurso = { ...base, id: 'c1', ordem: 0, hora: '13:30', procedimento: COLE, statusCirurgia: 'iniciada', inicioReal: '14:05', terminoPrevisto: '16:30' }
 const proxima = { ...base, id: 'c2', ordem: 1, hora: '15:30', procedimento: HERNIA }
+const terminada = { ...emCurso, statusCirurgia: 'terminada', terminoPrevisto: null, terminoReal: '15:22' }
 const escalaDe = (casos) => ({
   id: 'e1', hospital: 'unimed', data: '2026-10-02',
   ordemLiberacao: { vespertino: ['PAULO'] }, ajudaExterna: {}, liberacoes: {}, linhaOverrides: {}, casos,
 })
 
-const detalhe = (caso, casos = [caso], props = {}) => {
-  const esc = escalaDe(casos)
-  return render(<CasoDetalheSheet escala={esc} caso={caso} turno="vespertino" onClose={vi.fn()} podeEditar {...props} />, { wrapper: wrap })
-}
+const detalhe = (caso, casos = [caso], props = {}) =>
+  render(<CasoDetalheSheet escala={escalaDe(casos)} caso={caso} turno="vespertino" onClose={vi.fn()} podeEditar onEditarCaso={vi.fn()} {...props} />, { wrapper: wrap })
+const cartao = () => screen.getByRole('article', { name: 'Horário da cirurgia' })
 const folhaDeCima = () => { const d = screen.getAllByRole('dialog'); return d[d.length - 1] }
 const digitar = (slot, valor) => {
   const campo = document.querySelector(`[data-slot="${slot}"] input`) || document.querySelector(`[data-slot="${slot}"]`)
@@ -80,154 +81,235 @@ beforeAll(() => {
 afterAll(() => vi.useRealTimers())
 beforeEach(() => vi.clearAllMocks())
 
-describe('detalhe do caso: o cartão "Horário da cirurgia" (Completa, Minhas, Urgências)', () => {
-  it('fica ACIMA do Andamento, e o término saiu do Andamento', () => {
+describe('detalhe do caso: cartão compacto e pílula "Editar"', () => {
+  it('o cartão fica ACIMA do Andamento, e o término não mora mais no Andamento', () => {
     detalhe(emCurso)
-    const cartao = screen.getByRole('article', { name: 'Horário da cirurgia' })
     const andamento = screen.getByText('Andamento').closest('article')
-    // DOCUMENT_POSITION_FOLLOWING: o Andamento vem DEPOIS do cartão do horário
-    expect(cartao.compareDocumentPosition(andamento) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(within(andamento).queryByRole('button', { name: /Término desta cirurgia/ })).toBeNull()
-    expect(within(cartao).getByRole('button', { name: /Término desta cirurgia/ })).toBeTruthy()
+    expect(cartao().compareDocumentPosition(andamento) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(within(andamento).queryByRole('button', { name: /Término desta cirurgia|Tempo estimado/ })).toBeNull()
   })
 
-  it('em andamento: início e término em destaque, com o que dá sentido a cada um', () => {
+  it('"Editar dados da cirurgia" é a pílula "Editar" no canto (o ActionPill da Home)', () => {
     detalhe(emCurso)
-    const cartao = screen.getByRole('article', { name: 'Horário da cirurgia' })
-    expect(within(cartao).getByRole('button', { name: 'Início desta cirurgia: 14:05' })).toBeTruthy()
-    expect(within(cartao).getByText('agendada 13:30')).toBeTruthy()
-    expect(within(cartao).getByRole('button', { name: 'Término desta cirurgia: 16:30' })).toBeTruthy()
-    expect(within(cartao).getByText('faltam 45min')).toBeTruthy()
-    expect(within(cartao).getByText('em sala há 1h40')).toBeTruthy()
+    const pilula = screen.getByRole('button', { name: 'Editar dados da cirurgia' })
+    expect(pilula.textContent).toBe('Editar')
+    expect(pilula.className).toContain('absolute')
   })
 
-  it('agendada: os dois blocos convidam, e "Agora" no início marca Iniciada com o horário junto', async () => {
+  it('em andamento: início exato com "há X", término por definir com "faltam X", e o Estimado no topo', () => {
+    detalhe(emCurso)
+    const c = cartao()
+    const ini = within(c).getByRole('button', { name: 'Início desta cirurgia: 14:05' })
+    expect(within(ini).getByText('há 1h40')).toBeTruthy()
+    const fim = within(c).getByRole('button', { name: 'Término desta cirurgia: não informado' })
+    expect(within(fim).getByText('faltam 45min')).toBeTruthy()
+    expect(within(fim).getByText('Definir')).toBeTruthy()
+    const est = within(c).getByRole('button', { name: 'Tempo estimado desta cirurgia: 16:30' })
+    expect(est.textContent).toBe('Estimado16:30')
+  })
+
+  it('terminada: término real com "durou X", e o Estimado sai (a previsão já não conta)', () => {
+    detalhe(terminada)
+    const fim = within(cartao()).getByRole('button', { name: 'Término desta cirurgia: 15:22' })
+    expect(within(fim).getByText('durou 1h17')).toBeTruthy()
+    expect(within(cartao()).queryByRole('button', { name: /Tempo estimado/ })).toBeNull()
+  })
+
+  it('quem NÃO edita a escala vê os horários, mas sem botão', () => {
+    detalhe(emCurso, [emCurso], { podeEditar: false })
+    expect(within(cartao()).getByText('14:05')).toBeTruthy()
+    expect(within(cartao()).queryByRole('button')).toBeNull()
+  })
+})
+
+describe('confirmar o horário: pelo botão Iniciada/Terminada (dono 02/10, tarde)', () => {
+  it('tocar em Iniciada NÃO grava — abre o card com o horário de agora', async () => {
     detalhe(proxima, [emCurso, proxima])
-    const cartao = screen.getByRole('article', { name: 'Horário da cirurgia' })
-    expect(within(cartao).getByText('Definir início')).toBeTruthy()
-    expect(within(cartao).getByText('Definir término')).toBeTruthy()
-    fireEvent.click(within(cartao).getByRole('button', { name: 'Início desta cirurgia: não informado' }))
-    expect(within(folhaDeCima()).getByText('Quando a cirurgia começou. Ao informar, ela passa a Iniciada.')).toBeTruthy()
-    fireEvent.click(within(folhaDeCima()).getByRole('button', { name: 'Agora' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Iniciada' }))
+    expect(setStatusCirurgia).not.toHaveBeenCalled()
+    const folha = folhaDeCima()
+    expect(within(folha).getByText('Início da cirurgia')).toBeTruthy()
+    expect(within(folha).getByText('15:45')).toBeTruthy()
+    fireEvent.click(within(folha).getByRole('button', { name: 'Confirmar início às 15:45' }))
     await waitFor(() => expect(setStatusCirurgia).toHaveBeenCalled())
     const [, caso, status, info] = setStatusCirurgia.mock.calls[0]
-    expect(caso.id).toBe('c2')
-    expect(status).toBe('iniciada')
+    expect([caso.id, status]).toEqual(['c2', 'iniciada'])
     expect(info).toEqual({ userId: 'uid-paulo', inicioReal: '15:45' })
-    expect(atualizarCaso).not.toHaveBeenCalled()
   })
 
-  it('já iniciada: corrigir o início só grava o horário (sem mexer no status, sem toast)', async () => {
+  it('"foi em outro horário": digitar o correto grava ELE, sem segundo botão', async () => {
+    detalhe(proxima, [emCurso, proxima])
+    fireEvent.click(screen.getByRole('button', { name: 'Iniciada' }))
+    digitar('inicio-hora', '1520')
+    await waitFor(() => expect(setStatusCirurgia).toHaveBeenCalled())
+    expect(setStatusCirurgia.mock.calls[0][3]).toEqual({ userId: 'uid-paulo', inicioReal: '15:20' })
+  })
+
+  it('tocar em Terminada abre o card do término; confirmar marca Terminada com o horário', async () => {
     detalhe(emCurso)
-    fireEvent.click(screen.getByRole('button', { name: 'Início desta cirurgia: 14:05' }))
-    expect(within(folhaDeCima()).getByText('Quando a cirurgia começou.')).toBeTruthy()
-    // já há valor: o painel nasce no horário (o que está salvo é uma HORA)
+    fireEvent.click(screen.getByRole('button', { name: 'Terminada' }))
+    expect(setStatusCirurgia).not.toHaveBeenCalled()
+    fireEvent.click(within(folhaDeCima()).getByRole('button', { name: 'Confirmar término às 15:45' }))
+    await waitFor(() => expect(setStatusCirurgia).toHaveBeenCalled())
+    expect(setStatusCirurgia.mock.calls[0].slice(2)).toEqual(['terminada', { userId: 'uid-paulo', terminoReal: '15:45' }])
+  })
+
+  it('Iniciada já marcada: o card só CORRIGE o início (sem reenviar o status, que recarimbaria)', async () => {
+    detalhe(emCurso)
+    fireEvent.click(screen.getByRole('button', { name: 'Iniciada' }))
+    expect(within(folhaDeCima()).getByText('informado')).toBeTruthy()
     digitar('inicio-hora', '1350')
     await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
-    expect(atualizarCaso.mock.calls[0][1]).toBe('c1')
-    expect(atualizarCaso.mock.calls[0][2]).toEqual({ inicioReal: '13:50' })
-    expect(atualizarCaso.mock.calls[0][3]).toEqual({ silencioso: true })
+    expect(atualizarCaso.mock.calls[0].slice(1)).toEqual(['c1', { inicioReal: '13:50' }, { silencioso: true }])
     expect(setStatusCirurgia).not.toHaveBeenCalled()
   })
 
-  it('"há 30min" grava agora menos 30 minutos', async () => {
-    detalhe(proxima, [emCurso, proxima])
-    fireEvent.click(screen.getByRole('button', { name: 'Início desta cirurgia: não informado' }))
-    fireEvent.click(within(folhaDeCima()).getByRole('button', { name: '30min' }))
+  it('Agendada e os avisos continuam gravando no toque', async () => {
+    detalhe(emCurso)
+    fireEvent.click(screen.getByRole('button', { name: 'Agendada' }))
     await waitFor(() => expect(setStatusCirurgia).toHaveBeenCalled())
-    expect(setStatusCirurgia.mock.calls[0][3].inicioReal).toBe('15:15')
+    expect(setStatusCirurgia.mock.calls[0][2]).toBe('agendada')
+  })
+})
+
+describe('confirmar o horário: pelos blocos INÍCIO/TÉRMINO', () => {
+  it('bloco INÍCIO de uma agendada: confirmar a marca Iniciada', async () => {
+    detalhe(proxima, [emCurso, proxima])
+    fireEvent.click(within(cartao()).getByRole('button', { name: 'Início desta cirurgia: não informado' }))
+    fireEvent.click(within(folhaDeCima()).getByRole('button', { name: 'Confirmar início às 15:45' }))
+    await waitFor(() => expect(setStatusCirurgia).toHaveBeenCalled())
+    expect(setStatusCirurgia.mock.calls[0].slice(2)).toEqual(['iniciada', { userId: 'uid-paulo', inicioReal: '15:45' }])
   })
 
-  it('início no futuro é recusado com a frase, e nada é gravado', async () => {
+  it('bloco TÉRMINO de uma em andamento: informar o término marca Terminada', async () => {
     detalhe(emCurso)
-    fireEvent.click(screen.getByRole('button', { name: 'Início desta cirurgia: 14:05' }))
+    fireEvent.click(within(cartao()).getByRole('button', { name: 'Término desta cirurgia: não informado' }))
+    digitar('termino-real-hora', '1540')
+    await waitFor(() => expect(setStatusCirurgia).toHaveBeenCalled())
+    expect(setStatusCirurgia.mock.calls[0].slice(2)).toEqual(['terminada', { userId: 'uid-paulo', terminoReal: '15:40' }])
+  })
+
+  it('horário no futuro é recusado com a frase, e nada é gravado', () => {
+    detalhe(emCurso)
+    fireEvent.click(within(cartao()).getByRole('button', { name: 'Início desta cirurgia: 14:05' }))
     digitar('inicio-hora', '1700')
     expect(within(folhaDeCima()).getByRole('alert').textContent).toBe('O início não pode ser depois de agora.')
     expect(atualizarCaso).not.toHaveBeenCalled()
     expect(setStatusCirurgia).not.toHaveBeenCalled()
   })
 
-  it('terminada: o término é o REAL, com quanto durou; corrigir grava terminoReal', async () => {
-    const terminada = { ...emCurso, statusCirurgia: 'terminada', terminoPrevisto: null, terminoReal: '15:22' }
+  it('terminada: corrigir o término grava terminoReal; antes do início é recusado', async () => {
     detalhe(terminada)
-    const cartao = screen.getByRole('article', { name: 'Horário da cirurgia' })
-    expect(within(cartao).getByText('durou 1h17')).toBeTruthy()
-    expect(within(cartao).getByText('terminou')).toBeTruthy()
-    fireEvent.click(within(cartao).getByRole('button', { name: 'Término desta cirurgia: 15:22' }))
-    expect(within(folhaDeCima()).getByText('Quando a cirurgia terminou.')).toBeTruthy()
-    // antes do início é recusado
+    fireEvent.click(within(cartao()).getByRole('button', { name: 'Término desta cirurgia: 15:22' }))
     digitar('termino-real-hora', '1400')
     expect(within(folhaDeCima()).getByRole('alert').textContent).toBe('O término não pode ser antes do início (14:05).')
     digitar('termino-real-hora', '1510')
     await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
     expect(atualizarCaso.mock.calls[0][2]).toEqual({ terminoReal: '15:10' })
+    expect(setStatusCirurgia).not.toHaveBeenCalled()
   })
 
-  it('cirurgia em curso: o término continua sendo a PREVISÃO (o mesmo painel de sempre)', async () => {
+  it('"Limpar horário" (pelo bloco, com horário gravado) apaga só o horário', async () => {
     detalhe(emCurso)
-    fireEvent.click(screen.getByRole('button', { name: 'Término desta cirurgia: 16:30' }))
-    expect(within(folhaDeCima()).getByText(/Só desta cirurgia/)).toBeTruthy()
-    // com valor gravado o painel nasce no "Horário de término"; a duração é a outra aba
-    fireEvent.click(within(folhaDeCima()).getByRole('tab', { name: 'Tempo faltante' }))
-    fireEvent.click(within(folhaDeCima()).getByRole('button', { name: '1h' }))
+    fireEvent.click(within(cartao()).getByRole('button', { name: 'Início desta cirurgia: 14:05' }))
+    fireEvent.click(within(folhaDeCima()).getByRole('button', { name: 'Limpar horário' }))
     await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
-    expect(atualizarCaso.mock.calls[0][2]).toEqual({ terminoPrevisto: '16:45' })
-  })
-
-  it('quem NÃO edita a escala vê os horários, mas sem botão', () => {
-    detalhe(emCurso, [emCurso], { podeEditar: false })
-    const cartao = screen.getByRole('article', { name: 'Horário da cirurgia' })
-    expect(within(cartao).getByText('14:05')).toBeTruthy()
-    expect(within(cartao).queryByRole('button')).toBeNull()
+    expect(atualizarCaso.mock.calls[0][2]).toEqual({ inicioReal: null })
+    expect(setStatusCirurgia).not.toHaveBeenCalled()
   })
 })
 
-describe('Liberações: "+ Tempo total" com o início e o término de cada cirurgia', () => {
-  const rot = (p) => nomeCurtoProcedimento(p)
+describe('tempo estimado: o painel de sempre, horário primeiro', () => {
+  it('o botão Estimado abre o painel no "Horário de término"; a duração grava a previsão', async () => {
+    detalhe(emCurso)
+    fireEvent.click(within(cartao()).getByRole('button', { name: /Tempo estimado desta cirurgia/ }))
+    const folha = folhaDeCima()
+    expect(within(folha).getByText('Tempo estimado desta cirurgia')).toBeTruthy()
+    expect(within(folha).getByRole('tab', { name: 'Horário de término' })).toHaveAttribute('aria-selected', 'true')
+    fireEvent.click(within(folha).getByRole('tab', { name: 'Tempo faltante' }))
+    fireEvent.click(within(folha).getByRole('button', { name: '1h' }))
+    await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
+    expect(atualizarCaso.mock.calls[0][2]).toEqual({ terminoPrevisto: '16:45' })
+  })
+})
+
+describe('Liberações: folha do "+ Tempo total"', () => {
   const montarFila = (casos, props = {}) => render(
     <LiberacoesView escala={escalaDe(casos)} hospital="unimed" hospitalLabel="Unimed" turno="vespertino"
-      canEdit onToggle={() => {}} onSetOverride={() => {}} {...props} />,
+      canEdit onToggle={() => {}} onSetOverride={() => {}}
+      onDefinirInicioCaso={vi.fn(async () => {})} onDefinirTerminoRealCaso={vi.fn(async () => {})} {...props} />,
     { wrapper: wrap },
   )
   const abrirTempoTotal = () => fireEvent.click(screen.getByLabelText('Definir tempo faltante de Paulo Tonini'))
 
-  it('cada cirurgia mostra o INÍCIO ao lado do TÉRMINO', () => {
+  it('título direto: tempo total estimado de TODAS as cirurgias da pessoa', () => {
     montarFila([emCurso, proxima])
     abrirTempoTotal()
-    expect(screen.getByText('Horário de cada cirurgia')).toBeTruthy()
-    const ini1 = screen.getByRole('button', { name: `Início de 13:30 ${rot(COLE)}` })
-    expect(within(ini1).getByText('14:05')).toBeTruthy()
-    expect(within(ini1).getByText('há 1h40')).toBeTruthy()
-    const ini2 = screen.getByRole('button', { name: `Início de 15:30 ${rot(HERNIA)}` })
-    expect(within(ini2).getByText('Definir')).toBeTruthy()
+    const folha = screen.getByRole('dialog')
+    expect(within(folha).getByText('Tempo total estimado · Paulo Tonini')).toBeTruthy()
+    expect(folha.textContent).toContain('Até quando Paulo termina todas as 2 cirurgias em que está escalado.')
   })
 
-  it('tocar no INÍCIO sobe a folha da cirurgia; "Agora" grava pelo onDefinirInicioCaso e a folha do total fica', async () => {
+  it('cada cirurgia: tempo estimado ao lado do nome; início e término exatos embaixo', () => {
+    montarFila([emCurso, proxima])
+    abrirTempoTotal()
+    const est = screen.getByRole('button', { name: `Tempo estimado de 13:30 ${rot(COLE)}: 16:30` })
+    expect(within(est).getByText('faltam 45min')).toBeTruthy()
+    expect(within(screen.getByRole('button', { name: `Tempo estimado de 15:30 ${rot(HERNIA)}: não informado` })).getByText('Tempo estimado')).toBeTruthy()
+    const ini = screen.getByRole('button', { name: `Início de 13:30 ${rot(COLE)}: 14:05` })
+    expect(within(ini).getByText('há 1h40')).toBeTruthy()
+    expect(screen.getByRole('button', { name: `Término de 13:30 ${rot(COLE)}: não informado` })).toBeTruthy()
+  })
+
+  it('INÍCIO abre a confirmação; "Confirmar" grava pelo onDefinirInicioCaso e a folha do total fica', async () => {
     const onDefinirInicioCaso = vi.fn(async () => {})
     montarFila([emCurso, proxima], { onDefinirInicioCaso })
     abrirTempoTotal()
-    fireEvent.click(screen.getByRole('button', { name: `Início de 15:30 ${rot(HERNIA)}` }))
+    fireEvent.click(screen.getByRole('button', { name: `Início de 15:30 ${rot(HERNIA)}: não informado` }))
     const folha = folhaDeCima()
     expect(within(folha).getByText(`Início · 15:30 ${rot(HERNIA)}`)).toBeTruthy()
-    expect(within(folha).getByText('Quando a cirurgia começou. Ao informar, ela passa a Iniciada.')).toBeTruthy()
-    fireEvent.click(within(folha).getByRole('button', { name: 'Agora' }))
+    expect(within(folha).getByText(/Ao confirmar, ela passa a Iniciada\./)).toBeTruthy()
+    fireEvent.click(within(folha).getByRole('button', { name: 'Confirmar início às 15:45' }))
     await waitFor(() => expect(onDefinirInicioCaso).toHaveBeenCalledWith('c2', '15:45'))
-    await waitFor(() => expect(screen.queryByText(`Início · 15:30 ${rot(HERNIA)}`)).toBeNull())
-    expect(screen.getByText('Tempo faltante de Paulo Tonini')).toBeTruthy()
+    expect(screen.getByText('Tempo total estimado · Paulo Tonini')).toBeTruthy()
   })
 
-  it('início no futuro também é recusado aqui', () => {
-    const onDefinirInicioCaso = vi.fn(async () => {})
-    montarFila([emCurso, proxima], { onDefinirInicioCaso })
+  it('TÉRMINO abre a confirmação e avisa que a cirurgia sai da lista; grava pelo onDefinirTerminoRealCaso', async () => {
+    const onDefinirTerminoRealCaso = vi.fn(async () => {})
+    montarFila([emCurso, proxima], { onDefinirTerminoRealCaso })
     abrirTempoTotal()
-    fireEvent.click(screen.getByRole('button', { name: `Início de 13:30 ${rot(COLE)}` }))
-    digitar('inicio-hora', '1800')
-    expect(within(folhaDeCima()).getByRole('alert').textContent).toBe('O início não pode ser depois de agora.')
-    expect(onDefinirInicioCaso).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: `Término de 13:30 ${rot(COLE)}: não informado` }))
+    const folha = folhaDeCima()
+    expect(within(folha).getByText(/passa a Terminada e sai desta lista/)).toBeTruthy()
+    digitar('termino-real-hora', '1530')
+    await waitFor(() => expect(onDefinirTerminoRealCaso).toHaveBeenCalledWith('c1', '15:30'))
+  })
+
+  it('término antes do início também é recusado aqui', () => {
+    const onDefinirTerminoRealCaso = vi.fn(async () => {})
+    montarFila([emCurso, proxima], { onDefinirTerminoRealCaso })
+    abrirTempoTotal()
+    fireEvent.click(screen.getByRole('button', { name: `Término de 13:30 ${rot(COLE)}: não informado` }))
+    digitar('termino-real-hora', '1400')
+    expect(within(folhaDeCima()).getByRole('alert').textContent).toBe('O término não pode ser antes do início (14:05).')
+    expect(onDefinirTerminoRealCaso).not.toHaveBeenCalled()
   })
 })
 
-describe('SINCRONIA: as duas telas leem o mesmo campo do caso', () => {
+describe('o card da FILA mantém o tempo estimado ao lado da cirurgia (dono 02/10, tarde)', () => {
+  it('em andamento "faltam X", agendada "até HH:MM" — como já era', () => {
+    const comEstimativa = { ...proxima, terminoPrevisto: '17:30' }
+    render(<LiberacoesView escala={escalaDe([emCurso, comEstimativa])} hospital="unimed" hospitalLabel="Unimed" turno="vespertino"
+      canEdit onToggle={() => {}} onSetOverride={() => {}} />, { wrapper: wrap })
+    const card = document.querySelector('[data-linha][data-nome="Paulo Tonini"]')
+    expect(card).not.toBeNull()
+    expect(card.textContent).toContain(rot(COLE))
+    expect(card.textContent).toContain('faltam 45min')
+    expect(card.textContent).toContain('até 17:30')
+  })
+})
+
+describe('SINCRONIA: as telas leem o mesmo campo do caso', () => {
   it('o início gravado (escala nova vinda do context/realtime) aparece no detalhe E na folha das Liberações', () => {
     const antes = escalaDe([{ ...proxima }])
     const depois = escalaDe([{ ...proxima, statusCirurgia: 'iniciada', inicioReal: '15:10' }])
@@ -239,8 +321,33 @@ describe('SINCRONIA: as duas telas leem o mesmo campo do caso', () => {
     expect(screen.getByRole('button', { name: 'Início desta cirurgia: 15:10' })).toBeTruthy()
     det.unmount()
 
-    render(<LiberacoesView escala={depois} hospital="unimed" hospitalLabel="Unimed" turno="vespertino" canEdit onToggle={() => {}} onSetOverride={() => {}} />, { wrapper: wrap })
+    render(<LiberacoesView escala={depois} hospital="unimed" hospitalLabel="Unimed" turno="vespertino" canEdit
+      onToggle={() => {}} onSetOverride={() => {}} onDefinirInicioCaso={vi.fn()} onDefinirTerminoRealCaso={vi.fn()} />, { wrapper: wrap })
     fireEvent.click(screen.getByLabelText('Definir tempo faltante de Paulo Tonini'))
-    expect(within(screen.getByRole('button', { name: `Início de 15:30 ${nomeCurtoProcedimento(HERNIA)}` })).getByText('15:10')).toBeTruthy()
+    expect(screen.getByRole('button', { name: `Início de 15:30 ${rot(HERNIA)}: 15:10` })).toBeTruthy()
+  })
+})
+
+describe('iniciada ANTES de existir o campo (sem início gravado): o card propõe a hora MARCADA', () => {
+  const antiga = { ...emCurso, inicioReal: null, statusAtualizadoEm: '2026-10-02T14:16:00-03:00' }
+
+  it('no detalhe do caso', async () => {
+    detalhe(antiga)
+    fireEvent.click(within(cartao()).getByRole('button', { name: 'Início desta cirurgia: não informado' }))
+    const folha = folhaDeCima()
+    expect(within(folha).getByText('marcado')).toBeTruthy()
+    fireEvent.click(within(folha).getByRole('button', { name: 'Confirmar início às 14:16' }))
+    await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
+    expect(atualizarCaso.mock.calls[0][2]).toEqual({ inicioReal: '14:16' })
+  })
+
+  it('na folha das Liberações', async () => {
+    const onDefinirInicioCaso = vi.fn(async () => {})
+    render(<LiberacoesView escala={escalaDe([antiga, proxima])} hospital="unimed" hospitalLabel="Unimed" turno="vespertino" canEdit
+      onToggle={() => {}} onSetOverride={() => {}} onDefinirInicioCaso={onDefinirInicioCaso} onDefinirTerminoRealCaso={vi.fn()} />, { wrapper: wrap })
+    fireEvent.click(screen.getByLabelText('Definir tempo faltante de Paulo Tonini'))
+    fireEvent.click(screen.getByRole('button', { name: `Início de 13:30 ${rot(COLE)}: não informado` }))
+    fireEvent.click(within(folhaDeCima()).getByRole('button', { name: 'Confirmar início às 14:16' }))
+    await waitFor(() => expect(onDefinirInicioCaso).toHaveBeenCalledWith('c1', '14:16'))
   })
 })

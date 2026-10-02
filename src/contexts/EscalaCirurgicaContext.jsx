@@ -860,7 +860,9 @@ export function EscalaCirurgicaProvider({ children }) {
     // cirurgia agendada ele também a marca como iniciada, e vai ao banco ANTES da
     // RPC para o trigger encontrá-lo preenchido e não trocá-lo pela hora do toque.
     const inicioInformado = userInfo.inicioReal || null
-    const horarios = horarioRealNaTransicao(vivo, status, { agoraD: agora(), inicioInformado })
+    // o TÉRMINO informado (02/10, tarde) segue o mesmo caminho: vai antes da RPC
+    const terminoInformado = userInfo.terminoReal || null
+    const horarios = horarioRealNaTransicao(vivo, status, { agoraD: agora(), inicioInformado, terminoInformado })
     // `updatedAt` nos DOIS ramos, como a RPC (`updated_at = now()` em ambos): é o
     // único carimbo que o toggle "Suspensa" deixa, e a limpeza da virada das 19h
     // (utils.concluidoAntesDaNoite) lê dele QUANDO a cirurgia foi suspensa. Sem
@@ -894,7 +896,12 @@ export function EscalaCirurgicaProvider({ children }) {
     try {
       try {
         if (!isDemo && caso.id) {
-          if (inicioInformado) await svc.updateCaso(caso.id, { inicioReal: inicioInformado })
+          if (inicioInformado || terminoInformado) {
+            await svc.updateCaso(caso.id, {
+              ...(inicioInformado && { inicioReal: inicioInformado }),
+              ...(terminoInformado && { terminoReal: terminoInformado }),
+            })
+          }
           await svc.updateStatusCirurgia(caso.id, status)
           // só quando havia o que zerar — a RPC do status não conhece a coluna
           if (zeraTermino && vivo.terminoPrevisto) await svc.updateCaso(caso.id, { terminoPrevisto: null })

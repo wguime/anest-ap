@@ -44,6 +44,9 @@
  */
 import { useState } from 'react'
 import { ChevronRight, Settings2 } from 'lucide-react'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/design-system'
+import { erroHorarioReal } from '@/lib/escalaHorarioReal'
+import { ConfirmarHorario } from './BlocoHorario'
 import { fraseClinica } from '@/lib/colunaLiberacao'
 import { GRAVIDADE_LABEL } from '@/lib/escalaCirurgicaUrgencias'
 import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
@@ -145,6 +148,9 @@ export default function FaixaUrgencias({ escala, hospital, turno }) {
   const { rosterByUid } = useRosterAnestesistas()
   const { setStatusCirurgia } = useEscalaCirurgicaActions()
   const [detalhe, setDetalhe] = useState(null)
+  // "Terminada" da cirurgia esquecida (iniciada há >4h) passa pela CONFIRMAÇÃO do
+  // horário (dono 02/10, tarde) — é justamente onde a hora do toque mais erra.
+  const [terminar, setTerminar] = useState(null)
   // Definir o anestesista a partir do detalhe aberto PELA FAIXA (dono 21/08): a
   // urgência costuma nascer sem anestesista — é o caso das cesarianas do CO —, e
   // sem estas duas props o `CasoDetalheSheet` esconde o botão da linha
@@ -364,7 +370,7 @@ export default function FaixaUrgencias({ escala, hospital, turno }) {
                 type="button"
                 /* `.catch` obrigatório: a action dá throw depois do toast, e este
                    era o único call site sem tratamento — rejeição não tratada. */
-                onClick={() => setStatusCirurgia(escala, it.caso, 'terminada', { userId: user?.uid || user?.id }).catch(() => {})}
+                onClick={() => setTerminar(it.caso)}
                 className="relative shrink-0 rounded-[9px] border border-warning/50 px-2 py-1 font-bold text-warning after:absolute after:-inset-x-1 after:-inset-y-2.5 after:content-['']"
               >
                 Terminada
@@ -400,6 +406,29 @@ export default function FaixaUrgencias({ escala, hospital, turno }) {
         <SalasUrgenciaSheet escala={escala} turno={turno} onClose={() => setConfigurar(false)} />
       )}
 
+      {terminar && (
+        <Sheet open onOpenChange={(o) => { if (!o) setTerminar(null) }}>
+          <SheetContent side="bottom" className="!h-auto max-h-[85vh]">
+            <SheetHeader className="pb-2">
+              <SheetTitle className="text-[17px] leading-tight">Término da cirurgia</SheetTitle>
+              <p className="mt-1 text-[11.5px] leading-snug text-muted-foreground">
+                {salaLiberacao(terminar.sala)} · {fraseClinica(terminar.procedimento) || 'cirurgia'}. Confirme o horário em que ela terminou.
+              </p>
+            </SheetHeader>
+            <div className="px-4 pb-6 pt-2">
+              <ConfirmarHorario
+                campo="termino"
+                validar={(hhmm) => erroHorarioReal({ campo: 'termino', hhmm, inicioReal: terminar.inicioReal || null, dataEscala: escala?.data })}
+                onConfirmar={(hhmm) => {
+                  const caso = terminar
+                  setTerminar(null)
+                  setStatusCirurgia(escala, caso, 'terminada', { userId: user?.uid || user?.id, terminoReal: hhmm }).catch(() => {})
+                }}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
       {detalhe && (
         <CasoDetalheSheet
           escala={escala}

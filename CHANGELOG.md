@@ -3,6 +3,22 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.40 (02/10/2026) — Escala: horário compacto, confirmação do início/término e tempo estimado próprio
+
+Revisão do dono sobre a v5.12.39, escolhida em protótipo (`.tmp/horario-compacto.html`).
+- Cartão "Horário da cirurgia" 35% mais baixo (blocos de uma linha) e "Editar dados da cirurgia"
+  virou a pílula "Editar" no canto, a mesma dos cards da Home.
+- Início e término só com o horário exato. Tocar em Iniciada/Terminada (ou no bloco) abre um card
+  que confirma o horário — agora, o já informado ou a hora em que foi marcada — e aceita o correto
+  digitado. Informar o término marca Terminada. O "Terminada" da faixa de urgências também confirma.
+- Tempo estimado (a previsão de término) volta como botão próprio: no topo do cartão e, nas
+  Liberações, ao lado do nome de cada cirurgia. O card da fila continua mostrando o tempo estimado.
+- Painel de tempo abre no "Horário de término"; "Tempo faltante" em grade 4×2 com "Outro"; "Limpar"
+  na linha da prévia.
+- Liberações: a folha passa a "Tempo total estimado · Nome — até quando termina todas as N cirurgias".
+- Travas: `escalaHorarioCirurgia.test.jsx`, `painelTempo.test.jsx`, `escalaUrgenciasFaixa.test.jsx`,
+  `escalaHorarioReal*.test.js`.
+
 ## v5.12.39 (02/10/2026) — Escala: horário de início e de término de cada cirurgia
 
 Pedido do dono (02/10), modelo A escolhido em protótipo (`.tmp/inicio-termino-cirurgia.html`).
