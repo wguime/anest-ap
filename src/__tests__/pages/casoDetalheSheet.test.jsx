@@ -195,8 +195,12 @@ describe('Término DESTA cirurgia (dono 29/07)', () => {
 
   it('o rótulo separa os dois tempos para o plantonista não confundir', () => {
     montar()
-    // o bloco diz que é DESTA cirurgia; o tempo da PESSOA é outro campo, na fila
-    expect(screen.getByText(/Término desta cirurgia/)).toBeTruthy()
+    // o bloco diz que é DESTA cirurgia; o tempo da PESSOA é outro campo, na fila.
+    // ⚠️ 02/10: a linha "Término desta cirurgia" do fim do Andamento SUBIU para o
+    // cartão "Horário da cirurgia" (bloco TÉRMINO); o nome acessível e o título do
+    // editor continuam dizendo que é desta cirurgia.
+    expect(screen.getByRole('article', { name: 'Horário da cirurgia' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Término desta cirurgia/ })).toBeTruthy()
     abrirTempo()
     expect(screen.getByText(/Só desta cirurgia/)).toBeTruthy()
     // as duas entradas são ALTERNATIVAS: o painel abre numa e o alternador leva à outra

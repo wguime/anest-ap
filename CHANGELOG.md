@@ -3,6 +3,25 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.39 (02/10/2026) — Escala: horário de início e de término de cada cirurgia
+
+Pedido do dono (02/10), modelo A escolhido em protótipo (`.tmp/inicio-termino-cirurgia.html`).
+- **Cartão "Horário da cirurgia" acima do Andamento** no detalhe do caso (Completa, Minhas e
+  Urgências): INÍCIO e TÉRMINO em destaque, cada um um botão; "em sala há X" ou "durou X" no título.
+  O "Término desta cirurgia" saiu do fim do Andamento e virou o bloco TÉRMINO.
+- **Liberações → "+ Tempo total"**: a lista virou "Horário de cada cirurgia", com início e término por
+  cirurgia (com uma cirurgia só, a lista aparece para o início; o término dela é o tempo de cima).
+- **O horário anda junto com o status**: Iniciada/Terminada preenchem o início/término com a hora do
+  toque (só se vazio — a correção à mão vence); informar o início de uma cirurgia agendada a marca
+  Iniciada; reabrir limpa o término; Agendada limpa os dois. Nunca no futuro; início nunca depois do
+  término. Enquanto a cirurgia corre, o término é a previsão de sempre (fila, pílula e quadro intactos).
+- Banco: `inicio_real`/`termino_real` + autores em `escala_cirurgica_caso`, trigger
+  `tr_escala_caso_horario_real`, e a republicação do turno preserva os quatro (migration
+  `20261002190000`). A faixa de urgências conta "em sala há" do início real.
+- As folhas de editor do detalhe do caso ganharam a margem lateral de 16px (encostavam na borda).
+- Travas: `escalaHorarioCirurgia.test.jsx`, `escalaHorarioRealStatus.test.jsx`,
+  `escalaHorarioReal.test.js`, `escalaHorarioRealSql.test.js` (PGlite).
+
 ## v5.12.38 (02/10/2026) — Escala: continuação com os dados da cirurgia da manhã e conferência da publicação igual à fila
 
 - **Continuação da tarde mostra a cirurgia** (pedido do dono): a linha "CONTINUAÇÃO +-14h" da foto

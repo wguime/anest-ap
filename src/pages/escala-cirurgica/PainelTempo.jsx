@@ -278,3 +278,119 @@ export default function PainelTempo({ horarios, atual, horaExata, onHoraExata, o
     </div>
   )
 }
+
+/** Atalhos do horário que JÁ PASSOU (minutos atrás) — 0 é "Agora". */
+export const ATALHOS_PASSADO_MIN = [0, 5, 15, 30, 45, 60]
+
+/** "agora − N minutos" como "HH:MM". */
+export function haMinutos(min) {
+  const d = new Date(agora().getTime() - min * 60000)
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+/**
+ * PainelHoraPassada — o PainelTempo virado para trás: o horário REAL em que a
+ * cirurgia começou ou terminou (dono 02/10, modelo A em protótipo
+ * `.tmp/inicio-termino-cirurgia.html`). Mesmo desenho de propósito — alternador
+ * "há quanto tempo" × "horário", grade de 6 + "Outro tempo…", campo de 4 dígitos
+ * estreito e centrado, caixa de altura FIXA e "Limpar" —, para a equipe reconhecer o
+ * gesto: é o mesmo do término, só que o tempo conta para trás.
+ *
+ * Grava na escolha, como o PainelTempo. `validar(hhmm)` devolve a frase que impede
+ * gravar (no futuro, início depois do término…) ou null; com frase, nada é gravado e
+ * ela aparece no lugar da prévia.
+ *
+ * @param {{atual?:string, onDefinir:(hhmm:string)=>void, validar?:(hhmm:string)=>string|null,
+ *          verbo?:string, rotuloHorario?:string, previaVazia?:string, slot?:string}} props
+ */
+export function PainelHoraPassada({ atual = '', onDefinir, validar, verbo = 'Começou', rotuloHorario = 'Horário de início', previaVazia = '', slot = 'inicio-hora' }) {
+  const [erro, setErro] = useState('')
+  const [rascHora, setRascHora] = useState(null)
+  // nasce em "Horário" quando já há valor gravado: o que está salvo é uma HORA
+  const [modo, setModo] = useState(atual ? 'hora' : 'ha')
+  const gravar = (hhmm) => {
+    const motivo = validar?.(hhmm) || ''
+    setErro(motivo)
+    if (motivo) return false
+    onDefinir(hhmm)
+    return true
+  }
+  const digitarHora = (bruto) => {
+    const texto = formatHoraDigitada(bruto)
+    setRascHora(texto)
+    if (horaCompleta(texto) && gravar(texto)) setRascHora(null)
+  }
+  // "Outro tempo…": de 15 em 15 min até 8h atrás (acima disso é outro turno)
+  const opcoes = Array.from({ length: 32 }, (_, i) => (i + 1) * 15)
+    .map((m) => ({ value: String(m), label: `há ${rotuloDuracao(m)}` }))
+  const alvo = paraMinutos(atual)
+  const agoraD = agora()
+  const passou = alvo != null ? formatFaltante(alvo, agoraD.getHours() * 60 + agoraD.getMinutes()) : null
+
+  return (
+    <div className="space-y-3">
+      <SegmentedSelector
+        variant="filled"
+        options={[
+          { value: 'ha', label: `${verbo} há…` },
+          { value: 'hora', label: rotuloHorario },
+        ]}
+        value={modo}
+        onChange={(m) => { setModo(m); setErro('') }}
+      />
+      <p className="text-[12.5px] leading-snug text-muted-foreground">
+        Dois jeitos de dizer a mesma coisa. Preencha um.
+      </p>
+      {/* mesma caixa de 172px do PainelTempo: alternar não muda a altura */}
+      <div className="h-[172px]">
+        {modo === 'ha' ? (
+          <>
+            <div className="grid grid-cols-3 gap-2">
+              {ATALHOS_PASSADO_MIN.map((min) => (
+                <Button
+                  key={min}
+                  variant={min === 0 ? 'default' : 'outline'}
+                  className="min-h-[44px] font-bold"
+                  onClick={() => gravar(haMinutos(min))}
+                >
+                  {min === 0 ? 'Agora' : rotuloDuracao(min)}
+                </Button>
+              ))}
+            </div>
+            <Select className="mt-4 w-full" options={opcoes} value=""
+              onChange={(v) => gravar(haMinutos(Number(v)))}
+              placeholder="Outro tempo…" aria-label={`Outro tempo — ${verbo.toLowerCase()} há`} />
+          </>
+        ) : (
+          <Input
+            data-slot={slot}
+            className="mx-auto w-[160px] [&_input]:text-center [&_input]:text-[19px] [&_input]:font-bold [&_input]:tracking-wide"
+            value={rascHora ?? atual}
+            onChange={(e) => digitarHora(e.target.value)}
+            inputMode="numeric"
+            maxLength={5}
+            placeholder="14:05"
+            aria-label={rotuloHorario}
+          />
+        )}
+      </div>
+      <Button
+        variant="outline"
+        className="w-full border-destructive text-destructive hover:bg-destructive/10"
+        disabled={!atual}
+        onClick={() => { setErro(''); onDefinir('') }}
+      >
+        Limpar
+      </Button>
+      {erro ? (
+        <p role="alert" className="text-xs font-medium text-destructive">{erro}</p>
+      ) : passou ? (
+        <p className="text-xs text-muted-foreground">
+          {verbo} às {atual}{passou.atrasada ? ` · há ${passou.texto.replace('+', '')}` : ''}.
+        </p>
+      ) : previaVazia ? (
+        <p className="text-xs text-muted-foreground">{previaVazia}</p>
+      ) : null}
+    </div>
+  )
+}

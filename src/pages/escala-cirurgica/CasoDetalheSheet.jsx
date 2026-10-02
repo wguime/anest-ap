@@ -30,9 +30,17 @@
  * ⚠️ O ANESTESISTA é a exceção e MANTÉM o botão: ele não é campo de texto — o
  * `DefinirAnestesistaSheet` mostra onde cada colega está, marca dupla na mesma
  * cirurgia e assume posição na fila.
+ *
+ * HORÁRIO DA CIRURGIA ACIMA DO ANDAMENTO (dono 02/10, modelo A escolhido em
+ * protótipo `.tmp/inicio-termino-cirurgia.html`): "quero que seja possível adicionar
+ * o horário de início e fim de cada procedimento [...] quero que essa informação
+ * ganhe destaque e fique acima dos cards de andamento". O "Término desta cirurgia"
+ * que morava no fim do Andamento SUBIU para o cartão novo, ao lado do início — dois
+ * blocos grandes, cada um um botão. O horário anda junto com o status (trigger
+ * `tr_escala_caso_horario_real`, ver `src/lib/escalaHorarioReal.js`).
  */
 import { useMemo, useState } from 'react'
-import { GraduationCap, MapPin, Pencil, Stethoscope, Timer, UserCog } from 'lucide-react'
+import { Clock, GraduationCap, MapPin, Pencil, Stethoscope, UserCog } from 'lucide-react'
 import { Badge, Button, Sheet, SheetContent, SheetHeader, SheetTitle } from '@/design-system'
 import { HOSPITAL_LABEL, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
@@ -41,7 +49,8 @@ import useRosterResidentes from '@/hooks/useRosterResidentes'
 import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
 import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
 import { carimboDeStatus } from '@/lib/escalaCirurgicaStatus'
-import PainelTempo, { formatFaltante } from './PainelTempo'
+import { duracaoMin, ehDiaOperacionalAtual, erroHorarioReal, gravarInicioReal, rotuloMinutos } from '@/lib/escalaHorarioReal'
+import PainelTempo, { formatFaltante, PainelHoraPassada } from './PainelTempo'
 import useAgoraMinutoEscala from './useAgoraMinutoEscala'
 import { espelhoTempoTotal, nomeAnestesistaExibicao, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso, terminoEncadeado } from './utils'
 import ChipsEscolha, { GRAVIDADE_CHIPS, TIPOS_CIRURGIA } from './ChipsEscolha'
@@ -84,8 +93,9 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
   const { rosterByUid } = useRosterAnestesistas()
   const agoraMin = useAgoraMinutoEscala()
   const isDemo = String(escala?.id).startsWith('demo-')
-  // Sobrou UM editor nesta folha: o do tempo. Os de sala/cirurgião/convênio/
-  // residente foram para o formulário do caso em 01/09.
+  // Os editores desta folha são os do HORÁRIO: 'inicio', 'tempo' (término previsto,
+  // enquanto a cirurgia corre) e 'terminoReal' (depois de Terminada). Os de sala/
+  // cirurgião/convênio/residente foram para o formulário do caso em 01/09.
   const [editor, setEditor] = useState(null)
   const [horaExata, setHoraExata] = useState('') // hora exata de término da cirurgia
 
@@ -163,6 +173,21 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
     } catch { /* toast de erro já vem do context */ }
   }
 
+  // INÍCIO REAL desta cirurgia (dono 02/10). Numa cirurgia AGENDADA, informar o início
+  // é dizer que ela começou (status + horário juntos); já iniciada/terminada, é só a
+  // correção do horário. Mesma função da folha do tempo total nas Liberações.
+  const definirInicio = (hhmm) => {
+    setEditor(null)
+    gravarInicioReal({ escala, caso: vivo, hhmm, userId: user?.uid || user?.id, setStatusCirurgia, atualizarCaso })
+      .catch(() => {})
+  }
+  // TÉRMINO REAL (depois de "Terminada"): o toque gravou a hora da marcação; aqui se
+  // corrige para quando ela terminou de fato. Antes disso o término é a previsão.
+  const definirTerminoReal = (hhmm) => {
+    setEditor(null)
+    atualizarCaso(escala, vivo.id, { terminoReal: hhmm || null }, { silencioso: true }).catch(() => {})
+  }
+
   // AJUDA à mão pela aba Completa (dono 29/07). A ajuda é do ANESTESISTA, não do
   // caso — mas o detalhe do caso é o lugar menos intrusivo para marcá-la: o
   // cabeçalho da sala já carrega sala + nome + ⚙ + chevron numa linha de 44px a
@@ -204,6 +229,21 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
   const tb = tipoBadge(vivo.tipo)
   const alvoTermino = parseHoraMinutos(vivo.terminoPrevisto)
   const faltaTermino = alvoTermino != null && !terminada ? formatFaltante(alvoTermino, agoraMin) : null
+  // O que dá sentido aos dois números, no título do cartão: há quanto tempo está em
+  // sala (só no dia operacional da escala — "agora" de outro dia não diz nada) ou,
+  // terminada, quanto durou.
+  const agoraHHMM = `${String(Math.floor((agoraMin % 1440) / 60)).padStart(2, '0')}:${String(agoraMin % 60).padStart(2, '0')}`
+  const emSalaMin = principal === 'iniciada' && vivo.inicioReal && ehDiaOperacionalAtual(escala?.data)
+    ? duracaoMin(vivo.inicioReal, agoraHHMM) : null
+  const durouMin = terminada ? duracaoMin(vivo.inicioReal, vivo.terminoReal) : null
+  const resumoHorario = durouMin != null ? `durou ${rotuloMinutos(durouMin)}`
+    : emSalaMin != null ? `em sala há ${rotuloMinutos(emSalaMin)}` : ''
+  const validarInicio = (hhmm) => erroHorarioReal({
+    campo: 'inicio', hhmm, terminoReal: terminada ? vivo.terminoReal : null, dataEscala: escala?.data,
+  })
+  const validarTerminoReal = (hhmm) => erroHorarioReal({
+    campo: 'termino', hhmm, inicioReal: vivo.inicioReal, dataEscala: escala?.data,
+  })
 
   return (
     <Sheet open onOpenChange={(o) => !o && onClose?.()}>
@@ -273,7 +313,99 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
             )}
           </article>
 
-          {/* ── ANDAMENTO: os dois eixos + o tempo desta cirurgia ─────────── */}
+          {/* ── HORÁRIO DA CIRURGIA (dono 02/10): início e término em destaque,
+              ACIMA do Andamento. Borda verde para se destacar dos outros cartões;
+              cada bloco é um botão (182×88 a 430px) que abre a folha do editor. ── */}
+          {!isDemo && vivo.id && (
+            <article
+              aria-label="Horário da cirurgia"
+              className="rounded-2xl border-[1.5px] border-primary/55 bg-primary/[0.045] p-3 dark:bg-primary/[0.08]"
+            >
+              <div className="mb-2 flex items-center gap-1.5">
+                <Clock className="h-4 w-4 shrink-0 text-primary" />
+                <h3 className="text-[15px] font-extrabold">Horário da cirurgia</h3>
+                {resumoHorario && (
+                  <span className="ml-auto text-[12.5px] font-semibold text-muted-foreground">{resumoHorario}</span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <BlocoHorario
+                  rotulo="Início"
+                  nomeAcessivel="Início desta cirurgia"
+                  valor={vivo.inicioReal}
+                  convite={podeEditarCaso ? 'Definir início' : null}
+                  sub={vivo.hora ? `agendada ${vivo.hora}` : ''}
+                  faixa={principal === 'iniciada' ? 'border-l-4 border-l-success' : ''}
+                  onClick={podeEditarCaso ? () => setEditor('inicio') : null}
+                />
+                <BlocoHorario
+                  rotulo="Término"
+                  nomeAcessivel="Término desta cirurgia"
+                  valor={terminada ? vivo.terminoReal : vivo.terminoPrevisto}
+                  convite={podeEditarCaso ? 'Definir término' : null}
+                  sub={terminada
+                    ? (vivo.terminoReal ? 'terminou' : '')
+                    : faltaTermino
+                      ? (faltaTermino.atrasada ? `${faltaTermino.texto.replace('+', '')} além` : `faltam ${faltaTermino.texto.replace('~', '')}`)
+                      : 'previsão'}
+                  subAviso={!!faltaTermino?.atrasada}
+                  faixa={terminada ? 'border-l-4 border-l-info' : ''}
+                  onClick={podeEditarCaso ? () => setEditor(terminada ? 'terminoReal' : 'tempo') : null}
+                />
+              </div>
+              {/* Os editores abrem num sheet PRÓPRIO, de baixo para cima (dono
+                  17/08): expandindo aqui dentro, o cartão mudava de tamanho no
+                  meio da leitura e a pessoa perdia o lugar. */}
+              {editor === 'inicio' && (
+                <EditorSheet
+                  titulo="Início desta cirurgia"
+                  nota={principal === 'agendada'
+                    ? 'Quando a cirurgia começou. Ao informar, ela passa a Iniciada.'
+                    : 'Quando a cirurgia começou.'}
+                  onClose={() => setEditor(null)}
+                >
+                  <PainelHoraPassada
+                    atual={vivo.inicioReal || ''}
+                    validar={validarInicio}
+                    onDefinir={definirInicio}
+                    previaVazia={vivo.hora ? `Agendada para ${vivo.hora}.` : ''}
+                  />
+                </EditorSheet>
+              )}
+              {editor === 'tempo' && (
+                <EditorSheet
+                  titulo="Término desta cirurgia"
+                  nota="Só desta cirurgia. Na fila conta o tempo enquanto está Iniciada."
+                  onClose={() => setEditor(null)}
+                >
+                  <PainelTempo
+                    atual={vivo.terminoPrevisto || ''}
+                    horaExata={horaExata}
+                    onHoraExata={setHoraExata}
+                    onDefinir={(v, meta) => { definirTerminoCaso(v, meta); setEditor(null) }}
+                  />
+                </EditorSheet>
+              )}
+              {editor === 'terminoReal' && (
+                <EditorSheet
+                  titulo="Término desta cirurgia"
+                  nota="Quando a cirurgia terminou."
+                  onClose={() => setEditor(null)}
+                >
+                  <PainelHoraPassada
+                    atual={vivo.terminoReal || ''}
+                    validar={validarTerminoReal}
+                    onDefinir={definirTerminoReal}
+                    verbo="Terminou"
+                    rotuloHorario="Horário de término"
+                    slot="termino-real-hora"
+                  />
+                </EditorSheet>
+              )}
+            </article>
+          )}
+
+          {/* ── ANDAMENTO: os dois eixos ─────────────────────────────────── */}
           {!isDemo && vivo.id && (
             <article className="rounded-2xl border border-border-strong p-3">
               <h3 className="mb-2 text-[15px] font-extrabold">Andamento</h3>
@@ -364,57 +496,6 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                     aviso={!vivo.gravidade ? 'Sem classificação — entra no fim da fila.' : null}
                   />
                 </div>
-              )}
-
-              {podeEditarCaso && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setEditor((e) => (e === 'tempo' ? null : 'tempo'))}
-                    className="mt-2 flex min-h-[48px] w-full items-center gap-2 border-t border-border pt-2 text-left"
-                  >
-                    <span className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground">
-                      <Timer className="h-3.5 w-3.5" /> Término desta cirurgia
-                    </span>
-                    {vivo.terminoPrevisto ? (
-                      <span className="ml-auto flex items-center gap-1.5">
-                        <span className="text-[15px] font-bold tabular-nums">{vivo.terminoPrevisto}</span>
-                        {faltaTermino && (
-                          <span className={['text-[11.5px]', faltaTermino.atrasada ? 'font-medium text-warning' : 'text-muted-foreground'].join(' ')}>
-                            {faltaTermino.atrasada
-                              ? `${faltaTermino.texto.replace('+', '')} além`
-                              : `faltam ${faltaTermino.texto.replace('~', '')}`}
-                          </span>
-                        )}
-                      </span>
-                    ) : (
-                      <span className="ml-auto text-[14px] font-semibold text-primary">Definir término</span>
-                    )}
-                    <span className="text-muted-foreground">{editor === 'tempo' ? '▴' : '▾'}</span>
-                  </button>
-                  {/* O editor abre num sheet PRÓPRIO, de baixo para cima (dono
-                      17/08): expandindo aqui dentro, o card mudava de tamanho no
-                      meio da leitura e a pessoa perdia o lugar. */}
-                  {editor === 'tempo' && (
-                    <EditorSheet
-                      titulo="Término desta cirurgia"
-                      nota="Só desta cirurgia. Na fila conta o tempo enquanto está Iniciada."
-                      onClose={() => setEditor(null)}
-                    >
-                      <PainelTempo
-                        atual={vivo.terminoPrevisto || ''}
-                        horaExata={horaExata}
-                        onHoraExata={setHoraExata}
-                        onDefinir={(v, meta) => { definirTerminoCaso(v, meta); setEditor(null) }}
-                      />
-                    </EditorSheet>
-                  )}
-                </>
-              )}
-              {!podeEditarCaso && vivo.terminoPrevisto && (
-                <p className="mt-2 border-t border-border pt-2 text-[12.5px] text-muted-foreground">
-                  Término desta cirurgia: <b className="text-foreground tabular-nums">{vivo.terminoPrevisto}</b>
-                </p>
               )}
             </article>
           )}
@@ -544,6 +625,46 @@ function LinhaDado({ icone, rotulo, valor, destaque, acao }) {
 }
 
 /**
+ * Um dos dois blocos do cartão "Horário da cirurgia" (dono 02/10, modelo A): rótulo
+ * pequeno em caixa alta, o horário GRANDE (30px) e, embaixo, o que dá sentido a ele
+ * ("agendada 13:30", "faltam 45min"). Vazio vira convite tracejado ("Definir
+ * início"). A faixa colorida à esquerda repete a tinta do quadro: verde = iniciada
+ * (no início), azul = terminada (no término). Sem `onClick` (quem não edita a
+ * escala), o bloco é só leitura.
+ */
+function BlocoHorario({ rotulo, nomeAcessivel, valor, convite, sub, subAviso = false, faixa = '', onClick }) {
+  const vazio = !valor
+  const Tag = onClick ? 'button' : 'div'
+  return (
+    <Tag
+      {...(onClick ? { type: 'button', onClick } : {})}
+      aria-label={`${nomeAcessivel}: ${valor || 'não informado'}`}
+      className={[
+        'relative flex min-h-[88px] flex-col rounded-[14px] px-3 pb-2.5 pt-2 text-left',
+        vazio
+          ? 'border-[1.5px] border-dashed border-primary/70'
+          : `border border-border-strong bg-card ${faixa}`,
+      ].join(' ')}
+    >
+      <span className="text-[11.5px] font-bold uppercase tracking-[0.06em] text-muted-foreground">{rotulo}</span>
+      {onClick && !vazio && <Pencil aria-hidden className="absolute right-2.5 top-2.5 h-[15px] w-[15px] text-muted-foreground" />}
+      {vazio ? (
+        <span className={['mt-1 text-[18px] font-bold leading-[30px]', convite ? 'text-primary' : 'text-muted-foreground'].join(' ')}>
+          {convite || '—'}
+        </span>
+      ) : (
+        <span className="mt-px text-[30px] font-extrabold leading-9 tracking-[-0.01em] tabular-nums">{valor}</span>
+      )}
+      {sub && (
+        <span className={['text-[12.5px] leading-tight', subAviso ? 'font-semibold text-warning' : 'text-muted-foreground'].join(' ')}>
+          {sub}
+        </span>
+      )}
+    </Tag>
+  )
+}
+
+/**
  * Editor de UM campo, num sheet próprio de baixo para cima (dono 17/08).
  * Expandir dentro do cartão mudava a altura do painel no meio da leitura e a
  * pessoa perdia o lugar; aqui o conteúdo do caso fica parado atrás e o editor
@@ -559,7 +680,11 @@ function EditorSheet({ titulo, nota, onClose, children }) {
           <SheetTitle className="text-[17px] leading-tight">{titulo}</SheetTitle>
           {nota && <p className="mt-1 text-[11.5px] leading-snug text-muted-foreground">{nota}</p>}
         </SheetHeader>
-        <div className="space-y-2 overflow-y-auto pb-4">{children}</div>
+        {/* px-4 (02/10): o corpo encostava na borda — atalhos, alternador e "Limpar"
+            iam de ponta a ponta, sem a margem do cabeçalho. O protótipo aprovado do
+            horário (`.tmp/inicio-termino-cirurgia.html`) tem 16px, como a folha do
+            tempo total nas Liberações. */}
+        <div className="space-y-2 overflow-y-auto px-4 pb-4">{children}</div>
       </SheetContent>
     </Sheet>
   )

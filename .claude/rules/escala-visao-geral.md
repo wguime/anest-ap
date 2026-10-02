@@ -224,8 +224,10 @@ aplicada): `estimativa` (cada `termino_previsto`, inclusive o que "terminada" ze
 `realocacao` (troca de anestesista no caso) e `ordem` (ordem de liberação por turno); `detalhe.publicacao`
 separa o que a RPC gravou (GUC `anest.publicacao`). ⚠️ **Captura nova vai para ESTA tabela, nunca para
 `escala_cirurgica_evento`**: o relatório de adesão conta TODO evento de lá com autor como "ação". Leitura
-só admin (desempenho de pessoa; nenhuma tela lê), escrita só por trigger. Hora real de início/fim NÃO é
-capturada — o dono manteve a hora do toque (25/09). Análise: `docs/escala-cirurgica-metricas/2026-W39-aprendizado*`.
+só admin (desempenho de pessoa; nenhuma tela lê), escrita só por trigger. A hora real de início/fim
+NÃO era capturada (o dono manteve a hora do toque em 25/09) — **desde 02/10 ela mora no próprio caso**
+(`inicio_real`/`termino_real` + autores, ver `escala-telas.md` § "Horário da cirurgia"), não nesta tabela.
+Análise: `docs/escala-cirurgica-metricas/2026-W39-aprendizado*`.
 Trava: `escalaCapturaAprendizadoSql.test.js` (PGlite).
 
 ⚠️ coluna nova lida no front → `CAMEL_TO_SNAKE` do service (`statusExtra` incluso).

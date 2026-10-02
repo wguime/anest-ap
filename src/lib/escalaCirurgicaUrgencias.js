@@ -34,7 +34,7 @@
  *
  * Pura: sem React, sem I/O. Tudo que é política externa entra por `opts`.
  */
-import { casoConcluido, casosResolvidos, chaveSalaHro, compararSalas, normNome, salaLiberacao, turnoDoCaso } from '@/pages/escala-cirurgica/utils'
+import { casoConcluido, casosResolvidos, chaveSalaHro, compararSalas, normNome, parseHoraMinutos, salaLiberacao, turnoDoCaso } from '@/pages/escala-cirurgica/utils'
 import { INICIO_NOTURNO_MIN, faseLiberacoes } from '@/lib/plantaoNoturno'
 
 /**
@@ -828,10 +828,17 @@ export function estadoUrgenciasDaEscala(escala, { hospital, turno, agoraMin, hoj
  */
 export function inicioDaUrgencia(caso, { dataEscala } = {}) {
   const bruto = caso?.statusAtualizadoEm || caso?.status_atualizado_em
-  if (!bruto) return null
-  const d = new Date(bruto)
-  if (Number.isNaN(d.getTime())) return null
-  return minutoNoDiaOperacional(d, dataEscala)
+  const d = bruto ? new Date(bruto) : null
+  const marcado = d && !Number.isNaN(d.getTime()) ? minutoNoDiaOperacional(d, dataEscala) : null
+  // HORÁRIO REAL INFORMADO (dono 02/10) vence a hora do toque: "em sala há X" e o
+  // "ainda em andamento?" passam a contar de quando a cirurgia começou de fato. O
+  // dia vem da marcação — o início é o mesmo ou o anterior a ela, o que resolve a
+  // madrugada (marcada 00:10, iniciada 23:50 da véspera).
+  const real = parseHoraMinutos(caso?.inicioReal || caso?.inicio_real)
+  if (real == null) return marcado
+  if (marcado == null) return real
+  const candidatos = [real, real + 1440].filter((m) => m <= marcado + 1)
+  return candidatos.length ? Math.max(...candidatos) : real
 }
 
 /**

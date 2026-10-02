@@ -456,6 +456,14 @@ espelha…".
 
 ### Término de cada cirurgia na folha do tempo total (dono 25/09, modelo A em protótipo)
 
+> ↳ **02/10: virou "Horário de cada cirurgia"** — cada cirurgia ganhou o bloco INÍCIO ao lado do
+> TÉRMINO (dois blocos de 52px, `BlocoHorarioMini`), e o INÍCIO abre a folha "Início · {hora} {nome}"
+> (z-1200, `PainelHoraPassada`) que grava por `onDefinirInicioCaso` → `gravarInicioReal` (a mesma regra
+> do detalhe do caso: agendada passa a iniciada com o horário). **Com UMA cirurgia a lista aparece
+> agora ("Horário da cirurgia")**, só para o início: o término dela segue sendo o tempo de cima,
+> mostrado sem botão ("o tempo acima"). O resto desta seção continua valendo pelo bloco TÉRMINO (mesmo
+> nome acessível "Término de 16:00 …"). Ver `escala-telas.md` § "Horário da cirurgia".
+
 *"Ao clicar em '+ tempo total' quero que também seja possível inserir os tempos individuais de
 cada cirurgia em que o anestesista está designado"* — escolhido em maquete
 (`.tmp/tempo-total-com-cirurgias.html`, 430px, dois temas) contra o modelo B (alvos no topo e um

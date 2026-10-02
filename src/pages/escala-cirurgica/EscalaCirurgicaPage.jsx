@@ -24,6 +24,7 @@ import ImportarEscalasPage from './ImportarEscalasPage'
 import ImportarEscalaFdsPage from './ImportarEscalaFdsPage'
 import TrocaSheet from './TrocaSheet'
 import { meuAliasDe, turnoAtualOperacional, dataPorExtenso, estadoTrocasDoHistorico, normNome, formatData, rodapeDoTurno, localizarSlotEscala, localizarMeuPosto, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca, espelhoTempoTotal, inicioDaDuracao, terminoEncadeado, turnoDoCaso, patchDefinicaoNoTurnoSeguinte } from './utils'
+import { gravarInicioReal } from '@/lib/escalaHorarioReal'
 import { ehDataFilaUnica, ehFeriado, ehFimDeSemana, FDS_HOSPITAL, FDS_TURNO_CASOS, FDS_TURNOS, turnoFdsAtual } from '@/lib/escalaFds'
 import { faseLiberacoes } from '@/lib/plantaoNoturno'
 import { hospitalDaConta, podeEditarEscalaCirurgica, podePublicarEscalaCirurgica } from './gate'
@@ -52,7 +53,7 @@ const ABA_OPCOES = [
 
 export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const { user } = useUser()
-  const { escalas, data, loading, erroCarga, p4Hospital, hoje, setData, recarregar, garantirEscala: garantirEscalaNoServidor, prefetch, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, reordenarAjuda, definirOrigemLinha, definirSemAjudaLinha, definirP4Hospital, setAnestesistaCasos, atualizarCaso, marcarTroca, executarSubstituicao, desfazerSubstituicao } = useEscalaCirurgica()
+  const { escalas, data, loading, erroCarga, p4Hospital, hoje, setData, recarregar, garantirEscala: garantirEscalaNoServidor, prefetch, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, reordenarAjuda, definirOrigemLinha, definirSemAjudaLinha, definirP4Hospital, setAnestesistaCasos, atualizarCaso, setStatusCirurgia, marcarTroca, executarSubstituicao, desfazerSubstituicao } = useEscalaCirurgica()
   // Roster p/ resolver os lados do par da troca declarada (uid/nome/apelido)
   const { resolver: resolverRoster, rosterByUid } = useRosterAnestesistas()
   // P1–P4 do dia (card Plantões/PegaPlantao) — alimentam a fase noturna das Liberações
@@ -772,6 +773,15 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                     const esp = alvo && !String(dona?.id || '').startsWith('demo-')
                       ? espelhoTempoTotal(dona, alvo, hhmm || '', { hospitalLabels: HOSPITAL_LABEL }) : null
                     if (esp) await setLinhaOverride(dona, { chave: esp.chave, anestesista: esp.nome }, esp.override, userInfo, turno)
+                  }}
+                  // INÍCIO REAL de uma cirurgia pela folha do tempo total (dono 02/10). A MESMA
+                  // função do detalhe do caso (`gravarInicioReal`): numa cirurgia agendada,
+                  // informar o início é dizer que ela começou; já iniciada, só o horário. O
+                  // caso mora na escala do hospital (na fila única, não na linha 'fds').
+                  onDefinirInicioCaso={async (casoId, hhmm) => {
+                    const dona = modoFds ? escalaDoCaso(casoId) || escala : escala
+                    const alvo = (dona?.casos || []).find((c) => c.id === casoId)
+                    await gravarInicioReal({ escala: dona, caso: alvo, hhmm, userId: userInfo.userId, setStatusCirurgia, atualizarCaso })
                   }}
                   // DE ONDE CONTA A DURAÇÃO de uma cirurgia (dono 25/09): a folha do tempo
                   // total diz, antes do toque, que "1h" numa cirurgia que ainda não começou

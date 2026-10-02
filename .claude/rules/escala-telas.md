@@ -200,9 +200,11 @@ explicam metade das queixas e valem para o app inteiro:
   cabeçalho de sala). Neutralizar as duas.
 
 - **Detalhe do caso** (`CasoDetalheSheet`, Completa + Minhas): **três cartões por
-  assunto** — a cirurgia · **Andamento** · Quem está e onde. O primeiro é leitura; o
-  segundo traz os dois eixos (principal pinta o card, aviso convive com iniciada e é
-  bloqueado por terminada) mais o término desta cirurgia; o terceiro traz cirurgião,
+  assunto** — a cirurgia · **Andamento** · Quem está e onde (desde 02/10 com o cartão
+  **Horário da cirurgia** entre o primeiro e o Andamento — § "Horário da cirurgia"). O
+  primeiro é leitura; o segundo traz os dois eixos (principal pinta o card, aviso convive
+  com iniciada e é bloqueado por terminada) — o término desta cirurgia subiu para o cartão
+  do horário em 02/10; o terceiro traz cirurgião,
   anestesista, residente, sala/local e ajuda. Sala, cirurgião, convênio e residente se
   corrigem pelo **"Editar dados da cirurgia"** (desde 01/09 — os mini-editores daqui saíram,
   § "Editar e EXCLUIR"); o editor que sobrou, o do tempo, abre em **folha de baixo
@@ -243,6 +245,55 @@ explicam metade das queixas e valem para o app inteiro:
   botões "Salvar" na mesma tela é escolha que ninguém deveria ter). "Recado" chama-se
   **Observação**: com o recado do plantonista na mesma aba, dois "recados" com sentidos
   diferentes se confundiam.
+
+### Horário da cirurgia — início e término REAIS, acima do Andamento (dono 2026-10-02, modelo A em protótipo)
+
+> "quero que seja possível adicionar o horário de início e fim de cada procedimento [...] tanto
+> clicando no card do procedimento na aba completa como na aba liberações ao clicar em adicionar
+> tempo [...] quero que essa informação ganhe destaque e quero que fique acima dos cards de andamento."
+
+Reverte a recusa de 25/09 (a hora do toque era a última palavra) por pedido do próprio dono.
+Protótipo `.tmp/inicio-termino-cirurgia.html` (2 modelos, 430px, dois temas, medição ao lado); o dono
+escolheu o **A — dois blocos lado a lado** (o B era linha do tempo com barra) e, na mesma pergunta,
+**"andam juntos"** (o horário acompanha o status) contra "independentes".
+
+- **Cartão "Horário da cirurgia" ENTRE "a cirurgia" e o Andamento** (`CasoDetalheSheet`, serve
+  Completa, Minhas e Urgências): borda verde `border-primary/55` + tinta `bg-primary/[0.045]`
+  (dark /8), blocos **INÍCIO** e **TÉRMINO** de 88px com o horário em 30px, cada um um botão. Embaixo
+  do número, o que dá sentido a ele: "agendada 13:30" no início; "faltam 45min"/"X além" (âmbar) ou
+  "previsão" no término. No título, "em sala há X" (só no dia operacional da escala) ou "durou X".
+  Faixa à esquerda repete a tinta do quadro: verde no início quando iniciada, azul no término quando
+  terminada. Vazio = tracejado "Definir início/término". Quem não edita vê os blocos sem botão.
+- ⚠️ **A linha "Término desta cirurgia" saiu do fim do Andamento** — subiu para o bloco TÉRMINO
+  (nome acessível "Término desta cirurgia: …"). Não deixar o término em dois lugares.
+- **Término = previsão enquanto corre** (`terminoPrevisto`, o mesmo PainelTempo de sempre — fila,
+  pílula, espelho e "→15:30" do quadro intactos); **depois de Terminada é o REAL** (`terminoReal`,
+  folha "Terminou há…" × "Horário de término").
+- **Início** abre `PainelHoraPassada` (em `PainelTempo.jsx`, a fonte única da UI de tempo): o
+  PainelTempo virado para trás — "Começou há…" (Agora, 5, 15, 30, 45 min, 1h + "Outro tempo…" até
+  8h) × "Horário de início" (4 dígitos, mesma máscara), caixa fixa de 172px, Limpar, prévia "Começou
+  às 14:05 · há 25min". Recusa com frase (`role="alert"`), sem gravar: no futuro (só no dia
+  operacional da escala; 1 min de folga), início depois do término, término antes do início
+  (`erroHorarioReal`).
+- **O horário ANDA JUNTO com o status** — trigger `tr_escala_caso_horario_real` (migration
+  `20261002190000`), espelhado no otimista por `horarioRealNaTransicao` (`src/lib/escalaHorarioReal.js`):
+  Iniciada preenche o início com a hora do toque (se vazio); Terminada preenche o término (se vazio) e,
+  se o início estava vazio, tira-o do carimbo de iniciada que o UPDATE vai sobrescrever; reabrir limpa o
+  término; Agendada limpa os dois. **Valor informado à mão nunca é sobrescrito pelo toque** — é o que
+  conserta a marcação em lote. Informar o início de uma cirurgia AGENDADA a marca Iniciada
+  (`gravarInicioReal`: `setStatusCirurgia(..., { inicioReal })`, que grava o início ANTES da RPC para o
+  trigger não trocá-lo); já iniciada, só o horário. "Limpar" não mexe no status.
+- **Sincronia:** os campos são do caso — Completa, Minhas, Urgências e a folha do "+ Tempo total" leem
+  o mesmo dado pelo mesmo realtime. A faixa de urgências conta "em sala há" do início real
+  (`inicioDaUrgencia`, o dia vem da marcação — resolve a madrugada). Republicar o turno preserva os
+  quatro campos junto com o andamento (RPC de 23/09, bloco do andamento).
+- **Autor:** `inicio_real_por`/`termino_real_por` pelo mesmo trigger (`firebase_uid()`, com
+  `status_atualizado_por` de reserva), no padrão de `termino_previsto_por`.
+- **EditorSheet ganhou `px-4`**: o corpo das folhas de editor encostava na borda (o editor de término
+  que estava no ar tinha o mesmo defeito); o protótipo aprovado tem 16px.
+- Travas: `escalaHorarioCirurgia.test.jsx` (telas e sincronia), `escalaHorarioRealStatus.test.jsx`
+  (context), `escalaHorarioReal.test.js` (lib + par com o trigger), `escalaHorarioRealSql.test.js`
+  (PGlite: trigger, desfazer, script sem carimbo, republicação).
 
 ### Editar e EXCLUIR o caso publicado (dono 2026-09-01, modelo A em protótipo)
 

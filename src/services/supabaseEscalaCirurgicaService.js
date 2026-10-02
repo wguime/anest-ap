@@ -49,6 +49,10 @@ const CAMEL_TO_SNAKE = {
   statusAtualizadoPor: 'status_atualizado_por',
   statusAtualizadoEm: 'status_atualizado_em',
   statusPara: 'status_para',
+  // horário REAL de início/término (dono 02/10) — o trigger
+  // tr_escala_caso_horario_real preenche no toque; a tela corrige à mão
+  inicioReal: 'inicio_real',
+  terminoReal: 'termino_real',
 }
 
 const SNAKE_TO_CAMEL = Object.fromEntries(
@@ -98,6 +102,10 @@ const CASO_FIELDS = [
   'convenio', 'cirurgiao', 'cirurgiaoDisplay', 'anestesista', 'anestesistaUserId',
   'residente', 'residenteUserId', 'bloco',
   'isContinuacao', 'semAnestesista', 'tipo', 'gravidade', 'turno',
+  // não vêm da foto (nenhuma RPC de publicação os recebe no payload): entram aqui
+  // para o `updateCaso` poder gravar a correção à mão; a republicação os preserva
+  // junto com o andamento (rpc_publicar_escala_turno, 02/10)
+  'inicioReal', 'terminoReal',
 ]
 
 function casoToRow(caso, escalaId) {

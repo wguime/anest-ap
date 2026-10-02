@@ -19,6 +19,7 @@ import { nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
 import { ehDataFilaUnica, FDS_HOSPITAL } from '@/lib/escalaFds'
 import { getDemoEscala } from '@/data/escalaCirurgicaDemo'
 import { agora } from '@/lib/devClock'
+import { horarioRealNaTransicao } from '@/lib/escalaHorarioReal'
 
 // ⚠️ 'fds' NÃO entra aqui: HomeCard, HOSPITAL_OPCOES da página e o loadData
 // iteram esta constante — a linha da fila única do FDS é um slot EXTRA do
@@ -814,6 +815,11 @@ export function EscalaCirurgicaProvider({ children }) {
       statusCirurgia: antes.statusCirurgia || 'agendada', statusExtra: antes.statusExtra ?? null,
       statusAtualizadoEm: antes.statusAtualizadoEm ?? null, statusAtualizadoPor: antes.statusAtualizadoPor ?? null,
       ...('terminoPrevisto' in antes && { terminoPrevisto: antes.terminoPrevisto ?? null }),
+      // HORÁRIO REAL (02/10): o trigger limpa o término ao sair de "terminada" e, de
+      // volta a "agendada", o início também. O início de quem volta a "iniciada"
+      // fica — é a hora em que ela começou, que o "terminada" não muda.
+      ...('terminoReal' in antes && { terminoReal: antes.terminoReal ?? null }),
+      ...((antes.statusCirurgia || 'agendada') === 'agendada' && { inicioReal: null }),
     }
     dispatch({ type: 'PATCH_CASOS', hospital, ...alvo, patch: otimista })
     marcarEscrita()
@@ -847,6 +853,14 @@ export function EscalaCirurgicaProvider({ children }) {
     // reverter o espelho parcial da v5.12.8). O total muda pela pílula ou pelos
     // espelhos que já existiam (uma cirurgia; todas informadas), nunca pelo status.
     const zeraTermino = status === 'terminada'
+    // HORÁRIO REAL ANDA JUNTO COM O STATUS (dono 02/10): o trigger
+    // tr_escala_caso_horario_real preenche o início no "Iniciada" e o término no
+    // "Terminada" (só o que estiver vazio) e limpa ao reabrir; o otimista pinta o
+    // mesmo. `userInfo.inicioReal` é o início INFORMADO no bloco do horário — numa
+    // cirurgia agendada ele também a marca como iniciada, e vai ao banco ANTES da
+    // RPC para o trigger encontrá-lo preenchido e não trocá-lo pela hora do toque.
+    const inicioInformado = userInfo.inicioReal || null
+    const horarios = horarioRealNaTransicao(vivo, status, { agoraD: agora(), inicioInformado })
     // `updatedAt` nos DOIS ramos, como a RPC (`updated_at = now()` em ambos): é o
     // único carimbo que o toggle "Suspensa" deixa, e a limpeza da virada das 19h
     // (utils.concluidoAntesDaNoite) lê dele QUANDO a cirurgia foi suspensa. Sem
@@ -857,6 +871,7 @@ export function EscalaCirurgicaProvider({ children }) {
         statusCirurgia: status,
         ...(status === 'terminada' && { statusExtra: null }),
         ...(zeraTermino && { terminoPrevisto: null }),
+        ...horarios,
         statusAtualizadoEm: agora().toISOString(),
         statusAtualizadoPor: userInfo.userId || null,
         updatedAt: agora().toISOString(),
@@ -867,6 +882,8 @@ export function EscalaCirurgicaProvider({ children }) {
       statusAtualizadoEm: vivo.statusAtualizadoEm ?? null,
       statusAtualizadoPor: vivo.statusAtualizadoPor ?? null,
       ...(zeraTermino && { terminoPrevisto: vivo.terminoPrevisto ?? null }),
+      ...('inicioReal' in horarios && { inicioReal: vivo.inicioReal ?? null }),
+      ...('terminoReal' in horarios && { terminoReal: vivo.terminoReal ?? null }),
       updatedAt: vivo.updatedAt ?? null,
     }
     const alvo = caso.id ? { ids: [caso.id] } : { refCaso: vivo }
@@ -877,6 +894,7 @@ export function EscalaCirurgicaProvider({ children }) {
     try {
       try {
         if (!isDemo && caso.id) {
+          if (inicioInformado) await svc.updateCaso(caso.id, { inicioReal: inicioInformado })
           await svc.updateStatusCirurgia(caso.id, status)
           // só quando havia o que zerar — a RPC do status não conhece a coluna
           if (zeraTermino && vivo.terminoPrevisto) await svc.updateCaso(caso.id, { terminoPrevisto: null })
