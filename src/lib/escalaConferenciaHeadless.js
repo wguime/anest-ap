@@ -24,6 +24,7 @@ import {
   turnoDeHora, normNome, linhaVazia,
 } from '@/pages/escala-cirurgica/utils'
 import { ehHoraSequencialEscala } from '@/lib/escalaCirurgicaRegras'
+import { gerarColunaLiberacao } from '@/lib/colunaLiberacao'
 import { validarCasosParaPublicacao, textoBloqueio } from '@/lib/escalaCirurgicaValidacao'
 import { detectarItensDuplicados, aplicarHoraPadraoPosicoes } from '@/lib/escalaCirurgicaItens'
 import { detectarDuplicidadesEscala, carimbarDecisao, localizarDecisao } from '@/lib/escalaCirurgicaDuplicidades'
@@ -349,7 +350,50 @@ export function conferirHospital(hospital, entrada, contexto) {
   const ocupado = (p) => p.casos > 0 || p.ajuda || !!notaDoNome(p.nome)
   let ultimo = -1
   for (let i = ordemNumerada.length - 1; i >= 0; i--) if (ocupado(ordemNumerada[i])) { ultimo = i; break }
-  const caudaLiberada = ultimo < 0 ? [] : ordemNumerada.slice(ultimo + 1).filter((p) => p.casos === 0 && !p.ajuda)
+  const caudaPelaOrdem = ultimo < 0 ? [] : ordemNumerada.slice(ultimo + 1).filter((p) => p.casos === 0 && !p.ajuda)
+  // ⚠️ A FILA MEDE A CAUDA PELA LISTA, NÃO PELA ORDEM (dono 21/09; LiberacoesView `caudaLiberada`):
+  // as ajudas e os visitantes descem para o fim da lista, e quem está no rodapé sem cirurgia ACIMA
+  // de uma ajuda que trabalha NÃO nasce liberado — fica "Livre" e pode virar o próximo. Medir pela
+  // ordem fez o ensaio de 02/10 prometer "KLISMAN nasce LIBERADO" enquanto a tela o mostrou Livre
+  // (a Gabriela tinha sido lançada como ajuda da Unimed por engano, e trabalhava abaixo dele).
+  // A lista vem da MESMA lib da fila; a fronteira é a mesma da view (último com trabalho).
+  const seguradosPorAjuda = []
+  if (caudaPelaOrdem.length) {
+    const uidsAqui = new Set(casosNovos.map((c) => c.anestesistaUserId).filter(Boolean))
+    const ajudandoFora = []
+    for (const o of outrasEscalas) {
+      for (const c of o?.casos || []) {
+        if (c.turno && c.turno !== turno) continue
+        const nome = texto(c.anestesista)
+        if (!nome || nome === '//' || /^\?+$/.test(nome)) continue
+        const uid = c.anestesistaUserId || resolver(nome) || null
+        if (uid && uidsAqui.has(uid)) continue
+        ajudandoFora.push({ uid, nome })
+      }
+    }
+    const { linhas = [] } = gerarColunaLiberacao(casosNovos, ordem, {
+      hospital, turno, resolverUid: resolver, ajudaExterna: ajuda, ajudandoFora,
+      plantaoContraturno: hospital !== 'materno',
+    }) || {}
+    const naoEscalado = (l) => !l.teveCasos && !l.notaRodape && !(l.salas?.length) && !(l.cirurgioes?.length)
+    let idxUltimoTrabalho = -1
+    for (let i = linhas.length - 1; i >= 0; i--) if (!naoEscalado(linhas[i])) { idxUltimoTrabalho = i; break }
+    const mesmaPessoa = (l, nome) => {
+      const uid = resolver(nome)
+      return (uid && (l.uid === uid || l.chave === uid)) || normNome(l.nomeOriginal || '') === normNome(nome)
+    }
+    for (const p of caudaPelaOrdem) {
+      const i = linhas.findIndex((l) => l.noRodape && mesmaPessoa(l, p.nome))
+      if (i < 0 || i > idxUltimoTrabalho) continue
+      const abaixo = linhas.slice(i + 1, idxUltimoTrabalho + 1).filter((l) => (l.isAjuda || l.isExtra || !l.noRodape) && !naoEscalado(l))
+      seguradosPorAjuda.push({ nome: p.nome, abaixo: abaixo.map((l) => l.nomeOriginal || l.anestesista || l.chave) })
+    }
+  }
+  const nomesSegurados = new Set(seguradosPorAjuda.map((s) => s.nome))
+  const caudaLiberada = caudaPelaOrdem.filter((p) => !nomesSegurados.has(p.nome))
+  for (const s of seguradosPorAjuda) {
+    aviso('livre acima de ajuda', `${s.nome} está no rodapé sem cirurgia, mas ${s.abaixo.join(', ') || 'uma ajuda'} trabalha ABAIXO dele na fila — ${s.nome} NÃO nasce liberado: aparece "Livre" e pode virar o próximo. Se ${s.nome} não foi escalado, confira a ajuda: "ajuda na X e após Y" é ajuda SÓ em X; no hospital Y a pessoa mantém a posição, sem azul`)
+  }
   const nomesCauda = new Set(caudaLiberada.map((p) => p.nome))
   const suspeitosExtracao = rodapeSuspeitos.filter((n) => !nomesCauda.has(n))
   const ehAjuda = (nome) => ajuda.some((n) => normNome(n) === normNome(nome))

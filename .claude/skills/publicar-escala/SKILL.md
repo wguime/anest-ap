@@ -39,7 +39,9 @@ pedido ao PUBLICADO.** O porquê de cada regra está em `REFERENCIA.md` — não
    restantes têm explicação na foto ou no recado; (h) o bloco **"faltantes da numérica"** do ensaio
    já classifica cada faltante (rodapé de outro hospital · pós-plantão da véspera no Pega Plantão ·
    férias) — só os `❓` ficam: confira o recado (consultório, troca) e relate ao dono só o que
-   sobrar. Sem bloqueio e sem aviso que aponte erro seu →
+   sobrar; (i) **`livre acima de ajuda`** nunca é ruído: alguém sem cirurgia vai aparecer "Livre" (e
+   virar o próximo) por causa de uma ajuda abaixo dele — quase sempre a ajuda está no hospital errado;
+   volte ao recado antes de publicar. Sem bloqueio e sem aviso que aponte erro seu →
    **Bash** `publicar` (sem `--ensaio`). O `gerar.py` já parou antes em erro de forma (hora, cor e
    tempo na posição errada, "//" sem base ou abaixo de "?", cirurgião trocado com procedimento,
    particular sem nome) e avisou nome sem caso no meio do rodapé.
@@ -94,7 +96,8 @@ apelido conhecido).
 - **Rodapé** completo, NA ORDEM, com as notas ("MATHEUS (CONSULT)" é uma posição; "ADRIANO
   (REUNIÃO 15:30)" também — **nunca tirar a nota**: nome com nota é posição ocupada e não nasce
   liberado). Quem fecha o
-  rodapé **sem caso** (plantão do contraturno/noite) → `conferidos` — só a **cauda contígua**. Nome
+  rodapé **sem caso** (plantão do contraturno/noite) → `conferidos` — só a **cauda contígua**. A cauda nasce **Liberado**; nunca gravar `{escalado:true}` por conta
+  própria para "tirar do Livre" — isso põe a pessoa na fila como próxima (02/10, Klisman). Nome
   sem caso no MEIO do rodapé é quase sempre linha da foto esquecida (ou azul não lido): volte à
   foto antes de pôr em `conferidos`; o `gerar.py` avisa os dois casos.
 - **LGPD**: `pacienteNome` só em PARTICULAR/PART (o template faz; é o que abre a cobrança); FAS,
@@ -117,6 +120,7 @@ apelido conhecido).
 | frase | vira |
 |---|---|
 | "Como ajuda … 1º X – Local · 2º Y – Local" | X, Y em `ajudaExterna` do hospital do LOCAL, `cor: 'azul'` no caso; a ÚLTIMA do array sai primeiro (2º Y, 3º Z → `['Z','Y']`); **`ajuda_ordem_informada=True`** naquele hospital. A ajuda numerada pode estar no rodapé do próprio hospital — transcreva os dois. Ajuda de FORA do recado (o 2º do Materno em azul) sai ANTES da numerada; o plantão do contraturno de outro hospital sai antes de todos (01/10: Tiago → Raul → Oscar, Unimed `['OSCAR','RAUL']`). Se a fila publicada sair em ordem diferente do recado, é defeito de código, não do lote. |
+| "X como ajuda na <local> e após <hospital>" (02/10: "Gabi como ajuda na Simone e após Unimed") | X é ajuda SÓ no hospital do local: caso de lá `cor:'azul'` + `ajuda` de lá (é a 1ª a sair de lá). No hospital do "após" X **mantém a posição do rodapé**, caso sem cor e fora da `ajuda` — mesmo que o nome esteja azul naquele rodapé. Duplicidade `intencional`. Lançar como ajuda do "após" desce X para o fim da lista dele e segura em "Livre" quem está sem cirurgia acima (o aviso `livre acima de ajuda`). |
 | "Trocas: A (consultório) na posição do B no HRO" | `'A': {tipo:'troca', parceiro:'B', apenasRegistro:True, local:'Consultório'}` — B fora de escala. |
 | "Trocas consultório: R1 com X" (X no rodapé da foto; o R1 com caso e fora dele) | o R1 **ASSUME a posição de X no rodapé**: na `ordem`, troque o nome de X pelo do R1 (MELO→THAYNA) e só o R1 leva `{tipo:'troca', parceiro:'X', apenasRegistro:True, local:'Consultório'}`; X vai ao consultório, sem caso inventado. R1 fora do rodapé nasce com selo "Ajuda" no card (dono 25/09: "já foi corrigido e está voltando"); o aviso "fora da ordem: R1 tem caso" no ensaio é esse erro. |
 | "A na posição do B" com os DOIS em escala | registro nos dois lados: `'A': {…parceiro:'B', local:'<hospital de B>'}` e `'B': {…parceiro:'A', local:'<hospital de A>'}`. |

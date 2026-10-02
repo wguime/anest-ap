@@ -89,3 +89,8 @@ lista do que não fazer.
 - 05/09 (dono): "nos finais de semana não existe a opção de ajuda… nunca marque ajuda de forma
   automática". 04/09: P1–P4 é um bloco cuja ordem só a foto decide. 29/08: sala sem nome recebe o
   posto só na manhã de sábado. 16/08: noite = grade 19-07 + sáb P11,P8,P7 · dom P11,P6,P5.
+- 02/10: "Gabi como ajuda na Simone e após Unimed" lançada como ajuda da UNIMED → na fila ela desceu para
+  o fim e segurou KLISMAN (16º, sem caso) em "Livre"; o ensaio, que media a cauda pela ORDEM, disse
+  "nasce LIBERADO". Correção do dono: ajuda só no HRO, posição 9 mantida na Unimed. Daí o ensaio medir
+  a cauda pela LISTA da fila (`gerarColunaLiberacao`) e o aviso `livre acima de ajuda`. Tentar "tirar do
+  Livre" com `{escalado:true}` piorou: virou "Próximo a ser liberado".

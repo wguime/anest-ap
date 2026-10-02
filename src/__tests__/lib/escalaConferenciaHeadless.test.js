@@ -197,6 +197,20 @@ describe('avisos — a tela publica assim mesmo, mas diz', () => {
     expect(r.hospitais.unimed.cauda.map((p) => p.nome)).toEqual(['EDUARDO'])
   })
 
+  it('cauda medida pela LISTA da fila: sem cirurgia ACIMA de ajuda que trabalha não nasce liberado (02/10)', () => {
+    // BETO no rodapé E em ajuda, com caso: a fila o desce para o bloco do fim, abaixo da ANA
+    const comAjuda = conferir({ unimed: { rows: [caso('CC - Sala 1', 'CURY'), caso('CC - Sala 2', 'BETO')], ordem: ['CURY', 'BETO', 'ANA', 'EDUARDO'], ajuda: ['BETO'] } })
+    const u = comAjuda.hospitais.unimed
+    expect(avisos(u)).toContain('livre acima de ajuda')
+    expect(u.avisos.find((a) => a.codigo === 'livre acima de ajuda').texto).toMatch(/ANA .*BETO/)
+    expect(u.cauda.map((p) => p.nome)).toEqual(['EDUARDO'])
+    expect(u.avisos.filter((a) => a.codigo === 'cauda').map((a) => a.texto).join(' ')).not.toMatch(/ANA/)
+    // a mesma foto com BETO na posição dele (sem ajuda): ANA é cauda e nasce liberada
+    const semAjuda = conferir({ unimed: { rows: [caso('CC - Sala 1', 'CURY'), caso('CC - Sala 2', 'BETO')], ordem: ['CURY', 'BETO', 'ANA', 'EDUARDO'], ajuda: [] } })
+    expect(avisos(semAjuda.hospitais.unimed)).not.toContain('livre acima de ajuda')
+    expect(semAjuda.hospitais.unimed.cauda.map((p) => p.nome)).toEqual(['ANA', 'EDUARDO'])
+  })
+
   it('caso de quem não está no rodapé nem na ajuda avisa (azul não lido)', () => {
     const r = conferir({ unimed: { rows: [caso('CC - Sala 1', 'CURY'), caso('Exames', 'EDUARDO', '13:30', { bloco: 'exames' })], ordem: ['CURY'], ajuda: [] } })
     expect(avisos(r.hospitais.unimed)).toContain('fora da ordem')

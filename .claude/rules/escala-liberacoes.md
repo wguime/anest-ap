@@ -808,6 +808,11 @@ asserção do Vicente (com a visitante trabalhando abaixo ele espera) e o recort
 perguntar antes: **há alguém trabalhando ABAIXO dele na lista?** Se há, ele não está fora do
 jogo — está esperando.
 
+**Ensaio da publicação pela foto (02/10):** `escalaConferenciaHeadless` media a cauda pela ORDEM e
+prometia "nasce LIBERADO" a quem a fila deixava "Livre". Agora monta a lista com `gerarColunaLiberacao`
+e aplica a mesma fronteira desta view; quem fica segurado por ajuda abaixo gera o aviso
+`livre acima de ajuda` e sai da cauda. Mexeu em `caudaLiberada` aqui → espelhar lá.
+
 ### Card da fila — coluna à direita, selos e tempo estourado (dono 21–24/08)
 
 <!-- Movido de escala-urgencias.md: os paths de lá não carregam com LiberacoesView/PainelTempo. -->
