@@ -19,6 +19,8 @@ import { ThemeProvider } from '@/design-system'
 import FaixaHorarioPendente from '@/pages/escala-cirurgica/FaixaHorarioPendente'
 import useHorarioPendente from '@/pages/escala-cirurgica/useHorarioPendente'
 import { CasoCard } from '@/pages/escala-cirurgica/BoardView'
+import { anestesistaDoCasoEh } from '@/pages/escala-cirurgica/utils'
+import { compararPendencias } from '@/lib/escalaHorarioPendente'
 
 const estado = vi.hoisted(() => ({ ctx: null }))
 vi.mock('@/contexts/EscalaCirurgicaContext', async (orig) => ({
@@ -61,11 +63,13 @@ const contexto = (escalas, o = {}) => {
 }
 const agoraEm = (hhmm, dia = HOJE) => vi.setSystemTime(new Date(`${dia}T${hhmm}:00-03:00`))
 
-function Tela() {
+function Tela({ eu = null }) {
   const p = useHorarioPendente()
-  return <FaixaHorarioPendente pendencias={p} podeEditar />
+  // a página monta a lista pessoal na aba Minhas pelo critério da aba (login > apelido)
+  const minhas = eu ? p.itens.filter((i) => anestesistaDoCasoEh(i.caso, eu)).sort(compararPendencias) : null
+  return <FaixaHorarioPendente pendencias={p} podeEditar minhas={minhas} />
 }
-const montar = () => render(<ThemeProvider><Tela /></ThemeProvider>)
+const montar = (eu) => render(<ThemeProvider><Tela eu={eu} /></ThemeProvider>)
 const faixa = () => screen.queryByRole('button', { name: /^Horário pendente:/ })
 
 beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: true }) })
@@ -183,6 +187,55 @@ describe('a lista por anestesista', () => {
     fireEvent.click(faixa())
     expect(screen.queryByText('Liberado com a cirurgia aberta')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Colega assumiu' })).toBeNull()
+  })
+})
+
+describe('aba Minhas: o detalhamento de quem está logado (dono 05/10)', () => {
+  const doDia = () => contexto({
+    unimed: escala([
+      caso({ id: 'ana2', hora: '09:30', statusCirurgia: 'iniciada', inicioReal: '09:35', terminoReal: null }),
+      caso({ id: 'ana1' }),
+      caso({ id: 'bru', anestesista: 'BRUNO', anestesistaUserId: 'uid-bruno' }),
+    ]),
+  })
+  const caixa = () => screen.queryByRole('region', { name: /^Você tem/ })
+
+  it('mostra SÓ as cirurgias do login, em ordem de hora, com o atalho para preencher', () => {
+    agoraEm('13:30')
+    doDia()
+    montar({ uid: 'uid-ana', alias: 'Ana' })
+    const c = caixa()
+    expect(c.getAttribute('aria-label')).toBe('Você tem 2 cirurgias sem horário')
+    const linhas = within(c).getAllByRole('button', { name: /^Abrir a cirurgia/ })
+    expect(linhas.map((b) => b.getAttribute('aria-label').match(/\d\d:\d\d/)[0])).toEqual(['07:30', '09:30'])
+    fireEvent.click(linhas[1])
+    expect(screen.getByRole('dialog', { name: 'detalhe' }).textContent).toBe('detalhe unimed ana2')
+  })
+
+  it('início vencido: a dica do "Atrasada" sai UMA vez, no cabeçalho da caixa', () => {
+    agoraEm('08:30')
+    contexto({ unimed: escala([
+      caso({ id: 'x1', statusCirurgia: 'agendada', terminoReal: null }),
+      caso({ id: 'x2', hora: '07:45', statusCirurgia: 'agendada', terminoReal: null }),
+    ]) })
+    montar({ uid: 'uid-ana', alias: 'Ana' })
+    const c = caixa()
+    expect(within(c).getAllByText(/marque Atrasada/)).toHaveLength(1)
+  })
+
+  it('o login manda: o apelido igual de outra pessoa não puxa a cirurgia dela', () => {
+    agoraEm('13:30')
+    doDia()
+    montar({ uid: 'uid-outro', alias: 'Bruno' })
+    expect(caixa()).toBeNull()
+  })
+
+  it('quem não deve nada não vê caixa — a faixa pública continua', () => {
+    agoraEm('13:30')
+    doDia()
+    montar({ uid: 'uid-gabriel', alias: 'Gabriel' })
+    expect(caixa()).toBeNull()
+    expect(faixa()).toBeTruthy()
   })
 })
 

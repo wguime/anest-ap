@@ -200,7 +200,8 @@ const minutosDe = (hora) => {
   return m ? Number(m[1]) * 60 + Number(m[2]) : 24 * 60
 }
 const ORDEM_TURNO = { matutino: 0, vespertino: 1 }
-const compararItens = (a, b) =>
+/** Ordem de leitura das pendências: turno, hora, hospital (a lista pessoal da aba Minhas usa a mesma). */
+export const compararPendencias = (a, b) =>
   (ORDEM_TURNO[a.turno] ?? 0) - (ORDEM_TURNO[b.turno] ?? 0)
   || minutosDe(a.caso?.hora) - minutosDe(b.caso?.hora)
   || String(a.hospital).localeCompare(String(b.hospital))
@@ -224,10 +225,10 @@ export function agruparPorAnestesista(itens, { chaveDe, nomeDe } = {}) {
     }
   }
   const lista = [...grupos.values()]
-  for (const g of lista) g.itens.sort(compararItens)
+  for (const g of lista) g.itens.sort(compararPendencias)
   return lista.sort((a, b) =>
     b.itens.length - a.itens.length
-    || compararItens(a.itens[0], b.itens[0])
+    || compararPendencias(a.itens[0], b.itens[0])
     || String(a.nome).localeCompare(String(b.nome), 'pt-BR'))
 }
 
@@ -278,7 +279,7 @@ export function montarRelatorioHorario(dados, { chaveDe, nomeDe } = {}) {
     }
     return { caso, data: r.data, hospital: r.hospital, turno: r.turno, falta: r.falta, nomes: anestesistasDoCaso(caso) }
   })
-  const recente = (a, b) => String(b.data).localeCompare(String(a.data)) || compararItens(a, b)
+  const recente = (a, b) => String(b.data).localeCompare(String(a.data)) || compararPendencias(a, b)
   const grupos = agruparPorAnestesista(itens, { chaveDe, nomeDe })
   for (const g of grupos) {
     g.itens.sort(recente)

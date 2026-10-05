@@ -3,6 +3,15 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.44 (05/10/2026) — Escala: aba Minhas mostra o horário pendente de quem está logado
+
+Pedido do dono (05/10): "na aba minhas deve aparecer o detalhamento do anestesista de acordo com o
+login individual".
+- Na aba Minhas, abaixo da faixa pública, a caixa "Você tem N cirurgias sem horário" com as cirurgias
+  da pessoa nos três hospitais e o atalho para preencher (ou "Colega assumiu", se foi liberada).
+- Casamento pelo login (o mesmo critério da aba); quem não deve nada não vê a caixa.
+- Travas: `escalaHorarioPendente.test.jsx`.
+
 ## v5.12.43 (05/10/2026) — Escala: alerta também quando o início está atrasado
 
 Pedido do dono (05/10, tarde): "várias cirurgias já deveriam ter informação de início e não há alerta".

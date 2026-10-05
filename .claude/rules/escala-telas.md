@@ -369,6 +369,12 @@ da Minhas, prop `pendencia` do `CasoCard` — está no comparador do `memo`).
   há caminho para preencher dia anterior. ⚠️ O "dia encerrado" dela vira às 07:00, não é o
   `escala_adesao_ultimo_dia()`.
 - **Sem push e sem caixa de entrada** (a escala parou de notificar em 30/07): é só tela.
+- **Aba Minhas = o detalhamento de QUEM ESTÁ LOGADO (dono 05/10: "deve aparecer o detalhamento do
+  anestesista de acordo com o login individual")**: abaixo da faixa pública, a caixa "Você tem N
+  cirurgias sem horário" (desenho do modelo C) com as cirurgias da pessoa nos TRÊS hospitais, em ordem
+  de turno e hora (`compararPendencias`), cada uma abrindo a cirurgia. Casamento pelo critério da
+  própria aba (`anestesistaDoCasoEh`: o login gravado no caso manda; sem login, o apelido). A dica do
+  "Atrasada" sai UMA vez no cabeçalho, não em cada linha. Quem não deve nada não vê caixa.
 - **Relatório (modelo A, `.tmp/relatorio-horario-nao-preenchido.html`)**: seção "Horário não
   preenchido no dia" em `src/pages/escala-adesao/SecaoHorarioNaoPreenchido.jsx`, logo depois dos
   indicadores da página de adesão — último dia encerrado · 7 dias · período da ABA (a janela segue a

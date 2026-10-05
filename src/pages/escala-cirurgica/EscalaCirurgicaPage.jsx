@@ -25,8 +25,9 @@ import LiberacoesView from './LiberacoesView'
 import ImportarEscalasPage from './ImportarEscalasPage'
 import ImportarEscalaFdsPage from './ImportarEscalaFdsPage'
 import TrocaSheet from './TrocaSheet'
-import { meuAliasDe, turnoAtualOperacional, dataPorExtenso, estadoTrocasDoHistorico, normNome, formatData, rodapeDoTurno, localizarSlotEscala, localizarMeuPosto, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca, espelhoTempoTotal, inicioDaDuracao, terminoEncadeado, turnoDoCaso, patchDefinicaoNoTurnoSeguinte } from './utils'
+import { anestesistaDoCasoEh, meuAliasDe, turnoAtualOperacional, dataPorExtenso, estadoTrocasDoHistorico, normNome, formatData, rodapeDoTurno, localizarSlotEscala, localizarMeuPosto, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca, espelhoTempoTotal, inicioDaDuracao, terminoEncadeado, turnoDoCaso, patchDefinicaoNoTurnoSeguinte } from './utils'
 import { gravarInicioReal, gravarTerminoReal } from '@/lib/escalaHorarioReal'
+import { compararPendencias } from '@/lib/escalaHorarioPendente'
 import { ehDataFilaUnica, ehFeriado, ehFimDeSemana, FDS_HOSPITAL, FDS_TURNO_CASOS, FDS_TURNOS, turnoFdsAtual } from '@/lib/escalaFds'
 import { faseLiberacoes } from '@/lib/plantaoNoturno'
 import { hospitalDaConta, podeEditarEscalaCirurgica, podePublicarEscalaCirurgica } from './gate'
@@ -622,7 +623,15 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
         {/* ALERTA PÚBLICO do horário não preenchido (dono 05/10, modelo A): nas três
             abas, em qualquer hospital e turno — só some quando os horários forem
             preenchidos (ou a cirurgia suspensa). Só existe vendo HOJE. */}
-        <FaixaHorarioPendente pendencias={pendencias} podeEditar={canEdit} />
+        <FaixaHorarioPendente
+          pendencias={pendencias}
+          podeEditar={canEdit}
+          // aba Minhas: o detalhamento de QUEM ESTÁ LOGADO (dono 05/10), pelo mesmo critério da
+          // aba — o login gravado no caso manda; sem login, o apelido
+          minhas={abaVisivel === 'minhas'
+            ? pendencias.itens.filter((i) => anestesistaDoCasoEh(i.caso, { uid: meuUid, alias: meuAlias })).sort(compararPendencias)
+            : null}
+        />
 
         {/* Aterrissou noutra data (ex.: publicou pela importação): rótulo + volta */}
         {modoData === 'outra' && (

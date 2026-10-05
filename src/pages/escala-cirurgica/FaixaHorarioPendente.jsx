@@ -81,7 +81,7 @@ function NomesNaFaixa({ grupos }) {
   )
 }
 
-function LinhaPendente({ item, podeEditar, onAbrir, onColegaAssumiu }) {
+function LinhaPendente({ item, podeEditar, onAbrir, onColegaAssumiu, dicaInicio = true }) {
   const { caso } = item
   const onde = [ROTULO_TURNO[item.turno], HOSPITAL_LABEL[item.hospital], salaExibicao(caso.sala)].filter(Boolean).join(' · ')
   const procedimento = fraseClinica(caso.procedimento)
@@ -105,7 +105,7 @@ function LinhaPendente({ item, podeEditar, onAbrir, onColegaAssumiu }) {
       </button>
       {/* início VENCIDO (dono 05/10 à tarde): a cirurgia pode não ter começado de fato —
           "Atrasada" é a saída honesta e pausa este alerta até o fim do turno */}
-      {item.motivo === 'inicio' && (
+      {dicaInicio && item.motivo === 'inicio' && (
         <p className="pb-2.5 text-[12px] leading-snug text-muted-foreground">
           Passou do horário agendado. Se ainda não começou, marque Atrasada.
         </p>
@@ -128,7 +128,44 @@ function LinhaPendente({ item, podeEditar, onAbrir, onColegaAssumiu }) {
   )
 }
 
-export default function FaixaHorarioPendente({ pendencias, podeEditar = false }) {
+/**
+ * A CAIXA PESSOAL da aba Minhas (dono 05/10: "na aba minhas deve aparecer o detalhamento do
+ * anestesista de acordo com o login individual"; desenho do modelo C em
+ * `.tmp/alerta-horario-pendente.html`): só as cirurgias de QUEM ESTÁ LOGADO, com o atalho
+ * para preencher. A faixa pública continua em cima — é a mesma lista, vista por um só.
+ */
+function MinhasPendencias({ itens, podeEditar, onAbrir, onColegaAssumiu }) {
+  return (
+    <section
+      aria-label={`Você tem ${plural(itens.length, 'cirurgia', 'cirurgias')} sem horário`}
+      className="overflow-hidden rounded-xl border border-destructive/45 bg-destructive/[0.07] dark:border-destructive/60 dark:bg-destructive/[0.16]"
+    >
+      <h3 className="flex items-center gap-2 px-3 pb-1 pt-3 text-[15px] font-bold text-category-red-fg">
+        <ClockAlert className="h-[19px] w-[19px] shrink-0" aria-hidden="true" />
+        Você tem {plural(itens.length, 'cirurgia', 'cirurgias')} sem horário
+      </h3>
+      <p className="pb-2 pl-[39px] pr-3 text-[12px] leading-snug text-muted-foreground">
+        Elas aparecem para todos até início e término serem preenchidos. Toque para preencher.
+        {/* a dica do início vencido UMA vez aqui, não em cada linha (a caixa é de uma pessoa só) */}
+        {itens.some((i) => i.motivo === 'inicio') && ' Se alguma ainda não começou, marque Atrasada.'}
+      </p>
+      <div className="bg-card px-3">
+        {itens.map((item) => (
+          <LinhaPendente
+            key={item.caso.id || `${item.hospital}-${item.caso.sala}-${item.caso.ordem}`}
+            item={item}
+            podeEditar={podeEditar}
+            onAbrir={onAbrir}
+            onColegaAssumiu={onColegaAssumiu}
+            dicaInicio={false}
+          />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+export default function FaixaHorarioPendente({ pendencias, podeEditar = false, minhas = null }) {
   const { escalas } = useEscalaCirurgica()
   const [lista, setLista] = useState(false)
   const [detalhe, setDetalhe] = useState(null) // { hospital, caso, turno }
@@ -163,6 +200,10 @@ export default function FaixaHorarioPendente({ pendencias, podeEditar = false })
           </span>
           <NomesNaFaixa grupos={grupos} />
         </button>
+      )}
+
+      {minhas?.length > 0 && (
+        <MinhasPendencias itens={minhas} podeEditar={podeEditar} onAbrir={abrirDetalhe} onColegaAssumiu={colegaAssumiu} />
       )}
 
       {lista && (
