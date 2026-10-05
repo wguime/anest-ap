@@ -19,6 +19,8 @@ import { minutosDoDia } from './useAgoraMinuto'
 import MinhasEscalasView from './MinhasEscalasView'
 import BoardView from './BoardView'
 import FaixaUrgencias from './FaixaUrgencias'
+import FaixaHorarioPendente from './FaixaHorarioPendente'
+import useHorarioPendente from './useHorarioPendente'
 import LiberacoesView from './LiberacoesView'
 import ImportarEscalasPage from './ImportarEscalasPage'
 import ImportarEscalaFdsPage from './ImportarEscalaFdsPage'
@@ -517,6 +519,11 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
    * publicar por cima de uma existente apagaria o turno, e `null` na tela pode
    * ser só uma leitura que falhou.
    */
+  // HORÁRIO PENDENTE (dono 05/10, modelo A): cirurgias de HOJE sem início/término que
+  // já entraram no alerta (liberado ou turno encerrado) — a faixa no topo e o selo no card
+  // leem a MESMA lista. Antes do `if (!user)`: é hook.
+  const pendencias = useHorarioPendente()
+
   const garantirEscala = useCallback(async () => {
     if (escalaDoHospital?.id && !String(escalaDoHospital.id).startsWith('demo-')) return escalaDoHospital
     // publicação vai no turno de CASOS: o CHECK do banco só aceita
@@ -612,6 +619,11 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           onEscolherAba={escolherAba}
         />
 
+        {/* ALERTA PÚBLICO do horário não preenchido (dono 05/10, modelo A): nas três
+            abas, em qualquer hospital e turno — só some quando os horários forem
+            preenchidos (ou a cirurgia suspensa). Só existe vendo HOJE. */}
+        <FaixaHorarioPendente pendencias={pendencias} podeEditar={canEdit} />
+
         {/* Aterrissou noutra data (ex.: publicou pela importação): rótulo + volta */}
         {modoData === 'outra' && (
           <p className="rounded-lg bg-warning/10 px-3 py-1.5 text-xs text-warning">
@@ -645,7 +657,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           {/* Minhas e Completa também no fim de semana (dono 13/09) — por hospital,
               como num dia útil; só a Faixa de Urgências fica de fora do FDS. */}
           {abaVisivel === 'minhas' && (
-            <MinhasEscalasView escala={escala} meuAlias={meuAlias} meuUid={meuUid} turno={turnoCasos} onVerBoard={() => setAba('board')} />
+            <MinhasEscalasView escala={escala} meuAlias={meuAlias} meuUid={meuUid} turno={turnoCasos} pendencias={pendencias.porCaso} onVerBoard={() => setAba('board')} />
           )}
           {abaVisivel === 'board' && (
             <>
@@ -655,7 +667,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               {!modoFds && (
                 <FaixaUrgencias escala={escala} hospital={hospital} turno={turnoCasos} />
               )}
-              <BoardView escala={escala} meuAlias={meuAlias} meuUid={meuUid} turno={turnoCasos} onNavigate={onNavigate} />
+              <BoardView escala={escala} meuAlias={meuAlias} meuUid={meuUid} turno={turnoCasos} pendencias={pendencias.porCaso} onNavigate={onNavigate} />
             </>
           )}
           {abaVisivel === 'liberacoes' && (() => {

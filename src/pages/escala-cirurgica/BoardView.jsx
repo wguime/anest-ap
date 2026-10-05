@@ -22,6 +22,7 @@ import useEstadoUrgencias from './useEstadoUrgencias'
 import DefinirAnestesistaSheet from './DefinirAnestesistaSheet'
 import AddCasoSheet from './AddCasoSheet'
 import CasoDetalheSheet from './CasoDetalheSheet'
+import SeloHorarioPendente from './SeloHorarioPendente'
 
 // Grupo das cirurgias que atravessaram o turno. Valor impossível como chave de
 // sala, para não colidir com nenhum grupo real do Accordion.
@@ -85,7 +86,7 @@ export function casoTemColunaTempo(caso) {
   return !casoConcluido(caso) && parseHoraMinutos(caso?.terminoPrevisto) != null
 }
 
-function CasoCardBase({ caso, destaque, salaLabel, onClick, agoraMin = null, moldura = 'card', reservaHora = false }) {
+function CasoCardBase({ caso, destaque, salaLabel, onClick, agoraMin = null, moldura = 'card', reservaHora = false, pendencia = null }) {
   const tb = tipoBadge(caso.tipo)
   const st = STATUS_CIRURGIA[caso.statusCirurgia]
   const ex = extraDe(caso)
@@ -251,6 +252,10 @@ function CasoCardBase({ caso, destaque, salaLabel, onClick, agoraMin = null, mol
                   à direita — parecia solto no meio do card. Agora é o último
                   elemento da linha: com estado ou sem, encosta no canto. */}
               {ex && <Badge variant={ex.variant} className={ex.badgeClass}>{ex.label}</Badge>}
+              {/* HORÁRIO PENDENTE (dono 05/10, modelo A): o que falta, depois do estado —
+                  "Terminada · Falta início" diz que acabou e o que ficou faltando. Some
+                  quando os horários são preenchidos (a lista vem da página). */}
+              {pendencia && <SeloHorarioPendente falta={pendencia} />}
             </span>
           </span>
           {/* Linha 2 — QUAL cirurgia, na linha inteira */}
@@ -302,10 +307,11 @@ function CasoCardBase({ caso, destaque, salaLabel, onClick, agoraMin = null, mol
 export const CasoCard = memo(CasoCardBase, (prev, next) =>
   prev.caso === next.caso && prev.destaque === next.destaque &&
   prev.salaLabel === next.salaLabel && prev.agoraMin === next.agoraMin &&
-  prev.moldura === next.moldura && prev.reservaHora === next.reservaHora
+  prev.moldura === next.moldura && prev.reservaHora === next.reservaHora &&
+  prev.pendencia === next.pendencia
 )
 
-export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate }) {
+export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate, pendencias = null }) {
   const { user } = useUser()
   const { rosterByUid } = useRosterAnestesistas()
   // Nome do grupo na Completa (pedido do dono 23/07): 1 anestesista = 1º nome +
@@ -550,6 +556,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
                     agoraMin={agoraMin}
                     moldura="linha"
                     reservaHora={reservaHora}
+                    pendencia={pendencias?.get(caso.id)?.falta || null}
                     onClick={() => setDetalhe(caso)}
                   />
                 ))}
@@ -590,6 +597,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
                   agoraMin={agoraMin}
                   moldura="linha"
                   reservaHora={reservaHora}
+                  pendencia={pendencias?.get(caso.id)?.falta || null}
                   onClick={() => setDetalhe(caso)}
                 />
               ))}

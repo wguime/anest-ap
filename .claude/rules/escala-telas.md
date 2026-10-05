@@ -6,6 +6,10 @@ paths:
   - "src/pages/escala-cirurgica/ChipsEscolha.jsx"
   - "src/pages/escala-cirurgica/PainelTempo.jsx"
   - "src/pages/escala-cirurgica/DefinirAnestesistaSheet.jsx"
+  - "src/pages/escala-cirurgica/FaixaHorarioPendente.jsx"
+  - "src/pages/escala-cirurgica/SeloHorarioPendente.jsx"
+  - "src/pages/escala-cirurgica/useHorarioPendente.js"
+  - "src/lib/escalaHorarioPendente.js"
   - "src/pages/escala-cirurgica/ImportarEscalaPage.jsx"
   - "src/pages/escala-cirurgica/ImportarEscalasPage.jsx"
   - "src/lib/escalaLoteImportacao.js"
@@ -331,6 +335,40 @@ acima em conflito):
   prévia; a frase "Dois jeitos de dizer a mesma coisa" saiu; caixa de 104px (era 172).
 - Travas novas/atualizadas: `escalaHorarioCirurgia.test.jsx` (25 casos), `painelTempo.test.jsx`,
   `escalaUrgenciasFaixa.test.jsx` (o "Terminada" confirma antes de gravar).
+
+### Horário pendente — alerta PÚBLICO de quem não preencheu início/término (dono 2026-10-05, modelo A)
+
+> "há vários anestesistas que não estão preenchendo as informações. quero que crie um alerta [...]
+> marcando o anestesista que não preencheu e que seja público [...] só devem sair quando as
+> informações de início/término forem preenchidas"
+
+Protótipo `.tmp/alerta-horario-pendente.html` (3 modelos, 430px, dois temas); o dono escolheu o **A —
+faixa no topo**. Regras em `src/lib/escalaHorarioPendente.js` (puro); dados em `useHorarioPendente`
+(página); faixa + lista em `FaixaHorarioPendente`; selo em `SeloHorarioPendente` (card da Completa e
+da Minhas, prop `pendencia` do `CasoCard` — está no comparador do `memo`).
+
+- **Entra** quando o anestesista é LIBERADO na fila (`escala.liberacoes[turno:chave]`, uid ou nome
+  normalizado; `{escalado:true}` do repasse NÃO é liberação; no FDS também a linha 'fds') **ou** quando
+  o turno ACABA (13h/19h no relógio operacional) — o que vier primeiro. "Passa para tarde" vence com a
+  tarde e não entra pela liberação; "passa para a noite" não vence no dia.
+- **Sai** só com início E término — ou Suspensa. Fora da conta: sem anestesista/"?"/"//", sem
+  procedimento, continuação (não conta em dobro, como na cobrança). Dupla "A + B" marca os dois.
+- **Liberado com cirurgia ABERTA (uma ou mais — dono, mesma conversa):** a linha da lista diz
+  "Liberado com a cirurgia aberta" e oferece **Preencher horário** ou **Colega assumiu** (o
+  `DefinirAnestesistaSheet` do caso). Passada a cirurgia a quem não foi liberado, ela sai do alerta e
+  volta a seguir a regra pelo nome novo.
+- **Conta a partir da TARDE de 05/10** (`INICIO_ALERTA_HORARIO`). **Dura o dia operacional** (vira às
+  7h) e só existe vendo HOJE; o que não foi preenchido no dia vai para o relatório de adesão — RPC
+  `escala_horario_pendente_relatorio(p_desde, p_ate)` (migration `20261005150000`, mesmos cortes da
+  lib; acesso = `can_write_escala_cirurgica()`, porque devolve procedimento). Ao vivo, sem tabela: não
+  há caminho para preencher dia anterior. ⚠️ O "dia encerrado" dela vira às 07:00, não é o
+  `escala_adesao_ultimo_dia()`.
+- **Sem push e sem caixa de entrada** (a escala parou de notificar em 30/07): é só tela.
+- Faixa: vermelho-claro `destructive/[0.07]` (escuro /16), texto `category-red-fg`; nomes em pílulas
+  numa linha só, as que couberem + "+N" (medidas numa fileira invisível, `quantasPilulasCabem`).
+  Folhas montadas mesmo com zero pendência (preencher a última com o detalhe aberto não fecha o
+  detalhe). Selo: Badge `destructive` OUTLINE + `ClockAlert` (sólido já é Suspensa/Emergência).
+- Travas: `src/__tests__/lib/escalaHorarioPendente.test.js`, `src/__tests__/pages/escalaHorarioPendente.test.jsx`.
 
 ### Editar e EXCLUIR o caso publicado (dono 2026-09-01, modelo A em protótipo)
 

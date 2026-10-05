@@ -3,6 +3,20 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.41 (05/10/2026) — Escala: alerta público de horário não preenchido
+
+Pedido do dono (05/10), modelo A escolhido em protótipo (`.tmp/alerta-horario-pendente.html`).
+- **Faixa "Horário pendente" no topo da escala**, nas três abas e em qualquer hospital/turno: quantas
+  cirurgias e os nomes de quem não preencheu início/término. Toque abre a lista por anestesista; cada
+  linha abre a cirurgia no cartão do horário.
+- Entra quando o anestesista é liberado na fila ou quando o turno acaba (13h/19h); sai só com início e
+  término preenchidos, ou com a cirurgia suspensa. Conta a partir da tarde de 05/10 e dura o dia.
+- Liberado com cirurgia aberta: a lista oferece "Preencher horário" ou "Colega assumiu".
+- Selo "Falta início" / "Falta término" / "Sem horário" no card da cirurgia (Completa e Minhas).
+- Banco: `escala_horario_pendente_relatorio` — o que ficou sem horário nos dias encerrados, base do
+  relatório de adesão (a seção da página vem depois da escolha do modelo).
+- Travas: `escalaHorarioPendente.test.js`, `escalaHorarioPendente.test.jsx`.
+
 ## v5.12.40 (02/10/2026) — Escala: horário compacto, confirmação do início/término e tempo estimado próprio
 
 Revisão do dono sobre a v5.12.39, escolhida em protótipo (`.tmp/horario-compacto.html`).

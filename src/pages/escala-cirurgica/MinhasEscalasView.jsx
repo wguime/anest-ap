@@ -18,7 +18,7 @@ import DefinirAnestesistaSheet from './DefinirAnestesistaSheet'
 import CasoDetalheSheet from './CasoDetalheSheet'
 import AddCasoSheet from './AddCasoSheet'
 
-export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onVerBoard }) {
+export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onVerBoard, pendencias = null }) {
   const { user } = useUser()
   const [detalhe, setDetalhe] = useState(null)   // caso aberto (mesmo sheet da aba Completa)
   const [definir, setDefinir] = useState(null)   // { sala, caso? }
@@ -111,6 +111,7 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
           salaLabel={salaExibicao(caso.sala)}
           destaque
           agoraMin={agoraMin}
+          pendencia={pendencias?.get(caso.id)?.falta || null}
           onClick={() => setDetalhe(caso)}
         />
       )))}
