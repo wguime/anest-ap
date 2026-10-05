@@ -103,6 +103,13 @@ function LinhaPendente({ item, podeEditar, onAbrir, onColegaAssumiu }) {
         <SeloHorarioPendente falta={item.falta} />
         <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
       </button>
+      {/* início VENCIDO (dono 05/10 à tarde): a cirurgia pode não ter começado de fato —
+          "Atrasada" é a saída honesta e pausa este alerta até o fim do turno */}
+      {item.motivo === 'inicio' && (
+        <p className="pb-2.5 text-[12px] leading-snug text-muted-foreground">
+          Passou do horário agendado. Se ainda não começou, marque Atrasada.
+        </p>
+      )}
       {item.aberta && (
         <div className="pb-3">
           <p className="text-[12px] font-semibold text-category-red-fg">Liberado com a cirurgia aberta</p>

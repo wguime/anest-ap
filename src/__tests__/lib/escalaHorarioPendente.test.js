@@ -5,6 +5,8 @@
  *  1. entra quando o anestesista é LIBERADO ou quando o turno ACABA (13h/19h);
  *  2. sai só com início E término — ou Suspensa;
  *  3. conta a partir da TARDE de 05/10;
+ *  3b. início VENCIDO (dono 05/10 à tarde): 30 min depois do horário agendado sem início
+ *     já entra, durante o turno; "AS" conta do término da anterior; "Atrasada" pausa;
  *  4. liberado com cirurgia ABERTA (uma ou mais) → `aberta` (o alerta oferece "quem
  *     assumiu"); trocado o anestesista, a cirurgia segue a regra pelo nome novo;
  *  5. dupla conta para os dois; "?" não é pessoa; continuação não conta em dobro.
@@ -13,7 +15,7 @@ import { describe, it, expect } from 'vitest'
 import {
   INICIO_ALERTA_HORARIO, agruparPorAnestesista, anestesistasDoCaso, casoEntraNaConta,
   dentroDoInicioDoAlerta, faltaHorario, montarRelatorioHorario, pendenciasDoDia, prazoDoCaso,
-  quantasPilulasCabem, rotuloDiaRelatorio,
+  prazoInicio, quantasPilulasCabem, rotuloDiaRelatorio, TOLERANCIA_INICIO_MIN,
 } from '@/lib/escalaHorarioPendente'
 
 const HOJE = '2026-10-06'
@@ -65,7 +67,9 @@ describe('quem entra na conta', () => {
 
 describe('quando entra no alerta', () => {
   it('pelo relógio: manhã às 13h, tarde às 19h', () => {
-    const e = escala([caso({ id: 'm' }), caso({ id: 't', turno: 'vespertino', hora: '14:00' })])
+    // com início e sem término: isola a regra do fim do turno (a do início vencido não se aplica)
+    const aberta = { statusCirurgia: 'iniciada', inicioReal: '08:05', terminoReal: null }
+    const e = escala([caso({ id: 'm', ...aberta }), caso({ id: 't', turno: 'vespertino', hora: '14:00', ...aberta, inicioReal: '14:10' })])
     expect(pendenciasDoDia([e], { hoje: HOJE, agoraMin: 12 * 60 + 59, liberado: ninguemLiberado })).toHaveLength(0)
     expect(pendenciasDoDia([e], { hoje: HOJE, agoraMin: 13 * 60, liberado: ninguemLiberado }).map((p) => p.caso.id)).toEqual(['m'])
     expect(pendenciasDoDia([e], { hoje: HOJE, agoraMin: 19 * 60, liberado: ninguemLiberado }).map((p) => p.caso.id)).toEqual(['m', 't'])
@@ -81,6 +85,29 @@ describe('quando entra no alerta', () => {
     const liberado = (esc, turno, parte) => turno === 'matutino' && parte.uid === 'uid-ana'
     const [p] = pendenciasDoDia([e], { hoje: HOJE, agoraMin: 10 * 60, liberado })
     expect(p).toMatchObject({ falta: 'ini', motivo: 'liberado', aberta: false })
+  })
+
+  it('INÍCIO VENCIDO (dono 05/10 à tarde): 30 min depois do horário agendado, sem início → "Falta início"', () => {
+    const e = escala([caso({ id: 'ag', turno: 'vespertino', hora: '14:00', statusCirurgia: 'agendada', terminoReal: null })])
+    expect(pendenciasDoDia([e], { hoje: HOJE, agoraMin: 14 * 60 + 29, liberado: ninguemLiberado })).toHaveLength(0)
+    const [p] = pendenciasDoDia([e], { hoje: HOJE, agoraMin: 14 * 60 + 30, liberado: ninguemLiberado })
+    expect(p).toMatchObject({ falta: 'ini', motivo: 'inicio', aberta: false })
+  })
+
+  it('"a seguir" (sem hora) conta do término real da anterior da mesma sala', () => {
+    const e = escala([
+      caso({ id: 'a', ordem: 0, turno: 'vespertino', hora: '13:00', statusCirurgia: 'terminada', inicioReal: '13:05', terminoReal: '14:40' }),
+      caso({ id: 'as', ordem: 1, turno: 'vespertino', hora: 'AS', statusCirurgia: 'agendada', terminoReal: null }),
+    ])
+    expect(prazoInicio(e.casos[1], e.casos[0])).toBe(14 * 60 + 40 + TOLERANCIA_INICIO_MIN)
+    expect(pendenciasDoDia([e], { hoje: HOJE, agoraMin: 15 * 60 + 5, liberado: ninguemLiberado })).toHaveLength(0)
+    expect(pendenciasDoDia([e], { hoje: HOJE, agoraMin: 15 * 60 + 10, liberado: ninguemLiberado }).map((p) => p.caso.id)).toEqual(['as'])
+  })
+
+  it('"Atrasada" declarada pausa o início vencido — o fim do turno continua valendo', () => {
+    const e = escala([caso({ turno: 'vespertino', hora: '14:00', statusCirurgia: 'agendada', terminoReal: null, statusExtra: 'atrasada' })])
+    expect(pendenciasDoDia([e], { hoje: HOJE, agoraMin: 16 * 60, liberado: ninguemLiberado })).toHaveLength(0)
+    expect(pendenciasDoDia([e], { hoje: HOJE, agoraMin: 19 * 60, liberado: ninguemLiberado })[0]).toMatchObject({ motivo: 'turno', falta: 'ambos' })
   })
 
   it('a liberação NÃO encerra a cirurgia que passa de turno', () => {

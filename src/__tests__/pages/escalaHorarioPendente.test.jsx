@@ -8,7 +8,9 @@
  *  · só vendo HOJE; a manhã de 05/10 (antes do alerta existir) não conta;
  *  · liberado com a cirurgia ABERTA: a lista oferece "Preencher horário" e "Colega
  *    assumiu" (este abre o Definir anestesista do caso — dono 05/10);
- *  · o card da cirurgia mostra o que falta ("Falta início").
+ *  · o card da cirurgia mostra o que falta ("Falta início");
+ *  · início VENCIDO (dono 05/10 à tarde): 30 min depois do horário agendado já entra, no
+ *    turno, e a lista sugere "Atrasada" para quem ainda não começou.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, within } from '@testing-library/react'
@@ -81,9 +83,9 @@ describe('a faixa: quando aparece', () => {
     expect(within(f).getAllByText('Ana Ribeiro')[0].closest('[aria-hidden]')).toBeNull()
   })
 
-  it('antes das 13h, sem liberação, não há faixa', () => {
+  it('antes das 13h, sem liberação e com o início informado, não há faixa', () => {
     agoraEm('12:55')
-    contexto({ unimed: escala([caso()]) })
+    contexto({ unimed: escala([caso({ statusCirurgia: 'iniciada', inicioReal: '07:40', terminoReal: null })]) })
     montar()
     expect(faixa()).toBeNull()
   })
@@ -97,9 +99,18 @@ describe('a faixa: quando aparece', () => {
 
   it('o marcador de escalado do repasse NÃO é liberação', () => {
     agoraEm('10:00')
-    contexto({ unimed: escala([caso()], { liberacoes: { 'matutino:uid-ana': { escalado: true } } }) })
+    contexto({ unimed: escala([caso({ statusCirurgia: 'iniciada', inicioReal: '07:40', terminoReal: null })], { liberacoes: { 'matutino:uid-ana': { escalado: true } } }) })
     montar()
     expect(faixa()).toBeNull()
+  })
+
+  it('passou 30 min do horário agendado sem início → faixa já no turno, com "Falta início"', () => {
+    agoraEm('08:05')
+    contexto({ unimed: escala([caso({ statusCirurgia: 'agendada', terminoReal: null })]) })
+    montar()
+    fireEvent.click(faixa())
+    expect(screen.getByText('Falta início')).toBeTruthy()
+    expect(screen.getByText(/Passou do horário agendado/)).toBeTruthy()
   })
 
   it('some com início e término preenchidos, ou com a cirurgia suspensa', () => {

@@ -3,6 +3,15 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.43 (05/10/2026) — Escala: alerta também quando o início está atrasado
+
+Pedido do dono (05/10, tarde): "várias cirurgias já deveriam ter informação de início e não há alerta".
+- A cirurgia sem início 30 minutos depois do horário agendado entra no alerta já durante o turno, como
+  "Falta início". A que está "a seguir" (sem hora) conta do término da anterior da mesma sala.
+- Quem marca "Atrasada" pausa esse alerta (a lista sugere isso para a cirurgia que ainda não começou);
+  o fim do turno continua valendo.
+- Travas: `escalaHorarioPendente.test.js` e `escalaHorarioPendente.test.jsx`.
+
 ## v5.12.42 (05/10/2026) — Adesão à Escala: horário não preenchido no dia
 
 Modelo A escolhido em protótipo (`.tmp/relatorio-horario-nao-preenchido.html`).

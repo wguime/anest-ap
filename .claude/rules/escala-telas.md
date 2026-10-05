@@ -351,6 +351,11 @@ da Minhas, prop `pendencia` do `CasoCard` — está no comparador do `memo`).
   normalizado; `{escalado:true}` do repasse NÃO é liberação; no FDS também a linha 'fds') **ou** quando
   o turno ACABA (13h/19h no relógio operacional) — o que vier primeiro. "Passa para tarde" vence com a
   tarde e não entra pela liberação; "passa para a noite" não vence no dia.
+- **INÍCIO VENCIDO (dono 05/10 à tarde: "várias cirurgias já deveriam ter informação de início e não
+  há alerta")**: sem início **30 min depois do horário agendado** (`TOLERANCIA_INICIO_MIN`) já entra, no
+  meio do turno, como "Falta início" (`motivo: 'inicio'`). "AS" (sem hora) conta do término REAL da
+  anterior da mesma sala e turno (pela `ordem`). **"Atrasada" declarada pausa** esta regra (a lista
+  sugere marcar); o fim do turno continua valendo. Medido na estreia: 19 cirurgias de 18 pessoas às 15:10.
 - **Sai** só com início E término — ou Suspensa. Fora da conta: sem anestesista/"?"/"//", sem
   procedimento, continuação (não conta em dobro, como na cobrança). Dupla "A + B" marca os dois.
 - **Liberado com cirurgia ABERTA (uma ou mais — dono, mesma conversa):** a linha da lista diz

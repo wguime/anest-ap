@@ -109,19 +109,62 @@ export function prazoDoCaso(caso) {
 export const casoAberto = (caso) => (caso?.statusCirurgia || 'agendada') !== 'terminada'
 
 /**
+ * INÍCIO VENCIDO (dono 05/10, à tarde, com o quadro na mão: "várias cirurgias já deveriam
+ * ter informação de início e não há alerta"): a cirurgia que passou do horário AGENDADO
+ * sem início entra no alerta já durante o turno — não espera a liberação nem o fim do
+ * turno. Tolerância de 30 min (a escala costuma escorregar alguns minutos).
+ *   • sem hora ("AS", a seguir): conta do TÉRMINO real da cirurgia anterior da mesma sala;
+ *   • marcada ATRASADA: o atraso foi declarado — esta regra pausa (o fim do turno, não).
+ */
+export const TOLERANCIA_INICIO_MIN = 30
+
+const minutosHora = (h) => {
+  const m = /^\s*(\d{1,2}):(\d{2})/.exec(String(h ?? ''))
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null
+}
+
+/** Minuto (dia operacional) a partir do qual o início está vencido; null = sem referência. */
+export function prazoInicio(caso, anteriorDaSala = null) {
+  if (caso?.statusExtra === 'atrasada' || caso?.statusCirurgia === 'atrasada') return null
+  const hora = minutosHora(caso?.hora)
+  if (hora != null) return hora + TOLERANCIA_INICIO_MIN
+  const fimAnterior = minutosHora(anteriorDaSala?.terminoReal)
+  return fimAnterior != null ? fimAnterior + TOLERANCIA_INICIO_MIN : null
+}
+
+/** A cirurgia imediatamente antes desta na mesma sala e turno (pela ordem publicada). */
+function anterioresPorSala(casos) {
+  const porSala = new Map()
+  for (const c of casos || []) {
+    const k = `${String(c.sala || '').trim().toUpperCase()}|${turnoDoCasoHorario(c)}`
+    if (!porSala.has(k)) porSala.set(k, [])
+    porSala.get(k).push(c)
+  }
+  const anterior = new Map()
+  for (const lista of porSala.values()) {
+    lista.sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))
+    lista.forEach((c, i) => { if (i > 0) anterior.set(c, lista[i - 1]) })
+  }
+  return anterior
+}
+
+/**
  * As pendências do DIA. `escalas` = as escalas carregadas (um hospital cada); só entram
  * as publicadas da data `hoje`. `liberado(escala, turno, parte)` diz se a parte do
  * anestesista foi liberada na fila daquele turno (a página injeta a leitura de
  * `escala.liberacoes`). Devolve um item por CIRURGIA:
- *   { caso, hospital, turno, falta, nomes, motivo: 'turno' | 'liberado', aberta }
+ *   { caso, hospital, turno, falta, nomes, motivo: 'turno' | 'liberado' | 'inicio', aberta }
  * `aberta` = liberado com a cirurgia ainda aberta — o alerta oferece também "quem
  * assumiu", porque pode ser que a pessoa tenha sido substituída e não esquecido.
+ * `motivo: 'inicio'` = passou do horário agendado sem início: só o início é cobrado
+ * (o término ainda não era esperado).
  */
 export function pendenciasDoDia(escalas, { hoje, agoraMin, liberado = () => false } = {}) {
   const out = []
   for (const escala of escalas || []) {
     if (!escala || escala.status !== 'publicada' || escala.data !== hoje) continue
     if (escala.hospital === 'fds') continue // a linha da fila única não tem cirurgias
+    const anterior = anterioresPorSala(escala.casos)
     for (const caso of escala.casos || []) {
       if (!casoEntraNaConta(caso, { data: escala.data })) continue
       const falta = faltaHorario(caso)
@@ -132,14 +175,18 @@ export function pendenciasDoDia(escalas, { hoje, agoraMin, liberado = () => fals
       // a que passa de turno continua com alguém: a liberação de quem começou não a encerra
       const foiLiberado = caso.statusExtra !== 'passa_tarde'
         && nomes.some((p) => liberado(escala, turno, p))
-      if (!vencido && !foiLiberado) continue
+      const semInicio = !temTexto(caso.inicioReal)
+      const limiteInicio = semInicio ? prazoInicio(caso, anterior.get(caso)) : null
+      const inicioVencido = limiteInicio != null && agoraMin != null && agoraMin >= limiteInicio
+      if (!vencido && !foiLiberado && !inicioVencido) continue
+      const motivo = vencido ? 'turno' : foiLiberado ? 'liberado' : 'inicio'
       out.push({
         caso,
         hospital: escala.hospital,
         turno,
-        falta,
+        falta: motivo === 'inicio' ? 'ini' : falta,
         nomes,
-        motivo: vencido ? 'turno' : 'liberado',
+        motivo,
         aberta: foiLiberado && casoAberto(caso),
       })
     }
