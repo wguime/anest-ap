@@ -12,7 +12,8 @@
 import { describe, it, expect } from 'vitest'
 import {
   INICIO_ALERTA_HORARIO, agruparPorAnestesista, anestesistasDoCaso, casoEntraNaConta,
-  dentroDoInicioDoAlerta, faltaHorario, pendenciasDoDia, prazoDoCaso, quantasPilulasCabem,
+  dentroDoInicioDoAlerta, faltaHorario, montarRelatorioHorario, pendenciasDoDia, prazoDoCaso,
+  quantasPilulasCabem, rotuloDiaRelatorio,
 } from '@/lib/escalaHorarioPendente'
 
 const HOJE = '2026-10-06'
@@ -145,5 +146,40 @@ describe('pílulas que cabem na faixa', () => {
     expect(quantasPilulasCabem([102, 101, 117, 117], 374, { gap: 6, mais: 34 })).toBe(3)
     expect(quantasPilulasCabem([102, 101, 117, 117], 300, { gap: 6, mais: 34 })).toBe(2)
     expect(quantasPilulasCabem([], 300)).toBe(0)
+  })
+})
+
+describe('relatório: o que ficou sem horário nos dias encerrados', () => {
+  const r = (o) => ({ id: o.id, data: o.data, turno: o.turno || 'matutino', hospital: 'unimed', sala: 'Sala 1', hora: o.hora || '08:00', procedimento: 'X', anestesista: o.a, anestesista_user_id: o.uid ?? null, falta: o.falta || 'ambos' })
+  const dados = {
+    desde: '2026-10-05', ate: '2026-10-07',
+    casos: [
+      r({ id: '1', data: '2026-10-05', turno: 'vespertino', a: 'ANA', uid: 'uid-ana' }),
+      r({ id: '2', data: '2026-10-07', a: 'ANA', uid: 'uid-ana', falta: 'ini' }),
+      r({ id: '3', data: '2026-10-06', a: 'BRUNO', uid: 'uid-bruno' }),
+      r({ id: '4', data: '2026-10-07', a: 'CARLA', uid: 'uid-carla' }),
+    ],
+  }
+
+  it('por pessoa: quem deixou mais primeiro; empate → o mais recente; cirurgias da mais nova à mais antiga', () => {
+    const rel = montarRelatorioHorario(dados, { chaveDe: (p) => p.uid, nomeDe: (p) => p.alias })
+    expect(rel.pessoas.map((g) => [g.nome, g.ultima, g.itens.map((i) => i.caso.id)])).toEqual([
+      ['ANA', '2026-10-07', ['2', '1']],
+      ['CARLA', '2026-10-07', ['4']],
+      ['BRUNO', '2026-10-06', ['3']],
+    ])
+  })
+
+  it('os três números: último dia, 7 dias e o período', () => {
+    expect(montarRelatorioHorario(dados)).toMatchObject({ ultimoDia: 2, seteDias: 4, total: 4, vazio: false })
+  })
+
+  it('janela vazia (o primeiro dia ainda não encerrou) não conta nada', () => {
+    expect(montarRelatorioHorario({ desde: '2026-10-05', ate: '2026-10-04', casos: [] })).toMatchObject({ vazio: true, total: 0, pessoas: [] })
+  })
+
+  it('rótulo do dia: "ontem" ou dia da semana com a data', () => {
+    expect(rotuloDiaRelatorio('2026-10-06', '2026-10-07')).toBe('ontem')
+    expect(rotuloDiaRelatorio('2026-10-02', '2026-10-07')).toBe('sex 02/10')
   })
 })

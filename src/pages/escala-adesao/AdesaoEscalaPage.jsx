@@ -17,6 +17,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/design-system'
 import { useMediaQuery } from '@/design-system/hooks'
 import { useAdesaoEscala, useAdesaoMes, useAdesaoEvolucao } from '@/hooks/useAdesaoEscala'
 import GraficoEvolucao from './GraficoEvolucao'
+import SecaoHorarioNaoPreenchido from './SecaoHorarioNaoPreenchido'
 import {
   META, INDICE, CARGOS, ORDEM_CARGO, SITUACOES,
   montarPessoas, ordenarPessoas, resumirCargos, indicadoresGrupo, hospital,
@@ -482,6 +483,10 @@ export default function AdesaoEscalaPage({ goBack }) {
             <p className="text-[12.5px] text-muted-foreground xl:hidden">
               <b className="text-foreground">{usamMuito} de {pessoas.length}</b> pessoas com uso {metaUso} ou mais.
             </p>
+
+            {/* HORÁRIO NÃO PREENCHIDO NO DIA (dono 05/10, modelo A): o que o alerta público da
+                escala deixou para trás na virada das 7h — segue a aba de período da página. */}
+            <SecaoHorarioNaoPreenchido aba={aba} rotuloPeriodo={ehMes ? rotuloMes(aba) : `${aba} dias`} />
 
             <div className="flex flex-col gap-3 xl:grid xl:grid-cols-2 xl:items-start">
               {hospitais}

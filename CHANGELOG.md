@@ -3,6 +3,17 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.42 (05/10/2026) — Adesão à Escala: horário não preenchido no dia
+
+Modelo A escolhido em protótipo (`.tmp/relatorio-horario-nao-preenchido.html`).
+- Seção "Horário não preenchido no dia" na página Adesão à Escala, logo depois dos indicadores:
+  o último dia encerrado, os últimos 7 dias e o período da aba, e quem deixou de preencher (de quem
+  deixou mais para quem deixou menos, com a data da última vez). Toque no nome abre as cirurgias por
+  dia, com o que faltou. Segue a aba de período (30 dias, 60 dias, mês).
+- Dados: `escala_horario_pendente_relatorio` (o que o alerta da escala deixou para trás na virada
+  das 7h). Quem não opera a escala não vê a seção.
+- Travas: `adesaoHorarioNaoPreenchido.test.jsx` e o relatório em `escalaHorarioPendente.test.js`.
+
 ## v5.12.41 (05/10/2026) — Escala: alerta público de horário não preenchido
 
 Pedido do dono (05/10), modelo A escolhido em protótipo (`.tmp/alerta-horario-pendente.html`).
@@ -14,7 +25,7 @@ Pedido do dono (05/10), modelo A escolhido em protótipo (`.tmp/alerta-horario-p
 - Liberado com cirurgia aberta: a lista oferece "Preencher horário" ou "Colega assumiu".
 - Selo "Falta início" / "Falta término" / "Sem horário" no card da cirurgia (Completa e Minhas).
 - Banco: `escala_horario_pendente_relatorio` — o que ficou sem horário nos dias encerrados, base do
-  relatório de adesão (a seção da página vem depois da escolha do modelo).
+  relatório de adesão.
 - Travas: `escalaHorarioPendente.test.js`, `escalaHorarioPendente.test.jsx`.
 
 ## v5.12.40 (02/10/2026) — Escala: horário compacto, confirmação do início/término e tempo estimado próprio

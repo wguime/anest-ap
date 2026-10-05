@@ -60,3 +60,16 @@ export async function buscarAdesaoEvolucao() {
   salvarCache('evolucao', data)
   return data
 }
+
+/**
+ * Horário NÃO preenchido no dia (dono 05/10) — as cirurgias dos dias já encerrados que
+ * ficaram sem início ou sem término (`escala_horario_pendente_relatorio`, migration
+ * 20261005150000). `desde`/`ate` null = os últimos 30 dias encerrados. Acesso = quem opera
+ * a escala: para os demais a função recusa (42501) e a seção simplesmente não aparece.
+ */
+export async function buscarHorarioNaoPreenchido(id, desde = null, ate = null) {
+  const { data, error } = await supabase.rpc('escala_horario_pendente_relatorio', { p_desde: desde, p_ate: ate })
+  if (error) throw new Error(error.message || 'Não foi possível carregar o horário não preenchido')
+  salvarCache(id, data)
+  return data
+}

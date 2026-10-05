@@ -364,6 +364,12 @@ da Minhas, prop `pendencia` do `CasoCard` — está no comparador do `memo`).
   há caminho para preencher dia anterior. ⚠️ O "dia encerrado" dela vira às 07:00, não é o
   `escala_adesao_ultimo_dia()`.
 - **Sem push e sem caixa de entrada** (a escala parou de notificar em 30/07): é só tela.
+- **Relatório (modelo A, `.tmp/relatorio-horario-nao-preenchido.html`)**: seção "Horário não
+  preenchido no dia" em `src/pages/escala-adesao/SecaoHorarioNaoPreenchido.jsx`, logo depois dos
+  indicadores da página de adesão — último dia encerrado · 7 dias · período da ABA (a janela segue a
+  aba: 30/60 dias ou o mês, `useHorarioNaoPreenchido`) e a lista por pessoa (`montarRelatorioHorario`);
+  o toque abre as cirurgias por dia, só leitura. Sem acesso (42501) a seção não aparece. O card da Home
+  NÃO mudou (decisão de 05/10).
 - Faixa: vermelho-claro `destructive/[0.07]` (escuro /16), texto `category-red-fg`; nomes em pílulas
   numa linha só, as que couberem + "+N" (medidas numa fileira invisível, `quantasPilulasCabem`).
   Folhas montadas mesmo com zero pendência (preencher a última com o detalhe aberto não fecha o

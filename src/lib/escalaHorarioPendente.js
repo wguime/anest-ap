@@ -201,3 +201,60 @@ export function quantasPilulasCabem(larguras, disponivel, { gap = 6, mais = 40 }
   }
   return n
 }
+
+// ── RELATÓRIO: o que ficou sem horário nos dias encerrados ────────────────────
+// (dono 05/10: "se não for preenchido durante o dia, quero que crie um relatório e
+// incorpore ao relatório de adesão"; seção escolhida em protótipo — modelo A,
+// `.tmp/relatorio-horario-nao-preenchido.html`). Os dados vêm da RPC
+// `escala_horario_pendente_relatorio`, que aplica os MESMOS cortes desta lib.
+
+const mais = (iso, dias) => {
+  const [a, m, d] = String(iso).split('-').map(Number)
+  const dt = new Date(a, m - 1, d + dias)
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
+}
+
+/**
+ * Monta o relatório a partir do JSON da RPC: por anestesista (quem deixou mais primeiro;
+ * empate → o mais recente), com as cirurgias do mais recente para o mais antigo, e os
+ * três números — o último dia encerrado, os últimos 7 dias e o período inteiro.
+ * `chaveDe`/`nomeDe` como em `agruparPorAnestesista` (a página resolve pelo dicionário).
+ */
+export function montarRelatorioHorario(dados, { chaveDe, nomeDe } = {}) {
+  const desde = dados?.desde || null
+  const ate = dados?.ate || null
+  const vazio = !desde || !ate || ate < desde
+  const itens = vazio ? [] : (dados?.casos || []).map((r) => {
+    const caso = {
+      id: r.id, sala: r.sala, hora: r.hora, procedimento: r.procedimento, turno: r.turno,
+      anestesista: r.anestesista, anestesistaUserId: r.anestesista_user_id || null,
+    }
+    return { caso, data: r.data, hospital: r.hospital, turno: r.turno, falta: r.falta, nomes: anestesistasDoCaso(caso) }
+  })
+  const recente = (a, b) => String(b.data).localeCompare(String(a.data)) || compararItens(a, b)
+  const grupos = agruparPorAnestesista(itens, { chaveDe, nomeDe })
+  for (const g of grupos) {
+    g.itens.sort(recente)
+    g.ultima = g.itens[0]?.data || null
+  }
+  grupos.sort((a, b) => b.itens.length - a.itens.length
+    || String(b.ultima).localeCompare(String(a.ultima))
+    || String(a.nome).localeCompare(String(b.nome), 'pt-BR'))
+  const semana = ate ? mais(ate, -6) : null
+  return {
+    desde, ate, vazio,
+    total: itens.length,
+    ultimoDia: itens.filter((i) => i.data === ate).length,
+    seteDias: itens.filter((i) => semana && i.data >= semana).length,
+    pessoas: grupos,
+  }
+}
+
+const DIAS_SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
+/** "ontem" | "sex 02/10" — `hojeIso` = a data de hoje (calendário). */
+export function rotuloDiaRelatorio(iso, hojeIso) {
+  if (!iso) return ''
+  if (hojeIso && iso === mais(hojeIso, -1)) return 'ontem'
+  const [a, m, d] = String(iso).split('-').map(Number)
+  return `${DIAS_SEMANA[new Date(a, m - 1, d).getDay()]} ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`
+}

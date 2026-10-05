@@ -10,7 +10,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  buscarAdesao, buscarAdesaoPeriodo, buscarAdesaoEvolucao, lerCacheAdesao,
+  buscarAdesao, buscarAdesaoPeriodo, buscarAdesaoEvolucao, buscarHorarioNaoPreenchido, lerCacheAdesao,
 } from '@/services/escalaAdesaoService'
 import { limitesMes } from '@/lib/escalaAdesao'
 
@@ -70,4 +70,27 @@ export function useAdesaoMes(mes, gravadoAte = null, opcoes) {
 /** Evolução semanal + meses disponíveis. */
 export function useAdesaoEvolucao(opcoes) {
   return useConsultaAdesao('evolucao', buscarAdesaoEvolucao, opcoes)
+}
+
+/**
+ * Horário não preenchido no dia (dono 05/10), na janela da ABA da página: '30' e '60' =
+ * últimos N dias encerrados; 'AAAA-MM' = o mês inteiro (a função corta no último dia
+ * encerrado e na tarde de 05/10, quando a contagem começou).
+ */
+export function useHorarioNaoPreenchido(aba, opcoes) {
+  const id = aba ? `horario:${aba}` : null
+  return useConsultaAdesao(id, () => {
+    if (/^\d{4}-\d{2}$/.test(aba)) {
+      const [a, m] = aba.split('-').map(Number)
+      const ultimo = new Date(a, m, 0).getDate()
+      return buscarHorarioNaoPreenchido(id, `${aba}-01`, `${aba}-${String(ultimo).padStart(2, '0')}`)
+    }
+    if (aba === '60') {
+      const d = new Date()
+      d.setDate(d.getDate() - 60)
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      return buscarHorarioNaoPreenchido(id, iso, null)
+    }
+    return buscarHorarioNaoPreenchido(id)
+  }, opcoes)
 }
