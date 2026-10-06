@@ -387,7 +387,9 @@ da Minhas, prop `pendencia` do `CasoCard` — está no comparador do `memo`).
   largura, e num dia cheio ela passava de 1.000px. O Chrome do Android alarga a página até caber o
   vazamento e todo `fixed bottom-0` (detalhe, lista, tempo) abria FORA da tela — escurecia e nada
   subia, em todas as abas; o iPhone ignora. Medir com `innerWidth` no Chromium `isMobile` (≠ 390 =
-  vazou).
+  vazou). Mesma classe, v5.12.47: o gatilho do cabeçalho da sala precisa de `min-w-0` (sem ele o
+  `truncate` do nome nunca age) e todo `-mx-4` que desfaz o padding da página leva `faixa:-mx-3`
+  (a página é `faixa:px-3` no toque deitado).
   Folhas montadas mesmo com zero pendência (preencher a última com o detalhe aberto não fecha o
   detalhe). Selo: Badge `destructive` OUTLINE + `ClockAlert` (sólido já é Suspensa/Emergência).
 - Travas: `src/__tests__/lib/escalaHorarioPendente.test.js`, `src/__tests__/pages/escalaHorarioPendente.test.jsx`.

@@ -192,6 +192,24 @@ describe('Completa — cabeçalho da sala', () => {
     expect(screen.getByRole('button', { name: /Recolher seção/i })).toBeTruthy()
   })
 
+  // VAZAMENTO NO ANDROID (06/10): qualquer coisa que passe da largura da tela faz o
+  // Chrome do Android alargar a página, e as folhas `fixed bottom-0` abrem fora da vista.
+  // O jsdom não mede layout; a trava é a classe que permite caber.
+  it('o cabeçalho encolhe (min-w-0) para o nome truncar em vez de passar da tela', () => {
+    renderBoard([caso({ sala: 'Hemodinâmica', anestesista: 'ALEXANDRE DANIELI' })])
+    // a 360px "Hemodinâmica" + nome + ⚙ + chevron somavam 360,8px: sem min-w-0 o botão
+    // não encolhe abaixo do nome inteiro e o `truncate` nunca age
+    const gatilho = screen.getByText('Hemodinâmica').closest('button')
+    expect(gatilho.className).toMatch(/(^|\s)min-w-0(\s|$)/)
+  })
+
+  it('o quadro acompanha o recuo da página no toque deitado (faixa:-mx-3 com faixa:px-3)', () => {
+    const { container } = renderBoard([caso()])
+    // a página usa `faixa:px-3`: com -mx-4 fixo o quadro passava 4px da tela deitado
+    const quadro = container.querySelector('[class*="deitado:columns-2"]')
+    expect(quadro.className).toMatch(/(^|\s)faixa:-mx-3(\s|$)/)
+  })
+
   it('sala com dois anestesistas diferentes rende um cabeçalho por anestesista', () => {
     renderBoard([
       caso({ id: 'a', sala: 'IOSC', anestesista: 'ROBERTA', cirurgiao: 'RAFAEL' }),

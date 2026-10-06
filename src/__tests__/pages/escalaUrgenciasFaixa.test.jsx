@@ -98,6 +98,15 @@ describe('quando a faixa existe', () => {
     expect(screen.getByRole('button', { name: 'Configurar salas do contrato' })).toBeTruthy()
   })
 
+  it('acompanha o recuo da página no toque deitado — não passa da tela no Android (06/10)', () => {
+    // a página usa `faixa:px-3`; com -mx-4 fixo a faixa passava 4px da tela deitado, e o
+    // Chrome do Android alarga a página até caber — as folhas `fixed bottom-0` saem da vista
+    montar([caso('c1', 'Sala 2', { tipo: 'eletiva' })])
+    const faixa = screen.getByRole('region', { name: 'Urgências do HRO' })
+    expect(faixa.className).toMatch(/(^|\s)faixa:-mx-3(\s|$)/)
+    expect(faixa.className).toMatch(/(^|\s)faixa:px-3(\s|$)/)
+  })
+
   it('sem caso NENHUM no dia, a faixa some', () => {
     montar([])
     expect(screen.queryByText('Urgências')).toBeNull()

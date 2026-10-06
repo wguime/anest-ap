@@ -201,7 +201,9 @@ export default function FaixaUrgencias({ escala, hospital, turno }) {
       <section
         aria-label="Urgências do HRO"
         className={[
-          '-mx-4 border-y px-4 pb-2 pt-1.5 bg-muted/40',
+          // `faixa:` acompanha o `faixa:px-3` da página (06/10): com -mx-4 fixo a faixa
+          // passava 4px da tela no Android deitado — vazamento que alarga a página
+          '-mx-4 border-y px-4 pb-2 pt-1.5 bg-muted/40 faixa:-mx-3 faixa:px-3',
           acima ? 'border-destructive/40' : 'border-border',
         ].join(' ')}
       >

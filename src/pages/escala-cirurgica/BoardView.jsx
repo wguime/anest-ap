@@ -498,9 +498,11 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate,
           linha do caso usa ~360px dos 736 disponíveis e a outra metade ficava
           vazia. Multi-coluna porque a sala é um bloco inteiro que não pode ser
           partido (`break-inside-avoid`) e a leitura continua sendo de cima para
-          baixo, coluna a coluna. */}
+          baixo, coluna a coluna.
+          `faixa:-mx-3` (06/10): a página recua 12px no toque deitado (`faixa:px-3`);
+          com -mx-4 fixo o quadro passava 4px da tela e, no Android, alargava a página. */}
       {!quadroVazio && (
-      <Accordion type="multiple" value={abertasAtual} onValueChange={setAbertas} className="-mx-4 divide-y-0 deitado:columns-2 deitado:gap-4 deitado:[column-rule:1px_solid_hsl(var(--border-strong))] [&>*]:deitado:break-inside-avoid">
+      <Accordion type="multiple" value={abertasAtual} onValueChange={setAbertas} className="-mx-4 faixa:-mx-3 divide-y-0 deitado:columns-2 deitado:gap-4 deitado:[column-rule:1px_solid_hsl(var(--border-strong))] [&>*]:deitado:break-inside-avoid">
         {gruposExibicao.map((g) => {
           const nomeGrupo = g.anestesista ? displayGrupo(g) : (g.split ? '?' : '')
           const nCasos = g.casos.filter((c) => !casoVazio(c)).length
@@ -514,8 +516,12 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate,
                    DS pinta `dark:group-data-[state=open]:bg-card` e só a variante
                    clara estava neutralizada — no escuro o botão ficava `bg-card` e
                    o resto do cabeçalho `bg-card-elevated`, partindo a faixa em duas
-                   cores na vertical, bem no meio do nome e do ⚙ */
-                className="relative px-3 py-2 group-data-[state=open]:bg-transparent dark:group-data-[state=open]:bg-transparent after:absolute after:inset-x-0 after:-inset-y-[3px] after:content-['']"
+                   cores na vertical, bem no meio do nome e do ⚙.
+                   `min-w-0` (06/10): sem ele o botão não encolhe abaixo do nome
+                   inteiro, o `truncate` nunca age e, a 360px, "Hemodinâmica" +
+                   "Alexandre Danieli" + ⚙ + chevron passavam da tela — vazamento
+                   que, no Android, alarga a página e tira as folhas da vista */
+                className="relative min-w-0 px-3 py-2 group-data-[state=open]:bg-transparent dark:group-data-[state=open]:bg-transparent after:absolute after:inset-x-0 after:-inset-y-[3px] after:content-['']"
                 headerClassName="sticky top-14 z-10 deitado:static border-y border-border bg-card-elevated"
                 iconAfterActions
                 iconClassName="group-data-[state=open]:bg-transparent dark:group-data-[state=open]:bg-transparent"
@@ -570,7 +576,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate,
         {herdadasVisiveis.length > 0 && (
           <AccordionItem value={CHAVE_HERDADAS} className="border-0">
             <AccordionTrigger
-              className="relative px-3 py-2 group-data-[state=open]:bg-transparent dark:group-data-[state=open]:bg-transparent after:absolute after:inset-x-0 after:-inset-y-[3px] after:content-['']"
+              className="relative min-w-0 px-3 py-2 group-data-[state=open]:bg-transparent dark:group-data-[state=open]:bg-transparent after:absolute after:inset-x-0 after:-inset-y-[3px] after:content-['']"
               headerClassName="sticky top-14 z-10 deitado:static border-y border-border bg-card-elevated"
               iconAfterActions
               iconClassName="group-data-[state=open]:bg-transparent dark:group-data-[state=open]:bg-transparent"

@@ -3,6 +3,24 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.47 (06/10/2026) — Escala: mais dois vazamentos de largura no Android (tela estreita e deitado)
+
+Revisão depois da v5.12.46, atrás do MESMO mecanismo em outros usuários: tudo que passa da largura da tela faz
+o Chrome do Android alargar a página e tira da vista as folhas `fixed bottom-0`. Varredura no motor do Chrome:
+136 páginas a 360px e a escala inteira (3 hospitais × 3 abas) a 320, 360 e 390px e deitada (780×360).
+- Cabeçalho da sala na Completa: o botão não encolhia abaixo do nome inteiro, então o `truncate` nunca agia.
+  A 360px, "Hemodinâmica" + "Alexandre Danieli" + ⚙ + chevron somavam 360,8px — com nome mais longo, mais.
+  `min-w-0` no gatilho: o nome encurta com "…".
+- Celular deitado (toque): a página recua 12px (`faixa:px-3`), mas o quadro e a faixa de Urgências puxavam
+  16px (`-mx-4`) e passavam 4px da tela; em produção o HRO deitado media 798px numa tela de 780 (o "Importar"
+  saía cortado). `faixa:-mx-3` nos dois.
+- Depois: escala com a largura exata nos quatro tamanhos e as folhas (card, lista do horário pendente, fila)
+  abrindo na tela.
+- Travas: `escalaCompletaQuadroDenso.test.jsx` (2) e `escalaUrgenciasFaixa.test.jsx` (1), vermelhas sem a
+  correção.
+- Fora do escopo, registrado: a 320px (não a 360) vazam também Relatório de adesão, Cirurgias particulares,
+  Auditorias interativas e Personalizar atalhos.
+
 ## v5.12.46 (06/10/2026) — Escala: no Android, tocar na cirurgia escurecia a tela e nenhum painel subia
 
 Relato de um usuário no Android (06/10): ao tocar nos cards das cirurgias "nada acontece" — a tela
