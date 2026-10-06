@@ -3,6 +3,17 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.45 (06/10/2026) — Escala: a ajuda que chega depois não fica abaixo de quem já foi liberado
+
+Foto do dono (06/10, Unimed 10:03): Adriano "Liberado" (saiu às 09:46, era o próximo) e, logo abaixo,
+Eduardo "Ajuda (HRO)" amarelo, acrescentado às 09:49 com o Tórax do Rovani — "como isso foi possível
+novamente?".
+- Ajuda/extra fecha a lista e liberado não afunda: quem chega depois caía embaixo de quem já saiu. Agora
+  o liberado que só tem ajuda/extra na fila entre ele e o próximo desce para logo abaixo do próximo,
+  com o número da posição publicada (o mesmo padrão do turno próprio, 21/09).
+- Com alguém do rodapé ainda em sala abaixo, o liberado segue na posição dele (11/08). Fila única intacta.
+- Travas: `escalaCirurgicaPersonas.test.jsx`, recorte de 06/10.
+
 ## v5.12.44 (05/10/2026) — Escala: aba Minhas mostra o horário pendente de quem está logado
 
 Pedido do dono (05/10): "na aba minhas deve aparecer o detalhamento do anestesista de acordo com o

@@ -2001,6 +2001,68 @@ describe('Liberações — recorte de 21/09: ninguém da ordem nasce liberado ac
   })
 })
 
+// Recorte real da Unimed, 06/10 10:03: Cury (plantão da tarde) liberado 09:41, Adriano liberado
+// 09:46 — era o próximo —, e às 09:49 o Tórax do Rovani entrou para o EDUARDO (HRO). A lista
+// punha o Eduardo, amarelo, logo ABAIXO do Adriano vermelho: "como isso foi possível novamente?"
+describe('Liberações — recorte de 06/10: a ajuda que chega depois sobe acima de quem já foi liberado', () => {
+  const mat = (o) => ({ ordem: 0, turno: 'matutino', hora: '07:30', ...o })
+  const escala = {
+    id: 'e1', hospital: 'unimed', linhaOverrides: {},
+    ordemLiberacao: { matutino: ['LEANDRO', 'PAULO', 'ROMULO', 'ADRIANO', 'CURY'] },
+    liberacoes: { 'matutino:CURY': { liberadoEm: 'x' }, 'matutino:ADRIANO': { liberadoEm: 'x' } },
+    casos: [
+      mat({ id: 'c1', sala: 'Exames', anestesista: 'LEANDRO', cirurgiao: 'Mauricio', procedimento: '01 ESD' }),
+      mat({ id: 'c2', sala: 'Exames', hora: '08:00', anestesista: 'PAULO', cirurgiao: 'Waldir', procedimento: '05 EDA' }),
+      mat({ id: 'c3', sala: 'Umanitá', hora: '08:00', anestesista: 'ROMULO', cirurgiao: 'Rafael', procedimento: '02 FACO' }),
+      mat({ id: 'c4', sala: 'CO - Sala 1', hora: '', anestesista: 'ADRIANO', cirurgiao: 'cenci', procedimento: 'extração' }),
+      mat({ id: 'c5', sala: 'CC - Sala 1', hora: '11:00', anestesista: 'EDUARDO', cirurgiao: 'Rovani', procedimento: 'Tórax', origem: 'manual' }),
+    ],
+  }
+  const montar = (props = {}) => render(
+    <LiberacoesView escala={escala} hospital="unimed" hospitalLabel="Unimed" turno="matutino" canEdit
+      presencaOutros={[{ nome: 'EDUARDO', hospitalLabel: 'HRO', rodapeIdx: 16 }]}
+      onToggle={() => {}} {...props} />,
+    { wrapper: wrap },
+  )
+  const chaves = () => Array.from(document.querySelectorAll('[data-linha]')).map((e) => e.getAttribute('data-linha'))
+  const proximo = () => screen.getByText('Próximo a ser liberado').closest('[data-linha]').getAttribute('data-linha')
+
+  it('o Eduardo fica acima do Adriano: nenhum liberado acima de quem ainda está na fila', () => {
+    montar()
+    expect(chaves()).toEqual(['LEANDRO', 'PAULO', 'ROMULO', 'EDUARDO', 'ADRIANO', 'CURY'])
+    expect(proximo()).toBe('EDUARDO')
+  })
+
+  it('o Adriano desce mantendo o número da posição publicada (padrão de 21/09)', () => {
+    montar()
+    const card = (k) => document.querySelector(`[data-linha="${k}"]`)
+    expect(within(card('ADRIANO')).getByText('4')).toBeTruthy()
+    expect(within(card('ADRIANO')).getByText('Liberado')).toBeTruthy()
+    expect(within(card('EDUARDO')).getByText('5')).toBeTruthy()
+  })
+
+  it('a ordem do rodapé não muda: Rômulo segue acima do Adriano e o plantão da tarde fecha a lista', () => {
+    montar()
+    const c = chaves()
+    expect(c.indexOf('ROMULO')).toBeLessThan(c.indexOf('ADRIANO'))
+    expect(c[c.length - 1]).toBe('CURY')
+  })
+
+  it('liberar o Rômulo antes do Eduardo segue recusado', async () => {
+    const onToggle = vi.fn()
+    montar({ onToggle })
+    fireEvent.click(screen.getByLabelText(/Marcar R[oô]mulo liberado/))
+    expect(onToggle).not.toHaveBeenCalled()
+    expect(await screen.findByText('Libere Eduardo primeiro')).toBeTruthy()
+  })
+
+  it('sem liberação no toque nada se move: a ajuda continua fechando a lista antes do plantão', () => {
+    render(<LiberacoesView escala={{ ...escala, liberacoes: {} }} hospital="unimed" hospitalLabel="Unimed" turno="matutino" canEdit
+      presencaOutros={[{ nome: 'EDUARDO', hospitalLabel: 'HRO', rodapeIdx: 16 }]} onToggle={() => {}} />, { wrapper: wrap })
+    expect(chaves()).toEqual(['LEANDRO', 'PAULO', 'ROMULO', 'ADRIANO', 'EDUARDO', 'CURY'])
+  })
+})
+
 // ════════════════════════════════════════════════════════════════════════════
 // A CIRURGIA QUE ATRAVESSA O TURNO NÃO CRIA LINHA NA FILA (dono 24/08)
 // ════════════════════════════════════════════════════════════════════════════

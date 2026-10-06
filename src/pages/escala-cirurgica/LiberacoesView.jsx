@@ -2074,8 +2074,28 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // a exibição, não a ordem — afundar renumerando foi lido como "rodapé
           // publicado errado" em 11/08. Quem já está abaixo do "próximo" saiu na vez e
           // não se mexe; toda a lógica de fila acima continua sobre `linhasExibicao`.
+          //
+          // E A AJUDA QUE CHEGA DEPOIS (dono 06/10, Unimed 10:03): o Adriano saiu às 09:46
+          // na vez dele — era o próximo —, e às 09:49 o Tórax do Rovani entrou para o
+          // Eduardo, do HRO. Ajuda/extra fecha a lista (19/08), então o Eduardo nasceu
+          // ABAIXO do Adriano e o amarelo ficou embaixo de um vermelho ("como isso foi
+          // possível novamente?"). No dia útil desce também, sem hora de saída, o liberado
+          // que só tem gente de FORA do rodapé (ajuda/extra) na fila entre ele e o próximo.
+          // Com alguém do RODAPÉ ainda em sala abaixo dele, fica onde está (11/08 intacto).
+          // Fila única e card noturno ficam como estão.
           const indices = linhasExibicao.map((_, i) => i)
-          const desceu = (i) => i < idxProximo && !!horaSaidaDe(linhasExibicao[i]) && jaLiberada(linhasExibicao[i])
+          const deFora = (l) => (l.isExtra || l.isAjuda) && !l.ajudaFora
+          const soAjudaAbaixo = (i) => {
+            for (let k = i + 1; k <= idxProximo; k++) {
+              if (naFila(linhasExibicao[k], k) && !deFora(linhasExibicao[k])) return false
+            }
+            return true
+          }
+          const desceu = (i) => {
+            const l = linhasExibicao[i]
+            return i < idxProximo && jaLiberada(l)
+              && (!!horaSaidaDe(l) || (!modoFds && !l.noturno && soAjudaAbaixo(i)))
+          }
           const descidas = idxProximo > 0 ? indices.filter(desceu) : []
           const ordemRender = descidas.length
             ? [...indices.filter((i) => i <= idxProximo && !desceu(i)), ...descidas, ...indices.filter((i) => i > idxProximo)]

@@ -832,6 +832,25 @@ prometia "nasce LIBERADO" a quem a fila deixava "Livre". Agora monta a lista com
 e aplica a mesma fronteira desta view; quem fica segurado por ajuda abaixo gera o aviso
 `livre acima de ajuda` e sai da cauda. Mexeu em `caudaLiberada` aqui → espelhar lá.
 
+## A ajuda que chega depois — o liberado desce para baixo do próximo (dono 06/10/2026)
+
+Foto da Unimed, 10:03: **Adriano (14º) "Liberado" e, logo abaixo, Eduardo (15º, "Ajuda (HRO)") amarelo
+"Próximo a ser liberado"**, Cury (16º, plantão da tarde) vermelho. *"como isso foi possível novamente? já
+foi corrigido inúmeras vezes"*. Linha do tempo no banco: Cury liberado 09:41, Adriano 09:46 — era o
+próximo, saiu na vez —, e às 09:49 o caso manual "Tórax / Rovani / 11:00" entrou para o Eduardo. Ajuda e
+extra fecham a lista (19/08) e liberado não afunda (11/08): somadas, quem chega depois cai embaixo de
+quem já foi embora — o vermelho acima do amarelo de 18/09 e 21/09 por um terceiro caminho (nenhum dos
+dois fixes cobria liberação NO TOQUE anterior à chegada).
+
+Correção em `ordemRender` (render, não `linhasExibicao`): além de quem tem hora de saída (21/09), desce
+para logo abaixo do próximo, mantendo o número da posição publicada, o liberado do dia útil que só tem
+gente de FORA do rodapé (`isExtra`/`isAjuda`, não `ajudaFora`) na fila entre ele e o próximo. Com alguém
+do rodapé ainda em sala abaixo dele, fica onde está — `liberacoesTrocaDeclarada.test.jsx` "quem já foi
+liberado mantém a própria posição" (11/08) segue valendo. ⚠️ A 1ª tentativa subia a ajuda acima dos
+liberados em `linhasExibicao`: renumerava os cards (o "2" do turno próprio virava "4") e quebrava 11/08.
+Fila, bloqueio e convocação continuam sobre `linhasExibicao`. Travas: `escalaCirurgicaPersonas.test.jsx`,
+describe "recorte de 06/10" (5 testes; o da ordem falha contra o código anterior).
+
 ### Card da fila — coluna à direita, selos e tempo estourado (dono 21–24/08)
 
 <!-- Movido de escala-urgencias.md: os paths de lá não carregam com LiberacoesView/PainelTempo. -->
