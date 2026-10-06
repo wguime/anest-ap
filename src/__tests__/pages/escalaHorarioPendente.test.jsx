@@ -87,6 +87,23 @@ describe('a faixa: quando aparece', () => {
     expect(within(f).getAllByText('Ana Ribeiro')[0].closest('[aria-hidden]')).toBeNull()
   })
 
+  it('a fileira de MEDIDA não vaza da tela (06/10, Android: folhas abriam fora da tela)', () => {
+    // Com os nomes de um dia cheio a fileira invisível passava de 1.000px; o Chrome do
+    // Android alarga a página até caber o vazamento e todo `fixed bottom-0` (as folhas
+    // do detalhe, da lista, do tempo) ia parar abaixo da tela — escurecia e nada subia.
+    // O jsdom não mede layout: a trava é o CORTE no pai posicionado, que é o que
+    // impede a fileira absoluta de contar na largura da página.
+    agoraEm('13:05')
+    contexto({ unimed: escala([caso()]) })
+    montar()
+    const medida = within(faixa()).getAllByText('Ana Ribeiro')
+      .map((el) => el.closest('[aria-hidden="true"]')).find(Boolean)
+    expect(medida.className).toMatch(/\babsolute\b/)
+    const moldura = medida.parentElement
+    expect(moldura.className).toMatch(/\brelative\b/)
+    expect(moldura.className).toMatch(/\boverflow-hidden\b/)
+  })
+
   it('antes das 13h, sem liberação e com o início informado, não há faixa', () => {
     agoraEm('12:55')
     contexto({ unimed: escala([caso({ statusCirurgia: 'iniciada', inicioReal: '07:40', terminoReal: null })]) })

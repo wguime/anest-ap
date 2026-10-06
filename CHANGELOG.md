@@ -3,6 +3,22 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.46 (06/10/2026) — Escala: no Android, tocar na cirurgia escurecia a tela e nenhum painel subia
+
+Relato de um usuário no Android (06/10): ao tocar nos cards das cirurgias "nada acontece" — a tela
+escurece e as opções não aparecem, nas abas Completa, Minhas, Liberações e na lista do horário pendente.
+No iPhone funcionava.
+- Causa: a fileira INVISÍVEL que a faixa "Horário pendente" (v5.12.41) usa para medir quantos nomes
+  cabem tinha, num dia cheio, mais de 1.000px e vazava pela direita. O Chrome do Android alarga a página
+  até caber o vazamento (medido: 1073×2323 numa tela de 390×844), e tudo que é `fixed` passou a se
+  ancorar nessa página esticada — o fundo escuro cobria a tela, mas o painel, preso à base, abria em
+  y=2323, fora da vista. O título do cabeçalho e a barra inferior também saíam da tela. O iPhone ignora
+  o vazamento.
+- Correção: a moldura da fileira de medida corta o que passa da largura. Nada muda no desenho nem na
+  medida. Conferido no app local com o motor do Chrome: página de volta a 390px nas três abas e os
+  76 cards do dia abrindo o painel na tela.
+- Trava: `escalaHorarioPendente.test.jsx` ("a fileira de MEDIDA não vaza da tela").
+
 ## v5.12.45 (06/10/2026) — Escala: a ajuda que chega depois não fica abaixo de quem já foi liberado
 
 Foto do dono (06/10, Unimed 10:03): Adriano "Liberado" (saiu às 09:46, era o próximo) e, logo abaixo,

@@ -62,8 +62,14 @@ function NomesNaFaixa({ grupos }) {
     return () => ro.disconnect()
   }, [grupos])
   const resto = grupos.length - cabem
+  // `overflow-hidden` AQUI é o que segura a fileira de medida (dono 06/10, relato de
+  // um Android): com todos os nomes de um dia cheio ela passava de 1.000px e vazava da
+  // tela; o Chrome do Android alarga a página até caber o vazamento, e as folhas
+  // `fixed bottom-0` passavam a abrir FORA da tela — escurecia e nenhum painel subia,
+  // em todas as abas. O iPhone ignora o vazamento. Cortar não muda a medida
+  // (`offsetWidth` de cada pílula) nem o desenho (a fileira visível já corta).
   return (
-    <span className="relative mt-[7px] block">
+    <span className="relative mt-[7px] block overflow-hidden">
       <span ref={trilhoRef} className="flex gap-1.5 overflow-hidden">
         {grupos.slice(0, cabem).map((g) => <Pilula key={g.chave} nome={g.nome} n={g.itens.length} />)}
         {resto > 0 && (
@@ -72,7 +78,8 @@ function NomesNaFaixa({ grupos }) {
           </span>
         )}
       </span>
-      {/* fileira de MEDIDA: as mesmas pílulas, fora do fluxo e invisíveis */}
+      {/* fileira de MEDIDA: as mesmas pílulas, fora do fluxo, invisíveis e cortadas
+          pelo pai (ver acima) — invisível ainda ocupa largura */}
       <span ref={medidaRef} aria-hidden="true" className="pointer-events-none invisible absolute left-0 top-0 flex gap-1.5 whitespace-nowrap">
         {grupos.map((g) => <Pilula key={g.chave} nome={g.nome} n={g.itens.length} />)}
         <span className="inline-flex h-[26px] items-center rounded-full border px-[9px] text-[12.5px] font-semibold">+{grupos.length}</span>

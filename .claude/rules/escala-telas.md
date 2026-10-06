@@ -383,6 +383,11 @@ da Minhas, prop `pendencia` do `CasoCard` — está no comparador do `memo`).
   NÃO mudou (decisão de 05/10).
 - Faixa: vermelho-claro `destructive/[0.07]` (escuro /16), texto `category-red-fg`; nomes em pílulas
   numa linha só, as que couberem + "+N" (medidas numa fileira invisível, `quantasPilulasCabem`).
+  ⚠️ **A moldura da fileira de medida é `overflow-hidden` (06/10, v5.12.46)**: invisível ainda ocupa
+  largura, e num dia cheio ela passava de 1.000px. O Chrome do Android alarga a página até caber o
+  vazamento e todo `fixed bottom-0` (detalhe, lista, tempo) abria FORA da tela — escurecia e nada
+  subia, em todas as abas; o iPhone ignora. Medir com `innerWidth` no Chromium `isMobile` (≠ 390 =
+  vazou).
   Folhas montadas mesmo com zero pendência (preencher a última com o detalhe aberto não fecha o
   detalhe). Selo: Badge `destructive` OUTLINE + `ClockAlert` (sólido já é Suspensa/Emergência).
 - Travas: `src/__tests__/lib/escalaHorarioPendente.test.js`, `src/__tests__/pages/escalaHorarioPendente.test.jsx`.
