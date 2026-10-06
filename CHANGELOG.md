@@ -3,6 +3,24 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.48 (06/10/2026) — Quatro páginas que ainda passavam da tela no Android
+
+Fecha a revisão das v5.12.46/47 (folhas abrindo fora da tela no Android quando a página vaza na horizontal).
+Medido no motor do Chrome com o elemento que passava da tela em cada uma:
+- **Relatório de adesão** (vazava também a 360px, não só a 320): a tabela por cargo usava `1fr` na coluna do
+  nome, que não encolhia abaixo de "ANESTESIOLOGISTAS" e empurrava as cinco colunas de 40px para fora
+  (378px numa tela de 360). Agora `minmax(0,1fr)`, o rótulo do cargo trunca (o cargo já está no chip acima)
+  e a etiqueta de situação quebra dentro da própria coluna em vez de invadir a vizinha.
+- **Cirurgias particulares**: as datas "De"/"Até" lado a lado não cabiam a 320px; agora empilham quando não
+  cabem (a partir de 360px seguem lado a lado).
+- **Auditorias interativas**: o status ("Em Andamento") desce de linha em vez de passar da tela.
+- **Personalizar atalhos**: "Restaurar Padrão" e "Salvar Alterações" empilham quando não cabem.
+- Depois: varredura do app inteiro (136 páginas) a 320 e a 360px sem nenhuma página vazando; as quatro
+  conferidas também a 340, 375 e 390px; prints nos dois temas. Sem teste de unidade (o jsdom não mede
+  layout e o portão do CI cobre só a escala cirúrgica); a trava é a varredura.
+- Aba Minhas com cirurgias próprias conferida (cards, caixa "Você tem N cirurgias sem horário" e a cirurgia
+  aberta por ela, a 320, 360 e deitado), com cirurgias atribuídas ao usuário de teste só no navegador.
+
 ## v5.12.47 (06/10/2026) — Escala: mais dois vazamentos de largura no Android (tela estreita e deitado)
 
 Revisão depois da v5.12.46, atrás do MESMO mecanismo em outros usuários: tudo que passa da largura da tela faz

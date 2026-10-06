@@ -62,7 +62,9 @@ const HOSPITAIS = [
 function Tag({ situacao }) {
   const s = SITUACOES[situacao]
   return (
-    <span className={`inline-block rounded-full px-1.5 py-px text-[10.5px] font-semibold ${TOM[s.tom]}`}>
+    // `max-w-full` + quebra em qualquer ponto (06/10): a 320px a coluna do nome tem ~52px e
+    // "início/término" invadia a coluna do número ao lado; a 360px nada muda
+    <span className={`inline-block max-w-full rounded-full px-1.5 py-px text-[10.5px] font-semibold [overflow-wrap:anywhere] ${TOM[s.tom]}`}>
       {s.label}
     </span>
   )
@@ -188,8 +190,11 @@ function CabecalhoCargo({ cargo, total }) {
   const anest = cargo === 'anest'
   const cols = anest ? ['Uso', 'Início', 'Término', 'Tempo cir.', 'Tempo total'] : ['Uso', 'Inícios', 'Términos', 'Tempo cir.', 'Tempo total']
   return (
-    <div className="sticky top-14 deitado:top-11 z-10 grid grid-cols-[1fr_repeat(5,40px)] items-end gap-1 rounded-t-xl border-b border-border bg-muted px-2 py-1.5 text-center text-[10px] font-semibold leading-tight text-muted-foreground">
-      <span className="text-left text-[12px] font-extrabold uppercase tracking-wide text-primary">
+    // `minmax(0,1fr)` (06/10): com `1fr` puro a 1ª coluna não encolhia abaixo de
+    // "ANESTESIOLOGISTAS" e empurrava as cinco de 40px para fora da tela a 360px — no
+    // Android isso alarga a página e tira as folhas da vista. O cargo já está no chip acima.
+    <div className="sticky top-14 deitado:top-11 z-10 grid grid-cols-[minmax(0,1fr)_repeat(5,40px)] items-end gap-1 rounded-t-xl border-b border-border bg-muted px-2 py-1.5 text-center text-[10px] font-semibold leading-tight text-muted-foreground">
+      <span className="min-w-0 truncate text-left text-[12px] font-extrabold uppercase tracking-wide text-primary" title={`${CARGOS[cargo]} · ${total}`}>
         {CARGOS[cargo]} · {total}
       </span>
       {cols.map((c, i) => <span key={i}>{c}</span>)}
@@ -204,7 +209,7 @@ function LinhaPessoa({ p, vista, onAbrir }) {
     <button
       type="button"
       onClick={() => onAbrir(p)}
-      className="grid min-h-[48px] w-full grid-cols-[1fr_repeat(5,40px)] items-center gap-1 border-b border-border bg-card px-2 py-1.5 text-left last:border-b-0 active:bg-muted"
+      className="grid min-h-[48px] w-full grid-cols-[minmax(0,1fr)_repeat(5,40px)] items-center gap-1 border-b border-border bg-card px-2 py-1.5 text-left last:border-b-0 active:bg-muted"
     >
       <span className="min-w-0">
         <span className="block truncate text-[13px] font-semibold leading-tight">{p.nomeCurto}</span>

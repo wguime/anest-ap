@@ -265,8 +265,9 @@ export default function PersonalizarAtalhosPage({ onNavigate }) {
           </div>
         )}
 
-        {/* Botões de ação */}
-        <div className="flex gap-3 mt-6">
+        {/* Botões de ação — `flex-wrap` (06/10): a 320px os dois não cabem lado a lado e
+            passavam da tela; empilham, cada um com a largura inteira. */}
+        <div className="flex flex-wrap gap-3 mt-6">
           <Button
             variant="outline"
             className="flex-1"

@@ -61,8 +61,9 @@ const AuditCard = memo(function AuditCard({ execucao, onClick }) {
         <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
       </div>
 
-      {/* Zona 2: Badges — tipo à esquerda, status à direita */}
-      <div className="flex items-center justify-between gap-2 mt-2 ml-[52px]">
+      {/* Zona 2: Badges — tipo à esquerda, status à direita. `flex-wrap` (06/10): a 320px
+          tipo + status passavam da tela; o status desce de linha, ainda à direita. */}
+      <div className="flex flex-wrap items-center justify-between gap-2 mt-2 ml-[52px]">
         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-primary/10 text-primary shrink-0">
           {tipoConfig.label}
         </span>

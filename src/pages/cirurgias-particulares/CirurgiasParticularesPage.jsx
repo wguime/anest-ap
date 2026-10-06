@@ -339,8 +339,11 @@ export default function CirurgiasParticularesPage({ onNavigate, goBack }) {
           Nova cirurgia particular
         </Button>
 
-        {/* Período do relatório — bounds inclusivos, min/max cruzados */}
-        <div className="grid grid-cols-2 gap-3 mb-3">
+        {/* Período do relatório — bounds inclusivos, min/max cruzados.
+            Colunas FLUIDAS (06/10): o botão do DatePicker não encolhe abaixo de ~158px e,
+            a 320px, as duas datas lado a lado passavam da tela; agora empilham quando não
+            cabem (a partir de 360px seguem lado a lado). */}
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(158px,1fr))] gap-3 mb-3">
           <DatePicker
             label="De"
             placeholder="Início"
