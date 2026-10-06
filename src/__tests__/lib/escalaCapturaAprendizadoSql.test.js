@@ -87,7 +87,9 @@ describe('alocacao — o caso como foi gravado', () => {
     expect(nomes).not.toContain('paciente_iniciais')
     expect(nomes).not.toContain('idade')
     expect(JSON.stringify(a)).not.toContain('X.Y.')
-    expect(JSON.stringify(a)).not.toContain('40a')
+    // a idade como PALAVRA solta: `toContain('40a')` falhava ~2% das vezes porque os ids são
+    // UUID aleatórios ("4662a8d1-340a-…", CI de 06/10) — dentro de um id nunca há fronteira
+    expect(JSON.stringify(a)).not.toMatch(/\b40a\b/)
   })
 
   it('marca o que a PUBLICAÇÃO gravou (GUC anest.publicacao), separado do caso manual', async () => {
