@@ -79,3 +79,8 @@ documentos/
 
 # lotes da publicação pela foto: iniciais e nome de paciente particular (LGPD)
 .tmp/escala-lote/
+
+# backup local da config do Claude/MCP de 06/08 (pode conter tokens) — nunca no GitHub
+.backup-mcp/
+# cache do Python dos scripts das skills
+__pycache__/

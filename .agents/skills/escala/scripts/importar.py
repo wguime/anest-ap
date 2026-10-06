@@ -9,14 +9,15 @@ Não escreve nos arquivos — só extrai e valida. Quem aplica os Edit sou eu
 
 Uso:
   python3 importar.py "<docx preenchido>"              # só lê e valida
-  python3 importar.py "<docx preenchido>" --arquivar    # + arquiva na pasta canônica
-                                                        #   (só se ISSUES == 0)
+  python3 importar.py "<docx preenchido>" --arquivar    # + arquiva como "recebida" na pasta
+                                                        #   do mês (só se ISSUES == 0) — pasta.py
 """
-import sys, re, os, shutil
+import sys, re, os
 from docx import Document
+sys.dont_write_bytecode = True  # sem __pycache__ dentro da skill
+from pasta import arquivar_recebida
 
 NA = '—'
-OUT_DIR = "/Users/guilherme/Documents/IA/Escalas funcinárias"
 VALID = {'MARTA': 'marta', 'RENATA': 'renata', 'LUCIANA': 'luciana',
          'ELISETE': 'elisete', 'SAIONARA': 'saionara', 'MARI': 'mari'}
 
@@ -127,11 +128,8 @@ def main():
         tail = f"  [{e['label']}]" if e['label'] else ""
         print(f"  {fmt(k)}  " + " · ".join(partes) + tail)
 
-    # mês dominante (deriva o nome canônico do arquivo na pasta de escalas)
+    # mês dominante (decide a pasta do mês onde o original é arquivado)
     meses = sorted({k[:7] for k in sobre} | {k[:7] for k in hosp})
-    canonico = None
-    if len(meses) == 1:
-        canonico = os.path.join(OUT_DIR, f"Escala {meses[0]}.docx")
 
     print(f"\n=== RESUMO ===")
     print(f"  sobreaviso: {len(sobre)} dias")
@@ -139,21 +137,16 @@ def main():
     print(f"  ISSUES: {len(issues)}")
     for i in issues:
         print(f"    - {i}")
-    if canonico:
-        print(f"  ARQUIVO_CANONICO: {canonico}")
 
-    # arquiva o preenchido na pasta canônica (só com escala de mês único e zero issues)
+    # arquiva o original na pasta do mês (só com escala de mês único e zero issues)
     if arquivar:
         if issues:
             print("  ARQUIVAR: pulado (há ISSUES — resolva antes)")
-        elif not canonico:
+        elif len(meses) != 1:
             print(f"  ARQUIVAR: pulado (escala abrange {len(meses)} meses, esperado 1)")
-        elif os.path.abspath(src) == os.path.abspath(canonico):
-            print("  ARQUIVAR: arquivo já está na pasta canônica (nada a copiar)")
         else:
-            os.makedirs(OUT_DIR, exist_ok=True)
-            shutil.copy2(src, canonico)
-            print(f"  ARQUIVAR: salvo em {canonico}")
+            destino, copiou = arquivar_recebida(src, meses[0])
+            print(f"  ARQUIVAR: {'salvo em' if copiou else 'já estava em'} {destino}")
 
     # exit code != 0 se houver problema, pra eu não aplicar cego
     sys.exit(1 if issues else 0)

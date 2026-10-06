@@ -1,97 +1,84 @@
 ---
 name: escala
-description: Gera o template docx do mês da escala das funcionárias (sobreaviso materno + hospitais HRO/UNIMED/Plantão Pago) e, só como fallback do import in-app (Hub Escalas Funcionárias → Importar), importa o docx preenchido para src/data/sobreavisoMaterno2026.js e src/data/hospitaisTecnicas2026.js.
+description: Publica no app a escala mensal das FUNCIONÁRIAS da enfermagem (sobreaviso materno + hospitais HRO/UNIMED/Plantão Pago) a partir do docx que o dono envia, mantém organizada a pasta Documents/IA/Escalas funcinárias e gera o modelo único de preenchimento. Use quando o dono mandar o docx e pedir "publique a escala das funcionárias", quando pedir o modelo/template da escala, ou ao mexer na pasta das escalas. Não é a escala cirúrgica (essa é a skill publicar-escala).
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 user-invocable: true
-disable-model-invocation: true
 ---
 
-# Escala Mensal Unificada — Sobreaviso Materno + Hospitais
+# Escala Mensal das Funcionárias — Sobreaviso Materno + Hospitais
 
-Repo canônico: `/Users/guilherme/dev/anest`. Um docx por mês cobre **as duas escalas**; a mesma pessoa preenche.
+Um docx por mês cobre **as duas escalas**. O app lê o Firestore `escalasFuncionarias/{YYYY-MM}`
+(sem deploy: todos veem na hora). Mês publicado substitui o mês inteiro da base estática; abr→ago/2026
+seguem congelados nos data files como fallback.
 
-> **⚠️ O import é IN-APP (desde 31/07/2026):** o caminho oficial para importar o docx preenchido
-> é **Hub Escalas Funcionárias → ícone Importar (header)** — parseia no browser
-> (`src/lib/escalaFuncionariasDocx.js`), mostra a conferência e publica em
-> `escalasFuncionarias/{YYYY-MM}` no Firestore, **sem deploy** (todos veem na hora; write
-> gated por `hasEscalasEditPermission`). O modo B abaixo (importar.py + editar data files +
-> deploy) é **LEGADO/fallback** — use só se o app estiver indisponível. O modo A (gerar
-> template) continua sendo desta skill. Meses até ago/2026 seguem nos data files estáticos
-> (fallback histórico); mês publicado no Firestore substitui o mês inteiro do estático.
+## Quando o dono envia a escala
 
-**Pasta dos modelos (padrão):** `/Users/guilherme/Documents/IA/Escalas funcinárias/` (nome com o typo "funcinárias" — manter). É onde os docx vazios ficam pra preencher e de onde o usuário anexa os preenchidos. O gerador salva lá quando chamado sem caminho de saída.
+1. **Achar todos os anexos do envio.** O WhatsApp copia o mesmo arquivo em várias pastas UUID e às
+   vezes manda dois docx: `find ~/Library/Containers/net.whatsapp.WhatsApp/Data/tmp/documents -name '*.docx' -newermt <data>`.
+2. **Conferir com o parser do app:**
+   `node .claude/skills/escala/scripts/conferir.mjs "<docx>" <scratchpad>`. O mês é o das DATAS,
+   não o do nome do arquivo (em 02/10 veio `Escala 2026-08 gui.docx` com outubro). Se as sugestões de
+   nome forem óbvias (Sayonara → Saionara), rode de novo com `--aplicar-sugestoes`; nome sem sugestão,
+   pergunte. Exit 1 = o mês principal tem pendência, então não publique.
+3. **Publicar cada mês** com o Firebase MCP `firestore_update_document` em
+   `projects/anest-ap/databases/(default)/documents/escalasFuncionarias/<YYYY-MM>`: os campos de
+   `escala-<YYYY-MM>.firestore.json` mais `updatedAt` com a hora real (`updatedBy` já é o dono, quem
+   pede a publicação). Mês novo vai com `currentDocument: {exists: false}`. Substituir um mês já
+   publicado completo apaga o mês inteiro, por isso pergunte antes; mês parcial é substituído sem perguntar.
+   Linhas do mês seguinte coladas no fim do arquivo viram um mês parcial (decisão do dono, 02/10/2026).
+   Sem sobreaviso ele é inofensivo: a Consulta do sobreaviso vai só até o último dia que tem nome.
+4. **Atualizar a pasta** (o dono pediu que seja a cada envio, para a pasta espelhar o app):
+   ```bash
+   python3 .claude/skills/escala/scripts/pasta.py recebida "<docx>" <YYYY-MM> [rotulo]   # o original, no mês principal
+   python3 .claude/skills/escala/scripts/pasta.py publicada <scratchpad>/escala-<YYYY-MM>.json   # cada mês publicado
+   ```
+5. **Reportar:** dias de sobreaviso e de hospitais por mês, cada correção feita no arquivo e o que ficou de fora.
 
-## Dois modos
+**Formato antigo** (dois docx: sobreaviso de 3 colunas e hospitais de 4, com o domingo grudado no
+sábado) devolve 0 dias, porque o parser exige as 7 colunas. Copie as colunas para o modelo e confira o
+resultado; a legenda de totais no rodapé do docx é o cross-check.
 
-### A. Gerar template do mês (antes de preencher)
-Invocação típica: `/escala gerar 2026-08` (ou usuário pede "gera o template de agosto").
-```bash
-# Sem caminho → salva em /Users/guilherme/Documents/IA/Escalas funcinárias/Escala 2026-08.docx
-python3 .claude/skills/escala/scripts/gerar_template.py 2026-08
+## A pasta das escalas
+
+`/Users/guilherme/Documents/IA/Escalas funcinárias/`. O typo "funcinárias" fica, porque é o nome que
+o dono usa.
 ```
-Produz um docx com **uma tabela, uma linha por dia**, já com DATA, DIA-da-semana e FERIADO preenchidos. As células de hospital que não se aplicam vêm com `—`; as linhas de FDS/feriado ficam destacadas em verde. A pessoa só digita NOMES nas células vazias. Feriados saem de `FERIADO_LABELS` (`src/data/plantao2026.js`) — fonte única.
-
-### B. Importar o docx preenchido (LEGADO — preferir o import in-app)
-Invocação: `/escala <caminho-do-docx>` (anexo do usuário ou já na pasta de escalas). Use o path do argumento.
-Antes de seguir por aqui, ofereça o caminho oficial: Hub Escalas Funcionárias → Importar.
-```bash
-python3 .claude/skills/escala/scripts/importar.py "<docx preenchido>" --arquivar
+Modelo - escala mensal das funcionárias.docx   ← o único modelo para preencher
+2026-10 Outubro/
+  Escala 2026-10 - recebida.docx               ← como chegou; nunca editar
+  Escala 2026-10 - publicada.docx              ← o que está no app; regerado a cada publicação
 ```
-Emite dois blocos JS prontos para colar + a conferência legível + um relatório de validação. **Exit ≠ 0 = há issues; não aplique sem resolver.** O script não escreve nos data files — quem aplica os `Edit` é você, depois de ler a conferência.
+Rótulo na recebida quando vêm dois arquivos: `recebida (sobreaviso)`, `recebida (hospitais)`.
 
-**`--arquivar` mantém a pasta de escalas espelhando o app:** com zero issues, copia o docx preenchido para `Documents/IA/Escalas funcinárias/Escala <YYYY-MM>.docx` (substitui o modelo em branco daquele mês). Se o usuário anexou de outro lugar, fica arquivado na pasta canônica; se já está lá, é no-op. Com issues, o arquivamento é pulado. Sempre rode com `--arquivar` no fluxo de atualização do app — é o que o dono pediu (pasta = espelho do que está em produção).
+## Modelo de preenchimento
+
+`Modelo - escala mensal das funcionárias.docx`, na raiz da pasta, serve para qualquer mês: não tem
+datas nem faixas verdes, e quem preenche escreve o mês no título e a data em cada linha (pedido do
+dono, 02/10/2026). Para regerar: `python3 .claude/skills/escala/scripts/gerar_template.py modelo`. O
+template de um mês específico (`gerar_template.py YYYY-MM`, com datas e faixas verdes) ficou como legado.
 
 ## Formato do docx (uma tabela, 7 colunas)
 `DATA · DIA · SOBREAVISO · UNIMED (07-15) · HRO (07-15) · PLANTÃO PAGO (15-23) · FERIADO`
 
-Regras de quem se aplica (espelham `hospitaisTecnicas2026.js`):
 - **SOBREAVISO**: todo dia (19h→07h, 1 funcionária).
 - **UNIMED**: sábados e feriados (domingo não tem).
 - **HRO / PLANTÃO PAGO**: sábados, domingos e feriados.
-- Feriado em dia útil (ex.: 25/08 ter, Dia do Município) → libera os 3 slots.
-- Célula com `—` ou vazia em slot não-aplicável = ignorada pelo parser.
+- Feriado em dia útil libera os 3 slots; feriado conhecido vem de `FERIADO_LABELS` (`src/data/plantao2026.js`)
+  mesmo com a coluna FERIADO em branco, e o rótulo publicado é o de lá.
+- O parser usa a coluna DATA, não o DIA: um typo no dia da semana é inofensivo.
+- `FUNC.UNIMED` numa célula vira pendência: apague, porque o app já acrescenta a linha "Func. Unimed".
 
 ## Funcionárias válidas
-`Marta · Renata · Luciana · Elisete · Saionara · Mari` (Mari é técnica, só hospitais). IDs estáveis em `FUNCIONARIAS_SOBREAVISO` / `FUNCIONARIAS_HOSPITAIS`. **Nome fora da lista** → o importador acusa; pare e confirme com o usuário (nova contratada precisa de email + conta Firebase/Supabase + entrada nos dois arrays).
+`Marta · Renata · Luciana · Elisete · Saionara · Mari` (Mari é técnica, só hospitais). IDs em
+`FUNCIONARIAS_SOBREAVISO` (`src/data/sobreavisoMaterno2026.js`). Nome fora da lista: pare e confirme com
+o dono, porque uma nova contratada precisa de e-mail, conta Firebase/Supabase e entrada nos dois arrays.
 
-## Aplicar nos data files
-Use `Edit` apontando o fim do objeto, mantendo ordem cronológica — não reescreva o arquivo inteiro.
-- `src/data/sobreavisoMaterno2026.js` → objeto `SOBREAVISO_MATERNO_2026` (todo dia do mês).
-- `src/data/hospitaisTecnicas2026.js` → objeto `HOSPITAIS_2026` (só FDS/feriado).
-- Atualizar o comentário de cabeçalho de cada arquivo (range + fonte).
-
-## Depois de aplicar — testes (atualizar asserções!)
-Cada import muda contagens e ranges. Atualize **antes** de rodar:
-
-`src/__tests__/data/sobreavisoMaterno2026.test.js`:
-1. `toHaveLength(N)` → total acumulado (abr+mai+jun+jul = 122; +mês cheio = +30/31).
-2. Regex de key: `/^2026-(04|05|06|07|...)-\d{2}$/` — **incluir o novo mês**.
-3. Caso `'retorna null para data fora do range'` — a data usada precisa continuar fora do range; ao importar um mês, mova-a para o mês seguinte.
-
-`src/__tests__/data/hospitaisTecnicas2026.test.js`:
-4. `toHaveLength(N)` → total (abr+mai+jun+jul = 38; +mês = +nº de FDS/feriados).
-5. Regex de key: `/^2026-(04|05|06|07|...)-\d{2}$/` — incluir o novo mês.
-
-```bash
-npm run test -- --run src/__tests__/data/sobreavisoMaterno2026.test.js src/__tests__/data/hospitaisTecnicas2026.test.js
-npm run build
-git commit --only -m "feat(escala): importa <MÊS>/<ANO> (sobreaviso N dias + hospitais M dias)" -- \
-        src/data/sobreavisoMaterno2026.js src/data/hospitaisTecnicas2026.js \
-        src/__tests__/data/sobreavisoMaterno2026.test.js src/__tests__/data/hospitaisTecnicas2026.test.js
-```
-
-## Publicação
-`--only` leva só estes arquivos: o tree é compartilhado com outras sessões, e `git add` + `git commit`
-varreria o index delas. O push desse commit para a `main` já publica — o job `deploy` do CI roda
-lint/build/test e sobe o mesmo artefato (CLAUDE.md → Deploy). Push pelo SHA (`git push origin <sha>:main`);
-com a main local atrás da `origin/main`, cherry-pick num worktree a partir dela. `firebase deploy`
-manual só se o CI falhar, com confirmação do dono.
-
-## O que muda no app
-- Card "Sobreaviso Materno" e "Técnicas de Enfermagem" (Home + hub Escalas Funcionárias) passam a refletir o novo mês, com rollover às 07h.
-- Trocas (`sobreavisoMaternoDiario` / `hospitaisDiario` no Firestore) continuam; overrides não são apagados.
-- MATERNO/Férias/Atestado em dias úteis seguem manuais via Firestore.
-
-## Formato do docx
-- Use o template gerado por esta skill (um valor por célula): o export do Numbers gruda o domingo na célula do sábado e usa células multi-linha, e isso quebra o parsing.
-- O parser usa a coluna DATA, não DIA/SEMANA: typo no dia da semana (ex.: `QURTA`) é inofensivo.
+## Outros caminhos
+- **Pelo app** (o dono ou quem tem `hasEscalasEditPermission`): Hub Escalas Funcionárias → Importar.
+  A tela recusa arquivo com dois meses e trata o "—" grudado no nome como nome desconhecido; por isso,
+  quando o docx vem pelo chat, o caminho é o de cima.
+- **Legado — data files + deploy** (`importar.py "<docx>" --arquivar`): só com o app e o Firestore fora
+  do ar. Ele emite blocos JS para `SOBREAVISO_MATERNO_2026` / `HOSPITAIS_2026`; atualize junto as
+  contagens e os regex de mês em `src/__tests__/data/{sobreavisoMaterno2026,hospitaisTecnicas2026}.test.js`
+  e faça `git commit --only` desses 4 arquivos. O push publica pelo CI e recarrega o app de todos
+  (CLAUDE.md → Deploy).
