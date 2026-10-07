@@ -199,9 +199,10 @@ export default function EscalaNumericaPage({ goBack }) {
   const turnosImpressos = !impressao ? [] : impressao === 'dia'
     ? TURNOS.map((t) => ({
       rotulo: t.label,
+      turno: t.value,
       vista: t.value === turno ? vista : montarVista(dataISO, t.value, ferias, posPlantao.noturnos),
     }))
-    : [{ rotulo: LABEL_TURNO[turno], vista }]
+    : [{ rotulo: LABEL_TURNO[turno], turno, vista }]
   const notaFerias = erro
     ? 'Férias NÃO conferidas'
     : conferidoEm
@@ -231,11 +232,11 @@ export default function EscalaNumericaPage({ goBack }) {
                   <DropdownLabel>Imprimir</DropdownLabel>
                   <DropdownItem icon={<Clock className="size-5 text-primary" />} onClick={() => setImpressao('turno')}>
                     <b className="block text-[14.5px] font-semibold">Só a {LABEL_TURNO[turno].toLowerCase()}</b>
-                    <span className="block text-[12px] text-muted-foreground">o turno na tela · 1 página</span>
+                    <span className="block text-[12px] text-muted-foreground">o turno na tela · A4 colorido</span>
                   </DropdownItem>
                   <DropdownItem icon={<CalendarDays className="size-5 text-primary" />} onClick={() => setImpressao('dia')}>
                     <b className="block text-[14.5px] font-semibold">O dia inteiro</b>
-                    <span className="block text-[12px] text-muted-foreground">manhã e tarde · 1 página</span>
+                    <span className="block text-[12px] text-muted-foreground">manhã e tarde · A4 deitado, colorido</span>
                   </DropdownItem>
                 </DropdownContent>
               </DropdownMenu>
@@ -253,7 +254,15 @@ export default function EscalaNumericaPage({ goBack }) {
         }
       />
 
-      {impressao && <FolhaImpressao dia={subtitulo} turnos={turnosImpressos} notaFerias={notaFerias} />}
+      {impressao && (
+        <FolhaImpressao
+          // papel fica guardado: a data vai com o ano
+          dia={`${DIA_LONGO[data.getDay()]}, ${paraBr(dataISO)}/${dataISO.slice(0, 4)}`}
+          diaInteiro={impressao === 'dia'}
+          turnos={turnosImpressos}
+          notaFerias={notaFerias}
+        />
+      )}
 
       <div className="flex flex-col gap-3 px-4 pt-3 sm:px-5">
         <DatePicker value={data} onChange={(d) => d && setData(d)} />
@@ -282,8 +291,14 @@ export default function EscalaNumericaPage({ goBack }) {
 
         {vista.tipo === 'dia' && (
           <>
+            {/* "quantos trabalham" só no HRO e na Unimed (dono 07/10) — o Materno são duas posições */}
             {vista.blocos.map((b) => (
-              <BlocoOrdem key={b.hospital} rotulo={LABEL_HOSPITAL[b.hospital]} lista={b.lista} />
+              <BlocoOrdem
+                key={b.hospital}
+                rotulo={LABEL_HOSPITAL[b.hospital]}
+                lista={b.lista}
+                turno={b.hospital === 'materno' ? undefined : turno}
+              />
             ))}
             <BlocoConsultorio consultorio={vista.consultorio} />
           </>
@@ -307,7 +322,7 @@ export default function EscalaNumericaPage({ goBack }) {
               ? `Férias NÃO conferidas: ${erro}. A lista está sem a marca de férias.`
               : loading
                 ? 'Consultando as férias no Pega Plantão…'
-                : `Férias do Pega Plantão, consultadas ${conferidoEm ? `às ${conferidoEm.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 'agora'}. Quem está de férias fica na posição, marcado.`}
+                : `Férias do Pega Plantão, consultadas ${conferidoEm ? `às ${conferidoEm.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 'agora'}. Linha pintada = não trabalha no turno (férias ou pós-plantão), e fica na posição.`}
           </p>
         )}
       </div>

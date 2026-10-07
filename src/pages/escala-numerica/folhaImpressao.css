@@ -1,29 +1,91 @@
 /*
  * Folha impressa da Escala Numérica (FolhaImpressao.jsx). Tudo escopado pela presença da folha
  * (`:has`), que só existe no DOM enquanto a impressão está aberta — imprimir outra tela do app
- * não é afetado. Cor fixa preto/branco: papel não tem tema.
+ * não é afetado. O `@page` (A4 em pé para um turno, deitada para o dia) vai num <style> dentro
+ * da própria folha, pelo mesmo motivo.
+ *
+ * Cor fixa: papel não tem tema. Os hex espelham os tokens CLAROS da tela (anest-theme.css):
+ * verde #004225 = --primary, #E8F5E9 = --muted; laranja = --category-orange / -bg / -fg;
+ * índigo = --category-indigo / -bg / -fg. `print-color-adjust: exact` é o que faz o navegador
+ * imprimir os fundos (sem ele, Chrome e Safari tiram o fundo e a linha pintada some).
  */
-@page numerica { size: A4 portrait; margin: 10mm; }
 @media screen { .folha-numerica { display: none !important; } }
 @media print {
   html:has(.folha-numerica), body:has(> .folha-numerica) { background: #fff !important; margin: 0 !important; padding: 0 !important; }
   body:has(> .folha-numerica) > *:not(.folha-numerica) { display: none !important; }
-  .folha-numerica { display: block; page: numerica; color: #000; font: 9pt/1.25 -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
-  .folha-numerica .fn-cab { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px;
-    border-bottom: 1.5px solid #000; padding-bottom: 4px; margin-bottom: 4px; }
-  .folha-numerica .fn-cab b { display: block; font-size: 13pt; font-weight: 800; }
-  .folha-numerica .fn-cab small { font-size: 7.5pt; color: #555; text-align: right; }
+  .folha-numerica, .folha-numerica * { -webkit-print-color-adjust: exact; print-color-adjust: exact; box-sizing: border-box; }
+
+  /* um turno, A4 em pé: 190 × 277mm úteis */
+  .folha-numerica {
+    --verde: #004225; --verde-bg: #E8F5E9; --verde-txt: #3d5a4b;
+    --laranja: #F97316; --laranja-bg: #FFF3E0; --laranja-fg: #B33B00;
+    --indigo: #6366F1; --indigo-bg: #E6E9F9; --indigo-fg: #3730A3;
+    --linha: 8.4mm; --nome: 12pt; --posicao: 11pt; --numero: 8.5pt; --selo: 7pt;
+    --titulo: 17pt; --coluna: 11.5pt; --resumo: 9.5pt; --gap: 7mm; --w-posicao: 7mm; --w-numero: 6mm;
+    display: block; color: #111; font-family: Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif; line-height: 1.25;
+  }
+  /* o dia inteiro, A4 deitada: 281 × 194mm úteis, manhã | tarde */
+  .folha-numerica.fn-dia {
+    --linha: 5.4mm; --nome: 9.8pt; --posicao: 9pt; --numero: 7pt; --selo: 6pt;
+    --titulo: 14pt; --coluna: 9.5pt; --resumo: 8.2pt; --gap: 3.5mm; --w-posicao: 5.5mm; --w-numero: 4.6mm;
+  }
+
+  .folha-numerica .fn-cab { display: flex; justify-content: space-between; align-items: flex-end; gap: 6mm;
+    border-bottom: 2pt solid var(--verde); padding-bottom: 1.6mm; margin-bottom: 2.6mm; }
+  .folha-numerica .fn-kicker { display: block; font-size: 7pt; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--verde); }
+  .folha-numerica .fn-cab b { display: block; font-size: var(--titulo); font-weight: 800; line-height: 1.15; }
+  .folha-numerica .fn-cab small { font-size: 7pt; color: #555; text-align: right; line-height: 1.4; }
+
+  .folha-numerica.fn-dia .fn-turnos { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 7mm; align-items: start; }
   .folha-numerica .fn-turno { break-inside: avoid; }
-  .folha-numerica h3 { font-size: 10.5pt; font-weight: 800; margin: 8px 0 3px; text-transform: uppercase; letter-spacing: .05em; }
-  .folha-numerica .fn-grade { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; align-items: start; }
-  .folha-numerica h4 { margin: 0 0 1px; font-size: 9.5pt; font-weight: 700; border-bottom: 1px solid #000; display: flex; justify-content: space-between; }
-  .folha-numerica h4 span { font-weight: 400; color: #555; }
-  .folha-numerica .fn-col > section + section { margin-top: 8px; }
-  .folha-numerica table { width: 100%; border-collapse: collapse; }
-  .folha-numerica td { border-bottom: .5px solid #bbb; padding: 1.2px 2px; white-space: nowrap; }
-  .folha-numerica .fn-pos { width: 1.6em; font-weight: 700; text-align: right; padding-right: 4px; }
-  .folha-numerica .fn-num { width: 1.6em; color: #666; }
-  .folha-numerica .fn-apagado td { color: #666; }
-  .folha-numerica em { font-style: normal; font-size: 7.5pt; font-weight: 600; }
-  .folha-numerica .fn-rodape { margin: 8px 0 0; font-size: 7.5pt; color: #444; }
+  .folha-numerica.fn-um-turno h3 { display: none; } /* o turno já está no título */
+  .folha-numerica h3 { margin: 0 0 1.6mm; padding: .9mm 3mm; border-radius: 1.2mm; background: var(--verde); color: #fff;
+    font-size: 10pt; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+
+  .folha-numerica .fn-resumo { display: flex; flex-direction: column; gap: 1.2mm; margin-bottom: 3mm; font-size: var(--resumo); }
+  .folha-numerica.fn-um-turno .fn-resumo { border: .75pt solid #cfcfcf; border-radius: 2mm; padding: 2mm 3mm; }
+  /* as duas metades começam as listas na mesma altura: o quadro reserva 2 linhas */
+  .folha-numerica.fn-dia .fn-resumo { min-height: 9mm; margin-bottom: 1.6mm; }
+  .folha-numerica .fn-resumo-linha { display: flex; gap: 2.4mm; align-items: baseline; font-weight: 600; }
+  .folha-numerica .fn-ninguem { color: #555; font-weight: 500; }
+
+  .folha-numerica .fn-grade { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--gap); align-items: start; }
+  .folha-numerica .fn-baixo { margin-top: 3mm; }
+  .folha-numerica h4 { display: flex; justify-content: space-between; align-items: baseline; margin: 0; padding: 1.1mm 2.4mm;
+    background: var(--verde-bg); color: var(--verde); border-bottom: 1.5pt solid var(--verde); border-radius: 1.5mm 1.5mm 0 0;
+    font-size: var(--coluna); font-weight: 800; }
+  .folha-numerica.fn-dia h4 { padding: .7mm 2mm; }
+  .folha-numerica h4 span { font-size: var(--numero); font-weight: 600; color: var(--verde-txt); }
+
+  .folha-numerica .fn-linha { display: flex; align-items: center; gap: 1.8mm; height: var(--linha); padding-right: 1.4mm;
+    border-bottom: .5pt solid #d6d6d6; border-left: 3pt solid transparent; }
+  .folha-numerica .fn-posicao { width: var(--w-posicao); flex: none; text-align: right; font-size: var(--posicao); font-weight: 800; font-variant-numeric: tabular-nums; }
+  .folha-numerica .fn-numero { width: var(--w-numero); flex: none; font-size: var(--numero); color: #777; font-variant-numeric: tabular-nums; }
+  .folha-numerica .fn-nome { flex: 1; min-width: 0; font-size: var(--nome); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .folha-numerica .fn-linha.fn-ferias { background: var(--laranja-bg); border-left-color: var(--laranja); }
+  .folha-numerica .fn-linha.fn-pos-plantao { background: var(--indigo-bg); border-left-color: var(--indigo); }
+  .folha-numerica .fn-linha.fn-noite { border-left-color: var(--indigo); }
+  .folha-numerica .fn-linha.fn-ferias .fn-nome, .folha-numerica .fn-linha.fn-pos-plantao .fn-nome { color: #444; }
+
+  /* selo: fundo branco e contorno na cor — legível também numa impressora preto e branco */
+  .folha-numerica .fn-selo { flex: none; padding: .4mm 1.5mm; border: .75pt solid currentColor; border-radius: 1.2mm; background: #fff;
+    font-size: var(--selo); font-weight: 800; letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; }
+  .folha-numerica .fn-ferias .fn-selo, .folha-numerica .fn-selo.fn-ferias { color: var(--laranja-fg); }
+  .folha-numerica .fn-pos-plantao .fn-selo, .folha-numerica .fn-noite .fn-selo,
+  .folha-numerica .fn-selo.fn-pos-plantao, .folha-numerica .fn-selo.fn-noite { color: var(--indigo-fg); }
+  .folha-numerica .fn-resumo .fn-selo.fn-ferias { background: var(--laranja-bg); }
+  .folha-numerica .fn-resumo .fn-selo.fn-pos-plantao { background: var(--indigo-bg); }
+  .folha-numerica .fn-selo.fn-troca { color: #444; }
+
+  .folha-numerica .fn-trabalhando { margin: 1.2mm 0 0; font-size: var(--resumo); font-weight: 600; text-align: right; }
+  .folha-numerica .fn-trabalhando b { font-size: calc(var(--resumo) + 2pt); font-weight: 800; }
+
+  .folha-numerica .fn-feriado { display: grid; grid-auto-flow: column; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: var(--gap); }
+
+  .folha-numerica .fn-legenda { display: flex; flex-wrap: wrap; gap: 1mm 5mm; align-items: center; margin-top: 3mm; padding-top: 2mm;
+    border-top: .75pt solid #bbb; font-size: 7pt; color: #333; line-height: 1.4; }
+  .folha-numerica .fn-amostra { display: inline-block; width: 6mm; height: 3mm; margin-right: 1.2mm; vertical-align: -.4mm; border-left: 3pt solid; }
+  .folha-numerica .fn-amostra.fn-ferias { background: var(--laranja-bg); border-color: var(--laranja); }
+  .folha-numerica .fn-amostra.fn-pos-plantao { background: var(--indigo-bg); border-color: var(--indigo); }
+  .folha-numerica .fn-amostra.fn-noite { background: #fff; border-color: var(--indigo); box-shadow: inset 0 0 0 .5pt #ccc; }
 }

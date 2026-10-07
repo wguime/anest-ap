@@ -113,9 +113,9 @@ Vale **de segunda a sexta**, na tela de consulta (`src/lib/posPlantao.js`):
   vale o hospital do plantão, não o da grade. Caso real: na noite de 03/09 o ROMULO foi P1
   (HRO) e a numérica de 04/09 o traz na Unimed; ele atravessa para o HRO. Quem não está na
   grade do dia entra assim mesmo, identificado pela legenda; identidade desconhecida NÃO entra.
-- **Tarde:** não são escalados, mas **ficam na posição que a numérica lhes dá**, com
-  "(pós plantão)" ao lado do nome. Ninguém é renumerado (mesma escolha das férias: marcar, não
-  sumir). Abaixo de 400px o rótulo encolhe para "(pós)" — senão o nome é que truncava.
+- **Tarde:** não são escalados, mas **ficam na posição que a numérica lhes dá**, com a linha
+  pintada e o selo "pós P1/P2". Ninguém é renumerado (mesma escolha das férias: marcar, não
+  sumir).
 - **Fonte do plantão noturno:** de terça a sexta é o **Pega Plantão**, na data da VÉSPERA, nos
   registros que começam às 19h. Na **segunda** a véspera é domingo e o domingo à noite NÃO
   existe no Pega Plantão (conferido em 23/08 e 30/08: só o P11 de 24h) — vem da faixa `19-07`
@@ -135,6 +135,22 @@ Vale **de segunda a sexta**, na tela de consulta (`src/lib/posPlantao.js`):
   e a tela mostra a numérica pura — não se infere quem plantonou.
 - O par "HUMBERTO / ROBERTA" trunca a 375px e **fica assim** (dono 04/09); a 430px, que é o alvo
   do desenho, nada corta.
+
+## Marca na tela e na folha impressa (dono 07/10/2026)
+
+Escolhida por imagem (`.tmp/escala-numerica-marcas-impressao.html`). Uma regra só, em
+`pages/escala-numerica/situacao.js`, para tela, folha e contagem:
+- **Linha PINTADA = não trabalha no turno**: laranja (`category-orange`) = férias, índigo
+  (`category-indigo`) = pós-plantão. Selo escrito no fim ("férias", "pós P2"). De manhã, quem
+  veio da noite TRABALHA: linha sem pintura, número contornado e selo "P1"/"P2".
+- **Abaixo do HRO e da Unimed: quantos trabalham** = lista − férias − pós-plantão (as linhas
+  pintadas). Materno e feriado não têm a conta.
+- **Folha sempre colorida** (`print-color-adjust: exact`), selo por extenso para continuar
+  legível em impressora P&B. Um turno = A4 em pé; **dia inteiro = A4 DEITADA**, manhã | tarde,
+  cada uma com Materno e Consultório em blocos com título. O `@page` vai num `<style>` DENTRO
+  da folha e dentro de `@media print` (o jsdom quebra com `@page` solto). A folha segue sem
+  "fora da fila" no Consultório (dono 25/09). Conferir caber em 1 página com `page.pdf` +
+  `pdfinfo` (Chromium), não a olho.
 
 ## Trocas de FERIADO (dono 03/09/2026)
 

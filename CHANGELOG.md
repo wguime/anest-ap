@@ -3,6 +3,24 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.49 (07/10/2026) — Escala Numérica: férias, plantão da noite e pós-plantão à vista; folha A4 colorida
+
+Pedido do dono: quem está de férias, P2 e pós-plantão "melhor visualizado", impressão colorida e folha
+melhor em A4. Modelos aprovados por imagem (`.tmp/escala-numerica-marcas-impressao.html`, dados reais de 07/10).
+- **Tela:** a linha de quem não trabalha no turno fica PINTADA — laranja = férias, índigo = pós-plantão —
+  com selo escrito no fim ("férias", "pós P2"). De manhã, quem veio do plantão da noite trabalha: linha sem
+  pintura, número contornado e selo "P1"/"P2". Antes era um texto de 10,5px entre parênteses.
+- **Quantos trabalham:** abaixo do HRO e da Unimed, "Trabalhando de manhã/à tarde" = lista − férias −
+  pós-plantão (em 07/10: HRO 18 e Unimed 17 de manhã; 17 e 16 à tarde). Materno e feriado sem a conta.
+- **Folha impressa sempre colorida**, com o selo escrito (legível também em impressora P&B). "Só o turno" =
+  A4 em pé, HRO e Unimed lado a lado em letra 12pt, Materno e Consultório em blocos embaixo, quadro de quem
+  está fora no topo. "O dia inteiro" = **A4 deitada**, manhã | tarde, cada uma com Materno e Consultório com
+  título. As três folhas conferidas em 1 página pelo PDF do Chromium (`pdfinfo`). O Consultório segue sem
+  "fora da fila" na folha (dono 25/09).
+- Uma regra só (`pages/escala-numerica/situacao.js`) pinta, escreve o selo e conta — tela e papel não divergem.
+  Testes: 4 novos (conta na tela, conta na folha, folha deitada com Materno/Consultório, folha em pé) e os
+  das marcas reescritos para a marca nova.
+
 ## v5.12.48 (06/10/2026) — Quatro páginas que ainda passavam da tela no Android
 
 Fecha a revisão das v5.12.46/47 (folhas abrindo fora da tela no Android quando a página vaza na horizontal).

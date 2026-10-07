@@ -120,6 +120,12 @@ const pns = () => [...document.querySelectorAll('[data-slot="fds-linha"]')].map(
 // então casa pelo prefixo do title
 const posPlantao = () => [...document.querySelectorAll('[title^="Pós plantão"]')]
 const nomesFds = () => [...document.querySelectorAll('[data-slot="fds-nome"]')].map((el) => el.textContent)
+// marca da linha (dono 07/10): linha pintada + selo escrito — a situação vai em data-situacao
+const deFerias = () => [...document.querySelectorAll('[data-situacao="ferias"]')]
+const linhaDe = (nome) => screen.getByText(nome).closest('[data-slot="ordem-linha"]')
+const seloDe = (linha) => linha.querySelector('[data-slot="ordem-selo"]')?.textContent
+const trabalhando = (rotulo) =>
+  screen.getByRole('heading', { name: rotulo }).closest('section').querySelector('[data-slot="trabalhando-total"]')?.textContent
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -176,12 +182,13 @@ describe('Escala Numérica — quinta 03/09/2026', () => {
 
   it('quem está de férias FICA na posição, marcado — não é excluído', async () => {
     render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
-    await waitFor(() => expect(screen.getAllByText('(férias)').length).toBeGreaterThan(0))
+    await waitFor(() => expect(deFerias().length).toBeGreaterThan(0))
 
     // 3 no HRO + 1 no Materno + 1 no consultório
-    expect(screen.getAllByText('(férias)')).toHaveLength(5)
-    const linhaKarine = screen.getByText('Karine Bedin').closest('div')
-    expect(linhaKarine.textContent).toContain('(férias)')
+    expect(deFerias()).toHaveLength(5)
+    const linhaKarine = linhaDe('Karine Bedin')
+    expect(linhaKarine.dataset.situacao).toBe('ferias')
+    expect(seloDe(linhaKarine)).toBe('férias')
     expect(linhaKarine.textContent).toContain('18')
     // a posição do quadro é preservada: KARINE é a 8ª da manhã do HRO
     expect(nomesDoBloco('HRO')[7]).toBe('KARINE')
@@ -190,26 +197,29 @@ describe('Escala Numérica — quinta 03/09/2026', () => {
 
   it('a marca vale para o MATERNO e para o CONSULTÓRIO, não só para os hospitais da fila', async () => {
     render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
-    await waitFor(() => expect(screen.getAllByText('(férias)').length).toBe(5))
+    await waitFor(() => expect(deFerias()).toHaveLength(5))
 
     // Materno: CURY (24) fica na posição dele, marcado
     const materno = screen.getByRole('heading', { name: 'Materno' }).closest('section')
-    expect(within(materno).getByText('Marcos Cury').closest('div').textContent).toContain('(férias)')
+    expect(within(materno).getByText('Marcos Cury').closest('[data-slot="ordem-linha"]').dataset.situacao).toBe('ferias')
     expect(nomesDoBloco('Materno')).toEqual(['CURY', 'RAQUEL'])
 
     // Consultório: fica fora da fila, mas ERLEI (25) também aparece marcado
     const cons = screen.getByRole('heading', { name: 'Consultório' }).closest('section')
-    const chips = [...cons.querySelectorAll('[data-slot="consultorio-chip"]')].map((c) => c.textContent)
+    const chips = [...cons.querySelectorAll('[data-slot="consultorio-chip"]')]
     expect(chips).toHaveLength(3)
-    expect(chips.find((t) => t.includes('Erlei Perini'))).toContain('(férias)')
-    expect(chips.find((t) => t.includes('Eduardo Savoldi'))).not.toContain('(férias)')
+    const chip = (nome) => chips.find((c) => c.textContent.includes(nome))
+    expect(chip('Erlei Perini').dataset.situacao).toBe('ferias')
+    expect(chip('Erlei Perini').textContent).toContain('férias')
+    expect(chip('Eduardo Savoldi').dataset.situacao).toBeUndefined()
   })
 
   it('THAYNA está de férias em outro dia e NÃO é marcada em 03/09', async () => {
     render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
-    await waitFor(() => expect(screen.getAllByText('(férias)').length).toBe(5))
-    const linhaThayna = screen.getByText('Thayna Santos').closest('div')
-    expect(linhaThayna.textContent).not.toContain('(férias)')
+    await waitFor(() => expect(deFerias()).toHaveLength(5))
+    const linhaThayna = linhaDe('Thayna Santos')
+    expect(linhaThayna.dataset.situacao).toBeUndefined()
+    expect(seloDe(linhaThayna)).toBeUndefined()
   })
 
   it('a tarde já vem invertida da lib — a tela NÃO inverte de novo', async () => {
@@ -228,7 +238,7 @@ describe('Escala Numérica — quinta 03/09/2026', () => {
     getFeriasDoAno.mockRejectedValueOnce(new Error('proxy 502'))
     render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
     await waitFor(() => expect(screen.getByText(/Férias NÃO conferidas/i)).toBeInTheDocument())
-    expect(screen.queryByText('(férias)')).not.toBeInTheDocument()
+    expect(deFerias()).toHaveLength(0)
     expect(nomesDoBloco('HRO')).toHaveLength(20)
     expect(document.querySelectorAll('[data-slot="consultorio-chip"]')).toHaveLength(3)
   })
@@ -306,8 +316,7 @@ describe('Escala Numérica — feriado', () => {
     expect(manha.slice(0, 3)).toEqual(['GIOVANA', 'EDUARDO', 'JANAINA'])
     expect(manha).toHaveLength(20)
     expect(posPlantao()).toHaveLength(0)
-    expect(screen.queryByText('(P1)')).not.toBeInTheDocument()
-    expect(screen.queryByText('(P2)')).not.toBeInTheDocument()
+    expect(document.querySelectorAll('[data-situacao="noite"], [data-situacao="pos"]')).toHaveLength(0)
 
     fireEvent.click(screen.getByRole('tab', { name: 'Tarde' }))
     await waitFor(() => expect(nomesDoBloco('INDEPENDENCIA')[0]).toBe('STAUB'))
@@ -443,9 +452,12 @@ describe('Escala Numérica — pós-plantão', () => {
     expect(nomesDoBloco('Unimed')).not.toContain('ROMULO')
     // de manhã eles trabalham: nada de marca de pós plantão nem nome esmaecido…
     expect(posPlantao()).toHaveLength(0)
-    // …mas o POSTO entre parênteses fica, para a 2ª posição não parecer arbitrária
-    expect(screen.getByText('Rômulo Roxo').closest('div').textContent).toContain('(P1)')
-    expect(screen.getByText('Klisman Hilleshein').closest('div').textContent).toContain('(P2)')
+    // …mas o POSTO fica no selo, para a 2ª posição não parecer arbitrária — e a linha NÃO é
+    // pintada, porque eles trabalham (dono 07/10: pintada = fora do turno)
+    expect(linhaDe('Rômulo Roxo').dataset.situacao).toBe('noite')
+    expect(seloDe(linhaDe('Rômulo Roxo'))).toBe('P1')
+    expect(seloDe(linhaDe('Klisman Hilleshein'))).toBe('P2')
+    expect(linhaDe('Rômulo Roxo').className).not.toMatch(/bg-category/)
   })
 
   it('tarde: os dois ficam na posição da numérica, marcados como pós plantão', async () => {
@@ -458,8 +470,10 @@ describe('Escala Numérica — pós-plantão', () => {
     const uni = nomesDoBloco('Unimed')
     expect(uni[11]).toBe('ROMULO')
     expect(uni[13]).toBe('KLISMAN')
-    expect(screen.getByText('Rômulo Roxo').closest('div').textContent).toMatch(/\(pós.*P1\)/)
-    expect(screen.getByText('Klisman Hilleshein').closest('div').textContent).toMatch(/\(pós.*P2\)/)
+    expect(linhaDe('Rômulo Roxo').dataset.situacao).toBe('pos')
+    expect(seloDe(linhaDe('Rômulo Roxo'))).toBe('pós P1')
+    expect(seloDe(linhaDe('Klisman Hilleshein'))).toBe('pós P2')
+    expect(linhaDe('Klisman Hilleshein').className).toMatch(/bg-category-indigo-bg/)
     // ninguém foi tirado da fila da tarde
     expect(uni).toHaveLength(20)
   })
@@ -506,10 +520,19 @@ describe('Escala Numérica — imprimir (dono 25/09: o turno ou o dia)', () => {
 
     expect(turnosDaFolha()).toEqual(['Manhã', 'Tarde'])
     const [manha, tarde] = folha().querySelectorAll('.fn-turno')
-    // manhã: o Romulo na 2ª do HRO com o posto; tarde: marcado como pós plantão
-    expect(manha.textContent).toMatch(/2\d*Rômulo Roxo \(P1\)/) // folha = nome da tela (dono 27/09)
-    expect(tarde.textContent).toContain('Rômulo Roxo (pós plantão P1)')
-    expect(tarde.textContent).toContain('Klisman Hilleshein (pós plantão P2)')
+    const linha = (turno, nome) => [...turno.querySelectorAll('.fn-linha')].find((l) => l.querySelector('.fn-nome').textContent === nome)
+    // manhã: o Romulo na 2ª do HRO com o posto; tarde: marcado como pós plantão. Folha = nome
+    // da tela (dono 27/09); no dia inteiro o selo é o curto, porque a folha é deitada (07/10)
+    const romuloManha = linha(manha, 'Rômulo Roxo')
+    expect(romuloManha.querySelector('.fn-posicao').textContent).toBe('2')
+    expect(romuloManha.classList.contains('fn-noite')).toBe(true)
+    expect(romuloManha.querySelector('.fn-selo').textContent).toBe('P1 · noite')
+    expect(linha(tarde, 'Rômulo Roxo').classList.contains('fn-pos-plantao')).toBe(true)
+    expect(linha(tarde, 'Rômulo Roxo').querySelector('.fn-selo').textContent).toBe('pós P1')
+    expect(linha(tarde, 'Klisman Hilleshein').querySelector('.fn-selo').textContent).toBe('pós P2')
+    // o quadro do topo de cada turno diz quem está fora — e, de manhã, para onde subiu quem veio da noite
+    expect(tarde.querySelector('.fn-resumo').textContent).toContain('Rômulo Roxo (P1)')
+    expect(manha.querySelector('.fn-resumo').textContent).toContain('Rômulo Roxo → 2ª HRO')
 
     // fechou o diálogo: a folha sai do DOM
     window.dispatchEvent(new Event('afterprint'))
@@ -554,5 +577,83 @@ describe('Escala Numérica — folha impressa sem "fora da fila" (dono 25/09)', 
     const folha = document.querySelector('.folha-numerica')
     expect([...folha.querySelectorAll('h4')].some((h) => h.textContent.trim() === 'Consultório')).toBe(true)
     expect(folha.textContent).not.toContain('fora da fila')
+  })
+})
+
+/**
+ * Dono 07/10: "abaixo das listas do HRO e Unimed quero a quantidade de pessoas trabalhando
+ * naquele hospital naquele turno (excluir: pessoas em férias, pós plantão)". A conta é a das
+ * linhas pintadas — a mesma regra (`situacao.js`) pinta e conta.
+ */
+describe('Escala Numérica — quantos trabalham no turno (dono 07/10)', () => {
+  const pintadasEm = (rotulo) =>
+    screen.getByRole('heading', { name: rotulo }).closest('section')
+      .querySelectorAll('[data-slot="ordem-linha"][data-situacao="ferias"], [data-slot="ordem-linha"][data-situacao="pos"]').length
+
+  it('manhã de 03/09: HRO 20 na lista com 3 de férias = 17 trabalhando; o Materno não conta', async () => {
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(deFerias()).toHaveLength(5))
+    expect(trabalhando('HRO')).toBe('17')
+    expect(trabalhando('Unimed')).toBe(String(nomesDoBloco('Unimed').length - pintadasEm('Unimed')))
+    expect(trabalhando('Materno')).toBeUndefined()
+  })
+
+  it('tarde de 04/09: o pós-plantão sai da conta; de manhã, quem veio da noite ENTRA nela', async () => {
+    vi.setSystemTime(new Date('2026-09-04T10:00:00-03:00'))
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(nomesDoBloco('HRO')[1]).toBe('ROMULO'))
+    // manhã: Romulo (P1) trabalha na 2ª do HRO — não é pintado e conta
+    expect(trabalhando('HRO')).toBe(String(nomesDoBloco('HRO').length - pintadasEm('HRO')))
+    expect(linhaDe('Rômulo Roxo').dataset.situacao).toBe('noite')
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Tarde' }))
+    await waitFor(() => expect(posPlantao()).toHaveLength(2))
+    // à tarde os dois estão na Unimed, pintados e fora da conta
+    const uni = nomesDoBloco('Unimed')
+    expect(pintadasEm('Unimed')).toBeGreaterThanOrEqual(2)
+    expect(trabalhando('Unimed')).toBe(String(uni.length - pintadasEm('Unimed')))
+    const rodape = screen.getByRole('heading', { name: 'Unimed' }).closest('section').querySelector('[data-slot="trabalhando"]')
+    expect(rodape.textContent).toContain('Trabalhando à tarde')
+    expect(rodape.textContent).toContain('pós-plantão')
+  })
+})
+
+describe('Escala Numérica — folha A4 colorida (dono 07/10)', () => {
+  const folha = () => document.querySelector('.folha-numerica')
+  const imprimir = async (item) => {
+    fireEvent.click(screen.getByRole('button', { name: 'Imprimir a escala numérica' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: item }))
+    await waitFor(() => expect(window.print).toHaveBeenCalled())
+  }
+  beforeEach(() => {
+    vi.setSystemTime(new Date('2026-09-04T10:00:00-03:00'))
+    window.print = vi.fn()
+  })
+  afterEach(() => window.dispatchEvent(new Event('afterprint')))
+
+  it('o dia inteiro sai numa A4 DEITADA, e cada turno leva Materno e Consultório com título', async () => {
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(nomesDoBloco('HRO')[1]).toBe('ROMULO'))
+    await imprimir(/O dia inteiro/)
+    expect(folha().classList.contains('fn-dia')).toBe(true)
+    expect(folha().querySelector('style').textContent).toMatch(/size: A4 landscape/)
+    for (const turno of folha().querySelectorAll('.fn-turno')) {
+      const titulos = [...turno.querySelectorAll('h4')].map((h) => h.firstChild.textContent.trim())
+      expect(titulos).toEqual(['HRO', 'Unimed', 'Materno', 'Consultório'])
+      // "trabalhando" só abaixo do HRO e da Unimed
+      expect(turno.querySelectorAll('.fn-trabalhando')).toHaveLength(2)
+    }
+    expect(folha().textContent).toContain('sexta, 04/09/2026') // papel guardado leva o ano
+  })
+
+  it('um turno sai numa A4 em pé, com a mesma conta da tela', async () => {
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(nomesDoBloco('HRO')[1]).toBe('ROMULO'))
+    const naTela = trabalhando('HRO')
+    await imprimir(/Só a manhã/)
+    expect(folha().classList.contains('fn-um-turno')).toBe(true)
+    expect(folha().querySelector('style').textContent).toMatch(/size: A4 portrait/)
+    const hro = [...folha().querySelectorAll('.fn-coluna')].find((s) => s.querySelector('h4').firstChild.textContent === 'HRO')
+    expect(hro.querySelector('.fn-trabalhando b').textContent).toBe(naTela)
   })
 })
