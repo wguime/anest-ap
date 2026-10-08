@@ -272,6 +272,15 @@ describe('casarNomeComLegenda — legenda × nome completo do Pega Plantão', ()
     ['ADRIANO', 'Adriano Dall´Magro', true],
     ['OSCAR', 'Oscar Augusto De Oliveira Morais', true],
     ['JOAO RICARDO', 'João Henrique Salvão Vanni', false],
+    // inicial no MEIO (dono 08/10): o Pega Plantão grava "Diego B. Rigotti"; o cadastro é
+    // DIEGO BONIATTI RIGOTTI. A inicial só vale com um sobrenome por extenso junto
+    ['DIEGO', 'Diego B. Rigotti', true],
+    ['DIEGO', 'DIEGO B. RIGOTTI', true],
+    ['DIEGO', 'Diego B.', false],
+    ['DIEGO', 'Diego X. Rigotti', false],
+    ['DIEGO', 'Diego B. Souza', false],
+    ['MELO', 'Guilherme S. Melo', true],
+    ['GUILHERME D', 'Guilherme S. Melo', false],
   ])('%s × %s → %s', (legenda, completo, esperado) => {
     expect(casarNomeComLegenda(legenda, completo)).toBe(esperado)
   })

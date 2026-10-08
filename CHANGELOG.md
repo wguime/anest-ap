@@ -3,6 +3,19 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.53 (08/10/2026) — Escala Numérica: férias do Diego não marcavam; consulta de novo ao voltar ao app
+
+O dono: "Diego está de férias amanhã, mas na escala numérica ele não aparece como estando de férias". O Pega
+Plantão tinha o registro (Férias, 09/10 07:00–19:00) e a tela o recebia; quem falhava era a comparação de nomes:
+o Pega Plantão grava "Diego B. Rigotti" e o cadastro da numérica é DIEGO BONIATTI RIGOTTI. A inicial no meio
+passou a valer, desde que um sobrenome case por extenso. Eram 14 dias de férias dele na vigência sem marca,
+inclusive na conferência da publicação, que usa a mesma comparação. Varredura de todas as férias e licenças de 2026
+no Pega Plantão (46 nomes): agora nenhum fica sem par e nenhum casa com duas pessoas.
+Além de consultar ao abrir a tela e no botão de atualizar, a numérica consulta de novo quando o app volta do
+fundo (se a última consulta tem 2 minutos ou mais).
+- Testes: 7 casos de nome com inicial (inclusive os que NÃO podem casar) + 2 da página (Diego em 09/10; nova
+  consulta ao voltar ao app).
+
 ## v5.12.52 (08/10/2026) — Escala Numérica: observação embaixo de cada card
 
 Pedido do dono: "acrescentar observações abaixo de cada escala dos hospitais (UNIMED, HRO e MATERNO) e do

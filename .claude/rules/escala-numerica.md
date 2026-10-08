@@ -165,6 +165,14 @@ Escolhida por imagem (`.tmp/escala-numerica-marcas-impressao.html`). Uma regra s
   pós-plantão (caso não ocorrido na vigência — perguntar ao dono se acontecer).
 - **Férias são consultadas SEMPRE na hora** (dono 07/10, de novo: "podem ser marcadas a
   qualquer momento") — inclusive em auditoria/relatório: nunca reaproveitar consulta anterior.
+  Ao abrir a tela, no botão de atualizar e, com a tela aberta, quando o app volta do fundo
+  (se a última consulta tem 2 min ou mais — dono 08/10, "sempre atualize essa informação").
+- **Nome do Pega Plantão com INICIAL no meio (dono 08/10):** "Diego B. Rigotti" não casava com
+  DIEGO BONIATTI RIGOTTI e as férias dele (14 dias da vigência, inclusive 09/10) nunca
+  marcaram — nem na tela nem na conferência. `casarNomeComLegenda` aceita a inicial desde que
+  um sobrenome case POR EXTENSO. Varredura de 2026 (46 nomes de férias/licença): zero sem par,
+  zero ambíguo — `.tmp/sess-numerica/auditar-nomes-ferias.mjs`. Rodar de novo a cada edição
+  nova da numérica ou quando alguém "não aparece de férias".
 - **Folha sempre colorida** (`print-color-adjust: exact`), selo por extenso para continuar
   legível em impressora P&B. Um turno = A4 em pé; **dia inteiro = A4 DEITADA**, manhã | tarde,
   cada uma com Materno e Consultório em blocos com título. **Sem quadro de "quem está fora"

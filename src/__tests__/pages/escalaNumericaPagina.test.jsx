@@ -11,7 +11,7 @@
  * exatamente o que a API devolveu no dia em que a tela foi feita.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, within, act } from '@testing-library/react'
 
 const { getFeriasDoAno, invalidarFeriasDoAno, getLicencasDoAno } = vi.hoisted(() => {
   const registro = (nome, data, codigo) => ({
@@ -915,5 +915,33 @@ describe('Escala Numérica — observações embaixo de cada card (dono 08/10)',
       expect(folha().classList.contains('fn-aperto-3')).toBe(true)
       expect(folha().querySelectorAll('.fn-obs')).toHaveLength(4)
     })
+  })
+})
+
+describe('Escala Numérica — férias sempre atualizadas (dono 08/10)', () => {
+  it('Diego B. Rigotti (inicial no meio, como o Pega Plantão grava) aparece de férias em 09/10', async () => {
+    vi.setSystemTime(new Date('2026-10-09T08:00:00-03:00'))
+    getFeriasDoAno.mockResolvedValueOnce([
+      { CodigoPlantao: 'd1', Setor: 'Férias', ProfDePlantao: 'Diego B. Rigotti', Inicio: '2026-10-09T07:00:00', Fim: '2026-10-09T19:00:00' },
+    ])
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(linhaDe('Diego Rigotti').dataset.situacao).toBe('ferias'))
+    expect(seloDe(linhaDe('Diego Rigotti'))).toBe('férias')
+  })
+
+  it('com a tela aberta, o app voltando do fundo consulta de novo — só depois de 2 minutos', async () => {
+    // o jsdom não se diz "visível" por padrão
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' })
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(screen.getAllByText(/Férias do Pega Plantão, consultadas/).length).toBeGreaterThan(0))
+    await act(async () => {}) // deixa o React registrar o ouvinte com a consulta já feita
+    const antes = getFeriasDoAno.mock.calls.length
+    document.dispatchEvent(new Event('visibilitychange'))
+    expect(getFeriasDoAno.mock.calls.length).toBe(antes) // 1 min depois: não refaz
+    vi.setSystemTime(new Date(Date.now() + 3 * 60 * 1000))
+    document.dispatchEvent(new Event('visibilitychange'))
+    await waitFor(() => expect(getFeriasDoAno.mock.calls.length).toBe(antes + 1))
+    expect(invalidarFeriasDoAno).toHaveBeenCalledTimes(2) // e na hora: o cache é descartado antes
+    delete document.visibilityState // volta ao getter do protótipo
   })
 })

@@ -70,6 +70,29 @@ function subsequenciaComPrimeiroNome(a, b) {
   return i === curto.length
 }
 
+/** Token igual, ou um deles é a INICIAL do outro ("B" × "BONIATTI"). */
+const casaToken = (a, b) => a === b || (a.length === 1 && b.startsWith(a)) || (b.length === 1 && a.startsWith(b))
+
+/**
+ * Como `subsequenciaComPrimeiroNome`, mas aceitando INICIAL no meio: o Pega Plantão grava
+ * "Diego B. Rigotti" e o cadastro é "DIEGO BONIATTI RIGOTTI" (dono 08/10: as férias dele não
+ * marcavam — 14 dias da vigência). A inicial sozinha nunca identifica ninguém: além do primeiro
+ * nome, pelo menos um sobrenome tem de casar POR EXTENSO.
+ */
+function subsequenciaComIniciais(a, b) {
+  const [curto, longo] = a.length <= b.length ? [a, b] : [b, a]
+  if (curto.length < 2 || curto[0] !== longo[0]) return false
+  let i = 1
+  let porExtenso = 0
+  for (const t of longo.slice(1)) {
+    if (i < curto.length && casaToken(curto[i], t)) {
+      if (curto[i] === t && t.length > 1) porExtenso += 1
+      i += 1
+    }
+  }
+  return i === curto.length && porExtenso > 0
+}
+
 /**
  * Casa um nome completo (Pega Plantão / cadastro) com uma entrada da legenda.
  * Primeiro pelo cadastro conhecido (`CADASTRO_LEGENDA`); senão, heurística: mesmo primeiro
@@ -85,7 +108,7 @@ export function casarNomeComLegenda(nomeLegenda, nomeCompleto) {
   const abreviado = C.length >= 2 && C[0].length === 1
   for (const cad of CADASTRO_LEGENDA[L] || []) {
     const K = tokens(cad)
-    if (K.join('') === C.join('') || subsequenciaComPrimeiroNome(K, C)) return true
+    if (K.join('') === C.join('') || subsequenciaComPrimeiroNome(K, C) || subsequenciaComIniciais(K, C)) return true
     if (abreviado && K[0].length > 1 && K[0].startsWith(C[0]) && subsequenciaComPrimeiroNome(K, [K[0], ...C.slice(1)])) return true
   }
   const T = tokens(L)

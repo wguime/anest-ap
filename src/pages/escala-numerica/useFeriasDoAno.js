@@ -3,7 +3,8 @@
  *
  * O dono foi explícito em 03/09: "sempre há mudanças de última hora". Então a consulta é
  * SEMPRE na hora — ao abrir a tela o cache de 30min do `getFeriasDoAno` é invalidado antes
- * do fetch, e há um botão de recarregar no cabeçalho. A varredura traz o ANO inteiro (12
+ * do fetch, há um botão de recarregar no cabeçalho e, com a tela aberta, a consulta se refaz
+ * quando o app volta do fundo (dono 08/10). A varredura traz o ANO inteiro (12
  * chamadas), então trocar a data na tela NÃO refaz o fetch: a edição vigente da numérica e
  * os feriados moram todos no mesmo ano.
  *
@@ -37,6 +38,8 @@ export function feriasNaData(registros, dataISO) {
   return [...new Set(registros.filter((r) => r.data === dataISO).map((r) => r.nome))]
 }
 
+const RECONSULTA_AO_VOLTAR_MS = 2 * 60 * 1000
+
 export function useFeriasDoAno(ano) {
   const [registros, setRegistros] = useState(null)
   const [licencas, setLicencas] = useState(null)
@@ -68,6 +71,18 @@ export function useFeriasDoAno(ano) {
   }, [ano])
 
   useEffect(() => { recarregar() }, [recarregar])
+
+  // tela aberta e app no fundo: ao voltar, consulta de novo (dono 08/10: "sempre atualize essa
+  // informação" — férias são marcadas a qualquer momento). Só depois de 2 min, para trocar de
+  // app e voltar não refazer as 12 chamadas a cada vez
+  useEffect(() => {
+    const aoVoltar = () => {
+      if (document.visibilityState !== 'visible' || loading) return
+      if (!conferidoEm || Date.now() - conferidoEm.getTime() >= RECONSULTA_AO_VOLTAR_MS) recarregar()
+    }
+    document.addEventListener('visibilitychange', aoVoltar)
+    return () => document.removeEventListener('visibilitychange', aoVoltar)
+  }, [recarregar, conferidoEm, loading])
 
   return { registros, licencas, loading, erro, conferidoEm, recarregar }
 }
