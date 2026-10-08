@@ -144,10 +144,26 @@ Escolhida por imagem (`.tmp/escala-numerica-marcas-impressao.html`). Uma regra s
   (`category-indigo`) = pós-plantão. Selo escrito no fim ("férias", "pós P2"). De manhã, quem
   veio da noite TRABALHA: linha sem pintura, número contornado e selo "P1"/"P2".
 - **Abaixo do HRO e da Unimed: quantos trabalham** = lista − férias − pós-plantão (as linhas
-  pintadas). Materno e feriado não têm a conta.
+  pintadas). Materno e feriado não têm a conta. Auditada em 07/10 contra o Pega Plantão na
+  vigência inteira (190 turnos, tela × conferência: zero divergência) e contra o rodapé
+  publicado (01/10 bate nos 4; 07/10 o HRO tem 1 a mais: Vicente, sem férias nem registro).
+  Script: `.tmp/sess-numerica/auditar-contagem.mjs <ini> <fim> [--detalhe] [--noite=DATA=HRO,UNIMED]`.
+- **LUGAR VAGO (dono 07/10):** quem sobe para o P1/P2 de manhã e muda de card deixa, no card
+  de origem, uma linha tracejada na posição em que estaria ("→ P2"; consultório vira chip
+  tracejado). Sem número (a coluna foi renumerada), fora do "N nomes" e da conta. Quem sobe
+  dentro do próprio hospital não deixa vaga. Montado na página (`marcarLugaresVagos`) a partir
+  de `movidos[].origem` de `aplicarPosPlantaoManha`.
+- **Noite + férias (auditoria 07/10):** quem fez a noite e está de FÉRIAS no dia não sobe —
+  fica na posição da numérica, marcado (06/11, Marilio); a conferência passa `{ ferias }` e não
+  o recoloca. **Dupla na noite:** só quem plantonou sobe; o par fica na posição com quem ficou
+  (17/11: Roberta P2, Humberto de férias na posição 05). À TARDE a dupla inteira segue marcada
+  pós-plantão (caso não ocorrido na vigência — perguntar ao dono se acontecer).
+- **Férias são consultadas SEMPRE na hora** (dono 07/10, de novo: "podem ser marcadas a
+  qualquer momento") — inclusive em auditoria/relatório: nunca reaproveitar consulta anterior.
 - **Folha sempre colorida** (`print-color-adjust: exact`), selo por extenso para continuar
   legível em impressora P&B. Um turno = A4 em pé; **dia inteiro = A4 DEITADA**, manhã | tarde,
-  cada uma com Materno e Consultório em blocos com título. O `@page` vai num `<style>` DENTRO
+  cada uma com Materno e Consultório em blocos com título. **Sem quadro de "quem está fora"
+  no topo** (dono 07/10: "não quero esse resumo"). Pior caso = 21 linhas numa coluna. O `@page` vai num `<style>` DENTRO
   da folha e dentro de `@media print` (o jsdom quebra com `@page` solto). A folha segue sem
   "fora da fila" no Consultório (dono 25/09). Conferir caber em 1 página com `page.pdf` +
   `pdfinfo` (Chromium), não a olho.

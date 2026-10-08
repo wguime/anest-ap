@@ -87,13 +87,16 @@ export function noturnosDoDocumentoFds(grade) {
  * (identidade ambígua é nula).
  */
 const partesDaEntrada = (entrada) => String(entrada?.nome || '').split('/').map((n) => n.trim()).filter(Boolean)
-const ehAPessoa = (entrada, nomeCompleto, legendaExata = false) => {
+/** Qual parte da entrada é a pessoa (numa dupla, um dos dois); `undefined` se nenhuma. */
+const parteDaPessoa = (entrada, nomeCompleto, legendaExata = false) => {
   const alvo = normNomeNumerica(nomeCompleto)
   const partes = partesDaEntrada(entrada)
-  if (partes.some((n) => normNomeNumerica(n) === alvo)) return true
-  if (legendaExata || !alvo.includes(' ')) return false
-  return partes.some((n) => casarNomeComLegenda(n, nomeCompleto))
+  const igual = partes.find((n) => normNomeNumerica(n) === alvo)
+  if (igual) return igual
+  if (legendaExata || !alvo.includes(' ')) return undefined
+  return partes.find((n) => casarNomeComLegenda(n, nomeCompleto))
 }
+const ehAPessoa = (entrada, nomeCompleto, legendaExata = false) => Boolean(parteDaPessoa(entrada, nomeCompleto, legendaExata))
 
 /** O nome é, letra por letra, uma entrada da legenda (nome curto do documento de FDS)? */
 const nomesDaLegendaNorm = (dados) => new Set(
@@ -109,8 +112,16 @@ const renumerar = (lista) => lista.map((p, i) => ({ ...p, posicao: i + 1 }))
  * `blocos`: [{ hospital, lista }] · `consultorio`: entradas sem posição.
  * Quem não está na grade do dia entra assim mesmo, identificado pela legenda — plantonou,
  * então está no hospital. Sem identidade na legenda, não entra (não se inventa posição).
+ *
+ * Dois casos que a contagem de "quem trabalha" (dono 07/10) pegou nos dados reais:
+ * - `ferias` (nomes do Pega Plantão no dia): quem fez a noite e está de FÉRIAS no dia não
+ *   sobe — não vem de manhã. Fica onde a numérica o pôs (a tela marca férias) e, na
+ *   conferência, que já o tirou, não volta. Caso: Marilio, P2 de 05/11 e férias em 06/11.
+ * - DUPLA ("HUMBERTO / ROBERTA"): só quem plantonou sobe; o par continua sendo a posição,
+ *   com quem ficou. Caso: Roberta, P2 de 16/11, com o Humberto de férias em 17/11 — subir o
+ *   par inteiro pintava a Roberta de férias e a tirava da conta.
  */
-export function aplicarPosPlantaoManha(dados, blocos, consultorio = [], noturnos = {}) {
+export function aplicarPosPlantaoManha(dados, blocos, consultorio = [], noturnos = {}, { ferias = null } = {}) {
   const alvos = ['hro', 'unimed'].filter((h) => noturnos[h])
   if (!alvos.length) return { blocos, consultorio, movidos: [] }
 
@@ -119,34 +130,51 @@ export function aplicarPosPlantaoManha(dados, blocos, consultorio = [], noturnos
   let cons = [...consultorio]
   const movidos = []
   const aInserir = []
+  const deFerias = (parte) => Array.isArray(ferias) && ferias.some((f) => casarNomeComLegenda(parte, f))
 
   // 1) retirar de onde estiver — uma pessoa ocupa um lugar só
   for (const hospital of alvos) {
     const nomeCompleto = noturnos[hospital]
     const exata = legenda.has(normNomeNumerica(nomeCompleto))
+    const achadas = [...Object.values(listas).flat(), ...cons].filter((p) => ehAPessoa(p, nomeCompleto, exata))
     let entrada = null
-    for (const h of Object.keys(listas)) {
-      const i = listas[h].findIndex((p) => ehAPessoa(p, nomeCompleto, exata))
-      if (i >= 0) { entrada = listas[h][i]; listas[h] = listas[h].filter((_, k) => k !== i) }
-    }
-    const ic = cons.findIndex((c) => ehAPessoa(c, nomeCompleto, exata))
-    if (ic >= 0) { entrada = entrada || cons[ic]; cons = cons.filter((_, k) => k !== ic) }
-    if (!entrada) {
+    let origem = null
+    if (achadas.length) {
+      const achada = achadas[0]
+      const parte = parteDaPessoa(achada, nomeCompleto, exata)
+      if (deFerias(parte)) continue
+      // sai de TODO lugar em que estiver; numa dupla sai só quem plantonou e quem ficou
+      // segura a posição
+      const tirar = (lista) => lista.flatMap((p) => {
+        if (!achadas.includes(p)) return [p]
+        const resto = partesDaEntrada(p).filter((n) => n !== parteDaPessoa(p, nomeCompleto, exata))
+        return resto.length ? [{ ...p, nome: resto.join(' / ') }] : []
+      })
+      // de onde saiu (dono 07/10: "informe que a posição original seria no Materno no card do
+      // Materno") — só quando o lugar fica VAZIO; numa dupla quem ficou segura a posição
+      const origemHospital = Object.keys(listas).find((h) => listas[h].includes(achada))
+      origem = partesDaEntrada(achada).length > 1
+        ? null
+        : { hospital: origemHospital || 'consultorio', posicao: origemHospital ? achada.posicao : null }
+      listas = Object.fromEntries(Object.entries(listas).map(([h, l]) => [h, tirar(l)]))
+      cons = tirar(cons)
+      entrada = partesDaEntrada(achada).length > 1 ? { ...achada, nome: parte } : achada
+    } else {
       const numero = exata
         ? Object.keys(dados?.legenda || {}).find((n) => String(dados.legenda[n].nome).split('/').map(normNomeNumerica).includes(normNomeNumerica(nomeCompleto)))
         : null
       const naLegenda = numero
         ? { numero, nome: normNomeNumerica(nomeCompleto) }
         : (normNomeNumerica(nomeCompleto).includes(' ') ? identificarNaLegenda(dados, nomeCompleto) : null)
-      if (!naLegenda) continue
+      if (!naLegenda || deFerias(naLegenda.nome)) continue
       entrada = { numero: naLegenda.numero, nome: naLegenda.nome }
     }
-    aInserir.push({ hospital, entrada })
+    aInserir.push({ hospital, entrada, origem })
   }
 
   // 2) inserir na 2ª posição do hospital do plantão (depois de todas as retiradas, para a
   //    posição não depender da ordem em que os dois foram processados)
-  for (const { hospital, entrada } of aInserir) {
+  for (const { hospital, entrada, origem } of aInserir) {
     if (!listas[hospital]) continue
     const idx = Math.min(1, listas[hospital].length)
     listas[hospital] = [
@@ -158,7 +186,9 @@ export function aplicarPosPlantaoManha(dados, blocos, consultorio = [], noturnos
       { ...entrada, movidoPorPlantao: true, postoPlantao: POSTO_DO_HOSPITAL[hospital] },
       ...listas[hospital].slice(idx),
     ]
-    movidos.push({ hospital, nome: entrada.nome })
+    // `origem`: { hospital ('hro'|'unimed'|'materno'|'consultorio'), posicao } — null quando
+    // a pessoa veio da legenda (não estava na grade) ou de uma dupla (o lugar não ficou vazio)
+    movidos.push({ hospital, nome: entrada.nome, numero: entrada.numero, postoPlantao: POSTO_DO_HOSPITAL[hospital], origem })
   }
 
   return {

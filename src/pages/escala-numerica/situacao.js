@@ -37,9 +37,16 @@ export function rotuloSituacao(p, { tela = false, curto = false } = {}) {
   return null
 }
 
-/** Quantos trabalham no turno: a lista menos férias e pós-plantão. */
+/**
+ * Quem está NA lista: o lugar vago de quem subiu para o P1/P2 em outro card (dono 07/10) só
+ * aponta para onde a pessoa foi — não é ninguém ali.
+ */
+export const naLista = (lista = []) => lista.filter((p) => !p.lugarVago)
+
+/** Quantos trabalham no turno: a lista menos férias e pós-plantão (o lugar vago não conta). */
 export function contarTrabalhando(lista = []) {
-  const ferias = lista.filter((p) => situacao(p) === 'ferias').length
-  const pos = lista.filter((p) => situacao(p) === 'pos').length
-  return { total: lista.length, ferias, pos, trabalhando: lista.length - ferias - pos }
+  const reais = naLista(lista)
+  const ferias = reais.filter((p) => situacao(p) === 'ferias').length
+  const pos = reais.filter((p) => situacao(p) === 'pos').length
+  return { total: reais.length, ferias, pos, trabalhando: reais.length - ferias - pos }
 }

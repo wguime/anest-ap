@@ -117,6 +117,42 @@ function BlocoFds({ dataISO, fila, loading, erro, sabado }) {
 }
 
 /**
+ * Quem subiu para o P1/P2 sai da coluna que a numérica lhe deu (dono 03/09). No card de onde
+ * saiu fica o LUGAR VAGO, na posição em que estaria — "informe que a posição original seria no
+ * Materno no card do Materno, para evitar confusão" (dono 07/10). Sem número de posição (a
+ * coluna foi renumerada) e fora da conta de quem trabalha. Só quando muda de card: quem sobe
+ * dentro do próprio hospital continua à vista no mesmo card.
+ */
+function lugarVago(m) {
+  return { lugarVago: true, numero: m.numero, nome: m.nome, destino: m.hospital, postoPlantao: m.postoPlantao }
+}
+function marcarLugaresVagos(blocos, brutos, movidos = []) {
+  return blocos.map((b) => {
+    const saidas = movidos.filter((m) => m.origem?.hospital === b.hospital && m.hospital !== b.hospital)
+    if (!saidas.length) return b
+    const original = brutos.find((x) => x.hospital === b.hospital)?.lista || []
+    let lista = [...b.lista]
+    for (const m of saidas) {
+      // logo depois do último que vinha antes dele na numérica e continua na coluna
+      const ancora = original.slice(0, m.origem.posicao - 1).reverse()
+        .map((o) => lista.findIndex((p) => !p.lugarVago && p.numero === o.numero && p.nome === o.nome))
+        .find((i) => i >= 0)
+      const i = ancora === undefined ? 0 : ancora + 1
+      lista = [...lista.slice(0, i), lugarVago(m), ...lista.slice(i)]
+    }
+    return { ...b, lista }
+  })
+}
+function marcarVagosNoConsultorio(consultorio, original = [], movidos = []) {
+  const saidas = movidos.filter((m) => m.origem?.hospital === 'consultorio')
+  if (!saidas.length) return consultorio
+  return original.map((o) => {
+    const m = saidas.find((s) => s.numero === o.numero)
+    return m ? lugarVago(m) : consultorio.find((c) => c.numero === o.numero && c.nome === o.nome)
+  }).filter(Boolean)
+}
+
+/**
  * A lista de um turno, como a tela mostra. Função e não `useMemo` porque a impressão do dia
  * inteiro monta os DOIS turnos com as mesmas regras (pós-plantão antes das férias).
  */
@@ -140,14 +176,17 @@ function montarVista(dataISO, turno, ferias, noturnos) {
   // pós-plantão ANTES das férias: a manhã muda quem está em cada coluna, e marcar antes
   // de mover deixaria a marca na posição velha
   const pp = turno === 'matutino'
-    ? aplicarPosPlantaoManha(dadosNumerica, brutos, base.consultorio, noturnos)
+    ? aplicarPosPlantaoManha(dadosNumerica, brutos, base.consultorio, noturnos, { ferias })
     : marcarPosPlantaoTarde(brutos, base.consultorio, noturnos)
+  const blocos = pp.blocos.map((b) => ({ ...b, lista: anotarFerias(b.lista, ferias) }))
+  // o consultório não entra na FILA, mas quem está nele também tira férias (dono 03/09):
+  // a marca vale para os três hospitais E para o consultório
+  const consultorio = anotarFerias(pp.consultorio, ferias)
   return {
     tipo: 'dia',
-    blocos: pp.blocos.map((b) => ({ ...b, lista: anotarFerias(b.lista, ferias) })),
-    // o consultório não entra na FILA, mas quem está nele também tira férias (dono 03/09):
-    // a marca vale para os três hospitais E para o consultório
-    consultorio: anotarFerias(pp.consultorio, ferias),
+    // o lugar vago entra DEPOIS das férias: ele não é ninguém trabalhando ali, não leva marca
+    blocos: marcarLugaresVagos(blocos, brutos, pp.movidos),
+    consultorio: marcarVagosNoConsultorio(consultorio, base.consultorio, pp.movidos),
     diaSemana: base.diaSemana,
     pendencias: [...new Set(brutos.flatMap((b) => b.pendencias))],
   }

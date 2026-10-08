@@ -58,10 +58,16 @@ const { getPlantoesPorData, fetchEscala } = vi.hoisted(() => {
     { nome: 'Klisman Drescher Hilleshein', setor: 'P2', horario: '19:00', horarioFim: '07:00' },
     { nome: 'Marcos Cardoso Costa', setor: 'P3', horario: '19:00', horarioFim: '23:00' },
   ]
+  // noite de 07/10 (véspera de 08/10), do Pega Plantão de verdade: o P2 é o JOAO RICARDO, que a
+  // numérica de 08/10 põe como 1º do MATERNO — o exemplo do dono para o lugar vago (07/10)
+  const NOITE_07_10 = [
+    { nome: 'Gabriel Juan Kettenhuber Costa', setor: 'P1', horario: '19:00', horarioFim: '07:00' },
+    { nome: 'João Ricardo Moreira', setor: 'P2', horario: '19:00', horarioFim: '07:00' },
+  ]
   return {
     getPlantoesPorData: vi.fn(async (data) => ({
       ferias: [],
-      plantoes: data === '2026-09-03' ? NOITE_03 : FDS,
+      plantoes: data === '2026-09-03' ? NOITE_03 : data === '2026-10-07' ? NOITE_07_10 : FDS,
     })),
     fetchEscala: vi.fn(async () => ({ fdsMeta: { grade: { '19-07': { hro: 'MATHEUS', unimed: 'JOAO RICARDO' } } } })),
   }
@@ -122,7 +128,9 @@ const posPlantao = () => [...document.querySelectorAll('[title^="Pós plantão"]
 const nomesFds = () => [...document.querySelectorAll('[data-slot="fds-nome"]')].map((el) => el.textContent)
 // marca da linha (dono 07/10): linha pintada + selo escrito — a situação vai em data-situacao
 const deFerias = () => [...document.querySelectorAll('[data-situacao="ferias"]')]
-const linhaDe = (nome) => screen.getByText(nome).closest('[data-slot="ordem-linha"]')
+// só a linha REAL da fila — quem subiu para o P1/P2 aparece também como lugar vago no card de origem
+const linhaDe = (nome) => [...document.querySelectorAll('[data-slot="ordem-linha"] [data-slot="ordem-nome"]')]
+  .find((el) => el.textContent === nome).closest('[data-slot="ordem-linha"]')
 const seloDe = (linha) => linha.querySelector('[data-slot="ordem-selo"]')?.textContent
 const trabalhando = (rotulo) =>
   screen.getByRole('heading', { name: rotulo }).closest('section').querySelector('[data-slot="trabalhando-total"]')?.textContent
@@ -530,9 +538,9 @@ describe('Escala Numérica — imprimir (dono 25/09: o turno ou o dia)', () => {
     expect(linha(tarde, 'Rômulo Roxo').classList.contains('fn-pos-plantao')).toBe(true)
     expect(linha(tarde, 'Rômulo Roxo').querySelector('.fn-selo').textContent).toBe('pós P1')
     expect(linha(tarde, 'Klisman Hilleshein').querySelector('.fn-selo').textContent).toBe('pós P2')
-    // o quadro do topo de cada turno diz quem está fora — e, de manhã, para onde subiu quem veio da noite
-    expect(tarde.querySelector('.fn-resumo').textContent).toContain('Rômulo Roxo (P1)')
-    expect(manha.querySelector('.fn-resumo').textContent).toContain('Rômulo Roxo → 2ª HRO')
+    // sem quadro de "quem está fora" no topo (dono 07/10: "não quero esse resumo")
+    expect(folha().querySelector('.fn-resumo')).toBeNull()
+    expect(folha().textContent).not.toMatch(/plantão da noite · \d/)
 
     // fechou o diálogo: a folha sai do DOM
     window.dispatchEvent(new Event('afterprint'))
@@ -655,5 +663,74 @@ describe('Escala Numérica — folha A4 colorida (dono 07/10)', () => {
     expect(folha().querySelector('style').textContent).toMatch(/size: A4 portrait/)
     const hro = [...folha().querySelectorAll('.fn-coluna')].find((s) => s.querySelector('h4').firstChild.textContent === 'HRO')
     expect(hro.querySelector('.fn-trabalhando b').textContent).toBe(naTela)
+  })
+})
+
+/**
+ * Dono 07/10: "João Moreira é [da manhã] no Materno, mas está como 2º da manhã na Unimed por ser
+ * o P2 — quero que informe que a posição original seria no Materno no card do Materno (para
+ * evitar confusão)". O card de onde a pessoa saiu mostra o LUGAR VAGO onde ela estaria, sem
+ * número e fora da conta.
+ */
+describe('Escala Numérica — lugar vago de quem subiu para o P1/P2 (dono 07/10)', () => {
+  const vagas = (rotulo) => [...screen.getByRole('heading', { name: rotulo }).closest('section').querySelectorAll('[data-slot="ordem-vaga"]')]
+  const ordemComVagas = (rotulo) => [...screen.getByRole('heading', { name: rotulo }).closest('section')
+    .querySelectorAll('[data-slot="ordem-linha"] [data-slot="ordem-nome"], [data-slot="ordem-vaga"]')].map((el) => el.dataset.legenda)
+
+  it('08/10: o JOAO RICARDO sai do Materno para a 2ª da Unimed — o Materno mostra o lugar dele', async () => {
+    vi.setSystemTime(new Date('2026-10-08T10:00:00-03:00'))
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(nomesDoBloco('Unimed')[1]).toBe('JOAO RICARDO'))
+
+    // no Materno: a Giovana na fila, e o lugar do João Ricardo onde a numérica o põe (1º)
+    expect(nomesDoBloco('Materno')).toEqual(['GIOVANA'])
+    expect(ordemComVagas('Materno')).toEqual(['JOAO RICARDO', 'GIOVANA'])
+    const [vaga] = vagas('Materno')
+    expect(vaga.textContent).toContain('João Moreira')
+    expect(vaga.textContent).toContain('P2')
+    expect(vaga.title).toContain('Unimed') // o hospital vai por extenso no title
+    // o cabeçalho conta só quem está na lista
+    const materno = screen.getByRole('heading', { name: 'Materno' }).closest('section')
+    expect(within(materno).getByText('1 nome')).toBeInTheDocument()
+
+    // o P1 (Gabriel Costa) saiu da Unimed para o HRO: a Unimed mostra o lugar dele, e a conta
+    // de quem trabalha na Unimed não inclui esse lugar
+    expect(nomesDoBloco('HRO')[1]).toBe('GABRIEL')
+    expect(vagas('Unimed').map((v) => v.dataset.legenda)).toEqual(['GABRIEL'])
+    expect(vagas('HRO')).toHaveLength(0) // quem chegou não deixa vaga onde chegou
+    expect(trabalhando('Unimed')).toBe(String(nomesDoBloco('Unimed').length - deFerias().filter((l) => l.closest('section') === screen.getByRole('heading', { name: 'Unimed' }).closest('section')).length))
+  })
+
+  it('04/09: quem sobe DENTRO do próprio hospital não deixa lugar vago (o Klisman segue à vista no card)', async () => {
+    vi.setSystemTime(new Date('2026-09-04T10:00:00-03:00'))
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(nomesDoBloco('HRO')[1]).toBe('ROMULO'))
+    // Romulo saiu da Unimed (era o 9º) para o HRO: um lugar vago na Unimed, o dele
+    expect(vagas('Unimed').map((v) => v.dataset.legenda)).toEqual(['ROMULO'])
+    expect(ordemComVagas('Unimed').indexOf('ROMULO')).toBe(8)
+    // e à tarde ninguém sobe: nenhum lugar vago
+    fireEvent.click(screen.getByRole('tab', { name: 'Tarde' }))
+    await waitFor(() => expect(posPlantao()).toHaveLength(2))
+    expect(document.querySelectorAll('[data-slot="ordem-vaga"]')).toHaveLength(0)
+  })
+
+  it('a folha impressa mostra o mesmo lugar vago, fora da conta', async () => {
+    vi.setSystemTime(new Date('2026-10-08T10:00:00-03:00'))
+    window.print = vi.fn()
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(nomesDoBloco('Unimed')[1]).toBe('JOAO RICARDO'))
+    const naTela = trabalhando('Unimed')
+    fireEvent.click(screen.getByRole('button', { name: 'Imprimir a escala numérica' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /Só a manhã/ }))
+    await waitFor(() => expect(window.print).toHaveBeenCalled())
+    const folha = document.querySelector('.folha-numerica')
+    const coluna = (t) => [...folha.querySelectorAll('.fn-coluna')].find((s) => s.querySelector('h4').firstChild.textContent === t)
+    const materno = coluna('Materno')
+    expect(materno.querySelector('h4').textContent).toContain('1 nome')
+    expect(materno.querySelector('h4').textContent).not.toContain('1 nomes')
+    expect(materno.querySelector('.fn-vaga').textContent).toContain('João Moreira')
+    expect(materno.querySelector('.fn-vaga').textContent).toContain('Unimed P2')
+    expect(coluna('Unimed').querySelector('.fn-trabalhando b').textContent).toBe(naTela)
+    window.dispatchEvent(new Event('afterprint'))
   })
 })

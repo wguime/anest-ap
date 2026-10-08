@@ -453,7 +453,8 @@ export function conferirHospital(hospital, entrada, contexto) {
       let posPlantao = ''
       if (!esperada.filaUnica && noturnosVespera && (noturnosVespera.hro || noturnosVespera.unimed)) {
         if (turno === 'matutino') {
-          const pp = aplicarPosPlantaoManha(dadosNumerica, [{ hospital, lista: listaEsperada }], esperada.consultorio || [], noturnosVespera)
+          // `ferias`: quem fez a noite e está de férias no dia não volta à lista (06/11, Marilio)
+          const pp = aplicarPosPlantaoManha(dadosNumerica, [{ hospital, lista: listaEsperada }], esperada.consultorio || [], noturnosVespera, { ferias })
           listaEsperada = pp.blocos[0]?.lista || listaEsperada
           if (pp.movidos.length) posPlantao = ` · pós-plantão na 2ª posição: ${pp.movidos.map((m) => m.nome).join(', ')}`
         } else {

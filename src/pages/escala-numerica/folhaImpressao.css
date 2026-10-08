@@ -21,13 +21,13 @@
     --laranja: #F97316; --laranja-bg: #FFF3E0; --laranja-fg: #B33B00;
     --indigo: #6366F1; --indigo-bg: #E6E9F9; --indigo-fg: #3730A3;
     --linha: 8.4mm; --nome: 12pt; --posicao: 11pt; --numero: 8.5pt; --selo: 7pt;
-    --titulo: 17pt; --coluna: 11.5pt; --resumo: 9.5pt; --gap: 7mm; --w-posicao: 7mm; --w-numero: 6mm;
+    --titulo: 17pt; --coluna: 11.5pt; --rodape-coluna: 9.5pt; --gap: 7mm; --w-posicao: 7mm; --w-numero: 6mm;
     display: block; color: #111; font-family: Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif; line-height: 1.25;
   }
   /* o dia inteiro, A4 deitada: 281 × 194mm úteis, manhã | tarde */
   .folha-numerica.fn-dia {
     --linha: 5.4mm; --nome: 9.8pt; --posicao: 9pt; --numero: 7pt; --selo: 6pt;
-    --titulo: 14pt; --coluna: 9.5pt; --resumo: 8.2pt; --gap: 3.5mm; --w-posicao: 5.5mm; --w-numero: 4.6mm;
+    --titulo: 14pt; --coluna: 9.5pt; --rodape-coluna: 8.2pt; --gap: 3.5mm; --w-posicao: 5.5mm; --w-numero: 4.6mm;
   }
 
   .folha-numerica .fn-cab { display: flex; justify-content: space-between; align-items: flex-end; gap: 6mm;
@@ -42,12 +42,6 @@
   .folha-numerica h3 { margin: 0 0 1.6mm; padding: .9mm 3mm; border-radius: 1.2mm; background: var(--verde); color: #fff;
     font-size: 10pt; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 
-  .folha-numerica .fn-resumo { display: flex; flex-direction: column; gap: 1.2mm; margin-bottom: 3mm; font-size: var(--resumo); }
-  .folha-numerica.fn-um-turno .fn-resumo { border: .75pt solid #cfcfcf; border-radius: 2mm; padding: 2mm 3mm; }
-  /* as duas metades começam as listas na mesma altura: o quadro reserva 2 linhas */
-  .folha-numerica.fn-dia .fn-resumo { min-height: 9mm; margin-bottom: 1.6mm; }
-  .folha-numerica .fn-resumo-linha { display: flex; gap: 2.4mm; align-items: baseline; font-weight: 600; }
-  .folha-numerica .fn-ninguem { color: #555; font-weight: 500; }
 
   .folha-numerica .fn-grade { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--gap); align-items: start; }
   .folha-numerica .fn-baixo { margin-top: 3mm; }
@@ -67,18 +61,22 @@
   .folha-numerica .fn-linha.fn-noite { border-left-color: var(--indigo); }
   .folha-numerica .fn-linha.fn-ferias .fn-nome, .folha-numerica .fn-linha.fn-pos-plantao .fn-nome { color: #444; }
 
+  .folha-numerica .fn-linha.fn-vaga { border-bottom-style: dashed; color: #666; }
+  .folha-numerica .fn-linha.fn-vaga .fn-nome { font-weight: 500; color: #666; }
+  .folha-numerica .fn-linha.fn-vaga .fn-selo { color: var(--indigo-fg); border-style: dashed; }
+  /* inline: o preflight do Tailwind põe `svg { display: block }` e o selo quebrava em duas linhas */
+  .folha-numerica .fn-seta { display: inline-block; width: 1em; height: 1em; vertical-align: -.12em; color: var(--indigo-fg); }
+
   /* selo: fundo branco e contorno na cor — legível também numa impressora preto e branco */
   .folha-numerica .fn-selo { flex: none; padding: .4mm 1.5mm; border: .75pt solid currentColor; border-radius: 1.2mm; background: #fff;
     font-size: var(--selo); font-weight: 800; letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; }
   .folha-numerica .fn-ferias .fn-selo, .folha-numerica .fn-selo.fn-ferias { color: var(--laranja-fg); }
   .folha-numerica .fn-pos-plantao .fn-selo, .folha-numerica .fn-noite .fn-selo,
   .folha-numerica .fn-selo.fn-pos-plantao, .folha-numerica .fn-selo.fn-noite { color: var(--indigo-fg); }
-  .folha-numerica .fn-resumo .fn-selo.fn-ferias { background: var(--laranja-bg); }
-  .folha-numerica .fn-resumo .fn-selo.fn-pos-plantao { background: var(--indigo-bg); }
   .folha-numerica .fn-selo.fn-troca { color: #444; }
 
-  .folha-numerica .fn-trabalhando { margin: 1.2mm 0 0; font-size: var(--resumo); font-weight: 600; text-align: right; }
-  .folha-numerica .fn-trabalhando b { font-size: calc(var(--resumo) + 2pt); font-weight: 800; }
+  .folha-numerica .fn-trabalhando { margin: 1.2mm 0 0; font-size: var(--rodape-coluna); font-weight: 600; text-align: right; }
+  .folha-numerica .fn-trabalhando b { font-size: calc(var(--rodape-coluna) + 2pt); font-weight: 800; }
 
   .folha-numerica .fn-feriado { display: grid; grid-auto-flow: column; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: var(--gap); }
 

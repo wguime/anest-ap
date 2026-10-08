@@ -8,7 +8,8 @@
  * - **colorida sempre**, com a marca da tela (linha pintada + selo escrito). O selo é texto de
  *   propósito: numa impressora preto e branco a cor vira cinza, e "férias" continua legível;
  * - **um turno**: A4 em pé, HRO e Unimed lado a lado em colunas largas, Materno e Consultório
- *   em blocos com título embaixo;
+ *   em blocos com título embaixo (o quadro de "quem está fora" no topo saiu a pedido do dono,
+ *   07/10 — a linha pintada já diz);
  * - **o dia inteiro**: A4 DEITADA, manhã à esquerda e tarde à direita, cada uma com os mesmos
  *   blocos (Materno e Consultório com título — dono 07/10).
  * Abaixo do HRO e da Unimed vai quantos trabalham no turno (lista − férias − pós-plantão).
@@ -17,14 +18,32 @@
  * espelham os tokens CLAROS da tela.
  */
 import { createPortal } from 'react-dom'
+import { ArrowRight } from 'lucide-react'
 import { LABEL_HOSPITAL } from '@/lib/escalaNumerica'
 import { nomeExibicao } from './nomeExibicao'
-import { situacao, rotuloSituacao, contarTrabalhando } from './situacao'
+import { situacao, rotuloSituacao, contarTrabalhando, naLista } from './situacao'
 import './folhaImpressao.css'
 
 const CLASSE = { ferias: 'fn-ferias', pos: 'fn-pos-plantao', noite: 'fn-noite' }
 
+/** "20 nomes" / "1 nome" — o lugar vago não é ninguém na lista. */
+const nomes = (lista) => {
+  const n = naLista(lista).length
+  return `${n} ${n === 1 ? 'nome' : 'nomes'}`
+}
+
 function Linha({ p, curto, semPosicao }) {
+  // lugar vago de quem subiu para o P1/P2 em outro hospital (dono 07/10): onde estaria, e para onde foi
+  if (p.lugarVago) {
+    return (
+      <div className="fn-linha fn-vaga">
+        <span className="fn-posicao"><ArrowRight className="fn-seta" aria-hidden="true" /></span>
+        <span className="fn-numero">{p.numero || ''}</span>
+        <span className="fn-nome">{nomeExibicao(p.nome)}</span>
+        <span className="fn-selo"><ArrowRight className="fn-seta" aria-hidden="true" /> {LABEL_HOSPITAL[p.destino]} {p.postoPlantao}</span>
+      </div>
+    )
+  }
   const s = situacao(p)
   const selo = rotuloSituacao(p, { curto })
   return (
@@ -53,37 +72,10 @@ function Coluna({ titulo, meta, lista, curto, semPosicao, turno }) {
     <section className="fn-coluna">
       <h4>{titulo}{meta != null && <span>{meta}</span>}</h4>
       {lista.map((p, i) => (
-        <Linha key={`${p.numero || ''}-${p.nome}-${i}`} p={p} curto={curto} semPosicao={semPosicao} />
+        <Linha key={`${p.lugarVago ? 'vago' : ''}${p.numero || ''}-${p.nome}-${i}`} p={p} curto={curto} semPosicao={semPosicao} />
       ))}
       {turno && <Trabalhando lista={lista} turno={turno} />}
     </section>
-  )
-}
-
-/** Quem está fora do turno (e, de manhã, quem veio da noite), num quadro antes das listas. */
-function Resumo({ vista }) {
-  const todos = vista.tipo === 'feriado'
-    ? vista.lista.map((p) => ({ p, h: null }))
-    : [
-      ...vista.blocos.flatMap((b) => b.lista.map((p) => ({ p, h: b.hospital }))),
-      ...(vista.consultorio || []).map((p) => ({ p, h: 'consultorio' })),
-    ]
-  const grupos = [
-    { s: 'ferias', rotulo: 'férias', nome: ({ p }) => nomeExibicao(p.nome) },
-    { s: 'pos', rotulo: 'pós-plantão', nome: ({ p }) => `${nomeExibicao(p.nome)}${p.postoPlantao ? ` (${p.postoPlantao})` : ''}` },
-    { s: 'noite', rotulo: 'plantão da noite', nome: ({ p, h }) => `${nomeExibicao(p.nome)} → ${p.posicao}ª ${LABEL_HOSPITAL[h] || ''}`.trim() },
-  ]
-    .map((g) => ({ ...g, quem: todos.filter(({ p }) => situacao(p) === g.s) }))
-    .filter((g) => g.quem.length)
-  return (
-    <div className="fn-resumo">
-      {grupos.length ? grupos.map((g) => (
-        <div key={g.s} className="fn-resumo-linha">
-          <span className={`fn-selo ${CLASSE[g.s]}`}>{g.rotulo} · {g.quem.length}</span>
-          <span>{g.quem.map(g.nome).join(' · ')}</span>
-        </div>
-      )) : <div className="fn-resumo-linha fn-ninguem">Ninguém de férias nem de pós-plantão neste turno.</div>}
-    </div>
   )
 }
 
@@ -94,7 +86,6 @@ function Turno({ rotulo, turno, vista, curto }) {
     return (
       <div className="fn-turno">
         <h3>{rotulo}</h3>
-        <Resumo vista={vista} />
         <section className="fn-coluna">
           <h4>{vista.feriado}<span>fila única · {vista.lista.length}</span></h4>
           <div className="fn-feriado" style={{ gridTemplateRows: `repeat(${linhas}, auto)` }}>
@@ -106,19 +97,18 @@ function Turno({ rotulo, turno, vista, curto }) {
   }
   const bloco = (h) => vista.blocos.find((b) => b.hospital === h)
   const hospital = (h) => bloco(h) && (
-    <Coluna titulo={LABEL_HOSPITAL[h]} meta={`${bloco(h).lista.length} nomes`} lista={bloco(h).lista} curto={curto} turno={turno} />
+    <Coluna titulo={LABEL_HOSPITAL[h]} meta={nomes(bloco(h).lista)} lista={bloco(h).lista} curto={curto} turno={turno} />
   )
   return (
     <div className="fn-turno">
       <h3>{rotulo}</h3>
-      <Resumo vista={vista} />
       <div className="fn-grade">
         {hospital('hro')}
         {hospital('unimed')}
       </div>
       <div className="fn-grade fn-baixo">
         {bloco('materno') && (
-          <Coluna titulo={LABEL_HOSPITAL.materno} meta={`${bloco('materno').lista.length} nomes`} lista={bloco('materno').lista} curto={curto} />
+          <Coluna titulo={LABEL_HOSPITAL.materno} meta={nomes(bloco('materno').lista)} lista={bloco('materno').lista} curto={curto} />
         )}
         {vista.consultorio?.length > 0 && (
           <Coluna titulo={LABEL_HOSPITAL.consultorio} lista={vista.consultorio} curto={curto} semPosicao />

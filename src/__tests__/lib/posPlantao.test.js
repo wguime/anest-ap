@@ -99,7 +99,11 @@ describe('MANHÃ — sobe para a 2ª posição do hospital em que plantonou', ()
     expect(hro).toHaveLength(nomes(blocos, 'hro').length + 1)
     expect(uni).toHaveLength(nomes(blocos, 'unimed').length - 1)
     expect(uni.filter((p) => p.nome === 'ROMULO')).toEqual([])
-    expect(r.movidos).toEqual([{ hospital: 'hro', nome: 'ROMULO' }, { hospital: 'unimed', nome: 'KLISMAN' }])
+    // e cada um leva DE ONDE saiu — o card de origem mostra o lugar vago (dono 07/10)
+    expect(r.movidos).toEqual([
+      { hospital: 'hro', nome: 'ROMULO', numero: '20', postoPlantao: 'P1', origem: { hospital: 'unimed', posicao: 9 } },
+      { hospital: 'unimed', nome: 'KLISMAN', numero: '16', postoPlantao: 'P2', origem: { hospital: 'unimed', posicao: 7 } },
+    ])
   })
 
   it('a numeração é refeita: 1..n sem buraco, nos dois hospitais', () => {
@@ -278,5 +282,60 @@ describe('documento de FDS com NOME CURTO — segunda 28/09 (caso real)', () => 
     const g = grade('2026-09-28', 'matutino')
     const r = aplicarPosPlantaoManha(dados, g.blocos, g.consultorio, { hro: null, unimed: 'JOAO' })
     expect(r.movidos).toEqual([])
+  })
+})
+
+/**
+ * Achados da auditoria da contagem "quem trabalha" (dono 07/10), nos dados reais do Pega
+ * Plantão da vigência inteira — os dois únicos dias em que a tela e a conferência divergiam.
+ */
+describe('noite + férias no dia seguinte (auditoria de 07/10)', () => {
+  it('06/11: Marilio fez o P2 e está de férias — NÃO sobe; fica onde a numérica o pôs', () => {
+    const noturnos = { hro: 'Nathalia Fornari Fernandes', unimed: 'Marilio José Flach' }
+    const ferias = ['MARILIO JOSE FLACH', 'RAUL PERIZZOLO']
+    const g = grade('2026-11-06', 'matutino')
+    const ondeEstava = g.blocos.find((b) => b.lista.some((p) => p.nome === 'MARILIO'))
+    const posicaoAntes = ondeEstava.lista.find((p) => p.nome === 'MARILIO').posicao
+
+    const r = aplicarPosPlantaoManha(dados, g.blocos, g.consultorio, noturnos, { ferias })
+    expect(r.movidos.map((m) => m.nome)).not.toContain('MARILIO')
+    const depois = r.blocos.find((b) => b.hospital === ondeEstava.hospital).lista.find((p) => p.nome === 'MARILIO')
+    expect(depois.movidoPorPlantao).toBeUndefined()
+    // a Nathalia (P1) sobe normalmente
+    expect(nomes(r.blocos, 'hro')[1]).toBe('NATHALIA')
+    expect(posicaoAntes).toBeGreaterThan(0)
+  })
+
+  it('06/11 na CONFERÊNCIA: quem já saiu por férias não volta pela legenda', () => {
+    const ferias = ['MARILIO JOSE FLACH']
+    const esperada = montarOrdem(dados, { data: '2026-11-06', hospital: 'unimed', turno: 'matutino', ferias })
+    const r = aplicarPosPlantaoManha(dados, [{ hospital: 'unimed', lista: esperada.lista }], esperada.consultorio, { unimed: 'Marilio José Flach' }, { ferias })
+    expect(nomes(r.blocos, 'unimed')).not.toContain('MARILIO')
+    expect(r.blocos[0].lista).toHaveLength(esperada.lista.length)
+  })
+
+  it('sem férias informadas a regra antiga vale: quem fez a noite sobe', () => {
+    const g = grade('2026-11-06', 'matutino')
+    const r = aplicarPosPlantaoManha(dados, g.blocos, g.consultorio, { unimed: 'Marilio José Flach' })
+    expect(nomes(r.blocos, 'unimed')[1]).toBe('MARILIO')
+  })
+
+  it('17/11: Roberta fez o P2 — só ELA sobe; o Humberto segura a posição da dupla', () => {
+    const g = grade('2026-11-17', 'matutino')
+    const daDupla = g.blocos.find((b) => b.lista.some((p) => p.nome === 'HUMBERTO / ROBERTA'))
+    const posicaoDupla = daDupla.lista.find((p) => p.nome === 'HUMBERTO / ROBERTA').posicao
+    const ferias = ['HUMBERTO HEPP', 'CRISTINA BERTOL BARBOSA MARCON']
+
+    const r = aplicarPosPlantaoManha(dados, g.blocos, g.consultorio, { unimed: 'Roberta Marina Grando' }, { ferias })
+    const segunda = r.blocos.find((b) => b.hospital === 'unimed').lista[1]
+    expect(segunda).toMatchObject({ numero: '05', nome: 'ROBERTA', movidoPorPlantao: true, postoPlantao: 'P2' })
+    // ninguém duplicado: a dupla vira só o Humberto, no mesmo lugar
+    const todos = r.blocos.flatMap((b) => b.lista.map((p) => p.nome))
+    expect(todos.filter((n) => /ROBERTA/.test(n))).toEqual(['ROBERTA'])
+    const ficou = r.blocos.find((b) => b.hospital === daDupla.hospital).lista
+    const humberto = ficou.find((p) => p.nome === 'HUMBERTO')
+    expect(humberto.numero).toBe('05')
+    // na Unimed a posição dele não muda; se a dupla estava em outro hospital, também não
+    expect(humberto.posicao).toBe(daDupla.hospital === 'unimed' && posicaoDupla > 1 ? posicaoDupla + 1 : posicaoDupla)
   })
 })

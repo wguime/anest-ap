@@ -10,10 +10,11 @@
  * a LINHA PINTADA — laranja = férias, índigo = pós-plantão — com um selo escrito no fim; o
  * plantonista da noite, de manhã, trabalha: leva só o selo, sem pintar. Regra em `situacao.js`.
  */
+import { ArrowRight } from 'lucide-react'
 import { cn } from '@/design-system/utils/tokens'
 import { LABEL_HOSPITAL } from '@/lib/escalaNumerica'
 import { nomeExibicao } from './nomeExibicao'
-import { situacao, rotuloSituacao, contarTrabalhando } from './situacao'
+import { situacao, rotuloSituacao, contarTrabalhando, naLista } from './situacao'
 
 // classes por extenso: classe Tailwind montada em runtime é purgada no build. O número da
 // posição vai em `*-fg` (e não no `category-*` forte) porque o laranja forte com texto branco
@@ -59,7 +60,48 @@ export function SeloSituacao({ p, className }) {
   )
 }
 
+/**
+ * Para onde foi quem deixou este lugar vago: "→ P2". Só o posto — ele já diz o hospital
+ * (P1 = HRO, P2 = Unimed) e casa com o selo "P2" da linha onde a pessoa está; com o nome do
+ * hospital o selo cortava o nome a 430px. O hospital vai por extenso no title.
+ */
+function SeloDestino({ p }) {
+  return (
+    <span className="inline-flex flex-none items-center gap-0.5 rounded-[5px] border border-dashed border-category-indigo-fg bg-card px-1 text-[10px] font-bold leading-[15px] text-category-indigo-fg">
+      <ArrowRight className="size-3" aria-hidden="true" />
+      {p.postoPlantao}
+    </span>
+  )
+}
+
+const tituloVago = (p) =>
+  `${nomeExibicao(p.nome)} estaria aqui pela numérica; fez o plantão ${p.postoPlantao} da noite e hoje de manhã está na 2ª posição: ${LABEL_HOSPITAL[p.destino]}`
+
+/**
+ * Lugar vago de quem subiu para o P1/P2 em OUTRO card (dono 07/10: "informe que a posição
+ * original seria no Materno no card do Materno"). Sem número — a coluna foi renumerada — e
+ * fora da conta; tracejado para não parecer alguém na fila.
+ */
+function LinhaVaga({ p }) {
+  return (
+    <div
+      data-slot="ordem-vaga"
+      data-legenda={p.nome}
+      title={tituloVago(p)}
+      className="flex h-7 min-w-0 items-center gap-1 border-b border-dashed border-border"
+    >
+      <span className="flex size-[17px] flex-none items-center justify-center rounded-md border border-dashed border-category-indigo-fg text-category-indigo-fg">
+        <ArrowRight className="size-3" aria-hidden="true" />
+      </span>
+      <span className="w-4 flex-none text-[10px] font-semibold tabular-nums text-muted-foreground">{p.numero}</span>
+      <span className="min-w-0 truncate text-[12.5px] font-medium text-muted-foreground">{nomeExibicao(p.nome)}</span>
+      <span className="ml-auto flex flex-none"><SeloDestino p={p} /></span>
+    </div>
+  )
+}
+
 export function LinhaOrdem({ p }) {
+  if (p.lugarVago) return <LinhaVaga p={p} />
   const s = situacao(p)
   const tinta = s ? TINTA[s] : null
   const pintada = Boolean(tinta?.linha)
@@ -132,7 +174,7 @@ export default function ListaOrdem({ lista }) {
       style={{ gridTemplateRows: `repeat(${linhas}, 28px)` }}
     >
       {lista.map((p) => (
-        <LinhaOrdem key={`${p.posicao}-${p.numero}-${p.nome}`} p={p} />
+        <LinhaOrdem key={`${p.lugarVago ? 'vago' : p.posicao}-${p.numero}-${p.nome}`} p={p} />
       ))}
     </div>
   )
@@ -171,12 +213,13 @@ function Trabalhando({ lista, turno }) {
  * contagem de quem trabalha — só no HRO e na Unimed (dono 07/10).
  */
 export function BlocoOrdem({ rotulo, lista, meta, turno }) {
+  const n = naLista(lista).length
   return (
     <section className="rounded-[20px] border border-border bg-card p-3 dark:bg-card">
       <div className="mb-2.5 flex items-baseline justify-between gap-2">
         <h2 className="text-[15px] font-extrabold">{rotulo}</h2>
         <span className="text-[11.5px] tabular-nums text-muted-foreground">
-          {meta ?? `${lista.length} ${lista.length === 1 ? 'nome' : 'nomes'}`}
+          {meta ?? `${n} ${n === 1 ? 'nome' : 'nomes'}`}
         </span>
       </div>
       {lista.length ? (
@@ -184,7 +227,7 @@ export function BlocoOrdem({ rotulo, lista, meta, turno }) {
       ) : (
         <p className="py-2 text-[12.5px] text-muted-foreground">Ninguém nesta coluna hoje.</p>
       )}
-      {turno && lista.length > 0 && <Trabalhando lista={lista} turno={turno} />}
+      {turno && n > 0 && <Trabalhando lista={lista} turno={turno} />}
     </section>
   )
 }
@@ -200,6 +243,21 @@ export function BlocoConsultorio({ consultorio }) {
       </div>
       <div className="flex flex-wrap gap-1.5">
         {consultorio.map((c) => {
+          if (c.lugarVago) {
+            return (
+              <span
+                key={`vago-${c.numero}`}
+                data-slot="consultorio-vaga"
+                data-legenda={c.nome}
+                title={tituloVago(c)}
+                className="inline-flex min-h-[32px] items-center gap-1.5 rounded-full border border-dashed border-category-indigo-fg px-3 text-[12.5px] font-medium text-muted-foreground"
+              >
+                <span className="text-[11px] tabular-nums">{c.numero}</span>
+                {nomeExibicao(c.nome)}
+                <SeloDestino p={c} />
+              </span>
+            )
+          }
           const s = situacao(c)
           const tinta = s ? TINTA[s] : null
           return (

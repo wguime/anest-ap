@@ -3,6 +3,24 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.50 (07/10/2026) — Escala Numérica: lugar vago de quem sobe para o P1/P2; contagem auditada; folha sem resumo
+
+Pedidos do dono depois da v5.12.49:
+- **Folha impressa sem o quadro de "quem está fora"** no topo ("não quero esse resumo") — a linha pintada já diz.
+- **Lugar vago:** quem fez a noite e de manhã sobe para a 2ª do hospital do plantão deixa, no card de onde saiu,
+  uma linha tracejada na posição em que estaria ("→ P2"). Ex.: 08/10, João Moreira é o 1º do Materno pela
+  numérica e está na 2ª da Unimed — o Materno mostra o lugar dele. Fora do "N nomes" e da conta; vale na folha.
+- **Contagem auditada** com o Pega Plantão na vigência inteira (03/08–18/12, 190 turnos), comparando a conta
+  da tela com a da conferência da publicação, que é outro caminho de código. Dois erros achados e corrigidos:
+  - 06/11: quem fez a noite (Marilio, P2) e está de férias no dia não sobe mais para a 2ª — fica marcado na
+    posição da numérica; a conferência não o recoloca na lista esperada.
+  - 17/11: Roberta fez o P2 e o Humberto (dupla) está de férias — subia a dupla inteira pintada de férias e a
+    Roberta saía da conta (19 em vez de 20). Agora só ela sobe; o Humberto fica na posição da dupla.
+  Depois: zero divergência nos 190 turnos. Contra o rodapé publicado: 01/10 bate nos 4 (HRO 17/16, Unimed
+  15/15); 07/10 o HRO tem 1 a mais (Vicente Pons, sem férias nem registro no Pega Plantão).
+- Testes: 3 da lib que falham na versão anterior (06/11 tela e conferência, 17/11) + 3 da página (lugar vago na
+  tela, na folha, e nenhum vago à tarde ou quando a pessoa sobe dentro do próprio hospital).
+
 ## v5.12.49 (07/10/2026) — Escala Numérica: férias, plantão da noite e pós-plantão à vista; folha A4 colorida
 
 Pedido do dono: quem está de férias, P2 e pós-plantão "melhor visualizado", impressão colorida e folha
