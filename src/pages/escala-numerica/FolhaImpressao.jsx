@@ -13,6 +13,8 @@
  * - **o dia inteiro**: A4 DEITADA, manhã à esquerda e tarde à direita, cada uma com os mesmos
  *   blocos (Materno e Consultório com título — dono 07/10).
  * Abaixo do HRO e da Unimed vai quantos trabalham no turno (lista − férias − pós-plantão).
+ * A observação do turno (dono 08/10) sai embaixo da coluna dela, só onde há texto (opção P1 do
+ * modelo); com observação, as linhas da escala baixam um pouco para a folha seguir em UMA página.
  *
  * Cor fixa, fora dos tokens (em `folhaImpressao.css`): papel não tem tema escuro — os hex
  * espelham os tokens CLAROS da tela.
@@ -24,7 +26,7 @@ import { nomeExibicao } from './nomeExibicao'
 import { situacao, rotuloSituacao, contarTrabalhando, naLista } from './situacao'
 import './folhaImpressao.css'
 
-const CLASSE = { ferias: 'fn-ferias', pos: 'fn-pos-plantao', noite: 'fn-noite' }
+const CLASSE = { ferias: 'fn-ferias', ausente: 'fn-ausente', pos: 'fn-pos-plantao', noite: 'fn-noite' }
 
 /** "20 nomes" / "1 nome" — o lugar vago não é ninguém na lista. */
 const nomes = (lista) => {
@@ -66,8 +68,42 @@ function Trabalhando({ lista, turno }) {
   )
 }
 
+/**
+ * Quanto a folha aperta as linhas para as observações caberem sem passar de uma página. A conta
+ * é por estimativa de linhas de texto (caracteres por linha da coluna, medidos no PDF a 9,5pt em
+ * pé e 7,6pt deitada) — o navegador não deixa medir a folha antes de imprimir, porque ela só
+ * aparece no papel. Por turno vale a coluna mais alta de cima (HRO|Unimed) + a de baixo
+ * (Materno|Consultório); na folha deitada, o turno mais carregado. Níveis conferidos em PDF com
+ * 300 caracteres em todos os cards (`folhaImpressao.css`).
+ */
+const CARACTERES_POR_LINHA = { pe: 55, deitada: 48 }
+function linhasDaNota(texto, porLinha) {
+  if (!texto) return 0
+  return String(texto).split('\n').reduce((n, par) => n + Math.max(1, Math.ceil(par.length / porLinha)), 0)
+}
+function notasNaFolha({ vista, observacoes = {} }) {
+  if (vista?.tipo !== 'dia') return {}
+  const tem = (h) => (h === 'consultorio' ? vista.consultorio?.length > 0 : vista.blocos.some((b) => b.hospital === h))
+  return Object.fromEntries(Object.entries(observacoes).filter(([h, t]) => t && tem(h)))
+}
+function nivelAperto(turnos, diaInteiro) {
+  const porLinha = diaInteiro ? CARACTERES_POR_LINHA.deitada : CARACTERES_POR_LINHA.pe
+  const carga = Math.max(0, ...turnos.map((t) => {
+    const n = notasNaFolha(t)
+    const l = (h) => linhasDaNota(n[h], porLinha)
+    return Math.max(l('hro'), l('unimed')) + Math.max(l('materno'), l('consultorio'))
+  }))
+  if (!carga) return 0
+  return carga <= 4 ? 1 : carga <= 8 ? 2 : 3
+}
+
+function Observacao({ texto }) {
+  if (!texto) return null
+  return <div className="fn-obs"><b>Observações</b><p>{texto}</p></div>
+}
+
 /** O <h4> começa pelo título (o teste lê o 1º nó): o Consultório sai SÓ com ele (dono 25/09). */
-function Coluna({ titulo, meta, lista, curto, semPosicao, turno }) {
+function Coluna({ titulo, meta, lista, curto, semPosicao, turno, observacao }) {
   return (
     <section className="fn-coluna">
       <h4>{titulo}{meta != null && <span>{meta}</span>}</h4>
@@ -75,11 +111,12 @@ function Coluna({ titulo, meta, lista, curto, semPosicao, turno }) {
         <Linha key={`${p.lugarVago ? 'vago' : ''}${p.numero || ''}-${p.nome}-${i}`} p={p} curto={curto} semPosicao={semPosicao} />
       ))}
       {turno && <Trabalhando lista={lista} turno={turno} />}
+      <Observacao texto={observacao} />
     </section>
   )
 }
 
-function Turno({ rotulo, turno, vista, curto }) {
+function Turno({ rotulo, turno, vista, observacoes, curto }) {
   if (vista.tipo === 'feriado') {
     // fila única: as 20 posições descem a 1ª coluna e continuam na 2ª, como na tela
     const linhas = Math.ceil(vista.lista.length / 2)
@@ -96,8 +133,9 @@ function Turno({ rotulo, turno, vista, curto }) {
     )
   }
   const bloco = (h) => vista.blocos.find((b) => b.hospital === h)
+  const notas = notasNaFolha({ vista, observacoes })
   const hospital = (h) => bloco(h) && (
-    <Coluna titulo={LABEL_HOSPITAL[h]} meta={nomes(bloco(h).lista)} lista={bloco(h).lista} curto={curto} turno={turno} />
+    <Coluna titulo={LABEL_HOSPITAL[h]} meta={nomes(bloco(h).lista)} lista={bloco(h).lista} curto={curto} turno={turno} observacao={notas[h]} />
   )
   return (
     <div className="fn-turno">
@@ -108,10 +146,10 @@ function Turno({ rotulo, turno, vista, curto }) {
       </div>
       <div className="fn-grade fn-baixo">
         {bloco('materno') && (
-          <Coluna titulo={LABEL_HOSPITAL.materno} meta={nomes(bloco('materno').lista)} lista={bloco('materno').lista} curto={curto} />
+          <Coluna titulo={LABEL_HOSPITAL.materno} meta={nomes(bloco('materno').lista)} lista={bloco('materno').lista} curto={curto} observacao={notas.materno} />
         )}
         {vista.consultorio?.length > 0 && (
-          <Coluna titulo={LABEL_HOSPITAL.consultorio} lista={vista.consultorio} curto={curto} semPosicao />
+          <Coluna titulo={LABEL_HOSPITAL.consultorio} lista={vista.consultorio} curto={curto} semPosicao observacao={notas.consultorio} />
         )}
       </div>
     </div>
@@ -119,14 +157,16 @@ function Turno({ rotulo, turno, vista, curto }) {
 }
 
 /**
- * `turnos`: [{ rotulo, turno, vista }] — um (o turno da tela) ou dois (o dia inteiro).
+ * `turnos`: [{ rotulo, turno, vista, observacoes }] — um (o turno da tela) ou dois (o dia
+ * inteiro); `observacoes` = { hro, unimed, materno, consultorio } com o texto de cada card.
  * `dia`: "quarta, 07/10/2026".
  */
 export default function FolhaImpressao({ dia, diaInteiro = false, turnos, notaFerias }) {
   if (typeof document === 'undefined') return null
+  const aperto = nivelAperto(turnos, diaInteiro)
   const agora = new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
   return createPortal(
-    <div className={`folha-numerica ${diaInteiro ? 'fn-dia' : 'fn-um-turno'}`}>
+    <div className={`folha-numerica ${diaInteiro ? 'fn-dia' : 'fn-um-turno'}${aperto ? ` fn-aperto-${aperto}` : ''}`}>
       {/* o @page mora AQUI e não no CSS global: a folha só existe enquanto imprime, então a
           orientação dela não alcança outra impressão do app. Dentro de `@media print` porque o
           jsdom (testes) quebra no getComputedStyle com um @page solto, e só lê @media screen */}
@@ -143,9 +183,10 @@ export default function FolhaImpressao({ dia, diaInteiro = false, turnos, notaFe
       </div>
       <div className="fn-legenda">
         <span><i className="fn-amostra fn-ferias" />Férias: mantém a posição, não trabalha</span>
+        <span><i className="fn-amostra fn-ausente" />Ausente: afastamento no Pega Plantão, não trabalha</span>
         <span><i className="fn-amostra fn-pos-plantao" />Pós-plantão: fez a noite (P1 HRO · P2 Unimed), não trabalha à tarde</span>
         <span><i className="fn-amostra fn-noite" />Plantão da noite: de manhã sobe para a 2ª do hospital do plantão</span>
-        <span>1ª posição = primeira a ser liberada · Trabalhando = lista − férias − pós-plantão · Consultório não entra na fila</span>
+        <span>1ª posição = primeira a ser liberada · Trabalhando = lista − férias − ausentes − pós-plantão · Consultório não entra na fila</span>
       </div>
     </div>,
     document.body

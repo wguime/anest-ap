@@ -10,8 +10,23 @@
  * Nada aqui grava; nada aqui exclui ninguém. Quem marca a lista é `anotarFerias` na lib.
  */
 import { useState, useEffect, useCallback } from 'react'
-import { getFeriasDoAno, invalidarFeriasDoAno } from '@/services/pegaPlantaoApi'
+import { getFeriasDoAno, getLicencasDoAno, invalidarFeriasDoAno } from '@/services/pegaPlantaoApi'
 import { normalizarRegistrosFerias } from '@/lib/extratoFerias'
+
+/**
+ * Licenças ("LICENÇA SAÚDE"…) → [{ nome, data }], no mesmo formato das férias para
+ * `feriasNaData` servir às duas. A tela mostra só "ausente": o motivo é dado de saúde (LGPD).
+ */
+function normalizarLicencas(raw = []) {
+  const vistos = new Set()
+  return raw.flatMap((p) => {
+    const nome = String(p?.ProfDePlantao || p?.ProfFixo || '').trim().toUpperCase()
+    const data = String(p?.Inicio || '').slice(0, 10)
+    if (!nome || !/^\d{4}-\d{2}-\d{2}$/.test(data) || vistos.has(`${nome}|${data}`)) return []
+    vistos.add(`${nome}|${data}`)
+    return [{ nome, data }]
+  })
+}
 
 /**
  * Nomes de quem está de férias numa data (dedup). `null` quando o Pega Plantão não
@@ -24,6 +39,7 @@ export function feriasNaData(registros, dataISO) {
 
 export function useFeriasDoAno(ano) {
   const [registros, setRegistros] = useState(null)
+  const [licencas, setLicencas] = useState(null)
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState(null)
   const [conferidoEm, setConferidoEm] = useState(null)
@@ -36,12 +52,16 @@ export function useFeriasDoAno(ano) {
       // mostrar o agregado que o Extrato de Férias deixou no cache há 29 minutos
       invalidarFeriasDoAno(ano)
       const raw = await getFeriasDoAno(ano)
+      // depois das férias: lê os mesmos 12 meses do cache, sem chamada a mais (dono 07/10)
+      const rawLicencas = await getLicencasDoAno(ano)
       setRegistros(normalizarRegistrosFerias(raw))
+      setLicencas(normalizarLicencas(rawLicencas))
       setConferidoEm(new Date())
     } catch (e) {
       // lista sem férias conferidas é melhor que lista errada: some a marca e a tela avisa
       setErro(e?.message || 'Não foi possível consultar o Pega Plantão')
       setRegistros(null)
+      setLicencas(null)
     } finally {
       setLoading(false)
     }
@@ -49,5 +69,5 @@ export function useFeriasDoAno(ano) {
 
   useEffect(() => { recarregar() }, [recarregar])
 
-  return { registros, loading, erro, conferidoEm, recarregar }
+  return { registros, licencas, loading, erro, conferidoEm, recarregar }
 }

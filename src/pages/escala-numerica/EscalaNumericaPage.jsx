@@ -2,9 +2,10 @@
  * Escala Numérica — consulta da ORDEM DE LIBERAÇÃO esperada de um dia, por hospital e turno.
  *
  * Base: a escala numérica do grupo (`src/data/escalaNumerica.json` + `src/lib/escalaNumerica.js`),
- * a mesma que a conferência usa. Esta tela só LÊ: nada aqui grava `ordem_liberacao` nem qualquer
- * outra coisa — o rodapé publicado continua sendo a fonte da fila, e divergir dele é assunto da
- * conferência da escala cirúrgica.
+ * a mesma que a conferência usa. A FILA aqui só é lida: nada grava `ordem_liberacao` — o rodapé
+ * publicado continua sendo a fonte da fila, e divergir dele é assunto da conferência da escala
+ * cirúrgica. A única escrita da tela é a observação no pé de cada card (dono 08/10), em tabela
+ * própria (`escala_numerica_observacao`).
  *
  * Diferença deliberada para a conferência (dono 03/09): férias MARCAM, não excluem. Quem está de
  * férias no Pega Plantão aparece na posição dele com "(férias)" ao lado — o grupo quer ver a fila
@@ -19,7 +20,7 @@ import { RefreshCw, CalendarClock, Umbrella, TriangleAlert, Info, Printer, Clock
 import SegmentedSelector from '../escala-cirurgica/SegmentedSelector'
 import dadosNumerica from '@/data/escalaNumerica.json'
 import { acentuarNome } from '@/lib/nomeAcentos'
-import { montarOrdem, anotarFerias, HOSPITAIS_NUMERICA, LABEL_HOSPITAL, LABEL_TURNO } from '@/lib/escalaNumerica'
+import { montarOrdem, anotarFerias, casarNomeComLegenda, HOSPITAIS_NUMERICA, LABEL_HOSPITAL, LABEL_TURNO } from '@/lib/escalaNumerica'
 import { getPlantoesPorData } from '@/services/pegaPlantaoApi'
 import { BlocoOrdem, BlocoConsultorio } from './ListaOrdem'
 import FolhaImpressao from './FolhaImpressao'
@@ -27,6 +28,10 @@ import { useFeriasDoAno, feriasNaData } from './useFeriasDoAno'
 import { sabadoDoFimDeSemana, filaPn } from './plantonistasFds'
 import { aplicarPosPlantaoManha, marcarPosPlantaoTarde } from '@/lib/posPlantao'
 import { usePosPlantao } from './usePosPlantao'
+import ObservacaoCard from './ObservacaoCard'
+import { useObservacoes, chaveObservacao } from './useObservacoes'
+import { useUser } from '@/contexts/UserContext'
+import { podeEditarEscalaCirurgica } from '../escala-cirurgica/gate'
 import { paraISO, paraBr, DIA_LONGO } from './calendario'
 
 const TURNOS = [
@@ -156,7 +161,21 @@ function marcarVagosNoConsultorio(consultorio, original = [], movidos = []) {
  * A lista de um turno, como a tela mostra. Função e não `useMemo` porque a impressão do dia
  * inteiro monta os DOIS turnos com as mesmas regras (pós-plantão antes das férias).
  */
-function montarVista(dataISO, turno, ferias, noturnos) {
+/**
+ * Licença no Pega Plantão (dono 07/10: "descontar, mostrando 'ausente'"). Mesmo casamento de
+ * nomes das férias. Numa DUPLA só marca se os dois estiverem fora: a regra "férias da dupla são
+ * juntas" (21/09) é de férias; licença de um não diz nada do outro, que segura a posição.
+ */
+function anotarAusentes(lista, ausentes) {
+  if (!Array.isArray(ausentes) || !ausentes.length) return lista
+  return lista.map((p) => {
+    if (p.lugarVago) return p
+    const nomes = String(p.nome).split(' / ').map((n) => n.trim()).filter(Boolean)
+    return nomes.every((n) => ausentes.some((a) => casarNomeComLegenda(n, a))) ? { ...p, ausente: true } : p
+  })
+}
+
+function montarVista(dataISO, turno, ferias, noturnos, ausentes = null) {
   // qualquer hospital serve de sonda: fim de semana, fora da vigência e feriado (fila única)
   // respondem igual para os três
   const base = montarOrdem(dadosNumerica, { data: dataISO, hospital: 'hro', turno, ferias: null })
@@ -165,7 +184,7 @@ function montarVista(dataISO, turno, ferias, noturnos) {
     return {
       tipo: 'feriado',
       feriado: base.feriado,
-      lista: anotarFerias(base.lista, ferias),
+      lista: anotarAusentes(anotarFerias(base.lista, ferias), ausentes),
       pendencias: pendenciasReais(base.pendencias),
     }
   }
@@ -176,12 +195,15 @@ function montarVista(dataISO, turno, ferias, noturnos) {
   // pós-plantão ANTES das férias: a manhã muda quem está em cada coluna, e marcar antes
   // de mover deixaria a marca na posição velha
   const pp = turno === 'matutino'
-    ? aplicarPosPlantaoManha(dadosNumerica, brutos, base.consultorio, noturnos, { ferias })
+    // quem fez a noite e não trabalha no dia (férias OU licença) não sobe para a 2ª
+    ? aplicarPosPlantaoManha(dadosNumerica, brutos, base.consultorio, noturnos, {
+      ferias: Array.isArray(ferias) || Array.isArray(ausentes) ? [...(ferias || []), ...(ausentes || [])] : null,
+    })
     : marcarPosPlantaoTarde(brutos, base.consultorio, noturnos)
-  const blocos = pp.blocos.map((b) => ({ ...b, lista: anotarFerias(b.lista, ferias) }))
+  const blocos = pp.blocos.map((b) => ({ ...b, lista: anotarAusentes(anotarFerias(b.lista, ferias), ausentes) }))
   // o consultório não entra na FILA, mas quem está nele também tira férias (dono 03/09):
   // a marca vale para os três hospitais E para o consultório
-  const consultorio = anotarFerias(pp.consultorio, ferias)
+  const consultorio = anotarAusentes(anotarFerias(pp.consultorio, ferias), ausentes)
   return {
     tipo: 'dia',
     // o lugar vago entra DEPOIS das férias: ele não é ninguém trabalhando ali, não leva marca
@@ -207,20 +229,43 @@ export default function EscalaNumericaPage({ goBack }) {
   const [turno, setTurno] = useState('matutino')
   const dataISO = paraISO(data)
 
-  const { registros, loading, erro, conferidoEm, recarregar } = useFeriasDoAno(dadosNumerica.ano)
+  const { registros, licencas, loading, erro, conferidoEm, recarregar } = useFeriasDoAno(dadosNumerica.ano)
   const ferias = useMemo(() => feriasNaData(registros, dataISO), [registros, dataISO])
+  const ausentes = useMemo(() => feriasNaData(licencas, dataISO), [licencas, dataISO])
 
   // plantão noturno da véspera: na manhã P1/P2 sobem para a 2ª do hospital em que
   // plantonaram; na tarde ficam onde a numérica os põe, marcados (dono 03/09)
   const posPlantao = usePosPlantao(dataISO)
 
   const vista = useMemo(
-    () => montarVista(dataISO, turno, ferias, posPlantao.noturnos),
-    [dataISO, turno, ferias, posPlantao.noturnos]
+    () => montarVista(dataISO, turno, ferias, posPlantao.noturnos, ausentes),
+    [dataISO, turno, ferias, posPlantao.noturnos, ausentes]
   )
 
   const ehFds = vista.tipo === 'vazio' && vista.motivo === 'fim_de_semana'
   const fds = useFilaFds(dataISO, ehFds)
+
+  // observação no pé de cada card, por turno (dono 08/10): lê todo mundo, escreve quem opera a
+  // escala cirúrgica (mesmo gate da RLS). Enquanto não carregou — ou se a leitura falhou — não
+  // se escreve: gravar às cegas apagaria a anotação de outra pessoa
+  const { user } = useUser()
+  const obs = useObservacoes(dataISO)
+  const podeEscrever = podeEditarEscalaCirurgica(user) && !obs.carregando && !obs.erro
+  const observacao = (hospital) => (
+    <ObservacaoCard
+      key={`${dataISO}:${turno}:${hospital}`}
+      rotulo={LABEL_HOSPITAL[hospital]}
+      observacao={obs.porChave[chaveObservacao(turno, hospital)]}
+      podeEscrever={podeEscrever}
+      onSalvar={(texto) => obs.salvar(
+        { turno, hospital, texto },
+        { userId: user?.uid || user?.id, userName: user?.displayName || user?.nome }
+      )}
+    />
+  )
+  const observacoesDoTurno = (t) => Object.fromEntries(
+    ['hro', 'unimed', 'materno', 'consultorio'].map((h) => [h, obs.porChave[chaveObservacao(t, h)]?.texto || ''])
+  )
 
   const subtitulo = `${DIA_LONGO[data.getDay()]}, ${paraBr(dataISO)}`
 
@@ -239,9 +284,10 @@ export default function EscalaNumericaPage({ goBack }) {
     ? TURNOS.map((t) => ({
       rotulo: t.label,
       turno: t.value,
-      vista: t.value === turno ? vista : montarVista(dataISO, t.value, ferias, posPlantao.noturnos),
+      vista: t.value === turno ? vista : montarVista(dataISO, t.value, ferias, posPlantao.noturnos, ausentes),
+      observacoes: observacoesDoTurno(t.value),
     }))
-    : [{ rotulo: LABEL_TURNO[turno], turno, vista }]
+    : [{ rotulo: LABEL_TURNO[turno], turno, vista, observacoes: observacoesDoTurno(turno) }]
   const notaFerias = erro
     ? 'Férias NÃO conferidas'
     : conferidoEm
@@ -282,7 +328,7 @@ export default function EscalaNumericaPage({ goBack }) {
             )}
             <button
               type="button"
-              onClick={recarregar}
+              onClick={() => { recarregar(); obs.recarregar() }}
               disabled={loading}
               className="p-2 text-primary transition-opacity hover:opacity-70 disabled:opacity-50"
               aria-label="Consultar as férias de novo"
@@ -337,9 +383,17 @@ export default function EscalaNumericaPage({ goBack }) {
                 rotulo={LABEL_HOSPITAL[b.hospital]}
                 lista={b.lista}
                 turno={b.hospital === 'materno' ? undefined : turno}
-              />
+              >
+                {observacao(b.hospital)}
+              </BlocoOrdem>
             ))}
-            <BlocoConsultorio consultorio={vista.consultorio} />
+            <BlocoConsultorio consultorio={vista.consultorio}>{observacao('consultorio')}</BlocoConsultorio>
+            {obs.erro && (
+              <p className="flex items-start gap-1.5 px-0.5 text-[11.5px] leading-relaxed text-destructive">
+                <TriangleAlert className="mt-0.5 size-3.5 flex-none" aria-hidden="true" />
+                Não foi possível carregar as observações. Toque em atualizar para tentar de novo.
+              </p>
+            )}
           </>
         )}
 
@@ -361,7 +415,7 @@ export default function EscalaNumericaPage({ goBack }) {
               ? `Férias NÃO conferidas: ${erro}. A lista está sem a marca de férias.`
               : loading
                 ? 'Consultando as férias no Pega Plantão…'
-                : `Férias do Pega Plantão, consultadas ${conferidoEm ? `às ${conferidoEm.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 'agora'}. Linha pintada = não trabalha no turno (férias ou pós-plantão), e fica na posição.`}
+                : `Férias do Pega Plantão, consultadas ${conferidoEm ? `às ${conferidoEm.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 'agora'}. Linha pintada = não trabalha no turno (férias, ausência ou pós-plantão), e fica na posição.`}
           </p>
         )}
       </div>

@@ -143,8 +143,13 @@ Escolhida por imagem (`.tmp/escala-numerica-marcas-impressao.html`). Uma regra s
 - **Linha PINTADA = não trabalha no turno**: laranja (`category-orange`) = férias, índigo
   (`category-indigo`) = pós-plantão. Selo escrito no fim ("férias", "pós P2"). De manhã, quem
   veio da noite TRABALHA: linha sem pintura, número contornado e selo "P1"/"P2".
-- **Abaixo do HRO e da Unimed: quantos trabalham** = lista − férias − pós-plantão (as linhas
-  pintadas). Materno e feriado não têm a conta. Auditada em 07/10 contra o Pega Plantão na
+- **AUSENTE (dono 07/10):** licença no Pega Plantão (setor "LICENÇA SAÚDE" e afins,
+  `getLicencasDoAno`, que lê os 12 meses do cache das férias) pinta a linha em cinza com o selo
+  "ausente" e sai da conta — **nunca o motivo** (dado de saúde, LGPD; o teste trava a tela sem
+  "licença"/"saúde"). Numa dupla só marca se os dois estiverem fora. Quem fez a noite e está
+  ausente no dia não sobe (como férias). A CONFERÊNCIA da publicação ainda não desconta licença.
+- **Abaixo do HRO e da Unimed: quantos trabalham** = lista − férias − ausentes − pós-plantão (as
+  linhas pintadas). Materno e feriado não têm a conta. Auditada em 07/10 contra o Pega Plantão na
   vigência inteira (190 turnos, tela × conferência: zero divergência) e contra o rodapé
   publicado (01/10 bate nos 4; 07/10 o HRO tem 1 a mais: Vicente, sem férias nem registro).
   Script: `.tmp/sess-numerica/auditar-contagem.mjs <ini> <fim> [--detalhe] [--noite=DATA=HRO,UNIMED]`.
@@ -167,6 +172,32 @@ Escolhida por imagem (`.tmp/escala-numerica-marcas-impressao.html`). Uma regra s
   da folha e dentro de `@media print` (o jsdom quebra com `@page` solto). A folha segue sem
   "fora da fila" no Consultório (dono 25/09). Conferir caber em 1 página com `page.pdf` +
   `pdfinfo` (Chromium), não a olho.
+
+## Observação embaixo de cada card (dono 08/10/2026)
+
+Pedido: "acrescentar observações abaixo de cada escala dos hospitais (UNIMED, HRO e MATERNO) e do
+consultório. Deixe um campo livre para anotações". Escolhido por imagem
+(`.tmp/obs-modelo/escala-numerica-observacoes.html`): **modelo B** (linha "+ Observação" que abre o
+campo; com texto, bloco com autor + hora e "Editar"), **por turno**, escreve **quem opera a escala
+cirúrgica** (`podeEditarEscalaCirurgica` = RLS `can_write_escala_cirurgica()`), lê todo autenticado,
+**na folha só o que foi digitado** (opção P1).
+- Tabela `escala_numerica_observacao` (PK data+turno+hospital; migration `20261008150000`). Apagar =
+  gravar vazio (sem DELETE); autor e hora vêm do TRIGGER (uid do JWT + `profiles.nome`, sem
+  fallback do cliente). 300 caracteres. **Guarda de 90 dias** pela data da escala (dono
+  08/10): `escala_numerica_observacao_purge()` no pg_cron, diária. Sem tempo real: relê ao trocar a data, no botão de
+  atualizar e depois de gravar. Enquanto a leitura não chegou (ou falhou) ninguém escreve —
+  gravar às cegas apagaria a anotação de outra pessoa.
+- Feriado (fila única) não tem observação (o CHECK recusa `feriado`). Card de consultório vazio
+  some e leva a observação junto.
+- LGPD: o campo avisa "Todo o grupo vê, e sai na folha impressa. Recado de trabalho: sem motivo
+  de afastamento nem dado de paciente." — é a única barreira (texto livre); teste trava o aviso.
+  A folha não leva o autor.
+- **Folha em UMA página:** com observação, a folha aperta as linhas em 3 níveis
+  (`nivelAperto` em `FolhaImpressao.jsx`, por estimativa de linhas de texto — o navegador não
+  deixa medir a folha antes de imprimir). Conferido em PDF: em pé e deitada, sem observação,
+  com o modelo, com 150 e com 300 caracteres em todos os cards dos dois turnos = 1 página.
+  Mexeu no CSS da folha → refazer com `.tmp/sess-numerica/verificar-observacoes.mjs` (simula o
+  PostgREST com `page.route`).
 
 ## Trocas de FERIADO (dono 03/09/2026)
 

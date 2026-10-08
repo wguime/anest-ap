@@ -13,7 +13,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 
-const { getFeriasDoAno, invalidarFeriasDoAno } = vi.hoisted(() => {
+const { getFeriasDoAno, invalidarFeriasDoAno, getLicencasDoAno } = vi.hoisted(() => {
   const registro = (nome, data, codigo) => ({
     CodigoPlantao: codigo,
     Setor: 'Férias',
@@ -34,6 +34,11 @@ const { getFeriasDoAno, invalidarFeriasDoAno } = vi.hoisted(() => {
       registro('Thayná Regina Santos', '2026-10-12', 904),
     ]),
     invalidarFeriasDoAno: vi.fn(),
+    // licenças REAIS do Pega Plantão (setor "LICENÇA SAÚDE"): a tela mostra só "ausente"
+    getLicencasDoAno: vi.fn(async () => [
+      { ...registro('Raquel Schneider', '2026-09-03', 951), Setor: 'LICENÇA SAÚDE' },
+      { ...registro('Giovana Gomes Noll', '2026-09-18', 952), Setor: 'LICENÇA SAÚDE' },
+    ]),
   }
 })
 
@@ -75,7 +80,7 @@ const { getPlantoesPorData, fetchEscala } = vi.hoisted(() => {
 
 vi.mock('@/services/supabaseEscalaCirurgicaService', () => ({ default: { fetchEscala } }))
 
-vi.mock('@/services/pegaPlantaoApi', () => ({ getFeriasDoAno, invalidarFeriasDoAno, getPlantoesPorData }))
+vi.mock('@/services/pegaPlantaoApi', () => ({ getFeriasDoAno, invalidarFeriasDoAno, getLicencasDoAno, getPlantoesPorData }))
 
 /**
  * A página de Feriados também mostra as trocas, então precisa de identidade (quem sou na
@@ -86,9 +91,27 @@ const { assinantes, criarTroca, notificar } = vi.hoisted(() => ({
   assinantes: [], criarTroca: vi.fn(), notificar: vi.fn(async () => {}),
 }))
 
+// GIOVANA sem papel = só LÊ as observações (dono 08/10: escreve quem opera a escala)
+const GIOVANA = { uid: 'uid-giovana', nome: 'Giovana Gomes Noll', email: 'g@x.com' }
+const { usuario, bancoObs, listarObservacoes, salvarObservacao } = vi.hoisted(() => {
+  const bancoObs = { linhas: [] }
+  return {
+    usuario: { atual: null },
+    bancoObs,
+    // o "banco" das observações: o que se grava volta na releitura, como no Supabase
+    listarObservacoes: vi.fn(async () => bancoObs.linhas.filter((l) => l.texto)),
+    salvarObservacao: vi.fn(async ({ turno, hospital, texto }) => {
+      const limpo = String(texto).trim()
+      bancoObs.linhas = [...bancoObs.linhas.filter((l) => !(l.turno === turno && l.hospital === hospital)),
+        { turno, hospital, texto: limpo, autorNome: 'GUILHERME SOUZA MELO', atualizadoEm: new Date().toISOString() }]
+      return limpo
+    }),
+  }
+})
 vi.mock('@/contexts/UserContext', () => ({
-  useUser: () => ({ user: { uid: 'uid-giovana', nome: 'Giovana Gomes Noll', email: 'g@x.com' } }),
+  useUser: () => ({ user: usuario.atual }),
 }))
+vi.mock('@/services/escalaNumericaObservacaoService', () => ({ listarObservacoes, salvarObservacao, OBSERVACAO_MAX: 300 }))
 vi.mock('@/contexts/MessagesContext', () => ({
   useMessages: () => ({ createSystemNotification: notificar }),
 }))
@@ -137,6 +160,8 @@ const trabalhando = (rotulo) =>
 
 beforeEach(() => {
   vi.clearAllMocks()
+  usuario.atual = GIOVANA
+  bancoObs.linhas = []
   assinantes.length = 0
   estadoTrocas = { todas: [], aceitas: [], minhas: [], pendentesParaMim: [], erro: null }
   criarTroca.mockResolvedValue({ trade: { codigo: 'FR000001' }, error: null })
@@ -732,5 +757,163 @@ describe('Escala Numérica — lugar vago de quem subiu para o P1/P2 (dono 07/10
     expect(materno.querySelector('.fn-vaga').textContent).toContain('Unimed P2')
     expect(coluna('Unimed').querySelector('.fn-trabalhando b').textContent).toBe(naTela)
     window.dispatchEvent(new Event('afterprint'))
+  })
+})
+
+/**
+ * Dono 07/10: licença no Pega Plantão ("LICENÇA SAÚDE") sai da conta de quem trabalha e aparece
+ * como "ausente" — nunca o motivo, que é dado de saúde (LGPD). Casos reais: Raquel Schneider em
+ * 03/09 (Materno) e Giovana Noll em 18/09 (17ª da Unimed de manhã).
+ */
+describe('Escala Numérica — licença aparece como "ausente" e sai da conta (dono 07/10)', () => {
+  const linhaPorLegenda = (legenda) => document.querySelector(`[data-slot="ordem-linha"] [data-slot="ordem-nome"][data-legenda="${legenda}"]`)?.closest('[data-slot="ordem-linha"]')
+
+  it('18/09: Giovana de licença fica na posição, marcada "ausente", e a Unimed conta um a menos', async () => {
+    vi.setSystemTime(new Date('2026-09-18T10:00:00-03:00'))
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(linhaPorLegenda('GIOVANA')?.dataset.situacao).toBe('ausente'))
+    const giovana = linhaPorLegenda('GIOVANA')
+    expect(seloDe(giovana)).toBe('ausente')
+    expect(nomesDoBloco('Unimed')[16]).toBe('GIOVANA') // continua na 17ª
+    const uni = screen.getByRole('heading', { name: 'Unimed' }).closest('section')
+    const fora = uni.querySelectorAll('[data-slot="ordem-linha"][data-situacao="ferias"], [data-slot="ordem-linha"][data-situacao="ausente"], [data-slot="ordem-linha"][data-situacao="pos"]').length
+    expect(fora).toBeGreaterThanOrEqual(1)
+    expect(trabalhando('Unimed')).toBe(String(nomesDoBloco('Unimed').length - fora))
+    expect(uni.querySelector('[data-slot="trabalhando"]').textContent).toContain('1 ausente')
+    // LGPD: o motivo nunca aparece
+    expect(document.body.textContent).not.toMatch(/licen[çc]a|sa[úu]de/i)
+  })
+
+  it('03/09: a licença marca também no Materno, sem mexer nas férias do dia', async () => {
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(deFerias()).toHaveLength(5))
+    expect(linhaPorLegenda('RAQUEL').dataset.situacao).toBe('ausente')
+    expect(linhaPorLegenda('CURY').dataset.situacao).toBe('ferias')
+  })
+})
+
+describe('Escala Numérica — observações embaixo de cada card (dono 08/10)', () => {
+  const ESCRITOR = { uid: 'uid-gui', displayName: 'Guilherme Melo', role: 'anestesiologista' }
+  const card = (rotulo) => screen.getByRole('heading', { name: rotulo }).closest('section')
+  const nota = (turno, hospital, texto) => ({ turno, hospital, texto, autorNome: 'GUILHERME SOUZA MELO', atualizadoEm: '2026-10-08T13:42:00Z' })
+  beforeEach(() => vi.setSystemTime(new Date('2026-10-08T10:00:00-03:00')))
+
+  it('quem só lê vê a anotação do turno com autor e hora, sem botão; card sem anotação fica como era', async () => {
+    bancoObs.linhas = [nota('matutino', 'hro', 'Sala 5 bloqueada até as 10h.')]
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(within(card('HRO')).getByText('Sala 5 bloqueada até as 10h.')).toBeInTheDocument())
+    expect(listarObservacoes).toHaveBeenCalledWith('2026-10-08')
+    expect(within(card('HRO')).getByText('Guilherme Melo · 10:42')).toBeInTheDocument()
+    expect(document.querySelectorAll('[data-slot="observacao"]')).toHaveLength(1)
+    expect(screen.queryByRole('button', { name: /observação:/ })).toBeNull()
+  })
+
+  it('é POR TURNO: a da manhã não aparece à tarde, e a da tarde só à tarde', async () => {
+    bancoObs.linhas = [nota('matutino', 'hro', 'Só de manhã.'), nota('vespertino', 'consultorio', 'Só à tarde.')]
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(screen.getByText('Só de manhã.')).toBeInTheDocument())
+    expect(screen.queryByText('Só à tarde.')).toBeNull()
+    fireEvent.click(screen.getByRole('tab', { name: 'Tarde' }))
+    await waitFor(() => expect(within(card('Consultório')).getByText('Só à tarde.')).toBeInTheDocument())
+    expect(screen.queryByText('Só de manhã.')).toBeNull()
+    expect(listarObservacoes).toHaveBeenCalledTimes(1) // um dia = uma leitura, os dois turnos
+  })
+
+  it('quem opera a escala escreve: o campo avisa que todo o grupo vê e que vai para o papel', async () => {
+    usuario.atual = ESCRITOR
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    fireEvent.click(await screen.findByRole('button', { name: 'Escrever observação: Materno' }))
+    const campo = screen.getByRole('textbox', { name: 'Observações: Materno' })
+    // LGPD (revisão 08/10): o aviso é a única barreira contra motivo de afastamento no texto livre
+    expect(card('Materno').textContent).toMatch(/Todo o grupo vê, e sai na folha impressa/)
+    expect(card('Materno').textContent).toMatch(/sem motivo de afastamento nem dado de paciente/)
+    fireEvent.change(campo, { target: { value: '  Giovana sai às 11h.  ' } })
+    fireEvent.click(within(card('Materno')).getByRole('button', { name: 'Salvar' }))
+    await waitFor(() => expect(within(card('Materno')).getByText('Giovana sai às 11h.')).toBeInTheDocument())
+    expect(salvarObservacao).toHaveBeenCalledWith(
+      { turno: 'matutino', hospital: 'materno', texto: '  Giovana sai às 11h.  ', data: '2026-10-08' },
+      expect.objectContaining({ userId: 'uid-gui' })
+    )
+    await waitFor(() => expect(listarObservacoes.mock.calls.length).toBeGreaterThanOrEqual(2)) // relê: o autor vem do banco
+    expect(within(card('Materno')).getByRole('button', { name: 'Editar observação: Materno' })).toBeInTheDocument()
+    // os outros cards seguem só com o "+ Observação"
+    for (const rotulo of ['HRO', 'Unimed', 'Consultório']) {
+      expect(within(card(rotulo)).getByRole('button', { name: `Escrever observação: ${rotulo}` })).toBeInTheDocument()
+    }
+  })
+
+  it('apagar é salvar vazio: o card volta ao "+ Observação"', async () => {
+    usuario.atual = ESCRITOR
+    bancoObs.linhas = [nota('matutino', 'unimed', 'Vai sumir.')]
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    fireEvent.click(await screen.findByRole('button', { name: 'Editar observação: Unimed' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Observações: Unimed' }), { target: { value: '' } })
+    fireEvent.click(within(card('Unimed')).getByRole('button', { name: 'Salvar' }))
+    await waitFor(() => expect(within(card('Unimed')).getByRole('button', { name: 'Escrever observação: Unimed' })).toBeInTheDocument())
+    expect(salvarObservacao).toHaveBeenCalledWith(expect.objectContaining({ hospital: 'unimed', texto: '' }), expect.anything())
+    expect(screen.queryByText('Vai sumir.')).toBeNull()
+  })
+
+  it('falha ao gravar: avisa e o campo continua aberto com o que foi digitado', async () => {
+    usuario.atual = ESCRITOR
+    salvarObservacao.mockRejectedValueOnce(new Error('rede'))
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    fireEvent.click(await screen.findByRole('button', { name: 'Escrever observação: HRO' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Observações: HRO' }), { target: { value: 'Não perder.' } })
+    fireEvent.click(within(card('HRO')).getByRole('button', { name: 'Salvar' }))
+    await waitFor(() => expect(screen.getByText(/Não foi possível salvar a observação/)).toBeInTheDocument())
+    expect(screen.getByRole('textbox', { name: 'Observações: HRO' }).value).toBe('Não perder.')
+  })
+
+  it('leitura falhou: ninguém escreve às cegas (apagaria a anotação de outro) e a tela avisa', async () => {
+    usuario.atual = ESCRITOR
+    listarObservacoes.mockRejectedValueOnce(new Error('rede'))
+    render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+    await waitFor(() => expect(screen.getByText(/Não foi possível carregar as observações/)).toBeInTheDocument())
+    expect(screen.queryByRole('button', { name: /Escrever observação/ })).toBeNull()
+  })
+
+  describe('folha impressa', () => {
+    const folha = () => document.querySelector('.folha-numerica')
+    const imprimir = async (item) => {
+      fireEvent.click(screen.getByRole('button', { name: 'Imprimir a escala numérica' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: item }))
+      await waitFor(() => expect(window.print).toHaveBeenCalled())
+    }
+    const colunaDe = (turno, titulo) => [...turno.querySelectorAll('.fn-coluna')]
+      .find((c) => c.querySelector('h4').firstChild.textContent.trim() === titulo)
+    beforeEach(() => { window.print = vi.fn() })
+    afterEach(() => window.dispatchEvent(new Event('afterprint')))
+
+    it('a anotação sai embaixo da coluna dela, em cada turno; a folha aperta as linhas para seguir em 1 página', async () => {
+      bancoObs.linhas = [nota('matutino', 'hro', 'Sala 5 bloqueada.'), nota('vespertino', 'consultorio', 'Sem consultório à tarde.')]
+      render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+      await waitFor(() => expect(screen.getByText('Sala 5 bloqueada.')).toBeInTheDocument())
+      await imprimir(/O dia inteiro/)
+      const [manha, tarde] = folha().querySelectorAll('.fn-turno')
+      expect(colunaDe(manha, 'HRO').querySelector('.fn-obs').textContent).toBe('ObservaçõesSala 5 bloqueada.')
+      expect(colunaDe(tarde, 'Consultório').querySelector('.fn-obs p').textContent).toBe('Sem consultório à tarde.')
+      expect(folha().querySelectorAll('.fn-obs')).toHaveLength(2) // só onde há texto
+      expect(folha().classList.contains('fn-aperto-1')).toBe(true)
+      expect(folha().textContent).not.toContain('Melo · ') // o papel não leva o autor
+    })
+
+    it('sem observação a folha sai igual à de antes; com 300 caracteres em todo card, o aperto máximo', async () => {
+      render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+      await waitFor(() => expect(screen.getAllByText(/Linha pintada/).length).toBeGreaterThan(0))
+      await imprimir(/Só a manhã/)
+      expect(folha().querySelector('.fn-obs')).toBeNull()
+      expect(folha().className).not.toMatch(/fn-aperto/)
+    })
+
+    it('com 300 caracteres em todos os cards, o aperto máximo (conferido em PDF: 1 página)', async () => {
+      const longo = 'x'.repeat(300)
+      bancoObs.linhas = ['hro', 'unimed', 'materno', 'consultorio'].map((h) => nota('matutino', h, longo))
+      render(<EscalaNumericaPage goBack={() => {}} />, { wrapper: wrap })
+      await waitFor(() => expect(document.querySelectorAll('[data-slot="observacao-texto"]')).toHaveLength(4))
+      await imprimir(/Só a manhã/)
+      expect(folha().classList.contains('fn-aperto-3')).toBe(true)
+      expect(folha().querySelectorAll('.fn-obs')).toHaveLength(4)
+    })
   })
 })

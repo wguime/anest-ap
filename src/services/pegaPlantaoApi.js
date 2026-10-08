@@ -623,9 +623,11 @@ const FERIAS_ANO_TTL = 30 * 60 * 1000; // 30min — 12 chamadas por varredura
  * e não dá para esperar o TTL.
  */
 export function invalidarFeriasDoAno(ano = new Date().getFullYear()) {
-  cache.data.delete(`ferias_ano_${ano}`);
-  cache.timestamps.delete(`ferias_ano_${ano}`);
-  cache.ttls.delete(`ferias_ano_${ano}`);
+  for (const chave of [`ferias_ano_${ano}`, `licencas_ano_${ano}`]) {
+    cache.data.delete(chave);
+    cache.timestamps.delete(chave);
+    cache.ttls.delete(chave);
+  }
   // os 12 meses crus também, senão getPlantoes devolve o mesmo de antes
   for (const key of [...cache.data.keys()]) {
     if (key.startsWith('plantoes_') && key.includes(`${ano}-`)) {
@@ -637,7 +639,19 @@ export function invalidarFeriasDoAno(ano = new Date().getFullYear()) {
 }
 
 export async function getFeriasDoAno(ano = new Date().getFullYear()) {
-  const cacheKey = `ferias_ano_${ano}`;
+  return registrosDoAnoPorSetor(ano, `ferias_ano_${ano}`, /f[ée]rias/i);
+}
+
+/**
+ * Licenças do ano (setor "LICENÇA SAÚDE" e afins) — a Escala Numérica desconta quem está de
+ * licença da conta de quem trabalha, sem dizer o motivo (dono 07/10: aparece "ausente").
+ * Chamada DEPOIS de `getFeriasDoAno`, lê os mesmos 12 meses do cache: nenhuma chamada a mais.
+ */
+export async function getLicencasDoAno(ano = new Date().getFullYear()) {
+  return registrosDoAnoPorSetor(ano, `licencas_ano_${ano}`, /licen[çc]a/i);
+}
+
+async function registrosDoAnoPorSetor(ano, cacheKey, reSetor) {
   const cached = cache.get(cacheKey);
   if (cached) return cached;
 
@@ -659,7 +673,7 @@ export async function getFeriasDoAno(ano = new Date().getFullYear()) {
     for (const plantoes of resultados) {
       if (!Array.isArray(plantoes)) continue;
       for (const p of plantoes) {
-        if (!p?.Setor || !/f[ée]rias/i.test(p.Setor)) continue;
+        if (!p?.Setor || !reSetor.test(p.Setor)) continue;
         const codigo = p.CodigoPlantao || `${p.ProfDePlantao || p.ProfFixo}|${p.Inicio}`;
         if (!porCodigo.has(codigo)) porCodigo.set(codigo, p);
       }

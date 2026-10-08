@@ -26,6 +26,13 @@ const TINTA = {
     nome: 'text-category-orange-fg',
     selo: 'border-category-orange-fg text-category-orange-fg',
   },
+  // cinza neutro: ausência sem motivo à vista (licença é dado de saúde) e sem cara de alerta
+  ausente: {
+    linha: 'bg-muted',
+    posicao: 'bg-muted-foreground text-card',
+    nome: 'text-muted-foreground',
+    selo: 'border-muted-foreground text-muted-foreground',
+  },
   pos: {
     linha: 'bg-category-indigo-bg',
     posicao: 'bg-category-indigo-fg text-card',
@@ -42,6 +49,7 @@ const TINTA = {
 
 const TITULO_SELO = {
   ferias: () => 'Férias no Pega Plantão — fica na posição, não trabalha',
+  ausente: () => 'Ausente no Pega Plantão — fica na posição, não trabalha',
   pos: (p) => `Pós plantão${p.postoPlantao ? ` ${p.postoPlantao}` : ''} — fez a noite anterior, não trabalha à tarde`,
   noite: (p) => `Plantão ${p.postoPlantao} da noite anterior — sobe para a 2ª posição`,
 }
@@ -186,7 +194,11 @@ export default function ListaOrdem({ lista }) {
  */
 function Trabalhando({ lista, turno }) {
   const c = contarTrabalhando(lista)
-  const fora = [c.ferias && `${c.ferias} de férias`, c.pos && `${c.pos} pós-plantão`].filter(Boolean)
+  const fora = [
+    c.ferias && `${c.ferias} de férias`,
+    c.ausente && `${c.ausente} ${c.ausente === 1 ? 'ausente' : 'ausentes'}`,
+    c.pos && `${c.pos} pós-plantão`,
+  ].filter(Boolean)
   return (
     <div data-slot="trabalhando" className="mt-2 flex items-center justify-between gap-2 border-t border-border pt-2">
       <span className="min-w-0 text-[12.5px] font-semibold leading-snug">
@@ -210,9 +222,10 @@ function Trabalhando({ lista, turno }) {
 
 /**
  * Card de um hospital (ou da fila única do feriado) com o cabeçalho e a lista. `turno` liga a
- * contagem de quem trabalha — só no HRO e na Unimed (dono 07/10).
+ * contagem de quem trabalha — só no HRO e na Unimed (dono 07/10). `children` vai no pé do
+ * card: a observação do turno (dono 08/10).
  */
-export function BlocoOrdem({ rotulo, lista, meta, turno }) {
+export function BlocoOrdem({ rotulo, lista, meta, turno, children }) {
   const n = naLista(lista).length
   return (
     <section className="rounded-[20px] border border-border bg-card p-3 dark:bg-card">
@@ -228,12 +241,13 @@ export function BlocoOrdem({ rotulo, lista, meta, turno }) {
         <p className="py-2 text-[12.5px] text-muted-foreground">Ninguém nesta coluna hoje.</p>
       )}
       {turno && n > 0 && <Trabalhando lista={lista} turno={turno} />}
+      {children}
     </section>
   )
 }
 
 /** Consultório fica FORA da fila de liberação — nunca numerado junto (regra do dono). */
-export function BlocoConsultorio({ consultorio }) {
+export function BlocoConsultorio({ consultorio, children }) {
   if (!consultorio?.length) return null
   return (
     <section className="rounded-[20px] border border-border bg-card p-3 dark:bg-card">
@@ -278,6 +292,7 @@ export function BlocoConsultorio({ consultorio }) {
           )
         })}
       </div>
+      {children}
     </section>
   )
 }

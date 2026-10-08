@@ -3,6 +3,29 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.52 (08/10/2026) — Escala Numérica: observação embaixo de cada card
+
+Pedido do dono: "acrescentar observações abaixo de cada escala dos hospitais (UNIMED, HRO e MATERNO) e do
+consultório. Deixe um campo livre para anotações". Modelo escolhido por imagem: card sem anotação ganha só a
+linha "+ Observação"; o toque abre o campo (300 caracteres) com Cancelar/Salvar; com anotação, aparece o texto,
+quem escreveu, a hora e "Editar". Uma anotação por card e por TURNO. Escreve quem opera a escala cirúrgica;
+todos leem. Apagar = salvar vazio. Na folha impressa a anotação sai embaixo da coluna, só onde há texto, e as
+linhas da escala baixam um pouco para a folha seguir em uma página (conferido em PDF até 300 caracteres em
+todos os cards dos dois turnos). O campo avisa que todo o grupo vê e que vai para o papel, e que não é lugar de
+motivo de afastamento nem de dado de paciente.
+- Banco: tabela `escala_numerica_observacao` (migration `20261008150000`), autor gravado pelo servidor.
+  Guarda de 90 dias (dono, depois da revisão de LGPD): limpeza diária pelo pg_cron.
+- Testes: 11 da migration (PGlite) + 8 da página (leitura, por turno, escrever, apagar, falhas, folha).
+
+## v5.12.51 (07/10/2026) — Escala Numérica: licença aparece como "ausente" e sai da conta
+
+A auditoria da v5.12.50 achou registros "LICENÇA SAÚDE" no Pega Plantão (Fernando Machado 26–28/08, Raquel
+Schneider 03/09, Giovana Noll 18/09) que a conta de quem trabalha não descontava. Dono: "descontar, mostrando
+'ausente'". A linha fica pintada de cinza com o selo "ausente" e sai da conta; o motivo nunca aparece (dado de
+saúde, LGPD). Na folha impressa também, com a legenda "Ausente: afastamento no Pega Plantão". As licenças vêm
+dos mesmos 12 meses que a consulta de férias já buscou (nenhuma chamada a mais ao Pega Plantão). Numa dupla só
+marca se os dois estiverem fora. A conferência da publicação segue descontando só férias e pós-plantão.
+
 ## v5.12.50 (07/10/2026) — Escala Numérica: lugar vago de quem sobe para o P1/P2; contagem auditada; folha sem resumo
 
 Pedidos do dono depois da v5.12.49:

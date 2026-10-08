@@ -5,6 +5,8 @@
  * (excluir: pessoas em férias, pós plantão)").
  *
  * - `ferias`: férias no Pega Plantão — fica na posição, não trabalha.
+ * - `ausente`: licença no Pega Plantão ("LICENÇA SAÚDE"…) — idem; a tela diz só "ausente",
+ *   nunca o motivo, que é dado de saúde (dono 07/10, LGPD).
  * - `pos`: fez a noite da véspera (P1 HRO / P2 Unimed) — à tarde fica na posição, não trabalha.
  * - `noite`: o mesmo plantonista DE MANHÃ — trabalha, na 2ª posição do hospital do plantão.
  *
@@ -13,6 +15,7 @@
  */
 export function situacao(p) {
   if (p.ferias?.length) return 'ferias'
+  if (p.ausente) return 'ausente'
   if (p.posPlantao) return 'pos'
   if (p.movidoPorPlantao && p.postoPlantao) return 'noite'
   return null
@@ -26,6 +29,7 @@ export function situacao(p) {
 export function rotuloSituacao(p, { tela = false, curto = false } = {}) {
   const s = situacao(p)
   if (s === 'ferias') return 'férias'
+  if (s === 'ausente') return 'ausente'
   if (s === 'pos') {
     if (!p.postoPlantao) return 'pós plantão'
     return tela || curto ? `pós ${p.postoPlantao}` : `pós-plantão ${p.postoPlantao}`
@@ -43,10 +47,10 @@ export function rotuloSituacao(p, { tela = false, curto = false } = {}) {
  */
 export const naLista = (lista = []) => lista.filter((p) => !p.lugarVago)
 
-/** Quantos trabalham no turno: a lista menos férias e pós-plantão (o lugar vago não conta). */
+/** Quantos trabalham no turno: a lista menos férias, ausentes e pós-plantão (o lugar vago não conta). */
 export function contarTrabalhando(lista = []) {
   const reais = naLista(lista)
-  const ferias = reais.filter((p) => situacao(p) === 'ferias').length
-  const pos = reais.filter((p) => situacao(p) === 'pos').length
-  return { total: reais.length, ferias, pos, trabalhando: reais.length - ferias - pos }
+  const de = (s) => reais.filter((p) => situacao(p) === s).length
+  const ferias = de('ferias'), ausente = de('ausente'), pos = de('pos')
+  return { total: reais.length, ferias, ausente, pos, trabalhando: reais.length - ferias - ausente - pos }
 }
