@@ -25,6 +25,9 @@ export const TRABALHO_VAZIO = Object.freeze({
   azuisDaLeitura: [],
   azuisRealocados: [],
   entrantesProcessados: [],
+  // "X na equipe do HRO até as 19h" (recado, dono 21/09): selo da PESSOA neste hospital e
+  // turno. Nomes como estão no rodapé; vira `naEquipe` na publicação (montarLinhaOverrides)
+  equipes: [],
 })
 
 /** Trabalho vindo de fora (rascunho, pai): completa o que faltar com o vazio. */
@@ -40,10 +43,11 @@ export function normalizarTrabalho(t) {
     azuisDaLeitura: Array.isArray(t.azuisDaLeitura) ? t.azuisDaLeitura : [],
     azuisRealocados: Array.isArray(t.azuisRealocados) ? t.azuisRealocados : [],
     entrantesProcessados: Array.isArray(t.entrantesProcessados) ? t.entrantesProcessados : [],
+    equipes: Array.isArray(t.equipes) ? t.equipes : [],
   }
 }
 
 /** Há conferência feita? (algo além do que a leitura entregou) */
 export function trabalhoTemConteudo(t) {
-  return !!(t && (t.lote || t.linhas?.length || t.ordemTexto || t.ajudaTexto || Object.keys(t.atribuicoes || {}).length))
+  return !!(t && (t.lote || t.linhas?.length || t.ordemTexto || t.ajudaTexto || t.equipes?.length || Object.keys(t.atribuicoes || {}).length))
 }

@@ -13,7 +13,9 @@ import { useEscalaCirurgicaActions, HOSPITAL_LABEL } from '@/contexts/EscalaCiru
 import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { parseExcelEscala } from '@/lib/excelEscala'
-import { nomeCirurgiaoCurto, rotuloNota, separarListaRodape, stripNotaRodape, titleCaseNome } from '@/lib/colunaLiberacao'
+import { nomeCirurgiaoCurto, notaDoNome, rotuloNota, separarListaRodape, stripNotaRodape, titleCaseNome } from '@/lib/colunaLiberacao'
+import { montarVisaoPorFila } from '@/lib/escalaVisaoPorFila'
+import ConferenciaDesktop from './ConferenciaDesktop'
 import { aplicarHoraPadraoPosicoes, detectarItensDuplicados, ehPosicaoAssistencial, resumirItensEscala } from '@/lib/escalaCirurgicaItens'
 import { ERRO_IA, classificarFalhaVision, mensagemFalhaVision } from '@/lib/escalaVisionFalha'
 import { rodapeAusente } from '@/lib/escalaLeituraRodape'
@@ -233,6 +235,9 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   alteradaDepoisDoRascunho = null,
   // roster COMPARTILHADO pelo lote (item 2.5): um `resolver` só para as três abas
   roster: rosterCompartilhado = null,
+  // superfície de DESKTOP (≥1280 px, dono 09/10): mesma conferência, outra disposição —
+  // o pai desenha cabeçalho, coluna dos hospitais e a foto ao lado
+  desktop = false,
 }, ref) {
   const { toast } = useToast()
   const { salvarEscalaTurno, salvarEscala, executarSubstituicao } = useEscalaCirurgicaActions()
@@ -273,10 +278,12 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
   const setAzuisDaLeitura = useMemo(() => setCampoTrabalho('azuisDaLeitura'), [setCampoTrabalho])
   const setAzuisRealocados = useMemo(() => setCampoTrabalho('azuisRealocados'), [setCampoTrabalho])
   const setEntrantesProcessados = useMemo(() => setCampoTrabalho('entrantesProcessados'), [setCampoTrabalho])
+  const setEquipes = useMemo(() => setCampoTrabalho('equipes'), [setCampoTrabalho])
   const {
     lote: loteAnexo, linhas, atribuicoes, ordemTexto, ajudaTexto,
     azuisDaLeitura, azuisRealocados, entrantesProcessados,
   } = trabalho
+  const equipes = useMemo(() => trabalho.equipes || [], [trabalho.equipes])
   const [carregando, setCarregando] = useState(false)
   const [publicando, setPublicando] = useState(false)
   // Hospital da escala é escolhido AQUI (pedido do dono 2026-07-21) — entra
@@ -1590,8 +1597,15 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
       // ESCALA ESPECIAL DO DIA (dono 11/09): quem a numérica traz com jornada própria
       // sai da fila no horário dela. O documento é a fonte e a marca é recarimbada a
       // cada publicação — quando o quadro acabar, deixa de ser gravada sozinha.
+      // "Equipe até 13h/19h" (recado ou marcador, dono 09/10): selo da pessoa NESTE hospital.
+      // Chave própria (`equipe:`) para não colidir com a resposta de duplicidade da mesma
+      // pessoa — `montarLinhaOverrides` acha a linha pelo uid/nome carimbado na decisão.
+      const decisoesEquipe = Object.fromEntries(equipes.map((nome) => {
+        const key = resolver(nome) || normNome(nome)
+        return [`equipe:${key}`, carimbarDecisao({ tipo: 'equipe' }, { key, nome }, { resolver, normalizar: normNome })]
+      }))
       const linhaOverrides = montarLinhaOverrides({
-        decisoes: { ...duplicidadeDecisoes, ...conferencias }, conferidos, hospital: hosp,
+        decisoes: { ...duplicidadeDecisoes, ...conferencias, ...decisoesEquipe }, conferidos, hospital: hosp,
         ordem: ordemNova, ajuda: ajudaNova, casos: casosNovos, resolver, normalizar: normNome, carimbo,
         excecaoTurno: excecaoTurnoDoDia(dadosNumerica, { data: dataEscolhida, hospital: hosp, turno: periodo }),
         turno: periodo,
@@ -1908,6 +1922,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     // azuis realocados DESTA aba (emprestados): a aba de DESTINO os incorpora
     // à ajuda dela — é a declaração da foto aplicada no lugar certo (01/09)
     azuisRealocados,
+    equipes,
     bloqueios: bloqueiosConferencia,
     avisos: avisosConferencia,
     // O QUE são as pendências, não só quantas (dono 03/09, protótipo L2): a folha de
@@ -1921,7 +1936,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     // `updated_at` da escala publicada: o rascunho o guarda para avisar, ao restaurar, se
     // a escala mudou DEPOIS dele (outro aparelho publicou, ou a equipe marcou liberações)
     publicadaAtualizadaEm: escalaPublicada?.updatedAt || null,
-  }), [hosp, casosAtribuidosDoTurno, ordemTexto, ajudaTexto, azuisRealocados,
+  }), [hosp, casosAtribuidosDoTurno, ordemTexto, ajudaTexto, azuisRealocados, equipes,
     bloqueiosConferencia, avisosConferencia, resumoPendencias, escalaPublicada, periodo])
   // Assinatura estável: sem ela, um objeto novo a cada render realimentaria o
   // estado do pai e a árvore inteira giraria em laço.
@@ -1931,6 +1946,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     resumoAba.pendencias.join('~'),
     resumoAba.ordemLiberacao.join('~'), resumoAba.ajudaExterna.join('~'),
     azuisRealocados.map((a) => `${a.hospital}:${a.nome}`).join('~'),
+    equipes.join('~'),
     casosAtribuidosDoTurno.map((c) => `${c.sala}:${c.anestesistaUserId || c.anestesista}`).join('~'),
   ].join('|')
   useEffect(() => {
@@ -1957,6 +1973,539 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
     if (r.posicoes) partes.push(`${r.posicoes} posiç${r.posicoes === 1 ? 'ão' : 'ões'}`)
     return partes.join(' + ') || 'nenhum item'
   }
+
+  // ── SUPERFÍCIE DE DESKTOP (dono 09/10, modelo C) ──────────────────────────────
+  // A visão "Por fila" lê os casos com as atribuições aplicadas, alinhados por índice com a
+  // lista da tela: os índices que ela devolve são os que `setCampo`/`removeLinha` usam.
+  const casosAtribTela = useMemo(
+    () => (desktop ? aplicarAtribuicoes(casos, atribuicoes, apelidoExibicao, resolver) : []),
+    [desktop, casos, atribuicoes, apelidoExibicao, resolver],
+  )
+  const visaoFila = useMemo(() => (desktop ? montarVisaoPorFila({
+    casos: casosAtribTela,
+    ordem: separarListaRodape(ordemTexto),
+    ajuda: separarListaRodape(ajudaTexto),
+    grupos: chavesAnestesista(casos),
+    resolver,
+  }) : null), [desktop, casosAtribTela, ordemTexto, ajudaTexto, casos, resolver])
+  const opcoesPessoa = useMemo(() => rosterOpcoes.map((o) => {
+    const r = rosterByUid.get(o.value)
+    return { ...o, busca: (r?.apelidos || []).join(' ') }
+  }), [rosterOpcoes, rosterByUid])
+  const ehEquipe = useCallback(
+    (nome) => equipes.some((n) => normNome(n) === normNome(nome) || (resolver(n) && resolver(n) === resolver(nome))),
+    [equipes, resolver],
+  )
+  const fimTurno = periodo === 'matutino' ? '13h' : '19h'
+  const chavePessoa = (nome) => resolver(stripNotaRodape(nome)) || normNome(nome)
+  const ctxDesktop = !desktop ? null : {
+    vis: visaoFila, casos, casosAtrib: casosAtribTela, grupos, rosterByUid, opcoesPessoa,
+    SEM_ANESTESISTA, hospitalLabel: HOSPITAL_LABEL[hosp] || hosp,
+    turnoLabel: periodo === 'matutino' ? 'manhã' : 'tarde', fimTurno,
+    resumoTexto: resumoTexto(casos),
+    setCampo, commitSala, removeLinha, definirAnestesistaCaso, definirAnestesistaGrupo,
+    renderSala: (valor, onCommit) => <CampoSala valor={valor} onCommit={onCommit} opcoes={salasDisponiveis} />,
+    /** Linha nova — no nome da pessoa (já atribuída) ou solta (cai em "sem anestesista"). */
+    addCirurgia: (p) => {
+      const nova = {
+        ...linhaVazia(), turno: periodo,
+        ...(p ? {
+          anestesista: String(p.nome || '').toUpperCase(),
+          anestesistaUserId: p.uid || null,
+          anestesistaManual: !!p.uid,
+        } : {}),
+      }
+      atualizar((t) => ({ ...t, linhas: [...t.linhas, nova] }))
+      return nova._lid
+    },
+    moverPosicao,
+    nomeNaOrdem: (pos) => separarListaRodape(ordemTexto)[pos] || '',
+    renomearNaOrdem: (pos, novoBruto) => {
+      const nomes = separarListaRodape(ordemTexto)
+      const novo = limparNome(novoBruto)
+      const antigo = nomes[pos]
+      if (!novo || !antigo || novo === antigo) return
+      nomes[pos] = novo
+      gravarOrdem(nomes)
+      if (ehAjuda(antigo)) { marcarAjuda(antigo, false); marcarAjuda(novo, true) }
+    },
+    removerDaOrdem: (pos) => removerPosicao(pos),
+    acrescentarNaOrdem,
+    marcarAjudaNome: marcarAjuda,
+    alternarAjuda: (p) => marcarAjuda(p.nome, !ehAjuda(p.nome)),
+    alternarEquipe: (p) => setEquipes((atual) => {
+      const lista = atual || []
+      return ehEquipe(p.nome)
+        ? lista.filter((n) => normNome(n) !== normNome(p.nome) && !(resolver(n) && resolver(n) === resolver(p.nome)))
+        : [...lista, stripNotaRodape(p.nome)]
+    }),
+    /** Consultório/sobreaviso é NOTA na posição ("MATHEUS (CONSULT)") — o canal que a fila já lê. */
+    alternarNota: (p, nota) => {
+      const nomes = separarListaRodape(ordemTexto)
+      const atual = nomes[p.pos]
+      if (atual == null) return
+      const mesma = rotuloNota(notaDoNome(atual)) === rotuloNota(nota)
+      nomes[p.pos] = mesma ? stripNotaRodape(atual) : `${stripNotaRodape(atual)} (${nota})`
+      gravarOrdem(nomes)
+      const item = conferenciasSemCirurgia.find((x) => normNome(x.nome) === normNome(atual))
+      if (item && !mesma) responderConferencia(item, { tipo: 'local', local: nota })
+      if (item && mesma && item.decisao?.decisao?.tipo === 'local') refazerConferencia(item)
+    },
+    /** Troca do marcador = REGISTRO (a foto já saiu trocada) — o mesmo que o recado grava. */
+    registrarTroca: (p, uid) => {
+      const r = rosterByUid.get(uid)
+      if (!r) return
+      const key = chavePessoa(p.nome)
+      setConferencias((prev) => ({
+        ...prev,
+        [key]: carimbarDecisao(
+          { tipo: 'troca', parceiroUid: r.uid, parceiroNome: r.nome, hospitalVaga: hosp, apenasRegistro: true },
+          { key, nome: stripNotaRodape(p.nome) }, { resolver, normalizar: normNome },
+        ),
+      }))
+    },
+    desfazerTroca: (p) => setConferencias((prev) => {
+      const achada = localizarDecisao(prev, { key: chavePessoa(p.nome), nome: stripNotaRodape(p.nome) }, { resolver, normalizar: normNome })
+      if (!achada || achada.decisao?.tipo !== 'troca') return prev
+      const { [achada.chave]: _fora, ...resto } = prev
+      return resto
+    }),
+    reatribuirCasos: (indices, uid, { porBloco = false } = {}) => {
+      if (porBloco) {
+        const chaves = chavesAnestesista(casos)
+        const vistos = new Set()
+        for (const i of indices) {
+          const g = grupos.find((x) => x.chave === chaves[i])
+          if (g && !vistos.has(g.chave)) { vistos.add(g.chave); definirAnestesistaGrupo(g, uid) }
+        }
+        return
+      }
+      for (const i of indices) definirAnestesistaCaso(i, uid)
+    },
+    abrirSemCirurgia: (item) => abrirDecisao({ tipo: 'semCirurgia', item }),
+    marcasDe: (p) => {
+      const nomeBruto = separarListaRodape(ordemTexto)[p.pos] || p.nome
+      const key = chavePessoa(p.nome)
+      const conf = localizarDecisao(conferencias, { key, nome: stripNotaRodape(p.nome) }, { resolver, normalizar: normNome })?.decisao
+      const dup = duplicidades.find((d) => d.key === key)
+      const dec = dup ? decisaoDe(dup)?.decisao : null
+      const troca = conf?.tipo === 'troca' ? conf : (dec?.tipo === 'troca' ? dec : null)
+      const pergunta = conferenciasSemCirurgia.find((x) => normNome(x.nome) === normNome(nomeBruto) && !x.decisao)
+      return {
+        equipe: ehEquipe(p.nome),
+        ajuda: ehAjuda(p.nome),
+        local: rotuloNota(p.nota),
+        troca: troca ? nomeCirurgiaoCurto(titleCaseNome(troca.parceiroNome || '')) : '',
+        intencional: dec?.tipo === 'intencional',
+        cauda: nomesCauda.has(nomeBruto) && !rotuloNota(p.nota),
+        perguntaSemCirurgia: pergunta || null,
+      }
+    },
+    nomeDoCaso: (a) => {
+      if (!a || a.semAnestesista) return ''
+      const r = a.anestesistaUserId ? rosterByUid.get(a.anestesistaUserId) : null
+      const t = r ? (r.apelidos?.[0] || primeiroNomeUpper(r.nome)) : String(a.anestesista || '').trim()
+      return t && t !== '?' && t !== '//' ? titleCaseNome(t) : ''
+    },
+    posicaoDe: (a) => {
+      if (!a || a.semAnestesista) return 0
+      const p = (visaoFila?.pessoas || []).find((x) => x.chave === (a.anestesistaUserId || resolver(a.anestesista) || normNome(a.anestesista)))
+      return p ? p.pos + 1 : 0
+    },
+    importadoDoGrupo: (g) => (g.nome && g.nome !== '?' ? g.nome : ''),
+    candidatosAmbiguo: (f) => {
+      const amb = gruposAmbiguos.find(({ grupo }) => normNome(grupo.nome) === normNome(f.nome))
+      return amb ? amb.candidatos.map((c) => c.uid).filter(Boolean) : []
+    },
+    ambiguoDe: (f) => {
+      const amb = gruposAmbiguos.find(({ grupo }) => normNome(grupo.nome) === normNome(f.nome))
+      return amb ? amb.candidatos.map((c) => nomeCirurgiaoCurto(titleCaseNome(c.nome))).join(' ou ') : ''
+    },
+  }
+
+  // Blocos usados pelas DUAS superfícies (celular e desktop, dono 09/10): extraídos
+  // como estavam — o que muda entre as telas é onde eles ficam, não o que dizem.
+  const blocoDecisoes = temDecisoes ? (
+                  <div>
+                    <div className="flex items-center gap-1.5 border-t border-border bg-muted/45 px-2.5 py-2">
+                      <Pencil className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
+                      <span className="text-[11px] font-extrabold uppercase tracking-wide text-primary">Decisões do dia</span>
+                      <span className="ml-auto text-[11px] text-muted-foreground">
+                        {decisoesAbertas > 0 ? `${decisoesAbertas} por responder` : 'tudo respondido'}
+                        {conferenciasPendentes.length > 0 ? ` · ${conferenciasPendentes.length} para conferir` : ''}
+                      </span>
+                    </div>
+
+                    {duplicidades.map((d) => {
+                      const achada = decisaoDe(d)
+                      const decisao = achada?.decisao
+                      const lados = d.ocorrencias
+                        .filter((o) => o.casos.length > 0)
+                        .map((o) => `${o.hospitalLabel}: ${o.casos.length}`)
+                        .join(' · ')
+                      // rodapé lá SEM caso lá = a forma clássica da AJUDA (é o
+                      // que o cruzamento sugeria) — a linha fica azul e a folha
+                      // abre com "Marcar como ajuda" na frente
+                      const deFora = d.ocorrencias.filter((o) => o.hospital !== hosp)
+                      const soRodapeLa = deFora.length > 0 && deFora.every((o) => o.casos.length === 0)
+                      const hospLa = deFora.find((o) => o.noRodape)?.hospitalLabel || deFora[0]?.hospitalLabel
+                      if (d.ajudaDeclarada) {
+                        // a ajuda marcada AQUI já tem linha verde própria (com o
+                        // Refazer); repetir a mesma pessoa em duas linhas verdes
+                        // é o ruído que esta reforma veio tirar
+                        if (ajudasForaDaOrdem.some((n) => chaveDup(n) === d.key)) return null
+                        return (
+                          <LinhaDecisao key={`dup-${d.key}`} tom="vd" icone={<Check className="h-4 w-4" />}
+                            titulo={`${titleCaseNome(d.nome)} — em dois hospitais`}
+                            sub={`Já está como ajuda no rodapé do ${d.ajudaDeclarada} — nada a classificar.`} />
+                        )
+                      }
+                      if (decisao) {
+                        return (
+                          <LinhaDecisao key={`dup-${d.key}`} tom="vd" icone={<Check className="h-4 w-4" />}
+                            titulo={decisao.tipo === 'troca'
+                              ? (
+                                <>
+                                  {titleCaseNome(d.nome)}{' '}
+                                  <ArrowLeftRight className="inline size-3 align-[-1px]" aria-label="trocou com" />{' '}
+                                  {nomeCirurgiaoCurto(titleCaseNome(decisao.parceiroNome))} — troca declarada
+                                </>
+                              )
+                              : `${titleCaseNome(d.nome)} — trabalha nos dois hoje`}
+                            sub={decisao.tipo === 'troca'
+                              ? 'Executa ao publicar · badge nos dois lados.'
+                              : 'Duplicidade confirmada como intencional.'}
+                            onRefazer={() => setDuplicidadeDecisoes((p) => {
+                              // veio da escala publicada: apagar não basta, ela responderia de novo
+                              if (decisao.publicada) return { ...p, [d.key]: carimbarDecisao({ tipo: 'reaberta' }, d, { resolver, normalizar: normNome }) }
+                              const { [achada.chave]: _fora, ...resto } = p
+                              return resto
+                            })} />
+                        )
+                      }
+                      if (soRodapeLa) {
+                        return (
+                          <LinhaDecisao key={`dup-${d.key}`} tom="az" icone={<UserPlus className="h-4 w-4" />}
+                            titulo={`${titleCaseNome(d.nome)} — ajuda de fora?`}
+                            sub={`No rodapé da ${hospLa} hoje e com caso aqui.`}
+                            onClick={() => abrirDecisao({ tipo: 'duplicidade', key: d.key, soRodapeLa: true, hospLa })} />
+                        )
+                      }
+                      return (
+                        <LinhaDecisao key={`dup-${d.key}`} tom="am" icone={<ArrowLeftRight className="h-4 w-4" />}
+                          titulo={`${titleCaseNome(d.nome)} — em dois hospitais`}
+                          sub={`No mesmo turno (${lados}) — troca? intencional? ajuda?`}
+                          onClick={() => abrirDecisao({ tipo: 'duplicidade', key: d.key })} />
+                      )
+                    })}
+
+                    {ajudaProvavelSemDup.map((a) => (
+                      <LinhaDecisao key={`aj-${a.nome}`} tom="az" icone={<UserPlus className="h-4 w-4" />}
+                        titulo={`${titleCaseNome(a.nome)} — ajuda de fora?`}
+                        sub={`No rodapé da ${a.hospital} hoje e com caso aqui.`}
+                        onClick={() => setDecisaoAberta({ tipo: 'ajudaSugerida', nome: a.nome, hospital: a.hospital })} />
+                    ))}
+
+                    {ajudasForaDaOrdem.map((nome) => (
+                      <LinhaDecisao key={`ajm-${nome}`} tom="vd" icone={<Check className="h-4 w-4" />}
+                        titulo={`${titleCaseNome(nome)} — marcado como ajuda`}
+                        sub="Vai ao fim da fila e sai primeiro."
+                        onRefazer={() => marcarAjuda(nome, false)} />
+                    ))}
+
+                    {azuisRealocados.map((a) => (
+                      <LinhaDecisao key={`empr-${normNome(a.nome)}`} tom="az" icone={<UserPlus className="h-4 w-4" />}
+                        titulo={`${titleCaseNome(a.nome)} — emprestado ao ${a.hospitalLabel}`}
+                        sub={'O azul do mapa é "nosso, emprestado": mantém a posição daqui e sai primeiro lá.'}
+                        onRefazer={() => {
+                          marcarAjuda(a.nome, true)
+                          setAzuisRealocados((p) => p.filter((x) => normNome(x.nome) !== normNome(a.nome)))
+                        }} />
+                    ))}
+
+                    {casosForaDoRodape.map((f) => (
+                      <LinhaDecisao key={`fora-${f.nome}`} tom="am" icone={<AlertTriangle className="h-4 w-4" />}
+                        titulo={`${titleCaseNome(f.nome)} — com caso, fora da ordem`}
+                        sub={`${f.casos} caso${f.casos > 1 ? 's' : ''} e não está na ordem nem na ajuda.`}
+                        onClick={() => setDecisaoAberta({ tipo: 'foraDaOrdem', nome: f.nome, casos: f.casos })} />
+                    ))}
+
+                    {conferenciasSemCirurgia.map((p) => {
+                      const d = p.decisao?.decisao
+                      if (d) {
+                        const texto = {
+                          troca: (
+                            <>
+                              {titleCaseNome(p.nome)}{' '}
+                              <ArrowLeftRight className="inline size-3 align-[-1px]" aria-label="trocou com" />{' '}
+                              {nomeCirurgiaoCurto(titleCaseNome(d.parceiroNome || ''))} — troca declarada
+                            </>
+                          ),
+                          local: `${titleCaseNome(p.nome)} — ${rotuloNota(d.local) || d.local}`,
+                          conferido: `${titleCaseNome(p.nome)} — está certo, sem cirurgia hoje`,
+                        }[d.tipo] || `${titleCaseNome(p.nome)} — respondido`
+                        const sub = {
+                          troca: 'Executa ao publicar · badge nos dois lados.',
+                          local: 'Ocupa a posição na fila e não nasce liberado.',
+                          conferido: 'Sem cirurgia hoje, aguarda a vez na própria posição.',
+                        }[d.tipo] || ''
+                        return (
+                          <LinhaDecisao key={`semc-${p.key}`} tom="vd" icone={<Check className="h-4 w-4" />}
+                            titulo={texto} sub={sub} onRefazer={() => refazerConferencia(p)} />
+                        )
+                      }
+                      return (
+                        <LinhaDecisao key={`semc-${p.key}`} tom="am" ponto
+                          titulo={`${p.nome} — na ordem, sem cirurgia`}
+                          sub={`${p.pos > 0 ? `${p.pos}ª posição · ` : ''}confira a extração contra a foto.`}
+                          onClick={() => abrirDecisao({ tipo: 'semCirurgia', item: p })} />
+                      )
+                    })}
+                  </div>
+  ) : null
+  const blocoNumerica = conferenciaNumerica && !conferenciaNumerica.iguais ? (
+                <div className="rounded-xl border border-l-4 border-warning bg-warning/10 p-3 space-y-1 dark:bg-warning/15">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
+                    O rodapé difere da escala numérica
+                  </p>
+                  {conferenciaNumerica.faltamNoRodape.length > 0 && (
+                    <p className="text-xs text-foreground">
+                      <b>Na numérica e não no rodapé:</b>{' '}
+                      {conferenciaNumerica.faltamNoRodape.map((n) => titleCaseNome(n)).join(' · ')}
+                    </p>
+                  )}
+                  {conferenciaNumerica.sobramNoRodape.length > 0 && (
+                    <p className="text-xs text-foreground">
+                      <b>No rodapé e não na numérica:</b>{' '}
+                      {conferenciaNumerica.sobramNoRodape.map((n) => titleCaseNome(n)).join(' · ')}
+                    </p>
+                  )}
+                  {conferenciaNumerica.foraDeOrdem.length > 0 && (
+                    <p className="text-xs text-foreground">
+                      <b>Fora da sequência:</b>{' '}
+                      {conferenciaNumerica.foraDeOrdem.map((n) => titleCaseNome(n)).join(' · ')}
+                    </p>
+                  )}
+                  {conferenciaNumerica.resolvidos?.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Dupla resolvida pela escala:{' '}
+                      {conferenciaNumerica.resolvidos.map((d) => `${d.par} → ${titleCaseNome(d.nome)}`).join(' · ')}.
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Confira contra a foto. Diferença é normal quando houve troca, ajuda de outro
+                    hospital ou alguém do consultório escalado — o rodapé publicado é o que vale.
+                    {!conferenciaNumerica.feriasConferidas && ' Férias não conferidas nesta comparação.'}
+                  </p>
+                </div>
+  ) : null
+  const blocoPendencias = (
+            <section id="conf-pendencias" className="scroll-mt-28 space-y-2">
+              <h2 className="text-[15px] font-extrabold">
+                Pendências
+                {totalPendencias > 0 && (
+                  <span className="ml-1.5 text-[11.5px] font-semibold text-muted-foreground">
+                    {bloqueiosConferencia > 0 && `${bloqueiosConferencia} bloqueia${bloqueiosConferencia > 1 ? 'm' : ''}`}
+                    {bloqueiosConferencia > 0 && avisosConferencia > 0 && ' · '}
+                    {avisosConferencia > 0 && `${avisosConferencia} aviso${avisosConferencia > 1 ? 's' : ''}`}
+                  </span>
+                )}
+              </h2>
+              {totalPendencias === 0 && (
+                <p className="rounded-lg border-l-4 border-success bg-success/10 px-3 py-2 text-xs text-foreground dark:bg-success/15">
+                  Nada pendente — confira os blocos e a ordem e publique.
+                </p>
+              )}
+
+              {/* NOME AMBÍGUO (dono 11/08) — vermelho: isto impede publicar */}
+              {gruposAmbiguos.length > 0 && (
+                <div className="rounded-lg border-l-4 border-destructive bg-destructive/10 px-3 py-2 text-xs text-foreground dark:bg-destructive/15">
+                  {gruposAmbiguos.map(({ grupo, candidatos }) => (
+                    <p key={grupo.chave}>
+                      <Ban className="mr-1 inline h-3.5 w-3.5 shrink-0 align-[-2px] text-destructive" />
+                      <b>{grupo.nome}</b> em {grupo.sala || 'sala sem nome'}: pode ser{' '}
+                      {candidatos.map((c) => nomeCirurgiaoCurto(titleCaseNome(c.nome))).join(' ou ')}.
+                      Escolha o login — sem sobrenome a sala fica sem dono e some da ordem de liberação.
+                    </p>
+                  ))}
+                </div>
+              )}
+              {/* "Na ordem sem cirurgia" saiu daqui (dono 31/08): virou linha de
+                  DECISÃO no cartão da fila, com o porquê na folha — o aviso
+                  solto obrigava a ligar o ponto âmbar de lá com o texto daqui. */}
+
+              {secoesAusentesHro.length > 0 && (
+                <p className="rounded-lg border-l-4 border-warning bg-warning/10 px-3 py-2 text-xs text-foreground dark:bg-warning/15">
+                  <AlertTriangle className="mr-1 inline h-3.5 w-3.5 shrink-0 align-[-2px] text-warning" />
+                  A leitura não trouxe nenhuma linha de{' '}
+                  <b>{secoesAusentesHro.join(', ')}</b>. Essas seções ficam fora da grade principal do
+                  mapa do HRO e são as que mais escapam da extração — nas escalas publicadas até 28/08,
+                  a Imagem chegou em 15% das importações e a Hemodinâmica em 49%. Confira a imagem e
+                  acrescente à mão o que faltar (+ Linha), ou reimporte um print que mostre o mapa inteiro.
+                </p>
+              )}
+
+              {rodapeVazioConferencia && (
+                <p className="rounded-lg border-l-4 border-warning bg-warning/10 px-3 py-2 text-xs text-foreground dark:bg-warning/15">
+                  <AlertTriangle className="mr-1 inline h-3.5 w-3.5 shrink-0 align-[-2px] text-warning" />
+                  A leitura não trouxe a <b>ordem de liberação</b>: a lista acima está vazia. No
+                  {hosp === 'unimed' ? ' mapa da Unimed' : ' mapa do HRO'} ela é a última linha, em vermelho — quando
+                  vem vazia, a leitura parou antes do fim e costuma faltar seção também. Reimporte a foto
+                  ou acrescente os nomes na lista, na ordem, antes de publicar.
+                </p>
+              )}
+
+              {/* Cirurgia da manhã que atravessa e fica sem dono presente */}
+              {travessiasOrfas.length > 0 && (
+                <div className="rounded-xl border border-l-4 border-warning bg-warning/10 p-3 dark:bg-warning/15 space-y-1">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
+                    {travessiasOrfas.length === 1 ? '1 cirurgia da manhã passa para esta tarde' : `${travessiasOrfas.length} cirurgias da manhã passam para esta tarde`}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Marcadas “passa para tarde” e o anestesista delas não está nesta ordem de liberação.
+                    A continuação deve vir na própria escala da tarde; se não veio, acrescente o caso na Completa
+                    ou desmarque o “passa para tarde” na manhã. Elas não entram na fila desta tarde.
+                  </p>
+                  <ul className="space-y-0.5">
+                    {travessiasOrfas.map((c) => (
+                      <li key={c.id} className="text-xs text-foreground">
+                        {titleCaseNome(c.anestesista || 'sem anestesista')} · {c.sala || 'sem sala'}
+                        {c.hora ? ` · ${c.hora}` : ''}{c.cirurgiao ? ` · ${nomeCirurgiaoCurto(titleCaseNome(c.cirurgiao))}` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {duplicados.length > 0 && (
+                <div className="rounded-xl border border-l-4 border-warning bg-warning/10 p-3 dark:bg-warning/15 space-y-1">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-warning" /> Possíveis cirurgias duplicadas
+                  </p>
+                  {duplicados.map(({ item, quantidade }, i) => (
+                    <p key={`${item.sala}-${item.hora}-${i}`} className="text-xs text-foreground">
+                      {item.sala || 'Sem sala'} · {item.hora || 'sem hora'} · {item.procedimento || item.cirurgiao || 'sem descrição'} aparece {quantidade} vezes. Confira o anexo; nada foi removido automaticamente.
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              {/* Conflitos de horário (aviso, não bloqueia) */}
+              {conflitos.length > 0 && (
+                <div className="rounded-xl border border-l-4 border-warning bg-warning/10 p-3 dark:bg-warning/15 space-y-1.5">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
+                    {conflitos.length === 1 ? '1 conflito de horário' : `${conflitos.length} conflitos de horário`}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Mesmo anestesista em 2 salas no mesmo horário. Pode publicar mesmo assim — revise se foi intencional.</p>
+                  <ul className="space-y-0.5">
+                    {conflitos.map((c, i) => (
+                      <li key={i} className="text-xs text-foreground">{c.nome || 'Anestesista'} — {c.sala1} ({c.hora1}) e {c.sala2} ({c.hora2})</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Blocos multi-anestesista com todas as linhas iguais (aviso, não bloqueia) */}
+              {blocosRepetidos.length > 0 && (
+                <div className="rounded-xl border border-l-4 border-warning bg-warning/10 p-3 dark:bg-warning/15 space-y-1">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-warning" /> Mesmo anestesista em todas as linhas
+                  </p>
+                  {blocosRepetidos.map((b) => (
+                    <p key={b.sala} className="text-xs text-foreground">
+                      {b.sala}: {b.nome} nas {b.n} linhas — nesses blocos cada linha costuma ter o SEU anestesista; confira a imagem.
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              {/* Ajuda, cruzamento, duplicidade e fora-da-ordem SAÍRAM daqui
+                  (dono 31/08, modelo B): viraram DECISÕES DO DIA no cartão da
+                  fila, cada uma com folha própria — aqui era aviso espalhado,
+                  sem lugar de preencher. A gravação é a mesma (ajudaTexto,
+                  duplicidadeDecisoes, ordemTexto). */}
+            </section>
+  )
+
+  const corpoDesktop = !desktop ? null : (
+    <div className="space-y-3">
+      {!canEdit && (
+        <p className="rounded-lg border-l-4 border-warning bg-warning/10 p-3 text-sm text-foreground dark:bg-warning/15">Você não tem permissão para confeccionar escalas.</p>
+      )}
+      {alteradaDepoisDoRascunho && (
+        <Alert variant="warning" title={`A escala ${hosp === 'unimed' ? 'da Unimed' : `do ${HOSPITAL_LABEL[hosp] || hosp}`} mudou às ${new Date(alteradaDepoisDoRascunho).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}, depois deste rascunho`}>
+          Publicar daqui substitui o que está no ar. Confira a aba Completa antes.
+        </Alert>
+      )}
+      {ignoradosOutroTurno > 0 && (
+        <p className="rounded-lg bg-primary/10 px-3 py-2 text-xs text-primary">
+          {ignoradosOutroTurno} item(ns) do outro turno ficam fora — troque o período no topo para conferi-los.
+        </p>
+      )}
+      {/* O QUE FALTA, por extenso (no desktop cabe a lista inteira; no celular eram 4 linhas) */}
+      {resumoPendencias.length > 0 && (
+        <div
+          aria-label={`${resumoPendencias.length} pendência(s) da conferência`}
+          className={`rounded-xl border border-l-4 px-3 py-2 ${bloqueiosConferencia > 0
+            ? 'border-destructive bg-destructive/10 dark:bg-destructive/15'
+            : 'border-warning bg-warning/10 dark:bg-warning/15'}`}
+        >
+          <p className="flex items-center gap-1.5 text-[13px] font-bold text-foreground">
+            <AlertTriangle className={`h-4 w-4 shrink-0 ${bloqueiosConferencia > 0 ? 'text-destructive' : 'text-warning'}`} />
+            {HOSPITAL_LABEL[hosp] || hosp} —{' '}
+            {bloqueiosConferencia > 0
+              ? `${bloqueiosConferencia === 1 ? '1 bloqueio impede' : `${bloqueiosConferencia} bloqueios impedem`} publicar`
+              : `${avisosConferencia === 1 ? '1 aviso' : `${avisosConferencia} avisos`} — publica assim mesmo`}
+            {bloqueiosConferencia > 0 && avisosConferencia > 0 && ` · ${avisosConferencia} aviso${avisosConferencia > 1 ? 's' : ''}`}
+          </p>
+          <ul className="mt-1 grid grid-cols-2 gap-x-4 gap-y-0.5">
+            {resumoPendencias.map((p) => (
+              <li key={p.txt} className={`flex gap-1.5 text-xs text-foreground ${p.trava ? 'font-semibold' : ''}`}>
+                {p.trava
+                  ? <Ban className="mt-0.5 h-3 w-3 shrink-0 text-destructive" aria-hidden="true" />
+                  : <span className="text-muted-foreground" aria-hidden="true">·</span>}
+                {p.txt}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {carregando && (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Lendo…</p>
+      )}
+      {temBase ? (
+        <ConferenciaDesktop ctx={ctxDesktop} ativa={!oculta} />
+      ) : (
+        <div className="rounded-xl border border-dashed border-border-strong p-4 text-sm text-muted-foreground">
+          Nenhuma cirurgia deste turno no arquivo.{' '}
+          <button type="button" onClick={addLinha} className="font-semibold text-primary">Acrescentar à mão</button>
+        </div>
+      )}
+      {temBase && (
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="ghost" onClick={preencherRodape}>Preencher a ordem pela atribuição</Button>
+          <div className="w-72">
+            <Select
+              aria-label="Acrescentar anestesista ao fim do rodapé"
+              placeholder="+ Acrescentar no fim da ordem…"
+              value=""
+              onChange={adicionarNoRodape}
+              options={opcoesParaAcrescentar}
+              searchable
+            />
+          </div>
+        </div>
+      )}
+      {blocoDecisoes && (
+        <div id="conf-liberacoes" className="overflow-hidden rounded-xl border border-border-strong bg-card">{blocoDecisoes}</div>
+      )}
+      {blocoNumerica}
+      {temBase && blocoPendencias}
+    </div>
+  )
 
   return (
     // Embutida no lote: sem moldura própria e SEM DESMONTAR quando muda de aba
@@ -1994,6 +2543,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
         </div>
       </div>
       )}
+      {desktop ? corpoDesktop : (
       <div className={embutida ? 'space-y-4' : 'max-w-3xl mx-auto p-4 pb-28 space-y-4'}>
         {!canEdit && (
           <p className="rounded-lg border-l-4 border-warning bg-warning/10 p-3 text-sm text-foreground dark:bg-warning/15">Você não tem permissão para confeccionar escalas.</p>
@@ -2497,144 +3047,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                     elas mudam. A linha aberta abre a folha; a respondida fica
                     verde com "Refazer". A explicação de cada uma mora na folha,
                     não em aviso solto no fim da página. */}
-                {temDecisoes && (
-                  <div>
-                    <div className="flex items-center gap-1.5 border-t border-border bg-muted/45 px-2.5 py-2">
-                      <Pencil className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
-                      <span className="text-[11px] font-extrabold uppercase tracking-wide text-primary">Decisões do dia</span>
-                      <span className="ml-auto text-[11px] text-muted-foreground">
-                        {decisoesAbertas > 0 ? `${decisoesAbertas} por responder` : 'tudo respondido'}
-                        {conferenciasPendentes.length > 0 ? ` · ${conferenciasPendentes.length} para conferir` : ''}
-                      </span>
-                    </div>
-
-                    {duplicidades.map((d) => {
-                      const achada = decisaoDe(d)
-                      const decisao = achada?.decisao
-                      const lados = d.ocorrencias
-                        .filter((o) => o.casos.length > 0)
-                        .map((o) => `${o.hospitalLabel}: ${o.casos.length}`)
-                        .join(' · ')
-                      // rodapé lá SEM caso lá = a forma clássica da AJUDA (é o
-                      // que o cruzamento sugeria) — a linha fica azul e a folha
-                      // abre com "Marcar como ajuda" na frente
-                      const deFora = d.ocorrencias.filter((o) => o.hospital !== hosp)
-                      const soRodapeLa = deFora.length > 0 && deFora.every((o) => o.casos.length === 0)
-                      const hospLa = deFora.find((o) => o.noRodape)?.hospitalLabel || deFora[0]?.hospitalLabel
-                      if (d.ajudaDeclarada) {
-                        // a ajuda marcada AQUI já tem linha verde própria (com o
-                        // Refazer); repetir a mesma pessoa em duas linhas verdes
-                        // é o ruído que esta reforma veio tirar
-                        if (ajudasForaDaOrdem.some((n) => chaveDup(n) === d.key)) return null
-                        return (
-                          <LinhaDecisao key={`dup-${d.key}`} tom="vd" icone={<Check className="h-4 w-4" />}
-                            titulo={`${titleCaseNome(d.nome)} — em dois hospitais`}
-                            sub={`Já está como ajuda no rodapé do ${d.ajudaDeclarada} — nada a classificar.`} />
-                        )
-                      }
-                      if (decisao) {
-                        return (
-                          <LinhaDecisao key={`dup-${d.key}`} tom="vd" icone={<Check className="h-4 w-4" />}
-                            titulo={decisao.tipo === 'troca'
-                              ? (
-                                <>
-                                  {titleCaseNome(d.nome)}{' '}
-                                  <ArrowLeftRight className="inline size-3 align-[-1px]" aria-label="trocou com" />{' '}
-                                  {nomeCirurgiaoCurto(titleCaseNome(decisao.parceiroNome))} — troca declarada
-                                </>
-                              )
-                              : `${titleCaseNome(d.nome)} — trabalha nos dois hoje`}
-                            sub={decisao.tipo === 'troca'
-                              ? 'Executa ao publicar · badge nos dois lados.'
-                              : 'Duplicidade confirmada como intencional.'}
-                            onRefazer={() => setDuplicidadeDecisoes((p) => {
-                              // veio da escala publicada: apagar não basta, ela responderia de novo
-                              if (decisao.publicada) return { ...p, [d.key]: carimbarDecisao({ tipo: 'reaberta' }, d, { resolver, normalizar: normNome }) }
-                              const { [achada.chave]: _fora, ...resto } = p
-                              return resto
-                            })} />
-                        )
-                      }
-                      if (soRodapeLa) {
-                        return (
-                          <LinhaDecisao key={`dup-${d.key}`} tom="az" icone={<UserPlus className="h-4 w-4" />}
-                            titulo={`${titleCaseNome(d.nome)} — ajuda de fora?`}
-                            sub={`No rodapé da ${hospLa} hoje e com caso aqui.`}
-                            onClick={() => abrirDecisao({ tipo: 'duplicidade', key: d.key, soRodapeLa: true, hospLa })} />
-                        )
-                      }
-                      return (
-                        <LinhaDecisao key={`dup-${d.key}`} tom="am" icone={<ArrowLeftRight className="h-4 w-4" />}
-                          titulo={`${titleCaseNome(d.nome)} — em dois hospitais`}
-                          sub={`No mesmo turno (${lados}) — troca? intencional? ajuda?`}
-                          onClick={() => abrirDecisao({ tipo: 'duplicidade', key: d.key })} />
-                      )
-                    })}
-
-                    {ajudaProvavelSemDup.map((a) => (
-                      <LinhaDecisao key={`aj-${a.nome}`} tom="az" icone={<UserPlus className="h-4 w-4" />}
-                        titulo={`${titleCaseNome(a.nome)} — ajuda de fora?`}
-                        sub={`No rodapé da ${a.hospital} hoje e com caso aqui.`}
-                        onClick={() => setDecisaoAberta({ tipo: 'ajudaSugerida', nome: a.nome, hospital: a.hospital })} />
-                    ))}
-
-                    {ajudasForaDaOrdem.map((nome) => (
-                      <LinhaDecisao key={`ajm-${nome}`} tom="vd" icone={<Check className="h-4 w-4" />}
-                        titulo={`${titleCaseNome(nome)} — marcado como ajuda`}
-                        sub="Vai ao fim da fila e sai primeiro."
-                        onRefazer={() => marcarAjuda(nome, false)} />
-                    ))}
-
-                    {azuisRealocados.map((a) => (
-                      <LinhaDecisao key={`empr-${normNome(a.nome)}`} tom="az" icone={<UserPlus className="h-4 w-4" />}
-                        titulo={`${titleCaseNome(a.nome)} — emprestado ao ${a.hospitalLabel}`}
-                        sub={'O azul do mapa é "nosso, emprestado": mantém a posição daqui e sai primeiro lá.'}
-                        onRefazer={() => {
-                          marcarAjuda(a.nome, true)
-                          setAzuisRealocados((p) => p.filter((x) => normNome(x.nome) !== normNome(a.nome)))
-                        }} />
-                    ))}
-
-                    {casosForaDoRodape.map((f) => (
-                      <LinhaDecisao key={`fora-${f.nome}`} tom="am" icone={<AlertTriangle className="h-4 w-4" />}
-                        titulo={`${titleCaseNome(f.nome)} — com caso, fora da ordem`}
-                        sub={`${f.casos} caso${f.casos > 1 ? 's' : ''} e não está na ordem nem na ajuda.`}
-                        onClick={() => setDecisaoAberta({ tipo: 'foraDaOrdem', nome: f.nome, casos: f.casos })} />
-                    ))}
-
-                    {conferenciasSemCirurgia.map((p) => {
-                      const d = p.decisao?.decisao
-                      if (d) {
-                        const texto = {
-                          troca: (
-                            <>
-                              {titleCaseNome(p.nome)}{' '}
-                              <ArrowLeftRight className="inline size-3 align-[-1px]" aria-label="trocou com" />{' '}
-                              {nomeCirurgiaoCurto(titleCaseNome(d.parceiroNome || ''))} — troca declarada
-                            </>
-                          ),
-                          local: `${titleCaseNome(p.nome)} — ${rotuloNota(d.local) || d.local}`,
-                          conferido: `${titleCaseNome(p.nome)} — está certo, sem cirurgia hoje`,
-                        }[d.tipo] || `${titleCaseNome(p.nome)} — respondido`
-                        const sub = {
-                          troca: 'Executa ao publicar · badge nos dois lados.',
-                          local: 'Ocupa a posição na fila e não nasce liberado.',
-                          conferido: 'Sem cirurgia hoje, aguarda a vez na própria posição.',
-                        }[d.tipo] || ''
-                        return (
-                          <LinhaDecisao key={`semc-${p.key}`} tom="vd" icone={<Check className="h-4 w-4" />}
-                            titulo={texto} sub={sub} onRefazer={() => refazerConferencia(p)} />
-                        )
-                      }
-                      return (
-                        <LinhaDecisao key={`semc-${p.key}`} tom="am" ponto
-                          titulo={`${p.nome} — na ordem, sem cirurgia`}
-                          sub={`${p.pos > 0 ? `${p.pos}ª posição · ` : ''}confira a extração contra a foto.`}
-                          onClick={() => abrirDecisao({ tipo: 'semCirurgia', item: p })} />
-                      )
-                    })}
-                  </div>
-                )}
+                {blocoDecisoes}
                 <div className="border-t border-border bg-muted/40 px-2.5 py-2">
                   <Select
                     aria-label="Acrescentar anestesista ao fim do rodapé"
@@ -2658,43 +3071,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                   que pega o nome que a leitura trocou, perdeu ou embaralhou. Divergência
                   não é erro — troca, ajuda e consultório escalado mudam o rodapé de
                   propósito —, por isso a lista NOMEIA e não bloqueia. */}
-              {conferenciaNumerica && !conferenciaNumerica.iguais && (
-                <div className="rounded-xl border border-l-4 border-warning bg-warning/10 p-3 space-y-1 dark:bg-warning/15">
-                  <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                    <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
-                    O rodapé difere da escala numérica
-                  </p>
-                  {conferenciaNumerica.faltamNoRodape.length > 0 && (
-                    <p className="text-xs text-foreground">
-                      <b>Na numérica e não no rodapé:</b>{' '}
-                      {conferenciaNumerica.faltamNoRodape.map((n) => titleCaseNome(n)).join(' · ')}
-                    </p>
-                  )}
-                  {conferenciaNumerica.sobramNoRodape.length > 0 && (
-                    <p className="text-xs text-foreground">
-                      <b>No rodapé e não na numérica:</b>{' '}
-                      {conferenciaNumerica.sobramNoRodape.map((n) => titleCaseNome(n)).join(' · ')}
-                    </p>
-                  )}
-                  {conferenciaNumerica.foraDeOrdem.length > 0 && (
-                    <p className="text-xs text-foreground">
-                      <b>Fora da sequência:</b>{' '}
-                      {conferenciaNumerica.foraDeOrdem.map((n) => titleCaseNome(n)).join(' · ')}
-                    </p>
-                  )}
-                  {conferenciaNumerica.resolvidos?.length > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      Dupla resolvida pela escala:{' '}
-                      {conferenciaNumerica.resolvidos.map((d) => `${d.par} → ${titleCaseNome(d.nome)}`).join(' · ')}.
-                    </p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    Confira contra a foto. Diferença é normal quando houve troca, ajuda de outro
-                    hospital ou alguém do consultório escalado — o rodapé publicado é o que vale.
-                    {!conferenciaNumerica.feriasConferidas && ' Férias não conferidas nesta comparação.'}
-                  </p>
-                </div>
-              )}
+              {blocoNumerica}
 
               {/* NOME AMBÍGUO (dono 11/08) — vermelho: isto impede publicar */}
             </section>
@@ -2702,136 +3079,11 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
             {/* PENDÊNCIAS num lugar só (dono 17/08): o que impede publicar e o que
                 pede conferência ficavam espalhados entre os seletores, os blocos e
                 a fila. Aqui a ordem é a da gravidade — vermelho primeiro. */}
-            <section id="conf-pendencias" className="scroll-mt-28 space-y-2">
-              <h2 className="text-[15px] font-extrabold">
-                Pendências
-                {totalPendencias > 0 && (
-                  <span className="ml-1.5 text-[11.5px] font-semibold text-muted-foreground">
-                    {bloqueiosConferencia > 0 && `${bloqueiosConferencia} bloqueia${bloqueiosConferencia > 1 ? 'm' : ''}`}
-                    {bloqueiosConferencia > 0 && avisosConferencia > 0 && ' · '}
-                    {avisosConferencia > 0 && `${avisosConferencia} aviso${avisosConferencia > 1 ? 's' : ''}`}
-                  </span>
-                )}
-              </h2>
-              {totalPendencias === 0 && (
-                <p className="rounded-lg border-l-4 border-success bg-success/10 px-3 py-2 text-xs text-foreground dark:bg-success/15">
-                  Nada pendente — confira os blocos e a ordem e publique.
-                </p>
-              )}
-
-              {/* NOME AMBÍGUO (dono 11/08) — vermelho: isto impede publicar */}
-              {gruposAmbiguos.length > 0 && (
-                <div className="rounded-lg border-l-4 border-destructive bg-destructive/10 px-3 py-2 text-xs text-foreground dark:bg-destructive/15">
-                  {gruposAmbiguos.map(({ grupo, candidatos }) => (
-                    <p key={grupo.chave}>
-                      <Ban className="mr-1 inline h-3.5 w-3.5 shrink-0 align-[-2px] text-destructive" />
-                      <b>{grupo.nome}</b> em {grupo.sala || 'sala sem nome'}: pode ser{' '}
-                      {candidatos.map((c) => nomeCirurgiaoCurto(titleCaseNome(c.nome))).join(' ou ')}.
-                      Escolha o login — sem sobrenome a sala fica sem dono e some da ordem de liberação.
-                    </p>
-                  ))}
-                </div>
-              )}
-              {/* "Na ordem sem cirurgia" saiu daqui (dono 31/08): virou linha de
-                  DECISÃO no cartão da fila, com o porquê na folha — o aviso
-                  solto obrigava a ligar o ponto âmbar de lá com o texto daqui. */}
-
-              {secoesAusentesHro.length > 0 && (
-                <p className="rounded-lg border-l-4 border-warning bg-warning/10 px-3 py-2 text-xs text-foreground dark:bg-warning/15">
-                  <AlertTriangle className="mr-1 inline h-3.5 w-3.5 shrink-0 align-[-2px] text-warning" />
-                  A leitura não trouxe nenhuma linha de{' '}
-                  <b>{secoesAusentesHro.join(', ')}</b>. Essas seções ficam fora da grade principal do
-                  mapa do HRO e são as que mais escapam da extração — nas escalas publicadas até 28/08,
-                  a Imagem chegou em 15% das importações e a Hemodinâmica em 49%. Confira a imagem e
-                  acrescente à mão o que faltar (+ Linha), ou reimporte um print que mostre o mapa inteiro.
-                </p>
-              )}
-
-              {rodapeVazioConferencia && (
-                <p className="rounded-lg border-l-4 border-warning bg-warning/10 px-3 py-2 text-xs text-foreground dark:bg-warning/15">
-                  <AlertTriangle className="mr-1 inline h-3.5 w-3.5 shrink-0 align-[-2px] text-warning" />
-                  A leitura não trouxe a <b>ordem de liberação</b>: a lista acima está vazia. No
-                  {hosp === 'unimed' ? ' mapa da Unimed' : ' mapa do HRO'} ela é a última linha, em vermelho — quando
-                  vem vazia, a leitura parou antes do fim e costuma faltar seção também. Reimporte a foto
-                  ou acrescente os nomes na lista, na ordem, antes de publicar.
-                </p>
-              )}
-
-              {/* Cirurgia da manhã que atravessa e fica sem dono presente */}
-              {travessiasOrfas.length > 0 && (
-                <div className="rounded-xl border border-l-4 border-warning bg-warning/10 p-3 dark:bg-warning/15 space-y-1">
-                  <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                    <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
-                    {travessiasOrfas.length === 1 ? '1 cirurgia da manhã passa para esta tarde' : `${travessiasOrfas.length} cirurgias da manhã passam para esta tarde`}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Marcadas “passa para tarde” e o anestesista delas não está nesta ordem de liberação.
-                    A continuação deve vir na própria escala da tarde; se não veio, acrescente o caso na Completa
-                    ou desmarque o “passa para tarde” na manhã. Elas não entram na fila desta tarde.
-                  </p>
-                  <ul className="space-y-0.5">
-                    {travessiasOrfas.map((c) => (
-                      <li key={c.id} className="text-xs text-foreground">
-                        {titleCaseNome(c.anestesista || 'sem anestesista')} · {c.sala || 'sem sala'}
-                        {c.hora ? ` · ${c.hora}` : ''}{c.cirurgiao ? ` · ${nomeCirurgiaoCurto(titleCaseNome(c.cirurgiao))}` : ''}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {duplicados.length > 0 && (
-                <div className="rounded-xl border border-l-4 border-warning bg-warning/10 p-3 dark:bg-warning/15 space-y-1">
-                  <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                    <AlertTriangle className="h-4 w-4 shrink-0 text-warning" /> Possíveis cirurgias duplicadas
-                  </p>
-                  {duplicados.map(({ item, quantidade }, i) => (
-                    <p key={`${item.sala}-${item.hora}-${i}`} className="text-xs text-foreground">
-                      {item.sala || 'Sem sala'} · {item.hora || 'sem hora'} · {item.procedimento || item.cirurgiao || 'sem descrição'} aparece {quantidade} vezes. Confira o anexo; nada foi removido automaticamente.
-                    </p>
-                  ))}
-                </div>
-              )}
-
-              {/* Conflitos de horário (aviso, não bloqueia) */}
-              {conflitos.length > 0 && (
-                <div className="rounded-xl border border-l-4 border-warning bg-warning/10 p-3 dark:bg-warning/15 space-y-1.5">
-                  <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                    <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
-                    {conflitos.length === 1 ? '1 conflito de horário' : `${conflitos.length} conflitos de horário`}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Mesmo anestesista em 2 salas no mesmo horário. Pode publicar mesmo assim — revise se foi intencional.</p>
-                  <ul className="space-y-0.5">
-                    {conflitos.map((c, i) => (
-                      <li key={i} className="text-xs text-foreground">{c.nome || 'Anestesista'} — {c.sala1} ({c.hora1}) e {c.sala2} ({c.hora2})</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Blocos multi-anestesista com todas as linhas iguais (aviso, não bloqueia) */}
-              {blocosRepetidos.length > 0 && (
-                <div className="rounded-xl border border-l-4 border-warning bg-warning/10 p-3 dark:bg-warning/15 space-y-1">
-                  <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                    <AlertTriangle className="h-4 w-4 shrink-0 text-warning" /> Mesmo anestesista em todas as linhas
-                  </p>
-                  {blocosRepetidos.map((b) => (
-                    <p key={b.sala} className="text-xs text-foreground">
-                      {b.sala}: {b.nome} nas {b.n} linhas — nesses blocos cada linha costuma ter o SEU anestesista; confira a imagem.
-                    </p>
-                  ))}
-                </div>
-              )}
-
-              {/* Ajuda, cruzamento, duplicidade e fora-da-ordem SAÍRAM daqui
-                  (dono 31/08, modelo B): viraram DECISÕES DO DIA no cartão da
-                  fila, cada uma com folha própria — aqui era aviso espalhado,
-                  sem lugar de preencher. A gravação é a mesma (ajudaTexto,
-                  duplicidadeDecisoes, ordemTexto). */}
-            </section>
+            {blocoPendencias}
           </>
         )}
       </div>
+      )}
 
       {!embutida && temBase && canEdit && (
         <div className="fixed bottom-0 inset-x-0 z-modal border-t border-border bg-card p-3 flex gap-2 max-w-3xl mx-auto">
@@ -2868,7 +3120,9 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
         const nomeCurto = (n) => nomeCirurgiaoCurto(titleCaseNome(n))
         return (
           <Sheet open onOpenChange={(o) => !o && fechar()}>
-            <SheetContent side="bottom" className="!h-auto max-h-[88vh] overflow-y-auto">
+            {/* no desktop a folha abre do lado, sem cobrir a conferência que ela responde */}
+            <SheetContent side={desktop ? 'right' : 'bottom'}
+              className={desktop ? 'w-[440px] max-w-[92vw] overflow-y-auto' : '!h-auto max-h-[88vh] overflow-y-auto'}>
               {decisaoAberta.tipo === 'duplicidade' && (
                 <>
                   <SheetHeader>

@@ -23,7 +23,7 @@
  * folha de revisão só chama, em sequência, o `publicar` de cada aba.
  */
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
-import { AlertTriangle, Check, ChevronLeft, ChevronRight, FileText, Loader2, RefreshCw, Trash2 } from 'lucide-react'
+import { AlertTriangle, Check, ChevronLeft, ChevronRight, Eye, FileText, ImageIcon, Keyboard, Loader2, MessageCircle, RefreshCw, Trash2, Upload } from 'lucide-react'
 import {
   Alert, Button, ConfirmDialog, DatePicker, FileUpload, Progress, Select,
   Sheet, SheetContent, SheetHeader, SheetTitle, useToast,
@@ -48,7 +48,13 @@ import {
 import {
   reduzirLote, estadoInicialLote, hospitaisDoLote as hospitaisDoLoteDe, abaDoLote, hospitaisParaRascunho,
 } from '@/lib/escalaLoteStore'
-import { formatData, novaIdLinha, turnoAtual } from './utils'
+import { formatData, novaIdLinha, turnoAtual, normNome } from './utils'
+import { useMediaQuery } from '@/design-system/hooks'
+import { separarListaRodape, stripNotaRodape, notaDoNome, rotuloNota } from '@/lib/colunaLiberacao'
+import { carimbarDecisao } from '@/lib/escalaCirurgicaDuplicidades'
+import { trocasDoLote } from '@/lib/escalaPreviaPublicacao'
+import { VisorFoto, PainelRecados, PreviaPublicacao } from './LoteDesktop'
+import { useRecadosLote } from './useRecadosLote'
 import { segurarAtualizacao, liberarAtualizacao } from '@/lib/atualizacaoAdiada'
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard'
 import { podePublicarEscalaCirurgica } from './gate'
@@ -110,6 +116,12 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
   // `upsertAlias` de quem publicava primeiro mudava só o `resolver` dela, e a mesma pessoa
   // ficava com duas chaves de duplicidade no mesmo lote
   const rosterCompartilhado = useRosterAnestesistas()
+  // DESKTOP (dono 09/10, modelo C): a partir de 1280 px a conferência ganha a foto ao lado,
+  // a coluna dos hospitais e os recados. Largura, não orientação: a janela não gira.
+  const desktop = useMediaQuery('(min-width: 1280px)')
+  const [ladoDireito, setLadoDireito] = useState('foto') // 'foto' | 'recados'
+  const [previaAberta, setPreviaAberta] = useState(false)
+  const [contagemPub, setContagemPub] = useState(null) // { alvos, restante } — 10 s para desfazer
 
   const [dataEscolhida, setDataEscolhida] = useState(data)
   // trocar o dia ou o período do lote invalida toda decisão já tomada
@@ -709,53 +721,204 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
   const rotuloBotao = rotuloPublicacaoLote(plano, { rotulos: HOSPITAL_LABEL })
   const podePublicar = plano.publicar.length > 0 && canEdit && !publicandoLote
 
-  return (
-    // `data-no-swipe-back`: o gesto da borda esquerda (`useSwipeBack` no <main> do App) é
-    // desligado com a conferência aberta — ele fechava a tela inteira sem pergunta (audit A7-iii)
-    <div className="fixed inset-0 z-modal bg-background overflow-y-auto" data-no-swipe-back="true">
-      {/* Header no padrão do PageHeader do DS — altura 56, sombra, título com
-          subtítulo e slot à direita. Continua STICKY em vez de `fixed` (o
-          PageHeader é fixed com spacer e, no PWA do iPhone, cobria os
-          seletores — motivo já registrado na tela de uma escala só). */}
-      <div className="sticky top-0 z-20 border-b border-border bg-card shadow-sm pt-[env(safe-area-inset-top)]">
-        <div className="mx-auto flex h-14 max-w-3xl items-center px-4">
-          <button
-            type="button"
-            onClick={cancelar}
-            aria-label="Cancelar"
-            className="flex min-h-[44px] min-w-[70px] items-center gap-1 text-primary active:opacity-60"
-          >
-            <ChevronLeft className="h-5 w-5" />
-            <span className="text-sm font-medium">Cancelar</span>
-          </button>
-          <div className="mx-2 min-w-0 flex-1 text-center">
-            <h1 className="truncate text-base font-semibold text-foreground">Confeccionar escalas</h1>
-            <p className="-mt-0.5 truncate text-xs text-muted-foreground">
-              {formatData(dataEscolhida)} · {periodo === 'matutino' ? 'Matutino' : 'Vespertino'}
-            </p>
-          </div>
-          <div className="flex min-w-[70px] justify-end">
-            {temLote && (
-              <span className="inline-flex items-center gap-1 rounded-[10px] bg-muted px-2.5 py-1.5
-                               text-xs font-bold text-muted-foreground">
-                {hospitaisDoLote.length}
-                <FileText className="h-3.5 w-3.5" />
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
+  // ── RECADOS DO WHATSAPP (dono 09/10) ─────────────────────────────────────────
+  // O que é claro entra APLICADO na aba do hospital (decisão do dono), pelo MESMO canal que
+  // os botões da conferência usam: nota na posição do rodapé, `equipes`, `ajudaTexto` e a
+  // resposta "troca" (registro) do lote. Desfazer tira exatamente o que foi posto.
+  const { resolver: resolverLote, rosterByUid: rosterPorUid, roster: rosterLista } = rosterCompartilhado
+  const nomeNaOrdemDe = useCallback((h, uid, mencao) => {
+    for (const n of resumos[h]?.ordemLiberacao || []) {
+      const limpo = stripNotaRodape(n)
+      if ((uid && resolverLote(limpo) === uid) || normNome(limpo) === normNome(mencao || '')) return limpo
+    }
+    return null
+  }, [resumos, resolverLote])
+  const rotuloDaPessoa = useCallback((h, p) => {
+    const naOrdem = nomeNaOrdemDe(h, p?.uid, p?.mencao)
+    if (naOrdem) return naOrdem
+    const r = p?.uid ? rosterPorUid.get(p.uid) : null
+    return r ? (r.apelidos?.[0] || String(r.nome || '').split(/\s+/)[0].toUpperCase()) : String(p?.mencao || '').toUpperCase()
+  }, [nomeNaOrdemDe, rosterPorUid])
+  const mesmaPessoa = useCallback((n, nome, uid) => normNome(n) === normNome(nome) || (!!uid && resolverLote(stripNotaRodape(n)) === uid), [resolverLote])
+  const chaveDe = useCallback((nome, uid) => uid || resolverLote(stripNotaRodape(nome)) || normNome(nome), [resolverLote])
 
-      <div className="mx-auto max-w-3xl space-y-4 p-4 pb-28">
-        {!canEdit && (
-          <p className="rounded-lg border-l-4 border-warning bg-warning/10 p-3 text-sm text-foreground dark:bg-warning/15">
-            Você não tem permissão para confeccionar escalas.
-          </p>
-        )}
+  const aplicarRecado = useCallback((a) => {
+    const h = a.hospital
+    if (!h) return
+    if (a.tipo === 'nota') {
+      onTrabalhoDe(h)((t) => {
+        if (!t) return t
+        const nomes = separarListaRodape(t.ordemTexto)
+        const i = nomes.findIndex((n) => mesmaPessoa(n, a.nomeNaOrdem, a.pessoa?.uid))
+        if (i < 0 || rotuloNota(notaDoNome(nomes[i])) === rotuloNota(a.nota)) return t
+        nomes[i] = `${stripNotaRodape(nomes[i])} (${a.nota})`
+        return { ...t, ordemTexto: nomes.join(', ') }
+      })
+      const nome = stripNotaRodape(a.nomeNaOrdem)
+      const key = chaveDe(nome, a.pessoa?.uid)
+      // a nota responde a pergunta "Onde está X hoje?" — só quando ela não tem outra resposta
+      setConferencias((p) => (p[key] ? p : {
+        ...p, [key]: carimbarDecisao({ tipo: 'local', local: a.nota, doRecado: true }, { key, nome }, { resolver: resolverLote, normalizar: normNome }),
+      }))
+    } else if (a.tipo === 'equipe' || a.tipo === 'ajuda') {
+      const nome = rotuloDaPessoa(h, a.pessoa)
+      onTrabalhoDe(h)((t) => {
+        if (!t) return t
+        if (a.tipo === 'equipe') {
+          const lista = t.equipes || []
+          return lista.some((n) => mesmaPessoa(n, nome, a.pessoa?.uid)) ? t : { ...t, equipes: [...lista, nome] }
+        }
+        const lista = separarListaRodape(t.ajudaTexto)
+        return lista.some((n) => mesmaPessoa(n, nome, a.pessoa?.uid)) ? t : { ...t, ajudaTexto: [...lista, nome].join(', ') }
+      })
+    } else if (a.tipo === 'troca') {
+      const nome = rotuloDaPessoa(h, a.pessoa)
+      const key = chaveDe(nome, a.pessoa?.uid)
+      const parceiro = rosterPorUid.get(a.parceiro?.uid)
+      if (!parceiro) return
+      setConferencias((p) => ({
+        ...p,
+        [key]: carimbarDecisao(
+          // troca do recado é SEMPRE registro: já aconteceu, a foto já saiu certa
+          { tipo: 'troca', parceiroUid: parceiro.uid, parceiroNome: parceiro.nome, hospitalVaga: h, apenasRegistro: true, doRecado: true },
+          { key, nome }, { resolver: resolverLote, normalizar: normNome },
+        ),
+      }))
+    }
+  }, [chaveDe, mesmaPessoa, rotuloDaPessoa, rosterPorUid, resolverLote, setConferencias])
 
-        {/* RASCUNHO RESTAURADO (Onda 2; protótipo O2-A): a conferência voltou sozinha e a
-            faixa diz de quando é. Fica até ser descartada ou até publicar — some sozinha
-            seria mais uma coisa que "não persistiu". */}
+  const desfazerRecado = useCallback((a) => {
+    const h = a.hospital
+    if (!h) return
+    const tirarConferencia = (key, tipo) => setConferencias((p) => {
+      if (p[key]?.tipo !== tipo || !p[key]?.doRecado) return p
+      const { [key]: _fora, ...resto } = p
+      return resto
+    })
+    if (a.tipo === 'nota') {
+      onTrabalhoDe(h)((t) => {
+        if (!t) return t
+        const nomes = separarListaRodape(t.ordemTexto)
+        const i = nomes.findIndex((n) => mesmaPessoa(n, a.nomeNaOrdem, a.pessoa?.uid))
+        if (i < 0 || rotuloNota(notaDoNome(nomes[i])) !== rotuloNota(a.nota)) return t
+        nomes[i] = stripNotaRodape(nomes[i])
+        return { ...t, ordemTexto: nomes.join(', ') }
+      })
+      tirarConferencia(chaveDe(stripNotaRodape(a.nomeNaOrdem), a.pessoa?.uid), 'local')
+    } else if (a.tipo === 'equipe' || a.tipo === 'ajuda') {
+      const nome = rotuloDaPessoa(h, a.pessoa)
+      onTrabalhoDe(h)((t) => {
+        if (!t) return t
+        if (a.tipo === 'equipe') return { ...t, equipes: (t.equipes || []).filter((n) => !mesmaPessoa(n, nome, a.pessoa?.uid)) }
+        return { ...t, ajudaTexto: separarListaRodape(t.ajudaTexto).filter((n) => !mesmaPessoa(n, nome, a.pessoa?.uid)).join(', ') }
+      })
+    } else if (a.tipo === 'troca') {
+      tirarConferencia(chaveDe(rotuloDaPessoa(h, a.pessoa), a.pessoa?.uid), 'troca')
+    }
+  }, [chaveDe, mesmaPessoa, rotuloDaPessoa, setConferencias])
+
+  const recados = useRecadosLote({
+    periodo, resumos, roster: rosterLista, resolver: resolverLote, aplicar: aplicarRecado, desfazer: desfazerRecado,
+  })
+  const enviarPrintRecado = (file) => {
+    const id = recados.iniciarPrint(file?.name && file.name !== 'image.png' ? file.name : 'Print colado', file)
+    ;(async () => {
+      try {
+        const img = await prepararImagemParaVision(file)
+        const res = await svc.lerRecadoImagem({ imageBase64: img.base64, mimeType: img.mimeType })
+        if (res?.error) {
+          const m = res.error === ERRO_IA
+            ? mensagemFalhaVision(classificarFalhaVision({ status: res.iaStatus, tipo: res.iaTipo, mensagem: res.iaMensagem })).title
+            : 'não consegui ler o print — cole o texto copiado do WhatsApp'
+          recados.concluirPrint(id, { erro: m })
+          return
+        }
+        recados.concluirPrint(id, { mensagens: res.mensagens || [] })
+      } catch (err) {
+        recados.concluirPrint(id, { erro: err?.name === 'ErroImagem' ? err.message : 'não consegui ler o print — cole o texto copiado do WhatsApp' })
+      }
+    })()
+    return id
+  }
+  const colarTextoRecado = (texto) => {
+    if (recados.adicionarTexto(texto)) setLadoDireito('recados')
+    else toast({ variant: 'warning', title: 'Não achei mensagem no texto colado', description: 'Copie as mensagens no WhatsApp e cole aqui.' })
+  }
+
+  // ── ⌘V EM QUALQUER LUGAR DA TELA (desktop) ───────────────────────────────────
+  // Texto colado é recado. Imagem: na aba Recados é print de recado; fora dela, é foto de
+  // escala (vai para a leitura do lote, como o anexo).
+  const colarRef = useRef(null)
+  colarRef.current = { ladoDireito, importarArquivos, enviarPrintRecado, colarTextoRecado, canEdit, carregando }
+  useEffect(() => {
+    if (!desktop) return undefined
+    const onPaste = (e) => {
+      const alvo = e.target
+      if (alvo && (alvo.tagName === 'INPUT' || alvo.tagName === 'TEXTAREA' || alvo.isContentEditable)) return
+      const c = colarRef.current
+      if (!c.canEdit) return
+      const imagens = [...(e.clipboardData?.files || [])].filter((f) => String(f.type || '').startsWith('image/'))
+      if (imagens.length) {
+        e.preventDefault()
+        if (c.ladoDireito === 'recados') { imagens.forEach((f) => c.enviarPrintRecado(f)); return }
+        if (!c.carregando) c.importarArquivos(imagens.map((f, i) => (f.name && f.name !== 'image.png' ? f : new File([f], `print-${i + 1}.png`, { type: f.type }))))
+        return
+      }
+      const texto = e.clipboardData?.getData('text/plain') || ''
+      if (texto.trim()) { e.preventDefault(); c.colarTextoRecado(texto) }
+    }
+    document.addEventListener('paste', onPaste)
+    return () => document.removeEventListener('paste', onPaste)
+  }, [desktop])
+
+  // ── TECLADO DO LOTE (desktop): 1·2·3 hospital, ⌘↵ prévia ─────────────────────
+  useEffect(() => {
+    if (!desktop) return undefined
+    const onKey = (e) => {
+      const alvo = e.target
+      const digitando = alvo && (alvo.tagName === 'INPUT' || alvo.tagName === 'TEXTAREA' || alvo.isContentEditable)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && temLote) { e.preventDefault(); setPreviaAberta(true); return }
+      if (e.key === 'Escape' && previaAberta && !contagemPub && !publicandoLote) { setPreviaAberta(false); return }
+      if (digitando || e.metaKey || e.ctrlKey || e.altKey || previaAberta) return
+      if (document.querySelector('[role="dialog"]')) return
+      const n = Number(e.key)
+      if (n >= 1 && n <= HOSPITAIS_LOTE.length && hospitaisDoLote.includes(HOSPITAIS_LOTE[n - 1])) {
+        e.preventDefault(); setAbaAtiva(HOSPITAIS_LOTE[n - 1])
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [desktop, temLote, previaAberta, contagemPub, publicandoLote, hospitaisDoLote, setAbaAtiva])
+
+  // ── 10 s PARA DESFAZER (modelo P): nada é gravado antes de a contagem acabar ──
+  const publicarAlvosRef = useRef(null)
+  publicarAlvosRef.current = (alvos) => {
+    const encolheAqui = encolhem.filter((e) => alvos.some((a) => a.hospital === e.hospital))
+    if (encolheAqui.length) setEncolhimentos(encolheAqui)
+    else publicarAlvos(alvos)
+  }
+  useEffect(() => {
+    if (!contagemPub) return undefined
+    if (contagemPub.restante <= 0) {
+      const { alvos } = contagemPub
+      setContagemPub(null) // eslint-disable-line react-hooks/set-state-in-effect
+      publicarAlvosRef.current(alvos)
+      return undefined
+    }
+    const t = setTimeout(() => setContagemPub((c) => (c ? { ...c, restante: c.restante - 1 } : c)), 1000)
+    return () => clearTimeout(t)
+  }, [contagemPub])
+
+  const trocasPorHospital = useMemo(() => trocasDoLote({
+    decisoes: duplicidadeDecisoes, conferencias, hospitais: hospitaisDoLote, resumos, resolver: resolverLote,
+  }), [duplicidadeDecisoes, conferencias, hospitaisDoLote, resumos, resolverLote])
+  const arquivoDaAba = aba ? itens[aba]?.arquivo || null : null
+  const nomeArquivoDaAba = aba ? itens[aba]?.nome || '' : ''
+  const entradaArquivosRef = useRef(null)
+
+  // ── Blocos que o celular e o desktop compartilham (dono 09/10) ──
+  const blocoRascunho = (
+    <>
         {rascunhoRestaurado && temLote && (
           <Alert
             variant="info"
@@ -769,51 +932,10 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
               : 'Nada foi publicado ainda.'}
           </Alert>
         )}
-
-        {/* Data e período são do LOTE: o dono anexa um turno por vez, e as
-            escalas dos hospitais são do mesmo dia e do mesmo turno. */}
-        <section className="space-y-3 rounded-2xl border border-border-strong bg-card p-3">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-primary">Para qual escala</h3>
-          <div className="grid grid-cols-[1.15fr_1fr] items-start gap-2">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Data</label>
-              <DatePicker
-                className="w-full min-w-0"
-                value={(() => { const [y, m, d] = String(dataEscolhida || '').split('-').map(Number); return y ? new Date(y, m - 1, d) : new Date() })()}
-                onChange={(d) => { if (d) setDataEscolhida(dataToISO(d)) }}
-                placeholder="Data da escala"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Período</label>
-              {/* sem size="xs": a 40px o botão ficava mais baixo que o DatePicker
-                  e o cartão saía torto (dono 27/08). O padrão do DS é 44px, a
-                  mesma altura do campo de data. */}
-              <SegmentedSelector options={PERIODO_OPCOES} value={periodo} onChange={setPeriodo} />
-            </div>
-          </div>
-        </section>
-
-        {/* Com o lote na mão o anexo vira BOTÃO: o dropzone tem 126px e, depois
-            que as escalas entraram, ele só empurra as abas e a conferência
-            para baixo — quem já anexou está conferindo, não anexando. */}
-        <FileUpload
-          accept=".xlsx,.xls,.csv,image/*"
-          multiple
-          maxSize={15 * 1024 * 1024}
-          variant={temLote ? 'button' : 'dropzone'}
-          label={temLote ? 'Falta alguma escala?' : 'Arquivos das escalas'}
-          description={temLote
-            ? undefined
-            : 'Pode soltar todos de uma vez — o hospital sai do próprio arquivo. Excel/CSV ou foto (paciente só por iniciais).'}
-          onChange={(f) => importarArquivos(f)}
-          disabled={carregando || !canEdit}
-        />
-
-        {/* ESPERA COM ESTADO POR ARQUIVO (dono 03/09, protótipo L8). A leitura leva de 30 a
-            90 s e mostrava uma linha de texto; os problemas chegavam depois, num toast de
-            12 s que cobria o header e sumia sozinho. Agora a barra diz quanto falta, cada
-            arquivo diz em que pé está, e o que deu errado FICA na tela até a pessoa tirar. */}
+    </>
+  )
+  const blocoLeitura = (
+    <>
         {(carregando || arquivos.some((a) => a.problemas?.length)) && arquivos.length > 0 && (
           <section className="space-y-2 rounded-2xl border border-border-strong bg-card p-3">
             <div className="flex items-baseline justify-between gap-2">
@@ -861,8 +983,10 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
             )}
           </section>
         )}
-
-        {/* Arquivo que não se identificou: PERGUNTA o hospital, não chuta */}
+    </>
+  )
+  const blocoPendentesHospital = (
+    <>
         {pendentes.map((p) => (
           <div key={p.id} className="space-y-2 rounded-xl border border-l-4 border-warning bg-warning/10 p-3 dark:bg-warning/15">
             <p className="flex items-center gap-2 text-xs font-semibold text-warning">
@@ -877,8 +1001,10 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
             />
           </div>
         ))}
-
-        {/* Atalho do documento de FDS — desvio de rota, não etapa (dono 17/08) */}
+    </>
+  )
+  const blocoAtalhoFds = (
+    <>
         {!temLote && onAbrirFds && (
           <button
             type="button"
@@ -897,6 +1023,427 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
               : 'Escala de fim de semana? Importe o documento de FDS (fila única) ›'}
           </button>
         )}
+    </>
+  )
+  const instancias = (
+    <>
+        {hospitaisDoLote.map((h) => (
+          <ImportarEscalaPage
+            key={h}
+            ref={(api) => { if (api) refs.current[h] = api; else delete refs.current[h] }}
+            embutida
+            desktop={desktop}
+            oculta={h !== aba}
+            hospital={h}
+            data={dataEscolhida}
+            turno={periodo}
+            dataLote={dataEscolhida}
+            periodoLote={periodo}
+            loteInicial={itens[h]?.lote}
+            trabalho={trabalhos[h] || null}
+            onTrabalho={onTrabalhoDe(h)}
+            alteradaDepoisDoRascunho={alteradasDepois.includes(h) ? (resumos[h]?.publicadaAtualizadaEm || null) : null}
+            roster={rosterCompartilhado}
+            escalasIrmas={irmasPara(h)}
+            publicadasNoLote={publicadasNoLote}
+            decisoesLote={duplicidadeDecisoes}
+            onDecisoesLote={setDuplicidadeDecisoes}
+            trocasLote={trocaEscolhida}
+            onTrocasLote={setTrocaEscolhida}
+            conferenciasLote={conferencias}
+            onConferenciasLote={setConferencias}
+            onResumo={receberResumo}
+            onClose={() => {}}
+          />
+        ))}
+    </>
+  )
+  const dialogos = (
+    <>
+      {/* Anti-perda do lote inteiro, numa pergunta só */}
+      {encolhimentos && (
+        <ConfirmDialog
+          open
+          variant="danger"
+          onClose={() => setEncolhimentos(null)}
+          onConfirm={publicarLote}
+          title="Isso vai reduzir escala publicada?"
+          description={`${encolhimentos.map((e) => `${HOSPITAL_LABEL[e.hospital] || e.hospital}: ${e.publicados} → ${e.casos}`).join(' · ')}. Os casos a mais seriam apagados e não dá para desfazer. Se você só quer acrescentar uma cirurgia, cancele e use "Adicionar caso" na aba Completa.`}
+          confirmText="Republicar por cima"
+          cancelText="Cancelar"
+        />
+      )}
+
+      {/* Sair com trabalho pendente pergunta — e diz que o rascunho fica (protótipo O2-B) */}
+      <ConfirmDialog
+        open={guardaSaida.confirmOpen}
+        onClose={guardaSaida.cancelClose}
+        onConfirm={guardaSaida.confirmClose}
+        title="Sair da conferência?"
+        description={`O que você já conferiu fica guardado neste aparelho e volta quando você abrir de novo a importação de ${formatData(dataEscolhida)} · ${periodo === 'matutino' ? 'Manhã' : 'Tarde'}. Nada foi publicado.`}
+        confirmText="Sair"
+        cancelText="Continuar conferindo"
+      />
+
+      {/* Descartar o rascunho restaurado: some deste aparelho; as escalas publicadas não mudam */}
+      <ConfirmDialog
+        open={descartarAberto}
+        variant="danger"
+        onClose={() => setDescartarAberto(false)}
+        onConfirm={descartarRascunho}
+        title="Descartar o rascunho?"
+        description={`A conferência de ${hospitaisDoLote.map(rotulo).join(', ')} guardada ${rascunhoRestaurado ? `às ${descreverMomentoRascunho(rascunhoRestaurado)}` : 'neste aparelho'} some daqui. As escalas já publicadas não mudam.`}
+        confirmText="Descartar"
+        cancelText="Manter"
+      />
+
+      {/* Tirar do lote apaga a conferência daquele hospital — pergunta antes (item 1.7) */}
+      <ConfirmDialog
+        open={!!removerAlvo}
+        variant="danger"
+        onClose={() => setRemoverAlvo(null)}
+        onConfirm={() => { const h = removerAlvo; if (h) removerEscala(h) }}
+        title={`Tirar ${removerAlvo ? (HOSPITAL_LABEL[removerAlvo] || removerAlvo) : ''} do lote?`}
+        description="A conferência já feita nesta aba — logins escolhidos, horas corrigidas, rodapé — some. A escala publicada não muda; para conferir de novo é preciso anexar o arquivo outra vez."
+        confirmText="Tirar do lote"
+        cancelText="Manter"
+      />
+
+      {/* Resolver um pendente para hospital que JÁ TEM aba substitui a leitura dela (item 1.7) */}
+      <ConfirmDialog
+        open={!!pendenteColisao}
+        variant="danger"
+        onClose={() => setPendenteColisao(null)}
+        onConfirm={() => {
+          const alvo = pendenteColisao
+          setPendenteColisao(null)
+          if (alvo) entregarPendente(alvo.pendente, alvo.hospital)
+        }}
+        title={`Substituir a escala ${pendenteColisao ? (HOSPITAL_LABEL[pendenteColisao.hospital] || pendenteColisao.hospital) : ''} do lote?`}
+        description={`${pendenteColisao?.pendente?.nome || 'O arquivo'} entraria na aba que já está aberta, e a conferência feita nela some. Se o arquivo é de outro hospital, cancele e escolha o hospital certo.`}
+        confirmText="Substituir"
+        cancelText="Cancelar"
+      />
+
+      {/* Republicar por cima do que está no ar: zera liberações; casos manuais e andamento de
+          cirurgia igual sobrevivem (migration 20260923160000); tempo/observação/trocas também */}
+      <ConfirmDialog
+        open={!!republicarAlvo}
+        variant="danger"
+        onClose={() => setRepublicarAlvo(null)}
+        onConfirm={() => { const h = republicarAlvo; setRepublicarAlvo(null); if (h) republicar(h) }}
+        title={`Republicar ${republicarAlvo ? (HOSPITAL_LABEL[republicarAlvo] || republicarAlvo) : ''}?`}
+        description={`Publicar por cima substitui as cirurgias do turno pelas da foto e zera as liberações marcadas — não dá para desfazer. Continuam: casos adicionados à mão, o andamento das cirurgias que vierem iguais (mesma sala, hora e paciente) e o tempo, a observação e as trocas de quem segue na escala. ${formatData(dataEscolhida)} · ${periodo === 'matutino' ? 'Matutino' : 'Vespertino'}.`}
+        confirmText="Republicar por cima"
+        cancelText="Cancelar"
+      />
+    </>
+  )
+
+  if (desktop) {
+    const turnoLabel = periodo === 'matutino' ? 'Manhã' : 'Tarde'
+    const prontas = plano.publicar.length
+    const chipEstado = (h) => {
+      if (publicados.includes(h)) {
+        const em = resultados[h]?.em
+        return <span className="rounded-full bg-success/15 px-2 py-px text-[11px] font-semibold text-success">publicada{em ? ` ${em.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}</span>
+      }
+      if (!hospitaisDoLote.includes(h)) return <span className="rounded-full bg-muted px-2 py-px text-[11px] font-semibold text-muted-foreground">sem arquivo</span>
+      const e = estadoDe(h)
+      if (e.tipo === 'trava') return <span className="rounded-full bg-destructive/15 px-2 py-px text-[11px] font-semibold text-destructive">{e.n} bloqueio{e.n > 1 ? 's' : ''}</span>
+      if (e.tipo === 'avisa') return <span className="rounded-full bg-warning/20 px-2 py-px text-[11px] font-semibold text-foreground">{e.n} aviso{e.n > 1 ? 's' : ''}</span>
+      if (e.tipo === 'vazio') return <span className="rounded-full bg-muted px-2 py-px text-[11px] font-semibold text-muted-foreground">sem casos</span>
+      return <span className="rounded-full bg-success/15 px-2 py-px text-[11px] font-semibold text-success">pronta</span>
+    }
+    return (
+      <div className="fixed inset-0 z-modal flex flex-col bg-background" data-no-swipe-back="true" data-testid="lote-desktop">
+        {/* ── CABEÇALHO: tudo o que é do lote numa linha ── */}
+        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4 shadow-sm">
+          <button type="button" onClick={cancelar} aria-label="Cancelar"
+            className="flex min-h-[44px] items-center gap-1 pr-2 text-primary active:opacity-60">
+            <ChevronLeft className="h-5 w-5" /><span className="text-sm font-medium">Cancelar</span>
+          </button>
+          <h1 className="text-base font-semibold">Confeccionar escalas</h1>
+          <span className="text-sm text-muted-foreground">{formatData(dataEscolhida)} · {turnoLabel}</span>
+          <span className="w-2" />
+          <input ref={entradaArquivosRef} type="file" accept=".xlsx,.xls,.csv,image/*" multiple hidden
+            onChange={(e) => { const fs = [...(e.target.files || [])]; e.target.value = ''; if (fs.length) importarArquivos(fs) }} />
+          <Button variant="outline" disabled={carregando || !canEdit} onClick={() => entradaArquivosRef.current?.click()}>
+            {carregando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            {temLote ? 'Mais fotos' : 'Fotos das escalas'}
+            <kbd className="ml-1 rounded border border-current px-1 font-mono text-[10px] opacity-60">⌘V</kbd>
+          </Button>
+          <span className="ml-auto text-[12.5px] text-muted-foreground">
+            {temLote ? `${prontas} de ${hospitaisDoLote.length} pront${prontas === 1 ? 'a' : 'as'} para publicar` : ''}
+          </span>
+          {temLote && canEdit && (
+            <Button onClick={() => setPreviaAberta(true)}>
+              <Eye className="h-4 w-4" /> Prévia e publicar
+              <kbd className="ml-1 rounded border border-current px-1 font-mono text-[10px] opacity-70">⌘↵</kbd>
+            </Button>
+          )}
+        </header>
+
+        <div className="grid min-h-0 flex-1 grid-cols-[232px_minmax(0,1fr)_minmax(400px,32vw)]">
+          {/* ── HOSPITAIS DO LOTE ── */}
+          <aside className="flex min-h-0 flex-col gap-2 overflow-y-auto border-r border-border bg-card px-3 py-3" aria-label="Hospitais do lote">
+            {/* PARA QUAL ESCALA — data e período são do LOTE, como no celular */}
+            <p className="text-[11px] font-extrabold uppercase tracking-[0.07em] text-primary">Para qual escala</p>
+            <DatePicker
+              className="w-full min-w-0"
+              value={(() => { const [y, m, d] = String(dataEscolhida || '').split('-').map(Number); return y ? new Date(y, m - 1, d) : new Date() })()}
+              onChange={(d) => { if (d) setDataEscolhida(dataToISO(d)) }}
+              placeholder="Data da escala"
+            />
+            <SegmentedSelector options={PERIODO_OPCOES} value={periodo} onChange={setPeriodo} />
+            <p className="mt-2 text-[11px] font-extrabold uppercase tracking-[0.07em] text-primary">Hospitais · {turnoLabel}</p>
+            {HOSPITAIS_LOTE.map((h, k) => {
+              const ativa = h === aba
+              const noLote = hospitaisDoLote.includes(h)
+              const r = resumos[h]
+              return (
+                <button key={h} type="button" disabled={!noLote} onClick={() => setAbaAtiva(h)} aria-pressed={ativa}
+                  className={`rounded-[10px] border p-2 text-left transition-colors disabled:cursor-default ${ativa
+                    ? 'border-primary bg-primary/[0.06] shadow-[inset_3px_0_0_hsl(var(--primary))]'
+                    : 'border-border hover:bg-muted/50'}`}>
+                  <span className="flex items-center gap-1.5">
+                    <kbd className="rounded border border-border-strong px-1 font-mono text-[10px] text-muted-foreground">{k + 1}</kbd>
+                    <b className="text-[14.5px]">{HOSPITAL_LABEL[h] || h}</b>
+                    <span className="ml-auto">{chipEstado(h)}</span>
+                  </span>
+                  {noLote && !publicados.includes(h) && (r?.pendencias || []).map((linha) => (
+                    <span key={linha} className="mt-1 block text-[11.5px] leading-[15px] text-foreground">· {linha}</span>
+                  ))}
+                  {noLote && !publicados.includes(h) && r?.totalPendencias > (r?.pendencias || []).length && (
+                    <span className="mt-0.5 block text-[11px] text-muted-foreground">e mais {r.totalPendencias - r.pendencias.length}</span>
+                  )}
+                  {noLote && r && (
+                    <span className="mt-1 block text-[11px] text-muted-foreground">{r.totalCasos} cirurgia{r.totalCasos === 1 ? '' : 's'} · {r.ordemLiberacao?.length || 0} na ordem</span>
+                  )}
+                </button>
+              )
+            })}
+            <p className="mt-1 text-[11px] font-extrabold uppercase tracking-[0.07em] text-primary">Recados do dia</p>
+            <button type="button" onClick={() => setLadoDireito('recados')}
+              className="rounded-[10px] border border-border p-2 text-left text-[12px] hover:bg-muted/50">
+              <span className="flex items-center gap-1.5 font-semibold"><MessageCircle className="h-4 w-4" />
+                {recados.contagem.entradas ? `${recados.contagem.entradas} recado${recados.contagem.entradas > 1 ? 's' : ''}` : 'Nenhum recado ainda'}
+              </span>
+              <span className="mt-0.5 block text-muted-foreground">
+                {recados.contagem.entradas
+                  ? [
+                    recados.contagem.aplicadas ? `${recados.contagem.aplicadas} aplicada${recados.contagem.aplicadas > 1 ? 's' : ''}` : '',
+                    recados.contagem.decidir ? `${recados.contagem.decidir} a decidir` : '',
+                    recados.contagem.lendo ? 'lendo print…' : '',
+                  ].filter(Boolean).join(' · ') || 'nada a marcar'
+                  : 'cole o texto ou o print do WhatsApp'}
+              </span>
+            </button>
+            <div className="mt-auto space-y-2 pt-2">
+              {temLote && (
+                <>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                    <span className="block h-full bg-primary" style={{ width: `${hospitaisDoLote.length ? (publicados.length / hospitaisDoLote.length) * 100 : 0}%` }} />
+                  </div>
+                  <p className="text-[11.5px] text-muted-foreground">{publicados.length} de {hospitaisDoLote.length} publicada{publicados.length === 1 ? '' : 's'}</p>
+                  {canEdit && <Button className="w-full" onClick={() => setPreviaAberta(true)}><Eye className="h-4 w-4" /> Prévia e publicar</Button>}
+                  <button type="button" onClick={() => setRemoverAlvo(aba)}
+                    className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground">
+                    <Trash2 className="h-3.5 w-3.5" /> Tirar {HOSPITAL_LABEL[aba] || aba} do lote
+                  </button>
+                </>
+              )}
+              <p className="flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
+                <Keyboard className="h-3.5 w-3.5" /> <kbd className="font-mono">1</kbd><kbd className="font-mono">2</kbd><kbd className="font-mono">3</kbd> hospital · <kbd className="font-mono">⌘↵</kbd> prévia
+              </p>
+            </div>
+          </aside>
+
+          {/* ── CONFERÊNCIA ── */}
+          <main className="min-h-0 overflow-y-auto px-5 py-3">
+            {!canEdit && (
+              <p className="mb-3 rounded-lg border-l-4 border-warning bg-warning/10 p-3 text-sm text-foreground dark:bg-warning/15">
+                Você não tem permissão para confeccionar escalas.
+              </p>
+            )}
+            <div className="space-y-3">
+              {blocoRascunho}
+              {!temLote && (
+                <FileUpload
+                  accept=".xlsx,.xls,.csv,image/*"
+                  multiple
+                  maxSize={15 * 1024 * 1024}
+                  variant="dropzone"
+                  label="Fotos ou planilhas das escalas"
+                  description="Solte todas de uma vez, escolha os arquivos ou cole o print com ⌘V — o hospital sai do próprio arquivo. Paciente só por iniciais."
+                  onChange={(f) => importarArquivos(f)}
+                  disabled={carregando || !canEdit}
+                />
+              )}
+              {blocoLeitura}
+              {blocoPendentesHospital}
+              {blocoAtalhoFds}
+              {instancias}
+            </div>
+          </main>
+
+          {/* ── FOTO / RECADOS ── */}
+          <aside className="flex min-h-0 flex-col border-l border-border px-3 py-3">
+            <div className="mb-2 flex shrink-0 gap-1 rounded-[10px] bg-muted p-[3px]" role="tablist" aria-label="Foto ou recados">
+              {[
+                ['foto', <><ImageIcon className="h-4 w-4" /> Foto{aba ? ` ${HOSPITAL_LABEL[aba] || aba}` : ''}</>],
+                ['recados', <><MessageCircle className="h-4 w-4" /> Recados{recados.contagem.decidir ? <span className="ml-1 rounded-full bg-warning px-1.5 text-[11px] text-warning-foreground">{recados.contagem.decidir}</span> : null}</>],
+              ].map(([v, rot]) => (
+                <button key={v} type="button" role="tab" aria-selected={ladoDireito === v} onClick={() => setLadoDireito(v)}
+                  className={`flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg text-[13px] font-semibold ${ladoDireito === v ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>
+                  {rot}
+                </button>
+              ))}
+            </div>
+            <div className="min-h-0 flex-1">
+              {ladoDireito === 'foto'
+                ? <VisorFoto arquivo={arquivoDaAba} nome={nomeArquivoDaAba} hospitalLabel={aba ? (HOSPITAL_LABEL[aba] || aba) : ''} />
+                : (
+                  <PainelRecados
+                    recados={recados}
+                    rotulos={HOSPITAL_LABEL}
+                    fimTurno={periodo === 'matutino' ? '13h' : '19h'}
+                    onTexto={colarTextoRecado}
+                    onPrint={enviarPrintRecado}
+                    ativo={ladoDireito === 'recados'}
+                  />
+                )}
+            </div>
+          </aside>
+        </div>
+
+        {previaAberta && (
+          <PreviaPublicacao
+            hospitais={hospitaisDoLote}
+            rotulos={HOSPITAL_LABEL}
+            resumos={resumos}
+            resolver={resolverLote}
+            trocasPorHospital={trocasPorHospital}
+            plano={plano}
+            publicados={publicados}
+            resultados={resultados}
+            publicandoAgora={publicandoAgora}
+            contagem={contagemPub}
+            data={formatData(dataEscolhida)}
+            turnoLabel={turnoLabel}
+            onPublicar={(alvos) => { if (canEdit && alvos.length) setContagemPub({ alvos, restante: 10 }) }}
+            onDesfazer={() => setContagemPub(null)}
+            onRepublicar={(h) => setRepublicarAlvo(h)}
+            onFechar={() => setPreviaAberta(false)}
+            onIrPara={(h) => { setAbaAtiva(h); setPreviaAberta(false) }}
+          />
+        )}
+
+        {dialogos}
+      </div>
+    )
+  }
+
+  return (
+    // `data-no-swipe-back`: o gesto da borda esquerda (`useSwipeBack` no <main> do App) é
+    // desligado com a conferência aberta — ele fechava a tela inteira sem pergunta (audit A7-iii)
+    <div className="fixed inset-0 z-modal bg-background overflow-y-auto" data-no-swipe-back="true">
+      {/* Header no padrão do PageHeader do DS — altura 56, sombra, título com
+          subtítulo e slot à direita. Continua STICKY em vez de `fixed` (o
+          PageHeader é fixed com spacer e, no PWA do iPhone, cobria os
+          seletores — motivo já registrado na tela de uma escala só). */}
+      <div className="sticky top-0 z-20 border-b border-border bg-card shadow-sm pt-[env(safe-area-inset-top)]">
+        <div className="mx-auto flex h-14 max-w-3xl items-center px-4">
+          <button
+            type="button"
+            onClick={cancelar}
+            aria-label="Cancelar"
+            className="flex min-h-[44px] min-w-[70px] items-center gap-1 text-primary active:opacity-60"
+          >
+            <ChevronLeft className="h-5 w-5" />
+            <span className="text-sm font-medium">Cancelar</span>
+          </button>
+          <div className="mx-2 min-w-0 flex-1 text-center">
+            <h1 className="truncate text-base font-semibold text-foreground">Confeccionar escalas</h1>
+            <p className="-mt-0.5 truncate text-xs text-muted-foreground">
+              {formatData(dataEscolhida)} · {periodo === 'matutino' ? 'Matutino' : 'Vespertino'}
+            </p>
+          </div>
+          <div className="flex min-w-[70px] justify-end">
+            {temLote && (
+              <span className="inline-flex items-center gap-1 rounded-[10px] bg-muted px-2.5 py-1.5
+                               text-xs font-bold text-muted-foreground">
+                {hospitaisDoLote.length}
+                <FileText className="h-3.5 w-3.5" />
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-3xl space-y-4 p-4 pb-28">
+        {!canEdit && (
+          <p className="rounded-lg border-l-4 border-warning bg-warning/10 p-3 text-sm text-foreground dark:bg-warning/15">
+            Você não tem permissão para confeccionar escalas.
+          </p>
+        )}
+
+        {/* RASCUNHO RESTAURADO (Onda 2; protótipo O2-A): a conferência voltou sozinha e a
+            faixa diz de quando é. Fica até ser descartada ou até publicar — some sozinha
+            seria mais uma coisa que "não persistiu". */}
+        {blocoRascunho}
+
+        {/* Data e período são do LOTE: o dono anexa um turno por vez, e as
+            escalas dos hospitais são do mesmo dia e do mesmo turno. */}
+        <section className="space-y-3 rounded-2xl border border-border-strong bg-card p-3">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-primary">Para qual escala</h3>
+          <div className="grid grid-cols-[1.15fr_1fr] items-start gap-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Data</label>
+              <DatePicker
+                className="w-full min-w-0"
+                value={(() => { const [y, m, d] = String(dataEscolhida || '').split('-').map(Number); return y ? new Date(y, m - 1, d) : new Date() })()}
+                onChange={(d) => { if (d) setDataEscolhida(dataToISO(d)) }}
+                placeholder="Data da escala"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Período</label>
+              {/* sem size="xs": a 40px o botão ficava mais baixo que o DatePicker
+                  e o cartão saía torto (dono 27/08). O padrão do DS é 44px, a
+                  mesma altura do campo de data. */}
+              <SegmentedSelector options={PERIODO_OPCOES} value={periodo} onChange={setPeriodo} />
+            </div>
+          </div>
+        </section>
+
+        {/* Com o lote na mão o anexo vira BOTÃO: o dropzone tem 126px e, depois
+            que as escalas entraram, ele só empurra as abas e a conferência
+            para baixo — quem já anexou está conferindo, não anexando. */}
+        <FileUpload
+          accept=".xlsx,.xls,.csv,image/*"
+          multiple
+          maxSize={15 * 1024 * 1024}
+          variant={temLote ? 'button' : 'dropzone'}
+          label={temLote ? 'Falta alguma escala?' : 'Arquivos das escalas'}
+          description={temLote
+            ? undefined
+            : 'Pode soltar todos de uma vez — o hospital sai do próprio arquivo. Excel/CSV ou foto (paciente só por iniciais).'}
+          onChange={(f) => importarArquivos(f)}
+          disabled={carregando || !canEdit}
+        />
+
+        {/* ESPERA COM ESTADO POR ARQUIVO (dono 03/09, protótipo L8). A leitura leva de 30 a
+            90 s e mostrava uma linha de texto; os problemas chegavam depois, num toast de
+            12 s que cobria o header e sumia sozinho. Agora a barra diz quanto falta, cada
+            arquivo diz em que pé está, e o que deu errado FICA na tela até a pessoa tirar. */}
+        {blocoLeitura}
+
+        {/* Arquivo que não se identificou: PERGUNTA o hospital, não chuta */}
+        {blocoPendentesHospital}
+
+        {/* Atalho do documento de FDS — desvio de rota, não etapa (dono 17/08) */}
+        {blocoAtalhoFds}
 
         {/* ── ABAS ── mesmo visual do SegmentedSelector variant="filled" do DS.
             Não é o componente porque o selo de estado é colorido por hospital,
@@ -933,34 +1480,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
         )}
 
         {/* Uma instância por hospital: a inativa fica ESCONDIDA, nunca desmontada */}
-        {hospitaisDoLote.map((h) => (
-          <ImportarEscalaPage
-            key={h}
-            ref={(api) => { if (api) refs.current[h] = api; else delete refs.current[h] }}
-            embutida
-            oculta={h !== aba}
-            hospital={h}
-            data={dataEscolhida}
-            turno={periodo}
-            dataLote={dataEscolhida}
-            periodoLote={periodo}
-            loteInicial={itens[h]?.lote}
-            trabalho={trabalhos[h] || null}
-            onTrabalho={onTrabalhoDe(h)}
-            alteradaDepoisDoRascunho={alteradasDepois.includes(h) ? (resumos[h]?.publicadaAtualizadaEm || null) : null}
-            roster={rosterCompartilhado}
-            escalasIrmas={irmasPara(h)}
-            publicadasNoLote={publicadasNoLote}
-            decisoesLote={duplicidadeDecisoes}
-            onDecisoesLote={setDuplicidadeDecisoes}
-            trocasLote={trocaEscolhida}
-            onTrocasLote={setTrocaEscolhida}
-            conferenciasLote={conferencias}
-            onConferenciasLote={setConferencias}
-            onResumo={receberResumo}
-            onClose={() => {}}
-          />
-        ))}
+        {instancias}
 
         {temLote && (
           <button
@@ -1097,83 +1617,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
         </SheetContent>
       </Sheet>
 
-      {/* Anti-perda do lote inteiro, numa pergunta só */}
-      {encolhimentos && (
-        <ConfirmDialog
-          open
-          variant="danger"
-          onClose={() => setEncolhimentos(null)}
-          onConfirm={publicarLote}
-          title="Isso vai reduzir escala publicada?"
-          description={`${encolhimentos.map((e) => `${HOSPITAL_LABEL[e.hospital] || e.hospital}: ${e.publicados} → ${e.casos}`).join(' · ')}. Os casos a mais seriam apagados e não dá para desfazer. Se você só quer acrescentar uma cirurgia, cancele e use "Adicionar caso" na aba Completa.`}
-          confirmText="Republicar por cima"
-          cancelText="Cancelar"
-        />
-      )}
-
-      {/* Sair com trabalho pendente pergunta — e diz que o rascunho fica (protótipo O2-B) */}
-      <ConfirmDialog
-        open={guardaSaida.confirmOpen}
-        onClose={guardaSaida.cancelClose}
-        onConfirm={guardaSaida.confirmClose}
-        title="Sair da conferência?"
-        description={`O que você já conferiu fica guardado neste aparelho e volta quando você abrir de novo a importação de ${formatData(dataEscolhida)} · ${periodo === 'matutino' ? 'Manhã' : 'Tarde'}. Nada foi publicado.`}
-        confirmText="Sair"
-        cancelText="Continuar conferindo"
-      />
-
-      {/* Descartar o rascunho restaurado: some deste aparelho; as escalas publicadas não mudam */}
-      <ConfirmDialog
-        open={descartarAberto}
-        variant="danger"
-        onClose={() => setDescartarAberto(false)}
-        onConfirm={descartarRascunho}
-        title="Descartar o rascunho?"
-        description={`A conferência de ${hospitaisDoLote.map(rotulo).join(', ')} guardada ${rascunhoRestaurado ? `às ${descreverMomentoRascunho(rascunhoRestaurado)}` : 'neste aparelho'} some daqui. As escalas já publicadas não mudam.`}
-        confirmText="Descartar"
-        cancelText="Manter"
-      />
-
-      {/* Tirar do lote apaga a conferência daquele hospital — pergunta antes (item 1.7) */}
-      <ConfirmDialog
-        open={!!removerAlvo}
-        variant="danger"
-        onClose={() => setRemoverAlvo(null)}
-        onConfirm={() => { const h = removerAlvo; if (h) removerEscala(h) }}
-        title={`Tirar ${removerAlvo ? (HOSPITAL_LABEL[removerAlvo] || removerAlvo) : ''} do lote?`}
-        description="A conferência já feita nesta aba — logins escolhidos, horas corrigidas, rodapé — some. A escala publicada não muda; para conferir de novo é preciso anexar o arquivo outra vez."
-        confirmText="Tirar do lote"
-        cancelText="Manter"
-      />
-
-      {/* Resolver um pendente para hospital que JÁ TEM aba substitui a leitura dela (item 1.7) */}
-      <ConfirmDialog
-        open={!!pendenteColisao}
-        variant="danger"
-        onClose={() => setPendenteColisao(null)}
-        onConfirm={() => {
-          const alvo = pendenteColisao
-          setPendenteColisao(null)
-          if (alvo) entregarPendente(alvo.pendente, alvo.hospital)
-        }}
-        title={`Substituir a escala ${pendenteColisao ? (HOSPITAL_LABEL[pendenteColisao.hospital] || pendenteColisao.hospital) : ''} do lote?`}
-        description={`${pendenteColisao?.pendente?.nome || 'O arquivo'} entraria na aba que já está aberta, e a conferência feita nela some. Se o arquivo é de outro hospital, cancele e escolha o hospital certo.`}
-        confirmText="Substituir"
-        cancelText="Cancelar"
-      />
-
-      {/* Republicar por cima do que está no ar: zera liberações; casos manuais e andamento de
-          cirurgia igual sobrevivem (migration 20260923160000); tempo/observação/trocas também */}
-      <ConfirmDialog
-        open={!!republicarAlvo}
-        variant="danger"
-        onClose={() => setRepublicarAlvo(null)}
-        onConfirm={() => { const h = republicarAlvo; setRepublicarAlvo(null); if (h) republicar(h) }}
-        title={`Republicar ${republicarAlvo ? (HOSPITAL_LABEL[republicarAlvo] || republicarAlvo) : ''}?`}
-        description={`Publicar por cima substitui as cirurgias do turno pelas da foto e zera as liberações marcadas — não dá para desfazer. Continuam: casos adicionados à mão, o andamento das cirurgias que vierem iguais (mesma sala, hora e paciente) e o tempo, a observação e as trocas de quem segue na escala. ${formatData(dataEscolhida)} · ${periodo === 'matutino' ? 'Matutino' : 'Vespertino'}.`}
-        confirmText="Republicar por cima"
-        cancelText="Cancelar"
-      />
+      {dialogos}
 
       {/* Publicação parcial: as abas que subiram ficam ditas na tela, não só no
           toast, porque o toast some e a tela continua aberta. */}

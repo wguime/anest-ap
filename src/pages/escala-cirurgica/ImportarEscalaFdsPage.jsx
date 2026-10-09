@@ -37,7 +37,7 @@
  * casos por hospital — MAIS uma chamada por (hospital, dia, turno) com casos,
  * vinda dos mapas. Republicar é idempotente.
  */
-import { useMemo, useState, useEffect} from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { AlertTriangle, ArrowDown, ArrowUp, Check, ChevronLeft, FileText, Loader2, Plus, Trash2, X } from 'lucide-react'
 import { Badge, Button, ConfirmDialog, DatePicker, FileUpload, Input, Select, useToast } from '@/design-system'
 import svc from '@/services/supabaseEscalaCirurgicaService'
@@ -64,6 +64,9 @@ import {
   resumoMapa, HOSPITAIS_MAPA,
 } from '@/lib/escalaFdsMapas'
 import ConferirMapaFdsPage from './ConferirMapaFdsPage'
+import FdsDesktop from './FdsDesktop'
+import { useMediaQuery } from '@/design-system/hooks'
+import { sugerirAtribuicoesLidas, sugerirAtribuicoesDoPosto, anestesistaDoPosto, TURNOS_MAPA, turnoDoCasoImportado } from '@/lib/escalaFdsMapas'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import { validarCasosParaPublicacao, textoBloqueio } from '@/lib/escalaCirurgicaValidacao'
 import { ehHoraSequencialEscala } from '@/lib/escalaCirurgicaRegras'
@@ -156,6 +159,10 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
   // 'lista' (documentos) · 'grade' (conferência da tabela de posições) · chave de um mapa
   const [vista, setVista] = useState('lista')
   const [encolhimentos, setEncolhimentos] = useState(null) // guardrail anti-perda
+  // DESKTOP (dono 09/10, modelo F): a mesma tela do dia útil, com o que é do FDS. A foto do
+  // documento e de cada mapa fica só na memória, para o visor ao lado da conferência.
+  const desktop = useMediaQuery('(min-width: 1280px)')
+  const [docArquivo, setDocArquivo] = useState(null)
 
   // ── AS MESMAS GUARDAS DO LOTE DE DIA ÚTIL (Onda 2, item 2.3) ─────────────────
   // O fim de semana NÃO tem rascunho: aqui o que protege a conferência é não deixar o
@@ -230,6 +237,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
         }
       }
       setDias(porData)
+      if (Object.keys(porData).length) setDocArquivo(file)
       setLogins({})
       setIgnorados(norm.ignorados)
       setAvisos([
@@ -310,6 +318,8 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
               dataForaDoFimDeSemana: cls.dataForaDoFimDeSemana, confirmar: cls.confirmar,
               casos, atribuicoes: {}, sugeridos: {}, turnoAberto: null,
               truncado: !!res.truncado, conferido: false,
+              // a foto, só em memória: é o que o visor do desktop mostra ao lado
+              arquivo: file,
             },
           }))
           lidos += 1
@@ -1186,6 +1196,115 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
       />
     </div>
   )
+
+  // ── DESKTOP: as sugestões que a conferência do mapa faz ao abrir, feitas para TODOS ──
+  // No celular a sala recebe o login lido / o posto da grade quando o mapa é aberto; no
+  // desktop o mapa entra direto na fila do turno, então a mesma sugestão roda na entrada
+  // (uma vez por mapa e turno; escolha humana nunca é sobrescrita).
+  const sugeridosRef = useRef(new Set())
+  useEffect(() => {
+    if (!desktop || !canEdit) return
+    for (const m of Object.values(mapas)) {
+      for (const turno of TURNOS_MAPA) {
+        const chave = `${m.id}|${turno}`
+        if (sugeridosRef.current.has(chave)) continue
+        sugeridosRef.current.add(chave)
+        const casosTurno = (m.casos || []).filter((c) => turnoDoCasoImportado(c) === turno)
+        if (!casosTurno.length) continue
+        const grupos = gruposAnestesista(casosTurno, m.hospital)
+        const atrib = m.atribuicoes?.[turno] || {}
+        const lidas = Object.entries(sugerirAtribuicoesLidas(grupos, resolver)).filter(([k]) => atrib[k] === undefined)
+        const posto = Object.entries(sugerirAtribuicoesDoPosto(grupos, anestesistaDoPosto(dias[m.data]?.grade || null, m.hospital, turno, m.data), resolver))
+          .filter(([k]) => atrib[k] === undefined)
+        if (!lidas.length && !posto.length) continue
+        setMapas((prev) => {
+          const atual = prev[m.id]
+          if (!atual) return prev
+          return {
+            ...prev,
+            [m.id]: {
+              ...atual,
+              atribuicoes: { ...atual.atribuicoes, [turno]: { ...(atual.atribuicoes?.[turno] || {}), ...Object.fromEntries(lidas), ...Object.fromEntries(posto.map(([k, v]) => [k, v.uid])) } },
+              sugeridos: { ...atual.sugeridos, [turno]: { ...(atual.sugeridos?.[turno] || {}), ...Object.fromEntries(posto.map(([k, v]) => [k, v.nome])) } },
+            },
+          }
+        })
+      }
+    }
+  }, [desktop, canEdit, mapas, dias, resolver])
+
+  const opcoesPessoaFds = useMemo(() => rosterOpcoes.map((o) => ({ ...o, busca: (rosterByUid.get(o.value)?.apelidos || []).join(' ') })), [rosterOpcoes, rosterByUid])
+  const ctxDesktop = !desktop ? null : {
+    feriado, sabadoISO, domingoISO, datasSelecionadas, turnosOrdem, dias, mapas, listaMapas, planoMapas,
+    gradeLida, carregando, publicando, canEdit, logins, resolver, rosterByUid, docArquivo,
+    opcoesPessoa: opcoesPessoaFds,
+    bloqueiosGerais: [...todosBloqueios, ...bloqueiosMapas, ...bloqueiosConteudoMapas],
+    avisos: [...avisos, ...(ignorados.length ? [`Fora da escala (funcionárias têm escala própria): ${ignorados.join(' · ')}`] : [])],
+    resumoDocumento: itemGrade.sub,
+    avisoDocumento: !todosBloqueios.length ? itemGrade.pendencia : '',
+    resumoMapaTexto: (m) => {
+      const r = resumoMapa(m.casos)
+      const sem = gruposSemIdentidade(m)
+      return `${r.total} cirurgia${r.total === 1 ? '' : 's'} · manhã ${r.matutino} · tarde ${r.vespertino}${sem.matutino + sem.vespertino ? ` · ${sem.matutino + sem.vespertino} sem anestesista` : ''}`
+    },
+    resumoPublicacao: `${diasAlvo.length * TURNOS.length} filas na linha do fim de semana${planoMapas.length ? ` · ${planoMapas.length} turnos de cirurgias · ${totalCasos} casos` : ' · nenhum mapa cirúrgico anexado'}. Cada mapa vai para a escala do próprio hospital, como sempre.`,
+    cancelar,
+    mudarData: (d) => {
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      setSabadoISO(ehFeriado(iso) ? iso : (sabadoDoFimDeSemana(iso) || iso))
+    },
+    importarImagem, importarMapas, salvarMapa, removerMapa,
+    abrirMapa: (id) => setVista(id),
+    ordemDoDia, nomeDoToken, tokenParaPn, normalizarPn, bloqueiosDe, casosDoItem,
+    setPosicao,
+    setLogin: (iso, pn, uid) => setLogins((p) => ({ ...p, [`${iso}|${pn}`]: uid })),
+    ambiguo: (nome) => candidatosPrimeiroNomeMemo(nome, roster),
+    moverOrdem, removerOrdem,
+    acrescentar: (iso, turno, uid) => {
+      const r = rosterByUid.get(uid)
+      if (!r) return
+      const texto = r.apelidos?.[0] || primeiroNomeUpper(r.nome)
+      if (feriado) {
+        mudarListaFeriado(iso, (lista) => lista.some((t) => normNome(t) === normNome(texto)) ? lista : [...lista, texto])
+      } else {
+        mudarDia(iso, (d) => (
+          d.ordem[turno].some((t) => normNome(nomeDoToken(dias[iso], t)) === normNome(texto))
+            ? d
+            : { ...d, ordem: { ...d.ordem, [turno]: [...d.ordem[turno], texto] } }
+        ))
+      }
+    },
+    /** A fila como vai ao ar (convenção do rodapé: 1º = plantonista, o último sai primeiro). */
+    filaPublicada: (iso, turno) => (dias[iso] ? ordemPublicacao(iso, turno).rodape : []),
+    publicar: () => publicar(),
+  }
+  if (desktop && vista !== 'grade' && !mapas[vista]) {
+    return (
+      <>
+        <FdsDesktop ctx={ctxDesktop} />
+        <ConfirmDialog
+          open={guardaSaida.confirmOpen}
+          variant="danger"
+          onClose={guardaSaida.cancelClose}
+          onConfirm={guardaSaida.confirmClose}
+          title="Sair da conferência?"
+          description="O documento e os mapas anexados serão perdidos — o fim de semana não guarda rascunho. Nada foi publicado."
+          confirmText="Sair"
+          cancelText="Continuar conferindo"
+        />
+        <ConfirmDialog
+          open={!!encolhimentos}
+          variant="danger"
+          onClose={() => setEncolhimentos(null)}
+          onCancel={() => setEncolhimentos(null)}
+          onConfirm={() => { setEncolhimentos(null); publicar({ confirmado: true }) }}
+          title="A escala publicada tem mais cirurgias"
+          description={`O anexo traz menos casos do que já está publicado: ${(encolhimentos || []).join(' · ')}. Publicar substitui o turno inteiro — o que está lá some. Confira se o print pegou o mapa completo.`}
+          confirmText="Republicar por cima"
+        />
+      </>
+    )
+  }
 
   const mapaAberto = mapas[vista]
   if (mapaAberto) {
