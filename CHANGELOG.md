@@ -3,6 +3,33 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.54 (09/10/2026) — Publicação da escala no DESKTOP: foto ao lado, recados do WhatsApp e prévia com desfazer
+
+Pedido do dono: "melhore o layout para publicação de escala cirúrgica via desktop … que a marcação de trocas, na
+equipe até 13h/19h seja fácil de fazer e marcar … que sejam possíveis enviar prints assim como faço para publicar
+as escalas aqui". Modelos escolhidos por imagem (`.tmp/desktop-publicacao/`): C (3 colunas, Por fila), P (prévia
+com desfazer), E (editar na linha) e F (fim de semana no mesmo padrão). Só a partir de 1280 px de largura; no
+celular e no tablet nada muda.
+- **Dia útil**: coluna dos hospitais (estado, pendências, data e turno) · conferência **Por fila** — cada pessoa
+  na ordem de liberação com as SUAS cirurgias (hora · sala · procedimento · cirurgião) e as marcas na linha — ou
+  **Por sala** (a planilha na ordem da foto) · a **foto do hospital ao lado** (zoom, girar, arrastar).
+- **Marcador** (clique ou tecla na pessoa): Equipe até 13h/19h (E — antes só a skill do chat marcava), Troca
+  como registro (T), Ajuda (A), Consultório (C), Sobreaviso (S), subir/descer (⌥↑/⌥↓), corrigir o nome,
+  passar as cirurgias. Mesmos canais de sempre na publicação (`naEquipe`, nota no rodapé, `ajuda_externa`,
+  `trocaCom.apenasRegistro`).
+- **Editar na linha**: clicar na cirurgia abre hora, sala, iniciais, procedimento e cirurgião ali mesmo;
+  "+ Cirurgia para X" acrescenta o que não saiu na foto já no nome da pessoa; "Mover para outra pessoa".
+- **Recados**: ⌘V cola o texto copiado do WhatsApp (lido por regras, sem custo) ou o print (edge nova
+  `ler-recado-escala`, só transcreve). O que é claro entra APLICADO (decisão do dono) com desfazer; nome com dois
+  donos espera um toque (a escolha fica lembrada neste aparelho). Leitor testado com o recado real de 09/10.
+- **Prévia**: a fila como o grupo vai ver no celular, o que vai ao ar e o que fica de fora; publicar abre
+  **10 s para desfazer** antes de qualquer gravação.
+- **Fim de semana/feriado**: os 6 turnos na coluna, a fila única do turno com as cirurgias de cada pessoa e o
+  hospital de cada uma, P1–P12 no topo, o documento e os mapas ao lado, "Quem assume?" por sala. Regras do FDS
+  intactas — a publicação manda o mesmo rodapé do celular (trava em teste).
+- Testes: visão por fila (9), recados (20), conferência desktop (5), lote desktop com recado + desfazer (3), FDS
+  desktop (2). Suíte inteira verde.
+
 ## v5.12.53 (08/10/2026) — Escala Numérica: férias do Diego não marcavam; consulta de novo ao voltar ao app
 
 O dono: "Diego está de férias amanhã, mas na escala numérica ele não aparece como estando de férias". O Pega

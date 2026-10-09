@@ -771,3 +771,51 @@ vespertino, no turno que o reparo do dono não cobriu).
   do turno. O OAuth do Google resolve UMA vez e os lookups vão em blocos de 10. Contrato de 1
   pessoa (`userId` + 404 `no_fcm_token`) intacto — as mensagens internas dependem dele; os
   dois foram verificados contra a edge em produção depois do deploy.
+
+### Publicação no DESKTOP (dono 2026-10-09, modelos C · P · E · F em protótipo)
+
+> "melhore o layout para publicação de escala cirúrgica via desktop … que a marcação de trocas, na equipe até
+> 13h/19h seja fácil de fazer e marcar … que sejam possíveis enviar prints assim como faço para publicar aqui"
+
+Protótipos em `.tmp/desktop-publicacao/` (1440 px, dois temas). **Só ≥1280 px** (`useMediaQuery`, largura — a
+janela do desktop não gira); abaixo disso a conferência de sempre, intacta (toda a suíte de celular segue verde).
+
+- **Lote** (`ImportarEscalasPage`, ramo `desktop`): cabeçalho (título · "Mais fotos ⌘V" · "Prévia e publicar
+  ⌘↵") · coluna (data/turno, hospitais com estado e pendências, recados, publicar) · conferência · coluna da
+  direita com abas **Foto** (`VisorFoto`, a imagem do anexo só em memória) e **Recados**. Teclas 1·2·3 trocam o
+  hospital. ⚠️ Os blocos que celular e desktop compartilham (rascunho, leitura, arquivos sem hospital, atalho do
+  FDS, abas montadas, diálogos) viraram consts — a ordem no celular não mudou.
+- **Conferência** (`ImportarEscalaPage` com `desktop` → `ConferenciaDesktop`): **Por fila** (abre assim — escolha
+  do dono) = `montarVisaoPorFila` (`src/lib/escalaVisaoPorFila.js`): pessoa do rodapé, na ordem, com os índices
+  dos casos dela (login escolhido vence o texto; "//" herda o bloco; dupla "A + B" nas duas; "?" no grupo sem
+  anestesista; caso de quem não está na ordem vai para "fora", nunca some). **Por sala** = planilha na ordem dos
+  blocos. V alterna. As DECISÕES DO DIA, a numérica e as Pendências são os MESMOS blocos do celular
+  (`blocoDecisoes`/`blocoNumerica`/`blocoPendencias`), só em outro lugar.
+- **Marcador** (Enter ou "Marcar"): E Equipe até 13h/19h → `trabalho.equipes` (campo novo do trabalho, vai ao
+  rascunho) → decisão `equipe:<chave>` em `montarLinhaOverrides` (chave PRÓPRIA para não colidir com a resposta
+  de duplicidade da mesma pessoa) → `naEquipe`. T Troca = REGISTRO (`apenasRegistro`, `hospitalVaga` = esta
+  aba) em `conferencias`. A ajuda. C/S nota `(CONSULT)`/`(SOBREAVISO)` na posição, que também responde a
+  pergunta "Onde está X hoje?". ⌥↑/⌥↓ move na ordem.
+- **Editar na linha**: a edição segue a linha pelo `_lid` (o índice muda ao editar); "+ Cirurgia para X" nasce
+  com `anestesistaUserId` + `anestesistaManual` e já aberta; "Mover para outra pessoa" = `definirAnestesistaCaso`.
+  A busca de pessoa ranqueia quem COMEÇA pelo texto e, no nome ambíguo, põe os candidatos primeiro (digitar
+  "Henrique" punha o Fernando Henrique antes do João Henrique).
+- **Recados** (`src/lib/escalaRecados.js` + `useRecadosLote`): texto do WhatsApp lido por regras; print pela edge
+  `ler-recado-escala` (só transcreve — a regra mora num lugar só). Tipos: consultório (nota), equipe, ajuda, troca
+  (sempre registro), plantão noturno (só confere). O que é claro entra APLICADO, uma vez por ação (chave
+  mensagem·tipo·hospital·pessoa); desfazer não volta sozinho. Nome com dois donos = toque; a escolha fica em
+  `localStorage` (`escala-recados-apelidos`). Recado da equipe de outro turno não marca.
+- **Prévia** (`PreviaPublicacao` + `filaDaPrevia`): a fila como o grupo vai ver, por hospital; publicar abre
+  **10 s para desfazer** — a RPC só é chamada no fim (desfazer não apaga nada de ninguém). Encolhimento e
+  republicar seguem com os diálogos de sempre.
+- **FDS/feriado** (`ImportarEscalaFdsPage` com `desktop` → `FdsDesktop`): 6 turnos na coluna, fila única do turno
+  na direção do documento com as cirurgias dos mapas (hospital por linha), P1–P12 editáveis, "Quem assume?" por
+  sala (grava em `mapa.atribuicoes[turno]`), documento/mapas ao lado, prévia dos turnos + 10 s. As sugestões que a
+  conferência do mapa fazia ao ABRIR (login lido, posto da grade) rodam na entrada, uma vez por mapa e turno.
+  Recados não entram no FDS (lá não existe ajuda/troca/duplicidade — a troca é da posição Pn).
+- Travas: `escalaVisaoPorFila.test.js`, `escalaRecados.test.js` (recado REAL de 09/10),
+  `importarEscalaDesktop.test.jsx`, `importarEscalasLoteDesktop.test.jsx`, `importarEscalaFdsDesktop.test.jsx`
+  (mesmo rodapé do celular). Validação visual: `.tmp/shot-desktop-app.mjs`, `.tmp/shot-fds-desktop.mjs`,
+  `.tmp/shot-recado-print.mjs` (este chama a IA de verdade).
+- ⚠️ Não há realce da linha na foto: a leitura não devolve coordenadas. Pedir isso à Vision é outra rodada
+  (custo de saída).

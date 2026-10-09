@@ -1,4 +1,4 @@
-# ANEST v5.12.53 — Gestão de Qualidade para Anestesiologia
+# ANEST v5.12.54 — Gestão de Qualidade para Anestesiologia
 
 > **Para humanos:** README.md no root e `docs/dev-onboarding.md`.
 > **Conhecimento por módulo NÃO mora aqui.** Vive em `.claude/rules/*.md`, que o Claude Code carrega
@@ -122,7 +122,7 @@ Texto integral com os incidentes que originaram cada regra: `docs/deploy-e-ci.md
 `schedule-shift-reminders` · `send-fcm-push` · `sign-cert` / `verify-cert-public` /
 `verify-cert-uuid-public` / `get-cert-download-url` · `verify-doc-public` · `pdfa-convert` ·
 `watermark-pdf` · `api-v1` · `ai-rag` · `pegaplantao-proxy` · `generate-api-token` ·
-`get-supabase-token` · `parse-escala-cirurgica` (Claude Vision) · `relato-publico`
+`get-supabase-token` · `parse-escala-cirurgica` (Claude Vision) · `ler-recado-escala` (print de recado → texto) · `relato-publico`
 
 ⚠️ Edge que recebe JWT não-Supabase (Firebase/custom) exige `--no-verify-jwt`. CORS: allowlist + echo +
 `Vary: Origin` (nunca origin única). Conferir estado atual com `node scripts/diag-edge-fn-config.mjs`.
