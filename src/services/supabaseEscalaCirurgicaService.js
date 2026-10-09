@@ -598,6 +598,20 @@ async function parseEscalaImagem({ imageBase64, mimeType, hospital, modo, refSab
 }
 
 
+/**
+ * Print de RECADO do WhatsApp → mensagens em texto (dono 09/10/2026). A edge só transcreve;
+ * o que cada frase vira é decidido no cliente (`src/lib/escalaRecados.js`), o mesmo leitor do
+ * texto colado.
+ * @returns {{ mensagens: Array<{hora: string, texto: string}> } | { error: string }}
+ */
+async function lerRecadoImagem({ imageBase64, mimeType }) {
+  const { data, error } = await supabase.functions.invoke('ler-recado-escala', {
+    body: { imageBase64, mimeType },
+  })
+  if (error) handleError(error, 'lerRecadoImagem')
+  return data || { mensagens: [] }
+}
+
 // ============================================================================
 // AVISO DO PLANTONISTA (dono 2026-08-17)
 // ============================================================================
@@ -742,5 +756,6 @@ export default {
   fetchP4Hospital,
   setP4Hospital,
   parseEscalaImagem,
+  lerRecadoImagem,
   restaurarAnestesistaCasos,
 }
