@@ -5,6 +5,11 @@
 
 ## v5.12.54 (09/10/2026) — Publicação da escala no DESKTOP: foto ao lado, recados do WhatsApp e prévia com desfazer
 
+**Importação pelo app BLOQUEADA por enquanto** (dono, mesmo dia): a conta da IA está sem crédito. O
+botão "Importar" (dia útil e fim de semana) avisa "Escala não pode ser publicada por falta de créditos" e
+não abre a tela; a publicação pelo chat segue. Liberar: `IMPORTACAO_BLOQUEADA = false` em
+`src/pages/escala-cirurgica/importacaoBloqueio.js`. A tela de computador abaixo fica pronta para essa volta.
+
 Pedido do dono: "melhore o layout para publicação de escala cirúrgica via desktop … que a marcação de trocas, na
 equipe até 13h/19h seja fácil de fazer e marcar … que sejam possíveis enviar prints assim como faço para publicar
 as escalas aqui". Modelos escolhidos por imagem (`.tmp/desktop-publicacao/`): C (3 colunas, Por fila), P (prévia
