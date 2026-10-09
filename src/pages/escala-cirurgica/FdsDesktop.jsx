@@ -425,7 +425,7 @@ export default function FdsDesktop({ ctx }) {
           </div>
           <div className="min-h-0 flex-1">
             {ladoDireito === 'documento'
-              ? <VisorFoto arquivo={ctx.docArquivo} nome={ctx.docArquivo?.name || ''} hospitalLabel={feriado ? 'lista do feriado' : 'documento do FDS'} />
+              ? <VisorFoto arquivo={ctx.docArquivo} nome={ctx.docArquivo?.name || ''} hospitalLabel={gradeLida ? (feriado ? 'lista do feriado' : 'documento do FDS') : ''} />
               : <VisorFoto arquivo={mapaDireita?.arquivo || null} nome={mapaDireita?.nome || ''} hospitalLabel={mapaDireita ? (HOSPITAL_LABEL[mapaDireita.hospital] || '') : ''} />}
           </div>
         </aside>
