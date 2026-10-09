@@ -88,7 +88,8 @@ function BuscaPessoa({ opcoes, onEscolher, placeholder = 'Nome ou apelido…', a
           onKeyDown={(e) => {
             if (e.key === 'ArrowDown') { e.preventDefault(); setSel((s) => Math.min(s + 1, filtradas.length - 1)) }
             if (e.key === 'ArrowUp') { e.preventDefault(); setSel((s) => Math.max(s - 1, 0)) }
-            if (e.key === 'Enter' && filtradas[sel]) { e.preventDefault(); onEscolher(filtradas[sel]) }
+            // ⌘↵ é o atalho da prévia; sem nada digitado e sem seta, Enter não escolhe ninguém
+            if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey && (q.trim() || sel > 0) && filtradas[sel]) { e.preventDefault(); onEscolher(filtradas[sel]) }
             e.stopPropagation()
           }}
           placeholder={placeholder}

@@ -36,7 +36,11 @@ function Busca({ opcoes, onEscolher, placeholder = 'Nome ou apelido…' }) {
   return (
     <div>
       <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={placeholder} aria-label={placeholder}
-        onKeyDown={(e) => { if (e.key === 'Enter' && lista[0]) { e.preventDefault(); onEscolher(lista[0]) } e.stopPropagation() }}
+        onKeyDown={(e) => {
+          // ⌘↵ é o atalho da prévia: aqui ele não pode escolher a primeira pessoa da lista
+          if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey && q.trim() && lista[0]) { e.preventDefault(); onEscolher(lista[0]) }
+          e.stopPropagation()
+        }}
         className="h-9 w-full rounded-lg border-[1.5px] border-primary bg-card px-2.5 text-sm text-foreground outline-none" />
       <ul className="mt-1 max-h-60 overflow-y-auto">
         {lista.map((o) => (
@@ -58,8 +62,9 @@ function Pop({ aberto, onFechar, children, className = '' }) {
     const fora = (e) => { if (ref.current && !ref.current.contains(e.target)) onFechar() }
     const esc = (e) => { if (e.key === 'Escape') onFechar() }
     document.addEventListener('mousedown', fora)
-    document.addEventListener('keydown', esc)
-    return () => { document.removeEventListener('mousedown', fora); document.removeEventListener('keydown', esc) }
+    // captura: o campo de busca para a propagação das teclas, e o Esc tem de fechar mesmo assim
+    document.addEventListener('keydown', esc, true)
+    return () => { document.removeEventListener('mousedown', fora); document.removeEventListener('keydown', esc, true) }
   }, [aberto, onFechar])
   if (!aberto) return null
   return <div ref={ref} className={`absolute z-[1400] w-[320px] rounded-[14px] border border-border-strong bg-card p-2.5 shadow-[0_12px_32px_rgba(0,0,0,0.28)] ${className}`}>{children}</div>
@@ -219,7 +224,8 @@ export default function FdsDesktop({ ctx }) {
               {feriado ? 'Lista do feriado' : 'Documento do FDS'}
             </span>
             <span className="mt-0.5 block text-muted-foreground">{gradeLida ? ctx.resumoDocumento : 'ainda não anexado'}</span>
-            {ctx.avisoDocumento && <span className="mt-0.5 block font-semibold text-foreground">{ctx.avisoDocumento}</span>}
+            {/* a comparação com o Pega Plantão pode listar as 12 posições: 3 linhas aqui, o resto no título */}
+            {ctx.avisoDocumento && <span title={ctx.avisoDocumento} className="mt-0.5 line-clamp-3 font-semibold text-foreground">{ctx.avisoDocumento}</span>}
           </button>
           <p className="mt-1 text-[11px] font-extrabold uppercase tracking-[0.07em] text-primary">Mapas cirúrgicos</p>
           {!listaMapas.length && <p className="px-1 text-[12px] text-muted-foreground">Nenhum mapa ainda — anexe pelo botão no topo.</p>}
