@@ -6,7 +6,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PageHeader } from '@/components'
 import { WifiOff } from 'lucide-react'
-import { ActionPill, EmptyState } from '@/design-system'
+import { ActionPill, EmptyState, useToast } from '@/design-system'
+import { IMPORTACAO_BLOQUEADA, MENSAGEM_IMPORTACAO_BLOQUEADA } from './importacaoBloqueio'
 import { useUser } from '@/contexts/UserContext'
 import { useEscalaDia } from '@/hooks/usePegaPlantao'
 import { useEscalaCirurgica, HOSPITAIS, HOSPITAL_LABEL, hojeISO } from '@/contexts/EscalaCirurgicaContext'
@@ -100,6 +101,15 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   )
   const [importando, setImportando] = useState(false)
   const [importandoFds, setImportandoFds] = useState(false) // documento de FDS (fila única)
+  const { toast } = useToast()
+  // conta da IA sem crédito (dono 09/10): o "Importar" avisa e não abre — ver importacaoBloqueio.js
+  const abrirImportacao = () => {
+    if (IMPORTACAO_BLOQUEADA) {
+      toast({ variant: 'error', duration: 8000, title: MENSAGEM_IMPORTACAO_BLOQUEADA })
+      return
+    }
+    if (feriado) setImportandoFds(true); else setImportando(true)
+  }
   const [trocaSheet, setTrocaSheet] = useState(null) // { linha, colegaUid, modo } — origem do fluxo único de troca
 
   // Navegação de data (pedido do dono 24/07 + pesquisa NN/G: default HOJE, atalho
@@ -569,7 +579,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
             // par ghost-com-ícone (dia útil) / outline (FDS) de 24/08.
             <ActionPill
               // toque de 44px sem mudar o pill (revisão 23/09): ele mede ~21px de altura
-              className="relative after:absolute after:-inset-x-1 after:-inset-y-3 after:content-['']" onClick={() => feriado ? setImportandoFds(true) : setImportando(true)} aria-label="Importar escala">
+              className="relative after:absolute after:-inset-x-1 after:-inset-y-3 after:content-['']" onClick={abrirImportacao} aria-label="Importar escala">
               Importar
             </ActionPill>
           ) : null

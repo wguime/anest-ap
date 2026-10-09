@@ -266,6 +266,16 @@ describe('turno acompanha o relógio (dono 15/08)', () => {
     expect(btn.textContent.trim()).toBe('Importar')
   })
 
+  // Conta da IA sem crédito (dono 09/10): "se alguém tentar importar as escalas pelo
+  // aplicativo quero que envie a mensagem: escala não pode ser publicada por falta de créditos".
+  it('IMPORTAR bloqueado: avisa a falta de créditos e não abre a importação (dono 09/10)', async () => {
+    vi.setSystemTime(new Date('2026-08-17T10:00:00-03:00'))
+    montarHoje()
+    fireEvent.click(screen.getByLabelText('Importar escala'))
+    expect(await screen.findByText('Escala não pode ser publicada por falta de créditos')).toBeTruthy()
+    expect(screen.queryByText('Confeccionar escalas')).toBeNull()
+  })
+
   it('o calendário livre "Outra data" SAIU da tela (dono 16/08)', () => {
     vi.setSystemTime(new Date('2026-08-17T10:00:00-03:00'))
     montarHoje()
