@@ -55,6 +55,7 @@ import { carimbarDecisao } from '@/lib/escalaCirurgicaDuplicidades'
 import { trocasDoLote } from '@/lib/escalaPreviaPublicacao'
 import { VisorFoto, PainelRecados, PreviaPublicacao } from './LoteDesktop'
 import { useRecadosLote } from './useRecadosLote'
+import { MOD, ALT } from './teclasPlataforma'
 import { segurarAtualizacao, liberarAtualizacao } from '@/lib/atualizacaoAdiada'
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard'
 import { podePublicarEscalaCirurgica } from './gate'
@@ -1171,7 +1172,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
           <Button variant="outline" disabled={carregando || !canEdit} onClick={() => entradaArquivosRef.current?.click()}>
             {carregando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
             {temLote ? 'Mais fotos' : 'Fotos das escalas'}
-            <kbd className="ml-1 rounded border border-current px-1 font-mono text-[10px] opacity-60">⌘V</kbd>
+            <kbd className="ml-1 rounded border border-current px-1 font-mono text-[10px] opacity-60">{MOD}V</kbd>
           </Button>
           <span className="ml-auto text-[12.5px] text-muted-foreground">
             {temLote ? `${prontas} de ${hospitaisDoLote.length} pront${prontas === 1 ? 'a' : 'as'} para publicar` : ''}
@@ -1179,7 +1180,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
           {temLote && canEdit && (
             <Button onClick={() => setPreviaAberta(true)}>
               <Eye className="h-4 w-4" /> Prévia e publicar
-              <kbd className="ml-1 rounded border border-current px-1 font-mono text-[10px] opacity-70">⌘↵</kbd>
+              <kbd className="ml-1 rounded border border-current px-1 font-mono text-[10px] opacity-70">{MOD}↵</kbd>
             </Button>
           )}
         </header>
@@ -1254,7 +1255,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
                 </>
               )}
               <p className="flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
-                <Keyboard className="h-3.5 w-3.5" /> <kbd className="font-mono">1</kbd><kbd className="font-mono">2</kbd><kbd className="font-mono">3</kbd> hospital · <kbd className="font-mono">⌘↵</kbd> prévia
+                <Keyboard className="h-3.5 w-3.5" /> <kbd className="font-mono">1</kbd><kbd className="font-mono">2</kbd><kbd className="font-mono">3</kbd> hospital · <kbd className="font-mono">{MOD}↵</kbd> prévia
               </p>
             </div>
           </aside>
@@ -1275,7 +1276,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
                   maxSize={15 * 1024 * 1024}
                   variant="dropzone"
                   label="Fotos ou planilhas das escalas"
-                  description="Solte todas de uma vez, escolha os arquivos ou cole o print com ⌘V — o hospital sai do próprio arquivo. Paciente só por iniciais."
+                  description={`Solte todas de uma vez, escolha os arquivos ou cole o print com ${MOD}V — o hospital sai do próprio arquivo. Paciente só por iniciais.`}
                   onChange={(f) => importarArquivos(f)}
                   disabled={carregando || !canEdit}
                 />

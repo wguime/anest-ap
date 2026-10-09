@@ -22,6 +22,7 @@ import { HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
 import { titleCaseNome, nomeCirurgiaoCurto } from '@/lib/colunaLiberacao'
 import { gruposAnestesista, normNome, formatData } from './utils'
 import { VisorFoto } from './LoteDesktop'
+import { MOD, ALT } from './teclasPlataforma'
 
 const TURNO_CURTO = { matutino: 'Manhã', vespertino: 'Tarde', noturno: 'Noite' }
 
@@ -202,7 +203,7 @@ export default function FdsDesktop({ ctx }) {
         </span>
         {canEdit && (
           <Button disabled={!gradeLida} onClick={() => setPrevia(true)}>
-            <Eye className="h-4 w-4" /> Prévia e publicar <kbd className="ml-1 rounded border border-current px-1 font-mono text-[10px] opacity-70">⌘↵</kbd>
+            <Eye className="h-4 w-4" /> Prévia e publicar <kbd className="ml-1 rounded border border-current px-1 font-mono text-[10px] opacity-70">{MOD}↵</kbd>
           </Button>
         )}
       </header>
@@ -263,7 +264,7 @@ export default function FdsDesktop({ ctx }) {
           ))}
           <div className="mt-auto space-y-2 pt-2">
             {canEdit && <Button className="w-full" disabled={!gradeLida} onClick={() => setPrevia(true)}><Eye className="h-4 w-4" /> Prévia e publicar</Button>}
-            <p className="flex items-center gap-1 text-[11px] text-muted-foreground"><Keyboard className="h-3.5 w-3.5" /> <kbd className="font-mono">⌘↵</kbd> prévia</p>
+            <p className="flex items-center gap-1 text-[11px] text-muted-foreground"><Keyboard className="h-3.5 w-3.5" /> <kbd className="font-mono">{MOD}↵</kbd> prévia</p>
           </div>
         </aside>
 

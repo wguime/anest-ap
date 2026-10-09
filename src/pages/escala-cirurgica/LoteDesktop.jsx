@@ -12,6 +12,7 @@ import { Button } from '@/design-system'
 import { stripNotaRodape, titleCaseNome, nomeCirurgiaoCurto } from '@/lib/colunaLiberacao'
 import { filaDaPrevia } from '@/lib/escalaPreviaPublicacao'
 import { SeloMarca } from './ConferenciaDesktop'
+import { MOD, ALT } from './teclasPlataforma'
 
 // ── VISOR DA FOTO ──────────────────────────────────────────────────────────────
 /**
@@ -134,7 +135,7 @@ export function PainelRecados({ recados, rotulos, fimTurno, onTexto, onPrint, at
       <div className="mb-2 shrink-0 rounded-[10px] border-[1.5px] border-dashed border-border-strong px-3 py-2 text-[12.5px] text-muted-foreground">
         <p className="flex items-center gap-2">
           <ClipboardPaste className="h-4 w-4 shrink-0" />
-          <span><b className="text-foreground">Cole o print (⌘V)</b> ou o texto copiado do WhatsApp — ou arraste aqui.</span>
+          <span><b className="text-foreground">Cole o print ({MOD}V)</b> ou o texto copiado do WhatsApp — ou arraste aqui.</span>
         </p>
         <div className="mt-1.5 flex gap-1.5">
           <button type="button" onClick={() => setColando((v) => !v)} className="h-7 rounded-md border border-border-strong bg-card px-2.5 text-xs font-semibold text-foreground">

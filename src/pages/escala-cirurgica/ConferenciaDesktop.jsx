@@ -23,6 +23,7 @@ import { Input } from '@/design-system'
 import { titleCaseNome } from '@/lib/colunaLiberacao'
 import { ehPosicaoAssistencial } from '@/lib/escalaCirurgicaItens'
 import { iniciaisSeguras, INICIAIS_MAX } from '@/lib/escalaCirurgicaPaciente'
+import { MOD, ALT } from './teclasPlataforma'
 
 // ── tinta das marcas: as MESMAS da fila publicada (LiberacoesView) ────────────
 const TINTA_MARCA = {
@@ -369,11 +370,11 @@ export default function ConferenciaDesktop({ ctx, ativa = true }) {
         <div className="grid grid-cols-2 gap-1">
           <button type="button" disabled={p.pos === 0} onClick={() => ctx.moverPosicao(p.pos, -1)}
             className="flex h-9 items-center gap-1.5 rounded-md px-2 text-xs font-semibold hover:bg-muted disabled:opacity-40">
-            <ArrowUp className="h-3.5 w-3.5" /> Subir <Tecla>⌥↑</Tecla>
+            <ArrowUp className="h-3.5 w-3.5" /> Subir <Tecla>{ALT}↑</Tecla>
           </button>
           <button type="button" disabled={p.pos === pessoas.length - 1} onClick={() => ctx.moverPosicao(p.pos, 1)}
             className="flex h-9 items-center gap-1.5 rounded-md px-2 text-xs font-semibold hover:bg-muted disabled:opacity-40">
-            <ArrowDown className="h-3.5 w-3.5" /> Descer <Tecla>⌥↓</Tecla>
+            <ArrowDown className="h-3.5 w-3.5" /> Descer <Tecla>{ALT}↓</Tecla>
           </button>
           <button type="button" onClick={() => { setRascNome(ctx.nomeNaOrdem(p.pos)); setPassoMarcador('nome') }}
             className="flex h-9 items-center gap-1.5 rounded-md px-2 text-xs font-semibold hover:bg-muted">
@@ -604,7 +605,7 @@ export default function ConferenciaDesktop({ ctx, ativa = true }) {
             <span><Tecla>J</Tecla><Tecla>K</Tecla> pessoa</span>
             <span><Tecla>↵</Tecla> marcar</span>
             <span><Tecla>E</Tecla> equipe · <Tecla>T</Tecla> troca · <Tecla>A</Tecla> ajuda · <Tecla>C</Tecla> consultório · <Tecla>S</Tecla> sobreaviso</span>
-            <span><Tecla>⌥↑</Tecla><Tecla>⌥↓</Tecla> mover na ordem</span>
+            <span><Tecla>{ALT}↑</Tecla><Tecla>{ALT}↓</Tecla> mover na ordem</span>
             <span>clique numa cirurgia para editar</span>
           </p>
         </>
