@@ -69,12 +69,12 @@ describe('identidade — o número da legenda sozinho não basta', () => {
 describe('em que feriados a pessoa está', () => {
   it('lista os feriados da pessoa com a posição de cada um', () => {
     expect(feriadosDaPessoa(dados, GIOVANA).map((f) => `${f.data} ${f.posicao}`))
-      .toEqual(['2026-02-17 19', '2026-05-01 13', '2026-06-04 7', '2026-09-07 1', '2026-11-02 15'])
+      .toEqual(['2026-02-17 19', '2026-05-01 13', '2026-06-04 7', '2026-09-07 1', '2026-11-02 16', '2026-11-20 1'])
   })
 
   it('`aPartirDe` corta o que já passou — ninguém troca feriado vencido', () => {
     expect(feriadosDaPessoa(dados, GIOVANA, { aPartirDe: '2026-09-03' }).map((f) => f.data))
-      .toEqual(['2026-09-07', '2026-11-02'])
+      .toEqual(['2026-09-07', '2026-11-02', '2026-11-20'])
   })
 })
 

@@ -64,8 +64,9 @@ rede, e a lista sai pendente), férias `node scripts/ferias-pega-plantao.mjs
   (dono 03/09). Louise já vem impressa quando trabalha (nada a inserir). Nomes sem sobrenome
   ("GUILHERME", "JOAO") são resolvidos por `APELIDOS_FERIADO` na lib — em FERIADOS 2026,
   **GUILHERME = Guilherme Melo (04) e JOAO = João Ricardo (06)** (dono 03/09); edição nova
-  sem resposta → sem número e pendência. Daniela, Nathalia, Rômulo, Guilherme D e João
-  Henrique não estão em feriado nenhum de 2026. Feriado sem escala própria no dataset =
+  sem resposta → sem número e pendência. **Correção do grupo em 09/10/2026:** 12/10, 02/11 e 20/11 foram
+  reemitidos com **22 nomes** (entram Daniela, Nathalia, Rômulo, Guilherme D, João Henrique;
+  02/11 imprime o par "HUMBERTO/ROBERTA" e "ROSE" sozinha) — a fila não tem tamanho fixo. Feriado sem escala própria no dataset =
   registrar a ausência, nunca reaproveitar a grade.
 - **Exceção da Louise (nº 43):** trabalha só à tarde (13h–19h). Quadro próprio "ESCALA LOUISE —
   POSIÇÕES TURNO VESPERTINO": a **letra é o hospital do dia** e o **ordinal é a POSIÇÃO** em

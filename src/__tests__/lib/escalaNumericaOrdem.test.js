@@ -88,16 +88,22 @@ describe('turno: manhã de cima para baixo, tarde de baixo para cima', () => {
 })
 
 describe('coluna cinza = feriado: a escala própria é uma FILA ÚNICA', () => {
-  it('a escala de feriados tem 10 datas com 20 nomes cada; 40 pessoas, cada uma em 5 feriados (duas equipes alternadas)', () => {
+  it('a escala de feriados tem 10 datas: 20 nomes no PDF original, 22 nos três que o grupo corrigiu em 09/10', () => {
     const F = dados.feriados.dias
     expect(Object.keys(F)).toHaveLength(10)
-    const freq = {}
-    for (const f of Object.values(F)) {
-      expect(f.lista).toHaveLength(20)
-      for (const n of f.lista) freq[n] = (freq[n] || 0) + 1
+    const corrigidos = ['2026-10-12', '2026-11-02', '2026-11-20']
+    for (const [data, f] of Object.entries(F)) expect(f.lista).toHaveLength(corrigidos.includes(data) ? 22 : 20)
+  })
+  it('correção de 09/10: os três feriados identificam todo mundo na legenda, sem pendência', () => {
+    const r = (data) => ordemFeriado(dados, { data, turno: 'matutino' })
+    for (const data of ['2026-10-12', '2026-11-02', '2026-11-20']) {
+      expect(r(data).pendencias).toEqual([])
+      expect(r(data).posicoes.every((p) => p.numero)).toBe(true)
     }
-    expect(Object.keys(freq)).toHaveLength(40)
-    expect(new Set(Object.values(freq))).toEqual(new Set([5]))
+    expect(r('2026-10-12').posicoes.slice(5, 8).map((p) => p.numero)).toEqual(['03', '41', '04']) // RAUL, GUILHERME D, GUILHERME (Melo)
+    expect(r('2026-11-02').posicoes[0]).toMatchObject({ numero: '05', nome: 'HUMBERTO / ROBERTA' })
+    expect(r('2026-11-02').posicoes.at(-1)).toMatchObject({ numero: '12', nome: 'JOAO HENRIQUE' })
+    expect(r('2026-11-20').posicoes.map((p) => p.nome).slice(-2)).toEqual(['MELO', 'ROMULO'])
   })
   it('25/08 (Dia do Município): a numérica cede lugar à fila do feriado, de cima para baixo de manhã', () => {
     const r = montarOrdem(dados, { data: '2026-08-25', hospital: 'hro', turno: 'matutino', ferias: [] })
