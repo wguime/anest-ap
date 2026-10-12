@@ -65,7 +65,7 @@ apelido conhecido).
   `C.O - SALA 3`, `HEMODINAMICA`, `CENTRO CIRÚRGICO - SALA N` (`… SALA 10 ROBOTICA`), `EXAMES`,
   `IMAGEM`, `ACCURATA`, `UMANITA`, `CLINICA CIRURGICA`. HRO: `Sala N` (Bloco A), `Bloco M - Sala N`
   (o "//" **não** herda entre salas do Bloco M — escreva o nome), `C.O` (vira Sala 7), `HEMO`,
-  `EXAMES`, `IOSC` (as três salas internas viram `IOSC`), `HO`, `MATERNO`, `CONSULT.`, `AMBULAT.`,
+  `EXAMES`, `IOSC` (as três salas internas viram `IOSC`; a linha laranja "IOSC · NN RM" é `DIGIMAX`, dono 12/10), `HO`, `MATERNO`, `CONSULT.`, `AMBULAT.`,
   `Centro de Coluna`, `SIMONE`, `Braqui`. Materno: `Sala N HC`.
 - **Hora** só `HH:MM`; `AS` é hora válida. **Hora do outro turno na foto da tarde é digitação**
   (dono 24/09): "08:45" logo abaixo da 1ª da tarde na mesma sala e mesmo cirurgião → `AS`; seção
