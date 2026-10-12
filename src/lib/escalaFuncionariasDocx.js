@@ -16,7 +16,7 @@
  *           nunca aplicada automaticamente — a conferência oferece o botão)
  */
 import { FUNCIONARIAS_SOBREAVISO } from '@/data/sobreavisoMaterno2026';
-import { FERIADO_LABELS } from '@/data/plantao2026';
+import { FERIADO_LABELS_FUNCIONARIAS as FERIADO_LABELS } from '@/data/plantao2026';
 
 const WORD_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const NA = new Set(['—', '-', '–']);

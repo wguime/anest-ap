@@ -19,7 +19,7 @@ import { parseEscalaFuncionariasDocx, validarEscalaFuncionarias } from '@/lib/es
 import { getEscalaMes, publicarEscalaMes } from '@/services/escalasFuncionariasService';
 import { FUNCIONARIAS_SOBREAVISO } from '@/data/sobreavisoMaterno2026';
 import { FUNCIONARIAS_HOSPITAIS } from '@/data/hospitaisTecnicas2026';
-import { FERIADO_LABELS } from '@/data/plantao2026';
+import { FERIADO_LABELS_FUNCIONARIAS as FERIADO_LABELS } from '@/data/plantao2026';
 
 const DIAS_PT = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
 const MES_PT = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];

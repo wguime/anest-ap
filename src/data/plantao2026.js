@@ -416,6 +416,22 @@ export const FERIADO_LABELS = {
   '2027-02-09': 'Carnaval (Terça-Feira)',
 };
 
+/**
+ * 24/12 e 31/12 são feriado para a residência e a escala cirúrgica, mas dia de trabalho
+ * normal para as funcionárias (dono, 12/10/2026): sem escala de hospital, só o sobreaviso.
+ */
+const NAO_FERIADO_FUNCIONARIAS = new Set(['2026-12-24', '2026-12-31']);
+
+/** Feriados das escalas das funcionárias (sobreaviso materno + hospitais). */
+export const FERIADOS_FUNCIONARIAS = new Set(
+  [...FERIADOS_2026].filter((key) => !NAO_FERIADO_FUNCIONARIAS.has(key)),
+);
+
+/** Labels dos feriados das funcionárias (dateKey → nome). */
+export const FERIADO_LABELS_FUNCIONARIAS = Object.fromEntries(
+  Object.entries(FERIADO_LABELS).filter(([key]) => !NAO_FERIADO_FUNCIONARIAS.has(key)),
+);
+
 export function isPlantao24h(date) {
   const d = date instanceof Date ? date : new Date(date);
   const dow = d.getDay();

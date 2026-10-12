@@ -4,7 +4,7 @@
  * selecionar uma data no calendário e ver quem está de sobreaviso.
  *
  * Marcadores no calendário:
- *   - Bolinha amarela: feriados cadastrados em FERIADOS_2026.
+ *   - Bolinha amarela: feriados das funcionárias (FERIADOS_FUNCIONARIAS).
  *   - Bolinha azul: dias em que a funcionária logada está de sobreaviso.
  *
  * Tudo aqui é escala EFETIVA (base + overrides de troca aceita/ajuste manual):
@@ -18,7 +18,7 @@ import { SectionCard, Calendar, StaffScheduleCard } from '@/design-system';
 import { PageHeader } from '../components';
 import { getSobreavisoBase, FUNCIONARIAS_SOBREAVISO, getSobreavisoParaData, getSobreavisoEfetivo, getHorarioSobreaviso, getDatasDaSobreavisista } from '../data/sobreavisoMaterno2026';
 import { useEscalasFuncionariasBase } from '../contexts/EscalasFuncionariasBaseContext';
-import { FERIADOS_2026, FERIADO_LABELS } from '../data/plantao2026';
+import { FERIADOS_FUNCIONARIAS, FERIADO_LABELS_FUNCIONARIAS } from '../data/plantao2026';
 import { toDateKey } from '../data/residencia2026';
 import { getHospitaisEfetivos, isDiaAutomaticoHospitais, TURNO_MANHA as HOSPITAIS_TURNO_MANHA, TURNO_TARDE as HOSPITAIS_TURNO_TARDE, TURNO_FUNC_UNIMED as HOSPITAIS_TURNO_FUNC_UNIMED } from '../data/hospitaisTecnicas2026';
 import { useSobreavisoOverrides } from '../hooks/useOverridesDiario';
@@ -82,11 +82,11 @@ export default function ConsultaSobreavisoPage({ goBack }) {
   const events = useMemo(() => {
     const list = [];
     // Feriados dentro do range coberto pela base (era hard-coded até jun/2026)
-    for (const key of FERIADOS_2026) {
+    for (const key of FERIADOS_FUNCIONARIAS) {
       if (key < minKey || key > maxKey) continue;
       list.push({
         date: new Date(`${key}T12:00:00`),
-        label: FERIADO_LABELS[key] || 'Feriado',
+        label: FERIADO_LABELS_FUNCIONARIAS[key] || 'Feriado',
         color: COLOR_FERIADO,
       });
     }
@@ -111,7 +111,7 @@ export default function ConsultaSobreavisoPage({ goBack }) {
     : null;
 
   const horario = getHorarioSobreaviso();
-  const feriadoLabel = FERIADO_LABELS[dateKey] || null;
+  const feriadoLabel = FERIADO_LABELS_FUNCIONARIAS[dateKey] || null;
 
   const hospitalSections = useMemo(() => {
     if (!isDiaAutomaticoHospitais(selectedDate)) return [];
