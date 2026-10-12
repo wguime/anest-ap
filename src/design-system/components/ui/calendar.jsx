@@ -98,8 +98,8 @@ function Calendar({
       })
     }
 
-    // Next month days
-    const remainingDays = 42 - days.length // 6 rows * 7 days
+    // Next month days — só até completar a última semana (sem linha inteira do mês seguinte)
+    const remainingDays = (7 - (days.length % 7)) % 7
     if (showOutsideDays) {
       for (let i = 1; i <= remainingDays; i++) {
         days.push({
