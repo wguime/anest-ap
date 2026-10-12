@@ -120,6 +120,12 @@ apelido conhecido).
   O bloco de faltantes já imprime o 2º como "2º do Materno … NÃO é faltante" — nunca relatá-lo como
   sem explicação (02/10: Leandro, 2ª vez).
   O nome à mão continua sendo o dado — a numérica confere, não preenche.
+  **Rodapé do Materno SEMPRE = `ordem=[1º, 2º]` da numérica** (dono 12/10), como nos outros hospitais:
+  2º sem caso no mapa (não escalado) → cauda em `conferidos` (nasce Liberado); 1º e/ou 2º em AZUL em
+  outro hospital → mantém a posição no rodapé do Materno **e** `cor:'azul'` + `ajuda` de onde opera,
+  com `{tipo:'intencional'}` em `decisoes` se o ensaio acusar duplicidade. Sem rodapé a tela elege o
+  plantonista por nº de casos (06/10) e o 2º some da fila. Pós-plantão só vale para o P1/P2 da véspera
+  (HRO/Unimed) — o P3/P4 do Materno não é pós-plantão (12/10: Costa).
 
 ## Recado do dono → lote
 

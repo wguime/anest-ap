@@ -250,7 +250,7 @@ async function noturnosDaVespera(data, uid, posPlantao) {
  * explicação vai ao dono — em 24/09 João Ricardo e Nathalia (P2/P1 da véspera) saíram como
  * "faltam" e só a consulta à mão mostrou que eram pós-plantão.
  */
-async function explicarFaltantes({ data, resultado, resolver, uidDono, ferias }) {
+async function explicarFaltantes({ data, resultado, resolver, uidDono, ferias, noturnosVespera }) {
   const faltantes = Object.entries(resultado.hospitais)
     .flatMap(([h, r]) => (r.numerica?.faltamNoRodape || []).map((nome) => [h, nome]))
   if (!faltantes.length) return
@@ -267,8 +267,12 @@ async function explicarFaltantes({ data, resultado, resolver, uidDono, ferias })
   v.setUTCDate(v.getUTCDate() - 1)
   const vespera = v.toISOString().slice(0, 10)
   const plantoes = await plantoesPegaPlantao(`${vespera}T00:00:00`, `${data}T23:59:59`, uidDono)
+  // Pós-plantão é SÓ o noturno de HRO/Unimed (P1/P2) — a mesma regra da conferência (posPlantao.js).
+  // Antes valia qualquer plantão que virava a noite, e o P4 do Materno saiu como "pós-plantão" (dono 12/10: Costa).
+  const noturnosPP = [noturnosVespera?.hro, noturnosVespera?.unimed].filter(Boolean)
   const noturnos = (plantoes || []).filter((p) => !/f[ée]rias/i.test(p?.Setor || '')
-    && String(p.Inicio || '').startsWith(vespera) && String(p.Fim || '').startsWith(data))
+    && String(p.Inicio || '').startsWith(vespera) && String(p.Fim || '').startsWith(data)
+    && noturnosPP.some((n) => mesmo(n, p.ProfDePlantao || p.ProfFixo || '') || mesmo(p.ProfDePlantao || p.ProfFixo || '', n)))
   const hhmm = (s) => String(s || '').slice(11, 16)
   // Materno: a numérica traz DOIS nomes em ordem — 1º plantão, 2º segundo. O 2º sem caso no mapa não
   // foi escalado no turno (ou foi de ajuda a outro hospital, já explicado acima). Antes saía como ❓ e
@@ -407,7 +411,7 @@ if (cmd === 'publicar') {
     for (const a of r.avisos) console.log(`   ⚠️  ${a.codigo}: ${a.texto}`)
     totalBloqueios += r.bloqueios.length
   }
-  await explicarFaltantes({ data, resultado, resolver: identidade.resolver, uidDono, ferias })
+  await explicarFaltantes({ data, resultado, resolver: identidade.resolver, uidDono, ferias, noturnosVespera })
   if (totalBloqueios) {
     await libs.fechar()
     falhar(`${totalBloqueios} bloqueio(s) — a tela também recusaria. Corrija o lote (ou responda em decisoes/conferidos) e repita.`)
@@ -519,12 +523,17 @@ if (cmd === 'publicar-fds') {
   const TURNOS_ORDEM = [...TURNOS_FDS, 'noturno']         // + a fila da noite, que viaja em fds_meta.ordemNoite
   const datas = Object.keys(lote.dias || {}).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort()
   if (!datas.length) await sair('lote.dias vazio — precisa de pelo menos o sábado')
+  // FERIADO: um dia só, com a folha (lista simples) em `dias[data].listaFeriado` — o mesmo
+  // caminho da ImportarEscalaFdsPage: manhã na ordem da folha, tarde de trás para frente,
+  // sem grade/posições/noite e sem Pega Plantão.
+  const feriado = datas.length === 1 && fds.ehFeriado(datas[0])
   for (const d of datas) {
-    if (fds.ehFeriado(d)) await sair(`${d} é FERIADO: a folha do feriado é uma lista simples (ordensDocumentoFeriado) e este comando só cobre sáb/dom — publique pela tela`)
-    if (!fds.ehFimDeSemana(d)) await sair(`${d} não é sábado nem domingo`)
+    if (fds.ehFeriado(d) && !feriado) await sair(`${d} é FERIADO: publique o feriado num lote só dele (lote.dias com uma data e listaFeriado)`)
+    if (feriado && !(lote.dias[d]?.listaFeriado || []).length) await sair(`${d} é FERIADO: falta lote.dias['${d}'].listaFeriado (a folha, na ordem escrita)`)
+    if (!feriado && !fds.ehFimDeSemana(d)) await sair(`${d} não é sábado nem domingo`)
   }
-  const sabado = String(lote.sabado || fds.sabadoDoFimDeSemana(datas[0]))
-  if (!datas.every((d) => fds.sabadoDoFimDeSemana(d) === sabado)) await sair(`os dias do lote não pertencem ao fim de semana de ${sabado}`)
+  const sabado = feriado ? datas[0] : String(lote.sabado || fds.sabadoDoFimDeSemana(datas[0]))
+  if (!feriado && !datas.every((d) => fds.sabadoDoFimDeSemana(d) === sabado)) await sair(`os dias do lote não pertencem ao fim de semana de ${sabado}`)
 
   const { perfis, aliases } = await carregarIdentidade()
   const identidade = headless.montarRoster({ perfis, aliases })
@@ -565,9 +574,14 @@ if (cmd === 'publicar-fds') {
     const ordemFonte = {}
     const acrescentados = {}
     for (const turno of TURNOS_ORDEM) {
-      const tokens = (d.ordemDoc?.[turno] || []).map((t) => fds.normalizarPn(t) || norm(t)).filter(Boolean)
+      const tokens = feriado
+        ? (fds.ordensDocumentoFeriado((d.listaFeriado || []).map(norm))[turno] || [])
+        : (d.ordemDoc?.[turno] || []).map((t) => fds.normalizarPn(t) || norm(t)).filter(Boolean)
       let rodape
-      if (tokens.length) {
+      if (feriado) {
+        rodape = fds.rodapeDeOrdemDoc(tokens, {}).rodape
+        ordemFonte[turno] = 'documento'
+      } else if (tokens.length) {
         const r = fds.rodapeDeOrdemDoc(tokens, posicoes)
         rodape = r.rodape
         ordemFonte[turno] = 'documento'
@@ -597,9 +611,10 @@ if (cmd === 'publicar-fds') {
   }
 
   // ── 2. a tabela lida × o Pega Plantão (dono 04/09) — aviso, nunca bloqueio ──
-  const registrosPP = await plantoesPegaPlantao(`${sabado}T00:00:00`, `${sabado}T23:59:59`, uidDono)
+  const registrosPP = feriado ? null : await plantoesPegaPlantao(`${sabado}T00:00:00`, `${sabado}T23:59:59`, uidDono)
   let textoPP = ''
-  if (registrosPP === null) textoPP = 'Pega Plantão não consultado — posições conferidas só contra a foto'
+  if (feriado) textoPP = 'feriado: lista simples, sem posições para conferir'
+  else if (registrosPP === null) textoPP = 'Pega Plantão não consultado — posições conferidas só contra a foto'
   else if (dias[sabado]) {
     const posicoesPP = fdsPP.posicoesDoPegaPlantao(registrosPP, sabado)
     if (Object.keys(posicoesPP).length) {
@@ -680,7 +695,7 @@ if (cmd === 'publicar-fds') {
   }
 
   // ── relatório ──────────────────────────────────────────────────────────────
-  console.log(`\n== FIM DE SEMANA de ${sabado} · ${datas.join(' + ')} · Pega Plantão: ${textoPP}`)
+  console.log(`\n== ${feriado ? 'FERIADO' : 'FIM DE SEMANA'} de ${sabado} · ${datas.join(' + ')} · Pega Plantão: ${textoPP}`)
   for (const iso of datas) {
     const d = dias[iso]
     console.log(`\n-- ${iso}`)
@@ -721,7 +736,8 @@ if (cmd === 'publicar-fds') {
         ordem_liberacao: d.ordem[turno], ajuda_externa: [], source_image_path: null, published_by_name: comoApelido,
         // o meta COMPLETO vai em toda publicação (a RPC preserva quando ausente; não há "limpar")
         fds_meta: {
-          grade: d.grade, posicoes: d.posicoes, escalacao: d.escalacao, tipo: 'fim_de_semana',
+          grade: d.grade, posicoes: d.posicoes, escalacao: d.escalacao, tipo: feriado ? 'feriado' : 'fim_de_semana',
+          ...(feriado ? { listaFonte: (lote.dias[iso].listaFeriado || []).map(norm) } : {}),
           ordemFonte: d.ordemFonte,
           // a fila da NOITE mora aqui porque 'noturno' não é turno de publicação no banco
           ordemNoite: d.ordem.noturno,

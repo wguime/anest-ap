@@ -67,7 +67,10 @@ MAT = [
     # ('Sala 3 HC', '15:30', 'Nome Completo', '7', 'PROCEDIMENTO', 'Sindhy Mara Longo', 'RAFAEL', 'SUS'),
     # ('Sala 3 HC', '16:30', 'Nome Completo', '6', 'PROCEDIMENTO', 'Sindhy Mara Longo', '//', 'SUS'),
 ]
-materno = hospital('materno', MAT, data=DATA)
+materno = hospital(
+    'materno', MAT, data=DATA,
+    ordem=[],      # SEMPRE [1º, 2º] da numérica ("plantão do Materno neste turno = X, Y"); 2º sem caso → `conferidos`
+)
 
 lote = {
     'data': DATA,
