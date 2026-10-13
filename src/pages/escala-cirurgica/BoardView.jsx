@@ -311,7 +311,7 @@ export const CasoCard = memo(CasoCardBase, (prev, next) =>
   prev.pendencia === next.pendencia && prev.turnoExibido === next.turnoExibido
 )
 
-export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate, pendencias = null }) {
+export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null, turno, onNavigate, pendencias = null }) {
   const { user } = useUser()
   const { rosterByUid } = useRosterAnestesistas()
   // Nome do grupo na Completa (pedido do dono 23/07): 1 anestesista = 1º nome +
@@ -411,7 +411,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate,
     return out
   }, [grupos, escala?.hospital])
   // dupla "A + B": o caso é das DUAS — o helper cobre (uid é null por construção)
-  const ehMeu = (c) => anestesistaDoCasoEh(c, { uid: meuUid, alias: meuAlias })
+  const ehMeu = (c) => anestesistaDoCasoEh(c, { uid: meuUid, alias: meuAlias, resolverUid })
 
   const isDemo = String(escala?.id).startsWith('demo-')
   const canEdit = podeEditarEscalaCirurgica(user)

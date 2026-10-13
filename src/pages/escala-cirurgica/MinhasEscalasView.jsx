@@ -18,7 +18,7 @@ import DefinirAnestesistaSheet from './DefinirAnestesistaSheet'
 import CasoDetalheSheet from './CasoDetalheSheet'
 import AddCasoSheet from './AddCasoSheet'
 
-export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onVerBoard, pendencias = null }) {
+export default function MinhasEscalasView({ escala, meuAlias, meuUid, resolverUid = null, turno, onVerBoard, pendencias = null }) {
   const { user } = useUser()
   const [detalhe, setDetalhe] = useState(null)   // caso aberto (mesmo sheet da aba Completa)
   const [definir, setDefinir] = useState(null)   // { sala, caso? }
@@ -47,9 +47,9 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
     () => filtrarPorTurnoExibicao(casosResolvidos(escala), turno).filter((c) =>
       (!!meuUid && c.residenteUserId === meuUid)
       // dupla "A + B" entra para as DUAS (o helper trata; uid é null nela)
-      || anestesistaDoCasoEh(c, { uid: meuUid, alias: meuAlias })
+      || anestesistaDoCasoEh(c, { uid: meuUid, alias: meuAlias, resolverUid })
     ),
-    [escala, meuAlias, meuUid, turno]
+    [escala, meuAlias, meuUid, resolverUid, turno]
   )
   const meus = useMemo(
     () => (noite ? limparConcluidosNaVirada(meusDoTurno, { dataEscala: escala?.data }) : meusDoTurno),

@@ -278,6 +278,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
       escalas,
       hospitais: HOSPITAIS,
       eu: { uid: meuUid, alias: meuAlias },
+      resolverUid: resolverRoster,
       turnoPreferido: permitidos.includes(relogio) ? relogio : permitidos[0],
       turnos: permitidos,
     })
@@ -290,7 +291,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     // tira a tela da noite.
     escolherTurno(turno === 'noturno' && posto.turno === 'vespertino' ? 'noturno' : posto.turno)
     return true
-  }, [escalas, meuUid, meuAlias, turnoDoRelogio, escolherTurno, turnoOpcoes, turno])
+  }, [escalas, meuUid, meuAlias, resolverRoster, turnoDoRelogio, escolherTurno, turnoOpcoes, turno])
 
   // Abertura da tela: mesma varredura, porque a aba que abre É a Minhas (pedido
   // do dono 23/07 — abria fixo em Unimed e vinha em branco p/ quem estava no
@@ -639,7 +640,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           // aba Minhas: o detalhamento de QUEM ESTÁ LOGADO (dono 05/10), pelo mesmo critério da
           // aba — o login gravado no caso manda; sem login, o apelido
           minhas={abaVisivel === 'minhas'
-            ? pendencias.itens.filter((i) => anestesistaDoCasoEh(i.caso, { uid: meuUid, alias: meuAlias })).sort(compararPendencias)
+            ? pendencias.itens.filter((i) => anestesistaDoCasoEh(i.caso, { uid: meuUid, alias: meuAlias, resolverUid: resolverRoster })).sort(compararPendencias)
             : null}
         />
 
@@ -676,7 +677,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           {/* Minhas e Completa também no fim de semana (dono 13/09) — por hospital,
               como num dia útil; só a Faixa de Urgências fica de fora do FDS. */}
           {abaVisivel === 'minhas' && (
-            <MinhasEscalasView escala={escala} meuAlias={meuAlias} meuUid={meuUid} turno={turnoCasos} pendencias={pendencias.porCaso} onVerBoard={() => setAba('board')} />
+            <MinhasEscalasView escala={escala} meuAlias={meuAlias} meuUid={meuUid} resolverUid={resolverRoster} turno={turnoCasos} pendencias={pendencias.porCaso} onVerBoard={() => setAba('board')} />
           )}
           {abaVisivel === 'board' && (
             <>
@@ -686,7 +687,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               {!modoFds && (
                 <FaixaUrgencias escala={escala} hospital={hospital} turno={turnoCasos} />
               )}
-              <BoardView escala={escala} meuAlias={meuAlias} meuUid={meuUid} turno={turnoCasos} pendencias={pendencias.porCaso} onNavigate={onNavigate} />
+              <BoardView escala={escala} meuAlias={meuAlias} meuUid={meuUid} resolverUid={resolverRoster} turno={turnoCasos} pendencias={pendencias.porCaso} onNavigate={onNavigate} />
             </>
           )}
           {abaVisivel === 'liberacoes' && (() => {

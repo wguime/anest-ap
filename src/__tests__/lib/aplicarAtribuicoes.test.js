@@ -710,3 +710,22 @@ describe('grupo por identidade de linha (_lid)', () => {
     expect(out.map((c) => c.anestesistaUserId)).toEqual(['uid-costa', 'uid-costa'])
   })
 })
+
+// Dono 13/10: a Hemodinâmica "GUILHERME MELO + GUSTAVO" não aparecia em "Minhas" do
+// Guilherme — o apelido dele é "Guilherme" e a dupla traz o nome do rodapé.
+describe('anestesistaDoCasoEh — dupla pelo cadastro', () => {
+  const dicionario = { 'GUILHERME MELO': 'uid-melo', GUSTAVO: 'uid-gustavo', 'GUILHERME D': 'uid-xavier' }
+  const resolverUid = (n) => dicionario[String(n).toUpperCase()] || null
+  const dupla = { anestesista: 'GUILHERME MELO + GUSTAVO', anestesistaUserId: null }
+
+  it('entra para as DUAS metades, pelo login', () => {
+    expect(anestesistaDoCasoEh(dupla, { uid: 'uid-melo', alias: 'Guilherme', resolverUid })).toBe(true)
+    expect(anestesistaDoCasoEh(dupla, { uid: 'uid-gustavo', alias: 'Gus', resolverUid })).toBe(true)
+  })
+  it('não entra para quem não está na dupla (o outro Guilherme)', () => {
+    expect(anestesistaDoCasoEh(dupla, { uid: 'uid-xavier', alias: 'Guilherme', resolverUid })).toBe(false)
+  })
+  it('caso com login segue decidido pelo login', () => {
+    expect(anestesistaDoCasoEh({ anestesista: 'GUSTAVO', anestesistaUserId: 'uid-oscar' }, { uid: 'uid-gustavo', resolverUid })).toBe(false)
+  })
+})

@@ -1944,13 +1944,18 @@ export function planoExecucaoTroca({ escalas, resolverUid, a, b, turno = null, e
  * @param {object} caso  { anestesista, anestesistaUserId }
  * @param {object} eu    { uid, alias } — alias = apelido/1º nome do usuário
  */
-export function anestesistaDoCasoEh(caso, { uid = null, alias = '' } = {}) {
-  const partes = String(caso?.anestesista || '').split(/\s*\+\s*/).map(normNome).filter(Boolean)
+export function anestesistaDoCasoEh(caso, { uid = null, alias = '', resolverUid = null } = {}) {
+  const brutas = String(caso?.anestesista || '').split(/\s*\+\s*/).map((s) => s.trim()).filter(Boolean)
+  const partes = brutas.map(normNome).filter(Boolean)
   // MESMA regra do `nomeAnestesistaExibicao` (02/09): dupla é uid null por
   // construção, então login gravado é a identidade do caso. Sem isto, o caso com
   // texto de dupla corrompido some de "Minhas escalas" de quem o assumiu e
   // aparece na de quem saiu.
   if (caso?.anestesistaUserId) return !!uid && caso.anestesistaUserId === uid
+  // DUPLA pelo CADASTRO (dono 13/10): "GUILHERME MELO + GUSTAVO" não aparecia em
+  // "Minhas" do Guilherme — o apelido dele é "Guilherme", e o texto da dupla traz
+  // o nome do rodapé. Cada metade passa pelo dicionário, como no card da Home.
+  if (uid && resolverUid && brutas.some((p) => resolverUid(p) === uid)) return true
   const eu = normNome(alias)
   return !!eu && partes.includes(eu)
 }
@@ -2446,11 +2451,11 @@ export function gruposSemIdentidade(mapa) {
  * @param {string[]} turnos          turnos a varrer, na ordem de fallback
  * @returns {{hospital: string, turno: string}|null}
  */
-export function localizarMeuPosto({ escalas, hospitais, eu, turnoPreferido, turnos = ['matutino', 'vespertino'] }) {
+export function localizarMeuPosto({ escalas, hospitais, eu, turnoPreferido, turnos = ['matutino', 'vespertino'], resolverUid = null }) {
   const uid = eu?.uid || null
   const alias = eu?.alias || ''
   if (!uid && !alias) return null
-  const meuCaso = (c) => (uid && c.residenteUserId === uid) || anestesistaDoCasoEh(c, { uid, alias })
+  const meuCaso = (c) => (uid && c.residenteUserId === uid) || anestesistaDoCasoEh(c, { uid, alias, resolverUid })
   const ordemTurnos = [turnoPreferido, ...turnos].filter((t, i, a) => t && a.indexOf(t) === i)
   for (const turno of ordemTurnos) {
     for (const hospital of hospitais) {
