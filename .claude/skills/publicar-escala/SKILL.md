@@ -105,7 +105,8 @@ apelido conhecido).
   sem caso no MEIO do rodapé é quase sempre linha da foto esquecida (ou azul não lido): volte à
   foto antes de pôr em `conferidos`; o `gerar.py` avisa os dois casos.
 - **LGPD**: `pacienteNome` só em PARTICULAR/PART (o template faz; é o que abre a cobrança); FAS,
-  SC, BRF, UNIMED FUNDACAO não são particular. Todo o resto por iniciais; nome de não-particular
+  SC, BRF, UNIMED FUNDACAO não são particular. Abreviação fora de `^PART(ICULAR)?$` ("PARTIC", 14/10) o classificador da
+  cobrança NÃO pega → transcreva `PARTICULAR`. Todo o resto por iniciais; nome de não-particular
   não entra no JSON.
 - `turnoProprio` (Louise) é automático pela numérica. `RAFAEL` sai como `PELISSARO` — mesmo
   cadastro. Ambíguo na foto: diga no relatório em vez de escolher.
