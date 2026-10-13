@@ -427,6 +427,11 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
         inicioReal: String(c.inicioReal || '').trim(),
         statusAtualizadoEm: c.statusAtualizadoEm || null,
         andamento: (c.statusCirurgia || 'agendada') === 'iniciada',
+        // o "(continuação)" do rótulo (dono 13/10) decide por estes três — ver
+        // procedimentoComContinuacao em pages/escala-cirurgica/utils.js
+        isContinuacao: c.isContinuacao === true,
+        turno: c.turno || null,
+        statusExtra: c.statusExtra || null,
       })
       if (tok) {
         // A cirurgia EM ANDAMENTO é a única que pode mostrar contagem regressiva

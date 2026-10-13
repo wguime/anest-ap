@@ -53,7 +53,7 @@ import { duracaoMin, ehDiaOperacionalAtual, erroHorarioReal, gravarInicioReal, g
 import PainelTempo, { formatFaltante } from './PainelTempo'
 import { BlocoHorario, BotaoEstimado, ConfirmarHorario } from './BlocoHorario'
 import useAgoraMinutoEscala from './useAgoraMinutoEscala'
-import { espelhoTempoTotal, nomeAnestesistaExibicao, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso, terminoEncadeado } from './utils'
+import { espelhoTempoTotal, nomeAnestesistaExibicao, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso, terminoEncadeado, procedimentoComContinuacao, procedimentoBaseDoCaso } from './utils'
 import ChipsEscolha, { GRAVIDADE_CHIPS, TIPOS_CIRURGIA } from './ChipsEscolha'
 
 // Verbo de cada estado na linha de procedência ("Iniciada às 14:33 por Fulano").
@@ -324,7 +324,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                 vem em CAIXA ALTA e o painel repetia assim — o mesmo procedimento
                 aparecia de dois jeitos em duas telas do mesmo caso. */}
             <SheetTitle className={['text-[15px] font-extrabold leading-tight [overflow-wrap:anywhere]', podeEditarCaso && onEditarCaso ? 'pr-16' : ''].join(' ')}>
-              {fraseClinica(vivo.procedimento) || salaExibicao(vivo.sala)}
+              {procedimentoComContinuacao(fraseClinica(procedimentoBaseDoCaso(vivo)) || salaExibicao(vivo.sala), vivo, turno)}
             </SheetTitle>
             {(vivo.pacienteIniciais || vivo.idade || vivo.tempoEstimado) && (
               <p className="mt-1 text-[12.5px] text-muted-foreground">

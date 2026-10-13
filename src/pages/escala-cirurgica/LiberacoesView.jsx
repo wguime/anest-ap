@@ -28,7 +28,7 @@ import { nomeCurtoProcedimento } from '@/lib/escalaProcedimentoCurto'
 import { ehDiaOperacionalAtual, erroHorarioReal } from '@/lib/escalaHorarioReal'
 import { carimboDeStatus } from '@/lib/escalaCirurgicaStatus'
 import AddCasoSheet from './AddCasoSheet'
-import { ajudaOrdemInformada, casoConcluido, casosDaFilaDoTurno, casosDaFilaFds, casosResolvidos, chaveSalaEscolha, compararSalas, diffRelogioMin, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao, turnoDoCaso } from './utils'
+import { ajudaOrdemInformada, casoConcluido, casosDaFilaDoTurno, casosDaFilaFds, casosResolvidos, chaveSalaEscolha, compararSalas, diffRelogioMin, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao, turnoDoCaso, procedimentoComContinuacao, procedimentoBaseDoCaso } from './utils'
 
 // Sentinelas do dropdown de Local (valores impossíveis como nome de sala)
 const LOCAL_AUTO = '__auto__'
@@ -2738,10 +2738,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                               // ("CONSULTÓRIO" no grupo Consultório) não tem o que acrescentar —
                               // "— —" sob "SRPA" era a mesma palavra três vezes no card. Sem
                               // hora a linha não existe; com hora, fica só a hora.
-                              const rotuloBruto = nomeCurtoProcedimento(c.procedimento) || fraseClinica(c.procedimento) || ''
+                              const rotuloBruto = nomeCurtoProcedimento(procedimentoBaseDoCaso(c)) || fraseClinica(procedimentoBaseDoCaso(c)) || ''
                               const repeteTitulo = !rotuloBruto || normNome(rotuloBruto) === normNome(token)
                               if (repeteTitulo && !c.hora) return null
-                              const rotulo = repeteTitulo ? '' : rotuloBruto
+                              const rotulo = procedimentoComContinuacao(repeteTitulo ? '' : rotuloBruto, c, turno)
                               // UMA LINHA SÓ, tempo colado ao nome (dono 15/09: "informações
                               // devem estar na mesma linha"). O que dá a largura é a fileira
                               // ter recuado para baixo do círculo (acima); só um nome muito

@@ -15,7 +15,7 @@ import { describe, it, expect } from 'vitest'
 import {
   filtrarPorTurno, filtrarPorTurnoExibicao, casoSegueParaOTurno,
   casosQuePassamParaOTurno, casosTransferiveis, casosResolvidos, casosDaFilaDoTurno,
-  casosDaFilaFds, patchDefinicaoNoTurnoSeguinte,
+  casosDaFilaFds, patchDefinicaoNoTurnoSeguinte, procedimentoComContinuacao, procedimentoBaseDoCaso,
 } from '@/pages/escala-cirurgica/utils'
 import { casoPassaDeTurno, extraDoCaso } from '@/lib/escalaCirurgicaRegras'
 
@@ -198,5 +198,42 @@ describe('fila única — "passa" vira sem anestesista no turno seguinte', () =>
     expect(patchDefinicaoNoTurnoSeguinte(TARDE_PASSA, 'vespertino')).toBeNull()
     expect(patchDefinicaoNoTurnoSeguinte(MANHA_COMUM, 'vespertino')).toBeNull()
     expect(patchDefinicaoNoTurnoSeguinte(MANHA_PASSA, 'matutino')).toBeNull()
+  })
+})
+
+// Dono 13/10: "quando os casos da manhã passam para tarde ou da tarde passam para
+// noite, coloque ao lado do nome da cirurgia entre parênteses: continuação".
+describe('"(continuação)" ao lado do nome da cirurgia', () => {
+  const manhaPassa = { id: 'm', hora: '07:30', turno: 'matutino', procedimento: 'Septoplastia', statusExtra: 'passa_tarde' }
+  const tardePassa = { id: 't', hora: '13:30', turno: 'vespertino', procedimento: 'Septoplastia', statusExtra: 'passa_tarde' }
+  const contImportada = { id: 'c', hora: '13:30', turno: 'vespertino', procedimento: 'Nefrectomia parcial', isContinuacao: true }
+
+  it('manhã que passa: sufixo só na TARDE, nunca no próprio turno', () => {
+    expect(procedimentoComContinuacao('Septoplastia', manhaPassa, 'vespertino')).toBe('Septoplastia (continuação)')
+    expect(procedimentoComContinuacao('Septoplastia', manhaPassa, 'matutino')).toBe('Septoplastia')
+  })
+  it('tarde que passa: sufixo só na NOITE', () => {
+    expect(procedimentoComContinuacao('Septoplastia', tardePassa, 'noturno')).toBe('Septoplastia (continuação)')
+    expect(procedimentoComContinuacao('Septoplastia', tardePassa, 'vespertino')).toBe('Septoplastia')
+  })
+  it('linha CONTINUAÇÃO da foto da tarde: sempre, em qualquer tela', () => {
+    expect(procedimentoComContinuacao('Nefrectomia parcial', contImportada, 'vespertino')).toBe('Nefrectomia parcial (continuação)')
+    expect(procedimentoComContinuacao('Nefrectomia parcial', contImportada, null)).toBe('Nefrectomia parcial (continuação)')
+  })
+  it('nunca duplica, e caso comum não muda', () => {
+    expect(procedimentoComContinuacao('Continuação robótica +-17h', contImportada, 'vespertino')).toBe('Continuação robótica +-17h')
+    expect(procedimentoComContinuacao('Septoplastia', { ...manhaPassa, statusExtra: null }, 'vespertino')).toBe('Septoplastia')
+    expect(procedimentoComContinuacao('', contImportada, 'vespertino')).toBe('(continuação)')
+  })
+})
+
+describe('continuação herdada da manhã', () => {
+  it('troca o " · CONTINUAÇÃO …" herdado pelo sufixo', () => {
+    const c = { isContinuacao: true, turno: 'vespertino', procedimento: 'NEFRECTOMIA PARCIAL LAPAROSCOPICA UNILATERAL · CONTINUAÇÃO ROBOTICA +-17h' }
+    expect(procedimentoBaseDoCaso(c)).toBe('NEFRECTOMIA PARCIAL LAPAROSCOPICA UNILATERAL')
+    expect(procedimentoComContinuacao(procedimentoBaseDoCaso(c), c, 'vespertino')).toBe('NEFRECTOMIA PARCIAL LAPAROSCOPICA UNILATERAL (continuação)')
+  })
+  it('caso que não é continuação fica intacto', () => {
+    expect(procedimentoBaseDoCaso({ procedimento: 'Sutura · continuação de curativo' })).toBe('Sutura · continuação de curativo')
   })
 })

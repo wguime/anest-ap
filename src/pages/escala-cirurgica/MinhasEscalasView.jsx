@@ -112,6 +112,7 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
           destaque
           agoraMin={agoraMin}
           pendencia={pendencias?.get(caso.id)?.falta || null}
+          turnoExibido={noite ? 'noturno' : turno}
           onClick={() => setDetalhe(caso)}
         />
       )))}

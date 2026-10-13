@@ -14,7 +14,7 @@ import { useEscalaCirurgica } from '@/contexts/EscalaCirurgicaContext'
 import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
 import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
-import { anestesistaDoCasoEh, casoConcluido, casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, turnoDoCaso, compararSalas, parseHoraMinutos, salaExibicao, nomeAnestesistaExibicao, convenioExibicao, idadeExibicao, limparConcluidosNaVirada, visaoNoturna } from './utils'
+import { anestesistaDoCasoEh, casoConcluido, casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, turnoDoCaso, compararSalas, parseHoraMinutos, salaExibicao, nomeAnestesistaExibicao, convenioExibicao, idadeExibicao, limparConcluidosNaVirada, visaoNoturna, procedimentoComContinuacao, procedimentoBaseDoCaso } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import { formatFaltante } from './PainelTempo'
 import useAgoraMinutoEscala from './useAgoraMinutoEscala'
@@ -86,11 +86,11 @@ export function casoTemColunaTempo(caso) {
   return !casoConcluido(caso) && parseHoraMinutos(caso?.terminoPrevisto) != null
 }
 
-function CasoCardBase({ caso, destaque, salaLabel, onClick, agoraMin = null, moldura = 'card', reservaHora = false, pendencia = null }) {
+function CasoCardBase({ caso, destaque, salaLabel, onClick, agoraMin = null, moldura = 'card', reservaHora = false, pendencia = null, turnoExibido = null }) {
   const tb = tipoBadge(caso.tipo)
   const st = STATUS_CIRURGIA[caso.statusCirurgia]
   const ex = extraDe(caso)
-  const procedimento = fraseClinica(caso.procedimento)
+  const procedimento = procedimentoComContinuacao(fraseClinica(procedimentoBaseDoCaso(caso)), caso, turnoExibido)
   const cirurgiao = titleCaseNome(caso.cirurgiao)
   // residente ACOMPANHA o caso (dono 29/07) — aparece abaixo do cirurgião, em peso
   // menor: quem responde pelo caso continua sendo o anestesista.
@@ -308,7 +308,7 @@ export const CasoCard = memo(CasoCardBase, (prev, next) =>
   prev.caso === next.caso && prev.destaque === next.destaque &&
   prev.salaLabel === next.salaLabel && prev.agoraMin === next.agoraMin &&
   prev.moldura === next.moldura && prev.reservaHora === next.reservaHora &&
-  prev.pendencia === next.pendencia
+  prev.pendencia === next.pendencia && prev.turnoExibido === next.turnoExibido
 )
 
 export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate, pendencias = null }) {
@@ -563,6 +563,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate,
                     moldura="linha"
                     reservaHora={reservaHora}
                     pendencia={pendencias?.get(caso.id)?.falta || null}
+                    turnoExibido={noite ? 'noturno' : turno}
                     onClick={() => setDetalhe(caso)}
                   />
                 ))}
@@ -604,6 +605,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate,
                   moldura="linha"
                   reservaHora={reservaHora}
                   pendencia={pendencias?.get(caso.id)?.falta || null}
+                  turnoExibido={noite ? 'noturno' : turno}
                   onClick={() => setDetalhe(caso)}
                 />
               ))}

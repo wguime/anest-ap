@@ -795,6 +795,41 @@ export function casosDaFilaDoTurno(casos, turno, ordemTurno = [], resolverUid = 
 const ORDEM_TURNO_FILA = { matutino: 0, vespertino: 1, noturno: 2 }
 
 /**
+ * O caso é CONTINUAÇÃO no turno exibido (dono 13/10: "quando os casos da manhã
+ * passam para tarde ou da tarde passam para noite, coloque ao lado do nome da
+ * cirurgia entre parênteses: continuação"). Duas origens:
+ *  - a linha "CONTINUAÇÃO …" da foto da tarde (`isContinuacao`), que herda o
+ *    procedimento da manhã e, sem o sufixo, parecia uma cirurgia nova;
+ *  - a cirurgia marcada "Passa para tarde/noite" vista num turno DEPOIS do dela
+ *    (a fila da tarde conta a da manhã; a noite lê as da tarde).
+ */
+export function casoEhContinuacaoNoTurno(caso, turnoExibido) {
+  if (!caso) return false
+  if (caso.isContinuacao === true) return true
+  const exib = ORDEM_TURNO_FILA[turnoExibido]
+  if (exib == null || !casoPassaDeTurno(caso)) return false
+  return ORDEM_TURNO_FILA[turnoDoCaso(caso)] < exib
+}
+
+/**
+ * Procedimento da continuação SEM o " · CONTINUAÇÃO …" que a herança da manhã
+ * acrescenta (escalaConferenciaHeadless): no card o trecho sumia no "…" e a
+ * cirurgia parecia nova. Quem marca continuação agora é o sufixo abaixo.
+ */
+export function procedimentoBaseDoCaso(caso) {
+  const p = String(caso?.procedimento || '')
+  return caso?.isContinuacao === true ? p.replace(/\s*·\s*continua[çc][ãa]o\b.*$/i, '').trim() : p
+}
+
+/** `texto` (o nome da cirurgia já formatado) + " (continuação)" quando vale — nunca duas vezes. */
+export function procedimentoComContinuacao(texto, caso, turnoExibido) {
+  const t = String(texto || '').trim()
+  if (!casoEhContinuacaoNoTurno(caso, turnoExibido)) return t
+  if (/continua[çc][ãa]o/i.test(t)) return t
+  return t ? `${t} (continuação)` : '(continuação)'
+}
+
+/**
  * FILA ÚNICA (sáb/dom/feriado): "Passa para tarde"/"Passa para noite" entra no
  * turno SEGUINTE como SEM ANESTESISTA (dono 26/09: "mantenha o card da cirurgia
  * em escala completa e adicione como sem anestesista no próximo turno — o
