@@ -971,6 +971,23 @@ describe('slot assumido (troca declarada, dono 30/07)', () => {
     expect(extra?.anestesista).toBe('Maurício')
   })
 
+  it('dono que cedeu o slot com caso aqui só TERMINADO não volta como extra (dono 14/10)', () => {
+    // Gustavo passou a posição da Unimed ao Rômulo e foi para o HRO; ficou na
+    // Unimed só a dupla da Hemodinâmica, já terminada — virava "Ajuda · Livre ·
+    // Próximo a ser liberado" no fim da fila
+    const casosDupla = [
+      caso('S1', 0, 'ANDRE', 'Liana Winkelmann'),
+      caso('HEMO', 0, 'ANDRE + MAURICIO', 'Fernando Bernardi', { statusCirurgia: 'terminada' }),
+    ]
+    const r = gerarColunaLiberacao(casosDupla, ['ANDRE', 'MAURICIO'], { assumidas })
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['André', 'Giovana Silva'])
+    expect(r.linhas.some((l) => l.isExtra)).toBe(false)
+    // com o caso ainda ABERTO a linha extra continua (verdade dos dados)
+    const aberto = [casosDupla[0], { ...casosDupla[1], statusCirurgia: 'iniciada' }]
+    const r2 = gerarColunaLiberacao(aberto, ['ANDRE', 'MAURICIO'], { assumidas })
+    expect(r2.linhas.find((l) => l.isExtra)?.anestesista).toBe('Maurício')
+  })
+
   it('quem assumiu também some do bloco de ajuda avulsa (sem linha dupla)', () => {
     // Giovana tinha sido marcada como ajuda antes de executar a troca
     const r = gerarColunaLiberacao(casosPos, ['ANDRE', 'MAURICIO', 'CARLA'], {

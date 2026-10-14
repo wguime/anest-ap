@@ -668,6 +668,11 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     if ((usados.has(key) && !donosComCasos.has(key)) || consumidos.has(key)) continue
     const g = grupos.get(key)
     if (g.uid && consumidos.has(g.uid)) continue
+    // ...mas só com caso ABERTO (dono 14/10 — Gustavo↔Rômulo na Unimed): quem
+    // cedeu a posição e saiu para o slot do outro hospital deixou aqui só a
+    // dupla da Hemodinâmica, já terminada — virava "Ajuda · Livre · Próximo a
+    // ser liberado" no fim da fila de um hospital onde nem estava mais.
+    if (donosComCasos.has(key) && !g.casosAtivos) continue
     // dono de slot assumido reaparecendo com casos próprios: a chave do slot já
     // está em uso na linha assumida — namespace evita chave duplicada (React
     // omitia/duplicava linhas com a mesma chave, bug real da fase noturna).
