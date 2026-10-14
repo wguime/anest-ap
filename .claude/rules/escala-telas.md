@@ -419,7 +419,13 @@ plantonista) — a folha é para quem toca, não para quem sai.
   da fila, urgências) — início vazio com atalhos (agendada, fim da anterior na sala:
   `sugestoesDeInicio`), término em "agora", botão "Confirmar os dois" só com os dois.
   `gravarTerminoReal({ inicioReal })` leva o início no mesmo patch. O início de uma TERMINADA não
-  tem "Limpar horário". Só no cliente: o trigger do banco não recusa terminada sem início.
+  tem "Limpar horário".
+- **Também no BANCO desde 14/10 à noite** (migration `20261014200000`, "todos os caminhos"): o trigger
+  `tr_escala_caso_horario_real` recusa (23514) virar terminada sem início ou apagar o início de uma
+  terminada (linha antiga intocada segue editável); `rpc_escala_patch_liberacao` recusa `liberadoEm`
+  com cirurgia pendente (`escala_caso_trava_liberacao`, lado seguro: dupla e slot assumido sem login
+  ficam só com a tela; datas ≥ 14/10). O app espera as escritas em voo e repete uma vez se vier
+  `horario_pendente`. Rollback: `scripts/rollback-20261014200000-horario-obrigatorio.sql`.
 - Travas: `src/__tests__/pages/liberacoesAntesDeLiberar.test.jsx` e os blocos novos em
   `escalaHorarioPendente.test.js`/`escalaHorarioReal.test.js`/`colunaLiberacao.test.js`.
 
