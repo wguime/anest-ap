@@ -41,7 +41,7 @@ begin
     '{"ordem_liberacao":["ANA"],"ajuda_externa":[]}'::jsonb,
     '[{"sala":"S1","hora":"08:00","anestesista":"ANA","paciente_iniciais":"A.B."},{"sala":"S1","hora":"10:00","anestesista":"ANA","paciente_iniciais":"C.D."},{"sala":"S2","hora":"08:00","anestesista":"ANA","paciente_iniciais":"E.F."}]'::jsonb, null, null);
   v_id := (v_r->'header'->>'id')::uuid;
-  update public.escala_cirurgica_caso set status_cirurgia='terminada', status_atualizado_em='2099-01-02T11:00:00Z', status_atualizado_por='smk'
+  update public.escala_cirurgica_caso set status_cirurgia='terminada', inicio_real='08:00', status_atualizado_em='2099-01-02T11:00:00Z', status_atualizado_por='smk'
    where escala_id=v_id and sala='S1' and hora='08:00';
   update public.escala_cirurgica_caso set status_cirurgia='iniciada', status_extra='atrasada', termino_previsto='11:00'
    where escala_id=v_id and sala='S2';

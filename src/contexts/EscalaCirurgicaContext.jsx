@@ -158,6 +158,9 @@ function reducer(state, action) {
   }
 }
 
+// recusa do banco por cirurgia sem horário (rpc_escala_patch_liberacao, 14/10)
+const ehHorarioPendente = (e) => /horario_pendente/.test(String(e?.message || e || ''))
+
 export function EscalaCirurgicaProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState)
   const [data, setData] = useState(() => diaOperacionalISO())
@@ -203,6 +206,11 @@ export function EscalaCirurgicaProvider({ children }) {
   /** Toda action OTIMISTA chama marcar após o dispatch e encerrar no finally. */
   const marcarEscrita = () => { mutSeqRef.current++; escritasRef.current++ }
   const encerrarEscrita = () => { escritasRef.current = Math.max(0, escritasRef.current - 1) }
+  // espera as OUTRAS escritas em voo (a própria liberação já se marcou) — teto de 5s
+  const aguardarOutrasEscritas = async (tetoMs = 5000) => {
+    const ate = Date.now() + tetoMs
+    while (escritasRef.current > 1 && Date.now() < ate) await new Promise((r) => setTimeout(r, 100))
+  }
 
   const loadData = useCallback(async (dia, { revalidacao = false } = {}) => {
     const seq = ++loadSeqRef.current
@@ -576,7 +584,18 @@ export function EscalaCirurgicaProvider({ children }) {
       try {
         // merge por chave no servidor — marcações simultâneas de 2 plantonistas não se apagam
         if (!isDemo) {
-          await svc.patchLiberacao(escala.id, scoped, valor)
+          // SEM HORÁRIO NÃO SE LIBERA também no BANCO (dono 14/10, migration
+          // 20261014200000): o horário/repasse recém-confirmado na folha "Antes de
+          // liberar" é otimista e pode ainda estar a caminho — espera as escritas em
+          // voo (até 5s) e, se o banco ainda recusar, tenta UMA vez mais.
+          if (valor) await aguardarOutrasEscritas()
+          try {
+            await svc.patchLiberacao(escala.id, scoped, valor)
+          } catch (e) {
+            if (!valor || !ehHorarioPendente(e)) throw e
+            await new Promise((r) => setTimeout(r, 1500))
+            await svc.patchLiberacao(escala.id, scoped, valor)
+          }
           if (scopedLegada && atual[scopedLegada] !== undefined) await svc.patchLiberacao(escala.id, scopedLegada, null)
           if (marcador) {
             await svc.patchLinhaOverride(escala.id, scoped, marcador)
@@ -589,7 +608,13 @@ export function EscalaCirurgicaProvider({ children }) {
         type: 'PATCH_HOSPITAL', hospital: escala.hospital,
         patch: { liberacoes: escala.liberacoes || {}, linhaOverrides: escala.linhaOverrides || {} },
       })
-      toast({ variant: 'error', title: 'Erro ao liberar', description: error.message })
+      toast({
+        variant: 'error',
+        title: 'Erro ao liberar',
+        description: ehHorarioPendente(error)
+          ? 'Há cirurgia sem horário de início/término. Preencha ou passe a um colega antes de liberar.'
+          : error.message,
+      })
       throw error
     }
   }, [toast])

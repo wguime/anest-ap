@@ -431,3 +431,61 @@ describe('adicionarCaso não é atropelado pela recarga', () => {
     expect(unimed().casos.map((c) => c.id)).toContain('novo-1')
   })
 })
+
+// SEM HORÁRIO NÃO SE LIBERA também no banco (dono 14/10, migration 20261014200000):
+// o horário confirmado na folha "Antes de liberar" é otimista — a liberação espera as
+// escritas em voo e, se o banco ainda recusar por `horario_pendente`, tenta UMA vez mais.
+describe('liberação × horário recém-gravado (corrida apontada na validação da migration)', () => {
+  const recusa = () => new Error('patchLiberacao: horario_pendente: 1 cirurgia(s) sem horário')
+  // os blocos de cima deixam o service PENDENTE de propósito (clearAllMocks não zera
+  // implementação) — aqui cada escrita responde, salvo a que o teste prender
+  beforeEach(() => {
+    for (const f of ['patchLiberacao', 'patchLinhaOverride', 'updateCaso', 'updateStatusCirurgia']) {
+      svcMock[f].mockReset()
+      svcMock[f].mockImplementation(async () => {})
+    }
+  })
+
+  it('espera o horário em voo antes de gravar a liberação', async () => {
+    await montar()
+    let soltar
+    svcMock.updateStatusCirurgia.mockImplementation(() => new Promise((r) => { soltar = r }))
+    act(() => { actions.setStatusCirurgia(unimed(), unimed().casos[0], 'terminada', { userId: 'u1', inicioReal: '08:00', terminoReal: '09:00' }) })
+    let liberou
+    act(() => { liberou = actions.toggleLiberacao(unimed(), { chave: 'staub', anestesista: 'STAUB' }, { userId: 'u1' }, 'matutino') })
+    await new Promise((r) => setTimeout(r, 250))
+    expect(svcMock.patchLiberacao).not.toHaveBeenCalled() // ainda esperando o horário
+    await act(async () => { soltar(); await liberou })
+    expect(svcMock.patchLiberacao).toHaveBeenCalledTimes(1)
+  })
+
+  it('recusa por horario_pendente: tenta de novo uma vez e fica liberado', async () => {
+    await montar()
+    svcMock.patchLiberacao.mockRejectedValueOnce(recusa()).mockResolvedValueOnce(undefined)
+    await act(async () => {
+      await actions.toggleLiberacao(unimed(), { chave: 'staub', anestesista: 'STAUB' }, { userId: 'u1' }, 'matutino')
+    })
+    expect(svcMock.patchLiberacao).toHaveBeenCalledTimes(2)
+    expect(unimed().liberacoes['matutino:staub']).toBeTruthy()
+  })
+
+  it('recusa de novo: reverte a liberação (o toast explica em português)', async () => {
+    await montar()
+    svcMock.patchLiberacao.mockRejectedValue(recusa())
+    await act(async () => {
+      await actions.toggleLiberacao(unimed(), { chave: 'staub', anestesista: 'STAUB' }, { userId: 'u1' }, 'matutino').catch(() => {})
+    })
+    expect(svcMock.patchLiberacao).toHaveBeenCalledTimes(2)
+    expect(unimed().liberacoes['matutino:staub']).toBeUndefined()
+    await waitFor(() => expect(document.body.textContent).toContain('Há cirurgia sem horário de início/término'))
+  })
+
+  it('outra recusa qualquer NÃO repete', async () => {
+    await montar()
+    svcMock.patchLiberacao.mockRejectedValueOnce(new Error('permission_denied'))
+    await act(async () => {
+      await actions.toggleLiberacao(unimed(), { chave: 'staub', anestesista: 'STAUB' }, { userId: 'u1' }, 'matutino').catch(() => {})
+    })
+    expect(svcMock.patchLiberacao).toHaveBeenCalledTimes(1)
+  })
+})
