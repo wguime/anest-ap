@@ -998,6 +998,29 @@ describe('slot assumido (troca declarada, dono 30/07)', () => {
     expect(r.linhas.find((l) => l.anestesista === 'Carla').casosTurno.map((c) => c.id)).toEqual(['a2'])
   })
 
+  it('AJUDA que assume uma posição fica NA posição, não no bloco do fim (dono 14/10, Tiago/Fernanda)', () => {
+    // Unimed tarde 14/10: TIAGO publicado como ajuda (azul) assumiu a posição da
+    // CRISTINA. No bloco do fim ele trabalhava ABAIXO da Fernanda (sem cirurgia), e a
+    // regra da lista (21/09) a deixava "Livre" no meio da fila em vez de na cauda.
+    const casosT = [
+      caso('S1', 0, 'ANDRE', 'Liana Winkelmann'),
+      caso('S2', 0, 'TIAGO', 'Taciana Alflen', { anestesistaUserId: 'uid-tiago' }),
+    ]
+    const r = gerarColunaLiberacao(casosT, ['ANDRE', 'CRISTINA', 'MARILIO', 'FERNANDA', 'DIEGO'], {
+      assumidas: { CRISTINA: { uid: 'uid-tiago', nome: 'TIAGO VIANA' } },
+      ajudaExterna: ['TIAGO'],
+    })
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['André', 'Tiago Viana', 'Marílio', 'Fernanda', 'Diego'])
+    expect(r.linhas[1].isAjuda).toBe(false)
+    expect(r.linhas[1].chave).toBe('CRISTINA')
+    // o azul do PRÓPRIO slot continua valendo
+    const r2 = gerarColunaLiberacao(casosT, ['ANDRE', 'CRISTINA', 'FERNANDA'], {
+      assumidas: { CRISTINA: { uid: 'uid-tiago', nome: 'TIAGO VIANA' } },
+      ajudaExterna: ['CRISTINA'],
+    })
+    expect(r2.linhas.find((l) => l.chave === 'CRISTINA').isAjuda).toBe(true)
+  })
+
   it('quem assumiu também some do bloco de ajuda avulsa (sem linha dupla)', () => {
     // Giovana tinha sido marcada como ajuda antes de executar a troca
     const r = gerarColunaLiberacao(casosPos, ['ANDRE', 'MAURICIO', 'CARLA'], {

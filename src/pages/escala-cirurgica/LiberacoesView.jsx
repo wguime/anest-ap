@@ -1596,6 +1596,24 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     agendada: (caso.statusCirurgia || 'agendada') === 'agendada',
   }))
   const primeiroNomeAntes = String(linhaAntesLiberar?.anestesista || '').trim().split(/\s+/)[0] || ''
+  // COLEGAS PARA PASSAR A CIRURGIA (dono 14/10, modelo A2): os da fila deste turno com
+  // login, ainda não liberados e escalados — Livre primeiro (está pronto para assumir),
+  // depois quem opera, na ordem da lista. Nunca a própria pessoa que está saindo.
+  const colegasParaPassar = alvoSemAnest?.deLiberar
+    ? linhasExibicao
+      .filter((l) => l.uid && !l.noturno && l.chave !== antesLiberar?.chave && l.uid !== linhaAntesLiberar?.uid)
+      .filter((l) => { const m = marcaDe(l); return !(m && m.escalado !== true) && (!naoEscalado(l) || m?.escalado === true) })
+      .map((l) => {
+        const c0 = (l.cirurgias || [])[0]
+        const livre = estaLivre(l)
+        return {
+          uid: l.uid, nome: l.anestesista, livre,
+          onde: livre || !c0 ? 'sem cirurgia agora' : [salaLiberacao(c0.sala), [c0.hora, nomeCurtoProcedimento(c0.procedimento) || c0.token].filter(Boolean).join(' ')].filter(Boolean).join(' · '),
+        }
+      })
+      .filter((c, i, a) => a.findIndex((x) => x.uid === c.uid) === i)
+      .sort((a, b) => Number(b.livre) - Number(a.livre))
+    : []
   const idsDaLinhaAntes = new Set((linhaAntesLiberar?.casosTurno || []).map((c) => c.id).filter(Boolean))
   // "há 40min" só no dia operacional da escala — "agora" de outro dia não diz nada
   const diaDaEscalaAgora = ehDiaOperacionalAtual(escala?.data)
@@ -3925,14 +3943,17 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       )}
                       {c.aberta && !c.resolvida && (
                         <div className="mt-1 flex flex-wrap gap-x-4">
+                          {/* MAIS EVIDENTE (dono 14/10, tarde: "está demorando, quero que
+                              fique mais evidente para passar o caso para outro anestesista"):
+                              botão de largura cheia, não link — e abre a lista dos colegas */}
                           {onDefinirCasos && (
-                            <button
-                              type="button"
-                              className="flex min-h-[44px] items-center gap-1.5 text-[13px] font-semibold text-primary active:opacity-70"
-                              onClick={() => { setAlvoSemAnest({ id: c.id, hora: c.hora, sala: c.sala, procedimento: rotulo, cirurgiao: c.token, deLiberar: true }); setSemAnestUid('') }}
+                            <Button
+                              variant="outline"
+                              className="mt-1 min-h-[44px] w-full border-primary/60 text-[14px] font-semibold text-primary"
+                              onClick={() => { setAlvoSemAnest({ id: c.id, hora: c.hora, sala: c.sala, procedimento: rotulo, cirurgiao: c.token, inicioReal: c.inicioReal, deLiberar: true }); setSemAnestUid('') }}
                             >
-                              <ArrowLeftRight className="h-[15px] w-[15px] shrink-0" /> Passar para um colega
-                            </button>
+                              <ArrowLeftRight className="h-4 w-4 shrink-0" /> Passar para outro anestesista
+                            </Button>
                           )}
                           {/* a cirurgia que NÃO aconteceu não tem horário a dar — sem esta
                               saída, a única forma de liberar seria inventar um */}
@@ -4091,12 +4112,15 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           derivam da mesma fonte, então o alerta some nas duas na hora. */}
       <Sheet open={!!alvoSemAnest} onOpenChange={(o) => { if (!o) { setAlvoSemAnest(null); setSemAnestUid('') } }}>
         {/* vinda da folha "Antes de liberar" (dono 14/10), abre POR CIMA dela */}
-        <SheetContent side="bottom" className={alvoSemAnest?.deLiberar ? 'z-[1200]' : undefined}>
+        {/* a lista da fila inteira não cabe: a folha passa a ROLAR por dentro, com o
+            botão fixo no rodapé (14/10: o SheetContent é overflow-hidden e o botão
+            ficava a 1042px numa folha de 790 — inalcançável) */}
+        <SheetContent side="bottom" className={alvoSemAnest?.deLiberar ? 'z-[1200] !h-auto max-h-[88vh] flex flex-col' : undefined}>
           <SheetHeader>
-            <SheetTitle>{alvoSemAnest?.grupo && alvoSemAnest.itens.length > 1 ? `Quem assume estes ${alvoSemAnest.itens.length} procedimentos?` : 'Quem assume este procedimento?'}</SheetTitle>
+            <SheetTitle>{alvoSemAnest?.deLiberar ? 'Quem assume a cirurgia?' : alvoSemAnest?.grupo && alvoSemAnest.itens.length > 1 ? `Quem assume estes ${alvoSemAnest.itens.length} procedimentos?` : 'Quem assume este procedimento?'}</SheetTitle>
           </SheetHeader>
           {alvoSemAnest && (
-            <div className="space-y-3 p-1">
+            <div className={alvoSemAnest.deLiberar ? 'min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-1' : 'space-y-3 p-1'}>
               <div className="rounded-xl border border-border bg-muted/30 p-2.5 text-sm">
                 {alvoSemAnest.grupo ? (
                   <>
@@ -4128,11 +4152,48 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   </>
                 )}
               </div>
+              {/* OS COLEGAS DA FILA PRIMEIRO (dono 14/10, modelo A2 aprovado): um toque
+                  escolhe — quem está Livre no topo, depois quem ainda opera. A busca no
+                  cadastro inteiro fica embaixo, para quem não está na fila. */}
+              {alvoSemAnest.deLiberar && colegasParaPassar.length > 0 && (
+                <div>
+                  <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">Na fila, ainda não liberados</p>
+                  <div role="radiogroup" aria-label="Colegas da fila" className="divide-y divide-border/70">
+                    {colegasParaPassar.map((col) => {
+                      const on = semAnestUid === col.uid
+                      return (
+                        <button
+                          key={col.uid}
+                          type="button"
+                          role="radio"
+                          aria-checked={on}
+                          onClick={() => setSemAnestUid(col.uid)}
+                          className="flex min-h-[52px] w-full items-center gap-2.5 px-1 text-left active:opacity-70"
+                        >
+                          <span className={['h-[22px] w-[22px] shrink-0 rounded-full', on ? 'border-[7px] border-primary' : 'border-2 border-muted-foreground/50'].join(' ')} />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[15px] font-semibold">{col.nome}</span>
+                            <span className="block truncate text-[12.5px] text-muted-foreground">{col.onde}</span>
+                          </span>
+                          {col.livre && <span className="shrink-0 rounded-[10px] bg-success px-2 py-1 text-[11px] font-semibold leading-none text-black dark:text-[hsl(157_19%_8%)]">Livre</span>}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <p className="mb-1 mt-3 text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">Outro anestesista</p>
+                </div>
+              )}
               <Select className="w-full" searchable options={opcoesRoster} value={semAnestUid}
-                onChange={setSemAnestUid} placeholder="Escolha o anestesista" />
-              <Button className="w-full" disabled={!semAnestUid} onClick={confirmarSemAnest}>
-                Definir anestesista
+                onChange={setSemAnestUid} placeholder={alvoSemAnest.deLiberar ? 'Buscar pelo nome' : 'Escolha o anestesista'} />
+              {/* fixo no rodapé da folha: com a fila inteira na lista, o botão não pode
+                  ficar escondido embaixo dela (a "demora" de 14/10 era rolar até ele) */}
+              <div className="sticky bottom-0 -mx-1 bg-card px-1 pb-2 pt-2">
+              <Button className="min-h-[48px] w-full" disabled={!semAnestUid} onClick={confirmarSemAnest}>
+                {alvoSemAnest.deLiberar && semAnestUid
+                  ? `Passar para ${(colegasParaPassar.find((c) => c.uid === semAnestUid)?.nome || titleCaseNome(rosterByUid.get(semAnestUid)?.nome || '')).trim().split(/\s+/)[0]}`
+                  : alvoSemAnest.deLiberar ? 'Escolha quem assume' : 'Definir anestesista'}
               </Button>
+              </div>
             </div>
           )}
         </SheetContent>

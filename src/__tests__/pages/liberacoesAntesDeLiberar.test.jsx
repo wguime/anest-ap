@@ -111,7 +111,7 @@ describe('o toque em liberar é segurado quando falta horário', () => {
     // sem saída: não existe "liberar sem horário" (dono 14/10)
     expect(within(folha).queryByRole('button', { name: /sem horário/i })).toBeNull()
     // a aberta pode passar a um colega; a terminada, não
-    expect(within(folha).getAllByRole('button', { name: /Passar para um colega/ })).toHaveLength(1)
+    expect(within(folha).getAllByRole('button', { name: /Passar para outro anestesista/ })).toHaveLength(1)
   })
 
   it('preenchidos os horários (realtime), a folha acende e "Salvar e liberar" libera pelo caminho normal', async () => {
@@ -159,12 +159,23 @@ describe('o toque em liberar é segurado quando falta horário', () => {
 })
 
 describe('as saídas da folha', () => {
-  it('"Passar para um colega" abre o "Quem assume" de sempre e grava pelo onDefinirCasos', async () => {
+  it('"Passar para outro anestesista" é BOTÃO e abre os colegas da fila: um toque escolhe e grava', async () => {
     const { onDefinirCasos } = montarFila([daAna, emCurso])
     tocarLiberar()
-    fireEvent.click(within(folhaAntes()).getByRole('button', { name: /Passar para um colega/ }))
-    expect(within(folhaDeCima()).getByText('Quem assume este procedimento?')).toBeTruthy()
-    expect(onDefinirCasos).not.toHaveBeenCalled()
+    fireEvent.click(within(folhaAntes()).getByRole('button', { name: /Passar para outro anestesista/ }))
+    const folha = folhaDeCima()
+    expect(within(folha).getByText('Quem assume a cirurgia?')).toBeTruthy()
+    const colegas = within(folha).getByRole('radiogroup', { name: 'Colegas da fila' })
+    // a própria pessoa que sai nunca aparece; a Ana (em sala) aparece com onde está
+    expect(within(colegas).queryByText('Paulo Tonini')).toBeNull()
+    const ana = within(colegas).getByRole('radio', { name: /Ana Lima/ })
+    expect(ana.textContent).toContain('CC - Sala 1')
+    expect(within(folha).getByRole('button', { name: 'Escolha quem assume' }).disabled).toBe(true)
+    fireEvent.click(ana)
+    fireEvent.click(within(folha).getByRole('button', { name: 'Passar para Ana' }))
+    await waitFor(() => expect(onDefinirCasos).toHaveBeenCalled())
+    expect(onDefinirCasos.mock.calls[0][0]).toEqual(['c1'])
+    expect(onDefinirCasos.mock.calls[0][1]).toMatchObject({ uid: 'uid-ana' })
   })
 
   it('agendada que não aconteceu: "Não aconteceu (suspensa)" grava a suspensão', () => {

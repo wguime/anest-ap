@@ -587,7 +587,12 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
       const emprestadoAsm = foraKeys.has(keyAsm) || (nAsm && foraKeys.has(nAsm))
       const suprimidaAsm = semAjuda.has(keyAsm) || semAjuda.has(key) || (nAsm && semAjuda.has(nAsm))
       l = linha(displayDe(asm.nome, uidAsm || asm.uid || null), grupos.get(keyAsm), {
-        isAjuda: !suprimidaAsm && (azuis.has(key) || azuis.has(keyAsm) || emprestadoAsm),
+        // QUEM ASSUMIU A POSIÇÃO FICA NA POSIÇÃO (dono 14/10, Unimed tarde): o Tiago,
+        // ajuda azul da Unimed, assumiu a posição da Cristina (troca entre hospitais) e o
+        // azul DELE o mandava ao bloco do fim — trabalhando abaixo da Fernanda, que por
+        // isso ficou "Livre" no meio da fila em vez de nascer na cauda. Assumir o slot é
+        // ocupar a ordem: só o azul do PRÓPRIO slot (ou o empréstimo) faz dela ajuda.
+        isAjuda: !suprimidaAsm && (azuis.has(key) || emprestadoAsm),
         ajudaFora: !suprimidaAsm && emprestadoAsm,
         chave: key, uid: uidAsm || asm.uid || null, nomeOriginal: nomeRodape,
         // deNomeOriginal = nome CRU do rodapé (defeito D8, 07/08): o desfazer
