@@ -772,13 +772,14 @@ describe('Turno próprio — pode sair fora da ordem (dono 11/09)', () => {
     }
   })
 
-  it('liberada fora da vez, a linha desce para logo abaixo do "próximo" e mantém o número da posição (dono 21/09)', () => {
-    // Marílio (2º) saiu às 19h com a Karine (3ª) ainda em sala: a lista fica
-    // Leonardo · Karine (próximo, amarelo) · Marílio (vermelho, ainda "2") · ajuda/extra
+  it('liberada fora da vez, a linha FICA na posição publicada (dono 14/10, revoga a descida de 21/09)', () => {
+    // Marílio (2º) saiu às 19h com a Karine (3ª) ainda em sala: a lista segue
+    // Leonardo · Marílio (vermelho, "2") · … · Karine (próximo, amarelo, fecha a lista)
     const saiuNaHora = { ...comTurnoProprio, liberacoes: { 'matutino:MARILIO': { liberadoEm: 'x' } } }
     const { unmount } = montar({}, saiuNaHora)
     const posicao = (nome) => Array.from(document.querySelectorAll('[data-linha]')).indexOf(cardDe(nome))
-    expect(posicao('Marílio Flach')).toBe(posicao('Karine Bedin') + 1)
+    expect(posicao('Marílio Flach')).toBe(1)
+    expect(posicao('Karine Bedin')).toBeGreaterThan(posicao('Marílio Flach'))
     expect(posicao('Leonardo Ferrazzo')).toBe(0)
     expect(within(cardDe('Karine Bedin')).getByText('Próximo a ser liberado')).toBeTruthy()
     expect(within(cardDe('Marílio Flach')).getByText('Liberado')).toBeTruthy()

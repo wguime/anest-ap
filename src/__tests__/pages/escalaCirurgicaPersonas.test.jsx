@@ -2027,13 +2027,13 @@ describe('Liberações — recorte de 06/10: a ajuda que chega depois sobe acima
   const chaves = () => Array.from(document.querySelectorAll('[data-linha]')).map((e) => e.getAttribute('data-linha'))
   const proximo = () => screen.getByText('Próximo a ser liberado').closest('[data-linha]').getAttribute('data-linha')
 
-  it('o Eduardo fica acima do Adriano: nenhum liberado acima de quem ainda está na fila', () => {
+  it('o Adriano FICA na posição publicada, mesmo com a ajuda que chegou depois abaixo dele (dono 14/10)', () => {
     montar()
-    expect(chaves()).toEqual(['LEANDRO', 'PAULO', 'ROMULO', 'EDUARDO', 'ADRIANO', 'CURY'])
+    expect(chaves()).toEqual(['LEANDRO', 'PAULO', 'ROMULO', 'ADRIANO', 'EDUARDO', 'CURY'])
     expect(proximo()).toBe('EDUARDO')
   })
 
-  it('o Adriano desce mantendo o número da posição publicada (padrão de 21/09)', () => {
+  it('o Adriano mantém o número da posição publicada', () => {
     montar()
     const card = (k) => document.querySelector(`[data-linha="${k}"]`)
     expect(within(card('ADRIANO')).getByText('4')).toBeTruthy()

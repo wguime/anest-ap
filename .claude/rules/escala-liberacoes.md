@@ -690,13 +690,9 @@ escala)."* Uma regra para as duas marcas (`horaSaidaDe` na view lê `turnoPropri
 - **A partir da hora** (`chegouHoraDe`: escala de HOJE pelo `agoraMin`; dia anterior = passou;
   dia futuro = ainda não): o toque nela passa, esteja a fila onde estiver. Só o toque NELA — quem
   está acima segue esperando (`naFila` intacto). A marca **não libera sozinha**.
-- **Liberada fora da vez** (está acima do "próximo"): o card **desce para logo abaixo do
-  "próximo a ser liberado"**, no topo do bloco vermelho — a lista fica verde → amarelo →
-  vermelho. `ordemRender` é uma permutação de exibição: toda a lógica de fila (`idxProximo`,
-  `bloqueioOrdem`, `caudaLiberada`, convocar) continua sobre `linhasExibicao`, e o **número do
-  card é o da posição publicada** (`idx + 1`), porque afundar renumerando foi lido como "rodapé
-  publicado errado" em 11/08. Quem saiu na vez (já abaixo do "próximo") não se mexe; sem
-  ninguém em jogo (`idxProximo < 0`) ninguém desce.
+- **Liberada fora da vez**: ~~desce para logo abaixo do "próximo"~~ — **REVOGADO em 14/10/2026** (ver
+  § "Liberado fica na posição publicada" no fim): o card fica na posição dele, vermelho, com o número
+  da posição publicada.
 - Louise: vale **enquanto o quadro da numérica a trouxer** — `turnoProprio` é recarimbado a cada
   publicação por `excecaoTurnoDoDia`; depois de 20/11 (edição de 2026) a marca some sozinha e
   ela volta à ordem comum. Nada a desmarcar.
@@ -832,7 +828,7 @@ prometia "nasce LIBERADO" a quem a fila deixava "Livre". Agora monta a lista com
 e aplica a mesma fronteira desta view; quem fica segurado por ajuda abaixo gera o aviso
 `livre acima de ajuda` e sai da cauda. Mexeu em `caudaLiberada` aqui → espelhar lá.
 
-## A ajuda que chega depois — o liberado desce para baixo do próximo (dono 06/10/2026)
+## A ajuda que chega depois — o liberado desce para baixo do próximo (dono 06/10/2026) — REVOGADO 14/10
 
 Foto da Unimed, 10:03: **Adriano (14º) "Liberado" e, logo abaixo, Eduardo (15º, "Ajuda (HRO)") amarelo
 "Próximo a ser liberado"**, Cury (16º, plantão da tarde) vermelho. *"como isso foi possível novamente? já
@@ -921,3 +917,17 @@ describe "recorte de 06/10" (5 testes; o da ordem falha contra o código anterio
   passar; e a varredura de geometria (nenhum par < 6px, nada encostando na borda) vive no e2e
   `escala-cirurgica-acoes-layout.spec.ts`, porque jsdom não mede layout.
 
+
+## Liberado fica na posição publicada — sempre (dono 14/10/2026)
+
+> "quero que ao liberar algum anestesista ele mantenha a ordem de liberação que foi estabelecida na
+> publicação da escala e não faça alterações de posição como está acontecendo"
+
+Revoga as duas DESCIDAS de render: a de 21/09 (liberado fora da vez → logo abaixo do "próximo", pelo
+padrão de cores) e a de 06/10 (liberado acima de ajuda/extra que chegou depois). `ordemRender` é a
+própria `linhasExibicao` — liberar nunca move card. **Consequência aceita**: um card vermelho pode ficar
+ACIMA do amarelo (o "como isso foi possível novamente?" de 06/10 era esse desenho); a ordem publicada
+manda, não a cor. Seguem fora da ordem só os que a regra posiciona desde a lib: P1–P4 no topo à noite,
+extras/ajudas e o plantão do contraturno no fim. Não reintroduzir descida sem pedido do dono.
+Travas: os 4 testes de 21/09 e 06/10 foram reescritos para "FICA na posição" (`liberacoesPainelLinha`,
+`liberacoesTurnoProprioRecorte1109`, `liberacoesEquipeOutroHospital`, `escalaCirurgicaPersonas`).

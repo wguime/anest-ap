@@ -211,20 +211,17 @@ describe('HRO 11/09 mais cedo — a fila ainda não chegou nela (5º–9º em sa
     }
   })
 
-  it('saiu às 19h com cinco em sala: o card dela desce para logo abaixo do "próximo", ainda como 4ª (dono 21/09)', () => {
+  it('saiu às 19h com cinco em sala: o card dela FICA como 4ª, na posição publicada (dono 14/10)', () => {
     vi.setSystemTime(new Date('2026-09-11T19:02:00-03:00'))
     try {
       montar(escalaDe(lib('u-klisman', 'u-paulo', 'u-adriano', 'u-staub', 'u-rodnei', 'u-louise')))
       const chaves = Array.from(document.querySelectorAll('[data-linha]')).map((e) => e.getAttribute('data-linha'))
-      // verdes até a Fernanda (próximo), Louise logo abaixo (vermelha), depois o bloco vermelho
-      expect(chaves.indexOf('u-louise')).toBe(chaves.indexOf('u-fernanda') + 1)
+      // "não faça alterações de posição": a ordem exibida é a publicada
+      expect(chaves.indexOf('u-louise')).toBe(3)
       expect(chaves.slice(0, 3)).toEqual(['u-giovana', 'u-joaor', 'u-melo'])
       expect(within(card('u-fernanda')).getByText('Próximo a ser liberado')).toBeTruthy()
       expect(within(card('u-louise')).getByText('Liberado')).toBeTruthy()
       expect(within(card('u-louise')).getByText('4')).toBeTruthy()
-      // ninguém verde abaixo dela: o padrão verde → amarelo → vermelho fica inteiro
-      const depois = chaves.slice(chaves.indexOf('u-louise') + 1)
-      for (const uid of depois) expect(within(card(uid)).getByText('Liberado')).toBeTruthy()
     } finally {
       vi.setSystemTime(new Date('2026-09-11T18:09:00-03:00'))
     }

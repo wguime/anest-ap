@@ -160,11 +160,12 @@ describe('hora de saída — "podem ser liberados a partir desses horários mesm
     expect(within(card('u-melo')).queryByText('Liberado')).toBeNull()
   })
 
-  it('liberado fora da vez, o card desce para logo abaixo do "próximo" (Cury), com o número 4 — o padrão de cores fica inteiro', () => {
+  it('liberado fora da vez, o card FICA na posição publicada (4ª) — dono 14/10, revoga a descida de 21/09', () => {
     vi.setSystemTime(new Date('2026-09-21T19:05:00-03:00'))
     montarCom({ liberacoes: { 'vespertino:u-melo': { liberadoEm: '2026-09-21T22:03:00Z' } } })
     const chaves = Array.from(document.querySelectorAll('[data-linha]')).map((e) => e.getAttribute('data-linha'))
-    expect(chaves.indexOf('u-melo')).toBe(chaves.indexOf('u-cury') + 1)
+    expect(chaves.indexOf('u-melo')).toBe(3)
+    expect(chaves.indexOf('u-cury')).toBe(4)
     expect(chaves.slice(0, 3)).toEqual(['u-staub', 'u-louise', 'u-costa'])
     expect(within(card('u-cury')).getByText('Próximo a ser liberado')).toBeTruthy()
     expect(within(card('u-melo')).getByText('Liberado')).toBeTruthy()

@@ -14,7 +14,7 @@
  *  • a faixa vive FORA da BoardView: o EmptyState "nenhum caso neste turno" não
  *    pode matá-la (8 de 9 urgências de 18/08 nasceram à mão, sem escala do turno).
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 
 import { ThemeProvider, ToastProvider } from '@/design-system'
@@ -74,6 +74,15 @@ const iniciada = (id, sala, extra = {}) =>
   caso(id, sala, { statusCirurgia: 'iniciada', statusAtualizadoEm: `${HOJE}T10:20:00`, ...extra })
 
 const escalaCom = (casos) => ({ id: 'e1', hospital: 'hro', data: HOJE, casos })
+// RELÓGIO FIXO (14/10): os testes do término confirmam "agora" contra um início das
+// 05:00 — com o relógio real, depois das ~17h a duração passava do teto e o
+// "Confirmar" era recusado (passava ao meio-dia, falhava à noite). Dia SEGUINTE ao
+// da escala, como no relógio real: o dia operacional da escala já passou.
+const relogioMeioDia = () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  vi.setSystemTime(new Date('2026-08-19T12:00:00-03:00'))
+}
+afterEach(() => vi.useRealTimers())
 
 const montar = (casos, props = {}) => render(
   <FaixaUrgencias escala={escalaCom(casos)} hospital="hro" turno="matutino" hoje={HOJE} {...props} />,
@@ -287,6 +296,7 @@ describe('toque abre o detalhe — onde Iniciada/Terminada já são marcados', (
 
 describe('qualidade do dado', () => {
   it('iniciada há mais de 4h sai da conta, vira pergunta, e "Terminada" CONFIRMA o horário antes de gravar', () => {
+    relogioMeioDia() // o término proposto é "agora": às 19h, 05:00 → agora passava do teto de duração
     montar([iniciada('c1', 'Sala 6', { statusAtualizadoEm: `${HOJE}T05:00:00`, inicioReal: '05:00' })])
     expect(screen.getByText(/ainda em andamento\?/)).toBeTruthy()
     expect(screen.getByLabelText('0 de 2 vagas de urgência ocupadas')).toBeTruthy() // saiu da ocupação
@@ -313,6 +323,7 @@ describe('qualidade do dado', () => {
 
 describe('invariantes do módulo', () => {
   it('a faixa nunca escreve ordem_liberacao — o único caminho de escrita é o status', () => {
+    relogioMeioDia() // o término proposto é "agora": às 19h, 05:00 → agora passava do teto de duração
     // Garantido por construção: o mock do context SÓ expõe setStatusCirurgia; se
     // o componente chamasse setLinhaOverride/reordenarLiberacao, quebraria aqui.
     montar([iniciada('c1', 'Sala 6', { statusAtualizadoEm: `${HOJE}T05:00:00`, inicioReal: '05:00' })])
@@ -322,6 +333,7 @@ describe('invariantes do módulo', () => {
   })
 
   it('sem início gravado, "Terminada" exige o início junto (dono 14/10) — não há "só o término"', () => {
+    relogioMeioDia() // o término proposto é "agora": às 19h, 05:00 → agora passava do teto de duração
     montar([iniciada('c1', 'Sala 6', { statusAtualizadoEm: `${HOJE}T05:00:00` })])
     fireEvent.click(screen.getByRole('button', { name: 'Terminada' }))
     expect(screen.queryByRole('button', { name: /^Confirmar término às/ })).toBeNull()

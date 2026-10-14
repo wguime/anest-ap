@@ -2140,40 +2140,14 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             if (jaLiberada(linhasExibicao[i]) && voltaPraFila(linhasExibicao[i])) { idxConvocar = i; break }
           }
           const nomeConvocar = idxConvocar >= 0 ? linhasExibicao[idxConvocar].anestesista : null
-          // LIBERADA FORA DA VEZ, NA HORA DELA (dono 21/09): "ao serem liberados devem
-          // ficar abaixo do próximo a ser liberado na lista (para não quebrar o padrão
-          // de cores)". Só quem tem hora de saída e saiu ANTES de a fila chegar nela
-          // (está acima do "próximo") desce — para logo abaixo dele, no topo do bloco
-          // vermelho. O NÚMERO do card segue o da posição publicada (`idx + 1`): muda
-          // a exibição, não a ordem — afundar renumerando foi lido como "rodapé
-          // publicado errado" em 11/08. Quem já está abaixo do "próximo" saiu na vez e
-          // não se mexe; toda a lógica de fila acima continua sobre `linhasExibicao`.
-          //
-          // E A AJUDA QUE CHEGA DEPOIS (dono 06/10, Unimed 10:03): o Adriano saiu às 09:46
-          // na vez dele — era o próximo —, e às 09:49 o Tórax do Rovani entrou para o
-          // Eduardo, do HRO. Ajuda/extra fecha a lista (19/08), então o Eduardo nasceu
-          // ABAIXO do Adriano e o amarelo ficou embaixo de um vermelho ("como isso foi
-          // possível novamente?"). No dia útil desce também, sem hora de saída, o liberado
-          // que só tem gente de FORA do rodapé (ajuda/extra) na fila entre ele e o próximo.
-          // Com alguém do RODAPÉ ainda em sala abaixo dele, fica onde está (11/08 intacto).
-          // Fila única e card noturno ficam como estão.
-          const indices = linhasExibicao.map((_, i) => i)
-          const deFora = (l) => (l.isExtra || l.isAjuda) && !l.ajudaFora
-          const soAjudaAbaixo = (i) => {
-            for (let k = i + 1; k <= idxProximo; k++) {
-              if (naFila(linhasExibicao[k], k) && !deFora(linhasExibicao[k])) return false
-            }
-            return true
-          }
-          const desceu = (i) => {
-            const l = linhasExibicao[i]
-            return i < idxProximo && jaLiberada(l)
-              && (!!horaSaidaDe(l) || (!modoFds && !l.noturno && soAjudaAbaixo(i)))
-          }
-          const descidas = idxProximo > 0 ? indices.filter(desceu) : []
-          const ordemRender = descidas.length
-            ? [...indices.filter((i) => i <= idxProximo && !desceu(i)), ...descidas, ...indices.filter((i) => i > idxProximo)]
-            : indices
+          // LIBERADO FICA NA POSIÇÃO PUBLICADA, SEMPRE (dono 14/10/2026: "ao liberar algum
+          // anestesista ele mantenha a ordem de liberação que foi estabelecida na
+          // publicação da escala e não faça alterações de posição"). Substitui as descidas
+          // de 21/09 (liberado fora da vez ia para logo abaixo do "próximo", pelo padrão de
+          // cores) e de 06/10 (liberado acima de ajuda que chegou depois): o card vermelho
+          // pode ficar acima do amarelo — a ORDEM manda, não a cor. Toda a lógica de fila
+          // continua sobre `linhasExibicao`; a renderização é a própria lista.
+          const ordemRender = linhasExibicao.map((_, i) => i)
           return ordemRender.map((idx) => {
           const linha = linhasExibicao[idx]
           // PLANTÃO NOTURNO (pedido do dono 24/07): ao virar P1–P4 a pessoa SAI da
