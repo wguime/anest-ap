@@ -988,6 +988,16 @@ describe('slot assumido (troca declarada, dono 30/07)', () => {
     expect(r2.linhas.find((l) => l.isExtra)?.anestesista).toBe('Maurício')
   })
 
+  it('casosTurno leva TODAS as cirurgias da pessoa, abertas e terminadas (dono 14/10)', () => {
+    const casos = [
+      caso('S1', 0, 'ANDRE', 'Liana Winkelmann', { id: 'a1', statusCirurgia: 'terminada' }),
+      caso('S2', 0, 'ANDRE + CARLA', 'Taciana Alflen', { id: 'a2' }),
+    ]
+    const r = gerarColunaLiberacao(casos, ['ANDRE', 'CARLA'])
+    expect(r.linhas.find((l) => l.anestesista === 'André').casosTurno.map((c) => c.id)).toEqual(['a1', 'a2'])
+    expect(r.linhas.find((l) => l.anestesista === 'Carla').casosTurno.map((c) => c.id)).toEqual(['a2'])
+  })
+
   it('quem assumiu também some do bloco de ajuda avulsa (sem linha dupla)', () => {
     // Giovana tinha sido marcada como ajuda antes de executar a troca
     const r = gerarColunaLiberacao(casosPos, ['ANDRE', 'MAURICIO', 'CARLA'], {

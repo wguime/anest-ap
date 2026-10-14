@@ -147,10 +147,40 @@ export function gravarInicioReal({ escala, caso, hhmm, userId = null, setStatusC
  *
  * @returns {Promise<void>}
  */
-export function gravarTerminoReal({ escala, caso, hhmm, userId = null, setStatusCirurgia, atualizarCaso }) {
+export function gravarTerminoReal({ escala, caso, hhmm, inicioReal = null, userId = null, setStatusCirurgia, atualizarCaso }) {
   if (!caso?.id) return Promise.resolve()
+  // `inicioReal` = o início que a confirmação EXIGIU junto (dono 14/10: "não seja
+  // possível colocar apenas terminado") — viaja no mesmo patch, antes da RPC
+  const comInicio = inicioReal ? { inicioReal } : {}
   if (hhmm && (caso.statusCirurgia || 'agendada') !== 'terminada') {
-    return setStatusCirurgia(escala, caso, 'terminada', { userId, terminoReal: hhmm })
+    return setStatusCirurgia(escala, caso, 'terminada', { userId, terminoReal: hhmm, ...comInicio })
   }
-  return atualizarCaso(escala, caso.id, { terminoReal: hhmm || null }, { silencioso: true })
+  return atualizarCaso(escala, caso.id, { terminoReal: hhmm || null, ...comInicio }, { silencioso: true })
+}
+
+/**
+ * TÉRMINO SEM INÍCIO (dono 14/10, medida C de `.tmp/liberar-com-cirurgia-aberta.html`):
+ * 64 cirurgias de 06 a 13/10 foram marcadas Terminada sem nunca terem início. A
+ * confirmação do término numa cirurgia sem início passa a pedir os DOIS — "deve
+ * obrigatoriamente colocar o início da cirurgia". Atalhos do início: a hora agendada e
+ * o término real da cirurgia anterior da mesma sala e turno (pela ordem publicada).
+ *
+ * @returns {Array<{hhmm: string, rotulo: string}>}
+ */
+export function sugestoesDeInicio(caso, casos = []) {
+  const out = []
+  const hhmm = (v) => {
+    const m = /^\s*(\d{1,2}):(\d{2})/.exec(String(v ?? ''))
+    return m ? `${m[1].padStart(2, '0')}:${m[2]}` : null
+  }
+  const agendada = hhmm(caso?.hora)
+  if (agendada) out.push({ hhmm: agendada, rotulo: 'agendada' })
+  const sala = String(caso?.sala || '').trim().toUpperCase()
+  const anterior = (casos || [])
+    .filter((c) => c && c.id !== caso?.id && String(c.sala || '').trim().toUpperCase() === sala
+      && (c.turno || null) === (caso?.turno || null) && (c.ordem ?? 0) < (caso?.ordem ?? 0))
+    .sort((a, b) => (b.ordem ?? 0) - (a.ordem ?? 0))[0]
+  const fim = hhmm(anterior?.terminoReal)
+  if (fim && fim !== agendada) out.push({ hhmm: fim, rotulo: 'fim da anterior' })
+  return out
 }

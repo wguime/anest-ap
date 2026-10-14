@@ -16,6 +16,7 @@ import {
   INICIO_ALERTA_HORARIO, agruparPorAnestesista, anestesistasDoCaso, casoEntraNaConta,
   dentroDoInicioDoAlerta, faltaHorario, montarRelatorioHorario, pendenciasDoDia, prazoDoCaso,
   prazoInicio, quantasPilulasCabem, rotuloDiaRelatorio, TOLERANCIA_INICIO_MIN,
+  pendenciasParaLiberar,
 } from '@/lib/escalaHorarioPendente'
 
 const HOJE = '2026-10-06'
@@ -208,5 +209,45 @@ describe('relatório: o que ficou sem horário nos dias encerrados', () => {
   it('rótulo do dia: "ontem" ou dia da semana com a data', () => {
     expect(rotuloDiaRelatorio('2026-10-06', '2026-10-07')).toBe('ontem')
     expect(rotuloDiaRelatorio('2026-10-02', '2026-10-07')).toBe('sex 02/10')
+  })
+})
+
+// ANTES DE LIBERAR (dono 14/10): o que trava a liberação de quem tem cirurgia sem horário
+describe('pendenciasParaLiberar', () => {
+  const c = (extra) => ({ id: 'x', procedimento: 'HERNIORRAFIA', anestesista: 'PAULO', hora: '13:00', ...extra })
+
+  it('aberta (agendada ou em andamento) trava; terminada sem início ou sem término também', () => {
+    const r = pendenciasParaLiberar([
+      c({ id: 'a', statusCirurgia: 'agendada' }),
+      c({ id: 'b', statusCirurgia: 'iniciada', inicioReal: '13:05' }),
+      c({ id: 't1', statusCirurgia: 'terminada', terminoReal: '14:00' }),
+      c({ id: 't2', statusCirurgia: 'terminada', inicioReal: '13:00' }),
+      c({ id: 'ok', statusCirurgia: 'terminada', inicioReal: '13:00', terminoReal: '14:00' }),
+    ])
+    expect(r.map((p) => [p.caso.id, p.inicio, p.termino, p.aberta])).toEqual([
+      ['a', true, true, true], ['b', false, true, true],
+      ['t1', true, false, false], ['t2', false, true, false],
+    ])
+  })
+
+  it('não trava: suspensa, continuação, sem anestesista, sem procedimento', () => {
+    expect(pendenciasParaLiberar([
+      c({ statusExtra: 'suspensa' }), c({ statusCirurgia: 'suspensa' }), c({ isContinuacao: true }),
+      c({ semAnestesista: true }), c({ procedimento: '' }),
+    ])).toEqual([])
+  })
+
+  it('a que SEGUE com outra pessoa não trava enquanto aberta; terminada volta a cobrar', () => {
+    expect(pendenciasParaLiberar([
+      c({ statusExtra: 'passa_tarde', statusCirurgia: 'iniciada', inicioReal: '13:00' }),
+      c({ anestesista: 'PAULO + ANA', statusCirurgia: 'iniciada', inicioReal: '13:00' }),
+    ])).toEqual([])
+    const dupla = pendenciasParaLiberar([c({ anestesista: 'PAULO + ANA', statusCirurgia: 'terminada', terminoReal: '14:00' })])
+    expect(dupla.map((p) => p.inicio)).toEqual([true])
+  })
+
+  it('em ordem de horário (sem hora vai ao fim)', () => {
+    const r = pendenciasParaLiberar([c({ id: 's', hora: 'AS' }), c({ id: '2', hora: '15:00' }), c({ id: '1', hora: '08:00' })])
+    expect(r.map((p) => p.caso.id)).toEqual(['1', '2', 's'])
   })
 })

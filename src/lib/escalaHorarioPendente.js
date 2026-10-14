@@ -194,6 +194,36 @@ export function pendenciasDoDia(escalas, { hoje, agoraMin, liberado = () => fals
   return out
 }
 
+/**
+ * ANTES DE LIBERAR (dono 14/10/2026, modelo A de `.tmp/liberar-com-cirurgia-aberta.html`,
+ * sem a saída "Liberar sem horário"): "ao liberar algum anestesista e o mesmo tiver casos
+ * abertos/cirurgias sem tempos informados [...] que os tempos sejam adicionados antes da
+ * liberação ou que os casos sejam transferidos para outro colega". Medido de 06 a 13/10:
+ * 54% das liberações de quem operou deixaram cirurgia sem horário, e 97% das liberações
+ * são feitas pelo plantonista — é para ele que a folha aparece.
+ *
+ * `casos` = as cirurgias da PESSOA no turno, abertas e encerradas (`linha.casosTurno`).
+ * Devolve só as que travam a liberação: `{ caso, inicio, termino, aberta }` — `inicio`/
+ * `termino` dizem o que falta; `aberta` = ainda não terminou (pode passar a um colega).
+ * Mesmos cortes do alerta (`casoEntraNaConta`, sem a janela de datas). A cirurgia que
+ * SEGUE com outra pessoa não trava: a que passa para a tarde e a dupla "A + B" ainda
+ * aberta — quem fica responde por ela.
+ */
+export function pendenciasParaLiberar(casos) {
+  const out = []
+  for (const caso of casos || []) {
+    if (!caso || !temTexto(caso.procedimento)) continue
+    if (caso.semAnestesista || caso.isContinuacao) continue
+    if (caso.statusExtra === 'suspensa' || caso.statusCirurgia === 'suspensa') continue
+    const aberta = casoAberto(caso)
+    if (aberta && (caso.statusExtra === 'passa_tarde' || anestesistasDoCaso(caso).length > 1)) continue
+    const inicio = !temTexto(caso.inicioReal)
+    const termino = !temTexto(caso.terminoReal)
+    if (inicio || termino) out.push({ caso, inicio, termino, aberta })
+  }
+  return out.sort((a, b) => minutosDe(a.caso.hora) - minutosDe(b.caso.hora) || ((a.caso.ordem ?? 0) - (b.caso.ordem ?? 0)))
+}
+
 /** Minutos de "HH:MM" (sem hora = fim da fila). */
 const minutosDe = (hora) => {
   const m = /^(\d{1,2}):(\d{2})/.exec(String(hora || '').trim())

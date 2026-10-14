@@ -817,10 +817,18 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                   }}
                   // TÉRMINO REAL pela mesma folha (dono 02/10, tarde): informar o término
                   // marca Terminada — mesma função do detalhe do caso.
-                  onDefinirTerminoRealCaso={async (casoId, hhmm) => {
+                  onDefinirTerminoRealCaso={async (casoId, hhmm, { inicioReal = null } = {}) => {
                     const dona = modoFds ? escalaDoCaso(casoId) || escala : escala
                     const alvo = (dona?.casos || []).find((c) => c.id === casoId)
-                    await gravarTerminoReal({ escala: dona, caso: alvo, hhmm, userId: userInfo.userId, setStatusCirurgia, atualizarCaso })
+                    // o início vem junto quando a cirurgia não tinha (dono 14/10)
+                    await gravarTerminoReal({ escala: dona, caso: alvo, hhmm, inicioReal, userId: userInfo.userId, setStatusCirurgia, atualizarCaso })
+                  }}
+                  // "Não aconteceu" na folha Antes de liberar (dono 14/10): a cirurgia
+                  // agendada que não vai acontecer não tem horário a dar
+                  onSuspenderCaso={(casoId) => {
+                    const dona = modoFds ? escalaDoCaso(casoId) || escala : escala
+                    const alvo = (dona?.casos || []).find((c) => c.id === casoId)
+                    return alvo ? setStatusCirurgia(dona, alvo, 'suspensa', { userId: userInfo.userId }) : Promise.resolve()
                   }}
                   // DE ONDE CONTA A DURAÇÃO de uma cirurgia (dono 25/09): a folha do tempo
                   // total diz, antes do toque, que "1h" numa cirurgia que ainda não começou

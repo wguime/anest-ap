@@ -287,7 +287,7 @@ describe('toque abre o detalhe — onde Iniciada/Terminada já são marcados', (
 
 describe('qualidade do dado', () => {
   it('iniciada há mais de 4h sai da conta, vira pergunta, e "Terminada" CONFIRMA o horário antes de gravar', () => {
-    montar([iniciada('c1', 'Sala 6', { statusAtualizadoEm: `${HOJE}T05:00:00` })])
+    montar([iniciada('c1', 'Sala 6', { statusAtualizadoEm: `${HOJE}T05:00:00`, inicioReal: '05:00' })])
     expect(screen.getByText(/ainda em andamento\?/)).toBeTruthy()
     expect(screen.getByLabelText('0 de 2 vagas de urgência ocupadas')).toBeTruthy() // saiu da ocupação
     fireEvent.click(screen.getByRole('button', { name: 'Terminada' }))
@@ -315,10 +315,27 @@ describe('invariantes do módulo', () => {
   it('a faixa nunca escreve ordem_liberacao — o único caminho de escrita é o status', () => {
     // Garantido por construção: o mock do context SÓ expõe setStatusCirurgia; se
     // o componente chamasse setLinhaOverride/reordenarLiberacao, quebraria aqui.
-    montar([iniciada('c1', 'Sala 6', { statusAtualizadoEm: `${HOJE}T05:00:00` })])
+    montar([iniciada('c1', 'Sala 6', { statusAtualizadoEm: `${HOJE}T05:00:00`, inicioReal: '05:00' })])
     fireEvent.click(screen.getByRole('button', { name: 'Terminada' }))
     fireEvent.click(screen.getByRole('button', { name: /^Confirmar término às/ }))
     expect(setStatusCirurgia).toHaveBeenCalledTimes(1)
+  })
+
+  it('sem início gravado, "Terminada" exige o início junto (dono 14/10) — não há "só o término"', () => {
+    montar([iniciada('c1', 'Sala 6', { statusAtualizadoEm: `${HOJE}T05:00:00` })])
+    fireEvent.click(screen.getByRole('button', { name: 'Terminada' }))
+    expect(screen.queryByRole('button', { name: /^Confirmar término às/ })).toBeNull()
+    const confirmar = screen.getByRole('button', { name: 'Confirmar os dois' })
+    expect(confirmar.disabled).toBe(true) // o início começa vazio
+    fireEvent.change(document.querySelector('[data-slot="inicio-hora"] input') || document.querySelector('[data-slot="inicio-hora"]'), { target: { value: '0510' } })
+    expect(confirmar.disabled).toBe(false)
+    fireEvent.click(confirmar)
+    expect(setStatusCirurgia).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'e1' }),
+      expect.objectContaining({ id: 'c1' }),
+      'terminada',
+      expect.objectContaining({ inicioReal: '05:10', terminoReal: expect.stringMatching(/^\d{2}:\d{2}$/) }),
+    )
   })
 })
 

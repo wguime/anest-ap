@@ -394,6 +394,35 @@ da Minhas, prop `pendencia` do `CasoCard` — está no comparador do `memo`).
   detalhe). Selo: Badge `destructive` OUTLINE + `ClockAlert` (sólido já é Suspensa/Emergência).
 - Travas: `src/__tests__/lib/escalaHorarioPendente.test.js`, `src/__tests__/pages/escalaHorarioPendente.test.jsx`.
 
+### Antes de liberar — sem horário não se libera (dono 2026-10-14, modelo A sem saída)
+
+> "ao liberar algum anestesista e o mesmo tiver casos abertos/cirurgias sem tempos informados [...]
+> que os tempos sejam adicionados antes da liberação ou que os casos sejam transferidos para outro
+> colega" — e, ao escolher o modelo: "não deve ser possível liberar sem preenchimento das informações".
+
+Protótipo `.tmp/liberar-com-cirurgia-aberta.html`. Medido de 06 a 13/10: 54% das liberações de quem
+operou deixaram cirurgia sem horário, e **97% das liberações são feitas por outra pessoa** (o
+plantonista) — a folha é para quem toca, não para quem sai.
+- O toque em "Marcar X liberado" (só na IDA, só com `canEdit`) consulta
+  `pendenciasParaLiberar(linha.casosTurno)` (`src/lib/escalaHorarioPendente.js`; `casosTurno` = TODAS
+  as cirurgias da pessoa no turno, abertas e encerradas, vindas de `gerarColunaLiberacao`). Trava:
+  aberta (agendada/iniciada) e terminada sem início ou sem término. **Não trava**: suspensa,
+  continuação, sem anestesista/procedimento e a que SEGUE com outra pessoa enquanto aberta
+  ("passa para tarde", dupla "A + B").
+- A folha "Antes de liberar <nome completo>" lista as cirurgias do momento do toque com os blocos de
+  sempre (confirmação na folha z-1200 por cima), **"Passar para um colega"** (o "Quem assume" de
+  sempre) e, na agendada, **"Não aconteceu (suspensa)"** — sem ela a única saída de uma cirurgia
+  cancelada seria inventar horário. O botão "Salvar e liberar" só acende sem pendência e libera pelo
+  caminho normal (toast + Desfazer). **Não existe "liberar sem horário".**
+- **Término exige início (medida C, mesma conversa: "não seja possível colocar apenas terminado")**:
+  sem início gravado, Terminada/bloco Término abrem `ConfirmarInicioETermino` (detalhe do caso, folha
+  da fila, urgências) — início vazio com atalhos (agendada, fim da anterior na sala:
+  `sugestoesDeInicio`), término em "agora", botão "Confirmar os dois" só com os dois.
+  `gravarTerminoReal({ inicioReal })` leva o início no mesmo patch. O início de uma TERMINADA não
+  tem "Limpar horário". Só no cliente: o trigger do banco não recusa terminada sem início.
+- Travas: `src/__tests__/pages/liberacoesAntesDeLiberar.test.jsx` e os blocos novos em
+  `escalaHorarioPendente.test.js`/`escalaHorarioReal.test.js`/`colunaLiberacao.test.js`.
+
 ### Editar e EXCLUIR o caso publicado (dono 2026-09-01, modelo A em protótipo)
 
 > "ao adicionar novo caso, após adicionado não é possível editar… ou eventualmente

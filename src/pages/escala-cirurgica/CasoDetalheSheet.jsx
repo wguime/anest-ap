@@ -49,9 +49,9 @@ import useRosterResidentes from '@/hooks/useRosterResidentes'
 import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
 import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
 import { carimboDeStatus } from '@/lib/escalaCirurgicaStatus'
-import { duracaoMin, ehDiaOperacionalAtual, erroHorarioReal, gravarInicioReal, gravarTerminoReal, rotuloMinutos } from '@/lib/escalaHorarioReal'
+import { duracaoMin, ehDiaOperacionalAtual, erroHorarioReal, gravarInicioReal, gravarTerminoReal, rotuloMinutos, sugestoesDeInicio } from '@/lib/escalaHorarioReal'
 import PainelTempo, { formatFaltante } from './PainelTempo'
-import { BlocoHorario, BotaoEstimado, ConfirmarHorario } from './BlocoHorario'
+import { BlocoHorario, BotaoEstimado, ConfirmarHorario, ConfirmarInicioETermino } from './BlocoHorario'
 import useAgoraMinutoEscala from './useAgoraMinutoEscala'
 import { espelhoTempoTotal, nomeAnestesistaExibicao, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso, terminoEncadeado, procedimentoComContinuacao, procedimentoBaseDoCaso } from './utils'
 import ChipsEscolha, { GRAVIDADE_CHIPS, TIPOS_CIRURGIA } from './ChipsEscolha'
@@ -238,9 +238,15 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
   // detalhe poder dizer "Iniciada às 14:33 por Fulano" já no ato (dono 21/08).
   // Iniciada/Terminada passam pela CONFIRMAÇÃO do horário (dono 02/10, tarde); o
   // resto (Agendada e os avisos) grava no toque, como sempre.
+  // TÉRMINO SEM INÍCIO NÃO EXISTE MAIS (dono 14/10): a confirmação pede os dois
+  const terminoPedeInicio = !vivo.inicioReal
+  const confirmarAmbos = ({ inicio, termino }) => {
+    setConfirmar(null)
+    gravarTerminoReal({ escala, caso: vivo, hhmm: termino, inicioReal: inicio, userId, setStatusCirurgia, atualizarCaso }).catch(() => {})
+  }
   const mudarStatus = (status) => {
     if (status === 'iniciada') return setConfirmar({ campo: 'inicio', viaStatus: true })
-    if (status === 'terminada') return setConfirmar({ campo: 'termino', viaStatus: true })
+    if (status === 'terminada') return setConfirmar({ campo: terminoPedeInicio ? 'ambos' : 'termino', viaStatus: true })
     setStatusCirurgia(escala, vivo, status, { userId }).catch(() => {})
   }
 
@@ -376,7 +382,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                   sub={subTermino}
                   subAviso={!terminada && !!faltaTermino?.atrasada}
                   faixa={terminada ? 'border-l-4 border-l-info' : ''}
-                  onClick={podeEditarCaso ? () => setConfirmar({ campo: 'termino', viaStatus: false }) : null}
+                  onClick={podeEditarCaso ? () => setConfirmar({ campo: terminoPedeInicio ? 'ambos' : 'termino', viaStatus: false }) : null}
                 />
               </div>
               {/* As folhas abrem de baixo para cima (dono 17/08): expandindo aqui
@@ -397,7 +403,22 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
               )}
             </article>
           )}
-          {confirmar && (
+          {confirmar?.campo === 'ambos' && (
+            <EditorSheet
+              titulo="Início e término da cirurgia"
+              nota="Confirme os horários em que a cirurgia começou e terminou."
+              onClose={() => setConfirmar(null)}
+            >
+              <ConfirmarInicioETermino
+                sugestoesInicio={sugestoesDeInicio(vivo, escala?.casos || [])}
+                termino={vivo.terminoReal || ''}
+                validar={({ inicio, termino }) => erroHorarioReal({ campo: 'inicio', hhmm: inicio, dataEscala: escala?.data })
+                  || erroHorarioReal({ campo: 'termino', hhmm: termino, inicioReal: inicio, dataEscala: escala?.data }) || ''}
+                onConfirmar={confirmarAmbos}
+              />
+            </EditorSheet>
+          )}
+          {confirmar && confirmar.campo !== 'ambos' && (
             <EditorSheet
               titulo={confirmar.campo === 'inicio' ? 'Início da cirurgia' : 'Término da cirurgia'}
               nota={confirmar.campo === 'inicio'
@@ -413,7 +434,8 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                 sugestao={confirmar.campo === 'inicio' && carimbo?.status === 'iniciada' ? { hhmm: carimbo.hora, rotulo: 'marcado' } : null}
                 validar={validarConfirmacao}
                 onConfirmar={confirmarHorario}
-                onLimpar={confirmar.viaStatus ? null : limparHorario}
+                // o início da TERMINADA não se apaga (dono 14/10: início obrigatório)
+                onLimpar={confirmar.viaStatus || (confirmar.campo === 'inicio' && terminada) ? null : limparHorario}
               />
             </EditorSheet>
           )}

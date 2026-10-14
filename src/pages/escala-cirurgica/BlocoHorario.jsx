@@ -11,7 +11,7 @@
  * `1fr` puro o conteúdo mínimo empurrava o 2º bloco para fora do cartão a 375px.
  */
 import { useState } from 'react'
-import { Plus, Timer } from 'lucide-react'
+import { Plus, Timer, AlertTriangle } from 'lucide-react'
 import { Button, Input } from '@/design-system'
 import { agora } from '@/lib/devClock'
 import { hhmmDe } from '@/lib/escalaHorarioReal'
@@ -159,6 +159,74 @@ export function ConfirmarHorario({ campo, valor = '', sugestao = null, validar, 
           Limpar horário
         </Button>
       )}
+    </div>
+  )
+}
+
+/**
+ * INÍCIO E TÉRMINO JUNTOS (dono 14/10, medida C de `.tmp/liberar-com-cirurgia-aberta.html`):
+ * a cirurgia sem início não pode ser só "terminada" — "deve obrigatoriamente colocar o
+ * início da cirurgia". O término nasce em "agora" (o gesto de sempre); o início começa
+ * vazio, com atalhos (hora agendada, fim da anterior na sala) e campo para digitar. Não
+ * há "só o término": o botão só acende com os dois.
+ * `onConfirmar({ inicio, termino })`; `validar({ inicio, termino })` → mensagem | ''.
+ */
+export function ConfirmarInicioETermino({ sugestoesInicio = [], termino = '', validar, onConfirmar }) {
+  const [ini, setIni] = useState('')
+  const [ter, setTer] = useState(termino || hhmmDe(agora()))
+  const [erro, setErro] = useState('')
+  const agoraHHMM = hhmmDe(agora())
+  const pronto = horaCompleta(ini) && horaCompleta(ter)
+  const confirmar = () => {
+    const motivo = validar?.({ inicio: ini, termino: ter }) || ''
+    setErro(motivo)
+    if (!motivo) onConfirmar({ inicio: ini, termino: ter })
+  }
+  const Campo = ({ rotulo, valor, setValor, atalhos, slot, placeholder }) => (
+    <div className="rounded-xl border border-border-strong p-3">
+      <span className="block text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">{rotulo}</span>
+      <Input
+        data-slot={slot}
+        className="mt-1.5 w-[140px] [&_input]:text-[22px] [&_input]:font-extrabold [&_input]:tabular-nums"
+        value={valor}
+        onChange={(e) => { setErro(''); setValor(formatHoraDigitada(e.target.value)) }}
+        inputMode="numeric"
+        maxLength={5}
+        placeholder={placeholder}
+        aria-label={`Horário de ${rotulo.toLowerCase()}`}
+      />
+      {atalhos.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {atalhos.map((a) => (
+            <button
+              key={`${a.rotulo}-${a.hhmm}`}
+              type="button"
+              aria-pressed={valor === a.hhmm}
+              onClick={() => { setErro(''); setValor(a.hhmm) }}
+              className={[
+                'min-h-[44px] rounded-full border px-3 text-[13px] font-semibold tabular-nums',
+                valor === a.hhmm ? 'border-primary bg-primary/15 text-primary' : 'border-border-strong text-foreground',
+              ].join(' ')}
+            >
+              {a.hhmm} {a.rotulo}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+  return (
+    <div className="space-y-2.5 pb-1">
+      <p className="flex items-start gap-2 rounded-xl border border-destructive/45 bg-destructive/[0.07] px-3 py-2.5 text-[13px] leading-snug dark:border-destructive/60 dark:bg-destructive/15">
+        <AlertTriangle className="mt-px h-4 w-4 shrink-0 text-destructive" />
+        Esta cirurgia não foi marcada como iniciada. Informe também o início.
+      </p>
+      {Campo({ rotulo: 'Início', valor: ini, setValor: setIni, atalhos: sugestoesInicio, slot: 'inicio-hora', placeholder: '--:--' })}
+      {Campo({ rotulo: 'Término', valor: ter, setValor: setTer, atalhos: [{ hhmm: agoraHHMM, rotulo: 'agora' }], slot: 'termino-real-hora', placeholder: '--:--' })}
+      {erro && <p role="alert" className="text-center text-xs font-medium text-destructive">{erro}</p>}
+      <Button className="min-h-[48px] w-full text-[15px] font-bold" disabled={!pronto} onClick={confirmar}>
+        Confirmar os dois
+      </Button>
     </div>
   )
 }

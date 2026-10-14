@@ -402,11 +402,14 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     for (const parte of partes) {
       const { key, uid } = resolveKey(parte, umSo ? (c.anestesistaUserId || null) : null)
       if (!grupos.has(key)) {
-        grupos.set(key, { display: displayDe(parte, uid), tokens: [], tokenHora: {}, tokenTermino: {}, tokenAndamento: {}, casosAtivos: 0, casoIds: [], casos: [], salas: [], teveCasos: false, uid: uid || null, nomeOriginal: parte })
+        grupos.set(key, { display: displayDe(parte, uid), tokens: [], tokenHora: {}, tokenTermino: {}, tokenAndamento: {}, casosAtivos: 0, casoIds: [], casos: [], casosTurno: [], salas: [], teveCasos: false, uid: uid || null, nomeOriginal: parte })
         ordemEncontro.push(key)
       }
       const g = grupos.get(key)
       g.teveCasos = true
+      // TODAS as cirurgias da pessoa no turno, abertas e encerradas (dono 14/10): a
+      // folha "Antes de liberar" cobra o horário que falta também na já terminada
+      g.casosTurno.push(c)
       if (casoConcluido(c)) continue // encerrado: some da linha (sala/cirurgião saem)
       g.casosAtivos += 1 // p/ a linha de cobertura ("N cirurgias · M com término")
       // ids das cirurgias AINDA ABERTAS da pessoa (dono 24/08): é o que o
@@ -488,6 +491,8 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     // as cirurgias abertas, em ORDEM DE HORÁRIO (sem hora → fim, depois pela ordem
     // da sala): é o que a fila lista sob cada cirurgião desde 14/09
     cirurgias: g ? [...g.casos].sort((a, b) => (a.hora || '99:99').localeCompare(b.hora || '99:99') || ((a.ordem ?? 0) - (b.ordem ?? 0))) : [],
+    // os casos CRUS do turno (abertos e encerrados) — só para `pendenciasParaLiberar`
+    casosTurno: g ? [...g.casosTurno] : [],
     casosComTermino: g ? Object.keys(g.tokenTermino).length : 0,
     salas: g ? g.salas : [],
     // chave ESTÁVEL p/ marcações (uid do vínculo ou nome normalizado) + nome

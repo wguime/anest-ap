@@ -45,8 +45,8 @@
 import { useState } from 'react'
 import { ChevronRight, Settings2 } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/design-system'
-import { erroHorarioReal } from '@/lib/escalaHorarioReal'
-import { ConfirmarHorario } from './BlocoHorario'
+import { erroHorarioReal, sugestoesDeInicio } from '@/lib/escalaHorarioReal'
+import { ConfirmarHorario, ConfirmarInicioETermino } from './BlocoHorario'
 import { fraseClinica } from '@/lib/colunaLiberacao'
 import { GRAVIDADE_LABEL } from '@/lib/escalaCirurgicaUrgencias'
 import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
@@ -418,15 +418,29 @@ export default function FaixaUrgencias({ escala, hospital, turno }) {
               </p>
             </SheetHeader>
             <div className="px-4 pb-6 pt-2">
-              <ConfirmarHorario
-                campo="termino"
-                validar={(hhmm) => erroHorarioReal({ campo: 'termino', hhmm, inicioReal: terminar.inicioReal || null, dataEscala: escala?.data })}
-                onConfirmar={(hhmm) => {
-                  const caso = terminar
-                  setTerminar(null)
-                  setStatusCirurgia(escala, caso, 'terminada', { userId: user?.uid || user?.id, terminoReal: hhmm }).catch(() => {})
-                }}
-              />
+              {terminar.inicioReal ? (
+                <ConfirmarHorario
+                  campo="termino"
+                  validar={(hhmm) => erroHorarioReal({ campo: 'termino', hhmm, inicioReal: terminar.inicioReal || null, dataEscala: escala?.data })}
+                  onConfirmar={(hhmm) => {
+                    const caso = terminar
+                    setTerminar(null)
+                    setStatusCirurgia(escala, caso, 'terminada', { userId: user?.uid || user?.id, terminoReal: hhmm }).catch(() => {})
+                  }}
+                />
+              ) : (
+                // sem início, a urgência também não termina sem ele (dono 14/10)
+                <ConfirmarInicioETermino
+                  sugestoesInicio={sugestoesDeInicio(terminar, escala?.casos || [])}
+                  validar={({ inicio, termino }) => erroHorarioReal({ campo: 'inicio', hhmm: inicio, dataEscala: escala?.data })
+                    || erroHorarioReal({ campo: 'termino', hhmm: termino, inicioReal: inicio, dataEscala: escala?.data }) || ''}
+                  onConfirmar={({ inicio, termino }) => {
+                    const caso = terminar
+                    setTerminar(null)
+                    setStatusCirurgia(escala, caso, 'terminada', { userId: user?.uid || user?.id, inicioReal: inicio, terminoReal: termino }).catch(() => {})
+                  }}
+                />
+              )}
             </div>
           </SheetContent>
         </Sheet>

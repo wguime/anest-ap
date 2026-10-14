@@ -3,6 +3,16 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.55 (14/10/2026) — Sem horário não se libera; término exige o início
+
+Pedido do dono depois do caso Gustavo/Rômulo na Unimed (fe00274e): ao liberar quem tem cirurgia aberta ou
+sem início/término, o app pede os horários ou que a cirurgia passe a um colega. Modelo A escolhido por imagem
+(`.tmp/liberar-com-cirurgia-aberta.html`), **sem** a saída "Liberar sem horário".
+- **Folha "Antes de liberar"** na fila: blocos de início/término de cada cirurgia pendente, "Passar para um
+  colega" e "Não aconteceu (suspensa)" na agendada; o botão só acende sem pendência.
+- **Término exige o início**: Terminada numa cirurgia sem início pede os dois (detalhe, fila, urgências),
+  com atalhos da hora agendada e do fim da anterior na sala.
+
 ## v5.12.54 (09/10/2026) — Publicação da escala no DESKTOP: foto ao lado, recados do WhatsApp e prévia com desfazer
 
 **Importação pelo app BLOQUEADA por enquanto** (dono, mesmo dia): a conta da IA está sem crédito. O

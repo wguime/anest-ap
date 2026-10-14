@@ -19,7 +19,7 @@ import { describe, it, expect, vi } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
 import {
-  duracaoMin, ehDiaOperacionalAtual, erroHorarioReal, gravarInicioReal, gravarTerminoReal, horarioRealNaTransicao, rotuloMinutos,
+  duracaoMin, ehDiaOperacionalAtual, erroHorarioReal, gravarInicioReal, gravarTerminoReal, horarioRealNaTransicao, rotuloMinutos, sugestoesDeInicio,
 } from '@/lib/escalaHorarioReal'
 import { inicioDaUrgencia } from '@/lib/escalaCirurgicaUrgencias'
 
@@ -211,5 +211,47 @@ describe('gravarTerminoReal — informar o término marca Terminada (dono 02/10,
     await gravarTerminoReal({ escala, caso: { id: 'c1', statusCirurgia: 'iniciada' }, hhmm: '', ...d })
     expect(d.atualizarCaso.mock.calls.map((c) => c[2])).toEqual([{ terminoReal: '15:10' }, { terminoReal: null }])
     expect(d.setStatusCirurgia).not.toHaveBeenCalled()
+  })
+})
+
+// TÉRMINO SEM INÍCIO (dono 14/10): o início viaja junto; atalhos do início
+describe('gravarTerminoReal com o início exigido junto', () => {
+  const escala = { id: 'e1' }
+  it('aberta: vai pelo status com os dois horários', async () => {
+    const setStatusCirurgia = vi.fn(async () => {})
+    const atualizarCaso = vi.fn(async () => {})
+    await gravarTerminoReal({ escala, caso: { id: 'c1', statusCirurgia: 'agendada' }, hhmm: '15:00', inicioReal: '14:00', userId: 'u', setStatusCirurgia, atualizarCaso })
+    expect(setStatusCirurgia).toHaveBeenCalledWith(escala, { id: 'c1', statusCirurgia: 'agendada' }, 'terminada', { userId: 'u', terminoReal: '15:00', inicioReal: '14:00' })
+    expect(atualizarCaso).not.toHaveBeenCalled()
+  })
+  it('já terminada: corrige os dois pelo caso', async () => {
+    const setStatusCirurgia = vi.fn(async () => {})
+    const atualizarCaso = vi.fn(async () => {})
+    await gravarTerminoReal({ escala, caso: { id: 'c1', statusCirurgia: 'terminada' }, hhmm: '15:00', inicioReal: '14:00', setStatusCirurgia, atualizarCaso })
+    expect(atualizarCaso).toHaveBeenCalledWith(escala, 'c1', { terminoReal: '15:00', inicioReal: '14:00' }, { silencioso: true })
+  })
+  it('sem início informado, o patch é o de sempre', async () => {
+    const setStatusCirurgia = vi.fn(async () => {})
+    await gravarTerminoReal({ escala, caso: { id: 'c1', statusCirurgia: 'iniciada' }, hhmm: '15:00', setStatusCirurgia, atualizarCaso: vi.fn() })
+    expect(setStatusCirurgia.mock.calls[0][3]).toEqual({ userId: null, terminoReal: '15:00' })
+  })
+})
+
+describe('sugestoesDeInicio', () => {
+  const sala = 'CC - Sala 3'
+  it('hora agendada + término real da anterior da MESMA sala e turno', () => {
+    const casos = [
+      { id: 'a', sala, turno: 'matutino', ordem: 0, terminoReal: '09:40' },
+      { id: 'b', sala: 'CC - Sala 4', turno: 'matutino', ordem: 1, terminoReal: '10:10' },
+      { id: 'c', sala, turno: 'matutino', ordem: 2, hora: '9:30' },
+    ]
+    expect(sugestoesDeInicio(casos[2], casos)).toEqual([
+      { hhmm: '09:30', rotulo: 'agendada' }, { hhmm: '09:40', rotulo: 'fim da anterior' },
+    ])
+  })
+  it('"AS" sem anterior terminada: nenhum atalho; fim igual à agendada não repete', () => {
+    expect(sugestoesDeInicio({ id: 'x', hora: 'AS', sala }, [])).toEqual([])
+    const casos = [{ id: 'a', sala, ordem: 0, terminoReal: '10:00' }, { id: 'b', sala, ordem: 1, hora: '10:00' }]
+    expect(sugestoesDeInicio(casos[1], casos)).toEqual([{ hhmm: '10:00', rotulo: 'agendada' }])
   })
 })
