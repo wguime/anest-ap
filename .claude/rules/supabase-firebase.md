@@ -100,6 +100,16 @@ const { cleanup } = createReliableSubscription({
 - A publication `supabase_realtime` está SEM tabelas desde 17/09 (migration `20260917003000`,
   aplicada com `realtime.subscription` = 0). Tabela nova NÃO entra na publication — entra com o
   trigger `tr_rt_sinal`. Se alguém voltar a `add table`, o polling do WAL volta junto.
+- **Reconexão é do realtime-js, não do helper (15/10/2026).** Em CHANNEL_ERROR/TIMED_OUT o socket se
+  reconecta e o canal reentra sozinho (backoff, sem limite) e emite SUBSCRIBED de novo — é esse
+  SUBSCRIBED que chama `onRefetch`. ⚠️ Nunca derrubar e recriar o MESMO tópico em sequência: o
+  `removeChannel` é assíncrono e o `_remove` do realtime-js filtra POR TÓPICO quando a saída termina,
+  levando junto o canal novo (fica surdo, sem erro), e com a lista vazia ele chama `disconnect()`. Era
+  o que o helper fazia: numa queda do websocket o app ficava com ZERO canais e desconectado até
+  recarregar (reproduzido no navegador; em 14/10 o Realtime registrou "no connected users" às 13:53
+  com 12+ pessoas no app). Hoje: CLOSED do servidor → canal novo com backoff; o tópico só reentra
+  depois que a saída do anterior acabou (`saindo`); só recusa de PERMISSÃO repetida faz desistir.
+  Trava: describe "reconexão" em `supabaseSubscriptionHelper.test.js`.
 
 ## Referências
 - Config: `src/config/supabase.js`

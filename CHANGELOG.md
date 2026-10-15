@@ -3,6 +3,32 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.61 (15/10/2026) — Escala dos hospitais sempre atualizada; card de adesão completo no desktop
+
+Pedido do dono: "veririque para que as escalas cirúrgicas dos hospitais (hro e Unimed) atualizem com
+frequencia. esses usuários ficam abertos nos desktops dos hospitais e com frequencia a página fica
+desatualizada". Medido nos logs: em 14/10 a conta do HRO passou das 13:00 às 17:15 sem buscar a escala com a
+página viva (só o `profiles` de 30 em 30 min), enquanto 12 a 18 colegas a recarregavam; às 13:53 o servidor
+de tempo real registrou nenhum aparelho conectado. A renovação do token do tempo real (v5.12.58) já resolveu
+a queda de 1 h; esta versão resolve a queda de rede. Esta parte não muda nada na tela.
+- **Tempo real que se recupera** (`supabaseSubscriptionHelper`, vale para o app todo): numa queda do
+  websocket o helper derrubava e recriava cada canal, e a biblioteca levava o canal novo junto ao terminar a
+  saída do velho — o app ficava com zero canais e desconectado até recarregar (reproduzido no navegador). A
+  reconexão agora é da biblioteca; ao voltar, cada tela recarrega uma vez o que perdeu na queda. Conferido no
+  navegador: os 16 canais voltam em ~5 s e a escala recarrega uma vez.
+- **Vigia das contas de hospital:** com a tela visível e nada carregado há 2 min, a escala recarrega
+  sozinha; a rede que volta recarrega na hora. Com o tempo real funcionando o vigia quase não dispara.
+- **Volta ao padrão:** parada por 10 min, a tela da conta de hospital volta a hoje, ao turno em curso e ao
+  hospital dela; folha aberta ou campo em edição seguram a volta.
+- Contas comuns: só a reconexão do tempo real muda.
+
+**Card "Adesão à Escala Cirúrgica" no desktop** (dono: "no desktop o card [...] não vem com informações assim
+como está no mobile"). O desktop conta como tela deitada, e deitado o card encolhia para 86 px e escondia os
+quatro números. Escolhido por imagem o **modelo B** de `.tmp/adesao-card-desktop.html`: no desktop (deitado +
+mouse) a linha de destaques da Home volta aos 120 px do celular — o card de adesão com início, término, tempo
+total e "com alerta", e os artigos com a linha de resumo. A Home do desktop desce 34 px. Celular em pé, celular
+ou tablet deitado e as páginas de Notícias não mudam. Conferido no app (1440 e 1280, dois temas).
+
 ## v5.12.60 (15/10/2026) — Horário pendente: "Você" primeiro
 
 Pedido do dono: "verifique para melhorar a visualização de 'horário pendente' [...] para estimular o usuário

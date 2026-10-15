@@ -364,6 +364,23 @@ INSERT/DELETE do cabeçalho também passaram a exigir `can_publicar_escala_cirur
 
 Trava: `src/__tests__/pages/escalaGatePublicacao.test.js`.
 
+**A tela do computador do hospital se mantém atualizada sozinha (dono 15/10/2026:** "esses usuários
+ficam abertos nos desktops dos hospitais e com frequência a página fica desatualizada"**).** Nos logs de
+14/10 a conta do HRO ficou das 13:00 às 17:15 sem buscar a escala com a página viva: o tempo real tinha
+caído (ver "Reconexão" em `supabase-firebase.md`) e o computador nunca fica oculto, então a recarga do
+`visibilitychange`, que é a do celular, não vinha. São três camadas:
+1. o tempo real se reconecta sozinho e recarrega uma vez o que perdeu na queda (vale para todos);
+2. **vigia no contexto**, só para conta de hospital e tela visível: nenhuma carga completa há
+   `CONTA_HOSPITAL_IDADE_MAX_MS` (2 min) → recarrega; olha a cada `CONTA_HOSPITAL_VIGIA_MS` (30 s), e a
+   rede que volta (`online`) recarrega na hora. Com o tempo real funcionando as cargas dele chegam antes
+   e o vigia não dispara — sem tráfego a mais no movimento;
+3. **volta ao padrão na página**: parada por `CONTA_HOSPITAL_VOLTA_MS` (10 min, sem toque, tecla nem
+   mouse), a tela volta a hoje, ao turno em curso e ao hospital da conta. Folha aberta ou campo em
+   edição seguram; a aba fica (Completa e Liberações são as duas de trabalho).
+Conta comum não ganha 2 nem 3. O papel chega ao provider por `useUserOpcional`
+(`src/contexts/userContextObject.js`): importar o `UserContext.jsx` levaria o Firebase para os testes do
+provider. Travas: `escalaContaHospitalAoVivo.test.jsx`, `escalaContaHospitalVoltaAoPadrao.test.jsx`.
+
 ### "Minhas" leva onde eu estou (dono 2026-09-09)
 
 A aba **Minhas** filtrava pela escala do hospital SELECIONADO e pelo turno selecionado.
