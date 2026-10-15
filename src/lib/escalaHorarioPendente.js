@@ -237,6 +237,19 @@ export const compararPendencias = (a, b) =>
   || String(a.hospital).localeCompare(String(b.hospital))
 
 /**
+ * "VOCÊ EM DIA" (dono 15/10/2026, modelo A de `.tmp/horario-pendente-estimulo.html`): quem
+ * está logado tem cirurgia de HOJE que entra na conta do alerta? `ehMinha(caso)` é o
+ * critério da aba Minhas (`anestesistaDoCasoEh`). Sem nenhuma, a faixa não elogia ninguém
+ * — "em dia" é de quem operou (ou vai operar) e não deve nada, não de quem está de folga.
+ */
+export function temCirurgiaNaConta(escalas, { hoje, ehMinha } = {}) {
+  if (!ehMinha) return false
+  return (escalas || []).some((escala) => !!escala
+    && escala.status === 'publicada' && escala.data === hoje && escala.hospital !== 'fds'
+    && (escala.casos || []).some((caso) => casoEntraNaConta(caso, { data: escala.data }) && ehMinha(caso)))
+}
+
+/**
  * Agrupa por anestesista (a dupla aparece nos dois). `chaveDe(parte)` dá a identidade
  * estável (uid, senão o nome normalizado) e `nomeDe(parte)` o nome de exibição.
  * Ordem: quem deve MAIS primeiro; empate → a pendência mais antiga; depois o nome.

@@ -585,11 +585,20 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   // já entraram no alerta (liberado ou turno encerrado) — a faixa no topo e o selo no card
   // leem a MESMA lista. Antes do `if (!user)`: é hook.
   const pendencias = useHorarioPendente()
-  // aba Minhas: o detalhamento de QUEM ESTÁ LOGADO (dono 05/10), pelo mesmo critério da
-  // aba — o login gravado no caso manda; sem login, o apelido
-  const minhasPendencias = abaVisivel === 'minhas'
-    ? pendencias.itens.filter((i) => anestesistaDoCasoEh(i.caso, { uid: meuUid, alias: meuAlias, resolverUid: resolverRoster })).sort(compararPendencias)
-    : null
+  // QUEM ESTÁ LOGADO, pelo mesmo critério da aba Minhas — o login gravado no caso manda;
+  // sem login, o apelido. Conta de hospital não tem "Você" (não assume sala).
+  const euPendencia = useMemo(
+    () => (contaSoEscala ? null : { uid: meuUid, alias: meuAlias, resolverUid: resolverRoster }),
+    [contaSoEscala, meuUid, meuAlias, resolverRoster]
+  )
+  // as pendências de quem está logado (dono 05/10 na aba Minhas; desde 15/10, modelo A,
+  // nas três abas: viram a pílula "Você N" na frente da faixa)
+  const minhasPendencias = useMemo(
+    () => (euPendencia
+      ? pendencias.itens.filter((i) => anestesistaDoCasoEh(i.caso, euPendencia)).sort(compararPendencias)
+      : null),
+    [pendencias.itens, euPendencia]
+  )
 
   const garantirEscala = useCallback(async () => {
     if (escalaDoHospital?.id && !String(escalaDoHospital.id).startsWith('demo-')) return escalaDoHospital
@@ -699,6 +708,8 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           pendencias={pendencias}
           podeEditar={canEdit}
           minhas={minhasPendencias}
+          eu={euPendencia}
+          abaMinhas={abaVisivel === 'minhas'}
         />
 
         {/* Aterrissou noutra data (ex.: publicou pela importação): rótulo + volta */}

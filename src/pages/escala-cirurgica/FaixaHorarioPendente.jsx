@@ -12,18 +12,26 @@
  * Regras em `src/lib/escalaHorarioPendente.js`; dados em `useHorarioPendente`. Sem
  * pendência a faixa não ocupa espaço — mas as folhas ficam montadas: preencher a última
  * cirurgia com o detalhe aberto não pode fechar o detalhe debaixo do dedo.
+ *
+ * VOCÊ PRIMEIRO (dono 15/10/2026, modelo A de `.tmp/horario-pendente-estimulo.html`): o nome
+ * de quem está logado quase sempre caía no "+N" — às 8h de 15/10 couberam 2 de 18. Agora
+ * a pílula "Você N" (vermelho cheio) abre a fileira; quem tem cirurgia hoje e não deve nada
+ * vê "Você em dia". Na aba Minhas, a faixa e a caixa pessoal viram UM bloco: as suas
+ * cirurgias em cima e a equipe numa linha embaixo (toque abre a lista de todos). Conta de
+ * hospital e quem não tem cirurgia no dia (`eu` nulo ou sem nada) veem a faixa de antes. A
+ * regra de quem entra e sai do alerta não mudou.
  */
-import { useLayoutEffect, useRef, useState } from 'react'
-import { ChevronRight, ClockAlert } from 'lucide-react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { ChevronRight, CircleCheck, ClockAlert, Users } from 'lucide-react'
 import { Button, Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/design-system'
-import { HOSPITAL_LABEL, useEscalaCirurgica } from '@/contexts/EscalaCirurgicaContext'
+import { HOSPITAL_LABEL, HOSPITAIS, useEscalaCirurgica } from '@/contexts/EscalaCirurgicaContext'
 import { fraseClinica } from '@/lib/colunaLiberacao'
-import { quantasPilulasCabem } from '@/lib/escalaHorarioPendente'
+import { quantasPilulasCabem, temCirurgiaNaConta } from '@/lib/escalaHorarioPendente'
 import CasoDetalheSheet from './CasoDetalheSheet'
 import DefinirAnestesistaSheet from './DefinirAnestesistaSheet'
 import SeloHorarioPendente from './SeloHorarioPendente'
 import { ID_MINHAS_PENDENCIAS } from './MeuPreenchimento'
-import { salaExibicao } from './utils'
+import { anestesistaDoCasoEh, normNome, salaExibicao } from './utils'
 
 const ROTULO_TURNO = { matutino: 'Manhã', vespertino: 'Tarde' }
 const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`
@@ -36,14 +44,33 @@ function Pilula({ nome, n }) {
   )
 }
 
+/** A pílula de quem está logado: "Você N" em vermelho cheio, ou "Você em dia" (n = 0). */
+function PilulaVoce({ n }) {
+  if (n > 0) {
+    return (
+      <span className="inline-flex h-[26px] shrink-0 items-center gap-[5px] whitespace-nowrap rounded-full border border-destructive bg-destructive px-[9px] text-[12.5px] font-semibold text-white">
+        Você <b className="font-extrabold tabular-nums">{n}</b>
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex h-[26px] shrink-0 items-center gap-[5px] whitespace-nowrap rounded-full border border-success/75 bg-card px-[9px] text-[12.5px] font-semibold text-foreground">
+      <CircleCheck className="h-3.5 w-3.5 shrink-0 text-category-green-fg" aria-hidden="true" />
+      Você em dia
+    </span>
+  )
+}
+
 /**
  * Os nomes numa linha só. Mede as pílulas numa fileira invisível e mostra as que cabem,
- * reservando o "+N". Sem layout (teste, primeira pintura) mostra todas.
+ * reservando o "+N". Sem layout (teste, primeira pintura) mostra todas. `voce` (número)
+ * põe a pílula de quem está logado na frente, sempre visível: 0 = "Você em dia".
  */
-function NomesNaFaixa({ grupos }) {
+function NomesNaFaixa({ grupos, voce = null, className = 'mt-[7px]' }) {
   const trilhoRef = useRef(null)
   const medidaRef = useRef(null)
   const [cabem, setCabem] = useState(grupos.length)
+  const temVoce = voce != null
   useLayoutEffect(() => {
     const trilho = trilhoRef.current
     const medida = medidaRef.current
@@ -52,16 +79,18 @@ function NomesNaFaixa({ grupos }) {
       const disponivel = trilho.clientWidth
       if (!disponivel) { setCabem(grupos.length); return }
       const filhos = [...medida.children]
-      const larguras = filhos.slice(0, -1).map((el) => el.offsetWidth)
+      // a pílula "Você" sempre aparece: o que sobra dela (e do espaço) é dos outros
+      const daVoce = temVoce ? filhos[0].offsetWidth + 6 : 0
+      const larguras = filhos.slice(temVoce ? 1 : 0, -1).map((el) => el.offsetWidth)
       const mais = filhos[filhos.length - 1]?.offsetWidth || 40
-      setCabem(quantasPilulasCabem(larguras, disponivel, { gap: 6, mais }))
+      setCabem(quantasPilulasCabem(larguras, disponivel - daVoce, { gap: 6, mais }))
     }
     medir()
     if (typeof ResizeObserver === 'undefined') return undefined
     const ro = new ResizeObserver(medir)
     ro.observe(trilho)
     return () => ro.disconnect()
-  }, [grupos])
+  }, [grupos, temVoce, voce])
   const resto = grupos.length - cabem
   // `overflow-hidden` AQUI é o que segura a fileira de medida (dono 06/10, relato de
   // um Android): com todos os nomes de um dia cheio ela passava de 1.000px e vazava da
@@ -70,8 +99,9 @@ function NomesNaFaixa({ grupos }) {
   // em todas as abas. O iPhone ignora o vazamento. Cortar não muda a medida
   // (`offsetWidth` de cada pílula) nem o desenho (a fileira visível já corta).
   return (
-    <span className="relative mt-[7px] block overflow-hidden">
+    <span className={`relative block overflow-hidden ${className}`}>
       <span ref={trilhoRef} className="flex gap-1.5 overflow-hidden">
+        {temVoce && <PilulaVoce n={voce} />}
         {grupos.slice(0, cabem).map((g) => <Pilula key={g.chave} nome={g.nome} n={g.itens.length} />)}
         {resto > 0 && (
           <span className="inline-flex h-[26px] shrink-0 items-center rounded-full border border-dashed border-destructive/45 bg-card px-[9px] text-[12.5px] font-semibold text-muted-foreground dark:border-destructive/60">
@@ -82,6 +112,7 @@ function NomesNaFaixa({ grupos }) {
       {/* fileira de MEDIDA: as mesmas pílulas, fora do fluxo, invisíveis e cortadas
           pelo pai (ver acima) — invisível ainda ocupa largura */}
       <span ref={medidaRef} aria-hidden="true" className="pointer-events-none invisible absolute left-0 top-0 flex gap-1.5 whitespace-nowrap">
+        {temVoce && <PilulaVoce n={voce} />}
         {grupos.map((g) => <Pilula key={g.chave} nome={g.nome} n={g.itens.length} />)}
         <span className="inline-flex h-[26px] items-center rounded-full border px-[9px] text-[12.5px] font-semibold">+{grupos.length}</span>
       </span>
@@ -140,9 +171,10 @@ function LinhaPendente({ item, podeEditar, onAbrir, onColegaAssumiu, dicaInicio 
  * A CAIXA PESSOAL da aba Minhas (dono 05/10: "na aba minhas deve aparecer o detalhamento do
  * anestesista de acordo com o login individual"; desenho do modelo C em
  * `.tmp/alerta-horario-pendente.html`): só as cirurgias de QUEM ESTÁ LOGADO, com o atalho
- * para preencher. A faixa pública continua em cima — é a mesma lista, vista por um só.
+ * para preencher. Desde 15/10 (modelo A) ela É a faixa nessa aba: a equipe vem na linha de
+ * baixo ("Na equipe" + os nomes), e o toque nela abre a lista de todos.
  */
-function MinhasPendencias({ itens, podeEditar, onAbrir, onColegaAssumiu }) {
+function MinhasPendencias({ itens, podeEditar, onAbrir, onColegaAssumiu, outros = [], onVerLista }) {
   return (
     <section
       id={ID_MINHAS_PENDENCIAS}
@@ -170,16 +202,51 @@ function MinhasPendencias({ itens, podeEditar, onAbrir, onColegaAssumiu }) {
           />
         ))}
       </div>
+      {outros.length > 0 && (
+        <button
+          type="button"
+          onClick={onVerLista}
+          aria-label={`Na equipe: ${plural(outros.length, 'anestesista', 'anestesistas')} com horário pendente. Ver a lista`}
+          className="flex min-h-[44px] w-full items-center gap-1.5 border-t border-destructive/45 pl-3 pr-2 text-left transition-opacity active:opacity-80 dark:border-destructive/60"
+        >
+          <span className="flex shrink-0 items-center gap-[5px] whitespace-nowrap text-[12.5px] font-bold text-foreground/75">
+            <Users className="h-[15px] w-[15px] shrink-0 text-category-red-fg" aria-hidden="true" />
+            Na equipe
+          </span>
+          <NomesNaFaixa grupos={outros} className="min-w-0 flex-1" />
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+        </button>
+      )}
     </section>
   )
 }
 
-export default function FaixaHorarioPendente({ pendencias, podeEditar = false, minhas = null }) {
-  const { escalas } = useEscalaCirurgica()
+/**
+ * @param {object}  props.pendencias  `useHorarioPendente()` — itens e grupos de HOJE
+ * @param {Array?}  props.minhas      as pendências de quem está logado (critério da aba Minhas)
+ * @param {object?} props.eu          `{ uid, alias, resolverUid }`; nulo = sem "Você" (conta de hospital)
+ * @param {boolean} props.abaMinhas   na aba Minhas a caixa pessoal faz as vezes da faixa
+ */
+export default function FaixaHorarioPendente({ pendencias, podeEditar = false, minhas = null, eu = null, abaMinhas = false }) {
+  const { escalas, hoje } = useEscalaCirurgica()
   const [lista, setLista] = useState(false)
   const [detalhe, setDetalhe] = useState(null) // { hospital, caso, turno }
   const [definir, setDefinir] = useState(null) // { hospital, sala, casosAlvo, turno }
   const { itens = [], grupos = [] } = pendencias || {}
+
+  // VOCÊ PRIMEIRO (dono 15/10): o próprio grupo sai da fileira dos nomes e vira a pílula
+  // "Você" na frente — a conta é a da caixa pessoal (`minhas`, o login manda).
+  const meus = minhas?.length || 0
+  const aliasEu = eu?.alias ? normNome(eu.alias) : ''
+  const outros = useMemo(() => (eu
+    ? grupos.filter((g) => !((eu.uid && (g.uid === eu.uid || g.chave === eu.uid)) || (aliasEu && g.chave === aliasEu)))
+    : grupos), [grupos, eu, aliasEu])
+  // "Você em dia" só para quem tem cirurgia hoje na conta do alerta e não deve nada
+  const emDia = useMemo(() => !!eu && !meus && itens.length > 0 && temCirurgiaNaConta(
+    HOSPITAIS.map((h) => escalas?.[h]),
+    { hoje, ehMinha: (caso) => anestesistaDoCasoEh(caso, eu) },
+  ), [eu, meus, itens.length, escalas, hoje])
+  const voce = meus > 0 ? meus : emDia ? 0 : null
 
   const abrirDetalhe = (item) => {
     setLista(false)
@@ -190,13 +257,14 @@ export default function FaixaHorarioPendente({ pendencias, podeEditar = false, m
     setDefinir({ hospital: item.hospital, sala: item.caso.sala, casosAlvo: [item.caso], turno: item.turno })
   }
 
+  const resumoVoce = voce == null ? '' : voce > 0 ? `, ${voce} sua${voce === 1 ? '' : 's'}` : '. Você em dia'
   return (
     <>
-      {itens.length > 0 && (
+      {itens.length > 0 && !(abaMinhas && meus > 0) && (
         <button
           type="button"
           onClick={() => setLista(true)}
-          aria-label={`Horário pendente: ${plural(itens.length, 'cirurgia', 'cirurgias')} de ${plural(grupos.length, 'anestesista', 'anestesistas')}. Ver a lista`}
+          aria-label={`Horário pendente: ${plural(itens.length, 'cirurgia', 'cirurgias')} de ${plural(grupos.length, 'anestesista', 'anestesistas')}${resumoVoce}. Ver a lista`}
           className="block w-full rounded-xl border border-destructive/45 bg-destructive/[0.07] px-3 pb-2.5 pt-2 text-left transition-opacity active:opacity-80 dark:border-destructive/60 dark:bg-destructive/[0.16]"
         >
           <span className="flex min-h-[22px] items-center gap-[7px]">
@@ -207,12 +275,19 @@ export default function FaixaHorarioPendente({ pendencias, podeEditar = false, m
               <ChevronRight className="h-[15px] w-[15px] text-muted-foreground" aria-hidden="true" />
             </span>
           </span>
-          <NomesNaFaixa grupos={grupos} />
+          <NomesNaFaixa grupos={outros} voce={voce} />
         </button>
       )}
 
-      {minhas?.length > 0 && (
-        <MinhasPendencias itens={minhas} podeEditar={podeEditar} onAbrir={abrirDetalhe} onColegaAssumiu={colegaAssumiu} />
+      {abaMinhas && meus > 0 && (
+        <MinhasPendencias
+          itens={minhas}
+          podeEditar={podeEditar}
+          onAbrir={abrirDetalhe}
+          onColegaAssumiu={colegaAssumiu}
+          outros={outros}
+          onVerLista={() => setLista(true)}
+        />
       )}
 
       {lista && (
