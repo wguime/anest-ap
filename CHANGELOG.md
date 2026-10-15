@@ -35,8 +35,10 @@ a Home já pronta em cache; a Escala abria com ~0,5 s de spinner, carregava 1,15
 - Revisões de segurança e LGPD antes da publicação: sem vulnerabilidade; ajustes aplicados (cópia só abre se o
   Firebase guardou o login do mesmo uid; escrita confere o uid da tela; leitura de settings de incidente que falha =
   sem acesso; papel salvo com teto de 15 s sem resposta do Supabase; página de infra não grava `checked_by`
-  'system'). Linha nova em `docs/lgpd-retencao.md`. Pendente de decisão do dono: a seção 9 da política de
-  privacidade diz que nada fica no aparelho — já era impreciso antes (sessão do Firebase, cache do Firestore).
+  'system'). Linha nova em `docs/lgpd-retencao.md`. **Política de privacidade, seção 9** (aprovado pelo dono): dizia
+  que nada ficava no aparelho — já era impreciso antes (sessão do Firebase, cache do Firestore); agora diz o que
+  fica (sessão de login + cópia do próprio perfil), quando sai (Sair) e o que fazer em aparelho compartilhado.
+  v2.1, sem novo aceite.
 - Dois testes dependiam do relógio e falhavam de 00h às 07h (inclusive no CI de um push de madrugada) — agora
   com relógio fixo/dia operacional. Roteiro de medição: `scripts/medir-abertura.mjs`.
 

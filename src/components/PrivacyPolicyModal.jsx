@@ -143,7 +143,7 @@ export function PrivacyPolicyModal({ onClose }) {
           {/* 9. Armazenamento */}
           <Section icon={Lock} title="9. Armazenamento e segurança">
             <p className="text-sm text-muted-foreground">
-              Os dados pessoais são mantidos em ambiente seguro com controle de acesso baseado em papéis e autenticação obrigatória. Somente gestores autorizados e membros do Comitê de Ética têm acesso a dados pessoais. Os dados são armazenados em servidores protegidos e não são persistidos no armazenamento local do dispositivo, permanecendo apenas em memória durante a sessão. Arquivos de evidência anexados a relatos são guardados em repositório privado, com download restrito aos gestores autorizados por meio de links temporários de curta duração.
+              Os dados pessoais são mantidos em ambiente seguro com controle de acesso baseado em papéis e autenticação obrigatória. Somente gestores autorizados e membros do Comitê de Ética têm acesso a dados pessoais. Os dados são armazenados em servidores protegidos. Para abrir sem esperar a rede, o aparelho guarda a sua sessão de login e uma cópia do seu próprio perfil (nome, e-mail, cargo, permissões, CRM/especialidade e foto). As duas são apagadas ao tocar em Sair. Com 'Manter conectado' desmarcado, a cópia do perfil não é gravada. Em aparelho compartilhado, desmarque essa opção e use Sair. Arquivos de evidência anexados a relatos são guardados em repositório privado, com download restrito aos gestores autorizados por meio de links temporários de curta duração.
             </p>
           </Section>
 
@@ -196,7 +196,7 @@ export function PrivacyPolicyModal({ onClose }) {
           {/* Última atualização */}
           <div className="pt-4 border-t border-border">
             <p className="text-xs text-muted-foreground text-center">
-              Última atualização: 4 de maio de 2026 (v2 — base legal corrigida + DPO + retenção diferenciada + transferência internacional)
+              Última atualização: 15 de outubro de 2026 (v2.1 — armazenamento no aparelho; v2 de 4 de maio de 2026: base legal corrigida + DPO + retenção diferenciada + transferência internacional)
             </p>
           </div>
         </div>
