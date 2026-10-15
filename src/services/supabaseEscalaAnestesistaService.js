@@ -65,14 +65,26 @@ function toCamel(row) {
   }
 }
 
+// Leitura em voo compartilhada: cada `useRosterAnestesistas` busca ao montar, e a
+// abertura da escala monta dois ao mesmo tempo (mais o card da Home) — eram duas
+// leituras idênticas em paralelo (15/10/2026). Quem pede DEPOIS que a resposta
+// chegou busca de novo (o `refresh` após gravar um apelido precisa do dado novo).
+let _aliasesEmVoo = null
+
 /** Todos os apelidos (dicionário inteiro — tabela pequena). */
 async function fetchAliases() {
-  const { data, error } = await supabase
-    .from('escala_anestesista_alias')
-    .select('*')
-    .order('apelido', { ascending: true })
-  if (error) handleError(error, 'fetchAliases')
-  return (data || []).map(toCamel)
+  if (!_aliasesEmVoo) {
+    _aliasesEmVoo = (async () => {
+      const { data, error } = await supabase
+        .from('escala_anestesista_alias')
+        .select('*')
+        .order('apelido', { ascending: true })
+      if (error) handleError(error, 'fetchAliases')
+      return (data || []).map(toCamel)
+    })().finally(() => { _aliasesEmVoo = null })
+  }
+  // cópia por chamador: cada instância do hook guarda a sua lista
+  return (await _aliasesEmVoo).slice()
 }
 
 /** Apelidos de um login específico (self-claim do anestesista). */

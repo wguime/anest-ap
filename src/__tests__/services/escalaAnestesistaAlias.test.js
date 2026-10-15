@@ -10,7 +10,8 @@
  * gravava o texto errado e o quadro seguia mostrando a colega antiga.
  */
 import { describe, it, expect } from 'vitest'
-import { ehApelidoDePessoa, normApelido } from '@/services/supabaseEscalaAnestesistaService'
+import svc, { ehApelidoDePessoa, normApelido } from '@/services/supabaseEscalaAnestesistaService'
+import { supabase } from '@/config/supabase'
 
 describe('ehApelidoDePessoa', () => {
   it('aceita apelido de gente, com ou sem sobrenome e com o prefixo PED', () => {
@@ -35,5 +36,27 @@ describe('ehApelidoDePessoa', () => {
   it('julga o texto NORMALIZADO — "ped gabriela + ?" não escapa pela caixa', () => {
     expect(normApelido('ped gabriela + ?')).toBe('GABRIELA + ?')
     expect(ehApelidoDePessoa('ped gabriela + ?')).toBe(false)
+  })
+})
+
+// Abertura da escala (15/10/2026): cada useRosterAnestesistas busca o dicionário
+// ao montar e a página monta dois ao mesmo tempo — eram leituras idênticas em
+// paralelo. Quem pede junto divide a leitura; quem pede depois busca de novo.
+describe('fetchAliases — leitura em voo compartilhada', () => {
+  const leituras = () => supabase.from.mock.calls.filter(([t]) => t === 'escala_anestesista_alias').length
+
+  it('pedidos simultâneos dividem UMA leitura, cada um com a sua lista', async () => {
+    supabase.from.mockClear()
+    const [a, b] = await Promise.all([svc.fetchAliases(), svc.fetchAliases()])
+    expect(leituras()).toBe(1)
+    expect(a).toEqual(b)
+    expect(a).not.toBe(b)
+  })
+
+  it('pedido depois que a resposta chegou busca de novo (refresh após gravar apelido)', async () => {
+    supabase.from.mockClear()
+    await svc.fetchAliases()
+    await svc.fetchAliases()
+    expect(leituras()).toBe(2)
   })
 })

@@ -166,6 +166,20 @@ async function fetchEscala(data, hospital) {
   return { ...toCamelCase(header), casos: (casos || []).map(toCamelCase), trocasHistorico }
 }
 
+/**
+ * Status das escalas de UMA data, por hospital, numa ida só — sem casos nem
+ * histórico. É o que a tela precisa para oferecer o atalho "Amanhã" (antes ela
+ * chamava `fetchEscala` nos três hospitais: 9 leituras para um sim/não).
+ */
+async function fetchStatusDia(data) {
+  const { data: linhas, error } = await supabase
+    .from('escala_cirurgica')
+    .select('hospital, status')
+    .eq('data', data)
+  if (error) handleError(error, 'fetchStatusDia')
+  return linhas || []
+}
+
 // ============================================================================
 // ESCRITA
 // ============================================================================
@@ -730,6 +744,7 @@ async function confirmarAviso(avisoId, { userId, userName } = {}) {
 
 export default {
   fetchEscala,
+  fetchStatusDia,
   fetchAvisos,
   criarAviso,
   confirmarAviso,

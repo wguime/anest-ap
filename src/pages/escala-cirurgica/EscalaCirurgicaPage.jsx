@@ -3,10 +3,11 @@
  * Data no topo · turno (matutino/vespertino) · hospital · abas internas —
  * todos com seletor segmentado (mesmo estilo do Cateter Peridural).
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PageHeader } from '@/components'
 import { WifiOff } from 'lucide-react'
 import { ActionPill, EmptyState, useToast } from '@/design-system'
+import { PageLoadingFallback } from '@/design-system/components/anest/page-loading-fallback'
 import { IMPORTACAO_BLOQUEADA, MENSAGEM_IMPORTACAO_BLOQUEADA } from './importacaoBloqueio'
 import { useUser } from '@/contexts/UserContext'
 import { useEscalaDia } from '@/hooks/usePegaPlantao'
@@ -24,8 +25,12 @@ import FaixaHorarioPendente from './FaixaHorarioPendente'
 import MeuPreenchimento from './MeuPreenchimento'
 import useHorarioPendente from './useHorarioPendente'
 import LiberacoesView from './LiberacoesView'
-import ImportarEscalasPage from './ImportarEscalasPage'
-import ImportarEscalaFdsPage from './ImportarEscalaFdsPage'
+// Importação sob demanda (abertura da escala, 15/10/2026): as duas telas trazem
+// a planilha `xlsx` (~430 KB), a escala numérica inteira (~230 KB) e a
+// conferência — ~70% do JavaScript que a escala carregava ao abrir, para uma
+// ação de quem publica (e hoje bloqueada sem crédito da IA).
+const ImportarEscalasPage = lazy(() => import('./ImportarEscalasPage'))
+const ImportarEscalaFdsPage = lazy(() => import('./ImportarEscalaFdsPage'))
 import TrocaSheet from './TrocaSheet'
 import { anestesistaDoCasoEh, meuAliasDe, turnoAtualOperacional, dataPorExtenso, estadoTrocasDoHistorico, normNome, formatData, rodapeDoTurno, localizarSlotEscala, localizarMeuPosto, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca, espelhoTempoTotal, inicioDaDuracao, terminoEncadeado, turnoDoCaso, patchDefinicaoNoTurnoSeguinte } from './utils'
 import { gravarInicioReal, gravarTerminoReal } from '@/lib/escalaHorarioReal'
@@ -33,6 +38,7 @@ import { compararPendencias } from '@/lib/escalaHorarioPendente'
 import { ehDataFilaUnica, ehFeriado, ehFimDeSemana, FDS_HOSPITAL, FDS_TURNO_CASOS, FDS_TURNOS, turnoFdsAtual } from '@/lib/escalaFds'
 import { faseLiberacoes } from '@/lib/plantaoNoturno'
 import { hospitalDaConta, podeEditarEscalaCirurgica, podePublicarEscalaCirurgica } from './gate'
+import { algumaPublicada, amanhaPublicadaGuardada, guardarAmanhaPublicada } from './amanhaPublicada'
 import { ehContaDeHospital } from '@/utils/userTypes'
 
 const HOSPITAL_OPCOES = HOSPITAIS.map((h) => ({ value: h, label: HOSPITAL_LABEL[h] }))
@@ -124,21 +130,29 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     d.setDate(d.getDate() + 1)
     return hojeISO(d)
   }, [hoje])
-  const [amanhaPublicada, setAmanhaPublicada] = useState(false)
+  // Nasce com o que se sabe da data (abertura anterior): o atalho já vem no 1º
+  // render e a barra não pula quando a resposta chega (15/10/2026).
+  const [amanhaPublicada, setAmanhaPublicada] = useState(() => amanhaPublicadaGuardada(amanha))
   useEffect(() => {
     let vivo = true
+    // virada do dia com a tela aberta: começa do que se sabe da data nova
+    setAmanhaPublicada(amanhaPublicadaGuardada(amanha))
     // amanhã de sexta = sábado: a fila única (linha 'fds') também conta como publicada
     const alvos = [...HOSPITAIS, ...(ehDataFilaUnica(amanha) ? [FDS_HOSPITAL] : [])]
-    Promise.all(alvos.map((h) => svc.fetchEscala(amanha, h).catch(() => null)))
-      .then((rs) => {
+    ;(async () => {
+      try {
+        // uma leitura só (status por hospital) — antes eram 9, e o prefetch
+        // abaixo refazia as mesmas 9 quando estava publicada
+        const linhas = await svc.fetchStatusDia(amanha)
         if (!vivo) return
-        const publicada = rs.some((e) => e?.status === 'publicada')
+        const publicada = algumaPublicada(linhas, alvos)
+        guardarAmanhaPublicada(amanha, publicada)
         setAmanhaPublicada(publicada)
         // já adianta a busca: quando o usuário tocar em "Amanhã", a escala
         // aparece na hora em vez de esperar ~2,5s de rede (dono 16/08)
         if (publicada) prefetch?.(amanha)
-      })
-      .catch(() => {})
+      } catch { /* rede: fica o que se sabia; o load normal tenta de novo */ }
+    })()
     return () => { vivo = false }
   }, [amanha, prefetch])
   const modoData = data === amanha ? 'amanha' : data === hoje ? 'hoje' : 'outra'
@@ -912,6 +926,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
       )}
 
       {importando && (
+        <Suspense fallback={<PageLoadingFallback className="fixed inset-0 z-modal" />}>
         <ImportarEscalasPage
           hospital={hospital}
           data={data}
@@ -929,9 +944,11 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
             if (publicado?.turno) escolherTurno(publicado.turno)
           }}
         />
+        </Suspense>
       )}
 
       {importandoFds && (
+        <Suspense fallback={<PageLoadingFallback className="fixed inset-0 z-modal" />}>
         <ImportarEscalaFdsPage
           data={data}
           onClose={(publicado) => {
@@ -940,6 +957,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
             if (publicado?.data) { setData(publicado.data); setAba('liberacoes') }
           }}
         />
+        </Suspense>
       )}
     </div>
   )
