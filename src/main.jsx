@@ -259,7 +259,11 @@ const montar = () => createRoot(document.getElementById('root')).render(
 // tela entrar sem o spinner de transição. Qualquer outra URL monta na hora.
 // Falha do chunk não segura nada: monta e o Suspense/ChunkLoadError seguem
 // como sempre. Ver src/navigation/paginaInicial.js.
+const paginaInicial = (() => {
+  // nada aqui pode impedir a montagem — nem um erro síncrono
+  try { return prepararPaginaInicial() } catch { return null }
+})()
 Promise.race([
-  prepararPaginaInicial(),
+  paginaInicial,
   new Promise((resolve) => setTimeout(resolve, 1000)),
 ]).catch(() => {}).finally(montar)
