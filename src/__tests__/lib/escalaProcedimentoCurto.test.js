@@ -100,7 +100,7 @@ const casos = [
   ['IMPLANTE DE STENT CORONARIO', 'Stent coronário'],
   ['FECHAMENTO DE COLOSTOMIA OU ENTEROSTOMIA', 'Fechamento de ostomia'],
   ['JEJUNOSTOMIA / ILEOSTOMIA', 'Jejunostomia'], // "A / B" é a A (14/10)
-  ['DRENAGEM DE ABSCESSO RENAL', 'Drenagem de abscesso'],
+  ['DRENAGEM DE ABSCESSO RENAL', 'Drenagem de abscesso renal'], // o local fica (14/10)
   ['RECONSTRUÇÃO LIGAMENTAR + MENISCECTOMIA', 'Reconstrução ligamentar'],
   ['LESOES LIGAMENTARES CRONICAS AO NIVEL DO TORNOZELO', 'Ligamento de tornozelo'],
   // abreviações à mão do HRO
@@ -249,7 +249,7 @@ describe('nomeCurtoProcedimento — fallback para o que o dicionário não conhe
   })
   it('palavra genérica leva o complemento junto; sentence case como o dicionário', () => {
     expect(nomeCurtoProcedimento('LESÃO LABRAL - PROCEDIMENTO VIDEOARTROSCÓPICO DE OMBRO')).toBe('Artroscopia de ombro')
-    expect(nomeCurtoProcedimento('RETIRADA DE CORPO ESTRANHO DO OUVIDO')).toBe('Corpo estranho')
+    expect(nomeCurtoProcedimento('RETIRADA DE CORPO ESTRANHO DO OUVIDO')).toBe('Corpo estranho de ouvido') // o local fica (14/10)
     expect(nomeCurtoProcedimento('TROCA DE GERADOR')).toBe('Troca de gerador')
   })
   it('"C/", "P/", "S/" são abreviações, não separam cirurgias', () => {
@@ -276,7 +276,7 @@ describe('nomeCurtoProcedimento — fallback para o que o dicionário não conhe
     expect(nomeCurtoProcedimento('Ureteroscopia rigida')).toBe('Ureteroscopia')
     expect(nomeCurtoProcedimento('CISTOSCOPIA E/OU URETEROSCOPIA')).toBe('Cistoscopia')
     expect(nomeCurtoProcedimento('JEJUNOSTOMIA ENDOSCOPICA')).toBe('Jejunostomia')
-    expect(nomeCurtoProcedimento('MICROCIRURGIA VASCULAR INTRACRANIANA')).toBe('Microcirurgia vascular')
+    expect(nomeCurtoProcedimento('MICROCIRURGIA VASCULAR INTRACRANIANA')).toBe('Microcirurgia vascular intracraniana')
     expect(nomeCurtoProcedimento('MICROCIRURGIA PARA TUMOR INTRACRANIANO')).toBe('Tumor intracraniano')
     expect(nomeCurtoProcedimento('IMPLANTE DE CATETER DE LONGA PERMANÊNCIA P/ HEMODIÁLISE')).toBe('Cateter de hemodiálise')
     expect(nomeCurtoProcedimento('RETIRADA DE CORPO ESTRANHO DE OUVIDO / FARINGE / LARINGE / NARIZ')).toBe('Corpo estranho')
@@ -289,6 +289,56 @@ describe('nomeCurtoProcedimento — fallback para o que o dicionário não conhe
     expect(nomeCurtoProcedimento('RNM crânio')).toBe('RM')
     expect(nomeCurtoProcedimento('TORACECTOMIA SIMPLES 3HS')).toBe('Toracectomia simples')
     expect(nomeCurtoProcedimento('Exploração cirúrgica de nervo 1:30H')).toBe('Exploração cirúrgica de nervo')
+  })
+  it('dono 14/10: "importante manter o local" — o território e o qualificador que mudam a cirurgia', () => {
+    const casos = [
+      ['MICROCIRURGIA VASCULAR INTRACRANIANA 2HS', 'Microcirurgia vascular intracraniana'],
+      ['01 ANGIOPLASTIA CORONARIANA – 1H', '1 angioplastia coronária'],
+      ['HEMO ANGIOPLASTIA PERIFERICA', 'Angioplastia periférica'],
+      ['Angioplastia intraluminal de aorta/veia cava/vasos ilíacos (com stent)', 'Angioplastia periférica'],
+      ['ANGIOPLASTIA TRANSLUMINAL PERCUTANEA DE MULTIPLOS VASOS COM IMPLANTE DE STENT', 'Angioplastia'],
+      ['IMPLANTE DE STENT CORONARIO. COM OU SEM ANGIOPLASTIA BALAO CONCOITANTE (1 VASO)', 'Stent coronário'],
+      ['COLOCACAO DE STENT BILIAR', 'Stent biliar'],
+      ['Cateterismo direito', 'Cateterismo direito'],
+      ['NEFRECTOMIA PARCIAL', 'Nefrectomia parcial'], ['NEFRECTOMIA RADICAL LAPAROSCOPICA UNILATERAL', 'Nefrectomia total'],
+      ['TIREOIDECTOMIA TOTAL EM ONCOLOGIA', 'Tireoidectomia total'], ['TIREOIDECTOMIA PARCIAL', 'Tireoidectomia parcial'],
+      ['MASTECTOMIA SIMPLES + RECONSTRUÇÃO MAMÁRIA', 'Mastectomia simples'], ['MASTECTOMIA RADICAL COM LINFADENECTOMIA AXILAR', 'Mastectomia radical'],
+      ['HISTERECTOMIA TOTAL AMPLIADA', 'Histerectomia ampliada'], ['HISTERECTOMIA TOTAL LAPAROSCOPICA', 'Histerectomia'],
+      ['LAPAROTOMIA EXPLORADORA', 'Laparotomia exploradora'], ['LAPAROTOMIA PARA AVALIAÇÃO DE TUMOR DE OVÁRIO', 'Laparotomia (tumor de ovário)'],
+      ['MEDIASTINOSCOPIA/LINFADENECTOMIA MEDIASTINAL', 'Linfadenectomia mediastinal'],
+      ['Drenagem de hematoma subdural', 'Drenagem de hematoma subdural'], ['DRENAGEM PERCUTANEA DE VIA BILIAR', 'Drenagem biliar'],
+      ['TORACOSTOMIA COM DRENAGEM PLEURAL FECHADA', 'Drenagem pleural'], ['DRENAGEM LIQUÓRICA LOMBAR EXTERNA', 'Drenagem liquórica'],
+      ['INCISÃO E DRENAGEM DE ABCESSO, HEMATOMA OU PANARICIO', 'Drenagem de abscesso'],
+      ['DRENAGEM DE ABSCESSO RENAL', 'Drenagem de abscesso renal'], ['ABSCESSO ANORRETAL - DRENAGEM', 'Drenagem de abscesso anorretal'],
+      ['Desbridamento de dedo', 'Debridamento de dedo'], ['Desbridamento mse', 'Debridamento de membro superior'],
+      ['Amputação MIE', 'Amputação de membro inferior'], ['Amputação abdomino-perineal de reto em oncologia', 'Amputação de reto'],
+      ['FRATURA DA PATELA POR FIXAÇÃO INTERNA', 'Fratura de patela'], ['FRATURA SUBTROCANTERIANA', 'Fratura subtrocantérica'],
+      ['Fratura bimaleolar/trimaleolar', 'Fratura de tornozelo'], ['TRATAMENTO CIRÚRGICO DA FRATURA DO CRÂNIO', 'Fratura de crânio'],
+      ['FRATURA-LUXAÇÃO ACROMIO-CLAVICULAR', 'Fratura de ombro'], ['FRATURA DO ACETÁBULO', 'Fratura de acetábulo'],
+      ['FRATURA/LUXAÇÃO DO ANEL PÉLVICO', 'Fratura de pelve'], ['FRATURAS E/OU LUXAÇÕES DO PUNHO', 'Fratura de punho'],
+      ['FRATURA E OU LUXACOES (INCLUINDO DESCOLAMENTO EPIFISARIO COTOVELO-PUNHO)', 'Fratura de antebraço'],
+      ['FRATURA METACARPIANOS', 'Fratura de mão'], ['FRATURA SIMPLES DE MANDIBULA', 'Fratura de mandíbula'],
+      ['FRATURA DO OSSO ZIGOMATICO', 'Fratura de face'],
+      ['LUXAÇÃO DE ARTICULAÇÃO ESCAPULO-UMERAL', 'Luxação de ombro'], ['TRATAMENTO DE LUXAÇÃO COXO-FEMORAL CONGÊNITA', 'Luxação de quadril'],
+      ['INSTABILIDADE FÊMORO-PATELAR + CONDROPLASTIA', 'Artroscopia de joelho'],
+      ['ARTRODESE DE ARTICULAÇÕES DE MEMBRO INFERIOR', 'Artrodese de membro inferior'],
+      ['ARTRODESE + HÉRNIA DE DISCO – TRATAMENTO CIRÚRGICO', 'Artrodese de coluna'],
+      ['ARTROPLASTIA PARA LUXAÇÃO RECIDIVANTE DA ARTICULAÇÃO TÊMPORO-MANDIBULAR', 'Artroplastia de ATM'],
+      ['ARTROPLASTIA DE TORNOZELO (COM IMPLANTE)', 'Artroplastia de tornozelo'],
+      ['HÉRNIA DE DISCO TORACO-LOMBAR - TRATAMENTO CIRÚRGICO', 'Hérnia de disco toracolombar'], ['DISCECTOMIA CERVICAL', 'Hérnia de disco cervical'],
+      ['TENOTOMIA DA PORCAO LONGA DO BICEPS OMBRO', 'Tenotomia do bíceps'],
+      ['OSTEOTOMIA DE OSSOS DA MÃO E/OU DO PÉ', 'Osteotomia de mão ou pé'], ['OSTEOTOMIAS SUPRA-ACETABULARES CHIARI, PEMBERTON, DIAL, ETC', 'Osteotomia de quadril'],
+      ['PSEUDARTROSE DO ESCAFOIDE - TRATAMENTO CIRURGICO', 'Pseudartrose de escafoide'],
+      ['OSTEOSSÍNTESE DA FRATURA COMPLEXA DA MANDÍBULA', 'Osteossíntese de mandíbula'],
+      ['OSTEOSSINTESE DE FRATURA DE FALANGE E METACARPEANA COM USO DE MINIPARAFUSO', 'Osteossíntese de mão'],
+      ['RECONSTRUCAO RETENCIONAMENTO OU REFORCO DE LIGAMENTO TORN', 'Ligamento de tornozelo'],
+      ['BIÓPSIA DE PLEURA (POR ASPIRAÇÃO/AGULHA/PLEUROSCOPIA)', 'Biópsia de pleura'], ['BIOPSIA DE MASSA RETROPERITONEAL', 'Biópsia retroperitoneal'],
+      ['BIÓPSIA DE LINFONODOS PRÉ-ESCALÊNICOS – 30min', 'Biópsia de gânglio'],
+      ['CISTOLITOTOMIA E/OU RETIRADA DE CORPO ESTRANHO DA BEXIGA', 'Corpo estranho da bexiga'], ['Corpo estranho esofago', 'Corpo estranho de esôfago'],
+      ['RETIRADA DE CORPO ESTRANHO DE OUVIDO / FARINGE / LARINGE / NARIZ', 'Corpo estranho'],
+      ['IMPLANTE DE ELETRODO CEREBRAL PROFUNDO', 'Eletrodo cerebral profundo'], ['EXPLANTE DE MAMA + LIPOEXNERTIA - 02HS', 'Explante de mama'],
+    ]
+    for (const [texto, rotulo] of casos) expect(nomeCurtoProcedimento(texto), texto).toBe(rotulo)
   })
   it('vazio e nulo devolvem vazio', () => {
     expect(nomeCurtoProcedimento('')).toBe('')
