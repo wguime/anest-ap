@@ -61,7 +61,7 @@
  * ---------------------------------------------------------------
  */
 import { supabase, getSupabaseToken } from '@/config/supabase'
-import { auth } from '@/config/firebase'
+import { auth, authPronto } from '@/config/firebase'
 import { createReliableSubscription } from './supabaseSubscriptionHelper'
 
 // ============================================================================
@@ -567,6 +567,12 @@ async function createNotificationBatch(recipientIds, notifData) {
   // o INSERT seria rejeitado por RLS. Pula early e retorna shape vazio.
   // Cliente usa accessToken option → supabase.auth.getUser() lança erro.
   // auth.currentUser do Firebase é a fonte canônica de identidade no projeto.
+  // Espera o Firebase decidir a sessão: na abertura o app já está na tela antes
+  // dessa confirmação (sessão otimista) e `currentUser` ainda é null — sem a
+  // espera, o lote do boot era descartado como se fosse pós-logout. Depois do
+  // logout a promessa já está resolvida e o null continua valendo. Se a espera
+  // falhar, decide pelo estado atual, como antes.
+  try { await authPronto() } catch { /* segue com o currentUser de agora */ }
   if (!auth.currentUser?.uid) {
     console.debug('[createNotificationBatch] Skipped: no authenticated user (post-logout?)')
     return []

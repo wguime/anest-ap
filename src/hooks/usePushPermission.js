@@ -14,7 +14,7 @@
  * para desabilitar botão / mostrar spinner.
  */
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { auth, db } from '../config/firebase'
+import { auth, authPronto, db } from '../config/firebase'
 import { doc, getDoc } from 'firebase/firestore'
 import { isSupported, requestPermission, getFcmToken, unsubscribe as svcUnsubscribe } from '../services/pushNotificationService'
 
@@ -39,8 +39,12 @@ export function usePushPermission() {
     let cancelled = false
 
     ;(async () => {
+      // O app abre antes de o Firebase confirmar a sessão (sessão otimista do
+      // UserContext): sem esperar, `currentUser` ainda é null e o refresh do
+      // token desta sessão era perdido de vez (o ref acima já está marcado).
+      try { await authPronto() } catch { /* decide pelo estado atual */ }
       const user = auth.currentUser
-      if (!user) return
+      if (!user || cancelled) return
 
       try {
         const snap = await getDoc(doc(db, 'userProfiles', user.uid))

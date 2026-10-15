@@ -4,12 +4,14 @@
  */
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { doc, updateDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { auth, authPronto, db } from '../config/firebase';
 import { signIn, signUp, logOut, resetPassword, onAuthChange } from '../services/authService';
 import supabaseUsersService from '../services/supabaseUsersService';
 import { supabase } from '../config/supabase';
 import { createReliableSubscription } from '../services/supabaseSubscriptionHelper';
 import { uploadToSupabase, deleteAnyStorageObject, STORAGE_BUCKETS } from '../lib/storage';
+import { lerSessaoSalva, gravarSessao, limparSessao } from '../lib/sessaoSalva';
+import { usuarioFirebaseNoAparelho } from '../lib/tokenPersistido';
 
 const UserContext = createContext(null);
 
@@ -27,6 +29,12 @@ const CAMPOS_PRIVILEGIADOS = new Set([
   'documentCategoryPermissions', 'documentIndividualPermissions',
   'documentWritePermissions',
 ]);
+
+/** Campos que a reconciliação com o Supabase decide (ver reconcileFromSupabase). */
+const CAMPOS_RECONCILIADOS = ['role', 'isAdmin', 'isCoordenador', 'customPermissions', 'rankingOptIn', 'permissions'];
+
+const camposReconciliados = (perfil) =>
+  Object.fromEntries(CAMPOS_RECONCILIADOS.map((k) => [k, perfil?.[k]]));
 
 /**
  * Garante que usuarios com UIDs de admin tenham as flags corretas,
@@ -87,10 +95,24 @@ export function UserProvider({ children, forceMock = false }) {
   // usuário no onAuthChange.
   const reconciliadoRef = useRef(null);
 
-  const [user, setUser] = useState(null);
+  // SESSÃO OTIMISTA (abertura instantânea, 15/10/2026). Com o perfil do último
+  // login confirmado no aparelho, o app nasce autenticado e desenha a Home na
+  // hora; o Firebase confirma em segundo plano. Antes, toda abertura esperava
+  // o Firebase validar o token na rede (1,2–1,9 s medidos; 30–60 s com a rede
+  // do hospital pendurada) atrás de um spinner, com a Home já pronta em cache.
+  // Dado de negócio não vaza por aqui: Supabase e Firestore só leem depois da
+  // confirmação. `firebaseUser` continua null até ela — é o sinal de "confirmado".
+  const [sessaoInicial] = useState(() => (useMock ? null : lerSessaoSalva()));
+  // uid exibido sem confirmação; zera quando o Firebase confirma ou desmente
+  const uidOtimistaRef = useRef(sessaoInicial?.uid || null);
+  // Papel/permissões da sessão salva valem até a 1ª reconciliação desta abertura
+  // (ver o snapshot abaixo): o doc do Firestore pode estar atrás do Supabase.
+  const segurarReconciliadosRef = useRef(!!sessaoInicial);
+
+  const [user, setUser] = useState(() => (sessaoInicial ? ensureAdminFlags(sessaoInicial.perfil) : null));
   const [firebaseUser, setFirebaseUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(!useMock);
-  const [isAuthenticated, setIsAuthenticated] = useState(useMock);
+  const [isLoading, setIsLoading] = useState(!useMock && !sessaoInicial);
+  const [isAuthenticated, setIsAuthenticated] = useState(useMock || !!sessaoInicial);
   const [error, setError] = useState(null);
 
   // Listener de mudancas no estado de autenticacao Firebase
@@ -107,6 +129,16 @@ export function UserProvider({ children, forceMock = false }) {
       reconciliadoRef.current = null;
 
       if (fbUser) {
+        // A sessão salva era de OUTRA conta: o perfil dela não fica na tela nem
+        // um instante a mais — volta ao spinner até o perfil desta chegar.
+        if (uidOtimistaRef.current && uidOtimistaRef.current !== fbUser.uid) {
+          limparSessao();
+          segurarReconciliadosRef.current = false;
+          setUser(null);
+          setIsAuthenticated(false);
+          setIsLoading(true);
+        }
+        uidOtimistaRef.current = null;
         setFirebaseUser(fbUser);
 
         // Listener em tempo real do perfil no Firestore.
@@ -126,7 +158,17 @@ export function UserProvider({ children, forceMock = false }) {
             const enrichedProfile = reconciliadoRef.current
               ? ensureAdminFlags({ ...rawProfile, ...reconciliadoRef.current })
               : perfilBase;
-            setUser(enrichedProfile);
+            // Mesmo usuário já na tela (sessão salva ou snapshot anterior):
+            //  - `incidentSettings` não vem do Firestore — fica até o fetch abaixo
+            //    trocar, em vez de sumir e voltar (o acesso ao Centro de Gestão piscava);
+            //  - com a sessão salva, o papel/permissões dela ficam até a 1ª
+            //    reconciliação desta abertura: o doc pode trazer o papel velho e o
+            //    card da escala piscaria ao abrir (o laço de 27/08, pela outra porta).
+            setUser((prev) => {
+              if (!prev || (prev.uid || prev.id) !== rawProfile.id) return enrichedProfile;
+              const mantidos = segurarReconciliadosRef.current ? camposReconciliados(prev) : {};
+              return ensureAdminFlags({ ...enrichedProfile, ...mantidos, incidentSettings: prev.incidentSettings });
+            });
 
             // Buscar settings de notificação de incidentes do usuário (para acesso ao Centro de Gestão)
             supabaseUsersService.fetchMyIncidentSettings(fbUser.uid)
@@ -268,6 +310,14 @@ export function UserProvider({ children, forceMock = false }) {
                       syncFields.permissions = row.permissions;
                     }
                   }
+                  // 1ª reconciliação depois da sessão salva: a verdade de AGORA
+                  // (Firestore + Supabase) substitui o que estava segurado — inclusive
+                  // campo que deixou de divergir, para nada ficar preso no valor velho.
+                  if (segurarReconciliadosRef.current) {
+                    segurarReconciliadosRef.current = false;
+                    const verdade = { ...camposReconciliados(rawProfile), ...syncFields };
+                    setUser(prev => prev ? ensureAdminFlags({ ...prev, ...verdade }) : prev);
+                  }
                   // Repetição do que já foi reconciliado nesta sessão: o doc do
                   // Firestore continua velho (só admin persiste), então syncFields
                   // sai idêntico a cada snapshot. Re-aplicar só geraria render e log.
@@ -376,6 +426,9 @@ export function UserProvider({ children, forceMock = false }) {
           // utilizável. Liberar o gate (isLoading=false) para que o app
           // mostre LoginPage em vez de spinner infinito, e propagar o erro.
           console.error('[UserContext] onSnapshot profile error:', err);
+          // sem perfil não há sessão utilizável: a próxima abertura não deve
+          // desenhar a Home de cache para cair aqui de novo
+          limparSessao();
           setUser(null);
           setIsAuthenticated(false);
           setIsLoading(false);
@@ -385,6 +438,11 @@ export function UserProvider({ children, forceMock = false }) {
         // Record access in Supabase (fire-and-forget)
         supabaseUsersService.recordAccess(fbUser.uid).catch(console.warn);
       } else {
+        // Sem sessão no Firebase (logout, conta desativada, token revogado): a
+        // sessão salva sai junto e a tela vai para o login.
+        uidOtimistaRef.current = null;
+        segurarReconciliadosRef.current = false;
+        limparSessao();
         setFirebaseUser(null);
         setUser(null);
         setIsAuthenticated(false);
@@ -398,6 +456,36 @@ export function UserProvider({ children, forceMock = false }) {
       if (cleanupIncidentSettingsSub) cleanupIncidentSettingsSub();
     };
   }, [useMock]);
+
+  // Guarda o perfil CONFIRMADO (com a reconciliação do Supabase e os settings de
+  // incidente já aplicados — é o que os gates leem; guardar o doc cru do
+  // Firestore faria o papel piscar na próxima abertura). Nunca grava antes da
+  // confirmação: `firebaseUser` só existe depois dela.
+  // E só com "Manter conectado": sem ele o Firebase guarda o login apenas na aba,
+  // e o perfil no disco sobreviveria ao fechamento (tablet compartilhado).
+  useEffect(() => {
+    if (useMock || !firebaseUser || !user) return;
+    if ((user.uid || user.id) !== firebaseUser.uid) return;
+    const persiste = usuarioFirebaseNoAparelho({
+      storage: typeof localStorage !== 'undefined' ? localStorage : null,
+      apiKey: auth.app?.options?.apiKey,
+      appName: auth.app?.name,
+      uid: firebaseUser.uid,
+    });
+    if (persiste) gravarSessao(firebaseUser.uid, user);
+    else limparSessao();
+  }, [useMock, firebaseUser, user]);
+
+  /**
+   * uid para as escritas do perfil. Na sessão otimista o perfil já está na tela
+   * antes de o Firebase confirmar: a escrita espera a confirmação em vez de
+   * responder "não autenticado".
+   */
+  const uidConfirmado = useCallback(async () => {
+    if (firebaseUser) return firebaseUser.uid;
+    await authPronto();
+    return auth.currentUser?.uid || null;
+  }, [firebaseUser]);
 
   // Login
   const login = useCallback(async (email, password) => {
@@ -449,6 +537,8 @@ export function UserProvider({ children, forceMock = false }) {
       return { success: true };
     }
 
+    // antes do signOut: se ele falhar no meio, a próxima abertura pede login
+    limparSessao();
     const result = await logOut();
 
     if (result.error) {
@@ -472,10 +562,11 @@ export function UserProvider({ children, forceMock = false }) {
       return { success: true };
     }
 
-    if (!firebaseUser) return { success: false, error: 'Usuario nao autenticado' };
+    const uid = await uidConfirmado();
+    if (!uid) return { success: false, error: 'Usuario nao autenticado' };
 
     try {
-      const userRef = doc(db, 'userProfiles', firebaseUser.uid);
+      const userRef = doc(db, 'userProfiles', uid);
       await updateDoc(userRef, {
         ...updates,
         updatedAt: new Date(),
@@ -490,7 +581,7 @@ export function UserProvider({ children, forceMock = false }) {
           supabase
             .from('profiles')
             .update({ nome: fullName, updated_at: new Date().toISOString() })
-            .eq('id', firebaseUser.uid)
+            .eq('id', uid)
             .then(({ error: spErr }) => {
               if (spErr) console.warn('[UserContext] Supabase nome sync failed:', spErr.message);
             });
@@ -501,7 +592,7 @@ export function UserProvider({ children, forceMock = false }) {
     } catch (err) {
       return { success: false, error: err.message };
     }
-  }, [firebaseUser, user?.firstName, user?.lastName]);
+  }, [uidConfirmado, user?.firstName, user?.lastName]);
 
   // Atualizar avatar — recebe File ou null (para remover)
   const updateAvatar = useCallback(async (fileOrNull) => {
@@ -521,10 +612,10 @@ export function UserProvider({ children, forceMock = false }) {
       });
     }
 
-    if (!firebaseUser) return { success: false, error: 'Usuario nao autenticado' };
+    const uid = await uidConfirmado();
+    if (!uid) return { success: false, error: 'Usuario nao autenticado' };
 
     try {
-      const uid = firebaseUser.uid;
       const currentAvatarUrl = user?.avatar || null;
       const supabasePath = `${uid}/avatar.jpg`;
 
@@ -577,7 +668,7 @@ export function UserProvider({ children, forceMock = false }) {
       console.error('Erro ao atualizar avatar:', err);
       return { success: false, error: err.message };
     }
-  }, [firebaseUser, user?.avatar]);
+  }, [uidConfirmado, user?.avatar]);
 
   // Limpar erro
   const clearError = useCallback(() => {
@@ -590,10 +681,11 @@ export function UserProvider({ children, forceMock = false }) {
       setUser(prev => ({ ...prev, lgpdConsentAt: new Date().toISOString() }));
       return { success: true };
     }
-    if (!firebaseUser) return { success: false, error: 'Usuario nao autenticado' };
+    const uid = await uidConfirmado();
+    if (!uid) return { success: false, error: 'Usuario nao autenticado' };
     try {
       const timestamp = new Date().toISOString();
-      const userRef = doc(db, 'userProfiles', firebaseUser.uid);
+      const userRef = doc(db, 'userProfiles', uid);
       await updateDoc(userRef, {
         lgpdConsentAt: timestamp,
         updatedAt: serverTimestamp(),
@@ -603,7 +695,7 @@ export function UserProvider({ children, forceMock = false }) {
     } catch (err) {
       return { success: false, error: err.message };
     }
-  }, [firebaseUser]);
+  }, [uidConfirmado]);
 
   const needsLgpdConsent = isAuthenticated && user && !user.lgpdConsentAt;
 

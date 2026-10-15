@@ -194,3 +194,60 @@ describe('createReliableSubscription — broadcast', () => {
     }
   })
 })
+
+// Sessão otimista (abertura instantânea, 15/10/2026): o app monta antes de o
+// Firebase confirmar a sessão. Canal privado que entra sem token é recusado
+// (CHANNEL_ERROR) e a reconexão dispara onRefetch — a escala recarregava tudo
+// logo depois de abrir. Sem token no realtime, o canal espera o setAuth.
+describe('createReliableSubscription — espera o token do realtime', () => {
+  const adiada = () => {
+    let resolver
+    const promise = new Promise((r) => { resolver = r })
+    return { promise, resolver }
+  }
+
+  it('sem token ainda: o canal só entra depois que o realtime obtém o token', async () => {
+    const auth = adiada()
+    supabase.realtime = { accessTokenValue: null, setAuth: vi.fn(() => auth.promise) }
+    try {
+      createReliableSubscription({ table: 'escala_cirurgica', callback: vi.fn(), conteudo: false })
+      expect(canal('t:escala_cirurgica')).toBeUndefined()
+
+      auth.resolver()
+      await tick()
+
+      const ch = canal('t:escala_cirurgica')
+      expect(ch).toBeTruthy()
+      expect(ch.subscribe).toHaveBeenCalledTimes(1)
+    } finally {
+      delete supabase.realtime
+    }
+  })
+
+  it('cancelado antes de o token chegar: não entra em canal nenhum', async () => {
+    const auth = adiada()
+    supabase.realtime = { accessTokenValue: null, setAuth: vi.fn(() => auth.promise) }
+    try {
+      const { cleanup } = createReliableSubscription({ table: 'escala_cirurgica', callback: vi.fn(), conteudo: false })
+      cleanup()
+
+      auth.resolver()
+      await tick()
+
+      expect(canal('t:escala_cirurgica')).toBeUndefined()
+    } finally {
+      delete supabase.realtime
+    }
+  })
+
+  it('com token: entra na hora, sem esperar', () => {
+    supabase.realtime = { accessTokenValue: 'jwt', setAuth: vi.fn() }
+    try {
+      createReliableSubscription({ table: 'escala_cirurgica', callback: vi.fn(), conteudo: false })
+      expect(canal('t:escala_cirurgica')?.subscribe).toHaveBeenCalledTimes(1)
+      expect(supabase.realtime.setAuth).not.toHaveBeenCalled()
+    } finally {
+      delete supabase.realtime
+    }
+  })
+})

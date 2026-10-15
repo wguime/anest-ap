@@ -59,6 +59,8 @@ vi.mock('@/config/supabase', () => ({
 // Firebase auth — currentUser mutável por teste (fonte canônica de identidade)
 vi.mock('@/config/firebase', () => ({
   auth: { currentUser: null },
+  // a sessão já decidida (o createNotificationBatch espera o Firebase decidir)
+  authPronto: () => Promise.resolve(),
 }))
 
 import { auth } from '@/config/firebase'

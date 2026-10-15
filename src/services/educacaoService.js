@@ -2915,7 +2915,8 @@ export async function getUserStreakServerSide() {
  */
 export async function importQuestionsJsonl(cursoId, perguntas, { dryRun = false } = {}) {
   const { httpsCallable } = await import('firebase/functions');
-  const { functions } = await import('../config/firebase.js');
+  const { obterFunctions } = await import('../config/firebase.js');
+  const functions = await obterFunctions();
   const fn = httpsCallable(functions, 'importQuestionsJsonl');
   const result = await fn({ cursoId, perguntas, dryRun });
   return result.data;
@@ -2927,7 +2928,8 @@ export async function importQuestionsJsonl(cursoId, perguntas, { dryRun = false 
  */
 export async function rollbackImportQuestions(importId) {
   const { httpsCallable } = await import('firebase/functions');
-  const { functions } = await import('../config/firebase.js');
+  const { obterFunctions } = await import('../config/firebase.js');
+  const functions = await obterFunctions();
   const fn = httpsCallable(functions, 'rollbackImportQuestions');
   const result = await fn({ importId });
   return result.data;

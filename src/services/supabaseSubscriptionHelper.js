@@ -87,12 +87,32 @@ function obterCanal(topic, opts) {
     ouvintes: new Set(), // { onSinal, onStatus, onRefetch, onReconnect }
     retryCount: 0,
     retryTimer: null,
+    tentativa: 0,
     opts,
     subscribe() {
       if (this.channel) {
         supabase.removeChannel(this.channel)
         this.channel = null
       }
+      // Sessão otimista (15/10/2026): o app monta antes de o Firebase confirmar
+      // a sessão. Canal PRIVADO que entra sem token é recusado (CHANNEL_ERROR) —
+      // o realtime-js só segura os joins até ter token enquanto o socket ainda
+      // não abriu — e a reconexão que vem depois dispara `onRefetch`, recarregando
+      // a tela inteira. Sem token ainda: espera o próprio realtime obtê-lo.
+      const rt = supabase.realtime
+      if (rt && !rt.accessTokenValue && typeof rt.setAuth === 'function') {
+        const tentativa = ++this.tentativa
+        rt.setAuth()
+          .catch(() => {})
+          .then(() => {
+            if (canais.get(this.topic) === this && tentativa === this.tentativa && !this.channel) this.entrar()
+          })
+        return
+      }
+      this.tentativa++
+      this.entrar()
+    },
+    entrar() {
       // o nome do canal É o tópico: é o que o trigger endereça e o que a
       // policy de realtime.messages enxerga em realtime.topic()
       const channel = supabase

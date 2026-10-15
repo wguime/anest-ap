@@ -8,6 +8,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import { UserProvider, useUser } from '../contexts/UserContext';
+import { CHAVE_SESSAO, gravarSessao, lerSessaoSalva } from '../lib/sessaoSalva';
 
 // ─── Captured callbacks ──────────────────────────────────────────
 let authChangeCallback = null;       // callback registered by onAuthChange
@@ -39,7 +40,13 @@ vi.mock('firebase/storage', () => ({
 vi.mock('../config/firebase', () => ({
   db: { _type: 'mock-db' },
   storage: { _type: 'mock-storage' },
+  auth: { currentUser: null, app: { name: '[DEFAULT]', options: { apiKey: 'chave-teste' } } },
+  authPronto: () => Promise.resolve(),
 }));
+
+/** O Firebase guardou o login de `uid` no aparelho ("Manter conectado" marcado). */
+const loginPersistidoPeloFirebase = (uid = 'u1') =>
+  localStorage.setItem('firebase:authUser:chave-teste:[DEFAULT]', JSON.stringify({ uid }));
 
 // ─── Mock: authService ───────────────────────────────────────────
 vi.mock('../services/authService', () => ({
@@ -122,6 +129,9 @@ describe('UserContext real-time profile listener', () => {
     vi.clearAllMocks();
     authChangeCallback = null;
     snapshotCallback = null;
+    // o login de um caso grava a sessão salva; sem limpar, o caso seguinte
+    // abriria já autenticado (sessão otimista)
+    localStorage.clear();
   });
 
   // -----------------------------------------------------------
@@ -560,6 +570,7 @@ describe('UserContext — papel vindo do Supabase quando o Firestore está atrá
     vi.clearAllMocks();
     authChangeCallback = null;
     snapshotCallback = null;
+    localStorage.clear();
     // mockImplementation (não mockResolvedValue): um teste troca a implementação
     // por uma promise pendente e clearAllMocks não desfaz isso.
     mockSupabaseQuery.maybeSingle.mockImplementation(() => Promise.resolve(PADRAO_SUPABASE));
@@ -691,5 +702,218 @@ describe('UserContext — papel vindo do Supabase quando o Firestore está atrá
     });
 
     expect(JSON.parse(screen.getByTestId('user').textContent).role).toBe('colaborador');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// Sessão otimista (abertura instantânea, 15/10/2026)
+//
+// Toda abertura esperava o Firebase confirmar o token NA REDE (accounts:lookup,
+// e antes um securetoken quando o token de 1h venceu) atrás de um spinner:
+// 1,2–1,9 s medidos em produção, com a Home já pronta em cache. Com o perfil do
+// último login confirmado no aparelho, o app nasce autenticado e o Firebase
+// confirma em segundo plano. O que estes casos travam: abrir sem esperar; o
+// Firebase poder DESMENTIR (sem sessão / outra conta); e o papel salvo não
+// piscar nem ficar preso quando o Firestore está atrás do Supabase.
+// ═══════════════════════════════════════════════════════════════════
+describe('UserContext — sessão otimista (abertura instantânea)', () => {
+  const PADRAO_SUPABASE = { data: null, error: null };
+  const LINHA_ANEST = {
+    role: 'anestesiologista',
+    is_admin: false,
+    is_coordenador: false,
+    permissions: {},
+    custom_permissions: false,
+    ranking_opt_in: false,
+  };
+  const PERFIL_SALVO = {
+    id: 'u1',
+    uid: 'u1',
+    email: 'ana@anest.com.br',
+    firstName: 'Ana',
+    role: 'anestesiologista',
+    isAdmin: false,
+    isCoordenador: false,
+    permissions: { 'doc-protocolos': true },
+    lgpdConsentAt: '2026-08-01T10:00:00.000Z',
+    incidentSettings: { isResponsible: true, receberIncidentes: true, receberDenuncias: false },
+  };
+  // doc do Firestore ainda com o papel do cadastro (só admin persiste privilégio)
+  const DOC_FIRESTORE_VELHO = {
+    uid: 'u1',
+    email: 'ana@anest.com.br',
+    firstName: 'Ana',
+    role: 'colaborador',
+    isAdmin: false,
+    permissions: { 'doc-protocolos': true },
+    lgpdConsentAt: '2026-08-01T10:00:00.000Z',
+  };
+
+  const adiada = () => {
+    let resolver;
+    const promise = new Promise((r) => { resolver = r; });
+    return { promise, resolver };
+  };
+  const lerUser = () => JSON.parse(screen.getByTestId('user').textContent);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authChangeCallback = null;
+    snapshotCallback = null;
+    localStorage.clear();
+    mockSupabaseQuery.maybeSingle.mockImplementation(() => Promise.resolve(PADRAO_SUPABASE));
+  });
+
+  afterEach(async () => {
+    mockSupabaseQuery.maybeSingle.mockImplementation(() => Promise.resolve(PADRAO_SUPABASE));
+    const svc = (await import('../services/supabaseUsersService')).default;
+    svc.fetchMyIncidentSettings.mockImplementation(() => Promise.resolve(null));
+  });
+
+  it('com sessão salva, nasce autenticado com o perfil salvo — sem esperar o Firebase', () => {
+    gravarSessao('u1', PERFIL_SALVO);
+    renderWithProvider();
+
+    expect(screen.getByTestId('loading').textContent).toBe('false');
+    expect(screen.getByTestId('authenticated').textContent).toBe('true');
+    expect(lerUser().firstName).toBe('Ana');
+    expect(lerUser().role).toBe('anestesiologista');
+  });
+
+  it('sem sessão salva, continua esperando o Firebase (primeiro login)', () => {
+    renderWithProvider();
+
+    expect(screen.getByTestId('loading').textContent).toBe('true');
+    expect(screen.getByTestId('authenticated').textContent).toBe('false');
+  });
+
+  it('Firebase sem sessão (conta desativada, token revogado) → apaga a salva e vai ao login', async () => {
+    gravarSessao('u1', PERFIL_SALVO);
+    renderWithProvider();
+
+    await act(async () => {
+      await authChangeCallback(null);
+    });
+
+    expect(screen.getByTestId('authenticated').textContent).toBe('false');
+    expect(screen.getByTestId('loading').textContent).toBe('false');
+    expect(screen.getByTestId('user').textContent).toBe('null');
+    expect(localStorage.getItem(CHAVE_SESSAO)).toBeNull();
+  });
+
+  it('Firebase confirma OUTRA conta → o perfil salvo sai da tela na hora', async () => {
+    gravarSessao('u1', PERFIL_SALVO);
+    renderWithProvider();
+
+    await act(async () => {
+      await authChangeCallback({ uid: 'u2', email: 'outro@anest.com.br' });
+    });
+    expect(screen.getByTestId('user').textContent).toBe('null');
+    expect(screen.getByTestId('loading').textContent).toBe('true');
+    expect(localStorage.getItem(CHAVE_SESSAO)).toBeNull();
+
+    await act(async () => {
+      snapshotCallback(makeSnap({ uid: 'u2', email: 'outro@anest.com.br', role: 'colaborador' }, 'u2'));
+    });
+    expect(lerUser().uid).toBe('u2');
+    expect(lerUser().role).toBe('colaborador');
+    expect(screen.getByTestId('authenticated').textContent).toBe('true');
+  });
+
+  it('grava a sessão só depois da confirmação, já com o papel reconciliado', async () => {
+    mockSupabaseQuery.maybeSingle.mockResolvedValue({ data: LINHA_ANEST, error: null });
+    loginPersistidoPeloFirebase('u1');
+    renderWithProvider();
+    expect(localStorage.getItem(CHAVE_SESSAO)).toBeNull();
+
+    await act(async () => {
+      await authChangeCallback({ uid: 'u1', email: 'ana@anest.com.br' });
+    });
+    await act(async () => {
+      snapshotCallback(makeSnap(DOC_FIRESTORE_VELHO));
+    });
+
+    const salva = lerSessaoSalva();
+    expect(salva.uid).toBe('u1');
+    // é o perfil que os gates leem, não o doc cru — senão o papel piscaria na
+    // próxima abertura
+    expect(salva.perfil.role).toBe('anestesiologista');
+  });
+
+  it('papel e settings da sessão salva ficam até a reconciliação desta abertura (não pisca)', async () => {
+    gravarSessao('u1', PERFIL_SALVO);
+    const reconciliacao = adiada();
+    mockSupabaseQuery.maybeSingle.mockImplementation(() => reconciliacao.promise);
+    const svc = (await import('../services/supabaseUsersService')).default;
+    svc.fetchMyIncidentSettings.mockImplementation(() => new Promise(() => {}));
+    renderWithProvider();
+
+    await act(async () => {
+      await authChangeCallback({ uid: 'u1', email: 'ana@anest.com.br' });
+    });
+    // o Firestore entrega o doc com o papel velho; o Supabase ainda não respondeu
+    await act(async () => {
+      snapshotCallback(makeSnap(DOC_FIRESTORE_VELHO));
+    });
+    expect(lerUser().role).toBe('anestesiologista');
+    expect(lerUser().incidentSettings).toEqual(PERFIL_SALVO.incidentSettings);
+
+    await act(async () => {
+      reconciliacao.resolver({ data: LINHA_ANEST, error: null });
+    });
+    expect(lerUser().role).toBe('anestesiologista');
+  });
+
+  it('papel que mudou desde a última abertura: a reconciliação traz o de agora (nada preso)', async () => {
+    // ontem anestesiologista (vindo do Supabase); hoje o admin rebaixou nos dois lados
+    gravarSessao('u1', PERFIL_SALVO);
+    mockSupabaseQuery.maybeSingle.mockResolvedValue({ data: { ...LINHA_ANEST, role: 'colaborador' }, error: null });
+    renderWithProvider();
+
+    await act(async () => {
+      await authChangeCallback({ uid: 'u1', email: 'ana@anest.com.br' });
+    });
+    await act(async () => {
+      snapshotCallback(makeSnap(DOC_FIRESTORE_VELHO));
+    });
+
+    expect(lerUser().role).toBe('colaborador');
+  });
+
+  it('"Manter conectado" desmarcado: o Firebase guarda só na aba e a sessão NÃO vai ao disco', async () => {
+    // tablet compartilhado: quem sai sem marcar "manter" não pode deixar o perfil
+    // no aparelho, nem a Home dele aparecer para o próximo
+    gravarSessao('u1', PERFIL_SALVO); // sobra de uma abertura anterior
+    renderWithProvider();
+
+    await act(async () => {
+      await authChangeCallback({ uid: 'u1', email: 'ana@anest.com.br' });
+    });
+    await act(async () => {
+      snapshotCallback(makeSnap(DOC_FIRESTORE_VELHO));
+    });
+
+    expect(screen.getByTestId('authenticated').textContent).toBe('true');
+    expect(localStorage.getItem(CHAVE_SESSAO)).toBeNull();
+  });
+
+  it('logout apaga a sessão salva', async () => {
+    gravarSessao('u1', PERFIL_SALVO);
+    let ctx;
+    function Pega() {
+      ctx = useUser();
+      return null;
+    }
+    render(
+      <UserProvider>
+        <Pega />
+      </UserProvider>,
+    );
+
+    await act(async () => {
+      await ctx.logout();
+    });
+
+    expect(localStorage.getItem(CHAVE_SESSAO)).toBeNull();
   });
 });

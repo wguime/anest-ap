@@ -54,6 +54,7 @@ vi.mock('@/config/supabase', () => ({
 // `firebaseAuth.currentUser = null` no beforeEach.
 vi.mock('@/config/firebase', () => ({
   auth: { currentUser: { uid: 'test-uid' } },
+  authPronto: () => Promise.resolve(),
 }));
 
 vi.mock('../../services/supabaseSubscriptionHelper', () => ({

@@ -15,6 +15,8 @@
 import { createClient } from '@supabase/supabase-js'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from './firebase'
+import { lerSessaoSalva } from '../lib/sessaoSalva'
+import { tokenPersistidoValido } from '../lib/tokenPersistido'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -34,11 +36,18 @@ if (!supabaseUrl || !supabaseAnonKey) {
  * queries to run as anonymous and return 0 rows via RLS.
  */
 let _authReadyResolve
+let _authResolvido = false
 const _authReady = new Promise((resolve) => { _authReadyResolve = resolve })
 const _unsubAuthReady = onAuthStateChanged(auth, () => {
+  _authResolvido = true
   _authReadyResolve()
   _unsubAuthReady()
 })
+
+// Sessão otimista (abertura instantânea, 15/10/2026): uid do perfil que a tela
+// já mostra desde o 1º render. Lido UMA vez, na abertura — é a ele que o token
+// guardado precisa pertencer para ser usado antes da confirmação do Firebase.
+const _uidSessaoSalva = lerSessaoSalva()?.uid || null
 
 function decodeJwtPayload(token) {
   try {
@@ -109,6 +118,19 @@ async function getLegacyToken(currentUser) {
  * Preferência: Firebase ID Token nativo; fallback: JWT legado da edge.
  */
 export async function getSupabaseToken() {
+  // Antes de o Firebase anunciar o usuário (ele confirma a conta na rede, ~0,7 s
+  // medidos), o token que ele já guardou no aparelho serve se ainda vale e é do
+  // usuário que a tela mostra — as leituras saem na abertura em vez de esperar.
+  // Qualquer dúvida devolve null e segue o caminho de sempre. Ver tokenPersistido.js.
+  if (!_authResolvido) {
+    const cedo = tokenPersistidoValido({
+      storage: typeof localStorage !== 'undefined' ? localStorage : null,
+      apiKey: auth.app?.options?.apiKey,
+      appName: auth.app?.name,
+      uidEsperado: _uidSessaoSalva,
+    })
+    if (cedo) return cedo
+  }
   await _authReady
   const currentUser = auth.currentUser
   if (!currentUser) return null
