@@ -393,6 +393,12 @@ saiu do seletor, então quem só tem cirurgia de manhã fica na tarde com o `Emp
 atravessou "passa para tarde" continua no quadro por outra regra, 22/08). `localizarMeuPosto`
 recebe `turnos` com a lista oferecida e `turnoPreferido` é o do relógio quando ele está nela.
 
+**15/10: "ao abrir escala sempre abra na aba minhas" (dono).** A tela já nascia na Minhas; o que
+escapava era o app voltando do segundo plano com a escala montada noutra aba. Oculta por
+`REABRIR_EM_MINHAS_MS` (2 min) ou mais = abrir de novo → `escolherAba('minhas')`, que leva ao
+posto. Troca rápida de app (ler o recado) mantém a aba de quem opera a fila; conta de hospital
+fica fora (não tem Minhas). Trava: `escalaAberturaRapida.test.jsx` ("sempre abre na aba Minhas").
+
 ### Seletor de turno só com escolha; o turno em curso mora no subtítulo (dono 2026-09-16)
 
 Pedido: "quero que o turno válido comece a aparecer aqui [subtítulo do cabeçalho], não quero
@@ -441,6 +447,15 @@ Término "HH:MM" que atravessa a meia-noite: `diffRelogioMin` (utils) é a únic
 "falta/estourou" — `formatFaltante`, `formatRestante`, alvos da push de tempo estourado e o
 `maxDe` do espelho do tempo total. A volta de 24h só vale na janela da noite (agora ≥ 18h com
 alvo < 06h, ou o inverso); de dia, término esquecido continua "13h além".
+
+**Carga em UMA ida por hospital (15/10/2026).** `fetchEscala` pede o cabeçalho com os casos
+embutidos (`escala_cirurgica_caso(*)`, ordenados por sala/ordem com `referencedTable`) e, em
+paralelo, o histórico de trocas por `data+hospital+tipo='troca'` filtrado pelo id do cabeçalho
+(o evento não tem FK; o único gravador é o trigger `log_escala_troca`, que copia data/hospital).
+O P4 do dia sai junto com as escalas e a pergunta sobre AMANHÃ espera a carga de hoje. Eram
+duas idas em sequência + o P4 depois: "Carregando…" até 1,1–1,4 s logo depois de abrir o app.
+⚠️ Não voltar a buscar os casos pelo id numa segunda ida. Travas: `escalaFetchUmaIda.test.js`,
+`escalaCargaP4Paralelo.test.jsx`, `escalaAberturaRapida.test.jsx`.
 
 ### O dia da escala vira às 7h, não à meia-noite (dono 2026-09-23)
 

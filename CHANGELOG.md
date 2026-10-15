@@ -3,6 +3,26 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.59 (15/10/2026) — Escala Cirúrgica: dados mais cedo e sempre na aba Minhas
+
+Pedido do dono: "quero que revise lentidão ao abrir 'escalas cirúrgicas' e quero que o usuário ao abrir escala
+sempre abra na aba 'minhas'". Medido em produção depois da v5.12.58 (toque no card logo depois de abrir o app,
+CPU 4×): a moldura já vinha em 0,15–0,23 s, mas o "Carregando…" ficava até 1,06–1,36 s. Nenhuma mudança visual.
+- **Uma ida ao servidor por hospital** (`fetchEscala`): o cabeçalho traz os casos embutidos (FK caso→escala,
+  ordenados por sala e ordem no servidor) e o histórico de trocas sai em paralelo pela data+hospital, filtrado
+  pelo id da escala — eram duas idas em sequência. Conferido contra produção: mesmas escalas, mesmos casos na
+  mesma ordem, mesmo conjunto de eventos; 290–420 ms contra 700–950 ms.
+- **P4 do dia junto com as escalas** (carga e pré-carga): buscado depois, segurava o "Carregando…" uma ida a mais
+  com a escala já pronta.
+- **"Amanhã" espera a escala de hoje**: a pergunta (e a pré-carga) de amanhã disputava o banco com a carga de
+  hoje; agora sai depois que hoje chega, uma vez por data.
+- **Sempre na aba Minhas**: a página já abria na Minhas, mas o app que voltava do segundo plano com a escala
+  montada mantinha a aba de antes. Agora, fora do app por 2 min ou mais, volta à
+  Minhas e ao seu posto (como o toque na aba); troca rápida de app mantém a aba de quem opera a fila. Contas de
+  hospital (sem Minhas) ficam onde estavam.
+- **Resultado** (build local, mesmo roteiro): dados na tela em 0,42–0,79 s (produção antes: 1,06–1,36 s), sem
+  pulo de layout (CLS 0).
+
 ## v5.12.58 (15/10/2026) — Abertura instantânea: Home e Escala Cirúrgica sem espera
 
 Pedido do dono: "abertura do app está lenta, ao abrir as escalas cirúrgicas está muito lento também, demora a
