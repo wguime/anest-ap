@@ -5,5 +5,9 @@ export { default as SearchInput } from './SearchInput';
 export { default as DocumentoCard } from './DocumentoCard';
 export { default as TipoTabs } from './TipoTabs';
 
-// Componentes de Residencia
-export { EditEstagiosModal, EditPlantaoModal } from './residencia';
+// Componentes de Residencia — direto dos arquivos, NÃO do barrel './residencia':
+// o barrel traz o ResidenciaChat (dompurify + react-markdown), e como quase todo
+// o app importa deste index (PageHeader), o chat entrava no pacote de TODA
+// abertura sem ninguém usá-lo (15/10/2026).
+export { EditEstagiosModal } from './residencia/EditEstagiosModal';
+export { EditPlantaoModal } from './residencia/EditPlantaoModal';

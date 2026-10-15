@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Alert } from '@/design-system';
 import { useUser } from '@/contexts/UserContext';
-import { getCertificados } from '@/services/educacaoService';
 import { getCertificadosComAlertaExpiracao } from '@/utils/certificadoExpiracao';
 
 export function CertificadoExpiracaoBanner({ onNavigate }) {
@@ -15,6 +14,10 @@ export function CertificadoExpiracaoBanner({ onNavigate }) {
     let cancelled = false;
     (async () => {
       try {
+        // O serviço da Educação é grande (~110 KB de fonte) e este banner está na
+        // Home: import estático o punha no pacote de TODA abertura do app
+        // (15/10/2026). Carregado aqui, chega junto com a consulta.
+        const { getCertificados } = await import('@/services/educacaoService');
         const { certificados } = await getCertificados(userId);
         if (cancelled) return;
         const emitidos = (certificados || []).filter((c) => c.emitido);

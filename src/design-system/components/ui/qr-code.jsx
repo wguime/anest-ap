@@ -3,7 +3,6 @@
 // QR codes funcionais e escaneáveis
 
 import { useRef, useEffect, useCallback } from 'react'
-import QRCodeLib from 'qrcode'
 import { cn } from "@/design-system/utils/tokens"
 
 /**
@@ -44,6 +43,12 @@ function QRCode({
     if (!canvas || !value) return
 
     try {
+      // Biblioteca carregada no primeiro QR desenhado: ela é CommonJS (o
+      // tree-shaking não a tira) e o barrel do DS a punha no pacote de TODA
+      // abertura do app, sem nenhum QR na tela (15/10/2026).
+      const mod = await import('qrcode')
+      const QRCodeLib = mod.default || mod
+      if (canvasRef.current !== canvas) return
       // Gerar QR code real usando a biblioteca qrcode
       await QRCodeLib.toCanvas(canvas, value, {
         width: size,

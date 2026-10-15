@@ -12,13 +12,21 @@ import { useResidenciaChat } from '../../contexts/ResidenciaChatContext';
 import { useResidencia } from '../../hooks/useResidencia';
 import TradeRequestForm from './TradeRequestForm';
 
-// Lazy-load ReactMarkdown to avoid blocking initial render
+// ReactMarkdown sob demanda — na PRIMEIRA mensagem renderizada, não no
+// carregamento do módulo. O `import()` no topo rodava em toda abertura do app
+// (o chat entra no pacote inicial pelo barrel de components): ~118 KB de
+// markdown baixados e executados no boot sem ninguém no chat (15/10/2026).
 let ReactMarkdown = null;
-const ReactMarkdownPromise = import('react-markdown').then(mod => {
-  ReactMarkdown = mod.default;
-}).catch(() => {
-  // If react-markdown fails to load, we'll use the plain text fallback
-});
+let reactMarkdownPromise = null;
+function carregarReactMarkdown() {
+  if (!reactMarkdownPromise) {
+    reactMarkdownPromise = import('react-markdown')
+      .then((mod) => { ReactMarkdown = mod.default; return ReactMarkdown; })
+      // sem a lib, fica o fallback de texto simples
+      .catch(() => null);
+  }
+  return reactMarkdownPromise;
+}
 
 // ---------------------------------------------------------------------------
 // Error boundary to prevent blank page on render crashes
@@ -48,8 +56,16 @@ function formatBold(text) {
 
 /** Render markdown content - uses ReactMarkdown if available, fallback to simple formatting */
 function MarkdownContent({ children }) {
-  if (ReactMarkdown) {
-    return <ReactMarkdown>{children || ''}</ReactMarkdown>;
+  const [Markdown, setMarkdown] = useState(() => ReactMarkdown);
+  useEffect(() => {
+    if (Markdown) return undefined;
+    let vivo = true;
+    // componente é função: setState com updater para não ser chamado como um
+    carregarReactMarkdown().then((md) => { if (vivo && md) setMarkdown(() => md); });
+    return () => { vivo = false; };
+  }, [Markdown]);
+  if (Markdown) {
+    return <Markdown>{children || ''}</Markdown>;
   }
   // Fallback: simple bold formatting with whitespace preservation
   return (

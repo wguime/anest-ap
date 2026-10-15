@@ -1,4 +1,7 @@
-import { useState, useEffect, useId, Suspense, lazy } from "react"
+import { useState, useEffect, useId, useRef, Suspense } from "react"
+// lazy() que não suspende quando o chunk já foi pré-carregado — ver o efeito de
+// pré-carga no App e src/lib/lazyComPreload.js (abertura da escala, 15/10/2026)
+import { lazyComPreload } from "./lib/lazyComPreload"
 import { useNavigate, useLocation, useNavigationType } from "react-router"
 import { createPortal } from "react-dom"
 import { pageToPath, parsePath } from "./navigation/pageSlugs"
@@ -8,7 +11,7 @@ import { BottomNav, ErrorBoundary, useToast, useSwipeBack, useCommandPaletteShor
 // Lazy: a paleta ⌘K puxa as 73 definições de calculadora (~284KB de fonte)
 // para o índice — eager, isso tudo entrava no chunk INICIAL do app. O chunk
 // só carrega no primeiro ⌘K (raro em mobile, que é o uso dominante).
-const AppCommandPalette = lazy(() => import("./components/AppCommandPalette"))
+const AppCommandPalette = lazyComPreload(() => import("./components/AppCommandPalette"))
 import { PageLoadingFallback } from "@/design-system/components/anest/page-loading-fallback"
 import { SearchToggleButton } from "@/design-system/components/anest/search-toggle-button"
 import { ActionPill } from "@/design-system/components/anest/action-pill"
@@ -23,7 +26,7 @@ import { useOfflineQueueFlush } from "./hooks/useOfflineQueueFlush"
 
 // CalculatorShowcase é o maior arquivo do app (~2.5k linhas, 76 calculadoras
 // inline). Carrega sob demanda quando user abre /calculadoras.
-const CalculatorShowcase = lazy(() =>
+const CalculatorShowcase = lazyComPreload(() =>
   import("@/design-system/showcase/CalculatorShowcase").then((m) => ({
     default: m.CalculatorShowcase,
   }))
@@ -53,13 +56,13 @@ import QualidadePage from "./pages/QualidadePage"
 
 // Páginas frequentes mas não-críticas — lazy mesmo (perfil, comunicados,
 // pendências, notícias, etc.). Comunicados é a maior (1.8k linhas).
-const ProfilePage = lazy(() => import("./pages/ProfilePage"))
-const ComunicadosPage = lazy(() => import("./pages/ComunicadosPage"))
-const PendenciasPage = lazy(() => import("./pages/PendenciasPage"))
-const NoticiasPage = lazy(() => import("./pages/NoticiasPage"))
-const NoticiaDetalhePage = lazy(() => import("./pages/NoticiaDetalhePage"))
-const CategoriaNoticiasPage = lazy(() => import("./pages/CategoriaNoticiasPage"))
-const SearchResultsPage = lazy(() => import("./pages/SearchResultsPage"))
+const ProfilePage = lazyComPreload(() => import("./pages/ProfilePage"))
+const ComunicadosPage = lazyComPreload(() => import("./pages/ComunicadosPage"))
+const PendenciasPage = lazyComPreload(() => import("./pages/PendenciasPage"))
+const NoticiasPage = lazyComPreload(() => import("./pages/NoticiasPage"))
+const NoticiaDetalhePage = lazyComPreload(() => import("./pages/NoticiaDetalhePage"))
+const CategoriaNoticiasPage = lazyComPreload(() => import("./pages/CategoriaNoticiasPage"))
+const SearchResultsPage = lazyComPreload(() => import("./pages/SearchResultsPage"))
 
 // ─── Lazy imports — rotas pesadas/secundárias ────────────────────────────────
 // Cada `lazy()` cria um chunk próprio. Reduz main bundle e Time-To-Interactive
@@ -69,374 +72,381 @@ const SearchResultsPage = lazy(() => import("./pages/SearchResultsPage"))
 // que são named exports usam `.then(m => ({ default: m.X }))`.
 
 // Detalhe / docs (PDF viewer pesado)
-const DocumentoDetalhePage = lazy(() => import("./pages/DocumentoDetalhePage"))
-const BibliotecaPage = lazy(() => import("./pages/BibliotecaPage"))
-const GestaoDocumentalPage = lazy(() => import("./pages/GestaoDocumentalPage"))
+const DocumentoDetalhePage = lazyComPreload(() => import("./pages/DocumentoDetalhePage"))
+const BibliotecaPage = lazyComPreload(() => import("./pages/BibliotecaPage"))
+const GestaoDocumentalPage = lazyComPreload(() => import("./pages/GestaoDocumentalPage"))
 
 // Centro de Gestão / Admin
-const CentroGestaoPage = lazy(() => import("./pages/management/CentroGestaoPage"))
-const BulkImportPage = lazy(() => import("./pages/management/BulkImportPage"))
-const AuditTrailPage = lazy(() => import("./pages/management/documents/AuditTrailPage"))
+const CentroGestaoPage = lazyComPreload(() => import("./pages/management/CentroGestaoPage"))
+const BulkImportPage = lazyComPreload(() => import("./pages/management/BulkImportPage"))
+const AuditTrailPage = lazyComPreload(() => import("./pages/management/documents/AuditTrailPage"))
 
 // Educação
-const EducacaoPage = lazy(() => import("./pages/EducacaoPage"))
-const EducacaoContinuadaPage = lazy(() =>
+const EducacaoPage = lazyComPreload(() => import("./pages/EducacaoPage"))
+const EducacaoContinuadaPage = lazyComPreload(() =>
   import("./pages/educacao/EducacaoContinuadaPage").then((m) => ({ default: m.default || m.EducacaoContinuadaPage }))
 )
-const TrilhaDetalhePage = lazy(() =>
+const TrilhaDetalhePage = lazyComPreload(() =>
   import("./pages/educacao/TrilhaDetalhePage").then((m) => ({ default: m.default || m.TrilhaDetalhePage }))
 )
-const CursoDetalhePage = lazy(() =>
+const CursoDetalhePage = lazyComPreload(() =>
   import("./pages/educacao/CursoDetalhePage").then((m) => ({ default: m.default || m.CursoDetalhePage }))
 )
-const CertificadosPage = lazy(() =>
+const CertificadosPage = lazyComPreload(() =>
   import("./pages/educacao/CertificadosPage").then((m) => ({ default: m.default || m.CertificadosPage }))
 )
-const PontosPage = lazy(() =>
+const PontosPage = lazyComPreload(() =>
   import("./pages/educacao/PontosPage").then((m) => ({ default: m.default || m.PontosPage }))
 )
-const AulaPlayerPage = lazy(() =>
+const AulaPlayerPage = lazyComPreload(() =>
   import("./pages/educacao/AulaPlayerPage").then((m) => ({ default: m.default || m.AulaPlayerPage }))
 )
 
 // Admin Educação
-const AdminAulasPage = lazy(() =>
+const AdminAulasPage = lazyComPreload(() =>
   import("./pages/educacao/admin/AdminAulasPage").then((m) => ({ default: m.default || m.AdminAulasPage }))
 )
-const AdminTrilhasPage = lazy(() =>
+const AdminTrilhasPage = lazyComPreload(() =>
   import("./pages/educacao/admin/AdminTrilhasPage").then((m) => ({ default: m.default || m.AdminTrilhasPage }))
 )
-const AdminConteudoPage = lazy(() =>
+const AdminConteudoPage = lazyComPreload(() =>
   import("./pages/educacao/admin/AdminConteudoPage").then((m) => ({ default: m.default || m.AdminConteudoPage }))
 )
-const ControleEducacaoPage = lazy(() =>
+const ControleEducacaoPage = lazyComPreload(() =>
   import("./pages/educacao/admin/ControleEducacaoPage").then((m) => ({ default: m.default || m.ControleEducacaoPage }))
 )
-const CategoriasManagerPage = lazy(() =>
+const CategoriasManagerPage = lazyComPreload(() =>
   import("./pages/educacao/admin/CategoriasManagerPage").then((m) => ({ default: m.default || m.CategoriasManagerPage }))
 )
 
 // ROPs (Desafio + Quiz)
-const ROPsDesafioPage = lazy(() =>
+const ROPsDesafioPage = lazyComPreload(() =>
   import("./pages/rops/ROPsDesafioPage").then((m) => ({ default: m.default || m.ROPsDesafioPage }))
 )
-const ROPsChoiceMenuPage = lazy(() =>
+const ROPsChoiceMenuPage = lazyComPreload(() =>
   import("./pages/rops/ROPsChoiceMenuPage").then((m) => ({ default: m.default || m.ROPsChoiceMenuPage }))
 )
-const ROPsSubdivisoesPage = lazy(() =>
+const ROPsSubdivisoesPage = lazyComPreload(() =>
   import("./pages/rops/ROPsSubdivisoesPage").then((m) => ({ default: m.default || m.ROPsSubdivisoesPage }))
 )
-const ROPsQuizPage = lazy(() =>
+const ROPsQuizPage = lazyComPreload(() =>
   import("./pages/rops/ROPsQuizPage").then((m) => ({ default: m.default || m.ROPsQuizPage }))
 )
-const ROPsPodcastsPage = lazy(() =>
+const ROPsPodcastsPage = lazyComPreload(() =>
   import("./pages/rops/ROPsPodcastsPage").then((m) => ({ default: m.default || m.ROPsPodcastsPage }))
 )
-const ROPsRankingPage = lazy(() =>
+const ROPsRankingPage = lazyComPreload(() =>
   import("./pages/rops/ROPsRankingPage").then((m) => ({ default: m.default || m.ROPsRankingPage }))
 )
-const ROPsDesafioDiarioPage = lazy(() =>
+const ROPsDesafioDiarioPage = lazyComPreload(() =>
   import("./pages/rops/ROPsDesafioDiarioPage").then((m) => ({ default: m.default || m.ROPsDesafioDiarioPage }))
 )
 
 // Painel / Escalas / Residência
-const PainelGestaoPage = lazy(() => import("./pages/PainelGestaoPage"))
-const EscalasPage = lazy(() => import("./pages/EscalasPage"))
-const GerenciarResidenciaPage = lazy(() => import("./pages/GerenciarResidenciaPage"))
-const ResidenciaHubPage = lazy(() => import("./pages/ResidenciaHubPage"))
-const ResidenciaAssistentePage = lazy(() => import("./pages/ResidenciaAssistentePage"))
-const TrocasPlantaoPage = lazy(() => import("./pages/TrocasPlantaoPage"))
-const ConsultaPlantoesPage = lazy(() => import("./pages/ConsultaPlantoesPage"))
-const EscalasFuncionariasHubPage = lazy(() => import("./pages/EscalasFuncionariasHubPage"))
-const RefeicaoUnimedPage = lazy(() => import("./pages/RefeicaoUnimedPage"))
-const CodificacaoAnestesicaPage = lazy(() => import("./pages/codificacao-anestesica"))
-const EscalaCirurgicaPage = lazy(() => import("./pages/escala-cirurgica/EscalaCirurgicaPage"))
-const EscalaNumericaPage = lazy(() => import("./pages/escala-numerica/EscalaNumericaPage"))
-const AdesaoEscalaPage = lazy(() => import("./pages/escala-adesao/AdesaoEscalaPage"))
-const FeriadosPage = lazy(() => import("./pages/escala-numerica/FeriadosPage"))
+const PainelGestaoPage = lazyComPreload(() => import("./pages/PainelGestaoPage"))
+const EscalasPage = lazyComPreload(() => import("./pages/EscalasPage"))
+const GerenciarResidenciaPage = lazyComPreload(() => import("./pages/GerenciarResidenciaPage"))
+const ResidenciaHubPage = lazyComPreload(() => import("./pages/ResidenciaHubPage"))
+const ResidenciaAssistentePage = lazyComPreload(() => import("./pages/ResidenciaAssistentePage"))
+const TrocasPlantaoPage = lazyComPreload(() => import("./pages/TrocasPlantaoPage"))
+const ConsultaPlantoesPage = lazyComPreload(() => import("./pages/ConsultaPlantoesPage"))
+const EscalasFuncionariasHubPage = lazyComPreload(() => import("./pages/EscalasFuncionariasHubPage"))
+const RefeicaoUnimedPage = lazyComPreload(() => import("./pages/RefeicaoUnimedPage"))
+const CodificacaoAnestesicaPage = lazyComPreload(() => import("./pages/codificacao-anestesica"))
+// declarada junto da pré-carga da URL inicial (o main.jsx espera o chunk quando
+// o app nasce em /escala-cirurgica — destino dos pushes da escala)
+import { EscalaCirurgicaPage } from "./navigation/paginaInicial"
+const EscalaNumericaPage = lazyComPreload(() => import("./pages/escala-numerica/EscalaNumericaPage"))
+const AdesaoEscalaPage = lazyComPreload(() => import("./pages/escala-adesao/AdesaoEscalaPage"))
+const FeriadosPage = lazyComPreload(() => import("./pages/escala-numerica/FeriadosPage"))
 // gate leve (sem React) — produção exclusiva do dono durante o piloto
 import { podeVerEscalaCirurgica } from "./pages/escala-cirurgica/gate"
 import { podeVerExtratoFerias } from "./pages/ferias/gate"
-const ExtratoFeriasPage = lazy(() => import("./pages/ferias/ExtratoFeriasPage"))
-const ConsultaSobreavisoPage = lazy(() => import("./pages/ConsultaSobreavisoPage"))
-const TrocasSobreavisoPage = lazy(() => import("./pages/TrocasSobreavisoPage"))
-const TrocasPlantaoHospitalarPage = lazy(() => import("./pages/TrocasPlantaoHospitalarPage"))
-const AdminTodasTrocasFuncionariasPage = lazy(() => import("./pages/AdminTodasTrocasFuncionariasPage"))
-const AdminTodasTrocasResidenciaPage = lazy(() => import("./pages/AdminTodasTrocasResidenciaPage"))
+const ExtratoFeriasPage = lazyComPreload(() => import("./pages/ferias/ExtratoFeriasPage"))
+const ConsultaSobreavisoPage = lazyComPreload(() => import("./pages/ConsultaSobreavisoPage"))
+const TrocasSobreavisoPage = lazyComPreload(() => import("./pages/TrocasSobreavisoPage"))
+const TrocasPlantaoHospitalarPage = lazyComPreload(() => import("./pages/TrocasPlantaoHospitalarPage"))
+const AdminTodasTrocasFuncionariasPage = lazyComPreload(() => import("./pages/AdminTodasTrocasFuncionariasPage"))
+const AdminTodasTrocasResidenciaPage = lazyComPreload(() => import("./pages/AdminTodasTrocasResidenciaPage"))
 
 // Reuniões
-const ReunioesPage = lazy(() => import("./pages/ReunioesPage"))
-const ReuniaoDetalhePage = lazy(() => import("./pages/reunioes/ReuniaoDetalhePage"))
+const ReunioesPage = lazyComPreload(() => import("./pages/ReunioesPage"))
+const ReuniaoDetalhePage = lazyComPreload(() => import("./pages/reunioes/ReuniaoDetalhePage"))
 
 // Relatórios (PDF generation pesada)
-const RelatoriosPage = lazy(() => import("./pages/RelatoriosPage"))
-const RelatorioTrimestralPage = lazy(() =>
+const RelatoriosPage = lazyComPreload(() => import("./pages/RelatoriosPage"))
+const RelatorioTrimestralPage = lazyComPreload(() =>
   import("./pages/relatorios/RelatorioTrimestralPage").then((m) => ({ default: m.default || m.RelatorioTrimestralPage }))
 )
-const RelatorioIncidentesPage = lazy(() =>
+const RelatorioIncidentesPage = lazyComPreload(() =>
   import("./pages/relatorios/RelatorioIncidentesPage").then((m) => ({ default: m.default || m.RelatorioIncidentesPage }))
 )
-const RelatorioIndicadoresPage = lazy(() =>
+const RelatorioIndicadoresPage = lazyComPreload(() =>
   import("./pages/relatorios/RelatorioIndicadoresPage").then((m) => ({ default: m.default || m.RelatorioIndicadoresPage }))
 )
-const RelatorioDetalhePage = lazy(() =>
+const RelatorioDetalhePage = lazyComPreload(() =>
   import("./pages/relatorios/RelatorioDetalhePage").then((m) => ({ default: m.default || m.RelatorioDetalhePage }))
 )
 
 // Comitês / Auditorias hub
-const ComitesPage = lazy(() => import("./pages/ComitesPage"))
-const AuditoriasPage = lazy(() => import("./pages/AuditoriasPage"))
+const ComitesPage = lazyComPreload(() => import("./pages/ComitesPage"))
+const AuditoriasPage = lazyComPreload(() => import("./pages/AuditoriasPage"))
 
 // Páginas de nível secundário
-const FinanceiroPage = lazy(() => import("./pages/FinanceiroPage"))
-const OrganogramaPage = lazy(() => import("./pages/OrganogramaPage"))
-const EticaBioeticaPage = lazy(() => import("./pages/EticaBioeticaPage"))
-const DesastresPage = lazy(() => import("./pages/DesastresPage"))
-const PersonalizarAtalhosPage = lazy(() => import("./pages/PersonalizarAtalhosPage"))
+const FinanceiroPage = lazyComPreload(() => import("./pages/FinanceiroPage"))
+const OrganogramaPage = lazyComPreload(() => import("./pages/OrganogramaPage"))
+const EticaBioeticaPage = lazyComPreload(() => import("./pages/EticaBioeticaPage"))
+const DesastresPage = lazyComPreload(() => import("./pages/DesastresPage"))
+const PersonalizarAtalhosPage = lazyComPreload(() => import("./pages/PersonalizarAtalhosPage"))
 
 // Incidentes / Denúncias (formulários pesados)
-const IncidentesPage = lazy(() =>
+const IncidentesPage = lazyComPreload(() =>
   import("./pages/incidents/IncidentesPage").then((m) => ({ default: m.default || m.IncidentesPage }))
 )
-const NovoIncidentePage = lazy(() =>
+const NovoIncidentePage = lazyComPreload(() =>
   import("./pages/incidents/NovoIncidentePage").then((m) => ({ default: m.default || m.NovoIncidentePage }))
 )
-const NovaDenunciaPage = lazy(() =>
+const NovaDenunciaPage = lazyComPreload(() =>
   import("./pages/incidents/NovaDenunciaPage").then((m) => ({ default: m.default || m.NovaDenunciaPage }))
 )
-const MeusRelatosPage = lazy(() =>
+const MeusRelatosPage = lazyComPreload(() =>
   import("./pages/incidents/MeusRelatosPage").then((m) => ({ default: m.default || m.MeusRelatosPage }))
 )
-const QRCodeGeneratorPage = lazy(() =>
+const QRCodeGeneratorPage = lazyComPreload(() =>
   import("./pages/incidents/QRCodeGeneratorPage").then((m) => ({ default: m.default || m.QRCodeGeneratorPage }))
 )
-const AcompanhamentoIncidentePage = lazy(() =>
+const AcompanhamentoIncidentePage = lazyComPreload(() =>
   import("./pages/incidents/AcompanhamentoIncidentePage").then((m) => ({ default: m.default || m.AcompanhamentoIncidentePage }))
 )
-const AcompanhamentoDenunciaPage = lazy(() =>
+const AcompanhamentoDenunciaPage = lazyComPreload(() =>
   import("./pages/incidents/AcompanhamentoDenunciaPage").then((m) => ({ default: m.default || m.AcompanhamentoDenunciaPage }))
 )
-const IncidenteGestaoPage = lazy(() =>
+const IncidenteGestaoPage = lazyComPreload(() =>
   import("./pages/incidents/IncidenteGestaoPage").then((m) => ({ default: m.default || m.IncidenteGestaoPage }))
 )
-const DenunciaGestaoPage = lazy(() =>
+const DenunciaGestaoPage = lazyComPreload(() =>
   import("./pages/incidents/DenunciaGestaoPage").then((m) => ({ default: m.default || m.DenunciaGestaoPage }))
 )
-const IncidenteDetalhePage = lazy(() =>
+const IncidenteDetalhePage = lazyComPreload(() =>
   import("./pages/incidents/IncidenteDetalhePage").then((m) => ({ default: m.default || m.IncidenteDetalhePage }))
 )
-const DenunciaDetalhePage = lazy(() =>
+const DenunciaDetalhePage = lazyComPreload(() =>
   import("./pages/incidents/DenunciaDetalhePage").then((m) => ({ default: m.default || m.DenunciaDetalhePage }))
 )
-const RastrearRelatoPage = lazy(() =>
+const RastrearRelatoPage = lazyComPreload(() =>
   import("./pages/incidents/RastrearRelatoPage").then((m) => ({ default: m.default || m.RastrearRelatoPage }))
 )
 
 // KPI (charts pesados)
-const KpiInfeccaoPage = lazy(() =>
+const KpiInfeccaoPage = lazyComPreload(() =>
   import("./pages/kpi/KpiInfeccaoPage").then((m) => ({ default: m.default || m.KpiInfeccaoPage }))
 )
-const KpiAdesaoPage = lazy(() =>
+const KpiAdesaoPage = lazyComPreload(() =>
   import("./pages/kpi/KpiAdesaoPage").then((m) => ({ default: m.default || m.KpiAdesaoPage }))
 )
-const KpiEventosPage = lazy(() =>
+const KpiEventosPage = lazyComPreload(() =>
   import("./pages/kpi/KpiEventosPage").then((m) => ({ default: m.default || m.KpiEventosPage }))
 )
-const KpiSatisfacaoPage = lazy(() =>
+const KpiSatisfacaoPage = lazyComPreload(() =>
   import("./pages/kpi/KpiSatisfacaoPage").then((m) => ({ default: m.default || m.KpiSatisfacaoPage }))
 )
-const KpiTempoPage = lazy(() =>
+const KpiTempoPage = lazyComPreload(() =>
   import("./pages/kpi/KpiTempoPage").then((m) => ({ default: m.default || m.KpiTempoPage }))
 )
-const KpiMedicamentosPage = lazy(() =>
+const KpiMedicamentosPage = lazyComPreload(() =>
   import("./pages/kpi/KpiMedicamentosPage").then((m) => ({ default: m.default || m.KpiMedicamentosPage }))
 )
-const KpiDataEntryPage = lazy(() =>
+const KpiDataEntryPage = lazyComPreload(() =>
   import("./pages/kpi/KpiDataEntryPage").then((m) => ({ default: m.default || m.KpiDataEntryPage }))
 )
-const KpiHistoricoPage = lazy(() =>
+const KpiHistoricoPage = lazyComPreload(() =>
   import("./pages/kpi/KpiHistoricoPage").then((m) => ({ default: m.default || m.KpiHistoricoPage }))
 )
-const KpiIndicadorDetalhePage = lazy(() =>
+const KpiIndicadorDetalhePage = lazyComPreload(() =>
   import("./pages/kpi/KpiIndicadorDetalhePage").then((m) => ({ default: m.default || m.KpiIndicadorDetalhePage }))
 )
-const KpiDashboardOverview = lazy(() =>
+const KpiDashboardOverview = lazyComPreload(() =>
   import("./pages/kpi/KpiDashboardOverview").then((m) => ({ default: m.default || m.KpiDashboardOverview }))
 )
 
 // Ética
-const DilemasPage = lazy(() =>
+const DilemasPage = lazyComPreload(() =>
   import("./pages/etica/DilemasPage").then((m) => ({ default: m.default || m.DilemasPage }))
 )
-const ParecerUtiPage = lazy(() =>
+const ParecerUtiPage = lazyComPreload(() =>
   import("./pages/etica/ParecerUtiPage").then((m) => ({ default: m.default || m.ParecerUtiPage }))
 )
-const DiretrizesPage = lazy(() =>
+const DiretrizesPage = lazyComPreload(() =>
   import("./pages/etica/DiretrizesPage").then((m) => ({ default: m.default || m.DiretrizesPage }))
 )
-const EmissaoParecerPage = lazy(() =>
+const EmissaoParecerPage = lazyComPreload(() =>
   import("./pages/etica/EmissaoParecerPage").then((m) => ({ default: m.default || m.EmissaoParecerPage }))
 )
-const CodigoEticaPage = lazy(() =>
+const CodigoEticaPage = lazyComPreload(() =>
   import("./pages/etica/CodigoEticaPage").then((m) => ({ default: m.default || m.CodigoEticaPage }))
 )
 
 // Auditorias
-const HigieneMaosPage = lazy(() =>
+const HigieneMaosPage = lazyComPreload(() =>
   import("./pages/auditorias/HigieneMaosPage").then((m) => ({ default: m.default || m.HigieneMaosPage }))
 )
-const UsoMedicamentosPage = lazy(() =>
+const UsoMedicamentosPage = lazyComPreload(() =>
   import("./pages/auditorias/UsoMedicamentosPage").then((m) => ({ default: m.default || m.UsoMedicamentosPage }))
 )
-const AbreviaturasPage = lazy(() =>
+const AbreviaturasPage = lazyComPreload(() =>
   import("./pages/auditorias/AbreviaturasPage").then((m) => ({ default: m.default || m.AbreviaturasPage }))
 )
-const AuditoriasOperacionaisPage = lazy(() =>
+const AuditoriasOperacionaisPage = lazyComPreload(() =>
   import("./pages/auditorias/AuditoriasOperacionaisPage").then((m) => ({ default: m.default || m.AuditoriasOperacionaisPage }))
 )
-const AuditoriasConformidadePage = lazy(() =>
+const AuditoriasConformidadePage = lazyComPreload(() =>
   import("./pages/auditorias/AuditoriasConformidadePage").then((m) => ({ default: m.default || m.AuditoriasConformidadePage }))
 )
-const PoliticaGestaoQualidadePage = lazy(() =>
+const PoliticaGestaoQualidadePage = lazyComPreload(() =>
   import("./pages/auditorias/PoliticaGestaoQualidadePage").then((m) => ({ default: m.default || m.PoliticaGestaoQualidadePage }))
 )
-const PoliticaDisclosurePage = lazy(() =>
+const PoliticaDisclosurePage = lazyComPreload(() =>
   import("./pages/auditorias/PoliticaDisclosurePage").then((m) => ({ default: m.default || m.PoliticaDisclosurePage }))
 )
-const RelatorioAuditoriasRopsPage = lazy(() =>
+const RelatorioAuditoriasRopsPage = lazyComPreload(() =>
   import("./pages/auditorias/RelatorioAuditoriasRopsPage").then((m) => ({ default: m.default || m.RelatorioAuditoriasRopsPage }))
 )
 
 // Desastres
-const EmergenciaIncendioPage = lazy(() =>
+const EmergenciaIncendioPage = lazyComPreload(() =>
   import("./pages/desastres/EmergenciaIncendioPage").then((m) => ({ default: m.default || m.EmergenciaIncendioPage }))
 )
-const EmergenciaVitimasPage = lazy(() =>
+const EmergenciaVitimasPage = lazyComPreload(() =>
   import("./pages/desastres/EmergenciaVitimasPage").then((m) => ({ default: m.default || m.EmergenciaVitimasPage }))
 )
-const EmergenciaPanePage = lazy(() =>
+const EmergenciaPanePage = lazyComPreload(() =>
   import("./pages/desastres/EmergenciaPanePage").then((m) => ({ default: m.default || m.EmergenciaPanePage }))
 )
-const EmergenciaQuimicoPage = lazy(() =>
+const EmergenciaQuimicoPage = lazyComPreload(() =>
   import("./pages/desastres/EmergenciaQuimicoPage").then((m) => ({ default: m.default || m.EmergenciaQuimicoPage }))
 )
-const EmergenciaInundacaoPage = lazy(() =>
+const EmergenciaInundacaoPage = lazyComPreload(() =>
   import("./pages/desastres/EmergenciaInundacaoPage").then((m) => ({ default: m.default || m.EmergenciaInundacaoPage }))
 )
-const EmergenciaBombaPage = lazy(() =>
+const EmergenciaBombaPage = lazyComPreload(() =>
   import("./pages/desastres/EmergenciaBombaPage").then((m) => ({ default: m.default || m.EmergenciaBombaPage }))
 )
-const PlanoManualPage = lazy(() =>
+const PlanoManualPage = lazyComPreload(() =>
   import("./pages/desastres/PlanoManualPage").then((m) => ({ default: m.default || m.PlanoManualPage }))
 )
-const PlanoTimesPage = lazy(() =>
+const PlanoTimesPage = lazyComPreload(() =>
   import("./pages/desastres/PlanoTimesPage").then((m) => ({ default: m.default || m.PlanoTimesPage }))
 )
-const PlanoApoioPage = lazy(() =>
+const PlanoApoioPage = lazyComPreload(() =>
   import("./pages/desastres/PlanoApoioPage").then((m) => ({ default: m.default || m.PlanoApoioPage }))
 )
-const PlanoSimuladoPage = lazy(() =>
+const PlanoSimuladoPage = lazyComPreload(() =>
   import("./pages/desastres/PlanoSimuladoPage").then((m) => ({ default: m.default || m.PlanoSimuladoPage }))
 )
 
 // Faturamento
-const FaturamentoPage = lazy(() =>
+const FaturamentoPage = lazyComPreload(() =>
   import("./pages/faturamento/FaturamentoPage").then((m) => ({ default: m.default || m.FaturamentoPage }))
 )
-const FaturamentoDashboardPage = lazy(() =>
+const FaturamentoDashboardPage = lazyComPreload(() =>
   import("./pages/faturamento/FaturamentoDashboardPage").then((m) => ({ default: m.default || m.FaturamentoDashboardPage }))
 )
-const FaturamentoEventosPage = lazy(() =>
+const FaturamentoEventosPage = lazyComPreload(() =>
   import("./pages/faturamento/EventosPage").then((m) => ({ default: m.default || m.EventosPage }))
 )
-const FaturamentoNovoEventoPage = lazy(() =>
+const FaturamentoNovoEventoPage = lazyComPreload(() =>
   import("./pages/faturamento/NovoEventoPage").then((m) => ({ default: m.default || m.NovoEventoPage }))
 )
-const FaturamentoEventoDetalhePage = lazy(() =>
+const FaturamentoEventoDetalhePage = lazyComPreload(() =>
   import("./pages/faturamento/EventoDetalhePage").then((m) => ({ default: m.default || m.EventoDetalhePage }))
 )
-const FaturamentoNotasPage = lazy(() =>
+const FaturamentoNotasPage = lazyComPreload(() =>
   import("./pages/faturamento/NotasPage").then((m) => ({ default: m.default || m.NotasPage }))
 )
-const FaturamentoNotaDetalhePage = lazy(() =>
+const FaturamentoNotaDetalhePage = lazyComPreload(() =>
   import("./pages/faturamento/NotaDetalhePage").then((m) => ({ default: m.default || m.NotaDetalhePage }))
 )
-const FaturamentoNovaNotaPage = lazy(() =>
+const FaturamentoNovaNotaPage = lazyComPreload(() =>
   import("./pages/faturamento/NovaNotaPage").then((m) => ({ default: m.default || m.NovaNotaPage }))
 )
-const FaturamentoConveniosPage = lazy(() =>
+const FaturamentoConveniosPage = lazyComPreload(() =>
   import("./pages/faturamento/ConveniosPage").then((m) => ({ default: m.default || m.ConveniosPage }))
 )
 
 // Comunicação (mensagens internas)
-const InboxPage = lazy(() => import("./pages/communication/InboxPage"))
-const MessageDetailPage = lazy(() => import("./pages/communication/MessageDetailPage"))
+const InboxPage = lazyComPreload(() => import("./pages/communication/InboxPage"))
+const MessageDetailPage = lazyComPreload(() => import("./pages/communication/MessageDetailPage"))
 
 // Planos de Ação (PDCA)
-const PlanosAcaoPage = lazy(() =>
+const PlanosAcaoPage = lazyComPreload(() =>
   import("./pages/planos-acao/PlanosAcaoPage").then((m) => ({ default: m.default || m.PlanosAcaoPage }))
 )
-const NovoPlanoPage = lazy(() =>
+const NovoPlanoPage = lazyComPreload(() =>
   import("./pages/planos-acao/NovoPlanoPage").then((m) => ({ default: m.default || m.NovoPlanoPage }))
 )
-const PlanoAcaoDetalhePage = lazy(() =>
+const PlanoAcaoDetalhePage = lazyComPreload(() =>
   import("./pages/planos-acao/PlanoAcaoDetalhePage").then((m) => ({ default: m.default || m.PlanoAcaoDetalhePage }))
 )
 
 // Auditorias Interativas (F5)
-const AuditoriasInterativasPage = lazy(() =>
+const AuditoriasInterativasPage = lazyComPreload(() =>
   import("./pages/auditorias-interativas/AuditoriasInterativasPage").then((m) => ({ default: m.default || m.AuditoriasInterativasPage }))
 )
-const NovaAuditoriaPage = lazy(() =>
+const NovaAuditoriaPage = lazyComPreload(() =>
   import("./pages/auditorias-interativas/NovaAuditoriaPage").then((m) => ({ default: m.default || m.NovaAuditoriaPage }))
 )
-const ExecucaoAuditoriaPage = lazy(() =>
+const ExecucaoAuditoriaPage = lazyComPreload(() =>
   import("./pages/auditorias-interativas/ExecucaoAuditoriaPage").then((m) => ({ default: m.default || m.ExecucaoAuditoriaPage }))
 )
-const AuditoriaResultadoPage = lazy(() =>
+const AuditoriaResultadoPage = lazyComPreload(() =>
   import("./pages/auditorias-interativas/AuditoriaResultadoPage").then((m) => ({ default: m.default || m.AuditoriaResultadoPage }))
 )
 
 // Autoavaliação Qmentum (F6)
-const AutoavaliacaoPage = lazy(() =>
+const AutoavaliacaoPage = lazyComPreload(() =>
   import("./pages/autoavaliacao/AutoavaliacaoPage").then((m) => ({ default: m.default || m.AutoavaliacaoPage }))
 )
-const AutoavaliacaoAreaPage = lazy(() =>
+const AutoavaliacaoAreaPage = lazyComPreload(() =>
   import("./pages/autoavaliacao/AutoavaliacaoAreaPage").then((m) => ({ default: m.default || m.AutoavaliacaoAreaPage }))
 )
-const AutoavaliacaoRopPage = lazy(() =>
+const AutoavaliacaoRopPage = lazyComPreload(() =>
   import("./pages/autoavaliacao/AutoavaliacaoRopPage").then((m) => ({ default: m.default || m.AutoavaliacaoRopPage }))
 )
-const AutoavaliacaoRelatorioPage = lazy(() =>
+const AutoavaliacaoRelatorioPage = lazyComPreload(() =>
   import("./pages/autoavaliacao/AutoavaliacaoRelatorioPage").then((m) => ({ default: m.default || m.AutoavaliacaoRelatorioPage }))
 )
 
 // Dashboard Executivo (F8) — charts pesados
-const DashboardExecutivoPage = lazy(() => import("./pages/dashboard/DashboardExecutivoPage"))
+const DashboardExecutivoPage = lazyComPreload(() => import("./pages/dashboard/DashboardExecutivoPage"))
 
 // Critérios UTI
-const CriteriosUTIPage = lazy(() => import("./pages/CriteriosUTIPage"))
+const CriteriosUTIPage = lazyComPreload(() => import("./pages/CriteriosUTIPage"))
 
 // Cateter Peridural
-const CateteresPeridualPage = lazy(() =>
+const CateteresPeridualPage = lazyComPreload(() =>
   import("./pages/cateter-peridural/CateteresPeridualPage").then((m) => ({ default: m.default || m.CateteresPeridualPage }))
 )
-const NovoCateterPage = lazy(() =>
+const NovoCateterPage = lazyComPreload(() =>
   import("./pages/cateter-peridural/NovoCateterPage").then((m) => ({ default: m.default || m.NovoCateterPage }))
 )
-const CateterDetalhePage = lazy(() =>
+const CateterDetalhePage = lazyComPreload(() =>
   import("./pages/cateter-peridural/CateterDetalhePage").then((m) => ({ default: m.default || m.CateterDetalhePage }))
 )
 
 // Cirurgias Particulares (cobrança de honorários)
-const CirurgiasParticularesPage = lazy(() =>
+const CirurgiasParticularesPage = lazyComPreload(() =>
   import("./pages/cirurgias-particulares/CirurgiasParticularesPage").then((m) => ({ default: m.default || m.CirurgiasParticularesPage }))
 )
-const NovaCirurgiaParticularPage = lazy(() =>
+const NovaCirurgiaParticularPage = lazyComPreload(() =>
   import("./pages/cirurgias-particulares/NovaCirurgiaParticularPage").then((m) => ({ default: m.default || m.NovaCirurgiaParticularPage }))
 )
 
-import { EducacaoDataProvider } from "./pages/educacao/hooks"
+// Provider da Educação também sob demanda: só envolve páginas que já são lazy, e
+// o import estático pelo barrel de hooks punha o serviço inteiro da Educação
+// (~140 KB de fonte) no pacote de TODA abertura do app (15/10/2026).
+const EducacaoDataProvider = lazyComPreload(() =>
+  import("./pages/educacao/hooks/useEducacaoData").then((m) => ({ default: m.EducacaoDataProvider }))
+)
 // Provider on-demand (só nos cases do módulo): evita fetch+subscription
 // globais de dados financeiros p/ papéis sem acesso RLS.
 import { CirurgiasParticularesProvider } from "./contexts/CirurgiasParticularesContext"
@@ -923,24 +933,41 @@ function App() {
   // Sprint 10 / F6.2: drena fila de mutations offline ao mount + 'online' event.
   useOfflineQueueFlush()
 
-  // Pré-carga em idle dos chunks das páginas mais abertas: o 1º toque nelas
-  // não espera rede, e logo após um deploy o SW já guarda o chunk novo
-  // (encolhe a janela do ChunkLoadError de bundle velho). Sequencial e tarde
-  // (6s) para não disputar banda com os fetches do boot. O path do import é
-  // IGUAL ao do lazy() correspondente = Vite reusa o MESMO chunk.
+  // Pré-carga das páginas mais abertas pelo `.preload()` do lazyComPreload: o
+  // chunk chega E o lazy fica resolvido, então o 1º toque abre a página sem o
+  // spinner de transição (o lazy comum suspendia ~0,3–0,5 s mesmo com o chunk
+  // em cache — medido na escala, 15/10/2026). Logo após um deploy o SW também
+  // já guarda o chunk novo (encolhe a janela do ChunkLoadError de bundle velho).
+  // A Escala Cirúrgica vai primeiro e cedo — é a tela mais consultada e o card
+  // da Home leva a ela: no 1º idle depois da Home, com teto de 1,5 s. As demais
+  // seguem em fila a partir dos 6 s, para não disputar banda com o boot.
+  const userRef = useRef(user)
+  useEffect(() => { userRef.current = user }, [user])
   useEffect(() => {
+    let cancelado = false
+    const preloadEscala = () => {
+      if (!cancelado && podeVerEscalaCirurgica(userRef.current)) EscalaCirurgicaPage.preload().catch(() => {})
+    }
+    let cancelarEscala
+    if (typeof requestIdleCallback === 'function') {
+      const id = requestIdleCallback(preloadEscala, { timeout: 1500 })
+      cancelarEscala = () => cancelIdleCallback(id)
+    } else {
+      const id = setTimeout(preloadEscala, 1000)
+      cancelarEscala = () => clearTimeout(id)
+    }
     const timer = setTimeout(() => {
-      const paginas = [
-        () => import("./pages/escala-cirurgica/EscalaCirurgicaPage"),
-        () => import("./pages/ComunicadosPage"),
-        () => import("./pages/communication/InboxPage"),
-        () => import("./pages/EscalasPage"),
-        () => import("@/design-system/showcase/CalculatorShowcase"),
-        () => import("./pages/ProfilePage"),
-      ]
-      paginas.reduce((p, carrega) => p.then(() => carrega().catch(() => {})), Promise.resolve())
+      const paginas = [ComunicadosPage, InboxPage, EscalasPage, CalculatorShowcase, ProfilePage]
+      paginas.reduce(
+        (p, Pagina) => p.then(() => (cancelado ? null : Pagina.preload().catch(() => {}))),
+        Promise.resolve(),
+      )
     }, 6000)
-    return () => clearTimeout(timer)
+    return () => {
+      cancelado = true
+      cancelarEscala()
+      clearTimeout(timer)
+    }
   }, [])
 
   // Listen for Supabase token errors and show toast to user

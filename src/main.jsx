@@ -1,4 +1,4 @@
-import { StrictMode, Component, Suspense, useState, useEffect } from 'react'
+import { StrictMode, Component, Suspense, lazy, useState, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
 import { QueryClientProvider } from '@tanstack/react-query'
@@ -21,11 +21,14 @@ import { EscalaCirurgicaProvider } from './contexts/EscalaCirurgicaContext'
 import { EscalasFuncionariasBaseProvider } from './contexts/EscalasFuncionariasBaseContext'
 import { NoticiasProvider } from './contexts/NoticiasContext'
 import LoginPage from './pages/LoginPage'
-import VerificarCertificadoPage from './pages/educacao/VerificarCertificadoPage'
-import VerificarDocumentoPublicoPage from './pages/VerificarDocumentoPublicoPage'
+// Deep-links públicos (QR de certificado/documento): só abrem por URL direta, e
+// eager arrastavam páginas da Educação para o pacote de TODA abertura do app.
+const VerificarCertificadoPage = lazy(() => import('./pages/educacao/VerificarCertificadoPage'))
+const VerificarDocumentoPublicoPage = lazy(() => import('./pages/VerificarDocumentoPublicoPage'))
 import './index.css'
 import './pwaUpdate' // SW: check de update ao voltar ao 1º plano (aparelhos presos em bundle velho, 23/07)
 import App from './App.jsx'
+import { prepararPaginaInicial } from './navigation/paginaInicial'
 
 // Sentry init (PROD only, requer VITE_SENTRY_DSN). Lazy import → não bundla
 // em DEV e bundla apenas se DSN configurada via env build-time.
@@ -142,6 +145,11 @@ function DeferredProviders({ children }) {
  *   2. !isAuthenticated → LoginPage (no data providers yet)
  *   3. authenticated   → Tier 1 providers + DeferredProviders + App
  *
+ * Sessão otimista (15/10/2026): com o perfil do último login confirmado salvo
+ * no aparelho, o UserContext já nasce no estado 3 e o Firebase confirma em
+ * segundo plano — o spinner (estado 1) sobra só para o primeiro login e para a
+ * troca de conta. Ver src/lib/sessaoSalva.js.
+ *
  * Why splash before any decision: see firebase/quickstart-js#58 and
  * FirebaseExtended/reactfire#354 — without this, the login screen flashes
  * briefly even for users with persisted sessions, because the synchronous
@@ -224,7 +232,7 @@ function PublicRouteOrApp() {
   )
 }
 
-createRoot(document.getElementById('root')).render(
+const montar = () => createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
@@ -245,3 +253,13 @@ createRoot(document.getElementById('root')).render(
     </ErrorBoundary>
   </StrictMode>,
 )
+
+// App aberto direto numa página sob demanda (o push da escala leva a
+// /escala-cirurgica): o 1º render espera o chunk dela, no máximo 1 s, para a
+// tela entrar sem o spinner de transição. Qualquer outra URL monta na hora.
+// Falha do chunk não segura nada: monta e o Suspense/ChunkLoadError seguem
+// como sempre. Ver src/navigation/paginaInicial.js.
+Promise.race([
+  prepararPaginaInicial(),
+  new Promise((resolve) => setTimeout(resolve, 1000)),
+]).catch(() => {}).finally(montar)

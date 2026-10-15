@@ -1,14 +1,26 @@
 import React, { Suspense, useState, useEffect } from 'react'
 
-// Lazy load the entire chart module
-const chartPromise = import('./chart')
+// Lazy load the entire chart module — no PRIMEIRO uso, não no carregamento do
+// módulo. O `import('./chart')` no topo rodava assim que o barrel do DS era
+// avaliado, ou seja, em toda abertura do app: recharts (~93 KB) baixado e
+// executado no boot sem nenhum gráfico na tela (medido em produção, 15/10/2026).
+let chartPromise = null
 let resolvedModule = null
-chartPromise.then(m => { resolvedModule = m })
+const carregarChart = () => {
+  if (!chartPromise) {
+    chartPromise = import('./chart').then(
+      m => { resolvedModule = m; return m },
+      // chunk que não veio (rede/deploy): o gráfico fica vazio e o próximo uso tenta de novo
+      () => { chartPromise = null; return null },
+    )
+  }
+  return chartPromise
+}
 
 function useLazyModule() {
   const [mod, setMod] = useState(resolvedModule)
   useEffect(() => {
-    if (!mod) chartPromise.then(m => { resolvedModule = m; setMod(m) })
+    if (!mod) carregarChart().then(m => { if (m) setMod(m) })
   }, [mod])
   return mod
 }
