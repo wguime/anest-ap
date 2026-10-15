@@ -3,6 +3,21 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.57 (15/10/2026) — Nome curto da cirurgia: endoscopia certa e o local mantido
+
+Pedido do dono com a foto do HRO ("AMPUTAÇÃO CÔNICA DO COLO DO ÚTERO" saía "Endoscopia") e, em seguida,
+"importante manter o local" (microcirurgia vascular perdia o "intracraniana"). Varredura dos 2.793
+procedimentos distintos publicados por `nomeCurtoProcedimento`, com o diff antes×depois (8ef2fb78, 243cc73a):
+- **"COLO" só é colonoscopia sozinho** — colo do útero/uterino/do fêmur/vesical voltam a ser conização,
+  cerclagem, fratura de fêmur, RTU de bexiga; **"RETOSSIG." não pega a retossigmoidECTOMIA**. Broncoscopia,
+  gastrostomia endoscópica e ESD com o próprio nome; ureteroscopia ≠ cistoscopia; jejunostomia ≠ ileostomia;
+  cateter p/ hemodiálise ≠ fístula AV; corpo estranho ≠ cirurgia de laringe; neurólise ≠ túnel do carpo.
+- **Local e qualificador que mudam a cirurgia ficam no rótulo**: angioplastia coronária/periférica, stent
+  coronário/biliar, nefrectomia e tireoidectomia parcial × total, mastectomia simples × radical, histerectomia
+  ampliada, drenagem do quê (abscesso + órgão, hematoma subdural, pleural, liquórica, biliar), fraturas,
+  luxações, artrodese/artroplastia/osteotomia/osteossíntese por osso ou articulação, hérnia de disco por
+  segmento, biópsia e corpo estranho por órgão. Sem local no mapa, o rótulo segue genérico — nada é inventado.
+
 ## v5.12.56 (15/10/2026) — "Seu preenchimento" na aba Minhas
 
 Modelo A de `.tmp/melhorias-preenchimento.html`, escolhido pelo dono. No topo da aba Minhas (vendo hoje), um

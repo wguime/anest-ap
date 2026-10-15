@@ -387,6 +387,15 @@ tempo total" abaixo. Não é a volta do "+ término" de 14/09: nada nasce no car
   de novo: rodar a varredura** (procedimentos distintos dos 60 dias → `nomeCurtoProcedimento`,
   listar os rótulos de uma palavra por frequência e o diff antes×depois) em vez de corrigir só a
   foto — é o que impede a 4ª volta.
+  ⚠️ **4ª volta (dono 14/10: "Amputação cônica do colo do útero" saía Endoscopia; depois "importante
+  manter o local").** (1) Regra de família com SIGLA casa a palavra dentro de outra cirurgia: "COLO" só é
+  colonoscopia sozinho (não seguido de DO/DA/DE/UTERINO/VESICAL) e "RETOSSIG" não pode pegar
+  "RETOSSIGMOIDECTOMIA" — sigla nova no dicionário precisa de lookahead contra o órgão. (2) Rótulo de
+  família SEM o local quando o mapa diz o local é defeito: agora o território, o órgão ou o "parcial × total"
+  entram (angioplastia coronária, nefrectomia parcial, drenagem de hematoma subdural, fratura de acetábulo,
+  biópsia de pleura…). Lateralidade e via (bilateral, laparoscópica) continuam fora; lista de opções da
+  tabela ("ouvido / faringe / laringe") não escolhe local. A varredura foi feita sobre
+  `escala_cirurgica_caso.procedimento` (2.793 distintos, toda a base) — 235 grafias mudaram.
 - **`PainelTempo` devolve `meta.minutos`** quando a escolha foi DURAÇÃO (atalho ou "Outro
   tempo…"); hora exata não traz meta. Quem consome é o detalhe do caso — a fila deixou de
   abrir o painel por cirurgia em 15/09. O handler `onDefinirTerminoCaso(casoId, hhmm, meta)`
