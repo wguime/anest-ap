@@ -3,6 +3,27 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.63 (15/10/2026) — Urgência para anestesista fora da ordem pede confirmação
+
+Pedido do dono, depois do HRO da manhã: *"ao acrescentar cirurgias de urgência e for acrescentado anestesista
+que não é o próximo a ser chamado ou algum anestesista que está trabalhando envie uma mensagem confirmando se
+está correto a inclusão de anestesista fora da ordem estabelecida"*. Medido: às 11h28 a urgência foi para o
+Rafael (rodapé da Unimed) com a Karine (10º do HRO) sem cirurgia desde 11h19 e não liberada; às 12h06 foi
+para o Oscar com o Klisman (9º) livre. Escolhido por imagem o **modelo A** de
+`.tmp/confirmar-anestesista-fora-da-ordem.html`.
+- **Próximo a ser chamado = o 1º livre de cima para baixo** na fila do hospital e do turno: o inverso da
+  liberação. Livre é quem está no rodapé ou na ajuda em azul daqui, não foi liberado, não tem cirurgia aberta
+  no turno em nenhum hospital e não foi declarado ajuda em outro.
+- **Ao salvar a cirurgia nova** ("Adicionar caso") ou **ao trocar o anestesista de uma urgência/emergência**
+  (detalhe do caso), escolher outra pessoa abre o diálogo com o porquê: está na escala de outro hospital, está
+  trabalhando (sala e estado), já foi liberado (hora), e quem é o próximo. Há três saídas: **Usar [próximo]**,
+  **Trocar anestesista** e **Confirmar**. Nada é bloqueado e a fila não muda por causa da confirmação.
+- Sem diálogo nos casos em que a escolha não se compara à fila: o próprio próximo, "Definir depois", repasse de
+  cirurgia eletiva, "assumir a posição", fim de semana, noite e escala de outro dia.
+- Quem está passando a cirurgia adiante não é sugerido como próximo para ela.
+- Quem lançou a cirurgia continua sem registro no banco, porque só o status e a liberação têm autor. Em 15/10,
+  a do Oscar foi rastreada pelo log de requisições: foi a conta da Daniela.
+
 ## v5.12.62 (15/10/2026) — A fila de cada hospital fica como foi publicada
 
 Foto do dono, HRO da manhã, 12h22: **Rafael Pelissaro "Próximo a ser liberado" e Oscar com "Ajuda

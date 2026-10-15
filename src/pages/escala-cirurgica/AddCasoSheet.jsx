@@ -29,7 +29,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, Select, Input, Button, ConfirmDialog } from '@/design-system'
-import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
+import { HOSPITAL_LABEL, useEscalaCirurgica, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import useRosterResidentes from '@/hooks/useRosterResidentes'
@@ -39,6 +39,8 @@ import { conveniosDaEscala, familiaConvenio, normalizarSalaHro, turnoDeHora, sal
 import { chaveSala, CONTRATO_HRO, salasContrato } from '@/lib/escalaCirurgicaUrgencias'
 import ChipsEscolha, { GRAVIDADE_CHIPS, TIPOS_CIRURGIA } from './ChipsEscolha'
 import useEstadoUrgencias from './useEstadoUrgencias'
+import { avaliarEscolhaAnestesista } from './foraDaOrdem'
+import ConfirmarForaDaOrdem from './ConfirmarForaDaOrdem'
 
 const NOVA_SALA = '__nova__'
 const OUTRO_CONVENIO = '__outro__'
@@ -93,7 +95,10 @@ const Campo = ({ id, label, children }) => (
 export default function AddCasoSheet({ escala, turno, caso = null, onClose, onPreencherCobranca, postoInicial = '', salaInicial = '' }) {
   const { adicionarCaso, atualizarCaso, excluirCaso, definirSalasUrgencia } = useEscalaCirurgicaActions()
   const { user } = useUser()
-  const { options: rosterOpcoes, rosterByUid } = useRosterAnestesistas()
+  const { options: rosterOpcoes, rosterByUid, resolver } = useRosterAnestesistas()
+  // as três escalas da data: o "próximo a ser chamado" olha quem está ocupado em
+  // qualquer hospital (dono 15/10, `foraDaOrdem.js`)
+  const { escalas, hoje } = useEscalaCirurgica()
   const { options: opcoesResidente, residenteByUid } = useRosterResidentes()
   const edicao = !!caso
   // Em edição os campos abrem com o que está publicado. Sala e convênio guardam
@@ -135,6 +140,9 @@ export default function AddCasoSheet({ escala, turno, caso = null, onClose, onPr
   // Caso particular recém-adicionado: oferece preencher a cobrança agora
   // (o rascunho em Cirurgias Particulares já nasceu via trigger no banco).
   const [casoParticular, setCasoParticular] = useState(null)
+  // ANESTESISTA FORA DA ORDEM (dono 15/10, modelo A): a avaliação que segurou o
+  // salvar até alguém confirmar, trocar ou usar o próximo da fila.
+  const [foraDaOrdem, setForaDaOrdem] = useState(null) // { avaliacao, uid }
   // LGPD: a escala só grava INICIAIS (blur converte), mas p/ caso PARTICULAR o
   // nome completo digitado é aproveitado p/ completar a COBRANÇA — guarda o
   // último valor digitado que ainda era um nome de verdade.
@@ -295,11 +303,33 @@ export default function AddCasoSheet({ escala, turno, caso = null, onClose, onPr
     finally { setSalvando(false) }
   }
 
-  const submeter = async () => {
+  /**
+   * Quem foi escolhido está fora da ordem? Só HOJE (urgência é agora — numa escala
+   * de outro dia ninguém está em sala) e só no turno do caso. Sem escolha ("?")
+   * não há o que conferir.
+   */
+  const avaliarEscolha = (uid) => {
+    if (!uid || escala?.data !== hoje) return null
+    const r = rosterByUid.get(uid)
+    const turnoCaso = turnoDeHora(hora.trim()) || turno
+    return avaliarEscolhaAnestesista({
+      escalas, escala, turno: turnoCaso,
+      pessoa: { uid, nome: r?.apelidos?.[0] || r?.nome || '' },
+      resolverUid: resolver,
+    })
+  }
+
+  const submeter = async ({ uid = anestesistaUid, confirmado = false } = {}) => {
     if (!valido || salvando) return
     if (edicao) return salvarEdicao()
+    if (!confirmado) {
+      const avaliacao = avaliarEscolha(uid)
+      if (avaliacao?.foraDaOrdem) { setForaDaOrdem({ avaliacao, uid }); return }
+    }
+    setForaDaOrdem(null)
     setSalvando(true)
     try {
+      const anestesistaUid = uid
       const r = anestesistaUid ? rosterByUid.get(anestesistaUid) : null
       const alias = r ? (r.apelidos[0] || r.nome.split(/\s+/)[0].toUpperCase()) : ''
       const daSala = (escala?.casos || []).filter((c) => c.sala === salaFinal)
@@ -386,6 +416,23 @@ export default function AddCasoSheet({ escala, turno, caso = null, onClose, onPr
       await atualizarCaso(escala, caso.id, { turno: destino })
     } catch { /* toast no context; a hora nova já está gravada */ }
     finally { setSalvando(false); onClose?.() }
+  }
+
+  if (foraDaOrdem) {
+    const r = rosterByUid.get(foraDaOrdem.uid)
+    return (
+      <ConfirmarForaDaOrdem
+        avaliacao={foraDaOrdem.avaliacao}
+        nome={r?.nome || ''}
+        hospitalLabel={HOSPITAL_LABEL[escala?.hospital] || escala?.hospital || ''}
+        turno={turnoDeHora(hora.trim()) || turno}
+        rosterByUid={rosterByUid}
+        salvando={salvando}
+        onConfirmar={() => submeter({ uid: foraDaOrdem.uid, confirmado: true })}
+        onUsarProximo={(p) => { setAnestesistaUid(p.uid); submeter({ uid: p.uid, confirmado: true }) }}
+        onTrocar={() => setForaDaOrdem(null)}
+      />
+    )
   }
 
   if (turnoDivergente) {
@@ -626,7 +673,7 @@ export default function AddCasoSheet({ escala, turno, caso = null, onClose, onPr
           )}
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>
-            <Button onClick={submeter} disabled={!valido || salvando} className="flex-1">
+            <Button onClick={() => submeter()} disabled={!valido || salvando} className="flex-1">
               {salvando
                 ? <Loader2 className="w-4 h-4 animate-spin" />
                 : (edicao ? <Pencil className="w-4 h-4" /> : <Plus className="w-4 h-4" />)}

@@ -873,3 +873,30 @@ janela do desktop não gira); abaixo disso a conferência de sempre, intacta (to
   `.tmp/shot-recado-print.mjs` (este chama a IA de verdade).
 - ⚠️ Não há realce da linha na foto: a leitura não devolve coordenadas. Pedir isso à Vision é outra rodada
   (custo de saída).
+
+
+### Anestesista fora da ordem — confirmação ao lançar urgência (dono 2026-10-15, modelo A)
+
+Protótipo `.tmp/confirmar-anestesista-fora-da-ordem.html` (430px, dois temas). Regras em
+`src/pages/escala-cirurgica/foraDaOrdem.js` (puro) e diálogo em `ConfirmarForaDaOrdem.jsx`, que é o
+`ConfirmDialog` do DS com os motivos em `children` e o botão "Usar [próximo]".
+
+- **Próximo a ser chamado = 1º livre de cima para baixo** (escolha do dono): rodapé do turno na ordem e
+  depois a ajuda em azul daqui. Livre = não liberado (a mesma leitura de `liberacoes` da fila; o `escalado`
+  do repasse não conta), sem cirurgia aberta no turno em NENHUM hospital carregado (continuação, "?" e
+  concluída não ocupam) e sem estar declarado ajuda em outro hospital.
+- **Onde pergunta:** `AddCasoSheet` ao salvar a cirurgia nova com anestesista, e `DefinirAnestesistaSheet`
+  ao trocar o anestesista de uma URGÊNCIA/EMERGÊNCIA. Lá confere só quem ENTRA. As cirurgias que mudam de
+  mão não contam como ocupação (`ignorarCasos`), e quem está saindo não é sugerido (`quemSai`): sem isso, a
+  Daniela, ao entregar a única cirurgia, virava a "próxima" da própria cirurgia.
+- **Não pergunta:** escolha = o próximo; "Definir depois"; repasse de cirurgia eletiva (rotina de fim de
+  turno); "assumir a posição" (troca de lugar, não chamada); escala que não é de HOJE; FDS (`escalas.fds`
+  carregada); noite; turno sem rodapé publicado.
+- **Sem próximo livre:** quem é de outro hospital, está trabalhando ou já foi liberado ainda pergunta, e o
+  diálogo diz "Ninguém livre no HRO agora · N em cirurgia · M liberados". Quem é da fila daqui passa direto.
+- Só informa: confirmar não mexe na fila (a regra de v5.12.62 continua: quem é de outro rodapé e entra por
+  caso manual fica só na fila de origem).
+- Travas: `escalaForaDaOrdem.test.js` (fixture real do HRO de 15/10 às 11h28), `addCasoSheetForaDaOrdem.test.jsx`
+  e `definirAnestesistaForaDaOrdem.test.jsx`. Conferência visual: `.tmp/shot-fora-ordem-app.mjs` (bloqueia
+  TODA escrita na rede). ⚠️ O Select do DS fecha em qualquer rolagem, e o clique do Playwright rola até o
+  elemento: role antes e clique pela coordenada. O campo com busca se escolhe pelo teclado.

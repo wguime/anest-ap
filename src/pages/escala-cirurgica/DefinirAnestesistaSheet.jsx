@@ -24,13 +24,15 @@ import { useMemo, useState } from 'react'
 import { Check, ChevronDown, ChevronRight, Loader2, Search } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, Select, Button, Switch, Input } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
-import { HOSPITAL_LABEL, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
+import { HOSPITAL_LABEL, useEscalaCirurgica, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { fraseClinica, nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
 import {
   alvosTrocaResponsavel, anestesistaDaSala, filtrarPorTurno, localizarSlotRodape,
   nomeAnestesistaExibicao, normNome, salaExibicao,
 } from './utils'
+import { avaliarEscolhaAnestesista } from './foraDaOrdem'
+import ConfirmarForaDaOrdem from './ConfirmarForaDaOrdem'
 
 const primeiroNomeUpper = (nome) => String(nome || '').trim().split(/\s+/)[0]?.toUpperCase() || ''
 
@@ -55,6 +57,9 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
   const [busca, setBusca] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [assumirPosicao, setAssumirPosicao] = useState(false)
+  // ANESTESISTA FORA DA ORDEM (dono 15/10, modelo A) — { avaliacao, uid, podeUsar }
+  const [foraDaOrdem, setForaDaOrdem] = useState(null)
+  const { escalas, hoje } = useEscalaCirurgica()
 
   // MODO SALA opera SÓ no turno exibido (bug 31/07): a sala existe nos dois
   // turnos e o sheet consultava os casos do DIA INTEIRO — "Responsável atual"
@@ -211,6 +216,7 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
     : !duplaAtual ? ''
       : (escolhido && escolhido === duplaAtual.segundo) ? duplaAtual.primeiro : duplaAtual.segundo
   const segundo = podeDupla && segundoUid && segundoUid !== primeiroUid ? rosterByUid.get(segundoUid) : null
+  const segundoEscolhido = segundo
   const primeiro = primeiroUid ? rosterByUid.get(primeiroUid) || null : null
   const segundoAberto = abrirSegundo ?? !!duplaAtual
   const apelidoDe = (r) => duplaAtual?.textos?.[r?.uid] || r?.apelidos?.[0] || primeiroNomeUpper(r?.nome)
@@ -235,13 +241,42 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
     || (resultado.tipo === 'dupla' && !!duplaAtual && duplaAtual.primeiro === resultado.a && duplaAtual.segundo === resultado.b)
     || (resultado.tipo === 'sem' && jaSemAnestesista)
 
-  const confirmar = async () => {
-    const semAnest = escolhido === SEM_ANESTESISTA
+  /**
+   * FORA DA ORDEM (dono 15/10, `foraDaOrdem.js`): só quando a cirurgia é URGÊNCIA ou
+   * emergência — repassar a sala eletiva a um colega no fim do turno é rotina e não
+   * é "chamar alguém". Confere só quem ENTRA (quem já responde não foi chamado
+   * agora), e as cirurgias que estão mudando de mão não contam como ocupação.
+   * Assumir a posição é troca de lugar na fila, não chamada: fica de fora.
+   */
+  const avaliarQuemEntra = (pessoas) => {
+    if (escala?.data !== hoje || assumirPosicao) return null
+    if (!alvos.some((c) => c.tipo === 'urgencia' || c.tipo === 'emergencia')) return null
+    const jaResponde = new Set([atual.uid, duplaAtual?.primeiro, duplaAtual?.segundo].filter(Boolean))
+    for (const p of pessoas) {
+      if (!p?.uid || jaResponde.has(p.uid)) continue
+      const avaliacao = avaliarEscolhaAnestesista({
+        escalas, escala, turno: turno || alvos[0]?.turno,
+        pessoa: { uid: p.uid, nome: p.apelidos?.[0] || p.nome },
+        resolverUid: resolver, ignorarCasos: alvos.map((c) => c.id).filter(Boolean), quemSai: [...jaResponde],
+      })
+      if (avaliacao?.foraDaOrdem) return { avaliacao, uid: p.uid }
+    }
+    return null
+  }
+
+  const confirmar = async ({ confirmado = false, uidForcado = null } = {}) => {
+    const semAnest = !uidForcado && escolhido === SEM_ANESTESISTA
     // com segundo, o primeiro pode ser quem já responde (nenhuma escolha nova)
     // o primeiro pode ser quem já responde (nenhuma escolha nova) — inclusive a
     // primeira metade de uma dupla já gravada
-    const r = semAnest ? null : primeiro
+    const r = uidForcado ? rosterByUid.get(uidForcado) : semAnest ? null : primeiro
+    const segundo = uidForcado ? null : segundoEscolhido
     if (!semAnest && !r) return
+    if (!confirmado && !semAnest) {
+      const fora = avaliarQuemEntra([r, segundo])
+      if (fora) { setForaDaOrdem({ ...fora, podeUsar: !segundo }); return }
+    }
+    setForaDaOrdem(null)
     if (!segundo && !semAnest && assumirPosicao && ofereceAssumir) {
       // assumir a posição é TRANSACIONAL (rollback LIFO) — espera a persistência
       // com spinner, como o TrocaSheet; só então fecha.
@@ -288,6 +323,24 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
     totalLado ? `${totalLado} ${totalLado === 1 ? 'cirurgia' : 'cirurgias'}` : 'sem cirurgia',
     naoMudam.length ? `${naoMudam.length} terminada${naoMudam.length === 1 ? '' : 's'}` : null,
   ].filter(Boolean).join(' · ')
+
+  if (foraDaOrdem) {
+    return (
+      <ConfirmarForaDaOrdem
+        avaliacao={foraDaOrdem.avaliacao}
+        nome={rosterByUid.get(foraDaOrdem.uid)?.nome || ''}
+        hospitalLabel={HOSPITAL_LABEL[escala?.hospital] || escala?.hospital || ''}
+        turno={turno || alvos[0]?.turno}
+        rosterByUid={rosterByUid}
+        salvando={salvando}
+        onConfirmar={() => confirmar({ confirmado: true })}
+        onUsarProximo={foraDaOrdem.podeUsar
+          ? (p) => { setUidEscolhido(p.uid); confirmar({ confirmado: true, uidForcado: p.uid }) }
+          : undefined}
+        onTrocar={() => setForaDaOrdem(null)}
+      />
+    )
+  }
 
   return (
     <Sheet open onOpenChange={(o) => !o && onClose?.()}>
@@ -433,7 +486,7 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
             <Button
               className="flex-1"
               disabled={salvando || !alvos.length || semMudanca}
-              onClick={confirmar}
+              onClick={() => confirmar()}
             >
               {salvando
                 ? <Loader2 className="w-4 h-4 animate-spin" />
