@@ -251,6 +251,10 @@ export function EscalaCirurgicaProvider({ children }) {
     // cima da escala boa: um toque em "Adicionar caso" nesse estado publicava um
     // turno VAZIO por cima do real (a RPC apaga os casos do turno).
     const tentar = (p) => p.then((v) => ({ ok: true, v }), (e) => ({ ok: false, e }))
+    // P4 do dia sai JUNTO com as escalas (15/10/2026): buscado depois, segurava o
+    // "Carregando…" uma ida a mais ao servidor com a escala já na tela. Falha vira
+    // null, o padrão seguro (o coringa aparece nos 3 hospitais).
+    const p4Promise = Promise.resolve().then(() => svc.fetchP4Hospital(dia)).then((v) => v, () => null)
     try {
       const [results, fdsRes] = await Promise.all([
         Promise.all(HOSPITAIS.map((h) => tentar(svc.fetchEscala(dia, h)))),
@@ -276,12 +280,8 @@ export function EscalaCirurgicaProvider({ children }) {
       const falhou = !fdsRes.ok || results.some((r) => !r.ok)
       dispatch({ type: 'SET_ALL', payload: escalas })
       marcarErroCarga(Object.keys(erros).length ? erros : null)
-      // marcação do P4 do dia (fase noturna das Liberações) — falha vira null,
-      // que é o padrão seguro: o coringa aparece nos 3 hospitais.
-      let p4 = null
-      try {
-        p4 = await svc.fetchP4Hospital(dia)
-      } catch { p4 = null }
+      // marcação do P4 do dia (fase noturna das Liberações), pedida lá em cima
+      const p4 = await p4Promise
       if (seq !== loadSeqRef.current || dataRef.current !== dia) return
       if (escritasRef.current > 0 || mutSeqRef.current !== mutAntes) { reagendar(); return }
       dispatch({ type: 'SET_P4_HOSPITAL', payload: p4 })
@@ -349,6 +349,7 @@ export function EscalaCirurgicaProvider({ children }) {
     try {
       // Falha em qualquer hospital não cacheia: o conjunto parcial pintaria "Sem escala"
       // no hospital que só não respondeu, e o `has(dia)` acima barraria a nova tentativa.
+      const p4Promise = Promise.resolve().then(() => svc.fetchP4Hospital(dia)).then((v) => v, () => null)
       const [results, fdsRow] = await Promise.all([
         Promise.all(HOSPITAIS.map((h) => svc.fetchEscala(dia, h))),
         ehDataFilaUnica(dia) ? svc.fetchEscala(dia, FDS_HOSPITAL) : Promise.resolve(null),
@@ -356,8 +357,7 @@ export function EscalaCirurgicaProvider({ children }) {
       if (!results.some(Boolean) && !fdsRow) return // nada publicado: não cacheia
       const escalas = { fds: fdsRow }
       HOSPITAIS.forEach((h, i) => { escalas[h] = results[i] || null })
-      let p4 = null
-      try { p4 = await svc.fetchP4Hospital(dia) } catch { p4 = null }
+      const p4 = await p4Promise
       cacheRef.current.set(dia, { escalas, p4Hospital: p4 })
     } catch { /* silencioso: é adiantamento, não caminho crítico */ }
   }, [])

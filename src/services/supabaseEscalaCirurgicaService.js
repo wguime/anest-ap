@@ -122,34 +122,34 @@ function casoToRow(caso, escalaId) {
 // LEITURA
 // ============================================================================
 
-/** Busca a escala (cabeçalho + casos ordenados) de um hospital numa data. */
+/**
+ * Busca a escala (cabeçalho + casos ordenados + histórico de trocas) de um hospital
+ * numa data — em UMA ida ao servidor (15/10/2026).
+ *
+ * Eram duas em sequência: o cabeçalho e, com o id dele, casos + histórico. Medido em
+ * produção: ~210 ms de servidor por ida (p90 ~700 ms) mais a rede até os EUA, e a
+ * escala aberta logo depois do app ficava 1,1–2,5 s em "Carregando…". Agora os casos
+ * vêm EMBUTIDOS no cabeçalho (FK caso→escala, índice escala_id+sala+ordem) e o
+ * histórico sai em PARALELO pela data+hospital: o único gravador de evento de troca
+ * (trigger `log_escala_troca`) copia os dois da própria escala — conferido no banco em
+ * 15/10: 477 de 477 —, e o id ainda é checado aqui. Falha do histórico continua sem
+ * esconder a escala.
+ */
 async function fetchEscala(data, hospital) {
-  const { data: header, error } = await supabase
-    .from('escala_cirurgica')
-    .select('*')
-    .eq('data', data)
-    .eq('hospital', hospital)
-    .maybeSingle()
-
-  if (error) handleError(error, 'fetchEscala:header')
-  if (!header) return null
-
-  // Casos e histórico dependem só do header: as duas leituras vão JUNTAS (16/09 —
-  // cada recarga da escala pagava três idas em sequência, ~1,3 s; agora duas).
-  // O histórico de trocas é somente leitura e serve para manter o contexto no
-  // card mesmo quando a troca foi desfeita e o override operacional foi limpo.
-  // Falha nessa consulta não pode esconder a escala principal.
-  const [casosRes, eventosRes] = await Promise.all([
+  const [escalaRes, eventosRes] = await Promise.all([
     supabase
-      .from('escala_cirurgica_caso')
-      .select('*')
-      .eq('escala_id', header.id)
-      .order('sala', { ascending: true })
-      .order('ordem', { ascending: true }),
+      .from('escala_cirurgica')
+      .select('*, escala_cirurgica_caso(*)')
+      .eq('data', data)
+      .eq('hospital', hospital)
+      .order('sala', { ascending: true, referencedTable: 'escala_cirurgica_caso' })
+      .order('ordem', { ascending: true, referencedTable: 'escala_cirurgica_caso' })
+      .maybeSingle(),
     supabase
       .from('escala_cirurgica_evento')
-      .select('anestesista,detalhe,status_para,em,tipo')
-      .eq('escala_id', header.id)
+      .select('escala_id,anestesista,detalhe,status_para,em,tipo')
+      .eq('data', data)
+      .eq('hospital', hospital)
       .eq('tipo', 'troca')
       .order('em', { ascending: false })
       // janela: o consumo reduz ao último posicao_assumida por chave; sem teto,
@@ -157,11 +157,18 @@ async function fetchEscala(data, hospital) {
       .limit(60)
       .then((r) => r, (e) => ({ data: null, error: e })),
   ])
-  const { data: casos, error: casosErr } = casosRes
-  if (casosErr) handleError(casosErr, 'fetchEscala:casos')
 
+  const { data: linha, error } = escalaRes
+  if (error) handleError(error, 'fetchEscala:header')
+  if (!linha) return null
+
+  const { escala_cirurgica_caso: casos, ...header } = linha
   let trocasHistorico = []
-  if (!eventosRes?.error) trocasHistorico = (eventosRes?.data || []).map(toCamelCase)
+  if (!eventosRes?.error) {
+    trocasHistorico = (eventosRes?.data || [])
+      .filter((ev) => !ev.escala_id || ev.escala_id === header.id)
+      .map(({ escala_id: _escalaId, ...ev }) => toCamelCase(ev))
+  }
 
   return { ...toCamelCase(header), casos: (casos || []).map(toCamelCase), trocasHistorico }
 }
