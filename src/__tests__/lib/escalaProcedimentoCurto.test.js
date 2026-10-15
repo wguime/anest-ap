@@ -99,7 +99,7 @@ const casos = [
   ['FRATURA DOS OSSOS NASAIS - REDUCAO CIRURGICA', 'Fratura nasal'],
   ['IMPLANTE DE STENT CORONARIO', 'Stent coronário'],
   ['FECHAMENTO DE COLOSTOMIA OU ENTEROSTOMIA', 'Fechamento de ostomia'],
-  ['JEJUNOSTOMIA / ILEOSTOMIA', 'Ileostomia'],
+  ['JEJUNOSTOMIA / ILEOSTOMIA', 'Jejunostomia'], // "A / B" é a A (14/10)
   ['DRENAGEM DE ABSCESSO RENAL', 'Drenagem de abscesso'],
   ['RECONSTRUÇÃO LIGAMENTAR + MENISCECTOMIA', 'Reconstrução ligamentar'],
   ['LESOES LIGAMENTARES CRONICAS AO NIVEL DO TORNOZELO', 'Ligamento de tornozelo'],
@@ -255,6 +255,40 @@ describe('nomeCurtoProcedimento — fallback para o que o dicionário não conhe
   it('"C/", "P/", "S/" são abreviações, não separam cirurgias', () => {
     expect(nomeCurtoProcedimento('RESSECCAO DE TUMOR DE MEDIASTINO P/VIDEO')).toBe('Ressecção de tumor de mediastino')
     expect(nomeCurtoProcedimento('01 REINTERVENÇÃO c/ tópica')).toBe('1 reintervenção')
+  })
+  it('dono 14/10: "colo" e "retossig" só são endoscopia quando são o exame', () => {
+    expect(nomeCurtoProcedimento('AMPUTAÇÃO CÔNICA DO COLO DO ÚTERO')).toBe('Conização')
+    expect(nomeCurtoProcedimento('CERCLAGEM DO COLO UTERINO')).toBe('Cerclagem')
+    expect(nomeCurtoProcedimento('CONIZAÇÃO DO COLO UTERINO')).toBe('Conização')
+    expect(nomeCurtoProcedimento('Fratura proximal do colo do fêmur')).toBe('Fratura de fêmur')
+    expect(nomeCurtoProcedimento('RESSECÇÃO ENDOSCÓPICA DO COLO VESICAL')).toBe('RTU de bexiga')
+    expect(nomeCurtoProcedimento('RETOSSIGMOIDECTOMIA ABDOMINAL')).toBe('Retossigmoidectomia')
+    expect(nomeCurtoProcedimento('COLONOSCOPIA (INCLUI A RETOSSIGMOIDOSCOPIA)')).toBe('Endoscopia')
+    expect(nomeCurtoProcedimento('01 COLO')).toBe('1 COLO')
+    expect(nomeCurtoProcedimento('01 EDA C/ COLO + 04 EDA + 03 COLO')).toBe('1 EDA c/ COLO + 4 EDA + 3 COLO')
+    expect(nomeCurtoProcedimento('01 RETOSSIG. + 01 COLO')).toBe('1 retossig + 1 COLO')
+  })
+  it('dono 14/10: a família certa, não a vizinha', () => {
+    expect(nomeCurtoProcedimento('BRONCOSCOPIA COM OU SEM ASPIRADO OU LAVA')).toBe('Broncoscopia')
+    expect(nomeCurtoProcedimento('01 ECOBRONCO (2H) + 01 BRONCOSCOP.')).toBe('1 ecobronco + 1 broncoscop')
+    expect(nomeCurtoProcedimento('GASTROSTOMIA ENDOSCOPICA')).toBe('Gastrostomia endoscópica')
+    expect(nomeCurtoProcedimento('ESD - 3H')).toBe('ESD')
+    expect(nomeCurtoProcedimento('Ureteroscopia rigida')).toBe('Ureteroscopia')
+    expect(nomeCurtoProcedimento('CISTOSCOPIA E/OU URETEROSCOPIA')).toBe('Cistoscopia')
+    expect(nomeCurtoProcedimento('JEJUNOSTOMIA ENDOSCOPICA')).toBe('Jejunostomia')
+    expect(nomeCurtoProcedimento('MICROCIRURGIA VASCULAR INTRACRANIANA')).toBe('Microcirurgia vascular')
+    expect(nomeCurtoProcedimento('MICROCIRURGIA PARA TUMOR INTRACRANIANO')).toBe('Tumor intracraniano')
+    expect(nomeCurtoProcedimento('IMPLANTE DE CATETER DE LONGA PERMANÊNCIA P/ HEMODIÁLISE')).toBe('Cateter de hemodiálise')
+    expect(nomeCurtoProcedimento('RETIRADA DE CORPO ESTRANHO DE OUVIDO / FARINGE / LARINGE / NARIZ')).toBe('Corpo estranho')
+    expect(nomeCurtoProcedimento('ARTRODESE AO NIVEL DO TORNOZELO - TRATAMENTO CIRURGICO')).toBe('Artrodese de tornozelo')
+    expect(nomeCurtoProcedimento('NEUROLISE DAS SINDROMES COMPRESSIVAS')).toBe('Neurólise')
+    expect(nomeCurtoProcedimento('ALONGAMENTO / ENCURTAMENTO MIOTENDINOSO')).toBe('Alongamento miotendinoso')
+    expect(nomeCurtoProcedimento('APLICACAO DE MEDULA OSSEA OU CELULAS TRONCO')).toBe('Célula-tronco')
+    expect(nomeCurtoProcedimento('IMPLANTE TRANSCATETER DE PRÓTESE VALVAR AÓRTICA (TAVI)')).toBe('TAVI')
+    expect(nomeCurtoProcedimento('ABDOM. C/ LIPO + ENXERTIA GLUTEA')).toBe('Abdominoplastia')
+    expect(nomeCurtoProcedimento('RNM crânio')).toBe('RM')
+    expect(nomeCurtoProcedimento('TORACECTOMIA SIMPLES 3HS')).toBe('Toracectomia simples')
+    expect(nomeCurtoProcedimento('Exploração cirúrgica de nervo 1:30H')).toBe('Exploração cirúrgica de nervo')
   })
   it('vazio e nulo devolvem vazio', () => {
     expect(nomeCurtoProcedimento('')).toBe('')

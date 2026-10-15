@@ -120,7 +120,7 @@ function rotuloContado(bruto) {
     else {
       rotulo = nomeCurtoProcedimento(resto)
       // a família engoliria o exame que o mapa nomeou: "01 BRONCOSCOPIA" é "1 broncoscopia", não "1 endoscopia"
-      if (rotulo === 'Endoscopia' && !/\s/.test(resto)) rotulo = resto.toLowerCase()
+      if ((rotulo === 'Endoscopia' || rotulo === 'Broncoscopia') && !/\s/.test(resto)) rotulo = resto.toLowerCase()
     }
     if (!rotulo) continue
     itens.push((n == null ? rotulo : `${n} ${aposNumero(rotulo)}`) + com)
@@ -140,9 +140,15 @@ const DICIONARIO = [
   [/^\d+\s+\S/, (m, s, bruto) => rotuloContado(bruto) || null],
   // CPRE é CPRE (dono 21/09, foto do card: "quando vier esse nome coloque apenas CPRE e não endoscopia")
   [/\bCPRE\b|\bCOLANGIOPANCREATOGRAFIA\b|\bCOLANGIO ?PANCREATO\w*/, 'CPRE'],
-  [/\b(EDA|COLO|COLONO|RETOSSIG\w*|ENDOSCOPIA|ECOEDA|ESD|GASTROSTOMIA ENDOSCOPICA|BRONCOSCOP\w*|BRONCO|ECOBRONCO)\b/, 'Endoscopia'],
+  // dono 14/10 ("um desses procedimentos a leitura foi de endoscopia e está errado"): "COLO" é a
+  // colonoscopia só quando vem SOZINHO — "colo do útero", "colo uterino", "colo do fêmur", "colo
+  // vesical" são cirurgias; e "RETOSSIG." é a retossigmoidoscopia, nunca a retossigmoidECTOMIA
+  [/\bGASTROSTOMIA ENDOSCOPICA\b/, 'Gastrostomia endoscópica'],
+  [/\b(ECOBRONCO|BRONCOSCOP\w*|BRONCO)\b/, 'Broncoscopia'],
+  [/\bESD\b/, 'ESD'],
+  [/\b(EDA|COLONO\w*|RETOSSIG(?!MOIDECTOM)\w*|ENDOSCOPIA|ECOEDA)\b|\bCOLO\b(?!\s+(DO|DA|DE|UTERIN\w*|VESICAL)\b)/, 'Endoscopia'],
   [/\bTC\b.*\bRM\b|\bRM\b.*\bTC\b/, 'TC + RM'],
-  [/\bRMN?\b|\bRESSONANCIA\b/, 'RM'],
+  [/\bRN?MN?\b|\bRESSONANCIA\b/, 'RM'],
   [/\bTC\b/, 'TC'],
   // vitrectomia antes da FACO: "01 VITRECT. C/FACO" é vitrectomia (com faco junto)
   [/\bVITRECT\w*/, 'Vitrectomia'],
@@ -171,7 +177,10 @@ const DICIONARIO = [
   [/\bABLACAO\b/, 'Ablação'],
   [/\bANGIOGRAFIA\b/, 'Angiografia'],
   [/\bOCLUSAO PERCUTANEA\b/, 'Oclusão percutânea'],
+  [/\bTAVI\b/, 'TAVI'],
   [/\bVALVAR\b/, 'Cirurgia valvar'],
+  // cateter PARA hemodiálise não é a fístula (dono 14/10)
+  [/\bCATETER\b.*\bHEMODIALISE\b/, 'Cateter de hemodiálise'],
   [/\bFISTULA AV\b|\bHEMODIALISE\b/, 'Fístula AV'],
   // ── urologia ───────────────────────────────────────────────────────────
   // próstata e bexiga são cirurgias diferentes com a mesma sigla (dono 17/09)
@@ -187,7 +196,9 @@ const DICIONARIO = [
   [/\b(COLOCACAO|INSTALACAO|IMPLANTE|PASSAGEM|INSERCAO)\b.*\bDUPLO J\b/, 'Colocação de duplo J'],
   [/\bTROCA\b.*\bDUPLO J\b/, 'Troca de duplo J'],
   [/\bDUPLO J\b|^JJ$/, 'Duplo J'],
-  [/\bCISTOSCOPIA\b|\bURETEROSCOPIA\b/, 'Cistoscopia'],
+  // "CISTOSCOPIA E/OU URETEROSCOPIA" é a cistoscopia (a primeira); ureteroscopia sozinha é ureteroscopia
+  [/\bCISTOSCOPIA\b/, 'Cistoscopia'],
+  [/\bURETEROSCOPIA\b/, 'Ureteroscopia'],
   [/\bNEFRECTOMIA\b/, 'Nefrectomia'],
   [/\bPOSTECTOMIA\b/, 'Postectomia'],
   [/\bORQUIDOPEXIA\b/, 'Orquidopexia'],
@@ -235,7 +246,7 @@ const DICIONARIO = [
   [/\bENTERECTOMIA\b/, 'Enterectomia'],
   [/\bFECHAMENTO\b.*\b(COLOSTOMIA|ILEOSTOMIA|ENTEROSTOMIA)\b/, 'Fechamento de ostomia'],
   [/\bCOLOSTOMIA\b/, 'Colostomia'],
-  [/\bILEOSTOMIA\b|\bJEJUNOSTOMIA\b/, 'Ileostomia'],
+  [/\bILEOSTOMIA\b|\bJEJUNOSTOMIA\b/, (m, s) => primeiro(s, [[/\bJEJUNOSTOMIA\b/, 'Jejunostomia'], [/\bILEOSTOMIA\b/, 'Ileostomia']])],
   [/\bHEPATECTOMIA\b/, 'Hepatectomia'],
   [/\bHIPEC\b|\bCITORREDUTORA\b/, 'HIPEC'],
   [/\bTIREOIDECTOMIA\b/, 'Tireoidectomia'],
@@ -260,6 +271,8 @@ const DICIONARIO = [
   [/\bLIFTING\b/, 'Lifting'],
   [/\bLIPOABDOMINOPLASTIA\b/, 'Lipoabdominoplastia'],
   [/\bDERMOLIPECTOMIA\b|\bABDOMINOPLASTIA\b/, 'Abdominoplastia'],
+  // "ABDOM. C/ LIPO", "ABDOMEN + LIPOS": a abdominoplastia é a cirurgia, a lipo vem junto
+  [/^ABDOM\.|^ABDOMEN\b.*\bLIPO/, 'Abdominoplastia'],
   [/\bLIPO(ASPIRACAO|ENXERTIA)?\b/, 'Lipoaspiração'],
   [/\bBRAQUIOPLASTIA\b/, 'Braquioplastia'],
   // ── otorrino ───────────────────────────────────────────────────────────
@@ -271,6 +284,7 @@ const DICIONARIO = [
   [/\bTIMPANOPLASTIA\b|\bMIRINGOPLASTIA\b/, 'Timpanoplastia'],
   [/\bMICROCIRURGIA OTOLOGICA\b/, 'Microcirurgia otológica'],
   [/\bEXERESE DE PAPILOMA\b/, 'Exérese de papiloma'], // antes da laringe: o papiloma é a cirurgia
+  [/\bCORPOS? ESTRANHOS?\b/, 'Corpo estranho'], // "corpo estranho de ouvido / faringe / laringe" não é cirurgia de laringe
   [/\bFARINGECTOMIA\b|\bLARINGE\b/, 'Cirurgia de laringe'],
   // ── ortopedia ──────────────────────────────────────────────────────────
   [/\bMANGUITO ROTADOR\b/, 'Manguito rotador'],
@@ -290,6 +304,7 @@ const DICIONARIO = [
   [/\bARTRODESE\b.*\bCERVIC\w*/, 'Artrodese cervical'],
   [/\bARTRODESE\b.*\bTORACO-?LOMB\w*/, 'Artrodese toracolombar'],
   [/\bARTRODESE\b.*\bLOMB\w*/, 'Artrodese lombar'],
+  [/\bARTRODESE\b.*\bTORNOZELO\b/, 'Artrodese de tornozelo'], // "AO NIVEL DO TORNOZELO" não é nível de coluna
   [/\bARTRODESE\b.*\b(COLUNA|INTERSOMATICA|POSTERO-?LATERAL|VIA ANTERIOR|SEGMENTO|NIVE(L|IS))\b/, 'Artrodese de coluna'],
   [/\bARTRODESE\b.*\b(INTERFALANG\w*|METACARPO\w*|METATARSO\w*)/, 'Artrodese de dedo'],
   [/\bARTRODESE\b.*\b(TARSO|MEDIO PE)\b/, 'Artrodese de tarso'],
@@ -302,7 +317,9 @@ const DICIONARIO = [
     return alvo ? `Infiltração ${alvo}` : 'Infiltração'
   }],
   [/\bDESCOMPRESSAO MEDULAR\b/, 'Descompressão medular'],
-  [/\bTUNEL DO CARPO\b|\bNEUROLISE\b|\bSINDROMES COMPRESSIVAS\b/, 'Túnel do carpo'],
+  [/\bTUNEL DO CARPO\b/, 'Túnel do carpo'],
+  // neurólise é de qualquer nervo (ulnar, fibular…): só o mapa que diz "carpo" é túnel do carpo
+  [/\bNEUROLISE\b|\bSINDROMES COMPRESSIVAS\b/, 'Neurólise'],
   [/\bNEUROPATIAS COMPRESSIVAS\b/, 'Neuropatias compressivas'],
   [/\bDEDO EM (MARTELO|GARRA|BOTOEIRA|BOTEIRA)\b/, (m) => `Dedo em ${m[1].toLowerCase()}`],
   [/\bHALLUX VALGUS\b/, 'Hallux valgus'],
@@ -330,6 +347,7 @@ const DICIONARIO = [
   [/\bOSTEOSSINTESE\b/, 'Osteossíntese'],
   [/\bRETIRADA DE (FIO|PINO|PLACA|MATERIAL|FIXADOR)\w*|\bRETIRADA DE PLACA\b/, 'Retirada de material'],
   [/\bFIOS PINOS\b|\bFIOS OU PINOS\b|\bHASTES METALICAS\b/, 'Fixação com pinos'],
+  [/\bALONGAMENTO\b.*\bMIOTENDIN\w*/, 'Alongamento miotendinoso'],
   [/\bALONGAMENTO\b/, 'Alongamento ósseo'],
   [/\bAMPUTACAO\b|\bDESARTICULACAO\b/, (m, s) => {
     const seg = primeiro(s, [[/\bDEDO\w*/, 'de dedo'], [/\bPE\b|\bTARSO\b/, 'de pé'], [/\bMEMBROS? INFERIOR\w*|\bCOXA\b|\bPERNA\b/, 'de membro inferior'], [/\bMEMBROS? SUPERIOR\w*|\bBRACO\b|\bANTEBRACO\b/, 'de membro superior'], [/\bMAO\b/, 'de mão']])
@@ -361,9 +379,10 @@ const DICIONARIO = [
     return art ? `Luxação ${art}` : 'Luxação'
   }],
   // ── neuro ──────────────────────────────────────────────────────────────
+  // "MICROCIRURGIA VASCULAR INTRACRANIANA" é aneurisma/malformação, não tumor
+  [/\bMICROCIRURGIA VASCULAR\b/, 'Microcirurgia vascular'],
   [/\bMICROCIRURGIA\b.*\bINTRACRANIAN\w+|\bTUMOR(ES)? INTRACRANIAN\w+/, 'Tumor intracraniano'],
   [/\bTUMOR MEDULAR\b/, 'Tumor medular'],
-  [/\bMICROCIRURGIA VASCULAR\b/, 'Microcirurgia vascular'],
   [/\bELETRODOS? (CEREBRAL|MEDULAR)\b/, 'Implante de eletrodos'],
   [/\bCOLUNA\b.*\bENDOSCOPIC\w+/, 'Coluna endoscópica'],
   // ── vascular / tórax ───────────────────────────────────────────────────
@@ -382,8 +401,9 @@ const DICIONARIO = [
     const obj = primeiro(s, [[/\bGANGLIO\b|\bLINFONODO\b/, 'de gânglio'], [/\bOSSE\w*|\bOSSOS?\b/, 'óssea'], [/\bMAMA\b/, 'de mama'], [/\bPELE\b/, 'de pele'], [/\bFIGADO\b|\bHEPATIC\w*/, 'hepática'], [/\bRENAL\b|\bRIM\b/, 'renal'], [/\bPULM\w*/, 'pulmonar'], [/\bTOMOGRAFIA\b|\bTC\b/, 'por TC'], [/\bMUSCUL\w*/, 'muscular']])
     return obj ? `Biópsia ${obj}` : 'Biópsia'
   }],
+  // "APLICACAO DE MEDULA OSSEA OU CELULAS TRONCO" é aplicação, não aspiração
+  [/\bCELULAS? TRONCOS?\b/, 'Célula-tronco'],
   [/\bMEDULA OSSEA\b|\bBMO\b/, 'Aspiração de medula'],
-  [/\bCELULA TRONCO\b/, 'Célula-tronco'],
   [/\bDRENAGEM\b.*\bABSCESSO\b|\bABSCESSO\b.*\bDRENAGEM\b/, 'Drenagem de abscesso'],
   [/\bDRENAGEM\b/, 'Drenagem'],
   // EXÉRESE: "de quê" é o que identifica (dono 18/09: "exérese de que?"). Objetos vistos nos
@@ -424,7 +444,7 @@ const PREFIXOS = [
 const CORTES = [
   /\s+[-–]\s*.*$/, /\s*\(.*$/, /,.*$/, /;.*$/,
   /\s+(POR|COM|SEM|EM|VIA|PARA|NO|NA|NOS|NAS|CONFORME|UNI|UNILATERAL|BILATERAL|QUALQUER|AO NIVEL|C\/|S\/|P\/)\b.*$/,
-  /\s+\d+\s*H(\d+)?\b.*$/, /\s+\d+\s*MIN\b.*$/, // "2H", "4H30", "45MIN" colados sem hífen
+  /\s+\d+(:\d+)?\s*HS?(\d+)?\b.*$/, /\s+\d+\s*MIN\b.*$/, // "2H", "4H30", "3HS", "1:30H", "45MIN" colados sem hífen
 ]
 const STOP = new Set(['DE', 'DA', 'DO', 'DAS', 'DOS', 'E', 'OU', 'A', 'O', 'AS', 'OS', 'UM', 'UMA', 'AO'])
 /** Até quantas palavras de CONTEÚDO (fora as preposições) o rótulo do fallback leva. */
