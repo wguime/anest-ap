@@ -45,6 +45,8 @@ const HOSPITAL_OPCOES = HOSPITAIS.map((h) => ({ value: h, label: HOSPITAL_LABEL[
 
 /** Fora do app por mais que isso = abrir de novo: a escala volta à aba Minhas. */
 export const REABRIR_EM_MINHAS_MS = 2 * 60 * 1000
+/** Conta de hospital parada por isso (ninguém tocou nem mexeu o mouse) volta a hoje, ao turno e ao hospital dela. */
+export const CONTA_HOSPITAL_VOLTA_MS = 10 * 60 * 1000
 // Rótulos CURTOS (dono 16/08): "Manhã/Tarde/Noite" cabem no card a 375px —
 // "Matutino/Vespertino/Noturno" cortavam com o 3º turno do fim de semana.
 const TURNO_OPCOES = [
@@ -380,6 +382,43 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     }
     document.addEventListener('visibilitychange', aoMudarVisibilidade)
     return () => document.removeEventListener('visibilitychange', aoMudarVisibilidade)
+  }, [contaSoEscala])
+
+  // CONTA DE HOSPITAL VOLTA AO PADRÃO (dono 15/10/2026: "esses usuários ficam abertos nos
+  // desktops dos hospitais e com frequência a página fica desatualizada"). O computador do
+  // centro cirúrgico fica com a escala aberta o dia todo, e quem consulta outra data, outro
+  // hospital ou o outro turno deixa a tela lá para quem vem depois. Parada por
+  // CONTA_HOSPITAL_VOLTA_MS, volta a hoje, ao turno em curso e ao hospital da conta; a aba
+  // fica (Completa e Liberações são as duas de trabalho). Folha aberta ou campo em edição
+  // seguram a volta: alguém está no meio de algo. Os dados quem mantém frescos é o vigia do
+  // contexto (CONTA_HOSPITAL_IDADE_MAX_MS).
+  const voltarAoPadrao = useCallback(() => {
+    if (data !== hoje) setData(hoje)
+    if (hospitalConta && hospital !== hospitalConta) setHospital(hospitalConta)
+    if (turnoManualRef.current != null) {
+      turnoManualRef.current = null
+      setTurno(turnoDoRelogio())
+    }
+  }, [data, hoje, setData, hospitalConta, hospital, turnoDoRelogio])
+  const voltarAoPadraoRef = useRef(voltarAoPadrao)
+  useEffect(() => { voltarAoPadraoRef.current = voltarAoPadrao }, [voltarAoPadrao])
+  useEffect(() => {
+    if (!contaSoEscala) return undefined
+    let ultimoUso = Date.now()
+    const marcarUso = () => { ultimoUso = Date.now() }
+    const USO = ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart']
+    USO.forEach((e) => window.addEventListener(e, marcarUso, { capture: true, passive: true }))
+    const id = setInterval(() => {
+      if (Date.now() - ultimoUso < CONTA_HOSPITAL_VOLTA_MS) return
+      if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return
+      const foco = document.activeElement
+      if (foco && (foco.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(foco.tagName))) return
+      voltarAoPadraoRef.current()
+    }, 30 * 1000)
+    return () => {
+      clearInterval(id)
+      USO.forEach((e) => window.removeEventListener(e, marcarUso, { capture: true }))
+    }
   }, [contaSoEscala])
 
 

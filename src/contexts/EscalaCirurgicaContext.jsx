@@ -14,6 +14,8 @@ import svc from '@/services/supabaseEscalaCirurgicaService'
 import { mensagemErroPublicacao } from '@/lib/escalaPublicacaoErro'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
 import { useToast } from '@/design-system/components/ui/toast'
+import { useUserOpcional } from '@/contexts/userContextObject'
+import { ehContaDeHospital } from '@/utils/userTypes'
 import { ajudasPreservadasNoRepasse, escaladosPreservadosNoRepasse, familiaConvenio, lerOverrideAnterior, marcarAjudaOrdemInformada, mergeRodapeTurno, rodapeDoTurno, snapshotCasos } from '@/pages/escala-cirurgica/utils'
 import { nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
 import { ehDataFilaUnica, FDS_HOSPITAL } from '@/lib/escalaFds'
@@ -36,6 +38,19 @@ export const HOSPITAL_LABEL = { unimed: 'Unimed', hro: 'HRO', materno: 'Materno'
  * teto do atraso que a coalescência acrescenta.
  */
 export const REALTIME_COALESCE_MS = 500
+
+/**
+ * CONTA DE HOSPITAL SEMPRE ATUALIZADA (dono 15/10/2026: "esses usuários ficam abertos nos
+ * desktops dos hospitais e com frequência a página fica desatualizada"). Em 14/10 a conta do
+ * HRO passou das 13:00 às 17:15 sem buscar a escala, com a página viva, enquanto 12 a 18
+ * colegas a recarregavam: o tempo real tinha caído e nada o trazia de volta — a tela do
+ * computador nunca fica oculta, e a recarga do `visibilitychange` é a do celular. Para essas
+ * contas, tela visível e nenhuma carga há CONTA_HOSPITAL_IDADE_MAX_MS = recarrega (o vigia
+ * olha a cada CONTA_HOSPITAL_VIGIA_MS). Com o tempo real funcionando as cargas dele chegam
+ * antes e o vigia não dispara: em dia de movimento não há tráfego a mais.
+ */
+export const CONTA_HOSPITAL_IDADE_MAX_MS = 2 * 60 * 1000
+export const CONTA_HOSPITAL_VIGIA_MS = 30 * 1000
 
 /**
  * Teto da observação da linha (dono 29/07). É recado operacional curto, lido de
@@ -170,6 +185,10 @@ export function EscalaCirurgicaProvider({ children }) {
   const erroCargaRef = useRef(null)
   const marcarErroCarga = (v) => { erroCargaRef.current = v; setErroCarga(v) }
   const { toast } = useToast()
+  // conta de hospital (computador do centro cirúrgico) ganha o vigia de recarga, abaixo
+  const contaDeHospital = ehContaDeHospital(useUserOpcional()?.user)
+  // quando a última carga COMPLETA chegou (relógio real): é a idade que o vigia mede
+  const cargaOkEmRef = useRef(0)
 
   // evita stale closure no onRefetch da subscription
   const dataRef = useRef(data)
@@ -288,6 +307,7 @@ export function EscalaCirurgicaProvider({ children }) {
       // guarda para a próxima visita à mesma data (o realtime revalida) — leitura
       // com falha NÃO entra no cache: repintaria o buraco na próxima visita
       if (!falhou) {
+        cargaOkEmRef.current = Date.now()
         cacheRef.current.set(dia, { escalas, p4Hospital: p4 })
         if (cacheRef.current.size > 8) {
           cacheRef.current.delete(cacheRef.current.keys().next().value)
@@ -410,6 +430,28 @@ export function EscalaCirurgicaProvider({ children }) {
       window.removeEventListener('pageshow', retomar)
     }
   }, [loadData])
+
+  // CONTA DE HOSPITAL: o vigia (ver CONTA_HOSPITAL_IDADE_MAX_MS). O computador do centro
+  // cirúrgico fica com a escala na tela o dia todo e nunca passa pelo `retomar` acima. Tela
+  // oculta não recarrega (volta pelo `retomar`); a rede que volta recarrega na hora — o que
+  // mudou durante a queda não chega por sinal.
+  useEffect(() => {
+    if (!contaDeHospital) return undefined
+    const vigiar = () => {
+      if (document.visibilityState === 'hidden') return
+      if (Date.now() - cargaOkEmRef.current < CONTA_HOSPITAL_IDADE_MAX_MS) return
+      loadData(dataRef.current, { revalidacao: true })
+    }
+    const redeVoltou = () => loadData(dataRef.current, { revalidacao: true })
+    const id = setInterval(vigiar, CONTA_HOSPITAL_VIGIA_MS)
+    window.addEventListener('focus', vigiar)
+    window.addEventListener('online', redeVoltou)
+    return () => {
+      clearInterval(id)
+      window.removeEventListener('focus', vigiar)
+      window.removeEventListener('online', redeVoltou)
+    }
+  }, [contaDeHospital, loadData])
 
   // Subscriptions realtime — montadas uma única vez (loadData é estável). Separadas
   // da troca de data p/ não abrir janela de eventos perdidos ao reconectar canais.

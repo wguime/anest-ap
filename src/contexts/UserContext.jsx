@@ -2,7 +2,7 @@
  * UserContext
  * Gerencia estado do usuario e autenticacao Firebase.
  */
-import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { doc, updateDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { auth, authPronto, db } from '../config/firebase';
 import { signIn, signUp, logOut, resetPassword, onAuthChange } from '../services/authService';
@@ -12,8 +12,7 @@ import { createReliableSubscription } from '../services/supabaseSubscriptionHelp
 import { uploadToSupabase, deleteAnyStorageObject, STORAGE_BUCKETS } from '../lib/storage';
 import { lerSessaoSalva, gravarSessao, limparSessao } from '../lib/sessaoSalva';
 import { usuarioFirebaseNoAparelho } from '../lib/tokenPersistido';
-
-const UserContext = createContext(null);
+import { UserContext } from './userContextObject';
 
 // UIDs de administradores — lidos de variavel de ambiente para nao vazar no codigo-fonte
 const ADMIN_UIDS = (import.meta.env.VITE_ADMIN_UIDS || '').split(',').filter(Boolean);
