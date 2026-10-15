@@ -4,6 +4,13 @@
  * Mesma altura e largura dos cards de artigo (`NoticiaCard` variant carousel: 120px, 86px
  * deitado), para a linha não mudar de tamanho. Os 4 mini-indicadores são da janela de 30 dias.
  *
+ * DESKTOP (dono 15/10/2026: "no desktop o card de 'Adesão à escala cirúrgica' não vem com
+ * informações assim como está no mobile"): o desktop conta como tela deitada, e deitado o
+ * card encolhia para 86 px e escondia os números — sobrava só o título. Escolhido por imagem o
+ * modelo B de `.tmp/adesao-card-desktop.html`: no desktop (deitado + mouse) o card fica igual
+ * ao do celular, 120 px com os números, e os artigos do carrossel da Home acompanham
+ * (`altoNoDesktop`). Celular ou tablet deitado continua com 86 px, sem os números.
+ *
  * Busca com cache SWR de 30 min (`IDADE_CARD_MS`) e só depois do sinal do
  * DeferredReadyContext: a Home não pode virar uma chamada ao banco por abertura (plano free,
  * 16/09). Sem dado ainda, o card aparece sem os números — nunca some, porque é a porta de
@@ -47,6 +54,7 @@ function AdesaoEscalaCardImpl({ onClick }) {
       className={cn(
         'flex w-full h-[120px] flex-col gap-1 rounded-xl border border-border bg-card p-3 text-left',
         'deitado:h-[86px] deitado:p-2.5',
+        'desktop:h-[120px] desktop:p-3',
         'shadow-sm transition-all',
         'hover:bg-accent/40 hover:border-border-strong hover:-translate-y-px hover:shadow-elevation-2 active:scale-[0.98]',
         'dark:shadow-none dark:hover:shadow-[0_0_12px_hsl(var(--primary)/0.25)]',
@@ -62,14 +70,14 @@ function AdesaoEscalaCardImpl({ onClick }) {
         Adesão à Escala Cirúrgica
       </h3>
       {r ? (
-        <div className="mt-auto flex gap-1.5 deitado:hidden">
+        <div className="mt-auto flex gap-1.5 deitado:hidden desktop:flex">
           <Mini tom={faixa(r.ini, META.ini)} valor={formatarPct(r.ini)} rotulo="início" />
           <Mini tom={faixa(r.ter, META.ter)} valor={formatarPct(r.ter)} rotulo="término" />
           <Mini tom={faixa(r.tot, META.tot)} valor={formatarPct(r.tot)} rotulo="tempo total" />
           <Mini tom={r.alertas > 0 ? 'crit' : 'ok'} valor={r.alertas} rotulo="com alerta" />
         </div>
       ) : (
-        <p className="text-[12px] leading-snug text-muted-foreground line-clamp-1 deitado:hidden">
+        <p className="text-[12px] leading-snug text-muted-foreground line-clamp-1 deitado:hidden desktop:line-clamp-1">
           Por cargo e por pessoa, últimos 30 e 60 dias
         </p>
       )}

@@ -2,6 +2,8 @@
  * NoticiaCard — card de notícia com 3 variants.
  *
  *  - 'carousel': h-[150px] fixo, 2 linhas título + 1 resumo. Usado em HScroll.
+ *                `altoNoDesktop` (só o carrossel da Home, dono 15/10/2026): no desktop o card
+ *                mantém a altura e o resumo do celular em vez de encolher como a tela deitada.
  *  - 'list':     min-h-[140px] + grid 3 fileiras (meta / título 2-line / resumo 2-line).
  *                Layout uniforme mesmo com resumos vazios (placeholder "—").
  *  - 'featured': similar a list mas com border-l-primary marcando destaque.
@@ -35,7 +37,7 @@ function pickResumo(n) {
   return ''
 }
 
-function NoticiaCardImpl({ noticia, variant = 'list', onClick, className }) {
+function NoticiaCardImpl({ noticia, variant = 'list', onClick, className, altoNoDesktop = false }) {
   if (!noticia) return null
   const titulo = pickTitle(noticia)
   const resumo = pickResumo(noticia)
@@ -54,6 +56,9 @@ function NoticiaCardImpl({ noticia, variant = 'list', onClick, className }) {
           // deitado a altura é o recurso escasso: o card do carrossel cede
           // 34px mantendo título e fonte — some só o respiro.
           'deitado:h-[86px] deitado:p-2.5',
+          // Home no desktop (dono 15/10/2026, modelo B): a linha de destaques volta aos
+          // 120 px do celular — no desktop sobra altura; quem encolhe é o toque deitado
+          altoNoDesktop && 'desktop:h-[120px] desktop:p-3',
           'shadow-sm transition-all',
           'hover:bg-accent/40 hover:border-border-strong hover:-translate-y-px hover:shadow-elevation-2 active:scale-[0.98]',
           'dark:shadow-none dark:hover:shadow-[0_0_12px_hsl(var(--primary)/0.25)]',
@@ -86,7 +91,7 @@ function NoticiaCardImpl({ noticia, variant = 'list', onClick, className }) {
         </h3>
         {/* deitado o card é 34px mais baixo: o resumo SAI inteiro em vez de ser
             cortado no meio da linha — título e curadoria bastam para escolher. */}
-        <p className="text-[12px] leading-snug text-muted-foreground line-clamp-1 deitado:hidden">
+        <p className={cn('text-[12px] leading-snug text-muted-foreground line-clamp-1 deitado:hidden', altoNoDesktop && 'desktop:line-clamp-1')}>
           {resumo || '—'}
         </p>
       </button>
@@ -158,6 +163,7 @@ function arePropsEqual(prev, next) {
   if (prev.variant !== next.variant) return false
   if (prev.onClick !== next.onClick) return false
   if (prev.className !== next.className) return false
+  if (prev.altoNoDesktop !== next.altoNoDesktop) return false
   const a = prev.noticia
   const b = next.noticia
   if (a === b) return true

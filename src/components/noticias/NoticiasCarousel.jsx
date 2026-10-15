@@ -59,6 +59,7 @@ export function NoticiasCarousel({ onNavigate }) {
             key={noticia.id}
             noticia={noticia}
             variant="carousel"
+            altoNoDesktop
             onClick={() => onNavigate?.('noticia-detalhe', { noticiaId: noticia.id })}
           />
         ))}
