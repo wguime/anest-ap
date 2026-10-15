@@ -36,10 +36,13 @@ vi.mock('@/services/supabaseSubscriptionHelper', () => ({
 }))
 
 import {
-  EscalaCirurgicaProvider, useEscalaCirurgica, hojeISO, HOSPITAIS, REALTIME_COALESCE_MS,
+  EscalaCirurgicaProvider, useEscalaCirurgica, diaOperacionalISO, HOSPITAIS, REALTIME_COALESCE_MS,
 } from '@/contexts/EscalaCirurgicaContext'
 
-const HOJE = hojeISO()
+// a data NA TELA é o dia operacional (antes das 7h vale a véspera, 23/09): com a
+// data do calendário o caso "evento da data na tela" falhava de 00h às 07h —
+// inclusive no CI de um push de madrugada (15/10/2026)
+const HOJE = diaOperacionalISO()
 // dia útil: 3 hospitais; sáb/dom o context busca também a linha 'fds'
 const POR_RECARGA = HOSPITAIS.length + (ehDataFilaUnica(HOJE) ? 1 : 0)
 

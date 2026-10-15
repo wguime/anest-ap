@@ -1052,13 +1052,22 @@ describe('Liberações — não escalado e cronômetro manual (F1.9b)', () => {
     expect(onToggleEscalado).toHaveBeenCalledWith(expect.objectContaining({ anestesista: 'Ferias' }))
   })
   it('término manual (override.termino) vira o cronômetro do card', () => {
-    const escala = {
-      id: 'e1', hospital: 'unimed', ordemLiberacao: ['LEONARDO'], liberacoes: {},
-      linhaOverrides: { Leonardo: { termino: '23:59' } },
-      casos: [{ sala: 'S1', ordem: 0, anestesista: 'LEONARDO', cirurgiao: 'Liana Winkelmann' }],
+    // relógio FIXO à tarde: com o relógio real, de 00h às 06h o "23:59" lia
+    // como a noite que passou ("estourou") e o caso falhava — inclusive no CI de
+    // um push de madrugada (15/10/2026)
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date(2026, 6, 23, 14, 0, 0))
+    try {
+      const escala = {
+        id: 'e1', hospital: 'unimed', ordemLiberacao: ['LEONARDO'], liberacoes: {},
+        linhaOverrides: { Leonardo: { termino: '23:59' } },
+        casos: [{ sala: 'S1', ordem: 0, anestesista: 'LEONARDO', cirurgiao: 'Liana Winkelmann' }],
+      }
+      render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
+      expect(screen.getByTitle(/termina em ~/)).toBeTruthy() // compacto no card, frase no title
+    } finally {
+      vi.useRealTimers()
     }
-    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
-    expect(screen.getByTitle(/termina em ~/)).toBeTruthy() // compacto no card, frase no title
   })
 })
 
