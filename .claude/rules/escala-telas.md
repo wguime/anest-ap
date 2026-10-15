@@ -375,6 +375,16 @@ da Minhas, prop `pendencia` do `CasoCard` — está no comparador do `memo`).
   de turno e hora (`compararPendencias`), cada uma abrindo a cirurgia. Casamento pelo critério da
   própria aba (`anestesistaDoCasoEh`: o login gravado no caso manda; sem login, o apelido). A dica do
   "Atrasada" sai UMA vez no cabeçalho, não em cada linha. Quem não deve nada não vê caixa.
+- **VOCÊ PRIMEIRO (dono 15/10, modelo A de `.tmp/horario-pendente-estimulo.html`)**: o nome de quem
+  está logado quase sempre caía no "+N" (às 8h de 15/10 couberam 2 de 18). Nas três abas, a pílula
+  **"Você N"** (vermelho cheio) abre a fileira e o próprio grupo sai dos nomes; quem tem cirurgia HOJE
+  na conta do alerta e não deve nada vê **"Você em dia"** (`temCirurgiaNaConta`; de folga ou só com
+  suspensa, nada). **Na Minhas, a caixa pessoal faz as vezes da faixa** — um bloco só, com a linha
+  "Na equipe" + os nomes dos outros embaixo (toque abre a lista pública de sempre, inclusive com o
+  próprio nome); sozinho na lista, sem essa linha. A conta do "Você" é a da caixa (`minhas`,
+  `anestesistaDoCasoEh`); a página calcula `minhas` nas três abas e passa `eu` (nulo para conta de
+  hospital — ela vê a faixa de antes). Regra de entrada/saída do alerta: a mesma. Recusados de
+  propósito: notificação e o atalho "Começou?" (recusado 14/10, no card ou na caixa).
 - **Relatório (modelo A, `.tmp/relatorio-horario-nao-preenchido.html`)**: seção "Horário não
   preenchido no dia" em `src/pages/escala-adesao/SecaoHorarioNaoPreenchido.jsx`, logo depois dos
   indicadores da página de adesão — último dia encerrado · 7 dias · período da ABA (a janela segue a

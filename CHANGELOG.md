@@ -3,6 +3,19 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.60 (15/10/2026) — Horário pendente: "Você" primeiro
+
+Pedido do dono: "verifique para melhorar a visualização de 'horário pendente' [...] para estimular o usuário
+preencher". Escolhido por imagem o **modelo A** de `.tmp/horario-pendente-estimulo.html` (o B, meta do dia da
+equipe, ficou de fora). Medido antes: às 8h de 15/10 couberam 2 de 18 nomes na faixa — o da própria pessoa
+quase sempre caía no "+N"; e a aba Minhas empilhava duas caixas vermelhas dizendo quase o mesmo.
+- **"Você N" abre a faixa** nas três abas, em vermelho cheio, e o próprio nome sai da fileira; quem tem
+  cirurgia hoje e não deve nada vê **"Você em dia"** (em verde). De folga, só com cirurgia suspensa ou conta
+  de hospital: a faixa de antes.
+- **Na aba Minhas, um bloco só**: "Você tem N cirurgias sem horário" com as suas cirurgias em cima e a linha
+  "Na equipe" com os nomes dos outros embaixo — o toque nela abre a lista de todos, como a faixa.
+- A regra de quem entra e sai do alerta não mudou; nada de notificação.
+
 ## v5.12.59 (15/10/2026) — Escala Cirúrgica: dados mais cedo e sempre na aba Minhas
 
 Pedido do dono: "quero que revise lentidão ao abrir 'escalas cirúrgicas' e quero que o usuário ao abrir escala
