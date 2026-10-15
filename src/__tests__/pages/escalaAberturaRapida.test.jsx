@@ -19,7 +19,7 @@
  *  4. a resposta fica guardada por data (só um booleano — nada de escala/paciente).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, act, waitFor } from '@testing-library/react'
+import { render, screen, act, waitFor, fireEvent } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
@@ -38,7 +38,7 @@ const hojeLocalISO = (base) => {
 }
 
 const { estado, svcMock } = vi.hoisted(() => ({
-  estado: { ctx: null },
+  estado: { ctx: null, user: null },
   svcMock: {
     fetchEscala: vi.fn(async () => null),
     fetchStatusDia: vi.fn(async () => []),
@@ -49,6 +49,7 @@ const { estado, svcMock } = vi.hoisted(() => ({
 vi.mock('@/services/supabaseEscalaCirurgicaService', () => ({ default: svcMock }))
 vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
   useEscalaCirurgica: () => estado.ctx,
+  useEscalaCirurgicaActions: () => estado.ctx,
   hojeISO: (d) => hojeLocalISO(d),
   diaOperacionalISO: (d) => hojeLocalISO(d),
   HOSPITAIS: ['unimed', 'hro', 'materno'],
@@ -56,7 +57,7 @@ vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
   OBSERVACAO_MAX: 120,
 }))
 vi.mock('@/contexts/UserContext', () => ({
-  useUser: () => ({ user: { uid: 'u-x', role: 'anestesiologista', displayName: 'X' } }),
+  useUser: () => ({ user: estado.user }),
 }))
 vi.mock('@/hooks/usePegaPlantao', () => ({ useEscalaDia: () => ({ plantoes: [] }) }))
 vi.mock('@/hooks/useRosterAnestesistas', () => ({
@@ -67,7 +68,7 @@ vi.mock('@/hooks/useRosterAnestesistas', () => ({
   }),
 }))
 
-import EscalaCirurgicaPage from '@/pages/escala-cirurgica/EscalaCirurgicaPage'
+import EscalaCirurgicaPage, { REABRIR_EM_MINHAS_MS } from '@/pages/escala-cirurgica/EscalaCirurgicaPage'
 
 const wrap = ({ children }) => <ThemeProvider><ToastProvider>{children}</ToastProvider></ThemeProvider>
 
@@ -94,6 +95,7 @@ const montar = () => {
 beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true })
   vi.setSystemTime(AGORA)
+  estado.user = { uid: 'u-x', role: 'anestesiologista', displayName: 'X' }
   localStorage.clear()
   _esquecerAmanhaPublicada()
   svcMock.fetchEscala.mockClear()
@@ -213,5 +215,89 @@ describe('prepararPaginaInicial (abertura direto na escala)', () => {
       await prepararPaginaInicial(url, { escala })
     }
     expect(escala.preload).not.toHaveBeenCalled()
+  })
+})
+
+// Aberta logo depois do app, a escala de HOJE disputava o banco com as leituras de
+// AMANHÃ (status + prefetch) — a pergunta sobre amanhã agora espera a de hoje chegar.
+describe('amanhã espera a escala de hoje (15/10/2026)', () => {
+  it('com a escala de hoje carregando, nada de amanhã é pedido; chegou, pergunta uma vez', async () => {
+    estado.ctx = {
+      escalas: { unimed: null, hro: null, materno: null, fds: null },
+      p4Hospital: null, data: HOJE, hoje: HOJE, loading: true, ...acoes(),
+    }
+    const { rerender } = render(<EscalaCirurgicaPage onNavigate={() => {}} goBack={() => {}} />, { wrapper: wrap })
+    await act(async () => { await Promise.resolve() })
+    expect(svcMock.fetchStatusDia).not.toHaveBeenCalled()
+
+    estado.ctx = { ...estado.ctx, loading: false }
+    rerender(<EscalaCirurgicaPage onNavigate={() => {}} goBack={() => {}} />)
+    await waitFor(() => expect(svcMock.fetchStatusDia).toHaveBeenCalledTimes(1))
+
+    // uma recarga depois (loading oscila) não pergunta de novo pela mesma data
+    estado.ctx = { ...estado.ctx, loading: true }
+    rerender(<EscalaCirurgicaPage onNavigate={() => {}} goBack={() => {}} />)
+    estado.ctx = { ...estado.ctx, loading: false }
+    rerender(<EscalaCirurgicaPage onNavigate={() => {}} goBack={() => {}} />)
+    await act(async () => { await Promise.resolve() })
+    expect(svcMock.fetchStatusDia).toHaveBeenCalledTimes(1)
+  })
+})
+
+// Dono 15/10/2026: "quero que o usuário ao abrir escala sempre abra na aba minhas".
+// A tela já nascia na Minhas; o que escapava era o app voltando do segundo plano com
+// a escala aberta noutra aba. Voltar depois de REABRIR_EM_MINHAS_MS = abrir de novo.
+describe('sempre abre na aba Minhas (15/10/2026)', () => {
+  const abaSelecionada = () => ['Minhas', 'Completa', 'Liberações']
+    .find((n) => screen.queryByRole('tab', { name: n })?.getAttribute('aria-selected') === 'true') || null
+  const visibilidade = (v) => {
+    Object.defineProperty(document, 'visibilityState', { value: v, configurable: true })
+    document.dispatchEvent(new Event('visibilitychange'))
+  }
+  afterEach(() => {
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true })
+  })
+
+  it('abre na Minhas', () => {
+    montar()
+    expect(abaSelecionada()).toBe('Minhas')
+  })
+
+  it('voltou ao app depois de 2 min ou mais com a escala noutra aba → Minhas', async () => {
+    montar()
+    fireEvent.click(screen.getByRole('tab', { name: 'Completa' }))
+    expect(abaSelecionada()).toBe('Completa')
+
+    await act(async () => { visibilidade('hidden') })
+    vi.setSystemTime(new Date(AGORA.getTime() + REABRIR_EM_MINHAS_MS + 1000))
+    await act(async () => { visibilidade('visible') })
+
+    expect(abaSelecionada()).toBe('Minhas')
+  })
+
+  it('troca rápida de app (ler o recado) mantém a aba de quem opera a fila', async () => {
+    montar()
+    fireEvent.click(screen.getByRole('tab', { name: 'Liberações' }))
+    expect(abaSelecionada()).toBe('Liberações')
+
+    await act(async () => { visibilidade('hidden') })
+    vi.setSystemTime(new Date(AGORA.getTime() + 30_000))
+    await act(async () => { visibilidade('visible') })
+
+    expect(abaSelecionada()).toBe('Liberações')
+  })
+
+  it('conta de hospital (sem aba Minhas) continua nas Liberações depois da pausa do tablet', async () => {
+    estado.user = { uid: 'u-hro', role: 'func-hro', displayName: 'HRO' }
+    montar()
+    expect(screen.queryByRole('tab', { name: 'Minhas' })).toBeNull()
+    fireEvent.click(screen.getByRole('tab', { name: 'Liberações' }))
+    expect(abaSelecionada()).toBe('Liberações')
+
+    await act(async () => { visibilidade('hidden') })
+    vi.setSystemTime(new Date(AGORA.getTime() + REABRIR_EM_MINHAS_MS + 60_000))
+    await act(async () => { visibilidade('visible') })
+
+    expect(abaSelecionada()).toBe('Liberações')
   })
 })

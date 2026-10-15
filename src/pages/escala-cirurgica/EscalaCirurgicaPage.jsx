@@ -42,6 +42,9 @@ import { algumaPublicada, amanhaPublicadaGuardada, guardarAmanhaPublicada } from
 import { ehContaDeHospital } from '@/utils/userTypes'
 
 const HOSPITAL_OPCOES = HOSPITAIS.map((h) => ({ value: h, label: HOSPITAL_LABEL[h] }))
+
+/** Fora do app por mais que isso = abrir de novo: a escala volta à aba Minhas. */
+export const REABRIR_EM_MINHAS_MS = 2 * 60 * 1000
 // Rótulos CURTOS (dono 16/08): "Manhã/Tarde/Noite" cabem no card a 375px —
 // "Matutino/Vespertino/Noturno" cortavam com o 3º turno do fim de semana.
 const TURNO_OPCOES = [
@@ -133,28 +136,36 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   // Nasce com o que se sabe da data (abertura anterior): o atalho já vem no 1º
   // render e a barra não pula quando a resposta chega (15/10/2026).
   const [amanhaPublicada, setAmanhaPublicada] = useState(() => amanhaPublicadaGuardada(amanha))
+  // A pergunta sobre AMANHÃ espera a escala de hoje chegar (15/10/2026): aberta logo
+  // depois do app, as leituras de amanhã (status + prefetch) disputavam o banco com
+  // as de hoje e atrasavam o que a pessoa veio ver. Uma vez por data; a resposta vale
+  // para a data perguntada mesmo que o `loading` oscile no meio (não há cleanup que a
+  // descarte — só a virada do dia, conferida pelo ref).
+  const amanhaVerificadoRef = useRef(null)
+  const amanhaAtualRef = useRef(amanha)
+  useEffect(() => { amanhaAtualRef.current = amanha }, [amanha])
   useEffect(() => {
-    let vivo = true
+    if (loading || amanhaVerificadoRef.current === amanha) return
+    const alvo = amanha
+    amanhaVerificadoRef.current = alvo
     // virada do dia com a tela aberta: começa do que se sabe da data nova
-    setAmanhaPublicada(amanhaPublicadaGuardada(amanha))
+    setAmanhaPublicada(amanhaPublicadaGuardada(alvo))
     // amanhã de sexta = sábado: a fila única (linha 'fds') também conta como publicada
-    const alvos = [...HOSPITAIS, ...(ehDataFilaUnica(amanha) ? [FDS_HOSPITAL] : [])]
+    const alvos = [...HOSPITAIS, ...(ehDataFilaUnica(alvo) ? [FDS_HOSPITAL] : [])]
     ;(async () => {
       try {
         // uma leitura só (status por hospital) — antes eram 9, e o prefetch
         // abaixo refazia as mesmas 9 quando estava publicada
-        const linhas = await svc.fetchStatusDia(amanha)
-        if (!vivo) return
+        const linhas = await svc.fetchStatusDia(alvo)
         const publicada = algumaPublicada(linhas, alvos)
-        guardarAmanhaPublicada(amanha, publicada)
-        setAmanhaPublicada(publicada)
+        guardarAmanhaPublicada(alvo, publicada)
+        if (amanhaAtualRef.current === alvo) setAmanhaPublicada(publicada)
         // já adianta a busca: quando o usuário tocar em "Amanhã", a escala
         // aparece na hora em vez de esperar ~2,5s de rede (dono 16/08)
-        if (publicada) prefetch?.(amanha)
+        if (publicada) prefetch?.(alvo)
       } catch { /* rede: fica o que se sabia; o load normal tenta de novo */ }
     })()
-    return () => { vivo = false }
-  }, [amanha, prefetch])
+  }, [amanha, prefetch, loading])
   const modoData = data === amanha ? 'amanha' : data === hoje ? 'hoje' : 'outra'
   const opcoesData = [
     { value: 'hoje', label: 'Hoje' },
@@ -346,6 +357,30 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     setAba(v)
     if (v === 'minhas') irOndeEuEstou()
   }, [irOndeEuEstou])
+
+  // SEMPRE ABRE NA "MINHAS" (dono 15/10/2026: "quero que o usuário ao abrir escala
+  // sempre abra na aba minhas"). A tela já nasce na Minhas; o que escapava era o app
+  // voltando do segundo plano com a escala aberta, que mantinha a última aba
+  // (Completa/Liberações). Voltar depois de REABRIR_EM_MINHAS_MS conta como abrir de
+  // novo: volta à Minhas, levando ao meu posto como o toque na aba. Troca rápida de
+  // app (ler o recado no WhatsApp) mantém a aba de quem está operando a fila.
+  // Conta de hospital fica fora: ela não tem Minhas (a aba viraria Completa e o
+  // tablet que opera as Liberações perderia o lugar a cada pausa).
+  const escolherAbaRef = useRef(escolherAba)
+  useEffect(() => { escolherAbaRef.current = escolherAba }, [escolherAba])
+  useEffect(() => {
+    if (contaSoEscala) return undefined
+    let ocultaDesde = document.visibilityState === 'hidden' ? Date.now() : null
+    const aoMudarVisibilidade = () => {
+      if (document.visibilityState === 'hidden') { ocultaDesde = Date.now(); return }
+      if (ocultaDesde != null && Date.now() - ocultaDesde >= REABRIR_EM_MINHAS_MS) {
+        escolherAbaRef.current('minhas')
+      }
+      ocultaDesde = null
+    }
+    document.addEventListener('visibilitychange', aoMudarVisibilidade)
+    return () => document.removeEventListener('visibilitychange', aoMudarVisibilidade)
+  }, [contaSoEscala])
 
 
   // TROCA REMOVIDA (dono 29/07): `substituirPosicao`/`localizarPosicao` saíram
