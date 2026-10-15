@@ -10,7 +10,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  buscarAdesao, buscarAdesaoPeriodo, buscarAdesaoEvolucao, buscarHorarioNaoPreenchido, lerCacheAdesao,
+  buscarAdesao, buscarAdesaoPeriodo, buscarAdesaoEvolucao, buscarHorarioNaoPreenchido, buscarMeuPreenchimento, lerCacheAdesao,
 } from '@/services/escalaAdesaoService'
 import { limitesMes } from '@/lib/escalaAdesao'
 
@@ -93,4 +93,13 @@ export function useHorarioNaoPreenchido(aba, opcoes) {
     }
     return buscarHorarioNaoPreenchido(id)
   }, opcoes)
+}
+
+/**
+ * "Seu preenchimento" (aba Minhas, dono 14/10): o número de quem está logado. Cache de 30 min
+ * como o card da Home — a aba Minhas é aberta por todos, várias vezes por turno.
+ */
+export function useMeuPreenchimento(uid, opcoes) {
+  const id = uid ? `meu:${uid}` : null
+  return useConsultaAdesao(id, () => buscarMeuPreenchimento(id), opcoes)
 }

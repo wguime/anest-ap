@@ -394,6 +394,15 @@ da Minhas, prop `pendencia` do `CasoCard` — está no comparador do `memo`).
   detalhe). Selo: Badge `destructive` OUTLINE + `ClockAlert` (sólido já é Suspensa/Emergência).
 - Travas: `src/__tests__/lib/escalaHorarioPendente.test.js`, `src/__tests__/pages/escalaHorarioPendente.test.jsx`.
 
+### "Seu preenchimento" — topo da aba Minhas (dono 2026-10-15, modelo A)
+
+- `MeuPreenchimento.jsx` + `resumoMeuPreenchimento` (`src/lib/escalaAdesao.js`) + RPC `escala_meu_preenchimento(7)`.
+  % das cirurgias da PRÓPRIA pessoa com início E término (colunas `*_real`) nos 7 dias ENCERRADOS (hoje fora),
+  mesmos cortes da trava de liberação; marca = média dos 5 melhores (5+ cirurgias, sem conta de teste/duplicada;
+  só com 3+ no topo). Some sem cirurgia na janela ou na meta 80% sem pendência hoje. Só aparece vendo HOJE.
+- Só o número de quem chama sai do banco — o ranking com nomes continua só no relatório de adesão. Cache 30 min
+  por uid (`meu:<uid>`; o dono tem duas contas no mesmo aparelho).
+
 ### Antes de liberar — sem horário não se libera (dono 2026-10-14, modelo A sem saída)
 
 > "ao liberar algum anestesista e o mesmo tiver casos abertos/cirurgias sem tempos informados [...]

@@ -3,6 +3,14 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.56 (15/10/2026) — "Seu preenchimento" na aba Minhas
+
+Modelo A de `.tmp/melhorias-preenchimento.html`, escolhido pelo dono. No topo da aba Minhas (vendo hoje), um
+cartão com a % das cirurgias da própria pessoa com início e término nos últimos 7 dias encerrados, a marca da
+média dos 5 melhores da equipe e, quando há, "N cirurgias de hoje sem horário · Preencher" (desce até a caixa
+"Você tem N cirurgias sem horário"). Some na meta (80%) sem pendência do dia. RPC `escala_meu_preenchimento`
+(migration 20261015120000): devolve só o número de quem chama + a média dos melhores, sem nomes.
+
 ## v5.12.55 (14/10/2026) — Sem horário não se libera; término exige o início
 
 Pedido do dono depois do caso Gustavo/Rômulo na Unimed (fe00274e): ao liberar quem tem cirurgia aberta ou

@@ -1,0 +1,41 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent } from '@testing-library/react'
+
+const hook = vi.fn()
+vi.mock('@/hooks/useAdesaoEscala', () => ({ useMeuPreenchimento: (...a) => hook(...a) }))
+
+import MeuPreenchimento, { ID_MINHAS_PENDENCIAS } from '@/pages/escala-cirurgica/MeuPreenchimento'
+
+describe('MeuPreenchimento — topo da aba Minhas (dono 14/10, modelo A)', () => {
+  beforeEach(() => hook.mockReset())
+
+  it('mostra a % própria, "N de M", a média dos melhores e a ação do dia', () => {
+    hook.mockReturnValue({ dados: { casos: 13, completos: 8, pct: 61.5, top: 97.4, top_n: 5 } })
+    const alvo = document.createElement('section')
+    alvo.id = ID_MINHAS_PENDENCIAS
+    alvo.scrollIntoView = vi.fn()
+    document.body.appendChild(alvo)
+    render(<MeuPreenchimento uid="u1" pendentesHoje={2} />)
+    expect(hook).toHaveBeenCalledWith('u1', expect.any(Object))
+    expect(screen.getByText('62%')).toBeInTheDocument()
+    expect(screen.getByText('8 de 13')).toBeInTheDocument()
+    expect(screen.getByText('97%')).toBeInTheDocument()
+    expect(screen.getByText('2 cirurgias de hoje sem horário')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Preencher' }))
+    expect(alvo.scrollIntoView).toHaveBeenCalled()
+    alvo.remove()
+  })
+
+  it('na meta e sem pendência de hoje, não ocupa espaço', () => {
+    hook.mockReturnValue({ dados: { casos: 10, completos: 9, pct: 90, top: 100, top_n: 5 } })
+    const { container } = render(<MeuPreenchimento uid="u1" pendentesHoje={0} />)
+    expect(container).toBeEmptyDOMElement()
+  })
+
+  it('abaixo da meta sem pendência: mostra o número, sem a linha da ação', () => {
+    hook.mockReturnValue({ dados: { casos: 13, completos: 8, pct: 61.5, top: 97.4, top_n: 5 } })
+    render(<MeuPreenchimento uid="u1" />)
+    expect(screen.getByLabelText('Seu preenchimento')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Preencher' })).toBeNull()
+  })
+})

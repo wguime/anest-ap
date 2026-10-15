@@ -284,3 +284,29 @@ describe('escalaAdesao — abas por mês e evolução', () => {
     expect(tendencia([{ ter: 5, completa: true }], 'ter')).toBeNull()
   })
 })
+
+describe('escalaAdesao — "Seu preenchimento" da aba Minhas (dono 14/10, modelo A)', () => {
+  it('mostra a % de quem está abaixo da meta, com a média dos melhores e a faixa', async () => {
+    const { resumoMeuPreenchimento } = await import('@/lib/escalaAdesao')
+    const r = resumoMeuPreenchimento({ casos: 13, completos: 8, pct: 61.5, top: 97.4, top_n: 5 })
+    expect(r).toMatchObject({ pct: 62, top: 97, topN: 5, casos: 13, completos: 8, pendentes: 0, tom: 'mid' })
+  })
+
+  it('some na meta sem pendência de hoje; volta se há cirurgia de hoje sem horário', async () => {
+    const { resumoMeuPreenchimento } = await import('@/lib/escalaAdesao')
+    const naMeta = { casos: 10, completos: 9, pct: 90, top: 100, top_n: 5 }
+    expect(resumoMeuPreenchimento(naMeta, 0)).toBeNull()
+    expect(resumoMeuPreenchimento(naMeta, 2)).toMatchObject({ pct: 90, pendentes: 2, tom: 'ok' })
+  })
+
+  it('sem cirurgia na janela (férias, outro cargo) ou sem dado, não aparece', async () => {
+    const { resumoMeuPreenchimento } = await import('@/lib/escalaAdesao')
+    expect(resumoMeuPreenchimento(null)).toBeNull()
+    expect(resumoMeuPreenchimento({ casos: 0, completos: 0, pct: null, top: 97, top_n: 5 }, 3)).toBeNull()
+  })
+
+  it('sem "melhores" suficientes a marca não aparece', async () => {
+    const { resumoMeuPreenchimento } = await import('@/lib/escalaAdesao')
+    expect(resumoMeuPreenchimento({ casos: 6, completos: 0, pct: 0, top: null, top_n: 2 })).toMatchObject({ top: null, tom: 'crit' })
+  })
+})

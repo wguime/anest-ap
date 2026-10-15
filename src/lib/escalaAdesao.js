@@ -409,3 +409,29 @@ export function tendencia(serie, campo) {
   const antes = completas[Math.max(0, completas.length - 5)]
   return { atual: atual[campo], antes: antes[campo], delta: atual[campo] - antes[campo], desde: antes.semana }
 }
+
+/**
+ * "SEU PREENCHIMENTO" na aba Minhas (dono 14/10, modelo A de `.tmp/melhorias-preenchimento.html`):
+ * o retorno individual na tela de uso diário. `dados` = `escala_meu_preenchimento(7)`;
+ * `pendentesHoje` = quantas cirurgias da pessoa estão hoje na faixa de horário pendente.
+ * Some quando não há cirurgia na janela, ou quando a pessoa está na meta (80%) e não deve
+ * nada hoje — para quem já preenche, o cartão seria ruído.
+ */
+export const META_PREENCHIMENTO = 80
+
+export function resumoMeuPreenchimento(dados, pendentesHoje = 0) {
+  if (!dados || !(dados.casos > 0) || dados.pct == null) return null
+  const pct = Math.round(Number(dados.pct))
+  const top = dados.top == null || !(dados.top_n > 0) ? null : Math.round(Number(dados.top))
+  const pendentes = Math.max(0, pendentesHoje || 0)
+  if (pct >= META_PREENCHIMENTO && pendentes === 0) return null
+  return {
+    pct,
+    top,
+    topN: dados.top_n || 0,
+    casos: dados.casos,
+    completos: dados.completos ?? 0,
+    pendentes,
+    tom: faixa(pct, META_PREENCHIMENTO),
+  }
+}

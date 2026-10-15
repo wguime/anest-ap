@@ -22,6 +22,7 @@ import { quantasPilulasCabem } from '@/lib/escalaHorarioPendente'
 import CasoDetalheSheet from './CasoDetalheSheet'
 import DefinirAnestesistaSheet from './DefinirAnestesistaSheet'
 import SeloHorarioPendente from './SeloHorarioPendente'
+import { ID_MINHAS_PENDENCIAS } from './MeuPreenchimento'
 import { salaExibicao } from './utils'
 
 const ROTULO_TURNO = { matutino: 'Manhã', vespertino: 'Tarde' }
@@ -144,8 +145,9 @@ function LinhaPendente({ item, podeEditar, onAbrir, onColegaAssumiu, dicaInicio 
 function MinhasPendencias({ itens, podeEditar, onAbrir, onColegaAssumiu }) {
   return (
     <section
+      id={ID_MINHAS_PENDENCIAS}
       aria-label={`Você tem ${plural(itens.length, 'cirurgia', 'cirurgias')} sem horário`}
-      className="overflow-hidden rounded-xl border border-destructive/45 bg-destructive/[0.07] dark:border-destructive/60 dark:bg-destructive/[0.16]"
+      className="scroll-mt-16 overflow-hidden rounded-xl border border-destructive/45 bg-destructive/[0.07] dark:border-destructive/60 dark:bg-destructive/[0.16]"
     >
       <h3 className="flex items-center gap-2 px-3 pb-1 pt-3 text-[15px] font-bold text-category-red-fg">
         <ClockAlert className="h-[19px] w-[19px] shrink-0" aria-hidden="true" />

@@ -21,6 +21,7 @@ import MinhasEscalasView from './MinhasEscalasView'
 import BoardView from './BoardView'
 import FaixaUrgencias from './FaixaUrgencias'
 import FaixaHorarioPendente from './FaixaHorarioPendente'
+import MeuPreenchimento from './MeuPreenchimento'
 import useHorarioPendente from './useHorarioPendente'
 import LiberacoesView from './LiberacoesView'
 import ImportarEscalasPage from './ImportarEscalasPage'
@@ -535,6 +536,11 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   // já entraram no alerta (liberado ou turno encerrado) — a faixa no topo e o selo no card
   // leem a MESMA lista. Antes do `if (!user)`: é hook.
   const pendencias = useHorarioPendente()
+  // aba Minhas: o detalhamento de QUEM ESTÁ LOGADO (dono 05/10), pelo mesmo critério da
+  // aba — o login gravado no caso manda; sem login, o apelido
+  const minhasPendencias = abaVisivel === 'minhas'
+    ? pendencias.itens.filter((i) => anestesistaDoCasoEh(i.caso, { uid: meuUid, alias: meuAlias, resolverUid: resolverRoster })).sort(compararPendencias)
+    : null
 
   const garantirEscala = useCallback(async () => {
     if (escalaDoHospital?.id && !String(escalaDoHospital.id).startsWith('demo-')) return escalaDoHospital
@@ -631,17 +637,19 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           onEscolherAba={escolherAba}
         />
 
+        {/* SEU PREENCHIMENTO (dono 14/10, modelo A de `.tmp/melhorias-preenchimento.html`):
+            topo da aba Minhas, vendo HOJE — o retorno individual dos últimos 7 dias */}
+        {abaVisivel === 'minhas' && data === hoje && (
+          <MeuPreenchimento uid={meuUid} pendentesHoje={minhasPendencias?.length ?? 0} />
+        )}
+
         {/* ALERTA PÚBLICO do horário não preenchido (dono 05/10, modelo A): nas três
             abas, em qualquer hospital e turno — só some quando os horários forem
             preenchidos (ou a cirurgia suspensa). Só existe vendo HOJE. */}
         <FaixaHorarioPendente
           pendencias={pendencias}
           podeEditar={canEdit}
-          // aba Minhas: o detalhamento de QUEM ESTÁ LOGADO (dono 05/10), pelo mesmo critério da
-          // aba — o login gravado no caso manda; sem login, o apelido
-          minhas={abaVisivel === 'minhas'
-            ? pendencias.itens.filter((i) => anestesistaDoCasoEh(i.caso, { uid: meuUid, alias: meuAlias, resolverUid: resolverRoster })).sort(compararPendencias)
-            : null}
+          minhas={minhasPendencias}
         />
 
         {/* Aterrissou noutra data (ex.: publicou pela importação): rótulo + volta */}
