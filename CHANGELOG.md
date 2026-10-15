@@ -3,6 +3,43 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.58 (15/10/2026) — Abertura instantânea: Home e Escala Cirúrgica sem espera
+
+Pedido do dono: "abertura do app está lenta, ao abrir as escalas cirúrgicas está muito lento também, demora a
+mostrar as informações na página home". Medido antes em produção (perfil de PWA instalado, CPU de celular
+intermediário): toda abertura ficava 1,6–2,3 s num spinner esperando o Firebase confirmar o login NA REDE — com
+a Home já pronta em cache; a Escala abria com ~0,5 s de spinner, carregava 1,15 MB de JavaScript e a barra
+"Hoje | Amanhã" pulava depois. Nenhuma mudança visual.
+- **Sessão otimista** (`src/lib/sessaoSalva.js`, `UserContext`): com o perfil do último login confirmado no
+  aparelho, o app nasce na Home e o Firebase confirma em segundo plano; sem sessão, conta desativada ou outra
+  conta, volta ao login/spinner. Papel e permissões salvos valem até a 1ª reconciliação com o Supabase (não pisca
+  nem fica preso; se o Supabase não responder, volta ao do Firestore). Só existe com "Manter conectado" (sem ele o
+  Firebase guarda o login só na aba — tablet compartilhado), sai no logout, é ignorada depois de 30 dias parada;
+  token de push e texto com nome de segredo não vão ao disco. A 1ª abertura depois do deploy ainda espera (é ela
+  que grava a sessão); da 2ª em diante, instantânea.
+- **Leituras saem na abertura** (`src/lib/tokenPersistido.js`): antes da confirmação do Firebase, o Supabase usa
+  o ID token que o SDK já guardou — só se for do mesmo usuário, com o claim `role` e válido por ≥2 min. Canais
+  realtime esperam o token em vez de entrar sem ele (o `CHANNEL_ERROR` recarregava a escala inteira), e o realtime
+  passa a renovar o token a cada login, logout e renovação do Firebase — antes ele ficava com o da abertura (o
+  supabase-js o entrega como "manual"), inclusive depois de vencer.
+- **Firebase Auth sem o resolvedor de popup** (`initializeAuth`): saem o gapi e o iframe de toda abertura.
+- **Pacote inicial menor**: recharts e react-markdown não são mais baixados no boot (`import()` no topo de
+  módulo), nem `qrcode`, o chat da residência (dompurify), o serviço da Educação e o SDK de Functions.
+- **Escala**: telas de importação (xlsx + escala numérica) sob demanda — a página foi de 1,15 MB para 226 KB;
+  `lazyComPreload` pré-carrega a página quando a Home sossega e o 1º render não passa pelo spinner; aberta pelo
+  push, o `main.jsx` espera o chunk antes de montar; "Amanhã" é 1 leitura leve (eram 9 + 9 do prefetch) e a
+  resposta fica guardada por data, sem o pulo; o dicionário de apelidos não é mais lido 2× em paralelo.
+- **Resultado** (mesmas condições, CPU 4×): Home pintada em 0,4–0,5 s (antes 1,6–1,8 s; 2,3 s com o token
+  vencido da manhã); Escala aberta pela Home em ~0,2 s (antes ~0,47 s); aberta direto pelo push, tela em 0,33 s
+  e dados em ~1,3 s (antes 2,0–2,2 s só para sair do spinner).
+- Revisões de segurança e LGPD antes da publicação: sem vulnerabilidade; ajustes aplicados (cópia só abre se o
+  Firebase guardou o login do mesmo uid; escrita confere o uid da tela; leitura de settings de incidente que falha =
+  sem acesso; papel salvo com teto de 15 s sem resposta do Supabase; página de infra não grava `checked_by`
+  'system'). Linha nova em `docs/lgpd-retencao.md`. Pendente de decisão do dono: a seção 9 da política de
+  privacidade diz que nada fica no aparelho — já era impreciso antes (sessão do Firebase, cache do Firestore).
+- Dois testes dependiam do relógio e falhavam de 00h às 07h (inclusive no CI de um push de madrugada) — agora
+  com relógio fixo/dia operacional. Roteiro de medição: `scripts/medir-abertura.mjs`.
+
 ## v5.12.57 (15/10/2026) — Nome curto da cirurgia: endoscopia certa e o local mantido
 
 Pedido do dono com a foto do HRO ("AMPUTAÇÃO CÔNICA DO COLO DO ÚTERO" saía "Endoscopia") e, em seguida,

@@ -23,6 +23,27 @@ description: Arquitetura híbrida Firebase Auth + Supabase. JWT flow, RLS, field
 
 ## _authReady Promise
 Cold start guard — toda operação Supabase aguarda `_authReady` resolver antes de executar queries.
+Exceção (15/10/2026): antes de ele resolver, `getSupabaseToken` usa o ID token que o Firebase já guardou
+(`src/lib/tokenPersistido.js`) se for do usuário da sessão salva, tiver o claim `role` e valer por ≥2 min.
+
+## Sessão otimista — o app abre antes de o Firebase confirmar (15/10/2026)
+Com `anest-sessao-v1` (`src/lib/sessaoSalva.js`: perfil do último login CONFIRMADO, sem token de push), o
+`UserContext` nasce autenticado e a Home sai na hora; o Firebase confirma em segundo plano (antes: 1,6–2,3 s
+de spinner por abertura). Consequências para código novo:
+- `firebaseUser` fica `null` até a confirmação e `auth.currentUser` também — quem lê o Firebase direto na
+  abertura faz `await authPronto()` (de `@/config/firebase`) antes; sem isso a leitura dá null e desiste
+  (era o caso do refresh do token de push e do lote de notificações).
+- Escrita do perfil usa `uidConfirmado()` do contexto, nunca `firebaseUser.uid` direto.
+- Papel/permissões da sessão salva valem só até a 1ª reconciliação desta abertura — o doc do Firestore pode
+  estar atrás do Supabase (o card da escala piscava, caso de 27/08).
+- `createReliableSubscription` espera o realtime ter token antes de entrar no canal privado: sem token o join
+  é recusado (`CHANNEL_ERROR`) e a reconexão dispara `onRefetch`.
+- O supabase-js entrega ao realtime o 1º token com `setAuth(token)` — o realtime-js trata como "manual" e
+  NUNCA renova (nem no heartbeat). `config/supabase.js` escuta `onIdTokenChanged` e chama `setAuth()` SEM
+  argumento (modo callback). Não remover: sem ela o canal fica com o token da abertura, vencido após 1 h.
+- Escritas da janela otimista: `uidConfirmado()` (confere o uid da tela); audit trail nunca `'system'` —
+  sem uid confirmado, não grava (ex.: `useInfraStatus`).
+- Firestore e o caminho legado HS256 continuam esperando a confirmação (o SDK enfileira até o 1º usuário).
 
 ## Field Mapping
 camelCase (JavaScript) ↔ snake_case (PostgreSQL). Sempre converter nos services.

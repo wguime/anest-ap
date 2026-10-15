@@ -25,6 +25,13 @@ a interface `onNavigate(page, params)` das páginas NÃO mudou.
 - Slug desconhecido → redirect `/` (replace)
 - Página nova: adicionar case no switch + entrada em PAGES (pageSlugs.js) +
   PAGE_TO_CARD se exigir permissão (ou justificar no allowlist do teste de guard)
+- Página lazy = **`lazyComPreload`** (`src/lib/lazyComPreload.js`), não `React.lazy` (15/10/2026): o
+  `lazy` comum suspende no 1º render mesmo com o chunk baixado, e o React 19 segura o conteúdo ≥300 ms
+  depois do fallback — a escala abria com 0,3–0,5 s de spinner. Pré-carregar é `Pagina.preload()` (efeito
+  de pré-carga no App; o `import()` cru NÃO resolve o lazy). App aberto direto numa página lazy: o
+  `main.jsx` espera o chunk dela antes de montar (`src/navigation/paginaInicial.js`, hoje só a escala —
+  destino dos pushes). E nada de `import()` no TOPO de módulo: roda em toda abertura (recharts e markdown
+  iam assim no boot).
 
 ## Params na URL (F2 Etapa B — 2026-06-10)
 Páginas de detalhe podem promover o param crítico a segmento de path:

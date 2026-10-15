@@ -9,6 +9,7 @@ paths:
   - "src/contexts/UsersManagement*"
   - "public/formulario-*.html"
   - "supabase/migrations/**"
+  - "src/lib/sessaoSalva.js"
 description: Conformidade LGPD — consentimento, anonimização, retenção de dados pessoais de saúde
 ---
 
@@ -29,6 +30,9 @@ description: Conformidade LGPD — consentimento, anonimização, retenção de 
 ## Retenção de Dados
 - `infra_health_history`: retenção 90 dias (DELETE automático)
 - Dados de saúde: seguir regulamentação CFM para prontuários
+- Cópia local do perfil (`src/lib/sessaoSalva.js`, 15/10/2026): só o próprio usuário, só com "Manter
+  conectado", apagada no Sair, ignorada após 30 dias parada (linha em `docs/lgpd-retencao.md`). Campo novo
+  de aparelho/segredo em `userProfiles` entra em `CAMPOS_FORA` — texto com nome de token/senha/chave já sai
 
 ## Solicitações LGPD
 - 3 tipos: export, deletion, portability
