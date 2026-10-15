@@ -1,6 +1,6 @@
 /**
  * supabaseSubscriptionHelper — assinaturas realtime confiáveis por BROADCAST
- * (sinal + busca por chave), com reconexão e backoff exponencial.
+ * (sinal + busca por chave), com reconexão.
  *
  * Até 16/09/2026 o transporte era `postgres_changes`. Nesse modo o Realtime
  * CONSULTA o WAL a cada ~100 ms enquanto houver UM assinante em qualquer
@@ -28,11 +28,30 @@
  * mesmo tópico e `subscribe()` só pode ser chamado uma vez por canal — o
  * registro abaixo compartilha o canal entre assinantes e o derruba quando o
  * último sai.
+ *
+ * RECONEXÃO (15/10/2026, contas dos hospitais desatualizadas o dia todo): queda
+ * de rede e recusa de entrada (CHANNEL_ERROR/TIMED_OUT) quem resolve é o próprio
+ * realtime-js — o socket se reconecta e o canal reentra sozinho, com backoff e
+ * sem limite, emitindo SUBSCRIBED de novo. Este helper derrubava o canal e
+ * criava outro do MESMO tópico na sequência, e isso o matava em silêncio: o
+ * `removeChannel` do realtime-js é assíncrono e tira da lista POR TÓPICO quando a
+ * saída termina — levando junto o canal novo (que deixava de receber sinais sem
+ * erro nenhum) —, e enquanto a saída não termina `channel(tópico)` devolve o
+ * canal VELHO, onde o `subscribe` não faz nada. Daí as regras:
+ *  - CHANNEL_ERROR/TIMED_OUT só marcam a perda; o SUBSCRIBED seguinte chama
+ *    `onRefetch` (o que mudou durante a queda não chegou por sinal);
+ *  - CLOSED fora da nossa saída (o servidor fechou o canal: o realtime-js já o
+ *    tirou da lista e não reentra) vira canal novo, com backoff e sem limite;
+ *  - canal do mesmo tópico só entra DEPOIS que a saída do anterior acabou;
+ *  - só a recusa de PERMISSÃO repetida (`maxRetries` seguidas) faz desistir —
+ *    a do realtime-js tentaria a cada 10 s para sempre.
  */
 import { supabase } from '@/config/supabase'
 
 const DEFAULT_OPTIONS = {
+  // recusas de permissão SEGUIDAS até desistir do tópico (queda de rede não conta)
   maxRetries: 20,
+  // backoff do canal recriado depois de um CLOSED do servidor
   initialDelayMs: 1000,
   maxDelayMs: 30000,
   onStatusChange: null,
@@ -41,6 +60,9 @@ const DEFAULT_OPTIONS = {
 
 /** Evento do broadcast que o trigger `rt_sinal` emite. */
 export const EVENTO_SINAL = 'sinal'
+
+/** Recusa de entrada por permissão (policy de realtime.messages): tentar de novo não resolve. */
+const RECUSA = /unauthori[sz]ed|permiss/i
 
 /**
  * Tabelas cujo sinal sai por tópico PESSOAL (`u:<tabela>:<uid>`). Tem de bater
@@ -77,6 +99,9 @@ export function topicoDe(table, filter) {
 
 // ── registro: um canal por tópico, ouvintes compartilhados ─────────────────
 const canais = new Map()
+// saídas em andamento por tópico (o `removeChannel` do realtime-js é assíncrono):
+// um canal novo do mesmo tópico só entra quando a do anterior acaba
+const saindo = new Map()
 
 function obterCanal(topic, opts) {
   let entrada = canais.get(topic)
@@ -85,14 +110,23 @@ function obterCanal(topic, opts) {
     topic,
     channel: null,
     ouvintes: new Set(), // { onSinal, onStatus, onRefetch, onReconnect }
-    retryCount: 0,
+    perdido: false, // caiu desde o último SUBSCRIBED: ao voltar, onRefetch
+    recriacoes: 0, // canais novos seguidos depois de CLOSED do servidor (backoff)
+    negadas: 0, // recusas de permissão seguidas
     retryTimer: null,
     tentativa: 0,
     opts,
+    vale(tentativa) {
+      return canais.get(this.topic) === this && tentativa === this.tentativa
+    },
     subscribe() {
-      if (this.channel) {
-        supabase.removeChannel(this.channel)
-        this.channel = null
+      clearTimeout(this.retryTimer)
+      this.retryTimer = null
+      const tentativa = ++this.tentativa
+      const saida = saindo.get(this.topic)
+      if (saida) {
+        saida.finally(() => { if (this.vale(tentativa) && !this.channel) this.subscribe() })
+        return
       }
       // Sessão otimista (15/10/2026): o app monta antes de o Firebase confirmar
       // a sessão. Canal PRIVADO que entra sem token é recusado (CHANNEL_ERROR) —
@@ -101,15 +135,11 @@ function obterCanal(topic, opts) {
       // a tela inteira. Sem token ainda: espera o próprio realtime obtê-lo.
       const rt = supabase.realtime
       if (rt && !rt.accessTokenValue && typeof rt.setAuth === 'function') {
-        const tentativa = ++this.tentativa
         rt.setAuth()
           .catch(() => {})
-          .then(() => {
-            if (canais.get(this.topic) === this && tentativa === this.tentativa && !this.channel) this.entrar()
-          })
+          .then(() => { if (this.vale(tentativa) && !this.channel) this.entrar() })
         return
       }
-      this.tentativa++
       this.entrar()
     },
     entrar() {
@@ -121,40 +151,65 @@ function obterCanal(topic, opts) {
           const sinal = msg?.payload
           this.ouvintes.forEach((o) => o.onSinal(sinal))
         })
-        .subscribe((status) => {
-          if (!canais.has(this.topic)) return
-          this.ouvintes.forEach((o) => o.onStatus?.(status))
-          if (status === 'SUBSCRIBED') {
-            if (this.retryCount > 0) {
-              this.retryCount = 0
-              this.ouvintes.forEach((o) => { o.onRefetch?.(); o.onReconnect?.() })
-            }
-          }
-          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            console.warn(`[ReliableSubscription] ${this.topic}: ${status}, scheduling retry...`)
-            this.scheduleRetry()
-          }
-        })
       this.channel = channel
+      channel.subscribe((status, err) => {
+        // canal que já não é o desta entrada (derrubado, recriado): o status dele não vale
+        if (canais.get(this.topic) !== this || this.channel !== channel) return
+        this.ouvintes.forEach((o) => o.onStatus?.(status))
+        if (status === 'SUBSCRIBED') {
+          this.negadas = 0
+          this.recriacoes = 0
+          if (this.perdido) {
+            this.perdido = false
+            this.ouvintes.forEach((o) => { o.onRefetch?.(); o.onReconnect?.() })
+          }
+          return
+        }
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          // o realtime-js reentra sozinho: derrubar e recriar aqui matava o canal
+          this.perdido = true
+          console.warn(`[ReliableSubscription] ${this.topic}: ${status}, o realtime reentra sozinho`)
+          if (status === 'CHANNEL_ERROR' && RECUSA.test(String(err?.message || err || ''))) {
+            this.negadas++
+            if (this.negadas >= this.opts.maxRetries) this.desistir()
+          }
+          return
+        }
+        if (status === 'CLOSED') {
+          // o SERVIDOR fechou o canal: o realtime-js já o tirou da lista e não reentra
+          this.perdido = true
+          this.channel = null
+          this.agendarCanalNovo()
+        }
+      })
     },
-    scheduleRetry() {
-      if (!canais.has(this.topic)) return
-      if (this.retryCount >= this.opts.maxRetries) {
-        console.error(`[ReliableSubscription] ${this.topic}: max retries (${this.opts.maxRetries}) exceeded`)
-        return
-      }
-      const delay = Math.min(this.opts.initialDelayMs * Math.pow(2, this.retryCount), this.opts.maxDelayMs)
-      this.retryCount++
-      this.retryTimer = setTimeout(() => { if (canais.has(this.topic)) this.subscribe() }, delay)
+    agendarCanalNovo() {
+      clearTimeout(this.retryTimer)
+      const delay = Math.min(this.opts.initialDelayMs * Math.pow(2, this.recriacoes), this.opts.maxDelayMs)
+      this.recriacoes++
+      console.warn(`[ReliableSubscription] ${this.topic}: CLOSED, canal novo em ${delay} ms`)
+      this.retryTimer = setTimeout(() => { if (canais.get(this.topic) === this) this.subscribe() }, delay)
+    },
+    desistir() {
+      console.error(`[ReliableSubscription] ${this.topic}: acesso recusado ${this.negadas}× seguidas — desistindo`)
+      clearTimeout(this.retryTimer)
+      this.retryTimer = null
+      this.sair()
+    },
+    sair() {
+      const ch = this.channel
+      this.channel = null
+      if (!ch) return
+      let saida
+      try { saida = Promise.resolve(supabase.removeChannel(ch)).catch(() => {}) } catch { saida = Promise.resolve() }
+      saindo.set(this.topic, saida)
+      saida.finally(() => { if (saindo.get(this.topic) === saida) saindo.delete(this.topic) })
     },
     destruir() {
       clearTimeout(this.retryTimer)
       this.retryTimer = null
-      if (this.channel) {
-        supabase.removeChannel(this.channel)
-        this.channel = null
-      }
       canais.delete(this.topic)
+      this.sair()
     },
   }
   canais.set(topic, entrada)
@@ -166,6 +221,7 @@ function obterCanal(topic, opts) {
 export function __resetCanais() {
   for (const entrada of Array.from(canais.values())) entrada.destruir()
   canais.clear()
+  saindo.clear()
 }
 
 /**

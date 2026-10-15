@@ -13,7 +13,11 @@
  *   5. filtro col=eq.val vale sobre a linha entregue;
  *   6. um canal por tópico: dois assinantes = 1 channel/1 subscribe; o último
  *      cleanup derruba o canal;
- *   7. CHANNEL_ERROR → retry; SUBSCRIBED depois de retry → onRefetch.
+ *   7. queda (CHANNEL_ERROR/TIMED_OUT) NÃO derruba nem recria o canal — o realtime-js
+ *      reentra sozinho; o SUBSCRIBED seguinte chama onRefetch (15/10/2026);
+ *   8. CLOSED do servidor → canal novo com backoff; o da nossa saída, não;
+ *   9. o mesmo tópico só reentra depois que a saída do canal anterior terminou;
+ *  10. só a recusa de permissão repetida faz desistir.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
@@ -173,25 +177,138 @@ describe('createReliableSubscription — broadcast', () => {
     b.cleanup()
     expect(estado.removidos).toEqual(['t:documentos'])
   })
+})
 
-  it('CHANNEL_ERROR reassina com backoff e, ao voltar, chama onRefetch de cada assinante', async () => {
+// RECONEXÃO (15/10/2026): as contas dos hospitais ficavam o dia todo desatualizadas. O
+// helper derrubava o canal a cada CHANNEL_ERROR e criava outro do MESMO tópico na hora; o
+// `removeChannel` do realtime-js é assíncrono e tira da lista POR TÓPICO quando a saída
+// termina, levando junto o canal novo, que parava de receber sinais sem erro nenhum. Numa
+// queda do websocket o app ficou com ZERO canais e desconectado (reproduzido no navegador).
+describe('createReliableSubscription — reconexão', () => {
+  it('queda (CHANNEL_ERROR/TIMED_OUT) não derruba nem recria o canal; ao voltar, onRefetch uma vez', async () => {
     vi.useFakeTimers()
     try {
       const onRefetch = vi.fn()
       createReliableSubscription({ table: 'profiles', callback: vi.fn(), onRefetch }, { initialDelayMs: 10 })
-      const primeiro = canal('t:profiles')
-      primeiro.statusCb('SUBSCRIBED')
+      const ch = canal('t:profiles')
+      ch.statusCb('SUBSCRIBED')
       expect(onRefetch).not.toHaveBeenCalled() // primeira conexão não é reconexão
-      primeiro.statusCb('CHANNEL_ERROR')
-      await vi.advanceTimersByTimeAsync(15)
-      expect(estado.removidos).toEqual(['t:profiles'])
-      const segundo = canal('t:profiles')
-      expect(segundo).not.toBe(primeiro)
-      segundo.statusCb('SUBSCRIBED')
+
+      ch.statusCb('CHANNEL_ERROR', new Error('socket fechado'))
+      ch.statusCb('TIMED_OUT')
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(estado.removidos).toEqual([])
+      expect(supabase.channel).toHaveBeenCalledTimes(1)
+
+      ch.statusCb('SUBSCRIBED') // o realtime-js reentrou sozinho
+      expect(onRefetch).toHaveBeenCalledTimes(1)
+      ch.statusCb('SUBSCRIBED')
       expect(onRefetch).toHaveBeenCalledTimes(1)
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('queda longa (muitos CHANNEL_ERROR seguidos) não faz desistir', async () => {
+    vi.useFakeTimers()
+    try {
+      const onRefetch = vi.fn()
+      createReliableSubscription({ table: 'profiles', callback: vi.fn(), onRefetch }, { maxRetries: 3, initialDelayMs: 10 })
+      const ch = canal('t:profiles')
+      ch.statusCb('SUBSCRIBED')
+      for (let i = 0; i < 30; i++) {
+        ch.statusCb('CHANNEL_ERROR', new Error('{}'))
+        await vi.advanceTimersByTimeAsync(10_000)
+      }
+      expect(estado.removidos).toEqual([])
+      ch.statusCb('SUBSCRIBED')
+      expect(onRefetch).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('CLOSED do servidor → canal NOVO depois do backoff; ao entrar, onRefetch e os sinais voltam', async () => {
+    vi.useFakeTimers()
+    try {
+      const onRefetch = vi.fn()
+      const callback = vi.fn()
+      createReliableSubscription({ table: 'escala_cirurgica_caso', callback, onRefetch, conteudo: false }, { initialDelayMs: 10 })
+      const primeiro = canal('t:escala_cirurgica_caso')
+      primeiro.statusCb('SUBSCRIBED')
+      // o realtime-js tira da lista sozinho o canal que o servidor fechou (o mock imita)
+      estado.canais = estado.canais.filter((c) => c !== primeiro)
+      primeiro.statusCb('CLOSED')
+      expect(estado.removidos).toEqual([])
+
+      await vi.advanceTimersByTimeAsync(15)
+      const segundo = canal('t:escala_cirurgica_caso')
+      expect(segundo).toBeTruthy()
+      expect(segundo).not.toBe(primeiro)
+      segundo.statusCb('SUBSCRIBED')
+      expect(onRefetch).toHaveBeenCalledTimes(1)
+
+      // status atrasado do canal velho não vale mais
+      primeiro.statusCb('CLOSED')
+      await vi.advanceTimersByTimeAsync(100)
+      expect(supabase.channel).toHaveBeenCalledTimes(2)
+
+      emitir('t:escala_cirurgica_caso', { table: 'escala_cirurgica_caso', op: 'UPDATE', pk: { id: 'c1' }, chaves: { escala_id: 'e1' } })
+      await vi.advanceTimersByTimeAsync(0)
+      expect(callback).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('o CLOSED da saída que o próprio helper pediu (último cleanup) não recria', async () => {
+    vi.useFakeTimers()
+    try {
+      const { cleanup } = createReliableSubscription({ table: 'profiles', callback: vi.fn() }, { initialDelayMs: 10 })
+      const ch = canal('t:profiles')
+      ch.statusCb('SUBSCRIBED')
+      cleanup()
+      ch.statusCb('CLOSED')
+      await vi.advanceTimersByTimeAsync(100)
+      expect(supabase.channel).toHaveBeenCalledTimes(1)
+      expect(estado.removidos).toEqual(['t:profiles'])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('reassinar o mesmo tópico logo depois de derrubar: o canal novo só entra quando a saída termina', async () => {
+    let terminarSaida
+    supabase.removeChannel.mockImplementationOnce((ch) => {
+      estado.removidos.push(ch.topic)
+      return new Promise((resolve) => {
+        terminarSaida = () => { estado.canais = estado.canais.filter((c) => c !== ch); resolve('ok') }
+      })
+    })
+    const a = createReliableSubscription({ table: 'documentos', callback: vi.fn() })
+    canal('t:documentos').statusCb('SUBSCRIBED')
+    a.cleanup()
+    const b = createReliableSubscription({ table: 'documentos', callback: vi.fn() })
+    // a saída do velho não terminou: um canal novo agora seria levado junto com ele
+    expect(supabase.channel).toHaveBeenCalledTimes(1)
+
+    terminarSaida()
+    await tick()
+    await tick()
+    expect(supabase.channel).toHaveBeenCalledTimes(2)
+    expect(canal('t:documentos').subscribe).toHaveBeenCalledTimes(1)
+    b.cleanup()
+  })
+
+  it('recusa de PERMISSÃO repetida desiste depois de maxRetries (o realtime-js tentaria a cada 10 s)', () => {
+    createReliableSubscription({ table: 'incident_notification_settings', filter: 'user_id=eq.u1', callback: vi.fn() }, { maxRetries: 3 })
+    const ch = canal('u:incident_notification_settings:u1')
+    const recusa = new Error('"Unauthorized: You do not have permissions to read from this Channel topic: u:incident_notification_settings:u1"')
+    ch.statusCb('CHANNEL_ERROR', recusa)
+    ch.statusCb('CHANNEL_ERROR', recusa)
+    expect(estado.removidos).toEqual([])
+    ch.statusCb('CHANNEL_ERROR', recusa)
+    expect(estado.removidos).toEqual(['u:incident_notification_settings:u1'])
   })
 })
 
