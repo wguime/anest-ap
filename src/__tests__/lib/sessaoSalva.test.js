@@ -8,7 +8,7 @@
  *  - conteúdo estranho/storage bloqueado nunca vira sessão (cai no login normal).
  */
 import { describe, it, expect, beforeEach } from 'vitest'
-import { CHAVE_SESSAO, lerSessaoSalva, gravarSessao, limparSessao, TimestampSalvo } from '@/lib/sessaoSalva'
+import { CHAVE_SESSAO, IDADE_MAXIMA_MS, lerSessaoSalva, gravarSessao, limparSessao, TimestampSalvo } from '@/lib/sessaoSalva'
 
 /** Imita o Timestamp do Firestore (toDate + seconds/nanoseconds). */
 const timestampFirestore = (seconds, nanoseconds = 0) => ({
@@ -71,6 +71,26 @@ describe('sessaoSalva', () => {
     const { perfil } = lerSessaoSalva()
     expect(perfil).not.toHaveProperty('fcmToken')
     expect(perfil).not.toHaveProperty('fcmTokenUpdatedAt')
+  })
+
+  it('texto com nome de segredo não vai ao disco em nenhum nível; mapa de permissões fica', () => {
+    gravarSessao('u1', {
+      ...PERFIL,
+      apiToken: 'seg-1',
+      integracoes: { webhookSecret: 'seg-2', senhaApp: 'seg-3', api_key: 'seg-4' },
+      // card cujo nome tem "token" é permissão (booleano), não segredo
+      permissions: { 'api-tokens': true, 'doc-protocolos': true },
+    })
+    const bruto = localStorage.getItem(CHAVE_SESSAO)
+    for (const segredo of ['seg-1', 'seg-2', 'seg-3', 'seg-4']) expect(bruto).not.toContain(segredo)
+    expect(lerSessaoSalva().perfil.permissions).toEqual({ 'api-tokens': true, 'doc-protocolos': true })
+  })
+
+  it('cópia parada há mais de 30 dias não abre o app sozinha (aparelho esquecido)', () => {
+    gravarSessao('u1', PERFIL)
+    const agora = Date.now()
+    expect(lerSessaoSalva(undefined, agora + IDADE_MAXIMA_MS - 60_000)).not.toBeNull()
+    expect(lerSessaoSalva(undefined, agora + IDADE_MAXIMA_MS + 60_000)).toBeNull()
   })
 
   it('regravar uma sessão já restaurada não perde as datas', () => {

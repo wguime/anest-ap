@@ -100,8 +100,10 @@ export function UserProvider({ children, forceMock = false }) {
   // hora; o Firebase confirma em segundo plano. Antes, toda abertura esperava
   // o Firebase validar o token na rede (1,2–1,9 s medidos; 30–60 s com a rede
   // do hospital pendurada) atrás de um spinner, com a Home já pronta em cache.
-  // Dado de negócio não vaza por aqui: Supabase e Firestore só leem depois da
-  // confirmação. `firebaseUser` continua null até ela — é o sinal de "confirmado".
+  // Dado de negócio não vem daqui: o Firestore espera a confirmação; o Supabase
+  // pode ler antes só com o token que o Firebase já guardou (mesmo uid, válido —
+  // ver src/lib/tokenPersistido.js), e a RLS vale pelo uid. `firebaseUser`
+  // continua null até a confirmação — é o sinal de "confirmado".
   const [sessaoInicial] = useState(() => (useMock ? null : lerSessaoSalva()));
   // uid exibido sem confirmação; zera quando o Firebase confirma ou desmente
   const uidOtimistaRef = useRef(sessaoInicial?.uid || null);
@@ -237,6 +239,15 @@ export function UserProvider({ children, forceMock = false }) {
             // Supabase é source of truth. Se o Centro de Gestão salvou permissões no
             // Supabase mas o sync para Firestore falhou, esta reconciliação corrige.
             // Retry: JWT do Supabase pode não estar pronto no primeiro onSnapshot.
+            // Reconciliação que não conseguiu responder (3 tentativas): a cópia do
+            // disco não pode valer a sessão inteira — um acesso revogado seguiria na
+            // tela. Volta ao doc do Firestore, como era antes da sessão salva.
+            const soltarSemReconciliar = () => {
+              if (!segurarReconciliadosRef.current) return;
+              segurarReconciliadosRef.current = false;
+              const doFirestore = camposReconciliados(rawProfile);
+              setUser(prev => prev ? ensureAdminFlags({ ...prev, ...doFirestore }) : prev);
+            };
             const reconcileFromSupabase = (attempt = 1) => {
               supabase
                 .from('profiles')
@@ -247,6 +258,7 @@ export function UserProvider({ children, forceMock = false }) {
                   if (sbErr) {
                     console.warn(`[UserContext] Reconciliation query failed (attempt ${attempt}):`, sbErr.message);
                     if (attempt < 3) setTimeout(() => reconcileFromSupabase(attempt + 1), 2000 * attempt);
+                    else soltarSemReconciliar();
                     return;
                   }
                   if (!row) {
@@ -257,6 +269,7 @@ export function UserProvider({ children, forceMock = false }) {
                       console.debug(`[UserContext] Reconciliation: no row returned (attempt ${attempt}), retrying...`);
                       setTimeout(() => reconcileFromSupabase(attempt + 1), 2000 * attempt);
                     } else {
+                      soltarSemReconciliar();
                       console.warn('[UserContext] Reconciliation: no Supabase profile after 3 attempts — creating via RPC');
                       supabase.rpc('rpc_create_profile', {
                         p_id: fbUser.uid,
@@ -367,6 +380,7 @@ export function UserProvider({ children, forceMock = false }) {
                 .catch((err) => {
                   console.warn(`[UserContext] Reconciliation error (attempt ${attempt}):`, err);
                   if (attempt < 3) setTimeout(() => reconcileFromSupabase(attempt + 1), 2000 * attempt);
+                  else soltarSemReconciliar();
                 });
             };
             reconcileFromSupabase();

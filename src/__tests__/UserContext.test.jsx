@@ -864,6 +864,32 @@ describe('UserContext — sessão otimista (abertura instantânea)', () => {
     expect(lerUser().role).toBe('anestesiologista');
   });
 
+  it('reconciliação que não responde (3 tentativas): o papel do disco não vale a sessão inteira', async () => {
+    // rede ruim: sem a resposta do Supabase, um acesso revogado não pode seguir
+    // na tela pela cópia do disco — volta ao doc do Firestore, como antes
+    vi.useFakeTimers();
+    try {
+      gravarSessao('u1', PERFIL_SALVO);
+      mockSupabaseQuery.maybeSingle.mockImplementation(() => Promise.resolve({ data: null, error: { message: 'timeout' } }));
+      renderWithProvider();
+
+      await act(async () => {
+        await authChangeCallback({ uid: 'u1', email: 'ana@anest.com.br' });
+      });
+      await act(async () => {
+        snapshotCallback(makeSnap(DOC_FIRESTORE_VELHO));
+      });
+      expect(lerUser().role).toBe('anestesiologista'); // segurado enquanto tenta
+
+      await act(async () => { await vi.advanceTimersByTimeAsync(2000); }); // 2ª tentativa
+      await act(async () => { await vi.advanceTimersByTimeAsync(4000); }); // 3ª tentativa
+
+      expect(lerUser().role).toBe('colaborador');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('papel que mudou desde a última abertura: a reconciliação traz o de agora (nada preso)', async () => {
     // ontem anestesiologista (vindo do Supabase); hoje o admin rebaixou nos dois lados
     gravarSessao('u1', PERFIL_SALVO);

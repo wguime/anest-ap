@@ -9,21 +9,32 @@
  * pendurada. Os dados da Home já vinham de cache; quem segurava era o portão.
  *
  * Como funciona: com sessão salva o UserContext nasce autenticado com este
- * perfil e o Firebase confirma em segundo plano. Nada de dado de negócio passa
- * por aqui — Supabase e Firestore esperam o Firebase confirmar antes de qualquer
- * leitura (getSupabaseToken aguarda o `_authReady`; o Firestore enfileira até o
- * primeiro usuário). Se o Firebase disser que não há sessão (conta desativada,
- * token revogado), o perfil salvo é apagado e o app vai para o login.
+ * perfil e o Firebase confirma em segundo plano. Nenhum dado de negócio vem
+ * daqui: o Firestore enfileira tudo até o Firebase anunciar o usuário; o
+ * Supabase pode ler antes, mas só com o ID token que o próprio Firebase já
+ * guardou (mesmo uid, válido por ≥2 min — src/lib/tokenPersistido.js), e a RLS
+ * vale pelo uid. Revogação (conta desativada, senha trocada) só pesa quando o
+ * Firebase confirma — ele desmente a sessão, este perfil é apagado e o app vai
+ * para o login — ou quando o token vence (≤1 h), como num app que ficou aberto.
  *
  * LGPD: é o perfil da própria pessoa, no próprio aparelho — o mesmo documento que
- * o cache persistente do Firestore já guarda em IndexedDB. Tokens de push ficam
- * de fora (são do aparelho e não servem para desenhar tela). Sai no logout.
+ * o cache persistente do Firestore já guarda em IndexedDB. Só existe com "Manter
+ * conectado" (UserContext), sai no logout e é ignorado depois de 30 dias parado.
+ * Tokens de push ficam de fora, e qualquer campo de texto com nome de segredo
+ * (token, senha, chave de API) também — campo novo de aparelho/segredo em
+ * `userProfiles` entra em CAMPOS_FORA.
  */
 
 export const CHAVE_SESSAO = 'anest-sessao-v1'
 
 /** Campos que nunca vão para o disco. */
 const CAMPOS_FORA = new Set(['fcmToken', 'fcmTokens', 'fcmTokenUpdatedAt'])
+
+/** Texto com nome de segredo não vai para o disco, em nenhum nível do perfil. */
+const NOME_DE_SEGREDO = /token|secret|senha|password|api_?key/i
+
+/** Cópia parada há mais tempo que isso não abre o app sozinha (aparelho esquecido). */
+export const IDADE_MAXIMA_MS = 30 * 24 * 60 * 60 * 1000
 
 const PROFUNDIDADE_MAX = 6
 
@@ -58,6 +69,9 @@ function paraDisco(valor, nivel = 0) {
   const out = {}
   for (const [k, v] of Object.entries(valor)) {
     if (nivel === 0 && CAMPOS_FORA.has(k)) continue
+    // só TEXTO com nome de segredo sai: as permissões são mapas de booleanos e um
+    // card pode se chamar "api-tokens" sem ser segredo nenhum
+    if (typeof v === 'string' && NOME_DE_SEGREDO.test(k)) continue
     if (typeof v === 'function') continue
     const convertido = paraDisco(v, nivel + 1)
     if (convertido !== undefined) out[k] = convertido
@@ -82,9 +96,11 @@ const armazenamento = (storage) => {
 
 /**
  * Lê a sessão salva. Devolve `{ uid, perfil, salvaEm }` ou `null` — inclusive
- * quando o storage está bloqueado (aba privada) ou o conteúdo não confere.
+ * quando o storage está bloqueado (aba privada), o conteúdo não confere ou a
+ * cópia está parada há mais de IDADE_MAXIMA_MS (aí a abertura espera o Firebase,
+ * como antes, e a cópia é refeita depois da confirmação).
  */
-export function lerSessaoSalva(storage) {
+export function lerSessaoSalva(storage, agora = Date.now()) {
   try {
     const st = armazenamento(storage)
     const bruto = st?.getItem(CHAVE_SESSAO)
@@ -94,6 +110,7 @@ export function lerSessaoSalva(storage) {
     if (!s.perfil || typeof s.perfil !== 'object' || Array.isArray(s.perfil)) return null
     const uidPerfil = s.perfil.uid || s.perfil.id
     if (uidPerfil && uidPerfil !== s.uid) return null
+    if (typeof s.salvaEm !== 'number' || agora - s.salvaEm > IDADE_MAXIMA_MS) return null
     return s
   } catch {
     return null
