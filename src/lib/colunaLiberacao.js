@@ -816,9 +816,31 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     return (porChave(origemHosp, l) === m.hospital && derivado != null) ? derivado : 0
   }
   // extra com origem conhecida é visitante → sai dos extras e entra no bloco do fim
+  //
+  // ⚠️ MAS NÃO QUEM CHEGOU DEPOIS DA PUBLICAÇÃO (dono 15/10, HRO da manhã):
+  // Rafael e Oscar, do rodapé PUBLICADO da Unimed, ganharam urgência lançada à
+  // mão no HRO (11h28 e 12h06) e entraram no fim da fila de lá — Rafael virou o
+  // "próximo" e Klisman/Karine, já sem cirurgia, ficaram "Livre" presos acima dos
+  // liberados. "As escalas de cada hospital devem permanecer conforme foram
+  // publicadas": quem tem posição no rodapé de OUTRO hospital e aqui só tem caso
+  // acrescentado depois (`origem: 'manual'`) continua só na fila de lá, onde
+  // `ajudandoFora` já o mostra com "Ajuda (HRO)" e o local. O visitante que VEIO
+  // na escala publicada (27/08, 21/09) segue entrando na cauda como sempre; o
+  // recorte de 06/10 (ajuda que chegou por caso manual) fica revogado.
+  // Fica também quem foi DECLARADO: ajuda em azul (`ajudaExterna`, outro
+  // caminho), a origem informada à mão ("Veio de") e o "não é ajuda".
+  const chegouDepoisDeOutroRodape = (l) => {
+    if (marcaDe(l) || semAjudaDe(l) || porChave(origemIdx, l) == null) return false
+    const g = grupos.get(l.chave)
+    const casos = g?.casosTurno || []
+    return casos.length > 0 && casos.every((c) => c.origem === 'manual')
+  }
   const extrasLocais = []
   const visitantesExtras = []
-  for (const l of extras) (idxOrigem(l) != null ? visitantesExtras : extrasLocais).push(l)
+  for (const l of extras) {
+    if (chegouDepoisDeOutroRodape(l)) continue
+    ;(idxOrigem(l) != null ? visitantesExtras : extrasLocais).push(l)
+  }
   // ORDEM DA CAUDA (dono 27/08): "sempre os primeiros a irem embora são os
   // plantões do contraturno, após os anestesistas que estariam escalados no
   // materno, e após os anestesistas de outro hospital, sempre respeitando a

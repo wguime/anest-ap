@@ -3,6 +3,25 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.62 (15/10/2026) — A fila de cada hospital fica como foi publicada
+
+Foto do dono, HRO da manhã, 12h22: **Rafael Pelissaro "Próximo a ser liberado" e Oscar com "Ajuda
+(Unimed)" no fim da fila**, e Klisman/Karine, já sem cirurgia, "Livre" presos acima dos liberados. *"a
+escala da tarde não deve interferir na liberação da escala da manhã (...) A ordem de liberação nunca deve
+ser alterada após publicação"* e, depois: *"as escalas de cada hospital devem permanecer conforme foram
+publicadas. pessoas não devem aparecer livres no meio de pessoas liberadas"*.
+- **A tarde não foi a causa.** Reproduzido com os dados reais das 12h22, com e sem a escala da tarde, e a
+  fila sai idêntica. A causa foram duas **urgências lançadas à mão** no HRO, às 11h28 (Rafael) e às 12h06
+  (Oscar). Os dois estão no rodapé publicado da Unimed, e pela regra de 27/08 o visitante de outro rodapé
+  entra no fim da fila daqui.
+- **Agora:** quem tem posição no rodapé de OUTRO hospital e aqui só tem caso acrescentado depois da
+  publicação (`origem: 'manual'`) não entra nesta fila. Ele segue na fila de lá, onde já aparecia com
+  "Ajuda Sala 5/HRO". O visitante que veio na escala publicada continua entrando como sempre (27/08,
+  21/09). A ajuda declarada em azul, o "Veio de" e o "não é ajuda" não mudam. O recorte de 06/10 (Eduardo)
+  mudou de lado.
+- Conferido com os dados reais: o HRO da manhã sai 1–17 como publicado, com o Rômulo como próximo; na
+  Unimed, o Rafael segue em 18º com "Ajuda Sala 5/HRO".
+
 ## v5.12.61 (15/10/2026) — Escala dos hospitais sempre atualizada; card de adesão completo no desktop
 
 Pedido do dono: "veririque para que as escalas cirúrgicas dos hospitais (hro e Unimed) atualizem com

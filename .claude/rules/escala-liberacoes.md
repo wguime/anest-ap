@@ -940,3 +940,26 @@ manda, não a cor. Seguem fora da ordem só os que a regra posiciona desde a lib
 extras/ajudas e o plantão do contraturno no fim. Não reintroduzir descida sem pedido do dono.
 Travas: os 4 testes de 21/09 e 06/10 foram reescritos para "FICA na posição" (`liberacoesPainelLinha`,
 `liberacoesTurnoProprioRecorte1109`, `liberacoesEquipeOutroHospital`, `escalaCirurgicaPersonas`).
+
+
+## A fila de cada hospital fica como foi publicada — caso manual de quem é de outro rodapé (dono 15/10/2026)
+
+Foto do HRO da manhã, às 12h22. Rafael (último do rodapé da Unimed) e Oscar (6º de lá) ganharam urgência
+**lançada à mão** no HRO, às 11h28 e às 12h06. Pela regra de 27/08 (visitante de outro rodapé entra na
+cauda), os dois foram para o fim da fila do HRO. O Rafael virou o "próximo", e Klisman e Karine, sem
+cirurgia, ficaram "Livre" acima dos liberados. O dono suspeitou da tarde, mas o replay com e sem a tarde
+(`.tmp/ver-manha-hro-1510.mjs`) deu a mesma fila. *"as escalas de cada hospital devem permanecer conforme
+foram publicadas"*: a opção escolhida foi deixar a fila como publicada, contra a alternativa de mostrar o
+visitante sem travar a fila.
+
+- `chegouDepoisDeOutroRodape` (`colunaLiberacao.js`, junto de `visitantesExtras`): o extra com origem
+  DERIVADA (`rodapeOutros`) cujos casos do turno são TODOS `origem: 'manual'` não vira linha. Ele continua
+  na fila do hospital de origem, onde `ajudandoFora` já mostra "Ajuda Sala 5/HRO".
+- Seguem entrando: o visitante com caso **importado** (veio na publicação: 27/08, 21/09), quem não está em
+  rodapé nenhum (19/08), a ajuda em azul, o "Veio de" (`origemManual`) e o "não é ajuda" (`semAjuda`).
+- ⚠️ A 1ª tentativa tirou TODO visitante de origem derivada e derrubou 23 testes de 27/08/21/09 (*"as ajudas
+  vieram do HRO… Gustavo sai antes de Alexandre"*). O que é particular de 15/10 é o caso ter entrado
+  **depois** da publicação.
+- Travas: `escalaCirurgicaPersonas.test.jsx`, no describe "quem chega por caso manual e é do rodapé de outro
+  hospital…" (recorte de 06/10, que mudou de lado). Os 2 primeiros testes falham contra o código anterior.
+  `escalaConferenciaHeadless` usa a mesma lib, então o ensaio acompanha a regra sem mudança.
