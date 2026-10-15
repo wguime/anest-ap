@@ -6,7 +6,7 @@
  */
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/config/supabase'
-import { auth, db } from '@/config/firebase'
+import { auth, authPronto, db } from '@/config/firebase'
 import { collection, getCountFromServer } from 'firebase/firestore'
 
 // ---------------------------------------------------------------------------
@@ -140,6 +140,9 @@ export function useInfraStatus() {
   /** 1. Firebase Auth probe */
   const probeFirebaseAuth = useCallback(async () => {
     try {
+      // o app abre antes de o Firebase confirmar a sessão (sessão otimista):
+      // sem esperar, a sonda leria "desconectado" no começo de toda abertura
+      try { await authPronto() } catch { /* decide pelo estado atual */ }
       const currentUser = auth.currentUser
       const connected = !!currentUser
 
@@ -284,6 +287,11 @@ export function useInfraStatus() {
   /** Save a summary row into infra_health_history */
   const saveHealthCheck = useCallback(async (authResult, supaConn, syncResults) => {
     try {
+      // audit trail com o usuário REAL, nunca 'system' (audit-trail.md): sem
+      // sessão confirmada não há quem assinar a linha, e ela não é gravada
+      try { await authPronto() } catch { /* decide pelo estado atual */ }
+      const checkedBy = auth.currentUser?.uid
+      if (!checkedBy) return
       const modulesLive = syncResults.filter(s => s.status === 'live').length
       await supabase.from('infra_health_history').insert({
         firebase_status: authResult.connected ? 'connected' : 'disconnected',
@@ -291,7 +299,7 @@ export function useInfraStatus() {
         supabase_latency_ms: supaConn.latencyMs,
         modules_live: modulesLive,
         modules_total: syncResults.length,
-        checked_by: auth.currentUser?.uid || 'system',
+        checked_by: checkedBy,
       })
     } catch (err) {
       console.warn('[useInfraStatus] Failed to save health check:', err.message)

@@ -772,6 +772,7 @@ describe('UserContext — sessão otimista (abertura instantânea)', () => {
 
   it('com sessão salva, nasce autenticado com o perfil salvo — sem esperar o Firebase', () => {
     gravarSessao('u1', PERFIL_SALVO);
+    loginPersistidoPeloFirebase('u1');
     renderWithProvider();
 
     expect(screen.getByTestId('loading').textContent).toBe('false');
@@ -789,6 +790,7 @@ describe('UserContext — sessão otimista (abertura instantânea)', () => {
 
   it('Firebase sem sessão (conta desativada, token revogado) → apaga a salva e vai ao login', async () => {
     gravarSessao('u1', PERFIL_SALVO);
+    loginPersistidoPeloFirebase('u1');
     renderWithProvider();
 
     await act(async () => {
@@ -803,6 +805,7 @@ describe('UserContext — sessão otimista (abertura instantânea)', () => {
 
   it('Firebase confirma OUTRA conta → o perfil salvo sai da tela na hora', async () => {
     gravarSessao('u1', PERFIL_SALVO);
+    loginPersistidoPeloFirebase('u1');
     renderWithProvider();
 
     await act(async () => {
@@ -842,6 +845,7 @@ describe('UserContext — sessão otimista (abertura instantânea)', () => {
 
   it('papel e settings da sessão salva ficam até a reconciliação desta abertura (não pisca)', async () => {
     gravarSessao('u1', PERFIL_SALVO);
+    loginPersistidoPeloFirebase('u1');
     const reconciliacao = adiada();
     mockSupabaseQuery.maybeSingle.mockImplementation(() => reconciliacao.promise);
     const svc = (await import('../services/supabaseUsersService')).default;
@@ -870,6 +874,7 @@ describe('UserContext — sessão otimista (abertura instantânea)', () => {
     vi.useFakeTimers();
     try {
       gravarSessao('u1', PERFIL_SALVO);
+      loginPersistidoPeloFirebase('u1');
       mockSupabaseQuery.maybeSingle.mockImplementation(() => Promise.resolve({ data: null, error: { message: 'timeout' } }));
       renderWithProvider();
 
@@ -893,6 +898,7 @@ describe('UserContext — sessão otimista (abertura instantânea)', () => {
   it('papel que mudou desde a última abertura: a reconciliação traz o de agora (nada preso)', async () => {
     // ontem anestesiologista (vindo do Supabase); hoje o admin rebaixou nos dois lados
     gravarSessao('u1', PERFIL_SALVO);
+    loginPersistidoPeloFirebase('u1');
     mockSupabaseQuery.maybeSingle.mockResolvedValue({ data: { ...LINHA_ANEST, role: 'colaborador' }, error: null });
     renderWithProvider();
 
@@ -921,6 +927,86 @@ describe('UserContext — sessão otimista (abertura instantânea)', () => {
 
     expect(screen.getByTestId('authenticated').textContent).toBe('true');
     expect(localStorage.getItem(CHAVE_SESSAO)).toBeNull();
+  });
+
+  it('cópia de uma conta com o login de OUTRA (ou nenhum) guardado pelo Firebase → não abre otimista', () => {
+    // app fechado à força entre o login de B e a chegada do perfil dele
+    gravarSessao('u1', PERFIL_SALVO);
+    loginPersistidoPeloFirebase('u2');
+    renderWithProvider();
+
+    expect(screen.getByTestId('loading').textContent).toBe('true');
+    expect(screen.getByTestId('authenticated').textContent).toBe('false');
+    expect(screen.getByTestId('user').textContent).toBe('null');
+  });
+
+  it('escrita na janela otimista com o Firebase confirmando OUTRA conta: não grava em perfil nenhum', async () => {
+    gravarSessao('u1', PERFIL_SALVO);
+    loginPersistidoPeloFirebase('u1');
+    const { auth } = await import('../config/firebase');
+    const { updateDoc } = await import('firebase/firestore');
+    let ctx;
+    function Pega() {
+      ctx = useUser();
+      return null;
+    }
+    render(
+      <UserProvider>
+        <Pega />
+      </UserProvider>,
+    );
+    auth.currentUser = { uid: 'u2' };
+    try {
+      let resultado;
+      await act(async () => {
+        resultado = await ctx.updateUser({ firstName: 'Outro' });
+      });
+      expect(resultado.success).toBe(false);
+      expect(updateDoc).not.toHaveBeenCalled();
+    } finally {
+      auth.currentUser = null;
+    }
+  });
+
+  it('leitura dos settings de incidente falhou → sem acesso (o valor da cópia não vale a sessão)', async () => {
+    gravarSessao('u1', PERFIL_SALVO); // isResponsible: true na cópia
+    loginPersistidoPeloFirebase('u1');
+    const svc = (await import('../services/supabaseUsersService')).default;
+    svc.fetchMyIncidentSettings.mockImplementation(() => Promise.reject(new Error('544')));
+    renderWithProvider();
+
+    await act(async () => {
+      await authChangeCallback({ uid: 'u1', email: 'ana@anest.com.br' });
+    });
+    await act(async () => {
+      snapshotCallback(makeSnap(DOC_FIRESTORE_VELHO));
+    });
+
+    expect(lerUser().incidentSettings).toEqual({ isResponsible: false, receberIncidentes: false, receberDenuncias: false });
+  });
+
+  it('consulta de reconciliação pendurada: o papel da cópia vale no máximo 15 s', async () => {
+    vi.useFakeTimers();
+    try {
+      gravarSessao('u1', PERFIL_SALVO);
+      loginPersistidoPeloFirebase('u1');
+      mockSupabaseQuery.maybeSingle.mockImplementation(() => new Promise(() => {}));
+      renderWithProvider();
+
+      await act(async () => {
+        await authChangeCallback({ uid: 'u1', email: 'ana@anest.com.br' });
+      });
+      await act(async () => {
+        snapshotCallback(makeSnap(DOC_FIRESTORE_VELHO));
+      });
+      expect(lerUser().role).toBe('anestesiologista');
+
+      await act(async () => { await vi.advanceTimersByTimeAsync(15000); });
+
+      expect(lerUser().role).toBe('colaborador');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('logout apaga a sessão salva', async () => {

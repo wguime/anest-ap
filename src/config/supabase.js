@@ -13,7 +13,7 @@
  * projeto aceitam ambos os formatos (_shared/verify-auth.ts).
  */
 import { createClient } from '@supabase/supabase-js'
-import { onAuthStateChanged } from 'firebase/auth'
+import { onAuthStateChanged, onIdTokenChanged } from 'firebase/auth'
 import { auth } from './firebase'
 import { lerSessaoSalva } from '../lib/sessaoSalva'
 import { tokenPersistidoValido } from '../lib/tokenPersistido'
@@ -168,6 +168,17 @@ export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
     autoRefreshToken: false,
     detectSessionInUrl: false,
   },
+})
+
+// O realtime acompanha o login do Firebase (15/10/2026). O supabase-js entrega
+// ao realtime o 1º token com `setAuth(token)`, e token passado assim fica
+// "manual": o realtime-js nunca mais o renova (nem no heartbeat) — o canal
+// seguia com o JWT da abertura depois de ele vencer, e com a sessão otimista a
+// próxima conta a entrar na mesma aba herdaria o JWT de quem saiu. `setAuth()`
+// SEM argumento volta ao modo callback (pede ao getSupabaseToken agora e a cada
+// heartbeat); esta escuta cobre login, logout e cada renovação do ID token.
+onIdTokenChanged(auth, () => {
+  Promise.resolve(supabase.realtime?.setAuth?.()).catch(() => {})
 })
 
 export default supabase

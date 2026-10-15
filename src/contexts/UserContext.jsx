@@ -104,12 +104,27 @@ export function UserProvider({ children, forceMock = false }) {
   // pode ler antes só com o token que o Firebase já guardou (mesmo uid, válido —
   // ver src/lib/tokenPersistido.js), e a RLS vale pelo uid. `firebaseUser`
   // continua null até a confirmação — é o sinal de "confirmado".
-  const [sessaoInicial] = useState(() => (useMock ? null : lerSessaoSalva()));
+  // Só vale se o Firebase também guardou no aparelho o login do MESMO uid: app
+  // fechado à força entre o login de outra conta e a chegada do perfil dela (ou
+  // no meio de um logout) deixaria a cópia de quem saiu na tela de quem entrou.
+  const [sessaoInicial] = useState(() => {
+    if (useMock) return null;
+    const salva = lerSessaoSalva();
+    if (!salva) return null;
+    const doFirebase = usuarioFirebaseNoAparelho({
+      storage: typeof localStorage !== 'undefined' ? localStorage : null,
+      apiKey: auth.app?.options?.apiKey,
+      appName: auth.app?.name,
+      uid: salva.uid,
+    });
+    return doFirebase ? salva : null;
+  });
   // uid exibido sem confirmação; zera quando o Firebase confirma ou desmente
   const uidOtimistaRef = useRef(sessaoInicial?.uid || null);
   // Papel/permissões da sessão salva valem até a 1ª reconciliação desta abertura
   // (ver o snapshot abaixo): o doc do Firestore pode estar atrás do Supabase.
   const segurarReconciliadosRef = useRef(!!sessaoInicial);
+  const tetoReconciliacaoRef = useRef(null);
 
   const [user, setUser] = useState(() => (sessaoInicial ? ensureAdminFlags(sessaoInicial.perfil) : null));
   const [firebaseUser, setFirebaseUser] = useState(null);
@@ -173,11 +188,19 @@ export function UserProvider({ children, forceMock = false }) {
             });
 
             // Buscar settings de notificação de incidentes do usuário (para acesso ao Centro de Gestão)
+            // Falha da leitura = sem acesso (padrão seguro): o valor que veio da
+            // sessão salva não pode valer a sessão inteira — um "responsável"
+            // revogado pelo admin seguiria entrando na gestão de denúncias.
             supabaseUsersService.fetchMyIncidentSettings(fbUser.uid)
               .then((settings) => {
                 setUser(prev => prev ? { ...prev, incidentSettings: settings } : prev);
               })
-              .catch((err) => console.warn('[UserContext] fetchMyIncidentSettings failed:', err));
+              .catch((err) => {
+                console.warn('[UserContext] fetchMyIncidentSettings failed:', err);
+                setUser(prev => prev
+                  ? { ...prev, incidentSettings: { isResponsible: false, receberIncidentes: false, receberDenuncias: false } }
+                  : prev);
+              });
 
             // Realtime: revogação imediata quando admin altera receber_incidentes/denuncias.
             // Sem isso, o user-alvo só perderia acesso no próximo login.
@@ -248,6 +271,11 @@ export function UserProvider({ children, forceMock = false }) {
               const doFirestore = camposReconciliados(rawProfile);
               setUser(prev => prev ? ensureAdminFlags({ ...prev, ...doFirestore }) : prev);
             };
+            // Consulta pendurada também solta (o supabase-js não tem timeout):
+            // no máximo 15 s de papel vindo da cópia do disco.
+            if (segurarReconciliadosRef.current && !tetoReconciliacaoRef.current) {
+              tetoReconciliacaoRef.current = setTimeout(soltarSemReconciliar, 15000);
+            }
             const reconcileFromSupabase = (attempt = 1) => {
               supabase
                 .from('profiles')
@@ -468,6 +496,8 @@ export function UserProvider({ children, forceMock = false }) {
       unsubAuth();
       if (unsubProfile) unsubProfile();
       if (cleanupIncidentSettingsSub) cleanupIncidentSettingsSub();
+      clearTimeout(tetoReconciliacaoRef.current);
+      tetoReconciliacaoRef.current = null;
     };
   }, [useMock]);
 
@@ -496,10 +526,14 @@ export function UserProvider({ children, forceMock = false }) {
    * responder "não autenticado".
    */
   const uidConfirmado = useCallback(async () => {
-    if (firebaseUser) return firebaseUser.uid;
-    await authPronto();
-    return auth.currentUser?.uid || null;
-  }, [firebaseUser]);
+    // a escrita é do perfil que está NA TELA: se o Firebase confirmar outra
+    // conta, não grava (o perfil dela chega e a tela troca)
+    const uidTela = user?.uid || user?.id || null;
+    if (firebaseUser) return !uidTela || firebaseUser.uid === uidTela ? firebaseUser.uid : null;
+    try { await authPronto(); } catch { /* decide pelo estado atual */ }
+    const uid = auth.currentUser?.uid || null;
+    return uid && (!uidTela || uid === uidTela) ? uid : null;
+  }, [firebaseUser, user?.uid, user?.id]);
 
   // Login
   const login = useCallback(async (email, password) => {
