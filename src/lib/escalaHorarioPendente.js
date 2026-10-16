@@ -79,6 +79,16 @@ export function anestesistasDoCaso(caso) {
 }
 
 /**
+ * CONSULTÓRIO NÃO PEDE HORÁRIO (dono 16/10/2026): "consultório tem horário definido —
+ * manhã das 7:45 às 11:30 e à tarde das 13:30 às 17:00". O que marca é o PROCEDIMENTO
+ * ("CONSULTORIO", "CONSULTÓRIO – AJUDA", "11 CONSULTAS"), não a sala: em 10/2026 uma
+ * blefaroplastia foi lançada na sala "Consultório" e essa continua pedindo horário. Em toda a
+ * base, todo procedimento com "consult" estava na sala Consultório. Mesmo corte no banco
+ * (`escala_caso_trava_liberacao`, relatório e "Seu preenchimento", migration 20261016150000).
+ */
+export const ehConsultorio = (caso) => /CONSULT/i.test(String(caso?.procedimento || ''))
+
+/**
  * A cirurgia é da conta do alerta? Mesmos cortes do relatório (SQL): com procedimento,
  * com anestesista, não suspensa, não continuação (a da tarde herda o caso da manhã — a
  * mesma cirurgia não conta duas vezes, como na cobrança), dentro da janela.
@@ -88,6 +98,7 @@ export function casoEntraNaConta(caso, { data } = {}) {
   if (caso.semAnestesista) return false
   if (caso.statusExtra === 'suspensa' || caso.statusCirurgia === 'suspensa') return false
   if (caso.isContinuacao) return false
+  if (ehConsultorio(caso)) return false
   if (!anestesistasDoCaso(caso).length) return false
   return dentroDoInicioDoAlerta(data, turnoDoCasoHorario(caso))
 }
@@ -233,7 +244,7 @@ export function pendenciasParaLiberar(casos) {
   const out = []
   for (const caso of casos || []) {
     if (!caso || !temTexto(caso.procedimento)) continue
-    if (caso.semAnestesista || caso.isContinuacao) continue
+    if (caso.semAnestesista || caso.isContinuacao || ehConsultorio(caso)) continue
     if (caso.statusExtra === 'suspensa' || caso.statusCirurgia === 'suspensa') continue
     const aberta = casoAberto(caso)
     if (aberta && (caso.statusExtra === 'passa_tarde' || anestesistasDoCaso(caso).length > 1)) continue

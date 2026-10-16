@@ -18,6 +18,7 @@
  * 25/09) — a hora do toque é o ponto de partida, não a última palavra.
  */
 import { agora } from '@/lib/devClock'
+import { ehConsultorio, turnoDoCasoHorario } from '@/lib/escalaHorarioPendente'
 import { diffRelogioMin, parseHoraMinutos } from '@/pages/escala-cirurgica/utils'
 
 const pad = (n) => String(n).padStart(2, '0')
@@ -147,11 +148,23 @@ export function gravarInicioReal({ escala, caso, hhmm, userId = null, setStatusC
  *
  * @returns {Promise<void>}
  */
+/**
+ * CONSULTÓRIO TEM HORÁRIO DEFINIDO (dono 16/10/2026): "manhã das 7:45 às 11:30 e à tarde das
+ * 13:30 às 17:00". Ele não pede horário a ninguém; quando alguém marca Terminada sem início,
+ * o início é o do turno, em vez de pedir os dois. null = não é consultório ou já tem início.
+ */
+export function inicioDefinidoConsultorio(caso) {
+  if (!ehConsultorio(caso) || String(caso?.inicioReal ?? '').trim()) return null
+  return turnoDoCasoHorario(caso) === 'vespertino' ? '13:30' : '07:45'
+}
+
 export function gravarTerminoReal({ escala, caso, hhmm, inicioReal = null, userId = null, setStatusCirurgia, atualizarCaso }) {
   if (!caso?.id) return Promise.resolve()
   // `inicioReal` = o início que a confirmação EXIGIU junto (dono 14/10: "não seja
-  // possível colocar apenas terminado") — viaja no mesmo patch, antes da RPC
-  const comInicio = inicioReal ? { inicioReal } : {}
+  // possível colocar apenas terminado") — viaja no mesmo patch, antes da RPC. No
+  // consultório sem início, vem do horário definido (16/10).
+  const ini = inicioReal || (hhmm ? inicioDefinidoConsultorio(caso) : null)
+  const comInicio = ini ? { inicioReal: ini } : {}
   if (hhmm && (caso.statusCirurgia || 'agendada') !== 'terminada') {
     return setStatusCirurgia(escala, caso, 'terminada', { userId, terminoReal: hhmm, ...comInicio })
   }

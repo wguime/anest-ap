@@ -24,7 +24,7 @@ import useAvisoPlantonista from './useAvisoPlantonista'
 import { AvisoTempoEstourado } from './useAvisoTempoEstourado'
 import PainelTempo, { formatFaltante, fraseCronometro, fraseFaltante } from './PainelTempo'
 import { BlocoHorario, BotaoEstimado, ConfirmarHorario, ConfirmarInicioETermino } from './BlocoHorario'
-import { pendenciasDoDiaParaLiberar, pendenciasParaLiberar } from '@/lib/escalaHorarioPendente'
+import { ehConsultorio, pendenciasDoDiaParaLiberar, pendenciasParaLiberar } from '@/lib/escalaHorarioPendente'
 import { nomeCurtoProcedimento } from '@/lib/escalaProcedimentoCurto'
 import { ehDiaOperacionalAtual, erroHorarioReal, sugestoesDeInicio } from '@/lib/escalaHorarioReal'
 import { carimboDeStatus } from '@/lib/escalaCirurgicaStatus'
@@ -3869,7 +3869,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                             rotulo="Término"
                             nomeAcessivel={`Término de ${nome}`}
                             valor=""
-                            onClick={onDefinirTerminoRealCaso ? () => setConfirmarCirurgia({ cir: c, campo: c.inicioReal ? 'termino' : 'ambos' }) : null}
+                            onClick={onDefinirTerminoRealCaso ? () => setConfirmarCirurgia({ cir: c, campo: c.inicioReal || ehConsultorio(c) ? 'termino' : 'ambos' }) : null}
                           />
                         </div>
                       </div>
@@ -3983,7 +3983,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                             nomeAcessivel={`Término de ${nome}`}
                             valor={c.terminoReal}
                             faixa={c.terminoReal ? 'border-l-4 border-l-info' : ''}
-                            onClick={onDefinirTerminoRealCaso ? () => setConfirmarCirurgia({ cir: c, campo: c.inicioReal ? 'termino' : 'ambos' }) : null}
+                            onClick={onDefinirTerminoRealCaso ? () => setConfirmarCirurgia({ cir: c, campo: c.inicioReal || ehConsultorio(c) ? 'termino' : 'ambos' }) : null}
                           />
                         </div>
                       )}

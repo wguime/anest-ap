@@ -49,7 +49,7 @@ import useRosterResidentes from '@/hooks/useRosterResidentes'
 import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
 import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
 import { carimboDeStatus } from '@/lib/escalaCirurgicaStatus'
-import { duracaoMin, ehDiaOperacionalAtual, erroHorarioReal, gravarInicioReal, gravarTerminoReal, rotuloMinutos, sugestoesDeInicio } from '@/lib/escalaHorarioReal'
+import { duracaoMin, ehDiaOperacionalAtual, erroHorarioReal, gravarInicioReal, gravarTerminoReal, inicioDefinidoConsultorio, rotuloMinutos, sugestoesDeInicio } from '@/lib/escalaHorarioReal'
 import PainelTempo, { formatFaltante } from './PainelTempo'
 import { BlocoHorario, BotaoEstimado, ConfirmarHorario, ConfirmarInicioETermino } from './BlocoHorario'
 import useAgoraMinutoEscala from './useAgoraMinutoEscala'
@@ -192,7 +192,8 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
     const status = alvo.campo === 'inicio' ? 'iniciada' : 'terminada'
     const campoCaso = alvo.campo === 'inicio' ? 'inicioReal' : 'terminoReal'
     const p = alvo.viaStatus && (vivo.statusCirurgia || 'agendada') !== status
-      ? setStatusCirurgia(escala, vivo, status, { userId, [campoCaso]: hhmm })
+      // consultório sem início: o do horário definido do turno (dono 16/10)
+      ? setStatusCirurgia(escala, vivo, status, { userId, [campoCaso]: hhmm, ...(status === 'terminada' && inicioDefinidoConsultorio(vivo) ? { inicioReal: inicioDefinidoConsultorio(vivo) } : {}) })
       : (alvo.campo === 'inicio' ? gravarInicioReal : gravarTerminoReal)({ escala, caso: vivo, hhmm, userId, setStatusCirurgia, atualizarCaso })
     p.catch(() => {})
   }
@@ -246,7 +247,8 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
   // Iniciada/Terminada passam pela CONFIRMAÇÃO do horário (dono 02/10, tarde); o
   // resto (Agendada e os avisos) grava no toque, como sempre.
   // TÉRMINO SEM INÍCIO NÃO EXISTE MAIS (dono 14/10): a confirmação pede os dois
-  const terminoPedeInicio = !vivo.inicioReal
+  // o consultório não pede o início: vem do horário definido (dono 16/10)
+  const terminoPedeInicio = !vivo.inicioReal && !inicioDefinidoConsultorio(vivo)
   const confirmarAmbos = ({ inicio, termino }) => {
     setConfirmar(null)
     gravarTerminoReal({ escala, caso: vivo, hhmm: termino, inicioReal: inicio, userId, setStatusCirurgia, atualizarCaso }).catch(() => {})

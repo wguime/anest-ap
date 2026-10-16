@@ -19,7 +19,7 @@ import { describe, it, expect, vi } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
 import {
-  duracaoMin, ehDiaOperacionalAtual, erroHorarioReal, gravarInicioReal, gravarTerminoReal, horarioRealNaTransicao, rotuloMinutos, sugestoesDeInicio,
+  duracaoMin, ehDiaOperacionalAtual, erroHorarioReal, gravarInicioReal, gravarTerminoReal, horarioRealNaTransicao, inicioDefinidoConsultorio, rotuloMinutos, sugestoesDeInicio,
 } from '@/lib/escalaHorarioReal'
 import { inicioDaUrgencia } from '@/lib/escalaCirurgicaUrgencias'
 
@@ -255,3 +255,19 @@ describe('sugestoesDeInicio', () => {
     expect(sugestoesDeInicio(casos[1], casos)).toEqual([{ hhmm: '10:00', rotulo: 'agendada' }])
   })
 })
+
+describe('consultório: o início é o do horário definido (dono 16/10)', () => {
+  const consult = (o) => ({ id: 'k', sala: 'Consultório', procedimento: 'CONSULTORIO – AJUDA', turno: 'matutino', hora: '07:45', statusCirurgia: 'agendada', inicioReal: null, ...o })
+  it('manhã 07:45, tarde 13:30; com início gravado ou fora do consultório, nada', () => {
+    expect(inicioDefinidoConsultorio(consult())).toBe('07:45')
+    expect(inicioDefinidoConsultorio(consult({ turno: 'vespertino', hora: '13:30' }))).toBe('13:30')
+    expect(inicioDefinidoConsultorio(consult({ inicioReal: '08:02' }))).toBeNull()
+    expect(inicioDefinidoConsultorio(consult({ procedimento: '01 BLEFAROPLASTIA - 2h' }))).toBeNull()
+  })
+  it('marcar o término sem início leva o início do horário definido no mesmo patch', async () => {
+    const setStatusCirurgia = vi.fn(async () => {})
+    await gravarTerminoReal({ escala: {}, caso: consult(), hhmm: '11:30', userId: 'u1', setStatusCirurgia, atualizarCaso: vi.fn() })
+    expect(setStatusCirurgia).toHaveBeenCalledWith({}, expect.anything(), 'terminada', { userId: 'u1', terminoReal: '11:30', inicioReal: '07:45' })
+  })
+})
+

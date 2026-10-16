@@ -409,7 +409,15 @@ da Minhas, prop `pendencia` do `CasoCard` — está no comparador do `memo`).
   (a página é `faixa:px-3` no toque deitado).
   Folhas montadas mesmo com zero pendência (preencher a última com o detalhe aberto não fecha o
   detalhe). Selo: Badge `destructive` OUTLINE + `ClockAlert` (sólido já é Suspensa/Emergência).
-- Travas: `src/__tests__/lib/escalaHorarioPendente.test.js`, `src/__tests__/pages/escalaHorarioPendente.test.jsx`.
+- **CONSULTÓRIO NÃO PEDE HORÁRIO (dono 16/10)**: "consultório tem horário definido — manhã das 7:45 às 11:30
+  e à tarde das 13:30 às 17:00". `ehConsultorio(caso)` = PROCEDIMENTO com "consult" (CONSULTORIO, CONSULTÓRIO –
+  AJUDA, 11 CONSULTAS), não a sala — uma blefaroplastia na sala "Consultório" segue pedindo. Fica fora da faixa,
+  da folha "Antes de liberar", do "Você em dia", do relatório e do "Seu preenchimento" (migration
+  `20261016150000` nas três funções do banco; rollback em `scripts/`). Quem marcar Terminada sem início não é
+  mais perguntado: `inicioDefinidoConsultorio` (`escalaHorarioReal.js`) põe 07:45/13:30 no mesmo patch (o
+  trigger de 14/10 continua exigindo início — por isso o cliente o manda).
+- Travas: `src/__tests__/lib/escalaHorarioPendente.test.js`, `src/__tests__/pages/escalaHorarioPendente.test.jsx`,
+  `escalaHorarioReal.test.js` (describe "consultório").
 
 ### "Seu preenchimento" — topo da aba Minhas (dono 2026-10-15, modelo A)
 

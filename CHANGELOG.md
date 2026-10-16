@@ -3,6 +3,17 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.66 (16/10/2026) — Consultório não pede horário de início e término
+
+Pedido do dono: *"quem estiver escalado no consultório não seja necessário colocar horário de início e término,
+já que consultório tem horário definido. manhã das 7:45 às 11:30 e a tarde das 13:30 às 17:00"*.
+- O consultório (procedimento "Consultório", "Consultório – ajuda", "N consultas") sai da faixa "Horário
+  pendente", da folha "Antes de liberar", do relatório de adesão e do "Seu preenchimento", no app e no banco
+  (migration `20261016150000`). Cirurgia lançada na sala Consultório (uma blefaroplastia em outubro) continua
+  pedindo horário.
+- Marcar o consultório como Terminada sem início não pede mais os dois horários: o início vem do horário
+  definido do turno (07:45 de manhã, 13:30 à tarde).
+
 ## v5.12.65 (16/10/2026) — Quem já está na escala do hospital não pode ser marcado como ajuda
 
 Unimed, manhã de 16/10: o Guilherme Melo, 7º do rodapé, foi marcado "Ajuda de outro hospital" e foi para o fim

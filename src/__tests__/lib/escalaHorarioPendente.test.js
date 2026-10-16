@@ -296,3 +296,20 @@ describe('o fim do turno só cobra o que já devia ter acontecido (dono 15/10, c
     expect(pendenciasDoDia([e], { hoje: HOJE, agoraMin: 18 * 60, liberado }).map((p) => p.caso.id)).toEqual(['curso', 'noite'])
   })
 })
+
+describe('consultório não pede horário (dono 16/10)', () => {
+  const consult = (o) => caso({ sala: 'Consultório', hora: '07:45', statusCirurgia: 'agendada', terminoReal: null, ...o })
+  it('nem pela faixa nem pela liberação — as grafias reais da base', () => {
+    for (const procedimento of ['CONSULTORIO', 'CONSULTÓRIO – AJUDA (12 PACIENTES)', '11 CONSULTAS', 'Consultório ajuda']) {
+      expect(casoEntraNaConta(consult({ procedimento }), { data: HOJE })).toBe(false)
+      expect(pendenciasParaLiberar([consult({ procedimento })])).toEqual([])
+    }
+    expect(pendenciasDoDia([escala([consult({ procedimento: 'CONSULTORIO' })])], { hoje: HOJE, agoraMin: 19 * 60, liberado: () => true })).toEqual([])
+  })
+  it('cirurgia lançada na SALA Consultório continua pedindo (a blefaroplastia da Unimed)', () => {
+    const blefaro = consult({ procedimento: '01 BLEFAROPLASTIA - 2h', hora: '07:30' })
+    expect(casoEntraNaConta(blefaro, { data: HOJE })).toBe(true)
+    expect(pendenciasParaLiberar([blefaro])).toHaveLength(1)
+  })
+})
+
