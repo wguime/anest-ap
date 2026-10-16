@@ -6,7 +6,7 @@
  * override estruturado que sobrevive à re-derivação. Realtime: reflete para todos.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, ArrowLeftRight, Check, ChevronDown, ChevronRight, ChevronUp, History, ListOrdered, Loader2, MessageSquare, Moon, Pencil, Plus, Timer, UserPlus, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeftRight, Check, ChevronDown, ChevronRight, ChevronUp, History, Info, ListOrdered, Loader2, MessageSquare, Moon, Pencil, Plus, Timer, UserPlus, X } from 'lucide-react'
 import {
   Badge, Button, ConfirmDialog, EmptyState, Input, Select, useToast,
   Sheet, SheetContent, SheetHeader, SheetTitle,
@@ -1723,6 +1723,27 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       return (uid && alvos.has(uid)) || alvos.has(normNome(n))
     }) || null
   }
+  // QUEM JÁ ESTÁ NO RODAPÉ DAQUI NÃO VIRA AJUDA (dono 16/10, modelo A de
+  // `.tmp/ajuda-bloqueada-escalado.html`): Guilherme Melo, 7º da Unimed de manhã, foi
+  // marcado "Ajuda de outro hospital" e foi para o fim da fila, onde se libera primeiro.
+  // Devolve a posição (1-based) no rodapé deste hospital e turno, ou 0. Fila única fora:
+  // lá todo publicado está na ordem e a ajuda é a exceção manual de 05/09.
+  const posicaoNoRodapeDaqui = (alvos) => {
+    if (modoFds) return 0
+    const chaves = new Set(alvos.filter(Boolean).flatMap((a) => [a, normNome(a)]).filter(Boolean))
+    const i = rodapeTurno.findIndex((n) => {
+      const uid = resolverUid(n)
+      return (uid && chaves.has(uid)) || chaves.has(normNome(n))
+    })
+    return i + 1
+  }
+  // bloqueia só o MARCAR: desmarcar (array ou badge derivado) e limpar a declaração seguem
+  const posicaoAjudaBloqueada = (linha) => {
+    if (!linha || linha.noturno || ehAjudaVisivel(linha) || nomeAjudaDe(linha) || semAjudaManual.has(linha.chave)) return 0
+    return posicaoNoRodapeDaqui([linha.uid, linha.chave, linha.nomeOriginal, linha.anestesista])
+  }
+  const uidsNoRodapeDaqui = new Set(modoFds ? [] : rodapeTurno.map((n) => resolverUid(n)).filter(Boolean))
+  const opcoesAjuda = opcoesRoster.filter((o) => !uidsNoRodapeDaqui.has(o.value))
   // O que o toque FAZ acompanha o que o botão MOSTRA (`ehAjudaVisivel`):
   //   ajuda escrita no array → sai do array;
   //   badge DERIVADO (emprestado/extra/visitante) → declaração "não é ajuda"
@@ -1730,6 +1751,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   //   linha com a declaração → limpa a declaração (volta ao automático);
   //   linha comum → entra no array, no FIM (sai primeiro).
   const toggleAjuda = async (linha) => {
+    if (posicaoAjudaBloqueada(linha)) return
     const existente = nomeAjudaDe(linha)
     if (existente) { await onRemoveAjuda?.(existente); return }
     if (ehAjudaVisivel(linha)) {
@@ -3338,19 +3360,22 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
 
               {/* ── AJUDA à mão (dono 29/07) — card noturno fica de fora: ele é
                   sintetizado do plantão, não existe no rodapé do turno. ── */}
-              {canEdit && !editor.noturno && (
+              {canEdit && !editor.noturno && (() => {
+                const posBloqueio = posicaoAjudaBloqueada(editor)
+                return (<>
                 <button
                   type="button"
                   /* fecha no toque (dono 19/08): o badge pinta pelo otimista do
                      context; erro reverte + toast */
                   onClick={() => { toggleAjuda(editor).catch(() => {}); setEditor(null) }}
+                  disabled={posBloqueio > 0}
                   aria-pressed={!!ehAjudaVisivel(editor)}
                   /* nome acessível igual ao do detalhe do caso: os dois escrevem
                      no MESMO ajudaExterna e tinham dois rótulos (auditoria 17/08) */
                   aria-label={ehAjudaVisivel(editor)
                     ? `${editor.anestesista} não é ajuda de outro hospital`
                     : `Marcar ${editor.anestesista} como ajuda de outro hospital`}
-                  className="flex min-h-[48px] w-full items-center gap-2 border-b border-border py-2 text-left"
+                  className={['flex min-h-[48px] w-full items-center gap-2 py-2 text-left disabled:opacity-50', posBloqueio ? '' : 'border-b border-border'].join(' ')}
                 >
                   <span className="text-[14.5px] font-semibold">Ajuda de outro hospital</span>
                   <span className={[
@@ -3363,7 +3388,14 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     ].join(' ')} />
                   </span>
                 </button>
-              )}
+                {posBloqueio > 0 && (
+                  <p data-ajuda-bloqueada className="flex gap-1.5 border-b border-border pb-2.5 pt-1.5 text-[12.5px] leading-snug text-muted-foreground">
+                    <Info className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    <span>Está na escala {hospitalLabel === 'Materno' ? 'do' : 'da'} {hospitalLabel} ({posBloqueio}º), já tem posição na fila.</span>
+                  </p>
+                )}
+                </>)
+              })()}
 
               {/* ── TROCA DECLARADA (dono 30/07) — declarar / executar / desfazer.
                   NÃO é a troca antiga (removida 2×): par declarado + badge nos dois
@@ -4113,7 +4145,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 <Loader2 className="w-4 h-4 animate-spin" /> Carregando roster…
               </p>
             ) : (
-              <Select className="w-full" searchable options={opcoesRoster} value={ajudaUid}
+              /* quem já está no rodapé daqui não entra como ajuda (dono 16/10) */
+              <Select className="w-full" searchable options={opcoesAjuda} value={ajudaUid}
                 onChange={setAjudaUid} placeholder="Escolha o anestesista" />
             )}
             <Button className="w-full" disabled={!ajudaUid} onClick={confirmarAjuda}>Adicionar como ajuda</Button>

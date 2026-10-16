@@ -40,7 +40,7 @@
  * `tr_escala_caso_horario_real`, ver `src/lib/escalaHorarioReal.js`).
  */
 import { useMemo, useState } from 'react'
-import { Clock, GraduationCap, MapPin, Stethoscope, UserCog } from 'lucide-react'
+import { Clock, GraduationCap, Info, MapPin, Stethoscope, UserCog } from 'lucide-react'
 import { ActionPill, Badge, Button, Sheet, SheetContent, SheetHeader, SheetTitle } from '@/design-system'
 import { HOSPITAL_LABEL, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
@@ -91,7 +91,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
   const { setStatusCirurgia, atualizarCaso, adicionarAjuda, removerAjuda, setLinhaOverride } = useEscalaCirurgicaActions()
   const { user } = useUser()
   const { residenteByUid } = useRosterResidentes()
-  const { rosterByUid } = useRosterAnestesistas()
+  const { rosterByUid, resolver: resolverRoster } = useRosterAnestesistas()
   const agoraMin = useAgoraMinutoEscala()
   const isDemo = String(escala?.id).startsWith('demo-')
   // As folhas desta tela são as do HORÁRIO: 'tempo' (o tempo ESTIMADO — a previsão de
@@ -216,7 +216,14 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
     .find((n) => normNome(n) === normNome(nomeAnest)) || null
   // sala compartilhada ("A + B") e caso sem dono ("?") não têm um nome só p/ marcar
   const podeMarcarAjuda = podeEditarCaso && !!nomeAnest && !nomeAnest.includes('+') && !/^\?+$/.test(nomeAnest)
+  // QUEM JÁ ESTÁ NO RODAPÉ DAQUI NÃO VIRA AJUDA (dono 16/10, modelo A — mesma regra do
+  // painel da fila): marcar jogaria a pessoa do meio da fila para o fim. Desmarcar segue.
+  const posicaoNoRodape = (!entradaAjuda && escala?.hospital !== 'fds')
+    ? rodapeDoTurno(escala?.ordemLiberacao, turnoCaso).findIndex((n) => normNome(n) === normNome(nomeAnest)
+      || (!!vivo.anestesistaUserId && resolverRoster?.(n) === vivo.anestesistaUserId)) + 1
+    : 0
   const alternarAjuda = () => {
+    if (posicaoNoRodape > 0) return
     // sem await: o toggle vira no toque (context otimista); erro reverte + toast
     const p = entradaAjuda
       ? removerAjuda(escala, turnoCaso, entradaAjuda)
@@ -586,11 +593,12 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                 <button
                   type="button"
                   onClick={alternarAjuda}
+                  disabled={posicaoNoRodape > 0}
                   aria-pressed={!!entradaAjuda}
                   aria-label={entradaAjuda
                     ? `${titleCaseNome(nomeAnest)} não é ajuda de outro hospital`
                     : `Marcar ${titleCaseNome(nomeAnest)} como ajuda de outro hospital`}
-                  className="flex min-h-[48px] w-full items-center gap-2 py-2 text-left"
+                  className="flex min-h-[48px] w-full items-center gap-2 py-2 text-left disabled:opacity-50"
                 >
                   <span className="text-[14.5px] font-semibold">Ajuda de outro hospital</span>
                   <span className="ml-auto flex items-center gap-2">
@@ -605,9 +613,16 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                     </span>
                   </span>
                 </button>
-                <p className="text-[11.5px] text-muted-foreground">
-                  Entra ao fim da fila de liberação — primeiro a ser liberado.
-                </p>
+                {posicaoNoRodape > 0 ? (
+                  <p data-ajuda-bloqueada className="flex gap-1.5 text-[12.5px] leading-snug text-muted-foreground">
+                    <Info className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    <span>Está na escala {escala?.hospital === 'materno' ? 'do' : 'da'} {HOSPITAL_LABEL[escala?.hospital] || ''} ({posicaoNoRodape}º), já tem posição na fila.</span>
+                  </p>
+                ) : (
+                  <p className="text-[11.5px] text-muted-foreground">
+                    Entra ao fim da fila de liberação — primeiro a ser liberado.
+                  </p>
+                )}
               </>
             )}
           </article>

@@ -963,3 +963,22 @@ visitante sem travar a fila.
 - Travas: `escalaCirurgicaPersonas.test.jsx`, no describe "quem chega por caso manual e é do rodapé de outro
   hospital…" (recorte de 06/10, que mudou de lado). Os 2 primeiros testes falham contra o código anterior.
   `escalaConferenciaHeadless` usa a mesma lib, então o ensaio acompanha a regra sem mudança.
+
+
+## Quem está no rodapé daqui não vira ajuda (dono 16/10/2026, modelo A)
+
+Unimed, manhã de 16/10: **Guilherme Melo, 7º do rodapé, foi marcado "Ajuda de outro hospital"** no painel
+Editar e foi para o fim da fila, onde se libera primeiro. O botão aparecia para todo mundo. Escolhido em
+`.tmp/ajuda-bloqueada-escalado.html` o modelo A: **o botão fica apagado e uma linha diz por quê** ("Está na
+escala da Unimed (7º), já tem posição na fila.").
+- Vale nos três caminhos que escrevem em `ajuda_externa`: o painel da fila (`posicaoAjudaBloqueada` na
+  `LiberacoesView`), o detalhe da cirurgia (`CasoDetalheSheet`, aba Completa) e o "Adicionar ajuda", que
+  deixa de listar quem está no rodapé daqui (`opcoesAjuda`).
+- Bloqueia só o MARCAR, e só pelo rodapé DESTE hospital e DESTE turno. Desmarcar (ajuda escrita no array,
+  badge derivado, declaração "não é ajuda") segue. O azul que a publicação grava no rodapé não passa por
+  aqui. A fila única (FDS) fica de fora: lá todo publicado está na ordem e a ajuda é exceção manual (05/09).
+- Na prática, no dia útil o painel não tem mais quem "adicionar": fora do rodapé daqui a linha já nasce com
+  o badge derivado.
+- Travas: `liberacoesPainelLinha.test.jsx` (describe "Ajuda marcada à mão", com 1 teste que mudou de lado) e
+  `casoDetalheSheet.test.jsx` (describe "Ajuda marcada pela aba Completa").
+

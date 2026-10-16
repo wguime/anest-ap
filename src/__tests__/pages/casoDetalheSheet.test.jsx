@@ -234,6 +234,22 @@ describe('Ajuda marcada pela aba Completa (dono 29/07)', () => {
     expect(nome).toBe('MARILIO')
   })
 
+  // dono 16/10 (modelo A): Guilherme Melo, 7º da Unimed, marcado ajuda foi para o fim da fila
+  it('quem está no rodapé deste hospital NÃO pode ser marcado: botão apagado, com o porquê', () => {
+    montar({}, { ...escala, ordemLiberacao: { matutino: ['LEONARDO', 'MARILIO'] } })
+    const botao = screen.getByRole('button', { name: /Marcar Marílio como ajuda/ })
+    expect(botao.disabled).toBe(true)
+    expect(screen.getByText('Está na escala da HRO (2º), já tem posição na fila.')).toBeTruthy()
+    fireEvent.click(botao)
+    expect(adicionarAjuda).not.toHaveBeenCalled()
+  })
+
+  it('no rodapé de OUTRO turno não bloqueia', async () => {
+    montar({}, { ...escala, ordemLiberacao: { vespertino: ['MARILIO'] } })
+    fireEvent.click(screen.getByRole('button', { name: /Marcar Marílio como ajuda/ }))
+    await waitFor(() => expect(adicionarAjuda).toHaveBeenCalled())
+  })
+
   it('quem já é ajuda desmarca (volta ao estado anterior)', async () => {
     montar({}, { ...escala, ajudaExterna: { matutino: ['MARILIO'] } })
     fireEvent.click(screen.getByRole('button', { name: /Marílio não é ajuda/ }))

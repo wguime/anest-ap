@@ -3,6 +3,15 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.65 (16/10/2026) — Quem já está na escala do hospital não pode ser marcado como ajuda
+
+Unimed, manhã de 16/10: o Guilherme Melo, 7º do rodapé, foi marcado "Ajuda de outro hospital" e foi para o fim
+da fila, onde se libera primeiro. Escolhido por imagem o modelo A de `.tmp/ajuda-bloqueada-escalado.html`.
+- Para quem está no rodapé deste hospital neste turno, o botão "Ajuda de outro hospital" fica apagado e explica
+  por quê ("Está na escala da Unimed (7º), já tem posição na fila."). Vale no painel Editar da fila e no
+  detalhe da cirurgia; o "Adicionar ajuda" deixa de listar essas pessoas.
+- Desmarcar continua possível. O fim de semana (fila única) não muda.
+
 ## v5.12.64 (15/10/2026) — Liberar confere o dia inteiro; a faixa não cobra o que ainda não aconteceu
 
 Relatório das 24 cirurgias com "Horário pendente" na faixa das 19h de 15/10 (nenhuma finalizada sem horário:

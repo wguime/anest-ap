@@ -195,12 +195,28 @@ describe('Observação da linha (dono 29/07)', () => {
 })
 
 describe('Ajuda marcada à mão (dono 29/07)', () => {
-  it('linha comum oferece marcar; a ajuda entra no FIM do array (sai primeiro)', async () => {
+  // MUDOU DE LADO em 16/10 (dono, modelo A de `.tmp/ajuda-bloqueada-escalado.html`): o
+  // Marílio é o 2º do rodapé daqui. Marcar ajuda o jogaria para o fim da fila, onde se
+  // libera primeiro — foi o que aconteceu com o Guilherme Melo, 7º da Unimed, em 16/10.
+  it('quem está no rodapé DAQUI não pode ser marcado: botão apagado, com o porquê', () => {
     const onAddAjuda = vi.fn(async () => {})
     montar({ onAddAjuda })
     abrirEditor('Marílio Flach')
-    fireEvent.click(screen.getByRole('button', { name: /Marcar .* como ajuda de outro hospital/ }))
-    await waitFor(() => expect(onAddAjuda).toHaveBeenCalledWith('MARILIO'))
+    const botao = screen.getByRole('button', { name: /Marcar .* como ajuda de outro hospital/ })
+    expect(botao.disabled).toBe(true)
+    expect(screen.getByText('Está na escala da HRO (2º), já tem posição na fila.')).toBeTruthy()
+    fireEvent.click(botao)
+    expect(onAddAjuda).not.toHaveBeenCalled()
+  })
+
+  it('"Adicionar ajuda" não lista quem já está no rodapé daqui', () => {
+    montar({ onAddAjuda: vi.fn(async () => {}) })
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar anestesista (ajuda)' }))
+    const folha = screen.getAllByRole('dialog').find((d) => d.textContent.includes('Adicionar anestesista (ajuda)'))
+    fireEvent.click(within(folha).getByRole('combobox'))
+    const nomes = screen.getAllByRole('option').map((o) => o.textContent)
+    expect(nomes.some((n) => /MARILIO|LEONARDO|KARINE/.test(n))).toBe(false)
+    expect(nomes.some((n) => /PAULO TONINI/.test(n))).toBe(true)
   })
 
   it('quem JÁ é ajuda oferece desmarcar, removendo a entrada exata do rodapé', async () => {
