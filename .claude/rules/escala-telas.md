@@ -351,6 +351,13 @@ da Minhas, prop `pendencia` do `CasoCard` — está no comparador do `memo`).
   normalizado; `{escalado:true}` do repasse NÃO é liberação; no FDS também a linha 'fds') **ou** quando
   o turno ACABA (13h/19h no relógio operacional) — o que vier primeiro. "Passa para tarde" vence com a
   tarde e não entra pela liberação; "passa para a noite" não vence no dia.
+  ⚠️ **O fim do turno só cobra o que já devia ter acontecido (dono 15/10, causa 3 do relatório das 24
+  pendências)**: às 19h a faixa marcava o Diego por uma cirurgia agendada para 19:15 e por outra
+  iniciada às 16:20, em curso. `prazoDoCaso`: sem início e com horário agendado no fim do turno ou
+  depois → o fim do turno não vence (quem cobra é o início vencido, agendada + 30 min); à TARDE,
+  iniciada e sem término → prazo às **23h** (`PRAZO_TARDE_EM_ANDAMENTO_MIN`, a hora em que a noite
+  zera). De manhã nada mudou (13h; a que continua se marca "Passa para tarde"). A liberação segue
+  pondo na faixa na hora.
 - **INÍCIO VENCIDO (dono 05/10 à tarde: "várias cirurgias já deveriam ter informação de início e não
   há alerta")**: sem início **30 min depois do horário agendado** (`TOLERANCIA_INICIO_MIN`) já entra, no
   meio do turno, como "Falta início" (`motivo: 'inicio'`). "AS" (sem hora) conta do término REAL da
@@ -445,8 +452,21 @@ plantonista) — a folha é para quem toca, não para quem sai.
   com cirurgia pendente (`escala_caso_trava_liberacao`, lado seguro: dupla e slot assumido sem login
   ficam só com a tela; datas ≥ 14/10). O app espera as escritas em voo e repete uma vez se vier
   `horario_pendente`. Rollback: `scripts/rollback-20261014200000-horario-obrigatorio.sql`.
-- Travas: `src/__tests__/pages/liberacoesAntesDeLiberar.test.jsx` e os blocos novos em
-  `escalaHorarioPendente.test.js`/`escalaHorarioReal.test.js`/`colunaLiberacao.test.js`.
+- **LIBERAR CONFERE O DIA (dono 15/10, causa 1 do relatório das 24 pendências da faixa das 19h)**: a
+  conta acima olhava só esta fila. O Oscar foi liberado no HRO às 12h25 com 2 cirurgias abertas na
+  Unimed; Marílio, Leonardo, Raul e Guilherme Xavier foram liberados à TARDE com a cirurgia da MANHÃ sem
+  horário. Agora soma `pendenciasDoDiaParaLiberar(escalasDoDia, { turno, ehDaPessoa, jaVistos })`: a
+  pessoa nos três hospitais, no turno da liberação e nos anteriores (de manhã, só a manhã). A página
+  passa `escalasDoDia` e os handlers de início/término/suspensa acham a escala dona pelo id
+  (`escalaDoCaso`) também no dia útil. Na folha a cirurgia de fora diz onde está ("HRO · manhã") e
+  **não oferece "Passar para outro anestesista"** (os colegas são DESTA fila). Card noturno fora. No
+  banco: migration `20261015230000` (um SELECT só, sem o ramo fds/hospital; rollback
+  `scripts/rollback-20261015230000-liberar-confere-dia.sql`). A causa 2 (quem nunca é liberado —
+  Materno, quem vai embora) ficou SEM mudança por decisão do dono: qualquer cobrança "no turno
+  seguinte" bagunçaria o turno de quem chega.
+- Travas: `src/__tests__/pages/liberacoesAntesDeLiberar.test.jsx`,
+  `liberacoesAntesDeLiberarDiaInteiro.test.jsx` (4 dos 7 falham sem a conferência do dia) e os blocos
+  novos em `escalaHorarioPendente.test.js`/`escalaHorarioReal.test.js`/`colunaLiberacao.test.js`.
 
 ### Editar e EXCLUIR o caso publicado (dono 2026-09-01, modelo A em protótipo)
 

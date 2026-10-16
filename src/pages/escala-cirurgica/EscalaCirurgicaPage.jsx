@@ -829,6 +829,9 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                   // urgência/encaixe entra na escala do HOSPITAL selecionado
                   // (a fila do FDS é única, mas o caso pertence a um hospital)
                   escalaCasoNovo={escala}
+                  // LIBERAR CONFERE O DIA (dono 15/10): a folha "Antes de liberar" olha as
+                  // cirurgias da pessoa nos três hospitais, não só nesta fila
+                  escalasDoDia={escalas}
                   onGarantirEscala={garantirEscala}
                   onNavigate={onNavigate}
                   onDefinirP4={modoFds ? undefined : (h) => definirP4Hospital(h, userInfo)}
@@ -918,14 +921,16 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                   // informar o início é dizer que ela começou; já iniciada, só o horário. O
                   // caso mora na escala do hospital (na fila única, não na linha 'fds').
                   onDefinirInicioCaso={async (casoId, hhmm) => {
-                    const dona = modoFds ? escalaDoCaso(casoId) || escala : escala
+                    // a folha Antes de liberar traz também cirurgias de OUTRO hospital (15/10)
+                    const dona = escalaDoCaso(casoId) || escala
                     const alvo = (dona?.casos || []).find((c) => c.id === casoId)
                     await gravarInicioReal({ escala: dona, caso: alvo, hhmm, userId: userInfo.userId, setStatusCirurgia, atualizarCaso })
                   }}
                   // TÉRMINO REAL pela mesma folha (dono 02/10, tarde): informar o término
                   // marca Terminada — mesma função do detalhe do caso.
                   onDefinirTerminoRealCaso={async (casoId, hhmm, { inicioReal = null } = {}) => {
-                    const dona = modoFds ? escalaDoCaso(casoId) || escala : escala
+                    // a folha Antes de liberar traz também cirurgias de OUTRO hospital (15/10)
+                    const dona = escalaDoCaso(casoId) || escala
                     const alvo = (dona?.casos || []).find((c) => c.id === casoId)
                     // o início vem junto quando a cirurgia não tinha (dono 14/10)
                     await gravarTerminoReal({ escala: dona, caso: alvo, hhmm, inicioReal, userId: userInfo.userId, setStatusCirurgia, atualizarCaso })
@@ -933,7 +938,8 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                   // "Não aconteceu" na folha Antes de liberar (dono 14/10): a cirurgia
                   // agendada que não vai acontecer não tem horário a dar
                   onSuspenderCaso={(casoId) => {
-                    const dona = modoFds ? escalaDoCaso(casoId) || escala : escala
+                    // a folha Antes de liberar traz também cirurgias de OUTRO hospital (15/10)
+                    const dona = escalaDoCaso(casoId) || escala
                     const alvo = (dona?.casos || []).find((c) => c.id === casoId)
                     return alvo ? setStatusCirurgia(dona, alvo, 'suspensa', { userId: userInfo.userId }) : Promise.resolve()
                   }}

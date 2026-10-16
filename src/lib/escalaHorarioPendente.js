@@ -92,17 +92,37 @@ export function casoEntraNaConta(caso, { data } = {}) {
   return dentroDoInicioDoAlerta(data, turnoDoCasoHorario(caso))
 }
 
+/** 23:00 — a hora em que a noite "zera" a fila (fase noturna). Prazo da tarde em andamento. */
+export const PRAZO_TARDE_EM_ANDAMENTO_MIN = 23 * 60
+
 /**
  * Minuto (dia operacional) em que a cirurgia vence pelo RELÓGIO. A que "passa para
  * tarde" vence com a tarde; a que passa para a NOITE não vence no dia — se ninguém
  * preencher até a virada, vai para o relatório.
+ *
+ * O FIM DO TURNO SÓ COBRA O QUE JÁ DEVIA TER ACONTECIDO (dono 15/10, causa 3 do relatório
+ * das 24 pendências: às 19h a faixa marcava o Diego por uma cirurgia agendada para 19:15
+ * e por outra iniciada às 16:20, ainda em curso):
+ *  - não começou e o horário agendado é no fim do turno ou depois → o fim do turno não
+ *    vence; quem cobra é o início vencido (agendada + 30 min), como em qualquer horário;
+ *  - à TARDE, já começou e não terminou → tem até as 23h para terminar; sem término
+ *    então, entra. De manhã segue às 13h: a que continua à tarde se marca "Passa para tarde".
  */
 export function prazoDoCaso(caso) {
   const turno = turnoDoCasoHorario(caso)
   if (caso?.statusExtra === 'passa_tarde') {
     return turno === 'matutino' ? FIM_TURNO_MIN.vespertino : VIRADA_DO_DIA_MIN
   }
-  return FIM_TURNO_MIN[turno]
+  const fim = FIM_TURNO_MIN[turno]
+  if (casoAberto(caso)) {
+    if (!temTexto(caso.inicioReal)) {
+      const hora = minutosHora(caso.hora)
+      if (hora != null && hora >= fim) return VIRADA_DO_DIA_MIN
+    } else if (turno === 'vespertino') {
+      return PRAZO_TARDE_EM_ANDAMENTO_MIN
+    }
+  }
+  return fim
 }
 
 /** Cirurgia ainda ABERTA: não terminada (suspensa já ficou fora da conta). */
@@ -222,6 +242,35 @@ export function pendenciasParaLiberar(casos) {
     if (inicio || termino) out.push({ caso, inicio, termino, aberta })
   }
   return out.sort((a, b) => minutosDe(a.caso.hora) - minutosDe(b.caso.hora) || ((a.caso.ordem ?? 0) - (b.caso.ordem ?? 0)))
+}
+
+/**
+ * LIBERAR CONFERE O DIA (dono 15/10/2026, causa 1 do relatório das 24 pendências): a folha
+ * "Antes de liberar" só olhava o hospital e o turno da fila. Assim o Oscar foi liberado no
+ * HRO com 2 cirurgias abertas na Unimed, e Marílio, Leonardo, Raul e Guilherme Xavier foram
+ * liberados à tarde com a cirurgia da MANHÃ sem horário.
+ *
+ * Devolve as pendências da pessoa nos OUTROS lugares do dia — os três hospitais, o turno da
+ * liberação e os anteriores (de manhã só a manhã: a cirurgia da tarde ainda não aconteceu) —,
+ * com os mesmos cortes de `pendenciasParaLiberar`, cada uma com `hospital` e `turno`.
+ * `ehDaPessoa(caso)` decide a identidade; `jaVistos` = ids que a linha da fila já confere.
+ * O banco recusa o mesmo conjunto (`rpc_escala_patch_liberacao`, migration 20261015230000).
+ */
+const TURNOS_ATE = { matutino: ['matutino'], vespertino: ['matutino', 'vespertino'] }
+
+export function pendenciasDoDiaParaLiberar(escalas, { turno, ehDaPessoa, jaVistos = new Set() } = {}) {
+  const turnos = TURNOS_ATE[turno]
+  if (!turnos || !ehDaPessoa) return []
+  const out = []
+  for (const escala of escalas || []) {
+    if (!escala || escala.status !== 'publicada' || escala.hospital === 'fds') continue
+    const casos = (escala.casos || []).filter((c) => c?.id && !jaVistos.has(c.id)
+      && turnos.includes(turnoDoCasoHorario(c)) && ehDaPessoa(c))
+    for (const p of pendenciasParaLiberar(casos)) {
+      out.push({ ...p, hospital: escala.hospital, turno: turnoDoCasoHorario(p.caso) })
+    }
+  }
+  return out
 }
 
 /** Minutos de "HH:MM" (sem hora = fim da fila). */

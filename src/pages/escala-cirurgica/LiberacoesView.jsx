@@ -24,12 +24,12 @@ import useAvisoPlantonista from './useAvisoPlantonista'
 import { AvisoTempoEstourado } from './useAvisoTempoEstourado'
 import PainelTempo, { formatFaltante, fraseCronometro, fraseFaltante } from './PainelTempo'
 import { BlocoHorario, BotaoEstimado, ConfirmarHorario, ConfirmarInicioETermino } from './BlocoHorario'
-import { pendenciasParaLiberar } from '@/lib/escalaHorarioPendente'
+import { pendenciasDoDiaParaLiberar, pendenciasParaLiberar } from '@/lib/escalaHorarioPendente'
 import { nomeCurtoProcedimento } from '@/lib/escalaProcedimentoCurto'
 import { ehDiaOperacionalAtual, erroHorarioReal, sugestoesDeInicio } from '@/lib/escalaHorarioReal'
 import { carimboDeStatus } from '@/lib/escalaCirurgicaStatus'
 import AddCasoSheet from './AddCasoSheet'
-import { ajudaOrdemInformada, casoConcluido, casosDaFilaDoTurno, casosDaFilaFds, casosResolvidos, chaveSalaEscolha, compararSalas, diffRelogioMin, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao, turnoDoCaso, procedimentoComContinuacao, procedimentoBaseDoCaso } from './utils'
+import { ajudaOrdemInformada, anestesistaDoCasoEh, casoConcluido, casosDaFilaDoTurno, casosDaFilaFds, casosResolvidos, chaveSalaEscolha, compararSalas, diffRelogioMin, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao, turnoDoCaso, procedimentoComContinuacao, procedimentoBaseDoCaso } from './utils'
 
 // Sentinelas do dropdown de Local (valores impossíveis como nome de sala)
 const LOCAL_AUTO = '__auto__'
@@ -77,7 +77,7 @@ const AVISO_MAX = 160
 // que o card mostra, então sai do MESMO mapa que o resto do módulo usa.
 const HOSPITAIS_FILA = ['unimed', 'hro', 'materno'].map((v) => ({ value: v, label: HOSPITAL_LABEL[v] || v }))
 
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onDefinirTerminoCaso, onDefinirInicioCaso, onDefinirTerminoRealCaso, onSuspenderCaso, inicioDuracaoCaso, onDefinirSemAjuda, onTrocarResponsavel, onDevolverResponsavel, onTrocarPosicao, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, onDefinirOrigem, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, onGarantirEscala, onNavigate }) {
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onDefinirTerminoCaso, onDefinirInicioCaso, onDefinirTerminoRealCaso, onSuspenderCaso, inicioDuracaoCaso, onDefinirSemAjuda, onTrocarResponsavel, onDevolverResponsavel, onTrocarPosicao, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, onDefinirOrigem, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, escalasDoDia = null, onGarantirEscala, onNavigate }) {
   const { toast } = useToast()
   const haptic = useHaptic()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
@@ -1239,6 +1239,36 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // a cauda de 29/08 os pinta de liberados — com o porquê no card; acionar em
   // urgência é o toque de sempre, que os devolve à posição. `aplicarDomingoP7P8`
   // decide; aqui só se responde "está escalado neste turno, ou foi acionado?".
+  // LIBERAR CONFERE O DIA (dono 15/10/2026, causa 1 das 24 pendências): a linha só
+  // conhece as cirurgias DESTA fila; as da pessoa nos outros hospitais e na manhã vêm
+  // das escalas carregadas do dia (`escalasDoDia`, da página). Card da noite fora: a
+  // liberação noturna não passa pela trava (nem no banco).
+  // (sem hook: há retorno antecipado acima — é uma lista de 3 itens)
+  const listaDoDia = Object.values(escalasDoDia || {}).filter(Boolean)
+  const casoDoDia = (id) => {
+    for (const e of listaDoDia) {
+      const caso = (e.casos || []).find((c) => c.id === id)
+      if (caso) return { caso, hospital: e.hospital }
+    }
+    return null
+  }
+  const ehDaPessoaDaLinha = (linha) => {
+    const aliases = [linha.nomeOriginal, linha.anestesista].filter(Boolean)
+    return (c) => aliases.some((alias) => anestesistaDoCasoEh(c, { uid: linha.uid || null, alias, resolverUid }))
+  }
+  const pendenciasForaDaLinha = (linha) => {
+    if (!linha || linha.noturno || !listaDoDia.length) return []
+    if (turno !== 'matutino' && turno !== 'vespertino') return []
+    const jaVistos = new Set((linha.casosTurno || []).map((c) => c.id).filter(Boolean))
+    return pendenciasDoDiaParaLiberar(listaDoDia, { turno, ehDaPessoa: ehDaPessoaDaLinha(linha), jaVistos })
+  }
+  const rotuloForaDaLinha = (caso) => {
+    const h = casoDoDia(caso.id)?.hospital
+    const outroHospital = !modoFds && h && h !== hospital
+    const outroTurno = turnoDoCaso(caso) !== turnoBase
+    if (!outroHospital && !outroTurno) return ''
+    return [outroHospital ? HOSPITAL_LABEL[h] || h : null, outroTurno ? (turnoDoCaso(caso) === 'matutino' ? 'manhã' : 'tarde') : null].filter(Boolean).join(' · ')
+  }
   const linhasExibicao = modoFds && !feriado && !noiteFds
     ? aplicarDomingoP7P8(linhasExibicaoBase, {
       dataIso: escala?.data, turno,
@@ -1320,8 +1350,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     // ANTES DE LIBERAR (dono 14/10, modelo A sem saída): quem tem cirurgia aberta ou
     // sem início/término no turno só sai depois de preenchida ou passada a um colega.
     // Só na IDA (desfazer a liberação não pergunta nada) e só para quem pode gravar.
+    // LIBERAR CONFERE O DIA (dono 15/10): também as cirurgias da pessoa nos outros
+    // hospitais e no turno da manhã — `pendenciasForaDaLinha`
     const travas = !liberado && canEdit && onDefinirInicioCaso
-      ? pendenciasParaLiberar(linha.casosTurno).filter((p) => p.caso.id)
+      ? [...pendenciasParaLiberar(linha.casosTurno).filter((p) => p.caso.id), ...pendenciasForaDaLinha(linha)]
       : []
     if (travas.length) {
       haptic('warning')
@@ -1575,12 +1607,12 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     ? linhasExibicao.find((l) => l.chave === antesLiberar.chave && !!l.noturno === !!antesLiberar.noturno) || null
     : null
   const pendentesAntesLiberar = linhaAntesLiberar
-    ? pendenciasParaLiberar(linhaAntesLiberar.casosTurno).filter((p) => p.caso.id)
+    ? [...pendenciasParaLiberar(linhaAntesLiberar.casosTurno).filter((p) => p.caso.id), ...pendenciasForaDaLinha(linhaAntesLiberar)]
     : []
   // no formato das cirurgias da folha do tempo (o que o card de confirmação lê)
   const pendenteAntes = new Map(pendentesAntesLiberar.map((p) => [p.caso.id, p]))
   const casosAntesLiberar = (antesLiberar?.ids || [])
-    .map((id) => casosTurno.find((c) => c.id === id) || (escala?.casos || []).find((c) => c.id === id))
+    .map((id) => casosTurno.find((c) => c.id === id) || (escala?.casos || []).find((c) => c.id === id) || casoDoDia(id)?.caso)
     .filter(Boolean)
   const cirurgiasAntesLiberar = casosAntesLiberar.map((caso) => ({ caso, aberta: !!pendenteAntes.get(caso.id)?.aberta })).map(({ caso, aberta }) => ({
     id: caso.id, ordem: caso.ordem ?? null, hora: String(caso.hora || '').trim(), sala: String(caso.sala || '').trim(),
@@ -1594,6 +1626,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     // de quem é agora — "passada para Raquel" quando saiu do grupo desta pessoa
     anestesistaAtual: String(caso.anestesista || '').trim(),
     agendada: (caso.statusCirurgia || 'agendada') === 'agendada',
+    // de OUTRO hospital ou turno ("Unimed · manhã"): a folha diz onde, e passar a cirurgia
+    // a um colega DESTA fila não se oferece — ela é de outro lugar
+    fora: rotuloForaDaLinha(caso),
   }))
   const primeiroNomeAntes = String(linhaAntesLiberar?.anestesista || '').trim().split(/\s+/)[0] || ''
   // COLEGAS PARA PASSAR A CIRURGIA (dono 14/10, modelo A2): os da fila deste turno com
@@ -1615,6 +1650,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       .sort((a, b) => Number(b.livre) - Number(a.livre))
     : []
   const idsDaLinhaAntes = new Set((linhaAntesLiberar?.casosTurno || []).map((c) => c.id).filter(Boolean))
+  // as de fora da linha seguem "da pessoa" enquanto o caso estiver no nome dela
+  if (linhaAntesLiberar) {
+    const ehDela = ehDaPessoaDaLinha(linhaAntesLiberar)
+    for (const c of casosAntesLiberar) if (!idsDaLinhaAntes.has(c.id) && casoDoDia(c.id) && ehDela(c)) idsDaLinhaAntes.add(c.id)
+  }
   // "há 40min" só no dia operacional da escala — "agora" de outro dia não diz nada
   const diaDaEscalaAgora = ehDiaOperacionalAtual(escala?.data)
   const casoUnicoTempo = linhaTempo ? casoUnicoDoTotal(linhaTempo) : null
@@ -3890,7 +3930,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         <span className={['ml-auto shrink-0 rounded-[10px] px-2 py-1 text-[11px] font-semibold leading-none', status.cls].join(' ')}>{status.t}</span>
                       </div>
                       <p className="mt-0.5 truncate text-[12.5px] text-muted-foreground">
-                        {[salaLiberacao(c.sala), c.token].filter(Boolean).join(' · ')}
+                        {[c.fora, salaLiberacao(c.sala), c.token].filter(Boolean).join(' · ')}
                       </p>
                       {passada ? (
                         <p className="mt-2 flex items-center gap-1.5 text-[13px] font-semibold text-success">
@@ -3920,7 +3960,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                           {/* MAIS EVIDENTE (dono 14/10, tarde: "está demorando, quero que
                               fique mais evidente para passar o caso para outro anestesista"):
                               botão de largura cheia, não link — e abre a lista dos colegas */}
-                          {onDefinirCasos && (
+                          {onDefinirCasos && !c.fora && (
                             <Button
                               variant="outline"
                               className="mt-1 min-h-[44px] w-full border-primary/60 text-[14px] font-semibold text-primary"

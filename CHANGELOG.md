@@ -3,6 +3,22 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.64 (15/10/2026) — Liberar confere o dia inteiro; a faixa não cobra o que ainda não aconteceu
+
+Relatório das 24 cirurgias com "Horário pendente" na faixa das 19h de 15/10 (nenhuma finalizada sem horário:
+17 agendadas e 7 iniciadas). O dono escolheu corrigir as causas 1 e 3; a 2 (quem nunca é liberado) fica como
+está, porque qualquer cobrança no turno seguinte cairia em cima de quem chega.
+- **Causa 1 — liberar confere o dia inteiro, nos três hospitais.** A folha "Antes de liberar" olhava só o
+  hospital e o turno da fila: o Oscar saiu do HRO com 2 cirurgias abertas na Unimed, e Marílio, Leonardo, Raul
+  e Guilherme Xavier saíram à tarde com a cirurgia da manhã sem horário. Agora entram as cirurgias da pessoa
+  em qualquer hospital, no turno da liberação e nos anteriores (de manhã a tarde não conta). A de fora aparece
+  com o lugar ("HRO · manhã"); preenche-se ali ou marca-se "Não aconteceu". O banco recusa o mesmo
+  (`rpc_escala_patch_liberacao`, migration `20261015230000`). Com os dados de hoje, os 6 casos da causa 1
+  seriam barrados.
+- **Causa 3 — a faixa não cobra o que ainda não aconteceu.** Às 19h ela marcava o Diego por uma cirurgia
+  agendada para 19:15 e outra em curso desde 16:20. Agendada para o fim do turno ou depois passa a ser cobrada
+  só pelo início vencido (horário + 30 min); a da tarde em andamento ganha até as 23h para terminar.
+
 ## v5.12.63 (15/10/2026) — Urgência para anestesista fora da ordem pede confirmação
 
 Pedido do dono, depois do HRO da manhã: *"ao acrescentar cirurgias de urgência e for acrescentado anestesista
