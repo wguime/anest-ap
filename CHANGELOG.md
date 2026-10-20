@@ -3,6 +3,16 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.67 (20/10/2026) — Selo de plantão do Materno só pela escala numérica
+
+Foto do card do Rômulo na Unimed, tarde de 20/10, com "Plantão da manhã (Materno)": *"use apenas o badge de
+plantão quando estiver informado na escala numérica"*. O rodapé publicado do Materno era só [ROMULO] (quem assinou
+o mapa HC), e a tela fazia do último nome de cada rodapé o plantão do contraturno de lá.
+- No Materno o selo "Plantão da manhã/tarde (Materno)" passa a sair só da numérica: é o 1º nome azul do turno
+  seguinte (tarde → manhã do dia seguinte; manhã → tarde do mesmo dia). Sem numérica (sábado, feriado, fora da
+  vigência), sem selo. Em 20/10 o selo some do Rômulo; o plantão da manhã de 21/10 no Materno é o Gustavo.
+- HRO e Unimed não mudam: lá continua valendo o último nome do rodapé.
+
 ## v5.12.66 (16/10/2026) — Consultório não pede horário de início e término
 
 Pedido do dono: *"quem estiver escalado no consultório não seja necessário colocar horário de início e término,

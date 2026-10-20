@@ -37,6 +37,7 @@ import { gravarInicioReal, gravarTerminoReal } from '@/lib/escalaHorarioReal'
 import { compararPendencias } from '@/lib/escalaHorarioPendente'
 import { ehDataFilaUnica, ehFeriado, ehFimDeSemana, FDS_HOSPITAL, FDS_TURNO_CASOS, FDS_TURNOS, turnoFdsAtual } from '@/lib/escalaFds'
 import { faseLiberacoes } from '@/lib/plantaoNoturno'
+import { plantaoMaternoContraturno } from '@/lib/escalaNumerica'
 import { hospitalDaConta, podeEditarEscalaCirurgica, podePublicarEscalaCirurgica } from './gate'
 import { algumaPublicada, amanhaPublicadaGuardada, guardarAmanhaPublicada } from './amanhaPublicada'
 import { ehContaDeHospital } from '@/utils/userTypes'
@@ -435,18 +436,38 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   //
   // Derivado do context (as três escalas já estão carregadas) — sem schema novo e
   // sem persistência: é a mesma ideia do cruzamento ao publicar, aplicada à fila.
+  //
+  // MATERNO SÓ PELA NUMÉRICA (dono 20/10): lá não vale "último do rodapé" — o
+  // rodapé da tarde de 20/10 era só ROMULO, fora da numérica, e o card dele na
+  // Unimed ganhou "Plantão da manhã (Materno)". O plantão do turno seguinte é o
+  // 1º azul da numérica; o JSON (~220 KB) vem por import dinâmico para não pesar
+  // na abertura — até chegar, o Materno fica sem selo.
+  const [numericaDados, setNumericaDados] = useState(null)
+  useEffect(() => {
+    if (modoFds || numericaDados) return undefined
+    let vivo = true
+    import('@/data/escalaNumerica.json')
+      .then((m) => { if (vivo) setNumericaDados(m.default) })
+      .catch(() => {})
+    return () => { vivo = false }
+  }, [modoFds, numericaDados])
   const contraturnoOutros = useMemo(() => {
     const out = []
     for (const [h, esc] of Object.entries(escalas)) {
       // 'fds' é a fila única do fim de semana, não um "outro hospital" — o
       // último nome dela não é contraturno de ninguém
       if (h === hospital || h === FDS_HOSPITAL || !esc) continue
+      if (h === 'materno') {
+        const legenda = numericaDados ? plantaoMaternoContraturno(numericaDados, { data, turno }) : []
+        for (const n of legenda) out.push({ nome: normNome(n), legenda: n, hospitalLabel: HOSPITAL_LABEL[h] || h })
+        continue
+      }
       const rodape = rodapeDoTurno(esc.ordemLiberacao, turno)
       const ultimo = rodape[rodape.length - 1]
       if (ultimo) out.push({ nome: normNome(ultimo), hospitalLabel: HOSPITAL_LABEL[h] || h })
     }
     return out
-  }, [escalas, hospital, turno])
+  }, [escalas, hospital, turno, numericaDados, data])
 
   // casos dos 3 hospitais mesclados, cada um anotado com a origem (campo só de
   // exibição — nunca entra em CASO_FIELDS/persistência)

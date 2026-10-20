@@ -982,3 +982,18 @@ escala da Unimed (7º), já tem posição na fila.").
 - Travas: `liberacoesPainelLinha.test.jsx` (describe "Ajuda marcada à mão", com 1 teste que mudou de lado) e
   `casoDetalheSheet.test.jsx` (describe "Ajuda marcada pela aba Completa").
 
+
+## Plantão do contraturno no Materno vem da numérica (dono 20/10/2026)
+
+Unimed, tarde de 20/10: o Rômulo levou "Plantão da manhã (Materno)" porque o rodapé publicado do Materno era só
+[ROMULO] e `contraturnoOutros` (`EscalaCirurgicaPage`) fazia do último nome de cada rodapé o plantão do contraturno
+de lá. *"use apenas o badge de plantão quando estiver informado na escala numérica"*.
+- Para o Materno, `contraturnoOutros` usa `plantaoMaternoContraturno` (`src/lib/escalaNumerica.js`): o 1º nome azul
+  do turno SEGUINTE (tarde → manhã do dia seguinte; manhã → tarde do mesmo dia). Fim de semana, feriado ou fora da
+  vigência → sem selo. HRO/Unimed seguem posicionais (último do rodapé, 29/07).
+- O JSON da numérica (~220 KB) entra por `import()` dinâmico na página: até chegar, o Materno fica sem selo. Não
+  trocar por import estático, porque a escala é a página que abre mais rápido (15/10).
+- A entrada traz `legenda` e a view casa por `casarNomeComLegenda` ("MELO" × "Guilherme Melo"), não por igualdade
+  de texto.
+- Travas: `escalaContraturnoMaternoNumerica.test.jsx` (página; os 2 testes falham sem o fio) e o describe
+  `plantaoMaternoContraturno` em `escalaNumericaOrdem.test.js`.

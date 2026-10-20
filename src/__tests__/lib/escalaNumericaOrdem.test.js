@@ -10,7 +10,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import {
-  ordemBase, inserirLouise, excluirFerias, anotarFerias, montarOrdem, ordemFeriado, compararComRodape, aplicarEscalaNasDuplas, casarNomeComLegenda, formatarOrdem, excecaoTurnoDoDia } from '../../lib/escalaNumerica'
+  ordemBase, inserirLouise, excluirFerias, anotarFerias, montarOrdem, ordemFeriado, compararComRodape, aplicarEscalaNasDuplas, casarNomeComLegenda, formatarOrdem, excecaoTurnoDoDia, plantaoMaternoContraturno } from '../../lib/escalaNumerica'
 
 const dados = JSON.parse(readFileSync(resolve(__dirname, '../../data/escalaNumerica.json'), 'utf8'))
 const nomes = (r) => r.lista.map((p) => p.nome)
@@ -464,5 +464,22 @@ describe('excecaoTurnoDoDia — a jornada própria vem do documento (dono 11/09)
   it('sem hora legível no texto do quadro, devolve null em vez de chutar 19h', () => {
     const semHora = { louise: { excecao: 'vespertino', dias: { '2026-09-11': { hospital: 'hro', cinza: false } } } }
     expect(excecaoTurnoDoDia(semHora, { data: '2026-09-11', hospital: 'hro', turno: 'vespertino' })).toBeNull()
+  })
+})
+
+describe('plantaoMaternoContraturno — selo "(Materno)" só pela numérica (dono 20/10)', () => {
+  it('tarde de 20/10 → plantão da MANHÃ de 21/10 no Materno é o 1º azul (GUSTAVO), nunca o rodapé publicado', () => {
+    expect(plantaoMaternoContraturno(dados, { data: '2026-10-20', turno: 'vespertino' })).toEqual(['GUSTAVO'])
+    expect(plantaoMaternoContraturno(dados, { data: '2026-10-20', turno: 'vespertino' })).not.toContain('ROMULO')
+  })
+  it('manhã → plantão da TARDE do mesmo dia (20/10: KLISMAN, o 1º da tarde)', () => {
+    expect(plantaoMaternoContraturno(dados, { data: '2026-10-20', turno: 'matutino' })).toEqual(['KLISMAN'])
+  })
+  it('sexta à tarde → sábado não está na numérica: sem selo', () => {
+    expect(plantaoMaternoContraturno(dados, { data: '2026-10-23', turno: 'vespertino' })).toEqual([])
+  })
+  it('entrada inválida não chuta', () => {
+    expect(plantaoMaternoContraturno(dados, { data: '', turno: 'vespertino' })).toEqual([])
+    expect(plantaoMaternoContraturno(dados, { data: '2026-10-20', turno: 'noturno' })).toEqual([])
   })
 })

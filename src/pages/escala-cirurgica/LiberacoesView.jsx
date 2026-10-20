@@ -13,6 +13,7 @@ import {
 } from '@/design-system'
 import { useHaptic } from '@/design-system/hooks'
 import { fraseClinica, gerarColunaLiberacao, nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
+import { casarNomeComLegenda } from '@/lib/escalaNumerica'
 import { faseLiberacoes, plantonistasNoturnos, candidatosNome, linhasNoturnas, fundirLinhasNoturnas, marcarSelosNoTurno, ehDiaUtil, casarPorInicialSobrenome, P4_HOSPITAIS } from '@/lib/plantaoNoturno'
 import { marcarSelosFds, linhasNoturnasFds, plantonistasFaixaFds, FDS_TURNO_FAIXA, resolverNomeEstrito, ehFeriado, agruparSemAnestesistaPorCirurgiao, aplicarDomingoP7P8 } from '@/lib/escalaFds'
 import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
@@ -1165,7 +1166,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const contraturnoDe = (linha) => {
     const alvo = normNome(linha.anestesista)
     const chave = normNome(linha.nomeOriginal || '')
-    const m = contraturnoOutros.find((c) => c.nome === alvo || (chave && c.nome === chave))
+    // entrada da numérica (Materno) traz o nome da LEGENDA ("MELO", "GUILHERME D"):
+    // casa pelo cadastro dela, não por igualdade de texto com o rodapé
+    const m = contraturnoOutros.find((c) => c.nome === alvo || (chave && c.nome === chave)
+      || (c.legenda && [linha.anestesista, linha.nomeOriginal].some((n) => n && casarNomeComLegenda(c.legenda, n))))
     return m ? m.hospitalLabel : null
   }
   const doTurno = linhasFase.filter((l) => !l.noturno)

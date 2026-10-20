@@ -413,3 +413,27 @@ export function formatarOrdem(r) {
   for (const p of r.pendencias) out.push(`  ⚠ ${p}`)
   return out.join('\n')
 }
+
+/**
+ * PLANTÃO DO CONTRATURNO NO MATERNO pela numérica (dono 20/10: "use apenas o badge de plantão
+ * quando estiver informado na escala numérica"). O Materno não tem a regra posicional do
+ * HRO/Unimed (quem fecha o rodapé pega o próximo turno): o plantão de lá é o 1º nome azul da
+ * coluna. Em 20/10 o rodapé do Materno da tarde trazia só ROMULO, que nem estava na numérica,
+ * e o card dele na Unimed saiu como "Plantão da manhã (Materno)".
+ *
+ * Turno seguinte: manhã → tarde do mesmo dia; tarde → manhã do dia seguinte. Fim de semana,
+ * feriado ou fora da vigência devolvem [] — sem numérica, sem selo.
+ * @returns {string[]} nomes da legenda do 1º do Materno no turno seguinte (dupla rende 2)
+ */
+export function plantaoMaternoContraturno(dados, { data, turno } = {}) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(data || ''))) return []
+  let alvo
+  if (turno === 'matutino') alvo = { data, turno: 'vespertino' }
+  else if (turno === 'vespertino') {
+    const d = new Date(`${data}T12:00:00Z`)
+    d.setUTCDate(d.getUTCDate() + 1)
+    alvo = { data: d.toISOString().slice(0, 10), turno: 'matutino' }
+  } else return []
+  const r = ordemBase(dados, { ...alvo, hospital: 'materno' })
+  return r.ok && r.posicoes[0] ? r.posicoes[0].nomes : []
+}
