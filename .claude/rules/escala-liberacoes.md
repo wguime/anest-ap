@@ -997,3 +997,18 @@ de lá. *"use apenas o badge de plantão quando estiver informado na escala num�
   de texto.
 - Travas: `escalaContraturnoMaternoNumerica.test.jsx` (página; os 2 testes falham sem o fio) e o describe
   `plantaoMaternoContraturno` em `escalaNumericaOrdem.test.js`.
+
+
+## Quem volta da equipe de outro hospital não é ajuda de lá (dono 20/10/2026)
+
+Unimed, tarde de 20/10: a Giovana (Unimed pela numérica) foi publicada no rodapé do HRO com o selo Equipe ("na equipe
+do HRO até as 19h"), foi liberada lá às 13:44 e voltou para a hemodinâmica da Unimed. A fila da Unimed a deduzia
+"Ajuda (HRO)" pela regra de 27/08 (visitante de outro rodapé) e a punha no fim, saindo primeiro.
+- A página marca `naEquipe` nas entradas de rodapé de `presencaOutros` (lê `linha_overrides[turno:chave].naEquipe` da
+  escala de lá) e passa `ordemNumerica` (o `ordemBase` do hospital da tela). Na view, `rodapeTurno` encaixa quem tem
+  `naEquipe` lá e caso aqui pela `inserirPelaNumerica` (`escalaNumerica.js`): logo depois do vizinho de cima na
+  numérica que está no rodapé. Fora da numérica, ambíguo ou já no rodapé, fica a fila publicada.
+- Só exibição: `ordem_liberacao` não é reescrita (11/08). Sem o selo Equipe, 27/08 segue inteiro.
+- Travas: `escalaVoltouDaEquipe.test.jsx` (página; 2 dos 3 falham sem o fio, o 3º trava "sem selo nada muda") e o
+  describe `inserirPelaNumerica` em `escalaNumericaOrdem.test.js`.
+

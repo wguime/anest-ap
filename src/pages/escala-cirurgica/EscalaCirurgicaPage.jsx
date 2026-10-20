@@ -37,7 +37,7 @@ import { gravarInicioReal, gravarTerminoReal } from '@/lib/escalaHorarioReal'
 import { compararPendencias } from '@/lib/escalaHorarioPendente'
 import { ehDataFilaUnica, ehFeriado, ehFimDeSemana, FDS_HOSPITAL, FDS_TURNO_CASOS, FDS_TURNOS, turnoFdsAtual } from '@/lib/escalaFds'
 import { faseLiberacoes } from '@/lib/plantaoNoturno'
-import { plantaoMaternoContraturno } from '@/lib/escalaNumerica'
+import { ordemBase, plantaoMaternoContraturno } from '@/lib/escalaNumerica'
 import { hospitalDaConta, podeEditarEscalaCirurgica, podePublicarEscalaCirurgica } from './gate'
 import { algumaPublicada, amanhaPublicadaGuardada, guardarAmanhaPublicada } from './amanhaPublicada'
 import { ehContaDeHospital } from '@/utils/userTypes'
@@ -468,6 +468,13 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     }
     return out
   }, [escalas, hospital, turno, numericaDados, data])
+  // ordem da numérica do hospital da TELA neste turno — onde entra quem volta da equipe de
+  // outro hospital (dono 20/10, Giovana); sem numérica do dia (FDS, feriado), lista vazia
+  const ordemNumerica = useMemo(() => {
+    if (modoFds || !numericaDados || !['matutino', 'vespertino'].includes(turno)) return []
+    const r = ordemBase(numericaDados, { data, hospital, turno })
+    return r.ok ? r.posicoes.map((p) => p.nome) : []
+  }, [modoFds, numericaDados, data, hospital, turno])
 
   // casos dos 3 hospitais mesclados, cada um anotado com a origem (campo só de
   // exibição — nunca entra em CASO_FIELDS/persistência)
@@ -522,7 +529,12 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
       const label = HOSPITAL_LABEL[h] || h
       rodapeDoTurno(esc.ordemLiberacao, turno).forEach((n, i) => {
         const nm = normNome(n)
-        if (nm) out.push({ nome: nm, uid: null, hospital: h, hospitalLabel: label, rodapeIdx: i })
+        if (!nm) return
+        // "na equipe de lá" (selo Equipe, dono 20/10): a pessoa é de OUTRO hospital e
+        // está lá emprestada — se voltar com caso para casa, não é ajuda de lá
+        const chave = resolverRoster(n) || nm
+        const naEquipe = !!esc.linhaOverrides?.[`${turno}:${chave}`]?.naEquipe
+        out.push({ nome: nm, uid: null, hospital: h, hospitalLabel: label, rodapeIdx: i, ...(naEquipe ? { naEquipe } : {}) })
       })
       // AJUDA DECLARADA lá (dono 31/08 — caso Eduardo): quem está na
       // ajuda_externa de OUTRO hospital foi ajudar lá, com ou sem caso lá — no
@@ -548,7 +560,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
       }
     }
     return out
-  }, [escalas, hospital, turno])
+  }, [escalas, hospital, turno, resolverRoster])
 
   // ── TROCA DECLARADA (dono 30/07) — pares das 3 escalas + planos de execução ──
   // Mesmo padrão de contraturnoOutros/presencaOutros: o context já carrega as três
@@ -984,6 +996,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                   contraturnoOutros={modoFds ? [] : contraturnoOutros}
                   // fila única: os três hospitais estão nela — não há "outro" (dono 05/09)
                   presencaOutros={modoFds ? [] : presencaOutros}
+                  ordemNumerica={ordemNumerica}
                   paresTroca={modoFds ? [] : paresTroca}
                   onMarcarTroca={modoFds ? undefined : (linha, colega, par) => {
                     // REMOVER mira onde a declaração MORA, não a linha da tela

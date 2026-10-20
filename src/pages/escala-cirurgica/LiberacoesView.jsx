@@ -13,7 +13,7 @@ import {
 } from '@/design-system'
 import { useHaptic } from '@/design-system/hooks'
 import { fraseClinica, gerarColunaLiberacao, nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
-import { casarNomeComLegenda } from '@/lib/escalaNumerica'
+import { casarNomeComLegenda, inserirPelaNumerica } from '@/lib/escalaNumerica'
 import { faseLiberacoes, plantonistasNoturnos, candidatosNome, linhasNoturnas, fundirLinhasNoturnas, marcarSelosNoTurno, ehDiaUtil, casarPorInicialSobrenome, P4_HOSPITAIS } from '@/lib/plantaoNoturno'
 import { marcarSelosFds, linhasNoturnasFds, plantonistasFaixaFds, FDS_TURNO_FAIXA, resolverNomeEstrito, ehFeriado, agruparSemAnestesistaPorCirurgiao, aplicarDomingoP7P8 } from '@/lib/escalaFds'
 import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
@@ -78,7 +78,7 @@ const AVISO_MAX = 160
 // que o card mostra, então sai do MESMO mapa que o resto do módulo usa.
 const HOSPITAIS_FILA = ['unimed', 'hro', 'materno'].map((v) => ({ value: v, label: HOSPITAL_LABEL[v] || v }))
 
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onDefinirTerminoCaso, onDefinirInicioCaso, onDefinirTerminoRealCaso, onSuspenderCaso, inicioDuracaoCaso, onDefinirSemAjuda, onTrocarResponsavel, onDevolverResponsavel, onTrocarPosicao, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, onDefinirOrigem, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, escalasDoDia = null, onGarantirEscala, onNavigate }) {
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onDefinirTerminoCaso, onDefinirInicioCaso, onDefinirTerminoRealCaso, onSuspenderCaso, inicioDuracaoCaso, onDefinirSemAjuda, onTrocarResponsavel, onDevolverResponsavel, onTrocarPosicao, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, onDefinirOrigem, contraturnoOutros = [], presencaOutros = [], ordemNumerica = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, escalasDoDia = null, onGarantirEscala, onNavigate }) {
   const { toast } = useToast()
   const haptic = useHaptic()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
@@ -92,7 +92,25 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // "próximo a ser liberado" do lugar certo (bug do piloto 2026-07-21).
   const { roster, options: opcoesRoster, resolver: resolverUid, rosterByUid, loading: rosterLoading } = useRosterAnestesistas()
 
-  const rodapeTurno = useMemo(() => rodapeDoTurno(escala?.ordemLiberacao, turnoBase), [escala, turnoBase])
+  const rodapePublicado = useMemo(() => rodapeDoTurno(escala?.ordemLiberacao, turnoBase), [escala, turnoBase])
+  // VOLTOU PARA CASA (dono 20/10, Giovana): quem está "na equipe" de outro hospital (selo
+  // Equipe lá) e tem caso AQUI não é ajuda de lá — é daqui, emprestada e de volta. Entra na
+  // fila na posição que a numérica deste turno dá a ela; sem isso virava "Ajuda (HRO)" no fim
+  // da lista e saía primeiro. Só exibição: `ordem_liberacao` publicada não muda.
+  const rodapeTurno = useMemo(() => {
+    if (modoFds || !ordemNumerica.length) return rodapePublicado
+    const voltaram = presencaOutros.filter((p) => p.rodapeIdx != null && p.naEquipe)
+    if (!voltaram.length) return rodapePublicado
+    const casosAqui = (escala?.casos || []).filter((c) => (c.turno || turnoBase) === turnoBase)
+    let r = rodapePublicado
+    for (const p of voltaram) {
+      const uid = resolverUid(p.nome)
+      const temCaso = casosAqui.some((c) => (uid && c.anestesistaUserId === uid) || normNome(c.anestesista || '') === p.nome)
+      const jaNoRodape = r.some((n) => normNome(n) === p.nome || (uid && resolverUid(n) === uid))
+      if (temCaso && !jaNoRodape) r = inserirPelaNumerica(r, p.nome, ordemNumerica)
+    }
+    return r
+  }, [rodapePublicado, modoFds, ordemNumerica, presencaOutros, escala, turnoBase, resolverUid])
   // ⚠️ `casosDaFilaDoTurno`, e não `filtrarPorTurnoExibicao`: a cirurgia que
   // atravessa o turno ("Passa para tarde") conta para quem JÁ está no turno e
   // nunca cria posição na fila para quem não está — ver o cabeçalho do helper

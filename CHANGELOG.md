@@ -3,6 +3,17 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.68 (20/10/2026) — Quem volta da equipe de outro hospital entra na posição da numérica
+
+Foto das 13:46, Unimed da tarde: "Giovana Noll — Ajuda (HRO)". Ela é da Unimed pela numérica, estava "na equipe do
+HRO até as 19h" (recado) e voltou para a hemodinâmica da Unimed. Fora do rodapé da Unimed, a fila a deduzia ajuda do
+HRO e a punha no fim da lista, saindo primeiro: *"ela estava de ajuda no HRO mas voltou para a unimed… para que esses
+casos não desajustem a ordem de liberações"*.
+- Quem tem o selo Equipe em outro hospital e caso aqui entra na fila daqui na posição que a numérica do turno dá a ela
+  (Giovana: entre Gabriel e João Ricardo), sem o selo de Ajuda. Só a exibição muda; a ordem publicada fica.
+- Sem o selo Equipe, nada muda: quem está no rodapé de outro hospital e tem caso aqui segue como ajuda de lá (27/08).
+- A tarde de 20/10 foi corrigida no banco: GIOVANA entrou em 11º no rodapé da Unimed.
+
 ## v5.12.67 (20/10/2026) — Selo de plantão do Materno só pela escala numérica
 
 Foto do card do Rômulo na Unimed, tarde de 20/10, com "Plantão da manhã (Materno)": *"use apenas o badge de

@@ -10,7 +10,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import {
-  ordemBase, inserirLouise, excluirFerias, anotarFerias, montarOrdem, ordemFeriado, compararComRodape, aplicarEscalaNasDuplas, casarNomeComLegenda, formatarOrdem, excecaoTurnoDoDia, plantaoMaternoContraturno } from '../../lib/escalaNumerica'
+  ordemBase, inserirLouise, excluirFerias, anotarFerias, montarOrdem, ordemFeriado, compararComRodape, aplicarEscalaNasDuplas, casarNomeComLegenda, formatarOrdem, excecaoTurnoDoDia, plantaoMaternoContraturno, inserirPelaNumerica } from '../../lib/escalaNumerica'
 
 const dados = JSON.parse(readFileSync(resolve(__dirname, '../../data/escalaNumerica.json'), 'utf8'))
 const nomes = (r) => r.lista.map((p) => p.nome)
@@ -481,5 +481,31 @@ describe('plantaoMaternoContraturno — selo "(Materno)" só pela numérica (don
   it('entrada inválida não chuta', () => {
     expect(plantaoMaternoContraturno(dados, { data: '', turno: 'vespertino' })).toEqual([])
     expect(plantaoMaternoContraturno(dados, { data: '2026-10-20', turno: 'noturno' })).toEqual([])
+  })
+})
+
+describe('inserirPelaNumerica — quem volta da equipe de outro hospital entra na posição da numérica (dono 20/10)', () => {
+  const RODAPE_UNIMED_2010 = ['DIEGO', 'GARIM', 'LOUISE', 'RODNEI', 'RAQUEL', 'CURY', 'ADRIANO', 'ROMULO', 'KARINE', 'GABRIEL',
+    'JOAO RICARDO', 'GUILHERME MELO', 'LEANDRO', 'CRISTINA', 'OSCAR', 'GABRIELA', 'LEONARDO', 'MARILIO']
+  const numerica = () => ordemBase(dados, { data: '2026-10-20', hospital: 'unimed', turno: 'vespertino' }).posicoes.map((p) => p.nome)
+  it('Giovana (Unimed pela numérica, na equipe do HRO) entra entre Gabriel e João Ricardo — 11ª', () => {
+    const r = inserirPelaNumerica(RODAPE_UNIMED_2010, 'GIOVANA', numerica())
+    expect(r.indexOf('GIOVANA')).toBe(10)
+    expect(r[9]).toBe('GABRIEL')
+    expect(r[11]).toBe('JOAO RICARDO')
+    expect(r).toHaveLength(19)
+  })
+  it('vizinho de cima fora do rodapé: sobe na numérica até achar alguém publicado', () => {
+    const r = inserirPelaNumerica(['DIEGO', 'GARIM', 'JOAO RICARDO'], 'GIOVANA', numerica())
+    expect(r).toEqual(['DIEGO', 'GARIM', 'GIOVANA', 'JOAO RICARDO'])
+  })
+  it('nome com sobrenome no rodapé casa pelo cadastro ("MELO" × "GUILHERME MELO")', () => {
+    const r = inserirPelaNumerica(['GUILHERME MELO', 'LEANDRO'], 'JOAO RICARDO', numerica())
+    expect(r).toEqual(['JOAO RICARDO', 'GUILHERME MELO', 'LEANDRO'])
+  })
+  it('na dúvida fica a fila publicada: fora da numérica, já no rodapé ou sem lista', () => {
+    expect(inserirPelaNumerica(RODAPE_UNIMED_2010, 'VICENTE', numerica())).toBe(RODAPE_UNIMED_2010)
+    expect(inserirPelaNumerica(RODAPE_UNIMED_2010, 'GABRIEL', numerica())).toBe(RODAPE_UNIMED_2010)
+    expect(inserirPelaNumerica(RODAPE_UNIMED_2010, 'GIOVANA', [])).toBe(RODAPE_UNIMED_2010)
   })
 })

@@ -437,3 +437,36 @@ export function plantaoMaternoContraturno(dados, { data, turno } = {}) {
   const r = ordemBase(dados, { ...alvo, hospital: 'materno' })
   return r.ok && r.posicoes[0] ? r.posicoes[0].nomes : []
 }
+
+/**
+ * VOLTOU PARA O HOSPITAL DE ORIGEM (dono 20/10, Giovana): quem estava "na equipe do HRO" (selo
+ * Equipe) e volta com caso para a Unimed não é ajuda do HRO — é da Unimed, e entra na fila na
+ * posição que a numérica do turno dá a ela. Encaixa `nome` em `rodape` logo DEPOIS do vizinho de
+ * cima na numérica que estiver no rodapé (sem nenhum acima, logo ANTES do primeiro de baixo).
+ * Nome fora da numérica, ambíguo ou já no rodapé → `rodape` sem mudança: na dúvida, a fila publicada.
+ * @param {string[]} rodape  ordem publicada (nomes do rodapé, convenção da fila)
+ * @param {string[]} listaNumerica  nomes da legenda na ordem do turno (`ordemBase(...).posicoes[].nome`)
+ */
+export function inserirPelaNumerica(rodape, nome, listaNumerica, { casar = casarNomeComLegenda } = {}) {
+  const lista = Array.isArray(listaNumerica) ? listaNumerica : []
+  const r = Array.isArray(rodape) ? rodape : []
+  const igual = (leg, n) => normNomeNumerica(leg) === normNomeNumerica(n)
+    || String(leg).split('/').some((x) => casar(x.trim(), n))
+  if (!nome || r.some((n) => normNomeNumerica(n) === normNomeNumerica(nome))) return r
+  const alvos = lista.map((leg, i) => (igual(leg, nome) ? i : -1)).filter((i) => i >= 0)
+  if (alvos.length !== 1) return r
+  const i = alvos[0]
+  const noRodape = (leg) => {
+    const js = r.map((n, j) => (igual(leg, n) ? j : -1)).filter((j) => j >= 0)
+    return js.length === 1 ? js[0] : -1
+  }
+  for (let k = i - 1; k >= 0; k -= 1) {
+    const j = noRodape(lista[k])
+    if (j >= 0) return [...r.slice(0, j + 1), nome, ...r.slice(j + 1)]
+  }
+  for (let k = i + 1; k < lista.length; k += 1) {
+    const j = noRodape(lista[k])
+    if (j >= 0) return [...r.slice(0, j), nome, ...r.slice(j)]
+  }
+  return r
+}
