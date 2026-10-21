@@ -989,13 +989,17 @@ Unimed, tarde de 20/10: o Rômulo levou "Plantão da manhã (Materno)" porque o 
 [ROMULO] e `contraturnoOutros` (`EscalaCirurgicaPage`) fazia do último nome de cada rodapé o plantão do contraturno
 de lá. *"use apenas o badge de plantão quando estiver informado na escala numérica"*.
 - Para o Materno, `contraturnoOutros` usa `plantaoMaternoContraturno` (`src/lib/escalaNumerica.js`): o 1º nome azul
-  do turno SEGUINTE (tarde → manhã do dia seguinte; manhã → tarde do mesmo dia). Fim de semana, feriado ou fora da
-  vigência → sem selo. HRO/Unimed seguem posicionais (último do rodapé, 29/07).
+  do OUTRO TURNO DO MESMO DIA (manhã → tarde de hoje; tarde → manhã de hoje). Feriado ou fora da vigência → sem
+  selo. HRO/Unimed seguem posicionais (último do rodapé, 29/07).
+- ⚠️ **NUNCA o dia seguinte (dono 21/10, 2ª vez do mesmo selo):** a versão de 20/10 levava a tarde para a manhã de
+  AMANHÃ e, na tarde de 21/10, o Klisman (1º do Materno na manhã de 22/10) saiu com "Plantão da manhã (Materno)" no
+  HRO. *"hoje é 21.10, a escala de hoje à tarde não corresponde ao dia 22"*. O teste de 20/10 passou porque o
+  Gustavo era o 1º das duas manhãs que importavam; a trava agora usa a tarde de 21/10 com o Klisman na fila.
 - O JSON da numérica (~220 KB) entra por `import()` dinâmico na página: até chegar, o Materno fica sem selo. Não
   trocar por import estático, porque a escala é a página que abre mais rápido (15/10).
 - A entrada traz `legenda` e a view casa por `casarNomeComLegenda` ("MELO" × "Guilherme Melo"), não por igualdade
   de texto.
-- Travas: `escalaContraturnoMaternoNumerica.test.jsx` (página; os 2 testes falham sem o fio) e o describe
+- Travas: `escalaContraturnoMaternoNumerica.test.jsx` (página; falham sem o fio e com o dia seguinte) e o describe
   `plantaoMaternoContraturno` em `escalaNumericaOrdem.test.js`.
 
 

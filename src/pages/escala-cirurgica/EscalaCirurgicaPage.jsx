@@ -439,8 +439,8 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   //
   // MATERNO SÓ PELA NUMÉRICA (dono 20/10): lá não vale "último do rodapé" — o
   // rodapé da tarde de 20/10 era só ROMULO, fora da numérica, e o card dele na
-  // Unimed ganhou "Plantão da manhã (Materno)". O plantão do turno seguinte é o
-  // 1º azul da numérica; o JSON (~220 KB) vem por import dinâmico para não pesar
+  // Unimed ganhou "Plantão da manhã (Materno)". O plantão é o 1º azul da numérica
+  // no OUTRO turno do MESMO dia (21/10: nunca a manhã de amanhã); o JSON (~220 KB) vem por import dinâmico para não pesar
   // na abertura — até chegar, o Materno fica sem selo.
   const [numericaDados, setNumericaDados] = useState(null)
   useEffect(() => {

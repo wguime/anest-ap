@@ -421,20 +421,19 @@ export function formatarOrdem(r) {
  * coluna. Em 20/10 o rodapé do Materno da tarde trazia só ROMULO, que nem estava na numérica,
  * e o card dele na Unimed saiu como "Plantão da manhã (Materno)".
  *
- * Turno seguinte: manhã → tarde do mesmo dia; tarde → manhã do dia seguinte. Fim de semana,
- * feriado ou fora da vigência devolvem [] — sem numérica, sem selo.
- * @returns {string[]} nomes da legenda do 1º do Materno no turno seguinte (dupla rende 2)
+ * O contraturno é SEMPRE do MESMO DIA (dono 21/10: "hoje é 21.10, a escala de hoje à tarde não
+ * corresponde ao dia 22"): de manhã, "Plantão da tarde (Materno)" = 1º azul da tarde de hoje; à
+ * tarde, "Plantão da manhã (Materno)" = 1º azul da manhã de hoje. A versão de 20/10 levava a
+ * tarde para a manhã do dia SEGUINTE — na tarde de 21/10 o Klisman (1º do Materno na manhã de
+ * 22/10) saiu com o selo na fila do HRO. Feriado ou fora da vigência devolvem [] — sem
+ * numérica, sem selo.
+ * @returns {string[]} nomes da legenda do 1º do Materno no outro turno do dia (dupla rende 2)
  */
 export function plantaoMaternoContraturno(dados, { data, turno } = {}) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(data || ''))) return []
-  let alvo
-  if (turno === 'matutino') alvo = { data, turno: 'vespertino' }
-  else if (turno === 'vespertino') {
-    const d = new Date(`${data}T12:00:00Z`)
-    d.setUTCDate(d.getUTCDate() + 1)
-    alvo = { data: d.toISOString().slice(0, 10), turno: 'matutino' }
-  } else return []
-  const r = ordemBase(dados, { ...alvo, hospital: 'materno' })
+  const OUTRO_TURNO = { matutino: 'vespertino', vespertino: 'matutino' }
+  if (!OUTRO_TURNO[turno]) return []
+  const r = ordemBase(dados, { data, turno: OUTRO_TURNO[turno], hospital: 'materno' })
   return r.ok && r.posicoes[0] ? r.posicoes[0].nomes : []
 }
 

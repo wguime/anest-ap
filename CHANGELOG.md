@@ -3,6 +3,17 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.70 (21/10/2026) — Selo de plantão do Materno olha o mesmo dia
+
+Foto do card do Klisman no HRO, tarde de 21/10, com "Plantão da manhã (Materno)": *"use esse badge apenas se o
+usuário estiver na escala numérica como plantão. ontem corrigimos esse mesmo erro"* e *"hoje é 21.10, a escala de
+hoje à tarde não corresponde ao dia 22"*.
+- Por que repetiu: a correção de 20/10 (v5.12.67) levava a tarde para a manhã do dia SEGUINTE. O Klisman é o 1º do
+  Materno na manhã de 22/10 e ganhou o selo hoje. O teste de 20/10 não pegou: o Rômulo saía do selo nas duas leituras.
+- Agora o selo do Materno sai do 1º azul da numérica no outro turno do MESMO dia: à tarde, a manhã de hoje (21/10:
+  Gustavo, que não está escalado à tarde, então ninguém recebe o selo); de manhã, a tarde de hoje.
+- A trava de página usa a tarde de 21/10 com o Klisman e o Gustavo na fila e falha com a regra antiga.
+
 ## v5.12.69 (21/10/2026) — Cirurgia da manhã em curso não cobra término às 13h
 
 Foto das 13:08, HRO da tarde: "Você tem 1 cirurgia sem horário — Manhã · Sala 9 · Hernioplastia · Falta término",
