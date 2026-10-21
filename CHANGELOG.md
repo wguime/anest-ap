@@ -3,6 +3,16 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.69 (21/10/2026) — Cirurgia da manhã em curso não cobra término às 13h
+
+Foto das 13:08, HRO da tarde: "Você tem 1 cirurgia sem horário — Manhã · Sala 9 · Hernioplastia · Falta término",
+com a cirurgia iniciada às 12:25 e ainda em andamento: *"estou recebendo esse alerta, porém a cirurgia não terminou
+ainda"*. A manhã vencia às 13h; só a marcada "Passa para tarde" escapava.
+- Cirurgia da manhã já iniciada e sem término passa a vencer às 19h, como a "Passa para tarde" (a da tarde em curso
+  já tinha até as 23h desde 15/10).
+- Não muda: a sem início continua cobrando no início vencido e às 13h; a marcada Terminada sem horário de término
+  continua às 13h; ser liberado na fila continua pondo na faixa na hora.
+
 ## v5.12.68 (20/10/2026) — Quem volta da equipe de outro hospital entra na posição da numérica
 
 Foto das 13:46, Unimed da tarde: "Giovana Noll — Ajuda (HRO)". Ela é da Unimed pela numérica, estava "na equipe do

@@ -117,7 +117,11 @@ export const PRAZO_TARDE_EM_ANDAMENTO_MIN = 23 * 60
  *  - não começou e o horário agendado é no fim do turno ou depois → o fim do turno não
  *    vence; quem cobra é o início vencido (agendada + 30 min), como em qualquer horário;
  *  - à TARDE, já começou e não terminou → tem até as 23h para terminar; sem término
- *    então, entra. De manhã segue às 13h: a que continua à tarde se marca "Passa para tarde".
+ *    então, entra.
+ *  - de MANHÃ, já começou e não terminou → vence com a tarde (19h), como a "Passa para
+ *    tarde" (dono 21/10: hernioplastia da Sala 9 do HRO iniciada às 12:25 acendeu "Falta
+ *    término" às 13:08 com a cirurgia em curso — ninguém marca "Passa para tarde" no meio
+ *    da operação). A liberação segue cobrando na hora.
  */
 export function prazoDoCaso(caso) {
   const turno = turnoDoCasoHorario(caso)
@@ -131,6 +135,8 @@ export function prazoDoCaso(caso) {
       if (hora != null && hora >= fim) return VIRADA_DO_DIA_MIN
     } else if (turno === 'vespertino') {
       return PRAZO_TARDE_EM_ANDAMENTO_MIN
+    } else if (turno === 'matutino') {
+      return FIM_TURNO_MIN.vespertino
     }
   }
   return fim

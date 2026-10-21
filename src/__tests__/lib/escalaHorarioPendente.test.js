@@ -67,20 +67,22 @@ describe('quem entra na conta', () => {
 })
 
 describe('quando entra no alerta', () => {
-  it('pelo relógio: manhã às 13h, tarde às 19h — a tarde EM ANDAMENTO às 23h', () => {
+  it('pelo relógio: manhã às 13h, tarde às 19h — EM ANDAMENTO, a manhã às 19h e a tarde às 23h', () => {
     // com início e sem término: isola a regra do fim do turno (a do início vencido não se aplica).
     // MUDOU DE LADO em 15/10 (dono, causa 3 das 24 pendências): a tarde iniciada e não
     // terminada às 19h pode estar em curso — entrava às 19h, agora tem até as 23h.
+    // E em 21/10 a manhã em curso às 13h (Sala 9 do HRO) — entrava às 13h, agora às 19h.
     const aberta = { statusCirurgia: 'iniciada', inicioReal: '08:05', terminoReal: null }
     const e = escala([
       caso({ id: 'm', ...aberta }),
+      caso({ id: 'mt', statusCirurgia: 'terminada', inicioReal: '08:05', terminoReal: null }),
       caso({ id: 't', turno: 'vespertino', hora: '14:00', ...aberta, inicioReal: '14:10' }),
       caso({ id: 'tt', turno: 'vespertino', hora: '14:00', statusCirurgia: 'terminada', inicioReal: '14:10', terminoReal: null }),
     ])
     expect(pendenciasDoDia([e], { hoje: HOJE, agoraMin: 12 * 60 + 59, liberado: ninguemLiberado })).toHaveLength(0)
-    expect(pendenciasDoDia([e], { hoje: HOJE, agoraMin: 13 * 60, liberado: ninguemLiberado }).map((p) => p.caso.id)).toEqual(['m'])
-    expect(pendenciasDoDia([e], { hoje: HOJE, agoraMin: 19 * 60, liberado: ninguemLiberado }).map((p) => p.caso.id)).toEqual(['m', 'tt'])
-    expect(pendenciasDoDia([e], { hoje: HOJE, agoraMin: 23 * 60, liberado: ninguemLiberado }).map((p) => p.caso.id)).toEqual(['m', 't', 'tt'])
+    expect(pendenciasDoDia([e], { hoje: HOJE, agoraMin: 13 * 60, liberado: ninguemLiberado }).map((p) => p.caso.id)).toEqual(['mt'])
+    expect(pendenciasDoDia([e], { hoje: HOJE, agoraMin: 19 * 60, liberado: ninguemLiberado }).map((p) => p.caso.id)).toEqual(['m', 'mt', 'tt'])
+    expect(pendenciasDoDia([e], { hoje: HOJE, agoraMin: 23 * 60, liberado: ninguemLiberado }).map((p) => p.caso.id)).toEqual(['m', 'mt', 't', 'tt'])
   })
 
   it('a que passa para tarde vence com a tarde; a que passa para a noite não vence no dia', () => {
@@ -148,8 +150,8 @@ describe('liberado com cirurgia ABERTA (dono 05/10: "ou se ele foi substituído"
     const e = escala([caso({ statusCirurgia: 'iniciada', inicioReal: '09:00', anestesista: 'BRUNO', anestesistaUserId: 'uid-bruno' })])
     const liberado = (esc, turno, parte) => parte.uid === 'uid-ana'
     expect(pendenciasDoDia([e], { hoje: HOJE, agoraMin: 10 * 60, liberado })).toHaveLength(0)
-    // e no fim do turno volta a valer a regra — agora no nome de quem assumiu
-    const [p] = pendenciasDoDia([e], { hoje: HOJE, agoraMin: 13 * 60, liberado })
+    // e no prazo volta a valer a regra — agora no nome de quem assumiu (em curso de manhã: 19h)
+    const [p] = pendenciasDoDia([e], { hoje: HOJE, agoraMin: 19 * 60, liberado })
     expect(p.nomes).toEqual([{ alias: 'BRUNO', uid: 'uid-bruno' }])
   })
 })
@@ -285,8 +287,8 @@ describe('o fim do turno só cobra o que já devia ter acontecido (dono 15/10, c
     expect(ids(23 * 60)).toContain('curso')
   })
 
-  it('de manhã nada muda: aberta às 13h entra; agendada para depois das 13h espera o início vencido', () => {
-    expect(prazoDoCaso(caso({ statusCirurgia: 'iniciada', inicioReal: '08:00', terminoReal: null }))).toBe(13 * 60)
+  it('de manhã: em curso vence às 19h (dono 21/10); agendada para depois das 13h espera o início vencido', () => {
+    expect(prazoDoCaso(caso({ statusCirurgia: 'iniciada', inicioReal: '12:25', terminoReal: null }))).toBe(19 * 60)
     expect(prazoDoCaso(caso({ hora: '13:30', statusCirurgia: 'agendada' }))).toBe(31 * 60)
     expect(prazoDoCaso(caso({ hora: '12:30', statusCirurgia: 'agendada' }))).toBe(13 * 60)
   })

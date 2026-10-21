@@ -356,8 +356,10 @@ da Minhas, prop `pendencia` do `CasoCard` — está no comparador do `memo`).
   iniciada às 16:20, em curso. `prazoDoCaso`: sem início e com horário agendado no fim do turno ou
   depois → o fim do turno não vence (quem cobra é o início vencido, agendada + 30 min); à TARDE,
   iniciada e sem término → prazo às **23h** (`PRAZO_TARDE_EM_ANDAMENTO_MIN`, a hora em que a noite
-  zera). De manhã nada mudou (13h; a que continua se marca "Passa para tarde"). A liberação segue
-  pondo na faixa na hora.
+  zera). **De manhã, iniciada e sem término → prazo às 19h** (dono 21/10: Sala 9 do HRO iniciada às
+  12:25 acendeu "Falta término" às 13:08 com a cirurgia em curso; ninguém marca "Passa para tarde" no
+  meio da operação). Terminada sem término real segue vencendo às 13h. A liberação segue pondo na
+  faixa na hora.
 - **INÍCIO VENCIDO (dono 05/10 à tarde: "várias cirurgias já deveriam ter informação de início e não
   há alerta")**: sem início **30 min depois do horário agendado** (`TOLERANCIA_INICIO_MIN`) já entra, no
   meio do turno, como "Falta início" (`motivo: 'inicio'`). "AS" (sem hora) conta do término REAL da

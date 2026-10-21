@@ -171,7 +171,7 @@ describe('a lista por anestesista', () => {
   it('agrupa por pessoa, quem deve mais primeiro, e cada linha abre a cirurgia no hospital dela', () => {
     agoraEm('13:30')
     contexto({
-      unimed: escala([caso({ id: 'u1' }), caso({ id: 'u2', hora: '09:30', statusCirurgia: 'iniciada', inicioReal: '09:35', terminoReal: null })]),
+      unimed: escala([caso({ id: 'u1' }), caso({ id: 'u2', hora: '09:30', statusCirurgia: 'terminada', inicioReal: '09:35', terminoReal: null })]),
       hro: escala([caso({ id: 'h1', anestesista: 'BRUNO', anestesistaUserId: 'uid-bruno', sala: 'Sala 6' })], { id: 'e-hro', hospital: 'hro' }),
     })
     montar()
@@ -212,7 +212,7 @@ describe('a lista por anestesista', () => {
 describe('aba Minhas: o detalhamento de quem está logado (dono 05/10)', () => {
   const doDia = () => contexto({
     unimed: escala([
-      caso({ id: 'ana2', hora: '09:30', statusCirurgia: 'iniciada', inicioReal: '09:35', terminoReal: null }),
+      caso({ id: 'ana2', hora: '09:30', statusCirurgia: 'terminada', inicioReal: '09:35', terminoReal: null }),
       caso({ id: 'ana1' }),
       caso({ id: 'bru', anestesista: 'BRUNO', anestesistaUserId: 'uid-bruno' }),
     ]),
@@ -265,7 +265,7 @@ describe('modelo A — você primeiro (dono 15/10)', () => {
   const ANA = { uid: 'uid-ana', alias: 'Ana' }
   const doDia = () => contexto({
     unimed: escala([
-      caso({ id: 'ana2', hora: '09:30', statusCirurgia: 'iniciada', inicioReal: '09:35', terminoReal: null }),
+      caso({ id: 'ana2', hora: '09:30', statusCirurgia: 'terminada', inicioReal: '09:35', terminoReal: null }),
       caso({ id: 'ana1' }),
       caso({ id: 'bru', anestesista: 'BRUNO', anestesistaUserId: 'uid-bruno' }),
     ]),
