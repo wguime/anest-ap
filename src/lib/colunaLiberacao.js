@@ -909,6 +909,21 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     l.origemLabel = m?.label || porChave(origemLabel, l) || null
   }
 
+  // BLOCO DE CADA LINHA (dono 23/10) — quem decide a ordem diz também em que bloco a
+  // linha está, e a composição da lista exibida (`ordenarListaExibicao`, em
+  // src/lib/filaLiberacao.js) não relê as flags. Reler por `isExtra` jogava a ajuda do
+  // array com origem conhecida ACIMA dos visitantes e desfazia o sort de 27/08: Unimed
+  // 23/10, o Diego (14º do HRO) subiu acima do Paulo (9º) e do Rodnei (12º) quando a
+  // cesárea dele foi passada ao Costa, e foi liberado na vez aparecendo fora dela.
+  // Numerada pelo dono (09/09) fica na ordem do array, junto das ajudas sem origem.
+  for (const l of principais) l.blocoFila = 'rodape'
+  for (const l of extrasLocais) l.blocoFila = 'extra'
+  for (const l of fimAjuda) {
+    const numerada = ordemInformada && l.ajudaIdx != null
+    l.blocoFila = (idxOrigem(l) != null && !numerada) ? 'origem' : 'ajuda'
+  }
+  if (proximoPlantao) proximoPlantao.blocoFila = 'contraturno'
+
   const linhas = [...principais, ...extrasLocais, ...fimAjuda, ...(proximoPlantao ? [proximoPlantao] : [])]
 
   // texto final (regra 16/17): linhas + linha em branco + casos "?"

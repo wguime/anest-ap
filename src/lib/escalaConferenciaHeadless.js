@@ -25,6 +25,7 @@ import {
 } from '@/pages/escala-cirurgica/utils'
 import { ehHoraSequencialEscala } from '@/lib/escalaCirurgicaRegras'
 import { gerarColunaLiberacao } from '@/lib/colunaLiberacao'
+import { estadoDaFila, naoEscaladoLinha, ordenarListaExibicao } from '@/lib/filaLiberacao'
 import { validarCasosParaPublicacao, textoBloqueio } from '@/lib/escalaCirurgicaValidacao'
 import { detectarItensDuplicados, aplicarHoraPadraoPosicoes } from '@/lib/escalaCirurgicaItens'
 import { detectarDuplicidadesEscala, carimbarDecisao, localizarDecisao } from '@/lib/escalaCirurgicaDuplicidades'
@@ -371,13 +372,15 @@ export function conferirHospital(hospital, entrada, contexto) {
         ajudandoFora.push({ uid, nome })
       }
     }
-    const { linhas = [] } = gerarColunaLiberacao(casosNovos, ordem, {
+    // a lista e a fronteira saem do MESMO lugar que a tela usa (src/lib/filaLiberacao.js,
+    // 23/10) — aqui havia uma cópia de `naoEscalado` e da varredura do último com trabalho
+    const { linhas: daLib = [] } = gerarColunaLiberacao(casosNovos, ordem, {
       hospital, turno, resolverUid: resolver, ajudaExterna: ajuda, ajudandoFora,
       plantaoContraturno: hospital !== 'materno',
     }) || {}
-    const naoEscalado = (l) => !l.teveCasos && !l.notaRodape && !(l.salas?.length) && !(l.cirurgioes?.length)
-    let idxUltimoTrabalho = -1
-    for (let i = linhas.length - 1; i >= 0; i--) if (!naoEscalado(linhas[i])) { idxUltimoTrabalho = i; break }
+    const linhas = ordenarListaExibicao(daLib)
+    const naoEscalado = naoEscaladoLinha
+    const { idxUltimoTrabalho } = estadoDaFila(linhas)
     const mesmaPessoa = (l, nome) => {
       const uid = resolver(nome)
       return (uid && (l.uid === uid || l.chave === uid)) || normNome(l.nomeOriginal || '') === normNome(nome)

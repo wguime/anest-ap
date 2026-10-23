@@ -3,6 +3,22 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.71 (23/10/2026) — A fila de liberação tem uma fonte só
+
+Foto da Unimed às 10:39: Diego (14º do HRO) liberado ACIMA de Paulo (9º do HRO) e Rodnei (12º), os dois em sala.
+*"esse é um erro que está acontecendo com frequência mesmo após várias correções"*. Reconstruído com os dados reais:
+o toque foi NA VEZ. A cesárea estava no nome do Diego e, pela ordem do hospital de origem (27/08), ele era o último.
+Na folha "Antes de liberar" a cesárea foi passada ao Costa, o repasse o gravou no array de ajuda, e a TELA
+repartia a lista por `isExtra`, jogando a ajuda do array acima de todos os extras.
+- A ordem exibida e a fila (cauda, próximo, convocar, bloqueio) saíram da `LiberacoesView` para
+  `src/lib/filaLiberacao.js`. A lib carimba o bloco de cada linha (`blocoFila`) e a composição não relê flags. A
+  conferência da publicação usa as mesmas funções.
+- O "Salvar e liberar" da folha reconfere a ordem com a fila de agora. Se a fila mudou com a folha aberta, não
+  libera e avisa: "Horários salvos. Com o que mudou na fila, falta 1 anestesista antes de X".
+- Não muda: liberado fica na posição publicada (14/10); ajuda sem origem segue acima do extra sem origem.
+- A troca que grava por cima de uma posição já liberada (HRO, mesma manhã) vai em protótipo
+  (`.tmp/troca-posicao-ja-liberada.html`).
+
 ## v5.12.70 (21/10/2026) — Selo de plantão do Materno olha o mesmo dia
 
 Foto do card do Klisman no HRO, tarde de 21/10, com "Plantão da manhã (Materno)": *"use esse badge apenas se o

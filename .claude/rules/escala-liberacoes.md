@@ -6,11 +6,13 @@ paths:
   - "src/pages/escala-cirurgica/useAvisoPlantonista.js"
   - "src/pages/escala-cirurgica/useAvisoTempoEstourado.js"
   - "src/lib/colunaLiberacao.js"
+  - "src/lib/filaLiberacao.js"
   - "src/lib/escalaCirurgicaRegras.js"
   - "src/lib/plantaoNoturno.js"
   - "src/__tests__/**/escalaCirurgicaPersonas*"
   - "src/__tests__/**/escalaOrdemLiberacao*"
   - "src/__tests__/**/liberacoes*"
+  - "src/__tests__/**/filaLiberacao*"
   - "src/__tests__/**/escalaPassaDeTurno*"
 description: Escala Cirúrgica — fila de liberação (ordem imutável, cauda vermelha, plantão noturno, travessia de turno, resposta tátil)
 ---
@@ -1016,3 +1018,31 @@ do HRO até as 19h"), foi liberada lá às 13:44 e voltou para a hemodinâmica d
 - Travas: `escalaVoltouDaEquipe.test.jsx` (página; 2 dos 3 falham sem o fio, o 3º trava "sem selo nada muda") e o
   describe `inserirPelaNumerica` em `escalaNumericaOrdem.test.js`.
 
+
+## A fila tem UMA fonte — `src/lib/filaLiberacao.js` (dono 23/10/2026)
+
+Foto da Unimed às 10:39: Diego (14º do HRO) "Liberado" ACIMA de Paulo (9º do HRO) e Rodnei (12º), em sala. *"esse
+é um erro que está acontecendo com frequência mesmo após várias correções"*. Reconstruído minuto a minuto com os dados
+do banco (`.tmp/ver-fila-corte.mjs`: código publicado + estado num instante passado): o toque foi NA VEZ. A cesárea
+estava no nome dele (origem HRO, 13 > 11 > 8 → último). Na folha "Antes de liberar" ela foi passada ao Costa;
+`ajudasPreservadasNoRepasse` o gravou no array de ajuda; e a VIEW repartia a lista por `isExtra` — a ajuda do array
+subia acima de TODOS os extras, desfazendo o sort de origem da lib (27/08). A lib sozinha o deixava em 17º. O botão
+da folha liberou sem reconferir.
+
+- **Composição única:** `ordenarListaExibicao` (noturnos → rodapé → ajuda sem origem → extra → de outro hospital →
+  contraturno → exceção de 31/08). A lib carimba `blocoFila` em cada linha ('rodape' | 'ajuda' | 'extra' | 'origem'
+  | 'contraturno'); a composição não relê flags. Numerada pelo dono (09/09) é 'ajuda', na ordem do array.
+- **Fila única:** `estadoDaFila` devolve cauda, `naFila`, próximo, cartão, convocar e `bloqueioDe(linha, idx)`. A
+  view, a folha "Antes de liberar" e o `escalaConferenciaHeadless` usam as mesmas funções — não recriar cópia de
+  `naoEscalado`/fronteira em lugar nenhum.
+- **A folha reconfere:** "Salvar e liberar" chama `fila.bloqueioDe` com a lista do render; se a fila mudou com a
+  folha aberta, não libera e o aviso diz "Horários salvos. Com o que mudou na fila, falta N…".
+- ⚠️ A partição por `isExtra` era o SEGUNDO lugar decidindo ordem — o mesmo padrão de 10–11/09 ("procurar os DOIS
+  pontos"). Ordem nova entre blocos = mexer em `ORDEM_BLOCOS`, nunca reordenar na view.
+- Ainda aberto, em protótipo (`.tmp/troca-posicao-ja-liberada.html`): no HRO da mesma manhã, a troca Cristina ⇄
+  Rodnei feita na Unimed gravou "Cristina assume" por cima da posição 12, que o Klisman ocupava e onde já estava
+  liberado. A liberação ficou com a Cristina e o Klisman voltou ao fim como "próximo". A regra proposta: nenhuma ação
+  devolve à fila quem já saiu.
+- Travas: `filaLiberacao.test.js` (o recorte e as 8 combinações caso × array falham com a partição antiga) e
+  `liberacoesFilaFonteUnica2310.test.jsx` (tela: ordem renderizada, toque no Diego passa e no Rodnei é recusado, e a
+  folha que reconfere — 3 dos 4 falham contra o código anterior).
