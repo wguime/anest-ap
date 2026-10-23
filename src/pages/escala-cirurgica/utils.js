@@ -1848,6 +1848,30 @@ export function casosTransferiveis(esc, pessoa, resolverUid, turno = null) {
 }
 
 /**
+ * Quem está DE FATO numa posição do rodapé e se ela já foi liberada (dono 23/10).
+ *
+ * HRO da manhã de 23/10: a troca Cristina ⇄ Rodnei, feita na tela da Unimed, achou a
+ * posição pelo NOME do rodapé ("Posição de Rodnei") e gravou "Cristina assume" por
+ * cima do Klisman, que a ocupava desde 09:02 e já tinha sido liberado nela às 10:46.
+ * A liberação mora na chave da POSIÇÃO: passou para a Cristina, e o Klisman voltou ao
+ * fim da fila como "próximo", abaixo de 5 colegas liberados. A folha da troca mostra
+ * isto antes da escolha, e a execução mantém liberado quem sai (`executarSubstituicao`).
+ *
+ * @returns {{ ocupadoPor: {uid, nome, em}|null, liberadoEm: string|null }}
+ */
+export function estadoDaPosicao(esc, turno, chave) {
+  const comTurno = (turno === 'matutino' || turno === 'vespertino') ? `${turno}:${chave}` : chave
+  // chave crua legada é matutina (regra da migração de 05/08)
+  const ler = (mapa) => mapa?.[comTurno] ?? ((!turno || turno === 'matutino') ? mapa?.[chave] : undefined)
+  const asm = ler(esc?.linhaOverrides)?.assumidaPor
+  const marca = ler(esc?.liberacoes)
+  return {
+    ocupadoPor: asm && (asm.uid || asm.nome) ? { uid: asm.uid || null, nome: asm.nome || '', em: asm.em || null } : null,
+    liberadoEm: marca && marca.escalado !== true ? (marca.liberadoEm || marca.em || null) : null,
+  }
+}
+
+/**
  * Plano do swap SIMULTÂNEO da troca declarada: para cada hospital onde um dos
  * dois ocupa slot no rodapé, o OUTRO assume (assumidaPor) e herda os casos
  * transferíveis. Também lista onde limpar o `trocaCom` (o badge some após a
@@ -1882,12 +1906,25 @@ export function planoExecucaoTroca({ escalas, resolverUid, a, b, turno = null, e
       const slot = localizarSlotEscala(esc, de, resolverUid, turno)
       if (!slot) continue
       comSlot.add(de)
+      // A POSIÇÃO COMO ELA ESTÁ AGORA (dono 23/10): o slot é achado pelo nome do
+      // rodapé, mas pode estar com outra pessoa (assumidaPor) e já ter sido liberado.
+      // A folha diz isso no cartão. Se quem ocupa já é o próprio `para`, não conta.
+      const turnoSlot = slot.turno || turno || null
+      const atual = slot.semPosicao ? { ocupadoPor: null, liberadoEm: null } : estadoDaPosicao(esc, turnoSlot, slot.chave)
+      const ocupadoPor = atual.ocupadoPor
+        && !(atual.ocupadoPor.uid ? atual.ocupadoPor.uid === para.uid || atual.ocupadoPor.uid === de.uid
+          : normNome(atual.ocupadoPor.nome) === normNome(para.nome))
+        ? atual.ocupadoPor : null
+      const posicao = slot.semPosicao ? 0 : rodapeDoTurno(esc.ordemLiberacao, turnoSlot).indexOf(slot.nome) + 1
       lados.push({
         hospital, escalaId: esc.id,
         chaveSlot: slot.chave, nomeSlot: slot.nome,
         // slot achado pelos CASOS (Materno e afins): não há posição na fila para
         // herdar — o lado move só as cirurgias, e o sheet precisa dizer isso.
         ...(slot.semPosicao && { semPosicao: true }),
+        ...(posicao > 0 && { posicao }),
+        ...(ocupadoPor && { ocupadoPor }),
+        ...(atual.liberadoEm && { liberadoEm: atual.liberadoEm }),
         de: { uid: de.uid || null, nome: de.nome, apelido: de.apelido || slot.nome },
         para: { uid: para.uid || null, nome: para.nome, apelido: para.apelido },
         // sem uid de quem assume não há como transferir caso (o service escreveria

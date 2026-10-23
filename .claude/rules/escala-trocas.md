@@ -266,3 +266,25 @@ pela metade a desfazer.
 ⚠️ Sem suíte de PL/pgSQL no repo: `scripts/smoke-rpc-executar-troca.mjs` exercita a RPC
 contra o banco dentro de uma função que termina em EXCEÇÃO — a transação cai e nada fica
 gravado. É a cobertura do SQL, inclusive do "tudo ou nada".
+
+### Troca numa posição já liberada — a liberação é da PESSOA (dono 23/10/2026, modelo A)
+
+HRO, manhã de 23/10: o Klisman assumiu a posição do Rodnei às 09:02 e foi liberado nela às 10:46. A marca de
+liberação mora na chave da POSIÇÃO (`matutino:<uid do Rodnei>`). Às 10:53, na tela da Unimed, a troca Cristina ⇄
+Rodnei achou a vaga pelo NOME do rodapé ("Posição de Rodnei · Rodnei fica / Cristina assume") e gravou por cima.
+A liberação passou para a Cristina, e o Klisman voltou ao fim da fila como "próximo", abaixo de 5 liberados.
+Escolhido em `.tmp/troca-posicao-ja-liberada.html` (modelo A, contra o B = aviso só no pop-up).
+
+- `estadoDaPosicao(esc, turno, chave)` (utils, puro) responde quem OCUPA a posição (`assumidaPor`) e se ela já foi
+  liberada. `planoExecucaoTroca` carimba no lado `ocupadoPor`, `liberadoEm` e `posicao`.
+- **Cartão do TrocaSheet:** "Posição de Rodnei (12ª) · com Klisman desde 09:02 · saiu às 10:46", a opção "fica"
+  nomeia quem está lá, e uma linha diz o resultado: âmbar antes da escolha, cinza com ✓ depois de "assume". A mesma
+  frase vai no pop-up "Trocar as posições?". Nada vem pré-marcado (09/08). Sem artigo antes do nome: o app não sabe o
+  gênero de ninguém.
+- **Execução (`executarSubstituicao`, todos os caminhos):** antes da RPC, lê do snapshot quem ocupava cada posição
+  liberada. Depois dela, grava a liberação na chave PRÓPRIA de quem saiu (`turno:<uid>`, mesmo `liberadoEm`). A
+  posição segue liberada para quem chega; se for trabalhar, é o toque de sempre no card. Fica fora da transação da
+  troca de propósito: a RPC de liberação confere o horário das cirurgias, e a recusa dela vira aviso ("X voltou à
+  fila — preencha e libere pelo card"), nunca desfaz a troca.
+- Travas: `trocaSheetPosicaoLiberada.test.jsx` (plano + cartão + pop-up) e `escalaTrocaMantemLiberacao.test.jsx`
+  (contexto real, recusa do banco inclusive). 6 dos 8 falham contra o código anterior; os outros 2 são os controles.

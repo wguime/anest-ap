@@ -16,7 +16,7 @@ import { createReliableSubscription } from '@/services/supabaseSubscriptionHelpe
 import { useToast } from '@/design-system/components/ui/toast'
 import { useUserOpcional } from '@/contexts/userContextObject'
 import { ehContaDeHospital } from '@/utils/userTypes'
-import { ajudasPreservadasNoRepasse, escaladosPreservadosNoRepasse, familiaConvenio, lerOverrideAnterior, marcarAjudaOrdemInformada, mergeRodapeTurno, rodapeDoTurno, snapshotCasos } from '@/pages/escala-cirurgica/utils'
+import { ajudasPreservadasNoRepasse, escaladosPreservadosNoRepasse, estadoDaPosicao, familiaConvenio, lerOverrideAnterior, marcarAjudaOrdemInformada, mergeRodapeTurno, rodapeDoTurno, snapshotCasos } from '@/pages/escala-cirurgica/utils'
 import { nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
 import { ehDataFilaUnica, FDS_HOSPITAL } from '@/lib/escalaFds'
 import { getDemoEscala } from '@/data/escalaCirurgicaDemo'
@@ -1244,6 +1244,27 @@ export function EscalaCirurgicaProvider({ children }) {
       const pendentesLimpar = limparTroca.filter(
         (x) => !lados.some((l) => l.escalaId === x.escalaId && l.chaveSlot === x.chave),
       )
+      // A LIBERAÇÃO É DA PESSOA, NÃO DA POSIÇÃO (dono 23/10). A marca mora na chave da
+      // posição: trocar o ocupante de uma posição JÁ liberada passava a liberação para
+      // quem chega e devolvia quem saiu à fila — no HRO de 23/10 o Klisman (liberado às
+      // 10:46 na posição do Rodnei) voltou como "próximo", abaixo de 5 liberados, quando
+      // a troca Cristina ⇄ Rodnei gravou "Cristina assume" por cima dele. Quem já saiu
+      // continua liberado na PRÓPRIA chave; a posição segue liberada para quem chega
+      // (se for trabalhar, é o toque de sempre no card). Lido do snapshot de ANTES.
+      const liberacoesMantidas = []
+      for (const lado of lados) {
+        const esc = escalas[lado.hospital]
+        const { ocupadoPor, liberadoEm } = estadoDaPosicao(esc, lado.turno, lado.chaveSlot)
+        const uid = ocupadoPor?.uid
+        if (!liberadoEm || !uid || uid === lado.para.uid || uid === lado.chaveSlot) continue
+        const chave = chaveTurno(lado.turno, uid)
+        const ja = esc.liberacoes?.[chave]
+        if (ja && ja.escalado !== true) continue
+        liberacoesMantidas.push({
+          hospital: lado.hospital, escalaId: esc.id, chave, nome: ocupadoPor.nome,
+          valor: { liberadoEm, por: userInfo.userId || null },
+        })
+      }
 
       let resultado
       if (soDemo) {
@@ -1322,6 +1343,29 @@ export function EscalaCirurgicaProvider({ children }) {
         }
       }
 
+      // quem saiu de uma posição já liberada continua liberado (ver `liberacoesMantidas`).
+      // Fora da transação da troca: a RPC de liberação confere o horário das cirurgias,
+      // e a recusa dela não pode desfazer a troca — vira aviso com o caminho de volta.
+      const mantidasOk = []
+      for (const m of liberacoesMantidas) {
+        try {
+          if (!soDemo) await svc.patchLiberacao(m.escalaId, m.chave, m.valor)
+          const atual = escalasRef.current?.[m.hospital]
+          if (atual?.id === m.escalaId) {
+            dispatch({ type: 'PATCH_HOSPITAL', hospital: m.hospital, patch: { liberacoes: { ...(atual.liberacoes || {}), [m.chave]: m.valor } } })
+          }
+          mantidasOk.push(m)
+        } catch (e) {
+          toast({
+            variant: 'warning', duration: 12000,
+            title: `${titleCaseNome(m.nome)} voltou à fila`,
+            description: ehHorarioPendente(e)
+              ? 'Há cirurgia sem horário de início/término. Preencha e libere pelo card.'
+              : `Não foi possível manter a liberação (${e.message}). Libere pelo card.`,
+          })
+        }
+      }
+
       // todos os lados já estavam no estado-alvo: nada foi escrito (D10)
       if ((resultado.pulados || 0) === lados.length) {
         toast({ variant: 'success', title: 'Troca já executada', description: 'Nada a refazer — a posição já estava assumida.' })
@@ -1329,7 +1373,8 @@ export function EscalaCirurgicaProvider({ children }) {
       }
       const nomes = [...new Set(lados.map((l) =>
         `${nomeCirurgiaoCurto(l.para.nome)} → posição de ${titleCaseNome(l.nomeSlot || l.de.nome)}`))]
-      toast({ variant: 'success', title: 'Troca executada', description: nomes.join(' · ') })
+      const continuam = mantidasOk.map((m) => `liberação de ${titleCaseNome(m.nome)} mantida`)
+      toast({ variant: 'success', title: 'Troca executada', description: [...nomes, ...continuam].join(' · ') })
       return resultado
     } catch (error) {
       // Sem estado pela metade: a transação do servidor caiu inteira. O "confira a

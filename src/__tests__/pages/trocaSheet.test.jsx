@@ -125,8 +125,10 @@ describe('TrocaSheet', () => {
     await escolherColega('MAURICIO MAHALEM BASTOS')
     await screen.findByText('Quem fica com cada posição?')
     // as duas posições do par aparecem, cada uma com as duas saídas
-    expect(screen.getByText('Posição de Giovana')).toBeTruthy()
-    expect(screen.getByText('Posição de Maurício')).toBeTruthy()
+    // o número da posição no rodapé entrou no cartão em 23/10 (modelo A da troca sobre
+    // posição já liberada): "Posição de Rodnei (12ª)" diz qual vaga muda de dono
+    expect(screen.getByText('Posição de Giovana (1ª)')).toBeTruthy()
+    expect(screen.getByText('Posição de Maurício (2ª)')).toBeTruthy()
     expect(botaoPrincipal()).toBeDisabled()
     marcar('Giovana Noll fica HRO')
     expect(botaoPrincipal()).toBeDisabled() // falta a outra posição (defeito D4)
@@ -163,8 +165,8 @@ describe('TrocaSheet', () => {
   it('colegaInicial já vem escolhido, mas as posições seguem por confirmar', async () => {
     montar({ colegaInicial: 'uid-mau' })
     expect(await screen.findByText('Quem fica com cada posição?')).toBeTruthy()
-    expect(screen.getByText('Posição de Giovana')).toBeTruthy()
-    expect(screen.getByText('Posição de Maurício')).toBeTruthy()
+    expect(screen.getByText('Posição de Giovana (1ª)')).toBeTruthy()
+    expect(screen.getByText('Posição de Maurício (2ª)')).toBeTruthy()
     expect(botaoPrincipal()).toBeDisabled()
     marcar('Maurício Bastos assume HRO')
     marcar('Giovana Noll assume Unimed')
@@ -230,7 +232,7 @@ describe('TrocaSheet', () => {
     await escolherColega('ROSEMARY CURY')
     // o cartão do Materno diz que ali não há fila para herdar — só as cirurgias
     expect(await screen.findByText(/Cirurgias de Rose · sem fila de liberação/)).toBeTruthy()
-    expect(screen.getByText('Posição de Giovana')).toBeTruthy()
+    expect(screen.getByText('Posição de Giovana (1ª)')).toBeTruthy()
     marcar('Rosemary Cury assume HRO')
     marcar('Giovana Noll assume Materno')
     await waitFor(() => expect(botaoPrincipal()).toHaveTextContent('Trocar agora'))
@@ -301,8 +303,8 @@ describe('TrocaSheet', () => {
       await screen.findByText('Quem fica com cada posição?')
       // Materno (a tela) + Unimed (o colega). O HRO dela fica de fora.
       expect(screen.getByText(/Cirurgias de Rose · sem fila de liberação/)).toBeTruthy()
-      expect(screen.getByText('Posição de Maurício')).toBeTruthy()
-      expect(screen.queryByText('Posição de Rose')).toBeNull()
+      expect(screen.getByText('Posição de Maurício (2ª)')).toBeTruthy()
+      expect(screen.queryByText(/Posição de Rose/)).toBeNull()
     } finally {
       escalasMock.hro = hroOriginal
     }

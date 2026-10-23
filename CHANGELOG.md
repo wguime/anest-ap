@@ -3,6 +3,18 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.72 (23/10/2026) — Troca numa posição já liberada não devolve ninguém à fila
+
+HRO da manhã de 23/10: o Klisman assumiu a 12ª posição (a do Rodnei) às 09:02 e foi liberado nela às 10:46. Às
+10:53, na tela da Unimed, a troca Cristina ⇄ Rodnei mostrou o cartão do HRO como "Posição de Rodnei · Rodnei fica /
+Cristina assume" e gravou por cima. A liberação passou para a Cristina e o Klisman voltou ao fim da fila como
+"próximo", abaixo de 5 liberados. Escolhido o modelo A de `.tmp/troca-posicao-ja-liberada.html`.
+- O cartão da posição diz quem está nela e se já saiu ("Posição de Rodnei (12ª) · com Klisman desde 09:02 · saiu
+  às 10:46"), a opção "fica" nomeia quem está lá, e uma frase diz o resultado antes do botão e de novo no pop-up.
+- A liberação é da pessoa: quem sai de uma posição já liberada continua liberado na própria chave, em qualquer
+  caminho que execute troca ou assunção. Se o banco recusar (cirurgia sem horário), a troca fica feita e o aviso diz
+  como liberar pelo card.
+
 ## v5.12.71 (23/10/2026) — A fila de liberação tem uma fonte só
 
 Foto da Unimed às 10:39: Diego (14º do HRO) liberado ACIMA de Paulo (9º do HRO) e Rodnei (12º), os dois em sala.

@@ -33,12 +33,13 @@
  * slot muda via linha_overrides (invariante de 30/07).
  */
 import { useMemo, useState } from 'react'
-import { ArrowLeftRight, Loader2 } from 'lucide-react'
+import { AlertTriangle, ArrowLeftRight, Check, Loader2 } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, Select, Button, Input, ConfirmDialog } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { useEscalaCirurgica, useEscalaCirurgicaActions, HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
+import { hhmmDe } from '@/lib/escalaHorarioReal'
 import { planoExecucaoTroca, normNome } from './utils'
 
 export const MOTIVO_MAX = 80
@@ -66,6 +67,40 @@ export const LOCAL_COLEGA_OPCOES = [
 const ladoId = (l) => `${l.escalaId}:${l.chaveSlot}`
 const turnoCurto = (t) => (t === 'matutino' ? 'manhã' : t === 'vespertino' ? 'tarde' : '')
 const curto = (nome) => nomeCirurgiaoCurto(titleCaseNome(nome)) || nome
+const horaDe = (iso) => (iso ? hhmmDe(new Date(iso)) : null)
+
+/**
+ * A POSIÇÃO COMO ELA ESTÁ AGORA (dono 23/10, modelo A de `.tmp/troca-posicao-ja-liberada.html`).
+ * O cartão dizia só "Posição de Rodnei" e a troca de 10:53 gravou "Cristina assume" por
+ * cima do Klisman, que estava nela desde 09:02 e já tinha sido liberado às 10:46. Agora o
+ * cartão diz quem ocupa e se já saiu, a opção "fica" nomeia quem está lá, e uma frase
+ * diz o resultado antes de qualquer botão. Sem artigo antes do nome: o app não sabe o
+ * gênero de ninguém.
+ * @returns {{ situacao: string, quemFica: object, aviso: string, resultado: string }|null}
+ */
+function avisoDaPosicao(l, hospitalLabel) {
+  if (l.semPosicao || (!l.ocupadoPor && !l.liberadoEm)) return null
+  const quemFica = l.ocupadoPor || l.de
+  const sai = curto(quemFica.nome)
+  const chega = curto(l.para.nome)
+  const situacao = [
+    l.ocupadoPor && `com ${sai}${horaDe(l.ocupadoPor.em) ? ` desde ${horaDe(l.ocupadoPor.em)}` : ''}`,
+    l.liberadoEm && `saiu às ${horaDe(l.liberadoEm)}`,
+  ].filter(Boolean).join(' · ')
+  const posicao = l.posicao ? `${l.posicao}ª posição` : 'posição'
+  if (l.liberadoEm) {
+    return {
+      situacao, quemFica,
+      aviso: `${sai} já saiu desta posição. Se ${chega} assumir, recebe a posição liberada e ${sai} continua com a liberação.`,
+      resultado: `${chega} recebe a ${posicao} já liberada e ${sai} continua com a liberação. Se ${chega} for trabalhar no ${hospitalLabel}, acione pelo card.`,
+    }
+  }
+  return {
+    situacao, quemFica,
+    aviso: `A posição está com ${sai}. Se ${chega} assumir, ${sai} deixa esta posição.`,
+    resultado: `${chega} assume a ${posicao} no lugar de ${sai}.`,
+  }
+}
 
 /** Infere o tipo pela GEOGRAFIA dos slots do par (taxonomia do dono 07/08).
  *  Olha as posições que EXISTEM, não quem se move: numa troca já publicada
@@ -239,8 +274,14 @@ export default function TrocaSheet({ linha, escala, turno, colegaInicial = null,
                 <div className="space-y-2">
                   {slots.map((l) => {
                     const id = ladoId(l)
+                    const hosp = HOSPITAL_LABEL[l.hospital] || l.hospital
+                    const pos = avisoDaPosicao(l, hosp)
+                    const escolhido = escolhaDe(l)
                     return (
-                      <div key={id} className="rounded-xl border border-border-strong bg-card p-2.5">
+                      <div key={id} data-posicao={id} className={[
+                        'rounded-xl border bg-card p-2.5',
+                        pos && !escolhido ? 'border-warning/70 ring-1 ring-warning/50' : 'border-border-strong',
+                      ].join(' ')}>
                         <div className="mb-0.5 flex items-baseline justify-between gap-2">
                           <p className="text-sm font-semibold">
                             {HOSPITAL_LABEL[l.hospital] || l.hospital}
@@ -255,18 +296,30 @@ export default function TrocaSheet({ linha, escala, turno, colegaInicial = null,
                             // Materno & afins: o hospital publica só as cirurgias,
                             // não há fila para herdar — quem assume leva os casos.
                             ? `Cirurgias de ${titleCaseNome(l.nomeSlot)} · sem fila de liberação`
-                            : `Posição de ${titleCaseNome(l.nomeSlot)}`}
+                            : `Posição de ${titleCaseNome(l.nomeSlot)}${l.posicao ? ` (${l.posicao}ª)` : ''}`}
+                          {pos?.situacao && <> · <span className="font-semibold text-foreground">{pos.situacao}</span></>}
                         </p>
                         {/* o HOSPITAL vai no rótulo da opção (dono 10/08): lida
                             sozinha, "Fulano assume" não dizia assume ONDE */}
                         <div className="flex gap-1.5">
-                          <OpcaoSlot ativo={escolhaDe(l) === 'fica'} onClick={() => setEscolha((e) => ({ ...e, [id]: 'fica' }))}>
-                            {curto(l.de.nome)} fica {HOSPITAL_LABEL[l.hospital] || l.hospital}
+                          <OpcaoSlot ativo={escolhido === 'fica'} onClick={() => setEscolha((e) => ({ ...e, [id]: 'fica' }))}>
+                            {curto((pos?.quemFica || l.de).nome)} fica {hosp}
                           </OpcaoSlot>
-                          <OpcaoSlot ativo={escolhaDe(l) === 'assume'} onClick={() => setEscolha((e) => ({ ...e, [id]: 'assume' }))}>
-                            {curto(l.para.nome)} assume {HOSPITAL_LABEL[l.hospital] || l.hospital}
+                          <OpcaoSlot ativo={escolhido === 'assume'} onClick={() => setEscolha((e) => ({ ...e, [id]: 'assume' }))}>
+                            {curto(l.para.nome)} assume {hosp}
                           </OpcaoSlot>
                         </div>
+                        {pos && escolhido !== 'fica' && (
+                          <p className={[
+                            'mt-2 flex items-start gap-1.5 text-xs leading-snug',
+                            escolhido === 'assume' ? 'text-muted-foreground' : 'font-medium text-warning',
+                          ].join(' ')}>
+                            {escolhido === 'assume'
+                              ? <Check className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                              : <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
+                            <span>{escolhido === 'assume' ? pos.resultado : pos.aviso}</span>
+                          </p>
+                        )}
                       </div>
                     )
                   })}
@@ -369,6 +422,12 @@ export default function TrocaSheet({ linha, escala, turno, colegaInicial = null,
                     ? `${l.casoIds.length} cirurgia${l.casoIds.length === 1 ? ' em aberto vai junto' : 's em aberto vão junto'}`
                     : 'nenhuma cirurgia muda de mãos'}
                 </p>
+                {/* a mesma frase do cartão: é a última tela antes de gravar */}
+                {avisoDaPosicao(l, HOSPITAL_LABEL[l.hospital] || l.hospital) && (
+                  <p className="mt-1 text-xs leading-snug text-muted-foreground">
+                    {avisoDaPosicao(l, HOSPITAL_LABEL[l.hospital] || l.hospital).resultado}
+                  </p>
+                )}
               </li>
             ))}
           </ul>

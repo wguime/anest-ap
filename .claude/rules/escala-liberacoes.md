@@ -1039,10 +1039,9 @@ da folha liberou sem reconferir.
   folha aberta, não libera e o aviso diz "Horários salvos. Com o que mudou na fila, falta N…".
 - ⚠️ A partição por `isExtra` era o SEGUNDO lugar decidindo ordem — o mesmo padrão de 10–11/09 ("procurar os DOIS
   pontos"). Ordem nova entre blocos = mexer em `ORDEM_BLOCOS`, nunca reordenar na view.
-- Ainda aberto, em protótipo (`.tmp/troca-posicao-ja-liberada.html`): no HRO da mesma manhã, a troca Cristina ⇄
-  Rodnei feita na Unimed gravou "Cristina assume" por cima da posição 12, que o Klisman ocupava e onde já estava
-  liberado. A liberação ficou com a Cristina e o Klisman voltou ao fim como "próximo". A regra proposta: nenhuma ação
-  devolve à fila quem já saiu.
+- No HRO da mesma manhã, a troca Cristina ⇄ Rodnei feita na Unimed gravou "Cristina assume" por cima da posição
+  12, que o Klisman ocupava e onde já estava liberado; ele voltou ao fim como "próximo". Resolvido no mesmo dia
+  (v5.12.72, modelo A): **a liberação é da PESSOA** — ver `escala-trocas.md` § "Troca numa posição já liberada".
 - Travas: `filaLiberacao.test.js` (o recorte e as 8 combinações caso × array falham com a partição antiga) e
   `liberacoesFilaFonteUnica2310.test.jsx` (tela: ordem renderizada, toque no Diego passa e no Rodnei é recusado, e a
   folha que reconfere — 3 dos 4 falham contra o código anterior).
