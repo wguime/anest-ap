@@ -3,6 +3,20 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.73 (26/10/2026) — A continuação fica no card da manhã
+
+Unimed, tarde de 26/10: na Minhas do Guilherme Melo, o Umanitá aparecia duas vezes, com o card das 07:30 ("Iniciada ·
+Passa para tarde") e logo abaixo o das 13:00 da linha "CONTINUAÇÃO +-14h" da foto. Pedido: *"mantenha apenas um
+card"* e *"que cirurgias de continuação permaneçam com o card da manhã, para não gerar erro de preenchimentos [...]
+usar as mesmas informações do card original"*.
+- À tarde, a linha de continuação dá lugar ao caso da manhã de onde ela vem (mesmo cirurgião e as iniciais e o
+  procedimento que a publicação herdou). Isso vale na Minhas, na Completa e na fila: um card só, com início, status
+  e tempo, e "(continuação)" ao lado do nome mesmo sem a marcação "Passa para tarde".
+- Terminada no card da manhã encerra a cirurgia também à tarde. Não sobra continuação "agendada" segurando a pessoa
+  na fila.
+- Só funde quando a continuação é da mesma pessoa. Se a tarde assumiu a sala (outro nome), ou a manhã estava com "?",
+  os dois cards ficam: o da tarde é a informação de quem está na sala.
+
 ## v5.12.72 (23/10/2026) — Troca numa posição já liberada não devolve ninguém à fila
 
 HRO da manhã de 23/10: o Klisman assumiu a 12ª posição (a do Rodnei) às 09:02 e foi liberado nela às 10:46. Às

@@ -410,6 +410,13 @@ saiu do seletor, então quem só tem cirurgia de manhã fica na tarde com o `Emp
 atravessou "passa para tarde" continua no quadro por outra regra, 22/08). `localizarMeuPosto`
 recebe `turnos` com a lista oferecida e `turnoPreferido` é o do relógio quando ele está nela.
 
+**26/10: a continuação fica no CARD DA MANHÃ (dono).** À tarde, a linha "CONTINUAÇÃO" da foto dá
+lugar ao caso da manhã de onde vem (`fundirContinuacoesNaOrigem`/`origemDaContinuacao` em `utils`):
+um card só, com início, status e tempo, na Minhas (`filtrarPorTurnoExibicao`), na Completa e na fila
+(`casosDaFilaDoTurno`) — com dois, o horário ia para o card errado e a continuação "agendada" segurava
+a pessoa depois do Terminada. Só funde com a MESMA pessoa; outro nome (ou "?" na manhã) mantém os dois.
+Trava: `escalaContinuacaoCardDaManha.test.js`.
+
 **15/10: "ao abrir escala sempre abra na aba minhas" (dono).** A tela já nascia na Minhas; o que
 escapava era o app voltando do segundo plano com a escala montada noutra aba. Oculta por
 `REABRIR_EM_MINHAS_MS` (2 min) ou mais = abrir de novo → `escolherAba('minhas')`, que leva ao

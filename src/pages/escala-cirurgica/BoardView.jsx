@@ -14,7 +14,7 @@ import { useEscalaCirurgica } from '@/contexts/EscalaCirurgicaContext'
 import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
 import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
-import { anestesistaDoCasoEh, casoConcluido, casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, turnoDoCaso, compararSalas, parseHoraMinutos, salaExibicao, nomeAnestesistaExibicao, convenioExibicao, idadeExibicao, limparConcluidosNaVirada, visaoNoturna, procedimentoComContinuacao, procedimentoBaseDoCaso } from './utils'
+import { anestesistaDoCasoEh, casoConcluido, casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, fundirContinuacoesNaOrigem, turnoDoCaso, compararSalas, parseHoraMinutos, salaExibicao, nomeAnestesistaExibicao, convenioExibicao, idadeExibicao, limparConcluidosNaVirada, visaoNoturna, procedimentoComContinuacao, procedimentoBaseDoCaso } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import { formatFaltante } from './PainelTempo'
 import useAgoraMinutoEscala from './useAgoraMinutoEscala'
@@ -341,7 +341,9 @@ export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null
   // termina DEPOIS das 19h fica no quadro, como em qualquer turno (2ª rodada).
   const noite = visaoNoturna({ agoraMin, dataEscala: escala?.data, hojeIso: hoje, turno })
   const casos = useMemo(() => {
-    const doTurno = filtrarPorTurno(casosResolvidos(escala), turno)
+    const todos = casosResolvidos(escala)
+    // a linha "CONTINUAÇÃO" da tarde dá lugar ao card da manhã de onde vem (dono 26/10)
+    const doTurno = fundirContinuacoesNaOrigem(filtrarPorTurno(todos, turno), todos, turno, { marcar: true })
     return noite ? limparConcluidosNaVirada(doTurno, { dataEscala: escala?.data }) : doTurno
   }, [escala, turno, noite])
   // AINDA ABERTAS DO OUTRO TURNO (dono 21/08, o relato que abriu a revisão): a

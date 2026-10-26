@@ -697,7 +697,8 @@ export function casosQuePassamParaOTurno(casos, turno) {
  */
 export function filtrarPorTurnoExibicao(casos, turno) {
   if (!turno) return casos
-  return (casos || []).filter((c) => turnoDoCaso(c) === turno || casoSegueParaOTurno(c, turno))
+  const lista = (casos || []).filter((c) => turnoDoCaso(c) === turno || casoSegueParaOTurno(c, turno))
+  return fundirContinuacoesNaOrigem(lista, casos, turno, { marcar: true })
 }
 
 /**
@@ -787,9 +788,82 @@ export function casosDaFilaDoTurno(casos, turno, ordemTurno = [], resolverUid = 
   if (!turno) return casos || []
   const nativos = filtrarPorTurno(casos || [], turno)
   const atravessam = casosQuePassamParaOTurno(casos || [], turno)
-  if (!atravessam.length) return nativos
+  if (!atravessam.length) return fundirContinuacoesNaOrigem(nativos, casos, turno, { resolverUid })
   const presentes = presencaDoTurno(ordemTurno, nativos, resolverUid)
-  return [...nativos, ...atravessam.filter((c) => estaPresente(presentes, c, resolverUid))]
+  const lista = [...nativos, ...atravessam.filter((c) => estaPresente(presentes, c, resolverUid))]
+  return fundirContinuacoesNaOrigem(lista, casos, turno, { resolverUid })
+}
+
+const normCirurgiaoContinuacao = (s) => normNome(s).replace(/[^A-Z ]/g, '').replace(/\s+/g, ' ').trim()
+
+/**
+ * O caso da MANHÃ de onde vem a linha "CONTINUAÇÃO …" da foto da tarde.
+ *
+ * Mesmo cirurgião, como a herança da publicação casa (`completarContinuacoes`).
+ * Entre vários do mesmo cirurgião vence o que deixou a marca na continuação
+ * (iniciais e procedimento herdados), depois o marcado "Passa para tarde", a
+ * mesma sala e o último da sala. Aqui o caso da manhã pode já estar terminado
+ * (a publicação só herdava dos abertos): terminado é a cirurgia que acabou, e
+ * a continuação dela não pode reaparecer como cirurgia agendada.
+ */
+export function origemDaContinuacao(cont, casosDoDia) {
+  if (cont?.isContinuacao !== true || turnoDoCaso(cont) !== 'vespertino') return null
+  const cir = normCirurgiaoContinuacao(cont.cirurgiao)
+  if (!cir) return null
+  const cands = (casosDoDia || []).filter((c) => c && c !== cont && c.isContinuacao !== true
+    && turnoDoCaso(c) === 'matutino' && normCirurgiaoContinuacao(c.cirurgiao) === cir)
+  if (!cands.length) return null
+  const ini = normNome(cont.pacienteIniciais)
+  const proc = normNome(procedimentoBaseDoCaso(cont))
+  const peso = (c) => (ini && normNome(c.pacienteIniciais) === ini ? 8 : 0)
+    + (proc && normNome(c.procedimento) === proc ? 4 : 0)
+    + (casoPassaDeTurno(c) ? 2 : 0)
+    + (normNome(c.sala) === normNome(cont.sala) ? 1 : 0)
+  return [...cands].sort((a, b) => (peso(b) - peso(a)) || ((b.ordem ?? 0) - (a.ordem ?? 0)))[0]
+}
+
+/**
+ * CONTINUAÇÃO FICA NO CARD DA MANHÃ (dono 26/10, Umanitá do Guilherme Melo: o card
+ * das 07:30 "Iniciada · Passa para tarde" e o das 13:00 da continuação, lado a
+ * lado — "mantenha apenas um card"; e na sequência: "que cirurgias de continuação
+ * permaneçam com o card da manhã, para não gerar erro de preenchimentos [...]
+ * usar as mesmas informações do card original").
+ *
+ * À tarde, a linha "CONTINUAÇÃO" da foto dá lugar ao caso da manhã de onde ela
+ * vem: o card que já tem o início, o status e o tempo. Com dois cards, o horário
+ * ia para o card errado e a continuação, nunca marcada, seguia "agendada"
+ * segurando a pessoa na fila depois do Terminada no card da manhã.
+ *
+ * Só quando a continuação é da MESMA pessoa (ou do mesmo login) do caso da manhã.
+ * Com outro nome (a tarde assumiu a sala, ou a manhã estava com "?"), o card da
+ * tarde é a única informação de quem está na sala e fica como está.
+ *
+ * `marcar` (telas): o caso da manhã entra com `exibidoComoContinuacao`, que põe o
+ * "(continuação)" ao lado do nome mesmo sem a marcação "Passa para tarde". A fila
+ * recebe o objeto original — os mapas dela são por referência.
+ */
+export function fundirContinuacoesNaOrigem(casosTurno, casosDoDia, turno, { resolverUid = null, marcar = false } = {}) {
+  if (turno !== 'vespertino' || !(casosTurno || []).some((c) => c?.isContinuacao === true)) return casosTurno
+  const dia = casosDoDia || []
+  // identidade com o "//" resolvido: o caso da manhã costuma ser a 2ª linha da sala
+  const resolvidos = resolverAnestesistas(dia)
+  const resolvidoDe = new Map(dia.map((c, i) => [c, resolvidos[i]]))
+  const chaves = (c) => {
+    const r = resolvidoDe.get(c) || c
+    return chavesIdentidade(r?.anestesista, r?.anestesistaUserId, resolverUid)
+  }
+  const presentes = new Set((casosTurno || []).map((c) => c?.id).filter(Boolean))
+  const out = []
+  for (const c of casosTurno) {
+    const origem = c?.isContinuacao === true ? origemDaContinuacao(c, dia) : null
+    const daPessoa = origem && chaves(origem).some((k) => chaves(c).includes(k))
+    if (!daPessoa) { out.push(c); continue }
+    // já está na lista (atravessou pela marcação "Passa para tarde"): a continuação sai
+    if (origem.id && presentes.has(origem.id)) continue
+    if (origem.id) presentes.add(origem.id)
+    out.push(marcar ? { ...origem, exibidoComoContinuacao: true } : origem)
+  }
+  return out
 }
 
 const ORDEM_TURNO_FILA = { matutino: 0, vespertino: 1, noturno: 2 }
@@ -801,11 +875,13 @@ const ORDEM_TURNO_FILA = { matutino: 0, vespertino: 1, noturno: 2 }
  *  - a linha "CONTINUAÇÃO …" da foto da tarde (`isContinuacao`), que herda o
  *    procedimento da manhã e, sem o sufixo, parecia uma cirurgia nova;
  *  - a cirurgia marcada "Passa para tarde/noite" vista num turno DEPOIS do dela
- *    (a fila da tarde conta a da manhã; a noite lê as da tarde).
+ *    (a fila da tarde conta a da manhã; a noite lê as da tarde);
+ *  - o card da manhã que tomou o lugar da linha "CONTINUAÇÃO" na tarde
+ *    (`exibidoComoContinuacao`, dono 26/10 — ver `fundirContinuacoesNaOrigem`).
  */
 export function casoEhContinuacaoNoTurno(caso, turnoExibido) {
   if (!caso) return false
-  if (caso.isContinuacao === true) return true
+  if (caso.isContinuacao === true || caso.exibidoComoContinuacao === true) return true
   const exib = ORDEM_TURNO_FILA[turnoExibido]
   if (exib == null || !casoPassaDeTurno(caso)) return false
   return ORDEM_TURNO_FILA[turnoDoCaso(caso)] < exib
