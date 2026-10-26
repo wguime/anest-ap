@@ -73,6 +73,12 @@ discussão: as telas convivem com ela.
   ainda dá para corrigir. ⚠️ **só no MATUTINO**: a hora é o que decide o turno na publicação,
   e 09:00 numa importação vespertina jogaria a SRPA para FORA da escala da tarde. O horário
   da SRPA vespertina ninguém informou; até lá ela segue sem hora, herdando o turno escolhido.
+  **26/10 (dono): a SRPA tem horário FIXO — 09:00–13:00, 13:00–19:00, 19:00–22:00 — e no
+  quadro é só o horário de início, SEM toque** (`LinhaPosicaoSrpa` na `BoardView`,
+  `horaInicioSrpa` em `escalaCirurgicaItens.js`: 09:00/13:00 pela hora gravada ou o turno,
+  19:00 na noite). O detalhe oferecia Iniciada/Terminada para uma posição sem início nem
+  término a marcar. A publicação NÃO mudou (o 13:00 é só de exibição). Trava:
+  `escalaSrpaSemToque.test.jsx`.
 - **Importar · LOTE do dia útil (dono 27/08)**: os arquivos dos hospitais entram
   TODOS DE UMA VEZ e a conferência ganha **uma aba por hospital**
   (`ImportarEscalasPage`, modelo B escolhido em protótipo a 430px). Cada arquivo

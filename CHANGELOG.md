@@ -3,6 +3,17 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.74 (26/10/2026) — SRPA na Completa: só o horário de início, sem toque
+
+Print da Unimed (SRPA · Klisman · 09:00): *"esse card não deve ser clicável, deve apenas informar o horário de início
+[...] quem está nessa posição sempre assume ela às 09:00h até as 13:00h, mesmo acontece à tarde (13:00 às 19:00h) e à
+noite (19:00h às 22:00h)"*.
+- A SRPA na aba Completa virou uma linha só com o horário de início. Tocar não abre nada (antes abria o detalhe da
+  cirurgia, com Iniciada/Terminada).
+- O horário segue o período: 09:00 de manhã, 13:00 à tarde (antes a tarde mostrava só o cabeçalho, sem horário) e
+  19:00 à noite. Hora escrita no mapa vale de dia.
+- A publicação não mudou. A aba Minhas já mostrava a SRPA como posição, sem toque.
+
 ## v5.12.73 (26/10/2026) — A continuação fica no card da manhã
 
 Unimed, tarde de 26/10: na Minhas do Guilherme Melo, o Umanitá aparecia duas vezes, com o card das 07:30 ("Iniciada ·

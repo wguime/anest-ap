@@ -60,6 +60,25 @@ export function aplicarHoraPadraoPosicoes(itens, hospital, turno) {
   ))
 }
 
+/** A posição é a SRPA (não outra posição assistencial, como o Consultório do HRO). */
+export function ehPosicaoSrpa(item) {
+  return ehPosicaoAssistencial(item) && ehSrpa(item)
+}
+
+/**
+ * Horário em que quem está na SRPA a assume, pelo turno EXIBIDO (dono 26/10: "sempre
+ * assume ela às 09:00h até as 13:00h, mesmo acontece à tarde (13:00 às 19:00h) e à
+ * noite (19:00h às 22:00h)"). É o que o quadro mostra — a publicação segue carimbando
+ * só o 09:00 da manhã (`HORA_PADRAO_SRPA`): a hora decide o turno ao publicar.
+ * A noite lê os casos da tarde, então ali vale 19:00 mesmo com hora gravada.
+ */
+export const HORA_INICIO_SRPA = { matutino: '09:00', vespertino: '13:00', noturno: '19:00' }
+
+export function horaInicioSrpa(item, turnoExibido) {
+  if (turnoExibido === 'noturno') return HORA_INICIO_SRPA.noturno
+  return texto(item?.hora) || HORA_INICIO_SRPA[turnoExibido] || ''
+}
+
 /** Descarta somente ruído vazio/título; preserva casos e posições assistenciais. */
 export function filtrarItensImportados(itens) {
   return (itens || []).filter((item) => temConteudoClinico(item) || ehPosicaoAssistencial(item))

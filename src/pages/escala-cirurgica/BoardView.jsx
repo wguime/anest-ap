@@ -13,6 +13,7 @@ import { useUser } from '@/contexts/UserContext'
 import { useEscalaCirurgica } from '@/contexts/EscalaCirurgicaContext'
 import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
 import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
+import { ehPosicaoSrpa, horaInicioSrpa } from '@/lib/escalaCirurgicaItens'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { anestesistaDoCasoEh, casoConcluido, casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, fundirContinuacoesNaOrigem, turnoDoCaso, compararSalas, parseHoraMinutos, salaExibicao, nomeAnestesistaExibicao, convenioExibicao, idadeExibicao, limparConcluidosNaVirada, visaoNoturna, procedimentoComContinuacao, procedimentoBaseDoCaso } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
@@ -52,6 +53,26 @@ const extraDe = (caso) => {
   if (!chave) return null
   const cfg = STATUS_EXTRA[chave]
   return chave === 'passa_tarde' ? { ...cfg, label: passaTurnoLabel(turnoDoCaso(caso)) } : cfg
+}
+
+/**
+ * SRPA no quadro: só o horário de início, SEM toque (dono 26/10: "esse card não deve ser
+ * clicável, deve apenas informar o horário de início [...] quem está nessa posição sempre
+ * assume ela às 09:00h até as 13:00h, mesmo acontece à tarde (13:00 às 19:00h) e à noite
+ * (19:00h às 22:00h)"). Não há início nem término a marcar: o detalhe só oferecia
+ * Iniciada/Terminada para uma posição de horário fixo. Mesma linha do `CasoCard`
+ * (`moldura="linha"`), sem botão.
+ */
+function LinhaPosicaoSrpa({ hora }) {
+  return (
+    <div className="min-h-[44px] w-full border-b border-border/70 bg-card px-3 py-2">
+      <div className="flex gap-2">
+        <span className="w-[46px] shrink-0">
+          {hora && <span className="block text-[15px] font-bold tabular-nums text-foreground">{hora}</span>}
+        </span>
+      </div>
+    </div>
+  )
 }
 
 /** Caso "placeholder" (ex.: SRPA sem procedimentos): não renderiza card — só o cabeçalho da sala. */
@@ -507,7 +528,9 @@ export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null
       <Accordion type="multiple" value={abertasAtual} onValueChange={setAbertas} className="-mx-4 faixa:-mx-3 divide-y-0 deitado:columns-2 deitado:gap-4 deitado:[column-rule:1px_solid_hsl(var(--border-strong))] [&>*]:deitado:break-inside-avoid">
         {gruposExibicao.map((g) => {
           const nomeGrupo = g.anestesista ? displayGrupo(g) : (g.split ? '?' : '')
-          const nCasos = g.casos.filter((c) => !casoVazio(c)).length
+          // a SRPA sem hora gravada (tarde) também tem linha, com o horário do turno (26/10)
+          const visiveis = g.casos.filter((c) => !casoVazio(c) || ehPosicaoSrpa(c))
+          const nCasos = visiveis.length
           return (
             <AccordionItem key={g.chave} value={g.chave} className="border-0">
               {/* sticky no <h3> do header (no button interno é inerte — h3 tem a altura dele).
@@ -556,7 +579,12 @@ export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null
               </AccordionTrigger>
               <AccordionContent className="p-0">
                 {/* SRPA e afins sem procedimentos: só o cabeçalho, sem card vazio */}
-                {g.casos.filter((c) => !casoVazio(c)).map((caso) => (
+                {visiveis.map((caso) => (ehPosicaoSrpa(caso) ? (
+                  <LinhaPosicaoSrpa
+                    key={caso.id || `${g.chave}-${caso.ordem}`}
+                    hora={horaInicioSrpa(caso, noite ? 'noturno' : turno)}
+                  />
+                ) : (
                   <CasoCard
                     key={caso.id || `${g.chave}-${caso.ordem}`}
                     caso={caso}
@@ -568,7 +596,7 @@ export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null
                     turnoExibido={noite ? 'noturno' : turno}
                     onClick={() => setDetalhe(caso)}
                   />
-                ))}
+                )))}
               </AccordionContent>
             </AccordionItem>
           )
