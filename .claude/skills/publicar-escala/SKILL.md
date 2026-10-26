@@ -127,6 +127,12 @@ apelido conhecido).
   com `{tipo:'intencional'}` em `decisoes` se o ensaio acusar duplicidade. Sem rodapé a tela elege o
   plantonista por nº de casos (06/10) e o 2º some da fila. Pós-plantão só vale para o P1/P2 da véspera
   (HRO/Unimed) — o P3/P4 do Materno não é pós-plantão (12/10: Costa).
+  **1º da numérica em pós-plantão** (o ensaio imprime "pós-plantão descontado: X" no Materno): quem
+  assina o mapa HC no turno **ocupa a posição de plantão dele** → `ordem=[quem assina, 2º]`, e o 2º
+  sem caso vai em `conferidos` (cauda, nasce Liberado). Nunca `ordem=['2º']` sozinho: com um nome só
+  ele vira "Plantonista · Livre" e quem opera aparece como "Ajuda" (dono 26/10, tarde: Romulo
+  pós-plantão → João Henrique no plantão, Karine liberada; publiquei Karine sozinha e precisou
+  republicar). O aviso "a mais no rodapé: <quem assina>" é a confirmação, não erro.
 
 ## Recado do dono → lote
 
