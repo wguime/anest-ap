@@ -49,56 +49,44 @@ const montar = (props = {}) => {
 
 /** Combobox pelo texto visível (o DS usa aria-labelledby, que vence aria-label). */
 const combo = (re) => screen.getAllByRole('combobox').find((c) => re.test(c.textContent))
-/** O painel abre no horário (02/10); a duração fica na outra aba. */
-/** Vai para a rota do horário digitado (a outra metade do alternador). */
-const abaHorario = () => fireEvent.click(screen.getByRole('tab', { name: 'Horário de término' }))
-/** Vai para a rota da duração. */
-const abaFaltante = () => fireEvent.click(screen.getByRole('tab', { name: 'Tempo faltante' }))
 /** Escolhe no seletor de DURAÇÃO (rótulo é duração; o valor gravado é a hora). */
 const escolherDuracao = async (rotulo) => {
-  fireEvent.click(screen.getByRole('tab', { name: 'Tempo faltante' }))
   fireEvent.click(combo(/Outro/i))
   fireEvent.click(await screen.findByRole('option', { name: rotulo }))
 }
-/** Roletas de hora e minuto, escopadas pelo rótulo do bloco (o DS não deixa
- *  acessar o Select por accessible name — aria-labelledby vence aria-label). */
 /** Campo de horário mascarado (digita "1830" → "18:30"). */
 const campoHora = () => document.querySelector('[data-slot="termino-hora"]')
 /** Digita o horário no campo mascarado (grava só quando fica completo). */
 const digitarHorario = (hhmm) =>
   fireEvent.change(campoHora(), { target: { value: hhmm.replace(':', '') } })
 
-describe('PainelTempo — duas entradas para o mesmo campo (dono 29/07)', () => {
-  it('oferece HORÁRIO DE TÉRMINO e TEMPO FALTANTE — uma OU outra, nunca as duas', () => {
+// MUDOU DE LADO em 27/10 (dono, Modelo 2 da 4ª rodada de `.tmp/horarios-auditoria/`): "Horário
+// de término" e "Tempo faltante" UM ACIMA DO OUTRO, os dois à vista — o alternador de 17/08 e o
+// "abre sempre no horário" de 02/10 saíram. As travas de GRAVAÇÃO são as mesmas.
+describe('PainelTempo — os dois caminhos à vista, qualquer um grava (dono 27/10)', () => {
+  it('campo do horário em cima e a grade 4×2 de durações logo abaixo, sem alternador', () => {
     montar()
-    // 02/10: abre SEMPRE no horário, e ele é a 1ª aba ("a primeira opção que aparece")
-    const abas = screen.getAllByRole('tab').map((t) => t.textContent)
-    expect(abas).toEqual(['Horário de término', 'Tempo faltante'])
-    expect(screen.getByRole('tab', { name: 'Horário de término' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.queryAllByRole('tab')).toHaveLength(0)
     expect(campoHora()).toBeTruthy()
-    expect(screen.queryByRole('button', { name: '1h30' })).toBeNull() // a outra rota não está na tela
-    expect(screen.queryByText(/Dois jeitos de dizer a mesma coisa/)).toBeNull()
-    abaFaltante()
-    // grade 4×2: sete atalhos e o "Outro" na 8ª casa
+    expect(screen.getByText('ou daqui a')).toBeTruthy()
     for (const rot of ['15min', '30min', '45min', '1h', '1h30', '2h', '3h']) {
       expect(screen.getByRole('button', { name: rot })).toBeTruthy()
     }
     expect(combo(/Outro/)).toBeTruthy()
-    expect(campoHora()).toBeNull()
   })
 
   it('os atalhos gravam em UM toque (é o caminho do meio do plantão)', () => {
     const { onDefinir } = montar()
-    abaFaltante()
     fireEvent.click(screen.getByRole('button', { name: '1h30' }))
     expect(onDefinir).toHaveBeenCalledTimes(1)
     expect(onDefinir.mock.calls[0][0]).toMatch(/^([01][0-9]|2[0-3]):[0-5][0-9]$/)
+    expect(onDefinir.mock.calls[0][1]).toEqual({ minutos: 90 })
   })
 
-  it('com valor gravado abre na rota do HORÁRIO — o que vale é uma hora', () => {
+  it('com valor gravado, o próprio campo mostra o horário (e quanto falta ao lado)', () => {
     montar({ atual: '16:30' })
-    expect(screen.getByRole('tab', { name: 'Horário de término' })).toHaveAttribute('aria-selected', 'true')
     expect(campoHora().value).toBe('16:30')
+    expect(screen.getByText(/^faltam |além$/)).toBeTruthy()
   })
 
   it('hora incompleta NÃO grava — "18:3" no meio da digitação não é um término', () => {
@@ -118,24 +106,19 @@ describe('PainelTempo — duas entradas para o mesmo campo (dono 29/07)', () => 
     expect(onDefinir.mock.calls[0][0]).toMatch(/^([01][0-9]|2[0-3]):[0-5][0-9]$/)
   })
 
-  it('escolher o horário grava exatamente ele', async () => {
+  it('escolher o horário grava exatamente ele', () => {
     const { onDefinir } = montar()
-    abaHorario()
     digitarHorario('18:30')
     expect(onDefinir).toHaveBeenCalledWith('18:30')
   })
 
-  it('não finge um valor escolhido quando não há nenhum', () => {
+  it('não finge um valor escolhido quando não há nenhum: campo "--:--" e sem "Limpar"', () => {
     montar()
     expect(campoHora().value).toBe('')
-    expect(screen.queryByText(/Acaba às/)).toBeNull()
+    expect(campoHora().getAttribute('placeholder')).toBe('--:--')
     expect(screen.getByText('Sem tempo informado.')).toBeTruthy()
-  })
-
-  it('a prévia traduz a hora em quanto falta — sem conta de cabeça', () => {
-    montar({ atual: '16:30' })
-    const previa = screen.getByText(/Acaba às 16:30|Passou de 16:30/)
-    expect(previa).toBeTruthy()
+    // 27/10: sem valor o "Limpar" não aparece (era o "Limpar morto" da auditoria)
+    expect(screen.queryByRole('button', { name: 'Limpar' })).toBeNull()
   })
 
   it('"Definir" saiu — era botão morto (a escolha já grava)', () => {
@@ -143,20 +126,33 @@ describe('PainelTempo — duas entradas para o mesmo campo (dono 29/07)', () => 
     expect(screen.queryByRole('button', { name: 'Definir' })).toBeNull()
   })
 
-  it('sem valor, Limpar aparece mas fica DESABILITADO — layout estável', () => {
-    // o botão vem desde o primeiro render (dono 29/07): layout que muda de forma
-    // conforme o estado obriga a reprocurar o botão a cada vez
-    montar()
-    expect(screen.getByRole('button', { name: 'Limpar' })).toBeDisabled()
-  })
-
   it('com valor, Limpar grava vazio', () => {
     const { onDefinir } = montar({ atual: '16:30' })
-    abaFaltante() // Limpar vale nas duas rotas
-    const limpar = screen.getByRole('button', { name: 'Limpar' })
-    expect(limpar).not.toBeDisabled()
-    fireEvent.click(limpar)
+    fireEvent.click(screen.getByRole('button', { name: 'Limpar' }))
     expect(onDefinir).toHaveBeenCalledWith('')
+  })
+})
+
+describe('PainelTempo soDuracao — o estimado da cirurgia que ainda não começou (dono 27/10)', () => {
+  const montarDur = (props = {}) => {
+    const onDefinir = vi.fn()
+    render(<PainelTempo soDuracao duracaoAtual={null} onDefinir={onDefinir} {...props} />, { wrapper: wrap })
+    return { onDefinir }
+  }
+
+  it('só durações (sem campo de horário); o toque grava a DURAÇÃO, não um horário', () => {
+    const { onDefinir } = montarDur()
+    expect(campoHora()).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: '2h' }))
+    expect(onDefinir).toHaveBeenCalledWith(null, { minutos: 120 })
+  })
+
+  it('a duração gravada aparece marcada, com o exemplo e o Limpar', () => {
+    const { onDefinir } = montarDur({ duracaoAtual: 120, exemploDuracao: (min) => `Se começar às 16:00, termina às ${min === 120 ? '18:00' : '?'}.` })
+    expect(screen.getByRole('button', { name: '2h' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText('Se começar às 16:00, termina às 18:00.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Limpar' }))
+    expect(onDefinir).toHaveBeenCalledWith('', { minutos: null })
   })
 })
 

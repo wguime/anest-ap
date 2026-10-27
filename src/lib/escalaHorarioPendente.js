@@ -357,19 +357,6 @@ export const compararPendencias = (a, b) =>
   || String(a.hospital).localeCompare(String(b.hospital))
 
 /**
- * "VOCÊ EM DIA" (dono 15/10/2026, modelo A de `.tmp/horario-pendente-estimulo.html`): quem
- * está logado tem cirurgia de HOJE que entra na conta do alerta? `ehMinha(caso)` é o
- * critério da aba Minhas (`anestesistaDoCasoEh`). Sem nenhuma, a faixa não elogia ninguém
- * — "em dia" é de quem operou (ou vai operar) e não deve nada, não de quem está de folga.
- */
-export function temCirurgiaNaConta(escalas, { hoje, ehMinha } = {}) {
-  if (!ehMinha) return false
-  return (escalas || []).some((escala) => !!escala
-    && escala.status === 'publicada' && escala.data === hoje && escala.hospital !== 'fds'
-    && (escala.casos || []).some((caso) => casoEntraNaConta(caso, { data: escala.data }) && ehMinha(caso)))
-}
-
-/**
  * Agrupa por anestesista (a dupla aparece nos dois). `chaveDe(parte)` dá a identidade
  * estável (uid, senão o nome normalizado) e `nomeDe(parte)` o nome de exibição.
  * Ordem: quem deve MAIS primeiro; empate → a pendência mais antiga; depois o nome.
@@ -393,24 +380,6 @@ export function agruparPorAnestesista(itens, { chaveDe, nomeDe } = {}) {
     b.itens.length - a.itens.length
     || compararPendencias(a.itens[0], b.itens[0])
     || String(a.nome).localeCompare(String(b.nome), 'pt-BR'))
-}
-
-/**
- * Quantas pílulas de nome cabem numa linha, reservando o "+N" quando sobra alguém.
- * `larguras` = largura de cada pílula; `gap` entre elas; `mais` = largura da "+N".
- */
-export function quantasPilulasCabem(larguras, disponivel, { gap = 6, mais = 40 } = {}) {
-  const n = larguras.length
-  let usado = 0
-  for (let i = 0; i < n; i++) {
-    const proxima = usado + (i ? gap : 0) + larguras[i]
-    const sobraDepois = i < n - 1
-    const reserva = sobraDepois ? gap + mais : 0
-    // a última pílula não reserva lugar para o "+N": sem ninguém depois, ele não existe
-    if (proxima + reserva > disponivel) return i
-    usado = proxima
-  }
-  return n
 }
 
 // ── RELATÓRIO: o que ficou sem horário nos dias encerrados ────────────────────

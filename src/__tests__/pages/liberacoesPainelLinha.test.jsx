@@ -187,7 +187,6 @@ describe('Observação da linha (dono 29/07)', () => {
     fireEvent.click(screen.getByLabelText('Definir tempo faltante de Marílio Flach'))
     // atalho de duração em grade (redesenho 17/08): um toque grava — desde 02/10 a
     // duração é a 2ª aba (o painel abre no "Horário de término")
-    fireEvent.click(screen.getByRole('tab', { name: 'Tempo faltante' }))
     fireEvent.click(screen.getByRole('button', { name: '1h' }))
     await waitFor(() => expect(onSetOverride).toHaveBeenCalled())
     expect(onSetOverride.mock.calls[0][1].observacao).toBe('no consultório')
@@ -345,7 +344,7 @@ describe('Painel da linha — SEM a lista de casos (dono 30/07)', () => {
     fireEvent.click(screen.getByLabelText('Definir tempo faltante de Marílio Flach'))
     // 02/10: "Tempo total estimado" — o nome da pílula que abriu ("+ Tempo total") e o
     // que o dono pediu dito com todas as letras: é o total de TODAS as cirurgias
-    expect(screen.getByText(/Tempo total estimado · Marílio Flach/)).toBeTruthy()
+    expect(screen.getByText(/Tempo total · Marílio Flach/)).toBeTruthy()
     expect(screen.queryByText(/Tempo para término ou horário de término/)).toBeNull()
     // e o painel acompanha o conteúdo em vez de nascer com 85% da tela
     expect(document.querySelector('[data-slot="sheet-content"]').className).toContain('!h-auto')
@@ -882,19 +881,30 @@ describe('Turno próprio — pode sair fora da ordem (dono 11/09)', () => {
 describe('a pílula do total espelha no término da cirurgia quando ela é a única aberta', () => {
   const definirUmaHora = (nome) => {
     fireEvent.click(screen.getByLabelText(`Definir tempo faltante de ${nome}`))
-    fireEvent.click(screen.getByRole('tab', { name: 'Tempo faltante' })) // 2ª aba desde 02/10
     fireEvent.click(screen.getByRole('button', { name: '1h' }))
   }
 
-  it('uma cirurgia aberta: grava o total E o terminoPrevisto do caso, com o MESMO horário', async () => {
+  it('uma cirurgia aberta EM ANDAMENTO: grava o total E o terminoPrevisto do caso, com o MESMO horário', async () => {
     const onSetOverride = vi.fn(async () => {})
     const onDefinirTerminoCaso = vi.fn(async () => {})
-    montar({ onSetOverride, onDefinirTerminoCaso })
+    const emCurso = { ...escalaBase, casos: escalaBase.casos.map((c) => (c.id === 'Sala 2-0' ? { ...c, statusCirurgia: 'iniciada', inicioReal: '07:40' } : c)) }
+    montar({ onSetOverride, onDefinirTerminoCaso }, emCurso)
     definirUmaHora('Marílio Flach') // Marílio tem só a Sala 2
     await waitFor(() => expect(onSetOverride).toHaveBeenCalled())
     const termino = onSetOverride.mock.calls[0][1].termino
     expect(termino).toMatch(/^\d{2}:\d{2}$/)
     await waitFor(() => expect(onDefinirTerminoCaso).toHaveBeenCalledWith('Sala 2-0', termino))
+  })
+
+  // MUDOU DE LADO em 27/10 (dono, 5ª rodada): a cirurgia que ainda não começou guarda o
+  // estimado como DURAÇÃO, que conta do início — o total da pessoa não vira término fixo nela
+  it('uma cirurgia AGENDADA: só o total muda — ela guarda duração, não horário (27/10)', async () => {
+    const onSetOverride = vi.fn(async () => {})
+    const onDefinirTerminoCaso = vi.fn(async () => {})
+    montar({ onSetOverride, onDefinirTerminoCaso })
+    definirUmaHora('Marílio Flach')
+    await waitFor(() => expect(onSetOverride).toHaveBeenCalled())
+    expect(onDefinirTerminoCaso).not.toHaveBeenCalled()
   })
 
   it('duas cirurgias abertas: só o total muda — o caso não é tocado', async () => {

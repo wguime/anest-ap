@@ -75,15 +75,14 @@ const montar = (props = {}, esc = escala) => render(
   { wrapper: wrap }
 )
 
-/** Abre o TEMPO ESTIMADO desta cirurgia e vai à aba da duração.
- *  ⚠️ 02/10 (tarde, protótipo `.tmp/horario-compacto.html`): o tempo estimado (a
- *  previsão de término que estas travas sempre cobriram) virou o botão "Estimado" no
- *  topo do cartão do horário — o bloco TÉRMINO passou a ser o horário REAL — e o painel
- *  abre no "Horário de término"; a duração é um toque na aba "Tempo faltante". */
+/** Abre o TEMPO ESTIMADO desta cirurgia.
+ *  ⚠️ 02/10 (tarde): o tempo estimado virou o botão "Estimado" no topo do cartão do
+ *  horário. 27/10: o painel não tem mais alternador — horário e durações à vista. */
 const abrirTempo = () => {
   fireEvent.click(screen.getByRole('button', { name: /Tempo estimado desta cirurgia/ }))
-  fireEvent.click(screen.getByRole('tab', { name: 'Tempo faltante' }))
 }
+/** A cirurgia EM ANDAMENTO: é nela que o estimado é horário (na agendada é duração, 27/10). */
+const emAndamento = { ...caso, statusCirurgia: 'iniciada', inicioReal: '07:35' }
 
 beforeEach(() => vi.clearAllMocks())
 
@@ -175,7 +174,7 @@ describe('Dois eixos de status (dono 21/07, desenho 17/08)', () => {
 
 describe('Término DESTA cirurgia (dono 29/07)', () => {
   it('grava o término previsto no caso — e ESPELHA no tempo total (única cirurgia, dono 30/07)', async () => {
-    montar()
+    montar({}, { ...escala, casos: [emAndamento] })
     abrirTempo()
     fireEvent.click(screen.getByRole('button', { name: '1h' }))
     await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
@@ -192,7 +191,7 @@ describe('Término DESTA cirurgia (dono 29/07)', () => {
 
   it('com 2+ cirurgias ativas NÃO espelha — o total da pessoa segue manual', async () => {
     const segundo = { ...caso, id: 'c2', ordem: 1, hora: '09:00', cirurgiao: 'Liana W' }
-    montar({}, { ...escala, casos: [caso, segundo] })
+    montar({}, { ...escala, casos: [emAndamento, segundo] })
     abrirTempo()
     fireEvent.click(screen.getByRole('button', { name: '1h' }))
     await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
@@ -200,7 +199,7 @@ describe('Término DESTA cirurgia (dono 29/07)', () => {
   })
 
   it('o rótulo separa os dois tempos para o plantonista não confundir', () => {
-    montar()
+    montar({}, { ...escala, casos: [emAndamento] })
     // o bloco diz que é DESTA cirurgia; o tempo da PESSOA é outro campo, na fila.
     // ⚠️ 02/10: a linha "Término desta cirurgia" do fim do Andamento SUBIU para o
     // cartão "Horário da cirurgia" (bloco TÉRMINO); o nome acessível e o título do
@@ -209,14 +208,13 @@ describe('Término DESTA cirurgia (dono 29/07)', () => {
     expect(screen.getByRole('button', { name: /Tempo estimado desta cirurgia/ })).toBeTruthy()
     abrirTempo()
     expect(screen.getByText(/Quando esta cirurgia deve terminar/)).toBeTruthy()
-    // as duas entradas são ALTERNATIVAS: o painel abre numa e o alternador leva à outra
+    // 27/10: as duas entradas à vista, uma acima da outra (sem alternador)
     expect(screen.getByRole('button', { name: '1h30' })).toBeTruthy()
-    fireEvent.click(screen.getByRole('tab', { name: 'Horário de término' }))
     expect(document.querySelector('[data-slot="termino-hora"]')).toBeTruthy()
   })
 
   it('limpar devolve null (o campo volta a vazio, não a "00:00")', async () => {
-    montar({}, { ...escala, casos: [{ ...caso, terminoPrevisto: '10:30' }] })
+    montar({}, { ...escala, casos: [{ ...emAndamento, terminoPrevisto: '10:30' }] })
     abrirTempo()
     fireEvent.click(screen.getByRole('button', { name: 'Limpar' }))
     await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
@@ -276,7 +274,8 @@ describe('Editores em sheet próprio (dono 17/08)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Tempo estimado desta cirurgia/i }))
     const depois = document.querySelectorAll('[data-slot="sheet-content"], [role="dialog"]').length
     expect(depois).toBeGreaterThan(antes)
-    expect(screen.getByText('Tempo faltante')).toBeTruthy()
+    // a cirurgia do teste ainda não começou: o estimado dela é DURAÇÃO (27/10)
+    expect(screen.getByText('Quanto tempo deve durar')).toBeTruthy()
   })
 
 })
@@ -388,44 +387,46 @@ describe('Andamento — quando mudou e por quem', () => {
 // ⚠️ relógio real: os términos do fixture ficam no fim do dia (22:00/23:00) para
 // que "anterior + 1h" seja depois de agora em qualquer hora de execução.
 // ════════════════════════════════════════════════════════════════════════════
-describe('duas cirurgias: duração encadeada e soma no total (dono 14/09)', () => {
-  // relógio FIXO às 09:40 (a suíte roda a qualquer hora, inclusive à noite, quando
-  // "22:00" já teria passado e a base do encadeamento cairia em "agora")
+// MUDOU DE LADO em 27/10 (dono, 5ª rodada de `.tmp/horarios-auditoria/`): na cirurgia que
+// ainda não começou, "1h" não encadeia mais no término da anterior (14/09) — guarda a DURAÇÃO,
+// que conta do início (o gatilho a converte no Iniciada). A soma no total (14/09) segue valendo
+// quando as duas têm término, e a hora exata continua valendo como veio.
+describe('duas cirurgias: o estimado da que não começou é DURAÇÃO; a soma no total segue (dono 27/10)', () => {
+  // relógio FIXO às 09:40 (a suíte roda a qualquer hora)
   beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: true }); vi.setSystemTime(new Date('2026-07-29T09:40:00')) })
   afterEach(() => { vi.useRealTimers() })
-  const emCurso = { ...caso, id: 'c1', hora: '07:30', terminoPrevisto: '22:00', statusCirurgia: 'iniciada' }
+  const emCurso = { ...caso, id: 'c1', hora: '07:30', terminoPrevisto: '22:00', statusCirurgia: 'iniciada', inicioReal: '07:35' }
   const proxima = { ...caso, id: 'c2', ordem: 1, hora: '10:15', cirurgiao: 'Liana W', procedimento: 'Herniorrafia' }
-  const esc = { ...escala, casos: [emCurso, proxima] }
-  const montarSegunda = () => render(
-    <CasoDetalheSheet escala={esc} caso={proxima} onClose={vi.fn()} podeEditar />,
+  const montarSegunda = (segunda = proxima) => render(
+    <CasoDetalheSheet escala={{ ...escala, casos: [emCurso, segunda] }} caso={segunda} onClose={vi.fn()} podeEditar />,
     { wrapper: wrap },
   )
 
-  it('"1h" na cirurgia que ainda não começou vale DEPOIS da anterior (22:00 → 23:00)', async () => {
+  it('"1h" na cirurgia que ainda não começou grava a DURAÇÃO (60 min), não "22:00 + 1h"', async () => {
     montarSegunda()
     abrirTempo()
+    expect(screen.getByText(/a duração começa a contar quando ela for marcada Iniciada/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: '1h' }))
     await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
-    expect(atualizarCaso.mock.calls[0][2]).toEqual({ terminoPrevisto: '23:00' })
+    expect(atualizarCaso.mock.calls[0][2]).toEqual({ duracaoEstimadaMin: 60, terminoPrevisto: null })
+    expect(setLinhaOverride).not.toHaveBeenCalled()
   })
 
-  it('com as DUAS com término, o total da pessoa vira o último término (a soma)', async () => {
-    montarSegunda()
-    abrirTempo()
-    fireEvent.click(screen.getByRole('button', { name: '1h' }))
-    await waitFor(() => expect(setLinhaOverride).toHaveBeenCalled())
-    const [, linha, override] = setLinhaOverride.mock.calls[0]
-    expect(linha.chave).toBe('MARILIO')
-    expect(override.termino).toBe('23:00')
+  it('o botão diz "Estimado 1h · do início" e o bloco Término "1h do início"', () => {
+    montarSegunda({ ...proxima, duracaoEstimadaMin: 60 })
+    expect(screen.getByRole('button', { name: /Tempo estimado desta cirurgia: 1h/ })).toBeTruthy()
+    expect(screen.getByText('1h do início')).toBeTruthy()
   })
 
-  it('hora EXATA digitada não é encadeada — vale como veio', async () => {
-    montarSegunda()
+  it('com as DUAS com término, o total da pessoa vira o último término (a soma) — e a hora exata vale como veio', async () => {
+    montarSegunda({ ...proxima, statusCirurgia: 'iniciada', inicioReal: '10:20' })
     abrirTempo()
-    fireEvent.click(screen.getByRole('tab', { name: 'Horário de término' }))
     const campo = document.querySelector('[data-slot="termino-hora"] input') || document.querySelector('[data-slot="termino-hora"]')
     fireEvent.change(campo, { target: { value: '2330' } })
-    await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
+    await waitFor(() => expect(setLinhaOverride).toHaveBeenCalled())
     expect(atualizarCaso.mock.calls[0][2]).toEqual({ terminoPrevisto: '23:30' })
+    const [, linha, override] = setLinhaOverride.mock.calls[0]
+    expect(linha.chave).toBe('MARILIO')
+    expect(override.termino).toBe('23:30')
   })
 })

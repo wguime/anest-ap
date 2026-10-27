@@ -1,16 +1,22 @@
 /**
- * HORÁRIO PENDENTE na tela (dono 05/10, modelo A em `.tmp/alerta-horario-pendente.html`).
+ * HORÁRIO PENDENTE na tela — INDIVIDUAL (dono 27/10, 3ª e 4ª rodadas de `.tmp/horarios-auditoria/`).
+ *
+ * MUDOU DE LADO em 27/10: até aqui este arquivo travava o alerta PÚBLICO de 05/10 (a faixa com
+ * o nome de todos, a pílula "Você N", o "Na equipe", a lista por anestesista). O dono pediu:
+ * "retire a visualização de toda a equipe (deixe apenas individual até o usuário resolver
+ * todos os horários, inclusive de dias anteriores)". As regras de QUEM ENTRA no alerta não
+ * mudaram (a lib e `useHorarioPendente` são os mesmos) — o que mudou é QUEM VÊ.
  *
  * Travas:
- *  · a faixa aparece com a cirurgia que entrou no alerta — turno encerrado OU anestesista
- *    liberado — e diz quem deve e quanto; some quando os horários são preenchidos ou a
- *    cirurgia é suspensa;
- *  · só vendo HOJE; a manhã de 05/10 (antes do alerta existir) não conta;
- *  · liberado com a cirurgia ABERTA: a lista oferece "Preencher horário" e "Colega
- *    assumiu" (este abre o Definir anestesista do caso — dono 05/10);
- *  · o card da cirurgia mostra o que falta ("Falta início");
- *  · início VENCIDO (dono 05/10 à tarde): 30 min depois do horário agendado já entra, no
- *    turno, e a lista sugere "Atrasada" para quem ainda não começou.
+ *  · só quem tem horário a preencher vê; a conta de hospital (sem "eu") não vê nada, e o
+ *    nome de nenhum colega aparece;
+ *  · a regra de entrada continua: turno encerrado, liberado na fila, início vencido; some com
+ *    início e término ou suspensa; só vendo HOJE; a manhã de 05/10 não conta;
+ *  · Minhas: caixa com o número, os DIAS como cabeçalho, até 5 linhas e "Ver todas"; nas
+ *    outras abas, a faixa de uma linha que abre a lista;
+ *  · as de DIAS ANTERIORES (prop `anteriores`) entram na mesma conta e na mesma lista;
+ *  · o toque abre DIRETO a folha do horário: só início ou os dois;
+ *  · o selo no card da cirurgia continua (público).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, within } from '@testing-library/react'
@@ -26,9 +32,8 @@ const estado = vi.hoisted(() => ({ ctx: null }))
 vi.mock('@/contexts/EscalaCirurgicaContext', async (orig) => ({
   ...(await orig()),
   useEscalaCirurgica: () => estado.ctx,
-  useEscalaCirurgicaActions: () => ({}),
 }))
-vi.mock('@/contexts/UserContext', () => ({ useUser: () => ({ user: { uid: 'uid-gabriel' } }) }))
+vi.mock('@/contexts/UserContext', () => ({ useUser: () => ({ user: { uid: 'uid-ana' } }) }))
 const ROSTER = [
   { uid: 'uid-ana', nome: 'ANA RIBEIRO', apelidos: ['ANA'] },
   { uid: 'uid-bruno', nome: 'BRUNO LIMA', apelidos: ['BRUNO'] },
@@ -39,17 +44,11 @@ vi.mock('@/hooks/useRosterAnestesistas', () => ({
     resolver: (n) => ROSTER.find((r) => r.apelidos.includes(String(n || '').trim().toUpperCase()))?.uid || null,
   }),
 }))
-// as folhas de destino têm testes próprios; aqui vale o CAMINHO até elas
 vi.mock('@/pages/escala-cirurgica/CasoDetalheSheet', () => ({
   default: ({ caso, escala }) => <div role="dialog" aria-label="detalhe">detalhe {escala.hospital} {caso.id}</div>,
 }))
-vi.mock('@/pages/escala-cirurgica/DefinirAnestesistaSheet', () => ({
-  default: ({ sala, casosAlvo, escala }) => (
-    <div role="dialog" aria-label="definir">definir {escala.hospital} {sala} {casosAlvo.map((c) => c.id).join(',')}</div>
-  ),
-}))
 
-const HOJE = '2026-10-06'
+const HOJE = '2026-10-29'
 const caso = (o = {}) => ({
   id: 'c1', sala: 'CC - Sala 2', ordem: 0, turno: 'matutino', hora: '07:30',
   procedimento: 'COLECISTECTOMIA VIDEOLAPAROSCOPICA', anestesista: 'ANA', anestesistaUserId: 'uid-ana',
@@ -58,297 +57,210 @@ const caso = (o = {}) => ({
 const escala = (casos, o = {}) => ({
   id: 'e-unimed', hospital: 'unimed', data: HOJE, status: 'publicada', liberacoes: {}, linhaOverrides: {}, casos, ...o,
 })
+const setStatusCirurgia = vi.fn(() => Promise.resolve())
+const atualizarCaso = vi.fn(() => Promise.resolve())
 const contexto = (escalas, o = {}) => {
-  estado.ctx = { hoje: HOJE, data: HOJE, escalas: { unimed: null, hro: null, materno: null, fds: null, ...escalas }, ...o }
+  estado.ctx = { hoje: HOJE, data: HOJE, escalas: { unimed: null, hro: null, materno: null, fds: null, ...escalas }, setStatusCirurgia, atualizarCaso, ...o }
 }
 const agoraEm = (hhmm, dia = HOJE) => vi.setSystemTime(new Date(`${dia}T${hhmm}:00-03:00`))
+const ANA = { uid: 'uid-ana', alias: 'ANA', resolverUid: () => null }
 
-function Tela({ eu = null, aba = 'minhas' }) {
+function Tela({ eu = ANA, aba = 'minhas', anteriores = null }) {
   const p = useHorarioPendente()
   // a página monta a lista pessoal pelo critério da aba Minhas (login > apelido)
   const minhas = eu ? p.itens.filter((i) => anestesistaDoCasoEh(i.caso, eu)).sort(compararPendencias) : null
-  return <FaixaHorarioPendente pendencias={p} podeEditar minhas={minhas} eu={eu} abaMinhas={aba === 'minhas'} />
+  // ...e só monta a faixa vendo HOJE (EscalaCirurgicaPage)
+  if (estado.ctx.data !== estado.ctx.hoje) return null
+  return <FaixaHorarioPendente podeEditar minhas={minhas} anteriores={anteriores} eu={eu} abaMinhas={aba === 'minhas'} />
 }
-const montar = (eu, aba) => render(<ThemeProvider><Tela eu={eu} aba={aba} /></ThemeProvider>)
-const faixa = () => screen.queryByRole('button', { name: /^Horário pendente:/ })
-// só a fileira VISÍVEL (a de medida, invisível, repete as pílulas)
-const visiveis = (raiz, texto) => within(raiz).queryAllByText(texto).filter((el) => !el.closest('[aria-hidden="true"]'))
+const montar = (props = {}) => render(<ThemeProvider><Tela {...props} /></ThemeProvider>)
+const caixa = () => screen.queryByRole('region', { name: /^Você tem .* sem horário$/ })
+const faixa = () => screen.queryByRole('button', { name: /sem horário\. Ver a lista$/ })
 
-beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: true }) })
+beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: true }); setStatusCirurgia.mockClear(); atualizarCaso.mockClear() })
 afterEach(() => vi.useRealTimers())
 
-describe('a faixa: quando aparece', () => {
-  it('turno da manhã encerrado (13h) com cirurgia sem início → faixa com o nome e a conta', () => {
+describe('quem vê: só quem tem horário a preencher (dono 27/10)', () => {
+  it('a dona da cirurgia vê a caixa na Minhas; o nome de nenhum colega aparece', () => {
     agoraEm('13:05')
-    contexto({ unimed: escala([caso()]) })
+    contexto({ unimed: escala([caso(), caso({ id: 'bru', anestesista: 'BRUNO', anestesistaUserId: 'uid-bruno' })]) })
     montar()
-    const f = faixa()
-    expect(f).toBeTruthy()
-    expect(f.getAttribute('aria-label')).toBe('Horário pendente: 1 cirurgia de 1 anestesista. Ver a lista')
-    // a pílula visível (a fileira de medida, invisível, repete os nomes)
-    expect(within(f).getAllByText('Ana Ribeiro')[0].closest('[aria-hidden]')).toBeNull()
+    expect(caixa().getAttribute('aria-label')).toBe('Você tem 1 cirurgia sem horário')
+    expect(screen.queryByText(/Bruno/)).toBeNull()
+    expect(screen.queryByText(/Na equipe|Horário pendente|Você em dia/)).toBeNull()
   })
 
-  it('a fileira de MEDIDA não vaza da tela (06/10, Android: folhas abriam fora da tela)', () => {
-    // Com os nomes de um dia cheio a fileira invisível passava de 1.000px; o Chrome do
-    // Android alarga a página até caber o vazamento e todo `fixed bottom-0` (as folhas
-    // do detalhe, da lista, do tempo) ia parar abaixo da tela — escurecia e nada subia.
-    // O jsdom não mede layout: a trava é o CORTE no pai posicionado, que é o que
-    // impede a fileira absoluta de contar na largura da página.
+  it('quem não deve nada não vê nada — mesmo com colegas devendo', () => {
     agoraEm('13:05')
-    contexto({ unimed: escala([caso()]) })
+    contexto({ unimed: escala([caso({ id: 'bru', anestesista: 'BRUNO', anestesistaUserId: 'uid-bruno' })]) })
     montar()
-    const medida = within(faixa()).getAllByText('Ana Ribeiro')
-      .map((el) => el.closest('[aria-hidden="true"]')).find(Boolean)
-    expect(medida.className).toMatch(/\babsolute\b/)
-    const moldura = medida.parentElement
-    expect(moldura.className).toMatch(/\brelative\b/)
-    expect(moldura.className).toMatch(/\boverflow-hidden\b/)
+    expect(caixa()).toBeNull()
+    expect(faixa()).toBeNull()
   })
 
-  it('antes das 13h, sem liberação e com o início informado, não há faixa', () => {
+  it('conta de hospital (sem "eu") não vê nada', () => {
+    agoraEm('13:05')
+    contexto({ unimed: escala([caso()]) })
+    montar({ eu: null })
+    expect(caixa()).toBeNull()
+    expect(faixa()).toBeNull()
+  })
+
+  it('na Completa e nas Liberações, a faixa de uma linha abre a lista', () => {
+    agoraEm('13:05')
+    contexto({ unimed: escala([caso()]) })
+    montar({ aba: 'board' })
+    expect(faixa()).toBeTruthy()
+    fireEvent.click(faixa())
+    expect(screen.getByText('Suas cirurgias sem horário')).toBeTruthy()
+  })
+})
+
+describe('a regra de quem entra continua a mesma (lib + useHorarioPendente)', () => {
+  it('antes das 13h, sem liberação e com o início informado, não há aviso', () => {
     agoraEm('12:55')
     contexto({ unimed: escala([caso({ statusCirurgia: 'iniciada', inicioReal: '07:40', terminoReal: null })]) })
     montar()
-    expect(faixa()).toBeNull()
+    expect(caixa()).toBeNull()
   })
 
-  it('liberado na fila, antes do fim do turno → já entra', () => {
+  it('liberado na fila, antes do fim do turno → já entra; o marcador de escalado do repasse não é liberação', () => {
     agoraEm('10:00')
     contexto({ unimed: escala([caso()], { liberacoes: { 'matutino:uid-ana': { liberadoEm: 'x' } } }) })
-    montar()
-    expect(faixa()).toBeTruthy()
-  })
-
-  it('o marcador de escalado do repasse NÃO é liberação', () => {
-    agoraEm('10:00')
+    const { unmount } = montar()
+    expect(caixa()).toBeTruthy()
+    unmount()
     contexto({ unimed: escala([caso({ statusCirurgia: 'iniciada', inicioReal: '07:40', terminoReal: null })], { liberacoes: { 'matutino:uid-ana': { escalado: true } } }) })
     montar()
-    expect(faixa()).toBeNull()
+    expect(caixa()).toBeNull()
   })
 
-  it('passou 30 min do horário agendado sem início → faixa já no turno, com "Falta início"', () => {
+  it('passou 30 min do horário agendado sem início → entra no turno, com "Falta início"', () => {
     agoraEm('08:05')
     contexto({ unimed: escala([caso({ statusCirurgia: 'agendada', terminoReal: null })]) })
     montar()
-    fireEvent.click(faixa())
-    expect(screen.getByText('Falta início')).toBeTruthy()
-    expect(screen.getByText(/Passou do horário agendado/)).toBeTruthy()
+    expect(within(caixa()).getByText('Falta início')).toBeTruthy()
   })
 
   it('some com início e término preenchidos, ou com a cirurgia suspensa', () => {
     agoraEm('14:00')
     contexto({ unimed: escala([caso({ inicioReal: '07:40' })]) })
     const { unmount } = montar()
-    expect(faixa()).toBeNull()
+    expect(caixa()).toBeNull()
     unmount()
     contexto({ unimed: escala([caso({ statusCirurgia: 'agendada', terminoReal: null, statusExtra: 'suspensa' })]) })
     montar()
-    expect(faixa()).toBeNull()
+    expect(caixa()).toBeNull()
   })
 
   it('só vendo HOJE', () => {
     agoraEm('14:00')
-    contexto({ unimed: escala([caso()]) }, { data: '2026-10-07' })
+    contexto({ unimed: escala([caso()]) }, { data: '2026-10-30' })
     montar()
-    expect(faixa()).toBeNull()
+    expect(caixa()).toBeNull()
   })
 
   it('a manhã de 05/10 não conta; a tarde de 05/10 conta', () => {
     agoraEm('19:30', '2026-10-05')
-    const e = escala([
-      caso({ id: 'manha' }),
-      caso({ id: 'tarde', turno: 'vespertino', hora: '14:00', anestesista: 'BRUNO', anestesistaUserId: 'uid-bruno' }),
-    ], { data: '2026-10-05' })
+    const e = escala([caso({ id: 'manha' }), caso({ id: 'tarde', turno: 'vespertino', hora: '14:00' })], { data: '2026-10-05' })
     contexto({ unimed: e }, { hoje: '2026-10-05', data: '2026-10-05' })
     montar()
-    expect(faixa().getAttribute('aria-label')).toMatch(/^Horário pendente: 1 cirurgia de 1 anestesista/)
-    expect(within(faixa()).getAllByText('Bruno Lima')[0].closest('[aria-hidden]')).toBeNull()
+    expect(caixa().getAttribute('aria-label')).toBe('Você tem 1 cirurgia sem horário')
   })
 })
 
-describe('a lista por anestesista', () => {
-  it('agrupa por pessoa, quem deve mais primeiro, e cada linha abre a cirurgia no hospital dela', () => {
-    agoraEm('13:30')
-    contexto({
-      unimed: escala([caso({ id: 'u1' }), caso({ id: 'u2', hora: '09:30', statusCirurgia: 'terminada', inicioReal: '09:35', terminoReal: null })]),
-      hro: escala([caso({ id: 'h1', anestesista: 'BRUNO', anestesistaUserId: 'uid-bruno', sala: 'Sala 6' })], { id: 'e-hro', hospital: 'hro' }),
-    })
+describe('a caixa da Minhas: por dia, até 5 linhas', () => {
+  const anteriores = (n) => ({
+    itens: Array.from({ length: n }, (_, i) => ({
+      caso: caso({ id: `ant${i}`, hora: `0${7 + (i % 3)}:00`, terminoReal: null }),
+      hospital: 'hro', turno: 'matutino', falta: 'ambos', motivo: 'turno', data: i < 2 ? '2026-10-28' : '2026-10-27',
+    })),
+    informar: vi.fn(), naoAconteceu: vi.fn(),
+  })
+
+  it('soma hoje e os dias anteriores; os dias viram cabeçalho, hoje primeiro', () => {
+    agoraEm('13:05')
+    contexto({ unimed: escala([caso()]) })
+    montar({ anteriores: anteriores(3) })
+    expect(caixa().getAttribute('aria-label')).toBe('Você tem 4 cirurgias sem horário')
+    const dias = within(caixa()).getAllByRole('region').map((r) => r.getAttribute('aria-label'))
+    expect(dias).toEqual(['Hoje: 1 cirurgia', 'Ontem · qua 28/10: 2 cirurgias', 'ter 27/10: 1 cirurgia'])
+  })
+
+  it('com 12, a caixa mostra 5 linhas e "Ver todas as 12" abre a lista inteira', () => {
+    agoraEm('13:05')
+    contexto({ unimed: escala([caso()]) })
+    montar({ anteriores: anteriores(11) })
+    expect(within(caixa()).getAllByRole('button', { name: /^Informar o horário/ })).toHaveLength(5)
+    fireEvent.click(screen.getByRole('button', { name: /Ver todas as 12/ }))
+    const lista = screen.getByRole('dialog')
+    expect(within(lista).getAllByRole('button', { name: /^Informar o horário/ })).toHaveLength(12)
+  })
+
+  it('nas outras abas a faixa diz quantas são de dias anteriores', () => {
+    agoraEm('13:05')
+    contexto({ unimed: escala([caso()]) })
+    montar({ aba: 'board', anteriores: anteriores(3) })
+    expect(within(faixa()).getByText(/3 de dias anteriores/)).toBeTruthy()
+  })
+
+  it('só com dias anteriores (nada hoje), o aviso continua até resolver', () => {
+    agoraEm('09:00')
+    contexto({ unimed: escala([caso({ inicioReal: '07:40' })]) })
+    montar({ anteriores: anteriores(1) })
+    expect(caixa().getAttribute('aria-label')).toBe('Você tem 1 cirurgia sem horário')
+  })
+})
+
+describe('o toque abre direto a folha do horário', () => {
+  it('"Falta início" de uma cirurgia aberta pede SÓ o início', () => {
+    agoraEm('08:05')
+    contexto({ unimed: escala([caso({ statusCirurgia: 'agendada', terminoReal: null })]) })
     montar()
-    fireEvent.click(faixa())
-    const ana = screen.getByRole('region', { name: 'Ana Ribeiro: 2 cirurgias sem horário' })
-    const bruno = screen.getByRole('region', { name: 'Bruno Lima: 1 cirurgia sem horário' })
-    expect(ana.compareDocumentPosition(bruno) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(within(ana).getByText('Falta início')).toBeTruthy()
-    expect(within(ana).getByText('Falta término')).toBeTruthy()
-    expect(within(bruno).getByText('Manhã · HRO · Sala 6')).toBeTruthy()
-    fireEvent.click(within(bruno).getByRole('button', { name: /Abrir a cirurgia/ }))
-    expect(screen.getByRole('dialog', { name: 'detalhe' }).textContent).toBe('detalhe hro h1')
+    fireEvent.click(within(caixa()).getByRole('button', { name: /^Informar o horário/ }))
+    expect(screen.getByText(/^Início · 07:30/)).toBeTruthy()
+    expect(screen.queryByText('Confirmar os dois')).toBeNull()
   })
 
-  it('liberado com a cirurgia ABERTA: "Preencher horário" ou "Colega assumiu"', () => {
-    agoraEm('10:00')
-    contexto({ unimed: escala([
-      caso({ id: 'a1', statusCirurgia: 'agendada', terminoReal: null, hora: '10:30' }),
-    ], { liberacoes: { 'matutino:uid-ana': { liberadoEm: 'x' } } }) })
+  it('terminada sem início pede os dois, lado a lado, e grava pelo caminho de sempre', () => {
+    agoraEm('13:05')
+    contexto({ unimed: escala([caso()]) })
     montar()
-    fireEvent.click(faixa())
-    expect(screen.getByText('Liberado com a cirurgia aberta')).toBeTruthy()
-    expect(screen.getByText('Sem horário')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Colega assumiu' }))
-    expect(screen.getByRole('dialog', { name: 'definir' }).textContent).toBe('definir unimed CC - Sala 2 a1')
+    fireEvent.click(within(caixa()).getByRole('button', { name: /^Informar o horário/ }))
+    expect(screen.getByText(/^Início e término · 07:30/)).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Horário de início'), { target: { value: '0735' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar os dois' }))
+    expect(atualizarCaso).toHaveBeenCalledWith(expect.objectContaining({ hospital: 'unimed' }), 'c1',
+      { terminoReal: '09:10', inicioReal: '07:35' }, { silencioso: true })
   })
 
-  it('a cirurgia terminada de quem foi liberado pede só o horário (sem "Colega assumiu")', () => {
-    agoraEm('10:00')
-    contexto({ unimed: escala([caso()], { liberacoes: { 'matutino:uid-ana': { liberadoEm: 'x' } } }) })
+  it('a de dia anterior grava pelo id (prop `anteriores`) e não oferece "Ver a cirurgia"', () => {
+    agoraEm('09:00')
+    contexto({ unimed: escala([]) })
+    const ant = {
+      itens: [{ caso: caso({ id: 'ontem', terminoReal: null }), hospital: 'hro', turno: 'matutino', falta: 'ambos', motivo: 'turno', data: '2026-10-28' }],
+      informar: vi.fn(), naoAconteceu: vi.fn(),
+    }
+    montar({ anteriores: ant })
+    fireEvent.click(within(caixa()).getByRole('button', { name: /^Informar o horário/ }))
+    expect(screen.queryByText('Ver a cirurgia')).toBeNull()
+    fireEvent.change(screen.getByLabelText('Horário de início'), { target: { value: '0730' } })
+    fireEvent.change(screen.getByLabelText('Horário de término'), { target: { value: '0915' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar os dois' }))
+    expect(ant.informar).toHaveBeenCalledWith(ant.itens[0], { inicio: '07:30', termino: '09:15' })
+  })
+
+  it('"Não aconteceu" marca Suspensa na cirurgia aberta', () => {
+    agoraEm('08:05')
+    contexto({ unimed: escala([caso({ statusCirurgia: 'agendada', terminoReal: null })]) })
     montar()
-    fireEvent.click(faixa())
-    expect(screen.queryByText('Liberado com a cirurgia aberta')).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Colega assumiu' })).toBeNull()
+    fireEvent.click(within(caixa()).getByRole('button', { name: /^Informar o horário/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Não aconteceu (suspensa)' }))
+    expect(setStatusCirurgia).toHaveBeenCalledWith(expect.objectContaining({ hospital: 'unimed' }), expect.objectContaining({ id: 'c1' }), 'suspensa', { userId: 'uid-ana' })
   })
 })
 
-describe('aba Minhas: o detalhamento de quem está logado (dono 05/10)', () => {
-  const doDia = () => contexto({
-    unimed: escala([
-      caso({ id: 'ana2', hora: '09:30', statusCirurgia: 'terminada', inicioReal: '09:35', terminoReal: null }),
-      caso({ id: 'ana1' }),
-      caso({ id: 'bru', anestesista: 'BRUNO', anestesistaUserId: 'uid-bruno' }),
-    ]),
-  })
-  const caixa = () => screen.queryByRole('region', { name: /^Você tem/ })
-
-  it('mostra SÓ as cirurgias do login, em ordem de hora, com o atalho para preencher', () => {
-    agoraEm('13:30')
-    doDia()
-    montar({ uid: 'uid-ana', alias: 'Ana' })
-    const c = caixa()
-    expect(c.getAttribute('aria-label')).toBe('Você tem 2 cirurgias sem horário')
-    const linhas = within(c).getAllByRole('button', { name: /^Abrir a cirurgia/ })
-    expect(linhas.map((b) => b.getAttribute('aria-label').match(/\d\d:\d\d/)[0])).toEqual(['07:30', '09:30'])
-    fireEvent.click(linhas[1])
-    expect(screen.getByRole('dialog', { name: 'detalhe' }).textContent).toBe('detalhe unimed ana2')
-  })
-
-  it('início vencido: a dica do "Atrasada" sai UMA vez, no cabeçalho da caixa', () => {
-    agoraEm('08:30')
-    contexto({ unimed: escala([
-      caso({ id: 'x1', statusCirurgia: 'agendada', terminoReal: null }),
-      caso({ id: 'x2', hora: '07:45', statusCirurgia: 'agendada', terminoReal: null }),
-    ]) })
-    montar({ uid: 'uid-ana', alias: 'Ana' })
-    const c = caixa()
-    expect(within(c).getAllByText(/marque Atrasada/)).toHaveLength(1)
-  })
-
-  it('o login manda: o apelido igual de outra pessoa não puxa a cirurgia dela', () => {
-    agoraEm('13:30')
-    doDia()
-    montar({ uid: 'uid-outro', alias: 'Bruno' })
-    expect(caixa()).toBeNull()
-  })
-
-  it('quem não deve nada não vê caixa — a faixa pública continua', () => {
-    agoraEm('13:30')
-    doDia()
-    montar({ uid: 'uid-gabriel', alias: 'Gabriel' })
-    expect(caixa()).toBeNull()
-    expect(faixa()).toBeTruthy()
-  })
-})
-
-// Dono 15/10, modelo A de `.tmp/horario-pendente-estimulo.html`: o nome de quem está logado
-// caía no "+N" (às 8h couberam 2 de 18). "Você N" abre a fileira; quem tem cirurgia e não
-// deve nada vê "Você em dia"; na Minhas, a faixa e a caixa pessoal são um bloco só.
-describe('modelo A — você primeiro (dono 15/10)', () => {
-  const ANA = { uid: 'uid-ana', alias: 'Ana' }
-  const doDia = () => contexto({
-    unimed: escala([
-      caso({ id: 'ana2', hora: '09:30', statusCirurgia: 'terminada', inicioReal: '09:35', terminoReal: null }),
-      caso({ id: 'ana1' }),
-      caso({ id: 'bru', anestesista: 'BRUNO', anestesistaUserId: 'uid-bruno' }),
-    ]),
-  })
-  const caixa = () => screen.queryByRole('region', { name: /^Você tem/ })
-
-  it('na Completa e nas Liberações, "Você 2" abre a fileira e o seu nome não se repete', () => {
-    agoraEm('13:30')
-    doDia()
-    montar(ANA, 'board')
-    const f = faixa()
-    expect(f.getAttribute('aria-label')).toBe('Horário pendente: 3 cirurgias de 2 anestesistas, 2 suas. Ver a lista')
-    const [voce] = visiveis(f, 'Você')
-    expect(voce.closest('span').textContent).toBe('Você 2')
-    expect(visiveis(f, 'Ana Ribeiro')).toHaveLength(0)
-    const [bruno] = visiveis(f, 'Bruno Lima')
-    expect(voce.compareDocumentPosition(bruno) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(caixa()).toBeNull() // a caixa pessoal é só da Minhas
-  })
-
-  it('na Minhas, a caixa pessoal faz as vezes da faixa: a equipe na linha de baixo abre a lista de todos', () => {
-    agoraEm('13:30')
-    doDia()
-    montar(ANA, 'minhas')
-    expect(faixa()).toBeNull()
-    const c = caixa()
-    expect(c.getAttribute('aria-label')).toBe('Você tem 2 cirurgias sem horário')
-    const equipe = within(c).getByRole('button', { name: 'Na equipe: 1 anestesista com horário pendente. Ver a lista' })
-    expect(visiveis(equipe, 'Bruno Lima')).toHaveLength(1)
-    expect(visiveis(equipe, 'Ana Ribeiro')).toHaveLength(0)
-    fireEvent.click(equipe)
-    // a lista é a pública de sempre — inclusive com o próprio nome
-    expect(screen.getByRole('region', { name: 'Bruno Lima: 1 cirurgia sem horário' })).toBeTruthy()
-    expect(screen.getByRole('region', { name: 'Ana Ribeiro: 2 cirurgias sem horário' })).toBeTruthy()
-  })
-
-  it('sozinho na lista: a caixa vem sem a linha da equipe', () => {
-    agoraEm('13:30')
-    contexto({ unimed: escala([caso({ id: 'ana1' })]) })
-    montar(ANA, 'minhas')
-    expect(caixa()).toBeTruthy()
-    expect(screen.queryByRole('button', { name: /^Na equipe/ })).toBeNull()
-  })
-
-  it('quem tem cirurgia hoje e não deve nada vê "Você em dia" — na Minhas também', () => {
-    agoraEm('13:30')
-    contexto({ unimed: escala([
-      caso({ id: 'ana-ok', inicioReal: '07:35' }), // a da Ana tem os dois horários
-      caso({ id: 'bru', anestesista: 'BRUNO', anestesistaUserId: 'uid-bruno' }),
-    ]) })
-    const { unmount } = montar(ANA, 'board')
-    expect(faixa().getAttribute('aria-label')).toBe('Horário pendente: 1 cirurgia de 1 anestesista. Você em dia. Ver a lista')
-    expect(visiveis(faixa(), 'Você em dia')).toHaveLength(1)
-    unmount()
-    montar(ANA, 'minhas')
-    expect(caixa()).toBeNull()
-    expect(visiveis(faixa(), 'Você em dia')).toHaveLength(1)
-  })
-
-  it('sem cirurgia hoje (folga) ou conta de hospital: a faixa de antes, sem "Você"', () => {
-    agoraEm('13:30')
-    doDia()
-    const { unmount } = montar({ uid: 'uid-gabriel', alias: 'Gabriel' }, 'board')
-    expect(faixa().getAttribute('aria-label')).toBe('Horário pendente: 3 cirurgias de 2 anestesistas. Ver a lista')
-    expect(within(faixa()).queryAllByText(/^Você/)).toHaveLength(0)
-    unmount()
-    montar(null, 'board')
-    expect(within(faixa()).queryAllByText(/^Você/)).toHaveLength(0)
-    expect(visiveis(faixa(), 'Ana Ribeiro')).toHaveLength(1)
-  })
-
-  it('cirurgia suspensa não conta como "em dia"', () => {
-    agoraEm('13:30')
-    contexto({ unimed: escala([
-      caso({ id: 'ana-susp', statusCirurgia: 'agendada', terminoReal: null, statusExtra: 'suspensa' }),
-      caso({ id: 'bru', anestesista: 'BRUNO', anestesistaUserId: 'uid-bruno' }),
-    ]) })
-    montar(ANA, 'board')
-    expect(within(faixa()).queryAllByText(/^Você/)).toHaveLength(0)
-  })
-})
-
-describe('o selo no card da cirurgia', () => {
+describe('o selo no card da cirurgia (continua público)', () => {
   it('diz o que falta, ao lado do estado', () => {
     render(<ThemeProvider><CasoCard caso={caso()} pendencia="ini" onClick={() => {}} /></ThemeProvider>)
     expect(screen.getByText('Terminada')).toBeTruthy()

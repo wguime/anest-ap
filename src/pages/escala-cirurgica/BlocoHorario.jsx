@@ -14,7 +14,7 @@ import { useState } from 'react'
 import { Plus, Timer, AlertTriangle } from 'lucide-react'
 import { Button, Input } from '@/design-system'
 import { agora } from '@/lib/devClock'
-import { hhmmDe } from '@/lib/escalaHorarioReal'
+import { duracaoMin, hhmmDe, rotuloMinutos } from '@/lib/escalaHorarioReal'
 import { formatHoraDigitada, horaCompleta } from './PainelTempo'
 
 /**
@@ -103,12 +103,15 @@ export function BotaoEstimado({ valor = '', prefixo = '', detalhe = '', aviso = 
  * devolve a frase que impede gravar (no futuro, início depois do término…) ou null.
  * "Limpar horário" só existe quando há horário gravado e quem chama permite.
  */
-export function ConfirmarHorario({ campo, valor = '', sugestao = null, validar, onConfirmar, onLimpar }) {
+export function ConfirmarHorario({ campo, valor = '', sugestao = null, inicioReal = '', validar, onConfirmar, onLimpar }) {
   const inicio = campo === 'inicio'
   const [erro, setErro] = useState('')
   const [rascHora, setRascHora] = useState('')
   const proposto = valor || sugestao?.hhmm || hhmmDe(agora())
   const origem = valor ? 'informado' : sugestao?.hhmm ? sugestao.rotulo : 'agora'
+  // QUANTO DUROU antes de confirmar (dono 27/10, 3ª rodada): é o que denuncia na hora um
+  // término errado — 12:28 → 18:19 numa colecistectomia vira "durou 5h51"
+  const durou = !inicio && inicioReal ? duracaoMin(inicioReal, proposto) : null
   const gravar = (hhmm) => {
     const motivo = validar?.(hhmm) || ''
     setErro(motivo)
@@ -128,7 +131,10 @@ export function ConfirmarHorario({ campo, valor = '', sugestao = null, validar, 
           {inicio ? 'Começou às' : 'Terminou às'}
         </span>
         <span className="text-[40px] font-extrabold leading-[46px] tabular-nums">{proposto}</span>
-        <span className="text-[12.5px] text-muted-foreground">{origem}</span>
+        <span className="text-[12.5px] text-muted-foreground">
+          {origem}
+          {durou != null && <> · início {inicioReal} · durou <b className="font-semibold text-foreground">{rotuloMinutos(durou)}</b></>}
+        </span>
       </div>
       <Button
         className={['min-h-[48px] w-full text-[15px] font-bold', inicio ? '' : 'bg-info text-info-foreground hover:bg-info/90'].join(' ')}
@@ -146,7 +152,8 @@ export function ConfirmarHorario({ campo, valor = '', sugestao = null, validar, 
         onChange={(e) => digitar(e.target.value)}
         inputMode="numeric"
         maxLength={5}
-        placeholder={inicio ? '14:05' : '15:30'}
+        // "--:--" e não um horário de exemplo (27/10): "15:30" apagado parecia já preenchido
+        placeholder="--:--"
         aria-label={inicio ? 'Horário de início correto' : 'Horário de término correto'}
       />
       {erro && <p role="alert" className="text-center text-xs font-medium text-destructive">{erro}</p>}
@@ -166,63 +173,63 @@ export function ConfirmarHorario({ campo, valor = '', sugestao = null, validar, 
 /**
  * INÍCIO E TÉRMINO JUNTOS (dono 14/10, medida C de `.tmp/liberar-com-cirurgia-aberta.html`):
  * a cirurgia sem início não pode ser só "terminada" — "deve obrigatoriamente colocar o
- * início da cirurgia". O término nasce em "agora" (o gesto de sempre); o início começa
- * vazio, com atalhos (hora agendada, fim da anterior na sala) e campo para digitar. Não
- * há "só o término": o botão só acende com os dois.
+ * início da cirurgia". O botão só acende com os dois.
+ *
+ * SÓ OS DOIS HORÁRIOS, LADO A LADO (dono 27/10, 5ª a 7ª rodada de `.tmp/horarios-auditoria/`:
+ * "deixe apenas horários de início e término para não deixar confuso" e "deixe horários lado
+ * a lado para otimizar espaço"): saíram os atalhos ("agendada", "fim da anterior", "agora") —
+ * o "agendada" era também por onde a hora agendada entrava como se fosse o início real. A
+ * grade é a dos blocos INÍCIO | TÉRMINO do cartão "Horário da cirurgia". Hoje o término nasce
+ * com a hora do toque, como antes; num dia passado (`terminoAgora` falso) os dois nascem
+ * vazios. A duração aparece antes de confirmar.
  * `onConfirmar({ inicio, termino })`; `validar({ inicio, termino })` → mensagem | ''.
  */
-export function ConfirmarInicioETermino({ sugestoesInicio = [], termino = '', validar, onConfirmar }) {
-  const [ini, setIni] = useState('')
-  const [ter, setTer] = useState(termino || hhmmDe(agora()))
+export function ConfirmarInicioETermino({ inicio = '', termino = '', terminoAgora = true, aviso = true, validar, onConfirmar }) {
+  const [ini, setIni] = useState(inicio || '')
+  const [ter, setTer] = useState(termino || (terminoAgora ? hhmmDe(agora()) : ''))
   const [erro, setErro] = useState('')
-  const agoraHHMM = hhmmDe(agora())
   const pronto = horaCompleta(ini) && horaCompleta(ter)
+  const durou = pronto ? duracaoMin(ini, ter) : null
   const confirmar = () => {
     const motivo = validar?.({ inicio: ini, termino: ter }) || ''
     setErro(motivo)
     if (!motivo) onConfirmar({ inicio: ini, termino: ter })
   }
-  const Campo = ({ rotulo, valor, setValor, atalhos, slot, placeholder }) => (
-    <div className="rounded-xl border border-border-strong p-3">
+  const Campo = ({ rotulo, valor, setValor, slot }) => (
+    <label className="block min-w-0 rounded-xl border border-border-strong p-2.5">
       <span className="block text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">{rotulo}</span>
       <Input
         data-slot={slot}
-        className="mt-1.5 w-[140px] [&_input]:text-[22px] [&_input]:font-extrabold [&_input]:tabular-nums"
+        className="mt-1.5 w-full [&_input]:text-center [&_input]:text-[22px] [&_input]:font-extrabold [&_input]:tabular-nums"
         value={valor}
         onChange={(e) => { setErro(''); setValor(formatHoraDigitada(e.target.value)) }}
         inputMode="numeric"
         maxLength={5}
-        placeholder={placeholder}
+        placeholder="--:--"
         aria-label={`Horário de ${rotulo.toLowerCase()}`}
       />
-      {atalhos.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {atalhos.map((a) => (
-            <button
-              key={`${a.rotulo}-${a.hhmm}`}
-              type="button"
-              aria-pressed={valor === a.hhmm}
-              onClick={() => { setErro(''); setValor(a.hhmm) }}
-              className={[
-                'min-h-[44px] rounded-full border px-3 text-[13px] font-semibold tabular-nums',
-                valor === a.hhmm ? 'border-primary bg-primary/15 text-primary' : 'border-border-strong text-foreground',
-              ].join(' ')}
-            >
-              {a.hhmm} {a.rotulo}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+    </label>
   )
   return (
     <div className="space-y-2.5 pb-1">
-      <p className="flex items-start gap-2 rounded-xl border border-destructive/45 bg-destructive/[0.07] px-3 py-2.5 text-[13px] leading-snug dark:border-destructive/60 dark:bg-destructive/15">
-        <AlertTriangle className="mt-px h-4 w-4 shrink-0 text-destructive" />
-        Esta cirurgia não foi marcada como iniciada. Informe também o início.
+      {aviso && (
+        <p className="flex items-center gap-2 rounded-xl border border-destructive/45 bg-destructive/[0.07] px-3 py-2 text-[13px] leading-snug dark:border-destructive/60 dark:bg-destructive/15">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" />
+          Não foi marcada como iniciada: informe o início.
+        </p>
+      )}
+      <div className="grid grid-cols-2 gap-2">
+        {Campo({ rotulo: 'Início', valor: ini, setValor: setIni, slot: 'inicio-hora' })}
+        {Campo({ rotulo: 'Término', valor: ter, setValor: setTer, slot: 'termino-real-hora' })}
+      </div>
+      <p className="text-center text-[13px] text-muted-foreground">
+        {durou != null
+          ? <>{ini} → {ter} · durou <b className="font-bold text-foreground">{rotuloMinutos(durou)}</b></>
+          : !horaCompleta(ini) && !horaCompleta(ter) ? 'Informe os dois para ver quanto durou.'
+            : !horaCompleta(ini) ? 'Informe o início para ver quanto durou.'
+              : !horaCompleta(ter) ? 'Informe o término para ver quanto durou.'
+                : 'O término não pode ser antes do início.'}
       </p>
-      {Campo({ rotulo: 'Início', valor: ini, setValor: setIni, atalhos: sugestoesInicio, slot: 'inicio-hora', placeholder: '--:--' })}
-      {Campo({ rotulo: 'Término', valor: ter, setValor: setTer, atalhos: [{ hhmm: agoraHHMM, rotulo: 'agora' }], slot: 'termino-real-hora', placeholder: '--:--' })}
       {erro && <p role="alert" className="text-center text-xs font-medium text-destructive">{erro}</p>}
       <Button className="min-h-[48px] w-full text-[15px] font-bold" disabled={!pronto} onClick={confirmar}>
         Confirmar os dois

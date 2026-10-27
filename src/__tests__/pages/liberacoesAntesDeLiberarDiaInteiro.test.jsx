@@ -91,10 +91,11 @@ describe('liberar confere o dia inteiro, nos três hospitais (dono 15/10)', () =
     tocarLiberar()
     expect(onToggle).not.toHaveBeenCalled()
     const folha = folhaAntes()
-    expect(folha.textContent).toContain('1 cirurgia está sem horário')
+    // 27/10: a folha conta só a ABERTA ("1 cirurgia aberta") — a terminada sem horário não segura
+    expect(folha.textContent).toContain('1 cirurgia aberta.')
     // diz onde está: hospital e turno, porque não é desta fila
     expect(folha.textContent).toContain('HRO · manhã')
-    expect(within(folha).getByRole('button', { name: 'Preencha 1 cirurgia para liberar' }).disabled).toBe(true)
+    expect(within(folha).getByRole('button', { name: 'Resolva 1 cirurgia para liberar' }).disabled).toBe(true)
     // ⚠️ MUDOU DE LADO (dono 23/10, caso Leandro): a cesariana da manhã do Leandro no
     // HRO, já com o Leonardo à tarde, em andamento, não tinha término a dar nem como ser
     // passada — só um horário inventado destravava a liberação. Passar vale também para a

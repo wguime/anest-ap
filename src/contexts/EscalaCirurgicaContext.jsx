@@ -1798,9 +1798,9 @@ export function EscalaCirurgicaProvider({ children }) {
 
   const actionsValue = useMemo(() => ({
     setData, prefetch, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista,
-    setStatusCirurgia, terminarSemHorario, adicionarCaso, setAnestesistaCasos, atualizarCaso, excluirCaso, adicionarAjuda, removerAjuda,
+    setStatusCirurgia, terminarSemHorario, desfazerTerminada, adicionarCaso, setAnestesistaCasos, atualizarCaso, excluirCaso, adicionarAjuda, removerAjuda,
     reordenarAjuda, definirOrigemLinha, definirSemAjudaLinha, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, definirSalasUrgencia, refresh, recarregar, garantirEscala,
-  }), [prefetch, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, terminarSemHorario, adicionarCaso, setAnestesistaCasos, atualizarCaso, excluirCaso, adicionarAjuda, removerAjuda, reordenarAjuda, definirOrigemLinha, definirSemAjudaLinha, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, definirSalasUrgencia, refresh, recarregar, garantirEscala])
+  }), [prefetch, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, terminarSemHorario, desfazerTerminada, adicionarCaso, setAnestesistaCasos, atualizarCaso, excluirCaso, adicionarAjuda, removerAjuda, reordenarAjuda, definirOrigemLinha, definirSemAjudaLinha, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, definirSalasUrgencia, refresh, recarregar, garantirEscala])
 
   const stateValue = useMemo(() => ({
     escalas: state.escalas, p4Hospital: state.p4Hospital, data, loading, hoje, erroCarga,

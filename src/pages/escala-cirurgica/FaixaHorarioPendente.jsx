@@ -1,294 +1,263 @@
 /**
- * FAIXA DO HORÁRIO PENDENTE (dono 05/10, modelo A em `.tmp/alerta-horario-pendente.html`):
- * alerta PÚBLICO, logo abaixo dos seletores, nas três abas e em qualquer hospital/turno.
- * "Horário pendente · N cirurgias" e, embaixo, os NOMES com quantas cirurgias cada um deve
- * — cabem os que couberem numa linha, o resto vira "+N". Toque abre a lista por
- * anestesista; cada linha abre a cirurgia já no cartão "Horário da cirurgia".
+ * HORÁRIO PENDENTE — INDIVIDUAL (dono 27/10, 3ª e 4ª rodadas de `.tmp/horarios-auditoria/`).
  *
- * Liberado com a cirurgia ABERTA (dono 05/10, mesma conversa: "ou se ele foi substituído
- * por algum colega"): a linha oferece os dois caminhos — preencher o horário, ou passar a
- * cirurgia para o colega que assumiu (o `DefinirAnestesistaSheet` de sempre, modo caso).
+ * Até 27/10 era o alerta PÚBLICO de 05/10 (a faixa com o nome de todos os que deviam) e, na
+ * Minhas, a caixa pessoal com a equipe embaixo. O dono pediu: "mantenha uma faixa desse
+ * vermelho cheio em todas as abas apenas dos usuários que têm horários a preencher, retire a
+ * visualização de toda a equipe (deixe apenas individual até o usuário resolver todos os
+ * horários, inclusive de dias anteriores)". Reabre 05/10 e 15/10.
  *
- * Regras em `src/lib/escalaHorarioPendente.js`; dados em `useHorarioPendente`. Sem
- * pendência a faixa não ocupa espaço — mas as folhas ficam montadas: preencher a última
- * cirurgia com o detalhe aberto não pode fechar o detalhe debaixo do dedo.
+ *  - Na aba MINHAS: a caixa com cabeçalho vermelho cheio (a tinta da antiga pílula "Você N"),
+ *    o número em destaque, os DIAS como cabeçalho e até 5 linhas; "Ver todas as N" abre a
+ *    lista inteira numa folha.
+ *  - Na Completa e nas Liberações: uma faixa de uma linha, a mesma tinta, que abre a lista.
+ *  - Quem não deve nada — e a conta de hospital, que não opera — não vê nada.
+ *  - O toque numa cirurgia abre DIRETO a folha do horário (não o detalhe): "Falta início" de
+ *    uma que está aberta pede só o início; com o início marcado e ainda aberta, só o término;
+ *    o resto, os dois lado a lado. Em dia passado os dois nascem vazios e o término não passa
+ *    da hora em que a cirurgia foi marcada Terminada.
  *
- * VOCÊ PRIMEIRO (dono 15/10/2026, modelo A de `.tmp/horario-pendente-estimulo.html`): o nome
- * de quem está logado quase sempre caía no "+N" — às 8h de 15/10 couberam 2 de 18. Agora
- * a pílula "Você N" (vermelho cheio) abre a fileira; quem tem cirurgia hoje e não deve nada
- * vê "Você em dia". Na aba Minhas, a faixa e a caixa pessoal viram UM bloco: as suas
- * cirurgias em cima e a equipe numa linha embaixo (toque abre a lista de todos). Conta de
- * hospital e quem não tem cirurgia no dia (`eu` nulo ou sem nada) veem a faixa de antes. A
- * regra de quem entra e sai do alerta não mudou.
+ * O que continua visível para os outros: o selo no card da cirurgia (Completa/Minhas) e no
+ * card de quem saiu (fila), e o relatório de adesão. Sem push (a escala não notifica, 30/07).
+ * Regras em `src/lib/escalaHorarioPendente.js`; hoje vem de `useHorarioPendente`, os dias
+ * anteriores de `useMinhasPendenciasAnteriores`. As folhas ficam montadas mesmo sem
+ * pendência: preencher a última com o detalhe aberto não pode fechá-lo debaixo do dedo.
  */
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ChevronRight, CircleCheck, ClockAlert, Users } from 'lucide-react'
-import { Button, Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/design-system'
-import { HOSPITAL_LABEL, HOSPITAIS, useEscalaCirurgica } from '@/contexts/EscalaCirurgicaContext'
+import { useMemo, useState } from 'react'
+import { ChevronRight, ClockAlert } from 'lucide-react'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/design-system'
+import { HOSPITAL_LABEL, useEscalaCirurgica } from '@/contexts/EscalaCirurgicaContext'
+import { useUser } from '@/contexts/UserContext'
 import { fraseClinica } from '@/lib/colunaLiberacao'
-import { quantasPilulasCabem, temCirurgiaNaConta } from '@/lib/escalaHorarioPendente'
+import { casoAberto, rotuloDiaRelatorio } from '@/lib/escalaHorarioPendente'
+import { ehDiaOperacionalAtual, erroHorarioReal, gravarInicioReal, gravarTerminoReal, limiteDoTermino } from '@/lib/escalaHorarioReal'
+import { ConfirmarHorario, ConfirmarInicioETermino } from './BlocoHorario'
 import CasoDetalheSheet from './CasoDetalheSheet'
-import DefinirAnestesistaSheet from './DefinirAnestesistaSheet'
 import SeloHorarioPendente from './SeloHorarioPendente'
 import { ID_MINHAS_PENDENCIAS } from './MeuPreenchimento'
-import { anestesistaDoCasoEh, normNome, salaExibicao } from './utils'
+import { salaExibicao } from './utils'
 
 const ROTULO_TURNO = { matutino: 'Manhã', vespertino: 'Tarde' }
 const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`
+/** Até quantas linhas a caixa da Minhas mostra (com 1 ou com 15, a cirurgia de hoje fica no mesmo lugar). */
+export const MAX_LINHAS_CAIXA = 5
 
-function Pilula({ nome, n }) {
-  return (
-    <span className="inline-flex h-[26px] shrink-0 items-center gap-[5px] whitespace-nowrap rounded-full border border-destructive/45 bg-card px-[9px] text-[12.5px] font-semibold text-foreground dark:border-destructive/60">
-      {nome} <b className="font-extrabold tabular-nums text-category-red-fg">{n}</b>
-    </span>
-  )
-}
-
-/** A pílula de quem está logado: "Você N" em vermelho cheio, ou "Você em dia" (n = 0). */
-function PilulaVoce({ n }) {
-  if (n > 0) {
-    return (
-      <span className="inline-flex h-[26px] shrink-0 items-center gap-[5px] whitespace-nowrap rounded-full border border-destructive bg-destructive px-[9px] text-[12.5px] font-semibold text-white">
-        Você <b className="font-extrabold tabular-nums">{n}</b>
-      </span>
-    )
+/** Os itens por dia, na ordem em que chegam (hoje primeiro, depois do mais recente ao mais antigo). */
+function porDia(itens, hoje) {
+  const grupos = []
+  for (const item of itens) {
+    const dia = item.data || hoje
+    let g = grupos.find((x) => x.dia === dia)
+    if (!g) { g = { dia, itens: [] }; grupos.push(g) }
+    g.itens.push(item)
   }
-  return (
-    <span className="inline-flex h-[26px] shrink-0 items-center gap-[5px] whitespace-nowrap rounded-full border border-success/75 bg-card px-[9px] text-[12.5px] font-semibold text-foreground">
-      <CircleCheck className="h-3.5 w-3.5 shrink-0 text-category-green-fg" aria-hidden="true" />
-      Você em dia
-    </span>
-  )
+  return grupos
+}
+const rotuloDia = (dia, hoje) => {
+  if (dia === hoje) return 'Hoje'
+  const r = rotuloDiaRelatorio(dia, hoje)
+  return r === 'ontem' ? `Ontem · ${rotuloDiaRelatorio(dia, null)}` : r
 }
 
-/**
- * Os nomes numa linha só. Mede as pílulas numa fileira invisível e mostra as que cabem,
- * reservando o "+N". Sem layout (teste, primeira pintura) mostra todas. `voce` (número)
- * põe a pílula de quem está logado na frente, sempre visível: 0 = "Você em dia".
- */
-function NomesNaFaixa({ grupos, voce = null, className = 'mt-[7px]' }) {
-  const trilhoRef = useRef(null)
-  const medidaRef = useRef(null)
-  const [cabem, setCabem] = useState(grupos.length)
-  const temVoce = voce != null
-  useLayoutEffect(() => {
-    const trilho = trilhoRef.current
-    const medida = medidaRef.current
-    if (!trilho || !medida) return undefined
-    const medir = () => {
-      const disponivel = trilho.clientWidth
-      if (!disponivel) { setCabem(grupos.length); return }
-      const filhos = [...medida.children]
-      // a pílula "Você" sempre aparece: o que sobra dela (e do espaço) é dos outros
-      const daVoce = temVoce ? filhos[0].offsetWidth + 6 : 0
-      const larguras = filhos.slice(temVoce ? 1 : 0, -1).map((el) => el.offsetWidth)
-      const mais = filhos[filhos.length - 1]?.offsetWidth || 40
-      setCabem(quantasPilulasCabem(larguras, disponivel - daVoce, { gap: 6, mais }))
-    }
-    medir()
-    if (typeof ResizeObserver === 'undefined') return undefined
-    const ro = new ResizeObserver(medir)
-    ro.observe(trilho)
-    return () => ro.disconnect()
-  }, [grupos, temVoce, voce])
-  const resto = grupos.length - cabem
-  // `overflow-hidden` AQUI é o que segura a fileira de medida (dono 06/10, relato de
-  // um Android): com todos os nomes de um dia cheio ela passava de 1.000px e vazava da
-  // tela; o Chrome do Android alarga a página até caber o vazamento, e as folhas
-  // `fixed bottom-0` passavam a abrir FORA da tela — escurecia e nenhum painel subia,
-  // em todas as abas. O iPhone ignora o vazamento. Cortar não muda a medida
-  // (`offsetWidth` de cada pílula) nem o desenho (a fileira visível já corta).
-  return (
-    <span className={`relative block overflow-hidden ${className}`}>
-      <span ref={trilhoRef} className="flex gap-1.5 overflow-hidden">
-        {temVoce && <PilulaVoce n={voce} />}
-        {grupos.slice(0, cabem).map((g) => <Pilula key={g.chave} nome={g.nome} n={g.itens.length} />)}
-        {resto > 0 && (
-          <span className="inline-flex h-[26px] shrink-0 items-center rounded-full border border-dashed border-destructive/45 bg-card px-[9px] text-[12.5px] font-semibold text-muted-foreground dark:border-destructive/60">
-            +{resto}
-          </span>
-        )}
-      </span>
-      {/* fileira de MEDIDA: as mesmas pílulas, fora do fluxo, invisíveis e cortadas
-          pelo pai (ver acima) — invisível ainda ocupa largura */}
-      <span ref={medidaRef} aria-hidden="true" className="pointer-events-none invisible absolute left-0 top-0 flex gap-1.5 whitespace-nowrap">
-        {temVoce && <PilulaVoce n={voce} />}
-        {grupos.map((g) => <Pilula key={g.chave} nome={g.nome} n={g.itens.length} />)}
-        <span className="inline-flex h-[26px] items-center rounded-full border px-[9px] text-[12.5px] font-semibold">+{grupos.length}</span>
-      </span>
-    </span>
-  )
-}
-
-function LinhaPendente({ item, podeEditar, onAbrir, onColegaAssumiu, dicaInicio = true }) {
+function LinhaPendente({ item, onAbrir, primeira }) {
   const { caso } = item
   const onde = [ROTULO_TURNO[item.turno], HOSPITAL_LABEL[item.hospital], salaExibicao(caso.sala)].filter(Boolean).join(' · ')
   const procedimento = fraseClinica(caso.procedimento)
   return (
-    <div className="border-t border-border/70">
-      <button
-        type="button"
-        onClick={() => onAbrir(item)}
-        aria-label={`Abrir a cirurgia ${caso.hora || ''} ${procedimento}, ${onde}`}
-        className="flex min-h-[56px] w-full items-center gap-2 py-1.5 text-left active:bg-muted/60"
-      >
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[11.5px] text-muted-foreground">{onde}</span>
-          <span className="mt-0.5 flex gap-1.5 text-sm">
-            {caso.hora && <b className="shrink-0 font-bold tabular-nums">{caso.hora}</b>}
-            <span className="truncate">{procedimento}</span>
-          </span>
-        </span>
-        <SeloHorarioPendente falta={item.falta} />
-        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-      </button>
-      {/* início VENCIDO (dono 05/10 à tarde): a cirurgia pode não ter começado de fato —
-          "Atrasada" é a saída honesta e pausa este alerta até o fim do turno */}
-      {dicaInicio && item.motivo === 'inicio' && (
-        <p className="pb-2.5 text-[12px] leading-snug text-muted-foreground">
-          Passou do horário agendado. Se ainda não começou, marque Atrasada.
-        </p>
-      )}
-      {item.aberta && (
-        <div className="pb-3">
-          <p className="text-[12px] font-semibold text-category-red-fg">Liberado com a cirurgia aberta</p>
-          <p className="text-[12px] leading-snug text-muted-foreground">
-            Preencha o horário ou, se um colega assumiu, passe a cirurgia para ele.
-          </p>
-          {podeEditar && (
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <Button size="sm" variant="outline" onClick={() => onAbrir(item)}>Preencher horário</Button>
-              <Button size="sm" variant="outline" onClick={() => onColegaAssumiu(item)}>Colega assumiu</Button>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-/**
- * A CAIXA PESSOAL da aba Minhas (dono 05/10: "na aba minhas deve aparecer o detalhamento do
- * anestesista de acordo com o login individual"; desenho do modelo C em
- * `.tmp/alerta-horario-pendente.html`): só as cirurgias de QUEM ESTÁ LOGADO, com o atalho
- * para preencher. Desde 15/10 (modelo A) ela É a faixa nessa aba: a equipe vem na linha de
- * baixo ("Na equipe" + os nomes), e o toque nela abre a lista de todos.
- */
-function MinhasPendencias({ itens, podeEditar, onAbrir, onColegaAssumiu, outros = [], onVerLista }) {
-  return (
-    <section
-      id={ID_MINHAS_PENDENCIAS}
-      aria-label={`Você tem ${plural(itens.length, 'cirurgia', 'cirurgias')} sem horário`}
-      className="scroll-mt-16 overflow-hidden rounded-xl border border-destructive/45 bg-destructive/[0.07] dark:border-destructive/60 dark:bg-destructive/[0.16]"
+    <button
+      type="button"
+      onClick={() => onAbrir(item)}
+      aria-label={`Informar o horário de ${caso.hora || ''} ${procedimento}, ${onde}`}
+      className={['flex min-h-[56px] w-full items-center gap-2 py-1.5 text-left active:bg-muted/60', primeira ? '' : 'border-t border-border/70'].join(' ')}
     >
-      <h3 className="flex items-center gap-2 px-3 pb-1 pt-3 text-[15px] font-bold text-category-red-fg">
-        <ClockAlert className="h-[19px] w-[19px] shrink-0" aria-hidden="true" />
-        Você tem {plural(itens.length, 'cirurgia', 'cirurgias')} sem horário
-      </h3>
-      <p className="pb-2 pl-[39px] pr-3 text-[12px] leading-snug text-muted-foreground">
-        Elas aparecem para todos até início e término serem preenchidos. Toque para preencher.
-        {/* a dica do início vencido UMA vez aqui, não em cada linha (a caixa é de uma pessoa só) */}
-        {itens.some((i) => i.motivo === 'inicio') && ' Se alguma ainda não começou, marque Atrasada.'}
-      </p>
-      <div className="bg-card px-3">
-        {itens.map((item) => (
-          <LinhaPendente
-            key={item.caso.id || `${item.hospital}-${item.caso.sala}-${item.caso.ordem}`}
-            item={item}
-            podeEditar={podeEditar}
-            onAbrir={onAbrir}
-            onColegaAssumiu={onColegaAssumiu}
-            dicaInicio={false}
-          />
-        ))}
-      </div>
-      {outros.length > 0 && (
-        <button
-          type="button"
-          onClick={onVerLista}
-          aria-label={`Na equipe: ${plural(outros.length, 'anestesista', 'anestesistas')} com horário pendente. Ver a lista`}
-          className="flex min-h-[44px] w-full items-center gap-1.5 border-t border-destructive/45 pl-3 pr-2 text-left transition-opacity active:opacity-80 dark:border-destructive/60"
-        >
-          <span className="flex shrink-0 items-center gap-[5px] whitespace-nowrap text-[12.5px] font-bold text-foreground/75">
-            <Users className="h-[15px] w-[15px] shrink-0 text-category-red-fg" aria-hidden="true" />
-            Na equipe
-          </span>
-          <NomesNaFaixa grupos={outros} className="min-w-0 flex-1" />
-          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-        </button>
-      )}
-    </section>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[11.5px] text-muted-foreground">{onde}</span>
+        <span className="mt-0.5 flex gap-1.5 text-sm">
+          {caso.hora && <b className="shrink-0 font-bold tabular-nums">{caso.hora}</b>}
+          <span className="truncate">{procedimento}</span>
+        </span>
+      </span>
+      <SeloHorarioPendente falta={item.falta} />
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+    </button>
   )
 }
 
+function ListaPorDia({ itens, hoje, onAbrir, max = Infinity }) {
+  const total = new Map()
+  for (const i of itens) total.set(i.data || hoje, (total.get(i.data || hoje) || 0) + 1)
+  return porDia(itens.slice(0, max), hoje).map((g, gi) => (
+    <section key={g.dia} aria-label={`${rotuloDia(g.dia, hoje)}: ${plural(total.get(g.dia), 'cirurgia', 'cirurgias')}`}>
+      <p className={['flex items-center pb-0.5 pt-2.5 text-[11.5px] font-extrabold uppercase tracking-[0.05em] text-muted-foreground', gi ? 'border-t border-border/70' : ''].join(' ')}>
+        {rotuloDia(g.dia, hoje)}
+        <span className="ml-auto font-bold normal-case tracking-normal">{total.get(g.dia)}</span>
+      </p>
+      {g.itens.map((item, i) => (
+        <LinhaPendente key={item.caso.id || `${item.hospital}-${item.caso.sala}-${item.caso.ordem}`} item={item} onAbrir={onAbrir} primeira={i === 0} />
+      ))}
+    </section>
+  ))
+}
+
 /**
- * @param {object}  props.pendencias  `useHorarioPendente()` — itens e grupos de HOJE
- * @param {Array?}  props.minhas      as pendências de quem está logado (critério da aba Minhas)
- * @param {object?} props.eu          `{ uid, alias, resolverUid }`; nulo = sem "Você" (conta de hospital)
- * @param {boolean} props.abaMinhas   na aba Minhas a caixa pessoal faz as vezes da faixa
+ * @param {Array}   props.minhas      as pendências de HOJE de quem está logado
+ * @param {object}  props.anteriores  `useMinhasPendenciasAnteriores()` — itens, informar, naoAconteceu
+ * @param {object?} props.eu          `{ uid, alias, resolverUid }`; nulo = conta de hospital (nada aparece)
+ * @param {boolean} props.abaMinhas   na aba Minhas, a caixa; nas outras, a faixa de uma linha
  */
-export default function FaixaHorarioPendente({ pendencias, podeEditar = false, minhas = null, eu = null, abaMinhas = false }) {
-  const { escalas, hoje } = useEscalaCirurgica()
+export default function FaixaHorarioPendente({ minhas = null, anteriores = null, eu = null, abaMinhas = false, podeEditar = false }) {
+  const { escalas, hoje, setStatusCirurgia, atualizarCaso } = useEscalaCirurgica()
+  const { user } = useUser()
   const [lista, setLista] = useState(false)
-  const [detalhe, setDetalhe] = useState(null) // { hospital, caso, turno }
-  const [definir, setDefinir] = useState(null) // { hospital, sala, casosAlvo, turno }
-  const { itens = [], grupos = [] } = pendencias || {}
+  const [folha, setFolha] = useState(null) // o item cujo horário se informa
+  const [detalhe, setDetalhe] = useState(null) // { hospital, caso, turno } — "Ver a cirurgia"
 
-  // VOCÊ PRIMEIRO (dono 15/10): o próprio grupo sai da fileira dos nomes e vira a pílula
-  // "Você" na frente — a conta é a da caixa pessoal (`minhas`, o login manda).
-  const meus = minhas?.length || 0
-  const aliasEu = eu?.alias ? normNome(eu.alias) : ''
-  const outros = useMemo(() => (eu
-    ? grupos.filter((g) => !((eu.uid && (g.uid === eu.uid || g.chave === eu.uid)) || (aliasEu && g.chave === aliasEu)))
-    : grupos), [grupos, eu, aliasEu])
-  // "Você em dia" só para quem tem cirurgia hoje na conta do alerta e não deve nada
-  const emDia = useMemo(() => !!eu && !meus && itens.length > 0 && temCirurgiaNaConta(
-    HOSPITAIS.map((h) => escalas?.[h]),
-    { hoje, ehMinha: (caso) => anestesistaDoCasoEh(caso, eu) },
-  ), [eu, meus, itens.length, escalas, hoje])
-  const voce = meus > 0 ? meus : emDia ? 0 : null
+  const itens = useMemo(
+    () => (eu ? [...(minhas || []), ...(anteriores?.itens || [])] : []),
+    [eu, minhas, anteriores?.itens],
+  )
+  const deDiasAnteriores = eu ? anteriores?.itens?.length || 0 : 0
+  const userId = user?.uid || user?.id
+  const abrir = (item) => { setLista(false); setFolha(item) }
 
-  const abrirDetalhe = (item) => {
-    setLista(false)
-    setDetalhe({ hospital: item.hospital, caso: item.caso, turno: item.turno })
+  // ── a folha do horário de UMA cirurgia ──────────────────────────────────────
+  const conteudoDaFolha = () => {
+    if (!folha) return null
+    const deHoje = !folha.data
+    const escala = deHoje ? escalas?.[folha.hospital] : null
+    const vivo = (escala?.casos || []).find((c) => c.id === folha.caso.id) || folha.caso
+    const aberta = casoAberto(vivo)
+    const limite = limiteDoTermino(vivo)
+    const dataEscala = deHoje ? escala?.data : folha.data
+    const fechar = () => setFolha(null)
+    const titulo = [vivo.hora, fraseClinica(vivo.procedimento)].filter(Boolean).join(' ')
+    const onde = [
+      !deHoje && rotuloDia(folha.data, hoje),
+      ROTULO_TURNO[folha.turno], HOSPITAL_LABEL[folha.hospital], salaExibicao(vivo.sala),
+    ].filter(Boolean).join(' · ')
+    // só o início: "Falta início" de uma cirurgia de hoje ainda aberta (pode estar correndo)
+    if (deHoje && escala && aberta && !vivo.inicioReal && folha.falta === 'ini') {
+      return {
+        titulo: `Início · ${titulo}`,
+        nota: <>{onde}. Confirme o horário em que a cirurgia começou.</>,
+        corpo: (
+          <ConfirmarHorario
+            key={`${vivo.id}-inicio`}
+            campo="inicio"
+            validar={(hhmm) => erroHorarioReal({ campo: 'inicio', hhmm, dataEscala })}
+            onConfirmar={(hhmm) => { fechar(); gravarInicioReal({ escala, caso: vivo, hhmm, userId, setStatusCirurgia, atualizarCaso }).catch(() => {}) }}
+          />
+        ),
+      }
+    }
+    // só o término: hoje, com o início marcado e ainda aberta (o "agora" vale)
+    if (deHoje && escala && aberta && vivo.inicioReal) {
+      return {
+        titulo: `Término · ${titulo}`,
+        nota: <>{onde}. Confirme o horário em que a cirurgia terminou.</>,
+        corpo: (
+          <ConfirmarHorario
+            key={`${vivo.id}-termino`}
+            campo="termino"
+            inicioReal={vivo.inicioReal}
+            validar={(hhmm) => erroHorarioReal({ campo: 'termino', hhmm, inicioReal: vivo.inicioReal, dataEscala })}
+            onConfirmar={(hhmm) => { fechar(); gravarTerminoReal({ escala, caso: vivo, hhmm, userId, setStatusCirurgia, atualizarCaso }).catch(() => {}) }}
+          />
+        ),
+      }
+    }
+    // os dois, lado a lado (dono 27/10, 7ª rodada)
+    return {
+      titulo: `Início e término · ${titulo}`,
+      nota: <>{onde}{limite ? <> · <b className="font-semibold text-foreground">terminou antes de {limite}</b></> : null}</>,
+      corpo: (
+        <ConfirmarInicioETermino
+          key={`${vivo.id}-ambos`}
+          inicio={vivo.inicioReal || ''}
+          termino={vivo.terminoReal || ''}
+          terminoAgora={deHoje && aberta && ehDiaOperacionalAtual(dataEscala)}
+          aviso={deHoje && (vivo.statusCirurgia || 'agendada') === 'agendada'}
+          validar={({ inicio, termino }) => erroHorarioReal({ campo: 'inicio', hhmm: inicio, dataEscala, limite })
+            || erroHorarioReal({ campo: 'termino', hhmm: termino, inicioReal: inicio, dataEscala, limite }) || ''}
+          onConfirmar={({ inicio, termino }) => {
+            const item = folha
+            fechar()
+            if (deHoje && escala) {
+              gravarTerminoReal({ escala, caso: vivo, hhmm: termino, inicioReal: inicio, userId, setStatusCirurgia, atualizarCaso }).catch(() => {})
+            } else {
+              anteriores?.informar(item, { inicio, termino })
+            }
+          }}
+        />
+      ),
+    }
   }
-  const colegaAssumiu = (item) => {
-    setLista(false)
-    setDefinir({ hospital: item.hospital, sala: item.caso.sala, casosAlvo: [item.caso], turno: item.turno })
+  const conteudo = conteudoDaFolha()
+  const naoAconteceu = () => {
+    const item = folha
+    setFolha(null)
+    if (!item.data) {
+      const escala = escalas?.[item.hospital]
+      const vivo = (escala?.casos || []).find((c) => c.id === item.caso.id) || item.caso
+      if (escala) setStatusCirurgia(escala, vivo, 'suspensa', { userId }).catch(() => {})
+    } else {
+      anteriores?.naoAconteceu(item)
+    }
   }
 
-  const resumoVoce = voce == null ? '' : voce > 0 ? `, ${voce} sua${voce === 1 ? '' : 's'}` : '. Você em dia'
   return (
     <>
-      {itens.length > 0 && !(abaMinhas && meus > 0) && (
+      {itens.length > 0 && (abaMinhas ? (
+        <section
+          id={ID_MINHAS_PENDENCIAS}
+          aria-label={`Você tem ${plural(itens.length, 'cirurgia', 'cirurgias')} sem horário`}
+          className="scroll-mt-16 overflow-hidden rounded-xl border-[1.5px] border-destructive bg-card"
+        >
+          {/* VERMELHO CHEIO (dono 27/10, 3ª rodada: "mais vermelho e mais chamativo"), a
+              tinta da antiga pílula "Você N"; sem os espaços vazios em cima e embaixo */}
+          <div className="bg-destructive px-3 pb-2 pt-[9px] text-white">
+            <h3 className="flex items-center gap-2 text-[15.5px] font-extrabold leading-tight">
+              <ClockAlert className="h-[19px] w-[19px] shrink-0" aria-hidden="true" />
+              {itens.length === 1 ? 'Cirurgia sem horário' : 'Cirurgias sem horário'}
+              <span className="ml-auto inline-flex h-[22px] min-w-[24px] items-center justify-center rounded-full bg-white px-[7px] text-[12.5px] font-extrabold tabular-nums text-destructive">
+                {itens.length}
+              </span>
+            </h3>
+            <p className="ml-[27px] mt-0.5 text-[12px] leading-snug text-white/90">
+              {itens.length === 1 ? 'Fica' : 'Ficam'} aqui até você preencher início e término.
+            </p>
+          </div>
+          <div className="px-3">
+            <ListaPorDia itens={itens} hoje={hoje} onAbrir={abrir} max={MAX_LINHAS_CAIXA} />
+          </div>
+          {itens.length > MAX_LINHAS_CAIXA && (
+            <button
+              type="button"
+              onClick={() => setLista(true)}
+              className="flex min-h-[44px] w-full items-center justify-center gap-1 border-t border-border/70 text-[13.5px] font-bold text-primary active:bg-muted/60"
+            >
+              Ver todas as {itens.length}
+              <ChevronRight className="h-4 w-4" aria-hidden="true" />
+            </button>
+          )}
+        </section>
+      ) : (
         <button
           type="button"
           onClick={() => setLista(true)}
-          aria-label={`Horário pendente: ${plural(itens.length, 'cirurgia', 'cirurgias')} de ${plural(grupos.length, 'anestesista', 'anestesistas')}${resumoVoce}. Ver a lista`}
-          className="block w-full rounded-xl border border-destructive/45 bg-destructive/[0.07] px-3 pb-2.5 pt-2 text-left transition-opacity active:opacity-80 dark:border-destructive/60 dark:bg-destructive/[0.16]"
+          aria-label={`Você tem ${plural(itens.length, 'cirurgia', 'cirurgias')} sem horário. Ver a lista`}
+          className="flex min-h-[48px] w-full items-center gap-2 rounded-xl bg-destructive py-1.5 pl-3 pr-2.5 text-left text-white transition-opacity active:opacity-85"
         >
-          <span className="flex min-h-[22px] items-center gap-[7px]">
-            <ClockAlert className="h-[18px] w-[18px] shrink-0 text-category-red-fg" aria-hidden="true" />
-            <span className="text-sm font-bold text-category-red-fg">Horário pendente</span>
-            <span className="ml-auto flex items-center gap-0.5 whitespace-nowrap text-[12.5px] font-semibold text-foreground/75">
-              {plural(itens.length, 'cirurgia', 'cirurgias')}
-              <ChevronRight className="h-[15px] w-[15px] text-muted-foreground" aria-hidden="true" />
+          <ClockAlert className="h-[19px] w-[19px] shrink-0" aria-hidden="true" />
+          <span className="min-w-0 flex-1 leading-tight">
+            <span className="block text-[15px] font-extrabold">Você tem {plural(itens.length, 'cirurgia', 'cirurgias')} sem horário</span>
+            <span className="block text-[11.5px] font-medium text-white/90">
+              {deDiasAnteriores ? `${deDiasAnteriores} de ${deDiasAnteriores === 1 ? 'dia anterior' : 'dias anteriores'} · ` : ''}toque para ver
             </span>
           </span>
-          <NomesNaFaixa grupos={outros} voce={voce} />
+          <ChevronRight className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
         </button>
-      )}
-
-      {abaMinhas && meus > 0 && (
-        <MinhasPendencias
-          itens={minhas}
-          podeEditar={podeEditar}
-          onAbrir={abrirDetalhe}
-          onColegaAssumiu={colegaAssumiu}
-          outros={outros}
-          onVerLista={() => setLista(true)}
-        />
-      )}
+      ))}
 
       {lista && (
         <Sheet open onOpenChange={(o) => !o && setLista(false)}>
@@ -296,36 +265,50 @@ export default function FaixaHorarioPendente({ pendencias, podeEditar = false, m
             <SheetHeader className="pb-1">
               <SheetTitle className="flex items-center gap-2 text-[17px] font-bold">
                 <ClockAlert className="h-[19px] w-[19px] shrink-0 text-category-red-fg" aria-hidden="true" />
-                Horário pendente
+                Suas cirurgias sem horário
               </SheetTitle>
               <SheetDescription className="mt-1 text-[12.5px] leading-snug">
-                {plural(itens.length, 'cirurgia', 'cirurgias')} · {plural(grupos.length, 'anestesista', 'anestesistas')}.
-                {' '}Cada uma sai da lista quando início e término forem preenchidos, por quem fez ou por qualquer colega.
+                {plural(itens.length, 'cirurgia', 'cirurgias')}. Cada uma sai daqui quando início e término forem preenchidos; o aviso some quando acabar a última.
               </SheetDescription>
             </SheetHeader>
             <div className="px-4 pb-6">
-              {!itens.length && (
-                <p className="py-6 text-center text-[13px] text-muted-foreground">Nenhum horário pendente.</p>
-              )}
-              {grupos.map((g) => (
-                <section key={g.chave} aria-label={`${g.nome}: ${plural(g.itens.length, 'cirurgia', 'cirurgias')} sem horário`}>
-                  <h3 className="flex items-center gap-2 pb-1.5 pt-3 text-[15px] font-bold">
-                    {g.nome}
-                    <span className="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-destructive px-1.5 text-[12px] font-extrabold tabular-nums text-white">
-                      {g.itens.length}
-                    </span>
-                  </h3>
-                  {g.itens.map((item) => (
-                    <LinhaPendente
-                      key={`${g.chave}-${item.caso.id || `${item.hospital}-${item.caso.sala}-${item.caso.ordem}`}`}
-                      item={item}
-                      podeEditar={podeEditar}
-                      onAbrir={abrirDetalhe}
-                      onColegaAssumiu={colegaAssumiu}
-                    />
-                  ))}
-                </section>
-              ))}
+              {itens.length
+                ? <ListaPorDia itens={itens} hoje={hoje} onAbrir={abrir} />
+                : <p className="py-6 text-center text-[13px] text-muted-foreground">Nenhum horário pendente.</p>}
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
+
+      {folha && conteudo && (
+        <Sheet open onOpenChange={(o) => !o && setFolha(null)}>
+          <SheetContent side="bottom" className="!h-auto max-h-[88vh]">
+            <SheetHeader className="pb-2">
+              <SheetTitle className="text-[17px] leading-tight">{conteudo.titulo}</SheetTitle>
+              <SheetDescription className="mt-1 text-[12.5px] leading-snug">{conteudo.nota}</SheetDescription>
+            </SheetHeader>
+            <div className="px-4 pb-5 pt-1">
+              {conteudo.corpo}
+              <div className="mt-1 flex flex-wrap items-center justify-center gap-x-5">
+                {!folha.data && escalas?.[folha.hospital] && (
+                  <button
+                    type="button"
+                    className="flex min-h-[44px] items-center text-[13px] font-semibold text-primary active:opacity-70"
+                    onClick={() => { const f = folha; setFolha(null); setDetalhe({ hospital: f.hospital, caso: f.caso, turno: f.turno }) }}
+                  >
+                    Ver a cirurgia
+                  </button>
+                )}
+                {casoAberto(folha.caso) && (
+                  <button
+                    type="button"
+                    className="flex min-h-[44px] items-center text-[13px] font-semibold text-muted-foreground active:opacity-70"
+                    onClick={naoAconteceu}
+                  >
+                    Não aconteceu (suspensa)
+                  </button>
+                )}
+              </div>
             </div>
           </SheetContent>
         </Sheet>
@@ -337,21 +320,7 @@ export default function FaixaHorarioPendente({ pendencias, podeEditar = false, m
           caso={detalhe.caso}
           turno={detalhe.turno}
           onClose={() => setDetalhe(null)}
-          podeDefinirAnestesista={() => podeEditar}
-          onDefinirAnestesista={(sala, casoAlvo) => setDefinir({
-            hospital: detalhe.hospital, sala, casosAlvo: casoAlvo ? [casoAlvo] : null, turno: detalhe.turno,
-          })}
           podeEditar={podeEditar}
-        />
-      )}
-
-      {definir && escalas?.[definir.hospital] && (
-        <DefinirAnestesistaSheet
-          escala={escalas[definir.hospital]}
-          sala={definir.sala}
-          casosAlvo={definir.casosAlvo}
-          turno={definir.turno}
-          onClose={() => setDefinir(null)}
         />
       )}
     </>

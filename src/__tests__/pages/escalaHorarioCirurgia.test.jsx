@@ -219,14 +219,14 @@ describe('confirmar o horário: pelos blocos INÍCIO/TÉRMINO', () => {
   })
 })
 
-describe('tempo estimado: o painel de sempre, horário primeiro', () => {
-  it('o botão Estimado abre o painel no "Horário de término"; a duração grava a previsão', async () => {
+// 27/10 (Modelo 2): o painel não tem mais alternador — horário e durações à vista
+describe('tempo estimado: o painel de sempre, horário e durações à vista', () => {
+  it('o botão Estimado abre o painel com o campo e a grade; a duração grava a previsão', async () => {
     detalhe(emCurso)
     fireEvent.click(within(cartao()).getByRole('button', { name: /Tempo estimado desta cirurgia/ }))
     const folha = folhaDeCima()
     expect(within(folha).getByText('Tempo estimado desta cirurgia')).toBeTruthy()
-    expect(within(folha).getByRole('tab', { name: 'Horário de término' })).toHaveAttribute('aria-selected', 'true')
-    fireEvent.click(within(folha).getByRole('tab', { name: 'Tempo faltante' }))
+    expect(folha.querySelector('[data-slot="termino-hora"]')).toBeTruthy()
     fireEvent.click(within(folha).getByRole('button', { name: '1h' }))
     await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
     expect(atualizarCaso.mock.calls[0][2]).toEqual({ terminoPrevisto: '16:45' })
@@ -246,20 +246,23 @@ describe('Liberações: folha do "+ Tempo total"', () => {
     montarFila([emCurso, proxima])
     abrirTempoTotal()
     const folha = screen.getByRole('dialog')
-    expect(within(folha).getByText('Tempo total estimado · Paulo Tonini')).toBeTruthy()
-    expect(folha.textContent).toContain('Até quando Paulo termina todas as 2 cirurgias em que está escalado.')
+    expect(within(folha).getByText('Tempo total · Paulo Tonini')).toBeTruthy()
+    expect(folha.textContent).toContain('Até quando Paulo fica, contando as 2 cirurgias.')
   })
 
   it('cada cirurgia: tempo estimado ao lado do nome; início e término exatos embaixo', () => {
     montarFila([emCurso, proxima])
     abrirTempoTotal()
     const est = screen.getByRole('button', { name: `Tempo estimado de 13:30 ${rot(COLE)}: 16:30` })
-    expect(within(est).getByText('faltam 45min')).toBeTruthy()
-    expect(within(screen.getByRole('button', { name: `Tempo estimado de 15:30 ${rot(HERNIA)}: não informado` })).getByText('Tempo estimado')).toBeTruthy()
+    expect(within(est).getByText('16:30')).toBeTruthy()
+    // 27/10: quanto falta desceu para o bloco Término; o estimado é um link leve ao lado do nome
+    expect(screen.getByText('faltam 45min')).toBeTruthy()
+    expect(within(screen.getByRole('button', { name: `Tempo estimado de 15:30 ${rot(HERNIA)}: não informado` })).getByText('estimar')).toBeTruthy()
     const ini = screen.getByRole('button', { name: `Início de 13:30 ${rot(COLE)}: 14:05` })
     expect(within(ini).getByText('há 1h40')).toBeTruthy()
     expect(screen.getByRole('button', { name: `Término de 13:30 ${rot(COLE)}: não informado` })).toBeTruthy()
   })
+
 
   it('INÍCIO abre a confirmação; "Confirmar" grava pelo onDefinirInicioCaso e a folha do total fica', async () => {
     const onDefinirInicioCaso = vi.fn(async () => {})
@@ -271,7 +274,7 @@ describe('Liberações: folha do "+ Tempo total"', () => {
     expect(within(folha).getByText(/Ao confirmar, ela passa a Iniciada\./)).toBeTruthy()
     fireEvent.click(within(folha).getByRole('button', { name: 'Confirmar início às 15:45' }))
     await waitFor(() => expect(onDefinirInicioCaso).toHaveBeenCalledWith('c2', '15:45'))
-    expect(screen.getByText('Tempo total estimado · Paulo Tonini')).toBeTruthy()
+    expect(screen.getByText('Tempo total · Paulo Tonini')).toBeTruthy()
   })
 
   it('TÉRMINO abre a confirmação e avisa que a cirurgia sai da lista; grava pelo onDefinirTerminoRealCaso', async () => {

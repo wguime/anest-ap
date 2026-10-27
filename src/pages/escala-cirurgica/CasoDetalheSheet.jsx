@@ -49,8 +49,8 @@ import useRosterResidentes from '@/hooks/useRosterResidentes'
 import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
 import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
 import { carimboDeStatus } from '@/lib/escalaCirurgicaStatus'
-import { duracaoMin, ehDiaOperacionalAtual, erroHorarioReal, gravarInicioReal, gravarTerminoReal, inicioDefinidoConsultorio, rotuloMinutos, sugestoesDeInicio } from '@/lib/escalaHorarioReal'
-import PainelTempo, { formatFaltante } from './PainelTempo'
+import { duracaoMin, ehDiaOperacionalAtual, erroHorarioReal, gravarInicioReal, gravarTerminoReal, inicioDefinidoConsultorio, rotuloMinutos, terminoDaDuracao } from '@/lib/escalaHorarioReal'
+import PainelTempo, { formatFaltante, rotuloDuracao } from './PainelTempo'
 import { BlocoHorario, BotaoEstimado, ConfirmarHorario, ConfirmarInicioETermino } from './BlocoHorario'
 import useAgoraMinutoEscala from './useAgoraMinutoEscala'
 import { espelhoTempoTotal, nomeAnestesistaExibicao, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso, terminoEncadeado, procedimentoComContinuacao, procedimentoBaseDoCaso } from './utils'
@@ -175,6 +175,20 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
       }
     } catch { /* toast de erro já vem do context */ }
   }
+  // ESTIMADO QUE CONTA DO INÍCIO (dono 27/10, 5ª rodada): na cirurgia que ainda não
+  // começou, o tempo estimado é a DURAÇÃO — o gatilho a converte em término previsto no
+  // toque em Iniciada. Grava a duração e solta o término antigo (que era horário fixo); se
+  // ele era o total da pessoa (espelho de 30/07), o espelho limpa junto.
+  const definirDuracaoCaso = async (minutos) => {
+    try {
+      await atualizarCaso(escala, vivo.id, { duracaoEstimadaMin: minutos || null, terminoPrevisto: null })
+      const esp = !isDemo && vivo.terminoPrevisto ? espelhoTempoTotal(escala, vivo, '', { hospitalLabels: HOSPITAL_LABEL }) : null
+      if (esp) {
+        await setLinhaOverride(escala, { chave: esp.chave, anestesista: esp.nome }, esp.override,
+          { userId: user?.uid || user?.id, userName: user?.displayName }, turno)
+      }
+    } catch { /* toast de erro já vem do context */ }
+  }
 
   // CONFIRMAR O HORÁRIO (dono 02/10, tarde): o card abre pelo BLOCO (início/término)
   // e pelo BOTÃO de status (Iniciada/Terminada). A diferença é o que o "Confirmar" faz:
@@ -272,10 +286,13 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
   const emSalaMin = principal === 'iniciada' && vivo.inicioReal && ehDiaOperacionalAtual(escala?.data)
     ? duracaoMin(vivo.inicioReal, agoraHHMM) : null
   const durouMin = terminada ? duracaoMin(vivo.inicioReal, vivo.terminoReal) : null
+  // agendada com duração estimada (27/10): "2h do início" até ela começar
+  const naoComecou = principal === 'agendada'
+  const duracaoEst = naoComecou && Number(vivo.duracaoEstimadaMin) > 0 ? Number(vivo.duracaoEstimadaMin) : null
   const subTermino = durouMin != null ? `durou ${rotuloMinutos(durouMin)}`
     : faltaTermino
       ? (faltaTermino.atrasada ? `${faltaTermino.texto.replace('+', '')} além` : `faltam ${faltaTermino.texto.replace('~', '')}`)
-      : ''
+      : duracaoEst ? `${rotuloDuracao(duracaoEst)} do início` : ''
   // validação do card de confirmação: reabrir pelo "Iniciada" apaga o término, então
   // só o bloco (que corrige sem reabrir) compara o início com ele
   const validarConfirmacao = (hhmm) => (confirmar?.campo === 'inicio'
@@ -366,9 +383,10 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                 {!terminada && (
                   <span className="ml-auto">
                     <BotaoEstimado
-                      valor={vivo.terminoPrevisto || ''}
+                      valor={duracaoEst ? rotuloDuracao(duracaoEst) : (vivo.terminoPrevisto || '')}
                       prefixo="Estimado"
-                      aviso={!!faltaTermino?.atrasada}
+                      detalhe={duracaoEst ? '· do início' : ''}
+                      aviso={!duracaoEst && !!faltaTermino?.atrasada}
                       nomeAcessivel="Tempo estimado desta cirurgia"
                       onClick={podeEditarCaso ? () => setEditor('tempo') : null}
                     />
@@ -399,15 +417,27 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
               {editor === 'tempo' && (
                 <EditorSheet
                   titulo="Tempo estimado desta cirurgia"
-                  nota="Quando esta cirurgia deve terminar. Na fila conta enquanto está Iniciada."
+                  nota={naoComecou
+                    ? 'Ainda não começou: a duração começa a contar quando ela for marcada Iniciada.'
+                    : 'Quando esta cirurgia deve terminar. Na fila conta enquanto está Iniciada.'}
                   onClose={() => setEditor(null)}
                 >
-                  <PainelTempo
-                    atual={vivo.terminoPrevisto || ''}
-                    horaExata={horaExata}
-                    onHoraExata={setHoraExata}
-                    onDefinir={(v, meta) => { definirTerminoCaso(v, meta); setEditor(null) }}
-                  />
+                  {naoComecou ? (
+                    <PainelTempo
+                      soDuracao
+                      duracaoAtual={duracaoEst}
+                      exemploDuracao={(min) => (/^\d{1,2}:\d{2}$/.test(String(vivo.hora || '').trim())
+                        ? `Se começar às ${vivo.hora.trim()}, termina às ${terminoDaDuracao(vivo.hora.trim(), min)}.` : null)}
+                      onDefinir={(_v, meta) => { definirDuracaoCaso(meta?.minutos ?? null); setEditor(null) }}
+                    />
+                  ) : (
+                    <PainelTempo
+                      atual={vivo.terminoPrevisto || ''}
+                      horaExata={horaExata}
+                      onHoraExata={setHoraExata}
+                      onDefinir={(v, meta) => { definirTerminoCaso(v, meta); setEditor(null) }}
+                    />
+                  )}
                 </EditorSheet>
               )}
             </article>
@@ -419,8 +449,8 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
               onClose={() => setConfirmar(null)}
             >
               <ConfirmarInicioETermino
-                sugestoesInicio={sugestoesDeInicio(vivo, escala?.casos || [])}
                 termino={vivo.terminoReal || ''}
+                terminoAgora={ehDiaOperacionalAtual(escala?.data)}
                 validar={({ inicio, termino }) => erroHorarioReal({ campo: 'inicio', hhmm: inicio, dataEscala: escala?.data })
                   || erroHorarioReal({ campo: 'termino', hhmm: termino, inicioReal: inicio, dataEscala: escala?.data }) || ''}
                 onConfirmar={confirmarAmbos}
@@ -441,6 +471,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                 // iniciada ANTES de 02/10 (sem início gravado): propõe a hora em que
                 // foi marcada iniciada — é a que o trigger gravaria se já existisse
                 sugestao={confirmar.campo === 'inicio' && carimbo?.status === 'iniciada' ? { hhmm: carimbo.hora, rotulo: 'marcado' } : null}
+                inicioReal={vivo.inicioReal || ''}
                 validar={validarConfirmacao}
                 onConfirmar={confirmarHorario}
                 // o início da TERMINADA não se apaga (dono 14/10: início obrigatório)

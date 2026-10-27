@@ -18,7 +18,6 @@
 import { useState } from 'react'
 import { Button, Input, Select } from '@/design-system'
 import { agora } from '@/lib/devClock'
-import SegmentedSelector from './SegmentedSelector'
 import { diffRelogioMin } from './utils'
 
 /** Atalhos de duração da grade (minutos) — o resto vive em "Outro". Sete atalhos +
@@ -140,21 +139,39 @@ function paraMinutos(hhmm) {
   return h > 23 || min > 59 ? null : h * 60 + min
 }
 
-export default function PainelTempo({ horarios, atual, horaExata, onHoraExata, onDefinir }) {
+/** Atalhos da DURAÇÃO de uma cirurgia que ainda não começou (dono 27/10, 5ª rodada). */
+export const ATALHOS_DURACAO_MIN = [30, 45, 60, 90, 120, 150, 180]
+
+/**
+ * O PAINEL (dono 27/10, Modelo 2 da 4ª rodada de `.tmp/horarios-auditoria/`): "Horário de
+ * término" e "Tempo faltante" UM ACIMA DO OUTRO, os dois à vista e qualquer um grava, como
+ * antes — sai o alternador de 17/08 e, com ele, a caixa de altura fixa e o "abre sempre no
+ * horário de término" (02/10). O próprio campo mostra o horário gravado, com o "faltam X" e
+ * o "Limpar" ao lado (o "Limpar" só existe com valor); a grade de durações vem logo abaixo.
+ *
+ * `soDuracao` (dono 27/10, 5ª rodada): o estimado de uma cirurgia que AINDA NÃO COMEÇOU é uma
+ * DURAÇÃO, que começa a contar no toque em Iniciada (o gatilho a converte em término). Aí o
+ * painel oferece só durações; `onDefinir(null, { minutos })` grava e `onDefinir('', {
+ * minutos: null })` limpa. `exemploDuracao(min)` → frase de exemplo ("Se começar às 16:00,
+ * termina às 18:00.").
+ */
+export default function PainelTempo({ soDuracao = false, duracaoAtual = null, exemploDuracao = null, ...props }) {
+  return soDuracao
+    ? <PainelDuracao atual={duracaoAtual} onDefinir={props.onDefinir} exemplo={exemploDuracao} />
+    : <PainelHorario {...props} />
+}
+
+function PainelHorario({ horarios, atual, horaExata, onHoraExata, onDefinir }) {
   // `horarios` sobrescrevível só para teste; em produção são as opções de tempo
   // faltante, recalculadas a cada render (são relativas a agora).
   const opcoes = horarios || opcoesTempoFaltante()
-  // PRÉVIA DO RESULTADO (dono 29/07): o campo guarda uma HORA, e sozinha ela não
-  // diz o que importa — "16:15" exige o usuário calcular de cabeça quanto falta.
-  // Mostrar os dois lados tira a conta do plantonista.
   const valor = horaExata || atual || ''
   const alvo = paraMinutos(valor)
   const agoraD = agora()
   const restante = alvo != null ? formatFaltante(alvo, agoraD.getHours() * 60 + agoraD.getMinutes()) : null
-
-  // CAMPO DE HORÁRIO MASCARADO: `null` = não está sendo editado, então mostra o
-  // valor salvo. Grava só quando a hora está COMPLETA e válida — "18:3" no meio da
-  // digitação não pode virar um término gravado.
+  // CAMPO DE HORÁRIO MASCARADO: `null` = não está sendo editado, então mostra o valor
+  // salvo. Grava só quando a hora está COMPLETA e válida — "18:3" no meio da digitação
+  // não pode virar um término gravado.
   const [rascHora, setRascHora] = useState(null)
   const horaTexto = rascHora ?? valor
   const digitarHora = (bruto) => {
@@ -166,103 +183,111 @@ export default function PainelTempo({ horarios, atual, horaExata, onHoraExata, o
       setRascHora(null) // volta a espelhar o salvo
     }
   }
-
-  // MODO: abre SEMPRE no "Horário de término" (dono 02/10: "quero que a primeira
-  // opção que aparece é de horário de término"). Até 02/10 nascia no tempo faltante
-  // quando vazio; o alternador continua levando à duração com um toque.
-  const [modo, setModo] = useState('hora')
-  // `meta.minutos` acompanha a DURAÇÃO escolhida (atalho ou "Outro"): quem grava
-  // numa cirurgia que ainda não começou encadeia a duração depois da anterior (dono
-  // 14/09) — e só sabe que foi duração, e não hora exata, por aqui. Quem não usa o
-  // segundo argumento continua recebendo só o "HH:MM".
+  // `meta.minutos` acompanha a DURAÇÃO escolhida (atalho ou "Outro"): quem grava sabe que
+  // foi duração, e não hora exata, por aqui.
   const gravar = (hhmm, meta) => { onHoraExata(hhmm); onDefinir(hhmm, meta) }
 
   return (
-    <div className="space-y-3">
-      {/* UMA OU OUTRA (dono 17/08): o alternador é a própria escolha — os dois
-          caminhos gravam o MESMO "HH:MM" (o banco guarda a hora, que é o dado
-          estável: duração salva envelhece sozinha). GRAVA NA ESCOLHA (29/07): o
-          botão "Definir" era o passo que se perdia. A frase "Dois jeitos de dizer a
-          mesma coisa" saiu em 02/10 ("aproveite melhor os espaços") — os rótulos
-          das duas abas já dizem o que cada uma pede. */}
-      <SegmentedSelector
-        variant="filled"
-        options={[
-          { value: 'hora', label: 'Horário de término' },
-          { value: 'falta', label: 'Tempo faltante' },
-        ]}
-        value={modo}
-        onChange={setModo}
-      />
-
-      {/* ALTURA CONSTANTE (dono 17/08): as duas rotas ocupam a mesma caixa, senão o
-          painel encolhe e cresce debaixo do dedo. 104px (dono 02/10, era 172px) = a
-          grade 4×2 de 48 + gap 6 + folga; o campo de horário fica centrado nela. */}
-      <div className="flex h-[104px] flex-col justify-center">
-      {modo === 'falta' ? (
-        /* GRADE 4×2 (dono 02/10): sete atalhos e o "Outro" na 8ª casa — o seletor
-           tinha uma linha só para ele. O gatilho do Select do DS traz padding
-           INLINE (16×18px); o `!` dos descendentes encolhe só este, para "Outro"
-           caber na casa de ~81px a 375px. A lista abre com a largura da casa, e os
-           rótulos ("1h15", "8h") cabem nela. */
-        <div className="grid grid-cols-4 gap-1.5">
-          {ATALHOS_MIN.map((min) => (
-            <Button
-              key={min}
-              variant="outline"
-              className="min-h-[48px] px-1 font-bold"
-              onClick={() => gravar(emMinutos(min), { minutos: min })}
-            >
-              {rotuloDuracao(min)}
-            </Button>
-          ))}
-          <Select
-            size="sm"
-            className="[&_[role=combobox]]:!min-h-[48px] [&_[role=combobox]]:!rounded-xl [&_[role=combobox]]:!px-2 [&_[role=combobox]]:!py-0 [&_[role=combobox]]:!text-[13.5px]"
-            options={opcoes}
-            value=""
-            onChange={(v) => gravar(v, { minutos: opcoes.find((o) => o.value === v)?.min })}
-            placeholder="Outro"
-            aria-label="Outro tempo faltante"
-          />
-        </div>
-      ) : (
-        /* horário digitado com máscara — teclado numérico no celular (o picker
-           NATIVO segue recusado pelo dono). CENTRADO E ESTREITO (17/08): quatro
-           dígitos não pedem a largura da tela. A tipografia vai em `[&_input]`
-           porque o `className` do Input do DS pousa no WRAPPER. */
+    <div className="space-y-2">
+      <div className="flex min-h-[48px] items-center gap-2.5">
+        {/* horário digitado com máscara — teclado numérico no celular (o picker NATIVO
+            segue recusado pelo dono). A tipografia vai em `[&_input]` porque o
+            `className` do Input do DS pousa no WRAPPER. */}
         <Input
           data-slot="termino-hora"
-          className="mx-auto w-[160px] [&_input]:text-center [&_input]:text-[19px] [&_input]:font-bold [&_input]:tracking-wide"
+          className="w-[140px] shrink-0 [&_input]:text-center [&_input]:text-[22px] [&_input]:font-extrabold [&_input]:tabular-nums"
           value={horaTexto}
           onChange={(e) => digitarHora(e.target.value)}
           inputMode="numeric"
           maxLength={5}
-          placeholder="18:30"
+          placeholder="--:--"
           aria-label="Horário de término"
         />
-      )}
-      </div>
-
-      {/* PRÉVIA + LIMPAR NA MESMA LINHA (dono 02/10): o "Limpar" de largura inteira
-          ocupava uma linha só para ele. Sem valor, desabilitado (esconder seria pior
-          que mostrar apagado). */}
-      <div className="flex min-h-[44px] items-center gap-2">
-        <p className={['min-w-0 text-[12.5px] leading-snug', restante?.atrasada ? 'text-warning' : 'text-muted-foreground'].join(' ')}>
+        <p className={['min-w-0 text-[13px] leading-snug', restante?.atrasada ? 'text-warning' : 'text-muted-foreground'].join(' ')}>
           {restante
-            ? (restante.atrasada
-              ? `Passou de ${valor} — ${restante.texto.replace('+', '')} além do previsto.`
-              : `Acaba às ${valor} · faltam ${restante.texto.replace('~', '')}.`)
+            ? (restante.atrasada ? `${restante.texto.replace('+', '')} além` : `faltam ${restante.texto.replace('~', '')}`)
             : 'Sem tempo informado.'}
         </p>
-        <Button
-          variant="outline"
-          className="ml-auto min-h-[44px] shrink-0 border-destructive px-3.5 text-destructive hover:bg-destructive/10"
-          disabled={!atual}
-          onClick={() => onDefinir('')}
-        >
-          Limpar
-        </Button>
+        {atual && (
+          <button
+            type="button"
+            className="ml-auto flex min-h-[44px] shrink-0 items-center px-1.5 text-[13.5px] font-semibold text-destructive active:opacity-70"
+            onClick={() => onDefinir('')}
+          >
+            Limpar
+          </button>
+        )}
+      </div>
+      <p className="pt-0.5 text-[11.5px] font-bold uppercase tracking-[0.05em] text-muted-foreground">ou daqui a</p>
+      {/* GRADE 4×2 (dono 02/10): sete atalhos e o "Outro" na 8ª casa. O gatilho do Select
+          do DS traz padding INLINE (16×18px); o `!` dos descendentes encolhe só este. */}
+      <div className="grid grid-cols-4 gap-1.5">
+        {ATALHOS_MIN.map((min) => (
+          <Button
+            key={min}
+            variant="outline"
+            className="min-h-[44px] px-1 font-bold"
+            onClick={() => gravar(emMinutos(min), { minutos: min })}
+          >
+            {rotuloDuracao(min)}
+          </Button>
+        ))}
+        <Select
+          size="sm"
+          className="[&_[role=combobox]]:!min-h-[44px] [&_[role=combobox]]:!rounded-xl [&_[role=combobox]]:!px-2 [&_[role=combobox]]:!py-0 [&_[role=combobox]]:!text-[13.5px]"
+          options={opcoes}
+          value=""
+          onChange={(v) => gravar(v, { minutos: opcoes.find((o) => o.value === v)?.min })}
+          placeholder="Outro"
+          aria-label="Outro tempo faltante"
+        />
+      </div>
+    </div>
+  )
+}
+
+/** Só durações, para a cirurgia que ainda não começou (ver `soDuracao` acima). */
+function PainelDuracao({ atual, onDefinir, exemplo }) {
+  const opcoes = Array.from({ length: 32 }, (_, i) => (i + 1) * 15).map((min) => ({ value: String(min), label: rotuloDuracao(min) }))
+  const frase = atual ? exemplo?.(atual) : null
+  return (
+    <div className="space-y-2">
+      <p className="text-[11.5px] font-bold uppercase tracking-[0.05em] text-muted-foreground">Quanto tempo deve durar</p>
+      <div className="grid grid-cols-4 gap-1.5">
+        {ATALHOS_DURACAO_MIN.map((min) => (
+          <Button
+            key={min}
+            variant="outline"
+            aria-pressed={atual === min}
+            className={['min-h-[44px] px-1 font-bold', atual === min ? 'border-primary bg-primary/15 text-primary' : ''].join(' ')}
+            onClick={() => onDefinir(null, { minutos: min })}
+          >
+            {rotuloDuracao(min)}
+          </Button>
+        ))}
+        <Select
+          size="sm"
+          className="[&_[role=combobox]]:!min-h-[44px] [&_[role=combobox]]:!rounded-xl [&_[role=combobox]]:!px-2 [&_[role=combobox]]:!py-0 [&_[role=combobox]]:!text-[13.5px]"
+          options={opcoes}
+          value=""
+          onChange={(v) => onDefinir(null, { minutos: Number(v) })}
+          placeholder="Outro"
+          aria-label="Outra duração"
+        />
+      </div>
+      <div className="flex min-h-[44px] items-center gap-2">
+        <p className="min-w-0 text-[13px] leading-snug text-muted-foreground">
+          {atual ? (frase || `Estimado ${rotuloDuracao(atual)}, contado do início.`) : 'Sem tempo estimado.'}
+        </p>
+        {atual && (
+          <button
+            type="button"
+            className="ml-auto flex min-h-[44px] shrink-0 items-center px-1.5 text-[13.5px] font-semibold text-destructive active:opacity-70"
+            onClick={() => onDefinir('', { minutos: null })}
+          >
+            Limpar
+          </button>
+        )}
       </div>
     </div>
   )

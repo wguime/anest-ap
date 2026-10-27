@@ -19,7 +19,7 @@ import { describe, it, expect, vi } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
 import {
-  duracaoMin, ehDiaOperacionalAtual, erroHorarioReal, gravarInicioReal, gravarTerminoReal, horarioRealNaTransicao, inicioDefinidoConsultorio, rotuloMinutos, sugestoesDeInicio,
+  duracaoMin, ehDiaOperacionalAtual, erroHorarioReal, gravarInicioReal, gravarTerminoReal, horarioRealNaTransicao, inicioDefinidoConsultorio, rotuloMinutos,
   limiteDoTermino, terminoDaDuracao,
 } from '@/lib/escalaHorarioReal'
 import { inicioDaUrgencia } from '@/lib/escalaCirurgicaUrgencias'
@@ -235,25 +235,6 @@ describe('gravarTerminoReal com o início exigido junto', () => {
     const setStatusCirurgia = vi.fn(async () => {})
     await gravarTerminoReal({ escala, caso: { id: 'c1', statusCirurgia: 'iniciada' }, hhmm: '15:00', setStatusCirurgia, atualizarCaso: vi.fn() })
     expect(setStatusCirurgia.mock.calls[0][3]).toEqual({ userId: null, terminoReal: '15:00' })
-  })
-})
-
-describe('sugestoesDeInicio', () => {
-  const sala = 'CC - Sala 3'
-  it('hora agendada + término real da anterior da MESMA sala e turno', () => {
-    const casos = [
-      { id: 'a', sala, turno: 'matutino', ordem: 0, terminoReal: '09:40' },
-      { id: 'b', sala: 'CC - Sala 4', turno: 'matutino', ordem: 1, terminoReal: '10:10' },
-      { id: 'c', sala, turno: 'matutino', ordem: 2, hora: '9:30' },
-    ]
-    expect(sugestoesDeInicio(casos[2], casos)).toEqual([
-      { hhmm: '09:30', rotulo: 'agendada' }, { hhmm: '09:40', rotulo: 'fim da anterior' },
-    ])
-  })
-  it('"AS" sem anterior terminada: nenhum atalho; fim igual à agendada não repete', () => {
-    expect(sugestoesDeInicio({ id: 'x', hora: 'AS', sala }, [])).toEqual([])
-    const casos = [{ id: 'a', sala, ordem: 0, terminoReal: '10:00' }, { id: 'b', sala, ordem: 1, hora: '10:00' }]
-    expect(sugestoesDeInicio(casos[1], casos)).toEqual([{ hhmm: '10:00', rotulo: 'agendada' }])
   })
 })
 

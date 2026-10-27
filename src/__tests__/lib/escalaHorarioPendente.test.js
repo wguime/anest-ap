@@ -15,7 +15,7 @@ import { describe, it, expect } from 'vitest'
 import {
   INICIO_ALERTA_HORARIO, agruparPorAnestesista, anestesistasDoCaso, casoEntraNaConta,
   dentroDoInicioDoAlerta, faltaHorario, montarRelatorioHorario, pendenciasDoDia, prazoDoCaso,
-  prazoInicio, quantasPilulasCabem, rotuloDiaRelatorio, TOLERANCIA_INICIO_MIN, TOLERANCIA_INICIO_AS_MIN,
+  prazoInicio, rotuloDiaRelatorio, TOLERANCIA_INICIO_MIN, TOLERANCIA_INICIO_AS_MIN,
   pendenciasParaLiberar, pendenciasDeDiasAnteriores, CORTE_PENDENCIAS_MINHAS,
 } from '@/lib/escalaHorarioPendente'
 
@@ -177,15 +177,6 @@ describe('agrupar por anestesista', () => {
       ['uid-bruno', ['3']],
       ['CARLA', ['4']],
     ])
-  })
-})
-
-describe('pílulas que cabem na faixa', () => {
-  it('reserva o "+N" quando sobra gente; a última não reserva', () => {
-    expect(quantasPilulasCabem([102, 101, 117, 34], 374, { gap: 6, mais: 34 })).toBe(4)
-    expect(quantasPilulasCabem([102, 101, 117, 117], 374, { gap: 6, mais: 34 })).toBe(3)
-    expect(quantasPilulasCabem([102, 101, 117, 117], 300, { gap: 6, mais: 34 })).toBe(2)
-    expect(quantasPilulasCabem([], 300)).toBe(0)
   })
 })
 

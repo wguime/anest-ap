@@ -16,7 +16,7 @@
  * mesmo: pela Minhas o detalhe chega COMPLETO e grava pelo mesmo caminho.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 
 import { ThemeProvider, ToastProvider } from '@/design-system'
 import MinhasEscalasView from '@/pages/escala-cirurgica/MinhasEscalasView'
@@ -99,10 +99,9 @@ describe('Minhas — detalhe do caso vem COMPLETO', () => {
     const botao = screen.getByRole('button', { name: 'Tempo estimado desta cirurgia: não informado' })
     expect(botao.textContent).toContain('Tempo estimado')
     fireEvent.click(botao)
-    fireEvent.click(screen.getByRole('tab', { name: 'Tempo faltante' }))
+    // 27/10: a cirurgia do teste ainda não começou — o estimado dela é DURAÇÃO (conta do início)
+    expect(screen.getByText('Quanto tempo deve durar')).toBeTruthy()
     expect(screen.getByRole('button', { name: '1h30' })).toBeTruthy()
-    fireEvent.click(screen.getByRole('tab', { name: 'Horário de término' }))
-    expect(document.querySelector('[data-slot="termino-hora"]')).toBeTruthy()
   })
 
   it('traz a sala/local, o cirurgião e a marcação de ajuda', () => {
@@ -127,12 +126,11 @@ describe('Minhas — detalhe do caso vem COMPLETO', () => {
   it('editar pela Minhas grava no MESMO caminho da Completa', async () => {
     abrirDetalhe()
     fireEvent.click(screen.getByRole('button', { name: /Tempo estimado desta cirurgia/ }))
-    fireEvent.click(screen.getByRole('tab', { name: 'Horário de término' }))
-    // horário é campo mascarado: digitar 1800 → "18:00" e grava
-    fireEvent.change(document.querySelector('[data-slot="termino-hora"]'), { target: { value: '1800' } })
-    // mesma action de context que a Completa usa — é o que mantém as abas juntas
-    expect(atualizarCaso).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'e1' }), 'c1', { terminoPrevisto: '18:00' },
-    )
+    // agendada (27/10): a duração; mesma action de context que a Completa usa — é o que
+    // mantém as abas juntas
+    fireEvent.click(screen.getByRole('button', { name: '1h30' }))
+    await waitFor(() => expect(atualizarCaso).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'e1' }), 'c1', { duracaoEstimadaMin: 90, terminoPrevisto: null },
+    ))
   })
 })

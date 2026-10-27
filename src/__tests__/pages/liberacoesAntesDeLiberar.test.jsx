@@ -100,18 +100,40 @@ afterAll(() => vi.useRealTimers())
 beforeEach(() => vi.clearAllMocks())
 
 describe('o toque em liberar é segurado quando falta horário', () => {
-  it('cirurgia aberta + terminada sem início: abre a folha, NÃO libera, e o botão fica apagado', () => {
-    const { onToggle } = montarFila([daAna, semInicio, emCurso])
+  // MUDOU DE LADO em 27/10 (dono, reabre 14/10): só a cirurgia ABERTA segura; a terminada
+  // sem início não trava mais — vira pendência de quem operou (aba Minhas)
+  it('cirurgia aberta: abre a folha, NÃO libera, e o botão fica apagado; a terminada sem início não segura', () => {
+    const { onToggle } = montarFila([daAna, semInicio, emCurso], { onTerminarSemHorario: vi.fn(async () => {}) })
     tocarLiberar()
     expect(onToggle).not.toHaveBeenCalled()
     const folha = folhaAntes()
-    expect(folha.textContent).toContain('2 cirurgias estão sem horário. Preencha aqui ou passe a que está aberta para quem vai assumir.')
-    const botao = within(folha).getByRole('button', { name: 'Preencha 2 cirurgias para liberar' })
+    expect(folha.textContent).toContain('1 cirurgia aberta. Preencha agora, ou marque Terminou e o horário fica para Paulo informar.')
+    const botao = within(folha).getByRole('button', { name: 'Resolva 1 cirurgia para liberar' })
     expect(botao.disabled).toBe(true)
-    // sem saída: não existe "liberar sem horário" (dono 14/10)
-    expect(within(folha).queryByRole('button', { name: /sem horário/i })).toBeNull()
-    // a aberta pode passar a um colega; a terminada, não
+    // a aberta: passar a um colega OU "Terminou · horário depois" (27/10)
     expect(within(folha).getAllByRole('button', { name: /Passar para outro anestesista/ })).toHaveLength(1)
+    expect(within(folha).getAllByRole('button', { name: /^Terminou: horário depois/ })).toHaveLength(1)
+  })
+
+  it('só com terminada sem horário, ninguém é segurado: libera direto (27/10)', async () => {
+    const { onToggle } = montarFila([daAna, semInicio])
+    tocarLiberar()
+    expect(folhaAntesOuNada()).toBeNull()
+    await waitFor(() => expect(onToggle).toHaveBeenCalledTimes(1))
+  })
+
+  it('"Terminou · horário depois" fecha a aberta pelo caminho novo e a folha acende (a mesma para todos)', async () => {
+    const onTerminarSemHorario = vi.fn(async () => {})
+    const { rerender } = montarFila([daAna, emCurso], { onTerminarSemHorario })
+    tocarLiberar()
+    fireEvent.click(within(folhaAntes()).getByRole('button', { name: /^Terminou: horário depois/ }))
+    expect(onTerminarSemHorario).toHaveBeenCalledWith('c1')
+    // o realtime devolve a cirurgia terminada SEM término: resolvida, em uma linha
+    rerender([daAna, { ...emCurso, statusCirurgia: 'terminada', terminoReal: null, statusAtualizadoEm: '2026-10-02T18:45:00Z' }])
+    const folha = folhaAntes()
+    expect(folha.textContent).toContain('Tudo resolvido. Os horários que faltam ficam para Paulo informar.')
+    expect(folha.textContent).toContain('Terminou antes de 15:45 · horário depois')
+    expect(within(folha).getByRole('button', { name: 'Salvar e liberar Paulo' }).disabled).toBe(false)
   })
 
   it('preenchidos os horários (realtime), a folha acende e "Salvar e liberar" libera pelo caminho normal', async () => {
@@ -194,8 +216,10 @@ describe('as saídas da folha', () => {
     expect(within(conf).getByText(`Início e término · 13:00 ${rot(HERNIA)}`)).toBeTruthy()
     const botao = within(conf).getByRole('button', { name: 'Confirmar os dois' })
     expect(botao.disabled).toBe(true)
-    // atalho da hora agendada
-    fireEvent.click(within(conf).getByRole('button', { name: '13:00 agendada' }))
+    // 27/10: sem atalhos ("deixe apenas horários de início e término") — o início se digita
+    expect(within(conf).queryByRole('button', { name: /agendada/ })).toBeNull()
+    digitar('inicio-hora', '1300')
+    expect(conf.textContent).toContain('13:00 → 15:45 · durou 2h45')
     fireEvent.click(botao)
     await waitFor(() => expect(onDefinirTerminoRealCaso).toHaveBeenCalledWith('c0', '15:45', { inicioReal: '13:00' }))
   })

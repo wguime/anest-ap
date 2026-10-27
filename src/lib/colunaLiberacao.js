@@ -425,6 +425,8 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
         id: c.id || null, ordem: c.ordem ?? null, hora: String(c.hora || '').trim(), sala: String(c.sala || '').trim(),
         token: tok || '', procedimento: String(c.procedimento || '').trim(),
         terminoPrevisto: String(c.terminoPrevisto || '').trim(),
+        // duração estimada da que ainda não começou (dono 27/10): "2h do início" na fila
+        duracaoEstimadaMin: Number(c.duracaoEstimadaMin) > 0 ? Number(c.duracaoEstimadaMin) : null,
         // início REAL (dono 02/10): a folha do "+ Tempo total" mostra e corrige; o
         // carimbo do status serve de sugestão a quem começou antes de existir o campo
         inicioReal: String(c.inicioReal || '').trim(),

@@ -24,6 +24,7 @@ import FaixaUrgencias from './FaixaUrgencias'
 import FaixaHorarioPendente from './FaixaHorarioPendente'
 import MeuPreenchimento from './MeuPreenchimento'
 import useHorarioPendente from './useHorarioPendente'
+import useMinhasPendenciasAnteriores from './useMinhasPendenciasAnteriores'
 import LiberacoesView from './LiberacoesView'
 // Importação sob demanda (abertura da escala, 15/10/2026): as duas telas trazem
 // a planilha `xlsx` (~430 KB), a escala numérica inteira (~230 KB) e a
@@ -32,7 +33,7 @@ import LiberacoesView from './LiberacoesView'
 const ImportarEscalasPage = lazy(() => import('./ImportarEscalasPage'))
 const ImportarEscalaFdsPage = lazy(() => import('./ImportarEscalaFdsPage'))
 import TrocaSheet from './TrocaSheet'
-import { anestesistaDoCasoEh, meuAliasDe, turnoAtualOperacional, dataPorExtenso, estadoTrocasDoHistorico, normNome, formatData, rodapeDoTurno, localizarSlotEscala, localizarMeuPosto, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca, espelhoTempoTotal, inicioDaDuracao, terminoEncadeado, turnoDoCaso, patchDefinicaoNoTurnoSeguinte } from './utils'
+import { anestesistaDoCasoEh, meuAliasDe, turnoAtualOperacional, dataPorExtenso, estadoTrocasDoHistorico, normNome, formatData, rodapeDoTurno, localizarSlotEscala, localizarMeuPosto, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca, espelhoTempoTotal, terminoEncadeado, turnoDoCaso, patchDefinicaoNoTurnoSeguinte } from './utils'
 import { gravarInicioReal, gravarTerminoReal } from '@/lib/escalaHorarioReal'
 import { compararPendencias } from '@/lib/escalaHorarioPendente'
 import { ehDataFilaUnica, ehFeriado, ehFimDeSemana, FDS_HOSPITAL, FDS_TURNO_CASOS, FDS_TURNOS, turnoFdsAtual } from '@/lib/escalaFds'
@@ -70,7 +71,7 @@ const ABA_OPCOES = [
 
 export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const { user } = useUser()
-  const { escalas, data, loading, erroCarga, p4Hospital, hoje, setData, recarregar, garantirEscala: garantirEscalaNoServidor, prefetch, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, reordenarAjuda, definirOrigemLinha, definirSemAjudaLinha, definirP4Hospital, setAnestesistaCasos, atualizarCaso, setStatusCirurgia, marcarTroca, executarSubstituicao, desfazerSubstituicao } = useEscalaCirurgica()
+  const { escalas, data, loading, erroCarga, p4Hospital, hoje, setData, recarregar, garantirEscala: garantirEscalaNoServidor, prefetch, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, reordenarAjuda, definirOrigemLinha, definirSemAjudaLinha, definirP4Hospital, setAnestesistaCasos, atualizarCaso, setStatusCirurgia, terminarSemHorario, desfazerTerminada, marcarTroca, executarSubstituicao, desfazerSubstituicao } = useEscalaCirurgica()
   // Roster p/ resolver os lados do par da troca declarada (uid/nome/apelido)
   const { resolver: resolverRoster, rosterByUid } = useRosterAnestesistas()
   // P1–P4 do dia (card Plantões/PegaPlantao) — alimentam a fase noturna das Liberações
@@ -671,6 +672,9 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
       : null),
     [pendencias.itens, euPendencia]
   )
+  // AS DE DIAS ANTERIORES (dono 27/10): ficam até serem preenchidas, desde 27/10/2026 — a
+  // faixa individual soma as duas listas. Conta de hospital (`euPendencia` nulo) não busca.
+  const pendenciasAnteriores = useMinhasPendenciasAnteriores({ eu: euPendencia, hoje })
 
   const garantirEscala = useCallback(async () => {
     if (escalaDoHospital?.id && !String(escalaDoHospital.id).startsWith('demo-')) return escalaDoHospital
@@ -776,13 +780,19 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
         {/* ALERTA PÚBLICO do horário não preenchido (dono 05/10, modelo A): nas três
             abas, em qualquer hospital e turno — só some quando os horários forem
             preenchidos (ou a cirurgia suspensa). Só existe vendo HOJE. */}
-        <FaixaHorarioPendente
-          pendencias={pendencias}
-          podeEditar={canEdit}
-          minhas={minhasPendencias}
-          eu={euPendencia}
-          abaMinhas={abaVisivel === 'minhas'}
-        />
+        {/* HORÁRIO PENDENTE INDIVIDUAL (dono 27/10, reabre 05/10): só quem tem horário a
+            preencher vê — a caixa na Minhas, a faixa de uma linha nas outras abas —, até
+            resolver tudo, inclusive os dias anteriores. A lista da equipe saiu; o selo nos
+            cards continua. Só vendo HOJE. */}
+        {data === hoje && (
+          <FaixaHorarioPendente
+            podeEditar={canEdit}
+            minhas={minhasPendencias}
+            anteriores={pendenciasAnteriores}
+            eu={euPendencia}
+            abaMinhas={abaVisivel === 'minhas'}
+          />
+        )}
 
         {/* Aterrissou noutra data (ex.: publicou pela importação): rótulo + volta */}
         {modoData === 'outra' && (
@@ -984,14 +994,28 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                     const alvo = (dona?.casos || []).find((c) => c.id === casoId)
                     return alvo ? setStatusCirurgia(dona, alvo, 'suspensa', { userId: userInfo.userId }) : Promise.resolve()
                   }}
-                  // DE ONDE CONTA A DURAÇÃO de uma cirurgia (dono 25/09): a folha do tempo
-                  // total diz, antes do toque, que "1h" numa cirurgia que ainda não começou
-                  // vale depois da anterior — pela MESMA escala dona e a MESMA função que o
-                  // handler acima usa para gravar, senão a frase e o valor discordariam.
-                  inicioDuracaoCaso={(casoId, agoraMin) => {
-                    const dona = modoFds ? escalaDoCaso(casoId) || escala : escala
+                  // "TERMINOU · HORÁRIO DEPOIS" (dono 27/10, folha Antes de liberar): fecha sem a
+                  // hora do toque — o horário fica com quem operou (aba Minhas). O caso mora na
+                  // escala do hospital dele (a folha traz também os de outro hospital, 15/10).
+                  onTerminarSemHorario={(casoId) => {
+                    const dona = escalaDoCaso(casoId) || escala
                     const alvo = (dona?.casos || []).find((c) => c.id === casoId)
-                    return alvo && agoraMin != null ? inicioDaDuracao(dona, alvo, agoraMin) : null
+                    return alvo ? terminarSemHorario(dona, alvo, { userId: userInfo.userId }) : Promise.resolve()
+                  }}
+                  onDesfazerTerminada={(casoId, antes) => {
+                    const dona = escalaDoCaso(casoId) || escala
+                    return dona ? desfazerTerminada(dona.hospital, casoId, antes) : Promise.resolve()
+                  }}
+                  // ESTIMADO QUE CONTA DO INÍCIO (dono 27/10): na cirurgia que ainda não começou o
+                  // estimado é a DURAÇÃO (o gatilho a converte no Iniciada); o término antigo, que
+                  // era horário fixo, sai — e, se era o total da pessoa, o espelho limpa junto.
+                  onDefinirDuracaoCaso={async (casoId, minutos) => {
+                    const dona = escalaDoCaso(casoId) || escala
+                    const alvo = (dona?.casos || []).find((c) => c.id === casoId)
+                    await atualizarCaso(dona, casoId, { duracaoEstimadaMin: minutos || null, terminoPrevisto: null }, { silencioso: true })
+                    const esp = alvo?.terminoPrevisto && !String(dona?.id || '').startsWith('demo-')
+                      ? espelhoTempoTotal(dona, alvo, '', { hospitalLabels: HOSPITAL_LABEL }) : null
+                    if (esp) await setLinhaOverride(dona, { chave: esp.chave, anestesista: esp.nome }, esp.override, userInfo, turno)
                   }}
                   onAddAjuda={(nome) => adicionarAjuda(escalaLib, turno, nome)}
                   onReordenarAjuda={(de, para) => reordenarAjuda(escalaLib, turno, de, para)}
