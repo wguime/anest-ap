@@ -95,8 +95,24 @@ describe('liberar confere o dia inteiro, nos três hospitais (dono 15/10)', () =
     // diz onde está: hospital e turno, porque não é desta fila
     expect(folha.textContent).toContain('HRO · manhã')
     expect(within(folha).getByRole('button', { name: 'Preencha 1 cirurgia para liberar' }).disabled).toBe(true)
-    // passar a um colega DESTA fila não se oferece: a cirurgia é de outro lugar
-    expect(within(folha).queryByRole('button', { name: /Passar para outro anestesista/ })).toBeNull()
+    // ⚠️ MUDOU DE LADO (dono 23/10, caso Leandro): a cesariana da manhã do Leandro no
+    // HRO, já com o Leonardo à tarde, em andamento, não tinha término a dar nem como ser
+    // passada — só um horário inventado destravava a liberação. Passar vale também para a
+    // de outro hospital; a lista "Na fila" desta tela é que não serve (são colegas da
+    // Unimed), então a folha abre só com a busca pelo nome.
+    fireEvent.click(within(folha).getByRole('button', { name: /Passar para outro anestesista/ }))
+    expect(screen.queryByRole('radiogroup', { name: 'Colegas da fila' })).toBeNull()
+  })
+
+  it('a da manhã no MESMO hospital sem término pode ser passada a um colega da fila (caso Leandro)', async () => {
+    const manhaSemHorario = { ...manhaCompleta, id: 'u-m2', statusCirurgia: 'iniciada', inicioReal: '13:00', terminoReal: null }
+    const unimed = escalaDe('unimed', 'vespertino', [daAna('vespertino'), tardeCompleta, manhaSemHorario])
+    montar({ unimed, hro: escalaDe('hro', 'matutino', []) })
+    tocarLiberar()
+    const folha = folhaAntes()
+    fireEvent.click(within(folha).getByRole('button', { name: /Passar para outro anestesista/ }))
+    const fila = await screen.findByRole('radiogroup', { name: 'Colegas da fila' })
+    expect(within(fila).getAllByRole('radio').length).toBeGreaterThan(0)
   })
 
   it('preenchido o término lá (realtime), a folha acende e libera', async () => {

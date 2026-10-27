@@ -1644,15 +1644,18 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     // de quem é agora — "passada para Raquel" quando saiu do grupo desta pessoa
     anestesistaAtual: String(caso.anestesista || '').trim(),
     agendada: (caso.statusCirurgia || 'agendada') === 'agendada',
-    // de OUTRO hospital ou turno ("Unimed · manhã"): a folha diz onde, e passar a cirurgia
-    // a um colega DESTA fila não se oferece — ela é de outro lugar
+    // de OUTRO hospital ou turno ("Unimed · manhã"): a folha diz onde. Passar também vale
+    // para ela (dono 23/10, caso Leandro) — sem isso a cirurgia aberta de outro turno não
+    // tinha saída nenhuma. De outro HOSPITAL, a lista "Na fila" desta tela não serve: só a
+    // busca pelo nome.
     fora: rotuloForaDaLinha(caso),
+    outroHospital: !modoFds && !!casoDoDia(caso.id)?.hospital && casoDoDia(caso.id).hospital !== hospital,
   }))
   const primeiroNomeAntes = String(linhaAntesLiberar?.anestesista || '').trim().split(/\s+/)[0] || ''
   // COLEGAS PARA PASSAR A CIRURGIA (dono 14/10, modelo A2): os da fila deste turno com
   // login, ainda não liberados e escalados — Livre primeiro (está pronto para assumir),
   // depois quem opera, na ordem da lista. Nunca a própria pessoa que está saindo.
-  const colegasParaPassar = alvoSemAnest?.deLiberar
+  const colegasParaPassar = alvoSemAnest?.deLiberar && !alvoSemAnest?.outroHospital
     ? linhasExibicao
       .filter((l) => l.uid && !l.noturno && l.chave !== antesLiberar?.chave && l.uid !== linhaAntesLiberar?.uid)
       .filter((l) => { const m = marcaDe(l); return !(m && m.escalado !== true) && (!naoEscalado(l) || m?.escalado === true) })
@@ -3865,12 +3868,16 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         <div className="mt-1 flex flex-wrap gap-x-4">
                           {/* MAIS EVIDENTE (dono 14/10, tarde: "está demorando, quero que
                               fique mais evidente para passar o caso para outro anestesista"):
-                              botão de largura cheia, não link — e abre a lista dos colegas */}
-                          {onDefinirCasos && !c.fora && (
+                              botão de largura cheia, não link — e abre a lista dos colegas.
+                              VALE PARA A DE OUTRO TURNO/HOSPITAL (dono 23/10): a cesariana da
+                              manhã do Leandro, já com o Leonardo à tarde, em andamento, não
+                              tinha término a dar nem como ser passada — só um horário inventado
+                              destravava a liberação. */}
+                          {onDefinirCasos && (
                             <Button
                               variant="outline"
                               className="mt-1 min-h-[44px] w-full border-primary/60 text-[14px] font-semibold text-primary"
-                              onClick={() => { setAlvoSemAnest({ id: c.id, hora: c.hora, sala: c.sala, procedimento: rotulo, cirurgiao: c.token, inicioReal: c.inicioReal, deLiberar: true }); setSemAnestUid('') }}
+                              onClick={() => { setAlvoSemAnest({ id: c.id, hora: c.hora, sala: c.sala, procedimento: rotulo, cirurgiao: c.token, inicioReal: c.inicioReal, deLiberar: true, outroHospital: c.outroHospital }); setSemAnestUid('') }}
                             >
                               <ArrowLeftRight className="h-4 w-4 shrink-0" /> Passar para outro anestesista
                             </Button>

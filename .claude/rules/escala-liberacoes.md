@@ -1086,3 +1086,13 @@ modelos em `.tmp/auditoria-liberacoes/edicao-liberacoes.html`; o dono escolheu o
   `escalaSetasSemOrdemInformada2710.test.jsx`, e os testes de selo que mudaram de lado com o porquê
   (`escalaAjudaOrigemHospital`, `liberacoesCasoEmOutroHospital`, `liberacoesAjudaConsultorio`,
   `liberacoesFilaEspelhaCompleta1609`, `escalaFdsTelaUnica`, `escalaCirurgicaPersonas`).
+
+
+## "Antes de liberar": cirurgia de OUTRO turno ou hospital também pode ser passada (dono 23/10, publicado 27/10)
+
+HRO, 23/10: a cesariana da manhã do Leandro (Sala 7, início 13:00), já com o Leonardo no Centro Obstétrico à tarde,
+segurava a liberação dele. A folha só aceitava término para cirurgia de fora da linha, e o horário de 14:23 entrou para
+destravar. Agora o "Passar para outro anestesista" vale também para ela. De outro HOSPITAL a lista "Na fila" não aparece
+(são colegas daqui): só a busca pelo nome. A página grava o caso na escala onde ele mora (`escalaDoCaso`), não na da tela.
+O trabalho ficou parado no working tree de 23/10 a 27/10, sem commit. Travas: dois testes em
+`liberacoesAntesDeLiberarDiaInteiro.test.jsx` (o de 15/10 mudou de lado com o porquê), e os dois falham sem a mudança.

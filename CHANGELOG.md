@@ -3,6 +3,12 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.77 (27/10/2026) — "Antes de liberar" deixa passar cirurgia de outro turno ou hospital
+
+HRO, 23/10: a cesariana da manhã do Leandro, já com o Leonardo à tarde, segurava a liberação dele, e só um horário
+digitado destravou. A folha "Antes de liberar" agora oferece "Passar para outro anestesista" também para a cirurgia de
+outro turno ou hospital. De outro hospital, a escolha é pela busca do nome.
+
 ## v5.12.76 (27/10/2026) — Edição da aba Liberações mais clara: uma entrada de trocas, posição fixa e selos que dizem o efeito
 
 Auditoria das formas de edição da aba (*"quem está fazendo de forma manual está alterando a ordem de liberação"*). Em

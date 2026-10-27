@@ -875,8 +875,10 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                   onNavigate={onNavigate}
                   onDefinirP4={modoFds ? undefined : (h) => definirP4Hospital(h, userInfo)}
                   onDefinirCasos={(casoIds, { uid, apelido, rotulo }) => {
-                    // na fila única o caso pertence à escala do hospital de origem
-                    const dona = modoFds ? escalaDoCaso(casoIds[0]) || escala : escala
+                    // a cirurgia é gravada na escala ONDE ELA MORA: na fila única, o hospital
+                    // de origem; no dia útil, também — a folha "Antes de liberar" passa
+                    // cirurgia de outro turno ou hospital (dono 23/10, caso Leandro)
+                    const dona = escalaDoCaso(casoIds[0]) || escala
                     // cirurgia que ATRAVESSOU para este turno (dono 26/09): com
                     // dono definido pelo plantão ela passa a ser do turno
                     // seguinte e perde o "passa" — senão voltaria ao alerta
