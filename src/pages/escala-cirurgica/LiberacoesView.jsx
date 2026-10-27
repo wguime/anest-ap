@@ -6,7 +6,7 @@
  * override estruturado que sobrevive à re-derivação. Realtime: reflete para todos.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, ArrowLeftRight, Check, ChevronDown, ChevronRight, ChevronUp, History, Info, ListOrdered, Loader2, MessageSquare, Moon, Pencil, Plus, Timer, UserPlus, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeftRight, Check, ChevronDown, ChevronRight, ChevronUp, History, Info, ListOrdered, Loader2, Lock, MessageSquare, Moon, Pencil, Plus, Timer, UserPlus, X } from 'lucide-react'
 import {
   Badge, Button, ConfirmDialog, EmptyState, Input, Select, useToast,
   Sheet, SheetContent, SheetHeader, SheetTitle,
@@ -29,7 +29,7 @@ import { ehConsultorio, pendenciasDoDiaParaLiberar, pendenciasParaLiberar } from
 import { nomeCurtoProcedimento } from '@/lib/escalaProcedimentoCurto'
 import { ehDiaOperacionalAtual, erroHorarioReal, sugestoesDeInicio } from '@/lib/escalaHorarioReal'
 import { carimboDeStatus } from '@/lib/escalaCirurgicaStatus'
-import { estadoDaFila, ordenarListaExibicao } from '@/lib/filaLiberacao'
+import { blocoDaLinha, estadoDaFila, ordenarListaExibicao } from '@/lib/filaLiberacao'
 import AddCasoSheet from './AddCasoSheet'
 import { ajudaOrdemInformada, anestesistaDoCasoEh, casoConcluido, casosDaFilaDoTurno, casosDaFilaFds, casosResolvidos, chaveSalaEscolha, compararSalas, diffRelogioMin, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao, turnoDoCaso, procedimentoComContinuacao, procedimentoBaseDoCaso } from './utils'
 
@@ -158,6 +158,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const [semAnestUid, setSemAnestUid] = useState('')
   const [executandoTroca, setExecutandoTroca] = useState(false)
   const [confirmarTroca, setConfirmarTroca] = useState(null) // par aguardando o pop-up (dono 18/08)
+  const [confirmarRestaurar, setConfirmarRestaurar] = useState(false) // "Restaurar" pergunta antes (dono 27/10)
   const [addCaso, setAddCaso] = useState(false) // urgência/encaixe direto da fila (dono 16/08)
   const [escalaDoCasoNovo, setEscalaDoCasoNovo] = useState(null) // criada sob demanda
   const [criandoEscala, setCriandoEscala] = useState(false)
@@ -1073,7 +1074,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // o que limita as setas do bloco. Usa o maior `ajudaIdx` visto +1 em vez do
   // tamanho da lista exibida: quem virou plantão do contraturno saiu do bloco mas
   // continua ocupando posição no array.
-  const totalAjudas = linhas.reduce((m, l) => (l.ajudaIdx != null ? Math.max(m, l.ajudaIdx + 1) : m), 0)
   // rótulo do plantão do turno seguinte, para o badge cruzado. Vem da MESMA fonte
   // da lib quando existe linha local com o selo; senão deriva do turno.
   const rotuloPlantao = linhas.find((l) => l.plantaoLabel)?.plantaoLabel
@@ -1760,6 +1760,21 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     if (!linha || linha.noturno || ehAjudaVisivel(linha) || nomeAjudaDe(linha) || semAjudaManual.has(linha.chave)) return 0
     return posicaoNoRodapeDaqui([linha.uid, linha.chave, linha.nomeOriginal, linha.anestesista])
   }
+  // POSIÇÃO FIXA (dono 27/10, modelo A de `.tmp/auditoria-liberacoes/edicao-liberacoes.html`):
+  // quem ocupa uma posição publicada daqui — inclusive quem a ASSUMIU numa troca e o
+  // plantão do contraturno — não tem controle de ajuda no painel. A linha diz a posição
+  // e que só uma troca muda quem a ocupa. Antes o interruptor aparecia apagado (16/10)
+  // ou ligado por um selo derivado (consultório, emprestado), e o mesmo toque gravava
+  // quatro coisas diferentes. Devolve a posição (1-based) ou 0.
+  const posicaoFixaDe = (linha) => {
+    if (!linha || modoFds || linha.noturno) return 0
+    const bloco = blocoDaLinha(linha)
+    if (bloco !== 'rodape' && bloco !== 'contraturno') return 0
+    // azul publicado COM cirurgia aqui veio ajudar aqui (caso TIAGO 30/07): é ajuda de
+    // verdade, mesmo fechando o rodapé — segue com o selo sólido e o controle de ajuda
+    if (linha.isAjuda && !linha.ajudaFora) return 0
+    return posicaoNoRodapeDaqui([linha.nomeOriginal, linha.chave])
+  }
   const uidsNoRodapeDaqui = new Set(modoFds ? [] : rodapeTurno.map((n) => resolverUid(n)).filter(Boolean))
   const opcoesAjuda = opcoesRoster.filter((o) => !uidsNoRodapeDaqui.has(o.value))
   // O que o toque FAZ acompanha o que o botão MOSTRA (`ehAjudaVisivel`):
@@ -2032,6 +2047,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // cores) e de 06/10 (liberado acima de ajuda que chegou depois): o card vermelho
           // pode ficar acima do amarelo — a ORDEM manda, não a cor. Toda a lógica de fila
           // continua sobre `linhasExibicao`; a renderização é a própria lista.
+          const blocoAjudas = linhasExibicao.filter((l) => !l.noturno && blocoDaLinha(l) === 'ajuda' && l.ajudaIdx != null)
           const ordemRender = linhasExibicao.map((_, i) => i)
           return ordemRender.map((idx) => {
           const linha = linhasExibicao[idx]
@@ -2142,7 +2158,19 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // na fila única ajuda nunca é automática (dono 05/09) — quem tem
           // cirurgia sem estar na ordem entra na fila, e só `ajuda_externa`
           // (marcada à mão) pinta o badge.
-          const badgeAjuda = !liberadoReal && ehAjudaVisivel(linha)
+          // SELO SÓLIDO = MUDA A FILA, CONTORNADO = SÓ INFORMA (dono 27/10, modelo da seção 4
+          // de `.tmp/auditoria-liberacoes/edicao-liberacoes.html`). Quem ocupa posição daqui
+          // não sai antes por ser "ajuda": emprestado para outro hospital vira "Na Unimed",
+          // e o consultório (ajuda) vira "Consultório (ajuda)". O sólido "Ajuda" fica só para
+          // quem está nos blocos do fim (ajuda, extra, de outro hospital).
+          const posFixaCard = !noturno && posicaoFixaDe(linha) > 0
+          const badgeAjuda = !liberadoReal && ehAjudaVisivel(linha) && !posFixaCard
+          const foraCard = !liberadoReal && posFixaCard && !semAjudaManual.has(linha.chave) ? ajudaForaInfo(linha) : null
+          const consultorioCard = !liberadoReal && posFixaCard && !foraCard && !semAjudaManual.has(linha.chave) && ajudaNoConsultorio(linha)
+          // emprestado sem destino conhecido (azul publicado sem caso aqui, cruzamento
+          // não carregado): o selo diz que está fora, sem inventar onde
+          const ajudaForaCard = !liberadoReal && posFixaCard && !foraCard && !consultorioCard
+            && !semAjudaManual.has(linha.chave) && linha.isAjuda && linha.ajudaFora
           const badgeTroca = trocaDe(linha)
           const badgeAssumida = linha.assumida && !badgeTroca
           // card noturno nunca é ajuda (dono 16/09, caso Matheus) — a lib já
@@ -2212,7 +2240,13 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // coluna de "+8h53" sem sentido conforme o dia avançava.
           // setas de ordem existem só no bloco de AJUDA (o rodapé é imutável) e o
           // layout da coluna da direita depende disso: com setas vira duas linhas.
-          const temSetasAjuda = canEdit && linha.isAjuda && !linha.ajudaFora && !linha.isProximoPlantao && linha.ajudaIdx != null
+          // SETAS SÓ ENTRE AS AJUDAS (dono 27/10, revoga o "mexeu nas setas = ordem
+          // informada" de 09/09): o 1º toque reordenava a cauda do turno INTEIRO, e
+          // visitantes que ninguém tocou mudavam de lugar. Agora as setas aparecem só
+          // no bloco 'ajuda' e trocam com o vizinho DESSE bloco; visitantes de outro
+          // hospital e o contraturno ficam onde a regra os põe.
+          const kAjuda = blocoAjudas.indexOf(linha)
+          const temSetasAjuda = canEdit && kAjuda >= 0 && !linha.ajudaFora && !linha.isProximoPlantao && linha.ajudaIdx != null
           const terminoLinhaMin = parseHoraMinutos(ov?.termino)
           const cronometro = (() => {
             // terminou TUDO (badge Livre): o tempo que sobrou é informação vencida
@@ -2371,6 +2405,15 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       em outro hospital o badge derivado abaixo diz de onde veio */}
                   {badgeAjuda && (
                     <Badge variant="info" className="shrink-0">Ajuda</Badge>
+                  )}
+                  {foraCard && (
+                    <Badge className="shrink-0 border-category-blue-fg bg-transparent text-category-blue-fg">{foraCard.hospital === 'Unimed' ? 'Na' : 'No'} {foraCard.hospital}</Badge>
+                  )}
+                  {consultorioCard && (
+                    <Badge className="shrink-0 border-category-blue-fg bg-transparent text-category-blue-fg">Consultório (ajuda)</Badge>
+                  )}
+                  {ajudaForaCard && (
+                    <Badge className="shrink-0 border-category-blue-fg bg-transparent text-category-blue-fg">Ajuda fora</Badge>
                   )}
                   {/* A troca pertence ao SLOT original. Depois da execução, a
                       linha passa a exibir quem assumiu, mas o badge continua
@@ -2572,9 +2615,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       return (
                         <div className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
                           {/* declarada sem caso lá: só o destino ("Ajuda no Materno") */}
-                          <p className="truncate">
-                            {fora.locais ? `Ajuda ${fora.locais}/${fora.hospital}` : `Ajuda no ${fora.hospital}`}
-                          </p>
+                          {/* o selo "Na X" já diz o hospital: a linha fica com a sala */}
+                          {fora.locais && <p className="truncate">{fora.locais}</p>}
                           {fora.cirurgioes.map((c) => <p key={c} className="truncate">{c}</p>)}
                         </div>
                       )
@@ -2860,8 +2902,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       <>
                         <button
                           type="button"
-                          onClick={() => onReordenarAjuda?.(linha.ajudaIdx, linha.ajudaIdx - 1)}
-                          disabled={linha.ajudaIdx === 0}
+                          onClick={() => onReordenarAjuda?.(linha.ajudaIdx, blocoAjudas[kAjuda - 1].ajudaIdx)}
+                          disabled={kAjuda === 0}
                           aria-label={`Subir ${linha.anestesista} na ordem das ajudas`}
                           className="flex h-9 w-7 shrink-0 items-center justify-center text-primary active:opacity-60 disabled:opacity-25"
                         >
@@ -2869,8 +2911,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         </button>
                         <button
                           type="button"
-                          onClick={() => onReordenarAjuda?.(linha.ajudaIdx, linha.ajudaIdx + 1)}
-                          disabled={linha.ajudaIdx >= totalAjudas - 1}
+                          onClick={() => onReordenarAjuda?.(linha.ajudaIdx, blocoAjudas[kAjuda + 1].ajudaIdx)}
+                          disabled={kAjuda >= blocoAjudas.length - 1}
                           aria-label={`Descer ${linha.anestesista} na ordem das ajudas`}
                           className="flex h-9 w-7 shrink-0 items-center justify-center text-primary active:opacity-60 disabled:opacity-25"
                         >
@@ -2930,7 +2972,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             <SheetTitle className="flex flex-wrap items-center gap-2 text-[17px]">
               {editor?.anestesista}
               {editor?.isPlantonista && <Badge variant="secondary">Plantonista</Badge>}
-              {editor?.isAjuda && <Badge variant="info">Ajuda</Badge>}
+              {editor?.isAjuda && !posicaoFixaDe(editor) && <Badge variant="info">Ajuda</Badge>}
               {editor?.isProximoPlantao && (
                 <Badge className="border-transparent bg-primary text-primary-foreground">{editor.plantaoLabel}</Badge>
               )}
@@ -2977,6 +3019,149 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   própria linha, porque o hospital só existia quando vinha de uma
                   cirurgia importada. Só aparece na fila única: no dia útil a tela
                   inteira é de um hospital só. ── */}
+              {/* ── POSIÇÃO + TROCAS NO TOPO (dono 27/10, modelo A): o que muda a fila vem
+                  primeiro e junto. Quem ocupa posição publicada vê o número e que ela é
+                  fixa; mudar quem a ocupa é sempre pela única entrada "Trocas". ── */}
+              {(() => {
+                const pos = posicaoFixaDe(editor)
+                if (!pos) return null
+                const seloSuprimido = semAjudaManual.has(editor.chave)
+                const fora = !seloSuprimido ? ajudaForaInfo(editor) : null
+                const seloInfo = seloSuprimido ? null
+                  : fora ? `${fora.hospital === 'Unimed' ? 'Na' : 'No'} ${fora.hospital}`
+                    : ajudaNoConsultorio(editor) ? 'Consultório (ajuda)'
+                      : editor.isAjuda && editor.ajudaFora ? 'Ajuda fora' : null
+                return (<>
+                  <div data-posicao-fixa className="flex min-h-[48px] items-center gap-2 text-[14.5px] font-semibold">
+                    <Lock className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    Posição na fila
+                    <span className="ml-auto text-right text-[13px] font-medium text-muted-foreground">
+                      {pos}º {hospitalLabel === 'Unimed' ? 'da' : 'do'} {hospitalLabel} · fixa
+                    </span>
+                  </div>
+                  <p className={['text-[12px] leading-snug text-muted-foreground', seloInfo || seloSuprimido ? 'pb-1' : 'border-b border-border pb-2.5'].join(' ')}>
+                    {editor.isProximoPlantao
+                      ? `${editor.plantaoLabel}: sai primeiro, por regra. `
+                      : `Está na escala ${hospitalLabel === 'Unimed' ? 'da' : 'do'} ${hospitalLabel}: não vira ajuda e não muda de lugar por aqui. `}
+                    Para mudar quem ocupa a posição, use Trocas.
+                  </p>
+                  {/* O SELO INFORMATIVO SEGUE DESFAZÍVEL (dono 14/09): o cruzamento das
+                      escalas pode errar, e o selo deduzido precisa de saída. Grava a mesma
+                      declaração de antes (`semAjuda`) e não mexe na posição. */}
+                  {canEdit && (seloInfo || seloSuprimido) && (
+                    <button
+                      type="button"
+                      onClick={() => { toggleAjuda(editor).catch(() => {}); setEditor(null) }}
+                      className="flex min-h-[44px] w-full items-center border-b border-border text-left text-[13px] font-semibold text-primary"
+                    >
+                      {seloInfo ? `Tirar o selo "${seloInfo}" (não muda a posição)` : 'Voltar a mostrar o selo de ajuda'}
+                    </button>
+                  )}
+                </>)
+              })()}
+              {canEdit && !editor.noturno && !modoFds && !String(editor.chave || '').includes('#casos') && (() => {
+                if (editor.assumida) {
+                  return (
+                    <>
+                      <LinhaPainel
+                        rotulo="Trocas"
+                        valor={`assumiu a posição de ${editor.assumida.deNome}`}
+                        aberto={abaPainel === 'troca'}
+                        onClick={() => setAbaPainel((a) => (a === 'troca' ? null : 'troca'))}
+                      />
+                      {abaPainel === 'troca' && (
+                        <EditorPainel titulo="Troca" onFechar={() => setAbaPainel(null)} onSalvar={salvarEditor}>
+                          <Button variant="outline" className="w-full" disabled={executandoTroca} onClick={desfazerSubstEditor}>
+                            {executandoTroca ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowLeftRight className="w-4 h-4" />}
+                            Desfazer troca
+                          </Button>
+                          <p className="mt-1.5 text-[11.5px] text-muted-foreground">
+                            Devolve a posição e os casos em aberto para {editor.assumida.deNome}, nos dois lados da troca.
+                          </p>
+                        </EditorPainel>
+                      )}
+                    </>
+                  )
+                }
+                const info = trocaDe(editor)
+                if (info) {
+                  // REGISTRO (dono 10/08): a escala já saiu trocada, ninguém
+                  // muda de lugar — oferecer "executar" aqui MOVERIA os dois e
+                  // desfaria a troca real. Só o rastro e o botão de tirá-lo.
+                  const registro = !!info.par?.apenasRegistro
+                  return (
+                    <>
+                      <LinhaPainel
+                        rotulo="Trocas"
+                        valor={`com ${info.outroNome}${info.outroHospitalLabel ? ` (${info.outroHospitalLabel})` : ''}`}
+                        aberto={abaPainel === 'troca'}
+                        onClick={() => setAbaPainel((a) => (a === 'troca' ? null : 'troca'))}
+                      />
+                      {abaPainel === 'troca' && (
+                        <EditorPainel titulo="Troca" onFechar={() => setAbaPainel(null)} onSalvar={salvarEditor}>
+                          <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-foreground">
+                            <ArrowLeftRight className="h-3.5 w-3.5 shrink-0 text-category-indigo-fg" />
+                            Trocado com <b>{info.outroNome}</b>{info.outroHospitalLabel ? ` (${info.outroHospitalLabel})` : ''}
+                            {info.par?.motivo ? <span className="font-normal text-muted-foreground"> · {info.par.motivo}</span> : null}
+                          </p>
+                          {registro ? (
+                            <>
+                              <p className="mb-2 text-[11.5px] text-muted-foreground">
+                                A escala já saiu com os dois no lugar certo — este é o registro da troca, ninguém muda de posição.
+                              </p>
+                              {/* ⚠️ registro era BECO SEM SAÍDA (dono 18/08: "a
+                                  posição na lista de liberações não está
+                                  mudando"): com a troca registrada, o painel
+                                  perdia a entrada do TrocaSheet e o único botão
+                                  era remover — não havia caminho nenhum para
+                                  fazer as posições trocarem de fato. Aqui a
+                                  decisão volta a ser POR POSIÇÃO no sheet (o
+                                  app nunca supõe quem se move, regra 10/08), já
+                                  com o colega escolhido. */}
+                              <Button variant="outline" className="mb-1.5 w-full" disabled={executandoTroca}
+                                onClick={() => { const l = editor; setEditor(null); onAbrirTroca?.(l, info.outroUid || null, 'posicao') }}>
+                                <ArrowLeftRight className="w-4 h-4" />
+                                Trocar de posição na escala
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button className="w-full" disabled={executandoTroca}
+                                onClick={() => setConfirmarTroca({ par: info.par, outroNome: info.outroNome, euNome: editor.anestesista })}>
+                                {executandoTroca ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowLeftRight className="w-4 h-4" />}
+                                Executar agora — {info.outroNome} assume aqui
+                              </Button>
+                              <p className="my-1.5 text-[11.5px] text-muted-foreground">
+                                Um toque, os dois lados juntos: cada um herda a posição na fila e os casos em aberto do colega.
+                              </p>
+                            </>
+                          )}
+                          <Button variant="outline" className="w-full" disabled={executandoTroca} onClick={() => desfazerTrocaEditor(info.par)}>
+                            {registro ? 'Remover registro da troca' : 'Desfazer troca'}
+                          </Button>
+                        </EditorPainel>
+                      )}
+                    </>
+                  )
+                }
+                // FLUXO ÚNICO (dono 07/08, "as trocas num só local"): trocar sai
+                // daqui e vai para o TrocaSheet — origem confirmada + tipo
+                // inferido + motivo + "Trocar agora", a MESMA UI de qualquer
+                // entrada. Executar/desfazer o que já existe fica no painel.
+                // UMA ENTRADA SÓ (dono 27/10): "Troca com um colega" e "Trocar de posição
+                // na escala" abriam a MESMA folha e só mudavam o que vinha marcado — em
+                // outubro, seis trocas foram desfeitas em até um minuto. A folha agora
+                // pergunta o que aconteceu, com quem, e mostra a fila antes de gravar.
+                return (
+                  <>
+                    <LinhaPainel
+                      rotulo="Trocas"
+                      valor="nenhuma"
+                      onClick={() => { const l = editor; setEditor(null); onAbrirTroca?.(l) }}
+                    />
+                  </>
+                )
+              })()}
               {modoFds && (
                 <>
                   <LinhaPainel
@@ -3162,7 +3347,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
 
               {/* ── AJUDA à mão (dono 29/07) — card noturno fica de fora: ele é
                   sintetizado do plantão, não existe no rodapé do turno. ── */}
-              {canEdit && !editor.noturno && (() => {
+              {canEdit && !editor.noturno && !posicaoFixaDe(editor) && (() => {
                 const posBloqueio = posicaoAjudaBloqueada(editor)
                 return (<>
                 <button
@@ -3322,117 +3507,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   )}
                 </>
               )}
-              {canEdit && !editor.noturno && !modoFds && !String(editor.chave || '').includes('#casos') && (() => {
-                if (editor.assumida) {
-                  return (
-                    <>
-                      <LinhaPainel
-                        rotulo="Troca"
-                        valor={`assumiu a posição de ${editor.assumida.deNome}`}
-                        aberto={abaPainel === 'troca'}
-                        onClick={() => setAbaPainel((a) => (a === 'troca' ? null : 'troca'))}
-                      />
-                      {abaPainel === 'troca' && (
-                        <EditorPainel titulo="Troca" onFechar={() => setAbaPainel(null)} onSalvar={salvarEditor}>
-                          <Button variant="outline" className="w-full" disabled={executandoTroca} onClick={desfazerSubstEditor}>
-                            {executandoTroca ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowLeftRight className="w-4 h-4" />}
-                            Desfazer troca
-                          </Button>
-                          <p className="mt-1.5 text-[11.5px] text-muted-foreground">
-                            Devolve a posição e os casos em aberto para {editor.assumida.deNome}, nos dois lados da troca.
-                          </p>
-                        </EditorPainel>
-                      )}
-                    </>
-                  )
-                }
-                const info = trocaDe(editor)
-                if (info) {
-                  // REGISTRO (dono 10/08): a escala já saiu trocada, ninguém
-                  // muda de lugar — oferecer "executar" aqui MOVERIA os dois e
-                  // desfaria a troca real. Só o rastro e o botão de tirá-lo.
-                  const registro = !!info.par?.apenasRegistro
-                  return (
-                    <>
-                      <LinhaPainel
-                        rotulo="Troca"
-                        valor={`com ${info.outroNome}${info.outroHospitalLabel ? ` (${info.outroHospitalLabel})` : ''}`}
-                        aberto={abaPainel === 'troca'}
-                        onClick={() => setAbaPainel((a) => (a === 'troca' ? null : 'troca'))}
-                      />
-                      {abaPainel === 'troca' && (
-                        <EditorPainel titulo="Troca" onFechar={() => setAbaPainel(null)} onSalvar={salvarEditor}>
-                          <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-foreground">
-                            <ArrowLeftRight className="h-3.5 w-3.5 shrink-0 text-category-indigo-fg" />
-                            Trocado com <b>{info.outroNome}</b>{info.outroHospitalLabel ? ` (${info.outroHospitalLabel})` : ''}
-                            {info.par?.motivo ? <span className="font-normal text-muted-foreground"> · {info.par.motivo}</span> : null}
-                          </p>
-                          {registro ? (
-                            <>
-                              <p className="mb-2 text-[11.5px] text-muted-foreground">
-                                A escala já saiu com os dois no lugar certo — este é o registro da troca, ninguém muda de posição.
-                              </p>
-                              {/* ⚠️ registro era BECO SEM SAÍDA (dono 18/08: "a
-                                  posição na lista de liberações não está
-                                  mudando"): com a troca registrada, o painel
-                                  perdia a entrada do TrocaSheet e o único botão
-                                  era remover — não havia caminho nenhum para
-                                  fazer as posições trocarem de fato. Aqui a
-                                  decisão volta a ser POR POSIÇÃO no sheet (o
-                                  app nunca supõe quem se move, regra 10/08), já
-                                  com o colega escolhido. */}
-                              <Button variant="outline" className="mb-1.5 w-full" disabled={executandoTroca}
-                                onClick={() => { const l = editor; setEditor(null); onAbrirTroca?.(l, info.outroUid || null, 'posicao') }}>
-                                <ArrowLeftRight className="w-4 h-4" />
-                                Trocar de posição na escala
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <Button className="w-full" disabled={executandoTroca}
-                                onClick={() => setConfirmarTroca({ par: info.par, outroNome: info.outroNome, euNome: editor.anestesista })}>
-                                {executandoTroca ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowLeftRight className="w-4 h-4" />}
-                                Executar agora — {info.outroNome} assume aqui
-                              </Button>
-                              <p className="my-1.5 text-[11.5px] text-muted-foreground">
-                                Um toque, os dois lados juntos: cada um herda a posição na fila e os casos em aberto do colega.
-                              </p>
-                            </>
-                          )}
-                          <Button variant="outline" className="w-full" disabled={executandoTroca} onClick={() => desfazerTrocaEditor(info.par)}>
-                            {registro ? 'Remover registro da troca' : 'Desfazer troca'}
-                          </Button>
-                        </EditorPainel>
-                      )}
-                    </>
-                  )
-                }
-                // FLUXO ÚNICO (dono 07/08, "as trocas num só local"): trocar sai
-                // daqui e vai para o TrocaSheet — origem confirmada + tipo
-                // inferido + motivo + "Trocar agora", a MESMA UI de qualquer
-                // entrada. Executar/desfazer o que já existe fica no painel.
-                return (
-                  <>
-                    <LinhaPainel
-                      rotulo="Troca com um colega"
-                      valor="nenhuma"
-                      onClick={() => { const l = editor; setEditor(null); onAbrirTroca?.(l) }}
-                    />
-                    {/* ⚠️ OPÇÃO PRÓPRIA (dono 18/08, caso Fernanda⇄Daniela): "a
-                        Daniela assumiu o plantão mas ficou apenas o badge de
-                        troca — nesses casos quero que haja troca de posição".
-                        A troca de cima segue como sempre (registro por padrão,
-                        que é como a troca entre hospitais é feita); esta aqui
-                        diz de saída que a POSIÇÃO muda de dono na fila, e ainda
-                        pede confirmação antes de gravar. */}
-                    <LinhaPainel
-                      rotulo="Trocar de posição na escala"
-                      valor="quem assumir entra nesta posição"
-                      onClick={() => { const l = editor; setEditor(null); onAbrirTroca?.(l, null, 'posicao') }}
-                    />
-                  </>
-                )
-              })()}
 
               {/* "Observação", não "recado" (dono 17/08): com o RECADO DO
                   PLANTONISTA na mesma aba, dois "recados" com significados
@@ -3472,20 +3546,18 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   o campo ficava preenchido sem gravar. Some enquanto uma folha de
                   editor está aberta — ela tem o próprio Salvar, e dois botões com
                   o mesmo nome na mesma tela é escolha que ninguém deveria ter. */}
+              {/* "Restaurar" saiu de par com o Salvar (dono 27/10, modelo A): com o mesmo
+                  peso, era tocado por engano e apagava local, cirurgião, observação e
+                  cronômetro. Virou link discreto e pergunta antes. */}
               {!abaPainel && (
-              <div className="sticky bottom-0 -mx-4 mt-3 flex gap-2 border-t border-border bg-card px-4 pb-1 pt-3">
-                <Button variant="outline" className="flex-1" onClick={restaurarEditor}>
-                  Restaurar automático
-                </Button>
-                <Button className="flex-1" onClick={salvarEditor}>
+              <div className="sticky bottom-0 -mx-4 mt-3 border-t border-border bg-card px-4 pb-1 pt-3">
+                <Button className="min-h-12 w-full" onClick={salvarEditor}>
                   Salvar
                 </Button>
+                <Button variant="ghost" className="mt-1 min-h-11 w-full text-[13px] font-semibold text-muted-foreground" onClick={() => setConfirmarRestaurar(true)}>
+                  Restaurar o automático desta linha…
+                </Button>
               </div>
-              )}
-              {!abaPainel && (
-                <p className="mt-1 text-[11.5px] text-muted-foreground">
-                  "Restaurar automático" limpa também o cronômetro e as marcas desta linha.
-                </p>
               )}
             </div>
           )}
@@ -4089,6 +4161,21 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
 
       {/* CONFIRMAÇÃO DO SWAP (dono 18/08) — mesma pergunta do TrocaSheet: nenhum
           caminho executa a troca sem mostrar antes o que muda na fila. */}
+      <ConfirmDialog
+        open={confirmarRestaurar}
+        onClose={() => setConfirmarRestaurar(false)}
+        onConfirm={() => { setConfirmarRestaurar(false); restaurarEditor() }}
+        title="Restaurar o automático?"
+        description={editor ? `Linha de ${editor.anestesista}.` : undefined}
+        confirmText="Restaurar"
+        cancelText="Cancelar"
+      >
+        <p className="text-xs text-muted-foreground">
+          Local, cirurgião e observação voltam ao que vem das cirurgias, e o cronômetro desta linha é apagado.
+          A posição na fila, as trocas e a liberação não mudam.
+        </p>
+      </ConfirmDialog>
+
       <ConfirmDialog
         open={!!confirmarTroca}
         onClose={() => { if (!executandoTroca) setConfirmarTroca(null) }}

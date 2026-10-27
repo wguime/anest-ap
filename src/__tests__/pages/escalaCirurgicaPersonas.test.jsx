@@ -356,11 +356,15 @@ describe('Plantonista — interações na aba Liberações', () => {
       expect.objectContaining({ local: 'Coronel Freitas', cirurgioes: 'Vanessa B' })
     )
   })
-  it('Restaurar automático dispara onSetOverride(null)', () => {
+  // MUDOU DE LADO (dono 27/10, modelo A): "Restaurar" tinha o mesmo peso do Salvar e
+  // apagava local, cirurgião, observação e cronômetro num toque. Virou link que pergunta.
+  it('Restaurar o automático pergunta antes e só então dispara onSetOverride(null)', async () => {
     const onSetOverride = vi.fn()
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} onSetOverride={onSetOverride} />, { wrapper: wrap })
     fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Marílio'))
-    fireEvent.click(screen.getByRole('button', { name: 'Restaurar automático' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Restaurar o automático desta linha…' }))
+    expect(onSetOverride).not.toHaveBeenCalled()
+    fireEvent.click(await screen.findByRole('button', { name: 'Restaurar' }))
     expect(onSetOverride).toHaveBeenCalledWith(expect.objectContaining({ anestesista: 'Marílio' }), null)
   })
 })

@@ -108,11 +108,16 @@ describe('nota de local no rodapé — "CRISTINA (CONSULT)" (dono 22/09)', () =>
 })
 
 describe('selo "Ajuda" pela linha "CONSULTORIO - AJUDA" do mapa (dono 21/09)', () => {
+  // MUDOU DE LADO (dono 27/10): o selo é o contornado "Consultório (ajuda)" — ele não
+  // mexe na fila, e o sólido "Ajuda" passou a significar só "sai antes"
   it('aparece no card de quem tem a linha, e só nele — o consultório comum não ganha selo', () => {
     montar(escalaDe())
-    expect(within(card('u-alex-s')).getByText('Ajuda')).toBeTruthy()
+    // o selo contornado (a linha da cirurgia também diz "Consultório (ajuda)")
+    expect(within(card('u-alex-s')).getAllByText('Consultório (ajuda)').some((el) => /border-category-blue-fg/.test(el.className))).toBe(true)
+    expect(within(card('u-alex-s')).queryByText('Ajuda')).toBeNull()
     for (const uid of ['u-janaina', 'u-karine', 'u-raul', 'u-joao-r']) {
       expect(within(card(uid)).queryByText('Ajuda')).toBeNull()
+      expect([...card(uid).querySelectorAll('[class*="border-category-blue-fg"]')]).toHaveLength(0)
     }
   })
 

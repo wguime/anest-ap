@@ -18,7 +18,7 @@
  * o que quebrou foi o fio entre as duas, e é o fio que precisa de teste.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 
 import { ThemeProvider, ToastProvider } from '@/design-system'
 
@@ -210,10 +210,14 @@ describe('quem está de ajuda em outro hospital, na escala DELE', () => {
     expect(card.textContent).not.toMatch(/Liberado/)
   })
 
-  it('ganha o badge de Ajuda e o card diz local, hospital e cirurgião', () => {
+  it('ganha o selo do destino e o card diz local e cirurgião', () => {
+    // ⚠️ MUDOU DE LADO (dono 27/10): quem ocupa posição daqui e está emprestado não sai
+    // antes, então o selo é o contornado do destino ("No HRO") e a linha de baixo fica
+    // com a sala. O sólido "Ajuda" ficou para quem sai antes (blocos do fim).
     montar({ unimed: UNIMED_SEM_OSCAR, hro: HRO_COM_OSCAR })
     const card = screen.getByLabelText('Editar local/cirurgião de Oscar').closest('[data-linha]')
-    expect(card.textContent).toMatch(/Ajuda IOSC\/HRO/)
+    expect(within(card).getByText('No HRO')).toBeTruthy()
+    expect(card.textContent).toMatch(/IOSC/)
     expect(card.textContent).toMatch(/Maurício Fabiani/)
   })
 

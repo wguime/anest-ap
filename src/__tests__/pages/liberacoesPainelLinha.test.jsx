@@ -198,14 +198,17 @@ describe('Ajuda marcada à mão (dono 29/07)', () => {
   // MUDOU DE LADO em 16/10 (dono, modelo A de `.tmp/ajuda-bloqueada-escalado.html`): o
   // Marílio é o 2º do rodapé daqui. Marcar ajuda o jogaria para o fim da fila, onde se
   // libera primeiro — foi o que aconteceu com o Guilherme Melo, 7º da Unimed, em 16/10.
-  it('quem está no rodapé DAQUI não pode ser marcado: botão apagado, com o porquê', () => {
+  // MUDOU DE LADO DE NOVO em 27/10 (dono, modelo A): o botão apagado com o porquê virou a
+  // própria posição, à vista e fixa. O mesmo interruptor fazia quatro coisas conforme o
+  // estado; para quem ocupa posição daqui ele não tem nada a fazer.
+  it('quem está no rodapé DAQUI vê a posição fixa e nenhum controle de ajuda', () => {
     const onAddAjuda = vi.fn(async () => {})
     montar({ onAddAjuda })
     abrirEditor('Marílio Flach')
-    const botao = screen.getByRole('button', { name: /Marcar .* como ajuda de outro hospital/ })
-    expect(botao.disabled).toBe(true)
-    expect(screen.getByText('Está na escala da HRO (2º), já tem posição na fila.')).toBeTruthy()
-    fireEvent.click(botao)
+    expect(screen.queryByRole('button', { name: /como ajuda de outro hospital/ })).toBeNull()
+    const pos = document.querySelector('[data-posicao-fixa]')
+    expect(pos).toHaveTextContent('Posição na fila2º do HRO · fixa')
+    expect(screen.getByText(/Está na escala do HRO: não vira ajuda e não muda de lugar por aqui\. Para mudar quem ocupa a posição, use Trocas\./)).toBeTruthy()
     expect(onAddAjuda).not.toHaveBeenCalled()
   })
 
@@ -400,6 +403,27 @@ describe('Reordenar o bloco de ajuda (dono 30/07)', () => {
     expect(screen.getByLabelText(/Subir Marcos Cury na ordem das ajudas/)).toBeDisabled()
     expect(screen.getByLabelText(/Descer Paulo Tonini na ordem das ajudas/)).toBeDisabled()
   })
+
+  // SETAS SÓ ENTRE AS AJUDAS (dono 27/10, revoga o "mexeu nas setas = ordem informada"
+  // de 09/09). Garim está no array de ajuda MAS é da escala do HRO: vai para o bloco de
+  // quem veio de outro hospital, na ordem de lá. Antes ele ganhava setas, e o 1º toque
+  // ligava a "ordem informada" do turno — a cauda inteira passava a seguir o array.
+  // O Garim fica no MEIO do array de propósito: com ele no fim, "vizinho do bloco" e
+  // "próximo do array" coincidem e o teste passaria sem a regra.
+  it('visitante de outro hospital não tem setas, e a seta pula para o vizinho DO BLOCO', () => {
+    const onReordenarAjuda = vi.fn()
+    const comVisitante = {
+      ...comAjudas,
+      ajudaExterna: { matutino: ['CURY', 'GARIM', 'PAULO'] },
+      casos: [...comAjudas.casos, caso('Sala 9', 0, 'GARIM', 'Paulo Caldas', '07:00')],
+    }
+    const presenca = [{ nome: 'GARIM', uid: null, hospital: 'hro', hospitalLabel: 'HRO', rodapeIdx: 14 }]
+    montar({ onReordenarAjuda, presencaOutros: presenca }, comVisitante)
+    expect(screen.queryByLabelText(/Garim na ordem das ajudas/)).toBeNull()
+    fireEvent.click(screen.getByLabelText(/Descer Marcos Cury na ordem das ajudas/))
+    // Cury (0) troca com Paulo (2), o vizinho no bloco — o Garim (1) não entra na conta
+    expect(onReordenarAjuda).toHaveBeenCalledWith(0, 2)
+  })
 })
 
 /**
@@ -466,7 +490,10 @@ describe('Contraturno — guard e badge cruzado', () => {
     })
     const card = document.querySelector('[data-linha="uid-kar"]')
     expect(within(card).getByText('Plantão da tarde')).toBeTruthy()
-    expect(within(card).getByText('Ajuda')).toBeTruthy()
+    // ⚠️ MUDOU DE LADO (dono 27/10): azul sem cirurgia aqui está FORA e mantém a
+    // posição — o selo contornado "Ajuda fora" informa sem dizer "sai antes"
+    expect(within(card).getByText('Ajuda fora')).toBeTruthy()
+    expect(within(card).queryByText('Ajuda')).toBeNull()
   })
 
   it('quem pega o contraturno em OUTRO hospital vem com o hospital no badge', () => {
@@ -655,14 +682,19 @@ describe('Emprestado mantém posição na origem (caso TIAGO)', () => {
   }
   const presenca = [{ nome: 'TIAGO', uid: 'uid-tiago-x', hospitalLabel: 'Unimed', sala: 'Hemodinâmica' }]
 
-  it('fica na posição do rodapé com badge Ajuda e o destino no card', () => {
+  // ⚠️ MUDOU DE LADO (dono 27/10, modelo A de `.tmp/auditoria-liberacoes/edicao-liberacoes.html`):
+  // o "Ajuda" sólido diz "sai antes"; quem ocupa posição daqui e está EMPRESTADO não sai
+  // antes, então ganha o selo contornado "Na Unimed" (o destino), e a linha de baixo
+  // fica só com a sala. Sólido = muda a fila; contornado = só informa.
+  it('fica na posição do rodapé com o selo do destino e a sala no card', () => {
     montar({ presencaOutros: presenca }, escalaOrigem)
     const chaves = [...document.querySelectorAll('[data-linha]')].map((el) => el.getAttribute('data-linha'))
     // Tiago na 2ª posição do rodapé — NÃO desceu para o bloco de ajuda
     expect(chaves[1]).toBe('TIAGO')
     const card = document.querySelector('[data-linha="TIAGO"]')
-    expect(within(card).getByText('Ajuda')).toBeTruthy()
-    expect(within(card).getByText('Ajuda Hemodinâmica/Unimed')).toBeTruthy()
+    expect(within(card).getByText('Na Unimed')).toBeTruthy()
+    expect(within(card).queryByText('Ajuda')).toBeNull()
+    expect(within(card).getByText('Hemodinâmica')).toBeTruthy()
     // sem setas: a posição é a do rodapé
     expect(within(card).queryByLabelText(/na ordem das ajudas/)).toBeNull()
   })
@@ -674,7 +706,7 @@ describe('Emprestado mantém posição na origem (caso TIAGO)', () => {
     // vezes, com a frase mais longa puxando o olho antes do nome.
     montar({ presencaOutros: presenca }, escalaOrigem)
     const card = document.querySelector('[data-linha="TIAGO"]')
-    const destino = within(card).getByText('Ajuda Hemodinâmica/Unimed')
+    const destino = within(card).getByText('Hemodinâmica')
     // ⚠️ a cor mora no BLOCO desde 11/09, quando os cirurgiões viraram uma linha
     // cada (antes era tudo uma frase só, e a classe ficava no próprio <p>). A
     // asserção subiu junto e ficou mais estrita: nem o bloco nem nenhuma linha
@@ -683,8 +715,8 @@ describe('Emprestado mantém posição na origem (caso TIAGO)', () => {
     expect(bloco.className).toMatch(/text-muted-foreground/)
     expect(bloco.className).not.toMatch(/text-info/)
     for (const p of bloco.querySelectorAll('p')) expect(p.className).not.toMatch(/text-info/)
-    // o sinal continua existindo, no badge
-    expect(within(card).getByText('Ajuda')).toBeTruthy()
+    // o sinal continua existindo, no selo (contornado desde 27/10)
+    expect(within(card).getByText('Na Unimed')).toBeTruthy()
   })
 
   /**
@@ -703,11 +735,12 @@ describe('Emprestado mantém posição na origem (caso TIAGO)', () => {
     ]
     montar({ presencaOutros: doisCasos }, escalaOrigem)
     const card = document.querySelector('[data-linha="TIAGO"]')
-    const destino = within(card).getByText('Ajuda CC - Sala 2/Unimed')
+    const destino = within(card).getByText('CC - Sala 2')
     const bloco = destino.closest('div')
-    // destino + um <p> por cirurgião — nenhum nome dividindo linha com outro
+    // sala + um <p> por cirurgião — nenhum nome dividindo linha com outro (o hospital
+    // está no selo "Na Unimed" desde 27/10)
     expect([...bloco.querySelectorAll('p')].map((p) => p.textContent)).toEqual(
-      ['Ajuda CC - Sala 2/Unimed', 'Mateus Baptistella', 'Maurício Spagnol']
+      ['CC - Sala 2', 'Mateus Baptistella', 'Maurício Spagnol']
     )
     // a contagem saiu: o número de linhas já diz quantas são
     expect(bloco.textContent).not.toMatch(/cirurgias/)
@@ -716,7 +749,8 @@ describe('Emprestado mantém posição na origem (caso TIAGO)', () => {
   it('sem o cruzamento carregado, o azul volta ao comportamento clássico (fim)', () => {
     montar({}, escalaOrigem)
     const card = document.querySelector('[data-linha="TIAGO"]')
-    expect(within(card).getByText('Ajuda')).toBeTruthy()
+    // sem destino conhecido o selo diz só que está fora (contornado desde 27/10)
+    expect(within(card).getByText('Ajuda fora')).toBeTruthy()
     expect(within(card).queryByText(/Ajuda .+\//)).toBeNull()
   })
 })
@@ -899,27 +933,30 @@ describe('badge de Ajuda derivado tem "não é ajuda", e desfazer é uma declara
   // Leonardo está no rodapé daqui E com sala na escala da Unimed → "emprestado"
   const emprestado = [{ nome: 'LEONARDO', hospitalLabel: 'Unimed', sala: 'CC - Sala 1' }]
 
-  it('emprestado: o botão diz "não é ajuda" e o toque grava semAjuda — nunca adiciona ao array', async () => {
+  // ⚠️ MUDOU DE LADO (dono 27/10, modelo A): quem ocupa posição daqui não tem mais o
+  // interruptor de ajuda — o selo do emprestado virou informativo ("Na Unimed"). O que
+  // 14/09 garantia continua: o selo deduzido tem saída, e ela é a mesma declaração.
+  it('emprestado: "Tirar o selo" grava semAjuda — nunca adiciona ao array', async () => {
     const onAddAjuda = vi.fn(async () => {})
     const onDefinirSemAjuda = vi.fn(async () => {})
     montar({ onAddAjuda, onDefinirSemAjuda, presencaOutros: emprestado })
     abrirEditor('Leonardo Ferrazzo')
-    fireEvent.click(screen.getByRole('button', { name: /Leonardo Ferrazzo não é ajuda de outro hospital/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Tirar o selo "Na Unimed" (não muda a posição)' }))
     await waitFor(() => expect(onDefinirSemAjuda).toHaveBeenCalledTimes(1))
     expect(onDefinirSemAjuda.mock.calls[0][0]).toMatchObject({ chave: 'uid-leo' })
     expect(onDefinirSemAjuda.mock.calls[0][1]).toBe(true)
     expect(onAddAjuda).not.toHaveBeenCalled()
   })
 
-  it('com a declaração gravada o badge some, o botão volta a "Marcar", e o toque limpa a declaração', async () => {
+  it('com a declaração gravada o selo some, e "Voltar a mostrar" limpa a declaração', async () => {
     const onAddAjuda = vi.fn(async () => {})
     const onDefinirSemAjuda = vi.fn(async () => {})
     const declarada = { ...escalaBase, linhaOverrides: { 'matutino:uid-leo': { semAjuda: true } } }
     montar({ onAddAjuda, onDefinirSemAjuda, presencaOutros: emprestado }, declarada)
     // nenhum "não é ajuda" para o Leonardo: o badge derivado foi suprimido
     abrirEditor('Leonardo Ferrazzo')
-    expect(screen.queryByRole('button', { name: /Leonardo Ferrazzo não é ajuda/ })).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: /Marcar Leonardo Ferrazzo como ajuda de outro hospital/ }))
+    expect(screen.queryByRole('button', { name: /Tirar o selo/ })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Voltar a mostrar o selo de ajuda' }))
     await waitFor(() => expect(onDefinirSemAjuda).toHaveBeenCalledTimes(1))
     expect(onDefinirSemAjuda.mock.calls[0][1]).toBeNull()
     expect(onAddAjuda).not.toHaveBeenCalled()

@@ -178,7 +178,7 @@ describe('Painel ✏️ — declarar, executar e desfazer a troca', () => {
     const onAbrirTroca = vi.fn()
     montar({ onAbrirTroca })
     abrirEditor('Karine Bedin')
-    fireEvent.click(screen.getByRole('button', { name: /^Troca com um colega/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Trocas/ }))
     await waitFor(() => expect(onAbrirTroca).toHaveBeenCalled())
     expect(onAbrirTroca.mock.calls[0][0].chave).toBe('uid-kar')
   })
@@ -271,20 +271,21 @@ describe('Painel ✏️ — declarar, executar e desfazer a troca', () => {
     expect(modo).toBe('posicao')
   })
 
-  // ⚠️ OPÇÃO PRÓPRIA (dono 18/08): "trocas entre hospitais como já é feito
-  // normalmente, quero apenas uma nova opção para trocar de posição na escala".
-  // A troca de sempre continua na linha de cima, intacta.
-  it('linha sem troca tem as DUAS opções — a de sempre e a de posição', () => {
+  // ⚠️ MUDOU DE LADO (dono 27/10: "há muitos botões de trocas (isso confunde os
+  // usuários), crie um único botão e a partir dele opções de trocas com explicações").
+  // A "opção própria" de 18/08 ("Trocar de posição na escala") e a troca de sempre
+  // abriam a MESMA folha; em outubro seis trocas foram desfeitas em até um minuto. Agora
+  // há uma entrada só, e a folha pergunta o que aconteceu.
+  it('linha sem troca tem UMA entrada, "Trocas", que abre a folha sem opção marcada', () => {
     const onAbrirTroca = vi.fn()
     montar({ onAbrirTroca })
     abrirEditor('Karine Bedin')
-    fireEvent.click(screen.getByRole('button', { name: /^Troca com um colega/ }))
-    expect(onAbrirTroca.mock.calls[0][2]).toBeUndefined() // modo registro (o de sempre)
-
-    abrirEditor('Karine Bedin')
-    fireEvent.click(screen.getByRole('button', { name: /^Trocar de posição na escala/ }))
-    expect(onAbrirTroca.mock.calls[1][2]).toBe('posicao')
-    expect(onAbrirTroca.mock.calls[1][0].chave).toBe('uid-kar')
+    expect(screen.queryByRole('button', { name: /Troca com um colega/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Trocar de posição na escala/ })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /^Trocas/ }))
+    expect(onAbrirTroca).toHaveBeenCalledTimes(1)
+    expect(onAbrirTroca.mock.calls[0][0].chave).toBe('uid-kar')
+    expect(onAbrirTroca.mock.calls[0][2]).toBeUndefined()
   })
 })
 

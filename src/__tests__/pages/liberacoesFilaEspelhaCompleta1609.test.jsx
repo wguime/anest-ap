@@ -114,7 +114,9 @@ describe('Rômulo — emprestado a um caso SEM cirurgião: o procedimento diz o 
   it('o card diz o destino E o procedimento, sem o "…" de cirurgião desconhecido', () => {
     montar(escalaCom([daLouise]), { presencaOutros: noHro })
     const t = textoDe('Rômulo Roxo')
-    expect(t).toMatch(/Ajuda Sala 7\/HRO/)
+    // desde 27/10 o hospital vai no selo "No HRO" e a linha fica com a sala
+    expect(t).toMatch(/No HRO/)
+    expect(t).toMatch(/Sala 7/)
     expect(t).toMatch(/04 cesareas/i)
     expect(t).not.toMatch(/…/)
   })
