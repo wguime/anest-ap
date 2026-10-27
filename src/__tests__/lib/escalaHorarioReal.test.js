@@ -20,6 +20,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import {
   duracaoMin, ehDiaOperacionalAtual, erroHorarioReal, gravarInicioReal, gravarTerminoReal, horarioRealNaTransicao, inicioDefinidoConsultorio, rotuloMinutos, sugestoesDeInicio,
+  limiteDoTermino, terminoDaDuracao,
 } from '@/lib/escalaHorarioReal'
 import { inicioDaUrgencia } from '@/lib/escalaCirurgicaUrgencias'
 
@@ -271,3 +272,61 @@ describe('consultório: o início é o do horário definido (dono 16/10)', () =>
   })
 })
 
+
+describe('"Terminou · horário depois" e o estimado que conta do início (dono 27/10)', () => {
+  const sql = fs.readFileSync(path.resolve(__dirname, '../../../supabase/migrations/20261027190000_escala_horarios_liberar_sem_travar.sql'), 'utf8')
+  const corpo = sql.slice(sql.indexOf('create or replace function public.escala_caso_horario_real'), sql.indexOf('create or replace function public.rpc_escala_terminar_sem_horario'))
+
+  it('sem horário: o otimista não grava a hora do toque como término', () => {
+    expect(horarioRealNaTransicao({ statusCirurgia: 'agendada' }, 'terminada', { agoraD: AGORA, semHorario: true }))
+      .toEqual({ inicioReal: null, terminoReal: null })
+    // o início que veio do toque em Iniciada fica — é real
+    expect(horarioRealNaTransicao({ statusCirurgia: 'iniciada', inicioReal: '13:05' }, 'terminada', { agoraD: AGORA, semHorario: true }))
+      .toEqual({ inicioReal: '13:05', terminoReal: null })
+  })
+
+  it('o PAR com o banco: a flag segura o término e o "início obrigatório"', () => {
+    expect(corpo).toMatch(/current_setting\('escala\.terminar_sem_horario', true\)/)
+    expect(corpo).toMatch(/if new\.termino_real is null and not v_sem_horario then/)
+    expect(corpo).toMatch(/new\.inicio_real is null and not v_sem_horario/)
+  })
+
+  it('Iniciada converte a duração estimada em término previsto e a apaga', () => {
+    expect(horarioRealNaTransicao({ statusCirurgia: 'agendada', duracaoEstimadaMin: 120 }, 'iniciada', { agoraD: AGORA, inicioInformado: '16:05' }))
+      .toEqual({ inicioReal: '16:05', terminoReal: null, terminoPrevisto: '18:05', duracaoEstimadaMin: null })
+    // sem duração, nada muda no estimado
+    expect(horarioRealNaTransicao({ statusCirurgia: 'agendada' }, 'iniciada', { agoraD: AGORA }))
+      .toEqual({ inicioReal: '15:45', terminoReal: null })
+  })
+
+  it('o PAR com o banco: início + duração, com o autor de quem estimou', () => {
+    expect(corpo).toMatch(/new\.termino_previsto := to_char\(new\.inicio_real::time \+ make_interval\(mins => new\.duracao_estimada_min\), 'HH24:MI'\)/)
+    expect(corpo).toMatch(/new\.termino_previsto_por := coalesce\(new\.duracao_estimada_por, v_quem\)/)
+  })
+
+  it('Terminada apaga a duração que sobrou', () => {
+    expect(horarioRealNaTransicao({ statusCirurgia: 'agendada', duracaoEstimadaMin: 60, inicioReal: '13:00' }, 'terminada', { agoraD: AGORA }))
+      .toMatchObject({ duracaoEstimadaMin: null })
+  })
+
+  it('terminoDaDuracao soma e atravessa a meia-noite', () => {
+    expect(terminoDaDuracao('16:05', 120)).toBe('18:05')
+    expect(terminoDaDuracao('23:30', 90)).toBe('01:00')
+    expect(terminoDaDuracao('', 60)).toBe('')
+    expect(terminoDaDuracao('10:00', 0)).toBe('')
+  })
+
+  it('o limite é a hora em que marcaram Terminada, só para quem ficou sem término', () => {
+    const em = new Date('2026-10-27T15:40:00-03:00').toISOString()
+    expect(limiteDoTermino({ statusCirurgia: 'terminada', statusAtualizadoEm: em })).toBe('15:40')
+    expect(limiteDoTermino({ statusCirurgia: 'terminada', terminoReal: '15:00', statusAtualizadoEm: em })).toBeNull()
+    expect(limiteDoTermino({ statusCirurgia: 'iniciada', statusAtualizadoEm: em })).toBeNull()
+  })
+
+  it('o término (e o início) informados depois não passam do limite', () => {
+    const outroDia = { dataEscala: '2026-10-27', agoraD: new Date('2026-10-30T09:00:00-03:00') }
+    expect(erroHorarioReal({ campo: 'termino', hhmm: '15:50', limite: '15:40', ...outroDia })).toBe('Terminou antes de 15:40.')
+    expect(erroHorarioReal({ campo: 'termino', hhmm: '15:40', limite: '15:40', ...outroDia })).toBeNull()
+    expect(erroHorarioReal({ campo: 'inicio', hhmm: '16:00', limite: '15:40', ...outroDia })).toMatch(/Terminou antes de 15:40/)
+  })
+})

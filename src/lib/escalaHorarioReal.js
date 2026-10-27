@@ -42,12 +42,18 @@ export function hhmmDe(d) {
  * (dono 02/10, tarde: "informar o término marca Terminada") vence a hora do toque
  * do mesmo jeito que o início.
  *
+ * Desde 27/10, o espelho também de:
+ *   • "TERMINOU · HORÁRIO DEPOIS" (`semHorario`, RPC rpc_escala_terminar_sem_horario): a
+ *     hora do toque NÃO vira término — fica vazio, a informar por quem operou;
+ *   • ESTIMADO QUE CONTA DO INÍCIO: na iniciada, a duração estimada (`duracaoEstimadaMin`)
+ *     vira `terminoPrevisto` = início + duração e se apaga; na terminada, só se apaga.
+ *
  * @param {object} vivo  o caso antes do toque
  * @param {string} status
- * @param {{agoraD?: Date, inicioInformado?: string|null, terminoInformado?: string|null}} [opts]
- * @returns {{inicioReal?: string|null, terminoReal?: string|null}}
+ * @param {{agoraD?: Date, inicioInformado?: string|null, terminoInformado?: string|null, semHorario?: boolean}} [opts]
+ * @returns {{inicioReal?: string|null, terminoReal?: string|null, terminoPrevisto?: string, duracaoEstimadaMin?: null}}
  */
-export function horarioRealNaTransicao(vivo, status, { agoraD = agora(), inicioInformado = null, terminoInformado = null } = {}) {
+export function horarioRealNaTransicao(vivo, status, { agoraD = agora(), inicioInformado = null, terminoInformado = null, semHorario = false } = {}) {
   const antes = vivo?.statusCirurgia || 'agendada'
   if (!['agendada', 'iniciada', 'terminada'].includes(status) || status === antes) {
     return {
@@ -56,14 +62,40 @@ export function horarioRealNaTransicao(vivo, status, { agoraD = agora(), inicioI
     }
   }
   if (status === 'agendada') return { inicioReal: null, terminoReal: null }
+  const duracao = Number(vivo?.duracaoEstimadaMin) > 0 ? Number(vivo.duracaoEstimadaMin) : null
   if (status === 'iniciada') {
-    return { inicioReal: inicioInformado || vivo?.inicioReal || hhmmDe(agoraD), terminoReal: null }
+    const inicioReal = inicioInformado || vivo?.inicioReal || hhmmDe(agoraD)
+    return {
+      inicioReal,
+      terminoReal: null,
+      ...(duracao && { terminoPrevisto: terminoDaDuracao(inicioReal, duracao), duracaoEstimadaMin: null }),
+    }
   }
   const doCarimbo = antes === 'iniciada' && vivo?.statusAtualizadoEm ? hhmmDe(new Date(vivo.statusAtualizadoEm)) : null
   return {
     inicioReal: inicioInformado || vivo?.inicioReal || doCarimbo || null,
-    terminoReal: terminoInformado || vivo?.terminoReal || hhmmDe(agoraD),
+    terminoReal: terminoInformado || vivo?.terminoReal || (semHorario ? null : hhmmDe(agoraD)),
+    ...(duracao && { duracaoEstimadaMin: null }),
   }
+}
+
+/** "16:05" + 120 → "18:05" (atravessa a meia-noite, como o `time + interval` do gatilho). */
+export function terminoDaDuracao(inicioHHMM, minutos) {
+  const ini = parseHoraMinutos(inicioHHMM)
+  const dur = Number(minutos)
+  if (ini == null || !Number.isFinite(dur) || dur <= 0) return ''
+  const t = (ini + dur) % 1440
+  return `${pad(Math.floor(t / 60))}:${pad(t % 60)}`
+}
+
+/**
+ * O LIMITE de uma cirurgia que foi fechada sem horário (dono 27/10, "terminou antes de
+ * 15:40"): a hora em que ela foi marcada Terminada — o término real não pode passar dela.
+ * null quando a cirurgia não está terminada ou já tem o término.
+ */
+export function limiteDoTermino(caso) {
+  if ((caso?.statusCirurgia || 'agendada') !== 'terminada' || String(caso?.terminoReal ?? '').trim()) return null
+  return caso?.statusAtualizadoEm ? hhmmDe(new Date(caso.statusAtualizadoEm)) : null
 }
 
 /**
@@ -102,9 +134,14 @@ export function rotuloMinutos(min) {
  * @param {{campo:'inicio'|'termino', hhmm:string, inicioReal?:string, terminoReal?:string,
  *          dataEscala?:string, agoraD?:Date}} p
  */
-export function erroHorarioReal({ campo, hhmm, inicioReal = null, terminoReal = null, dataEscala = null, agoraD = agora() }) {
+export function erroHorarioReal({ campo, hhmm, inicioReal = null, terminoReal = null, dataEscala = null, agoraD = agora(), limite = null }) {
   const alvo = parseHoraMinutos(hhmm)
   if (alvo == null) return 'Horário inválido.'
+  // fechada sem horário (27/10): terminou no máximo na hora em que marcaram Terminada
+  const lim = parseHoraMinutos(limite)
+  if (lim != null && alvo > lim) {
+    return campo === 'inicio' ? `Terminou antes de ${limite}: o início também.` : `Terminou antes de ${limite}.`
+  }
   if (ehDiaOperacionalAtual(dataEscala, agoraD)) {
     const agoraMin = agoraD.getHours() * 60 + agoraD.getMinutes()
     if (diffRelogioMin(alvo, agoraMin) > 1) {

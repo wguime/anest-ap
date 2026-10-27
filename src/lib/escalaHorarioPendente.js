@@ -150,23 +150,48 @@ export const casoAberto = (caso) => (caso?.statusCirurgia || 'agendada') !== 'te
  * ter informação de início e não há alerta"): a cirurgia que passou do horário AGENDADO
  * sem início entra no alerta já durante o turno — não espera a liberação nem o fim do
  * turno. Tolerância de 30 min (a escala costuma escorregar alguns minutos).
- *   • sem hora ("AS", a seguir): conta do TÉRMINO real da cirurgia anterior da mesma sala;
  *   • marcada ATRASADA: o atraso foi declarado — esta regra pausa (o fim do turno, não).
+ *
+ * A SALA OCUPADA NÃO COBRA (dono 27/10, medido em outubro): o intervalo real entre o
+ * término de uma cirurgia e o início da seguinte na mesma sala tem mediana de 35 min e 75%
+ * até 60 min. Com 30 min contados só da hora agendada, 300 alertas do mês acenderam com a
+ * cirurgia ainda por começar (107 de 201 "AS"; 193 de 497 com hora, quase sempre atrás de
+ * uma sala atrasada). Agora:
+ *   • sem hora ("AS", a seguir): término real da anterior da mesma sala + 60 min;
+ *   • com hora: o MAIOR entre a hora agendada e o término real da anterior, + 30 min;
+ *   • a anterior ainda aberta (agendada/iniciada) segura a sala: a seguinte não é cobrada;
+ *   • a anterior fechada sem término ("Terminou · horário depois") conta da hora em que a
+ *     marcaram Terminada — o limite superior do término dela.
+ * Medido: 300 → 139 alertas falsos no mês.
  */
 export const TOLERANCIA_INICIO_MIN = 30
+export const TOLERANCIA_INICIO_AS_MIN = 60
 
 const minutosHora = (h) => {
   const m = /^\s*(\d{1,2}):(\d{2})/.exec(String(h ?? ''))
   return m ? Number(m[1]) * 60 + Number(m[2]) : null
 }
+const minutosDoCarimbo = (iso) => {
+  const d = iso ? new Date(iso) : null
+  return d && !Number.isNaN(d.getTime()) ? d.getHours() * 60 + d.getMinutes() : null
+}
+
+/** Quando a anterior liberou a sala: minuto | null (sem referência) | 'ocupada'. */
+function fimDaAnterior(anterior) {
+  if (!anterior) return null
+  if (anterior.statusExtra === 'suspensa' || anterior.statusCirurgia === 'suspensa') return null
+  if (casoAberto(anterior)) return 'ocupada'
+  return minutosHora(anterior.terminoReal) ?? minutosDoCarimbo(anterior.statusAtualizadoEm)
+}
 
 /** Minuto (dia operacional) a partir do qual o início está vencido; null = sem referência. */
 export function prazoInicio(caso, anteriorDaSala = null) {
   if (caso?.statusExtra === 'atrasada' || caso?.statusCirurgia === 'atrasada') return null
+  const fim = fimDaAnterior(anteriorDaSala)
+  if (fim === 'ocupada') return null
   const hora = minutosHora(caso?.hora)
-  if (hora != null) return hora + TOLERANCIA_INICIO_MIN
-  const fimAnterior = minutosHora(anteriorDaSala?.terminoReal)
-  return fimAnterior != null ? fimAnterior + TOLERANCIA_INICIO_MIN : null
+  if (hora != null) return Math.max(hora, fim ?? hora) + TOLERANCIA_INICIO_MIN
+  return fim != null ? fim + TOLERANCIA_INICIO_AS_MIN : null
 }
 
 /** A cirurgia imediatamente antes desta na mesma sala e turno (pela ordem publicada). */
@@ -241,10 +266,16 @@ export function pendenciasDoDia(escalas, { hoje, agoraMin, liberado = () => fals
  *
  * `casos` = as cirurgias da PESSOA no turno, abertas e encerradas (`linha.casosTurno`).
  * Devolve só as que travam a liberação: `{ caso, inicio, termino, aberta }` — `inicio`/
- * `termino` dizem o que falta; `aberta` = ainda não terminou (pode passar a um colega).
- * Mesmos cortes do alerta (`casoEntraNaConta`, sem a janela de datas). A cirurgia que
- * SEGUE com outra pessoa não trava: a que passa para a tarde e a dupla "A + B" ainda
- * aberta — quem fica responde por ela.
+ * `termino` dizem o que falta. Mesmos cortes do alerta (`casoEntraNaConta`, sem a janela de
+ * datas). A cirurgia que SEGUE com outra pessoa não trava: a que passa para a tarde e a
+ * dupla "A + B" ainda aberta — quem fica responde por ela.
+ *
+ * SÓ A ABERTA TRAVA (dono 27/10, reabre 14/10): 96% das liberações eram feitas por outra
+ * pessoa, que não sabe os horários — 177 términos entraram com a hora do toque só para
+ * destravar. Agora a folha pede o FATO de cada cirurgia aberta (preencher, "Terminou ·
+ * horário depois", passar, não aconteceu); terminada sem horário não segura ninguém e vira
+ * pendência de quem operou (aba Minhas). A folha é a mesma para quem libera a si mesmo.
+ * O banco recusa o mesmo conjunto (`escala_caso_trava_liberacao`, migration 20261027190000).
  */
 export function pendenciasParaLiberar(casos) {
   const out = []
@@ -252,11 +283,9 @@ export function pendenciasParaLiberar(casos) {
     if (!caso || !temTexto(caso.procedimento)) continue
     if (caso.semAnestesista || caso.isContinuacao || ehConsultorio(caso)) continue
     if (caso.statusExtra === 'suspensa' || caso.statusCirurgia === 'suspensa') continue
-    const aberta = casoAberto(caso)
-    if (aberta && (caso.statusExtra === 'passa_tarde' || anestesistasDoCaso(caso).length > 1)) continue
-    const inicio = !temTexto(caso.inicioReal)
-    const termino = !temTexto(caso.terminoReal)
-    if (inicio || termino) out.push({ caso, inicio, termino, aberta })
+    if (!casoAberto(caso)) continue
+    if (caso.statusExtra === 'passa_tarde' || anestesistasDoCaso(caso).length > 1) continue
+    out.push({ caso, inicio: !temTexto(caso.inicioReal), termino: !temTexto(caso.terminoReal), aberta: true })
   }
   return out.sort((a, b) => minutosDe(a.caso.hora) - minutosDe(b.caso.hora) || ((a.caso.ordem ?? 0) - (b.caso.ordem ?? 0)))
 }
@@ -288,6 +317,31 @@ export function pendenciasDoDiaParaLiberar(escalas, { turno, ehDaPessoa, jaVisto
     }
   }
   return out
+}
+
+/**
+ * PENDÊNCIAS QUE FICAM ATÉ SEREM PREENCHIDAS (dono 27/10): a cirurgia que terminou sem
+ * horário não some na virada do dia — fica na Minhas de quem operou até ele informar, em
+ * qualquer dia e hospital. Nada anterior a `CORTE_PENDENCIAS_MINHAS` entra (não despejar o
+ * histórico de ninguém). "Em aberto" é EXATAMENTE a regra da faixa: cada dia passado roda
+ * `pendenciasDoDia` com o relógio na virada (31:00), quando todo prazo já venceu — então
+ * consultório, SRPA, suspensa, continuação e passa-para-tarde saem pelos mesmos cortes.
+ *
+ * `escalas` = escalas de dias ANTERIORES a `hoje` (uma por hospital/dia). Devolve os itens
+ * de `pendenciasDoDia` com `data`, do dia mais recente para o mais antigo.
+ */
+export const CORTE_PENDENCIAS_MINHAS = '2026-10-27'
+
+export function pendenciasDeDiasAnteriores(escalas, { hoje, desde = CORTE_PENDENCIAS_MINHAS } = {}) {
+  const out = []
+  for (const escala of escalas || []) {
+    const d = String(escala?.data || '')
+    if (!d || d < desde || (hoje && d >= hoje)) continue
+    for (const item of pendenciasDoDia([escala], { hoje: d, agoraMin: VIRADA_DO_DIA_MIN })) {
+      out.push({ ...item, data: d })
+    }
+  }
+  return out.sort((a, b) => b.data.localeCompare(a.data) || compararPendencias(a, b))
 }
 
 /** Minutos de "HH:MM" (sem hora = fim da fila). */

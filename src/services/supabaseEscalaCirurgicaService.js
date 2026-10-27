@@ -53,6 +53,10 @@ const CAMEL_TO_SNAKE = {
   // tr_escala_caso_horario_real preenche no toque; a tela corrige à mão
   inicioReal: 'inicio_real',
   terminoReal: 'termino_real',
+  // ESTIMADO QUE CONTA DO INÍCIO (dono 27/10): duração da cirurgia que ainda não começou;
+  // o gatilho a converte em termino_previsto no Iniciada (o `_por` é do gatilho)
+  duracaoEstimadaMin: 'duracao_estimada_min',
+  duracaoEstimadaPor: 'duracao_estimada_por',
 }
 
 const SNAKE_TO_CAMEL = Object.fromEntries(
@@ -106,6 +110,8 @@ const CASO_FIELDS = [
   // para o `updateCaso` poder gravar a correção à mão; a republicação os preserva
   // junto com o andamento (rpc_publicar_escala_turno, 02/10)
   'inicioReal', 'terminoReal',
+  // idem a duração estimada (27/10): só o app grava; a republicação a preserva
+  'duracaoEstimadaMin',
 ]
 
 function casoToRow(caso, escalaId) {
@@ -378,12 +384,25 @@ async function desfazerTerminada(casoId, antes) {
       status_atualizado_em: antes.statusAtualizadoEm ?? null,
       status_atualizado_por: antes.statusAtualizadoPor ?? null,
       ...('terminoPrevisto' in antes && { termino_previsto: antes.terminoPrevisto ?? null }),
+      // a duração estimada que o Terminada apagou (27/10) volta com a agendada
+      ...('duracaoEstimadaMin' in antes && { duracao_estimada_min: antes.duracaoEstimadaMin ?? null }),
     })
     .eq('id', casoId)
     .eq('status_cirurgia', 'terminada')
     .select('id')
   if (error) handleError(error, 'desfazerTerminada')
   return (data || []).length > 0
+}
+
+/**
+ * "TERMINOU · HORÁRIO DEPOIS" (dono 27/10): fecha a cirurgia sem gravar a hora do toque
+ * como término e sem exigir o início — quem operou informa depois (aba Minhas). A RPC liga
+ * a flag que o gatilho do horário respeita (migration 20261027190000) e zera o tempo
+ * estimado, como o "Terminada" de sempre.
+ */
+async function terminarSemHorario(casoId) {
+  const { error } = await supabase.rpc('rpc_escala_terminar_sem_horario', { p_caso_id: casoId })
+  if (error) handleError(error, 'terminarSemHorario')
 }
 
 async function updateStatusCirurgia(casoId, status) {
@@ -538,6 +557,42 @@ async function removeCaso(casoId) {
 async function removeEscala(escalaId) {
   const { error } = await supabase.from('escala_cirurgica').delete().eq('id', escalaId)
   if (error) handleError(error, 'removeEscala')
+}
+
+/**
+ * AS CIRURGIAS DE UMA PESSOA NUM PERÍODO (dono 27/10, pendências que ficam na Minhas até
+ * serem preenchidas): `desde` ≤ data < `ate`, só escalas publicadas de hospital (a linha
+ * 'fds' não tem casos). Pelo login gravado no caso (índice idx_escala_caso_anest_uid) e,
+ * em separado, as duplas "A + B" do período — elas têm `anestesista_user_id` nulo por
+ * construção; quem chama filtra pelo critério da aba Minhas (`anestesistaDoCasoEh`).
+ * Devolve escalas no formato de `fetchEscala` (cabeçalho + casos), uma por hospital/dia.
+ */
+async function fetchCasosDaPessoa({ uid, desde, ate }) {
+  if (!uid || !desde) return []
+  const base = () => {
+    let q = supabase
+      .from('escala_cirurgica_caso')
+      .select('*, escala:escala_cirurgica!inner(id, data, hospital, status)')
+      .gte('escala.data', desde)
+      .neq('escala.hospital', 'fds')
+      .eq('escala.status', 'publicada')
+    if (ate) q = q.lt('escala.data', ate)
+    return q
+  }
+  const [meus, duplas] = await Promise.all([
+    base().eq('anestesista_user_id', uid),
+    base().is('anestesista_user_id', null).like('anestesista', '%+%'),
+  ])
+  if (meus.error) handleError(meus.error, 'fetchCasosDaPessoa')
+  if (duplas.error) handleError(duplas.error, 'fetchCasosDaPessoa:duplas')
+  const porEscala = new Map()
+  for (const { escala, ...row } of [...(meus.data || []), ...(duplas.data || [])]) {
+    if (!escala?.id) continue
+    if (!porEscala.has(escala.id)) porEscala.set(escala.id, { ...toCamelCase(escala), casos: [] })
+    const lista = porEscala.get(escala.id).casos
+    if (!lista.some((c) => c.id === row.id)) lista.push(toCamelCase(row))
+  }
+  return [...porEscala.values()]
 }
 
 /**
@@ -767,6 +822,7 @@ export default {
   patchLinhaOverride,
   patchUrgenciasMeta,
   updateStatusCirurgia,
+  terminarSemHorario,
   desfazerTerminada,
   updateAnestesistaCasos,
   executarTrocaAtomica,
@@ -775,6 +831,7 @@ export default {
   removeCaso,
   removeEscala,
   fetchCasosStatus,
+  fetchCasosDaPessoa,
   fetchP4Hospital,
   setP4Hospital,
   parseEscalaImagem,

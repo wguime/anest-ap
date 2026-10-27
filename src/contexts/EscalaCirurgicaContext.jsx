@@ -887,6 +887,7 @@ export function EscalaCirurgicaProvider({ children }) {
       // fica — é a hora em que ela começou, que o "terminada" não muda.
       ...('terminoReal' in antes && { terminoReal: antes.terminoReal ?? null }),
       ...((antes.statusCirurgia || 'agendada') === 'agendada' && { inicioReal: null }),
+      ...('duracaoEstimadaMin' in antes && { duracaoEstimadaMin: antes.duracaoEstimadaMin ?? null }),
     }
     dispatch({ type: 'PATCH_CASOS', hospital, ...alvo, patch: otimista })
     marcarEscrita()
@@ -953,6 +954,9 @@ export function EscalaCirurgicaProvider({ children }) {
       ...(zeraTermino && { terminoPrevisto: vivo.terminoPrevisto ?? null }),
       ...('inicioReal' in horarios && { inicioReal: vivo.inicioReal ?? null }),
       ...('terminoReal' in horarios && { terminoReal: vivo.terminoReal ?? null }),
+      // ESTIMADO QUE CONTA DO INÍCIO (dono 27/10): o Iniciada converte a duração em horário
+      ...('terminoPrevisto' in horarios && !zeraTermino && { terminoPrevisto: vivo.terminoPrevisto ?? null }),
+      ...('duracaoEstimadaMin' in horarios && { duracaoEstimadaMin: vivo.duracaoEstimadaMin ?? null }),
       updatedAt: vivo.updatedAt ?? null,
     }
     const alvo = caso.id ? { ids: [caso.id] } : { refCaso: vivo }
@@ -992,6 +996,51 @@ export function EscalaCirurgicaProvider({ children }) {
       // pessoa tivesse mudado na escala desde a captura.
       dispatch({ type: 'PATCH_CASOS', hospital: escala.hospital, ...alvo, patch: antes })
       toast({ variant: 'error', title: 'Erro ao atualizar status', description: error.message })
+      throw error
+    }
+  }, [toast, desfazerTerminada])
+
+  /**
+   * "TERMINOU · HORÁRIO DEPOIS" (dono 27/10, folha "Antes de liberar", a mesma para todos):
+   * fecha a cirurgia SEM gravar a hora do toque como término e sem exigir o início — quem
+   * operou informa depois, pela aba Minhas. O limite ("terminou antes de 15:40") é o
+   * carimbo do status. Otimista como o Terminada de sempre (o término previsto zera, a
+   * duração estimada some), com "Desfazer" pelo mesmo caminho.
+   */
+  const terminarSemHorario = useCallback(async (escala, caso, userInfo = {}) => {
+    const isDemo = String(escala.id).startsWith('demo-')
+    const vivo = (escala.casos || []).find((c) => (caso.id ? c.id === caso.id : c === caso)) || caso
+    if ((vivo.statusCirurgia || 'agendada') === 'terminada') return
+    const horarios = horarioRealNaTransicao(vivo, 'terminada', { agoraD: agora(), semHorario: true })
+    const patch = {
+      statusCirurgia: 'terminada', statusExtra: null, terminoPrevisto: null, ...horarios,
+      statusAtualizadoEm: agora().toISOString(), statusAtualizadoPor: userInfo.userId || null,
+      updatedAt: agora().toISOString(),
+    }
+    const antes = {
+      statusCirurgia: vivo.statusCirurgia ?? null, statusExtra: vivo.statusExtra ?? null,
+      statusAtualizadoEm: vivo.statusAtualizadoEm ?? null, statusAtualizadoPor: vivo.statusAtualizadoPor ?? null,
+      terminoPrevisto: vivo.terminoPrevisto ?? null, inicioReal: vivo.inicioReal ?? null,
+      terminoReal: vivo.terminoReal ?? null, duracaoEstimadaMin: vivo.duracaoEstimadaMin ?? null,
+      updatedAt: vivo.updatedAt ?? null,
+    }
+    const alvo = caso.id ? { ids: [caso.id] } : { refCaso: vivo }
+    dispatch({ type: 'PATCH_CASOS', hospital: escala.hospital, ...alvo, patch })
+    marcarEscrita()
+    try {
+      try {
+        if (!isDemo && caso.id) await svc.terminarSemHorario(caso.id)
+      } finally { encerrarEscrita() }
+      if (!isDemo && caso.id) {
+        toast({
+          title: 'Cirurgia terminada · horário depois',
+          duration: 8000,
+          action: { label: 'Desfazer', onClick: () => { desfazerTerminada(escala.hospital, caso.id, antes) } },
+        })
+      }
+    } catch (error) {
+      dispatch({ type: 'PATCH_CASOS', hospital: escala.hospital, ...alvo, patch: antes })
+      toast({ variant: 'error', title: 'Erro ao terminar a cirurgia', description: error.message })
       throw error
     }
   }, [toast, desfazerTerminada])
@@ -1749,9 +1798,9 @@ export function EscalaCirurgicaProvider({ children }) {
 
   const actionsValue = useMemo(() => ({
     setData, prefetch, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista,
-    setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, excluirCaso, adicionarAjuda, removerAjuda,
+    setStatusCirurgia, terminarSemHorario, adicionarCaso, setAnestesistaCasos, atualizarCaso, excluirCaso, adicionarAjuda, removerAjuda,
     reordenarAjuda, definirOrigemLinha, definirSemAjudaLinha, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, definirSalasUrgencia, refresh, recarregar, garantirEscala,
-  }), [prefetch, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, excluirCaso, adicionarAjuda, removerAjuda, reordenarAjuda, definirOrigemLinha, definirSemAjudaLinha, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, definirSalasUrgencia, refresh, recarregar, garantirEscala])
+  }), [prefetch, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, terminarSemHorario, adicionarCaso, setAnestesistaCasos, atualizarCaso, excluirCaso, adicionarAjuda, removerAjuda, reordenarAjuda, definirOrigemLinha, definirSemAjudaLinha, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, definirSalasUrgencia, refresh, recarregar, garantirEscala])
 
   const stateValue = useMemo(() => ({
     escalas: state.escalas, p4Hospital: state.p4Hospital, data, loading, hoje, erroCarga,

@@ -15,8 +15,8 @@ import { describe, it, expect } from 'vitest'
 import {
   INICIO_ALERTA_HORARIO, agruparPorAnestesista, anestesistasDoCaso, casoEntraNaConta,
   dentroDoInicioDoAlerta, faltaHorario, montarRelatorioHorario, pendenciasDoDia, prazoDoCaso,
-  prazoInicio, quantasPilulasCabem, rotuloDiaRelatorio, TOLERANCIA_INICIO_MIN,
-  pendenciasParaLiberar,
+  prazoInicio, quantasPilulasCabem, rotuloDiaRelatorio, TOLERANCIA_INICIO_MIN, TOLERANCIA_INICIO_AS_MIN,
+  pendenciasParaLiberar, pendenciasDeDiasAnteriores, CORTE_PENDENCIAS_MINHAS,
 } from '@/lib/escalaHorarioPendente'
 
 const HOJE = '2026-10-06'
@@ -104,14 +104,17 @@ describe('quando entra no alerta', () => {
     expect(p).toMatchObject({ falta: 'ini', motivo: 'inicio', aberta: false })
   })
 
-  it('"a seguir" (sem hora) conta do término real da anterior da mesma sala', () => {
+  // MUDOU DE LADO em 27/10 (dono, medido em outubro): era o término + 30 min, e 53% das "AS"
+  // acendiam antes de começar (mediana término → início na sala = 35 min). Agora + 60.
+  it('"a seguir" (sem hora) conta do término real da anterior da mesma sala, + 60 min', () => {
     const e = escala([
       caso({ id: 'a', ordem: 0, turno: 'vespertino', hora: '13:00', statusCirurgia: 'terminada', inicioReal: '13:05', terminoReal: '14:40' }),
       caso({ id: 'as', ordem: 1, turno: 'vespertino', hora: 'AS', statusCirurgia: 'agendada', terminoReal: null }),
     ])
-    expect(prazoInicio(e.casos[1], e.casos[0])).toBe(14 * 60 + 40 + TOLERANCIA_INICIO_MIN)
-    expect(pendenciasDoDia([e], { hoje: HOJE, agoraMin: 15 * 60 + 5, liberado: ninguemLiberado })).toHaveLength(0)
-    expect(pendenciasDoDia([e], { hoje: HOJE, agoraMin: 15 * 60 + 10, liberado: ninguemLiberado }).map((p) => p.caso.id)).toEqual(['as'])
+    expect(TOLERANCIA_INICIO_AS_MIN).toBe(60)
+    expect(prazoInicio(e.casos[1], e.casos[0])).toBe(14 * 60 + 40 + TOLERANCIA_INICIO_AS_MIN)
+    expect(pendenciasDoDia([e], { hoje: HOJE, agoraMin: 15 * 60 + 39, liberado: ninguemLiberado })).toHaveLength(0)
+    expect(pendenciasDoDia([e], { hoje: HOJE, agoraMin: 15 * 60 + 40, liberado: ninguemLiberado }).map((p) => p.caso.id)).toEqual(['as'])
   })
 
   it('"Atrasada" declarada pausa o início vencido — o fim do turno continua valendo', () => {
@@ -225,17 +228,20 @@ describe('relatório: o que ficou sem horário nos dias encerrados', () => {
 describe('pendenciasParaLiberar', () => {
   const c = (extra) => ({ id: 'x', procedimento: 'HERNIORRAFIA', anestesista: 'PAULO', hora: '13:00', ...extra })
 
-  it('aberta (agendada ou em andamento) trava; terminada sem início ou sem término também', () => {
+  // MUDOU DE LADO em 27/10 (dono, reabre 14/10): 96% das liberações eram de outra pessoa e
+  // 177 términos entraram com a hora do toque só para destravar. Terminada sem horário não
+  // segura mais ninguém — vira pendência de quem operou (Minhas).
+  it('só a aberta (agendada ou em andamento) trava; terminada sem início ou término não', () => {
     const r = pendenciasParaLiberar([
       c({ id: 'a', statusCirurgia: 'agendada' }),
       c({ id: 'b', statusCirurgia: 'iniciada', inicioReal: '13:05' }),
       c({ id: 't1', statusCirurgia: 'terminada', terminoReal: '14:00' }),
       c({ id: 't2', statusCirurgia: 'terminada', inicioReal: '13:00' }),
+      c({ id: 't3', statusCirurgia: 'terminada' }),
       c({ id: 'ok', statusCirurgia: 'terminada', inicioReal: '13:00', terminoReal: '14:00' }),
     ])
     expect(r.map((p) => [p.caso.id, p.inicio, p.termino, p.aberta])).toEqual([
       ['a', true, true, true], ['b', false, true, true],
-      ['t1', true, false, false], ['t2', false, true, false],
     ])
   })
 
@@ -246,13 +252,13 @@ describe('pendenciasParaLiberar', () => {
     ])).toEqual([])
   })
 
-  it('a que SEGUE com outra pessoa não trava enquanto aberta; terminada volta a cobrar', () => {
+  // a dupla terminada sem início cobrava na liberação até 27/10 — virou pendência (Minhas)
+  it('a que SEGUE com outra pessoa não trava enquanto aberta; terminada também não', () => {
     expect(pendenciasParaLiberar([
       c({ statusExtra: 'passa_tarde', statusCirurgia: 'iniciada', inicioReal: '13:00' }),
       c({ anestesista: 'PAULO + ANA', statusCirurgia: 'iniciada', inicioReal: '13:00' }),
+      c({ anestesista: 'PAULO + ANA', statusCirurgia: 'terminada', terminoReal: '14:00' }),
     ])).toEqual([])
-    const dupla = pendenciasParaLiberar([c({ anestesista: 'PAULO + ANA', statusCirurgia: 'terminada', terminoReal: '14:00' })])
-    expect(dupla.map((p) => p.inicio)).toEqual([true])
   })
 
   it('em ordem de horário (sem hora vai ao fim)', () => {
@@ -266,8 +272,10 @@ describe('o fim do turno só cobra o que já devia ter acontecido (dono 15/10, c
   // agendada para 19:15 (ainda não era hora) e outra iniciada às 16:20, em curso.
   const diego = (o) => caso({ turno: 'vespertino', anestesista: 'DIEGO', anestesistaUserId: 'u-die', terminoReal: null, ...o })
   const e = escala([
-    diego({ id: 'curso', hora: '16:00', statusCirurgia: 'iniciada', inicioReal: '16:20' }),
-    diego({ id: 'noite', hora: '19:15', statusCirurgia: 'agendada', inicioReal: null }),
+    // salas diferentes desde 27/10: na MESMA sala, a cirurgia em curso segura a das 19:15
+    // (sala ocupada não cobra início) — o que se trava aqui é o fim do turno de 15/10
+    diego({ id: 'curso', sala: 'Sala 2', hora: '16:00', statusCirurgia: 'iniciada', inicioReal: '16:20' }),
+    diego({ id: 'noite', sala: 'Sala 4', hora: '19:15', statusCirurgia: 'agendada', inicioReal: null }),
   ], { hospital: 'hro' })
   const ids = (agoraMin) => pendenciasDoDia([e], { hoje: HOJE, agoraMin, liberado: ninguemLiberado }).map((p) => p.caso.id)
 
@@ -315,3 +323,80 @@ describe('consultório não pede horário (dono 16/10)', () => {
   })
 })
 
+
+describe('a sala ocupada não cobra início (dono 27/10, medido em outubro: 300 → 139 alertas falsos)', () => {
+  const sala = (o) => caso({ turno: 'vespertino', sala: 'Sala 3', terminoReal: null, ...o })
+
+  it('com hora, atrás de uma anterior AINDA ABERTA na mesma sala: não acende', () => {
+    const e = escala([
+      sala({ id: 'ant', ordem: 0, hora: '13:00', statusCirurgia: 'iniciada', inicioReal: '13:10' }),
+      sala({ id: 'seg', ordem: 1, hora: '15:00', statusCirurgia: 'agendada' }),
+    ])
+    expect(prazoInicio(e.casos[1], e.casos[0])).toBeNull()
+    expect(pendenciasDoDia([e], { hoje: HOJE, agoraMin: 16 * 60 + 30, liberado: ninguemLiberado })).toEqual([])
+  })
+
+  it('com hora, a anterior terminou DEPOIS da hora agendada: conta do término dela + 30', () => {
+    const ant = sala({ id: 'ant', ordem: 0, hora: '13:00', statusCirurgia: 'terminada', inicioReal: '13:10', terminoReal: '15:20' })
+    const seg = sala({ id: 'seg', ordem: 1, hora: '15:00', statusCirurgia: 'agendada' })
+    expect(prazoInicio(seg, ant)).toBe(15 * 60 + 20 + TOLERANCIA_INICIO_MIN)
+  })
+
+  it('com hora, a anterior terminou ANTES da hora agendada: vale a hora agendada + 30, como antes', () => {
+    const ant = sala({ id: 'ant', ordem: 0, hora: '13:00', statusCirurgia: 'terminada', inicioReal: '13:10', terminoReal: '14:20' })
+    const seg = sala({ id: 'seg', ordem: 1, hora: '15:00', statusCirurgia: 'agendada' })
+    expect(prazoInicio(seg, ant)).toBe(15 * 60 + TOLERANCIA_INICIO_MIN)
+  })
+
+  it('anterior suspensa não segura a sala', () => {
+    const ant = sala({ id: 'ant', ordem: 0, hora: '13:00', statusCirurgia: 'agendada', statusExtra: 'suspensa' })
+    const seg = sala({ id: 'seg', ordem: 1, hora: '15:00', statusCirurgia: 'agendada' })
+    expect(prazoInicio(seg, ant)).toBe(15 * 60 + TOLERANCIA_INICIO_MIN)
+  })
+
+  it('anterior fechada sem término ("Terminou · horário depois"): conta da hora em que a marcaram Terminada', () => {
+    const marcada = new Date(2026, 9, 6, 15, 50).toISOString()
+    const ant = sala({ id: 'ant', ordem: 0, hora: '13:00', statusCirurgia: 'terminada', statusAtualizadoEm: marcada })
+    const seg = sala({ id: 'seg', ordem: 1, hora: 'AS', statusCirurgia: 'agendada' })
+    expect(prazoInicio(seg, ant)).toBe(15 * 60 + 50 + TOLERANCIA_INICIO_AS_MIN)
+  })
+})
+
+describe('pendências que ficam na Minhas até serem preenchidas (dono 27/10)', () => {
+  const dia = (data, casos, o = {}) => ({ hospital: 'hro', data, status: 'publicada', casos, ...o })
+  const minha = (o) => caso({ turno: 'vespertino', hora: '13:30', anestesista: 'GIOVANA', anestesistaUserId: 'u-gio', ...o })
+
+  it('a data de corte é 27/10/2026 — nada antes dela entra', () => {
+    expect(CORTE_PENDENCIAS_MINHAS).toBe('2026-10-27')
+    const r = pendenciasDeDiasAnteriores([
+      dia('2026-10-26', [minha({ id: 'antes' })]),
+      dia('2026-10-27', [minha({ id: 'corte' })]),
+    ], { hoje: '2026-10-30' })
+    expect(r.map((p) => p.caso.id)).toEqual(['corte'])
+  })
+
+  it('a regra é a da faixa, com o dia já virado: consultório, suspensa e continuação ficam fora', () => {
+    const r = pendenciasDeDiasAnteriores([dia('2026-10-28', [
+      minha({ id: 'sem-horario' }),
+      minha({ id: 'consult', procedimento: 'CONSULTORIO' }),
+      minha({ id: 'susp', statusExtra: 'suspensa' }),
+      minha({ id: 'cont', isContinuacao: true }),
+      minha({ id: 'ok', inicioReal: '13:30', terminoReal: '15:00' }),
+    ])], { hoje: '2026-10-30' })
+    expect(r.map((p) => [p.caso.id, p.falta, p.motivo])).toEqual([['sem-horario', 'ambos', 'turno']])
+  })
+
+  it('a agendada que nunca foi marcada também fica (pode não ter acontecido: a tela oferece "Não aconteceu")', () => {
+    const r = pendenciasDeDiasAnteriores([dia('2026-10-28', [minha({ id: 'nunca', statusCirurgia: 'agendada' })])], { hoje: '2026-10-30' })
+    expect(r.map((p) => p.caso.id)).toEqual(['nunca'])
+  })
+
+  it('hoje fica de fora (é da faixa do dia); do dia mais recente para o mais antigo', () => {
+    const r = pendenciasDeDiasAnteriores([
+      dia('2026-10-28', [minha({ id: 'qua' })]),
+      dia('2026-10-30', [minha({ id: 'hoje' })]),
+      dia('2026-10-29', [minha({ id: 'qui' })]),
+    ], { hoje: '2026-10-30' })
+    expect(r.map((p) => [p.caso.id, p.data])).toEqual([['qui', '2026-10-29'], ['qua', '2026-10-28']])
+  })
+})
