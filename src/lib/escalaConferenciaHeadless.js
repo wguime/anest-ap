@@ -435,13 +435,13 @@ export function conferirHospital(hospital, entrada, contexto) {
 
   // 7. cirurgia da manhã marcada "passa para tarde" sem CONTINUAÇÃO na escala da tarde (só à tarde).
   // Desde 27/10 a marcação não põe ninguém na tarde (dono: "não significam que serão o mesmo
-  // anestesista") — sem a linha da foto ela fica sem dono na fila e na Minhas, esteja quem a operou
-  // no rodapé ou não.
+  // anestesista"), e a escala da tarde sempre traz o anestesista da continuação — sem a linha, a
+  // cirurgia não atravessa. O aviso existe para pegar o cirurgião escrito com outra grafia na foto.
   if (turno === 'vespertino' && existente) {
     const continuam = new Set(casosNovos.filter((n) => n?.isContinuacao).map((n) => normCirurgiao(n.cirurgiao)).filter(Boolean))
     for (const c of casosQuePassamParaOTurno(existente.casos || [], 'vespertino')) {
       if (continuam.has(normCirurgiao(c.cirurgiao))) continue
-      aviso('travessia órfã', `${c.sala} ${c.hora || ''} ${c.cirurgiao || ''} (${c.anestesista || '?'}) passa para a tarde e a escala da tarde não traz CONTINUAÇÃO dela — à tarde não fica com ninguém. Cirurgião com outra grafia na foto? Senão, pergunte ao dono quem assume`)
+      aviso('travessia órfã', `${c.sala} ${c.hora || ''} ${c.cirurgiao || ''} (${c.anestesista || '?'}) está marcada "passa para tarde" e a escala da tarde não traz CONTINUAÇÃO dela. Confira se a foto escreve o cirurgião com outra grafia; se não, ela não atravessa o turno e não há o que fazer`)
     }
   }
 

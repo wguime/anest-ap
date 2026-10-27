@@ -90,7 +90,9 @@ da Unimed, "OSCAR + ERLEI" → "ALEXANDRE D + ERLEI"). O quadro da manhã segue 
 não estarei escalado"* — `filtrarPorTurnoExibicao` (Minhas e `localizarMeuPosto`) também conta só os
 casos do turno + a CONTINUAÇÃO da mesma pessoa. A conferência da publicação (`travessia órfã` em
 `escalaConferenciaHeadless`) avisa toda cirurgia marcada que a tarde não cobre com CONTINUAÇÃO, esteja
-quem operou no rodapé ou não — é o sinal para dizer ao dono que ela ficou sem dono à tarde.
+quem operou no rodapé ou não. Só serve para pegar a grafia diferente do cirurgião: o dono confirmou
+(27/10) que a escala da tarde SEMPRE traz o anestesista da continuação — sem a linha, a cirurgia não
+atravessa o turno, e não há pendência a relatar.
 
 ⚠️ **`filtrarPorTurno` continua ESTRITO** e é ele que TROCA e posição usam —
 regra estruturante de 13/08, turno é filtro e nunca preferência. Mover a

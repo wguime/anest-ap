@@ -102,9 +102,10 @@ apelido conhecido).
   foto, sem decisão; dupla só vira o card da manhã com a mesma dupla. `travessia órfã` no ensaio =
   cirurgia marcada que a tarde não cobre: (1) se o par acima diz `continuação sem origem` na MESMA
   sala e o cirurgião tem o mesmo 1º nome (27/10: manhã "Marcelo Vieira", foto "Marcelo Cunha"), é
-  grafia — escreva o cirurgião como no aviso da manhã e rode o ensaio de novo; (2) senão ela fica sem
-  dono à tarde: publique e diga no relatório qual cirurgia, de quem era e que ninguém a assume na foto
-  (27/10: blefaroplastia do IOSC) — nunca a atribua a quem operou de manhã.
+  grafia — escreva o cirurgião como no aviso da manhã e rode o ensaio de novo; (2) senão a cirurgia
+  não atravessa o turno — a escala da tarde sempre traz o anestesista da continuação, e sem ela a
+  cirurgia termina na manhã (dono 27/10). Publique sem acrescentar nada e não relate como pendência;
+  nunca a atribua a quem operou de manhã.
 - **Rodapé** completo, NA ORDEM, com as notas ("MATHEUS (CONSULT)" é uma posição; "ADRIANO
   (REUNIÃO 15:30)" também — **nunca tirar a nota**: nome com nota é posição ocupada e não nasce
   liberado). Quem fecha o
