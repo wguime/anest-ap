@@ -428,6 +428,9 @@ tempo total" abaixo. Não é a volta do "+ término" de 14/09: nada nasce no car
   tempo…"); hora exata não traz meta. Quem consome é o detalhe do caso — a fila deixou de
   abrir o painel por cirurgia em 15/09. O handler `onDefinirTerminoCaso(casoId, hhmm, meta)`
   da página segue existindo para o espelho inverso da pílula.
+- ↳ **27/10: na cirurgia que ainda NÃO começou, o estimado é uma DURAÇÃO que conta do início** (dono, 5ª
+  rodada de `.tmp/horarios-auditoria/`) — o encadeamento abaixo vale só para a EM ANDAMENTO. Ver
+  `escala-telas.md` § "Horários — liberar sem travar".
 - **Duração encadeada** (`terminoEncadeado`, utils): na cirurgia EM ANDAMENTO "1h" é agora
   + 1h; na que ainda não começou é **término da anterior da mesma pessoa + 1h** (a última,
   por hora, que já tem término; sem anterior com término, agora). Vale no detalhe do caso
@@ -492,6 +495,11 @@ espelha…".
 - Nada disso encosta em `ordem_liberacao`.
 
 ### Término de cada cirurgia na folha do tempo total (dono 25/09, modelo A em protótipo)
+
+> ↳ **27/10 (Modelo 2):** a folha chama-se "Tempo total · Nome", com os blocos **"Previsão de saída"**
+> (o PainelTempo sem alternador: o campo mostra o horário gravado e a grade "ou daqui a" vem logo
+> abaixo — reabre 17/08 e 02/10) e **"O que já aconteceu"** (horário real); o estimado de cada
+> cirurgia virou link leve ao lado do nome e o status desceu para a 2ª linha.
 
 > ↳ **02/10: virou "Horário de cada cirurgia"** — cada cirurgia ganhou o bloco INÍCIO ao lado do
 > TÉRMINO (dois blocos de 52px, `BlocoHorarioMini`), e o INÍCIO abre a folha "Início · {hora} {nome}"

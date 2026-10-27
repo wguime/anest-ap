@@ -3,6 +3,25 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.81 (27/10/2026) — Horários: liberar sem travar, o horário fica com quem operou
+
+*"a trava pune o plantonista e a fila, não quem esqueceu"*. Auditoria com os dados de outubro: 96% das 537 liberações
+desde a trava de 14/10 foram feitas por outra pessoa, e 177 términos entraram com a hora do toque só para destravar
+(a cesariana do Leandro, 23/10, 14:23). Escolhido pelo dono em 7 rodadas de protótipo.
+- **"Antes de liberar"** é a mesma folha para todos e só trava cirurgia ABERTA. Em cada uma: "Terminou · horário
+  depois" (fecha sem gravar a hora do toque; o horário fica com quem operou) ou "Passar · a um colega", lado a lado.
+- **Aviso individual**: quem tem horário a preencher vê, nas três abas, em vermelho cheio, até resolver tudo —
+  inclusive os dias anteriores, desde 27/10. A lista pública da equipe saiu; o selo nos cards continua (também no
+  card de quem foi liberado).
+- **"+ Tempo total"**: "Previsão de saída" e "O que já aconteceu", sem o alternador — o campo e a grade de durações
+  ficam um acima do outro.
+- **Tempo estimado de cirurgia que não começou** é uma duração que começa a contar no toque em Iniciada.
+- **Início e término** só com os dois campos, lado a lado; a duração aparece antes de confirmar.
+- **"Falta início"**: "AS" conta 60 min do fim da anterior; com hora, conta do fim da anterior quando ela atrasou; a
+  sala ocupada não cobra (outubro: 300 → 139 alertas falsos).
+- Banco: migration `20261027190000` (RPC `rpc_escala_terminar_sem_horario`, coluna `duracao_estimada_min`, gatilho e
+  trava da liberação; rollback em `scripts/`).
+
 ## v5.12.80 (27/10/2026) — Aba Minhas da tarde: só as cirurgias da escala da tarde
 
 *"na aba minhas à tarde continua aparecendo vinculado a cirurgia que não estarei escalado"*. A Minhas da tarde

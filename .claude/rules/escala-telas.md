@@ -10,6 +10,8 @@ paths:
   - "src/pages/escala-cirurgica/SeloHorarioPendente.jsx"
   - "src/pages/escala-cirurgica/useHorarioPendente.js"
   - "src/lib/escalaHorarioPendente.js"
+  - "src/pages/escala-cirurgica/BlocoHorario.jsx"
+  - "src/pages/escala-cirurgica/useMinhasPendenciasAnteriores.js"
   - "src/pages/escala-cirurgica/ImportarEscalaPage.jsx"
   - "src/pages/escala-cirurgica/ImportarEscalasPage.jsx"
   - "src/lib/escalaLoteImportacao.js"
@@ -344,6 +346,10 @@ acima em conflito):
 
 ### Horário pendente — alerta PÚBLICO de quem não preencheu início/término (dono 2026-10-05, modelo A)
 
+> ↳ **27/10: o alerta virou INDIVIDUAL** — a faixa pública, a pílula "Você N/Você em dia", o "Na
+> equipe" e a lista por anestesista SAÍRAM; a tolerância do início mudou. Ver § "Horários — liberar
+> sem travar". O que segue abaixo vale para a REGRA de quem entra/sai (lib), não para a tela.
+
 > "há vários anestesistas que não estão preenchendo as informações. quero que crie um alerta [...]
 > marcando o anestesista que não preencheu e que seja público [...] só devem sair quando as
 > informações de início/término forem preenchidas"
@@ -438,6 +444,9 @@ da Minhas, prop `pendencia` do `CasoCard` — está no comparador do `memo`).
 
 ### Antes de liberar — sem horário não se libera (dono 2026-10-14, modelo A sem saída)
 
+> ↳ **27/10: REABERTA pelo dono** — só a cirurgia ABERTA trava, e a folha (a mesma para todos)
+> ganhou "Terminou · horário depois". Ver § "Horários — liberar sem travar".
+
 > "ao liberar algum anestesista e o mesmo tiver casos abertos/cirurgias sem tempos informados [...]
 > que os tempos sejam adicionados antes da liberação ou que os casos sejam transferidos para outro
 > colega" — e, ao escolher o modelo: "não deve ser possível liberar sem preenchimento das informações".
@@ -483,6 +492,52 @@ plantonista) — a folha é para quem toca, não para quem sai.
 - Travas: `src/__tests__/pages/liberacoesAntesDeLiberar.test.jsx`,
   `liberacoesAntesDeLiberarDiaInteiro.test.jsx` (4 dos 7 falham sem a conferência do dia) e os blocos
   novos em `escalaHorarioPendente.test.js`/`escalaHorarioReal.test.js`/`colunaLiberacao.test.js`.
+
+### Horários — liberar sem travar (dono 2026-10-27, 7 rodadas de protótipo)
+
+> "a trava pune o plantonista e a fila, não quem esqueceu" — auditoria com os dados de outubro em
+> `.tmp/horarios-auditoria/` (relatório no topo de `horarios-modelos.html`; escolhas em `ESCOLHAS.md`).
+
+Medido: 96% das 537 liberações desde a trava de 14/10 eram de outra pessoa; 177 términos foram
+gravados por quem liberou com a hora do toque (171 no mesmo minuto da liberação — a cesariana do
+Leandro, 23/10, 14:23); 57%/54% dos inícios/términos de 14–26/10 por quem não operou. O dono escolheu
+por imagem, tela a tela (reabre 14/10, 05/10, 15/10, 17/08/02/10 do PainelTempo e 14/09):
+
+- **"Antes de liberar" = a MESMA folha para todos** (plantonista ou quem libera a si mesmo: "para não
+  haver confusão nem alterar usabilidade"). Só cirurgia ABERTA trava (`pendenciasParaLiberar`; no banco
+  `escala_caso_trava_liberacao`). Em cada aberta: blocos Início/Término (sem o "agendada 13:30", que
+  cortava a 375px), o par **"Terminou · horário depois" | "Passar · a um colega"** e, na agendada,
+  "Não aconteceu (suspensa)". Resolvida vira UMA linha ("Terminou antes de 15:40 · horário depois" +
+  Desfazer; "Passada para…"; "Não aconteceu"). Botão "Resolva N cirurgias para liberar".
+- **"Terminou · horário depois"** = `rpc_escala_terminar_sem_horario` (migration `20261027190000`): fecha
+  sem a hora do toque e sem exigir início (flag de transação `escala.terminar_sem_horario` lida pelo
+  gatilho). "A informar" = terminada sem término; o limite é `status_atualizado_em` (`limiteDoTermino`) —
+  o término informado depois não passa dele (`erroHorarioReal({ limite })`). Context:
+  `terminarSemHorario` (otimista, toast com Desfazer).
+- **Aviso INDIVIDUAL** (`FaixaHorarioPendente`): só quem tem horário a preencher vê, nas três abas, até
+  resolver TUDO desde `CORTE_PENDENCIAS_MINHAS` (27/10/2026). Minhas: caixa com cabeçalho **vermelho
+  cheio** + número, dias como cabeçalho, até 5 linhas (`MAX_LINHAS_CAIXA`) e "Ver todas". Completa e
+  Liberações: faixa de uma linha (48px). O toque abre DIRETO a folha do horário (só início / só término /
+  os dois lado a lado), com "Ver a cirurgia" (hoje) e "Não aconteceu". Conta de hospital não vê nada. O
+  selo nos cards (Completa, Minhas e o card do liberado na fila) continua público, e o relatório também.
+- **Dias anteriores** (`useMinhasPendenciasAnteriores` + `fetchCasosDaPessoa` + `pendenciasDeDiasAnteriores`):
+  pelo login gravado (índice `idx_escala_caso_anest_uid`) e as duplas "A + B" à parte; "em aberto" é
+  `pendenciasDoDia` com o relógio na virada (fonte única com a faixa). Grava pelo id do caso
+  (`updateCaso` + status Terminada; "Não aconteceu" = Suspensa) e tira o item na hora.
+- **Folhas de horário** (`BlocoHorario.jsx`): `ConfirmarHorario` com "--:--" no campo e "agora · início
+  12:14 · durou 1h03"; `ConfirmarInicioETermino` **só com os dois campos, lado a lado, sem atalhos**
+  ("deixe apenas horários de início e término para não deixar confuso") — `sugestoesDeInicio` saiu.
+  Em dia passado os dois nascem vazios (`terminoAgora` falso).
+- **Estimado da cirurgia que não começou = DURAÇÃO** (`duracao_estimada_min`): "Estimado 2h · do início",
+  folha só com durações (`PainelTempo soDuracao`), fila "2h do início"; no Iniciada o gatilho a converte
+  em `termino_previsto` (início + duração), com o autor de quem estimou, e a captura registra.
+  `horarioRealNaTransicao` é o espelho. O espelho inverso total → caso só vale com a cirurgia EM
+  ANDAMENTO. A duração do mapa (`tempo_estimado`) não entra (23/07). Republicar preserva a duração.
+- **Tolerância do "Falta início"**: AS = término real da anterior + 60; com hora = o maior entre a hora e o
+  término da anterior + 30; anterior aberta segura a sala (`prazoInicio`). Outubro: 300 → 139 alertas falsos.
+- Travas: `escalaHorariosSemTravarSql.test.js` (PGlite: RPC, flag, trava, duração, captura, republicação,
+  rollback), `escalaHorarioPendente.test.js`, `escalaHorarioReal.test.js` e os testes de tela que mudaram de
+  lado com o porquê. Rollback: `scripts/rollback-20261027190000-horarios-liberar-sem-travar.sql`.
 
 ### Editar e EXCLUIR o caso publicado (dono 2026-09-01, modelo A em protótipo)
 
