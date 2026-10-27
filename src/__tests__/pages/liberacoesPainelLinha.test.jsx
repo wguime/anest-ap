@@ -491,7 +491,7 @@ describe('Contraturno — guard e badge cruzado', () => {
     const card = document.querySelector('[data-linha="uid-kar"]')
     expect(within(card).getByText('Plantão da tarde')).toBeTruthy()
     // ⚠️ MUDOU DE LADO (dono 27/10): azul sem cirurgia aqui está FORA e mantém a
-    // posição — o selo contornado "Ajuda fora" informa sem dizer "sai antes"
+    // posição — o selo "Ajuda fora" informa sem dizer "sai antes"
     expect(within(card).getByText('Ajuda fora')).toBeTruthy()
     expect(within(card).queryByText('Ajuda')).toBeNull()
   })
@@ -684,8 +684,8 @@ describe('Emprestado mantém posição na origem (caso TIAGO)', () => {
 
   // ⚠️ MUDOU DE LADO (dono 27/10, modelo A de `.tmp/auditoria-liberacoes/edicao-liberacoes.html`):
   // o "Ajuda" sólido diz "sai antes"; quem ocupa posição daqui e está EMPRESTADO não sai
-  // antes, então ganha o selo contornado "Na Unimed" (o destino), e a linha de baixo
-  // fica só com a sala. Sólido = muda a fila; contornado = só informa.
+  // antes, então ganha o selo "Na Unimed" (o destino), e a linha de baixo
+  // fica só com a sala. O texto diz o efeito; a cor é o azul de sempre.
   it('fica na posição do rodapé com o selo do destino e a sala no card', () => {
     montar({ presencaOutros: presenca }, escalaOrigem)
     const chaves = [...document.querySelectorAll('[data-linha]')].map((el) => el.getAttribute('data-linha'))
@@ -693,6 +693,8 @@ describe('Emprestado mantém posição na origem (caso TIAGO)', () => {
     expect(chaves[1]).toBe('TIAGO')
     const card = document.querySelector('[data-linha="TIAGO"]')
     expect(within(card).getByText('Na Unimed')).toBeTruthy()
+    // a cor é a de sempre (dono 27/10, à tarde): azul sólido, não o contornado do modelo
+    expect(within(card).getByText('Na Unimed').getAttribute('data-variant')).toBe('info')
     expect(within(card).queryByText('Ajuda')).toBeNull()
     expect(within(card).getByText('Hemodinâmica')).toBeTruthy()
     // sem setas: a posição é a do rodapé
@@ -715,7 +717,7 @@ describe('Emprestado mantém posição na origem (caso TIAGO)', () => {
     expect(bloco.className).toMatch(/text-muted-foreground/)
     expect(bloco.className).not.toMatch(/text-info/)
     for (const p of bloco.querySelectorAll('p')) expect(p.className).not.toMatch(/text-info/)
-    // o sinal continua existindo, no selo (contornado desde 27/10)
+    // o sinal continua existindo, no selo "Na Unimed" (desde 27/10)
     expect(within(card).getByText('Na Unimed')).toBeTruthy()
   })
 
@@ -749,7 +751,7 @@ describe('Emprestado mantém posição na origem (caso TIAGO)', () => {
   it('sem o cruzamento carregado, o azul volta ao comportamento clássico (fim)', () => {
     montar({}, escalaOrigem)
     const card = document.querySelector('[data-linha="TIAGO"]')
-    // sem destino conhecido o selo diz só que está fora (contornado desde 27/10)
+    // sem destino conhecido o selo diz só que está fora (desde 27/10)
     expect(within(card).getByText('Ajuda fora')).toBeTruthy()
     expect(within(card).queryByText(/Ajuda .+\//)).toBeNull()
   })

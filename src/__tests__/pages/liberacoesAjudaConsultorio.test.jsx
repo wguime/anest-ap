@@ -108,16 +108,20 @@ describe('nota de local no rodapé — "CRISTINA (CONSULT)" (dono 22/09)', () =>
 })
 
 describe('selo "Ajuda" pela linha "CONSULTORIO - AJUDA" do mapa (dono 21/09)', () => {
-  // MUDOU DE LADO (dono 27/10): o selo é o contornado "Consultório (ajuda)" — ele não
-  // mexe na fila, e o sólido "Ajuda" passou a significar só "sai antes"
+  // MUDOU DE LADO (dono 27/10): o selo diz "Consultório (ajuda)" — ele não mexe na fila,
+  // e "Ajuda" passou a significar só "sai antes" (a cor segue o azul sólido de sempre)
   it('aparece no card de quem tem a linha, e só nele — o consultório comum não ganha selo', () => {
     montar(escalaDe())
-    // o selo contornado (a linha da cirurgia também diz "Consultório (ajuda)")
-    expect(within(card('u-alex-s')).getAllByText('Consultório (ajuda)').some((el) => /border-category-blue-fg/.test(el.className))).toBe(true)
+    // o selo (a linha da cirurgia também diz "Consultório (ajuda)") é o Badge, no azul
+    // de sempre: variant info, sem o contornado que o modelo de 27/10 tinha
+    const selo = within(card('u-alex-s')).getAllByText('Consultório (ajuda)').find((el) => el.getAttribute('data-slot') === 'badge')
+    expect(selo).toBeTruthy()
+    expect(selo.getAttribute('data-variant')).toBe('info')
+    expect(selo.className).not.toMatch(/bg-transparent/)
     expect(within(card('u-alex-s')).queryByText('Ajuda')).toBeNull()
     for (const uid of ['u-janaina', 'u-karine', 'u-raul', 'u-joao-r']) {
       expect(within(card(uid)).queryByText('Ajuda')).toBeNull()
-      expect([...card(uid).querySelectorAll('[class*="border-category-blue-fg"]')]).toHaveLength(0)
+      expect([...card(uid).querySelectorAll('[data-slot="badge"]')].some((el) => el.textContent === 'Consultório (ajuda)')).toBe(false)
     }
   })
 

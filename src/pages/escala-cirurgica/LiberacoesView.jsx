@@ -2161,11 +2161,12 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // na fila única ajuda nunca é automática (dono 05/09) — quem tem
           // cirurgia sem estar na ordem entra na fila, e só `ajuda_externa`
           // (marcada à mão) pinta o badge.
-          // SELO SÓLIDO = MUDA A FILA, CONTORNADO = SÓ INFORMA (dono 27/10, modelo da seção 4
-          // de `.tmp/auditoria-liberacoes/edicao-liberacoes.html`). Quem ocupa posição daqui
-          // não sai antes por ser "ajuda": emprestado para outro hospital vira "Na Unimed",
-          // e o consultório (ajuda) vira "Consultório (ajuda)". O sólido "Ajuda" fica só para
-          // quem está nos blocos do fim (ajuda, extra, de outro hospital).
+          // O TEXTO DO SELO DIZ O EFEITO (dono 27/10, seção 4 de
+          // `.tmp/auditoria-liberacoes/edicao-liberacoes.html`). Quem ocupa posição daqui não
+          // sai antes por ser "ajuda": emprestado para outro hospital vira "Na Unimed", e o
+          // consultório (ajuda) vira "Consultório (ajuda)". "Ajuda" fica só para quem está nos
+          // blocos do fim (ajuda, extra, de outro hospital). A COR é a de sempre, azul sólido
+          // (dono 27/10, à tarde: "quero que as cores dos badges de ajuda permaneçam como estavam antes").
           const posFixaCard = !noturno && posicaoFixaDe(linha) > 0
           const badgeAjuda = !liberadoReal && ehAjudaVisivel(linha) && !posFixaCard
           const foraCard = !liberadoReal && posFixaCard && !semAjudaManual.has(linha.chave) ? ajudaForaInfo(linha) : null
@@ -2410,13 +2411,13 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     <Badge variant="info" className="shrink-0">Ajuda</Badge>
                   )}
                   {foraCard && (
-                    <Badge className="shrink-0 border-category-blue-fg bg-transparent text-category-blue-fg">{foraCard.hospital === 'Unimed' ? 'Na' : 'No'} {foraCard.hospital}</Badge>
+                    <Badge variant="info" className="shrink-0">{foraCard.hospital === 'Unimed' ? 'Na' : 'No'} {foraCard.hospital}</Badge>
                   )}
                   {consultorioCard && (
-                    <Badge className="shrink-0 border-category-blue-fg bg-transparent text-category-blue-fg">Consultório (ajuda)</Badge>
+                    <Badge variant="info" className="shrink-0">Consultório (ajuda)</Badge>
                   )}
                   {ajudaForaCard && (
-                    <Badge className="shrink-0 border-category-blue-fg bg-transparent text-category-blue-fg">Ajuda fora</Badge>
+                    <Badge variant="info" className="shrink-0">Ajuda fora</Badge>
                   )}
                   {/* A troca pertence ao SLOT original. Depois da execução, a
                       linha passa a exibir quem assumiu, mas o badge continua

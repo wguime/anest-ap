@@ -212,7 +212,7 @@ describe('quem está de ajuda em outro hospital, na escala DELE', () => {
 
   it('ganha o selo do destino e o card diz local e cirurgião', () => {
     // ⚠️ MUDOU DE LADO (dono 27/10): quem ocupa posição daqui e está emprestado não sai
-    // antes, então o selo é o contornado do destino ("No HRO") e a linha de baixo fica
+    // antes, então o selo é o do destino ("No HRO") e a linha de baixo fica
     // com a sala. O sólido "Ajuda" ficou para quem sai antes (blocos do fim).
     montar({ unimed: UNIMED_SEM_OSCAR, hro: HRO_COM_OSCAR })
     const card = screen.getByLabelText('Editar local/cirurgião de Oscar').closest('[data-linha]')

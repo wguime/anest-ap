@@ -3,6 +3,11 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.78 (27/10/2026) — Selos de ajuda voltam ao azul sólido
+
+Os selos "Na Unimed", "No HRO", "Consultório (ajuda)" e "Ajuda fora" (v5.12.76) tinham saído contornados. O dono
+preferiu as cores de antes: voltam ao azul sólido do "Ajuda". O texto de cada selo continua dizendo o efeito.
+
 ## v5.12.77 (27/10/2026) — "Antes de liberar" deixa passar cirurgia de outro turno ou hospital
 
 HRO, 23/10: a cesariana da manhã do Leandro, já com o Leonardo à tarde, segurava a liberação dele, e só um horário

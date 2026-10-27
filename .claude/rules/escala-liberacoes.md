@@ -1075,8 +1075,10 @@ modelos em `.tmp/auditoria-liberacoes/edicao-liberacoes.html`; o dono escolheu o
   ASSUMIU) vê "Posição na fila · Nº do HRO · fixa" no topo do Editar, e o interruptor de ajuda some — ele fazia quatro
   coisas conforme o estado. Exceção: azul publicado COM cirurgia aqui (caso TIAGO) é ajuda de verdade e segue com o
   controle. O selo informativo continua desfazível ("Tirar o selo", mesma declaração `semAjuda` de 14/09).
-- **Selos:** sólido "Ajuda"/"Ajuda (HRO)" = sai antes (blocos do fim); contornado = só informa: "No HRO"/"Na Unimed"
-  (emprestado, com a sala na linha de baixo), "Consultório (ajuda)" e "Ajuda fora" (azul sem destino conhecido).
+- **Selos:** o TEXTO diz o efeito — "Ajuda"/"Ajuda (HRO)" = sai antes (blocos do fim); "No HRO"/"Na Unimed"
+  (emprestado, com a sala na linha de baixo), "Consultório (ajuda)" e "Ajuda fora" (azul sem destino conhecido) só
+  informam. A COR é a de sempre, azul sólido (`variant="info"`): o contornado do modelo saiu no mesmo dia, à tarde
+  (dono: "quero que as cores dos badges de ajuda permaneçam como estavam antes"). Não reintroduzir sem pedido.
 - **Setas ↑↓ só entre as ajudas** (revoga 09/09): aparecem só no bloco `ajuda`, trocam com o vizinho desse bloco, e
   `reordenarAjuda` não liga mais `ordemInformada` (a marca que veio da publicação é preservada).
 - **"Restaurar o automático"** virou link discreto com confirmação (antes, botão do mesmo peso do Salvar).

@@ -86,7 +86,7 @@ describe('na escala dele: fica na fila, marcado como ajuda, com o destino no car
 
   it('com a cirurgia do HRO, ele continua na fila e recebe o selo do destino', () => {
     // ⚠️ MUDOU DE LADO (dono 27/10): quem ocupa posição daqui e está emprestado não sai
-    // antes, então o selo é o contornado do destino ("No HRO") e a linha de baixo fica
+    // antes, então o selo é o do destino ("No HRO") e a linha de baixo fica
     // com a sala. O sólido "Ajuda" ficou para quem sai antes (blocos do fim).
     montar({ presencaOutros: noHro })
     expect(selosDe('Oscar Morais')).not.toContain('Liberado')
@@ -235,7 +235,7 @@ describe('ajuda DECLARADA em outro hospital, sem caso lá (caso Eduardo)', () =>
         onToggle={() => {}} onSetOverride={() => {}} />,
       { wrapper: wrap },
     )
-    // desde 27/10: selo contornado com o destino (não sai antes, mantém a posição)
+    // desde 27/10: selo com o destino (não sai antes, mantém a posição)
     expect(selosDe('Eduardo')).toContain('No Materno')
     // e ele NÃO muda de posição: segue no lugar do rodapé daqui
     const fila = [...document.querySelectorAll('[data-linha]')].map((n) => n.getAttribute('data-nome'))
