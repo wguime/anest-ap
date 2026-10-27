@@ -86,6 +86,20 @@ describe('o que NÃO funde', () => {
     expect(ids(tarde).sort()).toEqual(['m-umanita', 't-umanita'])
   })
 
+  // dono 27/10, HIPEC da Unimed: a metade em comum (Erlei) fundia, e a fila da tarde
+  // dizia Oscar no lugar do Alexandre
+  it('dupla com UMA pessoa trocada fica no card da tarde', () => {
+    const dia = [manha({ anestesista: 'OSCAR + ERLEI', statusExtra: 'passa_tarde' }), cont({ anestesista: 'ALEXANDRE D + ERLEI' })]
+    expect(ids(filtrarPorTurnoExibicao(dia, 'vespertino')).sort()).toEqual(['m-umanita', 't-umanita'])
+    const fila = casosDaFilaDoTurno(dia, 'vespertino', ['ALEXANDRE D', 'ERLEI'])
+    expect(fila.map((c) => c.anestesista)).toEqual(['ALEXANDRE D + ERLEI'])
+  })
+
+  it('a MESMA dupla, em outra ordem, funde', () => {
+    const dia = [manha({ anestesista: 'OSCAR + ERLEI' }), cont({ anestesista: 'ERLEI + OSCAR' })]
+    expect(ids(casosDaFilaDoTurno(dia, 'vespertino', []))).toEqual(['m-umanita'])
+  })
+
   it('manhã com "?" e a continuação com nome: o nome da tarde não se perde', () => {
     const tarde = filtrarPorTurnoExibicao([manha({ anestesista: '?', semAnestesista: true }), cont({ anestesista: 'OSCAR' })], 'vespertino')
     expect(ids(tarde)).toEqual(['t-umanita'])

@@ -829,7 +829,10 @@ export function origemDaContinuacao(cont, casosDoDia) {
  *
  * Só quando a continuação é da MESMA pessoa (ou do mesmo login) do caso da manhã.
  * Com outro nome (a tarde assumiu a sala, ou a manhã estava com "?"), o card da
- * tarde é a única informação de quem está na sala e fica como está.
+ * tarde é a única informação de quem está na sala e fica como está. Dupla só
+ * funde com a MESMA dupla (dono 27/10, HIPEC da Unimed: manhã "OSCAR + ERLEI",
+ * tarde "ALEXANDRE D + ERLEI" — a metade em comum fundia, o card da tarde voltava
+ * a dizer Oscar e o Alexandre ficava sem cirurgia na fila).
  *
  * `marcar` (telas): o caso da manhã entra com `exibidoComoContinuacao`, que põe o
  * "(continuação)" ao lado do nome mesmo sem a marcação "Passa para tarde". A fila
@@ -841,15 +844,25 @@ export function fundirContinuacoesNaOrigem(casosTurno, casosDoDia, turno, { reso
   // identidade com o "//" resolvido: o caso da manhã costuma ser a 2ª linha da sala
   const resolvidos = resolverAnestesistas(dia)
   const resolvidoDe = new Map(dia.map((c, i) => [c, resolvidos[i]]))
-  const chaves = (c) => {
+  // uma lista de chaves por PESSOA do caso ("A + B" = duas); o login só vale para quem está sozinho
+  const pessoas = (c) => {
     const r = resolvidoDe.get(c) || c
-    return chavesIdentidade(r?.anestesista, r?.anestesistaUserId, resolverUid)
+    const grupos = String(r?.anestesista || '').split('+')
+      .map((parte) => chavesIdentidade(parte, null, resolverUid)).filter((g) => g.length)
+    if (grupos.length <= 1 && r?.anestesistaUserId) grupos.length ? grupos[0].push(r.anestesistaUserId) : grupos.push([r.anestesistaUserId])
+    return grupos
+  }
+  const mesmasPessoas = (a, b) => {
+    const pa = pessoas(a)
+    const pb = pessoas(b)
+    const casa = (g, outros) => outros.some((o) => g.some((k) => o.includes(k)))
+    return pa.length > 0 && pa.length === pb.length && pa.every((g) => casa(g, pb)) && pb.every((g) => casa(g, pa))
   }
   const presentes = new Set((casosTurno || []).map((c) => c?.id).filter(Boolean))
   const out = []
   for (const c of casosTurno) {
     const origem = c?.isContinuacao === true ? origemDaContinuacao(c, dia) : null
-    const daPessoa = origem && chaves(origem).some((k) => chaves(c).includes(k))
+    const daPessoa = origem && mesmasPessoas(origem, c)
     if (!daPessoa) { out.push(c); continue }
     // já está na lista (atravessou pela marcação "Passa para tarde"): a continuação sai
     if (origem.id && presentes.has(origem.id)) continue

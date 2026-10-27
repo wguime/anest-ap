@@ -11,6 +11,8 @@ na fila da tarde para os dois, que não tinham cirurgia na escala da tarde, e o 
 ficavam "Livre". Agora, no dia útil, a fila da tarde conta só a escala publicada da tarde. A cirurgia da manhã só entra
 pela linha "CONTINUAÇÃO" da mesma pessoa (card da manhã, 26/10); com outra pessoa, fica o card dela. Quem fecha o rodapé
 sem cirurgia na tarde nasce Liberado. A aba Minhas e o quadro da manhã não mudam.
+- Dupla só vira o card da manhã com a mesma dupla. Na HIPEC da Unimed (manhã "Oscar + Erlei", tarde "Alexandre D +
+  Erlei"), o Erlei em comum bastava, a fila da tarde mostrava o Oscar e o Alexandre ficava sem cirurgia.
 
 ## v5.12.78 (27/10/2026) — Selos de ajuda voltam ao azul sólido
 

@@ -415,6 +415,8 @@ lugar ao caso da manhã de onde vem (`fundirContinuacoesNaOrigem`/`origemDaConti
 um card só, com início, status e tempo, na Minhas (`filtrarPorTurnoExibicao`), na Completa e na fila
 (`casosDaFilaDoTurno`) — com dois, o horário ia para o card errado e a continuação "agendada" segurava
 a pessoa depois do Terminada. Só funde com a MESMA pessoa; outro nome (ou "?" na manhã) mantém os dois.
+Dupla só funde com a MESMA dupla (27/10, HIPEC da Unimed: manhã "OSCAR + ERLEI", tarde "ALEXANDRE D +
+ERLEI" — a metade em comum fundia e o Alexandre ficava sem cirurgia na fila).
 Trava: `escalaContinuacaoCardDaManha.test.js`.
 
 **15/10: "ao abrir escala sempre abra na aba minhas" (dono).** A tela já nascia na Minhas; o que
