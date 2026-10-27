@@ -30,6 +30,7 @@ import { HOSPITAL_LABEL, useEscalaCirurgica } from '@/contexts/EscalaCirurgicaCo
 import { useUser } from '@/contexts/UserContext'
 import { fraseClinica } from '@/lib/colunaLiberacao'
 import { casoAberto, rotuloDiaRelatorio } from '@/lib/escalaHorarioPendente'
+import { nomeCurtoProcedimento } from '@/lib/escalaProcedimentoCurto'
 import { ehDiaOperacionalAtual, erroHorarioReal, gravarInicioReal, gravarTerminoReal, limiteDoTermino } from '@/lib/escalaHorarioReal'
 import { ConfirmarHorario, ConfirmarInicioETermino } from './BlocoHorario'
 import CasoDetalheSheet from './CasoDetalheSheet'
@@ -130,7 +131,8 @@ export default function FaixaHorarioPendente({ minhas = null, anteriores = null,
     const limite = limiteDoTermino(vivo)
     const dataEscala = deHoje ? escala?.data : folha.data
     const fechar = () => setFolha(null)
-    const titulo = [vivo.hora, fraseClinica(vivo.procedimento)].filter(Boolean).join(' ')
+    // o nome curto, como na folha Antes de liberar: o texto inteiro do mapa quebrava o título
+    const titulo = [vivo.hora, nomeCurtoProcedimento(vivo.procedimento)].filter(Boolean).join(' ')
     const onde = [
       !deHoje && rotuloDia(folha.data, hoje),
       ROTULO_TURNO[folha.turno], HOSPITAL_LABEL[folha.hospital], salaExibicao(vivo.sala),
