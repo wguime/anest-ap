@@ -10,7 +10,8 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  buscarAdesao, buscarAdesaoPeriodo, buscarAdesaoEvolucao, buscarHorarioNaoPreenchido, buscarMeuPreenchimento, lerCacheAdesao,
+  buscarAdesao, buscarAdesaoPeriodo, buscarAdesaoEvolucao, buscarAdesaoSemanas, buscarHorarioNaoPreenchido,
+  buscarMeuPreenchimento, lerCacheAdesao,
 } from '@/services/escalaAdesaoService'
 import { limitesMes } from '@/lib/escalaAdesao'
 
@@ -70,6 +71,15 @@ export function useAdesaoMes(mes, gravadoAte = null, opcoes) {
 /** Evolução semanal + meses disponíveis. */
 export function useAdesaoEvolucao(opcoes) {
   return useConsultaAdesao('evolucao', buscarAdesaoEvolucao, opcoes)
+}
+
+/**
+ * "Evolução da adesão" (dono 27/10): as 5 últimas semanas completas + as janelas antes × depois
+ * (`{ semanas, antes, depois, gravadoAte }`, cache 'semanas'). A página passa o resultado por
+ * `montarEvolucao` (lib/escalaAdesaoSemanal).
+ */
+export function useAdesaoSemanas(opcoes) {
+  return useConsultaAdesao('semanas', () => buscarAdesaoSemanas(5), opcoes)
 }
 
 /**

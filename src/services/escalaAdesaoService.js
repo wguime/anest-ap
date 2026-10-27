@@ -10,12 +10,13 @@
  * A página do relatório sempre busca ao abrir ("ao vivo") e mostra o cache enquanto isso.
  */
 import { supabase } from '@/config/supabase'
+import { janelasComparacao, ultimasSemanasCompletas } from '@/lib/escalaAdesaoSemanal'
 
 export const IDADE_CARD_MS = 30 * 60 * 1000
 
 const chave = (id) => `anest-escala-adesao-v2:${id}`
 
-/** `id`: 30 | 60 (janelas ao vivo) | 'mes:2026-09' | 'evolucao'. */
+/** `id`: 30 | 60 (janelas ao vivo) | 'mes:2026-09' | 'evolucao' | 'semanas'. */
 export function lerCacheAdesao(id) {
   try {
     const raw = localStorage.getItem(chave(id))
@@ -59,6 +60,35 @@ export async function buscarAdesaoEvolucao() {
   if (error) throw new Error(error.message || 'Não foi possível carregar a evolução')
   salvarCache('evolucao', data)
   return data
+}
+
+/**
+ * "Evolução da adesão" (dono 27/10): as `n` últimas semanas completas (segunda → domingo, a
+ * última terminando no último domingo já gravado) + as janelas da comparação antes × depois
+ * (4 semanas antes da 1ª do gráfico × as 4 últimas). Uma chamada de `escala_adesao_periodo` por
+ * semana e por janela, em paralelo (n + 2; cada uma soma só os agregados diários, ~7 a 28 dias).
+ * `semanas` sai na ordem do gráfico, da mais antiga para a mais recente; sem dia gravado,
+ * `semanas` = [] e as janelas null. Leitura com `montarEvolucao` (lib/escalaAdesaoSemanal).
+ */
+export async function buscarAdesaoSemanas(n = 5) {
+  const evolucao = await buscarAdesaoEvolucao()
+  const gravadoAte = evolucao?.gravado_ate ?? null
+  const limites = ultimasSemanasCompletas(n, gravadoAte)
+  const janelas = janelasComparacao(limites)
+  if (!janelas) {
+    const vazio = { semanas: [], antes: null, depois: null, gravadoAte }
+    salvarCache('semanas', vazio)
+    return vazio
+  }
+  const periodo = async ({ de, ate }) => {
+    const { data, error } = await supabase.rpc('escala_adesao_periodo', { p_desde: de, p_ate: ate })
+    if (error) throw new Error(error.message || 'Não foi possível carregar a evolução semanal')
+    return data
+  }
+  const [antes, depois, ...semanas] = await Promise.all([janelas.antes, janelas.depois, ...limites].map(periodo))
+  const dados = { semanas, antes, depois, gravadoAte }
+  salvarCache('semanas', dados)
+  return dados
 }
 
 /**
