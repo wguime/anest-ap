@@ -3,6 +3,20 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.76 (27/10/2026) — Edição da aba Liberações mais clara: uma entrada de trocas, posição fixa e selos que dizem o efeito
+
+Auditoria das formas de edição da aba (*"quem está fazendo de forma manual está alterando a ordem de liberação"*). Em
+outubro, 16 das 66 posições assumidas à mão foram desfeitas, seis delas em até um minuto. Modelo escolhido pelo dono.
+- **Trocas:** uma entrada só no Editar, em três passos — o que aconteceu, com quem (com a posição e a sala de cada
+  colega) e como a fila fica nos hospitais envolvidos, antes de gravar. Troca de um lado só entre hospitais deixou de
+  existir.
+- **Passar cirurgia a colega de outro hospital** (aba Completa) pergunta se os dois trocaram de hospital, quando quem
+  passa fica sem cirurgia aqui. "Sim" leva à troca, já na prévia.
+- **Posição fixa:** quem está na escala daqui vê a posição no topo do Editar e não tem mais o interruptor de ajuda.
+- **Selos:** sólido "Ajuda" = sai antes; contornado = só informa ("Na Unimed", "Consultório (ajuda)", "Ajuda fora").
+- **Setas das ajudas** mexem só no bloco de ajudas, sem reordenar a fila inteira.
+- **"Restaurar o automático"** pede confirmação.
+
 ## v5.12.75 (27/10/2026) — O selo de plantonista não pula para o 2º por causa de um repasse
 
 HRO e Unimed, manhã de 27/10: *"a escala na aba de liberações está toda bagunçada [...] o plantonista não está marcado

@@ -288,3 +288,25 @@ Escolhido em `.tmp/troca-posicao-ja-liberada.html` (modelo A, contra o B = aviso
   fila — preencha e libere pelo card"), nunca desfaz a troca.
 - Travas: `trocaSheetPosicaoLiberada.test.jsx` (plano + cartão + pop-up) e `escalaTrocaMantemLiberacao.test.jsx`
   (contexto real, recusa do banco inclusive). 6 dos 8 falham contra o código anterior; os outros 2 são os controles.
+
+
+## Trocas em três passos — uma entrada só (dono 27/10/2026)
+
+*"há muitos botões de trocas (isso confunde os usuários), crie um único botão e a partir dele opções de trocas com
+explicações para que não seja realizada uma troca de forma incorreta"*. Em outubro, 16 das 66 posições assumidas à mão
+foram desfeitas, seis delas em até um minuto. Modelo escolhido em `.tmp/auditoria-liberacoes/edicao-liberacoes.html`.
+- O painel tem UMA linha "Trocas" (saíram "Troca com um colega" e "Trocar de posição na escala", que abriam a mesma
+  folha). O `TrocaSheet` pergunta: (1) **o que aconteceu** — trocou de lugar com um colega · um colega SEM escala entra
+  no lugar · a escala já saiu trocada, só registrar; (2) **com quem**, com posição e sala de cada um
+  (`ondeEstaNoTurno`, a MESMA localização do `planoExecucaoTroca`); (3) **como a fila fica**, nos hospitais envolvidos,
+  com o botão dizendo o que acontece. A prévia é a confirmação; o pop-up de 18/08 saiu.
+- **Não existe mais troca de um lado só entre hospitais** ("fica/assume" por posição): foi o formato que deixou o HRO
+  bagunçado em 27/10 (Garim assumiu a vaga da Janaína na Unimed, a dele no HRO ficou com ele). "Trocou de lugar" move o
+  par inteiro; "entra no lugar" só aceita quem está sem escala no turno.
+- Posição assumida por outra pessoa não conta como escala de quem a perdeu (o Rodnei de 23/10 com o Klisman na vaga):
+  ele aparece como "sem escala" e não é oferecido para "trocou de lugar".
+- **Repasse que é troca de hospital** (`DefinirAnestesistaSheet`, aba Completa): quando quem recebe é da escala de OUTRO
+  hospital e quem passa fica sem cirurgia aberta aqui, a folha pergunta "os dois trocaram de hospital?". "Sim" abre a
+  troca já na prévia (`onTrocarPosicoes` → `setTrocaSheet(modo 'posicao')`). Troca de sala no mesmo hospital não pergunta.
+- Travas: `trocaSheet.test.jsx` e `trocaSheetPosicaoLiberada.test.jsx` (reescritos com o porquê),
+  `definirAnestesistaTrocaDeHospital2710.test.jsx`, `liberacoesTrocaDeclarada.test.jsx` (uma entrada só).

@@ -1065,3 +1065,24 @@ correta"*.
   teria perdido a posição para o Garim.
 - Travas: describe "selo de plantonista × cirurgia em outro hospital" em `colunaLiberacao.test.js`, com o recorte
   real. O 1º teste falha contra o código anterior; o azul e a assunção seguem como eram.
+
+
+## Edição da aba Liberações: o que muda a fila fica separado do que só informa (dono 27/10/2026)
+
+Auditoria das 19 formas de edição da aba (*"quem está fazendo de forma manual está alterando a ordem de liberação"*),
+modelos em `.tmp/auditoria-liberacoes/edicao-liberacoes.html`; o dono escolheu o modelo A e os itens recomendados.
+- **Posição fixa no painel:** quem ocupa posição publicada daqui (bloco `rodape`/`contraturno`, inclusive quem a
+  ASSUMIU) vê "Posição na fila · Nº do HRO · fixa" no topo do Editar, e o interruptor de ajuda some — ele fazia quatro
+  coisas conforme o estado. Exceção: azul publicado COM cirurgia aqui (caso TIAGO) é ajuda de verdade e segue com o
+  controle. O selo informativo continua desfazível ("Tirar o selo", mesma declaração `semAjuda` de 14/09).
+- **Selos:** sólido "Ajuda"/"Ajuda (HRO)" = sai antes (blocos do fim); contornado = só informa: "No HRO"/"Na Unimed"
+  (emprestado, com a sala na linha de baixo), "Consultório (ajuda)" e "Ajuda fora" (azul sem destino conhecido).
+- **Setas ↑↓ só entre as ajudas** (revoga 09/09): aparecem só no bloco `ajuda`, trocam com o vizinho desse bloco, e
+  `reordenarAjuda` não liga mais `ordemInformada` (a marca que veio da publicação é preservada).
+- **"Restaurar o automático"** virou link discreto com confirmação (antes, botão do mesmo peso do Salvar).
+- Pendente, a oferecer: prévia antes × depois também em "Veio de", "não é ajuda" e adicionar/remover ajuda;
+  "Desfazer" em toda gravação que muda a fila; "Adicionar ajuda" agrupado pelo efeito.
+- Travas: `liberacoesPainelLinha.test.jsx` (posição fixa, selos, setas com visitante no meio do array),
+  `escalaSetasSemOrdemInformada2710.test.jsx`, e os testes de selo que mudaram de lado com o porquê
+  (`escalaAjudaOrigemHospital`, `liberacoesCasoEmOutroHospital`, `liberacoesAjudaConsultorio`,
+  `liberacoesFilaEspelhaCompleta1609`, `escalaFdsTelaUnica`, `escalaCirurgicaPersonas`).
