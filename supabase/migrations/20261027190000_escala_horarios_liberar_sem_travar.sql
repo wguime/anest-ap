@@ -36,6 +36,9 @@
 -- ════════════════════════════════════════════════════════════════════════════
 
 begin;
+-- ALTER/ADD CONSTRAINT/trigger pegam bloqueio exclusivo da tabela: não ficar na fila atrás de
+-- uma transação longa segurando a escala de quem está operando (padrão de 20261002190000)
+set local lock_timeout = '3s';
 
 -- (3) a duração estimada da cirurgia que ainda não começou ─────────────────────
 alter table public.escala_cirurgica_caso
@@ -62,9 +65,12 @@ declare
   -- "Terminou · horário depois" (27/10): só a RPC rpc_escala_terminar_sem_horario liga
   v_sem_horario boolean := coalesce(current_setting('escala.terminar_sem_horario', true), '') = 'on';
 begin
-  -- 0. quem escolheu a duração estimada (antes da conversão, que lê este autor)
+  -- 0. quem escolheu a duração estimada (antes da conversão, que lê este autor); o cliente
+  --    nunca escreve o autor direto
   if new.duracao_estimada_min is distinct from old.duracao_estimada_min then
     new.duracao_estimada_por := case when new.duracao_estimada_min is null then null else v_quem end;
+  else
+    new.duracao_estimada_por := old.duracao_estimada_por;
   end if;
   -- 1. o status mudou: o horário acompanha (só preenche vazio; reabrir limpa)
   if new.status_cirurgia is distinct from old.status_cirurgia then
@@ -79,7 +85,8 @@ begin
         new.inicio_real := to_char(v_ref at time zone 'America/Sao_Paulo', 'HH24:MI');
       end if;
       -- ESTIMADO QUE CONTA DO INÍCIO (dono 27/10): a duração vira o horário de término
-      if new.duracao_estimada_min is not null then
+      -- (só com o início no formato do CHECK: um início malformado segue caindo no 23514)
+      if new.duracao_estimada_min is not null and new.inicio_real ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' then
         new.termino_previsto := to_char(new.inicio_real::time + make_interval(mins => new.duracao_estimada_min), 'HH24:MI');
         new.termino_previsto_por := coalesce(new.duracao_estimada_por, v_quem);
         new.duracao_estimada_min := null;
@@ -175,16 +182,24 @@ as $$
 $$;
 
 -- (4) a captura do estimado escuta também o status ───────────────────────────
-drop trigger if exists tr_escala_caso_captura_update on public.escala_cirurgica_caso;
-create trigger tr_escala_caso_captura_update
+-- O WHEN de 20260925220000 fica: a função só roda quando há o que registrar (o AFTER já
+-- enxerga o termino_previsto convertido pelo BEFORE) — sem ele, todo toque de status
+-- chamaria a captura à toa num banco que já saturou (16/09).
+create or replace trigger tr_escala_caso_captura_update
   after update of termino_previsto, anestesista, anestesista_user_id, sem_anestesista, status_cirurgia
   on public.escala_cirurgica_caso
-  for each row execute function public.captura_escala_caso_update();
+  for each row
+  when (old.termino_previsto is distinct from new.termino_previsto
+     or old.anestesista is distinct from new.anestesista
+     or old.anestesista_user_id is distinct from new.anestesista_user_id
+     or old.sem_anestesista is distinct from new.sem_anestesista)
+  execute function public.captura_escala_caso_update();
 
 -- (5) republicar preserva a duração — sobre a definição VIVA ──────────────────
 do $patch$
 declare
-  v_def text := pg_get_functiondef('public.rpc_publicar_escala_turno'::regproc);
+  v_oid regprocedure := to_regprocedure('public.rpc_publicar_escala_turno(date,text,text,jsonb,jsonb,jsonb,jsonb)');
+  v_def text;
   v_ancora text;
   v_novo text;
   v_par text[];
@@ -203,6 +218,10 @@ declare
       duracao_estimada_min smallint, duracao_estimada_por text$a$]
   ];
 begin
+  if v_oid is null then
+    raise exception 'rpc_publicar_escala_turno(date,text,text,jsonb,jsonb,jsonb,jsonb) não encontrada';
+  end if;
+  v_def := pg_get_functiondef(v_oid);
   if position('duracao_estimada_min' in v_def) > 0 then
     raise notice 'rpc_publicar_escala_turno já preserva a duração — nada a fazer';
     return;

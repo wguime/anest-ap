@@ -4,8 +4,18 @@
 -- ⚠️ Apagar as colunas perde as durações estimadas ainda não convertidas (aceito: o
 -- rollback volta ao estimado como horário). Cirurgias já fechadas sem horário continuam
 -- terminadas sem término — o relatório de adesão as conta, como antes.
+--
+-- ORDEM (de preferência fora do turno):
+--   1. reverter e publicar o APP antes (o app novo grava duracao_estimada_min — PGRST204 sem a
+--      coluna — e chama rpc_escala_terminar_sem_horario — 404 sem a RPC);
+--   2. se quiser guardar as durações ainda não convertidas:
+--      select id, duracao_estimada_min, duracao_estimada_por from escala_cirurgica_caso
+--       where duracao_estimada_min is not null;
+--   3. rodar este arquivo. No meio de um turno, quem tem cirurgia terminada sem horário volta
+--      a ser barrado na liberação.
 
 begin;
+set local lock_timeout = '3s';
 
 create or replace function public.escala_caso_horario_real()
 returns trigger
@@ -75,16 +85,21 @@ $$;
 
 drop function if exists public.rpc_escala_terminar_sem_horario(uuid);
 
-drop trigger if exists tr_escala_caso_captura_update on public.escala_cirurgica_caso;
-create trigger tr_escala_caso_captura_update
+create or replace trigger tr_escala_caso_captura_update
   after update of termino_previsto, anestesista, anestesista_user_id, sem_anestesista
   on public.escala_cirurgica_caso
-  for each row execute function public.captura_escala_caso_update();
+  for each row
+  when (old.termino_previsto is distinct from new.termino_previsto
+     or old.anestesista is distinct from new.anestesista
+     or old.anestesista_user_id is distinct from new.anestesista_user_id
+     or old.sem_anestesista is distinct from new.sem_anestesista)
+  execute function public.captura_escala_caso_update();
 
 -- desfaz o patch da republicação (os mesmos pares, ao contrário)
 do $patch$
 declare
-  v_def text := pg_get_functiondef('public.rpc_publicar_escala_turno'::regproc);
+  v_oid regprocedure := to_regprocedure('public.rpc_publicar_escala_turno(date,text,text,jsonb,jsonb,jsonb,jsonb)');
+  v_def text;
   v_par text[];
   v_pares text[][] := array[
     array[$a$'inicio_real_por', x.inicio_real_por, 'termino_real_por', x.termino_real_por,
@@ -101,13 +116,28 @@ declare
           $a$inicio_real text, termino_real text, inicio_real_por text, termino_real_por text$a$]
   ];
 begin
+  if v_oid is null then
+    raise exception 'rpc_publicar_escala_turno(date,text,text,jsonb,jsonb,jsonb,jsonb) não encontrada';
+  end if;
+  v_def := pg_get_functiondef(v_oid);
   if position('duracao_estimada_min' in v_def) = 0 then return; end if;
   foreach v_par slice 1 in array v_pares loop
+    -- a mesma conferência da migration: cada âncora exatamente uma vez
+    if (length(v_def) - length(replace(v_def, v_par[1], ''))) / length(v_par[1]) <> 1 then
+      raise exception 'âncora ausente ou repetida ao desfazer a publicação: %', left(v_par[1], 60);
+    end if;
     v_def := replace(v_def, v_par[1], v_par[2]);
   end loop;
   execute v_def;
 end
 $patch$;
+
+-- trava final: a publicação não pode continuar citando as colunas que vão sumir
+do $$ begin
+  if position('duracao_estimada_min' in pg_get_functiondef(to_regprocedure('public.rpc_publicar_escala_turno(date,text,text,jsonb,jsonb,jsonb,jsonb)'))) > 0 then
+    raise exception 'rpc_publicar_escala_turno ainda cita duracao_estimada_min — rollback abortado antes do drop column';
+  end if;
+end $$;
 
 alter table public.escala_cirurgica_caso drop constraint if exists escala_caso_duracao_estimada_min;
 alter table public.escala_cirurgica_caso drop column if exists duracao_estimada_min, drop column if exists duracao_estimada_por;

@@ -59,8 +59,15 @@ const montar = async () => {
       end if;
       return new;
     end $$;
-    create trigger tr_escala_caso_captura_update after update of termino_previsto, anestesista, anestesista_user_id, sem_anestesista
-      on public.escala_cirurgica_caso for each row execute function public.captura_escala_caso_update();
+    -- o gatilho no ar (20260925220000), com o WHEN
+    create or replace trigger tr_escala_caso_captura_update
+      after update of termino_previsto, anestesista, anestesista_user_id, sem_anestesista
+      on public.escala_cirurgica_caso for each row
+      when (old.termino_previsto is distinct from new.termino_previsto
+         or old.anestesista is distinct from new.anestesista
+         or old.anestesista_user_id is distinct from new.anestesista_user_id
+         or old.sem_anestesista is distinct from new.sem_anestesista)
+      execute function public.captura_escala_caso_update();
   `)
   await db.exec(fatia(ler('20260923160000_escala_republicar_preserva_andamento.sql'), 'create or replace function public.rpc_publicar_escala_turno('))
   await db.exec(ler('20260923200000_escala_republicacao_swap.sql'))
@@ -192,6 +199,28 @@ describe('estimado que conta do início (dono 27/10)', () => {
     await status('13:30', 'iniciada')
     const { rows } = await db.query('select * from log_estimativa')
     expect(rows).toEqual([{ de: null, para: '15:00' }])
+  })
+
+  it('a captura só roda quando há o que registrar (o WHEN de 20260925220000 continua)', async () => {
+    const { rows } = await db.query("select pg_get_triggerdef(oid) d from pg_trigger where tgname = 'tr_escala_caso_captura_update'")
+    expect(rows[0].d).toMatch(/UPDATE OF termino_previsto, anestesista, anestesista_user_id, sem_anestesista, status_cirurgia/)
+    expect(rows[0].d).toMatch(/WHEN .*old\.termino_previsto IS DISTINCT FROM new\.termino_previsto/)
+  })
+
+  it('o cliente não escreve o autor da duração direto', async () => {
+    await publicar()
+    await como('uid-paulo')
+    await db.query("update escala_cirurgica_caso set duracao_estimada_min = 60 where hora = '13:30'")
+    await db.query("update escala_cirurgica_caso set duracao_estimada_por = 'uid-forjado' where hora = '13:30'")
+    expect((await caso('13:30')).duracao_estimada_por).toBe('uid-paulo')
+  })
+
+  it('início fora do formato no mesmo toque: segue o erro de formato de antes, sem converter', async () => {
+    await publicar()
+    await db.query("update escala_cirurgica_caso set duracao_estimada_min = 60 where hora = '13:30'")
+    const { rows: [c] } = await db.query("select id from escala_cirurgica_caso where hora = '13:30'")
+    await expect(db.query("update escala_cirurgica_caso set inicio_real = '25:99', status_cirurgia = 'iniciada' where id = $1", [c.id]))
+      .rejects.toThrow(/escala_caso_inicio_real_hhmm/)
   })
 
   it('Terminada limpa a duração que sobrou', async () => {
