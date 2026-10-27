@@ -332,7 +332,7 @@ export const CasoCard = memo(CasoCardBase, (prev, next) =>
   prev.pendencia === next.pendencia && prev.turnoExibido === next.turnoExibido
 )
 
-export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null, turno, onNavigate, pendencias = null }) {
+export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null, turno, onNavigate, pendencias = null, onTrocarPosicoes = null }) {
   const { user } = useUser()
   const { rosterByUid } = useRosterAnestesistas()
   // Nome do grupo na Completa (pedido do dono 23/07): 1 anestesista = 1º nome +
@@ -674,6 +674,7 @@ export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null
           sala={definir.sala}
           casosAlvo={definir.casosAlvo || null}
           turno={turno}
+          onTrocarPosicoes={onTrocarPosicoes}
           onClose={() => setDefinir(null)}
         />
       )}

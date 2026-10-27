@@ -21,15 +21,15 @@
  * toques (abrir o Select, escolher) para um.
  */
 import { useMemo, useState } from 'react'
-import { Check, ChevronDown, ChevronRight, Loader2, Search } from 'lucide-react'
+import { AlertTriangle, Check, ChevronDown, ChevronRight, Loader2, Search } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, Select, Button, Switch, Input } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { HOSPITAL_LABEL, useEscalaCirurgica, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { fraseClinica, nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
 import {
-  alvosTrocaResponsavel, anestesistaDaSala, filtrarPorTurno, localizarSlotRodape,
-  nomeAnestesistaExibicao, normNome, salaExibicao,
+  alvosTrocaResponsavel, anestesistaDaSala, casosTransferiveis, filtrarPorTurno, localizarSlotRodape,
+  nomeAnestesistaExibicao, normNome, rodapeDoTurno, salaExibicao,
 } from './utils'
 import { avaliarEscolhaAnestesista } from './foraDaOrdem'
 import ConfirmarForaDaOrdem from './ConfirmarForaDaOrdem'
@@ -40,7 +40,7 @@ const primeiroNomeUpper = (nome) => String(nome || '').trim().split(/\s+/)[0]?.t
 const SEM_ANESTESISTA = '__sem__'
 const TURNO_LABEL = { matutino: 'Matutino', vespertino: 'Vespertino' }
 
-export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null, turno = null, onClose }) {
+export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null, turno = null, onTrocarPosicoes = null, onClose }) {
   const { user } = useUser()
   const { setAnestesistaCasos, executarSubstituicao } = useEscalaCirurgicaActions()
   const { options: rosterOpcoes, rosterByUid, resolver, loading: rosterLoading } = useRosterAnestesistas()
@@ -218,6 +218,33 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
   const segundo = podeDupla && segundoUid && segundoUid !== primeiroUid ? rosterByUid.get(segundoUid) : null
   const segundoEscolhido = segundo
   const primeiro = primeiroUid ? rosterByUid.get(primeiroUid) || null : null
+
+  /**
+   * OS DOIS TROCARAM DE HOSPITAL? (dono 27/10, seção 3 de
+   * `.tmp/auditoria-liberacoes/edicao-liberacoes.html`). Na manhã de 27/10 a conta UNIMED
+   * passou a Sala 1 do Raul ao Vicente (1º do HRO) e a Emergência do Vicente ao Raul só
+   * por aqui: as cirurgias mudaram de dono e as posições não, cada um virou "ajuda" no
+   * hospital do outro e o plantonista do HRO saiu do lugar. A pergunta aparece só quando
+   * as três coisas são verdade: quem recebe NÃO está na escala daqui, ESTÁ na de outro
+   * hospital neste turno, e quem passa fica SEM cirurgia aberta aqui. Trocar de sala
+   * dentro do mesmo hospital (o Humberto, no mesmo dia) não pergunta nada.
+   */
+  const trocaDeHospital = (() => {
+    if (!onTrocarPosicoes || !slotAnterior || !primeiro || segundo || primeiro.uid === atual.uid) return null
+    const recebe = { uid: primeiro.uid, nome: primeiro.nome, apelido: primeiro.apelidos?.[0] || '' }
+    if (localizarSlotRodape(escala, recebe, resolver, turno)) return null
+    let la = null
+    for (const [h, esc] of Object.entries(escalas || {})) {
+      if (!esc?.id || esc.id === escala?.id || h === 'fds') continue
+      const slot = localizarSlotRodape(esc, recebe, resolver, turno)
+      if (slot) { la = { hospital: h, posicao: rodapeDoTurno(esc.ordemLiberacao, slot.turno || turno).indexOf(slot.nome) + 1 }; break }
+    }
+    if (!la) return null
+    const quemPassa = { uid: atual.uid, nome: (atual.uid && rosterByUid.get(atual.uid)?.nome) || atual.alias }
+    const passando = new Set(alvos.map((c) => c.id))
+    if (casosTransferiveis(escala, quemPassa, resolver, turno).some((id) => !passando.has(id))) return null
+    return la
+  })()
   const segundoAberto = abrirSegundo ?? !!duplaAtual
   const apelidoDe = (r) => duplaAtual?.textos?.[r?.uid] || r?.apelidos?.[0] || primeiroNomeUpper(r?.nome)
   const nomeEscolhido = escolhido && escolhido !== SEM_ANESTESISTA
@@ -469,7 +496,35 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
 
           {/* Posição na fila junto com os casos (dono 30/07): sem isto quem
               assume vira linha EXTRA no fim da fila — o caso Giovana↔Maurício. */}
-          {ofereceAssumir && !segundo && (
+          {trocaDeHospital && (
+            <div data-troca-de-hospital className="space-y-2 border-t border-border py-3">
+              <p className="flex gap-2 rounded-xl bg-warning/15 px-3 py-2.5 text-[13px] leading-snug text-foreground">
+                <AlertTriangle className="mt-px h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+                <span>
+                  <b>{nomeAtual} fica sem cirurgia {escala?.hospital === 'unimed' ? 'na' : 'no'} {HOSPITAL_LABEL?.[escala?.hospital]}, e {nomeAnestesistaExibicao({ uid: primeiro.uid, alias: '', rosterByUid })} é da escala {trocaDeHospital.hospital === 'unimed' ? 'da' : 'do'} {HOSPITAL_LABEL?.[trocaDeHospital.hospital]}{trocaDeHospital.posicao ? ` (${trocaDeHospital.posicao}º)` : ''}.</b>
+                  {' '}Os dois trocaram de hospital?
+                </span>
+              </p>
+              <Button
+                className="min-h-12 w-full"
+                disabled={salvando}
+                onClick={() => {
+                  onTrocarPosicoes({ linha: { uid: atual.uid || null, nomeOriginal: slotAnterior.nome, anestesista: nomeAtual }, colegaUid: primeiro.uid })
+                  onClose?.()
+                }}
+              >
+                Sim, trocar as posições também
+              </Button>
+              <Button variant="outline" className="min-h-12 w-full" disabled={salvando} onClick={() => confirmar()}>
+                Não, só passar a cirurgia
+              </Button>
+              <p className="text-center text-[12px] leading-snug text-muted-foreground">
+                Só passar: {nomeAnestesistaExibicao({ uid: primeiro.uid, alias: '', rosterByUid })} entra no fim da fila como ajuda e {nomeAtual} segue na posição.
+              </p>
+            </div>
+          )}
+
+          {ofereceAssumir && !segundo && !trocaDeHospital && (
             <div className="border-t border-border py-3">
               <Switch
                 checked={assumirPosicao}
@@ -483,6 +538,7 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
 
         <div className="sticky bottom-0 z-10 flex gap-2 border-t border-border bg-card px-4 pb-4 pt-3">
             <Button variant="outline" className="flex-1" onClick={() => onClose?.()}>Cancelar</Button>
+            {!trocaDeHospital && (
             <Button
               className="flex-1"
               disabled={salvando || !alvos.length || semMudanca}
@@ -494,6 +550,7 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
                   : escolhido === SEM_ANESTESISTA ? 'Deixar sem anestesista'
                     : 'Confirmar responsável'}
           </Button>
+            )}
         </div>
       </SheetContent>
 

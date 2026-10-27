@@ -827,7 +827,13 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               {!modoFds && (
                 <FaixaUrgencias escala={escala} hospital={hospital} turno={turnoCasos} />
               )}
-              <BoardView escala={escala} meuAlias={meuAlias} meuUid={meuUid} resolverUid={resolverRoster} turno={turnoCasos} pendencias={pendencias.porCaso} onNavigate={onNavigate} />
+              <BoardView
+                escala={escala} meuAlias={meuAlias} meuUid={meuUid} resolverUid={resolverRoster} turno={turnoCasos}
+                pendencias={pendencias.porCaso} onNavigate={onNavigate}
+                // "os dois trocaram de hospital?" (dono 27/10): o "Sim" do definir anestesista
+                // abre a troca já na prévia, com os dois hospitais
+                onTrocarPosicoes={modoFds ? null : ({ linha, colegaUid }) => setTrocaSheet({ linha, colegaUid, modo: 'posicao' })}
+              />
             </>
           )}
           {abaVisivel === 'liberacoes' && (() => {
