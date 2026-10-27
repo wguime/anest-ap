@@ -538,6 +538,24 @@ por imagem, tela a tela (reabre 14/10, 05/10, 15/10, 17/08/02/10 do PainelTempo 
 - Travas: `escalaHorariosSemTravarSql.test.js` (PGlite: RPC, flag, trava, duração, captura, republicação,
   rollback), `escalaHorarioPendente.test.js`, `escalaHorarioReal.test.js` e os testes de tela que mudaram de
   lado com o porquê. Rollback: `scripts/rollback-20261027190000-horarios-liberar-sem-travar.sql`.
+- **A CONTINUAÇÃO HERDA O TÉRMINO (dono 27/10, 19:52; v5.12.83)**: a microcirurgia da Sala 1 do HRO
+  ficou "Iniciada · Passa para tarde" no nome do Melo e a Fernanda, posta na continuação pela escala da
+  tarde, marcou o card dela 13:00→13:32 — o "Falta término" seguia com ele. *"quero que essa herança de não
+  ter marcado o término fique com quem realmente estava com a cirurgia [...] o procedimento será 'passado'
+  com a publicação da nova escala"*. Manhã ABERTA + linha "CONTINUAÇÃO" da tarde = UMA cirurgia em dois
+  cards (`paresDeContinuacao`, `faltaNoPar`): o horário de qualquer card vale; com OUTRA pessoa na
+  continuação o início é de quem começou e o término de quem continuou (da continuação nunca se cobra
+  início); com a mesma pessoa nada passa (a tela já mostra um card só). Par: mesma escala, MESMA SALA,
+  cirurgião compatível (um em branco ou um nome em comum — a foto trouxe "Marcelo Cunha" × "Marcelo
+  Vieira"; o IOSC do HRO é um bloco de várias salas); entre vários, mais nomes em comum → "Passa para
+  tarde" → o último da sala. Manhã Terminada não passa nada. Valem a faixa individual, a Minhas (os dias
+  anteriores buscam o card do colega junto — `fetchCasosDaPessoa`), o selo no card e no liberado da
+  fila, o relatório de adesão e o "Seu preenchimento" (migration `20261027220000`, função
+  `escala_pares_continuacao`; JS e SQL formaram os mesmos 24 pares em outubro). A folha "Antes de
+  liberar" e a trava da liberação NÃO mudaram. Travas: `escalaHorarioPendente.test.js` (bloco "a
+  continuação herda o término") e `escalaContinuacaoHerdaTerminoSql.test.js` (relatório = tela, cirurgia
+  por cirurgia; rollback). Rollback: app primeiro, depois
+  `scripts/rollback-20261027220000-continuacao-herda-termino.sql`.
 
 ### Editar e EXCLUIR o caso publicado (dono 2026-09-01, modelo A em protótipo)
 

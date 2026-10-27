@@ -3,6 +3,20 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.83 (27/10/2026) — A continuação herda o término
+
+*"quero que essa herança de não ter marcado o término fique com quem realmente estava com a cirurgia"* (dono, 19:52,
+com o "Falta término" da microcirurgia da Sala 1 do HRO no nome dele, embora a Fernanda, posta na continuação pela
+escala da tarde, tivesse marcado o card dela 13:00→13:32).
+- A cirurgia da manhã ainda aberta e a linha "CONTINUAÇÃO" da tarde contam como **uma cirurgia em dois cards**: o
+  horário marcado em qualquer um vale. Com outra pessoa na continuação, **o início é de quem começou e o término de
+  quem continuou**; com a mesma pessoa nada muda de nome. A manhã já Terminada não passa nada adiante.
+- O par: mesma sala, cirurgião compatível (um em branco ou um nome em comum), e entre vários o de mais nomes em comum,
+  depois o marcado "Passa para tarde", depois o último da sala.
+- Vale no aviso individual, na Minhas (inclusive dias anteriores), no selo dos cards e da fila, no relatório de adesão
+  e no "Seu preenchimento" (migration `20261027220000`). Em 05–27/10: 18 cobranças saem de quem começou e 6 passam
+  para quem continuou. A folha "Antes de liberar" e a trava da liberação não mudam.
+
 ## v5.12.82 (27/10/2026) — Infográfico "Evolução da adesão" e card na Home (no ar 28/10 às 9h)
 
 *"um infográfico mostrando a melhoria de adesão dos usuários nas últimas 4-5 semanas… focado nas melhorias e nos pontos

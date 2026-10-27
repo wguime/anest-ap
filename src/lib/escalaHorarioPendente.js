@@ -91,16 +91,130 @@ export const ehConsultorio = (caso) => /CONSULT/i.test(String(caso?.procedimento
 /**
  * A cirurgia é da conta do alerta? Mesmos cortes do relatório (SQL): com procedimento,
  * com anestesista, não suspensa, não continuação (a da tarde herda o caso da manhã — a
- * mesma cirurgia não conta duas vezes, como na cobrança), dentro da janela.
+ * mesma cirurgia não conta duas vezes, como na cobrança; a que herda o TÉRMINO entra pelo
+ * par, `paresDeContinuacao`), dentro da janela.
  */
 export function casoEntraNaConta(caso, { data } = {}) {
+  if (!pedeHorario(caso) || caso.isContinuacao) return false
+  return dentroDoInicioDoAlerta(data, turnoDoCasoHorario(caso))
+}
+
+/** Os cortes da conta sem a continuação e sem a janela: a cirurgia é de alguém e pede horário. */
+function pedeHorario(caso) {
   if (!caso || !temTexto(caso.procedimento)) return false
   if (caso.semAnestesista) return false
   if (caso.statusExtra === 'suspensa' || caso.statusCirurgia === 'suspensa') return false
-  if (caso.isContinuacao) return false
   if (ehConsultorio(caso)) return false
-  if (!anestesistasDoCaso(caso).length) return false
-  return dentroDoInicioDoAlerta(data, turnoDoCasoHorario(caso))
+  return anestesistasDoCaso(caso).length > 0
+}
+
+/**
+ * A CONTINUAÇÃO HERDA O TÉRMINO (dono 27/10, às 19:52). No HRO, a microcirurgia da Sala 1
+ * estava com o Guilherme Melo, "Iniciada · Passa para tarde". A escala da tarde pôs a
+ * continuação com a Fernanda, que marcou o card dela 13:00→13:32. Mesmo assim, o "Falta
+ * término" seguia no nome dele. O dono: "quero que essa herança de não ter marcado o término
+ * fique com quem realmente estava com a cirurgia [...] nos casos de continuação o
+ * procedimento será 'passado' com a publicação da nova escala".
+ *
+ * O card da manhã ainda ABERTO e a linha "CONTINUAÇÃO" da tarde são UMA cirurgia em dois
+ * cards. Ela tem início quando qualquer um dos cards tem, e término idem. O que faltar é
+ * cobrado de quem estava na hora: o início de quem começou (o card da manhã), o término de
+ * quem a escala da tarde pôs na continuação. A manhã já Terminada não passa nada adiante:
+ * quem marcou disse que a cirurgia acabou ali. Com a MESMA pessoa nos dois cards nada passa:
+ * a tela já mostra um card só (`fundirContinuacoesNaOrigem`), e o da manhã segue devendo os
+ * dois horários, valendo o que estiver em qualquer um dos cards.
+ *
+ * O par exige a mesma escala (hospital e dia) e a MESMA SALA. O cirurgião tem de ser
+ * compatível: um dos dois em branco, ou ao menos um nome em comum. A foto escreveu "Marcelo
+ * Cunha" na tarde e "Marcelo Vieira" na manhã. E o "IOSC" do HRO é um bloco com várias
+ * salas, onde cirurgiões sem nome em comum não se casam. Entre vários candidatos vence o
+ * de mais nomes em comum, depois o marcado "Passa para tarde", depois o último da sala.
+ * O banco forma o mesmo par (`escala_pares_continuacao`, migration 20261027220000).
+ */
+const NAO_E_NOME = new Set(['DAS', 'DOS', 'DEL'])
+export function nomesDoCirurgiao(s) {
+  const partes = String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase()
+    .replace(/[^A-Z]+/g, ' ').trim().split(' ')
+  return [...new Set(partes.filter((t) => t.length >= 3 && !NAO_E_NOME.has(t)))]
+}
+
+const chaveDoCaso = (caso) => caso?.id ?? caso
+const salaDoPar = (caso) => String(caso?.sala || '').trim().toUpperCase()
+const semAcento = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/\s+/g, ' ').trim()
+
+/**
+ * As mesmas pessoas nos dois cards: o login decide quando os dois têm um nome só; senão, os
+ * apelidos (sem acento e sem ordem — "A + B" = "B + A"). O banco compara igual.
+ */
+function mesmaGente(a, b) {
+  const pa = anestesistasDoCaso(a)
+  const pb = anestesistasDoCaso(b)
+  if (pa.length === 1 && pb.length === 1 && pa[0].uid && pb[0].uid) return pa[0].uid === pb[0].uid
+  const chave = (ps) => ps.map((p) => semAcento(p.alias)).sort().join('+')
+  return chave(pa) === chave(pb)
+}
+
+/**
+ * Os pares manhã × continuação de UMA escala. `origemDe` vai da continuação (chave = id) ao
+ * caso da manhã; `continuacoesDe`, do caso da manhã às continuações dele; `herdeiras` são as
+ * continuações com OUTRA pessoa, as que levam o término.
+ */
+export function paresDeContinuacao(casos) {
+  const origemDe = new Map()
+  const continuacoesDe = new Map()
+  const herdeiras = new Set()
+  const lista = (casos || []).filter(Boolean)
+  const origens = lista.filter((c) => !c.isContinuacao && turnoDoCasoHorario(c) === 'matutino'
+    && casoAberto(c) && pedeHorario(c))
+  for (const cont of lista) {
+    if (!cont.isContinuacao || turnoDoCasoHorario(cont) !== 'vespertino' || !pedeHorario(cont)) continue
+    const nomes = nomesDoCirurgiao(cont.cirurgiao)
+    let melhor = null
+    let pesoMelhor = null
+    for (const o of origens) {
+      if (salaDoPar(o) !== salaDoPar(cont)) continue
+      const deles = nomesDoCirurgiao(o.cirurgiao)
+      const comuns = nomes.filter((t) => deles.includes(t)).length
+      if (nomes.length && deles.length && !comuns) continue
+      const peso = [comuns, o.statusExtra === 'passa_tarde' ? 1 : 0, o.ordem ?? -Infinity]
+      const i = pesoMelhor ? peso.findIndex((v, j) => v !== pesoMelhor[j]) : 0
+      const vence = !melhor || (i >= 0 ? peso[i] > pesoMelhor[i] : String(o.id) < String(melhor.id))
+      if (vence) { melhor = o; pesoMelhor = peso }
+    }
+    if (!melhor) continue
+    origemDe.set(chaveDoCaso(cont), melhor)
+    const k = chaveDoCaso(melhor)
+    if (!continuacoesDe.has(k)) continuacoesDe.set(k, [])
+    continuacoesDe.get(k).push(cont)
+    if (!mesmaGente(melhor, cont)) herdeiras.add(chaveDoCaso(cont))
+  }
+  return { origemDe, continuacoesDe, herdeiras }
+}
+
+/** A continuação que herda o término de um caso da manhã (`pares` = `paresDeContinuacao`). */
+export const herdaTermino = (caso, pares) => !!pares?.herdeiras.has(chaveDoCaso(caso))
+
+const faltaDe = (ini, ter) => (ini && ter ? null : !ini && !ter ? 'ambos' : ini ? 'ter' : 'ini')
+
+/**
+ * O que falta, contando o par — o horário de qualquer card do par vale para a cirurgia:
+ *  - continuação herdeira: só o término; a que é da mesma pessoa não deve nada (quem deve é o
+ *    card da manhã, que a tela mostra no lugar dela);
+ *  - card da manhã que passou o término adiante: só o início;
+ *  - card da manhã com continuação da mesma pessoa: os dois, como sem par.
+ * Fora de par vale `faltaHorario`.
+ */
+export function faltaNoPar(caso, pares) {
+  const k = chaveDoCaso(caso)
+  const origem = pares?.origemDe.get(k)
+  const continuacoes = pares?.continuacoesDe.get(origem ? chaveDoCaso(origem) : k)
+  if (!continuacoes) return faltaHorario(caso)
+  const juntos = [origem || caso, ...continuacoes]
+  const ini = juntos.some((c) => temTexto(c.inicioReal))
+  const ter = juntos.some((c) => temTexto(c.terminoReal))
+  if (origem) return pares.herdeiras.has(k) && !ter ? 'ter' : null
+  if (continuacoes.some((c) => pares.herdeiras.has(chaveDoCaso(c)))) return ini ? null : 'ini'
+  return faltaDe(ini, ter)
 }
 
 /** 23:00 — a hora em que a noite "zera" a fila (fase noturna). Prazo da tarde em andamento. */
@@ -227,9 +341,15 @@ export function pendenciasDoDia(escalas, { hoje, agoraMin, liberado = () => fals
     if (!escala || escala.status !== 'publicada' || escala.data !== hoje) continue
     if (escala.hospital === 'fds') continue // a linha da fila única não tem cirurgias
     const anterior = anterioresPorSala(escala.casos)
+    const pares = paresDeContinuacao(escala.casos)
     for (const caso of escala.casos || []) {
-      if (!casoEntraNaConta(caso, { data: escala.data })) continue
-      const falta = faltaHorario(caso)
+      // a continuação que herdou o término entra pelo nome de quem a escala da tarde pôs nela
+      const herdeira = herdaTermino(caso, pares)
+      const conta = herdeira
+        ? dentroDoInicioDoAlerta(escala.data, turnoDoCasoHorario(caso))
+        : casoEntraNaConta(caso, { data: escala.data })
+      if (!conta) continue
+      const falta = faltaNoPar(caso, pares)
       if (!falta) continue
       const turno = turnoDoCasoHorario(caso)
       const nomes = anestesistasDoCaso(caso)
@@ -237,7 +357,9 @@ export function pendenciasDoDia(escalas, { hoje, agoraMin, liberado = () => fals
       // a que passa de turno continua com alguém: a liberação de quem começou não a encerra
       const foiLiberado = caso.statusExtra !== 'passa_tarde'
         && nomes.some((p) => liberado(escala, turno, p))
-      const semInicio = !temTexto(caso.inicioReal)
+      // da continuação só se cobra o término: a cirurgia já tinha começado de manhã; o início
+      // que outro card do par já tem também vale
+      const semInicio = !herdeira && (falta === 'ini' || falta === 'ambos')
       const limiteInicio = semInicio ? prazoInicio(caso, anterior.get(caso)) : null
       const inicioVencido = limiteInicio != null && agoraMin != null && agoraMin >= limiteInicio
       if (!vencido && !foiLiberado && !inicioVencido) continue
@@ -328,7 +450,9 @@ export function pendenciasDoDiaParaLiberar(escalas, { turno, ehDaPessoa, jaVisto
  * consultório, SRPA, suspensa, continuação e passa-para-tarde saem pelos mesmos cortes.
  *
  * `escalas` = escalas de dias ANTERIORES a `hoje` (uma por hospital/dia). Devolve os itens
- * de `pendenciasDoDia` com `data`, do dia mais recente para o mais antigo.
+ * de `pendenciasDoDia` com `data`, do dia mais recente para o mais antigo. Cada escala
+ * precisa trazer os DOIS cards de um par manhã × continuação, mesmo o que é de outra pessoa:
+ * sem o par, o término volta para quem começou.
  */
 export const CORTE_PENDENCIAS_MINHAS = '2026-10-27'
 

@@ -565,6 +565,11 @@ async function removeEscala(escalaId) {
  * 'fds' não tem casos). Pelo login gravado no caso (índice idx_escala_caso_anest_uid) e,
  * em separado, as duplas "A + B" do período — elas têm `anestesista_user_id` nulo por
  * construção; quem chama filtra pelo critério da aba Minhas (`anestesistaDoCasoEh`).
+ * Vêm junto os cards de COLEGAS que formam par com os da pessoa (dono 27/10: o término da
+ * manhã aberta passa para quem a escala da tarde pôs na continuação — `paresDeContinuacao`):
+ * nas escalas em que ela tem uma continuação ou uma cirurgia da manhã ainda aberta, as
+ * continuações e as abertas da manhã. Sem o outro card do par, o término voltaria para
+ * quem começou.
  * Devolve escalas no formato de `fetchEscala` (cabeçalho + casos), uma por hospital/dia.
  */
 async function fetchCasosDaPessoa({ uid, desde, ate }) {
@@ -585,8 +590,17 @@ async function fetchCasosDaPessoa({ uid, desde, ate }) {
   ])
   if (meus.error) handleError(meus.error, 'fetchCasosDaPessoa')
   if (duplas.error) handleError(duplas.error, 'fetchCasosDaPessoa:duplas')
+  const lidos = [...(meus.data || []), ...(duplas.data || [])]
+  const podeTerPar = (r) => r.is_continuacao === true || (r.turno !== 'vespertino' && r.status_cirurgia !== 'terminada')
+  const comPar = [...new Set(lidos.filter(podeTerPar).map((r) => r.escala?.id).filter(Boolean))]
+  if (comPar.length) {
+    const pares = await base().in('escala_id', comPar)
+      .or('is_continuacao.eq.true,and(turno.eq.matutino,status_cirurgia.neq.terminada)')
+    if (pares.error) handleError(pares.error, 'fetchCasosDaPessoa:pares')
+    lidos.push(...(pares.data || []))
+  }
   const porEscala = new Map()
-  for (const { escala, ...row } of [...(meus.data || []), ...(duplas.data || [])]) {
+  for (const { escala, ...row } of lidos) {
     if (!escala?.id) continue
     if (!porEscala.has(escala.id)) porEscala.set(escala.id, { ...toCamelCase(escala), casos: [] })
     const lista = porEscala.get(escala.id).casos

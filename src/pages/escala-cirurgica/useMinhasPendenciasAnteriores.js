@@ -49,9 +49,10 @@ export default function useMinhasPendenciasAnteriores({ eu, hoje }) {
 
   const itens = useMemo(() => {
     if (!ativo || !escalas.length) return VAZIO
-    // as duplas vêm todas do período: fica só a de quem está logado (critério da aba Minhas)
-    const minhas = escalas.map((e) => ({ ...e, casos: (e.casos || []).filter((c) => anestesistaDoCasoEh(c, eu)) }))
-    return pendenciasDeDiasAnteriores(minhas, { hoje }).filter((i) => !resolvidos.has(i.caso.id))
+    // a conta roda com os dois cards de cada par manhã × continuação (o do colega vem junto);
+    // depois fica só o que é cobrado de quem está logado — as duplas vêm todas do período
+    return pendenciasDeDiasAnteriores(escalas, { hoje })
+      .filter((i) => anestesistaDoCasoEh(i.caso, eu) && !resolvidos.has(i.caso.id))
   }, [ativo, escalas, eu, hoje, resolvidos])
 
   const tirar = (id, sim) => setResolvidos((r) => {

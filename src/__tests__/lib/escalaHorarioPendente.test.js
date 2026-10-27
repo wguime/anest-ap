@@ -17,6 +17,7 @@ import {
   dentroDoInicioDoAlerta, faltaHorario, montarRelatorioHorario, pendenciasDoDia, prazoDoCaso,
   prazoInicio, rotuloDiaRelatorio, TOLERANCIA_INICIO_MIN, TOLERANCIA_INICIO_AS_MIN,
   pendenciasParaLiberar, pendenciasDeDiasAnteriores, CORTE_PENDENCIAS_MINHAS,
+  paresDeContinuacao, herdaTermino, faltaNoPar, nomesDoCirurgiao,
 } from '@/lib/escalaHorarioPendente'
 
 const HOJE = '2026-10-06'
@@ -389,5 +390,120 @@ describe('pendências que ficam na Minhas até serem preenchidas (dono 27/10)', 
       dia('2026-10-29', [minha({ id: 'qui' })]),
     ], { hoje: '2026-10-30' })
     expect(r.map((p) => [p.caso.id, p.data])).toEqual([['qui', '2026-10-29'], ['qua', '2026-10-28']])
+  })
+})
+
+describe('a continuação herda o término (dono 27/10, 19:52: "que essa herança fique com quem realmente estava com a cirurgia")', () => {
+  const DIA = '2026-10-27'
+  const hro = (casos) => ({ hospital: 'hro', data: DIA, status: 'publicada', casos })
+  const manha = (o) => caso({ turno: 'matutino', sala: 'Sala 1', ordem: 1, hora: 'AS', procedimento: 'MICROCIRURGIA PARA TUMOR INTRACRANIANO', cirurgiao: 'Marcelo Vieira', anestesista: 'MELO', anestesistaUserId: 'u-melo', statusCirurgia: 'iniciada', statusExtra: 'passa_tarde', inicioReal: '10:45', terminoReal: null, ...o })
+  const tarde = (o) => caso({ turno: 'vespertino', sala: 'Sala 1', ordem: 0, hora: '13:00', procedimento: 'CONTINUAÇÃO', cirurgiao: 'Marcelo Cunha', anestesista: 'FERNANDA', anestesistaUserId: 'u-fer', isContinuacao: true, statusCirurgia: 'agendada', inicioReal: null, terminoReal: null, ...o })
+  const as = (escalas, agoraMin, o = {}) => pendenciasDoDia(escalas, { hoje: DIA, agoraMin, ...o })
+  const quem = (r) => r.map((p) => [p.caso.id, p.nomes.map((n) => n.alias).join(' + '), p.falta])
+  const H = (h, m = 0) => h * 60 + m
+
+  it('o caso das 19:52: a Fernanda marcou a continuação 13:00→13:32 — o Melo não deve mais nada', () => {
+    const casos = [
+      manha({ id: 'm0', ordem: 0, hora: '07:00', statusCirurgia: 'terminada', statusExtra: null, inicioReal: '08:00', terminoReal: '09:44' }),
+      manha({ id: 'm1' }),
+      tarde({ id: 'c', statusCirurgia: 'terminada', inicioReal: '13:00', terminoReal: '13:32' }),
+    ]
+    expect(as([hro(casos)], H(19, 52))).toEqual([])
+    // sem a continuação publicada, o término segue com quem começou (como antes)
+    expect(quem(as([hro(casos.slice(0, 2))], H(19, 52)))).toEqual([['m1', 'MELO', 'ter']])
+  })
+
+  it('ninguém marcou a continuação: o "Falta término" vai para a Fernanda, não para o Melo', () => {
+    const casos = [manha({ id: 'm1' }), tarde({ id: 'c' })]
+    expect(quem(as([hro(casos)], H(19, 52)))).toEqual([['c', 'FERNANDA', 'ter']])
+    // da continuação não se cobra o início: às 13:45 (agendada 13:00 + 30) nada acende
+    expect(as([hro(casos)], H(13, 45))).toEqual([])
+  })
+
+  it('liberada à tarde com a continuação sem término, a cobrança vem na hora (como qualquer cirurgia)', () => {
+    const casos = [manha({ id: 'm1' }), tarde({ id: 'c', statusCirurgia: 'iniciada', inicioReal: '13:00' })]
+    const liberado = (_e, turno, p) => turno === 'vespertino' && p.alias === 'FERNANDA'
+    expect(quem(as([hro(casos)], H(15), { liberado }))).toEqual([['c', 'FERNANDA', 'ter']])
+  })
+
+  it('o término marcado em QUALQUER card do par vale (o Melo voltou e marcou o dele)', () => {
+    const casos = [manha({ id: 'm1', terminoReal: '14:10' }), tarde({ id: 'c' })]
+    expect(as([hro(casos)], H(19, 52))).toEqual([])
+  })
+
+  it('dupla: HIPEC "OSCAR + ERLEI" de manhã, "ALEXANDRE D + ERLEI" na continuação — o término é dos dois da tarde', () => {
+    const casos = [
+      manha({ id: 'm', sala: 'CC - Sala 3', ordem: 12, hora: '07:30', procedimento: 'CIRURGIA CITORREDUTORA - HIPEC', cirurgiao: 'CRISTIANO VENDRAME', anestesista: 'OSCAR + ERLEI', anestesistaUserId: null, inicioReal: '08:00' }),
+      tarde({ id: 'c', sala: 'CC - Sala 3', procedimento: 'CIRURGIA CITORREDUTORA - HIPEC · CONTINUAÇÃO +-21H', cirurgiao: 'CRISTIANO VENDRAME', anestesista: 'ALEXANDRE D + ERLEI', anestesistaUserId: null, statusCirurgia: 'iniciada', statusExtra: 'passa_tarde', inicioReal: '08:00' }),
+    ]
+    // passa para a noite: só cobra na virada do dia
+    expect(as([{ ...hro(casos), hospital: 'unimed' }], H(22))).toEqual([])
+    expect(quem(as([{ ...hro(casos), hospital: 'unimed' }], H(31)))).toEqual([['c', 'ALEXANDRE D + ERLEI', 'ter']])
+  })
+
+  it('o início segue com quem começou; marcado em qualquer card, vale', () => {
+    const semNada = [manha({ id: 'm', statusCirurgia: 'agendada', statusExtra: null, inicioReal: null, anestesista: 'ALINE', anestesistaUserId: 'u-aline' }), tarde({ id: 'c' })]
+    expect(quem(as([hro(semNada)], H(31)))).toEqual([['m', 'ALINE', 'ini'], ['c', 'FERNANDA', 'ter']])
+    // Umanitá 27/10: a continuação do Eduardo trouxe 08:00→13:00 — a cirurgia está completa
+    const completa = [semNada[0], tarde({ id: 'c', statusCirurgia: 'terminada', inicioReal: '08:00', terminoReal: '13:00' })]
+    expect(as([hro(completa)], H(31))).toEqual([])
+  })
+
+  it('a MESMA pessoa nos dois cards não passa nada: deve o card da manhã (o que a tela mostra), valendo o horário da continuação', () => {
+    const garim = { anestesista: 'GARIM', anestesistaUserId: 'u-garim' }
+    const aberta = [manha({ id: 'm', ...garim, inicioReal: '08:00' }), tarde({ id: 'c', ...garim })]
+    expect(quem(as([hro(aberta)], H(19, 52)))).toEqual([['m', 'GARIM', 'ter']])
+    const marcada = [aberta[0], tarde({ id: 'c', ...garim, statusCirurgia: 'terminada', inicioReal: '08:00', terminoReal: '14:40' })]
+    expect(as([hro(marcada)], H(19, 52))).toEqual([])
+  })
+
+  it('a manhã Terminada não passa nada adiante: quem marcou disse que acabou ali', () => {
+    const casos = [manha({ id: 'm', statusCirurgia: 'terminada', statusExtra: null }), tarde({ id: 'c' })]
+    expect(quem(as([hro(casos)], H(19, 52)))).toEqual([['m', 'MELO', 'ter']])
+  })
+
+  it('o par exige a mesma sala e cirurgião compatível (o IOSC do HRO é um bloco com várias salas)', () => {
+    const iosc = { sala: 'IOSC' }
+    const jorge = manha({ id: 'jorge', ...iosc, statusExtra: null, cirurgiao: 'Jorge Valentini', anestesista: 'NATHALIA', anestesistaUserId: 'u-nat' })
+    const dalul = tarde({ id: 'dalul', ...iosc, cirurgiao: 'Guilherme Dalul', anestesista: 'PELISSARO', anestesistaUserId: 'u-pel' })
+    expect(quem(as([hro([jorge, dalul])], H(19, 52)))).toEqual([['jorge', 'NATHALIA', 'ter']])
+    const outraSala = tarde({ id: 'c', sala: 'Sala 2' })
+    expect(quem(as([hro([manha({ id: 'm1' }), outraSala])], H(19, 52)))).toEqual([['m1', 'MELO', 'ter']])
+  })
+
+  it('entre várias da manhã: mais nomes do cirurgião em comum, depois "Passa para tarde", depois a última da sala', () => {
+    const iosc = { sala: 'IOSC', statusExtra: null }
+    const rafael = manha({ id: 'rafael', ...iosc, ordem: 20, cirurgiao: 'Rafael Tirapelle', statusExtra: 'passa_tarde', anestesista: 'NATHALIA', anestesistaUserId: 'u-nat' })
+    const marco = manha({ id: 'marco', ...iosc, ordem: 22, cirurgiao: 'Marco Tesseroli', anestesista: 'OSCAR', anestesistaUserId: 'u-oscar' })
+    const cont = tarde({ id: 'c', sala: 'IOSC', cirurgiao: 'Rafael Tirapelle', anestesista: 'MARILIO', anestesistaUserId: 'u-mar' })
+    const pares = paresDeContinuacao([rafael, marco, cont])
+    expect(pares.origemDe.get('c').id).toBe('rafael')
+    expect(herdaTermino(cont, pares)).toBe(true)
+    // sem nome do cirurgião (Imagem, Hemodinâmica): a marcação e depois a última da sala
+    const sem = { sala: 'Imagem', cirurgiao: null, statusExtra: null }
+    const a = manha({ id: 'a', ...sem, ordem: 3 })
+    const b = manha({ id: 'b', ...sem, ordem: 4 })
+    expect(paresDeContinuacao([a, b, tarde({ id: 'c', ...sem })]).origemDe.get('c').id).toBe('b')
+    expect(paresDeContinuacao([{ ...a, statusExtra: 'passa_tarde' }, b, tarde({ id: 'c', ...sem })]).origemDe.get('c').id).toBe('a')
+  })
+
+  it('os nomes do cirurgião: sem acento, só os de 3+ letras, sem "da/dos"', () => {
+    expect(nomesDoCirurgiao('Marcelo da Cunha Viêira')).toEqual(['MARCELO', 'CUNHA', 'VIEIRA'])
+    expect(nomesDoCirurgiao('DIRCEU FELIPE VALENTINI JUNIOR')).toContain('VALENTINI')
+    expect(nomesDoCirurgiao('')).toEqual([])
+  })
+
+  it('faltaNoPar: herdeira só o término; manhã que passou adiante só o início', () => {
+    const m = manha({ id: 'm', inicioReal: null })
+    const c = tarde({ id: 'c' })
+    const pares = paresDeContinuacao([m, c])
+    expect(faltaNoPar(c, pares)).toBe('ter')
+    expect(faltaNoPar(m, pares)).toBe('ini')
+    expect(faltaNoPar(caso({ id: 'x' }), pares)).toBe('ambos')
+  })
+
+  it('dias anteriores: com os dois cards na busca, a pendência é da continuação', () => {
+    const r = pendenciasDeDiasAnteriores([hro([manha({ id: 'm1' }), tarde({ id: 'c' })])], { hoje: '2026-10-28' })
+    expect(r.map((p) => [p.caso.id, p.falta, p.data])).toEqual([['c', 'ter', DIA]])
   })
 })

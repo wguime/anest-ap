@@ -25,7 +25,7 @@ import useAvisoPlantonista from './useAvisoPlantonista'
 import { AvisoTempoEstourado } from './useAvisoTempoEstourado'
 import PainelTempo, { formatFaltante, fraseCronometro, fraseFaltante, rotuloDuracao } from './PainelTempo'
 import { BlocoHorario, BotaoEstimado, ConfirmarHorario, ConfirmarInicioETermino } from './BlocoHorario'
-import { casoEntraNaConta, ehConsultorio, faltaHorario, pendenciasDoDiaParaLiberar, pendenciasParaLiberar } from '@/lib/escalaHorarioPendente'
+import { casoEntraNaConta, dentroDoInicioDoAlerta, ehConsultorio, faltaNoPar, herdaTermino, paresDeContinuacao, pendenciasDoDiaParaLiberar, pendenciasParaLiberar } from '@/lib/escalaHorarioPendente'
 import SeloHorarioPendente from './SeloHorarioPendente'
 import { nomeCurtoProcedimento } from '@/lib/escalaProcedimentoCurto'
 import { ehDiaOperacionalAtual, erroHorarioReal, limiteDoTermino, terminoDaDuracao } from '@/lib/escalaHorarioReal'
@@ -1269,11 +1269,14 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     return pendenciasDoDiaParaLiberar(listaDoDia, { turno, ehDaPessoa: ehDaPessoaDaLinha(linha), jaVistos })
   }
   // O QUE FALTA a quem já saiu (dono 27/10, selo no card liberado): as cirurgias da pessoa
-  // neste turno pela MESMA conta do alerta; "Sem horário" vence "Falta início/término"
+  // neste turno pela MESMA conta do alerta; "Sem horário" vence "Falta início/término". O
+  // término de uma manhã que seguiu na continuação é de quem a tarde pôs nela (27/10, 19:52)
+  const paresDoDia = paresDeContinuacao(escala?.casos)
   const faltaDaLinha = (linha) => {
     const faltas = (linha.casosTurno || [])
-      .filter((c) => casoEntraNaConta(c, { data: escala?.data }))
-      .map(faltaHorario).filter(Boolean)
+      .filter((c) => casoEntraNaConta(c, { data: escala?.data })
+        || (herdaTermino(c, paresDoDia) && dentroDoInicioDoAlerta(escala?.data, 'vespertino')))
+      .map((c) => faltaNoPar(c, paresDoDia)).filter(Boolean)
     return faltas.includes('ambos') || (faltas.includes('ini') && faltas.includes('ter')) ? 'ambos' : faltas[0] || null
   }
   const rotuloForaDaLinha = (caso) => {
