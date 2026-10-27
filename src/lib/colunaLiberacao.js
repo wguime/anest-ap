@@ -692,7 +692,11 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   // Plantonista = 1º nome NÃO-AZUL: com o azul-sem-caso mantendo a posição
   // (31/07), um emprestado que abre o rodapé ficaria com o selo de plantonista
   // de um hospital onde ele nem está — o selo pula para o 1º dos nossos.
-  const linhaPlantonista = principais.find((l) => !l.isAjuda) || principais[0]
+  // ⚠️ SÓ o AZUL (dono 27/10): o "emprestado" deduzido pelos casos do dia
+  // (`ajudandoFora`) também liga `isAjuda`, e um repasse da Emergência no HRO
+  // passou o selo ao 2º do rodapé, que estava no consultório. Repasse não muda
+  // quem é o plantonista — a troca de posição muda.
+  const linhaPlantonista = principais.find((l) => !(l.isAjuda && azuis.has(l.chave))) || principais[0]
   if (linhaPlantonista) linhaPlantonista.isPlantonista = true
   // PLANTÃO DO TURNO SEGUINTE (regra do dono 2026-07-29): o ÚLTIMO nome da escala
   // do hospital, quando está escalado, é o plantonista do próximo turno — e sai

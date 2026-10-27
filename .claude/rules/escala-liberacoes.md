@@ -1045,3 +1045,23 @@ da folha liberou sem reconferir.
 - Travas: `filaLiberacao.test.js` (o recorte e as 8 combinações caso × array falham com a partição antiga) e
   `liberacoesFilaFonteUnica2310.test.jsx` (tela: ordem renderizada, toque no Diego passa e no Rodnei é recusado, e a
   folha que reconfere — 3 dos 4 falham contra o código anterior).
+
+
+## Selo de plantonista: só o AZUL da publicação o tira do 1º (27/10/2026)
+
+HRO, manhã de 27/10: a conta UNIMED repassou a Emergência do Vicente (1º do rodapé) ao Raul e a Sala 1 do Raul ao
+Vicente, sem "Assumir também a posição". O Vicente ficou com cirurgia só na Unimed, virou `ajudaFora` pelo cruzamento
+das escalas e o selo **Plantonista caiu no Matheus, 2º do rodapé, que estava no consultório**. O Raul, que fazia a
+Emergência, aparecia no fim como "Ajuda (Unimed) · Próximo a ser liberado". *"o plantonista não está marcado de forma
+correta"*.
+- A regra de 31/07 é **"1º NÃO-AZUL"**, mas o código usava `!isAjuda`, e `isAjuda` também liga para o emprestado
+  deduzido pelos casos do dia. Agora `linhaPlantonista` pula só quem é ajuda **e** está em `ajudaExterna`. Quem tem
+  cirurgia só em outro hospital mantém o selo, e o card mostra "Ajuda Sala X/Hospital". O repasse não muda quem é o
+  plantonista; quem muda é a troca de posição (às 09:01 a Daniela fez Raul ⇄ Vicente pelo TrocaSheet e o selo foi
+  para o Raul, que é o certo).
+- O que bagunça a fila nesses dias é repassar as cirurgias sem a posição: cada um vira "ajuda" no hospital do outro
+  e o visitante sai primeiro. A ferramenta existe (toggle "Assumir também a posição" no `DefinirAnestesistaSheet`,
+  troca no `TrocaSheet`). Ligar o toggle sozinho NÃO serve: no mesmo dia o Humberto trocou de sala dentro da Unimed e
+  teria perdido a posição para o Garim.
+- Travas: describe "selo de plantonista × cirurgia em outro hospital" em `colunaLiberacao.test.js`, com o recorte
+  real. O 1º teste falha contra o código anterior; o azul e a assunção seguem como eram.

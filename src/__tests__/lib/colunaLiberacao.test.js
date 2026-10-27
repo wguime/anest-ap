@@ -1250,6 +1250,52 @@ describe('azul do rodapé sem caso aqui mantém a posição (dono 31/07)', () =>
 })
 
 // ════════════════════════════════════════════════════════════════════════════
+// O SELO PULA SÓ PELO AZUL DA PUBLICAÇÃO (dono 27/10, HRO da manhã: "o
+// plantonista não está marcado de forma correta"). A conta UNIMED repassou a
+// Emergência do Vicente (1º do HRO) ao Raul e a Sala 1 do Raul ao Vicente. O
+// Vicente ficou com cirurgia só na Unimed, virou "emprestado" pelo cruzamento
+// das escalas, e o selo de plantonista caiu no 2º do rodapé — o Matheus, que
+// estava no CONSULTÓRIO. A regra de 31/07 é "1º NÃO-AZUL": quem a publicação pôs
+// em azul abrindo o rodapé não é plantonista daqui. Repasse do dia não muda quem
+// é o plantonista; quem muda é a troca de posição.
+// ════════════════════════════════════════════════════════════════════════════
+describe('selo de plantonista × cirurgia em outro hospital (dono 27/10)', () => {
+  const rodape = ['VICENTE', 'MATHEUS (CONSULT)', 'CRISTINA', 'LEANDRO']
+  const casos = [
+    caso('IOSC', 0, 'CRISTINA', 'Rafael Tirapelle'),
+    caso('Bloco M - Sala 3', 0, 'LEANDRO', 'Kevin Gollo'),
+    caso('Sala 5', 0, 'RAUL', 'EMERGENCIA'),
+  ]
+  const fora = [{ nome: 'VICENTE', uid: null, sala: 'CC - Sala 1', hospital: 'unimed' }]
+
+  it('o 1º do rodapé com cirurgia só em OUTRO hospital segue com o selo — não passa ao 2º', () => {
+    const r = gerarColunaLiberacao(casos, rodape, { ajudandoFora: fora })
+    const vicente = r.linhas.find((l) => l.anestesista === 'Vicente')
+    const matheus = r.linhas.find((l) => l.anestesista === 'Matheus')
+    expect(vicente.isPlantonista).toBe(true)
+    expect(vicente.ajudaFora).toBe(true) // o card continua dizendo onde ele está
+    expect(matheus.isPlantonista).toBe(false)
+    expect(r.plantonista).toBe('Vicente')
+  })
+
+  it('azul da publicação abrindo o rodapé continua passando o selo ao 1º dos nossos', () => {
+    const r = gerarColunaLiberacao(casos, rodape, { ajudaExterna: ['VICENTE'], ajudandoFora: fora })
+    expect(r.linhas.find((l) => l.anestesista === 'Vicente').isPlantonista).toBe(false)
+    expect(r.plantonista).toBe('Matheus')
+  })
+
+  it('quem ASSUME a posição do 1º herda o selo (a correção feita às 09:01)', () => {
+    const r = gerarColunaLiberacao(casos, rodape, {
+      ajudandoFora: fora,
+      assumidas: { VICENTE: { uid: null, nome: 'RAUL' } },
+    })
+    expect(r.linhas[0].anestesista).toBe('Raul')
+    expect(r.linhas[0].isPlantonista).toBe(true)
+    expect(r.linhas.filter((l) => l.isPlantonista)).toHaveLength(1)
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
 // VISITANTE SEM CASO no destino (dono 31/07): repassado o último caso dele, a
 // entrada em ajuda_externa (gravada pelo repasse ou à mão) sustenta a linha —
 // com origem conhecida ele não nasce "não escalado"/liberado e ordena pela

@@ -3,6 +3,18 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.75 (27/10/2026) — O selo de plantonista não pula para o 2º por causa de um repasse
+
+HRO e Unimed, manhã de 27/10: *"a escala na aba de liberações está toda bagunçada [...] o plantonista não está marcado
+de forma correta"*. A conta UNIMED repassou as cirurgias de quem trocou de hospital (Raul ⇄ Vicente, Garim ⇄ Janaína)
+sem mover a posição na fila. O Vicente, 1º do HRO, passou a contar como ajuda na Unimed, e o selo Plantonista foi
+para o 2º, o Matheus, que estava no consultório. O Raul, que fazia a Emergência, aparecia no fim como próximo a ser
+liberado.
+- O selo só sai do 1º da lista quando a publicação o pôs em azul (regra de 31/07). Quem fica com cirurgia só em outro
+  hospital por repasse mantém o selo, e o card mostra onde ele está até alguém fazer a troca de posição.
+- Reparo do dia (`scripts/repair-escala-2026-10-27-plantonistas-trocas.sql`, pela mesma função da troca do app):
+  Janaína na posição do Garim no HRO; Vicente na posição do Oscar (plantonista da Unimed) e Oscar na do Raul.
+
 ## v5.12.74 (26/10/2026) — SRPA na Completa: só o horário de início, sem toque
 
 Print da Unimed (SRPA · Klisman · 09:00): *"esse card não deve ser clicável, deve apenas informar o horário de início
