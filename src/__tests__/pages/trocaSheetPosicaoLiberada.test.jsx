@@ -9,7 +9,7 @@
  * frase do resultado aparece antes de qualquer botão e de novo no pop-up.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, within } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 
 import { ThemeProvider, ToastProvider } from '@/design-system'
 import TrocaSheet from '@/pages/escala-cirurgica/TrocaSheet'
@@ -64,14 +64,15 @@ vi.mock('@/hooks/useRosterAnestesistas', () => ({
 
 const wrap = ({ children }) => <ThemeProvider><ToastProvider>{children}</ToastProvider></ThemeProvider>
 const LINHA_CRISTINA = { chave: 'u-cristina', uid: 'u-cristina', anestesista: 'Cristina Marcon', nomeOriginal: 'CRISTINA' }
-const abrirTrocaComRodnei = async () => {
-  render(<TrocaSheet linha={LINHA_CRISTINA} escala={escalaUnimed} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
-  fireEvent.click(screen.getAllByRole('combobox')[0])
-  fireEvent.click(await screen.findByRole('option', { name: 'RODNEI CABRAL LIMA' }))
-  await screen.findByText('Quem fica com cada posição?')
+const abrir = (props = {}) => render(
+  <TrocaSheet linha={LINHA_CRISTINA} escala={escalaUnimed} turno="matutino" onClose={vi.fn()} {...props} />,
+  { wrapper: wrap },
+)
+const opcao = async (rx) => {
+  fireEvent.click(await screen.findByRole('button', { name: rx }))
+  fireEvent.click(screen.getByRole('button', { name: 'Continuar' }))
 }
-const cartaoHro = () => document.querySelector('[data-posicao="esc-hro:u-rodnei"]')
-
+const RODNEI = /^Rodnei Cabral Lima/
 beforeEach(() => vi.clearAllMocks())
 
 describe('o plano da troca enxerga a posição como ela está', () => {
@@ -91,37 +92,39 @@ describe('o plano da troca enxerga a posição como ela está', () => {
   })
 })
 
-describe('o cartão da posição diz quem está lá e o que acontece (modelo A)', () => {
-  it('antes de escolher: quem ocupa, desde quando, que já saiu — e o aviso', async () => {
-    await abrirTrocaComRodnei()
-    const cartao = cartaoHro()
-    expect(cartao.textContent).toMatch(/Posição de Rodnei \(12ª\) · com Klisman \S+ desde 09:02 · saiu às 10:46/)
-    // a opção "fica" nomeia quem está de fato na posição
-    expect(within(cartao).getByRole('button', { name: /Klisman .* fica HRO/ })).toBeTruthy()
-    expect(within(cartao).queryByRole('button', { name: /Rodnei .* fica HRO/ })).toBeNull()
-    expect(cartao.textContent).toMatch(/Klisman \S+ já saiu desta posição\. Se Cristina \S+ assumir, recebe a posição liberada/)
+// ⚠️ MUDOU DE LADO (dono 27/10, troca em três passos). O cartão "fica/assume" de cada
+// posição saiu: a troca agora pergunta o que aconteceu. O que o modelo A de 23/10
+// protegia continua protegido, por dois caminhos: (1) quem teve a posição assumida por
+// outra pessoa conta como SEM escala no turno — o Rodnei não é oferecido para "trocou
+// de lugar", então o Klisman não sai da vaga por engano; (2) quando a vaga ocupada entra
+// mesmo na troca (reabertura de um registro), a prévia diz quem está lá e que já saiu.
+describe('posição ocupada e já liberada na troca em três passos', () => {
+  it('Rodnei, com a vaga do HRO ocupada pelo Klisman, conta como sem escala', async () => {
+    abrir()
+    await opcao(/trocou de lugar com um colega/)
+    expect(screen.getByRole('button', { name: RODNEI })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Voltar' }))
+    await opcao(/Um colega entra no lugar/)
+    expect(screen.getByRole('button', { name: RODNEI })).not.toBeDisabled()
   })
 
-  it('marcando "Cristina assume": a frase vira o resultado, e o pop-up repete', async () => {
-    await abrirTrocaComRodnei()
-    fireEvent.click(within(cartaoHro()).getByRole('button', { name: /Cristina .* assume HRO/ }))
-    expect(cartaoHro().textContent).toMatch(/Cristina \S+ recebe a 12ª posição já liberada e Klisman \S+ continua com a liberação/)
-    // a Unimed também precisa de resposta para liberar o botão
-    fireEvent.click(screen.getByRole('button', { name: /Rodnei .* assume Unimed/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Trocar agora' }))
-    await screen.findByRole('button', { name: 'Confirmar troca' })
-    // a mesma frase no cartão e no pop-up: é a última tela antes de gravar
-    expect(screen.getAllByText(/recebe a 12ª posição já liberada e Klisman \S+ continua com a liberação/)).toHaveLength(2)
-  })
-
-  it('marcando "Klisman fica": nada a avisar e o HRO não entra na troca', async () => {
-    await abrirTrocaComRodnei()
-    fireEvent.click(within(cartaoHro()).getByRole('button', { name: /Klisman .* fica HRO/ }))
-    expect(cartaoHro().textContent).not.toMatch(/já saiu desta posição/)
-    fireEvent.click(screen.getByRole('button', { name: /Rodnei .* assume Unimed/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Trocar agora' }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Confirmar troca' }))
+  it('"entra no lugar": só a Unimed muda, e o HRO do Klisman fica fora da prévia e da gravação', async () => {
+    abrir()
+    await opcao(/Um colega entra no lugar/)
+    fireEvent.click(screen.getByRole('button', { name: RODNEI }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ver como fica' }))
+    await screen.findByText('Como a fila fica')
+    expect(document.querySelector('[data-fila-previa="hro"]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /entra no lugar de Cristina/ }))
     await vi.waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
     expect(executarSubstituicao.mock.calls[0][0].lados.map((l) => l.hospital)).toEqual(['unimed'])
+  })
+
+  it('se a vaga ocupada entra na troca, a prévia diz quem está lá e que já saiu', async () => {
+    abrir({ colegaInicial: 'u-rodnei', modo: 'posicao' })
+    await screen.findByText('Como a fila fica')
+    expect(document.querySelector('[data-fila-previa="hro"]').textContent).toMatch(/12ºCristina \S+sai Klisman/)
+    expect(screen.getByText(/Klisman \S+ já saiu desta posição \(com Klisman \S+ desde 09:02 · saiu às 10:46\)\. Cristina \S+ recebe a 12ª posição já liberada e Klisman \S+ continua com a liberação/)).toBeTruthy()
+    expect(executarSubstituicao).not.toHaveBeenCalled()
   })
 })

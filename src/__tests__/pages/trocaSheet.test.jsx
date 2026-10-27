@@ -1,21 +1,22 @@
 /**
- * TrocaSheet — o FLUXO ÚNICO de troca (dono 07/08: "num só local, fáceis de
- * executar e intuitivas"). Estes testes travam o contrato:
- *   1. a decisão é POR POSIÇÃO e nada vem pré-marcado (dono 09–10/08): a escala
- *      pode sair JÁ com os nomes trocados — supor a origem invertia a troca;
- *   2. ninguém muda de lugar ("fica" nas duas) → "Registrar troca": grava
- *      trocaCom com `apenasRegistro`, sem mover posição nem caso. É o caso
- *      Rafael⇄Garim de 10/08, que antes não tinha caminho na UI;
- *   3. alguém assume → "Trocar agora" executa só as posições marcadas;
- *   4. com posição por confirmar o botão fica travado (meio swap = D4);
- *   5. o TIPO é inferido pela geografia dos slots do PAR (não por quem se move);
- *   6. a própria pessoa não aparece no seletor de colega.
+ * TrocaSheet — o FLUXO ÚNICO de troca, em TRÊS PASSOS (dono 27/10: "há muitos botões
+ * de trocas, crie um único botão e a partir dele opções de trocas com explicações").
+ * Estes testes travam o contrato:
+ *   1. nada é suposto: o passo 1 pergunta o que aconteceu (trocou de lugar · colega
+ *      sem escala entra no lugar · só registrar), porque a escala pode sair JÁ
+ *      trocada (dono 09–10/08) e mover nessa hora desfaz a troca real;
+ *   2. "só registrar" grava trocaCom com `apenasRegistro`, sem mover ninguém;
+ *   3. "trocou de lugar" move as posições do PAR, nos dois hospitais — não existe
+ *      mais troca de um lado só entre hospitais (o caso Garim/Janaína de 27/10);
+ *   4. "entra no lugar" é só para quem está SEM escala no turno;
+ *   5. nada grava antes da prévia "Como a fila fica";
+ *   6. o TIPO é inferido pela geografia; a própria pessoa não aparece na lista.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 
 import { ThemeProvider, ToastProvider } from '@/design-system'
-import TrocaSheet, { inferirTipoTroca, TIPO_LABEL } from '@/pages/escala-cirurgica/TrocaSheet'
+import TrocaSheet, { inferirTipoTroca } from '@/pages/escala-cirurgica/TrocaSheet'
 
 const ROSTER = [
   { uid: 'uid-gio', nome: 'GIOVANA GOMES NOLL', apelidos: ['GIOVANA'] },
@@ -85,15 +86,20 @@ const montar = (props = {}) => render(
   { wrapper: wrap },
 )
 
-const escolherColega = async (nome) => {
-  fireEvent.click(screen.getAllByRole('combobox')[0])
-  fireEvent.click(await screen.findByRole('option', { name: nome }))
+// Passo 1 → opção; passo 2 → colega; passo 3 → prévia
+const opcao = async (rx) => {
+  fireEvent.click(await screen.findByRole('button', { name: rx }))
+  fireEvent.click(screen.getByRole('button', { name: 'Continuar' }))
 }
-const marcar = (nomeBotao) => fireEvent.click(screen.getByRole('button', { name: nomeBotao }))
-const botaoPrincipal = () => screen.getByRole('button', { name: /Trocar agora|Trocar posição|Registrar troca/ })
-// POP-UP ANTES DE CONCLUIR (dono 18/08): o swap só grava depois do resumo do que
-// muda na fila — nenhum caminho executa a troca sem perguntar.
-const confirmarPopup = async () => fireEvent.click(await screen.findByRole('button', { name: 'Confirmar troca' }))
+const colega = async (rx) => {
+  fireEvent.click(await screen.findByRole('button', { name: rx }))
+  fireEvent.click(screen.getByRole('button', { name: 'Ver como fica' }))
+}
+const TROCOU = /trocou de lugar com um colega/
+const ENTRA = /Um colega entra no lugar/
+const REGISTRO = /só registrar/
+const MAU = /^Maurício Mahalem Bastos/
+const botaoGravar = () => screen.getByRole('button', { name: /⇄|entra no lugar de|Registrar a troca/ })
 
 beforeEach(() => vi.clearAllMocks())
 
@@ -112,80 +118,75 @@ describe('inferirTipoTroca — taxonomia pela geografia dos slots', () => {
   })
 })
 
-describe('TrocaSheet', () => {
-  it('a própria pessoa fica fora do seletor de colega', async () => {
+describe('Passo 1 — o que aconteceu', () => {
+  it('três opções com o efeito escrito, e nada vem marcado', async () => {
     montar()
-    fireEvent.click(screen.getAllByRole('combobox')[0])
-    expect(screen.queryByRole('option', { name: 'GIOVANA GOMES NOLL' })).toBeNull()
-    expect(await screen.findByRole('option', { name: 'MAURICIO MAHALEM BASTOS' })).toBeTruthy()
+    expect(await screen.findByText('Trocas de Giovana Noll')).toBeTruthy()
+    expect(screen.getByText('1º na escala do HRO · S1')).toBeTruthy()
+    for (const rx of [TROCOU, ENTRA, REGISTRO]) {
+      expect(screen.getByRole('button', { name: rx })).toHaveAttribute('aria-pressed', 'false')
+    }
+    expect(screen.getByText(/Os dois trocam de posição e levam as cirurgias em aberto/)).toBeTruthy()
+    expect(screen.getByText(/Ninguém muda de lugar/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled()
   })
 
-  it('uma decisão por POSIÇÃO, nada pré-marcado — e meia resposta não libera o botão', async () => {
+  it('"Declarar para depois" não existe mais (dono 09/08)', async () => {
     montar()
-    await escolherColega('MAURICIO MAHALEM BASTOS')
-    await screen.findByText('Quem fica com cada posição?')
-    // as duas posições do par aparecem, cada uma com as duas saídas
-    // o número da posição no rodapé entrou no cartão em 23/10 (modelo A da troca sobre
-    // posição já liberada): "Posição de Rodnei (12ª)" diz qual vaga muda de dono
-    expect(screen.getByText('Posição de Giovana (1ª)')).toBeTruthy()
-    expect(screen.getByText('Posição de Maurício (2ª)')).toBeTruthy()
-    expect(botaoPrincipal()).toBeDisabled()
-    marcar('Giovana Noll fica HRO')
-    expect(botaoPrincipal()).toBeDisabled() // falta a outra posição (defeito D4)
+    await screen.findByText('Trocas de Giovana Noll')
+    expect(screen.queryByRole('button', { name: /Declarar para depois/ })).toBeNull()
+  })
+})
+
+describe('Passo 2 — com quem', () => {
+  it('a própria pessoa fica fora da lista, e cada colega diz onde está', async () => {
+    montar()
+    await opcao(REGISTRO)
+    expect(screen.queryByRole('button', { name: /^Giovana Gomes Noll/ })).toBeNull()
+    expect(screen.getByRole('button', { name: MAU })).toHaveTextContent('2º · S2')
+    expect(screen.getByText('Escala da Unimed')).toBeTruthy()
+    expect(screen.getByText('Sem escala neste turno')).toBeTruthy()
   })
 
-  it('escala já publicada trocada: "fica" nas duas vira REGISTRO, sem mover ninguém', async () => {
-    // caso real 10/08 — Rafael já está no HRO e Garim na Unimed; o que falta é
-    // o rastro (badge nos dois), não o swap
+  it('"trocou de lugar" só aceita quem tem escala; "entra no lugar" só quem NÃO tem', async () => {
     montar()
-    await escolherColega('MAURICIO MAHALEM BASTOS')
-    marcar('Giovana Noll fica HRO')
-    marcar('Maurício Bastos fica Unimed')
-    fireEvent.change(screen.getByPlaceholderText(/plantão trocado/), { target: { value: 'trocaram entre si' } })
-    await waitFor(() => expect(botaoPrincipal()).toHaveTextContent('Registrar troca'))
-    fireEvent.click(botaoPrincipal())
-    await waitFor(() => expect(marcarTroca).toHaveBeenCalledTimes(1))
-    const [escala, linha, colega, , turno] = marcarTroca.mock.calls[0]
-    expect(escala.id).toBe('esc-hro')
-    expect(linha.chave).toBe('uid-gio')
-    expect(colega).toMatchObject({
-      uid: 'uid-mau', nome: 'MAURICIO MAHALEM BASTOS',
-      tipo: 'entre_hospitais', motivo: 'trocaram entre si', apenasRegistro: true,
-    })
-    expect(turno).toBe('matutino')
+    await opcao(TROCOU)
+    expect(screen.getByRole('button', { name: /^Colega De Fora/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: MAU })).not.toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Voltar' }))
+    await opcao(ENTRA)
+    expect(screen.getByRole('button', { name: MAU })).toBeDisabled()
+    expect(screen.getByRole('button', { name: MAU })).toHaveTextContent(/Está na escala da Unimed/)
+    expect(screen.getByRole('button', { name: /^Colega De Fora/ })).not.toBeDisabled()
+  })
+
+  it('a busca filtra pelo nome ou apelido', async () => {
+    montar()
+    await opcao(REGISTRO)
+    fireEvent.change(screen.getByRole('textbox', { name: 'Buscar colega pelo nome' }), { target: { value: 'rose' } })
+    expect(screen.getByRole('button', { name: /^Rosemary Cury/ })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: MAU })).toBeNull()
+  })
+})
+
+describe('Passo 3 — a prévia é a confirmação', () => {
+  it('"trocou de lugar": mostra as DUAS filas, diz quem vira plantonista e só grava no botão', async () => {
+    montar()
+    await opcao(TROCOU)
+    await colega(MAU)
+    expect(await screen.findByText('Como a fila fica')).toBeTruthy()
+    const hro = document.querySelector('[data-fila-previa="hro"]')
+    const uni = document.querySelector('[data-fila-previa="unimed"]')
+    // a linha que muda diz quem entra e, embaixo, quem sai
+    expect(hro).toHaveTextContent('1ºMaurício Bastossai Giovana Noll')
+    expect(uni).toHaveTextContent('2ºGiovana Nollsai Maurício Bastos')
+    expect(document.querySelector('[data-resumo-troca]')).toHaveTextContent(
+      'Maurício Bastos fica com o 1º do HRO e Giovana Noll fica com o 2º da Unimed.',
+    )
+    expect(screen.getByText('Maurício Bastos passa a ser o plantonista do HRO.')).toBeTruthy()
     expect(executarSubstituicao).not.toHaveBeenCalled()
-  })
-
-  // ⚠️ REABERTURA a partir de uma troca JÁ REGISTRADA (dono 18/08: "ao solicitar
-  // troca de posições a posição na lista de liberações não está mudando"): o
-  // painel da linha perdia a porta do sheet quando havia registro, e não sobrava
-  // caminho nenhum para as posições trocarem. O par já é conhecido — o que falta
-  // decidir é a POSIÇÃO, e ela continua em branco (supor quem se move é o que
-  // invertia a troca em 10/08).
-  it('colegaInicial já vem escolhido, mas as posições seguem por confirmar', async () => {
-    montar({ colegaInicial: 'uid-mau' })
-    expect(await screen.findByText('Quem fica com cada posição?')).toBeTruthy()
-    expect(screen.getByText('Posição de Giovana (1ª)')).toBeTruthy()
-    expect(screen.getByText('Posição de Maurício (2ª)')).toBeTruthy()
-    expect(botaoPrincipal()).toBeDisabled()
-    marcar('Maurício Bastos assume HRO')
-    marcar('Giovana Noll assume Unimed')
-    await waitFor(() => expect(botaoPrincipal()).toHaveTextContent('Trocar agora'))
-    fireEvent.click(botaoPrincipal())
-    await confirmarPopup()
-    await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
-    expect(executarSubstituicao.mock.calls[0][0].lados).toHaveLength(2)
-  })
-
-  it('os dois assumem a posição do outro: "Trocar agora" executa os 2 lados com tipo e motivo', async () => {
-    montar()
-    await escolherColega('MAURICIO MAHALEM BASTOS')
-    marcar('Maurício Bastos assume HRO')
-    marcar('Giovana Noll assume Unimed')
     fireEvent.change(screen.getByPlaceholderText(/plantão trocado/), { target: { value: 'plantão' } })
-    await waitFor(() => expect(botaoPrincipal()).toHaveTextContent('Trocar agora'))
-    fireEvent.click(botaoPrincipal())
-    await confirmarPopup()
+    fireEvent.click(screen.getByRole('button', { name: 'Trocar Giovana Noll ⇄ Maurício Bastos' }))
     await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
     const [plan] = executarSubstituicao.mock.calls[0]
     expect(plan.lados).toHaveLength(2)
@@ -196,100 +197,139 @@ describe('TrocaSheet', () => {
     expect(marcarTroca).not.toHaveBeenCalled()
   })
 
-  it('metade já publicada trocada: executa SÓ a posição marcada como assumida', async () => {
+  it('"Voltar" não grava nada', async () => {
     montar()
-    await escolherColega('MAURICIO MAHALEM BASTOS')
-    marcar('Giovana Noll fica HRO')       // o HRO já está certo
-    marcar('Giovana Noll assume Unimed')     // a vaga do Maurício na Unimed passa para ela
-    fireEvent.click(botaoPrincipal())
-    await confirmarPopup()
+    await opcao(TROCOU)
+    await colega(MAU)
+    fireEvent.click(await screen.findByRole('button', { name: 'Voltar' }))
+    expect(await screen.findByRole('button', { name: 'Ver como fica' })).toBeTruthy()
+    expect(executarSubstituicao).not.toHaveBeenCalled()
+  })
+
+  // ⚠️ MUDOU DE LADO (dono 27/10). Antes cada posição tinha "fica/assume" e dava para
+  // executar SÓ um dos lados entre hospitais ("metade já publicada trocada"). Na manhã
+  // de 27/10 foi esse formato que deixou o HRO bagunçado: Garim assumiu a posição da
+  // Janaína na Unimed e a dele no HRO ficou com ele, enquanto ela fazia o consultório
+  // de lá. "Trocou de lugar" agora move SEMPRE as posições do par, e a prévia mostra os
+  // dois hospitais antes de gravar.
+  it('não existe mais troca de um lado só entre hospitais: o par troca inteiro', async () => {
+    montar()
+    await opcao(TROCOU)
+    await colega(MAU)
+    await screen.findByText('Como a fila fica')
+    expect(screen.queryByRole('button', { name: /fica (HRO|Unimed)/ })).toBeNull()
+    fireEvent.click(botaoGravar())
+    await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
+    expect(executarSubstituicao.mock.calls[0][0].lados.map((l) => l.hospital).sort()).toEqual(['hro', 'unimed'])
+  })
+
+  it('"só registrar": grava trocaCom com apenasRegistro e não move ninguém', async () => {
+    // caso real 10/08 — Rafael já está no HRO e Garim na Unimed; o que falta é o rastro
+    montar()
+    await opcao(REGISTRO)
+    await colega(MAU)
+    expect(await screen.findByText(/Ninguém muda de lugar. O selo Troca aparece no card de Giovana Noll e de Maurício Bastos/)).toBeTruthy()
+    fireEvent.change(screen.getByPlaceholderText(/plantão trocado/), { target: { value: 'trocaram entre si' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Registrar a troca' }))
+    await waitFor(() => expect(marcarTroca).toHaveBeenCalledTimes(1))
+    const [escala, linha, colegaGravado, , turno] = marcarTroca.mock.calls[0]
+    expect(escala.id).toBe('esc-hro')
+    expect(linha.chave).toBe('uid-gio')
+    expect(colegaGravado).toMatchObject({
+      uid: 'uid-mau', nome: 'MAURICIO MAHALEM BASTOS',
+      tipo: 'entre_hospitais', motivo: 'trocaram entre si', apenasRegistro: true,
+    })
+    expect(turno).toBe('matutino')
+    expect(executarSubstituicao).not.toHaveBeenCalled()
+  })
+
+  // O caso Fernanda⇄Daniela (dono 18/08): quem entra NÃO tem posição própria — a fila
+  // passa a mostrar a colega naquela posição, e quem estava sai deste turno.
+  it('"entra no lugar": o colega sem escala assume a posição e quem abriu sai', async () => {
+    montar()
+    await opcao(ENTRA)
+    await colega(/^Colega De Fora/)
+    expect(await screen.findByText(/Giovana Noll sai da fila deste turno/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Colega Fora entra no lugar de Giovana Noll' }))
     await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
     const [plan] = executarSubstituicao.mock.calls[0]
     expect(plan.lados).toHaveLength(1)
-    expect(plan.lados[0].hospital).toBe('unimed')
-    expect(plan.lados[0].para.uid).toBe('uid-gio')
-    // tipo vem da GEOGRAFIA do par (2 hospitais), não de quem se move
-    expect(plan.lados[0].tipo).toBe('entre_hospitais')
+    expect(plan.lados[0]).toMatchObject({ hospital: 'hro', para: { uid: 'uid-fora' }, tipo: 'assuncao' })
   })
 
-  it('colega sem posição publicada: avisa e a única decisão é a posição que existe', async () => {
-    montar()
-    await escolherColega('COLEGA DE FORA')
-    expect(await screen.findByText(/não tem posição nem cirurgia/i)).toBeTruthy()
-    marcar('Colega Fora assume HRO')
-    fireEvent.click(botaoPrincipal())
-    await confirmarPopup()
+  // REABERTURA a partir de uma troca JÁ REGISTRADA (dono 18/08): o painel abre a
+  // folha com o colega e a opção — cai direto na prévia, sem gravar nada sozinho.
+  it('reabrir de um registro (colega + "trocou de lugar") começa na prévia', async () => {
+    montar({ colegaInicial: 'uid-mau', modo: 'posicao' })
+    expect(await screen.findByText('Como a fila fica')).toBeTruthy()
+    expect(executarSubstituicao).not.toHaveBeenCalled()
+    fireEvent.click(botaoGravar())
     await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
-    const [plan] = executarSubstituicao.mock.calls[0]
-    expect(plan.lados).toHaveLength(1)
-    expect(plan.lados[0].para.uid).toBe('uid-fora')
-    expect(plan.lados[0].tipo).toBe('assuncao')
+    expect(executarSubstituicao.mock.calls[0][0].lados).toHaveLength(2)
   })
+})
 
-  // ── COLEGA FORA DA UNIMED/HRO (dono 13/08) ─────────────────────────────────
+// ── COLEGA FORA DA UNIMED/HRO (dono 13/08) ─────────────────────────────────
+describe('Colegas fora da fila de Unimed/HRO', () => {
   it('colega do Materno: a troca fecha pelos CASOS, mesmo sem rodapé lá', async () => {
     montar()
-    await escolherColega('ROSEMARY CURY')
-    // o cartão do Materno diz que ali não há fila para herdar — só as cirurgias
-    expect(await screen.findByText(/Cirurgias de Rose · sem fila de liberação/)).toBeTruthy()
-    expect(screen.getByText('Posição de Giovana (1ª)')).toBeTruthy()
-    marcar('Rosemary Cury assume HRO')
-    marcar('Giovana Noll assume Materno')
-    await waitFor(() => expect(botaoPrincipal()).toHaveTextContent('Trocar agora'))
-    fireEvent.click(botaoPrincipal())
-    await confirmarPopup()
+    await opcao(TROCOU)
+    await colega(/^Rosemary Cury/)
+    const mat = await waitFor(() => {
+      const el = document.querySelector('[data-fila-previa="materno"]')
+      expect(el).toBeTruthy()
+      return el
+    })
+    // a prévia do Materno diz que ali não há fila para herdar — só as cirurgias
+    expect(mat).toHaveTextContent('Cirurgias de Rosemary Cury → Giovana Noll · sem fila de liberação')
+    fireEvent.click(botaoGravar())
     await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
     const [plan] = executarSubstituicao.mock.calls[0]
-    const mat = plan.lados.find((l) => l.hospital === 'materno')
-    expect(mat).toMatchObject({ semPosicao: true, casoIds: ['m1'], para: { uid: 'uid-gio' } })
+    const lado = plan.lados.find((l) => l.hospital === 'materno')
+    expect(lado).toMatchObject({ semPosicao: true, casoIds: ['m1'], para: { uid: 'uid-gio' } })
     // dois hospitais em jogo → é troca entre hospitais, não "colega de fora assume"
-    expect(mat.tipo).toBe('entre_hospitais')
+    expect(lado.tipo).toBe('entre_hospitais')
   })
 
-  it('colega em lugar nenhum: dá para dizer ONDE ele está, e isso entra no registro', async () => {
+  it('colega em lugar nenhum: no registro dá para dizer ONDE ele está', async () => {
     montar()
-    await escolherColega('COLEGA DE FORA')
-    // o seletor de local só existe para quem não aparece em escala nenhuma
-    fireEvent.click(screen.getAllByRole('combobox')[1])
+    await opcao(REGISTRO)
+    await colega(/^Colega De Fora/)
+    fireEvent.click(await screen.findByRole('combobox'))
     fireEvent.click(await screen.findByRole('option', { name: 'Consultório' }))
-    marcar('Giovana Noll fica HRO')
-    fireEvent.click(botaoPrincipal())
+    fireEvent.click(screen.getByRole('button', { name: 'Registrar a troca' }))
     await waitFor(() => expect(marcarTroca).toHaveBeenCalledTimes(1))
     expect(marcarTroca.mock.calls[0][2]).toMatchObject({ uid: 'uid-fora', local: 'Consultório', apenasRegistro: true })
   })
 
   it('colega que TEM escala no turno exibido não ganha campo de local', async () => {
     montar()
-    await escolherColega('MAURICIO MAHALEM BASTOS')
-    await screen.findByText('Quem fica com cada posição?')
+    await opcao(REGISTRO)
+    await colega(MAU)
+    await screen.findByText('Como a fila fica')
     expect(screen.queryByText(/Onde .* está/)).toBeNull()
   })
 
   // INCIDENTE 13/08 (Staub): fecha a MANHÃ do HRO e passa a TARDE no consultório.
-  // Como o nome dele estava no rodapé da manhã, o campo de local sumia e não
-  // havia onde dizer para onde ele tinha ido — o que era justamente o registro
-  // que faltava ("a troca já está correta na escala, só precisa ser identificada").
-  it('colega escalado só no OUTRO turno ainda pode ser marcado como fora (consultório)', async () => {
+  it('colega escalado só no OUTRO turno conta como sem escala e pode ser marcado no consultório', async () => {
     render(
       <TrocaSheet linha={LINHA_GIOVANA} escala={escalaHro} turno="vespertino" onClose={vi.fn()} />,
       { wrapper: wrap },
     )
+    await opcao(REGISTRO)
     // Maurício está no rodapé MATUTINO da Unimed; a tela é a tarde
-    await escolherColega('MAURICIO MAHALEM BASTOS')
+    expect(screen.getByRole('button', { name: MAU })).not.toHaveTextContent('2º')
+    await colega(MAU)
     expect(await screen.findByText(/Onde Maurício Bastos está à tarde/)).toBeTruthy()
-    fireEvent.click(screen.getAllByRole('combobox')[1])
+    fireEvent.click(screen.getByRole('combobox'))
     fireEvent.click(await screen.findByRole('option', { name: 'Consultório' }))
-    for (const b of screen.getAllByRole('button', { name: /fica (HRO|Unimed)/ })) fireEvent.click(b)
-    await waitFor(() => expect(botaoPrincipal()).toHaveTextContent('Registrar troca'))
-    fireEvent.click(botaoPrincipal())
+    fireEvent.click(screen.getByRole('button', { name: 'Registrar a troca' }))
     await waitFor(() => expect(marcarTroca).toHaveBeenCalledTimes(1))
     expect(marcarTroca.mock.calls[0][2]).toMatchObject({ uid: 'uid-mau', local: 'Consultório' })
   })
 
-  // INCIDENTE 13/08 (Karine): quem aparece em DOIS hospitais no mesmo turno —
-  // a mesma jornada anotada nos dois quadros (linha de sala "Materno" dentro da
-  // escala do HRO) — arrastava o outro hospital para o sheet. A posição em jogo
-  // é a da TELA de onde a troca foi aberta.
+  // INCIDENTE 13/08 (Karine): quem aparece em DOIS hospitais no mesmo turno arrastava
+  // o outro hospital para a troca. A posição em jogo é a da TELA de onde ela foi aberta.
   it('a posição trocada é a da escala aberta: o outro hospital dela não entra', async () => {
     const hroOriginal = escalasMock.hro
     escalasMock.hro = { ...escalaHro, ordemLiberacao: { matutino: ['GIOVANA', 'KARINE', 'ROSE'] } }
@@ -299,144 +339,15 @@ describe('TrocaSheet', () => {
         <TrocaSheet linha={LINHA_ROSE} escala={escalaMaterno} turno="matutino" onClose={vi.fn()} />,
         { wrapper: wrap },
       )
-      await escolherColega('MAURICIO MAHALEM BASTOS')
-      await screen.findByText('Quem fica com cada posição?')
+      await opcao(TROCOU)
+      await colega(MAU)
+      await screen.findByText('Como a fila fica')
       // Materno (a tela) + Unimed (o colega). O HRO dela fica de fora.
-      expect(screen.getByText(/Cirurgias de Rose · sem fila de liberação/)).toBeTruthy()
-      expect(screen.getByText('Posição de Maurício (2ª)')).toBeTruthy()
-      expect(screen.queryByText(/Posição de Rose/)).toBeNull()
+      expect(document.querySelector('[data-fila-previa="materno"]')).toBeTruthy()
+      expect(document.querySelector('[data-fila-previa="unimed"]')).toHaveTextContent('2ºRosemary Curysai Maurício Bastos')
+      expect(document.querySelector('[data-fila-previa="hro"]')).toBeNull()
     } finally {
       escalasMock.hro = hroOriginal
     }
-  })
-
-  it('"Declarar para depois" não existe mais (dono 09/08)', async () => {
-    montar()
-    await escolherColega('MAURICIO MAHALEM BASTOS')
-    expect(screen.queryByRole('button', { name: /Declarar para depois/ })).toBeNull()
-  })
-
-  it('o tipo inferido aparece escolhido e continua corrigível', async () => {
-    montar()
-    await escolherColega('MAURICIO MAHALEM BASTOS')
-    await waitFor(() => expect(screen.getByText(TIPO_LABEL.entre_hospitais)).toBeTruthy())
-    fireEvent.click(screen.getAllByRole('combobox')[1])
-    fireEvent.click(await screen.findByRole('option', { name: TIPO_LABEL.posicoes }))
-    marcar('Giovana Noll fica HRO')
-    marcar('Maurício Bastos fica Unimed')
-    fireEvent.click(botaoPrincipal())
-    await waitFor(() => expect(marcarTroca).toHaveBeenCalledTimes(1))
-    expect(marcarTroca.mock.calls[0][2].tipo).toBe('posicoes')
-  })
-})
-
-// ⚠️ MODO POSIÇÃO — OPÇÃO PRÓPRIA (dono 18/08, caso Fernanda⇄Daniela: "a Daniela
-// assumiu o plantão mas ficou apenas o badge de troca — nesses casos quero que
-// haja troca de posição"). É uma entrada separada da linha; a troca de sempre
-// (registro, que é como a troca entre hospitais é feita) segue INTACTA.
-describe('Modo posição — a nova opção "Trocar de posição na escala"', () => {
-  const montarPosicao = (props = {}) => montar({ modo: 'posicao', ...props })
-
-  it('nasce com as posições assumidas e o botão é "Trocar posição"', async () => {
-    montarPosicao()
-    await escolherColega('MAURICIO MAHALEM BASTOS')
-    expect(await screen.findByText('O que vai mudar na fila')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Maurício Bastos assume HRO' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: 'Giovana Noll assume Unimed' })).toHaveAttribute('aria-pressed', 'true')
-    await waitFor(() => expect(botaoPrincipal()).toHaveTextContent('Trocar posição'))
-    fireEvent.click(botaoPrincipal())
-    await confirmarPopup()
-    await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
-    const [plan] = executarSubstituicao.mock.calls[0]
-    expect(plan.lados).toHaveLength(2)
-    expect(plan.lados.every((l) => l.tipo === 'posicoes')).toBe(true)
-    expect(marcarTroca).not.toHaveBeenCalled()
-  })
-
-  // O caso do dono: quem assume NÃO tem posição própria aqui — Daniela entra no
-  // plantão da Fernanda e a fila passa a mostrar a Daniela naquela posição.
-  it('colega sem posição própria: ele assume a posição de quem abriu', async () => {
-    montarPosicao()
-    await escolherColega('COLEGA DE FORA')
-    await waitFor(() => expect(botaoPrincipal()).toHaveTextContent('Trocar posição'))
-    fireEvent.click(botaoPrincipal())
-    await confirmarPopup()
-    await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
-    const [plan] = executarSubstituicao.mock.calls[0]
-    expect(plan.lados).toHaveLength(1)
-    expect(plan.lados[0]).toMatchObject({ hospital: 'hro', para: { uid: 'uid-fora' }, tipo: 'posicoes' })
-  })
-
-  it('cada posição segue corrigível — marcar "fica" tira aquele lado do swap', async () => {
-    montarPosicao()
-    await escolherColega('MAURICIO MAHALEM BASTOS')
-    await screen.findByText('O que vai mudar na fila')
-    marcar('Giovana Noll fica HRO')
-    fireEvent.click(botaoPrincipal())
-    await confirmarPopup()
-    await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
-    expect(executarSubstituicao.mock.calls[0][0].lados).toHaveLength(1)
-  })
-
-  it('o tipo não é perguntado aqui — a opção já respondeu', async () => {
-    montarPosicao()
-    await escolherColega('MAURICIO MAHALEM BASTOS')
-    await screen.findByText('O que vai mudar na fila')
-    expect(screen.queryByText('Tipo da troca')).toBeNull()
-  })
-})
-
-// A TROCA DE SEMPRE NÃO MUDOU (dono 18/08: "nas outras modalidades de troca
-// mantenha como está"): sem o modo posição nada vem pré-marcado e o tipo segue
-// sendo só taxonomia do registro.
-describe('Modo registro (o de sempre) segue intacto', () => {
-  it('nada é pré-marcado e escolher o tipo não move ninguém', async () => {
-    montar()
-    await escolherColega('MAURICIO MAHALEM BASTOS')
-    await screen.findByText('Quem fica com cada posição?')
-    fireEvent.click(screen.getAllByRole('combobox')[1])
-    fireEvent.click(await screen.findByRole('option', { name: TIPO_LABEL.posicoes }))
-    expect(botaoPrincipal()).toBeDisabled() // as duas posições seguem por confirmar
-    expect(screen.getByRole('button', { name: 'Maurício Bastos assume HRO' })).toHaveAttribute('aria-pressed', 'false')
-  })
-})
-
-// POP-UP ANTES DE CONCLUIR (dono 18/08): o swap mexe na fila dos dois lados e
-// leva as cirurgias em aberto junto — nenhum caminho grava sem mostrar o resumo.
-describe('Confirmação antes do swap', () => {
-  it('o botão abre o pop-up com quem assume cada posição e quantas cirurgias vão junto', async () => {
-    montar()
-    await escolherColega('MAURICIO MAHALEM BASTOS')
-    marcar('Maurício Bastos assume HRO')
-    marcar('Giovana Noll assume Unimed')
-    fireEvent.click(botaoPrincipal())
-    expect(await screen.findByText('Trocar as posições?')).toBeTruthy()
-    expect(screen.getByText('Maurício Bastos assume a posição de Giovana Noll')).toBeTruthy()
-    expect(screen.getByText('Giovana Noll assume a posição de Maurício Bastos')).toBeTruthy()
-    expect(screen.getAllByText(/1 cirurgia em aberto vai junto/).length).toBe(2)
-    // nada foi gravado ainda
-    expect(executarSubstituicao).not.toHaveBeenCalled()
-  })
-
-  it('cancelar no pop-up não grava nada e devolve o sheet intacto', async () => {
-    montar()
-    await escolherColega('MAURICIO MAHALEM BASTOS')
-    marcar('Maurício Bastos assume HRO')
-    marcar('Giovana Noll assume Unimed')
-    fireEvent.click(botaoPrincipal())
-    fireEvent.click(await screen.findByRole('button', { name: 'Revisar' }))
-    await waitFor(() => expect(screen.queryByText('Trocar as posições?')).toBeNull())
-    expect(executarSubstituicao).not.toHaveBeenCalled()
-    expect(botaoPrincipal()).toHaveTextContent('Trocar agora')
-  })
-
-  it('REGISTRO (ninguém muda de lugar) não pergunta — não há o que rever', async () => {
-    montar()
-    await escolherColega('MAURICIO MAHALEM BASTOS')
-    marcar('Giovana Noll fica HRO')
-    marcar('Maurício Bastos fica Unimed')
-    fireEvent.click(botaoPrincipal())
-    await waitFor(() => expect(marcarTroca).toHaveBeenCalledTimes(1))
-    expect(screen.queryByText('Trocar as posições?')).toBeNull()
   })
 })

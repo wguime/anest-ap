@@ -2047,6 +2047,36 @@ export function planoExecucaoTroca({ escalas, resolverUid, a, b, turno = null, e
 }
 
 /**
+ * ONDE A PESSOA ESTÁ NESTE TURNO (dono 27/10, troca em três passos): a lista de colegas
+ * do "Com quem?" diz a posição e a sala de cada um, para ninguém escolher a pessoa
+ * errada. Usa a MESMA localização do `planoExecucaoTroca` (`localizarSlotEscala`), então
+ * o que a lista mostra é o que a prévia vai mover.
+ * @returns {Array<{ hospital, posicao, semPosicao, sala }>} vazia = sem escala no turno
+ */
+export function ondeEstaNoTurno({ escalas, resolverUid, pessoa, turno = null }) {
+  const out = []
+  for (const [hospital, esc] of Object.entries(escalas || {})) {
+    if (!esc?.id) continue
+    const slot = localizarSlotEscala(esc, pessoa, resolverUid, turno)
+    if (!slot) continue
+    const turnoSlot = slot.turno || turno || null
+    // posição do rodapé que já está com OUTRA pessoa (assumidaPor) não é mais dela:
+    // em 23/10 o Rodnei aparecia como "12º do HRO" com o Klisman nessa vaga, e
+    // "trocou de lugar" teria tirado o Klisman de lá sem ninguém pedir
+    if (!slot.semPosicao) {
+      const { ocupadoPor } = estadoDaPosicao(esc, turnoSlot, slot.chave)
+      const outro = ocupadoPor && (ocupadoPor.uid && pessoa.uid ? ocupadoPor.uid !== pessoa.uid : normNome(ocupadoPor.nome) !== normNome(pessoa.nome))
+      if (outro) continue
+    }
+    const posicao = slot.semPosicao ? 0 : rodapeDoTurno(esc.ordemLiberacao, turnoSlot).indexOf(slot.nome) + 1
+    const ids = new Set(casosTransferiveis(esc, pessoa, resolverUid, turnoSlot))
+    const caso = (esc.casos || []).find((c) => ids.has(c.id))
+    out.push({ hospital, posicao, semPosicao: !!slot.semPosicao, sala: caso?.sala || null })
+  }
+  return out.sort((x, y) => (y.posicao > 0) - (x.posicao > 0))
+}
+
+/**
  * O anestesista deste caso sou eu? (Minhas escalas / destaque "meu" na Completa)
  *
  * DUPLA na mesma cirurgia (dono 11/08): "RAQUEL + GABRIELA" é caso das DUAS e

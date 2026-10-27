@@ -77,31 +77,24 @@ test('confirmar origem → trocar agora (posição+casos) → badge nos 2 lados 
     }).toPass({ timeout: 30_000 });
   };
 
-  // ── 1. TROCAR pelo FLUXO ÚNICO (dono 07/08): o ✏️ abre o TrocaSheet, que
-  // pede a ORIGEM de cada um (dono 09/08 — a escala pode vir já trocada),
-  // infere o tipo e executa no ato ("Declarar para depois" saiu em 09/08).
-  // Retry no abrir (toPass): o clique durante a animação do sheet não registra.
-  const trigger = page.getByRole('combobox').filter({ hasText: /Escolha o colega/i });
-  // ⚠️ o rótulo é "Troca com um colega" (substantivo) desde ae7418a7 — com "Trocar" o
-  // locator nunca casava e o teste ficava batendo no overlay do painel até estourar
-  await noPainel(/Editar local\/cirurgião de Giovana/, /Troca com um colega/,
-    () => trigger.isVisible());
-  await expect(async () => {
-    await trigger.click();
-    await expect(page.getByPlaceholder('Buscar...')).toBeVisible({ timeout: 1_500 });
-  }).toPass({ timeout: 15_000 });
-  await page.getByPlaceholder('Buscar...').fill('mauric');
-  await page.getByRole('option', { name: /mauricio/i }).first().click();
+  // ── 1. TROCAS: UMA entrada, TRÊS passos (dono 27/10) — o ✏️ abre a folha que
+  // pergunta o que aconteceu (a escala pode vir já trocada, dono 09/08), com quem, e
+  // mostra a fila antes de gravar. Retry no abrir (toPass): o clique durante a
+  // animação do sheet não registra.
+  await noPainel(/Editar local\/cirurgião de Giovana/, /^Trocas/,
+    () => page.getByText('Trocas de Giovana Noll').isVisible());
+  await page.getByRole('button', { name: /trocou de lugar com um colega/ }).click();
+  await page.getByRole('button', { name: 'Continuar' }).click();
 
-  // ── 2. DECIDIR POSIÇÃO POR POSIÇÃO (nada vem pré-marcado) ─────────────────
-  // Os dois são do HRO no demo → 2 cartões de posição, cada um com "fica"/"assume".
-  await expect(page.getByText('Quem fica com cada posição?')).toBeVisible({ timeout: 5_000 });
-  await page.getByRole('button', { name: 'Mauricio Bastos assume HRO' }).click(); // posição da Giovana
-  await page.getByRole('button', { name: 'Giovana Noll assume HRO' }).click();    // posição do Maurício
-  // tipo INFERIDO da geografia do par (mesmo hospital → posições)
-  await expect(page.getByText('Troca de posições')).toBeVisible();
+  // ── 2. COM QUEM: a lista diz onde cada colega está ───────────────────────────
+  await page.getByRole('textbox', { name: 'Buscar colega pelo nome' }).fill('mauric');
+  await page.getByRole('button', { name: /^Mauricio/i }).first().click();
+  await page.getByRole('button', { name: 'Ver como fica' }).click();
+
+  // a prévia é a confirmação: os dois do HRO no demo → uma fila, duas posições
+  await expect(page.getByText('Como a fila fica')).toBeVisible({ timeout: 5_000 });
   await page.screenshot({ path: 'e2e/__screenshots__/troca-sheet-posicoes.png', fullPage: true });
-  await page.getByRole('button', { name: /Trocar agora/ }).click();
+  await page.getByRole('button', { name: /⇄/ }).click();
 
   // ── 3. Par no MESMO hospital → swap simultâneo dos DOIS slots: o slot do
   // Maurício exibe a Giovana e o dela exibe o Maurício — as CHAVES dos slots
