@@ -3,6 +3,24 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.82 (27/10/2026) — Infográfico "Evolução da adesão" e card na Home (no ar 28/10 às 9h)
+
+*"um infográfico mostrando a melhoria de adesão dos usuários nas últimas 4-5 semanas… focado nas melhorias e nos pontos
+que podem ser melhorados"*. Escolhido pelo dono por imagem, entre 3 exemplos montados a partir de referências de
+visualização (FT Visual Vocabulary, gráfico de acompanhamento anotado do IHI, NHS Making Data Count, Storytelling
+with Data), o exemplo 3 "Impacto": blocos de cor inteira, um recado por bloco, números gigantes.
+- **Página `/evolucao-adesao`**, única em qualquer tela (1 coluna no celular, 2 no tablet, 3 no desktop): engajados por
+  semana (anestesiologistas, enfermagem e residentes, com as 4 semanas anteriores em cinza), **a inclinação do início
+  marcado em % por semana** (+15% contra +2% antes do relatório de 23/09, a pedido do dono "em aumento de % e não em
+  pontos"), agora × antes, evolução semana a semana com a reta de tendência de cada indicador, quem marca, por cargo e
+  hospital, o que falta e os critérios.
+- **Ao vivo**: as 5 últimas semanas completas + 4 anteriores, uma `escala_adesao_periodo` por semana; os textos seguem
+  a semana que mudou (lib `escalaAdesaoInfografico`). Enfermagem e residentes: engajado = abriu em 4+ dos 5 dias úteis e
+  fez 3+ marcações na semana. A previsão de término fica fora: o app a apaga quando a cirurgia termina.
+- **Card "Evolução da adesão à escala"** à esquerda do "Adesão à Escala Cirúrgica" nos Destaques, mesma anatomia e
+  altura, **publicado por relógio em 28/10/2026 às 9h** (o código vai antes para não haver deploy com turno em
+  andamento; a Home já aberta mostra o card na hora). Cache de 6 h.
+
 ## v5.12.81 (27/10/2026) — Horários: liberar sem travar, o horário fica com quem operou
 
 *"a trava pune o plantonista e a fila, não quem esqueceu"*. Auditoria com os dados de outubro: 96% das 537 liberações

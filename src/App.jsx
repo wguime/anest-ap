@@ -158,6 +158,7 @@ const CodificacaoAnestesicaPage = lazyComPreload(() => import("./pages/codificac
 import { EscalaCirurgicaPage } from "./navigation/paginaInicial"
 const EscalaNumericaPage = lazyComPreload(() => import("./pages/escala-numerica/EscalaNumericaPage"))
 const AdesaoEscalaPage = lazyComPreload(() => import("./pages/escala-adesao/AdesaoEscalaPage"))
+const EvolucaoAdesaoPage = lazyComPreload(() => import("./pages/escala-adesao/EvolucaoAdesaoPage"))
 const FeriadosPage = lazyComPreload(() => import("./pages/escala-numerica/FeriadosPage"))
 // gate leve (sem React) — produção exclusiva do dono durante o piloto
 import { podeVerEscalaCirurgica } from "./pages/escala-cirurgica/gate"
@@ -1373,6 +1374,8 @@ function App() {
       // Aberto a todos por decisão do dono; o gate é o da RPC (usuário ativo).
       case 'adesaoEscala':
         return <AdesaoEscalaPage key="adesaoEscala" goBack={goBack} />
+      case 'evolucaoAdesao':
+        return <EvolucaoAdesaoPage key="evolucaoAdesao" goBack={goBack} />
       case 'feriados':
         return <FeriadosPage key="feriados" onNavigate={handleNavigate} goBack={goBack} />
       case 'extratoFerias':

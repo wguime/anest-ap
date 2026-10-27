@@ -7,7 +7,8 @@
  *
  * Lê do contexto (cache stale-while-revalidate). Não dispara fetch novo.
  * Some só enquanto os destaques não carregaram; o 1º item é o card do relatório de adesão
- * à Escala (dono 23/09), que mantém a linha mesmo sem artigos.
+ * à Escala (dono 23/09), que mantém a linha mesmo sem artigos. Desde 28/10 às 9h o card do
+ * infográfico "Evolução da adesão" entra à ESQUERDA dele (dono 27/10).
  */
 import { useEffect, useMemo } from 'react'
 import { ChevronRight, Sparkles } from 'lucide-react'
@@ -16,9 +17,11 @@ import { ordenarDestaques } from '@/lib/noticiasDestaques'
 import { NoticiaCard } from './NoticiaCard'
 import { HScroll } from './HScroll'
 import { AdesaoEscalaCard } from './AdesaoEscalaCard'
+import { EVOLUCAO_ADESAO_DESDE, EvolucaoAdesaoCard, useLiberadoDesde } from './EvolucaoAdesaoCard'
 
 export function NoticiasCarousel({ onNavigate }) {
   const { highlights, highlightsLoaded, loadHighlights } = useNoticias()
+  const evolucaoNoAr = useLiberadoDesde(EVOLUCAO_ADESAO_DESDE)
 
   useEffect(() => {
     loadHighlights()
@@ -53,6 +56,7 @@ export function NoticiasCarousel({ onNavigate }) {
         </button>
       </div>
       <HScroll ariaLabel="Lista horizontal de destaques" showDots loop>
+        {evolucaoNoAr && <EvolucaoAdesaoCard key="evolucao-adesao" onClick={() => onNavigate?.('evolucaoAdesao')} />}
         <AdesaoEscalaCard key="adesao-escala" onClick={() => onNavigate?.('adesaoEscala')} />
         {top10.map((noticia) => (
           <NoticiaCard

@@ -403,6 +403,23 @@ describe('escalaAdesaoSemanal — montarEvolucao', () => {
     expect(ev.inclinacoes.tot).not.toBeNull()
   })
 
+  it('semanas anteriores de contexto: engajados e início de cada uma, e o marco do relatório na virada', () => {
+    const previas = ['2026-08-24', '2026-08-31', '2026-09-07', '2026-09-14'].map((seg) => semana(seg, [anest({ nome: 'A0' })], [hosp('total', 100, 40, 50, 10, 1)]))
+    const ev = montarEvolucao({ semanas, previas })
+    expect(ev.anteriores.map((a) => a.rotulo)).toEqual(['24/08', '31/08', '07/09', '14/09'])
+    expect(ev.anteriores[0]).toMatchObject({ engajadosTotal: 1, ini: 40 })
+    expect(ev.inclinacoesAnteriores.ini).toBe(0)
+    // 23/09 cai na semana de 21/09, a 1ª do gráfico: as cinzas são exatamente as de antes do relatório
+    expect(ev.marco).toEqual({ indice: 4, virada: true })
+  })
+
+  it('marco fora da virada quando a janela já andou; fora da série inteira → null', () => {
+    const tarde = ['2026-10-26', '2026-11-02'].map((seg) => semana(seg, [anest()]))
+    expect(montarEvolucao({ semanas: tarde, previas: semanas.slice(0, 2) }).marco).toEqual({ indice: 0, virada: false })
+    expect(montarEvolucao({ semanas: tarde }).marco).toBeNull()
+    expect(montarEvolucao({ semanas: tarde }).anteriores).toEqual([])
+  })
+
   it('sem semanas → null', () => {
     expect(montarEvolucao({ semanas: [] })).toBeNull()
     expect(montarEvolucao()).toBeNull()

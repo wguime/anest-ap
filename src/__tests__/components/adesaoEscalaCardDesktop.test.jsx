@@ -17,7 +17,7 @@ import { ThemeProvider } from '@/design-system'
 
 const { estado } = vi.hoisted(() => ({ estado: { dados: null, destaques: [] } }))
 vi.mock('@/contexts/DeferredReadyContext', () => ({ useDeferredReady: () => true }))
-vi.mock('@/hooks/useAdesaoEscala', () => ({ useAdesaoEscala: () => ({ dados: estado.dados }) }))
+vi.mock('@/hooks/useAdesaoEscala', () => ({ useAdesaoEscala: () => ({ dados: estado.dados }), useAdesaoSemanas: () => ({ dados: null }) }))
 vi.mock('@/lib/escalaAdesao', async (importOriginal) => ({
   ...(await importOriginal()),
   resumoCard: (d) => d,

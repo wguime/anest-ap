@@ -79,8 +79,11 @@ export function useAdesaoEvolucao(opcoes) {
  * `montarEvolucao` (lib/escalaAdesaoSemanal).
  */
 export function useAdesaoSemanas(opcoes) {
-  return useConsultaAdesao('semanas', () => buscarAdesaoSemanas(5), opcoes)
+  return useConsultaAdesao(ID_INFOGRAFICO, () => buscarAdesaoSemanas(5, { previas: 4, janelas: false, id: ID_INFOGRAFICO }), opcoes)
 }
+
+/** Cache do infográfico (página + card da Home): 5 semanas + as 4 de antes, sem as janelas. */
+const ID_INFOGRAFICO = 'semanas-infografico'
 
 /**
  * Horário não preenchido no dia (dono 05/10), na janela da ABA da página: '30' e '60' =

@@ -40,6 +40,8 @@ export const SEMANAS_JANELA = 4
 export const LIMIAR_MUDANCA = 5
 
 export const HOSPITAIS = ['total', 'hro', 'unimed', 'materno']
+/** Dia em que o relatório de adesão entrou no app (dono 23/09) — o marco do infográfico. */
+export const MARCO_RELATORIO = '2026-09-23'
 
 // ─── Datas (string 'YYYY-MM-DD', conta em UTC) ───────────────────────────────────────────────
 
@@ -301,9 +303,16 @@ const CAMPOS_INCLINACAO = {
  * da mais antiga para a mais recente; `antes`/`depois` = as janelas de `janelasComparacao`.
  * null sem semanas. Formato no retorno (ver o relatório do commit / os testes).
  */
-export function montarEvolucao({ semanas, antes, depois } = {}) {
+export function montarEvolucao({ semanas, previas = [], antes, depois } = {}) {
   if (!semanas?.length) return null
   const resumos = semanas.map(resumoSemana)
+  // semanas de CONTEXTO antes do gráfico (cinza no infográfico) — engajados e início marcado
+  const resumosPrevios = (previas || []).map(resumoSemana)
+  const anteriores = resumosPrevios.map((r) => ({
+    de: r.de, ate: r.ate, rotulo: rotuloSemana(r.de), engajadosTotal: r.engajados.total, ini: r.hospitais.total.ini,
+  }))
+  const todasDe = [...resumosPrevios, ...resumos]
+  const iMarco = todasDe.findIndex((r) => r.de && r.ate && r.de <= MARCO_RELATORIO && MARCO_RELATORIO <= r.ate)
   const serie = resumos.map((r) => ({
     de: r.de,
     ate: r.ate,
@@ -329,6 +338,14 @@ export function montarEvolucao({ semanas, antes, depois } = {}) {
     enf: ponta((r) => r.enf),
     res: ponta((r) => r.res),
     janelas: antes && depois ? compararJanelas(antes, depois) : null,
+    anteriores,
+    inclinacoesAnteriores: {
+      total: inclinacao(anteriores.map((a) => a.engajadosTotal)),
+      ini: inclinacao(anteriores.map((a) => a.ini)),
+    },
+    // posição do relatório de adesão (23/09) na série anteriores + semanas; `virada` = ele cai na
+    // 1ª semana do gráfico, ou seja, as anteriores são exatamente as semanas ANTES do relatório
+    marco: iMarco < 0 ? null : { indice: iMarco, virada: iMarco === resumosPrevios.length },
     cirurgias: resumos.reduce((s, r) => s + r.hospitais.total.casos, 0),
     periodo: { de: primeira.de, ate: ultima.ate },
   }

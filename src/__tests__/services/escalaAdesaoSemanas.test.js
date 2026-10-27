@@ -30,9 +30,23 @@ describe('buscarAdesaoSemanas', () => {
     expect(lerCacheAdesao('semanas').dados).toEqual(r)
   })
 
+  it('infográfico: 5 semanas + 4 anteriores, sem as janelas, no cache próprio', async () => {
+    mockRpc.mockImplementation(async (fn, args) => (fn === 'escala_adesao_evolucao'
+      ? { data: { gravado_ate: '2026-10-27' }, error: null }
+      : { data: { desde: args.p_desde, ate: args.p_ate }, error: null }))
+    const r = await buscarAdesaoSemanas(5, { previas: 4, janelas: false, id: 'semanas-infografico' })
+    expect(mockRpc.mock.calls.filter(([fn]) => fn === 'escala_adesao_periodo')).toHaveLength(9)
+    expect(r.previas.map((s) => s.desde)).toEqual(['2026-08-24', '2026-08-31', '2026-09-07', '2026-09-14'])
+    expect(r.semanas.map((s) => s.desde)).toEqual(['2026-09-21', '2026-09-28', '2026-10-05', '2026-10-12', '2026-10-19'])
+    expect(r.antes).toBeNull()
+    expect(r.depois).toBeNull()
+    expect(lerCacheAdesao('semanas-infografico').dados).toEqual(r)
+    expect(lerCacheAdesao('semanas')).toBeNull()
+  })
+
   it('sem dia gravado: nada a buscar além da evolução', async () => {
     mockRpc.mockResolvedValue({ data: { gravado_ate: null }, error: null })
-    expect(await buscarAdesaoSemanas()).toEqual({ semanas: [], antes: null, depois: null, gravadoAte: null })
+    expect(await buscarAdesaoSemanas()).toEqual({ semanas: [], previas: [], antes: null, depois: null, gravadoAte: null })
     expect(mockRpc).toHaveBeenCalledTimes(1)
   })
 

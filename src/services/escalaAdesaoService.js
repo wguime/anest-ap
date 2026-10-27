@@ -13,6 +13,11 @@ import { supabase } from '@/config/supabase'
 import { janelasComparacao, ultimasSemanasCompletas } from '@/lib/escalaAdesaoSemanal'
 
 export const IDADE_CARD_MS = 30 * 60 * 1000
+/**
+ * Card do infográfico "Evolução da adesão": as semanas completas só mudam uma vez por dia (cron da
+ * madrugada), e cada busca são 10 chamadas (evolução + 9 semanas) — 6 h de cache bastam.
+ */
+export const IDADE_INFOGRAFICO_MS = 6 * 60 * 60 * 1000
 
 const chave = (id) => `anest-escala-adesao-v2:${id}`
 
@@ -64,20 +69,24 @@ export async function buscarAdesaoEvolucao() {
 
 /**
  * "Evolução da adesão" (dono 27/10): as `n` últimas semanas completas (segunda → domingo, a
- * última terminando no último domingo já gravado) + as janelas da comparação antes × depois
- * (4 semanas antes da 1ª do gráfico × as 4 últimas). Uma chamada de `escala_adesao_periodo` por
- * semana e por janela, em paralelo (n + 2; cada uma soma só os agregados diários, ~7 a 28 dias).
- * `semanas` sai na ordem do gráfico, da mais antiga para a mais recente; sem dia gravado,
- * `semanas` = [] e as janelas null. Leitura com `montarEvolucao` (lib/escalaAdesaoSemanal).
+ * última terminando no último domingo já gravado). Uma chamada de `escala_adesao_periodo` por
+ * semana, em paralelo (cada uma soma só os agregados diários de 7 dias).
+ *  - `previas`: semanas ANTERIORES às `n`, só de contexto (o infográfico escolhido pelo dono, o
+ *    exemplo 3, mostra as 4 de antes em cinza e a inclinação antes × depois).
+ *  - `janelas`: + as janelas da comparação antes × depois (4 semanas antes da 1ª do gráfico × as
+ *    4 últimas), 2 chamadas a mais.
+ * `semanas`/`previas` saem da mais antiga para a mais recente; sem dia gravado, `semanas` = [] e
+ * as janelas null. Leitura com `montarEvolucao` (lib/escalaAdesaoSemanal).
  */
-export async function buscarAdesaoSemanas(n = 5) {
+export async function buscarAdesaoSemanas(n = 5, { previas = 0, janelas = true, id = 'semanas' } = {}) {
   const evolucao = await buscarAdesaoEvolucao()
   const gravadoAte = evolucao?.gravado_ate ?? null
-  const limites = ultimasSemanasCompletas(n, gravadoAte)
-  const janelas = janelasComparacao(limites)
-  if (!janelas) {
-    const vazio = { semanas: [], antes: null, depois: null, gravadoAte }
-    salvarCache('semanas', vazio)
+  const todas = ultimasSemanasCompletas(n + previas, gravadoAte)
+  const limites = todas.slice(-n)
+  const jan = janelas ? janelasComparacao(limites) : null
+  if (!limites.length || (janelas && !jan)) {
+    const vazio = { semanas: [], previas: [], antes: null, depois: null, gravadoAte }
+    salvarCache(id, vazio)
     return vazio
   }
   const periodo = async ({ de, ate }) => {
@@ -85,9 +94,11 @@ export async function buscarAdesaoSemanas(n = 5) {
     if (error) throw new Error(error.message || 'Não foi possível carregar a evolução semanal')
     return data
   }
-  const [antes, depois, ...semanas] = await Promise.all([janelas.antes, janelas.depois, ...limites].map(periodo))
-  const dados = { semanas, antes, depois, gravadoAte }
-  salvarCache('semanas', dados)
+  const pedidos = jan ? [jan.antes, jan.depois, ...todas] : todas
+  const r = await Promise.all(pedidos.map(periodo))
+  const [antes, depois] = jan ? r.splice(0, 2) : [null, null]
+  const dados = { semanas: r.slice(-n), previas: r.slice(0, r.length - n), antes, depois, gravadoAte }
+  salvarCache(id, dados)
   return dados
 }
 

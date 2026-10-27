@@ -43,6 +43,7 @@ export const PAGES = [
   'escalaCirurgica',
   'escalaNumerica',
   'adesaoEscala',
+  'evolucaoAdesao',
   'feriados',
   'extratoFerias',
   'bulkImport',
