@@ -3,6 +3,15 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.79 (27/10/2026) — Fila da tarde: "Passa para tarde" não segura quem operou de manhã
+
+HRO, tarde de 27/10: *"só pq os procedimentos passam para tarde não significam que serão o mesmo anestesista"*. A
+microcirurgia da Sala 1 (Guilherme Melo) e a blefaroplastia do IOSC (Cristina), marcadas "Passa para tarde", contavam
+na fila da tarde para os dois, que não tinham cirurgia na escala da tarde, e o João Ricardo e o Leandro, entre eles,
+ficavam "Livre". Agora, no dia útil, a fila da tarde conta só a escala publicada da tarde. A cirurgia da manhã só entra
+pela linha "CONTINUAÇÃO" da mesma pessoa (card da manhã, 26/10); com outra pessoa, fica o card dela. Quem fecha o rodapé
+sem cirurgia na tarde nasce Liberado. A aba Minhas e o quadro da manhã não mudam.
+
 ## v5.12.78 (27/10/2026) — Selos de ajuda voltam ao azul sólido
 
 Os selos "Na Unimed", "No HRO", "Consultório (ajuda)" e "Ajuda fora" (v5.12.76) tinham saído contornados. O dono

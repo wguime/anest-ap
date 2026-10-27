@@ -112,12 +112,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     }
     return r
   }, [rodapePublicado, modoFds, ordemNumerica, presencaOutros, escala, turnoBase, resolverUid])
-  // ⚠️ `casosDaFilaDoTurno`, e não `filtrarPorTurnoExibicao`: a cirurgia que
-  // atravessa o turno ("Passa para tarde") conta para quem JÁ está no turno e
-  // nunca cria posição na fila para quem não está — ver o cabeçalho do helper
-  // (caso Gabriela, Unimed, 24/08). No quadro da Completa e na aba Minhas ela
-  // segue aparecendo: lá a pergunta é "esta cirurgia existe?", aqui é "quem
-  // está nesta fila?".
+  // ⚠️ `casosDaFilaDoTurno`, e não `filtrarPorTurnoExibicao`: a fila conta só a
+  // escala publicada do turno; a cirurgia da manhã marcada "Passa para tarde" não
+  // segura quem a operou (dono 27/10) — quem segue nela é a CONTINUAÇÃO da foto
+  // da tarde. Na aba Minhas ela segue aparecendo: lá a pergunta é "esta cirurgia
+  // existe?", aqui é "quem está nesta fila?".
   // FILA ÚNICA (dono 26/09): a travessia não fica com quem marcou — entra no
   // turno seguinte como "sem anestesista" para o plantão decidir (`casosDaFilaFds`).
   // Recebe o turno EXIBIDO (inclusive 'noturno'), não o `turnoBase`.

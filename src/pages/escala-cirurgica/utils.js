@@ -761,37 +761,30 @@ export function limparConcluidosNaVirada(casos, { dataEscala } = {}) {
 }
 
 /**
- * Casos que a FILA DE LIBERAÇÃO enxerga no turno.
+ * Casos que a FILA DE LIBERAÇÃO enxerga no turno: os da escala PUBLICADA dele.
  *
- * A cirurgia da manhã marcada "Passa para tarde" atravessa (dono 22/08) para que
- * quem vai fazê-la apareça OCUPADO no turno em que ela acontece. Mas ela conta
- * para quem JÁ ESTÁ no turno — nunca CRIA posição na fila para quem não está.
+ * A cirurgia da manhã marcada "Passa para tarde" NÃO entra sozinha na fila da
+ * tarde (dono 27/10, HRO: "só porque os procedimentos passam para a tarde não
+ * significa que serão o mesmo anestesista"). De 22/08 a 27/10 ela contava para
+ * quem a operou de manhã se a pessoa estivesse no rodapé da tarde: o Guilherme
+ * Melo e a Cristina, sem cirurgia na escala da tarde, apareciam ocupados com a
+ * microcirurgia da Sala 1 e a blefaroplastia do IOSC, e o João Ricardo e o
+ * Leandro, entre os dois, ficavam "Livre" em vez de nascer liberados. Quem segue
+ * na sala é a foto da tarde que diz: a linha "CONTINUAÇÃO" com a MESMA pessoa
+ * vira o card da manhã (`fundirContinuacoesNaOrigem`, 26/10); com outra pessoa,
+ * fica o card dela.
  *
- * Caso que motivou (Unimed, tarde de 24/08): a cirurgia da Gabriela das 07:00
- * ficou marcada "passa para tarde" e à tarde ela estava escalada no HRO. A fila
- * da tarde da Unimed ganhou uma linha dela no fim, com badge "Ajuda" — o app
- * afirmando o que não era verdade (ela não estava ajudando ali) e, de quebra,
- * empurrando a fronteira da cauda: o Vicente, que fecha a ordem sem cirurgia,
- * deixou de nascer liberado. A cirurgia NÃO some: segue no quadro da Completa,
- * no grupo "Ainda abertas — Manhã", que é onde ela é resolvida.
- *
- * "Está no turno" = nome na ordem publicada dele OU cirurgia PRÓPRIA dele. Quem
- * só apareceu por causa da travessia não conta — senão a regra se justificaria
- * sozinha.
+ * A cirurgia NÃO some: segue no quadro da manhã e na aba Minhas
+ * (`filtrarPorTurnoExibicao`), onde a pergunta é "esta cirurgia existe?".
  *
  * @param {Array} casos      casos da escala (os dois turnos)
  * @param {string} turno     turno exibido
- * @param {string[]} ordemTurno  rodapé publicado do turno
+ * @param {string[]} _ordemTurno  rodapé publicado do turno (não decide mais nada aqui)
  * @param {Function} [resolverUid]  apelido → uid do vínculo
  */
-export function casosDaFilaDoTurno(casos, turno, ordemTurno = [], resolverUid = null) {
+export function casosDaFilaDoTurno(casos, turno, _ordemTurno = [], resolverUid = null) {
   if (!turno) return casos || []
-  const nativos = filtrarPorTurno(casos || [], turno)
-  const atravessam = casosQuePassamParaOTurno(casos || [], turno)
-  if (!atravessam.length) return fundirContinuacoesNaOrigem(nativos, casos, turno, { resolverUid })
-  const presentes = presencaDoTurno(ordemTurno, nativos, resolverUid)
-  const lista = [...nativos, ...atravessam.filter((c) => estaPresente(presentes, c, resolverUid))]
-  return fundirContinuacoesNaOrigem(lista, casos, turno, { resolverUid })
+  return fundirContinuacoesNaOrigem(filtrarPorTurno(casos || [], turno), casos, turno, { resolverUid })
 }
 
 const normCirurgiaoContinuacao = (s) => normNome(s).replace(/[^A-Z ]/g, '').replace(/\s+/g, ' ').trim()

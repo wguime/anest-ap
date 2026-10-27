@@ -652,25 +652,30 @@ describe('Liberações — caso passa_tarde sinaliza o anestesista', () => {
     expect(linhaDoNome.contains(badge)).toBe(true)
   })
 
-  // PERSISTE NA TARDE (dono 2026-08-22): "quero que cirurgias marcadas como
-  // passam para tarde persistam na escala da tarde". Antes o marcador só pintava
-  // o badge no turno de origem — a cirurgia ficava só na manhã e, na tela da
-  // tarde, quem estava nela aparecia SEM CASO, some da conta de quem está
-  // ocupado bem no turno em que ela vai acontecer.
-  it('a cirurgia da MANHÃ marcada conta na fila da TARDE, sem virar "Passa para noite"', () => {
-    const escala = {
-      id: 'e1', hospital: 'unimed',
-      ordemLiberacao: { matutino: ['LEONARDO', 'MARILIO'], vespertino: ['LEONARDO', 'MARILIO'] },
-      liberacoes: {}, linhaOverrides: {},
-      casos: [
-        { id: 'c1', sala: 'SALA 4', ordem: 0, hora: '08:00', turno: 'matutino', anestesista: 'LEONARDO', cirurgiao: 'Liana Winkelmann', statusExtra: 'passa_tarde' },
-        { id: 'c2', sala: 'SALA 3', ordem: 0, hora: '14:00', turno: 'vespertino', anestesista: 'MARILIO', cirurgiao: 'Leandro Trevizan' },
-      ],
-    }
-    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" turno="vespertino" canEdit onToggle={() => {}} />, { wrapper: wrap })
-    // o caso atravessou: o cirurgião dele aparece na linha do Leonardo à tarde
+  // A FOTO DA TARDE DIZ QUEM SEGUE (dono 27/10: "só porque os procedimentos
+  // passam para a tarde não significa que serão o mesmo anestesista"). De 22/08 a
+  // 27/10 a marcação sozinha punha a cirurgia na linha de quem a operou de manhã.
+  const escalaLeonardo = (extra = []) => ({
+    id: 'e1', hospital: 'unimed',
+    ordemLiberacao: { matutino: ['LEONARDO', 'MARILIO'], vespertino: ['LEONARDO', 'MARILIO'] },
+    liberacoes: {}, linhaOverrides: {},
+    casos: [
+      { id: 'c1', sala: 'SALA 4', ordem: 0, hora: '08:00', turno: 'matutino', anestesista: 'LEONARDO', cirurgiao: 'Liana Winkelmann', statusExtra: 'passa_tarde' },
+      { id: 'c2', sala: 'SALA 3', ordem: 0, hora: '14:00', turno: 'vespertino', anestesista: 'MARILIO', cirurgiao: 'Leandro Trevizan' },
+      ...extra,
+    ],
+  })
+
+  it('a cirurgia da MANHÃ marcada, sem CONTINUAÇÃO na escala da tarde, não entra na fila da TARDE', () => {
+    render(<LiberacoesView escala={escalaLeonardo()} hospitalLabel="Unimed" turno="vespertino" canEdit onToggle={() => {}} />, { wrapper: wrap })
+    expect(screen.queryByText('Liana Winkelmann')).toBeNull()
+    expect(screen.queryByText('Passa para noite')).toBeNull()
+  })
+
+  it('com a CONTINUAÇÃO da mesma pessoa na foto da tarde, o card da manhã conta na linha dela', () => {
+    const cont = { id: 'c3', sala: 'SALA 4', ordem: 0, hora: '13:00', turno: 'vespertino', anestesista: 'LEONARDO', cirurgiao: 'Liana Winkelmann', procedimento: 'CONTINUAÇÃO', isContinuacao: true }
+    render(<LiberacoesView escala={escalaLeonardo([cont])} hospitalLabel="Unimed" turno="vespertino" canEdit onToggle={() => {}} />, { wrapper: wrap })
     expect(screen.getByText('Liana Winkelmann')).toBeTruthy()
-    // e ele NÃO está "Livre" — está em cirurgia
     expect(screen.getByText('Leonardo').closest('p').textContent).not.toContain('Livre')
     // o rótulo do destino é de quem SAI deste turno; ela entrou nele
     expect(screen.queryByText('Passa para noite')).toBeNull()
@@ -2123,13 +2128,12 @@ describe('Liberações — "passa para tarde" de quem não está na tarde (dono 
     expect(within(vicente).getByText('Liberado')).toBeTruthy()
   })
 
-  it('mas se ela ESTÁ na ordem da tarde, a cirurgia conta e ela aparece ocupada', () => {
+  it('e mesmo na ordem da tarde ela não leva a cirurgia da manhã (dono 27/10)', () => {
     render(<LiberacoesView escala={escala(['GABRIELA', 'RAUL'])} hospital="unimed" hospitalLabel="Unimed"
       turno="vespertino" canEdit onToggle={() => {}} />, { wrapper: wrap })
     const gabriela = document.querySelector('[data-linha="GABRIELA"]')
     expect(gabriela).toBeTruthy()
-    expect(within(gabriela).queryByText('Livre')).toBeNull()
-    expect(within(gabriela).getByText(/Paulo Caldas/)).toBeTruthy()
+    expect(within(gabriela).queryByText(/Paulo Caldas/)).toBeNull()
   })
 
   it('na fila da MANHÃ a cirurgia segue sendo dela, como sempre foi', () => {
@@ -2138,5 +2142,38 @@ describe('Liberações — "passa para tarde" de quem não está na tarde (dono 
     const gabriela = document.querySelector('[data-linha="GABRIELA"]')
     expect(gabriela).toBeTruthy()
     expect(within(gabriela).getByText('Passa para tarde')).toBeTruthy()
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// QUEM NÃO ESTÁ NA ESCALA DA TARDE NASCE LIBERADO, MESMO COM "PASSA PARA TARDE"
+// (dono 27/10, HRO, recorte real): a microcirurgia da Sala 1 do Guilherme Melo e a
+// blefaroplastia do IOSC da Cristina, marcadas de manhã, seguravam os dois na fila
+// da tarde, e o João Ricardo e o Leandro, entre eles, ficavam "Livre". A foto da
+// tarde punha a continuação da Sala 1 com a Fernanda e não citava o IOSC.
+// ════════════════════════════════════════════════════════════════════════════
+describe('Liberações — "passa para tarde" não segura quem não está na escala da tarde (dono 27/10)', () => {
+  const escala = {
+    id: 'e1', hospital: 'hro', liberacoes: {}, linhaOverrides: {},
+    ordemLiberacao: { vespertino: ['FERNANDA', 'GIOVANA', 'JOAO RICARDO', 'GUILHERME MELO', 'LEANDRO', 'CRISTINA', 'OSCAR'] },
+    casos: [
+      { id: 'm1', sala: 'Sala 1', ordem: 1, turno: 'matutino', hora: 'AS', anestesista: 'MELO', cirurgiao: 'Marcelo Vieira', procedimento: 'MICROCIRURGIA PARA TUMOR INTRACRANIANO', statusCirurgia: 'iniciada', inicioReal: '10:45', statusExtra: 'passa_tarde' },
+      { id: 'm2', sala: 'IOSC', ordem: 0, turno: 'matutino', hora: '07:30', anestesista: 'CRISTINA', cirurgiao: 'Rafael Tirapelle', procedimento: 'LASER CO2 + BLEFAROPLASTIA', statusCirurgia: 'iniciada', inicioReal: '07:30', statusExtra: 'passa_tarde' },
+      { id: 't1', sala: 'Sala 1', ordem: 0, turno: 'vespertino', hora: '13:00', anestesista: 'FERNANDA', cirurgiao: 'Marcelo Cunha', procedimento: 'CONTINUAÇÃO', isContinuacao: true },
+      { id: 't2', sala: 'Exames', ordem: 0, turno: 'vespertino', hora: '13:30', anestesista: 'GIOVANA', cirurgiao: 'Giovani', procedimento: '01 EDA C/ COLO + 04 EDA' },
+    ],
+  }
+
+  it('a cauda inteira sem cirurgia na escala da tarde nasce Liberado', () => {
+    render(<LiberacoesView escala={escala} hospital="hro" hospitalLabel="HRO"
+      turno="vespertino" canEdit onToggle={() => {}} />, { wrapper: wrap })
+    for (const chave of ['JOAO RICARDO', 'GUILHERME MELO', 'LEANDRO', 'CRISTINA', 'OSCAR']) {
+      const linha = document.querySelector(`[data-linha="${chave}"]`)
+      expect(linha, chave).toBeTruthy()
+      expect(within(linha).queryByText('Livre'), chave).toBeNull()
+      expect(within(linha).getByText('Liberado'), chave).toBeTruthy()
+    }
+    expect(screen.queryByText('Marcelo Vieira')).toBeNull()
+    expect(screen.queryByText(/Rafael Tirapelle/)).toBeNull()
   })
 })

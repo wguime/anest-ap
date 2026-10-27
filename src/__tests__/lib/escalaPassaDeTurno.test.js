@@ -122,21 +122,24 @@ describe('INVARIANTE: a travessia não inventa gente na fila', () => {
       .toEqual(['g1', 'r1'])
   })
 
-  it('quem ESTÁ na ordem da tarde leva a cirurgia junto (caso Humberto, mesmo dia)', () => {
+  // dono 27/10 (HRO): "só porque os procedimentos passam para a tarde não significa
+  // que serão o mesmo anestesista" — quem segue na sala é a escala da tarde que diz
+  it('nem quem ESTÁ na ordem da tarde leva a cirurgia da manhã junto', () => {
     const fila = casosDaFilaDoTurno([G_MANHA, R_TARDE], 'vespertino', ['GABRIELA', 'RAUL'])
-    expect(fila.map((c) => c.id).sort()).toEqual(['g1', 'r1'])
+    expect(fila.map((c) => c.id)).toEqual(['r1'])
   })
 
-  it('quem tem cirurgia PRÓPRIA da tarde também leva a da manhã junto', () => {
+  it('nem quem tem cirurgia PRÓPRIA da tarde', () => {
     const gTarde = caso({ id: 'g2', anestesista: 'GABRIELA', anestesistaUserId: 'uid-gab', turno: 'vespertino', hora: '14:00' })
     const fila = casosDaFilaDoTurno([G_MANHA, gTarde], 'vespertino', [])
-    expect(fila.map((c) => c.id).sort()).toEqual(['g1', 'g2'])
+    expect(fila.map((c) => c.id)).toEqual(['g2'])
   })
 
-  it('casa por LOGIN quando a grafia diverge (o rodapé diz o apelido, o caso diz outro)', () => {
-    const resolver = (n) => (String(n).toUpperCase().startsWith('GABRIELA') ? 'uid-gab' : null)
-    const fila = casosDaFilaDoTurno([G_MANHA, R_TARDE], 'vespertino', ['GABRIELA VEDANA', 'RAUL'], resolver)
-    expect(fila.map((c) => c.id).sort()).toEqual(['g1', 'r1'])
+  it('a CONTINUAÇÃO da tarde com outra pessoa fica com ela; a da manhã não volta para quem a operou', () => {
+    const m = caso({ id: 'mel', anestesista: 'MELO', hora: 'AS', cirurgiao: 'Marcelo Vieira', statusExtra: 'passa_tarde', statusCirurgia: 'iniciada' })
+    const cont = caso({ id: 'fer', anestesista: 'FERNANDA', turno: 'vespertino', hora: '13:00', cirurgiao: 'Marcelo Vieira', procedimento: 'CONTINUAÇÃO', isContinuacao: true })
+    const fila = casosDaFilaDoTurno([m, cont], 'vespertino', ['FERNANDA', 'GUILHERME MELO'])
+    expect(fila.map((c) => c.id)).toEqual(['fer'])
   })
 
   it('sem nenhuma travessia, devolve exatamente o filtro estrito do turno', () => {

@@ -64,10 +64,26 @@ de 'ainda abertas' não é necessária, as escalas são corrigidas quando enviad
 novo turno" — a foto da tarde já traz "CONTINUAÇÃO RM"/"CONTINUAÇÃO +-14h", e a RM
 da manhã aparecia ao lado da própria continuação). De 22/08 a 14/09 ela entrava no
 grupo "Ainda abertas — Manhã" das urgências herdadas; o grupo segue existindo SÓ
-para a urgência do contrato do HRO, que não vem na foto · **Minhas** e a **fila de
-Liberações** seguem contando a cirurgia na tarde. ⚠️ o badge "Passa para tarde/noite" da
+para a urgência do contrato do HRO, que não vem na foto · **Minhas** segue contando a
+cirurgia na tarde · a **fila de Liberações** deixou de contar em 27/10 (seção abaixo).
+⚠️ o badge "Passa para tarde/noite" da
 FILA continua saindo só do caso DAQUELE turno (`turnoDoCaso(c) !== turnoBase`
 pula): o rótulo nomeia quem SAI do turno, e ela entrou nele.
+
+### A fila da tarde é a escala da tarde — "passa" não segura quem operou (dono 27/10)
+
+*"essas informações não estão na escala da tarde, só pq os procedimentos passam para tarde não
+significam que serão o mesmo anestesista [...] ele deve nascer como liberado"*. HRO, tarde de 27/10:
+a microcirurgia da Sala 1 (Guilherme Melo) e a blefaroplastia do IOSC (Cristina), marcadas "Passa
+para tarde", contavam na linha deles na fila da tarde porque os dois estavam no rodapé; a foto da
+tarde punha a continuação da Sala 1 com a Fernanda e não citava o IOSC. Os dois apareciam ocupados e
+o João Ricardo e o Leandro, entre eles, ficavam "Livre" em vez de nascer liberados.
+`casosDaFilaDoTurno` (dia útil) conta agora só os casos do turno; a cirurgia da manhã só entra pela
+linha "CONTINUAÇÃO" da MESMA pessoa (`fundirContinuacoesNaOrigem`, 26/10). Revoga a metade "quem já
+está no turno leva junto" de 22/08/24/08 (caso Humberto). Minhas e o quadro da manhã seguem iguais;
+a fila única (`casosDaFilaFds`) não muda. Travas: "nem quem ESTÁ na ordem da tarde…" em
+`escalaPassaDeTurno.test.js` e o recorte real "…não segura quem não está na escala da tarde" em
+`escalaCirurgicaPersonas.test.jsx`.
 
 ⚠️ **`filtrarPorTurno` continua ESTRITO** e é ele que TROCA e posição usam —
 regra estruturante de 13/08, turno é filtro e nunca preferência. Mover a
@@ -102,7 +118,8 @@ cirurgia nenhuma, saiu de LIBERADO para "Livre".
   com cirurgia a empurrava; é por isso que o sintoma era frequente (visitante de
   outro hospital é rotina). `proximoPlantao` continua sendo do rodapé, mesmo
   exibido por último.
-- **A travessia conta, não cria** (`casosDaFilaDoTurno` em utils, no lugar de
+- **A travessia conta, não cria** (⚠️ desde 27/10 nem conta — ver § "A fila da tarde é a escala
+  da tarde"; o texto abaixo é o histórico) (`casosDaFilaDoTurno` em utils, no lugar de
   `filtrarPorTurnoExibicao` SÓ na LiberacoesView): a cirurgia que atravessa o
   turno entra na fila de quem **já está** no turno — nome na ordem publicada ou
   cirurgia própria dele — e nunca inventa posição para quem não está. O Humberto,
