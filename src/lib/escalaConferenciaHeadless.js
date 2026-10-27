@@ -20,7 +20,7 @@
 import {
   prepararCasosImportados, gruposAnestesista, preAtribuicoesDoDicionario, aplicarAtribuicoes,
   selecionarCasosDoTurno, candidatosPrimeiroNome, resumirRodape, detectarConflitos,
-  casosQuePassamParaOTurno, presencaDoTurno, estaPresente, azuisEmprestados, rodapeDoTurno,
+  casosQuePassamParaOTurno, azuisEmprestados, rodapeDoTurno,
   turnoDeHora, normNome, linhaVazia,
 } from '@/pages/escala-cirurgica/utils'
 import { ehHoraSequencialEscala } from '@/lib/escalaCirurgicaRegras'
@@ -433,14 +433,15 @@ export function conferirHospital(hospital, entrada, contexto) {
     for (const [nome, n] of fora) aviso('fora da ordem', `${nome} tem ${n} caso(s) e não está no rodapé nem na ajuda — azul não lido? marque em ajudaExterna ou acrescente à ordem`)
   }
 
-  // 7. cirurgia da manhã que atravessa sem dono presente (só à tarde)
+  // 7. cirurgia da manhã marcada "passa para tarde" sem CONTINUAÇÃO na escala da tarde (só à tarde).
+  // Desde 27/10 a marcação não põe ninguém na tarde (dono: "não significam que serão o mesmo
+  // anestesista") — sem a linha da foto ela fica sem dono na fila e na Minhas, esteja quem a operou
+  // no rodapé ou não.
   if (turno === 'vespertino' && existente) {
-    const atravessam = casosQuePassamParaOTurno(existente.casos || [], 'vespertino')
-    if (atravessam.length) {
-      const presentes = presencaDoTurno(ordem, casosNovos, resolver)
-      for (const c of atravessam.filter((x) => !estaPresente(presentes, x, resolver))) {
-        aviso('travessia órfã', `${c.sala} ${c.hora || ''} (${c.anestesista || '?'}) passa para a tarde e o anestesista não está nesta escala — a continuação deve vir na escala da tarde; se não veio, acrescente na Completa ou desmarque na manhã`)
-      }
+    const continuam = new Set(casosNovos.filter((n) => n?.isContinuacao).map((n) => normCirurgiao(n.cirurgiao)).filter(Boolean))
+    for (const c of casosQuePassamParaOTurno(existente.casos || [], 'vespertino')) {
+      if (continuam.has(normCirurgiao(c.cirurgiao))) continue
+      aviso('travessia órfã', `${c.sala} ${c.hora || ''} ${c.cirurgiao || ''} (${c.anestesista || '?'}) passa para a tarde e a escala da tarde não traz CONTINUAÇÃO dela — à tarde não fica com ninguém. Cirurgião com outra grafia na foto? Senão, pergunte ao dono quem assume`)
     }
   }
 

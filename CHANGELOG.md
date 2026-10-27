@@ -3,6 +3,14 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.80 (27/10/2026) — Aba Minhas da tarde: só as cirurgias da escala da tarde
+
+*"na aba minhas à tarde continua aparecendo vinculado a cirurgia que não estarei escalado"*. A Minhas da tarde
+mostrava a cirurgia da manhã marcada "Passa para tarde" para quem a operou, mesmo com a escala da tarde pondo outra
+pessoa na continuação. Agora segue a mesma regra da fila (v5.12.79): só os casos da tarde, e a cirurgia da manhã só pela
+linha "CONTINUAÇÃO" da mesma pessoa. A conferência da publicação pela foto passa a avisar toda cirurgia marcada que a
+escala da tarde não cobre.
+
 ## v5.12.79 (27/10/2026) — Fila da tarde: "Passa para tarde" não segura quem operou de manhã
 
 HRO, tarde de 27/10: *"só pq os procedimentos passam para tarde não significam que serão o mesmo anestesista"*. A

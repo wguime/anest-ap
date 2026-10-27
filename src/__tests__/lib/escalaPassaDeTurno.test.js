@@ -1,15 +1,14 @@
 /**
- * "Passa para tarde" PERSISTE na tarde (dono 2026-08-22).
+ * "Passa para tarde" — de 22/08 a 27/10 a cirurgia da manhã marcada aparecia na
+ * tarde de quem a operou (fila e Minhas). Dono 27/10: "só pq os procedimentos
+ * passam para tarde não significam que serão o mesmo anestesista" — à tarde ela
+ * só entra pela linha CONTINUAÇÃO da escala da tarde (card da manhã, 26/10).
  *
- * O marcador existia desde 20/08, mas só pintava o badge no turno de ORIGEM: a
- * cirurgia continuava só na manhã e, na tela da tarde, quem estava nela aparecia
- * sem caso — sumia da conta de quem está ocupado bem no turno em que ela vai
- * acontecer.
- *
- * INVARIANTE (não persona): toda cirurgia marcada e ainda aberta é alcançável no
- * turno da tarde, e nenhuma aparece duas vezes no mesmo turno. Escrito como
- * invariante de propósito — "isolar por turno" já regrediu três vezes neste
- * módulo, e persona morre junto com o revert.
+ * INVARIANTE (não persona): no dia útil a tarde mostra só os casos dela, nenhum
+ * aparece duas vezes no mesmo turno, e a conferência da publicação ainda enxerga a
+ * que atravessou (para avisar quando a tarde não a cobre). Escrito como invariante
+ * de propósito — "isolar por turno" já regrediu três vezes neste módulo, e persona
+ * morre junto com o revert.
  */
 import { describe, it, expect } from 'vitest'
 import {
@@ -61,12 +60,12 @@ describe('travessia — só da manhã para a tarde, e só enquanto está aberta'
   })
 })
 
-describe('INVARIANTE: alcançável na tarde, uma vez só', () => {
+describe('INVARIANTE: a tarde é a escala da tarde, uma vez só', () => {
   const escala = { casos: [MANHA_PASSA, MANHA_COMUM, TARDE] }
 
-  it('a tarde mostra os casos dela MAIS a que atravessou', () => {
+  it('a tarde mostra só os casos dela — a marcada da manhã não atravessa sozinha (dono 27/10)', () => {
     const tarde = filtrarPorTurnoExibicao(escala.casos, 'vespertino')
-    expect(tarde.map((c) => c.id).sort()).toEqual(['p1', 't1'])
+    expect(tarde.map((c) => c.id)).toEqual(['t1'])
   })
 
   it('nenhum caso aparece duas vezes no mesmo turno', () => {
@@ -76,7 +75,7 @@ describe('INVARIANTE: alcançável na tarde, uma vez só', () => {
     }
   })
 
-  it('o quadro da tarde recebe a que atravessou pelo grupo das herdadas', () => {
+  it('a conferência da publicação ainda enxerga a que atravessou (avisa se a tarde não a cobre)', () => {
     expect(casosQuePassamParaOTurno(casosResolvidos(escala), 'vespertino').map((c) => c.id)).toEqual(['p1'])
     expect(casosQuePassamParaOTurno(casosResolvidos(escala), 'matutino')).toEqual([])
   })
@@ -116,10 +115,9 @@ describe('INVARIANTE: a travessia não inventa gente na fila', () => {
     expect(fila.map((c) => c.id)).toEqual(['r1'])
   })
 
-  it('mas a cirurgia continua existindo para a tela que pergunta "isto existe?"', () => {
-    // é o que a Completa e a aba Minhas usam — a travessia de 22/08 segue de pé
+  it('e a aba Minhas da tarde também não a mostra (dono 27/10)', () => {
     expect(filtrarPorTurnoExibicao([G_MANHA, R_TARDE], 'vespertino').map((c) => c.id))
-      .toEqual(['g1', 'r1'])
+      .toEqual(['r1'])
   })
 
   // dono 27/10 (HRO): "só porque os procedimentos passam para a tarde não significa

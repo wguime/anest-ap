@@ -81,16 +81,17 @@ describe('a fila conta a cirurgia uma vez, pelo caso da manhã', () => {
 })
 
 describe('o que NÃO funde', () => {
+  // e o card da manhã não aparece na tarde de quem a operou (dono 27/10)
   it('continuação com outra pessoa (a tarde assumiu a sala) fica no card dela', () => {
     const tarde = filtrarPorTurnoExibicao([manha({ statusExtra: 'passa_tarde' }), cont({ anestesista: 'OSCAR' })], 'vespertino')
-    expect(ids(tarde).sort()).toEqual(['m-umanita', 't-umanita'])
+    expect(ids(tarde)).toEqual(['t-umanita'])
   })
 
   // dono 27/10, HIPEC da Unimed: a metade em comum (Erlei) fundia, e a fila da tarde
   // dizia Oscar no lugar do Alexandre
   it('dupla com UMA pessoa trocada fica no card da tarde', () => {
     const dia = [manha({ anestesista: 'OSCAR + ERLEI', statusExtra: 'passa_tarde' }), cont({ anestesista: 'ALEXANDRE D + ERLEI' })]
-    expect(ids(filtrarPorTurnoExibicao(dia, 'vespertino')).sort()).toEqual(['m-umanita', 't-umanita'])
+    expect(ids(filtrarPorTurnoExibicao(dia, 'vespertino'))).toEqual(['t-umanita'])
     const fila = casosDaFilaDoTurno(dia, 'vespertino', ['ALEXANDRE D', 'ERLEI'])
     expect(fila.map((c) => c.anestesista)).toEqual(['ALEXANDRE D + ERLEI'])
   })

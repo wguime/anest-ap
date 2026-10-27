@@ -224,7 +224,8 @@ describe('avisos — a tela publica assim mesmo, mas diz', () => {
     expect(r.hospitais.hro.avisos.find((a) => a.codigo === 'seção ausente').texto).toMatch(/Exames, Imagem, Hemodinâmica/)
   })
 
-  it('cirurgia da manhã que passa para a tarde sem dono presente avisa (só à tarde)', () => {
+  // dono 27/10: "passa para tarde" não põe ninguém na tarde — só a CONTINUAÇÃO da foto
+  it('cirurgia da manhã que passa para a tarde sem CONTINUAÇÃO na escala da tarde avisa, mesmo com quem operou no rodapé', () => {
     const existente = {
       id: 'e-unimed', hospital: 'unimed', ordemLiberacao: { matutino: ['ANA'] }, ajudaExterna: {}, linhaOverrides: {}, publicacaoTurnos: { matutino: { status: 'publicada' } },
       casos: [caso('CC - Sala 3', 'ANA', '07:30', { anestesistaUserId: 'uid-ana', turno: 'matutino', statusExtra: 'passa_tarde', statusCirurgia: 'iniciada' })],
@@ -232,7 +233,11 @@ describe('avisos — a tela publica assim mesmo, mas diz', () => {
     const r = conferir({ unimed: { rows: [caso('CC - Sala 1', 'CURY')], ordem: ['CURY'], ajuda: [] } }, { publicadas: { unimed: existente } })
     expect(avisos(r.hospitais.unimed)).toContain('travessia órfã')
     const presente = conferir({ unimed: { rows: [caso('CC - Sala 1', 'CURY')], ordem: ['CURY', 'ANA'], ajuda: [] } }, { publicadas: { unimed: existente } })
-    expect(avisos(presente.hospitais.unimed)).not.toContain('travessia órfã')
+    expect(avisos(presente.hospitais.unimed)).toContain('travessia órfã')
+    const comContinuacao = conferir({
+      unimed: { rows: [caso('CC - Sala 1', 'CURY'), caso('CC - Sala 3', 'BETO', '13:00', { procedimento: 'CONTINUAÇÃO', isContinuacao: true })], ordem: ['CURY', 'BETO'], ajuda: [] },
+    }, { publicadas: { unimed: existente } })
+    expect(avisos(comContinuacao.hospitais.unimed)).not.toContain('travessia órfã')
   })
 
   it('azul emprestado sai da ajuda de onde está no rodapé e entra na ajuda de onde trabalha', () => {

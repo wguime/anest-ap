@@ -64,8 +64,8 @@ de 'ainda abertas' não é necessária, as escalas são corrigidas quando enviad
 novo turno" — a foto da tarde já traz "CONTINUAÇÃO RM"/"CONTINUAÇÃO +-14h", e a RM
 da manhã aparecia ao lado da própria continuação). De 22/08 a 14/09 ela entrava no
 grupo "Ainda abertas — Manhã" das urgências herdadas; o grupo segue existindo SÓ
-para a urgência do contrato do HRO, que não vem na foto · **Minhas** segue contando a
-cirurgia na tarde · a **fila de Liberações** deixou de contar em 27/10 (seção abaixo).
+para a urgência do contrato do HRO, que não vem na foto · a **fila de Liberações** e a
+**Minhas** deixaram de contá-la na tarde em 27/10 (seção abaixo).
 ⚠️ o badge "Passa para tarde/noite" da
 FILA continua saindo só do caso DAQUELE turno (`turnoDoCaso(c) !== turnoBase`
 pula): o rótulo nomeia quem SAI do turno, e ela entrou nele.
@@ -80,10 +80,17 @@ tarde punha a continuação da Sala 1 com a Fernanda e não citava o IOSC. Os do
 o João Ricardo e o Leandro, entre eles, ficavam "Livre" em vez de nascer liberados.
 `casosDaFilaDoTurno` (dia útil) conta agora só os casos do turno; a cirurgia da manhã só entra pela
 linha "CONTINUAÇÃO" da MESMA pessoa (`fundirContinuacoesNaOrigem`, 26/10). Revoga a metade "quem já
-está no turno leva junto" de 22/08/24/08 (caso Humberto). Minhas e o quadro da manhã seguem iguais;
-a fila única (`casosDaFilaFds`) não muda. Travas: "nem quem ESTÁ na ordem da tarde…" em
+está no turno leva junto" de 22/08/24/08 (caso Humberto). Dupla só funde com a MESMA dupla (HIPEC
+da Unimed, "OSCAR + ERLEI" → "ALEXANDRE D + ERLEI"). O quadro da manhã segue igual; a fila única
+(`casosDaFilaFds`) não muda. Travas: "nem quem ESTÁ na ordem da tarde…" em
 `escalaPassaDeTurno.test.js` e o recorte real "…não segura quem não está na escala da tarde" em
 `escalaCirurgicaPersonas.test.jsx`.
+
+**Minhas (v5.12.80, mesmo dia):** *"na aba minhas à tarde continua aparecendo vinculado a cirurgia que
+não estarei escalado"* — `filtrarPorTurnoExibicao` (Minhas e `localizarMeuPosto`) também conta só os
+casos do turno + a CONTINUAÇÃO da mesma pessoa. A conferência da publicação (`travessia órfã` em
+`escalaConferenciaHeadless`) avisa toda cirurgia marcada que a tarde não cobre com CONTINUAÇÃO, esteja
+quem operou no rodapé ou não — é o sinal para dizer ao dono que ela ficou sem dono à tarde.
 
 ⚠️ **`filtrarPorTurno` continua ESTRITO** e é ele que TROCA e posição usam —
 regra estruturante de 13/08, turno é filtro e nunca preferência. Mover a

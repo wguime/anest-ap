@@ -97,6 +97,14 @@ apelido conhecido).
   `↪️ continuação … ← manhã …`. Particular herda até o convênio — o gatilho da cobrança ignora
   continuação (migration 20261002160000), a cobrança segue sendo a da manhã.
   `⚠️ continuação sem origem` = card só com "CONTINUAÇÃO": confira o cirurgião (dono 02/10). Varrer a foto de cima a baixo — é onde a leitura mais perde nome.
+  **Quem segue na sala é a foto da tarde** (dono 27/10): "passa para tarde" não põe ninguém na tarde
+  (nem na fila nem na Minhas); CONTINUAÇÃO com OUTRO anestesista que a manhã é normal — transcreva o da
+  foto, sem decisão; dupla só vira o card da manhã com a mesma dupla. `travessia órfã` no ensaio =
+  cirurgia marcada que a tarde não cobre: (1) se o par acima diz `continuação sem origem` na MESMA
+  sala e o cirurgião tem o mesmo 1º nome (27/10: manhã "Marcelo Vieira", foto "Marcelo Cunha"), é
+  grafia — escreva o cirurgião como no aviso da manhã e rode o ensaio de novo; (2) senão ela fica sem
+  dono à tarde: publique e diga no relatório qual cirurgia, de quem era e que ninguém a assume na foto
+  (27/10: blefaroplastia do IOSC) — nunca a atribua a quem operou de manhã.
 - **Rodapé** completo, NA ORDEM, com as notas ("MATHEUS (CONSULT)" é uma posição; "ADRIANO
   (REUNIÃO 15:30)" também — **nunca tirar a nota**: nome com nota é posição ocupada e não nasce
   liberado). Quem fecha o

@@ -662,11 +662,13 @@ export function filtrarPorTurno(casos, turno) {
 }
 
 /**
- * A cirurgia da MANHÃ marcada "Passa para tarde" segue valendo na TARDE (dono
- * 2026-08-22: "quero que cirurgias marcadas como passam para tarde persistam na
- * escala da tarde"). Antes o marcador só pintava o badge no turno de origem: a
- * cirurgia continuava só na manhã e, à tarde, quem estava nela aparecia sem caso
- * — some da conta de quem está ocupado bem no turno em que ela vai acontecer.
+ * A cirurgia da MANHÃ marcada "Passa para tarde" e ainda aberta na TARDE.
+ *
+ * De 22/08 a 27/10 ela aparecia na tarde de quem a operou de manhã (fila e
+ * Minhas). Dono 27/10: "só pq os procedimentos passam para tarde não significam
+ * que serão o mesmo anestesista" — quem segue nela é a escala da tarde que diz
+ * (linha "CONTINUAÇÃO"). Hoje só a conferência da publicação usa a pergunta, para
+ * avisar a que a tarde não cobriu; a fila única a entrega sem dono (`casosDaFilaFds`).
  *
  * `casoConcluido` (terminada OU suspensa) encerra a travessia: é a mesma
  * pergunta "ainda ocupa alguém?" que decide vaga e cronômetro no resto do módulo.
@@ -688,17 +690,21 @@ export function casosQuePassamParaOTurno(casos, turno) {
 }
 
 /**
- * Filtro de EXIBIÇÃO: os casos do turno MAIS os que atravessaram para ele.
+ * Filtro de EXIBIÇÃO (aba Minhas, `localizarMeuPosto`): os casos do turno, com a
+ * linha "CONTINUAÇÃO" da mesma pessoa trocada pelo card da manhã (26/10).
+ *
+ * A cirurgia da manhã marcada "Passa para tarde" não entra sozinha (dono 27/10:
+ * "na aba minhas à tarde continua aparecendo vinculado a cirurgia que não estarei
+ * escalado"): à tarde ela só aparece pela CONTINUAÇÃO da escala da tarde.
  *
  * ⚠️ Não substitui `filtrarPorTurno` em toda parte. Troca e posição continuam
  * com o filtro EXATO (regra estruturante de 13/08 — turno é filtro, nunca
  * preferência): mover um caso da manhã ao trocar a posição da TARDE reatribuiria
- * cirurgia de outro turno. Aqui é o que a tela mostra e o que a fila conta.
+ * cirurgia de outro turno.
  */
 export function filtrarPorTurnoExibicao(casos, turno) {
   if (!turno) return casos
-  const lista = (casos || []).filter((c) => turnoDoCaso(c) === turno || casoSegueParaOTurno(c, turno))
-  return fundirContinuacoesNaOrigem(lista, casos, turno, { marcar: true })
+  return fundirContinuacoesNaOrigem(filtrarPorTurno(casos || [], turno), casos, turno, { marcar: true })
 }
 
 /**
