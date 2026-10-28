@@ -556,6 +556,21 @@ por imagem, tela a tela (reabre 14/10, 05/10, 15/10, 17/08/02/10 do PainelTempo 
   continuação herda o término") e `escalaContinuacaoHerdaTerminoSql.test.js` (relatório = tela, cirurgia
   por cirurgia; rollback). Rollback: app primeiro, depois
   `scripts/rollback-20261027220000-continuacao-herda-termino.sql`.
+- **"SEU PREENCHIMENTO" = A CONTA DO AVISO, COM HOJE (dono 28/10; v5.12.84)**: *"eventualmente aparece
+  que tenho 100% de cirurgias marcadas mas falta 1?"*. A auditoria de outubro achou o número contando
+  outro conjunto: "passa para a tarde" sem continuação saía dele e seguia no aviso (17 cirurgias), a
+  continuação que herdou o término e a dupla "A + B" ficavam fora, o dia virava à meia-noite — e HOJE
+  não entrava ("100%" ao lado de "1 cirurgia de hoje sem horário"). Agora 100% só com a caixa vazia:
+  o banco tem UMA conta (`escala_horario_conta`, migration `20261028130000`) que o relatório e o
+  `escala_meu_preenchimento` leem; a pessoa é o login do caso ou, sem ele, cada nome pelo dicionário
+  de apelidos. Os "últimos 7 dias" = 6 dias encerrados do banco (`p_dias: 6`) + HOJE somado pela tela
+  (`contaDoDia`: a completa e a que já está no aviso; a em andamento sem prazo vencido espera). O
+  número sai das contagens e nunca arredonda para 100% (199/200 = 99%). Gravar um dia anterior na
+  caixa busca o número de novo na hora (`versao`); o dia operacional vai na chave do cache. Conferido
+  em produção (ensaio desfeito): relatório idêntico em 3 janelas, 47 de 47 pessoas iguais à regra do
+  app. Travas: `escalaPreenchimentoMesmaRegraSql.test.js`, bloco "hoje no Seu preenchimento" de
+  `escalaHorarioPendente.test.js`, `escalaAdesao.test.js`, `meuPreenchimento.test.jsx`. Rollback: app
+  primeiro, depois `scripts/rollback-20261028130000-preenchimento-mesma-regra.sql`.
 
 ### Editar e EXCLUIR o caso publicado (dono 2026-09-01, modelo A em protótipo)
 

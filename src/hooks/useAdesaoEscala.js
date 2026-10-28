@@ -110,9 +110,11 @@ export function useHorarioNaoPreenchido(aba, opcoes) {
 
 /**
  * "Seu preenchimento" (aba Minhas, dono 14/10): o número de quem está logado. Cache de 30 min
- * como o card da Home — a aba Minhas é aberta por todos, várias vezes por turno.
+ * como o card da Home — a aba Minhas é aberta por todos, várias vezes por turno. O dia
+ * operacional vai na chave: na virada das 07:00 o número da véspera não pode ficar 30 min no
+ * ar sem o dia que acabou de encerrar (a tela já não o soma como hoje).
  */
-export function useMeuPreenchimento(uid, opcoes) {
-  const id = uid ? `meu:${uid}` : null
+export function useMeuPreenchimento(uid, dia, opcoes) {
+  const id = uid && dia ? `meu:${uid}:${dia}` : null
   return useConsultaAdesao(id, () => buscarMeuPreenchimento(id), opcoes)
 }

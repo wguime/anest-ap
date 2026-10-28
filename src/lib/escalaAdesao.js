@@ -412,16 +412,28 @@ export function tendencia(serie, campo) {
 
 /**
  * "SEU PREENCHIMENTO" na aba Minhas (dono 14/10, modelo A de `.tmp/melhorias-preenchimento.html`):
- * o retorno individual na tela de uso diário. `dados` = `escala_meu_preenchimento(7)`;
- * `pendentesHoje` = quantas cirurgias da pessoa estão hoje na faixa de horário pendente.
+ * o retorno individual na tela de uso diário. `dados` = `escala_meu_preenchimento(6)`, os 6
+ * dias encerrados; `pendentesHoje` = quantas cirurgias da pessoa estão hoje na faixa de
+ * horário pendente.
+ *
+ * HOJE ENTRA NA CONTA (dono 28/10: "aparece que tenho 100% de cirurgias marcadas mas falta
+ * 1?"): `doDia` = `{ data, casos, completos }` das cirurgias de hoje que já deviam ter horário
+ * (`contaDoDia`); somadas aos 6 dias, dão os "últimos 7 dias". Só soma se o banco ainda não
+ * contou esse dia (`dados.ate` < `doDia.data`). O número sai das contagens e só mostra 100%
+ * com tudo completo: 199 de 200 é 99%, nunca 100% arredondado.
+ *
  * Some quando não há cirurgia na janela, ou quando a pessoa está na meta (80%) e não deve
  * nada hoje — para quem já preenche, o cartão seria ruído.
  */
 export const META_PREENCHIMENTO = 80
 
-export function resumoMeuPreenchimento(dados, pendentesHoje = 0) {
-  if (!dados || !(dados.casos > 0) || dados.pct == null) return null
-  const pct = Math.round(Number(dados.pct))
+export function resumoMeuPreenchimento(dados, pendentesHoje = 0, doDia = null) {
+  if (!dados) return null
+  const hoje = doDia && !(dados.ate && doDia.data && dados.ate >= doDia.data) ? doDia : null
+  const casos = (Number(dados.casos) || 0) + (Number(hoje?.casos) || 0)
+  const completos = (Number(dados.completos) || 0) + (Number(hoje?.completos) || 0)
+  if (!(casos > 0)) return null
+  const pct = completos >= casos ? 100 : Math.min(99, Math.round((100 * completos) / casos))
   const top = dados.top == null || !(dados.top_n > 0) ? null : Math.round(Number(dados.top))
   const pendentes = Math.max(0, pendentesHoje || 0)
   if (pct >= META_PREENCHIMENTO && pendentes === 0) return null
@@ -429,8 +441,8 @@ export function resumoMeuPreenchimento(dados, pendentesHoje = 0) {
     pct,
     top,
     topN: dados.top_n || 0,
-    casos: dados.casos,
-    completos: dados.completos ?? 0,
+    casos,
+    completos,
     pendentes,
     tom: faixa(pct, META_PREENCHIMENTO),
   }

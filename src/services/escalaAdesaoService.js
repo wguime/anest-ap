@@ -116,13 +116,14 @@ export async function buscarHorarioNaoPreenchido(id, desde = null, ate = null) {
 }
 
 /**
- * "Seu preenchimento" da aba Minhas (dono 14/10, modelo A): a % das cirurgias de QUEM ESTÁ
- * LOGADO com início e término nos últimos 7 dias encerrados + a média dos 5 melhores
- * (`escala_meu_preenchimento`, migration 20261015120000). O cache leva o uid na chave — o
- * mesmo aparelho pode trocar de conta (o dono tem duas).
+ * "Seu preenchimento" da aba Minhas (dono 14/10, modelo A): as cirurgias de QUEM ESTÁ LOGADO
+ * nos 6 dias encerrados, com quantas não devem horário nenhum, + a média dos 5 melhores
+ * (`escala_meu_preenchimento`, a mesma conta do aviso desde a migration 20261028130000). Hoje
+ * a tela soma (dono 28/10), e os dois juntos são os "últimos 7 dias". O cache leva o uid na
+ * chave — o mesmo aparelho pode trocar de conta (o dono tem duas).
  */
 export async function buscarMeuPreenchimento(id) {
-  const { data, error } = await supabase.rpc('escala_meu_preenchimento', { p_dias: 7 })
+  const { data, error } = await supabase.rpc('escala_meu_preenchimento', { p_dias: 6 })
   if (error) throw new Error(error.message || 'Não foi possível carregar o seu preenchimento')
   salvarCache(id, data)
   return data

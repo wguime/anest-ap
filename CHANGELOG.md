@@ -3,6 +3,18 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.84 (28/10/2026) — "Seu preenchimento" com a mesma conta do aviso
+
+*"verifique os dados [...] eventualmente aparece que tenho 100% de cirurgias marcadas mas falta 1?"* (dono).
+- A porcentagem passa a ser a **mesma conta do aviso "sem horário"**: 100% só aparece com a caixa vazia. Entram o
+  "passa para a tarde" sem continuação (17 cirurgias em outubro ficavam fora), a continuação que herdou o término,
+  a manhã que passou adiante (deve o início) e a dupla "A + B" (cada nome pelo dicionário de apelidos).
+- **Hoje entra na conta** (escolha do dono): "últimos 7 dias" = hoje + os 6 dias anteriores; a cirurgia de hoje
+  conta quando já devia ter horário (completa ou no aviso). O número nunca arredonda para 100%.
+- O dia vira às 07:00 também no número; horário gravado num dia anterior atualiza a porcentagem na hora.
+- Banco: `escala_horario_conta` (conta única) lida pelo relatório de adesão — que devolve o mesmo de antes — e pelo
+  `escala_meu_preenchimento` (migration `20261028130000`; rollback em `scripts/`).
+
 ## v5.12.83 (27/10/2026) — A continuação herda o término
 
 *"quero que essa herança de não ter marcado o término fique com quem realmente estava com a cirurgia"* (dono, 19:52,

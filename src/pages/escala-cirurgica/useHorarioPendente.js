@@ -14,11 +14,11 @@
 import { useCallback, useMemo } from 'react'
 import { useEscalaCirurgica } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
-import { agruparPorAnestesista, pendenciasDoDia } from '@/lib/escalaHorarioPendente'
+import { agruparPorAnestesista, contaDoDia, pendenciasDoDia } from '@/lib/escalaHorarioPendente'
 import useAgoraMinutoEscala from './useAgoraMinutoEscala'
 import { nomeAnestesistaExibicao, normNome } from './utils'
 
-const SEM_PENDENCIA = { itens: [], grupos: [], porCaso: new Map() }
+const SEM_PENDENCIA = { itens: [], grupos: [], porCaso: new Map(), conta: [] }
 
 export function liberadoEm(liberacoes, turno, chaves) {
   for (const k of chaves) {
@@ -37,8 +37,10 @@ export default function useHorarioPendente() {
 
   const uidDe = useCallback((parte) => parte.uid || resolver(parte.alias) || null, [resolver])
 
-  const itens = useMemo(() => {
-    if (!ativo) return []
+  // `conta` = as cirurgias de hoje que já deviam ter horário, completas ou no aviso: a parte de
+  // hoje do "Seu preenchimento" (dono 28/10), com as mesmas pendências
+  const { itens, conta } = useMemo(() => {
+    if (!ativo) return SEM_PENDENCIA
     const fds = escalas?.fds
     const liberado = (escala, turno, parte) => {
       const chaves = [uidDe(parte), normNome(parte.alias)]
@@ -46,16 +48,17 @@ export default function useHorarioPendente() {
         || (!!fds && fds.data === escala.data && liberadoEm(fds.liberacoes, turno, chaves))
     }
     const lista = ['unimed', 'hro', 'materno'].map((h) => escalas?.[h]).filter(Boolean)
-    return pendenciasDoDia(lista, { hoje, agoraMin, liberado })
+    const pendencias = pendenciasDoDia(lista, { hoje, agoraMin, liberado })
+    return { itens: pendencias, conta: contaDoDia(lista, { hoje, pendencias }) }
   }, [ativo, escalas, hoje, agoraMin, uidDe])
 
   return useMemo(() => {
-    if (!itens.length) return SEM_PENDENCIA
+    if (!itens.length) return conta.length ? { ...SEM_PENDENCIA, conta } : SEM_PENDENCIA
     const grupos = agruparPorAnestesista(itens, {
       chaveDe: (p) => uidDe(p) || normNome(p.alias),
       nomeDe: (p) => nomeAnestesistaExibicao({ uid: uidDe(p), alias: p.alias, rosterByUid }),
     })
     const porCaso = new Map(itens.filter((i) => i.caso.id).map((i) => [i.caso.id, i]))
-    return { itens, grupos, porCaso }
-  }, [itens, uidDe, rosterByUid])
+    return { itens, grupos, porCaso, conta }
+  }, [itens, conta, uidDe, rosterByUid])
 }

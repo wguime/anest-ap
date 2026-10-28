@@ -17,7 +17,7 @@ import {
   dentroDoInicioDoAlerta, faltaHorario, montarRelatorioHorario, pendenciasDoDia, prazoDoCaso,
   prazoInicio, rotuloDiaRelatorio, TOLERANCIA_INICIO_MIN, TOLERANCIA_INICIO_AS_MIN,
   pendenciasParaLiberar, pendenciasDeDiasAnteriores, CORTE_PENDENCIAS_MINHAS,
-  paresDeContinuacao, herdaTermino, faltaNoPar, nomesDoCirurgiao,
+  paresDeContinuacao, herdaTermino, faltaNoPar, nomesDoCirurgiao, contaDoDia,
 } from '@/lib/escalaHorarioPendente'
 
 const HOJE = '2026-10-06'
@@ -505,5 +505,61 @@ describe('a continuação herda o término (dono 27/10, 19:52: "que essa heranç
   it('dias anteriores: com os dois cards na busca, a pendência é da continuação', () => {
     const r = pendenciasDeDiasAnteriores([hro([manha({ id: 'm1' }), tarde({ id: 'c' })])], { hoje: '2026-10-28' })
     expect(r.map((p) => [p.caso.id, p.falta, p.data])).toEqual([['c', 'ter', DIA]])
+  })
+})
+
+describe('hoje no "Seu preenchimento" (dono 28/10: "aparece que tenho 100% de cirurgias marcadas mas falta 1?")', () => {
+  const H = (h, m = 0) => h * 60 + m
+  const conta = (escalas, agoraMin, o = {}) => contaDoDia(escalas, { hoje: HOJE, agoraMin, liberado: ninguemLiberado, ...o })
+  const ids = (r) => r.map((i) => [i.caso.id, i.falta])
+
+  it('entra a completa e a que está no aviso; a em andamento sem prazo vencido espera', () => {
+    const casos = [
+      caso({ id: 'ok', inicioReal: '08:00', terminoReal: '09:00' }),
+      caso({ id: 'sem', hora: '07:30', statusCirurgia: 'terminada' }), // às 13:00 o turno acabou
+      caso({ id: 'tarde', turno: 'vespertino', hora: '14:00', statusCirurgia: 'agendada' }),
+    ]
+    expect(ids(conta([escala(casos)], H(13)))).toEqual([['ok', null], ['sem', 'ambos']])
+    // às 11h a da manhã ainda não venceu (o início sim: 07:30 + 30)
+    expect(ids(conta([escala(casos)], H(11)))).toEqual([['ok', null], ['sem', 'ini']])
+    expect(ids(conta([escala(casos)], H(7)))).toEqual([['ok', null]])
+  })
+
+  it('as que faltam são exatamente as do aviso, em qualquer hora do dia', () => {
+    const casos = [
+      caso({ id: 'a', hora: '07:00', inicioReal: '07:10' }),
+      caso({ id: 'b', hora: '09:00', statusCirurgia: 'agendada', anestesista: 'ANA + BETO', anestesistaUserId: null }),
+      caso({ id: 'c', turno: 'vespertino', hora: '13:30', statusCirurgia: 'iniciada', inicioReal: '13:40' }),
+      caso({ id: 'd', turno: 'vespertino', hora: '15:00', statusExtra: 'suspensa' }),
+      caso({ id: 'e', procedimento: 'CONSULTORIO' }),
+    ]
+    for (const agora of [H(8), H(10), H(13), H(16), H(19), H(23)]) {
+      const pend = pendenciasDoDia([escala(casos)], { hoje: HOJE, agoraMin: agora, liberado: ninguemLiberado })
+      const faltam = conta([escala(casos)], agora).filter((i) => i.falta)
+      expect(ids(faltam)).toEqual(pend.map((p) => [p.caso.id, p.falta]))
+    }
+  })
+
+  it('liberado entra na hora, como no aviso', () => {
+    const casos = [caso({ id: 'x', hora: '08:00', statusCirurgia: 'terminada', inicioReal: '08:05' })]
+    const liberado = (e, t, p) => p.alias === 'ANA'
+    expect(ids(conta([escala(casos)], H(9)))).toEqual([])
+    expect(ids(conta([escala(casos)], H(9), { liberado }))).toEqual([['x', 'ter']])
+  })
+
+  it('a continuação de outra pessoa: o término é de quem continuou, o início de quem começou', () => {
+    const m = caso({ id: 'm', sala: 'Sala 1', hora: 'AS', cirurgiao: 'Marcelo', statusCirurgia: 'iniciada', statusExtra: 'passa_tarde', inicioReal: '10:45', anestesista: 'MELO', anestesistaUserId: 'u-melo' })
+    const c = caso({ id: 'c', sala: 'Sala 1', turno: 'vespertino', hora: '13:00', procedimento: 'CONTINUAÇÃO', cirurgiao: 'Marcelo', isContinuacao: true, statusCirurgia: 'agendada', anestesista: 'FERNANDA', anestesistaUserId: 'u-fer' })
+    // às 19h: o Melo já tem o início (completo para ele); a Fernanda deve o término
+    expect(ids(conta([escala([m, c])], H(19)))).toEqual([['m', null], ['c', 'ter']])
+    const c2 = { ...c, statusCirurgia: 'terminada', terminoReal: '15:30' }
+    expect(ids(conta([escala([m, c2])], H(19)))).toEqual([['m', null], ['c', null]])
+  })
+
+  it('reaproveita as pendências que a tela já calculou', () => {
+    const casos = [caso({ id: 'sem', hora: '07:30' })]
+    const pendencias = pendenciasDoDia([escala(casos)], { hoje: HOJE, agoraMin: H(13) })
+    expect(ids(contaDoDia([escala(casos)], { hoje: HOJE, pendencias }))).toEqual([['sem', 'ambos']])
+    expect(contaDoDia([escala(casos)], { hoje: '2026-10-07', pendencias: [] })).toEqual([])
   })
 })

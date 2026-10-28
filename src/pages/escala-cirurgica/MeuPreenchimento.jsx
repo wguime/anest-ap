@@ -1,13 +1,18 @@
 /**
  * "SEU PREENCHIMENTO" no topo da aba Minhas (dono 14/10, modelo A de
  * `.tmp/melhorias-preenchimento.html`): a % das SUAS cirurgias com início e término nos
- * últimos 7 dias encerrados, a marca da média dos 5 melhores da equipe na barra e, quando
- * há, a ação do dia ("N cirurgias de hoje sem horário · Preencher" → desce até a caixa
- * "Você tem N cirurgias sem horário", que já existe).
+ * últimos 7 dias, a marca da média dos 5 melhores da equipe na barra e, quando há, a ação do
+ * dia ("N cirurgias de hoje sem horário · Preencher" → desce até a caixa "Você tem N
+ * cirurgias sem horário", que já existe).
  *
  * Só a própria pessoa vê o próprio número (a função do banco não devolve o de ninguém mais);
  * o ranking com nomes continua só no relatório de adesão. Regras em `resumoMeuPreenchimento`.
+ *
+ * Desde 28/10 o número é a mesma conta do aviso "sem horário", com HOJE dentro (`doDia`): 100%
+ * só com a caixa vazia. `versao` muda quando um horário de dia anterior é gravado na caixa, e
+ * o número é buscado de novo na hora, sem esperar os 30 min do cache.
  */
+import { useEffect, useRef } from 'react'
 import { Button } from '@/design-system'
 import { useMeuPreenchimento } from '@/hooks/useAdesaoEscala'
 import { IDADE_CARD_MS } from '@/services/escalaAdesaoService'
@@ -23,9 +28,15 @@ const BARRA = {
 
 export const ID_MINHAS_PENDENCIAS = 'minhas-pendencias'
 
-export default function MeuPreenchimento({ uid, pendentesHoje = 0 }) {
-  const { dados } = useMeuPreenchimento(uid, { idadeMaxMs: IDADE_CARD_MS })
-  const r = resumoMeuPreenchimento(dados, pendentesHoje)
+export default function MeuPreenchimento({ uid, dia, pendentesHoje = 0, doDia = null, versao = 0 }) {
+  const { dados, recarregar } = useMeuPreenchimento(uid, dia, { idadeMaxMs: IDADE_CARD_MS })
+  const versaoVista = useRef(versao)
+  useEffect(() => {
+    if (versao === versaoVista.current) return
+    versaoVista.current = versao
+    recarregar()
+  }, [versao, recarregar])
+  const r = resumoMeuPreenchimento(dados, pendentesHoje, doDia)
   if (!r) return null
   const irParaPendencias = () => {
     document.getElementById(ID_MINHAS_PENDENCIAS)?.scrollIntoView({ behavior: 'smooth', block: 'start' })

@@ -672,6 +672,13 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
       : null),
     [pendencias.itens, euPendencia]
   )
+  // HOJE NO "SEU PREENCHIMENTO" (dono 28/10): as cirurgias de hoje que já deviam ter horário,
+  // pelas mesmas pessoas da lista acima — 100% só com a caixa vazia
+  const meuDia = useMemo(() => {
+    if (!euPendencia) return null
+    const meus = pendencias.conta.filter((i) => anestesistaDoCasoEh(i.caso, euPendencia))
+    return { data: hoje, casos: meus.length, completos: meus.filter((i) => !i.falta).length }
+  }, [pendencias.conta, euPendencia, hoje])
   // AS DE DIAS ANTERIORES (dono 27/10): ficam até serem preenchidas, desde 27/10/2026 — a
   // faixa individual soma as duas listas. Conta de hospital (`euPendencia` nulo) não busca.
   const pendenciasAnteriores = useMinhasPendenciasAnteriores({ eu: euPendencia, hoje })
@@ -774,7 +781,13 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
         {/* SEU PREENCHIMENTO (dono 14/10, modelo A de `.tmp/melhorias-preenchimento.html`):
             topo da aba Minhas, vendo HOJE — o retorno individual dos últimos 7 dias */}
         {abaVisivel === 'minhas' && data === hoje && (
-          <MeuPreenchimento uid={meuUid} pendentesHoje={minhasPendencias?.length ?? 0} />
+          <MeuPreenchimento
+            uid={meuUid}
+            dia={hoje}
+            pendentesHoje={minhasPendencias?.length ?? 0}
+            doDia={meuDia}
+            versao={pendenciasAnteriores.gravados}
+          />
         )}
 
         {/* ALERTA PÚBLICO do horário não preenchido (dono 05/10, modelo A): nas três

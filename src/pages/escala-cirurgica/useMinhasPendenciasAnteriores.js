@@ -24,6 +24,8 @@ export default function useMinhasPendenciasAnteriores({ eu, hoje }) {
   const { toast } = useToast()
   const [escalas, setEscalas] = useState(VAZIO)
   const [resolvidos, setResolvidos] = useState(() => new Set())
+  // quantas gravações deram certo: o "Seu preenchimento" busca o número de novo a cada uma
+  const [gravados, setGravados] = useState(0)
   const pedido = useRef(0)
   const uid = eu?.uid || null
   const ativo = !!uid && !!hoje && hoje > CORTE_PENDENCIAS_MINHAS
@@ -68,6 +70,7 @@ export default function useMinhasPendenciasAnteriores({ eu, hoje }) {
     try {
       await svc.updateCaso(caso.id, { inicioReal: inicio, terminoReal: termino })
       if ((caso.statusCirurgia || 'agendada') !== 'terminada') await svc.updateStatusCirurgia(caso.id, 'terminada')
+      setGravados((g) => g + 1)
       toast({ variant: 'success', title: 'Horário informado' })
     } catch (error) {
       tirar(caso.id, false)
@@ -81,11 +84,12 @@ export default function useMinhasPendenciasAnteriores({ eu, hoje }) {
     tirar(caso.id, true)
     try {
       await svc.updateStatusCirurgia(caso.id, 'suspensa')
+      setGravados((g) => g + 1)
     } catch (error) {
       tirar(caso.id, false)
       toast({ variant: 'error', title: 'Não foi possível marcar como suspensa', description: error.message })
     }
   }, [toast])
 
-  return { itens, recarregar, informar, naoAconteceu }
+  return { itens, recarregar, informar, naoAconteceu, gravados }
 }

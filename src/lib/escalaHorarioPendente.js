@@ -324,6 +324,11 @@ function anterioresPorSala(casos) {
   return anterior
 }
 
+/** Entra na conta do dia? A continuação que herdou o término entra pelo nome de quem a escala da tarde pôs nela. */
+const entraNoDia = (caso, pares, data) => (herdaTermino(caso, pares)
+  ? dentroDoInicioDoAlerta(data, turnoDoCasoHorario(caso))
+  : casoEntraNaConta(caso, { data }))
+
 /**
  * As pendências do DIA. `escalas` = as escalas carregadas (um hospital cada); só entram
  * as publicadas da data `hoje`. `liberado(escala, turno, parte)` diz se a parte do
@@ -343,12 +348,8 @@ export function pendenciasDoDia(escalas, { hoje, agoraMin, liberado = () => fals
     const anterior = anterioresPorSala(escala.casos)
     const pares = paresDeContinuacao(escala.casos)
     for (const caso of escala.casos || []) {
-      // a continuação que herdou o término entra pelo nome de quem a escala da tarde pôs nela
+      if (!entraNoDia(caso, pares, escala.data)) continue
       const herdeira = herdaTermino(caso, pares)
-      const conta = herdeira
-        ? dentroDoInicioDoAlerta(escala.data, turnoDoCasoHorario(caso))
-        : casoEntraNaConta(caso, { data: escala.data })
-      if (!conta) continue
       const falta = faltaNoPar(caso, pares)
       if (!falta) continue
       const turno = turnoDoCasoHorario(caso)
@@ -373,6 +374,36 @@ export function pendenciasDoDia(escalas, { hoje, agoraMin, liberado = () => fals
         motivo,
         aberta: foiLiberado && casoAberto(caso),
       })
+    }
+  }
+  return out
+}
+
+/**
+ * HOJE NO "SEU PREENCHIMENTO" (dono 28/10: "eventualmente aparece que tenho 100% de cirurgias
+ * marcadas mas falta 1?"). O número contava só os dias encerrados, e a cirurgia de hoje sem
+ * horário aparecia logo abaixo dele. O dono escolheu que hoje entre na conta. Os dias
+ * encerrados vêm do banco (`escala_meu_preenchimento`, a mesma conta com o dia virado); hoje
+ * a tela soma, porque o prazo de cada cirurgia depende da hora e da fila do dia.
+ *
+ * Entra a cirurgia de hoje que já devia ter horário: a completa e a que está no aviso. A que
+ * segue em andamento sem prazo vencido fica de fora até vencer. As pessoas e a conta são as
+ * do aviso, então 100% só aparece quando a caixa "sem horário" está vazia. `pendencias` = o
+ * resultado de `pendenciasDoDia` com as mesmas opções, se a tela já o tem. Devolve
+ * `{ caso, falta }` por cirurgia (falta null = completa); quem chama filtra a pessoa.
+ */
+export function contaDoDia(escalas, { pendencias, ...opcoes } = {}) {
+  const pendentes = new Map((pendencias ?? pendenciasDoDia(escalas, opcoes)).map((i) => [i.caso, i]))
+  const out = []
+  for (const escala of escalas || []) {
+    if (!escala || escala.status !== 'publicada' || escala.data !== opcoes.hoje) continue
+    if (escala.hospital === 'fds') continue
+    const pares = paresDeContinuacao(escala.casos)
+    for (const caso of escala.casos || []) {
+      if (!entraNoDia(caso, pares, escala.data)) continue
+      const p = pendentes.get(caso)
+      if (p) out.push({ caso, falta: p.falta })
+      else if (!faltaNoPar(caso, pares)) out.push({ caso, falta: null })
     }
   }
   return out

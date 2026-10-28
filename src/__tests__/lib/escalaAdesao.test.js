@@ -309,4 +309,31 @@ describe('escalaAdesao — "Seu preenchimento" da aba Minhas (dono 14/10, modelo
     const { resumoMeuPreenchimento } = await import('@/lib/escalaAdesao')
     expect(resumoMeuPreenchimento({ casos: 6, completos: 0, pct: 0, top: null, top_n: 2 })).toMatchObject({ top: null, tom: 'crit' })
   })
+
+  it('HOJE ENTRA NA CONTA (dono 28/10): 12 de 12 nos dias anteriores + 1 de hoje sem horário = 92%, não 100%', async () => {
+    const { resumoMeuPreenchimento } = await import('@/lib/escalaAdesao')
+    const dias = { ate: '2026-10-26', casos: 12, completos: 12, pct: 100, top: 100, top_n: 5 }
+    expect(resumoMeuPreenchimento(dias, 1, { data: '2026-10-27', casos: 1, completos: 0 }))
+      .toMatchObject({ pct: 92, casos: 13, completos: 12, pendentes: 1, tom: 'ok' })
+    // completa hoje: 100% e o cartão some (na meta, nada pendente)
+    expect(resumoMeuPreenchimento(dias, 0, { data: '2026-10-27', casos: 2, completos: 2 })).toBeNull()
+  })
+
+  it('só hoje (sem cirurgia nos dias anteriores) já mostra o número', async () => {
+    const { resumoMeuPreenchimento } = await import('@/lib/escalaAdesao')
+    const vazio = { ate: '2026-10-27', casos: 0, completos: 0, pct: null, top: 97, top_n: 5 }
+    expect(resumoMeuPreenchimento(vazio, 1, { data: '2026-10-28', casos: 2, completos: 1 })).toMatchObject({ pct: 50, casos: 2, completos: 1 })
+  })
+
+  it('o dia que o banco já contou não entra de novo (virada das 07:00)', async () => {
+    const { resumoMeuPreenchimento } = await import('@/lib/escalaAdesao')
+    const dias = { ate: '2026-10-27', casos: 10, completos: 7, pct: 70, top: 100, top_n: 5 }
+    expect(resumoMeuPreenchimento(dias, 0, { data: '2026-10-27', casos: 3, completos: 0 })).toMatchObject({ casos: 10, pct: 70 })
+  })
+
+  it('100% só com tudo completo: 199 de 200 é 99%', async () => {
+    const { resumoMeuPreenchimento } = await import('@/lib/escalaAdesao')
+    expect(resumoMeuPreenchimento({ casos: 199, completos: 199, top: null, top_n: 0 }, 1, { casos: 1, completos: 0 }))
+      .toMatchObject({ pct: 99, casos: 200, completos: 199 })
+  })
 })
