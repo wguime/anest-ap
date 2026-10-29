@@ -3,6 +3,15 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.87 (29/10/2026) — Selo de plantão do Materno só de manhã
+
+Foto do card do Tiago no IOSC (HRO, tarde de 29/10) com "Ajuda (Materno)" e "Plantão da manhã (Materno)": *"Tiago não
+é o plantão da tarde no materno, o plantão da tarde é Eduardo. Corrija"*.
+- Pela numérica de 29/10 o Materno é manhã Tiago, Eduardo · tarde **Eduardo**, Tiago. À tarde, a regra de 21/10
+  marcava o 1º da MANHÃ de hoje, um plantão que já terminou, e o 2º da tarde, em ajuda no HRO, parecia o plantão.
+- Agora o selo do Materno sai **só de manhã** ("Plantão da tarde (Materno)" = 1º azul da tarde do mesmo dia). À
+  tarde, nenhum selo de plantão do Materno; "Ajuda (Materno)" continua. HRO/Unimed não mudam.
+
 ## v5.12.86 (29/10/2026) — Turnos do dia abertos e pop-up de horários em aberto
 
 *"As escalas da manhã, da tarde e da noite do MESMO DIA continuam abertas, para quem esqueceu corrigir o horário"* e

@@ -13,12 +13,17 @@
  * plantão da manhã do Materno é o GUSTAVO (1º azul da manhã de 21/10). O recorte abaixo é a tarde
  * de 21/10 com os dois na fila: só o Gustavo leva o selo.
  *
+ * REVOGADO À TARDE em 29/10 (foto do card do Tiago no IOSC do HRO, "Plantão da manhã (Materno)"):
+ * "Tiago não é o plantão da tarde no materno, o plantão da tarde é Eduardo". O 1º da manhã já
+ * terminou o plantão; à tarde a fila não leva selo de contraturno do Materno. De manhã segue:
+ * "Plantão da tarde (Materno)" = 1º azul da tarde do mesmo dia (21/10: JANAINA).
+ *
  * ⚠️ Trava de PÁGINA: a lib (`plantaoMaternoContraturno`) tem teste próprio; o defeito estava no
  * fio que monta `contraturnoOutros`, e é ele que precisa de teste. O JSON da numérica entra por
  * import dinâmico — `findBy` espera ele chegar.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 
 import { ThemeProvider, ToastProvider } from '@/design-system'
 
@@ -56,8 +61,8 @@ import EscalaCirurgicaPage from '@/pages/escala-cirurgica/EscalaCirurgicaPage'
 
 const wrap = ({ children }) => <ThemeProvider><ToastProvider>{children}</ToastProvider></ThemeProvider>
 
-const caso = (id, sala, anestesista, hora = '13:30') => ({
-  id, sala, ordem: 0, hora, anestesista, cirurgiao: 'Cirurgião', turno: 'vespertino',
+const caso = (id, sala, anestesista, turno, hora) => ({
+  id, sala, ordem: 0, hora, anestesista, cirurgiao: 'Cirurgião', turno,
   bloco: 'normal', isContinuacao: false, semAnestesista: false,
 })
 
@@ -70,33 +75,40 @@ const acoes = () => ({
   setStatusCirurgia: vi.fn(), adicionarCaso: vi.fn(), definirSalasUrgencia: vi.fn(),
 })
 
-// Tarde de 21/10 (recorte): Rômulo no meio do rodapé com a linha MATERNO; Gustavo com caso
-// aqui — é ele o plantão da manhã de 21/10 no Materno pela numérica; Klisman (1º do Materno na
-// manhã de 22/10) com caso aqui — NÃO é plantão de hoje.
-const UNIMED = {
-  id: 'u1', hospital: 'unimed', data: '2026-10-21',
-  ordemLiberacao: { vespertino: ['DIEGO', 'ROMULO', 'KLISMAN', 'GUSTAVO', 'MARILIO'] },
-  ajudaExterna: { vespertino: [] },
-  liberacoes: {}, linhaOverrides: {},
-  casos: [
-    caso('c1', 'CC - Sala 1', 'DIEGO'),
-    caso('c2', 'MATERNO', 'ROMULO'),
-    caso('c4', 'CC - Sala 3', 'KLISMAN'),
-    caso('c3', 'CC - Sala 2', 'GUSTAVO'),
-  ],
-}
-// Materno publicado como em 20/10: rodapé de um nome só, quem assinou o mapa.
-const MATERNO = {
-  id: 'm1', hospital: 'materno', data: '2026-10-21',
-  ordemLiberacao: { vespertino: ['ROMULO'] },
-  ajudaExterna: { vespertino: [] },
-  liberacoes: {}, linhaOverrides: {},
-  casos: [caso('m-c1', 'Sala 2 HC', 'ROMULO')],
+// 21/10 pela numérica do Materno: manhã 1º GUSTAVO · tarde 1º JANAINA, 2º GUSTAVO.
+// Rômulo no meio do rodapé com a linha MATERNO (assinou o mapa); Klisman é o 1º da manhã de 22/10.
+const escalas = (turno) => {
+  const hora = turno === 'matutino' ? '07:30' : '13:30'
+  return {
+    unimed: {
+      id: 'u1', hospital: 'unimed', data: '2026-10-21',
+      ordemLiberacao: { [turno]: ['DIEGO', 'ROMULO', 'KLISMAN', 'GUSTAVO', 'JANAINA', 'MARILIO'] },
+      ajudaExterna: { [turno]: [] },
+      liberacoes: {}, linhaOverrides: {},
+      casos: [
+        caso('c1', 'CC - Sala 1', 'DIEGO', turno, hora),
+        caso('c2', 'MATERNO', 'ROMULO', turno, hora),
+        caso('c4', 'CC - Sala 3', 'KLISMAN', turno, hora),
+        caso('c3', 'CC - Sala 2', 'GUSTAVO', turno, hora),
+        caso('c5', 'CC - Sala 4', 'JANAINA', turno, hora),
+      ],
+    },
+    hro: null,
+    materno: {
+      id: 'm1', hospital: 'materno', data: '2026-10-21',
+      ordemLiberacao: { [turno]: ['ROMULO'] },
+      ajudaExterna: { [turno]: [] },
+      liberacoes: {}, linhaOverrides: {},
+      casos: [caso('m-c1', 'Sala 2 HC', 'ROMULO', turno, hora)],
+    },
+    fds: null,
+  }
 }
 
-const montar = () => {
+const montar = async (turno) => {
+  vi.setSystemTime(new Date(turno === 'matutino' ? '2026-10-21T09:00:00-03:00' : '2026-10-21T14:00:00-03:00'))
   estado.ctx = {
-    escalas: { unimed: UNIMED, hro: null, materno: MATERNO, fds: null },
+    escalas: escalas(turno),
     p4Hospital: null, data: '2026-10-21', hoje: '2026-10-21', loading: false, ...acoes(),
   }
   render(<EscalaCirurgicaPage onNavigate={() => {}} goBack={() => {}} />, { wrapper: wrap })
@@ -105,32 +117,27 @@ const montar = () => {
 
 const cardDe = (nome) => screen.getByLabelText(`Editar local/cirurgião de ${nome}`).closest('[data-linha]')
 
-beforeEach(() => {
-  vi.useFakeTimers({ shouldAdvanceTime: true })
-  vi.setSystemTime(new Date('2026-10-21T14:00:00-03:00')) // quarta, turno vespertino
-})
+beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: true }) })
 afterEach(() => vi.useRealTimers())
 
-describe('selo de plantão do Materno só pela numérica (dono 20/10)', () => {
-  it('quem está no Materno pela NUMÉRICA leva "Plantão da manhã (Materno)"', async () => {
-    montar()
+describe('selo de plantão do Materno só pela numérica, só de manhã (dono 20/10, 21/10, 29/10)', () => {
+  it('manhã: o 1º da TARDE do mesmo dia pela numérica leva "Plantão da tarde (Materno)"', async () => {
+    await montar('matutino')
     // o JSON chega por import dinâmico: o selo aparece depois dele
-    const selo = await screen.findByText(/Plantão da manhã \(Materno\)/, {}, { timeout: 4000 })
-    expect(cardDe('Gustavo')?.textContent).toContain('Plantão da manhã (Materno)')
-    expect(selo).toBeTruthy()
-  })
-
-  it('o último (e único) nome do rodapé do Materno NÃO vira plantão de lá — Rômulo fica sem selo', async () => {
-    montar()
-    await screen.findByText(/Plantão da manhã \(Materno\)/, {}, { timeout: 4000 })
-    expect(screen.getAllByText(/Plantão da manhã \(Materno\)/)).toHaveLength(1)
+    await screen.findByText(/Plantão da tarde \(Materno\)/, {}, { timeout: 4000 })
+    expect(screen.getAllByText(/Plantão da tarde \(Materno\)/)).toHaveLength(1)
+    expect(cardDe('Janaína')?.textContent).toContain('Plantão da tarde (Materno)')
+    // o último (e único) nome do rodapé do Materno NÃO vira plantão de lá (20/10)
     expect(cardDe('Rômulo')?.textContent || '').not.toContain('(Materno)')
   })
 
-  it('o 1º do Materno na manhã SEGUINTE (Klisman, 22/10) não leva selo na tarde de hoje (dono 21/10)', async () => {
-    montar()
-    await screen.findByText(/Plantão da manhã \(Materno\)/, {}, { timeout: 4000 })
+  it('tarde: ninguém leva selo de plantão do Materno — nem o 1º da manhã (Gustavo), nem o da manhã seguinte (Klisman)', async () => {
+    await montar('vespertino')
+    // espera a numérica chegar: o mesmo módulo que a página importa, já em cache depois disto
+    await import('@/data/escalaNumerica.json')
+    await act(async () => { await new Promise((r) => setTimeout(r, 50)) })
+    expect(screen.queryByText(/\(Materno\)/)).toBeNull()
+    expect(cardDe('Gustavo')?.textContent || '').not.toContain('Plantão')
     expect(cardDe('Klisman')?.textContent || '').not.toContain('(Materno)')
-    expect(cardDe('Gustavo')?.textContent).toContain('Plantão da manhã (Materno)')
   })
 })

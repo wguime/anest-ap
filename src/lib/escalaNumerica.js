@@ -423,7 +423,7 @@ export function formatarOrdem(r) {
  *
  * O contraturno é SEMPRE do MESMO DIA (dono 21/10: "hoje é 21.10, a escala de hoje à tarde não
  * corresponde ao dia 22"): de manhã, "Plantão da tarde (Materno)" = 1º azul da tarde de hoje; à
- * tarde, "Plantão da manhã (Materno)" = 1º azul da manhã de hoje. A versão de 20/10 levava a
+ * tarde, "Plantão da manhã (Materno)" = 1º azul da manhã de hoje [revogado 29/10: à tarde não há selo]. A versão de 20/10 levava a
  * tarde para a manhã do dia SEGUINTE — na tarde de 21/10 o Klisman (1º do Materno na manhã de
  * 22/10) saiu com o selo na fila do HRO. Feriado ou fora da vigência devolvem [] — sem
  * numérica, sem selo.
@@ -431,9 +431,12 @@ export function formatarOrdem(r) {
  */
 export function plantaoMaternoContraturno(dados, { data, turno } = {}) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(data || ''))) return []
-  const OUTRO_TURNO = { matutino: 'vespertino', vespertino: 'matutino' }
-  if (!OUTRO_TURNO[turno]) return []
-  const r = ordemBase(dados, { data, turno: OUTRO_TURNO[turno], hospital: 'materno' })
+  // SÓ DE MANHÃ (dono 29/10, card do Tiago no IOSC: "Tiago não é o plantão da tarde no materno,
+  // o plantão da tarde é Eduardo"). À tarde, a regra de 21/10 rotulava o 1º da MANHÃ de hoje —
+  // um plantão que já terminou — e o 2º do Materno da tarde, em ajuda no HRO, saiu como
+  // "Plantão da manhã (Materno)". A manhã seguinte também não vale (21/10). À tarde: sem selo.
+  if (turno !== 'matutino') return []
+  const r = ordemBase(dados, { data, turno: 'vespertino', hospital: 'materno' })
   return r.ok && r.posicoes[0] ? r.posicoes[0].nomes : []
 }
 

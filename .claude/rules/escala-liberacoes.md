@@ -1025,12 +1025,16 @@ Unimed, tarde de 20/10: o Rômulo levou "Plantão da manhã (Materno)" porque o 
 [ROMULO] e `contraturnoOutros` (`EscalaCirurgicaPage`) fazia do último nome de cada rodapé o plantão do contraturno
 de lá. *"use apenas o badge de plantão quando estiver informado na escala numérica"*.
 - Para o Materno, `contraturnoOutros` usa `plantaoMaternoContraturno` (`src/lib/escalaNumerica.js`): o 1º nome azul
-  do OUTRO TURNO DO MESMO DIA (manhã → tarde de hoje; tarde → manhã de hoje). Feriado ou fora da vigência → sem
+  do OUTRO TURNO DO MESMO DIA, só de manhã (manhã → tarde de hoje; tarde → sem selo, 29/10). Feriado ou fora da vigência → sem
   selo. HRO/Unimed seguem posicionais (último do rodapé, 29/07).
 - ⚠️ **NUNCA o dia seguinte (dono 21/10, 2ª vez do mesmo selo):** a versão de 20/10 levava a tarde para a manhã de
   AMANHÃ e, na tarde de 21/10, o Klisman (1º do Materno na manhã de 22/10) saiu com "Plantão da manhã (Materno)" no
   HRO. *"hoje é 21.10, a escala de hoje à tarde não corresponde ao dia 22"*. O teste de 20/10 passou porque o
   Gustavo era o 1º das duas manhãs que importavam; a trava agora usa a tarde de 21/10 com o Klisman na fila.
+- ⚠️ **À TARDE NÃO HÁ SELO (dono 29/10, 3ª vez do mesmo selo):** "tarde → manhã de hoje" marcava um plantão que já
+  terminou. Na tarde de 29/10 o Tiago (1º da manhã, 2º da tarde em ajuda no IOSC) saiu como "Plantão da manhã
+  (Materno)": *"Tiago não é o plantão da tarde no materno, o plantão da tarde é Eduardo"*. `plantaoMaternoContraturno`
+  devolve `[]` fora do `matutino`; de manhã segue o 1º azul da tarde do mesmo dia.
 - O JSON da numérica (~220 KB) entra por `import()` dinâmico na página: até chegar, o Materno fica sem selo. Não
   trocar por import estático, porque a escala é a página que abre mais rápido (15/10).
 - A entrada traz `legenda` e a view casa por `casarNomeComLegenda` ("MELO" × "Guilherme Melo"), não por igualdade
