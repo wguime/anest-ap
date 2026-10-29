@@ -3,6 +3,16 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.85 (28/10/2026) — Selo de ajuda com o lugar: "Ajuda (HRO)"
+
+*"Agora está: No HRO e quero que volte a ficar: Ajuda (HRO)"* e *"quero que fique: Ajuda (HRO), Ajuda (Unimed), Ajuda
+(Materno), Ajuda (Consultório)…"* (dono).
+- Um selo de ajuda só, azul sólido, com o lugar entre parênteses: o hospital de DESTINO de quem está emprestado, o de
+  ORIGEM de quem veio ajudar aqui (inclusive a ajuda marcada em azul na publicação), "Consultório" para a ajuda do
+  consultório; sem lugar conhecido, "Ajuda". A linha de baixo do emprestado fica com a sala e os cirurgiões.
+- Saem os rótulos da v5.12.76 ("No HRO"/"Na Unimed", "Consultório (ajuda)", "Ajuda fora"). Posição fixa no painel,
+  setas só entre as ajudas e "Restaurar" com confirmação continuam. A posição na fila não muda.
+
 ## v5.12.84 (28/10/2026) — "Seu preenchimento" com a mesma conta do aviso
 
 *"verifique os dados [...] eventualmente aparece que tenho 100% de cirurgias marcadas mas falta 1?"* (dono).

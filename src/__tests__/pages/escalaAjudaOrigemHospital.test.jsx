@@ -18,7 +18,7 @@
  * o que quebrou foi o fio entre as duas, e é o fio que precisa de teste.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, within } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 
 import { ThemeProvider, ToastProvider } from '@/design-system'
 
@@ -210,13 +210,11 @@ describe('quem está de ajuda em outro hospital, na escala DELE', () => {
     expect(card.textContent).not.toMatch(/Liberado/)
   })
 
-  it('ganha o selo do destino e o card diz local e cirurgião', () => {
-    // ⚠️ MUDOU DE LADO (dono 27/10): quem ocupa posição daqui e está emprestado não sai
-    // antes, então o selo é o do destino ("No HRO") e a linha de baixo fica
-    // com a sala. O sólido "Ajuda" ficou para quem sai antes (blocos do fim).
+  it('ganha o badge de Ajuda e o card diz local, hospital e cirurgião', () => {
     montar({ unimed: UNIMED_SEM_OSCAR, hro: HRO_COM_OSCAR })
     const card = screen.getByLabelText('Editar local/cirurgião de Oscar').closest('[data-linha]')
-    expect(within(card).getByText('No HRO')).toBeTruthy()
+    // desde 29/10 o hospital vai no selo "Ajuda (HRO)" e a linha fica com a sala
+    expect(card.textContent).toMatch(/Ajuda \(HRO\)/)
     expect(card.textContent).toMatch(/IOSC/)
     expect(card.textContent).toMatch(/Maurício Fabiani/)
   })
@@ -302,10 +300,10 @@ describe('ordem informada da ajuda vence a derivada (dono 09/09)', () => {
     expect(screen.queryByLabelText('Descer Alexandre D na ordem das ajudas')).toBeNull()
   })
 
-  it('a marca mexe na ORDEM, não no card: o badge segue sendo o mesmo "Ajuda"', () => {
+  it('a marca mexe na ORDEM, não no card: segue UM selo de ajuda, com o lugar dentro', () => {
+    // MUDOU DE LADO (dono 29/10): a ajuda declarada também leva "Ajuda (HRO)" — sem duplicar
     montar({ unimed: comMarca, hro: HRO_MANHA })
     const card = screen.getByLabelText('Editar local/cirurgião de Alexandre D').closest('[data-linha]')
-    expect(card.textContent).toMatch(/Ajuda/)
-    expect(card.textContent).not.toMatch(/Ajuda \(HRO\)/) // ajuda declarada não duplica o rótulo
+    expect(card.textContent.match(/Ajuda \(HRO\)/g)).toHaveLength(1)
   })
 })

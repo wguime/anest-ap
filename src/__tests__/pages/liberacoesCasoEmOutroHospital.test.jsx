@@ -84,18 +84,16 @@ describe('na escala dele: fica na fila, marcado como ajuda, com o destino no car
     expect(selosDe('Oscar Morais')).toContain('Liberado')
   })
 
-  it('com a cirurgia do HRO, ele continua na fila e recebe o selo do destino', () => {
-    // ⚠️ MUDOU DE LADO (dono 27/10): quem ocupa posição daqui e está emprestado não sai
-    // antes, então o selo é o do destino ("No HRO") e a linha de baixo fica
-    // com a sala. O sólido "Ajuda" ficou para quem sai antes (blocos do fim).
+  it('com a cirurgia do HRO, ele continua na fila e recebe o badge de Ajuda', () => {
     montar({ presencaOutros: noHro })
     expect(selosDe('Oscar Morais')).not.toContain('Liberado')
-    expect(selosDe('Oscar Morais')).toContain('No HRO')
+    expect(selosDe('Oscar Morais')).toContain('Ajuda (HRO)')
   })
 
   it('o card diz ONDE ele está: local, hospital e cirurgião', () => {
     montar({ presencaOutros: noHro })
-    expect(cardDe('Oscar Morais').textContent).toMatch(/No HRO/)
+    // desde 29/10 o hospital vai no selo "Ajuda (HRO)" e a linha fica com a sala
+    expect(cardDe('Oscar Morais').textContent).toMatch(/Ajuda \(HRO\)/)
     expect(cardDe('Oscar Morais').textContent).toMatch(/IOSC/)
     expect(cardDe('Oscar Morais').textContent).toMatch(/Maurício Fabiani/)
   })
@@ -105,7 +103,7 @@ describe('na escala dele: fica na fila, marcado como ajuda, com o destino no car
     // escalas com cirurgia nas duas é trabalho nas duas, não empréstimo. Quem
     // monta `presencaOutros` já não inclui essa pessoa — aqui a lista vem vazia.
     montar({ presencaOutros: [] })
-    expect(selosDe('Oscar Morais')).not.toContain('Ajuda')
+    expect(selosDe('Oscar Morais').some((s) => s.startsWith('Ajuda'))).toBe(false)
   })
 })
 
@@ -235,8 +233,7 @@ describe('ajuda DECLARADA em outro hospital, sem caso lá (caso Eduardo)', () =>
         onToggle={() => {}} onSetOverride={() => {}} />,
       { wrapper: wrap },
     )
-    // desde 27/10: selo com o destino (não sai antes, mantém a posição)
-    expect(selosDe('Eduardo')).toContain('No Materno')
+    expect(selosDe('Eduardo')).toContain('Ajuda (Materno)')
     // e ele NÃO muda de posição: segue no lugar do rodapé daqui
     const fila = [...document.querySelectorAll('[data-linha]')].map((n) => n.getAttribute('data-nome'))
     expect(fila.indexOf('Eduardo')).toBe(1)

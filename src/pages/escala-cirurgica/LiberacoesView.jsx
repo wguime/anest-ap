@@ -1147,6 +1147,18 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     return { hospital: matches[0].hospitalLabel, locais, cirurgioes }
   }
   /**
+   * Rótulo do selo de ajuda (dono 29/10: "Ajuda (HRO), Ajuda (Unimed), Ajuda (Materno),
+   * Ajuda (Consultório)"): o lugar vai DENTRO do selo — para onde foi quem está emprestado,
+   * de onde veio quem é ajuda aqui. Sem lugar conhecido, só "Ajuda".
+   */
+  const rotuloAjuda = (linha) => {
+    const fora = ajudaForaInfo(linha)
+    if (fora?.hospital) return `Ajuda (${fora.hospital})`
+    if (ajudaNoConsultorio(linha)) return 'Ajuda (Consultório)'
+    if (linha.origemLabel && !linha.noturno) return `Ajuda (${linha.origemLabel})`
+    return 'Ajuda'
+  }
+  /**
    * TROCA DECLARADA (dono 30/07): a linha é um dos lados de um par declarado?
    * Os pares vêm da page (paresTroca — varre as 3 escalas: o par atravessa
    * hospitais, caso real Giovana@HRO ⇄ Maurício@Unimed). Casa por uid E por nome
@@ -2187,20 +2199,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // na fila única ajuda nunca é automática (dono 05/09) — quem tem
           // cirurgia sem estar na ordem entra na fila, e só `ajuda_externa`
           // (marcada à mão) pinta o badge.
-          // O TEXTO DO SELO DIZ O EFEITO (dono 27/10, seção 4 de
-          // `.tmp/auditoria-liberacoes/edicao-liberacoes.html`). Quem ocupa posição daqui não
-          // sai antes por ser "ajuda": emprestado para outro hospital vira "Na Unimed", e o
-          // consultório (ajuda) vira "Consultório (ajuda)". "Ajuda" fica só para quem está nos
-          // blocos do fim (ajuda, extra, de outro hospital). A COR é a de sempre, azul sólido
-          // (dono 27/10, à tarde: "quero que as cores dos badges de ajuda permaneçam como estavam antes").
-          const posFixaCard = !noturno && posicaoFixaDe(linha) > 0
-          const badgeAjuda = !liberadoReal && ehAjudaVisivel(linha) && !posFixaCard
-          const foraCard = !liberadoReal && posFixaCard && !semAjudaManual.has(linha.chave) ? ajudaForaInfo(linha) : null
-          const consultorioCard = !liberadoReal && posFixaCard && !foraCard && !semAjudaManual.has(linha.chave) && ajudaNoConsultorio(linha)
-          // emprestado sem destino conhecido (azul publicado sem caso aqui, cruzamento
-          // não carregado): o selo diz que está fora, sem inventar onde
-          const ajudaForaCard = !liberadoReal && posFixaCard && !foraCard && !consultorioCard
-            && !semAjudaManual.has(linha.chave) && linha.isAjuda && linha.ajudaFora
+          // UM selo de ajuda, com o lugar dentro (dono 29/10): "Ajuda (HRO)", "Ajuda
+          // (Consultório)"… — `rotuloAjuda`. "No HRO"/"Na Unimed", "Consultório (ajuda)" e
+          // "Ajuda fora" (27/10) saíram; a linha de baixo do emprestado fica com a sala.
+          const badgeAjuda = !liberadoReal && ehAjudaVisivel(linha) ? rotuloAjuda(linha) : null
           const badgeTroca = trocaDe(linha)
           const badgeAssumida = linha.assumida && !badgeTroca
           // card noturno nunca é ajuda (dono 16/09, caso Matheus) — a lib já
@@ -2434,16 +2436,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       acrescentado e não consta em lista nenhuma é ajuda; com origem
                       em outro hospital o badge derivado abaixo diz de onde veio */}
                   {badgeAjuda && (
-                    <Badge variant="info" className="shrink-0">Ajuda</Badge>
-                  )}
-                  {foraCard && (
-                    <Badge variant="info" className="shrink-0">{foraCard.hospital === 'Unimed' ? 'Na' : 'No'} {foraCard.hospital}</Badge>
-                  )}
-                  {consultorioCard && (
-                    <Badge variant="info" className="shrink-0">Consultório (ajuda)</Badge>
-                  )}
-                  {ajudaForaCard && (
-                    <Badge variant="info" className="shrink-0">Ajuda fora</Badge>
+                    <Badge variant="info" className="shrink-0">{badgeAjuda}</Badge>
                   )}
                   {/* A troca pertence ao SLOT original. Depois da execução, a
                       linha passa a exibir quem assumiu, mas o badge continua
@@ -2648,8 +2641,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       const fora = ajudaForaInfo(linha)
                       return (
                         <div className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
-                          {/* declarada sem caso lá: só o destino ("Ajuda no Materno") */}
-                          {/* o selo "Na X" já diz o hospital: a linha fica com a sala */}
+                          {/* declarada sem caso lá: o selo "Ajuda (Materno)" diz tudo */}
+                          {/* o selo "Ajuda (HRO)" já diz o hospital: a linha fica com a sala */}
                           {fora.locais && <p className="truncate">{fora.locais}</p>}
                           {fora.cirurgioes.map((c) => <p key={c} className="truncate">{c}</p>)}
                         </div>
@@ -3010,7 +3003,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             <SheetTitle className="flex flex-wrap items-center gap-2 text-[17px]">
               {editor?.anestesista}
               {editor?.isPlantonista && <Badge variant="secondary">Plantonista</Badge>}
-              {editor?.isAjuda && !posicaoFixaDe(editor) && <Badge variant="info">Ajuda</Badge>}
+              {editor?.isAjuda && <Badge variant="info">{rotuloAjuda(editor)}</Badge>}
               {editor?.isProximoPlantao && (
                 <Badge className="border-transparent bg-primary text-primary-foreground">{editor.plantaoLabel}</Badge>
               )}
@@ -3066,9 +3059,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 const seloSuprimido = semAjudaManual.has(editor.chave)
                 const fora = !seloSuprimido ? ajudaForaInfo(editor) : null
                 const seloInfo = seloSuprimido ? null
-                  : fora ? `${fora.hospital === 'Unimed' ? 'Na' : 'No'} ${fora.hospital}`
-                    : ajudaNoConsultorio(editor) ? 'Consultório (ajuda)'
-                      : editor.isAjuda && editor.ajudaFora ? 'Ajuda fora' : null
+                  : fora || ajudaNoConsultorio(editor) || (editor.isAjuda && editor.ajudaFora) ? rotuloAjuda(editor) : null
                 return (<>
                   <div data-posicao-fixa className="flex min-h-[48px] items-center gap-2 text-[14.5px] font-semibold">
                     <Lock className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />

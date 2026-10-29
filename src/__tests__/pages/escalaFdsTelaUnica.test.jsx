@@ -1028,10 +1028,9 @@ describe('fila única — ajuda nunca é automática: só a marcada à mão', ()
     }
     render(<LiberacoesView escala={escala} hospital="unimed" hospitalLabel="Unimed" canEdit turno="matutino" onToggle={vi.fn()} presencaOutros={PRESENCA_HRO} />, { wrapper: wrap })
     await screen.findByText(/Gabriel/)
-    // desde 27/10 o emprestado (Gabriel, na ordem daqui) leva o selo do
-    // destino, e o extra (Marilia) o sólido "Ajuda" — os dois continuam marcados
-    expect(screen.getAllByText('Ajuda').length).toBe(1)
-    expect(screen.getByText('No HRO')).toBeTruthy()
+    // desde 29/10 o lugar vai dentro do selo: o emprestado (Gabriel) é "Ajuda (HRO)"
+    expect(screen.getAllByText(/^Ajuda( \(.+\))?$/).length).toBe(2)
+    expect(screen.getByText('Ajuda (HRO)')).toBeTruthy()
   })
 })
 

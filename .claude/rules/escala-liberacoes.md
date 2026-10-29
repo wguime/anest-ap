@@ -1109,10 +1109,13 @@ modelos em `.tmp/auditoria-liberacoes/edicao-liberacoes.html`; o dono escolheu o
   ASSUMIU) vê "Posição na fila · Nº do HRO · fixa" no topo do Editar, e o interruptor de ajuda some — ele fazia quatro
   coisas conforme o estado. Exceção: azul publicado COM cirurgia aqui (caso TIAGO) é ajuda de verdade e segue com o
   controle. O selo informativo continua desfazível ("Tirar o selo", mesma declaração `semAjuda` de 14/09).
-- **Selos:** o TEXTO diz o efeito — "Ajuda"/"Ajuda (HRO)" = sai antes (blocos do fim); "No HRO"/"Na Unimed"
-  (emprestado, com a sala na linha de baixo), "Consultório (ajuda)" e "Ajuda fora" (azul sem destino conhecido) só
-  informam. A COR é a de sempre, azul sólido (`variant="info"`): o contornado do modelo saiu no mesmo dia, à tarde
-  (dono: "quero que as cores dos badges de ajuda permaneçam como estavam antes"). Não reintroduzir sem pedido.
+- **Selos — UM selo de ajuda, com o lugar dentro (dono 29/10):** *"Ajuda (HRO), Ajuda (Unimed), Ajuda (Materno),
+  Ajuda (Consultório)…"*. `rotuloAjuda` (view) decide: emprestado → o hospital de DESTINO; consultório (ajuda) →
+  "Consultório"; ajuda daqui que veio de outro hospital (`origemLabel`, inclusive a marcada em azul) → a ORIGEM; sem
+  lugar conhecido → "Ajuda". A linha de baixo do emprestado fica com a sala (o hospital já está no selo). Saíram os
+  rótulos de 27/10 ("No HRO"/"Na Unimed", "Consultório (ajuda)", "Ajuda fora") e o "Ajuda" simples da ajuda marcada
+  com origem. Cor: azul sólido `variant="info"` (o contornado de 27/10 saiu no mesmo dia). O "Tirar o selo" do painel
+  usa o mesmo rótulo. Posição fixa, setas e "Restaurar" de 27/10 ficaram. Não mexer no texto nem na cor sem pedido.
 - **Setas ↑↓ só entre as ajudas** (revoga 09/09): aparecem só no bloco `ajuda`, trocam com o vizinho desse bloco, e
   `reordenarAjuda` não liga mais `ordemInformada` (a marca que veio da publicação é preservada).
 - **"Restaurar o automático"** virou link discreto com confirmação (antes, botão do mesmo peso do Salvar).

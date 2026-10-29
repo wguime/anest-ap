@@ -489,10 +489,7 @@ describe('Contraturno — guard e badge cruzado', () => {
     })
     const card = document.querySelector('[data-linha="uid-kar"]')
     expect(within(card).getByText('Plantão da tarde')).toBeTruthy()
-    // ⚠️ MUDOU DE LADO (dono 27/10): azul sem cirurgia aqui está FORA e mantém a
-    // posição — o selo "Ajuda fora" informa sem dizer "sai antes"
-    expect(within(card).getByText('Ajuda fora')).toBeTruthy()
-    expect(within(card).queryByText('Ajuda')).toBeNull()
+    expect(within(card).getByText('Ajuda')).toBeTruthy()
   })
 
   it('quem pega o contraturno em OUTRO hospital vem com o hospital no badge', () => {
@@ -642,14 +639,16 @@ describe('Ajuda derivada de outro hospital (caso TIAGO)', () => {
     expect(within(card).queryByText(/Ajuda \(/)).toBeNull()
   })
 
-  it('ajuda MARCADA em ajuda_externa segue com o badge simples, sem duplicar', () => {
+  it('ajuda MARCADA em ajuda_externa leva o lugar no selo, sem duplicar', () => {
+    // MUDOU DE LADO (dono 29/10): "Ajuda (HRO), Ajuda (Unimed)…" — o lugar vai dentro
+    // do selo também para a ajuda marcada; segue UM selo só
     montar(
       { presencaOutros: presenca },
       { ...comExtra, ajudaExterna: { matutino: ['TIAGO'] } },
     )
     const card = document.querySelector('[data-linha="uid-tiago"]')
-    expect(within(card).getByText('Ajuda')).toBeTruthy()
-    expect(within(card).queryByText('Ajuda (HRO)')).toBeNull()
+    expect(within(card).getAllByText('Ajuda (HRO)')).toHaveLength(1)
+    expect(within(card).queryByText('Ajuda')).toBeNull()
   })
 
   it('sem presença em NENHUMA lista, o extra ganha o badge Ajuda simples (dono 19/08)', () => {
@@ -681,21 +680,18 @@ describe('Emprestado mantém posição na origem (caso TIAGO)', () => {
   }
   const presenca = [{ nome: 'TIAGO', uid: 'uid-tiago-x', hospitalLabel: 'Unimed', sala: 'Hemodinâmica' }]
 
-  // ⚠️ MUDOU DE LADO (dono 27/10, modelo A de `.tmp/auditoria-liberacoes/edicao-liberacoes.html`):
-  // o "Ajuda" sólido diz "sai antes"; quem ocupa posição daqui e está EMPRESTADO não sai
-  // antes, então ganha o selo "Na Unimed" (o destino), e a linha de baixo
-  // fica só com a sala. O texto diz o efeito; a cor é o azul de sempre.
-  it('fica na posição do rodapé com o selo do destino e a sala no card', () => {
+  // ⚠️ MUDOU (dono 29/10): o selo "Na Unimed" de 27/10 virou "Ajuda (Unimed)" — o lugar
+  // dentro do selo de ajuda — e a linha de baixo fica com a sala
+  it('fica na posição do rodapé com o selo "Ajuda (Unimed)" e a sala no card', () => {
     montar({ presencaOutros: presenca }, escalaOrigem)
     const chaves = [...document.querySelectorAll('[data-linha]')].map((el) => el.getAttribute('data-linha'))
     // Tiago na 2ª posição do rodapé — NÃO desceu para o bloco de ajuda
     expect(chaves[1]).toBe('TIAGO')
     const card = document.querySelector('[data-linha="TIAGO"]')
-    expect(within(card).getByText('Na Unimed')).toBeTruthy()
-    // a cor é a de sempre (dono 27/10, à tarde): azul sólido, não o contornado do modelo
-    expect(within(card).getByText('Na Unimed').getAttribute('data-variant')).toBe('info')
-    expect(within(card).queryByText('Ajuda')).toBeNull()
+    expect(within(card).getByText('Ajuda (Unimed)')).toBeTruthy()
+    expect(within(card).getByText('Ajuda (Unimed)').getAttribute('data-variant')).toBe('info')
     expect(within(card).getByText('Hemodinâmica')).toBeTruthy()
+    expect(within(card).queryByText(/^N[ao] Unimed$/)).toBeNull()
     // sem setas: a posição é a do rodapé
     expect(within(card).queryByLabelText(/na ordem das ajudas/)).toBeNull()
   })
@@ -716,8 +712,8 @@ describe('Emprestado mantém posição na origem (caso TIAGO)', () => {
     expect(bloco.className).toMatch(/text-muted-foreground/)
     expect(bloco.className).not.toMatch(/text-info/)
     for (const p of bloco.querySelectorAll('p')) expect(p.className).not.toMatch(/text-info/)
-    // o sinal continua existindo, no selo "Na Unimed" (desde 27/10)
-    expect(within(card).getByText('Na Unimed')).toBeTruthy()
+    // o sinal continua existindo, no badge
+    expect(within(card).getByText('Ajuda (Unimed)')).toBeTruthy()
   })
 
   /**
@@ -739,7 +735,7 @@ describe('Emprestado mantém posição na origem (caso TIAGO)', () => {
     const destino = within(card).getByText('CC - Sala 2')
     const bloco = destino.closest('div')
     // sala + um <p> por cirurgião — nenhum nome dividindo linha com outro (o hospital
-    // está no selo "Na Unimed" desde 27/10)
+    // está no selo "Ajuda (Unimed)")
     expect([...bloco.querySelectorAll('p')].map((p) => p.textContent)).toEqual(
       ['CC - Sala 2', 'Mateus Baptistella', 'Maurício Spagnol']
     )
@@ -750,8 +746,7 @@ describe('Emprestado mantém posição na origem (caso TIAGO)', () => {
   it('sem o cruzamento carregado, o azul volta ao comportamento clássico (fim)', () => {
     montar({}, escalaOrigem)
     const card = document.querySelector('[data-linha="TIAGO"]')
-    // sem destino conhecido o selo diz só que está fora (desde 27/10)
-    expect(within(card).getByText('Ajuda fora')).toBeTruthy()
+    expect(within(card).getByText('Ajuda')).toBeTruthy()
     expect(within(card).queryByText(/Ajuda .+\//)).toBeNull()
   })
 })
@@ -946,14 +941,14 @@ describe('badge de Ajuda derivado tem "não é ajuda", e desfazer é uma declara
   const emprestado = [{ nome: 'LEONARDO', hospitalLabel: 'Unimed', sala: 'CC - Sala 1' }]
 
   // ⚠️ MUDOU DE LADO (dono 27/10, modelo A): quem ocupa posição daqui não tem mais o
-  // interruptor de ajuda — o selo do emprestado virou informativo ("Na Unimed"). O que
+  // interruptor de ajuda — o selo do emprestado se desfaz pelo "Tirar o selo". O que
   // 14/09 garantia continua: o selo deduzido tem saída, e ela é a mesma declaração.
   it('emprestado: "Tirar o selo" grava semAjuda — nunca adiciona ao array', async () => {
     const onAddAjuda = vi.fn(async () => {})
     const onDefinirSemAjuda = vi.fn(async () => {})
     montar({ onAddAjuda, onDefinirSemAjuda, presencaOutros: emprestado })
     abrirEditor('Leonardo Ferrazzo')
-    fireEvent.click(screen.getByRole('button', { name: 'Tirar o selo "Na Unimed" (não muda a posição)' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Tirar o selo "Ajuda (Unimed)" (não muda a posição)' }))
     await waitFor(() => expect(onDefinirSemAjuda).toHaveBeenCalledTimes(1))
     expect(onDefinirSemAjuda.mock.calls[0][0]).toMatchObject({ chave: 'uid-leo' })
     expect(onDefinirSemAjuda.mock.calls[0][1]).toBe(true)
