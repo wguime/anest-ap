@@ -16,6 +16,8 @@
  *    uma que está aberta pede só o início; com o início marcado e ainda aberta, só o término;
  *    o resto, os dois lado a lado. Em dia passado os dois nascem vazios e o término não passa
  *    da hora em que a cirurgia foi marcada Terminada.
+ *  - Na folha, a linha do anestesista com "Trocar" (dono 29/10): quem recebeu uma cirurgia que
+ *    não fez a passa a quem fez (a folha "Quem responde por esta cirurgia?", modo correção).
  *
  * POP-UP NA ENTRADA (dono 28/10/2026, `.tmp/popup-horarios/`): "sempre que o usuário tiver
  * débitos, não importa a data [...] o pop-up deve aparecer todas as vezes enquanto o usuário
@@ -35,10 +37,11 @@
  * pendência: preencher a última com o detalhe aberto não pode fechá-lo debaixo do dedo.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronRight, ChevronsRight, ClockAlert, X } from 'lucide-react'
+import { ChevronRight, ChevronsRight, ClockAlert, UserCog, X } from 'lucide-react'
 import { Button, Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, useToast } from '@/design-system'
 import { HOSPITAL_LABEL, useEscalaCirurgica } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
+import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { fraseClinica } from '@/lib/colunaLiberacao'
 import { casoAberto, rotuloDiaRelatorio } from '@/lib/escalaHorarioPendente'
 import { nomeCurtoProcedimento } from '@/lib/escalaProcedimentoCurto'
@@ -48,7 +51,7 @@ import CasoDetalheSheet from './CasoDetalheSheet'
 import DefinirAnestesistaSheet from './DefinirAnestesistaSheet'
 import SeloHorarioPendente from './SeloHorarioPendente'
 import { ID_MINHAS_PENDENCIAS } from './MeuPreenchimento'
-import { fraseTurnoEncerrado, salaExibicao, turnoJaEncerrou } from './utils'
+import { fraseTurnoEncerrado, nomeAnestesistaExibicao, salaExibicao, turnoJaEncerrou } from './utils'
 
 const ROTULO_TURNO = { matutino: 'Manhã', vespertino: 'Tarde' }
 const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`
@@ -126,6 +129,39 @@ function ListaPorDia({ itens, hoje, onAbrir, max = Infinity, atual = null, refAt
       ))}
     </section>
   ))
+}
+
+/**
+ * QUEM ESTÁ NA CIRURGIA, com "Trocar" (dono 29/10, modelo B de `.tmp/popup-horarios/trocar-responsavel.html`):
+ * "adicionar a possibilidade de trocar o responsável pelo procedimento. Ao clicar para adicionar o
+ * horário deve conter essa possibilidade." É a linha "Anestesista · Trocar" do detalhe, logo abaixo
+ * do subtítulo da folha: quem recebeu uma cirurgia que não fez a passa a quem fez em vez de ser
+ * cobrado por ela a cada entrada. O roster vem do cache (`inerte`): abrir a folha não vai ao banco.
+ */
+function LinhaAnestesista({ caso, podeTrocar, onTrocar }) {
+  const { rosterByUid } = useRosterAnestesistas({ inerte: true })
+  const nome = nomeAnestesistaExibicao({ uid: caso.anestesistaUserId, alias: caso.anestesista, rosterByUid })
+  return (
+    <div className="mb-2 flex min-h-[48px] items-center gap-2.5 border-b border-border py-1">
+      <span className="flex shrink-0 items-center gap-1.5 text-[12.5px] text-muted-foreground">
+        <UserCog className="h-3.5 w-3.5" aria-hidden="true" />
+        Anestesista
+      </span>
+      {/* nome de pessoa não abrevia: a linha quebra */}
+      <span className="min-w-0 text-[15px] font-bold [overflow-wrap:anywhere]">{nome || '—'}</span>
+      {podeTrocar && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="ml-auto h-11 min-h-[44px] shrink-0 px-4"
+          aria-label="Trocar anestesista"
+          onClick={onTrocar}
+        >
+          Trocar
+        </Button>
+      )}
+    </div>
+  )
 }
 
 /**
@@ -230,6 +266,8 @@ export default function FaixaHorarioPendente({ minhas = null, anteriores = null,
   const [folha, setFolha] = useState(null) // o item cujo horário se informa
   const [detalhe, setDetalhe] = useState(null) // { hospital, caso, turno } — "Ver a cirurgia"
   const [definir, setDefinir] = useState(null) // "Trocar" no detalhe de um turno encerrado
+  const [trocar, setTrocar] = useState(null) // "Trocar" na folha do horário (29/10): o item da folha
+  const trocou = useRef(false) // confirmada a troca, a folha do horário não volta
   // a última do pop-up foi resolvida AQUI: ao esvaziar, ele some com "Horários em dia"
   const resolveuNoPopup = useRef(false)
 
@@ -270,6 +308,7 @@ export default function FaixaHorarioPendente({ minhas = null, anteriores = null,
     // só o início: "Falta início" de uma cirurgia de hoje ainda aberta (pode estar correndo)
     if (deHoje && escala && aberta && !vivo.inicioReal && folha.falta === 'ini') {
       return {
+        caso: vivo,
         titulo: `Início · ${titulo}`,
         nota: <>{onde}. Confirme o horário em que a cirurgia começou.</>,
         corpo: (
@@ -285,6 +324,7 @@ export default function FaixaHorarioPendente({ minhas = null, anteriores = null,
     // só o término: hoje, com o início marcado e ainda aberta (o "agora" vale)
     if (deHoje && escala && aberta && vivo.inicioReal) {
       return {
+        caso: vivo,
         titulo: `Término · ${titulo}`,
         nota: <>{onde}. Confirme o horário em que a cirurgia terminou.</>,
         corpo: (
@@ -300,6 +340,7 @@ export default function FaixaHorarioPendente({ minhas = null, anteriores = null,
     }
     // os dois, lado a lado (dono 27/10, 7ª rodada)
     return {
+      caso: vivo,
       titulo: `Início e término · ${titulo}`,
       nota: <>{onde}{limite ? <> · <b className="font-semibold text-foreground">terminou antes de {limite}</b></> : null}</>,
       corpo: (
@@ -340,6 +381,29 @@ export default function FaixaHorarioPendente({ minhas = null, anteriores = null,
   }
   // a cirurgia de HOJE de um turno que já acabou abre no modo "só horário e quem fez" (28/10)
   const encerradoDe = (turno) => (turnoJaEncerrou({ turno, emCurso: turnoEmCurso, ehHoje: true }) ? fraseTurnoEncerrado(turno) : null)
+
+  // "Trocar" na folha do horário (29/10): a folha dá lugar à de troca — empilhar as duas deixaria
+  // a do horário clara e tocável por cima do fundo escuro da outra. Cancelada, ela volta.
+  const abrirTroca = () => { const f = folha; trocou.current = false; setFolha(null); setTrocar(f) }
+  const propsDaTroca = () => {
+    if (!trocar) return null
+    const deHoje = !trocar.data
+    const escalaDeHoje = deHoje ? escalas?.[trocar.hospital] : null
+    if (deHoje && !escalaDeHoje) return null
+    const vivo = (escalaDeHoje?.casos || []).find((c) => c.id === trocar.caso.id) || trocar.caso
+    return {
+      // de dia anterior a escala não está carregada: só o que a folha de troca lê, e grava pelo id
+      escala: escalaDeHoje || { id: vivo.escalaId || null, data: trocar.data, hospital: trocar.hospital, casos: [vivo] },
+      sala: vivo.sala,
+      casosAlvo: [vivo],
+      turno: trocar.turno,
+      // dia anterior e turno encerrado: só o nome; turno em curso: os cuidados de sempre na fila
+      encerrado: !deHoje || !!encerradoDe(trocar.turno),
+      dia: deHoje ? null : rotuloDia(trocar.data, hoje),
+      gravar: deHoje ? null : (_ids, payload, opcoes) => anteriores?.trocarResponsavel(trocar, payload, opcoes),
+    }
+  }
+  const troca = propsDaTroca()
 
   return (
     <>
@@ -430,6 +494,7 @@ export default function FaixaHorarioPendente({ minhas = null, anteriores = null,
               <SheetDescription className="mt-1 text-[12.5px] leading-snug">{conteudo.nota}</SheetDescription>
             </SheetHeader>
             <div className="px-4 pb-5 pt-1">
+              <LinhaAnestesista caso={conteudo.caso} podeTrocar={podeEditar} onTrocar={abrirTroca} />
               {conteudo.corpo}
               <div className="mt-1 flex flex-wrap items-center justify-center gap-x-5">
                 {!folha.data && escalas?.[folha.hospital] && (
@@ -485,6 +550,20 @@ export default function FaixaHorarioPendente({ minhas = null, anteriores = null,
           turno={definir.turno}
           encerrado
           onClose={() => setDefinir(null)}
+        />
+      )}
+
+      {troca && (
+        <DefinirAnestesistaSheet
+          {...troca}
+          corrigirQuemFez
+          onConfirmado={() => { trocou.current = true }}
+          onClose={() => {
+            const item = trocar
+            setTrocar(null)
+            // "Cancelar" (ou fechar) volta à folha do horário; confirmada, a cirurgia já saiu da lista
+            if (!trocou.current) setFolha(item)
+          }}
         />
       )}
     </>

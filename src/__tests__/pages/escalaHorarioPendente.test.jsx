@@ -219,7 +219,7 @@ describe('o toque abre direto a folha do horário', () => {
     montar()
     fireEvent.click(within(caixa()).getByRole('button', { name: /^Informar o horário/ }))
     expect(screen.getByText(/^Início · 07:30/)).toBeTruthy()
-    expect(screen.queryByText('Confirmar os dois')).toBeNull()
+    expect(screen.queryByText('Confirmar horários')).toBeNull()
   })
 
   it('terminada sem início pede os dois, lado a lado, e grava pelo caminho de sempre', () => {
@@ -229,7 +229,7 @@ describe('o toque abre direto a folha do horário', () => {
     fireEvent.click(within(caixa()).getByRole('button', { name: /^Informar o horário/ }))
     expect(screen.getByText(/^Início e término · 07:30/)).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Horário de início'), { target: { value: '0735' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar os dois' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar horários' }))
     expect(atualizarCaso).toHaveBeenCalledWith(expect.objectContaining({ hospital: 'unimed' }), 'c1',
       { terminoReal: '09:10', inicioReal: '07:35' }, { silencioso: true })
   })
@@ -246,7 +246,7 @@ describe('o toque abre direto a folha do horário', () => {
     expect(screen.queryByText('Ver a cirurgia')).toBeNull()
     fireEvent.change(screen.getByLabelText('Horário de início'), { target: { value: '0730' } })
     fireEvent.change(screen.getByLabelText('Horário de término'), { target: { value: '0915' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar os dois' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar horários' }))
     expect(ant.informar).toHaveBeenCalledWith(ant.itens[0], { inicio: '07:30', termino: '09:15' })
   })
 

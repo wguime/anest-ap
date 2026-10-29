@@ -46,8 +46,21 @@ const TURNO_LABEL = { matutino: 'Matutino', vespertino: 'Vespertino' }
  *   então nada aqui mexe nela: sem "assumir também a posição", sem a pergunta da troca entre
  *   hospitais, sem o aviso de "fora da ordem" (é sobre chamar alguém AGORA) e sem os efeitos do
  *   repasse na fila (`semEfeitosNaFila`).
+ * @param {boolean} corrigirQuemFez  A FOLHA DO HORÁRIO (dono 29/10, modelo B de
+ *   `.tmp/popup-horarios/trocar-responsavel.html`): quem recebe na caixa ou no pop-up uma cirurgia
+ *   que não fez passa-a a quem fez. É correção, não repasse: a terminada entra (a regra de 24/07 é
+ *   do repasse), "Sem anestesista" sai da lista (a cirurgia não some da conta) e saem as decisões
+ *   de fila — assumir a posição, a troca entre hospitais e o "fora da ordem" ficam na Completa.
+ *   Os cuidados automáticos do repasse continuam valendo no turno em curso; quem os desliga é
+ *   `encerrado`.
+ * @param {Function} gravar  `(ids, payload, { rotulo }) => Promise` no lugar do context — a
+ *   cirurgia de DIA ANTERIOR, cuja escala não está carregada (grava pelo id).
+ * @param {Function} onConfirmado  avisa que a troca foi feita (a folha fecha nos dois casos).
+ * @param {string} dia  o dia da cirurgia, quando não é hoje ("Ontem · qua 28/10").
  */
-export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null, turno = null, onTrocarPosicoes = null, onClose, encerrado = false }) {
+export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null, turno = null, onTrocarPosicoes = null, onClose, encerrado = false, corrigirQuemFez = false, gravar = null, onConfirmado = null, dia = null }) {
+  // a correção de quem fez (turno encerrado ou folha do horário) alcança a terminada e não decide fila
+  const correcao = encerrado || corrigirQuemFez
   const { user } = useUser()
   const { setAnestesistaCasos, executarSubstituicao } = useEscalaCirurgicaActions()
   const { options: rosterOpcoes, rosterByUid, resolver, loading: rosterLoading } = useRosterAnestesistas()
@@ -82,21 +95,23 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
   // cirurgia aberta no detalhe — e a que ficou no nome errado quase sempre já está terminada.
   // A regra de 24/07 é sobre o REPASSE (passar a sala adiante não reescreve quem já fez); a
   // correção de uma cirurgia só, num turno que acabou, é outra coisa. Só com `casosAlvo`.
+  // Vale também para a folha do horário (29/10, `corrigirQuemFez`): ali o turno pode estar em
+  // curso, e a terminada aparecia riscada com "Nada a passar" — a pessoa ficava sem saída.
   const { alvos } = useMemo(() => {
     if (casosAlvo?.length) {
-      return { alvos: encerrado ? casosAlvo : casosAlvo.filter((c) => (c.statusCirurgia || 'agendada') !== 'terminada') }
+      return { alvos: correcao ? casosAlvo : casosAlvo.filter((c) => (c.statusCirurgia || 'agendada') !== 'terminada') }
     }
     return alvosTrocaResponsavel(casosTurno, sala)
-  }, [casosTurno, sala, casosAlvo, encerrado])
+  }, [casosTurno, sala, casosAlvo, correcao])
 
   // O QUE NÃO MUDA: cirurgia terminada mantém quem a fez. Era a parte invisível
   // da decisão — quem repassava a sala não sabia que uma das linhas ficava para
   // trás, e só descobria olhando o quadro depois.
   const naoMudam = useMemo(() => {
-    if (encerrado && casosAlvo?.length) return [] // a correção de quem fez alcança a terminada
+    if (correcao && casosAlvo?.length) return [] // a correção de quem fez alcança a terminada
     const base = casosAlvo?.length ? casosAlvo : casosTurno.filter((c) => c.sala === sala)
     return base.filter((c) => (c.statusCirurgia || 'agendada') === 'terminada')
-  }, [casosAlvo, casosTurno, sala, encerrado])
+  }, [casosAlvo, casosTurno, sala, correcao])
 
   const atual = useMemo(() => {
     const ref = casosAlvo?.[0]
@@ -129,10 +144,12 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
   // OPÇÕES: "Sem anestesista" primeiro e o resto em ORDEM ALFABÉTICA, só o nome
   // (dono 17/08). Ordenação com `localeCompare` pt-BR — sem ela, nome acentuado
   // vai parar depois do Z.
+  // Na folha do horário (29/10) não há "Sem anestesista": a cirurgia passa para quem a fez —
+  // tirar o nome apagaria a cobrança do horário em vez de levá-la a alguém.
   const opcoes = useMemo(() => [
-    { value: SEM_ANESTESISTA, label: 'Sem anestesista (?)' },
+    ...(corrigirQuemFez ? [] : [{ value: SEM_ANESTESISTA, label: 'Sem anestesista (?)' }]),
     ...[...(rosterOpcoes || [])].sort((a, b) => a.label.localeCompare(b.label, 'pt-BR')),
-  ], [rosterOpcoes])
+  ], [rosterOpcoes, corrigirQuemFez])
 
   // BUSCA no topo da folha (dono 17/08): o roster passa de 45 pessoas e rolar
   // tudo com o dedo no meio do plantão é pior que digitar duas letras. Casa por
@@ -153,6 +170,7 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
   // 31/07 (com o board na tarde, o sheet mostrava o dono da MANHÃ). Some com o
   // nome daqui e a divergência de turno volta a ser invisível.
   const contexto = [
+    dia,
     TURNO_LABEL[turno],
     HOSPITAL_LABEL?.[escala?.hospital],
     casoUnico
@@ -171,14 +189,14 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
   // `assumidaPor` no slot (a ordem_liberacao NUNCA é escrita) JUNTO da troca de
   // casos — os dois efeitos ou nenhum (executarSubstituicao compensa falha).
   const slotAnterior = useMemo(() => {
-    if (encerrado || (!atual.uid && !atual.alias)) return null
+    if (correcao || (!atual.uid && !atual.alias)) return null
     const r = atual.uid ? rosterByUid.get(atual.uid) : null
     // SÓ o turno da tela (turnos independentes, dono 13/08): posição da manhã
     // não é assumível a partir da tarde. Achar o slot do outro turno e gravar
     // lá punha o assumidaPor numa chave que o rodapé exibido não continha
     // (defeito D3, 07/08 — o cruzamento era a raiz, não só o turno da escrita)
     return localizarSlotRodape(escala, { uid: atual.uid, nome: r?.nome || atual.alias }, resolver, turno)
-  }, [escala, atual, rosterByUid, resolver, turno, encerrado])
+  }, [escala, atual, rosterByUid, resolver, turno, correcao])
   const ofereceAssumir = !!slotAnterior && !!escolhido && escolhido !== SEM_ANESTESISTA && escolhido !== atual.uid
 
   // DUPLA NA MESMA CIRURGIA (dono 11/08). Duas pessoas não cabem num uid: o
@@ -242,7 +260,7 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
    * dentro do mesmo hospital (o Humberto, no mesmo dia) não pergunta nada.
    */
   const trocaDeHospital = (() => {
-    if (encerrado || !onTrocarPosicoes || !slotAnterior || !primeiro || segundo || primeiro.uid === atual.uid) return null
+    if (correcao || !onTrocarPosicoes || !slotAnterior || !primeiro || segundo || primeiro.uid === atual.uid) return null
     const recebe = { uid: primeiro.uid, nome: primeiro.nome, apelido: primeiro.apelidos?.[0] || '' }
     if (localizarSlotRodape(escala, recebe, resolver, turno)) return null
     let la = null
@@ -288,7 +306,7 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
    * Assumir a posição é troca de lugar na fila, não chamada: fica de fora.
    */
   const avaliarQuemEntra = (pessoas) => {
-    if (encerrado || escala?.data !== hoje || assumirPosicao) return null
+    if (correcao || escala?.data !== hoje || assumirPosicao) return null
     if (!alvos.some((c) => c.tipo === 'urgencia' || c.tipo === 'emergencia')) return null
     const jaResponde = new Set([atual.uid, duplaAtual?.primeiro, duplaAtual?.segundo].filter(Boolean))
     for (const p of pessoas) {
@@ -335,6 +353,7 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
           }],
           limparTroca: [],
         }, { userId: user?.uid || user?.id || null })
+        onConfirmado?.()
         onClose?.()
       } catch { /* toast de erro já vem do context */ } finally {
         setSalvando(false)
@@ -350,8 +369,13 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
       : semAnest
         ? { uid: null, apelido: '?' }
         : { uid: r.uid, apelido: r.apelidos?.[0] || primeiroNomeUpper(r.nome) }
-    setAnestesistaCasos(escala, alvos.map((c) => c.id), payload, { rotulo, resolverUid: resolver, userId: user?.uid || user?.id || null, semEfeitosNaFila: encerrado })
-      .catch(() => { /* toast de erro já vem do context */ })
+    const ids = alvos.map((c) => c.id)
+    // de dia anterior quem grava é quem chamou (pelo id); o resto passa pelo context
+    const gravacao = gravar
+      ? gravar(ids, payload, { rotulo })
+      : setAnestesistaCasos(escala, ids, payload, { rotulo, resolverUid: resolver, userId: user?.uid || user?.id || null, semEfeitosNaFila: encerrado })
+    Promise.resolve(gravacao).catch(() => { /* o aviso de erro já vem de quem grava */ })
+    onConfirmado?.()
     onClose?.()
   }
 

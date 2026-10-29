@@ -231,8 +231,9 @@ export function ConfirmarInicioETermino({ inicio = '', termino = '', terminoAgor
                 : 'O término não pode ser antes do início.'}
       </p>
       {erro && <p role="alert" className="text-center text-xs font-medium text-destructive">{erro}</p>}
+      {/* "Confirmar horários" (dono 29/10; era "Confirmar os dois") */}
       <Button className="min-h-[48px] w-full text-[15px] font-bold" disabled={!pronto} onClick={confirmar}>
-        Confirmar os dois
+        Confirmar horários
       </Button>
     </div>
   )

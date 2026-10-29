@@ -337,7 +337,7 @@ describe('invariantes do módulo', () => {
     montar([iniciada('c1', 'Sala 6', { statusAtualizadoEm: `${HOJE}T05:00:00` })])
     fireEvent.click(screen.getByRole('button', { name: 'Terminada' }))
     expect(screen.queryByRole('button', { name: /^Confirmar término às/ })).toBeNull()
-    const confirmar = screen.getByRole('button', { name: 'Confirmar os dois' })
+    const confirmar = screen.getByRole('button', { name: 'Confirmar horários' })
     expect(confirmar.disabled).toBe(true) // o início começa vazio
     fireEvent.change(document.querySelector('[data-slot="inicio-hora"] input') || document.querySelector('[data-slot="inicio-hora"]'), { target: { value: '0510' } })
     expect(confirmar.disabled).toBe(false)

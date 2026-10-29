@@ -101,5 +101,35 @@ export default function useMinhasPendenciasAnteriores({ eu, hoje }) {
     }
   }, [toast, uid])
 
-  return { itens, recarregar, informar, naoAconteceu, gravados, pronto }
+  /**
+   * Quem fez a cirurgia de outro dia (dono 29/10, "Trocar" na folha do horário): o nome muda na
+   * cirurgia e a cobrança do horário vai junto para quem a fez. Grava pelo id, como o horário; sai
+   * da lista na hora quando a pessoa deixa de estar nela (na dupla com ela, fica) e volta se falhar.
+   */
+  const trocarResponsavel = useCallback(async (item, { uid: para = null, apelido = '', dupla = false } = {}, { rotulo = '' } = {}) => {
+    const { caso } = item
+    // o mesmo patch do service (`updateAnestesistaCasos`): dupla é texto "A + B" sem login
+    const patch = dupla
+      ? { anestesista: apelido, anestesistaUserId: null, semAnestesista: false }
+      : para
+        ? { anestesista: apelido, anestesistaUserId: para, semAnestesista: false }
+        : { anestesista: '?', anestesistaUserId: null, semAnestesista: true }
+    const sai = !anestesistaDoCasoEh({ ...caso, ...patch }, eu)
+    if (sai) tirar(caso.id, true)
+    try {
+      await svc.updateAnestesistaCasos([caso.id], { uid: para, apelido, dupla })
+      aplicarNoGuardado(uid, caso.id, patch)
+      setGravados((g) => g + 1)
+      toast({
+        variant: 'success',
+        title: dupla ? 'Dois anestesistas na cirurgia' : 'Responsável atualizado',
+        description: `${rotulo || 'Cirurgia'} → ${apelido}`,
+      })
+    } catch (error) {
+      if (sai) tirar(caso.id, false)
+      toast({ variant: 'error', title: 'Não foi possível trocar o responsável', description: error.message })
+    }
+  }, [toast, uid, eu])
+
+  return { itens, recarregar, informar, naoAconteceu, trocarResponsavel, gravados, pronto }
 }

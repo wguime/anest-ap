@@ -24,6 +24,13 @@ débitos de horários em aberto"* (dono). Modelos e escolhas em `.tmp/popup-hora
   Pular · Ver a escala". A folha "Início e término" de 27/10 abre por cima; confirmada, a lista volta com a seguinte, e
   a última fecha o pop-up ("Horários em dia"). Fecha com um toque, não volta ao retornar do segundo plano, não manda
   push e não aparece para conta de hospital.
+- **Trocar o responsável na folha do horário** (dono 29/10: *"adicionar a possibilidade de trocar o responsável pelo
+  procedimento. Ao clicar para adicionar o horário deve conter essa possibilidade"*): a folha "Início e término" mostra
+  "Anestesista · nome · Trocar" acima dos campos. O toque abre "Quem responde por esta cirurgia?" como correção de quem
+  fez: a cirurgia já terminada também troca, sem "Sem anestesista" e sem decisão de fila. Confirmada, a cirurgia sai da
+  lista e a cobrança do horário vai para quem fez; "Cancelar" volta à folha. Vale para dia anterior (gravado pelo
+  número da cirurgia), para turno encerrado (sem mexer na fila) e para o turno em curso (com os cuidados de sempre na
+  fila). O botão da folha passa a **"Confirmar horários"**.
 - **Abertura sem espera:** a lista de dias anteriores passa a ser buscada na abertura do app (antes, só quando a página
   montava: 0,34–0,74 s depois de entrar, medido) e a última resposta fica no aparelho, sem dado de paciente.
 

@@ -308,5 +308,11 @@ foram desfeitas, seis delas em até um minuto. Modelo escolhido em `.tmp/auditor
 - **Repasse que é troca de hospital** (`DefinirAnestesistaSheet`, aba Completa): quando quem recebe é da escala de OUTRO
   hospital e quem passa fica sem cirurgia aberta aqui, a folha pergunta "os dois trocaram de hospital?". "Sim" abre a
   troca já na prévia (`onTrocarPosicoes` → `setTrocaSheet(modo 'posicao')`). Troca de sala no mesmo hospital não pergunta.
+- **Correção de quem fez** (`DefinirAnestesistaSheet`): `encerrado` (28/10, o "Trocar" do detalhe de um turno que já
+  passou) e `corrigirQuemFez` (29/10, o "Trocar" da folha do horário, na caixa e no pop-up). Os dois alcançam a
+  terminada — a regra de 24/07 ("terminada mantém quem fez") é do REPASSE — e tiram as decisões de fila (assumir a
+  posição, "trocaram de hospital?", fora da ordem). `encerrado` desliga também os efeitos do repasse
+  (`semEfeitosNaFila`); `corrigirQuemFez` tira "Sem anestesista" da lista. `gravar` substitui o context para a cirurgia
+  de dia anterior (escala não carregada: grava pelo id). O "Trocar" da Completa segue como era.
 - Travas: `trocaSheet.test.jsx` e `trocaSheetPosicaoLiberada.test.jsx` (reescritos com o porquê),
   `definirAnestesistaTrocaDeHospital2710.test.jsx`, `liberacoesTrocaDeclarada.test.jsx` (uma entrada só).

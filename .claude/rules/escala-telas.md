@@ -470,7 +470,8 @@ plantonista) — a folha é para quem toca, não para quem sai.
 - **Término exige início (medida C, mesma conversa: "não seja possível colocar apenas terminado")**:
   sem início gravado, Terminada/bloco Término abrem `ConfirmarInicioETermino` (detalhe do caso, folha
   da fila, urgências) — início vazio com atalhos (agendada, fim da anterior na sala:
-  `sugestoesDeInicio`), término em "agora", botão "Confirmar os dois" só com os dois.
+  `sugestoesDeInicio`), término em "agora", botão "Confirmar horários" (até 29/10, "Confirmar os dois") só com
+  os dois.
   `gravarTerminoReal({ inicioReal })` leva o início no mesmo patch. O início de uma TERMINADA não
   tem "Limpar horário".
 - **Também no BANCO desde 14/10 à noite** (migration `20261014200000`, "todos os caminhos"): o trigger
@@ -594,9 +595,23 @@ usuário tiver débitos de horários em aberto"*, e abre *"sempre que entrar na 
   preso com "k de N · hora procedimento", **"Informar horários"** (folha da marcada), **"Pular"** (a marca vai
   para a próxima; some com uma só) e **"Ver a escala"** (fecha). Cabeçalho e rodapé são `sticky`: com 22
   cirurgias (o pior caso real de 05–27/10) a lista rola por dentro (folha de 820px, cabem 8).
-- A folha "Início e término" de 27/10 (sem mudança) abre **por cima** do pop-up (`z-[1200]`); confirmada, a
+- A folha "Início e término" de 27/10 abre **por cima** do pop-up (`z-[1200]`); confirmada, a
   cirurgia sai e a marca fica no mesmo índice = a seguinte. A última fecha o pop-up com o toast "Horários em
   dia" (só se foi resolvida ALI). "Ver a cirurgia" troca o pop-up pelo detalhe.
+- **Trocar o responsável na folha do horário** (dono 29/10, modelo B de `.tmp/popup-horarios/trocar-responsavel.html`:
+  *"adicionar a possibilidade de trocar o responsável pelo procedimento. Ao clicar para adicionar o horário deve conter
+  essa possibilidade"*). Sem isso, quem recebeu uma cirurgia que não fez era cobrado a cada entrada: de dia anterior não
+  havia troca em lugar nenhum, e no turno em curso a terminada aparecia riscada com "Nada a passar". A folha ganhou a
+  linha "Anestesista · nome · Trocar" (`LinhaAnestesista`, roster `inerte`: abrir a folha não vai ao banco) logo abaixo
+  do subtítulo, nas três variantes; ela cresce 60px para cima e os campos ficam no lugar. O toque TROCA a folha pela
+  `DefinirAnestesistaSheet` com `corrigirQuemFez` (empilhar deixaria a folha do horário clara e tocável por cima do
+  fundo da outra — o fundo do DS é sempre z-1100): correção, não repasse — a terminada entra, sem "Sem anestesista"
+  (tirar o nome apagaria a cobrança), sem assumir posição, troca de hospital e fora da ordem. Grava: dia anterior pelo
+  id (`trocarResponsavel` de `useMinhasPendenciasAnteriores`: sai da lista na hora, volta com aviso se falhar); hoje
+  pelo context, com `semEfeitosNaFila` só no turno encerrado. "Cancelar" volta à folha; confirmada, a cirurgia sai da
+  lista e o pop-up segue com a próxima. O botão da folha passou a **"Confirmar horários"** — vale onde
+  `ConfirmarInicioETermino` aparece, inclusive na folha que abre por cima da "Antes de liberar" (a "Antes de liberar"
+  em si, lista e "Salvar e liberar", não muda). Trava: `escalaTrocarResponsavelNaFolha.test.jsx`.
 - **Quando abre** (página, `EscalaCirurgicaPage`): uma vez por ENTRADA (montagem da página), quando a escala de
   hoje, o roster e a lista dos dias anteriores estão prontos (teto `POPUP_ESPERA_MAX_MS` = 4 s; aí decide com o
   que se sabe). **"Abre mesmo assim"** (dono): sem exceção para quem já tocou na tela. Voltar do segundo plano
