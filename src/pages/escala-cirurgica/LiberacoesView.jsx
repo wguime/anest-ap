@@ -1650,7 +1650,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       && !!l.noturno === !!alvoTempo.noturno) || alvoTempo)
     : null
   // as cirurgias abertas da pessoa que dá para gravar (com id), em ordem de horário
-  const cirurgiasTempo = (linhaTempo?.cirurgias || []).filter((c) => c.id)
+  // consultório tem horário fixo (dono 29/10: "ao clicar em consultório não aconteça nada") — fora da folha
+  const cirurgiasTempo = (linhaTempo?.cirurgias || []).filter((c) => c.id && !ehConsultorio(c))
   // FOLHA "ANTES DE LIBERAR" AO VIVO (dono 14/10): a linha atual pela chave e as
   // cirurgias dela que ainda travam a saída — cada horário gravado ou cirurgia
   // passada a um colega tira o item daqui na hora, e o botão acende sozinho.
@@ -2146,6 +2147,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // noite a cirurgia HERDADA da tarde tem de aparecer no card mesmo com a pessoa
           // liberada (decisão de 15/08, travada em escalaFdsTelaUnica).
           const cardEnxuto = liberado
+          const soConsultorio = (linha.casosTurno || []).length > 0 && linha.casosTurno.every(ehConsultorio)
           // ⚠️ o card BRANCO de "Livre" também é de dia útil: na fila única ele
           // fazia metade da lista nascer descolorida na publicação, antes de a
           // primeira cirurgia ser importada. O BADGE "Livre" fica — é
@@ -2883,7 +2885,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     'flex shrink-0 flex-col items-end gap-1 pr-2.5',
                     temSeloAoLadoDoNome ? 'mt-2' : '',
                   ].join(' ')}>
-                    {!cardEnxuto && (cronometro ? (
+                    {/* SÓ CONSULTÓRIO = NADA A TOCAR (dono 29/10): horário fixo, 07:45–11:30 e
+                        13:30–17:00 — sem "+ Tempo total" nem cronômetro */}
+                    {!cardEnxuto && !soConsultorio && (cronometro ? (
                       <button
                         type="button"
                         disabled={!canEdit}

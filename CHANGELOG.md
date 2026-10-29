@@ -3,6 +3,12 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.89 (29/10/2026) — Consultório também sem toque nas Liberações
+
+*"atualize as escalas para que ao clicar em consultório não aconteça nada"* (dono, depois da v5.12.88).
+- Na fila, quem só tem consultório no turno fica sem "+ Tempo total" e sem cronômetro; a folha do tempo total não
+  lista consultório. O "Editar" do card (local, ajuda, troca) continua, porque é a posição na fila, não o consultório.
+
 ## v5.12.88 (29/10/2026) — Consultório não abre opções
 
 Print da Completa com "Consultório" e "Consultório – ajuda": *"ao clicar em consultório não devem aparecer opções, já que
