@@ -3,6 +3,13 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.88 (29/10/2026) — Consultório não abre opções
+
+Print da Completa com "Consultório" e "Consultório – ajuda": *"ao clicar em consultório não devem aparecer opções, já que
+o consultório o horário é fixo, manhã das 07:45 às 11:30 e à tarde das 13:30 às 17:00"*.
+- Na Completa e na Minhas, a linha de consultório deixa de ser tocável: o toque não abre o detalhe. Mesmo desenho,
+  sem o realce do toque. As cirurgias seguem abrindo o detalhe como antes; Liberações não muda.
+
 ## v5.12.87 (29/10/2026) — Selo de plantão do Materno só de manhã
 
 Foto do card do Tiago no IOSC (HRO, tarde de 29/10) com "Ajuda (Materno)" e "Plantão da manhã (Materno)": *"Tiago não

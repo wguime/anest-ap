@@ -24,6 +24,7 @@ import DefinirAnestesistaSheet from './DefinirAnestesistaSheet'
 import AddCasoSheet from './AddCasoSheet'
 import CasoDetalheSheet from './CasoDetalheSheet'
 import SeloHorarioPendente from './SeloHorarioPendente'
+import { ehConsultorio } from '@/lib/escalaHorarioPendente'
 
 // Grupo das cirurgias que atravessaram o turno. Valor impossível como chave de
 // sala, para não colidir com nenhum grupo real do Accordion.
@@ -151,17 +152,21 @@ function CasoCardBase({ caso, destaque, salaLabel, onClick, agoraMin = null, mol
   // card fica com duas linhas (dono 17/08).
   const temIdentificacao = Boolean(salaLabel || caso.pacienteIniciais || idade)
   const temColunaHora = casoTemColunaTempo(caso)
+  // CONSULTÓRIO NÃO ABRE NADA (dono 29/10): "ao clicar em consultório não devem aparecer
+  // opções, já que o consultório o horário é fixo, manhã das 07:45 às 11:30 e à tarde das
+  // 13:30 às 17:00" — a linha vira só leitura (div, sem toque), com o mesmo desenho.
+  const clicavel = Boolean(onClick) && !ehConsultorio(caso)
+  const Raiz = clicavel ? 'button' : 'div'
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={rotulo}
+    <Raiz
+      {...(clicavel ? { type: 'button', onClick } : {})}
+      aria-label={clicavel ? rotulo : rotulo.replace(/^Detalhes do caso, /, '')}
       className={[
         'w-full text-left min-h-[44px] transition-colors',
         emLinha ? 'border-b border-border/70 px-3 py-2' : 'rounded-xl border p-3',
         // hover só onde hover existe de verdade — no touch o :hover "gruda" após o tap
         // e o card fica oscilando entre a tinta do status e o cinza (bug reportado no mobile)
-        'active:bg-muted/60 supports-[hover:hover]:hover:bg-muted/40',
+        clicavel ? 'active:bg-muted/60 supports-[hover:hover]:hover:bg-muted/40' : '',
         tinta || (emLinha ? 'bg-card' : destaque ? 'border-primary/60 bg-primary/5' : 'border-border bg-card'),
         tinta && !emLinha ? (destaque ? 'border-primary/60' : 'border-border') : '',
         // convênio identifica só pelo SELO (stripe lateral removida a pedido do dono 2026-07-21)
@@ -311,7 +316,7 @@ function CasoCardBase({ caso, destaque, salaLabel, onClick, agoraMin = null, mol
           </span>
         </span>
       </div>
-    </button>
+    </Raiz>
   )
 }
 
