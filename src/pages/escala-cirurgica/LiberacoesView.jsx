@@ -542,7 +542,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // ⚠️ a data decide, não `fdsMeta.tipo`: o meta só existe depois de publicar
   // e uma republicação sem ele devolveria a fase noturna em silêncio.
   const feriado = modoFds && ehFeriado(escala?.data)
-  const fase = feriado
+  // A FASE DA NOITE É DA TARDE (dono 28/10, com os turnos do dia abertos): `faseLiberacoes`
+  // olha só o relógio e a data, então a fila da MANHÃ vista às 19h ganharia os P1–P4 por cima e
+  // zeraria às 23h. A página põe um aviso no lugar da fila de um turno encerrado; aqui a regra
+  // fica garantida também na própria fila ("a manhã às 21h mostra a manhã como publicada").
+  const fase = feriado || turnoBase === 'matutino'
     ? 'dia'
     : faseLiberacoes({ agoraMin, dataEscala: escala?.data, hojeIso: diaOperacionalISO(), fds: modoFds })
   // CAUDA VERMELHA AUTOMÁTICA — quem fecha a fila sem cirurgia nasce Liberado.

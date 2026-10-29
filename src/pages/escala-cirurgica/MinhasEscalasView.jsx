@@ -18,7 +18,8 @@ import DefinirAnestesistaSheet from './DefinirAnestesistaSheet'
 import CasoDetalheSheet from './CasoDetalheSheet'
 import AddCasoSheet from './AddCasoSheet'
 
-export default function MinhasEscalasView({ escala, meuAlias, meuUid, resolverUid = null, turno, onVerBoard, pendencias = null }) {
+// `encerrado` (dono 28/10): a frase do turno que já acabou — o detalhe só corrige horário e quem fez
+export default function MinhasEscalasView({ escala, meuAlias, meuUid, resolverUid = null, turno, onVerBoard, pendencias = null, encerrado = null }) {
   const { user } = useUser()
   const [detalhe, setDetalhe] = useState(null)   // caso aberto (mesmo sheet da aba Completa)
   const [definir, setDefinir] = useState(null)   // { sala, caso? }
@@ -126,7 +127,8 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, resolverUi
           podeEditar={podeEditarCaso}
           podeDefinirAnestesista={podeDefinirAnestesista}
           onDefinirAnestesista={(sala, casoAlvo) => setDefinir({ sala, casosAlvo: casoAlvo ? [casoAlvo] : null })}
-          onEditarCaso={(alvo) => { setDetalhe(null); setEditando(alvo) }}
+          onEditarCaso={encerrado ? null : (alvo) => { setDetalhe(null); setEditando(alvo) }}
+          encerrado={encerrado}
         />
       )}
       {editando && (
@@ -143,6 +145,7 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, resolverUi
           sala={definir.sala}
           casosAlvo={definir.casosAlvo || null}
           turno={turno}
+          encerrado={!!encerrado}
           onClose={() => setDefinir(null)}
         />
       )}

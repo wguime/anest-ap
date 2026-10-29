@@ -332,7 +332,13 @@ export const CasoCard = memo(CasoCardBase, (prev, next) =>
   prev.pendencia === next.pendencia && prev.turnoExibido === next.turnoExibido
 )
 
-export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null, turno, onNavigate, pendencias = null, onTrocarPosicoes = null }) {
+/**
+ * @param {string?} encerrado  TURNO JÁ ENCERRADO (dono 28/10): a frase "Manhã encerrada às 13h".
+ *   O quadro de um turno que acabou serve para CONSERTAR horário e quem fez: sem "Adicionar
+ *   caso", sem o ⚙ da sala (repasse em bloco) e sem o grupo "Ainda abertas" (as urgências do
+ *   contrato são do turno em curso); o detalhe abre no mesmo modo.
+ */
+export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null, turno, onNavigate, pendencias = null, onTrocarPosicoes = null, encerrado = null }) {
   const { user } = useUser()
   const { rosterByUid } = useRosterAnestesistas()
   // Nome do grupo na Completa (pedido do dono 23/07): 1 anestesista = 1º nome +
@@ -385,6 +391,7 @@ export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null
   // (era o relato de 21/08). A marcação "passa para tarde" em si não muda —
   // a fila do turno seguinte continua contando a cirurgia para quem está lá.
   const herdadasVisiveis = useMemo(() => {
+    if (encerrado) return []
     const vistos = new Set()
     const out = []
     for (const c of herdados) {
@@ -394,7 +401,7 @@ export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null
       out.push(c)
     }
     return out
-  }, [herdados, idsDoTurno])
+  }, [herdados, idsDoTurno, encerrado])
   const grupos = useMemo(() => agruparPorSala(casos), [casos])
   // MARGEM ÚNICA DO QUADRO (dono 18/08): quem não tem horário recua igual, em
   // qualquer sala — a urgência acrescentada à mão vira sala própria sem horário
@@ -446,6 +453,8 @@ export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null
   // dicionário) tirava o botão até da própria sala. Escala é colaborativa; toda
   // definição vai para `escala_cirurgica_evento` (sem notificação — decisão 30/07).
   const podeDefinir = canEdit && !isDemo
+  // turno encerrado: o quadro só conserta (ver o cabeçalho da função)
+  const podeAgirNoTurno = podeDefinir && !encerrado
 
   if (!escala || !escala.casos?.length) {
     return (
@@ -482,9 +491,9 @@ export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null
 
   return (
     <>
-      {(!quadroVazio || (canEdit && !isDemo)) && (
+      {(!quadroVazio || podeAgirNoTurno) && (
         <div className="mb-2 flex gap-2">
-          {canEdit && !isDemo && (
+          {podeAgirNoTurno && (
             <Button size="sm" variant="outline" onClick={() => setAddCaso(true)} className="min-w-0 flex-1">
               <Plus className="w-4 h-4" /> Adicionar caso (urgência/encaixe)
             </Button>
@@ -496,10 +505,10 @@ export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null
               variant="outline"
               onClick={() => setAbertas(algumaAberta ? [] : chavesGrupos)}
               aria-label={algumaAberta ? 'Recolher todas as salas' : 'Expandir todas as salas'}
-              className={`relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] ${canEdit && !isDemo ? 'shrink-0' : 'w-full'}`}
+              className={`relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] ${podeAgirNoTurno ? 'shrink-0' : 'w-full'}`}
             >
               {algumaAberta ? <ChevronsDownUp className="w-4 h-4" /> : <ChevronsUpDown className="w-4 h-4" />}
-              {canEdit && !isDemo ? null : (algumaAberta ? 'Recolher todas' : 'Expandir todas')}
+              {podeAgirNoTurno ? null : (algumaAberta ? 'Recolher todas' : 'Expandir todas')}
             </Button>
           )}
         </div>
@@ -550,7 +559,7 @@ export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null
                 headerClassName="sticky top-14 z-10 deitado:static border-y border-border bg-card-elevated"
                 iconAfterActions
                 iconClassName="group-data-[state=open]:bg-transparent dark:group-data-[state=open]:bg-transparent"
-                actions={podeDefinir ? (
+                actions={podeAgirNoTurno ? (
                   <button
                     type="button"
                     onClick={() => setDefinir({ sala: g.sala, casosAlvo: g.split ? g.casos : null })}
@@ -653,8 +662,9 @@ export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null
           onClose={() => setDetalhe(null)}
           podeDefinirAnestesista={() => podeDefinir}
           onDefinirAnestesista={(sala, casoAlvo) => setDefinir({ sala, casosAlvo: casoAlvo ? [casoAlvo] : null })}
-          onEditarCaso={(alvo) => { setDetalhe(null); setAddCaso({ caso: alvo }) }}
+          onEditarCaso={encerrado ? null : (alvo) => { setDetalhe(null); setAddCaso({ caso: alvo }) }}
           podeEditar={podeDefinir}
+          encerrado={encerrado}
         />
       )}
 
@@ -674,7 +684,8 @@ export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null
           sala={definir.sala}
           casosAlvo={definir.casosAlvo || null}
           turno={turno}
-          onTrocarPosicoes={onTrocarPosicoes}
+          onTrocarPosicoes={encerrado ? null : onTrocarPosicoes}
+          encerrado={!!encerrado}
           onClose={() => setDefinir(null)}
         />
       )}

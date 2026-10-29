@@ -40,7 +40,7 @@
  * `tr_escala_caso_horario_real`, ver `src/lib/escalaHorarioReal.js`).
  */
 import { useMemo, useState } from 'react'
-import { Clock, GraduationCap, Info, MapPin, Stethoscope, UserCog } from 'lucide-react'
+import { Clock, GraduationCap, Info, Lock, MapPin, Stethoscope, UserCog } from 'lucide-react'
 import { ActionPill, Badge, Button, Sheet, SheetContent, SheetHeader, SheetTitle } from '@/design-system'
 import { HOSPITAL_LABEL, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
@@ -87,7 +87,14 @@ const AVISO = [
   { valor: 'passa_tarde', label: null, cls: 'border-category-purple bg-category-purple text-white' },
 ]
 
-export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDefinirAnestesista, onDefinirAnestesista, onEditarCaso, podeEditar }) {
+/**
+ * @param {string?} encerrado  TURNO JÁ ENCERRADO (dono 28/10, modelo A+ de `.tmp/popup-horarios/`):
+ *   a frase do aviso ("Manhã encerrada às 13h"). Com ela o detalhe só corrige o HORÁRIO e QUEM
+ *   FEZ — os blocos de início/término, "Não aconteceu" na cirurgia ainda aberta e o "Trocar" do
+ *   anestesista. Andamento vira leitura; somem "Editar", o tempo estimado e a ajuda (são do
+ *   turno em curso). Null = o detalhe de sempre.
+ */
+export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDefinirAnestesista, onDefinirAnestesista, onEditarCaso, podeEditar, encerrado = null }) {
   const { setStatusCirurgia, atualizarCaso, adicionarAjuda, removerAjuda, setLinhaOverride } = useEscalaCirurgicaActions()
   const { user } = useUser()
   const { residenteByUid } = useRosterResidentes()
@@ -334,6 +341,12 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
             "Decisão ganha cartão" é a mesma regra das telas grandes; antes tudo
             vinha em uma coluna só, no mesmo peso. */}
         <div className="space-y-2.5 px-4 pb-4">
+          {encerrado && (
+            <p data-turno-encerrado className="flex items-center gap-2 rounded-xl bg-muted px-3 py-2 text-[12.5px] leading-snug text-muted-foreground">
+              <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <span>{encerrado}: aqui se corrigem o horário e quem fez.</span>
+            </p>
+          )}
           <article className="relative rounded-2xl border border-border-strong bg-card-elevated p-3">
             {/* EDITAR OS DADOS DA CIRURGIA (dono 01/09, modelo A): procedimento,
                 paciente, idade, convênio, hora, sala, cirurgião e residente se
@@ -343,7 +356,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                 página home") — o `ActionPill` do DS, o "Editar" do Estágios e do
                 Plantão da Home. O botão de largura inteira comia uma linha do cartão.
                 O alvo de toque cresce por `after:` sem mudar o desenho da pílula. */}
-            {podeEditarCaso && onEditarCaso && (
+            {podeEditarCaso && onEditarCaso && !encerrado && (
               <ActionPill
                 aria-label="Editar dados da cirurgia"
                 className="absolute right-3 top-3 after:absolute after:-inset-x-2 after:-inset-y-3 after:content-['']"
@@ -355,7 +368,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
             {/* MESMA grafia do card no quadro (`fraseClinica`): o texto importado
                 vem em CAIXA ALTA e o painel repetia assim — o mesmo procedimento
                 aparecia de dois jeitos em duas telas do mesmo caso. */}
-            <SheetTitle className={['text-[15px] font-extrabold leading-tight [overflow-wrap:anywhere]', podeEditarCaso && onEditarCaso ? 'pr-16' : ''].join(' ')}>
+            <SheetTitle className={['text-[15px] font-extrabold leading-tight [overflow-wrap:anywhere]', podeEditarCaso && onEditarCaso && !encerrado ? 'pr-16' : ''].join(' ')}>
               {procedimentoComContinuacao(fraseClinica(procedimentoBaseDoCaso(vivo)) || salaExibicao(vivo.sala), vivo, turno)}
             </SheetTitle>
             {(vivo.pacienteIniciais || vivo.idade || vivo.tempoEstimado) && (
@@ -380,7 +393,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
               <div className="mb-[5px] flex min-h-[26px] items-center gap-1.5">
                 <Clock className="h-4 w-4 shrink-0 text-primary" />
                 <h3 className="text-[15px] font-extrabold">Horário da cirurgia</h3>
-                {!terminada && (
+                {!terminada && !encerrado && (
                   <span className="ml-auto">
                     <BotaoEstimado
                       valor={duracaoEst ? rotuloDuracao(duracaoEst) : (vivo.terminoPrevisto || '')}
@@ -480,8 +493,32 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
             </EditorSheet>
           )}
 
+          {/* ── ANDAMENTO NO TURNO ENCERRADO (dono 28/10): leitura. O horário, logo acima,
+              já leva a cirurgia ao status certo ("andam juntos"); o que sobra fazer aqui é
+              dizer que ela NÃO aconteceu — a mesma saída da folha do horário. ── */}
+          {!isDemo && vivo.id && encerrado && (
+            <article data-andamento-leitura className="rounded-2xl border border-border-strong p-3">
+              <h3 className="mb-1 text-[15px] font-extrabold">Andamento</h3>
+              <p className="text-[14px] leading-snug">
+                {ANDAMENTO.find((s) => s.valor === principal)?.label || 'Agendada'}
+                {carimbo && <> às <b className="font-bold">{carimbo.hora}</b>{autorCarimbo ? ` por ${autorCarimbo}` : ''}</>}
+                {vivo.statusExtra === 'suspensa' ? ' · Suspensa' : ''}
+                {tb ? ` · ${tb.label}` : ''}
+              </p>
+              {podeEditarCaso && !terminada && vivo.statusExtra !== 'suspensa' && vivo.statusCirurgia !== 'suspensa' && (
+                <button
+                  type="button"
+                  onClick={() => setStatusCirurgia(escala, vivo, 'suspensa', { userId }).catch(() => {})}
+                  className="mt-1 flex min-h-[44px] items-center text-[13px] font-semibold text-muted-foreground active:opacity-70"
+                >
+                  Não aconteceu (suspensa)
+                </button>
+              )}
+            </article>
+          )}
+
           {/* ── ANDAMENTO: os dois eixos ─────────────────────────────────── */}
-          {!isDemo && vivo.id && (
+          {!isDemo && vivo.id && !encerrado && (
             <article className="rounded-2xl border border-border-strong p-3">
               <h3 className="mb-2 text-[15px] font-extrabold">Andamento</h3>
               <div className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">
@@ -621,7 +658,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
 
             {/* AJUDA de outro hospital (dono 29/07). RÓTULO ÚNICO com o painel da
                 linha (auditoria 17/08): eram dois textos para a mesma marca. */}
-            {podeMarcarAjuda && (
+            {podeMarcarAjuda && !encerrado && (
               <>
                 <button
                   type="button"
