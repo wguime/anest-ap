@@ -141,12 +141,15 @@ describe('conta de hospital volta ao padrão quando a tela fica parada (15/10/20
   it('conta comum não volta sozinha', async () => {
     estado.user = { uid: 'u-x', role: 'anestesiologista', displayName: 'X' }
     montar({ data: AMANHA })
+    // 28/10: ENTRAR na escala volta a hoje (uma vez, na montagem). O que esta trava protege é
+    // outra coisa — a volta POR TEMPO PARADO, que é só da conta de hospital
+    const naEntrada = estado.ctx.setData.mock.calls.length
     tocar('Completa')
     tocar('HRO')
     expect(hospitalSelecionado()).toBe('HRO')
 
     await passar(CONTA_HOSPITAL_VOLTA_MS + 5 * 60_000)
     expect(hospitalSelecionado()).toBe('HRO')
-    expect(estado.ctx.setData).not.toHaveBeenCalledWith(HOJE)
+    expect(estado.ctx.setData.mock.calls.length).toBe(naEntrada)
   })
 })

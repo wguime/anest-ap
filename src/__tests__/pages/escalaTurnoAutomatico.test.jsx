@@ -18,6 +18,13 @@
  * turno vespertino para noturno." O turno exibido passou ao SUBTÍTULO do
  * cabeçalho ("Hoje · Quarta, 16/09 · Tarde"); o trilho volta só quando a tela
  * oferece mais de um turno (em curso + seguinte publicado; tarde + noite).
+ *
+ * 28/10 — OS TURNOS DO DIA FICAM ABERTOS (dono): "as escalas da manhã, da tarde e da
+ * noite do MESMO DIA continuam abertas, para quem esqueceu corrigir o horário". Revoga
+ * a metade "na virada de turno a escala anterior sai" de 16/09: o turno que já passou
+ * FICA no trilho (em modo de conserto). O relógio continua mandando — às 13h a tela vai
+ * para a tarde — e o subtítulo continua dizendo o turno exibido. Cinco testes mudaram
+ * de lado com o porquê no corpo; o que eles travam de 16/09 que segue valendo também.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, act } from '@testing-library/react'
@@ -120,7 +127,9 @@ describe('turno acompanha o relógio (dono 15/08)', () => {
     expect(turnoNoTitulo()).toBe('Manhã')
   })
 
-  it('a escala da TARDE publicada durante a manhã vira opção: "Manhã | Tarde"; às 13h a manhã sai', async () => {
+  // MUDOU DE LADO em 28/10: às 13h a manhã SAÍA do seletor (16/09). Agora ela FICA, para
+  // quem esqueceu corrigir o horário — mas a tela continua indo para a tarde sozinha.
+  it('a escala da TARDE publicada durante a manhã vira opção: "Manhã | Tarde"; às 13h a tela vai para a tarde e a manhã FICA (28/10)', async () => {
     vi.setSystemTime(new Date('2026-08-17T12:59:00-03:00'))
     const hoje = hojeLocalISO()
     estado.ctx = {
@@ -134,13 +143,16 @@ describe('turno acompanha o relógio (dono 15/08)', () => {
     // espiar a tarde de propósito: o subtítulo acompanha o exibido
     fireEvent.click(screen.getByRole('tab', { name: 'Tarde' }))
     expect(turnoNoTitulo()).toBe('Tarde')
-    // virada das 13h: a manhã SAI da tela — sobra a tarde, sem trilho
+    // virada das 13h: a tela fica na tarde e a manhã segue no trilho, agora encerrada
     await act(async () => { vi.advanceTimersByTime(2 * 60_000) })
-    expect(trilhoDeTurno()).toEqual([])
+    expect(trilhoDeTurno()).toEqual(['Manhã', 'Tarde'])
+    expect(turnoAtivo()).toBe('Tarde')
     expect(turnoNoTitulo()).toBe('Tarde')
   })
 
-  it('dia útil às 20h: a escala da tarde FICA (exceção vespertino→noturno) e o subtítulo diz "Noite"', () => {
+  // MUDOU DE LADO em 28/10: às 20h o trilho sumia (a manhã tinha saído às 13h). Agora a manhã
+  // fica; a noite continua NÃO sendo turno do seletor no dia útil (é fase da tarde).
+  it('dia útil às 20h: "Manhã | Tarde" com a tarde marcada e o subtítulo dizendo "Noite" (28/10)', () => {
     vi.setSystemTime(new Date('2026-08-17T20:00:00-03:00'))
     const hoje = hojeLocalISO()
     estado.ctx = {
@@ -148,13 +160,16 @@ describe('turno acompanha o relógio (dono 15/08)', () => {
       p4Hospital: null, data: hoje, hoje, loading: false, ...acoes(),
     }
     render(<EscalaCirurgicaPage onNavigate={() => {}} goBack={() => {}} />, { wrapper: wrap })
-    expect(trilhoDeTurno()).toEqual([]) // nem manhã (saiu às 13h) nem noite (é fase da aba)
+    expect(trilhoDeTurno()).toEqual(['Manhã', 'Tarde']) // a noite segue fase da aba, não turno
+    expect(turnoAtivo()).toBe('Tarde')
     expect(turnoNoTitulo()).toBe('Noite')
     // e as cirurgias da tarde seguem na tela
     expect(screen.queryByText('Nenhum caso neste turno')).toBeNull()
   })
 
-  it('FDS às 20h: "Tarde | Noite" — a tarde fica quando a noite entra, a manhã já saiu', () => {
+  // MUDOU DE LADO em 28/10: era "Tarde | Noite" (a manhã saía às 13h). A exceção de 16/09 — a
+  // tarde fica quando a noite entra — virou a regra: no FDS são os três turnos o dia todo.
+  it('FDS às 20h: "Manhã | Tarde | Noite" — os três turnos do dia ficam (28/10)', () => {
     vi.setSystemTime(new Date('2026-08-15T20:00:00-03:00')) // sábado
     const hoje = hojeLocalISO()
     estado.ctx = {
@@ -170,7 +185,7 @@ describe('turno acompanha o relógio (dono 15/08)', () => {
       p4Hospital: null, data: hoje, hoje, loading: false, ...acoes(),
     }
     render(<EscalaCirurgicaPage onNavigate={() => {}} goBack={() => {}} />, { wrapper: wrap })
-    expect(trilhoDeTurno()).toEqual(['Tarde', 'Noite'])
+    expect(trilhoDeTurno()).toEqual(['Manhã', 'Tarde', 'Noite'])
     expect(turnoAtivo()).toBe('Noite')
     expect(turnoNoTitulo()).toBe('Noite')
   })
@@ -193,9 +208,10 @@ describe('turno acompanha o relógio (dono 15/08)', () => {
     render(<EscalaCirurgicaPage onNavigate={() => {}} goBack={() => {}} />, { wrapper: wrap })
     // seletor tem a tarde (em curso) e a noite (publicada — o documento do FDS
     // cobre o dia inteiro), com rótulos CURTOS (dono 16/08: Manhã/Tarde/Noite
-    // cabem ao lado do 'Hoje' a 375px). A manhã já saiu na virada das 13h (16/09).
+    // cabem ao lado do 'Hoje' a 375px). A manhã saía na virada das 13h (16/09); desde 28/10
+    // ela FICA no seletor, encerrada — o turno ativo continua sendo o do relógio.
     expect(screen.getByRole('tab', { name: 'Noite' })).toBeTruthy()
-    expect(screen.queryByRole('tab', { name: 'Manhã' })).toBeNull()
+    expect(screen.getByRole('tab', { name: 'Manhã' })).toBeTruthy()
     // ⚠️ a comparação com o trilho de HOSPITAL saiu em 24/08: no fim de semana ele
     // não existe mais (tela única). O que este teste cobre é a VIRADA do turno —
     // a separação dos trilhos segue coberta no dia útil, logo abaixo.
@@ -297,9 +313,9 @@ describe('turno acompanha o relógio (dono 15/08)', () => {
       p4Hospital: null, data: hoje, hoje, loading: true, ...acoes(),
     }
     render(<EscalaCirurgicaPage onNavigate={() => {}} goBack={() => {}} />, { wrapper: wrap })
-    // 16/09: a manhã já SAIU (virada das 13h); ficam a tarde (exceção
-    // vespertino→noturno) e a noite — e isso vem do CALENDÁRIO, sem esperar rede
-    expect(screen.queryByRole('tab', { name: 'Manhã' })).toBeNull()
+    // os três turnos do dia vêm do CALENDÁRIO, sem esperar rede. Em 16/09 a manhã SAÍA às 13h;
+    // desde 28/10 ela fica (encerrada) — mudou de lado com o porquê no topo do arquivo
+    expect(screen.getByRole('tab', { name: 'Manhã' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Tarde' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Noite' })).toBeTruthy()
     // e já abre no turno certo do relógio (20h = noite), sem trocar depois

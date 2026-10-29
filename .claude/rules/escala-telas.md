@@ -12,6 +12,7 @@ paths:
   - "src/lib/escalaHorarioPendente.js"
   - "src/pages/escala-cirurgica/BlocoHorario.jsx"
   - "src/pages/escala-cirurgica/useMinhasPendenciasAnteriores.js"
+  - "src/pages/escala-cirurgica/pendenciasAnteriores.js"
   - "src/pages/escala-cirurgica/ImportarEscalaPage.jsx"
   - "src/pages/escala-cirurgica/ImportarEscalasPage.jsx"
   - "src/lib/escalaLoteImportacao.js"
@@ -579,6 +580,48 @@ por imagem, tela a tela (reabre 14/10, 05/10, 15/10, 17/08/02/10 do PainelTempo 
   `escalaPreenchimentoDesdeCorteSql.test.js` compara as duas. Rollback:
   `scripts/rollback-20261029120000-preenchimento-desde-corte-caixa.sql`. Tela com N maior que o
   esperado (ex.: 11 de 15 contra 9 de 13) = bundle antigo pedindo `p_dias: 7`.
+
+### Pop-up de horários em aberto (dono 2026-10-28, v2 do modelo A em `.tmp/popup-horarios/popup.html`)
+
+*"Sempre que o usuário tiver débitos, não importa a data. O pop-up deve aparecer todas as vezes enquanto o
+usuário tiver débitos de horários em aberto"*, e abre *"sempre que entrar na escala cirúrgica"*.
+
+- **A lista é a da caixa vermelha** (`minhasPendencias` + `useMinhasPendenciasAnteriores`): o pop-up mora em
+  `FaixaHorarioPendente` (`PopupHorarios`), então pop-up, caixa e faixa não têm como discordar.
+- **Desenho escolhido pelo dono** (modelo A — folha de baixo — com as mudanças dele): cabeçalho VERMELHO da
+  caixa com **"Você tem X cirurgias sem horário"** + "Ficam aqui até você preencher início e término." + X
+  branco (44px); lista por dia com **"a da vez"** marcada (faixa verde à esquerda, `aria-current`); rodapé
+  preso com "k de N · hora procedimento", **"Informar horários"** (folha da marcada), **"Pular"** (a marca vai
+  para a próxima; some com uma só) e **"Ver a escala"** (fecha). Cabeçalho e rodapé são `sticky`: com 22
+  cirurgias (o pior caso real de 05–27/10) a lista rola por dentro (folha de 820px, cabem 8).
+- A folha "Início e término" de 27/10 (sem mudança) abre **por cima** do pop-up (`z-[1200]`); confirmada, a
+  cirurgia sai e a marca fica no mesmo índice = a seguinte. A última fecha o pop-up com o toast "Horários em
+  dia" (só se foi resolvida ALI). "Ver a cirurgia" troca o pop-up pelo detalhe.
+- **Quando abre** (página, `EscalaCirurgicaPage`): uma vez por ENTRADA (montagem da página), quando a escala de
+  hoje, o roster e a lista dos dias anteriores estão prontos (teto `POPUP_ESPERA_MAX_MS` = 4 s; aí decide com o
+  que se sabe). **"Abre mesmo assim"** (dono): sem exceção para quem já tocou na tela. Voltar do segundo plano
+  não remonta a página e não reabre — nem a volta à Minhas depois de 2 min. Conta de hospital (`eu` nulo) não
+  recebe. Sem push.
+- **Abertura sem espera** (pedido do dono na mesma rodada; medido em produção, CPU 4×: entrando pela Home a escala
+  aparecia em 0,05–0,2 s, mas a busca dos dias anteriores só saía quando a página montava e terminava 0,34–0,74 s
+  depois): `pendenciasAnteriores.js` guarda a lista por pessoa — memória → aparelho
+  (`anest-escala-anteriores-v1:<uid>`) → rede — e o `EscalaCirurgicaProvider` a pede na ABERTURA do app
+  (`buscarAnteriores`, junto com a escala do dia do card da Home). O aparelho guarda **só** o que a regra e a lista
+  usam (`semDadoDePaciente`: sem iniciais, idade, nome, convênio). O hook lê por `useSyncExternalStore`
+  (`retratoAnteriores`) e expõe `pronto`. **Depois** (build do ramo servido no próprio Mac, contra o banco de
+  produção, mesmo método, 28/10, `.tmp/popup-horarios/medir-popup.mjs`, 2 rodadas): entrando pela Home o pop-up
+  aparece 0,07–0,14 s após o toque (a escala, 0,05–0,1 s); abrindo direto na escala, 0,8–0,9 s. A cada entrada a
+  lista ainda se confere no banco em segundo plano (~0,3 s), sem segurar o pop-up.
+- Abrindo o app direto na escala (push/recarga) a espera real é a escala de hoje (~1,3 s medidos). A "segunda
+  rodada" de buscas que aparece logo depois (~1,0–1,6 s) **não é repetição**: é a pré-carga da escala de AMANHÃ
+  (16/08, "transição de hoje para amanhã está lenta"), que sai quando amanhã já está publicada — conferido pela
+  data de cada busca em 28/10 (`.tmp/popup-horarios/medir-pageshow.mjs`). O tempo real entra sem recusa e o
+  `pageshow` da abertura chega antes do ouvinte; nada a cortar ali.
+- Travas: `escalaPopupHorarios.test.jsx` (abre a cada entrada · só com dia anterior · não abre sem débito nem
+  para conta de hospital · fecha com um toque sem travar · não reabre do segundo plano · Pular/Informar ·
+  volta à lista · some com a última), `pendenciasAnteriores.test.js` (sem paciente no aparelho, uma ida só,
+  sem rede, retrato estável) e `escalaPendenciasNaAberturaETurnoEncerrado.test.jsx` (provider busca na
+  abertura; conta de hospital não).
 
 ### Editar e EXCLUIR o caso publicado (dono 2026-09-01, modelo A em protótipo)
 

@@ -22,6 +22,8 @@ import { ehDataFilaUnica, FDS_HOSPITAL } from '@/lib/escalaFds'
 import { getDemoEscala } from '@/data/escalaCirurgicaDemo'
 import { agora } from '@/lib/devClock'
 import { horarioRealNaTransicao } from '@/lib/escalaHorarioReal'
+import { podeVerEscalaCirurgica } from '@/pages/escala-cirurgica/gate'
+import { buscarAnteriores } from '@/pages/escala-cirurgica/pendenciasAnteriores'
 
 // ⚠️ 'fds' NÃO entra aqui: HomeCard, HOSPITAL_OPCOES da página e o loadData
 // iteram esta constante — a linha da fila única do FDS é um slot EXTRA do
@@ -186,7 +188,8 @@ export function EscalaCirurgicaProvider({ children }) {
   const marcarErroCarga = (v) => { erroCargaRef.current = v; setErroCarga(v) }
   const { toast } = useToast()
   // conta de hospital (computador do centro cirúrgico) ganha o vigia de recarga, abaixo
-  const contaDeHospital = ehContaDeHospital(useUserOpcional()?.user)
+  const usuarioDaSessao = useUserOpcional()?.user
+  const contaDeHospital = ehContaDeHospital(usuarioDaSessao)
   // quando a última carga COMPLETA chegou (relógio real): é a idade que o vigia mede
   const cargaOkEmRef = useRef(0)
 
@@ -417,6 +420,20 @@ export function EscalaCirurgicaProvider({ children }) {
       window.removeEventListener('focus', checar)
     }
   }, [])
+
+  // PENDÊNCIAS DE DIAS ANTERIORES NA ABERTURA DO APP (dono 28/10, "a abertura deve ser
+  // otimizada para não haver delays"). O pop-up de horários abre na entrada da escala e
+  // esperaria esta busca, que só saía quando a página montava (0,34–0,74 s depois de entrar,
+  // medido em produção). Pedida aqui, junto com a escala do dia que o card da Home já busca,
+  // ela chega antes de a pessoa tocar na escala — e a última resposta fica no aparelho para
+  // o app recém-aberto (`pendenciasAnteriores.js`). Conta de hospital não tem pendência
+  // pessoal, e quem não vê a escala não paga a ida.
+  const uidAnteriores = !contaDeHospital && podeVerEscalaCirurgica(usuarioDaSessao)
+    ? (usuarioDaSessao?.uid || usuarioDaSessao?.id || null)
+    : null
+  useEffect(() => {
+    if (uidAnteriores) buscarAnteriores({ uid: uidAnteriores, hoje })
+  }, [uidAnteriores, hoje])
 
   // PWA de volta do 2º plano: a suspensão mata websockets — o realtime pode não
   // reconectar e o estado vira FANTASMA (aviso de troca já excluída do banco
@@ -1091,7 +1108,10 @@ export function EscalaCirurgicaProvider({ children }) {
   // `resolverUid` (apelido→uid do dicionário, opcional) alimenta o
   // ajudasPreservadasNoRepasse: sem ele a decisão "é gente daqui?" cai no
   // fallback por grafia e texto torto da Vision vira ajuda indevida (19/08).
-  const setAnestesistaCasos = useCallback(async (escala, casoIds, { uid, apelido, dupla = false }, { rotulo = '', resolverUid, userId = null, extraPorId = null } = {}) => {
+  // `semEfeitosNaFila` (dono 28/10): passar a cirurgia de um turno JÁ ENCERRADO a quem a fez só
+  // troca o nome nela — a fila daquele turno acabou, e os três efeitos abaixo (ajuda preservada,
+  // marcador de escalado e a anotação da linha) existem para a fila que ainda corre.
+  const setAnestesistaCasos = useCallback(async (escala, casoIds, { uid, apelido, dupla = false }, { rotulo = '', resolverUid, userId = null, extraPorId = null, semEfeitosNaFila = false } = {}) => {
     if (String(escala.id).startsWith('demo-')) {
       toast({ variant: 'warning', title: 'Indisponível na demonstração' })
       return
@@ -1117,48 +1137,50 @@ export function EscalaCirurgicaProvider({ children }) {
       try {
         await svc.updateAnestesistaCasos(ids, { uid, apelido, dupla }, { extraPorId })
       } finally { encerrarEscrita() }
-      // VISITANTE PRESERVADO NO REPASSE (dono 31/07 — caso LEONARDO): quem veio
-      // de OUTRO HOSPITAL e ficou sem caso aqui entra em ajuda_externa[turno] — a
-      // linha das Liberações sobrevive ao repasse (era a única evidência de
-      // presença dele). Colega do MESMO hospital NUNCA vira ajuda (dono 19/08):
-      // a troca de sala move só os procedimentos; a origem é comprovada nas
-      // outras escalas do dia. Best-effort: falha aqui NÃO desfaz o repasse.
-      try {
-        const outrasEscalas = HOSPITAIS
-          .filter((h) => h !== escala.hospital)
-          .map((h) => escalasRef.current?.[h])
-          .filter(Boolean)
-        let ajudaExterna = escala.ajudaExterna
-        for (const { nome, turno } of ajudasPreservadasNoRepasse(escala.casos, casos, idSet, escala, { resolverUid, outrasEscalas })) {
-          const atual = rodapeDoTurno(ajudaExterna, turno)
-          ajudaExterna = mergeRodapeTurno(ajudaExterna, turno, [...atual, nome])
-        }
-        if (ajudaExterna !== escala.ajudaExterna) {
-          await svc.updateAjudaExterna(escala.id, ajudaExterna)
-          dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { ajudaExterna } })
-        }
-      } catch { /* repasse já está feito; a ajuda pode ser marcada à mão */ }
-      // ESCALADO PRESERVADO (dono 19/08 — "acaba os casos e aparece liberado no
-      // meio da fila"): gente do RODAPÉ que ficou sem caso no repasse seguiria
-      // como "não escalado" e nasceria Liberada sem ninguém liberar. Grava o
-      // MESMO marcador do toggle manual ({ escalado: true }) — a linha segue
-      // ativa na posição, aguardando a liberação NA ORDEM. Best-effort.
-      try {
-        const marcadores = escaladosPreservadosNoRepasse(escala.casos, casos, idSet, escala, { resolverUid })
-        if (marcadores.length) {
-          const liberacoes = { ...(escala.liberacoes || {}) }
-          for (const { chave, turno } of marcadores) {
-            const valor = { escalado: true, por: userId, em: new Date().toISOString() }
-            await svc.patchLiberacao(escala.id, `${turno}:${chave}`, valor)
-            liberacoes[`${turno}:${chave}`] = valor
+      if (!semEfeitosNaFila) {
+        // VISITANTE PRESERVADO NO REPASSE (dono 31/07 — caso LEONARDO): quem veio
+        // de OUTRO HOSPITAL e ficou sem caso aqui entra em ajuda_externa[turno] — a
+        // linha das Liberações sobrevive ao repasse (era a única evidência de
+        // presença dele). Colega do MESMO hospital NUNCA vira ajuda (dono 19/08):
+        // a troca de sala move só os procedimentos; a origem é comprovada nas
+        // outras escalas do dia. Best-effort: falha aqui NÃO desfaz o repasse.
+        try {
+          const outrasEscalas = HOSPITAIS
+            .filter((h) => h !== escala.hospital)
+            .map((h) => escalasRef.current?.[h])
+            .filter(Boolean)
+          let ajudaExterna = escala.ajudaExterna
+          for (const { nome, turno } of ajudasPreservadasNoRepasse(escala.casos, casos, idSet, escala, { resolverUid, outrasEscalas })) {
+            const atual = rodapeDoTurno(ajudaExterna, turno)
+            ajudaExterna = mergeRodapeTurno(ajudaExterna, turno, [...atual, nome])
           }
-          dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { liberacoes } })
+          if (ajudaExterna !== escala.ajudaExterna) {
+            await svc.updateAjudaExterna(escala.id, ajudaExterna)
+            dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { ajudaExterna } })
+          }
+        } catch { /* repasse já está feito; a ajuda pode ser marcada à mão */ }
+        // ESCALADO PRESERVADO (dono 19/08 — "acaba os casos e aparece liberado no
+        // meio da fila"): gente do RODAPÉ que ficou sem caso no repasse seguiria
+        // como "não escalado" e nasceria Liberada sem ninguém liberar. Grava o
+        // MESMO marcador do toggle manual ({ escalado: true }) — a linha segue
+        // ativa na posição, aguardando a liberação NA ORDEM. Best-effort.
+        try {
+          const marcadores = escaladosPreservadosNoRepasse(escala.casos, casos, idSet, escala, { resolverUid })
+          if (marcadores.length) {
+            const liberacoes = { ...(escala.liberacoes || {}) }
+            for (const { chave, turno } of marcadores) {
+              const valor = { escalado: true, por: userId, em: new Date().toISOString() }
+              await svc.patchLiberacao(escala.id, `${turno}:${chave}`, valor)
+              liberacoes[`${turno}:${chave}`] = valor
+            }
+            dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { liberacoes } })
+          }
+        } catch { /* repasse já está feito; o toggle manual cobre */ }
+        // ANOTAÇÃO DA LINHA CEDE AOS CASOS (dono 16/09) — ver limparAnotacaoDaLinha.
+        if (uid && !dupla) {
+          const turnos = [...new Set(ids.map((id) => casos.find((c) => c.id === id)?.turno).filter(Boolean))]
+          await limparAnotacaoDaLinha(escala, { chaves: [uid, apelido], turnos, userId })
         }
-      } catch { /* repasse já está feito; o toggle manual cobre */ }
-      // ANOTAÇÃO DA LINHA CEDE AOS CASOS (dono 16/09) — ver limparAnotacaoDaLinha.
-      if (uid && !dupla) {
-        const turnos = [...new Set(ids.map((id) => casos.find((c) => c.id === id)?.turno).filter(Boolean))]
-        await limparAnotacaoDaLinha(escala, { chaves: [uid, apelido], turnos, userId })
       }
       toast({
         variant: 'success',

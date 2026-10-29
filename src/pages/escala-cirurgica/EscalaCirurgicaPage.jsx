@@ -5,7 +5,7 @@
  */
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PageHeader } from '@/components'
-import { WifiOff } from 'lucide-react'
+import { Clock, Lock, WifiOff } from 'lucide-react'
 import { ActionPill, EmptyState, useToast } from '@/design-system'
 import { PageLoadingFallback } from '@/design-system/components/anest/page-loading-fallback'
 import { IMPORTACAO_BLOQUEADA, MENSAGEM_IMPORTACAO_BLOQUEADA } from './importacaoBloqueio'
@@ -33,7 +33,7 @@ import LiberacoesView from './LiberacoesView'
 const ImportarEscalasPage = lazy(() => import('./ImportarEscalasPage'))
 const ImportarEscalaFdsPage = lazy(() => import('./ImportarEscalaFdsPage'))
 import TrocaSheet from './TrocaSheet'
-import { anestesistaDoCasoEh, meuAliasDe, turnoAtualOperacional, dataPorExtenso, estadoTrocasDoHistorico, normNome, formatData, rodapeDoTurno, localizarSlotEscala, localizarMeuPosto, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca, espelhoTempoTotal, terminoEncadeado, turnoDoCaso, patchDefinicaoNoTurnoSeguinte } from './utils'
+import { anestesistaDoCasoEh, meuAliasDe, turnoAtualOperacional, turnosOferecidos, turnoJaEncerrou, fraseTurnoEncerrado, voltarAoTurno, dataPorExtenso, estadoTrocasDoHistorico, normNome, formatData, rodapeDoTurno, localizarSlotEscala, localizarMeuPosto, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca, espelhoTempoTotal, terminoEncadeado, turnoDoCaso, patchDefinicaoNoTurnoSeguinte } from './utils'
 import { gravarInicioReal, gravarTerminoReal } from '@/lib/escalaHorarioReal'
 import { compararPendencias } from '@/lib/escalaHorarioPendente'
 import { ehDataFilaUnica, ehFeriado, ehFimDeSemana, FDS_HOSPITAL, FDS_TURNO_CASOS, FDS_TURNOS, turnoFdsAtual } from '@/lib/escalaFds'
@@ -49,6 +49,12 @@ const HOSPITAL_OPCOES = HOSPITAIS.map((h) => ({ value: h, label: HOSPITAL_LABEL[
 export const REABRIR_EM_MINHAS_MS = 2 * 60 * 1000
 /** Conta de hospital parada por isso (ninguém tocou nem mexeu o mouse) volta a hoje, ao turno e ao hospital dela. */
 export const CONTA_HOSPITAL_VOLTA_MS = 10 * 60 * 1000
+/**
+ * O pop-up de horários espera as duas listas (hoje e dias anteriores) para abrir com a conta
+ * certa; sem rede, decide com o que se sabe depois disto. Com a lista dos dias anteriores
+ * buscada na abertura do app (28/10), a espera real é a carga da escala de hoje.
+ */
+export const POPUP_ESPERA_MAX_MS = 4000
 // Rótulos CURTOS (dono 16/08): "Manhã/Tarde/Noite" cabem no card a 375px —
 // "Matutino/Vespertino/Noturno" cortavam com o 3º turno do fim de semana.
 const TURNO_OPCOES = [
@@ -73,12 +79,12 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const { user } = useUser()
   const { escalas, data, loading, erroCarga, p4Hospital, hoje, setData, recarregar, garantirEscala: garantirEscalaNoServidor, prefetch, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, reordenarAjuda, definirOrigemLinha, definirSemAjudaLinha, definirP4Hospital, setAnestesistaCasos, atualizarCaso, setStatusCirurgia, terminarSemHorario, desfazerTerminada, marcarTroca, executarSubstituicao, desfazerSubstituicao } = useEscalaCirurgica()
   // Roster p/ resolver os lados do par da troca declarada (uid/nome/apelido)
-  const { resolver: resolverRoster, rosterByUid } = useRosterAnestesistas()
+  const { resolver: resolverRoster, rosterByUid, pronto: rosterPronto = true } = useRosterAnestesistas()
   // P1–P4 do dia (card Plantões/PegaPlantao) — alimentam a fase noturna das Liberações
   const { plantoes: plantoesDia } = useEscalaDia()
   const [hospital, setHospital] = useState('unimed')
   const [aba, setAba] = useState('minhas')
-  const [turno, setTurno] = useState(() => (ehFimDeSemana(data) ? turnoFdsAtual(minutosDoDia()) : turnoAtualOperacional()))
+  const [turno, setTurno] = useState(() => (ehFimDeSemana(hoje || data) ? turnoFdsAtual(minutosDoDia()) : turnoAtualOperacional()))
   // sáb/dom é dado do CALENDÁRIO — não espera rede (ver turnoDoRelogio)
   const fimDeSemana = ehFimDeSemana(data)
   const feriado = ehFeriado(data)
@@ -178,6 +184,15 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
 
   useEffect(() => { document.title = 'Escala Cirúrgica' }, [])
 
+  // ENTRAR NA ESCALA VOLTA A HOJE (dono 28/10, junto com os turnos do dia abertos: "a tela
+  // abrindo no turno em curso"). A data mora no provider do app inteiro, então quem saiu da
+  // escala vendo "Amanhã" voltava em "Amanhã" — sem a caixa de horários de hoje e sem o pop-up,
+  // que só existem vendo hoje. Só na montagem: dentro da tela a escolha de data segue valendo.
+  useEffect(() => {
+    if (hoje && data !== hoje) setData(hoje)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- só na entrada
+  }, [])
+
   // Escolha MANUAL de turno divergente do relógio: guarda o turno do RELÓGIO
   // no momento da escolha — o automático fica pausado enquanto a faixa durar.
   const turnoManualRef = useRef(null)
@@ -241,28 +256,32 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     if (fimDeSemana && out.has('vespertino')) out.add('noturno')
     return out
   }, [escalas, fimDeSemana, loading])
-  // Hoje: o turno EM CURSO + os turnos SEGUINTES já publicados (a escala nova
-  // aparece como opção; a anterior sai na virada). Exceção vespertino→noturno:
-  // a tarde FICA quando a noite entra — as cirurgias da noite são as da tarde.
-  // No dia útil a noite não é turno do seletor (é a fase das 19h dentro da aba),
-  // então lá a tarde já fica sozinha até virar o dia. Outra data (amanhã): o que
-  // está publicado; nada publicado → a manhã, para a tela não ficar sem turno.
+  // Hoje: o turno EM CURSO + os outros turnos do dia já publicados. Até 28/10 eram só
+  // os SEGUINTES ("na virada de turno a escala anterior sai, exceto na transição do
+  // turno vespertino para noturno", 16/09); o dono reabriu: "as escalas da manhã, da
+  // tarde e da noite do MESMO DIA continuam abertas, para quem esqueceu corrigir o
+  // horário". A exceção de 16/09 (a tarde fica quando a noite do FDS entra) virou a
+  // regra geral. No dia útil a noite segue fase da tarde (subtítulo "Noite"), não
+  // turno do seletor. O turno que já passou abre em modo de CONSERTO (`turnoEncerrado`,
+  // abaixo) e só com um toque: abertura, Minhas e a volta de 2 min levam ao em curso.
+  // Outra data (amanhã): o que está publicado; nada publicado → a manhã.
   // `agoraMin` entra nas deps para a lista virar junto com o relógio.
-  const turnoOpcoes = useMemo(() => {
-    const todas = fimDeSemana ? TURNO_OPCOES_FDS : TURNO_OPCOES
-    if (data !== hoje) {
-      const pub = todas.filter((o) => turnosPublicados.has(o.value))
-      return pub.length ? pub : [todas[0]]
-    }
-    const emCurso = turnoDoRelogio()
-    const i = todas.findIndex((o) => o.value === emCurso)
-    const out = todas.filter((o, j) => j === i || (j > i && turnosPublicados.has(o.value)))
-    if (emCurso === 'noturno' && turnosPublicados.has('vespertino')) {
-      out.unshift(todas.find((o) => o.value === 'vespertino'))
-    }
-    return out
+  const turnoOpcoes = useMemo(() => turnosOferecidos({
+    todas: fimDeSemana ? TURNO_OPCOES_FDS : TURNO_OPCOES,
+    emCurso: turnoDoRelogio(),
+    publicados: turnosPublicados,
+    ehHoje: data === hoje,
   // eslint-disable-next-line react-hooks/exhaustive-deps -- agoraMin: o relógio muda a lista (turnoDoRelogio lê new Date())
-  }, [fimDeSemana, data, hoje, turnoDoRelogio, turnosPublicados, agoraMin])
+  }), [fimDeSemana, data, hoje, turnoDoRelogio, turnosPublicados, agoraMin])
+  // TURNO QUE JÁ PASSOU (dono 28/10): a fila dele vira aviso, o quadro só conserta horário e
+  // quem fez, e a faixa âmbar diz isso com a volta ao turno em curso.
+  const turnoEmCurso = data === hoje ? turnoDoRelogio() : null
+  const turnoEncerrado = turnoJaEncerrou({ turno, emCurso: turnoEmCurso, ehHoje: data === hoje })
+  const fraseEncerrado = turnoEncerrado ? fraseTurnoEncerrado(turno) : null
+  const voltarAoTurnoEmCurso = useCallback(() => {
+    turnoManualRef.current = null
+    setTurno(turnoDoRelogio())
+  }, [turnoDoRelogio])
   // Turno fora do que a tela oferece (virou o turno com escolha manual parada,
   // mudou a data, a escala de amanhã só tem a tarde): cai no primeiro oferecido,
   // que é o em curso.
@@ -302,8 +321,11 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     // só os turnos que a tela oferece (dono 16/09): a escala do turno que já
     // virou saiu da tela — levar para lá seria levar a um turno que não existe
     // mais no seletor; o turno seguinte já publicado continua valendo
-    const permitidos = turnoOpcoes.map((o) => o.value)
+    // …e nunca a um turno que já passou (dono 28/10): ele está no seletor para CONSERTAR,
+    // e quem só operou de manhã continua abrindo a tela na tarde às 14h
     const relogio = turnoDoRelogio()
+    const permitidos = turnoOpcoes.map((o) => o.value)
+      .filter((t) => !turnoJaEncerrou({ turno: t, emCurso: relogio, ehHoje: data === hoje }))
     const posto = localizarMeuPosto({
       escalas,
       hospitais: HOSPITAIS,
@@ -321,7 +343,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     // tira a tela da noite.
     escolherTurno(turno === 'noturno' && posto.turno === 'vespertino' ? 'noturno' : posto.turno)
     return true
-  }, [escalas, meuUid, meuAlias, resolverRoster, turnoDoRelogio, escolherTurno, turnoOpcoes, turno])
+  }, [escalas, meuUid, meuAlias, resolverRoster, turnoDoRelogio, escolherTurno, turnoOpcoes, turno, data, hoje])
 
   // Abertura da tela: mesma varredura, porque a aba que abre É a Minhas (pedido
   // do dono 23/07 — abria fixo em Unimed e vinha em branco p/ quem estava no
@@ -372,12 +394,17 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   // tablet que opera as Liberações perderia o lugar a cada pausa).
   const escolherAbaRef = useRef(escolherAba)
   useEffect(() => { escolherAbaRef.current = escolherAba }, [escolherAba])
+  // voltar depois de 2 min fora é ABRIR DE NOVO: também sai de um turno que já passou (28/10) —
+  // sem posto em curso, a aba Minhas não mexe no turno e a tela ficaria na manhã
+  const sairDoEncerradoRef = useRef(null)
+  useEffect(() => { sairDoEncerradoRef.current = turnoEncerrado ? voltarAoTurnoEmCurso : null }, [turnoEncerrado, voltarAoTurnoEmCurso])
   useEffect(() => {
     if (contaSoEscala) return undefined
     let ocultaDesde = document.visibilityState === 'hidden' ? Date.now() : null
     const aoMudarVisibilidade = () => {
       if (document.visibilityState === 'hidden') { ocultaDesde = Date.now(); return }
       if (ocultaDesde != null && Date.now() - ocultaDesde >= REABRIR_EM_MINHAS_MS) {
+        sairDoEncerradoRef.current?.()
         escolherAbaRef.current('minhas')
       }
       ocultaDesde = null
@@ -683,6 +710,33 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   // faixa individual soma as duas listas. Conta de hospital (`euPendencia` nulo) não busca.
   const pendenciasAnteriores = useMinhasPendenciasAnteriores({ eu: euPendencia, hoje })
 
+  // POP-UP DE HORÁRIOS EM ABERTO (dono 28/10/2026, `.tmp/popup-horarios/`): "sempre que o
+  // usuário tiver débitos, não importa a data. O pop-up deve aparecer todas as vezes enquanto o
+  // usuário tiver débitos de horários em aberto", ao ENTRAR na escala. A lista é a da caixa
+  // vermelha (hoje + dias anteriores), mostrada por `FaixaHorarioPendente`; aqui se decide
+  // QUANDO: uma vez por entrada (montagem desta página), com as duas listas prontas — voltar
+  // do segundo plano não remonta a página e não reabre. "Abre mesmo assim" (dono 28/10): em
+  // toda entrada, sem exceção, e o mais cedo possível (a lista dos dias anteriores vem da
+  // abertura do app). Conta de hospital não tem "eu" e não recebe. Sem push: só tela.
+  const [popupAberto, setPopupAberto] = useState(false)
+  const popupDecididoRef = useRef(false)
+  const [esperaPopupAcabou, setEsperaPopupAcabou] = useState(false)
+  useEffect(() => {
+    const id = setTimeout(() => setEsperaPopupAcabou(true), POPUP_ESPERA_MAX_MS)
+    return () => clearTimeout(id)
+  }, [])
+  const debitosHorario = (minhasPendencias?.length || 0) + (pendenciasAnteriores.itens?.length || 0)
+  const escalaDeHojeNaTela = data === hoje && !loading
+  const listasProntas = escalaDeHojeNaTela && rosterPronto && pendenciasAnteriores.pronto
+  useEffect(() => {
+    if (popupDecididoRef.current || !euPendencia) return
+    if (!listasProntas && !(esperaPopupAcabou && escalaDeHojeNaTela)) return
+    popupDecididoRef.current = true
+    if (debitosHorario > 0) setPopupAberto(true)
+  }, [euPendencia, listasProntas, esperaPopupAcabou, escalaDeHojeNaTela, debitosHorario])
+  // a caixa e o pop-up só existem vendo hoje
+  useEffect(() => { if (data !== hoje) setPopupAberto(false) }, [data, hoje])
+
   const garantirEscala = useCallback(async () => {
     if (escalaDoHospital?.id && !String(escalaDoHospital.id).startsWith('demo-')) return escalaDoHospital
     // publicação vai no turno de CASOS: o CHECK do banco só aceita
@@ -778,6 +832,19 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           onEscolherAba={escolherAba}
         />
 
+        {/* TURNO QUE JÁ PASSOU (dono 28/10, modelo A de `.tmp/popup-horarios/turnos.html`):
+            a faixa âmbar diz que ele acabou e leva de volta ao turno em curso. É o mesmo
+            aviso de "vendo outra data", com a frase do turno. */}
+        {turnoEncerrado && (
+          <div role="status" data-turno-encerrado className="flex min-h-[44px] items-center gap-2 rounded-xl bg-warning/15 px-3 py-1 text-[12.5px] leading-snug text-foreground dark:bg-warning/20">
+            <Clock className="h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+            <span className="min-w-0 flex-1"><b className="font-bold">{fraseEncerrado}.</b> Corrija horários e quem fez.</span>
+            <button type="button" onClick={voltarAoTurnoEmCurso} className="flex min-h-[44px] shrink-0 items-center font-bold text-primary underline underline-offset-2 active:opacity-70">
+              {voltarAoTurno(turnoEmCurso)}
+            </button>
+          </div>
+        )}
+
         {/* SEU PREENCHIMENTO (dono 14/10, modelo A de `.tmp/melhorias-preenchimento.html`):
             topo da aba Minhas, vendo HOJE — o retorno individual dos últimos 7 dias */}
         {abaVisivel === 'minhas' && data === hoje && (
@@ -804,6 +871,9 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
             anteriores={pendenciasAnteriores}
             eu={euPendencia}
             abaMinhas={abaVisivel === 'minhas'}
+            popupAberto={popupAberto}
+            onFecharPopup={() => setPopupAberto(false)}
+            turnoEmCurso={turnoEmCurso}
           />
         )}
 
@@ -840,26 +910,40 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           {/* Minhas e Completa também no fim de semana (dono 13/09) — por hospital,
               como num dia útil; só a Faixa de Urgências fica de fora do FDS. */}
           {abaVisivel === 'minhas' && (
-            <MinhasEscalasView escala={escala} meuAlias={meuAlias} meuUid={meuUid} resolverUid={resolverRoster} turno={turnoCasos} pendencias={pendencias.porCaso} onVerBoard={() => setAba('board')} />
+            <MinhasEscalasView escala={escala} meuAlias={meuAlias} meuUid={meuUid} resolverUid={resolverRoster} turno={turnoCasos} pendencias={pendencias.porCaso} onVerBoard={() => setAba('board')} encerrado={fraseEncerrado} />
           )}
           {abaVisivel === 'board' && (
             <>
               {/* Urgências do HRO (dono 18/08): ocupação das 2 salas do contrato +
                   fila. FORA da BoardView de propósito — os EmptyStates dela matariam
                   a faixa no dia sem escala publicada com urgência à mão. */}
-              {!modoFds && (
+              {/* a ocupação do contrato é do turno EM CURSO: num turno encerrado ela falaria
+                  da tarde em cima do quadro da manhã (dono 28/10) */}
+              {!modoFds && !turnoEncerrado && (
                 <FaixaUrgencias escala={escala} hospital={hospital} turno={turnoCasos} />
               )}
               <BoardView
                 escala={escala} meuAlias={meuAlias} meuUid={meuUid} resolverUid={resolverRoster} turno={turnoCasos}
-                pendencias={pendencias.porCaso} onNavigate={onNavigate}
+                pendencias={pendencias.porCaso} onNavigate={onNavigate} encerrado={fraseEncerrado}
                 // "os dois trocaram de hospital?" (dono 27/10): o "Sim" do definir anestesista
                 // abre a troca já na prévia, com os dois hospitais
                 onTrocarPosicoes={modoFds ? null : ({ linha, colegaUid }) => setTrocaSheet({ linha, colegaUid, modo: 'posicao' })}
               />
             </>
           )}
-          {abaVisivel === 'liberacoes' && (() => {
+          {/* A FILA DE UM TURNO QUE JÁ PASSOU (dono 28/10, modelo A): aviso no lugar da fila —
+              o turno passado vale só na Minhas e na Completa. Ninguém é liberado depois da
+              troca de turno, e a fila montada faria recado, push de tempo estourado e os P1–P4
+              da noite em cima da manhã. A barra continua igual nas três abas (18/09). */}
+          {abaVisivel === 'liberacoes' && turnoEncerrado && (
+            <EmptyState
+              icon={<Lock className="w-6 h-6" />}
+              title={`A fila da ${(TURNO_OPCOES_FDS.find((o) => o.value === turno)?.label || '').toLowerCase()} encerrou às ${turno === 'matutino' ? '13h' : '19h'}`}
+              description="Na troca de turno começa a fila do turno seguinte; ninguém é liberado nesta. Para corrigir horários, use Minhas ou Completa."
+              action={{ label: `Ver a fila da ${(TURNO_OPCOES_FDS.find((o) => o.value === turnoEmCurso)?.label || '').toLowerCase()}`, onClick: voltarAoTurnoEmCurso }}
+            />
+          )}
+          {abaVisivel === 'liberacoes' && !turnoEncerrado && (() => {
             // MODO FDS: a view opera sobre a linha 'fds' (fila única + marcações)
             // e os casos mesclados dos 3 hospitais; troca/P4-coringa ficam fora.
             const escalaLib = modoFds ? escalas.fds : escala

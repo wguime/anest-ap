@@ -157,11 +157,14 @@ describe('aba "Minhas" leva ao meu posto', () => {
   // não é mais uma escolha, então a aba não leva para lá, mesmo que o meu caso
   // seja de manhã. O que atravessa (passa para tarde) continua no quadro da
   // tarde por outra regra (22/08).
-  it('depois da virada a escala da MANHÃ saiu: a aba não leva para ela', async () => {
+  // MUDOU DE LADO em parte em 28/10: a manhã VOLTOU ao seletor (os turnos do dia ficam
+  // abertos para corrigir horário), mas a aba continua sem levar para ela — o turno que já
+  // passou só abre com um toque, e quem operou de manhã segue abrindo a tela na tarde.
+  it('depois da virada a manhã fica no seletor, mas a aba não leva para ela (28/10)', async () => {
     vi.setSystemTime(new Date('2026-09-09T14:00:00-03:00')) // tarde
     montar({ escalas: { unimed: escalaCom('unimed', [meuCaso('matutino'), casoDeOutro('vespertino')]) } })
     expect(turnoMarcado()).toBe('Tarde')
-    expect(screen.queryByRole('tab', { name: 'Manhã' })).toBeNull()
+    expect(screen.getByRole('tab', { name: 'Manhã' })).toBeTruthy()
     expect(screen.getByText('Você não está escalado aqui')).toBeTruthy()
   })
 

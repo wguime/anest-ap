@@ -1014,6 +1014,58 @@ export function turnoAtualOperacional(d = agora()) {
   return d.getHours() < 7 ? 'vespertino' : turnoAtual(d)
 }
 
+// ── OS TURNOS DO DIA FICAM ABERTOS (dono 28/10/2026) ──────────────────────────
+// "As escalas da manhã, da tarde e da noite do MESMO DIA continuam abertas, para quem
+// esqueceu corrigir o horário." Revoga a metade "na virada de turno a escala anterior
+// sai" da regra de 16/09: às 13h a manhã saía do seletor e, dali em diante, só quem
+// operou alcançava a cirurgia da manhã (pela caixa vermelha). O turno em curso segue
+// sendo o padrão, e nenhuma volta automática leva a um turno que já passou — ele só
+// abre com um toque (modelo A escolhido em protótipo, `.tmp/popup-horarios/`).
+const ORDEM_DOS_TURNOS = ['matutino', 'vespertino', 'noturno']
+const FIM_DO_TURNO = { matutino: '13h', vespertino: '19h' }
+const NOME_DO_TURNO = { matutino: 'Manhã', vespertino: 'Tarde', noturno: 'Noite' }
+
+/**
+ * Os turnos que o seletor oferece. HOJE: o turno em curso e qualquer outro já publicado
+ * (antes de 28/10, só os SEGUINTES). Outra data: o que está publicado; nada publicado →
+ * o primeiro, para a tela não ficar sem turno. A ordem é a de `todas`.
+ * @param {Array<{value: string, label: string}>} todas  os turnos possíveis (2 no dia útil, 3 no FDS)
+ * @param {string} emCurso  o turno do relógio
+ * @param {Set<string>} publicados
+ * @param {boolean} ehHoje
+ */
+export function turnosOferecidos({ todas, emCurso, publicados, ehHoje }) {
+  if (!ehHoje) {
+    const pub = todas.filter((o) => publicados.has(o.value))
+    return pub.length ? pub : [todas[0]]
+  }
+  return todas.filter((o) => o.value === emCurso || publicados.has(o.value))
+}
+
+/**
+ * O turno já acabou no relógio de HOJE? É o que muda a tela para "só consertar": a fila
+ * dele vira aviso, o quadro perde as ações do turno em curso e o detalhe da cirurgia
+ * só corrige horário e quem fez. No dia útil a noite é fase da tarde, então a tarde
+ * nunca "acaba" no mesmo dia operacional.
+ */
+export function turnoJaEncerrou({ turno, emCurso, ehHoje }) {
+  if (!ehHoje) return false
+  const i = ORDEM_DOS_TURNOS.indexOf(turno)
+  const j = ORDEM_DOS_TURNOS.indexOf(emCurso)
+  return i >= 0 && j >= 0 && i < j
+}
+
+/** "Manhã encerrada às 13h" — a faixa âmbar e o aviso do detalhe. */
+export function fraseTurnoEncerrado(turno) {
+  const nome = NOME_DO_TURNO[turno] || ''
+  return FIM_DO_TURNO[turno] ? `${nome} encerrada às ${FIM_DO_TURNO[turno]}` : `${nome} encerrada`
+}
+
+/** "Voltar à tarde" — o botão da faixa leva ao turno em curso. */
+export function voltarAoTurno(turno) {
+  return `Voltar à ${String(NOME_DO_TURNO[turno] || '').toLowerCase()}`
+}
+
 // ── Azul de EMPRESTADO não é ajuda daqui (dono 01/09 — caso Eduardo) ─────────
 // No mapa do HRO o azul tem DOIS sentidos: gente de fora ajudando AQUI e gente
 // NOSSA emprestada para outro hospital. A leitura devolvia os dois em

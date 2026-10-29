@@ -3,6 +3,30 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.12.86 (29/10/2026) — Turnos do dia abertos e pop-up de horários em aberto
+
+*"As escalas da manhã, da tarde e da noite do MESMO DIA continuam abertas, para quem esqueceu corrigir o horário"* e
+*"sempre que o usuário tiver débitos, não importa a data. O pop-up deve aparecer todas as vezes enquanto o usuário tiver
+débitos de horários em aberto"* (dono). Modelos e escolhas em `.tmp/popup-horarios/` (ESCOLHAS.md).
+- **Turnos do dia abertos:** depois das 13h a manhã fica no seletor ("Manhã | Tarde"; no fim de semana, os três turnos
+  o dia todo). O relógio continua mandando: a tela abre e vira no turno em curso, e o turno que já passou só abre com um
+  toque, com a faixa âmbar "Manhã encerrada às 13h · Voltar à tarde". Nele se corrigem **horário e quem fez**: no
+  detalhe, início/término, "Não aconteceu" na cirurgia aberta e "Trocar" o anestesista daquela cirurgia (inclusive a já
+  terminada, sem mexer na fila); Andamento vira leitura e saem "Editar", tempo estimado, ajuda, "Adicionar caso", o ⚙
+  da sala e as urgências do turno em curso. Nas Liberações, um aviso no lugar da fila ("A fila da manhã encerrou às
+  13h · Ver a fila da tarde"): ninguém é liberado, nem há recado ou push, num turno encerrado.
+- **Entrar na escala volta a Hoje** (quem saiu vendo "Amanhã" voltava em "Amanhã", sem a caixa de horários); voltar
+  depois de 2 min fora também sai de um turno encerrado. A fase da noite (P1–P4 às 19h, lista zerada às 23h) passa a
+  valer só para a fila da tarde.
+- **Pop-up de horários em aberto:** a cada entrada na escala, enquanto houver cirurgia sem horário (as de hoje que já
+  entraram no aviso e as de dias anteriores desde 27/10 — a mesma lista da caixa vermelha), abre uma folha com o
+  cabeçalho vermelho "Você tem X cirurgias sem horário", a cirurgia "da vez" marcada e o rodapé "Informar horários ·
+  Pular · Ver a escala". A folha "Início e término" de 27/10 abre por cima; confirmada, a lista volta com a seguinte, e
+  a última fecha o pop-up ("Horários em dia"). Fecha com um toque, não volta ao retornar do segundo plano, não manda
+  push e não aparece para conta de hospital.
+- **Abertura sem espera:** a lista de dias anteriores passa a ser buscada na abertura do app (antes, só quando a página
+  montava: 0,34–0,74 s depois de entrar, medido) e a última resposta fica no aparelho, sem dado de paciente.
+
 ## 29/10/2026 (só banco, sem versão nova do app) — "Seu preenchimento" a partir de 27/10
 
 *"apesar de preencherem de forma adequada o percentual está diminuindo"* (equipe, exemplo do Humberto).

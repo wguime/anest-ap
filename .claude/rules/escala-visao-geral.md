@@ -405,7 +405,8 @@ turno, o relógio fica pausado nesta faixa — senão o efeito do minuto seguint
 turno em curso e as cirurgias sumiriam sob o dedo. Sem posto nenhum, nada se move e o
 `EmptyState` continua valendo.
 
-⚠️ **16/09: a aba só leva a turnos que a tela OFERECE** — ver a seção abaixo. Às 14h a manhã já
+⚠️ **16/09: a aba só leva a turnos que a tela OFERECE** — ver a seção abaixo. **28/10: e nunca a um
+turno que já passou** (ele voltou ao seletor para CONSERTO, ver "Os turnos do dia ficam abertos"). Às 14h a manhã já
 saiu do seletor, então quem só tem cirurgia de manhã fica na tarde com o `EmptyState` (o que
 atravessou "passa para tarde" continua no quadro por outra regra, 22/08). `localizarMeuPosto`
 recebe `turnos` com a lista oferecida e `turnoPreferido` é o do relógio quando ele está nela.
@@ -426,6 +427,10 @@ posto. Troca rápida de app (ler o recado) mantém a aba de quem opera a fila; c
 fica fora (não tem Minhas). Trava: `escalaAberturaRapida.test.jsx` ("sempre abre na aba Minhas").
 
 ### Seletor de turno só com escolha; o turno em curso mora no subtítulo (dono 2026-09-16)
+
+> ↳ **28/10: a metade "na virada de turno a escala anterior sai" foi REVOGADA** — os turnos do dia
+> ficam no seletor (seção "Os turnos do dia ficam abertos", logo abaixo). Subtítulo, trilho só com
+> escolha e o relógio mandando continuam.
 
 Pedido: "quero que o turno válido comece a aparecer aqui [subtítulo do cabeçalho], não quero
 mais que apareçam as opções de turno para clicar, quero apenas que apareça o turno em curso. Ao
@@ -452,6 +457,50 @@ a escala anterior sai, exceto na transição do turno vespertino para noturno".
 
 Travas: `escalaTurnoAutomatico.test.jsx` (reescrito), `escalaBarraControles.test.jsx` ("trilho
 de turno"), `escalaMinhasAbaVaiAoPosto.test.jsx`.
+
+### Os turnos do dia ficam abertos (dono 2026-10-28, modelos em `.tmp/popup-horarios/`)
+
+*"As escalas da manhã, da tarde e da noite do MESMO DIA continuam abertas, para quem esqueceu corrigir
+o horário."* Até aqui a manhã saía do seletor às 13h e só quem operou alcançava a cirurgia dela (pela
+caixa vermelha). Escolhas do dono por imagem: seletor = **A** (o trilho de sempre + faixa âmbar),
+cirurgia de turno passado = **A+** (horário e quem fez), Liberações = **A** (aviso no lugar da fila).
+
+- **`turnosOferecidos`** (`utils.js`): hoje = o turno em curso + qualquer outro já publicado (antes, só
+  os seguintes). Dia útil depois das 13h: "Manhã | Tarde"; às 19h o trilho segue igual e o subtítulo
+  diz "Noite" (a noite é fase da tarde). FDS: os três turnos o dia todo. Outra data: sem mudança.
+- **`turnoJaEncerrou`** decide o modo de CONSERTO: hoje, turno anterior ao do relógio. No FDS a tarde
+  encerra às 19h (a noite é turno próprio e opera os mesmos casos, com tudo liberado). Nele:
+  - faixa âmbar (`role="status"`, `data-turno-encerrado`) "Manhã encerrada às 13h. Corrija horários e
+    quem fez." + **"Voltar à tarde"** (`fraseTurnoEncerrado`/`voltarAoTurno`);
+  - **Completa** (`BoardView encerrado`): sem "Adicionar caso", sem o ⚙ da sala, sem "Ainda abertas";
+    a `FaixaUrgencias` não monta (a ocupação do contrato é do turno em curso);
+  - **detalhe** (`CasoDetalheSheet encerrado`, vale na Completa, na Minhas e no "Ver a cirurgia" da
+    caixa/pop-up): blocos de início/término, "Não aconteceu (suspensa)" na cirurgia aberta e **"Trocar"**
+    o anestesista; Andamento vira leitura (`data-andamento-leitura`); saem "Editar", tempo estimado e
+    ajuda;
+  - **troca** (`DefinirAnestesistaSheet encerrado`): sem "assumir também a posição", sem a pergunta da
+    troca entre hospitais e sem o "fora da ordem"; ⚠️ **alcança a cirurgia TERMINADA** — exceção
+    ESTREITA à regra de 24/07 ("terminados mantêm quem os fez", que é do REPASSE): aqui é corrigir quem
+    fez uma cirurgia só, e a que ficou no nome errado quase sempre já terminou. `setAnestesistaCasos`
+    recebe **`semEfeitosNaFila`**: só o nome no caso — sem ajuda preservada, marcador de escalado nem
+    limpeza da anotação da linha (efeitos da fila que ainda corre);
+  - **Liberações**: `EmptyState` "A fila da manhã encerrou às 13h" + "Ver a fila da tarde" no lugar da
+    `LiberacoesView` — ninguém é liberado, nem há recado ou push de tempo estourado num turno que acabou.
+    A barra continua igual nas três abas (18/09).
+- **O relógio continua mandando**: a tela abre no turno em curso; `irOndeEuEstou` (abertura e aba Minhas)
+  só leva a turno em curso ou seguinte (quem só operou de manhã abre na tarde às 14h, com o
+  `EmptyState`); a volta depois de 2 min fora (`REABRIR_EM_MINHAS_MS`) também sai do turno encerrado.
+  **Entrar na escala volta a Hoje** (montagem da página): a data mora no provider do app e quem saiu
+  vendo "Amanhã" voltava em "Amanhã", sem a caixa de horários. Conta de hospital: inalterada.
+- **A fase da noite é da tarde** (`LiberacoesView`): `faseLiberacoes` olha só relógio e data; com
+  `turnoBase === 'matutino'` a fase é 'dia' — a fila da manhã vista às 20h não ganha os P1–P4 nem zera às
+  23h (no FDS isso também zerava a manhã às 23h).
+
+Travas: `escalaTurnosDoDiaAbertos.test.jsx` (regra pura + tela), `escalaTurnoEncerradoDetalhe.test.jsx`
+(detalhe e troca), `escalaPendenciasNaAberturaETurnoEncerrado.test.jsx` (`semEfeitosNaFila`),
+`liberacoesFaseNoiteSoTarde.test.jsx` (2 de 3 falham contra o código anterior), e os testes de 16/09 que
+mudaram de lado com o porquê no corpo (`escalaTurnoAutomatico`, `escalaMinhasAbaVaiAoPosto`,
+`escalaContaHospitalVoltaAoPadrao`).
 
 ### Erro de leitura ≠ "sem escala publicada" (revisão 2026-09-23)
 

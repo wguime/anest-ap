@@ -10,36 +10,43 @@
  * a escala daquele dia não está carregada; o item sai da lista na hora (otimista) e volta
  * com um aviso se a gravação falhar.
  *
- * Recarrega ao montar, quando o dia vira e quando o app volta do segundo plano.
+ * DESDE 28/10 (pop-up de horários, "abertura otimizada"): as escalas vêm de
+ * `pendenciasAnteriores.js`, que o provider da escala já pede na ABERTURA DO APP e que
+ * guarda a última resposta no aparelho. A lista aparece no primeiro render da página; a
+ * página ainda revalida ao montar, quando o dia vira e quando o app volta do segundo plano.
+ * `pronto` diz se a lista deste dia já está decidida — é o que o pop-up espera para abrir.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { useToast } from '@/design-system/components/ui/toast'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import { CORTE_PENDENCIAS_MINHAS, pendenciasDeDiasAnteriores } from '@/lib/escalaHorarioPendente'
 import { anestesistaDoCasoEh } from './utils'
+import { aplicarNoGuardado, assinarAnteriores, buscarAnteriores, retratoAnteriores } from './pendenciasAnteriores'
 
 const VAZIO = []
+const SEM_LISTA = { guardado: null, pronto: true }
 
 export default function useMinhasPendenciasAnteriores({ eu, hoje }) {
   const { toast } = useToast()
-  const [escalas, setEscalas] = useState(VAZIO)
+  const uid = eu?.uid || null
+  const ativo = !!uid && !!hoje && hoje > CORTE_PENDENCIAS_MINHAS
+  // o que já se sabe, sem esperar a rede (memória desta sessão ou o aparelho), e se a lista
+  // deste dia já está decidida — lidos do módulo, que avisa quando a resposta ou uma gravação chega
+  const { guardado, pronto } = useSyncExternalStore(
+    assinarAnteriores,
+    () => (ativo ? retratoAnteriores(uid, hoje) : SEM_LISTA),
+  )
   const [resolvidos, setResolvidos] = useState(() => new Set())
   // quantas gravações deram certo: o "Seu preenchimento" busca o número de novo a cada uma
   const [gravados, setGravados] = useState(0)
-  const pedido = useRef(0)
-  const uid = eu?.uid || null
-  const ativo = !!uid && !!hoje && hoje > CORTE_PENDENCIAS_MINHAS
 
-  const recarregar = useCallback(async () => {
-    if (!ativo) return // sem login/dia: `itens` já sai vazio
-    const n = ++pedido.current
-    try {
-      const lidas = await svc.fetchCasosDaPessoa({ uid, desde: CORTE_PENDENCIAS_MINHAS, ate: hoje })
-      if (n === pedido.current) { setEscalas(lidas); setResolvidos(new Set()) }
-    } catch {
-      // sem a lista, a aba segue com as pendências de hoje — não derruba nada
-    }
-  }, [ativo, uid, hoje])
+  // sem login/dia: `itens` já sai vazio. O que foi resolvido AQUI continua fora da lista mesmo
+  // que uma resposta lida antes da gravação chegue depois dela (sem isto a cirurgia voltava por
+  // um instante); se a gravação falhar, `tirar(id, false)` a devolve.
+  const recarregar = useCallback(
+    () => (ativo ? buscarAnteriores({ uid, hoje }) : Promise.resolve(null)),
+    [ativo, uid, hoje],
+  )
 
   useEffect(() => { recarregar() }, [recarregar])
   useEffect(() => {
@@ -49,6 +56,7 @@ export default function useMinhasPendenciasAnteriores({ eu, hoje }) {
     return () => document.removeEventListener('visibilitychange', aoVoltar)
   }, [ativo, recarregar])
 
+  const escalas = guardado?.escalas || VAZIO
   const itens = useMemo(() => {
     if (!ativo || !escalas.length) return VAZIO
     // a conta roda com os dois cards de cada par manhã × continuação (o do colega vem junto);
@@ -70,13 +78,14 @@ export default function useMinhasPendenciasAnteriores({ eu, hoje }) {
     try {
       await svc.updateCaso(caso.id, { inicioReal: inicio, terminoReal: termino })
       if ((caso.statusCirurgia || 'agendada') !== 'terminada') await svc.updateStatusCirurgia(caso.id, 'terminada')
+      aplicarNoGuardado(uid, caso.id, { inicioReal: inicio, terminoReal: termino, statusCirurgia: 'terminada' })
       setGravados((g) => g + 1)
       toast({ variant: 'success', title: 'Horário informado' })
     } catch (error) {
       tirar(caso.id, false)
       toast({ variant: 'error', title: 'Não foi possível gravar o horário', description: error.message })
     }
-  }, [toast])
+  }, [toast, uid])
 
   /** A cirurgia que não aconteceu: Suspensa (sai da conta, como na folha Antes de liberar). */
   const naoAconteceu = useCallback(async (item) => {
@@ -84,12 +93,13 @@ export default function useMinhasPendenciasAnteriores({ eu, hoje }) {
     tirar(caso.id, true)
     try {
       await svc.updateStatusCirurgia(caso.id, 'suspensa')
+      aplicarNoGuardado(uid, caso.id, { statusCirurgia: 'suspensa' })
       setGravados((g) => g + 1)
     } catch (error) {
       tirar(caso.id, false)
       toast({ variant: 'error', title: 'Não foi possível marcar como suspensa', description: error.message })
     }
-  }, [toast])
+  }, [toast, uid])
 
-  return { itens, recarregar, informar, naoAconteceu, gravados }
+  return { itens, recarregar, informar, naoAconteceu, gravados, pronto }
 }
