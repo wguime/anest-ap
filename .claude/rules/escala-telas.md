@@ -435,8 +435,9 @@ da Minhas, prop `pendencia` do `CasoCard` — está no comparador do `memo`).
 
 ### "Seu preenchimento" — topo da aba Minhas (dono 2026-10-15, modelo A)
 
-- `MeuPreenchimento.jsx` + `resumoMeuPreenchimento` (`src/lib/escalaAdesao.js`) + RPC `escala_meu_preenchimento(7)`.
-  % das cirurgias da PRÓPRIA pessoa com início E término (colunas `*_real`) nos 7 dias ENCERRADOS (hoje fora),
+- `MeuPreenchimento.jsx` + `resumoMeuPreenchimento` (`src/lib/escalaAdesao.js`) + RPC `escala_meu_preenchimento(6)`.
+  % das cirurgias da PRÓPRIA pessoa com início E término (colunas `*_real`) nos 6 dias ENCERRADOS + HOJE (desde
+  28/10, ver abaixo; nunca antes de 27/10, o corte da caixa),
   mesmos cortes da trava de liberação; marca = média dos 5 melhores (5+ cirurgias, sem conta de teste/duplicada;
   só com 3+ no topo). Some sem cirurgia na janela ou na meta 80% sem pendência hoje. Só aparece vendo HOJE.
 - Só o número de quem chama sai do banco — o ranking com nomes continua só no relatório de adesão. Cache 30 min
@@ -571,6 +572,13 @@ por imagem, tela a tela (reabre 14/10, 05/10, 15/10, 17/08/02/10 do PainelTempo 
   app. Travas: `escalaPreenchimentoMesmaRegraSql.test.js`, bloco "hoje no Seu preenchimento" de
   `escalaHorarioPendente.test.js`, `escalaAdesao.test.js`, `meuPreenchimento.test.jsx`. Rollback: app
   primeiro, depois `scripts/rollback-20261028130000-preenchimento-mesma-regra.sql`.
+- **O NÚMERO NUNCA COMEÇA ANTES DA CAIXA (29/10, Humberto: "o percentual está diminuindo")**: a janela
+  começava em 05/10, mas a caixa só lista a partir de `CORTE_PENDENCIAS_MINHAS` (27/10) — 50 faltas de
+  23–26/10 (24 pessoas) pesavam sem como preencher. `v_desde := greatest(..., date '2026-10-27')`
+  (migration `20261029120000`, só banco). Mexer no corte da caixa = mexer nesta data junto; o
+  `escalaPreenchimentoDesdeCorteSql.test.js` compara as duas. Rollback:
+  `scripts/rollback-20261029120000-preenchimento-desde-corte-caixa.sql`. Tela com N maior que o
+  esperado (ex.: 11 de 15 contra 9 de 13) = bundle antigo pedindo `p_dias: 7`.
 
 ### Editar e EXCLUIR o caso publicado (dono 2026-09-01, modelo A em protótipo)
 

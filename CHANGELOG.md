@@ -3,6 +3,18 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## 29/10/2026 (só banco, sem versão nova do app) — "Seu preenchimento" a partir de 27/10
+
+*"apesar de preencherem de forma adequada o percentual está diminuindo"* (equipe, exemplo do Humberto).
+- A porcentagem contava faltas de 23 a 26/10 que a caixa "Cirurgias sem horário" não mostra (a caixa começa em
+  27/10): 50 cirurgias de 24 pessoas, impossíveis de preencher. O Humberto zeraria a caixa e ficaria em 85%.
+- Agora o número conta a partir de 27/10, a mesma data da caixa (escolha do dono). Efeito medido: 100% passou de 13
+  para 32 pessoas, 20 sobem, 7 caem (quem tem pendência de 27/10 em diante, todas visíveis na caixa). Até 03/11 a
+  janela é mais curta e o número oscila mais; depois disso o corte deixa de agir.
+- A queda de 73% para 69% na manhã de 29/10 foi a troca de versão do app (a anterior somava um dia a mais).
+- Banco: migration `20261029120000` (já aplicada; rollback em `scripts/`). Trava:
+  `escalaPreenchimentoDesdeCorteSql.test.js`.
+
 ## v5.12.85 (28/10/2026) — Selo de ajuda com o lugar: "Ajuda (HRO)"
 
 *"Agora está: No HRO e quero que volte a ficar: Ajuda (HRO)"* e *"quero que fique: Ajuda (HRO), Ajuda (Unimed), Ajuda
