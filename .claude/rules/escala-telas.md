@@ -431,6 +431,18 @@ da Minhas, prop `pendencia` do `CasoCard` — está no comparador do `memo`).
   `20261016150000` nas três funções do banco; rollback em `scripts/`). Quem marcar Terminada sem início não é
   mais perguntado: `inicioDefinidoConsultorio` (`escalaHorarioReal.js`) põe 07:45/13:30 no mesmo patch (o
   trigger de 14/10 continua exigindo início — por isso o cliente o manda).
+- **Consultório e SRPA sem débito de preenchimento em lugar nenhum** (dono 29/10: "já que esses horários são fixos.
+  SRPA 09:00–13:00, 13:00–19:00 e 19:00–22:00, consultório 07:45–11:30 e 13:30–17:00"). Revisão em produção: caixa,
+  pop-up, "Seu preenchimento", relatório de horário e trava da liberação já deixavam os dois de fora — o consultório
+  pelo procedimento, a SRPA porque a linha dela não tem procedimento (41 em outubro, todas sem). Faltava o RELATÓRIO
+  DE ADESÃO: contava o consultório como cirurgia (início, término e tempo da própria pessoa) e o turno só de
+  consultório como turno que pede tempo total — 49 casos e 47 turnos de 22 pessoas em 30 dias. A migration
+  `20261029213000` (aplicada 29/10 21h32) põe o mesmo corte (`!~* 'consult'`) no relatório ao vivo e no histórico
+  diário (por pessoa e por hospital) e regrava 30 dias; jul–set (congelados) ficam como foram gravados, escolha do
+  dono (109 consultórios, ~2%). Dias na escala ("abre a escala") não mudam: nenhum dia contava só por consultório ou
+  SRPA — mas `escala_adesao_escalados` não tem o corte, então um dia FUTURO só de consultório/SRPA contaria. ⚠️ Regra nova que conta cirurgia para cobrar horário precisa dos DOIS cortes — procedimento vazio (SRPA e
+  demais posições) e `consult` — no app e em TODA função do banco que conta cirurgias. Trava:
+  `escalaAdesaoSemConsultorioSql.test.js` (PGlite: no ar → migration → rollback).
 - Travas: `src/__tests__/lib/escalaHorarioPendente.test.js`, `src/__tests__/pages/escalaHorarioPendente.test.jsx`,
   `escalaHorarioReal.test.js` (describe "consultório").
 

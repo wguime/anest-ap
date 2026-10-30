@@ -3,6 +3,22 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## 29/10/2026 (só banco, sem versão nova do app) — Consultório e SRPA sem débito no relatório de adesão
+
+*"quero que revise e atualize para que quem está no consultório e SRPA não contenha débitos de preenchimento já que
+esses horários são fixos"* (dono).
+- Revisão: a caixa "Cirurgias sem horário", o pop-up, o "Seu preenchimento", o relatório de horário e a folha "Antes
+  de liberar" já deixavam os dois de fora. Faltava o relatório de adesão, que contava o consultório como cirurgia a
+  marcar e o turno só de consultório como turno que pede tempo total: 49 casos e 47 turnos de 22 pessoas em 30 dias.
+- Agora o consultório sai dessas contas, no relatório ao vivo e no histórico (por pessoa e por hospital), com os
+  últimos 30 dias regravados (escolha do dono). Julho a setembro ficam como foram gravados (109 consultórios, ~2% dos
+  casos), como nas mudanças de 24/09. A SRPA já estava fora. Os dias na escala ("abre a escala") não mudam, e a
+  blefaroplastia lançada na sala Consultório continua contando (o corte é o procedimento).
+- Efeito medido: no relatório ao vivo (30 dias) 2.595 → 2.546 casos e 1.280 → 1.233 turnos, em 22 pessoas; no histórico,
+  46 linhas mudaram e nenhum outro campo (aberturas, ações, dias na escala, tempos).
+- Banco: migration `20261029213000` (aplicada em 29/10, 21h32, ensaiada antes com rollback; rollback em `scripts/`).
+  Trava: `escalaAdesaoSemConsultorioSql.test.js`.
+
 ## v5.12.89 (29/10/2026) — Consultório também sem toque nas Liberações
 
 *"atualize as escalas para que ao clicar em consultório não aconteça nada"* (dono, depois da v5.12.88).
