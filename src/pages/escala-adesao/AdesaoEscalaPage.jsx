@@ -21,7 +21,7 @@ import SecaoHorarioNaoPreenchido from './SecaoHorarioNaoPreenchido'
 import {
   META, INDICE, CARGOS, ORDEM_CARGO, SITUACOES,
   montarPessoas, ordenarPessoas, resumirCargos, indicadoresGrupo, hospital,
-  faixa, formatarPct, melhores10, tamanhoTopo, proximoPasso, montarVista, rotuloMes, mesAnterior,
+  faixa, formatarPct, formatarDias, melhores10, tamanhoTopo, proximoPasso, montarVista, rotuloMes, mesAnterior,
 } from '@/lib/escalaAdesao'
 
 
@@ -156,7 +156,7 @@ function Ficha({ pessoa, pessoas, vista, lado = 'bottom', onClose }) {
           )}
           <Comparativo
             titulo="Abre a escala"
-            detalhe={`abriu em ${pessoa[`d${j}`]} de ${pessoa[`base${j}`]} dias trabalhados${pessoa.anest ? '' : ` · ${vista.rotA}`}`}
+            detalhe={`abriu em ${formatarDias(pessoa[`d${j}`])} de ${formatarDias(pessoa[`base${j}`])} dias trabalhados${pessoa.anest ? '' : ` · ${vista.rotA}`}`}
             linhas={eu(pessoa[`abre${j}`])} meta={META.uso} topo={pessoa.anest ? topo.abre : null} rotuloTopo={rotuloTopo}
           />
           {pessoa.anest ? (
@@ -292,7 +292,7 @@ function TabelaCargo({ cargo, lista, vista, onAbrir }) {
               <span className="mt-1 block xl:hidden"><Tag situacao={p.situacao} /></span>
             </td>
             <td className="hidden whitespace-nowrap border-t border-border px-1 text-center xl:table-cell"><Tag situacao={p.situacao} /></td>
-            <CelulaLarga valor={p[`uso${j}`]} meta={metaUso} sub={`abriu ${p[`d${j}`]} de ${p[`base${j}`]} dias`} sub2={`${vista.curtoB}: ${formatarPct(p[`uso${o}`])}`} />
+            <CelulaLarga valor={p[`uso${j}`]} meta={metaUso} sub={`abriu ${formatarDias(p[`d${j}`])} de ${formatarDias(p[`base${j}`])} dias`} sub2={`${vista.curtoB}: ${formatarPct(p[`uso${o}`])}`} />
             {p.anest ? (
               <>
                 <CelulaLarga valor={p[`ini${j}`]} meta={META.ini} sub={`sala: ${formatarPct(p[`iniSala${j}`])}`} sub2={`${vista.curtoB}: ${formatarPct(p[`ini${o}`])}`} />
@@ -443,7 +443,7 @@ export default function AdesaoEscalaPage({ goBack }) {
           <p className="text-[13px] leading-snug text-muted-foreground lg:order-1 lg:max-w-[62ch]">
             Quem usa a escala, quem marca início e término e quem informa o tempo que falta.
             Mede só se o app foi informado, não a qualidade do trabalho na sala. Tudo é contado apenas nos
-            dias em que a pessoa trabalhou: férias, pós-plantão, consultório e folgas ficam fora. {periodo && `Período: ${periodo}.`}
+            dias em que a pessoa trabalhou: férias, pós-plantão, folgas e os turnos de consultório ou SRPA ficam fora. {periodo && `Período: ${periodo}.`}
             {' '}O dia entra quando a escala do dia seguinte é publicada.
             {ehMes && ' A comparação (número pequeno) é com o mês anterior.'}
           </p>
@@ -560,11 +560,12 @@ export default function AdesaoEscalaPage({ goBack }) {
             </section>
 
             <p className="text-[11.5px] leading-snug text-muted-foreground">
-              Fonte: registros do ANEST. Ficam fora cirurgias suspensas, linhas sem anestesista, a conta de testes
-              e quem não trabalhou nenhum dia no período.
+              Fonte: registros do ANEST. Ficam fora cirurgias suspensas, o consultório, linhas sem anestesista, a
+              conta de testes e quem não trabalhou nenhum dia no período.
               Se uma troca não foi registrada no app, a cirurgia conta para quem estava escalado. Dia trabalhado:
-              cirurgia no nome ou nome no rodapé do hospital — no fim de semana só com cirurgia, e rodapé anotado
-              "consultório" não conta. O tempo total pode sair um pouco menor que o real quando outra pessoa editou a
+              cirurgia no nome ou nome no rodapé do hospital — no fim de semana só com cirurgia. O turno de consultório
+              ou SRPA (horário fixo) não conta: o dia só desses turnos fica fora, e o dia com um deles e o outro turno
+              na fila ou numa cirurgia vale meio dia. O tempo total pode sair um pouco menor que o real quando outra pessoa editou a
               linha depois; no índice dos anestesistas, o tempo da cirurgia conta o preenchido por qualquer pessoa.
             </p>
           </>

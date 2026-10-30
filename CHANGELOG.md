@@ -3,6 +3,22 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## 30/10/2026 — Relatório de adesão: o turno de SRPA ou consultório não conta, o dia vale a fração
+
+*"pode ser descontado desde que o usuário não volte a fazer outros procedimentos"* (dono, 29/10) e *"nesses casos de
+SRPA e/ou consultório sejam contados os turnos de forma proporcional para contagem de 'dia de escala'"* (30/10).
+- "Dias na escala", a base da coluna "abre a escala", passa a contar por turno: o turno só de SRPA ou de consultório
+  (linha no nome, ou rodapé anotado "(CONSULT)") não conta. SRPA ou consultório num turno e fila ou cirurgia no outro
+  = meio dia; o dia só desses turnos fica fora. Abrir a escala num meio dia conta meio dia.
+- Medido nos últimos 30 dias: 870 dias de escala viram 831 — saem 12 dias e 54 dias, de 25 pessoas, viram meio dia.
+  Entre os anestesistas, "abre a escala" muda no máximo 6,2 pontos; ninguém cruza 40% nem 70%. Nenhum outro número
+  do relatório muda.
+- Banco aplicado em 30/10 às 10h52; histórico dos últimos 30 dias regravado, julho a setembro como estavam.
+- App: "abriu X de Y dias" mostra o meio dia com vírgula ("12,5 de 19,5") e os critérios da página dizem a regra
+  nova — sai na próxima versão do app; até lá a tela mostra o meio dia com ponto ("12.5").
+- Banco: migration `20261030110000` (coluna `escala_adesao_dia.escalado_peso`; rollback em `scripts/`). Travas:
+  `escalaAdesaoDiaProporcionalSql.test.js`, `escalaAdesao.test.js`.
+
 ## 29/10/2026 (só banco, sem versão nova do app) — Consultório e SRPA sem débito no relatório de adesão
 
 *"quero que revise e atualize para que quem está no consultório e SRPA não contenha débitos de preenchimento já que

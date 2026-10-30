@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  tituloNome, razao, faixa, formatarPct, classificarSituacao, montarPessoas, ordenarPessoas,
+  tituloNome, razao, faixa, formatarPct, formatarDias, classificarSituacao, montarPessoas, ordenarPessoas,
   resumirCargos, indicadoresGrupo, melhores10, proximoPasso, resumoCard, mediana,
   rotuloMes, mesAnterior, limitesMes, montarVista, serieEvolucao, tendencia, tamanhoTopo, indiceUso,
 } from '@/lib/escalaAdesao'
@@ -27,6 +27,14 @@ describe('escalaAdesao — formatação', () => {
     expect(razao(1, 4)).toBe(25)
     expect(formatarPct(null)).toBe('—')
     expect(formatarPct(59.4)).toBe('59%')
+  })
+
+  it('dias na escala podem ter meio dia (turno de SRPA/consultório, dono 30/10): vírgula, uma casa no máximo', () => {
+    expect(formatarDias(19.5)).toBe('19,5')
+    expect(formatarDias(20)).toBe('20')
+    expect(formatarDias('17.50')).toBe('17,5') // numeric do banco
+    expect(formatarDias(0)).toBe('0')
+    expect(formatarDias(null)).toBe('0')
   })
 
   it('faixas: zero, abaixo da metade, metade ou mais, meta, não se aplica', () => {
@@ -86,6 +94,14 @@ describe('escalaAdesao — montarPessoas', () => {
     expect(p.d30).toBe(7)
     expect(Math.round(p.abre30)).toBe(78)
     expect(p.base7).toBe(2)
+  })
+
+  it('meio dia na escala (SRPA de manhã, cirurgia à tarde): a fração entra na base, no "abriu" e na frase da ficha', () => {
+    const [p] = montarPessoas(rel([linha({ de: 19.5, dne: 2.5, de7: 4.5, d7e: 0.5 })]), null)
+    expect(p.base30).toBe(19.5)
+    expect(Math.round(p.abre30)).toBe(13)
+    expect(p.situacao).not.toBe('sem') // abriu meio dia na semana: não é "sem uso"
+    expect(proximoPasso(p).texto).toBe('Abriu a escala em 2,5 de 19,5 dias trabalhados.')
   })
 
   it('demais cargos: base = dias úteis da janela (feriado conta) e o uso é o próprio "abre"', () => {

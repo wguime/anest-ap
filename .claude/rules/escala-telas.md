@@ -440,7 +440,18 @@ da Minhas, prop `pendencia` do `CasoCard` — está no comparador do `memo`).
   `20261029213000` (aplicada 29/10 21h32) põe o mesmo corte (`!~* 'consult'`) no relatório ao vivo e no histórico
   diário (por pessoa e por hospital) e regrava 30 dias; jul–set (congelados) ficam como foram gravados, escolha do
   dono (109 consultórios, ~2%). Dias na escala ("abre a escala") não mudam: nenhum dia contava só por consultório ou
-  SRPA — mas `escala_adesao_escalados` não tem o corte, então um dia FUTURO só de consultório/SRPA contaria. ⚠️ Regra nova que conta cirurgia para cobrar horário precisa dos DOIS cortes — procedimento vazio (SRPA e
+  SRPA (a pessoa estava no rodapé do turno ou tinha outra cirurgia).
+- **Turno de SRPA ou consultório não conta: o "dia na escala" vale a fração** (dono 29/10: "pode ser descontado desde
+  que o usuário não volte a fazer outros procedimentos"; 30/10: "sejam contados os turnos de forma proporcional").
+  `escala_adesao_escalados` (migration `20261030110000`, aplicada 30/10 10h52) devolve `(data, user_id, peso)`: por
+  hospital e turno, o turno é de horário fixo quando TODAS as linhas da pessoa ali são de consultório (procedimento
+  "consult" ou posição sem procedimento na sala/bloco Consultório) ou da SRPA, ou o rodapé vem anotado "(CONSULT…)";
+  `peso` = turnos que contam ÷ turnos da pessoa na escala (SRPA de manhã + fila ou cirurgia à tarde = 0,5; só horário
+  fixo = fora). O relatório ao vivo soma `peso` em `de` e também em `dne` (abrir num meio dia = meio dia); o histórico
+  grava `escala_adesao_dia.escalado_peso` (nula = dia inteiro, gravado antes) e `escala_adesao_periodo` soma. Medido
+  (30/09–29/10): 870 → 831 dias, 54 meios dias de 25 pessoas, 12 dias fora. Regravou 30 dias; congelados como
+  estavam. A tela mostra o meio dia com `formatarDias` ("12,5"); os critérios da página dizem a regra
+  (`AdesaoEscalaPage.jsx`). Trava: `escalaAdesaoDiaProporcionalSql.test.js`. ⚠️ Regra nova que conta cirurgia para cobrar horário precisa dos DOIS cortes — procedimento vazio (SRPA e
   demais posições) e `consult` — no app e em TODA função do banco que conta cirurgias. Trava:
   `escalaAdesaoSemConsultorioSql.test.js` (PGlite: no ar → migration → rollback).
 - Travas: `src/__tests__/lib/escalaHorarioPendente.test.js`, `src/__tests__/pages/escalaHorarioPendente.test.jsx`,

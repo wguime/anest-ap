@@ -12,7 +12,10 @@
  *    Demais cargos (sem cirurgia própria): índice = abre a escala.
  *  - ABRE A ESCALA (dono 24/09): % dos dias em que a pessoa podia usar a escala em que ela abriu.
  *    Anestesista → dias em que estava NA ESCALA PUBLICADA (caso ou rodapé): férias, atestado,
- *    consultório e pós-plantão ficam fora sozinhos; feriado e fim de semana escalados entram.
+ *    consultório e pós-plantão ficam fora sozinhos; feriado e fim de semana escalados entram. O turno
+ *    de consultório ou SRPA (horário fixo) não conta: o dia vale a fração dos turnos que contam (SRPA
+ *    de manhã e cirurgia ou fila à tarde = meio dia; só horário fixo = fora) e abrir num meio dia conta
+ *    meio dia (dono 29–30/10, migration 20261030110000) — a base e o "abriu" podem vir com ",5".
  *    Demais cargos → dias ÚTEIS (seg–sex, feriado conta) — a escala deles não tem histórico.
  *    Meta 70% (≈ os 15 dias de ~21 úteis da régua antiga). Quem não trabalhou nenhum dia no
  *    período (base 0) não entra na lista — sem rótulo próprio de férias (dono 24/09).
@@ -85,6 +88,11 @@ export function razao(n, d) {
 
 export function formatarPct(v) {
   return v == null ? '—' : `${Math.round(v)}%`
+}
+
+/** Dias na escala, que podem ter meio dia (turno de SRPA/consultório, dono 30/10): 19.5 → "19,5". */
+export function formatarDias(v) {
+  return String(Math.round((Number(v) || 0) * 10) / 10).replace('.', ',')
 }
 
 /** Faixa de cor de um valor contra a meta. */
@@ -284,11 +292,11 @@ export function proximoPasso(p) {
   if (p.base7 > 0 && p.d7 === 0) return { texto: 'Não abriu a escala nos dias em que esteve escalado nesta semana.', passo: 'voltar a abrir a escala todo dia escalado, pela aba Minhas.' }
   if (!p.anest) {
     return (p.abre30 ?? 0) < META.uso
-      ? { texto: `Abriu a escala em ${p.d30} de ${p.base30} dias úteis.`, passo: 'abrir todo dia útil e marcar início e término das cirurgias da sua sala.' }
+      ? { texto: `Abriu a escala em ${formatarDias(p.d30)} de ${formatarDias(p.base30)} dias úteis.`, passo: 'abrir todo dia útil e marcar início e término das cirurgias da sua sala.' }
       : { texto: 'Usa a escala com frequência.', passo: 'continuar marcando início e término, que é o que faz a fila andar.' }
   }
   const lacunas = [
-    { g: META.uso - (p.abre30 ?? 0), texto: `Abriu a escala em ${p.d30} de ${p.base30} dias trabalhados.`, passo: 'abrir a escala em todo dia escalado, pela aba Minhas.' },
+    { g: META.uso - (p.abre30 ?? 0), texto: `Abriu a escala em ${formatarDias(p.d30)} de ${formatarDias(p.base30)} dias trabalhados.`, passo: 'abrir a escala em todo dia escalado, pela aba Minhas.' },
     { g: META.ter - (p.ter30 ?? 0), texto: `Marcou o término em ${formatarPct(p.ter30)} das próprias cirurgias (meta 80%).`, passo: 'tocar "Terminada" ao sair da sala.' },
     { g: META.ini - (p.ini30 ?? 0), texto: `Marcou o início em ${formatarPct(p.ini30)} das próprias cirurgias (meta 80%).`, passo: 'tocar "Iniciada" quando a cirurgia começar.' },
     { g: (META.tot - (p.tot30 ?? 0)) * 0.8, texto: `Tempo total informado em ${formatarPct(p.tot30)} dos turnos (meta 80%).`, passo: 'informar a que horas termina o turno, para a fila saber quem libera primeiro.' },
