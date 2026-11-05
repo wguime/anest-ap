@@ -115,6 +115,24 @@ describe('estadoDaFila', () => {
     expect(fila.bloqueioDe(linhas[1], 1)).toBeNull()
   })
 
+  it('sobrou só o plantonista: fica verde, mas o toque para liberá-lo segue livre (05/11)', () => {
+    // Materno 05/11 tarde: Rodnei plantão com 5 casos, Raquel 2ª sem caso nasce liberada
+    const linhas = [linha('RODNEI', { isPlantonista: true }), linha('RAQUEL', { teveCasos: false })]
+    const fila = estadoDaFila(linhas)
+    expect(fila.caudaLiberada(linhas[1], 1)).toBe(true)
+    expect(fila.idxCartao).toBe(-1)
+    expect(fila.bloqueioDe(linhas[0], 0)).toBeNull()
+    // os outros saíram por toque ao longo do turno: mesma coisa, e quem volta é o mais próximo
+    const marcas = { B: { liberadoEm: 'x' }, C: { liberadoEm: 'x' } }
+    const tres = [linha('A', { isPlantonista: true }), linha('B'), linha('C')]
+    const depois = estadoDaFila(tres, { marcaDe: (l) => marcas[l.chave] })
+    expect(depois.idxCartao).toBe(-1)
+    expect(depois.idxConvocar).toBe(1)
+    // com mais alguém na fila, o próximo continua amarelo — e o plantonista não é ele
+    const comOutro = estadoDaFila([linha('A', { isPlantonista: true }), linha('B')])
+    expect(comOutro.idxCartao).toBe(1)
+  })
+
   it('hora de saída combinada: antes dela a ordem vale, a partir dela o toque passa (21/09)', () => {
     const linhas = [linha('A'), linha('LOUISE'), linha('C')]
     const horaSaidaDe = (l) => (l.chave === 'LOUISE' ? '19:00' : null)

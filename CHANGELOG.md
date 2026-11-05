@@ -3,6 +3,15 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## 05/11/2026 — v5.12.90 — Liberações: plantonista que sobra sozinho fica verde
+
+*"quando só houver o plantonista escalado deixe ele sempre em verde pq ele irá trabalhar"* (dono, 05/11 — Materno
+da tarde: Rodnei plantão, Raquel 2ª sem caso já liberada, e o Rodnei aparecia como "Próximo a ser liberado").
+- Nos três hospitais (dia útil): se o plantonista é o único ainda na fila — os outros nasceram liberados ou saíram ao
+  longo do turno —, o card fica verde, sem "Próximo a ser liberado". Só a cor muda: o toque para liberá-lo segue livre
+  e o "convocar" segue a ordem. Com mais alguém na fila, nada muda. Fim de semana fora (fila única).
+- Código: `estadoDaFila` (`src/lib/filaLiberacao.js`). Travas: `filaLiberacao.test.js`, `escalaCirurgicaPersonas.test.jsx`.
+
 ## 30/10/2026 — Relatório de adesão: o turno de SRPA ou consultório não conta, o dia vale a fração
 
 *"pode ser descontado desde que o usuário não volte a fazer outros procedimentos"* (dono, 29/10) e *"nesses casos de

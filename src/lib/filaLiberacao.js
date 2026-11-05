@@ -157,6 +157,14 @@ export function estadoDaFila(linhas, ctx = {}) {
       if (naFila(l, i) && (!naoEscalado(l) || marcaDe(l)?.escalado === true)) { idxCartao = i; break }
     }
   }
+  // SOBROU SÓ O PLANTONISTA = VERDE (dono 05/11: "quando só houver o plantonista escalado
+  // deixe ele sempre em verde pq ele irá trabalhar"). Vale nos três hospitais, desde o
+  // início do turno ou depois que os outros saíram. Só a tinta muda: o toque para
+  // liberá-lo segue livre (`bloqueioDe` não depende do cartão) e convocar segue a ordem.
+  if (!modoFds && idxCartao >= 0 && linhas[idxCartao].isPlantonista
+    && linhas.every((l, i) => i === idxCartao || !naFila(l, i))) {
+    idxCartao = -1
+  }
 
   // CONVOCAR TAMBÉM SEGUE A ORDEM (dono 20/08): a fila sai de baixo p/ cima, então volta
   // de cima p/ baixo — o próximo a convocar é o liberado mais próximo de quem ainda está

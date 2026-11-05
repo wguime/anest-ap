@@ -2114,10 +2114,21 @@ describe('Liberações — "passa para tarde" de quem não está na tarde (dono 
   it('o "próximo a ser liberado" volta a ser quem está de fato trabalhando', () => {
     // era a 3ª metade da queixa de 24/08: "Gabriela (próximo a ser liberado)" —
     // a fila anunciava como próxima a sair alguém que nem estava no turno
+    // Desde 05/11 o Raul, plantonista que sobrou sozinho na fila, fica verde (dono: "quando
+    // só houver o plantonista escalado deixe ele sempre em verde") — então ninguém é o
+    // próximo aqui; com mais alguém trabalhando na tarde, o próximo é ele e nunca a Gabriela.
     render(<LiberacoesView escala={escala(['RAUL', 'VICENTE'])} hospital="unimed" hospitalLabel="Unimed"
       turno="vespertino" canEdit onToggle={() => {}} />, { wrapper: wrap })
+    expect(screen.queryByText('Próximo a ser liberado')).toBeNull()
+    expect(document.querySelector('[data-linha="GABRIELA"]')).toBeNull()
+
+    const comOutro = escala(['RAUL', 'LEANDRO', 'VICENTE'])
+    comOutro.casos.push({ id: 't2', sala: 'CC - Sala 2', ordem: 0, turno: 'vespertino', hora: '13:30', anestesista: 'LEANDRO', cirurgiao: 'Fulano' })
+    cleanup()
+    render(<LiberacoesView escala={comOutro} hospital="unimed" hospitalLabel="Unimed"
+      turno="vespertino" canEdit onToggle={() => {}} />, { wrapper: wrap })
     const proximo = screen.getByText('Próximo a ser liberado').closest('[data-linha]')
-    expect(proximo.getAttribute('data-linha')).toBe('RAUL')
+    expect(proximo.getAttribute('data-linha')).toBe('LEANDRO')
   })
 
   it('e o VICENTE, que fecha a ordem sem cirurgia, nasce Liberado (fix completo do dia)', () => {
