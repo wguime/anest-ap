@@ -37,7 +37,7 @@ test('importação em lote: anexo múltiplo e header no padrão do DS', async ({
 
   // Header no padrão do PageHeader: título + subtítulo com data e turno
   await expect(page.getByRole('heading', { name: 'Confeccionar escalas' })).toBeVisible();
-  await expect(page.getByText(/·\s*(Matutino|Vespertino)/)).toBeVisible();
+  await expect(page.getByText(/·\s*(Manhã|Tarde)/)).toBeVisible();
 
   // A caixa de anexo aceita vários arquivos de uma vez
   const input = page.locator('input[type="file"]').first();

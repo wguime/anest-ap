@@ -633,7 +633,9 @@ export default function HomePage({ onNavigate }) {
             Gestão em 2026-07-22). Gate por papel, sem placeholder p/ quem não passa. */}
         {podeVerEscalaCirurgica(user) && (
           <div className="mb-4">
-            <EscalaCirurgicaHomeCard onNavigate={onNavigate} />
+            {/* P1–P4 do dia para o card mostrar o plantonista da noite (19h–7h) — o
+                mesmo dado do card Plantões, sem 2º fetch */}
+            <EscalaCirurgicaHomeCard onNavigate={onNavigate} plantoes={plantoesCombinados} plantoesDeDemonstracao={plantoesUsandoMock} />
           </div>
         )}
 

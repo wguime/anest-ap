@@ -458,12 +458,12 @@ export default function TrocaSheet({ linha, escala, turno, colegaInicial = null,
               </p>
             ))}
             {opcao !== 'registro' && !ladosEfetivos.length && (
-              <p className="text-[12.5px] text-warning">
+              <p className="text-[12.5px] text-category-orange-fg">
                 {A} não tem posição nem cirurgia em aberto neste turno: não há o que trocar. Use "só registrar".
               </p>
             )}
             {semVinculo.map((p) => (
-              <p key={p.pessoa.uid || p.pessoa.nome} className="text-[12px] text-warning">
+              <p key={p.pessoa.uid || p.pessoa.nome} className="text-[12px] text-category-orange-fg">
                 {curto(p.pessoa.nome)} está sem vínculo de login — a posição troca, mas os casos não (vincule pelo 🔗).
               </p>
             ))}

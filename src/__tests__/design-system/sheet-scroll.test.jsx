@@ -66,6 +66,50 @@ describe('Sheet — corpo rolável', () => {
 })
 
 /**
+ * CABEÇALHO FIXO — título e ✕ ficam parados, o conteúdo rola por baixo (dono 11/2026).
+ *
+ * O ✕ é `absolute` no painel e nunca rolou; o título rolava com o corpo. Numa folha
+ * longa ("Adicionar caso": 1.335px de formulário numa folha de 837) o ✕ acabava
+ * flutuando em cima do texto — medido no app a 430 e a 375px. O dono escolheu em
+ * modelo o cabeçalho fixo (opção A), sabendo que vale para todas as folhas do app.
+ *
+ * ⚠️ jsdom não calcula `position: sticky`: o que se trava é a REGRA nas classes e a
+ * condição que a faz funcionar — o cabeçalho ser filho DIRETO da caixa de rolagem.
+ */
+describe('Sheet — cabeçalho fixo', () => {
+  it('o cabeçalho gruda no topo, com fundo opaco, acima do conteúdo', () => {
+    montar()
+    const cab = document.querySelector('[data-slot="sheet-header"]')
+    for (const c of ['sticky', 'top-0', 'bg-card', 'z-10', 'border-b']) expect(cab.className).toContain(c)
+  })
+
+  it('o ✕ fica ACIMA do cabeçalho — com o mesmo z-index o cabeçalho o cobria', () => {
+    // Visto no navegador na 1ª versão: cabeçalho `z-10` e ✕ `z-10` no mesmo contexto de
+    // empilhamento, o cabeçalho depois no DOM → a folha abria SEM ✕. jsdom não empilha;
+    // o que se trava é a ordem dos dois valores.
+    montar()
+    const z = (el) => Number((el.className.match(/(?:^|\s)z-(\d+)/) || [])[1])
+    expect(z(screen.getByRole('button', { name: 'Fechar' }))).toBeGreaterThan(z(document.querySelector('[data-slot="sheet-header"]')))
+  })
+
+  it('é filho direto do corpo rolável — embrulhado, o sticky solta', () => {
+    montar()
+    const cab = document.querySelector('[data-slot="sheet-header"]')
+    expect(cab.parentElement).toBe(document.querySelector('[data-slot="sheet-body"]'))
+  })
+
+  it('a página ainda ajusta o respiro do cabeçalho sem perder o fixo', () => {
+    render(
+      <Sheet open onOpenChange={vi.fn()}>
+        <SheetContent side="bottom"><SheetHeader className="pb-2"><SheetTitle>Curto</SheetTitle></SheetHeader></SheetContent>
+      </Sheet>, { wrapper: wrap })
+    const cab = document.querySelector('[data-slot="sheet-header"]')
+    expect(cab.className).toContain('pb-2')
+    expect(cab.className).toContain('sticky')
+  })
+})
+
+/**
  * CELULAR DEITADO — a folha de baixo vira PAINEL LATERAL (dono 27/08).
  *
  * Em pé ela ocupa 85% da altura e sobra tela por baixo; deitado os mesmos 85%

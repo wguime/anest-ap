@@ -132,3 +132,35 @@ describe('a origem certa entre dois casos do mesmo cirurgião', () => {
     expect(ids(tarde)).toEqual(['m-umanita'])
   })
 })
+
+// Dono 10/11/2026: "continuação pode ser em outra sala, mas uma cirurgia que começou em uma
+// sala não termina em outra; apenas quando são procedimentos distintos". A sala era só
+// desempate: a continuação se juntava à cirurgia da manhã de OUTRA sala do mesmo cirurgião,
+// e o horário de um procedimento ia para o cartão do outro. O banco
+// (`escala_pares_continuacao`) sempre exigiu a mesma sala.
+describe('sala diferente = procedimento distinto: dois cartões', () => {
+  const contOutraSala = () => cont({ sala: 'CC - Sala 3' })
+
+  it('a continuação em OUTRA sala não acha origem na manhã', () => {
+    expect(origemDaContinuacao(contOutraSala(), [manha(), contOutraSala()])).toBeNull()
+    expect(origemDaContinuacao(cont(), [manha(), cont()])?.id).toBe('m-umanita')
+  })
+
+  it('a tarde mostra o cartão da continuação, e o da manhã não vem junto', () => {
+    const dia = [manha(), contOutraSala(), outraTarde]
+    expect(ids(filtrarPorTurnoExibicao(dia, 'vespertino')).sort()).toEqual(['t-sala1', 't-umanita'])
+    const board = fundirContinuacoesNaOrigem(filtrarPorTurno(dia, 'vespertino'), dia, 'vespertino', { marcar: true })
+    expect(ids(board).sort()).toEqual(['t-sala1', 't-umanita'])
+    expect(ids(casosDaFilaDoTurno(dia, 'vespertino')).sort()).toEqual(['t-sala1', 't-umanita'])
+  })
+
+  it('com duas cirurgias do mesmo cirurgião de manhã, a continuação casa com a da MESMA sala', () => {
+    const naOutra = manha({ id: 'm-sala3', sala: 'CC - Sala 3', procedimento: 'OUTRO PROCEDIMENTO', statusExtra: 'passa_tarde' })
+    expect(origemDaContinuacao(cont(), [manha(), naOutra, cont()])?.id).toBe('m-umanita')
+    expect(origemDaContinuacao(contOutraSala(), [manha(), naOutra, contOutraSala()])?.id).toBe('m-sala3')
+  })
+
+  it('grafia da sala com caixa e acento diferentes ainda é a mesma sala', () => {
+    expect(origemDaContinuacao(cont({ sala: 'umanita' }), [manha(), cont({ sala: 'umanita' })])?.id).toBe('m-umanita')
+  })
+})

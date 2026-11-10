@@ -46,6 +46,13 @@ import { INICIO_NOTURNO_MIN, faseLiberacoes } from '@/lib/plantaoNoturno'
  */
 export const chaveSala = (v) => chaveSalaHro(v)
 
+/**
+ * Chave de LUGAR do caso: a sala — ou, no caso lançado à mão SEM sala, o próprio caso
+ * (dono 11/2026: "nem sempre ela está definida"). Sem isso, "uma sala, uma vaga" juntaria
+ * todas as urgências sem sala, de pessoas diferentes, numa ocupação só.
+ */
+const salaOuCaso = (c) => chaveSala(c?.sala) || (c?.origem === 'manual' && c?.id != null ? `sem-sala:${c.id}` : '')
+
 /** Níveis de gravidade da fila (adaptação NCEPOD). */
 export const GRAVIDADES = Object.freeze(['imediata', 'urgente', 'aguarda'])
 
@@ -481,7 +488,10 @@ export function estadoUrgencias(casos = [], opts = {}) {
   for (const caso of casos) {
     if (casoConcluido(caso)) continue
     const papel = papelDaSalaHro(caso?.sala, salas)
-    const chave = papel === 'orto' || papel === 'co' ? `papel:${papel}` : chaveSala(caso?.sala)
+    // SEM SALA, lançado à mão (dono 11/2026: o formulário deixou de exigir): cada caso é o
+    // próprio grupo. Pela chave de texto, todas as urgências sem sala virariam UMA sala e
+    // ocupariam uma vaga só do contrato. Linha do MAPA sem sala segue como sempre.
+    const chave = papel === 'orto' || papel === 'co' ? `papel:${papel}` : salaOuCaso(caso)
     let g = porSala.get(chave)
     if (!g) {
       g = {
@@ -623,9 +633,10 @@ export function estadoUrgencias(casos = [], opts = {}) {
     const ra = raiz(a); const rb = raiz(b)
     if (ra !== rb) pai.set(rb, ra)
   }
+  // (sem sala e manual: a chave é do próprio caso — ver `salaOuCaso`)
   const chaveTitular = (c) => c?.anestesistaUserId
-    || (c?.anestesista && c.anestesista !== '?' ? `nome:${normNome(c.anestesista)}` : `sala:${chaveSala(c?.sala)}`)
-  for (const cand of candidatos) unir(`t:${chaveTitular(cand.caso)}`, `s:${chaveSala(cand.caso?.sala)}`)
+    || (c?.anestesista && c.anestesista !== '?' ? `nome:${normNome(c.anestesista)}` : `sala:${salaOuCaso(c)}`)
+  for (const cand of candidatos) unir(`t:${chaveTitular(cand.caso)}`, `s:${salaOuCaso(cand.caso)}`)
 
   const titulares = new Map()
   for (const cand of candidatos) {

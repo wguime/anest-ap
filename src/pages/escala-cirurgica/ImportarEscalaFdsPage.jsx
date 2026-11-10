@@ -83,7 +83,7 @@ const TURNOS = ['matutino', 'vespertino']
 // (dono 16/08: a fila noturna tem gente da lista numerada além da grade 19-07 —
 // sáb P2,P1,P4,P3,P11,P8,P7 · dom P3,P4,P1,P2,P11,P6,P5).
 const TURNOS_ORDEM = [...TURNOS, 'noturno']
-const TURNO_LABEL = { matutino: 'Matutino', vespertino: 'Vespertino', noturno: 'Noturno' }
+const TURNO_LABEL = { matutino: 'Manhã', vespertino: 'Tarde', noturno: 'Noite' }
 // rótulo curto das COLUNAS de liberação (dono 17/08: só o turno, sem "do
 // documento"/"sugerida") — mesma grafia do seletor da escala: Manhã · Tarde
 const TURNO_CURTO = { matutino: 'Manhã', vespertino: 'Tarde', noturno: 'Noite' }
@@ -743,7 +743,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
       </div>
       <div className="max-w-3xl mx-auto p-4 pb-28 space-y-4">
         {!canEdit && (
-          <p className="rounded-lg bg-warning/10 text-warning text-sm p-3">Você não tem permissão para confeccionar escalas.</p>
+          <p className="rounded-lg bg-warning/10 text-category-orange-fg text-sm p-3">Você não tem permissão para confeccionar escalas.</p>
         )}
         <p className="text-sm text-muted-foreground">
           {feriado
@@ -772,8 +772,8 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
           </div>
         )}
         {avisos.map((a, i) => (
-          <p key={i} className="flex items-start gap-2 rounded-lg bg-warning/10 p-2.5 text-xs text-warning">
-            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {a}
+          <p key={i} className="flex items-start gap-2 rounded-lg bg-warning/10 p-2.5 text-xs text-category-orange-fg">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" /> {a}
           </p>
         ))}
 
@@ -1017,7 +1017,7 @@ export default function ImportarEscalaFdsPage({ data, onClose }) {
 
       <div className="mx-auto max-w-3xl space-y-3 p-4 pb-32">
         {!canEdit && (
-          <p className="rounded-lg bg-warning/10 p-3 text-sm text-warning">Você não tem permissão para confeccionar escalas.</p>
+          <p className="rounded-lg bg-warning/10 p-3 text-sm text-category-orange-fg">Você não tem permissão para confeccionar escalas.</p>
         )}
 
         {/* dois passos declarados, mesma gramática da importação de dia útil */}
@@ -1343,7 +1343,7 @@ function ItemDocumento({ estado, titulo, sub, pendencia, erro, acao, onAbrir, on
           <p className="text-[15px] font-bold leading-tight text-foreground">{titulo}</p>
           <p className="mt-0.5 text-[12.5px] text-muted-foreground">{sub}</p>
           {pendencia && (
-            <p className={`mt-0.5 text-xs font-semibold ${erro ? 'text-destructive' : 'text-warning'}`}>{pendencia}</p>
+            <p className={`mt-0.5 text-xs font-semibold ${erro ? 'text-destructive' : 'text-category-orange-fg'}`}>{pendencia}</p>
           )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1 self-center">

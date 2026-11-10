@@ -65,7 +65,10 @@ export default function ChipsEscolha({ opcoes, valor, onChange, rotulo, nota, av
           )
         })}
       </div>
-      {aviso && <p className="mt-1.5 text-[11.5px] text-warning">{aviso}</p>}
+      {/* `category-orange-fg`, não `text-warning` (dono 11/2026): o âmbar do token mede 2,13:1
+          sobre o cartão claro; este mede 5,89:1. No escuro os dois são a MESMA cor. O token
+          `--warning` não foi mexido — a troca é por uso (ver design-tokens.md). */}
+      {aviso && <p className="mt-1.5 text-[11.5px] text-category-orange-fg">{aviso}</p>}
     </div>
   )
 }

@@ -239,9 +239,9 @@ describe('cada saída da folha grava no canal que a fila lê', () => {
   it('a folha pergunta onde a pessoa está, com posição, hospital e turno', async () => {
     await comNathaliaSemCirurgia()
     expect(await screen.findByText(/Onde está Nathalia hoje\?/i)).toBeTruthy()
-    expect(screen.getByText(/2ª posição · Unimed · Matutino/i)).toBeTruthy()
+    expect(screen.getByText(/2ª posição · Unimed · Manhã/i)).toBeTruthy()
     // fecha a lista sem cirurgia: a linha de dados avisa o que acontece se ficar assim
-    expect(screen.getByText(/2ª posição · Unimed · Matutino/i).textContent).toMatch(/nasce\s+LIBERADO/i)
+    expect(screen.getByText(/2ª posição · Unimed · Manhã/i).textContent).toMatch(/nasce\s+LIBERADO/i)
   })
 
   it('no passo "trocou com quem?" a folha não repete a consequência da cauda', async () => {
@@ -253,7 +253,7 @@ describe('cada saída da folha grava no canal que a fila lê', () => {
     await screen.findByText(/trocou com quem\?/i)
     // a pergunta ali já é outra — repetir "nasce LIBERADO" é ruído (protótipo L4)
     expect(dados().textContent).not.toMatch(/LIBERADO/)
-    expect(dados().textContent).toMatch(/2ª posição · Unimed · Matutino/)
+    expect(dados().textContent).toMatch(/2ª posição · Unimed · Manhã/)
   })
 
   it('"Trocou com um colega" declara a troca com a vaga ancorada nesta escala', async () => {

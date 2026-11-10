@@ -26,6 +26,11 @@ import CasoDetalheSheet from './CasoDetalheSheet'
 import SeloHorarioPendente from './SeloHorarioPendente'
 import { ehConsultorio } from '@/lib/escalaHorarioPendente'
 
+// Caso sem sala (o formulário deixou de exigir em 11/2026): `agruparPorSala` junta todos
+// sob "—". No cabeçalho o traço não dizia nada — o grupo se chama pelo que falta.
+const ROTULO_SEM_SALA = 'Sala a definir'
+const semSala = (sala) => !String(sala || '').trim() || sala === '—'
+
 // Grupo das cirurgias que atravessaram o turno. Valor impossível como chave de
 // sala, para não colidir com nenhum grupo real do Accordion.
 const CHAVE_HERDADAS = '__herdadas__'
@@ -500,7 +505,7 @@ export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null
         <div className="mb-2 flex gap-2">
           {podeAgirNoTurno && (
             <Button size="sm" variant="outline" onClick={() => setAddCaso(true)} className="min-w-0 flex-1">
-              <Plus className="w-4 h-4" /> Adicionar caso (urgência/encaixe)
+              <Plus className="w-4 h-4" /> Adicionar caso
             </Button>
           )}
           {/* sem sala no quadro não há o que recolher */}
@@ -567,8 +572,11 @@ export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null
                 actions={podeAgirNoTurno ? (
                   <button
                     type="button"
-                    onClick={() => setDefinir({ sala: g.sala, casosAlvo: g.split ? g.casos : null })}
-                    aria-label={`Definir anestesista da ${g.sala}${g.split ? ` (${nomeGrupo})` : ''}`}
+                    /* SEM SALA (dono 11/2026: "nem sempre ela está definida"): o grupo "—" não
+                       é uma sala de verdade — `c.sala === '—'` não casa com ninguém —, então a
+                       folha recebe os CASOS do grupo em vez do rótulo. */
+                    onClick={() => setDefinir({ sala: g.sala, casosAlvo: (g.split || semSala(g.sala)) ? g.casos : null })}
+                    aria-label={`Definir anestesista da ${semSala(g.sala) ? 'sala a definir' : g.sala}${g.split ? ` (${nomeGrupo})` : ''}`}
                     className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center self-stretch
                                px-1 text-primary transition-colors active:opacity-60"
                   >
@@ -583,7 +591,7 @@ export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null
                     um bloco só. */}
                 <span className="flex w-full min-w-0 items-center gap-2">
                   <span className="shrink-0 rounded-md bg-primary/20 px-1.5 py-0.5 text-[10.5px] font-extrabold uppercase tracking-wide text-primary">
-                    {salaExibicao(g.sala)}
+                    {semSala(g.sala) ? ROTULO_SEM_SALA : salaExibicao(g.sala)}
                   </span>
                   {nomeGrupo && (
                     <span className="truncate text-[15px] font-semibold text-primary" title={nomeGrupo}>{nomeGrupo}</span>
@@ -627,10 +635,10 @@ export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null
               iconClassName="group-data-[state=open]:bg-transparent dark:group-data-[state=open]:bg-transparent"
             >
               <span className="flex w-full min-w-0 items-center gap-2">
-                <span className="shrink-0 rounded-md bg-warning/20 px-1.5 py-0.5 text-[10.5px] font-extrabold uppercase tracking-wide text-warning">
+                <span className="shrink-0 rounded-md bg-warning/20 px-1.5 py-0.5 text-[10.5px] font-extrabold uppercase tracking-wide text-category-orange-fg">
                   Ainda abertas
                 </span>
-                <span className="truncate text-[15px] font-semibold text-warning">
+                <span className="truncate text-[15px] font-semibold text-category-orange-fg">
                   {rotuloTurno(turno === 'vespertino' ? 'matutino' : 'vespertino')}
                 </span>
                 <span className="ml-auto shrink-0 text-[11px] font-normal text-muted-foreground">

@@ -685,7 +685,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
       toast({
         variant: 'success',
         title: ok.length > 1 ? `${ok.length} escalas republicadas` : 'Escala republicada',
-        description: `${nomes(ok)} · ${formatData(dataEscolhida)} · ${periodo === 'matutino' ? 'Matutino' : 'Vespertino'}.`,
+        description: `${nomes(ok)} · ${formatData(dataEscolhida)} · ${periodo === 'matutino' ? 'Manhã' : 'Tarde'}.`,
       })
       return
     }
@@ -694,7 +694,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
       toast({
         variant: 'success',
         title: ok.length > 1 ? `${ok.length} escalas publicadas` : 'Escala publicada',
-        description: `${nomes(ok)} · ${formatData(dataEscolhida)} · ${periodo === 'matutino' ? 'Matutino' : 'Vespertino'}.`,
+        description: `${nomes(ok)} · ${formatData(dataEscolhida)} · ${periodo === 'matutino' ? 'Manhã' : 'Tarde'}.`,
       })
       onClose?.({ data: dataEscolhida, hospital: ok[ok.length - 1], turno: periodo })
       return
@@ -990,8 +990,8 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
     <>
         {pendentes.map((p) => (
           <div key={p.id} className="space-y-2 rounded-xl border border-l-4 border-warning bg-warning/10 p-3 dark:bg-warning/15">
-            <p className="flex items-center gap-2 text-xs font-semibold text-warning">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
+            <p className="flex items-center gap-2 text-xs font-semibold text-category-orange-fg">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
               {p.nome}: {p.motivo || 'não reconheci o hospital pelo layout.'}
             </p>
             <Select
@@ -1134,7 +1134,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
         onClose={() => setRepublicarAlvo(null)}
         onConfirm={() => { const h = republicarAlvo; setRepublicarAlvo(null); if (h) republicar(h) }}
         title={`Republicar ${republicarAlvo ? (HOSPITAL_LABEL[republicarAlvo] || republicarAlvo) : ''}?`}
-        description={`Publicar por cima substitui as cirurgias do turno pelas da foto e zera as liberações marcadas — não dá para desfazer. Continuam: casos adicionados à mão, o andamento das cirurgias que vierem iguais (mesma sala, hora e paciente) e o tempo, a observação e as trocas de quem segue na escala. ${formatData(dataEscolhida)} · ${periodo === 'matutino' ? 'Matutino' : 'Vespertino'}.`}
+        description={`Publicar por cima substitui as cirurgias do turno pelas da foto e zera as liberações marcadas — não dá para desfazer. Continuam: casos adicionados à mão, o andamento das cirurgias que vierem iguais (mesma sala, hora e paciente) e o tempo, a observação e as trocas de quem segue na escala. ${formatData(dataEscolhida)} · ${periodo === 'matutino' ? 'Manhã' : 'Tarde'}.`}
         confirmText="Republicar por cima"
         cancelText="Cancelar"
       />
@@ -1367,7 +1367,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
           <div className="mx-2 min-w-0 flex-1 text-center">
             <h1 className="truncate text-base font-semibold text-foreground">Confeccionar escalas</h1>
             <p className="-mt-0.5 truncate text-xs text-muted-foreground">
-              {formatData(dataEscolhida)} · {periodo === 'matutino' ? 'Matutino' : 'Vespertino'}
+              {formatData(dataEscolhida)} · {periodo === 'matutino' ? 'Manhã' : 'Tarde'}
             </p>
           </div>
           <div className="flex min-w-[70px] justify-end">
@@ -1513,7 +1513,7 @@ export default function ImportarEscalasPage({ hospital, data, turno: turnoInicia
           <SheetHeader className="pb-2">
             <SheetTitle>Revisar antes de publicar</SheetTitle>
             <p className="mt-2 text-sm leading-5 text-muted-foreground">
-              {formatData(dataEscolhida)} · {periodo === 'matutino' ? 'Matutino' : 'Vespertino'}.
+              {formatData(dataEscolhida)} · {periodo === 'matutino' ? 'Manhã' : 'Tarde'}.
               Cada hospital é publicado na sua própria escala, uma de cada vez — como sempre.
             </p>
           </SheetHeader>

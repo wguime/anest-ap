@@ -117,6 +117,10 @@ describe('O recado na tela', () => {
     const alerta = screen.getByText(/Procedimentos sem anestesista/)
     // DOCUMENT_POSITION_FOLLOWING = o alerta vem DEPOIS do recado no documento
     expect(recado.compareDocumentPosition(alerta) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // LEGÍVEL (dono 11/2026, modelo 5): o título do alerta media 2,06:1 em `text-warning`
+    // sobre o fundo claro da página; no laranja-escuro mede 5,70:1. O token não mudou.
+    expect(alerta.className).toContain('text-category-orange-fg')
+    expect(alerta.className).not.toContain('text-warning')
   })
 
   it('mostra quem falou e a HORA — sem contagem de leitura (dono 17/08)', async () => {
@@ -290,5 +294,109 @@ describe('Recado — um desenho só, em toda escala', () => {
     await screen.findByText('Guilherme libera Alexandre S.')
     expect(screen.getByText('Recado do plantonista')).toBeTruthy()
     expect(screen.getByRole('button', { name: /Confirmar leitura/ })).toBeTruthy()
+  })
+})
+
+/**
+ * AS AÇÕES NUMA FILEIRA SÓ (dono 11/2026, opção B do modelo 3).
+ *
+ * "Quero a letra B e em telefones pequenos ícones: histórico e mensagens."
+ * Eram duas fileiras (caso · ajuda / mensagem · histórico) e, no iPhone pequeno, a 1ª
+ * linha da fila nascia a 469px de 667 — cabia UMA. Numa fileira só cabem 2→3.
+ *
+ * ⚠️ SUBSTITUI o 2×2 do plantonista de 27/08 ("os QUATRO ficam iguais"): com as quatro
+ * ações o Histórico vira botão quadrado só com o ícone, e a Mensagem perde a palavra
+ * abaixo de 400px de largura. O recado, que ficava ENTRE as duas fileiras, vem logo abaixo.
+ *
+ * jsdom não avalia media query: o que se trava é a REGRA nas classes (a quebra é de CSS,
+ * nunca de JS), o nome acessível de cada botão e o alvo de toque.
+ */
+describe('Ações da fila numa fileira só (dono 11/2026)', () => {
+  const acoes = { onAddAjuda: () => {}, onGarantirEscala: () => {} }
+  const fileira = () => document.querySelector('[data-slot="acoes-liberacoes"]')
+  const nomes = () => [...fileira().querySelectorAll('button')].map((b) => b.getAttribute('aria-label'))
+  const botao = (nome) => screen.getByRole('button', { name: nome })
+
+  it('quem não é plantonista: Caso · Ajuda · Histórico, os três com palavra', () => {
+    montar({ ...acoes, meuUid: 'uid-mar', meuAlias: 'MARILIO' })
+    expect(nomes()).toEqual(['Adicionar caso (urgência/encaixe)', 'Adicionar anestesista (ajuda)', 'Histórico de mensagens'])
+    expect(botao('Histórico de mensagens').textContent).toBe('Histórico')
+    expect(botao('Histórico de mensagens').className).not.toContain('w-11')
+    // em pé o rótulo é o curto; o por extenso fica para a tela deitada
+    const caso = botao('Adicionar caso (urgência/encaixe)')
+    expect(caso.querySelector('span.deitado\\:hidden').textContent).toBe('Caso')
+    expect(caso.querySelector('span.hidden').textContent).toBe('Adicionar caso')
+  })
+
+  it('plantonista: os QUATRO na mesma fileira, na ordem caso · ajuda · mensagem · histórico', async () => {
+    montar({ ...acoes, meuUid: 'uid-leo', meuAlias: 'LEONARDO' })
+    await screen.findByRole('button', { name: 'Mensagem para equipe' })
+    expect(nomes()).toEqual(['Adicionar caso (urgência/encaixe)', 'Adicionar anestesista (ajuda)', 'Mensagem para equipe', 'Histórico de mensagens'])
+  })
+
+  it('plantonista: o Histórico é só o ícone, com 44px de largura e o nome para o leitor de tela', async () => {
+    montar({ ...acoes, meuUid: 'uid-leo', meuAlias: 'LEONARDO' })
+    await screen.findByRole('button', { name: 'Mensagem para equipe' })
+    const h = botao('Histórico de mensagens')
+    expect(h.className).toContain('w-11')
+    expect(h.className).toContain('flex-none')
+    // a palavra só existe deitada (lá os quatro são colunas iguais, com rótulo)
+    expect(h.querySelector('span').className).toBe('hidden deitado:inline')
+    expect(h.className).toContain('deitado:w-auto')
+  })
+
+  it('plantonista: a Mensagem perde a palavra SÓ em tela estreita — e por CSS', async () => {
+    montar({ ...acoes, meuUid: 'uid-leo', meuAlias: 'LEONARDO' })
+    const m = await screen.findByRole('button', { name: 'Mensagem para equipe' })
+    expect(m.textContent).toBe('Mensagem')
+    expect(m.querySelector('span').className).toContain('[@media(max-width:399px)]:hidden')
+    expect(m.className).toContain('[@media(max-width:399px)]:w-11')
+    // deitado ela volta a ter palavra e largura de coluna, qualquer que seja a largura
+    expect(m.querySelector('span').className).toContain('deitado:!inline')
+    expect(m.className).toContain('deitado:!w-auto')
+  })
+
+  it('todo botão da fileira tem o alvo de toque estendido (36px visíveis, 46 de toque)', async () => {
+    montar({ ...acoes, meuUid: 'uid-leo', meuAlias: 'LEONARDO' })
+    await screen.findByRole('button', { name: 'Mensagem para equipe' })
+    // -inset-y-1.5 = 46px: com -inset-y-1 o navegador mediu 42 (o `after:` não conta a borda)
+    for (const b of fileira().querySelectorAll('button')) expect(b.className).toContain('after:-inset-y-1.5')
+  })
+
+  it('o recado fica LOGO ABAIXO da fileira — não mais entre duas fileiras', async () => {
+    fetchAvisos.mockResolvedValue([AVISO])
+    montar({ ...acoes, meuUid: 'uid-leo', meuAlias: 'LEONARDO' })
+    const recado = await screen.findByText('Guilherme libera Alexandre S.')
+    for (const b of fileira().querySelectorAll('button')) {
+      expect(b.compareDocumentPosition(recado) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    }
+  })
+
+  it('quem só lê (sem edição) vê o Histórico sozinho, com palavra', () => {
+    montar({ canEdit: false })
+    expect(nomes()).toEqual(['Histórico de mensagens'])
+    expect(botao('Histórico de mensagens').textContent).toBe('Histórico')
+  })
+})
+
+/**
+ * CARD "LIVRE" ENXUTO (dono 11/2026, opção B do modelo 3): quem não tem cirurgia não tem
+ * cirurgião a mostrar nem tempo a informar — saem as reticências e o "+ Tempo total".
+ */
+describe('Card "Livre" enxuto (dono 11/2026)', () => {
+  const livre = {
+    ...escala,
+    casos: [
+      { ...escala.casos[0], statusCirurgia: 'terminada' },
+      escala.casos[1],
+    ],
+  }
+  it('Livre: sem reticências e sem "+ Tempo total"; quem tem cirurgia segue com o botão', () => {
+    montar({ escala: livre })
+    expect(screen.getByText('Livre')).toBeTruthy()
+    expect(screen.queryByText('…')).toBeNull()
+    const tempos = screen.getAllByLabelText(/^Definir tempo faltante de /).map((b) => b.getAttribute('aria-label'))
+    expect(tempos).toHaveLength(1)
+    expect(tempos[0]).not.toMatch(/Leonardo/i)
   })
 })

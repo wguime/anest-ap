@@ -159,7 +159,7 @@ export default function ConferirMapaFdsPage({ mapa, grade, onSalvar, onVoltar, c
             <section key={g.chave} className="overflow-hidden rounded-2xl border border-border-strong">
               <header className="flex items-center gap-2 bg-card-elevated px-3 py-2">
                 <Badge className="shrink-0 border-transparent bg-primary text-primary-foreground">{g.sala}</Badge>
-                <span className={`min-w-0 flex-1 truncate text-sm font-bold ${uid || g.nome ? '' : 'text-warning'}`}>
+                <span className={`min-w-0 flex-1 truncate text-sm font-bold ${uid || g.nome ? '' : 'text-category-orange-fg'}`}>
                   {rotulo}
                 </span>
                 <span className="shrink-0 text-[11px] text-muted-foreground">

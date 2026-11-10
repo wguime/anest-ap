@@ -106,15 +106,16 @@ describe('conta de hospital sempre atualizada (dono 15/10/2026)', () => {
   it('carga recente pelo tempo real adia a próxima: o vigia não dobra o tráfego', async () => {
     await montar(HRO)
     await passar(CONTA_HOSPITAL_IDADE_MAX_MS - 20_000)
-    // um sinal do tempo real recarrega agora
+    // um sinal do tempo real relê agora — desde 09/11 só o hospital do sinal (1 ida,
+    // não a carga dos 3). Sinal lido = tempo real vivo, e é isso que adia o vigia.
     act(() => { subs.filter((s) => s.table === 'escala_cirurgica_caso').forEach((s) => s.callback({ eventType: 'UPDATE', new: { id: 'c1', escala_id: 'esc-hro' }, old: null })) })
     await new Promise((r) => setTimeout(r, REALTIME_COALESCE_MS + 250))
-    await waitFor(() => expect(recargas()).toBe(1))
+    await waitFor(() => expect(svcMock.fetchEscala).toHaveBeenCalledTimes(1))
 
-    // 1 min e meio depois dessa carga: ainda fresca, nada de recarga extra
+    // 1 min e meio depois dessa leitura: ainda fresca, nada de recarga extra
     await passar(90_000)
     await act(async () => { await Promise.resolve() })
-    expect(recargas()).toBe(1)
+    expect(svcMock.fetchEscala).toHaveBeenCalledTimes(1)
   })
 
   it('conta comum não ganha recarga periódica', async () => {

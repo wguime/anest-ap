@@ -160,7 +160,9 @@ describe('convenioExibicao — Unimed é só "Unimed"', () => {
     expect(convenioExibicao('PARTICULAR')).toBe('Particular')
     expect(convenioExibicao('SUS')).toBe('SUS')
     expect(convenioExibicao('BRF')).toBe('BRF')
-    expect(convenioExibicao('Intercâmbio Mercosul')).toBe('Intercâmbio Mercosul')
+    // MUDOU DE LADO (dono 11/2026: os intercâmbios "também viram Unimed") — antes o
+    // Mercosul, que não começa com UNIMED, aparecia por extenso no selo
+    expect(convenioExibicao('Intercâmbio Mercosul')).toBe('Unimed')
     expect(convenioExibicao('Particular')).toBe('Particular')
     expect(convenioExibicao('')).toBe('')
   })

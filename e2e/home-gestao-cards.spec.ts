@@ -42,7 +42,7 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(cardEscala).toContainText('Escala Cirúrgica');
     // plantonista da demo Unimed = ordemLiberacao[0] 'LEONARDO' → titleCase
     await expect(cardEscala).toContainText('Leonardo', { timeout: 15_000 });
-    await expect(cardEscala).toContainText(/Matutino|Vespertino/);
+    await expect(cardEscala).toContainText(/Manhã|Tarde|Plantão/);
     // widget antigo de Comunicados fora da Home
     await expect(page.locator('[data-slot="anest-comunicados-card"]')).toHaveCount(0);
 

@@ -430,3 +430,32 @@ describe('duas cirurgias: o estimado da que não começou é DURAÇÃO; a soma n
     expect(override.termino).toBe('23:30')
   })
 })
+
+/**
+ * LEGIBILIDADE E NOMES (dono 11/2026, modelos 4 e 5 escolhidos por imagem).
+ *
+ * O chip "Iniciada" selecionado tinha letra branca sobre o verde claro do `success`:
+ * 2,22:1 no tema claro (mínimo 4,5:1). O dono escolheu a opção A — o verde-escuro do app
+ * (`primary`), 11,62:1. O quadro continua pintando a cirurgia iniciada de success; aqui é só
+ * o chip do detalhe. E o selo de convênio do cabeçalho passa a ler "Unimed" como o card.
+ */
+describe('Chip "Iniciada", convênio e sala no cabeçalho (dono 11/2026)', () => {
+  it('"Iniciada" selecionada usa o verde institucional com letra branca, não o success', () => {
+    montar({}, { ...escala, casos: [{ ...caso, statusCirurgia: 'iniciada', inicioReal: '07:35' }] })
+    const chip = screen.getByRole('button', { name: 'Iniciada' })
+    expect(chip.className).toContain('bg-primary')
+    expect(chip.className).toContain('text-primary-foreground')
+    expect(chip.className).not.toContain('bg-success')
+  })
+
+  it('o selo de convênio lê "Unimed" para qualquer grafia — a mesma do card do quadro', () => {
+    montar({}, { ...escala, casos: [{ ...caso, convenio: 'Unimed Chapecó - VD' }] })
+    expect(screen.getByText('Unimed')).toBeTruthy()
+    expect(screen.queryByText('Unimed Chapecó - VD')).toBeNull()
+  })
+
+  it('caso sem sala: o selo diz "Sala a definir" em vez de nascer vazio', () => {
+    montar({}, { ...escala, casos: [{ ...caso, sala: '' }] })
+    expect(screen.getAllByText('Sala a definir').length).toBeGreaterThan(0)
+  })
+})

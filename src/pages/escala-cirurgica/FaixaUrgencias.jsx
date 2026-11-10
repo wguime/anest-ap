@@ -334,7 +334,7 @@ export default function FaixaUrgencias({ escala, hospital, turno }) {
                       f.gravidade === 'imediata' && 'bg-destructive/15 text-destructive',
                       f.gravidade === 'urgente' && 'bg-warning/[0.18] text-warning',
                       f.gravidade === 'aguarda' && 'bg-muted text-muted-foreground',
-                      !f.gravidade && 'border border-dashed border-warning/60 text-warning',
+                      !f.gravidade && 'border border-dashed border-warning/60 text-category-orange-fg',
                     ].filter(Boolean).join(' ')}
                   >
                     {f.gravidade ? GRAVIDADE_LABEL[f.gravidade] : 'Classificar'}
@@ -363,7 +363,7 @@ export default function FaixaUrgencias({ escala, hospital, turno }) {
 
         {/* qualidade do dado: iniciada há >4h sai da conta e vira PERGUNTA */}
         {estado.aConfirmar.map((it) => (
-          <div key={it.id} className="mt-1.5 flex min-h-[30px] items-center gap-2 text-[11px] text-warning">
+          <div key={it.id} className="mt-1.5 flex min-h-[30px] items-center gap-2 text-[11px] text-category-orange-fg">
             <span className="min-w-0 flex-1">
               {salaLiberacao(it.sala)} iniciada há {formatEspera(it.desdeMin)} — ainda em andamento?
             </span>
@@ -373,7 +373,7 @@ export default function FaixaUrgencias({ escala, hospital, turno }) {
                 /* `.catch` obrigatório: a action dá throw depois do toast, e este
                    era o único call site sem tratamento — rejeição não tratada. */
                 onClick={() => setTerminar(it.caso)}
-                className="relative shrink-0 rounded-[9px] border border-warning/50 px-2 py-1 font-bold text-warning after:absolute after:-inset-x-1 after:-inset-y-2.5 after:content-['']"
+                className="relative shrink-0 rounded-[9px] border border-warning/50 px-2 py-1 font-bold text-category-orange-fg after:absolute after:-inset-x-1 after:-inset-y-2.5 after:content-['']"
               >
                 Terminada
               </button>
@@ -384,7 +384,7 @@ export default function FaixaUrgencias({ escala, hospital, turno }) {
           <button
             type="button"
             onClick={() => setDetalhe(estado.suspeitas[0].caso)}
-            className="relative mt-1 py-0.5 text-left text-[11px] text-warning after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-['']"
+            className="relative mt-1 py-0.5 text-left text-[11px] text-category-orange-fg after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-['']"
           >
             {estado.suspeitas.length === 1
               ? `${salaLiberacao(estado.suspeitas[0].sala)} marcada ${estado.suspeitas[0].caso?.hora || ''} pode já ter começado`

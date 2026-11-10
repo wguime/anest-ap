@@ -80,6 +80,11 @@ const AVISO_MAX = 160
 // que o card mostra, então sai do MESMO mapa que o resto do módulo usa.
 const HOSPITAIS_FILA = ['unimed', 'hro', 'materno'].map((v) => ({ value: v, label: HOSPITAL_LABEL[v] || v }))
 
+// Locais aprendidos por hospital, guardados entre montagens da aba (ver o efeito
+// de `locaisAprendidos`). Só nomes de sala/local — nunca dado de paciente.
+const LOCAIS_TTL_MS = 60 * 60 * 1000
+const locaisCache = new Map() // hospital → { lista, em }
+
 export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onDefinirTerminoCaso, onDefinirInicioCaso, onDefinirTerminoRealCaso, onSuspenderCaso, onTerminarSemHorario, onDesfazerTerminada, onDefinirDuracaoCaso, onDefinirSemAjuda, onTrocarResponsavel, onDevolverResponsavel, onTrocarPosicao, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, onDefinirOrigem, contraturnoOutros = [], presencaOutros = [], ordemNumerica = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, escalasDoDia = null, onGarantirEscala, onNavigate }) {
   const { toast } = useToast()
   const haptic = useHaptic()
@@ -376,15 +381,28 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // Locais do hospital p/ o editor de linha (dropdown, pedido do dono 2026-07-22):
   // salas da escala do dia (ordem do board) + locais APRENDIDOS do histórico
   // (salas + ajustes de "Outro" dos últimos 60 dias — novo local salvo entra p/ todos).
+  // Sob demanda (09/11/2026): a busca traz ~180 KB (60 dias de salas e ajustes) e
+  // era refeita a cada entrada na aba e a cada troca de hospital — 23 mil leituras
+  // para um seletor que só existe DENTRO do editor da linha. Agora sai quando o
+  // editor abre e vale 1 h por hospital (`locaisCache`, no módulo); as salas do dia
+  // e a base canônica aparecem na hora, o aprendido completa em seguida.
   const [locaisAprendidos, setLocaisAprendidos] = useState([])
+  const editorAberto = editor != null
   useEffect(() => {
-    let vivo = true
     const chaveHospital = String(hospitalLabel || '').toLowerCase()
+    const guardado = locaisCache.get(chaveHospital)
+    const valido = guardado && Date.now() - guardado.em < LOCAIS_TTL_MS
+    setLocaisAprendidos(valido ? guardado.lista : [])
+    if (!editorAberto || valido) return undefined
+    let vivo = true
     svc.fetchLocaisHospital(chaveHospital)
-      .then((ls) => { if (vivo) setLocaisAprendidos(ls) })
+      .then((ls) => {
+        locaisCache.set(chaveHospital, { lista: ls, em: Date.now() })
+        if (vivo) setLocaisAprendidos(ls)
+      })
       .catch(() => {}) // sem histórico → dropdown fica só com as salas do dia
     return () => { vivo = false }
-  }, [hospitalLabel])
+  }, [hospitalLabel, editorAberto])
 
   const locaisHospital = useMemo(() => {
     // ⚠️ DEFEITO CORRIGIDO (dono 24/08): a chave saía de `hospitalLabel`, que na
@@ -1010,29 +1028,76 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
 
   // ⚠️ deitado o 1º alerta vai ao lado dos botões e o resto desce inteiro; em pé
   // a lista é a mesma de sempre, só partida em dois blocos coladinhos.
-  const acoesTopo = canEdit && (podeAddCaso || fase !== 'zerada') ? (
-    <div className="flex items-stretch gap-2 deitado:contents">
-      {podeAddCaso && (
+  // ── UMA FILEIRA SÓ, EM PÉ (dono 11/2026, opção B do modelo
+  // `.tmp/analise-escala-2026-11/modelos/3-acoes-uma-fileira.html`) ─────────────
+  // Eram duas fileiras (caso · ajuda / mensagem · histórico) e a 1ª linha da fila
+  // nascia a 469px de 667 no iPhone pequeno — cabia UMA linha inteira. Numa fileira
+  // só cabem 2→3 linhas a 375×667 e 4→5 a 430×932. Os rótulos encurtam em pé
+  // ("Caso", "Ajuda", "Histórico"); o `aria-label` guarda o nome inteiro.
+  // ⚠️ SUBSTITUI o 2×2 do plantonista de 27/08: com ele são QUATRO ações, e o dono
+  // escolheu "a letra B e em telefones pequenos ícones: histórico e mensagens" —
+  //   · o Histórico vira botão quadrado só com o ícone (sempre que há as quatro);
+  //   · a Mensagem leva ícone + palavra a partir de 400px de largura e só o ícone
+  //     abaixo disso (medido: com palavra ela precisa de ~98px e a 390px sobram 97).
+  // A quebra é de CSS (`[@media(max-width:399px)]:`), nunca de JS — media query crua porque
+  // os `screens` do projeto têm entradas que não são largura (`deitado`), e aí o Tailwind
+  // não gera `max-[…]`. Todo botão tem ≥44px de toque:
+  // 36 visíveis + o `after:` (46 de altura); o só-ícone tem 44 de largura.
+  // deitado nada mudou: os invólucros somem (`contents`), os botões viram colunas
+  // IGUAIS da grade da raiz e todos levam palavra — por isso cada regra de largura
+  // daqui é desfeita com `deitado:`.
+  // O recado do plantonista, que ficava ENTRE as duas fileiras, vem logo abaixo.
+  const mostraCaso = canEdit && podeAddCaso
+  const mostraAjuda = canEdit && fase !== 'zerada' && !!onAddAjuda
+  const mostraMensagem = canEdit && souPlantonista && podeAvisar
+  const quatroAcoes = mostraCaso && mostraAjuda && mostraMensagem
+  // -inset-y-1.5: medido no navegador, o `after:` parte da caixa SEM a borda (34px), então
+  // -inset-y-1 dava 42px de toque; com 6px de cada lado são 46.
+  const ALVO_44 = "relative after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-['']"
+  const BOTAO_ACAO = `min-w-0 flex-1 gap-1.5 px-2 deitado:h-auto deitado:gap-2 deitado:px-3 ${ALVO_44}`
+  const SO_ICONE = 'w-11 flex-none px-0 deitado:w-auto deitado:px-3'
+  const acoesTopo = (
+    <div className="flex items-stretch gap-2 deitado:contents" data-slot="acoes-liberacoes">
+      {mostraCaso && (
         <Button
-          size="sm" variant="outline" className="min-w-0 flex-1 deitado:h-auto"
+          size="sm" variant="outline" className={BOTAO_ACAO}
           aria-label="Adicionar caso (urgência/encaixe)"
           disabled={criandoEscala}
           onClick={abrirAddCaso}
         >
-          <Plus className="w-4 h-4 shrink-0" /> Adicionar caso
+          <Plus className="w-4 h-4 shrink-0" />
+          <span className="deitado:hidden">Caso</span>
+          <span className="hidden deitado:inline">Adicionar caso</span>
         </Button>
       )}
-      {fase !== 'zerada' && onAddAjuda && (
+      {mostraAjuda && (
         <Button
-          size="sm" variant="outline" className="relative min-w-0 flex-1 deitado:h-auto after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']"
+          size="sm" variant="outline" className={BOTAO_ACAO}
           aria-label="Adicionar anestesista (ajuda)"
           onClick={() => setAjudaSheet(true)}
         >
-          <UserPlus className="w-4 h-4 shrink-0" /> Adicionar ajuda
+          <UserPlus className="w-4 h-4 shrink-0" />
+          <span className="deitado:hidden">Ajuda</span>
+          <span className="hidden deitado:inline">Adicionar ajuda</span>
         </Button>
       )}
+      {/* MANDAR é só do plantonista; LER o histórico é de todo mundo (dono 17/08). */}
+      {mostraMensagem && (
+        <Button size="sm" variant="outline"
+          className={`${BOTAO_ACAO} [@media(max-width:399px)]:w-11 [@media(max-width:399px)]:flex-none [@media(max-width:399px)]:px-0 deitado:!w-auto deitado:!flex-1`}
+          aria-label="Mensagem para equipe" onClick={() => setAvisoSheet(true)}>
+          <MessageSquare className="w-4 h-4 shrink-0" />
+          <span className="[@media(max-width:399px)]:hidden deitado:!inline">Mensagem</span>
+        </Button>
+      )}
+      <Button size="sm" variant="outline"
+        className={quatroAcoes ? `${BOTAO_ACAO} ${SO_ICONE} deitado:!flex-1` : BOTAO_ACAO}
+        aria-label="Histórico de mensagens" onClick={() => setHistoricoSheet(true)}>
+        <History className="w-4 h-4 shrink-0" />
+        <span className={quatroAcoes ? 'hidden deitado:inline' : undefined}>Histórico</span>
+      </Button>
     </div>
-  ) : null
+  )
 
   // Sem fila: mostra o vazio NO LUGAR da lista, mantendo as ações do topo e os
   // sheets montados uma única vez (o early return de antes deixava o hospital
@@ -1476,7 +1541,13 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     const observacao = rascObservacao.trim()
     // local novo (digitado em "Outro") entra na lista NA HORA; os demais aparelhos
     // aprendem no próximo load (o override salvo é a fonte do histórico)
-    if (local && !locaisHospital.includes(local)) setLocaisAprendidos((prev) => [...prev, local])
+    if (local && !locaisHospital.includes(local)) {
+      setLocaisAprendidos((prev) => [...prev, local])
+      // o local novo entra também no que está guardado, senão some ao reabrir o editor
+      const chaveHospital = String(hospitalLabel || '').toLowerCase()
+      const guardado = locaisCache.get(chaveHospital)
+      if (guardado) locaisCache.set(chaveHospital, { ...guardado, lista: [...guardado.lista, local] })
+    }
     setEditor(null)
     onSetOverride?.(editor, { local, hospital, cirurgioes, termino, observacao })?.catch?.(() => {})
   }
@@ -2006,36 +2077,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
         </div>
       ))}
 
-      {/* MANDAR é só do plantonista; LER o histórico é de todo mundo (dono 17/08).
-          O plantonista vê os dois botões na mesma linha. */}
-      {/* ⚠️ deitado esta é a 2ª FILEIRA da coluna esquerda — e sobe para a 1ª
-          quando não há "Adicionar caso/ajuda" acima (usuário sem permissão de
-          edição), senão sobraria uma fileira vazia sobre o Histórico.
-          Com o plantonista logado são dois botões aqui e dois acima: os QUATRO
-          ficam iguais, em 2×2 (dono 27/08). Sem ele, o Histórico ocupa sozinho a
-          largura dos dois de cima — é o que o `flex-1` já faz. */}
-      <div className="flex gap-2 deitado:contents">
-        {canEdit && souPlantonista && podeAvisar && (
-          <Button size="sm" variant="outline" className="min-w-0 flex-1 deitado:h-auto"
-            aria-label="Mensagem para equipe" onClick={() => setAvisoSheet(true)}>
-            <MessageSquare className="w-4 h-4 shrink-0" />
-            {/* ⚠️ deitado o rótulo ENCURTA: medido, "Mensagem para equipe" e
-                "Histórico de mensagens" não cabem nos 177px do botão em 2×2 e
-                saíam cortados no meio da palavra. O ícone ao lado já diz do que
-                se trata e o `aria-label` mantém o nome inteiro para leitor de
-                tela. Em pé continua por extenso. */}
-            <span className="deitado:hidden">Mensagem para equipe</span>
-            <span className="hidden deitado:inline">Mensagem</span>
-          </Button>
-        )}
-        <Button size="sm" variant="outline" className="relative min-w-0 flex-1 deitado:h-auto after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']"
-          aria-label="Histórico de mensagens" onClick={() => setHistoricoSheet(true)}>
-          <History className="w-4 h-4 shrink-0" />
-          <span className="deitado:hidden">Histórico de mensagens</span>
-          <span className="hidden deitado:inline">Histórico</span>
-        </Button>
-      </div>
-
       {/* Procedimentos sem anestesista NO TOPO (pedido do dono 24/07): o plantonista
           precisa cobrir. Somem sozinhos ao serem marcados como terminados/suspensos
           (concluído é filtrado em gerarColunaLiberacao). Hora em destaque, por horário. */}
@@ -2048,7 +2089,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           embaixo, tudo começando na mesma margem. */}
       {temAlertaSemAnest && (
         <div className="deitado:col-span-full">
-          <p className="mb-1.5 flex items-center gap-1 px-1 text-xs font-semibold text-warning">
+          <p className="mb-1.5 flex items-center gap-1 px-1 text-xs font-semibold text-category-orange-fg">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Procedimentos sem anestesista
           </p>
           <div className="space-y-1.5">
@@ -2240,7 +2281,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             // NOTA DE LOCAL no rodapé ("CRISTINA (CONSULT)") tem o mesmo problema (dono 22/09,
             // foto do card dela): a linha já diz "Consultório" logo abaixo, e o traço em cima
             // fazia o card parecer incompleto — quem está no consultório não tem cirurgião.
-            : (renovado || semEscala) ? [] : linha.cirurgioes.length ? linha.cirurgioes : ((linha.ajudaFora || linha.notaRodape) ? [] : ['…'])
+            : (renovado || semEscala) ? [] : linha.cirurgioes.length ? linha.cirurgioes
+              // LIVRE não tem cirurgião a mostrar (dono 11/2026, opção B do modelo 3): as
+              // reticências soltas sob o nome liam como dado faltando.
+              : ((livre || linha.ajudaFora || linha.notaRodape) ? [] : ['…'])
           // GRUPOS POR CIRURGIÃO (dono 14/09): as cirurgias abertas da pessoa
           // (`linha.cirurgias`, em ordem de horário) agrupadas pelo cirurgião, na
           // ordem em que aparecem. Só no dia a dia da linha: renovada, ajustada à
@@ -2852,7 +2896,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         problema. Some sozinha quando o tempo é atualizado — é a
                         mesma condição que pinta a pílula. */}
                     {!cardEnxuto && cronometro?.atrasada && (
-                      <p className="mt-0.5 text-[13px] font-medium leading-snug text-warning">
+                      <p className="mt-0.5 text-[13px] font-medium leading-snug text-category-orange-fg">
                         Atualize o tempo se a cirurgia não terminou.
                       </p>
                     )}
@@ -2911,7 +2955,13 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       >
                         <Timer className="h-3.5 w-3.5 shrink-0" /> {cronometro.texto}
                       </button>
-                    ) : (canEdit && (
+                    // LIVRE não oferece "+ Tempo total" (dono 11/2026, opção B do modelo 3): quem
+                    // não tem cirurgia não tem tempo a informar, e o botão deixava o card com
+                    // ~104px quase vazios (7 de 12 cards no fim de semana). Volta sozinho
+                    // quando a pessoa recebe uma cirurgia.
+                    // ⚠️ a linha RENOVADA (voltou de uma liberação) mantém o botão: é por ele que
+                    // quem voltou informa o tempo novo.
+                    ) : (canEdit && (!livre || renovado) && (
                       <button
                         type="button"
                         onClick={() => setAlvoTempo(linha)}

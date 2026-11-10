@@ -53,7 +53,7 @@ import { duracaoMin, ehDiaOperacionalAtual, erroHorarioReal, gravarInicioReal, g
 import PainelTempo, { formatFaltante, rotuloDuracao } from './PainelTempo'
 import { BlocoHorario, BotaoEstimado, ConfirmarHorario, ConfirmarInicioETermino } from './BlocoHorario'
 import useAgoraMinutoEscala from './useAgoraMinutoEscala'
-import { espelhoTempoTotal, nomeAnestesistaExibicao, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso, terminoEncadeado, procedimentoComContinuacao, procedimentoBaseDoCaso } from './utils'
+import { convenioExibicao, espelhoTempoTotal, nomeAnestesistaExibicao, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso, terminoEncadeado, procedimentoComContinuacao, procedimentoBaseDoCaso } from './utils'
 import ChipsEscolha, { GRAVIDADE_CHIPS, TIPOS_CIRURGIA } from './ChipsEscolha'
 
 // Verbo de cada estado na linha de procedência ("Iniciada às 14:33 por Fulano").
@@ -62,7 +62,11 @@ const STATUS_VERBO = { iniciada: 'Iniciada', terminada: 'Terminada' }
 // EIXO PRINCIPAL — exclusivo, é o que pinta o card no quadro.
 const ANDAMENTO = [
   { valor: 'agendada', label: 'Agendada' },
-  { valor: 'iniciada', label: 'Iniciada', cls: 'bg-success text-success-foreground' },
+  // `bg-primary`, não `bg-success` (dono 11/2026, opção A): letra branca sobre o verde claro do
+  // success mede 2,22:1 no tema claro; sobre o verde institucional, 11,62:1. No escuro os dois
+  // tokens são o MESMO verde. O quadro continua pintando a cirurgia iniciada de success — aqui
+  // é só o chip selecionado do detalhe.
+  { valor: 'iniciada', label: 'Iniciada', cls: 'bg-primary text-primary-foreground' },
   { valor: 'terminada', label: 'Terminada', cls: 'bg-info text-info-foreground' },
 ]
 // TIPO da cirurgia (dono 20/08): a importação lê o mapa e às vezes a urgência não
@@ -320,7 +324,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
         <SheetHeader className="pb-2">
           <div className="flex items-center gap-2">
             <span className="shrink-0 rounded-md bg-primary px-1.5 py-0.5 text-[10.5px] font-extrabold uppercase tracking-wide text-primary-foreground">
-              {salaExibicao(vivo.sala)}
+              {salaExibicao(vivo.sala) || 'Sala a definir'}
             </span>
             {vivo.hora && <span className="text-[15px] font-bold tabular-nums">{vivo.hora}</span>}
             <span className="ml-auto flex shrink-0 items-center gap-1.5">
@@ -329,7 +333,8 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
               {tb && <Badge variant={tb.variant} badgeStyle={tb.style}>{tb.label}</Badge>}
               {vivo.convenio && (
                 <span className="max-w-[140px] truncate rounded-md bg-black/10 px-1.5 py-0.5 text-xs font-medium text-foreground/80 dark:bg-white/15 dark:text-foreground/90">
-                  {vivo.convenio}
+                  {/* a MESMA grafia do card do quadro (dono 11/2026): toda Unimed lê "Unimed" */}
+                  {convenioExibicao(vivo.convenio)}
                 </span>
               )}
             </span>
@@ -647,7 +652,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
             <LinhaDado
               icone={<MapPin className="h-3.5 w-3.5" />}
               rotulo="Sala/local"
-              valor={salaExibicao(vivo.sala)}
+              valor={salaExibicao(vivo.sala) || 'A definir'}
             />
 
             <LinhaDado

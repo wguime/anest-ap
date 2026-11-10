@@ -185,7 +185,7 @@ export function localizarDecisao(mapa, dup, { resolver, normalizar = upperSimple
 }
 
 export const formatarOcorrenciaDuplicidade = (ocorrencia) => {
-  const onde = `${ocorrencia.hospitalLabel} · ${ocorrencia.turno === 'matutino' ? 'Matutino' : 'Vespertino'}`
+  const onde = `${ocorrencia.hospitalLabel} · ${ocorrencia.turno === 'matutino' ? 'Manhã' : 'Tarde'}`
   const posicao = ocorrencia.noRodape ? 'posição no rodapé' : 'sem posição no rodapé'
   return `${onde}: ${ocorrencia.casos.length} caso(s), ${posicao}`
 }

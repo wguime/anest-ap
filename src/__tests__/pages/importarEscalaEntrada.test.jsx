@@ -101,7 +101,7 @@ describe('Entrada — dois passos declarados', () => {
     // os três seletores continuam operáveis dentro do cartão (o SegmentedSelector
     // do DS expõe cada opção como role="tab")
     expect(within(cartao).getByRole('tab', { name: 'HRO' })).toBeTruthy()
-    expect(within(cartao).getByRole('tab', { name: 'Vespertino' })).toBeTruthy()
+    expect(within(cartao).getByRole('tab', { name: 'Tarde' })).toBeTruthy()
   })
 
   it('põe o atalho do fim de semana DEPOIS do campo de anexo', () => {

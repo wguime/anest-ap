@@ -35,7 +35,7 @@ import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import useRosterResidentes from '@/hooks/useRosterResidentes'
 import { iniciaisSeguras as soIniciais } from '@/lib/escalaCirurgicaPaciente'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
-import { conveniosDaEscala, familiaConvenio, normalizarSalaHro, turnoDeHora, salasDoHospital } from './utils'
+import { conveniosDaEscala, convenioDeEscolha, familiaConvenio, normalizarSalaHro, turnoDeHora, salasDoHospital } from './utils'
 import { chaveSala, CONTRATO_HRO, salasContrato } from '@/lib/escalaCirurgicaUrgencias'
 import ChipsEscolha, { GRAVIDADE_CHIPS, TIPOS_CIRURGIA } from './ChipsEscolha'
 import useEstadoUrgencias from './useEstadoUrgencias'
@@ -110,7 +110,10 @@ export default function AddCasoSheet({ escala, turno, caso = null, onClose, onPr
   const salaAtual = String(caso?.sala || '')
   const convenioAtual = String(caso?.convenio || '')
   const salaNaLista = !!salaAtual && salasBase.includes(salaAtual)
-  const convenioNaLista = !!convenioAtual && conveniosBase.includes(convenioAtual)
+  // UMA Unimed (dono 11/2026): o caso gravado como "Unimed Chapecó - VD" abre na opção
+  // "Unimed" — e salvar sem mexer no convênio NÃO regrava o texto antigo (ver patchEdicao).
+  const convenioAtualEscolha = convenioDeEscolha(convenioAtual)
+  const convenioNaLista = !!convenioAtual && conveniosBase.includes(convenioAtualEscolha)
 
   const [sala, setSala] = useState(() => {
     if (!edicao) return salaInicial || ''
@@ -124,7 +127,7 @@ export default function AddCasoSheet({ escala, turno, caso = null, onClose, onPr
   const [cirurgiao, setCirurgiao] = useState(() => String(caso?.cirurgiao || ''))
   const [convenio, setConvenio] = useState(() => {
     if (!edicao) return ''
-    return convenioNaLista ? convenioAtual : (convenioAtual ? OUTRO_CONVENIO : '')
+    return convenioNaLista ? convenioAtualEscolha : (convenioAtual ? OUTRO_CONVENIO : '')
   })
   const [outroConvenio, setOutroConvenio] = useState(() => (edicao && !convenioNaLista ? convenioAtual : ''))
   const [anestesistaUid, setAnestesistaUid] = useState('')
@@ -180,7 +183,8 @@ export default function AddCasoSheet({ escala, turno, caso = null, onClose, onPr
     ...conveniosBase.map((c) => ({ value: c, label: c })),
     { value: OUTRO_CONVENIO, label: '+ Outro convênio…' },
   ], [conveniosBase])
-  const convenioFinal = convenio === OUTRO_CONVENIO ? outroConvenio.trim() : convenio
+  // digitado também se junta: "unimed chapeco" no campo livre grava "Unimed"
+  const convenioFinal = convenioDeEscolha(convenio === OUTRO_CONVENIO ? outroConvenio : convenio)
   // OBRIGATÓRIOS (dono 29/07): cirurgião, convênio e tipo entram na exigência.
   // Não é burocracia — cada um alimenta uma decisão a jusante: o CIRURGIÃO agrupa
   // a linha na coluna de liberação, o CONVÊNIO decide se o caso vira cobrança
@@ -217,7 +221,12 @@ export default function AddCasoSheet({ escala, turno, caso = null, onClose, onPr
       ...POSTOS.map((o) => ({ ...o, label: tomado[o.value] ? `${o.label} · ocupado` : o.label })),
     ]
   }, [mostraPosto, estado])
-  const valido = !!(salaFinal && procedimento.trim() && cirurgiao.trim() && convenioFinal && tipo
+  // SALA NÃO é obrigatória (dono 11/2026: "nem sempre ela está definida" — a urgência
+  // chega antes de o centro cirúrgico dizer onde vai ser). O banco aceita (`sala text not
+  // null default ''`), o quadro junta os sem-sala no grupo "Sala a definir" e a sala entra
+  // depois pelo "Editar". Cada cirurgia sem sala conta como um lugar próprio (urgências e
+  // "Falta início") — ver `escalaCirurgicaUrgencias.js` e `escalaHorarioPendente.js`.
+  const valido = !!(procedimento.trim() && cirurgiao.trim() && convenioFinal && tipo
     && (!exigeGravidade || gravidade))
 
   // EXCLUIR só alcança o caso que alguém digitou (dono 01/09). O que veio do
@@ -262,7 +271,9 @@ export default function AddCasoSheet({ escala, turno, caso = null, onClose, onPr
     põe('pacienteIniciais', soIniciais(paciente), String(caso?.pacienteIniciais || ''))
     põe('idade', idade.trim(), String(caso?.idade || ''))
     põe('procedimento', procedimento.trim(), String(caso?.procedimento || ''))
-    põe('convenio', convenioFinal, convenioAtual)
+    // compara pela ESCOLHA: "Unimed" na tela × "Unimed Chapecó - VD" no banco é a mesma
+    // resposta, e corrigir só a hora não pode regravar o convênio de carona
+    if (convenioFinal !== convenioAtualEscolha) patch.convenio = convenioFinal
     põe('cirurgiao', cirurgiao.trim(), String(caso?.cirurgiao || ''))
     põe('tipo', tipo, caso?.tipo || 'eletiva')
     // gravidade só existe em urgência/emergência; voltar para eletiva a LIMPA
@@ -362,7 +373,8 @@ export default function AddCasoSheet({ escala, turno, caso = null, onClose, onPr
       // é a que já responde por ele — config existente NUNCA é sobrescrita por
       // aqui (o caso entra como comum e, extrapolando as 2 vagas, o quadro o
       // mostra como Extra sozinho — exatamente o combinado com o dono 19/08).
-      if (novo && mostraPosto && posto !== POSTO_AUTO) {
+      // sem sala não há o que configurar: o posto é configuração DE SALA
+      if (novo && mostraPosto && posto !== POSTO_AUTO && salaFinal) {
         const turnoCaso = turnoDeHora(hora.trim()) || turno || 'matutino'
         const cfg = salasContrato(escala?.urgenciasMeta, turnoCaso)
         const jaResponde = cfg[posto] || POSTO_SALA_PADRAO[posto] || null
@@ -498,36 +510,36 @@ export default function AddCasoSheet({ escala, turno, caso = null, onClose, onPr
         </SheetHeader>
 
         {/* UM CARTÃO POR PERGUNTA (dono 20/08: "no padrão das outras páginas da
-            escala cirúrgica") — a mesma divisão do detalhe do caso: que cirurgia
-            é · como ela entra · quem está e onde. Antes eram 12 campos numa
-            coluna só, todos no mesmo peso, e o TIPO era um Select enquanto o
-            detalhe já perguntava a mesma coisa em pastilhas. */}
+            escala cirúrgica"). ORDEM DE 11/2026 (modelo 4, escolhido por imagem): o que
+            não pode faltar — procedimento, cirurgião, convênio — e a sala sobem para o
+            1º cartão. Antes sala e cirurgião ficavam no 3º, depois do texto do contrato:
+            3 dos 5 obrigatórios visíveis ao abrir, e o "Falta preencher" mandava rolar
+            ~600px. Paciente, anestesista e residente (opcionais) desceram. Nenhum campo
+            entrou ou saiu. */}
         <div className="space-y-2.5 px-1 pb-2">
           <article className="rounded-2xl border border-border-strong bg-card-elevated p-3">
             <h3 className="mb-2 text-[15px] font-extrabold">A cirurgia</h3>
             <div className="space-y-2.5">
+              <div className="grid grid-cols-[1fr_108px] gap-2">
+                <Campo id="ac-sala" label="Sala">
+                  <Select options={salasOpcoes} value={sala} onChange={setSala} placeholder="A definir" searchable />
+                </Campo>
+                <Campo id="ac-hora" label="Hora">
+                  <Input id="ac-hora" value={hora} onChange={(e) => setHora(formatHora(e.target.value))}
+                    inputMode="numeric" placeholder="15:30" />
+                </Campo>
+              </div>
+              {sala === NOVA_SALA && (
+                <Input value={novaSala} onChange={(e) => setNovaSala(e.target.value)} placeholder="Nome da sala (ex.: SALA 5)" />
+              )}
               <Campo id="ac-proc" label="Procedimento *">
                 <Input id="ac-proc" value={procedimento} onChange={(e) => setProcedimento(e.target.value)}
                   placeholder="ex.: Apendicectomia" />
               </Campo>
-              <div className="grid grid-cols-[1fr_92px] gap-2">
-                <Campo id="ac-paciente" label="Paciente">
-                  <Input id="ac-paciente" value={paciente}
-                    onChange={(e) => {
-                      setPaciente(e.target.value)
-                      // nome de verdade (palavra 3+ letras) → memoriza p/ a cobrança de particular
-                      if (/\p{L}{3,}/u.test(e.target.value)) nomeCompletoRef.current = e.target.value.trim()
-                    }}
-                    onBlur={() => setPaciente(soIniciais(paciente))}
-                    placeholder="Nome ou iniciais" />
-                </Campo>
-                <Campo id="ac-idade" label="Idade">
-                  <Input id="ac-idade" value={idade} onChange={(e) => setIdade(e.target.value)} placeholder="47a" />
-                </Campo>
-              </div>
-              <p className="-mt-1 text-[11.5px] text-muted-foreground">
-                O nome vira INICIAIS ao sair do campo — a escala não guarda nome de paciente (LGPD).
-              </p>
+              <Campo id="ac-cir" label="Cirurgião *">
+                <Input id="ac-cir" value={cirurgiao} onChange={(e) => setCirurgiao(e.target.value)}
+                  placeholder="ex.: Mateus Baptistella" />
+              </Campo>
               <Campo id="ac-conv" label="Convênio *">
                 <Select options={conveniosOpcoes} value={convenio} onChange={setConvenio}
                   placeholder="Selecionar convênio…" searchable />
@@ -587,24 +599,26 @@ export default function AddCasoSheet({ escala, turno, caso = null, onClose, onPr
           </article>
 
           <article className="rounded-2xl border border-border-strong p-3">
-            <h3 className="mb-2 text-[15px] font-extrabold">Quem está e onde</h3>
+            <h3 className="mb-2 text-[15px] font-extrabold">Paciente e equipe</h3>
             <div className="space-y-2.5">
-              <div className="grid grid-cols-[1fr_108px] gap-2">
-                <Campo id="ac-sala" label="Sala *">
-                  <Select options={salasOpcoes} value={sala} onChange={setSala} placeholder="Selecionar sala…" searchable />
+              <div className="grid grid-cols-[1fr_92px] gap-2">
+                <Campo id="ac-paciente" label="Paciente">
+                  <Input id="ac-paciente" value={paciente}
+                    onChange={(e) => {
+                      setPaciente(e.target.value)
+                      // nome de verdade (palavra 3+ letras) → memoriza p/ a cobrança de particular
+                      if (/\p{L}{3,}/u.test(e.target.value)) nomeCompletoRef.current = e.target.value.trim()
+                    }}
+                    onBlur={() => setPaciente(soIniciais(paciente))}
+                    placeholder="Nome ou iniciais" />
                 </Campo>
-                <Campo id="ac-hora" label="Hora">
-                  <Input id="ac-hora" value={hora} onChange={(e) => setHora(formatHora(e.target.value))}
-                    inputMode="numeric" placeholder="15:30" />
+                <Campo id="ac-idade" label="Idade">
+                  <Input id="ac-idade" value={idade} onChange={(e) => setIdade(e.target.value)} placeholder="47a" />
                 </Campo>
               </div>
-              {sala === NOVA_SALA && (
-                <Input value={novaSala} onChange={(e) => setNovaSala(e.target.value)} placeholder="Nome da sala (ex.: SALA 5)" />
-              )}
-              <Campo id="ac-cir" label="Cirurgião *">
-                <Input id="ac-cir" value={cirurgiao} onChange={(e) => setCirurgiao(e.target.value)}
-                  placeholder="ex.: Mateus Baptistella" />
-              </Campo>
+              <p className="-mt-1 text-[11.5px] text-muted-foreground">
+                O nome vira INICIAIS ao sair do campo — a escala não guarda nome de paciente (LGPD).
+              </p>
               {edicao ? (
                 /* Trocar o anestesista é o `DefinirAnestesistaSheet`, no detalhe do
                    caso: lá se vê onde cada colega está, marca-se dupla na mesma
@@ -640,9 +654,8 @@ export default function AddCasoSheet({ escala, turno, caso = null, onClose, onPr
             erro no meio do plantão. */}
         <div className="border-t border-border px-1 pb-4 pt-3">
           {!valido && (
-            <p className="mb-2 text-xs text-warning">
+            <p className="mb-2 text-xs text-category-orange-fg">
               Falta preencher: {[
-                !salaFinal && 'sala',
                 !procedimento.trim() && 'procedimento',
                 !cirurgiao.trim() && 'cirurgião',
                 !convenioFinal && 'convênio',

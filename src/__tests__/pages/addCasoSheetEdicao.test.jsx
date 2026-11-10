@@ -308,3 +308,54 @@ describe('AddCasoSheet — excluir só o caso adicionado à mão (dono 01/09)', 
     expect(screen.getByRole('button', { name: /Adicionar/ })).toBeInTheDocument()
   })
 })
+
+/**
+ * UMA UNIMED SÓ + SALA OPCIONAL, NA EDIÇÃO (dono 11/2026).
+ *
+ * O perigo da unificação está aqui: o caso do mapa vem gravado "Unimed Chapecó - VD" e o
+ * seletor só oferece "Unimed". Abrir para corrigir a HORA e salvar não pode regravar o
+ * convênio de carona — "não reescreva dado já gravado".
+ */
+describe('AddCasoSheet — edição com a Unimed unificada e sem sala (dono 11/2026)', () => {
+  const casoDoMapa = { ...casoManual, convenio: 'Unimed Chapecó - VD', origem: 'importacao' }
+
+  it('convênio gravado "Unimed Chapecó - VD" abre como "Unimed", não no campo livre', () => {
+    abrir(casoDoMapa)
+    expect(screen.queryByPlaceholderText('Nome do convênio')).toBeNull()
+    expect(screen.queryByText('Unimed Chapecó - VD')).toBeNull()
+    expect(screen.getAllByText('Unimed').length).toBeGreaterThan(0)
+  })
+
+  it('corrigir só a hora NÃO regrava o convênio antigo', async () => {
+    abrir(casoDoMapa)
+    fireEvent.change(screen.getByPlaceholderText('15:30'), { target: { value: '0900' } })
+    salvar()
+    await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
+    expect(atualizarCaso.mock.calls[0][2]).toEqual({ hora: '09:00' })
+  })
+
+  it('abrir e salvar sem tocar em nada continua sem escrever', async () => {
+    abrir(casoDoMapa)
+    salvar()
+    await Promise.resolve()
+    expect(atualizarCaso).not.toHaveBeenCalled()
+  })
+
+  it('trocar de verdade (Unimed → SUS) grava a troca', async () => {
+    abrir(casoDoMapa)
+    escolher(screen.getAllByText('Unimed')[0], 'SUS')
+    salvar()
+    await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
+    expect(atualizarCaso.mock.calls[0][2]).toEqual({ convenio: 'SUS' })
+  })
+
+  it('caso SEM sala abre e salva — e definir a sala depois é o caminho normal', async () => {
+    const semSala = { ...casoManual, sala: '' }
+    abrir(semSala)
+    expect(screen.queryByText(/Falta preencher/)).toBeNull()
+    escolher(screen.getByText('A definir'), 'Sala 3')
+    salvar()
+    await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
+    expect(atualizarCaso.mock.calls[0][2]).toEqual({ sala: 'Sala 3' })
+  })
+})

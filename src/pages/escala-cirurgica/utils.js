@@ -296,11 +296,10 @@ export const LOCAIS_BASE = {
  */
 export const CONVENIOS_BASE = [
   'SUS',
-  'Unimed Chapecó - VD',
-  'Unimed Intercâmbio Estadual',
-  'Unimed Intercâmbio Nacional',
-  'Intercâmbio Mercosul - PR/RS',
-  'Unimed Fundação',
+  // UMA Unimed só (dono 11/2026: "não quero mais a variedade de nomes diferentes para se
+  // referir a Unimed"). Saíram "Unimed Chapecó - VD", "Unimed Fundação" e — por decisão
+  // dele, na 2ª rodada: "também viram Unimed" — os três INTERCÂMBIOS (Estadual, Nacional,
+  // Mercosul). Ver `convenioDeEscolha`.
   'Unimed',
   'Particular',
   'SC Saúde',
@@ -320,11 +319,33 @@ export const CONVENIOS_BASE = [
  * grafia limpa primeiro — e a escala de 20/08 trazia "Convênios", "PART" e "SC" no
  * topo, que é exatamente o que a lista existe para parar de propagar.
  */
+/**
+ * O convênio como ele é OFERECIDO e GRAVADO por quem escolhe à mão (dono 11/2026): toda
+ * grafia da Unimed — "Unimed Chapecó - VD", "UNIMED FUNDAÇÃO", "Unimed Regional" — e todo
+ * INTERCÂMBIO ("Unimed Intercâmbio Estadual/Nacional", "Intercâmbio Mercosul - PR/RS") vira
+ * "Unimed". O resto não muda.
+ *
+ * `familiaConvenio` continua devolvendo 'intercambio' à parte: nenhuma REGRA do app lê essa
+ * família (só `=== 'particular'` decide alguma coisa — a cobrança), então a distinção
+ * interna ficou como estava e o que se junta aqui é só a escolha e o rótulo.
+ *
+ * ⚠️ Vale para a ESCOLHA (seletor e campo livre do "Adicionar caso"). Não reescreve o que
+ * já está no banco nem o que a importação lê do mapa: a exibição continua por
+ * `convenioExibicao`, e particular × não particular continua por `familiaConvenio` /
+ * `fn_convenio_particular`, que não mudaram.
+ */
+export function convenioDeEscolha(convenio) {
+  const nome = String(convenio || '').trim()
+  const familia = familiaConvenio(nome)
+  return familia === 'unimed' || familia === 'intercambio' ? 'Unimed' : nome
+}
+
 export function conveniosDaEscala(casos) {
   const vistos = new Set()
   const out = []
   for (const c of [...CONVENIOS_BASE, ...(casos || []).map((x) => x?.convenio)]) {
-    const nome = String(c || '').trim()
+    // a grafia do dia também se junta: "UNIMED CHAPECÓ - VD" do mapa não volta como 2ª opção
+    const nome = convenioDeEscolha(c)
     if (!nome) continue
     const chave = normConvenio(nome)
     if (!chave || vistos.has(chave)) continue
@@ -798,10 +819,15 @@ const normCirurgiaoContinuacao = (s) => normNome(s).replace(/[^A-Z ]/g, '').repl
 /**
  * O caso da MANHÃ de onde vem a linha "CONTINUAÇÃO …" da foto da tarde.
  *
- * Mesmo cirurgião, como a herança da publicação casa (`completarContinuacoes`).
- * Entre vários do mesmo cirurgião vence o que deixou a marca na continuação
- * (iniciais e procedimento herdados), depois o marcado "Passa para tarde", a
- * mesma sala e o último da sala. Aqui o caso da manhã pode já estar terminado
+ * Mesmo cirurgião NA MESMA SALA (dono 10/11: "continuação pode ser em outra sala,
+ * mas uma cirurgia que começou em uma sala não termina em outra; apenas quando são
+ * procedimentos distintos"). Até 10/11 a sala era só desempate: a continuação se
+ * juntava à cirurgia da manhã de OUTRA sala do mesmo cirurgião — dois procedimentos
+ * num cartão só, com o horário de um no outro; o banco (`escala_pares_continuacao`)
+ * sempre exigiu a mesma sala, e o relatório contava duas onde a tela mostrava uma.
+ * Entre vários da mesma sala vence o que deixou a marca na continuação (iniciais e
+ * procedimento herdados), depois o marcado "Passa para tarde" e o último da sala.
+ * Aqui o caso da manhã pode já estar terminado
  * (a publicação só herdava dos abertos): terminado é a cirurgia que acabou, e
  * a continuação dela não pode reaparecer como cirurgia agendada.
  */
@@ -809,15 +835,16 @@ export function origemDaContinuacao(cont, casosDoDia) {
   if (cont?.isContinuacao !== true || turnoDoCaso(cont) !== 'vespertino') return null
   const cir = normCirurgiaoContinuacao(cont.cirurgiao)
   if (!cir) return null
+  const sala = normNome(cont.sala)
   const cands = (casosDoDia || []).filter((c) => c && c !== cont && c.isContinuacao !== true
-    && turnoDoCaso(c) === 'matutino' && normCirurgiaoContinuacao(c.cirurgiao) === cir)
+    && turnoDoCaso(c) === 'matutino' && normCirurgiaoContinuacao(c.cirurgiao) === cir
+    && normNome(c.sala) === sala)
   if (!cands.length) return null
   const ini = normNome(cont.pacienteIniciais)
   const proc = normNome(procedimentoBaseDoCaso(cont))
   const peso = (c) => (ini && normNome(c.pacienteIniciais) === ini ? 8 : 0)
     + (proc && normNome(c.procedimento) === proc ? 4 : 0)
     + (casoPassaDeTurno(c) ? 2 : 0)
-    + (normNome(c.sala) === normNome(cont.sala) ? 1 : 0)
   return [...cands].sort((a, b) => (peso(b) - peso(a)) || ((b.ordem ?? 0) - (a.ordem ?? 0)))[0]
 }
 
@@ -1795,7 +1822,9 @@ const normConvenio = (s) =>
 export function convenioExibicao(convenio) {
   const s = normConvenio(convenio)
   if (!s) return ''
-  if (/^UNIMED\b/.test(s)) return 'Unimed'
+  // intercâmbio também lê "Unimed" (dono 11/2026) — "Intercâmbio Mercosul - PR/RS" não
+  // começa com UNIMED e aparecia por extenso no selo
+  if (/^UNIMED\b/.test(s) || s.includes('INTERCAMB')) return 'Unimed'
   // GRAFIA DOS OUTROS BADGES (dono 17/08): "PARTICULAR" vira "Particular", como
   // "Iniciada" e "Passa para tarde". `fraseClinica` é a mesma função que trata o
   // procedimento — preserva sigla curta (SUS, BRF, SC, FAS) e não mexe em texto

@@ -8,7 +8,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 
 import { ThemeProvider, ToastProvider } from '@/design-system'
 import AddCasoSheet from '@/pages/escala-cirurgica/AddCasoSheet'
-import { CONVENIOS_BASE, familiaConvenio } from '@/pages/escala-cirurgica/utils'
+import { CONVENIOS_BASE, familiaConvenio, conveniosDaEscala, convenioDeEscolha, convenioExibicao } from '@/pages/escala-cirurgica/utils'
 
 const { adicionarCaso, definirSalasUrgencia } = vi.hoisted(() => ({
   adicionarCaso: vi.fn(async (_e, c) => ({ id: 'novo-1', ...c })),
@@ -56,7 +56,7 @@ const escolherPorPlaceholder = (placeholder, nomeOpcao) =>
   escolher(screen.getByText(placeholder), nomeOpcao)
 
 /** A sala é sempre o mesmo Select, esteja ele em que cartão estiver. */
-const escolherSala = (nomeOpcao) => escolherPorPlaceholder('Selecionar sala…', nomeOpcao)
+const escolherSala = (nomeOpcao) => escolherPorPlaceholder('A definir', nomeOpcao)
 
 /** Tipo e gravidade são PASTILHAS desde 20/08 (ChipsEscolha, as mesmas do
  *  detalhe do caso) — não são mais Select. */
@@ -349,11 +349,13 @@ describe('AddCasoSheet — convênio', () => {
     fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Cesárea' } })
     fireEvent.change(screen.getByPlaceholderText('ex.: Mateus Baptistella'), { target: { value: 'Dr. Ivo' } })
     marcarChip('Urgente')
-    escolherPorPlaceholder('Selecionar convênio…', 'Unimed Chapecó - VD')
+    // UMA Unimed (dono 11/2026): este teste escolhia "Unimed Chapecó - VD", que saiu da
+    // lista — o que ele trava (a grafia DA LISTA é a que vai ao banco) segue igual.
+    escolherPorPlaceholder('Selecionar convênio…', 'SC Saúde')
 
     fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
     await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
-    expect(adicionarCaso.mock.calls[0][1].convenio).toBe('Unimed Chapecó - VD')
+    expect(adicionarCaso.mock.calls[0][1].convenio).toBe('SC Saúde')
   })
 
   it('"+ Outro convênio…" abre a digitação e é ela que vale', async () => {
@@ -379,5 +381,124 @@ describe('AddCasoSheet — convênio', () => {
     expect(familiaConvenio('Particular')).toBe('particular')
     expect(CONVENIOS_BASE).toContain('Particular')
     expect(CONVENIOS_BASE.filter((c) => familiaConvenio(c) === 'outro')).toEqual(['GEAP'])
+  })
+})
+
+/**
+ * UMA UNIMED SÓ (dono 11/2026): "os convênios Unimed sejam todos unificados e seja apenas
+ * Unimed (não quero mais a variedade de nomes diferentes para se referir a Unimed)".
+ *
+ * Vale para a ESCOLHA e a EXIBIÇÃO. O que já está no banco e o que a importação lê do mapa
+ * não são reescritos, e particular × não particular (a cobrança) não muda. O INTERCÂMBIO
+ * entrou junto por decisão dele ("também viram Unimed").
+ */
+describe('AddCasoSheet — uma Unimed só', () => {
+  it('a lista oferece "Unimed" uma vez, mesmo com as grafias do mapa do dia', () => {
+    const lista = conveniosDaEscala([
+      { convenio: 'UNIMED CHAPECÓ - VD' }, { convenio: 'Unimed Fundação' }, { convenio: 'Unimed Regional' }, { convenio: 'unimed' },
+    ])
+    expect(lista.filter((c) => familiaConvenio(c) === 'unimed')).toEqual(['Unimed'])
+    expect(CONVENIOS_BASE.filter((c) => familiaConvenio(c) === 'unimed')).toEqual(['Unimed'])
+  })
+
+  it('o INTERCÂMBIO também vira "Unimed" — na escolha e na exibição', () => {
+    // ⚠️ MUDOU DE LADO na 2ª rodada do dono: a 1ª versão deixava os três intercâmbios à
+    // parte até ele decidir; a resposta foi "também viram Unimed".
+    for (const c of ['Unimed Intercâmbio Estadual', 'Unimed Intercâmbio Nacional', 'Intercâmbio Mercosul - PR/RS', 'INTERCAMBIO NACIONAL']) {
+      expect(convenioDeEscolha(c)).toBe('Unimed')
+      expect(convenioExibicao(c)).toBe('Unimed')
+    }
+    expect(CONVENIOS_BASE.filter((c) => /interc/i.test(c))).toEqual([])
+    expect(conveniosDaEscala([{ convenio: 'Unimed Intercâmbio Estadual' }, { convenio: 'Intercâmbio Mercosul - PR/RS' }])
+      .filter((c) => /unimed|interc/i.test(c))).toEqual(['Unimed'])
+  })
+
+  it('a distinção INTERNA continua: nenhuma regra dependia dela, e a cobrança não muda', () => {
+    // só `=== 'particular'` decide alguma coisa no app; a família do intercâmbio segue à parte
+    expect(familiaConvenio('Unimed Intercâmbio Estadual')).toBe('intercambio')
+    expect(familiaConvenio('Unimed')).toBe('unimed')
+    expect(familiaConvenio('Particular')).toBe('particular')
+    expect(convenioDeEscolha('Particular')).toBe('Particular')
+    expect(convenioDeEscolha(' SUS ')).toBe('SUS')
+    expect(convenioDeEscolha('SC Saúde')).toBe('SC Saúde')
+  })
+
+  it('digitar uma grafia da Unimed no campo livre grava "Unimed"', async () => {
+    render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
+    fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Cesárea' } })
+    fireEvent.change(screen.getByPlaceholderText('ex.: Mateus Baptistella'), { target: { value: 'Dr. Ivo' } })
+    marcarChip('Urgente')
+    escolherPorPlaceholder('Selecionar convênio…', '+ Outro convênio…')
+    fireEvent.change(screen.getByPlaceholderText('Nome do convênio'), { target: { value: 'unimed chapeco vd' } })
+    fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
+    await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
+    expect(adicionarCaso.mock.calls[0][1].convenio).toBe('Unimed')
+  })
+
+  it('a exibição já lia "Unimed" para toda grafia — e continua', () => {
+    for (const c of ['Unimed Chapecó - VD', 'UNIMED FUNDAÇÃO', 'Unimed']) expect(convenioExibicao(c)).toBe('Unimed')
+  })
+})
+
+/**
+ * SALA NÃO É OBRIGATÓRIA (dono 11/2026): "nem sempre ela está definida" — a urgência chega
+ * antes de o centro cirúrgico dizer onde vai ser. O banco aceita sala vazia
+ * (`sala text not null default ''`); o quadro junta os sem-sala em "Sala a definir".
+ */
+describe('AddCasoSheet — sala opcional', () => {
+  const preencherSemSala = () => {
+    fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Laparotomia' } })
+    preencherObrigatorios()
+  }
+
+  it('salva sem sala, e a sala vai vazia (não um texto inventado)', async () => {
+    render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
+    preencherSemSala()
+    expect(screen.queryByText(/Falta preencher/)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
+    await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
+    expect(adicionarCaso.mock.calls[0][1].sala).toBe('')
+  })
+
+  it('"Falta preencher" não cobra mais a sala', () => {
+    render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
+    const falta = screen.getByText(/Falta preencher/)
+    expect(falta.textContent).not.toMatch(/sala/)
+    expect(falta.textContent).toMatch(/procedimento, cirurgião, convênio, gravidade/)
+  })
+
+  it('posto do contrato escolhido SEM sala não grava configuração de sala nenhuma', async () => {
+    render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
+    preencherSemSala()
+    escolher(screen.getByText('Automático — decide pela sala'), 'Plantonista do HRO')
+    fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
+    await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
+    expect(definirSalasUrgencia).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * ORDEM DOS CAMPOS E AVISOS (dono 11/2026, modelos 4 e 5 escolhidos por imagem).
+ * Sala, procedimento, cirurgião e convênio no 1º cartão — antes sala e cirurgião vinham no
+ * 3º, depois do texto do contrato. E os avisos em âmbar passam ao laranja-escuro: o
+ * `text-warning` media 2,13:1 sobre o cartão claro (mínimo 4,5:1).
+ */
+describe('AddCasoSheet — ordem dos campos e avisos legíveis', () => {
+  it('o 1º cartão traz sala, hora, procedimento, cirurgião e convênio, nessa ordem', () => {
+    render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
+    const cartoes = [...document.querySelectorAll('article')]
+    expect(cartoes.map((a) => a.querySelector('h3').textContent)).toEqual(['A cirurgia', 'Tipo e prioridade', 'Paciente e equipe'])
+    const rotulos = (a) => [...a.querySelectorAll('label')].map((l) => l.textContent)
+    expect(rotulos(cartoes[0])).toEqual(['Sala', 'Hora', 'Procedimento *', 'Cirurgião *', 'Convênio *'])
+    expect(rotulos(cartoes[2])).toEqual(['Paciente', 'Idade', 'Anestesista', 'Residente'])
+  })
+
+  it('os dois avisos do formulário usam o laranja-escuro, não o âmbar do token', () => {
+    render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
+    for (const texto of [/Sem classificação a urgência/, /Falta preencher/]) {
+      const el = screen.getByText(texto)
+      expect(el.className).toContain('text-category-orange-fg')
+      expect(el.className).not.toContain('text-warning')
+    }
   })
 })

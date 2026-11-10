@@ -17,6 +17,7 @@ import { onAuthStateChanged, onIdTokenChanged } from 'firebase/auth'
 import { auth } from './firebase'
 import { lerSessaoSalva } from '../lib/sessaoSalva'
 import { tokenPersistidoValido } from '../lib/tokenPersistido'
+import { criarFetchAutenticado } from '../lib/fetchSupabaseAutenticado'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -161,8 +162,31 @@ export async function getSupabaseToken() {
   return getLegacyToken(currentUser)
 }
 
+/**
+ * Renovação FORÇADA, para o 401 de token vencido (volta do segundo plano).
+ * Devolve null quando não dá — quem chama fica com a resposta original.
+ */
+async function renovarTokenSupabase() {
+  const currentUser = auth.currentUser
+  if (!currentUser) return null
+  if (_hasRoleClaim) return currentUser.getIdToken(true)
+  _cachedToken = null
+  _cachedUid = null
+  _cachedExp = 0
+  return getLegacyToken(currentUser)
+}
+
 export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
   accessToken: getSupabaseToken,
+  // Usuário logado nunca sai como anônimo; 401 da Data API renova e repete 1x.
+  // Ver src/lib/fetchSupabaseAutenticado.js.
+  global: {
+    fetch: criarFetchAutenticado({
+      anonKey: supabaseAnonKey,
+      temSessao: () => !!auth.currentUser,
+      renovarToken: renovarTokenSupabase,
+    }),
+  },
   auth: {
     persistSession: false,
     autoRefreshToken: false,

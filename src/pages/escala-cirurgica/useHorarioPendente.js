@@ -15,6 +15,7 @@ import { useCallback, useMemo } from 'react'
 import { useEscalaCirurgica } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { agruparPorAnestesista, contaDoDia, pendenciasDoDia } from '@/lib/escalaHorarioPendente'
+import { liberacaoDaPessoa } from '@/lib/filaLiberacao'
 import useAgoraMinutoEscala from './useAgoraMinutoEscala'
 import { nomeAnestesistaExibicao, normNome } from './utils'
 
@@ -42,10 +43,14 @@ export default function useHorarioPendente() {
   const { itens, conta } = useMemo(() => {
     if (!ativo) return SEM_PENDENCIA
     const fds = escalas?.fds
+    // pela PESSOA, resolvendo posição assumida (fonte única, 09/11): a marca mora na
+    // chave da posição, e quem assumiu a posição de um colega é liberado NELA
     const liberado = (escala, turno, parte) => {
-      const chaves = [uidDe(parte), normNome(parte.alias)]
-      return liberadoEm(escala.liberacoes, turno, chaves)
-        || (!!fds && fds.data === escala.data && liberadoEm(fds.liberacoes, turno, chaves))
+      const uid = uidDe(parte)
+      const nome = normNome(parte.alias)
+      const pessoa = { uid, chaves: [uid, nome], mesmoNome: (n) => !!nome && normNome(n) === nome }
+      return !!liberacaoDaPessoa(escala, turno, pessoa)
+        || (!!fds && fds.data === escala.data && !!liberacaoDaPessoa(fds, turno, pessoa))
     }
     const lista = ['unimed', 'hro', 'materno'].map((h) => escalas?.[h]).filter(Boolean)
     const pendencias = pendenciasDoDia(lista, { hoje, agoraMin, liberado })

@@ -3,6 +3,53 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## 10/11/2026 — Escala Cirúrgica: revisão geral (rede, fila, telas, adesão, cobrança) — v5.12.91
+
+Análise completa pedida pelo dono em 09/11 ("erros de desempenho, funcionalidades que deveriam se completar e
+parecem separadas"). Medido antes: 55 % de todo o tráfego do app era a escala recarregando; o banco respondia em
+~1 ms e a tela redesenhava em 3–10 ms — a lentidão era número de idas a um servidor a ~270 ms.
+
+**Rede e conectividade (nada visível)**
+- Usuário logado nunca sai como anônimo: com o token indisponível a leitura voltava "Sem escala publicada" e a
+  escrita voltava "ok" sem gravar (3 episódios em 24 h, 2 gravações perdidas). Agora a requisição falha antes de
+  sair; e 401 de token vencido renova e repete uma vez (`src/lib/fetchSupabaseAutenticado.js`).
+- Sinal do tempo real relê só o hospital dele (1–2 idas em vez de 7); o do P4 só o P4. Reconexão segue relendo tudo.
+- Escrita em voo não dispara mais recarga para jogar fora a cada 800 ms.
+- Locais aprendidos (~180 KB) só quando o editor da linha abre; dicionário de apelidos vale 5 min em memória.
+
+**Funcionamento**
+- "Foi liberado?" (aviso de horário) e a confirmação "fora da ordem" respeitam a posição ASSUMIDA
+  (`liberacaoDaPessoa`, fonte única em `filaLiberacao.js`) — o caso Klisman/Rodnei de 23/10.
+- Fase noturna e card da Home ignoram a grade de demonstração do Pega Plantão em produção.
+- Continuação só se junta à cirurgia da manhã na MESMA sala (dono: "uma cirurgia que começou em uma sala não
+  termina em outra"); em outra sala são dois cartões.
+
+**Telas (modelos em `.tmp/analise-escala-2026-11/modelos/`, escolhidos pelo dono)**
+- Folhas com cabeçalho fixo (título + ✕) — vale para todas as folhas do app.
+- Adicionar caso: sala, hora, procedimento, cirurgião e convênio no 1º cartão; sala opcional ("Sala a definir");
+  convênio só "Unimed" (variações e intercâmbio unificados na escolha e na exibição; dado gravado não muda).
+- Liberações: ações numa fileira (plantonista com Mensagem/Histórico só-ícone abaixo de 400 px) e card "Livre"
+  sem reticências nem "+ Tempo total".
+- Avisos em âmbar ilegíveis → laranja-escuro (21 textos; trava em `escalaAvisosAmbarLegiveis.test.js`),
+  "Manhã / Tarde / Noite" no lugar de Matutino/Vespertino, chip "Iniciada" em verde-escuro.
+- Card da escala na Home das 19h às 7h: plantonista da noite por hospital (HRO P1 · Unimed P2 · Materno P4).
+
+**Banco (4 migrations aplicadas em 10/11, ensaiadas com rollback antes)**
+- `20261109230000`: gate de PUBLICAÇÃO de volta à `rpc_publicar_escala_turno` (perdido nas recriações de 23/09 e
+  02/10 — contas de hospital publicavam por chamada direta); `anon` sem acesso às tabelas da escala; índice do
+  relatório de adesão.
+- `20261109232000`: adesão não conta a continuação da mesma pessoa como cirurgia à parte e não cobra o término de
+  quem só começou; 30 dias regravados.
+- `20261109233000`: relatório de adesão vira cópia pronta, calculada ao fim de cada turno (7h10, 13h10, 19h10) —
+  6 cálculos por dia em vez de ~190. ⚠️ mudança na conta ao vivo agora é em `escala_adesao_relatorio_calc`.
+- `20261109234000`: cobrança particular ainda não preenchida acompanha o repasse do caso; dupla grava os dois
+  nomes; o cron das 20:30 não abre cobrança para linha de continuação.
+- Reparo de dados entregue ao dono: `scripts/repair-2026-11-09-particulares-repasse-e-continuacao.sql`.
+
+**Aprendizado da escalação** — regras do dono em `docs/escala-cirurgica-metricas/regras-escalacao.json`, modelo de
+tempo (cirurgião × procedimento, giro de sala), simulador e ciclo semanal em `2026-W45-aprendizado-scripts/`;
+relatórios versionados com códigos no lugar dos nomes.
+
 ## 05/11/2026 — v5.12.90 — Liberações: plantonista que sobra sozinho fica verde
 
 *"quando só houver o plantonista escalado deixe ele sempre em verde pq ele irá trabalhar"* (dono, 05/11 — Materno

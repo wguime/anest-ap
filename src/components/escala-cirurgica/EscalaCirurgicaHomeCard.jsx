@@ -11,6 +11,13 @@
  * client Supabase já aguarda _authReady internamente. Hospital sem escala
  * publicada hoje não gera linha; nenhum hospital → "Sem escala publicada hoje".
  * Plantonista = 1º nome do rodapé (ordemLiberacao[0]).
+ *
+ * DAS 19h ÀS 7h, EM DIA ÚTIL (dono 11/2026, opção A do modelo
+ * `.tmp/analise-escala-2026-11/modelos/5-contraste-e-nomes.html`): o card mostra o
+ * plantonista DA NOITE de cada hospital — HRO P1 · Unimed P2 · Materno P4, o 1º de
+ * `ORDEM_NOTURNA`, com o selo — no lugar dos plantonistas da tarde, que às 22h já
+ * tinham ido embora. Mesma fonte e mesma regra da fila de Liberações à noite
+ * (`faseLiberacoes` + `plantonistaNoturnoDe`), inclusive o P4 coringa marcado.
  */
 import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
@@ -24,8 +31,9 @@ import { ehDataFilaUnica, ehFeriado, FDS_HOSPITAL, faixaFdsAtual, plantonistasFa
 import { formatDate } from '@/utils/formatters'
 import useAgoraMinuto from '@/pages/escala-cirurgica/useAgoraMinuto'
 import { devClockAtivo } from '@/lib/devClock'
+import { faseLiberacoes, plantonistasNoturnos, linhasNoturnas, candidatosNome, casarPorInicialSobrenome, ORDEM_NOTURNA } from '@/lib/plantaoNoturno'
 
-const TURNO_LABEL = { matutino: 'Matutino', vespertino: 'Vespertino' }
+const TURNO_LABEL = { matutino: 'Manhã', vespertino: 'Tarde' }
 const FAIXA_LABEL = { '7-13': '7–13h', '13-19': '13–19h', '19-07': '19–07h' }
 
 /**
@@ -54,8 +62,17 @@ export function gravarSnapshotCard(chave, conteudo) {
   } catch { /* quota/private mode — snapshot é só aceleração */ }
 }
 
-export function EscalaCirurgicaHomeCard({ onNavigate }) {
-  const { escalas, data, loading } = useEscalaCirurgica()
+// Hospitais na ordem dos setores da noite (P1 · P2 · P4), como no modelo aprovado.
+const HOSPITAIS_NOITE = ['hro', 'unimed', 'materno']
+
+/**
+ * @param {Array}   plantoes                P1–P4 do dia (card Plantões / Pega Plantão) — a Home já
+ *                                          os busca; vêm por prop para não abrir um 2º fetch.
+ * @param {boolean} plantoesDeDemonstracao  o hook devolveu a grade de DEMONSTRAÇÃO (API fora do ar,
+ *                                          sem dado real do dia): nome fictício não vira plantonista.
+ */
+export function EscalaCirurgicaHomeCard({ onNavigate, plantoes = null, plantoesDeDemonstracao = false }) {
+  const { escalas, data, loading, p4Hospital = null } = useEscalaCirurgica()
   const hoje = hojeISO()
   const contextEhHoje = data === hoje
 
@@ -104,7 +121,7 @@ export function EscalaCirurgicaHomeCard({ onNavigate }) {
   // NOME DO CADASTRO no card (pedido do dono 31/07): o rodapé traz apelido/1º
   // nome ("ADRIANO", "DIDO") — o card mostra "nome + último sobrenome" do
   // cadastro via dicionário de apelidos, como a aba Liberações.
-  const { resolver, rosterByUid, pronto: rosterPronto } = useRosterAnestesistas()
+  const { resolver, rosterByUid, roster, pronto: rosterPronto } = useRosterAnestesistas()
 
   // SEM PISCAR (dono 13/08): mostrar o apelido e trocar pelo nome completo
   // segundos depois era o flicker relatado — enquanto o roster não tem como
@@ -190,6 +207,40 @@ export function EscalaCirurgicaHomeCard({ onNavigate }) {
     return [{ hospital: HOSPITAL_LABEL[h], nome: cadastro ? nomeCirurgiaoCurto(cadastro) : titleCaseNome(plantonista) }]
   }), [fonte, resolver, rosterByUid, turnoVivo])
 
+  // ── NOITE (19h–7h, dia útil e feriado em dia de semana) ─────────────────────
+  // `diaFdsRef` JÁ É o dia operacional (a madrugada pertence à véspera) e a madrugada
+  // conta como 24h+, igual ao relógio das telas da escala (`minutoOperacional`).
+  // Sáb/dom ficam de fora por `faseLiberacoes` (lá quem manda é a faixa 19–07 da grade).
+  const noiteAtiva = faseLiberacoes({
+    agoraMin: madrugada ? agoraMin + 1440 : agoraMin, dataEscala: diaFdsRef, hojeIso: diaFdsRef,
+  }) !== 'dia'
+  // o P4 marcado é da data do CONTEXT; noutra data vale o coringa sem marcação
+  const p4DoDia = data === diaFdsRef ? (p4Hospital || null) : null
+  const linhasNoite = useMemo(() => {
+    if (!noiteAtiva) return null
+    // ⚠️ grade de DEMONSTRAÇÃO não vira plantonista (mesmo corte de `plantoesDia` na
+    // EscalaCirurgicaPage): o card segue como de dia. Em DEV vale, como a escala demo.
+    if (plantoesDeDemonstracao && !import.meta.env.DEV) return null
+    const noturnos = plantonistasNoturnos(plantoes)
+    const uidDe = (nome) => {
+      for (const cand of candidatosNome(nome)) {
+        const uid = resolver(cand)
+        if (uid) return uid
+      }
+      return casarPorInicialSobrenome(nome, roster, normNome) // "A. Schmidt"
+    }
+    const out = []
+    for (const h of HOSPITAIS_NOITE) {
+      // SÓ o plantonista do hospital (o 1º setor de ORDEM_NOTURNA): se ele falta no
+      // plantão, a linha some — ninguém "assume" o posto no card (regra da fila).
+      const l = linhasNoturnas(h, noturnos, p4DoDia).find((x) => x.isPlantonista && x.setor === ORDEM_NOTURNA[h][0])
+      if (!l) continue
+      const cadastro = rosterByUid.get(uidDe(l.nome) || '')?.nome
+      out.push({ hospital: HOSPITAL_LABEL[h], selo: l.setor, nome: cadastro ? nomeCirurgiaoCurto(cadastro) : titleCaseNome(l.nome) })
+    }
+    return out.length ? out : null
+  }, [noiteAtiva, plantoesDeDemonstracao, plantoes, p4DoDia, resolver, roster, rosterByUid])
+
   const fonteCarregando = contextEhHoje ? loading : fallback == null
   const carregando = (linhas.length === 0 && fonteCarregando) || (linhas.length > 0 && aguardandoRoster)
   const abrir = () => onNavigate?.('escalaCirurgica')
@@ -198,13 +249,15 @@ export function EscalaCirurgicaHomeCard({ onNavigate }) {
   const turno = turnoAtual()
   const chaveSnapshot = fdsAtivo
     ? `${diaFdsRef}:fds:${ehFeriado(diaFdsRef) ? 'feriado' : (faixaFdsAtual(agoraMin) || '')}`
-    : `${hoje}:${turno}`
+    : noiteAtiva ? `${diaFdsRef}:noite` : `${hoje}:${turno}`
   const conteudoVivo = useMemo(() => {
+    // a noite não depende da escala publicada: sai do card Plantões
+    if (linhasNoite && !aguardandoRoster) return { rotulo: 'Plantão da noite', linhas: linhasNoite }
     if (carregando) return null
     if (linhasFds) return { rotulo: `Plantão · ${linhasFds.rotulo || FAIXA_LABEL[linhasFds.faixa]}`, linhas: linhasFds.linhas }
     if (linhas.length > 0) return { rotulo: `Plantonista · ${TURNO_LABEL[turno]}`, linhas }
     return null
-  }, [carregando, linhasFds, linhas, turno])
+  }, [carregando, linhasFds, linhas, turno, linhasNoite, aguardandoRoster])
   const snapshot = useMemo(() => (devClockAtivo() ? null : lerSnapshotCard(chaveSnapshot)), [chaveSnapshot])
   const assinaturaVivo = conteudoVivo ? JSON.stringify(conteudoVivo) : ''
   useEffect(() => {
@@ -268,6 +321,12 @@ export function EscalaCirurgicaHomeCard({ onNavigate }) {
                 <span className="w-[5.25rem] shrink-0 rounded-[8px] bg-primary/10 px-2 py-1 text-center text-[11px] font-bold uppercase tracking-wide text-primary">
                   {l.hospital}
                 </span>
+                {/* selo P1–P4 só à noite — o mesmo verde sólido dos selos da fila */}
+                {l.selo && (
+                  <span className="-mr-1 shrink-0 rounded-[7px] bg-primary px-1.5 py-0.5 text-[11px] font-bold leading-4 text-primary-foreground">
+                    {l.selo}
+                  </span>
+                )}
                 <span className="min-w-0 flex-1 truncate text-[16px] font-bold text-foreground">
                   {l.nome}
                 </span>

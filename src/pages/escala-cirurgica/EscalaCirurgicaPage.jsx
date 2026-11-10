@@ -81,7 +81,15 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   // Roster p/ resolver os lados do par da troca declarada (uid/nome/apelido)
   const { resolver: resolverRoster, rosterByUid, pronto: rosterPronto = true } = useRosterAnestesistas()
   // P1–P4 do dia (card Plantões/PegaPlantao) — alimentam a fase noturna das Liberações
-  const { plantoes: plantoesDia } = useEscalaDia()
+  // ⚠️ Quando o Pega Plantão falha sem dado real do dia, o hook devolve uma grade de
+  // DEMONSTRAÇÃO (a Home avisa "Dados de demonstração"). Aqui ela viraria selo P1–P4
+  // com nome fictício no topo da fila às 19h — sem plantões a fila da tarde segue (09/11).
+  const { plantoes: plantoesVivos, usandoMock: plantoesDeDemonstracao } = useEscalaDia()
+  // Em DEV a demonstração continua valendo (base dos e2e), como a escala demo.
+  const plantoesDia = useMemo(
+    () => (plantoesDeDemonstracao && !import.meta.env.DEV ? [] : plantoesVivos),
+    [plantoesDeDemonstracao, plantoesVivos],
+  )
   const [hospital, setHospital] = useState('unimed')
   const [aba, setAba] = useState('minhas')
   const [turno, setTurno] = useState(() => (ehFimDeSemana(hoje || data) ? turnoFdsAtual(minutosDoDia()) : turnoAtualOperacional()))
@@ -879,7 +887,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
 
         {/* Aterrissou noutra data (ex.: publicou pela importação): rótulo + volta */}
         {modoData === 'outra' && (
-          <p className="rounded-lg bg-warning/10 px-3 py-1.5 text-xs text-warning">
+          <p className="rounded-lg bg-warning/10 px-3 py-1.5 text-xs text-category-orange-fg">
             Vendo {formatData(data)} — <button type="button" className="font-semibold underline" onClick={() => setData(hoje)}>voltar para hoje</button>
           </p>
         )}
@@ -887,7 +895,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
         {/* Botão de demonstração EXCLUÍDO (pedido do dono 23/07) — a fixture demo
             segue existindo SÓ em DEV (base determinística dos e2e). */}
         {escala?.id?.startsWith('demo-') && (
-          <p className="rounded-lg bg-warning/10 text-warning text-xs px-3 py-2">
+          <p className="rounded-lg bg-warning/10 text-category-orange-fg text-xs px-3 py-2">
             Demonstração — alterações (liberar/reordenar) não são salvas.
           </p>
         )}

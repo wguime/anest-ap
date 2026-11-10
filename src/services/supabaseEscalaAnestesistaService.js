@@ -65,26 +65,51 @@ function toCamel(row) {
   }
 }
 
-// Leitura em voo compartilhada: cada `useRosterAnestesistas` busca ao montar, e a
-// abertura da escala monta dois ao mesmo tempo (mais o card da Home) — eram duas
-// leituras idênticas em paralelo (15/10/2026). Quem pede DEPOIS que a resposta
-// chegou busca de novo (o `refresh` após gravar um apelido precisa do dado novo).
+// Dicionário em memória (09/11/2026). Cada `useRosterAnestesistas` busca ao montar
+// — página, Liberações, Board, cada folha, card da Home: ~18 pontos — e a tabela
+// (~100 linhas) muda poucas vezes por mês: eram 99 mil leituras acumuladas, uma a
+// cada troca de aba ou folha aberta. Agora:
+//  - pedidos simultâneos dividem UMA leitura (15/10);
+//  - por 5 min a resposta é reaproveitada, e é a MESMA referência — o hook não
+//    re-renderiza nem refaz o `resolver` quando nada mudou. Ninguém pode mutar a lista;
+//  - gravar/remover apelido NESTE aparelho invalida na hora; `{ forcar: true }`
+//    busca de novo (refresh manual). Apelido aprendido em OUTRO aparelho aparece
+//    em até 5 min.
+const ALIASES_TTL_MS = 5 * 60 * 1000
 let _aliasesEmVoo = null
+let _aliasesCache = null // { lista, em }
+
+const cacheValido = () => !!_aliasesCache && Date.now() - _aliasesCache.em < ALIASES_TTL_MS
+
+/** Dicionário já em memória e ainda válido, ou null — para o 1º render do hook. */
+function aliasesEmCache() {
+  return cacheValido() ? _aliasesCache.lista : null
+}
+
+function invalidarAliases() {
+  _aliasesCache = null
+  _aliasesEmVoo = null
+}
 
 /** Todos os apelidos (dicionário inteiro — tabela pequena). */
-async function fetchAliases() {
+async function fetchAliases({ forcar = false } = {}) {
+  if (!forcar && cacheValido()) return _aliasesCache.lista
+  if (forcar) _aliasesEmVoo = null
   if (!_aliasesEmVoo) {
-    _aliasesEmVoo = (async () => {
+    const pedido = (async () => {
       const { data, error } = await supabase
         .from('escala_anestesista_alias')
         .select('*')
         .order('apelido', { ascending: true })
       if (error) handleError(error, 'fetchAliases')
-      return (data || []).map(toCamel)
-    })().finally(() => { _aliasesEmVoo = null })
+      const lista = (data || []).map(toCamel)
+      // só a leitura mais recente vira cache (um `forcar` pode ter passado à frente)
+      if (_aliasesEmVoo === pedido) _aliasesCache = { lista, em: Date.now() }
+      return lista
+    })().finally(() => { if (_aliasesEmVoo === pedido) _aliasesEmVoo = null })
+    _aliasesEmVoo = pedido
   }
-  // cópia por chamador: cada instância do hook guarda a sua lista
-  return (await _aliasesEmVoo).slice()
+  return _aliasesEmVoo
 }
 
 /** Apelidos de um login específico (self-claim do anestesista). */
@@ -113,12 +138,14 @@ async function upsertAlias({ apelido, userId, createdBy = null }) {
     .select('*')
     .single()
   if (error) handleError(error, 'upsertAlias')
+  invalidarAliases()
   return toCamel(data)
 }
 
 async function removeAlias(id) {
   const { error } = await supabase.from('escala_anestesista_alias').delete().eq('id', id)
   if (error) handleError(error, 'removeAlias')
+  invalidarAliases()
 }
 
 /**
@@ -133,6 +160,8 @@ export function buildResolver(aliases) {
 
 export default {
   fetchAliases,
+  aliasesEmCache,
+  invalidarAliases,
   fetchAliasesByUser,
   upsertAlias,
   removeAlias,

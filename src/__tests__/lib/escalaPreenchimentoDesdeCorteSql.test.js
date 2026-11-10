@@ -21,7 +21,9 @@ const ROLLBACK = ler('scripts/rollback-20261029120000-preenchimento-desde-corte-
 
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 // ontem (dia encerrado em qualquer hora da suíte, sempre depois do corte) e o dia antes do corte
-const ONTEM = iso(new Date(Date.now() - 86400000))
+// "Ontem" = o último dia ENCERRADO. O dia da escala vira às 7h (dia operacional): de 0h às 7h o
+// ontem do calendário ainda é o dia em curso, e o teste falhava nessa janela (visto 10/11 à 00h05).
+const ONTEM = iso(new Date(Date.now() - 7 * 3600000 - 86400000))
 const ANTES_DO_CORTE = '2026-10-26'
 
 let db

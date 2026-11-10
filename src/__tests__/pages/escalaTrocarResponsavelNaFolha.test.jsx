@@ -164,7 +164,7 @@ describe('dia anterior: passa a quem fez e a cobrança vai junto', () => {
     expect(screen.getByText(/^Início e término · 07:00/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Trocar anestesista' }))
     const troca = folhaDeTroca()
-    expect(within(troca).getByText(/^Ontem · .*Matutino · HRO/)).toBeTruthy()
+    expect(within(troca).getByText(/^Ontem · .*Manhã · HRO/)).toBeTruthy()
     // correção de quem fez, não repasse: nada de "Nada a passar" nem cirurgia riscada
     expect(within(troca).queryByText(/Nada a passar/)).toBeNull()
     expect(within(troca).getByText(/Fratura de fêmur/i)).toBeTruthy()

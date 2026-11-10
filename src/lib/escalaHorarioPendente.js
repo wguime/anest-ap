@@ -312,7 +312,14 @@ export function prazoInicio(caso, anteriorDaSala = null) {
 function anterioresPorSala(casos) {
   const porSala = new Map()
   for (const c of casos || []) {
-    const k = `${String(c.sala || '').trim().toUpperCase()}|${turnoDoCasoHorario(c)}`
+    const sala = String(c.sala || '').trim().toUpperCase()
+    // SEM SALA, lançado à mão, não é uma sala (dono 11/2026: o formulário deixou de exigir):
+    // duas urgências sem sala não ocupam o mesmo lugar, então uma não vira "a anterior" da
+    // outra — senão a aberta de um colega seguraria o "Falta início" da cirurgia de outro.
+    // ⚠️ só `origem: 'manual'`: linha do MAPA sem sala segue encadeando pela ordem da foto,
+    // como sempre (é assim que o "AS" dela acha a referência).
+    if (!sala && c.origem === 'manual') continue
+    const k = `${sala}|${turnoDoCasoHorario(c)}`
     if (!porSala.has(k)) porSala.set(k, [])
     porSala.get(k).push(c)
   }

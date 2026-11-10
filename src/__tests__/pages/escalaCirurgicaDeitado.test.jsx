@@ -187,8 +187,8 @@ describe('fila de liberação deitada (dono 26/08)', () => {
     const raiz = historico.closest('div.space-y-3')
     // três botões (Adicionar caso · Adicionar ajuda · Histórico) = três colunas
     expect(raiz.className).toContain('deitado:grid-cols-3')
-    // ⚠️ os dois blocos de ação são SEPARADOS no DOM (o recado do plantonista entra
-    // entre eles), então a fileira única só existe com `contents`
+    // desde 11/2026 as ações são UM bloco só (em pé também é uma fileira); deitado o
+    // invólucro some com `contents` e cada botão vira uma coluna da grade da raiz
     expect(historico.parentElement.className).toContain('deitado:contents')
     expect(screen.getByRole('button', { name: 'Adicionar anestesista (ajuda)' })
       .parentElement.className).toContain('deitado:contents')
@@ -209,16 +209,14 @@ describe('fila de liberação deitada (dono 26/08)', () => {
     expect(lista.className).not.toContain('deitado:col-span-2')
   })
 
-  it('o rótulo ENCURTA deitado, e o nome inteiro fica para o leitor de tela', () => {
+  it('o rótulo é CURTO nas duas orientações, e o nome inteiro fica para o leitor de tela', () => {
+    // ⚠️ este teste MUDOU DE LADO (dono 11/2026, opção B do modelo 3). Ele travava
+    // "Histórico de mensagens" por extenso EM PÉ e "Histórico" só deitado. Em pé as
+    // ações eram duas fileiras e a fila começava a 469px de 667 no iPhone pequeno;
+    // o dono escolheu a fileira única, e nela o rótulo é o curto também em pé.
     montar()
-    // medido: "Histórico de mensagens" não cabe nos 177px do botão em 2×2 e saía
-    // cortado no meio da palavra. Deitado vale "Histórico"; em pé, o nome inteiro.
     const historico = screen.getByRole('button', { name: 'Histórico de mensagens' })
-    const curto = historico.querySelector('span.hidden')
-    const longo = historico.querySelector('span.deitado\\:hidden')
-    expect(curto.textContent).toBe('Histórico')
-    expect(curto.className).toContain('deitado:inline')
-    expect(longo.textContent).toBe('Histórico de mensagens')
+    expect(historico.textContent).toBe('Histórico')
     // o nome acessível não muda com a orientação — é o `aria-label`
     expect(historico.getAttribute('aria-label')).toBe('Histórico de mensagens')
   })

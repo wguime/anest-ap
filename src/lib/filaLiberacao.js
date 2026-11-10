@@ -205,3 +205,48 @@ export function estadoDaFila(linhas, ctx = {}) {
     caudaLiberada, naFila, voltaPraFila, postoDoTurno, liberadoReal, bloqueioDe,
   }
 }
+
+/**
+ * "Esta PESSOA foi liberada neste turno?" — fonte única (09/11/2026).
+ *
+ * A marca de liberação mora na chave da POSIÇÃO (`turno:chave` do slot do rodapé), e
+ * a posição pode ter sido ASSUMIDA por outra pessoa (`linhaOverrides[...].assumidaPor`).
+ * A fila e o banco já leem assim; o aviso de horário e a confirmação "fora da ordem"
+ * procuravam pela chave da pessoa e trocavam os dois lados: em 23/10 o Klisman
+ * assumiu a posição do Rodnei e foi liberado nela — o Rodnei (operando) aparecia
+ * como liberado e o Klisman (que saiu) como não liberado.
+ *
+ * Regra: valem as marcas das posições que a pessoa ASSUMIU e a da posição dela
+ * mesma — menos quando essa foi assumida por OUTRA pessoa (aí a marca é de quem
+ * assumiu). O marcador `{ escalado: true }` do repasse nunca é liberação.
+ *
+ * @param {object} escala  com `liberacoes` e `linhaOverrides`
+ * @param {string} turno
+ * @param {object} pessoa
+ * @param {string|null} pessoa.uid
+ * @param {string[]} pessoa.chaves  chaves da posição DELA (uid do vínculo, nome normalizado)
+ * @param {(nome: string) => boolean} [pessoa.mesmoNome]  para `assumidaPor` sem uid
+ * @returns {object|null} a marca ({ liberadoEm, … }) ou null
+ */
+export function liberacaoDaPessoa(escala, turno, { uid = null, chaves = [], mesmoNome = () => false } = {}) {
+  const lib = escala?.liberacoes || {}
+  const ov = escala?.linhaOverrides || {}
+  const prefixo = `${turno}:`
+  const valida = (m) => (m && m.escalado !== true ? m : null)
+  const ehEla = (asm) => !!asm && (asm.uid ? !!uid && asm.uid === uid : !!asm.nome && mesmoNome(asm.nome))
+  const ocupada = (asm) => !!asm && !!(asm.uid || asm.nome)
+
+  for (const [k, v] of Object.entries(ov)) {
+    if (!k.startsWith(prefixo) || !ehEla(v?.assumidaPor)) continue
+    const m = valida(lib[k])
+    if (m) return m
+  }
+  for (const c of chaves) {
+    if (!c) continue
+    const asm = ov[`${prefixo}${c}`]?.assumidaPor
+    if (ocupada(asm) && !ehEla(asm)) continue // a posição dela está com outra pessoa
+    const m = valida(lib[`${prefixo}${c}`] ?? lib[c])
+    if (m) return m
+  }
+  return null
+}

@@ -9,7 +9,7 @@
  * "GABRIELA + ?" vem antes de "OSCAR". A partir daí toda escrita do responsável
  * gravava o texto errado e o quadro seguia mostrando a colega antiga.
  */
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import svc, { ehApelidoDePessoa, normApelido } from '@/services/supabaseEscalaAnestesistaService'
 import { supabase } from '@/config/supabase'
 
@@ -41,22 +41,48 @@ describe('ehApelidoDePessoa', () => {
 
 // Abertura da escala (15/10/2026): cada useRosterAnestesistas busca o dicionário
 // ao montar e a página monta dois ao mesmo tempo — eram leituras idênticas em
-// paralelo. Quem pede junto divide a leitura; quem pede depois busca de novo.
-describe('fetchAliases — leitura em voo compartilhada', () => {
+// paralelo. Desde 09/11 a resposta vale por 5 min (eram 99 mil leituras de uma
+// tabela que muda poucas vezes por mês) e gravar/remover invalida na hora.
+describe('fetchAliases — leitura compartilhada e cache de 5 min', () => {
   const leituras = () => supabase.from.mock.calls.filter(([t]) => t === 'escala_anestesista_alias').length
+  beforeEach(() => { svc.invalidarAliases(); supabase.from.mockClear(); vi.useRealTimers() })
 
-  it('pedidos simultâneos dividem UMA leitura, cada um com a sua lista', async () => {
-    supabase.from.mockClear()
+  it('pedidos simultâneos dividem UMA leitura', async () => {
     const [a, b] = await Promise.all([svc.fetchAliases(), svc.fetchAliases()])
     expect(leituras()).toBe(1)
     expect(a).toEqual(b)
-    expect(a).not.toBe(b)
   })
 
-  it('pedido depois que a resposta chegou busca de novo (refresh após gravar apelido)', async () => {
+  it('pedido seguinte reaproveita a resposta — MESMA referência, sem ir ao banco', async () => {
+    const a = await svc.fetchAliases()
+    const b = await svc.fetchAliases()
+    expect(leituras()).toBe(1)
+    expect(b).toBe(a)
+    expect(svc.aliasesEmCache()).toBe(a)
+  })
+
+  it('forcar busca de novo (refresh manual)', async () => {
+    await svc.fetchAliases()
+    await svc.fetchAliases({ forcar: true })
+    expect(leituras()).toBe(2)
+  })
+
+  it('gravar ou remover apelido invalida: a leitura seguinte vai ao banco', async () => {
+    await svc.fetchAliases()
+    await svc.removeAlias(1)
+    expect(svc.aliasesEmCache()).toBeNull()
     supabase.from.mockClear()
     await svc.fetchAliases()
+    expect(leituras()).toBe(1)
+  })
+
+  it('depois de 5 min a resposta vence', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    await svc.fetchAliases()
+    vi.setSystemTime(Date.now() + 5 * 60 * 1000 + 1)
+    expect(svc.aliasesEmCache()).toBeNull()
     await svc.fetchAliases()
     expect(leituras()).toBe(2)
+    vi.useRealTimers()
   })
 })

@@ -38,7 +38,7 @@ const primeiroNomeUpper = (nome) => String(nome || '').trim().split(/\s+/)[0]?.t
 
 // Sentinela: "deixar sem anestesista" (valor impossível como uid).
 const SEM_ANESTESISTA = '__sem__'
-const TURNO_LABEL = { matutino: 'Matutino', vespertino: 'Vespertino' }
+const TURNO_LABEL = { matutino: 'Manhã', vespertino: 'Tarde' }
 
 /**
  * @param {boolean} encerrado  TURNO JÁ ENCERRADO (dono 28/10, modelo A+): passar a cirurgia a

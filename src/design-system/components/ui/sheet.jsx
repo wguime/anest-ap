@@ -247,7 +247,10 @@ const SheetContent = React.forwardRef(function SheetContent(
             aria-label="Fechar"
             onClick={onClose}
             className={cn(
-              "absolute right-4 top-4 z-10 inline-flex h-11 w-11 items-center justify-center rounded-xl",
+              // z-20: ACIMA do cabeçalho fixo (z-10). Os dois são posicionados no MESMO contexto
+              // de empilhamento (o corpo rolável não cria um), e o cabeçalho vem depois no DOM —
+              // com o mesmo z ele cobria o ✕ (visto no navegador: a folha abria sem ✕).
+              "absolute right-4 top-4 z-20 inline-flex h-11 w-11 items-center justify-center rounded-xl",
               "text-muted-foreground hover:text-foreground hover:bg-muted/60",
               "transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -297,6 +300,16 @@ const SheetContent = React.forwardRef(function SheetContent(
 
 // --- Header ---
 
+// CABEÇALHO FIXO (dono 11/2026, modelo A de `.tmp/analise-escala-2026-11/modelos/
+// 2-fechar-da-folha.html`): o ✕ é `absolute` no painel e NÃO rola, mas o título
+// rolava com o corpo — numa folha longa ("Adicionar caso" tem 1.335px numa folha
+// de 837) o ✕ ficava flutuando em cima do texto. O cabeçalho agora gruda no topo
+// do corpo rolável (`sticky`), com fundo opaco e uma linha embaixo: título e ✕
+// ficam parados e o conteúdo passa por baixo.
+// ⚠️ `sticky` só funciona porque o `sheet-body` é a caixa de rolagem e o cabeçalho
+// é filho direto dela; embrulhar o SheetHeader numa div da altura dele o solta.
+// ⚠️ `z-10` fica ACIMA do conteúdo e ABAIXO do ✕ (`z-20`): os dois caem no mesmo contexto
+// de empilhamento e o cabeçalho vem depois no DOM — com z igual ele cobre o ✕.
 const SheetHeader = React.forwardRef(function SheetHeader(
   { className, children, ...props },
   ref
@@ -304,7 +317,7 @@ const SheetHeader = React.forwardRef(function SheetHeader(
   return (
     <div
       ref={ref}
-      className={cn("px-6 pt-6 pb-4 pr-14", className)}
+      className={cn("sticky top-0 z-10 bg-card border-b border-border px-6 pt-6 pb-4 pr-14", className)}
       data-slot="sheet-header"
       {...props}
     >

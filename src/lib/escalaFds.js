@@ -38,7 +38,7 @@ export const FAIXAS_FDS = ['7-13', '13-19', '19-07']
  * noturno herda o conteúdo do vespertino (`FDS_TURNO_CASOS`).
  */
 export const FDS_TURNOS = ['matutino', 'vespertino', 'noturno']
-export const FDS_TURNO_LABEL = { matutino: 'Matutino', vespertino: 'Vespertino', noturno: 'Noturno' }
+export const FDS_TURNO_LABEL = { matutino: 'Manhã', vespertino: 'Tarde', noturno: 'Noite' }
 
 /** Faixa da grade que corresponde a cada turno. */
 export const FDS_TURNO_FAIXA = { matutino: '7-13', vespertino: '13-19', noturno: '19-07' }

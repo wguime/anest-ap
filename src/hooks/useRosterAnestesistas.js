@@ -61,20 +61,24 @@ function gravarRosterCache(payload) {
  */
 export default function useRosterAnestesistas({ inerte = false } = {}) {
   const { users } = useUsersManagement()
-  const [aliases, setAliases] = useState([])
-  const [loading, setLoading] = useState(true)
+  // Dicionário já em memória (cache de 5 min do service) entra no 1º render: a
+  // instância não pisca nem refaz o `resolver` quando a lista "viva" chega igual.
+  const [aliases, setAliases] = useState(() => svc.aliasesEmCache?.() || [])
+  const [loading, setLoading] = useState(() => !svc.aliasesEmCache?.())
   const [cacheInicial] = useState(() => lerRosterCache())
 
-  const refresh = useCallback(async () => {
+  const carregar = useCallback(async (forcar) => {
     try {
-      setAliases(await svc.fetchAliases())
+      setAliases(await svc.fetchAliases({ forcar }))
     } catch {
       /* RLS/cold start — sem aliases ainda */
     } finally {
       setLoading(false)
     }
   }, [])
-  useEffect(() => { if (!inerte) refresh() }, [refresh, inerte])
+  // `refresh` (exposto) sempre vai ao banco; a montagem aproveita o cache.
+  const refresh = useCallback(() => carregar(true), [carregar])
+  useEffect(() => { if (!inerte) carregar(false) }, [carregar, inerte])
 
   // Aliases vivos vencem; enquanto não chegam, o cache resolve (o dicionário
   // muda raramente e o dado vivo corrige em segundos). `aliases` cru — usado

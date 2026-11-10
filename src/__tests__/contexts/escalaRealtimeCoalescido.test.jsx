@@ -12,7 +12,10 @@
  *   2. evento de OUTRA escala/data não recarrega nada;
  *   3. as 3 reconexões (onRefetch, uma por tabela) também viram uma recarga só;
  *   4. evento sem payload (DELETE só com a PK) continua recarregando — não se
- *      arrisca perder mudança.
+ *      arrisca perder mudança;
+ *   5. (09/11/2026) o sinal relê SÓ o hospital dele, e o do P4 só o P4: recarregar
+ *      os 3 hospitais + P4 a cada toque de qualquer colega era 55 % do tráfego do
+ *      app. Reconexão e sinal sem endereço seguem relendo tudo.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, waitFor, act } from '@testing-library/react'
@@ -75,6 +78,7 @@ const montar = async () => {
   // deixa a carga inicial assentar antes de zerar o contador
   await dormir(50)
   svcMock.fetchEscala.mockClear()
+  svcMock.fetchP4Hospital.mockClear()
 }
 
 beforeEach(() => {
@@ -91,7 +95,7 @@ describe('realtime da escala — recarga coalescida e filtrada', () => {
     )
   })
 
-  it('rajada de eventos da escala carregada vira UMA recarga', async () => {
+  it('rajada de eventos da escala carregada vira UMA recarga — só do hospital do sinal', async () => {
     await montar()
     for (let i = 0; i < 5; i++) {
       emitir('escala_cirurgica_caso', { eventType: 'UPDATE', new: { id: `c${i}`, escala_id: 'esc-uni' }, old: null })
@@ -100,7 +104,47 @@ describe('realtime da escala — recarga coalescida e filtrada', () => {
     // dentro da janela nada foi buscado ainda (trailing)
     expect(svcMock.fetchEscala).not.toHaveBeenCalled()
     await janela()
-    expect(svcMock.fetchEscala).toHaveBeenCalledTimes(POR_RECARGA)
+    expect(svcMock.fetchEscala).toHaveBeenCalledTimes(1)
+    expect(svcMock.fetchEscala).toHaveBeenCalledWith(HOJE, 'unimed')
+    expect(svcMock.fetchP4Hospital).not.toHaveBeenCalled()
+  })
+
+  it('o que o sinal trouxe vai para a tela, e os outros hospitais ficam como estavam', async () => {
+    await montar()
+    svcMock.fetchEscala.mockImplementation(async (dia, h) => (h === 'unimed'
+      ? { ...escalaUnimed(), casos: [{ ...escalaUnimed().casos[0], statusCirurgia: 'iniciada' }] }
+      : null))
+    emitir('escala_cirurgica_caso', { eventType: 'UPDATE', new: { id: 'c1', escala_id: 'esc-uni' }, old: null })
+    await janela()
+    await waitFor(() => expect(estado.escalas.unimed.casos[0].statusCirurgia).toBe('iniciada'))
+    expect(estado.escalas.hro).toBeNull()
+  })
+
+  it('sinais de dois hospitais na mesma janela releem os dois, uma vez cada', async () => {
+    await montar()
+    emitir('escala_cirurgica_caso', { eventType: 'UPDATE', new: { id: 'c1', escala_id: 'esc-uni' }, old: null })
+    emitir('escala_cirurgica', { eventType: 'UPDATE', new: { id: 'esc-hro', hospital: 'hro', data: HOJE }, old: null })
+    await janela()
+    expect(svcMock.fetchEscala.mock.calls.map((c) => c[1]).sort()).toEqual(['hro', 'unimed'])
+  })
+
+  it('sinal do P4 relê só o P4', async () => {
+    await montar()
+    svcMock.fetchP4Hospital.mockResolvedValueOnce('hro')
+    emitir('escala_plantao_p4_diario', { eventType: 'INSERT', new: { data: HOJE, hospital: 'hro' }, old: null })
+    await janela()
+    expect(svcMock.fetchEscala).not.toHaveBeenCalled()
+    expect(svcMock.fetchP4Hospital).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(estado.p4Hospital).toBe('hro'))
+  })
+
+  it('leitura parcial que falha mantém a escala na tela', async () => {
+    await montar()
+    svcMock.fetchEscala.mockRejectedValue(new Error('rede'))
+    emitir('escala_cirurgica_caso', { eventType: 'UPDATE', new: { id: 'c1', escala_id: 'esc-uni' }, old: null })
+    await janela()
+    expect(estado.escalas.unimed.id).toBe('esc-uni')
+    expect(estado.erroCarga ?? null).toBeNull()
   })
 
   it('evento de OUTRA escala ou de OUTRA data não recarrega nada', async () => {
@@ -116,7 +160,8 @@ describe('realtime da escala — recarga coalescida e filtrada', () => {
     await montar()
     emitir('escala_cirurgica', { eventType: 'INSERT', new: { id: 'esc-hro-novo', hospital: 'hro', data: HOJE }, old: null })
     await janela()
-    expect(svcMock.fetchEscala).toHaveBeenCalledTimes(POR_RECARGA)
+    expect(svcMock.fetchEscala).toHaveBeenCalledTimes(1)
+    expect(svcMock.fetchEscala).toHaveBeenCalledWith(HOJE, 'hro')
   })
 
   it('DELETE só com a PK (sem escala_id) continua recarregando', async () => {

@@ -225,6 +225,12 @@ export function EscalaCirurgicaProvider({ children }) {
   const mutSeqRef = useRef(0)
   const revalidacaoTimerRef = useRef(null)
   const realtimeTimerRef = useRef(null)
+  // recarga parcial por sinal: carga cheia em voo (seq, 0 = nenhuma), a vez de cada
+  // hospital e o que a janela de coalescência já juntou
+  const cargaCheiaEmVooRef = useRef(0)
+  const parcialSeqRef = useRef({})
+  const parcialTimerRef = useRef(null)
+  const pendenteRealtimeRef = useRef({ tudo: false, p4: false, hospitais: new Set() })
   /** Toda action OTIMISTA chama marcar após o dispatch e encerrar no finally. */
   const marcarEscrita = () => { mutSeqRef.current++; escritasRef.current++ }
   const encerrarEscrita = () => { escritasRef.current = Math.max(0, escritasRef.current - 1) }
@@ -234,7 +240,7 @@ export function EscalaCirurgicaProvider({ children }) {
     while (escritasRef.current > 1 && Date.now() < ate) await new Promise((r) => setTimeout(r, 100))
   }
 
-  const loadData = useCallback(async (dia, { revalidacao = false } = {}) => {
+  const loadData = useCallback(async (dia, { revalidacao = false, forcar = false } = {}) => {
     const seq = ++loadSeqRef.current
     const mutAntes = mutSeqRef.current
     // resposta velha não atropela: revalida de novo quando as escritas assentarem
@@ -247,6 +253,11 @@ export function EscalaCirurgicaProvider({ children }) {
     // O repinte do cache é o SWR da TROCA DE DATA (dono 16/08): data já vista
     // aparece na hora. Em REVALIDAÇÃO da mesma data ele era o bug: repintava o
     // snapshot de antes do toque (a opção "voltava") até o fetch fresco chegar.
+    // Escrita em voo: a resposta seria descartada lá embaixo de qualquer jeito —
+    // buscar para jogar fora punha cada aparelho num laço de 7 requisições a cada
+    // 800 ms justamente com a rede ruim (09/11/2026). Espera assentar e revalida.
+    // "Tentar de novo" (`forcar`) não espera: é a tela de falha pedindo a carga.
+    if (revalidacao && !forcar && escritasRef.current > 0) { reagendar(); return }
     if (!revalidacao) {
       marcarErroCarga(null)
       const emCache = cacheRef.current.get(dia)
@@ -277,6 +288,7 @@ export function EscalaCirurgicaProvider({ children }) {
     // "Carregando…" uma ida a mais ao servidor com a escala já na tela. Falha vira
     // null, o padrão seguro (o coringa aparece nos 3 hospitais).
     const p4Promise = Promise.resolve().then(() => svc.fetchP4Hospital(dia)).then((v) => v, () => null)
+    cargaCheiaEmVooRef.current = seq
     try {
       const [results, fdsRes] = await Promise.all([
         Promise.all(HOSPITAIS.map((h) => tentar(svc.fetchEscala(dia, h)))),
@@ -319,15 +331,67 @@ export function EscalaCirurgicaProvider({ children }) {
     } catch (err) {
       console.error('[EscalaCirurgicaContext] load falhou:', err)
     } finally {
+      if (cargaCheiaEmVooRef.current === seq) cargaCheiaEmVooRef.current = 0
       if (seq === loadSeqRef.current) setLoading(false)
     }
   }, [])
+
+  /**
+   * Recarga PARCIAL pedida por um sinal do tempo real (09/11/2026): só os hospitais
+   * que mudaram e/ou só o P4. Cada toque de qualquer colega recarregava os 3
+   * hospitais + P4 em todo aparelho (7 requisições, ~170 KB num dia cheio; 55 % de
+   * todo o tráfego do app). O sinal já diz de qual escala é.
+   *
+   * Mesmas guardas da carga cheia: resposta de outra data é descartada; com escrita
+   * em voo (ou feita durante a busca) espera e tenta de novo; carga cheia em voo ou
+   * começada durante a busca vence — ela traz tudo. Leitura que FALHA mantém a tela
+   * (o hospital era conhecido) e não marca erro.
+   */
+  const loadParcial = useCallback(async (dia, { hospitais = [], p4 = false } = {}) => {
+    const denovo = () => {
+      clearTimeout(parcialTimerRef.current)
+      parcialTimerRef.current = setTimeout(() => {
+        if (dataRef.current === dia) loadParcial(dia, { hospitais, p4 })
+      }, 800)
+    }
+    if (cargaCheiaEmVooRef.current) { loadData(dia, { revalidacao: true }); return }
+    if (escritasRef.current > 0) { denovo(); return }
+    const seqCheia = loadSeqRef.current
+    const mutAntes = mutSeqRef.current
+    const seqs = {}
+    hospitais.forEach((h) => { seqs[h] = (parcialSeqRef.current[h] = (parcialSeqRef.current[h] || 0) + 1) })
+    const tentar = (p) => p.then((v) => ({ ok: true, v }), () => ({ ok: false }))
+    const [results, p4Res] = await Promise.all([
+      Promise.all(hospitais.map((h) => tentar(Promise.resolve().then(() => svc.fetchEscala(dia, h))))),
+      p4 ? tentar(Promise.resolve().then(() => svc.fetchP4Hospital(dia))) : Promise.resolve(null),
+    ])
+    if (dataRef.current !== dia || loadSeqRef.current !== seqCheia) return
+    if (escritasRef.current > 0 || mutSeqRef.current !== mutAntes) { denovo(); return }
+    const emCache = cacheRef.current.get(dia)
+    let tudoOk = true
+    hospitais.forEach((h, i) => {
+      const res = results[i]
+      if (!res.ok) { tudoOk = false; return }
+      if (parcialSeqRef.current[h] !== seqs[h]) return // sinal mais novo já pediu este hospital
+      const escala = res.v || (import.meta.env.DEV ? getDemoEscala(dia, h) : null)
+      dispatch({ type: 'SET_HOSPITAL', hospital: h, payload: escala })
+      if (emCache) emCache.escalas = { ...emCache.escalas, [h]: escala }
+    })
+    if (p4Res) {
+      if (p4Res.ok) {
+        dispatch({ type: 'SET_P4_HOSPITAL', payload: p4Res.v })
+        if (emCache) emCache.p4Hospital = p4Res.v
+      } else tudoOk = false
+    }
+    // sinal recebido e lido = tempo real vivo: o vigia da conta de hospital não dispara
+    if (tudoOk) cargaOkEmRef.current = Date.now()
+  }, [loadData])
 
   /** "Tentar de novo" da tela de falha: mostra o carregando e busca do zero. */
   const recarregar = useCallback(() => {
     // erroCarga fica até a resposta: é ele que diz "não conhecido" à revalidação
     setLoading(true)
-    return loadData(dataRef.current, { revalidacao: true })
+    return loadData(dataRef.current, { revalidacao: true, forcar: true })
   }, [loadData])
 
   /**
@@ -492,20 +556,42 @@ export function EscalaCirurgicaProvider({ children }) {
       if (row.data) return row.data === dataRef.current
       return true
     }
-    const agendar = () => {
+    // O que este sinal obriga a reler. Sem como saber (DELETE de caso traz só a PK,
+    // hospital desconhecido) → tudo, como sempre foi.
+    const CHAVES_ESCALA = new Set([...HOSPITAIS, FDS_HOSPITAL])
+    const alvoDoSinal = (table, ev) => {
+      if (table === 'escala_plantao_p4_diario') return { p4: true }
+      const novo = ev?.new && Object.keys(ev.new).length ? ev.new : null
+      const row = novo || ev?.old
+      if (!row) return { tudo: true }
+      if (table === 'escala_cirurgica_caso') {
+        const dono = Object.entries(escalasRef.current || {}).find(([, e]) => e?.id && e.id === row.escala_id)
+        return dono ? { hospital: dono[0] } : { tudo: true }
+      }
+      return CHAVES_ESCALA.has(row.hospital) ? { hospital: row.hospital } : { tudo: true }
+    }
+    const agendar = (alvo = { tudo: true }) => {
+      const pend = pendenteRealtimeRef.current
+      if (alvo.tudo) pend.tudo = true
+      if (alvo.p4) pend.p4 = true
+      if (alvo.hospital) pend.hospitais.add(alvo.hospital)
       clearTimeout(realtimeTimerRef.current)
-      realtimeTimerRef.current = setTimeout(
-        () => loadData(dataRef.current, { revalidacao: true }),
-        REALTIME_COALESCE_MS
-      )
+      realtimeTimerRef.current = setTimeout(() => {
+        const { tudo, p4, hospitais } = pendenteRealtimeRef.current
+        pendenteRealtimeRef.current = { tudo: false, p4: false, hospitais: new Set() }
+        if (tudo) loadData(dataRef.current, { revalidacao: true })
+        else loadParcial(dataRef.current, { hospitais: [...hospitais], p4 })
+      }, REALTIME_COALESCE_MS)
     }
     const subs = ['escala_cirurgica', 'escala_cirurgica_caso', 'escala_plantao_p4_diario'].map((table) =>
       createReliableSubscription({
         channelName: `${table}-changes`,
         table,
-        // revalidação: MESMA data já na tela — sem repinte do cache (bug 19/08)
-        callback: (ev) => { if (eventoDestaTela(table, ev)) agendar() },
-        onRefetch: agendar,
+        // revalidação: MESMA data já na tela — sem repinte do cache (bug 19/08);
+        // só o hospital do sinal é relido (09/11)
+        callback: (ev) => { if (eventoDestaTela(table, ev)) agendar(alvoDoSinal(table, ev)) },
+        // reconexão: o que mudou na queda não chegou por sinal → tudo
+        onRefetch: () => agendar({ tudo: true }),
         // só o sinal (pk + escala_id/data/hospital): a recarga é do loadData,
         // buscar a linha aqui seria uma requisição a mais por evento
         conteudo: false,
@@ -515,8 +601,9 @@ export function EscalaCirurgicaProvider({ children }) {
       subs.forEach((s) => s.cleanup())
       clearTimeout(revalidacaoTimerRef.current)
       clearTimeout(realtimeTimerRef.current)
+      clearTimeout(parcialTimerRef.current)
     }
-  }, [loadData])
+  }, [loadData, loadParcial])
 
   // ── Actions ──────────────────────────────────────────────────────────────
   const salvarEscala = useCallback(async (payload, userInfo) => {

@@ -42,8 +42,8 @@ import { montarLinhaOverrides, montarPreservacao, decisoesPublicadas } from '@/l
 
 const HOSPITAL_OPCOES = Object.entries(HOSPITAL_LABEL).map(([value, label]) => ({ value, label }))
 const PERIODO_OPCOES = [
-  { value: 'matutino', label: 'Matutino' },
-  { value: 'vespertino', label: 'Vespertino' },
+  { value: 'matutino', label: 'Manhã' },
+  { value: 'vespertino', label: 'Tarde' },
 ]
 const dataToISO = (d) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -2536,7 +2536,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
               Confeccionar · {HOSPITAL_LABEL[hosp]}
             </h1>
             <p className="truncate text-xs text-muted-foreground -mt-0.5">
-              {formatData(dataEscolhida)} · {periodo === 'matutino' ? 'Matutino' : 'Vespertino'}
+              {formatData(dataEscolhida)} · {periodo === 'matutino' ? 'Manhã' : 'Tarde'}
             </p>
           </div>
           <span className="min-w-[70px]" aria-hidden="true" />
@@ -2866,7 +2866,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                             <div className="flex items-center justify-between gap-2 text-xs">
                               <span className="font-semibold text-muted-foreground">#{i + 1}</span>
                               {c.semAnestesista && (
-                                <span className="rounded-md bg-warning/15 px-1.5 py-0.5 font-semibold text-warning">Sem anestesista</span>
+                                <span className="rounded-md bg-warning/15 px-1.5 py-0.5 font-semibold text-category-orange-fg">Sem anestesista</span>
                               )}
                               {ehPosicaoAssistencial(c) && (
                                 <span className="rounded-md bg-primary/10 px-1.5 py-0.5 font-semibold text-primary">Posição assistencial · não é cirurgia</span>
@@ -3363,7 +3363,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
                       {/* UMA linha de dados no lugar do parágrafo (protótipo L4, 05/09) */}
                       <p className="text-xs leading-4 text-muted-foreground">
                         {item.pos > 0 ? `${item.pos}ª posição · ` : ''}{HOSPITAL_LABEL[hosp] || hosp}
-                        {' · '}{periodo === 'matutino' ? 'Matutino' : 'Vespertino'}
+                        {' · '}{periodo === 'matutino' ? 'Manhã' : 'Tarde'}
                         {/* a consequência é da PERGUNTA "onde está" — no passo da troca ela só
                             repete ruído: ali a pergunta já é com quem (protótipo L4) */}
                         {item.cauda && !passoTroca && <> · nasce <b className="text-foreground">LIBERADO</b> se ficar assim</>}
@@ -3524,7 +3524,7 @@ const ImportarEscalaPage = forwardRef(function ImportarEscalaPage({
         onClose={() => setConfirmacaoPublicacao(false)}
         onConfirm={() => { setConfirmacaoPublicacao(false); publicar({ confirmacao: true }) }}
         title="Confirmar publicação da escala"
-        description={`${HOSPITAL_LABEL[hosp]} · ${formatData(dataEscolhida)} · ${periodo === 'matutino' ? 'Matutino' : 'Vespertino'}. Serão publicados ${resumoTexto(selecionarCasosDoTurno(casos, periodo))}. Confirme hospital, data e turno antes de continuar.${fraseRepublicacao ? ` ${fraseRepublicacao}` : ''}`}
+        description={`${HOSPITAL_LABEL[hosp]} · ${formatData(dataEscolhida)} · ${periodo === 'matutino' ? 'Manhã' : 'Tarde'}. Serão publicados ${resumoTexto(selecionarCasosDoTurno(casos, periodo))}. Confirme hospital, data e turno antes de continuar.${fraseRepublicacao ? ` ${fraseRepublicacao}` : ''}`}
         confirmText="Publicar escala"
         cancelText="Voltar e revisar"
       />

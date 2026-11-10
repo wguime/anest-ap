@@ -55,6 +55,16 @@ const marcaLiberacao = (escala, turno, pessoa, nome, resolverUid) => {
   return null
 }
 
+/** Quem assumiu a posição deste nome do rodapé no turno ({ uid, nome }), ou null. */
+const quemAssumiu = (escala, turno, dono) => {
+  for (const k of [dono.uid, normNome(dono.nome)]) {
+    if (!k) continue
+    const asm = escala?.linhaOverrides?.[`${turno}:${k}`]?.assumidaPor
+    if (asm && (asm.uid || asm.nome)) return asm
+  }
+  return null
+}
+
 const horaDe = (iso) => {
   if (!iso) return null
   const d = new Date(iso)
@@ -83,12 +93,19 @@ export function filaParaChamar({ escalas, escala, turno, resolverUid, ignorarCas
   for (const a of azuis) if (!nomes.some((n) => normNome(n) === normNome(a))) nomes.push(a)
   const outras = Object.entries(escalas || {}).filter(([h, e]) => e && h !== FDS_HOSPITAL)
   return nomes.map((nome, i) => {
-    const pessoa = { uid: resolverUid?.(nome) || null, nome }
-    const lib = marcaLiberacao(escala, turno, pessoa, nome, resolverUid)
+    // POSIÇÃO ASSUMIDA (09/11): quem ocupa o slot é quem assumiu, como na fila
+    // (`gerarColunaLiberacao`). Com o rodapé cru, quem assumiu a 1ª posição daqui era
+    // acusado de "fora da ordem · é do outro hospital" e o dono antigo da vaga —
+    // que foi operar em outro lugar — era sugerido como o próximo.
+    const dono = { uid: resolverUid?.(nome) || null, nome }
+    const asm = quemAssumiu(escala, turno, dono)
+    const pessoa = asm ? { uid: asm.uid || resolverUid?.(asm.nome) || null, nome: asm.nome || nome } : dono
+    // a marca é da POSIÇÃO (chaves do dono do slot) e vale para quem a ocupa
+    const lib = marcaLiberacao(escala, turno, dono, nome, resolverUid)
     const aberta = situacaoNoTurno({ escalas, turno, pessoa, resolverUid, ignorar }).aberta
     const emprestada = outras.some(([h, e]) => h !== escala.hospital
       && rodapeDoTurno(e.ajudaExterna, turno).some((n) => casaNome(pessoa, n, resolverUid)))
-    return { nome, uid: pessoa.uid, posicao: i + 1, liberado: !!lib, liberadoEm: lib?.liberadoEm || null, aberta, emprestada }
+    return { nome: pessoa.nome, uid: pessoa.uid, posicao: i + 1, liberado: !!lib, liberadoEm: lib?.liberadoEm || null, aberta, emprestada }
   })
 }
 

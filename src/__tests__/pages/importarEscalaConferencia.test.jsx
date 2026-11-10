@@ -213,7 +213,7 @@ describe('Conferência — anexo misto e data impressa', () => {
     expect(screen.getAllByText(/9 cirurgias/i).length).toBeGreaterThan(0)
     expect(await screen.findByText(/3 item\(ns\) do outro turno não serão adicionados/i)).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Vespertino' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Tarde' }))
     expect(await screen.findByRole('heading', { name: /Blocos por anestesista/i })).toBeTruthy()
     expect(screen.getAllByText(/3 cirurgias/i).length).toBeGreaterThan(0)
     expect(svcMock.parseEscalaImagem).toHaveBeenCalledTimes(1)
@@ -267,7 +267,7 @@ describe('Conferência — anexo misto e data impressa', () => {
     expect(screen.getAllByText(/1 cirurgia \+ 1 posição/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/1 posição$/i).length).toBeGreaterThan(0)
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Vespertino' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Tarde' }))
     await waitFor(() => expect(screen.queryByText(/1 posição$/i)).toBeNull())
   })
 
@@ -1062,10 +1062,10 @@ describe('trocar o período preserva o que já foi conferido', () => {
     fireEvent.change(campo, { target: { value: 'X.Y.' } })
 
     // o seletor de período da própria página faz a mesma troca que o cartão do lote
-    fireEvent.click(screen.getByRole('tab', { name: /vespertino/i }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Tarde' }))
     await waitFor(() => expect([...container.querySelectorAll('input')].some((i) => i.value === 'C.D.')
       || blocos(container).length > 0).toBe(true))
-    fireEvent.click(screen.getByRole('tab', { name: /matutino/i }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Manhã' }))
 
     fireEvent.click(await screen.findByRole('button', { name: /Publicar/i }))
     await waitFor(() => expect(salvarEscala).toHaveBeenCalled())

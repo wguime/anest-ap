@@ -355,3 +355,98 @@ describe('plantonista da Home = o da fila de liberação (revisão 23/09)', () =
     expect(screen.queryByText('Gustavo Biesdorf')).toBeNull()
   })
 })
+
+/**
+ * DAS 19h ÀS 7h o card mostra o PLANTONISTA DA NOITE (dono 11/2026, opção A do modelo).
+ *
+ * Às 22h04 de 09/11 o card ainda dizia "Plantonista · Vespertino" com os nomes da tarde,
+ * e o card Plantões, logo abaixo, já listava P1–P4. O dono decidiu: à noite, um
+ * plantonista por hospital — HRO P1 · Unimed P2 · Materno P4 —, com o selo, na mesma
+ * altura do card. A regra é a da fila de Liberações à noite (`faseLiberacoes` +
+ * `ORDEM_NOTURNA`), e a grade de DEMONSTRAÇÃO do Pega Plantão não vira plantonista.
+ */
+describe('noite (19h–7h) — plantonista da noite por hospital', () => {
+  const roster = () => ({
+    resolver: (nome) => ({ DIDO: 'uid-gustavo', 'DIEGO ESTEVES': 'uid-diego' })[String(nome).trim().toUpperCase()] || null,
+    rosterByUid: new Map([
+      ['uid-gustavo', { uid: 'uid-gustavo', nome: 'GUSTAVO BIESDORF' }],
+      ['uid-diego', { uid: 'uid-diego', nome: 'DIEGO ESTEVES' }],
+      ['uid-livia', { uid: 'uid-livia', nome: 'LIVIA MORAES' }],
+    ]),
+    roster: [{ uid: 'uid-livia', nome: 'LIVIA MORAES' }],
+    pronto: true,
+  })
+  const plantoes = [
+    { setor: 'P1', nome: 'Diego Esteves' }, { setor: 'P2', nome: 'L. Moraes' },
+    { setor: 'P3', nome: 'Nina Oliveira' }, { setor: 'P4', nome: 'Otávio Prates' },
+  ]
+  const montar = (iso, extra = {}, props = {}) => {
+    vi.setSystemTime(new Date(iso))
+    const d = new Date(iso)
+    if (d.getHours() < 7) d.setDate(d.getDate() - 1) // context no dia OPERACIONAL
+    estado.ctx = { escalas: escalasComDido, data: hojeLocalISO(d), loading: false, ...extra }
+    estado.roster = roster()
+    return render(<EscalaCirurgicaHomeCard plantoes={plantoes} {...props} />)
+  }
+  const linhas = () => [...document.querySelectorAll('li')].map((li) => li.textContent)
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs() })
+
+  it('22h de quinta: HRO P1 · Unimed P2 · Materno P4, sob "Plantão da noite"', () => {
+    montar('2026-08-20T22:00:00-03:00')
+    expect(screen.getByText('Plantão da noite')).toBeTruthy()
+    // "L. Moraes" casa pelo cadastro (inicial + sobrenome), como na fila
+    expect(linhas()).toEqual(['HROP1Diego Esteves', 'UNIMEDP2Livia Moraes', 'MATERNOP4Otávio Prates'])
+    // o plantonista da TARDE (rodapé da escala) saiu do card
+    expect(screen.queryByText('Gustavo Biesdorf')).toBeNull()
+  })
+
+  it('01h da madrugada continua na noite que começou na véspera', () => {
+    montar('2026-08-21T01:00:00-03:00')
+    expect(screen.getByText('Plantão da noite')).toBeTruthy()
+    expect(linhas()[0]).toBe('HROP1Diego Esteves')
+  })
+
+  it('P4 marcado em outro hospital: o Materno fica sem linha (ninguém assume o posto)', () => {
+    montar('2026-08-20T22:00:00-03:00', { p4Hospital: 'hro' })
+    expect(linhas()).toEqual(['HROP1Diego Esteves', 'UNIMEDP2Livia Moraes'])
+  })
+
+  it('18h59 ainda é a tarde: plantonista da escala, sem selo', () => {
+    montar('2026-08-20T18:59:00-03:00')
+    expect(screen.getByText('Plantonista · Tarde')).toBeTruthy()
+    expect(linhas()).toEqual(['UNIMEDGustavo Biesdorf'])
+  })
+
+  it('sábado à noite sem fila única: a regra da noite não se aplica', () => {
+    montar('2026-08-22T22:00:00-03:00')
+    expect(screen.queryByText('Plantão da noite')).toBeNull()
+  })
+
+  it('grade de DEMONSTRAÇÃO em produção: o card segue como de dia, sem nome fictício', () => {
+    vi.stubEnv('DEV', false)
+    montar('2026-08-20T22:00:00-03:00', {}, { plantoesDeDemonstracao: true })
+    expect(screen.queryByText('Plantão da noite')).toBeNull()
+    expect(screen.queryByText('Diego Esteves')).toBeNull()
+    expect(screen.getByText('Gustavo Biesdorf')).toBeTruthy()
+  })
+
+  it('sem plantões carregados à noite: mostra o que tinha (a escala), não um card vazio', () => {
+    montar('2026-08-20T22:00:00-03:00', {}, { plantoes: [] })
+    expect(screen.queryByText('Plantão da noite')).toBeNull()
+    expect(screen.getByText('Gustavo Biesdorf')).toBeTruthy()
+  })
+})
+
+describe('rótulo do turno — Manhã/Tarde, como no seletor da escala (dono 11/2026)', () => {
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => vi.useRealTimers())
+  it('o card não diz mais Matutino/Vespertino', () => {
+    vi.setSystemTime(new Date('2026-08-20T10:00:00-03:00'))
+    estado.ctx = { escalas: escalasComDido, data: hojeLocalISO(), loading: false }
+    estado.roster = rosterComDido()
+    render(<EscalaCirurgicaHomeCard />)
+    expect(screen.getByText('Plantonista · Manhã')).toBeTruthy()
+    expect(screen.queryByText(/Matutino|Vespertino/)).toBeNull()
+  })
+})

@@ -73,7 +73,7 @@ const escolher = (texto, opcao) => {
 }
 const lancar = (anestesista) => {
   render(<AddCasoSheet escala={escalas.hro} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
-  escolher('Selecionar sala…', 'Sala 8')
+  escolher('A definir', 'Sala 8')
   fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Evacuação de coágulos' } })
   fireEvent.change(screen.getByPlaceholderText('ex.: Mateus Baptistella'), { target: { value: 'Rubin' } })
   escolher('Selecionar convênio…', 'Unimed')
