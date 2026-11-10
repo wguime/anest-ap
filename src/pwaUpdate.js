@@ -18,3 +18,10 @@ registerSW({
     instalarAtualizacaoPwa(registration, { buildId: BUILD_ID })
   },
 })
+
+// Cache antigo das respostas do banco (regra removida do service worker em 10/11/2026): o Workbox
+// não apaga cache de runtime que deixou de ter regra, e ali ficavam por até 24 h respostas com dado
+// de paciente e de outros usuários. Apaga na abertura; sem o cache, não faz nada.
+if (typeof caches !== 'undefined') {
+  caches.delete('supabase-api-cache').catch(() => {})
+}

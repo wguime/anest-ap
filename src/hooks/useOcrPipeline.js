@@ -18,8 +18,9 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { detectIfScanned } from '@/utils/pdfTextDetection.js'
-import { runOcr } from '@/services/ocrService.js'
+// detectIfScanned e runOcr entram por import() dentro do pipeline (10/11/2026): import estático
+// aqui punha o pdf.js (391 KB) no caminho de quem só LÊ a lista da Biblioteca e de mais 5 páginas,
+// por causa do modal de novo documento, que só o admin abre.
 import supabaseDocumentService from '@/services/supabaseDocumentService.js'
 import { isOcrEnabled } from '@/utils/featureFlags.js'
 
@@ -115,6 +116,7 @@ export function useOcrPipeline() {
         if (!force) {
           if (isStale()) return { stale: true }
           setStatus(STATUS.DETECTING)
+          const { detectIfScanned } = await import('@/utils/pdfTextDetection.js')
           detection = await detectIfScanned(file)
           if (isStale()) return { stale: true }
 
@@ -129,6 +131,7 @@ export function useOcrPipeline() {
         setStatus(STATUS.RUNNING)
         await supabaseDocumentService.markOcrProcessing(docId, userInfo)
 
+        const { runOcr } = await import('@/services/ocrService.js')
         const ocr = await runOcr(file, {
           maxPages,
           signal,

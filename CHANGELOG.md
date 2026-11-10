@@ -3,6 +3,20 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## 10/11/2026 — Desempenho do app: abertura e troca de telas — v5.12.92
+
+Medido em produção (PWA, celular simulado): com o app aquecido a Home aparece em 0,4–0,6 s e a troca de
+tela leva 14–90 ms; o que pesava era a abertura a frio e a 1ª visita de algumas telas.
+- Fontes: a folha de estilo do Google travava a 1ª pintura por 0,7–0,9 s quando o cache vencia — agora o
+  service worker a guarda (StaleWhileRevalidate).
+- Biblioteca e mais 5 páginas não baixam mais o pdf.js (391 KB) por causa do modal de novo documento.
+- Educação e Biblioteca entram na pré-carga (some o spinner de ~330 ms da 1ª visita).
+- React e roteador saíram do arquivo de entrada (1.305 → 1.094 KB; 394 → 317 KB comprimido).
+- Precache: saem 347 KB de fontes do editor que o app não usa e o preload da imagem do login; entra o
+  módulo de autenticação.
+- Service worker NÃO guarda mais as respostas do banco (dono): com a rede lenta ele devolvia a cópia de até
+  24 h sem aviso, e deixava dado de paciente no aparelho. O cache antigo é apagado na abertura.
+
 ## 10/11/2026 — Escala Cirúrgica: revisão geral (rede, fila, telas, adesão, cobrança) — v5.12.91
 
 Análise completa pedida pelo dono em 09/11 ("erros de desempenho, funcionalidades que deveriam se completar e

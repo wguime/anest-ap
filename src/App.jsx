@@ -958,7 +958,9 @@ function App() {
       cancelarEscala = () => clearTimeout(id)
     }
     const timer = setTimeout(() => {
-      const paginas = [ComunicadosPage, InboxPage, EscalasPage, CalculatorShowcase, ProfilePage]
+      // Educação (uma das 4 abas) e Biblioteca ficavam de fora: a 1ª visita mostrava ~330 ms de
+      // spinner com o chunk chegando em 13–36 ms (medido 10/11/2026)
+      const paginas = [EducacaoPage, ComunicadosPage, InboxPage, EscalasPage, BibliotecaPage, CalculatorShowcase, ProfilePage]
       paginas.reduce(
         (p, Pagina) => p.then(() => (cancelado ? null : Pagina.preload().catch(() => {}))),
         Promise.resolve(),

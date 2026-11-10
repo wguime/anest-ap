@@ -45,7 +45,11 @@ export default defineConfig({
           'assets/vendor-react-*.js',
           'assets/vendor-ui-*.js',
           'assets/vendor-supabase-*.js',
-          '**/*.{woff2,ico,svg}',
+          // crítico do boot (auth); antes só no cache de runtime, que expira em 7 dias (10/11/2026)
+          'assets/vendor-firebase-*.js',
+          // sem woff2: os 9 arquivos Inter do build são do editor BlockNote (347 KB, 5 pesos que o
+          // app não usa) — a Inter do app vem do Google Fonts, guardada pela regra abaixo
+          '**/*.{ico,svg}',
         ],
         globIgnores: ['**/gestao-incidentes.html', '**/formulario-incidente.html', '**/formulario-denuncia.html'],
         skipWaiting: true,
@@ -98,19 +102,11 @@ export default defineConfig({
               },
             },
           },
-          {
-            // Supabase REST API — NetworkFirst with 10s timeout
-            urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-api-cache',
-              networkTimeoutSeconds: 10,
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 24 * 60 * 60, // 1 day
-              },
-            },
-          },
+          // Supabase REST API: SEM cache no service worker (dono 10/11/2026). A regra NetworkFirst de
+          // 10 s / 1 dia devolvia a resposta guardada sem aviso quando a rede demorava — inclusive a
+          // escala do dia — e deixava até 24 h no aparelho respostas com dado de paciente e de
+          // outros usuários. Sem rede o app diz que não carregou (erro ≠ dado velho). O cache antigo
+          // é apagado na abertura (src/main.jsx).
           {
             // Supabase Storage (signed + public) — NetworkFirst, TTL alinhado ao signed URL (30 min).
             // ignoreSearch reaproveita o cache mesmo quando o token assinado muda entre requests.
@@ -133,8 +129,21 @@ export default defineConfig({
             handler: 'NetworkOnly',
           },
           {
-            // Google Fonts — CacheFirst, 1 year
-            urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
+            // Google Fonts — a FOLHA de estilo (10/11/2026): é render-blocking no index.html e o
+            // CacheFirst sem cacheableResponse não guardava a resposta opaca — toda abertura com o
+            // cache HTTP vencido esperava o Google antes da 1ª pintura (medido 0,7–0,9 s). Serve a
+            // cópia guardada na hora e atualiza por trás.
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'google-fonts-css',
+              expiration: { maxEntries: 10, maxAgeSeconds: 365 * 24 * 60 * 60 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // Google Fonts — os arquivos de fonte: imutáveis, CacheFirst, 1 ano
+            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
             handler: 'CacheFirst',
             options: {
               cacheName: 'google-fonts-cache',
@@ -142,6 +151,7 @@ export default defineConfig({
                 maxEntries: 30,
                 maxAgeSeconds: 365 * 24 * 60 * 60, // 1 year
               },
+              cacheableResponse: { statuses: [0, 200] },
             },
           },
         ],
@@ -162,7 +172,11 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'vendor-react': ['react', 'react-dom'],
+          // 'react-dom/client' e o roteador ficavam DENTRO do index (540 KB renderizados; o
+          // vendor-react tinha 4 KB): cada deploy rebaixava o React inteiro em todo aparelho
+          // (10/11/2026). Todos são import ESTÁTICO da entrada — a armadilha de 12/08 abaixo é
+          // de libs consumidas só por import() dinâmico e não se aplica.
+          'vendor-react': ['react', 'react-dom', 'react-dom/client', 'react-router', 'scheduler'],
           'vendor-supabase': ['@supabase/supabase-js'],
           'vendor-ui': ['lucide-react', 'framer-motion'],
           // Firebase é ~500KB+ (auth + firestore + messaging) — só consumido
