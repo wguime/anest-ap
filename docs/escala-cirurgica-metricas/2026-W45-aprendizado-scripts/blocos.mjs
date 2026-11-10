@@ -101,7 +101,7 @@ for (const [k, fin] of [...finais].sort((a, b) => a[0] < b[0] ? -1 : 1)) { const
     p.papel = !p.noRodape ? 'fora do rodapé' : p.plant ? 'plantonista (1º)' : p.ultimo ? 'último (contraturno)' : p.ajuda ? 'ajuda (azul)' : null }
   turnos.push({ k, data, hospital, turno, fonte, e, rod, P, porUid, blocos, n })
 }
-export const hhmm = (m) => m == null ? '—' : String(Math.floor((m % 1440) / 60)).padStart(2, '0') + ':' + String(Math.round(m % 60)).padStart(2, '0')
+export const hhmm = (m) => { if (m == null) return '—'; const t = Math.round(m) % 1440; return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0') }
 export const spearman = (x, y) => { const rk = (a) => { const s = a.map((v, i) => [v, i]).sort((p, q2) => p[0] - q2[0]); const r = Array(a.length); let i = 0; while (i < s.length) { let j = i; while (j + 1 < s.length && s[j + 1][0] === s[i][0]) j++; for (let k = i; k <= j; k++) r[s[k][1]] = (i + j) / 2; i = j + 1 } return r }; const a = rk(x), b = rk(y); const n = a.length; const ma = a.reduce((s, v) => s + v, 0) / n, mb = b.reduce((s, v) => s + v, 0) / n; let sab = 0, saa = 0, sbb = 0; for (let i = 0; i < n; i++) { sab += (a[i] - ma) * (b[i] - mb); saa += (a[i] - ma) ** 2; sbb += (b[i] - mb) ** 2 } return saa && sbb ? sab / Math.sqrt(saa * sbb) : null }
 export const embaralha = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[a[i], a[j]] = [a[j], a[i]] } return a }
 // ---- afinidades: O, E e p por permutação dentro do turno (nulo livre e nulo por FAIXA de saída)

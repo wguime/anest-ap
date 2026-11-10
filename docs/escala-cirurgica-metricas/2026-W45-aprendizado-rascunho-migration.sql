@@ -133,3 +133,116 @@ create table if not exists public.escala_aprendizado_placar (
   aceitacao           numeric,               -- % dos blocos sugeridos que o conferente manteve (quando existir)
   gerado_em     timestamptz not null default now()
 );
+
+-- =====================================================================================
+-- REVISÃO DE 10/11/2026 — RASCUNHO, NÃO APLICAR. SUBSTITUI as seções 1, 3 e 4 acima.
+-- Motivo: (a) a revisão de LGPD pediu purge na MESMA migration, RLS explícita para os 4 verbos,
+-- restrição SEM motivo, lista ÚNICA de indisponíveis, id do dicionário no lugar do nome do
+-- cirurgião e NENHUM texto livre; (b) a pesquisa 2026-W46 listou o que coletar.
+-- O que o banco JÁ tem e não precisa de nada novo: tempo do mapa bruto (caso.tempo_estimado e
+-- captura 'alocacao'), hora do mapa × início real do 1º caso, giro (fim → início seguinte),
+-- "quanto falta" (caso.termino_previsto + captura 'estimativa'), encaixe (captura 'alocacao'
+-- com origem manual), suspensão (evento de status), exclusão de caso (evento de exclusão),
+-- repasse de/para/hora (captura 'realocacao').
+-- =====================================================================================
+
+-- A. Tipos novos na captura que já existe (uma tabela só; nada em escala_cirurgica_evento)
+alter table public.escala_cirurgica_captura drop constraint if exists escala_cirurgica_captura_tipo_check;
+alter table public.escala_cirurgica_captura add constraint escala_cirurgica_captura_tipo_check
+  check (tipo in ('estimativa', 'estimativa_total', 'alocacao', 'realocacao', 'ordem',
+                  'conferencia',   -- retrato da conferência, por publicação de turno
+                  'saida',         -- hora real de saída informada na liberação
+                  'movimento',     -- caso que mudou de sala ou de hora depois da publicação
+                  'tempo_bloco')); -- tempo estimado pelo conferente para um bloco (HRO não manda no mapa)
+-- 'conferencia'.detalhe = { "esperado": [uid…], "indisponiveis": [uid…], "divergencias": {faltam, sobram, foraDeOrdem} }
+--    LISTA ÚNICA de indisponíveis: quem a grade previa e não trabalha. SEM motivo (férias, licença e
+--    pós-plantão não se distinguem aqui — licença é dado de saúde).
+-- 'saida'.valor_para = "HH:MM" informado; detalhe = { "toque": "HH:MM", "corrigido": bool }.
+-- 'movimento'.valor_de/valor_para = sala (ou hora) antes → depois; detalhe = { "campo": "sala" | "hora" }.
+-- 'tempo_bloco'.valor_para = minutos (texto numérico); sala = sala do bloco; detalhe = { "cirurgias": n }.
+-- 'realocacao' ganha detalhe.motivo, lista fechada, opcional:
+--    'liberar_na_ordem' | 'sala_atrasou' | 'urgencia' | 'combinado' | 'correcao_de_registro'.
+-- Captura de cirurgião: quando o dicionário existir, a captura grava cirurgiao_id e deixa `cirurgiao` nulo.
+alter table public.escala_cirurgica_captura add column if not exists cirurgiao_id uuid;
+alter table public.escala_cirurgica_captura add column if not exists procedimento_chave text; -- família normalizada (lib), não o texto do mapa
+
+-- B. Marca de "hora digitada depois" no próprio caso: quando o horário real foi gravado
+--    (hoje só se deduz comparando com o toque; a hora do registro se perde a cada edição).
+alter table public.escala_cirurgica_caso add column if not exists inicio_real_em timestamptz;
+alter table public.escala_cirurgica_caso add column if not exists termino_real_em timestamptz;
+-- preenchidos pelo gatilho escala_caso_horario_real junto com *_real_por; "digitado depois" =
+-- *_real_em mais de 10 min depois do horário informado. Sem coluna de texto.
+
+-- C. Sugestão × escolha do conferente × motivo (SEM texto livre; SEM nome de cirurgião)
+create table if not exists public.escala_cirurgica_sugestao (
+  id            uuid primary key default gen_random_uuid(),
+  data          date not null,
+  hospital      text not null check (hospital in ('unimed', 'hro', 'materno')),
+  turno         text not null check (turno in ('matutino', 'vespertino')),
+  modelo_versao text not null,
+  regras_versao text not null,
+  exibida       boolean not null default false,   -- false = modo sombra (calculada e gravada, não mostrada)
+  blocos        jsonb not null,  -- [{chave, sala, cirurgiaoId, cirurgias, fimP50, fimP80, baixaConfianca, sugeridoUid, regra}]
+  gerada_por    text not null,
+  gerada_em     timestamptz not null default now()
+);
+create table if not exists public.escala_cirurgica_sugestao_ajuste (
+  id            uuid primary key default gen_random_uuid(),
+  sugestao_id   uuid not null references public.escala_cirurgica_sugestao(id) on delete cascade,
+  data          date not null,                    -- repetida para o purge por data
+  bloco_chave   text not null,
+  sugerido_uid  text,
+  escolhido_uid text,
+  aceito        boolean generated always as (sugerido_uid is not distinct from escolhido_uid) stored,
+  motivo        text check (motivo in ('ordem', 'carga', 'cirurgiao_pede', 'nao_faz', 'combinado_entre_colegas',
+                                       'residente', 'ja_estava_na_sala', 'previsao_errada', 'outro')),
+  por           text not null,
+  em            timestamptz not null default now()
+);
+create index if not exists idx_esc_sugestao_data on public.escala_cirurgica_sugestao (data, hospital, turno);
+create index if not exists idx_esc_sugestao_ajuste_data on public.escala_cirurgica_sugestao_ajuste (data);
+
+-- D. Restrições confirmadas pelo dono — SEM motivo e sem origem "aprendida" (só o dono cria)
+create table if not exists public.escala_cirurgica_restricao (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     text not null,
+  alvo_tipo   text not null check (alvo_tipo in ('local', 'sala', 'especialidade', 'cirurgiao')),
+  alvo        text not null,          -- para 'cirurgiao': o id do dicionário, nunca o nome
+  regra       text not null check (regra in ('nunca', 'preferir')),
+  vale_ate    date,
+  criado_por  text not null,
+  criado_em   timestamptz not null default now(),
+  unique (user_id, alvo_tipo, alvo)
+);
+
+-- E. RLS — os 4 verbos, explícitos, nas três tabelas novas
+alter table public.escala_cirurgica_sugestao enable row level security;        alter table public.escala_cirurgica_sugestao force row level security;
+alter table public.escala_cirurgica_sugestao_ajuste enable row level security; alter table public.escala_cirurgica_sugestao_ajuste force row level security;
+alter table public.escala_cirurgica_restricao enable row level security;       alter table public.escala_cirurgica_restricao force row level security;
+-- sugestão e ajuste: quem publica a escala lê e grava; ninguém edita nem apaga pelo cliente (o purge é do servidor)
+create policy esc_sugestao_select on public.escala_cirurgica_sugestao for select to authenticated using ((select public.can_publicar_escala_cirurgica()));
+create policy esc_sugestao_insert on public.escala_cirurgica_sugestao for insert to authenticated with check ((select public.can_publicar_escala_cirurgica()) and gerada_por = (select public.firebase_uid()));
+create policy esc_sugestao_update on public.escala_cirurgica_sugestao for update to authenticated using (false) with check (false);
+create policy esc_sugestao_delete on public.escala_cirurgica_sugestao for delete to authenticated using (false);
+create policy esc_ajuste_select on public.escala_cirurgica_sugestao_ajuste for select to authenticated using ((select public.is_admin()));
+create policy esc_ajuste_insert on public.escala_cirurgica_sugestao_ajuste for insert to authenticated with check ((select public.can_publicar_escala_cirurgica()) and por = (select public.firebase_uid()));
+create policy esc_ajuste_update on public.escala_cirurgica_sugestao_ajuste for update to authenticated using (false) with check (false);
+create policy esc_ajuste_delete on public.escala_cirurgica_sugestao_ajuste for delete to authenticated using (false);
+-- restrição: quem publica lê (a conferência valida contra ela); só admin cria, altera e apaga
+create policy esc_restricao_select on public.escala_cirurgica_restricao for select to authenticated using ((select public.can_publicar_escala_cirurgica()));
+create policy esc_restricao_insert on public.escala_cirurgica_restricao for insert to authenticated with check ((select public.is_admin()) and criado_por = (select public.firebase_uid()));
+create policy esc_restricao_update on public.escala_cirurgica_restricao for update to authenticated using ((select public.is_admin())) with check ((select public.is_admin()));
+create policy esc_restricao_delete on public.escala_cirurgica_restricao for delete to authenticated using ((select public.is_admin()));
+revoke all on public.escala_cirurgica_sugestao, public.escala_cirurgica_sugestao_ajuste, public.escala_cirurgica_restricao from anon;
+
+-- F. PURGE na mesma migration — 24 meses pela data da escala (prazo a confirmar com o dono)
+create or replace function public.escala_aprendizado_purge()
+returns void language sql security definer set search_path = pg_catalog, public as $$
+  delete from public.escala_cirurgica_sugestao_ajuste where data < (current_date - interval '24 months');
+  delete from public.escala_cirurgica_sugestao        where data < (current_date - interval '24 months');
+  delete from public.escala_cirurgica_captura         where data < (current_date - interval '24 months');
+  delete from public.escala_cirurgica_restricao       where vale_ate is not null and vale_ate < current_date;
+$$;
+revoke execute on function public.escala_aprendizado_purge() from public, anon, authenticated;
+-- select cron.schedule('escala-aprendizado-purge', '37 6 * * 0', $$select public.escala_aprendizado_purge()$$);
+-- docs/lgpd-retencao.md ganha a linha na MESMA entrega (captura, sugestão, ajuste: 24 meses; base: legítimo interesse).
