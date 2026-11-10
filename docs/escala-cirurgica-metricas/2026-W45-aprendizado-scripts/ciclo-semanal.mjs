@@ -1,0 +1,70 @@
+#!/usr/bin/env node
+// ciclo-semanal.mjs — o aprendizado contínuo da escalação, em um comando.
+//   node docs/escala-cirurgica-metricas/2026-W45-aprendizado-scripts/ciclo-semanal.mjs --exportar
+// 1. (--exportar) lê o banco só com SELECT, uma ida por tabela (wrapper query-ro), até --ate (padrão: ontem);
+// 2. regrava as tabelas de tempo (duração por nível, giro de sala, atraso do 1º caso);
+// 3. roda o placar do simulador nas 3 últimas semanas, cada uma prevista só com as anteriores;
+// 4. lista o que mudou desde a rodada anterior (cirurgião novo, tempo que mudou).
+// Saídas com NOME ficam em .local/escala-aprendizado/ (fora do git); o placar vai para
+// docs/escala-cirurgica-metricas/placar-semanal/ com CÓDIGOS (A01, C001…; tabela em .local/escala-aprendizado/codigos.json).
+// Versão com nomes de tudo o que está em docs: node codigos.mjs nomes
+import fs from 'fs'
+import path from 'path'
+import { execFileSync } from 'child_process'
+import { fileURLToPath } from 'url'
+const AQUI = path.dirname(fileURLToPath(import.meta.url)); const RAIZ = path.resolve(AQUI, '..', '..', '..')
+const arg = (n) => { const i = process.argv.indexOf(n); return i >= 0 ? process.argv[i + 1] ?? true : null }
+const iso = (d) => d.toISOString().slice(0, 10); const dia = (s, n) => { const d = new Date(s + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return iso(d) }
+const ATE = typeof arg('--ate') === 'string' ? arg('--ate') : dia(iso(new Date(Date.now() - 3 * 3600e3)), -1)
+const BASE = path.join(RAIZ, '.local', 'escala-aprendizado'); const DADOS = process.env.DADOS || path.join(BASE, 'dados'); const SAIDA = path.join(BASE, 'saida')
+fs.mkdirSync(DADOS, { recursive: true }); fs.mkdirSync(SAIDA, { recursive: true })
+if (process.argv.includes('--exportar')) { const INI = '2026-07-22'; const Q = path.join(RAIZ, '.claude', 'skills', 'escala-cirurgica', 'scripts', 'query-ro.mjs')
+  const SQL = {
+    casos: `select c.id, e.data, e.hospital, c.turno, c.sala, c.ordem, c.hora, c.tempo_estimado, c.procedimento, c.convenio, c.cirurgiao, c.anestesista, c.anestesista_user_id uid, c.bloco, c.is_continuacao cont, c.sem_anestesista sem, c.tipo, c.origem, c.status_cirurgia st, c.status_extra ex, c.inicio_real ini, c.termino_real ter, c.inicio_real_por ini_por, c.termino_real_por ter_por, c.residente_user_id res, c.status_atualizado_em st_em, c.status_atualizado_por st_por, c.created_at from escala_cirurgica_caso c join escala_cirurgica e on e.id=c.escala_id where e.data between '${INI}' and '${ATE}'`,
+    escalas: `select id, data, hospital, ordem_liberacao, ajuda_externa, liberacoes, linha_overrides, publicacao_turnos, (fds_meta is not null) tem_fds from escala_cirurgica where data between '${INI}' and '${ATE}'`,
+    eventos: `select caso_id, escala_id, data, hospital, tipo, status_de de, status_para para, por, em, anestesista, anestesista_user_id uid, sala, hora, cirurgiao, procedimento from escala_cirurgica_evento where tipo in ('status','liberacao') and data between '${INI}' and '${ATE}'`,
+    captura: `select seq, tipo, caso_id, escala_id, data, hospital, turno, sala, hora, cirurgiao, procedimento, tempo_estimado, anestesista, anestesista_user_id uid, valor_de, valor_para, detalhe, por, em from escala_cirurgica_captura where data between '2026-09-25' and '${ATE}'`,
+    alias: `select apelido, user_id from escala_anestesista_alias`,
+    ped: `select c.id, (case when c.idade ~* '(m|mes|meses|d|dias)\\s*$' and c.idade !~* 'a' then true when c.idade ~ '^\\s*\\d+' then (regexp_match(c.idade,'\\d+'))[1]::int <= 12 else null end) ped, (c.residente is not null and c.residente<>'') tem_res, c.gravidade from escala_cirurgica_caso c join escala_cirurgica e on e.id=c.escala_id where e.data between '${INI}' and '${ATE}'`,
+    perfis: `select p.id, p.nome, p.role from profiles p where p.id in (select user_id from escala_anestesista_alias union select distinct anestesista_user_id from escala_cirurgica_caso where anestesista_user_id is not null union select distinct residente_user_id from escala_cirurgica_caso where residente_user_id is not null)`,
+  }
+  for (const [nome, sql] of Object.entries(SQL)) { process.stdout.write(`exportando ${nome}… `); const out = execFileSync('node', [Q, sql], { cwd: RAIZ, maxBuffer: 256 * 1024 * 1024 }); JSON.parse(out); fs.writeFileSync(path.join(DADOS, nome + '.json'), out); console.log((out.length / 1e6).toFixed(1) + ' MB') } }
+for (const n of ['casos', 'escalas', 'eventos', 'captura', 'alias', 'ped', 'perfis']) if (!fs.existsSync(path.join(DADOS, n + '.json'))) { console.error(`Falta ${n}.json em ${DADOS}. Rode com --exportar (ou aponte DADOS=<pasta>).`); process.exit(1) }
+// janela do placar: as 3 últimas semanas inteiras até ATE
+const seg = (s) => { const d = new Date(s + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return iso(d) }
+process.env.DADOS = DADOS; process.env.TESTE_FIM = ATE; process.env.TESTE_INI = dia(seg(ATE), -14)
+// códigos estáveis: quem apareceu de novo (anestesista, residente, cirurgião) ganha o próximo código livre
+const { atualizar: atualizarCodigos, codificarTexto } = await import('./codigos.mjs'); { const { T: tab, novos } = await atualizarCodigos(); console.log(`códigos: ${Object.keys(tab.anestesistas).length} anestesistas, ${Object.keys(tab.residentes).length} residentes, ${Object.keys(tab.cirurgioes).length} cirurgiões (${novos} novos)`) }
+const { med, q, r1 } = await import('./comum.mjs'); const { paresLimpos, casos } = await import('./blocos.mjs'); const { tabelaTempos, girosTodos, giroValido, atrasosTodos, NIVEIS, parametros, segunda, preverNivel } = await import('./tempo.mjs'); const { placar } = await import('./i_simulador_v3.mjs')
+const ultimaData = casos.reduce((m, c) => c.data > m ? c.data : m, ''); const semana = (() => { const d = new Date(ATE + 'T12:00:00Z'); const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())); t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7)); const y = t.getUTCFullYear(); const w = Math.ceil(((t - Date.UTC(y, 0, 1)) / 864e5 + 1) / 7); return `${y}-W${String(w).padStart(2, '0')}` })()
+// ---- 2. tabelas de tempo
+const Tb = tabelaTempos(paresLimpos.filter((p) => p.data <= ATE)); const obj = (m, minN) => Object.fromEntries([...m].filter(([, e]) => e.n >= minN).sort((a, b) => b[1].n - a[1].n))
+const tempos = { geradoEm: new Date().toISOString(), ate: ATE, pares: Tb.n, niveis: NIVEIS, cirurgiaoProcedimento: obj(Tb.FC, 3), procedimentoHospital: obj(Tb.FH, 3), procedimento: obj(Tb.F, 3), cirurgiao: obj(Tb.C, 3), hospital: obj(Tb.H, 1) }
+const est = (a) => ({ n: a.length, med: med(a), p25: q(a, .25), p75: q(a, .75) }); const gv = girosTodos.filter((x) => giroValido(x) && x.data <= ATE); const grupo = (l, kf, vf, minN) => { const m = {}; for (const x of l) { const k = kf(x); if (k) (m[k] ||= []).push(vf(x)) } return Object.fromEntries(Object.entries(m).filter(([, a]) => a.length >= minN).map(([k, a]) => [k, est(a)])) }
+const giro = { ate: ATE, hospital: grupo(gv, (x) => x.hospital, (x) => x.gap, 1), hospitalMesmoCirurgiao: grupo(gv, (x) => x.hospital + '|' + (x.mesmoCir ? 'mesmo' : 'outro'), (x) => x.gap, 1), sala: grupo(gv, (x) => x.hospital + '|' + x.sala, (x) => x.gap, 10), cirurgiao: grupo(gv.filter((x) => x.mesmoCir), (x) => x.hospital + '|' + x.cir, (x) => x.gap, 5) }
+const av = atrasosTodos.filter((x) => x.data <= ATE); const atraso = { ate: ATE, hospitalTurno: grupo(av, (x) => x.hospital + '|' + x.turno, (x) => x.atraso, 1), cirurgiao: grupo(av, (x) => x.cir && x.hospital + '|' + x.cir, (x) => x.atraso, 5) }
+// ---- 4. o que mudou desde a rodada anterior
+const arqT = path.join(SAIDA, 'tempos.json'); const antes = fs.existsSync(arqT) ? JSON.parse(fs.readFileSync(arqT, 'utf8')) : null; const mud = []
+if (antes && antes.ate !== ATE) { for (const k of Object.keys(tempos.cirurgiao)) if (!antes.cirurgiao[k]) mud.push(`cirurgião novo na tabela: ${k.replace('|', ' · ')} (${tempos.cirurgiao[k].n} cirurgias, mediana ${tempos.cirurgiao[k].med} min)`)
+  for (const [nome, chave] of [['cirurgião × procedimento', 'cirurgiaoProcedimento'], ['procedimento × hospital', 'procedimentoHospital']]) for (const [k, e] of Object.entries(tempos[chave])) { const a = antes[chave]?.[k]; if (!a) { if (e.n >= 5) mud.push(`${nome} novo: ${k.replaceAll('|', ' · ')} (n=${e.n}, ${e.med} min)`); continue } if (a.n >= 5 && e.n >= 5 && Math.abs(e.med - a.med) >= 15 && Math.abs(e.med - a.med) / a.med >= 0.2) mud.push(`${nome} mudou: ${k.replaceAll('|', ' · ')} de ${a.med} para ${e.med} min (n ${a.n} → ${e.n})`) } }
+// deriva recente: últimas 3 semanas × antes, por procedimento × hospital
+{ const corte = process.env.TESTE_INI; const a = tabelaTempos(paresLimpos.filter((p) => p.data < corte)).FH, b = tabelaTempos(paresLimpos.filter((p) => p.data >= corte && p.data <= ATE)).FH; for (const [k, e] of b) { const x = a.get(k); if (x && x.n >= 8 && e.n >= 8 && Math.abs(e.med - x.med) >= 20 && Math.abs(e.med - x.med) / x.med >= 0.25) mud.push(`tempo recente diferente do histórico: ${k.replace('|', ' · ')} — antes ${x.med} min (n=${x.n}), últimas 3 semanas ${e.med} min (n=${e.n})`) } }
+if (antes) fs.copyFileSync(arqT, path.join(SAIDA, 'tempos-anterior.json'))
+fs.writeFileSync(arqT, JSON.stringify(tempos, null, 1)); fs.writeFileSync(path.join(SAIDA, 'giro.json'), JSON.stringify(giro, null, 1)); fs.writeFileSync(path.join(SAIDA, 'atraso.json'), JSON.stringify(atraso, null, 1))
+// ---- erro de duração nas 3 últimas semanas (fora da amostra)
+const te = paresLimpos.filter((p) => p.data >= process.env.TESTE_INI && p.data <= ATE); const porId = new Map(casos.map((c) => [c.id, c])); const errN = Array.from({ length: 6 }, () => []), err = []
+for (const p of te) { const c = porId.get(p.id); const r = preverNivel({ procedimento: c.procedimento, hospital: p.hospital, cir: p.ck }, parametros(segunda(p.data)).Tb); errN[r.nivel].push(Math.abs(p.dur - r.v)); err.push(Math.abs(p.dur - r.v)) }
+// ---- 3. placar
+const P = placar({ silencioso: true })
+const pcx = (a, b) => b ? (100 * a / b).toFixed(1) + '%' : '—'
+const md = [`# Placar semanal do aprendizado da escalação · ${semana}`, '', `> Gerado por \`ciclo-semanal.mjs\` em ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC. Dados até ${ATE} (última data exportada: ${ultimaData}).`, `> Teste: ${process.env.TESTE_INI} a ${ATE}, cada semana prevista só com as anteriores. Sem nomes de pessoas.`, '',
+  '## Tempo', '', `- Pares limpos na tabela: ${Tb.n} · pares cirurgião × procedimento com 3+ casos: ${Object.keys(tempos.cirurgiaoProcedimento).length} · com 5+: ${Object.values(tempos.cirurgiaoProcedimento).filter((e) => e.n >= 5).length}`,
+  `- Erro mediano da duração no teste: **${r1(med(err))} min** (n=${err.length}) · meta < 25`, '', '| Nível usado | Cobertura | Erro mediano (min) |', '|---|---|---|', ...NIVEIS.map((n, i) => `| ${n} | ${pcx(errN[i].length, te.length)} | ${r1(med(errN[i])) ?? '—'} |`), '',
+  `- Giro de sala (mediana, min): ${Object.entries(giro.hospital).map(([h, e]) => `${h} ${e.med} (n=${e.n})`).join(' · ')}`, `- Atraso do 1º caso (mediana, min): ${Object.entries(atraso.hospitalTurno).map(([h, e]) => `${h.replace('|', ' ')} ${e.med}`).join(' · ')}`, '',
+  '## Escalação', '', `- Turnos no teste: ${P.turnos}`, `- Pares invertidos > 30 min — sugestão: **${pcx(P.R.inv[0], P.R.inv[1])}** (meta: ≤ plano publicado; ver linha "PUBLICADO" abaixo)`, `- Quem fica com/sem bloco certo: ${pcx(P.R.semOk[0], P.R.semOk[1])} (meta ≥ 90%) · violações de regra dura: ${P.R.viol} (meta 0)`, '', '```', P.texto, '```', '',
+  '## O que mudou', '', ...(mud.length ? mud.slice(0, 60).map((m) => `- ${m.replace(/ · (unimed|hro|materno) · [^—(]+/, (x) => x)}`) : ['- Nada acima dos limiares (cirurgião novo com 3+ casos; mediana que mudou 15+ min e 20%+).']), '']
+// o placar publicado em docs não leva nome de cirurgião: a lista de mudanças com nomes fica só em .local
+const comNomes = path.join(SAIDA, `placar-${semana}.md`); fs.writeFileSync(comNomes, md.join('\n'))
+const semNomes = md.join('\n').replace(/## O que mudou[\s\S]*$/, `## O que mudou\n\n- ${mud.length} mudança(s) acima dos limiares. A lista, com nomes de cirurgiões, está em \`.local/escala-aprendizado/saida/placar-${semana}.md\`.\n`)
+const dirDoc = path.join(RAIZ, 'docs', 'escala-cirurgica-metricas', 'placar-semanal'); fs.mkdirSync(dirDoc, { recursive: true }); fs.writeFileSync(path.join(dirDoc, `${semana}.md`), codificarTexto(semNomes)) // o que vai ao repositório sai sempre com código
+console.log(`\nCICLO ${semana} — dados até ${ATE}`); console.log(` duração: erro ${r1(med(err))} min (n=${err.length}) | cirurgião × procedimento cobre ${pcx(errN[0].length, te.length)}`); console.log(` escalação: inversões ${pcx(P.R.inv[0], P.R.inv[1])} | com/sem bloco ${pcx(P.R.semOk[0], P.R.semOk[1])} | violações ${P.R.viol}`); console.log(` mudanças: ${mud.length}`); console.log(` tabelas: ${SAIDA}/{tempos,giro,atraso}.json`); console.log(` placar: ${path.join(dirDoc, semana + '.md')}`)

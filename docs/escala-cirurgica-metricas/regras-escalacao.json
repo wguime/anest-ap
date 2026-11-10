@@ -1,0 +1,208 @@
+{
+  "versao": "2026-11-10.3",
+  "atualizadoEm": "2026-11-10",
+  "comoLer": "Regras da ESCALAÇÃO (quem vai para qual bloco), dadas a entrada mapa + rodapé. tipo: dura = nunca violar; preferencia = pesa na escolha; objetivo = o que a sugestão otimiza. origem: dono = resposta dele em 09/11/2026; aprendida = medida nos dados e ainda não confirmada. O simulador (i_simulador_v3.mjs) lê este arquivo. Pessoas são identificadas por uid do perfil + código (A01…, C001…); a tabela código → nome fica só em .local/escala-aprendizado/codigos.json (fora do git).",
+  "objetivo": {
+    "id": "ordem-de-saida",
+    "tipo": "objetivo",
+    "origem": "dono",
+    "data": "2026-11-09",
+    "texto": "A melhor escalação é a que respeita a ordem de saída: mais tempo de trabalho para quem sai depois, menos para quem vai embora antes. O resto o anestesista conferente ajusta."
+  },
+  "regras": [
+    {
+      "id": "sem-bloco",
+      "tipo": "dura",
+      "origem": "dono",
+      "data": "2026-11-10",
+      "texto": "Quando sobra gente, fica sem bloco o ÚLTIMO do rodapé e depois, na ordem, quem sai primeiro. \"Livre é sempre quem sai primeiro\": não se dão dois blocos curtos a quem sai cedo deixando alguém do meio livre."
+    },
+    {
+      "id": "pos-plantao-mais-curto",
+      "tipo": "dura",
+      "origem": "dono",
+      "data": "2026-11-10",
+      "texto": "O pós-plantão (2º do rodapé, Unimed, manhã) recebe SEMPRE o bloco mais curto e depois fica na SRPA até as 13h.",
+      "parametros": {
+        "hospital": "unimed",
+        "turno": "matutino",
+        "posicaoRodape": 2
+      },
+      "regraExistente": ".claude/rules/escala-telas.md → \"a SRPA tem horário FIXO — 09:00–13:00, 13:00–19:00, 19:00–22:00\" (dono 26/10) e HORA_PADRAO_SRPA em src/lib/escalaCirurgicaItens.js (Unimed manhã 09:00, dono 18/08). O que é NOVO aqui é só QUEM ocupa a SRPA."
+    },
+    {
+      "id": "plantonista-termina-por-ultimo",
+      "tipo": "dura",
+      "origem": "dono",
+      "data": "2026-11-10",
+      "texto": "Plantonista fora do HRO: recebe o bloco que termina por último.",
+      "parametros": {
+        "hospitais": [
+          "unimed",
+          "materno"
+        ]
+      }
+    },
+    {
+      "id": "srpa-unimed",
+      "tipo": "dura",
+      "origem": "dono",
+      "data": "2026-11-10",
+      "texto": "SRPA da Unimed: de manhã fica com o pós-plantão (2º do rodapé); à tarde, com quem sai tarde — normalmente o 4º anestesista do rodapé.",
+      "parametros": {
+        "hospital": "unimed",
+        "matutino": {
+          "posicaoRodape": 2
+        },
+        "vespertino": {
+          "posicaoRodape": 4
+        }
+      },
+      "evidencia": "manhã: 2º do rodapé em 65 de 74 turnos (88%); tarde: exatamente o 4º em 49 de 68 (72%) — 5º em 6, 3º em 4, 2º em 3"
+    },
+    {
+      "id": "plantonista-hro-ortopedia-urgencia",
+      "tipo": "dura",
+      "origem": "dono",
+      "data": "2026-11-10",
+      "texto": "Plantonista do HRO: vai para ortopedia e/ou urgência, mesmo que o bloco termine cedo. Hoje são as Salas 4 e 5, mas a regra é o tipo de cirurgia, não o número da sala.",
+      "parametros": {
+        "hospital": "hro",
+        "especialidades": [
+          "Ortopedia"
+        ],
+        "locais": [
+          "emergencia"
+        ],
+        "urgencia": true
+      }
+    },
+    {
+      "id": "dois-blocos-pelo-tempo",
+      "tipo": "dura",
+      "origem": "dono",
+      "data": "2026-11-09",
+      "texto": "Quando sobram blocos, quem recebe dois é decidido pelo TEMPO: blocos curtos juntos para quem sai antes, blocos longos para quem sai depois. O conjunto conta pelo horário em que termina."
+    },
+    {
+      "id": "trocas-do-dia",
+      "tipo": "objetivo",
+      "origem": "dono",
+      "data": "2026-11-09",
+      "texto": "Não tentar evitar na publicação as trocas que acontecem durante o turno: a troca do dia resolve."
+    },
+    {
+      "id": "consultorio-so-cooperado",
+      "tipo": "dura",
+      "origem": "dono",
+      "data": "2026-11-10",
+      "texto": "Só pode ser escalado no consultório quem é cooperado da Unimed. A lista de cooperados será enviada pelo dono; até lá o sistema NÃO sugere ninguém para o consultório — ele vem do rodapé (nota \"(CONSULT)\") ou da numérica, como hoje.",
+      "estado": "aguardando lista do dono"
+    },
+    {
+      "id": "sem-cirurgiao-fixo",
+      "tipo": "objetivo",
+      "origem": "dono",
+      "data": "2026-11-09",
+      "texto": "Não existe cirurgião com anestesista fixo. Existem anestesistas que NÃO devem ser escalados com determinados cirurgiões ou locais — a lista vem do dono e entra em 'restricoes'."
+    }
+  ],
+  "restricoes": [
+    {
+      "anestesistaUid": "ARHMFkzl0ebfWWnEzha1QtNdvMo1",
+      "anestesistaCodigo": "A40",
+      "alvoTipo": "local",
+      "alvo": "hro:iosc",
+      "regra": "nunca",
+      "origem": "dono",
+      "data": "2026-11-09",
+      "evidencia": "0 blocos em 48 turnos juntos; esperado 6,3"
+    },
+    {
+      "anestesistaUid": "ARHMFkzl0ebfWWnEzha1QtNdvMo1",
+      "anestesistaCodigo": "A40",
+      "alvoTipo": "local",
+      "alvo": "hro:exames",
+      "regra": "preferir",
+      "origem": "dono",
+      "data": "2026-11-09",
+      "evidencia": "16 blocos; esperado 4,8"
+    },
+    {
+      "anestesistaUid": "ARHMFkzl0ebfWWnEzha1QtNdvMo1",
+      "anestesistaCodigo": "A40",
+      "alvoTipo": "local",
+      "alvo": "unimed:exames",
+      "regra": "preferir",
+      "origem": "dono",
+      "data": "2026-11-09",
+      "evidencia": "endoscopia: 39 blocos; esperado 18,3"
+    },
+    {
+      "anestesistaUid": "ARHMFkzl0ebfWWnEzha1QtNdvMo1",
+      "anestesistaCodigo": "A40",
+      "alvoTipo": "especialidade",
+      "alvo": "Endoscopia",
+      "regra": "preferir",
+      "origem": "dono",
+      "data": "2026-11-09",
+      "evidencia": "39 blocos; esperado 18,3"
+    }
+  ],
+  "restricoesFormato": "anestesistaUid + anestesistaCodigo × (cirurgiao | local | sala | especialidade), regra nunca | preferir. Cirurgião entra pelo código (C001…). A lista de \"nunca\" com cirurgiões e locais será enviada pelo dono; entra aqui linha a linha.",
+  "consultorio": {
+    "estado": "aguardando lista do dono",
+    "cooperados": [],
+    "nota": "A lista provável deduzida do histórico NÃO é regra e não está no repositório: só em .local/escala-aprendizado/com-nomes/."
+  },
+  "descartadoPeloDono": [
+    {
+      "data": "2026-11-09",
+      "oQue": "Preferências e exclusões de pessoa × local numa clínica externa da Unimed (4 preferências, 2 exclusões medidas)",
+      "resposta": "Coincidência. Não é credenciamento."
+    },
+    {
+      "data": "2026-11-09",
+      "oQue": "Preferências de pessoa × especialidade (4 pares medidos: plástica, mastologia, pediatria, cirurgia geral)",
+      "resposta": "Ignorar."
+    },
+    {
+      "data": "2026-11-09",
+      "oQue": "Pares anestesista × cirurgião (3 pares medidos, 2 com grafia ambígua)",
+      "resposta": "Não existe cirurgião com anestesista fixo."
+    },
+    {
+      "data": "2026-11-09",
+      "oQue": "Evitar na publicação as trocas do dia (68% vão para quem sai depois)",
+      "resposta": "Não. A troca do dia resolve."
+    }
+  ],
+  "aprendidoSemResposta": [
+    {
+      "oQue": "A13 × centro obstétrico da Unimed (11 × 4,6)"
+    },
+    {
+      "oQue": "A34 × IOSC (14 × 6,9)"
+    }
+  ],
+  "entradasPrevistas": [
+    {
+      "id": "tempo-estimado-hro",
+      "origem": "dono",
+      "data": "2026-11-10",
+      "texto": "O HRO não manda tempo estimado no mapa. Na conferência, o anestesista que confere informa o tempo de cada bloco do HRO; esse tempo entra na previsão de fim do bloco no lugar da duração calculada.",
+      "campo": "tempo estimado por bloco, em minutos, na conferência (bloco = sala × sequência do turno)",
+      "estado": "a construir"
+    }
+  ],
+  "precedencias": [
+    {
+      "data": "2026-11-10",
+      "origem": "dono",
+      "vence": "sem-bloco",
+      "sobre": "preferência do A40 por endoscopia/exames",
+      "texto": "\"Livre é quem sai primeiro\" vence a preferência: se o A40 está entre os primeiros a sair e sobra gente, fica sem bloco mesmo havendo Exames no mapa. Preferência só decide entre quem vai receber bloco.",
+      "caso": "27/10/2026, Unimed, tarde"
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+// h_tempo.mjs — relatório do modelo de tempo: erro por nível, giro de sala, atraso do 1º caso, fim do bloco,
+// e a lista provável de quem pode ir ao consultório.
+import fs from 'fs'
+import { med, q, r1, min, familia, teMin, sa, R } from './comum.mjs'
+import { casos, paresLimpos, turnos, cap, nomeP, hhmm, spearman, cirK, uidDe } from './blocos.mjs'
+import { NIVEIS, tabelaTempos, preverNivel, girosTodos, giroValido, atrasosTodos, parametros, segunda, fimBloco } from './tempo.mjs'
+const INI = process.env.TESTE_INI || '2026-10-19', FIM = process.env.TESTE_FIM || '2026-11-08'
+const pc = (x) => x == null ? '—' : (100 * x).toFixed(0) + '%'; const media = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null
+const porId = new Map(casos.map((c) => [c.id, c]))
+console.log(`===== B1. DURAÇÃO POR NÍVEL — teste fora da amostra ${INI} a ${FIM} (cada semana prevista só com as semanas anteriores) =====`)
+{ const te = paresLimpos.filter((p) => p.data >= INI && p.data <= FIM); const err = Array.from({ length: 6 }, () => []), todos = [], base = [], forcado = Array.from({ length: 5 }, () => []), mapa = [], mapaMod = []
+  for (const p of te) { const P = parametros(segunda(p.data)); const c = porId.get(p.id); const it = { procedimento: c.procedimento, hospital: p.hospital, cir: p.ck }; const r = preverNivel(it, P.Tb); err[r.nivel].push(Math.abs(p.dur - r.v)); todos.push(Math.abs(p.dur - r.v)); base.push(Math.abs(p.dur - P.Tb.H.get(p.hospital).med))
+    // cada nível sozinho, onde existe
+    const f = familia(c.procedimento); const ks = [[P.Tb.FC, p.ck && f + '|' + p.hospital + '|' + p.ck], [P.Tb.FH, f + '|' + p.hospital], [P.Tb.F, f], [P.Tb.C, p.ck && p.hospital + '|' + p.ck], [P.Tb.H, p.hospital]]; ks.forEach(([m, k], i) => { const e = k ? m.get(k) : null; if (e && e.n >= 3) forcado[i].push(Math.abs(p.dur - e.med)) })
+    const t = teMin(c.tempo_estimado); if (t != null) { mapa.push(Math.abs(p.dur - t)); mapaMod.push(Math.abs(p.dur - r.v)) } }
+  console.log(` pares limpos no teste: ${te.length} | treino disponível na 1ª semana: ${parametros(segunda(INI)).Tb.n} pares`)
+  console.log(' nível (usado na cascata)        | cobertura | erro mediano | ≤30 min || nível sozinho, onde existe (n>=3): cobertura | erro mediano')
+  NIVEIS.forEach((n, i) => console.log(`  ${n.padEnd(28)} | ${pc(err[i].length / te.length).padStart(4)} | ${String(r1(med(err[i])) ?? '—').padStart(5)} | ${err[i].length ? pc(err[i].filter((x) => x <= 30).length / err[i].length) : '—'} || ${pc(forcado[i].length / te.length).padStart(4)} | ${r1(med(forcado[i]))}`))
+  console.log(`  ${'CASCATA inteira'.padEnd(28)} | 100% | ${r1(med(todos))} | ${pc(todos.filter((x) => x <= 30).length / todos.length)}   (só hospital: ${r1(med(base))})`)
+  console.log(`  tempo do mapa (onde existe, n=${mapa.length}): erro ${r1(med(mapa))} × cascata nos mesmos casos ${r1(med(mapaMod))}`)
+  // por nº de casos do par cirurgião×procedimento no treino
+  const fx = { '3–4': [], '5–9': [], '10+': [] }; for (const p of te) { const P = parametros(segunda(p.data)); const c = porId.get(p.id); const e = p.ck ? P.Tb.FC.get(familia(c.procedimento) + '|' + p.hospital + '|' + p.ck) : null; if (!e || e.n < 3) continue; fx[e.n < 5 ? '3–4' : e.n < 10 ? '5–9' : '10+'].push(Math.abs(p.dur - e.med)) }
+  console.log(`  cirurgião × procedimento por nº de casos no histórico: ${Object.entries(fx).map(([k, a]) => `${k}: erro ${r1(med(a))} (n=${a.length})`).join(' · ')}`)
+  const Tb = tabelaTempos(paresLimpos); console.log(` tabela com TODOS os pares (${Tb.n}): pares cirurgião×procedimento ${Tb.FC.size} (n>=3: ${[...Tb.FC.values()].filter((e) => e.n >= 3).length}, n>=5: ${[...Tb.FC.values()].filter((e) => e.n >= 5).length}, n>=10: ${[...Tb.FC.values()].filter((e) => e.n >= 10).length}) | procedimentos ${Tb.F.size} (n>=5: ${[...Tb.F.values()].filter((e) => e.n >= 5).length}) | cirurgiões ${Tb.C.size} (n>=5: ${[...Tb.C.values()].filter((e) => e.n >= 5).length})`)
+  const top = [...Tb.FC].filter(([, e]) => e.n >= 12).sort((a, b) => b[1].n - a[1].n).slice(0, 12); console.log(' exemplos (cirurgião × procedimento, 12+ casos): ' + top.map(([k, e]) => { const [f, h, c] = k.split('|'); return `${c} · ${f.toLowerCase()} (${h}): ${e.med} min [${e.p25}–${e.p75}], n=${e.n}` }).join(' ; ')) }
+
+console.log('\n===== B2. GIRO DE SALA (fim real → início real da seguinte, mesma sala e dia; pares limpos desde 02/10) =====')
+{ const u = girosTodos.filter((x) => x.unica); const v = u.filter(giroValido); const d = (a) => `mediana ${med(a)} | p25 ${q(a, .25)} | p75 ${q(a, .75)} | n=${a.length}`
+  console.log(` sequências em sala de CC/CO: ${u.length} | sobrepostas (início antes do fim da anterior): ${pc(u.filter((x) => x.gap < 0).length / u.length)} | acima de 120 min (sala parada): ${pc(u.filter((x) => x.gap > 120).length / u.length)} | válidas (0–120 min): ${v.length}`)
+  console.log(` TODAS: ${d(v.map((x) => x.gap))} | zero minuto (um horário colado no outro): ${pc(v.filter((x) => x.gap === 0).length / v.length)}`)
+  for (const h of ['unimed', 'hro', 'materno']) { const a = v.filter((x) => x.hospital === h); if (a.length < 10) continue; console.log(`  ${h}: ${d(a.map((x) => x.gap))} | mesmo cirurgião: ${d(a.filter((x) => x.mesmoCir).map((x) => x.gap))} | cirurgião diferente: ${d(a.filter((x) => !x.mesmoCir).map((x) => x.gap))}`) }
+  console.log(`  mesmo anestesista nas duas: ${d(v.filter((x) => x.mesmoAnest).map((x) => x.gap))} | anestesista diferente: ${d(v.filter((x) => !x.mesmoAnest).map((x) => x.gap))}`)
+  console.log(`  manhã: ${d(v.filter((x) => x.turno === 'matutino').map((x) => x.gap))} | tarde: ${d(v.filter((x) => x.turno === 'vespertino').map((x) => x.gap))}`)
+  const ps = {}; for (const x of v) (ps[x.hospital + ' ' + x.sala] ||= []).push(x.gap); console.log('  por sala (n>=20): ' + Object.entries(ps).filter(([, a]) => a.length >= 20).sort((a, b) => med(a[1]) - med(b[1])).map(([k, a]) => `${k} ${med(a)} (n${a.length})`).join(' · '))
+  const pcir = {}; for (const x of v.filter((y) => y.mesmoCir)) (pcir[x.cir + ' (' + x.hospital + ')'] ||= []).push(x.gap); const l = Object.entries(pcir).filter(([, a]) => a.length >= 10).sort((a, b) => med(a[1]) - med(b[1])); console.log(`  por cirurgião (entre cirurgias dele, n>=10): ${l.length} cirurgiões | mais rápidos: ${l.slice(0, 5).map(([k, a]) => `${k} ${med(a)} min (n${a.length})`).join(' · ')} | mais lentos: ${l.slice(-5).map(([k, a]) => `${k} ${med(a)} min (n${a.length})`).join(' · ')}`)
+  const par = girosTodos.filter((x) => !x.unica); console.log(` locais com salas paralelas sob o mesmo nome (IOSC, Exames, Hemodinâmica…): ${par.length} sequências, ${pc(par.filter((x) => x.gap < 0).length / par.length)} sobrepostas — giro não mensurável ali`) }
+
+console.log('\n===== B3. ATRASO DO 1º CASO DA SALA EM RELAÇÃO À HORA DO MAPA =====')
+{ const d = (a) => `mediana ${med(a)} | p25 ${q(a, .25)} | p75 ${q(a, .75)} | no horário ou antes: ${pc(a.filter((x) => x <= 0).length / a.length)} | >30 min: ${pc(a.filter((x) => x > 30).length / a.length)} | n=${a.length}`
+  for (const [h, t] of [['unimed', 'matutino'], ['unimed', 'vespertino'], ['hro', 'matutino'], ['hro', 'vespertino']]) console.log(`  ${h} ${t}: ${d(atrasosTodos.filter((x) => x.hospital === h && x.turno === t && x.unica).map((x) => x.atraso))}`)
+  const pcir = {}; for (const x of atrasosTodos.filter((y) => y.unica && y.cir)) (pcir[x.cir + ' (' + x.hospital + ')'] ||= []).push(x.atraso); const l = Object.entries(pcir).filter(([, a]) => a.length >= 8).sort((a, b) => med(a[1]) - med(b[1])); console.log(`  por cirurgião (n>=8): ${l.length} | mais pontuais: ${l.slice(0, 4).map(([k, a]) => `${k} ${med(a)} (n${a.length})`).join(' · ')} | mais atrasados: ${l.slice(-4).map(([k, a]) => `${k} +${med(a)} (n${a.length})`).join(' · ')}`) }
+
+console.log(`\n===== B4. FIM DO BLOCO — previsto × real (${INI} a ${FIM}, blocos com fim real, parâmetros só de semanas anteriores) =====`)
+{ const ts = turnos.filter((t) => t.hospital !== 'materno' && t.data >= INI && t.data <= FIM); const V = { 'v2 (duração + 20 min fixos entre cirurgias)': { usarAtraso: false, usarGiro: false }, '+ giro de sala medido': { usarAtraso: false, usarGiro: true }, '+ atraso do 1º caso': { usarAtraso: true, usarGiro: false }, 'v3 (duração + giro + atraso)': {}, 'v3 com o tempo do mapa no lugar da duração': { modo: 'mapa' } }
+  const linhas = {}; for (const k of Object.keys(V)) linhas[k] = { e: [], v: [], rho: [], e1: [], e2: [] }; const soMapa = { e: [], v: [], rho: [] }, nc = { e: [], rho: [] }
+  for (const t of ts) { const P = parametros(segunda(t.data)); const bs = t.blocos.filter((b) => !b.pos && b.realFim != null && b.donos.length <= 1); if (!bs.length) continue
+    for (const [k, o] of Object.entries(V)) { const pr = bs.map((b) => fimBloco(b, P, o).fim); bs.forEach((b, i) => { linhas[k].e.push(Math.abs(pr[i] - b.realFim)); linhas[k].v.push(pr[i] - b.realFim); (b.n === 1 ? linhas[k].e1 : linhas[k].e2).push(Math.abs(pr[i] - b.realFim)) }); if (bs.length >= 5) { const r = spearman(pr, bs.map((b) => b.realFim)); if (r != null) linhas[k].rho.push(r) } }
+    const bm = bs.filter((b) => b.somaMapa != null); bm.forEach((b) => { const p = b.ini + b.somaMapa; soMapa.e.push(Math.abs(p - b.realFim)); soMapa.v.push(p - b.realFim) }); if (bm.length >= 5) { const r = spearman(bm.map((b) => b.ini + b.somaMapa), bm.map((b) => b.realFim)); if (r != null) soMapa.rho.push(r) }
+    if (bs.length >= 5) { const r = spearman(bs.map((b) => b.n), bs.map((b) => b.realFim)); if (r != null) nc.rho.push(r) } }
+  console.log(' versão | erro mediano do fim (min) | viés mediano (− = prevê cedo demais) | ≤30 min | 1 cirurgia · 2+ cirurgias | ρ previsto×real dentro do turno (mediana, nº turnos)')
+  for (const [k, l] of Object.entries(linhas)) console.log(`  ${k.padEnd(44)} | ${r1(med(l.e))} | ${r1(med(l.v))} | ${pc(l.e.filter((x) => x <= 30).length / l.e.length)} | ${r1(med(l.e1))} · ${r1(med(l.e2))} | ${r1(med(l.rho) * 100) / 100} (${l.rho.length}) | n=${l.e.length}`)
+  console.log(`  ${'hora + soma do tempo do mapa (só Unimed, onde existe)'.padEnd(44)} | ${r1(med(soMapa.e))} | ${r1(med(soMapa.v))} | ${pc(soMapa.e.filter((x) => x <= 30).length / soMapa.e.length)} | — | ${r1(med(soMapa.rho) * 100) / 100} (${soMapa.rho.length}) | n=${soMapa.e.length}`)
+  console.log(`  ${'só o nº de cirurgias do bloco'.padEnd(44)} | — | — | — | — | ${r1(med(nc.rho) * 100) / 100} (${nc.rho.length})`)
+  // por hospital, v3
+  for (const h of ['unimed', 'hro']) { const e = [], rho = []; for (const t of ts.filter((x) => x.hospital === h)) { const P = parametros(segunda(t.data)); const bs = t.blocos.filter((b) => !b.pos && b.realFim != null && b.donos.length <= 1); bs.forEach((b) => e.push(Math.abs(fimBloco(b, P).fim - b.realFim))); if (bs.length >= 5) rho.push(spearman(bs.map((b) => fimBloco(b, P).fim), bs.map((b) => b.realFim))) } console.log(`  v3 — ${h}: erro ${r1(med(e))} | ρ ${r1(med(rho.filter((x) => x != null)) * 100) / 100} | n=${e.length}`) }
+  // estimativa da equipe: 1º tempo total informado × fim real da pessoa
+  const et = cap.filter((r) => r.tipo === 'estimativa_total' && r.valor_para && r.data >= INI && r.data <= FIM); const prim = new Map(); for (const r of et.sort((a, b) => a.seq - b.seq)) { const k = r.escala_id + '|' + r.anestesista; if (!prim.has(k)) prim.set(k, r) }
+  const fimPessoa = new Map(); for (const c of casos) { if (!c.uid || !c.turno || c.ex === 'suspensa') continue; const k = c.data + '|' + c.hospital + '|' + c.turno + ':' + c.uid; const f = fimPessoa.get(k) ?? { ok: true, fim: -1 }; if (c.st !== 'terminada' || min(c.ter) == null) f.ok = false; else f.fim = Math.max(f.fim, min(c.ter)); fimPessoa.set(k, f) }
+  const ee = [], ant = []; for (const r of prim.values()) { const f = fimPessoa.get(r.data + '|' + r.hospital + '|' + r.anestesista); if (!f?.ok || f.fim < 0) continue; const v = min(r.valor_para); if (v == null) continue; ee.push(Math.abs(v - f.fim)); const d = new Date(Date.parse(r.em) - 3 * 3600e3); ant.push(f.fim - (d.getUTCHours() * 60 + d.getUTCMinutes())) }
+  console.log(`  estimativa da EQUIPE (1º "tempo total" informado × fim real da pessoa): erro ${r1(med(ee))} min | n=${ee.length} | informada em mediana ${r1(med(ant))} min antes do fim`) }
+
+console.log('\n===== CONSULTÓRIO — quem já foi e quem nunca foi (22/07–08/11) =====')
+{ const N = await import(`${R}/src/lib/escalaNumerica.js`); const dados = JSON.parse(fs.readFileSync(`${R}/src/data/escalaNumerica.json`, 'utf8'))
+  const st = new Map(); const g = (u) => { if (!st.has(u)) st.set(u, { turnos: 0, cons: new Set(), nota: 0, bloco: 0, verde: 0, verdeFoi: 0 }); return st.get(u) }
+  for (const t of turnos) { for (const p of t.P) { if (!p.uid || !p.noRodape) continue; const s = g(p.uid); s.turnos++; if (p.nota && /^CONS/.test(p.nota)) { s.nota++; s.cons.add(t.data + t.turno) } } for (const b of t.blocos) if (b.local === 'consultorio') { for (const u of b.donos) { g(u).bloco++; g(u).cons.add(t.data + t.turno) } if (b.donoFinal) g(b.donoFinal).cons.add(t.data + t.turno) } }
+  for (const c of casos) if (c.bloco === 'consultorio' && c.uid) g(c.uid).cons.add(c.data + c.turno)
+  for (const [data, dia] of Object.entries(dados.dias)) { if (data < '2026-08-03' || data > '2026-11-08' || dia.feriado) continue; for (const e of dia.coluna.filter((x) => x.hospital === 'consultorio')) for (const nm of N.nomesDaLegenda(dados, e.n)) { const cad = N.CADASTRO_LEGENDA?.[nm]?.[0]; const u = uidDe(nm) || (cad ? [...st.keys()].find((k) => sa(nomeP(k)).split(' ')[0] === sa(cad).split(' ')[0] && sa(cad).includes(sa(nomeP(k)).split(' ').pop())) : null); if (!u) continue; const s = g(u); s.verde++; if ([...s.cons].some((k) => k.startsWith(data))) s.verdeFoi++ } }
+  const l = [...st].filter(([, s]) => s.turnos >= 20).map(([u, s]) => ({ nome: nomeP(u), ...s, n: s.cons.size })).sort((a, b) => b.n - a.n)
+  console.log(' JÁ ESTEVE no consultório (turnos em consultório | turnos no rodapé | dias em verde na numérica → compareceu):')
+  for (const x of l.filter((y) => y.n > 0)) console.log(`   ${x.nome.padEnd(22)} ${String(x.n).padStart(3)} | ${String(x.turnos).padStart(3)} | ${x.verde} → ${x.verdeFoi}`)
+  console.log(' NUNCA esteve (turnos no rodapé | dias em verde na numérica):')
+  console.log('   ' + l.filter((y) => y.n === 0).map((x) => `${x.nome} (${x.turnos} | verde ${x.verde})`).join(' · '))
+  // SRPA: quem fica
+  const f = {}; let n = 0; for (const t of turnos) for (const b of t.blocos) if (b.local === 'srpa' && b.donos.length === 1) { const p = t.porUid.get(b.donos[0]); const k = t.hospital + ': ' + (p.papel || (p.idx === 1 ? '2º do rodapé' : p.pct >= 0.75 ? 'sai tarde' : p.pct >= 0.5 ? '3º quarto' : 'metade que sai cedo')); f[k] = (f[k] || 0) + 1; n++ } console.log(`\n SRPA — quem recebe (n=${n}): ${Object.entries(f).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${pc(v / n)}`).join(' · ')}`) }
