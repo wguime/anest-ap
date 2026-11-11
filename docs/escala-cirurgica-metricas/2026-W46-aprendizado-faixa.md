@@ -182,3 +182,37 @@ texto livre (o motivo "outro" não abre texto).
 5. **Motivo do repasse.** Ao passar uma cirurgia para outro colega, marcar o motivo em um toque
    (liberar na ordem · sala atrasou · urgência · combinado · correção)?
    → Sim, sempre · Só quando for fora da ordem · Não.
+
+## 8. Fecho — respostas do dono (10/11/2026) e placar com elas
+
+| Pergunta | Resposta | Onde ficou |
+|---|---|---|
+| 1. Plantonista rende quem está preso | "Sim, é o esperado": estando livre, ele entra no lugar do colega que pela ordem já deveria ter saído | regra `plantonista-rende` |
+| 2. Bloco curto para o plantonista | Não foi perguntado: dá o mesmo resultado com um repasse a mais. Fica a regra dele | registrado como não adotado |
+| 3. Sala de horário incerto | "Sim, considerar a folga" | objetivo `considerar-a-folga`: a ordenação usa o P80 |
+| 4. Hora de saída na liberação | "Sim" | entrada aprovada `hora-de-saida`; tipo `saida` no rascunho de captura |
+| 5. Motivo do repasse | Em aberto: sai do reexame do sistema de trocas | `emAberto` no arquivo de regras; marcado no rascunho |
+
+Vocabulário (dono): no que o usuário lê não se usa "bloco" nem "tempo do bloco" — diz-se "sala" ou
+"cirurgias de <cirurgião>". Neste relatório técnico "bloco" continua.
+
+**Placar com as duas respostas** (mesmo teste: 19/10–09/11, 58 turnos, 913 blocos). v5 = v4 ordenando e
+mirando pelo fim com folga (P80). "Com rendição" = o plantonista, ao terminar, assume a cirurgia do
+primeiro da ordem de saída que ainda vai mais de 15 min além; esse colega sai nessa hora.
+
+| Versão | Mesma pessoa | Com/sem bloco certo | Pares invertidos > 30 min | Sem contar o pós-plantão | Atraso ponderado pela ordem | Violações |
+|---|---|---|---|---|---|---|
+| v4 (faixa + custo esperado) | 13% | 94% | 25,9% | 23,9% | 45,7 min | 0 |
+| v5 (v4 + folga pelo P80) | 14% | 94% | 25,7% | 23,7% | 45,4 min | 0 |
+| v4 + rendição do plantonista | 13% | 94% | 23,3% | 21,2% | 40,6 min | 0 |
+| **v5 + rendição do plantonista** | 14% | 94% | **23,0%** | 20,9% | **40,3 min** | 0 |
+| Publicado pelo coordenador | — | — | 23,6% | 20,7% | 41,8 min | 0 |
+| Publicado + a mesma rendição | — | — | 20,2% | 17,1% | 34,7 min | — |
+| Final, depois das trocas reais | — | — | 21,9% | 18,7% | 37,7 min | — |
+
+- **A folga quase não muda o placar** (25,9% → 25,7%; 0,3 min): muda poucas escolhas por turno.
+- **A rendição vale 2,7 pontos e 5 minutos** (25,7% → 23,0%; 45,4 → 40,3 min).
+- Com as duas, a sugestão **iguala o plano publicado sem rendição** (23,0% × 23,6%; 40,3 × 41,8 min).
+- Comparação justa é com a mesma rendição dos dois lados: o plano do coordenador vai a 20,2% e 34,7 min.
+  **A distância continua em ~3 pontos e ~6 minutos.**
+- A rendição simulada sabe quem ainda vai longe e troca na hora; na prática rende menos do que isso.

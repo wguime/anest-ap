@@ -28,6 +28,8 @@ for (const c of casos) if (c.bloco === 'consultorio' && c.uid && c.data < INI) j
 const TODAS = { semBloco: true, plant: true, plantOrto: true, pos: true, cons: true, restr: true, dois: true, tempoV3: true, srpa: true }
 // v4 = v3 + FAIXA: fim do bloco por simulação (P50/P80) e emparelhamento por custo ESPERADO sobre os sorteios
 export const V4 = { ...TODAS, faixa: true }
+// v5 = v4 + respostas do dono de 10/11: considerar a FOLGA (ordena e mira pelo P80) e contar com a RENDIÇÃO do plantonista
+export const V5 = { ...V4, folga: true }
 function simular(t, F = TODAS) { const P = parametros(segunda(t.data)); const fimV3 = fimBlocosTurno(t, P, { modo: 'mapa' }); const S = F.faixa ? simularTurno(t) : null
   const fim = (b) => F.oraculo && b.realFim != null ? b.realFim : F.faixa ? S.get(b).p50 : F.tempoV3 ? fimV3.get(b).fim : (b.prevFimAnt ?? b.prevFim); const mins = (b) => b.pos ? 9999 : F.faixa ? S.get(b).minP50 : (fimV3.get(b).min ?? b.prevMin ?? 0)
   const blocos = t.blocos.filter((b) => b.donos.length === 1); let livresB = new Set(blocos); let livresP = t.P.filter((p) => p.uid); const dono = new Map(); const porRegra = new Map()
@@ -43,7 +45,7 @@ function simular(t, F = TODAS) { const P = parametros(segunda(t.data)); const fi
   // SRPA da Unimed (dono 10/11): manhã = pós-plantão (2º do rodapé), depois do bloco curto, até 13h; tarde = 4º do rodapé
   if (F.srpa && t.hospital === 'unimed') { const b = [...livresB].find((x) => x.local === 'srpa'); if (b) { if (t.turno === 'matutino') { const p = t.P.find((x) => x.noRodape && x.idx === 1 && !x.ajuda); if (p) dar(b, p, 'SRPA (pós-plantão)') } else { const p = livresP.find((x) => x.noRodape && x.idx === 3); if (p) { dar(b, p, 'SRPA (4º do rodapé)'); tira(p) } } } }
   // o resto: pacotes × pessoas
-  let pac = [...livresB].map((b) => [b]); const fimPac = (g) => Math.max(...g.map(fim)), iniPac = (g) => Math.min(...g.map((b) => b.ini))
+  let pac = [...livresB].map((b) => [b]); const fimOrd = (b) => F.folga && S && !(F.oraculo && b.realFim != null) ? S.get(b).p80 : fim(b); const fimPac = (g) => Math.max(...g.map(fimOrd)), iniPac = (g) => Math.min(...g.map((b) => b.ini))
   let rec = [...livresP].sort((a, b) => a.saida - b.saida)
   if (pac.length < rec.length) { // sobra gente: sai o último do rodapé, depois quem sai mais cedo (ajuda de fora nunca fica sem)
     const ordemCorte = F.semBloco ? [...rec.filter((p) => p.ultimo), ...rec.filter((p) => p.noRodape && !p.ultimo)] : embaralha(rec.filter((p) => p.noRodape))
@@ -66,8 +68,15 @@ function simular(t, F = TODAS) { const P = parametros(segunda(t.data)); const fi
   return { dono, porRegra, fim, S } }
 // atraso ponderado pela ordem: para as pessoas com fim real, quanto cada uma termina DEPOIS do horário que teria se os mesmos
 // fins estivessem na ordem de saída (o i-ésimo a sair com o i-ésimo fim); peso maior para quem sai primeiro.
-const atrasoPond = (t, donoDe) => { const fimP = new Map(); const ruim = new Set(); for (const b of t.blocos) { if (b.pos || b.donos.length !== 1) continue; const u = donoDe(b); if (!u) continue; if (b.realFim == null) { ruim.add(u); continue } fimP.set(u, Math.max(fimP.get(u) ?? -1, b.realFim)) } const ps = t.P.filter((p) => p.noRodape && p.uid && fimP.has(p.uid) && !ruim.has(p.uid)).sort((a, b) => a.saida - b.saida); const n = ps.length; if (n < 4) return [0, 0]; const ideal = ps.map((p) => fimP.get(p.uid)).sort((a, b) => a - b); let s = 0, w = 0; ps.forEach((p, i) => { const peso = (n - i) / n; s += peso * Math.max(0, fimP.get(p.uid) - ideal[i]); w += peso }); return [s, w] }
-const inv = (t, donoDe, semPos = false) => { const fimP = new Map(); const ruim = new Set(); for (const b of t.blocos) { if (b.pos || b.donos.length !== 1) continue; const u = donoDe(b); if (!u) continue; if (b.realFim == null) { ruim.add(u); continue } fimP.set(u, Math.max(fimP.get(u) ?? -1, b.realFim)) } const ehPos = (p) => t.hospital === 'unimed' && t.turno === 'matutino' && p.idx === 1 && !p.ajuda; const ps = t.P.filter((p) => p.noRodape && p.uid && fimP.has(p.uid) && !ruim.has(p.uid) && !(semPos && ehPos(p))); let n = 0, tot = 0; for (const a of ps) for (const b of ps) if (a.saida < b.saida) { tot++; if (fimP.get(a.uid) > fimP.get(b.uid) + 30) n++ } return [n, tot] }
+// fim real de cada pessoa pelos blocos que recebeu. Com RENDIÇÃO (dono 10/11: "sim, é o esperado"): o plantonista, ao ficar
+// livre, entra no lugar do colega que pela ordem já deveria ter saído e ainda está em cirurgia — o primeiro da ordem de saída
+// que ainda vai mais de 15 min além. Esse colega sai na hora em que o plantonista ficou livre; o plantonista fica até o fim dela.
+let RENDER = false
+const fimPessoas = (t, donoDe) => { const fimP = new Map(); const ruim = new Set(); const blocosDe = new Map(); for (const b of t.blocos) { if (b.pos || b.donos.length !== 1) continue; const u = donoDe(b); if (!u) continue; if (b.realFim == null) { ruim.add(u); continue } fimP.set(u, Math.max(fimP.get(u) ?? -1, b.realFim)); if (!blocosDe.has(u)) blocosDe.set(u, []); blocosDe.get(u).push(b.realFim) }
+  if (RENDER) { const pl = t.P.find((p) => p.plant); if (pl && fimP.has(pl.uid) && !ruim.has(pl.uid)) { const livre = fimP.get(pl.uid); const preso = t.P.filter((p) => p.noRodape && p.uid !== pl.uid && fimP.has(p.uid) && !ruim.has(p.uid) && fimP.get(p.uid) > livre + 15).sort((a, b) => a.saida - b.saida)[0]; if (preso) { const fs2 = blocosDe.get(preso.uid).sort((a, b) => a - b); const longo = fs2.pop(); fimP.set(preso.uid, Math.max(livre, ...fs2, 0)); fimP.set(pl.uid, longo) } } }
+  return { fimP, ruim } }
+const atrasoPond = (t, donoDe) => { const { fimP, ruim } = fimPessoas(t, donoDe); const ps = t.P.filter((p) => p.noRodape && p.uid && fimP.has(p.uid) && !ruim.has(p.uid)).sort((a, b) => a.saida - b.saida); const n = ps.length; if (n < 4) return [0, 0]; const ideal = ps.map((p) => fimP.get(p.uid)).sort((a, b) => a - b); let s = 0, w = 0; ps.forEach((p, i) => { const peso = (n - i) / n; s += peso * Math.max(0, fimP.get(p.uid) - ideal[i]); w += peso }); return [s, w] }
+const inv = (t, donoDe, semPos = false) => { const { fimP, ruim } = fimPessoas(t, donoDe); const ehPos = (p) => t.hospital === 'unimed' && t.turno === 'matutino' && p.idx === 1 && !p.ajuda; const ps = t.P.filter((p) => p.noRodape && p.uid && fimP.has(p.uid) && !ruim.has(p.uid) && !(semPos && ehPos(p))); let n = 0, tot = 0; for (const a of ps) for (const b of ps) if (a.saida < b.saida) { tot++; if (fimP.get(a.uid) > fimP.get(b.uid) + 30) n++ } return [n, tot] }
 const violaDura = (uid, b) => (proibido(uid, b) ? 1 : 0)
 function avaliar(ts, F) { const R = { exato: [0, 0], exatoFinal: [0, 0], faixa: [0, 0], semOk: [0, 0], viol: 0, inv: [0, 0], inv2: [0, 0], ap: [0, 0], p80: [0, 0], regra: {} }; const porT = []
   for (const t of ts) { const { dono, porRegra, fim, S } = simular(t, F); let ex = 0, nb = 0
@@ -82,6 +91,10 @@ export function placar({ silencioso = false } = {}) { const te = T.filter((t) =>
   const cheio = avaliar(te, TODAS); linha('v3 — todas as regras do dono', cheio.R)
   const v4 = avaliar(te, V4); linha('v4 — faixa + custo esperado', v4.R)
   linha('v4 só ordenando pelo P50 (sem custo esperado)', avaliar(te, { ...V4, custoPonto: true }).R)
+  const v5 = avaliar(te, V5); linha('v5 — v4 + folga (P80 no custo)', v5.R)
+  RENDER = true; const v5r = avaliar(te, V5); linha('v5 + rendição do plantonista', v5r.R); linha('v4 + rendição do plantonista (sem a folga)', avaliar(te, V4).R)
+  { const R = { inv: [0, 0], inv2: [0, 0], ap: [0, 0] }; for (const t of te) { const [a, b] = inv(t, (x) => x.donos[0]); R.inv[0] += a; R.inv[1] += b; const [c, d] = inv(t, (x) => x.donos[0], true); R.inv2[0] += c; R.inv2[1] += d; const [e, f] = atrasoPond(t, (x) => x.donos[0]); R.ap[0] += e; R.ap[1] += f } log(`  ${'PUBLICADO + a mesma rendição do plantonista'.padEnd(46)} inversões >30min ${(100 * R.inv[0] / R.inv[1]).toFixed(1)}% (${R.inv[0]}/${R.inv[1]}) | sem contar o pós-plantão ${(100 * R.inv2[0] / R.inv2[1]).toFixed(1)}% | atraso ponderado pela ordem ${(R.ap[0] / R.ap[1]).toFixed(1)} min`) }
+  RENDER = false
   log('  tirando UMA regra de cada vez (o que cada uma vale):')
   for (const [k, nome] of [['tempoV3', 'sem o modelo de tempo novo (usa o da 2ª rodada)'], ['semBloco', 'sem "último fica sem bloco" (corte ao acaso)'], ['plant', 'sem "plantonista termina por último"'], ['plantOrto', 'sem "plantonista do HRO em ortopedia/urgência"'], ['pos', 'sem "pós-plantão com o bloco mais curto"'], ['srpa', 'sem a regra da SRPA da Unimed'], ['restr', 'sem as restrições do A40'], ['dois', 'sem "dois blocos pelo tempo"']]) { let acc = null; const reps = k === 'semBloco' ? 5 : 1; for (let r = 0; r < reps; r++) { const { R } = avaliar(te, { ...TODAS, [k]: false }); if (!acc) acc = R; else for (const f of ['exato', 'exatoFinal', 'faixa', 'semOk', 'inv', 'inv2']) { acc[f][0] += R[f][0]; acc[f][1] += R[f][1] } } linha('   ' + nome, acc) }
   linha('v3 se o fim real de cada bloco fosse conhecido', avaliar(te, { ...TODAS, oraculo: true }).R)
@@ -114,7 +127,7 @@ export function placar({ silencioso = false } = {}) { const te = T.filter((t) =>
     log('   SRPA — quem recebe: ' + Object.entries(c.srpa).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(' · ')) }
   for (const [h, tu] of [['unimed', 'matutino'], ['unimed', 'vespertino'], ['hro', 'matutino'], ['hro', 'vespertino']]) { const ts = te.filter((t) => t.hospital === h && t.turno === tu); if (ts.length) linha(`  v3 — ${h} ${tu} (${ts.length}t)`, avaliar(ts, TODAS).R) }
   { const melhor = cheio.porT.filter((x) => x.invTot); const pub = melhor.map((x) => inv(x.t, (b) => b.donos[0])[0]); log(`  por turno, v3 × publicado em inversões: melhor ${melhor.filter((x, i) => x.inv < pub[i]).length} · igual ${melhor.filter((x, i) => x.inv === pub[i]).length} · pior ${melhor.filter((x, i) => x.inv > pub[i]).length}`) }
-  return { texto: out.join('\n'), cheio, v4, R: cheio.R, R4: v4.R, turnos: te.length, te } }
+  return { texto: out.join('\n'), cheio, v4, v5, R: cheio.R, R4: v4.R, R5: v5.R, R5r: v5r.R, turnos: te.length, te } }
 // ---- TESTE da regra de Dexter 2019 × regra do dono para o plantonista (não muda regra nenhuma; é pergunta para o dono).
 // A = dono: plantonista com o bloco previsto para terminar por último (HRO: ortopedia/urgência).
 // B = bloco curto: plantonista começa no bloco previsto para terminar mais cedo e, ao terminar, assume o bloco que DE FATO

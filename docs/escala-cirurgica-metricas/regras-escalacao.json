@@ -1,5 +1,5 @@
 {
-  "versao": "2026-11-10.3",
+  "versao": "2026-11-10.4",
   "atualizadoEm": "2026-11-10",
   "comoLer": "Regras da ESCALAÇÃO (quem vai para qual bloco), dadas a entrada mapa + rodapé. tipo: dura = nunca violar; preferencia = pesa na escolha; objetivo = o que a sugestão otimiza. origem: dono = resposta dele em 09/11/2026; aprendida = medida nos dados e ainda não confirmada. O simulador (i_simulador_v3.mjs) lê este arquivo. Pessoas são identificadas por uid do perfil + código (A01…, C001…); a tabela código → nome fica só em .local/escala-aprendizado/codigos.json (fora do git).",
   "objetivo": {
@@ -105,6 +105,31 @@
       "origem": "dono",
       "data": "2026-11-09",
       "texto": "Não existe cirurgião com anestesista fixo. Existem anestesistas que NÃO devem ser escalados com determinados cirurgiões ou locais — a lista vem do dono e entra em 'restricoes'."
+    },
+    {
+      "id": "plantonista-rende",
+      "tipo": "dura",
+      "origem": "dono",
+      "data": "2026-11-10",
+      "texto": "O plantonista, estando livre, entra no lugar do colega que pela ordem já deveria ter saído e está preso numa cirurgia demorada (\"Sim, é o esperado\"). A sugestão pode contar com isso ao avaliar a ordem de saída.",
+      "evidencia": "no teste, a rendição tira ~70 min por turno de gente além do horário na Unimed e ~140 no HRO"
+    },
+    {
+      "id": "considerar-a-folga",
+      "tipo": "objetivo",
+      "origem": "dono",
+      "data": "2026-11-10",
+      "texto": "Sala de horário incerto: se pode ir longe, vai para quem sai mais tarde (\"Sim, considerar a folga\"). A ordenação usa o fim com folga (P80), não só o fim provável (P50).",
+      "parametros": {
+        "ordenarPor": "p80"
+      }
+    },
+    {
+      "id": "plantonista-bloco-curto",
+      "tipo": "objetivo",
+      "origem": "aprendida",
+      "data": "2026-11-10",
+      "texto": "A regra da literatura (plantonista começa na sala mais curta) NÃO foi adotada: dá o mesmo resultado da regra do dono com um repasse a mais por turno. Fica a regra do dono."
     }
   ],
   "restricoes": [
@@ -193,6 +218,14 @@
       "texto": "O HRO não manda tempo estimado no mapa. Na conferência, o anestesista que confere informa o tempo de cada bloco do HRO; esse tempo entra na previsão de fim do bloco no lugar da duração calculada.",
       "campo": "tempo estimado por bloco, em minutos, na conferência (bloco = sala × sequência do turno)",
       "estado": "a construir"
+    },
+    {
+      "id": "hora-de-saida",
+      "origem": "dono",
+      "data": "2026-11-10",
+      "estado": "aprovado, a construir",
+      "texto": "Ao liberar um colega, registrar a hora real de saída: vem preenchida com a hora do toque e pode ser corrigida.",
+      "campo": "hora de saída (HH:MM) na liberação; captura tipo \"saida\" no rascunho de migration"
     }
   ],
   "precedencias": [
@@ -204,5 +237,17 @@
       "texto": "\"Livre é quem sai primeiro\" vence a preferência: se o A40 está entre os primeiros a sair e sobra gente, fica sem bloco mesmo havendo Exames no mapa. Preferência só decide entre quem vai receber bloco.",
       "caso": "27/10/2026, Unimed, tarde"
     }
-  ]
+  ],
+  "emAberto": [
+    {
+      "data": "2026-11-10",
+      "oQue": "Motivo do repasse em um toque",
+      "estado": "depende do reexame do sistema de trocas, em andamento por outra frente"
+    }
+  ],
+  "vocabulario": {
+    "data": "2026-11-10",
+    "origem": "dono",
+    "texto": "No que o usuário lê (tela, pergunta ao dono) não usar \"bloco\" nem \"tempo do bloco\": dizer \"sala\" ou \"cirurgias de <cirurgião>\" e \"tempo previsto da sala\". Em relatório técnico e no código \"bloco\" continua."
+  }
 }

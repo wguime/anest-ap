@@ -151,7 +151,7 @@ alter table public.escala_cirurgica_captura drop constraint if exists escala_cir
 alter table public.escala_cirurgica_captura add constraint escala_cirurgica_captura_tipo_check
   check (tipo in ('estimativa', 'estimativa_total', 'alocacao', 'realocacao', 'ordem',
                   'conferencia',   -- retrato da conferência, por publicação de turno
-                  'saida',         -- hora real de saída informada na liberação
+                  'saida',         -- hora real de saída informada na liberação — APROVADO pelo dono em 10/11/2026
                   'movimento',     -- caso que mudou de sala ou de hora depois da publicação
                   'tempo_bloco')); -- tempo estimado pelo conferente para um bloco (HRO não manda no mapa)
 -- 'conferencia'.detalhe = { "esperado": [uid…], "indisponiveis": [uid…], "divergencias": {faltam, sobram, foraDeOrdem} }
@@ -160,6 +160,7 @@ alter table public.escala_cirurgica_captura add constraint escala_cirurgica_capt
 -- 'saida'.valor_para = "HH:MM" informado; detalhe = { "toque": "HH:MM", "corrigido": bool }.
 -- 'movimento'.valor_de/valor_para = sala (ou hora) antes → depois; detalhe = { "campo": "sala" | "hora" }.
 -- 'tempo_bloco'.valor_para = minutos (texto numérico); sala = sala do bloco; detalhe = { "cirurgias": n }.
+-- (EM ABERTO, dono 10/11: o motivo do repasse sai do reexame do sistema de trocas — não implementar daqui)
 -- 'realocacao' ganha detalhe.motivo, lista fechada, opcional:
 --    'liberar_na_ordem' | 'sala_atrasou' | 'urgencia' | 'combinado' | 'correcao_de_registro'.
 -- Captura de cirurgião: quando o dicionário existir, a captura grava cirurgiao_id e deixa `cirurgiao` nulo.
