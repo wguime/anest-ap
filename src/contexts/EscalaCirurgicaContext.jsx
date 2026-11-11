@@ -63,6 +63,9 @@ export const CONTA_HOSPITAL_VIGIA_MS = 30 * 1000
  */
 export const OBSERVACAO_MAX = 120
 
+/** Janela do "Desfazer" depois de troca/repasse que muda a fila (dono 10–11/11/2026). */
+export const JANELA_DESFAZER_TROCA_MS = 10000
+
 const normNome = (s) =>
   String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/^\s*ped[.\s]\s*/i, '').trim().toUpperCase()
 // Decisão do dono 30/07: a escala NÃO manda notificação nenhuma (escalado/
@@ -233,6 +236,9 @@ export function EscalaCirurgicaProvider({ children }) {
   const parcialTimerRef = useRef(null)
   const pendenteRealtimeRef = useRef({ tudo: false, p4: false, hospitais: new Set() })
   /** Toda action OTIMISTA chama marcar após o dispatch e encerrar no finally. */
+  // as duas ações que o "Desfazer" de 10 s chama de dentro de um aviso já emitido
+  const setAnestesistaCasosRef = useRef(null)
+  const desfazerSubstituicaoRef = useRef(null)
   const marcarEscrita = () => { mutSeqRef.current++; escritasRef.current++ }
   const encerrarEscrita = () => { escritasRef.current = Math.max(0, escritasRef.current - 1) }
   // espera as OUTRAS escritas em voo (a própria liberação já se marcou) — teto de 5s
@@ -1323,7 +1329,7 @@ export function EscalaCirurgicaProvider({ children }) {
   // `semEfeitosNaFila` (dono 28/10): passar a cirurgia de um turno JÁ ENCERRADO a quem a fez só
   // troca o nome nela — a fila daquele turno acabou, e os três efeitos abaixo (ajuda preservada,
   // marcador de escalado e a anotação da linha) existem para a fila que ainda corre.
-  const setAnestesistaCasos = useCallback(async (escala, casoIds, { uid, apelido, dupla = false }, { rotulo = '', resolverUid, userId = null, extraPorId = null, semEfeitosNaFila = false } = {}) => {
+  const setAnestesistaCasos = useCallback(async (escala, casoIds, { uid, apelido, dupla = false }, { rotulo = '', resolverUid, userId = null, extraPorId = null, semEfeitosNaFila = false, desfazivel = false, aviso = null, silencioso = false } = {}) => {
     if (String(escala.id).startsWith('demo-')) {
       toast({ variant: 'warning', title: 'Indisponível na demonstração' })
       return
@@ -1402,10 +1408,39 @@ export function EscalaCirurgicaProvider({ children }) {
           await limparAnotacaoDaLinha(escala, { chaves: [uid, apelido], turnos, userId })
         }
       }
-      toast({
+      // "DESFAZER" POR 10 s (dono 10–11/11, modelo B): só no repasse que MUDA A FILA — quem
+      // recebe não é do rodapé daqui (`desfazivel`, decidido por quem chama). 10 de 95
+      // posições assumidas de 26/09 a 10/11 foram desfeitas em até 2 minutos, refazendo o
+      // caminho ao contrário. Desfazer = as cirurgias voltam a quem estava com cada uma.
+      const antesPorDono = new Map()
+      if (desfazivel) {
+        for (const c of escala.casos || []) {
+          if (!idSet.has(c.id)) continue
+          const k = `${c.anestesistaUserId || ''}|${c.anestesista || ''}`
+          if (!antesPorDono.has(k)) antesPorDono.set(k, { uid: c.anestesistaUserId || null, apelido: c.anestesista || '?', ids: [] })
+          antesPorDono.get(k).ids.push(c.id)
+        }
+      }
+      // `silencioso`: a 1ª metade de uma troca de SALA (duas escritas, um aviso só)
+      if (!silencioso) toast({
         variant: 'success',
-        title: dupla ? 'Dois anestesistas na cirurgia' : uid ? 'Responsável atualizado' : 'Caso sem anestesista',
-        description: `${rotulo || `${ids.length} caso(s)`} → ${dupla || uid ? apelido : 'sem anestesista (?)'}`,
+        title: aviso?.title || (dupla ? 'Dois anestesistas na cirurgia' : uid ? 'Responsável atualizado' : 'Caso sem anestesista'),
+        description: aviso?.description || `${rotulo || `${ids.length} caso(s)`} → ${dupla || uid ? apelido : 'sem anestesista (?)'}`,
+        ...(desfazivel && antesPorDono.size ? {
+          duration: JANELA_DESFAZER_TROCA_MS,
+          action: {
+            label: 'Desfazer',
+            onClick: () => {
+              const atual = escalasRef.current?.[escala.hospital]
+              if (!atual || atual.id !== escala.id) return
+              for (const dono of antesPorDono.values()) {
+                const eraDupla = !dono.uid && String(dono.apelido).includes('+')
+                setAnestesistaCasosRef.current?.(atual, dono.ids, { uid: dono.uid, apelido: dono.apelido, dupla: eraDupla }, { rotulo, resolverUid, userId })
+                  ?.catch?.(() => {})
+              }
+            },
+          },
+        } : {}),
       })
     } catch (error) {
       // reverte o otimista ao snapshot — o servidor não confirmou o responsável
@@ -1414,6 +1449,7 @@ export function EscalaCirurgicaProvider({ children }) {
       throw error
     }
   }, [toast, limparAnotacaoDaLinha, limparTotalSemCirurgia])
+  setAnestesistaCasosRef.current = setAnestesistaCasos
 
   // ── TROCA DECLARADA (dono 30/07) — par declarado + execução de um toque ────
   // NÃO é a troca antiga (removida 2×): é um PAR de pessoas do dia, badge nos
@@ -1484,7 +1520,7 @@ export function EscalaCirurgicaProvider({ children }) {
    * numa transação; se falhar, nada foi gravado, e a tela recarrega do banco e avisa
    * — nunca finge sucesso (lição F1.6). No DEMO (DEV), tudo em memória.
    */
-  const executarSubstituicao = useCallback(async ({ lados = [], limparTroca = [] }, userInfo = {}, { escalasOverride = null } = {}) => {
+  const executarSubstituicao = useCallback(async ({ lados = [], limparTroca = [] }, userInfo = {}, { escalasOverride = null, desfazivel = false, aviso = null } = {}) => {
     if (!lados.length) return null
     // escalasOverride (Fase 2, importação): a publicação acabou de acontecer e o
     // estado do context ainda não a viu — o plano opera sobre o snapshot que o
@@ -1665,7 +1701,30 @@ export function EscalaCirurgicaProvider({ children }) {
       const nomes = [...new Set(lados.map((l) =>
         `${nomeCirurgiaoCurto(l.para.nome)} → posição de ${titleCaseNome(l.nomeSlot || l.de.nome)}`))]
       const continuam = mantidasOk.map((m) => `liberação de ${titleCaseNome(m.nome)} mantida`)
-      toast({ variant: 'success', title: 'Troca executada', description: [...nomes, ...continuam].join(' · ') })
+      // "DESFAZER" POR 10 s (dono 10–11/11): o desfazer é a RPC transacional, com os lados
+      // ao contrário (quem ocupa devolve ao dono). Lado pulado (já estava assumido) não entra.
+      const feitos = lados.filter((l) => l.para?.uid || l.para?.nome)
+      toast({
+        variant: 'success',
+        title: aviso?.title || 'Troca executada',
+        description: aviso?.description || [...nomes, ...continuam].join(' · '),
+        ...(desfazivel && !soDemo && feitos.length && !(resultado.pulados || 0) ? {
+          duration: JANELA_DESFAZER_TROCA_MS,
+          action: {
+            label: 'Desfazer',
+            onClick: () => {
+              desfazerSubstituicaoRef.current?.({
+                lados: feitos.map((l) => ({
+                  hospital: l.hospital, escalaId: l.escalaId, turno: l.turno, chaveSlot: l.chaveSlot,
+                  de: { uid: l.para.uid || null, nome: l.para.nome },
+                  para: { uid: l.de?.uid || null, nome: l.de?.nome || '', apelido: l.de?.apelido || '' },
+                  casoIds: l.casoIds || [],
+                })),
+              }, userInfo)?.catch?.(() => {})
+            },
+          },
+        } : {}),
+      })
       return resultado
     } catch (error) {
       // Sem estado pela metade: a transação do servidor caiu inteira. O "confira a
@@ -1815,6 +1874,7 @@ export function EscalaCirurgicaProvider({ children }) {
       throw error
     }
   }, [toast, loadData, limparTotalSemCirurgia])
+  desfazerSubstituicaoRef.current = desfazerSubstituicao
 
   // Edita SALA/LOCAL (ou outro campo) de UM caso — aba Completa → detalhe do caso
   // (pedido do dono 24/07: além do anestesista, poder corrigir onde o procedimento

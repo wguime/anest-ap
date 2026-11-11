@@ -25,15 +25,15 @@
  * O tipo é INFERIDO pela geografia dos slots. ordem_liberacao NUNCA é escrita — a
  * identidade do slot muda via linha_overrides (invariante de 30/07).
  */
-import { useMemo, useState } from 'react'
-import { AlertTriangle, ArrowLeftRight, ClipboardCheck, Info, Loader2, LogOut, Search } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+import { AlertTriangle, ArrowLeftRight, DoorOpen, Info, ListOrdered, Loader2, LogOut, Search } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, Select, Button, Input } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { useEscalaCirurgica, useEscalaCirurgicaActions, HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
 import { hhmmDe } from '@/lib/escalaHorarioReal'
-import { planoExecucaoTroca, ondeEstaNoTurno, rodapeDoTurno, estadoDaPosicao, normNome } from './utils'
+import { casosTransferiveis, planoExecucaoTroca, ondeEstaNoTurno, rodapeDoTurno, estadoDaPosicao, normNome } from './utils'
 
 export const MOTIVO_MAX = 80
 
@@ -71,7 +71,7 @@ const semNota = (n) => String(n || '').replace(/\s*\([^)]*\)\s*$/, '').trim()
  * Sem artigo antes do nome: o app não sabe o gênero de ninguém.
  * @returns {{ situacao: string, quemSai: object, resultado: string }|null}
  */
-function avisoDaPosicao(l) {
+function avisoDaPosicao(l, ctx = null) {
   if (l.semPosicao || (!l.ocupadoPor && !l.liberadoEm)) return null
   const quemSai = l.ocupadoPor || l.de
   const sai = curto(quemSai.nome)
@@ -82,12 +82,30 @@ function avisoDaPosicao(l) {
   ].filter(Boolean).join(' · ')
   const posicao = l.posicao ? `${l.posicao}ª posição` : 'posição'
   if (l.liberadoEm) {
+    // TROCA COM QUEM JÁ FOI LIBERADO (dono 10–11/11: "permitir, dizendo quem é
+    // ultrapassado"). 09/11, tarde: Rômulo (5º do HRO) trocou com Alexandre Danieli, já
+    // liberado na Unimed, e saiu antes da Daniela (6ª do HRO). Quem recebe a vaga liberada
+    // sai AGORA — a frase nomeia quem, na fila de onde ele vem, sairia antes dele.
+    const antes = ctx?.ultrapassados?.length ? `, antes de ${listaE(ctx.ultrapassados)}` : ''
+    const destino = ctx?.vagaDeQuemChega ? ` ${sai} vai para o ${ctx.vagaDeQuemChega.posicao}º ${doHosp(ctx.vagaDeQuemChega.hospital)}.` : ''
     return {
-      situacao, quemSai,
-      resultado: `${sai} já saiu desta posição (${situacao}). ${chega} recebe a ${posicao} já liberada e ${sai} continua com a liberação. Se ${chega} for trabalhar, acione pelo card.`,
+      situacao, quemSai, liberada: true,
+      resultado: `${sai} saiu às ${horaDe(l.liberadoEm)}. ${chega} fica com a vaga e sai agora${antes}.${destino}`,
     }
   }
   return { situacao, quemSai, resultado: `A ${posicao} está ${situacao}: ${sai} deixa a posição e ${chega} assume.` }
+}
+
+/** "A", "A e B", "A, B e C". */
+const listaE = (nomes) => (nomes.length <= 1 ? nomes.join('') : `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}`)
+
+/** Quem ocupa hoje a posição `p` (1-based) do rodapé — a vaga pode ter sido assumida. */
+function ocupanteDaPosicao(esc, turno, p, resolver) {
+  const nome = rodapeDoTurno(esc?.ordemLiberacao, turno)[p - 1]
+  if (!nome) return null
+  const chave = resolver?.(semNota(nome)) || normNome(nome)
+  const { ocupadoPor, liberadoEm } = estadoDaPosicao(esc, turno, chave)
+  return { nome: ocupadoPor ? curto(ocupadoPor.nome) : titleCaseNome(semNota(nome)), liberado: !!liberadoEm }
 }
 
 /** Infere o tipo pela GEOGRAFIA dos slots do par (taxonomia do dono 07/08).
@@ -119,7 +137,7 @@ function Passos({ atual }) {
  * Fila de UM hospital na prévia: as posições que mudam, com o vizinho de cima e o de
  * baixo para dar o contexto ("…" onde a lista pula).
  */
-function FilaPrevia({ hospital, esc, lados, resolver }) {
+export function FilaPrevia({ hospital, esc, lados, resolver }) {
   const turno = lados[0]?.turno || null
   const rodape = rodapeDoTurno(esc?.ordemLiberacao, turno)
   const porPos = new Map(lados.filter((l) => l.posicao).map((l) => [l.posicao, l]))
@@ -177,7 +195,11 @@ function FilaPrevia({ hospital, esc, lados, resolver }) {
 export default function TrocaSheet({ linha, escala, turno, colegaInicial = null, opcaoInicial = null, modo = null, onClose }) {
   const { user } = useUser()
   const { escalas } = useEscalaCirurgica()
-  const { marcarTroca, executarSubstituicao } = useEscalaCirurgicaActions()
+  // o estado MAIS NOVO na hora de gravar a 2ª metade da troca de sala (a 1ª já pintou)
+  const escalasRef = useRef(escalas)
+  escalasRef.current = escalas
+  const escalasAtuais = () => escalasRef.current
+  const { marcarTroca, executarSubstituicao, setAnestesistaCasos } = useEscalaCirurgicaActions()
   const { roster, rosterByUid, resolver } = useRosterAnestesistas()
 
   // pessoa A = dona da linha de origem (uid do vínculo > resolução do rodapé)
@@ -225,8 +247,9 @@ export default function TrocaSheet({ linha, escala, turno, colegaInicial = null,
 
   const elegibilidade = (c) => {
     const temEscala = c.onde.length > 0
-    if (opcao === 'troca' && !temEscala) return 'Sem escala neste turno: use "Um colega entra no lugar".'
-    if (opcao === 'entra' && temEscala) return `Está na escala ${doHosp(c.onde[0].hospital)}: use "trocou de lugar".`
+    if (opcao === 'sala' && !c.onde.some((o) => o.hospital === escala?.hospital)) return `Não está ${escala?.hospital === 'unimed' ? 'na' : 'no'} ${hospLabel(escala?.hospital)} neste turno: troca de sala é entre colegas daqui.`
+    if (opcao === 'troca' && !temEscala) return 'Sem escala neste turno: use "um colega SEM ESCALA assume a posição".'
+    if (opcao === 'entra' && temEscala) return `Está na escala ${doHosp(c.onde[0].hospital)}: use "Trocaram de POSIÇÃO".`
     return null
   }
   const ordemHosp = [escala?.hospital, 'unimed', 'hro', 'materno'].filter((h, i, arr) => h && arr.indexOf(h) === i)
@@ -258,7 +281,7 @@ export default function TrocaSheet({ linha, escala, turno, colegaInicial = null,
   const slots = plan?.lados || []
   // "entra no lugar": só a posição de A muda de dono; "trocou": todas as do par. A
   // posição de A vem primeiro: a prévia começa por quem assume o lugar de quem abriu.
-  const ladosEfetivos = (opcao === 'registro' ? [] : opcao === 'entra' ? slots.filter((l) => !ehDoColega(l)) : slots)
+  const ladosEfetivos = (opcao === 'registro' || opcao === 'sala' ? [] : opcao === 'entra' ? slots.filter((l) => !ehDoColega(l)) : slots)
     .slice().sort((x, y) => ehDoColega(x) - ehDoColega(y))
   const colegaSemEscala = !!b && !slots.some((l) => ehDoColega(l) && (!turno || l.turno === turno))
   const semVinculo = (plan?.pendencias || []).filter((p) => p.motivo === 'sem_uid')
@@ -270,13 +293,35 @@ export default function TrocaSheet({ linha, escala, turno, colegaInicial = null,
     ...(colegaSemEscala && local && { local }),
   }
   const userInfo = { userId: user?.uid || user?.id || null, userName: user?.displayName }
-  const podeGravar = !!b && !salvando && (opcao === 'registro' || ladosEfetivos.length > 0)
+  // TROCA DE SALA: as cirurgias em aberto de cada um, NESTA escala e neste turno, mudam
+  // de mãos; ninguém muda de posição. Dupla "A + B" e terminada ficam (regra do repasse).
+  const sala = useMemo(() => {
+    if (opcao !== 'sala' || !b || !escala) return null
+    const esc = escalas?.[escala.hospital]?.id === escala.id ? escalas[escala.hospital] : escala
+    return {
+      esc,
+      deA: casosTransferiveis(esc, a, resolver, turno),
+      deB: casosTransferiveis(esc, b, resolver, turno),
+      posA: ondeA.find((o) => o.hospital === escala.hospital)?.posicao || 0,
+      posB: ondeDe(b).find((o) => o.hospital === escala.hospital)?.posicao || 0,
+    }
+  }, [opcao, b, escala, escalas, a, resolver, turno, ondeA]) // eslint-disable-line react-hooks/exhaustive-deps
+  const podeGravar = !!b && !salvando && (opcao === 'registro'
+    || (opcao === 'sala' ? !!sala && sala.deA.length + sala.deB.length > 0 : ladosEfetivos.length > 0))
 
   const gravar = async () => {
     if (!podeGravar) return
     setSalvando(true)
     try {
-      if (opcao === 'registro') {
+      if (opcao === 'sala') {
+        // duas escritas de repasse, um aviso só (com "Desfazer" na segunda metade)
+        const opts = { resolverUid: resolver, userId: userInfo.userId }
+        const paraB = { uid: b.uid, apelido: b.apelido }
+        const paraA = { uid: a.uid, apelido: a.apelido }
+        const aviso = { title: 'Salas trocadas', description: `${A} ⇄ ${B} · a ordem de saída não muda` }
+        if (sala.deA.length) await setAnestesistaCasos(sala.esc, sala.deA, paraB, { ...opts, ...(sala.deB.length ? { silencioso: true } : { aviso }) })
+        if (sala.deB.length) await setAnestesistaCasos(escalasAtuais()?.[escala.hospital] || sala.esc, sala.deB, paraA, { ...opts, aviso })
+      } else if (opcao === 'registro') {
         // ninguém muda de lugar: fica só o RASTRO (badge nos dois lados).
         // `apenasRegistro` impede que a convergência da importação execute
         // depois um swap que a própria escala já resolveu.
@@ -285,7 +330,7 @@ export default function TrocaSheet({ linha, escala, turno, colegaInicial = null,
         await executarSubstituicao({
           lados: ladosEfetivos.map((l) => ({ ...l, ...meta })),
           limparTroca: plan?.limparTroca || [],
-        }, userInfo)
+        }, userInfo, { desfazivel: true }) // "Desfazer" por 10 s (dono 10–11/11)
       }
       onClose?.()
     } catch { /* toast no context */ } finally { setSalvando(false) }
@@ -293,13 +338,20 @@ export default function TrocaSheet({ linha, escala, turno, colegaInicial = null,
 
   const A = curto(a.nome)
   const B = b ? curto(b.nome) : ''
+  // AS TRÊS RESPOSTAS (dono 10–11/11/2026, modelo B). "Trocaram de SALA" entra como a
+  // PRIMEIRA: é a situação mais comum e não mexe na ordem — em 43 das 82 trocas de
+  // posição desde 07/08 os dois eram da MESMA fila, e 30% foram desfeitas em minutos
+  // (queriam trocar de sala, e o painel só oferecia "trocou de lugar"). Cada título diz o
+  // que acontece com a ordem. "Só registrar" SAIU da tela (não era usado à mão desde
+  // 27/10; a publicação segue registrando) — o código de `registro` fica para a folha
+  // aberta por quem ainda chega com `opcaoInicial`.
   const OPCOES = [
-    { id: 'troca', Icone: ArrowLeftRight, titulo: `${A} trocou de lugar com um colega`,
-      texto: 'Os dois trocam de posição e levam as cirurgias em aberto. Vale entre hospitais.' },
-    { id: 'entra', Icone: LogOut, titulo: `Um colega entra no lugar de ${A}`,
-      texto: `Para quem não está em nenhuma escala neste turno (consultório, folga). ${A} sai da fila deste turno.` },
-    { id: 'registro', Icone: ClipboardCheck, titulo: 'A escala já saiu com a troca: só registrar',
-      texto: 'Ninguém muda de lugar. Aparece o selo Troca nos dois cards.' },
+    { id: 'sala', Icone: DoorOpen, titulo: 'Trocaram de SALA — a ordem de saída não muda',
+      texto: 'Cada um fica com as cirurgias do outro. As posições na fila não mudam.' },
+    { id: 'troca', Icone: ListOrdered, titulo: 'Trocaram de POSIÇÃO na fila — muda quem sai primeiro',
+      texto: `${A} passa a sair na vez do colega e o colega na vez de ${A}. As cirurgias em aberto vão junto.` },
+    { id: 'entra', Icone: LogOut, titulo: `${A} saiu e um colega SEM ESCALA assume a posição`,
+      texto: `Para quem veio do consultório ou da folga. ${A} sai da fila deste turno.` },
   ]
 
   // ── prévia (passo 3) ─────────────────────────────────────────────────────────
@@ -311,7 +363,15 @@ export default function TrocaSheet({ linha, escala, turno, colegaInicial = null,
   const frasesLados = ladosEfetivos.filter((l) => l.posicao).map((l) => `${curto(l.para.nome)} fica com o ${l.posicao}º ${doHosp(l.hospital)}`)
   const casosMovidos = ladosEfetivos.filter((l) => l.casoIds.length)
     .map((l) => `${l.casoIds.length} ${l.casoIds.length === 1 ? 'cirurgia' : 'cirurgias'} ${doHosp(l.hospital)} para ${curto(l.para.nome)}`)
-  const resumo = opcao === 'registro'
+  const plural = (n) => `${n} ${n === 1 ? 'cirurgia' : 'cirurgias'}`
+  const resumo = opcao === 'sala'
+    ? [
+      'Cada um fica com as cirurgias do outro. As posições na fila não mudam.',
+      sala?.deA.length ? `${plural(sala.deA.length)} de ${A} para ${B}.` : `${A} não tem cirurgia em aberto aqui.`,
+      sala?.deB.length ? `${plural(sala.deB.length)} de ${B} para ${A}.` : `${B} não tem cirurgia em aberto aqui.`,
+      sala?.posA ? `${A} segue ${sala.posA}º` + (sala?.posB ? ` e ${B} segue ${sala.posB}º.` : '.') : '',
+    ].filter(Boolean).join(' ')
+    : opcao === 'registro'
     ? `Ninguém muda de lugar. O selo Troca aparece no card de ${A} e de ${B}.`
     : [
       frasesLados.length ? `${frasesLados.join(' e ')}.` : '',
@@ -319,12 +379,45 @@ export default function TrocaSheet({ linha, escala, turno, colegaInicial = null,
       casosMovidos.length ? `Vão junto as cirurgias em aberto: ${casosMovidos.join('; ')}.` : 'Nenhuma cirurgia em aberto muda de mãos.',
     ].filter(Boolean).join(' ')
   const viraPlantonista = ladosEfetivos.filter((l) => l.posicao === 1)
+  // QUEM PASSA A SAIR ANTES DE QUEM (troca de posição no MESMO hospital): a fila sai de
+  // baixo para cima — quem fica com a posição de número maior sai antes dos que estão entre as duas
+  const ultrapassagem = (() => {
+    if (opcao !== 'troca' || ladosEfetivos.length !== 2) return null
+    const [x, y] = ladosEfetivos
+    if (x.hospital !== y.hospital || !x.posicao || !y.posicao || x.turno !== y.turno) return null
+    const baixo = x.posicao > y.posicao ? x : y
+    const cima = baixo === x ? y : x
+    const entre = []
+    for (let p = cima.posicao + 1; p < baixo.posicao; p++) {
+      const o = ocupanteDaPosicao(escalas?.[x.hospital], x.turno, p, resolver)
+      if (o && !o.liberado) entre.push(o.nome)
+    }
+    return entre.length ? `${curto(baixo.para.nome)} passa a sair antes de ${listaE(entre)}.` : null
+  })()
+  // troca numa vaga JÁ LIBERADA: quem recebe sai agora — quem ele ultrapassa na fila de onde vem
+  const ctxLiberada = (l) => {
+    const dele = ladosEfetivos.find((o) => o !== l && (o.de?.uid && l.para?.uid ? o.de.uid === l.para.uid : false))
+    if (!dele?.posicao) return null
+    const total = rodapeDoTurno(escalas?.[dele.hospital]?.ordemLiberacao, dele.turno).length
+    const ultrapassados = []
+    for (let p = dele.posicao + 1; p <= total; p++) {
+      const o = ocupanteDaPosicao(escalas?.[dele.hospital], dele.turno, p, resolver)
+      if (o && !o.liberado) ultrapassados.push(o.nome)
+    }
+    return { ultrapassados, vagaDeQuemChega: { posicao: dele.posicao, hospital: dele.hospital } }
+  }
+  const temVagaLiberada = ladosEfetivos.some((l) => !!l.liberadoEm && !l.semPosicao)
+  const entreHospitais = opcao === 'troca' && new Set(ladosEfetivos.map((l) => l.hospital)).size > 1
   const rotuloGravar = opcao === 'registro' ? 'Registrar a troca'
-    : opcao === 'entra' ? `${B} entra no lugar de ${A}` : `Trocar ${A} ⇄ ${B}`
+    : opcao === 'sala' ? 'Trocar as salas'
+      : temVagaLiberada ? 'Trocar mesmo assim'
+        : opcao === 'entra' ? `${B} entra no lugar de ${A}` : `Trocar ${A} ⇄ ${B}`
 
   const tituloPasso = passo === 1 ? `Trocas de ${A}`
-    : passo === 2 ? (opcao === 'entra' ? `Quem entra no lugar de ${A}?` : opcao === 'troca' ? `${A} trocou de lugar com…` : `${A} trocou com…`)
-      : 'Como a fila fica'
+    : passo === 2 ? (opcao === 'entra' ? `Quem assume a posição de ${A}?` : opcao === 'sala' ? `${A} trocou de sala com…` : opcao === 'troca' ? `${A} trocou de posição com…` : `${A} trocou com…`)
+      : opcao === 'sala' ? 'Trocaram de SALA'
+        : opcao === 'troca' ? (entreHospitais ? 'Trocaram de HOSPITAL hoje' : 'Trocaram de POSIÇÃO na fila')
+          : 'Como a fila fica'
 
   return (
     <Sheet open onOpenChange={(o) => !o && onClose?.()}>
@@ -335,6 +428,9 @@ export default function TrocaSheet({ linha, escala, turno, colegaInicial = null,
             <ArrowLeftRight className="h-5 w-5 shrink-0 text-category-indigo-fg" aria-hidden="true" />
             {tituloPasso}
           </SheetTitle>
+          {passo === 3 && b && tituloPasso !== 'Como a fila fica' && (
+            <p className="text-[12.5px] text-muted-foreground">{A} ⇄ {B} · passo 3 de 3 · como a fila fica</p>
+          )}
           {passo === 1 && posA && (
             <p className="text-[12.5px] text-muted-foreground">
               {posA.posicao ? `${posA.posicao}º na escala ${doHosp(posA.hospital)}` : `Cirurgias ${doHosp(posA.hospital)}`}
@@ -444,6 +540,12 @@ export default function TrocaSheet({ linha, escala, turno, colegaInicial = null,
                 ))}
               </div>
             )}
+            {ultrapassagem && (
+              <p data-ultrapassagem className="flex gap-2 rounded-xl bg-warning/15 px-3 py-2.5 text-[13px] font-semibold leading-snug text-foreground">
+                <AlertTriangle className="mt-px h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+                {ultrapassagem}
+              </p>
+            )}
             <p data-resumo-troca className="text-[13px] leading-relaxed">{resumo}</p>
             {viraPlantonista.map((l) => (
               <p key={ladoId(l)} className="flex gap-2 rounded-xl bg-warning/15 px-3 py-2.5 text-[13px] font-semibold leading-snug text-foreground">
@@ -451,15 +553,25 @@ export default function TrocaSheet({ linha, escala, turno, colegaInicial = null,
                 {curto(l.para.nome)} passa a ser o plantonista {doHosp(l.hospital)}.
               </p>
             ))}
-            {ladosEfetivos.map((l) => avisoDaPosicao(l) && (
-              <p key={`av-${ladoId(l)}`} className="flex gap-2 text-[12px] leading-snug text-muted-foreground">
-                <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                {avisoDaPosicao(l).resultado}
-              </p>
-            ))}
-            {opcao !== 'registro' && !ladosEfetivos.length && (
+            {ladosEfetivos.map((l) => {
+              const av = avisoDaPosicao(l, l.liberadoEm ? ctxLiberada(l) : null)
+              if (!av) return null
+              // vaga já liberada: aviso em destaque, com quem é ultrapassado (10–11/11)
+              return av.liberada ? (
+                <p key={`av-${ladoId(l)}`} data-vaga-liberada className="flex gap-2 rounded-xl bg-warning/15 px-3 py-2.5 text-[13px] font-semibold leading-snug text-foreground">
+                  <AlertTriangle className="mt-px h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+                  {av.resultado}
+                </p>
+              ) : (
+                <p key={`av-${ladoId(l)}`} className="flex gap-2 text-[12px] leading-snug text-muted-foreground">
+                  <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  {av.resultado}
+                </p>
+              )
+            })}
+            {opcao !== 'registro' && opcao !== 'sala' && !ladosEfetivos.length && (
               <p className="text-[12.5px] text-category-orange-fg">
-                {A} não tem posição nem cirurgia em aberto neste turno: não há o que trocar. Use "só registrar".
+                {A} não tem posição nem cirurgia em aberto neste turno: não há o que trocar.
               </p>
             )}
             {semVinculo.map((p) => (
@@ -475,13 +587,17 @@ export default function TrocaSheet({ linha, escala, turno, colegaInicial = null,
                 <Select className="w-full" options={LOCAL_COLEGA_OPCOES} value={local} onChange={setLocal} placeholder="Consultório, Materno, folga…" />
               </div>
             )}
-            <div>
-              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Motivo (opcional)</p>
-              <Input value={motivo} maxLength={MOTIVO_MAX} onChange={(e) => setMotivo(e.target.value)} placeholder="ex.: plantão trocado, compromisso pessoal" />
-            </div>
-            <p className="text-[11.5px] text-muted-foreground">
-              A ordem publicada não muda: muda quem ocupa cada posição. Dá para desfazer pelo Editar do card.
-            </p>
+            {opcao !== 'sala' && (
+              <>
+              <div>
+                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Motivo (opcional)</p>
+                <Input value={motivo} maxLength={MOTIVO_MAX} onChange={(e) => setMotivo(e.target.value)} placeholder="ex.: plantão trocado, compromisso pessoal" />
+              </div>
+              <p className="text-[11.5px] text-muted-foreground">
+                A ordem publicada não muda: muda quem ocupa cada posição. Dá para desfazer pelo Editar do card.
+              </p>
+              </>
+            )}
             <div className="sticky bottom-0 -mx-4 flex gap-2 border-t border-border bg-card px-4 pb-1 pt-3">
               <Button variant="outline" className="min-h-12 flex-1" disabled={salvando} onClick={() => setPasso(2)}>Voltar</Button>
               <Button className="min-h-12 flex-[1.6]" disabled={!podeGravar} onClick={gravar}>

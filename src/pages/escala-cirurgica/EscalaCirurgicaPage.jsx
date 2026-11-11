@@ -941,9 +941,6 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                 pendencias={pendencias.porCaso} onNavigate={onNavigate} encerrado={fraseEncerrado}
                 onVerFila={() => setAba('liberacoes')}
                 abrirCasoId={casoParaAbrir} onCasoAberto={limparCasoParaAbrir}
-                // "os dois trocaram de hospital?" (dono 27/10): o "Sim" do definir anestesista
-                // abre a troca já na prévia, com os dois hospitais
-                onTrocarPosicoes={modoFds ? null : ({ linha, colegaUid }) => setTrocaSheet({ linha, colegaUid, modo: 'posicao' })}
               />
             </>
           )}
@@ -1010,7 +1007,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                   onGarantirEscala={garantirEscala}
                   onNavigate={onNavigate}
                   onDefinirP4={modoFds ? undefined : (h) => definirP4Hospital(h, userInfo)}
-                  onDefinirCasos={(casoIds, { uid, apelido, rotulo }) => {
+                  onDefinirCasos={(casoIds, { uid, apelido, rotulo, desfazivel = false, aviso = null }) => {
                     // a cirurgia é gravada na escala ONDE ELA MORA: na fila única, o hospital
                     // de origem; no dia útil, também — a folha "Antes de liberar" passa
                     // cirurgia de outro turno ou hospital (dono 23/10, caso Leandro)
@@ -1025,8 +1022,11 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                         if (extra) extraPorId[id] = extra
                       }
                     }
-                    return setAnestesistaCasos(dona, casoIds, { uid, apelido }, { rotulo, resolverUid: resolverRoster, userId: user?.uid || user?.id || null, extraPorId })
+                    return setAnestesistaCasos(dona, casoIds, { uid, apelido }, { rotulo, resolverUid: resolverRoster, userId: user?.uid || user?.id || null, extraPorId, desfazivel, aviso })
                   }}
+                  // "Como entra?" do "Passar · a um colega" (dono 10–11/11): assumir a posição ou
+                  // trocar de hospital — posição e cirurgias numa transação, aviso com "Desfazer"
+                  onEntrarNaFila={modoFds ? null : ((plano, aviso) => executarSubstituicao(plano, userInfo, { desfazivel: true, aviso }))}
                   // RESPONSÁVEL DA POSIÇÃO (dono 24/08) — assunção unilateral na
                   // fila única: o slot fica com quem assumiu, a posição e a ordem
                   // não se movem, e as cirurgias em aberto vão junto. Mesmo motor

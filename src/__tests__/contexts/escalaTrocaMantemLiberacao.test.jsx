@@ -285,3 +285,73 @@ describe('desfazer a troca: uma transação, e a liberação segue quem saiu', (
     expect(svcMock.desfazerTrocaAtomica).not.toHaveBeenCalled()
   })
 })
+
+/**
+ * "DESFAZER" POR 10 SEGUNDOS (dono 10–11/11/2026, modelo B, bloco 7). 10 de 95 posições
+ * assumidas de 26/09 a 10/11 foram desfeitas em até 2 minutos, refazendo o caminho ao
+ * contrário. O aviso da troca/repasse QUE MUDA A FILA (quem chama decide: `desfazivel`)
+ * traz o botão; sem a marca, o aviso é o de sempre.
+ */
+describe('aviso com "Desfazer" depois de troca ou repasse que muda a fila', () => {
+  const hro = () => ({
+    id: 'esc-hro', hospital: 'hro', status: 'publicada', data: '2026-11-10',
+    ordemLiberacao: { matutino: ['BRUNO', 'CARLA', 'DIEGO'] }, ajudaExterna: {}, linhaOverrides: {}, liberacoes: {},
+    casos: [{ id: 'c5', sala: 'Sala 5', turno: 'matutino', hora: '07:30', procedimento: 'X', statusCirurgia: 'iniciada', anestesista: 'CARLA', anestesistaUserId: 'u-carla' }],
+  })
+  const LADO = {
+    hospital: 'hro', escalaId: 'esc-hro', turno: 'matutino', chaveSlot: 'u-carla', nomeSlot: 'CARLA', tipo: 'assuncao',
+    de: { uid: 'u-carla', nome: 'CARLA DORNELLES', apelido: 'CARLA' }, para: { uid: 'u-tiago', nome: 'TIAGO VAZ', apelido: 'TIAGO' }, casoIds: ['c5'],
+  }
+
+  it('troca: o aviso diz o que foi feito e "Desfazer" chama a RPC com o lado ao contrário', async () => {
+    svcMock.executarTrocaAtomica.mockResolvedValue({
+      escalas: { 'esc-hro': { 'matutino:u-carla': { assumidaPor: { uid: 'u-tiago', nome: 'TIAGO VAZ' } } } },
+      casos: [{ id: 'c5', anestesista: 'TIAGO', anestesistaUserId: 'u-tiago', semAnestesista: false }], pulados: 0, lados: 1,
+    })
+    svcMock.desfazerTrocaAtomica.mockResolvedValue({ escalas: { 'esc-hro': {} }, liberacoes: { 'esc-hro': {} }, casos: [{ id: 'c5', anestesista: 'CARLA', anestesistaUserId: 'u-carla', semAnestesista: false }], pulados: 0, lados: 1, movidas: [] })
+    await montar(hro())
+    await act(async () => {
+      await actions.executarSubstituicao({ lados: [LADO], limparTroca: [] }, { userId: 'u-eu' },
+        { desfazivel: true, aviso: { title: 'Tiago assumiu a posição de Carla', description: 'Tiago é o 2º do HRO' } })
+    })
+    expect(await screen.findByText('Tiago assumiu a posição de Carla')).toBeTruthy()
+    expect(screen.getByText('Tiago é o 2º do HRO')).toBeTruthy()
+    await act(async () => { screen.getByRole('button', { name: 'Desfazer' }).click() })
+    await waitFor(() => expect(svcMock.desfazerTrocaAtomica).toHaveBeenCalledTimes(1))
+    expect(svcMock.desfazerTrocaAtomica.mock.calls[0][0].lados).toEqual([
+      { escala_id: 'esc-hro', chave: 'matutino:u-carla', caso_ids: ['c5'], para_uid: 'u-carla', para_apelido: 'CARLA' },
+    ])
+    await waitFor(() => expect(estado.escalas.hro.casos[0].anestesistaUserId).toBe('u-carla'))
+  })
+
+  it('troca sem a marca (convergência da publicação, FDS): aviso de sempre, sem botão', async () => {
+    svcMock.executarTrocaAtomica.mockResolvedValue({ escalas: {}, casos: [], pulados: 0, lados: 1 })
+    await montar(hro())
+    await act(async () => { await actions.executarSubstituicao({ lados: [LADO], limparTroca: [] }, { userId: 'u-eu' }) })
+    expect(await screen.findByText('Troca executada')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Desfazer' })).toBeNull()
+  })
+
+  it('repasse que entra como AJUDA: "Desfazer" devolve a cirurgia a quem estava com ela', async () => {
+    await montar(hro())
+    await act(async () => {
+      await actions.setAnestesistaCasos(estado.escalas.hro, ['c5'], { uid: 'u-jonas', apelido: 'JONAS' },
+        { rotulo: 'Sala 5', resolverUid: () => null, userId: 'u-eu', desfazivel: true, aviso: { title: 'Jonas entrou como ajuda', description: 'Carla segue 2º do HRO' } })
+    })
+    expect(await screen.findByText('Jonas entrou como ajuda')).toBeTruthy()
+    expect(svcMock.updateAnestesistaCasos).toHaveBeenCalledTimes(1)
+    await act(async () => { screen.getByRole('button', { name: 'Desfazer' }).click() })
+    await waitFor(() => expect(svcMock.updateAnestesistaCasos).toHaveBeenCalledTimes(2))
+    expect(svcMock.updateAnestesistaCasos.mock.calls[1].slice(0, 2)).toEqual([['c5'], { uid: 'u-carla', apelido: 'CARLA', dupla: false }])
+    await waitFor(() => expect(estado.escalas.hro.casos[0].anestesistaUserId).toBe('u-carla'))
+  })
+
+  it('repasse comum (colega do mesmo rodapé): sem botão de desfazer', async () => {
+    await montar(hro())
+    await act(async () => {
+      await actions.setAnestesistaCasos(estado.escalas.hro, ['c5'], { uid: 'u-diego', apelido: 'DIEGO' }, { rotulo: 'Sala 5', resolverUid: () => null, userId: 'u-eu' })
+    })
+    expect(await screen.findByText('Responsável atualizado')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Desfazer' })).toBeNull()
+  })
+})

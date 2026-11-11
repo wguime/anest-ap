@@ -32,6 +32,8 @@ import { nomeCurtoProcedimento } from '@/lib/escalaProcedimentoCurto'
 import { ehDiaOperacionalAtual, erroHorarioReal, limiteDoTermino, terminoDaDuracao } from '@/lib/escalaHorarioReal'
 import { carimboDeStatus } from '@/lib/escalaCirurgicaStatus'
 import { blocoDaLinha, estadoDaFila, ordenarListaExibicao } from '@/lib/filaLiberacao'
+import { doHospital, ladosDeComoEntra, situacaoDeQuemRecebe, textosComoEntra } from './repasseForaDoRodape'
+import PerguntaComoEntra from './PerguntaComoEntra'
 import AddCasoSheet from './AddCasoSheet'
 import { ajudaOrdemInformada, deParaLugar, anestesistaDoCasoEh, casoConcluido, casosDaFilaDoTurno, casosDaFilaFds, casosResolvidos, chaveSalaEscolha, compararSalas, diffRelogioMin, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao, turnoDoCaso, procedimentoComContinuacao, procedimentoBaseDoCaso } from './utils'
 
@@ -86,7 +88,7 @@ const HOSPITAIS_FILA = ['unimed', 'hro', 'materno'].map((v) => ({ value: v, labe
 const LOCAIS_TTL_MS = 60 * 60 * 1000
 const locaisCache = new Map() // hospital → { lista, em }
 
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onDefinirTerminoCaso, onVerCirurgias = null, onAbrirCaso = null, onDefinirInicioCaso, onDefinirTerminoRealCaso, onSuspenderCaso, onTerminarSemHorario, onDesfazerTerminada, onDefinirDuracaoCaso, onDefinirSemAjuda, onTrocarResponsavel, onDevolverResponsavel, onTrocarPosicao, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, onDefinirOrigem, contraturnoOutros = [], presencaOutros = [], ordemNumerica = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, escalasDoDia = null, onGarantirEscala, onNavigate }) {
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onDefinirTerminoCaso, onVerCirurgias = null, onAbrirCaso = null, onDefinirInicioCaso, onDefinirTerminoRealCaso, onSuspenderCaso, onTerminarSemHorario, onDesfazerTerminada, onDefinirDuracaoCaso, onDefinirSemAjuda, onTrocarResponsavel, onDevolverResponsavel, onTrocarPosicao, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, onDefinirOrigem, contraturnoOutros = [], presencaOutros = [], ordemNumerica = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, onEntrarNaFila = null, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, escalasDoDia = null, onGarantirEscala, onNavigate }) {
   const { toast } = useToast()
   const haptic = useHaptic()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
@@ -165,8 +167,12 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const [p4Sheet, setP4Sheet] = useState(false) // sheet "Onde está o P4 hoje?"
   const [alvoSemAnest, setAlvoSemAnest] = useState(null)
   const [semAnestUid, setSemAnestUid] = useState('')
+  // "Como {B} entra?" no "Passar · a um colega" (dono 10–11/11): 'ajuda' | 'assume' | 'trocaram'
+  const [passarComo, setPassarComo] = useState(null)
   const [executandoTroca, setExecutandoTroca] = useState(false)
   const [confirmarTroca, setConfirmarTroca] = useState(null) // par aguardando o pop-up (dono 18/08)
+  // desfazer com a VAGA JÁ LIBERADA: a folha diz o efeito antes (dono 10–11/11) — { texto, botao }
+  const [confirmarDesfazer, setConfirmarDesfazer] = useState(null)
   const [confirmarRestaurar, setConfirmarRestaurar] = useState(false) // "Restaurar" pergunta antes (dono 27/10)
   const [addCaso, setAddCaso] = useState(false) // urgência/encaixe direto da fila (dono 16/08)
   const [escalaDoCasoNovo, setEscalaDoCasoNovo] = useState(null) // criada sob demanda
@@ -1843,6 +1849,36 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
         ? <>Até quando {primeiroNomeTempo} fica no turno, contando <b className="font-bold text-foreground">a cirurgia</b>. Informado à mão.</>
         : <>Até quando {primeiroNomeTempo} fica no turno. Informado à mão.</>
   // Alerta "?" → dono: grava no caso (o alerta sai daqui E da Completa juntos).
+  /**
+   * QUEM RECEBE NÃO ESTÁ NA FILA DAQUI (dono 10–11/11/2026, `repasseForaDoRodape.js`): o
+   * "Passar · a um colega" era um repasse sem pergunta — quem recebia de fora do rodapé
+   * entrava no fim e saía antes, e quem passava seguia na vaga. Agora a folha pergunta
+   * "Como {B} entra?", como o ⚙ da sala. Só no dia útil e para a cirurgia DESTA escala;
+   * colega da lista "Na fila" já é do rodapé e não gera pergunta.
+   */
+  const quemPassaLib = alvoSemAnest?.deLiberar && linhaAntesLiberar
+    ? {
+      uid: linhaAntesLiberar.uid || null,
+      nome: (linhaAntesLiberar.uid && rosterByUid.get(linhaAntesLiberar.uid)?.nome) || linhaAntesLiberar.nomeOriginal || linhaAntesLiberar.anestesista,
+      apelido: linhaAntesLiberar.nomeOriginal || '',
+    }
+    : null
+  const quemRecebeLib = (() => {
+    const r = alvoSemAnest?.deLiberar && semAnestUid ? rosterByUid.get(semAnestUid) : null
+    return r ? { uid: r.uid, nome: r.nome, apelido: r.apelidos?.[0] || primeiroNomeUpper(r.nome) } : null
+  })()
+  const escalasPassar = escalasDoDia || { [hospital]: escala }
+  const sitPassar = !modoFds && quemPassaLib && quemRecebeLib && alvoSemAnest?.id && !alvoSemAnest.outroHospital
+    ? situacaoDeQuemRecebe({ escalas: escalasPassar, escala, turno, resolverUid, quemPassa: quemPassaLib, quemRecebe: quemRecebeLib, idsPassando: [alvoSemAnest.id] })
+    : null
+  const textosPassar = sitPassar
+    ? textosComoEntra({ situacao: sitPassar, hospital: escala?.hospital, turno: sitPassar.turno, nomeA: linhaAntesLiberar.anestesista, nomeB: titleCaseNome(quemRecebeLib.nome) })
+    : null
+  const entradaPassar = !sitPassar ? null : textosPassar.aviso ? 'ajuda' : (sitPassar.opcoes.includes(passarComo) ? passarComo : null)
+  const planoPassar = sitPassar && entradaPassar && entradaPassar !== 'ajuda'
+    ? ladosDeComoEntra({ escolha: entradaPassar, situacao: sitPassar, escalas: escalasPassar, escala, turno: sitPassar.turno, resolverUid, quemPassa: quemPassaLib, quemRecebe: quemRecebeLib, idsPassando: [alvoSemAnest.id] })
+    : { lados: [], limparTroca: [] }
+
   const confirmarSemAnest = async () => {
     const r = rosterByUid.get(semAnestUid)
     const alvo = alvoSemAnest
@@ -1851,16 +1887,34 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     // pelo 1º id que a página acha a escala dona.
     const ids = alvo?.grupo ? alvo.itens.map((i) => i.id).filter(Boolean) : [alvo?.id].filter(Boolean)
     if (!r || !ids.length) return
+    if (sitPassar && !entradaPassar) return // quem recebe é de fora da fila: falta a resposta
+    const fechar = () => { setAlvoSemAnest(null); setSemAnestUid(''); setPassarComo(null) }
     try {
+      if (sitPassar && entradaPassar !== 'ajuda' && planoPassar.lados.length && onEntrarNaFila) {
+        // posição + cirurgias juntas (RPC), com "Desfazer" por 10 s no aviso
+        const { A, B } = textosPassar.nomes
+        const onde = `${B} é o ${sitPassar.slotA.posicao}º ${doHospital(escala.hospital)}`
+        await onEntrarNaFila(planoPassar, entradaPassar === 'trocaram'
+          ? { title: `${A} e ${B} trocaram de hospital`, description: onde }
+          : { title: `${B} assumiu a posição de ${A}`, description: onde })
+        fechar()
+        return
+      }
       await onDefinirCasos?.(ids, {
         uid: r.uid,
         apelido: r.apelidos?.[0] || primeiroNomeUpper(r.nome),
         rotulo: alvo.grupo
           ? `${alvo.cirurgiao} · ${ids.length} procedimento${ids.length > 1 ? 's' : ''}`
           : [alvo.hora, salaLiberacao(alvo.sala)].filter(Boolean).join(' '),
+        ...(sitPassar ? {
+          desfazivel: true,
+          aviso: {
+            title: `${textosPassar.nomes.B} entrou como ajuda`,
+            description: sitPassar.slotA ? `${textosPassar.nomes.A} segue ${sitPassar.slotA.posicao}º ${doHospital(escala.hospital)}` : `Fim da fila ${doHospital(escala.hospital)}`,
+          },
+        } : {}),
       })
-      setAlvoSemAnest(null)
-      setSemAnestUid('')
+      fechar()
     } catch { /* toast de erro já vem do context */ }
   }
 
@@ -1981,8 +2035,35 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       setEditor(null)
     } catch { /* toast no context */ } finally { setExecutandoTroca(false) }
   }
-  const desfazerSubstEditor = async () => {
+  /**
+   * DESFAZER COM A VAGA JÁ LIBERADA (dono 10–11/11/2026, modelo B, bloco 6): "quem saiu
+   * continua liberado". 21/10, HRO: Fernando saiu às 15:02 na 14ª do Klisman e a troca foi
+   * desfeita às 16:40 sem a tela dizer nada — a liberação voltou para o Klisman. Hoje a RPC
+   * leva a marca para quem saiu; aqui a folha diz o resultado de cada um ANTES de gravar.
+   * Só quando a vaga foi liberada DEPOIS da troca; sem isso, desfazer segue de um toque.
+   */
+  const efeitoDoDesfazer = (linha) => {
+    const lib = marcaDe(linha)?.liberadoEm
+    const em = overrideDe(linha)?.assumidaPor?.em
+    if (!lib || !em || new Date(lib) < new Date(em)) return null
+    const pos = posicaoNoRodapeDaqui([linha.assumida?.deUid, linha.assumida?.deNomeOriginal, linha.chave])
+    const vaga = pos ? `${pos}ª` : 'vaga'
+    const ocupante = String(linha.anestesista || '').trim().split(/\s+/)[0]
+    const dono = String(linha.assumida?.deNome || '').trim().split(/\s+/)[0]
+    const hora = new Date(lib).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+    return {
+      texto: `A ${vaga} saiu às ${hora} com ${ocupante}. Desfazendo: ${ocupante} segue liberado; ${dono} volta à ${vaga}, na fila, com as cirurgias.`,
+      botao: `Desfazer: ${dono} volta à ${vaga}`,
+      subtitulo: `${linha.anestesista} ⇄ ${linha.assumida?.deNome || ''}`,
+    }
+  }
+  const desfazerSubstEditor = async ({ confirmado = false } = {}) => {
     if (!editor?.assumida || executandoTroca) return
+    if (!confirmado) {
+      const efeito = efeitoDoDesfazer(editor)
+      if (efeito) { setConfirmarDesfazer(efeito); return }
+    }
+    setConfirmarDesfazer(null)
     setExecutandoTroca(true)
     try {
       await onDesfazerSubstituicao?.(editor)
@@ -3223,7 +3304,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       />
                       {abaPainel === 'troca' && (
                         <EditorPainel titulo="Troca" onFechar={() => setAbaPainel(null)} onSalvar={salvarEditor}>
-                          <Button variant="outline" className="w-full" disabled={executandoTroca} onClick={desfazerSubstEditor}>
+                          <Button variant="outline" className="w-full" disabled={executandoTroca} onClick={() => desfazerSubstEditor()}>
                             {executandoTroca ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowLeftRight className="w-4 h-4" />}
                             Desfazer troca
                           </Button>
@@ -4239,7 +4320,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       {/* Definir o anestesista de um procedimento "?" direto da aba Liberações
           (pedido do dono 26/07). Grava no CASO — a Completa e o alerta daqui
           derivam da mesma fonte, então o alerta some nas duas na hora. */}
-      <Sheet open={!!alvoSemAnest} onOpenChange={(o) => { if (!o) { setAlvoSemAnest(null); setSemAnestUid('') } }}>
+      <Sheet open={!!alvoSemAnest} onOpenChange={(o) => { if (!o) { setAlvoSemAnest(null); setSemAnestUid(''); setPassarComo(null) } }}>
         {/* vinda da folha "Antes de liberar" (dono 14/10), abre POR CIMA dela */}
         {/* a lista da fila inteira não cabe: a folha passa a ROLAR por dentro, com o
             botão fixo no rodapé (14/10: o SheetContent é overflow-hidden e o botão
@@ -4296,7 +4377,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                           type="button"
                           role="radio"
                           aria-checked={on}
-                          onClick={() => setSemAnestUid(col.uid)}
+                          onClick={() => { setSemAnestUid(col.uid); setPassarComo(null) }}
                           className="flex min-h-[52px] w-full items-center gap-2.5 px-1 text-left active:opacity-70"
                         >
                           <span className={['h-[22px] w-[22px] shrink-0 rounded-full', on ? 'border-[7px] border-primary' : 'border-2 border-muted-foreground/50'].join(' ')} />
@@ -4313,12 +4394,20 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 </div>
               )}
               <Select className="w-full" searchable options={opcoesRoster} value={semAnestUid}
-                onChange={setSemAnestUid} placeholder={alvoSemAnest.deLiberar ? 'Buscar pelo nome' : 'Escolha o anestesista'} />
+                onChange={(v) => { setSemAnestUid(v); setPassarComo(null) }} placeholder={alvoSemAnest.deLiberar ? 'Buscar pelo nome' : 'Escolha o anestesista'} />
+              {/* quem recebe é de FORA da fila daqui: a folha pergunta como entra (10–11/11) */}
+              {sitPassar && (
+                <PerguntaComoEntra
+                  situacao={sitPassar} textos={textosPassar} escolha={entradaPassar} onEscolha={setPassarComo}
+                  lados={planoPassar.lados} escalas={escalasPassar} escala={escala} turno={sitPassar.turno} resolver={resolverUid}
+                />
+              )}
               {/* fixo no rodapé da folha: com a fila inteira na lista, o botão não pode
                   ficar escondido embaixo dela (a "demora" de 14/10 era rolar até ele) */}
               <div className="sticky bottom-0 -mx-1 bg-card px-1 pb-2 pt-2">
-              <Button className="min-h-[48px] w-full" disabled={!semAnestUid} onClick={confirmarSemAnest}>
-                {alvoSemAnest.deLiberar && semAnestUid
+              <Button className="min-h-[48px] w-full" disabled={!semAnestUid || (!!sitPassar && !entradaPassar)} onClick={confirmarSemAnest}>
+                {sitPassar ? textosPassar.botao(entradaPassar)
+                  : alvoSemAnest.deLiberar && semAnestUid
                   ? `Passar para ${(colegasParaPassar.find((c) => c.uid === semAnestUid)?.nome || titleCaseNome(rosterByUid.get(semAnestUid)?.nome || '')).trim().split(/\s+/)[0]}`
                   : alvoSemAnest.deLiberar ? 'Escolha quem assume' : 'Definir anestesista'}
               </Button>
@@ -4358,6 +4447,18 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
 
       {/* CONFIRMAÇÃO DO SWAP (dono 18/08) — mesma pergunta do TrocaSheet: nenhum
           caminho executa a troca sem mostrar antes o que muda na fila. */}
+      <ConfirmDialog
+        open={!!confirmarDesfazer}
+        onClose={() => setConfirmarDesfazer(null)}
+        onConfirm={() => desfazerSubstEditor({ confirmado: true })}
+        title="Desfazer a troca"
+        description={confirmarDesfazer?.subtitulo}
+        confirmText={confirmarDesfazer?.botao || 'Desfazer troca'}
+        cancelText="Cancelar"
+      >
+        <p data-efeito-desfazer className="text-[13px] font-semibold leading-snug text-foreground">{confirmarDesfazer?.texto}</p>
+      </ConfirmDialog>
+
       <ConfirmDialog
         open={confirmarRestaurar}
         onClose={() => setConfirmarRestaurar(false)}

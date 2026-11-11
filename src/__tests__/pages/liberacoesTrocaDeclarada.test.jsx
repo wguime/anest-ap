@@ -345,6 +345,41 @@ describe('Slot assumido (troca executada)', () => {
     expect(linha.uid).toBe('uid-cury')
     expect(linha.assumida?.deNome).toBe('Marílio Flach')
   })
+
+  // DESFAZER COM A VAGA JÁ LIBERADA (dono 10–11/11/2026, modelo B de
+  // `.tmp/analise-escala-2026-11/modelos-2/b-trocas.html`, bloco 6): "quem saiu continua
+  // liberado". Em 21/10 a troca Fernando ⇄ Klisman foi desfeita depois de a 14ª ser liberada
+  // e a tela só disse "Troca desfeita". Agora, SÓ nesse caso, a folha diz o efeito antes.
+  it('vaga liberada DEPOIS da troca: a folha diz o que acontece com cada um antes de desfazer', async () => {
+    const onDesfazerSubstituicao = vi.fn(async () => {})
+    montar({ onDesfazerSubstituicao }, {
+      ...escalaAssumida,
+      liberacoes: { 'matutino:uid-mar': { liberadoEm: '2026-07-29T13:20:00Z' } }, // 10:20 em Brasília
+      linhaOverrides: { 'matutino:uid-mar': { assumidaPor: { uid: 'uid-cury', nome: 'MARCOS TADEU CURY', em: '2026-07-29T12:00:00Z' } } },
+    })
+    abrirEditor('Marcos Cury')
+    fireEvent.click(screen.getByRole('button', { name: /^Troca/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Desfazer troca/ }))
+    expect(onDesfazerSubstituicao).not.toHaveBeenCalled() // ainda não: primeiro o efeito
+    const efeito = await waitFor(() => { const e = document.querySelector('[data-efeito-desfazer]'); expect(e).toBeTruthy(); return e })
+    expect(efeito.textContent).toMatch(/^A \d+ª saiu às 10:20 com Marcos\. Desfazendo: Marcos segue liberado; Marílio volta à \d+ª, na fila, com as cirurgias\.$/)
+    fireEvent.click(screen.getByRole('button', { name: /^Desfazer: Marílio volta à \d+ª$/ }))
+    await waitFor(() => expect(onDesfazerSubstituicao).toHaveBeenCalledTimes(1))
+  })
+
+  it('vaga liberada ANTES da troca (a liberação é do dono): desfazer segue de um toque', async () => {
+    const onDesfazerSubstituicao = vi.fn(async () => {})
+    montar({ onDesfazerSubstituicao }, {
+      ...escalaAssumida,
+      liberacoes: { 'matutino:uid-mar': { liberadoEm: '2026-07-29T11:00:00Z' } },
+      linhaOverrides: { 'matutino:uid-mar': { assumidaPor: { uid: 'uid-cury', nome: 'MARCOS TADEU CURY', em: '2026-07-29T12:00:00Z' } } },
+    })
+    abrirEditor('Marcos Cury')
+    fireEvent.click(screen.getByRole('button', { name: /^Troca/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Desfazer troca/ }))
+    await waitFor(() => expect(onDesfazerSubstituicao).toHaveBeenCalledTimes(1))
+    expect(document.querySelector('[data-efeito-desfazer]')).toBeNull()
+  })
 })
 
 describe('A linha da troca fica na MARGEM DAS INFOS, no bloco recuado (dono 16/09, opção B)', () => {

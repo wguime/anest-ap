@@ -1394,26 +1394,6 @@ export function escaladosPreservadosNoRepasse(casosAntes, casosDepois, ids, esca
 }
 
 /**
- * Snapshot dos campos de anestesista dos casos — combustível do ROLLBACK da
- * troca. O rollback antigo re-derivava do uid do dono (`{ uid: de.uid }`) e,
- * com dono SEM vínculo (uid null), o service traduzia para `anestesista='?'` +
- * `sem_anestesista=true`: o rollback APAGAVA o anestesista em vez de
- * restaurá-lo (defeito 07/08). O snapshot devolve o que estava lá de fato,
- * inclusive o TEXTO original do caso (ex.: "STAUB", não o nome do roster).
- */
-export function snapshotCasos(escala, casoIds = []) {
-  const ids = new Set(casoIds || [])
-  return (escala?.casos || [])
-    .filter((c) => ids.has(c.id))
-    .map((c) => ({
-      id: c.id,
-      anestesista: c.anestesista ?? null,
-      anestesistaUserId: c.anestesistaUserId ?? null,
-      semAnestesista: !!c.semAnestesista,
-    }))
-}
-
-/**
  * Lê o override anterior de uma linha pela MESMA cadeia de fallback do
  * setLinhaOverride: chave namespaced → chave crua → nome legado (namespaced e
  * cru). Ler SÓ a chave namespaced criava uma SEGUNDA entrada ao declarar troca

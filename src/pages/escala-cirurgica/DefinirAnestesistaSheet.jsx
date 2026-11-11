@@ -21,16 +21,18 @@
  * toques (abrir o Select, escolher) para um.
  */
 import { useMemo, useState } from 'react'
-import { AlertTriangle, Check, ChevronDown, ChevronRight, Loader2, Search } from 'lucide-react'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, Select, Button, Switch, Input } from '@/design-system'
+import { Check, ChevronDown, ChevronRight, Loader2, Search } from 'lucide-react'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, Select, Button, Input } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { HOSPITAL_LABEL, useEscalaCirurgica, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { fraseClinica, nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
 import {
-  alvosTrocaResponsavel, anestesistaDaSala, casosTransferiveis, filtrarPorTurno, localizarSlotRodape,
-  nomeAnestesistaExibicao, normNome, rodapeDoTurno, salaExibicao,
+  alvosTrocaResponsavel, anestesistaDaSala, filtrarPorTurno,
+  nomeAnestesistaExibicao, normNome, salaExibicao,
 } from './utils'
+import { doHospital, ladosDeComoEntra, situacaoDeQuemRecebe, textosComoEntra } from './repasseForaDoRodape'
+import ComoEntra from './PerguntaComoEntra'
 import { avaliarEscolhaAnestesista } from './foraDaOrdem'
 import { ehDiaOperacionalAtual } from '@/lib/escalaHorarioReal'
 import useAgoraMinutoEscala from './useAgoraMinutoEscala'
@@ -61,7 +63,7 @@ const TURNO_LABEL = { matutino: 'Manhã', vespertino: 'Tarde' }
  * @param {Function} onConfirmado  avisa que a troca foi feita (a folha fecha nos dois casos).
  * @param {string} dia  o dia da cirurgia, quando não é hoje ("Ontem · qua 28/10").
  */
-export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null, turno = null, onTrocarPosicoes = null, onClose, encerrado = false, corrigirQuemFez = false, gravar = null, onConfirmado = null, dia = null }) {
+export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null, turno = null, onClose, encerrado = false, corrigirQuemFez = false, gravar = null, onConfirmado = null, dia = null }) {
   // a correção de quem fez (turno encerrado ou folha do horário) alcança a terminada e não decide fila
   const correcao = encerrado || corrigirQuemFez
   const { user } = useUser()
@@ -79,7 +81,9 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
   const [pickerAberto, setPickerAberto] = useState(false)
   const [busca, setBusca] = useState('')
   const [salvando, setSalvando] = useState(false)
-  const [assumirPosicao, setAssumirPosicao] = useState(false)
+  // COMO QUEM RECEBE ENTRA NA FILA (dono 10–11/11, `repasseForaDoRodape.js`): 'ajuda' | 'assume' |
+  // 'trocaram'. Nada vem marcado, e trocar a pessoa escolhida zera a resposta.
+  const [comoEntra, setComoEntra] = useState(null)
   // ANESTESISTA FORA DA ORDEM (dono 15/10, modelo A) — { avaliacao, uid, podeUsar }
   const [foraDaOrdem, setForaDaOrdem] = useState(null)
   const { escalas, hoje } = useEscalaCirurgica()
@@ -189,22 +193,6 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
     ? `${salaExibicao(sala)}${casoUnico.cirurgiao ? ` · ${nomeCirurgiaoCurto(casoUnico.cirurgiao)}` : ''}`
     : `${salaExibicao(sala)}${casosAlvo?.length && atual.alias ? ` — ${nomeAtual}` : ''} (${alvos.length} caso${alvos.length === 1 ? '' : 's'})`
 
-  // POSIÇÃO NA FILA (dono 30/07): quando o responsável ANTERIOR ocupa posição no
-  // rodapé, definir um novo responsável pode herdar também a posição — foi o
-  // buraco do caso Giovana↔Maurício (ela assumiu os casos e virou linha extra
-  // "primeira a ser liberada" em vez de ocupar a posição dele). O toggle escreve
-  // `assumidaPor` no slot (a ordem_liberacao NUNCA é escrita) JUNTO da troca de
-  // casos — os dois efeitos ou nenhum (executarSubstituicao compensa falha).
-  const slotAnterior = useMemo(() => {
-    if (correcao || (!atual.uid && !atual.alias)) return null
-    const r = atual.uid ? rosterByUid.get(atual.uid) : null
-    // SÓ o turno da tela (turnos independentes, dono 13/08): posição da manhã
-    // não é assumível a partir da tarde. Achar o slot do outro turno e gravar
-    // lá punha o assumidaPor numa chave que o rodapé exibido não continha
-    // (defeito D3, 07/08 — o cruzamento era a raiz, não só o turno da escrita)
-    return localizarSlotRodape(escala, { uid: atual.uid, nome: r?.nome || atual.alias }, resolver, turno)
-  }, [escala, atual, rosterByUid, resolver, turno, correcao])
-  const ofereceAssumir = !!slotAnterior && !!escolhido && escolhido !== SEM_ANESTESISTA && escolhido !== atual.uid
 
   // DUPLA NA MESMA CIRURGIA (dono 11/08). Duas pessoas não cabem num uid: o
   // texto "A + B" É o dado — a Completa mostra as duas no cabeçalho, a fila
@@ -257,31 +245,39 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
   const primeiro = primeiroUid ? rosterByUid.get(primeiroUid) || null : null
 
   /**
-   * OS DOIS TROCARAM DE HOSPITAL? (dono 27/10, seção 3 de
-   * `.tmp/auditoria-liberacoes/edicao-liberacoes.html`). Na manhã de 27/10 a conta UNIMED
-   * passou a Sala 1 do Raul ao Vicente (1º do HRO) e a Emergência do Vicente ao Raul só
-   * por aqui: as cirurgias mudaram de dono e as posições não, cada um virou "ajuda" no
-   * hospital do outro e o plantonista do HRO saiu do lugar. A pergunta aparece só quando
-   * as três coisas são verdade: quem recebe NÃO está na escala daqui, ESTÁ na de outro
-   * hospital neste turno, e quem passa fica SEM cirurgia aberta aqui. Trocar de sala
-   * dentro do mesmo hospital (o Humberto, no mesmo dia) não pergunta nada.
+   * QUEM RECEBE NÃO ESTÁ NA FILA DAQUI (dono 10–11/11/2026, modelo B). A ordem do rodapé
+   * vale sempre; quando o repasse mexe nela, a folha pergunta por quê. Substitui o
+   * interruptor "Assumir também a posição" (30/07) e a pergunta "Os dois trocaram de
+   * hospital?" (27/10), que só cobria uma das situações. Entre colegas do MESMO rodapé
+   * (85% dos repasses) `situacao` é nula e nada muda. Fora: correção de quem fez, dupla,
+   * "sem anestesista" e caso sem dono (definir não é repassar).
    */
-  const trocaDeHospital = (() => {
-    if (correcao || !onTrocarPosicoes || !slotAnterior || !primeiro || segundo || primeiro.uid === atual.uid) return null
-    const recebe = { uid: primeiro.uid, nome: primeiro.nome, apelido: primeiro.apelidos?.[0] || '' }
-    if (localizarSlotRodape(escala, recebe, resolver, turno)) return null
-    let la = null
-    for (const [h, esc] of Object.entries(escalas || {})) {
-      if (!esc?.id || esc.id === escala?.id || h === 'fds') continue
-      const slot = localizarSlotRodape(esc, recebe, resolver, turno)
-      if (slot) { la = { hospital: h, posicao: rodapeDoTurno(esc.ordemLiberacao, slot.turno || turno).indexOf(slot.nome) + 1 }; break }
-    }
-    if (!la) return null
-    const quemPassa = { uid: atual.uid, nome: (atual.uid && rosterByUid.get(atual.uid)?.nome) || atual.alias }
-    const passando = new Set(alvos.map((c) => c.id))
-    if (casosTransferiveis(escala, quemPassa, resolver, turno).some((id) => !passando.has(id))) return null
-    return la
-  })()
+  const quemPassa = useMemo(() => {
+    if (!atual.uid && !atual.alias) return null
+    const r = atual.uid ? rosterByUid.get(atual.uid) : null
+    return { uid: atual.uid || null, nome: r?.nome || atual.alias, apelido: atual.alias || r?.apelidos?.[0] || '' }
+  }, [atual, rosterByUid])
+  const quemRecebe = useMemo(() => (primeiro && !segundo && escolhido && escolhido !== SEM_ANESTESISTA
+    ? { uid: primeiro.uid, nome: primeiro.nome, apelido: primeiro.apelidos?.[0] || primeiroNomeUpper(primeiro.nome) }
+    : null), [primeiro, segundo, escolhido])
+  const idsPassando = useMemo(() => alvos.map((c) => c.id).filter(Boolean), [alvos])
+  const situacao = useMemo(() => (correcao || !quemPassa || !quemRecebe || !idsPassando.length ? null
+    : situacaoDeQuemRecebe({ escalas, escala, turno: turno || alvos[0]?.turno, resolverUid: resolver, quemPassa, quemRecebe, idsPassando })),
+  [correcao, quemPassa, quemRecebe, idsPassando, escalas, escala, turno, alvos, resolver])
+  const textosEntrada = situacao
+    ? textosComoEntra({
+      situacao, hospital: escala?.hospital, turno: situacao.turno,
+      nomeA: nomeAtual, nomeB: nomeAnestesistaExibicao({ uid: quemRecebe.uid, alias: '', rosterByUid }),
+    })
+    : null
+  // a resposta em vigor: com uma opção só é aviso (ajuda); senão, o que foi tocado — e só
+  // vale se ainda é uma das opções (mudar a pessoa muda as opções)
+  const entrada = !situacao ? null
+    : textosEntrada.aviso ? 'ajuda'
+      : (situacao.opcoes.includes(comoEntra) ? comoEntra : null)
+  const planoEntrada = situacao && entrada && entrada !== 'ajuda'
+    ? ladosDeComoEntra({ escolha: entrada, situacao, escalas, escala, turno: situacao.turno, resolverUid: resolver, quemPassa, quemRecebe, idsPassando })
+    : { lados: [], limparTroca: [] }
   const segundoAberto = abrirSegundo ?? !!duplaAtual
   const apelidoDe = (r) => duplaAtual?.textos?.[r?.uid] || r?.apelidos?.[0] || primeiroNomeUpper(r?.nome)
   const nomeEscolhido = escolhido && escolhido !== SEM_ANESTESISTA
@@ -313,7 +309,7 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
    * Assumir a posição é troca de lugar na fila, não chamada: fica de fora.
    */
   const avaliarQuemEntra = (pessoas) => {
-    if (correcao || escala?.data !== hoje || assumirPosicao) return null
+    if (correcao || escala?.data !== hoje || entrada === 'assume' || entrada === 'trocaram') return null
     if (!alvos.some((c) => c.tipo === 'urgencia' || c.tipo === 'emergencia')) return null
     const jaResponde = new Set([atual.uid, duplaAtual?.primeiro, duplaAtual?.segundo].filter(Boolean))
     for (const p of pessoas) {
@@ -341,25 +337,23 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
       if (fora) { setForaDaOrdem({ ...fora, podeUsar: !segundo }); return }
     }
     setForaDaOrdem(null)
-    if (!segundo && !semAnest && assumirPosicao && ofereceAssumir) {
-      // assumir a posição é TRANSACIONAL (rollback LIFO) — espera a persistência
-      // com spinner, como o TrocaSheet; só então fecha.
+    // QUEM RECEBE É DE FORA DA FILA DAQUI: a resposta decide o que se grava (10–11/11).
+    // A folha só chega aqui com a resposta dada (o botão fica apagado sem ela).
+    const sit = uidForcado ? null : situacao
+    if (sit && !entrada) return
+    const B = sit ? textosEntrada.nomes.B : ''
+    const A = sit ? textosEntrada.nomes.A : ''
+    if (sit && (entrada === 'assume' || entrada === 'trocaram') && planoEntrada.lados.length) {
+      // posição + cirurgias numa transação (RPC) — espera a persistência com spinner,
+      // como o TrocaSheet; só então fecha. O aviso traz "Desfazer" por 10 s.
       setSalvando(true)
       try {
-        const rAtual = atual.uid ? rosterByUid.get(atual.uid) : null
-        await executarSubstituicao({
-          lados: [{
-            hospital: escala.hospital, escalaId: escala.id,
-            // o turno da ESCRITA é o do slot achado, nunca o da tela (D3)
-            turno: slotAnterior.turno || turno,
-            chaveSlot: slotAnterior.chave, nomeSlot: slotAnterior.nome,
-            tipo: 'assuncao',
-            de: { uid: atual.uid || null, nome: rAtual?.nome || atual.alias, apelido: atual.alias || slotAnterior.nome },
-            para: { uid: r.uid, nome: r.nome, apelido: r.apelidos?.[0] || primeiroNomeUpper(r.nome) },
-            casoIds: alvos.map((c) => c.id).filter(Boolean),
-          }],
-          limparTroca: [],
-        }, { userId: user?.uid || user?.id || null })
+        await executarSubstituicao(planoEntrada, { userId: user?.uid || user?.id || null }, {
+          desfazivel: true,
+          aviso: entrada === 'trocaram'
+            ? { title: `${A} e ${B} trocaram de hospital`, description: `${B} é o ${sit.slotA.posicao}º ${doHospital(escala.hospital)}` }
+            : { title: `${B} assumiu a posição de ${A}`, description: `${B} é o ${sit.slotA.posicao}º ${doHospital(escala.hospital)}` },
+        })
         onConfirmado?.()
         onClose?.()
       } catch { /* toast de erro já vem do context */ } finally {
@@ -380,7 +374,14 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
     // de dia anterior quem grava é quem chamou (pelo id); o resto passa pelo context
     const gravacao = gravar
       ? gravar(ids, payload, { rotulo })
-      : setAnestesistaCasos(escala, ids, payload, { rotulo, resolverUid: resolver, userId: user?.uid || user?.id || null, semEfeitosNaFila: encerrado })
+      : setAnestesistaCasos(escala, ids, payload, {
+        rotulo, resolverUid: resolver, userId: user?.uid || user?.id || null, semEfeitosNaFila: encerrado,
+        // entrou como AJUDA: mudou a fila (linha a mais no fim) — o aviso diz e dá 10 s para voltar
+        ...(sit ? {
+          desfazivel: true,
+          aviso: { title: `${B} entrou como ajuda`, description: sit.slotA ? `${A} segue ${sit.slotA.posicao}º ${doHospital(escala.hospital)}` : `Fim da fila ${doHospital(escala.hospital)}` },
+        } : {}),
+      })
     Promise.resolve(gravacao).catch(() => { /* o aviso de erro já vem de quem grava */ })
     onConfirmado?.()
     onClose?.()
@@ -554,63 +555,31 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
             />
           )}
 
-          {/* Posição na fila junto com os casos (dono 30/07): sem isto quem
-              assume vira linha EXTRA no fim da fila — o caso Giovana↔Maurício. */}
-          {trocaDeHospital && (
-            <div data-troca-de-hospital className="space-y-2 border-t border-border py-3">
-              <p className="flex gap-2 rounded-xl bg-warning/15 px-3 py-2.5 text-[13px] leading-snug text-foreground">
-                <AlertTriangle className="mt-px h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
-                <span>
-                  <b>{nomeAtual} fica sem cirurgia {escala?.hospital === 'unimed' ? 'na' : 'no'} {HOSPITAL_LABEL?.[escala?.hospital]}, e {nomeAnestesistaExibicao({ uid: primeiro.uid, alias: '', rosterByUid })} é da escala {trocaDeHospital.hospital === 'unimed' ? 'da' : 'do'} {HOSPITAL_LABEL?.[trocaDeHospital.hospital]}{trocaDeHospital.posicao ? ` (${trocaDeHospital.posicao}º)` : ''}.</b>
-                  {' '}Os dois trocaram de hospital?
-                </span>
-              </p>
-              <Button
-                className="min-h-12 w-full"
-                disabled={salvando}
-                onClick={() => {
-                  onTrocarPosicoes({ linha: { uid: atual.uid || null, nomeOriginal: slotAnterior.nome, anestesista: nomeAtual }, colegaUid: primeiro.uid })
-                  onClose?.()
-                }}
-              >
-                Sim, trocar as posições também
-              </Button>
-              <Button variant="outline" className="min-h-12 w-full" disabled={salvando} onClick={() => confirmar()}>
-                Não, só passar a cirurgia
-              </Button>
-              <p className="text-center text-[12px] leading-snug text-muted-foreground">
-                Só passar: {nomeAnestesistaExibicao({ uid: primeiro.uid, alias: '', rosterByUid })} entra no fim da fila como ajuda e {nomeAtual} segue na posição.
-              </p>
-            </div>
-          )}
-
-          {ofereceAssumir && !segundo && !trocaDeHospital && (
-            <div className="border-t border-border py-3">
-              <Switch
-                checked={assumirPosicao}
-                onChange={setAssumirPosicao}
-                label={`Assumir também a posição de ${nomeAtual} na fila`}
-                size="sm"
-              />
-            </div>
+          {/* COMO QUEM RECEBE ENTRA (dono 10–11/11, modelo B, opção A): só quando quem
+              recebe não é da fila daqui. Nada marcado; a mini-fila aparece depois de escolher. */}
+          {situacao && (
+            <ComoEntra
+              situacao={situacao} textos={textosEntrada} escolha={entrada} onEscolha={setComoEntra}
+              lados={planoEntrada.lados} escalas={escalas} escala={escala} turno={situacao.turno}
+              resolver={resolver} desabilitado={salvando}
+            />
           )}
         </div>
 
         <div className="sticky bottom-0 z-10 flex gap-2 border-t border-border bg-card px-4 pb-4 pt-3">
             <Button variant="outline" className="flex-1" onClick={() => onClose?.()}>Cancelar</Button>
-            {!trocaDeHospital && (
             <Button
               className="flex-1"
-              disabled={salvando || !alvos.length || semMudanca}
+              disabled={salvando || !alvos.length || semMudanca || (!!situacao && !entrada)}
               onClick={() => confirmar()}
             >
               {salvando
                 ? <Loader2 className="w-4 h-4 animate-spin" />
-                : segundo ? 'Confirmar os dois anestesistas'
-                  : escolhido === SEM_ANESTESISTA ? 'Deixar sem anestesista'
-                    : 'Confirmar responsável'}
+                : situacao ? textosEntrada.botao(entrada)
+                  : segundo ? 'Confirmar os dois anestesistas'
+                    : escolhido === SEM_ANESTESISTA ? 'Deixar sem anestesista'
+                      : 'Confirmar responsável'}
           </Button>
-            )}
         </div>
       </SheetContent>
 
@@ -644,7 +613,7 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
                     type="button"
                     role="option"
                     aria-selected={marcado}
-                    onClick={() => { setUidEscolhido(o.value); setPickerAberto(false); setBusca('') }}
+                    onClick={() => { setUidEscolhido(o.value); setComoEntra(null); setPickerAberto(false); setBusca('') }}
                     className={[
                       'flex min-h-[52px] w-full items-center gap-2 border-b border-border px-2 py-2 text-left',
                       marcado ? 'bg-primary/10' : 'active:bg-muted/60',

@@ -303,12 +303,20 @@ rollback LIFO (a classe do A15, que a execução perdeu em 05/09) e nenhuma olha
   do ocupante (`<turno>:<uid>`) e sai da vaga. Liberada antes → é do dono e fica (09/11, Alexandre Danieli).
 - Fica na vaga, como era: assunção antiga sem carimbo `em`, ocupante sem login, chave que não é de manhã/tarde (a
   noite da fila única).
-- Só volta ao dono a cirurgia que ainda está com o ocupante: o que ele já passou a um terceiro não é puxado.
+- OS MOVIMENTOS DE LIBERAÇÃO SÃO DECIDIDOS ANTES E APLICADOS JUNTOS (validador, 11/11): na troca A ⇄ B da mesma
+  escala a chave própria de um é a vaga do outro; decidindo lado a lado, com as DUAS vagas liberadas, uma marca era
+  apagada. "Liberação própria" só segura a do ocupante quando ela não é uma das que estão saindo.
+- Das cirurgias do recibo, volta ao dono a que ainda está com o ocupante e a que ficou SEM anestesista. Fica como
+  está a passada a alguém (com login ou só com nome) e a que virou dupla "A + B" (dupla não transfere, 11/08).
+- `caso_ids` com `para_uid` vazio é RECUSADO (`payload_formato_invalido`, 22023), como na execução. Dono sem login:
+  o context manda `caso_ids` vazio (só a posição) e mantém o aviso "Casos seguem com…".
+- Rastro: um evento por marca movida — `tipo='liberacao'`, `status_para='movida'`, `detalhe { de, para, por, apagada }`,
+  `por` nulo na coluna (não conta como ação na adesão).
 - Lado sem `assumidaPor` é pulado (idempotente). `trocaCom` não renasce (30/07).
 - `desfazerSubstituicao` (context) chama a RPC uma vez e pinta o que ela devolve (`escalas`, `liberacoes`, `casos`),
   sem reler a escala e sem rollback no cliente: se a transação cai, nada foi alterado, a escala recarrega e o aviso é
-  "Desfazer não concluído". **Não existe caminho antigo de reserva** — com a RPC ausente (42883/PGRST202) o aviso é
-  o mesmo. Migration antes do app.
+  "Desfazer não concluído". **Não existe caminho antigo de reserva** — com a RPC ausente (42883/PGRST202) ou o
+  payload recusado (22023) o aviso é o mesmo, sem o texto técnico. A migration está em produção desde 11/11.
 - Quem devolveu a última cirurgia aberta perde o tempo total gravado (`limparTotalSemCirurgia`, regra de 10/11).
   ⚠️ A limpeza lê `escalasRef`, que só acompanha o estado no render seguinte: o desfazer o atualiza na mão antes de
   chamá-la, senão ela regravaria no estado local o override de antes (com o `assumidaPor`).
@@ -318,7 +326,7 @@ rollback LIFO (a classe do A15, que a execução perdeu em 05/09) e nenhuma olha
 - Travas: `escalaDesfazerTrocaSql.test.js` e `escalaLogLiberacaoMarcadorSql.test.js` (PGlite; rollback em `scripts/`),
   e o describe "desfazer a troca" de `escalaTrocaMantemLiberacao.test.jsx` (context: uma chamada, estado devolvido,
   tempo total, RPC ausente).
-- `restaurarAnestesistaCasos` (service) e `snapshotCasos` (utils) ficaram sem chamador.
+- `restaurarAnestesistaCasos` (service) e `snapshotCasos` (utils) foram removidos em 11/11: não há mais rollback no cliente.
 
 
 ## Trocas em três passos — uma entrada só (dono 27/10/2026)
@@ -347,3 +355,50 @@ foram desfeitas, seis delas em até um minuto. Modelo escolhido em `.tmp/auditor
   de dia anterior (escala não carregada: grava pelo id). O "Trocar" da Completa segue como era.
 - Travas: `trocaSheet.test.jsx` e `trocaSheetPosicaoLiberada.test.jsx` (reescritos com o porquê),
   `definirAnestesistaTrocaDeHospital2710.test.jsx`, `liberacoesTrocaDeclarada.test.jsx` (uma entrada só).
+
+
+## A ordem do rodapé vale sempre; quando a troca mexe nela, a tela pergunta por quê (dono 10–11/11/2026)
+
+*"O único problema que vejo atualmente é quando as trocas são realizadas pelos usuários clicando nas opções erradas e
+bagunçando a ordem de liberação (a ordem de liberação do rodapé SEMPRE deve ser respeitada; se ela for desrespeitada
+por motivo de troca deve haver perguntas sobre os motivos — se o usuário irá assumir a posição do colega, se está
+vindo como ajuda…)."* Medido de 26/09 a 10/11: a trava do toque funciona (fora da ordem por POSIÇÃO em 12 de 114
+turnos); a fila bagunça por QUEM ocupa cada posição. 85% dos repasses são entre colegas do mesmo rodapé e não mexem em
+nada; 97 foram para fora do rodapé, 53 sem ninguém dizer se era ajuda ou substituição. Modelo B de
+`.tmp/analise-escala-2026-11/modelos-2/b-trocas.html` (opção A: a mini-fila aparece depois de escolher; frases na
+versão curta).
+
+- **"Como {B} entra?"** (`repasseForaDoRodape.js` + `PerguntaComoEntra.jsx`) — sempre que quem recebe as cirurgias NÃO
+  está no rodapé daquele hospital naquele turno, nos três pontos de repasse: ⚙ da sala e "Trocar" do caso
+  (`DefinirAnestesistaSheet`) e "Passar · a um colega" da folha "Antes de liberar" (`LiberacoesView`). Respostas, nada
+  marcado, com o efeito na fila embaixo de cada uma e o botão dizendo o que acontece:
+  - **"Veio AJUDAR"** → o repasse de sempre (`setAnestesistaCasos`); botão "{B} entra como ajuda".
+  - **"ASSUME a posição de {A} na fila"** → um lado, `tipo: assuncao` (`executarSubstituicao`); só quando {A} é da fila
+    daqui, fica sem cirurgia aberta e {B} não está em rodapé nenhum; botão "{B} assume o Nº".
+  - **"Os dois TROCARAM de hospital hoje"** → os dois lados, `tipo: entre_hospitais`, executado NA PRÓPRIA folha (não
+    abre mais o `TrocaSheet`); só quando {B} está no rodapé de outro hospital; botão "Trocar {A} ⇄ {B}".
+  - Uma resposta só (quem passa continua com outra cirurgia aqui, ou não é da fila) = AVISO, sem pergunta.
+  - Fora: correção de quem fez (`encerrado`/`corrigirQuemFez`), dupla, "sem anestesista", definir caso sem dono, fila
+    única do fim de semana e hospital sem rodapé no turno (Materno).
+- **SAÍRAM** o interruptor "Assumir também a posição de X na fila" (30/07) e a pergunta "Os dois trocaram de
+  hospital?" (27/10), com a prop `onTrocarPosicoes`. Não reintroduzir.
+- **"Trocas" do painel** (`TrocaSheet`, passo 1): "Trocaram de SALA — a ordem de saída não muda" (PRIMEIRA; duas
+  escritas de repasse nesta escala, sem `assumidaPor`; só entre colegas do mesmo hospital) · "Trocaram de POSIÇÃO na
+  fila — muda quem sai primeiro" (entre hospitais o passo 3 se chama "Trocaram de HOSPITAL hoje") · "{A} saiu e um
+  colega SEM ESCALA assume a posição". **"Só registrar" saiu da tela** (não era usado à mão desde 27/10; a publicação
+  segue registrando) — o código de `registro` ficou no componente, sem entrada, alcançável só por `opcaoInicial`.
+- **Prévia:** na troca de posição dentro do MESMO hospital, "{X} passa a sair antes de {quem está entre as duas
+  posições}." Troca em vaga já liberada: aviso em destaque "{X} saiu às HH:MM. {Y} fica com a vaga e sai agora, antes
+  de {…}. {X} vai para o Nº do {hospital}." e botão **"Trocar mesmo assim"**. ⚠️ Os "ultrapassados" são os que, na fila
+  de ONDE {Y} VEM, estão abaixo dele e ainda não saíram (09/11: Rômulo saiu antes da Daniela) — o modelo desenhou os da
+  fila de destino; os dados dizem que o salto é na de origem.
+- **Desfazer com a vaga liberada depois da troca:** a folha "Desfazer a troca" diz o efeito antes ("A Nª saiu às HH:MM
+  com {ocupante}. Desfazendo: {ocupante} segue liberado; {dono} volta à Nª, na fila, com as cirurgias."). Sem vaga
+  liberada, desfazer segue de um toque.
+- **"Desfazer" por 10 s** (`JANELA_DESFAZER_TROCA_MS`): opção `desfazivel` (+ `aviso`) de `executarSubstituicao` e
+  `setAnestesistaCasos` — quem chama decide que a escrita mudou a fila. A troca desfaz pela RPC com os lados ao
+  contrário; o repasse devolve cada cirurgia a quem estava com ela. A convergência da publicação e o FDS não marcam.
+- Travas: `definirAnestesistaTrocaDeHospital2710.test.jsx` e `definirAnestesistaAssumirPosicao.test.jsx` (mudaram de
+  lado, com o porquê), o describe "Passar a quem não está na fila daqui" de `liberacoesAntesDeLiberar.test.jsx`,
+  `trocaSheet.test.jsx` / `trocaSheetPosicaoLiberada.test.jsx`, `liberacoesTrocaDeclarada.test.jsx` (folha do desfazer)
+  e o describe do "Desfazer" em `escalaTrocaMantemLiberacao.test.jsx`.

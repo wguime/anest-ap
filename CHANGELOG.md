@@ -11,6 +11,24 @@ Dono: "quero que informe de onde veio a ajuda e para onde vai, da maneira como e
 concordância do lugar — "Do HRO para a Unimed · CC - Sala 3", "Da Unimed para o Consultório" (`deParaLugar`
 em `utils.js`). Sem número de versão: a v5.12.95 de outra sessão ainda não subiu.
 
+## 11/11/2026 — Escala: trocas que respeitam a ordem do rodapé — v5.12.95
+
+Dono: "a ordem de liberação do rodapé SEMPRE deve ser respeitada; se ela for desrespeitada por motivo de troca
+deve haver perguntas sobre os motivos". Medido em 45 dias: 53 repasses para alguém de fora do rodapé, sem
+posição, em 34 turnos; "trocou de lugar" desfeita em ~30 % das vezes. Modelo em
+`.tmp/analise-escala-2026-11/modelos-2/b-trocas.html`.
+- Repasse a quem NÃO está no rodapé daquele hospital (engrenagem da sala, "Trocar" do caso, "Passar · a um
+  colega"): o app pergunta "Fulano não está na fila do HRO nesta manhã. Como Fulano entra?" — "Veio AJUDAR" /
+  "ASSUME a posição de Beltrano na fila" / "Os dois TROCARAM de hospital hoje" —, nada marcado, com a frase do
+  efeito e a fila antes → depois; o botão diz o efeito. Entre colegas do mesmo rodapé nada muda. Saíram o
+  interruptor "Assumir também a posição" e a pergunta "trocaram de hospital?".
+- Tela "Trocas": "Trocaram de SALA — a ordem de saída não muda" (primeira opção), "Trocaram de POSIÇÃO na fila —
+  muda quem sai primeiro" / "Trocaram de HOSPITAL hoje", "saiu e um colega SEM ESCALA assume a posição"; "só
+  registrar" saiu da tela (continua na publicação).
+- Troca com quem já foi liberado: permitida, nomeando quem é ultrapassado ("Trocar mesmo assim").
+- Desfazer com a vaga já liberada: a folha diz o que acontece com cada um antes de gravar.
+- "Desfazer" por 10 s depois de troca/repasse que muda a fila.
+
 ## 11/11/2026 — Escala: tempos sem dúvida nas quatro folhas, desfazer de troca e tela de abertura — v5.12.94
 
 Modelos escolhidos pelo dono em 10/11 (`.tmp/analise-escala-2026-11/modelos-2/`).

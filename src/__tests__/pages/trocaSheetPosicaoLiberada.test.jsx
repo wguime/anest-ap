@@ -101,30 +101,41 @@ describe('o plano da troca enxerga a posição como ela está', () => {
 describe('posição ocupada e já liberada na troca em três passos', () => {
   it('Rodnei, com a vaga do HRO ocupada pelo Klisman, conta como sem escala', async () => {
     abrir()
-    await opcao(/trocou de lugar com um colega/)
+    await opcao(/Trocaram de POSIÇÃO na fila/)
     expect(screen.getByRole('button', { name: RODNEI })).toBeDisabled()
     fireEvent.click(screen.getByRole('button', { name: 'Voltar' }))
-    await opcao(/Um colega entra no lugar/)
+    await opcao(/SEM ESCALA assume a posição/)
     expect(screen.getByRole('button', { name: RODNEI })).not.toBeDisabled()
   })
 
   it('"entra no lugar": só a Unimed muda, e o HRO do Klisman fica fora da prévia e da gravação', async () => {
     abrir()
-    await opcao(/Um colega entra no lugar/)
+    await opcao(/SEM ESCALA assume a posição/)
     fireEvent.click(screen.getByRole('button', { name: RODNEI }))
     fireEvent.click(screen.getByRole('button', { name: 'Ver como fica' }))
-    await screen.findByText('Como a fila fica')
+    await screen.findByText(/como a fila fica/i)
     expect(document.querySelector('[data-fila-previa="hro"]')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /entra no lugar de Cristina/ }))
     await vi.waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
     expect(executarSubstituicao.mock.calls[0][0].lados.map((l) => l.hospital)).toEqual(['unimed'])
   })
 
-  it('se a vaga ocupada entra na troca, a prévia diz quem está lá e que já saiu', async () => {
+  // ⚠️ MUDOU DE LADO em 11/11/2026 (dono 10–11/11: troca com quem já foi liberado é
+  // "permitida, dizendo quem é ultrapassado"; modelo B, bloco 5). A frase de 23/10 ("já saiu
+  // desta posição… continua com a liberação. Se for trabalhar, acione pelo card") não dizia
+  // o que importa para a fila: quem recebe a vaga liberada SAI AGORA, antes de quem, na
+  // fila de onde vem, sairia antes dele (09/11: Rômulo saiu antes da Daniela). O título do
+  // passo 3 entre hospitais é "Trocaram de HOSPITAL hoje" e o botão, "Trocar mesmo assim".
+  it('vaga já liberada: a prévia nomeia quem é ultrapassado e o botão é "Trocar mesmo assim"', async () => {
     abrir({ colegaInicial: 'u-rodnei', modo: 'posicao' })
-    await screen.findByText('Como a fila fica')
+    await screen.findByText('Trocaram de HOSPITAL hoje')
     expect(document.querySelector('[data-fila-previa="hro"]').textContent).toMatch(/12ºCristina \S+sai Klisman/)
-    expect(screen.getByText(/Klisman \S+ já saiu desta posição \(com Klisman \S+ desde 09:02 · saiu às 10:46\)\. Cristina \S+ recebe a 12ª posição já liberada e Klisman \S+ continua com a liberação/)).toBeTruthy()
+    const aviso = document.querySelector('[data-vaga-liberada]')
+    expect(aviso.textContent).toMatch(/^Klisman \S+ saiu às 10:46\. Cristina \S+ fica com a vaga e sai agora/)
+    // quem saiu passa a ocupar a vaga de quem chega (a da Cristina na Unimed)
+    expect(aviso.textContent).toMatch(/Klisman \S+ vai para o \d+º da Unimed\./)
+    expect(screen.getByRole('button', { name: 'Trocar mesmo assim' })).toBeEnabled()
+    expect(screen.queryByText(/acione pelo card/)).toBeNull()
     expect(executarSubstituicao).not.toHaveBeenCalled()
   })
 })

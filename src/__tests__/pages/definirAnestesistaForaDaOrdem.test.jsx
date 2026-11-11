@@ -50,7 +50,12 @@ const abrir = (caso = escalas.hro.casos[0]) => render(
 const escolherEConfirmar = (nome) => {
   fireEvent.click(screen.getByRole('button', { name: 'Escolher quem assume' }))
   fireEvent.click(screen.getByRole('option', { name: new RegExp(nome) }))
-  fireEvent.click(screen.getByRole('button', { name: /Confirmar responsável/i }))
+  // 11/11/2026 (dono 10–11/11, modelo B das trocas): o Rafael é do rodapé da Unimed, fora da
+  // fila do HRO — a folha pergunta primeiro "Como Rafael entra?" e o botão passa a dizer o
+  // efeito (antes era "Confirmar responsável" direto). Aqui ele vem AJUDAR; a confirmação de
+  // fora da ordem (15/10) continua vindo depois, para a urgência.
+  fireEvent.click(document.querySelector('[data-como-entra-opcao="ajuda"]'))
+  fireEvent.click(screen.getByRole('button', { name: 'Rafael entra como ajuda' }))
 }
 
 beforeEach(() => vi.clearAllMocks())
@@ -80,7 +85,7 @@ describe('Trocar o anestesista da urgência — fora da ordem (dono 15/10)', () 
     expect(setAnestesistaCasos.mock.calls[0][2]).toEqual(expect.objectContaining({ uid: 'u-raf' }))
   })
 
-  it('cirurgia ELETIVA: repasse sem pergunta', async () => {
+  it('cirurgia ELETIVA: repasse sem a pergunta de fora da ordem', async () => {
     abrir({ ...escalas.hro.casos[0], tipo: 'eletiva' })
     escolherEConfirmar('RAFAEL PELISSARO')
     await waitFor(() => expect(setAnestesistaCasos).toHaveBeenCalled())

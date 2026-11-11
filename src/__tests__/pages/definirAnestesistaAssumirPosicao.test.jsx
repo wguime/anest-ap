@@ -151,38 +151,57 @@ describe('Lista de colegas (dono 17/08)', () => {
   it('sem ninguém escolhido o Confirmar existe, porém desabilitado', () => {
     render(<DefinirAnestesistaSheet escala={escalaComRodape} sala="Sala 5" onClose={vi.fn()} />, { wrapper: wrap })
     expect(screen.getByRole('button', { name: /Confirmar responsável/i })).toBeDisabled()
+    // 11/11/2026 (dono 10–11/11): Cury não está na fila do HRO — o botão segue apagado até
+    // a resposta de "Como entra?" e passa a dizer o efeito (antes acendia "Confirmar responsável")
     escolherCury()
-    expect(screen.getByRole('button', { name: /Confirmar responsável/i })).not.toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Escolha como Gustavo entra' })).toBeDisabled()
+    fireEvent.click(document.querySelector('[data-como-entra-opcao="ajuda"]'))
+    expect(screen.getByRole('button', { name: 'Gustavo entra como ajuda' })).not.toBeDisabled()
   })
 })
 
-describe('toggle "Assumir também a posição" no Definir anestesista', () => {
-  it('aparece quando o responsável anterior ocupa posição no rodapé — e nasce desligado', async () => {
+// ⚠️ MUDOU DE LADO em 11/11/2026 (decisão do dono de 10–11/11, modelo B de
+// `.tmp/analise-escala-2026-11/modelos-2/b-trocas.html`). O interruptor "Assumir também a
+// posição de X na fila" (30/07) nascia desligado e não dizia o efeito: de 26/09 a 10/11,
+// 53 repasses para alguém de fora do rodapé saíram sem ninguém dizer se era ajuda ou
+// substituição. No lugar dele a folha PERGUNTA "Como {B} entra?" sempre que quem recebe
+// não está na fila daquele hospital naquele turno — "Veio AJUDAR" / "ASSUME a posição de
+// {A} na fila" —, nada marcado, com o efeito escrito e o botão dizendo o que acontece.
+// O que se grava é o mesmo de antes (um lado, `assuncao`, slot + casos juntos).
+const opcaoEntrada = (id) => document.querySelector(`[data-como-entra-opcao="${id}"]`)
+describe('"Como entra?" no lugar do interruptor de assumir a posição (dono 10–11/11)', () => {
+  it('quem recebe está fora da fila daqui: a pergunta aparece, com nada marcado e o botão apagado', async () => {
     render(<DefinirAnestesistaSheet escala={escalaComRodape} sala="Sala 5" onClose={vi.fn()} />, { wrapper: wrap })
-    expect(screen.queryByRole('switch')).toBeNull() // sem escolhido, sem toggle
-    escolherCury()
-    const sw = await screen.findByRole('switch')
-    expect(sw).toHaveAttribute('aria-checked', 'false')
-    expect(screen.getByText(/Assumir também a posição de Guilherme Staub/)).toBeTruthy()
-  })
-
-  it('não aparece quando o anterior NÃO está no rodapé', () => {
-    const semSlot = { ...escalaComRodape, ordemLiberacao: { matutino: ['LEONARDO', 'KARINE'] } }
-    render(<DefinirAnestesistaSheet escala={semSlot} sala="Sala 5" onClose={vi.fn()} />, { wrapper: wrap })
+    expect(document.querySelector('[data-como-entra]')).toBeNull() // sem escolhido, sem pergunta
     escolherCury()
     expect(screen.queryByRole('switch')).toBeNull()
+    expect(screen.queryByText(/Assumir também a posição/)).toBeNull()
+    expect(opcaoEntrada('ajuda')).toHaveAttribute('aria-checked', 'false')
+    expect(opcaoEntrada('assume')).toHaveAttribute('aria-checked', 'false')
+    expect(opcaoEntrada('assume')).toHaveTextContent('ASSUME a posição de Guilherme na fila')
+    expect(opcaoEntrada('assume')).toHaveTextContent('Gustavo passa a ser o 2º do HRO. Guilherme sai da fila desta manhã.')
+    expect(screen.getByRole('button', { name: 'Escolha como Gustavo entra' })).toBeDisabled()
   })
 
-  it('ligado: confirmar dispara a substituição (slot + casos JUNTOS) e não o caminho clássico', async () => {
+  it('quem passa NÃO está no rodapé: não há posição em jogo — só o aviso de que entra como ajuda', () => {
+    const semSlot = { ...escalaComRodape, ordemLiberacao: { matutino: ['LEONARDO', 'KARINE'] } }
+    render(<DefinirAnestesistaSheet escala={semSlot} sala="Sala 5" turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
+    escolherCury()
+    expect(opcaoEntrada('assume')).toBeNull()
+    expect(screen.getByRole('note')).toHaveTextContent('Gustavo não está na fila do HRO nesta manhã. Por isso Gustavo entra como ajuda:')
+    expect(screen.getByRole('button', { name: 'Gustavo entra como ajuda' })).toBeEnabled()
+  })
+
+  it('"ASSUME": confirmar dispara a substituição (slot + casos JUNTOS) e não o caminho clássico', async () => {
     render(<DefinirAnestesistaSheet escala={escalaComRodape} sala="Sala 5" onClose={vi.fn()} />, { wrapper: wrap })
     escolherCury()
-    fireEvent.click(await screen.findByRole('switch'))
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar responsável' }))
+    fireEvent.click(opcaoEntrada('assume'))
+    fireEvent.click(screen.getByRole('button', { name: 'Gustavo assume o 2º' }))
     await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
     const [plan, userInfo] = executarSubstituicao.mock.calls[0]
     expect(plan.lados).toHaveLength(1)
     expect(plan.lados[0]).toMatchObject({
-      hospital: 'hro', escalaId: 'e1', chaveSlot: 'uid-staub', nomeSlot: 'STAUB',
+      hospital: 'hro', escalaId: 'e1', chaveSlot: 'uid-staub', nomeSlot: 'STAUB', tipo: 'assuncao',
       de: { uid: 'uid-staub' }, para: { uid: 'uid-cury', apelido: 'CURY' },
       casoIds: ['c1'], // terminada fica com quem terminou
     })
@@ -191,20 +210,19 @@ describe('toggle "Assumir também a posição" no Definir anestesista', () => {
     expect(JSON.stringify(plan)).not.toContain('ordem')
   })
 
-  it('desligado: confirmar segue o caminho clássico (só os casos)', async () => {
+  it('"Veio AJUDAR": confirmar segue o caminho clássico (só os casos)', async () => {
     render(<DefinirAnestesistaSheet escala={escalaComRodape} sala="Sala 5" onClose={vi.fn()} />, { wrapper: wrap })
     escolherCury()
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar responsável' }))
+    fireEvent.click(opcaoEntrada('ajuda'))
+    fireEvent.click(screen.getByRole('button', { name: 'Gustavo entra como ajuda' }))
     await waitFor(() => expect(setAnestesistaCasos).toHaveBeenCalledTimes(1))
     expect(executarSubstituicao).not.toHaveBeenCalled()
   })
 
   // TURNOS INDEPENDENTES (dono 13/08): a posição de STAUB é MATUTINA e a tela
-  // está na TARDE — na tarde não existe posição dele para assumir, então o
-  // toggle nem é oferecido e o repasse move só as cirurgias. Até 13/08 o slot da
-  // manhã era encontrado a partir da tarde e a assunção era gravada no OUTRO
-  // turno (defeito D3 tinha corrigido só o turno da escrita, não o cruzamento).
-  it('posição em outro turno não é oferecida: a tarde não assume vaga da manhã', async () => {
+  // está na TARDE — na tarde não existe fila publicada aqui (rodapé vazio), então
+  // não há ordem a ferir: nenhuma pergunta, e o repasse move só as cirurgias.
+  it('turno sem fila publicada: a tarde não pergunta nem assume vaga da manhã', async () => {
     const casoTarde = caso({ id: 'c3', hora: '14:00' })
     const esc = { ...escalaComRodape, casos: [...escalaComRodape.casos, casoTarde] }
     render(
@@ -212,7 +230,7 @@ describe('toggle "Assumir também a posição" no Definir anestesista', () => {
       { wrapper: wrap },
     )
     escolherCury()
-    expect(screen.queryByRole('switch')).toBeNull()
+    expect(document.querySelector('[data-como-entra]')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar responsável' }))
     await waitFor(() => expect(setAnestesistaCasos).toHaveBeenCalledTimes(1))
     expect(executarSubstituicao).not.toHaveBeenCalled()
@@ -393,12 +411,14 @@ describe('Segundo anestesista (mesma cirurgia)', () => {
     expect(executarSubstituicao).not.toHaveBeenCalled()
   })
 
-  it('com dupla, o toggle de assumir posição sai de cena (não há um dono só)', async () => {
+  // (até 11/11 a asserção era "o toggle some"; o toggle deu lugar à pergunta — mesma regra)
+  it('com dupla, a pergunta "Como entra?" sai de cena (não há um dono só)', async () => {
     abrirCaso()
     escolherCury()
     await screen.findByRole('button', { name: /Dois anestesistas nesta cirurgia/i })
     fireEvent.click(segundoSelect())
     fireEvent.click(await screen.findByRole('option', { name: 'GUILHERME STAUB' }))
-    await waitFor(() => expect(screen.queryByRole('switch')).toBeNull())
+    await waitFor(() => expect(document.querySelector('[data-como-entra]')).toBeNull())
+    expect(screen.queryByRole('switch')).toBeNull()
   })
 })

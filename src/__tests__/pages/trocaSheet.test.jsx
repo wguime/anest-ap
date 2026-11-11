@@ -13,7 +13,7 @@
  *   6. o TIPO é inferido pela geografia; a própria pessoa não aparece na lista.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react'
 
 import { ThemeProvider, ToastProvider } from '@/design-system'
 import TrocaSheet, { inferirTipoTroca } from '@/pages/escala-cirurgica/TrocaSheet'
@@ -26,7 +26,8 @@ const ROSTER = [
 ]
 const APELIDO_UID = Object.fromEntries(ROSTER.flatMap((r) => r.apelidos.map((a) => [a, r.uid])))
 
-const { marcarTroca, executarSubstituicao } = vi.hoisted(() => ({
+const { marcarTroca, executarSubstituicao, setAnestesistaCasos } = vi.hoisted(() => ({
+  setAnestesistaCasos: vi.fn(async () => {}),
   marcarTroca: vi.fn(async () => {}),
   executarSubstituicao: vi.fn(async () => {}),
 }))
@@ -61,7 +62,7 @@ const escalasMock = { unimed: escalaUnimed, hro: escalaHro, materno: escalaMater
 
 vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
   useEscalaCirurgica: () => ({ escalas: escalasMock }),
-  useEscalaCirurgicaActions: () => ({ marcarTroca, executarSubstituicao }),
+  useEscalaCirurgicaActions: () => ({ marcarTroca, executarSubstituicao, setAnestesistaCasos }),
   HOSPITAL_LABEL: { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' },
 }))
 vi.mock('@/contexts/UserContext', () => ({
@@ -81,13 +82,26 @@ const wrap = ({ children }) => <ThemeProvider><ToastProvider>{children}</ToastPr
 
 const LINHA_GIOVANA = { chave: 'uid-gio', uid: 'uid-gio', anestesista: 'Giovana Noll', nomeOriginal: 'GIOVANA' }
 
-const montar = (props = {}) => render(
-  <TrocaSheet linha={LINHA_GIOVANA} escala={escalaHro} turno="matutino" onClose={vi.fn()} {...props} />,
-  { wrapper: wrap },
-)
+let ultimasProps = {}
+const montar = (props = {}) => {
+  ultimasProps = props
+  return render(
+    <TrocaSheet linha={LINHA_GIOVANA} escala={escalaHro} turno="matutino" onClose={vi.fn()} {...props} />,
+    { wrapper: wrap },
+  )
+}
 
 // Passo 1 → opção; passo 2 → colega; passo 3 → prévia
 const opcao = async (rx) => {
+  // ⚠️ 11/11/2026 (dono 10–11/11): "só registrar" SAIU do passo 1 — não era usado à mão desde
+  // 27/10 e a publicação segue registrando. O código do registro continua no componente,
+  // sem entrada na tela; os testes dele o abrem pela prop, direto no passo 2.
+  if (rx === REGISTRO) {
+    cleanup()
+    render(<TrocaSheet linha={LINHA_GIOVANA} escala={escalaHro} turno="matutino" onClose={vi.fn()} {...ultimasProps} opcaoInicial="registro" />, { wrapper: wrap })
+    await screen.findByRole('textbox', { name: 'Buscar colega pelo nome' })
+    return
+  }
   fireEvent.click(await screen.findByRole('button', { name: rx }))
   fireEvent.click(screen.getByRole('button', { name: 'Continuar' }))
 }
@@ -95,8 +109,9 @@ const colega = async (rx) => {
   fireEvent.click(await screen.findByRole('button', { name: rx }))
   fireEvent.click(screen.getByRole('button', { name: 'Ver como fica' }))
 }
-const TROCOU = /trocou de lugar com um colega/
-const ENTRA = /Um colega entra no lugar/
+const SALA = /Trocaram de SALA — a ordem de saída não muda/
+const TROCOU = /Trocaram de POSIÇÃO na fila — muda quem sai primeiro/
+const ENTRA = /saiu e um colega SEM ESCALA assume a posição/
 const REGISTRO = /só registrar/
 const MAU = /^Maurício Mahalem Bastos/
 const botaoGravar = () => screen.getByRole('button', { name: /⇄|entra no lugar de|Registrar a troca/ })
@@ -119,15 +134,26 @@ describe('inferirTipoTroca — taxonomia pela geografia dos slots', () => {
 })
 
 describe('Passo 1 — o que aconteceu', () => {
-  it('três opções com o efeito escrito, e nada vem marcado', async () => {
+  // ⚠️ MUDOU DE LADO em 11/11/2026 (dono 10–11/11, modelo B, bloco 4): as três respostas
+  // eram "trocou de lugar · um colega entra no lugar · só registrar". Em 43 das 82 trocas de
+  // posição desde 07/08 os dois eram da MESMA fila e 30% foram desfeitas em minutos — a
+  // troca de sala, a situação mais comum, não existia aqui. Agora cada título diz o que
+  // acontece com a ORDEM, "Trocaram de SALA" é a primeira e "só registrar" saiu da tela.
+  it('três opções — SALA primeiro — com o efeito na ordem escrito, e nada vem marcado', async () => {
     montar()
     expect(await screen.findByText('Trocas de Giovana Noll')).toBeTruthy()
     expect(screen.getByText('1º na escala do HRO · S1')).toBeTruthy()
-    for (const rx of [TROCOU, ENTRA, REGISTRO]) {
+    const titulos = screen.getAllByRole('button').filter((b) => b.hasAttribute('aria-pressed')).map((b) => b.textContent)
+    expect(titulos).toHaveLength(3)
+    expect(titulos[0]).toMatch(SALA)
+    expect(titulos[1]).toMatch(TROCOU)
+    expect(titulos[2]).toMatch(/Giovana Noll saiu e um colega SEM ESCALA assume a posição/)
+    for (const rx of [SALA, TROCOU, ENTRA]) {
       expect(screen.getByRole('button', { name: rx })).toHaveAttribute('aria-pressed', 'false')
     }
-    expect(screen.getByText(/Os dois trocam de posição e levam as cirurgias em aberto/)).toBeTruthy()
-    expect(screen.getByText(/Ninguém muda de lugar/)).toBeTruthy()
+    expect(screen.getByText('Cada um fica com as cirurgias do outro. As posições na fila não mudam.')).toBeTruthy()
+    expect(screen.getByText(/passa a sair na vez do colega e o colega na vez de Giovana Noll/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /só registrar/ })).toBeNull()
     expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled()
   })
 
@@ -174,7 +200,7 @@ describe('Passo 3 — a prévia é a confirmação', () => {
     montar()
     await opcao(TROCOU)
     await colega(MAU)
-    expect(await screen.findByText('Como a fila fica')).toBeTruthy()
+    expect(await screen.findByText(/como a fila fica/i)).toBeTruthy()
     const hro = document.querySelector('[data-fila-previa="hro"]')
     const uni = document.querySelector('[data-fila-previa="unimed"]')
     // a linha que muda diz quem entra e, embaixo, quem sai
@@ -216,7 +242,7 @@ describe('Passo 3 — a prévia é a confirmação', () => {
     montar()
     await opcao(TROCOU)
     await colega(MAU)
-    await screen.findByText('Como a fila fica')
+    await screen.findByText(/como a fila fica/i)
     expect(screen.queryByRole('button', { name: /fica (HRO|Unimed)/ })).toBeNull()
     fireEvent.click(botaoGravar())
     await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
@@ -261,7 +287,7 @@ describe('Passo 3 — a prévia é a confirmação', () => {
   // folha com o colega e a opção — cai direto na prévia, sem gravar nada sozinho.
   it('reabrir de um registro (colega + "trocou de lugar") começa na prévia', async () => {
     montar({ colegaInicial: 'uid-mau', modo: 'posicao' })
-    expect(await screen.findByText('Como a fila fica')).toBeTruthy()
+    expect(await screen.findByText(/como a fila fica/i)).toBeTruthy()
     expect(executarSubstituicao).not.toHaveBeenCalled()
     fireEvent.click(botaoGravar())
     await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
@@ -306,16 +332,13 @@ describe('Colegas fora da fila de Unimed/HRO', () => {
     montar()
     await opcao(REGISTRO)
     await colega(MAU)
-    await screen.findByText('Como a fila fica')
+    await screen.findByText(/como a fila fica/i)
     expect(screen.queryByText(/Onde .* está/)).toBeNull()
   })
 
   // INCIDENTE 13/08 (Staub): fecha a MANHÃ do HRO e passa a TARDE no consultório.
   it('colega escalado só no OUTRO turno conta como sem escala e pode ser marcado no consultório', async () => {
-    render(
-      <TrocaSheet linha={LINHA_GIOVANA} escala={escalaHro} turno="vespertino" onClose={vi.fn()} />,
-      { wrapper: wrap },
-    )
+    montar({ turno: 'vespertino' })
     await opcao(REGISTRO)
     // Maurício está no rodapé MATUTINO da Unimed; a tela é a tarde
     expect(screen.getByRole('button', { name: MAU })).not.toHaveTextContent('2º')
@@ -341,7 +364,7 @@ describe('Colegas fora da fila de Unimed/HRO', () => {
       )
       await opcao(TROCOU)
       await colega(MAU)
-      await screen.findByText('Como a fila fica')
+      await screen.findByText(/como a fila fica/i)
       // Materno (a tela) + Unimed (o colega). O HRO dela fica de fora.
       expect(document.querySelector('[data-fila-previa="materno"]')).toBeTruthy()
       expect(document.querySelector('[data-fila-previa="unimed"]')).toHaveTextContent('2ºRosemary Curysai Maurício Bastos')
@@ -349,5 +372,76 @@ describe('Colegas fora da fila de Unimed/HRO', () => {
     } finally {
       escalasMock.hro = hroOriginal
     }
+  })
+})
+
+/**
+ * TROCA DE SALA, QUEM PASSA A SAIR ANTES DE QUEM, E O "DESFAZER" (dono 10–11/11/2026, modelo B
+ * de `.tmp/analise-escala-2026-11/modelos-2/b-trocas.html`, blocos 4 e 7).
+ */
+describe('Trocaram de SALA — a ordem de saída não muda (dono 10–11/11)', () => {
+  it('só aceita colega do MESMO hospital neste turno', async () => {
+    montar()
+    await opcao(SALA)
+    expect(screen.getByRole('button', { name: MAU })).toBeDisabled()
+    expect(screen.getByRole('button', { name: MAU })).toHaveTextContent('troca de sala é entre colegas daqui')
+  })
+
+  it('duas escritas de repasse, sem posição assumida, e um aviso só', async () => {
+    // a Rose entra na fila do HRO (2ª) com uma cirurgia na S2
+    const hroAntes = escalasMock.hro
+    escalasMock.hro = {
+      ...escalaHro,
+      ordemLiberacao: { matutino: ['GIOVANA', 'ROSE'] },
+      casos: [...escalaHro.casos, { id: 'h2', sala: 'S2', ordem: 0, anestesista: 'ROSE', anestesistaUserId: 'uid-rose', bloco: 'normal' }],
+    }
+    try {
+      montar({ escala: escalasMock.hro })
+      await opcao(SALA)
+      await colega(/^Rosemary Cury/)
+      expect(await screen.findByText('Trocaram de SALA')).toBeTruthy()
+      const resumo = document.querySelector('[data-resumo-troca]').textContent
+      expect(resumo).toMatch(/^Cada um fica com as cirurgias do outro\. As posições na fila não mudam\./)
+      expect(resumo).toContain('Giovana Noll segue 1º e Rosemary Cury segue 2º.')
+      expect(document.querySelector('[data-fila-previa]')).toBeNull() // ninguém muda de posição
+      expect(screen.queryByPlaceholderText(/plantão trocado/)).toBeNull() // motivo é da troca de posição
+      fireEvent.click(screen.getByRole('button', { name: 'Trocar as salas' }))
+      await waitFor(() => expect(setAnestesistaCasos).toHaveBeenCalledTimes(2))
+      const [c1, c2] = setAnestesistaCasos.mock.calls
+      expect([c1[1], c1[2].uid]).toEqual([['h1'], 'uid-rose'])
+      expect([c2[1], c2[2].uid]).toEqual([['h2'], 'uid-gio'])
+      expect(c1[3].silencioso).toBe(true)
+      expect(c2[3].aviso).toEqual({ title: 'Salas trocadas', description: 'Giovana Noll ⇄ Rosemary Cury · a ordem de saída não muda' })
+      expect(executarSubstituicao).not.toHaveBeenCalled()
+      expect(marcarTroca).not.toHaveBeenCalled()
+    } finally { escalasMock.hro = hroAntes }
+  })
+})
+
+describe('"Trocaram de POSIÇÃO": o aviso desfazível', () => {
+  it('no MESMO hospital a prévia nomeia quem passa a sair antes de quem', async () => {
+    const hroAntes = escalasMock.hro
+    const maternoAntes = escalasMock.materno
+    escalasMock.hro = { ...escalaHro, ordemLiberacao: { matutino: ['GIOVANA', 'KARINE', 'ROSE'] } }
+    escalasMock.materno = null // a Rose só no HRO: troca dentro do mesmo hospital
+    try {
+      montar({ escala: escalasMock.hro })
+      await opcao(TROCOU)
+      await colega(/^Rosemary Cury/)
+      expect(await screen.findByText('Trocaram de POSIÇÃO na fila')).toBeTruthy()
+      // Giovana (1ª) fica com a 3ª: a fila sai de baixo para cima, então ela passa a sair antes da 2ª
+      expect(document.querySelector('[data-ultrapassagem]')).toHaveTextContent('Giovana Noll passa a sair antes de Karine.')
+    } finally { escalasMock.hro = hroAntes; escalasMock.materno = maternoAntes }
+  })
+
+
+  it('a execução pede o "Desfazer" de 10 s ao context', async () => {
+    montar()
+    await opcao(TROCOU)
+    await colega(MAU)
+    await screen.findByText(/como a fila fica/i)
+    fireEvent.click(botaoGravar())
+    await waitFor(() => expect(executarSubstituicao).toHaveBeenCalledTimes(1))
+    expect(executarSubstituicao.mock.calls[0][2]).toEqual({ desfazivel: true })
   })
 })

@@ -295,7 +295,7 @@ export const CasoCard = memo(CasoCardBase, (prev, next) =>
  *   caso", sem o ⚙ da sala (repasse em bloco) e sem o grupo "Ainda abertas" (as urgências do
  *   contrato são do turno em curso); o detalhe abre no mesmo modo.
  */
-export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null, turno, onNavigate, pendencias = null, onTrocarPosicoes = null, encerrado = null, onVerFila = null, abrirCasoId = null, onCasoAberto = null }) {
+export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null, turno, onNavigate, pendencias = null, encerrado = null, onVerFila = null, abrirCasoId = null, onCasoAberto = null }) {
   const { user } = useUser()
   const { rosterByUid } = useRosterAnestesistas()
   // Nome do grupo na Completa (pedido do dono 23/07): 1 anestesista = 1º nome +
@@ -662,7 +662,6 @@ export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null
           sala={definir.sala}
           casosAlvo={definir.casosAlvo || null}
           turno={turno}
-          onTrocarPosicoes={encerrado ? null : onTrocarPosicoes}
           encerrado={!!encerrado}
           onClose={() => setDefinir(null)}
         />

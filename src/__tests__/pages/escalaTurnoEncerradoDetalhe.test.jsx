@@ -132,10 +132,13 @@ describe('trocar quem fez num turno encerrado não mexe na fila', () => {
     { wrapper: wrap },
   )
 
-  it('sem "Assumir também a posição"; passa só a cirurgia, sem os efeitos do repasse', () => {
+  // (11/11/2026: o interruptor "Assumir também a posição" deu lugar à pergunta "Como entra?",
+  // decisão do dono de 10–11/11 — a correção de turno encerrado segue sem decidir fila)
+  it('sem pergunta de fila; passa só a cirurgia, sem os efeitos do repasse', () => {
     folha({ encerrado: true })
     escolherCury()
     expect(screen.queryByRole('switch')).toBeNull()
+    expect(document.querySelector('[data-como-entra]')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /Confirmar responsável/i }))
     expect(acoes.executarSubstituicao).not.toHaveBeenCalled()
     expect(acoes.setAnestesistaCasos).toHaveBeenCalledWith(
@@ -144,9 +147,14 @@ describe('trocar quem fez num turno encerrado não mexe na fila', () => {
     )
   })
 
-  it('no turno em curso o "Assumir também a posição" segue lá (controle)', () => {
-    folha()
+  it('no turno em curso a decisão de fila segue lá: a pergunta "Como entra?" (controle)', () => {
+    // com a cirurgia ABERTA: é ela que passa (a terminada mantém quem fez e não há o que decidir)
+    const aberta = caso({ statusCirurgia: 'iniciada', statusAtualizadoEm: null })
+    render(
+      <DefinirAnestesistaSheet escala={escala(aberta)} sala="Sala 6" casosAlvo={[aberta]} turno="matutino" onClose={vi.fn()} />,
+      { wrapper: wrap },
+    )
     escolherCury()
-    expect(screen.getByRole('switch')).toBeTruthy()
+    expect(document.querySelector('[data-como-entra]')).toBeTruthy()
   })
 })
