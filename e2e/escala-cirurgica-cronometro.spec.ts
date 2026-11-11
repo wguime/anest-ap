@@ -60,7 +60,7 @@ test('pill do cronômetro avança com o tempo e recalcula ao voltar do backgroun
   const atalho1h = page.getByRole('button', { name: '1h', exact: true });
   await expect(async () => {
     if (!(await abaFaltante.isVisible().catch(() => false))) {
-      await page.getByRole('button', { name: /^Definir tempo faltante de/ }).first().click({ timeout: 2_000 });
+      await page.getByRole('button', { name: /^Informar o tempo total de/ }).first().click({ timeout: 2_000 });
       await expect(abaFaltante).toBeVisible({ timeout: 3_000 });
     }
     await abaFaltante.click({ timeout: 2_000 });

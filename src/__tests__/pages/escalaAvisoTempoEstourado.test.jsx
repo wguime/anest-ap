@@ -114,7 +114,7 @@ describe('Tempo estourado — a metade que aparece na TELA', () => {
   it('quem não informou tempo nenhum segue com o convite de preencher', () => {
     montar()
     const card = cardDe('uid-mar')
-    expect(within(card).getByLabelText(/Definir tempo faltante/)).toBeTruthy()
+    expect(within(card).getByLabelText(/Informar o tempo total/)).toBeTruthy()
     expect(within(card).queryByText(/Atualize o tempo/)).toBeNull()
   })
 })

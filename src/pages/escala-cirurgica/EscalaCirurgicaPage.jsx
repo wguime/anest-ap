@@ -93,6 +93,11 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   )
   const [hospital, setHospital] = useState('unimed')
   const [aba, setAba] = useState('minhas')
+  // ATALHOS ENTRE AS ABAS (dono 10/11, modelo A): "Fila" na folha da cirurgia leva às
+  // Liberações; "Cirurgias de …" e "abrir" (folha do tempo total) levam à Completa — o
+  // segundo já com a cirurgia aberta (`casoParaAbrir`, consumido pela BoardView).
+  const [casoParaAbrir, setCasoParaAbrir] = useState(null)
+  const limparCasoParaAbrir = useCallback(() => setCasoParaAbrir(null), [])
   const [turno, setTurno] = useState(() => (ehFimDeSemana(hoje || data) ? turnoFdsAtual(minutosDoDia()) : turnoAtualOperacional()))
   // sáb/dom é dado do CALENDÁRIO — não espera rede (ver turnoDoRelogio)
   const fimDeSemana = ehFimDeSemana(data)
@@ -919,7 +924,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           {/* Minhas e Completa também no fim de semana (dono 13/09) — por hospital,
               como num dia útil; só a Faixa de Urgências fica de fora do FDS. */}
           {abaVisivel === 'minhas' && (
-            <MinhasEscalasView escala={escala} meuAlias={meuAlias} meuUid={meuUid} resolverUid={resolverRoster} turno={turnoCasos} pendencias={pendencias.porCaso} onVerBoard={() => setAba('board')} encerrado={fraseEncerrado} />
+            <MinhasEscalasView escala={escala} meuAlias={meuAlias} meuUid={meuUid} resolverUid={resolverRoster} turno={turnoCasos} pendencias={pendencias.porCaso} onVerBoard={() => setAba('board')} encerrado={fraseEncerrado} onVerFila={() => setAba('liberacoes')} />
           )}
           {abaVisivel === 'board' && (
             <>
@@ -934,6 +939,8 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               <BoardView
                 escala={escala} meuAlias={meuAlias} meuUid={meuUid} resolverUid={resolverRoster} turno={turnoCasos}
                 pendencias={pendencias.porCaso} onNavigate={onNavigate} encerrado={fraseEncerrado}
+                onVerFila={() => setAba('liberacoes')}
+                abrirCasoId={casoParaAbrir} onCasoAberto={limparCasoParaAbrir}
                 // "os dois trocaram de hospital?" (dono 27/10): o "Sim" do definir anestesista
                 // abre a troca já na prévia, com os dois hospitais
                 onTrocarPosicoes={modoFds ? null : ({ linha, colegaUid }) => setTrocaSheet({ linha, colegaUid, modo: 'posicao' })}
@@ -967,6 +974,19 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                 )}
                 <LiberacoesView
                   escala={escalaLib}
+                  // atalhos para a Completa (10/11): na fila única a cirurgia pode estar em
+                  // outro hospital — a aba abre no hospital dela
+                  onVerCirurgias={(linha) => {
+                    const dona = modoFds && linha?.casoIds?.[0] ? escalaDoCaso(linha.casoIds[0]) : null
+                    if (dona?.hospital) setHospital(dona.hospital)
+                    setAba('board')
+                  }}
+                  onAbrirCaso={(casoId) => {
+                    const dona = escalaDoCaso(casoId)
+                    if (dona?.hospital && dona.hospital !== hospital) setHospital(dona.hospital)
+                    setCasoParaAbrir(casoId)
+                    setAba('board')
+                  }}
                   hospital={modoFds ? FDS_HOSPITAL : hospital}
                   hospitalLabel={modoFds ? (feriado ? 'Feriado' : 'Fim de semana') : HOSPITAL_LABEL[hospital]}
                   canEdit={canEdit}

@@ -184,7 +184,7 @@ describe('Observação da linha (dono 29/07)', () => {
   it('definir o tempo da pessoa NÃO apaga a observação já salva', async () => {
     const onSetOverride = vi.fn(async () => {})
     montar({ onSetOverride }, { ...escalaBase, linhaOverrides: { 'uid-mar': { observacao: 'no consultório' } } })
-    fireEvent.click(screen.getByLabelText('Definir tempo faltante de Marílio Flach'))
+    fireEvent.click(screen.getByLabelText('Informar o tempo total de Marílio Flach'))
     // atalho de duração em grade (redesenho 17/08): um toque grava — desde 02/10 a
     // duração é a 2ª aba (o painel abre no "Horário de término")
     fireEvent.click(screen.getByRole('button', { name: '1h' }))
@@ -252,7 +252,9 @@ describe('Tempo da CIRURGIA × tempo da PESSOA no card da fila (dono 29/07)', ()
     const linhaCirurgiao = linhaDaCirurgia(cardLeo, 'Liana W')
     // agendada => hora prevista, em PALAVRA (dono 30/07: o chip com ⏱ saiu, porque
     // o card ficava com dois relógios sem dizer qual era qual)
-    expect(linhaCirurgiao.textContent).toContain('até 23:30')
+    // 10/11 (modelo A do dono): a frase é a mesma do quadro — "Tempo estimado HH:MM · não
+    // começou" (era "até 23:30"); a agendada continua sem contagem
+    expect(linhaCirurgiao.textContent).toContain('Tempo estimado 23:30· não começou')
     expect(linhaCirurgiao.textContent).not.toMatch(/faltam/)
     // e a linha do cirurgião não tem ícone nenhum — o único ⏱ do card é o da pessoa
     expect(linhaCirurgiao.querySelector('svg')).toBeNull()
@@ -290,7 +292,7 @@ describe('Tempo da CIRURGIA × tempo da PESSOA no card da fila (dono 29/07)', ()
     const linhaCirurgiao = within(cardMarilio).getByText('Taciana A').closest('p')
     expect(linhaCirurgiao.textContent).toBe('Taciana A')
     // e a linha continua oferecendo informar o tempo DA PESSOA
-    expect(within(cardMarilio).getByLabelText(/Definir tempo faltante/)).toBeTruthy()
+    expect(within(cardMarilio).getByLabelText(/Informar o tempo total/)).toBeTruthy()
   })
 })
 
@@ -341,20 +343,46 @@ describe('Painel da linha — SEM a lista de casos (dono 30/07)', () => {
     // campo, "tempo faltante" no aria-label e "Tempo para término ou horário de
     // término de todos os seus casos" no subtítulo (auditoria 17/08)
     montar()
-    fireEvent.click(screen.getByLabelText('Definir tempo faltante de Marílio Flach'))
+    fireEvent.click(screen.getByLabelText('Informar o tempo total de Marílio Flach'))
     // 02/10: "Tempo total estimado" — o nome da pílula que abriu ("+ Tempo total") e o
     // que o dono pediu dito com todas as letras: é o total de TODAS as cirurgias
-    expect(screen.getByText(/Tempo total · Marílio Flach/)).toBeTruthy()
+    expect(screen.getByText(/Tempo total de Marílio Flach/)).toBeTruthy()
     expect(screen.queryByText(/Tempo para término ou horário de término/)).toBeNull()
     // e o painel acompanha o conteúdo em vez de nascer com 85% da tela
     expect(document.querySelector('[data-slot="sheet-content"]').className).toContain('!h-auto')
   })
 
-  it('o cabeçalho repete o contexto que o card da fila dá', () => {
+  // ⚠️ MUDOU DE LADO em 10/11/2026 (modelo A aprovado pelo dono: a folha é DA PESSOA; "as
+  // cirurgias só como ATALHO, sem listar"). O cabeçalho dizia "1 cirurgia · N com término
+  // informado · Sala" — e esse N contava estimados de cirurgiões, não términos. Agora diz
+  // posição, sala e turno; a contagem das cirurgias virou o atalho para a Completa.
+  it('o cabeçalho diz posição, sala e turno; as cirurgias viram atalho para a Completa', () => {
+    const onVerCirurgias = vi.fn()
+    montar({ onVerCirurgias })
+    abrirEditor('Marílio Flach')
+    expect(document.querySelector('[data-sub-painel]').textContent).toBe('2º do HRO · Sala 2 · Manhã')
+    expect(document.querySelector('[data-slot="sheet-header"]').textContent).not.toMatch(/com término informado/)
+    const atalho = document.querySelector('[data-atalho-cirurgias]')
+    expect(atalho.textContent).toBe('Cirurgias de Marílio1 · na Completa')
+    fireEvent.click(atalho)
+    expect(onVerCirurgias).toHaveBeenCalledWith(expect.objectContaining({ anestesista: 'Marílio Flach' }))
+  })
+
+  it('o TEMPO TOTAL da pessoa abre o painel, com o nome dela; "Alterar" leva à folha do tempo total', () => {
+    montar({}, { ...escalaBase, linhaOverrides: { 'matutino:uid-mar': { termino: '11:40' } } })
+    abrirEditor('Marílio Flach')
+    const faixa = document.querySelector('[data-slot="sheet-content"] [data-tempo-total]')
+    expect(faixa.textContent).toContain('Tempo total de Marílio')
+    expect(faixa.textContent).toContain('fica até 11:40')
+    fireEvent.click(within(faixa).getByRole('button', { name: 'Alterar o tempo total de Marílio Flach' }))
+    expect(screen.getByText('Tempo total de Marílio Flach')).toBeTruthy()
+    expect(screen.getByText('Marílio fica até')).toBeTruthy()
+  })
+
+  it('sem tempo total informado a faixa diz "ainda não informado" — nunca um horário calculado', () => {
     montar()
     abrirEditor('Marílio Flach')
-    // quantas cirurgias e onde — é o que decide o ajuste, e sumia ao abrir o painel
-    expect(document.querySelector('[data-slot="sheet-header"]').textContent).toMatch(/1 cirurgia/)
+    expect(document.querySelector('[data-slot="sheet-content"] [data-tempo-total]').textContent).toContain('ainda não informado')
   })
 })
 
@@ -550,7 +578,7 @@ describe('Clareza dos dois tempos no card (dono 30/07)', () => {
     // seria frágil: o lápis e o toggle também são ícones)
     const linhaCirurgiao = linhaDaCirurgia(card, 'Liana W')
     expect(linhaCirurgiao.querySelector('svg')).toBeNull()
-    expect(linhaCirurgiao.textContent).toMatch(/até 23:30|faltam/)
+    expect(linhaCirurgiao.textContent).toMatch(/Tempo estimado 23:30|faltam/)
   })
 
   // SEGUNDA VEZ que este número é relatado como pouco claro (a 1ª foi 30/07). O
@@ -587,7 +615,7 @@ describe('Clareza dos dois tempos no card (dono 30/07)', () => {
     montar({}, comTempos)
     // Marílio não tem override de tempo → estado vazio
     const card = document.querySelector('[data-linha="uid-mar"]')
-    const botao = within(card).getByLabelText(/Definir tempo faltante de Marílio/)
+    const botao = within(card).getByLabelText(/Informar o tempo total de Marílio/)
     expect(botao.textContent).toContain('+ Tempo total')
     expect(botao.className).toContain('border-dashed')
     // sem ícone: com contorno cheio + ⏱ ele parecia valor JÁ preenchido
@@ -875,7 +903,7 @@ describe('Turno próprio — pode sair fora da ordem (dono 11/09)', () => {
 // ════════════════════════════════════════════════════════════════════════════
 describe('a pílula do total espelha no término da cirurgia quando ela é a única aberta', () => {
   const definirUmaHora = (nome) => {
-    fireEvent.click(screen.getByLabelText(`Definir tempo faltante de ${nome}`))
+    fireEvent.click(screen.getByLabelText(`Informar o tempo total de ${nome}`))
     fireEvent.click(screen.getByRole('button', { name: '1h' }))
   }
 
@@ -1037,7 +1065,8 @@ describe('cirurgias sob o cirurgião: a fila só MOSTRA o término informado no 
     expect(screen.queryByText(/Término de Colecistectomia/)).toBeNull()
   })
 
-  it('o término informado no card aparece ao lado da cirurgia: "faltam" na iniciada, "até HH:MM" na agendada', () => {
+  // 10/11 (modelo A): a frase da agendada é "Tempo estimado HH:MM · não começou" (era "· até HH:MM")
+  it('o tempo estimado aparece ao lado da cirurgia: "faltam" na iniciada, "não começou" na agendada', () => {
     const comTermino = {
       ...duas,
       casos: [
@@ -1050,7 +1079,7 @@ describe('cirurgias sob o cirurgião: a fila só MOSTRA o término informado no 
     const card = document.querySelector('[data-linha="uid-leo"]')
     const linhas = linhasDe(card)
     expect(linhas[0]).toMatch(/faltam|além/)
-    expect(linhas[1]).toMatch(/^10:00 ?Herniorrafia inguinal ?· até 23:45$/)
+    expect(linhas[1]).toMatch(/^10:00 ?Herniorrafia inguinal ?Tempo estimado 23:45 ?· não começou$/)
   })
 
   it('sem permissão de edição o tempo informado continua visível', () => {
@@ -1091,7 +1120,13 @@ describe('a fileira das cirurgias fica sob o círculo, numa linha só (dono 15/0
     expect(fileira.className).toContain('mt-1')
   })
 
-  it('a linha da cirurgia não quebra: sem flex-wrap, e o tempo colado ao nome (sem ml-auto)', () => {
+  // ⚠️ MUDOU DE LADO em 10/11/2026. Este teste travava "sem flex-wrap, e o tempo colado ao
+  // nome (sem ml-auto)" — decisão de 15/09 ("informações devem estar na mesma linha"), quando
+  // o tempo era "faltam 12min". O modelo A aprovado pelo dono em 10/11 escreve a frase inteira
+  // ("Tempo estimado 09:30 · faltam 45min") alinhada à DIREITA da linha. A 430px ela cabe na
+  // mesma linha, como no modelo; a 375/360px não cabe ao lado do nome, e em vez de cortar o
+  // nome ou o tempo a frase desce INTEIRA para a linha de baixo — por isso o `flex-wrap`.
+  it('a linha da cirurgia: frase do tempo estimado à direita, inteira (desce de linha em vez de cortar)', () => {
     const duas = {
       ...escalaBase,
       casos: [caso('Sala 1', 0, 'LEONARDO', 'Liana W', '07:30', { procedimento: 'COLECISTECTOMIA', terminoPrevisto: '23:30', statusCirurgia: 'iniciada' })],
@@ -1099,8 +1134,11 @@ describe('a fileira das cirurgias fica sob o círculo, numa linha só (dono 15/0
     montar({ onDefinirTerminoCaso: vi.fn(async () => {}) }, duas)
     const card = document.querySelector('[data-linha="uid-leo"]')
     const linha = linhaDaCirurgia(card, 'Liana W')
-    expect(linha.className).not.toContain('flex-wrap')
-    expect([...linha.querySelectorAll('button,span')].some((el) => el.className.includes('ml-auto'))).toBe(false)
+    expect(linha.className).toContain('flex-wrap')
+    const tempo = linha.querySelector('[data-tempo-estimado]')
+    expect(tempo.className).toContain('ml-auto')
+    // nada dentro da frase quebra no meio
+    expect([...tempo.querySelectorAll('span')].every((el) => el.className.includes('whitespace-nowrap'))).toBe(true)
   })
 })
 

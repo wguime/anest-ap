@@ -467,6 +467,11 @@ Revertido na v5.12.9.
   individuais" — inclusive `espelhoTempoTotal.length === 3`, sem `patch` de status) e
   `escalaTerminadaZeraTempo.test.jsx` (describe "o total NÃO muda com o status").
 
+> ↳ **10/11 (modelo A aprovado):** os TEXTOS de tempo citados nas seções acima ("faltam 12min", "até
+> 12:05", "2h do início", "Tempo total · Nome", "Previsão de saída", "O que já aconteceu", "estimar",
+> "estimado = tempo acima", "N cirurgias · M com término informado") mudaram — ver `escala-telas.md` §
+> "Os tempos sem dúvida nas quatro folhas". As regras de quem espelha em quem não mudaram.
+
 ### Exceção de 10/11: o total acompanha o status nos DOIS EXTREMOS (dono 10/11/2026)
 
 > "os tempos devem conversar entre si e NÃO produzir tempos distintos." Vocabulário fixado por ele:

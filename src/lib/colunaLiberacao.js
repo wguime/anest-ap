@@ -496,6 +496,11 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     // os casos CRUS do turno (abertos e encerrados) — só para `pendenciasParaLiberar`
     casosTurno: g ? [...g.casosTurno] : [],
     casosComTermino: g ? Object.keys(g.tokenTermino).length : 0,
+    // QUANTAS CIRURGIAS abertas têm TEMPO ESTIMADO (10/11): horário (em andamento) ou duração
+    // (ainda não começou). `casosComTermino`, acima, conta CIRURGIÕES com horário — duas do
+    // mesmo cirurgião valiam 1 e a duração estimada valia 0; a tela dizia "0 com término
+    // informado" de quem tinha estimado tudo.
+    casosComEstimado: g ? g.casos.filter((c) => c.terminoPrevisto || c.duracaoEstimadaMin).length : 0,
     salas: g ? g.salas : [],
     // chave ESTÁVEL p/ marcações (uid do vínculo ou nome normalizado) + nome
     // ORIGINAL do rodapé p/ persistir reordenação — o nome EXIBIDO muda com

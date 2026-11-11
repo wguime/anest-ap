@@ -125,14 +125,26 @@ describe('moldura do sistema (theme-color) = fundo da página', () => {
     expect(THEME_COLOR.dark).toBe(fundo('dark'))
   })
 
-  it('index.html parte do tema claro: theme-color = fundo claro, color-scheme = only light', () => {
-    expect(INDEX_HTML).toMatch(new RegExp(`<meta name="theme-color" content="${THEME_COLOR.light}" />`))
+  // Dono 10/11/2026 (modelo D, opção B): a tela de abertura é a animação do login — fundo verde,
+  // logo e ECG — e a moldura do sistema nasce no MESMO verde (#006837, o que a LoginPage já segura).
+  // Até então nascia no fundo claro; quem a passa ao fundo do tema é o useTheme, quando o app monta.
+  it('index.html nasce na tela de abertura: theme-color = verde do login, color-scheme = only light', () => {
+    expect(INDEX_HTML).toMatch(/<meta name="theme-color" content="#006837" \/>/)
     expect(INDEX_HTML).toMatch(/<meta name="color-scheme" content="only light" \/>/)
     // a ordem importa para o Chrome Android: color-scheme antes de theme-color
     expect(INDEX_HTML.indexOf('name="color-scheme"')).toBeLessThan(INDEX_HTML.indexOf('name="theme-color"'))
   })
 
-  it('manifest.json usa o mesmo theme_color do index.html', () => {
+  it('a tela de abertura fica FORA do #root, sem recurso de rede, e respeita reduzir movimento', () => {
+    const casca = INDEX_HTML.indexOf('id="casca"')
+    expect(casca).toBeGreaterThan(-1)
+    expect(casca).toBeLessThan(INDEX_HTML.indexOf('<div id="root">'))
+    const trecho = INDEX_HTML.slice(casca, INDEX_HTML.indexOf('<div id="root">'))
+    expect(trecho).not.toMatch(/src="(?!data:)/) // imagem só embutida
+    expect(INDEX_HTML).toMatch(/prefers-reduced-motion:reduce\)\{\.cz \*\{animation:none/)
+  })
+
+  it('manifest.json segue no fundo claro do tema (a abertura verde é só do index.html)', () => {
     expect(MANIFEST.theme_color).toBe(THEME_COLOR.light)
   })
 })

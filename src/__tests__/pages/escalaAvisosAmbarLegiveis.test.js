@@ -26,14 +26,18 @@ const ICONE = /<(AlertTriangle|TriangleAlert|UserPlus|Clock|ArrowLeftRight)\b.*t
 
 /** arquivo → trechos que identificam cada uso PERMITIDO (e por quê). */
 const PERMITIDOS = {
-  'BoardView.jsx': ["faltaCaso.atrasada ? 'text-warning'"], // tempo estourado da cirurgia
+  // 10/11/2026 (modelo A do dono): o tempo estimado passou a ter UMA frase e UMA casa, em
+  // `TemposCirurgia.jsx` — os usos de tempo estourado do quadro, da folha do total e do
+  // botão "Estimado" saíram de BoardView/LiberacoesView/BlocoHorario e moram aqui.
+  'TemposCirurgia.jsx': [
+    "f.atrasada ? 'font-semibold text-warning'", // "· 15min além" na frase do quadro e da fila
+    "subAviso ? 'font-semibold text-warning'", // "X além" na casa do tempo estimado
+  ],
   'BlocoHorario.jsx': [
-    "subAviso ? 'font-semibold text-warning'", // "X além" sob o bloco do término
-    "aviso ? 'border-warning text-warning'", // estimado que já passou
+    "subAviso ? 'font-semibold text-warning'", // "X além" sob o bloco (folha Antes de liberar)
   ],
   'LiberacoesView.jsx': [
-    "falta?.atrasada ? 'font-medium text-warning'", // tempo estourado por cirurgia (2 lugares)
-    "falta?.atrasada ? 'text-warning' : 'text-primary'", // idem, na folha do tempo total
+    "falta?.atrasada ? 'font-medium text-warning'", // tempo estourado por cirurgião (desenho antigo da linha)
   ],
   'PainelTempo.jsx': ["restante?.atrasada ? 'text-warning'"], // prévia do tempo estourado
   'FaixaUrgencias.jsx': ["f.gravidade === 'urgente' && 'bg-warning/[0.18] text-warning'"], // etiqueta de gravidade

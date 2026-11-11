@@ -104,10 +104,12 @@ describe('Minhas — detalhe do caso vem COMPLETO', () => {
     expect(screen.getByRole('button', { name: '1h30' })).toBeTruthy()
   })
 
+  // 10/11 (modelo A do dono): sala e cirurgião subiram para o cabeçalho da folha (pílula da
+  // sala + subtítulo); as linhas "Sala/local" e "Cirurgião" do último cartão saíram.
   it('traz a sala/local, o cirurgião e a marcação de ajuda', () => {
     abrirDetalhe()
-    expect(screen.getByText('Sala/local')).toBeTruthy()
-    expect(screen.getByText('Cirurgião')).toBeTruthy()
+    expect(document.querySelector('[data-sub-cabecalho]').textContent.length).toBeGreaterThan(3)
+    expect(screen.getByText('Anestesista desta cirurgia')).toBeTruthy()
     expect(screen.getByRole('button', { name: /como ajuda/i })).toBeTruthy()
   })
 

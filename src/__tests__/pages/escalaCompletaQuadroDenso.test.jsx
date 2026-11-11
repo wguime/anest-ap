@@ -3,7 +3,8 @@
  * comparar protótipos a 430px).
  *
  * O que este teste protege:
- *  1. ARRANJO do caso: hora numa coluna com o término abaixo (→15:45), iniciais ·
+ *  1. ARRANJO do caso: hora numa coluna (o tempo estimado desceu para uma linha do card
+ *     em 10/11 — modelo A do dono, "Tempo estimado 15:45 · faltam 45min"), iniciais ·
  *     idade · PROCEDIMENTO na primeira linha e o cirurgião na segunda. Foi a
  *     terceira tentativa até fechar; voltar os selos para a primeira linha é
  *     exatamente o que o dono recusou.
@@ -83,10 +84,14 @@ describe('Completa — arranjo do caso', () => {
     expect(within(linhas[0]).getByText('Atrasada')).toBeTruthy()
   })
 
-  it('mostra o término previsto embaixo da hora, com a seta', () => {
+  // ⚠️ MUDOU DE LADO em 10/11/2026 (modelo A aprovado pelo dono: "Sim, aprovo"). Este teste
+  // exigia "→15:45" embaixo da hora. O mesmo tempo era escrito de três jeitos no app
+  // ("→09:30", "~45min", "faltam 45min"); agora é UMA frase, a mesma da fila de Liberações.
+  it('o tempo estimado sai numa linha do card, com as palavras da fila', () => {
     renderBoard([caso({ terminoPrevisto: '15:45' })])
     expect(screen.getByText('13:30')).toBeTruthy()
-    expect(screen.getByText('→15:45')).toBeTruthy()
+    expect(screen.queryByText('→15:45')).toBeNull()
+    expect(document.querySelector('[data-tempo-estimado]').textContent).toBe('Tempo estimado 15:45· não começou')
   })
 
   it('escreve o residente como "· R: nome" ao lado do cirurgião', () => {
@@ -221,73 +226,55 @@ describe('Completa — cabeçalho da sala', () => {
   })
 })
 
-describe('Completa — coluna do tempo', () => {
-  it('põe a duração estimada embaixo do horário enquanto ninguém informou o término', () => {
+// ⚠️ ESTE BLOCO MUDOU DE LADO em 10/11/2026 (modelo A aprovado pelo dono, bloco "quadro ×
+// fila: o mesmo tempo com as mesmas palavras"). Travava a coluna de 46px com a duração do
+// mapa ("02:30" com relógio), "→15:45", "~45min" e o "→15:45" riscado + "+15min". Hoje a
+// coluna tem só a HORA e o tempo é uma linha do card: "Tempo estimado 15:45 · faltam 45min"
+// (em andamento), "Tempo estimado 1h · não começou" (agendada — que antes não mostrava
+// nada com duração), "… · 15min além" em âmbar quando passa, e "mapa 2h30" só sem estimado.
+describe('Completa — o tempo estimado numa linha do card (dono 10/11)', () => {
+  const linhaTempo = (raiz = document) => raiz.querySelector('[data-tempo-estimado]')
+  const cartao = (c, agoraMin) => render(
+    <CasoCard caso={c} moldura="linha" onClick={() => {}} agoraMin={agoraMin} />, { wrapper: wrap },
+  ).container
+
+  it('sem estimado, a duração escrita no mapa aparece como "mapa 2h30" — fora da coluna da hora', () => {
     renderBoard([caso({ tempoEstimado: '02:30' })])
     const card = screen.getByRole('button', { name: /^Detalhes do caso/ })
     const coluna = card.querySelector(':scope > div > span:first-child')
-    expect(within(coluna).getByText('13:30')).toBeTruthy()
-    expect(within(coluna).getByText('02:30')).toBeTruthy()
+    expect(coluna.textContent).toBe('13:30')
+    expect(linhaTempo().textContent).toBe('mapa 2h30')
   })
 
-  // A duração é o palpite da escala; o término é o combinado. Mostrar os dois
-  // lado a lado era ler palpite e combinado juntos (dono 17/08).
-  it('término informado SUBSTITUI a duração sugerida pela escala', () => {
-    renderBoard([caso({ tempoEstimado: '02:30', terminoPrevisto: '15:45', statusCirurgia: 'iniciada' })])
-    const card = screen.getByRole('button', { name: /^Detalhes do caso/ })
-    const coluna = card.querySelector(':scope > div > span:first-child')
-    expect(within(coluna).queryByText('02:30')).toBeNull()
-    expect(coluna.textContent).toMatch(/min|h/)
+  // A duração do mapa é o palpite da escala; o tempo estimado é o combinado (dono 17/08).
+  it('tempo estimado informado SUBSTITUI a duração do mapa', () => {
+    const c = cartao(caso({ tempoEstimado: '02:30', terminoPrevisto: '15:45', statusCirurgia: 'iniciada' }), 15 * 60)
+    expect(linhaTempo(c).textContent).toBe('Tempo estimado 15:45· faltam 45min')
+    expect(c.textContent).not.toContain('mapa')
   })
 
-  it('cirurgia agendada mostra a hora de término, não contagem', () => {
-    renderBoard([caso({ tempoEstimado: '02:30', terminoPrevisto: '15:45' })])
-    expect(screen.getByText('→15:45')).toBeTruthy()
-    expect(screen.queryByText(/^~/)).toBeNull()
+  it('agendada com DURAÇÃO estimada: "Tempo estimado 1h · não começou" (o card não mostrava nada)', () => {
+    const c = cartao(caso({ duracaoEstimadaMin: 60 }), 13 * 60)
+    expect(linhaTempo(c).textContent).toBe('Tempo estimado 1h· não começou')
   })
 
-  // ESTOUROU O TEMPO (dono 18/08): sozinho na coluna, "+50min" não diz de que
-  // horário está falando — e a referência sumia justamente quando passava a
-  // fazer falta. Com o previsto de volta, a coluna se lê de cima para baixo:
-  // começou 13:30, previa terminar 15:45, passou 15min disso.
-  it('mostra o término previsto junto do excedente quando a cirurgia passa da hora', () => {
-    const { container } = render(
-      <CasoCard
-        caso={caso({ terminoPrevisto: '15:45', statusCirurgia: 'iniciada' })}
-        moldura="linha"
-        onClick={() => {}}
-        agoraMin={16 * 60}
-      />,
-      { wrapper: wrap },
-    )
-    const coluna = container.querySelector('button > div > span:first-child')
-    expect(within(coluna).getByText('13:30')).toBeTruthy()
-    // RISCADO é a convenção de painel de aeroporto para o horário que não vale
-    // mais — diz "venceu" sem gastar largura numa coluna de 46px, e não depende
-    // só da cor (que aqui já significa outras cinco coisas).
-    const previsto = within(coluna).getByText('→15:45')
-    expect(previsto.className).toContain('line-through')
-    const excedente = within(coluna).getByText('+15min')
-    expect(excedente.className).toContain('text-warning')
-    // o porquê fica no title para quem tem mouse; no celular, a leitura é a coluna
-    expect(excedente.getAttribute('title')).toMatch(/prevista para terminar às 15:45.*passou 15min/)
+  it('agendada não conta o tempo: só a que está em andamento diz "faltam"', () => {
+    const c = cartao(caso({ tempoEstimado: '02:30', terminoPrevisto: '15:45' }), 15 * 60)
+    expect(linhaTempo(c).textContent).toBe('Tempo estimado 15:45· não começou')
+    expect(c.textContent).not.toMatch(/faltam|~/)
   })
 
-  // Enquanto FALTA, o número se explica sozinho e a âncora seria ruído: a
-  // coluna tem 46px e três linhas ali empurram o card para cima.
-  it('cirurgia em andamento dentro do prazo não repete o horário previsto', () => {
-    const { container } = render(
-      <CasoCard
-        caso={caso({ terminoPrevisto: '15:45', statusCirurgia: 'iniciada' })}
-        moldura="linha"
-        onClick={() => {}}
-        agoraMin={15 * 60}
-      />,
-      { wrapper: wrap },
-    )
-    const coluna = container.querySelector('button > div > span:first-child')
-    expect(within(coluna).getByText('~45min')).toBeTruthy()
-    expect(within(coluna).queryByText('→15:45')).toBeNull()
+  // ESTOUROU (dono 18/08): o horário previsto fica à vista junto do excedente — hoje na
+  // mesma frase, com o excedente em âmbar.
+  it('passou da hora: "Tempo estimado 15:45 · 15min além", o excedente em âmbar', () => {
+    const c = cartao(caso({ terminoPrevisto: '15:45', statusCirurgia: 'iniciada' }), 16 * 60)
+    expect(linhaTempo(c).textContent).toBe('Tempo estimado 15:45· 15min além')
+    expect(within(linhaTempo(c)).getByText('· 15min além').className).toContain('text-warning')
+  })
+
+  it('terminada não mostra tempo estimado nem a duração do mapa', () => {
+    const c = cartao(caso({ tempoEstimado: '02:30', statusCirurgia: 'terminada' }), 16 * 60)
+    expect(linhaTempo(c)).toBeNull()
   })
 })
 
@@ -384,5 +371,39 @@ describe('Completa — os selos do canto direito quebram linha em vez de vazar (
     // e os dois selos continuam lá, na ordem estado → ocorrência
     expect(box.textContent).toContain('Iniciada')
     expect(box.lastElementChild.textContent).toBe('Passa para noite')
+  })
+})
+
+// TEMPO TOTAL DA PESSOA NO CABEÇALHO DA SALA (dono 10/11/2026, modelo A, opção B: pílula
+// "Tempo total HH:MM" com ícone de pessoa). Só MOSTRA o que foi informado na fila.
+describe('Completa — pílula do tempo total no cabeçalho da sala (dono 10/11)', () => {
+  const renderCom = (casos, linhaOverrides, props = {}) => render(
+    <BoardView escala={{ ...escalaCom(casos), linhaOverrides }} meuAlias="MELO" meuUid="uid-melo" turno="vespertino" {...props} />,
+    { wrapper: wrap },
+  )
+
+  it('com tempo total informado: pílula com o horário e o nome acessível dizendo de quem é', () => {
+    renderCom([caso({ statusCirurgia: 'iniciada' })], { 'vespertino:GABRIEL': { termino: '17:40' } })
+    const pilula = document.querySelector('[data-pilula-tempo-total]')
+    expect(pilula.textContent).toBe('Tempo total17:40')
+    expect(pilula.getAttribute('aria-label')).toMatch(/^Tempo total de .+: fica até 17:40$/)
+    expect(pilula.querySelector('svg')).not.toBeNull()
+  })
+
+  it('sem tempo total informado o cabeçalho fica como sempre — nada é calculado das cirurgias', () => {
+    renderCom([caso({ statusCirurgia: 'iniciada', terminoPrevisto: '16:00' })], {})
+    expect(document.querySelector('[data-pilula-tempo-total]')).toBeNull()
+  })
+
+  it('o tempo total é do TURNO: o da manhã não aparece na sala da tarde', () => {
+    renderCom([caso({ statusCirurgia: 'iniciada' })], { 'matutino:GABRIEL': { termino: '12:00' } })
+    expect(document.querySelector('[data-pilula-tempo-total]')).toBeNull()
+  })
+
+  it('`abrirCasoId` abre o detalhe daquela cirurgia (o "abrir" da folha do tempo total)', async () => {
+    const onCasoAberto = vi.fn()
+    renderCom([caso()], {}, { abrirCasoId: 'c1', onCasoAberto })
+    expect(await screen.findByText('Horário desta cirurgia')).toBeTruthy()
+    expect(onCasoAberto).toHaveBeenCalled()
   })
 })

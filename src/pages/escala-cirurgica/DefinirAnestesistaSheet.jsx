@@ -32,6 +32,9 @@ import {
   nomeAnestesistaExibicao, normNome, rodapeDoTurno, salaExibicao,
 } from './utils'
 import { avaliarEscolhaAnestesista } from './foraDaOrdem'
+import { ehDiaOperacionalAtual } from '@/lib/escalaHorarioReal'
+import useAgoraMinutoEscala from './useAgoraMinutoEscala'
+import { CartaoCirurgia, CasasCirurgia, TempoTotalPessoa, tempoTotalDaPessoa } from './TemposCirurgia'
 import ConfirmarForaDaOrdem from './ConfirmarForaDaOrdem'
 
 const primeiroNomeUpper = (nome) => String(nome || '').trim().split(/\s+/)[0]?.toUpperCase() || ''
@@ -163,6 +166,10 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
     })
   }, [opcoes, rosterByUid, busca])
 
+  const agoraMin = useAgoraMinutoEscala()
+  // tempo total de quem SAI, lido da linha dele na fila (não entra na correção de quem fez)
+  const totalDeQuemSai = !correcao && nomeAtual && alvos.length
+    ? (tempoTotalDaPessoa(escala, alvos[0], escalas)?.termino || '') : ''
   const pergunta = casoUnico
     ? 'Quem responde por esta cirurgia?'
     : `Quem responde pela ${salaExibicao(sala)}?`
@@ -464,16 +471,21 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
           </div>
 
           {/* ── O QUE MUDA DE MÃOS ─────────────────────────────────────────── */}
-          <p className="mb-1 mt-3 text-[11.5px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Procedimentos assumidos
+          {/* CADA CIRURGIA QUE PASSA COM AS TRÊS CASAS DELA (dono 10/11, modelo A): Início ·
+              Tempo estimado · Término, com o nome no título — os horários são da cirurgia e
+              vão junto com ela. Era "Procedimentos assumidos", uma linha por cirurgia, sem
+              dizer o que acontecia com os tempos. Só leitura: aqui se troca quem responde. */}
+          <p className="mb-1.5 mt-3 flex items-baseline gap-1.5 text-[11.5px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Cirurgias que passam
+            {alvos.length > 0 && <span className="font-medium normal-case tracking-normal">{alvos.length} · os horários vão junto</span>}
           </p>
-          {alvos.map((c) => (
-            <div key={c.id} className="flex items-baseline gap-2 border-b border-border py-1.5 text-[12.5px] last:border-b-0">
-              <b className="tabular-nums">{c.hora || '—'}</b>
-              {c.pacienteIniciais && <span>{c.pacienteIniciais}</span>}
-              <span className="min-w-0 truncate">{fraseClinica(c.procedimento)}</span>
-            </div>
-          ))}
+          <div className="grid gap-1.5">
+            {alvos.map((c) => (
+              <CartaoCirurgia key={c.id} titulo={[c.hora || '—', c.pacienteIniciais, fraseClinica(c.procedimento)].filter(Boolean).join(' · ')}>
+                <CasasCirurgia caso={c} agoraMin={agoraMin} diaAtual={ehDiaOperacionalAtual(escala?.data)} />
+              </CartaoCirurgia>
+            ))}
+          </div>
           {!alvos.length && (
             <p className="py-1.5 text-[12.5px] text-muted-foreground">
               Nada a passar: as cirurgias já terminaram e mantêm quem as fez.
@@ -528,6 +540,18 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
                 </div>
               )}
             </>
+          )}
+
+          {/* O TEMPO TOTAL É DA PESSOA E FICA COM ELA (dono 10/11, modelo A): à parte das
+              cirurgias, com o nome de quem sai e outro desenho — "não passa para quem assume".
+              Só aparece quando há tempo total informado na fila. */}
+          {totalDeQuemSai && (
+            <TempoTotalPessoa
+              className="mt-2"
+              nome={nomeAtual}
+              termino={totalDeQuemSai}
+              sub={`fica com ${String(nomeAtual || '').trim().split(/\s+/)[0]}: não passa para quem assume`}
+            />
           )}
 
           {/* Posição na fila junto com os casos (dono 30/07): sem isto quem

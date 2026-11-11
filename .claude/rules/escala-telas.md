@@ -345,6 +345,60 @@ acima em conflito):
 - Travas novas/atualizadas: `escalaHorarioCirurgia.test.jsx` (25 casos), `painelTempo.test.jsx`,
   `escalaUrgenciasFaixa.test.jsx` (o "Terminada" confirma antes de gravar).
 
+### Os tempos sem dúvida nas quatro folhas (dono 2026-11-10, modelo A: "Sim, aprovo") — o que vale HOJE
+
+> Modelo em `.tmp/analise-escala-2026-11/modelos-2/a-quatro-folhas.html`; conferência do implementado em
+> `.tmp/analise-escala-2026-11/implementado-a/`. **Substitui, no que conflitar, o desenho e os rótulos das
+> duas seções acima** (blocos INÍCIO/TÉRMINO de uma linha, botão "+ Tempo estimado"/"Estimado 15:30" no
+> título, "faltam X" sob o bloco Término). O que cada toque GRAVA não mudou.
+
+**Vocabulário único (um nome por tempo, no app inteiro):** **Início / Término** = horário REAL ·
+**Tempo estimado** = previsão da CIRURGIA (duração antes de começar, horário de fim depois) ·
+**Tempo total** = até quando a PESSOA fica · **mapa 1h30** = a duração escrita no mapa, só sem estimado.
+Saíram: "Previsão de saída", "Estimado" solto, "estimar", "previsto 01:30", "→09:30", "~45min", "até
+12:05", "2h do início", "N com término informado", "Definir tempo faltante" (nome acessível).
+
+- **Fonte única: `TemposCirurgia.jsx`.** `CasasCirurgia` = as TRÊS CASAS, sempre de UMA cirurgia (Início ·
+  Tempo estimado · Término; vazio = "—" + "ainda não informado"; com handler cada casa é botão de ≥64px);
+  `CartaoCirurgia` = o bloco com o nome da cirurgia no título; `TempoTotalPessoa` = a faixa de contorno
+  verde com ícone de pessoa ("Tempo total de {Nome} · fica até HH:MM") — **nunca na mesma fileira das
+  casas**; `LinhaTempoEstimado`/`fraseTempoEstimado` = a frase do quadro e da fila; `PilulaTempoTotal`;
+  `tempoTotalDaPessoa` lê o total de onde a fila lê (linha `'fds'` na fila única). Nada ali calcula ou soma.
+- **Folha da cirurgia** (`CasoDetalheSheet`): cabeçalho com "Cirurgião · Nª de M cirurgias da sala · turno ·
+  hospital"; cartão **"Horário desta cirurgia"** com as três casas ("toque para mudar"); o último cartão é
+  **"Anestesista desta cirurgia"** + "Trocar" e, à parte, o **tempo total dela** com posição e nº de
+  cirurgias e o atalho **"Fila"** (`onVerFila` → aba Liberações). As linhas "Sala/local" e "Cirurgião"
+  saíram (estão no cabeçalho). Dupla "A + B", "?" e turno encerrado não mostram a faixa. O `BotaoEstimado` saiu.
+- **Completa** (`BoardView`): a coluna de 46px tem só a HORA; o tempo é uma linha do card — "Tempo estimado
+  09:30 · faltam 45min" (só a em andamento conta), "Tempo estimado 1h · não começou", "… · 15min além" em
+  âmbar, "mapa 1h30" só sem estimado. Cabeçalho da sala: pílula **"Tempo total HH:MM"** com ícone de pessoa
+  (opção B do dono) quando há tempo total informado na fila — abaixo de 390px a pílula fica só com o ícone
+  e o horário (o nome do anestesista sumia no "…"). `abrirCasoId` abre o detalhe a pedido da página.
+- **Fila** (`LiberacoesView`): a linha da cirurgia usa a MESMA frase, à direita; onde não cabe ao lado do
+  nome (375/360px) ela desce INTEIRA para a linha de baixo (`flex-wrap`) — **reabre "sem flex-wrap / sem
+  ml-auto" de 15/09**, com o porquê no teste. O desenho antigo (linha renovada/cirurgião ajustado) diz
+  "Tempo estimado HH:MM · …" e "M de N com tempo estimado" (`casosComEstimado`, conta CIRURGIAS).
+- **Folha da pessoa** (lápis): subtítulo "Nº do HRO · sala · turno"; no topo o **tempo total dela** com
+  "Alterar" (abre a folha do tempo total) e o atalho **"Cirurgias de {Nome} · N · na Completa"**
+  (`onVerCirurgias`) — as cirurgias não são listadas.
+- **Folha do tempo total**: título "Tempo total de {Nome}", campo **"{Nome} fica até"** (PainelTempo e
+  atalhos de sempre) e "Cirurgias de {Nome} · horários de cada uma": um `CartaoCirurgia` por cirurgia com as
+  três casas e **"abrir"** (`onAbrirCaso` → Completa com o detalhe aberto). "estimado = tempo acima" saiu.
+  ⚠️ a frase do modelo ("não muda sozinho com as cirurgias") NÃO foi usada: deixou de ser verdade nos dois
+  extremos de 10/11 (`escala-liberacoes.md` § "Exceção de 10/11"); a folha diz "Informado à mão: não é a
+  soma delas". A linha "Pelas cirurgias: 11:40 · usar" não existe (o modelo a retirou).
+- **Quem responde pela sala** (`DefinirAnestesistaSheet`): "Cirurgias que passam · N · os horários vão
+  junto", cada uma com as três casas em leitura; o tempo total de quem SAI vem à parte com "fica com {Nome}:
+  não passa para quem assume" (só quando informado; fora da correção de quem fez).
+- Medido no app (dados reais do dia, respostas de leitura reescritas no navegador de teste, toda escrita
+  bloqueada), claro e escuro, a 430/375/360 e deitado (844×390): nenhuma página alarga, nenhum texto das
+  peças novas corta; casa com 121/103/98px de largura e 73–84px de altura.
+- Travas: `escalaTemposCirurgia.test.jsx` (frase, casas, faixa, leitura do total, `casosComEstimado`),
+  `casoDetalheSheet.test.jsx` (describe "o tempo total da anestesista à parte"), `escalaCompletaQuadroDenso
+  .test.jsx` (linha do tempo e pílula), `liberacoesPainelLinha.test.jsx`, `liberacoesTempoPorCirurgia.test.jsx`,
+  `escalaHorarioCirurgia.test.jsx`, `definirAnestesistaAssumirPosicao.test.jsx`. Os que mudaram de lado
+  levam o porquê e a data no corpo.
+
 ### Horário pendente — alerta PÚBLICO de quem não preencheu início/término (dono 2026-10-05, modelo A)
 
 > ↳ **27/10: o alerta virou INDIVIDUAL** — a faixa pública, a pílula "Você N/Você em dia", o "Na

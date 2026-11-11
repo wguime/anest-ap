@@ -3,8 +3,8 @@
  * Lista de cards agrupada por sala (mobile-first, sem grid). Toque no caso
  * abre um bottom-sheet com o detalhe.
  */
-import { memo, useMemo, useState } from 'react'
-import { ChevronsDownUp, ChevronsUpDown, Moon, Stethoscope, Timer, UserCog, Plus } from 'lucide-react'
+import { memo, useEffect, useMemo, useState } from 'react'
+import { ChevronsDownUp, ChevronsUpDown, Moon, Stethoscope, UserCog, Plus } from 'lucide-react'
 import {
   Accordion, AccordionItem, AccordionTrigger, AccordionContent,
   Badge, Button, EmptyState,
@@ -15,14 +15,14 @@ import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
 import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
 import { ehPosicaoSrpa, horaInicioSrpa } from '@/lib/escalaCirurgicaItens'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
-import { anestesistaDoCasoEh, casoConcluido, casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, fundirContinuacoesNaOrigem, turnoDoCaso, compararSalas, parseHoraMinutos, salaExibicao, nomeAnestesistaExibicao, convenioExibicao, idadeExibicao, limparConcluidosNaVirada, visaoNoturna, procedimentoComContinuacao, procedimentoBaseDoCaso } from './utils'
+import { anestesistaDoCasoEh, casoConcluido, casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, fundirContinuacoesNaOrigem, turnoDoCaso, compararSalas, salaExibicao, nomeAnestesistaExibicao, convenioExibicao, idadeExibicao, limparConcluidosNaVirada, visaoNoturna, procedimentoComContinuacao, procedimentoBaseDoCaso } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
-import { formatFaltante } from './PainelTempo'
 import useAgoraMinutoEscala from './useAgoraMinutoEscala'
 import useEstadoUrgencias from './useEstadoUrgencias'
 import DefinirAnestesistaSheet from './DefinirAnestesistaSheet'
 import AddCasoSheet from './AddCasoSheet'
 import CasoDetalheSheet from './CasoDetalheSheet'
+import { LinhaTempoEstimado, PilulaTempoTotal, tempoTotalDaPessoa } from './TemposCirurgia'
 import SeloHorarioPendente from './SeloHorarioPendente'
 import { ehConsultorio } from '@/lib/escalaHorarioPendente'
 
@@ -108,9 +108,9 @@ export const casoVazio = (c) =>
  * mostra a HORA do término em vez da contagem — nunca perde a informação.
  */
 export function casoTemColunaTempo(caso) {
-  if (String(caso?.hora || '').trim()) return true
-  if (String(caso?.tempoEstimado || '').trim()) return true
-  return !casoConcluido(caso) && parseHoraMinutos(caso?.terminoPrevisto) != null
+  // só a HORA mora na coluna desde 10/11 (modelo A do dono): o tempo estimado e a duração do
+  // mapa desceram para a linha "Tempo estimado …" do card, com as mesmas palavras da fila
+  return Boolean(String(caso?.hora || '').trim())
 }
 
 function CasoCardBase({ caso, destaque, salaLabel, onClick, agoraMin = null, moldura = 'card', reservaHora = false, pendencia = null, turnoExibido = null }) {
@@ -125,22 +125,13 @@ function CasoCardBase({ caso, destaque, salaLabel, onClick, agoraMin = null, mol
   // exibição enxuta (dono 17/08): "Unimed X" vira "Unimed"; idade só em anos
   const convenio = convenioExibicao(caso.convenio)
   const idade = idadeExibicao(caso.idade)
-  // Tempo faltante DESTA CIRURGIA (dono 29/07) — informado à mão no detalhe do
-  // caso. Some quando o caso encerra: contagem de cirurgia terminada é ruído.
-  const alvoCaso = casoConcluido(caso) ? null : parseHoraMinutos(caso.terminoPrevisto)
-  // CONTAGEM SÓ NO CASO EM ANDAMENTO (pesquisa + decisão do dono 29/07). Quadro de
-  // centro cirúrgico conta o tempo restante do caso EM CURSO; os agendados mostram
-  // a HORA prevista. Dois motivos:
-  //  1. desambigua por construção — se só UMA cirurgia da pessoa pode contar,
-  //     "~45min" nunca é confundível com o total dela (a pílula verde da fila);
-  //  2. depois que a estimativa estoura, o tempo médio restante fica quase
-  //     CONSTANTE em vez de convergir para zero (Dexter & Epstein, Anesth Analg,
-  //     no paper sobre o que exibir em whiteboard eletrônico), então contar caso
-  //     que ainda não começou é chute apresentado como número.
-  const emAndamento = (caso.statusCirurgia || 'agendada') === 'iniciada'
-  const faltaCaso = emAndamento && alvoCaso != null && agoraMin != null
-    ? formatFaltante(alvoCaso, agoraMin)
-    : null
+  // O TEMPO ESTIMADO desta cirurgia sai numa LINHA do card (dono 10/11, modelo A), com as
+  // mesmas palavras da fila de Liberações: "Tempo estimado 09:30 · faltam 45min" na que
+  // está em andamento (só ela conta o tempo — regra de 29/07), "Tempo estimado 1h · não
+  // começou" na agendada, e "mapa 1h30" só quando não há estimado. Antes eram três formatos
+  // na coluna da hora ("→09:30", "~45min", chip com relógio) e a agendada com duração
+  // estimada não mostrava nada. Some quando o caso encerra.
+  const mostraTempo = !casoConcluido(caso) && !ehConsultorio(caso)
   const rotulo = ['Detalhes do caso', salaLabel, caso.hora, caso.pacienteIniciais, procedimento]
     .filter(Boolean).join(', ')
   // SÓ o eixo principal pinta o card, e em tinta suave (dono 17/08): com os cinco
@@ -185,51 +176,6 @@ function CasoCardBase({ caso, destaque, salaLabel, onClick, agoraMin = null, mol
         {temColunaHora && (
           <span className="w-[46px] shrink-0">
             {caso.hora && <span className="block text-[15px] font-bold tabular-nums text-foreground">{caso.hora}</span>}
-            {/* A duração SUGERIDA pela escala cede a vez assim que alguém informa o
-                término (dono 17/08): mostrar as duas é ler o palpite e o combinado
-                lado a lado. */}
-            {caso.tempoEstimado && alvoCaso == null && (
-              <span
-                className="flex items-center gap-0.5 whitespace-nowrap text-[10px] tabular-nums text-muted-foreground"
-                title={`Duração estimada desta cirurgia: ${caso.tempoEstimado}`}
-              >
-                <Timer className="h-2.5 w-2.5 shrink-0" />{caso.tempoEstimado}
-              </span>
-            )}
-            {/* CONTAGEM SÓ NO CASO EM ANDAMENTO (regra 29/07): agendada mostra a
-                hora prevista de término; contar o que ainda não começou é chute
-                apresentado como número. */}
-            {faltaCaso ? (
-              <>
-                {/* A ÂNCORA VOLTA QUANDO O TEMPO ESTOURA (dono 18/08). Enquanto
-                    falta, "~45min" se explica sozinho; depois que passa, o card
-                    ficava só com "+50min" — e o horário que dá sentido ao número
-                    era justamente o que sumia. Some a referência e o sinal vira
-                    adivinhação: 50min do quê, faltando ou passados? Com o
-                    previsto de volta, a coluna lê-se de cima para baixo — começou
-                    08:45, previa terminar 10:01, passou 50min disso. */}
-                {faltaCaso.atrasada && (
-                  <span className="block whitespace-nowrap text-[10px] tabular-nums text-muted-foreground line-through">
-                    →{caso.terminoPrevisto}
-                  </span>
-                )}
-                <span
-                  className={`block whitespace-nowrap text-[10px] font-semibold tabular-nums ${faltaCaso.atrasada ? 'text-warning' : 'text-foreground/70'}`}
-                  title={faltaCaso.atrasada
-                    ? `Esta cirurgia estava prevista para terminar às ${caso.terminoPrevisto} — passou ${faltaCaso.texto.replace('+', '')}`
-                    : `Esta cirurgia (em andamento) termina às ${caso.terminoPrevisto}`}
-                >
-                  {faltaCaso.texto}
-                </span>
-              </>
-            ) : alvoCaso != null ? (
-              <span
-                className="block text-[10px] tabular-nums text-muted-foreground"
-                title={`Esta cirurgia está prevista para terminar às ${caso.terminoPrevisto}`}
-              >
-                →{caso.terminoPrevisto}
-              </span>
-            ) : null}
           </span>
         )}
         {/* CAIXA VAZIA NO LUGAR DA HORA (dono 18/08): caso sem horário começava
@@ -319,6 +265,7 @@ function CasoCardBase({ caso, destaque, salaLabel, onClick, agoraMin = null, mol
               )}
             </span>
           </span>
+          {mostraTempo && <LinhaTempoEstimado caso={caso} agoraMin={agoraMin} className="mt-[3px]" />}
         </span>
       </div>
     </Raiz>
@@ -348,7 +295,7 @@ export const CasoCard = memo(CasoCardBase, (prev, next) =>
  *   caso", sem o ⚙ da sala (repasse em bloco) e sem o grupo "Ainda abertas" (as urgências do
  *   contrato são do turno em curso); o detalhe abre no mesmo modo.
  */
-export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null, turno, onNavigate, pendencias = null, onTrocarPosicoes = null, encerrado = null }) {
+export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null, turno, onNavigate, pendencias = null, onTrocarPosicoes = null, encerrado = null, onVerFila = null, abrirCasoId = null, onCasoAberto = null }) {
   const { user } = useUser()
   const { rosterByUid } = useRosterAnestesistas()
   // Nome do grupo na Completa (pedido do dono 23/07): 1 anestesista = 1º nome +
@@ -371,7 +318,7 @@ export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null
   // de cada cirurgia nos CasoCard.
   const agoraMin = useAgoraMinutoEscala()
   // `hoje` do context (fonte única desde 21/08) — decide se a escala é a de hoje
-  const { hoje } = useEscalaCirurgica()
+  const { hoje, escalas: escalasDoDia } = useEscalaCirurgica()
   // VIRADA DAS 19h (dono 17/09): o quadro da tarde perde o que JÁ ESTAVA
   // terminado/suspenso às 19h — e com isso as salas que já fecharam. O que sobra
   // é o que a noite opera: as cirurgias que atravessam e as urgências. Quem
@@ -413,6 +360,19 @@ export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null
     return out
   }, [herdados, idsDoTurno, encerrado])
   const grupos = useMemo(() => agruparPorSala(casos), [casos])
+  // o tempo total de quem responde pelo grupo: lido da linha da fila pela 1ª cirurgia
+  // ainda aberta (com todas encerradas o total já foi apagado — regra de 10/11)
+  const totalDoGrupo = (g) => {
+    const aberta = (g.casos || []).find((c) => !casoConcluido(c))
+    return aberta ? (tempoTotalDaPessoa(escala, aberta, escalasDoDia)?.termino || '') : ''
+  }
+  // ABRIR UMA CIRURGIA A PEDIDO DE FORA (10/11): o "abrir" da folha do tempo total e o
+  // atalho "Cirurgias de …" das Liberações trazem a pessoa para a Completa já no detalhe.
+  useEffect(() => {
+    if (!abrirCasoId) return
+    const alvo = (escala?.casos || []).find((c) => c.id === abrirCasoId)
+    if (alvo) { setDetalhe(alvo); onCasoAberto?.() }
+  }, [abrirCasoId, escala, onCasoAberto])
   // MARGEM ÚNICA DO QUADRO (dono 18/08): quem não tem horário recua igual, em
   // qualquer sala — a urgência acrescentada à mão vira sala própria sem horário
   // nenhum e a reserva por sala a deixava fora do prumo do resto. Quadro sem
@@ -596,6 +556,10 @@ export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null
                   {nomeGrupo && (
                     <span className="truncate text-[15px] font-semibold text-primary" title={nomeGrupo}>{nomeGrupo}</span>
                   )}
+                  {/* TEMPO TOTAL DA PESSOA no cabeçalho da sala (dono 10/11, opção B): pílula
+                      "Tempo total 11:40" com ícone de pessoa. Só MOSTRA o que foi informado na
+                      fila — não calcula; sem tempo total, o cabeçalho fica como sempre. */}
+                  {!encerrado && <PilulaTempoTotal termino={totalDoGrupo(g)} nome={nomeGrupo} />}
                   <span className="ml-auto shrink-0 text-[11px] font-normal text-muted-foreground">{nCasos}</span>
                 </span>
               </AccordionTrigger>
@@ -678,6 +642,7 @@ export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null
           onEditarCaso={encerrado ? null : (alvo) => { setDetalhe(null); setAddCaso({ caso: alvo }) }}
           podeEditar={podeDefinir}
           encerrado={encerrado}
+          onVerFila={onVerFila}
         />
       )}
 

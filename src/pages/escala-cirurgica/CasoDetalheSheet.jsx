@@ -40,20 +40,21 @@
  * `tr_escala_caso_horario_real`, ver `src/lib/escalaHorarioReal.js`).
  */
 import { useMemo, useState } from 'react'
-import { Clock, GraduationCap, Info, Lock, MapPin, Stethoscope, UserCog } from 'lucide-react'
+import { Clock, GraduationCap, Info, Lock } from 'lucide-react'
 import { ActionPill, Badge, Button, Sheet, SheetContent, SheetHeader, SheetTitle } from '@/design-system'
-import { HOSPITAL_LABEL, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
+import { HOSPITAL_LABEL, useEscalaCirurgica, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import useRosterResidentes from '@/hooks/useRosterResidentes'
 import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
 import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
 import { carimboDeStatus } from '@/lib/escalaCirurgicaStatus'
-import { duracaoMin, ehDiaOperacionalAtual, erroHorarioReal, gravarInicioReal, gravarTerminoReal, inicioDefinidoConsultorio, rotuloMinutos, terminoDaDuracao } from '@/lib/escalaHorarioReal'
-import PainelTempo, { formatFaltante, rotuloDuracao } from './PainelTempo'
-import { BlocoHorario, BotaoEstimado, ConfirmarHorario, ConfirmarInicioETermino } from './BlocoHorario'
+import { ehDiaOperacionalAtual, erroHorarioReal, gravarInicioReal, gravarTerminoReal, inicioDefinidoConsultorio, terminoDaDuracao } from '@/lib/escalaHorarioReal'
+import PainelTempo from './PainelTempo'
+import { ConfirmarHorario, ConfirmarInicioETermino } from './BlocoHorario'
+import { CasasCirurgia, TempoTotalPessoa, rotuloDoMapa, tempoTotalDaPessoa } from './TemposCirurgia'
 import useAgoraMinutoEscala from './useAgoraMinutoEscala'
-import { convenioExibicao, nomeAnestesistaExibicao, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso, terminoEncadeado, procedimentoComContinuacao, procedimentoBaseDoCaso } from './utils'
+import { convenioExibicao, nomeAnestesistaExibicao, normNome, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso, terminoEncadeado, procedimentoComContinuacao, procedimentoBaseDoCaso } from './utils'
 import ChipsEscolha, { GRAVIDADE_CHIPS, TIPOS_CIRURGIA } from './ChipsEscolha'
 
 // Verbo de cada estado na linha de procedência ("Iniciada às 14:33 por Fulano").
@@ -97,8 +98,11 @@ const AVISO = [
  *   FEZ — os blocos de início/término, "Não aconteceu" na cirurgia ainda aberta e o "Trocar" do
  *   anestesista. Andamento vira leitura; somem "Editar", o tempo estimado e a ajuda (são do
  *   turno em curso). Null = o detalhe de sempre.
+ * @param {Function?} onVerFila  (dono 10/11, modelo A): o atalho "Fila" do cartão do tempo total
+ *   da anestesista — um toque leva à linha dela na aba Liberações. Sem ele o cartão só mostra.
  */
-export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDefinirAnestesista, onDefinirAnestesista, onEditarCaso, podeEditar, encerrado = null }) {
+export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDefinirAnestesista, onDefinirAnestesista, onEditarCaso, podeEditar, encerrado = null, onVerFila = null }) {
+  const { escalas: escalasDoDia } = useEscalaCirurgica() || {}
   const { setStatusCirurgia, atualizarCaso, adicionarAjuda, removerAjuda, espelharTempoTotal } = useEscalaCirurgicaActions()
   const { user } = useUser()
   const { residenteByUid } = useRosterResidentes()
@@ -281,23 +285,25 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
   const principal = vivo.statusCirurgia || 'agendada'
   const terminada = principal === 'terminada'
   const tb = tipoBadge(vivo.tipo)
-  const alvoTermino = parseHoraMinutos(vivo.terminoPrevisto)
-  const faltaTermino = alvoTermino != null && !terminada ? formatFaltante(alvoTermino, agoraMin) : null
-  // O que dá sentido a cada número, embaixo do rótulo do bloco (dono 02/10, tarde — a
-  // hora agendada ficou no cabeçalho da folha): há quanto tempo começou (só no dia
-  // operacional da escala — "agora" de outro dia não diz nada), quanto falta pelo tempo
-  // estimado e, terminada, quanto durou.
-  const agoraHHMM = `${String(Math.floor((agoraMin % 1440) / 60)).padStart(2, '0')}:${String(agoraMin % 60).padStart(2, '0')}`
-  const emSalaMin = principal === 'iniciada' && vivo.inicioReal && ehDiaOperacionalAtual(escala?.data)
-    ? duracaoMin(vivo.inicioReal, agoraHHMM) : null
-  const durouMin = terminada ? duracaoMin(vivo.inicioReal, vivo.terminoReal) : null
-  // agendada com duração estimada (27/10): "2h do início" até ela começar
+  // agendada com duração estimada (27/10): a folha do tempo estimado só oferece durações
   const naoComecou = principal === 'agendada'
   const duracaoEst = naoComecou && Number(vivo.duracaoEstimadaMin) > 0 ? Number(vivo.duracaoEstimadaMin) : null
-  const subTermino = durouMin != null ? `durou ${rotuloMinutos(durouMin)}`
-    : faltaTermino
-      ? (faltaTermino.atrasada ? `${faltaTermino.texto.replace('+', '')} além` : `faltam ${faltaTermino.texto.replace('~', '')}`)
-      : duracaoEst ? `${rotuloDuracao(duracaoEst)} do início` : ''
+  // CABEÇALHO DIZ DE QUAL CIRURGIA SE FALA (dono 10/11, modelo A): cirurgião, a ordem dela
+  // na sala, turno e hospital — o cirurgião e a sala saíram do último cartão para cá.
+  const daSala = (escala?.casos || [])
+    .filter((c) => c.sala === vivo.sala && turnoDoCaso(c) === turnoCaso && !c.isContinuacao)
+    .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))
+  const posNaSala = daSala.findIndex((c) => (c.id ? c.id === vivo.id : c === vivo)) + 1
+  const subCabecalho = [
+    titleCaseNome(vivo.cirurgiao),
+    posNaSala > 0 && daSala.length > 1 ? `${posNaSala}ª de ${daSala.length} cirurgias da sala` : null,
+    turnoCaso === 'vespertino' ? 'Tarde' : turnoCaso === 'matutino' ? 'Manhã' : null,
+    HOSPITAL_LABEL[escala?.hospital] || null,
+  ].filter(Boolean).join(' · ')
+  // O TEMPO TOTAL É DA PESSOA (modelo A, opção A do dono): cartão à parte, com o nome dela,
+  // lido da linha da fila — nunca calculado aqui. Dupla "A + B" e "?" não têm uma linha só.
+  const totalPessoa = !isDemo && !encerrado ? tempoTotalDaPessoa(escala, vivo, escalasDoDia) : null
+  const nomeExibido = nomeAnestesistaExibicao({ uid: vivo.anestesistaUserId, alias: vivo.anestesista, rosterByUid })
   // validação do card de confirmação: reabrir pelo "Iniciada" apaga o término, então
   // só o bloco (que corrige sem reabrir) compara o início com ele
   const validarConfirmacao = (hhmm) => (confirmar?.campo === 'inicio'
@@ -333,6 +339,9 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
               )}
             </span>
           </div>
+          {subCabecalho && (
+            <p data-sub-cabecalho className="mt-1 text-[12.5px] leading-snug text-muted-foreground [overflow-wrap:anywhere]">{subCabecalho}</p>
+          )}
         </SheetHeader>
 
         {/* TRÊS CARTÕES POR ASSUNTO (dono 17/08, escolhido em protótipo): uma
@@ -372,7 +381,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
             </SheetTitle>
             {(vivo.pacienteIniciais || vivo.idade || vivo.tempoEstimado) && (
               <p className="mt-1 text-[12.5px] text-muted-foreground">
-                {[vivo.pacienteIniciais, idadeCurta(vivo.idade), vivo.tempoEstimado && `previsto ${vivo.tempoEstimado}`]
+                {[vivo.pacienteIniciais, idadeCurta(vivo.idade), vivo.tempoEstimado && `mapa ${rotuloDoMapa(vivo.tempoEstimado)}`]
                   .filter(Boolean).join(' · ')}
               </p>
             )}
@@ -386,44 +395,27 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
               término que a fila usa) como botão próprio no topo, ao lado do título. ── */}
           {!isDemo && vivo.id && (
             <article
-              aria-label="Horário da cirurgia"
+              aria-label="Horário desta cirurgia"
               className="rounded-2xl border-[1.5px] border-primary/55 bg-primary/[0.045] px-2.5 py-2 dark:bg-primary/[0.08]"
             >
+              {/* TRÊS CASAS, SEMPRE DESTA CIRURGIA (dono 10/11, modelo A): Início · Tempo
+                  estimado · Término. O "+ Tempo estimado" saiu do título e virou a casa do
+                  meio; vazio é "—" com "ainda não informado". Os nomes acessíveis são os de
+                  antes — só o desenho e o lugar mudaram. */}
               <div className="mb-[5px] flex min-h-[26px] items-center gap-1.5">
                 <Clock className="h-4 w-4 shrink-0 text-primary" />
-                <h3 className="text-[15px] font-extrabold">Horário da cirurgia</h3>
-                {!terminada && !encerrado && (
-                  <span className="ml-auto">
-                    <BotaoEstimado
-                      valor={duracaoEst ? rotuloDuracao(duracaoEst) : (vivo.terminoPrevisto || '')}
-                      prefixo="Estimado"
-                      detalhe={duracaoEst ? '· do início' : ''}
-                      aviso={!duracaoEst && !!faltaTermino?.atrasada}
-                      nomeAcessivel="Tempo estimado desta cirurgia"
-                      onClick={podeEditarCaso ? () => setEditor('tempo') : null}
-                    />
-                  </span>
-                )}
+                <h3 className="text-[15px] font-extrabold">Horário desta cirurgia</h3>
+                {podeEditarCaso && <span className="ml-auto shrink-0 text-[11.5px] text-muted-foreground">toque para mudar</span>}
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <BlocoHorario
-                  rotulo="Início"
-                  nomeAcessivel="Início desta cirurgia"
-                  valor={vivo.inicioReal}
-                  sub={emSalaMin != null ? `há ${rotuloMinutos(emSalaMin)}` : ''}
-                  faixa={principal === 'iniciada' ? 'border-l-4 border-l-success' : ''}
-                  onClick={podeEditarCaso ? () => setConfirmar({ campo: 'inicio', viaStatus: false }) : null}
-                />
-                <BlocoHorario
-                  rotulo="Término"
-                  nomeAcessivel="Término desta cirurgia"
-                  valor={vivo.terminoReal}
-                  sub={subTermino}
-                  subAviso={!terminada && !!faltaTermino?.atrasada}
-                  faixa={terminada ? 'border-l-4 border-l-info' : ''}
-                  onClick={podeEditarCaso ? () => setConfirmar({ campo: terminoPedeInicio ? 'ambos' : 'termino', viaStatus: false }) : null}
-                />
-              </div>
+              <CasasCirurgia
+                caso={vivo}
+                agoraMin={agoraMin}
+                diaAtual={ehDiaOperacionalAtual(escala?.data)}
+                nomes={{ inicio: 'Início desta cirurgia', estimado: 'Tempo estimado desta cirurgia', termino: 'Término desta cirurgia' }}
+                onInicio={podeEditarCaso ? () => setConfirmar({ campo: 'inicio', viaStatus: false }) : null}
+                onEstimado={podeEditarCaso && !encerrado ? () => setEditor('tempo') : null}
+                onTermino={podeEditarCaso ? () => setConfirmar({ campo: terminoPedeInicio ? 'ambos' : 'termino', viaStatus: false }) : null}
+              />
               {/* As folhas abrem de baixo para cima (dono 17/08): expandindo aqui
                   dentro, o cartão mudava de tamanho no meio da leitura. */}
               {editor === 'tempo' && (
@@ -611,48 +603,56 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
             </article>
           )}
 
-          {/* ── QUEM ESTÁ E ONDE ─────────────────────────────────────────── */}
+          {/* ── ANESTESISTA DESTA CIRURGIA + O TEMPO TOTAL DELA (dono 10/11, modelo A,
+              opção A: "cartão separado com o tempo total da anestesista e a posição dela,
+              com atalho de um toque para a fila dela"). O tempo total é da PESSOA: fica
+              aqui, longe das casas da cirurgia e com outro desenho (contorno verde, ícone
+              de pessoa, o nome dela). Sala e cirurgião subiram para o cabeçalho da folha. ── */}
           <article className="rounded-2xl border border-border-strong p-3">
-            <h3 className="mb-1 text-[15px] font-extrabold">Quem está e onde</h3>
-
+            <h3 className="text-[12.5px] font-medium text-muted-foreground">Anestesista desta cirurgia</h3>
             {/* MESMA função do cabeçalho da sala e do sheet de definir (bug 29/07:
                 o cabeçalho vinha do cadastro e este texto vinha do alias importado,
                 então "Guilherme Staub" lá e "STAUB" aqui — o dono leu como duas
                 pessoas). Também tira a CAIXA ALTA do alias. */}
-            <LinhaDado
-              icone={<UserCog className="h-3.5 w-3.5" />}
-              rotulo="Anestesista"
-              valor={nomeAnestesistaExibicao({ uid: vivo.anestesistaUserId, alias: vivo.anestesista, rosterByUid })}
-              destaque
-              acao={definivel && {
-                label: 'Trocar',
-                onClick: () => { onClose?.(); onDefinirAnestesista(vivo.sala, vivo) },
-              }}
-            />
+            <div className="flex min-h-[48px] items-center gap-2.5">
+              {/* nome de pessoa não abrevia: a linha quebra */}
+              <span className="min-w-0 text-[15px] font-bold [overflow-wrap:anywhere]">{nomeExibido || '—'}</span>
+              {definivel && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="ml-auto shrink-0"
+                  aria-label="Trocar anestesista"
+                  onClick={() => { onClose?.(); onDefinirAnestesista(vivo.sala, vivo) }}
+                >
+                  Trocar
+                </Button>
+              )}
+            </div>
+            {totalPessoa && nomeExibido && (
+              <TempoTotalPessoa
+                nome={nomeExibido}
+                termino={totalPessoa.termino}
+                sub={[
+                  posicaoNoRodape > 0 ? `${posicaoNoRodape}º ${escala?.hospital === 'materno' ? 'do' : escala?.hospital === 'unimed' ? 'da' : 'do'} ${HOSPITAL_LABEL[escala?.hospital] || ''}`.trim() : null,
+                  totalPessoa.cirurgias > 0 ? `${totalPessoa.cirurgias} ${totalPessoa.cirurgias === 1 ? 'cirurgia' : 'cirurgias'}` : null,
+                ].filter(Boolean).join(' · ')}
+                acao={onVerFila ? {
+                  label: 'Fila', seta: true,
+                  nomeAcessivel: `Ver ${nomeExibido} na fila de liberações`,
+                  onClick: () => { onClose?.(); onVerFila(vivo) },
+                } : null}
+              />
+            )}
 
-            {/* Residente, sala e cirurgião são LEITURA aqui desde 01/09: os
-                três se corrigem no "Editar dados da cirurgia", junto do resto do
-                caso. Manter um segundo caminho para os mesmos campos deixaria
-                duas telas gravando a mesma coisa com validações diferentes. O
-                ANESTESISTA é a exceção e continua com botão: ele não é um campo
-                de texto — o sheet próprio mostra onde cada colega está, marca
-                dupla e assume posição na fila. */}
+            {/* Residente é LEITURA aqui desde 01/09: corrige-se no "Editar dados da
+                cirurgia", junto do resto do caso. O ANESTESISTA é a exceção e continua
+                com botão: o sheet próprio mostra onde cada colega está, marca dupla e
+                assume posição na fila. */}
             <LinhaDado
               icone={<GraduationCap className="h-3.5 w-3.5" />}
               rotulo="Residente"
               valor={titleCaseNome(residenteNome)}
-            />
-
-            <LinhaDado
-              icone={<MapPin className="h-3.5 w-3.5" />}
-              rotulo="Sala/local"
-              valor={salaExibicao(vivo.sala) || 'A definir'}
-            />
-
-            <LinhaDado
-              icone={<Stethoscope className="h-3.5 w-3.5" />}
-              rotulo="Cirurgião"
-              valor={titleCaseNome(vivo.cirurgiao)}
             />
 
             {/* AJUDA de outro hospital (dono 29/07). RÓTULO ÚNICO com o painel da

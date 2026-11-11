@@ -3,6 +3,23 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## 11/11/2026 — Escala: tempos sem dúvida nas quatro folhas, desfazer de troca e tela de abertura — v5.12.94
+
+Modelos escolhidos pelo dono em 10/11 (`.tmp/analise-escala-2026-11/modelos-2/`).
+- **Tempos (modelo A):** as três casas são sempre de UMA cirurgia — Início · Tempo estimado · Término —, com o
+  nome dela no título; o tempo da pessoa é um elemento à parte, "Tempo total de Fulano · fica até HH:MM".
+  Folha da cirurgia ganha o cartão do anestesista com atalho para a fila; cabeçalho da sala na Completa ganha a
+  pílula "Tempo total"; a folha da pessoa em Liberações tem o atalho "Cirurgias de Fulano · na Completa"; a
+  folha "Quem responde pela sala" mostra os horários que passam junto. Um nome e um formato por tempo no quadro
+  e na fila ("Tempo estimado 09:30 · faltam 45min"); "N de M com tempo estimado" conta cirurgias; "previsto"
+  virou "mapa". Peças em `TemposCirurgia.jsx`.
+- **Desfazer troca:** vira uma chamada só ao banco (`rpc_escala_desfazer_troca`, migration `20261110121000`):
+  quem saiu enquanto ocupava a vaga continua liberado e o dono volta à fila (caso de 21/10).
+- **Registro:** o marcador do repasse deixa de ser gravado como "liberado" (migration `20261110120000`,
+  aplicada em 11/11) — as "ações" do relatório de adesão caem ~2 %.
+- **Tela de abertura (modelo D, opção B):** a animação do login (fundo verde, logo e ECG) aparece assim que o
+  HTML chega, no lugar da tela branca; sai quando o app pinta.
+
 ## 10/11/2026 — Escala: os tempos conversam entre Completa e Liberações — v5.12.93
 
 Dono: "os tempos devem conversar entre si e não produzir tempos distintos". Medido antes: em 70 % dos turnos com

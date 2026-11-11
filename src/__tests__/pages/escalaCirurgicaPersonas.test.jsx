@@ -816,7 +816,7 @@ describe('Notificações — disparo por login', () => {
     expect(screen.queryByText('Liana Winkelmann')).toBeNull()
     expect(screen.queryByText('Passa para tarde')).toBeNull() // era da escala de antes
     expect(screen.queryByText('…')).toBeNull() // renovada: nem o "…" de cirurgião desconhecido
-    expect(screen.getByLabelText('Definir tempo faltante de Leonardo')).toBeTruthy()
+    expect(screen.getByLabelText('Informar o tempo total de Leonardo')).toBeTruthy()
   })
 
   it('linha renovada COM cirurgia aberta mostra a cirurgia: a Completa manda (dono 16/09, caso Karine)', () => {
@@ -892,7 +892,9 @@ describe('Cards — idade e tempo cirúrgico no demo (quando houver)', () => {
     const escala = { id: 'e1', hospital: 'unimed', casos: [{ id: 'c1', sala: 'SALA 1', ordem: 0, hora: '13:30', idade: '37a', tempoEstimado: '01:15', anestesista: 'X', cirurgiao: 'Rodrigo Souza', procedimento: 'Sinus', pacienteIniciais: 'M.C.' }] }
     render(<BoardView escala={escala} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
     expect(screen.getByText('37a')).toBeTruthy()
-    expect(screen.getByText('01:15')).toBeTruthy()
+    // 10/11/2026 (modelo A do dono): a duração escrita no mapa aparece como "mapa 1h15"
+    // (era o chip "01:15" com relógio, sem dizer de onde vinha o número)
+    expect(screen.getByText('mapa 1h15')).toBeTruthy()
   })
 })
 
@@ -1091,7 +1093,7 @@ describe('Liberações — Tempo faltante e lista de cirurgiões (F1.9d)', () =>
   it('sem estimativa → botão "Tempo faltante"; atalho de duração grava override.termino', () => {
     const onSetOverride = vi.fn()
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} onSetOverride={onSetOverride} />, { wrapper: wrap })
-    fireEvent.click(screen.getByLabelText('Definir tempo faltante de Rodnei'))
+    fireEvent.click(screen.getByLabelText('Informar o tempo total de Rodnei'))
     // os atalhos de duração VOLTARAM como grade (dono 17/08): um toque grava, e o
     // "Outro tempo…" cobre o resto da lista. Desde 02/10 a duração é a 2ª aba: o
     // painel abre no "Horário de término" (dono: "a primeira opção que aparece")
@@ -1326,7 +1328,7 @@ describe('Liberações — cards do plantão noturno (P1–P4)', () => {
   it('card noturno é COMPLETO: tem toggle de liberar e cronômetro (decisão do dono 24/07)', () => {
     renderNoite({ hospital: 'materno', hospitalLabel: 'Materno' })
     expect(screen.getByLabelText('Marcar Davi Rocha liberado')).toBeTruthy()
-    expect(screen.getByLabelText('Definir tempo faltante de Davi Rocha')).toBeTruthy()
+    expect(screen.getByLabelText('Informar o tempo total de Davi Rocha')).toBeTruthy()
   })
 
   // ── selo de AVISO no vespertino (pedido do dono 25/07): quem entra no plantão

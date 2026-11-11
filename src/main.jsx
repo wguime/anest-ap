@@ -232,7 +232,20 @@ function PublicRouteOrApp() {
   )
 }
 
-const montar = () => createRoot(document.getElementById('root')).render(
+// Tela de abertura do index.html (#casca): sai quando o app já pintou por baixo — dois quadros
+// depois do render —, esmaecendo em 0,25 s. Sem ela no DOM (teste, página antiga em cache) não faz nada.
+const retirarCasca = () => {
+  const casca = document.getElementById('casca')
+  if (!casca) return
+  const sair = () => {
+    casca.classList.add('sai')
+    setTimeout(() => casca.remove(), 300)
+  }
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(sair))
+  else sair()
+}
+
+const montarApp = () => createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
@@ -253,6 +266,8 @@ const montar = () => createRoot(document.getElementById('root')).render(
     </ErrorBoundary>
   </StrictMode>,
 )
+
+const montar = () => { montarApp(); retirarCasca() }
 
 // App aberto direto numa página sob demanda (o push da escala leva a
 // /escala-cirurgica): o 1º render espera o chunk dela, no máximo 1 s, para a

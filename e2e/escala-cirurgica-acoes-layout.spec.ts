@@ -42,7 +42,7 @@ test('tempo e "Editar" empilhados à direita, alinhados, sem vazar da tela', asy
   //    direito — empilhados, não lado a lado —, e os dois com a MESMA margem da
   //    borda do card. Era a geometria oposta até 20/08 (uma linha só); a medida
   //    aqui é o que impede a volta silenciosa, porque jsdom não mede layout.
-  const badge = card.getByRole('button', { name: /Definir tempo faltante|toque para ajustar/ }).first();
+  const badge = card.getByRole('button', { name: /Informar o tempo total|toque para ajustar/ }).first();
   const editar = card.getByRole('button', { name: /^Editar local\/cirurgião/ });
   const [bBadge, bEditar, bCard] = [
     await badge.boundingBox(), await editar.boundingBox(), await card.boundingBox(),

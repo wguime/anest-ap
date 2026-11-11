@@ -502,6 +502,21 @@ async function executarTrocaAtomica({ lados = [], limpar = [] } = {}) {
 }
 
 /**
+ * DESFAZ a troca numa transação (10/11/2026, migration 20261110121000): a posição e as
+ * cirurgias do recibo voltam ao dono, e a liberação gravada enquanto a vaga estava
+ * assumida segue para a chave própria de quem a ocupava ("a liberação é da pessoa",
+ * 23/10). Devolve o estado resultante — overrides e liberações de cada escala tocada e
+ * os casos — para a tela pintar sem reler a escala.
+ *
+ * @param {Array<{escala_id:string, chave:string, caso_ids?:string[], para_uid?:string|null, para_apelido?:string}>} lados
+ */
+async function desfazerTrocaAtomica({ lados = [] } = {}) {
+  const { data, error } = await supabase.rpc('rpc_escala_desfazer_troca', { p_lados: lados })
+  if (error) handleError(error, 'desfazerTrocaAtomica')
+  return data || { escalas: {}, liberacoes: {}, casos: [], pulados: 0, lados: lados.length, movidas: [] }
+}
+
+/**
  * Restaura o snapshot EXATO de anestesista por caso — caminho de ROLLBACK da
  * troca. Nunca deriva do uid: dono sem vínculo (uid null) viraria '?' pelo
  * updateAnestesistaCasos e o rollback apagaria o anestesista em vez de
@@ -840,6 +855,7 @@ export default {
   desfazerTerminada,
   updateAnestesistaCasos,
   executarTrocaAtomica,
+  desfazerTrocaAtomica,
   addCaso,
   updateCaso,
   removeCaso,

@@ -74,8 +74,8 @@ describe('consultório nas Liberações: sem "+ Tempo total" (dono 29/10)', () =
         <LiberacoesView escala={escala} hospital="hro" hospitalLabel="HRO" turno="matutino" canEdit onToggle={() => {}} onSetOverride={() => {}} />
       </ToastProvider></ThemeProvider>,
     )
-    expect(screen.getByLabelText(/Definir tempo faltante de Marílio/)).toBeTruthy()
-    expect(screen.queryByLabelText(/Definir tempo faltante de Raquel/)).toBeNull()
-    expect(screen.queryByLabelText(/Definir tempo faltante de Rodnei/)).toBeNull()
+    expect(screen.getByLabelText(/Informar o tempo total de Marílio/)).toBeTruthy()
+    expect(screen.queryByLabelText(/Informar o tempo total de Raquel/)).toBeNull()
+    expect(screen.queryByLabelText(/Informar o tempo total de Rodnei/)).toBeNull()
   })
 })

@@ -395,7 +395,7 @@ describe('Card "Livre" enxuto (dono 11/2026)', () => {
     montar({ escala: livre })
     expect(screen.getByText('Livre')).toBeTruthy()
     expect(screen.queryByText('…')).toBeNull()
-    const tempos = screen.getAllByLabelText(/^Definir tempo faltante de /).map((b) => b.getAttribute('aria-label'))
+    const tempos = screen.getAllByLabelText(/^Informar o tempo total de /).map((b) => b.getAttribute('aria-label'))
     expect(tempos).toHaveLength(1)
     expect(tempos[0]).not.toMatch(/Leonardo/i)
   })

@@ -290,6 +290,37 @@ Escolhido em `.tmp/troca-posicao-ja-liberada.html` (modelo A, contra o B = aviso
   (contexto real, recusa do banco inclusive). 6 dos 8 falham contra o código anterior; os outros 2 são os controles.
 
 
+### Desfazer a troca também é uma transação, e a liberação segue quem saiu (10/11/2026)
+
+HRO, tarde de 21/10: o Fernando assumiu a 14ª do Klisman às 14:01 e foi liberado nela às 15:02. Às 16:40 a troca foi
+desfeita. A marca de liberação ficou na chave da posição e voltou para o Klisman, que apareceu "Liberado" com a
+cirurgia devolvida; o Fernando voltou à fila. Os dois foram re-liberados à mão como "fora do rodapé". No mesmo dia,
+18:37–18:38, Melo ⇄ Cury: liberação na 12ª, desfeita um minuto depois. O desfazer eram 2 a 4 escritas do navegador com
+rollback LIFO (a classe do A15, que a execução perdeu em 05/09) e nenhuma olhava `liberacoes`.
+
+- `rpc_escala_desfazer_troca(p_lados)` (migration `20261110121000`): tira `assumidaPor`, devolve ao dono as cirurgias
+  do recibo e trata a marca. Liberada DEPOIS da assunção (`liberadoEm >= assumidaPor.em`) → vai para a chave própria
+  do ocupante (`<turno>:<uid>`) e sai da vaga. Liberada antes → é do dono e fica (09/11, Alexandre Danieli).
+- Fica na vaga, como era: assunção antiga sem carimbo `em`, ocupante sem login, chave que não é de manhã/tarde (a
+  noite da fila única).
+- Só volta ao dono a cirurgia que ainda está com o ocupante: o que ele já passou a um terceiro não é puxado.
+- Lado sem `assumidaPor` é pulado (idempotente). `trocaCom` não renasce (30/07).
+- `desfazerSubstituicao` (context) chama a RPC uma vez e pinta o que ela devolve (`escalas`, `liberacoes`, `casos`),
+  sem reler a escala e sem rollback no cliente: se a transação cai, nada foi alterado, a escala recarrega e o aviso é
+  "Desfazer não concluído". **Não existe caminho antigo de reserva** — com a RPC ausente (42883/PGRST202) o aviso é
+  o mesmo. Migration antes do app.
+- Quem devolveu a última cirurgia aberta perde o tempo total gravado (`limparTotalSemCirurgia`, regra de 10/11).
+  ⚠️ A limpeza lê `escalasRef`, que só acompanha o estado no render seguinte: o desfazer o atualiza na mão antes de
+  chamá-la, senão ela regravaria no estado local o override de antes (com o `assumidaPor`).
+- O trigger de rastro não registra a mudança de chave como liberação (GUC `anest.liberacao_movida`, migration
+  `20261110120000`, que também deixou de chamar de "liberado" o marcador `{ escalado: true }` do repasse: ele sai como
+  `status_para = 'marcador'`, sem autor na coluna, fora da conta de ações da adesão).
+- Travas: `escalaDesfazerTrocaSql.test.js` e `escalaLogLiberacaoMarcadorSql.test.js` (PGlite; rollback em `scripts/`),
+  e o describe "desfazer a troca" de `escalaTrocaMantemLiberacao.test.jsx` (context: uma chamada, estado devolvido,
+  tempo total, RPC ausente).
+- `restaurarAnestesistaCasos` (service) e `snapshotCasos` (utils) ficaram sem chamador.
+
+
 ## Trocas em três passos — uma entrada só (dono 27/10/2026)
 
 *"há muitos botões de trocas (isso confunde os usuários), crie um único botão e a partir dele opções de trocas com

@@ -82,8 +82,34 @@ describe('Lista de colegas (dono 17/08)', () => {
     render(<DefinirAnestesistaSheet escala={escalaComRodape} sala="Sala 5" onClose={vi.fn()} />, { wrapper: wrap })
     escolherCury()
     // 2 casos na sala, 1 terminado → 1 é assumido, 1 fica (invisível no desenho antigo)
-    expect(screen.getByText('Procedimentos assumidos')).toBeTruthy()
+    // 10/11 (modelo A aprovado pelo dono): "Procedimentos assumidos" virou "Cirurgias que
+    // passam · N · os horários vão junto", cada uma com as três casas dela (só leitura)
+    expect(screen.getByText('Cirurgias que passam')).toBeTruthy()
+    expect(screen.getByText('1 · os horários vão junto')).toBeTruthy()
+    const blocos = [...document.querySelectorAll('[data-cirurgia-tempos]')]
+    expect(blocos).toHaveLength(1)
+    expect([...blocos[0].querySelectorAll('[data-casa]')].map((n) => n.getAttribute('data-casa'))).toEqual(['Início', 'Tempo estimado', 'Término'])
+    expect(blocos[0].querySelector('button')).toBeNull()
     expect(screen.getByText(/já terminou: fica com/)).toBeTruthy()
+  })
+
+  it('o TEMPO TOTAL de quem sai vem à parte, com o nome — "não passa para quem assume" (dono 10/11)', () => {
+    const aberto = escalaComRodape.casos.find((c) => c.sala === 'Sala 5' && c.statusCirurgia !== 'terminada')
+    const chave = `${aberto.turno || 'matutino'}:${aberto.anestesistaUserId || String(aberto.anestesista).toUpperCase()}`
+    render(
+      <DefinirAnestesistaSheet escala={{ ...escalaComRodape, linhaOverrides: { [chave]: { termino: '11:40' } } }} sala="Sala 5" onClose={vi.fn()} />,
+      { wrapper: wrap },
+    )
+    const faixa = document.querySelector('[data-tempo-total]')
+    expect(faixa.textContent).toContain('fica até 11:40')
+    expect(faixa.textContent).toMatch(/fica com \S+: não passa para quem assume/)
+    // fora das casas das cirurgias: nunca na mesma fileira
+    expect(faixa.closest('[data-cirurgia-tempos]')).toBeNull()
+  })
+
+  it('sem tempo total informado, a faixa não aparece', () => {
+    render(<DefinirAnestesistaSheet escala={escalaComRodape} sala="Sala 5" onClose={vi.fn()} />, { wrapper: wrap })
+    expect(document.querySelector('[data-tempo-total]')).toBeNull()
   })
 
   it('o card ASSUME abre a folha com a lista e a busca no topo', () => {

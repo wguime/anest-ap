@@ -277,7 +277,7 @@ function PainelDuracao({ atual, onDefinir, exemplo }) {
       </div>
       <div className="flex min-h-[44px] items-center gap-2">
         <p className="min-w-0 text-[13px] leading-snug text-muted-foreground">
-          {atual ? (frase || `Estimado ${rotuloDuracao(atual)}, contado do início.`) : 'Sem tempo estimado.'}
+          {atual ? (frase || `Tempo estimado ${rotuloDuracao(atual)}, contado do início.`) : 'Sem tempo estimado.'}
         </p>
         {atual && (
           <button

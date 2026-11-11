@@ -25,7 +25,7 @@
  * não é um campo de texto.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 
 import { ThemeProvider, ToastProvider } from '@/design-system'
 import CasoDetalheSheet from '@/pages/escala-cirurgica/CasoDetalheSheet'
@@ -103,12 +103,17 @@ describe('Os dados do caso são LEITURA aqui, com UMA porta para editar (dono 01
   const completo = { ...caso, residente: 'Augusto', residenteUserId: 'uid-augusto', convenio: 'Sua' }
   const escalaCompleta = { ...escala, casos: [completo] }
 
+  // ⚠️ AJUSTADO em 10/11/2026 (modelo A aprovado pelo dono): as linhas "Sala/local" e
+  // "Cirurgião" saíram do último cartão — a sala já era a pílula do cabeçalho e o cirurgião
+  // subiu para o subtítulo dele ("Cirurgião · 1ª de 2 cirurgias da sala · Manhã · HRO"). O
+  // que o teste protege segue igual: os dados aparecem e nenhum tem editor próprio aqui.
   it('residente, sala e cirurgião aparecem, e nenhum tem editor próprio', () => {
     montar({ onEditarCaso: vi.fn() }, escalaCompleta)
     expect(screen.getByText('Residente')).toBeTruthy()
     expect(screen.getByText('Augusto')).toBeTruthy()
-    expect(screen.getByText('Sala/local')).toBeTruthy()
-    expect(screen.getByText('Cirurgião')).toBeTruthy()
+    const sub = document.querySelector('[data-sub-cabecalho]').textContent
+    expect(sub).toContain('Taciana')
+    expect(document.querySelector('[data-slot="sheet-content"]').textContent).toMatch(/sala/i)
     // os quatro editorzinhos foram para o formulário do caso
     for (const rotulo of ['Trocar residente', 'Mudar sala/local', 'Trocar cirurgião', 'Trocar convênio']) {
       expect(screen.queryByRole('button', { name: rotulo })).toBeNull()
@@ -158,7 +163,9 @@ describe('Dois eixos de status (dono 21/07, desenho 17/08)', () => {
     // uma pergunta por cartão: que cirurgia é · como ela vai · quem está e onde
     montar()
     expect(screen.getByText('Andamento')).toBeTruthy()
-    expect(screen.getByText('Quem está e onde')).toBeTruthy()
+    // 10/11 (modelo A): o terceiro cartão chama-se pelo que traz — a anestesista desta
+    // cirurgia (e, à parte, o tempo total dela). Era "Quem está e onde".
+    expect(screen.getByText('Anestesista desta cirurgia')).toBeTruthy()
   })
 
   it('o painel acompanha o conteúdo — não nasce com 85% da tela', () => {
@@ -217,7 +224,7 @@ describe('Término DESTA cirurgia (dono 29/07)', () => {
     // ⚠️ 02/10: a linha "Término desta cirurgia" do fim do Andamento SUBIU para o
     // cartão "Horário da cirurgia" (bloco TÉRMINO); o nome acessível e o título do
     // editor continuam dizendo que é desta cirurgia.
-    expect(screen.getByRole('article', { name: 'Horário da cirurgia' })).toBeTruthy()
+    expect(screen.getByRole('article', { name: 'Horário desta cirurgia' })).toBeTruthy()
     expect(screen.getByRole('button', { name: /Tempo estimado desta cirurgia/ })).toBeTruthy()
     abrirTempo()
     expect(screen.getByText(/Quando esta cirurgia deve terminar/)).toBeTruthy()
@@ -425,10 +432,15 @@ describe('duas cirurgias: o estimado da que não começou é DURAÇÃO; a soma n
     expect(setLinhaOverride).not.toHaveBeenCalled()
   })
 
-  it('o botão diz "Estimado 1h · do início" e o bloco Término "1h do início"', () => {
+  // ⚠️ MUDOU DE LADO em 10/11/2026 (modelo A): era o botão "Estimado 1h · do início" no
+  // título e "1h do início" no bloco Término. O tempo estimado virou a CASA do meio — "1h"
+  // com "duração prevista" — e o Término só fala do horário real ("ainda não informado").
+  it('a casa "Tempo estimado" diz "1h · duração prevista"; a do Término não fala de estimativa', () => {
     montarSegunda({ ...proxima, duracaoEstimadaMin: 60 })
-    expect(screen.getByRole('button', { name: /Tempo estimado desta cirurgia: 1h/ })).toBeTruthy()
-    expect(screen.getByText('1h do início')).toBeTruthy()
+    const casa = screen.getByRole('button', { name: /Tempo estimado desta cirurgia: 1h/ })
+    expect(casa.textContent).toBe('Tempo estimado1hduração prevista')
+    expect(screen.getByRole('button', { name: 'Término desta cirurgia: não informado' }).textContent).toBe('Término—ainda não informado')
+    expect(screen.queryByText('1h do início')).toBeNull()
   })
 
   it('com as DUAS com término, o total da pessoa vira o último término (a soma) — e a hora exata vale como veio', async () => {
@@ -470,5 +482,59 @@ describe('Chip "Iniciada", convênio e sala no cabeçalho (dono 11/2026)', () =>
   it('caso sem sala: o selo diz "Sala a definir" em vez de nascer vazio', () => {
     montar({}, { ...escala, casos: [{ ...caso, sala: '' }] })
     expect(screen.getAllByText('Sala a definir').length).toBeGreaterThan(0)
+  })
+})
+
+// O TEMPO TOTAL É DA PESSOA (dono 10/11/2026, modelo A, opção A: "cartão separado com o tempo
+// total da anestesista e a posição dela, com atalho de um toque para a fila dela").
+describe('folha da cirurgia: o tempo total da anestesista à parte (dono 10/11)', () => {
+  const comRodape = (extra = {}) => ({
+    ...escala, ordemLiberacao: { matutino: ['LEONARDO', 'MARILIO'] }, casos: [emAndamento], ...extra,
+  })
+
+  it('mostra "Tempo total de {Nome} · fica até HH:MM", com posição e nº de cirurgias — fora das casas', () => {
+    montar({}, comRodape({ linhaOverrides: { 'matutino:MARILIO': { termino: '11:40' } } }))
+    const faixa = document.querySelector('[data-tempo-total]')
+    expect(faixa.textContent).toContain('Tempo total de')
+    expect(faixa.textContent).toContain('fica até 11:40')
+    expect(faixa.textContent).toContain('2º do HRO · 1 cirurgia')
+    // nunca dentro do cartão das três casas da cirurgia
+    expect(faixa.closest('[aria-label="Horário desta cirurgia"]')).toBeNull()
+    expect(document.querySelector('[aria-label="Horário desta cirurgia"]').textContent).not.toContain('11:40')
+  })
+
+  it('sem tempo total informado diz "ainda não informado" — a folha não calcula nada', () => {
+    montar({}, comRodape({ casos: [{ ...emAndamento, terminoPrevisto: '10:30' }] }))
+    expect(document.querySelector('[data-tempo-total]').textContent).toContain('ainda não informado')
+  })
+
+  it('"Fila" fecha a folha e chama o atalho para as Liberações; sem atalho, não há botão', () => {
+    const onVerFila = vi.fn()
+    const onClose = vi.fn()
+    const { unmount } = montar({ onVerFila, onClose }, comRodape())
+    fireEvent.click(within(document.querySelector('[data-tempo-total]')).getByRole('button', { name: /na fila de liberações/ }))
+    expect(onClose).toHaveBeenCalled()
+    expect(onVerFila).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }))
+    unmount()
+    montar({}, comRodape())
+    expect(within(document.querySelector('[data-tempo-total]')).queryByRole('button')).toBeNull()
+  })
+
+  it('dupla "A + B" e cirurgia sem anestesista não têm um tempo total só: a faixa não aparece', () => {
+    montar({}, comRodape({ casos: [{ ...emAndamento, anestesista: 'MARILIO + KARINE' }] }))
+    expect(document.querySelector('[data-tempo-total]')).toBeNull()
+  })
+
+  it('o cabeçalho diz de qual cirurgia se fala: cirurgião · ordem na sala · turno · hospital', () => {
+    const outra = { ...caso, id: 'c2', ordem: 1, hora: '09:00' }
+    montar({}, comRodape({ casos: [emAndamento, outra] }))
+    expect(document.querySelector('[data-sub-cabecalho]').textContent).toBe('Taciana A · 1ª de 2 cirurgias da sala · Manhã · HRO')
+  })
+
+  it('a duração escrita no mapa aparece como "mapa 1h30" — "previsto" saiu', () => {
+    montar({}, comRodape({ casos: [{ ...emAndamento, tempoEstimado: '01:30' }] }))
+    const folha = document.querySelector('[data-slot="sheet-content"]').textContent
+    expect(folha).toContain('mapa 1h30')
+    expect(folha).not.toContain('previsto')
   })
 })

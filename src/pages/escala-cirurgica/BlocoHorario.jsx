@@ -11,7 +11,7 @@
  * `1fr` puro o conteúdo mínimo empurrava o 2º bloco para fora do cartão a 375px.
  */
 import { useState } from 'react'
-import { Plus, Timer, AlertTriangle } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 import { Button, Input } from '@/design-system'
 import { agora } from '@/lib/devClock'
 import { duracaoMin, hhmmDe, rotuloMinutos } from '@/lib/escalaHorarioReal'
@@ -53,40 +53,8 @@ export function BlocoHorario({ rotulo, nomeAcessivel, valor, sub = '', subAviso 
   )
 }
 
-/**
- * Botão do TEMPO ESTIMADO (a previsão de término — `terminoPrevisto`), dono 02/10:
- * "configure um botão para tempo estimado nesse espaço" (topo do cartão do horário) e
- * "ao lado do nome do procedimento adicione o tempo estimado" (folha das Liberações).
- * Pílula contornada: o estado (verde sólido) é das pílulas da fila; contorno é AÇÃO.
- * Vazio: "+ Tempo estimado". Com valor: `prefixo` (ex.: "Estimado") + o horário e,
- * se houver, `detalhe` ("faltam 45min"); `aviso` pinta de âmbar quando já passou.
- * O alvo de toque cresce por `after:` (a pílula tem 26px) sem esticar a linha.
- */
-export function BotaoEstimado({ valor = '', prefixo = '', detalhe = '', aviso = false, nomeAcessivel, onClick }) {
-  const classes = [
-    'relative inline-flex h-[26px] shrink-0 items-center gap-1 whitespace-nowrap rounded-full border-[1.5px] bg-card px-2.5 text-[12.5px] font-semibold',
-    aviso ? 'border-warning text-warning' : 'border-primary text-primary',
-    onClick ? "after:absolute after:-inset-x-1 after:-inset-y-2.5 after:content-['']" : '',
-  ].join(' ')
-  const conteudo = valor ? (
-    <>
-      <Timer className="h-3.5 w-3.5" aria-hidden />
-      {prefixo && <span>{prefixo}</span>}
-      <b className="font-extrabold tabular-nums">{valor}</b>
-      {detalhe && <span className="font-medium">{detalhe}</span>}
-    </>
-  ) : (
-    <>
-      <Plus className="h-3.5 w-3.5" aria-hidden /> Tempo estimado
-    </>
-  )
-  if (!onClick) return valor ? <span className={classes}>{conteudo}</span> : null
-  return (
-    <button type="button" onClick={onClick} aria-label={`${nomeAcessivel}: ${valor || 'não informado'}`} className={classes}>
-      {conteudo}
-    </button>
-  )
-}
+// O `BotaoEstimado` ("+ Tempo estimado" / "Estimado 15:30") morou aqui de 02/10 a 10/11/2026: o
+// tempo estimado virou a CASA do meio de `CasasCirurgia` (`TemposCirurgia.jsx`, modelo A do dono).
 
 /**
  * CONFIRMAR O HORÁRIO (dono 02/10, tarde, aprovado em protótipo): "quero que ao clicar

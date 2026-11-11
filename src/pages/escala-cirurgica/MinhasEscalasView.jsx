@@ -19,7 +19,7 @@ import CasoDetalheSheet from './CasoDetalheSheet'
 import AddCasoSheet from './AddCasoSheet'
 
 // `encerrado` (dono 28/10): a frase do turno que já acabou — o detalhe só corrige horário e quem fez
-export default function MinhasEscalasView({ escala, meuAlias, meuUid, resolverUid = null, turno, onVerBoard, pendencias = null, encerrado = null }) {
+export default function MinhasEscalasView({ escala, meuAlias, meuUid, resolverUid = null, turno, onVerBoard, pendencias = null, encerrado = null, onVerFila = null }) {
   const { user } = useUser()
   const [detalhe, setDetalhe] = useState(null)   // caso aberto (mesmo sheet da aba Completa)
   const [definir, setDefinir] = useState(null)   // { sala, caso? }
@@ -129,6 +129,7 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, resolverUi
           onDefinirAnestesista={(sala, casoAlvo) => setDefinir({ sala, casosAlvo: casoAlvo ? [casoAlvo] : null })}
           onEditarCaso={encerrado ? null : (alvo) => { setDetalhe(null); setEditando(alvo) }}
           encerrado={encerrado}
+          onVerFila={onVerFila}
         />
       )}
       {editando && (

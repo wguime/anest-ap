@@ -92,7 +92,7 @@ const montar = (props = {}, escala = escalaDuas) => render(
   { wrapper: wrap }
 )
 
-const abrirTempoTotal = () => fireEvent.click(screen.getByLabelText('Definir tempo faltante de Marílio Flach'))
+const abrirTempoTotal = () => fireEvent.click(screen.getByLabelText('Informar o tempo total de Marílio Flach'))
 // o botão do tempo estimado de UMA cirurgia (o nome acessível termina com o valor)
 const estimado = (hora, proc) => screen.getByRole('button', { name: new RegExp(`^Tempo estimado de ${hora} ${proc}`) })
 // a folha que está por cima (a da cirurgia, quando aberta)
@@ -110,29 +110,40 @@ beforeEach(() => vi.clearAllMocks())
 // aconteceu" (horário real); o estimado de cada cirurgia é um link leve ao lado do nome. Na
 // cirurgia que ainda não começou o estimado é DURAÇÃO (conta do início) — o encadeamento no
 // término da anterior (14/09, trava 3 acima) MUDOU DE LADO.
-describe('"+ Tempo total" com o horário de cada cirurgia (dono 25/09; Modelo 2 em 27/10)', () => {
-  it('2 cirurgias: "O que já aconteceu" lista as duas, o estimado ao lado do nome', () => {
-    montar()
+// ⚠️ 10/11/2026 (dono: "Sim, aprovo" o modelo A de `.tmp/analise-escala-2026-11/modelos-2/`):
+// a folha chama-se "Tempo total de {Nome}", o campo é "{Nome} fica até" (era "Previsão de
+// saída") e embaixo vem "Cirurgias de {Nome} · horários de cada uma", cada uma com o nome no
+// título e as TRÊS casas — Início · Tempo estimado · Término (era "O que já aconteceu", dois
+// blocos e o link "estimar"). Os testes abaixo mudaram de palavras; o que cada toque grava
+// é o mesmo.
+describe('"+ Tempo total" com o horário de cada cirurgia (dono 25/09; Modelo 2 em 27/10; modelo A em 10/11)', () => {
+  it('2 cirurgias: cada uma com o nome no título e as três casas; o tempo estimado é a do meio', () => {
+    const onAbrirCaso = vi.fn()
+    montar({ onAbrirCaso })
     abrirTempoTotal()
-    expect(screen.getByText('Previsão de saída')).toBeInTheDocument()
-    expect(screen.getByText('O que já aconteceu')).toBeInTheDocument()
-    const primeira = estimado('13:00', rot(ARTRODESE))
-    const segunda = estimado('16:00', rot(OSTEO))
-    // em andamento, com término: o horário no link; quanto falta, no bloco Término
-    expect(within(primeira).getByText('16:30')).toBeInTheDocument()
-    expect(screen.getByText('faltam 45min')).toBeInTheDocument()
-    expect(screen.getByText(/Eduardo Baldissera · em andamento/)).toBeInTheDocument()
-    // agendada, sem estimativa: o convite
-    expect(within(segunda).getByText('estimar')).toBeInTheDocument()
-    expect(screen.getByText(/Carlos Fogaca · agendada/)).toBeInTheDocument()
+    expect(screen.getByText('Marílio fica até')).toBeInTheDocument()
+    expect(screen.queryByText('Previsão de saída')).toBeNull()
+    expect(screen.queryByText('O que já aconteceu')).toBeNull()
+    expect(screen.getByText('Cirurgias de Marílio')).toBeInTheDocument()
+    const blocos = [...document.querySelectorAll('[data-cirurgia-tempos]')]
+    expect(blocos).toHaveLength(2)
+    expect(blocos[0].textContent).toContain(`13:00 · ${rot(ARTRODESE)}`)
+    expect([...blocos[0].querySelectorAll('[data-casa]')].map((n) => n.getAttribute('data-casa'))).toEqual(['Início', 'Tempo estimado', 'Término'])
+    // em andamento, com estimado: o horário e quanto falta, na casa do tempo estimado
+    expect(estimado('13:00', rot(ARTRODESE)).textContent).toBe('Tempo estimado16:30faltam 45min')
+    // agendada, sem estimativa: traço e "ainda não informado" (era o link "estimar")
+    expect(estimado('16:00', rot(OSTEO)).textContent).toBe('Tempo estimado—ainda não informado')
+    // "abrir" leva à cirurgia na Completa
+    fireEvent.click(screen.getByRole('button', { name: `Abrir a cirurgia 16:00 ${rot(OSTEO)}` }))
+    expect(onAbrirCaso).toHaveBeenCalledWith('Sala 3-1')
   })
 
   it('título numa linha e a frase sem gênero: é o total de TODAS as cirurgias da pessoa', () => {
     montar()
     abrirTempoTotal()
     const folha = screen.getByRole('dialog')
-    expect(within(folha).getByText('Tempo total · Marílio Flach')).toBeInTheDocument()
-    expect(folha.textContent).toContain('Até quando Marílio fica, contando as 2 cirurgias.')
+    expect(within(folha).getByText('Tempo total de Marílio Flach')).toBeInTheDocument()
+    expect(folha.textContent).toContain('Até quando Marílio fica no turno, contando as 2 cirurgias. Informado à mão: não é a soma delas.')
     expect(folha.textContent).not.toMatch(/escalad[oa]/)
     expect(within(folha).queryByText(/nunca é a soma/)).toBeNull()
   })
@@ -146,7 +157,7 @@ describe('"+ Tempo total" com o horário de cada cirurgia (dono 25/09; Modelo 2 
     await waitFor(() => expect(onSetOverride).toHaveBeenCalledTimes(1))
     expect(onSetOverride.mock.calls[0][1].termino).toBe('16:45')
     expect(onDefinirTerminoCaso).not.toHaveBeenCalled()
-    await waitFor(() => expect(screen.queryByText('O que já aconteceu')).toBeNull())
+    await waitFor(() => expect(screen.queryByText('Cirurgias de Marílio')).toBeNull())
   })
 
   it('na cirurgia EM ANDAMENTO, "1h" grava só no caso (com meta.minutos) e a folha do total fica aberta', async () => {
@@ -166,7 +177,7 @@ describe('"+ Tempo total" com o horário de cada cirurgia (dono 25/09; Modelo 2 
     expect(meta).toEqual({ minutos: 60 })
     expect(onSetOverride).not.toHaveBeenCalled()
     await waitFor(() => expect(screen.queryByText(`Tempo estimado · 13:00 ${rot(ARTRODESE)}`)).toBeNull())
-    expect(screen.getByText('Tempo total · Marílio Flach')).toBeInTheDocument()
+    expect(screen.getByText('Tempo total de Marílio Flach')).toBeInTheDocument()
   })
 
   it('na que ainda NÃO começou: só durações, "conta do início", e grava a DURAÇÃO (27/10)', async () => {
@@ -198,15 +209,16 @@ describe('"+ Tempo total" com o horário de cada cirurgia (dono 25/09; Modelo 2 
   it('a folha lê a linha AO VIVO: a duração gravada com ela aberta (outro aparelho, realtime) aparece na linha', () => {
     const { rerender } = montar()
     abrirTempoTotal()
-    expect(within(estimado('16:00', rot(OSTEO))).getByText('estimar')).toBeInTheDocument()
+    expect(estimado('16:00', rot(OSTEO)).textContent).toBe('Tempo estimado—ainda não informado')
     const depois = { ...escalaDuas, casos: escalaDuas.casos.map((c) => (c.id === 'Sala 3-1' ? { ...c, duracaoEstimadaMin: 90 } : c)) }
     rerender(
       <LiberacoesView escala={depois} hospital="unimed" hospitalLabel="Unimed" turno="vespertino"
         canEdit onToggle={() => {}} onSetOverride={() => {}} />
     )
     const linha = estimado('16:00', rot(OSTEO))
-    expect(within(linha).getByText('1h30')).toBeInTheDocument()
-    expect(screen.getAllByText('1h30 do início').length).toBeGreaterThan(0)
+    // 10/11 (modelo A): "1h30 · duração prevista" na casa; na fila, "Tempo estimado 1h30 · não começou"
+    expect(linha.textContent).toBe('Tempo estimado1h30duração prevista')
+    expect(document.body.textContent).toContain('Tempo estimado 1h30· não começou')
   })
 })
 
@@ -215,21 +227,22 @@ describe('uma cirurgia só, em andamento: o tempo da folha É o término dela (e
   // pílula VAZIA e exigia "estimado = tempo acima" — a frase mentia (acima não havia nada)
   // e era exatamente o estado que o dono apontou: "os tempos devem conversar entre si e
   // NÃO produzir tempos distintos". Agora o total é o espelho (16:30), como o app grava.
-  it('o tempo estimado dela NÃO é segunda entrada; a frase diz que é também o tempo dela', () => {
+  // ↳ 10/11 à noite (modelo A aprovado): a frase "estimado = tempo acima" SAIU — a cirurgia
+  // mostra as três casas como qualquer outra, e a do tempo estimado traz o mesmo horário do
+  // total. Um toque nela abre a folha do tempo estimado (que grava no caso e espelha no total).
+  it('a cirurgia única mostra as três casas; o tempo estimado dela é o mesmo horário do total', () => {
     // os blocos só viram botão com quem grava (a página passa os dois handlers)
     montar({ onDefinirInicioCaso: vi.fn(async () => {}), onDefinirTerminoRealCaso: vi.fn(async () => {}) },
       { ...escalaUma, linhaOverrides: { 'vespertino:MARILIO': { termino: '16:30' } } })
     fireEvent.click(screen.getByRole('button', { name: /45min/ }))
-    expect(screen.getByText('O que já aconteceu')).toBeInTheDocument()
+    expect(screen.getByText('Cirurgias de Marílio')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: new RegExp(`^Início de 13:00 ${rot(ARTRODESE)}`) })).toBeInTheDocument()
-    expect(screen.getByText('estimado = tempo acima')).toBeInTheDocument()
+    expect(screen.queryByText('estimado = tempo acima')).toBeNull()
     expect(screen.getByRole('dialog').textContent).toContain('Até quando Marílio fica — é também o tempo estimado da cirurgia.')
-    expect(within(screen.getByRole('dialog')).getByText(rot(ARTRODESE))).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /^Tempo estimado de 13:00/ })).toBeNull()
+    expect(estimado('13:00', rot(ARTRODESE)).textContent).toBe('Tempo estimado16:30faltam 45min')
   })
 
-  it('estimado DIFERENTE do total: a frase "estimado = tempo acima" some e o botão do estimado volta (10/11)', () => {
-    // total vazio com a cirurgia estimada em 16:30 (dado antigo, ou total apagado à mão)
+  it('estimado DIFERENTE do total (dado antigo): a casa mostra o estimado DELA, sem frase que os iguale', () => {
     montar({ onDefinirInicioCaso: vi.fn(async () => {}), onDefinirTerminoRealCaso: vi.fn(async () => {}) }, escalaUma)
     abrirTempoTotal()
     expect(screen.queryByText('estimado = tempo acima')).toBeNull()

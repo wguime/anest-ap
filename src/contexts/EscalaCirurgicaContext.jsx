@@ -16,7 +16,7 @@ import { createReliableSubscription } from '@/services/supabaseSubscriptionHelpe
 import { useToast } from '@/design-system/components/ui/toast'
 import { useUserOpcional } from '@/contexts/userContextObject'
 import { ehContaDeHospital } from '@/utils/userTypes'
-import { ajudasPreservadasNoRepasse, casosAtivosDaPessoa, escaladosPreservadosNoRepasse, espelhoTempoTotal, estadoDaPosicao, familiaConvenio, lerOverrideAnterior, mergeRodapeTurno, rodapeDoTurno, snapshotCasos, turnoDoCaso } from '@/pages/escala-cirurgica/utils'
+import { ajudasPreservadasNoRepasse, casosAtivosDaPessoa, escaladosPreservadosNoRepasse, espelhoTempoTotal, estadoDaPosicao, familiaConvenio, lerOverrideAnterior, mergeRodapeTurno, rodapeDoTurno, turnoDoCaso } from '@/pages/escala-cirurgica/utils'
 import { casoConcluido } from '@/lib/escalaCirurgicaStatus'
 import { nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
 import { ehDataFilaUnica, FDS_HOSPITAL } from '@/lib/escalaFds'
@@ -1680,61 +1680,115 @@ export function EscalaCirurgicaProvider({ children }) {
     }
   }, [toast, loadData])
 
-  /** Desfaz a substituição (plano de planoDesfazerTroca): limpa assumidaPor e
-   *  devolve os casos ao dono original do slot. Dono sem uid → só limpa (avisa). */
+  /**
+   * Desfaz a substituição (plano de planoDesfazerTroca): a posição e as cirurgias do
+   * recibo voltam ao dono original do slot. Dono sem uid → só a posição (avisa).
+   *
+   * UMA TRANSAÇÃO NO SERVIDOR (10/11/2026, `rpc_escala_desfazer_troca`), como a execução
+   * desde 05/09: eram 2 a 4 escritas saindo do navegador com rollback LIFO, e nenhuma
+   * olhava `liberacoes`. A marca de liberação mora na chave da POSIÇÃO — se a vaga foi
+   * liberada enquanto estava assumida, quem saiu foi o OCUPANTE, e desfazer devolvia a
+   * marca ao dono (21/10, HRO: o Fernando saiu às 15:02 na 14ª do Klisman, a troca foi
+   * desfeita às 16:40 e os dois tiveram de ser re-liberados à mão). A RPC leva a marca
+   * para a chave própria de quem ocupava e devolve o estado resultante, que é o que
+   * pinta a tela. Sem rollback no cliente: se a transação cai, nada foi alterado.
+   */
   const desfazerSubstituicao = useCallback(async ({ lados = [] }, userInfo = {}) => {
     if (!lados.length) return
     const escalas = escalasRef.current
-    const agoraIso = new Date().toISOString()
-    const rollback = []
-    const porHospital = {}
+    const soDemo = lados.every((l) => String(l.escalaId).startsWith('demo-'))
     try {
       for (const lado of lados) {
         const esc = escalas[lado.hospital]
         if (!esc || esc.id !== lado.escalaId) throw new Error('A escala mudou — recarregue e tente de novo.')
-        const demo = String(lado.escalaId).startsWith('demo-') // demo: só em memória
-        const scoped = chaveTurno(lado.turno, lado.chaveSlot)
-        const anterior = (esc.linhaOverrides || {})[scoped] ?? null
-        const { assumidaPor: _sai, por: _p, em: _e, ...resto } = anterior || {}
-        const valor = Object.keys(resto).length ? { ...resto, por: userInfo.userId || null, em: agoraIso } : null
-        if (!demo) {
-          await svc.patchLinhaOverride(lado.escalaId, scoped, valor)
-          rollback.push(() => svc.patchLinhaOverride(lado.escalaId, scoped, anterior))
-        }
-        if (!porHospital[lado.hospital]) {
-          porHospital[lado.hospital] = { linhaOverrides: { ...(esc.linhaOverrides || {}) }, casos: [...(esc.casos || [])] }
-        }
-        const p = porHospital[lado.hospital]
-        if (valor) p.linhaOverrides[scoped] = valor
-        else delete p.linhaOverrides[scoped]
-        if (lado.para?.uid && lado.casoIds?.length) {
-          // MESMA correção do executar (dono 24/08): na fila única a linha 'fds'
-          // não guarda caso nenhum — o snapshot e o patch otimista precisam ir
-          // ao hospital que realmente tem a cirurgia.
-          const ids = new Set(lado.casoIds)
-          const donos = Object.entries(escalas)
-            .filter(([, e]) => (e?.casos || []).some((c) => ids.has(c.id)))
-          const alvos = donos.length ? donos : [[lado.hospital, esc]]
-          if (!demo) {
-            // mesmo snapshot do executar: rollback restaura o que estava lá,
-            // nunca re-deriva do uid (uid null viraria '?')
-            const antes = alvos.flatMap(([, e]) => snapshotCasos(e, lado.casoIds))
-            await svc.updateAnestesistaCasos(lado.casoIds, { uid: lado.para.uid, apelido: lado.para.apelido })
-            rollback.push(() => svc.restaurarAnestesistaCasos(antes))
-          }
-          for (const [h, e] of alvos) {
-            if (!porHospital[h]) {
-              porHospital[h] = { linhaOverrides: { ...(e?.linhaOverrides || {}) }, casos: [...(e?.casos || [])] }
+      }
+
+      let resultado
+      if (soDemo) {
+        // DEMO (DEV): tudo em memória, sem tocar no banco — é a base dos e2e.
+        const agoraIso = new Date().toISOString()
+        const overridesPorId = {}
+        const casos = []
+        for (const lado of lados) {
+          const esc = escalas[lado.hospital]
+          const scoped = chaveTurno(lado.turno, lado.chaveSlot)
+          const base = overridesPorId[esc.id] || { ...(esc.linhaOverrides || {}) }
+          const { assumidaPor: _sai, por: _p, em: _e, ...resto } = base[scoped] || {}
+          if (Object.keys(resto).length) base[scoped] = { ...resto, por: userInfo.userId || null, em: agoraIso }
+          else delete base[scoped]
+          overridesPorId[esc.id] = base
+          if (lado.para?.uid) {
+            for (const id of lado.casoIds || []) {
+              casos.push({ id, anestesista: lado.para.apelido, anestesistaUserId: lado.para.uid, semAnestesista: false })
             }
-            porHospital[h].casos = porHospital[h].casos.map((c) => ids.has(c.id)
-              ? { ...c, anestesista: lado.para.apelido, anestesistaUserId: lado.para.uid, semAnestesista: false }
-              : c)
+          }
+        }
+        resultado = { escalas: overridesPorId, liberacoes: {}, casos, pulados: 0, lados: lados.length, movidas: [] }
+      } else {
+        marcarEscrita()
+        try {
+          resultado = await svc.desfazerTrocaAtomica({
+            lados: lados.map((lado) => ({
+              escala_id: lado.escalaId,
+              chave: chaveTurno(lado.turno, lado.chaveSlot),
+              caso_ids: lado.para?.uid ? (lado.casoIds || []) : [],
+              para_uid: lado.para?.uid || null,
+              para_apelido: lado.para?.apelido || '',
+            })),
+          })
+        } finally { encerrarEscrita() }
+      }
+
+      // Estado resultante direto do servidor: overrides e liberações de cada escala
+      // tocada, e as cirurgias onde elas MORAM (na fila única a linha 'fds' não guarda
+      // caso nenhum — dono 24/08).
+      const hospitalPorId = new Map(Object.entries(escalas).filter(([, e]) => e?.id).map(([h, e]) => [e.id, h]))
+      const casosPorId = new Map((resultado?.casos || []).map((c) => [c.id, c]))
+      const patches = {}
+      for (const [escalaId, overrides] of Object.entries(resultado?.escalas || {})) {
+        const hospital = hospitalPorId.get(escalaId)
+        if (hospital) patches[hospital] = { ...(patches[hospital] || {}), linhaOverrides: overrides || {} }
+      }
+      for (const [escalaId, liberacoes] of Object.entries(resultado?.liberacoes || {})) {
+        const hospital = hospitalPorId.get(escalaId)
+        if (hospital) patches[hospital] = { ...(patches[hospital] || {}), liberacoes: liberacoes || {} }
+      }
+      const devolvidos = [] // { hospital, antes } das cirurgias que mudaram de mãos
+      if (casosPorId.size) {
+        for (const [hospital, esc] of Object.entries(escalas)) {
+          if (!esc?.casos?.some((c) => casosPorId.has(c.id))) continue
+          patches[hospital] = {
+            ...(patches[hospital] || {}),
+            casos: esc.casos.map((c) => {
+              const novo = casosPorId.get(c.id)
+              if (!novo) return c
+              if ((novo.anestesistaUserId || null) !== (c.anestesistaUserId || null)) devolvidos.push({ hospital, antes: c })
+              return { ...c, ...novo }
+            }),
           }
         }
       }
-      for (const [hospital, patch] of Object.entries(porHospital)) {
+      for (const [hospital, patch] of Object.entries(patches)) {
         dispatch({ type: 'PATCH_HOSPITAL', hospital, patch })
       }
+
+      // SEM CIRURGIA ABERTA, O TEMPO TOTAL SAI (dono 10/11) — a mesma regra do repasse:
+      // quem OCUPAVA a vaga e devolveu a última cirurgia aberta fica com um total que não
+      // descreve mais nada. O dono, que recebe de volta, não é tocado. A limpeza lê a
+      // escala pelo ref, que só acompanha o estado no próximo render: ele recebe aqui o
+      // que acabou de ser pintado, senão ela regravaria o override de antes do desfazer.
+      if (!soDemo && devolvidos.length) {
+        const frescas = { ...(escalasRef.current || {}) }
+        for (const [hospital, patch] of Object.entries(patches)) {
+          if (frescas[hospital]) frescas[hospital] = { ...frescas[hospital], ...patch }
+        }
+        escalasRef.current = frescas
+        for (const { hospital, antes } of devolvidos) {
+          const esc = escalasRef.current?.[hospital]
+          if (esc) await limparTotalSemCirurgia(esc, esc.casos, antes, userInfo.userId || null)
+        }
+      }
+
       const semVolta = lados.filter((l) => !l.para?.uid)
       toast({
         variant: semVolta.length ? 'warning' : 'success',
@@ -1743,20 +1797,24 @@ export function EscalaCirurgicaProvider({ children }) {
           ? `Casos seguem com ${semVolta.map((l) => nomeCirurgiaoCurto(l.de.nome)).join(', ')} — ajuste pelo Definir anestesista se preciso.`
           : undefined,
       })
+      return resultado
     } catch (error) {
-      let restaurou = true
-      for (const desfaz of rollback.reverse()) {
-        try { await desfaz() } catch { restaurou = false }
-      }
+      // Sem estado pela metade: a transação do servidor caiu inteira (ou nem existe —
+      // app publicado antes da migration: 42883/PGRST202). NÃO há caminho antigo de
+      // reserva: escrever lado a lado pelo navegador é o defeito que a RPC conserta.
+      // O payload recusado (22023: cirurgia sem dono a quem devolver) também não tem
+      // frase que ajude quem está na tela — vale o aviso de sempre, sem o texto técnico.
+      const semRpc = error?.code === '42883' || error?.code === 'PGRST202' || error?.code === '22023'
+        || /could not find the function|does not exist|payload_formato_invalido/i.test(String(error?.message || ''))
       loadData(dataRef.current, { revalidacao: true })
       toast({
         variant: 'error',
         title: 'Desfazer não concluído',
-        description: restaurou ? `${error.message} Nada foi alterado.` : `${error.message} Confira a lista antes de repetir.`,
+        description: semRpc ? 'Nada foi alterado.' : `${error.message} Nada foi alterado.`,
       })
       throw error
     }
-  }, [toast, loadData])
+  }, [toast, loadData, limparTotalSemCirurgia])
 
   // Edita SALA/LOCAL (ou outro campo) de UM caso — aba Completa → detalhe do caso
   // (pedido do dono 24/07: além do anestesista, poder corrigir onde o procedimento

@@ -24,7 +24,8 @@ import useAgoraMinutoEscala from './useAgoraMinutoEscala'
 import useAvisoPlantonista from './useAvisoPlantonista'
 import { AvisoTempoEstourado } from './useAvisoTempoEstourado'
 import PainelTempo, { formatFaltante, fraseCronometro, fraseFaltante, rotuloDuracao } from './PainelTempo'
-import { BlocoHorario, BotaoEstimado, ConfirmarHorario, ConfirmarInicioETermino } from './BlocoHorario'
+import { BlocoHorario, ConfirmarHorario, ConfirmarInicioETermino } from './BlocoHorario'
+import { CartaoCirurgia, CasasCirurgia, LinhaTempoEstimado, TempoTotalPessoa } from './TemposCirurgia'
 import { casoEntraNaConta, dentroDoInicioDoAlerta, ehConsultorio, faltaNoPar, herdaTermino, paresDeContinuacao, pendenciasDoDiaParaLiberar, pendenciasParaLiberar } from '@/lib/escalaHorarioPendente'
 import SeloHorarioPendente from './SeloHorarioPendente'
 import { nomeCurtoProcedimento } from '@/lib/escalaProcedimentoCurto'
@@ -85,7 +86,7 @@ const HOSPITAIS_FILA = ['unimed', 'hro', 'materno'].map((v) => ({ value: v, labe
 const LOCAIS_TTL_MS = 60 * 60 * 1000
 const locaisCache = new Map() // hospital → { lista, em }
 
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onDefinirTerminoCaso, onDefinirInicioCaso, onDefinirTerminoRealCaso, onSuspenderCaso, onTerminarSemHorario, onDesfazerTerminada, onDefinirDuracaoCaso, onDefinirSemAjuda, onTrocarResponsavel, onDevolverResponsavel, onTrocarPosicao, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, onDefinirOrigem, contraturnoOutros = [], presencaOutros = [], ordemNumerica = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, escalasDoDia = null, onGarantirEscala, onNavigate }) {
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onDefinirTerminoCaso, onVerCirurgias = null, onAbrirCaso = null, onDefinirInicioCaso, onDefinirTerminoRealCaso, onSuspenderCaso, onTerminarSemHorario, onDesfazerTerminada, onDefinirDuracaoCaso, onDefinirSemAjuda, onTrocarResponsavel, onDevolverResponsavel, onTrocarPosicao, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, onDefinirOrigem, contraturnoOutros = [], presencaOutros = [], ordemNumerica = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, escalasDoDia = null, onGarantirEscala, onNavigate }) {
   const { toast } = useToast()
   const haptic = useHaptic()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
@@ -1811,7 +1812,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // "há 40min" só no dia operacional da escala — "agora" de outro dia não diz nada
   const diaDaEscalaAgora = ehDiaOperacionalAtual(escala?.data)
   const casoUnicoTempo = linhaTempo ? casoUnicoDoTotal(linhaTempo) : null
-  const cirurgiaUnicaTempo = casoUnicoTempo ? cirurgiasTempo.find((c) => c.id === casoUnicoTempo.id) || null : null
   // rótulo de uma cirurgia na folha: o MESMO nome curto do card da fila
   const rotuloCirurgia = (c) => nomeCurtoProcedimento(c?.procedimento) || fraseClinica(c?.procedimento) || c?.token || salaLiberacao(c?.sala) || 'Cirurgia'
   // A FRASE ACOMPANHA A REGRA (dono 25/09). "…e nunca é a soma delas" ficou errado
@@ -1823,13 +1823,16 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // nome da pílula que abriu, "+ Tempo total") e a frase diz TODAS as N cirurgias.
   const nCirurgiasTempo = linhaTempo?.casosAtivos || 0
   const primeiroNomeTempo = String(alvoTempo?.anestesista || '').trim().split(/\s+/)[0] || 'a pessoa'
+  // (10/11, modelo A) Com 2+ cirurgias a folha diz que o total é informado à mão e não é a
+  // soma delas. O modelo escreveu "não muda sozinho com as cirurgias" — não é mais verdade nos
+  // dois extremos que o dono abriu no mesmo dia (uma cirurgia só que inicia; terminar todas).
   const fraseFolhaTempo = casoUnicoTempo
     ? <>Até quando {primeiroNomeTempo} fica — é também o tempo estimado <b className="font-bold text-foreground">da cirurgia</b>.</>
     : nCirurgiasTempo > 1
-      ? <>Até quando {primeiroNomeTempo} fica, contando <b className="font-bold text-foreground">as {nCirurgiasTempo} cirurgias</b>.</>
+      ? <>Até quando {primeiroNomeTempo} fica no turno, contando <b className="font-bold text-foreground">as {nCirurgiasTempo} cirurgias</b>. Informado à mão: não é a soma delas.</>
       : nCirurgiasTempo === 1
-        ? <>Até quando {primeiroNomeTempo} fica, contando <b className="font-bold text-foreground">a cirurgia</b>.</>
-        : <>Até quando {primeiroNomeTempo} fica no turno.</>
+        ? <>Até quando {primeiroNomeTempo} fica no turno, contando <b className="font-bold text-foreground">a cirurgia</b>. Informado à mão.</>
+        : <>Até quando {primeiroNomeTempo} fica no turno. Informado à mão.</>
   // Alerta "?" → dono: grava no caso (o alerta sai daqui E da Completa juntos).
   const confirmarSemAnest = async () => {
     const r = rosterByUid.get(semAnestUid)
@@ -1901,6 +1904,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // e que só uma troca muda quem a ocupa. Antes o interruptor aparecia apagado (16/10)
   // ou ligado por um selo derivado (consultório, emprestado), e o mesmo toque gravava
   // quatro coisas diferentes. Devolve a posição (1-based) ou 0.
+  // só consultório = horário fixo, nada de tempo a informar (dono 29/10)
+  const cardSoConsultorio = (l) => (l?.casosTurno || []).length > 0 && l.casosTurno.every(ehConsultorio)
   const posicaoFixaDe = (linha) => {
     if (!linha || modoFds || linha.noturno) return 0
     const bloco = blocoDaLinha(linha)
@@ -2777,11 +2782,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                             <p className="truncate font-semibold text-foreground/90">{token}</p>
                             {cirs.map((c, j) => {
                               const alvo = parseHoraMinutos(c.terminoPrevisto)
-                              const falta = c.andamento && alvo != null ? formatFaltante(alvo, agoraMin) : null
-                              const hora = c.terminoPrevisto || null
-                              // ESTIMADO QUE CONTA DO INÍCIO (dono 27/10): a agendada com duração
-                              // mostra "2h do início" até começar; no Iniciada vira "faltam 2h"
-                              const durDoInicio = !c.andamento && !hora && c.duracaoEstimadaMin ? `${rotuloDuracao(c.duracaoEstimadaMin)} do início` : null
                               // MESMO HORÁRIO, UMA VEZ SÓ (dono 18/08): com UMA cirurgia o total
                               // da linha é espelhado do término dela — fica a pílula.
                               const espelhaOTotal = linha.cirurgias.length === 1 && alvo != null && alvo === terminoLinhaMin && !!cronometro
@@ -2800,15 +2800,15 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                               // longo encurta com "…" — o tempo nunca desce de linha. Sem
                               // término informado a linha acaba no nome: nada de tracejado.
                               return (
-                                <p key={c.id || `${token}-${j}`} className="flex items-center gap-1.5 pl-2.5 text-[12.5px]">
+                                /* AS MESMAS PALAVRAS DO QUADRO (dono 10/11, modelo A): "Tempo estimado
+                                   09:30 · faltam 45min" / "Tempo estimado 1h · não começou" — eram
+                                   "faltam 45min", "até 12:05" e "2h do início". A frase é mais longa:
+                                   onde não cabe ao lado do nome (375/360px) ela DESCE inteira para a
+                                   linha de baixo (`flex-wrap`), em vez de cortar o nome ou o tempo. */
+                                <p key={c.id || `${token}-${j}`} className="flex flex-wrap items-center gap-x-1.5 pl-2.5 text-[12.5px]">
                                   <span className="shrink-0 font-semibold tabular-nums text-foreground/70">{c.hora || '—'}</span>
                                   {rotulo && <span className="min-w-0 truncate">{rotulo}</span>}
-                                  {(falta || hora) && !espelhaOTotal && (
-                                    <span className={['shrink-0 text-xs', falta?.atrasada ? 'font-medium text-warning' : 'text-muted-foreground'].join(' ')}>
-                                      · {falta ? fraseFaltante(falta) : `até ${hora}`}
-                                    </span>
-                                  )}
-                                  {durDoInicio && <span className="shrink-0 text-xs text-muted-foreground">· {durDoInicio}</span>}
+                                  {!espelhaOTotal && <LinhaTempoEstimado caso={c} agoraMin={agoraMin} icone={false} suave className="ml-auto !text-xs" />}
                                 </p>
                               )
                             })}
@@ -2867,7 +2867,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                                     falta?.atrasada ? 'font-medium text-warning' : 'text-muted-foreground',
                                   ].join(' ')}
                                 >
-                                  · {falta ? fraseFaltante(falta) : `até ${hora}`}
+                                  · Tempo estimado {hora}{falta ? ` · ${fraseFaltante(falta)}` : andando ? '' : ' · não começou'}
                                 </span>
                               )}
                             </p>
@@ -2879,7 +2879,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                             número já é evidente. */}
                         {linha.casosAtivos > 1 && (
                           <p className="mt-0.5 text-xs text-muted-foreground/80">
-                            {linha.casosAtivos} cirurgias · {linha.casosComTermino} com término informado
+                            {linha.casosAtivos} cirurgias · {linha.casosComEstimado} de {linha.casosAtivos} com tempo estimado
                           </p>
                         )}
                       </div>
@@ -2983,7 +2983,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       <button
                         type="button"
                         onClick={() => setAlvoTempo(linha)}
-                        aria-label={`Definir tempo faltante de ${linha.anestesista}`}
+                        aria-label={`Informar o tempo total de ${linha.anestesista}`}
                         /* VAZIO TEM CARA DE AÇÃO (dono 30/07): com contorno cheio ele
                            parecia um valor JÁ preenchido, e era metade da confusão com
                            o tempo da cirurgia. Tracejado + "+" diz "falta preencher"
@@ -3094,23 +3094,53 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 <Badge className="border-transparent bg-category-indigo text-white">Troca</Badge>
               )}
             </SheetTitle>
-            {/* O CONTEXTO QUE O CARD JÁ MOSTRAVA (auditoria 17/08): quem abria o
-                painel perdia de vista quantas cirurgias a pessoa tem e quantas já
-                têm término informado — e é justamente o que decide o ajuste. */}
+            {/* A FOLHA É DA PESSOA (dono 10/11, modelo A): o subtítulo diz posição, sala e
+                turno. O "N cirurgias · M com término informado" saiu — contava estimados, não
+                términos; as cirurgias viraram o atalho logo abaixo. */}
             {editor && (
-              <p className="mt-1 text-[11.5px] leading-snug text-muted-foreground">
+              <p data-sub-painel className="mt-1 text-[11.5px] leading-snug text-muted-foreground">
                 {[
-                  editor.casosAtivos
-                    ? `${editor.casosAtivos} ${editor.casosAtivos === 1 ? 'cirurgia' : 'cirurgias'}`
-                    : 'sem cirurgia neste turno',
-                  editor.casosAtivos > 1 ? `${editor.casosComTermino} com término informado` : null,
+                  posicaoFixaDe(editor) ? `${posicaoFixaDe(editor)}º ${hospitalLabel === 'Unimed' ? 'da' : 'do'} ${hospitalLabel}` : null,
                   (editor.salas || []).map(salaLiberacao).join('/') || editor.notaRodape || null,
+                  turno === 'matutino' ? 'Manhã' : turno === 'vespertino' ? 'Tarde' : turno === 'noturno' ? 'Noite' : null,
                 ].filter(Boolean).join(' · ')}
               </p>
             )}
           </SheetHeader>
           {editor && (
             <div className="px-4 pb-4">
+              {/* O TEMPO TOTAL DELA NO TOPO + AS CIRURGIAS SÓ COMO ATALHO (dono 10/11, modelo A:
+                  "cirurgias só como ATALHO, sem listar"). O painel não tinha onde ver o tempo
+                  total — e o regravava no Salvar. "Alterar" leva à folha do tempo total (a
+                  mesma da pílula); o atalho leva à Completa, onde as cirurgias se abrem. */}
+              {!cardSoConsultorio(editor) && (editor.casosAtivos > 0 || overrideDe(editor)?.termino) && (
+                <TempoTotalPessoa
+                  className="mb-1"
+                  nome={editor.anestesista}
+                  termino={overrideDe(editor)?.termino || ''}
+                  acao={canEdit ? {
+                    label: 'Alterar',
+                    nomeAcessivel: `Alterar o tempo total de ${editor.anestesista}`,
+                    onClick: () => { const l = editor; setEditor(null); setAlvoTempo(l) },
+                  } : null}
+                />
+              )}
+              {editor.casosAtivos > 0 && (() => {
+                const Tag = onVerCirurgias ? 'button' : 'div'
+                return (
+                  <Tag
+                    {...(onVerCirurgias ? { type: 'button', onClick: () => { const l = editor; setEditor(null); onVerCirurgias(l) } } : {})}
+                    data-atalho-cirurgias
+                    className="flex min-h-[48px] w-full items-center gap-2 border-b border-border text-left text-[14.5px] font-semibold"
+                  >
+                    Cirurgias de {String(editor.anestesista || '').trim().split(/\s+/)[0]}
+                    <span className="ml-auto flex items-center gap-1 text-[13px] font-medium text-muted-foreground">
+                      {editor.casosAtivos} · na Completa
+                      {onVerCirurgias && <ChevronRight className="h-4 w-4" aria-hidden="true" />}
+                    </span>
+                  </Tag>
+                )
+              })()}
               {/* Os CASOS da pessoa saíram do painel (dono 30/07): ver e abrir
                   cirurgias é papel das abas Completa/Minhas — aqui ficou só o
                   que é da LINHA da fila (recado, ajuda, troca, local, cirurgião).
@@ -3772,7 +3802,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             {/* MESMO NOME do botão que abriu (dono 17/08): "+ Tempo total". `break-normal`:
                 o título do DS quebra em qualquer letra (`break-all`). */}
             <SheetTitle className="flex items-center gap-2 text-[17px] break-normal">
-              <Timer className="w-4 h-4 shrink-0" /> <span className="min-w-0 truncate">Tempo total · {alvoTempo?.anestesista || '—'}</span>
+              <Timer className="w-4 h-4 shrink-0" /> <span className="min-w-0 truncate">Tempo total de {alvoTempo?.anestesista || '—'}</span>
             </SheetTitle>
             <p className="mt-1 text-[12.5px] leading-snug text-muted-foreground">
               {fraseFolhaTempo}
@@ -3780,83 +3810,62 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           </SheetHeader>
           {linhaTempo && (
             <div className="px-4 pb-6 pt-1">
-              <p className="mb-1.5 text-[11.5px] font-extrabold uppercase tracking-[0.06em] text-muted-foreground">Previsão de saída</p>
+              {/* "{Nome} fica até" (dono 10/11, modelo A) — era "Previsão de saída", o terceiro
+                  nome do mesmo tempo nesta folha. O campo e os atalhos são os de sempre. */}
+              <p className="mb-1.5 text-[11.5px] font-extrabold uppercase tracking-[0.06em] text-muted-foreground">{primeiroNomeTempo} fica até</p>
               <PainelTempo
                 atual={overrideDe(linhaTempo)?.termino || ''}
                 horaExata={horaExata}
                 onHoraExata={setHoraExata}
                 onDefinir={(hhmm) => definirTempo(linhaTempo, hhmm)}
               />
-              {/* O QUE JÁ ACONTECEU: o horário REAL de cada cirurgia (02/10), com o tempo
-                  estimado dela ao lado do nome (02/10, "ao lado do nome do procedimento adicione
-                  o tempo estimado") — desde 27/10 um link leve, para não disputar com o real. Com
-                  UMA cirurgia em andamento, o estimado dela é o tempo de cima (espelho de 14/09). */}
+              {/* CADA CIRURGIA COM AS TRÊS CASAS E O NOME DELA (dono 10/11, modelo A): Início ·
+                  Tempo estimado · Término. Era "O que já aconteceu · horário real" com dois
+                  blocos e um link "estimar"/"estimado = tempo acima" ao lado do nome. As casas
+                  gravam pelos mesmos caminhos de antes; "abrir" leva à cirurgia na Completa. */}
               {cirurgiasTempo.length > 0 && (
                 <div className="mt-4">
-                  <p className="mb-0.5 flex items-center gap-2 text-[11.5px] font-extrabold uppercase tracking-[0.06em] text-muted-foreground">
-                    O que já aconteceu
-                    <span className="rounded-md bg-muted px-1.5 py-px text-[10.5px] font-bold normal-case tracking-normal">horário real</span>
+                  <p className="mb-1.5 text-[11.5px] font-extrabold uppercase tracking-[0.06em] text-muted-foreground">
+                    Cirurgias de {primeiroNomeTempo} <span className="font-semibold normal-case tracking-normal">· horários de cada uma</span>
                   </p>
-                  {cirurgiasTempo.map((c) => {
-                    const rotulo = rotuloCirurgia(c)
-                    const nome = [c.hora, rotulo].filter(Boolean).join(' ')
-                    const alvoMin = parseHoraMinutos(c.terminoPrevisto)
-                    const falta = c.andamento && alvoMin != null ? formatFaltante(alvoMin, agoraMin) : null
-                    const iniMin = diaDaEscalaAgora ? parseHoraMinutos(c.inicioReal) : null
-                    const passou = iniMin != null ? formatFaltante(iniMin, agoraMin) : null
-                    const detalhe = [c.token && c.token !== rotulo ? c.token : null, c.andamento ? 'em andamento' : 'agendada']
-                      .filter(Boolean).join(' · ')
-                    // "estimado = tempo acima" SÓ quando é verdade (10/11): a frase aparecia com a
-                    // pílula vazia ou num horário diferente do estimado da cirurgia, e ainda
-                    // tirava o botão que corrige. Diferentes → o botão do estimado volta.
-                    const estimadoDoTotal = cirurgiaUnicaTempo?.id === c.id
-                      && (c.terminoPrevisto || '') === (overrideDe(linhaTempo)?.termino || '')
-                    // agendada: o estimado é DURAÇÃO, que conta do início (27/10)
-                    const dur = !c.andamento && c.duracaoEstimadaMin ? rotuloDuracao(c.duracaoEstimadaMin) : null
-                    return (
-                      <div key={c.id} className="border-t border-border pb-2.5 pt-1">
-                        <div className="flex items-center gap-1.5">
-                          {c.hora && <span className="shrink-0 text-[14px] font-semibold tabular-nums text-foreground/70">{c.hora}</span>}
-                          <span className="min-w-0 truncate text-[14px] font-semibold">{rotulo}</span>
-                          {estimadoDoTotal ? (
-                            <span className="ml-auto shrink-0 text-[11.5px] text-muted-foreground">estimado = tempo acima</span>
-                          ) : (
+                  <div className="grid gap-1.5">
+                    {cirurgiasTempo.map((c) => {
+                      const rotulo = rotuloCirurgia(c)
+                      const nome = [c.hora, rotulo].filter(Boolean).join(' ')
+                      const dur = !c.andamento && c.duracaoEstimadaMin ? rotuloDuracao(c.duracaoEstimadaMin) : null
+                      return (
+                        <CartaoCirurgia
+                          key={c.id}
+                          titulo={[c.hora, rotulo].filter(Boolean).join(' · ')}
+                          acao={onAbrirCaso ? (
                             <button
                               type="button"
-                              aria-label={`Tempo estimado de ${nome}: ${dur ? `${dur} do início` : c.terminoPrevisto || 'não informado'}`}
-                              className={['ml-auto flex min-h-[44px] shrink-0 items-center gap-1 whitespace-nowrap text-[12.5px] font-semibold active:opacity-70',
-                                falta?.atrasada ? 'text-warning' : 'text-primary'].join(' ')}
-                              onClick={() => { setHoraExataCaso(''); setCirurgiaTempo(c) }}
+                              aria-label={`Abrir a cirurgia ${nome}`}
+                              onClick={() => { setAlvoTempo(null); setHoraExata(''); onAbrirCaso(c.id) }}
+                              className="relative flex shrink-0 items-center text-[12.5px] font-semibold text-primary active:opacity-70 after:absolute after:-inset-x-2 after:-inset-y-3 after:content-['']"
                             >
-                              <Timer className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                              {dur ? <>estimado <b className="font-extrabold">{dur}</b><span className="font-medium text-muted-foreground">do início</span></>
-                                : c.terminoPrevisto ? <>estimado <b className="font-extrabold tabular-nums">{c.terminoPrevisto}</b></>
-                                  : 'estimar'}
+                              abrir<ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
                             </button>
-                          )}
-                        </div>
-                        <p className="-mt-2 truncate text-xs text-muted-foreground">{detalhe}</p>
-                        <div className="mt-1.5 grid grid-cols-2 gap-2">
-                          <BlocoHorario
-                            rotulo="Início"
-                            nomeAcessivel={`Início de ${nome}`}
-                            valor={c.inicioReal}
-                            sub={passou?.atrasada ? `há ${passou.texto.replace('+', '')}` : ''}
-                            faixa={c.andamento ? 'border-l-4 border-l-success' : ''}
-                            onClick={onDefinirInicioCaso ? () => setConfirmarCirurgia({ cir: c, campo: 'inicio' }) : null}
+                          ) : null}
+                        >
+                          <CasasCirurgia
+                            caso={c}
+                            agoraMin={agoraMin}
+                            diaAtual={diaDaEscalaAgora}
+                            nomes={{
+                              inicio: `Início de ${nome}`,
+                              // o nome acessível do estimado segue terminando no valor (duração "do início")
+                              estimado: `Tempo estimado de ${nome}${dur ? ` (${dur} do início)` : ''}`,
+                              termino: `Término de ${nome}`,
+                            }}
+                            onInicio={onDefinirInicioCaso ? () => setConfirmarCirurgia({ cir: c, campo: 'inicio' }) : null}
+                            onEstimado={() => { setHoraExataCaso(''); setCirurgiaTempo(c) }}
+                            onTermino={onDefinirTerminoRealCaso ? () => setConfirmarCirurgia({ cir: c, campo: c.inicioReal || ehConsultorio(c) ? 'termino' : 'ambos' }) : null}
                           />
-                          <BlocoHorario
-                            rotulo="Término"
-                            nomeAcessivel={`Término de ${nome}`}
-                            valor=""
-                            sub={falta ? fraseFaltante(falta) : dur ? `${dur} do início` : ''}
-                            subAviso={!!falta?.atrasada}
-                            onClick={onDefinirTerminoRealCaso ? () => setConfirmarCirurgia({ cir: c, campo: c.inicioReal || ehConsultorio(c) ? 'termino' : 'ambos' }) : null}
-                          />
-                        </div>
-                      </div>
-                    )
-                  })}
+                        </CartaoCirurgia>
+                      )
+                    })}
+                  </div>
                 </div>
               )}
             </div>
