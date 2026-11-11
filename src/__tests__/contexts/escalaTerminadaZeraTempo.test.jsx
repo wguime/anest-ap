@@ -16,7 +16,8 @@
  *   · o otimista pinta `terminoPrevisto: null` junto com o status
  *   · o banco recebe o status pela RPC E o término zerado pelo `updateCaso`
  *   · erro na RPC reverte o término junto com o status
- *   · o total da linha (linha_overrides.termino) fica exatamente como estava
+ *   · o total da linha (linha_overrides.termino) fica exatamente como estava ENQUANTO
+ *     houver cirurgia aberta; sem nenhuma, é apagado (dono 10/11 — ver o teste que mudou de lado)
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, waitFor, act } from '@testing-library/react'
@@ -132,13 +133,28 @@ describe('o total da pessoa NÃO muda com o status — é informado independente
     expect(svcMock.patchLinhaOverride).not.toHaveBeenCalled()
   })
 
-  it('termina TODAS as cirurgias → a pílula continua como a pessoa deixou', async () => {
+  // ⚠️ MUDOU DE LADO em 10/11/2026. Até aqui este teste afirmava "termina TODAS as cirurgias
+  // → a pílula continua como a pessoa deixou" (15/09). O dono reabriu só este extremo: à
+  // pergunta "quando o colega termina todas as cirurgias, a previsão antiga deve ser
+  // apagada?" respondeu "Sim, apaga" — o total ficava gravado, a tela só o escondia, e ele
+  // voltava "estourado" (âmbar + push) se a pessoa recebesse uma urgência depois. Com
+  // cirurgia ainda aberta nada muda (os dois testes vizinhos seguem do lado de 15/09).
+  it('termina TODAS as cirurgias → o tempo total é APAGADO; local e o resto da linha ficam (dono 10/11)', async () => {
     await montar()
-    for (const id of ['c-let', 'c-h1', 'c-h2']) {
+    for (const id of ['c-let', 'c-h1']) {
       await act(async () => { await actions.setStatusCirurgia(hro(), casoDe(id), 'terminada', { userId: 'uid-melo' }) })
     }
+    // ainda há uma aberta: a pílula segue como a pessoa deixou
     expect(totalDe()).toBe('19:00')
     expect(svcMock.patchLinhaOverride).not.toHaveBeenCalled()
+    await act(async () => { await actions.setStatusCirurgia(hro(), casoDe('c-h2'), 'terminada', { userId: 'uid-melo' }) })
+    expect(totalDe()).toBeNull()
+    expect(hro().linhaOverrides['vespertino:uid-melo'].local).toBe('Bloco M - Sala 4')
+    expect(svcMock.patchLinhaOverride).toHaveBeenCalledTimes(1)
+    const [id, chave, valor] = svcMock.patchLinhaOverride.mock.calls[0]
+    expect([id, chave]).toEqual(['esc-hro', 'vespertino:uid-melo'])
+    expect(valor).toMatchObject({ local: 'Bloco M - Sala 4', por: 'uid-melo' })
+    expect(valor).not.toHaveProperty('termino')
   })
 
   it('suspensa / reabrir também não encostam na pílula nem no término da cirurgia', async () => {

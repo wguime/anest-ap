@@ -1441,7 +1441,8 @@ export function lerOverrideAnterior(overrides, chave, turno, nomesLegados = []) 
  * herdam por sala dentro do turno; nome→uid pelos próprios casos, nome ambíguo
  * fica de fora). Devolve null quando o caso não tem UM dono com identidade
  * própria (sem anestesista, "?", "//", dupla "A + B") ou quando a posição da
- * pessoa foi ASSUMIDA em qualquer direção — a chave da linha não é dela.
+ * pessoa foi ASSUMIDA por outro. Quem assumiu a posição de um colega recebe em
+ * `chave` a chave do SLOT (é a da linha dele na fila).
  * Compartilhado por `espelhoTempoTotal` e `terminoEncadeado`.
  */
 export function casosAtivosDaPessoa(escala, caso) {
@@ -1468,6 +1469,14 @@ export function casosAtivosDaPessoa(escala, caso) {
   // posição assumida em qualquer direção → a chave da linha não é a desta pessoa.
   // Chaves namespaced por turno ("matutino:uid") desde a migração 20260805130000;
   // SÓ o turno DESTE caso interessa (comparar a chave crua deixava o guard morto).
+  // ⚠️ AS DUAS DIREÇÕES NÃO SÃO IGUAIS (dono 10/11/2026: "os tempos devem conversar entre
+  // si e NÃO produzir tempos distintos"). Quem ASSUMIU a posição de um colega aparece na
+  // fila na linha DELE (`linha.chave` = chave do slot, `colunaLiberacao`), com as próprias
+  // cirurgias — a pílula dessa linha já gravava no caso (`casoUnicoDoTotal`) e o caso não
+  // gravava de volta: uma cirurgia, dois números. Agora a chave devolvida é a do SLOT.
+  // Já quem TEVE a posição assumida segue fora (null): se ainda tem cirurgia, ela aparece
+  // numa linha extra que divide a chave com o slot — não há um total que seja só dela.
+  let chaveLinha = chave
   for (const [k, ov] of Object.entries(escala?.linhaOverrides || {})) {
     const asm = ov?.assumidaPor
     if (!asm) continue
@@ -1475,7 +1484,7 @@ export function casosAtivosDaPessoa(escala, caso) {
     const [pref, resto] = sep >= 0 ? [k.slice(0, sep), k.slice(sep + 1)] : ['matutino', k]
     if (pref !== turno) continue
     if (resto === chave) return null
-    if ((asm.uid && asm.uid === uid) || (asm.nome && normNome(asm.nome) === normNome(nomeBruto))) return null
+    if ((asm.uid && asm.uid === uid) || (asm.nome && normNome(asm.nome) === normNome(nomeBruto))) chaveLinha = resto
   }
   const ativos = doTurno.filter((c) => {
     if (casoConcluido(c) || c.semAnestesista) return false
@@ -1487,7 +1496,7 @@ export function casosAtivosDaPessoa(escala, caso) {
       return (u || normNome(parte)) === chave || (uid && u === uid)
     })
   })
-  return { ativos, uid, chave, nomeBruto, turno }
+  return { ativos, uid, chave: chaveLinha, nomeBruto, turno }
 }
 
 /** O caso editado, entre os ativos: por id; sem id (otimista/demo), por sala+ordem. */
@@ -1567,6 +1576,10 @@ export function inicioDaDuracao(escala, caso, agoraMin) {
  * 14:56 convivendo com um término informado depois — divergência esperada, não
  * defeito. Pelo mesmo motivo, mudar o STATUS de uma cirurgia (terminada/suspensa)
  * não chama este helper: `setStatusCirurgia` zera o término DA CIRURGIA e para aí.
+ * ↳ EXCEÇÃO de 10/11/2026 (dono, só nos dois extremos): pessoa com UMA cirurgia ativa que
+ * marca Iniciada com estimado → o total vira o estimado dela; pessoa que fica SEM cirurgia
+ * aberta → o total é apagado. Quem decide é o context (`espelharTempoTotal` com
+ * `soUmaCirurgia`, `limparTotalSemCirurgia`); com 2+ cirurgias o status segue sem efeito.
  *
  * Chamado ao gravar `terminoPrevisto` (detalhe do caso e pílula → caso único);
  * devolve `{ chave, nome, override }` prontos p/ `setLinhaOverride` — override
@@ -1612,6 +1625,9 @@ export function espelhoTempoTotal(escala, caso, terminoHHMM, { hospitalLabels } 
     nome: nomeBruto,
     override: {
       local: ov?.local || '',
+      // o HOSPITAL da linha (painel da fila única) viaja junto: `setLinhaOverride` grava a
+      // exibição inteira, e desde 10/11 este espelho alcança a linha 'fds'
+      ...(ov?.hospital && { hospital: ov.hospital }),
       cirurgioes: ov?.cirurgioes || '',
       termino: novo,
       observacao: observacaoDaLinha(ov, hospitalLabels),

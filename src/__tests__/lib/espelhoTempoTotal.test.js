@@ -3,7 +3,7 @@
  * o término da cirurgia preenche sozinho o cronômetro da pessoa nas Liberações —
  * os dois campos divergiam ("caso 18:30, pílula 17:00") e ninguém sabia qual valia.
  * Estes testes travam o contrato do helper puro: QUANDO espelha (1 caso ativo),
- * quando NÃO (2+ casos, "A + B", sem anestesista, posição assumida) e que o
+ * quando NÃO (2+ casos, "A + B", sem anestesista, posição assumida POR OUTRO) e que o
  * override devolvido é COMPLETO (parcial apagaria local/cirurgião/observação).
  */
 import { describe, it, expect } from 'vitest'
@@ -99,8 +99,8 @@ describe('espelhoTempoTotal — quando NÃO espelha', () => {
     expect(espelhoTempoTotal(esc, c1, '18:30')).toBeNull()
   })
 
-  it('a pessoa ASSUMIU a posição de outro (os casos dela exibem sob a chave do dono)', () => {
-    const esc = escalaCom([c1], { 'uid-leo': { assumidaPor: { uid: 'uid-mar', nome: 'MARILIO' } } })
+  it('término já igual ao gravado no slot que a pessoa assumiu', () => {
+    const esc = escalaCom([c1], { 'uid-leo': { assumidaPor: { uid: 'uid-mar', nome: 'MARILIO' }, termino: '18:30' } })
     expect(espelhoTempoTotal(esc, c1, '18:30')).toBeNull()
   })
 
@@ -285,5 +285,44 @@ describe('espelhoTempoTotal — o total é independente dos tempos individuais (
   it('o helper não aceita "status novo": terminar/suspender uma cirurgia não passa por aqui', () => {
     // a assinatura não tem `patch`; se alguém reintroduzir, este teste passa a falhar
     expect(espelhoTempoTotal.length).toBe(3)
+  })
+})
+
+// ⚠️ MUDOU DE LADO em 10/11/2026. Até aqui "a pessoa ASSUMIU a posição de outro" devolvia
+// null — o caso não espelhava no total. Só que a pílula dessa linha JÁ gravava no caso
+// (`casoUnicoDoTotal`, LiberacoesView): mudar o estimado no detalhe deixava a cirurgia em
+// 18:30 e a pílula em 17:00 (7 linhas assim nos 7 dias antes da auditoria). Dono, 10/11:
+// "os tempos devem conversar entre si e NÃO produzir tempos distintos". Quem assumiu é
+// exibido na linha do SLOT, então o espelho devolve a chave do slot. O outro sentido —
+// quem TEVE a posição assumida — continua null (teste acima), porque a linha extra dele
+// divide a chave com o slot.
+describe('espelhoTempoTotal — quem ASSUMIU uma posição espelha na linha do slot (10/11)', () => {
+  const c1 = caso('c1', 'MARILIO', { anestesistaUserId: 'uid-mar' })
+
+  it('devolve a chave do SLOT e preserva a assunção e o que já estava na linha', () => {
+    const esc = escalaCom([c1], {
+      'matutino:uid-leo': { assumidaPor: { uid: 'uid-mar', nome: 'MARILIO' }, local: 'IOSC', termino: '17:00' },
+    })
+    const esp = espelhoTempoTotal(esc, c1, '18:30')
+    expect(esp.chave).toBe('uid-leo')
+    expect(esp.override).toEqual({ local: 'IOSC', cirurgioes: '', termino: '18:30', observacao: '' })
+  })
+
+  it('assunção casada só pelo NOME (sem uid) também resolve o slot', () => {
+    const semUid = caso('c1', 'MARILIO')
+    const esc = escalaCom([semUid], { 'matutino:LEONARDO': { assumidaPor: { nome: 'Marílio' } } })
+    expect(espelhoTempoTotal(esc, semUid, '18:30').chave).toBe('LEONARDO')
+  })
+
+  it('assunção em OUTRO turno não muda a chave', () => {
+    const esc = escalaCom([c1], { 'vespertino:uid-leo': { assumidaPor: { uid: 'uid-mar', nome: 'MARILIO' } } })
+    expect(espelhoTempoTotal(esc, c1, '18:30').chave).toBe('uid-mar')
+  })
+
+  it('o HOSPITAL da linha (painel da fila única) viaja no override — gravar sem ele o apagaria', () => {
+    const esc = escalaCom([c1], { 'matutino:uid-mar': { hospital: 'hro', local: 'Sala 4' } })
+    expect(espelhoTempoTotal(esc, c1, '18:30').override).toEqual({
+      local: 'Sala 4', hospital: 'hro', cirurgioes: '', termino: '18:30', observacao: '',
+    })
   })
 })

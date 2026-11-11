@@ -16,7 +16,8 @@ import { createReliableSubscription } from '@/services/supabaseSubscriptionHelpe
 import { useToast } from '@/design-system/components/ui/toast'
 import { useUserOpcional } from '@/contexts/userContextObject'
 import { ehContaDeHospital } from '@/utils/userTypes'
-import { ajudasPreservadasNoRepasse, escaladosPreservadosNoRepasse, estadoDaPosicao, familiaConvenio, lerOverrideAnterior, mergeRodapeTurno, rodapeDoTurno, snapshotCasos } from '@/pages/escala-cirurgica/utils'
+import { ajudasPreservadasNoRepasse, casosAtivosDaPessoa, escaladosPreservadosNoRepasse, espelhoTempoTotal, estadoDaPosicao, familiaConvenio, lerOverrideAnterior, mergeRodapeTurno, rodapeDoTurno, snapshotCasos, turnoDoCaso } from '@/pages/escala-cirurgica/utils'
+import { casoConcluido } from '@/lib/escalaCirurgicaStatus'
 import { nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
 import { ehDataFilaUnica, FDS_HOSPITAL } from '@/lib/escalaFds'
 import { getDemoEscala } from '@/data/escalaCirurgicaDemo'
@@ -976,6 +977,96 @@ export function EscalaCirurgicaProvider({ children }) {
     [setLinhaOverride]
   )
 
+  // ── O TEMPO TOTAL DA PESSOA ACOMPANHA AS CIRURGIAS (dono 10/11/2026) ─────────────
+  // "os tempos devem conversar entre si e NÃO produzir tempos distintos". Três regras
+  // moram aqui, no contexto, para valerem em TODO caminho (detalhe do caso, folha do
+  // total, "Antes de liberar", faixa de urgências):
+  //  · o espelho caso → total grava na LINHA CERTA (`contextoDaFila`);
+  //  · UMA cirurgia só, marcada Iniciada com estimado → o total vira o estimado dela;
+  //  · sem cirurgia aberta no turno, o total antigo é APAGADO (não só escondido).
+
+  /**
+   * ONDE MORA A LINHA da pessoa e QUAIS cirurgias contam para ela. No dia útil é a escala
+   * do próprio hospital. Na FILA ÚNICA (sáb/dom/feriado com a linha 'fds' publicada) a
+   * fila lê `linha_overrides` da linha 'fds' e as cirurgias dos TRÊS hospitais — o espelho
+   * gravava na escala do hospital, que a fila nunca lê (o estimado dado no detalhe do caso
+   * não chegava à pílula no fim de semana).
+   * @returns {{ alvo: object, visao: object }} `alvo` = escala onde gravar; `visao` = a
+   *   escala do caso com os casos e os overrides que a FILA enxerga (entrada dos helpers puros)
+   */
+  const contextoDaFila = useCallback((escalaDoCaso, casosDepois = null) => {
+    const todas = escalasRef.current || {}
+    const fresca = todas[escalaDoCaso?.hospital]
+    const propria = fresca && fresca.id === escalaDoCaso?.id ? fresca : escalaDoCaso
+    const casosDaqui = casosDepois || propria?.casos || []
+    const fds = todas[FDS_HOSPITAL]
+    const filaUnica = escalaDoCaso?.hospital !== FDS_HOSPITAL && ehDataFilaUnica(escalaDoCaso?.data)
+      && fds?.status === 'publicada' && fds?.data === escalaDoCaso?.data
+    if (!filaUnica) return { alvo: propria, visao: { ...propria, casos: casosDaqui } }
+    const casos = HOSPITAIS.flatMap((h) => (h === escalaDoCaso.hospital ? casosDaqui : (todas[h]?.casos || [])))
+    return { alvo: fds, visao: { ...propria, casos, linhaOverrides: fds.linhaOverrides || {} } }
+  }, [])
+
+  /**
+   * ESPELHO caso → tempo total (30/07, 14/09) — a porta única das telas. `soUmaCirurgia`
+   * restringe ao recorte que o dono abriu em 10/11 para a mudança de STATUS: só a pessoa
+   * com UMA cirurgia ativa (2+ cirurgias, dupla "A + B" e caso sem anestesista ficam como
+   * estão — o total é informado à mão, 15/09). Best-effort: nunca desfaz a escrita do caso.
+   */
+  const espelharTempoTotal = useCallback(async (escalaDoCaso, caso, hhmm, userInfo = {}, { turno = null, soUmaCirurgia = false, casosDepois = null } = {}) => {
+    if (!escalaDoCaso || !caso || String(escalaDoCaso.id).startsWith('demo-')) return
+    const { alvo, visao } = contextoDaFila(escalaDoCaso, casosDepois)
+    if (!alvo) return
+    if (soUmaCirurgia) {
+      const ctx = casosAtivosDaPessoa(visao, caso)
+      if (!ctx || ctx.ativos.length !== 1) return
+    }
+    const esp = espelhoTempoTotal(visao, caso, hhmm || '', { hospitalLabels: HOSPITAL_LABEL })
+    if (!esp) return
+    const quem = { userId: userInfo.userId || usuarioDaSessao?.uid || usuarioDaSessao?.id || null, userName: userInfo.userName || usuarioDaSessao?.displayName }
+    await setLinhaOverride(alvo, { chave: esp.chave, anestesista: esp.nome }, esp.override, quem, turno || turnoDoCaso(caso))
+  }, [contextoDaFila, setLinhaOverride, usuarioDaSessao])
+
+  /**
+   * SEM CIRURGIA ABERTA, O TEMPO TOTAL SAI (dono 10/11/2026: "Sim, apaga"). A pílula de
+   * quem terminou tudo ficava gravada — a tela só a escondia — e voltava "1h20 além", em
+   * âmbar e com push de tempo estourado, quando a pessoa recebia uma urgência depois (83
+   * de 85 totais dos 7 dias anteriores ficaram gravados assim). `caso` diz QUEM é a pessoa
+   * e o turno; `casosVisao` são os casos como ficaram. Só o `termino` sai: local,
+   * observação e as declarações da linha ficam. Dupla e caso sem dono não têm uma linha só.
+   */
+  const limparTotalSemCirurgia = useCallback(async (escalaDoCaso, casosVisao, caso, userId = null) => {
+    try {
+      if (!escalaDoCaso || !caso || String(escalaDoCaso.id).startsWith('demo-')) return
+      const { alvo, visao } = contextoDaFila(escalaDoCaso, casosVisao)
+      const ctx = casosAtivosDaPessoa(visao, caso)
+      if (!alvo || !ctx || ctx.ativos.length) return
+      const linhaOverrides = { ...(alvo.linhaOverrides || {}) }
+      let mudou = false
+      for (const k of new Set([`${ctx.turno}:${ctx.chave}`, `${ctx.turno}:${normNome(ctx.nomeBruto)}`])) {
+        const atual = linhaOverrides[k]
+        if (!atual || typeof atual !== 'object' || !atual.termino) continue
+        const { termino: _sai, ...resto } = atual
+        const valor = temAlgumCampo(resto)
+          ? { ...resto, por: userId || usuarioDaSessao?.uid || usuarioDaSessao?.id || null, em: new Date().toISOString() }
+          : null
+        await svc.patchLinhaOverride(alvo.id, k, valor)
+        if (valor) linhaOverrides[k] = valor
+        else delete linhaOverrides[k]
+        mudou = true
+      }
+      if (mudou) dispatch({ type: 'PATCH_HOSPITAL', hospital: alvo.hospital, patch: { linhaOverrides } })
+    } catch { /* a escrita do caso já aconteceu; a pílula segue editável à mão */ }
+  }, [contextoDaFila, usuarioDaSessao])
+
+  /** Os casos de uma escala como estão AGORA no estado, com um patch por cima de alguns. */
+  const casosComPatch = useCallback((escala, ids, patch) => {
+    const fresca = escalasRef.current?.[escala?.hospital]
+    const base = (fresca && fresca.id === escala?.id ? fresca.casos : escala?.casos) || []
+    const idSet = new Set(ids)
+    return base.map((c) => (idSet.has(c.id) ? { ...c, ...patch } : c))
+  }, [])
+
   // Status da cirurgia em DOIS eixos — principal (agendada/iniciada/terminada, exclusivo)
   // e extra (atrasada/suspensa/passa_tarde, toggle; terminada limpa e bloqueia).
   // Espelha a regra da RPC no update otimista. Qualquer clínico atualiza.
@@ -998,11 +1089,21 @@ export function EscalaCirurgicaProvider({ children }) {
     try {
       const restaurou = await svc.desfazerTerminada(casoId, antes)
       if (!restaurou) throw new Error('A cirurgia mudou de estado nesse meio-tempo — nada foi alterado.')
+      // DESFAZER E O TEMPO TOTAL (10/11): o "Terminada" pode ter apagado o total (ficou sem
+      // cirurgia aberta). Não se guarda foto do total: ele volta pela MESMA regra de sempre —
+      // a cirurgia que reabre EM ANDAMENTO, sendo a única da pessoa, devolve o estimado dela
+      // ao total. Reaberta sem estimado, ou com outras cirurgias, o total fica a informar.
+      const escala = escalasRef.current?.[hospital]
+      if (escala && otimista.statusCirurgia === 'iniciada' && otimista.terminoPrevisto) {
+        const casosDepois = casosComPatch(escala, [casoId], otimista)
+        const reaberto = casosDepois.find((c) => c.id === casoId)
+        if (reaberto) await espelharTempoTotal(escala, reaberto, otimista.terminoPrevisto, {}, { soUmaCirurgia: true, casosDepois }).catch(() => {})
+      }
     } catch (error) {
       dispatch({ type: 'PATCH_CASOS', hospital, ...alvo, patch: { statusCirurgia: 'terminada', statusExtra: null, terminoPrevisto: null } })
       toast({ variant: 'error', title: 'Não foi possível desfazer', description: error.message })
     } finally { encerrarEscrita() }
-  }, [toast])
+  }, [toast, casosComPatch, espelharTempoTotal])
 
   const setStatusCirurgia = useCallback(async (escala, caso, status, userInfo = {}) => {
     const EXTRAS = ['atrasada', 'suspensa', 'passa_tarde']
@@ -1024,6 +1125,9 @@ export function EscalaCirurgicaProvider({ children }) {
     // independente dos tempos individuais das cirurgias" (dono, 15/09 à tarde, ao
     // reverter o espelho parcial da v5.12.8). O total muda pela pílula ou pelos
     // espelhos que já existiam (uma cirurgia; todas informadas), nunca pelo status.
+    // ↳ desde 10/11 há DOIS extremos em que o status alcança o total (bloco depois do
+    // `encerrarEscrita`, abaixo): uma cirurgia só que inicia com estimado, e ficar sem
+    // cirurgia aberta. Com 2+ cirurgias ativas o parágrafo acima segue valendo inteiro.
     const zeraTermino = status === 'terminada'
     // HORÁRIO REAL ANDA JUNTO COM O STATUS (dono 02/10): o trigger
     // tr_escala_caso_horario_real preenche o início no "Iniciada" e o término no
@@ -1082,6 +1186,22 @@ export function EscalaCirurgicaProvider({ children }) {
           if (zeraTermino && vivo.terminoPrevisto) await svc.updateCaso(caso.id, { terminoPrevisto: null })
         }
       } finally { encerrarEscrita() }
+      // O TEMPO TOTAL ACOMPANHA (dono 10/11/2026) — exceção ESTREITA à regra de 15/09 ("o
+      // total não muda com o status"), aberta por ele para os dois extremos:
+      //  · INICIADA com estimado e a pessoa com UMA cirurgia ativa: o total vira o estimado
+      //    dela (início + duração), "sim, sempre" — mesmo que já houvesse outro valor. Sem
+      //    isto a cirurgia dizia "faltam 2h" e a pílula ficava vazia ou no horário antigo;
+      //  · ficou SEM cirurgia aberta (Terminada, Suspensa): o total antigo é apagado.
+      // Com 2+ cirurgias ativas, dupla "A + B" ou sem anestesista, nada muda sozinho.
+      if (!isDemo && caso.id) {
+        const casosDepois = casosComPatch(escala, [caso.id], patch)
+        const depois = casosDepois.find((c) => c.id === caso.id) || { ...vivo, ...patch }
+        if (status === 'iniciada' && horarios.terminoPrevisto) {
+          await espelharTempoTotal(escala, depois, horarios.terminoPrevisto, userInfo, { soUmaCirurgia: true, casosDepois }).catch(() => {})
+        } else if (casoConcluido(depois)) {
+          await limparTotalSemCirurgia(escala, casosDepois, depois, userInfo.userId || null)
+        }
+      }
       // DESFAZER O "TERMINADA" (revisão 23/09): marcado por engano, voltar pela RPC de
       // status recarimbava o início e o "em sala há X" se perdia. O servidor devolve o
       // estado de antes com o carimbo original; o término zerado volta por updateCaso.
@@ -1102,7 +1222,7 @@ export function EscalaCirurgicaProvider({ children }) {
       toast({ variant: 'error', title: 'Erro ao atualizar status', description: error.message })
       throw error
     }
-  }, [toast, desfazerTerminada])
+  }, [toast, desfazerTerminada, casosComPatch, espelharTempoTotal, limparTotalSemCirurgia])
 
   /**
    * "TERMINOU · HORÁRIO DEPOIS" (dono 27/10, folha "Antes de liberar", a mesma para todos):
@@ -1135,6 +1255,11 @@ export function EscalaCirurgicaProvider({ children }) {
       try {
         if (!isDemo && caso.id) await svc.terminarSemHorario(caso.id)
       } finally { encerrarEscrita() }
+      // sem cirurgia aberta, o tempo total sai (dono 10/11) — mesma regra do Terminada
+      if (!isDemo && caso.id) {
+        const casosDepois = casosComPatch(escala, [caso.id], patch)
+        await limparTotalSemCirurgia(escala, casosDepois, casosDepois.find((c) => c.id === caso.id) || { ...vivo, ...patch }, userInfo.userId || null)
+      }
       if (!isDemo && caso.id) {
         toast({
           title: 'Cirurgia terminada · horário depois',
@@ -1147,7 +1272,7 @@ export function EscalaCirurgicaProvider({ children }) {
       toast({ variant: 'error', title: 'Erro ao terminar a cirurgia', description: error.message })
       throw error
     }
-  }, [toast, desfazerTerminada])
+  }, [toast, desfazerTerminada, casosComPatch, limparTotalSemCirurgia])
 
   /**
    * ANOTAÇÃO DA LINHA CEDE AOS CASOS (dono 16/09/2026: "ajustes na Escala completa
@@ -1263,6 +1388,14 @@ export function EscalaCirurgicaProvider({ children }) {
             dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { liberacoes } })
           }
         } catch { /* repasse já está feito; o toggle manual cobre */ }
+        // SEM CIRURGIA ABERTA, O TEMPO TOTAL SAI (dono 10/11): quem PASSOU a última
+        // cirurgia aberta fica com um total que não descreve mais nada. Quem RECEBE não é
+        // tocado aqui — o tempo dele pode ter sido informado de propósito (linha renovada),
+        // e `limparAnotacaoDaLinha`, abaixo, segue preservando-o.
+        for (const id of ids) {
+          const antes = (escala.casos || []).find((c) => c.id === id)
+          if (antes) await limparTotalSemCirurgia(escala, casos, antes, userId)
+        }
         // ANOTAÇÃO DA LINHA CEDE AOS CASOS (dono 16/09) — ver limparAnotacaoDaLinha.
         if (uid && !dupla) {
           const turnos = [...new Set(ids.map((id) => casos.find((c) => c.id === id)?.turno).filter(Boolean))]
@@ -1280,7 +1413,7 @@ export function EscalaCirurgicaProvider({ children }) {
       toast({ variant: 'error', title: 'Erro ao definir anestesista', description: error.message })
       throw error
     }
-  }, [toast, limparAnotacaoDaLinha])
+  }, [toast, limparAnotacaoDaLinha, limparTotalSemCirurgia])
 
   // ── TROCA DECLARADA (dono 30/07) — par declarado + execução de um toque ────
   // NÃO é a troca antiga (removida 2×): é um PAR de pessoas do dia, badge nos
@@ -1834,6 +1967,8 @@ export function EscalaCirurgicaProvider({ children }) {
       try {
         await svc.removeCaso(casoId)
       } finally { encerrarEscrita() }
+      // era a última aberta da pessoa: o tempo total sai junto (dono 10/11)
+      if (alvo) await limparTotalSemCirurgia(escala, anteriores.filter((c) => c.id !== casoId), alvo, null)
       toast({
         variant: 'success',
         title: 'Caso excluído',
@@ -1844,7 +1979,7 @@ export function EscalaCirurgicaProvider({ children }) {
       toast({ variant: 'error', title: 'Erro ao excluir caso', description: error.message })
       throw error
     }
-  }, [toast])
+  }, [toast, limparTotalSemCirurgia])
 
   // TROCA REMOVIDA DO APP (decisão do dono 29/07): "retire a funcionalidade de
   // troca (apenas deixe um campo em aberto para observação)". Caiu tudo — o
@@ -1907,9 +2042,9 @@ export function EscalaCirurgicaProvider({ children }) {
 
   const actionsValue = useMemo(() => ({
     setData, prefetch, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista,
-    setStatusCirurgia, terminarSemHorario, desfazerTerminada, adicionarCaso, setAnestesistaCasos, atualizarCaso, excluirCaso, adicionarAjuda, removerAjuda,
+    setStatusCirurgia, terminarSemHorario, desfazerTerminada, espelharTempoTotal, adicionarCaso, setAnestesistaCasos, atualizarCaso, excluirCaso, adicionarAjuda, removerAjuda,
     reordenarAjuda, definirOrigemLinha, definirSemAjudaLinha, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, definirSalasUrgencia, refresh, recarregar, garantirEscala,
-  }), [prefetch, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, terminarSemHorario, desfazerTerminada, adicionarCaso, setAnestesistaCasos, atualizarCaso, excluirCaso, adicionarAjuda, removerAjuda, reordenarAjuda, definirOrigemLinha, definirSemAjudaLinha, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, definirSalasUrgencia, refresh, recarregar, garantirEscala])
+  }), [prefetch, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, terminarSemHorario, desfazerTerminada, espelharTempoTotal, adicionarCaso, setAnestesistaCasos, atualizarCaso, excluirCaso, adicionarAjuda, removerAjuda, reordenarAjuda, definirOrigemLinha, definirSemAjudaLinha, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, definirSalasUrgencia, refresh, recarregar, garantirEscala])
 
   const stateValue = useMemo(() => ({
     escalas: state.escalas, p4Hospital: state.p4Hospital, data, loading, hoje, erroCarga,

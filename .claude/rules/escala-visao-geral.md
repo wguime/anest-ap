@@ -214,6 +214,12 @@ Mobile-first: data (`DatePicker` DS) + turno + hospital (Unimed/HRO/Materno) + *
 
 **ESPELHO do tempo total (31/07; SOMA em 14/09):** gravar o término da cirurgia quando a pessoa tem UMA só cirurgia ATIVA no turno preenche sozinho o cronômetro da linha, e com TODAS as cirurgias ativas com término o total vira o ÚLTIMO término (= soma das durações encadeadas, decisão do dono em 14/09) (`espelhoTempoTotal` puro em utils → `setLinhaOverride` no `CasoDetalheSheet`; limpa junto; com alguma cirurgia sem término, sala "A+B", sem anestesista ou posição assumida NÃO espelha — total segue manual; o espelho PARCIAL foi revertido em 15/09 e não volta, ver `escala-liberacoes.md`). `CasoCard` recebe `agoraMin` do PAI (um intervalo por lista, nunca um timer por card).
 
+**EXCEÇÃO DE 10/11 (dono):** o total acompanha o STATUS só em dois extremos — pessoa com UMA cirurgia
+ativa que marca Iniciada com estimado (o total vira o estimado dela) e pessoa que fica SEM cirurgia
+aberta (o total é apagado). O espelho caso → total tem uma porta só, `espelharTempoTotal` (context), que
+grava na linha `'fds'` quando a fila é única. Nome fixado: **Tempo total** (pessoa), **Tempo estimado**
+(cirurgia), **Início/Término** (real). Detalhe em `escala-liberacoes.md` § "Exceção de 10/11".
+
 #### Log de eventos e integridade das chaves
 
 **Log de eventos invisível** `escala_cirurgica_evento` (Fase 0 da previsão de tempos): triggers status (2 eixos) + liberações c/ snapshot da ordem — NUNCA bloqueia operação clínica.

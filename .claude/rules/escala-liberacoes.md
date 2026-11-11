@@ -462,10 +462,53 @@ Revertido na v5.12.9.
   outra ainda sem término é ESPERADO, não defeito — quem ajusta é a pessoa, na pílula.
 - O que continua valendo é só o que já existia: uma cirurgia ↔ total (30/07 e 14/09) e
   todas informadas → soma (14/09). Alguma sem término → manual (29/07). Nada disso roda ao
-  mudar STATUS.
+  mudar STATUS — **com as duas exceções estreitas de 10/11, seção logo abaixo**.
 - Travas: `espelhoTempoTotal.test.js` (describe "o total é independente dos tempos
   individuais" — inclusive `espelhoTempoTotal.length === 3`, sem `patch` de status) e
   `escalaTerminadaZeraTempo.test.jsx` (describe "o total NÃO muda com o status").
+
+### Exceção de 10/11: o total acompanha o status nos DOIS EXTREMOS (dono 10/11/2026)
+
+> "os tempos devem conversar entre si e NÃO produzir tempos distintos." Vocabulário fixado por ele:
+> **Início / Término** = horário real da cirurgia · **Tempo estimado** = previsão da cirurgia ·
+> **Tempo total** = até quando a pessoa fica (o nome NÃO muda para "Previsão de saída").
+
+A auditoria de 10/11 achou a mesma cirurgia com dois números e o total de quem já
+tinha terminado tudo guardado no banco (83 de 85 totais em 7 dias). O dono respondeu a duas perguntas
+e as respostas REVOGAM a regra de 15/09 **só nestes dois recortes**:
+
+- **Uma cirurgia só, com estimado, marcada Iniciada → o total vira o estimado dela** ("Sim, sempre",
+  mesmo que já houvesse outro valor). O gatilho converte a duração em horário (27/10) e o context
+  espelha na linha: `setStatusCirurgia` → `espelharTempoTotal(..., { soUmaCirurgia: true })`. Vale por
+  todo caminho que inicia (botão Iniciada, bloco INÍCIO, folha do total, "Antes de liberar", urgências)
+  porque todos passam por `setStatusCirurgia`.
+- **Sem cirurgia aberta no turno → o total é APAGADO**, não só escondido ("Sim, apaga"):
+  `limparTotalSemCirurgia` em Terminada, Suspensa, "Terminou · horário depois", excluir caso e em quem
+  PASSOU a última cirurgia aberta a um colega. Só o `termino` sai — local, observação e declarações
+  ficam. Quem RECEBE não é tocado (`limparAnotacaoDaLinha` segue preservando o tempo dele).
+- **Não generalizar:** com 2+ cirurgias ativas, dupla "A + B" ou cirurgia sem anestesista nada muda
+  sozinho — o total continua informado à mão, e o espelho PARCIAL segue proibido.
+- **Desfazer o Terminada** não guarda foto do total: a cirurgia que reabre em andamento, sendo a única
+  da pessoa e com estimado, devolve o estimado ao total pela mesma regra; reaberta sem estimado ou com
+  outras cirurgias, o total fica a informar.
+- **Uma porta só para o espelho caso → total:** `espelharTempoTotal` (context). Detalhe do caso e
+  página deixaram de chamar `setLinhaOverride` direto. `contextoDaFila` decide ONDE mora a linha: na
+  fila única (sáb/dom/feriado) é a escala `'fds'`, com as cirurgias dos TRÊS hospitais — antes o
+  espelho gravava na escala do hospital, que a fila não lê. ⚠️ Não alcança o card NOTURNO do FDS
+  (chave `noite:…`, sem turno de caso).
+- **Posição assumida espelha nos dois sentidos:** `casosAtivosDaPessoa` devolve a chave do SLOT para
+  quem assumiu (é a linha dele na fila); quem TEVE a posição assumida segue sem espelho.
+- **Painel da linha:** "Salvar" grava o total de AGORA (não o de quando abriu); "Restaurar" apaga também
+  o estimado ESPELHADO da cirurgia única (e o Desfazer devolve os dois). Na folha do total,
+  "estimado = tempo acima" só aparece quando os dois são iguais.
+- ⚠️ `escala_cirurgica_captura.estimativa_total` passa a registrar também o total preenchido pelo
+  Iniciada e o apagado no fim — quem analisar o aprendizado não pode ler tudo como palpite manual.
+- Travas: `escalaTempoTotalAcompanha1011.test.jsx` (context: os dois extremos, o recorte estreito, o
+  desfazer, a fila única), `espelhoTempoTotal.test.js` (slot assumido — um teste mudou de lado),
+  `escalaTerminadaZeraTempo.test.jsx` ("termina TODAS" mudou de lado), `liberacoesPainelLinha.test.jsx`
+  (describe "não produz tempos distintos"), `liberacoesTempoPorCirurgia.test.jsx` (a frase).
+- **Pendente (não feito):** corrigir o INÍCIO depois de iniciada não reancora o estimado — a duração é
+  apagada na conversão; manter a duração exige migration no gatilho `escala_caso_horario_real`.
 
 ### "Terminada" zera o tempo da cirurgia — e SÓ dela (dono 15/09)
 
@@ -476,7 +519,8 @@ caso e faixa de urgências — passam por ele):
   do status, que não conhece a coluna; só quando havia o que zerar). Erro na RPC reverte os
   dois. `iniciada`/`agendada` e os avisos (atrasada/suspensa/passa_tarde) não encostam no
   término — suspensa pode voltar.
-- A pílula do total NÃO é tocada (seção acima). A linha da cirurgia some da fila por
+- A pílula do total NÃO é tocada enquanto a pessoa tiver outra cirurgia aberta; ficando sem
+  nenhuma, o total é apagado (exceção de 10/11, seção acima). A linha da cirurgia some da fila por
   `casoConcluido`, e é isso que "para de contar".
 - Trava: `escalaTerminadaZeraTempo.test.jsx` (context, com o cenário real do HRO de 15/09).
 

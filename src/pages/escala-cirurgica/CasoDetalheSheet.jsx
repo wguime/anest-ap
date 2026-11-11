@@ -53,7 +53,7 @@ import { duracaoMin, ehDiaOperacionalAtual, erroHorarioReal, gravarInicioReal, g
 import PainelTempo, { formatFaltante, rotuloDuracao } from './PainelTempo'
 import { BlocoHorario, BotaoEstimado, ConfirmarHorario, ConfirmarInicioETermino } from './BlocoHorario'
 import useAgoraMinutoEscala from './useAgoraMinutoEscala'
-import { convenioExibicao, espelhoTempoTotal, nomeAnestesistaExibicao, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso, terminoEncadeado, procedimentoComContinuacao, procedimentoBaseDoCaso } from './utils'
+import { convenioExibicao, nomeAnestesistaExibicao, normNome, parseHoraMinutos, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso, terminoEncadeado, procedimentoComContinuacao, procedimentoBaseDoCaso } from './utils'
 import ChipsEscolha, { GRAVIDADE_CHIPS, TIPOS_CIRURGIA } from './ChipsEscolha'
 
 // Verbo de cada estado na linha de procedência ("Iniciada às 14:33 por Fulano").
@@ -99,7 +99,7 @@ const AVISO = [
  *   turno em curso). Null = o detalhe de sempre.
  */
 export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDefinirAnestesista, onDefinirAnestesista, onEditarCaso, podeEditar, encerrado = null }) {
-  const { setStatusCirurgia, atualizarCaso, adicionarAjuda, removerAjuda, setLinhaOverride } = useEscalaCirurgicaActions()
+  const { setStatusCirurgia, atualizarCaso, adicionarAjuda, removerAjuda, espelharTempoTotal } = useEscalaCirurgicaActions()
   const { user } = useUser()
   const { residenteByUid } = useRosterResidentes()
   const { rosterByUid, resolver: resolverRoster } = useRosterAnestesistas()
@@ -179,11 +179,9 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
       // é o horário de saída da pessoa — o cronômetro da linha (Liberações)
       // acompanha sozinho, senão os dois campos divergiam e ninguém sabia qual
       // valia. Com 2+ casos o total segue 100% manual (nunca é soma de estimativas).
-      const esp = isDemo ? null : espelhoTempoTotal(escala, vivo, hhmm, { hospitalLabels: HOSPITAL_LABEL })
-      if (esp) {
-        await setLinhaOverride(escala, { chave: esp.chave, anestesista: esp.nome }, esp.override,
-          { userId: user?.uid || user?.id, userName: user?.displayName }, turno)
-      }
+      // ↳ 10/11: quem grava é o context (`espelharTempoTotal`) — na fila única do fim de
+      // semana a linha da pessoa mora na escala 'fds', não na do hospital do caso.
+      if (!isDemo) await espelharTempoTotal(escala, vivo, hhmm, { userId: user?.uid || user?.id, userName: user?.displayName }, { turno })
     } catch { /* toast de erro já vem do context */ }
   }
   // ESTIMADO QUE CONTA DO INÍCIO (dono 27/10, 5ª rodada): na cirurgia que ainda não
@@ -193,11 +191,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
   const definirDuracaoCaso = async (minutos) => {
     try {
       await atualizarCaso(escala, vivo.id, { duracaoEstimadaMin: minutos || null, terminoPrevisto: null })
-      const esp = !isDemo && vivo.terminoPrevisto ? espelhoTempoTotal(escala, vivo, '', { hospitalLabels: HOSPITAL_LABEL }) : null
-      if (esp) {
-        await setLinhaOverride(escala, { chave: esp.chave, anestesista: esp.nome }, esp.override,
-          { userId: user?.uid || user?.id, userName: user?.displayName }, turno)
-      }
+      if (!isDemo && vivo.terminoPrevisto) await espelharTempoTotal(escala, vivo, '', { userId: user?.uid || user?.id, userName: user?.displayName }, { turno })
     } catch { /* toast de erro já vem do context */ }
   }
 

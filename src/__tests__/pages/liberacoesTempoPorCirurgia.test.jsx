@@ -211,16 +211,29 @@ describe('"+ Tempo total" com o horário de cada cirurgia (dono 25/09; Modelo 2 
 })
 
 describe('uma cirurgia só, em andamento: o tempo da folha É o término dela (espelho de 14/09)', () => {
+  // ⚠️ FIXTURE CORRIGIDA em 10/11/2026: este teste montava a cirurgia com estimado 16:30 e a
+  // pílula VAZIA e exigia "estimado = tempo acima" — a frase mentia (acima não havia nada)
+  // e era exatamente o estado que o dono apontou: "os tempos devem conversar entre si e
+  // NÃO produzir tempos distintos". Agora o total é o espelho (16:30), como o app grava.
   it('o tempo estimado dela NÃO é segunda entrada; a frase diz que é também o tempo dela', () => {
     // os blocos só viram botão com quem grava (a página passa os dois handlers)
-    montar({ onDefinirInicioCaso: vi.fn(async () => {}), onDefinirTerminoRealCaso: vi.fn(async () => {}) }, escalaUma)
-    abrirTempoTotal()
+    montar({ onDefinirInicioCaso: vi.fn(async () => {}), onDefinirTerminoRealCaso: vi.fn(async () => {}) },
+      { ...escalaUma, linhaOverrides: { 'vespertino:MARILIO': { termino: '16:30' } } })
+    fireEvent.click(screen.getByRole('button', { name: /45min/ }))
     expect(screen.getByText('O que já aconteceu')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: new RegExp(`^Início de 13:00 ${rot(ARTRODESE)}`) })).toBeInTheDocument()
     expect(screen.getByText('estimado = tempo acima')).toBeInTheDocument()
     expect(screen.getByRole('dialog').textContent).toContain('Até quando Marílio fica — é também o tempo estimado da cirurgia.')
     expect(within(screen.getByRole('dialog')).getByText(rot(ARTRODESE))).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Tempo estimado de 13:00/ })).toBeNull()
+  })
+
+  it('estimado DIFERENTE do total: a frase "estimado = tempo acima" some e o botão do estimado volta (10/11)', () => {
+    // total vazio com a cirurgia estimada em 16:30 (dado antigo, ou total apagado à mão)
+    montar({ onDefinirInicioCaso: vi.fn(async () => {}), onDefinirTerminoRealCaso: vi.fn(async () => {}) }, escalaUma)
+    abrirTempoTotal()
+    expect(screen.queryByText('estimado = tempo acima')).toBeNull()
+    expect(estimado('13:00', rot(ARTRODESE))).toHaveTextContent('16:30')
   })
 
   it('"1h" grava o total E o término da cirurgia, com o mesmo horário (como já era)', async () => {

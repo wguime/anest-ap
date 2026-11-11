@@ -1103,3 +1103,66 @@ describe('a fileira das cirurgias fica sob o círculo, numa linha só (dono 15/0
     expect([...linha.querySelectorAll('button,span')].some((el) => el.className.includes('ml-auto'))).toBe(false)
   })
 })
+
+// UMA CIRURGIA, UM NÚMERO — também no painel da linha (auditoria de 10/11/2026; dono: "os
+// tempos devem conversar entre si e NÃO produzir tempos distintos").
+describe('o painel da linha não produz tempos distintos (10/11)', () => {
+  // `local` escrito à mão abre o painel direto no ajuste (sem o rodapé Salvar/Restaurar)
+  const umaEmAndamento = (termino, estimado = termino, extra = {}) => ({
+    ...escalaBase,
+    linhaOverrides: { 'matutino:uid-mar': { termino, ...extra } },
+    casos: escalaBase.casos.map((c) => (c.anestesista === 'MARILIO'
+      ? { ...c, statusCirurgia: 'iniciada', terminoPrevisto: estimado } : c)),
+  })
+  const restaurar = () => {
+    abrirEditor('Marílio Flach')
+    fireEvent.click(screen.getByRole('button', { name: /Restaurar o automático desta linha/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Restaurar' }))
+  }
+
+  it('SALVAR grava o tempo total de AGORA, não o de quando o painel abriu', async () => {
+    const onSetOverride = vi.fn(async () => {})
+    const { rerender } = montar({ onSetOverride }, umaEmAndamento('11:00'))
+    abrirEditor('Marílio Flach')
+    // com o painel aberto, o total muda (outro aparelho, ou o espelho de uma cirurgia)
+    rerender(
+      <LiberacoesView escala={umaEmAndamento('12:30')} hospital="hro" hospitalLabel="HRO" turno="matutino"
+        canEdit onToggle={() => {}} onSetOverride={onSetOverride} />
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    await waitFor(() => expect(onSetOverride).toHaveBeenCalled())
+    // com a foto da abertura, voltava 11:00
+    expect(onSetOverride.mock.calls[0][1].termino).toBe('12:30')
+  })
+
+  it('RESTAURAR apaga o estimado espelhado da cirurgia única — e o Desfazer devolve os dois', async () => {
+    const onSetOverride = vi.fn(async () => {})
+    const onDefinirTerminoCaso = vi.fn(async () => {})
+    montar({ onSetOverride, onDefinirTerminoCaso }, umaEmAndamento('11:00'))
+    restaurar()
+    await waitFor(() => expect(onSetOverride).toHaveBeenCalledWith(expect.anything(), null))
+    await waitFor(() => expect(onDefinirTerminoCaso).toHaveBeenCalledWith('Sala 2-0', ''))
+    fireEvent.click(await screen.findByRole('button', { name: 'Desfazer' }))
+    await waitFor(() => expect(onSetOverride).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ termino: '11:00' })))
+    await waitFor(() => expect(onDefinirTerminoCaso).toHaveBeenLastCalledWith('Sala 2-0', '11:00'))
+  })
+
+  it('RESTAURAR não toca no estimado que NÃO era espelho (diferente do total)', async () => {
+    const onSetOverride = vi.fn(async () => {})
+    const onDefinirTerminoCaso = vi.fn(async () => {})
+    montar({ onSetOverride, onDefinirTerminoCaso }, umaEmAndamento('11:00', '10:15'))
+    restaurar()
+    await waitFor(() => expect(onSetOverride).toHaveBeenCalledWith(expect.anything(), null))
+    expect(onDefinirTerminoCaso).not.toHaveBeenCalled()
+  })
+
+  it('RESTAURAR com 2+ cirurgias não mexe em cirurgia nenhuma', async () => {
+    const onSetOverride = vi.fn(async () => {})
+    const onDefinirTerminoCaso = vi.fn(async () => {})
+    const base = umaEmAndamento('11:00')
+    montar({ onSetOverride, onDefinirTerminoCaso }, { ...base, casos: [...base.casos, caso('Sala 2', 1, 'MARILIO', 'Taciana A', '11:30')] })
+    restaurar()
+    await waitFor(() => expect(onSetOverride).toHaveBeenCalledWith(expect.anything(), null))
+    expect(onDefinirTerminoCaso).not.toHaveBeenCalled()
+  })
+})

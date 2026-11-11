@@ -1,4 +1,4 @@
-# ANEST v5.12.92 — Gestão de Qualidade para Anestesiologia
+# ANEST v5.12.93 — Gestão de Qualidade para Anestesiologia
 
 > **Para humanos:** README.md no root e `docs/dev-onboarding.md`.
 > **Conhecimento por módulo NÃO mora aqui.** Vive em `.claude/rules/*.md`, que o Claude Code carrega
@@ -39,6 +39,10 @@ Proposta visual vai primeiro como **HTML estático com os tokens reais, a 430px,
 medição ao lado (altura dos controles, y do 1º item, quantos itens cabem sem rolar). Copiar o bloco
 `:root`/`.dark` de um protótipo em `.tmp/` e **abrir no navegador dele** (`open .tmp/<arquivo>.html`) —
 o dono escolhe por imagem; só então `src/` muda.
+
+⚠️ **Modelo visual, protótipo e captura são gerados pelo Opus 5.5, nunca pelo Fable 5.2** (dono 10/11/2026:
+custo). Quem monta o HTML/as imagens é um subagente lançado com `model: "opus"`; o Fable fica com a análise,
+a decisão e o código de `src/`.
 
 ## Solicitações & Prompts
 

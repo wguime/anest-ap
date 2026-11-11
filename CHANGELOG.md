@@ -3,6 +3,18 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## 10/11/2026 — Escala: os tempos conversam entre Completa e Liberações — v5.12.93
+
+Dono: "os tempos devem conversar entre si e não produzir tempos distintos". Medido antes: em 70 % dos turnos com
+tempo total informado ele diferia mais de 15 min do que as cirurgias diziam. Vocabulário fixado por ele: Início e
+Término = horário real da cirurgia; Tempo estimado = previsão da cirurgia; Tempo total = até quando a pessoa fica.
+- Marcar Iniciada com UMA cirurgia só e tempo estimado preenche o tempo total da pessoa (exceção estreita à regra
+  de 15/09; com 2+ cirurgias, dupla ou sem anestesista nada muda sozinho).
+- Sem cirurgia aberta, o tempo total antigo é apagado (não volta "estourado" numa urgência posterior).
+- Posição assumida espelha nos dois sentidos; no fim de semana o tempo vai para a fila única; "Restaurar" apaga
+  também o estimado espelhado; "Salvar" do lápis não regrava tempo velho; "estimado = tempo acima" só quando igual.
+- Regra do projeto (CLAUDE.md, Regra #3): modelo visual é gerado pelo Opus 5.5, nunca pelo Fable 5.2.
+
 ## 10/11/2026 — Desempenho do app: abertura e troca de telas — v5.12.92
 
 Medido em produção (PWA, celular simulado): com o app aquecido a Home aparece em 0,4–0,6 s e a troca de

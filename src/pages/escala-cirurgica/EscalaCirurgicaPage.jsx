@@ -33,9 +33,10 @@ import LiberacoesView from './LiberacoesView'
 const ImportarEscalasPage = lazy(() => import('./ImportarEscalasPage'))
 const ImportarEscalaFdsPage = lazy(() => import('./ImportarEscalaFdsPage'))
 import TrocaSheet from './TrocaSheet'
-import { anestesistaDoCasoEh, meuAliasDe, turnoAtualOperacional, turnosOferecidos, turnoJaEncerrou, fraseTurnoEncerrado, voltarAoTurno, dataPorExtenso, estadoTrocasDoHistorico, normNome, formatData, rodapeDoTurno, localizarSlotEscala, localizarMeuPosto, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca, espelhoTempoTotal, terminoEncadeado, turnoDoCaso, patchDefinicaoNoTurnoSeguinte } from './utils'
+import { anestesistaDoCasoEh, meuAliasDe, turnoAtualOperacional, turnosOferecidos, turnoJaEncerrou, fraseTurnoEncerrado, voltarAoTurno, dataPorExtenso, estadoTrocasDoHistorico, normNome, formatData, rodapeDoTurno, localizarSlotEscala, localizarMeuPosto, planoExecucaoTroca, planoDesfazerTroca, alvoRemocaoTroca, terminoEncadeado, turnoDoCaso, patchDefinicaoNoTurnoSeguinte } from './utils'
 import { gravarInicioReal, gravarTerminoReal } from '@/lib/escalaHorarioReal'
 import { compararPendencias } from '@/lib/escalaHorarioPendente'
+import { agora } from '@/lib/devClock'
 import { ehDataFilaUnica, ehFeriado, ehFimDeSemana, FDS_HOSPITAL, FDS_TURNO_CASOS, FDS_TURNOS, turnoFdsAtual } from '@/lib/escalaFds'
 import { faseLiberacoes } from '@/lib/plantaoNoturno'
 import { ordemBase, plantaoMaternoContraturno } from '@/lib/escalaNumerica'
@@ -77,7 +78,7 @@ const ABA_OPCOES = [
 
 export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const { user } = useUser()
-  const { escalas, data, loading, erroCarga, p4Hospital, hoje, setData, recarregar, garantirEscala: garantirEscalaNoServidor, prefetch, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, reordenarAjuda, definirOrigemLinha, definirSemAjudaLinha, definirP4Hospital, setAnestesistaCasos, atualizarCaso, setStatusCirurgia, terminarSemHorario, desfazerTerminada, marcarTroca, executarSubstituicao, desfazerSubstituicao } = useEscalaCirurgica()
+  const { escalas, data, loading, erroCarga, p4Hospital, hoje, setData, recarregar, garantirEscala: garantirEscalaNoServidor, prefetch, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, reordenarAjuda, definirOrigemLinha, definirSemAjudaLinha, definirP4Hospital, setAnestesistaCasos, atualizarCaso, setStatusCirurgia, terminarSemHorario, desfazerTerminada, espelharTempoTotal, marcarTroca, executarSubstituicao, desfazerSubstituicao } = useEscalaCirurgica()
   // Roster p/ resolver os lados do par da troca declarada (uid/nome/apelido)
   const { resolver: resolverRoster, rosterByUid, pronto: rosterPronto = true } = useRosterAnestesistas()
   // P1–P4 do dia (card Plantões/PegaPlantao) — alimentam a fase noturna das Liberações
@@ -1059,7 +1060,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                     const alvo = (dona?.casos || []).find((c) => c.id === casoId)
                     // DURAÇÃO numa cirurgia que ainda não começou vale DEPOIS da anterior
                     // (dono 14/09) — mesma regra do detalhe do caso; hora exata passa como veio
-                    const agoraD = new Date()
+                    const agoraD = agora()
                     const hhmm = meta?.minutos && alvo
                       ? (terminoEncadeado(dona, alvo, meta.minutos, agoraD.getHours() * 60 + agoraD.getMinutes()) || hhmmEscolhido)
                       : hhmmEscolhido
@@ -1068,9 +1069,9 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                     // todas têm término) — o MESMO helper do detalhe do caso, para as três
                     // abas gravarem a mesma coisa. Vindo da pílula (uma cirurgia) o valor já
                     // é igual e o helper devolve null — sem ida e volta.
-                    const esp = alvo && !String(dona?.id || '').startsWith('demo-')
-                      ? espelhoTempoTotal(dona, alvo, hhmm || '', { hospitalLabels: HOSPITAL_LABEL }) : null
-                    if (esp) await setLinhaOverride(dona, { chave: esp.chave, anestesista: esp.nome }, esp.override, userInfo, turno)
+                    // ↳ 10/11: pelo context (`espelharTempoTotal`), que grava na linha 'fds' quando
+                    // a fila é única — gravar em `dona` punha o total onde a fila não lê.
+                    if (alvo) await espelharTempoTotal(dona, alvo, hhmm || '', userInfo, { turno: turnoCasos })
                   }}
                   // INÍCIO REAL de uma cirurgia pela folha do tempo total (dono 02/10). A MESMA
                   // função do detalhe do caso (`gravarInicioReal`): numa cirurgia agendada,
@@ -1118,9 +1119,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                     const dona = escalaDoCaso(casoId) || escala
                     const alvo = (dona?.casos || []).find((c) => c.id === casoId)
                     await atualizarCaso(dona, casoId, { duracaoEstimadaMin: minutos || null, terminoPrevisto: null }, { silencioso: true })
-                    const esp = alvo?.terminoPrevisto && !String(dona?.id || '').startsWith('demo-')
-                      ? espelhoTempoTotal(dona, alvo, '', { hospitalLabels: HOSPITAL_LABEL }) : null
-                    if (esp) await setLinhaOverride(dona, { chave: esp.chave, anestesista: esp.nome }, esp.override, userInfo, turno)
+                    if (alvo?.terminoPrevisto) await espelharTempoTotal(dona, alvo, '', userInfo, { turno: turnoCasos })
                   }}
                   onAddAjuda={(nome) => adicionarAjuda(escalaLib, turno, nome)}
                   onReordenarAjuda={(de, para) => reordenarAjuda(escalaLib, turno, de, para)}

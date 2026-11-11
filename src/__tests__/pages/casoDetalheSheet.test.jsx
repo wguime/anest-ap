@@ -37,12 +37,25 @@ const { atualizarCaso, adicionarAjuda, removerAjuda, setStatusCirurgia, setLinha
   setStatusCirurgia: vi.fn(async () => {}),
   setLinhaOverride: vi.fn(async () => {}),
 }))
-vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
-  useEscalaCirurgicaActions: () => ({ atualizarCaso, adicionarAjuda, removerAjuda, setStatusCirurgia, setLinhaOverride }),
+// ESPELHO PELO CONTEXT (10/11/2026): o detalhe deixou de chamar `setLinhaOverride` direto —
+// quem grava o tempo total é `espelharTempoTotal`, do context, que sabe em que escala mora
+// a linha (na fila única do fim de semana, a 'fds'). Aqui ele é a MESMA conta do context
+// no dia útil (helper puro real + o mock de gravação), para os testes abaixo seguirem
+// afirmando QUANDO o detalhe espelha; o caminho do context tem teste próprio
+// (`escalaTempoTotalAcompanha1011.test.jsx`).
+vi.mock('@/contexts/EscalaCirurgicaContext', async () => {
+  const { espelhoTempoTotal } = await vi.importActual('@/pages/escala-cirurgica/utils')
+  const espelharTempoTotal = async (esc, c, hhmm, userInfo, { turno } = {}) => {
+    const esp = espelhoTempoTotal(esc, c, hhmm || '', { hospitalLabels: { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' } })
+    if (esp) await setLinhaOverride(esc, { chave: esp.chave, anestesista: esp.nome }, esp.override, userInfo, turno)
+  }
+  return {
+  useEscalaCirurgicaActions: () => ({ atualizarCaso, adicionarAjuda, removerAjuda, setStatusCirurgia, setLinhaOverride, espelharTempoTotal }),
   // o hook das urgências lê `hoje` do context (fonte única desde 21/08)
   useEscalaCirurgica: () => ({ hoje: '2026-08-18', escalas: {}, data: '2026-08-18', loading: false }),
   HOSPITAL_LABEL: { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' },
-}))
+  }
+})
 vi.mock('@/contexts/UserContext', () => ({
   useUser: () => ({ user: { uid: 'u-eu', displayName: 'Eu Mesmo' } }),
 }))

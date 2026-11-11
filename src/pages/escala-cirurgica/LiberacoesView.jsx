@@ -1537,7 +1537,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     const local = rascLocal.trim()
     const hospital = rascHospital.trim()
     const cirurgioes = rascCirurgiao.trim()
-    const termino = rascTermino.trim()
+    // O TEMPO TOTAL É O DE AGORA, não o de quando o painel abriu (10/11): o painel não tem
+    // campo de tempo e grava a linha INTEIRA — com a foto da abertura, um total mudado
+    // nesse meio-tempo (outro aparelho, o espelho de uma cirurgia) voltava ao valor velho.
+    const termino = String(overrideDe(editor)?.termino ?? rascTermino ?? '').trim()
     const observacao = rascObservacao.trim()
     // local novo (digitado em "Outro") entra na lista NA HORA; os demais aparelhos
     // aprendem no próximo load (o override salvo é a fonte do histórico)
@@ -1624,13 +1627,28 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       termino: ov.termino || '', observacao: ov.observacao || '', renovado: ov.renovado === true,
     }
     const tinhaAlgo = Object.values(exibicao).some(Boolean)
+    // UMA CIRURGIA, UM NÚMERO (10/11): com uma só cirurgia em andamento o total É o
+    // estimado dela (espelho de 14/09). Restaurar apagava a pílula e deixava "faltam X" na
+    // cirurgia — o mesmo tempo, apagado de um lado só. O estimado espelhado sai junto, e o
+    // "Desfazer" o devolve. Estimado diferente do total (não era espelho) fica como está.
+    const unico = exibicao.termino && onDefinirTerminoCaso ? casoUnicoDoTotal(linha) : null
+    const espelhado = unico && (unico.terminoPrevisto || '') === exibicao.termino ? unico : null
     setEditor(null)
     const restauracao = onSetOverride?.(linha, null) // null = restauração explícita (limpa flags)
     restauracao?.catch?.(() => {})
+    // DEPOIS da linha gravada: o caso avisa o espelho, que precisa ler a linha já restaurada
+    if (espelhado) Promise.resolve(restauracao).then(() => onDefinirTerminoCaso(espelhado.id, '')).catch(() => {})
     if (tinhaAlgo) {
       Promise.resolve(restauracao).then(() => toast({
         title: `Linha de ${linha.anestesista} restaurada`,
-        action: { label: 'Desfazer', onClick: () => { onSetOverride?.(linha, exibicao)?.catch?.(() => {}) } },
+        action: {
+          label: 'Desfazer',
+          onClick: () => {
+            Promise.resolve(onSetOverride?.(linha, exibicao))
+              .then(() => (espelhado ? onDefinirTerminoCaso(espelhado.id, exibicao.termino) : null))
+              .catch(() => {})
+          },
+        },
       })).catch(() => {})
     }
   }
@@ -3788,7 +3806,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     const passou = iniMin != null ? formatFaltante(iniMin, agoraMin) : null
                     const detalhe = [c.token && c.token !== rotulo ? c.token : null, c.andamento ? 'em andamento' : 'agendada']
                       .filter(Boolean).join(' · ')
+                    // "estimado = tempo acima" SÓ quando é verdade (10/11): a frase aparecia com a
+                    // pílula vazia ou num horário diferente do estimado da cirurgia, e ainda
+                    // tirava o botão que corrige. Diferentes → o botão do estimado volta.
                     const estimadoDoTotal = cirurgiaUnicaTempo?.id === c.id
+                      && (c.terminoPrevisto || '') === (overrideDe(linhaTempo)?.termino || '')
                     // agendada: o estimado é DURAÇÃO, que conta do início (27/10)
                     const dur = !c.andamento && c.duracaoEstimadaMin ? rotuloDuracao(c.duracaoEstimadaMin) : null
                     return (
