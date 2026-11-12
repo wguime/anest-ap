@@ -115,7 +115,7 @@ describe('Rômulo — emprestado a um caso SEM cirurgião: o procedimento diz o 
     montar(escalaCom([daLouise]), { presencaOutros: noHro })
     const t = textoDe('Rômulo Roxo')
     // desde 29/10 o hospital vai no selo "Ajuda (HRO)" e a linha fica com a sala
-    expect(t).toMatch(/Ajuda \(HRO\)/)
+    expect(t).toMatch(/Da Unimed para o HRO · Sala 7/)
     expect(t).toMatch(/Sala 7/)
     expect(t).toMatch(/04 cesareas/i)
     expect(t).not.toMatch(/…/)
@@ -194,7 +194,7 @@ describe('card noturno de quem estava no rodapé de outro hospital (dono 16/09)'
     montar(escalaCom([daLouise, artrodese]), { presencaOutros: rodapeHro, plantoes })
     const card = cardComTexto('Matheus Cunha')
     expect(card).toBeTruthy()
-    expect(card.textContent).toContain('Ajuda (HRO)')
+    expect(card.textContent).toContain('Do HRO para a Unimed')
   })
 
   it('À NOITE (20h) o card P3 dele NÃO tem "Ajuda (HRO)" — e mantém a sala e o cirurgião', () => {
@@ -203,7 +203,7 @@ describe('card noturno de quem estava no rodapé de outro hospital (dono 16/09)'
     const card = cardComTexto('Matheus Cunha')
     expect(card).toBeTruthy()
     expect(card.textContent).toContain('P3')
-    expect(card.textContent).not.toContain('Ajuda (HRO)')
+    expect(card.textContent).not.toContain('Do HRO para a Unimed')
     expect(card.textContent).not.toMatch(/Ajuda/)
     expect(card.textContent).toContain('Cleiton Piekala')
     expect(card.textContent).toContain('19:30')

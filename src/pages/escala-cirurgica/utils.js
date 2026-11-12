@@ -2782,3 +2782,16 @@ export function frasePerdaRepublicacao(perda) {
   partes.push('Tempo, observação e trocas de quem continua na escala são mantidos.')
   return partes.join(' ')
 }
+
+/**
+ * Sentido da ajuda por extenso, com a concordância do lugar (dono 11/11: "do HRO, do
+ * Materno, da Unimed"): "Do HRO para a Unimed", "Da Unimed para o Consultório".
+ * Sem um dos lados, ou com os dois iguais, não há trajeto → null.
+ */
+const artigoDoLugar = (lugar) => (/^unimed$/i.test(String(lugar || '').trim()) ? 'a' : 'o')
+export function deParaLugar(de, para) {
+  const d = String(de || '').trim()
+  const p = String(para || '').trim()
+  if (!d || !p || d.toLowerCase() === p.toLowerCase()) return null
+  return `${artigoDoLugar(d) === 'a' ? 'Da' : 'Do'} ${d} para ${artigoDoLugar(p)} ${p}`
+}

@@ -1639,7 +1639,8 @@ describe('Liberações — acrescentado fora do rodapé entra na fila como Ajuda
       presencaOutros={[{ nome: 'ZILDA', hospitalLabel: 'HRO', rodapeIdx: 3 }]}
       onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
     // com origem conhecida, quem diz de onde veio é o badge derivado — sem duplicar
-    expect(screen.getByText('Ajuda (HRO)')).toBeTruthy()
+    expect(screen.getByText('Ajuda')).toBeTruthy()
+    expect(screen.getByText('Do HRO para a Unimed')).toBeTruthy()
   })
 })
 

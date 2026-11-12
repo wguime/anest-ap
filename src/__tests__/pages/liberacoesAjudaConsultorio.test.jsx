@@ -111,7 +111,8 @@ describe('selo "Ajuda" pela linha "CONSULTORIO - AJUDA" do mapa (dono 21/09)', (
   it('aparece no card de quem tem a linha, e só nele — o consultório comum não ganha selo', () => {
     montar(escalaDe())
     // desde 29/10 o lugar vai dentro do selo (dono: "Ajuda (Consultório)")
-    expect(within(card('u-alex-s')).getByText('Ajuda (Consultório)')).toBeTruthy()
+    expect(within(card('u-alex-s')).getByText('Ajuda')).toBeTruthy()
+    expect(within(card('u-alex-s')).getByText('Do HRO para o Consultório')).toBeTruthy()
     for (const uid of ['u-janaina', 'u-karine', 'u-raul', 'u-joao-r']) {
       expect(within(card(uid)).queryByText(/^Ajuda/)).toBeNull()
     }

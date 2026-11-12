@@ -1030,7 +1030,7 @@ describe('fila única — ajuda nunca é automática: só a marcada à mão', ()
     await screen.findByText(/Gabriel/)
     // desde 29/10 o lugar vai dentro do selo: o emprestado (Gabriel) é "Ajuda (HRO)"
     expect(screen.getAllByText(/^Ajuda( \(.+\))?$/).length).toBe(2)
-    expect(screen.getByText('Ajuda (HRO)')).toBeTruthy()
+    expect(screen.getByText('Da Unimed para o HRO · Sala 4')).toBeTruthy()
   })
 })
 

@@ -657,7 +657,7 @@ describe('Ajuda derivada de outro hospital (caso TIAGO)', () => {
     montar({ presencaOutros: presenca }, comExtra)
     const card = document.querySelector('[data-linha="uid-tiago"]')
     expect(card).toBeTruthy()
-    expect(within(card).getByText('Ajuda (HRO)')).toBeTruthy()
+    expect(within(card).getByText('Ajuda')).toBeTruthy()
   })
 
   it('quem está no rodapé LOCAL não ganha o badge derivado, mesmo cruzando', () => {
@@ -675,8 +675,7 @@ describe('Ajuda derivada de outro hospital (caso TIAGO)', () => {
       { ...comExtra, ajudaExterna: { matutino: ['TIAGO'] } },
     )
     const card = document.querySelector('[data-linha="uid-tiago"]')
-    expect(within(card).getAllByText('Ajuda (HRO)')).toHaveLength(1)
-    expect(within(card).queryByText('Ajuda')).toBeNull()
+    expect(within(card).getAllByText('Ajuda')).toHaveLength(1)
   })
 
   it('sem presença em NENHUMA lista, o extra ganha o badge Ajuda simples (dono 19/08)', () => {
@@ -716,9 +715,9 @@ describe('Emprestado mantém posição na origem (caso TIAGO)', () => {
     // Tiago na 2ª posição do rodapé — NÃO desceu para o bloco de ajuda
     expect(chaves[1]).toBe('TIAGO')
     const card = document.querySelector('[data-linha="TIAGO"]')
-    expect(within(card).getByText('Ajuda (Unimed)')).toBeTruthy()
-    expect(within(card).getByText('Ajuda (Unimed)').getAttribute('data-variant')).toBe('info')
-    expect(within(card).getByText('Hemodinâmica')).toBeTruthy()
+    expect(within(card).getByText('Ajuda')).toBeTruthy()
+    expect(within(card).getByText('Ajuda').getAttribute('data-variant')).toBe('info')
+    expect(within(card).getByText('Do HRO para a Unimed · Hemodinâmica')).toBeTruthy()
     expect(within(card).queryByText(/^N[ao] Unimed$/)).toBeNull()
     // sem setas: a posição é a do rodapé
     expect(within(card).queryByLabelText(/na ordem das ajudas/)).toBeNull()
@@ -731,7 +730,7 @@ describe('Emprestado mantém posição na origem (caso TIAGO)', () => {
     // vezes, com a frase mais longa puxando o olho antes do nome.
     montar({ presencaOutros: presenca }, escalaOrigem)
     const card = document.querySelector('[data-linha="TIAGO"]')
-    const destino = within(card).getByText('Hemodinâmica')
+    const destino = within(card).getByText('Do HRO para a Unimed · Hemodinâmica')
     // ⚠️ a cor mora no BLOCO desde 11/09, quando os cirurgiões viraram uma linha
     // cada (antes era tudo uma frase só, e a classe ficava no próprio <p>). A
     // asserção subiu junto e ficou mais estrita: nem o bloco nem nenhuma linha
@@ -741,7 +740,7 @@ describe('Emprestado mantém posição na origem (caso TIAGO)', () => {
     expect(bloco.className).not.toMatch(/text-info/)
     for (const p of bloco.querySelectorAll('p')) expect(p.className).not.toMatch(/text-info/)
     // o sinal continua existindo, no badge
-    expect(within(card).getByText('Ajuda (Unimed)')).toBeTruthy()
+    expect(within(card).getByText('Ajuda')).toBeTruthy()
   })
 
   /**
@@ -760,12 +759,12 @@ describe('Emprestado mantém posição na origem (caso TIAGO)', () => {
     ]
     montar({ presencaOutros: doisCasos }, escalaOrigem)
     const card = document.querySelector('[data-linha="TIAGO"]')
-    const destino = within(card).getByText('CC - Sala 2')
+    const destino = within(card).getByText('Do HRO para a Unimed · CC - Sala 2')
     const bloco = destino.closest('div')
-    // sala + um <p> por cirurgião — nenhum nome dividindo linha com outro (o hospital
-    // está no selo "Ajuda (Unimed)")
+    // sentido + sala + um <p> por cirurgião — nenhum nome dividindo linha com outro
+    // (o selo é só "Ajuda"; o sentido vai por extenso, dono 11/11)
     expect([...bloco.querySelectorAll('p')].map((p) => p.textContent)).toEqual(
-      ['CC - Sala 2', 'Mateus Baptistella', 'Maurício Spagnol']
+      ['Do HRO para a Unimed · CC - Sala 2', 'Mateus Baptistella', 'Maurício Spagnol']
     )
     // a contagem saiu: o número de linhas já diz quantas são
     expect(bloco.textContent).not.toMatch(/cirurgias/)
@@ -976,7 +975,7 @@ describe('badge de Ajuda derivado tem "não é ajuda", e desfazer é uma declara
     const onDefinirSemAjuda = vi.fn(async () => {})
     montar({ onAddAjuda, onDefinirSemAjuda, presencaOutros: emprestado })
     abrirEditor('Leonardo Ferrazzo')
-    fireEvent.click(screen.getByRole('button', { name: 'Tirar o selo "Ajuda (Unimed)" (não muda a posição)' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Tirar o selo "Ajuda" (não muda a posição)' }))
     await waitFor(() => expect(onDefinirSemAjuda).toHaveBeenCalledTimes(1))
     expect(onDefinirSemAjuda.mock.calls[0][0]).toMatchObject({ chave: 'uid-leo' })
     expect(onDefinirSemAjuda.mock.calls[0][1]).toBe(true)

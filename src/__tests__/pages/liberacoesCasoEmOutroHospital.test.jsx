@@ -87,13 +87,13 @@ describe('na escala dele: fica na fila, marcado como ajuda, com o destino no car
   it('com a cirurgia do HRO, ele continua na fila e recebe o badge de Ajuda', () => {
     montar({ presencaOutros: noHro })
     expect(selosDe('Oscar Morais')).not.toContain('Liberado')
-    expect(selosDe('Oscar Morais')).toContain('Ajuda (HRO)')
+    expect(selosDe('Oscar Morais')).toContain('Ajuda')
   })
 
   it('o card diz ONDE ele está: local, hospital e cirurgião', () => {
     montar({ presencaOutros: noHro })
     // desde 29/10 o hospital vai no selo "Ajuda (HRO)" e a linha fica com a sala
-    expect(cardDe('Oscar Morais').textContent).toMatch(/Ajuda \(HRO\)/)
+    expect(cardDe('Oscar Morais').textContent).toMatch(/Da Unimed para o HRO · IOSC/)
     expect(cardDe('Oscar Morais').textContent).toMatch(/IOSC/)
     expect(cardDe('Oscar Morais').textContent).toMatch(/Maurício Fabiani/)
   })
@@ -233,7 +233,8 @@ describe('ajuda DECLARADA em outro hospital, sem caso lá (caso Eduardo)', () =>
         onToggle={() => {}} onSetOverride={() => {}} />,
       { wrapper: wrap },
     )
-    expect(selosDe('Eduardo')).toContain('Ajuda (Materno)')
+    expect(selosDe('Eduardo')).toContain('Ajuda')
+    expect(cardDe('Eduardo').textContent).toMatch(/Do HRO para o Materno/)
     // e ele NÃO muda de posição: segue no lugar do rodapé daqui
     const fila = [...document.querySelectorAll('[data-linha]')].map((n) => n.getAttribute('data-nome'))
     expect(fila.indexOf('Eduardo')).toBe(1)

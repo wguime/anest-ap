@@ -18,7 +18,7 @@
  * o que quebrou foi o fio entre as duas, e é o fio que precisa de teste.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 
 import { ThemeProvider, ToastProvider } from '@/design-system'
 
@@ -132,7 +132,7 @@ describe('ajuda libera na ordem do hospital de ORIGEM (dono 27/08)', () => {
 
   it('o card diz de ONDE a ajuda veio', () => {
     montar({ unimed: UNIMED, hro: HRO })
-    expect(screen.getAllByText('Ajuda (HRO)').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getAllByText('Do HRO para a Unimed').length).toBeGreaterThanOrEqual(2)
   })
 
   it('o painel “Veio de” existe na ajuda e grava o hospital escolhido', () => {
@@ -172,7 +172,7 @@ describe('ajuda libera na ordem do hospital de ORIGEM (dono 27/08)', () => {
     montar({ unimed: marcado, hro: HRO })
     const nomes = fila()
     expect(nomes.slice(-4)).toEqual(['Alexandre S', 'Gustavo', 'Rômulo', 'Oscar'])
-    expect(screen.getByText('Ajuda (Materno)')).toBeTruthy()
+    expect(screen.getByText('Do Materno para a Unimed')).toBeTruthy()
   })
 
   it('sem a escala do outro hospital, a cauda não inventa ordem nenhuma', () => {
@@ -180,7 +180,7 @@ describe('ajuda libera na ordem do hospital de ORIGEM (dono 27/08)', () => {
     // ninguém tem origem conhecida: a fila não quebra e o contraturno segue no fim
     const nomes = fila()
     expect(nomes[nomes.length - 1]).toBe('Oscar')
-    expect(screen.queryByText('Ajuda (HRO)')).toBeNull()
+    expect(screen.queryByText('Do HRO para a Unimed')).toBeNull()
   })
 })
 
@@ -214,7 +214,8 @@ describe('quem está de ajuda em outro hospital, na escala DELE', () => {
     montar({ unimed: UNIMED_SEM_OSCAR, hro: HRO_COM_OSCAR })
     const card = screen.getByLabelText('Editar local/cirurgião de Oscar').closest('[data-linha]')
     // desde 29/10 o hospital vai no selo "Ajuda (HRO)" e a linha fica com a sala
-    expect(card.textContent).toMatch(/Ajuda \(HRO\)/)
+    expect(within(card).getByText('Ajuda')).toBeTruthy()
+    expect(card.textContent).toMatch(/Da Unimed para o HRO · IOSC/)
     expect(card.textContent).toMatch(/IOSC/)
     expect(card.textContent).toMatch(/Maurício Fabiani/)
   })
@@ -304,6 +305,7 @@ describe('ordem informada da ajuda vence a derivada (dono 09/09)', () => {
     // MUDOU DE LADO (dono 29/10): a ajuda declarada também leva "Ajuda (HRO)" — sem duplicar
     montar({ unimed: comMarca, hro: HRO_MANHA })
     const card = screen.getByLabelText('Editar local/cirurgião de Alexandre D').closest('[data-linha]')
-    expect(card.textContent.match(/Ajuda \(HRO\)/g)).toHaveLength(1)
+    expect(within(card).getAllByText('Ajuda')).toHaveLength(1)
+    expect(card.textContent.match(/Do HRO para a Unimed/g)).toHaveLength(1)
   })
 })

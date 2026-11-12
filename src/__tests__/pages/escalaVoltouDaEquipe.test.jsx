@@ -131,6 +131,6 @@ describe('voltou da equipe de outro hospital: entra na posição da numérica, n
     await new Promise((r) => setTimeout(r, 300))
     const nomes = fila()
     expect(nomes.indexOf('Giovana')).toBeGreaterThan(nomes.indexOf('Marilio'))
-    expect(cardDe('Giovana').textContent).toMatch(/Ajuda \(HRO\)/)
+    expect(cardDe('Giovana').textContent).toMatch(/AjudaDo HRO para a Unimed/)
   })
 })

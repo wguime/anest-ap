@@ -3,6 +3,14 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## 11/11/2026 (noite) — Escala: o selo de ajuda diz o sentido por extenso
+
+Dono: "quero que informe de onde veio a ajuda e para onde vai, da maneira como está não fica muito claro" — o
+"Ajuda (Unimed)" no HRO era o DESTINO e o "Ajuda (HRO)" na Unimed era a ORIGEM, da mesma pessoa. Modelo B de
+`.tmp/ajuda-origem-destino.html`: o selo azul é só **"Ajuda"** e a 1ª linha cinza do card diz o sentido com a
+concordância do lugar — "Do HRO para a Unimed · CC - Sala 3", "Da Unimed para o Consultório" (`deParaLugar`
+em `utils.js`). Sem número de versão: a v5.12.95 de outra sessão ainda não subiu.
+
 ## 11/11/2026 — Escala: tempos sem dúvida nas quatro folhas, desfazer de troca e tela de abertura — v5.12.94
 
 Modelos escolhidos pelo dono em 10/11 (`.tmp/analise-escala-2026-11/modelos-2/`).

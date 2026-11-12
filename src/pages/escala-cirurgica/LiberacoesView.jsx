@@ -33,7 +33,7 @@ import { ehDiaOperacionalAtual, erroHorarioReal, limiteDoTermino, terminoDaDurac
 import { carimboDeStatus } from '@/lib/escalaCirurgicaStatus'
 import { blocoDaLinha, estadoDaFila, ordenarListaExibicao } from '@/lib/filaLiberacao'
 import AddCasoSheet from './AddCasoSheet'
-import { ajudaOrdemInformada, anestesistaDoCasoEh, casoConcluido, casosDaFilaDoTurno, casosDaFilaFds, casosResolvidos, chaveSalaEscolha, compararSalas, diffRelogioMin, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao, turnoDoCaso, procedimentoComContinuacao, procedimentoBaseDoCaso } from './utils'
+import { ajudaOrdemInformada, deParaLugar, anestesistaDoCasoEh, casoConcluido, casosDaFilaDoTurno, casosDaFilaFds, casosResolvidos, chaveSalaEscolha, compararSalas, diffRelogioMin, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao, turnoDoCaso, procedimentoComContinuacao, procedimentoBaseDoCaso } from './utils'
 
 // Sentinelas do dropdown de Local (valores impossíveis como nome de sala)
 const LOCAL_AUTO = '__auto__'
@@ -1217,16 +1217,25 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     return { hospital: matches[0].hospitalLabel, locais, cirurgioes }
   }
   /**
-   * Rótulo do selo de ajuda (dono 29/10: "Ajuda (HRO), Ajuda (Unimed), Ajuda (Materno),
-   * Ajuda (Consultório)"): o lugar vai DENTRO do selo — para onde foi quem está emprestado,
-   * de onde veio quem é ajuda aqui. Sem lugar conhecido, só "Ajuda".
+   * Selo de ajuda = "Ajuda", sempre (dono 11/11, opção B de `.tmp/ajuda-origem-destino.html`).
+   * O "Ajuda (Lugar)" de 29/10 dizia o DESTINO na fila de origem e a ORIGEM na fila de
+   * destino — a mesma pessoa aparecia como "Ajuda (Unimed)" no HRO e "Ajuda (HRO)" na
+   * Unimed, e quem lia não sabia o sentido ("da maneira como está não fica muito claro").
+   * O sentido foi para a linha de baixo, por extenso: `trajetoAjudaDe`.
    */
-  const rotuloAjuda = (linha) => {
+  const rotuloAjuda = () => 'Ajuda'
+  /**
+   * "Do HRO para a Unimed", "Da Unimed para o Consultório" (dono 11/11: "cuide a
+   * concordância — do HRO, do Materno, da Unimed"). Emprestado: daqui → onde opera;
+   * consultório: daqui → Consultório; ajuda vinda de fora: origem → aqui.
+   */
+  const trajetoAjudaDe = (linha) => {
+    if (!linha || modoFds || linha.noturno) return null
     const fora = ajudaForaInfo(linha)
-    if (fora?.hospital) return `Ajuda (${fora.hospital})`
-    if (ajudaNoConsultorio(linha)) return 'Ajuda (Consultório)'
-    if (linha.origemLabel && !linha.noturno) return `Ajuda (${linha.origemLabel})`
-    return 'Ajuda'
+    if (fora?.hospital) return deParaLugar(hospitalLabel, fora.hospital)
+    if (ajudaNoConsultorio(linha)) return deParaLugar(hospitalLabel, 'Consultório')
+    if (linha.origemLabel) return deParaLugar(linha.origemLabel, hospitalLabel)
+    return null
   }
   /**
    * TROCA DECLARADA (dono 30/07): a linha é um dos lados de um par declarado?
@@ -2533,7 +2542,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   {/* ajuda DERIVADA do cruzamento (caso TIAGO 30/07): com o hospital
                       de origem, porque a marca não veio de ajuda_externa */}
                   {badgeAjudaOutro && (
-                    <Badge variant="info" className="shrink-0">Ajuda ({badgeAjudaOutro})</Badge>
+                    <Badge variant="info" className="shrink-0">Ajuda</Badge>
                   )}
                   {/* EQUIPE DE OUTRO HOSPITAL (dono 21/09): "Equipe até 13h/19h". CIANO
                       sólido — o dono pediu a faixa de Ajuda (azul) e Troca (índigo), e o
@@ -2712,15 +2721,23 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         pessoa está, e a contagem já é o número de linhas. */}
                     {!liberadoReal && ajudaForaInfo(linha) && (() => {
                       const fora = ajudaForaInfo(linha)
+                      // 1ª linha = o SENTIDO + a sala (dono 11/11, opção B): "Do HRO para a
+                      // Unimed · CC - Sala 3". O selo ficou só "Ajuda".
+                      const primeira = [trajetoAjudaDe(linha), fora.locais].filter(Boolean).join(' · ')
                       return (
                         <div className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
-                          {/* declarada sem caso lá: o selo "Ajuda (Materno)" diz tudo */}
-                          {/* o selo "Ajuda (HRO)" já diz o hospital: a linha fica com a sala */}
-                          {fora.locais && <p className="truncate">{fora.locais}</p>}
+                          {primeira && <p className="truncate" data-trajeto-ajuda>{primeira}</p>}
                           {fora.cirurgioes.map((c) => <p key={c} className="truncate">{c}</p>)}
                         </div>
                       )
                     })()}
+                    {/* AJUDA AQUI (vinda de outro hospital) e AJUDA NO CONSULTÓRIO: o
+                        sentido por extenso, na mesma receita da linha acima (dono 11/11). */}
+                    {!liberadoReal && !ajudaForaInfo(linha) && (badgeAjuda || badgeAjudaOutro) && trajetoAjudaDe(linha) && (
+                      <p className="mt-0.5 truncate text-[13px] leading-snug text-muted-foreground" data-trajeto-ajuda>
+                        {trajetoAjudaDe(linha)}
+                      </p>
+                    )}
                     {/* TURNO PRÓPRIO (dono 11/09): o card precisa DIZER por que esta
                         pessoa PODE sair fora da ordem — sem a frase, ver alguém do meio
                         da fila ser liberado antes dos de baixo lê como fila furada, que
