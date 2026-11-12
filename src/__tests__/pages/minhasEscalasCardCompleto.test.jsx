@@ -136,3 +136,47 @@ describe('Minhas — detalhe do caso vem COMPLETO', () => {
     ))
   })
 })
+
+// MINHA VEZ (dono 11/11/2026, opção B de `modelos-4/6-minhas-minha-vez.html`): a linha que já
+// existia diz também a posição na fila e o Tempo total, lidos de onde a fila lê.
+describe('Minhas — "N cirurgias neste hospital · 3º da fila · fica até HH:MM" (dono 11/11/2026)', () => {
+  const montarMinhas = (extra = {}, casos = [caso]) => render(
+    <MinhasEscalasView escala={{ ...escala, casos, ...extra }} meuAlias="MELO" meuUid="uid-melo" turno="vespertino" />,
+    { wrapper: wrap },
+  )
+  const linha = () => document.querySelector('[data-resumo-minhas]').textContent
+  const RODAPE = { ordemLiberacao: { vespertino: ['KARINE', 'LEONARDO', 'MELO'] } }
+
+  it('com posição e tempo total: a linha diz os três', () => {
+    montarMinhas({ ...RODAPE, linhaOverrides: { 'vespertino:uid-melo': { termino: '18:26' } } })
+    expect(linha()).toBe('1 cirurgia neste hospital · 3º da fila · fica até 18:26')
+  })
+
+  it('sem tempo total: só a posição', () => {
+    montarMinhas(RODAPE)
+    expect(linha()).toBe('1 cirurgia neste hospital · 3º da fila')
+  })
+
+  it('fora da ordem publicada (sem rodapé): a linha fica como era', () => {
+    montarMinhas()
+    expect(linha()).toBe('1 cirurgia neste hospital')
+  })
+
+  it('quem ASSUMIU a posição de um colega lê a posição e o tempo total do slot', () => {
+    montarMinhas({
+      ordemLiberacao: { vespertino: ['KARINE', 'LEONARDO'] },
+      linhaOverrides: { 'vespertino:LEONARDO': { assumidaPor: { uid: 'uid-melo', nome: 'MELO' }, termino: '17:10' } },
+    })
+    expect(linha()).toBe('1 cirurgia neste hospital · 2º da fila · fica até 17:10')
+  })
+
+  it('já liberada no turno: não diz posição nem tempo', () => {
+    montarMinhas({ ...RODAPE, liberacoes: { 'vespertino:uid-melo': { liberadoEm: '2026-07-29T17:00:00-03:00' } }, linhaOverrides: { 'vespertino:uid-melo': { termino: '18:26' } } })
+    expect(linha()).toBe('1 cirurgia neste hospital')
+  })
+
+  it('o tempo total da MANHÃ não aparece na tarde (é do turno)', () => {
+    montarMinhas({ ...RODAPE, linhaOverrides: { 'matutino:uid-melo': { termino: '12:00' } } })
+    expect(linha()).toBe('1 cirurgia neste hospital · 3º da fila')
+  })
+})

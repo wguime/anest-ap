@@ -399,6 +399,44 @@ Saíram: "Previsão de saída", "Estimado" solto, "estimar", "previsto 01:30", "
   `escalaHorarioCirurgia.test.jsx`, `definirAnestesistaAssumirPosicao.test.jsx`. Os que mudaram de lado
   levam o porquê e a data no corpo.
 
+### Leva de layout de 11/11/2026 (dono, por modelo) — o que vale HOJE
+
+> Modelos em `.tmp/analise-escala-2026-11/modelos-3` a `modelos-6`. **Substitui, no que conflitar, a seção
+> "Os tempos sem dúvida" logo acima** (casas de 64–84 px com "ainda não informado", três casas por cirurgia
+> na folha da sala, pílula do tempo total no cabeçalho da sala).
+
+- **Casas compactas** (`TemposCirurgia.jsx`, opção A de `modelos-5/1`): as três casas continuam em TODA
+  cirurgia, com **52 px**, rótulo pequeno em cima e valor grande embaixo; **vazia = só "—"**; o apoio saiu de
+  dentro delas para UMA linha abaixo das três (`apoioDasCasas`: "Início: há 1h31 · Tempo estimado: faltam
+  3h25" · "Tempo estimado: duração prevista" · "Término: durou 1h17"; âmbar quando passou).
+- **Um início só** (opção A de `modelos-4/2`): a linha "Iniciada às 08:26 por Fulano" SAIU do cartão Andamento —
+  a folha mostrava dois horários de início. A procedência fica sob as casas, pequena: "informado por Fulano às
+  08:26" (`informado` em `CasasCirurgia`). O autor é o do horário (`inicioRealPor`/`terminoRealPor`); a HORA só
+  aparece quando o carimbo do status é do mesmo passo e da mesma pessoa; sem autor no roster, só a hora. No turno
+  encerrado o cartão Andamento (leitura) segue dizendo o estado.
+- **Quem responde pela sala** (opção C de `modelos-3/1`): as três casas por cirurgia saíram; fica SAI → ASSUME e
+  UMA linha-resumo ("4 cirurgias passam com Fernanda · 1 em andamento · 3 não começaram · os horários vão
+  junto") que abre a lista (hora · iniciais · procedimento) só se tocar; com UMA cirurgia, a própria linha
+  dela. "Dois anestesistas…", a faixa do tempo total de quem sai e "Como Fulano entra?" continuam.
+- **Hospital no título** (opção A de `modelos-3/2`): subtítulo "HRO · Hoje · Quarta, 11/11 · Manhã" — reabre
+  16/08. Diz o hospital SELECIONADO; na fila única das Liberações diz "Fila única".
+- **Procedimentos sem anestesista** (opção B): UMA caixa com uma linha por procedimento e "Definir" (linha
+  inteira ≥ 44 px) — reabre 24/08. A fila única segue agrupada por cirurgião.
+- **A pílula "Tempo total HH:MM" do cabeçalho da sala SAIU** (dono: "retire essa funcionalidade, não acho que
+  ela será prática"). O cartão do anestesista com o atalho "Fila" na folha da cirurgia fica. Não repropor.
+- **Minhas** (opção B de `modelos-4/6`): a linha de cima vira "6 cirurgias neste hospital · 3º da fila · fica
+  até 12:26" — posição e tempo total lidos de onde a fila lê (`tempoTotalDaPessoa`, que agora devolve
+  `posicao` e `liberada`; slot assumido e linha `'fds'` inclusos). Sem posição publicada ou já liberada, a
+  linha fica como era. Os cartões não mudaram.
+- **Adicionar/editar caso** (opção A de `modelos-5/3`): um bloco "A cirurgia" em grade — Procedimento*,
+  Cirurgião*, Convênio* | Hora, Sala | Idade, Paciente (iniciais) | Residente, Anestesista — e "Tipo e
+  prioridade"; a frase vermelha da gravidade só depois de tentar salvar (o botão não fica `disabled`: usa
+  `aria-disabled` e o toque acende o aviso); rodapé preso; o posto do contrato saiu da tela
+  (`escala-urgencias.md`).
+- **Pílula "+ Tempo total" vazia** (opção B de `modelos-5/4`): fundo `accent`, contorno contínuo `primary`,
+  mais folga dos lados (`px-2.5`); altura, posição e a preenchida iguais — reabre o tracejado de 30/07.
+- **Faixa de urgências e "Urgências aguardando"**: ver `escala-urgencias.md`.
+
 ### Horário pendente — alerta PÚBLICO de quem não preencheu início/término (dono 2026-10-05, modelo A)
 
 > ↳ **27/10: o alerta virou INDIVIDUAL** — a faixa pública, a pílula "Você N/Você em dia", o "Na

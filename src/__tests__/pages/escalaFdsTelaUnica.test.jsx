@@ -1062,7 +1062,12 @@ describe('o desenho da fila única não atravessa para o dia útil', () => {
 
 
 
-  it('sem anestesista: volta a frase de sempre, não a pastilha "Assumir"', async () => {
+  // ⚠️ MUDOU DE LADO (dono 11/11/2026, opção B de `modelos-3/2-pagina-principal.html`). O
+  // teste travava a frase "Toque para definir o anestesista" abaixo de cada cartão (24/08).
+  // O dia útil passou a ter UMA caixa com uma linha por procedimento e "Definir" à direita —
+  // os cartões de 3 linhas empurravam a fila para fora da tela. O que segue de pé: o desenho
+  // do FIM DE SEMANA ("Assumir", agrupado por cirurgião) não atravessa para o dia útil.
+  it('sem anestesista: uma linha com "Definir" na caixa do dia útil, não a pastilha "Assumir"', async () => {
     const escala = {
       ...ESCALA_UTIL,
       casos: [
@@ -1071,7 +1076,11 @@ describe('o desenho da fila única não atravessa para o dia útil', () => {
       ],
     }
     render(<LiberacoesView {...utilProps({ escala, onDefinirCasos: vi.fn() })} />, { wrapper: wrap })
-    expect(await screen.findByText(/Toque para definir o anestesista/)).toBeTruthy()
+    const linha = await screen.findByRole('button', { name: /^Definir anestesista de / })
+    expect(linha.closest('[data-caixa-sem-anestesista]')).not.toBeNull()
+    expect(linha.className).toContain('min-h-[44px]')
+    expect(linha.textContent).toMatch(/Definir$/)
+    expect(screen.queryByText(/Toque para definir o anestesista/)).toBeNull()
     expect(screen.queryByText('Assumir')).toBeNull()
   })
 
@@ -1161,10 +1170,15 @@ describe('sem anestesista por CIRURGIÃO — só na fila única (dono 13/09)', (
     expect(onDefinirCasos.mock.calls[0][0]).toEqual(['h2'])
   })
 
-  it('no DIA ÚTIL segue um card por procedimento — o agrupamento é da fila única', async () => {
+  // 11/11/2026 (dono, opção B): no dia útil é UMA caixa com uma linha por procedimento (eram
+  // cartões soltos com "Toque para definir o anestesista"); o agrupamento por cirurgião
+  // continua sendo só da fila única.
+  it('no DIA ÚTIL é uma linha por procedimento, numa caixa só — o agrupamento é da fila única', async () => {
     const escalaHro = { id: 'hro-1', hospital: 'hro', ordemLiberacao: { matutino: ['GABRIEL'] }, liberacoes: {}, linhaOverrides: {}, casos: [CASOS_FDS[1], ...ORFAS_HRO] }
     render(<LiberacoesView {...props({ modoFds: false, casosFds: null, fdsMeta: null, hospital: 'hro', hospitalLabel: 'HRO', escala: escalaHro, onDefinirCasos: vi.fn() })} />, { wrapper: wrap })
-    expect(await screen.findAllByText(/Toque para definir o anestesista/)).toHaveLength(2)
+    expect(await screen.findAllByRole('button', { name: /^Definir anestesista de / })).toHaveLength(2)
+    expect(document.querySelectorAll('[data-caixa-sem-anestesista]')).toHaveLength(1)
+    expect(document.querySelector('[data-caixa-sem-anestesista]').textContent).toContain('2 procedimentos sem anestesista')
     expect(screen.queryByRole('group', { name: /sem anestesista/ })).toBeNull()
     expect(screen.queryByText(/Toque para assumir/)).toBeNull()
   })

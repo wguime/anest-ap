@@ -11,6 +11,8 @@
  *  • CO é dedicado SÓ de manhã (contrato por turno);
  *  • tocar num card com caso abre o detalhe — a mesma superfície onde se marca
  *    Iniciada/Terminada;
+ *  • desde 11/11/2026 a caixa tem DUAS linhas (papel + quem, ou "livre") e as urgências que
+ *    aguardam saíram de dentro da faixa para o bloco "Urgências aguardando", logo abaixo;
  *  • a faixa vive FORA da BoardView: o EmptyState "nenhum caso neste turno" não
  *    pode matá-la (8 de 9 urgências de 18/08 nasceram à mão, sem escala do turno).
  */
@@ -138,17 +140,24 @@ describe('quando a faixa existe', () => {
   })
 })
 
+// ⚠️ OS CARDS DA FAIXA MUDARAM DE LADO (dono 11/11/2026, opção B de `.tmp/analise-escala-2026-11/
+// modelos-6/1-faixa-urgencias.html`, com o ajuste dele: "na linha de baixo deixe apenas o nome do
+// anestesista, retire o ocupada e a sala"). De 09/09 a 10/11 o card tinha TRÊS linhas — papel,
+// quem, onde e quanto pesa ("Sala 6 · 40min", "Sala 7 - CO · 2 cir.") — e os testes abaixo
+// travavam a 3ª. Agora são DUAS: o papel em cima e, embaixo, só QUEM está, ou "livre". No HRO a
+// primeira cirurgia só aparecia no meio da tela. A REGRA de qual urgência ocupa qual vaga não
+// mudou — as pastilhas e as contagens seguem iguais.
 describe('postos do contrato', () => {
-  it('ocupado mostra papel + quem + onde; vago mostra o papel e "livre"', () => {
-    // MODELO B (dono 09/09): o card tem três linhas de papel fixo — papel,
-    // quem está, onde e quanto pesa. O papel é o TÍTULO, não uma palavra
-    // espremida no canto direito junto de "livre"/"48min"/"2 cir.".
+  const cardDe = (papel) => screen.getByText(papel).closest('button, div')
+
+  it('ocupado mostra papel + QUEM, sem sala nem tempo; vago mostra o papel e "livre"', () => {
     montar([iniciada('c1', 'Sala 6')])
-    expect(screen.getByText('Plantão')).toBeTruthy()
-    expect(screen.getByText('Marcelo')).toBeTruthy()
-    expect(screen.getByText('Sala 6 · 40min')).toBeTruthy()
-    expect(screen.getByText('Sobreaviso')).toBeTruthy()
-    expect(screen.getByText('livre')).toBeTruthy()
+    expect(cardDe('Plantão').textContent).toBe('PlantãoMarcelo')
+    expect(cardDe('Sobreaviso').textContent).toBe('Sobreavisolivre')
+    expect(screen.queryByText('Sala 6 · 40min')).toBeNull()
+    expect(document.querySelector('[aria-label="Urgências do HRO"]').textContent).not.toMatch(/Sala 6|40min/)
+    // caixa mais baixa: 44 px (era 48+)
+    expect(cardDe('Plantão').className).toContain('min-h-[44px]')
   })
 
   it('o cabeçalho diz em que LINHA do contrato estamos, e não duas contagens', () => {
@@ -172,9 +181,16 @@ describe('postos do contrato', () => {
     // lido como estado, do lado de "livre", e não como quem cobre a sala.
     expect(screen.getByText('Ortopedia')).toBeTruthy()
     expect(screen.getByText('Centro obstétrico')).toBeTruthy()
-    expect(screen.getByText('Rafael')).toBeTruthy()
-    expect(screen.getByText('Cristina')).toBeTruthy()
-    expect(screen.getByText('Sala 4 · 1 cir.')).toBeTruthy()
+    // só o nome de quem o mapa pôs ali — sem sala, sem contagem (dono 11/11/2026)
+    expect(cardDe('Ortopedia').textContent).toBe('OrtopediaRafael')
+    expect(cardDe('Centro obstétrico').textContent).toBe('Centro obstétricoCristina')
+    expect(screen.queryByText('Sala 4 · 1 cir.')).toBeNull()
+  })
+
+  it('dedicado sem ninguém no mapa diz "livre" (era "sem anestesista" + a sala)', () => {
+    montar([iniciada('c1', 'Sala 6')])
+    expect(cardDe('Ortopedia').textContent).toBe('Ortopedialivre')
+    expect(cardDe('Centro obstétrico').textContent).toBe('Centro obstétricolivre')
   })
 
   it('à tarde o CO SAI dos dedicados e passa a OCUPAR uma vaga (dono 20/08)', () => {
@@ -188,8 +204,9 @@ describe('postos do contrato', () => {
     )
     expect(screen.getByText('Ortopedia')).toBeTruthy()
     expect(screen.queryByText('Centro obstétrico')).toBeNull() // não é mais card de dedicado
-    expect(screen.getByText('Sala 7 - CO')).toBeTruthy()
-    expect(screen.getByText('Cristina')).toBeTruthy()
+    // a sala do CO ocupa uma vaga do contrato — a caixa diz só quem está (11/11)
+    expect(screen.queryByText('Sala 7 - CO')).toBeNull()
+    expect(screen.getByText('Cristina').closest('button').textContent).toMatch(/^(Plantão|Sobreaviso)Cristina$/)
     expect(screen.getByLabelText('2 de 2 vagas de urgência ocupadas')).toBeTruthy()
   })
 
@@ -201,10 +218,12 @@ describe('postos do contrato', () => {
        caso('co2', 'Sala 7 - CO', { gravidade: 'urgente', procedimento: 'Cesarianas', turno: 'vespertino', anestesista: 'GABRIEL', anestesistaUserId: 'u-gabriel' })],
       { turno: 'vespertino' },
     )
-    // sala e contagem viraram a MESMA linha do card (modelo B): um card só.
-    expect(screen.getAllByText('Sala 7 - CO · 2 cir.')).toHaveLength(1)
+    // um card só, com o nome de quem está (a contagem "2 cir." saiu da caixa em 11/11)
+    expect(screen.getAllByText('Gabriel')).toHaveLength(1)
+    expect(screen.queryByText(/cir\./)).toBeNull()
     expect(screen.getByLabelText('1 de 2 vagas de urgência ocupadas')).toBeTruthy()
-    expect(screen.queryByText(/Fila —/)).toBeNull() // a cesárea seguinte é trabalho DESTA sala
+    // a cesárea seguinte é trabalho DESTA sala: não vira "urgência aguardando"
+    expect(document.querySelector('[data-urgencias-aguardando]')).toBeNull()
   })
 })
 
@@ -236,35 +255,64 @@ describe('excedente — acima do contrato', () => {
   })
 })
 
-describe('fila', () => {
-  it('ordena por gravidade, mostra a espera e a não classificada pede "Classificar" no fim', () => {
-    // 2 vagas ocupadas (a iniciada + a 1ª agendada, que ENTRA na vaga livre desde
-    // 20/08) ⇒ as duas seguintes formam a fila.
+// ⚠️ MUDOU DE LADO (dono 11/11/2026, opção A de `modelos-6/2-urgencias-aguardando.html`): a
+// "Fila — N aguardando" de DENTRO da faixa (uma linha com posição, selo, procedimento e espera,
+// teto de 3 + "ver todas") virou o bloco "Urgências aguardando", logo ABAIXO da faixa — o mesmo
+// bloco, com o mesmo nome e desenho, que abre a aba Liberações. Cada linha diz também a sala (ou
+// "Sala a definir") e quem faz (ou "sem anestesista", com "Definir"). A ORDEM continua sendo a
+// da lib (gravidade → chegada) e a lista é a mesma `estado.fila`.
+describe('urgências aguardando — o bloco abaixo da faixa (dono 11/11/2026)', () => {
+  const bloco = () => document.querySelector('[data-urgencias-aguardando]')
+  const linhas = () => [...bloco().querySelectorAll(':scope > div > div')].map((l) => l.textContent)
+
+  it('ordena por gravidade; cada linha diz selo · procedimento · sala · quem · há quanto tempo', () => {
+    // 2 vagas ocupadas (as duas iniciadas) ⇒ as duas agendadas aguardam
     montar([
       iniciada('c0', 'Sala 6'),
       iniciada('c0b', 'Sala 1'),
       caso('f-sem', 'Sala 9', { created_at: `${HOJE}T08:50:00` }),
       caso('f-imed', 'Sala 3', { gravidade: 'imediata', procedimento: 'AVC HEMORRAGICO', created_at: `${HOJE}T10:48:00` }),
     ])
-    expect(screen.getByText(/Fila — 2 aguardando/i)).toBeTruthy()
-    const linhas = screen.getAllByText(/^(1|2)º$/).map((el) => el.closest('button'))
-    expect(linhas[0].textContent).toContain('Imediata')
-    expect(linhas[0].textContent).toContain('AVC hemorragico') // fraseClinica preserva a sigla
-    expect(linhas[0].textContent).toContain('12min')
-    expect(linhas[1].textContent).toContain('Classificar')
-    expect(linhas[1].textContent).toContain('2h10')
+    expect(screen.queryByText(/Fila — /)).toBeNull()
+    expect(bloco().textContent).toContain('Urgências aguardando (2)')
+    const [primeira, segunda] = linhas()
+    expect(primeira).toBe('ImediataAVC hemorragicoSala 3 · Marcelo · lançada há 12min') // fraseClinica preserva a sigla
+    expect(segunda).toBe('ClassificarApendicectomiaSala 9 · Marcelo · lançada há 2h10')
+    // fora da faixa: o bloco vem DEPOIS dela
+    expect(bloco().closest('[aria-label="Urgências do HRO"]')).toBeNull()
   })
 
-  it('acima de 3 na fila, esconde o resto atrás de "ver todas (N)"', () => {
-    // as 2 primeiras ocupam as vagas do contrato; as 4 seguintes fazem a fila
+  it('lista TODAS as que aguardam — o teto de 3 com "ver todas (N)" saiu', () => {
     montar([
       iniciada('v1', 'Sala 5'), iniciada('v2', 'Sala 6'),
       caso('f1', 'Sala 1', { gravidade: 'urgente' }), caso('f2', 'Sala 2', { gravidade: 'urgente' }),
       caso('f3', 'Sala 3', { gravidade: 'urgente' }), caso('f4', 'Sala 9', { gravidade: 'urgente', procedimento: 'QUARTA' }),
     ])
-    expect(screen.queryByText('Quarta')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: /ver todas \(4\)/ }))
+    expect(linhas()).toHaveLength(4)
     expect(screen.getByText('Quarta')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /ver todas/ })).toBeNull()
+  })
+
+  it('sem sala: "Sala a definir"; sem anestesista: diz e oferece "Definir" (alvo de 44 px)', () => {
+    montar([
+      iniciada('v1', 'Sala 5'), iniciada('v2', 'Sala 6'),
+      caso('orfa', '', { gravidade: 'imediata', anestesista: '?', anestesistaUserId: null, semAnestesista: true }),
+    ])
+    expect(linhas()[0]).toBe('ImediataApendicectomiaSala a definir · sem anestesista · lançada há 1h00Definir')
+    const definir = screen.getByRole('button', { name: /^Definir anestesista de / })
+    expect(definir.className).toContain('min-h-[44px]')
+    expect(definir.className).toContain('min-w-[44px]')
+    // "Definir" abre a folha de quem responde, com ESTA cirurgia como alvo
+    fireEvent.click(definir)
+    expect(screen.getByTestId('definir').textContent).toBe('|orfa')
+  })
+
+  it('com anestesista não há "Definir"; sem urgência aguardando o bloco não existe', () => {
+    const { unmount } = montar([iniciada('v1', 'Sala 5'), iniciada('v2', 'Sala 6'), caso('f1', 'Sala 9', { gravidade: 'urgente' })])
+    expect(screen.queryByRole('button', { name: /^Definir anestesista de / })).toBeNull()
+    unmount()
+    montar([iniciada('c1', 'Sala 6')])
+    expect(bloco()).toBeNull()
   })
 })
 
@@ -288,7 +336,8 @@ describe('toque abre o detalhe — onde Iniciada/Terminada já são marcados', (
   // caminho para a urgência que nasce sem anestesista, que é o caso comum aqui.
   it('o detalhe aberto pela faixa permite DEFINIR o anestesista', () => {
     montar([caso('sem', 'Sala 9', { anestesista: '?', anestesistaUserId: null, semAnestesista: true })])
-    fireEvent.click(screen.getByText('Sala 9').closest('button'))
+    // a caixa diz "sem anestesista" (a sala saiu dela em 11/11)
+    fireEvent.click(screen.getByText('sem anestesista').closest('button'))
     expect(screen.getByTestId('detalhe').textContent).toBe('sem')
     expect(screen.getByTestId('detalhe').dataset.definivel).toBe('true')
   })
@@ -371,10 +420,9 @@ describe('salas configuráveis por dia/turno', () => {
       />,
       { wrapper: wrap },
     )
-    // o card da ortopedia agora aponta a Sala 3 e quem a cobre
-    const orto = screen.getByText('Ortopedia').closest('div')
-    expect(orto.textContent).toContain('Sala 3')
-    expect(orto.textContent).toContain('Rafael')
+    // o card da ortopedia passa a dizer quem cobre a Sala 3 (a sala em si saiu da caixa em 11/11)
+    const orto = screen.getByText('Ortopedia').closest('button, div')
+    expect(orto.textContent).toBe('OrtopediaRafael')
   })
 
   it('urgência na Sala 4 vira comum quando a ortopedia foi marcada noutra sala', () => {
@@ -404,8 +452,8 @@ describe('salas configuráveis por dia/turno', () => {
       { wrapper: wrap },
     )
     expect(screen.getByLabelText('1 de 2 vagas de urgência ocupadas')).toBeTruthy()
-    expect(screen.getByText('Sala 6')).toBeTruthy()
-    expect(screen.getByText('Marcelo')).toBeTruthy()
+    // a vaga do plantão passa a mostrar quem está na sala marcada (só o nome, 11/11)
+    expect(screen.getByText('Plantão').closest('button').textContent).toBe('PlantãoMarcelo')
   })
 
   it('o ⚙ abre o sheet e salvar chama a action com o payload do turno', async () => {
@@ -480,7 +528,8 @@ describe('cirurgias do mesmo anestesista', () => {
       caso('b', 'Sala 7 - CO', { anestesistaUserId: 'u-gab', anestesista: 'GABRIEL', turno: 'vespertino' }),
     ], { turno: 'vespertino' })
     expect(screen.getByLabelText('1 de 2 vagas de urgência ocupadas')).toBeTruthy()
-    expect(screen.getByText('Sala 7 - CO · 2 cir.')).toBeTruthy()
-    expect(screen.queryByText(/Fila —/)).toBeNull()
+    // um card só, com o nome (a contagem "2 cir." saiu da caixa em 11/11)
+    expect(screen.getAllByText('Gabriel')).toHaveLength(1)
+    expect(document.querySelector('[data-urgencias-aguardando]')).toBeNull()
   })
 })

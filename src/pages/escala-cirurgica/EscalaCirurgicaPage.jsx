@@ -17,6 +17,7 @@ import svc from '@/services/supabaseEscalaCirurgicaService'
 import SegmentedSelector from './SegmentedSelector'
 import BarraControles from './BarraControles'
 import useAgoraMinutoEscala from './useAgoraMinutoEscala'
+import useEstadoUrgencias from './useEstadoUrgencias'
 import { minutosDoDia } from './useAgoraMinuto'
 import MinhasEscalasView from './MinhasEscalasView'
 import BoardView from './BoardView'
@@ -37,6 +38,7 @@ import { anestesistaDoCasoEh, meuAliasDe, turnoAtualOperacional, turnosOferecido
 import { gravarInicioReal, gravarTerminoReal } from '@/lib/escalaHorarioReal'
 import { compararPendencias } from '@/lib/escalaHorarioPendente'
 import { agora } from '@/lib/devClock'
+import { useMediaQuery } from '@/design-system/hooks'
 import { ehDataFilaUnica, ehFeriado, ehFimDeSemana, FDS_HOSPITAL, FDS_TURNO_CASOS, FDS_TURNOS, turnoFdsAtual } from '@/lib/escalaFds'
 import { faseLiberacoes } from '@/lib/plantaoNoturno'
 import { ordemBase, plantaoMaternoContraturno } from '@/lib/escalaNumerica'
@@ -92,6 +94,8 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     [plantoesDeDemonstracao, plantoesVivos],
   )
   const [hospital, setHospital] = useState('unimed')
+  // largura do aparelho: só para o subtítulo com hospital caber sem cortar o turno (11/11)
+  const telaEstreita = useMediaQuery('(max-width: 399px)')
   const [aba, setAba] = useState('minhas')
   // ATALHOS ENTRE AS ABAS (dono 10/11, modelo A): "Fila" na folha da cirurgia leva às
   // Liberações; "Cirurgias de …" e "abrir" (folha do tempo total) levam à Completa — o
@@ -784,7 +788,21 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
         // …e o TURNO exibido voltou ao subtítulo em 16/09 (dono: "quero que o
         // turno válido comece a aparecer aqui"), porque o trilho de turno só
         // existe quando há mais de um para escolher.
-        subtitle={[dataPorExtenso(data, hoje), rotuloTurno].filter(Boolean).join(' · ')}
+        // ↳ O HOSPITAL VOLTOU, NA FRENTE (dono 11/11/2026, opção A de `modelos-3/2-pagina-
+        // principal.html`: "HRO · Hoje · Quarta, 11/11 · Manhã"). A barra de controles sai da
+        // tela na 1ª rolagem e "Sala 2" existe nos três hospitais — dava para ler o mapa de
+        // outro hospital sem perceber. Diz o hospital SELECIONADO (vale para Minhas e
+        // Completa, inclusive no fim de semana); na fila única das Liberações o hospital
+        // escolhido não filtra nada, então ali o título diz "Fila única".
+        // ⚠️ Com o hospital na frente a linha não cabe em tela estreita: a 360/375 px (e com o
+        // botão "Importar" à direita) o TURNO saía cortado no "…" — conferido no navegador.
+        // Abaixo de 400 px o dia da semana sai ("HRO · Hoje · 11/11 · Manhã"), que devolve a
+        // linha ao comprimento de antes; a partir de 400 px vale o texto do modelo.
+        subtitle={[
+          modoFds && abaVisivel === 'liberacoes' ? 'Fila única' : HOSPITAL_LABEL[hospital],
+          telaEstreita ? dataPorExtenso(data, hoje).replace(/(Domingo|Segunda|Terça|Quarta|Quinta|Sexta|Sábado), /, '') : dataPorExtenso(data, hoje),
+          rotuloTurno,
+        ].filter(Boolean).join(' · ')}
         onBack={goBack}
         actions={
           canPublicar ? (
@@ -969,8 +987,11 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                       : 'Fim de semana: importe o documento de FDS (grade P1–P4 + ordem de liberação) para a fila única de todos os hospitais. Sem ele, a fila segue por hospital.'}
                   </p>
                 )}
+                <ComUrgenciasAguardando ativo={hospital === 'hro' && !modoFds} escala={escala} hospital={hospital} turno={turnoCasos}>{(urgenciasAguardando) => (
                 <LiberacoesView
                   escala={escalaLib}
+                  // "Urgências aguardando" (11/11): a mesma lista da faixa da Completa
+                  urgenciasAguardando={urgenciasAguardando}
                   // atalhos para a Completa (10/11): na fila única a cirurgia pode estar em
                   // outro hospital — a aba abre no hospital dela
                   onVerCirurgias={(linha) => {
@@ -1182,6 +1203,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                     }), userInfo)}
                   onRemoveAjuda={(nome) => removerAjuda(escalaLib, turno, nome)}
                 />
+                )}</ComUrgenciasAguardando>
               </>
             )
           })()}
@@ -1242,4 +1264,15 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
       )}
     </div>
   )
+}
+
+/**
+ * URGÊNCIAS AGUARDANDO para as Liberações (dono 11/11/2026): a MESMA conta da faixa da Completa —
+ * `useEstadoUrgencias` é a porta única do estado das urgências. É um componente à parte porque
+ * a página decide o turno depois de retornos antecipados, e hook não pode vir depois deles.
+ * Só existe no HRO, fora da fila única; fora disso entrega `null`.
+ */
+function ComUrgenciasAguardando({ ativo, escala, hospital, turno, children }) {
+  const { estado } = useEstadoUrgencias(ativo ? escala : null, { hospital, turno })
+  return children(ativo ? estado.fila : null)
 }

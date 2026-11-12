@@ -34,9 +34,7 @@ import {
 import { doHospital, ladosDeComoEntra, situacaoDeQuemRecebe, textosComoEntra } from './repasseForaDoRodape'
 import ComoEntra from './PerguntaComoEntra'
 import { avaliarEscolhaAnestesista } from './foraDaOrdem'
-import { ehDiaOperacionalAtual } from '@/lib/escalaHorarioReal'
-import useAgoraMinutoEscala from './useAgoraMinutoEscala'
-import { CartaoCirurgia, CasasCirurgia, TempoTotalPessoa, tempoTotalDaPessoa } from './TemposCirurgia'
+import { TempoTotalPessoa, tempoTotalDaPessoa } from './TemposCirurgia'
 import ConfirmarForaDaOrdem from './ConfirmarForaDaOrdem'
 
 const primeiroNomeUpper = (nome) => String(nome || '').trim().split(/\s+/)[0]?.toUpperCase() || ''
@@ -79,6 +77,7 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
   // aqui é meio card — a lista saía num popover estreito, com os nomes quebrando.
   // Uma folha própria dá largura inteira, busca no topo e altura fixa com rolagem.
   const [pickerAberto, setPickerAberto] = useState(false)
+  const [listaAberta, setListaAberta] = useState(false) // a lista das cirurgias que passam (11/11)
   const [busca, setBusca] = useState('')
   const [salvando, setSalvando] = useState(false)
   // COMO QUEM RECEBE ENTRA NA FILA (dono 10–11/11, `repasseForaDoRodape.js`): 'ajuda' | 'assume' |
@@ -170,7 +169,6 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
     })
   }, [opcoes, rosterByUid, busca])
 
-  const agoraMin = useAgoraMinutoEscala()
   // tempo total de quem SAI, lido da linha dele na fila (não entra na correção de quem fez)
   const totalDeQuemSai = !correcao && nomeAtual && alvos.length
     ? (tempoTotalDaPessoa(escala, alvos[0], escalas)?.termino || '') : ''
@@ -472,21 +470,60 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
           </div>
 
           {/* ── O QUE MUDA DE MÃOS ─────────────────────────────────────────── */}
-          {/* CADA CIRURGIA QUE PASSA COM AS TRÊS CASAS DELA (dono 10/11, modelo A): Início ·
-              Tempo estimado · Término, com o nome no título — os horários são da cirurgia e
-              vão junto com ela. Era "Procedimentos assumidos", uma linha por cirurgia, sem
-              dizer o que acontecia com os tempos. Só leitura: aqui se troca quem responde. */}
-          <p className="mb-1.5 mt-3 flex items-baseline gap-1.5 text-[11.5px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Cirurgias que passam
-            {alvos.length > 0 && <span className="font-medium normal-case tracking-normal">{alvos.length} · os horários vão junto</span>}
-          </p>
-          <div className="grid gap-1.5">
-            {alvos.map((c) => (
-              <CartaoCirurgia key={c.id} titulo={[c.hora || '—', c.pacienteIniciais, fraseClinica(c.procedimento)].filter(Boolean).join(' · ')}>
-                <CasasCirurgia caso={c} agoraMin={agoraMin} diaAtual={ehDiaOperacionalAtual(escala?.data)} />
-              </CartaoCirurgia>
-            ))}
-          </div>
+          {/* AS CIRURGIAS VIRAM UMA LINHA-RESUMO (dono 11/11/2026, opção C de `modelos-3/
+              1-quem-responde.html`). As três casas por cirurgia de 10/11 saíram daqui: numa sala
+              de 4 cirurgias eram 12 casas "ainda não informado" que não se editavam, e a escolha
+              de quem assume e os botões ficavam longe. A folha é de QUEM ASSUME; a lista (hora ·
+              iniciais · procedimento, sem horários) só abre se tocar. */}
+          {/* UMA cirurgia só: a própria linha dela (o resumo de uma linha seria mais um toque) */}
+          {alvos.length === 1 && (
+            <div data-cirurgia-unica className="mt-3 flex items-baseline gap-2 rounded-2xl border border-border-strong px-3 py-2.5 text-[13.5px]">
+              <b className="shrink-0 tabular-nums">{alvos[0].hora || '—'}</b>
+              {alvos[0].pacienteIniciais && <span className="shrink-0">{alvos[0].pacienteIniciais}</span>}
+              <span className="min-w-0 font-semibold [overflow-wrap:anywhere]">{fraseClinica(alvos[0].procedimento)}</span>
+            </div>
+          )}
+          {alvos.length > 1 && (() => {
+            const emAndamento = alvos.filter((c) => (c.statusCirurgia || 'agendada') === 'iniciada').length
+            const naoComecaram = alvos.length - emAndamento
+            const primeiroSai = String(nomeAtual || '').trim().split(/\s+/)[0]
+            return (
+              <div className="mt-3">
+                <button
+                  type="button"
+                  data-resumo-cirurgias
+                  aria-expanded={listaAberta}
+                  onClick={() => setListaAberta((v) => !v)}
+                  className="flex min-h-[52px] w-full items-center gap-2 rounded-2xl border border-border-strong px-3 py-2 text-left active:opacity-70"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[14.5px] font-bold leading-tight">
+                      {`${alvos.length} cirurgias passam`}{primeiroSai ? ` com ${primeiroSai}` : ''}
+                    </span>
+                    <span className="block text-[12px] leading-snug text-muted-foreground">
+                      {[
+                        emAndamento ? `${emAndamento} em andamento` : null,
+                        naoComecaram ? (naoComecaram === 1 ? '1 não começou' : `${naoComecaram} não começaram`) : null,
+                        'os horários vão junto',
+                      ].filter(Boolean).join(' · ')}
+                    </span>
+                  </span>
+                  <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${listaAberta ? 'rotate-180' : ''}`} aria-hidden="true" />
+                </button>
+                {listaAberta && (
+                  <div data-lista-cirurgias className="px-1 pt-1">
+                    {alvos.map((c) => (
+                      <div key={c.id} className="flex items-baseline gap-2 border-b border-border py-1.5 text-[12.5px] last:border-b-0">
+                        <b className="shrink-0 tabular-nums">{c.hora || '—'}</b>
+                        {c.pacienteIniciais && <span className="shrink-0">{c.pacienteIniciais}</span>}
+                        <span className="min-w-0 [overflow-wrap:anywhere]">{fraseClinica(c.procedimento)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
           {!alvos.length && (
             <p className="py-1.5 text-[12.5px] text-muted-foreground">
               Nada a passar: as cirurgias já terminaram e mantêm quem as fez.

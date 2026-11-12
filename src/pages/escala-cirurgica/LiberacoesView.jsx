@@ -26,6 +26,7 @@ import { AvisoTempoEstourado } from './useAvisoTempoEstourado'
 import PainelTempo, { formatFaltante, fraseCronometro, fraseFaltante, rotuloDuracao } from './PainelTempo'
 import { BlocoHorario, ConfirmarHorario, ConfirmarInicioETermino } from './BlocoHorario'
 import { CartaoCirurgia, CasasCirurgia, LinhaTempoEstimado, TempoTotalPessoa } from './TemposCirurgia'
+import UrgenciasAguardando from './UrgenciasAguardando'
 import { casoEntraNaConta, dentroDoInicioDoAlerta, ehConsultorio, faltaNoPar, herdaTermino, paresDeContinuacao, pendenciasDoDiaParaLiberar, pendenciasParaLiberar } from '@/lib/escalaHorarioPendente'
 import SeloHorarioPendente from './SeloHorarioPendente'
 import { nomeCurtoProcedimento } from '@/lib/escalaProcedimentoCurto'
@@ -35,7 +36,7 @@ import { blocoDaLinha, estadoDaFila, ordenarListaExibicao } from '@/lib/filaLibe
 import { doHospital, ladosDeComoEntra, situacaoDeQuemRecebe, textosComoEntra } from './repasseForaDoRodape'
 import PerguntaComoEntra from './PerguntaComoEntra'
 import AddCasoSheet from './AddCasoSheet'
-import { ajudaOrdemInformada, deParaLugar, anestesistaDoCasoEh, casoConcluido, casosDaFilaDoTurno, casosDaFilaFds, casosResolvidos, chaveSalaEscolha, compararSalas, diffRelogioMin, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao, turnoDoCaso, procedimentoComContinuacao, procedimentoBaseDoCaso } from './utils'
+import { ajudaOrdemInformada, deParaLugar, anestesistaDoCasoEh, casoConcluido, casosDaFilaDoTurno, casosDaFilaFds, casosResolvidos, chaveSalaEscolha, compararSalas, diffRelogioMin, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao, turnoDoCaso, procedimentoComContinuacao, procedimentoBaseDoCaso, nomeAnestesistaExibicao } from './utils'
 
 // Sentinelas do dropdown de Local (valores impossíveis como nome de sala)
 const LOCAL_AUTO = '__auto__'
@@ -88,7 +89,7 @@ const HOSPITAIS_FILA = ['unimed', 'hro', 'materno'].map((v) => ({ value: v, labe
 const LOCAIS_TTL_MS = 60 * 60 * 1000
 const locaisCache = new Map() // hospital → { lista, em }
 
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onDefinirTerminoCaso, onVerCirurgias = null, onAbrirCaso = null, onDefinirInicioCaso, onDefinirTerminoRealCaso, onSuspenderCaso, onTerminarSemHorario, onDesfazerTerminada, onDefinirDuracaoCaso, onDefinirSemAjuda, onTrocarResponsavel, onDevolverResponsavel, onTrocarPosicao, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, onDefinirOrigem, contraturnoOutros = [], presencaOutros = [], ordemNumerica = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, onEntrarNaFila = null, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, escalasDoDia = null, onGarantirEscala, onNavigate }) {
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onDefinirTerminoCaso, onVerCirurgias = null, onAbrirCaso = null, urgenciasAguardando = null, onDefinirInicioCaso, onDefinirTerminoRealCaso, onSuspenderCaso, onTerminarSemHorario, onDesfazerTerminada, onDefinirDuracaoCaso, onDefinirSemAjuda, onTrocarResponsavel, onDevolverResponsavel, onTrocarPosicao, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, onDefinirOrigem, contraturnoOutros = [], presencaOutros = [], ordemNumerica = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, onEntrarNaFila = null, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, escalasDoDia = null, onGarantirEscala, onNavigate }) {
   const { toast } = useToast()
   const haptic = useHaptic()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
@@ -907,6 +908,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // que aí ganha uma coluna por botão. O `gap` do invólucro e o da raiz são o
   // mesmo 8px, então nada muda de espaçamento.
   const temAlertaSemAnest = fase !== 'zerada' && semAnestesista.length > 0
+  // as urgências que AGUARDAM têm bloco próprio (11/11) — saem do alerta de sem anestesista
+  const urgenciasVisiveis = !modoFds && hospital === 'hro' && fase !== 'zerada' ? (urgenciasAguardando || []) : []
+  const idsUrgenciasAguardando = new Set(urgenciasVisiveis.map((f) => f.caso?.id || f.id))
+  const semAnestEletivas = semAnestesista.filter((i) => !idsUrgenciasAguardando.has(i.id))
   const nAcoes = (canEdit && podeAddCaso ? 1 : 0)
     + (canEdit && fase !== 'zerada' && onAddAjuda ? 1 : 0)
     + (canEdit && souPlantonista && podeAvisar ? 1 : 0)
@@ -916,57 +921,44 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const COLUNAS_RAIZ = { 1: 'deitado:grid-cols-1', 2: 'deitado:grid-cols-2', 3: 'deitado:grid-cols-3', 4: 'deitado:grid-cols-4' }
   const gradeRaiz = COLUNAS_RAIZ[nAcoes] || 'deitado:grid-cols-4'
 
-  const cartaoSemAnestesista = (i, k) => {
-    // Tocar no alerta define o responsável (pedido do dono 26/07) — o
-    // caso sai da lista sozinho, aqui e na Completa (mesma fonte).
-    const definivel = canEdit && !!i.id && !!onDefinirCasos
-    const Wrapper = definivel ? 'button' : 'div'
-    return (
-      <Wrapper
-        key={i.id || k}
-        {...(definivel ? {
-          type: 'button',
-          onClick: () => { setAlvoSemAnest(i); setSemAnestUid('') },
-          'aria-label': `Definir anestesista de ${i.cirurgiao || i.sala || 'procedimento sem anestesista'}`,
-        } : {})}
-        className={[
-          'w-full rounded-xl border border-warning/50 bg-warning/10 p-2.5 text-left text-sm',
-          'dark:border-warning/60 dark:bg-warning/15',
-          definivel && 'active:opacity-70',
-        ].filter(Boolean).join(' ')}
-      >
-        {/* TEXTO À ESQUERDA, AÇÃO À DIREITA (dono 24/08, comparando a
-            tela com o protótipo aprovado): a pastilha ocupava uma
-            TERCEIRA linha só para ela e o alerta ia a 107px medidos.
-            Inline, volta a ~74px. O badge "Sem anestesista" saiu junto:
-            o título logo acima já diz isso e ele só empurrava a sala
-            para a esquerda. */}
-        {/* A AÇÃO FICA ABAIXO DO TEXTO, NOS DOIS MODOS (dono 24/08,
-            escolhendo entre três protótipos). A pastilha inline comia
-            48% da linha — 183px de 378 — e sobravam 195px para
-            "11:00 · Unimed · CO - Sala 3 · Cesariana · Carlos Yora".
-            Abaixo, o texto recupera a linha inteira (388px medidos) ao
-            custo de 22px de altura, e o alerta volta a ser UM código
-            só: era pastilha no sábado e frase na segunda, para o mesmo
-            gesto. O card inteiro continua sendo o alvo. */}
-        <div className="flex items-center gap-2">
-          <span className="font-bold tabular-nums">{i.hora || '—'}</span>
-          {hospitalDoAlerta(i.id) && <span className="shrink-0 text-xs font-semibold text-muted-foreground">{hospitalDoAlerta(i.id)}</span>}
-          {i.sala && <span className="min-w-0 truncate font-semibold" title={i.sala}>{salaLiberacao(i.sala)}</span>}
-        </div>
-        {(i.procedimento || i.cirurgiao) && (
-          <p className="mt-0.5 text-foreground/90">
-            {[i.procedimento, i.cirurgiao].filter(Boolean).join(' · ')}
-          </p>
-        )}
-        {definivel && (
-          <p className="mt-1 flex items-center gap-1 text-xs font-medium text-primary">
-            <UserPlus className="h-3 w-3 shrink-0" /> Toque para definir o anestesista
-          </p>
-        )}
-      </Wrapper>
-            )
-  }
+  // UMA CAIXA SÓ, UMA LINHA POR PROCEDIMENTO (dono 11/11/2026, opção B de `modelos-3/
+  // 2-pagina-principal.html`). Eram cartões de 3 linhas, um por procedimento — com 4 sem
+  // anestesista o alerta empurrava a fila para fora da tela. A linha INTEIRA é o alvo
+  // (≥ 44 px), com "Definir" à direita. ⚠️ Reabre a decisão de 24/08 ("a pastilha sai, vale
+  // a frase abaixo do texto"): lá a pastilha disputava UMA linha com cinco dados; aqui o
+  // texto quebra em duas linhas e o "Definir" fica de fora da conta. A fila única do fim de
+  // semana segue agrupada por cirurgião (13/09) — não muda.
+  const caixaSemAnestesista = (itens) => (
+    <div data-caixa-sem-anestesista className="rounded-xl border border-warning/50 bg-warning/10 dark:border-warning/60 dark:bg-warning/15">
+      <p className="flex items-baseline gap-2 px-2.5 pb-1 pt-2 text-[13px] font-bold">
+        {itens.length} {itens.length === 1 ? 'procedimento' : 'procedimentos'} sem anestesista
+        {canEdit && onDefinirCasos && <span className="ml-auto shrink-0 text-[11.5px] font-medium text-muted-foreground">toque em Definir</span>}
+      </p>
+      {itens.map((i, k) => {
+        const definivel = canEdit && !!i.id && !!onDefinirCasos
+        const Linha = definivel ? 'button' : 'div'
+        return (
+          <Linha
+            key={i.id || k}
+            {...(definivel ? {
+              type: 'button',
+              onClick: () => { setAlvoSemAnest(i); setSemAnestUid('') },
+              'aria-label': `Definir anestesista de ${i.cirurgiao || i.sala || 'procedimento sem anestesista'}`,
+            } : {})}
+            className={['flex min-h-[44px] w-full items-center gap-2 border-t border-warning/30 px-2.5 py-1.5 text-left text-[13px]', definivel ? 'active:opacity-70' : ''].join(' ')}
+          >
+            <span className="w-[42px] shrink-0 font-bold tabular-nums">{i.hora || '—'}</span>
+            <span className="min-w-0 flex-1 leading-snug text-foreground/90 [overflow-wrap:anywhere]">
+              {[hospitalDoAlerta(i.id), i.sala ? salaLiberacao(i.sala) : null, i.procedimento, i.cirurgiao].filter(Boolean).join(' · ')}
+            </span>
+            {definivel && (
+              <span aria-hidden="true" className="flex h-6 shrink-0 items-center rounded-full border border-primary px-2.5 text-[12px] font-semibold text-primary">Definir</span>
+            )}
+          </Linha>
+        )
+      })}
+    </div>
+  )
 
   // SEM ANESTESISTA POR CIRURGIÃO — só na fila única (dono 13/09, modelo A
   // escolhido em protótipo a 430px com os 17 casos reais de 12/09 à tarde):
@@ -2200,13 +2192,29 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           punham conteúdo de assuntos diferentes na mesma faixa e deixavam os topos
           desencontrados. Agora é a mesma pilha da Completa: ações em cima, conteúdo
           embaixo, tudo começando na mesma margem. */}
-      {temAlertaSemAnest && (
+      {/* URGÊNCIAS AGUARDANDO no topo (dono 11/11/2026, opção A de `modelos-6/2-urgencias-
+          aguardando.html`): o MESMO bloco da Completa. A urgência que ainda não começou sai do
+          "Procedimentos sem anestesista" (que fica para as eletivas) e aparece aqui — com ou
+          sem anestesista. Só HRO, fora da fila única; a lista vem da página (`estado.fila`). */}
+      {urgenciasVisiveis.length > 0 && (
+        <UrgenciasAguardando
+          className="deitado:col-span-full"
+          itens={urgenciasVisiveis}
+          nomeDe={(c) => nomeAnestesistaExibicao({ uid: c.anestesistaUserId, alias: c.anestesista, rosterByUid })}
+          onAbrir={onAbrirCaso ? (c) => onAbrirCaso(c.id) : null}
+          onDefinir={canEdit && onDefinirCasos ? (c) => {
+            setAlvoSemAnest({ id: c.id, hora: String(c.hora || '').trim(), sala: String(c.sala || '').trim(), procedimento: fraseClinica(c.procedimento), cirurgiao: nomeCirurgiaoCurto(c.cirurgiao) || '' })
+            setSemAnestUid('')
+          } : null}
+        />
+      )}
+      {temAlertaSemAnest && semAnestEletivas.length + (modoFds ? gruposSemAnest.length : 0) > 0 && (
         <div className="deitado:col-span-full">
           <p className="mb-1.5 flex items-center gap-1 px-1 text-xs font-semibold text-category-orange-fg">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Procedimentos sem anestesista
           </p>
           <div className="space-y-1.5">
-            {modoFds ? gruposSemAnest.map(cartaoGrupoCirurgiao) : semAnestesista.map(cartaoSemAnestesista)}
+            {modoFds ? gruposSemAnest.map(cartaoGrupoCirurgiao) : caixaSemAnestesista(semAnestEletivas)}
           </div>
         </div>
       )}
@@ -3088,7 +3096,13 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                            pela FORMA, sem precisar ler. Preenchido continua sendo a
                            pílula verde sólida, logo acima — a única coisa no card com
                            peso de badge, porque é ela que dirige a ordem da fila. */
-                        className="relative rounded-md border border-dashed border-border-strong bg-transparent px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground active:bg-muted after:absolute after:-inset-x-2 after:-top-3.5 after:-bottom-1.5 after:content-['']"
+                        /* ↳ 11/11/2026 (dono, opção B de `modelos-5/4-pilula-tempo-total.html`): a vazia
+                           passava despercebida (tracejada e clara). Fundo do token de destaque
+                           (`accent`), contorno CONTÍNUO e letra na cor primária; e, palavras dele,
+                           "ajuste o tamanho da pílula para que o contorno não encoste no texto" —
+                           só a LARGURA cresceu (px-1.5 → px-2.5), altura e posição iguais. Segue
+                           sem ícone e com o "+": é ação, não valor. A preenchida não mudou. */
+                        className="relative whitespace-nowrap rounded-md border border-primary bg-accent px-2.5 py-0.5 text-[11px] font-semibold text-primary active:opacity-70 after:absolute after:-inset-x-2 after:-top-3.5 after:-bottom-1.5 after:content-['']"
                       >
                         + Tempo total
                       </button>

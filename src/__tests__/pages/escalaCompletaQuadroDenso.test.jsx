@@ -374,30 +374,20 @@ describe('Completa — os selos do canto direito quebram linha em vez de vazar (
   })
 })
 
-// TEMPO TOTAL DA PESSOA NO CABEÇALHO DA SALA (dono 10/11/2026, modelo A, opção B: pílula
-// "Tempo total HH:MM" com ícone de pessoa). Só MOSTRA o que foi informado na fila.
-describe('Completa — pílula do tempo total no cabeçalho da sala (dono 10/11)', () => {
+// A PÍLULA "Tempo total HH:MM" DO CABEÇALHO DA SALA SAIU (dono 11/11/2026: "retire essa
+// funcionalidade, não acho que ela será prática"). Entrou em 10/11 (modelo A, opção B) e durou
+// um dia; o bloco que a travava mudou de lado e trava a ausência.
+describe('Completa — o cabeçalho da sala não mostra tempo total (dono 11/11/2026)', () => {
   const renderCom = (casos, linhaOverrides, props = {}) => render(
     <BoardView escala={{ ...escalaCom(casos), linhaOverrides }} meuAlias="MELO" meuUid="uid-melo" turno="vespertino" {...props} />,
     { wrapper: wrap },
   )
 
-  it('com tempo total informado: pílula com o horário e o nome acessível dizendo de quem é', () => {
+  it('mesmo com tempo total informado na fila, o cabeçalho fica como sempre', () => {
     renderCom([caso({ statusCirurgia: 'iniciada' })], { 'vespertino:GABRIEL': { termino: '17:40' } })
-    const pilula = document.querySelector('[data-pilula-tempo-total]')
-    expect(pilula.textContent).toBe('Tempo total17:40')
-    expect(pilula.getAttribute('aria-label')).toMatch(/^Tempo total de .+: fica até 17:40$/)
-    expect(pilula.querySelector('svg')).not.toBeNull()
-  })
-
-  it('sem tempo total informado o cabeçalho fica como sempre — nada é calculado das cirurgias', () => {
-    renderCom([caso({ statusCirurgia: 'iniciada', terminoPrevisto: '16:00' })], {})
     expect(document.querySelector('[data-pilula-tempo-total]')).toBeNull()
-  })
-
-  it('o tempo total é do TURNO: o da manhã não aparece na sala da tarde', () => {
-    renderCom([caso({ statusCirurgia: 'iniciada' })], { 'matutino:GABRIEL': { termino: '12:00' } })
-    expect(document.querySelector('[data-pilula-tempo-total]')).toBeNull()
+    expect(document.body.textContent).not.toContain('Tempo total')
+    expect(document.body.textContent).not.toContain('17:40')
   })
 
   it('`abrirCasoId` abre o detalhe daquela cirurgia (o "abrir" da folha do tempo total)', async () => {

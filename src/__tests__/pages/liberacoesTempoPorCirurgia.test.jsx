@@ -130,9 +130,12 @@ describe('"+ Tempo total" com o horário de cada cirurgia (dono 25/09; Modelo 2 
     expect(blocos[0].textContent).toContain(`13:00 · ${rot(ARTRODESE)}`)
     expect([...blocos[0].querySelectorAll('[data-casa]')].map((n) => n.getAttribute('data-casa'))).toEqual(['Início', 'Tempo estimado', 'Término'])
     // em andamento, com estimado: o horário e quanto falta, na casa do tempo estimado
-    expect(estimado('13:00', rot(ARTRODESE)).textContent).toBe('Tempo estimado16:30faltam 45min')
-    // agendada, sem estimativa: traço e "ainda não informado" (era o link "estimar")
-    expect(estimado('16:00', rot(OSTEO)).textContent).toBe('Tempo estimado—ainda não informado')
+    // (11/11: casas compactas — o apoio vai numa linha abaixo das três)
+    expect(estimado('13:00', rot(ARTRODESE)).textContent).toBe('Tempo estimado16:30')
+    expect(blocos[0].querySelector('[data-apoio-casas]').textContent).toContain('Tempo estimado: faltam 45min')
+    // agendada, sem estimativa: só o traço (era o link "estimar")
+    expect(estimado('16:00', rot(OSTEO)).textContent).toBe('Tempo estimado—')
+    expect(blocos[1].querySelector('[data-apoio-casas]')).toBeNull()
     // "abrir" leva à cirurgia na Completa
     fireEvent.click(screen.getByRole('button', { name: `Abrir a cirurgia 16:00 ${rot(OSTEO)}` }))
     expect(onAbrirCaso).toHaveBeenCalledWith('Sala 3-1')
@@ -209,7 +212,7 @@ describe('"+ Tempo total" com o horário de cada cirurgia (dono 25/09; Modelo 2 
   it('a folha lê a linha AO VIVO: a duração gravada com ela aberta (outro aparelho, realtime) aparece na linha', () => {
     const { rerender } = montar()
     abrirTempoTotal()
-    expect(estimado('16:00', rot(OSTEO)).textContent).toBe('Tempo estimado—ainda não informado')
+    expect(estimado('16:00', rot(OSTEO)).textContent).toBe('Tempo estimado—')
     const depois = { ...escalaDuas, casos: escalaDuas.casos.map((c) => (c.id === 'Sala 3-1' ? { ...c, duracaoEstimadaMin: 90 } : c)) }
     rerender(
       <LiberacoesView escala={depois} hospital="unimed" hospitalLabel="Unimed" turno="vespertino"
@@ -217,7 +220,8 @@ describe('"+ Tempo total" com o horário de cada cirurgia (dono 25/09; Modelo 2 
     )
     const linha = estimado('16:00', rot(OSTEO))
     // 10/11 (modelo A): "1h30 · duração prevista" na casa; na fila, "Tempo estimado 1h30 · não começou"
-    expect(linha.textContent).toBe('Tempo estimado1h30duração prevista')
+    expect(linha.textContent).toBe('Tempo estimado1h30')
+    expect(linha.closest('[data-cirurgia-tempos]').querySelector('[data-apoio-casas]').textContent).toBe('Tempo estimado: duração prevista')
     expect(document.body.textContent).toContain('Tempo estimado 1h30· não começou')
   })
 })
@@ -239,7 +243,7 @@ describe('uma cirurgia só, em andamento: o tempo da folha É o término dela (e
     expect(screen.getByRole('button', { name: new RegExp(`^Início de 13:00 ${rot(ARTRODESE)}`) })).toBeInTheDocument()
     expect(screen.queryByText('estimado = tempo acima')).toBeNull()
     expect(screen.getByRole('dialog').textContent).toContain('Até quando Marílio fica — é também o tempo estimado da cirurgia.')
-    expect(estimado('13:00', rot(ARTRODESE)).textContent).toBe('Tempo estimado16:30faltam 45min')
+    expect(estimado('13:00', rot(ARTRODESE)).textContent).toBe('Tempo estimado16:30')
   })
 
   it('estimado DIFERENTE do total (dado antigo): a casa mostra o estimado DELA, sem frase que os iguale', () => {

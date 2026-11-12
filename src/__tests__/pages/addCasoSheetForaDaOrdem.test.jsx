@@ -76,7 +76,7 @@ const lancar = (anestesista) => {
   escolher('A definir', 'Sala 8')
   fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Evacuação de coágulos' } })
   fireEvent.change(screen.getByPlaceholderText('ex.: Mateus Baptistella'), { target: { value: 'Rubin' } })
-  escolher('Selecionar convênio…', 'Unimed')
+  escolher('Selecionar…', 'Unimed')
   fireEvent.click(screen.getByRole('button', { name: 'Urgente' }))
   if (anestesista) escolher('Definir depois', anestesista)
   fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))

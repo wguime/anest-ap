@@ -12,7 +12,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import {
-  CasasCirurgia, TempoTotalPessoa, fraseTempoEstimado, rotuloDoMapa, tempoEstimadoDe, tempoTotalDaPessoa,
+  CasasCirurgia, TempoTotalPessoa, apoioDasCasas, fraseTempoEstimado, rotuloDoMapa, tempoEstimadoDe, tempoTotalDaPessoa,
 } from '@/pages/escala-cirurgica/TemposCirurgia'
 import { gerarColunaLiberacao } from '@/lib/colunaLiberacao'
 
@@ -52,35 +52,58 @@ describe('a frase única do quadro e da fila', () => {
   })
 })
 
-describe('as três casas são SEMPRE de uma cirurgia', () => {
+// ↳ 11/11/2026 (dono, opção A de `modelos-5/1-casas-compactas.html`): casas de 52 px com rótulo
+// e valor; vazia é só "—" (era "—" + "ainda não informado", 73–84 px por casa); o apoio ("há
+// 1h22", "faltam 3h25") saiu de dentro das casas para UMA linha abaixo das três.
+describe('as três casas são SEMPRE de uma cirurgia — compactas (dono 11/11/2026)', () => {
   const casas = () => [...document.querySelectorAll('[data-casa]')].map((n) => n.textContent)
+  const apoio = () => document.querySelector('[data-apoio-casas]')?.textContent || null
 
-  it('vazio é "—" com "ainda não informado", nas três', () => {
+  it('vazia é só "—", nas três, e não há linha de apoio', () => {
     render(<CasasCirurgia caso={caso()} agoraMin={AGORA} />)
-    expect(casas()).toEqual(['Início—ainda não informado', 'Tempo estimado—ainda não informado', 'Término—ainda não informado'])
+    expect(casas()).toEqual(['Início—', 'Tempo estimado—', 'Término—'])
+    expect(apoio()).toBeNull()
+    expect(document.body.textContent).not.toContain('ainda não informado')
   })
-  it('em andamento: início "há X", tempo estimado "faltam X"', () => {
+  it('em andamento: as casas só com o horário; apoio "Início: há X · Tempo estimado: faltam X"', () => {
     render(<CasasCirurgia caso={caso({ statusCirurgia: 'iniciada', inicioReal: '07:10', terminoPrevisto: '09:30' })} agoraMin={AGORA} />)
-    expect(casas()).toEqual(['Início07:10há 1h35', 'Tempo estimado09:30faltam 45min', 'Término—ainda não informado'])
+    expect(casas()).toEqual(['Início07:10', 'Tempo estimado09:30', 'Término—'])
+    expect(apoio()).toBe('Início: há 1h35 · Tempo estimado: faltam 45min')
   })
-  it('terminada: término "durou X"; o tempo estimado deixa de ser botão', () => {
+  it('não começou, com duração: apoio "Tempo estimado: duração prevista"', () => {
+    render(<CasasCirurgia caso={caso({ duracaoEstimadaMin: 60 })} agoraMin={AGORA} />)
+    expect(casas()[1]).toBe('Tempo estimado1h')
+    expect(apoio()).toBe('Tempo estimado: duração prevista')
+  })
+  it('passou da hora: o apoio do tempo estimado fica em âmbar', () => {
+    render(<CasasCirurgia caso={caso({ statusCirurgia: 'iniciada', inicioReal: '07:10', terminoPrevisto: '08:30' })} agoraMin={AGORA} />)
+    expect(apoio()).toBe('Início: há 1h35 · Tempo estimado: 15min além')
+    expect(screen.getByText('Tempo estimado: 15min além').className).toContain('text-warning')
+    expect(apoioDasCasas(caso({ statusCirurgia: 'iniciada', terminoPrevisto: '08:30' }), AGORA).atrasada).toBe(true)
+  })
+  it('terminada: apoio "Término: durou X"; o tempo estimado deixa de ser botão', () => {
     const onEstimado = vi.fn()
     render(<CasasCirurgia caso={caso({ statusCirurgia: 'terminada', inicioReal: '07:10', terminoReal: '08:27' })} agoraMin={AGORA}
       nomes={{ inicio: 'Início', estimado: 'Tempo estimado', termino: 'Término' }} onInicio={() => {}} onEstimado={onEstimado} onTermino={() => {}} />)
-    expect(casas()[2]).toBe('Término08:27durou 1h17')
+    expect(casas()[2]).toBe('Término08:27')
+    expect(apoio()).toBe('Término: durou 1h17')
     expect(screen.queryByRole('button', { name: /^Tempo estimado/ })).toBeNull()
     expect(screen.getByRole('button', { name: 'Término: 08:27' })).toBeTruthy()
   })
-  it('só leitura sem handlers; com handler cada casa é um botão de 64px (alvo ≥ 44px)', () => {
+  it('só leitura sem handlers; com handler cada casa é um botão de 52px (alvo ≥ 44px)', () => {
     const { unmount } = render(<CasasCirurgia caso={caso()} agoraMin={AGORA} />)
     expect(screen.queryByRole('button')).toBeNull()
     unmount()
     const onInicio = vi.fn()
     render(<CasasCirurgia caso={caso()} agoraMin={AGORA} nomes={{ inicio: 'Início de X' }} onInicio={onInicio} />)
     const b = screen.getByRole('button', { name: 'Início de X: não informado' })
-    expect(b.className).toContain('min-h-[64px]')
+    expect(b.className).toContain('min-h-[52px]')
     fireEvent.click(b)
     expect(onInicio).toHaveBeenCalled()
+  })
+  it('"informado por …" sai em letra menor, abaixo do apoio', () => {
+    render(<CasasCirurgia caso={caso({ statusCirurgia: 'iniciada', inicioReal: '07:30' })} agoraMin={AGORA} informado="informado por Karine às 08:26" />)
+    expect(document.querySelector('[data-informado-por]').textContent).toBe('informado por Karine às 08:26')
   })
 })
 

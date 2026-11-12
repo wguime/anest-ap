@@ -218,6 +218,23 @@ não gasta vaga — marcar não é reservar. Tinta verde só com cirurgia EM AND
   titulares = uma ocupação (21/08). ⚠️ consequência aceita: uma pessoa em duas salas LIGA
   essas salas, então um terceiro numa delas cai no mesmo componente — o erro passa a ser para
   MENOS, que é o oposto do que o dono recusou.
+- **FAIXA EM DUAS LINHAS + "URGÊNCIAS AGUARDANDO" (dono 11/11/2026 — o que vale HOJE; substitui o
+  desenho dos dois itens abaixo).** Opção B de `.tmp/analise-escala-2026-11/modelos-6/1-faixa-urgencias.html`
+  com o ajuste dele ("na linha de baixo deixe apenas o nome do anestesista, retire o ocupada e a sala"): a
+  caixa tem **papel em cima e, embaixo, só QUEM está — ou "livre"**; 44 px (era 48+). Plantão/Sobreaviso
+  com alguém atendendo = o nome de quem faz (urgência sem anestesista = "sem anestesista"); Ortopedia e
+  Centro obstétrico = o nome de quem o mapa pôs ali, sem sala nem contagem, e sem ninguém = "livre". "contrato
+  de 2", pastilhas, ⚙ e o card **Extra** (três linhas) ficam como estavam. **A "Fila — N aguardando" saiu de
+  dentro da faixa**: virou `UrgenciasAguardando.jsx` (opção A de `modelos-6/2-urgencias-aguardando.html`), o
+  MESMO bloco na Completa (logo abaixo da faixa) e nas Liberações (no topo, lista passada pela página por
+  `ComUrgenciasAguardando`): uma linha por urgência que ainda não começou — selo da gravidade · procedimento ·
+  sala ou "Sala a definir" · quem faz ou "sem anestesista" · "lançada há 48min" · **"Definir"** (44 px) quando
+  falta o anestesista; sem teto de 3. A lista é `estado.fila`: **a regra de qual urgência ocupa qual vaga não
+  mudou**. Nas Liberações a urgência que aguarda sai do "Procedimentos sem anestesista", que continua para as
+  ELETIVAS. Só HRO, fora da fila única. No "Adicionar caso" o campo "Quem vai fazer esta urgência" e o
+  parágrafo do contrato SAÍRAM (vale o "Automático — decide pela sala"; o toque num posto vazio da faixa ainda
+  abre a folha com `postoInicial`). Travas: `escalaUrgenciasFaixa.test.jsx` (blocos que mudaram de lado),
+  `liberacoesPainelLinha.test.jsx` (describe "urgências aguardando no topo"), `addCasoSheet.test.jsx`.
 - **Urgências: card do posto em TRÊS LINHAS + fila com uma linha por CIRURGIA (dono 21/08; card
   refeito em 09/09).** Card: papel · quem · onde+carga, modelo B escolhido pelo dono entre três a
   430px ("as informações nesses cards não ficam muito claras"): no desenho anterior, sala em cima e

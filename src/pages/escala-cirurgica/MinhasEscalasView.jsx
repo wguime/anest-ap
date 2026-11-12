@@ -10,7 +10,8 @@ import { Badge, EmptyState } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { useEscalaCirurgica } from '@/contexts/EscalaCirurgicaContext'
 import { ehPosicaoAssistencial, resumirItensEscala } from '@/lib/escalaCirurgicaItens'
-import { anestesistaDoCasoEh, casosResolvidos, filtrarPorTurnoExibicao, limparConcluidosNaVirada, salaExibicao, visaoNoturna } from './utils'
+import { anestesistaDoCasoEh, casoConcluido, casosResolvidos, filtrarPorTurnoExibicao, limparConcluidosNaVirada, salaExibicao, visaoNoturna } from './utils'
+import { tempoTotalDaPessoa } from './TemposCirurgia'
 import { podeEditarEscalaCirurgica } from './gate'
 import { CasoCard } from './BoardView'
 import useAgoraMinutoEscala from './useAgoraMinutoEscala'
@@ -29,7 +30,7 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, resolverUi
   const [editando, setEditando] = useState(null)
   const isDemo = String(escala?.id).startsWith('demo-')
   const agoraMin = useAgoraMinutoEscala() // um intervalo p/ a lista (tempo faltante dos casos)
-  const { hoje } = useEscalaCirurgica()
+  const { hoje, escalas: escalasDoDia } = useEscalaCirurgica()
   // VIRADA DAS 19h (dono 17/09): a mesma regra da Completa — sai o que JÁ
   // ESTAVA terminado/suspenso às 19h; o que termina depois fica. Minhas
   // cirurgias da tarde já fechadas são poluição para quem segue de plantão.
@@ -79,6 +80,16 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, resolverUi
     )
   }
 
+  // MINHA VEZ (dono 11/11/2026, opção B de `modelos-4/6-minhas-minha-vez.html`): a linha que já
+  // existia ganha a posição na fila e o Tempo total — "6 cirurgias neste hospital · 3º da fila ·
+  // fica até 12:26". Lidos de ONDE A FILA LÊ (`tempoTotalDaPessoa`: linha do turno, slot assumido,
+  // linha 'fds' na fila única); nada é calculado aqui. Sem posição publicada, liberada ou só
+  // como residente/dupla, a linha fica como era.
+  const meuCaso = meus.find((c) => !casoConcluido(c) && anestesistaDoCasoEh(c, { uid: meuUid, alias: meuAlias, resolverUid }) && !String(c.anestesista || '').includes('+'))
+  const fila = meuCaso && !isDemo && !encerrado ? tempoTotalDaPessoa(escala, meuCaso, escalasDoDia, resolverUid) : null
+  const minhaVez = fila && fila.posicao > 0 && !fila.liberada
+    ? [`${fila.posicao}º da fila`, fila.termino ? `fica até ${fila.termino}` : null].filter(Boolean)
+    : []
   const resumo = resumirItensEscala(meus)
   const resumoPartes = [
     resumo.cirurgias ? `${resumo.cirurgias} ${resumo.cirurgias === 1 ? 'cirurgia' : 'cirurgias'}` : '',
@@ -87,8 +98,8 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, resolverUi
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-muted-foreground px-1">
-        {resumoPartes.join(' + ')} neste hospital
+      <p data-resumo-minhas className="text-xs text-muted-foreground px-1">
+        {[`${resumoPartes.join(' + ')} neste hospital`, ...minhaVez].join(' · ')}
       </p>
       {/* MESMO card da aba Completa (pedido do dono 2026-07-21), com a sala no cabeçalho */}
       {meus.map((caso) => (ehPosicaoAssistencial(caso) ? (

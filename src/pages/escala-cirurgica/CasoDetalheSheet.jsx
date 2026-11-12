@@ -137,6 +137,25 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
 
   if (!vivo) return null
 
+  // QUEM INFORMOU O HORÁRIO (dono 11/11/2026): o autor é o do próprio horário (`*RealPor`); a
+  // HORA do registro só existe no carimbo do status, então só aparece quando o carimbo é do
+  // mesmo passo e da mesma pessoa. Sem autor reconhecido no roster, só a hora — nunca "por —".
+  const nomeDe = (uid) => (uid ? nomeAnestesistaExibicao({ uid, rosterByUid }) || '' : '')
+  const procedencia = (campo, statusDoCampo) => {
+    if (!vivo[campo]) return ''
+    const doCarimbo = carimbo?.status === statusDoCampo
+    const uid = vivo[`${campo}Por`] || (doCarimbo ? carimbo.porUid : null)
+    const hora = doCarimbo && (!vivo[`${campo}Por`] || vivo[`${campo}Por`] === carimbo.porUid) ? carimbo.hora : ''
+    const nome = nomeDe(uid)
+    if (!nome && !hora) return ''
+    return ['informado', nome ? `por ${nome}` : null, hora ? `às ${hora}` : null].filter(Boolean).join(' ')
+  }
+  const infoInicio = procedencia('inicioReal', 'iniciada')
+  const infoTermino = procedencia('terminoReal', 'terminada')
+  const informado = infoInicio && infoTermino
+    ? `Início ${infoInicio} · Término ${infoTermino}`
+    : infoTermino ? `Término ${infoTermino}` : infoInicio
+
   // Um gate só para todos os ajustes do caso: quem edita a escala (canEdit), fora
   // da demo e com o caso já persistido (id) — sem id não há o que atualizar.
   const podeEditarCaso = !!podeEditar && !isDemo && !!vivo.id
@@ -415,6 +434,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                 onInicio={podeEditarCaso ? () => setConfirmar({ campo: 'inicio', viaStatus: false }) : null}
                 onEstimado={podeEditarCaso && !encerrado ? () => setEditor('tempo') : null}
                 onTermino={podeEditarCaso ? () => setConfirmar({ campo: terminoPedeInicio ? 'ambos' : 'termino', viaStatus: false }) : null}
+                informado={informado}
               />
               {/* As folhas abrem de baixo para cima (dono 17/08): expandindo aqui
                   dentro, o cartão mudava de tamanho no meio da leitura. */}
@@ -555,19 +575,11 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
               <p className="mt-1.5 text-[11.5px] text-muted-foreground">
                 Marcar <b className="font-semibold text-foreground">Terminada</b> desliga os avisos.
               </p>
-              {/* PROCEDÊNCIA DO ESTADO (dono 21/08). A pesquisa sobre quadros
-                  cirúrgicos eletrônicos converge num ponto: o quadro em que a
-                  equipe não confia AUMENTA a carga de comunicação, porque as
-                  pessoas ligam para confirmar. Dizer quando e por quem custa uma
-                  linha e é o que separa "o app afirma" de "alguém marcou".
-                  Sem autor reconhecido, mostra só o horário — nunca "por —". */}
-              {carimbo && (
-                <p className="mt-0.5 text-[11.5px] text-muted-foreground">
-                  {STATUS_VERBO[carimbo.status] || carimbo.status} às{' '}
-                  <b className="font-semibold text-foreground">{carimbo.hora}</b>
-                  {autorCarimbo ? ` por ${autorCarimbo}` : ''}
-                </p>
-              )}
+              {/* UM INÍCIO SÓ (dono 11/11/2026, opção A de `modelos-4/2-inicio-um-so.html`): a
+                  linha "Iniciada às 08:26 por Fulano" saiu daqui — a folha mostrava DOIS
+                  horários de início (o real, 07:30, em cima; a hora do toque, embaixo). A
+                  procedência (dono 21/08: quem marcou e quando) continua dita, agora sob as
+                  casas do horário: "informado por Fulano às 08:26". */}
 
               {/* TIPO: fica no Andamento porque reclassificar é AÇÃO no meio do
                   turno (a urgência que entrou como eletiva no mapa), e porque é

@@ -22,7 +22,7 @@ import useEstadoUrgencias from './useEstadoUrgencias'
 import DefinirAnestesistaSheet from './DefinirAnestesistaSheet'
 import AddCasoSheet from './AddCasoSheet'
 import CasoDetalheSheet from './CasoDetalheSheet'
-import { LinhaTempoEstimado, PilulaTempoTotal, tempoTotalDaPessoa } from './TemposCirurgia'
+import { LinhaTempoEstimado } from './TemposCirurgia'
 import SeloHorarioPendente from './SeloHorarioPendente'
 import { ehConsultorio } from '@/lib/escalaHorarioPendente'
 
@@ -318,7 +318,7 @@ export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null
   // de cada cirurgia nos CasoCard.
   const agoraMin = useAgoraMinutoEscala()
   // `hoje` do context (fonte única desde 21/08) — decide se a escala é a de hoje
-  const { hoje, escalas: escalasDoDia } = useEscalaCirurgica()
+  const { hoje } = useEscalaCirurgica()
   // VIRADA DAS 19h (dono 17/09): o quadro da tarde perde o que JÁ ESTAVA
   // terminado/suspenso às 19h — e com isso as salas que já fecharam. O que sobra
   // é o que a noite opera: as cirurgias que atravessam e as urgências. Quem
@@ -360,12 +360,6 @@ export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null
     return out
   }, [herdados, idsDoTurno, encerrado])
   const grupos = useMemo(() => agruparPorSala(casos), [casos])
-  // o tempo total de quem responde pelo grupo: lido da linha da fila pela 1ª cirurgia
-  // ainda aberta (com todas encerradas o total já foi apagado — regra de 10/11)
-  const totalDoGrupo = (g) => {
-    const aberta = (g.casos || []).find((c) => !casoConcluido(c))
-    return aberta ? (tempoTotalDaPessoa(escala, aberta, escalasDoDia)?.termino || '') : ''
-  }
   // ABRIR UMA CIRURGIA A PEDIDO DE FORA (10/11): o "abrir" da folha do tempo total e o
   // atalho "Cirurgias de …" das Liberações trazem a pessoa para a Completa já no detalhe.
   useEffect(() => {
@@ -556,10 +550,9 @@ export default function BoardView({ escala, meuAlias, meuUid, resolverUid = null
                   {nomeGrupo && (
                     <span className="truncate text-[15px] font-semibold text-primary" title={nomeGrupo}>{nomeGrupo}</span>
                   )}
-                  {/* TEMPO TOTAL DA PESSOA no cabeçalho da sala (dono 10/11, opção B): pílula
-                      "Tempo total 11:40" com ícone de pessoa. Só MOSTRA o que foi informado na
-                      fila — não calcula; sem tempo total, o cabeçalho fica como sempre. */}
-                  {!encerrado && <PilulaTempoTotal termino={totalDoGrupo(g)} nome={nomeGrupo} />}
+                  {/* A pílula "Tempo total HH:MM" esteve aqui de 10 a 11/11/2026 e SAIU (dono 11/11:
+                      "retire essa funcionalidade, não acho que ela será prática"). O tempo total
+                      da pessoa segue na folha da cirurgia, com o atalho "Fila". Não repropor. */}
                   <span className="ml-auto shrink-0 text-[11px] font-normal text-muted-foreground">{nCasos}</span>
                 </span>
               </AccordionTrigger>

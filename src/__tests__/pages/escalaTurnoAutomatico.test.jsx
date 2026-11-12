@@ -82,7 +82,9 @@ afterEach(() => vi.useRealTimers())
 const turnoAtivo = () => ['Manhã', 'Tarde', 'Noite']
   .find((n) => screen.queryByRole('tab', { name: n })?.getAttribute('aria-selected') === 'true') || null
 /** Turno EXIBIDO, lido do subtítulo do cabeçalho ("Hoje · Sábado, 15/08 · Tarde"). */
-const turnoNoTitulo = () => (screen.getByText(/^(Hoje|Amanhã) · /).textContent.match(/· (Manhã|Tarde|Noite)$/) || [])[1] || null
+// 11/11/2026: o subtítulo começa pelo HOSPITAL ("HRO · Hoje · Quarta, 11/11 · Manhã")
+const subtitulo = () => screen.getByText(/ · (Hoje|Amanhã) · /).textContent
+const turnoNoTitulo = () => (subtitulo().match(/· (Manhã|Tarde|Noite)$/) || [])[1] || null
 const trilhoDeTurno = () => ['Manhã', 'Tarde', 'Noite'].filter((n) => screen.queryByRole('tab', { name: n }))
 
 /** Escala de um hospital com casos carimbados nos turnos dados (= turnos publicados). */
@@ -103,6 +105,19 @@ const montarHoje = () => {
   }
   return render(<EscalaCirurgicaPage onNavigate={() => {}} goBack={() => {}} />, { wrapper: wrap })
 }
+
+// HOSPITAL NO TÍTULO (dono 11/11/2026, opção A de `modelos-3/2-pagina-principal.html`). Reabre a
+// decisão de 16/08 ("hospital e turno saíram do subtítulo: os botões logo abaixo já dizem"): a
+// barra de controles sai da tela na 1ª rolagem e "Sala 2" existe nos três hospitais.
+describe('o subtítulo diz o hospital que está na tela (dono 11/11/2026)', () => {
+  it('"HRO · Hoje · Segunda, 17/08 · Manhã" — e acompanha a troca de hospital', () => {
+    vi.setSystemTime(new Date('2026-08-17T09:00:00-03:00'))
+    montarHoje()
+    expect(subtitulo()).toBe('Unimed · Hoje · Segunda, 17/08 · Manhã')
+    fireEvent.click(screen.getByRole('tab', { name: 'HRO' }))
+    expect(subtitulo()).toBe('HRO · Hoje · Segunda, 17/08 · Manhã')
+  })
+})
 
 describe('turno acompanha o relógio (dono 15/08)', () => {
   it('às 13h a tela vira sozinha do matutino para o vespertino', async () => {
@@ -254,8 +269,12 @@ describe('turno acompanha o relógio (dono 15/08)', () => {
     for (const a of ['Minhas', 'Completa', 'Liberações']) expect(screen.getByRole('tab', { name: a })).toBeTruthy()
     // abre na Minhas: o hospital filtra, então está na tela
     for (const h of ['Unimed', 'HRO', 'Materno']) expect(screen.getByRole('tab', { name: h })).toBeTruthy()
+    // o título diz o hospital selecionado (dono 11/11/2026)…
+    expect(subtitulo()).toMatch(/^Unimed · Hoje · /)
     // nas Liberações a fila é única, mas o seletor de hospital FICA (sem movimentar a barra)
     fireEvent.click(screen.getByRole('tab', { name: 'Liberações' }))
+    // …e na fila única, onde o hospital escolhido não filtra nada, diz "Fila única"
+    expect(subtitulo()).toMatch(/^Fila única · Hoje · /)
     for (const h of ['Unimed', 'HRO', 'Materno']) expect(screen.getByRole('tab', { name: h })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Manhã' })).toBeTruthy()
     // e volta na Completa, que é por hospital

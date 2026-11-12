@@ -472,6 +472,11 @@ Revertido na v5.12.9.
 > "estimado = tempo acima", "N cirurgias · M com término informado") mudaram — ver `escala-telas.md` §
 > "Os tempos sem dúvida nas quatro folhas". As regras de quem espelha em quem não mudaram.
 
+> ↳ **11/11 (leva de layout):** na aba Liberações mudaram o alerta de sem anestesista (UMA caixa, uma linha
+> por procedimento, "Definir"), o topo (bloco "Urgências aguardando", só HRO) e a pílula "+ Tempo total"
+> vazia (fundo de destaque, contorno contínuo). Detalhe em `escala-telas.md` § "Leva de layout de 11/11" e
+> `escala-urgencias.md`.
+
 ### Exceção de 10/11: o total acompanha o status nos DOIS EXTREMOS (dono 10/11/2026)
 
 > "os tempos devem conversar entre si e NÃO produzir tempos distintos." Vocabulário fixado por ele:

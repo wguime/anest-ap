@@ -38,7 +38,6 @@ import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import { conveniosDaEscala, convenioDeEscolha, familiaConvenio, normalizarSalaHro, turnoDeHora, salasDoHospital } from './utils'
 import { chaveSala, CONTRATO_HRO, salasContrato } from '@/lib/escalaCirurgicaUrgencias'
 import ChipsEscolha, { GRAVIDADE_CHIPS, TIPOS_CIRURGIA } from './ChipsEscolha'
-import useEstadoUrgencias from './useEstadoUrgencias'
 import { avaliarEscolhaAnestesista } from './foraDaOrdem'
 import ConfirmarForaDaOrdem from './ConfirmarForaDaOrdem'
 
@@ -71,12 +70,6 @@ const formatHora = (v) => {
 // faz ENTRAR na contagem das 2 vagas — antes só trocava o rótulo, e a sala
 // marcada seguia contando 0.
 const POSTO_AUTO = '__auto__'
-const POSTOS = [
-  { value: 'plantao', label: 'Plantonista do HRO' },
-  { value: 'sobreaviso', label: 'Sobreaviso' },
-  { value: 'orto', label: 'Anestesista da ortopedia' },
-  { value: 'co', label: 'Anestesista do CO' },
-]
 // Defaults do contrato lidos da FONTE (antes eram copiados à mão aqui e ficaram
 // para trás quando as numéricas do HRO ganharam o bloco em 20/08).
 const POSTO_SALA_PADRAO = CONTRATO_HRO.manha.dedicadas
@@ -134,8 +127,10 @@ export default function AddCasoSheet({ escala, turno, caso = null, onClose, onPr
   const [residenteUid, setResidenteUid] = useState(() => String(caso?.residenteUserId || ''))
   const [tipo, setTipo] = useState(() => (edicao ? (caso.tipo || 'eletiva') : 'urgencia'))
   const [gravidade, setGravidade] = useState(() => String(caso?.gravidade || ''))
-  const [posto, setPosto] = useState(() => postoInicial || POSTO_AUTO)
+  // o campo saiu da tela em 11/11/2026: vale o automático, salvo o posto tocado na faixa
+  const posto = postoInicial || POSTO_AUTO
   const [salvando, setSalvando] = useState(false)
+  const [tentouSalvar, setTentouSalvar] = useState(false) // acende o aviso da gravidade (11/11)
   // Confirmações que interrompem o fechamento do formulário: excluir e a hora
   // que caiu no outro período.
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
@@ -202,25 +197,11 @@ export default function AddCasoSheet({ escala, turno, caso = null, onClose, onPr
   // `hojeIso = escala.data`, e a faixa passava o hoje de verdade — numa escala de
   // outro dia os dois aplicavam linhas de contrato DIFERENTES, e este campo dizia
   // "CO · ocupado" ao lado de um card de CO livre.
-  const { estado } = useEstadoUrgencias(escala, { hospital: 'hro', turno })
   // POSTO fica FORA da edição: ele não é campo do caso, é configuração da SALA
   // (urgencias_meta) gravada no ato de acrescentar. Reabrir o formulário para
   // corrigir a hora e, de lambuja, reescrever quem responde pela vaga do
   // contrato seria efeito colateral invisível — isso se muda no ⚙ da faixa.
   const mostraPosto = escala?.hospital === 'hro' && exigeGravidade && !edicao
-  const postoOpcoes = useMemo(() => {
-    if (!mostraPosto) return []
-    const tomado = {
-      plantao: !!estado.postos.find((pp) => pp.papel === 'plantonista')?.item,
-      sobreaviso: !!estado.postos.find((pp) => pp.papel === 'sobreaviso')?.item,
-      orto: !!estado.dedicados.find((d) => d.papel === 'orto')?.item,
-      co: !!estado.dedicados.find((d) => d.papel === 'co')?.item,
-    }
-    return [
-      { value: POSTO_AUTO, label: 'Automático — decide pela sala' },
-      ...POSTOS.map((o) => ({ ...o, label: tomado[o.value] ? `${o.label} · ocupado` : o.label })),
-    ]
-  }, [mostraPosto, estado])
   // SALA NÃO é obrigatória (dono 11/2026: "nem sempre ela está definida" — a urgência
   // chega antes de o centro cirúrgico dizer onde vai ser). O banco aceita (`sala text not
   // null default ''`), o quadro junta os sem-sala no grupo "Sala a definir" e a sala entra
@@ -509,29 +490,19 @@ export default function AddCasoSheet({ escala, turno, caso = null, onClose, onPr
           </SheetTitle>
         </SheetHeader>
 
-        {/* UM CARTÃO POR PERGUNTA (dono 20/08: "no padrão das outras páginas da
-            escala cirúrgica"). ORDEM DE 11/2026 (modelo 4, escolhido por imagem): o que
-            não pode faltar — procedimento, cirurgião, convênio — e a sala sobem para o
-            1º cartão. Antes sala e cirurgião ficavam no 3º, depois do texto do contrato:
-            3 dos 5 obrigatórios visíveis ao abrir, e o "Falta preencher" mandava rolar
-            ~600px. Paciente, anestesista e residente (opcionais) desceram. Nenhum campo
-            entrou ou saiu. */}
+        {/* UM BLOCO SÓ "A CIRURGIA", EM GRADE DE DUAS COLUNAS (dono 11/11/2026, opção A de
+            `modelos-5/3-adicionar-caso.html`). Eram três cartões — a cirurgia, tipo e
+            prioridade, paciente e equipe — e a folha passava de uma tela; paciente, idade,
+            residente e anestesista subiram para o 1º bloco, com os campos curtos lado a lado.
+            Nenhum dado entrou ou saiu do CASO. O que saiu da TELA (decisão do mesmo dia): o
+            campo "Quem vai fazer esta urgência" e o parágrafo do contrato — por baixo vale o
+            "Automático — decide pela sala" (`posto` nasce `POSTO_AUTO`; só o toque num posto
+            vazio da faixa de urgências ainda chega com `postoInicial`). A engrenagem "Salas
+            do contrato" continua na faixa. Vale igual para a EDIÇÃO. */}
         <div className="space-y-2.5 px-1 pb-2">
           <article className="rounded-2xl border border-border-strong bg-card-elevated p-3">
             <h3 className="mb-2 text-[15px] font-extrabold">A cirurgia</h3>
             <div className="space-y-2.5">
-              <div className="grid grid-cols-[1fr_108px] gap-2">
-                <Campo id="ac-sala" label="Sala">
-                  <Select options={salasOpcoes} value={sala} onChange={setSala} placeholder="A definir" searchable />
-                </Campo>
-                <Campo id="ac-hora" label="Hora">
-                  <Input id="ac-hora" value={hora} onChange={(e) => setHora(formatHora(e.target.value))}
-                    inputMode="numeric" placeholder="15:30" />
-                </Campo>
-              </div>
-              {sala === NOVA_SALA && (
-                <Input value={novaSala} onChange={(e) => setNovaSala(e.target.value)} placeholder="Nome da sala (ex.: SALA 5)" />
-              )}
               <Campo id="ac-proc" label="Procedimento *">
                 <Input id="ac-proc" value={procedimento} onChange={(e) => setProcedimento(e.target.value)}
                   placeholder="ex.: Apendicectomia" />
@@ -540,10 +511,16 @@ export default function AddCasoSheet({ escala, turno, caso = null, onClose, onPr
                 <Input id="ac-cir" value={cirurgiao} onChange={(e) => setCirurgiao(e.target.value)}
                   placeholder="ex.: Mateus Baptistella" />
               </Campo>
-              <Campo id="ac-conv" label="Convênio *">
-                <Select options={conveniosOpcoes} value={convenio} onChange={setConvenio}
-                  placeholder="Selecionar convênio…" searchable />
-              </Campo>
+              <div className="grid grid-cols-2 gap-2 [&>*]:min-w-0">
+                <Campo id="ac-conv" label="Convênio *">
+                  <Select options={conveniosOpcoes} value={convenio} onChange={setConvenio}
+                    placeholder="Selecionar…" searchable />
+                </Campo>
+                <Campo id="ac-hora" label="Hora">
+                  <Input id="ac-hora" value={hora} onChange={(e) => setHora(formatHora(e.target.value))}
+                    inputMode="numeric" placeholder="15:30" />
+                </Campo>
+              </div>
               {convenio === OUTRO_CONVENIO && (
                 <Input value={outroConvenio} onChange={(e) => setOutroConvenio(e.target.value)}
                   placeholder="Nome do convênio" />
@@ -558,51 +535,19 @@ export default function AddCasoSheet({ escala, turno, caso = null, onClose, onPr
                   NÃO some sozinha — cancele em Cirurgias Particulares.
                 </p>
               )}
-            </div>
-          </article>
-
-          <article className="rounded-2xl border border-border-strong p-3">
-            <h3 className="mb-2 text-[15px] font-extrabold">Tipo e prioridade</h3>
-            {/* MESMAS pastilhas do cartão Andamento do detalhe (ChipsEscolha). */}
-            <ChipsEscolha
-              opcoes={TIPOS_CIRURGIA}
-              valor={tipo}
-              onChange={escolherTipo}
-              rotulo="Tipo"
-              nota="urgência entra na conta do contrato"
-            />
-            {exigeGravidade && (
-              <ChipsEscolha
-                className="mt-3"
-                opcoes={GRAVIDADE_CHIPS}
-                valor={gravidade}
-                onChange={setGravidade}
-                rotulo="Gravidade *"
-                nota="ordena a fila de urgências"
-                aviso={!gravidade ? 'Sem classificação a urgência não tem lugar na fila.' : null}
-              />
-            )}
-            {mostraPosto && (
-              <div className="mt-3">
-                <Campo id="ac-posto" label="Quem vai fazer esta urgência">
-                  <Select options={postoOpcoes} value={posto} onChange={setPosto} />
+              <div className="grid grid-cols-2 gap-2 [&>*]:min-w-0">
+                <Campo id="ac-sala" label="Sala">
+                  <Select options={salasOpcoes} value={sala} onChange={setSala} placeholder="A definir" searchable />
                 </Campo>
-                <p className="mt-1 text-[11.5px] leading-snug text-muted-foreground">
-                  O contrato do HRO paga <b className="font-semibold text-foreground">2 vagas de
-                  urgência por turno</b> — plantonista e sobreaviso. A ortopedia e o CO têm
-                  anestesista próprio e ficam fora dessa conta. Se a vaga escolhida já estiver
-                  ocupada, esta urgência entra como <b className="font-semibold text-foreground">Extra</b>,
-                  acima do contrato.
-                </p>
+                <Campo id="ac-idade" label="Idade">
+                  <Input id="ac-idade" value={idade} onChange={(e) => setIdade(e.target.value)} placeholder="ex.: 47a" />
+                </Campo>
               </div>
-            )}
-          </article>
-
-          <article className="rounded-2xl border border-border-strong p-3">
-            <h3 className="mb-2 text-[15px] font-extrabold">Paciente e equipe</h3>
-            <div className="space-y-2.5">
-              <div className="grid grid-cols-[1fr_92px] gap-2">
-                <Campo id="ac-paciente" label="Paciente">
+              {sala === NOVA_SALA && (
+                <Input value={novaSala} onChange={(e) => setNovaSala(e.target.value)} placeholder="Nome da sala (ex.: SALA 5)" />
+              )}
+              <div className="grid grid-cols-2 gap-2 [&>*]:min-w-0">
+                <Campo id="ac-paciente" label="Paciente (iniciais)">
                   <Input id="ac-paciente" value={paciente}
                     onChange={(e) => {
                       setPaciente(e.target.value)
@@ -610,10 +555,17 @@ export default function AddCasoSheet({ escala, turno, caso = null, onClose, onPr
                       if (/\p{L}{3,}/u.test(e.target.value)) nomeCompletoRef.current = e.target.value.trim()
                     }}
                     onBlur={() => setPaciente(soIniciais(paciente))}
-                    placeholder="Nome ou iniciais" />
+                    placeholder="ex.: M.A." />
                 </Campo>
-                <Campo id="ac-idade" label="Idade">
-                  <Input id="ac-idade" value={idade} onChange={(e) => setIdade(e.target.value)} placeholder="47a" />
+                <Campo id="ac-residente" label="Residente">
+                  {/* Em edição a lista ganha "Sem residente": no formulário novo o
+                      vazio é o placeholder, mas quem já tem residente gravado
+                      precisa de uma opção para TIRAR — sem ela, residente lançado
+                      por engano ficaria no caso para sempre. */}
+                  <Select
+                    options={edicao ? [{ value: SEM_RESIDENTE, label: 'Sem residente' }, ...opcoesResidente] : opcoesResidente}
+                    value={residenteUid} onChange={setResidenteUid}
+                    placeholder="Sem residente" searchable />
                 </Campo>
               </div>
               <p className="-mt-1 text-[11.5px] text-muted-foreground">
@@ -635,24 +587,41 @@ export default function AddCasoSheet({ escala, turno, caso = null, onClose, onPr
                     placeholder="Definir depois" searchable />
                 </Campo>
               )}
-              <Campo id="ac-residente" label="Residente">
-                {/* Em edição a lista ganha "Sem residente": no formulário novo o
-                    vazio é o placeholder, mas quem já tem residente gravado
-                    precisa de uma opção para TIRAR — sem ela, residente lançado
-                    por engano ficaria no caso para sempre. */}
-                <Select
-                  options={edicao ? [{ value: SEM_RESIDENTE, label: 'Sem residente' }, ...opcoesResidente] : opcoesResidente}
-                  value={residenteUid} onChange={setResidenteUid}
-                  placeholder="Sem residente" searchable />
-              </Campo>
             </div>
+          </article>
+
+          <article className="rounded-2xl border border-border-strong p-3">
+            <h3 className="mb-2 text-[15px] font-extrabold">Tipo e prioridade</h3>
+            {/* MESMAS pastilhas do cartão Andamento do detalhe (ChipsEscolha). */}
+            <ChipsEscolha
+              opcoes={TIPOS_CIRURGIA}
+              valor={tipo}
+              onChange={escolherTipo}
+              rotulo="Tipo"
+              nota="urgência entra na conta do contrato"
+            />
+            {exigeGravidade && (
+              <ChipsEscolha
+                className="mt-3"
+                opcoes={GRAVIDADE_CHIPS}
+                valor={gravidade}
+                onChange={setGravidade}
+                rotulo="Gravidade *"
+                nota={gravidade ? 'ordena a fila de urgências' : 'escolha uma'}
+                /* a frase vermelha só DEPOIS de tentar salvar (dono 11/11/2026): antes ela
+                   abria a folha já em tom de erro, antes de a pessoa tocar em nada */
+                aviso={tentouSalvar && !gravidade ? 'Sem classificação a urgência não tem lugar na fila.' : null}
+              />
+            )}
           </article>
         </div>
 
         {/* RODAPÉ do padrão dos sheets da escala: borda + par de botões. O que
             falta é dito por extenso — botão cinza sem explicação vira tentativa e
             erro no meio do plantão. */}
-        <div className="border-t border-border px-1 pb-4 pt-3">
+        {/* PRESO NO RODAPÉ (dono 11/11/2026): Cancelar/Adicionar sempre à vista, com o
+            formulário rolando por trás. */}
+        <div data-rodape-caso className="sticky bottom-0 z-10 border-t border-border bg-card px-1 pb-4 pt-3">
           {!valido && (
             <p className="mb-2 text-xs text-category-orange-fg">
               Falta preencher: {[
@@ -686,7 +655,14 @@ export default function AddCasoSheet({ escala, turno, caso = null, onClose, onPr
           )}
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>
-            <Button onClick={() => submeter()} disabled={!valido || salvando} className="flex-1">
+            {/* inválido NÃO desabilita: o toque é a "tentativa" que acende o aviso da gravidade
+                (o que falta já está dito na frase acima) */}
+            <Button
+              onClick={() => { if (!valido) { setTentouSalvar(true); return } submeter() }}
+              disabled={salvando}
+              aria-disabled={!valido || undefined}
+              className={['flex-1', !valido ? 'opacity-60' : ''].join(' ')}
+            >
               {salvando
                 ? <Loader2 className="w-4 h-4 animate-spin" />
                 : (edicao ? <Pencil className="w-4 h-4" /> : <Plus className="w-4 h-4" />)}

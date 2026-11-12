@@ -91,7 +91,7 @@ const montar = ({ data = HOJE, escalas = { unimed: escalaDoDia() } } = {}) => {
 const turnoAtivo = () => ['Manhã', 'Tarde', 'Noite']
   .find((n) => screen.queryByRole('tab', { name: n })?.getAttribute('aria-selected') === 'true') || null
 const trilhoDeTurno = () => ['Manhã', 'Tarde', 'Noite'].filter((n) => screen.queryByRole('tab', { name: n }))
-const turnoNoTitulo = () => (screen.getByText(/^(Hoje|Amanhã) · /).textContent.match(/· (Manhã|Tarde|Noite)$/) || [])[1] || null
+const turnoNoTitulo = () => (screen.getByText(/ · (Hoje|Amanhã) · /).textContent.match(/· (Manhã|Tarde|Noite)$/) || [])[1] || null
 const faixaAmbar = () => document.querySelector('[role="status"][data-turno-encerrado]')
 const aba = (nome) => fireEvent.click(screen.getByRole('tab', { name: nome }))
 

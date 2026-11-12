@@ -82,14 +82,14 @@ describe('Lista de colegas (dono 17/08)', () => {
     render(<DefinirAnestesistaSheet escala={escalaComRodape} sala="Sala 5" onClose={vi.fn()} />, { wrapper: wrap })
     escolherCury()
     // 2 casos na sala, 1 terminado → 1 é assumido, 1 fica (invisível no desenho antigo)
-    // 10/11 (modelo A aprovado pelo dono): "Procedimentos assumidos" virou "Cirurgias que
-    // passam · N · os horários vão junto", cada uma com as três casas dela (só leitura)
-    expect(screen.getByText('Cirurgias que passam')).toBeTruthy()
-    expect(screen.getByText('1 · os horários vão junto')).toBeTruthy()
-    const blocos = [...document.querySelectorAll('[data-cirurgia-tempos]')]
-    expect(blocos).toHaveLength(1)
-    expect([...blocos[0].querySelectorAll('[data-casa]')].map((n) => n.getAttribute('data-casa'))).toEqual(['Início', 'Tempo estimado', 'Término'])
-    expect(blocos[0].querySelector('button')).toBeNull()
+    // ⚠️ MUDOU DE LADO de novo (dono 11/11/2026, opção C de `modelos-3/1-quem-responde.html`):
+    // as três casas por cirurgia de 10/11 SAÍRAM desta folha — numa sala de 4 cirurgias eram
+    // 12 casas "ainda não informado" sem edição, com quem assume e os botões longe. Fica UMA
+    // linha-resumo, e a lista (hora · iniciais · procedimento, sem horários) só abre se tocar.
+    // com UMA cirurgia a passar, a própria linha dela (hora · procedimento), sem casas
+    expect(document.querySelector('[data-cirurgia-unica]')).not.toBeNull()
+    expect(document.querySelector('[data-resumo-cirurgias]')).toBeNull()
+    expect(document.querySelector('[data-casa]')).toBeNull()
     expect(screen.getByText(/já terminou: fica com/)).toBeTruthy()
   })
 
@@ -104,7 +104,7 @@ describe('Lista de colegas (dono 17/08)', () => {
     expect(faixa.textContent).toContain('fica até 11:40')
     expect(faixa.textContent).toMatch(/fica com \S+: não passa para quem assume/)
     // fora das casas das cirurgias: nunca na mesma fileira
-    expect(faixa.closest('[data-cirurgia-tempos]')).toBeNull()
+    expect(faixa.closest('[data-resumo-cirurgias]')).toBeNull()
   })
 
   it('sem tempo total informado, a faixa não aparece', () => {
@@ -420,5 +420,24 @@ describe('Segundo anestesista (mesma cirurgia)', () => {
     fireEvent.click(await screen.findByRole('option', { name: 'GUILHERME STAUB' }))
     await waitFor(() => expect(document.querySelector('[data-como-entra]')).toBeNull())
     expect(screen.queryByRole('switch')).toBeNull()
+  })
+})
+
+// LINHA-RESUMO (dono 11/11/2026, opção C): conta o que passa pelo andamento de cada cirurgia.
+describe('folha da sala: as cirurgias que passam numa linha-resumo (dono 11/11/2026)', () => {
+  it('4 cirurgias, 1 em andamento: "4 cirurgias passam … · 1 em andamento · 3 não começaram"', () => {
+    const quatro = {
+      ...escalaComRodape,
+      casos: [
+        caso({ id: 'a', hora: '07:00', statusCirurgia: 'iniciada', inicioReal: '07:10' }),
+        caso({ id: 'b', hora: 'AS' }), caso({ id: 'c', hora: 'AS' }), caso({ id: 'd', hora: '11:30' }),
+      ],
+    }
+    render(<DefinirAnestesistaSheet escala={quatro} sala="Sala 5" onClose={vi.fn()} />, { wrapper: wrap })
+    const resumo = document.querySelector('[data-resumo-cirurgias]')
+    expect(resumo.textContent).toMatch(/^4 cirurgias passam( com \S+)?1 em andamento · 3 não começaram · os horários vão junto$/)
+    expect(resumo.className).toContain('min-h-[52px]')
+    fireEvent.click(resumo)
+    expect(document.querySelectorAll('[data-lista-cirurgias] > div')).toHaveLength(4)
   })
 })

@@ -23,9 +23,9 @@ import { ChevronRight, Clock, UserRound } from 'lucide-react'
 import { duracaoMin, rotuloMinutos } from '@/lib/escalaHorarioReal'
 import { ehDataFilaUnica, FDS_HOSPITAL } from '@/lib/escalaFds'
 import { formatFaltante, rotuloDuracao } from './PainelTempo'
-import { casosAtivosDaPessoa, normNome, parseDuracaoMin, parseHoraMinutos } from './utils'
+import { casosAtivosDaPessoa, normNome, parseDuracaoMin, parseHoraMinutos, rodapeDoTurno } from './utils'
 
-const VAZIO = 'ainda não informado'
+const VAZIO = 'ainda não informado' // só na faixa do tempo total; as casas vazias dizem "—"
 const HOSPITAIS_DA_FILA = ['unimed', 'hro', 'materno']
 
 /** Em que pé está a cirurgia — aceita o caso inteiro ou a linha enxuta da fila (`andamento`). */
@@ -89,7 +89,11 @@ export function LinhaTempoEstimado({ caso, agoraMin = null, icone = true, suave 
   )
 }
 
-function Casa({ rotulo, valor, sub, subAviso = false, faixa = '', nomeAcessivel, onClick, editavel }) {
+// CASAS COMPACTAS (dono 11/11/2026, opção A de `modelos-5/1-casas-compactas.html`): 52 px, rótulo
+// pequeno em cima e valor grande embaixo; vazia é só "—". Cada casa vazia gastava de 73 a 84 px
+// para dizer "ainda não informado", e o apoio ("há 1h22", "faltam 3h25") saiu de dentro delas
+// para UMA linha abaixo das três (`apoioDasCasas`).
+function Casa({ rotulo, valor, faixa = '', nomeAcessivel, onClick, editavel }) {
   const vazio = !valor
   const Tag = onClick ? 'button' : 'div'
   return (
@@ -98,37 +102,30 @@ function Casa({ rotulo, valor, sub, subAviso = false, faixa = '', nomeAcessivel,
       aria-label={nomeAcessivel ? `${nomeAcessivel}: ${valor || 'não informado'}` : undefined}
       data-casa={rotulo}
       className={[
-        'flex min-w-0 flex-col rounded-[10px] px-2 py-1.5 text-left',
-        editavel
-          ? (vazio
-            ? 'min-h-[64px] border-[1.5px] border-dashed border-border-strong bg-card'
-            : `min-h-[64px] border border-border-strong bg-card ${faixa || 'border-l-4 border-l-success'}`)
-          : 'min-h-[58px] border border-border bg-muted',
+        'flex min-h-[52px] min-w-0 flex-col justify-center rounded-[10px] px-2 py-[5px] text-left',
+        vazio
+          ? 'border-[1.5px] border-dashed border-border-strong bg-transparent'
+          : editavel
+            ? `border border-border-strong bg-card ${faixa || 'border-l-4 border-l-success'}`
+            : 'border border-border bg-muted',
         onClick ? 'active:opacity-70' : '',
       ].join(' ')}
     >
-      <span className="text-[9.5px] font-extrabold uppercase leading-[1.2] tracking-[0.05em] text-muted-foreground">{rotulo}</span>
-      <span className={['text-[17px] leading-tight tabular-nums', vazio ? 'font-medium text-muted-foreground' : 'font-extrabold text-foreground'].join(' ')}>
+      <span className="text-[9.5px] font-extrabold uppercase leading-[1.1] tracking-[0.05em] text-muted-foreground">{rotulo}</span>
+      <span className={['text-[17px] leading-[1.2] tabular-nums', vazio ? 'font-medium text-muted-foreground' : 'font-extrabold text-foreground'].join(' ')}>
         {valor || '—'}
-      </span>
-      <span className={[
-        'text-[10.5px] leading-tight',
-        subAviso ? 'font-semibold text-warning' : vazio && onClick ? 'font-semibold text-primary' : 'text-muted-foreground',
-      ].join(' ')}>
-        {sub || (vazio ? VAZIO : '')}
       </span>
     </Tag>
   )
 }
 
 /**
- * AS TRÊS CASAS de UMA cirurgia — Início · Tempo estimado · Término.
- * `nomes` = prefixos dos nomes acessíveis ({ inicio, estimado, termino }); cada `on*`
- * presente torna a casa um botão (≥ 64px de altura). Sem nenhum, é só leitura.
+ * O APOIO das três casas, numa linha só: "Início: há 1h31 · Tempo estimado: faltam 3h25" ·
+ * "Tempo estimado: duração prevista" · "Término: durou 1h17". Vazio quando não há o que dizer.
+ * @returns {{ partes: string[], atrasada: boolean }}
  */
-export function CasasCirurgia({ caso, agoraMin = null, diaAtual = true, nomes = {}, onInicio = null, onEstimado = null, onTermino = null }) {
+export function apoioDasCasas(caso, agoraMin = null, diaAtual = true) {
   const estado = estadoDe(caso)
-  const editavel = !!(onInicio || onEstimado || onTermino)
   const inicio = String(caso?.inicioReal || '').trim()
   const termino = String(caso?.terminoReal || '').trim()
   const est = tempoEstimadoDe(caso, agoraMin)
@@ -136,27 +133,49 @@ export function CasasCirurgia({ caso, agoraMin = null, diaAtual = true, nomes = 
     ? `${String(Math.floor((agoraMin % 1440) / 60)).padStart(2, '0')}:${String(agoraMin % 60).padStart(2, '0')}` : null
   const emSala = estado === 'iniciada' && inicio && diaAtual && agoraHHMM ? duracaoMin(inicio, agoraHHMM) : null
   const durou = estado === 'terminada' ? duracaoMin(inicio, termino) : null
+  const partes = [
+    emSala != null ? `Início: há ${rotuloMinutos(emSala)}` : null,
+    est.valor ? `Tempo estimado: ${est.tipo === 'duracao' ? 'duração prevista' : (est.falta || (estado === 'iniciada' ? '' : 'não começou'))}` : null,
+    durou != null ? `Término: durou ${rotuloMinutos(durou)}` : null,
+  ].filter((p) => p && !p.endsWith(': '))
+  return { partes, atrasada: est.atrasada }
+}
+
+/**
+ * AS TRÊS CASAS de UMA cirurgia — Início · Tempo estimado · Término — e, abaixo delas, a linha
+ * de apoio. `nomes` = prefixos dos nomes acessíveis ({ inicio, estimado, termino }); cada `on*`
+ * presente torna a casa um botão (52 px de altura, alvo ≥ 44). Sem nenhum, é só leitura.
+ * `informado` = "informado por Karine às 08:26" (quem registrou o horário), em letra menor.
+ */
+export function CasasCirurgia({ caso, agoraMin = null, diaAtual = true, nomes = {}, onInicio = null, onEstimado = null, onTermino = null, informado = '' }) {
+  const estado = estadoDe(caso)
+  const editavel = !!(onInicio || onEstimado || onTermino)
+  const inicio = String(caso?.inicioReal || '').trim()
+  const termino = String(caso?.terminoReal || '').trim()
+  const est = tempoEstimadoDe(caso, agoraMin)
+  const apoio = apoioDasCasas(caso, agoraMin, diaAtual)
   return (
-    <div className="grid grid-cols-3 gap-1.5">
-      <Casa
-        rotulo="Início" valor={inicio} editavel={editavel}
-        sub={emSala != null ? `há ${rotuloMinutos(emSala)}` : ''}
-        nomeAcessivel={nomes.inicio} onClick={onInicio}
-      />
-      <Casa
-        rotulo="Tempo estimado" valor={est.valor} editavel={editavel}
-        sub={est.valor ? (est.tipo === 'duracao' ? 'duração prevista' : (est.falta || (estado === 'iniciada' ? '' : 'não começou'))) : (estado === 'terminada' ? 'cirurgia terminada' : '')}
-        subAviso={est.atrasada}
-        faixa="border-l-4 border-l-primary"
-        nomeAcessivel={nomes.estimado} onClick={estado === 'terminada' ? null : onEstimado}
-      />
-      <Casa
-        rotulo="Término" valor={termino} editavel={editavel}
-        sub={durou != null ? `durou ${rotuloMinutos(durou)}` : ''}
-        faixa="border-l-4 border-l-info"
-        nomeAcessivel={nomes.termino} onClick={onTermino}
-      />
-    </div>
+    <>
+      <div className="grid grid-cols-3 gap-1.5">
+        <Casa rotulo="Início" valor={inicio} editavel={editavel} nomeAcessivel={nomes.inicio} onClick={onInicio} />
+        <Casa
+          rotulo="Tempo estimado" valor={est.valor} editavel={editavel} faixa="border-l-4 border-l-primary"
+          nomeAcessivel={nomes.estimado} onClick={estado === 'terminada' ? null : onEstimado}
+        />
+        <Casa rotulo="Término" valor={termino} editavel={editavel} faixa="border-l-4 border-l-info" nomeAcessivel={nomes.termino} onClick={onTermino} />
+      </div>
+      {apoio.partes.length > 0 && (
+        <p data-apoio-casas className="mt-1.5 pl-0.5 text-[11.5px] leading-[1.3] text-muted-foreground">
+          {apoio.partes.map((parte, i) => (
+            <span key={parte}>
+              {i > 0 && ' · '}
+              <span className={apoio.atrasada && parte.startsWith('Tempo estimado') ? 'font-semibold text-warning' : ''}>{parte}</span>
+            </span>
+          ))}
+        </p>
+      )}
+      {informado && <p data-informado-por className="mt-0.5 pl-0.5 text-[11px] leading-[1.3] text-muted-foreground/90">{informado}</p>}
+    </>
   )
 }
 
@@ -210,32 +229,14 @@ export function TempoTotalPessoa({ nome, termino = '', sub = '', acao = null, cl
   )
 }
 
-/** Pílula do cabeçalho da sala (Completa, opção B do dono): "Tempo total 11:40" com ícone de pessoa. */
-export function PilulaTempoTotal({ termino, nome = '' }) {
-  if (!termino) return null
-  return (
-    <span
-      data-pilula-tempo-total
-      aria-label={`Tempo total${nome ? ` de ${nome}` : ''}: fica até ${termino}`}
-      className="inline-flex h-6 shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-primary px-2 text-[12px] font-bold tabular-nums text-primary-foreground"
-    >
-      <UserRound className="h-3.5 w-3.5 shrink-0" aria-hidden />
-      {/* a 360–389px o rótulo sai (o nome do anestesista sumiria no "…"); o ícone de pessoa
-          e o nome acessível seguem dizendo de quem é o horário */}
-      <span className="hidden text-[11px] font-medium opacity-90 min-[390px]:inline">Tempo total</span>
-      {termino}
-    </span>
-  )
-}
-
 /**
  * O TEMPO TOTAL e a POSIÇÃO de quem responde por um caso, lidos de onde a fila lê: a escala
  * do hospital no dia útil; a linha 'fds' (com as cirurgias dos três hospitais) na fila única.
  * Só LEITURA — a mesma resolução do espelho (`casosAtivosDaPessoa`), então posição assumida
  * cai na linha do slot. Null quando o caso não tem UM dono (dupla, "?", sem anestesista).
- * @returns {{ termino: string, cirurgias: number, turno: string, chave: string }|null}
+ * @returns {{ termino: string, cirurgias: number, turno: string, chave: string, posicao: number, liberada: boolean }|null}
  */
-export function tempoTotalDaPessoa(escala, caso, escalas = null) {
+export function tempoTotalDaPessoa(escala, caso, escalas = null, resolverUid = null) {
   if (!escala || !caso) return null
   const fds = escalas?.[FDS_HOSPITAL]
   const filaUnica = escala.hospital !== FDS_HOSPITAL && ehDataFilaUnica(escala.data)
@@ -253,5 +254,17 @@ export function tempoTotalDaPessoa(escala, caso, escalas = null) {
   const bruto = lo[`${ctx.turno}:${ctx.chave}`] ?? lo[ctx.chave]
     ?? lo[`${ctx.turno}:${normNome(ctx.nomeBruto)}`] ?? lo[normNome(ctx.nomeBruto)]
   const termino = bruto && typeof bruto === 'object' ? String(bruto.termino || '').trim() : ''
-  return { termino, cirurgias: ctx.ativos.length, turno: ctx.turno, chave: ctx.chave }
+  // POSIÇÃO NA FILA (11/11): o lugar da CHAVE da linha na ordem publicada do turno — quem
+  // assumiu a posição de um colega ocupa o lugar dele (`ctx.chave` já é a do slot). Fora da
+  // ordem publicada (ajuda, extra, Materno sem rodapé) não há posição a dizer: 0.
+  const dona = filaUnica ? fds : escala
+  const rodape = rodapeDoTurno(dona?.ordemLiberacao, ctx.turno)
+  const ehOSlot = ctx.chave !== (ctx.uid || normNome(ctx.nomeBruto)) // posição assumida de outro
+  const posicao = rodape.findIndex((n) => normNome(n) === ctx.chave
+    || (typeof resolverUid === 'function' && resolverUid(n) === ctx.chave)
+    || (!ehOSlot && normNome(n) === normNome(ctx.nomeBruto))) + 1
+  // já liberada neste turno? (o marcador `{ escalado: true }` do repasse não é liberação)
+  const marca = (dona?.liberacoes || {})[`${ctx.turno}:${ctx.chave}`]
+  const liberada = !!marca && marca.escalado !== true
+  return { termino, cirurgias: ctx.ativos.length, turno: ctx.turno, chave: ctx.chave, posicao, liberada }
 }

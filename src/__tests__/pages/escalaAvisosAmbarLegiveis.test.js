@@ -31,7 +31,7 @@ const PERMITIDOS = {
   // botão "Estimado" saíram de BoardView/LiberacoesView/BlocoHorario e moram aqui.
   'TemposCirurgia.jsx': [
     "f.atrasada ? 'font-semibold text-warning'", // "· 15min além" na frase do quadro e da fila
-    "subAviso ? 'font-semibold text-warning'", // "X além" na casa do tempo estimado
+    "parte.startsWith('Tempo estimado') ? 'font-semibold text-warning'", // "X além" no apoio das casas
   ],
   'BlocoHorario.jsx': [
     "subAviso ? 'font-semibold text-warning'", // "X além" sob o bloco (folha Antes de liberar)
@@ -40,7 +40,9 @@ const PERMITIDOS = {
     "falta?.atrasada ? 'font-medium text-warning'", // tempo estourado por cirurgião (desenho antigo da linha)
   ],
   'PainelTempo.jsx': ["restante?.atrasada ? 'text-warning'"], // prévia do tempo estourado
-  'FaixaUrgencias.jsx': ["f.gravidade === 'urgente' && 'bg-warning/[0.18] text-warning'"], // etiqueta de gravidade
+  // 11/11/2026: a etiqueta de gravidade saiu da faixa junto com a "Fila — N aguardando" e mora
+  // no bloco "Urgências aguardando" (o mesmo na Completa e nas Liberações)
+  'UrgenciasAguardando.jsx': ["f.gravidade === 'urgente' && 'bg-warning/[0.18] text-warning'"], // etiqueta de gravidade
   'ImportarEscalaPage.jsx': ["'bg-warning/15 text-warning'"], // pastilha do ÍCONE das decisões
 }
 

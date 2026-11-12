@@ -43,12 +43,11 @@
  * aparecer DUAS vezes na grade.
  */
 import { useState } from 'react'
-import { ChevronRight, Settings2 } from 'lucide-react'
+import { Settings2 } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/design-system'
 import { erroHorarioReal } from '@/lib/escalaHorarioReal'
 import { ConfirmarHorario, ConfirmarInicioETermino } from './BlocoHorario'
 import { fraseClinica } from '@/lib/colunaLiberacao'
-import { GRAVIDADE_LABEL } from '@/lib/escalaCirurgicaUrgencias'
 import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
@@ -59,6 +58,7 @@ import CasoDetalheSheet from './CasoDetalheSheet'
 import DefinirAnestesistaSheet from './DefinirAnestesistaSheet'
 import SalasUrgenciaSheet from './SalasUrgenciaSheet'
 import AddCasoSheet from './AddCasoSheet'
+import UrgenciasAguardando from './UrgenciasAguardando'
 
 const PAPEL_LABEL = { plantonista: 'Plantão', sobreaviso: 'Sobreaviso' }
 /** Papel do dedicado por EXTENSO — ele virou o TÍTULO do card (dono 09/09), e
@@ -87,11 +87,12 @@ const CARD_BOX = 'w-full overflow-hidden rounded-[10px] border px-2 py-1 text-le
  * o canto direito falava cinco idiomas ("livre", "Orto", "2 cir.", "48min",
  * "fora do contrato") e a vaga livre tinha silhueta diferente da ocupada.
  */
-const CARD_BASE = `flex min-h-[48px] flex-col justify-center gap-px ${CARD_BOX}`
-
-/** Linha da FILA: continua em UMA linha — ali não há sala, e o que se lê de
- *  relance é gravidade → procedimento → espera, nessa ordem, lado a lado. */
-const CARD_FILA = `flex min-h-[36px] items-center gap-1.5 ${CARD_BOX}`
+// ↳ DUAS LINHAS desde 11/11/2026 (dono, opção B de `modelos-6/1-faixa-urgencias.html`, com o
+// ajuste dele: "na linha de baixo deixe apenas o nome do anestesista, retire o ocupada e a
+// sala"): rótulo em cima e, embaixo, só QUEM está — ou "livre". A 3ª linha ("Sala 7 · 2 cir.")
+// saiu dos postos e dos dedicados, e a caixa baixou de 48+ para 44 px; no HRO a primeira
+// cirurgia só aparecia no meio da tela. O card EXTRA (acima do contrato) segue com as três.
+const CARD_BASE = `flex min-h-[44px] flex-col justify-center gap-px ${CARD_BOX}`
 
 /** Título do card: o papel, sempre no mesmo lugar e no mesmo tamanho. */
 const Papel = ({ children, tom = 'muted' }) => (
@@ -156,7 +157,6 @@ export default function FaixaUrgencias({ escala, hospital, turno }) {
   // sem estas duas props o `CasoDetalheSheet` esconde o botão da linha
   // "Anestesista", que é justamente o dado que falta preencher ali.
   const [definir, setDefinir] = useState(null)
-  const [todas, setTodas] = useState(false)
   const [configurar, setConfigurar] = useState(false)
   // Toque num posto SEM caso abre o "Adicionar caso" já apontando o posto
   // (dono 19/08) — { posto, sala } pré-preenchidos; ocupado segue abrindo o detalhe.
@@ -185,13 +185,11 @@ export default function FaixaUrgencias({ escala, hospital, turno }) {
       .filter(Boolean).join(' · ') || undefined
   /** 3ª linha do card: onde está e o que carrega, na mesma frase. */
   const ondeOcupacao = (it) => [salaLiberacao(it.sala), metaOcupacao(it)].filter(Boolean).join(' · ')
-  const ondeDedicado = (d) => [salaLiberacao(d.sala), d.qtd ? `${d.qtd} cir.` : ''].filter(Boolean).join(' · ')
 
   // Postos e excedente vêm da LIB (distribuirPostos): sala marcada casa
   // primeiro, o resto por ordem de início — testável fora do React.
   const { postos, extras } = estado
 
-  const filaVisivel = todas ? estado.fila : estado.fila.slice(0, 3)
   const acima = estado.nivel === 'acima'
   // MESMO gate do BoardView: demo não grava, e quem não edita só olha.
   const podeEditar = podeEditarEscalaCirurgica(user) && !String(escala?.id || '').startsWith('demo-')
@@ -247,8 +245,8 @@ export default function FaixaUrgencias({ escala, hospital, turno }) {
               ].join(' ')}
             >
               <Papel tom="primary">{PAPEL_LABEL[papel] || papel}</Papel>
+              {/* só o nome de quem está fazendo (dono 11/11); a sala e o tempo ficam no detalhe */}
               <Quem vazio={!nomeDe(item.anestesista)}>{nomeDe(item.anestesista) || SEM_NOME}</Quem>
-              <Onde>{ondeOcupacao(item)}</Onde>
             </button>
           ) : (
             <button
@@ -285,8 +283,8 @@ export default function FaixaUrgencias({ escala, hospital, turno }) {
                 ].join(' ')}
               >
                 <Papel>{DEDICADO_TITULO[d.papel] || d.papel}</Papel>
-                <Quem vazio={!nomeDe(d.anestesista)}>{nomeDe(d.anestesista) || SEM_NOME}</Quem>
-                <Onde>{ondeDedicado(d)}</Onde>
+                {/* só o nome de quem o mapa pôs ali — sem sala, sem contagem; ninguém = "livre" */}
+                <Quem vazio={!nomeDe(d.anestesista)}>{nomeDe(d.anestesista) || 'livre'}</Quem>
               </Comp>
             )
           })}
@@ -311,56 +309,8 @@ export default function FaixaUrgencias({ escala, hospital, turno }) {
           </p>
         )}
 
-        {/* FILA — uma linha por urgência; sem sala/convênio (ficam no detalhe) */}
-        {estado.fila.length > 0 && (
-          <>
-            <p className="mb-1 mt-2 text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground">
-              Fila — {estado.fila.length} aguardando
-            </p>
-            <div className="flex flex-col gap-1">
-              {filaVisivel.map((f) => (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => setDetalhe(f.caso)}
-                  className={`${CARD_FILA} border-border bg-card`}
-                >
-                  <span className="min-w-[13px] shrink-0 text-[11.5px] font-extrabold tabular-nums text-muted-foreground">
-                    {f.posicao}º
-                  </span>
-                  <span
-                    className={[
-                      'shrink-0 whitespace-nowrap rounded-lg px-1.5 py-0.5 text-[11px] font-bold',
-                      f.gravidade === 'imediata' && 'bg-destructive/15 text-destructive',
-                      f.gravidade === 'urgente' && 'bg-warning/[0.18] text-warning',
-                      f.gravidade === 'aguarda' && 'bg-muted text-muted-foreground',
-                      !f.gravidade && 'border border-dashed border-warning/60 text-category-orange-fg',
-                    ].filter(Boolean).join(' ')}
-                  >
-                    {f.gravidade ? GRAVIDADE_LABEL[f.gravidade] : 'Classificar'}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-[14px]">
-                    {fraseClinica(f.caso?.procedimento) || 'Sem procedimento'}
-                  </span>
-                  {f.esperaMin != null && (
-                    <span className="shrink-0 text-[11.5px] tabular-nums text-muted-foreground">{formatEspera(f.esperaMin)}</span>
-                  )}
-                  <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                </button>
-              ))}
-            </div>
-            {estado.fila.length > 3 && !todas && (
-              <button
-                type="button"
-                onClick={() => setTodas(true)}
-                className="mt-1 py-1 text-[11.5px] font-semibold text-primary"
-              >
-                ver todas ({estado.fila.length})
-              </button>
-            )}
-          </>
-        )}
-
+        {/* A "Fila — N aguardando" saiu daqui em 11/11/2026: virou o bloco "Urgências
+            aguardando", logo abaixo da faixa — o mesmo que abre as Liberações. */}
         {/* qualidade do dado: iniciada há >4h sai da conta e vira PERGUNTA */}
         {estado.aConfirmar.map((it) => (
           <div key={it.id} className="mt-1.5 flex min-h-[30px] items-center gap-2 text-[11px] text-category-orange-fg">
@@ -392,6 +342,14 @@ export default function FaixaUrgencias({ escala, hospital, turno }) {
           </button>
         )}
       </section>
+
+      <UrgenciasAguardando
+        className="mb-2 mt-2"
+        itens={estado.fila}
+        nomeDe={(c) => nomeAnestesistaExibicao({ uid: c.anestesistaUserId, alias: c.anestesista, rosterByUid })}
+        onAbrir={(c) => setDetalhe(c)}
+        onDefinir={podeEditar ? (c) => setDefinir({ sala: c.sala, casosAlvo: [c] }) : null}
+      />
 
       {addCaso && (
         <AddCasoSheet

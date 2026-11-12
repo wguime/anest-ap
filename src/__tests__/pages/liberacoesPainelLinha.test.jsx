@@ -611,13 +611,22 @@ describe('Clareza dos dois tempos no card (dono 30/07)', () => {
     expect(pilula.getAttribute('title')).toMatch(/45min/)
   })
 
-  it('estado VAZIO tem cara de ação: "+ Tempo total", tracejado e sem ícone', () => {
+  // ⚠️ MUDOU DE LADO (dono 11/11/2026, opção B de `modelos-5/4-pilula-tempo-total.html`). O
+  // teste travava o TRACEJADO (30/07: "vazio tem cara de ação"). Em uso, a pílula tracejada e
+  // clara passava despercebida; agora é fundo de destaque com contorno contínuo e mais folga
+  // dos lados ("que o contorno não encoste no texto"). O "+" e a ausência de ícone — o que
+  // separa a vazia da preenchida — continuam.
+  it('estado VAZIO: "+ Tempo total" em fundo de destaque, contorno contínuo, folga dos lados e sem ícone', () => {
     montar({}, comTempos)
     // Marílio não tem override de tempo → estado vazio
     const card = document.querySelector('[data-linha="uid-mar"]')
     const botao = within(card).getByLabelText(/Informar o tempo total de Marílio/)
     expect(botao.textContent).toContain('+ Tempo total')
-    expect(botao.className).toContain('border-dashed')
+    expect(botao.className).not.toContain('border-dashed')
+    expect(botao.className).toContain('bg-accent')
+    expect(botao.className).toContain('border-primary')
+    expect(botao.className).toContain('px-2.5')
+    expect(botao.className).toContain('py-0.5') // a altura não mudou
     // sem ícone: com contorno cheio + ⏱ ele parecia valor JÁ preenchido
     expect(botao.querySelector('svg')).toBeNull()
   })
@@ -1201,5 +1210,95 @@ describe('o painel da linha não produz tempos distintos (10/11)', () => {
     restaurar()
     await waitFor(() => expect(onSetOverride).toHaveBeenCalledWith(expect.anything(), null))
     expect(onDefinirTerminoCaso).not.toHaveBeenCalled()
+  })
+})
+
+// "URGÊNCIAS AGUARDANDO" NO TOPO DAS LIBERAÇÕES (dono 11/11/2026, opção A de `modelos-6/
+// 2-urgencias-aguardando.html`): o MESMO bloco da Completa. A urgência que ainda não começou sai
+// do "Procedimentos sem anestesista" — que continua para as ELETIVAS, na caixa de uma linha por
+// procedimento — e aparece aqui, com ou sem anestesista. A lista vem da página (`estado.fila`).
+describe('Liberações — urgências aguardando no topo, eletivas na caixa de sem anestesista (dono 11/11/2026)', () => {
+  const urgSemDono = caso('Sala 8', 0, '?', 'Vinicius Rubin', '', { semAnestesista: true, tipo: 'urgencia', gravidade: 'imediata', procedimento: 'APENDICECTOMIA' })
+  const urgComDono = caso('Sala 7', 0, 'KARINE', 'Paula Reis', '', { tipo: 'urgencia', gravidade: 'urgente', procedimento: 'CESARIANA', anestesistaUserId: 'uid-kar' })
+  const eletivaSemDono = caso('Sala 9', 0, '?', 'Cesar Bombardelli', '11:00', { semAnestesista: true, procedimento: 'NEFRECTOMIA PARCIAL' })
+  const escalaUrg = { ...escalaBase, casos: [...escalaBase.casos, urgSemDono, urgComDono, eletivaSemDono] }
+  const fila = [
+    { id: urgSemDono.id, caso: urgSemDono, gravidade: 'imediata', esperaMin: 48, posicao: 1 },
+    { id: urgComDono.id, caso: urgComDono, gravidade: 'urgente', esperaMin: 31, posicao: 2 },
+  ]
+  const bloco = () => document.querySelector('[data-urgencias-aguardando]')
+  const linhasUrg = () => [...bloco().querySelectorAll(':scope > div > div')].map((l) => l.textContent)
+
+  it('o bloco abre a aba com uma linha por urgência — selo · procedimento · sala · quem · há quanto tempo', () => {
+    montar({ onDefinirCasos: vi.fn(), urgenciasAguardando: fila }, escalaUrg)
+    expect(bloco().textContent).toContain('Urgências aguardando (2)')
+    expect(linhasUrg()[0]).toBe('ImediataApendicectomiaSala 8 · sem anestesista · lançada há 48minDefinir')
+    expect(linhasUrg()[1]).toMatch(/^UrgenteCesarianaSala 7 · Karine.* · lançada há 31min$/)
+    // vem antes da caixa de sem anestesista e da fila
+    const caixa = document.querySelector('[data-caixa-sem-anestesista]')
+    expect(bloco().compareDocumentPosition(caixa) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('a urgência que aguarda SAI da caixa "sem anestesista"; a eletiva fica', () => {
+    montar({ onDefinirCasos: vi.fn(), urgenciasAguardando: fila }, escalaUrg)
+    const caixa = document.querySelector('[data-caixa-sem-anestesista]')
+    expect(caixa.textContent).toContain('1 procedimento sem anestesista')
+    expect(caixa.textContent).toMatch(/Nefrectomia/i)
+    expect(caixa.textContent).not.toMatch(/Apendicectomia/i)
+  })
+
+  it('"Definir" da urgência abre o mesmo "quem assume" do alerta, para ESTA cirurgia', async () => {
+    const onDefinirCasos = vi.fn(async () => {})
+    montar({ onDefinirCasos, urgenciasAguardando: fila }, escalaUrg)
+    const definir = within(bloco()).getByRole('button', { name: /^Definir anestesista de Apendicectomia/ })
+    expect(definir.className).toContain('min-h-[44px]')
+    fireEvent.click(definir)
+    expect(await screen.findByRole('dialog')).toBeTruthy()
+  })
+
+  it('sem a lista (outra aba/hospital sem urgência), nada muda: as órfãs ficam todas na caixa', () => {
+    montar({ onDefinirCasos: vi.fn() }, escalaUrg)
+    expect(bloco()).toBeNull()
+    expect(document.querySelector('[data-caixa-sem-anestesista]').textContent).toContain('2 procedimentos sem anestesista')
+  })
+
+  it('fora do HRO o bloco não existe, mesmo que a lista chegue', () => {
+    render(
+      <LiberacoesView escala={{ ...escalaUrg, hospital: 'unimed' }} hospital="unimed" hospitalLabel="Unimed" turno="matutino"
+        canEdit onToggle={() => {}} onSetOverride={() => {}} onDefinirCasos={vi.fn()} urgenciasAguardando={fila} />,
+      { wrapper: wrap },
+    )
+    expect(bloco()).toBeNull()
+  })
+})
+
+// O "DEFINIR" DA CAIXA DE SEM ANESTESISTA É A MESMA PÍLULA DO BLOCO DE URGÊNCIAS (dono 11/11/2026,
+// 22h37: o botão a 44 px visíveis "ficou grande demais"; menor, harmônico com o cartão e igual em
+// todo lugar). Visível: 24 px (`h-6`, a altura das pílulas do cartão — 32 ainda destoava), só contorno, sem fundo branco. Alvo de toque: a LINHA
+// inteira, com 44 px ou mais.
+describe('caixa "Procedimentos sem anestesista" — "Definir" de 24 px, alvo de 44 px (dono 11/11/2026)', () => {
+  const orfa = caso('Sala 9', 0, '?', 'Cesar Bombardelli', '11:00', { semAnestesista: true, procedimento: 'NEFRECTOMIA PARCIAL' })
+
+  it('pílula visível de 24 px só com contorno; a linha inteira é o alvo (≥ 44 px)', () => {
+    montar({ onDefinirCasos: vi.fn() }, { ...escalaBase, casos: [...escalaBase.casos, orfa] })
+    const linha = within(document.querySelector('[data-caixa-sem-anestesista]')).getByRole('button', { name: /^Definir anestesista de / })
+    expect(linha.className).toContain('min-h-[44px]')
+    expect(linha.className).toContain('w-full')
+    const pilula = [...linha.querySelectorAll('span')].find((s) => s.textContent === 'Definir')
+    expect(pilula.className).toContain('h-6')
+    expect(pilula.className).toContain('border-primary')
+    expect(pilula.className).toContain('text-primary')
+    expect(pilula.className).not.toMatch(/\bbg-/)
+  })
+
+  it('é a MESMA pílula do bloco "Urgências aguardando" (mesmas classes)', () => {
+    const urg = caso('Sala 8', 0, '?', 'Vinicius Rubin', '', { semAnestesista: true, tipo: 'urgencia', gravidade: 'imediata', procedimento: 'APENDICECTOMIA' })
+    montar(
+      { onDefinirCasos: vi.fn(), urgenciasAguardando: [{ id: urg.id, caso: urg, gravidade: 'imediata', esperaMin: 10 }] },
+      { ...escalaBase, casos: [...escalaBase.casos, orfa, urg] },
+    )
+    const daCaixa = [...document.querySelectorAll('[data-caixa-sem-anestesista] span')].find((s) => s.textContent === 'Definir')
+    const doBloco = [...document.querySelectorAll('[data-urgencias-aguardando] span')].find((s) => s.textContent === 'Definir')
+    expect(daCaixa.className).toBe(doBloco.className)
   })
 })

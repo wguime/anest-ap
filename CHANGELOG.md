@@ -3,6 +3,28 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## 11/11/2026 (noite) — Escala: revisão de layout das telas (11 itens) — v5.12.96
+
+Dono 11/11: revisão geral das telas da escala ("fácil e intuitivo"), item a item por modelo
+(`.tmp/analise-escala-2026-11/modelos-3` a `modelos-6`). Capturas da tela real em `implementado-c/`.
+- **Folha "Quem responde pela sala"**: só o resumo ("N cirurgias passam com Fulano"); a lista abre ao tocar.
+- **Subtítulo com o hospital em texto**: "HRO · Hoje · Quarta, 11/11 · Manhã" (abaixo de 400 px sai o dia da
+  semana; na fila única diz "Fila única").
+- **"Procedimentos sem anestesista"** numa caixa só, uma linha por procedimento, com "Definir".
+- **Um início só** na folha da cirurgia: "informado por Fulano às HH:MM" sob a casa Início; some "Iniciada às…".
+- **Cabeçalho da sala** sem a pílula de tempo.
+- **Minhas**: "6 cirurgias neste hospital · 3º da fila · fica até 12:26".
+- **Casas de tempo compactas** (52 px; vazia = "—"; apoio numa linha abaixo), três casas em toda cirurgia.
+- **Adicionar caso**: grade de duas colunas, campo Anestesista opcional, sem "Quem vai fazer esta urgência";
+  a gravidade é obrigatória e o aviso vermelho só aparece depois de tentar salvar (o botão não salva, mas não
+  fica desabilitado).
+- **Pílula "+ Tempo total"** vazia: fundo verde-claro, contorno contínuo, mais larga.
+- **Faixa de urgências (HRO)** em duas linhas: rótulo em cima, embaixo só o nome de quem atende ("livre" quando
+  vazio; "sem anestesista" quando a vaga está ocupada por urgência sem dono).
+- **"Urgências aguardando"** (`UrgenciasAguardando.jsx`): uma linha por urgência, igual na Completa e nas
+  Liberações. O "Definir" tem 24 px visíveis (pílula como as do cartão) dentro de um alvo de toque de 44 px —
+  dono, 22h37: a 44 px "ficou muito grande"; vale também na caixa de sem anestesista.
+
 ## 11/11/2026 (noite) — Escala: o selo de ajuda diz o sentido por extenso
 
 Dono: "quero que informe de onde veio a ajuda e para onde vai, da maneira como está não fica muito claro" — o

@@ -103,12 +103,16 @@ describe('detalhe do caso: cartão compacto e pílula "Editar"', () => {
   it('em andamento: três casas — início "há X", tempo estimado "faltam X", término "ainda não informado"', () => {
     detalhe(emCurso)
     const c = cartao()
+    // ↳ 11/11/2026 (casas compactas): 52 px, só rótulo e valor; vazia é "—"; "há X" e "faltam X"
+    // foram para UMA linha abaixo das três
     const ini = within(c).getByRole('button', { name: 'Início desta cirurgia: 14:05' })
-    expect(within(ini).getByText('há 1h40')).toBeTruthy()
+    expect(ini.textContent).toBe('Início14:05')
+    expect(ini.className).toContain('min-h-[52px]')
     const est = within(c).getByRole('button', { name: 'Tempo estimado desta cirurgia: 16:30' })
-    expect(est.textContent).toBe('Tempo estimado16:30faltam 45min')
+    expect(est.textContent).toBe('Tempo estimado16:30')
     const fim = within(c).getByRole('button', { name: 'Término desta cirurgia: não informado' })
-    expect(fim.textContent).toBe('Término—ainda não informado')
+    expect(fim.textContent).toBe('Término—')
+    expect(c.querySelector('[data-apoio-casas]').textContent).toBe('Início: há 1h40 · Tempo estimado: faltam 45min')
     // a ordem das casas é a do modelo
     expect([...c.querySelectorAll('[data-casa]')].map((n) => n.getAttribute('data-casa'))).toEqual(['Início', 'Tempo estimado', 'Término'])
   })
@@ -116,7 +120,8 @@ describe('detalhe do caso: cartão compacto e pílula "Editar"', () => {
   it('terminada: término real com "durou X", e o Estimado sai (a previsão já não conta)', () => {
     detalhe(terminada)
     const fim = within(cartao()).getByRole('button', { name: 'Término desta cirurgia: 15:22' })
-    expect(within(fim).getByText('durou 1h17')).toBeTruthy()
+    expect(fim.textContent).toBe('Término15:22')
+    expect(cartao().querySelector('[data-apoio-casas]').textContent).toBe('Término: durou 1h17')
     expect(within(cartao()).queryByRole('button', { name: /Tempo estimado/ })).toBeNull()
   })
 
@@ -265,10 +270,10 @@ describe('Liberações: folha do "+ Tempo total"', () => {
     expect(within(est).getByText('16:30')).toBeTruthy()
     // 10/11 (modelo A): o tempo estimado é a casa do meio de cada cirurgia — "faltam" mora
     // nela; a que não tem estimado mostra "—" com "ainda não informado" (era o link "estimar")
-    expect(within(est).getByText('faltam 45min')).toBeTruthy()
-    expect(screen.getByRole('button', { name: `Tempo estimado de 15:30 ${rot(HERNIA)}: não informado` }).textContent).toBe('Tempo estimado—ainda não informado')
+    expect(est.closest('[data-cirurgia-tempos]').querySelector('[data-apoio-casas]').textContent).toContain('Tempo estimado: faltam 45min')
+    expect(screen.getByRole('button', { name: `Tempo estimado de 15:30 ${rot(HERNIA)}: não informado` }).textContent).toBe('Tempo estimado—')
     const ini = screen.getByRole('button', { name: `Início de 13:30 ${rot(COLE)}: 14:05` })
-    expect(within(ini).getByText('há 1h40')).toBeTruthy()
+    expect(ini.closest('[data-cirurgia-tempos]').querySelector('[data-apoio-casas]').textContent).toContain('Início: há 1h40')
     expect(screen.getByRole('button', { name: `Término de 13:30 ${rot(COLE)}: não informado` })).toBeTruthy()
   })
 

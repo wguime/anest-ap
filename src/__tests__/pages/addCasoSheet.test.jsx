@@ -61,6 +61,15 @@ const escolherSala = (nomeOpcao) => escolherPorPlaceholder('A definir', nomeOpca
 /** Tipo e gravidade são PASTILHAS desde 20/08 (ChipsEscolha, as mesmas do
  *  detalhe do caso) — não são mais Select. */
 const marcarChip = (nome) => fireEvent.click(screen.getByRole('button', { name: nome }))
+// 11/11/2026 (dono): com campo obrigatório faltando o botão NÃO fica `disabled` — o toque é a
+// "tentativa" que acende o aviso da gravidade —, mas continua sem salvar (`aria-disabled`).
+// Estes testes travavam `toBeDisabled()`; o que protegem é o mesmo: inválido não grava.
+const naoSalva = () => {
+  const botao = screen.getByRole('button', { name: /Adicionar/ })
+  expect(botao.getAttribute('aria-disabled')).toBe('true')
+  fireEvent.click(botao)
+  expect(adicionarCaso).not.toHaveBeenCalled()
+}
 
 /** Cirurgião e convênio passaram a ser OBRIGATÓRIOS (dono 29/07): o cirurgião
  *  agrupa a linha na coluna de liberação e o convênio decide se o caso vira
@@ -69,7 +78,7 @@ const marcarChip = (nome) => fireEvent.click(screen.getByRole('button', { name: 
  *  Todo teste que salva precisa preenchê-los. */
 const preencherObrigatorios = () => {
   fireEvent.change(screen.getByPlaceholderText('ex.: Mateus Baptistella'), { target: { value: 'Dr. Ivo' } })
-  escolherPorPlaceholder('Selecionar convênio…', 'Unimed')
+  escolherPorPlaceholder('Selecionar…', 'Unimed')
   marcarChip('Urgente')
 }
 
@@ -138,7 +147,7 @@ describe('AddCasoSheet — salvar procedimento e anestesista (dono 29/07)', () =
     render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
     escolherSala('Sala 2')
     fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Drenagem' } })
-    fireEvent.change(screen.getByPlaceholderText(/Nome ou iniciais/), { target: { value: 'Maria Aparecida Souza' } })
+    fireEvent.change(screen.getByPlaceholderText(/ex\.: M\.A\./), { target: { value: 'Maria Aparecida Souza' } })
     preencherObrigatorios()
     fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
     await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
@@ -186,9 +195,9 @@ describe('AddCasoSheet — campos obrigatórios', () => {
     abrir()
     escolherSala('Sala 2')
     fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Drenagem' } })
-    escolherPorPlaceholder('Selecionar convênio…', 'Unimed')
+    escolherPorPlaceholder('Selecionar…', 'Unimed')
 
-    expect(screen.getByRole('button', { name: /Adicionar/ })).toBeDisabled()
+    naoSalva()
     // botão cinza sem explicação vira tentativa e erro no meio do plantão
     expect(screen.getByText(/Falta preencher/i).textContent).toMatch(/cirurgião/i)
   })
@@ -199,7 +208,7 @@ describe('AddCasoSheet — campos obrigatórios', () => {
     fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Drenagem' } })
     fireEvent.change(screen.getByPlaceholderText('ex.: Mateus Baptistella'), { target: { value: 'Dr. Ivo' } })
 
-    expect(screen.getByRole('button', { name: /Adicionar/ })).toBeDisabled()
+    naoSalva()
     expect(screen.getByText(/Falta preencher/i).textContent).toMatch(/convênio/i)
   })
 
@@ -230,10 +239,10 @@ describe('AddCasoSheet — gravidade da urgência', () => {
     escolherSala('Sala 2')
     fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Apendicectomia' } })
     fireEvent.change(screen.getByPlaceholderText('ex.: Mateus Baptistella'), { target: { value: 'Dr. Ivo' } })
-    escolherPorPlaceholder('Selecionar convênio…', 'SUS')
+    escolherPorPlaceholder('Selecionar…', 'SUS')
 
     expect(screen.getByText(/Falta preencher/i).textContent).toMatch(/gravidade/)
-    expect(screen.getByRole('button', { name: /Adicionar/ })).toBeDisabled()
+    naoSalva()
   })
 
   it('eletiva não pede gravidade — o campo some e o caso salva sem ele', async () => {
@@ -241,7 +250,7 @@ describe('AddCasoSheet — gravidade da urgência', () => {
     escolherSala('Sala 2')
     fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Herniorrafia' } })
     fireEvent.change(screen.getByPlaceholderText('ex.: Mateus Baptistella'), { target: { value: 'Dr. Ivo' } })
-    escolherPorPlaceholder('Selecionar convênio…', 'SUS')
+    escolherPorPlaceholder('Selecionar…', 'SUS')
     marcarChip('Urgente')
     marcarChip('Eletiva') // pastilha do TIPO
 
@@ -256,7 +265,7 @@ describe('AddCasoSheet — gravidade da urgência', () => {
     escolherSala('Sala 2')
     fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Laparotomia' } })
     fireEvent.change(screen.getByPlaceholderText('ex.: Mateus Baptistella'), { target: { value: 'Dr. Ivo' } })
-    escolherPorPlaceholder('Selecionar convênio…', 'SUS')
+    escolherPorPlaceholder('Selecionar…', 'SUS')
     marcarChip('Emergência') // pastilha do TIPO
     // a gravidade já vem preenchida: "Imediata" marcada, nada mais a escolher
     expect(screen.getByRole('button', { name: 'Imediata' }).getAttribute('aria-pressed')).toBe('true')
@@ -267,36 +276,43 @@ describe('AddCasoSheet — gravidade da urgência', () => {
 })
 
 /**
- * POSTO DO CONTRATO (dono 19/08): no HRO, quem adiciona urgência/emergência já
- * diz QUEM a faz (Plantão/Sobreaviso/Ortopedia/CO). A escolha vira CONFIG de
- * sala (urgencias_meta) — o mesmo dado do ⚙ da faixa —, nunca campo do caso;
- * posto ocupado pode ser escolhido e o excedente entra como Extra sozinho.
+ * POSTO DO CONTRATO — o campo SAIU da tela (dono 11/11/2026).
+ *
+ * ⚠️ ESTE BLOCO MUDOU DE LADO. De 19/08 a 10/11 a folha tinha "Quem vai fazer esta urgência"
+ * (Automático/Plantonista/Sobreaviso/Ortopedia/CO) e um parágrafo sobre o contrato do HRO; os
+ * testes travavam o campo e a gravação da sala em `urgencias_meta`. O dono mandou tirar o campo
+ * e o parágrafo: por baixo vale o "Automático — decide pela sala". A engrenagem "Salas do
+ * contrato" continua na faixa de urgências, e o toque num posto VAZIO da faixa ainda abre a
+ * folha com `postoInicial` (é a intenção de quem tocou naquele posto).
  */
-describe('AddCasoSheet — posto do contrato (só HRO)', () => {
+describe('AddCasoSheet — o posto do contrato não é mais perguntado (dono 11/11/2026)', () => {
   const preencherUrgencia = (salaNome = 'Sala 2') => {
     escolherSala(salaNome)
     fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Laparotomia' } })
     fireEvent.change(screen.getByPlaceholderText('ex.: Mateus Baptistella'), { target: { value: 'Dr. Ivo' } })
-    escolherPorPlaceholder('Selecionar convênio…', 'SUS')
+    escolherPorPlaceholder('Selecionar…', 'SUS')
     marcarChip('Urgente')
   }
 
-  it('o campo existe no HRO em urgência e some fora do HRO', () => {
+  it('urgência no HRO: nem o campo nem o parágrafo do contrato aparecem', () => {
     render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
-    expect(screen.getByText('Quem vai fazer esta urgência')).toBeTruthy()
-
-    render(
-      <AddCasoSheet escala={{ id: 'e2', hospital: 'unimed', casos: [] }} turno="matutino" onClose={vi.fn()} />,
-      { wrapper: wrap },
-    )
-    // só um campo — o do HRO do primeiro render
-    expect(screen.getAllByText('Quem vai fazer esta urgência')).toHaveLength(1)
+    expect(screen.queryByText('Quem vai fazer esta urgência')).toBeNull()
+    expect(screen.queryByText('Automático — decide pela sala')).toBeNull()
+    expect(document.body.textContent).not.toMatch(/2 vagas de\s+urgência por turno/)
   })
 
-  it('escolher Plantão grava a sala do caso na config daquele posto/turno', async () => {
+  it('salvar uma urgência não grava configuração de sala nenhuma — vale o automático', async () => {
     render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
     preencherUrgencia('Sala 2')
-    escolher(screen.getByText('Automático — decide pela sala'), 'Plantonista do HRO')
+    fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
+    await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
+    expect(definirSalasUrgencia).not.toHaveBeenCalled()
+  })
+
+  it('aberta por um posto vazio da faixa (`postoInicial`), grava a sala naquele posto — sem campo na tela', async () => {
+    render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} postoInicial="plantao" />, { wrapper: wrap })
+    expect(screen.queryByText('Quem vai fazer esta urgência')).toBeNull()
+    preencherUrgencia('Sala 2')
     fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
     await waitFor(() => expect(definirSalasUrgencia).toHaveBeenCalled())
     const [, turnoArg, cfgArg] = definirSalasUrgencia.mock.calls[0]
@@ -304,33 +320,15 @@ describe('AddCasoSheet — posto do contrato (só HRO)', () => {
     expect(cfgArg).toEqual({ plantao: 'Sala 2' })
   })
 
-  it('Automático não grava config nenhuma', async () => {
-    render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
-    preencherUrgencia('Sala 2')
-    fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
-    await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
-    expect(definirSalasUrgencia).not.toHaveBeenCalled()
-  })
-
-  it('Ortopedia na Sala 4 (o default) não precisa de config — nada é gravado', async () => {
-    render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
-    preencherUrgencia('Sala 4')
-    escolher(screen.getByText('Automático — decide pela sala'), 'Anestesista da ortopedia')
-    fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
-    await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
-    expect(definirSalasUrgencia).not.toHaveBeenCalled()
-  })
-
   it('config existente do posto NUNCA é sobrescrita por aqui — o excedente vira Extra sozinho', async () => {
     render(
       <AddCasoSheet
         escala={{ ...escala, urgenciasMeta: { matutino: { plantao: 'Sala 6' } } }}
-        turno="matutino" onClose={vi.fn()}
+        turno="matutino" onClose={vi.fn()} postoInicial="plantao"
       />,
       { wrapper: wrap },
     )
     preencherUrgencia('Sala 2')
-    escolher(screen.getByText('Automático — decide pela sala'), 'Plantonista do HRO')
     fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
     await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
     expect(definirSalasUrgencia).not.toHaveBeenCalled()
@@ -351,7 +349,7 @@ describe('AddCasoSheet — convênio', () => {
     marcarChip('Urgente')
     // UMA Unimed (dono 11/2026): este teste escolhia "Unimed Chapecó - VD", que saiu da
     // lista — o que ele trava (a grafia DA LISTA é a que vai ao banco) segue igual.
-    escolherPorPlaceholder('Selecionar convênio…', 'SC Saúde')
+    escolherPorPlaceholder('Selecionar…', 'SC Saúde')
 
     fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
     await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
@@ -364,9 +362,9 @@ describe('AddCasoSheet — convênio', () => {
     fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Cesárea' } })
     fireEvent.change(screen.getByPlaceholderText('ex.: Mateus Baptistella'), { target: { value: 'Dr. Ivo' } })
     marcarChip('Urgente')
-    escolherPorPlaceholder('Selecionar convênio…', '+ Outro convênio…')
+    escolherPorPlaceholder('Selecionar…', '+ Outro convênio…')
     // enquanto o campo está vazio o botão continua travado
-    expect(screen.getByRole('button', { name: /Adicionar/ })).toBeDisabled()
+    naoSalva()
     fireEvent.change(screen.getByPlaceholderText('Nome do convênio'), { target: { value: 'Sindicato Rural' } })
 
     fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
@@ -428,7 +426,7 @@ describe('AddCasoSheet — uma Unimed só', () => {
     fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Cesárea' } })
     fireEvent.change(screen.getByPlaceholderText('ex.: Mateus Baptistella'), { target: { value: 'Dr. Ivo' } })
     marcarChip('Urgente')
-    escolherPorPlaceholder('Selecionar convênio…', '+ Outro convênio…')
+    escolherPorPlaceholder('Selecionar…', '+ Outro convênio…')
     fireEvent.change(screen.getByPlaceholderText('Nome do convênio'), { target: { value: 'unimed chapeco vd' } })
     fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
     await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
@@ -467,10 +465,9 @@ describe('AddCasoSheet — sala opcional', () => {
     expect(falta.textContent).toMatch(/procedimento, cirurgião, convênio, gravidade/)
   })
 
-  it('posto do contrato escolhido SEM sala não grava configuração de sala nenhuma', async () => {
-    render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
+  it('posto do contrato (vindo da faixa) SEM sala não grava configuração de sala nenhuma', async () => {
+    render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} postoInicial="plantao" />, { wrapper: wrap })
     preencherSemSala()
-    escolher(screen.getByText('Automático — decide pela sala'), 'Plantonista do HRO')
     fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
     await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
     expect(definirSalasUrgencia).not.toHaveBeenCalled()
@@ -478,27 +475,50 @@ describe('AddCasoSheet — sala opcional', () => {
 })
 
 /**
- * ORDEM DOS CAMPOS E AVISOS (dono 11/2026, modelos 4 e 5 escolhidos por imagem).
- * Sala, procedimento, cirurgião e convênio no 1º cartão — antes sala e cirurgião vinham no
- * 3º, depois do texto do contrato. E os avisos em âmbar passam ao laranja-escuro: o
- * `text-warning` media 2,13:1 sobre o cartão claro (mínimo 4,5:1).
+ * UM BLOCO SÓ "A CIRURGIA", EM GRADE (dono 11/11/2026, opção A de `modelos-5/3-adicionar-caso.html`).
+ *
+ * ⚠️ MUDOU DE LADO: o teste travava TRÊS cartões ("A cirurgia", "Tipo e prioridade", "Paciente e
+ * equipe") com sala e hora na frente. Agora os dados da cirurgia e do paciente moram num bloco
+ * só, com os campos curtos lado a lado; a frase vermelha da gravidade só aparece depois de
+ * tentar salvar; e os botões ficam presos no rodapé. Os avisos seguem no laranja-escuro (o
+ * `text-warning` media 2,13:1 sobre o cartão claro).
  */
-describe('AddCasoSheet — ordem dos campos e avisos legíveis', () => {
-  it('o 1º cartão traz sala, hora, procedimento, cirurgião e convênio, nessa ordem', () => {
+describe('AddCasoSheet — um bloco só, em grade (dono 11/11/2026)', () => {
+  const rotulos = (a) => [...a.querySelectorAll('label')].map((l) => l.textContent)
+
+  it('dois cartões; o 1º traz todos os dados, na ordem do modelo', () => {
     render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
     const cartoes = [...document.querySelectorAll('article')]
-    expect(cartoes.map((a) => a.querySelector('h3').textContent)).toEqual(['A cirurgia', 'Tipo e prioridade', 'Paciente e equipe'])
-    const rotulos = (a) => [...a.querySelectorAll('label')].map((l) => l.textContent)
-    expect(rotulos(cartoes[0])).toEqual(['Sala', 'Hora', 'Procedimento *', 'Cirurgião *', 'Convênio *'])
-    expect(rotulos(cartoes[2])).toEqual(['Paciente', 'Idade', 'Anestesista', 'Residente'])
+    expect(cartoes.map((a) => a.querySelector('h3').textContent)).toEqual(['A cirurgia', 'Tipo e prioridade'])
+    expect(rotulos(cartoes[0])).toEqual([
+      'Procedimento *', 'Cirurgião *', 'Convênio *', 'Hora', 'Sala', 'Idade', 'Paciente (iniciais)', 'Residente', 'Anestesista',
+    ])
+    // campos curtos em pares, lado a lado
+    expect(cartoes[0].querySelectorAll('.grid.grid-cols-2')).toHaveLength(3)
   })
 
-  it('os dois avisos do formulário usam o laranja-escuro, não o âmbar do token', () => {
+  it('a frase vermelha da gravidade só aparece DEPOIS de tentar salvar', () => {
     render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
-    for (const texto of [/Sem classificação a urgência/, /Falta preencher/]) {
-      const el = screen.getByText(texto)
-      expect(el.className).toContain('text-category-orange-fg')
-      expect(el.className).not.toContain('text-warning')
-    }
+    expect(screen.queryByText(/Sem classificação a urgência/)).toBeNull()
+    expect(screen.getByText(/Falta preencher/).textContent).toMatch(/gravidade/)
+    fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
+    const aviso = screen.getByText(/Sem classificação a urgência/)
+    expect(aviso.className).toContain('text-category-orange-fg')
+    expect(adicionarCaso).not.toHaveBeenCalled()
+  })
+
+  it('os botões ficam presos no rodapé da folha', () => {
+    render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
+    const rodape = document.querySelector('[data-rodape-caso]')
+    expect(rodape.className).toContain('sticky')
+    expect(rodape.className).toContain('bottom-0')
+    expect(rodape.querySelector('button')).not.toBeNull()
+  })
+
+  it('o aviso do que falta usa o laranja-escuro, não o âmbar do token', () => {
+    render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
+    const el = screen.getByText(/Falta preencher/)
+    expect(el.className).toContain('text-category-orange-fg')
+    expect(el.className).not.toContain('text-warning')
   })
 })

@@ -75,7 +75,7 @@ const marcado = (...nomes) => nomes
 const hospitalMarcado = () => marcado('Unimed', 'HRO', 'Materno')
 // 16/09: o trilho de turno só existe com mais de um turno para escolher; o turno
 // EXIBIDO mora no subtítulo do cabeçalho ("Hoje · Quarta, 16/09 · Tarde")
-const turnoMarcado = () => (screen.getByText(/^(Hoje|Amanhã) · /).textContent.match(/· (Manhã|Tarde|Noite)$/) || [])[1] || null
+const turnoMarcado = () => (screen.getByText(/ · (Hoje|Amanhã) · /).textContent.match(/· (Manhã|Tarde|Noite)$/) || [])[1] || null
 const abaMarcada = () => marcado('Minhas', 'Completa', 'Liberações')
 
 const escalaCom = (hospital, casos) => ({

@@ -366,35 +366,53 @@ describe('Convênio da cirurgia', () => {
 // carga de comunicação, porque as pessoas ligam para confirmar. Dizer quando e
 // por quem custa uma linha — e é o que separa "o app afirma" de "alguém marcou".
 // ════════════════════════════════════════════════════════════════════════════
-describe('Andamento — quando mudou e por quem', () => {
+// ⚠️ ESTE BLOCO MUDOU DE LADO (dono 11/11/2026, opção A de `modelos-4/2-inicio-um-so.html`).
+// Travava a linha "Iniciada às 14:33 por Fulano" no cartão Andamento (21/08). A folha mostrava
+// DOIS horários de início — o real em cima (07:30) e a hora do toque embaixo (08:26). A linha
+// saiu do Andamento; a procedência continua dita, pequena, sob as casas do horário:
+// "informado por Fulano às 14:33".
+describe('quem informou o horário — sob as casas, não no Andamento (dono 11/11/2026)', () => {
   const comCarimbo = (extra = {}) => {
-    const c = { ...caso, statusCirurgia: 'iniciada', statusAtualizadoEm: '2026-07-29T14:33:07', ...extra }
+    const c = { ...caso, statusCirurgia: 'iniciada', inicioReal: '14:05', statusAtualizadoEm: '2026-07-29T14:33:07', ...extra }
     return { ...escala, casos: [c] }
   }
+  const informado = () => document.querySelector('[data-informado-por]')?.textContent || null
 
-  it('diz o estado e a hora em que foi marcado', () => {
+  it('a linha do Andamento saiu; sob as casas: a hora em que o início foi informado', () => {
     montar({}, comCarimbo())
-    expect(screen.getByText(/Iniciada às/)).toBeTruthy()
-    expect(screen.getByText('14:33')).toBeTruthy()
+    expect(screen.queryByText(/Iniciada às/)).toBeNull()
+    expect(informado()).toBe('informado às 14:33')
+    expect(document.querySelector('[data-informado-por]').closest('[aria-label="Horário desta cirurgia"]')).not.toBeNull()
+  })
+
+  it('início corrigido à mão por OUTRA pessoa: o autor é o do horário, e a hora do toque não é dele', () => {
+    montar({}, comCarimbo({ inicioRealPor: 'u-outro', statusAtualizadoPor: 'u-quem-tocou' }))
+    // sem autor reconhecido no roster e sem hora que seja dele: nada é afirmado
+    expect(informado()).toBeNull()
+  })
+
+  it('terminada: a procedência é do TÉRMINO', () => {
+    montar({}, comCarimbo({ statusCirurgia: 'terminada', terminoReal: '14:30' }))
+    expect(screen.queryByText(/Terminada às/)).toBeNull()
+    expect(informado()).toBe('Término informado às 14:33')
   })
 
   // O uid é de QUEM TOCOU e o roster só cobre anestesiologistas: secretária,
   // técnica ou admin não resolvem. Melhor só a hora do que "por —".
   it('sem autor reconhecido, mostra só o horário', () => {
     montar({}, comCarimbo({ statusAtualizadoPor: 'u-desconhecido' }))
-    expect(screen.getByText(/Iniciada às/)).toBeTruthy()
+    expect(informado()).toBe('informado às 14:33')
     expect(screen.queryByText(/por\s*—/)).toBeNull()
   })
 
   it('caso AGENDADO não ganha a linha — nada aconteceu ainda', () => {
     montar()
-    expect(screen.queryByText(/Iniciada às/)).toBeNull()
-    expect(screen.queryByText(/Terminada às/)).toBeNull()
+    expect(informado()).toBeNull()
   })
 
   it('carimbo de OUTRO dia não vira horário solto', () => {
     montar({}, comCarimbo({ statusAtualizadoEm: '2026-07-28T14:33:07' }))
-    expect(screen.queryByText(/Iniciada às/)).toBeNull()
+    expect(informado()).toBeNull()
   })
 })
 
@@ -435,11 +453,14 @@ describe('duas cirurgias: o estimado da que não começou é DURAÇÃO; a soma n
   // ⚠️ MUDOU DE LADO em 10/11/2026 (modelo A): era o botão "Estimado 1h · do início" no
   // título e "1h do início" no bloco Término. O tempo estimado virou a CASA do meio — "1h"
   // com "duração prevista" — e o Término só fala do horário real ("ainda não informado").
-  it('a casa "Tempo estimado" diz "1h · duração prevista"; a do Término não fala de estimativa', () => {
+  // ↳ 11/11/2026 (casas compactas, opção A de `modelos-5/1-casas-compactas.html`): a casa tem só
+  // rótulo e valor; "duração prevista" foi para a linha de apoio abaixo das três; vazia é "—".
+  it('a casa "Tempo estimado" diz "1h"; o apoio diz "duração prevista"; a do Término não fala de estimativa', () => {
     montarSegunda({ ...proxima, duracaoEstimadaMin: 60 })
     const casa = screen.getByRole('button', { name: /Tempo estimado desta cirurgia: 1h/ })
-    expect(casa.textContent).toBe('Tempo estimado1hduração prevista')
-    expect(screen.getByRole('button', { name: 'Término desta cirurgia: não informado' }).textContent).toBe('Término—ainda não informado')
+    expect(casa.textContent).toBe('Tempo estimado1h')
+    expect(document.querySelector('[data-apoio-casas]').textContent).toBe('Tempo estimado: duração prevista')
+    expect(screen.getByRole('button', { name: 'Término desta cirurgia: não informado' }).textContent).toBe('Término—')
     expect(screen.queryByText('1h do início')).toBeNull()
   })
 
