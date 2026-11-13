@@ -58,6 +58,9 @@ const ALLOWED_SCOPES = new Set(['read'])
 const VALID_GRANULAR_SCOPES = new Set([
   'read:docs', 'read:planos-acao', 'read:comunicados',
   'write:docs', 'write:planos-acao', 'write:comunicados',
+  // nov/2026 — domínios só de leitura (migration 20261112*). Opt-in, fora do default.
+  'read:escala-cirurgica', 'read:anestesistas', 'read:residentes',
+  'read:funcionarias', 'read:ferias',
 ])
 const DEFAULT_GRANULAR_SCOPES = ['read:docs', 'read:planos-acao', 'read:comunicados']
 const MIN_NAME_LEN = 3

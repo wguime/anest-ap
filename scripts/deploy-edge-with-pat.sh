@@ -31,4 +31,5 @@ if [ -z "$FN" ]; then
 fi
 shift
 
-exec npx supabase functions deploy "$FN" --project-ref=vjzrahruvjffyyqyhjny "$@"
+# Fixado na v2: a v3 (nov/2026) recusa o [inbucket] do config.toml.
+exec npx -y supabase@2 functions deploy "$FN" --project-ref=vjzrahruvjffyyqyhjny "$@"

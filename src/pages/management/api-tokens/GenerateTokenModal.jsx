@@ -30,7 +30,16 @@ const WRITE_SCOPES = [
   { value: 'write:planos-acao', label: 'Planos de Ação', code: 'write:planos-acao' },
   { value: 'write:comunicados', label: 'Comunicados', code: 'write:comunicados' },
 ]
-const SCOPE_OPTIONS = [...READ_SCOPES, ...WRITE_SCOPES]
+// nov/2026 — escalas, pessoas e férias: só leitura e DESMARCADOS por padrão
+// (dado pessoal; liberar é decisão explícita de quem gera a chave).
+const PESSOAS_SCOPES = [
+  { value: 'read:escala-cirurgica', label: 'Escala cirúrgica', code: 'read:escala-cirurgica' },
+  { value: 'read:anestesistas', label: 'Anestesistas', code: 'read:anestesistas' },
+  { value: 'read:residentes', label: 'Residentes', code: 'read:residentes' },
+  { value: 'read:funcionarias', label: 'Funcionárias', code: 'read:funcionarias' },
+  { value: 'read:ferias', label: 'Extrato de férias', code: 'read:ferias' },
+]
+const SCOPE_OPTIONS = [...READ_SCOPES, ...PESSOAS_SCOPES, ...WRITE_SCOPES]
 
 function GenerateTokenModal({ open, onClose, onGenerate, onCreated }) {
   const { toast } = useToast()
@@ -166,6 +175,32 @@ function GenerateTokenModal({ open, onClose, onGenerate, onCreated }) {
                 </p>
                 <div className="space-y-1">
                   {READ_SCOPES.map((opt) => (
+                    <Checkbox
+                      key={opt.value}
+                      id={`scope-${opt.value}`}
+                      compact
+                      size="sm"
+                      checked={scopes.includes(opt.value)}
+                      onChange={toggleScope(opt.value)}
+                      label={
+                        <span className="inline-flex items-baseline gap-1.5">
+                          <span>{opt.label}</span>
+                          <code className="text-[11px] text-muted-foreground bg-muted px-1 py-0.5 rounded">
+                            {opt.code}
+                          </code>
+                        </span>
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="mb-2">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                  Escalas e pessoas (leitura)
+                </p>
+                <div className="space-y-1">
+                  {PESSOAS_SCOPES.map((opt) => (
                     <Checkbox
                       key={opt.value}
                       id={`scope-${opt.value}`}

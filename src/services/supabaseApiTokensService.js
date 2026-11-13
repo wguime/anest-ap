@@ -41,6 +41,12 @@ const VALID_SCOPES = Object.freeze([
   'write:docs',
   'write:planos-acao',
   'write:comunicados',
+  // nov/2026 — domínios só de leitura (escala, pessoas, férias). Opt-in.
+  'read:escala-cirurgica',
+  'read:anestesistas',
+  'read:residentes',
+  'read:funcionarias',
+  'read:ferias',
 ])
 
 // Back-compat: tokens legacy (scope='read' sem scopes text[]) mapeiam só pros 3

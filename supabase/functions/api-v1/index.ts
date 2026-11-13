@@ -11,6 +11,12 @@
 //   GET /v1/docs/:id/changelog        → histórico paginado do doc (200/404)
 //   GET /v1/planos-acao               → Sprint 15b: lista paginada planos PDCA (200)
 //   GET /v1/comunicados               → Sprint 15b: lista paginada comunicados (200)
+//   nov/2026 — só leitura, módulos _escala-cirurgica.ts / _pessoas-escalas.ts / _ferias.ts:
+//   GET /v1/escala-cirurgica          → read:escala-cirurgica (sem dado de paciente)
+//   GET /v1/anestesistas              → read:anestesistas
+//   GET /v1/residentes[/plantoes|/estagios] → read:residentes
+//   GET /v1/funcionarias/escala       → read:funcionarias
+//   GET /v1/ferias/extrato            → read:ferias
 //   *                                 → 404 { error: 'not_found' }
 //
 // Auth:
@@ -55,6 +61,42 @@
 // =============================================================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
+import type { RotaCtx, RotaResultado } from './_contrato.ts'
+import { rotaEscalaCirurgica, rotaAnestesistas } from './_escala-cirurgica.ts'
+import {
+  rotaResidentes,
+  rotaResidentesPlantoes,
+  rotaResidentesEstagios,
+  rotaFuncionariasEscala,
+} from './_pessoas-escalas.ts'
+import { rotaFeriasExtrato } from './_ferias.ts'
+
+// nov/2026 — rotas só de leitura dos módulos de domínio (contrato em _contrato.ts).
+// Chave = caminho lógico sem barra final. O escopo exigido vem de ENDPOINT_SCOPES.
+const ROTAS_LEITURA: Record<string, (ctx: RotaCtx) => Promise<RotaResultado>> = {
+  '/v1/escala-cirurgica': rotaEscalaCirurgica,
+  '/v1/anestesistas': rotaAnestesistas,
+  '/v1/residentes': rotaResidentes,
+  '/v1/residentes/plantoes': rotaResidentesPlantoes,
+  '/v1/residentes/estagios': rotaResidentesEstagios,
+  '/v1/funcionarias/escala': rotaFuncionariasEscala,
+  '/v1/ferias/extrato': rotaFeriasExtrato,
+}
+
+async function executarRota(
+  rota: (ctx: RotaCtx) => Promise<RotaResultado>,
+  ctx: RotaCtx,
+  rlHeaders: Record<string, string>,
+): Promise<Response> {
+  try {
+    const r = await rota(ctx)
+    return jsonResponse(r.status, r.body, rlHeaders)
+  } catch (err) {
+    // Nunca devolver a mensagem crua: pode carregar trecho de linha do banco/Firestore.
+    console.error('api-v1: rota', ctx.pathname, err instanceof Error ? err.name : 'erro')
+    return jsonResponse(500, { error: 'internal_error' }, rlHeaders)
+  }
+}
 
 // ──────────────────────────────────────────────────────────────────────────
 // CORS
@@ -273,10 +315,24 @@ const LEGACY_ALL_SCOPES = [
 // Map endpoint-prefix → { read, write } scope obrigatório. Sprint 19 separa
 // por método HTTP: GET → read:*, POST/PUT/DELETE → write:*. Match por prefix
 // garante que sub-rotas como /v1/docs/:id e /v1/docs/:id/changelog herdem.
-const ENDPOINT_SCOPES: Record<string, { read: string; write: string }> = {
+const ENDPOINT_SCOPES: Record<string, { read: string; write: string | null }> = {
   '/v1/docs': { read: 'read:docs', write: 'write:docs' },
   '/v1/planos-acao': { read: 'read:planos-acao', write: 'write:planos-acao' },
   '/v1/comunicados': { read: 'read:comunicados', write: 'write:comunicados' },
+  // nov/2026 — domínios só de leitura (write: null → 405 para POST/PUT/DELETE).
+  '/v1/escala-cirurgica': { read: 'read:escala-cirurgica', write: null },
+  '/v1/anestesistas': { read: 'read:anestesistas', write: null },
+  '/v1/residentes': { read: 'read:residentes', write: null },
+  '/v1/funcionarias': { read: 'read:funcionarias', write: null },
+  '/v1/ferias': { read: 'read:ferias', write: null },
+}
+
+/** Prefixo só de leitura (write: null)? Usado para responder 405 a POST/PUT/DELETE. */
+function isReadOnlyPath(pathname: string): boolean {
+  for (const [prefix, scopes] of Object.entries(ENDPOINT_SCOPES)) {
+    if (pathname === prefix || pathname.startsWith(prefix + '/')) return scopes.write === null
+  }
+  return false
 }
 
 /**
@@ -287,7 +343,7 @@ const ENDPOINT_SCOPES: Record<string, { read: string; write: string }> = {
 function requiredScopeFor(method: string, pathname: string): string | null {
   for (const [prefix, scopes] of Object.entries(ENDPOINT_SCOPES)) {
     if (pathname === prefix || pathname.startsWith(prefix + '/')) {
-      return method === 'GET' ? scopes.read : scopes.write
+      return method === 'GET' ? scopes.read : scopes.write ?? scopes.read
     }
   }
   return null
@@ -1296,6 +1352,11 @@ Deno.serve(async (req) => {
   }
   if (!pathname.startsWith('/')) pathname = '/' + pathname
 
+  // nov/2026 — escala, pessoas e férias são só leitura, sem exceção.
+  if (req.method !== 'GET' && isReadOnlyPath(pathname)) {
+    return jsonResponse(405, { error: 'method_not_allowed', detail: 'read-only endpoint' })
+  }
+
   const ip = clientIp(req)
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
@@ -1379,6 +1440,13 @@ Deno.serve(async (req) => {
       response = await handleListPlanosAcao(supabase, url, rlHeaders)
     } else if (pathname === '/v1/comunicados' || pathname === '/v1/comunicados/') {
       response = await handleListComunicados(supabase, url, rlHeaders)
+    } else if (ROTAS_LEITURA[pathname.replace(/\/+$/, '')]) {
+      // nov/2026 — escala cirúrgica, anestesistas, residentes, funcionárias, férias.
+      response = await executarRota(
+        ROTAS_LEITURA[pathname.replace(/\/+$/, '')],
+        { supabase, url, pathname },
+        rlHeaders,
+      )
     } else {
       const changelogMatch = pathname.match(/^\/v1\/docs\/([^/]+)\/changelog\/?$/)
       const detailMatch = pathname.match(/^\/v1\/docs\/([^/]+)\/?$/)
