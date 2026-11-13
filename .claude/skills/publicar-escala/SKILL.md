@@ -38,8 +38,10 @@ pedido ao PUBLICADO.** O porquê de cada regra está em `REFERENCIA.md` — não
    leitura errada se corrige, "?" não se preenche com a numérica) e dizer no relatório; (h) os avisos
    restantes têm explicação na foto ou no recado; (h) o bloco **"faltantes da numérica"** do ensaio
    já classifica cada faltante (rodapé de outro hospital · pós-plantão da véspera no Pega Plantão ·
-   férias) — só os `❓` ficam: confira o recado (consultório, troca) e relate ao dono só o que
-   sobrar; (i) **`livre acima de ajuda`** nunca é ruído: alguém sem cirurgia vai aparecer "Livre" (e
+   férias). **Todo nome da numérica aparece na escala, exceto férias e atestado** (dono 12/11): o
+   `❌ FORA DA ESCALA` BLOQUEIA — ponha no rodapé (consultório do recado = `"NOME (CONSULT)"`, posição
+   ocupada) ou, se for atestado, `'ausentes': {'NOME': 'atestado'}` no lote; posição que nem a foto
+   nem o recado dizem → pergunte ao dono; (i) **`livre acima de ajuda`** nunca é ruído: alguém sem cirurgia vai aparecer "Livre" (e
    virar o próximo) por causa de uma ajuda abaixo dele — quase sempre a ajuda está no hospital errado;
    volte ao recado antes de publicar. Sem bloqueio e sem aviso que aponte erro seu →
    **Bash** `publicar` (sem `--ensaio`). O `gerar.py` já parou antes em erro de forma (hora, cor e
@@ -72,7 +74,9 @@ apelido conhecido).
   de baixo com nome do rodapé da tarde ("EXAMES 08:00 … RAUL") → `13:30`. Transcrita como está, a
   publicação DESCARTA a linha em silêncio (o turno corta pela hora) e o nome fica sem caso. **Data** (`dataDetectada`) é a que a FOTO diz — a Unimed
   traz em cada linha, o Materno no topo, o HRO às vezes a do dia anterior ou nenhuma (`''`): decida
-  pela coerência das três e deixe o aviso aparecer.
+  pela coerência das três e deixe o aviso aparecer. **Mapa do Materno com outra data = mapa velho:
+  NÃO publique o Materno** (sem mapa do dia o Materno não tem escala) e diga no relatório (13/11: mapa
+  de 12/11 publicado como 13/11 tirou o Romulo da fila da Unimed e precisou ser apagado).
 - **Anestesista por linha**: nome da foto · `//` = igual à linha de cima na MESMA sala, **sempre**
   (mesmo se quem está acima é ajuda de fora) · `?`/vazio = descoberta (`"?"`, `semAnestesista`).
   **"//" abaixo de "?"** também é descoberta → escreva `"?"` (um "//" ali cairia no 1º nome da sala).
@@ -123,15 +127,13 @@ apelido conhecido).
   HC), **2º = segundo**, não outro plantão; a ordem inverte entre manhã e tarde (01/10: manhã Vicente,
   Raul · tarde Raul, Vicente). O ensaio compara com quem assina caso no mapa (aviso `plantão materno`,
   nunca bloqueio). O 2º tem três leituras: nome à mão no mapa → está no Materno · em **azul em outro
-  hospital** → ajuda vinda do Materno (`cor:'azul'` + `ajuda` de onde opera) · **em lugar nenhum** →
-  **não foi escalado** no turno. Nas duas últimas o aviso "sem caso no mapa" e o `❓` dos faltantes
-  são esperados: não relatar como faltante, não perguntar, não preencher o "?" do mapa. Relatório:
-  "Materno: plantão X (mapa confere) · 2º Y → ajuda na Unimed | não escalado" (dono 30/09 e 01/10).
-  O bloco de faltantes já imprime o 2º como "2º do Materno … NÃO é faltante" — nunca relatá-lo como
-  sem explicação (02/10: Leandro, 2ª vez).
+  hospital** → ajuda vinda do Materno (`cor:'azul'` + `ajuda` de onde opera) · **sem caso** → fica no
+  rodapé do Materno, sem caso, em `conferidos` (nasce Liberado). Nunca fora do rodapé (dono 12/11). O
+  "?" do mapa não se preenche com a numérica. Relatório: "Materno: plantão X (mapa confere) · 2º Y →
+  ajuda na Unimed | sem caso, liberado".
   O nome à mão continua sendo o dado — a numérica confere, não preenche.
   **Rodapé do Materno SEMPRE = `ordem=[1º, 2º]` da numérica** (dono 12/10), como nos outros hospitais:
-  2º sem caso no mapa (não escalado) → cauda em `conferidos` (nasce Liberado); 1º e/ou 2º em AZUL em
+  2º sem caso no mapa → cauda em `conferidos` (nasce Liberado); 1º e/ou 2º em AZUL em
   outro hospital → mantém a posição no rodapé do Materno **e** `cor:'azul'` + `ajuda` de onde opera,
   com `{tipo:'intencional'}` em `decisoes` se o ensaio acusar duplicidade. Sem rodapé a tela elege o
   plantonista por nº de casos (06/10) e o 2º some da fila. Pós-plantão só vale para o P1/P2 da véspera
@@ -142,6 +144,11 @@ apelido conhecido).
   ele vira "Plantonista · Livre" e quem opera aparece como "Ajuda" (dono 26/10, tarde: Romulo
   pós-plantão → João Henrique no plantão, Karine liberada; publiquei Karine sozinha e precisou
   republicar). O aviso "a mais no rodapé: <quem assina>" é a confirmação, não erro.
+  **1º ou 2º da numérica de FÉRIAS** (o ensaio e o `ordem-liberacao-numerica` o tiram da lista e o que
+  sobra aparece como "1." — não é o plantão): quem vem no lugar é ajuda e ocupa a posição de quem está
+  de férias; o outro NÃO assume o plantão nem sai do rodapé → `ordem=[quem assina, 2º]` (ou `[1º, quem
+  assina]`), quem fica sem caso vai em `conferidos` (dono 12/11: Diego de férias, Romulo assina →
+  `['ROMULO','FERNANDA']`; publiquei só o Romulo e a Fernanda sumiu da fila).
 
 ## Recado do dono → lote
 

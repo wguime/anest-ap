@@ -250,10 +250,14 @@ async function noturnosDaVespera(data, uid, posPlantao) {
  * explicação vai ao dono — em 24/09 João Ricardo e Nathalia (P2/P1 da véspera) saíram como
  * "faltam" e só a consulta à mão mostrou que eram pós-plantão.
  */
-async function explicarFaltantes({ data, resultado, resolver, uidDono, ferias, noturnosVespera }) {
+// Regra do dono (12/11): TODO nome da numérica aparece na escala — num rodapé, como posição
+// ("MATHEUS (CONSULT)" conta) —, exceto férias e atestado. Quem não aparece em lugar nenhum BLOQUEIA;
+// atestado (o Pega Plantão não traz) se declara no lote: `ausentes: {'NOME': 'atestado'}`.
+// Devolve o nº de faltantes sem explicação.
+async function explicarFaltantes({ data, resultado, resolver, uidDono, ferias, noturnosVespera, ausentes = {}, decisoes = {} }) {
   const faltantes = Object.entries(resultado.hospitais)
     .flatMap(([h, r]) => (r.numerica?.faltamNoRodape || []).map((nome) => [h, nome]))
-  if (!faltantes.length) return
+  if (!faltantes.length) return 0
   const semNota = (s) => String(s || '').replace(/\s*\([^()]*\)\s*$/, '')
   const mesmo = (curto, outro) => {
     const u = resolver(semNota(curto))
@@ -283,7 +287,14 @@ async function explicarFaltantes({ data, resultado, resolver, uidDono, ferias, n
   }
   console.log('\n== faltantes da numérica × outro hospital / pós-plantão / férias')
   if (plantoes === null) console.log('   ⚠️  Pega Plantão não respondeu — pós-plantão NÃO conferido')
+  let semExplicacao = 0
+  const ausente = (nome) => Object.entries(ausentes).find(([n]) => mesmo(nome, n) || mesmo(n, nome))
+  // troca do recado ("A (consultório) na posição da B no HRO"): B foi para o lugar de A — está na escala
+  const parceiroDeTroca = (nome) => Object.entries(decisoes).find(([, d]) => d?.tipo === 'troca' && d.parceiro
+    && (mesmo(nome, d.parceiro) || mesmo(d.parceiro, nome)))
   for (const [h, nome] of faltantes) {
+    const aus = ausente(nome)
+    const troca = parceiroDeTroca(nome)
     const outro = Object.entries(resultado.hospitais)
       .find(([h2, r2]) => h2 !== h && r2.payload.ordemLiberacao.some((n) => mesmo(nome, n)))
     const pos = noturnos.find((p) => mesmo(nome, p.ProfDePlantao || p.ProfFixo || ''))
@@ -291,10 +302,14 @@ async function explicarFaltantes({ data, resultado, resolver, uidDono, ferias, n
     const motivo = outro ? `no rodapé do ${outro[0].toUpperCase()}`
       : pos ? `pós-plantão (${pos.Setor} ${vespera.slice(8)}/${vespera.slice(5, 7)} ${hhmm(pos.Inicio)}→${hhmm(pos.Fim)})`
         : fer ? 'férias'
-          : segundoMaterno(h, nome) ? '2º do Materno sem caso no mapa = não escalado no turno (NÃO é faltante — não relatar; dono 01/10 e 02/10)'
-          : '❓ sem explicação no lote nem no Pega Plantão — confira o recado (consultório, troca) ou relate ao dono'
+          : aus ? `${aus[1]} (declarado no lote)`
+          : troca ? `troca do recado: ${troca[0]} está na posição dele(a)${troca[1].local ? ` — foi para ${troca[1].local}` : ''}`
+          : segundoMaterno(h, nome) ? '❌ 2º do Materno FORA DA ESCALA — vai no rodapé do Materno, ordem=[1º, 2º]; sem caso no mapa → conferidos (nasce Liberado)'
+          : '❌ FORA DA ESCALA — todo nome da numérica aparece, exceto férias e atestado (dono 12/11): ponha no rodapé (consultório = "NOME (CONSULT)"), ou `ausentes` no lote se for atestado'
+    if (!outro && !pos && !fer && !aus && !troca) semExplicacao++
     console.log(`   ${h.toUpperCase().padEnd(7)} ${String(nome).padEnd(16)} → ${motivo}`)
   }
+  return semExplicacao
 }
 
 // ── comandos ─────────────────────────────────────────────────────────────────
@@ -405,13 +420,27 @@ if (cmd === 'publicar') {
     if (p.ordemLiberacao.length) console.log(`   rodapé: ${r.ordemNumerada.map((o) => `${o.i + 1}.${o.nome}${o.casos ? '' : '°'}${o.ajuda ? '*' : ''}`).join(' / ')}  (° sem caso · * ajuda)`)
     if (r.numerica?.plantao) console.log(`   numérica: plantão do Materno neste turno = ${r.numerica.esperada.join(', ')} · no mapa: ${r.numerica.noMapa.join(', ') || 'ninguém'} → ${r.numerica.iguais ? 'confere' : 'DIFERE'}${r.numerica.feriasConferidas ? ' (férias conferidas)' : ''}`)
     else if (r.numerica) console.log(`   numérica: ${r.numerica.iguais ? 'igual ao rodapé' : 'difere'}${r.numerica.feriasConferidas ? ' (férias conferidas)' : ''}${r.numerica.feriasDupla?.length ? ` · dupla de férias: ${r.numerica.feriasDupla.join('; ')}` : ''}${r.numerica.posPlantao || ''}`)
+    // Materno com 1º ou 2º de FÉRIAS: a numérica sem quem está de férias sai com um nome só como "1.",
+    // e esse nome NÃO vira plantão — quem vem no lugar ocupa a posição do que está de férias e o outro
+    // fica onde está (dono 12/11: Diego de férias, Romulo no lugar dele, Fernanda 2ª; publiquei só o
+    // Romulo e a Fernanda sumiu da fila). Imprime a ordem COMPLETA com a vaga marcada.
+    if (h === 'materno' && Array.isArray(ferias)) {
+      const cheia = libs.numerica.montarOrdem(dadosNumerica, { data, hospital: 'materno', turno })
+      const deFerias = (libs.numerica.montarOrdem(dadosNumerica, { data, hospital: 'materno', turno, ferias }).excluidos || []).map((e) => e.nome)
+      if (cheia.ok && deFerias.length) {
+        const pos = cheia.lista.map((x, i) => `${i + 1}º ${x.nome}${deFerias.includes(x.nome) ? ' (FÉRIAS → vaga de quem assina o mapa)' : ''}`)
+        const fica = cheia.lista.filter((x) => !deFerias.includes(x.nome)).map((x) => x.nome)
+        const semFica = fica.filter((n) => !p.ordemLiberacao.some((o) => String(o).toUpperCase().includes(n)))
+        console.log(`   ⚠️  materno com férias: numérica completa = ${pos.join(' · ')} — quem vem no lugar ocupa a posição; ${fica.join(', ') || 'ninguém'} fica(m) onde está(ão) (sem caso → conferidos)${semFica.length ? ` · FALTA NO RODAPÉ: ${semFica.join(', ')}` : ''}`)
+      }
+    }
     if (Object.keys(p.linhaOverrides || {}).length) console.log(`   decisões: ${JSON.stringify(p.linhaOverrides)}`)
     if (p.preservar) console.log(`   preservar: ${p.preservar.linhas.length} linha(s) com rastro`)
     for (const b of r.bloqueios) console.log(`   ❌ ${b.codigo}: ${b.texto}`)
     for (const a of r.avisos) console.log(`   ⚠️  ${a.codigo}: ${a.texto}`)
     totalBloqueios += r.bloqueios.length
   }
-  await explicarFaltantes({ data, resultado, resolver: identidade.resolver, uidDono, ferias, noturnosVespera })
+  totalBloqueios += await explicarFaltantes({ data, resultado, resolver: identidade.resolver, uidDono, ferias, noturnosVespera, ausentes: lote.ausentes || {}, decisoes: lote.decisoes || {} })
   if (totalBloqueios) {
     await libs.fechar()
     falhar(`${totalBloqueios} bloqueio(s) — a tela também recusaria. Corrija o lote (ou responda em decisoes/conferidos) e repita.`)
