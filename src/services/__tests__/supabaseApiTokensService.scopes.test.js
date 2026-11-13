@@ -33,11 +33,13 @@ vi.mock('@/config/supabase', () => ({
 import { validateScopes, VALID_SCOPES } from '../supabaseApiTokensService'
 
 describe('VALID_SCOPES', () => {
-  it('contém os 6 scopes documentados (3 read + 3 write, Sprint 19)', () => {
+  it('contém os 11 scopes documentados (3 read + 3 write + 5 escalas/pessoas, nov/2026)', () => {
     expect([...VALID_SCOPES].sort()).toEqual(
       [
         'read:comunicados', 'read:docs', 'read:planos-acao',
         'write:comunicados', 'write:docs', 'write:planos-acao',
+        'read:escala-cirurgica', 'read:anestesistas', 'read:residentes',
+        'read:funcionarias', 'read:ferias',
       ].sort()
     )
   })
