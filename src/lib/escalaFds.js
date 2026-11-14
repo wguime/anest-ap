@@ -121,7 +121,10 @@ export function ehFimDeSemana(dataIso) {
  */
 export function ehFeriado(dataIso) {
   const iso = String(dataIso || '')
-  return /^\d{4}-\d{2}-\d{2}$/.test(iso) && FERIADOS_2026.has(iso)
+  // FERIADO NO SÁB/DOM É FIM DE SEMANA (dono 13/11, domingo 15/11): o documento vem no
+  // formato do FDS (grade P1–P4, posições, noite) e é a regra do fim de semana que vale —
+  // o modo feriado (lista simples, sem grade, sem noite) só existe em dia de semana.
+  return /^\d{4}-\d{2}-\d{2}$/.test(iso) && FERIADOS_2026.has(iso) && !ehFimDeSemana(iso)
 }
 
 /** Datas em que a Escala Cirúrgica opera com a linha única hospital='fds'. */

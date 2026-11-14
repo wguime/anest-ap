@@ -425,10 +425,10 @@ describe('feriado — a folha lida é conferida contra a escala publicada', () =
   })
 
   it('feriado fora do documento publicado não compara nada', async () => {
-    // 15/11 é feriado no app e NÃO está na folha "FERIADOS 2026" — sem segunda fonte,
+    // 24/12 é feriado no app e NÃO está na folha "FERIADOS 2026" — sem segunda fonte,
     // a tela não inventa comparação (a lacuna está registrada para o dono)
-    svcMock.parseEscalaImagem.mockResolvedValueOnce({ dias: [{ data: '2026-11-15', listaFeriado: ['FERNANDA', 'TIAGO'] }], ignorados: [] })
-    const utils = render(<ImportarEscalaFdsPage data="2026-11-15" onClose={vi.fn()} />, { wrapper: wrap })
+    svcMock.parseEscalaImagem.mockResolvedValueOnce({ dias: [{ data: '2026-12-24', listaFeriado: ['FERNANDA', 'TIAGO'] }], ignorados: [] })
+    const utils = render(<ImportarEscalaFdsPage data="2026-12-24" onClose={vi.fn()} />, { wrapper: wrap })
     fireEvent.click(await screen.findByRole('button', { name: /Anexar/ }))
     await screen.findByText('Lista e fila', { selector: 'h1' })
     fireEvent.change(utils.container.querySelector('input[type="file"]'), {

@@ -238,7 +238,7 @@ troca de P1–P4 que a foto mostrou.
 
 Nunca publicar sem reler a foto contra o ensaio; nome completo de paciente só em particular;
 `.tmp/escala-lote/` não entra em commit; nenhum deploy ou migration faz parte disto; **feriado**
-(lista simples, `ordensDocumentoFeriado`) não tem comando — o script recusa a data e a publicação é
+(lista simples, `ordensDocumentoFeriado`; só em dia de semana — feriado no sáb/dom é FDS normal, dono 13/11) não tem comando — o script recusa a data e a publicação é
 pela tela; **nunca a edge de leitura** — foto ilegível é pergunta ao dono, com o custo; **o app não
 muda** (edge, prompt dela, cache, `ImportarEscalaPage`, `escalaCirurgicaService` ficam como estão —
 é como a equipe publica; mudança lá é pedido próprio do dono, Regra #2).

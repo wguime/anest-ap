@@ -240,6 +240,11 @@ sumir: o de 16/08 que exigia o seletor de hospital no FDS.
 
 ### FERIADO — a mesma fila única, com uma LISTA no lugar da grade (dono 24/08)
 
+⚠️ **FERIADO NO SÁBADO/DOMINGO É FIM DE SEMANA (dono 13/11):** "como o feriado caiu no final de
+semana, a regra de final de semana prevalece". `ehFeriado` devolve `false` em sáb/dom (15/11/2026,
+domingo): o documento vem no formato do FDS (grade P1–P4, posições, fila da noite) e publica-se no
+lote do fim de semana. O modo feriado (lista simples) só existe em dia de semana.
+
 Feriado roda como fim de semana na vida real (plantão 07h→07h, um anestesista
 cobrindo os três hospitais) e rodava como dia útil no app. Agora `ehDataFilaUnica`
 = sáb/dom **ou** feriado, e o feriado entra pelo MESMO caminho do FDS — linha

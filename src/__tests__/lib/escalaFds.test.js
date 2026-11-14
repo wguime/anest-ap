@@ -92,12 +92,20 @@ describe('feriado como data de fila única (sem mudar ehDiaUtil)', () => {
     // `FERIADOS_UTEIS` (feriasFeriados.js) exclui de propósito 24/12, 25/12,
     // 31/12 e 01/01 — lá o fim de ano é RECESSO. No hospital esses dias rodam
     // escala de feriado, então a fila única precisa alcançá-los.
-    for (const iso of ['2026-11-15', '2026-12-24', '2026-12-25', '2026-12-31', '2027-01-01']) {
+    for (const iso of ['2026-12-24', '2026-12-25', '2026-12-31', '2027-01-01']) {
       expect(ehFeriado(iso)).toBe(true)
       expect(ehDataFilaUnica(iso)).toBe(true)
     }
     expect(ehFeriado('2026-08-26')).toBe(false) // quarta comum
     expect(ehFeriado('')).toBe(false)
+  })
+
+  it('feriado no sábado/domingo segue a regra do FIM DE SEMANA (dono 13/11)', () => {
+    // 15/11/2026 (Proclamação) é domingo: o documento veio no formato do FDS e o dono
+    // decidiu que a regra do fim de semana prevalece — grade, posições e fila da noite
+    expect(ehFeriado('2026-11-15')).toBe(false)
+    expect(ehFimDeSemana('2026-11-15')).toBe(true)
+    expect(ehDataFilaUnica('2026-11-15')).toBe(true)
   })
 
   /**
