@@ -13,10 +13,13 @@
 //   GET /v1/comunicados               → Sprint 15b: lista paginada comunicados (200)
 //   nov/2026 — só leitura, módulos _escala-cirurgica.ts / _pessoas-escalas.ts / _ferias.ts:
 //   GET /v1/escala-cirurgica          → read:escala-cirurgica (sem dado de paciente)
+//   GET /v1/escala-cirurgica/plantoes → read:escala-cirurgica (P1–P4 noturno, _plantoes.ts)
 //   GET /v1/anestesistas              → read:anestesistas
 //   GET /v1/residentes[/plantoes|/estagios] → read:residentes
 //   GET /v1/funcionarias/escala       → read:funcionarias
 //   GET /v1/ferias/extrato            → read:ferias
+//   GET /v1/ferias/ausencias          → read:ferias (férias + afastamento sem motivo, _ausencias.ts)
+//   ?exemplo=true em qualquer rota acima → dados fictícios (_exemplos.ts)
 //   *                                 → 404 { error: 'not_found' }
 //
 // Auth:
@@ -70,17 +73,22 @@ import {
   rotaFuncionariasEscala,
 } from './_pessoas-escalas.ts'
 import { rotaFeriasExtrato } from './_ferias.ts'
+import { rotaFeriasAusencias } from './_ausencias.ts'
+import { rotaEscalaPlantoes } from './_plantoes.ts'
+import { respostaExemplo } from './_exemplos.ts'
 
 // nov/2026 — rotas só de leitura dos módulos de domínio (contrato em _contrato.ts).
 // Chave = caminho lógico sem barra final. O escopo exigido vem de ENDPOINT_SCOPES.
 const ROTAS_LEITURA: Record<string, (ctx: RotaCtx) => Promise<RotaResultado>> = {
   '/v1/escala-cirurgica': rotaEscalaCirurgica,
+  '/v1/escala-cirurgica/plantoes': rotaEscalaPlantoes,
   '/v1/anestesistas': rotaAnestesistas,
   '/v1/residentes': rotaResidentes,
   '/v1/residentes/plantoes': rotaResidentesPlantoes,
   '/v1/residentes/estagios': rotaResidentesEstagios,
   '/v1/funcionarias/escala': rotaFuncionariasEscala,
   '/v1/ferias/extrato': rotaFeriasExtrato,
+  '/v1/ferias/ausencias': rotaFeriasAusencias,
 }
 
 async function executarRota(
@@ -1442,11 +1450,17 @@ Deno.serve(async (req) => {
       response = await handleListComunicados(supabase, url, rlHeaders)
     } else if (ROTAS_LEITURA[pathname.replace(/\/+$/, '')]) {
       // nov/2026 — escala cirúrgica, anestesistas, residentes, funcionárias, férias.
-      response = await executarRota(
-        ROTAS_LEITURA[pathname.replace(/\/+$/, '')],
-        { supabase, url, pathname },
-        rlHeaders,
-      )
+      // ?exemplo=true → dados fictícios no mesmo formato (_exemplos.ts), sem ler nada real.
+      if (url.searchParams.get('exemplo') === 'true') {
+        const ex = respostaExemplo(pathname.replace(/\/+$/, ''))
+        response = jsonResponse(ex.status, ex.body, rlHeaders)
+      } else {
+        response = await executarRota(
+          ROTAS_LEITURA[pathname.replace(/\/+$/, '')],
+          { supabase, url, pathname },
+          rlHeaders,
+        )
+      }
     } else {
       const changelogMatch = pathname.match(/^\/v1\/docs\/([^/]+)\/changelog\/?$/)
       const detailMatch = pathname.match(/^\/v1\/docs\/([^/]+)\/?$/)

@@ -16,10 +16,15 @@
 // resultado só pode divergir em registro do PP sem DataCriacao que nenhuma tela
 // aberta tenha visto ainda.
 //
-// LGPD — whitelist campo a campo. FORA da resposta: licenças (só o setor
-// "Férias" é lido; licença/motivo nem entra no cache), campos crus do Pega
-// Plantão, e-mail/CPF/CRM, user_id de quem registrou movimentação,
-// avisos_aceitos, nomes do PP fora da lista de sócios.
+// LGPD — whitelist campo a campo. FORA da resposta: licenças (o extrato só lê
+// o setor "Férias"; da licença o cache guarda SÓ nome+data, para a rota
+// /v1/ferias/ausencias em _ausencias.ts — setor/motivo nunca entram), campos
+// crus do Pega Plantão, e-mail/CPF/CRM, user_id de quem registrou
+// movimentação, avisos_aceitos, nomes do PP fora da lista de sócios.
+//
+// `id` do sócio (nov/2026, pedido do integrador): o MESMO uid de /v1/anestesistas
+// (profiles.id, conta secundária resolvida para a principal). Ver
+// resolverIdsSocios — identidade ambígua é NULA, nunca adivinhada.
 // =============================================================================
 
 import { type RotaCtx, type RotaResultado, ok, parametroInvalido, erroInterno } from './_contrato.ts'
@@ -104,8 +109,9 @@ export function comporExtratoFerias({
 
 // ─── Serialização (WHITELIST) ───────────────────────────────────────────────
 
-export function serializarSocio(p: Extrato) {
+export function serializarSocio(p: Extrato, id: string | null = null) {
   return {
+    id,
     nome: p.nomeCompleto,
     nome_escala: p.nome,
     cota: p.cota,
@@ -136,15 +142,127 @@ export function normalizarNome(s: string): string {
     .toUpperCase()
 }
 
+// ─── Identidade: sócio/nome do PP → uid de /v1/anestesistas ─────────────────
+//
+// Fontes, todas DETERMINÍSTICAS (nenhuma heurística de semelhança):
+//   1. vw_api_anestesistas (a mesma de /v1/anestesistas): nome e apelidos da
+//      escala, comparados por normalizarNome com o nomeCompleto E com o nome do
+//      PP do sócio — igualdade exata, sem prefixo/substring;
+//   2. EMAIL_TO_SOCIO (espelho de src/pages/ferias/gate.js, que é espelhado no
+//      SQL por ferias_nome_socio()): e-mail da conta → sócio. A conta secundária
+//      resolve para a principal (conta_duplicada_de), como na view.
+// Todas as fontes se SOMAM: o id só sai quando o conjunto de candidatos tem
+// exatamente 1 uid. 0 ou ≥2 candidatos → id null (identidade ambígua é nula).
+// Quem fica null hoje (16/11/2026): o nome do profile difere do da lista de
+// sócios — o dono completa ajustando o nome no profile ou um apelido da escala
+// (escala_anestesista_alias), sem código novo.
+
+/** ESPELHO de EMAIL_TO_SOCIO (src/pages/ferias/gate.js). Paridade travada em apiV1FeriasAusencias.test.js. */
+export const EMAIL_TO_SOCIO: Readonly<Record<string, string>> = {
+  'wguime@yahoo.com.br': 'G. MELO',
+  'anestesista.guilherme@gmail.com': 'G. MELO',
+  'guollofernanda@gmail.com': 'FERNANDA GUOLLO',
+  'leandrobernardes03@hotmail.com': 'LEANDRO BERNARDES',
+  'joaormoreiraster@gmail.com': 'JOÃO RICARDO MOREIRA',
+}
+
+export interface AnestesistaMin {
+  id: string
+  nome: string
+  apelidos: string[]
+}
+
+export interface Identidades {
+  anestesistas: AnestesistaMin[]
+  /** nome do sócio no PP → uids canônicos vindos do e-mail (EMAIL_TO_SOCIO) */
+  idsPorEmailSocio: Map<string, Set<string>>
+}
+
+/** chave normalizada (nome ou apelido) → uids que a carregam */
+export function indexarAnestesistas(lista: AnestesistaMin[]): Map<string, Set<string>> {
+  const idx = new Map<string, Set<string>>()
+  const add = (chave: string, id: string) => {
+    const k = normalizarNome(chave)
+    if (!k || !id) return
+    if (!idx.has(k)) idx.set(k, new Set())
+    idx.get(k)!.add(id)
+  }
+  for (const a of lista) {
+    add(a.nome, a.id)
+    for (const ap of a.apelidos || []) add(ap, a.id)
+  }
+  return idx
+}
+
+/** uid único para um conjunto de nomes (candidatos somados); senão null. */
+export function idUnico(idx: Map<string, Set<string>>, nomes: string[], extras: Iterable<string> = []): string | null {
+  const ids = new Set<string>(extras)
+  for (const n of nomes) for (const id of idx.get(normalizarNome(n)) || []) ids.add(id)
+  return ids.size === 1 ? [...ids][0] : null
+}
+
+/** nome do sócio no PP (chave do extrato) → uid ou null. */
+export function resolverIdsSocios(
+  socios: { nome: string; nomeCompleto: string }[],
+  { anestesistas, idsPorEmailSocio }: Identidades,
+): Map<string, string | null> {
+  const idx = indexarAnestesistas(anestesistas)
+  const out = new Map<string, string | null>()
+  for (const s of socios) {
+    out.set(s.nome, idUnico(idx, [s.nomeCompleto, s.nome], idsPorEmailSocio.get(s.nome) || []))
+  }
+  return out
+}
+
+export async function lerIdentidades(ctx: RotaCtx): Promise<Identidades> {
+  const [roster, contas] = await Promise.all([
+    ctx.supabase.from('vw_api_anestesistas').select('id, nome, apelidos'),
+    // e-mail só serve de chave aqui; não sai da função
+    ctx.supabase.from('profiles').select('id, email, conta_duplicada_de').in('email', Object.keys(EMAIL_TO_SOCIO)),
+  ])
+  if (roster.error) throw new Error('db_identidades')
+  if (contas.error) throw new Error('db_identidades')
+  const anestesistas: AnestesistaMin[] = (roster.data || []).map(
+    (r: { id: string; nome: string | null; apelidos: string[] | null }) => ({
+      id: r.id,
+      nome: r.nome || '',
+      apelidos: Array.isArray(r.apelidos) ? r.apelidos : [],
+    }),
+  )
+  const idsPorEmailSocio = new Map<string, Set<string>>()
+  for (const c of contas.data || []) {
+    const socio = EMAIL_TO_SOCIO[String(c.email || '').trim().toLowerCase()]
+    if (!socio) continue
+    if (!idsPorEmailSocio.has(socio)) idsPorEmailSocio.set(socio, new Set())
+    idsPorEmailSocio.get(socio)!.add(c.conta_duplicada_de || c.id)
+  }
+  return { anestesistas, idsPorEmailSocio }
+}
+
 // ─── I/O ────────────────────────────────────────────────────────────────────
 
 const RE_FERIAS = /f[ée]rias/i
+/** Mesmo filtro de getLicencasDoAno (pegaPlantaoApi.js): setor "LICENÇA SAÚDE" e afins. */
+const RE_LICENCA = /licen[çc]a/i
 const CACHE_TTL_MS = 5 * 60 * 1000
-const cachePP = new Map<number, { expira: number; promessa: Promise<PlantaoFeriasMin[]> }>()
+
+/** Licença minimizada: SÓ quem e quando. Setor, motivo, código e o resto do PP nunca ficam em memória. */
+export interface LicencaMin {
+  nome: string
+  data: string
+}
+
+export interface PPDoAno {
+  ferias: PlantaoFeriasMin[]
+  licencas: LicencaMin[]
+}
+
+const cachePP = new Map<number, { expira: number; promessa: Promise<PPDoAno> }>()
 
 /** Espelha registrosDoAnoPorSetor (pegaPlantaoApi.js): 12 meses em lotes de 3, dedup por código. */
-async function varrerFeriasDoAno(ano: number): Promise<PlantaoFeriasMin[]> {
+async function varrerPPDoAno(ano: number): Promise<PPDoAno> {
   const porCodigo = new Map<string, PlantaoFeriasMin>()
+  const licencas = new Map<string, LicencaMin>()
   for (let i = 1; i <= 12; i += 3) {
     const lote = [i, i + 1, i + 2]
     const resultados = await Promise.all(
@@ -157,7 +275,15 @@ async function varrerFeriasDoAno(ano: number): Promise<PlantaoFeriasMin[]> {
     for (const plantoes of resultados) {
       if (!Array.isArray(plantoes)) continue
       for (const p of plantoes) {
-        if (!p?.Setor || !RE_FERIAS.test(p.Setor)) continue
+        if (!p?.Setor) continue
+        if (RE_LICENCA.test(p.Setor) && !RE_FERIAS.test(p.Setor)) {
+          // mesma normalização de normalizarLicencas (useFeriasDoAno.js): dedup nome|data
+          const nome = String(p.ProfDePlantao || p.ProfFixo || '').trim().toUpperCase()
+          const data = String(p.Inicio || '').slice(0, 10)
+          if (nome && /^\d{4}-\d{2}-\d{2}$/.test(data)) licencas.set(`${nome}|${data}`, { nome, data })
+          continue
+        }
+        if (!RE_FERIAS.test(p.Setor)) continue
         const codigo = p.CodigoPlantao || `${p.ProfDePlantao || p.ProfFixo}|${p.Inicio}`
         if (porCodigo.has(codigo)) continue
         // minimização: só os 6 campos que a normalização lê; o resto do PP nunca fica em memória
@@ -172,15 +298,18 @@ async function varrerFeriasDoAno(ano: number): Promise<PlantaoFeriasMin[]> {
       }
     }
   }
-  return [...porCodigo.values()]
+  return { ferias: [...porCodigo.values()], licencas: [...licencas.values()] }
 }
 
-/** Cache em memória por isolate (5 min) + dedup de requisições simultâneas. */
-function feriasDoAnoComCache(ano: number): Promise<PlantaoFeriasMin[]> {
+/**
+ * Cache em memória por isolate (5 min) + dedup de requisições simultâneas.
+ * Uma varredura serve o extrato (férias) e as ausências (férias + licenças).
+ */
+export function ppDoAnoComCache(ano: number): Promise<PPDoAno> {
   const agora = Date.now()
   const hit = cachePP.get(ano)
   if (hit && hit.expira > agora) return hit.promessa
-  const promessa = varrerFeriasDoAno(ano)
+  const promessa = varrerPPDoAno(ano)
   cachePP.set(ano, { expira: agora + CACHE_TTL_MS, promessa })
   promessa.catch(() => cachePP.delete(ano)) // erro não fica cacheado
   return promessa
@@ -188,7 +317,7 @@ function feriasDoAnoComCache(ano: number): Promise<PlantaoFeriasMin[]> {
 
 const PAGINA = 1000
 
-async function lerMovimentacoes(ctx: RotaCtx, ano: number): Promise<MovimentacaoMin[]> {
+export async function lerMovimentacoes(ctx: RotaCtx, ano: number): Promise<MovimentacaoMin[]> {
   const out: MovimentacaoMin[] = []
   for (let de = 0; ; de += PAGINA) {
     // colunas explícitas: user_id, avisos_aceitos, req_id, custo_dias NUNCA saem do banco
@@ -222,11 +351,11 @@ async function lerMarcacoesVistas(ctx: RotaCtx, ano: number): Promise<MarcacoesV
   }
 }
 
-function anoCorrenteSaoPaulo(): number {
+export function anoCorrenteSaoPaulo(): number {
   return Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric' }).format(new Date()))
 }
 
-const ANO_MINIMO = 2023 // o Pega Plantão serve 2023+ (mesmo piso do Mapa)
+export const ANO_MINIMO = 2023 // o Pega Plantão serve 2023+ (mesmo piso do Mapa)
 
 // ─── Rota ───────────────────────────────────────────────────────────────────
 
@@ -247,11 +376,14 @@ export async function rotaFeriasExtrato(ctx: RotaCtx): Promise<RotaResultado> {
   }
 
   try {
-    const [plantoesRaw, movimentacoes, marcacoesVistas] = await Promise.all([
-      feriasDoAnoComCache(ano),
+    const [pp, movimentacoes, marcacoesVistas, identidades] = await Promise.all([
+      ppDoAnoComCache(ano),
       lerMovimentacoes(ctx, ano),
       lerMarcacoesVistas(ctx, ano),
+      lerIdentidades(ctx),
     ])
+    const plantoesRaw = pp.ferias
+    const idsSocios = resolverIdsSocios(getSocios(ano), identidades)
     const extrato = comporExtratoFerias({ plantoesRaw, movimentacoes, marcacoesVistas, ano })
 
     let socios = extrato.porPessoa
@@ -274,7 +406,7 @@ export async function rotaFeriasExtrato(ctx: RotaCtx): Promise<RotaResultado> {
         setima_vaga: 'quem marcou por último um dia com mais de 6 sócios paga 3 dias (2 extras)',
       },
       total: socios.length,
-      socios: socios.map(serializarSocio),
+      socios: socios.map((p: Extrato) => serializarSocio(p, idsSocios.get(p.nome) ?? null)),
     })
   } catch (err) {
     // só o código da etapa — nunca mensagem/corpo do upstream
