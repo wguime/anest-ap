@@ -4013,6 +4013,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     <PainelTempo
                       key={cir.id}
                       atual={cir.terminoPrevisto || ''}
+                      inicio={cir.andamento ? (cir.inicioReal || '') : ''}
                       horaExata={horaExataCaso}
                       onHoraExata={setHoraExataCaso}
                       onDefinir={(hhmm, meta) => definirTerminoCirurgia(cir, hhmm, meta)}

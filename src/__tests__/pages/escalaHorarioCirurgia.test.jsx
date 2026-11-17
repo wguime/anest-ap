@@ -239,7 +239,11 @@ describe('tempo estimado: o painel de sempre, horário e durações à vista', (
     expect(folha.querySelector('[data-slot="termino-hora"]')).toBeTruthy()
     fireEvent.click(within(folha).getByRole('button', { name: '1h' }))
     await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
-    expect(atualizarCaso.mock.calls[0][2]).toEqual({ terminoPrevisto: '16:45' })
+    // MUDOU DE LADO (dono 16/11/2026): "quando clicar em um tempo, ele seja calculado a partir do
+    // horário de início e não no horário que foi clicado". Era agora + 1h (16:45); agora é o
+    // início real (14:05) + 1h.
+    expect(atualizarCaso.mock.calls[0][2]).toEqual({ terminoPrevisto: '15:05' })
+    expect(within(folha).getByText('ou duração desde o início (14:05)')).toBeTruthy()
   })
 })
 

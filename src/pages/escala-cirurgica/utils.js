@@ -1515,6 +1515,13 @@ export function terminoEncadeado(escala, caso, minutos, agoraMin) {
 export function inicioDaDuracao(escala, caso, agoraMin) {
   let base = agoraMin
   let anterior = null
+  // JÁ COMEÇOU (dono 16/11/2026): a duração conta do INÍCIO REAL, não da hora do toque —
+  // "1h" numa cirurgia iniciada às 07:30 é término 08:30, toque-se às 07:50 ou às 08:10.
+  // Sem início gravado (iniciada antes de 02/10), segue contando de agora.
+  if ((caso?.statusCirurgia || 'agendada') === 'iniciada') {
+    const ini = parseHoraMinutos(caso?.inicioReal)
+    if (ini != null) base = ini
+  }
   if ((caso?.statusCirurgia || 'agendada') !== 'iniciada') {
     const ctx = casosAtivosDaPessoa(escala, caso)
     const horaCaso = parseHoraMinutos(caso?.hora)

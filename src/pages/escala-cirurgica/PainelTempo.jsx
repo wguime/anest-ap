@@ -161,7 +161,7 @@ export default function PainelTempo({ soDuracao = false, duracaoAtual = null, ex
     : <PainelHorario {...props} />
 }
 
-function PainelHorario({ horarios, atual, horaExata, onHoraExata, onDefinir }) {
+function PainelHorario({ horarios, atual, horaExata, onHoraExata, onDefinir, inicio = '' }) {
   // `horarios` sobrescrevível só para teste; em produção são as opções de tempo
   // faltante, recalculadas a cada render (são relativas a agora).
   const opcoes = horarios || opcoesTempoFaltante()
@@ -218,7 +218,11 @@ function PainelHorario({ horarios, atual, horaExata, onHoraExata, onDefinir }) {
           </button>
         )}
       </div>
-      <p className="pt-0.5 text-[11.5px] font-bold uppercase tracking-[0.05em] text-muted-foreground">ou daqui a</p>
+      {/* COM INÍCIO (dono 16/11/2026): a duração conta do início real da cirurgia, não do
+          toque — quem grava é `terminoEncadeado`; aqui só se diz de onde conta. */}
+      <p className="pt-0.5 text-[11.5px] font-bold uppercase tracking-[0.05em] text-muted-foreground">
+        {horaCompleta(inicio) ? `ou duração desde o início (${inicio})` : 'ou daqui a'}
+      </p>
       {/* GRADE 4×2 (dono 02/10): sete atalhos e o "Outro" na 8ª casa. O gatilho do Select
           do DS traz padding INLINE (16×18px); o `!` dos descendentes encolhe só este. */}
       <div className="grid grid-cols-4 gap-1.5">

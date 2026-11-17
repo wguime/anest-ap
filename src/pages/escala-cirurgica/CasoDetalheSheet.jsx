@@ -129,32 +129,9 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
     () => carimboDeStatus(vivo, { dataEscala: escala?.data || null }),
     [vivo, escala?.data],
   )
-  // Sem autor reconhecido (o uid é de quem TOCOU e o roster só cobre
-  // anestesiologistas) a linha sai só com o horário — nunca "por —".
-  const autorCarimbo = carimbo?.porUid
-    ? nomeAnestesistaExibicao({ uid: carimbo.porUid, rosterByUid }) || ''
-    : ''
 
   if (!vivo) return null
 
-  // QUEM INFORMOU O HORÁRIO (dono 11/11/2026): o autor é o do próprio horário (`*RealPor`); a
-  // HORA do registro só existe no carimbo do status, então só aparece quando o carimbo é do
-  // mesmo passo e da mesma pessoa. Sem autor reconhecido no roster, só a hora — nunca "por —".
-  const nomeDe = (uid) => (uid ? nomeAnestesistaExibicao({ uid, rosterByUid }) || '' : '')
-  const procedencia = (campo, statusDoCampo) => {
-    if (!vivo[campo]) return ''
-    const doCarimbo = carimbo?.status === statusDoCampo
-    const uid = vivo[`${campo}Por`] || (doCarimbo ? carimbo.porUid : null)
-    const hora = doCarimbo && (!vivo[`${campo}Por`] || vivo[`${campo}Por`] === carimbo.porUid) ? carimbo.hora : ''
-    const nome = nomeDe(uid)
-    if (!nome && !hora) return ''
-    return ['informado', nome ? `por ${nome}` : null, hora ? `às ${hora}` : null].filter(Boolean).join(' ')
-  }
-  const infoInicio = procedencia('inicioReal', 'iniciada')
-  const infoTermino = procedencia('terminoReal', 'terminada')
-  const informado = infoInicio && infoTermino
-    ? `Início ${infoInicio} · Término ${infoTermino}`
-    : infoTermino ? `Término ${infoTermino}` : infoInicio
 
   // Um gate só para todos os ajustes do caso: quem edita a escala (canEdit), fora
   // da demo e com o caso já persistido (id) — sem id não há o que atualizar.
@@ -434,7 +411,6 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                 onInicio={podeEditarCaso ? () => setConfirmar({ campo: 'inicio', viaStatus: false }) : null}
                 onEstimado={podeEditarCaso && !encerrado ? () => setEditor('tempo') : null}
                 onTermino={podeEditarCaso ? () => setConfirmar({ campo: terminoPedeInicio ? 'ambos' : 'termino', viaStatus: false }) : null}
-                informado={informado}
               />
               {/* As folhas abrem de baixo para cima (dono 17/08): expandindo aqui
                   dentro, o cartão mudava de tamanho no meio da leitura. */}
@@ -457,6 +433,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                   ) : (
                     <PainelTempo
                       atual={vivo.terminoPrevisto || ''}
+                      inicio={vivo.statusCirurgia === 'iniciada' ? (vivo.inicioReal || '') : ''}
                       horaExata={horaExata}
                       onHoraExata={setHoraExata}
                       onDefinir={(v, meta) => { definirTerminoCaso(v, meta); setEditor(null) }}
@@ -512,7 +489,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
               <h3 className="mb-1 text-[15px] font-extrabold">Andamento</h3>
               <p className="text-[14px] leading-snug">
                 {ANDAMENTO.find((s) => s.valor === principal)?.label || 'Agendada'}
-                {carimbo && <> às <b className="font-bold">{carimbo.hora}</b>{autorCarimbo ? ` por ${autorCarimbo}` : ''}</>}
+                {carimbo && <> às <b className="font-bold">{carimbo.hora}</b></>}
                 {vivo.statusExtra === 'suspensa' ? ' · Suspensa' : ''}
                 {tb ? ` · ${tb.label}` : ''}
               </p>
@@ -578,8 +555,8 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
               {/* UM INÍCIO SÓ (dono 11/11/2026, opção A de `modelos-4/2-inicio-um-so.html`): a
                   linha "Iniciada às 08:26 por Fulano" saiu daqui — a folha mostrava DOIS
                   horários de início (o real, 07:30, em cima; a hora do toque, embaixo). A
-                  procedência (dono 21/08: quem marcou e quando) continua dita, agora sob as
-                  casas do horário: "informado por Fulano às 08:26". */}
+                  procedência ia sob as casas do horário ("informado às 08:26") até 16/11/2026,
+                  quando o dono pediu para tirar quem informou e, depois, a hora também. */}
 
               {/* TIPO: fica no Andamento porque reclassificar é AÇÃO no meio do
                   turno (a urgência que entrou como eletiva no mapa), e porque é

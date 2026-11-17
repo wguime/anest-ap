@@ -247,8 +247,17 @@ describe('inicioDaDuracao — a base que a folha anuncia é a que terminoEncadea
     // a mesma base que o valor gravado usa
     expect(terminoEncadeado(escalaCom([emCurso, proxima]), proxima, 60, agora)).toBe('11:00')
   })
-  it('em andamento: conta de agora, sem anterior para anunciar', () => {
+  it('em andamento SEM início gravado: conta de agora, sem anterior para anunciar', () => {
     expect(inicioDaDuracao(escalaCom([emCurso, proxima]), emCurso, agora)).toEqual({ baseMin: agora, anterior: null })
+  })
+  // dono 16/11/2026: "quando clicar em um tempo, ele seja calculado a partir do horário de
+  // início e não no horário que foi clicado"
+  it('em andamento COM início real: a duração conta do INÍCIO, não da hora do toque', () => {
+    const iniciada = { ...emCurso, inicioReal: '07:30' }
+    expect(inicioDaDuracao(escalaCom([iniciada, proxima]), iniciada, agora)).toEqual({ baseMin: 7 * 60 + 30, anterior: null })
+    // 1h numa cirurgia iniciada às 07:30, tocado às 09:40 → 08:30 (antes: 10:40)
+    expect(terminoEncadeado(escalaCom([iniciada, proxima]), iniciada, 60, agora)).toBe('08:30')
+    expect(terminoEncadeado(escalaCom([iniciada, proxima]), iniciada, 180, agora)).toBe('10:30')
   })
   it('anterior sem término ou que já passou: conta de agora, sem frase', () => {
     const semTermino = { ...emCurso, terminoPrevisto: '' }

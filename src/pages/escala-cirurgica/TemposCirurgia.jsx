@@ -145,7 +145,7 @@ export function apoioDasCasas(caso, agoraMin = null, diaAtual = true) {
  * AS TRÊS CASAS de UMA cirurgia — Início · Tempo estimado · Término — e, abaixo delas, a linha
  * de apoio. `nomes` = prefixos dos nomes acessíveis ({ inicio, estimado, termino }); cada `on*`
  * presente torna a casa um botão (52 px de altura, alvo ≥ 44). Sem nenhum, é só leitura.
- * `informado` = "informado por Karine às 08:26" (quem registrou o horário), em letra menor.
+ * `informado` = "informado às 08:26" (quando o horário foi registrado; sem o nome desde 16/11), em letra menor.
  */
 export function CasasCirurgia({ caso, agoraMin = null, diaAtual = true, nomes = {}, onInicio = null, onEstimado = null, onTermino = null, informado = '' }) {
   const estado = estadoDe(caso)

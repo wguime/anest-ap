@@ -63,6 +63,20 @@ const digitarHorario = (hhmm) =>
 // MUDOU DE LADO em 27/10 (dono, Modelo 2 da 4ª rodada de `.tmp/horarios-auditoria/`): "Horário
 // de término" e "Tempo faltante" UM ACIMA DO OUTRO, os dois à vista — o alternador de 17/08 e o
 // "abre sempre no horário" de 02/10 saíram. As travas de GRAVAÇÃO são as mesmas.
+// dono 16/11/2026: na cirurgia iniciada a duração conta do INÍCIO (quem grava é
+// `terminoEncadeado`); o rótulo da grade diz isso, senão "daqui a" mentiria.
+describe('PainelTempo — com início, a grade diz que conta do início (dono 16/11)', () => {
+  it('com inicio="07:30" o rótulo é "ou duração desde o início (07:30)"', () => {
+    montar({ inicio: '07:30' })
+    expect(screen.getByText('ou duração desde o início (07:30)')).toBeTruthy()
+    expect(screen.queryByText('ou daqui a')).toBeNull()
+  })
+  it('sem início segue "ou daqui a"', () => {
+    montar({ inicio: '' })
+    expect(screen.getByText('ou daqui a')).toBeTruthy()
+  })
+})
+
 describe('PainelTempo — os dois caminhos à vista, qualquer um grava (dono 27/10)', () => {
   it('campo do horário em cima e a grade 4×2 de durações logo abaixo, sem alternador', () => {
     montar()

@@ -431,8 +431,9 @@ tempo total" abaixo. Não é a volta do "+ término" de 14/09: nada nasce no car
 - ↳ **27/10: na cirurgia que ainda NÃO começou, o estimado é uma DURAÇÃO que conta do início** (dono, 5ª
   rodada de `.tmp/horarios-auditoria/`) — o encadeamento abaixo vale só para a EM ANDAMENTO. Ver
   `escala-telas.md` § "Horários — liberar sem travar".
-- **Duração encadeada** (`terminoEncadeado`, utils): na cirurgia EM ANDAMENTO "1h" é agora
-  + 1h; na que ainda não começou é **término da anterior da mesma pessoa + 1h** (a última,
+- **Duração encadeada** (`terminoEncadeado`, utils): na cirurgia EM ANDAMENTO "1h" é **início
+  real + 1h** (dono 16/11/2026: "calculado a partir do horário de início e não no horário que foi
+  clicado"; sem início gravado, agora + 1h — a grade diz "ou duração desde o início (HH:MM)"); na que ainda não começou é **término da anterior da mesma pessoa + 1h** (a última,
   por hora, que já tem término; sem anterior com término, agora). Vale no detalhe do caso
   (Minhas/Completa) — a fila só mostra o resultado (15/09).
 - **SOMA no total** (`espelhoTempoTotal`, ampliado): com UMA cirurgia o total espelha o

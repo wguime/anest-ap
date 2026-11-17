@@ -62,7 +62,8 @@ vi.mock('@/contexts/UserContext', () => ({
 // o detalhe usa o roster de anestesistas só para EXIBIR o nome do cadastro
 // (mesma função do cabeçalho da sala) — sem vínculo, cai no texto importado
 vi.mock('@/hooks/useRosterAnestesistas', () => ({
-  default: () => ({ options: [], rosterByUid: new Map(), resolver: () => null, loading: false }),
+  // 'u-karine' só existe para provar que o nome de quem informou o horário NÃO aparece (16/11)
+  default: () => ({ options: [], rosterByUid: new Map([['u-karine', { uid: 'u-karine', nome: 'Karine Souza' }]]), resolver: () => null, loading: false }),
 }))
 vi.mock('@/hooks/useRosterResidentes', () => ({
   default: () => ({
@@ -367,52 +368,28 @@ describe('Convênio da cirurgia', () => {
 // por quem custa uma linha — e é o que separa "o app afirma" de "alguém marcou".
 // ════════════════════════════════════════════════════════════════════════════
 // ⚠️ ESTE BLOCO MUDOU DE LADO (dono 11/11/2026, opção A de `modelos-4/2-inicio-um-so.html`).
-// Travava a linha "Iniciada às 14:33 por Fulano" no cartão Andamento (21/08). A folha mostrava
-// DOIS horários de início — o real em cima (07:30) e a hora do toque embaixo (08:26). A linha
-// saiu do Andamento; a procedência continua dita, pequena, sob as casas do horário:
-// "informado por Fulano às 14:33".
-describe('quem informou o horário — sob as casas, não no Andamento (dono 11/11/2026)', () => {
+// MUDOU DE LADO (dono 16/11/2026): de 11/11 a 16/11 a procedência saía sob as casas do horário
+// ("informado por Fulano às 14:33"). O dono pediu primeiro para tirar o nome e, no mesmo dia, a
+// hora também: "retire a informação do horário que foi informado". Nada de procedência na folha.
+describe('sem procedência do horário — nem quem, nem quando (dono 16/11/2026)', () => {
   const comCarimbo = (extra = {}) => {
     const c = { ...caso, statusCirurgia: 'iniciada', inicioReal: '14:05', statusAtualizadoEm: '2026-07-29T14:33:07', ...extra }
     return { ...escala, casos: [c] }
   }
-  const informado = () => document.querySelector('[data-informado-por]')?.textContent || null
+  const informado = () => document.querySelector('[data-informado-por]')
 
-  it('a linha do Andamento saiu; sob as casas: a hora em que o início foi informado', () => {
-    montar({}, comCarimbo())
+  it('iniciada: sem "informado às", sem nome, e a linha do Andamento segue fora', () => {
+    montar({}, comCarimbo({ inicioRealPor: 'u-karine', statusAtualizadoPor: 'u-karine' }))
     expect(screen.queryByText(/Iniciada às/)).toBeNull()
-    expect(informado()).toBe('informado às 14:33')
-    expect(document.querySelector('[data-informado-por]').closest('[aria-label="Horário desta cirurgia"]')).not.toBeNull()
-  })
-
-  it('início corrigido à mão por OUTRA pessoa: o autor é o do horário, e a hora do toque não é dele', () => {
-    montar({}, comCarimbo({ inicioRealPor: 'u-outro', statusAtualizadoPor: 'u-quem-tocou' }))
-    // sem autor reconhecido no roster e sem hora que seja dele: nada é afirmado
     expect(informado()).toBeNull()
+    expect(screen.queryByText(/informado (por|às)/)).toBeNull()
+    expect(screen.queryByText(/Karine/)).toBeNull()
   })
 
-  it('terminada: a procedência é do TÉRMINO', () => {
+  it('terminada: também sem procedência do término', () => {
     montar({}, comCarimbo({ statusCirurgia: 'terminada', terminoReal: '14:30' }))
-    expect(screen.queryByText(/Terminada às/)).toBeNull()
-    expect(informado()).toBe('Término informado às 14:33')
-  })
-
-  // O uid é de QUEM TOCOU e o roster só cobre anestesiologistas: secretária,
-  // técnica ou admin não resolvem. Melhor só a hora do que "por —".
-  it('sem autor reconhecido, mostra só o horário', () => {
-    montar({}, comCarimbo({ statusAtualizadoPor: 'u-desconhecido' }))
-    expect(informado()).toBe('informado às 14:33')
-    expect(screen.queryByText(/por\s*—/)).toBeNull()
-  })
-
-  it('caso AGENDADO não ganha a linha — nada aconteceu ainda', () => {
-    montar()
     expect(informado()).toBeNull()
-  })
-
-  it('carimbo de OUTRO dia não vira horário solto', () => {
-    montar({}, comCarimbo({ statusAtualizadoEm: '2026-07-28T14:33:07' }))
-    expect(informado()).toBeNull()
+    expect(screen.queryByText(/informado (por|às)/)).toBeNull()
   })
 })
 

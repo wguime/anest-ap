@@ -101,9 +101,9 @@ describe('as três casas são SEMPRE de uma cirurgia — compactas (dono 11/11/2
     fireEvent.click(b)
     expect(onInicio).toHaveBeenCalled()
   })
-  it('"informado por …" sai em letra menor, abaixo do apoio', () => {
-    render(<CasasCirurgia caso={caso({ statusCirurgia: 'iniciada', inicioReal: '07:30' })} agoraMin={AGORA} informado="informado por Karine às 08:26" />)
-    expect(document.querySelector('[data-informado-por]').textContent).toBe('informado por Karine às 08:26')
+  it('"informado às …" sai em letra menor, abaixo do apoio', () => {
+    render(<CasasCirurgia caso={caso({ statusCirurgia: 'iniciada', inicioReal: '07:30' })} agoraMin={AGORA} informado="informado às 08:26" />)
+    expect(document.querySelector('[data-informado-por]').textContent).toBe('informado às 08:26')
   })
 })
 
