@@ -243,8 +243,11 @@ repassados a terceiros e devem ser apagados ao fim do contrato.
   ```
   Os testes `src/__tests__/functions/apiV1*.test.js` falham se as cópias ficarem velhas ou se uma rota
   nova ficar sem exemplo.
-- **`id` nulo no extrato** (4 sócios em 17/11/2026: OSCAR AUGUSTO DE OLIVEIRA MORAIS, JANAINA SANCHES
-  FAVORITO MORAIS, MATHEUS VIEIRA DA CUNHA e GUILHERME XAVIER DI DOMENICO): o nome do cadastro
-  (`profiles.nome`) difere do Pega Plantão. Igualar o nome do cadastro resolve sem mexer em código.
+- **`id` nulo no extrato/ausências/plantões:** o nome do Pega Plantão não casa com nenhum cadastro.
+  Corrigir cadastrando o nome do PP como apelido da pessoa (`escala_anestesista_alias`, o mesmo
+  dicionário da escala), sem mexer em código e sem trocar o nome exibido no app. Feito em 17/11/2026
+  para OSCAR AUGUSTO DE OLIVEIRA MORAIS, JANAINA SANCHES FAVORITO MORAIS, MATHEUS VIEIRA DA CUNHA e
+  GUILHERME XAVIER DI DOMENICO → 46/46 sócios com id. Sócio novo no PP com nome diferente do cadastro:
+  repetir.
 - **Secrets do projeto** usados por esta função: `FCM_SERVICE_ACCOUNT_JSON` (leitura do Firestore) e
   `PEGAPLANTAO_*`.

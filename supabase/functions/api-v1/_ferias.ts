@@ -153,9 +153,9 @@ export function normalizarNome(s: string): string {
 //      resolve para a principal (conta_duplicada_de), como na view.
 // Todas as fontes se SOMAM: o id só sai quando o conjunto de candidatos tem
 // exatamente 1 uid. 0 ou ≥2 candidatos → id null (identidade ambígua é nula).
-// Quem fica null hoje (16/11/2026): o nome do profile difere do da lista de
-// sócios — o dono completa ajustando o nome no profile ou um apelido da escala
-// (escala_anestesista_alias), sem código novo.
+// Nome do PP diferente do cadastro → cadastrar o nome do PP como apelido da
+// escala (escala_anestesista_alias), sem código novo e sem mudar o nome exibido.
+// 17/11/2026: feito para os 4 que faltavam → 46/46 sócios com id.
 
 /** ESPELHO de EMAIL_TO_SOCIO (src/pages/ferias/gate.js). Paridade travada em apiV1FeriasAusencias.test.js. */
 export const EMAIL_TO_SOCIO: Readonly<Record<string, string>> = {
