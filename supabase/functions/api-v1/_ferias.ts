@@ -18,7 +18,7 @@
 //
 // LGPD — whitelist campo a campo. FORA da resposta: licenças (o extrato só lê
 // o setor "Férias"; da licença o cache guarda SÓ nome+data, para a rota
-// /v1/ferias/ausencias em _ausencias.ts — setor/motivo nunca entram), campos
+// /v1/ferias/ausencias em _ausencias.ts, com o motivo = setor do PP — dado sensível), campos
 // crus do Pega Plantão, e-mail/CPF/CRM, user_id de quem registrou
 // movimentação, avisos_aceitos, nomes do PP fora da lista de sócios.
 //
@@ -246,10 +246,16 @@ const RE_FERIAS = /f[ée]rias/i
 const RE_LICENCA = /licen[çc]a/i
 const CACHE_TTL_MS = 5 * 60 * 1000
 
-/** Licença minimizada: SÓ quem e quando. Setor, motivo, código e o resto do PP nunca ficam em memória. */
+/**
+ * Licença minimizada: quem, quando e o MOTIVO (o setor do PP, ex. "LICENÇA SAÚDE").
+ * O motivo sai em /v1/ferias/ausencias por decisão expressa do dono (nov/2026) —
+ * DADO SENSÍVEL (saúde, LGPD art. 11), coberto pelo contrato de operador. Código,
+ * comentário e o resto do PP continuam nunca ficando em memória.
+ */
 export interface LicencaMin {
   nome: string
   data: string
+  motivo: string
 }
 
 export interface PPDoAno {
@@ -280,7 +286,10 @@ async function varrerPPDoAno(ano: number): Promise<PPDoAno> {
           // mesma normalização de normalizarLicencas (useFeriasDoAno.js): dedup nome|data
           const nome = String(p.ProfDePlantao || p.ProfFixo || '').trim().toUpperCase()
           const data = String(p.Inicio || '').slice(0, 10)
-          if (nome && /^\d{4}-\d{2}-\d{2}$/.test(data)) licencas.set(`${nome}|${data}`, { nome, data })
+          const motivo = String(p.Setor).trim()
+          if (nome && /^\d{4}-\d{2}-\d{2}$/.test(data) && !licencas.has(`${nome}|${data}`)) {
+            licencas.set(`${nome}|${data}`, { nome, data, motivo })
+          }
           continue
         }
         if (!RE_FERIAS.test(p.Setor)) continue

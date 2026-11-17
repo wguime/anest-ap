@@ -123,9 +123,9 @@ export const EXEMPLOS: Record<string, Record<string, unknown>> = {
   },
   '/v1/ferias/ausencias': {
     data: [
-      { data: '2026-07-15', pessoa: { id: A1.id, nome: 'Ana Exemplo Souza' }, tipo: 'ferias' },
-      { data: '2026-07-15', pessoa: { id: A2.id, nome: A2.nome }, tipo: 'ausente' },
-      { data: '2026-07-16', pessoa: { id: null, nome: 'NOME SEM CADASTRO' }, tipo: 'ausente' },
+      { data: '2026-07-15', pessoa: { id: A1.id, nome: 'Ana Exemplo Souza' }, tipo: 'ferias', motivo: null },
+      { data: '2026-07-15', pessoa: { id: A2.id, nome: A2.nome }, tipo: 'ausente', motivo: 'LICENÇA EXEMPLO' },
+      { data: '2026-07-16', pessoa: { id: null, nome: 'NOME SEM CADASTRO' }, tipo: 'ausente', motivo: 'LICENÇA EXEMPLO' },
     ],
     meta: {
       inicio: '2026-07-15',
@@ -134,10 +134,104 @@ export const EXEMPLOS: Record<string, Record<string, unknown>> = {
       fonte: 'pega_plantao+ferias_movimentacoes',
       tipos: {
         ferias: 'férias (Pega Plantão + marcações/desmarcações do app)',
-        ausente: 'afastamento no Pega Plantão — o motivo não é informado',
+        ausente: 'afastamento no Pega Plantão — `motivo` traz o setor do PP (dado sensível)',
       },
     },
   },
+}
+
+/** Linha da fila da numérica/feriados (mesmas chaves de linhaApi em _escala-numerica.ts). */
+const linhaEx = (posicao: number | null, numero: string, legenda: string, nome: string, pessoa: { id: string | null; nome: string }, extra: Record<string, unknown> = {}) => ({
+  posicao, numero, nome_legenda: legenda, nome, anestesistas: [pessoa],
+  situacao: null, rotulo: null, posto_plantao: null, destino: null, em_ferias: [], inserida: false, trocado: false,
+  ...extra,
+})
+
+EXEMPLOS['/v1/escala-numerica'] = {
+  data: [
+    {
+      data: '2026-01-15',
+      dia_semana: 'quinta',
+      tipo: 'dia_util',
+      feriado: null,
+      turnos: [
+        {
+          turno: 'matutino',
+          rotulo: 'Manhã',
+          hospitais: [
+            {
+              hospital: 'hro',
+              rotulo: 'HRO',
+              lista: [
+                linhaEx(1, '90', 'ANA', 'Ana Souza', A1),
+                linhaEx(2, '91', 'BRUNO', 'Bruno Lima', A2, { situacao: 'plantao_noturno', rotulo: 'plantão P1 · noite', posto_plantao: 'P1' }),
+                linhaEx(3, '92', 'CARLA', 'Carla Exemplo', { id: null, nome: 'CARLA EXEMPLO' }, { situacao: 'ferias', rotulo: 'férias', em_ferias: ['CARLA'] }),
+              ],
+              trabalhando: 2,
+              observacao: { texto: 'Observação fictícia do card', atualizado_em: '2026-01-14T20:00:00+00:00' },
+            },
+          ],
+          consultorio: { lista: [linhaEx(null, '93', 'DIEGO', 'Diego Exemplo', { id: null, nome: 'DIEGO EXEMPLO' })], observacao: null },
+          pendencias: [],
+        },
+      ],
+    },
+    {
+      data: '2026-01-17',
+      dia_semana: 'sábado',
+      tipo: 'fim_de_semana',
+      feriado: null,
+      sabado_referencia: '2026-01-17',
+      fim_de_semana: [{ posicao: 'P1', faixa: '07:00–19:00', anestesista: A1 }],
+      turnos: null,
+    },
+  ],
+  meta: {
+    inicio: '2026-01-15', fim: '2026-01-17', total_dias: 2,
+    edicao: { ano: 2026, vigencia: { inicio: '2026-01-05', fim: '2026-05-29' } },
+    ferias_conferidas: true,
+    fonte: 'escala_numerica+pega_plantao+escala_numerica_observacao',
+    situacoes: {},
+  },
+}
+
+EXEMPLOS['/v1/feriados'] = {
+  ano: 2026,
+  feriados: [
+    {
+      data: '2026-04-21',
+      nome: 'Tiradentes',
+      dia_semana: 'terça',
+      fila: {
+        matutino: [linhaEx(1, '90', 'ANA', 'Ana Souza', A1), linhaEx(2, '91', 'BRUNO', 'Bruno Lima', A2, { trocado: true })],
+        vespertino: [linhaEx(1, '91', 'BRUNO', 'Bruno Lima', A2, { trocado: true }), linhaEx(2, '90', 'ANA', 'Ana Souza', A1)],
+      },
+    },
+  ],
+  trocas: [
+    {
+      codigo: 'FR000000', status: 'pendente', escopo: 'data',
+      feriado: { data: '2026-04-21', nome: 'Tiradentes' },
+      feriado_desejado: { data: '2026-05-01', nome: 'Dia do Trabalho' },
+      de: A1, para: A2,
+      justificativa: 'Justificativa fictícia',
+      criada_em: '2026-03-01T12:00:00Z', decidida_em: null,
+    },
+  ],
+  meta: { total_feriados: 1, total_trocas: 1, ferias_conferidas: true, fonte: 'escala_de_feriados+trocas_feriado+pega_plantao', regras: {} },
+}
+
+EXEMPLOS['/v1/plantoes'] = {
+  data: [
+    {
+      data: '2026-01-15',
+      plantoes: [
+        { posicao: 'P1', setor: '1 - P1', tipo: 'Noturno', inicio: '2026-01-15T19:00:00-03:00', fim: '2026-01-16T07:00:00-03:00', anestesista: A1, licenca: false, motivo: null },
+        { posicao: null, setor: 'LICENÇA EXEMPLO', tipo: null, inicio: '2026-01-15T07:00:00-03:00', fim: '2026-01-15T19:00:00-03:00', anestesista: A2, licenca: true, motivo: 'LICENÇA EXEMPLO' },
+      ],
+    },
+  ],
+  meta: { inicio: '2026-01-15', fim: '2026-01-15', fonte: 'pega_plantao', total_dias: 1, total_plantoes: 1, total_licencas: 1, observacao: '' },
 }
 
 /** Resposta de exemplo da rota, ou 404 se a rota não tiver exemplo. */

@@ -57,7 +57,13 @@ curl -H "Authorization: Bearer $ANEST_API_KEY" \
 | `GET /v1/residentes/estagios` | `read:residentes` | rodízio de estágios por dia e turno (só dias úteis) |
 | `GET /v1/funcionarias/escala` | `read:funcionarias` | sobreaviso materno e hospitais (HRO, UNIMED, Plantão Pago) por dia e turno |
 | `GET /v1/ferias/extrato` | `read:ferias` | extrato de férias dos sócios no ano |
-| `GET /v1/ferias/ausencias` | `read:ferias` | quem está ausente em cada dia (férias ou afastamento, sem motivo) |
+| `GET /v1/ferias/ausencias` | `read:ferias` | quem está ausente em cada dia (férias ou afastamento, com o motivo do afastamento ⚠️) |
+| `GET /v1/escala-numerica` | `read:escala-cirurgica` | ordem de liberação do dia por hospital e turno (escala numérica), com as observações dos cards ⚠️ |
+| `GET /v1/feriados` | `read:escala-cirurgica` | escala dos feriados do ano (fila efetiva) e todas as trocas de feriado, com justificativa ⚠️ |
+| `GET /v1/plantoes` | `read:escala-cirurgica` | todos os registros do Pega Plantão por dia, inclusive licenças com o motivo ⚠️ |
+
+⚠️ = traz **dado sensível** (veja "Dados sensíveis" no fim). As três últimas usam a **mesma chave** da
+escala cirúrgica: quem tem `read:escala-cirurgica` vê tudo o que a página Escalas do app mostra.
 
 ### Escala cirúrgica: `GET /v1/escala-cirurgica`
 
@@ -184,14 +190,14 @@ a situação do momento, sem histórico por data.
 
 ### Ausências: `GET /v1/ferias/ausencias?data=` ou `?inicio=&fim=`
 
-Lista, por dia, quem está ausente, para não escalar essas pessoas. **O motivo do afastamento nunca é
-informado.**
+Lista, por dia, quem está ausente, para não escalar essas pessoas. Na linha `ausente`, `motivo` traz o
+setor do afastamento no Pega Plantão (ex.: `"LICENÇA SAÚDE"`) — **dado sensível**; em `ferias`, `null`.
 
 ```json
 {"data":[
-  {"data":"2026-07-14","pessoa":{"id":"<id>","nome":"Fulano de Tal"},"tipo":"ferias"},
-  {"data":"2026-07-14","pessoa":{"id":"<id>","nome":"Beltrano"},"tipo":"ausente"},
-  {"data":"2026-07-16","pessoa":{"id":null,"nome":"NOME NO PEGA PLANTÃO"},"tipo":"ausente"}],
+  {"data":"2026-07-14","pessoa":{"id":"<id>","nome":"Fulano de Tal"},"tipo":"ferias","motivo":null},
+  {"data":"2026-07-14","pessoa":{"id":"<id>","nome":"Beltrano"},"tipo":"ausente","motivo":"LICENÇA SAÚDE"},
+  {"data":"2026-07-16","pessoa":{"id":null,"nome":"NOME NO PEGA PLANTÃO"},"tipo":"ausente","motivo":"LICENÇA MATERNIDADE"}],
  "meta":{"inicio":"2026-07-13","fim":"2026-07-17","total":3,"fonte":"pega_plantao+ferias_movimentacoes","tipos":{"…":"…"}}}
 ```
 
@@ -199,6 +205,92 @@ informado.**
 - `tipo: "ausente"` é qualquer outro afastamento registrado no Pega Plantão.
 - Se a pessoa tiver os dois no mesmo dia, sai uma linha só, como `ferias`.
 - Inclui anestesistas que não são sócios. O período pode atravessar a virada do ano.
+
+### Escala numérica: `GET /v1/escala-numerica?data=` ou `?inicio=&fim=` (até 62 dias)
+
+A ordem de liberação esperada de cada dia, **exatamente como a tela "Escala Numérica" do app**: a
+escala numérica do grupo, com o pós-plantão aplicado e quem está fora marcado na posição (ninguém é
+removido nem renumerado). A tarde já vem invertida — não inverta de novo.
+
+```json
+{"data":[{"data":"2026-11-04","dia_semana":"quarta","tipo":"dia_util","feriado":null,
+  "turnos":[{"turno":"matutino","rotulo":"Manhã",
+    "hospitais":[{"hospital":"hro","rotulo":"HRO","trabalhando":17,
+      "lista":[
+        {"posicao":1,"numero":"04","nome_legenda":"MELO","nome":"Guilherme Melo",
+         "anestesistas":[{"id":"<id>","nome":"GUILHERME SOUZA MELO"}],
+         "situacao":null,"rotulo":null,"posto_plantao":null,"destino":null,
+         "em_ferias":[],"inserida":false,"trocado":false},
+        {"posicao":2,"numero":"30","nome_legenda":"ROMULO","nome":"Rômulo Roxo","anestesistas":[…],
+         "situacao":"plantao_noturno","rotulo":"plantão P1 · noite","posto_plantao":"P1", "…":"…"}],
+      "observacao":{"texto":"texto livre do card","atualizado_em":"2026-11-03T20:00:00+00:00"}}],
+    "consultorio":{"lista":[…],"observacao":null},
+    "pendencias":[]},
+   {"turno":"vespertino", "…":"…"}]}],
+ "meta":{"inicio":"2026-11-04","fim":"2026-11-04","total_dias":1,
+         "edicao":{"ano":2026,"vigencia":{"inicio":"2026-08-03","fim":"2026-12-18"}},
+         "ferias_conferidas":true,"situacoes":{"…":"…"}}}
+```
+
+- `tipo`: `dia_util` (três hospitais + consultório), `feriado` (fila única: `turnos[].lista`, todos os
+  hospitais), `fim_de_semana` (a numérica não vale: `fim_de_semana` traz os postos P1…P12 do Pega
+  Plantão, lançados no sábado — o domingo usa o sábado anterior, `sabado_referencia`) ou
+  `fora_da_vigencia` (a edição publicada não cobre a data).
+- `situacao`: `ferias`, `ausente` (licença), `pos_plantao` (fez a noite; à tarde não trabalha),
+  `plantao_noturno` (fez a noite; de manhã **trabalha**, na 2ª posição do hospital do plantão),
+  `lugar_vago` (lugar de quem subiu para o plantão em outro hospital — `destino` diz para onde; não é
+  ninguém ali) ou `null`. Linha com `ferias`/`ausente`/`pos_plantao` fica na posição mas não trabalha.
+- `trabalhando`: quantos trabalham no turno (só HRO e Unimed, como no app).
+- `nome_legenda` é o nome impresso na escala do grupo; `anestesistas` traz uma pessoa por nome — a
+  **dupla** ("HUMBERTO / ROBERTA") traz as duas. `inserida: true` = a Louise, inserida pelo quadro
+  dela na tarde.
+- `observacao`: texto livre que a equipe escreve embaixo de cada card (por dia, turno e hospital/
+  consultório) — **dado sensível** (texto livre). Sem autor.
+- `ferias_conferidas: false` = o Pega Plantão não respondeu: a lista sai sem as marcas de férias,
+  licença e plantão da noite, como no app.
+
+### Feriados: `GET /v1/feriados[?ano=YYYY]`
+
+A escala de cada feriado (fila única, todos os hospitais) **já com as trocas aceitas aplicadas**, e a
+lista de todas as trocas de feriado do ano, em qualquer status.
+
+```json
+{"ano":2026,
+ "feriados":[{"data":"2026-11-20","nome":"Consciência Negra","dia_semana":"sexta",
+   "fila":{"matutino":[{"posicao":1,"numero":"…","nome_legenda":"…","anestesistas":[…],"situacao":null,"trocado":true,"…":"…"}],
+           "vespertino":[…]}}],
+ "trocas":[{"codigo":"FR123456","status":"pendente","escopo":"data",
+   "feriado":{"data":"2026-11-20","nome":"Consciência Negra"},
+   "feriado_desejado":{"data":"2026-11-02","nome":"Finados"},
+   "de":{"id":"<id>","nome":"…"},"para":{"id":"<id>","nome":"…"},
+   "justificativa":"texto escrito por quem pediu",
+   "criada_em":"2026-10-05T10:00:00Z","decidida_em":null}],
+ "meta":{"total_feriados":10,"total_trocas":1,"ferias_conferidas":true}}
+```
+
+- A tarde é a manhã invertida. `trocado: true` marca quem entrou por troca.
+- `status` da troca: `pendente`, `aceita`, `rejeitada` ou `cancelada`. Só as `aceita` mudam a fila.
+  `escopo`: `data` (troca de feriado entre duas pessoas) ou `posicao` (troca de lugar no mesmo feriado).
+- `justificativa` é texto livre — **dado sensível**.
+- Só existe a escala do ano publicado; outro `ano` devolve listas vazias com `meta.aviso`.
+
+### Registros do Pega Plantão: `GET /v1/plantoes?data=` ou `?inicio=&fim=` (até 62 dias)
+
+Tudo o que está lançado no Pega Plantão em cada dia (por dia de início), menos férias (que estão em
+`/v1/ferias/ausencias`). Diferente de `/v1/escala-cirurgica/plantoes`, que é a visão do app (só o
+noturno P1–P4 no dia útil, com hospital), aqui vem o registro como está no Pega Plantão.
+
+```json
+{"data":[{"data":"2026-11-10","plantoes":[
+  {"posicao":"P1","setor":"1 - P1","tipo":"Noturno","inicio":"2026-11-10T19:00:00-03:00",
+   "fim":"2026-11-11T07:00:00-03:00","anestesista":{"id":"<id>","nome":"…"},"licenca":false,"motivo":null},
+  {"posicao":null,"setor":"LICENÇA SAÚDE","tipo":"…","inicio":"2026-11-10T07:00:00-03:00",
+   "fim":"2026-11-10T19:00:00-03:00","anestesista":{"id":"<id>","nome":"…"},"licenca":true,"motivo":"LICENÇA SAÚDE"}]}],
+ "meta":{"total_plantoes":1,"total_licencas":1,"fonte":"pega_plantao"}}
+```
+
+- Licença: `licenca: true`, `posicao: null` e `motivo` = setor do Pega Plantão — **dado sensível**.
+- O fim de semana é lançado no **sábado** e vale 48 h; o domingo quase não tem registro próprio.
 
 ## Erros
 
@@ -215,11 +307,24 @@ informado.**
 ## O que a API NÃO entrega (LGPD)
 
 Estes dados ficam fora por decisão do grupo:
-- dados de paciente da escala: iniciais, idade, procedimento, convênio, gravidade, observações e a
-  foto da escala;
+- dados de paciente da escala cirúrgica: iniciais, idade, procedimento, convênio, gravidade,
+  observações do caso e a foto da escala;
 - e-mails, CPF, CRM e telefones;
-- **motivo** de licença, atestado ou afastamento;
-- quem registrou cada marcação de férias.
+- quem registrou cada marcação de férias, quem escreveu cada observação e quem respondeu cada troca.
+
+## Dados sensíveis (incluídos por decisão do grupo)
+
+Por decisão expressa do grupo (controlador dos dados, nov/2026), a API entrega também:
+
+| Campo | Rota | Por que é sensível |
+|---|---|---|
+| `motivo` | `/v1/ferias/ausencias`, `/v1/plantoes` | motivo de licença/afastamento é **dado de saúde** (LGPD, art. 11) |
+| `observacao` | `/v1/escala-numerica` | texto livre escrito pela equipe |
+| `justificativa` | `/v1/feriados` (trocas) | texto livre escrito por quem pediu a troca |
+
+Esses campos só podem ser tratados nos termos do **contrato de operador de dados** assinado com o
+grupo: finalidade combinada, acesso restrito a quem precisa, sem repasse a terceiros, armazenamento
+protegido e exclusão ao fim do contrato. Se a sua aplicação não precisa deles, descarte-os ao receber.
 
 Os dados de anestesistas, residentes e funcionárias continuam sendo **dados pessoais**. O uso está
 restrito à finalidade combinada no contrato de tratamento de dados com o grupo. Não podem ser
@@ -229,7 +334,10 @@ repassados a terceiros e devem ser apagados ao fim do contrato.
 
 ### Para quem mantém o ANEST
 
-- **Código:** `supabase/functions/api-v1/`
+- **Código:** `supabase/functions/api-v1/` (numérica e feriados em `_escala-numerica.ts`, registros do
+  PP em `_plantoes-pp.ts`; libs da numérica COPIADAS em `_lib-numerica/` por
+  `node scripts/gerar-libs-numerica-api-v1.mjs` — rodar e redeployar a cada edição nova da escala
+  numérica/feriados ou mudança nas libs; o teste `apiV1EscalaNumerica` acusa se esquecer)
   - `_escala-cirurgica.ts`, `_plantoes.ts`, `_pessoas-escalas.ts`, `_ferias.ts`, `_ausencias.ts`,
     `_exemplos.ts`
   - contrato em `_contrato.ts`

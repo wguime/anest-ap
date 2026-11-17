@@ -266,7 +266,9 @@ cadastro. Acentos: `acentuarNome` (`src/lib/nomeAcentos.js`), só exibição, di
    para a edição nova (eles travam a edição vigente, não a regra).
 4. Conferir a legenda contra `escala_anestesista_alias` (`query-ro.mjs`): nome novo ou grafia
    nova → atualizar `CADASTRO_LEGENDA` na lib.
-5. Commit do JSON + testes; o PDF não entra.
+5. `node scripts/gerar-libs-numerica-api-v1.mjs` — a API externa (`/v1/escala-numerica`,
+   `/v1/feriados`) roda uma CÓPIA do JSON e das libs; redeployar a edge `api-v1` depois.
+6. Commit do JSON + testes + `_lib-numerica/`; o PDF não entra.
 
 Regime novo (jornada diferente, fim da exceção da Louise, hospital novo) NÃO se deduz do
 padrão: confirmar com o dono antes de aplicar fora do intervalo impresso.

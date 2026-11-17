@@ -98,19 +98,19 @@ describe('api-v1 /v1/ferias/ausencias — composição', () => {
         { nome: 'G. MELO', data: '2026-07-20' }, // fora do intervalo
       ],
       licencas: [
-        { nome: 'FERNANDA GUOLLO', data: '2026-07-14' }, // mesmo dia das férias → só 'ferias'
-        { nome: 'PEDRINHO', data: '2026-07-15' }, // não sócio, casa por apelido
-        { nome: 'FULANO SEM CADASTRO', data: '2026-07-15' }, // não sócio sem casamento
-        { nome: 'JOÃO SILVA', data: '2026-07-16' }, // sócio ambíguo
+        { nome: 'FERNANDA GUOLLO', data: '2026-07-14', motivo: 'LICENÇA SAÚDE' }, // mesmo dia das férias → só 'ferias'
+        { nome: 'PEDRINHO', data: '2026-07-15', motivo: 'LICENÇA SAÚDE' }, // não sócio, casa por apelido
+        { nome: 'FULANO SEM CADASTRO', data: '2026-07-15', motivo: 'Licença Maternidade' }, // não sócio sem casamento
+        { nome: 'JOÃO SILVA', data: '2026-07-16', motivo: 'LICENÇA SAÚDE' }, // sócio ambíguo
       ],
     })
     expect(out).toEqual([
-      { data: '2026-07-13', pessoa: { id: 'uid-melo', nome: 'Guilherme Souza Melo' }, tipo: 'ferias' },
-      { data: '2026-07-14', pessoa: { id: 'uid-guollo', nome: 'Fernanda Guollo' }, tipo: 'ferias' },
-      { data: '2026-07-15', pessoa: { id: null, nome: 'FULANO SEM CADASTRO' }, tipo: 'ausente' },
-      { data: '2026-07-15', pessoa: { id: 'uid-pedro', nome: 'PEDRO NAO SOCIO' }, tipo: 'ausente' },
-      { data: '2026-07-16', pessoa: { id: null, nome: 'João Silva' }, tipo: 'ausente' },
-      { data: '2026-07-18', pessoa: { id: 'uid-guollo', nome: 'Fernanda Guollo' }, tipo: 'ferias' },
+      { data: '2026-07-13', pessoa: { id: 'uid-melo', nome: 'Guilherme Souza Melo' }, tipo: 'ferias', motivo: null },
+      { data: '2026-07-14', pessoa: { id: 'uid-guollo', nome: 'Fernanda Guollo' }, tipo: 'ferias', motivo: null },
+      { data: '2026-07-15', pessoa: { id: null, nome: 'FULANO SEM CADASTRO' }, tipo: 'ausente', motivo: 'Licença Maternidade' },
+      { data: '2026-07-15', pessoa: { id: 'uid-pedro', nome: 'PEDRO NAO SOCIO' }, tipo: 'ausente', motivo: 'LICENÇA SAÚDE' },
+      { data: '2026-07-16', pessoa: { id: null, nome: 'João Silva' }, tipo: 'ausente', motivo: 'LICENÇA SAÚDE' },
+      { data: '2026-07-18', pessoa: { id: 'uid-guollo', nome: 'Fernanda Guollo' }, tipo: 'ferias', motivo: null },
     ])
   })
 
@@ -130,7 +130,7 @@ describe('api-v1 /v1/ferias/ausencias — composição', () => {
     const ex = EXEMPLOS['/v1/ferias/ausencias']
     expect(Object.keys(ex.meta).sort()).toEqual(['fim', 'fonte', 'inicio', 'tipos', 'total'])
     for (const item of ex.data) {
-      expect(Object.keys(item).sort()).toEqual(['data', 'pessoa', 'tipo'])
+      expect(Object.keys(item).sort()).toEqual(['data', 'motivo', 'pessoa', 'tipo'])
       expect(Object.keys(item.pessoa).sort()).toEqual(['id', 'nome'])
     }
   })
@@ -189,7 +189,7 @@ describe('api-v1 /v1/ferias/ausencias — rota (whitelist LGPD)', () => {
   })
   afterEach(() => vi.unstubAllGlobals())
 
-  it('compõe férias (com replay) + ausente e não vaza motivo, setor nem campo cru', async () => {
+  it('compõe férias (com replay) + ausente com o motivo (setor do PP) e sem campo cru', async () => {
     const r = await rotaFeriasAusencias({
       supabase: fakeSupabase(),
       url: new URL('https://x/functions/v1/api-v1/v1/ferias/ausencias?inicio=2026-07-13&fim=2026-07-17'),
@@ -197,17 +197,18 @@ describe('api-v1 /v1/ferias/ausencias — rota (whitelist LGPD)', () => {
     })
     expect(r.status).toBe(200)
     expect(r.body.data).toEqual([
-      { data: '2026-07-14', pessoa: { id: 'uid-guollo', nome: 'Fernanda Guollo' }, tipo: 'ferias' },
-      { data: '2026-07-14', pessoa: { id: 'uid-melo', nome: 'Guilherme Souza Melo' }, tipo: 'ausente' },
+      { data: '2026-07-14', pessoa: { id: 'uid-guollo', nome: 'Fernanda Guollo' }, tipo: 'ferias', motivo: null },
+      { data: '2026-07-14', pessoa: { id: 'uid-melo', nome: 'Guilherme Souza Melo' }, tipo: 'ausente', motivo: 'LICENÇA SAÚDE' },
       // 15/07 desmarcado no app → não aparece
-      { data: '2026-07-16', pessoa: { id: null, nome: 'FULANA DE FORA' }, tipo: 'ausente' },
-      { data: '2026-07-16', pessoa: { id: 'uid-melo', nome: 'Guilherme Souza Melo' }, tipo: 'ferias' }, // marcado no app
+      { data: '2026-07-16', pessoa: { id: null, nome: 'FULANA DE FORA' }, tipo: 'ausente', motivo: 'Licença Maternidade' },
+      { data: '2026-07-16', pessoa: { id: 'uid-melo', nome: 'Guilherme Souza Melo' }, tipo: 'ferias', motivo: null }, // marcado no app
     ])
     expect(r.body.meta.total).toBe(4)
     const texto = JSON.stringify(r.body.data)
-    expect(texto).not.toMatch(/LICEN|SA[UÚ]DE|Maternidade|CID|gripe|atestado|gestante|viagem|x@y\.z|PP[FLP]\d|Setor|Comentario|Motivo|Observacao|P1 HRO|email/i)
+    // o motivo é o SETOR do PP e nada mais: comentário/campos crus nunca saem
+    expect(texto).not.toMatch(/CID|gripe|atestado|gestante|viagem|x@y\.z|PP[FLP]\d|Setor|Comentario|Motivo|Observacao|P1 HRO|email/)
     for (const item of r.body.data) {
-      expect(Object.keys(item).sort()).toEqual(['data', 'pessoa', 'tipo'])
+      expect(Object.keys(item).sort()).toEqual(['data', 'motivo', 'pessoa', 'tipo'])
       expect(Object.keys(item.pessoa).sort()).toEqual(['id', 'nome'])
     }
   })

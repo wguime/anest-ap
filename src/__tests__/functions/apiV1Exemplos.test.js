@@ -5,14 +5,22 @@
  *  1. toda rota de ROTAS_LEITURA (index.ts) tem exemplo — rota nova sem exemplo falha aqui;
  *  2. o exemplo tem o MESMO formato da resposta real (chaves do caso da escala e do sócio
  *     das férias comparadas com os mapeadores reais);
- *  3. nenhum campo proibido (LGPD) aparece nos exemplos.
+ *  3. nenhum campo proibido (LGPD) aparece nos exemplos. Desde nov/2026 o dono (controlador)
+ *     autorizou motivo de licença, observações e justificativas — continuam proibidos
+ *     paciente, e-mail, CPF e CRM.
  */
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { EXEMPLOS, respostaExemplo } from '../../../supabase/functions/api-v1/_exemplos.ts'
 import { mapCasoApi, mapAnestesistaApi } from '../../../supabase/functions/api-v1/_escala-cirurgica.ts'
 import { serializarSocio } from '../../../supabase/functions/api-v1/_ferias.ts'
+import { criarIdentificador, linhaApi, trocaApi } from '../../../supabase/functions/api-v1/_escala-numerica.ts'
+import { comporPlantoesPP } from '../../../supabase/functions/api-v1/_plantoes-pp.ts'
+
+// _firestore.ts importa o jose por URL (https:) — o Node não carrega; a rota de feriados
+// só precisa de listarColecao, simulada aqui.
+vi.mock('../../../supabase/functions/api-v1/_firestore.ts', () => ({ listarColecao: vi.fn(async () => ({})) }))
 
 const INDEX = readFileSync(resolve(__dirname, '../../../supabase/functions/api-v1/index.ts'), 'utf8')
 
@@ -63,9 +71,27 @@ describe('api-v1 — exemplos fictícios', () => {
     for (const s of EXEMPLOS['/v1/ferias/extrato'].socios) expect(chaves(s)).toEqual(chaves(real))
   })
 
+  it('linha da numérica/feriados e troca têm as mesmas chaves dos serializadores reais', () => {
+    const ident = criarIdentificador([])
+    const real = linhaApi({ posicao: 1, numero: '01', nome: 'MELO' }, ident)
+    const ex = EXEMPLOS['/v1/escala-numerica'].data[0].turnos[0]
+    for (const l of [...ex.hospitais[0].lista, ...ex.consultorio.lista]) expect(chaves(l)).toEqual(chaves(real))
+    for (const l of EXEMPLOS['/v1/feriados'].feriados[0].fila.matutino) expect(chaves(l)).toEqual(chaves(real))
+    const troca = trocaApi({ status: 'pendente', escopo: 'data' }, ident)
+    for (const t of EXEMPLOS['/v1/feriados'].trocas) expect(chaves(t)).toEqual(chaves(troca))
+  })
+
+  it('registro de /v1/plantoes tem as mesmas chaves do compositor real', () => {
+    const [dia] = comporPlantoesPP({
+      registros: [{ Setor: '1 - P1', Inicio: '2026-01-15T19:00:00', ProfDePlantao: 'X' }],
+      pessoas: [], inicio: '2026-01-15', fim: '2026-01-15',
+    })
+    for (const r of EXEMPLOS['/v1/plantoes'].data[0].plantoes) expect(chaves(r)).toEqual(chaves(dia.plantoes[0]))
+  })
+
   it('nenhum campo proibido nos exemplos', () => {
     const txt = JSON.stringify(EXEMPLOS)
-    for (const k of ['paciente_iniciais', 'idade', 'procedimento', 'convenio', 'gravidade', 'email', 'motivo', 'setor', 'cpf', 'crm']) {
+    for (const k of ['paciente_iniciais', 'idade', 'procedimento', 'convenio', 'gravidade', 'email', 'cpf', 'crm', 'autor_nome', 'autor_id']) {
       expect(txt).not.toContain(`"${k}"`)
     }
   })

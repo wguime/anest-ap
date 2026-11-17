@@ -16,10 +16,11 @@
 // se inventa nem se apaga dia. A regra "FDS não conta" é do SALDO (extrato),
 // não de quem está fora.
 //
-// LGPD (art. 11 — licença é dado de saúde): a resposta NUNCA traz motivo,
-// setor, código, comentário nem outro campo cru do PP. A licença já chega
-// minimizada do cache (só nome+data, _ferias.ts) e a linha é montada campo a
-// campo aqui. Nome do PP sem casamento único → id null (nunca adivinhar).
+// LGPD (art. 11 — licença é dado de saúde): por decisão expressa do dono
+// (nov/2026), a linha 'ausente' traz `motivo` = setor do PP ("LICENÇA SAÚDE").
+// DADO SENSÍVEL, coberto pelo contrato de operador. Em 'ferias' motivo = null.
+// Código, comentário e outros campos crus do PP nunca saem; a linha é montada
+// campo a campo aqui. Nome do PP sem casamento único → id null (nunca adivinhar).
 // =============================================================================
 
 import {
@@ -56,6 +57,8 @@ export interface AusenciaApi {
   data: string
   pessoa: { id: string | null; nome: string }
   tipo: TipoAusencia
+  /** setor do PP na licença ('ausente'); null em 'ferias'. DADO SENSÍVEL (saúde). */
+  motivo: string | null
 }
 
 // ─── Composição pura ────────────────────────────────────────────────────────
@@ -89,21 +92,21 @@ export function comporAusencias({
   }
 
   const noIntervalo = (d: string) => d >= inicio && d <= fim
-  const porChave = new Map<string, { nomePP: string; data: string; tipo: TipoAusencia }>()
+  const porChave = new Map<string, { nomePP: string; data: string; tipo: TipoAusencia; motivo: string | null }>()
   for (const r of ferias) {
     if (!noIntervalo(r.data)) continue
-    porChave.set(`${normalizarNome(r.nome)}|${r.data}`, { nomePP: r.nome, data: r.data, tipo: 'ferias' })
+    porChave.set(`${normalizarNome(r.nome)}|${r.data}`, { nomePP: r.nome, data: r.data, tipo: 'ferias', motivo: null })
   }
   for (const l of licencas) {
     if (!noIntervalo(l.data)) continue
     const k = `${normalizarNome(l.nome)}|${l.data}`
     if (porChave.has(k)) continue // férias vence: a licença nem aparece
-    porChave.set(k, { nomePP: l.nome, data: l.data, tipo: 'ausente' })
+    porChave.set(k, { nomePP: l.nome, data: l.data, tipo: 'ausente', motivo: l.motivo || null })
   }
 
-  // whitelist: só data, pessoa {id, nome} e tipo
+  // whitelist: só data, pessoa {id, nome}, tipo e motivo
   return [...porChave.values()]
-    .map(({ nomePP, data, tipo }) => ({ data, pessoa: pessoaDe(nomePP), tipo }))
+    .map(({ nomePP, data, tipo, motivo }) => ({ data, pessoa: pessoaDe(nomePP), tipo, motivo }))
     .sort((a, b) => a.data.localeCompare(b.data) || a.pessoa.nome.localeCompare(b.pessoa.nome, 'pt-BR'))
 }
 
@@ -180,7 +183,7 @@ export async function rotaFeriasAusencias(ctx: RotaCtx): Promise<RotaResultado> 
         fonte: 'pega_plantao+ferias_movimentacoes',
         tipos: {
           ferias: 'férias (Pega Plantão + marcações/desmarcações do app)',
-          ausente: 'afastamento no Pega Plantão — o motivo não é informado',
+          ausente: 'afastamento no Pega Plantão — `motivo` traz o setor do PP (dado sensível)',
         },
       },
     })

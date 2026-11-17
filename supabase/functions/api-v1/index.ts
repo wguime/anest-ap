@@ -18,7 +18,11 @@
 //   GET /v1/residentes[/plantoes|/estagios] → read:residentes
 //   GET /v1/funcionarias/escala       → read:funcionarias
 //   GET /v1/ferias/extrato            → read:ferias
-//   GET /v1/ferias/ausencias          → read:ferias (férias + afastamento sem motivo, _ausencias.ts)
+//   GET /v1/ferias/ausencias          → read:ferias (férias + afastamento com motivo*, _ausencias.ts)
+//   GET /v1/escala-numerica           → read:escala-cirurgica (ordem de liberação + observações*, _escala-numerica.ts)
+//   GET /v1/feriados                  → read:escala-cirurgica (fila efetiva + trocas com justificativa*, _escala-numerica.ts)
+//   GET /v1/plantoes                  → read:escala-cirurgica (registros do Pega Plantão + licenças com motivo*, _plantoes-pp.ts)
+//   * DADO SENSÍVEL por decisão expressa do dono (nov/2026), coberto pelo contrato de operador
 //   ?exemplo=true em qualquer rota acima → dados fictícios (_exemplos.ts)
 //   *                                 → 404 { error: 'not_found' }
 //
@@ -75,6 +79,8 @@ import {
 import { rotaFeriasExtrato } from './_ferias.ts'
 import { rotaFeriasAusencias } from './_ausencias.ts'
 import { rotaEscalaPlantoes } from './_plantoes.ts'
+import { rotaEscalaNumerica, rotaFeriados } from './_escala-numerica.ts'
+import { rotaPlantoesPP } from './_plantoes-pp.ts'
 import { respostaExemplo } from './_exemplos.ts'
 
 // nov/2026 — rotas só de leitura dos módulos de domínio (contrato em _contrato.ts).
@@ -89,6 +95,9 @@ const ROTAS_LEITURA: Record<string, (ctx: RotaCtx) => Promise<RotaResultado>> = 
   '/v1/funcionarias/escala': rotaFuncionariasEscala,
   '/v1/ferias/extrato': rotaFeriasExtrato,
   '/v1/ferias/ausencias': rotaFeriasAusencias,
+  '/v1/escala-numerica': rotaEscalaNumerica,
+  '/v1/feriados': rotaFeriados,
+  '/v1/plantoes': rotaPlantoesPP,
 }
 
 async function executarRota(
@@ -333,6 +342,10 @@ const ENDPOINT_SCOPES: Record<string, { read: string; write: string | null }> = 
   '/v1/residentes': { read: 'read:residentes', write: null },
   '/v1/funcionarias': { read: 'read:funcionarias', write: null },
   '/v1/ferias': { read: 'read:ferias', write: null },
+  // tudo o que a página /escalas mostra, sob a MESMA chave da escala cirúrgica
+  '/v1/escala-numerica': { read: 'read:escala-cirurgica', write: null },
+  '/v1/feriados': { read: 'read:escala-cirurgica', write: null },
+  '/v1/plantoes': { read: 'read:escala-cirurgica', write: null },
 }
 
 /** Prefixo só de leitura (write: null)? Usado para responder 405 a POST/PUT/DELETE. */
