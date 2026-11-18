@@ -109,30 +109,14 @@ describe('Unimed 23/10 — a tela mantém a ordem do hospital de origem', () => 
   })
 })
 
-describe('a folha "Antes de liberar" reconfere a ordem no "Salvar e liberar"', () => {
-  const folhaAntes = () => screen.getAllByRole('dialog').find((d) => d.textContent.includes('Antes de liberar'))
-  // o Alexandre fecha os que trabalham (o Matheus, sem cirurgia, é a cauda) e tem cirurgia aberta
+describe('a cirurgia aberta não segura mais o toque (dono 18/11)', () => {
+  // o Alexandre fecha os que trabalham (o Matheus, sem cirurgia, é a cauda) e tem cirurgia aberta:
+  // é o próximo e sai direto — a folha "Antes de liberar" (e a reconferência dela) saiu
   const alexandreEmSala = [caso('1', 'GABRIELA'), caso('7', 'COSTA'), caso('9', 'ALEXANDRE D')]
-  const alexandreTerminou = [caso('1', 'GABRIELA'), caso('7', 'COSTA'), caso('9', 'ALEXANDRE D', { statusCirurgia: 'terminada', terminoReal: '10:30' })]
 
-  it('a fila mudou com a folha aberta: não libera e diz quem é o próximo agora', async () => {
-    const { onToggle, rerender } = montar(alexandreEmSala)
+  it('libera na vez, sem folha', async () => {
+    const { onToggle } = montar(alexandreEmSala)
     fireEvent.click(screen.getByRole('button', { name: 'Marcar Alexandre Danieli liberado' }))
-    expect(folhaAntes()).toBeTruthy()
-    // enquanto a folha está aberta: o término é preenchido e chega uma urgência para o
-    // Leandro, que não está em rodapé nenhum — ele entra no fim e passa a ser o próximo
-    rerender([...alexandreTerminou, caso('u', 'LEANDRO', { origem: 'manual', hora: '10:35' })])
-    fireEvent.click(within(folhaAntes()).getByRole('button', { name: 'Salvar e liberar Alexandre' }))
-    expect(await screen.findByText('Libere Leandro Bernardes primeiro')).toBeTruthy()
-    expect(screen.getByText(/Horários salvos\. Com o que mudou na fila, falta 1 anestesista antes de Alexandre Danieli\./)).toBeTruthy()
-    expect(onToggle).not.toHaveBeenCalled()
-  })
-
-  it('a fila não mudou: libera como sempre', async () => {
-    const { onToggle, rerender } = montar(alexandreEmSala)
-    fireEvent.click(screen.getByRole('button', { name: 'Marcar Alexandre Danieli liberado' }))
-    rerender(alexandreTerminou)
-    fireEvent.click(within(folhaAntes()).getByRole('button', { name: 'Salvar e liberar Alexandre' }))
     await waitFor(() => expect(onToggle).toHaveBeenCalledTimes(1))
     expect(onToggle.mock.calls[0][0].anestesista).toBe('Alexandre Danieli')
   })

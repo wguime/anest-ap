@@ -1468,21 +1468,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       avisarBloqueio(linha, bloqueio)
       return
     }
-    // ANTES DE LIBERAR (dono 14/10, modelo A sem saída): quem tem cirurgia aberta ou
-    // sem início/término no turno só sai depois de preenchida ou passada a um colega.
-    // Só na IDA (desfazer a liberação não pergunta nada) e só para quem pode gravar.
-    // LIBERAR CONFERE O DIA (dono 15/10): também as cirurgias da pessoa nos outros
-    // hospitais e no turno da manhã — `pendenciasForaDaLinha`
-    const travas = !liberado && canEdit && onDefinirInicioCaso
-      ? [...pendenciasParaLiberar(linha.casosTurno).filter((p) => p.caso.id), ...pendenciasForaDaLinha(linha)]
-      : []
-    if (travas.length) {
-      haptic('warning')
-      // `ids` = foto do momento do toque: a folha segue mostrando a cirurgia já
-      // resolvida (verde, ou "passada para…") enquanto as outras se resolvem
-      setAntesLiberar({ chave: linha.chave, noturno: !!linha.noturno, ids: travas.map((p) => p.caso.id) })
-      return
-    }
+    // LIBERAR NÃO PASSA MAIS PELA FOLHA "ANTES DE LIBERAR" (dono 18/11: "só não quero mais que
+    // a mensagem apareça, para não travar as liberações"). Revoga 14/10 e 15/10: o toque libera
+    // direto, e a cirurgia sem horário fica no débito de quem está no caso (a caixa vermelha e o
+    // pop-up dele); quem assume a cirurgia leva o débito. O banco também deixou de travar
+    // (migration 20261118150000). A folha segue no arquivo, sem gatilho — `antesLiberar` nasce null.
     await liberarDeFato(linha, liberado)
   }
   const liberarDeFato = async (linha, liberado = false) => {

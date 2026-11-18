@@ -163,11 +163,28 @@ describe('trava da liberação: só cirurgia ABERTA (dono 27/10)', () => {
     await expect(liberar()).resolves.toBeTruthy()
   })
 
-  it('cirurgia aberta continua travando', async () => {
+  it('cirurgia aberta travava até 18/11', async () => {
     await publicar()
     await terminarSemHorario('13:30')
     await status('15:30', 'iniciada')
     await expect(liberar()).rejects.toThrow(/horario_pendente/)
+  })
+})
+
+// LIBERAR SEM TRAVA DE HORÁRIO (dono 18/11: "só não quero mais que a mensagem apareça, para não
+// travar as liberações"). A migration troca a RPC para os testes seguintes — nenhum deles libera, e o
+// teste do rollback no fim remonta o banco.
+describe('trava da liberação removida (dono 18/11)', () => {
+  it('aberta e agendada não travam; o débito segue no anestesista do caso', async () => {
+    await db.exec(ler('20261118150000_escala_liberar_sem_trava_de_horario.sql'))
+    await publicar()
+    await status('15:30', 'iniciada')
+    await expect(liberar()).resolves.toBeTruthy()
+    const { rows } = await db.query("select liberacoes from escala_cirurgica where data = '2099-01-02'")
+    expect(rows[0].liberacoes['vespertino:uid-paulo']).toMatchObject({ liberadoEm: '2099-01-02T18:00:00Z', por: 'uid-paulo' })
+    // nada no caso muda: segue aberto e no nome de quem estava nele
+    expect((await caso('15:30')).status_cirurgia).toBe('iniciada')
+    expect((await caso('13:30')).status_cirurgia).toBe('agendada')
   })
 })
 
@@ -268,3 +285,4 @@ describe('migration e rollback', () => {
     await db.close(); await montar()
   }, 60000)
 })
+

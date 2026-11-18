@@ -561,6 +561,14 @@ da Minhas, prop `pendencia` do `CasoCard` — está no comparador do `memo`).
 
 ### Antes de liberar — sem horário não se libera (dono 2026-10-14, modelo A sem saída)
 
+> ↳ **18/11: REVOGADA pelo dono** — "só não quero mais que a mensagem apareça, para não travar as
+> liberações. Nada muda com relação aos débitos de quem deixou em aberto; se outra pessoa assume o
+> procedimento, o débito é transferido." O toque libera direto (sem folha, só o toast de sempre) e o
+> banco não trava mais (migration `20261118150000`, rollback `scripts/rollback-20261118150000-liberar-sem-trava.sql`).
+> O status das cirurgias não muda; o débito é da conta de sempre (`escala_horario_conta`, pelo
+> `anestesista_user_id` do caso — quem assume leva). A folha segue no `LiberacoesView` sem gatilho
+> (`antesLiberar` nasce null). Base: 29/10–17/11, 599/650 liberações por outra pessoa; 279 casos
+> fechados pelo liberador nos 4 min antes, 112 com término = hora do toque. O texto abaixo é histórico.
 > ↳ **27/10: REABERTA pelo dono** — só a cirurgia ABERTA trava, e a folha (a mesma para todos)
 > ganhou "Terminou · horário depois". Ver § "Horários — liberar sem travar".
 

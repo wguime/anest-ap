@@ -3,6 +3,18 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## 18/11/2026 — Escala: liberar sem a folha "Antes de liberar" — v5.12.97
+
+Dono 18/11: "só não quero mais que a mensagem apareça, para não travar as liberações. Nada muda com relação
+aos débitos de quem deixou em aberto; se outra pessoa assume o procedimento, o débito é transferido."
+- **O toque em liberar libera direto** (só o toast de sempre, com Desfazer). A folha com as cirurgias sem
+  horário não abre mais, em nenhum hospital ou turno. A ordem da fila continua sendo conferida.
+- **O banco não trava mais a liberação** (migration `20261118150000`; rollback em
+  `scripts/rollback-20261118150000-liberar-sem-trava.sql`, app antigo primeiro).
+- O status das cirurgias não muda e o débito é o de sempre: fica com quem está no caso; quem assume leva.
+- Base (29/10–17/11): 599 de 650 liberações feitas por outra pessoa; em 279 cirurgias quem liberava fechou o
+  caso do colega nos 4 min antes, 112 com o término = hora do toque.
+
 ## 11/11/2026 (noite) — Escala: revisão de layout das telas (11 itens) — v5.12.96
 
 Dono 11/11: revisão geral das telas da escala ("fácil e intuitivo"), item a item por modelo

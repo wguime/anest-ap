@@ -1,4 +1,8 @@
 /**
+ * ⚠️ A FOLHA "ANTES DE LIBERAR" SAIU (dono 18/11/2026): "só não quero mais que a mensagem apareça,
+ * para não travar as liberações" — o toque libera direto, a cirurgia sem horário fica no débito
+ * de quem está no caso. Ficam aqui a regra nova e a medida C do detalhe do caso. Histórico:
+ *
  * ANTES DE LIBERAR (dono 14/10/2026) — modelo A de `.tmp/liberar-com-cirurgia-aberta.html`,
  * SEM a saída "Liberar sem horário": "não deve ser possível liberar sem preenchimento das
  * informações". Quem tem cirurgia aberta ou sem início/término no turno só é liberado
@@ -102,20 +106,16 @@ beforeAll(() => {
 afterAll(() => vi.useRealTimers())
 beforeEach(() => vi.clearAllMocks())
 
-describe('o toque em liberar é segurado quando falta horário', () => {
-  // MUDOU DE LADO em 27/10 (dono, reabre 14/10): só a cirurgia ABERTA segura; a terminada
-  // sem início não trava mais — vira pendência de quem operou (aba Minhas)
-  it('cirurgia aberta: abre a folha, NÃO libera, e o botão fica apagado; a terminada sem início não segura', () => {
+describe('o toque em liberar não é segurado por horário (dono 18/11)', () => {
+  // REVOGADO 18/11 (dono: "só não quero mais que a mensagem apareça, para não travar as
+  // liberações"): a cirurgia ABERTA também não segura mais — o toque libera direto e o
+  // horário fica no débito de quem está no caso.
+  it('cirurgia aberta: libera direto, sem a folha "Antes de liberar" (18/11)', async () => {
     const { onToggle } = montarFila([daAna, semInicio, emCurso], { onTerminarSemHorario: vi.fn(async () => {}) })
     tocarLiberar()
-    expect(onToggle).not.toHaveBeenCalled()
-    const folha = folhaAntes()
-    expect(folha.textContent).toContain('1 cirurgia aberta. Preencha agora, ou marque Terminou e o horário fica para Paulo informar.')
-    const botao = within(folha).getByRole('button', { name: 'Resolva 1 cirurgia para liberar' })
-    expect(botao.disabled).toBe(true)
-    // a aberta: passar a um colega OU "Terminou · horário depois" (27/10)
-    expect(within(folha).getAllByRole('button', { name: /Passar para outro anestesista/ })).toHaveLength(1)
-    expect(within(folha).getAllByRole('button', { name: /^Terminou: horário depois/ })).toHaveLength(1)
+    expect(folhaAntesOuNada()).toBeNull()
+    await waitFor(() => expect(onToggle).toHaveBeenCalledTimes(1))
+    expect(onToggle.mock.calls[0][0].anestesista).toBe('Paulo Tonini')
   })
 
   it('só com terminada sem horário, ninguém é segurado: libera direto (27/10)', async () => {
@@ -123,40 +123,6 @@ describe('o toque em liberar é segurado quando falta horário', () => {
     tocarLiberar()
     expect(folhaAntesOuNada()).toBeNull()
     await waitFor(() => expect(onToggle).toHaveBeenCalledTimes(1))
-  })
-
-  it('"Terminou · horário depois" fecha a aberta pelo caminho novo e a folha acende (a mesma para todos)', async () => {
-    const onTerminarSemHorario = vi.fn(async () => {})
-    const { rerender } = montarFila([daAna, emCurso], { onTerminarSemHorario })
-    tocarLiberar()
-    fireEvent.click(within(folhaAntes()).getByRole('button', { name: /^Terminou: horário depois/ }))
-    expect(onTerminarSemHorario).toHaveBeenCalledWith('c1')
-    // o realtime devolve a cirurgia terminada SEM término: resolvida, em uma linha
-    rerender([daAna, { ...emCurso, statusCirurgia: 'terminada', terminoReal: null, statusAtualizadoEm: '2026-10-02T18:45:00Z' }])
-    const folha = folhaAntes()
-    expect(folha.textContent).toContain('Tudo resolvido. Os horários que faltam ficam para Paulo informar.')
-    expect(folha.textContent).toContain('Terminou antes de 15:45 · horário depois')
-    expect(within(folha).getByRole('button', { name: 'Salvar e liberar Paulo' }).disabled).toBe(false)
-  })
-
-  it('preenchidos os horários (realtime), a folha acende e "Salvar e liberar" libera pelo caminho normal', async () => {
-    const { onToggle, rerender } = montarFila([daAna, semInicio, emCurso])
-    tocarLiberar()
-    rerender([daAna, completa, { ...emCurso, statusCirurgia: 'terminada', terminoReal: '15:40' }])
-    const folha = folhaAntes()
-    expect(folha.textContent).toContain('Tudo preenchido. Confira e libere.')
-    fireEvent.click(within(folha).getByRole('button', { name: 'Salvar e liberar Paulo' }))
-    await waitFor(() => expect(onToggle).toHaveBeenCalledTimes(1))
-    expect(onToggle.mock.calls[0][0].anestesista).toBe('Paulo Tonini')
-  })
-
-  it('cirurgia passada a outro anestesista sai da conta e aparece como "Passada para"', () => {
-    const { rerender } = montarFila([daAna, emCurso])
-    tocarLiberar()
-    rerender([daAna, { ...emCurso, anestesista: 'ANA', anestesistaUserId: 'uid-ana' }])
-    const folha = folhaAntes()
-    expect(folha.textContent).toContain('Passada para Ana')
-    expect(within(folha).getByRole('button', { name: 'Salvar e liberar Paulo' }).disabled).toBe(false)
   })
 
   it('nada pendente: libera direto, como sempre', async () => {
@@ -180,62 +146,6 @@ describe('o toque em liberar é segurado quando falta horário', () => {
     if (botao) fireEvent.click(botao)
     expect(folhaAntesOuNada()).toBeNull()
     expect(onToggle.mock.calls.length).toBeLessThanOrEqual(1)
-  })
-})
-
-describe('as saídas da folha', () => {
-  it('"Passar para outro anestesista" é BOTÃO e abre os colegas da fila: um toque escolhe e grava', async () => {
-    const { onDefinirCasos } = montarFila([daAna, emCurso])
-    tocarLiberar()
-    fireEvent.click(within(folhaAntes()).getByRole('button', { name: /Passar para outro anestesista/ }))
-    const folha = folhaDeCima()
-    expect(within(folha).getByText('Quem assume a cirurgia?')).toBeTruthy()
-    const colegas = within(folha).getByRole('radiogroup', { name: 'Colegas da fila' })
-    // a própria pessoa que sai nunca aparece; a Ana (em sala) aparece com onde está
-    expect(within(colegas).queryByText('Paulo Tonini')).toBeNull()
-    const ana = within(colegas).getByRole('radio', { name: /Ana Lima/ })
-    expect(ana.textContent).toContain('CC - Sala 1')
-    expect(within(folha).getByRole('button', { name: 'Escolha quem assume' }).disabled).toBe(true)
-    fireEvent.click(ana)
-    fireEvent.click(within(folha).getByRole('button', { name: 'Passar para Ana' }))
-    await waitFor(() => expect(onDefinirCasos).toHaveBeenCalled())
-    expect(onDefinirCasos.mock.calls[0][0]).toEqual(['c1'])
-    expect(onDefinirCasos.mock.calls[0][1]).toMatchObject({ uid: 'uid-ana' })
-  })
-
-  it('agendada que não aconteceu: "Não aconteceu (suspensa)" grava a suspensão', () => {
-    const agendada = { ...emCurso, statusCirurgia: 'agendada', inicioReal: null, hora: '15:00' }
-    const { onSuspenderCaso } = montarFila([daAna, agendada])
-    tocarLiberar()
-    fireEvent.click(within(folhaAntes()).getByRole('button', { name: 'Não aconteceu (suspensa)' }))
-    expect(onSuspenderCaso).toHaveBeenCalledWith('c1')
-  })
-
-  it('TÉRMINO de uma cirurgia sem início pede os DOIS e grava o início junto', async () => {
-    const { onDefinirTerminoRealCaso } = montarFila([daAna, { ...semInicio, terminoReal: null, statusCirurgia: 'iniciada' }])
-    tocarLiberar()
-    fireEvent.click(within(folhaAntes()).getByRole('button', { name: `Término de 13:00 ${rot(HERNIA)}: não informado` }))
-    const conf = folhaDeCima()
-    expect(within(conf).getByText(`Início e término · 13:00 ${rot(HERNIA)}`)).toBeTruthy()
-    const botao = within(conf).getByRole('button', { name: 'Confirmar horários' })
-    expect(botao.disabled).toBe(true)
-    // 27/10: sem atalhos ("deixe apenas horários de início e término") — o início se digita
-    expect(within(conf).queryByRole('button', { name: /agendada/ })).toBeNull()
-    digitar('inicio-hora', '1300')
-    expect(conf.textContent).toContain('13:00 → 15:45 · durou 2h45')
-    fireEvent.click(botao)
-    await waitFor(() => expect(onDefinirTerminoRealCaso).toHaveBeenCalledWith('c0', '15:45', { inicioReal: '13:00' }))
-  })
-
-  it('início no futuro é recusado com a frase de sempre, e nada é gravado', () => {
-    const { onDefinirTerminoRealCaso } = montarFila([daAna, { ...semInicio, terminoReal: null, statusCirurgia: 'iniciada' }])
-    tocarLiberar()
-    fireEvent.click(within(folhaAntes()).getByRole('button', { name: `Término de 13:00 ${rot(HERNIA)}: não informado` }))
-    digitar('inicio-hora', '1600')
-    digitar('termino-real-hora', '1530')
-    fireEvent.click(within(folhaDeCima()).getByRole('button', { name: 'Confirmar horários' }))
-    expect(within(folhaDeCima()).getByRole('alert').textContent).toBe('O início não pode ser depois de agora.')
-    expect(onDefinirTerminoRealCaso).not.toHaveBeenCalled()
   })
 })
 
@@ -272,76 +182,5 @@ describe('medida C no detalhe do caso: não existe "só terminada" sem início',
     detalhe(completa)
     fireEvent.click(screen.getByRole('button', { name: 'Início desta cirurgia: 13:05' }))
     expect(within(folhaDeCima()).queryByRole('button', { name: 'Limpar horário' })).toBeNull()
-  })
-})
-
-/**
- * "PASSAR · A UM COLEGA" PARA QUEM NÃO ESTÁ NA FILA DAQUI (dono 10–11/11/2026, modelo B de
- * `.tmp/analise-escala-2026-11/modelos-2/b-trocas.html`). Era um repasse sem pergunta
- * nenhuma: quem recebia de fora do rodapé entrava no fim e saía antes; quem passava seguia
- * na vaga. A folha agora pergunta "Como {B} entra?", igual ao ⚙ da sala. Colega da lista
- * "Na fila" é do rodapé: segue um toque, sem pergunta (o teste de 14/10 acima).
- */
-describe('Passar a quem não está na fila daqui pergunta como entra (dono 10–11/11)', () => {
-  const hro = { id: 'e-hro', hospital: 'hro', data: '2026-10-02', status: 'publicada', ordemLiberacao: { vespertino: ['X', 'CAIO', 'Y'] }, ajudaExterna: {}, liberacoes: {}, linhaOverrides: {}, casos: [] }
-  const abrirPassar = (props = {}) => {
-    const r = montarFila([daAna, emCurso], props)
-    tocarLiberar()
-    fireEvent.click(within(folhaAntes()).getByRole('button', { name: /Passar para outro anestesista/ }))
-    return { ...r, folha: folhaDeCima() }
-  }
-  const escolherDeFora = (folha, rx) => {
-    fireEvent.click(within(folha).getByRole('combobox'))
-    fireEvent.click(screen.getByRole('option', { name: rx }))
-  }
-  const opcao = (id) => document.querySelector(`[data-como-entra-opcao="${id}"]`)
-
-  it('Bia (sem escala): "Veio AJUDAR" ou "ASSUME a posição de Paulo na fila", nada marcado e botão apagado', () => {
-    const { folha } = abrirPassar()
-    escolherDeFora(folha, /BIA SOUZA/)
-    expect(folha.textContent).toContain('Bia não está na fila da Unimed nesta tarde. Como Bia entra?')
-    expect(opcao('ajuda')).toHaveTextContent('Bia está fora da escala. Entra no fim como Ajuda e sai antes do rodapé. Paulo segue 2º.')
-    expect(opcao('assume')).toHaveTextContent('Bia passa a ser o 2º da Unimed. Paulo sai da fila desta tarde.')
-    expect(opcao('assume')).toHaveAttribute('aria-checked', 'false')
-    expect(within(folha).getByRole('button', { name: 'Escolha como Bia entra' })).toBeDisabled()
-  })
-
-  it('"Veio AJUDAR": o repasse de sempre, com o aviso desfazível', async () => {
-    const { folha, onDefinirCasos } = abrirPassar()
-    escolherDeFora(folha, /BIA SOUZA/)
-    fireEvent.click(opcao('ajuda'))
-    fireEvent.click(within(folha).getByRole('button', { name: 'Bia entra como ajuda' }))
-    await waitFor(() => expect(onDefinirCasos).toHaveBeenCalledTimes(1))
-    expect(onDefinirCasos.mock.calls[0][0]).toEqual(['c1'])
-    expect(onDefinirCasos.mock.calls[0][1]).toMatchObject({ uid: 'uid-bia', desfazivel: true, aviso: { title: 'Bia entrou como ajuda', description: 'Paulo segue 2º da Unimed' } })
-  })
-
-  it('"ASSUME": posição e cirurgia juntas, pelo caminho da troca — não pelo repasse', async () => {
-    const onEntrarNaFila = vi.fn(async () => {})
-    const { folha, onDefinirCasos } = abrirPassar({ onEntrarNaFila })
-    escolherDeFora(folha, /BIA SOUZA/)
-    fireEvent.click(opcao('assume'))
-    fireEvent.click(within(folha).getByRole('button', { name: 'Bia assume o 2º' }))
-    await waitFor(() => expect(onEntrarNaFila).toHaveBeenCalledTimes(1))
-    const [plano, aviso] = onEntrarNaFila.mock.calls[0]
-    expect(plano.lados).toHaveLength(1)
-    expect(plano.lados[0]).toMatchObject({ hospital: 'unimed', turno: 'vespertino', chaveSlot: 'uid-paulo', tipo: 'assuncao', para: { uid: 'uid-bia' }, casoIds: ['c1'] })
-    expect(aviso).toEqual({ title: 'Bia assumiu a posição de Paulo', description: 'Bia é o 2º da Unimed' })
-    expect(onDefinirCasos).not.toHaveBeenCalled()
-  })
-
-  it('Caio (2º do HRO): "Veio AJUDAR" ou "Os dois TROCARAM de hospital hoje" — não "assume"', () => {
-    const { folha } = abrirPassar({ escalasDoDia: { unimed: escalaDe([daAna, emCurso]), hro } })
-    escolherDeFora(folha, /CAIO REIS/)
-    expect(opcao('ajuda')).toHaveTextContent('Caio segue 2º no HRO. Aqui entra no fim como Ajuda (HRO) e sai antes do rodapé. Paulo segue 2º.')
-    expect(opcao('trocaram')).toHaveTextContent('Caio fica com o 2º da Unimed; Paulo, com o 2º do HRO. As cirurgias vão junto.')
-    expect(opcao('assume')).toBeNull()
-  })
-
-  it('colega da fila daqui (Ana): um toque e "Passar para Ana", sem pergunta', () => {
-    const { folha } = abrirPassar()
-    fireEvent.click(within(folha).getByRole('radio', { name: /Ana Lima/ }))
-    expect(document.querySelector('[data-como-entra]')).toBeNull()
-    expect(within(folha).getByRole('button', { name: 'Passar para Ana' })).toBeEnabled()
   })
 })
