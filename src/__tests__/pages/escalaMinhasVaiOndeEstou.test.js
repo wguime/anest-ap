@@ -58,6 +58,36 @@ describe('localizarMeuPosto — a aba Minhas acha o meu posto', () => {
       .toEqual({ hospital: 'unimed', turno: 'matutino' })
   })
 
+  // dono 18/11: liberado da manhã às 11h, a Minhas abria na manhã encerrada e a tarde não aparecia
+  it('a manhã toda concluída e cirurgia à tarde: abre na TARDE, mesmo com o relógio na manhã', () => {
+    const escalas = {
+      hro: escala([caso({ turno: 'matutino', anestesista: 'GUILHERME', anestesistaUserId: EU.uid, statusCirurgia: 'terminada' })]),
+      unimed: escala([caso({ turno: 'vespertino', anestesista: 'GUILHERME', anestesistaUserId: EU.uid })]),
+    }
+    expect(localizarMeuPosto({ escalas, hospitais: HOSPITAIS, eu: EU, turnoPreferido: 'matutino', turnos: ['matutino', 'vespertino'] }))
+      .toEqual({ hospital: 'unimed', turno: 'vespertino' })
+  })
+
+  it('ainda com cirurgia aberta de manhã, fica na manhã', () => {
+    const escalas = {
+      hro: escala([
+        caso({ turno: 'matutino', anestesista: 'GUILHERME', anestesistaUserId: EU.uid, statusCirurgia: 'terminada' }),
+        caso({ turno: 'matutino', anestesista: 'GUILHERME', anestesistaUserId: EU.uid, statusCirurgia: 'iniciada' }),
+      ]),
+      unimed: escala([caso({ turno: 'vespertino', anestesista: 'GUILHERME', anestesistaUserId: EU.uid })]),
+    }
+    expect(localizarMeuPosto({ escalas, hospitais: HOSPITAIS, eu: EU, turnoPreferido: 'matutino', turnos: ['matutino', 'vespertino'] }))
+      .toEqual({ hospital: 'hro', turno: 'matutino' })
+  })
+
+  it('manhã concluída sem nada à tarde: continua na manhã', () => {
+    const escalas = {
+      hro: escala([caso({ turno: 'matutino', anestesista: 'GUILHERME', anestesistaUserId: EU.uid, statusCirurgia: 'terminada' })]),
+    }
+    expect(localizarMeuPosto({ escalas, hospitais: HOSPITAIS, eu: EU, turnoPreferido: 'matutino', turnos: ['matutino', 'vespertino'] }))
+      .toEqual({ hospital: 'hro', turno: 'matutino' })
+  })
+
   it('residente acha o posto pelos casos que acompanha', () => {
     const escalas = {
       materno: escala([caso({ turno: 'vespertino', residenteUserId: 'uid-residente' })]),

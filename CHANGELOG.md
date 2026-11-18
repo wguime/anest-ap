@@ -3,6 +3,15 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## 18/11/2026 (tarde) — Escala: Minhas abre na tarde + limpeza da folha — v5.12.98
+
+- **Minhas abre no turno seguinte quando o seu terminou** (dono 18/11: "aba minhas não está mostrando minhas
+  cirurgias da tarde"): com todas as suas cirurgias do turno em curso concluídas e cirurgia sua no turno
+  seguinte, a aba abre nele. Com cirurgia aberta, ou sem nada adiante, segue no turno em curso.
+- **Código da folha "Antes de liberar" removido** do `LiberacoesView` (sem gatilho desde a v5.12.97), com as
+  props que só ela usava. O "Como entra?" continua no ⚙ da sala.
+- Skill `publicar-escala`: REUNIÃO sem caso não é trabalho — nasce liberado, com os sem-caso acima dele.
+
 ## 18/11/2026 — Escala: liberar sem a folha "Antes de liberar" — v5.12.97
 
 Dono 18/11: "só não quero mais que a mensagem apareça, para não travar as liberações. Nada muda com relação

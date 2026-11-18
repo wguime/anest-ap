@@ -27,16 +27,14 @@ import PainelTempo, { formatFaltante, fraseCronometro, fraseFaltante, rotuloDura
 import { BlocoHorario, ConfirmarHorario, ConfirmarInicioETermino } from './BlocoHorario'
 import { CartaoCirurgia, CasasCirurgia, LinhaTempoEstimado, TempoTotalPessoa } from './TemposCirurgia'
 import UrgenciasAguardando from './UrgenciasAguardando'
-import { casoEntraNaConta, dentroDoInicioDoAlerta, ehConsultorio, faltaNoPar, herdaTermino, paresDeContinuacao, pendenciasDoDiaParaLiberar, pendenciasParaLiberar } from '@/lib/escalaHorarioPendente'
+import { casoEntraNaConta, dentroDoInicioDoAlerta, ehConsultorio, faltaNoPar, herdaTermino, paresDeContinuacao } from '@/lib/escalaHorarioPendente'
 import SeloHorarioPendente from './SeloHorarioPendente'
 import { nomeCurtoProcedimento } from '@/lib/escalaProcedimentoCurto'
-import { ehDiaOperacionalAtual, erroHorarioReal, limiteDoTermino, terminoDaDuracao } from '@/lib/escalaHorarioReal'
+import { ehDiaOperacionalAtual, erroHorarioReal, terminoDaDuracao } from '@/lib/escalaHorarioReal'
 import { carimboDeStatus } from '@/lib/escalaCirurgicaStatus'
 import { blocoDaLinha, estadoDaFila, ordenarListaExibicao } from '@/lib/filaLiberacao'
-import { doHospital, ladosDeComoEntra, situacaoDeQuemRecebe, textosComoEntra } from './repasseForaDoRodape'
-import PerguntaComoEntra from './PerguntaComoEntra'
 import AddCasoSheet from './AddCasoSheet'
-import { ajudaOrdemInformada, deParaLugar, anestesistaDoCasoEh, casoConcluido, casosDaFilaDoTurno, casosDaFilaFds, casosResolvidos, chaveSalaEscolha, compararSalas, diffRelogioMin, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao, turnoDoCaso, procedimentoComContinuacao, procedimentoBaseDoCaso, nomeAnestesistaExibicao } from './utils'
+import { ajudaOrdemInformada, deParaLugar, casoConcluido, casosDaFilaDoTurno, casosDaFilaFds, casosResolvidos, chaveSalaEscolha, compararSalas, diffRelogioMin, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao, turnoDoCaso, procedimentoComContinuacao, procedimentoBaseDoCaso, nomeAnestesistaExibicao } from './utils'
 
 // Sentinelas do dropdown de Local (valores impossíveis como nome de sala)
 const LOCAL_AUTO = '__auto__'
@@ -89,7 +87,7 @@ const HOSPITAIS_FILA = ['unimed', 'hro', 'materno'].map((v) => ({ value: v, labe
 const LOCAIS_TTL_MS = 60 * 60 * 1000
 const locaisCache = new Map() // hospital → { lista, em }
 
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onDefinirTerminoCaso, onVerCirurgias = null, onAbrirCaso = null, urgenciasAguardando = null, onDefinirInicioCaso, onDefinirTerminoRealCaso, onSuspenderCaso, onTerminarSemHorario, onDesfazerTerminada, onDefinirDuracaoCaso, onDefinirSemAjuda, onTrocarResponsavel, onDevolverResponsavel, onTrocarPosicao, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, onDefinirOrigem, contraturnoOutros = [], presencaOutros = [], ordemNumerica = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, onEntrarNaFila = null, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, escalasDoDia = null, onGarantirEscala, onNavigate }) {
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, meuUid = null, meuAlias = '', meuNome = '', p4Hospital = null, onDefinirP4, onDefinirCasos, onDefinirTerminoCaso, onVerCirurgias = null, onAbrirCaso = null, urgenciasAguardando = null, onDefinirInicioCaso, onDefinirTerminoRealCaso, onDefinirDuracaoCaso, onDefinirSemAjuda, onTrocarResponsavel, onDevolverResponsavel, onTrocarPosicao, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, onDefinirOrigem, contraturnoOutros = [], presencaOutros = [], ordemNumerica = [], paresTroca = [], onMarcarTroca, onAbrirTroca, onExecutarTroca, onDesfazerSubstituicao, modoFds = false, casosFds = null, fdsMeta = null, escalaCasoNovo = null, onGarantirEscala, onNavigate }) {
   const { toast } = useToast()
   const haptic = useHaptic()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
@@ -156,12 +154,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // a cirurgia cujo INÍCIO ou TÉRMINO está sendo confirmado (dono 02/10) — folha por
   // cima da do total: `{ cir, campo: 'inicio'|'termino' }`
   const [confirmarCirurgia, setConfirmarCirurgia] = useState(null)
-  // ANTES DE LIBERAR (dono 14/10): a linha cujo toque foi segurado por cirurgia sem
-  // horário — `{ chave, noturno }`; a folha relê a linha AO VIVO pela chave
-  const [antesLiberar, setAntesLiberar] = useState(null)
-  // "Desfazer" do "Terminou · horário depois" na própria folha: o estado de antes de cada
-  // cirurgia fechada ali (o mesmo que o toast do context guarda)
-  const [desfazerAntes, setDesfazerAntes] = useState(() => new Map())
   const [horaExataCaso, setHoraExataCaso] = useState('')
   const [ajudaSheet, setAjudaSheet] = useState(false) // sheet "adicionar ajuda"
   const [ajudaUid, setAjudaUid] = useState('')
@@ -169,7 +161,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const [alvoSemAnest, setAlvoSemAnest] = useState(null)
   const [semAnestUid, setSemAnestUid] = useState('')
   // "Como {B} entra?" no "Passar · a um colega" (dono 10–11/11): 'ajuda' | 'assume' | 'trocaram'
-  const [passarComo, setPassarComo] = useState(null)
   const [executandoTroca, setExecutandoTroca] = useState(false)
   const [confirmarTroca, setConfirmarTroca] = useState(null) // par aguardando o pop-up (dono 18/08)
   // desfazer com a VAGA JÁ LIBERADA: a folha diz o efeito antes (dono 10–11/11) — { texto, botao }
@@ -1334,29 +1325,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // a cauda de 29/08 os pinta de liberados — com o porquê no card; acionar em
   // urgência é o toque de sempre, que os devolve à posição. `aplicarDomingoP7P8`
   // decide; aqui só se responde "está escalado neste turno, ou foi acionado?".
-  // LIBERAR CONFERE O DIA (dono 15/10/2026, causa 1 das 24 pendências): a linha só
-  // conhece as cirurgias DESTA fila; as da pessoa nos outros hospitais e na manhã vêm
-  // das escalas carregadas do dia (`escalasDoDia`, da página). Card da noite fora: a
-  // liberação noturna não passa pela trava (nem no banco).
-  // (sem hook: há retorno antecipado acima — é uma lista de 3 itens)
-  const listaDoDia = Object.values(escalasDoDia || {}).filter(Boolean)
-  const casoDoDia = (id) => {
-    for (const e of listaDoDia) {
-      const caso = (e.casos || []).find((c) => c.id === id)
-      if (caso) return { caso, hospital: e.hospital }
-    }
-    return null
-  }
-  const ehDaPessoaDaLinha = (linha) => {
-    const aliases = [linha.nomeOriginal, linha.anestesista].filter(Boolean)
-    return (c) => aliases.some((alias) => anestesistaDoCasoEh(c, { uid: linha.uid || null, alias, resolverUid }))
-  }
-  const pendenciasForaDaLinha = (linha) => {
-    if (!linha || linha.noturno || !listaDoDia.length) return []
-    if (turno !== 'matutino' && turno !== 'vespertino') return []
-    const jaVistos = new Set((linha.casosTurno || []).map((c) => c.id).filter(Boolean))
-    return pendenciasDoDiaParaLiberar(listaDoDia, { turno, ehDaPessoa: ehDaPessoaDaLinha(linha), jaVistos })
-  }
   // O QUE FALTA a quem já saiu (dono 27/10, selo no card liberado): as cirurgias da pessoa
   // neste turno pela MESMA conta do alerta; "Sem horário" vence "Falta início/término". O
   // término de uma manhã que seguiu na continuação é de quem a tarde pôs nela (27/10, 19:52)
@@ -1367,13 +1335,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
         || (herdaTermino(c, paresDoDia) && dentroDoInicioDoAlerta(escala?.data, 'vespertino')))
       .map((c) => faltaNoPar(c, paresDoDia)).filter(Boolean)
     return faltas.includes('ambos') || (faltas.includes('ini') && faltas.includes('ter')) ? 'ambos' : faltas[0] || null
-  }
-  const rotuloForaDaLinha = (caso) => {
-    const h = casoDoDia(caso.id)?.hospital
-    const outroHospital = !modoFds && h && h !== hospital
-    const outroTurno = turnoDoCaso(caso) !== turnoBase
-    if (!outroHospital && !outroTurno) return ''
-    return [outroHospital ? HOSPITAL_LABEL[h] || h : null, outroTurno ? (turnoDoCaso(caso) === 'matutino' ? 'manhã' : 'tarde') : null].filter(Boolean).join(' · ')
   }
   const linhasExibicao = modoFds && !feriado && !noiteFds
     ? aplicarDomingoP7P8(linhasExibicaoBase, {
@@ -1421,10 +1382,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
    * bagunçava a fila e obrigava a corrigir depois no banco.
    * `bloqueio` = { faltam, proximo } quando a linha não é a próxima.
    */
-  // `horariosSalvos`: o aviso vem do "Salvar e liberar" da folha "Antes de liberar" —
-  // o que foi feito nela já está gravado, e quem tocou precisa saber por que a pessoa
-  // não saiu (a fila mudou com a própria folha: Unimed 23/10, cesárea passada ao Costa).
-  const avisarBloqueio = (linha, bloqueio, { horariosSalvos = false } = {}) => {
+  const avisarBloqueio = (linha, bloqueio) => {
     // RESPOSTA TÁTIL (revisão 23/09): quem libera costuma estar com uma mão só, entre
     // cirurgias, sem olhar a tela — o toque recusado e o aceito têm de se distinguir
     // no dedo. No iPhone é no-op (o Safari não tem navigator.vibrate).
@@ -1442,9 +1400,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           }
         : {
             title: `Libere ${bloqueio.proximo} primeiro`,
-            description: horariosSalvos
-              ? `Horários salvos. Com o que mudou na fila, ${faltam.charAt(0).toLowerCase()}${faltam.slice(1)}.`
-              : `${faltam} na ordem de liberação.${
+            description: `${faltam} na ordem de liberação.${
                 // hora combinada (turno próprio / equipe de outro hospital): a partir dela o toque passa
                 bloqueio.horaSaida ? ` A partir das ${bloqueio.horaSaida} ${linha.anestesista} pode sair fora da ordem.` : ''}`,
           }),
@@ -1739,73 +1695,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // as cirurgias abertas da pessoa que dá para gravar (com id), em ordem de horário
   // consultório tem horário fixo (dono 29/10: "ao clicar em consultório não aconteça nada") — fora da folha
   const cirurgiasTempo = (linhaTempo?.cirurgias || []).filter((c) => c.id && !ehConsultorio(c))
-  // FOLHA "ANTES DE LIBERAR" AO VIVO (dono 14/10): a linha atual pela chave e as
-  // cirurgias dela que ainda travam a saída — cada horário gravado ou cirurgia
-  // passada a um colega tira o item daqui na hora, e o botão acende sozinho.
-  const linhaAntesLiberar = antesLiberar
-    ? linhasExibicao.find((l) => l.chave === antesLiberar.chave && !!l.noturno === !!antesLiberar.noturno) || null
-    : null
-  const pendentesAntesLiberar = linhaAntesLiberar
-    ? [...pendenciasParaLiberar(linhaAntesLiberar.casosTurno).filter((p) => p.caso.id), ...pendenciasForaDaLinha(linhaAntesLiberar)]
-    : []
-  // no formato das cirurgias da folha do tempo (o que o card de confirmação lê)
-  const pendenteAntes = new Map(pendentesAntesLiberar.map((p) => [p.caso.id, p]))
-  const casosAntesLiberar = (antesLiberar?.ids || [])
-    .map((id) => casosTurno.find((c) => c.id === id) || (escala?.casos || []).find((c) => c.id === id) || casoDoDia(id)?.caso)
-    .filter(Boolean)
-  const cirurgiasAntesLiberar = casosAntesLiberar.map((caso) => ({ caso, aberta: !!pendenteAntes.get(caso.id)?.aberta })).map(({ caso, aberta }) => ({
-    id: caso.id, ordem: caso.ordem ?? null, hora: String(caso.hora || '').trim(), sala: String(caso.sala || '').trim(),
-    token: nomeCirurgiaoCurto(caso.cirurgiao) || '', procedimento: procedimentoBaseDoCaso(caso),
-    inicioReal: String(caso.inicioReal || '').trim(), terminoReal: String(caso.terminoReal || '').trim(),
-    statusAtualizadoEm: caso.statusAtualizadoEm || null, turno: caso.turno || null,
-    andamento: (caso.statusCirurgia || 'agendada') === 'iniciada',
-    terminada: caso.statusCirurgia === 'terminada', aberta,
-    suspensa: caso.statusExtra === 'suspensa' || caso.statusCirurgia === 'suspensa',
-    // fechada sem horário (27/10): "terminou antes de 15:40"
-    limite: limiteDoTermino(caso),
-    // resolvida = saiu das pendências (horários gravados ou passada a um colega)
-    resolvida: !pendenteAntes.has(caso.id),
-    // de quem é agora — "passada para Raquel" quando saiu do grupo desta pessoa
-    anestesistaAtual: String(caso.anestesista || '').trim(),
-    agendada: (caso.statusCirurgia || 'agendada') === 'agendada',
-    // de OUTRO hospital ou turno ("Unimed · manhã"): a folha diz onde. Passar também vale
-    // para ela (dono 23/10, caso Leandro) — sem isso a cirurgia aberta de outro turno não
-    // tinha saída nenhuma. De outro HOSPITAL, a lista "Na fila" desta tela não serve: só a
-    // busca pelo nome.
-    fora: rotuloForaDaLinha(caso),
-    outroHospital: !modoFds && !!casoDoDia(caso.id)?.hospital && casoDoDia(caso.id).hospital !== hospital,
-  }))
-  const primeiroNomeAntes = String(linhaAntesLiberar?.anestesista || '').trim().split(/\s+/)[0] || ''
-  const antesDoTerminar = (caso) => ({
-    statusCirurgia: caso.statusCirurgia ?? null, statusExtra: caso.statusExtra ?? null,
-    statusAtualizadoEm: caso.statusAtualizadoEm ?? null, statusAtualizadoPor: caso.statusAtualizadoPor ?? null,
-    terminoPrevisto: caso.terminoPrevisto ?? null, terminoReal: caso.terminoReal ?? null,
-    duracaoEstimadaMin: caso.duracaoEstimadaMin ?? null,
-  })
-  // COLEGAS PARA PASSAR A CIRURGIA (dono 14/10, modelo A2): os da fila deste turno com
-  // login, ainda não liberados e escalados — Livre primeiro (está pronto para assumir),
-  // depois quem opera, na ordem da lista. Nunca a própria pessoa que está saindo.
-  const colegasParaPassar = alvoSemAnest?.deLiberar && !alvoSemAnest?.outroHospital
-    ? linhasExibicao
-      .filter((l) => l.uid && !l.noturno && l.chave !== antesLiberar?.chave && l.uid !== linhaAntesLiberar?.uid)
-      .filter((l) => { const m = marcaDe(l); return !(m && m.escalado !== true) && (!naoEscalado(l) || m?.escalado === true) })
-      .map((l) => {
-        const c0 = (l.cirurgias || [])[0]
-        const livre = estaLivre(l)
-        return {
-          uid: l.uid, nome: l.anestesista, livre,
-          onde: livre || !c0 ? 'sem cirurgia agora' : [salaLiberacao(c0.sala), [c0.hora, nomeCurtoProcedimento(c0.procedimento) || c0.token].filter(Boolean).join(' ')].filter(Boolean).join(' · '),
-        }
-      })
-      .filter((c, i, a) => a.findIndex((x) => x.uid === c.uid) === i)
-      .sort((a, b) => Number(b.livre) - Number(a.livre))
-    : []
-  const idsDaLinhaAntes = new Set((linhaAntesLiberar?.casosTurno || []).map((c) => c.id).filter(Boolean))
-  // as de fora da linha seguem "da pessoa" enquanto o caso estiver no nome dela
-  if (linhaAntesLiberar) {
-    const ehDela = ehDaPessoaDaLinha(linhaAntesLiberar)
-    for (const c of casosAntesLiberar) if (!idsDaLinhaAntes.has(c.id) && casoDoDia(c.id) && ehDela(c)) idsDaLinhaAntes.add(c.id)
-  }
   // "há 40min" só no dia operacional da escala — "agora" de outro dia não diz nada
   const diaDaEscalaAgora = ehDiaOperacionalAtual(escala?.data)
   const casoUnicoTempo = linhaTempo ? casoUnicoDoTotal(linhaTempo) : null
@@ -1831,36 +1720,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
         ? <>Até quando {primeiroNomeTempo} fica no turno, contando <b className="font-bold text-foreground">a cirurgia</b>. Informado à mão.</>
         : <>Até quando {primeiroNomeTempo} fica no turno. Informado à mão.</>
   // Alerta "?" → dono: grava no caso (o alerta sai daqui E da Completa juntos).
-  /**
-   * QUEM RECEBE NÃO ESTÁ NA FILA DAQUI (dono 10–11/11/2026, `repasseForaDoRodape.js`): o
-   * "Passar · a um colega" era um repasse sem pergunta — quem recebia de fora do rodapé
-   * entrava no fim e saía antes, e quem passava seguia na vaga. Agora a folha pergunta
-   * "Como {B} entra?", como o ⚙ da sala. Só no dia útil e para a cirurgia DESTA escala;
-   * colega da lista "Na fila" já é do rodapé e não gera pergunta.
-   */
-  const quemPassaLib = alvoSemAnest?.deLiberar && linhaAntesLiberar
-    ? {
-      uid: linhaAntesLiberar.uid || null,
-      nome: (linhaAntesLiberar.uid && rosterByUid.get(linhaAntesLiberar.uid)?.nome) || linhaAntesLiberar.nomeOriginal || linhaAntesLiberar.anestesista,
-      apelido: linhaAntesLiberar.nomeOriginal || '',
-    }
-    : null
-  const quemRecebeLib = (() => {
-    const r = alvoSemAnest?.deLiberar && semAnestUid ? rosterByUid.get(semAnestUid) : null
-    return r ? { uid: r.uid, nome: r.nome, apelido: r.apelidos?.[0] || primeiroNomeUpper(r.nome) } : null
-  })()
-  const escalasPassar = escalasDoDia || { [hospital]: escala }
-  const sitPassar = !modoFds && quemPassaLib && quemRecebeLib && alvoSemAnest?.id && !alvoSemAnest.outroHospital
-    ? situacaoDeQuemRecebe({ escalas: escalasPassar, escala, turno, resolverUid, quemPassa: quemPassaLib, quemRecebe: quemRecebeLib, idsPassando: [alvoSemAnest.id] })
-    : null
-  const textosPassar = sitPassar
-    ? textosComoEntra({ situacao: sitPassar, hospital: escala?.hospital, turno: sitPassar.turno, nomeA: linhaAntesLiberar.anestesista, nomeB: titleCaseNome(quemRecebeLib.nome) })
-    : null
-  const entradaPassar = !sitPassar ? null : textosPassar.aviso ? 'ajuda' : (sitPassar.opcoes.includes(passarComo) ? passarComo : null)
-  const planoPassar = sitPassar && entradaPassar && entradaPassar !== 'ajuda'
-    ? ladosDeComoEntra({ escolha: entradaPassar, situacao: sitPassar, escalas: escalasPassar, escala, turno: sitPassar.turno, resolverUid, quemPassa: quemPassaLib, quemRecebe: quemRecebeLib, idsPassando: [alvoSemAnest.id] })
-    : { lados: [], limparTroca: [] }
-
   const confirmarSemAnest = async () => {
     const r = rosterByUid.get(semAnestUid)
     const alvo = alvoSemAnest
@@ -1869,32 +1728,14 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     // pelo 1º id que a página acha a escala dona.
     const ids = alvo?.grupo ? alvo.itens.map((i) => i.id).filter(Boolean) : [alvo?.id].filter(Boolean)
     if (!r || !ids.length) return
-    if (sitPassar && !entradaPassar) return // quem recebe é de fora da fila: falta a resposta
-    const fechar = () => { setAlvoSemAnest(null); setSemAnestUid(''); setPassarComo(null) }
+    const fechar = () => { setAlvoSemAnest(null); setSemAnestUid('') }
     try {
-      if (sitPassar && entradaPassar !== 'ajuda' && planoPassar.lados.length && onEntrarNaFila) {
-        // posição + cirurgias juntas (RPC), com "Desfazer" por 10 s no aviso
-        const { A, B } = textosPassar.nomes
-        const onde = `${B} é o ${sitPassar.slotA.posicao}º ${doHospital(escala.hospital)}`
-        await onEntrarNaFila(planoPassar, entradaPassar === 'trocaram'
-          ? { title: `${A} e ${B} trocaram de hospital`, description: onde }
-          : { title: `${B} assumiu a posição de ${A}`, description: onde })
-        fechar()
-        return
-      }
       await onDefinirCasos?.(ids, {
         uid: r.uid,
         apelido: r.apelidos?.[0] || primeiroNomeUpper(r.nome),
         rotulo: alvo.grupo
           ? `${alvo.cirurgiao} · ${ids.length} procedimento${ids.length > 1 ? 's' : ''}`
           : [alvo.hora, salaLiberacao(alvo.sala)].filter(Boolean).join(' '),
-        ...(sitPassar ? {
-          desfazivel: true,
-          aviso: {
-            title: `${textosPassar.nomes.B} entrou como ajuda`,
-            description: sitPassar.slotA ? `${textosPassar.nomes.A} segue ${sitPassar.slotA.posicao}º ${doHospital(escala.hospital)}` : `Fim da fila ${doHospital(escala.hospital)}`,
-          },
-        } : {}),
       })
       fechar()
     } catch { /* toast de erro já vem do context */ }
@@ -4027,185 +3868,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
         </SheetContent>
       </Sheet>
 
-      {/* ANTES DE LIBERAR (dono 14/10, modelo A de `.tmp/liberar-com-cirurgia-aberta.html`
-          SEM a saída "Liberar sem horário" — "não deve ser possível liberar sem
-          preenchimento das informações"). O toque em quem tem cirurgia aberta ou sem
-          início/término abre esta folha: os horários se confirmam no card de sempre
-          (folha z-1200 acima desta) e a cirurgia aberta pode passar a um colega. O botão
-          só acende quando nada mais trava; aí libera pelo caminho normal (toast +
-          Desfazer). Quem toca é quase sempre o plantonista (97% em 06–13/10). */}
-      <Sheet open={!!antesLiberar && !!linhaAntesLiberar} onOpenChange={(o) => { if (!o) { setAntesLiberar(null); setDesfazerAntes(new Map()) } }}>
-        <SheetContent side="bottom" className="!h-auto max-h-[90vh]">
-          {linhaAntesLiberar && (
-            <>
-              <SheetHeader className="pb-1">
-                <SheetTitle className="flex items-center gap-2 text-[17px] leading-tight">
-                  {pendentesAntesLiberar.length > 0 && <AlertTriangle className="h-[19px] w-[19px] shrink-0 text-destructive" />}
-                  {/* nome COMPLETO: a fila tem homônimos (Guilherme Staub / Melo) */}
-                  Antes de liberar {linhaAntesLiberar.anestesista}
-                </SheetTitle>
-                {/* A MESMA FOLHA PARA TODOS (dono 27/10: "igual para o plantonista e para qualquer
-                    usuário que clicar na liberação, os mesmos elementos, para não haver confusão"):
-                    o texto não muda conforme quem toca — só o nome é o de quem sai. */}
-                <p className="mt-1 text-[13px] leading-snug text-muted-foreground">
-                  {pendentesAntesLiberar.length === 0
-                    ? (cirurgiasAntesLiberar.some((c) => c.terminada && !c.terminoReal)
-                      ? `Tudo resolvido. Os horários que faltam ficam para ${primeiroNomeAntes} informar.`
-                      : 'Tudo preenchido. Confira e libere.')
-                    : <>{pendentesAntesLiberar.length === 1 ? '1 cirurgia aberta' : `${pendentesAntesLiberar.length} cirurgias abertas`}. Preencha agora, ou marque <b className="font-semibold text-foreground">Terminou</b> e o horário fica para {primeiroNomeAntes} informar.</>}
-                </p>
-              </SheetHeader>
-              <div className="space-y-2.5 overflow-y-auto px-4 pt-1">
-                {cirurgiasAntesLiberar.map((c) => {
-                  const rotulo = rotuloCirurgia(c)
-                  const nome = [c.hora, rotulo].filter(Boolean).join(' ')
-                  // saiu do grupo da pessoa = foi passada a outro anestesista
-                  const passada = !idsDaLinhaAntes.has(c.id)
-                  // fechada pelo "Terminou · horário depois": terminada sem término
-                  const semHorario = !passada && c.terminada && !c.terminoReal
-                  const status = c.suspensa ? { t: 'Suspensa', cls: 'bg-destructive/10 text-destructive' }
-                    : c.terminada ? { t: 'Terminada', cls: 'bg-info/15 text-info' }
-                      : c.andamento ? { t: 'Em andamento', cls: 'bg-success/15 text-success' }
-                        : { t: 'Agendada', cls: 'bg-muted text-muted-foreground' }
-                  return (
-                    <div key={c.id} className={['rounded-[14px] border p-2.5 pl-3', c.resolvida ? 'border-success/70' : 'border-border-strong'].join(' ')}>
-                      <div className="flex items-center gap-1.5">
-                        {c.hora && <span className="shrink-0 text-[15px] font-bold tabular-nums">{c.hora}</span>}
-                        <span className="min-w-0 truncate text-[14.5px] font-semibold">{rotulo}</span>
-                        <span className={['ml-auto shrink-0 rounded-[10px] px-2 py-1 text-[11px] font-semibold leading-none', status.cls].join(' ')}>{status.t}</span>
-                      </div>
-                      {!c.resolvida && (
-                        <p className="mt-0.5 truncate text-[12.5px] text-muted-foreground">
-                          {[c.fora, salaLiberacao(c.sala), c.token].filter(Boolean).join(' · ')}
-                        </p>
-                      )}
-                      {passada ? (
-                        <p className="mt-2 flex items-center gap-1.5 text-[13px] font-semibold text-success">
-                          <Check className="h-4 w-4 shrink-0" /> Passada para {titleCaseNome(c.anestesistaAtual)}
-                        </p>
-                      ) : semHorario || c.suspensa ? (
-                        /* RESOLVIDA EM UMA LINHA (dono 27/10, 2ª rodada), como o "Passada para…" */
-                        <div className="mt-1 flex items-center gap-1.5 text-[13px] font-semibold text-success">
-                          <Check className="h-4 w-4 shrink-0" />
-                          <span className="min-w-0 flex-1">
-                            {c.suspensa ? 'Não aconteceu (suspensa)'
-                              : `Terminou${c.limite ? ` antes de ${c.limite}` : ''} · horário depois`}
-                          </span>
-                          {semHorario && desfazerAntes.has(c.id) && onDesfazerTerminada && (
-                            <button
-                              type="button"
-                              className="flex min-h-[44px] shrink-0 items-center pl-2 text-[12.5px] font-semibold text-muted-foreground active:opacity-70"
-                              onClick={() => { onDesfazerTerminada(c.id, desfazerAntes.get(c.id)); setDesfazerAntes((m) => { const n = new Map(m); n.delete(c.id); return n }) }}
-                            >
-                              Desfazer
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="mt-2 grid grid-cols-2 gap-2">
-                          {/* sem o "agendada 13:30" dentro do bloco (27/10): a hora já está no
-                              cabeçalho e a 375px o texto saía cortado (o cartão do horário já
-                              tinha tirado o mesmo texto em 02/10) */}
-                          <BlocoHorario
-                            rotulo="Início"
-                            nomeAcessivel={`Início de ${nome}`}
-                            valor={c.inicioReal}
-                            faixa={c.inicioReal ? 'border-l-4 border-l-success' : ''}
-                            onClick={() => setConfirmarCirurgia({ cir: c, campo: 'inicio' })}
-                          />
-                          <BlocoHorario
-                            rotulo="Término"
-                            nomeAcessivel={`Término de ${nome}`}
-                            valor={c.terminoReal}
-                            faixa={c.terminoReal ? 'border-l-4 border-l-info' : ''}
-                            onClick={onDefinirTerminoRealCaso ? () => setConfirmarCirurgia({ cir: c, campo: c.inicioReal || ehConsultorio(c) ? 'termino' : 'ambos' }) : null}
-                          />
-                        </div>
-                      )}
-                      {c.aberta && !c.resolvida && (
-                        <>
-                          {/* AÇÕES EM PAR (dono 27/10, 2ª rodada — o par "Preencher horário | Colega
-                              assumiu" da caixa de pendências): "Terminou" fecha sem a hora do toque
-                              (o horário fica com quem operou); "Passar" é o "Quem assume" de sempre,
-                              que vale também para a de OUTRO turno/hospital (dono 23/10). */}
-                          <div className="mt-2 grid grid-cols-2 gap-2">
-                            {onTerminarSemHorario && (
-                              <button
-                                type="button"
-                                aria-label={`Terminou: horário depois — ${nome}`}
-                                className="flex min-h-[48px] min-w-0 items-center gap-2 rounded-xl border-[1.5px] border-border-strong px-2.5 text-left leading-tight active:bg-muted/60"
-                                onClick={() => {
-                                  const vivo = casosAntesLiberar.find((x) => x.id === c.id)
-                                  if (vivo) setDesfazerAntes((m) => new Map(m).set(c.id, antesDoTerminar(vivo)))
-                                  onTerminarSemHorario(c.id)?.catch?.(() => {})
-                                }}
-                              >
-                                <Hourglass className="h-[17px] w-[17px] shrink-0 text-muted-foreground" />
-                                <span className="min-w-0"><b className="block text-[13.5px] font-bold">Terminou</b><span className="block text-[11.5px] text-muted-foreground">horário depois</span></span>
-                              </button>
-                            )}
-                            {onDefinirCasos && (
-                              <button
-                                type="button"
-                                aria-label={`Passar para outro anestesista — ${nome}`}
-                                className="flex min-h-[48px] min-w-0 items-center gap-2 rounded-xl border-[1.5px] border-primary/60 px-2.5 text-left leading-tight active:bg-muted/60"
-                                onClick={() => { setAlvoSemAnest({ id: c.id, hora: c.hora, sala: c.sala, procedimento: rotulo, cirurgiao: c.token, inicioReal: c.inicioReal, deLiberar: true, outroHospital: c.outroHospital }); setSemAnestUid('') }}
-                              >
-                                <ArrowLeftRight className="h-[17px] w-[17px] shrink-0 text-primary" />
-                                <span className="min-w-0"><b className="block text-[13.5px] font-bold text-primary">Passar</b><span className="block text-[11.5px] text-muted-foreground">a um colega</span></span>
-                              </button>
-                            )}
-                          </div>
-                          {/* a cirurgia que NÃO aconteceu não tem horário a dar */}
-                          {c.agendada && onSuspenderCaso && (
-                            <button
-                              type="button"
-                              className="flex min-h-[44px] items-center text-[13px] font-semibold text-muted-foreground active:opacity-70"
-                              onClick={() => { onSuspenderCaso(c.id)?.catch?.(() => {}) }}
-                            >
-                              Não aconteceu (suspensa)
-                            </button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-              <div className="mt-3 border-t border-border px-4 pb-4 pt-3">
-                <Button
-                  className="min-h-[48px] w-full text-[15px] font-semibold"
-                  disabled={pendentesAntesLiberar.length > 0}
-                  onClick={() => {
-                    const l = linhaAntesLiberar
-                    setAntesLiberar(null)
-                    // RECONFERE A ORDEM (dono 23/10): passar a cirurgia a um colega aqui
-                    // muda a fila — na Unimed o Diego deixou de ser o próximo no meio da
-                    // folha e saiu assim mesmo, acima de dois colegas em sala. A fila é a
-                    // deste render, já com o que a folha gravou.
-                    const i = linhasExibicao.indexOf(l)
-                    const bloqueio = i >= 0 ? fila.bloqueioDe(l, i) : null
-                    if (bloqueio) { avisarBloqueio(l, bloqueio, { horariosSalvos: true }); return }
-                    liberarDeFato(l)
-                  }}
-                >
-                  {pendentesAntesLiberar.length > 0
-                    ? `Resolva ${pendentesAntesLiberar.length === 1 ? '1 cirurgia' : `${pendentesAntesLiberar.length} cirurgias`} para liberar`
-                    : `Salvar e liberar ${primeiroNomeAntes}`}
-                </Button>
-                <p className="mt-2 text-center text-xs leading-snug text-muted-foreground">
-                  {pendentesAntesLiberar.length > 0
-                    ? 'Só libera com cada cirurgia aberta resolvida: preenchida, terminada, passada ou suspensa.'
-                    : cirurgiasAntesLiberar.some((c) => c.terminada && !c.terminoReal)
-                      ? `Os horários que faltam ficam com ${primeiroNomeAntes}, na aba Minhas.`
-                      : 'Os horários ficam gravados nas cirurgias, com o seu nome como autor.'}
-                </p>
-              </div>
-            </>
-          )}
-        </SheetContent>
-      </Sheet>
-
       {/* CONFIRMAR O INÍCIO/TÉRMINO DE UMA CIRURGIA, por cima da folha do tempo total
           (dono 02/10, tarde). O MESMO card do detalhe do caso (`ConfirmarHorario`), na
           mesma folha z-1200 do tempo estimado — a equipe reconhece o gesto. */}
@@ -4213,7 +3875,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
         <SheetContent side="bottom" className="!h-auto max-h-[85vh] z-[1200]">
           {confirmarCirurgia && (() => {
             const cir = cirurgiasTempo.find((c) => c.id === confirmarCirurgia.cir.id)
-              || cirurgiasAntesLiberar.find((c) => c.id === confirmarCirurgia.cir.id)
               || confirmarCirurgia.cir
             const rotulo = rotuloCirurgia(cir)
             const inicio = confirmarCirurgia.campo === 'inicio'
@@ -4325,17 +3986,13 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       {/* Definir o anestesista de um procedimento "?" direto da aba Liberações
           (pedido do dono 26/07). Grava no CASO — a Completa e o alerta daqui
           derivam da mesma fonte, então o alerta some nas duas na hora. */}
-      <Sheet open={!!alvoSemAnest} onOpenChange={(o) => { if (!o) { setAlvoSemAnest(null); setSemAnestUid(''); setPassarComo(null) } }}>
-        {/* vinda da folha "Antes de liberar" (dono 14/10), abre POR CIMA dela */}
-        {/* a lista da fila inteira não cabe: a folha passa a ROLAR por dentro, com o
-            botão fixo no rodapé (14/10: o SheetContent é overflow-hidden e o botão
-            ficava a 1042px numa folha de 790 — inalcançável) */}
-        <SheetContent side="bottom" className={alvoSemAnest?.deLiberar ? 'z-[1200] !h-auto max-h-[88vh] flex flex-col' : undefined}>
+      <Sheet open={!!alvoSemAnest} onOpenChange={(o) => { if (!o) { setAlvoSemAnest(null); setSemAnestUid('') } }}>
+        <SheetContent side="bottom">
           <SheetHeader>
-            <SheetTitle>{alvoSemAnest?.deLiberar ? 'Quem assume a cirurgia?' : alvoSemAnest?.grupo && alvoSemAnest.itens.length > 1 ? `Quem assume estes ${alvoSemAnest.itens.length} procedimentos?` : 'Quem assume este procedimento?'}</SheetTitle>
+            <SheetTitle>{alvoSemAnest?.grupo && alvoSemAnest.itens.length > 1 ? `Quem assume estes ${alvoSemAnest.itens.length} procedimentos?` : 'Quem assume este procedimento?'}</SheetTitle>
           </SheetHeader>
           {alvoSemAnest && (
-            <div className={alvoSemAnest.deLiberar ? 'min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-1' : 'space-y-3 p-1'}>
+            <div className="space-y-3 p-1">
               <div className="rounded-xl border border-border bg-muted/30 p-2.5 text-sm">
                 {alvoSemAnest.grupo ? (
                   <>
@@ -4367,54 +4024,13 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   </>
                 )}
               </div>
-              {/* OS COLEGAS DA FILA PRIMEIRO (dono 14/10, modelo A2 aprovado): um toque
-                  escolhe — quem está Livre no topo, depois quem ainda opera. A busca no
-                  cadastro inteiro fica embaixo, para quem não está na fila. */}
-              {alvoSemAnest.deLiberar && colegasParaPassar.length > 0 && (
-                <div>
-                  <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">Na fila, ainda não liberados</p>
-                  <div role="radiogroup" aria-label="Colegas da fila" className="divide-y divide-border/70">
-                    {colegasParaPassar.map((col) => {
-                      const on = semAnestUid === col.uid
-                      return (
-                        <button
-                          key={col.uid}
-                          type="button"
-                          role="radio"
-                          aria-checked={on}
-                          onClick={() => { setSemAnestUid(col.uid); setPassarComo(null) }}
-                          className="flex min-h-[52px] w-full items-center gap-2.5 px-1 text-left active:opacity-70"
-                        >
-                          <span className={['h-[22px] w-[22px] shrink-0 rounded-full', on ? 'border-[7px] border-primary' : 'border-2 border-muted-foreground/50'].join(' ')} />
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-[15px] font-semibold">{col.nome}</span>
-                            <span className="block truncate text-[12.5px] text-muted-foreground">{col.onde}</span>
-                          </span>
-                          {col.livre && <span className="shrink-0 rounded-[10px] bg-success px-2 py-1 text-[11px] font-semibold leading-none text-black dark:text-[hsl(157_19%_8%)]">Livre</span>}
-                        </button>
-                      )
-                    })}
-                  </div>
-                  <p className="mb-1 mt-3 text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">Outro anestesista</p>
-                </div>
-              )}
               <Select className="w-full" searchable options={opcoesRoster} value={semAnestUid}
-                onChange={(v) => { setSemAnestUid(v); setPassarComo(null) }} placeholder={alvoSemAnest.deLiberar ? 'Buscar pelo nome' : 'Escolha o anestesista'} />
-              {/* quem recebe é de FORA da fila daqui: a folha pergunta como entra (10–11/11) */}
-              {sitPassar && (
-                <PerguntaComoEntra
-                  situacao={sitPassar} textos={textosPassar} escolha={entradaPassar} onEscolha={setPassarComo}
-                  lados={planoPassar.lados} escalas={escalasPassar} escala={escala} turno={sitPassar.turno} resolver={resolverUid}
-                />
-              )}
+                onChange={setSemAnestUid} placeholder="Escolha o anestesista" />
               {/* fixo no rodapé da folha: com a fila inteira na lista, o botão não pode
                   ficar escondido embaixo dela (a "demora" de 14/10 era rolar até ele) */}
               <div className="sticky bottom-0 -mx-1 bg-card px-1 pb-2 pt-2">
-              <Button className="min-h-[48px] w-full" disabled={!semAnestUid || (!!sitPassar && !entradaPassar)} onClick={confirmarSemAnest}>
-                {sitPassar ? textosPassar.botao(entradaPassar)
-                  : alvoSemAnest.deLiberar && semAnestUid
-                  ? `Passar para ${(colegasParaPassar.find((c) => c.uid === semAnestUid)?.nome || titleCaseNome(rosterByUid.get(semAnestUid)?.nome || '')).trim().split(/\s+/)[0]}`
-                  : alvoSemAnest.deLiberar ? 'Escolha quem assume' : 'Definir anestesista'}
+              <Button className="min-h-[48px] w-full" disabled={!semAnestUid} onClick={confirmarSemAnest}>
+                Definir anestesista
               </Button>
               </div>
             </div>

@@ -110,9 +110,14 @@ apelido conhecido).
   não atravessa o turno — a escala da tarde sempre traz o anestesista da continuação, e sem ela a
   cirurgia termina na manhã (dono 27/10). Publique sem acrescentar nada e não relate como pendência;
   nunca a atribua a quem operou de manhã.
-- **Rodapé** completo, NA ORDEM, com as notas ("MATHEUS (CONSULT)" é uma posição; "ADRIANO
-  (REUNIÃO 15:30)" também — **nunca tirar a nota**: nome com nota é posição ocupada e não nasce
-  liberado). Quem fecha o
+- **Rodapé** completo, NA ORDEM, com as notas ("MATHEUS (CONSULT)" é uma posição ocupada — nunca
+  tirar a nota). **REUNIÃO não é trabalho** (dono 18/11): "ADRIANO (REUNIÃO 15:30)" sem caso não está
+  escalado e nasce **Liberado**, junto com todo nome sem caso acima dele até o último com caso
+  (18/11: RAQUEL, CURY, ADRIANO). A tela conta qualquer nota como trabalho e corta a cauda ali — deixa
+  esses nomes "Livre". Então: nota mantida, todos em `conferidos`, e logo após o `publicar` liberar
+  cada um no turno, sem republicar (MCP supabase `execute_sql`):
+  `update escala_cirurgica set liberacoes = coalesce(liberacoes,'{}') || (select jsonb_object_agg('<turno>:'||user_id, jsonb_build_object('em',now(),'por','pPdKZ75E9zNdPnLz50qisPiHfJw1','liberadoEm',to_char(now() at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))) from escala_anestesista_alias where upper(apelido) in ('RAQUEL','CURY','ADRIANO')) where data='<data>' and hospital='<hosp>'`.
+  Quem fecha o
   rodapé **sem caso** (plantão do contraturno/noite) → `conferidos` — só a **cauda contígua**. A cauda nasce **Liberado**; nunca gravar `{escalado:true}` por conta
   própria para "tirar do Livre" — isso põe a pessoa na fila como próxima (02/10, Klisman). Nome
   sem caso no MEIO do rodapé é quase sempre linha da foto esquecida (ou azul não lido): volte à

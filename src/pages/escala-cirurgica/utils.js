@@ -2695,13 +2695,29 @@ export function localizarMeuPosto({ escalas, hospitais, eu, turnoPreferido, turn
   const alias = eu?.alias || ''
   if (!uid && !alias) return null
   const meuCaso = (c) => (uid && c.residenteUserId === uid) || anestesistaDoCasoEh(c, { uid, alias, resolverUid })
-  const ordemTurnos = [turnoPreferido, ...turnos].filter((t, i, a) => t && a.indexOf(t) === i)
-  for (const turno of ordemTurnos) {
+  const achar = (turno, filtro = () => true) => {
     for (const hospital of hospitais) {
       const casos = casosResolvidos(escalas?.[hospital])
       if (!casos.length) continue
-      if (filtrarPorTurnoExibicao(casos, turno).some(meuCaso)) return { hospital, turno }
+      if (filtrarPorTurnoExibicao(casos, turno).some((c) => meuCaso(c) && filtro(c))) return { hospital, turno }
     }
+    return null
+  }
+  // A MANHÃ JÁ ACABOU PARA MIM (dono 18/11: "aba minhas não está mostrando minhas cirurgias da
+  // tarde"): com tudo o que é meu no turno em curso concluído e cirurgia minha no turno SEGUINTE,
+  // é lá que a Minhas abre. Só para a frente — a manhã encerrada continua a um toque no seletor.
+  const ORDEM = ['matutino', 'vespertino', 'noturno']
+  const iPref = ORDEM.indexOf(turnoPreferido)
+  if (iPref >= 0 && achar(turnoPreferido) && !achar(turnoPreferido, (c) => !casoConcluido(c))) {
+    for (const turno of turnos.filter((t) => ORDEM.indexOf(t) > iPref)) {
+      const adiante = achar(turno, (c) => !casoConcluido(c))
+      if (adiante) return adiante
+    }
+  }
+  const ordemTurnos = [turnoPreferido, ...turnos].filter((t, i, a) => t && a.indexOf(t) === i)
+  for (const turno of ordemTurnos) {
+    const posto = achar(turno)
+    if (posto) return posto
   }
   return null
 }

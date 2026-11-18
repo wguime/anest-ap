@@ -80,7 +80,7 @@ const ABA_OPCOES = [
 
 export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const { user } = useUser()
-  const { escalas, data, loading, erroCarga, p4Hospital, hoje, setData, recarregar, garantirEscala: garantirEscalaNoServidor, prefetch, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, reordenarAjuda, definirOrigemLinha, definirSemAjudaLinha, definirP4Hospital, setAnestesistaCasos, atualizarCaso, setStatusCirurgia, terminarSemHorario, desfazerTerminada, espelharTempoTotal, marcarTroca, executarSubstituicao, desfazerSubstituicao } = useEscalaCirurgica()
+  const { escalas, data, loading, erroCarga, p4Hospital, hoje, setData, recarregar, garantirEscala: garantirEscalaNoServidor, prefetch, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, reordenarAjuda, definirOrigemLinha, definirSemAjudaLinha, definirP4Hospital, setAnestesistaCasos, atualizarCaso, setStatusCirurgia, espelharTempoTotal, marcarTroca, executarSubstituicao, desfazerSubstituicao } = useEscalaCirurgica()
   // Roster p/ resolver os lados do par da troca declarada (uid/nome/apelido)
   const { resolver: resolverRoster, rosterByUid, pronto: rosterPronto = true } = useRosterAnestesistas()
   // P1–P4 do dia (card Plantões/PegaPlantao) — alimentam a fase noturna das Liberações
@@ -1022,16 +1022,12 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                   // urgência/encaixe entra na escala do HOSPITAL selecionado
                   // (a fila do FDS é única, mas o caso pertence a um hospital)
                   escalaCasoNovo={escala}
-                  // LIBERAR CONFERE O DIA (dono 15/10): a folha "Antes de liberar" olha as
-                  // cirurgias da pessoa nos três hospitais, não só nesta fila
-                  escalasDoDia={escalas}
                   onGarantirEscala={garantirEscala}
                   onNavigate={onNavigate}
                   onDefinirP4={modoFds ? undefined : (h) => definirP4Hospital(h, userInfo)}
                   onDefinirCasos={(casoIds, { uid, apelido, rotulo, desfazivel = false, aviso = null }) => {
                     // a cirurgia é gravada na escala ONDE ELA MORA: na fila única, o hospital
-                    // de origem; no dia útil, também — a folha "Antes de liberar" passa
-                    // cirurgia de outro turno ou hospital (dono 23/10, caso Leandro)
+                    // de origem; no dia útil, também
                     const dona = escalaDoCaso(casoIds[0]) || escala
                     // cirurgia que ATRAVESSOU para este turno (dono 26/09): com
                     // dono definido pelo plantão ela passa a ser do turno
@@ -1045,9 +1041,6 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                     }
                     return setAnestesistaCasos(dona, casoIds, { uid, apelido }, { rotulo, resolverUid: resolverRoster, userId: user?.uid || user?.id || null, extraPorId, desfazivel, aviso })
                   }}
-                  // "Como entra?" do "Passar · a um colega" (dono 10–11/11): assumir a posição ou
-                  // trocar de hospital — posição e cirurgias numa transação, aviso com "Desfazer"
-                  onEntrarNaFila={modoFds ? null : ((plano, aviso) => executarSubstituicao(plano, userInfo, { desfazivel: true, aviso }))}
                   // RESPONSÁVEL DA POSIÇÃO (dono 24/08) — assunção unilateral na
                   // fila única: o slot fica com quem assumiu, a posição e a ordem
                   // não se movem, e as cirurgias em aberto vão junto. Mesmo motor
@@ -1119,7 +1112,6 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                   // informar o início é dizer que ela começou; já iniciada, só o horário. O
                   // caso mora na escala do hospital (na fila única, não na linha 'fds').
                   onDefinirInicioCaso={async (casoId, hhmm) => {
-                    // a folha Antes de liberar traz também cirurgias de OUTRO hospital (15/10)
                     const dona = escalaDoCaso(casoId) || escala
                     const alvo = (dona?.casos || []).find((c) => c.id === casoId)
                     await gravarInicioReal({ escala: dona, caso: alvo, hhmm, userId: userInfo.userId, setStatusCirurgia, atualizarCaso })
@@ -1127,31 +1119,10 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                   // TÉRMINO REAL pela mesma folha (dono 02/10, tarde): informar o término
                   // marca Terminada — mesma função do detalhe do caso.
                   onDefinirTerminoRealCaso={async (casoId, hhmm, { inicioReal = null } = {}) => {
-                    // a folha Antes de liberar traz também cirurgias de OUTRO hospital (15/10)
                     const dona = escalaDoCaso(casoId) || escala
                     const alvo = (dona?.casos || []).find((c) => c.id === casoId)
                     // o início vem junto quando a cirurgia não tinha (dono 14/10)
                     await gravarTerminoReal({ escala: dona, caso: alvo, hhmm, inicioReal, userId: userInfo.userId, setStatusCirurgia, atualizarCaso })
-                  }}
-                  // "Não aconteceu" na folha Antes de liberar (dono 14/10): a cirurgia
-                  // agendada que não vai acontecer não tem horário a dar
-                  onSuspenderCaso={(casoId) => {
-                    // a folha Antes de liberar traz também cirurgias de OUTRO hospital (15/10)
-                    const dona = escalaDoCaso(casoId) || escala
-                    const alvo = (dona?.casos || []).find((c) => c.id === casoId)
-                    return alvo ? setStatusCirurgia(dona, alvo, 'suspensa', { userId: userInfo.userId }) : Promise.resolve()
-                  }}
-                  // "TERMINOU · HORÁRIO DEPOIS" (dono 27/10, folha Antes de liberar): fecha sem a
-                  // hora do toque — o horário fica com quem operou (aba Minhas). O caso mora na
-                  // escala do hospital dele (a folha traz também os de outro hospital, 15/10).
-                  onTerminarSemHorario={(casoId) => {
-                    const dona = escalaDoCaso(casoId) || escala
-                    const alvo = (dona?.casos || []).find((c) => c.id === casoId)
-                    return alvo ? terminarSemHorario(dona, alvo, { userId: userInfo.userId }) : Promise.resolve()
-                  }}
-                  onDesfazerTerminada={(casoId, antes) => {
-                    const dona = escalaDoCaso(casoId) || escala
-                    return dona ? desfazerTerminada(dona.hospital, casoId, antes) : Promise.resolve()
                   }}
                   // ESTIMADO QUE CONTA DO INÍCIO (dono 27/10): na cirurgia que ainda não começou o
                   // estimado é a DURAÇÃO (o gatilho a converte no Iniciada); o término antigo, que
