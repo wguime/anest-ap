@@ -37,13 +37,13 @@ curl -H "Authorization: Bearer $ANEST_API_KEY" \
 
 ## Identificação das pessoas
 
-- O **`id` do anestesista** é o mesmo em todas as rotas: escala, plantões, extrato de férias e
-  ausências. É o `id` de `/v1/anestesistas`. Case sempre por `id`, nunca por nome.
+- Todo `id` é um **código opaco e estável** (por exemplo, `p_3f9a1c0b7e2d4a6f8b1c`): a mesma pessoa
+  tem sempre o mesmo `id`, em todas as rotas e em todas as consultas. Ele serve só para ligar os
+  registros entre si; não tem significado fora desta API.
+- O **`id` do anestesista** é o mesmo em escala, plantões, escala numérica, feriados, extrato de férias
+  e ausências. É o `id` de `/v1/anestesistas`. Case sempre por `id`, nunca por nome.
 - O `id` vem `null` quando a pessoa não pôde ser identificada **sem ambiguidade**. A API nunca adivinha.
-  Hoje 4 dos 46 sócios estão nessa situação no extrato de férias, porque o nome no Pega Plantão difere
-  do cadastro do app. O grupo está corrigindo o cadastro.
-- Residentes e funcionárias têm `id` próprio (por exemplo, `r2-daniel` ou `renata`), sem relação com o
-  `id` dos anestesistas.
+- Residentes e funcionárias também têm `id` opaco próprio, sem relação com o `id` dos anestesistas.
 
 ## Rotas
 
@@ -76,7 +76,7 @@ Só entram turnos **publicados**.
 ```json
 {"data":[{"data":"2026-11-12","hospital":"unimed","turno":"matutino","casos":[
   {"sala":"3","ordem":1,"hora":"07:00","termino_previsto":"09:00","tempo_estimado":"2h",
-   "cirurgiao":"Dr. Fulano","anestesista":{"id":"<id>","nome":"NOME"},
+   "cirurgiao":"Dr. Fulano","anestesista":{"id":"p_…","nome":"NOME"},
    "residente":null,"tipo":"eletiva","status":"terminada",
    "inicio_real":"07:10","termino_real":"08:55","sem_anestesista":false,"continuacao":false}]}],
  "meta":{"inicio":"2026-11-12","fim":"2026-11-12","hospital":null,"turno":null,"total_escalas":1,"total_casos":1}}
@@ -100,7 +100,7 @@ Só entram turnos **publicados**.
 {"data":[{"data":"2026-11-16","fim_de_semana":false,"plantoes":[
   {"posicao":"P1","hospital":"hro","papel":"plantonista",
    "inicio":"2026-11-16T19:00:00-03:00","fim":"2026-11-17T07:00:00-03:00",
-   "anestesista":{"id":"<id>","nome":"NOME"}},
+   "anestesista":{"id":"p_…","nome":"NOME"}},
   {"posicao":"P4","hospital":null,"papel":"coringa","inicio":"…","fim":"…",
    "anestesista":{"id":null,"nome":"NOME NO PEGA PLANTÃO"}}]}],
  "meta":{"inicio":"2026-11-16","fim":"2026-11-16","fonte":"pega_plantao","total_dias":1,"total_plantoes":4}}
@@ -120,22 +120,22 @@ Só entram turnos **publicados**.
 ### Anestesistas: `GET /v1/anestesistas[?ativos=true|false]`
 
 ```json
-{"data":[{"id":"<id>","nome":"NOME","apelidos":["APELIDO"],"ativo":true}],"meta":{"total":46,"ativos":null}}
+{"data":[{"id":"p_…","nome":"NOME","apelidos":["APELIDO"],"ativo":true}],"meta":{"total":46,"ativos":null}}
 ```
 
 ### Residentes
 
 - `GET /v1/residentes` →
   ```json
-  {"data":[{"id":"r1-augusto","nome":"Augusto","ano":"R1"}]}
+  {"data":[{"id":"p_…","nome":"Augusto","ano":"R1"}]}
   ```
 - `GET /v1/residentes/plantoes?inicio=&fim=` →
   ```json
-  {"data":[{"data":"2026-11-07","residente":{"id":"r2-daniel","nome":"Daniel","ano":"R2"},"origem":"base","inicio":"07:00","fim":"07:00","duracaoHoras":24,"feriado":null}]}
+  {"data":[{"data":"2026-11-07","residente":{"id":"p_…","nome":"Daniel","ano":"R2"},"origem":"base","inicio":"07:00","fim":"07:00","duracaoHoras":24,"feriado":null}]}
   ```
 - `GET /v1/residentes/estagios?inicio=&fim=` →
   ```json
-  {"data":[{"data":"2026-11-13","turnos":[{"turno":"manha","residentes":[{"id":"r3-wagner","nome":"Wagner","ano":"R3","estagio":"Neuro","origem":"base"}]}]}]}
+  {"data":[{"data":"2026-11-13","turnos":[{"turno":"manha","residentes":[{"id":"p_…","nome":"Wagner","ano":"R3","estagio":"Neuro","origem":"base"}]}]}]}
   ```
 
 O campo `origem` diz de onde veio o nome: `base` é a escala original, `troca` é uma troca aceita e
@@ -145,8 +145,8 @@ O campo `origem` diz de onde veio o nome: `base` é a escala original, `troca` �
 
 ```json
 {"data":[{"data":"2026-04-04","feriado":null,
-  "sobreavisoMaterno":{"funcionaria":{"id":"renata","nome":"Renata"},"inicio":"19:00","fim":"07:00","origem":"base"},
-  "hospitais":[{"local":"HRO","turno":"manha","inicio":"07:00","fim":"15:00","funcionaria":{"id":"renata","nome":"Renata"},"origem":"base"}]}]}
+  "sobreavisoMaterno":{"funcionaria":{"id":"p_…","nome":"Renata"},"inicio":"19:00","fim":"07:00","origem":"base"},
+  "hospitais":[{"local":"HRO","turno":"manha","inicio":"07:00","fim":"15:00","funcionaria":{"id":"p_…","nome":"Renata"},"origem":"base"}]}]}
 ```
 
 A escala de dia útil do HRO, da UNIMED e do consultório ainda **não** está disponível. O app guarda só
@@ -160,7 +160,7 @@ a situação do momento, sem histórico por data.
 - Os números são os mesmos da tela Extrato de Férias do app.
 
 ```json
-{"ano":2026,"total":1,"socios":[{"id":"<id>","nome":"Fulano de Tal","nome_escala":"FULANO DE TAL","cota":30,
+{"ano":2026,"total":1,"socios":[{"id":"p_…","nome":"Fulano de Tal","nome_escala":"FULANO DE TAL","cota":30,
   "regra_cota":"4º ano em diante","dias_marcados":15,"dias_penalidade":2,"dias_usados":17,"saldo":13,
   "periodos":[{"inicio":"2026-07-13","fim":"2026-07-24","dias_uteis":10}],
   "penalidades":[{"data":"2026-07-15","dias_extras":2}]}]}
@@ -195,10 +195,10 @@ setor do afastamento no Pega Plantão (ex.: `"LICENÇA SAÚDE"`) — **dado sens
 
 ```json
 {"data":[
-  {"data":"2026-07-14","pessoa":{"id":"<id>","nome":"Fulano de Tal"},"tipo":"ferias","motivo":null},
-  {"data":"2026-07-14","pessoa":{"id":"<id>","nome":"Beltrano"},"tipo":"ausente","motivo":"LICENÇA SAÚDE"},
+  {"data":"2026-07-14","pessoa":{"id":"p_…","nome":"Fulano de Tal"},"tipo":"ferias","motivo":null},
+  {"data":"2026-07-14","pessoa":{"id":"p_…","nome":"Beltrano"},"tipo":"ausente","motivo":"LICENÇA SAÚDE"},
   {"data":"2026-07-16","pessoa":{"id":null,"nome":"NOME NO PEGA PLANTÃO"},"tipo":"ausente","motivo":"LICENÇA MATERNIDADE"}],
- "meta":{"inicio":"2026-07-13","fim":"2026-07-17","total":3,"fonte":"pega_plantao+ferias_movimentacoes","tipos":{"…":"…"}}}
+ "meta":{"inicio":"2026-07-13","fim":"2026-07-17","total":3,"fonte":"pega_plantao+app","tipos":{"…":"…"}}}
 ```
 
 - `tipo: "ferias"` vem do mesmo cálculo do extrato.
@@ -218,7 +218,7 @@ removido nem renumerado). A tarde já vem invertida — não inverta de novo.
     "hospitais":[{"hospital":"hro","rotulo":"HRO","trabalhando":17,
       "lista":[
         {"posicao":1,"numero":"04","nome_legenda":"MELO","nome":"Guilherme Melo",
-         "anestesistas":[{"id":"<id>","nome":"GUILHERME SOUZA MELO"}],
+         "anestesistas":[{"id":"p_…","nome":"GUILHERME SOUZA MELO"}],
          "situacao":null,"rotulo":null,"posto_plantao":null,"destino":null,
          "em_ferias":[],"inserida":false,"trocado":false},
         {"posicao":2,"numero":"30","nome_legenda":"ROMULO","nome":"Rômulo Roxo","anestesistas":[…],
@@ -262,7 +262,7 @@ lista de todas as trocas de feriado do ano, em qualquer status.
  "trocas":[{"codigo":"FR123456","status":"pendente","escopo":"data",
    "feriado":{"data":"2026-11-20","nome":"Consciência Negra"},
    "feriado_desejado":{"data":"2026-11-02","nome":"Finados"},
-   "de":{"id":"<id>","nome":"…"},"para":{"id":"<id>","nome":"…"},
+   "de":{"id":"p_…","nome":"…"},"para":{"id":"p_…","nome":"…"},
    "justificativa":"texto escrito por quem pediu",
    "criada_em":"2026-10-05T10:00:00Z","decidida_em":null}],
  "meta":{"total_feriados":10,"total_trocas":1,"ferias_conferidas":true}}
@@ -283,9 +283,9 @@ noturno P1–P4 no dia útil, com hospital), aqui vem o registro como está no P
 ```json
 {"data":[{"data":"2026-11-10","plantoes":[
   {"posicao":"P1","setor":"1 - P1","tipo":"Noturno","inicio":"2026-11-10T19:00:00-03:00",
-   "fim":"2026-11-11T07:00:00-03:00","anestesista":{"id":"<id>","nome":"…"},"licenca":false,"motivo":null},
+   "fim":"2026-11-11T07:00:00-03:00","anestesista":{"id":"p_…","nome":"…"},"licenca":false,"motivo":null},
   {"posicao":null,"setor":"LICENÇA SAÚDE","tipo":"…","inicio":"2026-11-10T07:00:00-03:00",
-   "fim":"2026-11-10T19:00:00-03:00","anestesista":{"id":"<id>","nome":"…"},"licenca":true,"motivo":"LICENÇA SAÚDE"}]}],
+   "fim":"2026-11-10T19:00:00-03:00","anestesista":{"id":"p_…","nome":"…"},"licenca":true,"motivo":"LICENÇA SAÚDE"}]}],
  "meta":{"total_plantoes":1,"total_licencas":1,"fonte":"pega_plantao"}}
 ```
 
@@ -298,8 +298,7 @@ noturno P1–P4 no dia útil, com hospital), aqui vem o registro como está no P
 |---|---|---|
 | 400 | `invalid_parameter` | data inválida, período acima de 62 dias, filtro desconhecido |
 | 401 | `invalid_token` | chave ausente, errada, **vencida** ou revogada |
-| 403 | `forbidden` (+ `required_scope`) | a chave não tem o escopo da rota |
-| 404 | `not_found` | rota inexistente, ou `nome` sem correspondência nas férias |
+| 404 | `not_found` | rota inexistente ou fora do que a sua chave libera, ou `nome` sem correspondência nas férias |
 | 405 | `method_not_allowed` | método diferente de GET |
 | 429 | `rate_limit_exceeded` | mais de 50 requisições por minuto |
 | 500/502 | `internal_error` / `upstream_unavailable` | falha interna ou do Pega Plantão (tente de novo em instantes) |
@@ -329,33 +328,3 @@ protegido e exclusão ao fim do contrato. Se a sua aplicação não precisa dele
 Os dados de anestesistas, residentes e funcionárias continuam sendo **dados pessoais**. O uso está
 restrito à finalidade combinada no contrato de tratamento de dados com o grupo. Não podem ser
 repassados a terceiros e devem ser apagados ao fim do contrato.
-
----
-
-### Para quem mantém o ANEST
-
-- **Código:** `supabase/functions/api-v1/` (numérica e feriados em `_escala-numerica.ts`, registros do
-  PP em `_plantoes-pp.ts`; libs da numérica COPIADAS em `_lib-numerica/` por
-  `node scripts/gerar-libs-numerica-api-v1.mjs` — rodar e redeployar a cada edição nova da escala
-  numérica/feriados ou mudança nas libs; o teste `apiV1EscalaNumerica` acusa se esquecer)
-  - `_escala-cirurgica.ts`, `_plantoes.ts`, `_pessoas-escalas.ts`, `_ferias.ts`, `_ausencias.ts`,
-    `_exemplos.ts`
-  - contrato em `_contrato.ts`
-  - views `vw_api_escala_cirurgica` e `vw_api_anestesistas`, criadas em `20261112150000`
-- **Regenerar e republicar** a api-v1 quando mudar `src/data/residencia2026.js`, `plantao2026.js`,
-  `sobreavisoMaterno2026.js`, `hospitaisTecnicas2026.js` ou as libs de férias (troca anual de sócios
-  ou feriados):
-  ```bash
-  node scripts/gerar-dados-api-v1.mjs
-  node scripts/gerar-libs-ferias-api-v1.mjs
-  ```
-  Os testes `src/__tests__/functions/apiV1*.test.js` falham se as cópias ficarem velhas ou se uma rota
-  nova ficar sem exemplo.
-- **`id` nulo no extrato/ausências/plantões:** o nome do Pega Plantão não casa com nenhum cadastro.
-  Corrigir cadastrando o nome do PP como apelido da pessoa (`escala_anestesista_alias`, o mesmo
-  dicionário da escala), sem mexer em código e sem trocar o nome exibido no app. Feito em 17/11/2026
-  para OSCAR AUGUSTO DE OLIVEIRA MORAIS, JANAINA SANCHES FAVORITO MORAIS, MATHEUS VIEIRA DA CUNHA e
-  GUILHERME XAVIER DI DOMENICO → 46/46 sócios com id. Sócio novo no PP com nome diferente do cadastro:
-  repetir.
-- **Secrets do projeto** usados por esta função: `FCM_SERVICE_ACCOUNT_JSON` (leitura do Firestore) e
-  `PEGAPLANTAO_*`.

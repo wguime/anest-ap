@@ -39,7 +39,7 @@
 //   ENDPOINT_SCOPES = { '/v1/docs': 'read:docs', '/v1/planos-acao': 'read:planos-acao',
 //                       '/v1/comunicados': 'read:comunicados' }
 //   Match por prefix — '/v1/docs/abc/changelog' herda 'read:docs'.
-//   Se auth.scopes não contém o required → 403 { error:'forbidden', required_scope }.
+//   Se auth.scopes não contém o required → 404 { error:'not_found' } (não nomeia o escopo).
 //
 // Rate limit:
 //   Sliding window 50 req/min/IP em public.documento_api_rate_limit
@@ -67,6 +67,7 @@
 //   node scripts/smoke-api-v1.mjs
 // =============================================================================
 
+import { sanitizarSaida } from './_saida.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 import type { RotaCtx, RotaResultado } from './_contrato.ts'
 import { rotaEscalaCirurgica, rotaAnestesistas } from './_escala-cirurgica.ts'
@@ -107,7 +108,7 @@ async function executarRota(
 ): Promise<Response> {
   try {
     const r = await rota(ctx)
-    return jsonResponse(r.status, r.body, rlHeaders)
+    return jsonResponse(r.status, await sanitizarSaida(r.status, r.body), rlHeaders)
   } catch (err) {
     // Nunca devolver a mensagem crua: pode carregar trecho de linha do banco/Firestore.
     console.error('api-v1: rota', ctx.pathname, err instanceof Error ? err.name : 'erro')
@@ -1420,10 +1421,9 @@ Deno.serve(async (req) => {
       `${Date.now() - startedAt}ms`,
       `missing_scope=${requiredScope}`,
     )
-    return jsonResponse(403, {
-      error: 'forbidden',
-      required_scope: requiredScope,
-    })
+    // 18/11/2026: rota fora da chave responde como inexistente (404), sem nomear
+    // o escopo — não revela a quem tem chave só de escalas que outras áreas existem.
+    return jsonResponse(404, { error: 'not_found' })
   }
 
   // 2. Rate limit
@@ -1466,7 +1466,7 @@ Deno.serve(async (req) => {
       // ?exemplo=true → dados fictícios no mesmo formato (_exemplos.ts), sem ler nada real.
       if (url.searchParams.get('exemplo') === 'true') {
         const ex = respostaExemplo(pathname.replace(/\/+$/, ''))
-        response = jsonResponse(ex.status, ex.body, rlHeaders)
+        response = jsonResponse(ex.status, await sanitizarSaida(ex.status, ex.body), rlHeaders)
       } else {
         response = await executarRota(
           ROTAS_LEITURA[pathname.replace(/\/+$/, '')],
