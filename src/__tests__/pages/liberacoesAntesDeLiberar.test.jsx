@@ -22,7 +22,6 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { ThemeProvider, ToastProvider } from '@/design-system'
 import LiberacoesView from '@/pages/escala-cirurgica/LiberacoesView'
 import CasoDetalheSheet from '@/pages/escala-cirurgica/CasoDetalheSheet'
-import { nomeCurtoProcedimento } from '@/lib/escalaProcedimentoCurto'
 
 const { atualizarCaso, setStatusCirurgia, setLinhaOverride } = vi.hoisted(() => ({
   atualizarCaso: vi.fn(async () => {}),
@@ -60,7 +59,6 @@ const wrap = ({ children }) => <ThemeProvider><ToastProvider>{children}</ToastPr
 
 const COLE = 'COLECISTECTOMIA VIDEOLAPAROSCOPICA'
 const HERNIA = 'HERNIORRAFIA INGUINAL'
-const rot = (p) => nomeCurtoProcedimento(p)
 const base = { sala: 'CC - Sala 3', anestesista: 'PAULO', anestesistaUserId: 'uid-paulo', cirurgiao: 'Marcos Zanella', turno: 'vespertino', bloco: 'normal' }
 // a cirurgia da ANA (1ª do rodapé) — fica na fila e é por ela que o Paulo é o próximo
 const daAna = { ...base, id: 'a1', ordem: 0, sala: 'CC - Sala 1', hora: '13:00', procedimento: HERNIA, anestesista: 'ANA', anestesistaUserId: 'uid-ana', statusCirurgia: 'iniciada', inicioReal: '13:10' }
@@ -88,11 +86,6 @@ const montarFila = (casos, props = {}) => {
 }
 const tocarLiberar = () => fireEvent.click(screen.getByRole('button', { name: 'Marcar Paulo Tonini liberado' }))
 const folhaAntesOuNada = () => screen.queryAllByRole('dialog').find((d) => d.textContent.includes('Antes de liberar')) || null
-const folhaAntes = () => {
-  const f = folhaAntesOuNada()
-  if (!f) throw new Error('folha "Antes de liberar" não abriu')
-  return f
-}
 const folhaDeCima = () => { const d = screen.getAllByRole('dialog'); return d[d.length - 1] }
 const digitar = (slot, valor) => {
   const campo = document.querySelector(`[data-slot="${slot}"] input`) || document.querySelector(`[data-slot="${slot}"]`)
