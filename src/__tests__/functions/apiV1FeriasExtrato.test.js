@@ -164,7 +164,7 @@ describe('api-v1 /v1/ferias/extrato — whitelist (LGPD)', () => {
     const json = ex.porPessoa.map(serializarSocio)
     for (const s of json) {
       expect(Object.keys(s).sort()).toEqual(
-        ['cota', 'dias_marcados', 'dias_penalidade', 'dias_usados', 'id', 'nome', 'nome_escala', 'penalidades', 'periodos', 'regra_cota', 'saldo'].sort()
+        ['cota', 'dias_marcados', 'dias_penalidade', 'dias_usados', 'excesso_ano_anterior', 'id', 'nome', 'nome_escala', 'penalidades', 'periodos', 'regra_cota', 'saldo'].sort()
       )
       for (const per of s.periodos) expect(Object.keys(per).sort()).toEqual(['dias_uteis', 'fim', 'inicio'])
       for (const pen of s.penalidades) expect(Object.keys(pen).sort()).toEqual(['data', 'dias_extras'])

@@ -161,7 +161,7 @@ a situação do momento, sem histórico por data.
 
 ```json
 {"ano":2026,"total":1,"socios":[{"id":"p_…","nome":"Fulano de Tal","nome_escala":"FULANO DE TAL","cota":30,
-  "regra_cota":"4º ano em diante","dias_marcados":15,"dias_penalidade":2,"dias_usados":17,"saldo":13,
+  "regra_cota":"4º ano em diante","dias_marcados":15,"dias_penalidade":2,"dias_usados":17,"excesso_ano_anterior":0,"saldo":13,
   "periodos":[{"inicio":"2026-07-13","fim":"2026-07-24","dias_uteis":10}],
   "penalidades":[{"data":"2026-07-15","dias_extras":2}]}]}
 ```
@@ -175,7 +175,7 @@ a situação do momento, sem histórico por data.
   como Férias no Pega Plantão, mais o que o próprio sócio marca ou desmarca no app.
   - Marcação e desmarcação feitas no app valem **na hora**.
   - Mudança feita direto no Pega Plantão aparece em **até 5 minutos** (cache fixo de 5 min).
-- **Saldo:** use `dias_marcados`, `dias_usados` e `saldo`, que já aplicam as regras do grupo. Fim de
+- **Saldo:** use `dias_marcados`, `dias_usados` e `saldo`, que já aplicam as regras do grupo. `excesso_ano_anterior` são os dias que passaram da cota no ano anterior e já saíram da `cota` deste ano. Fim de
   semana não conta. Feriado só deixa de contar quando a semana inteira está marcada.
 - **`periodos`:**
   - `inicio` e `fim` são sempre dias úteis. Sábado, domingo e feriado no meio do período não o

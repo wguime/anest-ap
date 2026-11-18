@@ -51,7 +51,7 @@ export const REGRAS_FERIAS = [
     titulo: 'Períodos nobres e congressos',
     itens: [
       { texto: 'V-12 · Períodos nobres (1ª quinzena de janeiro, 2ª quinzena de dezembro e as semanas escolares de julho) exigem semanas cheias. Dias isolados só a partir de 2 meses antes, se houver vaga.', verificada: true },
-      { texto: 'V-13 · Nas semanas escolares de julho, só quem tem filho em idade escolar marca até 2 meses antes da semana; depois disso, se sobrar vaga, qualquer sócio. Não há limite de semanas em julho. Não vale para janeiro. O comitê cadastra quem tem filho.', verificada: true },
+      { texto: 'V-13 · Nas semanas escolares de julho, só quem tem filho em idade escolar marca até 2 meses antes da semana; depois disso, se sobrar vaga, qualquer sócio. Não há limite de semanas em julho. Não vale para janeiro. O comitê cadastra quem tem filho. As semanas seguem o calendário escolar de Chapecó (em 2026 o recesso foi transferido para agosto).', verificada: true },
       { texto: 'V-20 · O comitê revisa quem já usou julho, o peri-recesso e os feriadões nos anos anteriores e dá chance a outros interessados.' },
       { texto: 'V-21 · Em período de congresso (CBA e COPA, com data divulgada) ou de prova do TSA, você pode marcar férias. O dia ocupa uma das 6 vagas; se o dia já estiver cheio, você é candidato e não perde os 3 dias.' },
       { texto: 'V-22 · São 2 dias extras por ano civil para CBA, COPA ou prova do TSA (só para quem presta), exceto no 1º ano de grupo. Os dias são marcados com asterisco, com comprovante anexado em até 15 dias, e não descontam da cota. Sem comprovante, viram férias normais. COPA sem data divulgada 2 meses antes não dá direito aos dias extras.' },

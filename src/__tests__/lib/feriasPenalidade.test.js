@@ -45,16 +45,39 @@ describe('penalidadesSetimaVaga', () => {
   })
 })
 
-describe('penalidadesSetimaVaga — regras novas (18/11/2026, V-10)', () => {
-  it('quem marcou acima das 6 DEPOIS das regras novas é candidato: sem débito automático', () => {
+describe('penalidadesSetimaVaga — regras de 2026 em diante (dono 18/11/2026)', () => {
+  it('marcou acima das 6 depois de 18/11: também paga 3 dias', () => {
     const porDia = new Map([['2026-12-10', [...seis, 'NOVO CANDIDATO']]])
     const ultimos = new Map([['2026-12-10', { confiavel: true, nome: 'NOVO CANDIDATO', vistoEm: '2026-11-18' }]])
-    expect(penalidadesSetimaVaga(porDia, ultimos).size).toBe(0)
+    expect(penalidadesSetimaVaga(porDia, ultimos).get('NOVO CANDIDATO')).toEqual([{ data: '2026-12-10', diasExtras: 2 }])
   })
 
-  it('o que foi marcado ANTES segue com a penalidade antiga (dado de 2026 preservado)', () => {
-    const porDia = new Map([['2026-10-13', [...seis, 'RAQUEL SCHNEIDER']]])
-    const ultimos = new Map([['2026-10-13', { confiavel: true, nome: 'RAQUEL SCHNEIDER', vistoEm: '2026-07-22' }]])
-    expect(penalidadesSetimaVaga(porDia, ultimos).get('RAQUEL SCHNEIDER')).toEqual([{ data: '2026-10-13', diasExtras: 2 }])
+  it('períodos nobres e congresso não descontam (V-33/V-21)', () => {
+    for (const data of ['2026-12-21', '2027-01-08', '2026-08-18', '2027-07-27', '2026-11-27']) {
+      const porDia = new Map([[data, [...seis, 'X']]])
+      const ultimos = new Map([[data, { confiavel: true, nome: 'X' }]])
+      expect(penalidadesSetimaVaga(porDia, ultimos).size, data).toBe(0)
+    }
+  })
+})
+
+describe('excesso do ano passa para o ano seguinte (dono 18/11/2026)', () => {
+  it('excessoDoAno soma marcados + penalidade acima da cota', async () => {
+    const { excessoDoAno } = await import('../../lib/feriasAnalise')
+    const ext = { porPessoa: [
+      { nome: 'A', cota: 30, diasContados: 31, diasEfetivos: 33 },
+      { nome: 'B', cota: 30, diasContados: 30, diasEfetivos: 30 },
+      { nome: 'C', cota: 20, diasContados: 10 },
+    ] }
+    expect([...excessoDoAno(ext)]).toEqual([['A', 3]])
+  })
+
+  it('aplicarExcessoAnterior reduz a cota e o saldo, guardando a cota cheia', async () => {
+    const { aplicarExcessoAnterior } = await import('../../lib/feriasAnalise')
+    const ext = { porPessoa: [{ nome: 'A', cota: 30, diasContados: 10, diasEfetivos: 10, saldo: 20 }, { nome: 'B', cota: 30, diasContados: 0, saldo: 30 }] }
+    const out = aplicarExcessoAnterior(ext, new Map([['A', 3]]))
+    expect(out.porPessoa[0]).toMatchObject({ cota: 27, cotaOriginal: 30, excessoAnterior: 3, saldo: 17 })
+    expect(out.porPessoa[1]).toBe(ext.porPessoa[1])
+    expect(aplicarExcessoAnterior(ext, null)).toBe(ext)
   })
 })

@@ -132,14 +132,15 @@ export function calcularCota({ anoEntrada, anoRef, cotaInformada = null }) {
  * Semana com feriado tirada INTEIRA (todos os dias úteis não-feriado) → o
  * feriado não conta. Férias em semana com feriado SEM ser a semana toda → o
  * feriado conta como dia de férias ("paga" 1 dia a mais), esteja ele marcado
- * ou não. Feriado ANTERIOR a DATA_REGRAS_NOVAS segue a leitura antiga (só
- * conta se veio marcado) — cobrar retroativamente pôs 7 sócios acima da cota
- * de 2026 por férias já tiradas (medido nos dados reais em 18/11).
+ * ou não. Vale para 2026 INTEIRO (dono 18/11/2026: "descontos no saldo podem
+ * ser retroativos"); o que passar da cota vai para o ano seguinte
+ * (`excessoDoAno`). `desde` (opcional) restringe a cobrança a feriados a
+ * partir dessa data — os anteriores só contam se vieram marcados.
  *
  * @param {string[]} diasISO datas marcadas (podem incluir FDS/feriado)
  * @param {Set<string>} feriadosSet
  */
-export function contarDias(diasISO = [], feriadosSet = new Set(), { desde = DATA_REGRAS_NOVAS } = {}) {
+export function contarDias(diasISO = [], feriadosSet = new Set(), { desde = '' } = {}) {
   const marcados = new Set(diasISO)
   const fdsIgnorados = []
 
@@ -173,8 +174,7 @@ export function contarDias(diasISO = [], feriadosSet = new Set(), { desde = DATA
     if (inteira) {
       feriadosNaoContados.push(...feriadosDaSemana)
     } else {
-      // Paga o feriado da semana (V-19), marcado ou não; antes das regras
-      // novas, só o feriado que veio marcado.
+      // Paga o feriado da semana (V-19), marcado ou não.
       const pagos = feriadosDaSemana.filter((f) => f >= desde || marcados.has(f))
       feriadosContados.push(...pagos)
       diasContaveis.push(...pagos)

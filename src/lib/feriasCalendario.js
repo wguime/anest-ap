@@ -4,8 +4,8 @@
  * alimentar (16/11/2026: "ela tem que pesquisar data de férias da rede
  * particular, e COPA e CBA").
  *
- * FÉRIAS ESCOLARES DE JULHO (V-13): semanas nobres de julho são só as do
- * calendário escolar; se as férias começam no meio da semana, a semana
+ * FÉRIAS ESCOLARES DE MEIO DE ANO (V-13, "julho"): semanas nobres são só as
+ * do calendário escolar de Chapecó — em 2026 caíram em AGOSTO; se as férias começam no meio da semana, a semana
  * inteira conta. As escolas particulares de Chapecó não publicaram o
  * calendário (pesquisa 18/11/2026; o Sinepe/SC tem o ofício 030/2026 só para
  * associados). Até sair, vale a rede estadual de SC (SED) como referência —
@@ -24,7 +24,12 @@
  */
 
 export const FERIAS_ESCOLARES_JULHO = {
-  2026: { inicio: '2026-07-23', fim: '2026-07-31', fonte: 'Rede estadual de SC (SED) — escolas particulares de Chapecó sem calendário publicado' },
+  // Chapecó 2026: o recesso de meio de ano das redes municipal E estadual foi
+  // transferido de julho para agosto por causa do Parajasc — começou na segunda
+  // 17/08, retorno em 26/08 (Ed. Infantil) e 27/08 (Fundamental). Fonte: ND+,
+  // 14/08/2026 (ndmais.com.br, "Redes municipal e estadual de Chapecó iniciam
+  // recesso na segunda"). Escolas particulares: sem calendário publicado.
+  2026: { inicio: '2026-08-17', fim: '2026-08-25', fonte: 'Redes municipal e estadual de Chapecó (recesso transferido para agosto pelo Parajasc) — particulares sem calendário publicado' },
   2027: { inicio: '2027-07-22', fim: '2027-07-31', fonte: 'Rede estadual de SC (SED, calendário 2027) — escolas particulares de Chapecó sem calendário publicado' },
 }
 

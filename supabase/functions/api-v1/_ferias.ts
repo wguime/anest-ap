@@ -31,7 +31,7 @@ import { type RotaCtx, type RotaResultado, ok, parametroInvalido, erroInterno } 
 import { getPlantoes, PegaPlantaoErro } from './_pegaplantao.ts'
 import { normalizarRegistrosFerias, construirExtrato } from './_lib-ferias/extratoFerias.js'
 import { aplicarMovimentacoes, vistasDasMovimentacoes } from './_lib-ferias/feriasMovimentacoes.js'
-import { ultimoAMarcar, penalidadesSetimaVaga, aplicarPenalidades } from './_lib-ferias/feriasAnalise.js'
+import { ultimoAMarcar, penalidadesSetimaVaga, aplicarPenalidades, excessoDoAno, aplicarExcessoAnterior } from './_lib-ferias/feriasAnalise.js'
 import { MAX_VAGAS_DIA } from './_lib-ferias/extratoFeriasRegras.js'
 import { getSocios } from './_lib-ferias/feriasSocios.js'
 import { getFeriados } from './_lib-ferias/feriasFeriados.js'
@@ -70,11 +70,13 @@ export function comporExtratoFerias({
   movimentacoes,
   marcacoesVistas,
   ano,
+  excessoAnterior = null,
 }: {
   plantoesRaw: PlantaoFeriasMin[]
   movimentacoes: MovimentacaoMin[]
   marcacoesVistas: MarcacoesVistas
   ano: number
+  excessoAnterior?: Map<string, number> | null
 }): Extrato {
   const socios = getSocios(ano)
   const feriados = getFeriados(ano)
@@ -104,7 +106,20 @@ export function comporExtratoFerias({
   }
 
   const penalidadesPorPessoa = penalidadesSetimaVaga(extratoBase.porDia, ultimosPorDia)
-  return aplicarPenalidades(extratoBase, penalidadesPorPessoa)
+  // excesso do ano anterior sai da cota deste (dono 18/11/2026)
+  return aplicarExcessoAnterior(aplicarPenalidades(extratoBase, penalidadesPorPessoa), excessoAnterior)
+}
+
+/** Excesso (dias acima da cota) do ano anterior, ou null antes de 2027. */
+async function excessoDoAnoAnterior(ctx: RotaCtx, ano: number): Promise<Map<string, number> | null> {
+  const anterior = ano - 1
+  if (anterior < 2026) return null
+  const [pp, movimentacoes, marcacoesVistas] = await Promise.all([
+    ppDoAnoComCache(anterior),
+    lerMovimentacoes(ctx, anterior),
+    lerMarcacoesVistas(ctx, anterior),
+  ])
+  return excessoDoAno(comporExtratoFerias({ plantoesRaw: pp.ferias, movimentacoes, marcacoesVistas, ano: anterior }))
 }
 
 // ─── Serialização (WHITELIST) ───────────────────────────────────────────────
@@ -119,6 +134,7 @@ export function serializarSocio(p: Extrato, id: string | null = null) {
     dias_marcados: p.diasContados,
     dias_penalidade: p.diasPenalidade,
     dias_usados: p.diasEfetivos,
+    excesso_ano_anterior: p.excessoAnterior ?? 0,
     saldo: p.saldo,
     periodos: (p.periodos || []).map((per: { inicio: string; fim: string; diasUteis: number }) => ({
       inicio: per.inicio,
@@ -427,15 +443,16 @@ export async function rotaFeriasExtrato(ctx: RotaCtx): Promise<RotaResultado> {
   }
 
   try {
-    const [pp, movimentacoes, marcacoesVistas, identidades] = await Promise.all([
+    const [pp, movimentacoes, marcacoesVistas, identidades, excessoAnterior] = await Promise.all([
       ppDoAnoComCache(ano),
       lerMovimentacoes(ctx, ano),
       lerMarcacoesVistas(ctx, ano),
       lerIdentidades(ctx),
+      excessoDoAnoAnterior(ctx, ano),
     ])
     const plantoesRaw = pp.ferias
     const idsSocios = resolverIdsSocios(getSocios(ano), identidades)
-    const extrato = comporExtratoFerias({ plantoesRaw, movimentacoes, marcacoesVistas, ano })
+    const extrato = comporExtratoFerias({ plantoesRaw, movimentacoes, marcacoesVistas, ano, excessoAnterior })
 
     let socios = extrato.porPessoa
     if (nomeParam !== null) {
@@ -453,8 +470,9 @@ export async function rotaFeriasExtrato(ctx: RotaCtx): Promise<RotaResultado> {
       fonte: 'pega_plantao+ferias_movimentacoes',
       regras: {
         fim_de_semana: 'não conta',
-        feriado: 'só não conta quando a semana inteira está marcada',
-        setima_vaga: 'quem marcou por último um dia com mais de 6 sócios paga 3 dias (2 extras)',
+        feriado: 'em semana com feriado, só não conta quando a semana inteira está marcada; senão o feriado conta como dia de férias',
+        setima_vaga: 'quem marcou por último um dia com mais de 6 sócios paga 3 dias (2 extras), exceto nos períodos nobres e em dia de congresso',
+        excesso: 'dias acima da cota no ano são descontados da cota do ano seguinte',
       },
       total: socios.length,
       socios: socios.map((p: Extrato) => serializarSocio(p, idsSocios.get(p.nome) ?? null)),

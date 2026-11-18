@@ -115,7 +115,7 @@ export const EXEMPLOS: Record<string, Record<string, unknown>> = {
     socios: [
       {
         id: A1.id, nome: 'Ana Exemplo Souza', nome_escala: A1.nome, cota: 30, regra_cota: '4º ano em diante',
-        dias_marcados: 15, dias_penalidade: 2, dias_usados: 17, saldo: 13,
+        dias_marcados: 15, dias_penalidade: 2, dias_usados: 17, excesso_ano_anterior: 0, saldo: 13,
         periodos: [{ inicio: '2026-07-13', fim: '2026-07-24', dias_uteis: 10 }, { inicio: '2026-09-07', fim: '2026-09-11', dias_uteis: 5 }],
         penalidades: [{ data: '2026-07-15', dias_extras: 2 }],
       },

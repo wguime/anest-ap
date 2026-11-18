@@ -10,8 +10,10 @@
  * comparável ao teto de 6 vagas diárias da regra do grupo.
  */
 
-import { ehFimDeSemana } from './extratoFerias'
-import { DATA_REGRAS_NOVAS } from './extratoFeriasRegras'
+import { ehFimDeSemana, construirExtrato } from './extratoFerias'
+import { aplicarMovimentacoes, vistasDasMovimentacoes } from './feriasMovimentacoes'
+import { ehQuinzenaNobreFimDeAno } from './extratoFeriasRegras'
+import { ehSemanaEscolarJulho, congressoNoDia } from './feriasCalendario'
 
 export const VAGAS_DIA = 6
 
@@ -166,10 +168,15 @@ export function ultimoAMarcar(codigosDoDia = [], vistas = new Map()) {
   return { confiavel: true, nome: ultimo.nome, vistoEm: String(ultimo.firstSeenAt).slice(0, 10) }
 }
 
+/** Dia em que ficar acima das 6 vagas NÃO custa 3 dias (V-33 nobres, V-21 congresso). */
+export function diaSemDescontoDeCandidato(dataISO) {
+  return ehQuinzenaNobreFimDeAno(dataISO) || ehSemanaEscolarJulho(dataISO) || Boolean(congressoNoDia(dataISO))
+}
+
 /**
- * Penalidade da 7ª vaga por pessoa — SÓ para marcações anteriores às regras
- * novas (DATA_REGRAS_NOVAS). Regra antiga (REGRAS pág. 3: "a 7ª vaga poderá ser
- * usada, mas contará como 3 dias"). Quem chegou por último num dia que
+ * Penalidade da 7ª vaga por pessoa (V-10; dono 18/11/2026: vale para 2026
+ * inteiro e daí em diante), exceto em período nobre/congresso
+ * (`diaSemDescontoDeCandidato`). Quem chegou por último num dia que
  * passou do teto paga 3 em vez de 1 — 2 dias EXTRAS.
  *
  * Só entra quando a ordem de marcação é confiável (DataCriacao do Pega
@@ -186,10 +193,11 @@ export function penalidadesSetimaVaga(porDia = new Map(), ultimosPorDia = new Ma
     if (nomes.length <= VAGAS_DIA) continue
     const ultimo = ultimosPorDia.get(data)
     if (!ultimo?.confiavel || !ultimo.nome) continue
-    // Regras novas (18/11/2026, V-10): quem marca acima das 6 é CANDIDATO e
-    // só perde 3 dias se o comitê lhe der a vaga. O débito automático vale
-    // apenas para o que foi marcado antes disso (dado de 2026 preservado).
-    if (ultimo.vistoEm && ultimo.vistoEm >= DATA_REGRAS_NOVAS) continue
+    // V-10/V-33/V-21 (dono 18/11/2026: "será cobrado o 7º dia de férias como
+    // 3 dias", todas as regras valendo de 2026 em diante): quem está acima das
+    // 6 paga 3 dias, EXCETO nos períodos nobres (2ª quinzena de dezembro, 1ª
+    // de janeiro, semanas escolares de julho) e em dia de congresso.
+    if (diaSemDescontoDeCandidato(data)) continue
     if (!out.has(ultimo.nome)) out.set(ultimo.nome, [])
     out.get(ultimo.nome).push({ data, diasExtras: 2 }) // 3 no lugar de 1
   }
@@ -229,6 +237,79 @@ export function aplicarPenalidades(extrato, penalidadesPorPessoa = new Map()) {
         diasEfetivos,
         saldo: p.cota - diasEfetivos,
       }
+    }),
+  }
+}
+
+/**
+ * Quem foi o último a marcar em cada dia acima das 6 vagas. Ordem, da melhor
+ * para a pior fonte: DataCriacao do Pega Plantão, timestamp das marcações do
+ * app e o first-seen da varredura (`marcacoesVistas`).
+ */
+export function ultimosPorDiaDoExtrato({ extratoBase, registros, registrosPP, movimentacoes = [], marcacoesVistas = new Map() }) {
+  const out = new Map()
+  if (!extratoBase) return out
+  const doPP = new Map(
+    registrosPP.filter((r) => r.criadoEm).map((r) => [r.codigo, { nome: r.nome, data: r.data, firstSeenAt: r.criadoEm }])
+  )
+  const vistas = new Map([...(marcacoesVistas || new Map()), ...doPP, ...vistasDasMovimentacoes(movimentacoes)])
+  const codigosPorDia = new Map()
+  for (const r of registros) {
+    if (r.ehFimDeSemana) continue
+    if (!codigosPorDia.has(r.data)) codigosPorDia.set(r.data, [])
+    codigosPorDia.get(r.data).push(r.codigo)
+  }
+  for (const [data, nomes] of extratoBase.porDia) {
+    if (nomes.length <= VAGAS_DIA) continue
+    const info = ultimoAMarcar(codigosPorDia.get(data) || [], vistas)
+    if (info) out.set(data, info)
+  }
+  return out
+}
+
+/**
+ * Extrato COMPLETO de um ano (PP + app + penalidade da 7ª vaga), sem o
+ * excesso do ano anterior. Usado para fechar o ano anterior e calcular o
+ * excesso que passa para o seguinte.
+ */
+export function comporExtratoDoAno({ registrosPP, movimentacoes = [], marcacoesVistas = new Map(), ano, socios, feriados }) {
+  const registros = aplicarMovimentacoes(registrosPP, movimentacoes)
+  const extratoBase = construirExtrato({ registros, ano, socios, feriados })
+  const ultimos = ultimosPorDiaDoExtrato({ extratoBase, registros, registrosPP, movimentacoes, marcacoesVistas })
+  return aplicarPenalidades(extratoBase, penalidadesSetimaVaga(extratoBase.porDia, ultimos))
+}
+
+/**
+ * Dias acima da cota no ano (marcados + penalidades − cota), por nome. Dono
+ * 18/11/2026: "se algum sócio já extrapolou as férias desse ano, os dias em
+ * excesso sempre serão descontados no ano seguinte".
+ * @returns {Map<string, number>}
+ */
+export function excessoDoAno(extrato) {
+  const out = new Map()
+  for (const p of extrato?.porPessoa || []) {
+    const efetivos = p.diasEfetivos ?? p.diasContados
+    const excesso = efetivos - p.cota
+    if (excesso > 0) out.set(p.nome, excesso)
+  }
+  return out
+}
+
+/**
+ * Desconta da cota do ano o excesso do ano anterior. `cotaOriginal` guarda a
+ * cota cheia; `excessoAnterior` o desconto; `saldo` e os tetos de semestre
+ * (que leem `cota`) já saem com o desconto.
+ */
+export function aplicarExcessoAnterior(extrato, excessoAnterior = new Map()) {
+  if (!extrato || !excessoAnterior || excessoAnterior.size === 0) return extrato
+  return {
+    ...extrato,
+    porPessoa: extrato.porPessoa.map((p) => {
+      const excesso = excessoAnterior.get(p.nome) || 0
+      if (!excesso) return p
+      const cota = Math.max(0, p.cota - excesso)
+      const efetivos = p.diasEfetivos ?? p.diasContados
+      return { ...p, cotaOriginal: p.cota, excessoAnterior: excesso, cota, saldo: cota - efetivos }
     }),
   }
 }

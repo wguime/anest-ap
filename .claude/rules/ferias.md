@@ -38,9 +38,14 @@ description: Extrato de Férias — allowlist de acesso, metade da cota por seme
 >   entram quando o dono mandar os nomes); `calcularCota` soma +1 só DEPOIS do 25º ano (2026 congelado:
 >   Vicente 35). Feriados 2027, recessos 23/12/26–02/01/27 e 24/12/27–02/01/28. `feriasCalendario.js`:
 >   julho escolar (rede estadual SC até as particulares de Chapecó publicarem) e congressos (CBA/COPA/TSA).
-> - **Alertas julgam 2026 INTEIRO** (dono 18/11: "quero que os alertas já sejam contabilizados agora em
->   2026") — `avaliarRegras` sem corte por padrão (`config.desde` opcional). Só o CUSTO (feriado pago,
->   penalidade da 7ª vaga) segue `DATA_REGRAS_NOVAS`, para não mexer em saldo de férias já tiradas.
+> - **TUDO vale para 2026 inteiro** (dono 18/11, 2ª rodada: "todas as regras devem ser aplicadas no ano de
+>   2026 em diante"): alertas sem corte (`avaliarRegras`, `config.desde` opcional); feriado de semana parcial
+>   pago no ano todo (`contarDias`, `desde` opcional); 7ª vaga = 3 dias SEMPRE, exceto quinzenas nobres,
+>   semanas escolares e congresso (`diaSemDescontoDeCandidato`). **Excesso vai para o ano seguinte:**
+>   `excessoDoAno` + `aplicarExcessoAnterior` (cota reduzida, `cotaOriginal`/`excessoAnterior`); a página e a
+>   edge fecham o ano anterior com `comporExtratoDoAno`/`comporExtratoFerias` (a partir de 2027).
+> - **Julho escolar 2026 = AGOSTO** (17–25/08): Chapecó transferiu o recesso das redes municipal e estadual
+>   pelo Parajasc (ND+ 14/08/2026). Particulares sem calendário. 2027 ainda provisório (rede estadual).
 > - **Fase 2 (não feita):** telas do comitê (decidir candidatos, adiantamento, congresso com asterisco +
 >   comprovante, penalidade V-30/V-32, licenças, cadastro de filhos), via protótipo antes de `src/`.
 

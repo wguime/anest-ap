@@ -111,14 +111,13 @@ describe('contarDias — regra de feriado e FDS', () => {
     expect(r.feriadosContados).toEqual(['2026-09-07'])
   })
 
-  it('feriado anterior às regras novas (18/11/2026) não é cobrado retroativamente', () => {
-    // mesmo caso, com o corte padrão: 07/09 já tinha passado → leitura antiga
+  it('feriado é cobrado em 2026 inteiro (dono 18/11/2026: desconto retroativo)', () => {
     const r = contarDias(['2026-09-08', '2026-09-09'], FERIADOS)
-    expect(r.diasContados).toBe(2)
-    expect(r.feriadosContados).toEqual([])
-    // 20/11/2026 (sexta, Consciência Negra) é depois do corte → paga
-    const depois = contarDias(['2026-11-16', '2026-11-17'], FERIADOS)
-    expect(depois.feriadosContados).toEqual(['2026-11-20'])
+    expect(r.diasContados).toBe(3)
+    expect(r.feriadosContados).toEqual(['2026-09-07'])
+    // `desde` explícito volta à leitura antiga para feriados anteriores
+    const antigo = contarDias(['2026-09-08', '2026-09-09'], FERIADOS, { desde: '2026-11-18' })
+    expect(antigo.feriadosContados).toEqual([])
   })
 
   it('V-18: semana inteira sem marcar o feriado (ninguém marca o feriado) não paga nada', () => {

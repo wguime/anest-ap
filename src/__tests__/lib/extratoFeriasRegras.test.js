@@ -82,8 +82,8 @@ describe('regraMaxPorDia (V-09/V-10/V-33)', () => {
     expect(regraMaxPorDia(todosEm('2026-12-15'))[0].detalhe).toContain('V-10')
   })
 
-  it('semana escolar de julho: preferência a quem tem filho, sem perda (V-13)', () => {
-    expect(regraMaxPorDia(todosEm('2026-07-22'))[0].detalhe).toContain('V-13')
+  it('semana escolar (Chapecó 2026 = agosto): preferência a quem tem filho, sem perda (V-13)', () => {
+    expect(regraMaxPorDia(todosEm('2026-08-19'))[0].detalhe).toContain('V-13')
   })
 })
 

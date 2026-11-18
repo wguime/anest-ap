@@ -30,7 +30,7 @@ import { useMessages } from '@/contexts/MessagesContext'
 import { useUsersManagement } from '@/contexts/UsersManagementContext'
 import { usePdfExport } from '@/hooks/usePdfExport'
 import { getFeriasDoAno, invalidarFeriasDoAno } from '@/services/pegaPlantaoApi'
-import { penalidadesSetimaVaga, aplicarPenalidades } from '@/lib/feriasAnalise'
+import { penalidadesSetimaVaga, aplicarPenalidades, comporExtratoDoAno, excessoDoAno, aplicarExcessoAnterior } from '@/lib/feriasAnalise'
 import {
   fetchViolacoesVistas, registrarViolacoesVistas,
   fetchMarcacoesVistas, registrarMarcacoesVistas,
@@ -488,7 +488,11 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO, ano, feriados, penalida
             <span className="text-destructive font-medium"> · +{diasExtras} de penalidade</span>
           )}
         </p>
-        <p className="text-[11px] text-muted-foreground">Cota de {pessoa.cota} dias — {pessoa.regraCota}</p>
+        <p className="text-[11px] text-muted-foreground">
+          {pessoa.excessoAnterior
+            ? `Cota de ${pessoa.cota} dias — ${pessoa.cotaOriginal} − ${pessoa.excessoAnterior} do excesso de ${ano - 1}`
+            : `Cota de ${pessoa.cota} dias — ${pessoa.regraCota}`}
+        </p>
         {/* Totais em destaque (dono 04/08) — superfície accent (nível 1 do DS),
             não o cinza muted que destoava da paleta verde */}
         <div className="mt-3 grid grid-cols-2 gap-2">
@@ -733,6 +737,38 @@ export default function ExtratoFeriasPage({ goBack }) {
     setMovimentacoes(await fetchMovimentacoes(ano))
   }, [ano])
 
+  // Excesso do ano anterior (dono 18/11/2026: dias acima da cota "sempre serão
+  // descontados no ano seguinte"). O ano anterior é fechado com a MESMA
+  // composição (PP + app + 7ª vaga). 2026 é o 1º ano com a regra.
+  const [excessoAnterior, setExcessoAnterior] = useState(null)
+  useEffect(() => {
+    setExcessoAnterior(null)
+    const anterior = ano - 1
+    if (anterior < 2026) return
+    let vivo = true
+    ;(async () => {
+      try {
+        const [raw, movs, vistas] = await Promise.all([
+          getFeriasDoAno(anterior),
+          fetchMovimentacoes(anterior),
+          fetchMarcacoesVistas(anterior).catch(() => new Map()),
+        ])
+        const ext = comporExtratoDoAno({
+          registrosPP: normalizarRegistrosFerias(raw),
+          movimentacoes: movs,
+          marcacoesVistas: vistas,
+          ano: anterior,
+          socios: getSocios(anterior),
+          feriados: getFeriados(anterior),
+        })
+        if (vivo) setExcessoAnterior(excessoDoAno(ext))
+      } catch (err) {
+        console.warn('[ExtratoFerias] excesso do ano anterior falhou:', err?.message)
+      }
+    })()
+    return () => { vivo = false }
+  }, [ano])
+
   const socios = useMemo(() => getSocios(ano), [ano])
   const feriados = useMemo(() => getFeriados(ano), [ano])
   const registrosPP = useMemo(
@@ -820,8 +856,8 @@ export default function ExtratoFeriasPage({ goBack }) {
   // export leem daqui — sem isso a mesma pessoa aparecia com saldos
   // diferentes em abas diferentes (bug 04/08).
   const extrato = useMemo(
-    () => aplicarPenalidades(extratoBase, penalidadesPorPessoa),
-    [extratoBase, penalidadesPorPessoa]
+    () => aplicarExcessoAnterior(aplicarPenalidades(extratoBase, penalidadesPorPessoa), excessoAnterior),
+    [extratoBase, penalidadesPorPessoa, excessoAnterior]
   )
 
   // Regras avaliam o extrato JÁ COM as penalidades da 7ª vaga (dono 04/08: o

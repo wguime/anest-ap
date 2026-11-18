@@ -327,7 +327,7 @@ const PERIODOS_NOBRES = (ano) => {
     { chave: 'dez2q', label: 'na 2ª quinzena de dezembro', inicio: `${ano}-12-16`, fim: `${ano}-12-31` },
   ]
   const julho = semanasEscolaresJulho(ano)
-  if (julho) lista.push({ chave: 'jul', label: 'nas semanas escolares de julho', inicio: julho.inicio, fim: julho.fim })
+  if (julho) lista.push({ chave: 'jul', label: 'nas semanas das férias escolares de meio de ano', inicio: julho.inicio, fim: julho.fim })
   return lista
 }
 
@@ -453,7 +453,7 @@ function fimDoPeriodo(v, ano) {
   if (/^\d{4}-S1$/.test(ref)) return `${ref.slice(0, 4)}-06-30`
   if (/^\d{4}-S2$/.test(ref)) return `${ref.slice(0, 4)}-12-31`
   if (ref === 'jan1q') return `${ano}-01-15`
-  if (ref === 'jul') return `${ano}-07-31`
+  if (ref === 'jul') return semanasEscolaresJulho(ano)?.fim ?? `${ano}-07-31`
   if (ref === 'dez2q') return `${ano}-12-31`
   if (/^\d{4}-\d{2}-\d{2}$/.test(ref)) return v.regra === 'SEMANA_FERIADO_EXTRA' ? somarDiasISO(ref, 4) : ref
   return null // cota do ano, 1º ano: sempre avaliadas

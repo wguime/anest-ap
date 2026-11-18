@@ -107,14 +107,14 @@ describe('avaliarMarcacaoDia — teto do semestre e cota (V-02/V-05)', () => {
 
   it('V-13: com a lista de filhos cadastrada, julho escolar é só de quem tem filho até 2 meses antes', () => {
     const lim = limites(0, 0, { listaFilhos: true, temFilho: false })
-    expect(avaliarMarcacaoDia({ ...base, data: '2026-07-27', limites: lim }).bloqueio.tipo).toBe('JULHO_ESCOLAR')
-    expect(avaliarMarcacaoDia({ ...base, data: '2026-07-27', limites: { ...lim, temFilho: true } }).ok).toBe(true)
+    expect(avaliarMarcacaoDia({ ...base, data: '2026-08-18', limites: lim }).bloqueio.tipo).toBe('JULHO_ESCOLAR')
+    expect(avaliarMarcacaoDia({ ...base, data: '2026-08-18', limites: { ...lim, temFilho: true } }).ok).toBe(true)
     // a partir de 2 meses antes da semana, qualquer sócio
-    expect(avaliarMarcacaoDia({ ...base, hojeISO: '2026-05-28', data: '2026-07-27', limites: lim }).ok).toBe(true)
+    expect(avaliarMarcacaoDia({ ...base, hojeISO: '2026-06-18', data: '2026-08-18', limites: lim }).ok).toBe(true)
   })
 
   it('sem lista de filhos cadastrada, julho não trava ninguém', () => {
-    expect(avaliarMarcacaoDia({ ...base, data: '2026-07-27', limites: limites(0, 0) }).ok).toBe(true)
+    expect(avaliarMarcacaoDia({ ...base, data: '2026-08-18', limites: limites(0, 0) }).ok).toBe(true)
   })
 
   it('limitesDaPessoa soma a seleção pendente no semestre certo', () => {
