@@ -276,3 +276,15 @@ describe('montarMovimentacoesParaInsert', () => {
     expect(desmarcarApp).toMatchObject({ acao: 'desmarcar', origem_dia: 'app', codigo_pp: null })
   })
 })
+
+describe('lista de filhos em idade escolar (V-13, dono 18/11/2026)', () => {
+  it('13 sócios marcados, lista vale em 2026 e 2027', async () => {
+    const { getSocios } = await import('../../lib/feriasSocios')
+    for (const ano of [2026, 2027]) {
+      const com = getSocios(ano).filter((s) => s.filhosIdadeEscolar === true).map((s) => s.nome)
+      expect(com, String(ano)).toHaveLength(13)
+      expect(com).toContain('G. STAUB')
+      expect(getSocios(ano).every((s) => typeof s.filhosIdadeEscolar === 'boolean')).toBe(true)
+    }
+  })
+})
