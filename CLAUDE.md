@@ -161,6 +161,7 @@ granulares. Deploy de Cloud Function é tarefa DO DONO (secrets via `firebase fu
 | `escala-telas.md` | sheets e painéis da escala (`CasoDetalheSheet`, `PainelTempo`, …) |
 | `escalas-trocas.md` | trocas de plantão da residência, sobreaviso, hospitais e feriados (`Consulta*Page`, `Trocas*Page`, `services/troca*`, `useOverridesDiario`, edge `schedule-shift-reminders`) — escala EFETIVA = base + override |
 | `escala-numerica.md` | `escalaNumerica.js/.json`, `extrair-escala-numerica.py`, `ordem-liberacao-numerica.mjs` (escala numérica do grupo = base da ordem de liberação) |
+| `api-v1.md` | API externa somente leitura (`supabase/functions/api-v1/**`, `docs/api-v1-*`) — o que pode sair, filtro de saída sem vestígio da arquitetura, manutenção |
 | `calculadoras-clinicas.md` | libs e displays de calculadora |
 | `cateter-peridural.md` · `comunicados-notificacoes.md` · `faturamento-particulares.md` · `ferias.md` | os módulos homônimos |
 | `modulos-diversos.md` | mensagens, perfil, escalas & trocas, residência, notícias, qualidade, busca |
