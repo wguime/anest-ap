@@ -22,6 +22,7 @@ import {
 } from './calendarioOcupacao'
 import MovimentacoesLog from './MovimentacoesLog'
 import { getFeriasDoAnoMin } from '@/services/pegaPlantaoApi'
+import { DATA_REGRAS_NOVAS } from '@/lib/extratoFeriasRegras'
 import {
   VAGAS_DIA, ocupacaoPorDia, serieSemanal, rankingSemanas, metricasGestao,
   labelSemana, semanaISO,
@@ -177,7 +178,11 @@ export default function MapaFeriasView({
             {nomesDoDia.length > VAGAS_DIA && (
               // Quem pagará a 7ª vaga — e por quê (dono 04/08)
               <div className="mt-1.5 rounded-lg bg-destructive/10 px-2.5 py-1.5">
-                {ultimosPorDia.get(diaSelecionado)?.confiavel ? (
+                {ultimosPorDia.get(diaSelecionado)?.confiavel && ultimosPorDia.get(diaSelecionado).vistoEm >= DATA_REGRAS_NOVAS ? (
+                  <p className="text-[12px] text-foreground/90">
+                    Quem passou das 6 vagas é candidato: o comitê de escalas decide quem fica (V-10).
+                  </p>
+                ) : ultimosPorDia.get(diaSelecionado)?.confiavel ? (
                   <>
                     <p className="text-destructive font-semibold">
                       Último a marcar: {ultimosPorDia.get(diaSelecionado).nomeCompleto} (marcado em{' '}

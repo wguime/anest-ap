@@ -29,7 +29,7 @@ describe('aplicarMovimentacoes — identidade e marcação simples', () => {
   it('marcação do app vira registro sintético contável', () => {
     const out = aplicarMovimentacoes([], [mov('m1', '2026-09-10', 'marcar')])
     expect(out).toEqual([
-      { codigo: 'app:m1', nome: NOME, data: '2026-09-10', ehFimDeSemana: false, origem: 'app' },
+      { codigo: 'app:m1', nome: NOME, data: '2026-09-10', ehFimDeSemana: false, origem: 'app', criadoEm: expect.any(String) },
     ])
   })
 })

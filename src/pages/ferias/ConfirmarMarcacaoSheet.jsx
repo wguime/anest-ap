@@ -1,9 +1,9 @@
 /**
- * Confirmação da marcação — a tela onde o CUSTO é declarado antes de gravar
- * (decisão do dono 04/08: nada bloqueia em silêncio, mas nada passa sem o
- * usuário ver o que custa). Mostra dia a dia, saldo antes → depois, o custo
- * extra da 7ª vaga e os alertas de regra que a seleção CRIA (diff — não
- * repete os que já existiam).
+ * Confirmação da marcação — dia a dia, saldo antes → depois, e o que a
+ * seleção CRIA (diff — não repete o que já existia). Regras 2026/27: o que
+ * quebra uma regra [TRAVA] aparece com o código (V-xx) e o botão fica
+ * desabilitado; o resto (ex.: candidato acima das 6 vagas) é aviso que segue
+ * para o comitê de escalas.
  */
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, Badge, Button,
@@ -80,7 +80,12 @@ export default function ConfirmarMarcacaoSheet({ open, onOpenChange, resumo, onC
               </p>
               <ul className="divide-y divide-border mb-3">
                 {desmarcar.map((l) => (
-                  <li key={l.data} className="py-2 text-sm font-medium text-foreground">{fmtBr(l.data)}</li>
+                  <li key={l.data} className="py-2">
+                    <span className="text-sm font-medium text-foreground">{fmtBr(l.data)}</span>
+                    {l.avisos.map((a) => (
+                      <p key={a.tipo} className="mt-0.5 text-[12px] leading-snug text-muted-foreground">{a.msg}</p>
+                    ))}
+                  </li>
                 ))}
               </ul>
             </>
@@ -93,7 +98,7 @@ export default function ConfirmarMarcacaoSheet({ open, onOpenChange, resumo, onC
                 Custo extra declarado: +{resumo.custoDeclaradoExtra} dia{resumo.custoDeclaradoExtra !== 1 ? 's' : ''}
               </p>
               <p className="mt-1 text-[12px] leading-snug text-foreground/90">
-                Regra do grupo: a 7ª vaga do dia conta 3 dias de férias. O extrato mostra os dias marcados;
+                Marcação feita antes das regras de 18/11/2026: a 7ª vaga do dia conta 3 dias de férias. O extrato mostra os dias marcados;
                 o desconto extra fica registrado no log para a gestão das escalas.
               </p>
             </div>
@@ -116,12 +121,32 @@ export default function ConfirmarMarcacaoSheet({ open, onOpenChange, resumo, onC
             </div>
           )}
 
+          {/* Seção 9 das regras: o app bloqueia, mostra o código e o motivo */}
+          {resumo.bloqueios?.length > 0 && (
+            <div role="alert" className="rounded-xl bg-destructive/10 border border-destructive/40 p-3 mb-3">
+              <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-destructive" aria-hidden="true" />
+                Não é possível confirmar: {resumo.bloqueios.length === 1 ? 'a seleção quebra uma regra' : `a seleção quebra ${resumo.bloqueios.length} regras`}
+              </p>
+              <ul className="mt-2 space-y-1.5">
+                {resumo.bloqueios.map((v) => (
+                  <li key={v.id} className="text-[12px] leading-snug">
+                    <span className="font-semibold text-foreground">{v.codigo} · {v.label}</span>
+                    <span className="text-muted-foreground"> — {v.detalhe}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-[12px] leading-snug text-foreground/90">
+                Ajuste os dias. Exceção só com aprovação do comitê de escalas.
+              </p>
+            </div>
+          )}
+
           {resumo.avisosNovos.length > 0 && (
             <div className="rounded-xl bg-destructive/10 border border-destructive/40 p-3 mb-3">
               <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
                 <AlertTriangle className="w-4 h-4 shrink-0 text-destructive" aria-hidden="true" />
-                {resumo.avisosNovos.length} novo{resumo.avisosNovos.length !== 1 ? 's' : ''} alerta
-                {resumo.avisosNovos.length !== 1 ? 's' : ''} de regra
+                {resumo.avisosNovos.length} aviso{resumo.avisosNovos.length !== 1 ? 's' : ''} para o comitê
               </p>
               <ul className="mt-2 space-y-1.5">
                 {resumo.avisosNovos.map((v) => (
@@ -138,11 +163,13 @@ export default function ConfirmarMarcacaoSheet({ open, onOpenChange, resumo, onC
             variant={desmarcar.length && !marcar.length ? 'destructive' : 'default'}
             className="w-full"
             onClick={onConfirmar}
-            disabled={gravando}
+            disabled={gravando || resumo.bloqueios?.length > 0}
             leftIcon={gravando ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}
           >
             {gravando
               ? 'Gravando...'
+              : resumo.bloqueios?.length > 0
+                ? 'Ajuste a seleção para confirmar'
               : desmarcar.length && !marcar.length
                 ? `Desmarcar ${desmarcar.length} dia${desmarcar.length !== 1 ? 's' : ''}`
                 : resumo.saldoDepois < 0

@@ -4,8 +4,9 @@
  * Dono 20/08: o relatório completo de férias traz stat boxes, a tabela geral
  * e os 51 alertas de regra; para discutir a divisão do ano isso é ruído. Aqui
  * entra SÓ a distribuição entre as metades do ano, agrupada pelo que precisa
- * de conversa — quem passou do máximo do 2º semestre, quem ficou abaixo do
- * mínimo do 1º, quem é do 1º ano e fracionou a semana, e quem está em dia.
+ * de conversa — quem passou do máximo do 2º semestre, quem passou do máximo
+ * do 1º (regras 2026/27: os dois têm teto), quem é do 1º ano e fracionou a
+ * semana, e quem está em dia.
  *
  * Agrupar por situação (e não em ordem alfabética, como faz o relatório
  * completo) é a diferença dos dois documentos: lá se procura uma pessoa, aqui
@@ -87,22 +88,22 @@ const linhaSetima = (a) => [
   `+${a.s2Excede}`,
 ]
 
-const COLS_ABAIXO = [
+const COLS_ACIMA_S1 = [
   { label: 'Sócio', width: 46, align: 'left' },
   { label: 'Cota', width: 10, align: 'center' },
-  { label: 'Devia no 1º sem.', width: 26, align: 'center' },
-  { label: 'Tirou no 1º sem.', width: 26, align: 'center' },
-  { label: 'DIAS EM FALTA', width: 24, align: 'center' },
+  { label: 'Podia no 1º sem.', width: 26, align: 'center' },
+  { label: 'Marcou no 1º sem.', width: 26, align: 'center' },
+  { label: 'DIAS A MAIS', width: 24, align: 'center' },
   { label: 'Total no 2º sem.', width: 24, align: 'center' },
   { label: 'Podia no 2º sem.', width: 24, align: 'center' },
 ]
 
-const linhaAbaixo = (a) => [
+const linhaAcimaS1 = (a) => [
   a.nomeCompleto,
   String(a.cota),
-  String(a.s1Minimo),
+  String(a.s1Maximo),
   String(a.s1Total),
-  `-${a.s1Falta}`,
+  `+${a.s1Excede}`,
   String(a.s2Total),
   String(a.s2Maximo),
 ]
@@ -158,8 +159,8 @@ export async function render(doc, startY, data, context = {}) {
     (a) => !a.semestreLivre && marcadoS2(a) <= a.s2Maximo && a.s2Excede > 0
   )
   const soAbaixo = analise
-    .filter((a) => !a.semestreLivre && a.s2Excede === 0 && marcadoS2(a) <= a.s2Maximo && a.s1Falta > 0)
-    .sort((x, z) => z.s1Falta - x.s1Falta || x.nomeCompleto.localeCompare(z.nomeCompleto, 'pt-BR'))
+    .filter((a) => !a.semestreLivre && a.s2Excede === 0 && marcadoS2(a) <= a.s2Maximo && a.s1Excede > 0)
+    .sort((x, z) => z.s1Excede - x.s1Excede || x.nomeCompleto.localeCompare(z.nomeCompleto, 'pt-BR'))
   const fracionada = analise.filter((a) => a.semestreLivre && a.situacao !== 'Semana corrida')
   const jaListados = new Set([...acima, ...porSetima, ...soAbaixo, ...fracionada].map((a) => a.nome))
   const emDia = analise.filter((a) => !jaListados.has(a.nome))
@@ -179,8 +180,8 @@ export async function render(doc, startY, data, context = {}) {
   doc.setTextColor(...ANEST_COLORS.gray)
   const legenda = doc.splitTextToSize(
     sanitizeForPdf(
-      'Regra do grupo: metade da cota tem de ser usufruída até 30/06 (mínimo do 1º semestre; 31/07 para quem tem filhos em idade escolar) e o 2º semestre nunca passa da outra metade (máximo). ' +
-      'Cota de 5 dias (1º ano) escolhe o semestre, mas a semana tem de ser corrida, de segunda a sexta. ' +
+      'Regra do grupo (V-02/V-03): cada semestre aceita até a metade da cota, arredondada para cima; o 1º vai até 30/06 e o 2º até 31/12, e o dia não usado no semestre é perdido. ' +
+      'Cota de 5 dias (1º ano) escolhe o semestre: uma semana de segunda a sexta, sem feriado. ' +
       `Só os dias ainda agendados dão para remanejar. O 2º semestre soma ${soma('s2Usufruido')} já tirados + ${soma('s2Agendado')} ainda agendados + ${soma('s2Penalidade')} de custo da 7ª vaga.`
     ),
     PAGE.contentWidth
@@ -220,7 +221,7 @@ export async function render(doc, startY, data, context = {}) {
     linhaAcima,
     {
       cor: ANEST_COLORS.danger,
-      nota: 'Podia = metade da cota. Já tirou + ainda vai tirar = marcou no 2º semestre. A última coluna é quanto isso passou do permitido. Em ordem do maior excesso para o menor.',
+      nota: 'Podia = metade da cota, arredondada para cima. Já tirou + ainda vai tirar = marcou no 2º semestre. A última coluna é quanto isso passou do permitido. Em ordem do maior excesso para o menor.',
     }
   )
   secao(
@@ -230,16 +231,17 @@ export async function render(doc, startY, data, context = {}) {
     linhaSetima,
     {
       cor: ANEST_COLORS.warning,
-      nota: 'Estes NÃO marcaram além do permitido — marcaram exatamente o limite. O dia usado na 7ª vaga conta 3 dias de férias em vez de 1, e é esse custo extra que fez o consumo do semestre passar da metade da cota.',
+      nota: 'Estes NÃO marcaram além do permitido — marcaram exatamente o limite. O excesso vem da 7ª vaga usada antes das regras de 18/11/2026 (3 dias em vez de 1); desde então, acima das 6 vagas o sócio é candidato e só paga se o comitê lhe der a vaga.',
     }
   )
   secao(
-    'Tiraram menos do que deviam no 1º semestre',
+    'Marcaram mais dias do que podiam no 1º semestre',
     soAbaixo,
-    COLS_ABAIXO,
-    linhaAbaixo,
+    COLS_ACIMA_S1,
+    linhaAcimaS1,
     {
-      nota: 'Devia = metade da cota até 30/06. Estes estão dentro do permitido no 2º semestre, então os dias em falta não cabem mais em 2026. Em ordem da maior falta para a menor.',
+      cor: ANEST_COLORS.danger,
+      nota: 'Podia = metade da cota, arredondada para cima. Em ordem do maior excesso para o menor.',
     }
   )
   secao(
@@ -249,7 +251,7 @@ export async function render(doc, startY, data, context = {}) {
     linhaPrimeiroAno,
     {
       cor: ANEST_COLORS.danger,
-      nota: 'No 1º ano não há mínimo nem máximo por semestre: a semana pode ficar em qualquer um dos dois, mas os 5 dias têm de ser corridos, de segunda a sexta.',
+      nota: 'No 1º ano não há máximo por semestre: a semana pode ficar em qualquer um dos dois, mas os 5 dias são uma semana de segunda a sexta, sem feriado.',
     }
   )
 

@@ -49,6 +49,36 @@ describe('conteúdo 2026 (fonte: férias/FERIADOS 2026.pdf)', () => {
       expect(s.anoEntrada).toBeGreaterThanOrEqual(1988)
       expect(s.anoEntrada).toBeLessThanOrEqual(2026)
     }
-    expect(getSocios(2030)).toEqual(socios)
+    expect(getSocios(2030)).toEqual(getSocios(2027))
+  })
+})
+
+describe('conteúdo 2027 (regras 2026/27 + COTAS_FERIAS_2027.pdf)', () => {
+  it('45 sócios (Rômulo saiu) e cotas informadas somando 1.280 (+ 4 novos × 5 = 1.300 do PDF)', () => {
+    const socios = getSocios(2027)
+    expect(socios).toHaveLength(45)
+    expect(socios.some((s) => s.nome === 'ROMULO SANTOS ROXO')).toBe(false)
+    expect(socios.reduce((a, s) => a + s.cota, 0)).toBe(1280)
+  })
+
+  it('cota informada bate com a progressão da observação do PDF', async () => {
+    const { calcularCota } = await import('../../lib/extratoFerias')
+    for (const s of getSocios(2027)) {
+      expect(calcularCota({ anoEntrada: s.anoEntrada, anoRef: 2027 }).cota).toBe(s.cota)
+    }
+  })
+
+  it('2026 congelado: Vicente segue com 35 (fórmula nova daria 34)', () => {
+    expect(getSocios(2026).find((s) => s.nome === 'VICENTE PONS').cota).toBe(35)
+  })
+
+  it('feriados 2027 só em dia útil, sem 01/01 e 25/12; recessos do comitê', () => {
+    const f = getFeriados(2027)
+    expect(f.size).toBe(9)
+    expect(f.has('2027-02-09')).toBe(true) // Carnaval
+    expect(f.has('2027-05-27')).toBe(true) // Corpus Christi
+    expect(f.has('2027-05-01')).toBe(false) // sábado
+    expect(getRecesso(2026)).toEqual({ inicio: '2026-12-23', fim: '2027-01-02' })
+    expect(getRecesso(2027)).toEqual({ inicio: '2027-12-24', fim: '2028-01-02' })
   })
 })

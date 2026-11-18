@@ -86,11 +86,11 @@ describe('ExtratoFeriasPage — pipeline', () => {
     fireEvent.click(screen.getByRole('tab', { name: /Individual/i }))
 
     const card = await screen.findByText(/Extrato por semestre/i).then((el) => el.closest('div'))
-    // Piso do 1º semestre e teto do 2º, cada um no seu cabeçalho
-    expect(within(card).getByText('mín. 15')).toBeInTheDocument()
-    expect(within(card).getByText('máx. 15')).toBeInTheDocument()
-    // 5 marcados contra o piso de 15 → faltam 10; o 2º semestre segue vazio
-    expect(within(card).getByText(/faltam 10 dias para a metade obrigatória/i)).toBeInTheDocument()
+    // Regras 2026/27 (V-02): o MESMO teto nos dois semestres, sem piso
+    expect(within(card).getAllByText('máx. 15')).toHaveLength(2)
+    expect(within(card).queryByText(/mín\./)).not.toBeInTheDocument()
+    // 5 marcados contra o teto de 15 → cabem mais 10; o 2º semestre segue vazio
+    expect(within(card).getByText(/cabem mais 10 dias neste semestre/i)).toBeInTheDocument()
     expect(within(card).getByText(/cabem mais 15 dias neste semestre/i)).toBeInTheDocument()
     expect(within(card).getByText(/Nenhum dia marcado neste semestre/i)).toBeInTheDocument()
   })

@@ -60,3 +60,17 @@ describe('podeVerExtratoFerias — cargo, não e-mail', () => {
     expect(getSocioDoUsuario({ role: 'anestesiologista', email: 'wguime@yahoo.com.br' })).toBe('G. MELO')
   })
 })
+
+describe('marcação aberta a todos os sócios (V-01, dono 18/11/2026)', () => {
+  it('os 46 sócios de 2026 têm login; o SQL ferias_nome_socio() espelha EMAIL_TO_SOCIO', async () => {
+    const { EMAIL_TO_SOCIO } = await import('@/pages/ferias/gate')
+    const { getSocios } = await import('@/lib/feriasSocios')
+    const fs = await import('node:fs')
+    const nomes = new Set(Object.values(EMAIL_TO_SOCIO))
+    for (const s of getSocios(2026)) expect(nomes.has(s.nome)).toBe(true)
+
+    const sql = fs.readFileSync('supabase/migrations/20261118120000_ferias_marcacao_todos_socios.sql', 'utf8')
+    const doSql = Object.fromEntries([...sql.matchAll(/when '([^']+)' then '([^']+)'/g)].map((m) => [m[1], m[2]]))
+    expect(doSql).toEqual(EMAIL_TO_SOCIO)
+  })
+})

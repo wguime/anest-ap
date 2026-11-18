@@ -1,22 +1,34 @@
 /**
- * Validação e simulação da marcação de férias (REGRAS ESCALAS.pdf).
+ * Validação e simulação da marcação de férias — regras 2026/27 do comitê de
+ * escalas (V-01 a V-33), em vigor desde 18/11/2026.
  *
- * Filosofia travada pelo dono (04/08): "confirmação com custo declarado" —
- * dia lotado (7ª vaga = 3 dias) e estouro de cota NÃO bloqueiam, mas o
- * usuário só confirma vendo o custo. O que bloqueia de fato é prazo:
- *  - marcar: dia corrente/passado já está em escala publicada;
- *  - desmarcar: "férias marcadas não poderão ser desmarcadas após a escala
- *    do dia sair à noite (no dia anterior)" — logo, véspera também trava.
- * Os mesmos prazos são reavaliados no servidor (RLS de ferias_movimentacoes):
- * o relógio do device é manipulável.
+ * Seção 9 do documento: o app TRAVA o que descumpre uma regra [TRAVA],
+ * mostra o código e o motivo, e só aceita as exceções previstas. Duas
+ * camadas:
+ *  - por DIA (avaliarMarcacaoDia): o que se decide olhando um dia só — prazo,
+ *    FDS, feriado (V-11), cota do ano (V-05), teto do semestre (V-02), julho
+ *    escolar só para quem tem filho até 2 meses antes (V-13);
+ *  - pela SELEÇÃO inteira (montarResumoConfirmacao): o motor de regras roda
+ *    no estado depois da seleção e as violações NOVAS desta pessoa que são
+ *    [TRAVA] viram bloqueio (semanas cheias, segundas/sextas isoladas, meses
+ *    nobres, semana com feriado, 1º ano).
+ * Dia com as 6 vagas ocupadas NÃO trava: a marcação entra como CANDIDATA
+ * (V-10/V-33), sem custo agora, e o comitê é avisado.
+ * Prazos também são reavaliados no servidor (RLS de ferias_movimentacoes).
  *
  * Sem I/O; o "hoje" entra por parâmetro.
  */
 
-import { construirExtrato, ehFimDeSemana } from './extratoFerias'
-import { avaliarRegras, MAX_VAGAS_DIA } from './extratoFeriasRegras'
+import { construirExtrato, ehFimDeSemana, segundaDaSemana } from './extratoFerias'
+import {
+  avaliarRegras, MAX_VAGAS_DIA, REGRAS_TRAVA, REGRA_CODIGO, REGRA_LABEL, mesesAntes,
+  ehQuinzenaNobreFimDeAno,
+} from './extratoFeriasRegras'
 import { aplicarMovimentacoes, chaveDia } from './feriasMovimentacoes'
+import { semestreDe, metadesDaCota } from './feriasSemestre'
+import { ehSemanaEscolarJulho, congressoNoDia } from './feriasCalendario'
 
+/** Custo de quem FICA com a vaga além das 6 fora dos períodos sem perda (V-10) — decidido pelo comitê. */
 export const CUSTO_SETIMA_VAGA = 3
 
 /**
@@ -38,65 +50,92 @@ function somarDiasISO(iso, n) {
 }
 
 /**
+ * Limites da pessoa para a marcação, já com a seleção pendente somada (sem
+ * isso dava para furar o teto marcando vários dias antes de confirmar).
+ * @returns {{cota, usadosAno, maxSemestre, semestreLivre, usados:{S1,S2}, temFilho:boolean|null, listaFilhos:boolean}}
+ */
+export function limitesDaPessoa({ pessoa, pendentes = [], socios = [] }) {
+  if (!pessoa) return null
+  const { maxSemestre, semestreLivre } = metadesDaCota(pessoa.cota)
+  const penal = pessoa.penalidades || []
+  const usados = { S1: 0, S2: 0 }
+  for (const d of pessoa.diasContaveis || []) usados[semestreDe(d)] += 1
+  for (const p of penal) usados[semestreDe(p.data)] += p.diasExtras || 0
+  for (const d of pendentes) usados[semestreDe(d)] += 1
+  return {
+    cota: pessoa.cota,
+    usadosAno: (pessoa.diasEfetivos ?? pessoa.diasContados) + pendentes.length,
+    maxSemestre,
+    semestreLivre,
+    usados,
+    temFilho: pessoa.filhosIdadeEscolar ?? null,
+    // V-13 só trava quando o comitê já cadastrou quem tem filho.
+    listaFilhos: socios.some((s) => s.filhosIdadeEscolar === true),
+  }
+}
+
+/** Como o comitê decide o candidato acima das 6 vagas, conforme o período. */
+export function textoCandidato(data) {
+  if (ehQuinzenaNobreFimDeAno(data)) {
+    return `Dia com as ${MAX_VAGAS_DIA} vagas ocupadas: você entra como candidato. O comitê decide por sorteio ou pelo histórico, e quem fica não perde dias (V-33).`
+  }
+  if (ehSemanaEscolarJulho(data)) {
+    return `Dia com as ${MAX_VAGAS_DIA} vagas ocupadas: você entra como candidato. O comitê decide com preferência a quem tem filho em idade escolar, sem perda de dias (V-13).`
+  }
+  return `Dia com as ${MAX_VAGAS_DIA} vagas ocupadas: você entra como candidato, só em extrema necessidade. O comitê decide; quem ficar com a vaga perde ${CUSTO_SETIMA_VAGA} dias, e quem não ficar não paga nada (V-10).`
+}
+
+/**
  * Pode marcar este dia?
  *
- * `semestre` (opcional) liga o TETO do 2º semestre: dono 19/08 — "não deve
- * ser possível marcar mais da metade das férias no segundo semestre".
- * Diferente de dia lotado e de estouro de cota (que só declaram custo),
- * esse é BLOQUEIO: a regra do grupo não admite o dia, então não há custo a
- * confirmar. `usadosS2` já vem com a seleção pendente somada, senão dava
- * para furar o teto marcando vários dias antes de confirmar. Cota do 1º ano
- * é livre entre os semestres → a view não passa `semestre`.
- *
- * @param {{corte:string, maxS2:number, usadosS2:number}} [semestre]
+ * @param {object} [limites] saída de limitesDaPessoa (null = sem trava de cota/semestre)
+ * @param {boolean} [socioNoAno] false quando o sócio não está na lista do ano (ex.: saiu do grupo)
  * @returns {{ok:boolean, bloqueio?:{tipo,msg}, avisos:Array<{tipo,msg,custoDias?}>, custoDias:number}}
  */
-export function avaliarMarcacaoDia({ data, nome, porDia = new Map(), estadoPorDia = new Map(), hojeISO, feriados = new Set(), semestre = null }) {
+export function avaliarMarcacaoDia({ data, nome, porDia = new Map(), estadoPorDia = new Map(), hojeISO, feriados = new Set(), limites = null, socioNoAno = true }) {
   const vazio = { avisos: [], custoDias: 1 }
-  if (ehFimDeSemana(data)) {
-    return { ok: false, bloqueio: { tipo: 'FDS', msg: 'Férias contam só em dias úteis.' }, ...vazio }
+  const trava = (tipo, msg) => ({ ok: false, bloqueio: { tipo, msg }, ...vazio })
+
+  if (ehFimDeSemana(data)) return trava('FDS', 'Férias contam só em dias úteis.')
+  if (data <= hojeISO) return trava('PASSADO', 'A escala deste dia já saiu — só é possível marcar a partir de amanhã.')
+  if (estadoPorDia.get(chaveDia(nome, data))) return trava('JA_MARCADO', 'Você já tem férias neste dia.')
+  if (!socioNoAno) return trava('FORA_DO_GRUPO', `Você não está na lista de sócios de ${data.slice(0, 4)}.`)
+  if (feriados.has(data)) {
+    return trava('FERIADO', 'V-11: ninguém marca férias no dia do feriado. Marque os outros dias da semana — tirando a semana toda, o feriado não conta.')
   }
-  if (data <= hojeISO) {
-    return {
-      ok: false,
-      bloqueio: { tipo: 'PASSADO', msg: 'A escala deste dia já saiu — só é possível marcar a partir de amanhã.' },
-      ...vazio,
+  if (limites) {
+    if (limites.usadosAno >= limites.cota) {
+      return trava('COTA', `V-05: sua cota de ${limites.cota} dias já está completa. Adiantamento só com aprovação do comitê de escalas.`)
     }
-  }
-  if (estadoPorDia.get(chaveDia(nome, data))) {
-    return { ok: false, bloqueio: { tipo: 'JA_MARCADO', msg: 'Você já tem férias neste dia.' }, ...vazio }
-  }
-  if (semestre && data > semestre.corte && semestre.usadosS2 >= semestre.maxS2) {
-    return {
-      ok: false,
-      bloqueio: {
-        tipo: 'METADE_SEGUNDO_SEMESTRE',
-        msg: `Regra do grupo: no máximo ${semestre.maxS2} dias no 2º semestre (metade da cota) — você já está com ${semestre.usadosS2}.`,
-      },
-      ...vazio,
+    const sem = semestreDe(data)
+    if (!limites.semestreLivre && limites.usados[sem] >= limites.maxSemestre) {
+      return trava('SEMESTRE', `V-02: no máximo ${limites.maxSemestre} dias no ${sem === 'S1' ? '1º' : '2º'} semestre (metade da cota) — você já está com ${limites.usados[sem]}.`)
+    }
+    if (limites.listaFilhos && limites.temFilho !== true && ehSemanaEscolarJulho(data)) {
+      const abre = mesesAntes(segundaDaSemana(data), 2)
+      if (hojeISO < abre) {
+        return trava('JULHO_ESCOLAR', `V-13: nas semanas escolares de julho, até ${abre.split('-').reverse().join('/')} só marca quem tem filho em idade escolar. Depois disso, havendo vaga, qualquer sócio marca.`)
+      }
     }
   }
 
   const avisos = []
-  let custoDias = 1
-
   const ocupacao = porDia.get(data)?.length || 0
   if (ocupacao >= MAX_VAGAS_DIA) {
-    custoDias = CUSTO_SETIMA_VAGA
-    avisos.push({
-      tipo: 'SETIMA_VAGA',
-      msg: `Dia com as ${MAX_VAGAS_DIA} vagas ocupadas — usar a ${MAX_VAGAS_DIA + 1}ª vaga custa ${CUSTO_SETIMA_VAGA} dias de férias.`,
-      custoDias: CUSTO_SETIMA_VAGA,
-    })
+    avisos.push({ tipo: 'CANDIDATO', msg: textoCandidato(data) })
   }
   if (data === somarDiasISO(hojeISO, 1)) {
-    avisos.push({ tipo: 'VESPERA', msg: 'É a véspera: a escala de amanhã sai hoje à noite e, depois disso, este dia não poderá mais ser desmarcado.' })
+    avisos.push({ tipo: 'VESPERA', msg: 'É a véspera: a escala de amanhã sai hoje à noite e, depois disso, este dia não poderá mais ser desmarcado (V-27).' })
   }
-  if (feriados.has(data)) {
-    avisos.push({ tipo: 'FERIADO', msg: 'É feriado — só não conta como dia de férias se você pegar a semana inteira.' })
+  const congresso = congressoNoDia(data)
+  if (congresso) {
+    avisos.push({
+      tipo: 'CONGRESSO',
+      msg: `Período de ${congresso.nome}. Indo ao evento, até 2 dias por ano não descontam da cota mediante comprovante (V-22) — avise o comitê de escalas para registrar.`,
+    })
   }
 
-  return { ok: true, avisos, custoDias }
+  return { ok: true, avisos, custoDias: 1 }
 }
 
 /**
@@ -159,13 +198,63 @@ export function montarResumoConfirmacao({
 
   const efetivosDepois = aplicarMovimentacoes(registrosPP, [...movimentacoes, ...provisorias])
   const extratoDepois = construirExtrato({ registros: efetivosDepois, ano, socios, feriados })
-  const violacoesDepois = avaliarRegras(extratoDepois, { feriados })
+  const violacoesDepois = avaliarRegras(extratoDepois, { feriados, hojeISO })
 
-  const idsAtuais = new Set(violacoesAtuais.map((v) => v.id))
-  const avisosNovos = violacoesDepois.filter((v) => !idsAtuais.has(v.id))
-
+  // Diff contra o estado ANTES calculado aqui mesmo (mesmo motor, mesma
+  // config) — comparar com as violações da página misturaria versões.
   const efetivosAntes = aplicarMovimentacoes(registrosPP, movimentacoes)
   const extratoAntes = construirExtrato({ registros: efetivosAntes, ano, socios, feriados })
+  const violacoesAntes = avaliarRegras(extratoAntes, { feriados, hojeISO })
+  const idsAtuais = new Set([...violacoesAntes, ...violacoesAtuais].map((v) => v.id))
+  const novas = violacoesDepois.filter((v) => !idsAtuais.has(v.id))
+
+  // TRAVA (seção 9): violação nova, da própria pessoa, de regra [TRAVA].
+  // Exceção da V-07: a 3ª segunda/sexta isolada vale na semana vigente — vira
+  // aviso ao comitê em vez de bloqueio.
+  const semanaVigente = segundaDaSemana(hojeISO)
+  const tudoNaSemanaVigente = marcar.length > 0 && marcar.every((d) => segundaDaSemana(d) === semanaVigente)
+  const bloqueios = []
+  const avisosNovos = []
+  for (const v of novas) {
+    const ehTrava = REGRAS_TRAVA.has(v.regra) && v.pessoa === nome &&
+      !(v.regra === 'SEG_SEX_ISOLADA' && tudoNaSemanaVigente)
+    if (ehTrava) bloqueios.push({ ...v, codigo: REGRA_CODIGO[v.regra], label: REGRA_LABEL[v.regra] })
+    else avisosNovos.push(v)
+  }
+
+  // Desistência (V-25/V-32): o que se desmarca de semana em mês nobre ou de
+  // semana cheia com feriado. Olha o estado ANTES (a semana que existia).
+  const pessoaAntesCheias = new Map(
+    (extratoAntes.porPessoa.find((p) => p.nome === nome)?.semanas || [])
+      .filter((sem) => sem.inteira)
+      .map((sem) => [sem.segunda, sem])
+  )
+  const avisosDesmarcar = []
+  for (const data of desmarcar) {
+    const semana = pessoaAntesCheias.get(segundaDaSemana(data))
+    if (!semana) continue
+    if (semana.comFeriado) {
+      if (hojeISO > mesesAntes(semana.segunda, 2)) {
+        avisosDesmarcar.push({
+          data,
+          tipo: 'DESISTENCIA_FERIADO',
+          msg: 'V-32: desmarcar semana cheia com feriado com menos de 2 meses de antecedência desconta 1 dia da sua cota. O comitê de escalas registra.',
+        })
+      }
+      continue
+    }
+    const nobre = ehQuinzenaNobreFimDeAno(data) || ehSemanaEscolarJulho(data)
+    if (nobre && hojeISO > mesesAntes(semana.segunda, 1)) {
+      bloqueios.push({
+        id: `desistencia:${data}`,
+        regra: 'DESISTENCIA_NOBRE',
+        codigo: 'V-25',
+        label: 'Desistência fora do prazo',
+        pessoa: nome,
+        detalhe: `${data.split('-').reverse().join('/')}: semana em período nobre só pode ser desmarcada até 1 mês antes. Depois disso os dias contam igual.`,
+      })
+    }
+  }
   const pessoaAntes = extratoAntes.porPessoa.find((p) => p.nome === nome)
   const pessoaDepois = extratoDepois.porPessoa.find((p) => p.nome === nome)
 
@@ -181,7 +270,14 @@ export function montarResumoConfirmacao({
   const diasDepois = (pessoaDepois?.diasContados ?? 0) + penalidadeAtual + custoDeclaradoExtra
   const cota = pessoaDepois?.cota ?? pessoaAntes?.cota ?? 0
 
+  for (const a of avisosDesmarcar) {
+    const linha = linhas.find((l) => l.acao === 'desmarcar' && l.data === a.data)
+    if (linha) linha.avisos.push({ tipo: a.tipo, msg: a.msg })
+  }
+
   return {
+    bloqueios,
+    candidaturas: linhas.filter((l) => l.avisos.some((a) => a.tipo === 'CANDIDATO')).map((l) => l.data),
     linhas,
     saldoAntes: (pessoaAntes?.cota ?? cota) - diasAntes,
     saldoDepois: cota - diasDepois,

@@ -33,6 +33,8 @@ export const LIBS_FERIAS = [
   'feriasSocios.js',
   'feriasFeriados.js',
   'feriasAnalise.js', // penalidade da 7ª vaga — entra no saldo da tela
+  'feriasSemestre.js', // teto por semestre e semanas cheias — usado pelo motor de regras (18/11)
+  'feriasCalendario.js', // julho escolar e congressos — usado pelo motor de regras (18/11)
 ]
 
 const NOMES = new Set(LIBS_FERIAS.map((f) => f.replace(/\.js$/, '')))

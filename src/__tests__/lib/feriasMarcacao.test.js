@@ -1,12 +1,12 @@
 /**
- * Validação/simulação da marcação: prazos (bloqueios duros), custo da 7ª
- * vaga, avisos e o resumo de confirmação (saldo antes/depois + violações
- * NOVAS). Filosofia: só prazo bloqueia; custo e cota confirmam.
+ * Validação/simulação da marcação — regras 2026/27 (desde 18/11/2026): o app
+ * TRAVA o que descumpre regra [TRAVA] (por dia e pela seleção inteira) e o
+ * dia lotado vira CANDIDATO, sem custo agora (V-10).
  */
 import { describe, it, expect } from 'vitest'
 import {
   hojeLocalISO, avaliarMarcacaoDia, avaliarDesmarcacaoDia,
-  montarResumoConfirmacao, montarMovimentacoesParaInsert, CUSTO_SETIMA_VAGA,
+  montarResumoConfirmacao, montarMovimentacoesParaInsert, limitesDaPessoa,
 } from '../../lib/feriasMarcacao'
 import { chaveDia } from '../../lib/feriasMovimentacoes'
 import { getFeriados } from '../../lib/feriasFeriados'
@@ -48,12 +48,18 @@ describe('avaliarMarcacaoDia — bloqueios e avisos', () => {
     expect(avaliarMarcacaoDia({ ...base, data: '2026-09-10', estadoPorDia }).bloqueio.tipo).toBe('JA_MARCADO')
   })
 
-  it('dia com 6 vagas: permitido, custo 3 declarado', () => {
+  it('V-10: dia com 6 vagas aceita como CANDIDATO, sem custo agora', () => {
     const porDia = new Map([['2026-09-10', ['A', 'B', 'C', 'D', 'E', 'F']]])
     const r = avaliarMarcacaoDia({ ...base, data: '2026-09-10', porDia })
     expect(r.ok).toBe(true)
-    expect(r.custoDias).toBe(CUSTO_SETIMA_VAGA)
-    expect(r.avisos.find((a) => a.tipo === 'SETIMA_VAGA')).toBeTruthy()
+    expect(r.custoDias).toBe(1)
+    expect(r.avisos.find((a) => a.tipo === 'CANDIDATO').msg).toContain('V-10')
+  })
+
+  it('V-33: na 2ª quinzena de dezembro o candidato não perde dias', () => {
+    const porDia = new Map([['2026-12-17', ['A', 'B', 'C', 'D', 'E', 'F']]])
+    const r = avaliarMarcacaoDia({ ...base, data: '2026-12-17', porDia })
+    expect(r.avisos.find((a) => a.tipo === 'CANDIDATO').msg).toContain('V-33')
   })
 
   it('dia com 5 vagas: custo normal', () => {
@@ -61,38 +67,62 @@ describe('avaliarMarcacaoDia — bloqueios e avisos', () => {
     expect(avaliarMarcacaoDia({ ...base, data: '2026-09-10', porDia }).custoDias).toBe(1)
   })
 
-  it('feriado avisa sobre a regra da semana inteira', () => {
+  it('V-11: o dia do feriado não tem vaga — bloqueia', () => {
     const r = avaliarMarcacaoDia({ ...base, data: '2026-09-07' })
-    expect(r.avisos.map((a) => a.tipo)).toContain('FERIADO')
+    expect(r.ok).toBe(false)
+    expect(r.bloqueio.tipo).toBe('FERIADO')
+  })
+
+  it('sócio fora da lista do ano não marca', () => {
+    expect(avaliarMarcacaoDia({ ...base, data: '2026-09-10', socioNoAno: false }).bloqueio.tipo).toBe('FORA_DO_GRUPO')
+  })
+
+  it('período de congresso avisa sobre os 2 dias com comprovante (V-22)', () => {
+    const r = avaliarMarcacaoDia({ ...base, data: '2026-11-26', hojeISO: '2026-11-18' })
+    expect(r.avisos.map((a) => a.tipo)).toContain('CONGRESSO')
   })
 })
 
-describe('avaliarMarcacaoDia — teto do 2º semestre (dono 19/08)', () => {
-  const base = { nome: NOME, hojeISO: HOJE, feriados: FERIADOS }
-  // Cota 30 → metade 15. O corte é 30/06 (ninguém marcado com filhos em
-  // idade escolar hoje em feriasSocios.js).
-  const semestre = (usadosS2) => ({ corte: '2026-06-30', maxS2: 15, usadosS2 })
-
-  it('no teto, dia do 2º semestre é BLOQUEIO — não é custo a confirmar', () => {
-    const r = avaliarMarcacaoDia({ ...base, data: '2026-09-15', semestre: semestre(15) })
-    expect(r.ok).toBe(false)
-    expect(r.bloqueio.tipo).toBe('METADE_SEGUNDO_SEMESTRE')
-    expect(r.bloqueio.msg).toContain('15')
+describe('avaliarMarcacaoDia — teto do semestre e cota (V-02/V-05)', () => {
+  const base = { nome: NOME, hojeISO: '2026-03-02', feriados: FERIADOS }
+  const limites = (S1, S2, extra = {}) => ({
+    cota: 30, usadosAno: S1 + S2, maxSemestre: 15, semestreLivre: false, usados: { S1, S2 },
+    temFilho: null, listaFilhos: false, ...extra,
   })
 
-  it('abaixo do teto libera o mesmo dia', () => {
-    expect(avaliarMarcacaoDia({ ...base, data: '2026-09-15', semestre: semestre(14) }).ok).toBe(true)
+  it('no teto, o semestre BLOQUEIA — nos dois semestres', () => {
+    expect(avaliarMarcacaoDia({ ...base, data: '2026-09-15', limites: limites(0, 15) }).bloqueio.tipo).toBe('SEMESTRE')
+    expect(avaliarMarcacaoDia({ ...base, data: '2026-06-30', limites: limites(15, 0) }).bloqueio.tipo).toBe('SEMESTRE')
   })
 
-  it('o teto não alcança o 1º semestre — lá pode passar da metade', () => {
-    // 30/06 é o próprio corte: ainda é 1º semestre (hoje recuado para o dia
-    // ser futuro; senão o bloqueio de prazo responde antes)
-    const r = avaliarMarcacaoDia({ ...base, hojeISO: '2026-03-02', data: '2026-06-30', semestre: semestre(20) })
-    expect(r.ok).toBe(true)
+  it('abaixo do teto libera', () => {
+    expect(avaliarMarcacaoDia({ ...base, data: '2026-09-15', limites: limites(10, 14) }).ok).toBe(true)
   })
 
-  it('sem `semestre` (1º ano, cota livre) nada é bloqueado', () => {
-    expect(avaliarMarcacaoDia({ ...base, data: '2026-09-15' }).ok).toBe(true)
+  it('cota completa bloqueia (adiantamento só com o comitê)', () => {
+    const r = avaliarMarcacaoDia({ ...base, data: '2026-09-15', limites: { ...limites(15, 14), usadosAno: 30 } })
+    expect(r.bloqueio.tipo).toBe('COTA')
+    expect(r.bloqueio.msg).toContain('V-05')
+  })
+
+  it('V-13: com a lista de filhos cadastrada, julho escolar é só de quem tem filho até 2 meses antes', () => {
+    const lim = limites(0, 0, { listaFilhos: true, temFilho: false })
+    expect(avaliarMarcacaoDia({ ...base, data: '2026-07-27', limites: lim }).bloqueio.tipo).toBe('JULHO_ESCOLAR')
+    expect(avaliarMarcacaoDia({ ...base, data: '2026-07-27', limites: { ...lim, temFilho: true } }).ok).toBe(true)
+    // a partir de 2 meses antes da semana, qualquer sócio
+    expect(avaliarMarcacaoDia({ ...base, hojeISO: '2026-05-28', data: '2026-07-27', limites: lim }).ok).toBe(true)
+  })
+
+  it('sem lista de filhos cadastrada, julho não trava ninguém', () => {
+    expect(avaliarMarcacaoDia({ ...base, data: '2026-07-27', limites: limites(0, 0) }).ok).toBe(true)
+  })
+
+  it('limitesDaPessoa soma a seleção pendente no semestre certo', () => {
+    const pessoa = { cota: 30, diasContaveis: ['2026-03-02', '2026-09-01'], diasContados: 2, penalidades: [] }
+    const l = limitesDaPessoa({ pessoa, pendentes: ['2026-09-02', '2026-09-03'] })
+    expect(l.usados).toEqual({ S1: 1, S2: 3 })
+    expect(l.usadosAno).toBe(4)
+    expect(l.maxSemestre).toBe(15)
   })
 })
 
@@ -123,25 +153,74 @@ describe('montarResumoConfirmacao', () => {
     codigo: `c${i}`, nome: NOME, data, ehFimDeSemana: false,
   }))
 
-  it('saldo cai ao marcar e sobe ao desmarcar; custo extra da 7ª vaga é somado à parte', () => {
-    const porDia = new Map([['2026-09-10', ['A', 'B', 'C', 'D', 'E', 'F']]])
+  it('saldo cai ao marcar e sobe ao desmarcar; dia lotado vira candidatura sem custo extra', () => {
+    // semana 14–18/09 sem feriado (na de 07/09 o dia solto pagaria o feriado, V-19)
+    const porDia = new Map([['2026-09-17', ['A', 'B', 'C', 'D', 'E', 'F']]])
     const estadoPorDia = new Map([[chaveDia(NOME, '2026-03-02'), { codigo: 'c0', origem: 'pp' }]])
     const resumo = montarResumoConfirmacao({
       registrosPP,
       movimentacoes: [],
-      selecoes: { marcar: new Set(['2026-09-10', '2026-09-11']), desmarcar: new Set(['2026-03-02']) },
+      selecoes: { marcar: new Set(['2026-09-17', '2026-09-18']), desmarcar: new Set(['2026-03-02']) },
       nome: NOME, ano: 2026, socios, feriados: FERIADOS, hojeISO: HOJE,
       violacoesAtuais: [], estadoPorDia, porDia,
     })
     expect(resumo.totalMarcar).toBe(2)
     expect(resumo.totalDesmarcar).toBe(1)
     expect(resumo.diasAntes).toBe(3)
-    // +2 marcados, -1 desmarcado = 4 no calendário, mais os 2 dias extras da
-    // 7ª vaga, que o dono mandou DEBITAR (04/08): o resumo declara o efetivo
-    expect(resumo.diasDepois).toBe(6)
-    expect(resumo.saldoDepois).toBe(resumo.saldoAntes - 3)
-    expect(resumo.custoDeclaradoExtra).toBe(CUSTO_SETIMA_VAGA - 1) // só o dia lotado
-    expect(resumo.custoTotal).toBe(CUSTO_SETIMA_VAGA + 1)
+    expect(resumo.diasDepois).toBe(4)
+    expect(resumo.custoDeclaradoExtra).toBe(0)
+    expect(resumo.candidaturas).toEqual(['2026-09-17'])
+    expect(resumo.bloqueios).toEqual([])
+  })
+
+  it('seleção que quebra regra [TRAVA] vira BLOQUEIO com o código (seção 9)', () => {
+    // 6 dias avulsos no 2º semestre (cota 30 → 15, exige 2 semanas cheias → máx. 5 avulsos)
+    const avulsos = ['2026-09-01', '2026-09-15', '2026-09-22', '2026-09-29', '2026-10-06', '2026-10-20']
+    const resumo = montarResumoConfirmacao({
+      registrosPP: [], movimentacoes: [],
+      selecoes: { marcar: new Set(avulsos), desmarcar: new Set() },
+      nome: NOME, ano: 2026, socios, feriados: FERIADOS, hojeISO: HOJE,
+      violacoesAtuais: [], estadoPorDia: new Map(), porDia: new Map(),
+    })
+    const b = resumo.bloqueios.find((v) => v.regra === 'SEMANAS_INTEIRAS')
+    expect(b).toBeTruthy()
+    expect(b.codigo).toBe('V-06')
+    expect(resumo.bloqueios.every((v) => v.pessoa === NOME)).toBe(true)
+  })
+
+  it('V-07: a 3ª sexta isolada só passa na semana vigente', () => {
+    const tresSextas = ['2026-09-04', '2026-09-18', '2026-10-02']
+    const fora = montarResumoConfirmacao({
+      registrosPP: [], movimentacoes: [],
+      selecoes: { marcar: new Set(tresSextas), desmarcar: new Set() },
+      nome: NOME, ano: 2026, socios, feriados: FERIADOS, hojeISO: HOJE,
+      violacoesAtuais: [], estadoPorDia: new Map(), porDia: new Map(),
+    })
+    expect(fora.bloqueios.some((v) => v.regra === 'SEG_SEX_ISOLADA')).toBe(true)
+
+    // já tem 2 sextas isoladas; a 3ª é a sexta desta semana (hoje = terça 04/08)
+    const registrosPP2 = ['2026-08-21', '2026-09-04'].map((data, i) => ({ codigo: `s${i}`, nome: NOME, data, ehFimDeSemana: false }))
+    const vigente = montarResumoConfirmacao({
+      registrosPP: registrosPP2, movimentacoes: [],
+      selecoes: { marcar: new Set(['2026-08-07']), desmarcar: new Set() },
+      nome: NOME, ano: 2026, socios, feriados: FERIADOS, hojeISO: HOJE,
+      violacoesAtuais: [], estadoPorDia: new Map(), porDia: new Map(),
+    })
+    expect(vigente.bloqueios.some((v) => v.regra === 'SEG_SEX_ISOLADA')).toBe(false)
+    expect(vigente.avisosNovos.some((v) => v.regra === 'SEG_SEX_ISOLADA')).toBe(true)
+  })
+
+  it('V-25: desmarcar semana em mês nobre a menos de 1 mês bloqueia', () => {
+    const semanaJan = ['2027-01-04', '2027-01-05', '2027-01-06', '2027-01-07', '2027-01-08']
+    const regs = semanaJan.map((data, i) => ({ codigo: `j${i}`, nome: NOME, data, ehFimDeSemana: false }))
+    const estadoPorDia = new Map(semanaJan.map((d, i) => [chaveDia(NOME, d), { codigo: `j${i}`, origem: 'pp' }]))
+    const r = montarResumoConfirmacao({
+      registrosPP: regs, movimentacoes: [],
+      selecoes: { marcar: new Set(), desmarcar: new Set(['2027-01-08']) },
+      nome: NOME, ano: 2027, socios, feriados: getFeriados(2027), hojeISO: '2026-12-20',
+      violacoesAtuais: [], estadoPorDia, porDia: new Map(),
+    })
+    expect(r.bloqueios.map((v) => v.codigo)).toContain('V-25')
   })
 
   it('lista SÓ violações novas (não repete as pré-existentes)', () => {
@@ -154,17 +233,18 @@ describe('montarResumoConfirmacao', () => {
       nome: NOME, ano: 2026, socios, feriados: FERIADOS, hojeISO: HOJE,
       violacoesAtuais: [], estadoPorDia: new Map(), porDia: new Map(),
     })
-    expect(resumo.avisosNovos.some((v) => v.regra === 'SEMANAS_INTEIRAS')).toBe(true)
+    const novas = (r) => [...r.bloqueios, ...r.avisosNovos]
+    expect(novas(resumo).some((v) => v.regra === 'SEMANAS_INTEIRAS')).toBe(true)
 
     // com a mesma violação já listada como atual, ela não reaparece
-    const jaExistente = resumo.avisosNovos.filter((v) => v.regra === 'SEMANAS_INTEIRAS')
+    const jaExistente = novas(resumo).filter((v) => v.regra === 'SEMANAS_INTEIRAS')
     const resumo2 = montarResumoConfirmacao({
       registrosPP: [], movimentacoes: [],
       selecoes: { marcar: new Set(avulsos), desmarcar: new Set() },
       nome: NOME, ano: 2026, socios, feriados: FERIADOS, hojeISO: HOJE,
       violacoesAtuais: jaExistente, estadoPorDia: new Map(), porDia: new Map(),
     })
-    expect(resumo2.avisosNovos.some((v) => v.regra === 'SEMANAS_INTEIRAS')).toBe(false)
+    expect(novas(resumo2).some((v) => v.regra === 'SEMANAS_INTEIRAS')).toBe(false)
   })
 })
 
@@ -175,7 +255,7 @@ describe('montarMovimentacoesParaInsert', () => {
       [chaveDia(NOME, '2026-03-03'), { codigo: 'app:m1', origem: 'app' }],
     ])
     const resumo = {
-      linhas: [{ data: '2026-09-10', acao: 'marcar', custoDias: 3, avisos: [{ tipo: 'SETIMA_VAGA' }] }],
+      linhas: [{ data: '2026-09-10', acao: 'marcar', custoDias: 3, avisos: [{ tipo: 'CANDIDATO' }] }],
     }
     const rows = montarMovimentacoesParaInsert({
       selecoes: { marcar: new Set(['2026-09-10']), desmarcar: new Set(['2026-03-02', '2026-03-03']) },

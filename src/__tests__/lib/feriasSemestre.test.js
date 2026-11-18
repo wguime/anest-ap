@@ -1,6 +1,7 @@
 /**
- * Metades do ano — regra da metade da COTA por semestre (dono 19/08) e a
- * semana corrida do 1º ano. A fixture principal é o extrato REAL que o dono
+ * Metades do ano — regras 2026/27 (V-02/V-03, desde 18/11/2026): cada
+ * semestre aceita até a metade da cota ARREDONDADA PARA CIMA, corte 30/06
+ * para todos, e a semana do 1º ano (sem feriado). A fixture principal é o extrato REAL que o dono
  * mandou na captura de 19/08: 26 dias marcados, 7 no 1º semestre e 19 no 2º.
  */
 import { describe, it, expect } from 'vitest'
@@ -12,7 +13,8 @@ import {
   metadesDaCota,
   resumoSemestres,
   semanaCorridaPrimeiroAno,
-  vagasRestantesSegundoSemestre,
+  vagasRestantesNoSemestre,
+  semanasCheiasMinimas,
 } from '../../lib/feriasSemestre'
 
 const FERIADOS = getFeriados(2026)
@@ -54,28 +56,32 @@ const CAPTURA = [
   ...uteis('2026-10-19', 10),
 ]
 
-describe('metadesDaCota', () => {
+describe('metadesDaCota (V-02)', () => {
   it('cota par divide ao meio', () => {
-    expect(metadesDaCota(30)).toMatchObject({ minS1: 15, maxS2: 15, semestreLivre: false })
-    expect(metadesDaCota(20)).toMatchObject({ minS1: 10, maxS2: 10, semestreLivre: false })
+    expect(metadesDaCota(30)).toMatchObject({ maxSemestre: 15, semestreLivre: false })
+    expect(metadesDaCota(20)).toMatchObject({ maxSemestre: 10, semestreLivre: false })
   })
 
-  it('cota ímpar sobra para o 1º semestre — o 2º nunca passa da metade', () => {
-    // 35 dias (25+ anos de grupo): 17,5 → teto 17 no 2º, piso 18 no 1º
-    expect(metadesDaCota(35)).toMatchObject({ minS1: 18, maxS2: 17 })
-    expect(metadesDaCota(31)).toMatchObject({ minS1: 16, maxS2: 15 })
+  it('cota ímpar: cada semestre aceita a metade arredondada para cima (31 = 16 + 15 ou 15 + 16)', () => {
+    expect(metadesDaCota(31)).toMatchObject({ maxSemestre: 16 })
+    expect(metadesDaCota(35)).toMatchObject({ maxSemestre: 18 })
   })
 
   it('1º ano (5 dias) fica livre entre os semestres', () => {
-    expect(metadesDaCota(5)).toMatchObject({ minS1: 0, maxS2: 5, semestreLivre: true })
+    expect(metadesDaCota(5)).toMatchObject({ maxSemestre: 5, semestreLivre: true })
   })
 })
 
-describe('corteSemestre', () => {
-  it('30/06 por padrão; 31/07 com filhos em idade escolar', () => {
+describe('semanasCheiasMinimas (V-06)', () => {
+  it.each([[5, 1], [10, 1], [15, 2], [16, 2], [18, 2], [0, 0]])('%i dias no semestre → %i semana(s)', (dias, semanas) => {
+    expect(semanasCheiasMinimas(dias)).toBe(semanas)
+  })
+})
+
+describe('corteSemestre (V-03)', () => {
+  it('30/06 para todos — o corte de 31/07 para quem tem filhos acabou', () => {
     expect(corteSemestre({ ano: 2026 })).toBe('2026-06-30')
-    expect(corteSemestre({ ano: 2026, filhosIdadeEscolar: null })).toBe('2026-06-30')
-    expect(corteSemestre({ ano: 2026, filhosIdadeEscolar: true })).toBe('2026-07-31')
+    expect(corteSemestre({ ano: 2026, filhosIdadeEscolar: true })).toBe('2026-06-30')
   })
 })
 
@@ -88,10 +94,10 @@ describe('resumoSemestres — captura real do dono (cota 30)', () => {
     expect(resumo.s1.total + resumo.s2.total).toBe(26)
   })
 
-  it('acusa 8 dias faltando no piso do 1º semestre', () => {
-    expect(resumo.s1.minimo).toBe(15)
-    expect(resumo.s1.falta).toBe(8)
-    expect(resumo.s1.ok).toBe(false)
+  it('1º semestre não tem piso: 7 de 15 está dentro, cabem mais 8', () => {
+    expect(resumo.s1.maximo).toBe(15)
+    expect(resumo.s1.restante).toBe(8)
+    expect(resumo.s1.ok).toBe(true)
   })
 
   it('acusa 4 dias acima do teto do 2º semestre', () => {
@@ -111,11 +117,11 @@ describe('resumoSemestres — captura real do dono (cota 30)', () => {
 })
 
 describe('resumoSemestres — fronteira e casos permitidos', () => {
-  it('mais que a metade no 1º semestre é permitido (só o 2º tem teto)', () => {
+  it('mais que a metade no 1º semestre agora PASSA do teto (os dois semestres têm teto)', () => {
     const resumo = resumoSemestres(montar(uteis('2026-01-05', 20)), { ano: 2026, feriados: FERIADOS })
     expect(resumo.s1.total).toBe(20)
-    expect(resumo.s1.excedente).toBe(5)
-    expect(resumo.s1.ok).toBe(true)
+    expect(resumo.s1.excede).toBe(5)
+    expect(resumo.s1.ok).toBe(false)
     expect(resumo.s2.ok).toBe(true)
   })
 
@@ -128,14 +134,12 @@ describe('resumoSemestres — fronteira e casos permitidos', () => {
     expect(resumo.s2.periodos).toEqual([{ inicio: '2026-07-01', fim: '2026-07-03', diasUteis: 3 }])
   })
 
-  it('com filhos em idade escolar, julho ainda conta no 1º semestre', () => {
-    const dias = uteis('2026-07-06', 10)
-    const pessoa = montar(dias, { filhosIdadeEscolar: true })
+  it('com filhos em idade escolar, julho conta no 2º semestre como para todos', () => {
+    const pessoa = montar(uteis('2026-07-06', 10), { filhosIdadeEscolar: true })
     const resumo = resumoSemestres(pessoa, { ano: 2026, feriados: FERIADOS })
-    expect(resumo.corte).toBe('2026-07-31')
-    expect(resumo.prazoEstendido).toBe(true)
-    expect(resumo.s1.total).toBe(10)
-    expect(resumo.s2.total).toBe(0)
+    expect(resumo.corte).toBe('2026-06-30')
+    expect(resumo.s1.total).toBe(0)
+    expect(resumo.s2.total).toBe(10)
   })
 
   it('o dia extra da 7ª vaga conta no semestre em que caiu', () => {
@@ -173,11 +177,11 @@ describe('semana corrida do 1º ano (cota 5)', () => {
     ).toMatchObject({ cumprida: false, motivo: 'varias_semanas' })
   })
 
-  it('semana com feriado no meio continua sendo semana cheia', () => {
-    // 20/04 a 24/04 com 21/04 (Tiradentes) marcado: 4 dias contam, semana inteira
+  it('semana com feriado é cheia, mas no 1º ano só vale com aprovação do comitê (V-06)', () => {
+    // 20/04 a 24/04 com 21/04 (Tiradentes): 4 dias contam, semana inteira
     const pessoa = primeiroAno(uteis('2026-04-20', 5))
-    expect(semanaCorridaPrimeiroAno(pessoa)).toMatchObject({ cumprida: true })
     expect(pessoa.diasContados).toBe(4)
+    expect(semanaCorridaPrimeiroAno(pessoa, FERIADOS)).toMatchObject({ cumprida: false, motivo: 'com_feriado' })
   })
 
   it('a semana pode ficar inteira no 2º semestre sem violar teto', () => {
@@ -189,15 +193,15 @@ describe('semana corrida do 1º ano (cota 5)', () => {
   })
 })
 
-describe('vagasRestantesSegundoSemestre', () => {
-  it('conta o que ainda cabe no teto do 2º semestre', () => {
-    expect(vagasRestantesSegundoSemestre({ cota: 30, diasNoSegundo: 12 })).toBe(3)
-    expect(vagasRestantesSegundoSemestre({ cota: 30, diasNoSegundo: 15 })).toBe(0)
-    expect(vagasRestantesSegundoSemestre({ cota: 30, diasNoSegundo: 19 })).toBe(0)
+describe('vagasRestantesNoSemestre', () => {
+  it('conta o que ainda cabe no teto do semestre', () => {
+    expect(vagasRestantesNoSemestre({ cota: 30, diasNoSemestre: 12 })).toBe(3)
+    expect(vagasRestantesNoSemestre({ cota: 31, diasNoSemestre: 15 })).toBe(1)
+    expect(vagasRestantesNoSemestre({ cota: 30, diasNoSemestre: 19 })).toBe(0)
   })
 
   it('1º ano não tem teto de semestre', () => {
-    expect(vagasRestantesSegundoSemestre({ cota: 5, diasNoSegundo: 5 })).toBe(Infinity)
+    expect(vagasRestantesNoSemestre({ cota: 5, diasNoSemestre: 5 })).toBe(Infinity)
   })
 })
 
@@ -212,7 +216,7 @@ describe('linhaAnaliseSemestre — linha do export do grupo', () => {
     expect(a.s2Agendado).toBe(10)
     expect(a.s2Usufruido + a.s2Agendado).toBe(a.s2Total)
     // ASCII puro: o jsPDF engole o − tipográfico (viraria "1o sem. 8")
-    expect(a.situacao).toBe('faltam 8 no 1º · 4 a mais no 2º')
+    expect(a.situacao).toBe('4 a mais no 2º')
     // O − tipográfico some no PDF (WinAnsi) — nunca usar aqui
     expect(a.situacao).not.toMatch(/\u2212/)
   })

@@ -8,6 +8,7 @@ paths:
   - "src/lib/feriasAnalise.js"
   - "src/lib/feriasSocios.js"
   - "src/lib/feriasFeriados.js"
+  - "src/lib/feriasCalendario.js"
 description: Extrato de Férias — allowlist de acesso, metade da cota por semestre, marcação self-service append-only
 ---
 
@@ -15,6 +16,33 @@ description: Extrato de Férias — allowlist de acesso, metade da cota por seme
      1.603 linhas para o alvo oficial de <200. O texto abaixo está VERBATIM — nenhuma
      decisão do dono foi editada ou resumida. Esta rule carrega SÓ quando o Claude lê um
      arquivo que casa os `paths` acima. -->
+
+> ⚠️ **REGRAS NOVAS 2026-11-18 (dono: "valem a partir de agora e continuam em 2027"; dados de 2026
+> preservados).** Fonte: "Regras de Escalação – versão estruturada" do comitê de escalas (12/11),
+> seção 7, V-01…V-33 + respostas de 16/11. SUPERA o texto abaixo onde divergir:
+> - **Semestre (V-02/V-03):** os DOIS semestres têm teto = `ceil(cota/2)`; corte 30/06 para TODOS
+>   (acabou o 31/07 de quem tem filho e o piso do 1º). `metadesDaCota` → `{maxSemestre, semestreLivre}`.
+> - **7ª vaga (V-10/V-33):** não existe — acima de 6 é CANDIDATO, sem custo na hora, aviso ao comitê de
+>   escalas (`buildCandidatoNotificationPayload`). Penalidade automática de 3 dias só para o que foi
+>   marcado ANTES de `DATA_REGRAS_NOVAS` ('2026-11-18'). Peri-recesso não proíbe mais nada.
+> - **Feriado (V-11/V-19):** não se marca o dia do feriado (trava); semana parcial PAGA o feriado mesmo
+>   sem marcá-lo (`contarDias`); semana inteira não paga.
+> - **Travas (seção 9):** por dia em `avaliarMarcacaoDia` (FDS, prazo, feriado, cota V-05, semestre V-02,
+>   julho V-13 quando a lista de filhos existir, sócio fora do ano) + pela seleção em
+>   `montarResumoConfirmacao` → `bloqueios` (regras em `REGRAS_TRAVA`, com `REGRA_CODIGO`). V-25 trava
+>   desistência de semana nobre < 1 mês. Motor: 9 regras (`extratoFeriasRegras.js`), ids antigos mantidos.
+> - **Marcação aberta a TODOS os sócios** (`EMAIL_TO_SOCIO` com os 46 + SQL `ferias_nome_socio()` migration
+>   `20261118120000` + espelho na edge api-v1 — paridade testada). Comitê de escalas = `EMAILS_COMITE_ESCALAS`
+>   (João Ricardo coordena, Aline, Oscar, Alexandre Schmidt), também em `EMAILS_ALERTAS_FERIAS`.
+> - **Dados:** `SOCIOS_FERIAS[2027]` com `cota` INFORMADA (COTAS_FERIAS_2027.pdf; Rômulo saiu; "NOVO 1–4"
+>   entram quando o dono mandar os nomes); `calcularCota` soma +1 só DEPOIS do 25º ano (2026 congelado:
+>   Vicente 35). Feriados 2027, recessos 23/12/26–02/01/27 e 24/12/27–02/01/28. `feriasCalendario.js`:
+>   julho escolar (rede estadual SC até as particulares de Chapecó publicarem) e congressos (CBA/COPA/TSA).
+> - **Alertas julgam 2026 INTEIRO** (dono 18/11: "quero que os alertas já sejam contabilizados agora em
+>   2026") — `avaliarRegras` sem corte por padrão (`config.desde` opcional). Só o CUSTO (feriado pago,
+>   penalidade da 7ª vaga) segue `DATA_REGRAS_NOVAS`, para não mexer em saldo de férias já tiradas.
+> - **Fase 2 (não feita):** telas do comitê (decidir candidatos, adiantamento, congresso com asterisco +
+>   comprovante, penalidade V-30/V-32, licenças, cadastro de filhos), via protótipo antes de `src/`.
 
 > ⚠️ **Atualização 2026-09-11 (dono): a LEITURA do extrato abriu a todo anestesiologista.**
 > `podeVerExtratoFerias` = `normalizeRole(user.role) === 'anestesiologista'` (sem admin, sem

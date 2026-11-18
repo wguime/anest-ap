@@ -50,7 +50,7 @@ import MarcarFeriasView from './MarcarFeriasView'
 import RegrasFeriasSheet from './RegrasFeriasSheet'
 import { getSocios } from '@/lib/feriasSocios'
 import { getFeriados, FERIADOS_UTEIS } from '@/lib/feriasFeriados'
-import { avaliarRegras, REGRA_LABEL, MAX_VAGAS_DIA } from '@/lib/extratoFeriasRegras'
+import { avaliarRegras, REGRA_LABEL, MAX_VAGAS_DIA, DATA_REGRAS_NOVAS } from '@/lib/extratoFeriasRegras'
 
 const fmtBr = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
 // espelha o TTL do cache de getFeriasDoAno (pegaPlantaoApi)
@@ -239,7 +239,10 @@ function AlertasSheet({ open, onOpenChange, violacoes, ultimosPorDia = new Map()
                             <span className="text-foreground/90">{v.detalhe}</span>
                           )}
                           {v.regra === 'MAX_POR_DIA' && (
-                            ultimo?.confiavel ? (
+                            // Regras novas (18/11): acima das 6 é candidato; a
+                            // penalidade automática fica só para o que foi
+                            // marcado antes.
+                            ultimo?.confiavel && ultimo.vistoEm < DATA_REGRAS_NOVAS ? (
                               <>
                                 <p className="mt-0.5 text-[12px] font-medium text-destructive">
                                   Último a marcar: {ultimo.nomeCompleto} (marcado em {fmtBr(ultimo.vistoEm)})
@@ -248,6 +251,10 @@ function AlertasSheet({ open, onOpenChange, violacoes, ultimosPorDia = new Map()
                                   Penalidade da 7ª vaga: conta 3 dias de férias em vez de 1 (+2).
                                 </p>
                               </>
+                            ) : ultimo?.confiavel ? (
+                              <p className="mt-0.5 text-[12px] text-muted-foreground">
+                                Quem passou das 6 vagas é candidato: o comitê de escalas decide quem fica (V-10).
+                              </p>
                             ) : (
                               <p className="mt-0.5 text-[12px] text-muted-foreground">
                                 Ordem de marcação desconhecida — não há como apontar quem usou a 7ª vaga.
@@ -321,38 +328,18 @@ function TabelaColetiva({ extrato, onSelectPessoa }) {
 }
 
 /**
- * Um semestre do extrato individual: cabeçalho com o que a regra pede, a
- * barra até esse número e os períodos daquela metade do ano.
+ * Um semestre do extrato individual: cabeçalho com o teto da regra, a barra
+ * até ele e os períodos daquela metade do ano.
  *
- * O piso do 1º semestre e o TETO do 2º são a mesma metade da cota vista dos
- * dois lados (dono 19/08) — por isso a barra é sempre "total ÷ exigência",
- * mudando só a cor e a frase de status.
+ * Regras 2026/27 (V-02): os dois semestres têm o MESMO teto — metade da cota
+ * arredondada para cima — e o dia não usado no semestre é perdido (V-03).
  */
 function BlocoSemestre({ lado, agendados, usufruidos, linhaPeriodo, semestreLivre }) {
-  const ehPrimeiro = lado.chave === 's1'
-  const alvo = ehPrimeiro ? lado.minimo : lado.maximo
-  const variante = semestreLivre
-    ? 'default'
-    : ehPrimeiro
-      ? (lado.ok ? 'success' : 'warning')
-      : (lado.excede > 0 ? 'error' : 'success')
+  const alvo = lado.maximo
+  const variante = semestreLivre ? 'default' : lado.excede > 0 ? 'error' : 'success'
 
   const status = (() => {
     if (semestreLivre) return null
-    if (ehPrimeiro) {
-      if (!lado.ok) {
-        return {
-          tom: 'text-warning',
-          texto: `faltam ${lado.falta} dia${lado.falta !== 1 ? 's' : ''} para a metade obrigatória — o que não for usufruído no semestre é perdido`,
-        }
-      }
-      return {
-        tom: 'text-muted-foreground',
-        texto: lado.excedente > 0
-          ? `metade cumprida · ${lado.excedente} dia${lado.excedente !== 1 ? 's' : ''} além dela (permitido)`
-          : 'metade cumprida',
-      }
-    }
     if (lado.excede > 0) {
       return {
         tom: 'text-destructive',
@@ -374,7 +361,7 @@ function BlocoSemestre({ lado, agendados, usufruidos, linhaPeriodo, semestreLivr
           {lado.label}
           {!semestreLivre && (
             <span className="ml-1.5 font-medium normal-case tracking-normal text-muted-foreground">
-              {ehPrimeiro ? `mín. ${alvo}` : `máx. ${alvo}`}
+              {`máx. ${alvo}`}
             </span>
           )}
         </p>
@@ -575,9 +562,8 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO, ano, feriados, penalida
           <p className="text-xs font-semibold uppercase tracking-wide text-primary">Extrato por semestre</p>
           <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
             {semestres.semestreLivre
-              ? 'No 1º ano a semana pode ficar no semestre que você quiser, mas tem de ser corrida — de segunda a sexta, sem fracionar.'
-              : `Metade da cota (${semestres.s1.minimo} dias) até ${fmtBr(semestres.corte)}; o 2º semestre nunca passa da metade.`}
-            {semestres.prazoEstendido && ' Prazo estendido a 31/07 por filhos em idade escolar.'}
+              ? 'No 1º ano a semana pode ficar no semestre que você quiser: os 5 dias são uma semana de segunda a sexta sem feriado (semana com feriado só com aprovação do comitê).'
+              : `Cada semestre aceita até ${semestres.s1.maximo} dias (metade da cota). Os dias do 1º semestre são usados até ${fmtBr(semestres.corte)}, os do 2º até 31/12 — o que não for usado no semestre é perdido.`}
           </p>
 
           {/* 1º ano: a exigência é a semana corrida, não a divisão por semestre */}
@@ -593,7 +579,9 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO, ano, feriados, penalida
                 ? 'Semana corrida de segunda a sexta — regra do 1º ano cumprida.'
                 : semestres.primeiroAno.motivo === 'varias_semanas'
                   ? `Marcação partida em ${semestres.primeiroAno.semanas} semanas — no 1º ano os 5 dias têm de ser corridos, numa semana só, de segunda a sexta.`
-                  : 'No 1º ano os 5 dias têm de ser corridos, numa semana só, de segunda a sexta — sem fracionar.'}
+                  : semestres.primeiroAno.motivo === 'com_feriado'
+                    ? 'Semana com feriado — no 1º ano ela só vale com aprovação do comitê de escalas.'
+                    : 'No 1º ano os 5 dias têm de ser corridos, numa semana só, de segunda a sexta — sem fracionar.'}
             </p>
           )}
 
@@ -841,8 +829,8 @@ export default function ExtratoFeriasPage({ goBack }) {
   // `extrato` — avaliando `extratoBase`, quem estourava a cota só por causa da
   // penalidade não gerava alerta nenhum.
   const violacoes = useMemo(
-    () => (extrato ? avaliarRegras(extrato, { feriados }) : []),
-    [extrato, feriados]
+    () => (extrato ? avaliarRegras(extrato, { feriados, hojeISO }) : []),
+    [extrato, feriados, hojeISO]
   )
 
   // ─── Notificação agregada (violações NOVAS; 1/dia; só p/ quem tem acesso) ──
@@ -984,23 +972,23 @@ export default function ExtratoFeriasPage({ goBack }) {
       const somaSem = (campo) => analise.reduce((acc, a) => acc + a[campo], 0)
       const wsSem = XLSX.utils.aoa_to_sheet([
         [`Distribuição por semestre — ${ano}`],
-        ['Metade da cota até 30/06 (mínimo do 1º semestre); o 2º semestre nunca passa da outra metade (máximo).'],
-        ['Cota de 5 dias (1º ano) escolhe o semestre, mas a semana tem de ser corrida — de segunda a sexta.'],
+        ['Cada semestre aceita até a metade da cota, arredondada para cima (V-02); o 1º vai até 30/06 e o 2º até 31/12, e o dia não usado no semestre é perdido.'],
+        ['Cota de 5 dias (1º ano) escolhe o semestre: uma semana de segunda a sexta, sem feriado.'],
         ['Os totais já incluem os dias extras da 7ª vaga no semestre em que caíram.'],
         [],
         // Mesma tripla nos dois semestres (já tirou + ainda vai tirar + 7ª
         // vaga = total): sem a coluna da penalidade a soma da linha não fecha
         // e o leitor procura um erro que não existe.
         ['Sócio', 'Cota',
-          '1º sem. devia (mínimo)', '1º sem. já tirou', '1º sem. ainda vai tirar', '1º sem. 7ª vaga',
-          '1º sem. total', '1º sem. EM FALTA',
+          '1º sem. podia (máximo)', '1º sem. já tirou', '1º sem. ainda vai tirar', '1º sem. 7ª vaga',
+          '1º sem. total', '1º sem. DIAS A MAIS',
           '2º sem. podia (máximo)', '2º sem. já tirou', '2º sem. ainda vai tirar', '2º sem. 7ª vaga',
           '2º sem. total', '2º sem. DIAS A MAIS',
           'Total no ano', 'Saldo da cota', 'Situação'],
         ...analise.map((a) => [
           a.nomeCompleto, a.cota,
-          a.semestreLivre ? 'livre' : a.s1Minimo, a.s1Usufruido, a.s1Agendado, a.s1Penalidade,
-          a.s1Total, a.semestreLivre ? 'livre' : a.s1Falta,
+          a.semestreLivre ? 'livre' : a.s1Maximo, a.s1Usufruido, a.s1Agendado, a.s1Penalidade,
+          a.s1Total, a.semestreLivre ? 'livre' : a.s1Excede,
           a.semestreLivre ? 'livre' : a.s2Maximo, a.s2Usufruido, a.s2Agendado, a.s2Penalidade,
           a.s2Total, a.semestreLivre ? 'livre' : a.s2Excede,
           a.total, a.saldo, a.situacao,
@@ -1011,8 +999,8 @@ export default function ExtratoFeriasPage({ goBack }) {
           '', somaSem('s2Usufruido'), somaSem('s2Agendado'), somaSem('s2Penalidade'), somaSem('s2Total'), '',
           somaSem('total')],
         [],
-        [`${analise.filter((a) => a.s2Excede > 0).length} acima do máximo do 2º semestre · ` +
-          `${analise.filter((a) => a.s1Falta > 0).length} abaixo do mínimo do 1º · ` +
+        [`${analise.filter((a) => a.s1Excede > 0).length} acima do máximo do 1º semestre · ` +
+          `${analise.filter((a) => a.s2Excede > 0).length} acima do máximo do 2º · ` +
           `${analise.filter((a) => a.semestreLivre && a.situacao !== 'Semana corrida').length} do 1º ano com a semana fracionada`],
       ])
       wsSem['!cols'] = [34, 6, 20, 16, 21, 15, 13, 17, 20, 16, 21, 15, 13, 19, 12, 13, 30]

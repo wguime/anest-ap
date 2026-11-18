@@ -79,12 +79,17 @@ describe('calcularCota — fronteiras da progressão', () => {
     [2024, 20],  // 3º ano
     [2023, 30],  // 4º ano
     [2002, 30],  // 24 anos
-    [2001, 31],  // 25 anos → +1
-    [2000, 32],  // 26 anos → +2
-    [1997, 35],  // 29 anos → +5 (teto)
+    [2001, 30],  // 25 anos — ainda 30 (COTAS_FERIAS_2027: soma só APÓS 25 anos)
+    [2000, 31],  // 26 anos → +1
+    [1997, 34],  // 29 anos → +4
+    [1996, 35],  // 30 anos → 35 ("quem tem 30 anos de grupo tem 35")
     [1988, 35],  // 38 anos → teto mantém 35
   ])('entrada %i → cota %i', (anoEntrada, esperado) => {
     expect(cota(anoEntrada)).toBe(esperado)
+  })
+
+  it('cota informada pelo comitê vence o cálculo', () => {
+    expect(calcularCota({ anoEntrada: 2001, anoRef: 2026, cotaInformada: 20 }).cota).toBe(20)
   })
 })
 
@@ -95,8 +100,32 @@ describe('contarDias — regra de feriado e FDS', () => {
     expect(r.diasContados).toBe(4)
     expect(r.feriadosNaoContados).toEqual(['2026-09-07'])
     expect(r.semanas).toEqual([
-      { segunda: '2026-09-07', dias, inteira: true },
+      { segunda: '2026-09-07', dias, inteira: true, comFeriado: true },
     ])
+  })
+
+  it('V-11/V-19: semana com feriado SEM ser inteira paga o feriado mesmo sem marcá-lo', () => {
+    // 07/09/2026 (segunda) é feriado; marcou só terça e quarta
+    const r = contarDias(['2026-09-08', '2026-09-09'], FERIADOS, { desde: '2026-01-01' })
+    expect(r.diasContados).toBe(3)
+    expect(r.feriadosContados).toEqual(['2026-09-07'])
+  })
+
+  it('feriado anterior às regras novas (18/11/2026) não é cobrado retroativamente', () => {
+    // mesmo caso, com o corte padrão: 07/09 já tinha passado → leitura antiga
+    const r = contarDias(['2026-09-08', '2026-09-09'], FERIADOS)
+    expect(r.diasContados).toBe(2)
+    expect(r.feriadosContados).toEqual([])
+    // 20/11/2026 (sexta, Consciência Negra) é depois do corte → paga
+    const depois = contarDias(['2026-11-16', '2026-11-17'], FERIADOS)
+    expect(depois.feriadosContados).toEqual(['2026-11-20'])
+  })
+
+  it('V-18: semana inteira sem marcar o feriado (ninguém marca o feriado) não paga nada', () => {
+    const r = contarDias(['2026-09-08', '2026-09-09', '2026-09-10', '2026-09-11'], FERIADOS)
+    expect(r.diasContados).toBe(4)
+    expect(r.feriadosNaoContados).toEqual(['2026-09-07'])
+    expect(r.semanas[0]).toMatchObject({ inteira: true, comFeriado: true })
   })
 
   it('feriado marcado em semana PARCIAL conta como dia de férias', () => {

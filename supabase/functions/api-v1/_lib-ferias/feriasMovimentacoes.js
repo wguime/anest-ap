@@ -58,6 +58,7 @@ export function aplicarMovimentacoes(registrosPP = [], movimentacoes = []) {
       estado.set(k, { nome: r.nome, data: r.data, codigosPP: [], appMarcado: false, appId: null })
     }
     estado.get(k).codigosPP.push(r.codigo)
+    estado.get(k).criadoPP = { ...(estado.get(k).criadoPP || {}), [r.codigo]: r.criadoEm || null }
   }
 
   for (const mov of ordenarCronologico(movimentacoes)) {
@@ -70,6 +71,7 @@ export function aplicarMovimentacoes(registrosPP = [], movimentacoes = []) {
     if (mov.acao === 'marcar') {
       e.appMarcado = true
       e.appId = mov.id
+      e.appCriadoEm = mov.criadoEm || null
       continue
     }
     // desmarcar
@@ -85,7 +87,7 @@ export function aplicarMovimentacoes(registrosPP = [], movimentacoes = []) {
   for (const e of estado.values()) {
     const fds = ehFimDeSemana(e.data)
     for (const codigo of e.codigosPP) {
-      efetivos.push({ codigo, nome: e.nome, data: e.data, ehFimDeSemana: fds, origem: 'pp' })
+      efetivos.push({ codigo, nome: e.nome, data: e.data, ehFimDeSemana: fds, origem: 'pp', criadoEm: e.criadoPP?.[codigo] ?? null })
     }
     if (e.appMarcado && e.codigosPP.length === 0) {
       efetivos.push({
@@ -94,6 +96,7 @@ export function aplicarMovimentacoes(registrosPP = [], movimentacoes = []) {
         data: e.data,
         ehFimDeSemana: fds,
         origem: 'app',
+        criadoEm: e.appCriadoEm ?? null,
       })
     }
   }

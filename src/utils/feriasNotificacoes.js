@@ -9,7 +9,7 @@
  */
 
 import { REGRA_LABEL } from '@/lib/extratoFeriasRegras'
-import { EMAILS_ALERTAS_FERIAS, EMAILS_COMITE_ETICA } from '@/pages/ferias/gate'
+import { EMAILS_ALERTAS_FERIAS, EMAILS_COMITE_ETICA, EMAILS_COMITE_ESCALAS } from '@/pages/ferias/gate'
 
 /**
  * Destinatários = a lista de fiscalização em gate.js (Guilherme [2 contas],
@@ -45,6 +45,47 @@ export function getComiteEtica(users) {
         EMAILS_COMITE_ETICA.includes((u.email || '').trim().toLowerCase())
     )
     .map((u) => u.id)
+}
+
+/**
+ * Membros do comitê de escalas (ativos) — decidem os candidatos acima das 6
+ * vagas, exceções e adiantamentos (regras 2026/27).
+ * @returns {string[]} Firebase UIDs
+ */
+export function getComiteEscalas(users) {
+  if (!Array.isArray(users)) return []
+  return users
+    .filter(
+      (u) =>
+        u?.id &&
+        u.active !== false &&
+        EMAILS_COMITE_ESCALAS.includes((u.email || '').trim().toLowerCase())
+    )
+    .map((u) => u.id)
+}
+
+/**
+ * Aviso ao comitê de escalas: alguém marcou férias em dia com as 6 vagas
+ * ocupadas e entrou como candidato (V-10/V-33). O nome vai na notificação
+ * porque o comitê precisa decidir sobre a pessoa. relatedEntityId por
+ * pessoa+dia de hoje evita repetir o mesmo aviso no dia.
+ */
+export function buildCandidatoNotificationPayload({ nomeCompleto, datas = [], ano, hojeISO, recipientIds = [] }) {
+  const fmt = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
+  const lista = [...datas].sort().map(fmt).join(', ')
+  return {
+    category: 'sistema',
+    subject: `Férias: candidato acima das 6 vagas — ${nomeCompleto}`,
+    content: `${nomeCompleto} marcou férias em dia${datas.length !== 1 ? 's' : ''} com as 6 vagas ocupadas (${lista}) e entrou como candidato. O comitê decide quem fica com a vaga.`,
+    senderName: 'Extrato de Férias',
+    priority: 'alta',
+    actionUrl: 'extratoFerias',
+    actionLabel: 'Ver extrato',
+    relatedEntityType: 'ferias_candidato',
+    relatedEntityId: `ferias-candidato-${ano}-${slugNome(nomeCompleto)}-${(hojeISO || '').replaceAll('-', '')}`,
+    dismissable: true,
+    recipientIds: recipientIds.filter(Boolean),
+  }
 }
 
 /**

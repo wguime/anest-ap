@@ -44,3 +44,17 @@ describe('penalidadesSetimaVaga', () => {
     expect(out.get('X').reduce((a, p) => a + p.diasExtras, 0)).toBe(4)
   })
 })
+
+describe('penalidadesSetimaVaga — regras novas (18/11/2026, V-10)', () => {
+  it('quem marcou acima das 6 DEPOIS das regras novas é candidato: sem débito automático', () => {
+    const porDia = new Map([['2026-12-10', [...seis, 'NOVO CANDIDATO']]])
+    const ultimos = new Map([['2026-12-10', { confiavel: true, nome: 'NOVO CANDIDATO', vistoEm: '2026-11-18' }]])
+    expect(penalidadesSetimaVaga(porDia, ultimos).size).toBe(0)
+  })
+
+  it('o que foi marcado ANTES segue com a penalidade antiga (dado de 2026 preservado)', () => {
+    const porDia = new Map([['2026-10-13', [...seis, 'RAQUEL SCHNEIDER']]])
+    const ultimos = new Map([['2026-10-13', { confiavel: true, nome: 'RAQUEL SCHNEIDER', vistoEm: '2026-07-22' }]])
+    expect(penalidadesSetimaVaga(porDia, ultimos).get('RAQUEL SCHNEIDER')).toEqual([{ data: '2026-10-13', diasExtras: 2 }])
+  })
+})

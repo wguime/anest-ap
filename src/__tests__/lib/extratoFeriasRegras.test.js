@@ -10,9 +10,13 @@ import {
   regraMaxPorDia,
   regraSegundasSextasIsoladas,
   regraCotaEstourada,
-  regraMetadeMeioAno,
+  regraSemestre,
   regraSemanasInteiras,
   regraMesesNobres,
+  regraPrimeiroAno,
+  regraFeriadoSegSex,
+  regraSemanaComFeriado,
+  REGRAS_TRAVA,
   avaliarRegras,
   fingerprintViolacoes,
   MAX_VAGAS_DIA,
@@ -20,17 +24,20 @@ import {
 
 const FERIADOS = getFeriados(2026)
 
-const reg = (nome, data) => ({
+const reg = (nome, data, criadoEm = null) => ({
   codigo: `${nome}-${data}`,
   nome,
   data,
   ehFimDeSemana: ehFimDeSemana(data),
+  criadoEm,
 })
 
 const socio = (nome, anoEntrada, filhosIdadeEscolar = null) => ({ nome, anoEntrada, filhosIdadeEscolar })
 
-const montar = (socios, diasPorNome, ano = 2026) => {
-  const registros = Object.entries(diasPorNome).flatMap(([nome, dias]) => dias.map((d) => reg(nome, d)))
+const montar = (socios, diasPorNome, ano = 2026, criadoEmPorNome = {}) => {
+  const registros = Object.entries(diasPorNome).flatMap(([nome, dias]) =>
+    dias.map((d) => reg(nome, d, criadoEmPorNome[nome] ?? null))
+  )
   return construirExtrato({ registros, ano, socios, feriados: FERIADOS })
 }
 
@@ -46,39 +53,37 @@ const semana = (segundaISO, n = 5) => {
   return out
 }
 
-describe('regraMaxPorDia', () => {
-  it('7 pessoas no mesmo dia viola; 6 não (caso real 17/12)', () => {
-    const nomes = ['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((n) => `PESSOA ${n}`)
-    const socios = nomes.map((n) => socio(n, 2010))
-    const cheio = montar(socios, Object.fromEntries(nomes.map((n) => [n, ['2026-12-17']])))
-    const violacoes = regraMaxPorDia(cheio)
-    expect(violacoes).toHaveLength(1)
-    expect(violacoes[0]).toMatchObject({
-      id: 'max-dia:2026-12-17',
-      regra: 'MAX_POR_DIA',
-      pessoa: null,
-      // 17/12 cai na janela de ±7 dias do recesso (21/12/26–03/01/27,
-      // confirmado pelo dono em 04/08): ali a 7ª vaga é proibida, não só cara
-      severidade: 'critical',
-    })
+describe('regraMaxPorDia (V-09/V-10/V-33)', () => {
+  const nomes = ['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((n) => `PESSOA ${n}`)
+  const socios = nomes.map((n) => socio(n, 2010))
+  const todosEm = (data) => montar(socios, Object.fromEntries(nomes.map((n) => [n, [data]])))
 
-    // fora da janela do recesso o mesmo excesso continua sendo só warning
-    const foraDoRecesso = montar(socios, Object.fromEntries(nomes.map((n) => [n, ['2026-09-17']])))
-    expect(regraMaxPorDia(foraDoRecesso)[0]).toMatchObject({ severidade: 'warning' })
+  it('7 no mesmo dia vira 1 candidato; 6 não alerta', () => {
+    const violacoes = regraMaxPorDia(todosEm('2026-09-17'))
+    expect(violacoes).toHaveLength(1)
+    expect(violacoes[0]).toMatchObject({ id: 'max-dia:2026-09-17', regra: 'MAX_POR_DIA', pessoa: null, severidade: 'warning' })
+    expect(violacoes[0].detalhe).toContain('1 candidato')
+    expect(violacoes[0].detalhe).toContain('V-10')
 
     const noLimite = montar(
       socios.slice(0, MAX_VAGAS_DIA),
-      Object.fromEntries(nomes.slice(0, MAX_VAGAS_DIA).map((n) => [n, ['2026-12-17']]))
+      Object.fromEntries(nomes.slice(0, MAX_VAGAS_DIA).map((n) => [n, ['2026-09-17']]))
     )
     expect(regraMaxPorDia(noLimite)).toHaveLength(0)
   })
 
-  it('peri-recesso configurado vira critical', () => {
-    const nomes = ['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((n) => `PESSOA ${n}`)
-    const socios = nomes.map((n) => socio(n, 2010))
-    const extrato = montar(socios, Object.fromEntries(nomes.map((n) => [n, ['2026-12-17']])))
-    const config = { recesso: { inicio: '2026-12-21', fim: '2027-01-02' } }
-    expect(regraMaxPorDia(extrato, config)[0].severidade).toBe('critical')
+  it('peri-recesso não é mais proibido: na 2ª quinzena de dezembro o comitê decide sem perda (V-33)', () => {
+    const v = regraMaxPorDia(todosEm('2026-12-17'))[0]
+    expect(v.severidade).toBe('warning')
+    expect(v.detalhe).toContain('V-33')
+  })
+
+  it('01 a 15/12 segue a regra comum (V-09)', () => {
+    expect(regraMaxPorDia(todosEm('2026-12-15'))[0].detalhe).toContain('V-10')
+  })
+
+  it('semana escolar de julho: preferência a quem tem filho, sem perda (V-13)', () => {
+    expect(regraMaxPorDia(todosEm('2026-07-22'))[0].detalhe).toContain('V-13')
   })
 })
 
@@ -199,56 +204,110 @@ describe('regraCotaEstourada — casos reais', () => {
   })
 })
 
-describe('regraMetadeMeioAno', () => {
-  it('filhos=false: tudo no 2º semestre viola; filhos=null pula', () => {
-    const socios = [
-      socio('SEM FILHOS', 2010, false),
-      socio('NAO INFORMADO', 2010, null),
-    ]
-    const extrato = montar(socios, {
-      'SEM FILHOS': semana('2026-08-03'),
-      'NAO INFORMADO': semana('2026-08-10'),
-    })
-    const violacoes = regraMetadeMeioAno(extrato)
-    expect(violacoes).toHaveLength(1)
-    expect(violacoes[0].pessoa).toBe('SEM FILHOS')
+describe('regraSemestre (V-02)', () => {
+  it('cota 30: 16 dias no 1º semestre passa do teto de 15; 15 não', () => {
+    const socios = [socio('TETO S1', 2010)]
+    const dias16 = [...semana('2026-03-02'), ...semana('2026-03-09'), ...semana('2026-03-16'), '2026-03-24']
+    const v = regraSemestre(montar(socios, { 'TETO S1': dias16 }))
+    expect(v).toHaveLength(1)
+    expect(v[0]).toMatchObject({ id: 'semestre:teto-s1:2026-S1', regra: 'SEMESTRE_EXCEDIDO' })
+    expect(regraSemestre(montar(socios, { 'TETO S1': dias16.slice(0, 15) }))).toHaveLength(0)
   })
 
-  it('filhos=true usa corte 31/07 (dias de julho contam para a metade)', () => {
-    const socios = [socio('COM FILHOS', 2010, true)]
-    const extrato = montar(socios, {
-      'COM FILHOS': [...semana('2026-07-13'), ...semana('2026-08-10')],
-    })
-    expect(regraMetadeMeioAno(extrato)).toHaveLength(0)
+  it('cota ímpar aceita a metade para cima em qualquer semestre (31 → 16)', () => {
+    const socios = [{ ...socio('IMPAR', 2010), cota: 31 }]
+    const dias16 = [...semana('2026-08-03'), ...semana('2026-08-10'), ...semana('2026-08-17'), '2026-08-25']
+    expect(regraSemestre(montar(socios, { IMPAR: dias16 }))).toHaveLength(0)
+  })
+
+  it('1º ano não tem teto por semestre', () => {
+    expect(regraSemestre(montar([socio('NOVATO', 2026)], { NOVATO: semana('2026-08-03') }))).toHaveLength(0)
   })
 })
 
-describe('regraSemanasInteiras', () => {
-  it('cota 30: 11 dias fracionados viola, 10 não', () => {
-    const socios = [socio('FRACIONADO TESTE', 2010)]
-    const onzeAvulsos = [
-      '2026-02-03', '2026-02-11', '2026-02-19', '2026-03-03', '2026-03-11',
-      '2026-03-19', '2026-04-08', '2026-04-14', '2026-05-06', '2026-05-13', '2026-05-20',
-    ]
-    const viola = montar(socios, { 'FRACIONADO TESTE': onzeAvulsos })
-    expect(regraSemanasInteiras(viola)).toHaveLength(1)
+describe('regraSemanasInteiras (V-06)', () => {
+  const socios = [socio('FRACIONADO TESTE', 2010)]
+  // sem semana de feriado (17/02 é Carnaval: dia solto naquela semana pagaria o feriado)
+  const avulsos = ['2026-02-03', '2026-02-11', '2026-02-26', '2026-03-03', '2026-03-11', '2026-03-19']
 
-    const ok = montar(socios, { 'FRACIONADO TESTE': onzeAvulsos.slice(0, 10) })
-    expect(regraSemanasInteiras(ok)).toHaveLength(0)
+  it('cota 30 (15 no semestre): 5 avulsos cabem, 6 não', () => {
+    expect(regraSemanasInteiras(montar(socios, { 'FRACIONADO TESTE': avulsos.slice(0, 5) }))).toHaveLength(0)
+    const v = regraSemanasInteiras(montar(socios, { 'FRACIONADO TESTE': avulsos }))
+    expect(v).toHaveLength(1)
+    expect(v[0].id).toBe('semanas:fracionado-teste:2026-S1')
   })
 
-  it('semana inteira não conta como fracionado; cota 5 (1º ano) nunca dispara', () => {
-    const socios = [socio('VETERANO', 2010), socio('NOVATO', 2026)]
-    const extrato = montar(socios, {
-      VETERANO: [...semana('2026-03-02'), '2026-04-08'],
-      NOVATO: ['2026-02-03', '2026-02-11', '2026-02-19', '2026-03-03', '2026-03-11', '2026-03-19'],
-    })
-    expect(regraSemanasInteiras(extrato)).toHaveLength(0)
+  it('o mínimo é em SEMANAS: semana normal + semana com feriado liberam 6 avulsos (exemplo da V-06)', () => {
+    // 20–24/04 tem Tiradentes (21/04): semana cheia com 4 dias
+    const dias = [...semana('2026-03-02'), '2026-04-20', '2026-04-22', '2026-04-23', '2026-04-24', ...avulsos]
+    expect(regraSemanasInteiras(montar(socios, { 'FRACIONADO TESTE': dias }))).toHaveLength(0)
+  })
+
+  it('conta por semestre: avulsos do 2º não somam aos do 1º', () => {
+    const dias = [...avulsos.slice(0, 5), '2026-08-04', '2026-08-12', '2026-08-19', '2026-09-02', '2026-09-16']
+    expect(regraSemanasInteiras(montar(socios, { 'FRACIONADO TESTE': dias }))).toHaveLength(0)
+  })
+
+  it('cota 5 (1º ano) fica com a regra própria', () => {
+    expect(regraSemanasInteiras(montar([socio('NOVATO', 2026)], { NOVATO: avulsos }))).toHaveLength(0)
   })
 })
 
-describe('regraMesesNobres', () => {
-  it('dia solto na 1ª quinzena de janeiro dispara; semana cheia não', () => {
+describe('regraPrimeiroAno (V-06)', () => {
+  it('semana com feriado e dias em 2 semanas alertam; semana futura incompleta não', () => {
+    const socios = [socio('COM FERIADO', 2026), socio('PARTIDO', 2026), socio('MONTANDO', 2026), socio('CERTO', 2026)]
+    const extrato = montar(socios, {
+      'COM FERIADO': ['2026-04-20', '2026-04-22', '2026-04-23', '2026-04-24'],
+      PARTIDO: ['2026-03-09', '2026-03-16'],
+      MONTANDO: ['2026-12-07', '2026-12-08'],
+      CERTO: semana('2026-03-09'),
+    })
+    const v = regraPrimeiroAno(extrato, { feriados: FERIADOS, hojeISO: '2026-11-18' })
+    expect(v.map((x) => x.pessoa).sort()).toEqual(['COM FERIADO', 'PARTIDO'])
+  })
+})
+
+describe('regraFeriadoSegSex (V-08)', () => {
+  it('sexta sozinha com feriado na quinta é proibida; quarta isolada segue a regra comum', () => {
+    // 04/06/2026 (quinta) é Corpus Christi
+    const socios = [socio('SEXTA', 2010), socio('QUARTA', 2010)]
+    const extrato = montar(socios, { SEXTA: ['2026-06-05'], QUARTA: ['2026-06-03'] })
+    const v = regraFeriadoSegSex(extrato)
+    expect(v).toHaveLength(1)
+    expect(v[0]).toMatchObject({ pessoa: 'SEXTA', id: 'feriado-isolado:sexta:2026-06-05' })
+  })
+})
+
+describe('regraSemanaComFeriado (V-15/V-16)', () => {
+  const socios = [socio('FERIADOES', 2010)]
+  // 20–24/04 (Tiradentes) e 01–05/06 (Corpus Christi, 04/06): duas semanas com feriado no 1º semestre
+  const duas = ['2026-04-20', '2026-04-22', '2026-04-23', '2026-04-24', '2026-06-01', '2026-06-02', '2026-06-03', '2026-06-05']
+
+  it('a 2ª semana com feriado do semestre marcada cedo alerta', () => {
+    const v = regraSemanaComFeriado(montar(socios, { FERIADOES: duas }, 2026, { FERIADOES: '2026-01-10T10:00:00Z' }))
+    expect(v).toHaveLength(1)
+    expect(v[0].regra).toBe('SEMANA_FERIADO_EXTRA')
+  })
+
+  it('extra marcada a partir de 30 dias antes do feriado é permitida', () => {
+    const extrato = construirExtrato({
+      registros: [
+        ...duas.slice(0, 4).map((d) => reg('FERIADOES', d, '2026-01-10T10:00:00Z')),
+        ...duas.slice(4).map((d) => reg('FERIADOES', d, '2026-05-20T10:00:00Z')),
+      ],
+      ano: 2026, socios, feriados: FERIADOS,
+    })
+    expect(regraSemanaComFeriado(extrato)).toHaveLength(0)
+  })
+
+  it('dias soltos em semana com feriado não gastam a "1 por semestre"', () => {
+    const dias = ['2026-04-22', ...duas.slice(4)]
+    expect(regraSemanaComFeriado(montar(socios, { FERIADOES: dias }, 2026, { FERIADOES: '2026-01-10T10:00:00Z' }))).toHaveLength(0)
+  })
+})
+
+describe('regraMesesNobres (V-12/V-13)', () => {
+  it('dia solto na 1ª quinzena de janeiro sem data de marcação dispara; semana cheia não', () => {
     const socios = [socio('AVULSO JAN', 2010), socio('SEMANA JAN', 2010)]
     const extrato = montar(socios, {
       'AVULSO JAN': ['2026-01-07'],
@@ -259,19 +318,47 @@ describe('regraMesesNobres', () => {
     expect(violacoes[0]).toMatchObject({ pessoa: 'AVULSO JAN', referencia: 'jan1q' })
   })
 
-  it('2 semanas inteiras em julho geram o alerta de excesso (caso real João Ricardo)', () => {
-    const socios = [socio('JOÃO RICARDO MOREIRA', 2022)]
-    const extrato = montar(socios, {
-      'JOÃO RICARDO MOREIRA': [...semana('2026-07-06'), ...semana('2026-07-13')],
-    })
-    const violacoes = regraMesesNobres(extrato)
-    expect(violacoes.map((v) => v.id)).toContain('nobre:joao-ricardo-moreira:2026-jul-excesso')
+  it('dia isolado marcado a partir de 2 meses antes, com vaga, é permitido; antes disso não', () => {
+    const socios = [socio('DEZ', 2010)]
+    const tarde = montar(socios, { DEZ: ['2026-12-21'] }, 2026, { DEZ: '2026-11-18T10:00:00Z' })
+    expect(regraMesesNobres(tarde, { hojeISO: '2026-11-18' })).toHaveLength(0)
+    const cedo = montar(socios, { DEZ: ['2026-12-21'] }, 2026, { DEZ: '2026-08-01T10:00:00Z' })
+    expect(regraMesesNobres(cedo, { hojeISO: '2026-11-18' })).toHaveLength(1)
   })
 
-  it('semana 29/06–03/07 cruza o mês: os dias de julho pertencem a semana cheia → sem alerta', () => {
+  it('julho só é nobre nas semanas escolares, e sem limite de semanas por sócio', () => {
+    const socios = [socio('JOÃO RICARDO MOREIRA', 2022), socio('JULHO COMUM', 2010)]
+    const extrato = montar(socios, {
+      'JOÃO RICARDO MOREIRA': [...semana('2026-07-20'), ...semana('2026-07-27')],
+      'JULHO COMUM': ['2026-07-08'],
+    })
+    expect(regraMesesNobres(extrato)).toHaveLength(0)
+  })
+
+  it('semana 29/06–03/07 cruza o mês: sem alerta', () => {
     const socios = [socio('VIRADA DE MES', 2010)]
     const extrato = montar(socios, { 'VIRADA DE MES': semana('2026-06-29') })
     expect(regraMesesNobres(extrato)).toHaveLength(0)
+  })
+})
+
+describe('avaliarRegras — alertas julgam o ano inteiro (dono 18/11/2026)', () => {
+  it('1º semestre já encerrado também é julgado; `desde` explícito volta a filtrar', () => {
+    const socios = [socio('TETO S1', 2010)]
+    const dias16 = [...semana('2026-03-02'), ...semana('2026-03-09'), ...semana('2026-03-16'), '2026-03-24']
+    const extrato = montar(socios, { 'TETO S1': dias16 })
+    expect(regraSemestre(extrato)).toHaveLength(1) // a regra em si acusa
+    expect(avaliarRegras(extrato, { feriados: FERIADOS }).some((v) => v.regra === 'SEMESTRE_EXCEDIDO')).toBe(true)
+    expect(avaliarRegras(extrato, { feriados: FERIADOS, desde: '2026-11-18' }).some((v) => v.regra === 'SEMESTRE_EXCEDIDO')).toBe(false)
+  })
+})
+
+describe('REGRAS_TRAVA', () => {
+  it('dia lotado não trava (vira candidato); as demais regras de marcação travam', () => {
+    expect(REGRAS_TRAVA.has('MAX_POR_DIA')).toBe(false)
+    for (const r of ['COTA_ESTOURADA', 'SEMESTRE_EXCEDIDO', 'SEMANAS_INTEIRAS', 'SEG_SEX_ISOLADA', 'MES_NOBRE']) {
+      expect(REGRAS_TRAVA.has(r)).toBe(true)
+    }
   })
 })
 

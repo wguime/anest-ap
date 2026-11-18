@@ -14,6 +14,13 @@
  * compatível com resume de workflows).
  */
 
+/**
+ * Dia em que as regras de férias 2026/27 passaram a valer (dono 18/11/2026:
+ * "valem a partir de agora"; os dados de 2026 não podem mudar). O que é
+ * anterior a isto segue a leitura antiga.
+ */
+export const DATA_REGRAS_NOVAS = '2026-11-18'
+
 // ============================================================================
 // HELPERS DE DATA (ISO string in, ISO string out)
 // ============================================================================
@@ -95,16 +102,22 @@ export function normalizarRegistrosFerias(plantoesRaw = []) {
 
 /**
  * Cota anual de dias úteis de férias.
- * Premissa (documentada com o dono no plano 03/08): anosDeGrupo = anoRef −
- * anoEntrada. 0 → 5 (1º ano) · 1–2 → 20 (2º–3º) · 3–24 → 30 (4º ano em
- * diante) · ≥25 → +1 por ano além do 24º, teto 35 (regra dos 25 anos).
+ * anosDeGrupo = anoRef − anoEntrada. 0 → 5 (1º ano) · 1–2 → 20 (2º–3º) ·
+ * 3–25 → 30 · depois +1 por ano além do 25º, teto 35 — observação do
+ * COTAS_FERIAS_2027.pdf: "após 25 anos de grupo, cada ano a mais soma 1 dia,
+ * até o máximo de 35; quem tem 30 anos de grupo tem 35" (antes o app somava
+ * a partir do 25º, um ano cedo).
+ *
+ * `cotaInformada` (regras 2026/27: "cota de cada sócio informada sócio a
+ * sócio") vence o cálculo quando existe.
  */
-export function calcularCota({ anoEntrada, anoRef }) {
+export function calcularCota({ anoEntrada, anoRef, cotaInformada = null }) {
   const anosDeGrupo = anoRef - anoEntrada
+  if (Number.isFinite(cotaInformada)) return { cota: cotaInformada, anosDeGrupo, regra: 'cota informada pelo comitê' }
   if (anosDeGrupo <= 0) return { cota: 5, anosDeGrupo, regra: '1º ano de grupo' }
   if (anosDeGrupo <= 2) return { cota: 20, anosDeGrupo, regra: '2º–3º ano de grupo' }
-  if (anosDeGrupo <= 24) return { cota: 30, anosDeGrupo, regra: '4º ano em diante' }
-  const cota = Math.min(35, 30 + (anosDeGrupo - 24))
+  if (anosDeGrupo <= 25) return { cota: 30, anosDeGrupo, regra: '4º ano em diante' }
+  const cota = Math.min(35, 30 + (anosDeGrupo - 25))
   return { cota, anosDeGrupo, regra: 'mais de 25 anos de grupo' }
 }
 
@@ -114,51 +127,65 @@ export function calcularCota({ anoEntrada, anoRef }) {
 
 /**
  * Conta os dias de férias de UMA pessoa.
+ *
+ * Feriado (regras 2026/27, V-11/V-18/V-19): ninguém marca o dia do feriado.
+ * Semana com feriado tirada INTEIRA (todos os dias úteis não-feriado) → o
+ * feriado não conta. Férias em semana com feriado SEM ser a semana toda → o
+ * feriado conta como dia de férias ("paga" 1 dia a mais), esteja ele marcado
+ * ou não. Feriado ANTERIOR a DATA_REGRAS_NOVAS segue a leitura antiga (só
+ * conta se veio marcado) — cobrar retroativamente pôs 7 sócios acima da cota
+ * de 2026 por férias já tiradas (medido nos dados reais em 18/11).
+ *
  * @param {string[]} diasISO datas marcadas (podem incluir FDS/feriado)
  * @param {Set<string>} feriadosSet
  */
-export function contarDias(diasISO = [], feriadosSet = new Set()) {
+export function contarDias(diasISO = [], feriadosSet = new Set(), { desde = DATA_REGRAS_NOVAS } = {}) {
   const marcados = new Set(diasISO)
   const fdsIgnorados = []
-  const feriadosContados = []
-  const feriadosNaoContados = []
-  const diasContaveis = []
 
+  // Semanas: agrupa os dias úteis marcados (feriado incluso) por segunda-feira.
+  const porSemana = new Map()
   for (const dia of [...marcados].sort()) {
     if (ehFimDeSemana(dia)) {
       fdsIgnorados.push(dia)
       continue
     }
-    if (feriadosSet.has(dia)) {
-      const uteis = diasUteisDaSemana(segundaDaSemana(dia), feriadosSet)
-      const semanaInteira = uteis.length > 0 && uteis.every((d) => marcados.has(d))
-      if (semanaInteira) {
-        feriadosNaoContados.push(dia)
-      } else {
-        feriadosContados.push(dia)
-        diasContaveis.push(dia)
-      }
-      continue
-    }
-    diasContaveis.push(dia)
-  }
-
-  // Semanas: agrupa os dias úteis marcados (feriado incluso) por segunda-feira.
-  const porSemana = new Map()
-  for (const dia of [...marcados].sort()) {
-    if (ehFimDeSemana(dia)) continue
     const seg = segundaDaSemana(dia)
     if (!porSemana.has(seg)) porSemana.set(seg, [])
     porSemana.get(seg).push(dia)
   }
-  const semanas = [...porSemana.entries()].map(([segunda, dias]) => {
+
+  const semanas = []
+  const diasContaveis = []
+  const feriadosContados = []
+  const feriadosNaoContados = []
+
+  for (const [segunda, dias] of porSemana) {
     const uteis = diasUteisDaSemana(segunda, feriadosSet)
-    return {
-      segunda,
-      dias,
-      inteira: uteis.length > 0 && uteis.every((d) => marcados.has(d)),
+    const inteira = uteis.length > 0 && uteis.every((d) => marcados.has(d))
+    const feriadosDaSemana = []
+    for (let i = 0; i < 5; i++) {
+      const d = somarDias(segunda, i)
+      if (feriadosSet.has(d)) feriadosDaSemana.push(d)
     }
-  })
+    const naoFeriado = dias.filter((d) => !feriadosSet.has(d))
+    diasContaveis.push(...naoFeriado)
+    if (inteira) {
+      feriadosNaoContados.push(...feriadosDaSemana)
+    } else {
+      // Paga o feriado da semana (V-19), marcado ou não; antes das regras
+      // novas, só o feriado que veio marcado.
+      const pagos = feriadosDaSemana.filter((f) => f >= desde || marcados.has(f))
+      feriadosContados.push(...pagos)
+      diasContaveis.push(...pagos)
+    }
+    semanas.push({ segunda, dias, inteira, comFeriado: feriadosDaSemana.length > 0 })
+  }
+
+  diasContaveis.sort()
+  feriadosContados.sort()
+  feriadosNaoContados.sort()
+  semanas.sort((x, y) => x.segunda.localeCompare(y.segunda))
 
   return {
     diasContados: diasContaveis.length,
@@ -212,9 +239,18 @@ function proximoDiaUtil(dataISO, feriadosSet) {
  */
 export function construirExtrato({ registros = [], ano, socios = [], feriados = new Set() }) {
   const diasPorNome = new Map()
+  // Quando cada dia foi marcado (DataCriacao do PP ou criado_em do app): as
+  // regras de prazo (2 meses nos meses nobres, 30 dias na semana com feriado)
+  // dependem disso. Dia com dois registros fica com o mais antigo.
+  const marcadoEmPorNome = new Map()
   for (const r of registros) {
     if (!diasPorNome.has(r.nome)) diasPorNome.set(r.nome, [])
     diasPorNome.get(r.nome).push(r.data)
+    if (r.criadoEm) {
+      if (!marcadoEmPorNome.has(r.nome)) marcadoEmPorNome.set(r.nome, {})
+      const m = marcadoEmPorNome.get(r.nome)
+      if (!m[r.data] || String(r.criadoEm) < String(m[r.data])) m[r.data] = r.criadoEm
+    }
   }
 
   const nomesSocios = new Set(socios.map((s) => s.nome))
@@ -222,7 +258,7 @@ export function construirExtrato({ registros = [], ano, socios = [], feriados = 
   const porPessoa = socios.map((socio) => {
     const dias = (diasPorNome.get(socio.nome) || []).sort()
     const contagem = contarDias(dias, feriados)
-    const { cota, anosDeGrupo, regra } = calcularCota({ anoEntrada: socio.anoEntrada, anoRef: ano })
+    const { cota, anosDeGrupo, regra } = calcularCota({ anoEntrada: socio.anoEntrada, anoRef: ano, cotaInformada: socio.cota ?? null })
 
     const porMes = {}
     for (const d of contagem.diasContaveis) {
@@ -248,6 +284,7 @@ export function construirExtrato({ registros = [], ano, socios = [], feriados = 
       saldo: cota - contagem.diasContados,
       periodos: agruparPeriodos(dias, feriados),
       porMes,
+      marcadoEm: marcadoEmPorNome.get(socio.nome) || {},
     }
   })
 
@@ -267,6 +304,7 @@ export function construirExtrato({ registros = [], ano, socios = [], feriados = 
 
   return {
     ano,
+    feriadosLista: [...feriados].sort(),
     porPessoa,
     porDia,
     naoReconhecidos: [...naoReconhecidosMap.entries()].map(([nome, dias]) => ({ nome, dias })),

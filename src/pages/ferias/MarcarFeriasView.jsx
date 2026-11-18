@@ -7,8 +7,12 @@
  * férias ainda não cumpridas (o caminho fácil) além do calendário.
  * Só as próprias férias (a RLS garante; a UI nem oferece outro nome).
  *
- * Prazos bloqueiam (marcar exige dia futuro; desmarcar, depois de amanhã);
- * dia lotado e estouro de cota apenas exigem confirmação — REGRAS ESCALAS.
+ * Regras 2026/27 (comitê de escalas, desde 18/11/2026): o app TRAVA o que
+ * descumpre uma regra e cita o código (V-xx). Por dia: prazo, FDS, feriado,
+ * cota e teto do semestre. Pela seleção inteira, na confirmação: semanas
+ * cheias, segundas/sextas isoladas, meses nobres, semana com feriado, 1º ano.
+ * Dia lotado não trava: a marcação entra como candidata e o comitê de escalas
+ * é avisado (V-10/V-33).
  */
 import { useState, useMemo, useCallback } from 'react'
 import { CalendarPlus, CalendarX2, ClipboardCheck, X } from 'lucide-react'
@@ -17,14 +21,15 @@ import { CalendarioOcupacao, Legenda, fmtBr } from './calendarioOcupacao'
 import ConfirmarMarcacaoSheet from './ConfirmarMarcacaoSheet'
 import {
   avaliarMarcacaoDia, avaliarDesmarcacaoDia, montarResumoConfirmacao,
-  montarMovimentacoesParaInsert,
+  montarMovimentacoesParaInsert, limitesDaPessoa,
 } from '@/lib/feriasMarcacao'
 import { indexarPorPessoaDia, filtrarNoOps } from '@/lib/feriasMovimentacoes'
-import { resumoSemestres } from '@/lib/feriasSemestre'
 import {
   fetchMovimentacoes, registrarMovimentacoes,
 } from '@/services/supabaseFeriasMovimentacoesService'
-import { getComiteEtica, buildExcedenteNotificationPayload } from '@/utils/feriasNotificacoes'
+import {
+  getComiteEtica, buildExcedenteNotificationPayload, getComiteEscalas, buildCandidatoNotificationPayload,
+} from '@/utils/feriasNotificacoes'
 
 const vazio = () => ({ marcar: new Set(), desmarcar: new Set() })
 const titleCase = (n) => n.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase())
@@ -72,17 +77,15 @@ export default function MarcarFeriasView({
   )
 
   /**
-   * Teto do 2º semestre (dono 19/08): metade da cota, e a seleção pendente
-   * já conta — sem isso dava para furar o teto marcando vários dias antes de
-   * confirmar. `null` quando a cota é livre entre os semestres (1º ano).
+   * Limites da regra (V-02 teto do semestre, V-05 cota, V-13 julho) com a
+   * seleção pendente já somada — sem isso dava para furar o teto marcando
+   * vários dias antes de confirmar.
    */
-  const semestre = useMemo(() => {
-    if (!pessoa) return null
-    const r = resumoSemestres(pessoa, { ano, feriados, penalidades: pessoa.penalidades || [] })
-    if (r.semestreLivre) return null
-    const pendentes = [...selecoes.marcar].filter((d) => d > r.corte).length
-    return { corte: r.corte, maxS2: r.s2.maximo, usadosS2: r.s2.total + pendentes }
-  }, [pessoa, ano, feriados, selecoes])
+  const limites = useMemo(
+    () => limitesDaPessoa({ pessoa, pendentes: [...selecoes.marcar], socios }),
+    [pessoa, selecoes, socios]
+  )
+  const socioNoAno = useMemo(() => socios.some((s) => s.nome === nome), [socios, nome])
 
   const motivoBloqueio = useCallback(
     (dia) => {
@@ -92,9 +95,9 @@ export default function MarcarFeriasView({
       }
       if (meusDias.has(dia)) return 'Você já tem férias neste dia'
       if (selecoes.marcar.has(dia)) return null
-      return avaliarMarcacaoDia({ data: dia, nome, porDia, estadoPorDia, hojeISO, feriados, semestre }).bloqueio?.msg || null
+      return avaliarMarcacaoDia({ data: dia, nome, porDia, estadoPorDia, hojeISO, feriados, limites, socioNoAno }).bloqueio?.msg || null
     },
-    [modo, meusDias, nome, estadoPorDia, hojeISO, porDia, feriados, semestre, selecoes]
+    [modo, meusDias, nome, estadoPorDia, hojeISO, porDia, feriados, limites, socioNoAno, selecoes]
   )
 
   const alternarDia = useCallback(
@@ -108,7 +111,7 @@ export default function MarcarFeriasView({
         const querDesmarcar = modo === 'desmarcar'
         const aval = querDesmarcar
           ? avaliarDesmarcacaoDia({ data: dia, nome, estadoPorDia, hojeISO })
-          : avaliarMarcacaoDia({ data: dia, nome, porDia, estadoPorDia, hojeISO, feriados, semestre })
+          : avaliarMarcacaoDia({ data: dia, nome, porDia, estadoPorDia, hojeISO, feriados, limites, socioNoAno })
         if (!aval.ok) {
           toast({ title: 'Não é possível', description: aval.bloqueio.msg, variant: 'warning' })
           return atual
@@ -118,7 +121,7 @@ export default function MarcarFeriasView({
         return { marcar, desmarcar }
       })
     },
-    [modo, nome, estadoPorDia, hojeISO, porDia, feriados, semestre, toast]
+    [modo, nome, estadoPorDia, hojeISO, porDia, feriados, limites, socioNoAno, toast]
   )
 
   const trocarModo = (novo) => {
@@ -167,6 +170,25 @@ export default function MarcarFeriasView({
         ].filter(Boolean).join(' · '),
         variant: 'success',
       })
+      // Candidatura acima das 6 vagas → comitê de escalas decide (V-10/V-33).
+      // Best-effort: falhar o aviso não desfaz a marcação já gravada.
+      const candidaturas = (resumo?.candidaturas || []).filter((d) =>
+        efetivas.some((r) => r.acao === 'marcar' && r.data === d)
+      )
+      if (candidaturas.length > 0) {
+        try {
+          const comite = getComiteEscalas(usersList)
+          if (comite.length > 0) {
+            await createSystemNotification?.(
+              buildCandidatoNotificationPayload({
+                nomeCompleto: pessoa.nomeCompleto, datas: candidaturas, ano, hojeISO, recipientIds: comite,
+              })
+            )
+          }
+        } catch (errNotif) {
+          console.warn('[MarcarFerias] aviso ao comitê de escalas falhou:', errNotif?.message)
+        }
+      }
       // Marcação além da cota → Comitê de Ética é informado (dono 04/08).
       // Best-effort: falhar o aviso não desfaz a marcação já gravada.
       if (resumo?.saldoDepois < 0 && nMarcar > 0) {
@@ -251,11 +273,11 @@ export default function MarcarFeriasView({
             </p>
           </div>
         </div>
-        {/* Sem esta linha, os dias do 2º semestre aparecem apagados no
+        {/* Sem esta linha, os dias de um semestre cheio aparecem apagados no
             calendário sem explicação (o teto é da regra, não da cota) */}
-        {semestre && (
+        {limites && !limites.semestreLivre && (
           <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
-            2º semestre: {semestre.usadosS2} de {semestre.maxS2} dias — metade da cota é o máximo depois de {fmtBr(semestre.corte)}.
+            1º semestre: {limites.usados.S1} de {limites.maxSemestre} dias · 2º semestre: {limites.usados.S2} de {limites.maxSemestre} dias — metade da cota é o máximo em cada um (V-02).
           </p>
         )}
       </Card>

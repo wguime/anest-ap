@@ -1,25 +1,19 @@
 /**
- * Metades do ano no Extrato de Férias — REGRAS ESCALAS.pdf (seção FÉRIAS)
- * + decisões do dono em 19/08.
+ * Metades do ano no Extrato de Férias — regras de férias 2026/27 (comitê de
+ * escalas; valem desde 18/11/2026, decisão do dono).
  *
- * O documento diz duas coisas que só fazem sentido juntas: "é necessário
- * que metade dos dias sejam usufruídos até final de junho (ou final de
- * julho para colegas com filhos em idade escolar)" e "os dias de férias
- * não usufruídos em cada semestre serão perdidos". Dono 19/08: a metade é
- * metade da COTA — pode-se usar MAIS que a metade no 1º semestre, nunca
- * mais que a metade no 2º. Por isso o 2º semestre tem TETO (`maxS2`), e é
- * esse teto que o app impede de estourar na hora de marcar; o 1º semestre
- * tem PISO (`minS1`), que o app só mostra (o dia que passou não volta).
+ * V-02: a cota é dividida meio a meio por semestre; cada semestre aceita até
+ * a metade ARREDONDADA PARA CIMA (31 = 16 + 15 ou 15 + 16) e o total do ano
+ * não passa da cota. V-03: os dias de cada semestre são usados dentro dele —
+ * até 30/06 no 1º e até 31/12 no 2º, prazo IGUAL para todos (o corte de 31/07
+ * para quem tem filhos acabou). Dia não usado é perdido.
  *
- * 1º ano (cota 5) é exceção nos dois eixos: o PDF deixa a semana livre
- * entre os semestres ("colegas no primeiro ano poderão usufruir no
- * primeiro ou segundo semestre, conforme queiram") e o dono fechou que ela
- * tem de ser CORRIDA — segunda a sexta, sem fracionar.
+ * Antes (dono 19/08) o 1º semestre tinha PISO e só o 2º tinha TETO; agora os
+ * dois lados têm o mesmo teto, e é ele que a marcação bloqueia.
  *
- * A fronteira dos semestres é o CORTE (30/06, ou 31/07 para quem tem
- * filhos em idade escolar): é a data da regra, não a metade do calendário.
- * Hoje `filhosIdadeEscolar` é null para todos em feriasSocios.js, então o
- * corte cai em 30/06 e "1º semestre" é literal.
+ * 1º ano (cota 5) continua exceção: escolhe o semestre, e os 5 dias são uma
+ * semana de segunda a sexta sem feriado (V-06; semana com feriado só com
+ * aprovação do comitê).
  *
  * Puro: sem I/O, sem relógio; datas entram e saem como string ISO.
  */
@@ -29,47 +23,67 @@ import { agruparPeriodos } from './extratoFerias'
 /** Cota do 1º ano de grupo — 1 semana, com regra própria. */
 export const COTA_PRIMEIRO_ANO = 5
 
-/**
- * Último dia que conta para a metade do 1º semestre.
- * `filhosIdadeEscolar` true estende o prazo a 31/07 (PDF); null/false = 30/06.
- */
-export function corteSemestre({ ano, filhosIdadeEscolar = null }) {
-  return filhosIdadeEscolar ? `${ano}-07-31` : `${ano}-06-30`
+/** Último dia do 1º semestre — 30/06 para todos (V-03). */
+export function corteSemestre({ ano }) {
+  return `${ano}-06-30`
 }
 
+/** Semestre de uma data ISO: 'S1' até 30/06, 'S2' depois. */
+export const semestreDe = (dataISO) => (dataISO.slice(5, 7) <= '06' ? 'S1' : 'S2')
+
 /**
- * Piso do 1º semestre e teto do 2º. Cota ímpar sobra para o 1º semestre
- * (é o lado que pode receber mais — "nunca mais que a metade" só limita o 2º).
- * @returns {{minS1:number, maxS2:number, semestreLivre:boolean}}
+ * Teto de cada semestre (V-02): metade da cota arredondada para cima.
+ * @returns {{maxSemestre:number, semestreLivre:boolean}}
  */
 export function metadesDaCota(cota = 0) {
-  if (cota <= COTA_PRIMEIRO_ANO) return { minS1: 0, maxS2: cota, semestreLivre: true }
-  return { minS1: Math.ceil(cota / 2), maxS2: Math.floor(cota / 2), semestreLivre: false }
+  if (cota <= COTA_PRIMEIRO_ANO) return { maxSemestre: cota, semestreLivre: true }
+  return { maxSemestre: Math.ceil(cota / 2), semestreLivre: false }
 }
 
 /**
- * A semana do 1º ano está corrida? Exige UMA única semana e ela INTEIRA —
- * `semanas[].inteira` já compara contra os dias úteis não-feriado, então
- * feriado no meio não descaracteriza a semana cheia.
- * @returns {{cumprida:boolean, semanas:number, dias:number, motivo:'sem_marcacao'|'fracionada'|'varias_semanas'|null}}
+ * Mínimo de semanas cheias no semestre (V-06), pela parte da cota que cabe
+ * nele: 5 dias = tudo em semana cheia (1 semana) · 10 = 1 semana · 15 a 18 =
+ * 2 semanas. Para valores fora da tabela (cota informada atípica) vale a
+ * faixa: até 14 dias = 1 semana, 15 ou mais = 2.
  */
-export function semanaCorridaPrimeiroAno(pessoa) {
+export function semanasCheiasMinimas(diasNoSemestre = 0) {
+  if (diasNoSemestre <= 0) return 0
+  return diasNoSemestre >= 15 ? 2 : 1
+}
+
+/**
+ * A semana do 1º ano está certa? Exige UMA única semana, INTEIRA e sem
+ * feriado (V-06: "uma semana de segunda a sexta sem feriado; semana com
+ * feriado só com aprovação do comitê").
+ * @returns {{cumprida:boolean, semanas:number, dias:number, motivo:'sem_marcacao'|'fracionada'|'varias_semanas'|'com_feriado'|null}}
+ */
+export function semanaCorridaPrimeiroAno(pessoa, feriados = new Set()) {
   const semanas = pessoa?.semanas || []
   const dias = semanas.reduce((acc, s) => acc + s.dias.length, 0)
   if (semanas.length === 0) return { cumprida: false, semanas: 0, dias: 0, motivo: 'sem_marcacao' }
   if (semanas.length > 1) return { cumprida: false, semanas: semanas.length, dias, motivo: 'varias_semanas' }
   if (!semanas[0].inteira) return { cumprida: false, semanas: 1, dias, motivo: 'fracionada' }
+  if (temFeriadoNaSemana(semanas[0].segunda, feriados)) return { cumprida: false, semanas: 1, dias, motivo: 'com_feriado' }
   return { cumprida: true, semanas: 1, dias, motivo: null }
 }
 
+function temFeriadoNaSemana(segundaISO, feriados) {
+  const d = new Date(`${segundaISO}T12:00:00Z`)
+  for (let i = 0; i < 5; i++) {
+    if (feriados.has(d.toISOString().slice(0, 10))) return true
+    d.setUTCDate(d.getUTCDate() + 1)
+  }
+  return false
+}
+
 /**
- * Dias que ainda cabem no 2º semestre — o número que a marcação consulta.
- * Cota do 1º ano é livre entre os semestres → Infinity (nada a bloquear).
+ * Dias que ainda cabem no semestre — o número que a marcação consulta.
+ * Cota do 1º ano é livre entre os semestres → Infinity (o teto é a cota).
  */
-export function vagasRestantesSegundoSemestre({ cota = 0, diasNoSegundo = 0 }) {
-  const { maxS2, semestreLivre } = metadesDaCota(cota)
+export function vagasRestantesNoSemestre({ cota = 0, diasNoSemestre = 0 }) {
+  const { maxSemestre, semestreLivre } = metadesDaCota(cota)
   if (semestreLivre) return Infinity
-  return Math.max(0, maxS2 - diasNoSegundo)
+  return Math.max(0, maxSemestre - diasNoSemestre)
 }
 
 /**
@@ -91,59 +105,41 @@ export function vagasRestantesSegundoSemestre({ cota = 0, diasNoSegundo = 0 }) {
  * @param {Array<{data:string, diasExtras:number}>} opts.penalidades da 7ª vaga
  */
 export function resumoSemestres(pessoa, { ano, feriados = new Set(), penalidades = [] } = {}) {
-  const corte = corteSemestre({ ano, filhosIdadeEscolar: pessoa?.filhosIdadeEscolar })
+  const corte = corteSemestre({ ano })
   const cota = pessoa?.cota ?? 0
-  const { minS1, maxS2, semestreLivre } = metadesDaCota(cota)
+  const { maxSemestre, semestreLivre } = metadesDaCota(cota)
 
   const noPrimeiro = (d) => d <= corte
   const somaPenal = (filtro) =>
     penalidades.filter((p) => filtro(p.data)).reduce((acc, p) => acc + (p.diasExtras || 0), 0)
 
-  const montar = (filtro) => {
+  const montar = (filtro, chave, label) => {
     const dias = (pessoa?.dias || []).filter(filtro)
     const contados = (pessoa?.diasContaveis || []).filter(filtro).length
     const penalidade = somaPenal(filtro)
+    const total = contados + penalidade
     return {
+      chave,
+      label,
       dias,
       periodos: agruparPeriodos(dias, feriados),
       contados,
       penalidade,
-      total: contados + penalidade,
+      total,
+      maximo: maxSemestre,
+      restante: semestreLivre ? Infinity : Math.max(0, maxSemestre - total),
+      excede: semestreLivre ? 0 : Math.max(0, total - maxSemestre),
+      ok: semestreLivre || total <= maxSemestre,
     }
-  }
-
-  const base1 = montar(noPrimeiro)
-  const base2 = montar((d) => !noPrimeiro(d))
-
-  const s1 = {
-    ...base1,
-    chave: 's1',
-    label: '1º semestre',
-    minimo: minS1,
-    // Falta é o que ainda cabe no piso; excedente é o que passou dele (permitido).
-    falta: Math.max(0, minS1 - base1.total),
-    excedente: Math.max(0, base1.total - minS1),
-    ok: base1.total >= minS1,
-  }
-
-  const s2 = {
-    ...base2,
-    chave: 's2',
-    label: '2º semestre',
-    maximo: maxS2,
-    restante: semestreLivre ? Infinity : Math.max(0, maxS2 - base2.total),
-    excede: semestreLivre ? 0 : Math.max(0, base2.total - maxS2),
-    ok: semestreLivre || base2.total <= maxS2,
   }
 
   return {
     corte,
-    prazoEstendido: Boolean(pessoa?.filhosIdadeEscolar),
     semestreLivre,
     cota,
-    primeiroAno: semestreLivre ? semanaCorridaPrimeiroAno(pessoa) : null,
-    s1,
-    s2,
+    primeiroAno: semestreLivre ? semanaCorridaPrimeiroAno(pessoa, feriados) : null,
+    s1: montar(noPrimeiro, 's1', '1º semestre'),
+    s2: montar((d) => !noPrimeiro(d), 's2', '2º semestre'),
   }
 }
 
@@ -173,7 +169,7 @@ export function linhaAnaliseSemestre(pessoa, { ano, feriados = new Set(), hojeIS
   const situacao = r.semestreLivre
     ? (r.primeiroAno?.cumprida ? 'Semana corrida' : 'Semana fracionada')
     : [
-        r.s1.falta > 0 ? `faltam ${r.s1.falta} no 1º` : null,
+        r.s1.excede > 0 ? `${r.s1.excede} a mais no 1º` : null,
         r.s2.excede > 0 ? `${r.s2.excede} a mais no 2º` : null,
       ].filter(Boolean).join(' · ') || 'Dentro da regra'
 
@@ -188,7 +184,9 @@ export function linhaAnaliseSemestre(pessoa, { ano, feriados = new Set(), hojeIS
         ? `${pa.dias} dias repartidos em ${pa.semanas} semanas diferentes`
         : pa.motivo === 'fracionada'
           ? `${pa.dias} dia${pa.dias !== 1 ? 's' : ''} avulso${pa.dias !== 1 ? 's' : ''} numa semana só — falta fechar a semana`
-          : 'Sem férias marcadas no ano'
+          : pa.motivo === 'com_feriado'
+            ? 'Semana com feriado — só vale com aprovação do comitê'
+            : 'Sem férias marcadas no ano'
 
   return {
     nome: pessoa.nome,
@@ -198,8 +196,8 @@ export function linhaAnaliseSemestre(pessoa, { ano, feriados = new Set(), hojeIS
     cota: r.cota,
     semestreLivre: r.semestreLivre,
     s1Total: r.s1.total,
-    s1Minimo: r.s1.minimo,
-    s1Falta: r.s1.falta,
+    s1Maximo: r.s1.maximo,
+    s1Excede: r.s1.excede,
     s1Usufruido: parte(r.s1.dias, true),
     s1Agendado: parte(r.s1.dias, false),
     // Penalidade POR SEMESTRE, não só do ano: sem ela a linha não fecha na
