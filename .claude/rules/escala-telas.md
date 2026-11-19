@@ -1213,3 +1213,20 @@ Protótipo `.tmp/confirmar-anestesista-fora-da-ordem.html` (430px, dois temas). 
   e `definirAnestesistaForaDaOrdem.test.jsx`. Conferência visual: `.tmp/shot-fora-ordem-app.mjs` (bloqueia
   TODA escrita na rede). ⚠️ O Select do DS fecha em qualquer rolagem, e o clique do Playwright rola até o
   elemento: role antes e clique pela coordenada. O campo com busca se escolhe pelo teclado.
+
+### Motivo da suspensão e do atraso (dono 2026-11-19, v5.12.99)
+"Não há como informar que ela foi suspensa [...] quero que seja possível informar o motivo."
+- **Suspensa exige motivo; Atrasada é opcional.** Na folha do horário pendente o link cinza virou o botão
+  vermelho "Não aconteceu — foi suspensa", que troca o corpo da folha por `MotivoStatus`; no Andamento,
+  "Suspensa" abre o painel e só grava com o motivo, "Atrasada" marca no toque e abre o motivo ("Agora não").
+  Desmarcar limpa o motivo. Turno encerrado: o mesmo botão.
+- **Gravar: motivo ANTES do status** (`gravarStatusComMotivo`): `atualizarCaso` repinta a lista a partir do
+  `escala` recebido; na ordem inversa apagaria o status otimista. A RPC do extra é TOGGLE — só chamar quando o
+  status ainda não é o pedido.
+- **Quanto atrasou é calculado** (`minutosDeAtraso` = `inicio_real − hora`), nunca perguntado. "AS" fica sem.
+- Grava-se o TEXTO (rótulo do chip ou o "Outro", ≤200) em `motivo_suspensao`/`motivo_atraso`; o autor
+  (`*_por`) é do gatilho. A linha só lê o motivo do `statusExtra` ATUAL — o de um atraso depois suspenso
+  fica gravado, mas não aparece. Listas em `src/lib/escalaMotivoStatus.js` (pesquisa + grupo da escala);
+  "Anestesista atrasado" é separado de "Anestesista em outra sala" por pedido do dono.
+- ⚠️ Editar o motivo mexe em `updated_at`: suspensa da tarde com motivo editado à noite volta ao quadro
+  (mesma consequência já assumida na virada das 19h).

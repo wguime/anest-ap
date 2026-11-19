@@ -39,8 +39,8 @@
  * blocos grandes, cada um um botão. O horário anda junto com o status (trigger
  * `tr_escala_caso_horario_real`, ver `src/lib/escalaHorarioReal.js`).
  */
-import { useMemo, useState } from 'react'
-import { Clock, GraduationCap, Info, Lock } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Ban, Clock, GraduationCap, Info, Lock, MessageSquareText, Pencil } from 'lucide-react'
 import { ActionPill, Badge, Button, Sheet, SheetContent, SheetHeader, SheetTitle } from '@/design-system'
 import { HOSPITAL_LABEL, useEscalaCirurgica, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
@@ -56,6 +56,8 @@ import { CasasCirurgia, TempoTotalPessoa, rotuloDoMapa, tempoTotalDaPessoa } fro
 import useAgoraMinutoEscala from './useAgoraMinutoEscala'
 import { convenioExibicao, nomeAnestesistaExibicao, normNome, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso, terminoEncadeado, procedimentoComContinuacao, procedimentoBaseDoCaso } from './utils'
 import ChipsEscolha, { GRAVIDADE_CHIPS, TIPOS_CIRURGIA } from './ChipsEscolha'
+import MotivoStatus from './MotivoStatus'
+import { campoMotivo, gravarStatusComMotivo, linhaDoMotivo, temMotivo } from '@/lib/escalaMotivoStatus'
 
 // Verbo de cada estado na linha de procedência ("Iniciada às 14:33 por Fulano").
 const STATUS_VERBO = { iniciada: 'Iniciada', terminada: 'Terminada' }
@@ -116,6 +118,14 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
   const [editor, setEditor] = useState(null)
   const [confirmar, setConfirmar] = useState(null)
   const [horaExata, setHoraExata] = useState('') // hora exata de término da cirurgia
+  // MOTIVO (dono 19/11, modelo B1/B3): 'suspensa' | 'atrasada' com o painel aberto. A suspensa
+  // só grava com o motivo; a atrasada marca no toque e o motivo é opcional.
+  const [motivoAberto, setMotivoAberto] = useState(null)
+  const painelMotivo = useRef(null)
+  // o painel abre abaixo da dobra (a folha passa de 88vh com ele): rola até ele (dono 19/11)
+  useEffect(() => {
+    if (motivoAberto) painelMotivo.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
+  }, [motivoAberto])
 
   // caso VIVO: busca a versão atual no estado (id); cai no prop p/ demo/sem id
   const vivo = useMemo(() => {
@@ -275,8 +285,69 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
   const mudarStatus = (status) => {
     if (status === 'iniciada') return setConfirmar({ campo: 'inicio', viaStatus: true })
     if (status === 'terminada') return setConfirmar({ campo: terminoPedeInicio ? 'ambos' : 'termino', viaStatus: true })
+    // SUSPENSA E ATRASADA LEVAM O MOTIVO (dono 19/11): desmarcar limpa o motivo junto; marcar a
+    // suspensa abre a escolha e só grava com ela; a atrasada marca já e abre o motivo opcional.
+    if (temMotivo(status)) {
+      if (vivo.statusExtra === status) {
+        setMotivoAberto(null)
+        return gravarStatusComMotivo({ escala, caso: vivo, status, ligar: false, userId, setStatusCirurgia, atualizarCaso }).catch(() => {})
+      }
+      if (status === 'atrasada') gravarStatusComMotivo({ escala, caso: vivo, status, ligar: true, motivo: vivo.motivoAtraso, userId, setStatusCirurgia, atualizarCaso }).catch(() => {})
+      return setMotivoAberto(motivoAberto === status && status === 'suspensa' ? null : status)
+    }
     setStatusCirurgia(escala, vivo, status, { userId }).catch(() => {})
   }
+  const salvarMotivo = (status, motivo) => {
+    setMotivoAberto(null)
+    gravarStatusComMotivo({ escala, caso: vivo, status, motivo, ligar: true, userId, setStatusCirurgia, atualizarCaso }).catch(() => {})
+  }
+  // o painel do motivo e, fechado, a linha "Motivo: … · Editar" do status atual
+  const statusComMotivo = temMotivo(vivo.statusExtra) ? vivo.statusExtra : null
+  const linhaMotivo = linhaDoMotivo(vivo)
+  const blocoMotivo = (
+    <>
+      {motivoAberto && (
+        <div ref={painelMotivo} className="mt-3 scroll-mb-4 border-t border-border pt-3">
+          <MotivoStatus
+            key={`${vivo.id}-${motivoAberto}`}
+            status={motivoAberto}
+            inicial={vivo[campoMotivo(motivoAberto)]}
+            titulo={motivoAberto === 'suspensa' ? 'Motivo da suspensão' : 'Motivo do atraso'}
+            rotuloBotao={motivoAberto === 'suspensa' && vivo.statusExtra !== 'suspensa' ? 'Marcar como suspensa' : 'Salvar motivo'}
+            onConfirmar={(m) => salvarMotivo(motivoAberto, m)}
+            onCancelar={() => setMotivoAberto(null)}
+            rotuloCancelar={motivoAberto === 'atrasada' && !vivo.motivoAtraso ? 'Agora não' : 'Cancelar'}
+          />
+        </div>
+      )}
+      {!motivoAberto && statusComMotivo && (linhaMotivo || statusComMotivo === 'atrasada' || podeEditarCaso) && (
+        <div
+          data-linha-motivo
+          className={[
+            'mt-2 flex min-h-[44px] items-center gap-2 rounded-[10px] border px-2.5 py-1.5',
+            statusComMotivo === 'suspensa' ? 'border-destructive/40 bg-destructive/5' : 'border-warning/50 bg-warning/10',
+          ].join(' ')}
+        >
+          <MessageSquareText className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <span className="min-w-0 flex-1 text-[13px] leading-snug">
+            {linhaMotivo
+              ? <><b className="font-semibold">Motivo:</b> {linhaMotivo}</>
+              : <span className="text-muted-foreground">Sem motivo informado</span>}
+          </span>
+          {podeEditarCaso && (
+            <button
+              type="button"
+              onClick={() => setMotivoAberto(statusComMotivo)}
+              className="flex min-h-[44px] shrink-0 items-center gap-1 text-[13px] font-semibold text-primary active:opacity-70"
+            >
+              <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+              {vivo[campoMotivo(statusComMotivo)] ? 'Editar' : 'Informar'}
+            </button>
+          )}
+        </div>
+      )}
+    </>
+  )
 
   const principal = vivo.statusCirurgia || 'agendada'
   const terminada = principal === 'terminada'
@@ -493,15 +564,18 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                 {vivo.statusExtra === 'suspensa' ? ' · Suspensa' : ''}
                 {tb ? ` · ${tb.label}` : ''}
               </p>
-              {podeEditarCaso && !terminada && vivo.statusExtra !== 'suspensa' && vivo.statusCirurgia !== 'suspensa' && (
-                <button
-                  type="button"
-                  onClick={() => setStatusCirurgia(escala, vivo, 'suspensa', { userId }).catch(() => {})}
-                  className="mt-1 flex min-h-[44px] items-center text-[13px] font-semibold text-muted-foreground active:opacity-70"
+              {/* NÃO ACONTECEU (dono 19/11): botão visível e com o motivo, como na folha do horário */}
+              {podeEditarCaso && !terminada && !motivoAberto && vivo.statusExtra !== 'suspensa' && vivo.statusCirurgia !== 'suspensa' && (
+                <Button
+                  variant="outline"
+                  className="mt-2 min-h-[48px] w-full border-destructive text-[15px] font-bold text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => setMotivoAberto('suspensa')}
                 >
-                  Não aconteceu (suspensa)
-                </button>
+                  <Ban className="h-[18px] w-[18px]" aria-hidden="true" />
+                  Não aconteceu — foi suspensa
+                </Button>
               )}
+              {blocoMotivo}
             </article>
           )}
 
@@ -530,6 +604,8 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
               <div className="mt-2 flex gap-1.5">
                 {AVISO.map((s) => {
                   const ativo = vivo.statusExtra === s.valor
+                  // suspensa escolhendo o motivo: ainda não gravada, o botão fica só contornado
+                  const escolhendo = !ativo && motivoAberto === s.valor
                   const rotulo = s.label || passaTurnoLabel(turnoCaso)
                   return (
                     <button
@@ -540,7 +616,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                       onClick={() => mudarStatus(s.valor)}
                       className={[
                         'min-h-[44px] flex-1 rounded-[10px] border px-1.5 text-[12.5px] font-semibold leading-tight transition-colors',
-                        ativo ? s.cls : 'border-border-strong bg-card text-foreground',
+                        ativo ? s.cls : escolhendo ? 'border-destructive bg-destructive/10 text-destructive' : 'border-border-strong bg-card text-foreground',
                         terminada && 'opacity-40',
                       ].filter(Boolean).join(' ')}
                     >
@@ -549,6 +625,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                   )
                 })}
               </div>
+              {blocoMotivo}
               <p className="mt-1.5 text-[11.5px] text-muted-foreground">
                 Marcar <b className="font-semibold text-foreground">Terminada</b> desliga os avisos.
               </p>

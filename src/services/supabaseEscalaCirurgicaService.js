@@ -57,6 +57,11 @@ const CAMEL_TO_SNAKE = {
   // o gatilho a converte em termino_previsto no Iniciada (o `_por` é do gatilho)
   duracaoEstimadaMin: 'duracao_estimada_min',
   duracaoEstimadaPor: 'duracao_estimada_por',
+  // MOTIVO da suspensão e do atraso (dono 19/11): o `_por` é do gatilho
+  motivoSuspensao: 'motivo_suspensao',
+  motivoSuspensaoPor: 'motivo_suspensao_por',
+  motivoAtraso: 'motivo_atraso',
+  motivoAtrasoPor: 'motivo_atraso_por',
 }
 
 const SNAKE_TO_CAMEL = Object.fromEntries(
@@ -112,6 +117,8 @@ const CASO_FIELDS = [
   'inicioReal', 'terminoReal',
   // idem a duração estimada (27/10): só o app grava; a republicação a preserva
   'duracaoEstimadaMin',
+  // idem o motivo da suspensão/atraso (19/11)
+  'motivoSuspensao', 'motivoAtraso',
 ]
 
 function casoToRow(caso, escalaId) {

@@ -37,7 +37,7 @@
  * pendência: preencher a última com o detalhe aberto não pode fechá-lo debaixo do dedo.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronRight, ChevronsRight, ClockAlert, UserCog, X } from 'lucide-react'
+import { Ban, ChevronRight, ChevronsRight, ClockAlert, UserCog, X } from 'lucide-react'
 import { Button, Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, useToast } from '@/design-system'
 import { HOSPITAL_LABEL, useEscalaCirurgica } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
@@ -46,9 +46,11 @@ import { fraseClinica } from '@/lib/colunaLiberacao'
 import { casoAberto, rotuloDiaRelatorio } from '@/lib/escalaHorarioPendente'
 import { nomeCurtoProcedimento } from '@/lib/escalaProcedimentoCurto'
 import { ehDiaOperacionalAtual, erroHorarioReal, gravarInicioReal, gravarTerminoReal, limiteDoTermino } from '@/lib/escalaHorarioReal'
+import { gravarStatusComMotivo } from '@/lib/escalaMotivoStatus'
 import { ConfirmarHorario, ConfirmarInicioETermino } from './BlocoHorario'
 import CasoDetalheSheet from './CasoDetalheSheet'
 import DefinirAnestesistaSheet from './DefinirAnestesistaSheet'
+import MotivoStatus from './MotivoStatus'
 import SeloHorarioPendente from './SeloHorarioPendente'
 import { ID_MINHAS_PENDENCIAS } from './MeuPreenchimento'
 import { fraseTurnoEncerrado, nomeAnestesistaExibicao, salaExibicao, turnoJaEncerrou } from './utils'
@@ -267,6 +269,9 @@ export default function FaixaHorarioPendente({ minhas = null, anteriores = null,
   const [detalhe, setDetalhe] = useState(null) // { hospital, caso, turno } — "Ver a cirurgia"
   const [definir, setDefinir] = useState(null) // "Trocar" no detalhe de um turno encerrado
   const [trocar, setTrocar] = useState(null) // "Trocar" na folha do horário (29/10): o item da folha
+  // "NÃO ACONTECEU — FOI SUSPENSA" (dono 19/11, modelo A2): a folha troca o corpo pela escolha
+  // do motivo. Guardado pelo id da cirurgia: abrir outra folha volta aos horários sozinho.
+  const [suspenderDe, setSuspenderDe] = useState(null)
   const trocou = useRef(false) // confirmada a troca, a folha do horário não volta
   // a última do pop-up foi resolvida AQUI: ao esvaziar, ele some com "Horários em dia"
   const resolveuNoPopup = useRef(false)
@@ -367,18 +372,22 @@ export default function FaixaHorarioPendente({ minhas = null, anteriores = null,
     }
   }
   const conteudo = conteudoDaFolha()
-  const naoAconteceu = () => {
+  // a suspensa leva o MOTIVO junto (dono 19/11: obrigatório) — de hoje pelo context, de dia
+  // anterior pelo id (a escala daquele dia não está carregada)
+  const naoAconteceu = (motivo) => {
     const item = folha
     marcarResolucao()
     setFolha(null)
+    setSuspenderDe(null)
     if (!item.data) {
       const escala = escalas?.[item.hospital]
       const vivo = (escala?.casos || []).find((c) => c.id === item.caso.id) || item.caso
-      if (escala) setStatusCirurgia(escala, vivo, 'suspensa', { userId }).catch(() => {})
+      if (escala) gravarStatusComMotivo({ escala, caso: vivo, status: 'suspensa', motivo, userId, setStatusCirurgia, atualizarCaso }).catch(() => {})
     } else {
-      anteriores?.naoAconteceu(item)
+      anteriores?.naoAconteceu(item, motivo)
     }
   }
+  const suspendendo = !!folha && suspenderDe === folha.caso.id
   // a cirurgia de HOJE de um turno que já acabou abre no modo "só horário e quem fez" (28/10)
   const encerradoDe = (turno) => (turnoJaEncerrou({ turno, emCurso: turnoEmCurso, ehHoje: true }) ? fraseTurnoEncerrado(turno) : null)
 
@@ -495,8 +504,30 @@ export default function FaixaHorarioPendente({ minhas = null, anteriores = null,
             </SheetHeader>
             <div className="px-4 pb-5 pt-1">
               <LinhaAnestesista caso={conteudo.caso} podeTrocar={podeEditar} onTrocar={abrirTroca} />
-              {conteudo.corpo}
-              <div className="mt-1 flex flex-wrap items-center justify-center gap-x-5">
+              {suspendendo ? (
+                <MotivoStatus
+                  key={`${folha.caso.id}-suspensa`}
+                  status="suspensa"
+                  titulo="Por que foi suspensa?"
+                  rotuloBotao="Marcar como suspensa"
+                  onConfirmar={naoAconteceu}
+                  onCancelar={() => setSuspenderDe(null)}
+                  rotuloCancelar="Voltar aos horários"
+                />
+              ) : conteudo.corpo}
+              {/* NÃO ACONTECEU (dono 19/11): era um link cinza embaixo do botão e ninguém via —
+                  "não há como informar que ela foi suspensa". Agora é botão de largura total. */}
+              {!suspendendo && casoAberto(folha.caso) && (
+                <Button
+                  variant="outline"
+                  className="mt-2 min-h-[48px] w-full border-destructive text-[15px] font-bold text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => setSuspenderDe(folha.caso.id)}
+                >
+                  <Ban className="h-[18px] w-[18px]" aria-hidden="true" />
+                  Não aconteceu — foi suspensa
+                </Button>
+              )}
+              {!suspendendo && <div className="mt-1 flex flex-wrap items-center justify-center gap-x-5">
                 {!folha.data && escalas?.[folha.hospital] && (
                   <button
                     type="button"
@@ -512,16 +543,7 @@ export default function FaixaHorarioPendente({ minhas = null, anteriores = null,
                     Ver a cirurgia
                   </button>
                 )}
-                {casoAberto(folha.caso) && (
-                  <button
-                    type="button"
-                    className="flex min-h-[44px] items-center text-[13px] font-semibold text-muted-foreground active:opacity-70"
-                    onClick={naoAconteceu}
-                  >
-                    Não aconteceu (suspensa)
-                  </button>
-                )}
-              </div>
+              </div>}
             </div>
           </SheetContent>
         </Sheet>

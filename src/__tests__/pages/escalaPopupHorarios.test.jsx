@@ -256,7 +256,10 @@ describe('some quando o último débito é preenchido', () => {
   it('"Não aconteceu" na cirurgia ainda aberta também resolve', async () => {
     const { rerender } = montar([meu('p1', '08:00', 'RETOSSIGMOIDECTOMIA ABDOMINAL', { statusCirurgia: 'agendada', statusAtualizadoEm: null })])
     fireEvent.click(within(await esperarPopup()).getByRole('button', { name: 'Informar horários' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Não aconteceu (suspensa)' }))
+    fireEvent.click(screen.getByRole('button', { name: /Não aconteceu — foi suspensa/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Paciente não veio ou desistiu' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Marcar como suspensa' }))
+    await passar(0)
     expect(estado.ctx.setStatusCirurgia).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ id: 'p1' }), 'suspensa', expect.anything())
     rerender(pagina())
     await passar(50)

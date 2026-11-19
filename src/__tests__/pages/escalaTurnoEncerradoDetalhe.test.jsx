@@ -10,7 +10,7 @@
  * sem os efeitos do repasse.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 
 import { ThemeProvider, ToastProvider } from '@/design-system'
 import CasoDetalheSheet from '@/pages/escala-cirurgica/CasoDetalheSheet'
@@ -104,14 +104,17 @@ describe('detalhe no turno encerrado: só horário e quem fez', () => {
     expect(screen.getByRole('button', { name: 'Trocar anestesista' })).toBeTruthy()
   })
 
-  it('"Não aconteceu" só na cirurgia ainda aberta, e marca Suspensa', () => {
+  it('"Não aconteceu" só na cirurgia ainda aberta, e marca Suspensa com o motivo', async () => {
     const { unmount } = detalhe(caso(), { encerrado: AVISO })
-    expect(screen.queryByRole('button', { name: 'Não aconteceu (suspensa)' })).toBeNull() // terminada
+    expect(screen.queryByRole('button', { name: /Não aconteceu — foi suspensa/ })).toBeNull() // terminada
     unmount()
     const aberta = caso({ statusCirurgia: 'agendada', statusAtualizadoEm: null })
     detalhe(aberta, { encerrado: AVISO })
-    fireEvent.click(screen.getByRole('button', { name: 'Não aconteceu (suspensa)' }))
-    expect(acoes.setStatusCirurgia).toHaveBeenCalledWith(expect.objectContaining({ id: 'e-hro' }), expect.objectContaining({ id: 'c1' }), 'suspensa', { userId: 'u-eu' })
+    fireEvent.click(screen.getByRole('button', { name: /Não aconteceu — foi suspensa/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sem vaga de UTI ou leito' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Marcar como suspensa' }))
+    expect(acoes.atualizarCaso).toHaveBeenCalledWith(expect.objectContaining({ id: 'e-hro' }), 'c1', { motivoSuspensao: 'Sem vaga de UTI ou leito' }, { silencioso: true })
+    await waitFor(() => expect(acoes.setStatusCirurgia).toHaveBeenCalledWith(expect.objectContaining({ id: 'e-hro' }), expect.objectContaining({ id: 'c1' }), 'suspensa', { userId: 'u-eu' }))
   })
 
   it('fora do turno encerrado o detalhe é o de sempre (controle)', () => {

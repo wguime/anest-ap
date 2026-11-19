@@ -87,13 +87,17 @@ export default function useMinhasPendenciasAnteriores({ eu, hoje }) {
     }
   }, [toast, uid])
 
-  /** A cirurgia que não aconteceu: Suspensa (sai da conta, como na folha Antes de liberar). */
-  const naoAconteceu = useCallback(async (item) => {
+  /**
+   * A cirurgia que não aconteceu: Suspensa, com o MOTIVO (dono 19/11, obrigatório). O motivo vai
+   * antes do status (a RPC do status é um toggle — só é chamada se ela ainda não está suspensa).
+   */
+  const naoAconteceu = useCallback(async (item, motivo = null) => {
     const { caso } = item
     tirar(caso.id, true)
     try {
-      await svc.updateStatusCirurgia(caso.id, 'suspensa')
-      aplicarNoGuardado(uid, caso.id, { statusCirurgia: 'suspensa' })
+      if (motivo) await svc.updateCaso(caso.id, { motivoSuspensao: motivo })
+      if (caso.statusExtra !== 'suspensa') await svc.updateStatusCirurgia(caso.id, 'suspensa')
+      aplicarNoGuardado(uid, caso.id, { statusExtra: 'suspensa', ...(motivo && { motivoSuspensao: motivo }) })
       setGravados((g) => g + 1)
     } catch (error) {
       tirar(caso.id, false)

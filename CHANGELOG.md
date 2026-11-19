@@ -3,6 +3,22 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## 19/11/2026 — Escala: motivo da suspensão e do atraso — v5.12.99
+
+Dono 19/11: "Humberto me passou essa cirurgia pois ela foi suspensa e não há como informar que ela foi
+suspensa [...] quero que seja possível informar o motivo". Modelo escolhido em `.tmp/motivo-suspensa-atrasada.html`.
+- **Folha "Início e término"**: o link cinza "Não aconteceu (suspensa)" virou o botão vermelho **"Não aconteceu —
+  foi suspensa"**, que pergunta o motivo antes de gravar. Vale para hoje e para dia anterior (aba Minhas).
+- **Andamento do detalhe**: "Suspensa" abre o motivo e só grava com ele (obrigatório); "Atrasada" marca no toque e o
+  motivo é opcional. Com o motivo salvo, a linha "Motivo: … · Editar". Desmarcar limpa o motivo. O painel rola sozinho.
+- **Quanto atrasou** é calculado (início real − hora agendada), sem campo a preencher; a "AS" não tem de onde calcular.
+- **Quadro**: o motivo aparece em letra pequena embaixo do selo Suspensa/Atrasada.
+- Motivos (grupo da escala + revisões sistemáticas de cancelamento e de first-case delay) em `src/lib/escalaMotivoStatus.js`;
+  "Anestesista atrasado" é motivo próprio, separado de "Anestesista em outra sala". Campo "Outro" com até 200
+  caracteres e o aviso "sem o nome do paciente".
+- Banco: colunas `motivo_suspensao`/`motivo_atraso` (+ autor por gatilho) e a republicação as preserva
+  (migration `20261119180000`; rollback em `scripts/rollback-20261119180000-escala-motivo-suspensa-atraso.sql`, app antigo primeiro).
+
 ## 18/11/2026 (tarde) — Escala: Minhas abre na tarde + limpeza da folha — v5.12.98
 
 - **Minhas abre no turno seguinte quando o seu terminou** (dono 18/11: "aba minhas não está mostrando minhas

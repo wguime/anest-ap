@@ -25,6 +25,7 @@ import CasoDetalheSheet from './CasoDetalheSheet'
 import { LinhaTempoEstimado } from './TemposCirurgia'
 import SeloHorarioPendente from './SeloHorarioPendente'
 import { ehConsultorio } from '@/lib/escalaHorarioPendente'
+import { linhaDoMotivo } from '@/lib/escalaMotivoStatus'
 
 // Caso sem sala (o formulário deixou de exigir em 11/2026): `agruparPorSala` junta todos
 // sob "—". No cabeçalho o traço não dizia nada — o grupo se chama pelo que falta.
@@ -132,6 +133,7 @@ function CasoCardBase({ caso, destaque, salaLabel, onClick, agoraMin = null, mol
   // na coluna da hora ("→09:30", "~45min", chip com relógio) e a agendada com duração
   // estimada não mostrava nada. Some quando o caso encerra.
   const mostraTempo = !casoConcluido(caso) && !ehConsultorio(caso)
+  const motivo = linhaDoMotivo(caso)
   const rotulo = ['Detalhes do caso', salaLabel, caso.hora, caso.pacienteIniciais, procedimento]
     .filter(Boolean).join(', ')
   // SÓ o eixo principal pinta o card, e em tinta suave (dono 17/08): com os cinco
@@ -266,6 +268,12 @@ function CasoCardBase({ caso, destaque, salaLabel, onClick, agoraMin = null, mol
             </span>
           </span>
           {mostraTempo && <LinhaTempoEstimado caso={caso} agoraMin={agoraMin} className="mt-[3px]" />}
+          {/* MOTIVO da suspensão/atraso (dono 19/11, modelo C): embaixo, pequeno, só com o selo */}
+          {motivo && (
+            <span data-motivo className="mt-[3px] block truncate text-[12px] text-muted-foreground" title={motivo}>
+              {motivo}
+            </span>
+          )}
         </span>
       </div>
     </Raiz>

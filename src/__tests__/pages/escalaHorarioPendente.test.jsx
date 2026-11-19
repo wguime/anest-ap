@@ -19,7 +19,7 @@
  *  · o selo no card da cirurgia continua (público).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, within } from '@testing-library/react'
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react'
 
 import { ThemeProvider } from '@/design-system'
 import FaixaHorarioPendente from '@/pages/escala-cirurgica/FaixaHorarioPendente'
@@ -250,13 +250,54 @@ describe('o toque abre direto a folha do horário', () => {
     expect(ant.informar).toHaveBeenCalledWith(ant.itens[0], { inicio: '07:30', termino: '09:15' })
   })
 
-  it('"Não aconteceu" marca Suspensa na cirurgia aberta', () => {
+  it('"Não aconteceu" marca Suspensa na cirurgia aberta — com o motivo, que é obrigatório (dono 19/11)', async () => {
     agoraEm('08:05')
     contexto({ unimed: escala([caso({ statusCirurgia: 'agendada', terminoReal: null })]) })
     montar()
     fireEvent.click(within(caixa()).getByRole('button', { name: /^Informar o horário/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Não aconteceu (suspensa)' }))
-    expect(setStatusCirurgia).toHaveBeenCalledWith(expect.objectContaining({ hospital: 'unimed' }), expect.objectContaining({ id: 'c1' }), 'suspensa', { userId: 'uid-ana' })
+    fireEvent.click(screen.getByRole('button', { name: /Não aconteceu — foi suspensa/ }))
+    // a folha troca os horários pela escolha do motivo; sem motivo o botão não grava
+    expect(screen.getByText('Por que foi suspensa?')).toBeTruthy()
+    const marcar = screen.getByRole('button', { name: 'Marcar como suspensa' })
+    expect(marcar.disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Paciente sem jejum' }))
+    fireEvent.click(marcar)
+    // o motivo vai ANTES do status (atualizarCaso repinta a lista a partir da escala recebida)
+    expect(atualizarCaso).toHaveBeenCalledWith(expect.objectContaining({ hospital: 'unimed' }), 'c1', { motivoSuspensao: 'Paciente sem jejum' }, { silencioso: true })
+    await waitFor(() => expect(setStatusCirurgia).toHaveBeenCalledWith(expect.objectContaining({ hospital: 'unimed' }), expect.objectContaining({ id: 'c1' }), 'suspensa', { userId: 'uid-ana' }))
+  })
+
+  it('"Outro" abre o campo livre e "Voltar aos horários" desiste sem gravar', () => {
+    agoraEm('08:05')
+    contexto({ unimed: escala([caso({ statusCirurgia: 'agendada', terminoReal: null })]) })
+    montar()
+    fireEvent.click(within(caixa()).getByRole('button', { name: /^Informar o horário/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Não aconteceu — foi suspensa/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Outro' }))
+    const campo = screen.getByPlaceholderText('Descreva sem o nome do paciente')
+    expect(screen.getByRole('button', { name: 'Marcar como suspensa' }).disabled).toBe(true)
+    fireEvent.change(campo, { target: { value: '  falta de   anestésico  ' } })
+    expect(screen.getByRole('button', { name: 'Marcar como suspensa' }).disabled).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: 'Voltar aos horários' }))
+    expect(screen.queryByText('Por que foi suspensa?')).toBeNull()
+    expect(screen.getByRole('button', { name: /Não aconteceu — foi suspensa/ })).toBeTruthy()
+    expect(atualizarCaso).not.toHaveBeenCalled()
+    expect(setStatusCirurgia).not.toHaveBeenCalled()
+  })
+
+  it('de dia anterior, o motivo segue com o item (grava pelo id)', () => {
+    agoraEm('08:05')
+    contexto()
+    const ant = {
+      itens: [{ caso: caso({ id: 'ontem', statusCirurgia: 'agendada', terminoReal: null }), hospital: 'hro', turno: 'matutino', falta: 'ambos', motivo: 'turno', data: '2026-10-28' }],
+      informar: vi.fn(), naoAconteceu: vi.fn(),
+    }
+    montar({ anteriores: ant })
+    fireEvent.click(within(caixa()).getByRole('button', { name: /^Informar o horário/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Não aconteceu — foi suspensa/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Decisão ou ausência do cirurgião' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Marcar como suspensa' }))
+    expect(ant.naoAconteceu).toHaveBeenCalledWith(ant.itens[0], 'Decisão ou ausência do cirurgião')
   })
 })
 
