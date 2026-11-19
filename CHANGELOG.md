@@ -3,6 +3,14 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## 19/11/2026 (noite, 2) — Escala: "Não aconteceu" também na terminada sem horário — v5.12.101
+
+- Dono 19/11, 20h47 (a cirurgia do Humberto, ter 17/11): o botão "Não aconteceu — foi suspensa" não aparecia
+  porque a cirurgia já estava **Terminada sem horário** ("terminou antes de 10:35"). Sem início nem término nada
+  diz que ela aconteceu: agora o botão aparece nela também (folha do horário e detalhe do turno encerrado); a
+  cirurgia volta a Agendada e recebe a Suspensa com o motivo (a RPC recusa o extra numa terminada).
+- Terminada COM início ou término aconteceu: continua sem o botão.
+
 ## 19/11/2026 (noite) — Escala: motivo do atraso e retenção do texto livre — v5.12.100
 
 - **"Cirurgião atrasado"** sozinho (dono 19/11: "retire em outra sala"); o que já estava gravado com o rótulo

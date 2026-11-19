@@ -141,9 +141,26 @@ export async function gravarStatusComMotivo({ escala, caso, status, motivo = nul
   if (campo && caso.id && novo !== normalizarMotivo(caso[campo])) {
     await atualizarCaso(escala, caso.id, { [campo]: novo }, { silencioso: true })
   }
+  // a terminada sem horário volta a Agendada antes: a RPC recusa o extra numa terminada
+  if (ligar && status === 'suspensa' && terminadaSemHorario(caso)) {
+    await setStatusCirurgia(escala, caso, 'agendada', { userId })
+  }
   const ativo = caso.statusExtra === status
   if (ligar !== ativo) await setStatusCirurgia(escala, caso, status, { userId })
 }
+
+/**
+ * TERMINADA SEM HORÁRIO (dono 19/11, 20h47, a cirurgia do Humberto): alguém fechou com "Terminou ·
+ * horário depois" a cirurgia que na verdade foi suspensa — sem início e sem término, nada diz que ela
+ * aconteceu. É a única terminada que ainda pode virar Suspensa (volta a Agendada e recebe o extra).
+ */
+export const terminadaSemHorario = (caso) => (caso?.statusCirurgia || 'agendada') === 'terminada'
+  && !String(caso?.inicioReal ?? '').trim() && !String(caso?.terminoReal ?? '').trim()
+
+/** Pode receber "Não aconteceu — foi suspensa"? Aberta, ou terminada sem horário; e ainda não suspensa. */
+export const podeMarcarNaoAconteceu = (caso) => !!caso
+  && caso.statusExtra !== 'suspensa' && caso.statusCirurgia !== 'suspensa'
+  && ((caso.statusCirurgia || 'agendada') !== 'terminada' || terminadaSemHorario(caso))
 
 /**
  * O "OUTRO" PARECE IDENTIFICAR O PACIENTE? (revisão LGPD, 19/11): no grupo da escala o recado de

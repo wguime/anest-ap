@@ -46,7 +46,7 @@ import { fraseClinica } from '@/lib/colunaLiberacao'
 import { casoAberto, rotuloDiaRelatorio } from '@/lib/escalaHorarioPendente'
 import { nomeCurtoProcedimento } from '@/lib/escalaProcedimentoCurto'
 import { ehDiaOperacionalAtual, erroHorarioReal, gravarInicioReal, gravarTerminoReal, limiteDoTermino } from '@/lib/escalaHorarioReal'
-import { gravarStatusComMotivo } from '@/lib/escalaMotivoStatus'
+import { gravarStatusComMotivo, podeMarcarNaoAconteceu } from '@/lib/escalaMotivoStatus'
 import { ConfirmarHorario, ConfirmarInicioETermino } from './BlocoHorario'
 import CasoDetalheSheet from './CasoDetalheSheet'
 import DefinirAnestesistaSheet from './DefinirAnestesistaSheet'
@@ -517,7 +517,9 @@ export default function FaixaHorarioPendente({ minhas = null, anteriores = null,
               ) : conteudo.corpo}
               {/* NÃO ACONTECEU (dono 19/11): era um link cinza embaixo do botão e ninguém via —
                   "não há como informar que ela foi suspensa". Agora é botão de largura total. */}
-              {!suspendendo && casoAberto(folha.caso) && (
+              {/* também a TERMINADA SEM HORÁRIO (dono 19/11, 20h47): "terminou antes de 10:35" sem início
+                  nem término é a cirurgia fechada por quem não sabia — pode ter sido suspensa */}
+              {!suspendendo && podeMarcarNaoAconteceu(folha.caso) && (
                 <Button
                   variant="outline"
                   className="mt-2 min-h-[48px] w-full border-destructive text-[15px] font-bold text-destructive hover:bg-destructive/10 hover:text-destructive"

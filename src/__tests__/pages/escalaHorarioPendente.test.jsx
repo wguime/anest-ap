@@ -285,6 +285,33 @@ describe('o toque abre direto a folha do horário', () => {
     expect(setStatusCirurgia).not.toHaveBeenCalled()
   })
 
+  it('de dia anterior TERMINADA SEM HORÁRIO ("terminou antes de 10:35"): o botão aparece (dono 19/11, 20h47)', () => {
+    agoraEm('08:05')
+    contexto()
+    const ant = {
+      itens: [{ caso: caso({ id: 'ontem', statusCirurgia: 'terminada', inicioReal: null, terminoReal: null }), hospital: 'hro', turno: 'matutino', falta: 'ambos', motivo: 'turno', data: '2026-10-28' }],
+      informar: vi.fn(), naoAconteceu: vi.fn(),
+    }
+    montar({ anteriores: ant })
+    fireEvent.click(within(caixa()).getByRole('button', { name: /^Informar o horário/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Não aconteceu — foi suspensa/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Paciente não veio ou desistiu' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Marcar como suspensa' }))
+    expect(ant.naoAconteceu).toHaveBeenCalledWith(ant.itens[0], 'Paciente não veio ou desistiu')
+  })
+
+  it('terminada COM horário não oferece "Não aconteceu"', () => {
+    agoraEm('08:05')
+    contexto()
+    const ant = {
+      itens: [{ caso: caso({ id: 'ontem', statusCirurgia: 'terminada', inicioReal: '07:30', terminoReal: null }), hospital: 'hro', turno: 'matutino', falta: 'fim', motivo: 'turno', data: '2026-10-28' }],
+      informar: vi.fn(), naoAconteceu: vi.fn(),
+    }
+    montar({ anteriores: ant })
+    fireEvent.click(within(caixa()).getByRole('button', { name: /^Informar o horário/ }))
+    expect(screen.queryByRole('button', { name: /Não aconteceu — foi suspensa/ })).toBeNull()
+  })
+
   it('de dia anterior, o motivo segue com o item (grava pelo id)', () => {
     agoraEm('08:05')
     contexto()

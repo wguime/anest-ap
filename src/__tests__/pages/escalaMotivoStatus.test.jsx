@@ -9,7 +9,7 @@ import CasoDetalheSheet from '@/pages/escala-cirurgica/CasoDetalheSheet'
 import { CasoCard } from '@/pages/escala-cirurgica/BoardView'
 import {
   MOTIVOS_ATRASO, MOTIVOS_SUSPENSAO, MOTIVO_MAX, OUTRO, gravarStatusComMotivo, linhaDoMotivo,
-  minutosDeAtraso, motivoEscolhido, motivoParaEdicao, normalizarMotivo, pareceIdentificarPaciente, rotuloMinutos,
+  minutosDeAtraso, motivoEscolhido, motivoParaEdicao, normalizarMotivo, pareceIdentificarPaciente, podeMarcarNaoAconteceu, rotuloMinutos, terminadaSemHorario,
 } from '@/lib/escalaMotivoStatus'
 
 const { acoes } = vi.hoisted(() => ({
@@ -135,12 +135,32 @@ describe('gravar: o motivo vai ANTES do status', () => {
     expect(atualizarCaso).toHaveBeenLastCalledWith(esc, 'c1', { motivoAtraso: null }, { silencioso: true })
   })
 
+  it('terminada sem horário: motivo, depois Agendada, depois Suspensa (a RPC recusa extra em terminada)', async () => {
+    const ordem = []
+    const atualizarCaso = vi.fn(async () => { ordem.push('motivo') })
+    const setStatusCirurgia = vi.fn(async (_e, _c, s) => { ordem.push(s) })
+    await gravarStatusComMotivo({ escala: escala(caso()), caso: caso({ statusCirurgia: 'terminada' }), status: 'suspensa', motivo: 'Paciente sem jejum', setStatusCirurgia, atualizarCaso })
+    expect(ordem).toEqual(['motivo', 'agendada', 'suspensa'])
+  })
+
   it('já no status: só troca o motivo (a RPC é toggle — chamar de novo desmarcaria)', async () => {
     const atualizarCaso = vi.fn(async () => {})
     const setStatusCirurgia = vi.fn(async () => {})
     await gravarStatusComMotivo({ escala: escala(caso()), caso: caso({ statusExtra: 'suspensa' }), status: 'suspensa', motivo: 'Sem vaga de UTI ou leito', setStatusCirurgia, atualizarCaso })
     expect(atualizarCaso).toHaveBeenCalledTimes(1)
     expect(setStatusCirurgia).not.toHaveBeenCalled()
+  })
+})
+
+describe('quem pode receber "Não aconteceu"', () => {
+  it('aberta sim; terminada só sem início e sem término; já suspensa não', () => {
+    expect(podeMarcarNaoAconteceu(caso())).toBe(true)
+    expect(podeMarcarNaoAconteceu(caso({ statusCirurgia: 'iniciada', inicioReal: '13:10' }))).toBe(true)
+    expect(terminadaSemHorario(caso({ statusCirurgia: 'terminada' }))).toBe(true)
+    expect(podeMarcarNaoAconteceu(caso({ statusCirurgia: 'terminada' }))).toBe(true)
+    expect(podeMarcarNaoAconteceu(caso({ statusCirurgia: 'terminada', inicioReal: '13:10' }))).toBe(false)
+    expect(podeMarcarNaoAconteceu(caso({ statusCirurgia: 'terminada', terminoReal: '15:00' }))).toBe(false)
+    expect(podeMarcarNaoAconteceu(caso({ statusExtra: 'suspensa' }))).toBe(false)
   })
 })
 

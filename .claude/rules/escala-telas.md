@@ -1231,5 +1231,8 @@ Protótipo `.tmp/confirmar-anestesista-fora-da-ordem.html` (430px, dois temas). 
   é sozinho (o "ou em outra sala" saiu, 19/11 à noite).
 - **Retenção (LGPD, 180 dias)**: `escala_caso_motivo_purge()` troca por "Outro" o texto que não é rótulo de chip.
   O array da função ESPELHA as listas do app — chip novo/renomeado entra lá também (teste `escalaMotivoRetencaoSql`).
+- **Terminada SEM horário também pode virar Suspensa** (dono 19/11, 20h47): "terminou antes de…" sem início nem
+  término não prova que aconteceu. `podeMarcarNaoAconteceu`; `gravarStatusComMotivo` faz motivo → Agendada →
+  Suspensa (a RPC recusa o extra numa terminada). Terminada com início OU término: sem o botão.
 - ⚠️ Editar o motivo mexe em `updated_at`: suspensa da tarde com motivo editado à noite volta ao quadro
   (mesma consequência já assumida na virada das 19h).

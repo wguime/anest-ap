@@ -57,7 +57,7 @@ import useAgoraMinutoEscala from './useAgoraMinutoEscala'
 import { convenioExibicao, nomeAnestesistaExibicao, normNome, rodapeDoTurno, salaExibicao, tipoBadge, turnoDoCaso, terminoEncadeado, procedimentoComContinuacao, procedimentoBaseDoCaso } from './utils'
 import ChipsEscolha, { GRAVIDADE_CHIPS, TIPOS_CIRURGIA } from './ChipsEscolha'
 import MotivoStatus from './MotivoStatus'
-import { campoMotivo, gravarStatusComMotivo, linhaDoMotivo, temMotivo } from '@/lib/escalaMotivoStatus'
+import { campoMotivo, gravarStatusComMotivo, linhaDoMotivo, podeMarcarNaoAconteceu, temMotivo } from '@/lib/escalaMotivoStatus'
 
 // Verbo de cada estado na linha de procedência ("Iniciada às 14:33 por Fulano").
 const STATUS_VERBO = { iniciada: 'Iniciada', terminada: 'Terminada' }
@@ -565,7 +565,7 @@ export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDef
                 {tb ? ` · ${tb.label}` : ''}
               </p>
               {/* NÃO ACONTECEU (dono 19/11): botão visível e com o motivo, como na folha do horário */}
-              {podeEditarCaso && !terminada && !motivoAberto && vivo.statusExtra !== 'suspensa' && vivo.statusCirurgia !== 'suspensa' && (
+              {podeEditarCaso && !motivoAberto && podeMarcarNaoAconteceu(vivo) && (
                 <Button
                   variant="outline"
                   className="mt-2 min-h-[48px] w-full border-destructive text-[15px] font-bold text-destructive hover:bg-destructive/10 hover:text-destructive"

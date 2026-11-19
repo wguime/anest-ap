@@ -20,6 +20,7 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 import { useToast } from '@/design-system/components/ui/toast'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import { CORTE_PENDENCIAS_MINHAS, pendenciasDeDiasAnteriores } from '@/lib/escalaHorarioPendente'
+import { terminadaSemHorario } from '@/lib/escalaMotivoStatus'
 import { anestesistaDoCasoEh } from './utils'
 import { aplicarNoGuardado, assinarAnteriores, buscarAnteriores, retratoAnteriores } from './pendenciasAnteriores'
 
@@ -96,8 +97,11 @@ export default function useMinhasPendenciasAnteriores({ eu, hoje }) {
     tirar(caso.id, true)
     try {
       if (motivo) await svc.updateCaso(caso.id, { motivoSuspensao: motivo })
+      // terminada sem horário (dono 19/11, 20h47): volta a Agendada — a RPC recusa o extra numa terminada
+      const reabre = terminadaSemHorario(caso)
+      if (reabre) await svc.updateStatusCirurgia(caso.id, 'agendada')
       if (caso.statusExtra !== 'suspensa') await svc.updateStatusCirurgia(caso.id, 'suspensa')
-      aplicarNoGuardado(uid, caso.id, { statusExtra: 'suspensa', ...(motivo && { motivoSuspensao: motivo }) })
+      aplicarNoGuardado(uid, caso.id, { statusExtra: 'suspensa', ...(reabre && { statusCirurgia: 'agendada' }), ...(motivo && { motivoSuspensao: motivo }) })
       setGravados((g) => g + 1)
     } catch (error) {
       tirar(caso.id, false)
