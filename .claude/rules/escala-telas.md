@@ -1227,6 +1227,9 @@ Protótipo `.tmp/confirmar-anestesista-fora-da-ordem.html` (430px, dois temas). 
 - Grava-se o TEXTO (rótulo do chip ou o "Outro", ≤200) em `motivo_suspensao`/`motivo_atraso`; o autor
   (`*_por`) é do gatilho. A linha só lê o motivo do `statusExtra` ATUAL — o de um atraso depois suspenso
   fica gravado, mas não aparece. Listas em `src/lib/escalaMotivoStatus.js` (pesquisa + grupo da escala);
-  "Anestesista atrasado" é separado de "Anestesista em outra sala" por pedido do dono.
+  "Anestesista atrasado" é separado de "Anestesista em outra sala" por pedido do dono; "Cirurgião atrasado"
+  é sozinho (o "ou em outra sala" saiu, 19/11 à noite).
+- **Retenção (LGPD, 180 dias)**: `escala_caso_motivo_purge()` troca por "Outro" o texto que não é rótulo de chip.
+  O array da função ESPELHA as listas do app — chip novo/renomeado entra lá também (teste `escalaMotivoRetencaoSql`).
 - ⚠️ Editar o motivo mexe em `updated_at`: suspensa da tarde com motivo editado à noite volta ao quadro
   (mesma consequência já assumida na virada das 19h).

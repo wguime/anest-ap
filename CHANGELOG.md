@@ -3,6 +3,17 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## 19/11/2026 (noite) — Escala: motivo do atraso e retenção do texto livre — v5.12.100
+
+- **"Cirurgião atrasado"** sozinho (dono 19/11: "retire em outra sala"); o que já estava gravado com o rótulo
+  antigo foi trocado.
+- **Retenção de 180 dias do texto livre do "Outro"** (dono: "veja um prazo adequado e defina"): depois disso o
+  texto vira só "Outro"; rótulos de chip e autor ficam (são o indicador e não identificam o paciente). Expurgo
+  diário pelo pg_cron, 03:41 BRT (migration `20261119210000`; rollback em
+  `scripts/rollback-20261119210000-escala-motivo-retencao.sql`). Linha nova em `docs/lgpd-retencao.md`.
+- ⚠️ A lista de chips tem espelho no banco (`escala_caso_motivo_purge`); o teste `escalaMotivoRetencaoSql` trava
+  os dois iguais.
+
 ## 19/11/2026 — Escala: motivo da suspensão e do atraso — v5.12.99
 
 Dono 19/11: "Humberto me passou essa cirurgia pois ela foi suspensa e não há como informar que ela foi

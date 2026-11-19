@@ -53,6 +53,11 @@ describe('as listas (pesquisa + grupo da escala, 19/11)', () => {
     expect(MOTIVOS_ATRASO.some((m) => /anestesista atrasado.*outra sala/i.test(m))).toBe(false)
   })
 
+  it('"Cirurgião atrasado" sozinho — "em outra sala" saiu (dono 19/11, à noite)', () => {
+    expect(MOTIVOS_ATRASO).toContain('Cirurgião atrasado')
+    expect(MOTIVOS_ATRASO.some((m) => /cirurgião.*outra sala/i.test(m))).toBe(false)
+  })
+
   it('9 motivos em cada lista + "Outro" = grade de 2 colunas sem buraco', () => {
     expect(MOTIVOS_SUSPENSAO).toHaveLength(9)
     expect(MOTIVOS_ATRASO).toHaveLength(9)
@@ -106,8 +111,8 @@ describe('quanto atrasou — calculado (dono 19/11: "do início previsto até a 
   })
 
   it('a linha junta o quanto e o motivo; só fala do status ATUAL', () => {
-    expect(linhaDoMotivo(caso({ statusExtra: 'atrasada', inicioReal: '13:40', motivoAtraso: 'Cirurgião atrasado ou em outra sala' })))
-      .toBe('Atrasou 40 min · Cirurgião atrasado ou em outra sala')
+    expect(linhaDoMotivo(caso({ statusExtra: 'atrasada', inicioReal: '13:40', motivoAtraso: 'Cirurgião atrasado' })))
+      .toBe('Atrasou 40 min · Cirurgião atrasado')
     expect(linhaDoMotivo(caso({ statusExtra: 'suspensa', motivoAtraso: 'Material ou equipamento não pronto', motivoSuspensao: 'Paciente sem jejum' })))
       .toBe('Paciente sem jejum')
     expect(linhaDoMotivo(caso({ statusExtra: null, motivoSuspensao: 'Paciente sem jejum' }))).toBe('')

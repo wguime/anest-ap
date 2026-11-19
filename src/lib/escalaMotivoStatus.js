@@ -12,7 +12,12 @@
  * Regras do dono (19/11):
  *  · suspensa EXIGE motivo; atrasada é opcional (marca-se no meio da correria);
  *  · o atraso NÃO pede "quanto": é calculado do horário agendado até o início marcado;
- *  · "Anestesista atrasado" é motivo próprio, separado de "Anestesista em outra sala".
+ *  · "Anestesista atrasado" é motivo próprio, separado de "Anestesista em outra sala";
+ *  · "Cirurgião atrasado" sozinho — o "ou em outra sala" saiu (dono 19/11, à noite).
+ *
+ * ⚠️ AS LISTAS TÊM ESPELHO NO BANCO: `escala_caso_motivo_purge()` (20261119210000) troca por "Outro"
+ * todo texto que NÃO é rótulo de chip depois de 180 dias (retenção LGPD do texto livre). Rótulo novo
+ * ou renomeado aqui precisa entrar no array da função, senão vira "Outro" em 180 dias.
  *
  * O que se grava é o TEXTO (rótulo do chip ou o "Outro" digitado), não um código: a lista pode
  * mudar sem migration e o relatório lê direto. LGPD: o campo livre pede "sem o nome do paciente".
@@ -31,7 +36,7 @@ export const MOTIVOS_SUSPENSAO = [
 ]
 
 export const MOTIVOS_ATRASO = [
-  'Cirurgião atrasado ou em outra sala',
+  'Cirurgião atrasado',
   'Cirurgia anterior da sala atrasou',
   'Anestesista atrasado',
   'Anestesista em outra sala',
