@@ -314,8 +314,9 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   // que está em curso (P1–P4 no topo da fila), e a tarde ficou de propósito.
   const rotuloTurno = useMemo(() => {
     const todas = fimDeSemana ? TURNO_OPCOES_FDS : TURNO_OPCOES
-    const noiteDiaUtil = !fimDeSemana && data === hoje && turno === 'vespertino' && !(modoFds && feriado)
-      && faseLiberacoes({ agoraMin, dataEscala: data, hojeIso: hoje, fds: modoFds }) !== 'dia'
+    // feriado de dia de semana também tem noite desde 20/11/2026 (P1–P4 no topo da fila única)
+    const noiteDiaUtil = !fimDeSemana && data === hoje && turno === 'vespertino'
+      && faseLiberacoes({ agoraMin, dataEscala: data, hojeIso: hoje, fds: modoFds && !feriado }) !== 'dia'
     if (noiteDiaUtil) return 'Noite'
     return todas.find((o) => o.value === turno)?.label || ''
   }, [fimDeSemana, data, hoje, turno, modoFds, feriado, agoraMin])
@@ -1024,7 +1025,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                   escalaCasoNovo={escala}
                   onGarantirEscala={garantirEscala}
                   onNavigate={onNavigate}
-                  onDefinirP4={modoFds ? undefined : (h) => definirP4Hospital(h, userInfo)}
+                  onDefinirP4={modoFds && !feriado ? undefined : (h) => definirP4Hospital(h, userInfo)}
                   onDefinirCasos={(casoIds, { uid, apelido, rotulo, desfazivel = false, aviso = null }) => {
                     // a cirurgia é gravada na escala ONDE ELA MORA: na fila única, o hospital
                     // de origem; no dia útil, também

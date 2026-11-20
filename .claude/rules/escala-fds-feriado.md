@@ -280,6 +280,16 @@ tem os plantões do turno (posições 1 e 2) que sumiriam. Travas: "NOITE do fer
 feriado antes das 19h" em `escalaFdsTelaUnica.test.jsx` (o 1º falha com a fase fixa) e o
 describe `linhasNoturnasFeriado` em `plantaoNoturno.test.js`.
 
+↳ **Mesma noite, 20h44 (foto: "Karine não é a próxima a ser liberada")**: os dois "Plantão
+Unimed/HRO" da TARDE seguiam como posto (`postoDoTurno` → fora da fila) e, com eles em sala abaixo,
+a P4 sem cirurgia virava o próximo. **Às 19h o posto da tarde acaba** (`plantaoFisico` devolve
+null no feriado com `fase !== 'dia'`): selo some e os dois voltam à fila — o mesmo que o
+plantonista do dia útil sofre à noite. E *"P4 deve ser igual aos dias úteis no feriado com opção de
+marcar para onde ele vai"*: o selo P4 abre "Onde está o P4 hoje?" (mesma tabela
+`escala_plantao_p4_diario`); como a fila é uma só, a marcação não esconde o P4 — vira o HOSPITAL do
+card dele. O subtítulo diz "Noite" como no dia útil. Travas: "os plantões da TARDE perdem o posto"
+e "o P4 é marcável" no mesmo describe (os dois falham sem a mudança).
+
 **SELOS P1–P4 DO PLANTÃO — a fonte é a do DIA ÚTIL (dono 25/08):** "informe quem
 são os plantões (P1–P4) assim como já é informado nas escalas de dias úteis;
 apenas nos feriados, já que dias úteis e finais de semana já possuem essas

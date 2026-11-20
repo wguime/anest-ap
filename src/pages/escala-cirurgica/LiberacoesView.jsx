@@ -692,6 +692,12 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     // Mesmo desenho do ramo de fim de semana logo abaixo, que já lê a faixa do
     // TURNO EXIBIDO. O hospital de cada um sai das cirurgias DO DIA.
     if (feriado) {
+      // À NOITE o posto da tarde acaba (dono 20/11/2026, 20h44: a Karine, P4, aparecia como
+      // "Próximo a ser liberado" porque os dois "Plantão Unimed/HRO" da tarde, ainda em sala,
+      // ficavam fora da fila). A partir das 19h os plantões são os P1–P4 do topo; os dois da
+      // tarde voltam a ser gente da fila, como o plantonista do dia útil perde o selo à noite
+      // (`fundirLinhasNoturnas`, "um só Plantonista na tela").
+      if (fase !== 'dia') return null
       for (const nome of rodapeTurno.slice(0, 2)) {
         const chave = resolverUid(String(nome || '').trim()) || normNome(nome)
         const onde = hospitaisDoDia?.get(chave)
@@ -713,7 +719,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     add(unimed, 'Plantão Unimed')
     add(hro, 'Plantão HRO')
     return m
-  }, [modoFds, feriado, fdsMeta, turno, rodapeTurno, resolverUid, hospitaisDoDia])
+  }, [modoFds, feriado, fase, fdsMeta, turno, rodapeTurno, resolverUid, hospitaisDoDia])
   // vale também no card NOTURNO (dono 16/08: "adicione os badges de plantão em
   // todos os turnos") — lá a chave é namespaced 'noite:', daí o chaveDia
   const plantaoFisicoDe = (l) => {
@@ -1129,7 +1135,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // marcar onde o coringa está é da equipe toda (mesma permissão de editar a lista).
   // No FDS não há coringa: os 4 têm posto explícito na grade 19-07 — o sheet do
   // P4 fica fora (e o selo Pn do modo FDS nunca vira botão).
-  const podeMarcarP4 = !!canEdit && !!onDefinirP4 && !modoFds
+  // feriado (dono 20/11/2026): "P4 deve ser igual aos dias úteis no feriado com opção de marcar
+  // para onde ele vai" — a fila é uma só, então a marcação não esconde o P4 de lista nenhuma:
+  // ela vira o HOSPITAL do card dele (ver `hospitalDaLinha`)
+  const podeMarcarP4 = !!canEdit && !!onDefinirP4 && (!modoFds || feriado)
   // não escalado = está no rodapé mas NUNCA teve caso no dia → liberado por
   // definição (vermelho desde a publicação). Quem TEVE casos e todos encerraram
   // fica ATIVO (o conteúdo sai da linha, mas quem libera é o plantonista).
@@ -2276,7 +2285,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // casos. Fora do modo FDS `hospitaisDe` devolve null e a linha nem
           // aparece — no dia útil a tela toda é de um hospital só e repetir o
           // nome em cada card não informa nada.
-          const hospitalDaLinha = ov?.hospital || hospitaisDe(linha)
+          const hospitalDaLinha = ov?.hospital
+            || (feriado && linha.noturno && linha.selo === 'P4' && p4Hospital ? String(HOSPITAL_LABEL[p4Hospital] || '').toUpperCase() : null)
+            || hospitaisDe(linha)
           const observacaoLinha = observacaoDe(ov)
           // Cronômetro 100% MANUAL (decisão do dono 23/07): TODA linha nasce em
           // branco ("Tempo faltante") e só conta depois que alguém preenche —
@@ -4077,7 +4088,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           </SheetHeader>
           <div className="space-y-3 p-1">
             <p className="text-sm text-muted-foreground">
-              O P4 é coringa: sem definição, ele aparece nos três hospitais. A marcação vale para hoje e todos veem.
+              {feriado
+                ? 'O P4 é coringa. No feriado a fila é uma só: a marcação mostra no card dele em qual hospital ele está. Vale para hoje e todos veem.'
+                : 'O P4 é coringa: sem definição, ele aparece nos três hospitais. A marcação vale para hoje e todos veem.'}
             </p>
             <div className="space-y-2">
               {P4_HOSPITAIS.map((h) => (

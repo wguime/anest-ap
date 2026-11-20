@@ -909,6 +909,49 @@ describe('feriado — selos e plantão', () => {
     }
   })
 
+  /**
+   * Dono 20/11/2026, 20h44 (foto): "está errado, Karine não é a próxima a ser liberada". A P4 sem
+   * cirurgia virava o "próximo" porque os dois "Plantão Unimed/HRO" da tarde — em sala, abaixo dela
+   * — ficavam fora da fila. À noite o posto da tarde acaba (como o plantonista do dia útil perde o
+   * selo): eles voltam à fila e o próximo é o último da lista que ainda trabalha.
+   */
+  it('NOITE do feriado: os plantões da TARDE perdem o posto e a P4 não é o próximo', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-08-25T20:00:00-03:00'))
+    try {
+      render(<LiberacoesView {...feriado({
+        turno: 'vespertino',
+        plantoes: [{ setor: 'P1', nome: 'GABRIEL' }, { setor: 'P4', nome: 'KARINE' }],
+      })} />, { wrapper: wrap })
+      await screen.findByText(/Karine/)
+      expect(screen.queryByText(/^Plantão (Unimed|HRO)/)).toBeNull()
+      expect(cardDe('noite:uid-karine').textContent).not.toContain('Próximo a ser liberado')
+      // MARILIA (2ª da ordem da tarde, em sala) fecha a lista e é quem sai agora
+      expect(cardDe('uid-marilia').textContent).toContain('Próximo a ser liberado')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('NOITE do feriado: o P4 é marcável como no dia útil, e o hospital marcado vai para o card', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-08-25T20:00:00-03:00'))
+    try {
+      const onDefinirP4 = vi.fn()
+      render(<LiberacoesView {...feriado({
+        turno: 'vespertino', p4Hospital: 'hro', onDefinirP4,
+        plantoes: [{ setor: 'P1', nome: 'GABRIEL' }, { setor: 'P4', nome: 'KARINE' }],
+      })} />, { wrapper: wrap })
+      fireEvent.click(await screen.findByRole('button', { name: 'Definir em qual hospital o P4 está hoje' }))
+      expect(await screen.findByText('Onde está o P4 hoje?')).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: /Unimed/ }))
+      expect(onDefinirP4).toHaveBeenCalledWith('unimed')
+      expect(cardDe('noite:uid-karine').querySelector('[data-hospital-linha]')?.textContent).toBe('HRO')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('TARDE do feriado antes das 19h: os P1–P4 só levam o selo, a fila segue como publicada', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.setSystemTime(new Date('2026-08-25T15:00:00-03:00'))

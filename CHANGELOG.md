@@ -3,6 +3,19 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## 20/11/2026 (noite, 21h) — Escala (feriado): P4 marcável e plantões da tarde voltam à fila — v5.12.106
+
+Dono 20/11, 20h44 (foto): "está errado, Karine não é a próxima a ser liberada, P4 deve ser igual aos dias úteis
+no feriado com opção de marcar para onde ele vai".
+- **Próximo a ser liberado:** os dois "Plantão Unimed/HRO" da tarde (Rômulo e Guilherme Melo) seguiam como posto
+  depois das 19h, fora da fila; com eles em sala abaixo, a P4 sem cirurgia virava a próxima. Às 19h o posto da
+  tarde acaba: o selo sai e eles voltam à fila (o próximo passou a ser o Melo, em sala às 20h).
+- **P4:** o selo abre "Onde está o P4 hoje?", como no dia útil; na fila única a marcação aparece como o hospital
+  do card dele. O subtítulo diz "Noite".
+- **Sábado 21/11, manhã (dado):** Guilherme Melo saiu do 7º lugar e entrou entre Raquel e Guilherme Xavier — nasce
+  liberado e é o primeiro a ser chamado de volta, antes do Xavier
+  (`scripts/repair-escala-2026-11-21-matutino-melo-cauda.sql`, já aplicado).
+
 ## 20/11/2026 (noite) — Escala (feriado): P1–P4 no topo da fila depois das 19h — v5.12.105
 
 Dono 20/11 (Consciência Negra), às 19h: "a escala de liberações não está com os P1, P2, P3 e P4 na ordem após
