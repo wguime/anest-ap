@@ -2695,8 +2695,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                             aqui empilhava dois iguais no card do plantonista. `-ml-1.5`
                             devolve o `px-1.5` na folga `pl-1.5` do bloco: o TEXTO segue na
                             coluna do local. Sem padding vertical nem `leading` próprio —
-                            a linha (e o card) mantêm a altura de antes. */}
-                        <span data-hospital-linha className="-ml-1.5 inline-block rounded-[4px] bg-primary/[0.14] px-1.5">
+                            a linha (e o card) mantêm a altura de antes. No tema escuro a
+                            faixa é primary/10: sobre o card "escalado" (primary/20) a de
+                            14% derrubava o texto para 4,41:1; com 10% fica em 4,77:1. */}
+                        <span data-hospital-linha className="-ml-1.5 inline-block rounded-[4px] bg-primary/[0.14] px-1.5 dark:bg-primary/[0.10]">
                           {hospitalDaLinha}
                         </span>
                       </p>
@@ -2751,10 +2753,19 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                                    "faltam 45min", "até 12:05" e "2h do início". A frase é mais longa:
                                    onde não cabe ao lado do nome (375/360px) ela DESCE inteira para a
                                    linha de baixo (`flex-wrap`), em vez de cortar o nome ou o tempo. */
-                                <p key={c.id || `${token}-${j}`} className="flex flex-wrap items-center gap-x-1.5 pl-2.5 text-[12.5px]">
+                                /* ALINHADO À CIRURGIA (dono 20/11, foto do card do Pauletti): o tempo
+                                   descia com `ml-auto` e parava num recuo solto, nem sob a hora nem
+                                   sob o nome. Agora a hora é uma coluna e nome + tempo quebram DENTRO
+                                   da coluna ao lado: descendo, o tempo começa exatamente sob o nome
+                                   da cirurgia, em qualquer largura (celular, tablet e desktop).
+                                   Cabendo na mesma linha segue à DIREITA (modelo A, 10/11): quem
+                                   empurra é o `grow` do nome, não mais `ml-auto` no tempo. */
+                                <p key={c.id || `${token}-${j}`} data-linha-cirurgia className="flex items-baseline gap-x-1.5 pl-2.5 text-[12.5px]">
                                   <span className="shrink-0 font-semibold tabular-nums text-foreground/70">{c.hora || '—'}</span>
-                                  {rotulo && <span className="min-w-0 truncate">{rotulo}</span>}
-                                  {!espelhaOTotal && <LinhaTempoEstimado caso={c} agoraMin={agoraMin} icone={false} suave className="ml-auto !text-xs" />}
+                                  <span data-cirurgia-e-tempo className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5">
+                                    <span className="min-w-0 grow truncate">{rotulo}</span>
+                                    {!espelhaOTotal && <LinhaTempoEstimado caso={c} agoraMin={agoraMin} icone={false} suave className="!text-xs" />}
+                                  </span>
                                 </p>
                               )
                             })}

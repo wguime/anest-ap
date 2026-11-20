@@ -1142,9 +1142,21 @@ describe('a fileira das cirurgias fica sob o círculo, numa linha só (dono 15/0
     montar({ onDefinirTerminoCaso: vi.fn(async () => {}) }, duas)
     const card = document.querySelector('[data-linha="uid-leo"]')
     const linha = linhaDaCirurgia(card, 'Liana W')
-    expect(linha.className).toContain('flex-wrap')
-    const tempo = linha.querySelector('[data-tempo-estimado]')
-    expect(tempo.className).toContain('ml-auto')
+    // ⚠️ 20/11 (dono, foto do card do Pauletti: "alinhado com a cirurgia acima"): com `ml-auto`
+    // a frase que descia parava num recuo solto. A hora virou coluna; nome + tempo quebram
+    // DENTRO da coluna ao lado — descendo, o tempo começa sob o nome. À direita só quando
+    // cabe na mesma linha, empurrado pelo `grow` do nome.
+    expect(linha.className).not.toContain('flex-wrap')
+    const coluna = linha.querySelector('[data-cirurgia-e-tempo]')
+    expect(coluna.className).toContain('flex-wrap')
+    expect(coluna.className).toContain('flex-1')
+    const tempo = coluna.querySelector(':scope > [data-tempo-estimado]')
+    expect(tempo.className).not.toContain('ml-auto')
+    expect(tempo.previousElementSibling.textContent).toBe('Colecistectomia')
+    expect(tempo.previousElementSibling.className).toContain('grow')
+    // a hora fica FORA da coluna que quebra: nada desce para baixo dela
+    expect(linha.firstElementChild.textContent).toBe('07:30')
+    expect(coluna.contains(linha.firstElementChild)).toBe(false)
     // nada dentro da frase quebra no meio
     expect([...tempo.querySelectorAll('span')].every((el) => el.className.includes('whitespace-nowrap'))).toBe(true)
   })

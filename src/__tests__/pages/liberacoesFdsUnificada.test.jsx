@@ -155,6 +155,8 @@ describe('fila única — ordem do rodapé publicado, cruzando hospitais', () =>
     expect(faixa('uid-staub')).toHaveLength(1)
     expect(faixa('uid-staub')[0].textContent).toBe('Unimed/HRO')
     expect(faixa('uid-staub')[0].className).toContain('bg-primary/[0.14]')
+    // tema escuro: faixa mais fraca — a de 14% sobre o card escalado (primary/20) dá 4,41:1
+    expect(faixa('uid-staub')[0].className).toContain('dark:bg-primary/[0.10]')
     // a faixa não pode trazer padding vertical: a altura do card é a de antes
     expect(faixa('uid-staub')[0].className).not.toMatch(/\bp[y]?-\d|\bpt-|\bpb-/)
     expect(faixa('MATHEUS')).toHaveLength(1)

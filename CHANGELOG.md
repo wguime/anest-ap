@@ -3,6 +3,17 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## 20/11/2026 (fim da tarde) — Escala: tempo estimado alinhado à cirurgia, e faixa do hospital legível no escuro — v5.12.104
+
+Dono 20/11, foto do card do Pauletti: "quero que a informação de tempo estimado fique alinhada com a cirurgia
+acima (mobile, tablets e desktop)".
+- **Tempo estimado na fila:** quando a frase não cabe ao lado do nome e desce de linha, ela começa exatamente
+  sob o nome da cirurgia (antes parava num recuo solto, empurrada por `ml-auto`). A hora virou coluna; nome e
+  tempo quebram dentro da coluna ao lado. Cabendo na mesma linha (tablet/desktop) segue à direita, como no
+  modelo A de 10/11.
+- **Faixa do hospital (H5) no tema escuro:** de primary/14 para primary/10 — sobre o card "escalado" o texto
+  estava em 4,41:1 e passa a 4,77:1. Tema claro igual.
+
 ## 20/11/2026 (tarde) — Escala: o card diz QUAL é o procedimento, e o mesmo cirurgião é um título só — v5.12.103
 
 Dono 20/11, cinco fotos da fila: "corrija os procedimentos, coloque os procedimentos corretos, evite colocar
