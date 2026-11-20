@@ -261,9 +261,24 @@ escala de funcionárias seguem com as próprias regras.
 
 **O documento é uma LISTA SIMPLES de nomes** ("FERIADO 25/08" + 22 nomes), sem
 grade P1–P4, sem posições numeradas e sem a linha "1º→último a ser liberado" do
-FDS. Daí: sem a numeração Pn DA GRADE (P1–P12), sem P4-coringa, sem fila da
-noite (`fase` fixa em `'dia'` — derivada da DATA, não de `fdsMeta.tipo`, que só
-existe depois de publicar), e o seletor com dois turnos.
+FDS. Daí: sem a numeração Pn DA GRADE (P1–P12), sem P4-coringa marcável, e o
+seletor com dois turnos. ~~sem fila da noite (`fase` fixa em `'dia'`)~~ — **revogado
+em 20/11/2026**, ver *FERIADO — a noite tem os P1–P4 no topo* logo abaixo.
+
+**FERIADO — a noite tem os P1–P4 no topo (dono 20/11/2026, Consciência Negra):**
+*"a escala de liberações não está com os P1, P2, P3 e P4 na ordem após as 19h, organize
+para que a escala fique correta"*. Com a fase fixa em `'dia'`, às 19h os quatro só tinham
+o selo e seguiam espalhados na fila da tarde (naquele dia: P3 em 6º, P1 em 8º, P2 em 9º,
+P4 liberada em 17º). Agora `fase` segue o relógio no feriado de dia de semana
+(`faseLiberacoes` com `fds: false`, porque `ehDiaUtil` é true) e às 19h
+`linhasNoturnasFeriado` funde os quatro NO TOPO da fila única na ordem **P1 → P2 → P3 → P4**
+(uma lista só: sem `ORDEM_NOTURNA` por hospital, o coringa aparece uma vez). Mesma fonte do
+selo da tarde (card Plantões, `resolverNomeCompleto` — o estrito do FDS não casa "G. Staub"),
+`forcarEmSala` ligado como no dia útil, P1/P2 com `foraDaFila` (nunca o "próximo"). ⚠️ **às
+23h a lista NÃO zera no feriado** (`'zerada'` vira `'noite'`): não foi pedido, e a fila única
+tem os plantões do turno (posições 1 e 2) que sumiriam. Travas: "NOITE do feriado" e "TARDE do
+feriado antes das 19h" em `escalaFdsTelaUnica.test.jsx` (o 1º falha com a fase fixa) e o
+describe `linhasNoturnasFeriado` em `plantaoNoturno.test.js`.
 
 **SELOS P1–P4 DO PLANTÃO — a fonte é a do DIA ÚTIL (dono 25/08):** "informe quem
 são os plantões (P1–P4) assim como já é informado nas escalas de dias úteis;

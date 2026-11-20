@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   faseLiberacoes, plantonistasNoturnos, candidatosNome, plantonistaNoturnoDe, linhasNoturnas,
-  fundirLinhasNoturnas, marcarSelosNoTurno, ehDiaUtil, casarPorInicialSobrenome,
+  fundirLinhasNoturnas, marcarSelosNoTurno, ehDiaUtil, casarPorInicialSobrenome, linhasNoturnasFeriado,
 } from '../../lib/plantaoNoturno'
 
 const HOJE = '2026-07-23' // quinta-feira
@@ -448,5 +448,29 @@ describe('fundirLinhasNoturnas — quem está de plantão não veio de outro hos
     const linhaOutro = out.find((l) => l.chave === 'uid-out')
     expect(linhaOutro.noturno).toBeUndefined()
     expect(linhaOutro.origemLabel).toBe('HRO')
+  })
+})
+
+describe('linhasNoturnasFeriado — a noite do feriado na fila única (dono 20/11/2026)', () => {
+  const NOT = { P1: 'Guilherme Xavier', P2: 'G. Staub', P3: 'Klisman', P4: 'Karine' }
+  it('P1 → P2 → P3 → P4, uma linha cada — sem hospital, o coringa aparece uma vez', () => {
+    expect(linhasNoturnasFeriado(NOT).map((l) => l.setor)).toEqual(['P1', 'P2', 'P3', 'P4'])
+  })
+  it('P1 e P2 são os plantonistas e ficam fora do "próximo"; P3/P4 seguem a fila', () => {
+    const [p1, p2, p3, p4] = linhasNoturnasFeriado(NOT)
+    expect([p1.isPlantonista, p2.isPlantonista, p3.isPlantonista, p4.isPlantonista]).toEqual([true, true, false, false])
+    expect([p1.foraDaFila, p2.foraDaFila, p3.foraDaFila, p4.foraDaFila]).toEqual([true, true, undefined, undefined])
+    expect(p4.papel).toBe('Coringa')
+  })
+  it('setor sem nome no card Plantões não vira linha', () => {
+    expect(linhasNoturnasFeriado({ P1: 'A', P3: 'C' }).map((l) => l.setor)).toEqual(['P1', 'P3'])
+    expect(linhasNoturnasFeriado(null)).toEqual([])
+  })
+  it('fundida na lista da tarde: os quatro sobem, na ordem, sem duplicar quem já estava', () => {
+    const tarde = ['KARINE', 'MARILIO', 'KLISMAN', 'STAUB', 'XAVIER'].map((n) => ({ chave: n, anestesista: n }))
+    const uid = { 'Guilherme Xavier': 'XAVIER', 'G. Staub': 'STAUB', Klisman: 'KLISMAN', Karine: 'KARINE' }
+    const out = fundirLinhasNoturnas(tarde, linhasNoturnasFeriado(NOT), { resolverUid: (n) => uid[n] })
+    expect(out.map((l) => l.chaveDia || l.chave)).toEqual(['XAVIER', 'STAUB', 'KLISMAN', 'KARINE', 'MARILIO'])
+    expect(out.slice(0, 2).every((l) => l.foraDaFila)).toBe(true)
   })
 })

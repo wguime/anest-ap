@@ -14,7 +14,7 @@ import {
 import { useHaptic } from '@/design-system/hooks'
 import { fraseClinica, gerarColunaLiberacao, nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
 import { casarNomeComLegenda, inserirPelaNumerica } from '@/lib/escalaNumerica'
-import { faseLiberacoes, plantonistasNoturnos, candidatosNome, linhasNoturnas, fundirLinhasNoturnas, marcarSelosNoTurno, ehDiaUtil, casarPorInicialSobrenome, P4_HOSPITAIS } from '@/lib/plantaoNoturno'
+import { faseLiberacoes, plantonistasNoturnos, candidatosNome, linhasNoturnas, linhasNoturnasFeriado, fundirLinhasNoturnas, marcarSelosNoTurno, ehDiaUtil, casarPorInicialSobrenome, P4_HOSPITAIS } from '@/lib/plantaoNoturno'
 import { marcarSelosFds, linhasNoturnasFds, plantonistasFaixaFds, FDS_TURNO_FAIXA, resolverNomeEstrito, ehFeriado, agruparSemAnestesistaPorCirurgiao, aplicarDomingoP7P8 } from '@/lib/escalaFds'
 import { passaTurnoLabel } from '@/lib/escalaCirurgicaRegras'
 import { diaOperacionalISO, HOSPITAIS, HOSPITAL_LABEL, OBSERVACAO_MAX } from '@/contexts/EscalaCirurgicaContext'
@@ -563,9 +563,17 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // olha só o relógio e a data, então a fila da MANHÃ vista às 19h ganharia os P1–P4 por cima e
   // zeraria às 23h. A página põe um aviso no lugar da fila de um turno encerrado; aqui a regra
   // fica garantida também na própria fila ("a manhã às 21h mostra a manhã como publicada").
-  const fase = feriado || turnoBase === 'matutino'
+  //
+  // FERIADO TEM NOITE (dono 20/11/2026, Consciência Negra: "a escala de liberações não está com
+  // os P1, P2, P3 e P4 na ordem após as 19h"). De 25/08 até aqui a fase ficava fixa em 'dia' no
+  // feriado, e os P1–P4 seguiam espalhados na lista da tarde só com o selo. Agora, às 19h, eles
+  // sobem para o topo da fila única na ordem P1 → P2 → P3 → P4 (`linhasNoturnasFeriado`), com a
+  // mesma fonte do dia útil (card Plantões). A lista da tarde NÃO zera às 23h no feriado: a fila
+  // única tem os plantões do turno (posições 1 e 2) e ninguém pediu para tirá-los da tela.
+  const faseRelogio = turnoBase === 'matutino'
     ? 'dia'
-    : faseLiberacoes({ agoraMin, dataEscala: escala?.data, hojeIso: diaOperacionalISO(), fds: modoFds })
+    : faseLiberacoes({ agoraMin, dataEscala: escala?.data, hojeIso: diaOperacionalISO(), fds: modoFds && !feriado })
+  const fase = feriado && faseRelogio === 'zerada' ? 'noite' : faseRelogio
   // CAUDA VERMELHA AUTOMÁTICA — quem fecha a fila sem cirurgia nasce Liberado.
   //
   //   dia útil ........... sempre (regra de 21/08)
@@ -761,7 +769,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
         // a própria linha 19-07 da grade
         ordem: Array.isArray(fdsMeta?.ordemNoite) ? fdsMeta.ordemNoite : [],
         resolverUid: (n) => resolverNomeEstrito(n, resolverUid), normalizar: normNome,
-      }) : [])
+      }) : (feriado && fase !== 'dia' ? linhasNoturnasFeriado(noturnos) : []))
     : fase === 'dia' ? [] : linhasNoturnas(chaveHospital, noturnos, p4Hospital)
   // Antes das 19h, no VESPERTINO da escala de HOJE: quem entra no plantão hoje já
   // aparece com o selo P1–P4 na lista da tarde (pedido do dono 25/07) — só o
@@ -787,12 +795,14 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     ? fundirLinhasNoturnas(linhas, linhasNoite, {
         // FDS: matching ESTRITO — sem ele "JOAO RICARDO" casava com o alias
         // "JOAO" do JOAO HENRIQUE e os dois viravam um card só (16/08)
-        resolverUid: modoFds ? (n) => resolverNomeEstrito(n, resolverUid) : resolverNomeCompleto,
+        // feriado: os nomes vêm do card Plantões ("G. Staub"), como no dia útil — o mesmo
+        // casamento que já põe o selo neles à tarde (`marcarSelosNoTurno`)
+        resolverUid: modoFds && !feriado ? (n) => resolverNomeEstrito(n, resolverUid) : resolverNomeCompleto,
         normalizar: normNome,
         display: (nome, uid) => (uid && nomeExibicao(uid)) || titleCaseNome(nome),
         // na fila única a noite classifica como o dia (dono 29/08) — ver a
         // doc de `forcarEmSala`. No dia útil o carimbo continua.
-        forcarEmSala: !modoFds,
+        forcarEmSala: !modoFds || feriado,
       })
     : avisarSelos
       ? marcarSelosNoTurno(linhas, noturnos, { resolverUid: resolverNomeCompleto, normalizar: normNome })

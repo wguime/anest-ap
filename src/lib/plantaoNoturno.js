@@ -131,6 +131,31 @@ export function linhasNoturnas(chaveHospital, noturnos, p4Hospital = null) {
 }
 
 /**
+ * NOITE DO FERIADO (dono 20/11/2026, Consciência Negra: "a escala de liberações não está com os
+ * P1, P2, P3 e P4 na ordem após as 19h"). O feriado de dia de semana roda na FILA ÚNICA — uma
+ * lista só para os três hospitais —, e até aqui a fase da noite ficava desligada nele (25/08:
+ * "sem fila da noite"): às 19h os P1–P4 só tinham o selo e seguiam espalhados na posição da
+ * tarde. Agora entram no topo, P1 → P2 → P3 → P4, com os mesmos nomes do card Plantões.
+ * Sem hospital por coluna: o P4 coringa aparece uma vez (não há outra lista de onde sumir).
+ * P1/P2 são os plantonistas e ficam fora do "próximo a ser liberado" (`foraDaFila`, o mesmo
+ * campo que a fila única já lê para os postos da noite); P3/P4 seguem a fila.
+ */
+export function linhasNoturnasFeriado(noturnos) {
+  const papeis = { P1: 'Plantonista', P2: 'Plantonista', P3: 'Plantão noturno', P4: 'Coringa' }
+  const linhas = []
+  for (const setor of ['P1', 'P2', 'P3', 'P4']) {
+    const nome = String(noturnos?.[setor] || '').trim()
+    if (!nome) continue
+    const plantonista = setor === 'P1' || setor === 'P2'
+    linhas.push({
+      setor, nome, papel: papeis[setor], isPlantonista: plantonista,
+      ...(plantonista ? { foraDaFila: true } : {}),
+    })
+  }
+  return linhas
+}
+
+/**
  * Casa "A. Schmidt" (INICIAL + SOBRENOME, formato comum do PegaPlantão) com o
  * cadastro. `candidatosNome` descarta a inicial, então sobra só "Schmidt" — e
  * apelido de sobrenome puro não existe no dicionário justamente porque seria

@@ -3,6 +3,17 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## 20/11/2026 (noite) — Escala (feriado): P1–P4 no topo da fila depois das 19h — v5.12.105
+
+Dono 20/11 (Consciência Negra), às 19h: "a escala de liberações não está com os P1, P2, P3 e P4 na ordem após
+as 19h, organize para que a escala fique correta". No feriado a fase da noite ficava desligada (25/08), e os
+quatro plantonistas só ganhavam o selo, cada um na posição da tarde (P3 em 6º, P1 em 8º, P2 em 9º, P4 em 17º).
+- **A partir das 19h, no feriado de dia de semana:** P1 → P2 → P3 → P4 sobem para o topo da fila única, com os
+  nomes do card Plantões; quem já estava na lista sobe (não duplica) e o resto da tarde segue abaixo, na ordem
+  publicada. P1 e P2 nunca viram "próximo a ser liberado"; P3 e P4 seguem a fila, como no dia útil.
+- **Às 23h a lista não zera no feriado** (no dia útil zera): não foi pedido.
+- Dia útil e sábado/domingo não mudam.
+
 ## 20/11/2026 (fim da tarde) — Escala: tempo estimado alinhado à cirurgia, e faixa do hospital legível no escuro — v5.12.104
 
 Dono 20/11, foto do card do Pauletti: "quero que a informação de tempo estimado fique alinhada com a cirurgia

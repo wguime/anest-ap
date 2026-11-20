@@ -875,6 +875,52 @@ describe('feriado — selos e plantão', () => {
     expect(cardDe('uid-marilia').textContent).not.toMatch(/Liberado|Livre/)
   })
 
+  /**
+   * Dono 20/11/2026 (Consciência Negra): "a escala de liberações não está com os P1, P2, P3 e P4
+   * na ordem após as 19h". O feriado ficava sem fase noturna (25/08) e os P1–P4 seguiam na posição
+   * da tarde só com o selo. Os P1–P4 desta fixture estão na ordem INVERSA da fila da tarde
+   * (RENATO, MARILIA, GABRIEL, KARINE) — sem isso a lista da tarde já sairia "em ordem" e o teste
+   * passaria sem a correção.
+   */
+  const PLANTOES_NOITE = [
+    { setor: 'P1', nome: 'KARINE' }, { setor: 'P2', nome: 'GABRIEL' },
+    { setor: 'P3', nome: 'MARILIA' }, { setor: 'P4', nome: 'RENATO' },
+  ]
+  // selos na ordem em que a fila os desenha (o documento é de cima para baixo)
+  const selosNaOrdem = (container) => [...container.querySelectorAll('[data-selo]')]
+    .map((e) => e.getAttribute('data-selo'))
+  // a chave do card de cada selo, na mesma ordem: prova que o selo está no TOPO, não só ordenado
+  const linhasComSelo = (container) => [...container.querySelectorAll('[data-linha]')]
+    .map((c, i) => ({ i, chave: c.getAttribute('data-linha') }))
+
+  it('NOITE do feriado: às 20h os P1–P4 sobem para o topo, P1 → P2 → P3 → P4', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-08-25T20:00:00-03:00'))
+    try {
+      const { container } = render(<LiberacoesView {...feriado({ turno: 'vespertino', plantoes: PLANTOES_NOITE })} />, { wrapper: wrap })
+      await screen.findByText(/Karine/)
+      expect(selosNaOrdem(container)).toEqual(['P1', 'P2', 'P3', 'P4'])
+      // um card por pessoa: quem estava na tarde é HOISTADO, não duplicado — e na ordem do plantão
+      const chaves = linhasComSelo(container).map((l) => l.chave)
+      expect(chaves).toHaveLength(4)
+      expect(chaves.map((c) => c.replace(/^noite:/, ''))).toEqual(['uid-karine', 'GABRIEL', 'uid-marilia', 'RENATO'])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('TARDE do feriado antes das 19h: os P1–P4 só levam o selo, a fila segue como publicada', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-08-25T15:00:00-03:00'))
+    try {
+      const { container } = render(<LiberacoesView {...feriado({ turno: 'vespertino', plantoes: PLANTOES_NOITE })} />, { wrapper: wrap })
+      await screen.findByText(/Karine/)
+      expect(selosNaOrdem(container)).toEqual(['P4', 'P3', 'P2', 'P1'])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('quem não está nas duas primeiras posições da folha não recebe selo', async () => {
     render(<LiberacoesView {...feriado({
       escala: {
