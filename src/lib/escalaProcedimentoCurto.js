@@ -68,6 +68,26 @@ const primeiro = (s, pares) => {
 }
 const contagem = (m) => parseInt(m[1], 10)
 
+/**
+ * Dono 20/11/2026, cinco fotos da fila ("Cirurgia", "Endoscopia", "Cateter central", "Fratura de
+ * fêmur"): *"coloque os procedimentos corretos, evite colocar coisas genéricas que não
+ * identificam o real procedimento"*. Quando a família não acha o qualificador na sua lista, o
+ * rótulo deixa de ser a palavra da família sozinha e passa a ser o que o PRÓPRIO TEXTO diz
+ * ("Biópsia de boca", "Drenagem de linfonodo inguinal", "Fratura supracondiliana"). Só fica a
+ * palavra sozinha quando o texto não traz mais nada ("Debridamento", "Biópsia").
+ */
+const porTexto = (bruto, generico) => {
+  const f = fallback(bruto).replace(/\s+cir[uú]rgic[ao]s?\b/gi, '')
+  return /\s/.test(f) ? f : generico
+}
+/** Ossos de uma fratura, na ordem em que o texto os cita (a fíbula acompanha a tíbia; rádio/ulna é o antebraço). */
+const OSSOS = [
+  [/\bFEMUR\b/, 'fêmur'], [/\bTIBIA(L)?\b/, 'tíbia'], [/\bUMERO\b/, 'úmero'], [/\b(RADIO|ULNA|ANTEBRACO)\b/, 'antebraço'],
+  [/\bPATELA\b/, 'patela'], [/\bTORNOZELO\b/, 'tornozelo'], [/\bCLAVICULA\b/, 'clavícula'],
+  [/\b(METACARP\w+|FALANG\w+|MAOS?)\b/, 'mão'], [/\bPUNHO\b/, 'punho'],
+]
+const ossosDaFratura = (s) => OSSOS.map(([re, nome]) => ({ i: s.search(re), nome })).filter((o) => o.i >= 0).sort((a, b) => a.i - b.i).map((o) => o.nome)
+
 /** Siglas de exame que ficam como no mapa dentro de uma linha contada ("8 EDA + 2 COLO"). */
 const SIGLAS_EXAME = new Set(['EDA', 'COLO', 'COLONO', 'RM', 'TC', 'FACO', 'US', 'CPRE', 'ESD', 'ECOEDA', 'RX', 'PET', 'RTU'])
 /** "(08 PCTES)" no fim da linha de exames: quantos pacientes fazem os N exames. */
@@ -86,6 +106,7 @@ const aposNumero = (rotulo) => {
  * qualquer outro parêntese são embalagem. O que não é sigla passa pelo dicionário/fallback
  * ("01 VITRECT." → "1 vitrectomia"). Devolve '' quando não sobra item — o chamador segue.
  */
+const EXAMES_DE_FAMILIA = new Set(['Endoscopia', 'Broncoscopia', 'Colonoscopia', 'Retossigmoidoscopia', 'Ecoendoscopia', 'Endoscopia + colonoscopia'])
 function rotuloContado(bruto) {
   // trabalha no texto ORIGINAL (acentos preservados para o fallback); `norm` só decide
   const texto = String(bruto || '').normalize('NFC').replace(/\s+/g, ' ').trim()
@@ -120,7 +141,7 @@ function rotuloContado(bruto) {
     else {
       rotulo = nomeCurtoProcedimento(resto)
       // a família engoliria o exame que o mapa nomeou: "01 BRONCOSCOPIA" é "1 broncoscopia", não "1 endoscopia"
-      if ((rotulo === 'Endoscopia' || rotulo === 'Broncoscopia') && !/\s/.test(resto)) rotulo = resto.toLowerCase()
+      if (EXAMES_DE_FAMILIA.has(rotulo) && !/\s/.test(resto)) rotulo = resto.toLowerCase()
     }
     if (!rotulo) continue
     itens.push((n == null ? rotulo : `${n} ${aposNumero(rotulo)}`) + com)
@@ -133,6 +154,8 @@ const DICIONARIO = [
   // ── blocos e seções (fora da grade) ────────────────────────────────────
   [/\bCONTINUACAO\b/, 'Continuação'],
   [/\bCO\/EMERG\w*|\bEMERGENCIA\/CO\b/, 'CO / Emergência'],
+  // "EMERGENCIA – TRANSPLANTE RENAL": o que se faz vem depois do traço (dono 20/11)
+  [/^EMERGENCIA\s*[-–—]\s*\S/, (m, s, bruto) => nomeCurtoProcedimento(bruto.replace(/^\s*emerg[eê]ncia\s*[-–—]\s*/i, '')) || null],
   [/\bCONSULTORIO\b.*AJUDA/, 'Consultório (ajuda)'],
   [/\bCONSULTORIO\b|\bCONSULTAS?\b/, 'Consultório'],
   // linha CONTADA ("01 EDA", "08 EDA + 02 COLO (08 PCTES)", "07 RM + 02 TC"): as quantidades são a
@@ -146,7 +169,22 @@ const DICIONARIO = [
   [/\bGASTROSTOMIA ENDOSCOPICA\b/, 'Gastrostomia endoscópica'],
   [/\b(ECOBRONCO|BRONCOSCOP\w*|BRONCO)\b/, 'Broncoscopia'],
   [/\bESD\b/, 'ESD'],
-  [/\b(EDA|COLONO\w*|RETOSSIG(?!MOIDECTOM)\w*|ENDOSCOPIA|ECOEDA)\b|\bCOLO\b(?!\s+(DO|DA|DE|UTERIN\w*|VESICAL)\b)/, 'Endoscopia'],
+  // dono 20/11 (foto: "AS Endoscopia" era "FRATURA/LESÃO FISÁRIA PROXIMAL (COLO) DO FÊMUR"): o
+  // parêntese escondia o "DO" do lookahead. E cada exame leva o próprio nome — colonoscopia não
+  // é "Endoscopia" —, com o motivo quando o texto o traz ("Passagem de SNE por EDA").
+  [/\b(EDA|COLONO\w*|RETOSSIG(?!MOIDECTOM)\w*|ENDOSCOPIA|ECOEDA|ECOENDOSCOPIA)\b|\bCOLO\b(?!\)?\s+(DO|DA|DE|UTERIN\w*|VESICAL|FEMORAL)\b)/, (m, s) => {
+    const alta = /\b(EDA|ENDOSCOPIA)\b/.test(s)
+    const baixa = /\bCOLONO\w*|\bCOLO\b/.test(s)
+    if (/\bENDOSCOPIA NASAL\b/.test(s)) return 'Endoscopia nasal'
+    if (/\bECOEDA\b|\bECOENDOSCOPIA\b/.test(s)) return 'Ecoendoscopia'
+    if (alta && baixa) return 'Endoscopia + colonoscopia'
+    if (baixa) return 'Colonoscopia'
+    if (!alta) return 'Retossigmoidoscopia'
+    if (/\bSNE\b|\bSONDA\b/.test(s)) return 'Passagem de SNE por endoscopia'
+    if (/\bHEMORRAGIA\b/.test(s)) return 'Endoscopia por hemorragia digestiva'
+    if (/\bBIOPSIA\b/.test(s)) return 'Endoscopia com biópsia'
+    return 'Endoscopia'
+  }],
   [/\bTC\b.*\bRM\b|\bRM\b.*\bTC\b/, 'TC + RM'],
   [/\bRN?MN?\b|\bRESSONANCIA\b/, 'RM'],
   [/\bTC\b/, 'TC'],
@@ -181,7 +219,7 @@ const DICIONARIO = [
   [/\bABLACAO\b.*\bPROSTAT\w*/, 'Ablação prostática'],
   [/\bABLACAO\b.*\b(ARRITMIA|CATETER)\b/, 'Ablação de arritmia'],
   [/\bABLACAO\b/, 'Ablação'],
-  [/\bANGIOGRAFIA\b/, 'Angiografia'],
+  [/\bANGIOGRAFIA\b/, (m, s, bruto) => porTexto(bruto, 'Angiografia')],
   [/\bOCLUSAO PERCUTANEA\b/, 'Oclusão percutânea'],
   [/\bTAVI\b/, 'TAVI'],
   [/\bVALVAR\b/, 'Cirurgia valvar'],
@@ -257,7 +295,13 @@ const DICIONARIO = [
   [/\bHEPATECTOMIA\b/, 'Hepatectomia'],
   [/\bHIPEC\b|\bCITORREDUTORA\b/, 'HIPEC'],
   [/\bTIREOIDECTOMIA\b/, (m, s) => /\bPARCIAL\b/.test(s) ? 'Tireoidectomia parcial' : /\bTOTAL\b/.test(s) ? 'Tireoidectomia total' : 'Tireoidectomia'],
-  [/\bCATETER (VENOSO CENTRAL|DE LONGA PERMANENCIA)\b|\bPORTOCATH\b|\bCATETERDE LONGA\b/, 'Cateter central'],
+  // implante × retirada muda o que se faz (dono 20/11, foto: "Cateter central" era a RETIRADA)
+  [/\bCATETER (VENOSO CENTRAL|DE LONGA PERMANENCIA)\b|\bPORTOCATH\b|\bCATETERDE LONGA\b/, (m, s) => {
+    const qual = /\bCATETER/.test(s) ? 'cateter central' : 'Portocath'
+    if (/\bRETIRADA\b/.test(s)) return `Retirada de ${qual}`
+    if (/\b(IMPLANT\w+|COLOCACAO|INSTALACAO|PASSAGEM)\b/.test(s)) return `Implante de ${qual}`
+    return qual === 'Portocath' ? 'Portocath' : 'Cateter central'
+  }],
   // ── mama / plástica ────────────────────────────────────────────────────
   [/\bMASTECTOMIA\b/, (m, s) => /\bRADICAL\b/.test(s) ? 'Mastectomia radical' : /\bSIMPLES\b/.test(s) ? 'Mastectomia simples' : 'Mastectomia'],
   [/\bQUADRANTECTOMIA\b|\bSETORECTOMIA\b|\bSEGMENTECTOMIA\b|\bLESAO (NAO PALPAVEL )?(DE|DA) MAMA\b|\bMARCACAO ESTEREOTAXICA\b/, 'Setorectomia de mama'],
@@ -301,11 +345,11 @@ const DICIONARIO = [
   // ── ortopedia ──────────────────────────────────────────────────────────
   [/\bMANGUITO ROTADOR\b/, 'Manguito rotador'],
   [/\bLCA\b|\bLIGAMENTO CRUZADO\b/, 'LCA'],
-  [/\bLIGAMENTO\b|\bLIGAMENTAR\w*/, (m, s) => {
+  [/\bLIGAMENT\w*/, (m, s) => {
     // "TORN" é o "TORNOZELO" cortado pela coluna do mapa; cartilagem triangular é do punho
     const art = primeiro(s, [[/\bTORN(OZELO)?\b/, 'de tornozelo'], [/\bJOELHO\b/, 'de joelho'], [/\bPUNHO\b|\bCARTILAGEM TRIANGULAR\b/, 'de punho'], [/\bMAO\b/, 'de mão'], [/\bOMBRO\b/, 'de ombro'], [/\bCOTOVELO\b/, 'de cotovelo']])
     if (art) return `Ligamento ${art}`
-    return /\bRECONSTRU/.test(s) ? 'Reconstrução ligamentar' : 'Ligamento'
+    return /\bRECONST|\bRETENCIONAMENTO\b|\bREFORCO\b/.test(s) ? 'Reconstrução ligamentar' : 'Ligamento'
   }],
   [/\bMENISC(O|ECTOMIA)\b/, 'Menisco'],
   [/\bARTROPLASTIA\b.*\bJOELHO\b|\bJOELHO\b.*\bARTROPLASTIA\b/, 'Artroplastia de joelho'],
@@ -314,6 +358,9 @@ const DICIONARIO = [
   [/\bARTROPLASTIA\b.*\bT[EÉ]MPORO-?MANDIBULAR\b|\bARTROPLASTIA\b.*-MANDIBULAR\b/, 'Artroplastia de ATM'],
   [/\bARTROPLASTIA\b.*\bTORNOZELO\b/, 'Artroplastia de tornozelo'],
   [/\bARTROPLASTIA\b.*\bMAO\b/, 'Artroplastia de mão'],
+  [/\bREVISAO\b.*\bARTROPLASTIA\b/, 'Revisão de artroplastia'],
+  [/\bARTROPLASTIA DE RESSECCAO\b/, 'Artroplastia de ressecção'],
+  [/\bARTROPLASTIA\b.*\bCABECA DO RADIO\b/, 'Artroplastia de cabeça do rádio'],
   [/\bARTROPLASTIA\b/, 'Artroplastia'],
   [/\bACROMIOPLASTIA\b/, 'Acromioplastia'],
   // o segmento diz qual artrodese é (dono 17/09: "Artrodese" sozinha estava incompleta)
@@ -374,12 +421,13 @@ const DICIONARIO = [
   [/\bFIOS PINOS\b|\bFIOS OU PINOS\b|\bHASTES METALICAS\b/, 'Fixação com pinos'],
   [/\bALONGAMENTO\b.*\bMIOTENDIN\w*/, 'Alongamento miotendinoso'],
   [/\bALONGAMENTO\b/, 'Alongamento ósseo'],
-  [/\bAMPUTACAO\b|\bDESARTICULACAO\b/, (m, s) => {
+  [/\bAMPUTACAO\b|\bDESARTICULACAO\b/, (m, s, bruto) => {
     const seg = primeiro(s, [[/\bDEDO\w*/, 'de dedo'], [/\bPE\b|\bTARSO\b/, 'de pé'], [/\bMEMBROS? INFERIOR\w*|\bCOXA\b|\bPERNA\b|\bMI[DE]?\b/, 'de membro inferior'], [/\bMEMBROS? SUPERIOR\w*|\bBRACO\b|\bANTEBRACO\b|\bMS[DE]?\b/, 'de membro superior'], [/\bMAO\b/, 'de mão'], [/\bRETO\b/, 'de reto']])
-    return seg ? `Amputação ${seg}` : 'Amputação'
+    return seg ? `Amputação ${seg}` : porTexto(bruto, 'Amputação')
   }],
   [/\bDES?BRIDAMENTO\b.*\bULCERA\b/, 'Debridamento de úlcera'],
   [/\bDES?BRIDAMENTO\b.*\bFERIDA\w*/, 'Debridamento de ferida'],
+  [/\bDES?BRIDAMENTO\b.*\bENXERTO\b/, 'Debridamento + enxerto de pele'],
   [/\bDES?BRIDAMENTO\b/, (m, s) => {
     const seg = primeiro(s, [[/\bDEDO\w*/, 'de dedo'], [/\bMAO\b/, 'de mão'], [/\bPE\b/, 'de pé'], [/\bMS[DE]?\b|\bMEMBROS? SUPERIOR\w*/, 'de membro superior'], [/\bMI[DE]?\b|\bMEMBROS? INFERIOR\w*/, 'de membro inferior'], [/\bRADIO\b|\bULNA\b|\bANTEBRACO\b/, 'de antebraço']])
     return seg ? `Debridamento ${seg}` : 'Debridamento'
@@ -387,6 +435,15 @@ const DICIONARIO = [
   [/\bMANIPULACAO ARTICULAR\b/, 'Manipulação articular'],
   [/\bPUNCAO ARTICULAR\b/, 'Punção articular'],
   [/\bLUXACAO\b.*\bTEMPORO-?MANDIBULAR\b|\bATM\b|\bMANDIBULAR POR ARTROSCOPIA\b/, 'ATM'],
+  // o colo do fêmur é outra fratura (e outra cirurgia) que a da diáfise (dono 20/11)
+  [/\bFRATURA\w*\b.*\bCOLO\)?\s+D[OE]\s+FEMUR\b|\bFRATURA\w*\b.*\bCOLO FEMORAL\b/, 'Fratura do colo do fêmur'],
+  [/\bFRATURA\w*\b.*\bSUPRACONDIL\w+/, (m, s) => /\bUMERO\b/.test(s) ? 'Fratura supracondiliana de úmero' : /\bFEMUR\b/.test(s) ? 'Fratura supracondiliana de fêmur' : 'Fratura supracondiliana'],
+  // dois ossos no texto são dois ossos no rótulo (dono 20/11, foto: "Fratura de fêmur e tíbia" saía "Fratura de fêmur")
+  [/\bFRATURA\w*\b/, (m, s) => {
+    const ossos = [...new Set(ossosDaFratura(s))]
+    if (ossos.length < 2) return null
+    return `Fratura de ${ossos.slice(0, -1).join(', ')} e ${ossos[ossos.length - 1]}`
+  }],
   [/\bFRATURA\w*\b.*\b(TRANSTROCANT\w+)/, 'Fratura transtrocantérica'],
   [/\bFRATURA\w*\b.*\bSUBTROCANT\w+/, 'Fratura subtrocantérica'],
   [/\bFRATURA\w*\b.*\bPATELA\b/, 'Fratura de patela'],
@@ -412,10 +469,10 @@ const DICIONARIO = [
   [/\bFRATURA\w*\b.*\bCOSTELA\w*/, 'Fratura de costela'],
   [/\bFRATURA\w*\b.*\bNASA\w*/, 'Fratura nasal'],
   [/\bFRATURA\w*\b.*\bCOLUNA\b|\bFRATURA\w*\b.*\bVERTEBR\w*/, 'Fratura de coluna'],
-  [/\bFRATURA\w*\b/, 'Fratura'],
-  [/\bLUXACAO\b|\bLUXACOES\b/, (m, s) => {
+  [/\bFRATURA\w*\b/, (m, s, bruto) => porTexto(bruto, 'Fratura')],
+  [/\bLUXACAO\b|\bLUXACOES\b/, (m, s, bruto) => {
     const art = primeiro(s, [[/\bQUADRIL\b|\bCOXO-?\s?FEMORAL\b/, 'de quadril'], [/\bOMBRO\b|\bACROMIO\w*|\bESCAPULO-?\s?UMERAL\b/, 'de ombro'], [/\bCARPO\b|\bPUNHO\b/, 'de punho'], [/\bCOTOVELO\b/, 'de cotovelo'], [/\bPATEL\w*|\bJOELHO\b/, 'de patela'], [/\bTORNOZELO\b/, 'de tornozelo']])
-    return art ? `Luxação ${art}` : 'Luxação'
+    return art ? `Luxação ${art}` : porTexto(bruto, 'Luxação')
   }],
   // ── neuro ──────────────────────────────────────────────────────────────
   // "MICROCIRURGIA VASCULAR INTRACRANIANA" é aneurisma/malformação, não tumor
@@ -437,14 +494,19 @@ const DICIONARIO = [
   [/\bESTRABISMO\b/, 'Estrabismo'],
   [/\bTRANSPLANTE CONJUNTIVAL\b|\bPTERIGIO\b/, 'Pterígio'],
   // ── outros ─────────────────────────────────────────────────────────────
-  [/\bBIOPSIAS?\b/, (m, s) => {
+  [/\bBIOPSIAS?\b/, (m, s, bruto) => {
     const obj = primeiro(s, [[/\bGANGLIO\b|\bLINFONODOS?\b/, 'de gânglio'], [/\bPLEURA\b/, 'de pleura'], [/\bMEDIASTINO\b/, 'de mediastino'], [/\bGLANDULA SALIVAR\b/, 'de glândula salivar'], [/\bRETROPERITON\w*/, 'retroperitoneal'], [/\bCAVUM\b|\b(ORO|HIPO|NASO)?FARINGE\b/, 'de faringe'], [/\bLARING\w*/, 'de laringe'], [/\bOSSE\w*|\bOSSOS?\b/, 'óssea'], [/\bMAMA\b/, 'de mama'], [/\bPELE\b/, 'de pele'], [/\bFIGADO\b|\bHEPATIC\w*/, 'hepática'], [/\bRENAL\b|\bRIM\b/, 'renal'], [/\bPULM\w*/, 'pulmonar'], [/\bTOMOGRAFIA\b|\bTC\b/, 'por TC'], [/\bMUSCUL\w*/, 'muscular']])
-    return obj ? `Biópsia ${obj}` : 'Biópsia'
+    if (obj) return `Biópsia ${obj}`
+    if (/\bPERICARDIO\b/.test(s)) return 'Biópsia de pericárdio'
+    // "TORACOTOMIA COM BIOPSIA": a cirurgia é a primeira palavra, a biópsia vem junto
+    const com = /^(\w+) (?:COM|C\/) BIOPSIAS?$/.exec(s)
+    if (com) return `${frase([com[1]])} com biópsia`
+    return porTexto(bruto, 'Biópsia')
   }],
   // "APLICACAO DE MEDULA OSSEA OU CELULAS TRONCO" é aplicação, não aspiração
   [/\bCELULAS? TRONCOS?\b/, 'Célula-tronco'],
   [/\bMEDULA OSSEA\b|\bBMO\b/, 'Aspiração de medula'],
-  [/\bDRENAGEM\b/, (m, s) => {
+  [/\bDRENAGEM\b/, (m, s, bruto) => {
     // o que se drena e onde (dono 14/10): o PRIMEIRO do texto ("ABCESSO, HEMATOMA OU PANARICIO" é o abscesso)
     const sitioAbscesso = primeiro(s, [[/\bRENAL\b/, ' renal'], [/\bHEPATIC\w*/, ' hepático'], [/\bANORRETAL\b|\bPERIANAL\b/, ' anorretal']]) || ''
     const alvo = primeiro(s, [
@@ -453,7 +515,7 @@ const DICIONARIO = [
       [/\bSEROMA\b/, 'Drenagem de seroma'], [/\bPLEURA\w*/, 'Drenagem pleural'], [/\bLIQUORIC\w*/, 'Drenagem liquórica'],
       [/\bBILIAR\b/, 'Drenagem biliar'], [/\bHEPATIC\w*/, 'Drenagem hepática'],
     ])
-    return alvo || 'Drenagem'
+    return alvo || porTexto(bruto, 'Drenagem')
   }],
   // EXÉRESE: "de quê" é o que identifica (dono 18/09: "exérese de que?"). Objetos vistos nos
   // 60 dias até 18/09: pele/mucosas, cervical (tumor/cisto/fístula), cisto branquial/
@@ -477,6 +539,11 @@ const DICIONARIO = [
   }],
   [/\bTRANSPLANTE OSSEO\b/, 'Transplante ósseo'],
   [/\bNEUROMA\b/, 'Neuroma'],
+  // "CIRURGIA (VIA ALTA OU BAIXA) DO PROLAPSO" é o descritivo cortado de "…do prolapso de cúpula
+  // vaginal" — o corte no parêntese deixava só "Cirurgia" (dono 20/11)
+  [/\bPROLAPSO\b.*\bCUPULA\b|\bVIA ALTA OU BAIXA\b.*\bPROLAPSO\b/, 'Prolapso de cúpula vaginal'],
+  [/\bRECONSTRUCAO COM RETALHO\b/, (m, s) => /\bMIOCUTANEO\b/.test(s) ? 'Reconstrução com retalho miocutâneo' : 'Reconstrução com retalho'],
+  [/\bCIRURGIAS MULTIPLAS\b/, 'Cirurgias múltiplas'],
 ]
 
 /** O que é embalagem no descritivo e some antes de olhar a cabeça da frase. */
@@ -526,6 +593,7 @@ const ACENTOS = {
   CUTANEA: 'cutânea', CLAVICULA: 'clavícula', LIQUORICA: 'liquórica', NEUROLITICO: 'neurolítico',
   SUBARACNOIDEO: 'subaracnóideo', BRONQUICA: 'brônquica', CUPULA: 'cúpula', NAO: 'não', FASCIA: 'fáscia',
   OPERATORIO: 'operatório', 'INTRA-HEPATICA': 'intra-hepática', FEMORO: 'fêmoro', PERIFERICO: 'periférico',
+  'POS-OPERATORIA': 'pós-operatória', TRANSOPERATORIA: 'transoperatória', PERICARDIO: 'pericárdio', ZIGOMA: 'zigoma',
   ARTERIA: 'artéria', ESTOMATOLOGICO: 'estomatológico', TRAQUEIA: 'traqueia', VESICAL: 'vesical',
 }
 

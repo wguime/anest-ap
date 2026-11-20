@@ -424,6 +424,19 @@ tempo total" abaixo. Não é a volta do "+ término" de 14/09: nada nasce no car
   biópsia de pleura…). Lateralidade e via (bilateral, laparoscópica) continuam fora; lista de opções da
   tabela ("ouvido / faringe / laringe") não escolhe local. A varredura foi feita sobre
   `escala_cirurgica_caso.procedimento` (2.793 distintos, toda a base) — 235 grafias mudaram.
+  ⚠️ **5ª volta (dono 20/11: "Cirurgia", "Endoscopia", "Cateter central", "Fratura de fêmur" — "evite colocar
+  coisas genéricas que não identificam o real procedimento").** (1) O lookahead de "COLO" não via o "DO" atrás do
+  parêntese: "(COLO) DO FÊMUR" saía Endoscopia. (2) A família sem qualificador na lista devolvia a palavra
+  sozinha; agora cai no texto (`porTexto`: "Biópsia de boca", "Drenagem de linfonodo inguinal") e só fica a
+  palavra quando o texto não traz mais nada. (3) O VERBO muda o ato também no cateter (implante × retirada), e
+  dois ossos no texto são dois ossos no rótulo (`ossosDaFratura`). (4) Cada exame tem o próprio nome
+  (colonoscopia não é "Endoscopia"); a linha contada segue com a palavra do mapa (`EXAMES_DE_FAMILIA`).
+  Varredura: 3.595 grafias, 117 mudaram — script em `.tmp/varredura-nome-curto.mjs` (resumo · rotulo · texto ·
+  dump para o antes × depois). ⛔ Não completar o que o texto não diz: "Masto" continua "Masto", caso sem
+  procedimento continua em branco.
+- **O mesmo cirurgião, um título só (dono 20/11):** `unificarCirurgioesDoGrupo` (`colunaLiberacao.js`) funde, no
+  card de UMA pessoa, o nome curto ao mais completo quando é o começo dele ("Theodoro" → "Theodoro Gonzalez";
+  "Ana R" → "Ana Romanzini"). Dois candidatos → não funde. Token com "/", SRPA e Continuação ficam fora.
 - **`PainelTempo` devolve `meta.minutos`** quando a escolha foi DURAÇÃO (atalho ou "Outro
   tempo…"); hora exata não traz meta. Quem consome é o detalhe do caso — a fila deixou de
   abrir o painel por cirurgia em 15/09. O handler `onDefinirTerminoCaso(casoId, hhmm, meta)`

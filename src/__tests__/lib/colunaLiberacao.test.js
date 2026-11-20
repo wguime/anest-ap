@@ -1612,3 +1612,45 @@ describe('cirurgias — as cirurgias abertas da pessoa, uma a uma', () => {
     expect(r.linhas[0].cirurgias).toEqual([])
   })
 })
+
+// Dono 20/11/2026, foto do card: "Theodoro" com duas cirurgias e "Theodoro Gonzalez" com outras
+// duas — "é o mesmo cirurgião, não subdivida como se fossem dois". O mapa traz o nome completo; o
+// caso lançado à mão, só o primeiro nome.
+describe('o mesmo cirurgião escrito de dois jeitos é um título só', () => {
+  const tokens = (r, i = 0) => [...new Set(r.linhas[i].cirurgias.map((c) => c.token))]
+  it('recorte real de 20/11: o primeiro nome se funde ao nome completo', () => {
+    const r = gerarColunaLiberacao([
+      caso('Sala 2', 0, 'GABRIELA', 'Theodoro', { hora: '14:00', procedimento: 'Debridamento' }),
+      caso('Sala 2', 1, 'GABRIELA', 'Theodoro', { hora: '18:00', procedimento: 'Fratura de fêmur e tíbia' }),
+      caso('Sala 2', 2, 'GABRIELA', 'Theodoro Gonzalez', { hora: 'AS', procedimento: 'FRATURA/LESÃO FISÁRIA PROXIMAL (COLO) DO FÊMUR.' }),
+      caso('Sala 2', 3, 'GABRIELA', 'Theodoro Gonzalez', { hora: 'AS', procedimento: 'DEBRIDAMENTO DE ÚLCERA / TECIDOS DESVITALIZADOS.' }),
+    ], ['GABRIELA'])
+    expect(tokens(r)).toEqual(['Theodoro Gonzalez'])
+    expect(r.linhas[0].cirurgioes).toEqual(['Theodoro Gonzalez'])
+    expect(r.linhas[0].cirurgias).toHaveLength(4)
+  })
+  it('a inicial no fim também casa ("Ana R" é a "Ana Romanzini")', () => {
+    const r = gerarColunaLiberacao([
+      caso('CO', 0, 'NATHALIA', 'Ana Romanzini', { hora: '08:00' }),
+      caso('CO', 1, 'NATHALIA', 'Ana R', { hora: '09:00' }),
+    ], ['NATHALIA'])
+    expect(tokens(r)).toEqual(['Ana Romanzini'])
+  })
+  it('com dois candidatos não adivinha: "Rafael" fica separado de "Rafael Cordeiro" e "Rafael Dutra"', () => {
+    const r = gerarColunaLiberacao([
+      caso('S1', 0, 'ADRIANO', 'Rafael', { hora: '08:00' }),
+      caso('S1', 1, 'ADRIANO', 'Rafael Cordeiro', { hora: '09:00' }),
+      caso('S1', 2, 'ADRIANO', 'Rafael Dutra', { hora: '10:00' }),
+    ], ['ADRIANO'])
+    expect(tokens(r).sort()).toEqual(['Rafael', 'Rafael Cordeiro', 'Rafael Dutra'])
+  })
+  it('só dentro do card da mesma pessoa, e nomes diferentes seguem separados', () => {
+    const r = gerarColunaLiberacao([
+      caso('S1', 0, 'ADRIANO', 'Theodoro', { hora: '08:00' }),
+      caso('S2', 0, 'RAQUEL', 'Theodoro Gonzalez', { hora: '08:00' }),
+      caso('S2', 1, 'RAQUEL', 'Amauri Biazi', { hora: '10:00' }),
+    ], ['ADRIANO', 'RAQUEL'])
+    expect(tokens(r, 0)).toEqual(['Theodoro'])
+    expect(tokens(r, 1)).toEqual(['Theodoro Gonzalez', 'Amauri Biazi'])
+  })
+})

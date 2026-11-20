@@ -219,6 +219,51 @@ export function resolverAnestesistas(casos) {
   })
 }
 
+/**
+ * O MESMO CIRURGIÃO, UM TÍTULO SÓ (dono 20/11/2026, foto do card: "Theodoro" com duas cirurgias
+ * e, logo abaixo, "Theodoro Gonzalez" com outras duas — "é o mesmo cirurgião, não subdivida como
+ * se fossem dois"). A foto do mapa traz o nome completo e o caso lançado à mão traz só o primeiro
+ * nome; o token saía diferente e o card abria dois grupos.
+ *
+ * No card de UMA pessoa, o nome mais curto se funde ao mais longo quando é o começo dele, palavra
+ * por palavra ("Theodoro" → "Theodoro Gonzalez", "Amauri" → "Amauri Biazi"); a última palavra
+ * pode ser a inicial ("Ana R" → "Ana Romanzini"). Com DOIS candidatos mais longos ("Rafael" ×
+ * "Rafael Cordeiro" e "Rafael Dutra") não funde: identidade ambígua não se adivinha. Só nomes
+ * de pessoa — token com "/", sufixo de bloco, "SRPA" e "Continuação" ficam como estão.
+ */
+const palavrasDoToken = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().split(/\s+/).filter(Boolean)
+const ehNomeSimples = (t) => /^[\p{L}.' -]+$/u.test(String(t || '')) && !/^(SRPA|CONTINUACAO)$/.test(palavrasDoToken(t).join(' '))
+function comecaIgual(curto, longo) {
+  if (!curto.length || curto.length > longo.length || curto[0] !== longo[0]) return false
+  const ultima = curto[curto.length - 1].replace('.', '')
+  const inicial = curto.length > 1 && ultima.length === 1 && longo[curto.length - 1].length > 1 && longo[curto.length - 1].startsWith(ultima)
+  // mesmo nº de palavras só casa pela inicial ("Ana R" × "Ana Romanzini"); senão o curto tem de ser MENOR
+  if (curto.length === longo.length && !inicial) return false
+  return curto.every((p, i) => p === longo[i] || (inicial && i === curto.length - 1))
+}
+function unificarCirurgioesDoGrupo(g) {
+  const nomes = g.tokens.filter(ehNomeSimples)
+  if (nomes.length < 2) return
+  const para = new Map()
+  for (const curto of nomes) {
+    const pc = palavrasDoToken(curto)
+    const candidatos = nomes.filter((longo) => longo !== curto && comecaIgual(pc, palavrasDoToken(longo)))
+    if (candidatos.length === 1) para.set(curto, candidatos[0])
+  }
+  if (!para.size) return
+  // "Ana" → "Ana R" → "Ana Romanzini": segue a cadeia até o nome mais completo
+  const destino = (t) => { let d = t; const vistos = new Set(); while (para.has(d) && !vistos.has(d)) { vistos.add(d); d = para.get(d) } return d }
+  for (const c of g.casos) if (para.has(c.token)) c.token = destino(c.token)
+  for (const curto of para.keys()) {
+    const d = destino(curto)
+    if (g.tokenHora[curto] && (!g.tokenHora[d] || g.tokenHora[curto] < g.tokenHora[d])) g.tokenHora[d] = g.tokenHora[curto]
+    if (g.tokenTermino[curto] && (!g.tokenTermino[d] || g.tokenTermino[curto] < g.tokenTermino[d])) g.tokenTermino[d] = g.tokenTermino[curto]
+    if (g.tokenAndamento[curto]) g.tokenAndamento[d] = true
+    delete g.tokenHora[curto]; delete g.tokenTermino[curto]; delete g.tokenAndamento[curto]
+  }
+  g.tokens = g.tokens.filter((t) => !para.has(t))
+}
+
 /** Token de cirurgião para um caso, com sufixo de bloco/SRPA/Continuação/Imagem (regras 4–8,13). */
 function tokenCirurgiao(caso) {
   const bloco = caso.bloco || 'normal'
@@ -461,6 +506,7 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
       if (sala && !g.salas.includes(sala)) g.salas.push(sala) // onde o anestesista está escalado
     }
   }
+  for (const g of grupos.values()) unificarCirurgioesDoGrupo(g)
 
   // alertas "?" em ordem de horário (pedido do dono 2026-07-21; sem hora → fim)
   incerteza.sort((a, b) => (a.hora || '99:99').localeCompare(b.hora || '99:99'))

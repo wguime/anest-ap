@@ -3,6 +3,23 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## 20/11/2026 (tarde) — Escala: o card diz QUAL é o procedimento, e o mesmo cirurgião é um título só — v5.12.103
+
+Dono 20/11, cinco fotos da fila: "corrija os procedimentos, coloque os procedimentos corretos, evite colocar
+coisas genéricas que não identificam o real procedimento" e "é o mesmo cirurgião, não subdivida como se fossem
+dois".
+- **Rótulos das fotos:** "Cirurgia" era a cirurgia do prolapso de cúpula vaginal; "Endoscopia" era a **fratura do
+  colo do fêmur** (o parêntese em "(COLO) DO FÊMUR" enganava a regra da colonoscopia); "Cateter central" era a
+  **retirada** (agora "Retirada de…" × "Implante de cateter central"); "Fratura de fêmur" era **fêmur e tíbia**.
+- **Varredura da base inteira** (3.595 grafias): 117 mudaram. Colonoscopia deixa de sair "Endoscopia"; fratura
+  com dois ossos cita os dois; supracondiliana e colo do fêmur têm nome próprio; biópsia, drenagem, amputação,
+  angiografia, luxação e fratura sem qualificador na lista passam a usar o que o próprio texto diz ("Biópsia de
+  boca"); "EMERGENCIA – X" mostra o X.
+- **O que o texto não diz não é inventado:** caso lançado sem procedimento continua em branco, e "Debridamento"
+  escrito só assim continua "Debridamento". "Masto" segue como o mapa escreve.
+- **Cirurgião:** no card de uma pessoa, "Theodoro" e "Theodoro Gonzalez" (ou "Ana R" e "Ana Romanzini") viram um
+  grupo só, com o nome mais completo. Com dois candidatos possíveis não funde.
+
 ## 20/11/2026 — Escala (fila única): hospital do card em faixa de realce — v5.12.102
 
 - Dono 20/11, escolhido por imagem entre sete opções (`.tmp/selo-hospital-fds-v4.html`, 430px, dois temas): a

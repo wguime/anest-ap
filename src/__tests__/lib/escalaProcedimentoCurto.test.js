@@ -135,7 +135,8 @@ const casos = [
   ['02 ANGIOPLASTIA – 4H', '2 angioplastia'],
   ['ABLAÇÃO PERCUTÂNEA POR CATETER PARA TRATAMENTO DE ARRITMIAS CARDÍACAS', 'Ablação de arritmia'],
   ['ABLAÇAO PROSTATICA A LASER', 'Ablação prostática'],
-  ['COLOCACAO DE CATETER VENOSO CENTRAL OU PORTOCATH', 'Cateter central'],
+  // 20/11: implante × retirada muda o que se faz — o rótulo deixou de ser só "Cateter central"
+  ['COLOCACAO DE CATETER VENOSO CENTRAL OU PORTOCATH', 'Implante de cateter central'],
   ['INCONTINENCIA URINARIA COM COLPOPLASTIA ANTERIOR', 'Sling'],
   ['MASTOPEXIA COM PROTESE - 4H30', 'Mastopexia'],
   ['BRAQUIOPLASTIA', 'Braquioplastia'],
@@ -260,10 +261,12 @@ describe('nomeCurtoProcedimento — fallback para o que o dicionário não conhe
     expect(nomeCurtoProcedimento('AMPUTAÇÃO CÔNICA DO COLO DO ÚTERO')).toBe('Conização')
     expect(nomeCurtoProcedimento('CERCLAGEM DO COLO UTERINO')).toBe('Cerclagem')
     expect(nomeCurtoProcedimento('CONIZAÇÃO DO COLO UTERINO')).toBe('Conização')
-    expect(nomeCurtoProcedimento('Fratura proximal do colo do fêmur')).toBe('Fratura de fêmur')
+    // 20/11: o colo é outra fratura que a da diáfise — o rótulo passou a dizer qual
+    expect(nomeCurtoProcedimento('Fratura proximal do colo do fêmur')).toBe('Fratura do colo do fêmur')
     expect(nomeCurtoProcedimento('RESSECÇÃO ENDOSCÓPICA DO COLO VESICAL')).toBe('RTU de bexiga')
     expect(nomeCurtoProcedimento('RETOSSIGMOIDECTOMIA ABDOMINAL')).toBe('Retossigmoidectomia')
-    expect(nomeCurtoProcedimento('COLONOSCOPIA (INCLUI A RETOSSIGMOIDOSCOPIA)')).toBe('Endoscopia')
+    // 20/11 ("evite coisas genéricas"): colonoscopia é colonoscopia, não a família "Endoscopia"
+    expect(nomeCurtoProcedimento('COLONOSCOPIA (INCLUI A RETOSSIGMOIDOSCOPIA)')).toBe('Colonoscopia')
     expect(nomeCurtoProcedimento('01 COLO')).toBe('1 COLO')
     expect(nomeCurtoProcedimento('01 EDA C/ COLO + 04 EDA + 03 COLO')).toBe('1 EDA c/ COLO + 4 EDA + 3 COLO')
     expect(nomeCurtoProcedimento('01 RETOSSIG. + 01 COLO')).toBe('1 retossig + 1 COLO')
@@ -343,5 +346,58 @@ describe('nomeCurtoProcedimento — fallback para o que o dicionário não conhe
   it('vazio e nulo devolvem vazio', () => {
     expect(nomeCurtoProcedimento('')).toBe('')
     expect(nomeCurtoProcedimento(null)).toBe('')
+  })
+})
+
+// Dono 20/11/2026, cinco fotos da fila — "Cirurgia", "Endoscopia" (era fratura do colo do fêmur),
+// "Cateter central" (era a RETIRADA), "Fratura de fêmur" (era fêmur e tíbia): "corrija os
+// procedimentos, coloque os procedimentos corretos, evite colocar coisas genéricas que não
+// identificam o real procedimento". Os textos são os do banco naquele dia.
+describe('dono 20/11 — o rótulo diz qual é o procedimento, não só a família', () => {
+  it.each([
+    // as fotos
+    ['CIRURGIA (VIA ALTA OU BAIXA) DO PROLAPSO', 'Prolapso de cúpula vaginal'],
+    ['CIRURGIA LAPAROSCOPICA DO PROLAPSO DE CUPULA VAGINAL', 'Prolapso de cúpula vaginal'],
+    ['FRATURA/LESÃO FISÁRIA PROXIMAL (COLO) DO FÊMUR.', 'Fratura do colo do fêmur'],
+    ['DE FRATURA / LESÃO FISÁRIA PROXIMAL (COLO) DO FÊMUR', 'Fratura do colo do fêmur'],
+    ['RETIRADA DE CATETER DE LONGA PERMANÊNCIA', 'Retirada de cateter central'],
+    ['IMPLANTE CIRURGICO DE CATETERDE LONGA PERMANENCIA PARA NPP, QT OU HEMODEPURAÇÃO', 'Implante de cateter central'],
+    ['Portocath', 'Portocath'],
+    ['Fratura de fêmur e tíbia', 'Fratura de fêmur e tíbia'],
+    // a mesma família, pela varredura da base inteira
+    ['Fraturas de úmero, tíbia e tornozelo', 'Fratura de úmero, tíbia e tornozelo'],
+    ['FRATURA DA CLAVÍCULA + RÁDIO/ULNA', 'Fratura de clavícula e antebraço'],
+    ['Fratura supracondiliana', 'Fratura supracondiliana'],
+    ['FRATURA / LESÃO FISÁRIA SUPRACONDILIANA DO ÚMERO', 'Fratura supracondiliana de úmero'],
+    ['Fratura exposta', 'Fratura exposta'],
+    ['Hemorragia digestiva eda', 'Endoscopia por hemorragia digestiva'],
+    ['Passagem de SNE por EDA', 'Passagem de SNE por endoscopia'],
+    ['Colonoscopia', 'Colonoscopia'],
+    ['ENDOSCOPIA NASAL 2H', 'Endoscopia nasal'],
+    ['BIOPSIA DE BOCA', 'Biópsia de boca'],
+    ['TORACOTOMIA COM BIOPSIA', 'Toracotomia com biópsia'],
+    ['DRENAGEM DE LINFONODO INGUINAL', 'Drenagem de linfonodo inguinal'],
+    ['AMPUTAÇÃO DE PÊNIS EM ONCOLOGIA', 'Amputação de pênis'],
+    ['ANGIOGRAFIA CEREBRAL – 2H', 'Angiografia cerebral'],
+    ['ARTROPLASTIA DE RESSECÇÃO DE MÉDIA / GRANDE ARTICULAÇÃO', 'Artroplastia de ressecção'],
+    ['RETENCIONAMENTO, REFORÇO OU RECONST DO LIGAMENTO', 'Reconstrução ligamentar'],
+    ['EMERGENCIA – TRANSPLANTE RENAL', 'Transplante renal'],
+    ['TRATAMENTO COM CIRURGIAS MÚLTIPLAS', 'Cirurgias múltiplas'],
+  ])('%s → %s', (texto, rotulo) => {
+    expect(nomeCurtoProcedimento(texto)).toBe(rotulo)
+  })
+
+  it('o que o texto não diz continua não sendo inventado', () => {
+    // só a palavra no mapa → só a palavra no card
+    expect(nomeCurtoProcedimento('Debridamento')).toBe('Debridamento')
+    expect(nomeCurtoProcedimento('Biópsia')).toBe('Biópsia')
+    expect(nomeCurtoProcedimento('EMERGENCIA')).toBe('Emergência')
+    // um osso só e a diáfise seguem como estavam
+    expect(nomeCurtoProcedimento('TRATAMENTO CIRÚRGICO DE FRATURA DA DIÁFISE DO FÊMUR')).toBe('Fratura de fêmur')
+    expect(nomeCurtoProcedimento('FRATURA DA TIBIA ASSOCIADA OU NAO A FIBULA (INCLUI DESLOCAMENTO EPIFISÁRIO)')).toBe('Fratura de tíbia')
+    expect(nomeCurtoProcedimento('FRATURA DIAFISÁRIA ÚNICA DO RÁDIO/DA ULNA')).toBe('Fratura de antebraço')
+    // EDA sozinha segue "Endoscopia"; a linha contada segue com a palavra do mapa
+    expect(nomeCurtoProcedimento('EDA')).toBe('Endoscopia')
+    expect(nomeCurtoProcedimento('02 Colonoscopias')).toBe('2 colonoscopias')
   })
 })
