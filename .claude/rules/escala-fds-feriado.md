@@ -902,3 +902,18 @@ define o dono pelo alerta, `patchDefinicaoNoTurnoSeguinte` grava junto (mesmo `s
 sem isso o caso voltaria ao alerta. ⚠️ efeito aceito: depois de definido, o caso é da TARDE — republicar
 a tarde por cima o substitui, como qualquer caso da tarde. Travas: describe "fila única — passa vira sem
 anestesista" em `escalaPassaDeTurno.test.js` + describe homônimo em `escalaFdsTelaUnica.test.jsx`.
+
+
+### FILA ÚNICA — o hospital do card é REALCE, não selo (dono 20/11/2026, opção H5)
+
+Escolhido por imagem em `.tmp/selo-hospital-fds-v4.html` (sete opções, 430px, dois temas): a linha do hospital
+abaixo do nome (caixa alta, 11.5px extrabold, `text-primary` — desenho de 24/08) ganha uma faixa
+`bg-primary/[0.14]`, cantos de 4px, justa ao texto (`<span data-hospital-linha>` na `LiberacoesView`). O
+`-ml-1.5` devolve o `px-1.5` na folga `pl-1.5` do bloco: o texto fica na coluna do local. Sem padding vertical
+nem `leading` próprio — a altura do card é a de antes (medido: 17,3px = a linha).
+- **Selo cheio foi recusado (H6):** selo cheio é de papel ou situação ("Plantão HRO", "Ajuda", "Pn"); no card
+  do plantonista ficavam dois selos verdes iguais empilhados, e no escuro o do hospital saía idêntico ao "Pn".
+- Dois hospitais seguem numa faixa só ("UNIMED/HRO"). ⚠️ A barra ali é "nos dois", ao contrário da célula da
+  escala publicada, onde "A / B" é um ou outro — separar em duas faixas foi sugerido e não pedido.
+- Só existe em `modoFds` (a linha do hospital não existe no dia útil). Trava: "hospital da linha vem na faixa
+  de realce" em `liberacoesFdsUnificada.test.jsx`.

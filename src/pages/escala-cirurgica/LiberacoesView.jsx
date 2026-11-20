@@ -2689,7 +2689,16 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         20/07 — cirurgião, depois sala — fica como está. */}
                     {modoFds && !liberadoReal && hospitalDaLinha && (
                       <p className="mt-0.5 text-[11.5px] font-extrabold uppercase tracking-[0.06em] text-primary">
-                        {hospitalDaLinha}
+                        {/* REALCE (dono 20/11, opção H5 da maquete `selo-hospital-fds-v4`):
+                            faixa primary/14 justa ao texto. Selo CHEIO fica reservado a
+                            papel/situação ("Plantão HRO", "Ajuda", "Pn") — um selo verde
+                            aqui empilhava dois iguais no card do plantonista. `-ml-1.5`
+                            devolve o `px-1.5` na folga `pl-1.5` do bloco: o TEXTO segue na
+                            coluna do local. Sem padding vertical nem `leading` próprio —
+                            a linha (e o card) mantêm a altura de antes. */}
+                        <span data-hospital-linha className="-ml-1.5 inline-block rounded-[4px] bg-primary/[0.14] px-1.5">
+                          {hospitalDaLinha}
+                        </span>
                       </p>
                     )}
                     {modoFds && !liberadoReal && localExibido && (

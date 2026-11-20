@@ -3,6 +3,16 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## 20/11/2026 — Escala (fila única): hospital do card em faixa de realce — v5.12.102
+
+- Dono 20/11, escolhido por imagem entre sete opções (`.tmp/selo-hospital-fds-v4.html`, 430px, dois temas): a
+  linha do hospital no card da fila de sábado, domingo e feriado ganha a **faixa de realce** (opção H5 — verde a
+  14%, cantos de 4px, justa ao texto). Texto, caixa alta, peso e cor são os de antes; a altura do card não muda
+  (medido no app: faixa 17,3px = linha 17,3px; o texto segue na coluna do local).
+- Recusado o selo cheio (H6): selo cheio é de papel ou situação ("Plantão HRO", "Ajuda", "Pn") e, no card do
+  plantonista, ficavam dois selos verdes iguais empilhados.
+- Dois hospitais seguem numa faixa só ("UNIMED/HRO"), como no modelo aprovado. O dia útil não tem a linha.
+
 ## 19/11/2026 (noite, 2) — Escala: "Não aconteceu" também na terminada sem horário — v5.12.101
 
 - Dono 19/11, 20h47 (a cirurgia do Humberto, ter 17/11): o botão "Não aconteceu — foi suspensa" não aparecia

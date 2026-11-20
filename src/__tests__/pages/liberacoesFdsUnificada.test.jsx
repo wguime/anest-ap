@@ -147,6 +147,24 @@ describe('fila única — ordem do rodapé publicado, cruzando hospitais', () =>
     expect(cardDe('GABRIELA').textContent).toContain('Unimed')
   })
 
+  // dono 20/11 (opção H5): o hospital é REALCE — faixa justa ao texto —, nunca
+  // selo cheio (esse é de papel/situação: "Plantão HRO", "Ajuda", "Pn").
+  it('hospital da linha vem na faixa de realce, uma por card', () => {
+    montar()
+    const faixa = (chave) => cardDe(chave).querySelectorAll('[data-hospital-linha]')
+    expect(faixa('uid-staub')).toHaveLength(1)
+    expect(faixa('uid-staub')[0].textContent).toBe('Unimed/HRO')
+    expect(faixa('uid-staub')[0].className).toContain('bg-primary/[0.14]')
+    // a faixa não pode trazer padding vertical: a altura do card é a de antes
+    expect(faixa('uid-staub')[0].className).not.toMatch(/\bp[y]?-\d|\bpt-|\bpb-/)
+    expect(faixa('MATHEUS')).toHaveLength(1)
+    expect(faixa('MATHEUS')[0].textContent).toBe('HRO')
+    expect(faixa('GABRIELA')[0].textContent).toBe('Unimed')
+    // a faixa é FILHA da linha do hospital: caixa alta, peso e cor seguem os de antes
+    expect(faixa('MATHEUS')[0].parentElement.className).toContain('uppercase')
+    expect(faixa('MATHEUS')[0].parentElement.className).toContain('text-primary')
+  })
+
   it('plantão físico da faixa 7-13 (grade) no lugar do "Plantonista" genérico', () => {
     montar()
     expect(cardDe('GUILHERME DIDOMENICO').textContent).toContain('Plantão Unimed')
